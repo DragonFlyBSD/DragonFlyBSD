@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/route6.c,v 1.1.2.5 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/route6.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/route6.c,v 1.3 2003/08/23 11:02:46 rob Exp $	*/
 /*	$KAME: route6.c,v 1.24 2001/03/14 03:07:05 itojun Exp $	*/
 
 /*
@@ -49,8 +49,8 @@
 
 #include <netinet/icmp6.h>
 
-static int ip6_rthdr0 __P((struct mbuf *, struct ip6_hdr *,
-    struct ip6_rthdr0 *));
+static int ip6_rthdr0 (struct mbuf *, struct ip6_hdr *,
+    struct ip6_rthdr0 *);
 
 int
 route6_input(mp, offp, proto)

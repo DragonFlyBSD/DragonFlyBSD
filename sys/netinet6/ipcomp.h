@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp.h,v 1.1.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp.h,v 1.3 2003/07/23 02:30:22 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipcomp.h,v 1.4 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: ipcomp.h,v 1.11 2001/09/04 08:43:19 itojun Exp $	*/
 
 /*
@@ -58,15 +58,15 @@ struct ipcomp {
 
 #ifdef _KERNEL
 struct ipcomp_algorithm {
-	int (*compress) __P((struct mbuf *, struct mbuf *, size_t *));
-	int (*decompress) __P((struct mbuf *, struct mbuf *, size_t *));
+	int (*compress) (struct mbuf *, struct mbuf *, size_t *);
+	int (*decompress) (struct mbuf *, struct mbuf *, size_t *);
 	size_t minplen;		/* minimum required length for compression */
 };
 
 struct ipsecrequest;
-extern const struct ipcomp_algorithm *ipcomp_algorithm_lookup __P((int));
-extern void ipcomp4_input __P((struct mbuf *, int off, int proto));
-extern int ipcomp4_output __P((struct mbuf *, struct ipsecrequest *));
+extern const struct ipcomp_algorithm *ipcomp_algorithm_lookup (int);
+extern void ipcomp4_input (struct mbuf *, int off, int proto);
+extern int ipcomp4_output (struct mbuf *, struct ipsecrequest *);
 #endif /* KERNEL */
 
 #endif /* _NETINET6_IPCOMP_H_ */

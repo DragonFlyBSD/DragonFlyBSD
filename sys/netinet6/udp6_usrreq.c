@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.8 2003/08/07 21:17:33 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.9 2003/08/23 11:02:46 rob Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -118,8 +118,8 @@
  */
 
 extern	struct protosw inetsw[];
-static	int in6_mcmatch __P((struct inpcb *, struct in6_addr *, struct ifnet *));
-static	int udp6_detach __P((struct socket *so));
+static	int in6_mcmatch (struct inpcb *, struct in6_addr *, struct ifnet *);
+static	int udp6_detach (struct socket *so);
 
 static int
 in6_mcmatch(in6p, ia6, ifp)
@@ -432,7 +432,7 @@ udp6_ctlinput(cmd, sa, d)
 	int off = 0;
 	struct ip6ctlparam *ip6cp = NULL;
 	const struct sockaddr_in6 *sa6_src = NULL;
-	void (*notify) __P((struct inpcb *, int)) = udp_notify;
+	void (*notify) (struct inpcb *, int) = udp_notify;
 	struct udp_portonly {
 		u_int16_t uh_sport;
 		u_int16_t uh_dport;

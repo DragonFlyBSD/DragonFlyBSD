@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/pim6_var.h,v 1.2.2.1 2000/07/15 07:14:36 kris Exp $	*/
-/*	$DragonFly: src/sys/netinet6/pim6_var.h,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/pim6_var.h,v 1.3 2003/08/23 11:02:46 rob Exp $	*/
 /*	$KAME: pim6_var.h,v 1.8 2000/06/06 08:07:43 jinmei Exp $	*/
 
 /*
@@ -55,7 +55,7 @@ struct pim6stat {
 #if (defined(KERNEL)) || (defined(_KERNEL))
 extern struct pim6stat pim6stat;
 
-int pim6_input __P((struct mbuf **, int*, int));
+int pim6_input (struct mbuf **, int*, int);
 #endif /* KERNEL */
 
 /*

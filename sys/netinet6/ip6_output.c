@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.7 2003/08/07 21:54:33 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.8 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -113,7 +113,7 @@
 #include <net/net_osdep.h>
 
 struct ip;
-extern int (*fr_checkp) __P((struct ip *, int, struct ifnet *, int, struct mbuf **));
+extern int (*fr_checkp) (struct ip *, int, struct ifnet *, int, struct mbuf **);
 
 static MALLOC_DEFINE(M_IPMOPTS, "ip6_moptions", "internet multicast options");
 
@@ -125,15 +125,15 @@ struct ip6_exthdrs {
 	struct mbuf *ip6e_dest2;
 };
 
-static int ip6_pcbopts __P((struct ip6_pktopts **, struct mbuf *,
-			    struct socket *, struct sockopt *sopt));
-static int ip6_setmoptions __P((int, struct ip6_moptions **, struct mbuf *));
-static int ip6_getmoptions __P((int, struct ip6_moptions *, struct mbuf **));
-static int ip6_copyexthdr __P((struct mbuf **, caddr_t, int));
-static int ip6_insertfraghdr __P((struct mbuf *, struct mbuf *, int,
-				  struct ip6_frag **));
-static int ip6_insert_jumboopt __P((struct ip6_exthdrs *, u_int32_t));
-static int ip6_splithdr __P((struct mbuf *, struct ip6_exthdrs *));
+static int ip6_pcbopts (struct ip6_pktopts **, struct mbuf *,
+			    struct socket *, struct sockopt *sopt);
+static int ip6_setmoptions (int, struct ip6_moptions **, struct mbuf *);
+static int ip6_getmoptions (int, struct ip6_moptions *, struct mbuf **);
+static int ip6_copyexthdr (struct mbuf **, caddr_t, int);
+static int ip6_insertfraghdr (struct mbuf *, struct mbuf *, int,
+				  struct ip6_frag **);
+static int ip6_insert_jumboopt (struct ip6_exthdrs *, u_int32_t);
+static int ip6_splithdr (struct mbuf *, struct ip6_exthdrs *);
 
 /*
  * IP6 output. The packet in mbuf chain m contains a skeletal IP6

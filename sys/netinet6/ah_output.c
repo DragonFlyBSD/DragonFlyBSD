@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_output.c,v 1.1.2.5 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_output.c,v 1.3 2003/08/07 21:54:33 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_output.c,v 1.4 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: ah_output.c,v 1.31 2001/07/26 06:53:15 jinmei Exp $	*/
 
 /*
@@ -78,7 +78,7 @@
 #include <net/net_osdep.h>
 
 #ifdef INET
-static struct in_addr *ah4_finaldst __P((struct mbuf *));
+static struct in_addr *ah4_finaldst (struct mbuf *);
 #endif
 
 /*

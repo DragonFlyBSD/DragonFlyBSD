@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.4 2003/08/07 21:17:33 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.5 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -114,8 +114,8 @@ struct nd_prhead nd_prefix = { 0 };
 int nd6_recalc_reachtm_interval = ND6_RECALC_REACHTM_INTERVAL;
 static struct sockaddr_in6 all1_sa;
 
-static void nd6_slowtimo __P((void *));
-static int regen_tmpaddr __P((struct in6_ifaddr *));
+static void nd6_slowtimo (void *);
+static int regen_tmpaddr (struct in6_ifaddr *);
 
 struct callout nd6_slowtimo_ch;
 struct callout nd6_timer_ch;

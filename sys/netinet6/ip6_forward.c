@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_forward.c,v 1.4.2.7 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_forward.c,v 1.4 2003/08/07 21:54:33 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_forward.c,v 1.5 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: ip6_forward.c,v 1.69 2001/05/17 03:48:30 itojun Exp $	*/
 
 /*
@@ -83,7 +83,7 @@
 
 #include <net/net_osdep.h>
 
-extern int (*fr_checkp) __P((struct ip *, int, struct ifnet *, int, struct mbuf **));
+extern int (*fr_checkp) (struct ip *, int, struct ifnet *, int, struct mbuf **);
 
 struct	route_in6 ip6_forward_rt;
 

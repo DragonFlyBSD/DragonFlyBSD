@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_proto.c,v 1.6.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_proto.c,v 1.3 2003/08/07 21:17:33 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_proto.c,v 1.4 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: in6_proto.c,v 1.91 2001/05/27 13:28:35 itojun Exp $	*/
 
 /*
@@ -256,7 +256,7 @@ struct ip6protosw inet6sw[] = {
 },
 };
 
-extern int in6_inithead __P((void **, int));
+extern int in6_inithead (void **, int);
 
 struct domain inet6domain =
     { AF_INET6, "internet6", 0, 0, 0,

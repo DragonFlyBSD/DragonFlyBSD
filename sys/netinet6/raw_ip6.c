@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.7 2003/08/07 21:17:33 dillon Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.8 2003/08/23 11:02:46 rob Exp $
  */
 
 /*
@@ -276,7 +276,7 @@ rip6_ctlinput(cmd, sa, d)
 	int off = 0;
 	struct ip6ctlparam *ip6cp = NULL;
 	const struct sockaddr_in6 *sa6_src = NULL;
-	void (*notify) __P((struct inpcb *, int)) = in6_rtchange;
+	void (*notify) (struct inpcb *, int) = in6_rtchange;
 
 	if (sa->sa_family != AF_INET6 ||
 	    sa->sa_len != sizeof(struct sockaddr_in6))

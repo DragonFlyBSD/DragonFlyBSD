@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.6 2003/08/07 21:17:33 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.7 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -129,7 +129,7 @@
 
 #include <net/net_osdep.h>
 
-extern int (*fr_checkp) __P((struct ip *, int, struct ifnet *, int, struct mbuf **));
+extern int (*fr_checkp) (struct ip *, int, struct ifnet *, int, struct mbuf **);
 
 extern struct domain inet6domain;
 extern struct ip6protosw inet6sw[];
@@ -155,11 +155,11 @@ int ip6_fw_enable = 1;
 
 struct ip6stat ip6stat;
 
-static void ip6_init2 __P((void *));
-static struct ip6aux *ip6_setdstifaddr __P((struct mbuf *, struct in6_ifaddr *));
-static int ip6_hopopts_input __P((u_int32_t *, u_int32_t *, struct mbuf **, int *));
+static void ip6_init2 (void *);
+static struct ip6aux *ip6_setdstifaddr (struct mbuf *, struct in6_ifaddr *);
+static int ip6_hopopts_input (u_int32_t *, u_int32_t *, struct mbuf **, int *);
 #ifdef PULLDOWN_TEST
-static struct mbuf *ip6_pullexthdr __P((struct mbuf *, size_t, int));
+static struct mbuf *ip6_pullexthdr (struct mbuf *, size_t, int);
 #endif
 
 

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_prefix.c,v 1.4.2.3 2001/07/03 11:01:52 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.3 2003/06/27 01:53:25 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.4 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: in6_prefix.c,v 1.47 2001/03/25 08:41:39 itojun Exp $	*/
 
 /*
@@ -93,13 +93,13 @@ struct callout in6_rr_timer_ch;
 
 #include <net/net_osdep.h>
 
-static void	add_each_addr __P((struct socket *so, struct rr_prefix *rpp,
-				   struct rp_addr *rap));
-static int create_ra_entry __P((struct rp_addr **rapp));
-static int add_each_prefix __P((struct socket *so, struct rr_prefix *rpp));
-static void free_rp_entries __P((struct rr_prefix *rpp));
-static int link_stray_ia6s __P((struct rr_prefix *rpp));
-static void	rp_remove __P((struct rr_prefix *rpp));
+static void	add_each_addr (struct socket *so, struct rr_prefix *rpp,
+				   struct rp_addr *rap);
+static int create_ra_entry (struct rp_addr **rapp);
+static int add_each_prefix (struct socket *so, struct rr_prefix *rpp);
+static void free_rp_entries (struct rr_prefix *rpp);
+static int link_stray_ia6s (struct rr_prefix *rpp);
+static void	rp_remove (struct rr_prefix *rpp);
 
 /*
  * Copy bits from src to tgt, from off bit for len bits.

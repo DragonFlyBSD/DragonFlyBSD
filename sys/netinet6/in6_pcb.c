@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.9 2003/08/07 21:54:33 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.10 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -769,7 +769,7 @@ in6_pcbnotify(head, dst, fport_arg, src, lport_arg, cmd, notify)
 	const struct sockaddr *src;
 	u_int lport_arg;
 	int cmd;
-	void (*notify) __P((struct inpcb *, int));
+	void (*notify) (struct inpcb *, int);
 {
 	struct inpcb *inp, *ninp;
 	struct sockaddr_in6 sa6_src, *sa6_dst;

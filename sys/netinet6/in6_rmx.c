@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_rmx.c,v 1.1.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: in6_rmx.c,v 1.11 2001/07/26 06:53:16 jinmei Exp $	*/
 
 /*
@@ -100,7 +100,7 @@
 #include <netinet/tcp_timer.h>
 #include <netinet/tcp_var.h>
 
-extern int	in6_inithead __P((void **head, int off));
+extern int	in6_inithead (void **head, int off);
 
 #define RTPRF_OURS		RTF_PROTO3	/* set on routes we manage */
 

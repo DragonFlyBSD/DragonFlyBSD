@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.h,v 1.1.2.2 2001/07/03 11:01:52 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.h,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.h,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: in6_ifattach.h,v 1.14 2001/02/08 12:48:39 jinmei Exp $	*/
 
 /*
@@ -35,13 +35,13 @@
 #define _NETINET6_IN6_IFATTACH_H_
 
 #ifdef _KERNEL
-void in6_nigroup_attach __P((const char *, int));
-void in6_nigroup_detach __P((const char *, int));
-void in6_ifattach __P((struct ifnet *, struct ifnet *));
-void in6_ifdetach __P((struct ifnet *));
-void in6_get_tmpifid __P((struct ifnet *, u_int8_t *, const u_int8_t *, int));
-void in6_tmpaddrtimer __P((void *));
-int in6_nigroup __P((struct ifnet *, const char *, int, struct in6_addr *));
+void in6_nigroup_attach (const char *, int);
+void in6_nigroup_detach (const char *, int);
+void in6_ifattach (struct ifnet *, struct ifnet *);
+void in6_ifdetach (struct ifnet *);
+void in6_get_tmpifid (struct ifnet *, u_int8_t *, const u_int8_t *, int);
+void in6_tmpaddrtimer (void *);
+int in6_nigroup (struct ifnet *, const char *, int, struct in6_addr *);
 #endif /* _KERNEL */
 
 #endif /* _NETINET6_IN6_IFATTACH_H_ */

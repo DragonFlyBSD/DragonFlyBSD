@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_prefix.h,v 1.1.2.2 2001/07/03 11:01:52 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_prefix.h,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_prefix.h,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: in6_prefix.h,v 1.10 2001/02/08 16:30:30 itojun Exp $	*/
 
 /*
@@ -87,6 +87,6 @@ LIST_HEAD(rr_prhead, rr_prefix);
 
 extern struct rr_prhead rr_prefix;
 
-void in6_rr_timer __P((void *));
+void in6_rr_timer (void *);
 extern struct callout in6_rr_timer_ch;
-int delete_each_prefix  __P((struct rr_prefix *rpp, u_char origin));
+int delete_each_prefix  (struct rr_prefix *rpp, u_char origin);

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/frag6.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/frag6.c,v 1.2 2003/06/17 04:28:51 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/frag6.c,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: frag6.c,v 1.33 2002/01/07 11:34:48 kjc Exp $	*/
 
 /*
@@ -61,11 +61,11 @@
  */
 #define IN6_IFSTAT_STRICT
 
-static void frag6_enq __P((struct ip6asfrag *, struct ip6asfrag *));
-static void frag6_deq __P((struct ip6asfrag *));
-static void frag6_insque __P((struct ip6q *, struct ip6q *));
-static void frag6_remque __P((struct ip6q *));
-static void frag6_freef __P((struct ip6q *));
+static void frag6_enq (struct ip6asfrag *, struct ip6asfrag *);
+static void frag6_deq (struct ip6asfrag *);
+static void frag6_insque (struct ip6q *, struct ip6q *);
+static void frag6_remque (struct ip6q *);
+static void frag6_freef (struct ip6q *);
 
 /* XXX we eventually need splreass6, or some real semaphore */
 int frag6_doing_reass;

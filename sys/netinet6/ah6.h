@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah6.h,v 1.2.2.2 2001/07/03 11:01:49 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah6.h,v 1.2 2003/06/17 04:28:51 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah6.h,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: ah.h,v 1.13 2000/10/18 21:28:00 itojun Exp $	*/
 
 /*
@@ -41,13 +41,13 @@
 #ifdef _KERNEL
 struct secasvar;
 
-extern int ah6_input __P((struct mbuf **, int *, int));
-extern int ah6_output __P((struct mbuf *, u_char *, struct mbuf *,
-	struct ipsecrequest *));
-extern int ah6_calccksum __P((struct mbuf *, caddr_t, size_t,
-	const struct ah_algorithm *, struct secasvar *));
+extern int ah6_input (struct mbuf **, int *, int);
+extern int ah6_output (struct mbuf *, u_char *, struct mbuf *,
+	struct ipsecrequest *);
+extern int ah6_calccksum (struct mbuf *, caddr_t, size_t,
+	const struct ah_algorithm *, struct secasvar *);
 
-extern void ah6_ctlinput __P((int, struct sockaddr *, void *));
+extern void ah6_ctlinput (int, struct sockaddr *, void *);
 #endif
 
 #endif /*_NETINET6_AH6_H_*/

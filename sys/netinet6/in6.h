@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.h,v 1.7.2.7 2002/08/01 19:38:50 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.h,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.h,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: in6.h,v 1.89 2001/05/27 13:28:35 itojun Exp $	*/
 
 /*
@@ -583,20 +583,20 @@ struct in6_pktinfo {
 #ifdef _KERNEL
 struct cmsghdr;
 
-int	in6_cksum __P((struct mbuf *, u_int8_t, u_int32_t, u_int32_t));
-int	in6_localaddr __P((struct in6_addr *));
-int	in6_addrscope __P((struct in6_addr *));
-struct	in6_ifaddr *in6_ifawithscope __P((struct ifnet *, struct in6_addr *));
-struct	in6_ifaddr *in6_ifawithifp __P((struct ifnet *, struct in6_addr *));
-extern void in6_if_up __P((struct ifnet *));
+int	in6_cksum (struct mbuf *, u_int8_t, u_int32_t, u_int32_t);
+int	in6_localaddr (struct in6_addr *);
+int	in6_addrscope (struct in6_addr *);
+struct	in6_ifaddr *in6_ifawithscope (struct ifnet *, struct in6_addr *);
+struct	in6_ifaddr *in6_ifawithifp (struct ifnet *, struct in6_addr *);
+extern void in6_if_up (struct ifnet *);
 struct sockaddr;
 
-void	in6_sin6_2_sin __P((struct sockaddr_in *sin,
-			    struct sockaddr_in6 *sin6));
-void	in6_sin_2_v4mapsin6 __P((struct sockaddr_in *sin,
-				 struct sockaddr_in6 *sin6));
-void	in6_sin6_2_sin_in_sock __P((struct sockaddr *nam));
-void	in6_sin_2_v4mapsin6_in_sock __P((struct sockaddr **nam));
+void	in6_sin6_2_sin (struct sockaddr_in *sin,
+			    struct sockaddr_in6 *sin6);
+void	in6_sin_2_v4mapsin6 (struct sockaddr_in *sin,
+				 struct sockaddr_in6 *sin6);
+void	in6_sin6_2_sin_in_sock (struct sockaddr *nam);
+void	in6_sin_2_v4mapsin6_in_sock (struct sockaddr **nam);
 
 #define	satosin6(sa)	((struct sockaddr_in6 *)(sa))
 #define	sin6tosa(sin6)	((struct sockaddr *)(sin6))
@@ -608,43 +608,43 @@ extern int	(*faithprefix_p)(struct in6_addr *);
 __BEGIN_DECLS
 struct cmsghdr;
 
-extern int inet6_option_space __P((int));
-extern int inet6_option_init __P((void *, struct cmsghdr **, int));
-extern int inet6_option_append __P((struct cmsghdr *, const u_int8_t *,
-	int, int));
-extern u_int8_t *inet6_option_alloc __P((struct cmsghdr *, int, int, int));
-extern int inet6_option_next __P((const struct cmsghdr *, u_int8_t **));
-extern int inet6_option_find __P((const struct cmsghdr *, u_int8_t **, int));
+extern int inet6_option_space (int);
+extern int inet6_option_init (void *, struct cmsghdr **, int);
+extern int inet6_option_append (struct cmsghdr *, const u_int8_t *,
+	int, int);
+extern u_int8_t *inet6_option_alloc (struct cmsghdr *, int, int, int);
+extern int inet6_option_next (const struct cmsghdr *, u_int8_t **);
+extern int inet6_option_find (const struct cmsghdr *, u_int8_t **, int);
 
-extern size_t inet6_rthdr_space __P((int, int));
-extern struct cmsghdr *inet6_rthdr_init __P((void *, int));
-extern int inet6_rthdr_add __P((struct cmsghdr *, const struct in6_addr *,
-		unsigned int));
-extern int inet6_rthdr_lasthop __P((struct cmsghdr *, unsigned int));
+extern size_t inet6_rthdr_space (int, int);
+extern struct cmsghdr *inet6_rthdr_init (void *, int);
+extern int inet6_rthdr_add (struct cmsghdr *, const struct in6_addr *,
+		unsigned int);
+extern int inet6_rthdr_lasthop (struct cmsghdr *, unsigned int);
 #if 0 /* not implemented yet */
-extern int inet6_rthdr_reverse __P((const struct cmsghdr *, struct cmsghdr *));
+extern int inet6_rthdr_reverse (const struct cmsghdr *, struct cmsghdr *);
 #endif
-extern int inet6_rthdr_segments __P((const struct cmsghdr *));
-extern struct in6_addr *inet6_rthdr_getaddr __P((struct cmsghdr *, int));
-extern int inet6_rthdr_getflags __P((const struct cmsghdr *, int));
+extern int inet6_rthdr_segments (const struct cmsghdr *);
+extern struct in6_addr *inet6_rthdr_getaddr (struct cmsghdr *, int);
+extern int inet6_rthdr_getflags (const struct cmsghdr *, int);
 
-extern int inet6_opt_init __P((void *, size_t));
-extern int inet6_opt_append __P((void *, size_t, int, u_int8_t,
-				 size_t, u_int8_t, void **));
-extern int inet6_opt_finish __P((void *, size_t, int));
-extern int inet6_opt_set_val __P((void *, size_t, void *, int));
+extern int inet6_opt_init (void *, size_t);
+extern int inet6_opt_append (void *, size_t, int, u_int8_t,
+				 size_t, u_int8_t, void **);
+extern int inet6_opt_finish (void *, size_t, int);
+extern int inet6_opt_set_val (void *, size_t, void *, int);
 
-extern int inet6_opt_next __P((void *, size_t, int, u_int8_t *,
-			       size_t *, void **));
-extern int inet6_opt_find __P((void *, size_t, int, u_int8_t,
-			  size_t *, void **));
-extern int inet6_opt_get_val __P((void *, size_t, void *, int));
-extern size_t inet6_rth_space __P((int, int));
-extern void *inet6_rth_init __P((void *, int, int, int));
-extern int inet6_rth_add __P((void *, const struct in6_addr *));
-extern int inet6_rth_reverse __P((const void *, void *));
-extern int inet6_rth_segments __P((const void *));
-extern struct in6_addr *inet6_rth_getaddr __P((const void *, int));
+extern int inet6_opt_next (void *, size_t, int, u_int8_t *,
+			       size_t *, void **);
+extern int inet6_opt_find (void *, size_t, int, u_int8_t,
+			  size_t *, void **);
+extern int inet6_opt_get_val (void *, size_t, void *, int);
+extern size_t inet6_rth_space (int, int);
+extern void *inet6_rth_init (void *, int, int, int);
+extern int inet6_rth_add (void *, const struct in6_addr *);
+extern int inet6_rth_reverse (const void *, void *);
+extern int inet6_rth_segments (const void *);
+extern struct in6_addr *inet6_rth_getaddr (const void *, int);
 __END_DECLS
 
 #endif /* !_NETINET6_IN6_H_ */

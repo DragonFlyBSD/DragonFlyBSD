@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_mroute.h,v 1.2.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_mroute.h,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_mroute.h,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: ip6_mroute.h,v 1.19 2001/06/14 06:12:55 suz Exp $	*/
 
 /*
@@ -269,10 +269,10 @@ struct rtdetq {		/* XXX: rtdetq is also defined in ip_mroute.h */
 
 #define MAX_UPQ6	4		/* max. no of pkts in upcall Q */
 
-int	ip6_mrouter_set __P((struct socket *so, struct sockopt *sopt));
-int	ip6_mrouter_get __P((struct socket *so, struct sockopt *sopt));
-int	ip6_mrouter_done __P((void));
-int	mrt6_ioctl __P((int, caddr_t));
+int	ip6_mrouter_set (struct socket *so, struct sockopt *sopt);
+int	ip6_mrouter_get (struct socket *so, struct sockopt *sopt);
+int	ip6_mrouter_done (void);
+int	mrt6_ioctl (int, caddr_t);
 #endif /* _KERNEL */
 
 #endif /* !_NETINET6_IP6_MROUTE_H_ */

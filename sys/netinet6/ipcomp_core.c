@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp_core.c,v 1.1.2.5 2003/01/11 19:10:59 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp_core.c,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipcomp_core.c,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: ipcomp_core.c,v 1.25 2001/07/26 06:53:17 jinmei Exp $	*/
 
 /*
@@ -70,11 +70,11 @@
 
 #include <net/net_osdep.h>
 
-static void *deflate_alloc __P((void *, u_int, u_int));
-static void deflate_free __P((void *, void *));
-static int deflate_common __P((struct mbuf *, struct mbuf *, size_t *, int));
-static int deflate_compress __P((struct mbuf *, struct mbuf *, size_t *));
-static int deflate_decompress __P((struct mbuf *, struct mbuf *, size_t *));
+static void *deflate_alloc (void *, u_int, u_int);
+static void deflate_free (void *, void *);
+static int deflate_common (struct mbuf *, struct mbuf *, size_t *, int);
+static int deflate_compress (struct mbuf *, struct mbuf *, size_t *);
+static int deflate_decompress (struct mbuf *, struct mbuf *, size_t *);
 
 /*
  * We need to use default window size (2^15 = 32Kbytes as of writing) for

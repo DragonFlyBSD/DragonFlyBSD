@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp6.h,v 1.2.2.2 2001/07/03 11:01:49 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp6.h,v 1.2 2003/06/17 04:28:51 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp6.h,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: esp.h,v 1.16 2000/10/18 21:28:00 itojun Exp $	*/
 
 /*
@@ -39,11 +39,11 @@
 #define _NETINET6_ESP6_H_
 
 #ifdef _KERNEL
-extern int esp6_output __P((struct mbuf *, u_char *, struct mbuf *,
-	struct ipsecrequest *));
-extern int esp6_input __P((struct mbuf **, int *, int));
+extern int esp6_output (struct mbuf *, u_char *, struct mbuf *,
+	struct ipsecrequest *);
+extern int esp6_input (struct mbuf **, int *, int);
 
-extern void esp6_ctlinput __P((int, struct sockaddr *, void *));
+extern void esp6_ctlinput (int, struct sockaddr *, void *);
 #endif /*_KERNEL*/
 
 #endif /*_NETINET6_ESP6_H_*/

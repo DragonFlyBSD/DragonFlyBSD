@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_rtr.c,v 1.2.2.5 2003/04/05 10:28:53 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: nd6_rtr.c,v 1.111 2001/04/27 01:37:15 jinmei Exp $	*/
 
 /*
@@ -65,22 +65,22 @@
 
 #define SDL(s)	((struct sockaddr_dl *)s)
 
-static struct nd_defrouter *defrtrlist_update __P((struct nd_defrouter *));
-static struct in6_ifaddr *in6_ifadd __P((struct nd_prefix *,
-	struct in6_addr *));
-static struct nd_pfxrouter *pfxrtr_lookup __P((struct nd_prefix *,
-	struct nd_defrouter *));
-static void pfxrtr_add __P((struct nd_prefix *, struct nd_defrouter *));
-static void pfxrtr_del __P((struct nd_pfxrouter *));
+static struct nd_defrouter *defrtrlist_update (struct nd_defrouter *);
+static struct in6_ifaddr *in6_ifadd (struct nd_prefix *,
+	struct in6_addr *);
+static struct nd_pfxrouter *pfxrtr_lookup (struct nd_prefix *,
+	struct nd_defrouter *);
+static void pfxrtr_add (struct nd_prefix *, struct nd_defrouter *);
+static void pfxrtr_del (struct nd_pfxrouter *);
 static struct nd_pfxrouter *find_pfxlist_reachable_router
-	__P((struct nd_prefix *));
-static void defrouter_addifreq __P((struct ifnet *));
-static void nd6_rtmsg __P((int, struct rtentry *));
+	(struct nd_prefix *);
+static void defrouter_addifreq (struct ifnet *);
+static void nd6_rtmsg (int, struct rtentry *);
 
-static void in6_init_address_ltimes __P((struct nd_prefix *ndpr,
-					 struct in6_addrlifetime *lt6));
+static void in6_init_address_ltimes (struct nd_prefix *ndpr,
+					 struct in6_addrlifetime *lt6);
 
-static int rt6_deleteroute __P((struct radix_node *, void *));
+static int rt6_deleteroute (struct radix_node *, void *);
 
 extern int nd6_recalc_reachtm_interval;
 

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_ecn.h,v 1.2.2.2 2001/07/03 11:01:53 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_ecn.h,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_ecn.h,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: ip_ecn.h,v 1.5 2000/03/27 04:58:38 sumikawa Exp $	*/
 
 /*
@@ -37,6 +37,6 @@
  */
 
 #ifdef _KERNEL
-extern void ip6_ecn_ingress __P((int, u_int32_t *, const u_int32_t *));
-extern void ip6_ecn_egress __P((int, const u_int32_t *, u_int32_t *));
+extern void ip6_ecn_ingress (int, u_int32_t *, const u_int32_t *);
+extern void ip6_ecn_egress (int, const u_int32_t *, u_int32_t *);
 #endif

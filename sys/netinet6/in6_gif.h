@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_gif.h,v 1.2.2.3 2002/11/08 16:57:13 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_gif.h,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_gif.h,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: in6_gif.h,v 1.5 2000/04/14 08:36:03 itojun Exp $	*/
 
 /*
@@ -37,10 +37,10 @@
 #define GIF_HLIM	30
 
 struct gif_softc;
-int in6_gif_input __P((struct mbuf **, int *, int));
-int in6_gif_output __P((struct ifnet *, int, struct mbuf *));
-int gif_encapcheck6 __P((const struct mbuf *, int, int, void *));
-int in6_gif_attach __P((struct gif_softc *));
-int in6_gif_detach __P((struct gif_softc *));
+int in6_gif_input (struct mbuf **, int *, int);
+int in6_gif_output (struct ifnet *, int, struct mbuf *);
+int gif_encapcheck6 (const struct mbuf *, int, int, void *);
+int in6_gif_attach (struct gif_softc *);
+int in6_gif_detach (struct gif_softc *);
 
 #endif /*_NETINET6_IN6_GIF_H_*/

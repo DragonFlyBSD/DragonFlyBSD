@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/mld6_var.h,v 1.1.2.1 2000/07/15 07:14:36 kris Exp $	*/
-/*	$DragonFly: src/sys/netinet6/mld6_var.h,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/mld6_var.h,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: mld6_var.h,v 1.4 2000/03/25 07:23:54 sumikawa Exp $	*/
 
 /*
@@ -44,11 +44,11 @@
 #define MLD6_OTHERLISTENER			0
 #define MLD6_IREPORTEDLAST			1
 
-void	mld6_init __P((void));
-void	mld6_input __P((struct mbuf *, int));
-void	mld6_start_listening __P((struct in6_multi *));
-void	mld6_stop_listening __P((struct in6_multi *));
-void	mld6_fasttimeo __P((void));
+void	mld6_init (void);
+void	mld6_input (struct mbuf *, int);
+void	mld6_start_listening (struct in6_multi *);
+void	mld6_stop_listening (struct in6_multi *);
+void	mld6_fasttimeo (void);
 #endif /* _KERNEL */
 
 #endif /* _NETINET6_MLD6_VAR_H_ */

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.5 2003/06/25 05:22:32 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.6 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -131,11 +131,11 @@ const struct in6_addr in6mask128 = IN6MASK128;
 const struct sockaddr_in6 sa6_any = {sizeof(sa6_any), AF_INET6,
 				     0, 0, IN6ADDR_ANY_INIT, 0};
 
-static int in6_lifaddr_ioctl __P((struct socket *, u_long, caddr_t,
-	struct ifnet *, struct thread *));
-static int in6_ifinit __P((struct ifnet *, struct in6_ifaddr *,
-			   struct sockaddr_in6 *, int));
-static void in6_unlink_ifa __P((struct in6_ifaddr *, struct ifnet *));
+static int in6_lifaddr_ioctl (struct socket *, u_long, caddr_t,
+	struct ifnet *, struct thread *);
+static int in6_ifinit (struct ifnet *, struct in6_ifaddr *,
+			   struct sockaddr_in6 *, int);
+static void in6_unlink_ifa (struct in6_ifaddr *, struct ifnet *);
 
 struct in6_multihead in6_multihead;	/* XXX BSS initialization */
 

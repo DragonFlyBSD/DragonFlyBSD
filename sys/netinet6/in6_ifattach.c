@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: in6_ifattach.c,v 1.118 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -78,12 +78,12 @@ struct callout in6_tmpaddrtimer_ch;
 extern struct inpcbinfo udbinfo;
 extern struct inpcbinfo ripcbinfo;
 
-static int get_rand_ifid __P((struct ifnet *, struct in6_addr *));
-static int generate_tmp_ifid __P((u_int8_t *, const u_int8_t *, u_int8_t *));
-static int get_hw_ifid __P((struct ifnet *, struct in6_addr *));
-static int get_ifid __P((struct ifnet *, struct ifnet *, struct in6_addr *));
-static int in6_ifattach_linklocal __P((struct ifnet *, struct ifnet *));
-static int in6_ifattach_loopback __P((struct ifnet *));
+static int get_rand_ifid (struct ifnet *, struct in6_addr *);
+static int generate_tmp_ifid (u_int8_t *, const u_int8_t *, u_int8_t *);
+static int get_hw_ifid (struct ifnet *, struct in6_addr *);
+static int get_ifid (struct ifnet *, struct ifnet *, struct in6_addr *);
+static int in6_ifattach_linklocal (struct ifnet *, struct ifnet *);
+static int in6_ifattach_loopback (struct ifnet *);
 
 #define EUI64_GBIT	0x01
 #define EUI64_UBIT	0x02

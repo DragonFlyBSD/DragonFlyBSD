@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec.h,v 1.4.2.4 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec.h,v 1.3 2003/08/07 21:54:33 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipsec.h,v 1.4 2003/08/23 11:02:45 rob Exp $	*/
 /*	$KAME: ipsec.h,v 1.53 2001/11/20 08:32:38 itojun Exp $	*/
 
 /*
@@ -299,54 +299,54 @@ extern int ip4_esp_randpad;
 #define ipseclog(x)	do { if (ipsec_debug) log x; } while (0)
 
 extern struct secpolicy *ipsec4_getpolicybysock
-	__P((struct mbuf *, u_int, struct socket *, int *));
+	(struct mbuf *, u_int, struct socket *, int *);
 extern struct secpolicy *ipsec4_getpolicybyaddr
-	__P((struct mbuf *, u_int, int, int *));
+	(struct mbuf *, u_int, int, int *);
 
 struct inpcb;
-extern int ipsec_init_policy __P((struct socket *so, struct inpcbpolicy **));
+extern int ipsec_init_policy (struct socket *so, struct inpcbpolicy **);
 extern int ipsec_copy_policy
-	__P((struct inpcbpolicy *, struct inpcbpolicy *));
-extern u_int ipsec_get_reqlevel __P((struct ipsecrequest *));
+	(struct inpcbpolicy *, struct inpcbpolicy *);
+extern u_int ipsec_get_reqlevel (struct ipsecrequest *);
 
-extern int ipsec4_set_policy __P((struct inpcb *inp, int optname,
-	caddr_t request, size_t len, int priv));
-extern int ipsec4_get_policy __P((struct inpcb *inpcb, caddr_t request,
-	size_t len, struct mbuf **mp));
-extern int ipsec4_delete_pcbpolicy __P((struct inpcb *));
-extern int ipsec4_in_reject_so __P((struct mbuf *, struct socket *));
-extern int ipsec4_in_reject __P((struct mbuf *, struct inpcb *));
+extern int ipsec4_set_policy (struct inpcb *inp, int optname,
+	caddr_t request, size_t len, int priv);
+extern int ipsec4_get_policy (struct inpcb *inpcb, caddr_t request,
+	size_t len, struct mbuf **mp);
+extern int ipsec4_delete_pcbpolicy (struct inpcb *);
+extern int ipsec4_in_reject_so (struct mbuf *, struct socket *);
+extern int ipsec4_in_reject (struct mbuf *, struct inpcb *);
 
 struct secas;
 struct tcpcb;
-extern int ipsec_chkreplay __P((u_int32_t, struct secasvar *));
-extern int ipsec_updatereplay __P((u_int32_t, struct secasvar *));
+extern int ipsec_chkreplay (u_int32_t, struct secasvar *);
+extern int ipsec_updatereplay (u_int32_t, struct secasvar *);
 
-extern size_t ipsec4_hdrsiz __P((struct mbuf *, u_int, struct inpcb *));
-extern size_t ipsec_hdrsiz_tcp __P((struct tcpcb *));
+extern size_t ipsec4_hdrsiz (struct mbuf *, u_int, struct inpcb *);
+extern size_t ipsec_hdrsiz_tcp (struct tcpcb *);
 
 struct ip;
-extern const char *ipsec4_logpacketstr __P((struct ip *, u_int32_t));
-extern const char *ipsec_logsastr __P((struct secasvar *));
+extern const char *ipsec4_logpacketstr (struct ip *, u_int32_t);
+extern const char *ipsec_logsastr (struct secasvar *);
 
-extern void ipsec_dumpmbuf __P((struct mbuf *));
+extern void ipsec_dumpmbuf (struct mbuf *);
 
-extern int ipsec4_output __P((struct ipsec_output_state *, struct secpolicy *,
-	int));
-extern int ipsec4_tunnel_validate __P((struct mbuf *, int, u_int,
-	struct secasvar *));
-extern struct mbuf *ipsec_copypkt __P((struct mbuf *));
-extern void ipsec_delaux __P((struct mbuf *));
-extern int ipsec_addhist __P((struct mbuf *, int, u_int32_t)); 
-extern struct ipsec_history *ipsec_gethist __P((struct mbuf *, int *));
+extern int ipsec4_output (struct ipsec_output_state *, struct secpolicy *,
+	int);
+extern int ipsec4_tunnel_validate (struct mbuf *, int, u_int,
+	struct secasvar *);
+extern struct mbuf *ipsec_copypkt (struct mbuf *);
+extern void ipsec_delaux (struct mbuf *);
+extern int ipsec_addhist (struct mbuf *, int, u_int32_t); 
+extern struct ipsec_history *ipsec_gethist (struct mbuf *, int *);
 #endif /* _KERNEL */
 
 #ifndef _KERNEL
-extern caddr_t ipsec_set_policy __P((char *, int));
-extern int ipsec_get_policylen __P((caddr_t));
-extern char *ipsec_dump_policy __P((caddr_t, char *));
+extern caddr_t ipsec_set_policy (char *, int);
+extern int ipsec_get_policylen (caddr_t);
+extern char *ipsec_dump_policy (caddr_t, char *);
 
-extern const char *ipsec_strerror __P((void));
+extern const char *ipsec_strerror (void);
 #endif /* !_KERNEL */
 
 #endif /* _NETINET6_IPSEC_H_ */

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/scope6_var.h,v 1.1.2.1 2000/07/15 07:14:38 kris Exp $	*/
-/*	$DragonFly: src/sys/netinet6/scope6_var.h,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/scope6_var.h,v 1.3 2003/08/23 11:02:46 rob Exp $	*/
 /*	$KAME: scope6_var.h,v 1.4 2000/05/18 15:03:27 jinmei Exp $	*/
 
 /*
@@ -35,13 +35,13 @@
 #define _NETINET6_SCOPE6_VAR_H_
 
 #ifdef _KERNEL
-void	scope6_ifattach __P((struct ifnet *));
-int	scope6_set __P((struct ifnet *, u_int32_t *));
-int	scope6_get __P((struct ifnet *, u_int32_t *));
-void	scope6_setdefault __P((struct ifnet *));
-int	scope6_get_default __P((u_int32_t *));
-u_int32_t scope6_in6_addrscope __P((struct in6_addr *));
-u_int32_t scope6_addr2default __P((struct in6_addr *));
+void	scope6_ifattach (struct ifnet *);
+int	scope6_set (struct ifnet *, u_int32_t *);
+int	scope6_get (struct ifnet *, u_int32_t *);
+void	scope6_setdefault (struct ifnet *);
+int	scope6_get_default (u_int32_t *);
+u_int32_t scope6_in6_addrscope (struct in6_addr *);
+u_int32_t scope6_addr2default (struct in6_addr *);
 #endif /* _KERNEL */
 
 #endif /* _NETINET6_SCOPE6_VAR_H_ */
