@@ -11,7 +11,7 @@
 # in doubt as to the purpose or necessity of a line, check first in LINT.
 #
 # $FreeBSD: src/sys/i386/conf/GENERIC,v 1.246.2.54 2003/04/28 03:41:46 simokawa Exp $
-# $DragonFly: src/sys/config/GENERIC,v 1.12 2004/04/16 20:13:17 drhodus Exp $
+# $DragonFly: src/sys/config/GENERIC,v 1.13 2004/06/08 15:50:43 drhodus Exp $
 
 machine		i386
 cpu		I386_CPU
@@ -202,6 +202,7 @@ device		pcn		# AMD Am79C97x PCI 10/100 NICs
 device		rl		# RealTek 8129/8139
 device		sf		# Adaptec AIC-6915 (``Starfire'')
 device		sis		# Silicon Integrated Systems SiS 900/SiS 7016
+device		sk		# SysKonnect GEnesis
 device		ste		# Sundance ST201 (D-Link DFE-550TX)
 device		tl		# Texas Instruments ThunderLAN
 device		tx		# SMC EtherPower II (83c170 ``EPIC'')
