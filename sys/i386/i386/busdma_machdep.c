@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
- * $DragonFly: src/sys/i386/i386/Attic/busdma_machdep.c,v 1.7 2004/02/16 19:35:53 joerg Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/busdma_machdep.c,v 1.8 2004/04/02 18:16:45 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -60,6 +60,7 @@ struct bus_dma_tag {
 	int		  flags;
 	int		  ref_count;
 	int		  map_count;
+	bus_dma_segment_t *segments;
 };
 
 struct bounce_page {
@@ -154,6 +155,12 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 	newtag->flags = flags;
 	newtag->ref_count = 1; /* Count ourself */
 	newtag->map_count = 0;
+	newtag->segments = malloc(sizeof(bus_dma_segment_t) * newtag->nsegments,
+				  M_DEVBUF, M_INTWAIT);
+	if (newtag->segments == NULL) {
+		free(newtag, M_DEVBUF);
+		return(ENOMEM);
+	}
 	
 	/* Take into account any restrictions imposed by our parent tag */
 	if (parent != NULL) {
@@ -225,6 +232,8 @@ bus_dma_tag_destroy(bus_dma_tag_t dmat)
 			parent = dmat->parent;
 			dmat->ref_count--;
 			if (dmat->ref_count == 0) {
+				if (dmat->segments != NULL)
+					free(dmat->segments, M_DEVBUF);
 				free(dmat, M_DEVBUF);
 				/*
 				 * Last reference count, so
@@ -387,11 +396,6 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 {
 	vm_offset_t		vaddr;
 	vm_paddr_t		paddr;
-#ifdef __GNUC__
-	bus_dma_segment_t	dm_segments[dmat->nsegments];
-#else
-	bus_dma_segment_t	dm_segments[BUS_DMAMAP_NSEGS];
-#endif
 	bus_dma_segment_t      *sg;
 	int			seg;
 	int			error;
@@ -449,7 +453,7 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 	}
 
 	vaddr = (vm_offset_t)buf;
-	sg = &dm_segments[0];
+	sg = dmat->segments;
 	seg = 1;
 	sg->ds_len = 0;
 
@@ -483,7 +487,6 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 		vaddr += size;
 		nextpaddr = paddr + size;
 		buflen -= size;
-
 	} while (buflen > 0);
 
 	if (buflen != 0) {
@@ -492,7 +495,7 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 		error = EFBIG;
 	}
 
-	(*callback)(callback_arg, dm_segments, seg, error);
+	(*callback)(callback_arg, dmat->segments, seg, error);
 
 	return (0);
 }
@@ -505,7 +508,6 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
  */
 static int
 _bus_dmamap_load_buffer(bus_dma_tag_t dmat,
-			bus_dma_segment_t segs[],
 			void *buf, bus_size_t buflen,
 			struct thread *td,
 			int flags,
@@ -513,6 +515,7 @@ _bus_dmamap_load_buffer(bus_dma_tag_t dmat,
 			int *segp,
 			int first)
 {
+	bus_dma_segment_t *segs;
 	bus_size_t sgsize;
 	bus_addr_t curaddr, lastaddr, baddr, bmask;
 	vm_offset_t vaddr = (vm_offset_t)buf;
@@ -524,6 +527,7 @@ _bus_dmamap_load_buffer(bus_dma_tag_t dmat,
 	else
 		pmap = NULL;
 
+	segs = dmat->segments;
 	lastaddr = *lastaddrp;
 	bmask  = ~(dmat->boundary - 1);
 
@@ -597,11 +601,6 @@ bus_dmamap_load_mbuf(bus_dma_tag_t dmat, bus_dmamap_t map,
 		     bus_dmamap_callback2_t *callback, void *callback_arg,
 		     int flags)
 {
-#ifdef __GNUC__
-	bus_dma_segment_t dm_segments[dmat->nsegments];
-#else
-	bus_dma_segment_t dm_segments[BUS_DMAMAP_NSEGS];
-#endif
 	int nsegs, error;
 
 	KASSERT(dmat->lowaddr >= ptoa(Maxmem) || map != NULL,
@@ -618,7 +617,6 @@ bus_dmamap_load_mbuf(bus_dma_tag_t dmat, bus_dmamap_t map,
 
 		for (m = m0; m != NULL && error == 0; m = m->m_next) {
 			error = _bus_dmamap_load_buffer(dmat,
-					dm_segments,
 					m->m_data, m->m_len,
 					curthread, flags, &lastaddr,
 					&nsegs, first);
@@ -630,9 +628,9 @@ bus_dmamap_load_mbuf(bus_dma_tag_t dmat, bus_dmamap_t map,
 
 	if (error) {
 		/* force "no valid mappings" in callback */
-		(*callback)(callback_arg, dm_segments, 0, 0, error);
+		(*callback)(callback_arg, dmat->segments, 0, 0, error);
 	} else {
-		(*callback)(callback_arg, dm_segments,
+		(*callback)(callback_arg, dmat->segments,
 			    nsegs+1, m0->m_pkthdr.len, error);
 	}
 	return (error);
@@ -648,11 +646,6 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 		    int flags)
 {
 	vm_offset_t lastaddr;
-#ifdef __GNUC__
-	bus_dma_segment_t dm_segments[dmat->nsegments];
-#else
-	bus_dma_segment_t dm_segments[BUS_DMAMAP_NSEGS];
-#endif
 	int nsegs, error, first, i;
 	bus_size_t resid;
 	struct iovec *iov;
@@ -683,7 +676,6 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 		caddr_t addr = (caddr_t) iov[i].iov_base;
 
 		error = _bus_dmamap_load_buffer(dmat,
-				dm_segments,
 				addr, minlen,
 				td, flags, &lastaddr, &nsegs, first);
 		first = 0;
@@ -693,9 +685,9 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 
 	if (error) {
 		/* force "no valid mappings" in callback */
-		(*callback)(callback_arg, dm_segments, 0, 0, error);
+		(*callback)(callback_arg, dmat->segments, 0, 0, error);
 	} else {
-		(*callback)(callback_arg, dm_segments,
+		(*callback)(callback_arg, dmat->segments,
 			    nsegs+1, uio->uio_resid, error);
 	}
 	return (error);
