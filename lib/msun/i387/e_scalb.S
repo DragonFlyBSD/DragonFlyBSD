@@ -1,46 +1,22 @@
 /*
- * Copyright (c) 1994 Winning Strategies, Inc.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *      This product includes software developed by Winning Strategies, Inc.
- * 4. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
-/*
- * Written by:
- *	J.T. Conklin (jtc@wimsey.com), Winning Strategies, Inc.
+ * Written by J.T. Conklin <jtc@NetBSD.org>.
+ * Public domain.
  */
 
 #include <machine/asm.h>
 
-RCSID("$FreeBSD: src/lib/msun/i387/e_scalb.S,v 1.7 1999/08/28 00:06:10 peter Exp $")
-RCSID("$DragonFly: src/lib/msun/i387/Attic/e_scalb.S,v 1.2 2003/06/17 04:26:52 dillon Exp $")
+#include "abi.h"
+
+#if 0
+RCSID("$NetBSD: e_scalb.S,v 1.6 2001/06/19 00:26:30 fvdl Exp $")
+#endif
+RCSID("$DragonFly: src/lib/msun/i387/Attic/e_scalb.S,v 1.3 2004/12/29 11:40:18 asmodai Exp $")
 
 ENTRY(__ieee754_scalb)
-	fldl	12(%esp)
-	fldl	4(%esp)
+	XMM_TWO_ARG_DOUBLE_PROLOGUE
+	fldl	ARG_DOUBLE_TWO
+	fldl	ARG_DOUBLE_ONE
 	fscale
-	fstp	%st(1)
+	fstp	%st(1)			/* bug fix for fp stack overflow */
+	XMM_DOUBLE_EPILOGUE
 	ret

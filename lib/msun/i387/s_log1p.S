@@ -1,56 +1,79 @@
 /*
- * Copyright (c) 1993,94 Winning Strategies, Inc.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *      This product includes software developed by Winning Strategies, Inc.
- * 4. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * Written by J.T. Conklin <jtc@NetBSD.org>.
+ * Public domain.
  */
 
 /*
- * Written by:
- *	J.T. Conklin (jtc@wimsey.com), Winning Strategies, Inc.
+ * Modified by Lex Wennmacher <wennmach@NetBSD.org>
+ * Still public domain.
  */
 
 #include <machine/asm.h>
 
-RCSID("$FreeBSD: src/lib/msun/i387/s_log1p.S,v 1.7 1999/08/28 00:06:13 peter Exp $")
-RCSID("$DragonFly: src/lib/msun/i387/Attic/s_log1p.S,v 1.2 2003/06/17 04:26:52 dillon Exp $")
+#include "abi.h"
+
+#if 0
+RCSID("$NetBSD$")
+#endif
+RCSID("$DragonFly: src/lib/msun/i387/Attic/s_log1p.S,v 1.3 2004/12/29 11:40:18 asmodai Exp $")
 
 /*
- * The fyl2xp1 instruction has such a limited range:
- *	-(1 - (sqrt(2) / 2)) <= x <= sqrt(2) - 1
- * it's not worth trying to use it.  
+ * The log1p() function is provided to compute an accurate value of
+ * log(1 + x), even for tiny values of x. The i387 FPU provides the
+ * fyl2xp1 instruction for this purpose. However, the range of this
+ * instruction is limited to:
+ * 		-(1 - (sqrt(2) / 2)) <= x <= sqrt(2) - 1
+ *                         -0.292893 <= x <= 0.414214
+ * at least on older processor versions.
  *
- * Also, I'm not sure fyl2xp1's extra precision will
- * matter once the result is converted from extended
- * real (80 bits) back to double real (64 bits).
+ * log1p() is implemented by testing the range of the argument.
+ * If it is appropriate for fyl2xp1, this instruction is used.
+ * Else, we compute log1p(x) = ln(2)*ld(1 + x) the traditional way
+ * (using fyl2x).
+ *
+ * The range testing costs speed, but as the rationale for the very
+ * existence of this function is accuracy, we accept that.
+ *
+ * In order to reduce the cost for testing the range, we check if
+ * the argument is in the range
+ *                             -0.25 <= x <= 0.25
+ * which can be done with just one conditional branch. If x is
+ * inside this range, we use fyl2xp1. Outside of this range,
+ * the use of fyl2x is accurate enough.
+ * 
  */
+
+.text
+	.align	4
 ENTRY(log1p)
+	XMM_ONE_ARG_DOUBLE_PROLOGUE
+	fldl	ARG_DOUBLE_ONE
+	fabs
+	fld1				/* ... x 1 */
+	fadd	%st(0)			/* ... x 2 */
+	fadd	%st(0)			/* ... x 4 */
+	fld1				/* ... 4 1 */
+	fdivp				/* ... x 0.25 */
+	fcompp
+	fnstsw	%ax
+	andb	$69,%ah
+	jne	use_fyl2x
+	jmp	use_fyl2xp1
+
+	.align	4
+use_fyl2x:
 	fldln2
-	fldl 4(%esp)
-	fld1
-	faddp
-	fyl2x
+        fldl	ARG_DOUBLE_ONE
+        fld1
+        faddp
+        fyl2x
+	XMM_DOUBLE_EPILOGUE
+        ret
+
+	.align	4
+use_fyl2xp1:
+	fldln2
+	fldl	ARG_DOUBLE_ONE
+	fyl2xp1
+	XMM_DOUBLE_EPILOGUE
 	ret

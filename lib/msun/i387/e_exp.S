@@ -35,11 +35,45 @@
 
 #include <machine/asm.h>
 
+#include "abi.h"
+
+#if 0
+RCSID("$NetBSD: e_exp.S,v 1.11 2001/06/19 17:49:36 fvdl Exp $")
 RCSID("$FreeBSD: src/lib/msun/i387/e_exp.S,v 1.8.2.1 2000/07/10 09:16:28 obrien Exp $")
-RCSID("$DragonFly: src/lib/msun/i387/Attic/e_exp.S,v 1.2 2003/06/17 04:26:52 dillon Exp $")
+#endif
+RCSID("$DragonFly: src/lib/msun/i387/Attic/e_exp.S,v 1.3 2004/12/29 11:40:17 asmodai Exp $")
 
 /* e^x = 2^(x * log2(e)) */
 ENTRY(__ieee754_exp)
+#ifndef __i386__
+	/*
+	 * XXX: This code is broken and needs to be merged with the i386 case.
+	 */
+	fstcw	-12(%rsp)
+	movw	-12(%rsp),%dx
+	orw	$0x0180,%dx
+	movw	%dx,-16(%rsp)
+	fldcw	-16(%rsp)
+	movsd	%xmm0,-8(%rsp)
+	fldl	-8(%rsp)
+
+	fldl2e
+	fmulp				/* x * log2(e) */
+	fld	%st(0)
+	frndint				/* int(x * log2(e)) */
+	fxch	%st(1)
+	fsub	%st(1),%st		/* fract(x * log2(e)) */
+	f2xm1				/* 2^(fract(x * log2(e))) - 1 */
+	fld1
+	faddp				/* 2^(fract(x * log2(e))) */
+	fscale				/* e^x */
+	fstp	%st(1)
+
+	fstpl	-8(%rsp)
+	movsd	-8(%rsp),%xmm0
+	fldcw	-12(%rsp)
+	ret
+#else
 	/*
 	 * If x is +-Inf, then the subtraction would give Inf-Inf = NaN.
 	 * Avoid this.  Also avoid it if x is NaN for convenience.
@@ -95,3 +129,4 @@ x_Inf_or_NaN:
 x_not_minus_Inf:
 	fldl	4(%esp)
 	ret
+#endif

@@ -1,44 +1,29 @@
 /*
- * Copyright (c) 1993,94 Winning Strategies, Inc.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *      This product includes software developed by Winning Strategies, Inc.
- * 4. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * Written by J.T. Conklin <jtc@NetBSD.org>.
+ * Public domain.
  */
 
 /*
- * Written by:
- *	J.T. Conklin (jtc@wimsey.com), Winning Strategies, Inc.
+ * XXXfvdl might as well split this file.
  */
 
 #include <machine/asm.h>
 
-RCSID("$FreeBSD: src/lib/msun/i387/s_copysign.S,v 1.6 1999/08/28 00:06:11 peter Exp $")
-RCSID("$DragonFly: src/lib/msun/i387/Attic/s_copysign.S,v 1.2 2003/06/17 04:26:52 dillon Exp $")
+#if 0
+RCSID("$NetBSD: s_copysign.S,v 1.5 2001/06/19 00:26:30 fvdl Exp $")
+#endif
+RCSID("$DragonFly: src/lib/msun/i387/Attic/s_copysign.S,v 1.3 2004/12/29 11:40:18 asmodai Exp $")
+
+#ifdef __x86_64__
+.Lpos:
+	.quad	0x8000000000000000
+.Lneg:
+	.quad	0x7fffffffffffffff
+#endif
+
 
 ENTRY(copysign)
+#ifdef __i386__
 	movl	16(%esp),%edx
 	andl	$0x80000000,%edx
 	movl	8(%esp),%eax
@@ -46,4 +31,26 @@ ENTRY(copysign)
 	orl	%edx,%eax
 	movl	%eax,8(%esp)
 	fldl	4(%esp)
+#else
+#if 0
+	/*
+	 * XXXfvdl gas doesn't grok this yet.
+	 */
+	movq	.Lpos(%rip),%xmm2
+	movq	.Lneg(%rip),%xmm3
+	pand	%xmm2,%xmm1
+	pand	%xmm3,%xmm0
+	por	%xmm1,%xmm0
+#else
+	movsd	%xmm0,-8(%rsp)
+	movsd	%xmm1,-16(%rsp)
+	movl	-12(%rsp),%edx
+	andl	$0x80000000,%edx
+	movl	-4(%rsp),%eax
+	andl	$0x7fffffff,%eax
+	orl	%edx,%eax
+	movl	%eax,-4(%rsp)
+	movsd	-8(%rsp),%xmm0
+#endif
+#endif
 	ret
