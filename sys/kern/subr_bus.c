@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.7 2003/11/18 04:58:19 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.8 2003/11/18 05:02:40 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -122,10 +122,9 @@ devclass_find_internal(const char *classname, int create)
     PDEBUG(("%s not found%s", classname, (create? ", creating": "")));
     if (create) {
 	dc = malloc(sizeof(struct devclass) + strlen(classname) + 1,
-		    M_BUS, M_NOWAIT);
+		    M_BUS, M_NOWAIT | M_ZERO);
 	if (!dc)
 	    return NULL;
-	bzero(dc, sizeof(struct devclass) + strlen(classname) + 1);
 	dc->name = (char*) (dc + 1);
 	strcpy(dc->name, classname);
 	dc->devices = NULL;
@@ -157,10 +156,9 @@ devclass_add_driver(devclass_t dc, driver_t *driver)
 
     PDEBUG(("%s", DRIVERNAME(driver)));
 
-    dl = malloc(sizeof *dl, M_BUS, M_NOWAIT);
+    dl = malloc(sizeof *dl, M_BUS, M_NOWAIT | M_ZERO);
     if (!dl)
 	return ENOMEM;
-    bzero(dl, sizeof *dl);
 
     /*
      * Compile the driver's methods. Also increase the reference count
@@ -315,10 +313,9 @@ devclass_get_devices(devclass_t dc, device_t **devlistp, int *devcountp)
 	if (dc->devices[i])
 	    count++;
 
-    list = malloc(count * sizeof(device_t), M_TEMP, M_NOWAIT);
+    list = malloc(count * sizeof(device_t), M_TEMP, M_NOWAIT | M_ZERO);
     if (!list)
 	return ENOMEM;
-    bzero(list, count * sizeof(device_t));
 
     count = 0;
     for (i = 0; i < dc->maxunit; i++)
@@ -373,12 +370,10 @@ devclass_alloc_unit(devclass_t dc, int *unitp)
 	int newsize;
 
 	newsize = roundup((unit + 1), MINALLOCSIZE / sizeof(device_t));
-	newlist = malloc(sizeof(device_t) * newsize, M_BUS, M_NOWAIT);
+	newlist = malloc(sizeof(device_t) * newsize, M_BUS, M_NOWAIT | M_ZERO);
 	if (!newlist)
 	    return ENOMEM;
 	bcopy(dc->devices, newlist, sizeof(device_t) * dc->maxunit);
-	bzero(newlist + dc->maxunit,
-	      sizeof(device_t) * (newsize - dc->maxunit));
 	if (dc->devices)
 	    free(dc->devices, M_BUS);
 	dc->devices = newlist;
@@ -398,10 +393,9 @@ devclass_add_device(devclass_t dc, device_t dev)
     PDEBUG(("%s in devclass %s", DEVICENAME(dev), DEVCLANAME(dc)));
 
     buflen = strlen(dc->name) + 5;
-    dev->nameunit = malloc(buflen, M_BUS, M_NOWAIT);
+    dev->nameunit = malloc(buflen, M_BUS, M_NOWAIT | M_ZERO);
     if (!dev->nameunit)
 	return ENOMEM;
-    bzero(dev->nameunit, buflen);
 
     if ((error = devclass_alloc_unit(dc, &dev->unit)) != 0) {
 	free(dev->nameunit, M_BUS);
@@ -461,10 +455,9 @@ make_device(device_t parent, const char *name, int unit)
     } else
 	dc = NULL;
 
-    dev = malloc(sizeof(struct device), M_BUS, M_NOWAIT);
+    dev = malloc(sizeof(struct device), M_BUS, M_NOWAIT | M_ZERO);
     if (!dev)
 	return 0;
-    bzero(dev, sizeof(struct device));
 
     dev->parent = parent;
     TAILQ_INIT(&dev->children);
@@ -711,10 +704,9 @@ device_get_children(device_t dev, device_t **devlistp, int *devcountp)
 	 child = TAILQ_NEXT(child, link))
 	count++;
 
-    list = malloc(count * sizeof(device_t), M_TEMP, M_NOWAIT);
+    list = malloc(count * sizeof(device_t), M_TEMP, M_NOWAIT | M_ZERO);
     if (!list)
 	return ENOMEM;
-    bzero(list, count * sizeof(device_t));
 
     count = 0;
     for (child = TAILQ_FIRST(&dev->children); child;
@@ -997,14 +989,13 @@ device_set_driver(device_t dev, driver_t *driver)
     if (driver) {
 	kobj_init((kobj_t) dev, (kobj_class_t) driver);
 	if (!(dev->flags & DF_EXTERNALSOFTC)) {
-	    dev->softc = malloc(driver->size, M_BUS, M_NOWAIT);
+	    dev->softc = malloc(driver->size, M_BUS, M_NOWAIT | M_ZERO);
 	    if (!dev->softc) {
 		kobj_delete((kobj_t)dev, 0);
 		kobj_init((kobj_t) dev, &null_class);
 		dev->driver = NULL;
 		return ENOMEM;
 	    }
-	    bzero(dev->softc, driver->size);
 	}
     } else
 	kobj_init((kobj_t) dev, &null_class);
@@ -1242,12 +1233,12 @@ resource_new_name(const char *name, int unit)
 {
 	struct config_device *new;
 
-	new = malloc((devtab_count + 1) * sizeof(*new), M_TEMP, M_NOWAIT);
+	new = malloc((devtab_count + 1) * sizeof(*new), M_TEMP,
+		     M_NOWAIT | M_ZERO);
 	if (new == NULL)
 		return -1;
 	if (devtab && devtab_count > 0)
 		bcopy(devtab, new, devtab_count * sizeof(*new));
-	bzero(&new[devtab_count], sizeof(*new));
 	new[devtab_count].name = malloc(strlen(name) + 1, M_TEMP, M_NOWAIT);
 	if (new[devtab_count].name == NULL) {
 		free(new, M_TEMP);
@@ -1268,12 +1259,11 @@ resource_new_resname(int j, const char *resname, resource_type type)
 	int i;
 
 	i = devtab[j].resource_count;
-	new = malloc((i + 1) * sizeof(*new), M_TEMP, M_NOWAIT);
+	new = malloc((i + 1) * sizeof(*new), M_TEMP, M_NOWAIT | M_ZERO);
 	if (new == NULL)
 		return -1;
 	if (devtab[j].resources && i > 0)
 		bcopy(devtab[j].resources, new, i * sizeof(*new));
-	bzero(&new[i], sizeof(*new));
 	new[i].name = malloc(strlen(resname) + 1, M_TEMP, M_NOWAIT);
 	if (new[i].name == NULL) {
 		free(new, M_TEMP);
