@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.10 2004/03/01 06:33:19 dillon Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.11 2004/03/30 17:18:58 joerg Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -113,6 +113,7 @@ enum sysinit_sub_id {
 	SI_SUB_CONSOLE		= 0x0800000,	/* console*/
 	SI_SUB_COPYRIGHT	= 0x0800001,	/* first use of console*/
 	SI_SUB_TUNABLES		= 0x0700000,	/* establish tunable values */
+	SI_SUB_LOCK		= 0x0900000,	/* lockmgr locks and tokens */
 	SI_SUB_VM		= 0x1000000,	/* virtual memory system init*/
 	SI_SUB_KMEM		= 0x1800000,	/* kernel memory*/
 	SI_SUB_KVM_RSRC		= 0x1A00000,	/* kvm operational limits*/
