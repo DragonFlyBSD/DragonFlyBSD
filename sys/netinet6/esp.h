@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp.h,v 1.2.2.3 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp.h,v 1.5 2004/06/03 18:30:04 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp.h,v 1.6 2004/10/16 23:24:24 hsu Exp $	*/
 /*	$KAME: esp.h,v 1.19 2001/09/04 08:43:19 itojun Exp $	*/
 
 /*
@@ -49,7 +49,6 @@ struct esp {
 	/* variable size */		/* padding */
 	/* 8bit */			/* pad size */
 	/* 8bit */			/* next header */
-	/* 8bit */			/* next header */
 	/* variable size, 32bit bound */ /* Authentication data (new IPsec) */
 };
 
@@ -59,7 +58,6 @@ struct newesp {
 	/* variable size */		/* (IV and) Payload data */
 	/* variable size */		/* padding */
 	/* 8bit */			/* pad size */
-	/* 8bit */			/* next header */
 	/* 8bit */			/* next header */
 	/* variable size, 32bit bound *//* Authentication data */
 };
