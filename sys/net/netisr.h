@@ -32,7 +32,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.6 2003/11/08 07:57:42 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.7 2003/11/23 20:22:59 dillon Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -55,7 +55,8 @@
  * interrupt used for scheduling the network code to calls
  * on the lowest level routine of each protocol.
  */
-#define	NETISR_POLL	0		/* polling callback */
+#define NETISR_RESERVED0 0		/* cannot be used */
+#define	NETISR_POLL	1		/* polling callback */
 #define	NETISR_IP	2		/* same as AF_INET */
 #define	NETISR_NS	6		/* same as AF_NS */
 #define	NETISR_AARP	15		/* Appletalk ARP */
