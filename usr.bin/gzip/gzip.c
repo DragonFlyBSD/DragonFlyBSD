@@ -1,5 +1,5 @@
 /*	$NetBSD: gzip.c,v 1.67 2004/09/11 11:07:44 dsl Exp $	*/
-/*	$DragonFly: src/usr.bin/gzip/gzip.c,v 1.4 2004/12/25 04:14:19 y0netan1 Exp $ */
+/*	$DragonFly: src/usr.bin/gzip/gzip.c,v 1.5 2005/01/31 19:28:57 y0netan1 Exp $ */
 
 /*
  * Copyright (c) 1997, 1998, 2003, 2004 Matthew R. Green
@@ -431,16 +431,17 @@ prepend_gzip(char *gzip, int *argc, char ***argv)
 	int nenvarg = 0, i;
 
 	/* scan how many arguments there are */
-	for (s = gzip; *s; s++) {
-		if (*s == ' ' || *s == '\t')
-			continue;
+	for (s = gzip;;) {
+		while (*s == ' ' || *s == '\t')
+			s++;
+		if (*s == 0)
+			goto count_done;
 		nenvarg++;
-		for (; *s; s++)
-			if (*s == ' ' || *s == '\t')
-				break;
-		if (*s == 0x0)
-			break;
+		while (*s != ' ' && *s != '\t')
+			if (*s++ == 0)
+				goto count_done;
 	}
+count_done:
 	/* punt early */
 	if (nenvarg == 0)
 		return;
@@ -463,18 +464,22 @@ prepend_gzip(char *gzip, int *argc, char ***argv)
 	s = strdup(gzip);
 	if (s == NULL)
 		maybe_err("strdup");
-	for (; *s; s++) {
-		if (*s == ' ' || *s == '\t')
-			continue;
+	for (;;) {
+		/* Skip whitespaces. */
+		while (*s == ' ' || *s == '\t')
+			s++;
+		if (*s == 0)
+			goto copy_done;
 		nargv[i++] = s;
-		for (; *s; s++)
-			if (*s == ' ' || *s == '\t') {
-				*s = 0;
-				break;
-			}
-		if (*s == '\0')
-			break;
+		/* Find the end of this argument. */
+		while (*s != ' ' && *s != '\t')
+			if (*s++ == 0)
+				/* Argument followed by NUL. */
+				goto copy_done;
+		/* Terminate by overwriting ' ' or '\t' with NUL. */
+		*s++ = 0;
 	}
+copy_done:
 
 	/* copy the original arguments and a NULL */
 	while (*ac)
