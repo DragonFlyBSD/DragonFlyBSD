@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.7 2004/03/17 19:20:12 dillon Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.8 2004/06/18 23:50:34 drhodus Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -346,6 +346,7 @@ all)
 	sh MAKEDEV i4brbch0 i4brbch1			# cdev, ISDN
 	sh MAKEDEV agpgart				# cdev, AGP
 	sh MAKEDEV nsmb0				# cdev, SMB/CIFS
+	sh MAKEDEV twed0				# 3ware
 	sh MAKEDEV crypto				# cdev, crypto
 	sh MAKEDEV fw0 fw1 fw2 fw3 fwmem0		# cdev, firewire
 	;;
