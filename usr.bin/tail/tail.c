@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tail.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/tail.c,v 1.6.2.2 2001/12/19 20:29:31 iedowse Exp $
- * $DragonFly: src/usr.bin/tail/tail.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
+ * $DragonFly: src/usr.bin/tail/tail.c,v 1.4 2004/12/27 20:55:07 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -49,8 +49,10 @@
 #include <err.h>
 #include "extern.h"
 
-int Fflag, fflag, rflag, rval;
+int Fflag, fflag, rflag, rval, no_files;
 char *fname;
+
+file_info_t *files;
 
 static void obsolete(char **);
 static void usage(void);
@@ -62,7 +64,8 @@ main(int argc, char **argv)
 	FILE *fp;
 	off_t off;
 	enum STYLE style;
-	int ch, first;
+	int i, ch, first;
+	file_info_t *file;
 	char *p;
 
 	/*
@@ -127,8 +130,7 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (fflag && argc > 1)
-		errx(1, "-f option only appropriate for a single file");
+	no_files = argc ? argc : 1;
 
 	/*
 	 * If displaying in reverse, don't permit follow option, and convert
@@ -157,8 +159,29 @@ main(int argc, char **argv)
 		}
 	}
 
-	if (*argv)
-		for (first = 1; fname = *argv++;) {
+	if (*argv && fflag) {
+		files = malloc(no_files * sizeof(struct file_info));
+		if (files == NULL)
+			err(1, "Couldn't malloc space for files descriptors.");
+
+		for (file = files; (fname = *argv++) != NULL; file++) {
+			file->file_name = strdup(fname);
+			if (! file->file_name)
+				errx(1, "Couldn't alloc space for file name.");
+			file->fp = fopen(file->file_name, "r");
+			if (file->fp == NULL ||
+			    fstat(fileno(file->fp), &file->st) == -1) {
+				file->fp = NULL;
+				ierr();
+				continue;
+			}
+		}
+		follow(files, style, off);
+		for (i = 0, file = files; i < no_files; i++, file++)
+			free(file->file_name);
+		free(files);
+	} else if (*argv) {
+		for (first = 1; (fname = *argv++) != NULL;) {
 			if ((fp = fopen(fname, "r")) == NULL ||
 			    fstat(fileno(fp), &sb)) {
 				ierr();
@@ -177,7 +200,7 @@ main(int argc, char **argv)
 				forward(fp, style, off, &sb);
 			(void)fclose(fp);
 		}
-	else {
+	} else {
 		fname = "stdin";
 
 		if (fstat(fileno(stdin), &sb)) {
