@@ -1,7 +1,7 @@
 /*
  * $OpenBSD: show.c,v 1.26 2003/08/26 08:33:12 itojun Exp $
  * $NetBSD: show.c,v 1.1 1996/11/15 18:01:41 gwr Exp $
- * $DragonFly: src/sbin/route/show.c,v 1.1 2004/03/23 17:56:29 dillon Exp $
+ * $DragonFly: src/sbin/route/show.c,v 1.2 2004/03/23 18:00:48 dillon Exp $
  */
 /*
  * Copyright (c) 1983, 1988, 1993
@@ -176,8 +176,8 @@ bad:                    usage(*argv);
 }
 
 /* column widths; each followed by one space */
-#define		WID_DST		16	/* width of destination column */
-#define		WID_GW		18	/* width of gateway column */
+#define	WID_DST		(nflag ? 20 : 32)	/* destination column width */
+#define	WID_GW		(nflag ? 20 : 32)	/* gateway column width */
 
 /*
  * Print header for routing table columns.
@@ -380,9 +380,9 @@ p_sockaddr(struct sockaddr *sa, int flags, int width)
 		cp = workbuf;
 	    }
 	}
-	if (width < 0 )
+	if (width < 0 ) {
 		printf("%s ", cp);
-	else {
+	} else {
 		if (nflag)
 			printf("%-*s ", width, cp);
 		else
@@ -396,9 +396,10 @@ p_flags(int f, char *format)
 	char name[33], *flags;
 	const struct bits *p = bits;
 
-	for (flags = name; p->b_mask && flags < &name[sizeof(name-2)]; p++)
+	for (flags = name; p->b_mask && flags < &name[sizeof(name-2)]; p++) {
 		if (p->b_mask & f)
 			*flags++ = p->b_val;
+	}
 	*flags = '\0';
 	printf(format, name);
 }
