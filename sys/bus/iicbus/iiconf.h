@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/iicbus/iiconf.h,v 1.6 1999/08/28 00:41:59 peter Exp $
- * $DragonFly: src/sys/bus/iicbus/iiconf.h,v 1.3 2003/07/19 21:14:22 dillon Exp $
+ * $FreeBSD: src/sys/dev/iicbus/iiconf.h,v 1.7 2002/03/23 15:47:17 nsouch Exp $
+ * $DragonFly: src/sys/bus/iicbus/iiconf.h,v 1.4 2003/11/14 21:46:17 daver Exp $
  */
 #ifndef __IICONF_H
 #define __IICONF_H
@@ -125,5 +125,15 @@ extern int iicbus_block_write(device_t, u_char, char *, int, int *);
 extern int iicbus_block_read(device_t, u_char, char *, int, int *);
 
 extern u_char iicbus_get_addr(device_t);
+
+#define IICBUS_MODVER  1
+#define IICBUS_MINVER  1
+#define IICBUS_MAXVER  1
+#define IICBUS_PREFVER IICBUS_MODVER
+
+#define IICBB_MODVER   1
+#define IICBB_MINVER   1
+#define IICBB_MAXVER   1
+#define IICBB_PREFVER  IICBB_MODVER
 
 #endif

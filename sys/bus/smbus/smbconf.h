@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/smbus/smbconf.h,v 1.6 1999/08/28 00:42:29 peter Exp $
- * $DragonFly: src/sys/bus/smbus/smbconf.h,v 1.3 2003/07/19 21:14:28 dillon Exp $
+ * $FreeBSD: src/sys/dev/smbus/smbconf.h,v 1.7 2002/03/23 15:47:28 nsouch Exp $
+ * $DragonFly: src/sys/bus/smbus/smbconf.h,v 1.4 2003/11/14 21:46:18 daver Exp $
  */
 #ifndef __SMBONF_H
 #define __SMBONF_H
@@ -99,5 +99,10 @@ extern u_char smbus_get_addr(device_t);
 	(SMBUS_BWRITE(device_get_parent(bus), slave, cmd, count, buf))
 #define smbus_bread(bus,slave,cmd,count,buf) \
 	(SMBUS_BREAD(device_get_parent(bus), slave, cmd, count, buf))
+
+#define SMBUS_MODVER   1
+#define SMBUS_MINVER   1
+#define SMBUS_MAXVER   1
+#define SMBUS_PREFVER  SMBUS_MODVER
 
 #endif
