@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_write_cmd.c,v 1.13 1999/08/28 00:41:12 peter Exp $
- * $DragonFly: src/sys/ddb/db_write_cmd.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_write_cmd.c,v 1.3 2003/07/26 14:18:51 rob Exp $
  */
 
 /*
@@ -50,12 +50,10 @@ db_write_cmd(address, have_addr, count, modif)
 	db_expr_t	count;
 	char *		modif;
 {
-	register
 	db_addr_t	addr;
-	register
 	db_expr_t	old_value;
 	db_expr_t	new_value;
-	register int	size;
+	int	size;
 	boolean_t	wrote_one = FALSE;
 
 	addr = (db_addr_t) address;

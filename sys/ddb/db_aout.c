@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_aout.c,v 1.27 1999/08/28 00:41:05 peter Exp $
- * $DragonFly: src/sys/ddb/db_aout.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_aout.c,v 1.3 2003/07/26 14:18:51 rob Exp $
  */
 
 /*
@@ -79,10 +79,10 @@ X_db_sym_init(symtab, esymtab, name)
 				   boundary */
 	char *	name;
 {
-	register struct nlist	*sym_start, *sym_end;
-	register struct nlist	*sp;
-	register char *	strtab;
-	register int	strlen;
+	struct nlist	*sym_start, *sym_end;
+	struct nlist	*sp;
+	char	*	strtab;
+	int	strlen;
 
 	if (*symtab < 4) {
 		printf ("DDB: no symbols\n");
@@ -105,7 +105,7 @@ X_db_sym_init(symtab, esymtab, name)
 		esymtab - (char *)symtab, name);
 
 	for (sp = sym_start; sp < sym_end; sp++) {
-	    register int strx;
+	    int strx;
 	    strx = sp->n_un.n_strx;
 	    if (strx != 0) {
 		if (strx > strlen) {
@@ -126,7 +126,7 @@ X_db_lookup(stab, symstr)
 	db_symtab_t	*stab;
 	const char *	symstr;
 {
-	register struct nlist *sp, *ep;
+	struct nlist *sp, *ep;
 
 	sp = (struct nlist *)stab->start;
 	ep = (struct nlist *)stab->end;
@@ -147,14 +147,14 @@ X_db_lookup(stab, symstr)
 c_db_sym_t
 X_db_search_symbol(symtab, off, strategy, diffp)
 	db_symtab_t *	symtab;
-	register
+	
 	db_addr_t	off;
 	db_strategy_t	strategy;
 	db_expr_t	*diffp;		/* in/out */
 {
-	register unsigned int	diff = *diffp;
-	register struct nlist	*symp = 0;
-	register struct nlist	*sp, *ep;
+	unsigned int	diff = *diffp;
+	struct nlist	*symp = 0;
+	struct nlist	*sp, *ep;
 
 	sp = (struct nlist *)symtab->start;
 	ep = (struct nlist *)symtab->end;
@@ -205,7 +205,7 @@ X_db_symbol_values(symtab, sym, namep, valuep)
 	const char	**namep;
 	db_expr_t	*valuep;
 {
-	register const struct nlist *sp;
+	const struct nlist *sp;
 
 	sp = (const struct nlist *)sym;
 	if (namep)
@@ -223,7 +223,7 @@ X_db_line_at_pc(symtab, cursym, filename, linenum, off)
 	int 		*linenum;
 	db_expr_t	off;
 {
-	register struct nlist	*sp, *ep;
+	struct nlist	*sp, *ep;
 	unsigned long		sodiff = -1UL, lndiff = -1UL, ln = 0;
 	char			*fname = NULL;
 
@@ -288,7 +288,7 @@ X_db_sym_numargs(symtab, cursym, nargp, argnamep)
 	int		*nargp;
 	char		**argnamep;
 {
-	register struct nlist	*sp, *ep;
+	struct nlist	*sp, *ep;
 	u_long			addr;
 	int			maxnarg = *nargp, nargs = 0;
 

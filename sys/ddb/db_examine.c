@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_examine.c,v 1.27 1999/08/28 00:41:07 peter Exp $
- * $DragonFly: src/sys/ddb/db_examine.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_examine.c,v 1.3 2003/07/26 14:18:51 rob Exp $
  */
 
 /*
@@ -70,7 +70,7 @@ db_examine_cmd(addr, have_addr, count, modif)
 
 static void
 db_examine(addr, fmt, count)
-	register
+
 	db_addr_t	addr;
 	char *		fmt;	/* format string */
 	int		count;	/* repeat count */
@@ -322,7 +322,7 @@ db_search_cmd(dummy1, dummy2, dummy3, dummy4)
 
 static void
 db_search(addr, size, value, mask, count)
-	register
+	
 	db_addr_t	addr;
 	int		size;
 	db_expr_t	value;

@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_break.c,v 1.18 1999/08/28 00:41:05 peter Exp $
- * $DragonFly: src/sys/ddb/db_break.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_break.c,v 1.3 2003/07/26 14:18:51 rob Exp $
  */
 
 /*
@@ -61,7 +61,7 @@ static void	db_set_breakpoint __P((vm_map_t map, db_addr_t addr,
 static db_breakpoint_t
 db_breakpoint_alloc()
 {
-	register db_breakpoint_t	bkpt;
+	db_breakpoint_t	bkpt;
 
 	if ((bkpt = db_free_breakpoints) != 0) {
 	    db_free_breakpoints = bkpt->link;
@@ -79,7 +79,7 @@ db_breakpoint_alloc()
 
 static void
 db_breakpoint_free(bkpt)
-	register db_breakpoint_t	bkpt;
+	db_breakpoint_t	bkpt;
 {
 	bkpt->link = db_free_breakpoints;
 	db_free_breakpoints = bkpt;
@@ -91,7 +91,7 @@ db_set_breakpoint(map, addr, count)
 	db_addr_t	addr;
 	int		count;
 {
-	register db_breakpoint_t	bkpt;
+	db_breakpoint_t	bkpt;
 
 	if (db_find_breakpoint(map, addr)) {
 	    db_printf("Already set.\n");
@@ -119,8 +119,8 @@ db_delete_breakpoint(map, addr)
 	vm_map_t	map;
 	db_addr_t	addr;
 {
-	register db_breakpoint_t	bkpt;
-	register db_breakpoint_t	*prev;
+	db_breakpoint_t	bkpt;
+	db_breakpoint_t	*prev;
 
 	for (prev = &db_breakpoint_list;
 	     (bkpt = *prev) != 0;
@@ -144,7 +144,7 @@ db_find_breakpoint(map, addr)
 	vm_map_t	map;
 	db_addr_t	addr;
 {
-	register db_breakpoint_t	bkpt;
+	db_breakpoint_t	bkpt;
 
 	for (bkpt = db_breakpoint_list;
 	     bkpt != 0;
@@ -169,7 +169,7 @@ static boolean_t	db_breakpoints_inserted = TRUE;
 void
 db_set_breakpoints()
 {
-	register db_breakpoint_t	bkpt;
+	db_breakpoint_t	bkpt;
 
 	if (!db_breakpoints_inserted) {
 
@@ -191,7 +191,7 @@ db_set_breakpoints()
 void
 db_clear_breakpoints()
 {
-	register db_breakpoint_t	bkpt;
+	db_breakpoint_t	bkpt;
 
 	if (db_breakpoints_inserted) {
 
@@ -215,7 +215,7 @@ db_breakpoint_t
 db_set_temp_breakpoint(addr)
 	db_addr_t	addr;
 {
-	register db_breakpoint_t	bkpt;
+	db_breakpoint_t	bkpt;
 
 	bkpt = db_breakpoint_alloc();
 	if (bkpt == 0) {
@@ -249,7 +249,7 @@ db_delete_temp_breakpoint(bkpt)
 static void
 db_list_breakpoints()
 {
-	register db_breakpoint_t	bkpt;
+	db_breakpoint_t	bkpt;
 
 	if (db_breakpoint_list == 0) {
 	    db_printf("No breakpoints set\n");

@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_sym.c,v 1.32 1999/08/28 00:41:10 peter Exp $
- * $DragonFly: src/sys/ddb/db_sym.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_sym.c,v 1.3 2003/07/26 14:18:51 rob Exp $
  */
 
 /*
@@ -86,7 +86,7 @@ db_add_symbol_table(start, end, name, ref)
 static char *
 db_qualify(sym, symtabname)
 	c_db_sym_t	sym;
-	register char	*symtabname;
+	char	*symtabname;
 {
 	const char	*symname;
 	static char     tmp[256];
@@ -136,10 +136,10 @@ db_lookup(symstr)
 	const char *symstr;
 {
 	c_db_sym_t sp;
-	register int i;
+	int i;
 	int symtab_start = 0;
 	int symtab_end = db_nsymtab;
-	register const char *cp;
+	const char *cp;
 
 	/*
 	 * Look for, remove, and remember any symbol table specifier.
@@ -194,8 +194,8 @@ db_symbol_is_ambiguous(sym)
 	c_db_sym_t	sym;
 {
 	const char	*sym_name;
-	register int	i;
-	register
+	int	i;
+	
 	boolean_t	found_once = FALSE;
 
 	if (!db_qualify_ambiguous_names)
@@ -218,14 +218,14 @@ db_symbol_is_ambiguous(sym)
  */
 c_db_sym_t
 db_search_symbol( val, strategy, offp)
-	register db_addr_t	val;
+	db_addr_t	val;
 	db_strategy_t		strategy;
 	db_expr_t		*offp;
 {
-	register
+	
 	unsigned int	diff;
 	size_t		newdiff;
-	register int	i;
+	int	i;
 	c_db_sym_t	ret = C_DB_SYM_NULL, sym;
 
 	newdiff = diff = ~0;

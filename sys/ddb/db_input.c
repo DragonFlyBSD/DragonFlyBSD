@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_input.c,v 1.28.2.1 2002/03/08 16:37:10 yar Exp $
- * $DragonFly: src/sys/ddb/db_input.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_input.c,v 1.3 2003/07/26 14:18:51 rob Exp $
  */
 
 /*
@@ -98,7 +98,7 @@ db_delete(n, bwd)
 	int	n;
 	int	bwd;
 {
-	register char *p;
+	char *p;
 
 	if (bwd) {
 	    db_lc -= n;
@@ -276,7 +276,7 @@ db_inputchar(c)
 		    cnputc('\007');
 		}
 		else if (c >= ' ' && c <= '~') {
-		    register char *p;
+		    char *p;
 
 		    for (p = db_le; p > db_lc; p--)
 			*p = *(p-1);
@@ -344,7 +344,7 @@ db_readline(lstart, lsize)
 void
 db_check_interrupt()
 {
-	register int	c;
+	int	c;
 
 	c = cnmaygetc();
 	switch (c) {

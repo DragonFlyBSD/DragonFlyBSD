@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_run.c,v 1.18 1999/08/28 00:41:10 peter Exp $
- * $DragonFly: src/sys/ddb/db_run.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_run.c,v 1.3 2003/07/26 14:18:51 rob Exp $
  */
 
 /*
@@ -75,8 +75,8 @@ boolean_t
 db_stop_at_pc(is_breakpoint)
 	boolean_t	*is_breakpoint;
 {
-	register db_addr_t	pc;
-	register db_breakpoint_t bkpt;
+	db_addr_t	pc;
+	db_breakpoint_t bkpt;
 
 	db_clear_single_step(DDB_REGS);
 	db_clear_breakpoints();
@@ -138,7 +138,7 @@ db_stop_at_pc(is_breakpoint)
 		(!inst_return(ins) || --db_call_depth != 0)) {
 		if (db_sstep_print) {
 		    if (inst_call(ins) || inst_return(ins)) {
-			register int i;
+			int i;
 
 			db_printf("[after %6d]     ", db_inst_count);
 			for (i = db_call_depth; --i > 0; )
@@ -171,7 +171,7 @@ void
 db_restart_at_pc(watchpt)
 	boolean_t watchpt;
 {
-	register db_addr_t	pc = PC_REGS(DDB_REGS);
+	db_addr_t	pc = PC_REGS(DDB_REGS);
 
 	if ((db_run_mode == STEP_COUNT) ||
 	    (db_run_mode == STEP_RETURN) ||
@@ -262,7 +262,7 @@ db_breakpoint_t	db_taken_bkpt = 0;
 
 void
 db_set_single_step(regs)
-	register db_regs_t *regs;
+	db_regs_t *regs;
 {
 	db_addr_t pc = PC_REGS(regs), brpc;
 	 unsigned	 inst;

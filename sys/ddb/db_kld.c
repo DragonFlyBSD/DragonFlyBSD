@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_kld.c,v 1.9 2000/01/11 13:25:12 peter Exp $
- * $DragonFly: src/sys/ddb/db_kld.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_kld.c,v 1.3 2003/07/26 14:18:51 rob Exp $
  *	from db_aout.c,v 1.20 1998/06/07 17:09:36 dfr Exp
  */
 
@@ -59,7 +59,6 @@ X_db_lookup(stab, symstr)
 c_db_sym_t
 X_db_search_symbol(symtab, off, strategy, diffp)
 	db_symtab_t *	symtab;
-	register
 	db_addr_t	off;
 	db_strategy_t	strategy;
 	db_expr_t	*diffp;		/* in/out */

@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_command.c,v 1.34.2.2 2001/07/29 22:48:36 kris Exp $
- * $DragonFly: src/sys/ddb/db_command.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_command.c,v 1.3 2003/07/26 14:18:51 rob Exp $
  */
 
 /*
@@ -118,9 +118,9 @@ db_cmd_search(name, table, aux_tablep, cmdp)
 	int		result = CMD_NONE;
 
 	for (cmd = table; cmd->name != 0; cmd++) {
-	    register char *lp;
-	    register char *rp;
-	    register int  c;
+	    char *lp;
+	    char *rp;
+	    int  c;
 
 	    lp = name;
 	    rp = cmd->name;
@@ -150,9 +150,9 @@ db_cmd_search(name, table, aux_tablep, cmdp)
 	if (result == CMD_NONE && aux_tablep != 0)
 	    /* XXX repeat too much code. */
 	    for (aux_cmdp = aux_tablep; *aux_cmdp != 0; aux_cmdp++) {
-		register char *lp;
-		register char *rp;
-		register int  c;
+		char *lp;
+		char *rp;
+		int  c;
 
 		lp = name;
 		rp = (*aux_cmdp)->name;
@@ -193,8 +193,8 @@ db_cmd_list(table, aux_tablep)
 	struct command *table;
 	struct command **aux_tablep;
 {
-	register struct command *cmd;
-	register struct command **aux_cmdp;
+	struct command *cmd;
+	struct command **aux_cmdp;
 
 	for (cmd = table; cmd->name != 0; cmd++) {
 	    db_printf("%-12s", cmd->name);

@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_output.c,v 1.26 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_output.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_output.c,v 1.3 2003/07/26 14:18:51 rob Exp $
  */
 
 /*
@@ -72,7 +72,7 @@ static void db_putchar __P((int c, void *arg));
 void
 db_force_whitespace()
 {
-	register int last_print, next_tab;
+	int last_print, next_tab;
 
 	last_print = db_last_non_space;
 	while (last_print < db_output_position) {
@@ -176,7 +176,7 @@ db_iprintf(fmt)
 	const char *fmt;
 #endif
 {
-	register int i;
+	int i;
 	va_list listp;
 
 	for (i = db_indent; i >= 8; i -= 8)

@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_watch.c,v 1.20.2.1 2001/07/25 01:00:08 bsd Exp $
- * $DragonFly: src/sys/ddb/db_watch.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_watch.c,v 1.3 2003/07/26 14:18:51 rob Exp $
  */
 
 /*
@@ -75,7 +75,7 @@ void db_md_list_watchpoints __P((void));
 db_watchpoint_t
 db_watchpoint_alloc()
 {
-	register db_watchpoint_t	watch;
+	db_watchpoint_t	watch;
 
 	if ((watch = db_free_watchpoints) != 0) {
 	    db_free_watchpoints = watch->link;
@@ -93,7 +93,7 @@ db_watchpoint_alloc()
 
 void
 db_watchpoint_free(watch)
-	register db_watchpoint_t	watch;
+	db_watchpoint_t	watch;
 {
 	watch->link = db_free_watchpoints;
 	db_free_watchpoints = watch;
@@ -105,7 +105,7 @@ db_set_watchpoint(map, addr, size)
 	db_addr_t	addr;
 	vm_size_t	size;
 {
-	register db_watchpoint_t	watch;
+	db_watchpoint_t	watch;
 
 	if (map == NULL) {
 	    db_printf("No map.\n");
@@ -147,8 +147,8 @@ db_delete_watchpoint(map, addr)
 	vm_map_t	map;
 	db_addr_t	addr;
 {
-	register db_watchpoint_t	watch;
-	register db_watchpoint_t	*prev;
+	db_watchpoint_t	watch;
+	db_watchpoint_t	*prev;
 
 	for (prev = &db_watchpoint_list;
 	     (watch = *prev) != 0;
@@ -167,7 +167,7 @@ db_delete_watchpoint(map, addr)
 static void
 db_list_watchpoints()
 {
-	register db_watchpoint_t	watch;
+	db_watchpoint_t	watch;
 
 	if (db_watchpoint_list == 0) {
 	    db_printf("No watchpoints set\n");
@@ -230,7 +230,7 @@ DB_SHOW_COMMAND(watches, db_listwatch_cmd)
 void
 db_set_watchpoints()
 {
-	register db_watchpoint_t	watch;
+	db_watchpoint_t	watch;
 
 	if (!db_watchpoints_inserted) {
 	    for (watch = db_watchpoint_list;
@@ -258,7 +258,7 @@ db_find_watchpoint(map, addr, regs)
 	db_addr_t	addr;
 	db_regs_t	*regs;
 {
-	register db_watchpoint_t watch;
+	db_watchpoint_t watch;
 	db_watchpoint_t found = 0;
 
 	for (watch = db_watchpoint_list;

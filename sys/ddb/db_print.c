@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_print.c,v 1.26 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_print.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_print.c,v 1.3 2003/07/26 14:18:51 rob Exp $
  */
 
 /*
@@ -48,7 +48,7 @@ db_show_regs(dummy1, dummy2, dummy3, dummy4)
 	db_expr_t	dummy3;
 	char *		dummy4;
 {
-	register struct db_variable *regp;
+	struct db_variable *regp;
 	db_expr_t	value, offset;
 	const char *	name;
 
