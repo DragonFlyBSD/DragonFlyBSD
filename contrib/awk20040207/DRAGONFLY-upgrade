@@ -1,0 +1,24 @@
+# $DragonFly: src/contrib/awk20040207/Attic/DRAGONFLY-upgrade,v 1.1.1.1 2004/04/17 19:41:05 eirikn Exp $
+
+Import of one-true-awk.
+
+Original source is availale from:
+http://cm.bell-labs.com/cm/cs/awkbook/
+
+
+The following files were removed for this import:
+
+	buildwin.bat
+	mac.code
+	makefile.win
+	missing95.c
+	vcvars32.bat
+	ytab.c
+	ytab.h
+	ytabc.bak
+	ytabh.bak
+
+The vendor import was done by:
+
+	cvs import -m "Import of awk 20040207" src/contrib/awk20040207 \
+	    BELL_LABS awk_20040207
