@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.70 2005/02/09 06:05:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.71 2005/02/09 11:52:18 okumoto Exp $
  */
 
 /*-
@@ -1837,7 +1837,6 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 			    str = p;
 			    expand = FALSE;
 			}
-
 		    } else {
 			/*
 			 * Single letter variable name.
@@ -1905,7 +1904,6 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 		    free(val);
 		}
 	    }
-
 	} else {
 	    /*
 	     * Skip as many characters as possible -- either to the end of
