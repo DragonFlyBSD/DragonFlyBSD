@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.49 2005/01/27 10:25:19 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.50 2005/01/31 08:30:51 okumoto Exp $
  */
 
 /*-
@@ -805,7 +805,12 @@ main(int argc, char **argv)
 		 */
 		static char VPATH[] = "${VPATH}";
 
-		vpath = Var_Subst(NULL, VPATH, VAR_CMD, FALSE);
+		{
+		    Buffer *buf;
+		    buf = Var_Subst(NULL, VPATH, VAR_CMD, FALSE);
+		    vpath = Buf_GetAll(buf, NULL);
+		    Buf_Destroy(buf, FALSE);
+		}
 		path = vpath;
 		do {
 			/* skip to end of directory */
@@ -843,7 +848,12 @@ main(int argc, char **argv)
 				p1 = emalloc(strlen(Lst_Datum(ln)) + 1 + 3);
 				/* This sprintf is safe, because of the malloc above */
 				sprintf(p1, "${%s}", (char *)Lst_Datum(ln));
-				value = Var_Subst(NULL, p1, VAR_GLOBAL, FALSE);
+				{
+				    Buffer *buf;
+				    buf = Var_Subst(NULL, p1, VAR_GLOBAL, FALSE);
+				    value = Buf_GetAll(buf, NULL);
+				    Buf_Destroy(buf, FALSE);
+				}
 			} else {
 				value = Var_Value(Lst_Datum(ln),
 						  VAR_GLOBAL, &p1);

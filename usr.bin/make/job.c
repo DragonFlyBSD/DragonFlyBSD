@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.39 2005/01/08 21:58:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.40 2005/01/31 08:30:51 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -119,6 +119,7 @@
 #endif
 
 #include "arch.h"
+#include "buf.h"
 #include "compat.h"
 #include "dir.h"
 #include "globals.h"
@@ -509,7 +510,13 @@ JobPrintCommand(void *cmdp, void *jobp)
      * the variables in the command.
      */
     cmdNode = Lst_Member(&job->node->commands, cmd);
-    cmdStart = cmd = Var_Subst(NULL, cmd, job->node, FALSE);
+    {
+	Buffer *buf;
+	buf = Var_Subst(NULL, cmd, job->node, FALSE);
+	cmd = Buf_GetAll(buf, NULL);
+	Buf_Destroy(buf, FALSE);
+	cmdStart = cmd;
+    }
     Lst_Replace(cmdNode, cmdStart);
 
     cmdTemplate = "%s\n";
@@ -644,9 +651,14 @@ JobPrintCommand(void *cmdp, void *jobp)
 static int
 JobSaveCommand(void *cmd, void *gn)
 {
+    Buffer	*buf;
+    char	*str;
 
-    cmd = Var_Subst(NULL, cmd, gn, FALSE);
-    Lst_AtEnd(&postCommands->commands, cmd);
+    buf = Var_Subst(NULL, cmd, gn, FALSE);
+    str = Buf_GetAll(buf, NULL);
+    Buf_Destroy(buf, FALSE);
+
+    Lst_AtEnd(&postCommands->commands, str);
     return (0);
 }
 

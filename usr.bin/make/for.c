@@ -35,7 +35,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.10 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.27 2005/01/27 02:30:19 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.28 2005/01/31 08:30:51 okumoto Exp $
  */
 
 /*-
@@ -177,7 +177,13 @@ For_Eval(char *line)
 	 */
 	Lst_Init(&forLst);
 	buf = Buf_Init(0);
-	sub = Var_Subst(NULL, ptr, VAR_CMD, FALSE);
+	{
+	    Buffer *buf1;
+
+	    buf1 = Var_Subst(NULL, ptr, VAR_CMD, FALSE);
+	    sub = Buf_GetAll(buf1, NULL);
+	    Buf_Destroy(buf1, FALSE);
+	}
 
 	for (ptr = sub; *ptr && isspace((unsigned char)*ptr); ptr++)
 	    continue;
@@ -254,13 +260,20 @@ For_Eval(char *line)
 static int
 ForExec(void *namep, void *argp)
 {
-    char *name = namep;
-    For *arg = argp;
+    char	*name = namep;
+    For		*arg = argp;
+    Buffer	*buf;
+    char	*str;
 
     Var_Set(arg->var, name, VAR_GLOBAL);
     DEBUGF(FOR, ("--- %s = %s\n", arg->var, name));
-    Parse_FromString(Var_Subst(arg->var, (char *)Buf_GetAll(arg->buf, NULL),
-			       VAR_GLOBAL, FALSE), arg->lineno);
+
+    buf = Var_Subst(arg->var,
+		    (char *)Buf_GetAll(arg->buf, NULL), VAR_GLOBAL, FALSE);
+    str = Buf_GetAll(buf, NULL);
+    Buf_Destroy(buf, FALSE);
+
+    Parse_FromString(str, arg->lineno);
     Var_Delete(arg->var, VAR_GLOBAL);
 
     return (0);

@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.25 2005/01/22 11:28:03 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.26 2005/01/31 08:30:51 okumoto Exp $
  */
 
 /*-
@@ -63,6 +63,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "buf.h"
 #include "compat.h"
 #include "config.h"
 #include "dir.h"
@@ -227,20 +228,21 @@ shellneed(char *cmd)
 int
 Compat_RunCommand(void *cmdp, void *gnp)
 {
-    char    	  *cmdStart;	/* Start of expanded command */
-    char	  *cp;
-    Boolean 	  silent,   	/* Don't print command */
-		  doit,		/* Execute even in -n */
-		  errCheck; 	/* Check errors */
-    int 	  reason;   	/* Reason for child's death */
-    int	    	  status;   	/* Description of child's death */
-    int	    	  cpid;	    	/* Child actually found */
-    ReturnStatus  rstat;	/* Status of fork */
-    LstNode 	  *cmdNode;  	/* Node where current command is located */
-    char    	  **av;	    	/* Argument vector for thing to exec */
-    int		  internal;	/* Various values.. */
-    char	  *cmd = cmdp;
-    GNode	  *gn = gnp;
+    char	*cmdStart;	/* Start of expanded command */
+    char	*cp;
+    Boolean	silent;		/* Don't print command */
+    Boolean	doit;		/* Execute even in -n */
+    Boolean	errCheck;	/* Check errors */
+    int		reason;		/* Reason for child's death */
+    int		status;		/* Description of child's death */
+    int		cpid;		/* Child actually found */
+    ReturnStatus	rstat;	/* Status of fork */
+    LstNode	*cmdNode;	/* Node where current command is located */
+    char	**av;		/* Argument vector for thing to exec */
+    int		internal;	/* Various values.. */
+    char	*cmd = cmdp;
+    GNode	*gn = gnp;
+    Buffer	*buf;
 
     /*
      * Avoid clobbered variable warnings by forcing the compiler
@@ -255,7 +257,10 @@ Compat_RunCommand(void *cmdp, void *gnp)
     doit = FALSE;
 
     cmdNode = Lst_Member(&gn->commands, cmd);
-    cmdStart = Var_Subst(NULL, cmd, gn, FALSE);
+
+    buf = Var_Subst(NULL, cmd, gn, FALSE);
+    cmdStart = Buf_GetAll(buf, NULL);
+    Buf_Destroy(buf, FALSE);
 
     /*
      * brk_string will return an argv with a NULL in av[0], thus causing

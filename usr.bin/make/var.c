@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.52 2005/01/30 07:20:59 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.53 2005/01/31 08:30:51 okumoto Exp $
  */
 
 /*-
@@ -183,10 +183,18 @@ VarCmp(const void *v, const void *name)
 static char *
 VarPossiblyExpand(const char *name, GNode *ctxt)
 {
-    if (strchr(name, '$') != NULL)
-        return Var_Subst(NULL, name, ctxt, 0);
-    else
-        return estrdup(name);
+    if (strchr(name, '$') != NULL) {
+	Buffer	*buf;
+	char	*str;
+
+	buf = Var_Subst(NULL, name, ctxt, 0);
+	str = Buf_GetAll(buf, NULL);
+	Buf_Destroy(buf, FALSE);
+
+	return(str);
+    } else {
+	return(estrdup(name));
+    }
 }
 
 /*-
@@ -1125,8 +1133,13 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
      * return.
      */
     str = (char *)Buf_GetAll(v->val, (size_t *)NULL);
-    if (strchr(str, '$') != (char *)NULL) {
-	str = Var_Subst(NULL, str, ctxt, err);
+    if (strchr(str, '$') != NULL) {
+	Buffer	*buf;
+
+	buf = Var_Subst(NULL, str, ctxt, err);
+	str = Buf_GetAll(buf, NULL);
+	Buf_Destroy(buf, FALSE);
+
 	*freePtr = TRUE;
     }
 
@@ -1727,22 +1740,19 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
  *	None. The old string must be freed by the caller
  *-----------------------------------------------------------------------
  */
-char *
+Buffer *
 Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 {
-    Buffer	*buf;	/* Buffer for forming things */
-    char	*val;	/* Value to substitute for a variable */
-    size_t	length;	/* Length of the variable invocation */
-    Boolean	doFree;	/* Set true if val should be freed */
-    char	*result;
+    Boolean	errorReported;
+    Buffer	*buf;		/* Buffer for forming things */
 
-    static Boolean errorReported;	/* Set true if an error has already
-					 * been reported to prevent a plethora
-					 * of messages when recursing */
-
-    buf = Buf_Init(0);
+    /*
+     * Set TRUE if an error has already been reported to prevent a
+     * plethora of messages when recursing.
+     */
     errorReported = FALSE;
 
+    buf = Buf_Init(0);
     while (*str) {
 	if (var == NULL && (str[0] == '$') && (str[1] == '$')) {
 	    /*
@@ -1753,36 +1763,17 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 	    Buf_AddByte(buf, (Byte)str[0]);
 	    str += 2;
 
-	} else if (str[0] != '$') {
-	    /*
-	     * Skip as many characters as possible -- either to the end of
-	     * the string or to the next dollar sign (variable invocation).
-	     */
-	    const char	*cp = str;
-
-	    do {
-		str++;
-	    } while (str[0] != '$' && str[0] != '\0');
-
-	    Buf_AppendRange(buf, cp, str);
-
-	} else {
+	} else if (str[0] == '$') {
+	    char	*val;	/* Value to substitute for a variable */
+	    size_t	length;	/* Length of the variable invocation */
+	    Boolean	doFree;	/* Set true if val should be freed */
 	    /*
 	     * Variable invocation.
 	     */
 	    if (var != NULL) {
 		int expand;
 		for (;;) {
-		    if (str[1] != OPEN_PAREN && str[1] != OPEN_BRACKET) {
-			if (str[1] != var[0] || var[1] != '\0') {
-			    Buf_AddBytes(buf, 2, (const Byte *)str);
-			    str += 2;
-			    expand = FALSE;
-			} else {
-			    expand = TRUE;
-			}
-			break;
-		    } else {
+		    if (str[1] == OPEN_PAREN || str[1] == OPEN_BRACKET) {
 			const char *p = str + 2;
 
 			/*
@@ -1795,6 +1786,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 			       *p != '$') {
 			    ++p;
 			}
+
 			/*
 			 * A variable inside the variable. We cannot expand
 			 * the external variable yet, so we try again with
@@ -1806,22 +1798,34 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 			    continue;
 			}
 
-			if (strncmp(var, str + 2, p - str - 2) != 0 ||
-			    var[p - str - 2] != '\0') {
+			if (var[p - (str + 2)] == '\0' && strncmp(var, str + 2, p - (str + 2)) == 0) {
+			    expand = TRUE;
+			} else {
 			    /*
 			     * Not the variable we want to expand, scan
 			     * until the next variable
 			     */
-			    for (;*p != '$' && *p != '\0'; p++)
-				continue;
+			    while (*p != '$' && *p != '\0')
+				++p;
+
 			    Buf_AppendRange(buf, str, p);
 			    str = p;
 			    expand = FALSE;
-			} else {
-			    expand = TRUE;
 			}
-			break;
+
+		    } else {
+			/*
+			 * Single letter variable name.
+			 */
+			if (var[1] == '\0' && str[1] == var[0]) {
+			    expand = TRUE;
+			} else {
+			    Buf_AddBytes(buf, 2, (const Byte *)str);
+			    str += 2;
+			    expand = FALSE;
+			}
 		    }
+		    break;
 		}
 		if (!expand)
 		    continue;
@@ -1876,13 +1880,23 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 		    free(val);
 		}
 	    }
+
+	} else {
+	    /*
+	     * Skip as many characters as possible -- either to the end of
+	     * the string or to the next dollar sign (variable invocation).
+	     */
+	    const char	*cp = str;
+
+	    do {
+		str++;
+	    } while (str[0] != '$' && str[0] != '\0');
+
+	    Buf_AppendRange(buf, cp, str);
 	}
     }
 
-    //Buf_AddByte(buf, '\0');
-    result = (char *)Buf_GetAll(buf, (size_t *)NULL);
-    Buf_Destroy(buf, FALSE);
-    return (result);
+    return (buf);
 }
 
 /*-

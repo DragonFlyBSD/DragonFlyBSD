@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.2 2004/06/10 13:07:53 ru Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.29 2005/01/22 11:34:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.30 2005/01/31 08:30:51 okumoto Exp $
  */
 
 /*-
@@ -93,6 +93,7 @@
 #include <stdlib.h>
 
 #include "arch.h"
+#include "buf.h"
 #include "config.h"
 #include "dir.h"
 #include "globals.h"
@@ -1310,7 +1311,12 @@ SuffExpandChildren(void *cgnp, void *pgnp)
      */
     if (strchr(cgn->name, '$') != NULL) {
 	DEBUGF(SUFF, ("Expanding \"%s\"...", cgn->name));
-	cp = Var_Subst(NULL, cgn->name, pgn, TRUE);
+	{
+	    Buffer	*buf;
+	    buf = Var_Subst(NULL, cgn->name, pgn, TRUE);
+	    cp = Buf_GetAll(buf, NULL);
+	    Buf_Destroy(buf, FALSE);
+	}
 
 	if (cp != NULL) {
 	    Lst members = Lst_Initializer(members);

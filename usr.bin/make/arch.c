@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.26 2005/01/09 23:03:28 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.27 2005/01/31 08:30:51 okumoto Exp $
  */
 
 /*-
@@ -96,6 +96,7 @@
 #include <utime.h>
 
 #include "arch.h"
+#include "buf.h"
 #include "config.h"
 #include "dir.h"
 #include "globals.h"
@@ -185,7 +186,11 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 
     *cp++ = '\0';
     if (subLibName) {
-	libName = Var_Subst(NULL, libName, ctxt, TRUE);
+	Buffer	*buf;
+
+	buf = Var_Subst(NULL, libName, ctxt, TRUE);
+	libName = Buf_GetAll(buf, NULL);
+	Buf_Destroy(buf, FALSE);
     }
 
 
@@ -260,12 +265,15 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 	 * later.
 	 */
 	if (doSubst) {
-	    char    *buf;
-	    char    *sacrifice;
-	    char    *oldMemName = memName;
-	    size_t   sz;
+	    char	*buf;
+	    char	*sacrifice;
+	    char	*oldMemName = memName;
+	    size_t	sz;
+	    Buffer	*buf1;
 
-	    memName = Var_Subst(NULL, memName, ctxt, TRUE);
+	    buf1 = Var_Subst(NULL, memName, ctxt, TRUE);
+	    memName = Buf_GetAll(buf1, NULL);
+	    Buf_Destroy(buf1, FALSE);
 
 	    /*
 	     * Now form an archive spec and recurse to deal with nested

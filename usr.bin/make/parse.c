@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.41 2005/01/27 10:25:19 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.42 2005/01/31 08:30:51 okumoto Exp $
  */
 
 /*-
@@ -1424,7 +1424,12 @@ Parse_DoVar(char *line, GNode *ctxt)
 	if (!Var_Exists(line, ctxt))
 	    Var_Set(line, "", ctxt);
 
-	cp = Var_Subst(NULL, cp, ctxt, FALSE);
+	{
+	    Buffer *buf;
+	    buf = Var_Subst(NULL, cp, ctxt, FALSE);
+	    cp = Buf_GetAll(buf, NULL);
+	    Buf_Destroy(buf, FALSE);
+	}
 	oldVars = oldOldVars;
 
 	Var_Set(line, cp, ctxt);
@@ -1441,7 +1446,12 @@ Parse_DoVar(char *line, GNode *ctxt)
 	     * expansion on the whole thing. The resulting string will need
 	     * freeing when we're done, so set freeCmd to TRUE.
 	     */
-	    cp = Var_Subst(NULL, cp, VAR_CMD, TRUE);
+	    {
+		Buffer *buf1;
+		buf1 = Var_Subst(NULL, cp, VAR_CMD, TRUE);
+		cp = Buf_GetAll(buf1, NULL);
+		Buf_Destroy(buf1, FALSE);
+	    }
 	    freeCmd = TRUE;
 	}
 
@@ -1556,7 +1566,12 @@ ParseDoError(char *errmsg)
 	while (isspace((unsigned char)*errmsg))
 		errmsg++;
 
-	errmsg = Var_Subst(NULL, errmsg, VAR_GLOBAL, FALSE);
+	{
+	    Buffer *buf;
+	    buf = Var_Subst(NULL, errmsg, VAR_GLOBAL, FALSE);
+	    errmsg = Buf_GetAll(buf, NULL);
+	    Buf_Destroy(buf, FALSE);
+	}
 
 	Parse_Error(PARSE_FATAL, "%s", errmsg);
 	/* Terminate immediately. */
@@ -1586,7 +1601,12 @@ ParseDoWarning(char *warnmsg)
 	while (isspace((unsigned char)*warnmsg))
 		warnmsg++;
 
-	warnmsg = Var_Subst(NULL, warnmsg, VAR_GLOBAL, FALSE);
+	{
+	    Buffer *buf;
+	    buf = Var_Subst(NULL, warnmsg, VAR_GLOBAL, FALSE);
+	    warnmsg = Buf_GetAll(buf, NULL);
+	    Buf_Destroy(buf, FALSE);
+	}
 
 	Parse_Error(PARSE_WARNING, "%s", warnmsg);
 }
@@ -1663,7 +1683,12 @@ ParseDoInclude(char *file)
      * Substitute for any variables in the file name before trying to
      * find the thing.
      */
-    file = Var_Subst(NULL, file, VAR_CMD, FALSE);
+    {
+	Buffer *buf;
+	buf = Var_Subst(NULL, file, VAR_CMD, FALSE);
+	file = Buf_GetAll(buf, NULL);
+	Buf_Destroy(buf, FALSE);
+    }
 
     /*
      * Now we know the file's name and its search path, we attempt to
@@ -1851,7 +1876,12 @@ ParseTraditionalInclude(char *file)
      * Substitute for any variables in the file name before trying to
      * find the thing.
      */
-    file = Var_Subst(NULL, file, VAR_CMD, FALSE);
+    {
+	Buffer *buf;
+    	buf = Var_Subst(NULL, file, VAR_CMD, FALSE);
+	file = Buf_GetAll(buf, NULL);
+	Buf_Destroy(buf, FALSE);
+    }
 
     /*
      * Now we know the file's name, we attempt to find the durn thing.
@@ -2416,7 +2446,12 @@ Parse_File(const char *name, FILE *stream)
 	            goto nextLine;
 		} else if (strncmp(cp, "undef", 5) == 0) {
 		    cp = stripvarname(cp + 5);
-		    cp = Var_Subst(NULL, cp, VAR_CMD, FALSE);
+		    {
+			Buffer *buf;
+			buf = Var_Subst(NULL, cp, VAR_CMD, FALSE);
+			cp = Buf_GetAll(buf, NULL);
+			Buf_Destroy(buf, FALSE);
+		    }
 		    Var_Delete(cp, VAR_GLOBAL);
 		    goto nextLine;
 		} else if (strncmp(cp, "makeenv", 7) == 0) {
@@ -2489,7 +2524,12 @@ Parse_File(const char *name, FILE *stream)
 
 		ParseFinishLine();
 
-		cp = Var_Subst(NULL, line, VAR_CMD, TRUE);
+		{
+		    Buffer *buf;
+		    buf = Var_Subst(NULL, line, VAR_CMD, TRUE);
+		    cp = Buf_GetAll(buf, NULL);
+		    Buf_Destroy(buf, FALSE);
+		}
 		free(line);
 		line = cp;
 
