@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.55 2005/02/15 01:01:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.56 2005/02/16 22:38:03 okumoto Exp $
  */
 
 /*-
@@ -840,18 +840,15 @@ main(int argc, char **argv)
 	if (DEBUG(GRAPH1))
 		Targ_PrintGraph(1);
 
+	/* print the values of any variables requested by the user */
 	if (Lst_IsEmpty(&variables)) {
 		/*
 		 * Since the user has not requested that any variables
 		 * be printed, we can build targets.
 		 *
-		 * Someone please tell me what the following comment
-		 * means? <max>
-		 *
-		 * Have now read the entire graph and need to make
-		 * a list of targets to create. If none was given
-		 * on the command line, we consult the parsing
-		 * module to find the main target(s) to create.
+		 * Have read the entire graph and need to make a list of targets
+		 * to create. If none was given on the command line, we consult
+		 * the parsing module to find the main target(s) to create.
 		 */
 		Lst targs = Lst_Initializer(targs);
 
