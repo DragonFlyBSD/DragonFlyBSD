@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt.c,v 1.25.2.1 2000/08/02 22:32:26 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.4 2003/08/07 21:16:52 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.5 2004/01/25 15:43:24 joerg Exp $
  */
 
  /*
@@ -924,10 +924,9 @@ bt_find_probe_range(int ioport, int *port_index, int *max_port_index)
 				break;
 		if ((i >= BT_NUM_ISAPORTS)
 		 || (ioport != bt_isa_ports[i].addr)) {
-			printf("
-bt_isa_probe: Invalid baseport of 0x%x specified.
-bt_isa_probe: Nearest valid baseport is 0x%x.
-bt_isa_probe: Failing probe.\n",
+			printf("\nbt_isa_probe: Invalid baseport of 0x%x specified.\n"
+			       "bt_isa_probe: Nearest valid baseport is 0x%x.\n"
+			       "bt_isa_probe: Failing probe.\n",
 			       ioport,
 			       (i < BT_NUM_ISAPORTS)
 				    ? bt_isa_ports[i].addr
