@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.14.2.5 2003/03/02 20:58:54 dan Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rlreg.h,v 1.3 2004/09/15 00:36:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rlreg.h,v 1.4 2004/11/10 18:30:13 joerg Exp $
  */
 
 /*
@@ -239,7 +239,8 @@
 
 /* 9346 EEPROM commands */
 #define RL_EECMD_WRITE		0x140
-#define RL_EECMD_READ		0x180
+#define RL_EECMD_READ_6BIT	0x180
+#define RL_EECMD_READ_8BIT	0x600
 #define RL_EECMD_ERASE		0x1c0
 
 #define RL_EE_ID		0x00
@@ -303,7 +304,7 @@
 #define RL_TXTHRESH(x)		((x) << 11)
 #define RL_TX_THRESH_INIT	96
 #define RL_RX_FIFOTHRESH	RL_RXFIFO_256BYTES
-#define RL_RX_MAXDMA		RL_RXDMA_UNLIMITED
+#define RL_RX_MAXDMA		RL_RXDMA_1024BYTES
 #define RL_TX_MAXDMA		RL_TXDMA_2048BYTES
 
 #define RL_RXCFG_CONFIG (RL_RX_FIFOTHRESH|RL_RX_MAXDMA|RL_RX_BUF_SZ)
@@ -312,36 +313,34 @@
 #define RL_ETHER_ALIGN	2
 
 struct rl_chain_data {
-	u_int16_t		cur_rx;
+	uint16_t		cur_rx;
 	caddr_t			rl_rx_buf;
 	caddr_t			rl_rx_buf_ptr;
+	bus_dmamap_t		rl_rx_dmamap;
 
 	struct mbuf		*rl_tx_chain[RL_TX_LIST_CNT];
-	u_int8_t		last_tx;
-	u_int8_t		cur_tx;
+	bus_dmamap_t		rl_tx_dmamap[RL_TX_LIST_CNT];
+	uint8_t			last_tx;
+	uint8_t			cur_tx;
 };
 
 #define RL_INC(x)		(x = (x + 1) % RL_TX_LIST_CNT)
 #define RL_CUR_TXADDR(x)	((x->rl_cdata.cur_tx * 4) + RL_TXADDR0)
 #define RL_CUR_TXSTAT(x)	((x->rl_cdata.cur_tx * 4) + RL_TXSTAT0)
 #define RL_CUR_TXMBUF(x)	(x->rl_cdata.rl_tx_chain[x->rl_cdata.cur_tx])
+#define RL_CUR_DMAMAP(x)	(x->rl_cdata.rl_tx_dmamap[x->rl_cdata.cur_tx])
 #define RL_LAST_TXADDR(x)	((x->rl_cdata.last_tx * 4) + RL_TXADDR0)
 #define RL_LAST_TXSTAT(x)	((x->rl_cdata.last_tx * 4) + RL_TXSTAT0)
 #define RL_LAST_TXMBUF(x)	(x->rl_cdata.rl_tx_chain[x->rl_cdata.last_tx])
-
-struct rl_type {
-	u_int16_t		rl_vid;
-	u_int16_t		rl_did;
-	char			*rl_name;
-};
+#define RL_LAST_DMAMAP(x)	(x->rl_cdata.rl_tx_dmamap[x->rl_cdata.last_tx])
 
 struct rl_mii_frame {
-	u_int8_t		mii_stdelim;
-	u_int8_t		mii_opcode;
-	u_int8_t		mii_phyaddr;
-	u_int8_t		mii_regaddr;
-	u_int8_t		mii_turnaround;
-	u_int16_t		mii_data;
+	uint8_t			mii_stdelim;
+	uint8_t			mii_opcode;
+	uint8_t			mii_phyaddr;
+	uint8_t			mii_regaddr;
+	uint8_t			mii_turnaround;
+	uint16_t		mii_data;
 };
 
 /*
@@ -357,15 +356,18 @@ struct rl_mii_frame {
 
 struct rl_softc {
 	struct arpcom		arpcom;		/* interface info */
+	device_t		rl_dev;
 	bus_space_handle_t	rl_bhandle;	/* bus space handle */
 	bus_space_tag_t		rl_btag;	/* bus space tag */
 	struct resource		*rl_res;
 	struct resource		*rl_irq;
 	void			*rl_intrhand;
 	device_t		rl_miibus;
-	u_int8_t		rl_unit;	/* interface number */
-	u_int8_t		rl_type;
-	u_int8_t		rl_stats_no_timeout;
+	bus_dma_tag_t		rl_parent_tag;
+	bus_dma_tag_t		rl_tag;
+	uint8_t			rl_type;
+	int			rl_eecmd_read;
+	uint8_t			rl_stats_no_timeout;
 	int			rl_txthresh;
 	struct rl_chain_data	rl_cdata;
 	struct callout		rl_stat_timer;
@@ -374,16 +376,18 @@ struct rl_softc {
 	int			rxcycles;
 #endif /* DEVICE_POLLING */
  
- 	u_int32_t		saved_maps[5];	/* pci data */
- 	u_int32_t		saved_biosaddr;
- 	u_int8_t		saved_intline;
- 	u_int8_t		saved_cachelnsz;
- 	u_int8_t		saved_lattimer;
+ 	uint32_t		saved_maps[5];	/* pci data */
+ 	uint32_t		saved_biosaddr;
+ 	uint8_t			saved_intline;
+ 	uint8_t			saved_cachelnsz;
+ 	uint8_t			saved_lattimer;
 };
 
 /*
  * register space access macros
  */
+#define CSR_WRITE_STREAM_4(sc, reg, val)	\
+	bus_space_write_stream_4(sc->rl_btag, sc->rl_bhandle, reg, val)
 #define CSR_WRITE_4(sc, reg, val)	\
 	bus_space_write_4(sc->rl_btag, sc->rl_bhandle, reg, val)
 #define CSR_WRITE_2(sc, reg, val)	\
@@ -411,6 +415,7 @@ struct rl_softc {
  * RealTek chip device IDs.
  */
 #define	RT_DEVICEID_8129			0x8129
+#define	RT_DEVICEID_8138			0x8138
 #define	RT_DEVICEID_8139			0x8139
 
 /*
@@ -459,6 +464,31 @@ struct rl_softc {
 #define DLINK_DEVICEID_530TXPLUS		0x1300
 
 /*
+ * D-Link DFE-690TXD device ID
+ */
+#define DLINK_DEVICEID_690TXD			0x1340
+
+/*
+ * Corega K.K vendor ID
+ */
+#define COREGA_VENDORID				0x1259
+
+/*
+ * Corega FEther CB-TXD device ID
+ */
+#define COREGA_DEVICEID_FETHERCBTXD			0xa117
+
+/*
+ * Corega FEtherII CB-TXD device ID
+ */
+#define COREGA_DEVICEID_FETHERIICBTXD			0xa11e
+
+/*
+ * Corega CG-LAPCIGT device ID
+ */
+#define COREGA_DEVICEID_CGLAPCIGT		0xc107
+
+/*
  * Peppercon vendor ID.
  */
 #define PEPPERCON_VENDORID			0x1743
@@ -467,6 +497,16 @@ struct rl_softc {
  * Peppercon AG ROL/F device ID.
  */
 #define PEPPERCON_DEVICEID_ROLF			0x8139
+
+/*
+ * Planex Communications, Inc. vendor ID
+ */
+#define PLANEX_VENDORID				0x14ea
+
+/*
+ * Planex FNW-3800-TX device ID
+ */
+#define PLANEX_DEVICEID_FNW3800TX		0xab07
 
 /*
  * PCI low memory base and low I/O base register, and
@@ -502,8 +542,3 @@ struct rl_softc {
 #define RL_PSTATE_D3		0x0003
 #define RL_PME_EN		0x0010
 #define RL_PME_STATUS		0x8000
-
-#ifdef __alpha__
-#undef vtophys
-#define vtophys(va)     alpha_XXX_dmamap((vm_offset_t)va)
-#endif
