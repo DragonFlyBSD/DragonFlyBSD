@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.39 2004/05/13 17:40:14 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.40 2004/05/21 11:03:14 hmp Exp $
  */
 
 /*
@@ -685,9 +685,11 @@ pmap_extract_vmpage(pmap_t pmap, vm_offset_t va, int prot)
  ***************************************************/
 
 /*
- * add a wired page to the kva
- * note that in order for the mapping to take effect -- you
- * should do a invltlb after doing the pmap_kenter...
+ * Routine: pmap_kenter
+ * Function:
+ *  	Add a wired page to the KVA
+ *  	NOTE! note that in order for the mapping to take effect -- you
+ *  	should do an invltlb after doing the pmap_kenter().
  */
 void 
 pmap_kenter(vm_offset_t va, vm_paddr_t pa)
@@ -704,6 +706,12 @@ pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 	pmap_inval_flush(&info);
 }
 
+/*
+ * Routine: pmap_kenter_quick
+ * Function:
+ *  	Similar to pmap_kenter(), except we only invalidate the
+ *  	mapping on the current CPU.
+ */
 void
 pmap_kenter_quick(vm_offset_t va, vm_paddr_t pa)
 {
