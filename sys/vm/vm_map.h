@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.12 2004/03/01 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.13 2004/03/12 23:09:37 dillon Exp $
  */
 
 /*
@@ -222,6 +222,7 @@ struct vmspace {
 	caddr_t vm_daddr;	/* user virtual address of data XXX */
 	caddr_t vm_maxsaddr;	/* user VA at max stack growth */
 	caddr_t vm_minsaddr;	/* user VA at max stack growth */
+#define vm_endcopy	vm_exitingcnt
 	int	vm_exitingcnt;	/* several procsses zombied in exit1 */
 	int	vm_upccount;	/* number of registered upcalls */
 	struct vmupcall *vm_upcalls; /* registered upcalls */

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.22 2004/03/01 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.23 2004/03/12 23:09:37 dillon Exp $
  */
 
 /*
@@ -2632,9 +2632,12 @@ vmspace_fork(struct vmspace *vm1)
 	vm_map_lock(old_map);
 	old_map->infork = 1;
 
+	/*
+	 * XXX Note: upcalls are not copied.
+	 */
 	vm2 = vmspace_alloc(old_map->min_offset, old_map->max_offset);
 	bcopy(&vm1->vm_startcopy, &vm2->vm_startcopy,
-	    (caddr_t) (vm1 + 1) - (caddr_t) &vm1->vm_startcopy);
+	    (caddr_t)&vm1->vm_endcopy - (caddr_t)&vm1->vm_startcopy);
 	new_map = &vm2->vm_map;	/* XXX */
 	new_map->timestamp = 1;
 
@@ -2990,14 +2993,16 @@ vmspace_exec(struct proc *p, struct vmspace *vmcopy)
 
 	/*
 	 * If we are execing a resident vmspace we fork it, otherwise
-	 * we create a new vmspace.
+	 * we create a new vmspace.  Note that exitingcnt and upcalls
+	 * are not copied to the new vmspace.
 	 */
 	if (vmcopy)  {
 	    newvmspace = vmspace_fork(vmcopy);
 	} else {
 	    newvmspace = vmspace_alloc(map->min_offset, map->max_offset);
 	    bcopy(&oldvmspace->vm_startcopy, &newvmspace->vm_startcopy,
-		(caddr_t)(newvmspace+1) - (caddr_t) &newvmspace->vm_startcopy);
+		(caddr_t)&oldvmspace->vm_endcopy - 
+		    (caddr_t)&oldvmspace->vm_startcopy);
 	}
 
 	/*
@@ -3017,6 +3022,9 @@ vmspace_exec(struct proc *p, struct vmspace *vmcopy)
 /*
  * Unshare the specified VM space for forcing COW.  This
  * is called by rfork, for the (RFMEM|RFPROC) == 0 case.
+ *
+ * The exitingcnt test is not strictly necessary but has been
+ * included for code sanity (to make the code a bit more deterministic).
  */
 
 void
@@ -3025,7 +3033,7 @@ vmspace_unshare(struct proc *p)
 	struct vmspace *oldvmspace = p->p_vmspace;
 	struct vmspace *newvmspace;
 
-	if (oldvmspace->vm_refcnt == 1)
+	if (oldvmspace->vm_refcnt == 1 && oldvmspace->vm_exitingcnt == 0)
 		return;
 	newvmspace = vmspace_fork(oldvmspace);
 	p->p_vmspace = newvmspace;

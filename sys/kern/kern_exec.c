@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.20 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.21 2004/03/12 23:09:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -596,6 +596,9 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 	 * otherwise, create a new VM space so that other threads are
 	 * not disrupted.  If we are execing a resident vmspace we
 	 * create a duplicate of it and remap the stack.
+	 *
+	 * The exitingcnt test is not strictly necessary but has been
+	 * included for code sanity (to make the code more deterministic).
 	 */
 	map = &vmspace->vm_map;
 	if (vmcopy) {
@@ -603,8 +606,10 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 		vmspace = imgp->proc->p_vmspace;
 		pmap_remove_pages(vmspace_pmap(vmspace), stack_addr, USRSTACK);
 		map = &vmspace->vm_map;
-	} else if (vmspace->vm_refcnt == 1) {
+	} else if (vmspace->vm_refcnt == 1 && vmspace->vm_exitingcnt == 0) {
 		shmexit(vmspace);
+		if (vmspace->vm_upcalls)
+			upc_release(vmspace, imgp->proc);
 		pmap_remove_pages(vmspace_pmap(vmspace), 0, VM_MAXUSER_ADDRESS);
 		vm_map_remove(map, 0, VM_MAXUSER_ADDRESS);
 	} else {
