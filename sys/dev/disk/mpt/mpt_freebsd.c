@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_freebsd.c,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.c,v 1.6 2004/09/19 00:25:57 joerg Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.c,v 1.7 2005/03/21 22:08:41 dillon Exp $ */
 /*
  * FreeBSD/CAM specific routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -256,11 +256,13 @@ mpt_execute_req(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 				ntodo = MPT_NSGL(mpt) - 1;
 				ce->NextChainOffset = (MPT_RQSL(mpt) -
 				    sizeof (SGE_SIMPLE32)) >> 2;
+				ce->Length = MPT_NSGL(mpt) 
+					* sizeof(SGE_SIMPLE32);
 			} else {
 				ntodo = nleft;
 				ce->NextChainOffset = 0;
+				ce->Length = ntodo * sizeof (SGE_SIMPLE32);
 			}
-			ce->Length = ntodo * sizeof (SGE_SIMPLE32);
 			ce->Address = req->req_pbuf +
 			    ((char *)se - (char *)mpt_req);
 			ce->Flags = MPI_SGE_FLAGS_CHAIN_ELEMENT;
