@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.9 2004/07/10 22:29:11 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.10 2004/07/11 02:53:13 dillon Exp $
 #
 
 ISODIR ?= /usr/release
@@ -122,6 +122,7 @@ customizeiso:
 	cpdup -X cpignore -o ${ROOTSKEL} ${ISOROOT}
 .endfor
 	rm -rf `find ${ISOROOT} -type d -name CVS -print`
+	pwd_mkdb -p -d ${ISOROOT}/etc ${ISOROOT}/etc/master.passwd
 
 pkgcleaniso:
 	rm -f ${ISOROOT}/tmp/chrootscript
