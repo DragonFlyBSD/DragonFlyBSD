@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_extern.h	8.10 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_extern.h,v 1.27.2.1 2000/12/28 11:01:46 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_extern.h,v 1.10 2004/11/12 00:09:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_extern.h,v 1.11 2005/01/20 18:08:54 dillon Exp $
  */
 
 #ifndef _UFS_UFS_EXTERN_H_
@@ -78,6 +78,7 @@ int	 ufs_dirrewrite(struct inode *, struct inode *, ino_t, int, int);
 int	 ufs_getlbns(struct vnode *, ufs_daddr_t, struct indir *, int *);
 struct vnode *
 	 ufs_ihashget(dev_t, ino_t);
+int	 ufs_ihashcheck(dev_t, ino_t);
 void	 ufs_ihashinit(void);
 int	 ufs_ihashins(struct inode *);
 struct vnode *

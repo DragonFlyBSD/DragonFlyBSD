@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.14 2004/10/12 19:21:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.15 2005/01/20 18:08:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -134,6 +134,33 @@ loop:
 	}
 	lwkt_reltoken(&ilock);
 	return (NULL);
+}
+
+/*
+ * Check to see if an inode is in the hash table.  This is used to interlock
+ * file free operations to ensure that the vnode is not reused due to a
+ * reallocate of its inode number before we have had a chance to recycle it.
+ */
+int
+ufs_ihashcheck(dev_t dev, ino_t inum)
+{
+	lwkt_tokref ilock;
+	struct inode *ip;
+
+	lwkt_gettoken(&ilock, &ufs_ihash_token);
+	for (ip = *INOHASH(dev, inum); ip; ip = ip->i_next) {
+		if (inum == ip->i_number && dev == ip->i_dev) {
+			if (ip->i_vnode) {
+			    printf("conflict with vnode %p", ip->i_vnode);
+			    if (TAILQ_FIRST(&ip->i_vnode->v_namecache))
+				printf(" ncp %s", TAILQ_FIRST(&ip->i_vnode->v_namecache)->nc_name);
+			    printf("\n");
+			}
+			break;
+		}
+	}
+	lwkt_reltoken(&ilock);
+	return(ip ? 1 : 0);
 }
 
 /*

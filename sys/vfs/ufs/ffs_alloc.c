@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.11 2004/08/09 19:41:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.12 2005/01/20 18:08:54 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1282,6 +1282,15 @@ fail:
  *   1) allocate the requested inode.
  *   2) allocate the next available inode after the requested
  *      inode in the specified cylinder group.
+ *   3) the inode must not already be in the inode hash table.  We
+ *	can encounter such a case because the vnode reclamation sequence
+ *	frees the bit
+ *   3) the inode must not already be in the inode hash, otherwise it
+ *	may be in the process of being deallocated.  This can occur
+ *	because the bitmap is updated before the inode is removed from
+ *	hash.  If we were to reallocate the inode the caller could wind
+ *	up returning a vnode/inode combination which is in an indeterminate
+ *	state.
  */
 static ino_t
 ffs_nodealloccg(struct inode *ip, int cg, ufs_daddr_t ipref, int mode)
@@ -1290,7 +1299,9 @@ ffs_nodealloccg(struct inode *ip, int cg, ufs_daddr_t ipref, int mode)
 	struct cg *cgp;
 	struct buf *bp;
 	uint8_t *inosused;
-	int error, start, len, loc, map, i;
+	int error, len, map, i;
+	int icheckmiss;
+	ufs_daddr_t ibase;
 
 	fs = ip->i_fs;
 	if (fs->fs_cs(fs, cg).cs_nifree == 0)
@@ -1306,43 +1317,87 @@ ffs_nodealloccg(struct inode *ip, int cg, ufs_daddr_t ipref, int mode)
 		brelse(bp);
 		return (0);
 	}
-	bp->b_xflags |= BX_BKGRDWRITE;
-	cgp->cg_time = time_second;
 	inosused = cg_inosused(cgp);
+	icheckmiss = 0;
+
+	/*
+	 * Quick check, reuse the most recently free inode or continue
+	 * a scan from where we left off the last time.
+	 */
+	ibase = cg * fs->fs_ipg;
 	if (ipref) {
 		ipref %= fs->fs_ipg;
-		if (isclr(inosused, ipref))
-			goto gotit;
-	}
-	start = cgp->cg_irotor / NBBY;
-	len = howmany(fs->fs_ipg - cgp->cg_irotor, NBBY);
-	loc = skpc(0xff, len, &inosused[start]);
-	if (loc == 0) {
-		len = start + 1;
-		start = 0;
-		loc = skpc(0xff, len, &inosused[0]);
-		if (loc == 0) {
-			printf("cg = %d, irotor = %ld, fs = %s\n",
-			    cg, (long)cgp->cg_irotor, fs->fs_fsmnt);
-			panic("ffs_nodealloccg: map corrupted");
-			/* NOTREACHED */
+		if (isclr(inosused, ipref)) {
+			if (ufs_ihashcheck(ip->i_dev, ibase + ipref) == 0)
+				goto gotit;
 		}
 	}
-	i = start + len - loc;
-	map = inosused[i];
-	ipref = i * NBBY;
-	for (i = 1; i < (1 << NBBY); i <<= 1, ipref++) {
-		if ((map & i) == 0) {
-			cgp->cg_irotor = ipref;
-			goto gotit;
+
+	/*
+	 * Scan the inode bitmap starting at irotor, be sure to handle
+	 * the edge case by going back to the beginning of the array.
+	 * Note that 'len' can go negative.  Start the scan at bit 0 to
+	 * simplify the code.
+	 */
+	ipref = (cgp->cg_irotor % fs->fs_ipg) & ~7;
+	map = inosused[ipref >> 3];
+	len = fs->fs_ipg;
+
+	while (len > 0) {
+		if (map != (1 << NBBY) - 1) {
+			for (i = 0; i < NBBY; ++i) {
+				/*
+				 * If we find a free bit we have to make sure
+				 * that the inode is not in the middle of
+				 * being destroyed.  The inode should not exist
+				 * in the inode hash.
+				 *
+				 * Adjust the rotor to try to hit the 
+				 * quick-check up above.
+				 */
+				if ((map & (1 << i)) == 0) {
+					KKASSERT(ipref + i < fs->fs_ipg);
+					if (ufs_ihashcheck(ip->i_dev, ibase + ipref + i) == 0) {
+						ipref += i;
+						cgp->cg_irotor = (ipref + 1) % fs->fs_ipg;
+						goto gotit;
+					}
+					++icheckmiss;
+				}
+			}
 		}
+
+		/*
+		 * Setup for the next byte.  If we hit the edge make sure to
+		 * adjust the remaining length only by the number of bits in
+		 * the last byte.
+		 */
+		ipref += NBBY;
+		if (ipref >= fs->fs_ipg) {
+			ipref = 0;
+			len -= fs->fs_ipg & 7;
+		} else {
+			len -= NBBY;
+		}
+		map = inosused[ipref >> 3];
+	}
+	if (icheckmiss == cgp->cg_cs.cs_nifree) {
+		brelse(bp);
+		return(0);
 	}
 	printf("fs = %s\n", fs->fs_fsmnt);
-	panic("ffs_nodealloccg: block not in map");
+	panic("ffs_nodealloccg: block not in map, icheckmiss/nfree %d/%d",
+		icheckmiss, cgp->cg_cs.cs_nifree);
 	/* NOTREACHED */
 gotit:
+	if (icheckmiss) {
+		printf("Warning: inode free race avoided %d times\n",
+			icheckmiss);
+	}
+	bp->b_xflags |= BX_BKGRDWRITE;
+	cgp->cg_time = time_second;
 	if (DOINGSOFTDEP(ITOV(ip)))
-		softdep_setup_inomapdep(bp, ip, cg * fs->fs_ipg + ipref);
+		softdep_setup_inomapdep(bp, ip, ibase + ipref);
 	setbit(inosused, ipref);
 	cgp->cg_cs.cs_nifree--;
 	fs->fs_cstotal.cs_nifree--;
@@ -1354,7 +1409,7 @@ gotit:
 		fs->fs_cs(fs, cg).cs_ndir++;
 	}
 	bdwrite(bp);
-	return (cg * fs->fs_ipg + ipref);
+	return (ibase + ipref);
 }
 
 /*
