@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.40 2004/11/14 00:49:08 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.41 2004/12/16 03:37:30 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -692,7 +692,6 @@ tcp_newtcpcb(struct inpcb *inp)
 	tp->snd_bwnd = TCP_MAXWIN << TCP_MAX_WINSHIFT;
 	tp->snd_ssthresh = TCP_MAXWIN << TCP_MAX_WINSHIFT;
 	tp->t_rcvtime = ticks;
-	tp->t_bw_rtttime = ticks;
 	/*
 	 * IPv4 TTL initialization is necessary for an IPv6 socket as well,
 	 * because the socket may be bound to an IPv6 wildcard address,
@@ -1834,6 +1833,7 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 	u_long bw;
 	u_long bwnd;
 	int save_ticks;
+	int delta_ticks;
 
 	/*
 	 * If inflight_enable is disabled in the middle of a tcp connection,
@@ -1846,26 +1846,38 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 	}
 
 	/*
+	 * Validate the delta time.  If a connection is new or has been idle
+	 * a long time we have to reset the bandwidth calculator.
+	 */
+	save_ticks = ticks;
+	delta_ticks = save_ticks - tp->t_bw_rtttime;
+	if (tp->t_bw_rtttime == 0 || delta_ticks < 0 || delta_ticks > hz * 10) {
+		tp->t_bw_rtttime = ticks;
+		tp->t_bw_rtseq = ack_seq;
+		if (tp->snd_bandwidth == 0)
+			tp->snd_bandwidth = tcp_inflight_min;
+		return;
+	}
+	if (delta_ticks == 0)
+		return;
+
+	/*
+	 * Sanity check, plus ignore pure window update acks.
+	 */
+	if ((int)(ack_seq - tp->t_bw_rtseq) <= 0)
+		return;
+
+	/*
 	 * Figure out the bandwidth.  Due to the tick granularity this
 	 * is a very rough number and it MUST be averaged over a fairly
 	 * long period of time.  XXX we need to take into account a link
 	 * that is not using all available bandwidth, but for now our
 	 * slop will ramp us up if this case occurs and the bandwidth later
 	 * increases.
-	 *
-	 * Note: if ticks rollover 'bw' may wind up negative.  We must
-	 * effectively reset t_bw_rtttime for this case.
 	 */
-	save_ticks = ticks;
-	if ((u_int)(save_ticks - tp->t_bw_rtttime) < 1)
-		return;
-
-	bw = (int64_t)(ack_seq - tp->t_bw_rtseq) * hz / 
-	    (save_ticks - tp->t_bw_rtttime);
+	bw = (int64_t)(ack_seq - tp->t_bw_rtseq) * hz / delta_ticks;
 	tp->t_bw_rtttime = save_ticks;
 	tp->t_bw_rtseq = ack_seq;
-	if (tp->t_bw_rtttime == 0 || (int)bw < 0)
-		return;
 	bw = ((int64_t)tp->snd_bandwidth * 15 + bw) >> 4;
 
 	tp->snd_bandwidth = bw;

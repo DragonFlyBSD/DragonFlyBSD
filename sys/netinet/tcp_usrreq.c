@@ -82,7 +82,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.29 2004/12/08 23:59:01 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.30 2004/12/16 03:37:30 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -873,7 +873,6 @@ tcp_connect_oncpu(struct tcpcb *tp, struct sockaddr_in *sin,
 	tp->t_state = TCPS_SYN_SENT;
 	callout_reset(tp->tt_keep, tcp_keepinit, tcp_timer_keep, tp);
 	tp->iss = tcp_new_isn(tp);
-	tp->t_bw_rtseq = tp->iss;
 	tcp_sendseqinit(tp);
 
 	/*
@@ -1036,7 +1035,6 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	tp->t_state = TCPS_SYN_SENT;
 	callout_reset(tp->tt_keep, tcp_keepinit, tcp_timer_keep, tp);
 	tp->iss = tcp_new_isn(tp);
-	tp->t_bw_rtseq = tp->iss;
 	tcp_sendseqinit(tp);
 
 	/*
