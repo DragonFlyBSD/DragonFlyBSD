@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.5 2003/08/15 20:45:33 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.6 2003/09/02 10:05:52 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -111,7 +111,7 @@ tcp_output(tp)
 	struct tcpcb *tp;
 {
 	struct socket *so = tp->t_inpcb->inp_socket;
-	long len, win;
+	long len, recvwin, sendwin;
 	int off, flags, error;
 	struct mbuf *m;
 	struct ip *ip = NULL;
@@ -173,8 +173,8 @@ tcp_output(tp)
 again:
 	sendalot = 0;
 	off = tp->snd_nxt - tp->snd_una;
-	win = min(tp->snd_wnd, tp->snd_cwnd);
-	win = min(win, tp->snd_bwnd);
+	sendwin = min(tp->snd_wnd, tp->snd_cwnd);
+	sendwin = min(sendwin, tp->snd_bwnd);
 
 	flags = tcp_outflags[tp->t_state];
 	/*
@@ -193,7 +193,7 @@ again:
 	 * and go to transmit state.
 	 */
 	if (tp->t_force) {
-		if (win == 0) {
+		if (sendwin == 0) {
 			/*
 			 * If we still have some data to send, then
 			 * clear the FIN bit.  Usually this would
@@ -212,7 +212,7 @@ again:
 			 */
 			if (off < so->so_snd.sb_cc)
 				flags &= ~TH_FIN;
-			win = 1;
+			sendwin = 1;
 		} else {
 			callout_stop(tp->tt_persist);
 			tp->t_rxtshift = 0;
@@ -222,7 +222,7 @@ again:
 	/*
 	 * If snd_nxt == snd_max and we have transmitted a FIN, the 
 	 * offset will be > 0 even if so_snd.sb_cc is 0, resulting in
-	 * a negative length.  This can also occur when tcp opens up
+	 * a negative length.  This can also occur when TCP opens up
 	 * its congestion window while receiving additional duplicate
 	 * acks after fast-retransmit because TCP will reset snd_nxt
 	 * to snd_max after the fast-retransmit.
@@ -231,7 +231,7 @@ again:
 	 * be set to snd_una, the offset will be 0, and the length may
 	 * wind up 0.
 	 */
-	len = (long)ulmin(so->so_snd.sb_cc, win) - off;
+	len = (long)ulmin(so->so_snd.sb_cc, sendwin) - off;
 
 	taop = tcp_gettaocache(&tp->t_inpcb->inp_inc);
 
@@ -273,7 +273,7 @@ again:
 		 * close completely, just wait for an ACK.
 		 */
 		len = 0;
-		if (win == 0) {
+		if (sendwin == 0) {
 			callout_stop(tp->tt_rexmt);
 			tp->t_rxtshift = 0;
 			tp->snd_nxt = tp->snd_una;
@@ -294,7 +294,7 @@ again:
 	if (SEQ_LT(tp->snd_nxt + len, tp->snd_una + so->so_snd.sb_cc))
 		flags &= ~TH_FIN;
 
-	win = sbspace(&so->so_rcv);
+	recvwin = sbspace(&so->so_rcv);
 
 	/*
 	 * Sender silly window avoidance.   We transmit under the following
@@ -339,13 +339,13 @@ again:
 	 * max size segments, or at least 50% of the maximum possible
 	 * window, then want to send a window update to peer.
 	 */
-	if (win > 0) {
+	if (recvwin > 0) {
 		/*
 		 * "adv" is the amount we can increase the window,
 		 * taking into account that we are limited by
 		 * TCP_MAXWIN << tp->rcv_scale.
 		 */
-		long adv = min(win, (long)TCP_MAXWIN << tp->rcv_scale) -
+		long adv = min(recvwin, (long)TCP_MAXWIN << tp->rcv_scale) -
 			(tp->rcv_adv - tp->rcv_nxt);
 
 		if (adv >= (long) (2 * tp->t_maxseg))
@@ -705,8 +705,7 @@ send:
 	 * case, since we know we aren't doing a retransmission.
 	 * (retransmit and persist are mutually exclusive...)
 	 */
-	if (len || (flags & (TH_SYN|TH_FIN)) 
-	    || callout_active(tp->tt_persist))
+	if (len || (flags & (TH_SYN|TH_FIN)) || callout_active(tp->tt_persist))
 		th->th_seq = htonl(tp->snd_nxt);
 	else
 		th->th_seq = htonl(tp->snd_max);
@@ -720,13 +719,14 @@ send:
 	 * Calculate receive window.  Don't shrink window,
 	 * but avoid silly window syndrome.
 	 */
-	if (win < (long)(so->so_rcv.sb_hiwat / 4) && win < (long)tp->t_maxseg)
-		win = 0;
-	if (win < (long)(tp->rcv_adv - tp->rcv_nxt))
-		win = (long)(tp->rcv_adv - tp->rcv_nxt);
-	if (win > (long)TCP_MAXWIN << tp->rcv_scale)
-		win = (long)TCP_MAXWIN << tp->rcv_scale;
-	th->th_win = htons((u_short) (win>>tp->rcv_scale));
+	if (recvwin < (long)(so->so_rcv.sb_hiwat / 4) &&
+	    recvwin < (long)tp->t_maxseg)
+		recvwin = 0;
+	if (recvwin < (long)(tp->rcv_adv - tp->rcv_nxt))
+		recvwin = (long)(tp->rcv_adv - tp->rcv_nxt);
+	if (recvwin > (long)TCP_MAXWIN << tp->rcv_scale)
+		recvwin = (long)TCP_MAXWIN << tp->rcv_scale;
+	th->th_win = htons((u_short) (recvwin>>tp->rcv_scale));
 
 	/*
 	 * Adjust the RXWIN0SENT flag - indicate that we have advertised
@@ -736,7 +736,7 @@ send:
 	 * to read more data then can be buffered prior to transmitting on
 	 * the connection.
 	 */
-	if (win == 0)
+	if (recvwin == 0)
 		tp->t_flags |= TF_RXWIN0SENT;
 	else
 		tp->t_flags &= ~TF_RXWIN0SENT;
@@ -904,12 +904,9 @@ send:
 	 *	2) the MTU is not locked (if it is, then discovery has been
 	 *	   disabled)
 	 */
-	if (path_mtu_discovery
-	    && (rt = tp->t_inpcb->inp_route.ro_rt)
-	    && rt->rt_flags & RTF_UP
-	    && !(rt->rt_rmx.rmx_locks & RTV_MTU)) {
+	if (path_mtu_discovery && (rt = tp->t_inpcb->inp_route.ro_rt) &&
+	    (rt->rt_flags & RTF_UP) && !(rt->rt_rmx.rmx_locks & RTV_MTU))
 		ip->ip_off |= IP_DF;
-	}
 	error = ip_output(m, tp->t_inpcb->inp_options, &tp->t_inpcb->inp_route,
 	    (so->so_options & SO_DONTROUTE), 0, tp->t_inpcb);
     }
@@ -962,8 +959,8 @@ out:
 	 * then remember the size of the advertised window.
 	 * Any pending ACK has now been sent.
 	 */
-	if (win > 0 && SEQ_GT(tp->rcv_nxt+win, tp->rcv_adv))
-		tp->rcv_adv = tp->rcv_nxt + win;
+	if (recvwin > 0 && SEQ_GT(tp->rcv_nxt + recvwin, tp->rcv_adv))
+		tp->rcv_adv = tp->rcv_nxt + recvwin;
 	tp->last_ack_sent = tp->rcv_nxt;
 	tp->t_flags &= ~TF_ACKNOW;
 	if (tcp_delack_enabled)
