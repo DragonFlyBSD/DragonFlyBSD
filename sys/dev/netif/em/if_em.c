@@ -34,9 +34,10 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.27 2005/02/14 16:21:34 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.28 2005/02/14 17:09:58 joerg Exp $*/
 
 #include "if_em.h"
+#include <net/ifq_var.h>
 
 /*********************************************************************
  *  Set this to one to display debug statistics                                                   
@@ -628,17 +629,17 @@ em_start(struct ifnet *ifp)
 		return;
 
 	s = splimp();
-	while (ifp->if_snd.ifq_head != NULL) {
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+	while (!ifq_is_empty(&ifp->if_snd)) {
+		m_head = ifq_poll(&ifp->if_snd);
 
 		if (m_head == NULL)
 			break;
 
 		if (em_encap(adapter, m_head)) { 
 			ifp->if_flags |= IFF_OACTIVE;
-			IF_PREPEND(&ifp->if_snd, m_head);
 			break;
 		}
+		m_head = ifq_dequeue(&ifp->if_snd);
 
 		/* Send a copy of the frame to the BPF listener */
 		BPF_MTAP(ifp, m_head);
@@ -890,7 +891,7 @@ em_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		em_clean_transmit_interrupts(adapter);
 	}
 
-	if (ifp->if_flags & IFF_RUNNING && ifp->if_snd.ifq_head != NULL)
+	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_empty(&ifp->if_snd))
 		em_start(ifp);
 }
 #endif /* DEVICE_POLLING */
@@ -943,7 +944,7 @@ em_intr(void *arg)
 		em_clean_transmit_interrupts(adapter);
 	}
 
-	if (ifp->if_flags & IFF_RUNNING && ifp->if_snd.ifq_head != NULL)
+	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_empty(&ifp->if_snd))
 		em_start(ifp);
 }
 
@@ -1643,7 +1644,7 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 	ifp->if_ioctl = em_ioctl;
 	ifp->if_start = em_start;
 	ifp->if_watchdog = em_watchdog;
-	ifp->if_snd.ifq_maxlen = adapter->num_tx_desc - 1;
+	ifq_set_maxlen(&ifp->if_snd, adapter->num_tx_desc - 1);
 
 	ether_ifattach(ifp, adapter->hw.mac_addr);
 
