@@ -28,7 +28,7 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_syscalls.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_syscalls.c,v 1.2 2005/02/21 13:40:00 davidxu Exp $
  */
 
 /*
@@ -279,7 +279,6 @@ ___open(const char *path, int flags,...)
 	int	mode = 0;
 	va_list	ap;
 
-	_thread_printf(1, "%s %s\n", __func__, path);
 	oldcancel = _thr_cancel_enter(curthread);
 	
 	/* Check if the file is being created: */
