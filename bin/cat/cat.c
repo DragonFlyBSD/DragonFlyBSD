@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cat.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/bin/cat/cat.c,v 1.14.2.8 2002/06/29 05:09:26 tjr Exp $
- * $DragonFly: src/bin/cat/cat.c,v 1.11 2004/08/25 01:05:29 dillon Exp $
+ * $DragonFly: src/bin/cat/cat.c,v 1.12 2004/11/04 21:31:37 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -238,23 +238,21 @@ cook_cat(FILE *fp)
 static void
 raw_cat(int rfd)
 {
-	int off, wfd;
+	int off;
 	ssize_t nr, nw;
 	static size_t bsize;
 	static char *buf = NULL;
 	struct stat sbuf;
 
-	wfd = fileno(stdout);
-	if (buf == NULL) {
-		if (fstat(wfd, &sbuf))
-			err(1, "%s", filename);
-		bsize = MAX(sbuf.st_blksize, 1024);
-		if ((buf = malloc(bsize)) == NULL)
-			err(1, "buffer");
-	}
+	if (fstat(STDOUT_FILENO, &sbuf))
+		err(1, "%s", filename);
+	bsize = MAX(sbuf.st_blksize, 1024);
+	if ((buf = malloc(bsize)) == NULL)
+		err(1, "malloc failed");
+
 	while ((nr = read(rfd, buf, bsize)) > 0)
 		for (off = 0; nr; nr -= nw, off += nw)
-			if ((nw = write(wfd, buf + off, (size_t)nr)) < 0)
+			if ((nw = write(STDOUT_FILENO, buf + off, (size_t)nr)) < 0)
 				err(1, "stdout");
 	if (nr < 0) {
 		warn("%s", filename);
