@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/elf_machdep.c,v 1.8 1999/12/21 11:14:02 eivind Exp $
- * $DragonFly: src/sys/i386/i386/Attic/elf_machdep.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/elf_machdep.c,v 1.3 2003/07/18 05:12:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,6 +40,7 @@ elf_reloc(linker_file_t lf, const void *data, int type, const char *sym)
 	Elf_Addr addr;
 	Elf_Addr addend;
 	Elf_Word rtype;
+	caddr_t caddr;
 	const Elf_Rel *rel;
 	const Elf_Rela *rela;
 
@@ -68,9 +69,9 @@ elf_reloc(linker_file_t lf, const void *data, int type, const char *sym)
 		case R_386_32:		/* S + A */
 			if (sym == NULL)
 				return -1;
-			addr = (Elf_Addr)linker_file_lookup_symbol(lf, sym, 1);
-			if (addr == 0)
+			if (linker_file_lookup_symbol(lf, sym, 1, &caddr) != 0)
 				return -1;
+			addr = (Elf_Addr)caddr;
 			addr += addend;
 			if (*where != addr)
 				*where = addr;
@@ -79,9 +80,9 @@ elf_reloc(linker_file_t lf, const void *data, int type, const char *sym)
 		case R_386_PC32:	/* S + A - P */
 			if (sym == NULL)
 				return -1;
-			addr = (Elf_Addr)linker_file_lookup_symbol(lf, sym, 1);
-			if (addr == 0)
+			if (linker_file_lookup_symbol(lf, sym, 1, &caddr) != 0)
 				return -1;
+			addr = (Elf_Addr)caddr;
 			addr += addend - (Elf_Addr)where;
 			if (*where != addr)
 				*where = addr;
@@ -99,9 +100,9 @@ elf_reloc(linker_file_t lf, const void *data, int type, const char *sym)
 		case R_386_GLOB_DAT:	/* S */
 			if (sym == NULL)
 				return -1;
-			addr = (Elf_Addr)linker_file_lookup_symbol(lf, sym, 1);
-			if (addr == 0)
+			if (linker_file_lookup_symbol(lf, sym, 1, &caddr) != 0)
 				return -1;
+			addr = (Elf_Addr)caddr;
 			if (*where != addr)
 				*where = addr;
 			break;

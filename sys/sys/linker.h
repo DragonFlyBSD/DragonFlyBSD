@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/linker.h,v 1.17.2.1 2002/03/11 01:13:53 dd Exp $
- * $DragonFly: src/sys/sys/linker.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/linker.h,v 1.3 2003/07/18 05:12:41 dillon Exp $
  */
 
 #ifndef _SYS_LINKER_H_
@@ -180,10 +180,11 @@ int linker_file_add_dependancy(linker_file_t _file, linker_file_t _dep);
 
 /*
  * Lookup a symbol in a file.  If deps is TRUE, look in dependancies
- * if not found in file.
+ * if not found in file.  The symbol's value is returned in the
+ * caddr_t.  An error is returned, 0 if no error occured.
  */
-caddr_t linker_file_lookup_symbol(linker_file_t _file, const char* _name, 
-				  int _deps);
+int linker_file_lookup_symbol(linker_file_t _file, const char* _name, 
+				  int _deps, caddr_t *);
 
 /*
  * Search the linker path for the module.  Return the full pathname in

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.6 2003/06/27 01:53:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.7 2003/07/18 05:12:39 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -102,11 +102,12 @@ linker_file_sysinit(linker_file_t lf)
     KLD_DPF(FILE, ("linker_file_sysinit: calling SYSINITs for %s\n",
 		   lf->filename));
 
-    sysinits = (struct linker_set*)
-	linker_file_lookup_symbol(lf, "sysinit_set", 0);
-
+    if (linker_file_lookup_symbol(lf, "sysinit_set", 0, (caddr_t *)&sysinits)) {
+	KLD_DPF(FILE, ("linker_file_sysinit: SYSINITs not found\n"));
+	return 0; /* XXX is this correct ? No sysinit ? */
+    }
     KLD_DPF(FILE, ("linker_file_sysinit: SYSINITs %p\n", sysinits));
-    if (!sysinits)
+    if (sysinits == NULL)
 	return 0; /* XXX is this correct ? No sysinit ? */
 
     /* HACK ALERT! */
@@ -167,11 +168,12 @@ linker_file_sysuninit(linker_file_t lf)
     KLD_DPF(FILE, ("linker_file_sysuninit: calling SYSUNINITs for %s\n",
 		   lf->filename));
 
-    sysuninits = (struct linker_set*)
-	linker_file_lookup_symbol(lf, "sysuninit_set", 0);
-
+    if (linker_file_lookup_symbol(lf, "sysuninit_set", 0, (caddr_t *)&sysuninits)) {
+	KLD_DPF(FILE, ("linker_file_sysuninit: SYSUNINITs not found\n"));
+	return;
+    }
     KLD_DPF(FILE, ("linker_file_sysuninit: SYSUNINITs %p\n", sysuninits));
-    if (!sysuninits)
+    if (sysuninits == NULL)
 	return;
 
     /*
@@ -215,11 +217,12 @@ linker_file_register_sysctls(linker_file_t lf)
     KLD_DPF(FILE, ("linker_file_register_sysctls: registering SYSCTLs for %s\n",
 		   lf->filename));
 
-    sysctls = (struct linker_set*)
-	linker_file_lookup_symbol(lf, "sysctl_set", 0);
-
+    if (linker_file_lookup_symbol(lf, "sysctl_set", 0, (caddr_t *)&sysctls)) {
+	KLD_DPF(FILE, ("linker_file_register_sysctls: SYSCTLs not found\n"));
+	return;
+    }
     KLD_DPF(FILE, ("linker_file_register_sysctls: SYSCTLs %p\n", sysctls));
-    if (!sysctls)
+    if (sysctls == NULL)
 	return;
 
     sysctl_register_set(sysctls);
@@ -233,11 +236,12 @@ linker_file_unregister_sysctls(linker_file_t lf)
     KLD_DPF(FILE, ("linker_file_unregister_sysctls: registering SYSCTLs for %s\n",
 		   lf->filename));
 
-    sysctls = (struct linker_set*)
-	linker_file_lookup_symbol(lf, "sysctl_set", 0);
-
+    if (linker_file_lookup_symbol(lf, "sysctl_set", 0, (caddr_t *)&sysctls)) {
+	KLD_DPF(FILE, ("linker_file_unregister_sysctls: SYSCTLs not found\n"));
+	return;
+    }
     KLD_DPF(FILE, ("linker_file_unregister_sysctls: SYSCTLs %p\n", sysctls));
-    if (!sysctls)
+    if (sysctls == NULL)
 	return;
 
     sysctl_unregister_set(sysctls);
@@ -478,13 +482,12 @@ linker_file_add_dependancy(linker_file_t file, linker_file_t dep)
     return 0;
 }
 
-caddr_t
-linker_file_lookup_symbol(linker_file_t file, const char* name, int deps)
+int
+linker_file_lookup_symbol(linker_file_t file, const char* name, int deps, caddr_t *raddr)
 {
     c_linker_sym_t sym;
     linker_symval_t symval;
     linker_file_t lf;
-    caddr_t address;
     size_t common_size = 0;
     int i;
 
@@ -493,24 +496,28 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps)
 
     if (file->ops->lookup_symbol(file, name, &sym) == 0) {
 	file->ops->symbol_values(file, sym, &symval);
-	if (symval.value == 0)
+
+	/*
+	 * XXX Assume a common symbol if its value is 0 and it has a non-zero
+	 * size, otherwise it could be an absolute symbol with a value of 0.
+	 */
+	if (symval.value == 0 && symval.size != 0) {
 	    /*
 	     * For commons, first look them up in the dependancies and
 	     * only allocate space if not found there.
 	     */
 	    common_size = symval.size;
-	else {
+	} else {
 	    KLD_DPF(SYM, ("linker_file_lookup_symbol: symbol.value=%x\n", symval.value));
-	    return symval.value;
+	    *raddr = symval.value;
+	    return 0;
 	}
     }
-
     if (deps) {
 	for (i = 0; i < file->ndeps; i++) {
-	    address = linker_file_lookup_symbol(file->deps[i], name, 0);
-	    if (address) {
-		KLD_DPF(SYM, ("linker_file_lookup_symbol: deps value=%x\n", address));
-		return address;
+	    if (linker_file_lookup_symbol(file->deps[i], name, 0, raddr) == 0) {
+		KLD_DPF(SYM, ("linker_file_lookup_symbol: deps value=%x\n", *raddr));
+		return 0;
 	    }
 	}
 
@@ -525,10 +532,9 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps)
 		    break;
 	    if (i < file->ndeps)
 		continue;
-	    address = linker_file_lookup_symbol(lf, name, 0);
-	    if (address) {
-		KLD_DPF(SYM, ("linker_file_lookup_symbol: global value=%x\n", address));
-		return address;
+	    if (linker_file_lookup_symbol(lf, name, 0, raddr) == 0) {
+		KLD_DPF(SYM, ("linker_file_lookup_symbol: global value=%x\n", *raddr));
+		return 0;
 	    }
 	}
     }
@@ -545,7 +551,8 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps)
 	     cp = STAILQ_NEXT(cp, link))
 	    if (!strcmp(cp->name, name)) {
 		KLD_DPF(SYM, ("linker_file_lookup_symbol: old common value=%x\n", cp->address));
-		return cp->address;
+		*raddr = cp->address;
+		return 0;
 	    }
 
 	/*
@@ -558,7 +565,7 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps)
 		    M_LINKER, M_WAITOK);
 	if (!cp) {
 	    KLD_DPF(SYM, ("linker_file_lookup_symbol: nomem\n"));
-	    return 0;
+	    return ENOMEM;
 	}
 	bzero(cp, sizeof(struct common_symbol) + common_size + strlen(name)+ 1);
 
@@ -569,11 +576,12 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps)
 	STAILQ_INSERT_TAIL(&file->common, cp, link);
 
 	KLD_DPF(SYM, ("linker_file_lookup_symbol: new common value=%x\n", cp->address));
-	return cp->address;
+	*raddr = cp->address;
+	return 0;
     }
 
     KLD_DPF(SYM, ("linker_file_lookup_symbol: fail\n"));
-    return 0;
+    return ENOENT;
 }
 
 #ifdef DDB
@@ -947,9 +955,7 @@ linker_preload(void* arg)
 	if (lf) {
 	    lf->userrefs++;
 
-	    sysinits = (struct linker_set*)
-		linker_file_lookup_symbol(lf, "sysinit_set", 0);
-	    if (sysinits) {
+	    if (linker_file_lookup_symbol(lf, "sysinit_set", 0, (caddr_t *)&sysinits) == 0 && sysinits) {
 		/* HACK ALERT!
 		 * This is to set the sysinit moduledata so that the module
 		 * can attach itself to the correct containing file.

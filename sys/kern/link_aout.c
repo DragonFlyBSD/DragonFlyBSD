@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_aout.c,v 1.26 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_aout.c,v 1.4 2003/06/26 05:55:14 dillon Exp $
+ * $DragonFly: src/sys/kern/link_aout.c,v 1.5 2003/07/18 05:12:39 dillon Exp $
  */
 
 #ifndef __alpha__
@@ -408,14 +408,14 @@ relocate_file(linker_file_t lf)
 
 	    if (sym[0] != '_') {
 		printf("link_aout: bad symbol name %s\n", sym);
-		relocation = 0;
-	    } else
-		relocation = (intptr_t)
-		    linker_file_lookup_symbol(lf, sym + 1,
-					      np->nz_type != (N_SETV+N_EXT));
-	    if (!relocation) {
 		printf("link_aout: symbol %s not found\n", sym);
 		return ENOENT;
+	    } else {
+		if (linker_file_lookup_symbol(lf, sym + 1,
+		    (np->nz_type != (N_SETV+N_EXT)), (caddr_t *)&relocation)) {
+			printf("link_aout: symbol %s not found\n", sym);
+			return ENOENT;
+		}
 	    }
 	    
 	    relocation += read_relocation(r, addr);

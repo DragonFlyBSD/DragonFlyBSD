@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.4 2003/06/26 05:55:14 dillon Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.5 2003/07/18 05:12:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -896,11 +896,13 @@ link_elf_lookup_symbol(linker_file_t lf, const char* name, c_linker_sym_t* sym)
 	if (strcmp(name, strp) == 0) {
 	    if (symp->st_shndx != SHN_UNDEF ||
 		(symp->st_value != 0 &&
-		 ELF_ST_TYPE(symp->st_info) == STT_FUNC)) {
+		 ELF_ST_TYPE(symp->st_info) == STT_FUNC)
+	     ) {
 		*sym = (c_linker_sym_t) symp;
 		return 0;
-	    } else
+	    } else {
 		return ENOENT;
+	    }
 	}
 
 	symnum = ef->chains[symnum];
@@ -919,11 +921,11 @@ link_elf_lookup_symbol(linker_file_t lf, const char* name, c_linker_sym_t* sym)
 		 ELF_ST_TYPE(symp->st_info) == STT_FUNC)) {
 		*sym = (c_linker_sym_t) symp;
 		return 0;
-	    } else
+	    } else {
 		return ENOENT;
+	    }
 	}
     }
-
     return ENOENT;
 }
 
