@@ -55,7 +55,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/fpu_asm.h,v 1.8 1999/08/28 00:42:50 peter Exp $
- * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/fpu_asm.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/fpu_asm.h,v 1.3 2003/07/31 12:37:39 hmp Exp $
  *
  */
 
@@ -65,7 +65,7 @@
 #include <machine/asmacros.h>
 #include <gnu/i386/fpemul/fpu_emu.h>
 
-#define	EXCEPTION	_exception
+#define	EXCEPTION	exception
 
 
 #define PARAM1	8(%ebp)
