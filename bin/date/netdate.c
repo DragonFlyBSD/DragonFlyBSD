@@ -32,7 +32,7 @@
  *
  * @(#)netdate.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/date/netdate.c,v 1.11.2.1 2001/05/12 17:14:22 fenner Exp $
- * $DragonFly: src/bin/date/netdate.c,v 1.4 2004/03/19 17:30:59 cpressey Exp $
+ * $DragonFly: src/bin/date/netdate.c,v 1.5 2004/09/26 16:29:49 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -69,7 +69,7 @@ netsettime(time_t tval)
 	struct timeval tout;
 	struct servent *sp;
 	struct tsp msg;
-	struct sockaddr_in sin, dest, from;
+	struct sockaddr_in tmpsin, dest, from;
 	fd_set ready;
 	long waittime;
 	int s, port, timed_ack, found, errn;
@@ -91,11 +91,11 @@ netsettime(time_t tval)
 		return (retval = 2);
 	}
 
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
+	memset(&tmpsin, 0, sizeof(tmpsin));
+	tmpsin.sin_family = AF_INET;
 	for (port = IPPORT_RESERVED - 1; port > IPPORT_RESERVED / 2; port--) {
-		sin.sin_port = htons((u_short)port);
-		if (bind(s, (struct sockaddr *)&sin, sizeof(sin)) >= 0)
+		tmpsin.sin_port = htons((u_short)port);
+		if (bind(s, (struct sockaddr *)&tmpsin, sizeof(tmpsin)) >= 0)
 			break;
 		if (errno == EADDRINUSE)
 			continue;
