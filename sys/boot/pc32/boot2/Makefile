@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/boot2/Makefile,v 1.47 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/pc32/boot2/Makefile,v 1.5 2004/03/04 00:06:58 dillon Exp $
+# $DragonFly: src/sys/boot/pc32/boot2/Makefile,v 1.6 2004/04/10 12:07:20 joerg Exp $
 
 PROG=		boot2
 NOMAN=
@@ -39,7 +39,7 @@ BOOT2_UFS?=	UFS1_ONLY
 #	-fno-guess-branch-probability
 #	-mno-align-long-strings
 
-CFLAGS=	-elf -ffreestanding -Os -fno-builtin \
+CFLAGS=	-elf -ffreestanding -Os -fno-builtin -fno-stack-protector \
 	-fomit-frame-pointer \
 	-mrtd \
 	-D${BOOT2_UFS} \
