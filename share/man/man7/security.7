@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/security.7,v 1.13.2.11 2002/04/13 02:04:44 keramida Exp $
-.\" $DragonFly: src/share/man/man7/security.7,v 1.4 2004/06/28 02:57:10 drhodus Exp $
+.\" $DragonFly: src/share/man/man7/security.7,v 1.5 2005/02/12 00:18:14 liamfoy Exp $
 .\"
 .Dd September 18, 1999
 .Dt SECURITY 7
@@ -256,7 +256,7 @@ sysadmin would research and implement sandboxes for servers whenever possible.
 .Pp
 There are a number of other servers that typically do not run in sandboxes:
 sendmail, popper, imapd, ftpd, and others.  There are alternatives to
-some of these, but installing them may require more work then you are willing
+some of these, but installing them may require more work than you are willing
 to put
 (the convenience factor strikes again).
 You may have to run these
@@ -307,7 +307,7 @@ more problematic due to the extra administration and technical support
 required, but still a very good solution compared to a crypted password
 file.
 .Sh SECURING THE PASSWORD FILE
-The only sure fire way is to *-out as many passwords as you can and
+The only sure-fire way is to *-out as many passwords as you can and
 use ssh or kerberos for access to those accounts.  Even though the
 crypted password file
 .Pq Pa /etc/spwd.db
@@ -462,8 +462,8 @@ the system console to a serial port and collect the information on a
 continuing basis through a secure machine monitoring the consoles.
 .Sh PARANOIA
 A little paranoia never hurts.  As a rule, a sysadmin can add any number
-of security features as long as they do not effect convenience, and
-can add security features that do effect convenience with some added
+of security features as long as they do not affect convenience, and
+can add security features that do affect convenience with some added
 thought.  Even more importantly, a security administrator should mix it up
 a bit - if you use recommendations such as those given by this manual
 page verbatim, you give away your methodologies to the prospective
@@ -482,7 +482,7 @@ Limiting springboard attacks (ICMP response attacks, ping broadcast, etc...)
 Kernel Route Cache
 .El
 .Pp
-A common DOS attack is against a forking server that attempts to cause the
+A common D.O.S. attack is against a forking server that attempts to cause the
 server to eat processes, file descriptors, and memory until the machine
 dies.  Inetd
 (see
@@ -570,7 +570,7 @@ block everything under 4000 off in my firewall
 (except for certain specific
 internet-accessible ports, of course).
 .Pp
-Another common DOS attack is called a springboard attack - to attack a server
+Another common D.O.S. attack is called a springboard attack - to attack a server
 in a manner that causes the server to generate responses which then overload
 the server, the local network, or some other machine.  The most common attack
 of this nature is the ICMP PING BROADCAST attack.  The attacker spoofs ping
