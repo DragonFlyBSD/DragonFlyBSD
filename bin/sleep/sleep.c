@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)sleep.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/sleep/sleep.c,v 1.9.2.1 2001/08/01 05:23:25 obrien Exp $
- * $DragonFly: src/bin/sleep/sleep.c,v 1.6 2004/11/07 20:54:52 eirikn Exp $
+ * $DragonFly: src/bin/sleep/sleep.c,v 1.7 2005/02/27 15:57:15 liamfoy Exp $
  */
 
 #include <ctype.h>
@@ -91,7 +91,7 @@ main(int argc, char **argv)
 		if (l > INT_MAX) {
 			/*
 			 * Avoid overflow when `seconds' is huge.  This assumes
-			 * that the maximum value for a time_t is >= INT_MAX.
+			 * that the maximum value for a time_t is <= INT_MAX.
 			 */
 			l = INT_MAX;
 		}
@@ -121,7 +121,6 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-
 	fprintf(stderr, "usage: sleep seconds\n");
 	exit(1);
 }
