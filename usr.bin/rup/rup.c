@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/rup/rup.c,v 1.11.2.2 2001/07/02 23:43:04 mikeh Exp $
- * $DragonFly: src/usr.bin/rup/rup.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/rup/rup.c,v 1.3 2004/09/14 18:36:40 joerg Exp $
  */
 
 #include <err.h>
@@ -57,11 +57,12 @@ struct host_list {
 	struct in_addr addr;
 } *hosts;
 
-int search_host(struct in_addr addr)
+static int
+search_host(struct in_addr addr)
 {
 	struct host_list *hp;
 
-	if (!hosts)
+	if (hosts == NULL)
 		return(0);
 
 	for (hp = hosts; hp != NULL; hp = hp->next) {
@@ -71,18 +72,19 @@ int search_host(struct in_addr addr)
 	return(0);
 }
 
-void remember_host(struct in_addr addr)
+static void
+remember_host(struct in_addr addr)
 {
 	struct host_list *hp;
 
-	if (!(hp = (struct host_list *)malloc(sizeof(struct host_list))))
-		errx(1, "no memory");
+	if ((hp = malloc(sizeof(struct host_list))) == NULL)
+		err(1, "malloc failed");
 	hp->addr.s_addr = addr.s_addr;
 	hp->next = hosts;
 	hosts = hp;
 }
 
-int
+static int
 rstat_reply(char *replyp, struct sockaddr_in *raddrp)
 {
 	struct tm *tmp_time;
@@ -120,19 +122,22 @@ rstat_reply(char *replyp, struct sockaddr_in *raddrp)
 
 	#define updays (host_stat->curtime.tv_sec  / 86400)
 	if (host_uptime.tm_yday != 0)
-		sprintf(days_buf, "%3d day%s, ", updays,
+		snprintf(days_buf, sizeof days_buf, "%3d day%s, ", updays,
 			(updays > 1) ? "s" : "");
 	else
 		days_buf[0] = '\0';
 
 	if (host_uptime.tm_hour != 0)
-		sprintf(hours_buf, "%2d:%02d, ",
+		snprintf(hours_buf, sizeof hours_buf, "%2d:%02d, ",
 			host_uptime.tm_hour, host_uptime.tm_min);
+	else if (host_uptime.tm_min != 0)
+		snprintf(hours_buf, sizeof hours_buf, "%2d mins, ",
+			 host_uptime.tm_min);
+	else if (host_stat->curtime.tv_sec < 60)
+		snprintf(hours_buf, sizeof hours_buf, "%2d secs, ",
+			 host_uptime.tm_sec);
 	else
-		if (host_uptime.tm_min != 0)
-			sprintf(hours_buf, "%2d mins, ", host_uptime.tm_min);
-		else
-			hours_buf[0] = '\0';
+		hours_buf[0] = '\0';
 
 	printf(" %2d:%02d%cm  up %9.9s%9.9s load average: %.2f %.2f %.2f\n",
 		(host_time.tm_hour % 12) ? host_time.tm_hour % 12 : 12,
@@ -148,7 +153,7 @@ rstat_reply(char *replyp, struct sockaddr_in *raddrp)
 	return(0);
 }
 
-int
+static int
 onehost(char *host)
 {
 	CLIENT *rstat_clnt;
@@ -159,21 +164,21 @@ onehost(char *host)
 
 	hp = gethostbyname(host);
 	if (hp == NULL) {
-		warnx("unknown host \"%s\"", host);
+		herror("rup");
 		return(-1);
 	}
 
 	rstat_clnt = clnt_create(host, RSTATPROG, RSTATVERS_TIME, "udp");
 	if (rstat_clnt == NULL) {
-		warnx("%s %s", host, clnt_spcreateerror(""));
+		clnt_pcreateerror(host);
 		return(-1);
 	}
 
-	bzero((char *)&host_stat, sizeof(host_stat));
+	bzero(&host_stat, sizeof(host_stat));
 	tv.tv_sec = 15;	/* XXX ??? */
 	tv.tv_usec = 0;
 	if (clnt_call(rstat_clnt, RSTATPROC_STATS, xdr_void, NULL, xdr_statstime, &host_stat, tv) != RPC_SUCCESS) {
-		warnx("%s: %s", host, clnt_sperror(rstat_clnt, host));
+		clnt_perror(rstat_clnt, host);
 		clnt_destroy(rstat_clnt);
 		return(-1);
 	}
@@ -184,8 +189,8 @@ onehost(char *host)
 	return (0);
 }
 
-void
-allhosts()
+static void
+allhosts(void)
 {
 	statstime host_stat;
 	enum clnt_stat clnt_stat;
@@ -198,7 +203,7 @@ allhosts()
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: rup [hosts ...]\n");
 	exit(1);
@@ -209,7 +214,7 @@ main(int argc, char *argv[])
 {
 	int ch;
 
-	while ((ch = getopt(argc, argv, "?")) != -1)
+	while ((ch = getopt(argc, argv, "")) != -1)
 		switch (ch) {
 		default:
 			usage();
