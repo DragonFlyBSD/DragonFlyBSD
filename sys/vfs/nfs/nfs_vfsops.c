@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.13 2004/03/01 06:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.14 2004/03/10 02:07:52 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -99,7 +99,14 @@ int nfs_debug;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, debug, CTLFLAG_RW, &nfs_debug, 0, "");
 #endif
 
-static int	nfs_iosize (struct nfsmount *nmp);
+/*
+ * Tunable to determine the Read/Write unit size.  Maximum value
+ * is NFS_MAXDATA.  We also default to NFS_MAXDATA.
+ */
+static int nfs_io_size = NFS_MAXDATA;
+SYSCTL_INT(_vfs_nfs, OID_AUTO, nfs_io_size, CTLFLAG_RW,
+	&nfs_io_size, 0, "NFS optimal I/O unit size");
+
 static void	nfs_decode_args (struct nfsmount *nmp,
 			struct nfs_args *argp);
 static int	mountnfs (struct nfs_args *,struct mount *,
@@ -171,20 +178,33 @@ static void nfs_convert_diskless (void);
 static void nfs_convert_oargs (struct nfs_args *args,
 				   struct onfs_args *oargs);
 
-static int
-nfs_iosize(nmp)
-	struct nfsmount* nmp;
+/*
+ * Calculate the buffer I/O block size to use.  The maximum V2 block size
+ * is typically 8K, the maximum datagram size is typically 16K, and the
+ * maximum V3 block size is typically 32K.  The buffer cache tends to work
+ * best with 16K blocks but we allow 32K for TCP connections.
+ *
+ * We force the block size to be at least a page for buffer cache efficiency.
+ */
+static
+int
+nfs_iosize(int v3, int sotype)
 {
 	int iosize;
+	int iomax;
 
-	/*
-	 * Calculate the size used for io buffers.  Use the larger
-	 * of the two sizes to minimise nfs requests but make sure
-	 * that it is at least one VM page to avoid wasting buffer
-	 * space.
-	 */
-	iosize = max(nmp->nm_rsize, nmp->nm_wsize);
-	if (iosize < PAGE_SIZE) iosize = PAGE_SIZE;
+	if (v3) {
+		if (sotype == SOCK_STREAM)
+			iomax = NFS_MAXDATA;
+		else
+			iomax = NFS_MAXDGRAMDATA;
+	} else {
+		iomax = NFS_V2MAXDATA;
+	}
+	if ((iosize = nfs_io_size) > iomax)
+		iosize = iomax;
+	if (iosize < PAGE_SIZE)
+		iosize = PAGE_SIZE;
 	return iosize;
 }
 
@@ -284,7 +304,8 @@ nfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	}
 	nfsm_dissect(sfp, struct nfs_statfs *, NFSX_STATFS(v3));
 	sbp->f_flags = nmp->nm_flag;
-	sbp->f_iosize = nfs_iosize(nmp);
+	sbp->f_iosize = nfs_iosize(v3, nmp->nm_sotype);
+
 	if (v3) {
 		sbp->f_bsize = NFS_FABLKSIZE;
 		tquad = fxdr_hyper(&sfp->sf_tbytes);
@@ -639,13 +660,7 @@ nfs_decode_args(nmp, argp)
 			nmp->nm_retry = NFS_MAXREXMIT;
 	}
 
-	if (argp->flags & NFSMNT_NFSV3) {
-		if (argp->sotype == SOCK_DGRAM)
-			maxio = NFS_MAXDGRAMDATA;
-		else
-			maxio = NFS_MAXDATA;
-	} else
-		maxio = NFS_V2MAXDATA;
+	maxio = nfs_iosize(argp->flags & NFSMNT_NFSV3, argp->sotype);
 
 	if ((argp->flags & NFSMNT_WSIZE) && argp->wsize > 0) {
 		nmp->nm_wsize = argp->wsize;
@@ -845,7 +860,6 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	struct nfsmount *nmp;
 	struct nfsnode *np;
 	int error;
-	struct vattr attrs;
 
 	if (mp->mnt_flag & MNT_UPDATE) {
 		nmp = VFSTONFS(mp);
@@ -887,8 +901,8 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 
 	nmp->nm_timeo = NFS_TIMEO;
 	nmp->nm_retry = NFS_RETRANS;
-	nmp->nm_wsize = NFS_WSIZE;
-	nmp->nm_rsize = NFS_RSIZE;
+	nmp->nm_wsize = nfs_iosize(argp->flags & NFSMNT_NFSV3, argp->sotype);
+	nmp->nm_rsize = nmp->nm_wsize;
 	nmp->nm_readdirsize = NFS_READDIRSIZE;
 	nmp->nm_numgrps = NFS_MAXGRPS;
 	nmp->nm_readahead = NFS_DEFRAHEAD;
@@ -922,7 +936,9 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	 * stuck on a dead server and we are holding a lock on the mount
 	 * point.
 	 */
-	mp->mnt_stat.f_iosize = nfs_iosize(nmp);
+	mp->mnt_stat.f_iosize = 
+		nfs_iosize(nmp->nm_flag & NFSMNT_NFSV3, nmp->nm_sotype);
+
 	/*
 	 * A reference count is needed on the nfsnode representing the
 	 * remote root.  If this object is not persistent, then backward
@@ -937,10 +953,16 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	*vpp = NFSTOV(np);
 
 	/*
-	 * Get file attributes for the mountpoint.  This has the side
-	 * effect of filling in (*vpp)->v_type with the correct value.
+	 * Retrieval of mountpoint attributes is delayed until nfs_rot
+	 * or nfs_statfs are first called.  This will happen either when
+	 * we first traverse the mount point or if somebody does a df(1).
+	 *
+	 * NFSSTA_GOTFSINFO is used to flag if we have successfully
+	 * retrieved mountpoint attributes.  In the case of NFSv3 we
+	 * also flag static fsinfo.
 	 */
-	VOP_GETATTR(*vpp, &attrs, curthread);
+	if (*vpp != NULL)
+		(*vpp)->v_type = VNON;
 
 	/*
 	 * Lose the lock but keep the ref.
@@ -1028,6 +1050,7 @@ nfs_root(mp, vpp)
 {
 	struct vnode *vp;
 	struct nfsmount *nmp;
+	struct vattr attrs;
 	struct nfsnode *np;
 	int error;
 
@@ -1036,6 +1059,20 @@ nfs_root(mp, vpp)
 	if (error)
 		return (error);
 	vp = NFSTOV(np);
+
+	/*
+	 * Get transfer parameters and root vnode attributes
+	 */
+	if ((nmp->nm_state & NFSSTA_GOTFSINFO) == 0) {
+	    if (nmp->nm_flag & NFSMNT_NFSV3) {
+		nfs_fsinfo(nmp, vp, curthread);
+		mp->mnt_stat.f_iosize = nfs_iosize(1, nmp->nm_sotype);
+	    } else {
+		if ((error = VOP_GETATTR(vp, &attrs, curthread)) == 0)
+			nmp->nm_state |= NFSSTA_GOTFSINFO;
+		
+	    }
+	}
 	if (vp->v_type == VNON)
 	    vp->v_type = VDIR;
 	vp->v_flag = VROOT;
