@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/route.c,v 1.60.2.8 2003/04/05 10:39:05 ume Exp $
- * $DragonFly: src/usr.sbin/ppp/route.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/route.c,v 1.3 2004/03/27 01:39:13 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -188,7 +188,7 @@ static void
 p_flags(struct prompt *prompt, u_int32_t f, int max)
 {
   char name[33], *flags;
-  register struct bits *p = bits;
+  struct bits *p = bits;
 
   if (max > sizeof name - 1)
     max = sizeof name - 1;

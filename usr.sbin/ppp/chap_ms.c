@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/chap_ms.c,v 1.9.2.6 2002/09/01 02:12:23 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/chap_ms.c,v 1.3 2004/02/03 07:11:47 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/chap_ms.c,v 1.4 2004/03/27 01:39:13 cpressey Exp $
  */
 
 #include <ctype.h>
@@ -80,7 +80,7 @@ struct MS_ChapResponse {
 static u_char
 Get7Bits(u_char *input, int startBit)
 {
-    register unsigned int	word;
+    unsigned int word;
 
     word  = (unsigned)input[startBit / 8] << 8;
     word |= (unsigned)input[startBit / 8 + 1];

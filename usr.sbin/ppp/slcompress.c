@@ -18,7 +18,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/ppp/slcompress.c,v 1.31.2.2 2002/09/01 02:12:32 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/slcompress.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/slcompress.c,v 1.3 2004/03/27 01:39:13 cpressey Exp $
  *
  *	Van Jacobson (van@helios.ee.lbl.gov), Dec 31, 1989:
  *	- Initial distribution.
@@ -68,8 +68,8 @@
 void
 sl_compress_init(struct slcompress *comp, int max_state)
 {
-  register u_int i;
-  register struct cstate *tstate = comp->tstate;
+  u_int i;
+  struct cstate *tstate = comp->tstate;
 
   memset(comp, '\0', sizeof *comp);
   for (i = max_state; i > 0; --i) {
@@ -145,14 +145,14 @@ sl_compress_tcp(struct mbuf * m,
                 struct slstat *slstat,
 		int compress_cid)
 {
-  register struct cstate *cs = comp->last_cs->cs_next;
-  register u_int hlen = ip->ip_hl;
-  register struct tcphdr *oth;
-  register struct tcphdr *th;
-  register u_int deltaS, deltaA;
-  register u_int changes = 0;
+  struct cstate *cs = comp->last_cs->cs_next;
+  u_int hlen = ip->ip_hl;
+  struct tcphdr *oth;
+  struct tcphdr *th;
+  u_int deltaS, deltaA;
+  u_int changes = 0;
   u_char new_seq[16];
-  register u_char *cp = new_seq;
+  u_char *cp = new_seq;
 
   /*
    * Bail if this is an IP fragment or if the TCP packet isn't `compressible'
@@ -194,8 +194,8 @@ sl_compress_tcp(struct mbuf * m,
      * the front, we locate states via linear search.  If we don't find a
      * state for the datagram, the oldest state is (re-)used.
      */
-    register struct cstate *lcs;
-    register struct cstate *lastcs = comp->last_cs;
+    struct cstate *lcs;
+    struct cstate *lastcs = comp->last_cs;
 
     do {
       lcs = cs;
@@ -415,11 +415,11 @@ int
 sl_uncompress_tcp(u_char ** bufp, int len, u_int type, struct slcompress *comp,
                   struct slstat *slstat, int max_state)
 {
-  register u_char *cp;
-  register u_int hlen, changes;
-  register struct tcphdr *th;
-  register struct cstate *cs;
-  register struct ip *ip;
+  u_char *cp;
+  u_int hlen, changes;
+  struct tcphdr *th;
+  struct cstate *cs;
+  struct ip *ip;
   u_short *bp;
 
   switch (type) {
@@ -495,8 +495,9 @@ sl_uncompress_tcp(u_char ** bufp, int len, u_int type, struct slcompress *comp,
   switch (changes & SPECIALS_MASK) {
   case SPECIAL_I:
     {
-      register u_int i = ntohs(cs->cs_ip.ip_len) - cs->cs_hlen;
+      u_int i;
 
+      i = ntohs(cs->cs_ip.ip_len) - cs->cs_hlen;
       th->th_ack = htonl(ntohl(th->th_ack) + i);
       th->th_seq = htonl(ntohl(th->th_seq) + i);
     }
