@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_xio.c,v 1.1 2004/03/31 19:24:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_xio.c,v 1.2 2004/03/31 22:08:32 dillon Exp $
  */
 /*
  * Kernel XIO interface.  An initialized XIO is basically a collection of
@@ -236,8 +236,8 @@ xio_copy_xtou(xio_t xio, void *uptr, int bytes)
     for (i = xio->xio_offset >> PAGE_SHIFT; i < xio->xio_npages; ++i) {
 	m = xio->xio_pages[i];
 	sf = sf_buf_alloc(m);
-
 	error = copyout((char *)sf_buf_kva(sf) + offset, uptr, n);
+	sf_buf_free(sf);
 	if (error)
 	    break;
 	bytes -= n;
@@ -280,8 +280,8 @@ xio_copy_xtok(xio_t xio, void *kptr, int bytes)
     for (i = xio->xio_offset >> PAGE_SHIFT; i < xio->xio_npages; ++i) {
 	m = xio->xio_pages[i];
 	sf = sf_buf_alloc(m);
-
 	bcopy((char *)sf_buf_kva(sf) + offset, kptr, n);
+	sf_buf_free(sf);
 	bytes -= n;
 	xio->xio_bytes -= n;
 	xio->xio_offset += n;
