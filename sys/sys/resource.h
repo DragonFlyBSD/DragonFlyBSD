@@ -32,7 +32,7 @@
  *
  *	@(#)resource.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/resource.h,v 1.12.2.2 2002/08/20 18:42:20 dillon Exp $
- * $DragonFly: src/sys/sys/resource.h,v 1.4 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/resource.h,v 1.5 2003/08/20 22:59:00 dillon Exp $
  */
 
 #ifndef _SYS_RESOURCE_H_
@@ -141,7 +141,7 @@ int	dosetrlimit (u_int which, struct rlimit *limp);
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	getpriority (int, int));
+int	getpriority (int, int);
 int	getrlimit (int, struct rlimit *);
 int	getrusage (int, struct rusage *);
 int	setpriority (int, int, int);
