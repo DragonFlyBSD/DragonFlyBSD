@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.20 2004/09/16 04:39:30 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.21 2004/10/16 03:58:52 dillon Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -1503,10 +1503,18 @@ ppp_inproc(sc, m)
 	break;
     }
 
-    if (isr == -1)
+    /*
+     * If we found a netproto just pass it to the proto.  Otherwise queue
+     * the packet to the tty (e.g. pppd).  Note that sc_ctlp() must be
+     * called EXACTLY once per packet queued.
+     */
+    if (isr == -1) {
 	rv = IF_HANDOFF(&sc->sc_inq, m, NULL);
-    else
+	if (rv)
+	    (*sc->sc_ctlp)(sc);
+    } else {
 	rv = (netisr_queue(isr, m) == 0);
+    }
     if (!rv) {
 	if (sc->sc_flags & SC_DEBUG)
 	    printf("%s: input queue full\n", ifp->if_xname);
@@ -1517,9 +1525,6 @@ ppp_inproc(sc, m)
     ifp->if_ipackets++;
     ifp->if_ibytes += ilen;
     getmicrotime(&ifp->if_lastchange);
-
-    if (rv)
-	(*sc->sc_ctlp)(sc);
 
     return;
 
