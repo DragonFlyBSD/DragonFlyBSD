@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rsh.c	8.3 (Berkeley) 4/6/94
  * $FreeBSD: src/usr.bin/rsh/rsh.c,v 1.21.2.4 2002/09/17 15:34:41 nectar Exp $
- * $DragonFly: src/usr.bin/rsh/rsh.c,v 1.4 2004/07/22 14:49:15 eirikn Exp $
+ * $DragonFly: src/usr.bin/rsh/rsh.c,v 1.5 2004/07/22 14:50:19 eirikn Exp $
  */
 
 #include <sys/param.h>
