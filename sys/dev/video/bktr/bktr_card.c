@@ -31,7 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_card.c,v 1.23 2003/12/08 07:59:18 obrien Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_card.c,v 1.6 2004/05/15 17:54:12 joerg Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_card.c,v 1.7 2004/09/20 04:10:44 dillon Exp $
  */
 
 /*
@@ -679,8 +679,8 @@ probeCard( bktr_ptr_t bktr, int verbose, int unit )
                     goto checkTuner;
                 }
 
-		if (subsystem_vendor_id == 0x10fc &&
-		    subsystem_id == 0x4020) {
+		if (subsystem_vendor_id == PCI_VENDOR_IODATA &&
+		    subsystem_id == MODEL_IODATA_GV_BCTV3_PCI) {
 		    bktr->card = cards[ (card = CARD_IO_BCTV3) ];
 		    bktr->card.eepromAddr = eeprom_i2c_address;
 		    bktr->card.eepromSize = (u_char)(256 / EEPROMBLOCKSIZE);
