@@ -1,8 +1,106 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.17 2004/07/12 06:01:52 dillon Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.18 2004/09/18 23:36:20 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
+
+<h2>Sat 18 September 2004</h2>
+<ul>
+	<li>DragonFly has adopted the 3-clause BSD license as its official
+	    license.
+	<li>NFS - increase the size of the nfsheur hash table as per a
+	    Freenix track paper.  nfsheur is used for for sequential I/O
+	    heuristic in NFS.  The increase greatly improves clustering
+	    under parallel NFS loads.
+	<li>More VFS work: make vnode locks mandatory, get rid of nolock
+	    kludges in NFS, procfs, nullfs, and many other filesystems. 
+	    Remove the vnode_if.m dynamic dispatch algorithms and replace 
+	    with a fixed structure (in preparation for upcoming VFS work).
+	    Rewrite the VOP table parsing code.  Redo vnode/inode hash table
+	    interactions to close race conditions (Matt).  
+	<li>Reorganize the boot code to consolidate all fixed ORG directives
+	    and other dependancies into a single header file, allowing us
+	    to re position the boot code and eventually (not yet) move it
+	    out of low BIOS memory.  Change the way the BTX code clears BSS
+	    to make it more deterministic and more gcc3 compatible.
+	<li>A major cleanup of ipfilter has been done (Hiten).
+	<li>Fix a very old but serious bug in the VM system that could result
+	    in corrupt user memory when MADV_FREE is used (from Alan Cox).
+	<li>Rewrite most of the MBUF allocator and support code.  Get rid
+	    of mb_map and back the mbuf allocator with malloc.  Get rid of
+	    the old-style m_ext support and replace with new style m_ext
+	    support (which is somewhat different then FreeBSD's new code).
+	    Cleanup sendfile() to use the new m_ext callback scheme.
+	<li>Lots minor/major bug fixes, cleanups, new driver support, etc.
+	<li>More GCC3 work.  The system mostly compiles and runs GCC3 builds
+	    but the boot/loader code still has some issues (Various people).
+	<li>Work on the userland schedule.  Introduce an 'interactivity'
+	    measure in an attempt to do a better job assigning time slices.
+	    Fix some scheduler interaction bugs which were sometimes resulting
+	    in processes being given a full 1/10 second time slice when they
+	    shouldn't be.
+	<li>A major import of the FreeBSD-5 802_11 infrastructure has been
+	    accomplished (Joerg).
+	<li>NDis has been ported from FreeBSD, giving DragonFly access to
+	    many more 802.11 devices via windoz device drivers (Matt).
+	<li>Add thermal control circuit support (Asmodai).
+	<li>Generally add throttling support to the system.
+	<li><b>Add TCP SACK support (Jeffrey Hsu).  This is still considered
+	    experimental.</b>
+	<li>Make the syncache per-cpu and dispatch syncache timer events 
+	    via LWKT messages directly to the appropriate protocol thread
+	    (Jeffrey Hsu).  This removes all race conditions from the syncache
+	    code and makes it 95% MP safe.
+	<li><b>Greatly reduce the number of ACKs generated on a TCP connection
+	    going full-out over a GigE (or other fast) interface by delaying
+	    the sending of the ACK until all protocol stack packets have been
+	    processed.  Since GiGE interfaces tend to aggregate 8-12(+) 
+	    received packets per interrupt, this can cut the ACK rate by 75%
+	    (one ack per 8-12 packets instead of one ack per 2 packets), and
+	    it does it without violating the TCP spec.  The code takes 
+	    advantage of the protocol thread abstraction used to process
+	    TCP packets.  (Matt)</b>
+	<li><b>Greatly reduce the number of pure window updates that occur over
+	    a high speed (typ GigE) TCP connection by recognizing that a
+	    pure window update is not always necessary when userland has
+	    drained the TCP socket buffer.  (Jeffrey Hsu)</b>
+	<li>Rewrite the callout_*() core infrastructure and rip out the old
+	    [un]timeout() API (saving ~800K+ of KVM in the process).  The new
+	    callout infrastructure uses a DragonFly-friendly per-cpu 
+	    implementation and is able to guarentee that callouts will occur
+	    on the same cpu they were registered on, a feature that the TCP
+	    protocol stack threads are going to soon take major advantage of.
+	<li>Cleanup the link layer broadcast address, consolidating many 
+	    separate implementations into one ifnet-based implementation
+	    (Joerg).
+	<li>BUF/BIO progress - start working the XIO vm_page mapping code
+	    into the system buffer cache (Hiten).  Remove b_caller2 and
+	    b_driver2 field members from the BUF structure (Hiten) (generally
+	    we are trying to remove the non-recursive-friendly driver 
+	    specific fields from struct buf and friends).
+	<li>The release went well!  There were a few gotchas, such as trying
+	    to run dual console output to the serial port causing problems on
+	    laptops which did not have serial ports.  A bug in the installer
+	    was serious enough to have to go to an '1.0A' release a day or two
+	    after the 1.0 release.  But, generally speaking, the release did its
+	    job!
+	<li>More USB fixes.  Clean up some timer races in USB/CAM interactions
+	    related to pulling out USB mass storage cards.  Fix a serious bug
+	    that could lead to lost transactions and create confusion between
+	    the USB code and the device.
+	<li>Async syscall work: clean up the sendsys2() syscall API into
+	    something that's a bit more reasonable (Eirik Nygaard)
+	<li>Add a generic framework for IOCTL mapping (Joerg).
+	<li>Add VESA mode support, giving us access to bitmapped VESA video
+	    modes (Sascha Wildner).
+	<li>Fix USB keyboard support by giving the USB keyboard preference
+	    even if a normal keyboard is detected earlier in the boot process.
+	    This is necessary due to hardware/firmware level PS/2 keyboard
+	    emulation that many USB chipsets and BIOSes offer.
+	<li><b>Installer Updated: Lots of bug fixes have been made.</b>
+	<li>Stability: Spend two weeks stabilizing recent work in preparation
+	    for another big push.
+</ul>
 
 <h2>Sun 11 July 2004</h2>
 <ul>
@@ -128,13 +226,13 @@ $TITLE(DragonFly - Big-Picture Status)
 	<li>Optimize kern_getcwd() some to avoid a string shifting bcopy().
 	<li>Continued work on asynch syscalls - track pending system calls
 	    and make exit1() wait for them (abort support will be forthcoming).
-	<li><B>Add a negative lookup cache for NFS.</B>  This makes a huge
+	<li><b>Add a negative lookup cache for NFS.</b>  This makes a huge
 	    difference for things like buildworlds where /usr/src is NFS
 	    mounted, reducing (post cached) network bandwidth to 1/10 what
 	    it was before.
 	<li>Add the '-l' option to the 'resident' command, listing all
 	    residented programs and their full paths (if available).  -Hiten.
-	<li><B>Implement the 'rconfig' utility (see the manual page)</B> - for
+	<li><b>Implement the 'rconfig' utility (see the manual page)</b> - for
 	    automatic search/config-script downloading and execution, which
 	    makes installing a new DFly box from CDBoot a whole lot easier
 	    when you are in a multi-machine environment.
