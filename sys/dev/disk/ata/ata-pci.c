@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.16 2004/07/16 13:08:46 asmodai Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.17 2004/09/01 14:13:55 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -236,8 +236,14 @@ ata_pci_match(device_t dev)
     case 0x35121095:
 	return "SiI 3512 SATA controller";
 
+    case 0x31121095:
+	return "SiI 3112 SATA controller";
+
     case 0x31141095:
 	return "SiI 3114 SATA controller";
+
+    case 0x31241095:
+	return "SiI 3124 SATA controller";
 
     case 0x06801095:
 	return "SiI 0680 ATA133 controller";
