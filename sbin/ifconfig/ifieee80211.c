@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifieee80211.c,v 1.1.2.3 2002/02/07 15:12:37 ambrisko Exp $
- * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.4 2003/11/22 19:30:55 asmodai Exp $
+ * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.5 2004/07/27 13:56:50 joerg Exp $
  */
 
 /*-
@@ -74,7 +74,8 @@
 #include <net/if_dl.h>
 #include <net/if_types.h>
 #include <net/route.h>
-#include <net/if_ieee80211.h>
+#include <netproto/802_11/ieee80211.h>
+#include <netproto/802_11/ieee80211_ioctl.h>
 
 #include <ctype.h>
 #include <err.h>
