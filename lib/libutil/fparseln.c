@@ -1,6 +1,6 @@
 /*	$NetBSD: fparseln.c,v 1.9 1999/09/20 04:48:06 lukem Exp $	*/
 /* $FreeBSD: src/lib/libutil/fparseln.c,v 1.2 1999/12/29 17:50:33 peter Exp $ */
-/* $DragonFly: src/lib/libutil/fparseln.c,v 1.5 2005/03/04 05:22:57 cpressey Exp $ */
+/* $DragonFly: src/lib/libutil/fparseln.c,v 1.6 2005/03/16 06:35:48 cpressey Exp $ */
 
 /*
  * Copyright (c) 1997 Christos Zoulas.  All rights reserved.
@@ -55,10 +55,8 @@ isescaped(const char *sp, const char *p, int esc)
 	const char     *cp;
 	size_t		ne;
 
-#if 0
 	_DIAGASSERT(sp != NULL);
 	_DIAGASSERT(p != NULL);
-#endif
 
 	/* No escape character */
 	if (esc == '\0')
@@ -89,9 +87,7 @@ fparseln(FILE *fp, size_t *size, size_t *lineno, const char str[3], int flags)
 	int	cnt;
 	char	esc, con, nl, com;
 
-#if 0
 	_DIAGASSERT(fp != NULL);
-#endif
 
 	len = 0;
 	buf = NULL;
