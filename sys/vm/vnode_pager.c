@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.16 2004/10/12 19:21:16 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.17 2004/12/10 19:50:32 dillon Exp $
  */
 
 /*
@@ -370,7 +370,7 @@ vnode_pager_addr(struct vnode *vp, vm_ooffset_t address, int *run)
 	daddr_t vblock;
 	int voffset;
 
-	if ((int) address < 0)
+	if (address < 0)
 		return -1;
 
 	if (vp->v_mount == NULL)
