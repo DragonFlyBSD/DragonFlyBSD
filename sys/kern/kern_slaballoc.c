@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.16 2004/02/12 06:57:48 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.17 2004/02/14 20:02:28 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -855,7 +855,6 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     vm_offset_t addr;
     vm_offset_t offset;
     int count;
-    int wanted_reserve;
     thread_t td;
     vm_map_t map = kernel_map;
 
@@ -885,7 +884,6 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 		    VM_PROT_ALL, VM_PROT_ALL, 0);
 
     td = curthread;
-    wanted_reserve = 0;	/* non-zero = tried but unable to use system reserve */
 
     /*
      * Allocate the pages.  Do not mess with the PG_ZERO flag yet.
@@ -903,12 +901,17 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	    vmflags |= VM_ALLOC_INTERRUPT;
 	if ((flags & (M_RNOWAIT|M_WAITOK)) == 0)
 		printf("kmem_slab_alloc: bad flags %08x (%p)\n", flags, ((int **)&size)[-1]);
+
+	/*
+	 * Never set VM_ALLOC_NORMAL during a preemption because this allows
+	 * allocation out of the VM page cache and could cause mainline kernel
+	 * code working on VM objects to get confused.
+	 */
 	if (flags & (M_FAILSAFE|M_WAITOK)) {
 	    if (td->td_preempted) {
-		wanted_reserve = 1;
+		vmflags |= VM_ALLOC_SYSTEM;
 	    } else {
 		vmflags |= VM_ALLOC_NORMAL;
-		wanted_reserve = 0;
 	    }
 	}
 
@@ -920,18 +923,24 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	 * If M_WAITOK or M_FAILSAFE is set we retry.  Note that M_WAITOK
 	 * (and M_FAILSAFE) can be specified from an interrupt.  M_FAILSAFE
 	 * generates a warning or a panic.
+	 *
+	 * If we are preempting a thread we yield instead of block.  Both
+	 * gets us out from under a preemption but yielding will get cpu
+	 * back more quicker.  Livelock does not occur because we will not
+	 * be preempting anyone the second time around.
+	 * 
 	 */
 	if (m == NULL) {
 	    if (flags & (M_FAILSAFE|M_WAITOK)) {
-		if (wanted_reserve) {
-		    if (flags & M_FAILSAFE)
-			printf("malloc: no memory, try failsafe\n");
+		if (td->td_preempted) {
+		    if (flags & M_FAILSAFE) {
+			printf("malloc: M_WAITOK from preemption would block"
+				" try failsafe yield/block\n");
+		    }
 		    vm_map_unlock(map);
 		    lwkt_yield();
 		    vm_map_lock(map);
 		} else {
-		    if (flags & M_FAILSAFE)
-			printf("malloc: no memory, block even tho we shouldn't\n");
 		    vm_map_unlock(map);
 		    vm_wait();
 		    vm_map_lock(map);
