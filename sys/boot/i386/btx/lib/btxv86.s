@@ -14,7 +14,7 @@
 #
 
 # $FreeBSD: src/sys/boot/i386/btx/lib/btxv86.s,v 1.3 1999/08/28 00:40:08 peter Exp $
-# $DragonFly: src/sys/boot/i386/btx/lib/Attic/btxv86.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $DragonFly: src/sys/boot/i386/btx/lib/Attic/btxv86.s,v 1.3 2003/11/10 06:08:35 dillon Exp $
 
 #
 # BTX V86 interface.

@@ -24,8 +24,8 @@
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 #	From: btx.s 1.10 1999/02/25 16:27:41 rnordier
-# $FreeBSD: src/sys/boot/i386/kgzldr/crt.s,v 1.2 1999/08/28 00:40:10 peter Exp $
-# $DragonFly: src/sys/boot/pc32/kgzldr/crt.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD: src/sys/boot/i386/kgzldr/crt.s,v 1.4 2002/09/17 01:48:55 peter Exp $
+# $DragonFly: src/sys/boot/pc32/kgzldr/crt.s,v 1.3 2003/11/10 06:08:35 dillon Exp $
 #
 
 # Screen defaults and assumptions.

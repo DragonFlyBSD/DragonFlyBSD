@@ -24,10 +24,7 @@
  * the rights to redistribute these changes.
  *
  *	from: Mach, Revision 2.2  92/04/04  11:35:49  rpd
- * $FreeBSD: src/sys/boot/pc98/boot2/disk.c,v 1.4.2.1 2003/01/13 08:52:53 nyan Exp $
- * $DragonFly: src/sys/boot/pc98/boot2/Attic/disk.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
-
 /*
  * Ported to PC-9801 by Yoshio Kimura
  */
@@ -40,11 +37,15 @@
  * 93/08/22  bde
  *	Fixed reading of bad sector table.  It is at the end of the 'c'
  *	partition, which is not always at the end of the disk.
+ *
+ * $FreeBSD: src/sys/boot/pc98/boot2/disk.c,v 1.10 2003/09/08 09:11:20 obrien Exp $
+ * $DragonFly: src/sys/boot/pc98/boot2/Attic/disk.c,v 1.3 2003/11/10 06:08:38 dillon Exp $
  */
 
 #include "boot.h"
 #include <sys/disklabel.h>
-#include <sys/diskslice.h>
+#include <sys/diskpc98.h>
+#include <machine/bootinfo.h>
 
 #define	BIOS_DEV_FLOPPY	0x0
 #define	BIOS_DEV_WIN	0x80
@@ -77,7 +78,7 @@ static char *Bread(int dosdev, int sector);
 int
 devopen(void)
 {
-	struct dos_partition *dptr;
+	struct pc98_partition *dptr;
 	struct disklabel *dl;
 	char *p;
 	int i, sector = 0, di, dosdev_copy;
@@ -96,10 +97,10 @@ devopen(void)
 	{
 #ifdef	EMBEDDED_DISKLABEL
 		dl = &disklabel;
-#else	EMBEDDED_DISKLABEL
+#else	/* EMBEDDED_DISKLABEL */
 #ifdef PC98
 		p = Bread(dosdev_copy, 1);
-		dptr = (struct dos_partition *)p;
+		dptr = (struct pc98_partition *)p;
 		slice = WHOLE_DISK_SLICE;
 		for (i = 0; i < NDOSPART; i++, dptr++)
 			if (dptr->dp_mid == DOSPTYP_386BSD) {
@@ -124,7 +125,7 @@ devopen(void)
 		dl=((struct disklabel *)p);
 		disklabel = *dl;	/* structure copy (maybe useful later)*/
 #endif /* PC98 */
-#endif	EMBEDDED_DISKLABEL
+#endif /* EMBEDDED_DISKLABEL */
 		if (dl->d_magic != DISKMAGIC) {
 			printf("bad disklabel\n");
 			return 1;

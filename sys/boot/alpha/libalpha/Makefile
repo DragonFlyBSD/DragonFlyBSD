@@ -1,9 +1,10 @@
-# $FreeBSD: src/sys/boot/alpha/libalpha/Makefile,v 1.7.2.2 2002/07/19 18:46:28 ru Exp $
-# $DragonFly: src/sys/boot/alpha/libalpha/Attic/Makefile,v 1.2 2003/06/17 04:28:16 dillon Exp $
+# $FreeBSD: src/sys/boot/alpha/libalpha/Makefile,v 1.13 2002/05/13 10:53:24 ru Exp $
+# $DragonFly: src/sys/boot/alpha/libalpha/Attic/Makefile,v 1.3 2003/11/10 06:08:29 dillon Exp $
 
 LIB=		alpha
 INTERNALLIB=	true
 
+CFLAGS+=	-ffreestanding
 #CFLAGS+=	-DDISK_DEBUG
 #CPPFLAGS+=	-DNO_DISKLABEL
 #CPPFLAGS+=	-DSAVE_MEMORY

@@ -23,25 +23,25 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/i386/libi386/aout_freebsd.c,v 1.12.2.2 2000/12/28 13:12:37 ps Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/aout_freebsd.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $FreeBSD: src/sys/boot/i386/libi386/elf32_freebsd.c,v 1.13 2003/08/25 23:28:31 obrien Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/elf32_freebsd.c,v 1.1 2003/11/10 06:08:36 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/exec.h>
-#include <sys/imgact_aout.h>
-#include <sys/reboot.h>
 #include <sys/linker.h>
+#include <string.h>
 #include <machine/bootinfo.h>
+#include <machine/elf.h>
 #include <stand.h>
 
 #include "bootstrap.h"
 #include "libi386.h"
 #include "btxv86.h"
 
-static int	aout_exec(struct loaded_module *amp);
+static int	elf32_exec(struct preloaded_file *amp);
 
-struct module_format i386_aout = { aout_loadmodule, aout_exec };
+struct file_format i386_elf = { elf32_loadfile, elf32_exec };
 
 /*
  * There is an a.out kernel and one or more a.out modules loaded.  
@@ -49,36 +49,28 @@ struct module_format i386_aout = { aout_loadmodule, aout_exec };
  * preparations as are required, and do so.
  */
 static int
-aout_exec(struct loaded_module *mp)
+elf32_exec(struct preloaded_file *fp)
 {
-    struct module_metadata	*md;
-    struct exec			*ehdr;
-    vm_offset_t			entry, bootinfop;
+    struct file_metadata	*md;
+    Elf_Ehdr 			*ehdr;
+    vm_offset_t			entry, bootinfop, modulep, kernend;
     int				boothowto, err, bootdev;
-    struct bootinfo		*bi;
-    vm_offset_t			ssym, esym;
 
-    if ((md = mod_findmetadata(mp, MODINFOMD_AOUTEXEC)) == NULL)
+    if ((md = file_findmetadata(fp, MODINFOMD_ELFHDR)) == NULL)
 	return(EFTYPE);			/* XXX actually EFUCKUP */
-    ehdr = (struct exec *)&(md->md_data);
+    ehdr = (Elf_Ehdr *)&(md->md_data);
 
-    if ((err = bi_load(mp->m_args, &boothowto, &bootdev, &bootinfop)) != 0)
+    err = bi_load32(fp->f_args, &boothowto, &bootdev, &bootinfop, &modulep, &kernend);
+    if (err != 0)
 	return(err);
-    entry = ehdr->a_entry & 0xffffff;
+    entry = ehdr->e_entry & 0xffffff;
 
-    ssym = esym = 0;
-    if ((md = mod_findmetadata(mp, MODINFOMD_SSYM)) != NULL)
-	ssym = *((vm_offset_t *)&(md->md_data));
-    if ((md = mod_findmetadata(mp, MODINFOMD_ESYM)) != NULL)
-	esym = *((vm_offset_t *)&(md->md_data));
-    if (ssym == 0 || esym == 0) 
-	ssym = esym = 0;	/* sanity */
-    bi = (struct bootinfo *)PTOV(bootinfop);
-    bi->bi_symtab = ssym;	/* XXX this is only the primary kernel symtab */
-    bi->bi_esymtab = esym;
+#ifdef DEBUG
+    printf("Start @ 0x%lx ...\n", entry);
+#endif
 
     dev_cleanup();
-    __exec((void *)entry, boothowto, bootdev, 0, 0, 0, bootinfop);
+    __exec((void *)entry, boothowto, bootdev, 0, 0, 0, bootinfop, modulep, kernend);
 
     panic("exec returned");
 }

@@ -1,7 +1,5 @@
 /*	
- * $FreeBSD: src/sys/boot/common/dev_net.c,v 1.6.2.5 2001/03/04 04:44:42 obrien Exp $
- * $DragonFly: src/sys/boot/common/dev_net.c,v 1.3 2003/11/09 02:22:33 dillon Exp $
- * From: $NetBSD: dev_net.c,v 1.12 1997/12/10 20:38:37 gwr Exp $
+ * $NetBSD: dev_net.c,v 1.12 1997/12/10 20:38:37 gwr Exp $
  */
 
 /*-
@@ -38,9 +36,12 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/boot/common/dev_net.c,v 1.13 2003/11/03 19:45:05 iedowse Exp $
+ * $DragonFly: src/sys/boot/common/dev_net.c,v 1.4 2003/11/10 06:08:31 dillon Exp $
  */
 
-/*
+/*-
  * This module implements a "raw device" interface suitable for
  * use by the stand-alone I/O library NFS code.  This interface
  * does not support any "block" access, and exists only for the
@@ -113,13 +114,13 @@ net_init(void)
 int
 net_open(struct open_file *f, ...)
 {
-    __va_list args;
+    va_list args;
     char *devname;		/* Device part of file name (or NULL). */
     int error = 0;
 
-    __va_start(args, f);
-    devname = __va_arg(args, char*);
-    __va_end(args);
+    va_start(args, f);
+    devname = va_arg(args, char*);
+    va_end(args);
 
     /* On first open, do netif open, mount, etc. */
     if (netdev_opens == 0) {
@@ -210,6 +211,7 @@ net_getparams(sock)
 {
     char buf[MAXHOSTNAMELEN];
     char temp[FNAME_SIZE];
+    struct iodesc *d;
     int i;
     n_long smask;
 
@@ -268,23 +270,33 @@ net_getparams(sock)
 	return (EIO);
     }
  exit:
-    printf("net_open: server addr: %s\n", inet_ntoa(rootip));
-
     /*  
      * If present, strip the server's address off of the rootpath
      * before passing it along.  This allows us to be compatible with
      * the kernel's diskless (BOOTP_NFSROOT) booting conventions
      */
-
-    for(i=0; i<FNAME_SIZE; i++)
-	    if(rootpath[i] == ':')
+    for (i = 0; rootpath[i] != '\0' && i < FNAME_SIZE; i++)
+	    if (rootpath[i] == ':')
 		    break;
-    if(i && i != FNAME_SIZE) {
-	    i++;
+    if (i && i != FNAME_SIZE && rootpath[i] == ':') {
+	    rootpath[i++] = '\0';
+	    if (inet_addr(&rootpath[0]) != INADDR_NONE)
+		    rootip.s_addr = inet_addr(&rootpath[0]);
 	    bcopy(&rootpath[i], &temp[0], strlen(&rootpath[i])+1);
 	    bcopy(&temp[0], &rootpath[0], strlen(&rootpath[i])+1);	    
     }
+    printf("net_open: server addr: %s\n", inet_ntoa(rootip));
     printf("net_open: server path: %s\n", rootpath);	    
+
+    d = socktodesc(sock);
+    sprintf(temp, "%6D", d->myea, ":");
+    setenv("boot.netif.ip", inet_ntoa(myip), 1);
+    setenv("boot.netif.netmask", intoa(netmask), 1);
+    setenv("boot.netif.gateway", inet_ntoa(gateip), 1);
+    setenv("boot.netif.hwaddr", temp, 1);
+    setenv("boot.nfsroot.server", inet_ntoa(rootip), 1);
+    setenv("boot.nfsroot.path", rootpath, 1);
+
     return (0);
 }
 

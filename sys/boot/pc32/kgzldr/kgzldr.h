@@ -24,7 +24,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/kgzldr/kgzldr.h,v 1.2 1999/08/28 00:40:10 peter Exp $
- * $DragonFly: src/sys/boot/pc32/kgzldr/kgzldr.h,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/kgzldr/kgzldr.h,v 1.3 2003/11/10 06:08:35 dillon Exp $
  */
 
 #define KGZ_CRT	 0x1		/* Video console */

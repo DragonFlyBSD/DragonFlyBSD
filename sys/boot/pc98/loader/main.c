@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/pc98/loader/main.c,v 1.7.2.6 2001/12/22 15:08:49 nyan Exp $
- * $DragonFly: src/sys/boot/pc98/loader/Attic/main.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $FreeBSD: src/sys/boot/pc98/loader/main.c,v 1.16 2003/09/08 09:11:21 obrien Exp $
+ * $DragonFly: src/sys/boot/pc98/loader/Attic/main.c,v 1.3 2003/11/10 06:08:40 dillon Exp $
  */
 
 /*
@@ -130,6 +130,11 @@ main(void)
 	if (devsw[i]->dv_init != NULL)
 	    (devsw[i]->dv_init)();
     printf("BIOS %dkB/%dkB available memory\n", bios_basemem / 1024, bios_extmem / 1024);
+
+#ifndef PC98
+    /* detect ACPI for future reference */
+    biosacpi_detect();
+#endif
 
     printf("\n");
     printf("%s, Revision %s\n", bootprog_name, bootprog_rev);

@@ -13,8 +13,8 @@
 # purpose.
 #
 
-# $FreeBSD: src/sys/boot/i386/btx/btxldr/btxldr.s,v 1.8.2.2 2000/07/06 23:04:29 obrien Exp $
-# $DragonFly: src/sys/boot/i386/btx/btxldr/Attic/btxldr.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD: src/sys/boot/i386/btx/btxldr/btxldr.s,v 1.13 2003/11/06 21:33:17 jhb Exp $
+# $DragonFly: src/sys/boot/i386/btx/btxldr/Attic/btxldr.s,v 1.3 2003/11/10 06:08:35 dillon Exp $
 
 #
 # Prototype BTX loader program, written in a couple of hours.  The
@@ -79,7 +79,7 @@ ifdef(`BTXLDR_VERBOSE',`
 #
 # Relocate caller's arguments.
 #
-ifdef('BTXLDR_VERBOSE',`
+ifdef(`BTXLDR_VERBOSE',`
 		movl $m_esp,%esi		# Display
 		movl %esp,%eax			#  caller
 		call hexout			#  stack

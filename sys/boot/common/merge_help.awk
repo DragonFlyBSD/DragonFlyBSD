@@ -1,7 +1,7 @@
 #!/usr/bin/awk -f
 #
-# $FreeBSD: src/sys/boot/common/merge_help.awk,v 1.2 1999/08/28 00:39:50 peter Exp $
-# $DragonFly: src/sys/boot/common/merge_help.awk,v 1.2 2003/06/17 04:28:16 dillon Exp $
+# $FreeBSD: src/sys/boot/common/merge_help.awk,v 1.5 2001/11/07 17:53:25 fenner Exp $
+# $DragonFly: src/sys/boot/common/merge_help.awk,v 1.3 2003/11/10 06:08:31 dillon Exp $
 #
 # Merge two boot loader help files for FreeBSD 3.0
 # Joe Abley <jabley@patho.gen.nz>
@@ -9,7 +9,7 @@
 BEGIN \
 {
   state = 0;
-  first = 0;
+  first = -1;
   ind = 0;
 }
 

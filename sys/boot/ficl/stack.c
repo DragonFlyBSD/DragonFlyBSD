@@ -3,11 +3,47 @@
 ** Forth Inspired Command Language
 ** Author: John Sadler (john_sadler@alum.mit.edu)
 ** Created: 16 Oct 1997
-** 
+** $Id: stack.c,v 1.10 2001/12/05 07:21:34 jsadler Exp $
 *******************************************************************/
+/*
+** Copyright (c) 1997-2001 John Sadler (john_sadler@alum.mit.edu)
+** All rights reserved.
+**
+** Get the latest Ficl release at http://ficl.sourceforge.net
+**
+** I am interested in hearing from anyone who uses ficl. If you have
+** a problem, a success story, a defect, an enhancement request, or
+** if you would like to contribute to the ficl release, please
+** contact me by email at the address above.
+**
+** L I C E N S E  and  D I S C L A I M E R
+** 
+** Redistribution and use in source and binary forms, with or without
+** modification, are permitted provided that the following conditions
+** are met:
+** 1. Redistributions of source code must retain the above copyright
+**    notice, this list of conditions and the following disclaimer.
+** 2. Redistributions in binary form must reproduce the above copyright
+**    notice, this list of conditions and the following disclaimer in the
+**    documentation and/or other materials provided with the distribution.
+**
+** THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+** ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+** IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+** ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+** FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+** DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+** OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+** HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+** LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+** OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+** SUCH DAMAGE.
+*/
 
-/* $FreeBSD: src/sys/boot/ficl/stack.c,v 1.3 1999/09/29 04:43:07 dcs Exp $ */
-/* $DragonFly: src/sys/boot/ficl/stack.c,v 1.2 2003/06/17 04:28:17 dillon Exp $ */
+/*
+ * $FreeBSD: src/sys/boot/ficl/stack.c,v 1.5 2002/04/09 17:45:11 dcs Exp $
+ * $DragonFly: src/sys/boot/ficl/stack.c,v 1.3 2003/11/10 06:08:33 dillon Exp $
+ */
 
 #ifdef TESTMAIN
 #include <stdlib.h>
@@ -54,6 +90,24 @@ void vmCheckStack(FICL_VM *pVM, int popCells, int pushCells)
 
     return;
 }
+
+#if FICL_WANT_FLOAT
+void vmCheckFStack(FICL_VM *pVM, int popCells, int pushCells)
+{
+    FICL_STACK *fStack = pVM->fStack;
+    int nFree = fStack->base + fStack->nCells - fStack->sp;
+
+    if (popCells > STKDEPTH(fStack))
+    {
+        vmThrowErr(pVM, "Error: float stack underflow");
+    }
+
+    if (nFree < pushCells - popCells)
+    {
+        vmThrowErr(pVM, "Error: float stack overflow");
+    }
+}
+#endif
 
 /*******************************************************************
                     s t a c k C r e a t e
@@ -213,6 +267,12 @@ FICL_INT stackPopINT(FICL_STACK *pStack)
     return (*--pStack->sp).i;
 }
 
+#if (FICL_WANT_FLOAT)
+float stackPopFloat(FICL_STACK *pStack)
+{
+    return (*(--pStack->sp)).f;
+}
+#endif
 
 /*******************************************************************
                     s t a c k P u s h
@@ -238,6 +298,13 @@ void stackPushINT(FICL_STACK *pStack, FICL_INT i)
 {
     *pStack->sp++ = LVALUEtoCELL(i);
 }
+
+#if (FICL_WANT_FLOAT)
+void stackPushFloat(FICL_STACK *pStack, FICL_FLOAT f)
+{
+    *pStack->sp++ = LVALUEtoCELL(f);
+}
+#endif
 
 /*******************************************************************
                     s t a c k R e s e t

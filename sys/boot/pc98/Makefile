@@ -1,5 +1,5 @@
-# $FreeBSD: src/sys/boot/pc98/Makefile,v 1.2.2.2 2002/02/03 11:37:20 nyan Exp $
-# $DragonFly: src/sys/boot/pc98/Attic/Makefile,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD: src/sys/boot/pc98/Makefile,v 1.8 2002/10/03 16:21:40 nyan Exp $
+# $DragonFly: src/sys/boot/pc98/Attic/Makefile,v 1.3 2003/11/10 06:08:37 dillon Exp $
 
 SUBDIR=		btx boot0 boot0.5 boot2 kgzldr libpc98 loader
 

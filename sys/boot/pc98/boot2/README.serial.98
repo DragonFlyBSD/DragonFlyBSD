@@ -1,5 +1,5 @@
-$FreeBSD: src/sys/boot/pc98/boot2/README.serial.98,v 1.1.4.1 2000/07/06 23:29:48 obrien Exp $
-$DragonFly: src/sys/boot/pc98/boot2/Attic/README.serial.98,v 1.2 2003/06/17 04:28:18 dillon Exp $
+$FreeBSD: src/sys/boot/pc98/boot2/README.serial.98,v 1.2 2000/05/01 20:26:24 peter Exp $
+$DragonFly: src/sys/boot/pc98/boot2/Attic/README.serial.98,v 1.3 2003/11/10 06:08:38 dillon Exp $
 
                             README.srieal.98
                        シリアルコンソールについて

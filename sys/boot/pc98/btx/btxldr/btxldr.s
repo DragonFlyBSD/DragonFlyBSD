@@ -13,8 +13,8 @@
 # purpose.
 #
 
-# $FreeBSD: src/sys/boot/pc98/btx/btxldr/btxldr.s,v 1.3.2.2 2000/07/06 23:04:33 obrien Exp $
-# $DragonFly: src/sys/boot/pc98/btx/btxldr/Attic/btxldr.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD: src/sys/boot/pc98/btx/btxldr/btxldr.s,v 1.5 2000/05/29 11:58:01 nyan Exp $
+# $DragonFly: src/sys/boot/pc98/btx/btxldr/Attic/btxldr.s,v 1.3 2003/11/10 06:08:39 dillon Exp $
 
 #
 # Prototype BTX loader program, written in a couple of hours.  The

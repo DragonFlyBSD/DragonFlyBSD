@@ -1,5 +1,5 @@
-# $FreeBSD: src/sys/boot/pc98/btx/btx/Makefile,v 1.3.2.2 2000/12/30 12:01:05 nyan Exp $
-# $DragonFly: src/sys/boot/pc98/btx/btx/Attic/Makefile,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD: src/sys/boot/pc98/btx/btx/Makefile,v 1.7 2002/09/17 01:48:56 peter Exp $
+# $DragonFly: src/sys/boot/pc98/btx/btx/Attic/Makefile,v 1.3 2003/11/10 06:08:38 dillon Exp $
 
 M4?=	m4
 
@@ -16,18 +16,22 @@ BOOT_BTX_FLAGS=0x0
 AFLAGS+=	--defsym BTX_FLAGS=${BOOT_BTX_FLAGS}
 AFLAGS+=	--defsym PC98=1
 
+.if defined(BTX_SERIAL)
+BOOT_COMCONSOLE_PORT?= 0x238
+BOOT_COMCONSOLE_SPEED?= 9600
+B2SIOFMT?=	0x3
+
+M4FLAGS+=	-DBTX_SERIAL -DSIOPRT=${BOOT_COMCONSOLE_PORT} \
+		-DSIOFMT=${B2SIOFMT} -DSIOSPD=${BOOT_COMCONSOLE_SPEED}
+.endif
+
 ORG=	0x9000
 
 all: btx
 
 btx: btx.o
-.if ${OBJFORMAT} == aout
-	${LD} -nostdlib -N -s -T ${ORG} -o btx.out btx.o
-	dd if=btx.out of=${.TARGET} ibs=32 skip=1
-.else
 	${LD} -N -e start -Ttext ${ORG} -o btx.out btx.o
 	objcopy -S -O binary btx.out ${.TARGET}
-.endif
 
 btx.o: btx.s
 	(cd ${.CURDIR}; ${M4} ${M4FLAGS} btx.s) | \

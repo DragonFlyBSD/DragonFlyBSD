@@ -24,8 +24,8 @@
  * the rights to redistribute these changes.
  *
  *	from: Mach, Revision 2.2  92/04/04  11:34:13  rpd
- * $FreeBSD: src/sys/boot/pc98/boot2/asm.S,v 1.2.2.1 2001/10/07 13:22:38 nyan Exp $
- * $DragonFly: src/sys/boot/pc98/boot2/Attic/asm.S,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $FreeBSD: src/sys/boot/pc98/boot2/asm.S,v 1.3 2001/05/24 11:18:32 nyan Exp $
+ * $DragonFly: src/sys/boot/pc98/boot2/Attic/asm.S,v 1.3 2003/11/10 06:08:38 dillon Exp $
  */
 
 

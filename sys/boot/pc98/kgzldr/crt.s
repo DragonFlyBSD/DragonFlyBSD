@@ -24,13 +24,13 @@
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 #	From: btx.s 1.10 1999/02/25 16:27:41 rnordier
-# $FreeBSD: src/sys/boot/pc98/kgzldr/crt.s,v 1.1.2.2 2002/06/19 13:45:19 nyan Exp $
-# $DragonFly: src/sys/boot/pc98/kgzldr/Attic/crt.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD: src/sys/boot/pc98/kgzldr/crt.s,v 1.4 2002/09/24 02:17:13 nyan Exp $
+# $DragonFly: src/sys/boot/pc98/kgzldr/Attic/crt.s,v 1.3 2003/11/10 06:08:39 dillon Exp $
 #
 
 # Screen defaults and assumptions.
 
-.`ifdef' PC98
+.ifdef PC98
 		.set SCR_MAT,0xe1		# Mode/attribute
 .else
 		.set SCR_MAT,0x7		# Mode/attribute
@@ -40,7 +40,7 @@
 
 # BIOS Data Area locations.
 
-.`ifdef' PC98
+.ifdef PC98
 		.set BDA_POS,0x53e		# Cursor position
 .else
 		.set BDA_SCR,0x449		# Video mode
@@ -57,7 +57,7 @@ crt_putchr: 	movb 0x4(%esp,1),%al		# Get character
 		movb $SCR_MAT,%ah		# Mode/attribute
 		movl $BDA_POS,%ebx		# BDA pointer
 		movw (%ebx),%dx 		# Cursor position
-.`ifdef' PC98
+.ifdef PC98
 		movl $0xa0000,%edi
 .else
 		movl $0xb8000,%edi		# Regen buffer (color)
@@ -67,7 +67,7 @@ crt_putchr: 	movb 0x4(%esp,1),%al		# Get character
 .endif
 crt_putchr.1:	cmpb $0xa,%al			# New line?
 		je crt_putchr.2			# Yes
-.`ifdef' PC98
+.ifdef PC98
 		movw %dx,%cx
 		movb %al,(%edi,%ecx,1)		# Write char
 		addl $0x2000,%ecx
@@ -103,13 +103,13 @@ crt_putchr.3:	cmpb $SCR_ROW,%dh		# Beyond screen?
 		rep				# Scroll
 		movsl				#  screen
 		movb $' ',%al			# Space
-.`ifdef' PC98
+.ifdef PC98
 		xorb %ah,%ah
 .endif
 		movb $SCR_COL,%cl		# Columns to clear
 		rep				# Clear
 		stosw				#  line
-.`ifdef' PC98
+.ifdef PC98
 		movw $(SCR_ROW-1)*SCR_COL*2,%dx
 .else
 		movb $SCR_ROW-1,%dh		# Bottom line

@@ -13,8 +13,8 @@
 # purpose.
 #
 
-# $FreeBSD: src/sys/boot/i386/cdboot/cdboot.s,v 1.9.2.1 2001/12/21 21:01:41 jhb Exp $
-# $DragonFly: src/sys/boot/i386/cdboot/Attic/cdboot.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD: src/sys/boot/i386/cdboot/cdboot.s,v 1.9 2001/11/07 01:20:33 jhb Exp $
+# $DragonFly: src/sys/boot/i386/cdboot/Attic/cdboot.s,v 1.3 2003/11/10 06:08:35 dillon Exp $
 
 #
 # This program is a freestanding boot program to load an a.out binary

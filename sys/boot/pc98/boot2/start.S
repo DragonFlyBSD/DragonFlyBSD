@@ -24,8 +24,8 @@
  * the rights to redistribute these changes.
  *
  *	from: Mach, Revision 2.2  92/04/04  11:36:29  rpd
- * $FreeBSD: src/sys/boot/pc98/boot2/start.S,v 1.2.2.2 2001/10/07 13:22:38 nyan Exp $
- * $DragonFly: src/sys/boot/pc98/boot2/Attic/start.S,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $FreeBSD: src/sys/boot/pc98/boot2/start.S,v 1.5 2002/05/14 12:34:03 nyan Exp $
+ * $DragonFly: src/sys/boot/pc98/boot2/Attic/start.S,v 1.3 2003/11/10 06:08:38 dillon Exp $
  */
 
 /*
@@ -451,7 +451,7 @@ one:	String		"1-\0"
 two:	String		"2-\0"
 three:	String		"3-\0"
 four:	String		"4-\0"
-#endif	DEBUG
+#endif	/* DEBUG */
 #ifdef 	NAMEBLOCK_WRITEBACK
 ewrite:	String		"Write error\r\n\0"
 #endif	/* NAMEBLOCK_WRITEBACK */

@@ -23,9 +23,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/common/interp.c,v 1.22.2.5 2001/03/04 04:46:18 obrien Exp $
- * $DragonFly: src/sys/boot/common/interp.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ * $FreeBSD: src/sys/boot/common/interp.c,v 1.29 2003/08/25 23:30:41 obrien Exp $
+ * $DragonFly: src/sys/boot/common/interp.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
  */
+
 /*
  * Simple commandline interpreter, toplevel and misc.
  *
@@ -119,7 +120,7 @@ interact(void)
     if (getenv("prompt") == NULL)
 	setenv("prompt", "${interpret}", 1);
     if (getenv("interpret") == NULL)
-        setenv("interpret", "ok", 1);
+        setenv("interpret", "OK", 1);
     
 
     for (;;) {

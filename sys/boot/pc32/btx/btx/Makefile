@@ -1,5 +1,5 @@
-# $FreeBSD: src/sys/boot/i386/btx/btx/Makefile,v 1.7.2.2 2000/12/28 12:08:22 ps Exp $
-# $DragonFly: src/sys/boot/pc32/btx/btx/Makefile,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD: src/sys/boot/i386/btx/btx/Makefile,v 1.13 2002/09/17 01:48:54 peter Exp $
+# $DragonFly: src/sys/boot/pc32/btx/btx/Makefile,v 1.3 2003/11/10 06:08:35 dillon Exp $
 
 M4?=	m4
 
@@ -15,18 +15,22 @@ BOOT_BTX_FLAGS=0x0
 
 AFLAGS+=	--defsym BTX_FLAGS=${BOOT_BTX_FLAGS}
 
+.if defined(BTX_SERIAL)
+BOOT_COMCONSOLE_PORT?= 0x3f8
+BOOT_COMCONSOLE_SPEED?= 9600
+B2SIOFMT?=	0x3
+
+M4FLAGS+=	-DBTX_SERIAL -DSIOPRT=${BOOT_COMCONSOLE_PORT} \
+		-DSIOFMT=${B2SIOFMT} -DSIOSPD=${BOOT_COMCONSOLE_SPEED}
+.endif
+
 ORG=	0x9000
 
 all: btx
 
 btx: btx.o
-.if ${OBJFORMAT} == aout
-	${LD} -nostdlib -N -s -T ${ORG} -o btx.out btx.o
-	dd if=btx.out of=${.TARGET} ibs=32 skip=1
-.else
 	${LD} -N -e start -Ttext ${ORG} -o btx.out btx.o
 	objcopy -S -O binary btx.out ${.TARGET}
-.endif
 
 btx.o: btx.s
 	(cd ${.CURDIR}; ${M4} ${M4FLAGS} btx.s) | \

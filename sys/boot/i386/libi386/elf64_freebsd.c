@@ -23,13 +23,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/i386/libi386/elf_freebsd.c,v 1.7.2.2 2000/12/28 13:12:40 ps Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/elf_freebsd.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $FreeBSD: src/sys/boot/i386/libi386/elf64_freebsd.c,v 1.14 2003/08/25 23:28:31 obrien Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/elf64_freebsd.c,v 1.1 2003/11/10 06:08:36 dillon Exp $
  */
 
+#define __ELF_WORD_SIZE 64
 #include <sys/param.h>
 #include <sys/exec.h>
-#include <sys/reboot.h>
 #include <sys/linker.h>
 #include <string.h>
 #include <machine/bootinfo.h>
@@ -40,9 +40,26 @@
 #include "libi386.h"
 #include "btxv86.h"
 
-static int	elf_exec(struct loaded_module *amp);
+static int	elf64_exec(struct preloaded_file *amp);
 
-struct module_format i386_elf = { elf_loadmodule, elf_exec };
+struct file_format amd64_elf = { elf64_loadfile, elf64_exec };
+
+#define PG_V	0x001
+#define PG_RW	0x002
+#define PG_U	0x004
+#define PG_PS	0x080
+
+typedef u_int64_t p4_entry_t;
+typedef u_int64_t p3_entry_t;
+typedef u_int64_t p2_entry_t;
+extern p4_entry_t PT4[];
+extern p3_entry_t PT3[];
+extern p2_entry_t PT2[];
+
+u_int32_t entry_hi;
+u_int32_t entry_lo;
+
+extern amd64_tramp();
 
 /*
  * There is an a.out kernel and one or more a.out modules loaded.  
@@ -50,41 +67,52 @@ struct module_format i386_elf = { elf_loadmodule, elf_exec };
  * preparations as are required, and do so.
  */
 static int
-elf_exec(struct loaded_module *mp)
+elf64_exec(struct preloaded_file *fp)
 {
-    struct module_metadata	*md;
+    struct file_metadata	*md;
     Elf_Ehdr 			*ehdr;
-    vm_offset_t			entry, bootinfop;
-    int				boothowto, err, bootdev;
-    struct bootinfo		*bi;
-    vm_offset_t			ssym, esym;
+    vm_offset_t			modulep, kernend;
+    int				err;
+    int				i;
 
-    if ((md = mod_findmetadata(mp, MODINFOMD_ELFHDR)) == NULL)
+    if ((md = file_findmetadata(fp, MODINFOMD_ELFHDR)) == NULL)
 	return(EFTYPE);			/* XXX actually EFUCKUP */
     ehdr = (Elf_Ehdr *)&(md->md_data);
 
-    if ((err = bi_load(mp->m_args, &boothowto, &bootdev, &bootinfop)) != 0)
+    err = bi_load64(fp->f_args, &modulep, &kernend);
+    if (err != 0)
 	return(err);
-    entry = ehdr->e_entry & 0xffffff;
 
-    ssym = esym = 0;
-    if ((md = mod_findmetadata(mp, MODINFOMD_SSYM)) != NULL)
-	ssym = *((vm_offset_t *)&(md->md_data));
-    if ((md = mod_findmetadata(mp, MODINFOMD_ESYM)) != NULL)
-	esym = *((vm_offset_t *)&(md->md_data));
-    if (ssym == 0 || esym == 0)
-	ssym = esym = 0;		/* sanity */
-    bi = (struct bootinfo *)PTOV(bootinfop);
-    bi->bi_symtab = ssym;	/* XXX this is only the primary kernel symtab */
-    bi->bi_esymtab = esym;
+    bzero(PT4, PAGE_SIZE);
+    bzero(PT3, PAGE_SIZE);
+    bzero(PT2, PAGE_SIZE);
 
+    /*
+     * This is kinda brutal, but every single 1GB VM memory segment points to
+     * the same first 1GB of physical memory.  But it is more than adequate.
+     */
+    for (i = 0; i < 512; i++) {
+	/* Each slot of the level 4 pages points to the same level 3 page */
+	PT4[i] = (p4_entry_t)VTOP((uintptr_t)&PT3[0]);
+	PT4[i] |= PG_V | PG_RW | PG_U;
 
+	/* Each slot of the level 3 pages points to the same level 2 page */
+	PT3[i] = (p3_entry_t)VTOP((uintptr_t)&PT2[0]);
+	PT3[i] |= PG_V | PG_RW | PG_U;
+
+	/* The level 2 page slots are mapped with 2MB pages for 1GB. */
+	PT2[i] = i * (2 * 1024 * 1024);
+	PT2[i] |= PG_V | PG_RW | PG_PS | PG_U;
+    }
+
+    entry_lo = ehdr->e_entry & 0xffffffff;
+    entry_hi = (ehdr->e_entry >> 32) & 0xffffffff;
 #ifdef DEBUG
-    printf("Start @ 0x%lx ...\n", entry);
+    printf("Start @ %#llx ...\n", ehdr->e_entry);
 #endif
 
     dev_cleanup();
-    __exec((void *)entry, boothowto, bootdev, 0, 0, 0, bootinfop);
+    __exec((void *)VTOP(amd64_tramp), modulep, kernend);
 
     panic("exec returned");
 }

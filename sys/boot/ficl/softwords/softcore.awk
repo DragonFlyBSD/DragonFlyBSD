@@ -10,8 +10,8 @@
 # Note! This script uses strftime() which is a gawk-ism, and the
 # POSIX [[:space:]] character class.
 #
-# $FreeBSD: src/sys/boot/ficl/softwords/softcore.awk,v 1.3.2.2 2001/03/04 04:55:10 obrien Exp $
-# $DragonFly: src/sys/boot/ficl/softwords/softcore.awk,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD: src/sys/boot/ficl/softwords/softcore.awk,v 1.8 2001/11/03 01:33:12 obrien Exp $
+# $DragonFly: src/sys/boot/ficl/softwords/softcore.awk,v 1.3 2003/11/10 06:08:34 dillon Exp $
 
 BEGIN \
 {
@@ -129,8 +129,15 @@ END \
 {
   if (commenting) end_comments();
   printf "    \"quit \";\n";
-  printf "\n\nvoid ficlCompileSoftCore(FICL_VM *pVM)\n";
+  printf "\n\nvoid ficlCompileSoftCore(FICL_SYSTEM *pSys)\n";
   printf "{\n";
-  printf "    assert(ficlExec(pVM, softWords) != VM_ERREXIT);\n";
+  printf "    FICL_VM *pVM = pSys->vmList;\n";
+  printf "    int ret = sizeof (softWords);\n";
+  printf "	  assert(pVM);\n";
+  printf "\n"
+  printf "    ret = ficlExec(pVM, softWords);\n";
+  printf "    if (ret == VM_ERREXIT)\n";
+  printf "        assert(FALSE);\n";
+  printf "    return;\n";
   printf "}\n";
 }

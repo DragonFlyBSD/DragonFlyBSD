@@ -24,10 +24,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/i386/libi386/bioscd.c,v 1.2.2.1 2001/12/21 22:19:58 jhb Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/bioscd.c,v 1.3 2003/11/09 02:22:33 dillon Exp $
+ * $FreeBSD: src/sys/boot/i386/libi386/bioscd.c,v 1.5 2003/08/25 23:28:31 obrien Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/bioscd.c,v 1.4 2003/11/10 06:08:36 dillon Exp $
  */
-
 /*
  * BIOS CD device handling for CD's that have been booted off of via no
  * emulation booting as defined in the El Torito standard.
@@ -40,8 +39,8 @@
 
 #include <stand.h>
 
-#include <sys/reboot.h>
-#include <machine/param.h>
+#include <sys/param.h>
+#include <machine/bootinfo.h>
 #include <machine/psl.h>
 
 #include <stdarg.h>
@@ -191,13 +190,13 @@ bc_print(int verbose)
 static int 
 bc_open(struct open_file *f, ...)
 {
-	__va_list ap;
+	va_list ap;
 	struct i386_devdesc *dev;
 	int error;
 
-	__va_start(ap, f);
-	dev = __va_arg(ap, struct i386_devdesc *);
-	__va_end(ap);
+	va_start(ap, f);
+	dev = va_arg(ap, struct i386_devdesc *);
+	va_end(ap);
 	if (dev->d_kind.bioscd.unit >= nbcinfo) {
 		DEBUG("attempt to open nonexistent disk");
 		return(ENXIO);

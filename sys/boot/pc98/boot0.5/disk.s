@@ -25,8 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-# $FreeBSD: src/sys/boot/pc98/boot0.5/disk.s,v 1.4.2.1 2000/09/11 09:19:46 kato Exp $
-# $DragonFly: src/sys/boot/pc98/boot0.5/Attic/disk.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD: src/sys/boot/pc98/boot0.5/disk.s,v 1.4 2000/08/31 10:24:06 kato Exp $
+# $DragonFly: src/sys/boot/pc98/boot0.5/Attic/disk.s,v 1.3 2003/11/10 06:08:38 dillon Exp $
 #
 
 	.code16

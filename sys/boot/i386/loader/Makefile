@@ -1,9 +1,7 @@
-# $FreeBSD: src/sys/boot/i386/loader/Makefile,v 1.41.2.8 2002/07/17 12:34:16 ru Exp $
-# $DragonFly: src/sys/boot/i386/loader/Attic/Makefile,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD: src/sys/boot/i386/loader/Makefile,v 1.66 2003/06/26 03:51:57 peter Exp $
+# $DragonFly: src/sys/boot/i386/loader/Attic/Makefile,v 1.3 2003/11/10 06:08:36 dillon Exp $
 
-BASE=		loader
-PROG=		${BASE}
-#NOMAN=
+PROG=		loader
 STRIP=
 NEWVERSWHAT=	"bootstrap loader" i386
 BINDIR?=	/boot
@@ -12,6 +10,7 @@ INSTALLFLAGS=	-b
 # architecture-specific loader code
 SRCS=		main.c conf.c
 
+CFLAGS+=	-ffreestanding
 # Enable PXE TFTP or NFS support, not both.
 .if defined(LOADER_TFTP_SUPPORT)
 CFLAGS+=	-DLOADER_TFTP_SUPPORT
@@ -47,7 +46,7 @@ CFLAGS+=	-DLOADER_GZIP_SUPPORT
 CFLAGS+=	-I${.CURDIR}/../../common
 CFLAGS+=	-I${.CURDIR}/../../.. -I.
 
-CLEANFILES+=	vers.c vers.o ${BASE}.list ${BASE}.bin ${BASE}.sym ${BASE}.help
+CLEANFILES+=	vers.c vers.o ${PROG}.list ${PROG}.bin ${PROG}.sym ${PROG}.help
 
 CFLAGS+=	-Wall
 LDFLAGS=	-nostdlib -static -Ttext 0x0
@@ -81,55 +80,42 @@ CFLAGS+=	-I${.CURDIR}/../btx/lib
 # BTX is expecting ELF components
 CFLAGS+=	-elf
 
-# New linker set code
-CFLAGS+=	-DNEW_LINKER_SET
-
 # Debug me!
 #CFLAGS+=	-g
 #LDFLAGS+=	-g
 
 vers.o:	${.CURDIR}/../../common/newvers.sh ${.CURDIR}/version
 	sh ${.CURDIR}/../../common/newvers.sh ${.CURDIR}/version ${NEWVERSWHAT}
-	${CC} -c vers.c
+	${CC} ${CFLAGS} -c vers.c
 
-${BASE}: ${BASE}.bin ${BTXLDR} ${BTXKERN} ${BTXCRT} ${BASE}.help
+${PROG}: ${PROG}.bin ${BTXLDR} ${BTXKERN} ${BTXCRT}
 	btxld -v -f aout -e ${LOADER_ADDRESS} -o ${.TARGET} -l ${BTXLDR} \
-		-b ${BTXKERN} ${BASE}.bin
+		-b ${BTXKERN} ${PROG}.bin
 #	/usr/bin/kzip ${.TARGET}
 #	mv ${.TARGET}.kz ${.TARGET}
 
-${BASE}.bin: ${BASE}.sym
+${PROG}.bin: ${PROG}.sym
 	cp ${.ALLSRC} ${.TARGET}
 	strip -R .comment -R .note ${.TARGET}
 
-${BASE}.help: help.common help.i386
+${PROG}.help: help.common help.i386
 	cat ${.ALLSRC} | awk -f ${.CURDIR}/../../common/merge_help.awk > ${.TARGET}
 
-beforeinstall:
-.if exists(${.OBJDIR}/loader.help)
-	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
-		${.OBJDIR}/${BASE}.help ${DESTDIR}/boot
-.else
-	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
-		${.CURDIR}/${BASE}.help ${DESTDIR}/boot
-.endif
+.PATH: ${.CURDIR}/../../forth 
+FILES=	${PROG}.help loader.4th support.4th loader.conf
+FILES+= screen.4th frames.4th beastie.4th
+FILESDIR_loader.conf=	/boot/defaults
+
 .if !exists(${DESTDIR}/boot/loader.rc)
-	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
-		${.CURDIR}/../../forth/loader.rc ${DESTDIR}/boot
+FILES+=	${.CURDIR}/loader.rc
 .endif
-	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
-		${.CURDIR}/../../forth/loader.4th ${DESTDIR}/boot
-	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
-		${.CURDIR}/../../forth/support.4th ${DESTDIR}/boot
-	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
-		${.CURDIR}/../../forth/loader.conf ${DESTDIR}/boot/defaults
 
 .include <${.CURDIR}/../Makefile.inc>
 
 # Cannot use ${OBJS} above this line
 .include <bsd.prog.mk>
 
-${BASE}.sym: ${OBJS} ${LIBI386} ${LIBSTAND} ${LIBFICL} vers.o
+${PROG}.sym: ${OBJS} ${LIBI386} ${LIBSTAND} ${LIBFICL} vers.o
 	${CC} ${LDFLAGS} -o ${.TARGET} ${BTXCRT} ${OBJS} vers.o \
 		${LIBFICL} ${LIBI386} ${LIBSTAND}
 

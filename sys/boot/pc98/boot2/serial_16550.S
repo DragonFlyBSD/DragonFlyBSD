@@ -24,8 +24,8 @@
  * the rights to redistribute these changes.
  *
  *	from: Mach, Revision 2.2  92/04/04  11:34:26  rpd
- * $FreeBSD: src/sys/boot/pc98/boot2/serial_16550.S,v 1.1.2.2 2002/03/08 13:00:22 nyan Exp $
- * $DragonFly: src/sys/boot/pc98/boot2/Attic/serial_16550.S,v 1.3 2003/08/07 21:16:44 dillon Exp $
+ * $FreeBSD: src/sys/boot/pc98/boot2/serial_16550.S,v 1.4 2002/05/26 10:11:17 n_hibma Exp $
+ * $DragonFly: src/sys/boot/pc98/boot2/Attic/serial_16550.S,v 1.4 2003/11/10 06:08:38 dillon Exp $
  */
 
 /*
@@ -68,7 +68,7 @@ WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 	.file	"serial.S"
 
-#include <dev/serial/sio/sioreg.h>
+#include <dev/sio/sioreg.h>
 #include "asm.h"
 
 	.text
@@ -81,7 +81,7 @@ WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  * BIOS support is duplicated here.
  *
  * The base address and speed for the i/o port are passed from the
- * Makefile in the COMCONSOLE and CONSPEED preprocessor macros.  The
+ * Makefile in the COMCONSOLE and COMSPEED preprocessor macros.  The
  * line control parameters are currently hard-coded to 8 bits, no
  * parity, 1 stop bit (8N1).  This can be changed in init_serial().
  */
@@ -144,7 +144,7 @@ ENTRY(serial_ischar)
 
 /*
  * void init_serial(void);
- * 	Initialize port COMCONSOLE to speed CONSPEED, line settings 8N1.
+ * 	Initialize port COMCONSOLE to speed COMSPEED, line settings 8N1.
  */
 ENTRY(init_serial)
 	movl	$COMCONSOLE + 3, %edx	# line control reg
@@ -152,10 +152,10 @@ ENTRY(init_serial)
 	outb	%al, %dx	# enable DLAB
 
 	subl	$3, %edx	# divisor latch, low byte
-	movb	(1843200 / (16*(CONSPEED))) & 0xff, %al
+	movb	(1843200 / (16*(COMSPEED))) & 0xff, %al
 	outb	%al, %dx
 	incl	%edx		# divisor latch, high byte
-	movb	(1843200 / (16*(CONSPEED))) >> 8, %al
+	movb	(1843200 / (16*(COMSPEED))) >> 8, %al
 	outb	%al, %dx
 
 	incl	%edx		# fifo control register (if any)

@@ -23,12 +23,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/common/bootstrap.h,v 1.24.2.4 2001/12/21 22:19:13 jhb Exp $
- * $DragonFly: src/sys/boot/common/bootstrap.h,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ * $FreeBSD: src/sys/boot/common/bootstrap.h,v 1.38 2003/05/01 03:56:29 peter Exp $
+ * $DragonFly: src/sys/boot/common/bootstrap.h,v 1.3 2003/11/10 06:08:31 dillon Exp $
  */
 
 #include <sys/types.h>
 #include <sys/queue.h>
+#include <sys/linker_set.h>
 
 /*
  * Generic device specifier; architecture-dependant 
@@ -140,6 +141,10 @@ struct pnpinfo
     STAILQ_ENTRY(pnpinfo)	pi_link;
 };
 
+STAILQ_HEAD(pnpinfo_stql, pnpinfo);
+
+extern struct pnpinfo_stql pnp_devices;
+
 extern struct pnphandler	*pnphandlers[];		/* provided by MD code */
 
 void			pnp_addident(struct pnpinfo *pi, char *ident);
@@ -156,103 +161,79 @@ char			*pnp_eisaformat(u_int8_t *data);
 extern int			isapnp_readport;
 
 /*
- * Module metadata header.
+ * Preloaded file metadata header.
  *
  * Metadata are allocated on our heap, and copied into kernel space
  * before executing the kernel.
  */
-struct module_metadata 
+struct file_metadata 
 {
     size_t			md_size;
     u_int16_t			md_type;
-    struct module_metadata	*md_next;
-    char			md_data[0];	/* data are immediately appended */
+    struct file_metadata	*md_next;
+    char			md_data[1];	/* data are immediately appended */
+};
+
+struct preloaded_file;
+struct mod_depend;
+
+struct kernel_module
+{
+    char			*m_name;	/* module name */
+    int				m_version;	/* module version */
+/*    char			*m_args;*/	/* arguments for the module */
+    struct preloaded_file	*m_fp;
+    struct kernel_module	*m_next;
 };
 
 /*
- * Loaded module information.
+ * Preloaded file information. Depending on type, file can contain
+ * additional units called 'modules'.
  *
- * At least one module (the kernel) must be loaded in order to boot.
+ * At least one file (the kernel) must be loaded in order to boot.
  * The kernel is always loaded first.
  *
  * String fields (m_name, m_type) should be dynamically allocated.
  */
-struct loaded_module
+struct preloaded_file
 {
-    char			*m_name;	/* module name */
-    char			*m_type;	/* verbose module type, eg 'ELF kernel', 'pnptable', etc. */
-    char			*m_args;	/* arguments for the module */
-    struct module_metadata	*m_metadata;	/* metadata that will be placed in the module directory */
-    int				m_loader;	/* index of the loader that read the file */
-    vm_offset_t			m_addr;		/* load address */
-    size_t			m_size;		/* module size */
-    struct loaded_module	*m_next;	/* next module */
+    char			*f_name;	/* file name */
+    char			*f_type;	/* verbose file type, eg 'ELF kernel', 'pnptable', etc. */
+    char			*f_args;	/* arguments for the file */
+    struct file_metadata	*f_metadata;	/* metadata that will be placed in the module directory */
+    int				f_loader;	/* index of the loader that read the file */
+    vm_offset_t			f_addr;		/* load address */
+    size_t			f_size;		/* file size */
+    struct kernel_module	*f_modules;	/* list of modules if any */
+    struct preloaded_file	*f_next;	/* next file */
 };
 
-struct module_format
+struct file_format
 {
     /* Load function must return EFTYPE if it can't handle the module supplied */
-    int		(* l_load)(char *filename, vm_offset_t dest, struct loaded_module **result);
+    int		(* l_load)(char *filename, u_int64_t dest, struct preloaded_file **result);
     /* Only a loader that will load a kernel (first module) should have an exec handler */
-    int		(* l_exec)(struct loaded_module *mp);
+    int		(* l_exec)(struct preloaded_file *mp);
 };
-extern struct module_format	*module_formats[];	/* supplied by consumer */
-extern struct loaded_module	*loaded_modules;
-extern int			mod_load(char *name, int argc, char *argv[]);
-extern int			mod_loadobj(char *type, char *name);
-extern struct loaded_module	*mod_findmodule(char *name, char *type);
-extern void			mod_addmetadata(struct loaded_module *mp, int type, size_t size, void *p);
-extern struct module_metadata	*mod_findmetadata(struct loaded_module *mp, int type);
-extern void			mod_discard(struct loaded_module *mp);
-extern struct loaded_module	*mod_allocmodule(void);
+
+extern struct file_format	*file_formats[];	/* supplied by consumer */
+extern struct preloaded_file	*preloaded_files;
+
+int			mod_load(char *name, struct mod_depend *verinfo, int argc, char *argv[]);
+int			mod_loadkld(const char *name, int argc, char *argv[]);
+
+struct preloaded_file *file_alloc(void);
+struct preloaded_file *file_findfile(char *name, char *type);
+struct file_metadata *file_findmetadata(struct preloaded_file *fp, int type);
+void file_discard(struct preloaded_file *fp);
+void file_addmetadata(struct preloaded_file *fp, int type, size_t size, void *p);
+int  file_addmodule(struct preloaded_file *fp, char *modname, int version,
+	struct kernel_module **newmp);
+
 
 /* MI module loaders */
-extern int		aout_loadmodule(char *filename, vm_offset_t dest, struct loaded_module **result);
-extern vm_offset_t	aout_findsym(char *name, struct loaded_module *mp);
-extern int	elf_loadmodule(char *filename, vm_offset_t dest, struct loaded_module **result);
-
-#ifndef NEW_LINKER_SET
-#include <sys/linker_set.h>
-
-/* XXX just for conversion's sake, until we move to the new linker set code */
-
-#define SET_FOREACH(pvar, set)				\
-	    for ((char*) pvar = set.ls_items;			\
-		 (char*) pvar < (char*) &set.ls_items[set.ls_length];	\
-		 pvar++)
-
-#else /* NEW_LINKER_SET */
-
-/*
- * Private macros, not to be used outside this header file.
- */
-#define __MAKE_SET(set, sym)						\
-	static void *__CONCAT(__setentry,__LINE__)			\
-	__attribute__((__section__("set_" #set),__unused__)) = &sym
-#define __SET_BEGIN(set)						\
-	({ extern void *__CONCAT(__start_set_,set);			\
-	    &__CONCAT(__start_set_,set); })
-#define __SET_END(set)							\
-	({ extern void *__CONCAT(__stop_set_,set);			\
-	    &__CONCAT(__stop_set_,set); })
-
-/*
- * Public macros.
- */
-
-/* Add an entry to a set. */
-#define DATA_SET(set, sym) __MAKE_SET(set, sym)
-
-/*
- * Iterate over all the elements of a set.
- *
- * Sets always contain addresses of things, and "pvar" points to words
- * containing those addresses.  Thus is must be declared as "type **pvar",
- * and the address of each set item is obtained inside the loop by "*pvar".
- */
-#define SET_FOREACH(pvar, set)						\
-	for (pvar = (__typeof__(pvar))__SET_BEGIN(set);			\
-	    pvar < (__typeof__(pvar))__SET_END(set); pvar++)
+#ifdef __elfN
+int	__elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result);
 #endif
 
 /*
@@ -270,7 +251,7 @@ struct bootblk_command
     static struct bootblk_command _cmd_ ## tag = { key, desc, func };	\
     DATA_SET(Xcommand_set, _cmd_ ## tag)
 
-extern struct linker_set Xcommand_set;
+SET_DECLARE(Xcommand_set, struct bootblk_command);
 
 /* 
  * The intention of the architecture switch is to provide a convenient
@@ -303,3 +284,5 @@ extern struct arch_switch archsw;
 void	delay(int delay);
 
 void	dev_cleanup(void);
+
+time_t	time(time_t *tloc);

@@ -1,5 +1,5 @@
-# $FreeBSD: src/sys/boot/alpha/common/Makefile.common,v 1.4.2.5 2002/07/17 12:34:16 ru Exp $
-# $DragonFly: src/sys/boot/alpha/common/Attic/Makefile.common,v 1.2 2003/06/17 04:28:16 dillon Exp $
+# $FreeBSD$
+# $DragonFly: src/sys/boot/alpha/common/Attic/Makefile.common,v 1.3 2003/11/10 06:08:29 dillon Exp $
 #
 # Common Alpha loader build rules
 
@@ -11,14 +11,16 @@ SRCS+=		main.c conf.c
 SRCS+=		dev_net.c
 .endif
 
+.if !defined(NOFORTH)
 # Enable BootForth
 BOOT_FORTH=	yes
-CFLAGS+=	-I${.CURDIR}/../../ficl -I${.CURDIR}/../../ficl/alpha
 CFLAGS+=	-DBOOT_FORTH
+CFLAGS+=	-I${.CURDIR}/../../ficl -I${.CURDIR}/../../ficl/alpha
 .if exists(${.OBJDIR}/../../ficl/libficl.a)
 LIBFICL=	${.OBJDIR}/../../ficl/libficl.a
 .else
 LIBFICL=	${.CURDIR}/../../ficl/libficl.a
+.endif
 .endif
 
 # Always add MI sources 
@@ -42,20 +44,18 @@ STRIP=
 BINDIR?=	/boot
 INSTALLFLAGS?=	-b
 
-all: ${BASE}
+all: ${BASE} ${BASE}.help
 
 vers.o: ${.CURDIR}/../../common/newvers.sh ${.CURDIR}/version
 	sh ${.CURDIR}/../../common/newvers.sh ${.CURDIR}/version ${NEWVERSWHAT}
 	${CC} -c vers.c
 
-${BASE}: ${BASE}.sym ${BASE}.help
-	objcopy -O binary ${BASE}.sym ${BASE}
-
-${BASE}.sym: ${OBJS} ${LIBSTAND} ${LIBFICL} ${LIBALPHA} ${CRT} vers.o setdef0.o setdef1.o
+${BASE}: ${OBJS} ${LIBSTAND} ${LIBFICL} ${LIBALPHA} ${CRT} vers.o
 	${LD} -o ${BASE}.sym -M -e start -N -Ttext ${LOAD_ADDRESS} \
-	${CRT} setdef0.o ${OBJS} setdef1.o vers.o \
+	${CRT} ${OBJS} vers.o \
 	-L${DESTDIR}${LIBDIR} ${LIBSTAND} ${LIBALPHA} ${LIBFICL} ${LIBSTAND} \
 	>${.OBJDIR}/${BASE}.list
+	objcopy -O binary ${BASE}.sym ${BASE}
 
 CLEANFILES+=	${BASE}.help
 ${BASE}.help: help.common help.alpha
@@ -86,20 +86,11 @@ beforeinstall:
 start.o:	${.CURDIR}/../libalpha/start.S
 	${CC} -c ${CFLAGS} $<
 
-setdef0.o: setdefs.h
-
-setdef1.o: setdefs.h
-
 machine:
 	ln -sf ${.CURDIR}/../../../alpha/include machine
 
 CLEANFILES+=	machine
 
 .include <bsd.prog.mk>
-
-.ORDER: setdefs.h setdef0.c setdef1.c
-setdefs.h setdef0.c setdef1.c: ${OBJS}
-	@echo Generating linker sets
-	@gensetdefs ${OBJS}
 
 beforedepend ${OBJS}: machine

@@ -14,7 +14,7 @@
 #
 
 # $FreeBSD: src/sys/boot/pc98/btx/lib/btxsys.s,v 1.2 1999/08/28 00:40:32 peter Exp $
-# $DragonFly: src/sys/boot/pc98/btx/lib/Attic/btxsys.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $DragonFly: src/sys/boot/pc98/btx/lib/Attic/btxsys.s,v 1.3 2003/11/10 06:08:39 dillon Exp $
 
 #
 # BTX system calls.

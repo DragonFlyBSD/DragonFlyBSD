@@ -1,20 +1,21 @@
 # $NetBSD: Makefile,v 1.15 1998/03/28 00:21:35 thorpej Exp $
-# $FreeBSD: src/sys/boot/alpha/boot1/Makefile,v 1.10.2.1 2001/03/04 05:12:40 obrien Exp $
-# $DragonFly: src/sys/boot/alpha/boot1/Attic/Makefile,v 1.2 2003/06/17 04:28:16 dillon Exp $
+# $FreeBSD: src/sys/boot/alpha/boot1/Makefile,v 1.16 2003/01/26 14:32:53 phk Exp $
+# $DragonFly: src/sys/boot/alpha/boot1/Attic/Makefile,v 1.3 2003/11/10 06:08:25 dillon Exp $
 
 .include <../Makefile.inc>
 
 PROG = boot1
+LINKS =	${BINDIR}/${PROG} ${BINDIR}/boot
 
 .PATH:		${.CURDIR}/../libalpha
 
-SRCS=		start.S boot1.c sys.c
-CFLAGS+=	-mno-fp-regs
+SRCS=		start.S boot1.c
+CFLAGS+=	-ffreestanding -mno-fp-regs
+CFLAGS+=	-DSECONDARY_LOAD_ADDRESS=${SECONDARY_LOAD_ADDRESS} -DMINIMAL
+CFLAGS+=	-DBOOT1
 CFLAGS+=	-I${.CURDIR}/../../common -I${.CURDIR}
 CFLAGS+=	-I${LIBSTANDDIR}
 CFLAGS+=	-I${.CURDIR}/..
-CFLAGS+=	-DSECONDARY_LOAD_ADDRESS=${SECONDARY_LOAD_ADDRESS} -DMINIMAL
-CFLAGS+=	-DBOOT1
 NOMAN=1
 STRIP=
 BINDIR?=	/boot

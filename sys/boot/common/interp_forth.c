@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1998 Michael Smith <msmith@freebsd.org>
  * All rights reserved.
  *
@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/common/interp_forth.c,v 1.15.2.2 2000/12/28 13:12:34 ps Exp $
- * $DragonFly: src/sys/boot/common/interp_forth.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ * $FreeBSD: src/sys/boot/common/interp_forth.c,v 1.23 2003/08/25 23:30:41 obrien Exp $
+ * $DragonFly: src/sys/boot/common/interp_forth.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
  */
 
 #include <sys/param.h>		/* to pick up __FreeBSD_version */
@@ -38,7 +38,7 @@ extern char bootprog_rev[];
 /* #define BFORTH_DEBUG */
 
 #ifdef BFORTH_DEBUG
-# define DEBUG(fmt, args...)	printf("%s: " fmt "\n" , __FUNCTION__ , ## args)
+# define DEBUG(fmt, args...)	printf("%s: " fmt "\n" , __func__ , ## args)
 #else
 # define DEBUG(fmt, args...)
 #endif
@@ -54,6 +54,7 @@ extern char bootprog_rev[];
  * BootForth   Interface to Ficl Forth interpreter.
  */
 
+FICL_SYSTEM *bf_sys;
 FICL_VM	*bf_vm;
 FICL_WORD *pInterp;
 
@@ -233,8 +234,8 @@ bf_init(void)
     char create_buf[41];	/* 31 characters-long builtins */
     int fd;
    
-    ficlInitSystem(10000);	/* Default dictionary ~4000 cells */
-    bf_vm = ficlNewVM();
+    bf_sys = ficlInitSystem(10000);	/* Default dictionary ~4000 cells */
+    bf_vm = ficlNewVM(bf_sys);
 
     /* Put all private definitions in a "builtins" vocabulary */
     ficlExec(bf_vm, "vocabulary builtins also builtins definitions");
@@ -244,7 +245,7 @@ bf_init(void)
 
     /* make all commands appear as Forth words */
     SET_FOREACH(cmdp, Xcommand_set) {
-	ficlBuild((*cmdp)->c_name, bf_command, FW_DEFAULT);
+	ficlBuild(bf_sys, (char *)(*cmdp)->c_name, bf_command, FW_DEFAULT);
 	ficlExec(bf_vm, "forth definitions builtins");
 	sprintf(create_buf, "builtin: %s", (*cmdp)->c_name);
 	ficlExec(bf_vm, create_buf);
@@ -253,8 +254,8 @@ bf_init(void)
     ficlExec(bf_vm, "only forth definitions");
 
     /* Export some version numbers so that code can detect the loader/host version */
-    ficlSetEnv("FreeBSD_version", __FreeBSD_version);
-    ficlSetEnv("loader_version", 
+    ficlSetEnv(bf_sys, "FreeBSD_version", __FreeBSD_version);
+    ficlSetEnv(bf_sys, "loader_version", 
 	       (bootprog_rev[0] - '0') * 10 + (bootprog_rev[2] - '0'));
 
     /* try to load and run init file if present */
@@ -264,7 +265,7 @@ bf_init(void)
     }
 
     /* Do this last, so /boot/boot.4th can change it */
-    pInterp = ficlLookup("interpret");
+    pInterp = ficlLookup(bf_sys, "interpret");
 }
 
 /*
@@ -300,7 +301,7 @@ bf_run(char *line)
     
     if (result == VM_USEREXIT)
 	panic("interpreter exit");
-    setenv("interpret", bf_vm->state ? "" : "ok", 1);
+    setenv("interpret", bf_vm->state ? "" : "OK", 1);
 
     return result;
 }

@@ -7,8 +7,10 @@
 **
 *******************************************************************/
 
-/* $FreeBSD: src/sys/boot/ficl/alpha/sysdep.c,v 1.7.2.1 2000/07/06 23:51:46 obrien Exp $ */
-/* $DragonFly: src/sys/boot/ficl/alpha/Attic/sysdep.c,v 1.2 2003/06/17 04:28:18 dillon Exp $ */
+/*
+ * $FreeBSD: src/sys/boot/ficl/alpha/sysdep.c,v 1.8 2000/06/02 20:07:55 dcs Exp $
+ * $DragonFly: src/sys/boot/ficl/alpha/Attic/sysdep.c,v 1.3 2003/11/10 06:08:33 dillon Exp $
+ */
 
 #ifdef TESTMAIN
 #include <stdio.h>

@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/common/boot.c,v 1.15.2.5 2000/12/28 13:12:33 ps Exp $
- * $DragonFly: src/sys/boot/common/boot.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ * $FreeBSD: src/sys/boot/common/boot.c,v 1.29 2003/08/25 23:30:41 obrien Exp $
+ * $DragonFly: src/sys/boot/common/boot.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
  */
 
 /*
@@ -37,9 +37,10 @@
 #include "bootstrap.h"
 
 static char	*getbootfile(int try);
+static int	loadakernel(int try, int argc, char* argv[]);
 
 /* List of kernel names to try (may be overwritten by boot.config) XXX should move from here? */
-static const char *default_bootfiles = "kernel;kernel.old";
+static const char *default_bootfiles = "kernel";
 
 static int autoboot_tried;
 
@@ -51,9 +52,7 @@ COMMAND_SET(boot, "boot", "boot a file or loaded kernel", command_boot);
 static int
 command_boot(int argc, char *argv[])
 {
-    struct loaded_module	*km;
-    char			*cp;
-    int				try;
+    struct preloaded_file	*fp;
     
     /*
      * See if the user has specified an explicit kernel to boot.
@@ -61,13 +60,13 @@ command_boot(int argc, char *argv[])
     if ((argc > 1) && (argv[1][0] != '-')) {
 	
 	/* XXX maybe we should discard everything and start again? */
-	if (mod_findmodule(NULL, NULL) != NULL) {
+	if (file_findfile(NULL, NULL) != NULL) {
 	    sprintf(command_errbuf, "can't boot '%s', kernel module already loaded", argv[1]);
 	    return(CMD_ERROR);
 	}
 	
 	/* find/load the kernel module */
-	if (mod_load(argv[1], argc - 2, argv + 2) != 0)
+	if (mod_loadkld(argv[1], argc - 2, argv + 2) != 0)
 	    return(CMD_ERROR);
 	/* we have consumed all arguments */
 	argc = 1;
@@ -76,22 +75,15 @@ command_boot(int argc, char *argv[])
     /*
      * See if there is a kernel module already loaded
      */
-    if (mod_findmodule(NULL, NULL) == NULL) {
-	for (try = 0; (cp = getbootfile(try)) != NULL; try++) {
-	    if (mod_load(cp, argc - 1, argv + 1) != 0) {
-		printf("can't load '%s'\n", cp);
-	    } else {
-		/* we have consumed all arguments */
-		argc = 1;
-		break;
-	    }
-	}
-    }
+    if (file_findfile(NULL, NULL) == NULL)
+	if (loadakernel(0, argc - 1, argv + 1))
+	    /* we have consumed all arguments */
+	    argc = 1;
 
     /*
      * Loaded anything yet?
      */
-    if ((km = mod_findmodule(NULL, NULL)) == NULL) {
+    if ((fp = file_findfile(NULL, NULL)) == NULL) {
 	command_errmsg = "no bootable kernel";
 	return(CMD_ERROR);
     }
@@ -101,9 +93,9 @@ command_boot(int argc, char *argv[])
      * XXX should we merge arguments?  Hard to DWIM.
      */
     if (argc > 1) {
-	if (km->m_args != NULL)	
-	    free(km->m_args);
-	km->m_args = unargv(argc - 1, argv + 1);
+	if (fp->f_args != NULL)	
+	    free(fp->f_args);
+	fp->f_args = unargv(argc - 1, argv + 1);
     }
 
     /* Hook for platform-specific autoloading of modules */
@@ -111,7 +103,7 @@ command_boot(int argc, char *argv[])
 	return(CMD_ERROR);
 
     /* Call the exec handler from the loader matching the kernel */
-    module_formats[km->m_loader]->l_exec(km);
+    file_formats[fp->f_loader]->l_exec(fp);
     return(CMD_ERROR);
 }
 
@@ -169,6 +161,7 @@ autoboot(int timeout, char *prompt)
     time_t	when, otime, ntime;
     int		c, yes;
     char	*argv[2], *cp, *ep;
+    char	*kernelname;
 
     autoboot_tried = 1;
 
@@ -183,11 +176,21 @@ autoboot(int timeout, char *prompt)
     if (timeout == -1)		/* all else fails */
 	timeout = 10;
 
+    kernelname = getenv("kernelname");
+    if (kernelname == NULL) {
+	argv[0] = NULL;
+	loadakernel(0, 0, argv);
+	kernelname = getenv("kernelname");
+	if (kernelname == NULL) {
+	    command_errmsg = "no valid kernel found";
+	    return(CMD_ERROR);
+	}
+    }
+
     otime = time(NULL);
     when = otime + timeout;	/* when to boot */
     yes = 0;
 
-    /* XXX could try to work out what we might boot */
     printf("%s\n", (prompt == NULL) ? "Hit [Enter] to boot immediately, or any other key for command prompt." : prompt);
 
     for (;;) {
@@ -202,15 +205,16 @@ autoboot(int timeout, char *prompt)
 	    yes = 1;
 	    break;
 	}
+	
 	if (ntime != otime) {
 	    printf("\rBooting [%s] in %d second%s... ",
-	    		getbootfile(0), (int)(when - ntime),
+	    		kernelname, (int)(when - ntime),
 			(when-ntime)==1?"":"s");
 	    otime = ntime;
 	}
     }
     if (yes)
-	printf("\rBooting [%s]...               ", getbootfile(0));
+	printf("\rBooting [%s]...               ", kernelname);
     putchar('\n');
     if (yes) {
 	argv[0] = "boot";
@@ -227,7 +231,7 @@ static char *
 getbootfile(int try) 
 {
     static char *name = NULL;
-    char	*spec, *ep;
+    const char	*spec, *ep;
     size_t	len;
     
     /* we use dynamic storage */
@@ -333,3 +337,17 @@ getrootmount(char *rootdev)
     close(fd);
     return(error);
 }
+
+static int
+loadakernel(int try, int argc, char* argv[])
+{
+    char *cp;
+
+	for (try = 0; (cp = getbootfile(try)) != NULL; try++)
+	    if (mod_loadkld(cp, argc - 1, argv + 1) != 0)
+		printf("can't load '%s'\n", cp);
+	    else
+		return 1;
+	return 0;
+}
+

@@ -1,5 +1,5 @@
-# $FreeBSD: src/sys/boot/alpha/Makefile.inc,v 1.5.6.1 2000/07/06 23:29:46 obrien Exp $
-# $DragonFly: src/sys/boot/alpha/Attic/Makefile.inc,v 1.2 2003/06/17 04:28:16 dillon Exp $
+# $FreeBSD: src/sys/boot/alpha/Makefile.inc,v 1.8 2000/10/27 09:36:34 dfr Exp $
+# $DragonFly: src/sys/boot/alpha/Attic/Makefile.inc,v 1.3 2003/11/10 06:08:22 dillon Exp $
 # Options used when building app-specific libalpha components
 PRIMARY_LOAD_ADDRESS=	0x20000000	# "Region 1 start"
 SECONDARY_LOAD_ADDRESS=	0x2000c000	# "Region 1 start" + 48k

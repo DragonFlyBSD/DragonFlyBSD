@@ -22,8 +22,8 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/sys/boot/forth/loader.4th.8,v 1.5.2.6 2002/07/07 14:32:16 schweikh Exp $
-.\" $DragonFly: src/sys/boot/forth/loader.4th.8,v 1.2 2003/06/17 04:28:18 dillon Exp $
+.\" $FreeBSD: src/sys/boot/forth/loader.4th.8,v 1.14 2002/08/13 15:09:33 ru Exp $
+.\" $DragonFly: src/sys/boot/forth/loader.4th.8,v 1.3 2003/11/10 06:08:34 dillon Exp $
 .\"
 .Dd April 25, 1999
 .Dt LOADER.4TH 8
@@ -36,19 +36,22 @@ The file that goes by the name of
 .Nm
 is a set of commands designed to manipulate
 .Xr loader.conf 5
-files. The default
+files.
+The default
 .Pa /boot/loader.rc
 includes
 .Nm
 and uses one of its commands to automatically read and process
 the standard
 .Xr loader.conf 5
-files. Other commands exists to help the user specify alternate
+files.
+Other commands exists to help the user specify alternate
 configurations.
 .Pp
 The commands of
 .Nm
-by themselves are not enough for most uses. Please refer to the
+by themselves are not enough for most uses.
+Please refer to the
 examples below for the most common situations, and to
 .Xr loader 8
 for additional commands.
@@ -65,12 +68,25 @@ This line is present in the default
 file, so it isn't needed (and should not be re-issued) in a normal setup.
 .Pp
 The commands provided by it are:
-.Bl -tag -width disable-module_module -offset indent
-.It Ic boot-conf
+.Bl -tag -width disable-module_module -compact -offset indent
+.It Ic boot
+.It Ic boot Ar kernelname Op Cm ...
+.It Ic boot Ar directory Op Cm ...
+.It Ic boot Fl flag Cm ...
 Boot as specified by the
 .Xr loader.conf 5
 files read.
-It uses
+.Pp
+Depending on the arguments passed, it can override boot flags and
+either the kernel name or the search path for kernel and modules.
+.Pp
+.It Ic boot-conf
+.It Ic boot-conf Ar kernelname Op Cm ...
+.It Ic boot-conf Ar directory Op Cm ...
+.It Ic boot-conf Fl flag Cm ...
+Works like
+.Ic boot
+described above, but instead of booting immediately, uses
 .Ic autoboot ,
 so it can be stopped.
 .Pp
@@ -79,7 +95,8 @@ Reads
 .Pa /boot/defaults/loader.conf ,
 all other
 .Xr loader.conf 5
-files specified in it, and then proceeds to boot as specified in them. This
+files specified in it, and then proceeds to boot as specified in them.
+This
 is the command used in the default
 .Pa /boot/loader.rc
 file, and it uses the
@@ -93,19 +110,22 @@ so it can be stopped for further interaction with
 Initialize the supporting library so commands can be used without
 executing
 .Ic start
-first. Like
+first.
+Like
 .Ic start ,
 reads
 .Pa /boot/defaults/loader.conf
 and all other
 .Xr loader.conf 5
-files specified in it. Returns a flag on the stack to indicate
+files specified in it.
+Returns a flag on the stack to indicate
 if any configuration file was successfully loaded.
 .Pp
 .It Ic read-conf Ar filename
 Reads and processes a
 .Xr loader.conf 5
-file. Does not proceed to boot.
+file.
+Does not proceed to boot.
 .Pp
 .It Ic enable-module Ar module
 Enables the loading of
@@ -164,7 +184,7 @@ start
 Load a different kernel with the standard configuration:
 .Pp
 .Bd -literal -offset indent -compact
-set kernel="kernel.old"
+set kernel="/boot/kernel.old/kernel"
 unload
 boot-conf
 .Ed
@@ -190,12 +210,14 @@ boot-conf
 .Xr loader.conf 5 ,
 .Xr loader 8
 .Sh HISTORY
+The
 .Nm
-first appeared in
+set of commands first appeared in
 .Fx 3.2 .
 .Sh AUTHORS
+The
 .Nm
-was written by
+set of commands was written by
 .An Daniel C. Sobral Aq dcs@FreeBSD.org .
 .Sh BUGS
 A British espionage series.

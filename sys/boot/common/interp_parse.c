@@ -1,4 +1,4 @@
-/*
+/*-
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -11,10 +11,10 @@
  * Jordan K. Hubbard
  * 29 August 1998
  *
- * $FreeBSD: src/sys/boot/common/interp_parse.c,v 1.8.2.1 2000/12/28 13:12:35 ps Exp $
- * $DragonFly: src/sys/boot/common/interp_parse.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
- * 
  * The meat of the simple parser.
+ *
+ * $FreeBSD: src/sys/boot/common/interp_parse.c,v 1.10 2003/08/25 23:30:41 obrien Exp $
+ * $DragonFly: src/sys/boot/common/interp_parse.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
  */
 
 #include <stand.h>

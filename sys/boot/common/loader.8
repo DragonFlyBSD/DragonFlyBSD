@@ -22,8 +22,8 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/sys/boot/common/loader.8,v 1.18.2.15 2003/05/10 23:40:09 murray Exp $
-.\" $DragonFly: src/sys/boot/common/loader.8,v 1.3 2003/10/02 19:24:10 dillon Exp $
+.\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
+.\" $DragonFly: src/sys/boot/common/loader.8,v 1.4 2003/11/10 06:08:31 dillon Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
@@ -58,7 +58,7 @@ commands" for historical reasons.
 The main drive behind these commands is user-friendliness.
 The bigger component is an
 .Tn ANS
-Forth compatible Forth interpreter based on ficl, by
+Forth compatible Forth interpreter based on FICL, by
 .An John Sadler .
 .Pp
 During initialization,
@@ -79,7 +79,7 @@ Next,
 .Tn FICL
 is initialized, the builtin words are added to its vocabulary, and
 .Pa /boot/boot.4th
-will be processed if it exists.
+is processed if it exists.
 No disk switching is possible while that file is being read.
 The inner interpreter
 .Nm
@@ -94,7 +94,7 @@ After that,
 .Pa /boot/loader.rc
 is processed if available, and, failing that,
 .Pa /boot/boot.conf
-will be read for historical reasons.
+is read for historical reasons.
 These files are processed through the
 .Ic include
 command, which reads all of them into memory before processing them,
@@ -115,8 +115,9 @@ will be set and
 .Nm
 will engage interactive mode.
 .Sh BUILTIN COMMANDS
-.Nm Loader Ns 's
-builtin commands take its parameters from the command line.
+In
+.Nm ,
+builtin commands take parameters from the command line.
 Presently,
 the only way to call them from a script is by using
 .Pa evaluate
@@ -310,6 +311,12 @@ Some options may require a value,
 while others define behavior just by being set.
 Both types of builtin variables are described below.
 .Bl -tag -width bootfile
+.It Va acpi_load
+Unset this to disable automatic loading of the ACPI module.
+See also
+.Va hint.acpi.0.disabled
+in
+.Xr device.hints 5 .
 .It Va autoboot_delay
 Number of seconds
 .Ic autoboot
@@ -369,7 +376,7 @@ Define the number of lines on the screen, to be used by the pager.
 Sets the list of directories which will be searched for modules
 named in a load command or implicitly required by a dependency.
 The default value for this variable is
-.Dq Li /;/boot;/modules .
+.Dq Li /boot/kernel;/boot/modules .
 .It Va num_ide_disks
 Sets the number of IDE disks as a workaround for some problems in
 finding the root disk at boot.
@@ -389,7 +396,7 @@ be forced by setting this variable.
 .It Va rootdev
 By default the value of
 .Va currdev
-is used to set the root filesystem
+is used to set the root file system
 when the kernel is booted.
 This can be overridden by setting
 .Va rootdev
@@ -406,6 +413,26 @@ MIB variable.
 Other variables are used to override kernel tunable parameters.
 The following tunables are available:
 .Bl -tag -width Va
+.It Va hw.physmem
+Limit the amount of physical memory the system will use.
+By default the size is in bytes, but the
+.Cm k , K , m , M , g
+and
+.Cm G
+suffixes
+are also accepted and indicate kilobytes, megabytes and gigabytes
+respectively.
+An invalid suffix will result in the variable being ignored by the
+kernel.
+.It Va hw.pci.enable_io_modes
+Enable PCI resources which are left off by some BIOSes or are not
+enabled correctly by the device driver.
+Tunable value set to ON (1) by default, but this may cause problems
+with some peripherals.
+.It Va hw.pci.allow_unsupported_io_range
+Allow the PCI bridge to pass through an unsupported memory range
+assigned by the BIOS.
+Tunable value set to OFF (0) by default.
 .It Va kern.maxusers
 Set the size of a number of statically allocated system tables; see
 .Xr tuning 7
@@ -419,10 +446,15 @@ The value cannot be set below the default
 determined when the kernel was compiled.
 Modifies
 .Va NMBCLUSTERS .
+.It Va kern.ipc.nsfbufs
+Set the number of
+.Xr sendfile 2
+buffers to be allocated.
+Overrides
+.Dv NSFBUFS .
 .It Va kern.vm.kmem.size
 Sets the size of kernel memory (bytes).
-This overrides completely the value
-determined when the kernel was compiled.
+This overrides the value determined when the kernel was compiled.
 Modifies
 .Va VM_KMEM_SIZE .
 .It Va kern.maxswzone
@@ -460,22 +492,13 @@ Note that
 the NBUF parameter will override this limit.
 Modifies
 .Va VM_BCACHE_SIZE_MAX .
-.It Va machdep.pccard.pcic_irq
-Overrides the IRQ normally assigned to a PCCARD controller.
-Typically the first available interrupt will be allocated,
-which may conflict with other hardware.
-If this value is set to 0,
-an interrupt will not be assigned
-and the controller will operate in polled mode only.
+.It Va machdep.disable_mtrrs
+Disable the use of i686 MTRRs (x86 only).
 .It Va net.inet.tcp.tcbhashsize
 Overrides the compile-time set value of
 .Va TCBHASHSIZE
 or the preset default of 512.
 Must be a power of 2.
-.It Va hw.physmem
-Overrides the amount of physical memory recognized by the system.
-May be specified in units of 'g'igabytes, 'm'egabytes, or 'k'ilobytes.
-This variable is typically only used for debugging purposes.
 .El
 .Ss BUILTIN PARSER
 When a builtin command is executed, the rest of the line is taken
@@ -655,9 +678,20 @@ Reads a single character from a file.
 .It Ic fload Pq Ar fd --
 Processes a file
 .Em fd .
-.It Ic fopen Pq Ar addr len -- fd
+.It Ic fopen Pq Ar addr len mode Li -- Ar fd
 Opens a file.
-Returns a file descriptor, or -1 in case of failure.
+Returns a file descriptor, or \-1 in case of failure.
+The
+.Ar mode
+parameter selects whether the file is to be opened for read access, write
+access, or both.
+The constants
+.Dv O_RDONLY , O_WRONLY ,
+and
+.Dv O_RDWR
+are defined in
+.Pa /boot/support.4th ,
+indicating read only, write only, and read-write access, respectively.
 .It Xo
 .Ic fread
 .Pq Ar fd addr len -- len'
@@ -844,11 +878,13 @@ from the Programming-Tools extension word set, Providing the
 Search-Order extensions word set.
 .Ef
 .Sh HISTORY
+The
 .Nm
 first appeared in
 .Fx 3.1 .
 .Sh AUTHORS
 .An -nosplit
+The
 .Nm
 was written by
 .An Michael Smith Aq msmith@FreeBSD.org .

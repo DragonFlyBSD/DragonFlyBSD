@@ -1,7 +1,7 @@
 /* 
- * $FreeBSD: src/sys/boot/alpha/libalpha/prom_disp.S,v 1.2 1999/08/28 00:39:28 peter Exp $ 
- * $DragonFly: src/sys/boot/alpha/libalpha/Attic/prom_disp.S,v 1.2 2003/06/17 04:28:16 dillon Exp $ 
  * From: $NetBSD: prom_disp.S,v 1.2 1997/04/06 08:41:00 cgd Exp $ 
+ * $FreeBSD: src/sys/boot/alpha/libalpha/prom_disp.S,v 1.2 1999/08/28 00:39:28 peter Exp $ 
+ * $DragonFly: src/sys/boot/alpha/libalpha/Attic/prom_disp.S,v 1.3 2003/11/10 06:08:30 dillon Exp $
  */
 
 /*

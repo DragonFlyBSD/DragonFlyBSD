@@ -24,11 +24,9 @@
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 #	From: sio.s 1.3 1999/01/10 14:48:03 rnordier
-# $FreeBSD: src/sys/boot/i386/kgzldr/sio.s,v 1.2 1999/08/28 00:40:11 peter Exp $
-# $DragonFly: src/sys/boot/i386/kgzldr/Attic/sio.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD: src/sys/boot/i386/kgzldr/sio.s,v 1.5 2002/09/30 20:37:57 peter Exp $
+# $DragonFly: src/sys/boot/i386/kgzldr/Attic/sio.s,v 1.3 2003/11/10 06:08:35 dillon Exp $
 #
-
-		.set SIO_PRT,SIOPRT		# Base port
 
 		.globl sio_putchr
 
@@ -37,11 +35,11 @@
 sio_putchr:	movw $SIO_PRT+0x5,%dx		# Line status reg
 		xor %ecx,%ecx			# Timeout
 		movb $0x40,%ch			#  counter
-sio_putchr.1:	inb (%dx),%al			# Transmitter
+sio_putchr.1:	inb %dx,%al			# Transmitter
 		testb $0x20,%al 		#  buffer empty?
 		loopz sio_putchr.1		# No
 		jz sio_putchr.2			# If timeout
 		movb 0x4(%esp,1),%al		# Get character
 		subb $0x5,%dl			# Transmitter hold reg
-		outb %al,(%dx)			# Write character
+		outb %al,%dx			# Write character
 sio_putchr.2:	ret				# To caller

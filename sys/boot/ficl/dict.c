@@ -3,7 +3,7 @@
 ** Forth Inspired Command Language - dictionary methods
 ** Author: John Sadler (john_sadler@alum.mit.edu)
 ** Created: 19 July 1997
-** 
+** $Id: dict.c,v 1.14 2001/12/05 07:21:34 jsadler Exp $
 *******************************************************************/
 /*
 ** This file implements the dictionary -- FICL's model of 
@@ -16,13 +16,48 @@
 **
 ** 29 jun 1998 (sadler) added variable sized hash table support
 */
+/*
+** Copyright (c) 1997-2001 John Sadler (john_sadler@alum.mit.edu)
+** All rights reserved.
+**
+** Get the latest Ficl release at http://ficl.sourceforge.net
+**
+** I am interested in hearing from anyone who uses ficl. If you have
+** a problem, a success story, a defect, an enhancement request, or
+** if you would like to contribute to the ficl release, please
+** contact me by email at the address above.
+**
+** L I C E N S E  and  D I S C L A I M E R
+** 
+** Redistribution and use in source and binary forms, with or without
+** modification, are permitted provided that the following conditions
+** are met:
+** 1. Redistributions of source code must retain the above copyright
+**    notice, this list of conditions and the following disclaimer.
+** 2. Redistributions in binary form must reproduce the above copyright
+**    notice, this list of conditions and the following disclaimer in the
+**    documentation and/or other materials provided with the distribution.
+**
+** THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+** ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+** IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+** ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+** FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+** DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+** OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+** HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+** LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+** OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+** SUCH DAMAGE.
+*/
 
-/* $FreeBSD: src/sys/boot/ficl/dict.c,v 1.6.2.1 2000/07/06 23:51:45 obrien Exp $ */
-/* $DragonFly: src/sys/boot/ficl/dict.c,v 1.2 2003/06/17 04:28:17 dillon Exp $ */
+/*
+ * $FreeBSD: src/sys/boot/ficl/dict.c,v 1.13 2002/04/09 17:45:11 dcs Exp $
+ * $DragonFly: src/sys/boot/ficl/dict.c,v 1.3 2003/11/10 06:08:33 dillon Exp $
+ */
 
 #ifdef TESTMAIN
 #include <stdio.h>
-#include <stdlib.h>
 #include <ctype.h>
 #else
 #include <stand.h>
@@ -31,8 +66,8 @@
 #include "ficl.h"
 
 /* Dictionary on-demand resizing control variables */
-unsigned int dictThreshold;
-unsigned int dictIncrease;
+CELL dictThreshold;
+CELL dictIncrease;
 
 
 static char *dictCopyName(FICL_DICT *pDict, STRINGINFO si);
@@ -269,16 +304,19 @@ int dictCellsUsed(FICL_DICT *pDict)
 /**************************************************************************
                         d i c t C h e c k
 ** Checks the dictionary for corruption and throws appropriate
-** errors
+** errors.
+** Input: +n number of ADDRESS UNITS (not Cells) proposed to allot
+**        -n number of ADDRESS UNITS proposed to de-allot
+**         0 just do a consistency check
 **************************************************************************/
 void dictCheck(FICL_DICT *pDict, FICL_VM *pVM, int n)
 {
-    if ((n >= 0) && (dictCellsAvail(pDict) * sizeof (CELL) < n))
+    if ((n >= 0) && (dictCellsAvail(pDict) * (int)sizeof(CELL) < n))
     {
         vmThrowErr(pVM, "Error: dictionary full");
     }
 
-    if ((n <= 0) && (dictCellsUsed(pDict) * sizeof (CELL) < -n))
+    if ((n <= 0) && (dictCellsUsed(pDict) * (int)sizeof(CELL) < -n))
     {
         vmThrowErr(pVM, "Error: dictionary underflow");
     }
@@ -361,9 +399,29 @@ FICL_DICT  *dictCreateHashed(unsigned nCells, unsigned nHash)
     memset(pDict, 0, sizeof (FICL_DICT));
     pDict->dict = ficlMalloc(nAlloc);
     assert(pDict->dict);
+
     pDict->size = nCells;
     dictEmpty(pDict, nHash);
     return pDict;
+}
+
+
+/**************************************************************************
+                        d i c t C r e a t e W o r d l i s t
+** Create and initialize an anonymous wordlist
+**************************************************************************/
+FICL_HASH *dictCreateWordlist(FICL_DICT *dp, int nBuckets)
+{
+    FICL_HASH *pHash;
+    
+    dictAlign(dp);
+    pHash    = (FICL_HASH *)dp->here;
+    dictAllot(dp, sizeof (FICL_HASH) 
+        + (nBuckets-1) * sizeof (FICL_WORD *));
+
+    pHash->size = nBuckets;
+    hashReset(pHash);
+    return pHash;
 }
 
 
@@ -406,6 +464,84 @@ void dictEmpty(FICL_DICT *pDict, unsigned nHash)
 
 
 /**************************************************************************
+                        d i c t H a s h S u m m a r y
+** Calculate a figure of merit for the dictionary hash table based
+** on the average search depth for all the words in the dictionary,
+** assuming uniform distribution of target keys. The figure of merit
+** is the ratio of the total search depth for all keys in the table
+** versus a theoretical optimum that would be achieved if the keys
+** were distributed into the table as evenly as possible. 
+** The figure would be worse if the hash table used an open
+** addressing scheme (i.e. collisions resolved by searching the
+** table for an empty slot) for a given size table.
+**************************************************************************/
+#if FICL_WANT_FLOAT
+void dictHashSummary(FICL_VM *pVM)
+{
+    FICL_DICT *dp = vmGetDict(pVM);
+    FICL_HASH *pFHash;
+    FICL_WORD **pHash;
+    unsigned size;
+    FICL_WORD *pFW;
+    unsigned i;
+    int nMax = 0;
+    int nWords = 0;
+    int nFilled;
+    double avg = 0.0;
+    double best;
+    int nAvg, nRem, nDepth;
+
+    dictCheck(dp, pVM, 0);
+
+    pFHash = dp->pSearch[dp->nLists - 1];
+    pHash  = pFHash->table;
+    size   = pFHash->size;
+    nFilled = size;
+
+    for (i = 0; i < size; i++)
+    {
+        int n = 0;
+        pFW = pHash[i];
+
+        while (pFW)
+        {
+            ++n;
+            ++nWords;
+            pFW = pFW->link;
+        }
+
+        avg += (double)(n * (n+1)) / 2.0;
+
+        if (n > nMax)
+            nMax = n;
+        if (n == 0)
+            --nFilled;
+    }
+
+    /* Calc actual avg search depth for this hash */
+    avg = avg / nWords;
+
+    /* Calc best possible performance with this size hash */
+    nAvg = nWords / size;
+    nRem = nWords % size;
+    nDepth = size * (nAvg * (nAvg+1))/2 + (nAvg+1)*nRem;
+    best = (double)nDepth/nWords;
+
+    sprintf(pVM->pad, 
+        "%d bins, %2.0f%% filled, Depth: Max=%d, Avg=%2.1f, Best=%2.1f, Score: %2.0f%%", 
+        size,
+        (double)nFilled * 100.0 / size, nMax,
+        avg, 
+        best,
+        100.0 * best / avg);
+
+    ficlTextOut(pVM, pVM->pad, 1);
+
+    return;
+}
+#endif
+
+/**************************************************************************
                         d i c t I n c l u d e s
 ** Returns TRUE iff the given pointer is within the address range of 
 ** the dictionary.
@@ -416,7 +552,6 @@ int dictIncludes(FICL_DICT *pDict, void *p)
         &&  (p <  (void *)(&pDict->dict + pDict->size)) 
            );
 }
-
 
 /**************************************************************************
                         d i c t L o o k u p
@@ -447,15 +582,16 @@ FICL_WORD *dictLookup(FICL_DICT *pDict, STRINGINFO si)
 
 
 /**************************************************************************
-                        d i c t L o o k u p L o c
+                        f i c l L o o k u p L o c
 ** Same as dictLookup, but looks in system locals dictionary first...
 ** Assumes locals dictionary has only one wordlist...
 **************************************************************************/
 #if FICL_WANT_LOCALS
-FICL_WORD *dictLookupLoc(FICL_DICT *pDict, STRINGINFO si)
+FICL_WORD *ficlLookupLoc(FICL_SYSTEM *pSys, STRINGINFO si)
 {
     FICL_WORD *pFW = NULL;
-    FICL_HASH *pHash = ficlGetLoc()->pForthWords;
+	FICL_DICT *pDict = pSys->dp;
+    FICL_HASH *pHash = ficlGetLoc(pSys)->pForthWords;
     int i;
     UNS16 hashCode   = hashHashCode(si);
 
@@ -607,7 +743,8 @@ UNS16 hashHashCode(STRINGINFO si)
     if (si.count == 0)
         return 0;
 
-    for (cp = (UNS8 *)si.cp; *cp && si.count; cp++, si.count--)
+    /* changed to run without errors under Purify -- lch */
+    for (cp = (UNS8 *)si.cp; si.count && *cp; cp++, si.count--)
     {
         code = (UNS16)((code << 4) + tolower(*cp));
         shift = (UNS16)(code & 0xf000);
@@ -620,6 +757,8 @@ UNS16 hashHashCode(STRINGINFO si)
 
     return (UNS16)code;
 }
+
+
 
 
 /**************************************************************************
@@ -660,7 +799,7 @@ void hashInsertWord(FICL_HASH *pHash, FICL_WORD *pFW)
 **************************************************************************/
 FICL_WORD *hashLookup(FICL_HASH *pHash, STRINGINFO si, UNS16 hashCode)
 {
-    FICL_COUNT nCmp = (FICL_COUNT)si.count;
+    FICL_UNS nCmp = si.count;
     FICL_WORD *pFW;
     UNS16 hashIdx;
 
@@ -705,6 +844,7 @@ void hashReset(FICL_HASH *pHash)
     }
 
     pHash->link = NULL;
+    pHash->name = NULL;
     return;
 }
 
@@ -716,11 +856,12 @@ void hashReset(FICL_HASH *pHash)
 
 void dictCheckThreshold(FICL_DICT* dp)
 {
-    if( dictCellsAvail(dp) < dictThreshold ) {
-        dp->dict = ficlMalloc( dictIncrease * sizeof (CELL) );
+    if( dictCellsAvail(dp) < dictThreshold.u ) {
+        dp->dict = ficlMalloc( dictIncrease.u * sizeof (CELL) );
         assert(dp->dict);
         dp->here = dp->dict;
-        dp->size = dictIncrease;
+        dp->size = dictIncrease.u;
+        dictAlign(dp);
     }
 }
 

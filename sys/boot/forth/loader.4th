@@ -22,13 +22,13 @@
 \ OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 \ SUCH DAMAGE.
 \
-\ $FreeBSD: src/sys/boot/forth/loader.4th,v 1.5.2.1 2000/07/07 00:14:34 obrien Exp $
-\ $DragonFly: src/sys/boot/forth/loader.4th,v 1.2 2003/06/17 04:28:18 dillon Exp $
+\ $FreeBSD: src/sys/boot/forth/loader.4th,v 1.24 2002/05/24 02:28:58 gordon Exp $
+\ $DragonFly: src/sys/boot/forth/loader.4th,v 1.3 2003/11/10 06:08:34 dillon Exp $
 
 s" arch-alpha" environment? [if] [if]
 	s" loader_version" environment?  [if]
-		3 < [if]
-			.( Loader version 0.3+ required) cr
+		12 < [if]
+			.( Loader version 1.2+ required) cr
 			abort
 		[then]
 	[else]
@@ -39,8 +39,8 @@ s" arch-alpha" environment? [if] [if]
 
 s" arch-i386" environment? [if] [if]
 	s" loader_version" environment?  [if]
-		8 < [if]
-			.( Loader version 0.8+ required) cr
+		11 < [if]
+			.( Loader version 1.1+ required) cr
 			abort
 		[then]
 	[else]
@@ -49,136 +49,57 @@ s" arch-i386" environment? [if] [if]
 	[then]
 [then] [then]
 
-include /boot/support.4th
+256 dictthreshold !  \ 256 cells minimum free space
+2048 dictincrease !  \ 2048 additional cells each time
 
-only forth definitions also support-functions
+include /boot/support.4th
 
 \ ***** boot-conf
 \
 \	Prepares to boot as specified by loaded configuration files.
 
-also support-functions definitions
-
-: bootpath s" /boot/" ;
-: modulepath s" module_path" ;
-: saveenv ( addr len | 0 -1 -- addr' len | 0 -1 )
-  dup -1 = if exit then
-  dup allocate abort" Out of memory"
-  swap 2dup 2>r
-  move
-  2r>
-;
-: freeenv ( addr len | 0 -1 )
-  -1 = if drop else free abort" Freeing error" then
-;
-: restoreenv  ( addr len | 0 -1 -- )
-  dup -1 = if ( it wasn't set )
-    2drop
-    modulepath unsetenv
-  else
-    over >r
-    modulepath setenv
-    r> free abort" Freeing error"
-  then
-;
-
 only forth also support-functions also builtins definitions
 
-: boot-conf  ( args 1 | 0 "args" -- flag )
-  0 1 unload drop
+: boot
+  0= if ( interpreted ) get_arguments then
 
-  0= if ( interpreted )
-    \ Get next word on the command line
-    bl word count
-    ?dup 0= if ( there wasn't anything )
-      drop 0
-    else ( put in the number of strings )
-      1
+  \ Unload only if a path was passed
+  dup if
+    >r over r> swap
+    c@ [char] - <> if
+      0 1 unload drop
+    else
+      s" kernelname" getenv? if ( a kernel has been loaded )
+        1 boot exit
+      then
+      load_kernel_and_modules
+      ?dup if exit then
+      0 1 boot exit
     then
-  then ( interpreted )
-
-  if ( there are arguments )
-    \ Try to load the kernel
-    s" kernel_options" getenv dup -1 = if drop 2dup 1 else 2over 2 then
-
-    1 load if ( load command failed )
-      \ Remove garbage from the stack
-
-      \ Set the environment variable module_path, and try loading
-      \ the kernel again.
-
-      \ First, save module_path value
-      modulepath getenv saveenv dup -1 = if 0 swap then 2>r
-
-      \ Sets the new value
-      2dup modulepath setenv
-
-      \ Try to load the kernel
-      s" load ${kernel} ${kernel_options}" ['] evaluate catch
-      if ( load failed yet again )
-	\ Remove garbage from the stack
-	2drop
-
-	\ Try prepending /boot/
-	bootpath 2over nip over + allocate
-	if ( out of memory )
-	  2drop 2drop
-	  2r> restoreenv
-	  100 exit
-	then
-
-	0 2swap strcat 2swap strcat
-	2dup modulepath setenv
-
-	drop free if ( freeing memory error )
-	  2drop
-	  2r> restoreenv
-	  100 exit
-	then
- 
-	\ Now, once more, try to load the kernel
-	s" load ${kernel} ${kernel_options}" ['] evaluate catch
-	if ( failed once more )
-	  2drop
-	  2r> restoreenv
-	  100 exit
-	then
-
-      else ( we found the kernel on the path passed )
-
-	2drop ( discard command line arguments )
-
-      then ( could not load kernel from directory passed )
-
-      \ Load the remaining modules, if the kernel was loaded at all
-      ['] load_modules catch if 2r> restoreenv 100 exit then
-
-      \ Call autoboot to perform the booting
-      0 1 autoboot
-
-      \ Keep new module_path
-      2r> freeenv
-
-      exit
-    then ( could not load kernel with name passed )
-
-    2drop ( discard command line arguments )
-
-  else ( try just a straight-forward kernel load )
-    s" load ${kernel} ${kernel_options}" ['] evaluate catch
-    if ( kernel load failed ) 2drop 100 exit then
-
-  then ( there are command line arguments )
-
-  \ Load the remaining modules, if the kernel was loaded at all
-  ['] load_modules catch if 100 exit then
-
-  \ Call autoboot to perform the booting
-  0 1 autoboot
+  else
+    s" kernelname" getenv? if ( a kernel has been loaded )
+      1 boot exit
+    then
+    load_kernel_and_modules
+    ?dup if exit then
+    0 1 boot exit
+  then
+  load_kernel_and_modules
+  ?dup 0= if 0 1 boot then
 ;
 
-also forth definitions
+: boot-conf
+  0= if ( interpreted ) get_arguments then
+  0 1 unload drop
+  load_kernel_and_modules
+  ?dup 0= if 0 1 autoboot then
+;
+
+also forth definitions also builtins
+
+builtin: boot
 builtin: boot-conf
+
 only forth definitions also support-functions
 
 \ ***** check-password
@@ -214,6 +135,7 @@ only forth definitions also support-functions
 : start  ( -- ) ( throws: abort & user-defined )
   s" /boot/defaults/loader.conf" initialize
   include_conf_files
+  include_nextboot_file
   \ Will *NOT* try to load kernel and modules if no configuration file
   \ was succesfully loaded!
   any_conf_read? if
@@ -231,6 +153,7 @@ only forth definitions also support-functions
 : initialize ( -- flag )
   s" /boot/defaults/loader.conf" initialize
   include_conf_files
+  include_nextboot_file
   any_conf_read?
 ;
 
@@ -366,6 +289,24 @@ only forth definitions also support-functions
 : ignore true ;         \ For use in load error commands
 
 \ Return to strict forth vocabulary
+
+: #type
+  over - >r
+  type
+  r> spaces
+;
+
+: .? 2 spaces 2swap 15 #type 2 spaces type cr ;
+
+: ?
+  ['] ? execute
+  s" boot-conf" s" load kernel and modules, then autoboot" .?
+  s" read-conf" s" read a configuration file" .?
+  s" enable-module" s" enable loading of a module" .?
+  s" disable-module" s" disable loading of a module" .?
+  s" toggle-module" s" toggle loading of a module" .?
+  s" show-module" s" show module load data" .?
+;
 
 only forth also
 

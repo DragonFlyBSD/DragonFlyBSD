@@ -25,14 +25,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-# $FreeBSD: src/sys/boot/pc98/boot0.5/start.s,v 1.1.2.1 2000/09/11 09:19:46 kato Exp $
-# $DragonFly: src/sys/boot/pc98/boot0.5/Attic/start.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD: src/sys/boot/pc98/boot0.5/start.s,v 1.2 2003/05/02 09:33:12 kato Exp $
+# $DragonFly: src/sys/boot/pc98/boot0.5/Attic/start.s,v 1.3 2003/11/10 06:08:38 dillon Exp $
 #
 	.global	start
 	.code16
 
 	.text
 start:
+	jmp	start1
+
+	.org	0x2d4
+start1:
 	cli
 	movw	%cs, %ax
 	movw	%ax, %ds

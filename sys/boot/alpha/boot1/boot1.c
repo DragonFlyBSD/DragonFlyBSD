@@ -1,7 +1,7 @@
 /*
- * $FreeBSD: src/sys/boot/alpha/boot1/boot1.c,v 1.7.2.1 2000/10/28 01:03:33 gallatin Exp $
- * $DragonFly: src/sys/boot/alpha/boot1/Attic/boot1.c,v 1.3 2003/08/27 11:42:33 rob Exp $
  * From	$NetBSD: bootxx.c,v 1.4 1997/09/06 14:08:29 drochner Exp $ 
+ * $FreeBSD$
+ * $DragonFly: src/sys/boot/alpha/boot1/Attic/boot1.c,v 1.4 2003/11/10 06:08:25 dillon Exp $
  */
 
 /*
@@ -33,16 +33,39 @@
 
 #include <string.h>
 #include <sys/param.h>
+#include <sys/dirent.h>
 
 #include <machine/prom.h>
 #include <machine/rpb.h>
 
 #define DEBUGxx
 
+void puts(const char *s);
+void puthex(u_long v);
+static int dskread(void *, u_int64_t, size_t);
+
+#define printf(...) \
+while (0)
+
+#define memcpy(dst, src, len) \
+bcopy(src, dst, len)
+
+#include "ufsread.c"
+
 extern end[];
 int errno;
 
 char *heap = (char*) end;
+
+void
+bcopy(const void *src, void *dst, size_t len) 
+{
+	const char *s;
+	char *d;
+		 
+	for (d = dst, s = src; len; len--)
+		*d++ = *s++;
+}
 
 void
 putchar(int c)
@@ -69,20 +92,6 @@ puts(const char *s)
 {
     while (*s)
 	putchar(*s++);
-}
-
-void *
-malloc(size_t size)
-{
-    char *p = heap;
-    size = (size + 7) & ~7;
-    heap += size;
-    return p;
-}
-
-void
-free(void * p)
-{
 }
 
 void
@@ -125,6 +134,7 @@ puthex(u_long v)
     int digit;
     char hex[] = "0123456789abcdef";
 
+    puts("0x");
     if (!v) {
 	puts("0");
 	return;
@@ -139,11 +149,11 @@ puthex(u_long v)
 
 #endif
 
-void
-devread(char *buf, int block, size_t size)
+int
+dskread(void *buf, u_int64_t block, size_t size)
 {
 #ifdef DEBUG
-    puts("devread(");
+    puts("dskread(");
     puthex((u_long)buf);
     puts(",");
     puthex(block);
@@ -152,7 +162,8 @@ devread(char *buf, int block, size_t size)
     puts(")\n");
 #endif
 
-    prom_read(prom_fd, size, buf, block);
+    prom_read(prom_fd, size * DEV_BSIZE, buf, block);
+    return (0);
 }
 
 static inline void
@@ -190,17 +201,22 @@ getfilename(char *filename, const char *defname)
     return;
 }
 
+static struct dmadat __dmadat;
+
 static inline void
 loadfile(char *name, char *addr)
 {
     int n;
     char *p;
+    ino_t ino;
 
     puts("Loading ");
     puts(name);
     puts("\n");
 
-    if (openrd(name)) {
+    dmadat = &__dmadat;
+
+    if (devopen() || (ino = lookup(name)) == 0) {
 	puts("Can't open file ");
 	puts(name);
 	puts("\n");
@@ -209,10 +225,16 @@ loadfile(char *name, char *addr)
 
     p = addr;
     do {
-	n = readit(p, 1024);
+	    n = fsread(ino, p, VBLKSIZE);
+	    if (n < 0) {
+		puts("Can't read file ");
+		puts(name);
+		puts("\n");
+		halt();
+	    }
 	p += n;
 	twiddle();
-    } while (n > 0);
+    } while (n == VBLKSIZE);
 
     devclose();
 }
@@ -231,7 +253,7 @@ main()
     char *name = "/boot/loader";
     char *p;
     char filename[512];
-    void (*entry) (void);
+    void (*entry)(void);
     u_long start, freq;
     int	i;
 

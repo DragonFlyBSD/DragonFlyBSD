@@ -1,9 +1,10 @@
-# $FreeBSD: src/sys/boot/arc/lib/Makefile,v 1.4.2.1 2002/07/19 18:46:28 ru Exp $
-# $DragonFly: src/sys/boot/arc/lib/Attic/Makefile,v 1.2 2003/06/17 04:28:16 dillon Exp $
+# $FreeBSD: src/sys/boot/arc/lib/Makefile,v 1.9 2002/05/13 10:53:24 ru Exp $
+# $DragonFly: src/sys/boot/arc/lib/Attic/Makefile,v 1.3 2003/11/10 06:08:31 dillon Exp $
 
 LIB=		arc
 INTERNALLIB=	true
 
+CFLAGS+=	-ffreestanding
 .PATH:		${.CURDIR}/arch/${MACHINE_ARCH}
 # XXX hack to pick up stand.h
 LIBSTANDDIR=	${.CURDIR}/../../../../lib/libstand

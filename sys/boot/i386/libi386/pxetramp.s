@@ -12,8 +12,8 @@
 # warranties of merchantability and fitness for a particular
 # purpose.
 #
-# $FreeBSD: src/sys/boot/i386/libi386/pxetramp.s,v 1.2.2.1 2000/05/04 13:51:24 ps Exp $
-# $DragonFly: src/sys/boot/i386/libi386/Attic/pxetramp.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD: src/sys/boot/i386/libi386/pxetramp.s,v 1.3 2001/10/04 10:18:00 jhb Exp $
+# $DragonFly: src/sys/boot/i386/libi386/Attic/pxetramp.s,v 1.3 2003/11/10 06:08:36 dillon Exp $
 
 # ph33r this
 
@@ -29,11 +29,11 @@ __bangpxeentry:
 		.byte   0x9a			# far call
 __bangpxeoff:	.word   0x0000			# offset
 __bangpxeseg:	.word   0x0000			# segment
-		add $6, %sp			# restore stack
-		.byte 0xcb			# to vm86int
+		add	$6, %sp			# restore stack
+		.byte	0xcb			# to vm86int
 #
 __pxenventry:
 		.byte   0x9a			# far call
 __pxenvoff:	.word   0x0000			# offset
 __pxenvseg:	.word   0x0000			# segment
-		.byte 0xcb			# to vm86int
+		.byte	0xcb			# to vm86int

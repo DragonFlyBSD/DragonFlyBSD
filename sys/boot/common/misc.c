@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/common/misc.c,v 1.6.2.1 2000/07/06 00:34:02 ps Exp $
- * $DragonFly: src/sys/boot/common/misc.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ * $FreeBSD: src/sys/boot/common/misc.c,v 1.8 2003/08/25 23:30:41 obrien Exp $
+ * $DragonFly: src/sys/boot/common/misc.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
  */
 
 #include <string.h>

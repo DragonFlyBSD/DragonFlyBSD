@@ -1,7 +1,7 @@
 /* 
- * $FreeBSD: src/sys/boot/alpha/libalpha/start.S,v 1.6.2.2 2001/03/04 05:23:01 obrien Exp $ 
- * $DragonFly: src/sys/boot/alpha/libalpha/Attic/start.S,v 1.2 2003/06/17 04:28:16 dillon Exp $ 
  * From: $NetBSD: start.S,v 1.4 1998/03/28 00:54:15 cgd Exp $ 
+ * $FreeBSD: src/sys/boot/alpha/libalpha/start.S,v 1.9 2001/03/04 04:38:14 obrien Exp $ 
+ * $DragonFly: src/sys/boot/alpha/libalpha/Attic/start.S,v 1.3 2003/11/10 06:08:30 dillon Exp $
  */
 
 /*  

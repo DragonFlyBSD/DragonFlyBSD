@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/i386/loader/conf.c,v 1.11.2.6 2002/04/08 13:50:09 sobomax Exp $
- * $DragonFly: src/sys/boot/pc32/loader/conf.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $FreeBSD: src/sys/boot/i386/loader/conf.c,v 1.24 2003/08/25 23:28:32 obrien Exp $
+ * $DragonFly: src/sys/boot/pc32/loader/conf.c,v 1.3 2003/11/10 06:08:36 dillon Exp $
  */
 
 #include <stand.h>
@@ -63,7 +63,7 @@ struct fs_ops *file_system[] = {
     &cd9660_fsops,
     &splitfs_fsops,
 #ifdef LOADER_GZIP_SUPPORT
-    &zipfs_fsops,
+    &gzipfs_fsops,
 #endif
 #ifdef LOADER_BZIP2_SUPPORT
     &bzipfs_fsops,
@@ -82,12 +82,12 @@ struct fs_ops *file_system[] = {
  * Sort formats so that those that can detect based on arguments
  * rather than reading the file go first.
  */
-extern struct module_format	i386_aout;
-extern struct module_format	i386_elf;
+extern struct file_format	i386_elf;
+extern struct file_format	amd64_elf;
 
-struct module_format *module_formats[] = {
+struct file_format *file_formats[] = {
     &i386_elf,
-    &i386_aout,
+    &amd64_elf,
     NULL
 };
 

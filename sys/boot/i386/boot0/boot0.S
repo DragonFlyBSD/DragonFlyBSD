@@ -12,9 +12,9 @@
 # warranties of merchantability and fitness for a particular
 # purpose.
 #
-
-# $FreeBSD: src/sys/boot/i386/boot0/boot0.s,v 1.14.2.6 2000/12/19 00:32:19 rnordier Exp $
-# $DragonFly: src/sys/boot/i386/boot0/Attic/boot0.S,v 1.2 2003/06/17 04:28:18 dillon Exp $
+#
+# $FreeBSD: src/sys/boot/i386/boot0/boot0.s,v 1.26 2003/06/01 20:41:04 obrien Exp $
+# $DragonFly: src/sys/boot/i386/boot0/Attic/boot0.S,v 1.3 2003/11/10 06:08:34 dillon Exp $
 
 # A 512-byte boot manager.
 
@@ -33,6 +33,7 @@
 
 		.set KEY_ENTER,0x1c		# Enter key scan code
 		.set KEY_F1,0x3b		# F1 key scan code
+		.set KEY_1,0x02			# #1 key scan code
 
 #
 # Addresses in the sector of embedded data values.
@@ -229,6 +230,9 @@ main.11:	xorb %ah,%ah			# BIOS: Get
 #
 		subb $KEY_F1,%al		# Less F1 scan code
 		cmpb $0x4,%al			# F1..F5?
+		jna main.12			# Yes
+		subb $(KEY_1 - KEY_F1),%al	# Less #1 scan code
+		cmpb $0x4,%al			# #1..#5?
 		ja main.10			# No
 #
 # We have a selection.
@@ -365,7 +369,7 @@ tables:
 #
 # These values indicate bootable types we know the names of
 #
-		.byte 0x1, 0x4, 0x6, 0xb, 0xc, 0xe, 0x63, 0x83
+		.byte 0x1, 0x4, 0x6, 0xb, 0xc, 0xe, 0x83
 		.byte 0x9f, 0xa5, 0xa6, 0xa9
 #
 # These are offsets that match the known names above and point to the strings
@@ -378,7 +382,6 @@ tables:
 		.byte os_dos-.			# Windows
 		.byte os_dos-.			# Windows
 		.byte os_dos-.			# Windows
-		.byte os_unix-. 		# UNIX
 		.byte os_linux-.		# Linux
 		.byte os_bsd-.			# BSD/OS
 		.byte os_freebsd-.		# FreeBSD
@@ -390,7 +393,6 @@ tables:
 #
 os_misc:	.ascii "?";    .byte '?'|0x80
 os_dos: 	.ascii "DO";   .byte 'S'|0x80
-os_unix:	.ascii "UNI";  .byte 'X'|0x80
 os_linux:	.ascii "Linu"; .byte 'x'|0x80
 os_freebsd:	.ascii "Free"
 os_bsd: 	.ascii "BS";   .byte 'D'|0x80

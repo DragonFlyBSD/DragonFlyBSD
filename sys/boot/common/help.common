@@ -5,6 +5,7 @@
 	?
 
 	The help command displays help on commands and their usage.
+	$DragonFly: src/sys/boot/common/help.common,v 1.2 2003/11/10 06:08:31 dillon Exp $
 
 	In command help, a term enclosed with <...> indicates a value as
 	described by the term.  A term enclosed with [...] is optional,
@@ -12,6 +13,11 @@
 
 	Some commands may not be available.  Use the '?' command to list
 	most available commands.
+
+	If needed, disable the use of ACPI with:
+
+	unset acpi_load
+	$hint.acpi.0.disabled="1"
 
 ################################################################################
 # Tautoboot DBoot after a delay
@@ -128,7 +134,7 @@
 	Sets the default set of kernel boot filename(s). It may be overridden
 	by setting the bootfile variable to a semicolon-separated list of
 	filenames, each of which will be searched for in the module_path
-	directories. The default bootfile set is "kernel;kernel.old".
+	directories. The default bootfile set is "kernel".
 
 ################################################################################
 # Tset Sboot_askname DPrompt for root device
@@ -200,7 +206,7 @@
 
 	Sets the list of directories which will be searched in for modules
 	named in a load command or implicitly required by a dependency. The
-	default module_path is "/;/boot;/modules".
+	default module_path is "/boot/kernel;/boot/modules".
 
 ################################################################################
 # Tset Sprompt DSet the command prompt
@@ -234,24 +240,30 @@
 		cannot be set below the default determined when the kernel
 		was compiled.
 
+	set kern.ipc.nsfbufs=<value>		NSFBUFS
+
+		Set the number of sendfile buffers to be allocated.  This
+		overrides the value determined when the kernel was compiled.
+
 	set kern.vm.kmem.size=<value>		VM_KMEM_SIZE
 
 		Sets the size of kernel memory (bytes).  This overrides
-		completely the value determined when the kernel was
-		compiled.
+		the value determined when the kernel was compiled.
 
-	set machdep.pccard.pcic_irq=<value>
+	set machdep.disable_mtrrs=1
 
-		Overrides the IRQ normally assigned to a PCCARD controller.
-		Typically the first available interrupt will be allocated,
-		which may conflict with other hardware.  If this value is
-		set to 0, an interrupt will not be assigned and the
-		controller will operate in polled mode only.
+		Disable the use of i686 MTRRs (i386 only)
 
 	set net.inet.tcp.tcbhashsize=<value>	TCBHASHSIZE
 
 		Overrides the compile-time set value of TCBHASHSIZE or
 		the preset default of 512.  Must be a power of 2.
+
+	hw.syscons.sc_no_suspend_vtswitch=<value>
+
+		Disable VT switching on suspend.
+
+		value is 0 (default) or non-zero to enable.
 
 	set hw.physmem=<value>			MAXMEM (i386 only)
 
@@ -264,6 +276,21 @@
 		On systems where memory cannot be accurately probed,
 		this option provides a hint as to the actual size of
 		system memory (which will be tested before use).
+
+	set hw.pci.allow_unsupported_io_range=<value>
+
+		Allow the PCI Bridge to pass through an unsupported
+		memory range assigned by the BIOS.
+
+		value is 0 (default) or non-zero to enable.
+
+	set hw.pci.enable_io_modes=<value>
+
+		Enable PCI resources which are left off by some BIOSes
+		or are not enabled correctly by the device driver.
+
+		value is 1 (default), but this may cause problems with
+		some peripherals.  Set to 0 to disable.
 
 ################################################################################
 # Tshow DShow the values of variables

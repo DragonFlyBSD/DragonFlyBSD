@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/i386/libi386/i386_module.c,v 1.3 1999/08/28 00:40:15 peter Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/i386_module.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $FreeBSD: src/sys/boot/i386/libi386/i386_module.c,v 1.12 2003/08/25 23:28:31 obrien Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/i386_module.c,v 1.3 2003/11/10 06:08:36 dillon Exp $
  */
 
 /*
@@ -44,6 +44,25 @@
 int
 i386_autoload(void)
 {
+    int		error;
+    int		disabled;
+    char	*rv;
+
     /* XXX use PnP to locate stuff here */
+
+    /* autoload ACPI support */
+    /* XXX should be in 4th keyed off acpi_load */
+    disabled = 0;
+    rv = getenv("hint.acpi.0.disabled");
+    if (rv != NULL && strncmp(rv, "0", 1) != 0) {
+	disabled = 1;
+    }
+
+    if (getenv("acpi_load") && (!disabled)) {
+	error = mod_load("acpi", NULL, 0, NULL);
+	if (error != 0)
+	    printf("ACPI autoload failed - %s\n", strerror(error));
+    }
+
     return(0);
 }

@@ -24,8 +24,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/pc98/boot2/probe_keyboard.c,v 1.1.4.1 2000/07/06 23:29:48 obrien Exp $
- * $DragonFly: src/sys/boot/pc98/boot2/Attic/probe_keyboard.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $FreeBSD: src/sys/boot/pc98/boot2/probe_keyboard.c,v 1.3 2003/09/08 09:11:20 obrien Exp $
+ * $DragonFly: src/sys/boot/pc98/boot2/Attic/probe_keyboard.c,v 1.3 2003/11/10 06:08:38 dillon Exp $
  */
 
 #include "boot.h"

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/btx/Makefile,v 1.6 1999/08/28 00:40:03 peter Exp $
-# $DragonFly: src/sys/boot/pc32/btx/Makefile,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $DragonFly: src/sys/boot/pc32/btx/Makefile,v 1.3 2003/11/10 06:08:35 dillon Exp $
 
 SUBDIR=	btx btxldr lib
 

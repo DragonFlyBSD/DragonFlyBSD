@@ -1,7 +1,7 @@
 /*
- * $FreeBSD: src/sys/boot/alpha/libalpha/getsecs.c,v 1.2 1999/08/28 00:39:27 peter Exp $
- * $DragonFly: src/sys/boot/alpha/libalpha/Attic/getsecs.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  * From:	$NetBSD: getsecs.c,v 1.5 1998/01/05 07:02:49 perry Exp $	
+ * $FreeBSD: src/sys/boot/alpha/libalpha/getsecs.c,v 1.2 1999/08/28 00:39:27 peter Exp $
+ * $DragonFly: src/sys/boot/alpha/libalpha/Attic/getsecs.c,v 1.3 2003/11/10 06:08:30 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/boot/alpha/common/conf.c,v 1.1.2.1 2000/05/04 13:50:47 ps Exp $
- *	$DragonFly: src/sys/boot/alpha/common/Attic/conf.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ *	$FreeBSD: src/sys/boot/alpha/common/conf.c,v 1.4 2002/12/19 19:34:58 jake Exp $
+ *	$DragonFly: src/sys/boot/alpha/common/Attic/conf.c,v 1.3 2003/11/10 06:08:29 dillon Exp $
  */
 
 #include <stand.h>
@@ -66,7 +66,7 @@ struct fs_ops *file_system[] = {
 #ifdef LOADER_NET_SUPPORT
     &nfs_fsops,
 #endif
-    &zipfs_fsops,
+    &gzipfs_fsops,
     NULL
 };
 
@@ -82,9 +82,9 @@ struct netif_driver *netif_drivers[] = {
  * Sort formats so that those that can detect based on arguments
  * rather than reading the file go first.
  */
-extern struct module_format alpha_elf;
+extern struct file_format alpha_elf;
 
-struct module_format *module_formats[] = {
+struct file_format *file_formats[] = {
     &alpha_elf,
     NULL
 };

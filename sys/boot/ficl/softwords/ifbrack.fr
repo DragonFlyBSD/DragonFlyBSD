@@ -1,30 +1,23 @@
 \ ** ficl/softwords/ifbrack.fr
 \ ** ANS conditional compile directives [if] [else] [then]
 \ ** Requires ficl 2.0 or greater...
+\
+\ $FreeBSD: src/sys/boot/ficl/softwords/ifbrack.fr,v 1.3 2002/04/09 17:45:27 dcs Exp $
+\ $DragonFly: src/sys/boot/ficl/softwords/ifbrack.fr,v 1.3 2003/11/10 06:08:34 dillon Exp $
 
-\ $FreeBSD: src/sys/boot/ficl/softwords/ifbrack.fr,v 1.1 1999/09/29 04:43:16 dcs Exp $
-\ $DragonFly: src/sys/boot/ficl/softwords/ifbrack.fr,v 1.2 2003/06/17 04:28:18 dillon Exp $
-
-hidden dup >search ficl-set-current
+hide
 
 : ?[if]   ( c-addr u -- c-addr u flag )
-    2dup 2dup
-    s" [if]" compare 0= >r
-    s" [IF]" compare 0= r> 
-    or
+    2dup s" [if]" compare-insensitive 0=
 ;
 
 : ?[else]   ( c-addr u -- c-addr u flag )
-    2dup 2dup
-    s" [else]" compare 0= >r
-    s" [ELSE]" compare 0= r> 
-    or
+    2dup s" [else]" compare-insensitive 0=
 ;
 
 : ?[then]   ( c-addr u -- c-addr u flag )
-    2dup 2dup
-    s" [then]" compare 0= >r
-    s" [THEN]" compare 0= r> 
+    2dup s" [then]" compare-insensitive 0= >r
+    2dup s" [endif]" compare-insensitive 0= r> 
     or
 ;
 
@@ -53,5 +46,6 @@ set-current
 0= if postpone [else] then ;  immediate
 
 : [then]  ( -- )  ;  immediate
+: [endif]  ( -- )  ;  immediate
 
 previous

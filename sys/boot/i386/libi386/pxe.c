@@ -1,8 +1,6 @@
-/*
+/*-
  * Copyright (c) 2000 Alfred Perlstein <alfred@freebsd.org>
- * All rights reserved.
  * Copyright (c) 2000 Paul Saab <ps@freebsd.org>
- * All rights reserved.
  * Copyright (c) 2000 John Baldwin <jhb@freebsd.org>
  * All rights reserved.
  *
@@ -27,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/i386/libi386/pxe.c,v 1.3.2.9 2001/03/15 08:35:54 ps Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/pxe.c,v 1.3 2003/11/09 02:22:33 dillon Exp $
+ * $FreeBSD: src/sys/boot/i386/libi386/pxe.c,v 1.20 2003/08/25 23:28:31 obrien Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/pxe.c,v 1.4 2003/11/10 06:08:36 dillon Exp $
  */
 
 #include <stand.h>
@@ -252,15 +250,15 @@ pxe_strategy(void *devdata, int flag, daddr_t dblk, size_t size,
 static int
 pxe_open(struct open_file *f, ...)
 {
-    __va_list args;
+    va_list args;
     char *devname;		/* Device part of file name (or NULL). */
     char temp[FNAME_SIZE];
     int error = 0;
     int i;
 	
-    __va_start(args, f);
-    devname = __va_arg(args, char*);
-    __va_end(args);
+    va_start(args, f);
+    devname = va_arg(args, char*);
+    va_end(args);
 
     /* On first open, do netif open, mount, etc. */
     if (pxe_opens == 0) {
@@ -287,10 +285,10 @@ pxe_open(struct open_file *f, ...)
 		if (!rootpath[1])
 			strcpy(rootpath, PXENFSROOTPATH);
 
-		for (i = 0; i < FNAME_SIZE; i++)
+		for (i = 0; rootpath[i] != '\0' && i < FNAME_SIZE; i++)
 			if (rootpath[i] == ':')
 				break;
-		if (i && i != FNAME_SIZE) {
+		if (i && i != FNAME_SIZE && rootpath[i] == ':') {
 			rootpath[i++] = '\0';
 			if (inet_addr(&rootpath[0]) != INADDR_NONE)
 				rootip.s_addr = inet_addr(&rootpath[0]);

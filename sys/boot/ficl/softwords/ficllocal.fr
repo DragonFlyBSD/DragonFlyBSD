@@ -8,7 +8,7 @@
 \           1 = found --
 \
 \ $FreeBSD: src/sys/boot/ficl/softwords/ficllocal.fr,v 1.1 1999/09/29 04:43:15 dcs Exp $
-\ $DragonFly: src/sys/boot/ficl/softwords/ficllocal.fr,v 1.2 2003/06/17 04:28:18 dillon Exp $
+\ $DragonFly: src/sys/boot/ficl/softwords/ficllocal.fr,v 1.3 2003/11/10 06:08:34 dillon Exp $
 
 hide
 0 constant zero

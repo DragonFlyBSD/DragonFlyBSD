@@ -1,7 +1,7 @@
 /* 
- * $FreeBSD: src/sys/boot/alpha/libalpha/bbinfo.h,v 1.2 1999/08/28 00:39:26 peter Exp $
- * $DragonFly: src/sys/boot/alpha/libalpha/Attic/bbinfo.h,v 1.2 2003/06/17 04:28:16 dillon Exp $
  * From $NetBSD: bbinfo.h,v 1.2 1997/04/06 08:40:57 cgd Exp $ 
+ * $FreeBSD: src/sys/boot/alpha/libalpha/bbinfo.h,v 1.2 1999/08/28 00:39:26 peter Exp $
+ * $DragonFly: src/sys/boot/alpha/libalpha/Attic/bbinfo.h,v 1.3 2003/11/10 06:08:29 dillon Exp $
  */
 
 /*

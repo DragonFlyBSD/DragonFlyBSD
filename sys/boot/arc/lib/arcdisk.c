@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/arc/lib/arcdisk.c,v 1.3.2.1 2001/01/05 17:37:51 mjacob Exp $
- * $DragonFly: src/sys/boot/arc/lib/Attic/arcdisk.c,v 1.3 2003/11/09 02:22:30 dillon Exp $
+ * $FreeBSD$
+ * $DragonFly: src/sys/boot/arc/lib/Attic/arcdisk.c,v 1.4 2003/11/10 06:08:31 dillon Exp $
  */
 
 /*
@@ -40,8 +40,6 @@
 
 #include <stand.h>
 
-#include <sys/disklabel.h>
-#include <sys/diskslice.h>
 
 #include <machine/stdarg.h>
 
@@ -150,11 +148,11 @@ bd_open(struct open_file *f, ...)
     int				error;
     int				unit;
     u_int32_t			fd;
-    __va_list			ap;
+    va_list			ap;
 
-    __va_start(ap, f);
-    dev = __va_arg(ap, struct arc_devdesc *);
-    __va_end(ap);
+    va_start(ap, f);
+    dev = va_arg(ap, struct arc_devdesc *);
+    va_end(ap);
 
     unit = dev->d_kind.arcdisk.unit;
     if (unit >= nbdinfo) {

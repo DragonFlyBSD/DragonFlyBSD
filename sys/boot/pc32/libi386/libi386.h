@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/i386/libi386/libi386.h,v 1.11.2.3 2001/12/21 22:19:58 jhb Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/libi386.h,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $FreeBSD: src/sys/boot/i386/libi386/libi386.h,v 1.16 2003/05/01 03:56:29 peter Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/libi386.h,v 1.3 2003/11/10 06:08:36 dillon Exp $
  */
 
 
@@ -85,10 +85,16 @@ ssize_t	i386_copyin(const void *src, vm_offset_t dest, const size_t len);
 ssize_t	i386_copyout(const vm_offset_t src, void *dest, const size_t len);
 ssize_t	i386_readin(const int fd, vm_offset_t dest, const size_t len);
 
+struct preloaded_file;
+void	bios_addsmapdata(struct preloaded_file *);
+void	bios_getsmap(void);
+
 void	bios_getmem(void);
 extern u_int32_t	bios_basemem;				/* base memory in bytes */
 extern u_int32_t	bios_extmem;				/* extended memory in bytes */
 extern vm_offset_t	memtop;
+
+void	biosacpi_detect();
 
 void	gateA20(void);
 
@@ -96,6 +102,8 @@ int	i386_autoload(void);
 
 int	bi_getboothowto(char *kargs);
 vm_offset_t	bi_copyenv(vm_offset_t addr);
-int	bi_load(char *args, int *howtop, int *bootdevp, vm_offset_t *bip);
+int	bi_load32(char *args, int *howtop, int *bootdevp, vm_offset_t *bip,
+	    vm_offset_t *modulep, vm_offset_t *kernend);
+int	bi_load64(char *args, vm_offset_t *modulep, vm_offset_t *kernend);
 
 void	pxe_enable(void *pxeinfo);

@@ -1,5 +1,5 @@
-# $FreeBSD: src/sys/boot/pc98/boot2/Makefile,v 1.4.2.2 2002/08/07 16:31:53 ru Exp $
-# $DragonFly: src/sys/boot/pc98/boot2/Attic/Makefile,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD$
+# $DragonFly: src/sys/boot/pc98/boot2/Attic/Makefile,v 1.3 2003/11/10 06:08:38 dillon Exp $
 #
 
 PROG=	boot
@@ -9,14 +9,12 @@ SRCS+=	probe_keyboard.c io.c disk.c sys.c
 
 BINDIR=		/boot
 BINMODE=	444
-CFLAGS=		-elf -Os -fno-builtin -fforce-addr -fdata-sections \
-		-malign-functions=0 -malign-jumps=0 -malign-loops=0 \
-		-mpreferred-stack-boundary=2 -mrtd \
-		-DPC98 -DBOOTWAIT=${BOOTWAIT} -DTIMEOUT=${TIMEOUT}
+CFLAGS=		-elf -Os -mrtd \
+		-ffreestanding -fno-builtin -fno-guess-branch-probability \
+		-D_KERNEL -DPC98 -DBOOTWAIT=${BOOTWAIT} -DTIMEOUT=${TIMEOUT}
 CFLAGS+=	-DBOOTSEG=${BOOTSEG} -DBOOTSTACK=${BOOTSTACK}
 CFLAGS+=	${CWARNFLAGS}
-CFLAGS+=	-I${.CURDIR}/../../..
-
+CFLAGS+=	-I${.CURDIR}/../../.. -I.
 
 # By default, if a serial port is going to be used as console, use COM1
 # (aka /dev/ttyd0).
@@ -30,7 +28,7 @@ CFLAGS+=	-DCOMCONSOLE=${BOOT_COMCONSOLE_PORT} \
 
 # feature not implemented
 BOOT_COMCONSOLE_SPEED?=9600
-CFLAGS+=	-DCONSPEED=${BOOT_COMCONSOLE_SPEED}
+CFLAGS+=	-DCOMSPEED=${BOOT_COMCONSOLE_SPEED}
 
 # Enable code to take the default boot string from a fixed location on the
 # disk.  See nextboot(8) and README.386BSD for more info.
@@ -50,7 +48,7 @@ CFLAGS+=	-DCONSPEED=${BOOT_COMCONSOLE_SPEED}
 # SCSI and have BIOS drive number (da_unit_number + BOOT_HD_BIAS).  E.g.,
 # BOOT_HD_BIAS=1 makes da(0,a) correspond to 1:da(0,a) instead of 0:da(0,a).
 
-CLEANFILES+=	boot.nohdr boot.strip boot1 boot2 sizetest
+CLEANFILES+=	boot.nohdr boot.strip boot.ldr boot1 boot2 sizetest
 LDFLAGS+=	-N -Ttext 0 -nostdlib -e start
 NOSHARED=	YES
 NOMAN=
@@ -71,6 +69,9 @@ boot.nohdr:	boot
 	objcopy -S -O binary boot boot.nohdr
 	ls -l boot.nohdr
 
+boot.ldr:	boot.nohdr
+	dd if=boot.nohdr of=boot.ldr bs=8192 count=1 conv=sync
+
 boot1:		boot.nohdr
 	dd if=boot.nohdr of=boot1 bs=512 count=1
 
@@ -83,11 +84,24 @@ boot2:		boot.nohdr
 		exit 2 ; \
 	fi
 
-all:		boot1 boot2
+all:		boot.ldr boot1 boot2
 
 install:
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
+		boot.ldr ${DESTDIR}${BINDIR}/boot
+	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
 		boot1 boot2 ${DESTDIR}${BINDIR}
 
-.include <bsd.kern.mk>
+# If it's not there, don't consider it a target
+.if exists(${.CURDIR}/../../../i386/include)
+beforedepend ${OBJS}: machine
+
+machine:
+	ln -sf ${.CURDIR}/../../../i386/include machine
+
+.endif
+
+CLEANFILES+=	machine
+
+.include "${.CURDIR}/../../../conf/kern.mk"
 .include <bsd.prog.mk>

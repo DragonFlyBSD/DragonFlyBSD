@@ -1,5 +1,3 @@
-/* $FreeBSD: src/sys/boot/arc/lib/arch/alpha/setjmp.S,v 1.2 1999/08/28 00:39:40 peter Exp $ */
-/* $DragonFly: src/sys/boot/arc/lib/arch/alpha/Attic/setjmp.S,v 1.2 2003/06/17 04:28:16 dillon Exp $ */
 /*
  * Copyright (c) 1994, 1995, 1996 Carnegie-Mellon University.
  * All rights reserved.
@@ -25,6 +23,9 @@
  *
  * any improvements or extensions that they make and grant Carnegie the
  * rights to redistribute these changes.
+ *
+ * $FreeBSD: src/sys/boot/arc/lib/arch/alpha/setjmp.S,v 1.2 1999/08/28 00:39:40 peter Exp $
+ * $DragonFly: src/sys/boot/arc/lib/arch/alpha/Attic/setjmp.S,v 1.3 2003/11/10 06:08:31 dillon Exp $
  */
 
 #include <machine/asm.h>

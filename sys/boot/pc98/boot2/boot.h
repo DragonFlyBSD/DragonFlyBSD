@@ -24,16 +24,20 @@
  * the rights to redistribute these changes.
  *
  *	from: Mach, Revision 2.2  92/04/04  11:35:03  rpd
- * $FreeBSD: src/sys/boot/pc98/boot2/boot.h,v 1.2 1999/08/28 00:40:25 peter Exp $
- * $DragonFly: src/sys/boot/pc98/boot2/Attic/boot.h,v 1.3 2003/08/07 21:16:44 dillon Exp $
+ * $FreeBSD: src/sys/boot/pc98/boot2/boot.h,v 1.5 2002/10/03 16:20:14 nyan Exp $
+ * $DragonFly: src/sys/boot/pc98/boot2/Attic/boot.h,v 1.4 2003/11/10 06:08:38 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/time.h>
 
-#include <vfs/ufs/fs.h>
-#include <vfs/ufs/quota.h>
-#include <vfs/ufs/inode.h>
+typedef	int32_t	ufs_daddr_t;
+
+#define	MAXFRAG	8
+
+#include "quota.h"
+#include "inode.h"
+#include "fs.h"
 
 #define	RB_DUAL		0x40000		/* XXX */
 #define	RB_PROBEKBD	0x80000		/* XXX */

@@ -1,10 +1,8 @@
 /*
- * $FreeBSD: src/sys/boot/common/ls.c,v 1.8.2.2 2000/07/07 00:09:45 obrien Exp $
- * $DragonFly: src/sys/boot/common/ls.c,v 1.3 2003/08/07 21:16:44 dillon Exp $
- * From: $NetBSD: ls.c,v 1.3 1997/06/13 13:48:47 drochner Exp $
+ * $NetBSD: ls.c,v 1.3 1997/06/13 13:48:47 drochner Exp $
  */
 
-/*
+/*-
  * Copyright (c) 1993
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1996
@@ -37,12 +35,14 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/boot/common/ls.c,v 1.11 2003/08/25 23:30:41 obrien Exp $
+ * $DragonFly: src/sys/boot/common/ls.c,v 1.4 2003/11/10 06:08:31 dillon Exp $
  */
 
-
 #include <sys/param.h>
-#include <vfs/ufs/dinode.h>
-#include <vfs/ufs/dir.h>
+#include <ufs/ufs/dinode.h>
+#include <ufs/ufs/dir.h>
 
 #include <stand.h>
 #include <string.h>

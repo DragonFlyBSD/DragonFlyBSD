@@ -22,8 +22,8 @@
 \ OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 \ SUCH DAMAGE.
 \
-\ $FreeBSD: src/sys/boot/forth/support.4th,v 1.3.2.1 2000/07/07 00:15:53 obrien Exp $
-\ $DragonFly: src/sys/boot/forth/support.4th,v 1.2 2003/06/17 04:28:18 dillon Exp $
+\ $FreeBSD: src/sys/boot/forth/support.4th,v 1.15 2002/05/24 02:28:58 gordon Exp $
+\ $DragonFly: src/sys/boot/forth/support.4th,v 1.3 2003/11/10 06:08:34 dillon Exp $
 
 \ Loader.rc support functions:
 \
@@ -81,11 +81,27 @@
 8 constant before_load_error
 9 constant after_load_error
 
+\ I/O constants
+
+0 constant SEEK_SET
+1 constant SEEK_CUR
+2 constant SEEK_END
+
+0 constant O_RDONLY
+1 constant O_WRONLY
+2 constant O_RDWR
+
 \ Crude structure support
 
-: structure: create here 0 , 0 does> create @ allot ;
+: structure:
+  create here 0 , ['] drop , 0
+  does> create here swap dup @ allot cell+ @ execute
+;
 : member: create dup , over , + does> cell+ @ + ;
 : ;structure swap ! ;
+: constructor! >body cell+ ! ;
+: constructor: over :noname ;
+: ;constructor postpone ; swap cell+ ! ; immediate
 : sizeof ' >body @ state @ if postpone literal then ; immediate
 : offsetof ' >body cell+ @ state @ if postpone literal then ; immediate
 : ptr 1 cells member: ;
@@ -96,7 +112,12 @@
 structure: string
 	ptr .addr
 	int .len
+	constructor:
+	  0 over .addr !
+	  0 swap .len !
+	;constructor
 ;structure
+
 
 \ Module options linked list
 
@@ -112,13 +133,88 @@ structure: module
 	ptr module.next
 ;structure
 
+\ Internal loader structures
+structure: preloaded_file
+	ptr pf.name
+	ptr pf.type
+	ptr pf.args
+	ptr pf.metadata	\ file_metadata
+	int pf.loader
+	int pf.addr
+	int pf.size
+	ptr pf.modules	\ kernel_module
+	ptr pf.next	\ preloaded_file
+;structure
+
+structure: kernel_module
+	ptr km.name
+	\ ptr km.args
+	ptr km.fp	\ preloaded_file
+	ptr km.next	\ kernel_module
+;structure
+
+structure: file_metadata
+	int		md.size
+	2 member:	md.type	\ this is not ANS Forth compatible (XXX)
+	ptr		md.next	\ file_metadata
+	0 member:	md.data	\ variable size
+;structure
+
+structure: config_resource
+	ptr cf.name
+	int cf.type
+0 constant RES_INT
+1 constant RES_STRING
+2 constant RES_LONG
+	2 cells member: u
+;structure
+
+structure: config_device
+	ptr cd.name
+	int cd.unit
+	int cd.resource_count
+	ptr cd.resources	\ config_resource
+;structure
+
+structure: STAILQ_HEAD
+	ptr stqh_first	\ type*
+	ptr stqh_last	\ type**
+;structure
+
+structure: STAILQ_ENTRY
+	ptr stqe_next	\ type*
+;structure
+
+structure: pnphandler
+	ptr pnph.name
+	ptr pnph.enumerate
+;structure
+
+structure: pnpident
+	ptr pnpid.ident					\ char*
+	sizeof STAILQ_ENTRY cells member: pnpid.link	\ pnpident
+;structure
+
+structure: pnpinfo
+	ptr pnpi.desc
+	int pnpi.revision
+	ptr pnpi.module				\ (char*) module args
+	int pnpi.argc
+	ptr pnpi.argv
+	ptr pnpi.handler			\ pnphandler
+	sizeof STAILQ_HEAD member: pnpi.ident	\ pnpident
+	sizeof STAILQ_ENTRY member: pnpi.link	\ pnpinfo
+;structure
+
 \ Global variables
 
 string conf_files
+string nextboot_conf_file
 string password
-create module_options sizeof module.next allot
-create last_module_option sizeof module.next allot
+create module_options sizeof module.next allot 0 module_options !
+create last_module_option sizeof module.next allot 0 last_module_option !
 0 value verbose?
+0 value nextboot?
 
 \ Support string functions
 
@@ -150,6 +246,12 @@ create last_module_option sizeof module.next allot
 
 : 2>r postpone >r postpone >r ; immediate
 : 2r> postpone r> postpone r> ; immediate
+: 2r@ postpone 2r> postpone 2dup postpone 2>r ; immediate
+
+: getenv?
+  getenv
+  -1 = if false else drop true then
+;
 
 \ Private definitions
 
@@ -192,16 +294,32 @@ only forth also support-functions definitions
 string name_buffer
 string value_buffer
 
+\ Line by line file reading functions
+\
+\ exported:
+\	line_buffer
+\	end_of_file?
+\	fd
+\	read_line
+\	reset_line_reading
+
+vocabulary line-reading
+also line-reading definitions also
+
 \ File data temporary storage
 
-string line_buffer
 string read_buffer
 0 value read_buffer_ptr
 
 \ File's line reading function
 
+support-functions definitions
+
+string line_buffer
 0 value end_of_file?
 variable fd
+
+line-reading definitions
 
 : skip_newlines
   begin
@@ -277,8 +395,17 @@ variable fd
 ;
 
 : reset_line_buffer
+  line_buffer .addr @ ?dup if
+    free-memory
+  then
   0 line_buffer .addr !
   0 line_buffer .len !
+;
+
+support-functions definitions
+
+: reset_line_reading
+  0 to read_buffer_ptr
 ;
 
 : read_line
@@ -292,6 +419,8 @@ variable fd
   repeat
 ;
 
+only forth also support-functions definitions
+
 \ Conf file line parser:
 \ <line> ::= <spaces><name><spaces>'='<spaces><value><spaces>[<comment>] |
 \            <spaces>[<comment>]
@@ -299,11 +428,26 @@ variable fd
 \ <value> ::= '"'{<character_set>|'\'<anything>}'"' | <name>
 \ <character_set> ::= ASCII 32 to 126, except '\' and '"'
 \ <comment> ::= '#'{<anything>}
+\
+\ exported:
+\	line_pointer
+\	process_conf
+
+0 value line_pointer
+
+vocabulary file-processing
+also file-processing definitions
+
+\ parser functions
+\
+\ exported:
+\	get_assignment
+
+vocabulary parser
+also parser definitions also
 
 0 value parsing_function
-
 0 value end_of_line
-0 value line_pointer
 
 : end_of_line?
   line_pointer end_of_line =
@@ -483,6 +627,8 @@ variable fd
   end_of_line? 0= if syntax_error throw then
 ;
 
+file-processing definitions
+
 : get_assignment
   line_buffer .addr @ line_buffer .len @ + to end_of_line
   line_buffer .addr @ to line_pointer
@@ -497,6 +643,8 @@ variable fd
   parsing_function ['] white_space_4 =
   or or 0= if syntax_error throw then
 ;
+
+only forth also support-functions also file-processing definitions also
 
 \ Process line
 
@@ -513,6 +661,14 @@ variable fd
 
 : loader_conf_files?
   s" loader_conf_files" assignment_type?
+;
+
+: nextboot_flag?
+  s" nextboot_enable" assignment_type?
+;
+
+: nextboot_conf?
+  s" nextboot_conf" assignment_type?
 ;
 
 : verbose_flag?
@@ -566,6 +722,19 @@ variable fd
   then
   strdup
   conf_files .len ! conf_files .addr !
+;
+
+: set_nextboot_conf
+  nextboot_conf_file .addr @ ?dup if
+    free-memory
+  then
+  value_buffer .addr @ c@ [char] " = if
+    value_buffer .addr @ char+ value_buffer .len @ 2 chars -
+  else
+    value_buffer .addr @ value_buffer .len @
+  then
+  strdup
+  nextboot_conf_file .len ! nextboot_conf_file .addr !
 ;
 
 : append_to_module_options_list  ( addr -- )
@@ -718,6 +887,10 @@ variable fd
   then
 ;
 
+: set_nextboot_flag
+  yes_value? to nextboot?
+;
+
 : set_verbose
   yes_value? to verbose?
 ;
@@ -745,6 +918,8 @@ variable fd
 : process_assignment
   name_buffer .len @ 0= if exit then
   loader_conf_files?	if set_conf_files exit then
+  nextboot_flag?	if set_nextboot_flag exit then
+  nextboot_conf?	if set_nextboot_conf exit then
   verbose_flag?		if set_verbose exit then
   execute?		if execute_command exit then
   password?		if set_password exit then
@@ -765,10 +940,9 @@ variable fd
 \ not allocated, it's value (0) is used as flag.
 
 : free_buffers
-  line_buffer .addr @ dup if free then
   name_buffer .addr @ dup if free then
   value_buffer .addr @ dup if free then
-  or or if free_error throw then
+  or if free_error throw then
 ;
 
 : reset_assignment_buffers
@@ -779,6 +953,8 @@ variable fd
 ;
 
 \ Higher level file processing
+
+support-functions definitions
 
 : process_conf
   begin
@@ -793,36 +969,31 @@ variable fd
   repeat
 ;
 
-: create_null_terminated_string  { addr len -- addr' len }
-  len char+ allocate if out_of_memory throw then
-  >r
-  addr r@ len move
-  0 r@ len + c!
-  r> len
+: peek_file
+  0 to end_of_file?
+  reset_line_reading
+  O_RDONLY fopen fd !
+  fd @ -1 = if open_error throw then
+  reset_assignment_buffers
+  read_line
+  get_assignment
+  ['] process_assignment catch
+  ['] free_buffers catch
+  fd @ fclose
 ;
+  
+only forth also support-functions definitions
 
 \ Interface to loading conf files
 
 : load_conf  ( addr len -- )
   0 to end_of_file?
-  0 to read_buffer_ptr
-  create_null_terminated_string
-  over >r
-  fopen fd !
-  r> free-memory
+  reset_line_reading
+  O_RDONLY fopen fd !
   fd @ -1 = if open_error throw then
   ['] process_conf catch
   fd @ fclose
   throw
-;
-
-: initialize_support
-  0 read_buffer .addr !
-  0 conf_files .addr !
-  0 password .addr !
-  0 module_options !
-  0 last_module_option !
-  0 to verbose?
 ;
 
 : print_line
@@ -973,6 +1144,29 @@ variable current_conf_files
   repeat
 ;
 
+: get_nextboot_conf_file ( -- addr len )
+  nextboot_conf_file .addr @ nextboot_conf_file .len @ strdup
+;
+
+: rewrite_nextboot_file ( -- )
+  get_nextboot_conf_file
+  O_WRONLY fopen fd !
+  fd @ -1 = if open_error throw then
+  fd @ s' nextboot_enable="NO" ' fwrite
+  fd @ fclose
+;
+
+: include_nextboot_file
+  get_nextboot_conf_file
+  ['] peek_file catch
+  nextboot? if
+    get_nextboot_conf_file
+    ['] load_conf catch
+    process_conf_errors
+    ['] rewrite_nextboot_file catch
+  then
+;
+
 \ Module loading functions
 
 : load_module?
@@ -1095,16 +1289,396 @@ variable current_conf_files
   repeat
 ;
 
-\ Additional functions used in "start"
+\ h00h00 magic used to try loading either a kernel with a given name,
+\ or a kernel with the default name in a directory of a given name
+\ (the pain!)
+
+: bootpath s" /boot/" ;
+: modulepath s" module_path" ;
+
+\ Functions used to save and restore module_path's value.
+: saveenv ( addr len | -1 -- addr' len | 0 -1 )
+  dup -1 = if 0 swap exit then
+  strdup
+;
+: freeenv ( addr len | 0 -1 )
+  -1 = if drop else free abort" Freeing error" then
+;
+: restoreenv  ( addr len | 0 -1 -- )
+  dup -1 = if ( it wasn't set )
+    2drop
+    modulepath unsetenv
+  else
+    over >r
+    modulepath setenv
+    r> free abort" Freeing error"
+  then
+;
+
+: clip_args   \ Drop second string if only one argument is passed
+  1 = if
+    2swap 2drop
+    1
+  else
+    2
+  then
+;
+
+also builtins
+
+\ Parse filename from a comma-separated list
+
+: parse-; ( addr len -- addr' len-x addr x )
+  over 0 2swap
+  begin
+    dup 0 <>
+  while
+    over c@ [char] ; <>
+  while
+    1- swap 1+ swap
+    2swap 1+ 2swap
+  repeat then
+  dup 0 <> if
+    1- swap 1+ swap
+  then
+  2swap
+;
+
+\ Try loading one of multiple kernels specified
+
+: try_multiple_kernels ( addr len addr' len' args -- flag )
+  >r
+  begin
+    parse-; 2>r
+    2over 2r>
+    r@ clip_args
+    s" DEBUG" getenv? if
+      s" echo Module_path: ${module_path}" evaluate
+      ." Kernel     : " >r 2dup type r> cr
+      dup 2 = if ." Flags      : " >r 2over type r> cr then
+    then
+    1 load
+  while
+    dup 0=
+  until
+    1 >r \ Failure
+  else
+    0 >r \ Success
+  then
+  2drop 2drop
+  r>
+  r> drop
+;
+
+\ Try to load a kernel; the kernel name is taken from one of
+\ the following lists, as ordered:
+\
+\   1. The "bootfile" environment variable
+\   2. The "kernel" environment variable
+\
+\ Flags are passed, if available. If not, dummy values must be given.
+\
+\ The kernel gets loaded from the current module_path.
+
+: load_a_kernel ( flags len 1 | x x 0 -- flag )
+  local args
+  2local flags
+  0 0 2local kernel
+  end-locals
+
+  \ Check if a default kernel name exists at all, exits if not
+  s" bootfile" getenv dup -1 <> if
+    to kernel
+    flags kernel args 1+ try_multiple_kernels
+    dup 0= if exit then
+  then
+  drop
+
+  s" kernel" getenv dup -1 <> if
+    to kernel
+  else
+    drop
+    1 exit \ Failure
+  then
+
+  \ Try all default kernel names
+  flags kernel args 1+ try_multiple_kernels
+;
+
+\ Try to load a kernel; the kernel name is taken from one of
+\ the following lists, as ordered:
+\
+\   1. The "bootfile" environment variable
+\   2. The "kernel" environment variable
+\
+\ Flags are passed, if provided.
+\
+\ The kernel will be loaded from a directory computed from the
+\ path given. Two directories will be tried in the following order:
+\
+\   1. /boot/path
+\   2. path
+\
+\ The module_path variable is overridden if load is succesful, by
+\ prepending the successful path.
+
+: load_from_directory ( path len 1 | flags len' path len 2 -- flag )
+  local args
+  2local path
+  args 1 = if 0 0 then
+  2local flags
+  0 0 2local oldmodulepath
+  0 0 2local newmodulepath
+  end-locals
+
+  \ Set the environment variable module_path, and try loading
+  \ the kernel again.
+  modulepath getenv saveenv to oldmodulepath
+
+  \ Try prepending /boot/ first
+  bootpath nip path nip + 
+  oldmodulepath nip dup -1 = if
+    drop
+  else
+    1+ +
+  then
+  allocate
+  if ( out of memory )
+    1 exit
+  then
+
+  0
+  bootpath strcat
+  path strcat
+  2dup to newmodulepath
+  modulepath setenv
+
+  \ Try all default kernel names
+  flags args 1- load_a_kernel
+  0= if ( success )
+    oldmodulepath nip -1 <> if
+      newmodulepath s" ;" strcat
+      oldmodulepath strcat
+      modulepath setenv
+      newmodulepath drop free-memory
+      oldmodulepath drop free-memory
+    then
+    0 exit
+  then
+
+  \ Well, try without the prepended /boot/
+  path newmodulepath drop swap move
+  newmodulepath drop path nip
+  2dup to newmodulepath
+  modulepath setenv
+
+  \ Try all default kernel names
+  flags args 1- load_a_kernel
+  if ( failed once more )
+    oldmodulepath restoreenv
+    newmodulepath drop free-memory
+    1
+  else
+    oldmodulepath nip -1 <> if
+      newmodulepath s" ;" strcat
+      oldmodulepath strcat
+      modulepath setenv
+      newmodulepath drop free-memory
+      oldmodulepath drop free-memory
+    then
+    0
+  then
+;
+
+\ Try to load a kernel; the kernel name is taken from one of
+\ the following lists, as ordered:
+\
+\   1. The "bootfile" environment variable
+\   2. The "kernel" environment variable
+\   3. The "path" argument
+\
+\ Flags are passed, if provided.
+\
+\ The kernel will be loaded from a directory computed from the
+\ path given. Two directories will be tried in the following order:
+\
+\   1. /boot/path
+\   2. path
+\
+\ Unless "path" is meant to be kernel name itself. In that case, it
+\ will first be tried as a full path, and, next, search on the
+\ directories pointed by module_path.
+\
+\ The module_path variable is overridden if load is succesful, by
+\ prepending the successful path.
+
+: load_directory_or_file ( path len 1 | flags len' path len 2 -- flag )
+  local args
+  2local path
+  args 1 = if 0 0 then
+  2local flags
+  end-locals
+
+  \ First, assume path is an absolute path to a directory
+  flags path args clip_args load_from_directory
+  dup 0= if exit else drop then
+
+  \ Next, assume path points to the kernel
+  flags path args try_multiple_kernels
+;
 
 : initialize  ( addr len -- )
-  initialize_support
   strdup conf_files .len ! conf_files .addr !
 ;
 
+: kernel_options ( -- addr len 1 | 0 )
+  s" kernel_options" getenv
+  dup -1 = if drop 0 else 1 then
+;
+
+: standard_kernel_search  ( flags 1 | 0 -- flag )
+  local args
+  args 0= if 0 0 then
+  2local flags
+  s" kernel" getenv
+  dup -1 = if 0 swap then
+  2local path
+  end-locals
+
+  path nip -1 = if ( there isn't a "kernel" environment variable )
+    flags args load_a_kernel
+  else
+    flags path args 1+ clip_args load_directory_or_file
+  then
+;
+
 : load_kernel  ( -- ) ( throws: abort )
-  s" load ${kernel} ${kernel_options}" ['] evaluate catch
-  if s" echo Unable to load kernel: ${kernel_name}" evaluate abort then
+  kernel_options standard_kernel_search
+  abort" Unable to load a kernel!"
+;
+
+: set_defaultoptions  ( -- )
+  s" kernel_options" getenv dup -1 = if
+    drop
+  else
+    s" temp_options" setenv
+  then
+;
+
+: argv[]  ( aN uN ... a1 u1 N i -- aN uN ... a1 u1 N ai+1 ui+1 )
+  2dup = if 0 0 exit then
+  dup >r
+  1+ 2* ( skip N and ui )
+  pick
+  r>
+  1+ 2* ( skip N and ai )
+  pick
+;
+
+: drop_args  ( aN uN ... a1 u1 N -- )
+  0 ?do 2drop loop
+;
+
+: argc
+  dup
+;
+
+: queue_argv  ( aN uN ... a1 u1 N a u -- a u aN uN ... a1 u1 N+1 )
+  >r
+  over 2* 1+ -roll
+  r>
+  over 2* 1+ -roll
+  1+
+;
+
+: unqueue_argv  ( aN uN ... a1 u1 N -- aN uN ... a2 u2 N-1 a1 u1 )
+  1- -rot
+;
+
+: strlen(argv)
+  dup 0= if 0 exit then
+  0 >r	\ Size
+  0 >r	\ Index
+  begin
+    argc r@ <>
+  while
+    r@ argv[]
+    nip
+    r> r> rot + 1+
+    >r 1+ >r
+  repeat
+  r> drop
+  r>
+;
+
+: concat_argv  ( aN uN ... a1 u1 N -- a u )
+  strlen(argv) allocate if out_of_memory throw then
+  0 2>r
+
+  begin
+    argc
+  while
+    unqueue_argv
+    2r> 2swap
+    strcat
+    s"  " strcat
+    2>r
+  repeat
+  drop_args
+  2r>
+;
+
+: set_tempoptions  ( addrN lenN ... addr1 len1 N -- addr len 1 | 0 )
+  \ Save the first argument, if it exists and is not a flag
+  argc if
+    0 argv[] drop c@ [char] - <> if
+      unqueue_argv 2>r  \ Filename
+      1 >r		\ Filename present
+    else
+      0 >r		\ Filename not present
+    then
+  else
+    0 >r		\ Filename not present
+  then
+
+  \ If there are other arguments, assume they are flags
+  ?dup if
+    concat_argv
+    2dup s" temp_options" setenv
+    drop free if free_error throw then
+  else
+    set_defaultoptions
+  then
+
+  \ Bring back the filename, if one was provided
+  r> if 2r> 1 else 0 then
+;
+
+: get_arguments ( -- addrN lenN ... addr1 len1 N )
+  0
+  begin
+    \ Get next word on the command line
+    parse-word
+  ?dup while
+    queue_argv
+  repeat
+  drop ( empty string )
+;
+
+: load_kernel_and_modules  ( args -- flag )
+  set_tempoptions
+  argc >r
+  s" temp_options" getenv dup -1 <> if
+    queue_argv
+  else
+    drop
+  then
+  r> if ( a path was passed )
+    load_directory_or_file
+  else
+    standard_kernel_search
+  then
+  ?dup 0= if ['] load_modules catch then
 ;
 
 : read-password { size | buf len -- }

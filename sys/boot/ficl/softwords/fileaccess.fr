@@ -1,0 +1,27 @@
+\ #if FICL_WANT_FILE
+\ ** 
+\ ** File Access words for ficl
+\ ** submitted by Larry Hastings, larry@hastings.org
+\ **
+\
+\ $FreeBSD: src/sys/boot/ficl/softwords/fileaccess.fr,v 1.1 2002/04/09 17:45:27 dcs Exp $
+\ $DragonFly: src/sys/boot/ficl/softwords/fileaccess.fr,v 1.1 2003/11/10 06:08:34 dillon Exp $
+
+: r/o 1 ;
+: r/w 3 ; 
+: w/o 2 ; 
+: bin 8 or ; 
+
+: included
+    r/o bin open-file 0= if
+        locals| f | end-locals
+        f include-file
+        f close-file drop
+    else
+        drop
+    endif
+    ;
+
+: include parse-word included ; immediate
+
+\ #endif

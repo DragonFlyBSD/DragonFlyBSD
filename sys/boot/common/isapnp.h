@@ -29,8 +29,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/common/isapnp.h,v 1.5 1999/12/29 04:54:22 peter Exp $
- * $DragonFly: src/sys/boot/common/isapnp.h,v 1.3 2003/08/27 11:42:33 rob Exp $
+ * $FreeBSD: src/sys/boot/common/isapnp.h,v 1.7 2002/03/20 07:59:37 alfred Exp $
+ * $DragonFly: src/sys/boot/common/isapnp.h,v 1.4 2003/11/10 06:08:31 dillon Exp $
  */
 
 #ifndef _I386_ISA_PNP_H_
@@ -297,8 +297,6 @@ extern pnp_id pnp_devices[MAX_PNP_CARDS];
 extern struct pnp_cinfo pnp_ldn_overrides[MAX_PNP_LDN];
 extern int pnp_overrides_valid;
 
-extern struct linker_set pnpdevice_set;
-
 /*
  * these two functions are for use in drivers
  */
@@ -309,7 +307,7 @@ int enable_pnp_card(void);
 /*
  * used by autoconfigure to actually probe and attach drivers
  */
-void pnp_configure (void);
+void pnp_configure(void);
 
 #endif /* _KERNEL */
 

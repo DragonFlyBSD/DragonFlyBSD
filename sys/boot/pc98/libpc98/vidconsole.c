@@ -24,10 +24,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * 	From Id: probe_keyboard.c,v 1.13 1997/06/09 05:10:55 bde Exp
- *
- * $FreeBSD: src/sys/boot/pc98/libpc98/vidconsole.c,v 1.5.2.3 2002/02/11 04:50:11 nyan Exp $
- * $DragonFly: src/sys/boot/pc98/libpc98/Attic/vidconsole.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * 	Id: probe_keyboard.c,v 1.13 1997/06/09 05:10:55 bde Exp
+ * $FreeBSD: src/sys/boot/pc98/libpc98/vidconsole.c,v 1.11 2003/09/08 09:11:20 obrien Exp $
+ * $DragonFly: src/sys/boot/pc98/libpc98/Attic/vidconsole.c,v 1.3 2003/11/10 06:08:39 dillon Exp $
  */
 
 #include <stand.h>
@@ -53,6 +52,10 @@ static int	vidc_ischar(void);
 static int	vidc_started;
 
 #ifdef TERM_EMU
+#define MAXARGS		8
+#define DEFAULT_FGCOLOR	7
+#define DEFAULT_BGCOLOR	0
+
 void		end_term(void);
 void		bail_out(int c);
 void		vidc_term_emu(int c);
@@ -60,17 +63,12 @@ void		get_pos(void);
 void		curs_move(int x, int y);
 void		write_char(int c, int fg, int bg);
 void		scroll_up(int rows, int fg, int bg);
-int		pow10(int i);
-void		AB(void);
-void		AF(void);
 void		CD(void);
 void		CM(void);
 void		HO(void);
-void		ME(void);
 
-static int	args[2],argc,br;
-static int	fg,bg,dig;
-static int	fg_c,bg_c,curx,cury;
+static int	args[MAXARGS], argc;
+static int	fg_c, bg_c, curx, cury;
 static int	esc;
 #endif
 
@@ -154,13 +152,15 @@ vidc_init(int arg)
 #endif
 
     if (vidc_started && arg == 0)
-	return(0);
+	return (0);
     vidc_started = 1;
 #ifdef PC98
     Crtat = (unsigned short *)PTOV(0xA0000);
-    while((inb(0x60) & 0x04) == 0);
+    while ((inb(0x60) & 0x04) == 0)
+	;
     outb(0x62, 0xe0);
-    while((inb(0x60) & 0x01) == 0);
+    while ((inb(0x60) & 0x01) == 0)
+	;
     hw_cursor = inb(0x62);
     hw_cursor |= (inb(0x62) << 8);
     inb(0x62);
@@ -172,19 +172,20 @@ vidc_init(int arg)
     /* Init terminal emulator */
     end_term();
     get_pos();
-    curs_move(curx,cury);
-    fg_c=7;
-    bg_c=0;
+    curs_move(curx, cury);
+    fg_c = DEFAULT_FGCOLOR;
+    bg_c = DEFAULT_BGCOLOR;
 #endif
-    for(i = 0; i < 10 && vidc_ischar(); i++)
-	  (void)vidc_getchar();
-    return(0);	/* XXX reinit? */
+    for (i = 0; i < 10 && vidc_ischar(); i++)
+	(void)vidc_getchar();
+    return (0);	/* XXX reinit? */
 }
 
 #ifdef PC98
 static void
 beep(void)
 {
+
 	outb(0x37, 6);
 	delay(40000);
 	outb(0x37, 7);
@@ -222,7 +223,7 @@ vidc_biosputchar(int c)
     if (crtat >= Crtat + col * row) {
         cp = Crtat;
 	for (i = 1; i < row; i++) {
-	    bcopy((void *)(cp+col), (void *)cp, col*2);
+	    bcopy((void *)(cp + col), (void *)cp, col * 2);
 	    cp += col;
 	}
 	for (i = 0; i < col; i++) {
@@ -231,12 +232,13 @@ vidc_biosputchar(int c)
 	crtat -= col;
     }
     pos = crtat - Crtat;
-    while((inb(0x60) & 0x04) == 0) {}
+    while ((inb(0x60) & 0x04) == 0) {}
     outb(0x62, 0x49);
     outb(0x60, pos & 0xff);
     outb(0x60, pos >> 8);
 #endif
 #else
+
     v86.ctl = 0;
     v86.addr = 0x10;
     v86.eax = 0xe00 | (c & 0xff);
@@ -251,7 +253,7 @@ vidc_rawputchar(int c)
 {
     int		i;
 
-    if(c == '\t')
+    if (c == '\t')
 	/* lame tab expansion */
 	for (i = 0; i < 8; i++)
 	    vidc_rawputchar(' ');
@@ -263,46 +265,46 @@ vidc_rawputchar(int c)
 	switch(c) {
 	case '\a':
 #ifdef PC98
-		beep();
+	    beep();
 #else
-		vidc_biosputchar(c);
+	    vidc_biosputchar(c);
 #endif
-		return;
+	    return;
 	case '\r':
-		curx=0;
-		curs_move(curx,cury);
-		return;
+	    curx = 0;
+	    curs_move(curx, cury);
+	    return;
 	case '\n':
-		cury++;
-		if(cury>24) {
-			scroll_up(1,fg_c,bg_c);
-			cury--;
-		} else {
-			curs_move(curx,cury);
-		}
-		return;
+	    cury++;
+	    if (cury > 24) {
+		scroll_up(1, fg_c, bg_c);
+		cury--;
+	    } else {
+		curs_move(curx, cury);
+	    }
+	    return;
 	case '\b':
-		if(curx>0) {
-			curx--;
-			curs_move(curx,cury);
-			/* write_char(' ',fg_c,bg_c); XXX destructive(!) */
-			return;
-		}
+	    if (curx > 0) {
+		curx--;
+		curs_move(curx, cury);
+		/* write_char(' ', fg_c, bg_c); XXX destructive(!) */
 		return;
+	    }
+	    return;
 	default:
-		write_char(c,fg_c,bg_c);
-		curx++;
-		if(curx>79) {
-			curx=0;
-			cury++;
-		}
-		if(cury>24) {
-			curx=0;
-			scroll_up(1,fg_c,bg_c);
-			cury--;
-		}
+	    write_char(c, fg_c, bg_c);
+	    curx++;
+	    if (curx > 79) {
+		curx = 0;
+		cury++;
+	    }
+	    if (cury > 24) {
+		curx = 0;
+		scroll_up(1, fg_c, bg_c);
+		cury--;
+	    }
 	}
-	curs_move(curx,cury);
+	curs_move(curx, cury);
 #endif
     }
 }
@@ -317,16 +319,18 @@ get_pos(void)
 {
 #ifdef PC98
     int pos = crtat - Crtat;
+
     curx = pos % col;
     cury = pos / col;
 #else
+
     v86.ctl = 0;
     v86.addr = 0x10;
     v86.eax = 0x0300;
     v86.ebx = 0x0;
     v86int();
-    curx=v86.edx & 0x00ff;
-    cury=(v86.edx & 0xff00)>>8;
+    curx = v86.edx & 0x00ff;
+    cury = (v86.edx & 0xff00) >> 8;
 #endif
 }
 
@@ -336,39 +340,41 @@ curs_move(int x, int y)
 {
 #ifdef PC98
     int pos;
-    pos = x + y*col;
+
+    pos = x + y * col;
     crtat = Crtat + pos;
     pos = crtat - Crtat;
     while((inb(0x60) & 0x04) == 0) {}
     outb(0x62, 0x49);
     outb(0x60, pos & 0xff);
     outb(0x60, pos >> 8);
-    curx=x;
-    cury=y;
-#define isvisible(c)	(((c)>32) && ((c)<255))
-    if(!isvisible(*crtat & 0x00ff)) {
-	write_char(' ',fg_c,bg_c);
+    curx = x;
+    cury = y;
+#define isvisible(c)	(((c) >= 32) && ((c) < 255))
+    if (!isvisible(*crtat & 0x00ff)) {
+	write_char(' ', fg_c, bg_c);
     }
 #else
+
     v86.ctl = 0;
     v86.addr = 0x10;
     v86.eax = 0x0200;
     v86.ebx = 0x0;
-    v86.edx = ((0x00ff & y)<<8)+(0x00ff & x);
+    v86.edx = ((0x00ff & y) << 8) + (0x00ff & x);
     v86int();
-    curx=x;
-    cury=y;
+    curx = x;
+    cury = y;
     /* If there is ctrl char at this position, cursor would be invisible.
      * Make it a space instead.
      */
-    v86.ctl=0;
+    v86.ctl = 0;
     v86.addr = 0x10;
     v86.eax = 0x0800;
-    v86.ebx= 0x0;
+    v86.ebx = 0x0;
     v86int();
-#define isvisible(c)	(((c)>32) && ((c)<255))
-    if(!isvisible(v86.eax & 0x00ff)) {
-	write_char(' ',fg_c,bg_c);
+#define isvisible(c)	(((c) >= 32) && ((c) < 255))
+    if (!isvisible(v86.eax & 0x00ff)) {
+	write_char(' ', fg_c, bg_c);
     }
 #endif
 }
@@ -381,28 +387,31 @@ void
 scroll_up(int rows, int fgcol, int bgcol)
 {
 #ifdef PC98
-        unsigned short *cp;
-	int i;
+    unsigned short *cp;
+    int i;
 
-	if(rows==0) rows=25;
-	cp = Crtat;
-	for (i = rows ; i < row; i++) {
-	    bcopy((void *)(cp+col), (void *)cp, col*2);
-	    cp += col;
-	}
-	for (i = 0; i < col; i++) {
-	    *(cp + 0x1000) = at2pc98(fgcol, bgcol);
-	    *cp++ = ' ';
-	}
+    if (rows == 0)
+	rows = 25;
+    cp = Crtat;
+    for (i = rows; i < row; i++) {
+	bcopy((void *)(cp + col), (void *)cp, col * 2);
+	cp += col;
+    }
+    for (i = 0; i < col; i++) {
+	*(cp + 0x1000) = at2pc98(fgcol, bgcol);
+	*cp++ = ' ';
+    }
 #else
-	if(rows==0) rows=25;
-	v86.ctl = 0;
-	v86.addr = 0x10;
-	v86.eax = 0x0600+(0x00ff & rows);
-	v86.ebx = (bgcol<<12)+(fgcol<<8);
-	v86.ecx = 0x0;
-	v86.edx = 0x184f;
-	v86int();
+
+    if (rows == 0)
+	rows = 25;
+    v86.ctl = 0;
+    v86.addr = 0x10;
+    v86.eax = 0x0600 + (0x00ff & rows);
+    v86.ebx = (bgcol << 12) + (fgcol << 8);
+    v86.ecx = 0x0;
+    v86.edx = 0x184f;
+    v86int();
 #endif
 }
 
@@ -410,29 +419,18 @@ scroll_up(int rows, int fgcol, int bgcol)
 void
 write_char(int c, int fgcol, int bgcol)
 {
+
 #ifdef PC98
-	*crtat = (c == 0x5c ? 0xfc : c);
-	*(crtat + 0x1000) = at2pc98(fgcol, bgcol);
+    *crtat = (c == 0x5c ? 0xfc : c);
+    *(crtat + 0x1000) = at2pc98(fgcol, bgcol);
 #else
-	v86.ctl=0;
-    	v86.addr = 0x10;
-    	v86.eax = 0x0900+(0x00ff & c);
-	v86.ebx = (bgcol<<4)+fgcol;
-    	v86.ecx = 0x1;
-    	v86int();
+    v86.ctl = 0;
+    v86.addr = 0x10;
+    v86.eax = 0x0900 + (0x00ff & c);
+    v86.ebx = (bgcol << 4) + fgcol;
+    v86.ecx = 0x1;
+    v86int();
 #endif
-}
-
-/* Calculate power of 10 */
-int
-pow10(int i)
-{
-	int res=1;
-
-	while(i-->0) {
-		res*=10;
-	}
-	return res;
 }
 
 /**************************************************************/
@@ -442,43 +440,44 @@ pow10(int i)
  *
  */
 
-/* Set background color */
-void
-AB(void){
-	bg_c=args[0];
-	end_term();
-}
-
-/* Set foreground color */
-void
-AF(void)
-{
-	fg_c=args[0];
-	end_term();
-}
-
 /* Clear display from current position to end of screen */
 void
 CD(void)
 {
-    get_pos();
 #ifdef PC98
-    for(;crtat <= Crtat + col*row; crtat++){
-	*crtat = ' ';
-	*(crtat + 0x1000) = at2pc98(fg_c, bg_c);
+    int pos;
+
+    get_pos();
+    for (pos = 0; crtat + pos <= Crtat + col * row; pos++) {
+	*(crtat + pos) = ' ';
+	*(crtat + pos + 0x1000) = at2pc98(fg_c, bg_c);
     }
+    end_term();
 #else
+
+    get_pos();
+    if (curx > 0) {
+	v86.ctl = 0;
+	v86.addr = 0x10;
+	v86.eax = 0x0600;
+	v86.ebx = (bg_c << 4) + fg_c;
+	v86.ecx = (cury << 8) + curx;
+	v86.edx = (cury << 8) + 79;
+	v86int();
+	if (++cury > 24) {
+	    end_term();
+	    return;
+	}
+    }
     v86.ctl = 0;
     v86.addr = 0x10;
     v86.eax = 0x0600;
-    v86.ebx = (bg_c<<4)+fg_c;
-    v86.ecx = v86.edx;
-    v86.edx = 0x184f;
+    v86.ebx = (bg_c << 4) + fg_c;
+    v86.ecx = (cury << 8) + 0;
+    v86.edx = (24 << 8) + 79;
     v86int();
-#endif
-    curx=0;
-    curs_move(curx,cury);
     end_term();
+#endif
 }
 
 /* Absolute cursor move to args[0] rows and args[1] columns
@@ -487,9 +486,12 @@ CD(void)
 void
 CM(void)
 {
-    if(args[0]>0) args[0]--;
-    if(args[1]>0) args[1]--;
-    curs_move(args[1],args[0]);
+
+    if (args[0] > 0)
+	args[0]--;
+    if (args[1] > 0)
+	args[1]--;
+    curs_move(args[1], args[0]);
     end_term();
 }
 
@@ -497,156 +499,164 @@ CM(void)
 void
 HO(void)
 {
-	argc=1;
-	args[0]=args[1]=1;
-	CM();
-}
 
-/* Exit attribute mode (reset fore/back-ground colors to defaults) */
-void
-ME(void)
-{
-	fg_c=7;
-	bg_c=0;
-	end_term();
+    argc = 1;
+    args[0] = args[1] = 1;
+    CM();
 }
 
 /* Clear internal state of the terminal emulation code */
 void
 end_term(void)
 {
-	esc=0;
-	argc=-1;
-	fg=bg=br=0;
-	args[0]=args[1]=0;
-	dig=0;
+
+    esc = 0;
+    argc = -1;
 }
 
 /* Gracefully exit ESC-sequence processing in case of misunderstanding */
 void
 bail_out(int c)
 {
-	char buf[6],*ch;
+    char buf[16], *ch;
+    int i;
 
-	if(esc) vidc_rawputchar('\033');
-	if(br) vidc_rawputchar('[');
-	if(argc>-1) {
-		sprintf(buf,"%d",args[0]);
-		ch=buf;
-		while(*ch) vidc_rawputchar(*ch++);
-		
-		if(argc>0) {
-			vidc_rawputchar(';');
-			sprintf(buf,"%d",args[1]);
-			ch=buf;
-			while(*ch) vidc_rawputchar(*ch++);
-		}
+    if (esc) {
+	vidc_rawputchar('\033');
+	if (esc != '\033')
+	    vidc_rawputchar(esc);
+	for (i = 0; i <= argc; ++i) {
+	    sprintf(buf, "%d", args[i]);
+	    ch = buf;
+	    while (*ch)
+		vidc_rawputchar(*ch++);
 	}
-	vidc_rawputchar(c);
-	end_term();
+    }
+    vidc_rawputchar(c);
+    end_term();
+}
+
+static void
+get_arg(c)
+{
+
+    if (argc < 0)
+	argc = 0;
+    args[argc] *= 10;
+    args[argc] += c - '0';
 }
 
 /* Emulate basic capabilities of cons25 terminal */
 void
 vidc_term_emu(int c)
 {
+    static int ansi_col[] = {
+	0, 4, 2, 6, 1, 5, 3, 7,
+    };
+    int t;
+    int i;
 
-    if(!esc) {
-	if(c=='\033') {
-	    esc=1;
-	} else {
+    switch (esc) {
+    case 0:
+	switch (c) {
+	case '\033':
+	    esc = c;
+	    break;
+	default:
 	    vidc_rawputchar(c);
+	    break;
 	}
-	return;
-    }
+	break;
 
-    /* Do ESC sequences processing */
-    switch(c) {
     case '\033':
-	/* ESC in ESC sequence - error */
-	bail_out(c);
-	break;
-    case '[':
-	/* Check if it's first char after ESC */
-        if(argc<0) {
-            br=1;
-        } else {
+	switch (c) {
+	case '[':
+	    esc = c;
+	    args[0] = 0;
+	    argc = -1;
+	    break;
+	default:
 	    bail_out(c);
-        }
+	    break;
+	}
 	break;
-    case 'H':
-	/* Emulate \E[H (cursor home) and 
-	 * \E%d;%dH (cursor absolute move) */
-	if(br) {
-	    switch(argc) {
-	    case -1:
+
+    case '[':
+	switch (c) {
+	case ';':
+	    if (argc < 0)	/* XXX */
+		argc = 0;
+	    else if (argc + 1 >= MAXARGS)
+		bail_out(c);
+	    else
+		args[++argc] = 0;
+	    break;
+	case 'H':
+	    if (argc < 0)
 		HO();
-		break;
-	    case 1:
-		if(fg) args[0]+=pow10(dig)*3;
-		if(bg) args[0]+=pow10(dig)*4;
+	    else if (argc == 1)
 		CM();
-		break;
-	    default:
+	    else
 		bail_out(c);
-	    }
-	} else bail_out(c);
-	break;
-    case 'J':
-	/* Emulate \EJ (clear to end of screen) */
-	if(br && argc<0) {
-	    CD();
-	} else bail_out(c);
-	break;
-    case ';':
-	/* perhaps args separator */
-	if(br && (argc>-1)) {
-	    argc++;
-	} else bail_out(c);
-	break;
-    case 'm':
-	/* Change char attributes */
-	if(br) {
-	    switch(argc) {
-	    case -1:
-		ME();
-		break;
-	    case 0:
-		if(fg) AF();
-		else AB();
-		break;
-	    default:
+	    break;
+	case 'J':
+	    if (argc < 0)
+		CD();
+	    else
 		bail_out(c);
+	    break;
+	case 'm':
+	    if (argc < 0) {
+		fg_c = DEFAULT_FGCOLOR;
+		bg_c = DEFAULT_BGCOLOR;
 	    }
-	} else bail_out(c);
+	    for (i = 0; i <= argc; ++i) {
+		switch (args[i]) {
+		case 0:		/* back to normal */
+		    fg_c = DEFAULT_FGCOLOR;
+		    bg_c = DEFAULT_BGCOLOR;
+		    break;
+		case 1:		/* bold */
+		    fg_c |= 0x8;
+		    break;
+		case 4:		/* underline */
+		case 5:		/* blink */
+		    bg_c |= 0x8;
+		    break;
+		case 7:		/* reverse */
+		    t = fg_c;
+		    fg_c = bg_c;
+		    bg_c = t;
+		    break;
+		case 30: case 31: case 32: case 33:
+		case 34: case 35: case 36: case 37:
+		    fg_c = ansi_col[args[i] - 30];
+		    break;
+		case 39:	/* normal */
+		    fg_c = DEFAULT_FGCOLOR;
+		    break;
+		case 40: case 41: case 42: case 43:
+		case 44: case 45: case 46: case 47:
+		    bg_c = ansi_col[args[i] - 40];
+		    break;
+		case 49:	/* normal */
+		    bg_c = DEFAULT_BGCOLOR;
+		    break;
+		}
+	    }
+	    end_term();
+	    break;
+	default:
+	    if (isdigit(c))
+		get_arg(c);
+	    else
+		bail_out(c);
+	    break;
+	}
 	break;
+
     default:
-	if(isdigit(c)) {
-	    /* Carefully collect numeric arguments */
-	    /* XXX this is ugly. */
-	    if(br) {
-	        if(argc==-1) {
-	     	    argc=0;
-		    args[argc]=0;
-		    dig=0;
-		    /* in case we're in error... */
-		    if(c=='3') {
-			fg=1;
-			return;
-		    }
-		    if(c=='4') {
-			bg=1;
-			return;
-		    }
-	     	    args[argc]=(int)(c-'0');
-		    dig=1;
-	     	    args[argc+1]=0;
-	    	} else {
-		    args[argc]=args[argc]*10+(int)(c-'0');
-		    if(argc==0) dig++;
-	    	}
-	    } else bail_out(c);
-	} else bail_out(c);
+	bail_out(c);
 	break;
     }
 }
@@ -665,6 +675,7 @@ vidc_putchar(int c)
 static int
 vidc_getchar(void)
 {
+
     if (vidc_ischar()) {
 	v86.ctl = 0;
 #ifdef PC98
@@ -674,27 +685,28 @@ vidc_getchar(void)
 #endif
 	v86.eax = 0x0;
 	v86int();
-	return(v86.eax & 0xff);
+	return (v86.eax & 0xff);
     } else {
-	return(-1);
+	return (-1);
     }
 }
 
 static int
 vidc_ischar(void)
 {
+
 #ifdef PC98
     v86.ctl = 0;
     v86.addr = 0x18;
     v86.eax = 0x100;
     v86int();
-    return((v86.ebx >> 8) & 0x1);
+    return ((v86.ebx >> 8) & 0x1);
 #else
     v86.ctl = V86_FLAGS;
     v86.addr = 0x16;
     v86.eax = 0x100;
     v86int();
-    return(!(v86.efl & PSL_Z));
+    return (!(v86.efl & PSL_Z));
 #endif
 }
 

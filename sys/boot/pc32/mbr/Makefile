@@ -1,5 +1,5 @@
-# $FreeBSD: src/sys/boot/i386/mbr/Makefile,v 1.2.2.1 2000/07/06 23:04:29 obrien Exp $
-# $DragonFly: src/sys/boot/pc32/mbr/Makefile,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD: src/sys/boot/i386/mbr/Makefile,v 1.6 2002/09/17 01:48:55 peter Exp $
+# $DragonFly: src/sys/boot/pc32/mbr/Makefile,v 1.3 2003/11/10 06:08:36 dillon Exp $
 
 PROG=		mbr
 NOMAN=
@@ -10,13 +10,8 @@ BINMODE=	444
 ORG=	0x600
 
 mbr: mbr.o
-.if ${OBJFORMAT} == aout
-	${LD} -N -s -T ${ORG} -o mbr.out mbr.o
-	dd if=mbr.out of=${.TARGET} ibs=32 skip=1
-.else
 	${LD} -N -e start -Ttext ${ORG} -o mbr.out mbr.o
 	objcopy -S -O binary mbr.out ${.TARGET}
-.endif
 
 CLEANFILES+= mbr.out mbr.o
 

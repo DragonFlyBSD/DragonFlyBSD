@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/alpha/common/main.c,v 1.11.2.2 2001/03/04 05:14:50 obrien Exp $
- * $DragonFly: src/sys/boot/alpha/common/Attic/main.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ * $FreeBSD: src/sys/boot/alpha/common/main.c,v 1.13 2000/10/25 23:36:01 dfr Exp $
+ * $DragonFly: src/sys/boot/alpha/common/Attic/main.c,v 1.3 2003/11/10 06:08:29 dillon Exp $
  */
 
 

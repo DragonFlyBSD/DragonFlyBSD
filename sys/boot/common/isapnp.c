@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1998, Michael Smith
  * Copyright (c) 1996, Sujal M. Patel
  * All rights reserved.
@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/common/isapnp.c,v 1.5.2.1 2000/12/28 13:12:35 ps Exp $
- * $DragonFly: src/sys/boot/common/isapnp.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ * $FreeBSD: src/sys/boot/common/isapnp.c,v 1.7 2003/08/25 23:30:41 obrien Exp $
+ * $DragonFly: src/sys/boot/common/isapnp.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
  */
 
 /*

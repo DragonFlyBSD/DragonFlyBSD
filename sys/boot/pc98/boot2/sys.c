@@ -24,8 +24,8 @@
  * the rights to redistribute these changes.
  *
  *	from: Mach, Revision 2.2  92/04/04  11:36:34  rpd
- * $FreeBSD: src/sys/boot/pc98/boot2/sys.c,v 1.2.2.1 2003/01/13 08:52:53 nyan Exp $
- * $DragonFly: src/sys/boot/pc98/boot2/Attic/sys.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $FreeBSD: src/sys/boot/pc98/boot2/sys.c,v 1.5 2003/09/08 09:11:20 obrien Exp $
+ * $DragonFly: src/sys/boot/pc98/boot2/Attic/sys.c,v 1.3 2003/11/10 06:08:38 dillon Exp $
  */
 
 /*
@@ -34,7 +34,6 @@
 
 #include "boot.h"
 #include <sys/dirent.h>
-#include <sys/reboot.h>
 
 #if 0
 /* #define BUFSIZE 4096 */

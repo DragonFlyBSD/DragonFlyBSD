@@ -1,5 +1,5 @@
 $FreeBSD: src/sys/boot/arc/loader/version,v 1.2 1999/08/28 00:39:43 peter Exp $
-$DragonFly: src/sys/boot/arc/loader/Attic/version,v 1.2 2003/06/17 04:28:16 dillon Exp $
+$DragonFly: src/sys/boot/arc/loader/Attic/version,v 1.3 2003/11/10 06:08:31 dillon Exp $
 
 NOTE ANY CHANGES YOU MAKE TO THE BOOTBLOCKS HERE.  The format of this
 file is important.  Make sure the current version number is on line 6.

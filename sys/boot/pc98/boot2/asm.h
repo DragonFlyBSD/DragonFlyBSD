@@ -24,8 +24,8 @@
  * the rights to redistribute these changes.
  *
  *	from: Mach, Revision 2.7  92/02/29  15:33:41  rpd
- * $FreeBSD: src/sys/boot/pc98/boot2/asm.h,v 1.2.2.1 2001/10/07 13:22:38 nyan Exp $
- * $DragonFly: src/sys/boot/pc98/boot2/Attic/asm.h,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $FreeBSD: src/sys/boot/pc98/boot2/asm.h,v 1.5 2003/07/13 08:13:52 nyan Exp $
+ * $DragonFly: src/sys/boot/pc98/boot2/Attic/asm.h,v 1.3 2003/11/10 06:08:38 dillon Exp $
  */
 
 #define S_ARG0	 4(%esp)
@@ -64,23 +64,23 @@
 #define INL	inl	(%dx)
 #define OUTL	outl	(%dx)
 
-#else	wheeze
+#else	/* wheeze */
+
 #define ALIGN
 #define	LCL(x)	x
 
 #define LB(x,n) n
 #ifdef	__STDC__
 #define EXT(x) x
-#define LEXT(x) x ## :
-
+#define LEXT(x) .type EXT(x),@function; EXT(x):
 #define LBb(x,n) n ## b
 #define LBf(x,n) n ## f
-#else __STDC__
+#else	/* __STDC__ */
 #define EXT(x) _/**/x
-#define LEXT(x) _/**/x/**/:
+#define LEXT(x) .type EXT(x),@function; EXT(x)/**/:
 #define LBb(x,n) n/**/b
 #define LBf(x,n) n/**/f
-#endif __STDC__
+#endif	/* __STDC__ */
 #define SVC .byte 0x9a; .long 0; .word 0x7
 
 #define String	.ascii
@@ -93,7 +93,7 @@
 #define INL	inl	%dx, %eax
 #define OUTL	outl	%eax, %dx
 
-#endif	wheeze
+#endif	/* wheeze */
 
 #define addr32	.byte 0x67
 #define data32	.byte 0x66
@@ -110,7 +110,7 @@
 #define	ASENTRY(x) 	.globl x; .align ALIGN; x ## : ; \
   			pushl %ebp; movl %esp, %ebp; MCOUNT; popl %ebp;
 
-#else   __STDC__
+#else	/* __STDC__ */
 
 #define MCOUNT		.data; LB(x, 9): .long 0; .text; lea LBb(x, 9),%edx; call mcount
 #define	ENTRY(x)	.globl EXT(x); .align ALIGN; LEXT(x) ; \
@@ -120,8 +120,8 @@
 #define	ASENTRY(x) 	.globl x; .align ALIGN; x: ; \
   			pushl %ebp; movl %esp, %ebp; MCOUNT; popl %ebp;
 
-#endif	__STDC__
-#else	GPROF
+#endif	/* __STDC__ */
+#else	/* GPROF */
 #ifdef	__STDC__
 
 #define MCOUNT
@@ -130,7 +130,7 @@
 			.align ALIGN; LEXT(x) LEXT(y)
 #define	ASENTRY(x)	.globl x; .align ALIGN; x ## :
 
-#else 	__STDC__
+#else	/* __STDC__ */
 
 #define MCOUNT
 #define	ENTRY(x)	.globl EXT(x); .align ALIGN; LEXT(x)
@@ -138,8 +138,8 @@
 			.align ALIGN; LEXT(x) LEXT(y)
 #define	ASENTRY(x)	.globl x; .align ALIGN; x:
 
-#endif	__STDC__
-#endif	GPROF
+#endif	/* __STDC__ */
+#endif	/* GPROF */
 
 #define	Entry(x)	.globl EXT(x); .align ALIGN; LEXT(x)
 #define	DATA(x)		.globl EXT(x); .align ALIGN; LEXT(x)

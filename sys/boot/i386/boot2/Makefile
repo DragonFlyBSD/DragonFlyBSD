@@ -1,14 +1,14 @@
-# $FreeBSD: src/sys/boot/i386/boot2/Makefile,v 1.16.2.5 2002/08/07 16:31:53 ru Exp $
-# $DragonFly: src/sys/boot/i386/boot2/Attic/Makefile,v 1.3 2003/08/16 02:51:57 dillon Exp $
+# $FreeBSD: src/sys/boot/i386/boot2/Makefile,v 1.47 2003/06/26 03:51:57 peter Exp $
+# $DragonFly: src/sys/boot/i386/boot2/Attic/Makefile,v 1.4 2003/11/10 06:08:35 dillon Exp $
 
 PROG=		boot2
 NOMAN=
 STRIP=
 BINDIR?=	/boot
 BINMODE=	444
-CLEANFILES+=	boot1 boot1.out boot1.o \
+CLEANFILES=	boot boot1 boot1.out boot1.o \
 		boot2.ldr boot2.bin boot2.ld boot2.out boot2.o boot2.h \
-		sio.o
+		boot2.s sio.o
 
 NM?=		nm
 
@@ -25,20 +25,36 @@ BTX=	${.OBJDIR}/../btx
 BTX=	${.CURDIR}/../btx
 .endif
 
+REL1=	0x700
 ORG1=	0x7c00
-ORG2=	0x1000
+ORG2=	0x2000
 
-CFLAGS=	-elf -I${.CURDIR}/../btx/lib -I. -I${.CURDIR}/../../.. \
-	-Os -fno-builtin -fforce-addr -fdata-sections \
-	-malign-functions=0 -malign-jumps=0 -malign-loops=0 -mrtd \
-	-mpreferred-stack-boundary=2 \
+# Decide Level of UFS support.  UFS1_AND_UFS2 doesn't fit.
+
+# BOOT2_UFS?=	UFS2_ONLY
+#BOOT2_UFS?=	UFS1_AND_UFS2
+BOOT2_UFS?=	UFS1_ONLY
+
+# gcc3.x
+#	-fno-guess-branch-probability
+#	-mno-align-long-strings
+
+CFLAGS=	-elf -ffreestanding -Os -fno-builtin \
+	-fomit-frame-pointer \
+	-mrtd \
+	-D${BOOT2_UFS} \
+	-I${.CURDIR}/../../common \
+	-I${.CURDIR}/../btx/lib -I. \
 	-Wall -Waggregate-return -Wbad-function-cast -Wcast-align \
 	-Wmissing-declarations -Wmissing-prototypes -Wnested-externs \
 	-Wpointer-arith -Wshadow -Wstrict-prototypes -Wwrite-strings
 
-LDFLAGS=-nostdlib -static -N
+LDFLAGS=-nostdlib -static -N --gc-sections
 
-all: boot1 boot2
+all: boot1 boot2 boot
+
+boot: boot1 boot2
+	cat boot1 boot2 > boot
 
 boot1: boot1.out
 	objcopy -S -O binary boot1.out ${.TARGET}
@@ -47,12 +63,21 @@ boot1.out: boot1.o
 	${LD} ${LDFLAGS} -e start -Ttext ${ORG1} -o ${.TARGET} boot1.o
 
 boot1.o: boot1.s
-	${AS} ${AFLAGS} --defsym FLAGS=${B1FLAGS} ${.IMPSRC} -o ${.TARGET}
+	${CPP} ${CFLAGS} ${.IMPSRC} | \
+	    ${AS} ${AFLAGS} --defsym FLAGS=${B1FLAGS} -o ${.TARGET}
+
+boot2.o: boot2.c ${.CURDIR}/../../common/ufsread.c
+	${CC} ${CFLAGS} -S -o boot2.s.tmp ${.IMPSRC}
+	sed -e '/align/d' -e '/nop/d' < boot2.s.tmp > boot2.s
+	rm -f boot2.s.tmp
+	${AS} ${AFLAGS} -o boot2.o boot2.s
 
 boot2.h: boot1.out
 	${NM} -t d ${.ALLSRC} | awk '/([0-9])+ T xread/ \
-	 	{ x = $$1 - ORG1; printf("#define XREADORG 0x7%x\n", x) }' \
-	 	ORG1=`printf "%d" ${ORG1}` > boot2.h
+	 	{ x = $$1 - ORG1; \
+		printf("#define XREADORG %#x\n", REL1 + x) }' \
+	 	ORG1=`printf "%d" ${ORG1}` \
+		REL1=`printf "%d" ${REL1}` > boot2.h
 
 boot2: boot2.ldr boot2.bin ${BTX}/btx/btx
 	btxld -v -E ${ORG2} -f bin -b ${BTX}/btx/btx -l boot2.ldr \
@@ -62,14 +87,14 @@ boot2: boot2.ldr boot2.bin ${BTX}/btx/btx
 	dd if=boot2.ld of=${.TARGET} obs=7680 conv=osync 2>/dev/null
 
 boot2.ldr:
-	dd if=/dev/zero of=${.TARGET} bs=512 count=1 2>/dev/null
+	dd if=/dev/zero of=${.TARGET} bs=276 count=1 2>/dev/null
 
 boot2.bin: boot2.out
 	objcopy -S -O binary boot2.out ${.TARGET}
 
 boot2.out: boot2.o sio.o
 	${LD} ${LDFLAGS} -Ttext ${ORG2} -o ${.TARGET} \
-		${BTX}/lib/crt0.o boot2.o sio.o
+		${BTX}/lib/crt0.o ${.ALLSRC}
 
 boot2.o: boot2.h
 
@@ -81,8 +106,22 @@ sio.o: sio.s
 
 install:
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
+		boot ${DESTDIR}${BINDIR}/boot
+	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
 		boot1 ${DESTDIR}${BINDIR}/boot1
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
 		boot2 ${DESTDIR}${BINDIR}/boot2
 
 .include <bsd.prog.mk>
+
+.if defined(REALLY_AMD64)
+boot2.o: machine
+
+beforedepend ${OBJS}: machine
+
+machine:
+	ln -sf ${.CURDIR}/../../../i386/include machine
+
+CLEANFILES+=	machine
+.endif
+

@@ -1,6 +1,8 @@
-/* $FreeBSD: src/sys/boot/arc/lib/arcconsole.c,v 1.2 1999/08/28 00:39:36 peter Exp $ */
-/* $DragonFly: src/sys/boot/arc/lib/Attic/arcconsole.c,v 1.2 2003/06/17 04:28:16 dillon Exp $ */
-/* $NetBSD: prom.c,v 1.3 1997/09/06 14:03:58 drochner Exp $ */
+/*
+ * $NetBSD: prom.c,v 1.3 1997/09/06 14:03:58 drochner Exp $
+ * $FreeBSD: src/sys/boot/arc/lib/arcconsole.c,v 1.2 1999/08/28 00:39:36 peter Exp $
+ * $DragonFly: src/sys/boot/arc/lib/Attic/arcconsole.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
+ */
 
 /*  
  * Mach Operating System

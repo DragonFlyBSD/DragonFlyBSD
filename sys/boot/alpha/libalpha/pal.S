@@ -1,7 +1,7 @@
 /*
- * $FreeBSD: src/sys/boot/alpha/libalpha/pal.S,v 1.2.2.1 2001/08/03 07:14:52 obrien Exp $
- * $DragonFly: src/sys/boot/alpha/libalpha/Attic/pal.S,v 1.2 2003/06/17 04:28:16 dillon Exp $
  * From: $NetBSD: pal.s,v 1.12 1998/02/27 03:44:53 thorpej Exp $ 
+ * $FreeBSD: src/sys/boot/alpha/libalpha/pal.S,v 1.3 2001/05/28 09:52:21 obrien Exp $
+ * $DragonFly: src/sys/boot/alpha/libalpha/Attic/pal.S,v 1.3 2003/11/10 06:08:30 dillon Exp $
  */
 
 /*

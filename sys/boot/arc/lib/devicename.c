@@ -23,13 +23,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/arc/lib/devicename.c,v 1.2 1999/08/28 00:39:38 peter Exp $
- * $DragonFly: src/sys/boot/arc/lib/Attic/devicename.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ * $FreeBSD$
+ * $DragonFly: src/sys/boot/arc/lib/Attic/devicename.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
  */
 
 #include <stand.h>
 #include <string.h>
-#include <sys/disklabel.h>
 #include "bootstrap.h"
 #include "libarc.h"
 

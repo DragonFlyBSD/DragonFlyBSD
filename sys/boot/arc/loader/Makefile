@@ -1,6 +1,6 @@
 #	$NetBSD: Makefile,v 1.12 1998/02/19 14:18:36 drochner Exp $
-# $FreeBSD: src/sys/boot/arc/loader/Makefile,v 1.4.2.1 2000/08/04 08:31:08 obrien Exp $
-# $DragonFly: src/sys/boot/arc/loader/Attic/Makefile,v 1.2 2003/06/17 04:28:16 dillon Exp $
+# $FreeBSD: src/sys/boot/arc/loader/Makefile,v 1.7 2002/05/10 09:26:30 obrien Exp $
+# $DragonFly: src/sys/boot/arc/loader/Attic/Makefile,v 1.3 2003/11/10 06:08:31 dillon Exp $
 
 BASE= 		loader
 PROG= 		${BASE}.exe
@@ -15,7 +15,7 @@ SRCS+=		main.c conf.c
 # Always add MI sources 
 .PATH:		${.CURDIR}/../../common
 .include	<${.CURDIR}/../../common/Makefile.inc>
-CFLAGS+=	-mno-fp-regs
+CFLAGS+=	-ffreestanding -mno-fp-regs
 CFLAGS+=	-I${.CURDIR}/../../common -I${.CURDIR}
 CFLAGS+=	-I${.CURDIR}/../../.. -I.
 CFLAGS+=	-DLOADER
@@ -43,9 +43,9 @@ vers.o: ${.CURDIR}/../../common/newvers.sh ${.CURDIR}/version
 ${BASE}.exe: ${BASE}.sym ${BASE}.help
 	elf2exe ${BASE}.sym ${BASE}.exe
 
-${BASE}.sym: ${OBJS} ${LIBSTAND} ${LIBARC} ${CRT} vers.o setdef0.o setdef1.o
+${BASE}.sym: ${OBJS} ${LIBSTAND} ${LIBARC} ${CRT} vers.o
 	${LD} -o ${BASE}.sym -M -N -Ttext ${LOAD_ADDRESS} \
-	${CRT} setdef0.o ${OBJS} setdef1.o vers.o -L${DESTDIR}${LIBDIR} \
+	${CRT} ${OBJS} vers.o -L${DESTDIR}${LIBDIR} \
 	${LIBSTAND} ${LIBARC} ${LIBSTAND} >${.OBJDIR}/${BASE}.list
 
 ${BASE}.help: help.common help.alpha
@@ -64,18 +64,9 @@ beforeinstall:
 start.o:	${.CURDIR}/../lib/arch/${MACHINE_ARCH}/start.S
 	${CC} -c ${CFLAGS} $<
 
-setdef0.o: setdefs.h
-
-setdef1.o: setdefs.h
-
 machine:
 	ln -sf ${.CURDIR}/../../../alpha/include machine
 
 .include <bsd.prog.mk>
-
-.ORDER: setdefs.h setdef0.c setdef1.c
-setdefs.h setdef0.c setdef1.c: ${OBJS}
-	@echo Generating linker sets
-	@gensetdefs ${OBJS}
 
 beforedepend ${OBJS}: machine

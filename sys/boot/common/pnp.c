@@ -1,9 +1,10 @@
 /*
  * mjs copyright
  *
- * $FreeBSD: src/sys/boot/common/pnp.c,v 1.9.2.2 2000/12/28 13:12:36 ps Exp $
- * $DragonFly: src/sys/boot/common/pnp.c,v 1.2 2003/06/17 04:28:17 dillon Exp $
+ * $FreeBSD: src/sys/boot/common/pnp.c,v 1.16 2003/08/25 23:30:41 obrien Exp $
+ * $DragonFly: src/sys/boot/common/pnp.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
  */
+
 /*
  * "Plug and Play" functionality.
  *
@@ -16,7 +17,7 @@
 #include <string.h>
 #include <bootstrap.h>
 
-STAILQ_HEAD(,pnpinfo)	pnp_devices;
+struct pnpinfo_stql	pnp_devices;
 static int		pnp_devices_initted = 0;
 
 static void		pnp_discard(void);
@@ -67,8 +68,8 @@ pnp_scan(int argc, char *argv[])
     if (verbose) {
 	pager_open();
 	pager_output("PNP scan summary:\n");
-	for (pi = pnp_devices.stqh_first; pi != NULL; pi = pi->pi_link.stqe_next) {
-	    pager_output(pi->pi_ident.stqh_first->id_ident);	/* first ident should be canonical */
+	STAILQ_FOREACH(pi, &pnp_devices, pi_link) {
+	    pager_output(STAILQ_FIRST(&pi->pi_ident)->id_ident);	/* first ident should be canonical */
 	    if (pi->pi_desc != NULL) {
 		pager_output(" : ");
 		pager_output(pi->pi_desc);
@@ -93,7 +94,7 @@ pnp_load(int argc, char *argv[])
     char		*modfname;
 	
     /* find anything? */
-    if (pnp_devices.stqh_first != NULL) {
+    if (STAILQ_FIRST(&pnp_devices) != NULL) {
 
 	/* check for kernel, assign modules handled by static drivers there */
 	if (pnp_scankernel()) {
@@ -112,13 +113,13 @@ pnp_load(int argc, char *argv[])
 	}
 
 	/* try to load any modules that have been nominated */
-	for (pi = pnp_devices.stqh_first; pi != NULL; pi = pi->pi_link.stqe_next) {
+	STAILQ_FOREACH(pi, &pnp_devices, pi_link) {
 	    /* Already loaded? */
-	    if ((pi->pi_module != NULL) && (mod_findmodule(pi->pi_module, NULL) == NULL)) {
+	    if ((pi->pi_module != NULL) && (file_findfile(pi->pi_module, NULL) == NULL)) {
 		modfname = malloc(strlen(pi->pi_module) + 4);
 		sprintf(modfname, "%s.ko", pi->pi_module);	/* XXX implicit knowledge of KLD module filenames */
 		if (mod_load(pi->pi_module, pi->pi_argc, pi->pi_argv))
-		    printf("Could not load module '%s' for device '%s'\n", modfname, pi->pi_ident.stqh_first->id_ident);
+		    printf("Could not load module '%s' for device '%s'\n", modfname, STAILQ_FIRST(&pi->pi_ident)->id_ident);
 		free(modfname);
 	    }
 	}
@@ -134,8 +135,8 @@ pnp_discard(void)
 {
     struct pnpinfo	*pi;
 
-    while (pnp_devices.stqh_first != NULL) {
-	pi = pnp_devices.stqh_first;
+    while (STAILQ_FIRST(&pnp_devices) != NULL) {
+	pi = STAILQ_FIRST(&pnp_devices);
 	STAILQ_REMOVE_HEAD(&pnp_devices, pi_link);
 	pnp_freeinfo(pi);
     }
@@ -258,14 +259,14 @@ pnp_readconf(char *path)
 	     * assigned.
 	     * XXX no revision parse/test here yet.
 	     */
-	    for (pi = pnp_devices.stqh_first; pi != NULL; pi = pi->pi_link.stqe_next) {
+	    STAILQ_FOREACH(pi, &pnp_devices, pi_link) {
 
 		/* no driver assigned, bus matches OK */
 		if ((pi->pi_module == NULL) &&
 		    !strcmp(pi->pi_handler->pp_name, currbus)) {
 
 		    /* scan idents, take first match */
-		    for (id = pi->pi_ident.stqh_first; id != NULL; id = id->id_link.stqe_next)
+		    STAILQ_FOREACH(id, &pi->pi_ident, id_link)
 			if (!strcmp(id->id_ident, ident))
 			    break;
 			
@@ -301,7 +302,7 @@ pnp_addident(struct pnpinfo *pi, char *ident)
 {
     struct pnpident	*id;
 
-    for (id = pi->pi_ident.stqh_first; id != NULL; id = id->id_link.stqe_next)
+    STAILQ_FOREACH(id, &pi->pi_ident, id_link)
 	if (!strcmp(id->id_ident, ident))
 	    return;			/* already have this one */
 
@@ -332,8 +333,8 @@ pnp_freeinfo(struct pnpinfo *pi)
 {
     struct pnpident	*id;
 
-    while (pi->pi_ident.stqh_first != NULL) {
-	id = pi->pi_ident.stqh_first;
+    while (!STAILQ_EMPTY(&pi->pi_ident)) {
+	id = STAILQ_FIRST(&pi->pi_ident);
 	STAILQ_REMOVE_HEAD(&pi->pi_ident, id_link);
 	free(id->id_ident);
 	free(id);

@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/i386/libi386/biospci.c,v 1.2.2.1 2000/12/28 13:12:39 ps Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/biospci.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $FreeBSD: src/sys/boot/i386/libi386/biospci.c,v 1.4 2003/08/25 23:28:31 obrien Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/biospci.c,v 1.3 2003/11/10 06:08:36 dillon Exp $
  */
 
 /*

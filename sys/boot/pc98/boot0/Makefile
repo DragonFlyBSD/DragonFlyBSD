@@ -1,5 +1,5 @@
-# $FreeBSD: src/sys/boot/pc98/boot0/Makefile,v 1.1.2.1 2000/09/11 09:19:46 kato Exp $
-# $DragonFly: src/sys/boot/pc98/boot0/Attic/Makefile,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD: src/sys/boot/pc98/boot0/Makefile,v 1.1 2000/08/02 08:46:08 kato Exp $
+# $DragonFly: src/sys/boot/pc98/boot0/Attic/Makefile,v 1.3 2003/11/10 06:08:37 dillon Exp $
 
 PROG=		boot0
 OBJS=		boot0.o

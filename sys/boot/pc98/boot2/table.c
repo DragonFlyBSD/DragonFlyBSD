@@ -24,10 +24,7 @@
  * the rights to redistribute these changes.
  *
  *	from: Mach, Revision 2.2  92/04/04  11:36:43  rpd
- * $FreeBSD: src/sys/boot/pc98/boot2/table.c,v 1.3 1999/08/28 00:40:27 peter Exp $
- * $DragonFly: src/sys/boot/pc98/boot2/Attic/table.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
-
 /*
   Copyright 1988, 1989, 1990, 1991, 1992
    by Intel Corporation, Santa Clara, California.
@@ -50,6 +47,11 @@ LOSS OF USE, DATA OR PROFITS, WHETHER IN ACTION OF CONTRACT,
 NEGLIGENCE, OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
 WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
+
+/*
+ * $FreeBSD: src/sys/boot/pc98/boot2/table.c,v 1.4 2003/09/08 09:11:20 obrien Exp $
+ * $DragonFly: src/sys/boot/pc98/boot2/Attic/table.c,v 1.3 2003/11/10 06:08:38 dillon Exp $
+ */
 
 #include "boot.h"
 

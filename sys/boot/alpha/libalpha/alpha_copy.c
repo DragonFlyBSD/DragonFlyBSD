@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/alpha/libalpha/alpha_copy.c,v 1.4.2.1 2000/12/28 13:12:24 ps Exp $
- * $DragonFly: src/sys/boot/alpha/libalpha/Attic/alpha_copy.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ * $FreeBSD: src/sys/boot/alpha/libalpha/alpha_copy.c,v 1.5 2000/08/03 09:49:44 jhb Exp $
+ * $DragonFly: src/sys/boot/alpha/libalpha/Attic/alpha_copy.c,v 1.3 2003/11/10 06:08:29 dillon Exp $
  */
 /*
  * MD primitives supporting placement of module data 

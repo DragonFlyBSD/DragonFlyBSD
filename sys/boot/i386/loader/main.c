@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/i386/loader/main.c,v 1.17.2.7 2002/10/10 15:53:27 iwasaki Exp $
- * $DragonFly: src/sys/boot/i386/loader/Attic/main.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $FreeBSD: src/sys/boot/i386/loader/main.c,v 1.28 2003/08/25 23:28:32 obrien Exp $
+ * $DragonFly: src/sys/boot/i386/loader/Attic/main.c,v 1.3 2003/11/10 06:08:36 dillon Exp $
  */
 
 /*
@@ -130,19 +130,23 @@ main(void)
 	if (devsw[i]->dv_init != NULL)
 	    (devsw[i]->dv_init)();
     printf("BIOS %dkB/%dkB available memory\n", bios_basemem / 1024, bios_extmem / 1024);
-
-    printf("\n");
-    printf("%s, Revision %s\n", bootprog_name, bootprog_rev);
-    printf("(%s, %s)\n", bootprog_maker, bootprog_date);
-
     if (initial_bootinfo != NULL) {
 	initial_bootinfo->bi_basemem = bios_basemem / 1024;
 	initial_bootinfo->bi_extmem = bios_extmem / 1024;
     }
 
+    /* detect ACPI for future reference */
+    biosacpi_detect();
+
+    printf("\n");
+    printf("%s, Revision %s\n", bootprog_name, bootprog_rev);
+    printf("(%s, %s)\n", bootprog_maker, bootprog_date);
+
     extract_currdev();				/* set $currdev and $loaddev */
     setenv("LINES", "24", 1);			/* optional */
     
+    bios_getsmap();
+
     archsw.arch_autoload = i386_autoload;
     archsw.arch_getdev = i386_getdev;
     archsw.arch_copyin = i386_copyin;

@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/i386/libi386/biospnp.c,v 1.4.2.1 2000/12/28 13:12:39 ps Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/biospnp.c,v 1.3 2003/11/09 02:22:33 dillon Exp $
+ * $FreeBSD: src/sys/boot/i386/libi386/biospnp.c,v 1.9 2003/08/25 23:28:31 obrien Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/biospnp.c,v 1.4 2003/11/10 06:08:36 dillon Exp $
  */
 
 /*
@@ -37,6 +37,7 @@
 #include <isapnp.h>
 #include <btxv86.h>
 
+#define __packed __attribute__((__packed__))
 
 static int	biospnp_init(void);
 static void	biospnp_enumerate(void);
@@ -49,37 +50,37 @@ struct pnphandler biospnphandler =
 
 struct pnp_ICstructure
 {
-    u_int8_t	pnp_signature[4]	 __attribute__ ((packed));
-    u_int8_t	pnp_version		 __attribute__ ((packed));
-    u_int8_t	pnp_length		 __attribute__ ((packed));
-    u_int16_t	pnp_BIOScontrol		 __attribute__ ((packed));
-    u_int8_t	pnp_checksum		 __attribute__ ((packed));
-    u_int32_t	pnp_eventflag		 __attribute__ ((packed));
-    u_int16_t	pnp_rmip		 __attribute__ ((packed));
-    u_int16_t	pnp_rmcs		 __attribute__ ((packed));
-    u_int16_t	pnp_pmip		 __attribute__ ((packed));
-    u_int32_t	pnp_pmcs		 __attribute__ ((packed));
-    u_int8_t	pnp_OEMdev[4]		 __attribute__ ((packed));
-    u_int16_t	pnp_rmds		 __attribute__ ((packed));
-    u_int32_t	pnp_pmds		 __attribute__ ((packed));
+    u_int8_t	pnp_signature[4]	 __packed;
+    u_int8_t	pnp_version		 __packed;
+    u_int8_t	pnp_length		 __packed;
+    u_int16_t	pnp_BIOScontrol		 __packed;
+    u_int8_t	pnp_checksum		 __packed;
+    u_int32_t	pnp_eventflag		 __packed;
+    u_int16_t	pnp_rmip		 __packed;
+    u_int16_t	pnp_rmcs		 __packed;
+    u_int16_t	pnp_pmip		 __packed;
+    u_int32_t	pnp_pmcs		 __packed;
+    u_int8_t	pnp_OEMdev[4]		 __packed;
+    u_int16_t	pnp_rmds		 __packed;
+    u_int32_t	pnp_pmds		 __packed;
 };
 
 struct pnp_devNode 
 {
-    u_int16_t	dn_size		__attribute__ ((packed));
-    u_int8_t	dn_handle	__attribute__ ((packed));
-    u_int8_t	dn_id[4]	__attribute__ ((packed));
-    u_int8_t	dn_type[3]	__attribute__ ((packed));
-    u_int16_t	dn_attrib	__attribute__ ((packed));
-    u_int8_t	dn_data[1]	__attribute__ ((packed));
+    u_int16_t	dn_size		__packed;
+    u_int8_t	dn_handle	__packed;
+    u_int8_t	dn_id[4]	__packed;
+    u_int8_t	dn_type[3]	__packed;
+    u_int16_t	dn_attrib	__packed;
+    u_int8_t	dn_data[1]	__packed;
 };
 
 struct pnp_isaConfiguration
 {
-    u_int8_t	ic_revision	__attribute__ ((packed));
-    u_int8_t	ic_nCSN		__attribute__ ((packed));
-    u_int16_t	ic_rdport	__attribute__ ((packed));
-    u_int16_t	ic_reserved	__attribute__ ((packed));
+    u_int8_t	ic_revision	__packed;
+    u_int8_t	ic_nCSN		__packed;
+    u_int16_t	ic_rdport	__packed;
+    u_int16_t	ic_reserved	__packed;
 };
 
 static struct pnp_ICstructure	*pnp_Icheck = NULL;
@@ -264,7 +265,7 @@ biospnp_call(int func, const char *fmt, ...)
 	switch(*p) {
 
 	case 'w':
-	    i = __va_arg(ap, u_int16_t);
+	    i = __va_arg(ap, u_int);
 	    *(u_int16_t *)argp = i;
 	    argp += sizeof(u_int16_t);
 	    break;

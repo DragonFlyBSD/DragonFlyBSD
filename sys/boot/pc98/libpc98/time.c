@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/pc98/libpc98/time.c,v 1.3.2.1 2000/12/30 12:01:06 nyan Exp $
- * $DragonFly: src/sys/boot/pc98/libpc98/Attic/time.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $FreeBSD: src/sys/boot/pc98/libpc98/time.c,v 1.5 2003/09/08 09:11:20 obrien Exp $
+ * $DragonFly: src/sys/boot/pc98/libpc98/Attic/time.c,v 1.3 2003/11/10 06:08:39 dillon Exp $
  */
 
 #include <stand.h>

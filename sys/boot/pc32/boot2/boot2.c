@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1998 Robert Nordier
  * All rights reserved.
  *
@@ -11,23 +11,17 @@
  * implied warranties, including, without limitation, the implied
  * warranties of merchantability and fitness for a particular
  * purpose.
+ *
+ * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.64 2003/08/25 23:28:31 obrien Exp $
+ * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.5 2003/11/10 06:08:35 dillon Exp $
  */
-
-/*
- * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.28.2.7 2002/10/10 15:53:24 iwasaki Exp $
- * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.4 2003/11/09 02:22:33 dillon Exp $
- */
-
 #include <sys/param.h>
-#include <sys/reboot.h>
-#include <sys/diskslice.h>
 #include <sys/disklabel.h>
+#include <sys/diskslice.h>
+#include <sys/diskmbr.h>
 #include <sys/dirent.h>
 #include <machine/bootinfo.h>
 #include <machine/elf.h>
-
-#include <vfs/ufs/fs.h>
-#include <vfs/ufs/dinode.h>
 
 #include <stdarg.h>
 
@@ -38,6 +32,11 @@
 #include "boot2.h"
 #include "lib.h"
 
+#define IO_KEYBOARD	1
+#define IO_SERIAL	2
+
+#define SECOND		18	/* Circa that many ticks in a second. */
+
 #define RBX_ASKNAME	0x0	/* -a */
 #define RBX_SINGLE	0x1	/* -s */
 #define RBX_DFLTROOT	0x5	/* -r */
@@ -47,11 +46,15 @@
 #define RBX_SERIAL	0xc	/* -h */
 #define RBX_CDROM	0xd	/* -C */
 #define RBX_GDB 	0xf	/* -g */
+#define RBX_MUTE	0x10	/* -m */
+#define RBX_PAUSE	0x12	/* -p */
+#define RBX_NOINTR	0x1c	/* -n */
 #define RBX_DUAL	0x1d	/* -D */
 #define RBX_PROBEKBD	0x1e	/* -P */
-#define RBX_NOINTR	0x1f	/* -n */
+/* 0x1f is reserved for the historical RB_BOOTINFO option */
 
-#define RBX_MASK	0xffff
+/* pass: -a, -s, -r, -d, -c, -v, -h, -C, -g, -m, -p, -D */
+#define RBX_MASK	0x2005ffff
 
 #define PATH_CONFIG	"/boot.config"
 #define PATH_BOOT3	"/boot/loader"
@@ -59,8 +62,7 @@
 
 #define ARGS		0x900
 #define NOPT		12
-#define BSIZEMAX	16384
-#define NDEV		5
+#define NDEV		3
 #define MEM_BASE	0x12
 #define MEM_EXT 	0x15
 #define V86_CY(x)	((x) & 1)
@@ -70,31 +72,30 @@
 #define DRV_MASK	0x7f
 
 #define TYPE_AD		0
-#define TYPE_WD		1
-#define TYPE_WFD 	2
-#define TYPE_FD		3
-#define TYPE_DA		4
+#define TYPE_DA		1
+#define TYPE_MAXHARD	TYPE_DA
+#define TYPE_FD		2
 
 extern uint32_t _end;
 
-static const char optstr[NOPT] = "DhaCcdgnPrsv";
+static const char optstr[NOPT] = "DhaCgmnPprsv";
 static const unsigned char flags[NOPT] = {
     RBX_DUAL,
     RBX_SERIAL,
     RBX_ASKNAME,
     RBX_CDROM,
-    RBX_CONFIG,
-    RBX_KDB,
     RBX_GDB,
+    RBX_MUTE,
     RBX_NOINTR,
     RBX_PROBEKBD,
+    RBX_PAUSE,
     RBX_DFLTROOT,
     RBX_SINGLE,
     RBX_VERBOSE
 };
 
-static const char *const dev_nm[] = {"ad", "wd", "  ", "fd", "da"};
-static const unsigned dev_maj[] = {30, 0, 1, 2, 4};
+static const char *const dev_nm[NDEV] = {"ad", "da", "fd"};
+static const unsigned char dev_maj[NDEV] = {30, 4, 2};
 
 static struct dsk {
     unsigned drive;
@@ -104,129 +105,102 @@ static struct dsk {
     unsigned part;
     unsigned start;
     int init;
-    int meta;
 } dsk;
 static char cmd[512];
 static char kname[1024];
 static uint32_t opts;
 static struct bootinfo bootinfo;
-static int ls;
-static uint32_t fs_off;
-static uint8_t ioctrl = 0x1;
+static uint8_t ioctrl = IO_KEYBOARD;
 
 void exit(int);
-static void load(const char *);
-static int parse(char *);
-static ino_t lookup(const char *);
+static void load(void);
+static int parse(void);
 static int xfsread(ino_t, void *, size_t);
-static ssize_t fsread(ino_t, void *, size_t);
 static int dskread(void *, unsigned, unsigned);
-static int printf(const char *,...);
-static int putchar(int);
-static void *memcpy(void *, const void *, size_t);
-static void *malloc(size_t);
-static uint32_t memsize(int);
+static void printf(const char *,...);
+static void putchar(int);
+static uint32_t memsize(void);
 static int drvread(void *, unsigned, unsigned);
 static int keyhit(unsigned);
 static int xputc(int);
 static int xgetc(int);
 static int getc(int);
 
-static inline void
-readfile(const char *fname, void *buf, size_t size)
+static void 
+memcpy(void *d, const void *s, int len)
 {
-    ino_t ino;
+    char *dd = d;
+    const char *ss = s;
 
-    if ((ino = lookup(fname)))
-	fsread(ino, buf, size);
+#if 0
+    if (dd < ss) {
+	while (--len >= 0)
+	    *dd++ = *ss++;
+    } else {
+#endif
+	while (--len >= 0)
+	    dd[len] = ss[len];
+#if 0
+    }
+#endif
 }
 
 static inline int
 strcmp(const char *s1, const char *s2)
 {
     for (; *s1 == *s2 && *s1; s1++, s2++);
-    return (u_char)*s1 - (u_char)*s2;
+    return (unsigned char)*s1 - (unsigned char)*s2;
 }
 
-static inline int
-fsfind(const char *name, ino_t * ino)
-{
-    char buf[DEV_BSIZE];
-    struct dirent *d;
-    char *s;
-    ssize_t n;
+#include "ufsread.c"
 
-    fs_off = 0;
-    while ((n = fsread(*ino, buf, DEV_BSIZE)) > 0)
-	for (s = buf; s < buf + DEV_BSIZE;) {
-	    d = (void *)s;
-	    if (ls)
-		printf("%s ", d->d_name);
-	    else if (!strcmp(name, d->d_name)) {
-		*ino = d->d_fileno;
-		return d->d_type;
-	    }
-	    s += d->d_reclen;
-	}
-    if (n != -1 && ls)
-	putchar('\n');
+static int
+xfsread(ino_t inode, void *buf, size_t nbyte)
+{
+    if ((size_t)fsread(inode, buf, nbyte) != nbyte) {
+	printf("Invalid %s\n", "format");
+	return -1;
+    }
     return 0;
 }
 
-static inline int
-getchar(void)
+static inline uint32_t
+memsize(void)
 {
-    int c;
-
-    c = xgetc(0);
-    if (c == '\r')
-	c = '\n';
-    return c;
+    v86.addr = MEM_EXT;
+    v86.eax = 0x8800;
+    v86int();
+    return v86.eax;
 }
 
 static inline void
-getstr(char *str, int size)
+getstr(void)
 {
     char *s;
     int c;
 
-    s = str;
-    do {
-	switch (c = getchar()) {
+    s = cmd;
+    for (;;) {
+	switch (c = xgetc(0)) {
 	case 0:
 	    break;
-	case '\b':
 	case '\177':
-	    if (s > str) {
+	case '\b':
+	    if (s > cmd) {
 		s--;
-		putchar('\b');
-		putchar(' ');
-	    } else
-		c = 0;
+		printf("\b \b");
+	    }
 	    break;
 	case '\n':
+	case '\r':
 	    *s = 0;
-	    break;
+	    return;
 	default:
-	    if (s - str < size - 1)
+	    if (s - cmd < sizeof(cmd) - 1)
 		*s++ = c;
-	}
-	if (c)
 	    putchar(c);
-    } while (c != '\n');
-}
-
-static inline uint32_t
-drvinfo(int drive)
-{
-    v86.addr = 0x13;
-    v86.eax = 0x800;
-    v86.edx = DRV_HARD + drive;
-    v86int();
-    if (V86_CY(v86.efl))
-	return 0x4f010f;
-    return ((v86.ecx & 0xc0) << 18) | ((v86.ecx & 0xff00) << 8) |
-	   (v86.edx & 0xff00) | (v86.ecx & 0x3f);
+	}
+    }
 }
 
 static inline void
@@ -241,8 +215,10 @@ putc(int c)
 int
 main(void)
 {
-    int autoboot, i;
+    int autoboot;
+    ino_t ino;
 
+    dmadat = (void *)(roundup2(__base + (int32_t)&_end, 0x10000) - __base);
     v86.ctl = V86_FLAGS;
     dsk.drive = *(uint8_t *)PTOV(ARGS);
     dsk.type = dsk.drive & DRV_HARD ? TYPE_AD : TYPE_FD;
@@ -251,46 +227,56 @@ main(void)
     bootinfo.bi_version = BOOTINFO_VERSION;
     bootinfo.bi_size = sizeof(bootinfo);
     bootinfo.bi_basemem = 0;	/* XXX will be filled by loader or kernel */
-    bootinfo.bi_extmem = memsize(MEM_EXT);
+    bootinfo.bi_extmem = memsize();
     bootinfo.bi_memsizes_valid++;
-    for (i = 0; i < N_BIOS_GEOM; i++)
-	bootinfo.bi_bios_geom[i] = drvinfo(i);
-    autoboot = 2;
-    readfile(PATH_CONFIG, cmd, sizeof(cmd));
+
+    /* Process configuration file */
+
+    autoboot = 1;
+
+    if ((ino = lookup(PATH_CONFIG)))
+	fsread(ino, cmd, sizeof(cmd));
+
     if (*cmd) {
 	printf("%s: %s", PATH_CONFIG, cmd);
-	if (parse(cmd))
+	if (parse())
 	    autoboot = 0;
+	/* Do not process this command twice */
 	*cmd = 0;
     }
+
+    /*
+     * Try to exec stage 3 boot loader. If interrupted by a keypress,
+     * or in case of failure, try to load a kernel directly instead.
+     */
+
     if (autoboot && !*kname) {
-	if (autoboot == 2) {
-	    memcpy(kname, PATH_BOOT3, sizeof(PATH_BOOT3));
-	    if (!keyhit(0x37)) {
-		load(kname);
-		autoboot = 1;
-	    }
-	}
-	if (autoboot == 1)
+	memcpy(kname, PATH_BOOT3, sizeof(PATH_BOOT3));
+	if (!keyhit(3*SECOND)) {
+	    load();
 	    memcpy(kname, PATH_KERNEL, sizeof(PATH_KERNEL));
+	}
     }
+
+    /* Present the user with the boot2 prompt. */
+
     for (;;) {
-	printf(" \n>> FreeBSD/i386 BOOT\n"
+	printf("\nFreeBSD/i386 boot\n"
 	       "Default: %u:%s(%u,%c)%s\n"
 	       "boot: ",
 	       dsk.drive & DRV_MASK, dev_nm[dsk.type], dsk.unit,
 	       'a' + dsk.part, kname);
-	if (ioctrl & 0x2)
+	if (ioctrl & IO_SERIAL)
 	    sio_flush();
-	if (!autoboot || keyhit(0x5a))
-	    getstr(cmd, sizeof(cmd));
+	if (!autoboot || keyhit(5*SECOND))
+	    getstr();
 	else
 	    putchar('\n');
 	autoboot = 0;
-	if (parse(cmd))
-	    putchar('\a'); 
+	if (parse())
+	    putchar('\a');
 	else
-	    load(kname);
+	    load();
     }
 }
 
@@ -301,7 +287,7 @@ exit(int x)
 }
 
 static void
-load(const char *fname)
+load(void)
 {
     union {
 	struct exec ex;
@@ -314,9 +300,9 @@ load(const char *fname)
     uint32_t addr, x;
     int fmt, i, j;
 
-    if (!(ino = lookup(fname))) {
+    if (!(ino = lookup(kname))) {
 	if (!ls)
-	    printf("No %s\n", fname);
+	    printf("No %s\n", kname);
 	return;
     }
     if (xfsread(ino, &hdr, sizeof(hdr)))
@@ -388,18 +374,20 @@ load(const char *fname)
 	addr = hdr.eh.e_entry & 0xffffff;
     }
     bootinfo.bi_esymtab = VTOP(p);
-    bootinfo.bi_kernelname = VTOP(fname);
+    bootinfo.bi_kernelname = VTOP(kname);
     bootinfo.bi_bios_dev = dsk.drive;
-    __exec((caddr_t)addr, RB_BOOTINFO | (opts & RBX_MASK),
+    __exec((caddr_t)addr, opts & RBX_MASK,
 	   MAKEBOOTDEV(dev_maj[dsk.type], 0, dsk.slice, dsk.unit, dsk.part),
 	   0, 0, 0, VTOP(&bootinfo));
 }
 
 static int
-parse(char *arg)
+parse()
 {
+    char *arg = cmd;
     char *p, *q;
-    int drv, c, i;
+    unsigned int drv;
+    int c, i;
 
     while ((c = *arg++)) {
 	if (c == ' ' || c == '\t' || c == '\n')
@@ -421,18 +409,18 @@ parse(char *arg)
 		    opts |= 1 << RBX_DUAL | 1 << RBX_SERIAL;
 		opts &= ~(1 << RBX_PROBEKBD);
 	    }
-	    ioctrl = opts & 1 << RBX_DUAL ? 0x3 :
-		     opts & 1 << RBX_SERIAL ? 0x2 : 0x1;
-	    if (ioctrl & 0x2)
+	    ioctrl = opts & 1 << RBX_DUAL ? (IO_SERIAL|IO_KEYBOARD) :
+		     opts & 1 << RBX_SERIAL ? IO_SERIAL : IO_KEYBOARD;
+	    if (ioctrl & IO_SERIAL)
 	        sio_init();
 	} else {
 	    for (q = arg--; *q && *q != '('; q++);
 	    if (*q) {
 		drv = -1;
 		if (arg[1] == ':') {
-		    if (*arg < '0' || *arg > '9')
-			return -1;
 		    drv = *arg - '0';
+		    if (drv > 9)
+			return (-1);
 		    arg += 2;
 		}
 		if (q - arg != 2)
@@ -443,32 +431,31 @@ parse(char *arg)
 			return -1;
 		dsk.type = i;
 		arg += 3;
-		if (arg[1] != ',' || *arg < '0' || *arg > '9')
-		    return -1;
 		dsk.unit = *arg - '0';
+		if (arg[1] != ',' || dsk.unit > 9)
+		    return -1;
 		arg += 2;
 		dsk.slice = WHOLE_DISK_SLICE;
 		if (arg[1] == ',') {
-		    if (*arg < '0' || *arg > '0' + NDOSPART)
+		    dsk.slice = *arg - '0' + 1;
+		    if (dsk.slice > NDOSPART)
 			return -1;
-		    if ((dsk.slice = *arg - '0'))
-			dsk.slice++;
 		    arg += 2;
 		}
-		if (arg[1] != ')' || *arg < 'a' || *arg > 'p')
+		if (arg[1] != ')')
 		    return -1;
 		dsk.part = *arg - 'a';
+		if (dsk.part > 7)
+		    return (-1);
 		arg += 2;
 		if (drv == -1)
 		    drv = dsk.unit;
-		dsk.drive = (dsk.type == TYPE_WD ||
-			     dsk.type == TYPE_AD ||
-			     dsk.type == TYPE_DA ? DRV_HARD : 0) + drv;
-		dsk.meta = 0;
-		fsread(0, NULL, 0);
+		dsk.drive = (dsk.type <= TYPE_MAXHARD
+			     ? DRV_HARD : 0) + drv;
+		dsk_meta = 0;
 	    }
 	    if ((i = p - arg - !*(p - 1))) {
-		if (i >= sizeof(kname))
+		if ((size_t)i >= sizeof(kname))
 		    return -1;
 		memcpy(kname, arg, i + 1);
 	    }
@@ -478,131 +465,16 @@ parse(char *arg)
     return 0;
 }
 
-static ino_t
-lookup(const char *path)
-{
-    char name[MAXNAMLEN + 1];
-    const char *s;
-    ino_t ino;
-    ssize_t n;
-    int dt;
-
-    ino = ROOTINO;
-    dt = DT_DIR;
-    for (;;) {
-	if (*path == '/')
-	    path++;
-	if (!*path)
-	    break;
-	for (s = path; *s && *s != '/'; s++);
-	if ((n = s - path) > MAXNAMLEN)
-	    return 0;
-	ls = *path == '?' && n == 1 && !*s;
-	memcpy(name, path, n);
-	name[n] = 0;
-	if ((dt = fsfind(name, &ino)) <= 0)
-	    break;
-	path = s;
-    }
-    return dt == DT_REG ? ino : 0;
-}
-static int
-xfsread(ino_t inode, void *buf, size_t nbyte)
-{
-    if (fsread(inode, buf, nbyte) != nbyte) {
-	printf("Invalid %s\n", "format");
-	return -1;
-    }
-    return 0;
-}
-
-static ssize_t
-fsread(ino_t inode, void *buf, size_t nbyte)
-{
-    static struct fs fs;
-    static struct dinode din;
-    static char *blkbuf;
-    static ufs_daddr_t *indbuf;
-    static ino_t inomap;
-    static ufs_daddr_t blkmap, indmap;
-    static unsigned fsblks;
-    char *s;
-    ufs_daddr_t lbn, addr;
-    size_t n, nb, off;
-
-    if (!dsk.meta) {
-	if (!blkbuf)
-	    blkbuf = malloc(BSIZEMAX);
-	inomap = 0;
-	if (dskread(blkbuf, SBOFF / DEV_BSIZE, SBSIZE / DEV_BSIZE))
-	    return -1;
-	memcpy(&fs, blkbuf, sizeof(fs));
-	if (fs.fs_magic != FS_MAGIC) {
-	    printf("Not ufs\n");
-	    return -1;
-	}
-	fsblks = fs.fs_bsize >> DEV_BSHIFT;
-	dsk.meta++;
-    }
-    if (!inode)
-	return 0;
-    if (inomap != inode) {
-	if (dskread(blkbuf, fsbtodb(&fs, ino_to_fsba(&fs, inode)),
-		    fsblks))
-	    return -1;
-	din = ((struct dinode *)blkbuf)[inode % INOPB(&fs)];
-	inomap = inode;
-	fs_off = 0;
-	blkmap = indmap = 0;
-    }
-    s = buf;
-    if (nbyte > (n = din.di_size - fs_off))
-	nbyte = n;
-    nb = nbyte;
-    while (nb) {
-	lbn = lblkno(&fs, fs_off);
-	if (lbn < NDADDR)
-	    addr = din.di_db[lbn];
-	else {
-	    if (indmap != din.di_ib[0]) {
-		if (!indbuf)
-		    indbuf = malloc(BSIZEMAX);
-		if (dskread(indbuf, fsbtodb(&fs, din.di_ib[0]),
-			    fsblks))
-		    return -1;
-		indmap = din.di_ib[0];
-	    }
-	    addr = indbuf[(lbn - NDADDR) % NINDIR(&fs)];
-	}
-	n = dblksize(&fs, &din, lbn);
-	if (blkmap != addr) {
-	    if (dskread(blkbuf, fsbtodb(&fs, addr), n >> DEV_BSHIFT))
-		return -1;
-	    blkmap = addr;
-	}
-	off = blkoff(&fs, fs_off);
-	n -= off;
-	if (n > nb)
-	    n = nb;
-	memcpy(s, blkbuf + off, n);
-	s += n;
-	fs_off += n;
-	nb -= n;
-    }
-    return nbyte;
-}
-
 static int
 dskread(void *buf, unsigned lba, unsigned nblk)
 {
-    static char *sec;
     struct dos_partition *dp;
     struct disklabel *d;
+    char *sec;
     unsigned sl, i;
 
-    if (!dsk.meta) {
-	if (!sec)
-	    sec = malloc(DEV_BSIZE);
+    if (!dsk_meta) {
+	sec = dmadat->secbuf;
 	dsk.start = 0;
 	if (drvread(sec, DOSBBSECTOR, 1))
 	    return -1;
@@ -648,42 +520,40 @@ dskread(void *buf, unsigned lba, unsigned nblk)
 		printf("Invalid %s\n", "partition");
 		return -1;
 	    }
-	    dsk.start = d->d_partitions[dsk.part].p_offset;
+	    dsk.start += d->d_partitions[dsk.part].p_offset;
+	    dsk.start -= d->d_partitions[RAW_PART].p_offset;
 	}
     }
     return drvread(buf, dsk.start + lba, nblk);
 }
 
-static int
+static void
 printf(const char *fmt,...)
 {
-    static const char digits[16] = "0123456789abcdef";
-    __va_list ap;
+    va_list ap;
     char buf[10];
     char *s;
-    unsigned r, u;
+    unsigned u;
     int c;
 
-    __va_start(ap, fmt);
+    va_start(ap, fmt);
     while ((c = *fmt++)) {
 	if (c == '%') {
 	    c = *fmt++;
 	    switch (c) {
 	    case 'c':
-		putchar(__va_arg(ap, int));
+		putchar(va_arg(ap, int));
 		continue;
 	    case 's':
-		for (s = __va_arg(ap, char *); *s; s++)
+		for (s = va_arg(ap, char *); *s; s++)
 		    putchar(*s);
 		continue;
 	    case 'u':
-	    case 'x':
-		r = c == 'u' ? 10U : 16U;
-		u = __va_arg(ap, unsigned);
+		u = va_arg(ap, unsigned);
 		s = buf;
 		do
-		    *s++ = digits[u % r];
-		while (u /= r);
+		    *s++ = '0' + u % 10U;
+		while (u /= 10U);
 		while (--s >= buf)
 		    putchar(*s);
 		continue;
@@ -691,49 +561,16 @@ printf(const char *fmt,...)
 	}
 	putchar(c);
     }
-    __va_end(ap);
-    return 0;
+    va_end(ap);
+    return;
 }
 
-static int
+static void
 putchar(int c)
 {
     if (c == '\n')
 	xputc('\r');
-    return xputc(c);
-}
-
-static void *
-memcpy(void *dst, const void *src, size_t size)
-{
-    const char *s;
-    char *d;
-
-    for (d = dst, s = src; size; size--)
-	*d++ = *s++;
-    return dst;
-}
-
-static void *
-malloc(size_t size)
-{
-    static uint32_t next;
-    void *p;
-
-    if (!next)
-	next = roundup2(__base + _end, 0x10000) - __base;
-    p = (void *)next;
-    next += size;
-    return p;
-}
-
-static uint32_t
-memsize(int type)
-{
-    v86.addr = type;
-    v86.eax = 0x8800;
-    v86int();
-    return v86.eax;
+    xputc(c);
 }
 
 static int
@@ -752,8 +589,7 @@ drvread(void *buf, unsigned lba, unsigned nblk)
     v86int();
     v86.ctl = V86_FLAGS;
     if (V86_CY(v86.efl)) {
-	printf("Disk error 0x%x (lba=0x%x)\n", v86.eax >> 8 & 0xff,
-	       lba);
+	printf("error %u lba %u\n", v86.eax >> 8 & 0xff, lba);
 	return -1;
     }
     return 0;
@@ -781,9 +617,9 @@ keyhit(unsigned ticks)
 static int
 xputc(int c)
 {
-    if (ioctrl & 0x1)
+    if (ioctrl & IO_KEYBOARD)
 	putc(c);
-    if (ioctrl & 0x2)
+    if (ioctrl & IO_SERIAL)
 	sio_putc(c);
     return c;
 }
@@ -794,9 +630,9 @@ xgetc(int fn)
     if (opts & 1 << RBX_NOINTR)
 	return 0;
     for (;;) {
-	if (ioctrl & 0x1 && getc(1))
+	if (ioctrl & IO_KEYBOARD && getc(1))
 	    return fn ? 1 : getc(0);
-	if (ioctrl & 0x2 && sio_ischar())
+	if (ioctrl & IO_SERIAL && sio_ischar())
 	    return fn ? 1 : sio_getc();
 	if (fn)
 	    return 0;

@@ -23,13 +23,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/common/commands.c,v 1.13.2.3 2001/03/05 02:27:01 obrien Exp $
- * $DragonFly: src/sys/boot/common/commands.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ * $FreeBSD: src/sys/boot/common/commands.c,v 1.19 2003/08/25 23:30:41 obrien Exp $
+ * $DragonFly: src/sys/boot/common/commands.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
  */
 
 #include <stand.h>
 #include <string.h>
-#include <sys/reboot.h>
 
 #include "bootstrap.h"
 
@@ -470,7 +469,7 @@ command_lsdev(int argc, char *argv[])
     pager_open();
     for (i = 0; devsw[i] != NULL; i++) {
 	if (devsw[i]->dv_print != NULL){
-	    sprintf(line, "%s @ %p\n", devsw[i]->dv_name, devsw[i]->dv_print);
+	    sprintf(line, "%s devices:\n", devsw[i]->dv_name);
 	    if (pager_output(line))
 		    break;
 	    devsw[i]->dv_print(verbose);

@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/common/console.c,v 1.5 1999/08/28 00:39:46 peter Exp $
- * $DragonFly: src/sys/boot/common/console.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ * $FreeBSD: src/sys/boot/common/console.c,v 1.6 2003/08/25 23:30:41 obrien Exp $
+ * $DragonFly: src/sys/boot/common/console.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
  */
 
 #include <stand.h>

@@ -1,0 +1,21 @@
+\ Loader.rc
+\ $FreeBSD: src/sys/boot/i386/loader/loader.rc,v 1.1 2003/05/31 05:25:18 scottl Exp $
+\ $DragonFly: src/sys/boot/i386/loader/Attic/loader.rc,v 1.1 2003/11/10 06:08:36 dillon Exp $
+\
+\ Includes additional commands
+include /boot/loader.4th
+
+\ Reads and processes loader.rc
+start
+
+\ Tests for password -- executes autoboot first if a password was defined
+check-password
+
+\ Load in the boot menu
+include /boot/beastie.4th
+
+\ Do the normal initialization and startup
+initialize drop
+
+\ Start the boot menu
+beastie-start

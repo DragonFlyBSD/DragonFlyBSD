@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/alpha/libalpha/srmdisk.c,v 1.8.2.2 2001/08/01 20:52:03 mjacob Exp $
- * $DragonFly: src/sys/boot/alpha/libalpha/Attic/srmdisk.c,v 1.3 2003/11/09 02:22:29 dillon Exp $
+ * $FreeBSD$
+ * $DragonFly: src/sys/boot/alpha/libalpha/Attic/srmdisk.c,v 1.4 2003/11/10 06:08:30 dillon Exp $
  */
 
 /*
@@ -41,7 +41,6 @@
 #include <stand.h>
 
 #include <sys/disklabel.h>
-#include <sys/diskslice.h>
 
 #include <machine/stdarg.h>
 #include <machine/prom.h>
@@ -153,7 +152,7 @@ bd_print(int verbose)
 static int 
 bd_open(struct open_file *f, ...)
 {
-    __va_list			args;
+    va_list			args;
     struct alpha_devdesc	*dev;
     struct dos_partition	*dptr;
     struct open_disk		*od;
@@ -163,9 +162,9 @@ bd_open(struct open_file *f, ...)
     int				unit, fd;
     prom_return_t		ret;
 
-    __va_start(args, f);
-    dev = __va_arg(args, struct alpha_devdesc*);
-    __va_end(args);
+    va_start(args, f);
+    dev = va_arg(args, struct alpha_devdesc*);
+    va_end(args);
 
     unit = dev->d_kind.srmdisk.unit;
     if (unit >= nbdinfo) {

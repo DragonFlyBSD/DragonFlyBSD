@@ -1,35 +1,26 @@
-# $FreeBSD: src/sys/boot/i386/kgzldr/Makefile,v 1.3.2.1 2001/03/04 05:04:33 obrien Exp $
-# $DragonFly: src/sys/boot/pc32/kgzldr/Makefile,v 1.2 2003/06/17 04:28:18 dillon Exp $
+# $FreeBSD: src/sys/boot/i386/kgzldr/Makefile,v 1.16 2003/06/30 00:15:38 ru Exp $
+# $DragonFly: src/sys/boot/pc32/kgzldr/Makefile,v 1.3 2003/11/10 06:08:35 dillon Exp $
 
-PROG=	kgzldr.o
 SRCS=	start.s boot.c inflate.c lib.c crt.s sio.s
-CFLAGS=	-fno-builtin
-.if ${OBJFORMAT} == aout
-CFLAGS+=-O2
-.else
+OBJS=	${SRCS:N*.h:R:S/$/.o/g}
+CFLAGS=	-ffreestanding
 CFLAGS+=-Os
-.endif
 CFLAGS+=-DKZIP
-LDFLAGS=-nostdlib -static -r
-NOMAN=
-BINDIR=	/usr/lib
-BINMODE=444
-STRIP=
+LDFLAGS=-nostdlib -static -Wl,-r
 .PATH:	${.CURDIR}/../../../kern
 
-M4?=	m4
-M4FLAGS=
+CLEANFILES=kgzldr.o
 
 BOOT_COMCONSOLE_PORT?=	0x3f8
-M4FLAGS+=-DSIOPRT=${BOOT_COMCONSOLE_PORT}
+AFLAGS+=--defsym SIO_PRT=${BOOT_COMCONSOLE_PORT}
 
 all: kgzldr.o
 
 kgzldr.o: ${OBJS}
 	${CC} ${LDFLAGS} -o ${.TARGET} ${OBJS}
 
-.s.o:
-	(cd ${.CURDIR}; ${M4} ${M4FLAGS} ${.IMPSRC}) |\
-		${AS} ${AFLAGS} -o ${.TARGET}
+realinstall:
+	${INSTALL} -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \
+	    kgzldr.o ${DESTDIR}${LIBDIR}
 
 .include <bsd.prog.mk>
