@@ -26,7 +26,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.24 2004/06/10 22:11:35 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.25 2004/06/12 01:55:59 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -314,28 +314,26 @@ lwkt_default_replyport(lwkt_port_t port, lwkt_msg_t msg)
 {
     crit_enter();
     msg->ms_flags |= MSGF_REPLY1;
+
+    /*
+     * An abort may have caught up to us while we were processing the
+     * message.  If this occured we have to dequeue the message from the
+     * target port in the context of our current cpu before we can finish
+     * replying it.
+     */
+    if (msg->ms_flags & MSGF_QUEUED) {
+	KKASSERT(msg->ms_flags & MSGF_ABORTED);
+	TAILQ_REMOVE(&msg->ms_target_port->mp_msgq, msg, ms_node);
+	msg->ms_flags &= ~MSGF_QUEUED;
+    }
+
+    /*
+     * Do reply port processing for async messages.  Just mark the message
+     * done and wakeup the owner of the reply port for synchronous messages.
+     */
     if (msg->ms_flags & MSGF_ASYNC) {
-	/*
-	 * An abort may have caught up to us while we were processing the
-	 * message.  If this occured we have to dequeue the message from the
-	 * target port in the context of our current cpu before we can
-	 * finish replying it.
-	 *
-	 * If an abort occurs after we reply the MSGF_REPLY1 flag will
-	 * prevent it from being requeued to the target port.
-	 */
-	if (msg->ms_flags & MSGF_QUEUED) {
-	    KKASSERT(msg->ms_flags & MSGF_ABORTED);
-	    TAILQ_REMOVE(&msg->ms_target_port->mp_msgq, msg, ms_node);
-	    msg->ms_flags &= ~MSGF_QUEUED;
-	}
 	_lwkt_replyport(port, msg, 0);
     } else {
-	/*
-	 * Synchronously executed messages cannot be aborted and are just
-	 * marked done.  YYY MSGF_DONE should already be set, change flag set
-	 * to KKASSERT.
-	 */
 	msg->ms_flags |= MSGF_DONE;
 	if (port->mp_flags & MSGPORTF_WAITING)
 	    lwkt_schedule(port->mp_td);
