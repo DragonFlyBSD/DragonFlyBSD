@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_command.c,v 1.34.2.2 2001/07/29 22:48:36 kris Exp $
- * $DragonFly: src/sys/ddb/db_command.c,v 1.6 2003/11/10 06:12:04 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_command.c,v 1.7 2005/02/12 21:04:41 eirikn Exp $
  */
 
 /*
@@ -300,7 +300,7 @@ db_command(last_cmdp, cmd_table, aux_cmd_tablep, aux_cmd_tablep_end)
 		t = db_read_token();
 		if (t == tSLASH) {
 		    t = db_read_token();
-		    if (t != tIDENT) {
+		    if (t != tIDENT && t != tNUMBER) {
 			db_printf("Bad modifier\n");
 			db_flush_lex();
 			return;
