@@ -1,5 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/binutils/gdb/i386/freebsd-nat.c,v 1.21.4.4 2001/08/15 02:42:27 peter Exp $ */
-/* $DragonFly: src/gnu/usr.bin/binutils/gdb/i386/Attic/freebsd-nat.c,v 1.4 2004/02/03 19:22:53 dillon Exp $ */
+/* $DragonFly: src/gnu/usr.bin/binutils/gdb/i386/Attic/freebsd-nat.c,v 1.5 2004/08/09 13:55:35 eirikn Exp $ */
 /* Native-dependent code for BSD Unix running on i386's, for GDB.
    Copyright 1988, 1989, 1991, 1992, 1994, 1996 Free Software Foundation, Inc.
 
@@ -169,7 +169,7 @@ extern void print_387_control_word ();		/* i387-tdep.h */
 extern void print_387_status_word ();
 
 #define	fpstate		save87
-#if __FreeBSD_version >= 440000
+#if __FreeBSD_version >= 440000 || defined(__DragonFly__)
 #define	U_FPSTATE(u)	(((struct pcb *)((char *)&u + PCB_OFFSET))->pcb_save.sv_87)
 #else
 #define	U_FPSTATE(u)	(((struct pcb *)((char *)&u + PCB_OFFSET))->pcb_savefpu)
