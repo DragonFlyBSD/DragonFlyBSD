@@ -32,7 +32,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.11 2004/06/04 07:45:46 hmp Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.12 2004/06/04 20:29:02 dillon Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -55,12 +55,10 @@
 /*
  * Macros for type conversion:
  * mtod(m, t)	-- Convert mbuf pointer to data pointer of correct type.
- * dtom(x)	-- Convert data pointer within mbuf to mbuf pointer (XXX).
  * mtocl(x) -	convert pointer within cluster to cluster index #
  * cltom(x) -	convert cluster # to ptr to beginning of cluster
  */
 #define	mtod(m, t)	((t)((m)->m_data))
-#define	dtom(x)		((struct mbuf *)((intptr_t)(x) & ~(MSIZE-1)))
 #define	mtocl(x)	(((uintptr_t)(x) - (uintptr_t)mbutl) >> MCLSHIFT)
 #define	cltom(x)	((caddr_t)((uintptr_t)mbutl + \
 			    ((uintptr_t)(x) << MCLSHIFT)))
