@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)startslip.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/startslip/startslip.c,v 1.31.2.1 2000/05/07 18:26:51 joe Exp $
- * $DragonFly: src/sbin/startslip/startslip.c,v 1.4 2003/11/01 17:16:02 drhodus Exp $
+ * $DragonFly: src/sbin/startslip/startslip.c,v 1.5 2004/09/22 08:38:09 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -81,7 +81,7 @@ int diali, dialc;
 int fd = -1;
 FILE *pfd;
 char *dvname, *devicename;
-char pidfile[80];
+char my_pidfile[80];
 
 #ifdef DEBUG
 int	debug = 1;
@@ -203,10 +203,10 @@ main(int argc, char **argv)
 		dvname = devicename;
 	else
 		dvname++;
-	if (snprintf(pidfile, sizeof(pidfile), PIDFILE, _PATH_VARRUN, dvname) >= sizeof(pidfile))
+	if (snprintf(my_pidfile, sizeof(my_pidfile), PIDFILE, _PATH_VARRUN, dvname) >= sizeof(my_pidfile))
 		usage();
 
-	if ((pfd = fopen(pidfile, "r")) != NULL) {
+	if ((pfd = fopen(my_pidfile, "r")) != NULL) {
 		if (fscanf(pfd, "%ld\n", &lpid) == 1) {
 			pid = lpid;
 			if (pid == lpid && pid > 0)
@@ -274,7 +274,7 @@ restart:
 
 	pid = getpid();
 	printd("restart: pid %ld: ", (long)pid);
-	if ((pfd = fopen(pidfile, "w")) != NULL) {
+	if ((pfd = fopen(my_pidfile, "w")) != NULL) {
 		fprintf(pfd, "%ld\n", (long)pid);
 		fclose(pfd);
 	}
@@ -569,7 +569,7 @@ down(int code)
 	if (fd > -1)
 		close(fd);
 	if (pfd)
-		unlink(pidfile);
+		unlink(my_pidfile);
 	if (uucp_lock && locked)
 		uu_unlock(dvname);
 	exit(code);
