@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.17 2004/02/16 21:06:29 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.18 2004/02/26 18:50:42 justin Exp $
 
 $TITLE(DragonFly - Download)
 <P>
@@ -26,15 +26,19 @@ If you are looking for the most recent version possible,
 daily snapshots are available from Simon 'corecode' Schubert via
 <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">FTP</A>
 and <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">HTTP</A>.
-
-Esat.net is mirroring these snapshots via IPv4 and IPv6 on
+<P>
+Esat.net (UK) is mirroring these snapshots via IPv4 and IPv6 on
 <a href="ftp://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">FTP</a>, 
 <a href="http://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">HTTP</a>, and 
-<a href="rsync://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">rysnc</a>.  
-AllBSD.org also mirrors these images via 
-<A HREF="http://pub.allbsd.org/DragonFly/snapshots/">HTTP</A> and 
-<A HREF="ftp://ftp.allbsd.org/pub/DragonFly/snapshots/">FTP</A>.
+<a href="rsync://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">rysnc</a>.  <BR>
 
+AllBSD.org (Japan) also mirrors these images via 
+<A HREF="http://pub.allbsd.org/DragonFly/snapshots/">HTTP</A> and 
+<A HREF="ftp://ftp.allbsd.org/pub/DragonFly/snapshots/">FTP</A>. <BR>
+
+Fortunaty.net (Europe) offers mirrors via 
+<A HREF="http://ftp.fortunaty.net/">HTTP</A> and
+<A HREF="ftp://ftp.fortunaty.net/">FTP</A>.
 
 <H2>Obtaining source via CVS</H2>
 
