@@ -19,6 +19,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * $DragonFly: src/sys/i386/gnu/isa/sound/Attic/awe_compat.h,v 1.2 2004/02/12 23:33:26 joerg Exp $
  */
 
 /*----------------------------------------------------------------
@@ -148,7 +150,7 @@ static void *my_realloc(void *buf, int oldsize, int size)
 #define MEMCPY(dst,src,len)	memcpy(dst, src, len)
 
 
-#elif defined(__FreeBSD__)
+#elif defined(__DragonFly__) || defined(__FreeBSD__)
 
 /*================================================================
  * FreeBSD macros

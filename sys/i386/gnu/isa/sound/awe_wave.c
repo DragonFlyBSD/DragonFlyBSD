@@ -20,12 +20,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * $DragonFly: src/sys/i386/gnu/isa/sound/Attic/awe_wave.c,v 1.2 2003/08/07 21:17:21 dillon Exp $
+ * $DragonFly: src/sys/i386/gnu/isa/sound/Attic/awe_wave.c,v 1.3 2004/02/12 23:33:26 joerg Exp $
  */
 
 #include <stddef.h>
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #  include "awe_config.h"
 #else
 #  include "awe_config.h"
@@ -35,7 +35,7 @@
 
 #ifdef CONFIG_AWE32_SYNTH
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #  include "awe_hw.h"
 #  include "awe_version.h"
 #  include "awe_voice.h"
@@ -48,7 +48,7 @@
 #ifdef AWE_HAS_GUS_COMPATIBILITY
 /* include finetune table */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #  ifdef AWE_OBSOLETE_VOXWARE
 #    define SEQUENCER_C
 #  endif
@@ -63,7 +63,7 @@
 
 #ifdef linux
 #  include <linux/ultrasound.h>
-#elif defined(__FreeBSD__)
+#elif defined(__DragonFly__) || defined(__FreeBSD__)
 #  include <machine/ultrasound.h>
 #endif
 
@@ -450,7 +450,7 @@ static int awe_mixer_ioctl(int dev, unsigned int cmd, caddr_t arg);
 #endif
 
 /* define macros for compatibility */
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #  include "awe_compat.h"
 #else
 #  include "awe_compat.h"
@@ -492,7 +492,7 @@ static struct synth_operations awe_operations =
 
 #ifdef CONFIG_AWE32_MIXER
 static struct mixer_operations awe_mixer_operations = {
-#ifndef __FreeBSD__
+#if !defined(__DragonFly__) && !defined(__FreeBSD__)
 	"AWE32",
 #endif
 	"AWE32 Equalizer",
@@ -511,7 +511,7 @@ static struct mixer_operations awe_mixer_operations = {
 #define ATTACH_DECL	/**/
 #endif
 
-#if defined(__FreeBSD__) && !defined(AWE_OBSOLETE_VOXWARE)
+#if (defined(__DragonFly__) || defined(__FreeBSD__)) && !defined(AWE_OBSOLETE_VOXWARE)
 #  define ATTACH_RET
 void attach_awe(struct address_info *hw_config)
 #else
@@ -582,7 +582,7 @@ int attach_awe(void)
 
 	snprintf(awe_info.name, sizeof(awe_info.name), "AWE32-%s (RAM%dk)",
 		AWEDRV_VERSION, awe_mem_size/1024);
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	printk("awe0: <SoundBlaster EMU8000 MIDI (RAM%dk)>", awe_mem_size/1024);
 #elif defined(AWE_DEBUG_ON)
 	printk("%s\n", awe_info.name);
@@ -639,7 +639,7 @@ void unload_awe(void)
 
 #ifdef AWE_OBSOLETE_VOXWARE
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 long attach_awe_obsolete(long mem_start, struct address_info *hw_config)
 #else
 int attach_awe_obsolete(int mem_start, struct address_info *hw_config)
@@ -658,7 +658,7 @@ int probe_awe_obsolete(struct address_info *hw_config)
 }
 
 #else
-#if defined(__FreeBSD__ )
+#if defined(__DragonFly__) || defined(__FreeBSD__ )
 int probe_awe(struct address_info *hw_config)
 {
 	return 1;
@@ -3088,7 +3088,7 @@ awe_replace_data(awe_patch_info *patch, const char *addr, int count)
 static const char *readbuf_addr;
 static int readbuf_offs;
 static int readbuf_flags;
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 static unsigned short *readbuf_loop;
 static int readbuf_loopstart, readbuf_loopend;
 #endif
@@ -3097,7 +3097,7 @@ static int readbuf_loopstart, readbuf_loopend;
 static int
 readbuf_init(const char *addr, int offset, awe_sample_info *sp)
 {
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	readbuf_loop = NULL;
 	readbuf_loopstart = sp->loopstart;
 	readbuf_loopend = sp->loopend;
@@ -3131,7 +3131,7 @@ readbuf_word(int pos)
 	}
 	if (readbuf_flags & AWE_SAMPLE_UNSIGNED)
 		c ^= 0x8000; /* unsigned -> signed */
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	/* write on cache for reverse loop */
 	if (readbuf_flags & (AWE_SAMPLE_BIDIR_LOOP|AWE_SAMPLE_REVERSE_LOOP)) {
 		if (pos >= readbuf_loopstart && pos < readbuf_loopend)
@@ -3141,7 +3141,7 @@ readbuf_word(int pos)
 	return c;
 }
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 /* read from cache */
 static unsigned short
 readbuf_word_cache(int pos)

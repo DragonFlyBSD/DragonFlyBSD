@@ -22,7 +22,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *      $DragonFly: src/sys/platform/pc32/acpica/Attic/acpi_machdep.c,v 1.1 2003/09/24 03:32:16 drhodus Exp $ 
+ *      $DragonFly: src/sys/platform/pc32/acpica/Attic/acpi_machdep.c,v 1.2 2004/02/12 23:33:26 joerg Exp $ 
  */
 
 #include <sys/cdefs.h>
@@ -44,7 +44,7 @@ static device_t	acpi_dev;
  * APM driver emulation 
  */
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <sys/select.h>
 #else
 #include <sys/selinfo.h>
@@ -53,7 +53,7 @@ static device_t	acpi_dev;
 #include <machine/apm_bios.h>
 #include <machine/pc/bios.h>
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <i386/apm/apm.h>
 #else
 #include <i386/bios/apm.h>

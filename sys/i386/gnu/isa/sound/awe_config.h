@@ -19,6 +19,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * $DragonFly: src/sys/i386/gnu/isa/sound/Attic/awe_config.h,v 1.2 2004/02/12 23:33:26 joerg Exp $
  */
 
 #ifndef AWE_CONFIG_H_DEF
@@ -117,7 +119,7 @@
 
 #ifdef AWE_OBSOLETE_VOXWARE
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #  include <i386/isa/sound/sound_config.h>
 #else
 #  include "sound_config.h"
@@ -133,7 +135,7 @@
 #include "lowlevel.h"
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #  include <i386/isa/sound/sound_config.h>
 #  if defined(CONFIGURE_SOUNDCARD) && defined(CONFIG_AWE32)
 #    define CONFIG_AWE32_SYNTH
