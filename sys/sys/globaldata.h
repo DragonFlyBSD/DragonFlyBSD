@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.29 2004/03/30 19:14:13 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.30 2004/04/01 17:40:59 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -97,6 +97,7 @@ struct globaldata {
 	TAILQ_HEAD(,thread) gd_tdrunq[32];	/* runnable threads */
 	__uint32_t	gd_runqmask;		/* which queues? */
 	__uint32_t	gd_cpuid;
+	cpumask_t	gd_cpumask;		/* mask = 1<<cpuid */
 	cpumask_t	gd_other_cpus;		/* mask of 'other' cpus */
 	struct timeval	gd_stattv;
 	int		gd_intr_nesting_level;	/* (for interrupts) */

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.5 2004/03/08 03:03:54 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.6 2004/04/01 17:40:57 dillon Exp $
  */
 
 /*
@@ -468,7 +468,7 @@ lwkt_cpusync_start(cpumask_t mask, lwkt_cpusync_t poll)
 		mask & gd->gd_other_cpus & smp_active_mask,
 		(ipifunc_t)lwkt_cpusync_remote1, poll);
 #endif
-    if (mask & (1 << gd->gd_cpuid)) {
+    if (mask & gd->gd_cpumask) {
 	if (poll->cs_run_func)
 	    poll->cs_run_func(poll);
     }
@@ -500,7 +500,7 @@ lwkt_cpusync_add(cpumask_t mask, lwkt_cpusync_t poll)
 		mask & gd->gd_other_cpus & smp_active_mask,
 		(ipifunc_t)lwkt_cpusync_remote1, poll);
 #endif
-    if (mask & (1 << gd->gd_cpuid)) {
+    if (mask & gd->gd_cpumask) {
 	if (poll->cs_run_func)
 	    poll->cs_run_func(poll);
     }
@@ -532,7 +532,7 @@ lwkt_cpusync_finish(lwkt_cpusync_t poll)
     globaldata_t gd = mycpu;
 
     poll->cs_count = -1;
-    if (poll->cs_mask & (1 << gd->gd_cpuid)) {
+    if (poll->cs_mask & gd->gd_cpumask) {
 	if (poll->cs_fin1_func)
 	    poll->cs_fin1_func(poll);
 	if (poll->cs_fin2_func)
