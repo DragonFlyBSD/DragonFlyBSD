@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_inode.c	8.13 (Berkeley) 4/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_inode.c,v 1.56.2.5 2002/02/05 18:35:03 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.12 2004/08/24 14:01:57 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.13 2005/03/08 17:47:04 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -193,6 +193,7 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred,
 #endif
 			softdep_setup_freeblocks(oip, length);
 			vinvalbuf(ovp, 0, td, 0, 0);
+			vnode_pager_setsize(ovp, 0);
 			oip->i_flag |= IN_CHANGE | IN_UPDATE;
 			return (ffs_update(ovp, 0));
 		}
