@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.14 2003/10/17 05:25:45 daver Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.15 2003/10/21 20:06:47 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -331,7 +331,7 @@ kern_writev(int fd, struct uio *auio, int flags, int *res)
 	fp = holdfp(fdp, fd, FWRITE);
 	if (fp == NULL)
 		return (EBADF);
-	if (flags & FOF_OFFSET && fp->f_type != DTYPE_VNODE) {
+	if ((flags & FOF_OFFSET) && fp->f_type != DTYPE_VNODE) {
 		error = ESPIPE;
 		goto done;
 	}
@@ -354,7 +354,7 @@ kern_writev(int fd, struct uio *auio, int flags, int *res)
 	len = auio->uio_resid;
 	if (fp->f_type == DTYPE_VNODE)
 		bwillwrite();
-	error = fo_write(fp, auio, fp->f_cred, 0, td);
+	error = fo_write(fp, auio, fp->f_cred, flags, td);
 	if (error) {
 		if (auio->uio_resid != len && (error == ERESTART ||
 		    error == EINTR || error == EWOULDBLOCK))
