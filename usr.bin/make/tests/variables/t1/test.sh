@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $DragonFly: src/usr.bin/make/tests/variables/t1/test.sh,v 1.5 2005/02/26 11:23:54 okumoto Exp $
+# $DragonFly: src/usr.bin/make/tests/variables/t1/test.sh,v 1.6 2005/02/26 11:25:02 okumoto Exp $
 
 . ../../common.sh
 
@@ -28,7 +28,7 @@ _EOF_
 
 desc_test()
 {
-	echo "Variable expansion."
+	echo "Variable expansion with M modifier"
 }
 
 eval_cmd $1
