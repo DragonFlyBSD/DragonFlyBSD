@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_subr.c,v 1.2.2.1 2001/02/22 08:54:11 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_subr.c,v 1.4 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_subr.c,v 1.5 2004/09/16 22:26:22 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -52,7 +52,7 @@
 
 int ncp_debuglevel = 0;
 
-struct callout_handle ncp_timer_handle;
+struct callout ncp_timer_handle;
 
 static void ncp_at_exit(struct thread *td);
 static void ncp_timer(void *arg);
@@ -108,7 +108,8 @@ ncp_init(void)
 		NCPFATAL("can't register at_exit handler\n");
 		return ENOMEM;
 	}
-	ncp_timer_handle = timeout(ncp_timer,NULL,NCP_TIMER_TICK);
+	callout_init(&ncp_timer);
+	callout_reset(&ncp_timer_handle, NCP_TIMER_TICK, ncp_timer, NULL);
 	return 0;
 }
 
@@ -121,8 +122,8 @@ ncp_done(void)
 
 	KKASSERT(td->td_proc);
 	cred = td->td_proc->p_ucred;
-	
-	untimeout(ncp_timer,NULL,ncp_timer_handle);
+
+	callout_stop(&ncp_timer_handle);
 	rm_at_exit(ncp_at_exit);
 	ncp_conn_locklist(LK_EXCLUSIVE, td);
 	for (ncp = SLIST_FIRST(&conn_list); ncp; ncp = nncp) {
@@ -141,7 +142,8 @@ ncp_done(void)
 
 /* tick every second and check for watch dog packets and lost connections */
 static void
-ncp_timer(void *arg){
+ncp_timer(void *arg)
+{
 	struct ncp_conn *conn;
 
 	if(ncp_conn_locklist(LK_SHARED | LK_NOWAIT, NULL) == 0) {
@@ -149,7 +151,7 @@ ncp_timer(void *arg){
 			ncp_check_conn(conn);
 		ncp_conn_unlocklist(NULL);
 	}
-	ncp_timer_handle = timeout(ncp_timer,NULL,NCP_TIMER_TICK);
+	callout_reset(&ncp_timer_handle, NCP_TIMER_TICK, ncp_timer, NULL);
 }
 
 int
