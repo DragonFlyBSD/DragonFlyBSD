@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/upcall.h,v 1.4 2003/12/04 20:09:33 dillon Exp $
+ * $DragonFly: src/sys/sys/upcall.h,v 1.5 2003/12/07 01:17:52 dillon Exp $
  */
 
 #ifndef _SYS_UPCALL_H_
@@ -32,9 +32,10 @@
 typedef void (*upcall_func_t)(void *);
 
 struct upcall {
-	int	magic;
-	int	crit_count;
-	int	pending;	/* must follow crit_count */
+	int	upc_magic;
+	int	upc_critoff;		/* offset of crit_count in uthread */
+	int	upc_pending;		/* must follow crit_count */
+	struct thread *upc_uthread;	/* pointer to user thread (opaque0 */
 };
 
 #define UPCALL_MAGIC	0x55504331

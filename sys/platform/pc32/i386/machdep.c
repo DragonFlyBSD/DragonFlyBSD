@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.47 2003/12/04 20:35:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.48 2003/12/07 01:17:53 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -706,11 +706,14 @@ sendupcall(struct vmupcall *vu, int morepending)
 	struct trapframe *regs;
 	struct upcall upcall;
 	struct upc_frame upc_frame;
+	int	crit_count = 0;
 
 	/*
 	 * Get the upcall data structure
 	 */
-	if (copyin(p->p_upcall, &upcall, sizeof(upcall))) {
+	if (copyin(p->p_upcall, &upcall, sizeof(upcall)) ||
+	    copyin((char *)upcall.upc_uthread + upcall.upc_critoff, &crit_count, sizeof(int))
+	) {
 		vu->vu_pending = 0;
 		printf("bad upcall address\n");
 		return;
@@ -721,11 +724,11 @@ sendupcall(struct vmupcall *vu, int morepending)
 	 * section count, mark the data structure as pending and return 
 	 * without doing an upcall.  vu_pending is left set.
 	 */
-	if (upcall.pending || upcall.crit_count >= vu->vu_pending) {
-		if (upcall.pending < vu->vu_pending) {
-			upcall.pending = vu->vu_pending;
-			copyout(&upcall.pending, &p->p_upcall->pending,
-				sizeof(upcall.pending));
+	if (upcall.upc_pending || crit_count >= vu->vu_pending) {
+		if (upcall.upc_pending < vu->vu_pending) {
+			upcall.upc_pending = vu->vu_pending;
+			copyout(&upcall.upc_pending, &p->p_upcall->upc_pending,
+				sizeof(upcall.upc_pending));
 		}
 		return;
 	}
@@ -739,9 +742,12 @@ sendupcall(struct vmupcall *vu, int morepending)
 	 * upc_dispatch(-1) to process remaining upcalls.
 	 */
 	vu->vu_pending = 0;
-	upcall.pending = morepending;
-	upcall.crit_count += TDPRI_CRIT;
-	copyout(&upcall, p->p_upcall, sizeof(upcall));
+	upcall.upc_pending = morepending;
+	crit_count += TDPRI_CRIT;
+	copyout(&upcall.upc_pending, &p->p_upcall->upc_pending, 
+		sizeof(upcall.upc_pending));
+	copyout(&crit_count, (char *)upcall.upc_uthread + upcall.upc_critoff,
+		sizeof(int));
 
 	/*
 	 * Construct a stack frame and issue the upcall
@@ -779,21 +785,26 @@ fetchupcall (struct vmupcall *vu, int morepending, void *rsp)
 	struct proc *p;
 	struct trapframe *regs;
 	int error;
+	struct upcall upcall;
+	int crit_count;
 
 	p = curproc;
 	regs = p->p_md.md_regs;
 
-	error = copyout(&morepending, &p->p_upcall->pending, sizeof(int));
+	error = copyout(&morepending, &p->p_upcall->upc_pending, sizeof(int));
 	if (error == 0) {
 	    if (vu) {
 		/*
 		 * This jumps us to the next ready context.
 		 */
 		vu->vu_pending = 0;
-		error = copyin(&p->p_upcall->crit_count, &morepending, sizeof(int));
-		morepending += TDPRI_CRIT;
+		error = copyin(p->p_upcall, &upcall, sizeof(upcall));
+		crit_count = 0;
 		if (error == 0)
-			error = copyout(&morepending, &p->p_upcall->crit_count, sizeof(int));
+			error = copyin((char *)upcall.upc_uthread + upcall.upc_critoff, &crit_count, sizeof(int));
+		crit_count += TDPRI_CRIT;
+		if (error == 0)
+			error = copyout(&crit_count, (char *)upcall.upc_uthread + upcall.upc_critoff, sizeof(int));
 		regs->tf_eax = (register_t)vu->vu_func;
 		regs->tf_ecx = (register_t)vu->vu_data;
 		regs->tf_edx = (register_t)p->p_upcall;
@@ -807,7 +818,8 @@ fetchupcall (struct vmupcall *vu, int morepending, void *rsp)
 		regs->tf_eax = upc_frame.eax;
 		regs->tf_ecx = upc_frame.ecx;
 		regs->tf_edx = upc_frame.edx;
-		regs->tf_eflags = upc_frame.flags;
+		regs->tf_eflags = (regs->tf_eflags & ~PSL_USERCHANGE) |
+				(upc_frame.flags & PSL_USERCHANGE);
 		regs->tf_eip = upc_frame.oldip;
 		regs->tf_esp = (register_t)((char *)rsp + sizeof(upc_frame));
 	    }
