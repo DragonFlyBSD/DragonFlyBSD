@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/forums.cgi,v 1.5 2003/09/05 02:35:51 dillon Exp $
+# $DragonFly: site/data/main/Attic/forums.cgi,v 1.6 2004/01/26 21:49:23 justin Exp $
 
 $TITLE(DragonFly - Forums)
 <P>
@@ -51,4 +51,11 @@ list for experimentation and remember to unsubscribe from it when you are done
 </UL>
 <P>
 We will be providing a web-based archival access feature soon for those people
-who just want to browse the lists who do not have a USENET newsreader handy.
+who just want to browse the lists and do not have a USENET newsreader handy.
+<P>
+There are two third-party mailing list archives available now:<BR>
+<UL>
+	<P><A HREF="http://www.shiningsilence.com/mailarchive/">shiningsilence.com</A> (experimental, all groups)
+	<BR><A HREF="http://news.gmane.org/gmane.os.dragonfly-bsd.kernel/">Gmane.org</A> (stable, kernel list only)
+</UL>
+
