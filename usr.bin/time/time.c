@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)time.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/time/time.c,v 1.14.2.5 2002/06/28 08:35:15 tjr Exp $
- * $DragonFly: src/usr.bin/time/time.c,v 1.10 2005/01/31 21:27:56 joerg Exp $
+ * $DragonFly: src/usr.bin/time/time.c,v 1.11 2005/03/04 16:54:37 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -215,7 +215,7 @@ main(int argc, char **argv)
 	 */
 	if (exit_on_sig) {
 		if (signal(exit_on_sig, SIG_DFL) == SIG_ERR)
-			perror("signal");
+			warn("signal failed");
 		else
 			kill(getpid(), exit_on_sig);
 	}
