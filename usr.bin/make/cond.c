@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.22 2005/01/09 23:14:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.23 2005/01/24 05:09:30 okumoto Exp $
  */
 
 /*-
@@ -250,7 +250,6 @@ CondGetArg(char **linePtr, char **argPtr, const char *func, Boolean parens)
 	}
     }
 
-    Buf_AddByte(buf, (Byte)'\0');
     *argPtr = (char *)Buf_GetAll(buf, &argLen);
     Buf_Destroy(buf, FALSE);
 
@@ -554,7 +553,6 @@ CondToken(Boolean doEval)
 			 condExpr++)
 			Buf_AddByte(buf, (Byte)*condExpr);
 
-		    Buf_AddByte(buf, (Byte)'\0');
 		    lhs = (char *)Buf_GetAll(buf, &varSpecLen);
 		    Buf_Destroy(buf, FALSE);
 
@@ -649,8 +647,6 @@ do_string_compare:
 			    Buf_AddByte(buf, (Byte)*cp);
 			}
 		    }
-
-		    Buf_AddByte(buf, (Byte)0);
 
 		    string = (char *)Buf_GetAll(buf, (size_t *)NULL);
 		    Buf_Destroy(buf, FALSE);

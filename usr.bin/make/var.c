@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.40 2005/01/10 12:36:06 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.41 2005/01/24 05:09:30 okumoto Exp $
  */
 
 /*-
@@ -617,7 +617,6 @@ VarModify(char *str, Boolean (*modProc)(const char *, Boolean, Buffer *, void *)
     for (i = 1; i < ac; i++)
 	addSpace = (*modProc)(av[i], addSpace, buf, datum);
 
-    Buf_AddByte(buf, '\0');
     str = (char *)Buf_GetAll(buf, (size_t *)NULL);
     Buf_Destroy(buf, FALSE);
     return (str);
@@ -772,8 +771,6 @@ VarGetPattern(GNode *ctxt, int err, char **tstr, int delim, int *flags,
 	    Buf_AddByte(buf, (Byte)*cp);
     }
 
-    Buf_AddByte(buf, (Byte)'\0');
-
     if (*cp != delim) {
 	*tstr = cp;
 	*length = 0;
@@ -814,7 +811,6 @@ Var_Quote(const char *str)
 	    Buf_AddByte(buf, (Byte)'\\');
 	Buf_AddByte(buf, (Byte)*str);
     }
-    Buf_AddByte(buf, (Byte)'\0');
     ret = Buf_GetAll(buf, NULL);
     Buf_Destroy(buf, FALSE);
     return (ret);
@@ -986,7 +982,6 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 	haveModifier = (*tstr == ':');
 	*tstr = '\0';
 
-	Buf_AddByte(buf, (Byte)'\0');
 	str = Buf_GetAll(buf, (size_t *)NULL);
 	vlen = strlen(str);
 
@@ -1290,8 +1285,6 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 			}
 		    }
 
-		    Buf_AddByte(buf, (Byte)'\0');
-
 		    /*
 		     * If lhs didn't end with the delimiter, complain and
 		     * exit.
@@ -1349,8 +1342,6 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 			    Buf_AddByte(buf, (Byte)*cp);
 			}
 		    }
-
-		    Buf_AddByte(buf, (Byte)'\0');
 
 		    /*
 		     * If didn't end in delimiter character, complain
@@ -1479,7 +1470,6 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 			for (cp = str; *cp ; cp++)
 			    Buf_AddByte(buf, (Byte)tolower(*cp));
 
-			Buf_AddByte(buf, (Byte)'\0');
 			newStr = (char *)Buf_GetAll(buf, (size_t *)NULL);
 			Buf_Destroy(buf, FALSE);
 
@@ -1519,7 +1509,6 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 			for (cp = str; *cp ; cp++)
 			    Buf_AddByte(buf, (Byte)toupper(*cp));
 
-			Buf_AddByte(buf, (Byte)'\0');
 			newStr = (char *)Buf_GetAll(buf, (size_t *)NULL);
 			Buf_Destroy(buf, FALSE);
 
@@ -1878,7 +1867,6 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 	}
     }
 
-    Buf_AddByte(buf, '\0');
     result = (char *)Buf_GetAll(buf, (size_t *)NULL);
     Buf_Destroy(buf, FALSE);
     return (result);

@@ -35,7 +35,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.10 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.19 2005/01/11 05:13:33 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.20 2005/01/24 05:09:30 okumoto Exp $
  */
 
 /*-
@@ -181,7 +181,6 @@ For_Eval(char *line)
 
 #define	ADDWORD() \
 	Buf_AddBytes(buf, ptr - wrd, (Byte *)wrd), \
-	Buf_AddByte(buf, (Byte)'\0'), \
 	Lst_AtFront(&forLst, Buf_GetAll(buf, &varlen)), \
 	Buf_Destroy(buf, FALSE)
 
