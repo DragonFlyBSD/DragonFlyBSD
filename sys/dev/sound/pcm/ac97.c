@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/ac97.c,v 1.49 2003/11/11 22:15:17 kuriyama Exp $
- * $DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.17 2004/07/09 10:01:02 asmodai Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.18 2004/07/16 08:02:46 asmodai Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -33,7 +33,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.17 2004/07/09 10:01:02 asmodai Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.18 2004/07/16 08:02:46 asmodai Exp $");
 
 MALLOC_DEFINE(M_AC97, "ac97", "ac97 codec");
 
@@ -101,7 +101,7 @@ static const struct ac97_vendorid ac97vendorid[] = {
 	{ 0x41445300, "Analog Devices" },
 	{ 0x414b4d00, "Asahi Kasei" },
 	{ 0x414c4300, "Realtek" },
-	{ 0x414c4700, "Avance Logic" },
+	{ 0x414c4700, "Avance Logic" },		/* Nowadays Realtek */
 	{ 0x43525900, "Cirrus Logic" },
 	{ 0x434d4900, "C-Media Electronics" },
 	{ 0x43585400, "Conexant" },
