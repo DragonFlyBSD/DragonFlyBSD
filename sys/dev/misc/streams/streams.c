@@ -31,7 +31,7 @@
  * in 3.0-980524-SNAP then hacked a bit (but probably not enough :-).
  *
  * $FreeBSD: src/sys/dev/streams/streams.c,v 1.16.2.1 2001/02/26 04:23:07 jlemon Exp $
- * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.3 2003/06/23 17:55:35 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.4 2003/06/25 03:55:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,12 +62,12 @@
 #include <svr4/svr4_stropts.h>
 #include <svr4/svr4_socket.h>
 
-static int svr4_soo_close __P((struct file *, struct proc *));
-static int svr4_ptm_alloc __P((struct proc *));
+static int svr4_soo_close __P((struct file *, struct thread *));
+static int svr4_ptm_alloc __P((struct thread *));
 static  d_open_t	streamsopen;
 
 struct svr4_sockcache_entry {
-	struct proc *p;		/* Process for the socket		*/
+	struct thread *td;	/* Thread for the socket		*/
 	void *cookie;		/* Internal cookie used for matching	*/
 	struct sockaddr_un sock;/* Pathname for the socket		*/
 	dev_t dev;		/* Device where the socket lives on	*/
@@ -254,7 +254,7 @@ streamsopen(dev_t dev, int oflags, int devtype, d_thread_t *td)
 	  break;
 
 	case dev_ptm:
-	  return svr4_ptm_alloc(p);
+	  return svr4_ptm_alloc(td);
 
 	default:
 	  return EOPNOTSUPP;
@@ -263,7 +263,7 @@ streamsopen(dev_t dev, int oflags, int devtype, d_thread_t *td)
 	if ((error = falloc(p, &fp, &fd)) != 0)
 	  return error;
 
-	if ((error = socreate(family, &so, type, protocol, p)) != 0) {
+	if ((error = socreate(family, &so, type, protocol, td)) != 0) {
 	  p->p_fd->fd_ofiles[fd] = 0;
 	  ffree(fp);
 	  return error;
@@ -280,8 +280,7 @@ streamsopen(dev_t dev, int oflags, int devtype, d_thread_t *td)
 }
 
 static int
-svr4_ptm_alloc(p)
-	struct proc *p;
+svr4_ptm_alloc(struct thread *td)
 {
 	/*
 	 * XXX this is very, very ugly.  But I can't find a better
@@ -305,6 +304,9 @@ svr4_ptm_alloc(p)
 	int l = 0, n = 0;
 	register_t fd = -1;
 	int error;
+	struct proc *p = td->td_proc;
+
+	KKASSERT(p);
 
 	SCARG(&oa, path) = path;
 	SCARG(&oa, flags) = O_RDWR;
@@ -364,9 +366,7 @@ svr4_stream_get(fp)
 }
 
 void
-svr4_delete_socket(p, fp)
-	struct proc *p;
-	struct file *fp;
+svr4_delete_socket(struct thread *td, struct file *fp)
 {
 	struct svr4_sockcache_entry *e;
 	void *cookie = ((struct socket *) fp->f_data)->so_emuldata;
@@ -378,24 +378,25 @@ svr4_delete_socket(p, fp)
 	}
 
 	for (e = svr4_head.tqh_first; e != NULL; e = e->entries.tqe_next)
-		if (e->p == p && e->cookie == cookie) {
+		if (e->td == td && e->cookie == cookie) {
 			TAILQ_REMOVE(&svr4_head, e, entries);
 			DPRINTF(("svr4_delete_socket: %s [%p,%d,%d]\n",
-				 e->sock.sun_path, p, e->dev, e->ino));
+				 e->sock.sun_path, td, (int)e->dev,
+				 (int)e->ino));
 			free(e, M_TEMP);
 			return;
 		}
 }
 
 static int
-svr4_soo_close(struct file *fp, struct proc *p)
+svr4_soo_close(struct file *fp, struct thread *td)
 {
         struct socket *so = (struct socket *)fp->f_data;
 	
 	/*	CHECKUNIT_DIAG(ENXIO);*/
 
-	svr4_delete_socket(p, fp);
+	svr4_delete_socket(td, fp);
 	free(so->so_emuldata, M_TEMP);
-	return soo_close(fp, p);
+	return soo_close(fp, td);
 	return (0);
 }

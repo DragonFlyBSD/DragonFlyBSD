@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_conn.h,v 1.3 1999/12/29 04:46:15 peter Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_conn.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_conn.h,v 1.3 2003/06/25 03:56:05 dillon Exp $
  */
 #ifndef _NETNCP_NCP_CONN_H_
 #define _NETNCP_NCP_CONN_H_
@@ -158,7 +158,7 @@ struct ncp_handle {
 	SLIST_ENTRY(ncp_handle)	nh_next;
 	int		nh_id;		/* handle id */
 	struct ncp_conn*nh_conn;	/* which conn we are refernce */
-	struct proc *	nh_proc;	/* who owns the handle	*/
+	struct thread *	nh_td;		/* who owns the handle	*/
 	int		nh_ref;		/* one process can asquire many handles, but we return the one */
 };
 
@@ -180,7 +180,7 @@ struct ncp_conn {
 	SLIST_HEAD(ncp_ref_hd,ncp_ref) ref_list;/* list of handles */
 	struct lock	nc_lock;		/* excl locks */
 	int		nc_lwant;		/* number of wanted locks */
-	struct proc	*procp;			/* pid currently operates */
+	struct thread	*td;			/* thread currently operates */
 	struct ucred	*ucred;			/* usr currently operates */
 	struct ncp_rq	*nc_rq;			/* current request */
 	/* Fields used to process ncp requests */
@@ -205,27 +205,27 @@ struct ncp_conn {
 #define ncp_conn_invalidate(conn) 	{conn->flags |= NCPFL_INVALID;}
 
 int  ncp_conn_init(void);
-int  ncp_conn_alloc(struct proc *p,struct ucred *cred, struct ncp_conn **connid);
+int  ncp_conn_alloc(struct thread *td,struct ucred *cred, struct ncp_conn **connid);
 int  ncp_conn_free(struct ncp_conn *conn);
 int  ncp_conn_access(struct ncp_conn *conn,struct ucred *cred,mode_t mode);
-int  ncp_conn_lock(struct ncp_conn *conn,struct proc *p,struct ucred *cred,int mode);
-void ncp_conn_unlock(struct ncp_conn *conn,struct proc *p);
-int  ncp_conn_assert_locked(struct ncp_conn *conn,char *checker,struct proc *p);
+int  ncp_conn_lock(struct ncp_conn *conn,struct thread *td,struct ucred *cred,int mode);
+void ncp_conn_unlock(struct ncp_conn *conn,struct thread *td);
+int  ncp_conn_assert_locked(struct ncp_conn *conn,char *checker,struct thread *td);
 /*int  ncp_conn_ref(struct ncp_conn *conn, pid_t pid);
 int  ncp_conn_rm_ref(struct ncp_conn *conn, pid_t pid, int force);
 void ncp_conn_list_rm_ref(pid_t pid);*/
-int  ncp_conn_getbyref(int connRef,struct proc *p,struct ucred *cred, int mode,
+int  ncp_conn_getbyref(int connRef,struct thread *td,struct ucred *cred, int mode,
 	struct ncp_conn **connpp);
-int  ncp_conn_getbyli(struct ncp_conn_loginfo *li,struct proc *p,struct ucred *cred, 
+int  ncp_conn_getbyli(struct ncp_conn_loginfo *li,struct thread *td,struct ucred *cred, 
 	int mode, struct ncp_conn **connpp);
 int  ncp_conn_setprimary(struct ncp_conn *conn, int on);
-int  ncp_conn_locklist(int flags, struct proc *p);
-void ncp_conn_unlocklist(struct proc *p);
-int  ncp_conn_gethandle(struct ncp_conn *conn, struct proc *p, struct ncp_handle **handle);
-int  ncp_conn_puthandle(struct ncp_handle *handle, struct proc *p, int force);
-int  ncp_conn_findhandle(int connHandle, struct proc *p, struct ncp_handle **handle);
-int  ncp_conn_getattached(struct ncp_conn_args *li,struct proc *p,struct ucred *cred,int mode, struct ncp_conn **connpp);
-int  ncp_conn_putprochandles(struct proc *p);
+int  ncp_conn_locklist(int flags, struct thread *td);
+void ncp_conn_unlocklist(struct thread *td);
+int  ncp_conn_gethandle(struct ncp_conn *conn, struct thread *td, struct ncp_handle **handle);
+int  ncp_conn_puthandle(struct ncp_handle *handle, struct thread *td, int force);
+int  ncp_conn_findhandle(int connHandle, struct thread *td, struct ncp_handle **handle);
+int  ncp_conn_getattached(struct ncp_conn_args *li,struct thread *td,struct ucred *cred,int mode, struct ncp_conn **connpp);
+int  ncp_conn_putprochandles(struct thread *td);
 int  ncp_conn_getinfo(struct ncp_conn *ncp, struct ncp_conn_stat *ncs);
 
 extern struct ncp_conn_head conn_list;

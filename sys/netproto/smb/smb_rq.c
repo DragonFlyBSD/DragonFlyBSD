@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_rq.c,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_rq.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_rq.c,v 1.3 2003/06/25 03:56:06 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -181,7 +181,7 @@ smb_rq_enqueue(struct smb_rq *rqp)
 		if (ssp->ss_flags & SMBS_RECONNECTING) {
 			msleep(&ssp->ss_vcgenid, SMBS_ST_LOCKPTR(ssp),
 			    PWAIT | PDROP, "90trcn", hz);
-			if (smb_proc_intr(rqp->sr_cred->scr_p))
+			if (smb_proc_intr(rqp->sr_cred->scr_td))
 				return EINTR;
 			continue;
 		}
@@ -245,11 +245,11 @@ smb_rq_bend(struct smb_rq *rqp)
 int
 smb_rq_intr(struct smb_rq *rqp)
 {
-	struct proc *p = rqp->sr_cred->scr_p;
+	struct thread *td = rqp->sr_cred->scr_td;
 
 	if (rqp->sr_flags & SMBR_INTR)
 		return EINTR;
-	return smb_proc_intr(p);
+	return smb_proc_intr(td);
 }
 
 int

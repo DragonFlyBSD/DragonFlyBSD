@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.7.2.3 2002/02/13 00:43:12 dillon Exp $
- * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.3 2003/06/23 17:55:46 dillon Exp $
+ * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.4 2003/06/25 03:56:03 dillon Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -191,13 +191,13 @@ static int ngt_ldisc;
 static int
 ngt_open(dev_t dev, struct tty *tp)
 {
-	struct proc *const p = curproc;	/* XXX */
+	struct thread *td = curthread;	/* XXX */
 	char name[sizeof(NG_TTY_NODE_TYPE) + 8];
 	sc_p sc;
 	int s, error;
 
 	/* Super-user only */
-	if ((error = suser_xxx(p->p_ucred, 0)))
+	if ((error = suser(td)))
 		return (error);
 	s = splnet();
 	(void) spltty();	/* XXX is this necessary? */

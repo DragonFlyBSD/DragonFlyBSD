@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -116,12 +116,13 @@ acct(uap)
 		syscallarg(char *) path;
 	} */ *uap;
 {
-	struct proc *p = curproc;	/* XXX */
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;	/* XXX */
 	struct nameidata nd;
 	int error;
 
 	/* Make sure that the caller is root. */
-	error = suser();
+	error = suser(td);
 	if (error)
 		return (error);
 
@@ -130,15 +131,15 @@ acct(uap)
 	 * appending and make sure it's a 'normal'.
 	 */
 	if (SCARG(uap, path) != NULL) {
-		NDINIT(&nd, LOOKUP, NOFOLLOW, UIO_USERSPACE, SCARG(uap, path),
-		       p);
+		NDINIT(&nd, LOOKUP, NOFOLLOW, UIO_USERSPACE,
+			SCARG(uap, path), td);
 		error = vn_open(&nd, FWRITE | O_APPEND, 0);
 		if (error)
 			return (error);
 		NDFREE(&nd, NDF_ONLY_PNBUF);
-		VOP_UNLOCK(nd.ni_vp, 0, p);
+		VOP_UNLOCK(nd.ni_vp, 0, td);
 		if (nd.ni_vp->v_type != VREG) {
-			vn_close(nd.ni_vp, FWRITE | O_APPEND, p->p_ucred, p);
+			vn_close(nd.ni_vp, FWRITE | O_APPEND, p->p_ucred, td);
 			return (EACCES);
 		}
 	}
@@ -150,7 +151,7 @@ acct(uap)
 	if (acctp != NULLVP || savacctp != NULLVP) {
 		untimeout(acctwatch, NULL, acctwatch_handle);
 		error = vn_close((acctp != NULLVP ? acctp : savacctp),
-		    FWRITE | O_APPEND, p->p_ucred, p);
+		    FWRITE | O_APPEND, p->p_ucred, td);
 		acctp = savacctp = NULLVP;
 	}
 	if (SCARG(uap, path) == NULL)
@@ -173,14 +174,14 @@ acct(uap)
  */
 
 int
-acct_process(p)
-	struct proc *p;
+acct_process(struct proc *p)
 {
 	struct acct acct;
 	struct rusage *r;
 	struct timeval ut, st, tmp;
 	int t;
 	struct vnode *vp;
+	struct thread *td = p->p_thread;
 
 	/* If accounting isn't enabled, don't bother */
 	vp = acctp;
@@ -244,10 +245,10 @@ acct_process(p)
 	/*
 	 * Write the accounting information to the file.
 	 */
-	VOP_LEASE(vp, p, p->p_ucred, LEASE_WRITE);
+	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 	return (vn_rdwr(UIO_WRITE, vp, (caddr_t)&acct, sizeof (acct),
 	    (off_t)0, UIO_SYSSPACE, IO_APPEND|IO_UNIT, p->p_ucred,
-	    (int *)0, p));
+	    (int *)0, td));
 }
 
 /*
@@ -309,7 +310,7 @@ acctwatch(a)
 			savacctp = NULLVP;
 			return;
 		}
-		(void)VFS_STATFS(savacctp->v_mount, &sb, (struct proc *)0);
+		(void)VFS_STATFS(savacctp->v_mount, &sb, NULL);
 		if (sb.f_bavail > acctresume * sb.f_blocks / 100) {
 			acctp = savacctp;
 			savacctp = NULLVP;
@@ -323,7 +324,7 @@ acctwatch(a)
 			acctp = NULLVP;
 			return;
 		}
-		(void)VFS_STATFS(acctp->v_mount, &sb, (struct proc *)0);
+		(void)VFS_STATFS(acctp->v_mount, &sb, NULL);
 		if (sb.f_bavail <= acctsuspend * sb.f_blocks / 100) {
 			savacctp = acctp;
 			acctp = NULLVP;

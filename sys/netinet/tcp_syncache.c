@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.3 2003/06/25 03:56:04 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -664,7 +664,7 @@ syncache_socket(sc, lso)
 		laddr = inp->inp_laddr;
 		if (inp->inp_laddr.s_addr == INADDR_ANY)
 			inp->inp_laddr = sc->sc_inc.inc_laddr;
-		if (in_pcbconnect(inp, (struct sockaddr *)sin, &proc0)) {
+		if (in_pcbconnect(inp, (struct sockaddr *)sin, &thread0)) {
 			inp->inp_laddr = laddr;
 			FREE(sin, M_SONAME);
 			goto abort;

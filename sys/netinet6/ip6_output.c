@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.3 2003/06/23 17:55:47 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.4 2003/06/25 03:56:04 dillon Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -1308,29 +1308,29 @@ ip6_insertfraghdr(m0, m, hlen, frghdrp)
  * IP6 socket option processing.
  */
 int
-ip6_ctloutput(so, sopt)
-	struct socket *so;
-	struct sockopt *sopt;
+ip6_ctloutput(struct socket *so, struct sockopt *sopt)
 {
 	int privileged;
 	struct inpcb *in6p = sotoinpcb(so);
 	int error, optval;
 	int level, op, optname;
 	int optlen;
-	struct proc *p;
+	struct thread *td;
 
 	if (sopt) {
 		level = sopt->sopt_level;
 		op = sopt->sopt_dir;
 		optname = sopt->sopt_name;
 		optlen = sopt->sopt_valsize;
-		p = sopt->sopt_p;
+		td = sopt->sopt_td;
 	} else {
 		panic("ip6_ctloutput: arg soopt is NULL");
+		/* NOT REACHED */
+		td = NULL;
 	}
 	error = optval = 0;
 
-	privileged = (p == 0 || suser_xxx(p->p_ucred, 0)) ? 0 : 1;
+	privileged = (td == NULL || suser(td)) ? 0 : 1;
 
 	if (level == IPPROTO_IPV6) {
 		switch (op) {

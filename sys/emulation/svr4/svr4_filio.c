@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_filio.c,v 1.8 2000/01/15 15:30:44 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_filio.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_filio.c,v 1.4 2003/06/25 03:56:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,6 +38,7 @@
 #include <sys/filedesc.h>
 #include <sys/poll.h>
 #include <sys/malloc.h>
+#include <sys/file2.h>
 
 #include <sys/sysproto.h>
 
@@ -167,17 +168,21 @@ svr4_sys_write(struct svr4_sys_write_args *uap)
 #endif /* BOGUS */
 
 int
-svr4_fil_ioctl(fp, p, retval, fd, cmd, data)
+svr4_fil_ioctl(fp, td, retval, fd, cmd, data)
 	struct file *fp;
-	struct proc *p;
+	struct thread *td;
 	register_t *retval;
 	int fd;
 	u_long cmd;
 	caddr_t data;
 {
+	struct proc *p = td->td_proc;
 	int error;
 	int num;
-	struct filedesc *fdp = p->p_fd;
+	struct filedesc *fdp;
+
+	KKASSERT(p);
+	fdp = p->p_fd;
 
 	*retval = 0;
 
@@ -209,7 +214,7 @@ svr4_fil_ioctl(fp, p, retval, fd, cmd, data)
 #ifdef SVR4_DEBUG
 		if (cmd == FIOASYNC) DPRINTF(("FIOASYNC\n"));
 #endif
-		error = fo_ioctl(fp, cmd, (caddr_t) &num, p);
+		error = fo_ioctl(fp, cmd, (caddr_t) &num, td);
 
 		if (error)
 			return error;

@@ -1,6 +1,6 @@
 /*-
  *  dgb.c $FreeBSD: src/sys/gnu/i386/isa/dgb.c,v 1.56.2.1 2001/02/26 04:23:09 jlemon Exp $
- *  dgb.c $DragonFly: src/sys/i386/gnu/isa/Attic/dgb.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ *  dgb.c $DragonFly: src/sys/i386/gnu/isa/Attic/dgb.c,v 1.3 2003/06/25 03:55:52 dillon Exp $
  *
  *  Digiboard driver.
  *
@@ -924,11 +924,7 @@ load_fep:
 
 /* ARGSUSED */
 static	int
-dgbopen(dev, flag, mode, p)
-	dev_t		dev;
-	int		flag;
-	int		mode;
-	struct proc	*p;
+dgbopen(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct dgb_softc *sc;
 	struct tty *tp;
@@ -1013,8 +1009,7 @@ open_top:
 				goto open_top;
 			}
 		}
-		if (tp->t_state & TS_XCLUDE &&
-		    suser(p)) {
+		if (tp->t_state & TS_XCLUDE && suser(td)) {
 			error = EBUSY;
 			goto out;
 		}
@@ -1104,17 +1099,13 @@ out:
 
 /*ARGSUSED*/
 static	int
-dgbclose(dev, flag, mode, p)
-	dev_t		dev;
-	int		flag;
-	int		mode;
-	struct proc	*p;
+dgbclose(dev_t dev, int flag, int mode, struct thread *td)
 {
-	int		mynor;
-	struct tty	*tp;
+	struct tty *tp;
 	int unit, pnum;
 	struct dgb_softc *sc;
 	struct dgb_p *port;
+	int mynor;
 	int s;
 	int i;
 
@@ -1464,12 +1455,7 @@ dgbpoll(unit_c)
 }
 
 static	int
-dgbioctl(dev, cmd, data, flag, p)
-	dev_t		dev;
-	u_long		cmd;
-	caddr_t		data;
-	int		flag;
-	struct proc	*p;
+dgbioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 {
 	struct dgb_softc *sc;
 	int unit, pnum;
@@ -1512,7 +1498,7 @@ dgbioctl(dev, cmd, data, flag, p)
 		}
 		switch (cmd) {
 		case TIOCSETA:
-			error = suser(p);
+			error = suser(td);
 			if (error != 0)
 				return (error);
 			*ct = *(struct termios *)data;
@@ -1734,7 +1720,7 @@ dgbioctl(dev, cmd, data, flag, p)
 		break;
 	case TIOCMSDTRWAIT:
 		/* must be root since the wait applies to following logins */
-		error = suser(p);
+		error = suser(td);
 		if (error != 0) {
 			splx(s);
 			return (error);

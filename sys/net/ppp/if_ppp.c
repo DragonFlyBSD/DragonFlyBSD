@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.3 2003/06/23 17:55:45 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.4 2003/06/25 03:56:02 dillon Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -227,15 +227,14 @@ pppattach(dummy)
  * Allocate a ppp interface unit and initialize it.
  */
 struct ppp_softc *
-pppalloc(pid)
-    pid_t pid;
+pppalloc(struct thread *td)
 {
     int nppp, i;
     struct ppp_softc *sc;
 
     for (nppp = 0, sc = ppp_softc; nppp < NPPP; nppp++, sc++)
-	if (sc->sc_xfer == pid) {
-	    sc->sc_xfer = 0;
+	if (sc->sc_xfer == td) {
+	    sc->sc_xfer = NULL;
 	    return sc;
 	}
     for (nppp = 0, sc = ppp_softc; nppp < NPPP; nppp++, sc++)
@@ -280,7 +279,7 @@ pppdealloc(sc)
     sc->sc_if.if_flags &= ~(IFF_UP|IFF_RUNNING);
     getmicrotime(&sc->sc_if.if_lastchange);
     sc->sc_devp = NULL;
-    sc->sc_xfer = 0;
+    sc->sc_xfer = NULL;
     for (;;) {
 	IF_DEQUEUE(&sc->sc_rawq, m);
 	if (m == NULL)
@@ -332,12 +331,8 @@ pppdealloc(sc)
  * Ioctl routine for generic ppp devices.
  */
 int
-pppioctl(sc, cmd, data, flag, p)
-    struct ppp_softc *sc;
-    u_long cmd;
-    caddr_t data;
-    int flag;
-    struct proc *p;
+pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
+    int flag, struct thread *td)
 {
     int s, error, flags, mru, npx;
     u_int nb;
@@ -368,7 +363,7 @@ pppioctl(sc, cmd, data, flag, p)
 	break;
 
     case PPPIOCSFLAGS:
-	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+	if ((error = suser(td)) != 0)
 	    return (error);
 	flags = *(int *)data & SC_MASK;
 	s = splsoftnet();
@@ -382,7 +377,7 @@ pppioctl(sc, cmd, data, flag, p)
 	break;
 
     case PPPIOCSMRU:
-	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+	if ((error = suser(td)) != 0)
 	    return (error);
 	mru = *(int *)data;
 	if (mru >= PPP_MRU && mru <= PPP_MAXMRU)
@@ -395,7 +390,7 @@ pppioctl(sc, cmd, data, flag, p)
 
 #ifdef VJC
     case PPPIOCSMAXCID:
-	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+	if ((error = suser(td)) != 0)
 	    return (error);
 	if (sc->sc_comp) {
 	    s = splsoftnet();
@@ -406,14 +401,14 @@ pppioctl(sc, cmd, data, flag, p)
 #endif
 
     case PPPIOCXFERUNIT:
-	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+	if ((error = suser(td)) != 0)
 	    return (error);
-	sc->sc_xfer = p->p_pid;
+	sc->sc_xfer = td;
 	break;
 
 #ifdef PPP_COMPRESS
     case PPPIOCSCOMPRESS:
-	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+	if ((error = suser(td)) != 0)
 	    return (error);
 	odp = (struct ppp_option_data *) data;
 	nb = odp->length;
@@ -483,7 +478,7 @@ pppioctl(sc, cmd, data, flag, p)
 	if (cmd == PPPIOCGNPMODE) {
 	    npi->mode = sc->sc_npmode[npx];
 	} else {
-	    if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+	    if ((error = suser(td)) != 0)
 		return (error);
 	    if (npi->mode != sc->sc_npmode[npx]) {
 		s = splsoftnet();
@@ -550,14 +545,14 @@ pppioctl(sc, cmd, data, flag, p)
  */
 static int
 pppsioctl(ifp, cmd, data)
-    register struct ifnet *ifp;
+    struct ifnet *ifp;
     u_long cmd;
     caddr_t data;
 {
-    struct proc *p = curproc;	/* XXX */
-    register struct ppp_softc *sc = &ppp_softc[ifp->if_unit];
-    register struct ifaddr *ifa = (struct ifaddr *)data;
-    register struct ifreq *ifr = (struct ifreq *)data;
+    struct thread *td = curthread;	/* XXX */
+    struct ppp_softc *sc = &ppp_softc[ifp->if_unit];
+    struct ifaddr *ifa = (struct ifaddr *)data;
+    struct ifreq *ifr = (struct ifreq *)data;
     struct ppp_stats *psp;
 #ifdef	PPP_COMPRESS
     struct ppp_comp_stats *pcp;
@@ -604,7 +599,7 @@ pppsioctl(ifp, cmd, data)
 	break;
 
     case SIOCSIFMTU:
-	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+	if ((error = suser(td)) != 0)
 	    break;
 	if (ifr->ifr_mtu > PPP_MAXMTU)
 	    error = EINVAL;

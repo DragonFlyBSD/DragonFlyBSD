@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.3 2003/06/23 17:55:33 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.4 2003/06/25 03:55:48 dillon Exp $
  */
 
 /* 
@@ -963,9 +963,6 @@ rpopen(dev_t dev, int flag, int mode, d_thread_t *td)
 	struct	tty	*tp;
 	int	oldspl, error;
 	unsigned int	IntMask, ChanStatus;
-	struct proc *p = td->td_proc;
-
-	KKASSERT(p != NULL);
 
    umynor = (((minor(dev) >> 16) -1) * 32);    /* SG */
 	port  = (minor(dev) & 0x1f);                /* SG */
@@ -1009,7 +1006,7 @@ open_top:
 				goto open_top;
 			}
 		}
-		if(tp->t_state & TS_XCLUDE && suser_xxx(p->p_ucred, 0) != 0) {
+		if(tp->t_state & TS_XCLUDE && suser(td) != 0) {
 			splx(oldspl);
 			error = EBUSY;
 			goto out2;
@@ -1236,9 +1233,6 @@ rpioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 	int	error = 0;
 	int	arg, flags, result, ChanStatus;
 	struct	termios *t;
-	struct proc *p = td->td_proc;
-
-	KKASSERT(p != NULL);
 
    umynor = (((minor(dev) >> 16) -1) * 32);    /* SG */
 	port  = (minor(dev) & 0x1f);                /* SG */
@@ -1261,7 +1255,7 @@ rpioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		}
 		switch (cmd) {
 		case TIOCSETA:
-			error = suser_xxx(p->p_ucred, 0);
+			error = suser(td);
 			if(error != 0)
 				return(error);
 			*ct = *(struct termios *)data;
@@ -1406,7 +1400,7 @@ rpioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		*(int *)data = result;
 		break;
 	case TIOCMSDTRWAIT:
-		error = suser_xxx(p->p_ucred, 0);
+		error = suser(td);
 		if(error != 0) {
 			splx(oldspl);
 			return(error);

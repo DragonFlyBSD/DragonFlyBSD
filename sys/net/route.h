@@ -32,7 +32,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.3 2003/06/25 03:56:02 dillon Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -293,7 +293,7 @@ struct rtentry *
 	 rtalloc1 __P((struct sockaddr *, int, u_long));
 void	 rtfree __P((struct rtentry *));
 int	 rtinit __P((struct ifaddr *, int, int));
-int	 rtioctl __P((u_long, caddr_t, struct proc *));
+int	 rtioctl __P((u_long, caddr_t, struct thread *));
 void	 rtredirect __P((struct sockaddr *, struct sockaddr *,
 	    struct sockaddr *, int, struct sockaddr *, struct rtentry **));
 int	 rtrequest __P((int, struct sockaddr *,

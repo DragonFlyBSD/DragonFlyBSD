@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.3 2003/06/25 03:56:07 dillon Exp $
  */
 
 
@@ -83,16 +83,12 @@ nfs_nhinit()
 static int nfs_node_hash_lock;
 
 int
-nfs_nget(mntp, fhp, fhsize, npp)
-	struct mount *mntp;
-	register nfsfh_t *fhp;
-	int fhsize;
-	struct nfsnode **npp;
+nfs_nget(struct mount *mntp, nfsfh_t *fhp, int fhsize, struct nfsnode **npp)
 {
-	struct proc *p = curproc;	/* XXX */
+	struct thread *td = curthread;	/* XXX */
 	struct nfsnode *np, *np2;
 	struct nfsnodehashhead *nhpp;
-	register struct vnode *vp;
+	struct vnode *vp;
 	struct vnode *nvp;
 	int error;
 	int rsflags;
@@ -116,7 +112,7 @@ loop:
 		    bcmp((caddr_t)fhp, (caddr_t)np->n_fhp, fhsize))
 			continue;
 		vp = NFSTOV(np);
-		if (vget(vp, LK_EXCLUSIVE|LK_SLEEPFAIL, p))
+		if (vget(vp, LK_EXCLUSIVE|LK_SLEEPFAIL, td))
 			goto loop;
 		*npp = np;
 		return(0);
@@ -186,7 +182,7 @@ loop:
 	/*
 	 * Lock the new nfsnode.
 	 */
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 
 	return (0);
 }
@@ -195,12 +191,11 @@ int
 nfs_inactive(ap)
 	struct vop_inactive_args /* {
 		struct vnode *a_vp;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
-	register struct nfsnode *np;
-	register struct sillyrename *sp;
-	struct proc *p = curproc;	/* XXX */
+	struct nfsnode *np;
+	struct sillyrename *sp;
 
 	np = VTONFS(ap->a_vp);
 	if (prtactive && ap->a_vp->v_usecount != 0)
@@ -219,11 +214,11 @@ nfs_inactive(ap)
 		 * have our own reference.
 		 */
 		if (ap->a_vp->v_usecount > 0)
-			(void) nfs_vinvalbuf(ap->a_vp, 0, sp->s_cred, p, 1);
-		else if (vget(ap->a_vp, 0, p))
+			(void) nfs_vinvalbuf(ap->a_vp, 0, sp->s_cred, ap->a_td, 1);
+		else if (vget(ap->a_vp, 0, ap->a_td))
 			panic("nfs_inactive: lost vnode");
 		else {
-			(void) nfs_vinvalbuf(ap->a_vp, 0, sp->s_cred, p, 1);
+			(void) nfs_vinvalbuf(ap->a_vp, 0, sp->s_cred, ap->a_td, 1);
 			vrele(ap->a_vp);
 		}
 		/*
@@ -236,7 +231,7 @@ nfs_inactive(ap)
 	}
 	np->n_flag &= (NMODIFIED | NFLUSHINPROG | NFLUSHWANT | NQNFSEVICTED |
 		NQNFSNONCACHE | NQNFSWRITE);
-	VOP_UNLOCK(ap->a_vp, 0, ap->a_p);
+	VOP_UNLOCK(ap->a_vp, 0, ap->a_td);
 	return (0);
 }
 
@@ -377,7 +372,7 @@ int
 nfs_islocked(ap)
 	struct vop_islocked_args /* {
 		struct vnode *a_vp;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	return VTONFS(ap->a_vp)->n_flag & NLOCKED ? 1 : 0;

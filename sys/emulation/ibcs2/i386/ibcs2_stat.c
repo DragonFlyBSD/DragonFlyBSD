@@ -26,13 +26,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_stat.c,v 1.10 1999/12/15 23:01:45 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.4 2003/06/25 03:55:53 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/namei.h>
 #include <sys/file.h>
+#include <sys/proc.h>
+#include <sys/namei.h>
 #include <sys/stat.h>
 #include <sys/filedesc.h>
 #include <sys/kernel.h>
@@ -99,7 +100,7 @@ cvt_statfs(sp, buf, len)
 int
 ibcs2_statfs(struct ibcs2_statfs_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;	/* XXX */
 	struct mount *mp;
 	struct statfs *sp;
 	int error;
@@ -107,14 +108,14 @@ ibcs2_statfs(struct ibcs2_statfs_args *uap)
 	caddr_t sg = stackgap_init();
 
 	CHECKALTEXIST(&sg, SCARG(uap, path));
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	mp = nd.ni_vp->v_mount;
 	sp = &mp->mnt_stat;
 	vrele(nd.ni_vp);
-	if ((error = VFS_STATFS(mp, sp, p)) != 0)
+	if ((error = VFS_STATFS(mp, sp, td)) != 0)
 		return (error);
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 	return cvt_statfs(sp, (caddr_t)SCARG(uap, buf), SCARG(uap, len));
@@ -123,17 +124,18 @@ ibcs2_statfs(struct ibcs2_statfs_args *uap)
 int
 ibcs2_fstatfs(struct ibcs2_fstatfs_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread; /* XXX */
 	struct file *fp;
 	struct mount *mp;
 	register struct statfs *sp;
 	int error;
 
-	if ((error = getvnode(p->p_fd, SCARG(uap, fd), &fp)) != 0)
+	KKASSERT(td->td_proc);
+	if ((error = getvnode(td->td_proc->p_fd, SCARG(uap, fd), &fp)) != 0)
 		return (error);
 	mp = ((struct vnode *)fp->f_data)->v_mount;
 	sp = &mp->mnt_stat;
-	if ((error = VFS_STATFS(mp, sp, p)) != 0)
+	if ((error = VFS_STATFS(mp, sp, td)) != 0)
 		return (error);
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 	return cvt_statfs(sp, (caddr_t)SCARG(uap, buf), SCARG(uap, len));

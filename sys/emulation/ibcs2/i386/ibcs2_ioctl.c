@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_ioctl.c,v 1.13.2.1 2001/07/31 20:14:21 jon Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ioctl.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ioctl.c,v 1.4 2003/06/25 03:55:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -35,9 +35,11 @@
 #include <sys/file.h>
 #include <sys/filedesc.h>
 #include <sys/filio.h>
+#include <sys/proc.h>
 #include <sys/ioctl_compat.h>
 #include <sys/tty.h>
 #include <machine/console.h>
+#include <sys/file2.h>
 
 #include <sys/sysproto.h>
 
@@ -337,20 +339,23 @@ stio2stios(t, ts)
 int
 ibcs2_ioctl(struct ibcs2_ioctl_args *uap)
 {
-	struct proc *p = curproc;
-	struct filedesc *fdp = p->p_fd;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct filedesc *fdp;
 	struct file *fp;
 	int error;
 
+	KKASSERT(p);
+	fdp = p->p_fd;
+
 	if (SCARG(uap, fd) < 0 || SCARG(uap, fd) >= fdp->fd_nfiles ||
 	    (fp = fdp->fd_ofiles[SCARG(uap, fd)]) == NULL) {
-		DPRINTF(("ibcs2_ioctl(%d): bad fd %d ", p->p_pid,
-			 SCARG(uap, fd)));
+		DPRINTF(("ibcs2_ioctl(td=%p): bad fd %d ", td, SCARG(uap, fd)));
 		return EBADF;
 	}
 
 	if ((fp->f_flag & (FREAD|FWRITE)) == 0) {
-		DPRINTF(("ibcs2_ioctl(%d): bad fp flag ", p->p_pid));
+		DPRINTF(("ibcs2_ioctl(td=%p): bad fp flag ", td));
 		return EBADF;
 	}
 
@@ -363,7 +368,7 @@ ibcs2_ioctl(struct ibcs2_ioctl_args *uap)
 		struct ibcs2_termios sts;
 		struct ibcs2_termio st;
 	
-		if ((error = fo_ioctl(fp, TIOCGETA, (caddr_t)&bts, p)) != 0)
+		if ((error = fo_ioctl(fp, TIOCGETA, (caddr_t)&bts, td)) != 0)
 			return error;
 	
 		btios2stios (&bts, &sts);
@@ -399,7 +404,7 @@ ibcs2_ioctl(struct ibcs2_ioctl_args *uap)
 		}
 
 		/* get full BSD termios so we don't lose information */
-		if ((error = fo_ioctl(fp, TIOCGETA, (caddr_t)&bts, p)) != 0) {
+		if ((error = fo_ioctl(fp, TIOCGETA, (caddr_t)&bts, td)) != 0) {
 			DPRINTF(("ibcs2_ioctl(%d): TCSET ctl failed fd %d ",
 				 p->p_pid, SCARG(uap, fd)));
 			return error;
@@ -414,7 +419,7 @@ ibcs2_ioctl(struct ibcs2_ioctl_args *uap)
 		stios2btios(&sts, &bts);
 
 		return fo_ioctl(fp, SCARG(uap, cmd) - IBCS2_TCSETA + TIOCSETA,
-			      (caddr_t)&bts, p);
+			      (caddr_t)&bts, td);
 	    }
 
 	case IBCS2_XCSETA:
@@ -430,7 +435,7 @@ ibcs2_ioctl(struct ibcs2_ioctl_args *uap)
 		}
 		stios2btios (&sts, &bts);
 		return fo_ioctl(fp, SCARG(uap, cmd) - IBCS2_XCSETA + TIOCSETA,
-			      (caddr_t)&bts, p);
+			      (caddr_t)&bts, td);
 	    }
 
 	case IBCS2_OXCSETA:
@@ -446,11 +451,11 @@ ibcs2_ioctl(struct ibcs2_ioctl_args *uap)
 		}
 		stios2btios (&sts, &bts);
 		return fo_ioctl(fp, SCARG(uap, cmd) - IBCS2_OXCSETA + TIOCSETA,
-			      (caddr_t)&bts, p);
+			      (caddr_t)&bts, td);
 	    }
 
 	case IBCS2_TCSBRK:
-		DPRINTF(("ibcs2_ioctl(%d): TCSBRK ", p->p_pid));
+		DPRINTF(("ibcs2_ioctl(td=%p): TCSBRK ", td));
 		return ENOSYS;
 
 	case IBCS2_TCXONC:
@@ -458,12 +463,12 @@ ibcs2_ioctl(struct ibcs2_ioctl_args *uap)
 		switch ((int)SCARG(uap, data)) {
 		case 0:
 		case 1:
-			DPRINTF(("ibcs2_ioctl(%d): TCXONC ", p->p_pid));
+			DPRINTF(("ibcs2_ioctl(td=%p): TCXONC ", td));
 			return ENOSYS;
 		case 2:
-			return fo_ioctl(fp, TIOCSTOP, (caddr_t)0, p);
+			return fo_ioctl(fp, TIOCSTOP, (caddr_t)0, td);
 		case 3:
-			return fo_ioctl(fp, TIOCSTART, (caddr_t)1, p);
+			return fo_ioctl(fp, TIOCSTART, (caddr_t)1, td);
 		default:
 			return EINVAL;
 		}
@@ -486,7 +491,7 @@ ibcs2_ioctl(struct ibcs2_ioctl_args *uap)
 		default:
 			return EINVAL;
 		}
-		return fo_ioctl(fp, TIOCFLUSH, (caddr_t)&arg, p);
+		return fo_ioctl(fp, TIOCFLUSH, (caddr_t)&arg, td);
 	    }
 
 	case IBCS2_TIOCGWINSZ:

@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.3 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -254,9 +254,9 @@ vop_stdlock(ap)
 	}
 
 #ifndef	DEBUG_LOCKS
-	return (lockmgr(l, ap->a_flags, &ap->a_vp->v_interlock, ap->a_p));
+	return (lockmgr(l, ap->a_flags, &ap->a_vp->v_interlock, ap->a_td));
 #else
-	return (debuglockmgr(l, ap->a_flags, &ap->a_vp->v_interlock, ap->a_p,
+	return (debuglockmgr(l, ap->a_flags, &ap->a_vp->v_interlock, ap->a_td,
 	    "vop_stdlock", ap->a_vp->filename, ap->a_vp->line));
 #endif
 }
@@ -266,7 +266,7 @@ vop_stdunlock(ap)
 	struct vop_unlock_args /* {
 		struct vnode *a_vp;
 		int a_flags;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct lock *l;
@@ -277,15 +277,15 @@ vop_stdunlock(ap)
 		return 0;
 	}
 
-	return (lockmgr(l, ap->a_flags | LK_RELEASE, &ap->a_vp->v_interlock, 
-	    ap->a_p));
+	return (lockmgr(l, ap->a_flags | LK_RELEASE,
+		    &ap->a_vp->v_interlock, ap->a_td));
 }
 
 int
 vop_stdislocked(ap)
 	struct vop_islocked_args /* {
 		struct vnode *a_vp;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct lock *l;
@@ -293,7 +293,7 @@ vop_stdislocked(ap)
 	if ((l = (struct lock *)ap->a_vp->v_data) == NULL)
 		return 0;
 
-	return (lockstatus(l, ap->a_p));
+	return (lockstatus(l, ap->a_td));
 }
 
 /*
@@ -330,11 +330,11 @@ vop_stdpoll(ap)
 		struct vnode *a_vp;
 		int  a_events;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	if (ap->a_events & ~POLLSTANDARD)
-		return (vn_pollrecord(ap->a_vp, ap->a_p, ap->a_events));
+		return (vn_pollrecord(ap->a_vp, ap->a_td, ap->a_events));
 	return (ap->a_events & (POLLIN | POLLOUT | POLLRDNORM | POLLWRNORM));
 }
 
@@ -409,9 +409,9 @@ vop_sharedlock(ap)
 	if (flags & LK_INTERLOCK)
 		vnflags |= LK_INTERLOCK;
 #ifndef	DEBUG_LOCKS
-	return (lockmgr(l, vnflags, &vp->v_interlock, ap->a_p));
+	return (lockmgr(l, vnflags, &vp->v_interlock, ap->a_td));
 #else
-	return (debuglockmgr(l, vnflags, &vp->v_interlock, ap->a_p,
+	return (debuglockmgr(l, vnflags, &vp->v_interlock, ap->a_td,
 	    "vop_sharedlock", vp->filename, vp->line));
 #endif
 }
@@ -510,14 +510,14 @@ vop_noislocked(ap)
 int
 vop_stdcreatevobject(ap)
 	struct vop_createvobject_args /* {
-		struct vnode *vp;
-		struct ucred *cred;
-		struct proc *p;
+		struct vnode *a_vp;
+		struct ucred *a_cred;
+		struct proc *a_td;
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
 	struct ucred *cred = ap->a_cred;
-	struct proc *p = ap->a_p;
+	struct thread *td = ap->a_td;
 	struct vattr vat;
 	vm_object_t object;
 	int error = 0;
@@ -528,7 +528,7 @@ vop_stdcreatevobject(ap)
 retry:
 	if ((object = vp->v_object) == NULL) {
 		if (vp->v_type == VREG || vp->v_type == VDIR) {
-			if ((error = VOP_GETATTR(vp, &vat, cred, p)) != 0)
+			if ((error = VOP_GETATTR(vp, &vat, cred, td)) != 0)
 				goto retn;
 			object = vnode_pager_alloc(vp, vat.va_size, 0, 0);
 		} else if (devsw(vp->v_rdev) != NULL) {
@@ -549,9 +549,9 @@ retry:
 		vp->v_usecount--;
 	} else {
 		if (object->flags & OBJ_DEAD) {
-			VOP_UNLOCK(vp, 0, p);
+			VOP_UNLOCK(vp, 0, td);
 			tsleep(object, PVM, "vodead", 0);
-			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 			goto retry;
 		}
 	}
@@ -623,129 +623,90 @@ vop_stdgetvobject(ap)
  * used to fill the vfs fucntion table to get reasonable default return values.
  */
 int 
-vfs_stdmount (mp, path, data, ndp, p)
-	struct mount *mp;
-	char *path;
-	caddr_t data; 
-	struct nameidata *ndp;
-	struct proc *p;
+vfs_stdmount(struct mount *mp, char *path, caddr_t data,
+	struct nameidata *ndp, struct thread *td)
 {
 	return (0);
 }
 
 int	
-vfs_stdunmount (mp, mntflags, p)
-	struct mount *mp;
-	int mntflags;
-	struct proc *p;
+vfs_stdunmount(struct mount *mp, int mntflags, struct thread *td)
 {
 	return (0);
 }
 
 int	
-vfs_stdroot (mp, vpp)
-	struct mount *mp;
-	struct vnode **vpp;
+vfs_stdroot(struct mount *mp, struct vnode **vpp)
 {
 	return (EOPNOTSUPP);
 }
 
 int	
-vfs_stdstatfs (mp, sbp, p)
-	struct mount *mp;
-	struct statfs *sbp;
-	struct proc *p;
+vfs_stdstatfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
 	return (EOPNOTSUPP);
 }
 
 int
-vfs_stdvptofh (vp, fhp)
-	struct vnode *vp;
-	struct fid *fhp;
+vfs_stdvptofh(struct vnode *vp, struct fid *fhp)
 {
 	return (EOPNOTSUPP);
 }
 
 int	
-vfs_stdstart (mp, flags, p)
-	struct mount *mp;
-	int flags;
-	struct proc *p;
+vfs_stdstart(struct mount *mp, int flags, struct thread *td)
 {
 	return (0);
 }
 
 int	
-vfs_stdquotactl (mp, cmds, uid, arg, p)
-	struct mount *mp;
-	int cmds;
-	uid_t uid;
-	caddr_t arg;
-	struct proc *p;
+vfs_stdquotactl(struct mount *mp, int cmds, uid_t uid,
+	caddr_t arg, struct thread *td)
 {
 	return (EOPNOTSUPP);
 }
 
 int	
-vfs_stdsync (mp, waitfor, cred, p)
-	struct mount *mp;
-	int waitfor;
-	struct ucred *cred; 
-	struct proc *p;
+vfs_stdsync(struct mount *mp, int waitfor,
+	struct ucred *cred, struct thread *td)
 {
 	return (0);
 }
 
 int	
-vfs_stdvget (mp, ino, vpp)
-	struct mount *mp;
-	ino_t ino;
-	struct vnode **vpp;
+vfs_stdvget(struct mount *mp, ino_t ino, struct vnode **vpp)
 {
 	return (EOPNOTSUPP);
 }
 
 int	
-vfs_stdfhtovp (mp, fhp, vpp)
-	struct mount *mp;
-	struct fid *fhp;
-	struct vnode **vpp;
+vfs_stdfhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 {
 	return (EOPNOTSUPP);
 }
 
 int 
-vfs_stdcheckexp (mp, nam, extflagsp, credanonp)
-	struct mount *mp;
-	struct sockaddr *nam;
-	int *extflagsp;
-	struct ucred **credanonp;
+vfs_stdcheckexp(struct mount *mp, struct sockaddr *nam, int *extflagsp,
+	struct ucred **credanonp)
 {
 	return (EOPNOTSUPP);
 }
 
 int
-vfs_stdinit (vfsp) 
-	struct vfsconf *vfsp;
+vfs_stdinit(struct vfsconf *vfsp)
 {
 	return (0);
 }
 
 int
-vfs_stduninit (vfsp)
-	struct vfsconf *vfsp;
+vfs_stduninit(struct vfsconf *vfsp)
 {
 	return(0);
 }
 
 int
-vfs_stdextattrctl(mp, cmd, attrname, arg, p)
-	struct mount *mp;
-	int cmd;
-	const char *attrname;
-	caddr_t arg;
-	struct proc *p;
+vfs_stdextattrctl(struct mount *mp, int cmd, const char *attrname,
+	caddr_t arg, struct thread *td)
 {
 	return(EOPNOTSUPP);
 }

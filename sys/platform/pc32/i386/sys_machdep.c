@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.4 2003/06/23 17:55:38 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.5 2003/06/25 03:55:53 dillon Exp $
  *
  */
 
@@ -163,9 +163,7 @@ i386_extend_pcb(struct proc *p)
 }
 
 static int
-i386_set_ioperm(p, args)
-	struct proc *p;
-	char *args;
+i386_set_ioperm(struct proc *p, char *args)
 {
 	int i, error;
 	struct i386_ioperm_args ua;
@@ -174,7 +172,7 @@ i386_set_ioperm(p, args)
 	if ((error = copyin(args, &ua, sizeof(struct i386_ioperm_args))) != 0)
 		return (error);
 
-	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+	if ((error = suser_cred(p->p_ucred, 0)) != 0)
 		return (error);
 	if (securelevel > 0)
 		return (EPERM);

@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.4 2003/06/23 17:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.5 2003/06/25 03:55:56 dillon Exp $
  *
  */
 
@@ -2325,7 +2325,6 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 static int
 fdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 {
-	struct proc *p = td->td_proc;
  	fdu_t	fdu = FDUNIT(minor(dev));
  	fd_p	fd = devclass_get_softc(fd_devclass, fdu);
 	size_t fdblk;
@@ -2396,7 +2395,7 @@ fdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 	case FD_STYPE:                  /* set drive type */
 		/* this is considered harmful; only allow for superuser */
-		if (suser_xxx(p->p_ucred, 0) != 0)
+		if (suser(td) != 0)
 			return EPERM;
 		*fd->ft = *(struct fd_type *)addr;
 		break;

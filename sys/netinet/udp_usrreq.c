@@ -32,7 +32,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.3 2003/06/23 17:55:46 dillon Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.4 2003/06/25 03:56:04 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -138,7 +138,7 @@ static void ip_2_ip6_hdr __P((struct ip6_hdr *ip6, struct ip *ip));
 
 static int udp_detach __P((struct socket *so));
 static	int udp_output __P((struct inpcb *, struct mbuf *, struct sockaddr *,
-			    struct mbuf *, struct proc *));
+			    struct mbuf *, struct thread *));
 
 void
 udp_init()
@@ -602,7 +602,7 @@ udp_pcblist(SYSCTL_HANDLER_ARGS)
 	s = splnet();
 	for (inp = LIST_FIRST(udbinfo.listhead), i = 0; inp && i < n;
 	     inp = LIST_NEXT(inp, inp_list)) {
-		if (inp->inp_gencnt <= gencnt && !prison_xinpcb(req->p, inp))
+		if (inp->inp_gencnt <= gencnt && !prison_xinpcb(req->td, inp))
 			inp_list[i++] = inp;
 	}
 	splx(s);
@@ -650,7 +650,7 @@ udp_getcred(SYSCTL_HANDLER_ARGS)
 	struct inpcb *inp;
 	int error, s;
 
-	error = suser_xxx(req->p->p_ucred, 0);
+	error = suser(req->td);
 	if (error)
 		return (error);
 	error = SYSCTL_IN(req, addrs, sizeof(addrs));
@@ -673,15 +673,15 @@ SYSCTL_PROC(_net_inet_udp, OID_AUTO, getcred, CTLTYPE_OPAQUE|CTLFLAG_RW,
     0, 0, udp_getcred, "S,ucred", "Get the ucred of a UDP connection");
 
 static int
-udp_output(inp, m, addr, control, p)
-	register struct inpcb *inp;
+udp_output(inp, m, addr, control, td)
+	struct inpcb *inp;
 	struct mbuf *m;
 	struct sockaddr *addr;
 	struct mbuf *control;
-	struct proc *p;
+	struct thread *td;
 {
-	register struct udpiphdr *ui;
-	register int len = m->m_pkthdr.len;
+	struct udpiphdr *ui;
+	int len = m->m_pkthdr.len;
 	struct in_addr laddr;
 	struct sockaddr_in *sin;
 	int s = 0, error = 0;
@@ -696,7 +696,7 @@ udp_output(inp, m, addr, control, p)
 
 	if (addr) {
 		sin = (struct sockaddr_in *)addr;
-		prison_remote_ip(p, 0, &sin->sin_addr.s_addr);
+		prison_remote_ip(td, 0, &sin->sin_addr.s_addr);
 		laddr = inp->inp_laddr;
 		if (inp->inp_faddr.s_addr != INADDR_ANY) {
 			error = EISCONN;
@@ -706,7 +706,7 @@ udp_output(inp, m, addr, control, p)
 		 * Must block input while temporarily connected.
 		 */
 		s = splnet();
-		error = in_pcbconnect(inp, addr, p);
+		error = in_pcbconnect(inp, addr, td);
 		if (error) {
 			splx(s);
 			goto release;
@@ -806,7 +806,7 @@ udp_abort(struct socket *so)
 }
 
 static int
-udp_attach(struct socket *so, int proto, struct proc *p)
+udp_attach(struct socket *so, int proto, struct thread *td)
 {
 	struct inpcb *inp;
 	int s, error;
@@ -819,7 +819,7 @@ udp_attach(struct socket *so, int proto, struct proc *p)
 	if (error)
 		return error;
 	s = splnet();
-	error = in_pcballoc(so, &udbinfo, p);
+	error = in_pcballoc(so, &udbinfo, td);
 	splx(s);
 	if (error)
 		return error;
@@ -831,7 +831,7 @@ udp_attach(struct socket *so, int proto, struct proc *p)
 }
 
 static int
-udp_bind(struct socket *so, struct sockaddr *nam, struct proc *p)
+udp_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct inpcb *inp;
 	int s, error;
@@ -840,13 +840,13 @@ udp_bind(struct socket *so, struct sockaddr *nam, struct proc *p)
 	if (inp == 0)
 		return EINVAL;
 	s = splnet();
-	error = in_pcbbind(inp, nam, p);
+	error = in_pcbbind(inp, nam, td);
 	splx(s);
 	return error;
 }
 
 static int
-udp_connect(struct socket *so, struct sockaddr *nam, struct proc *p)
+udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct inpcb *inp;
 	int s, error;
@@ -859,12 +859,15 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct proc *p)
 		return EISCONN;
 	error = 0;
 	s = splnet();
-	if (inp->inp_laddr.s_addr == INADDR_ANY && p->p_ucred->cr_prison != NULL)
-		error = in_pcbbind(inp, NULL, p);
+	if (inp->inp_laddr.s_addr == INADDR_ANY && 
+	    td->td_proc &&
+	    td->td_proc->p_ucred->cr_prison != NULL) {
+		error = in_pcbbind(inp, NULL, td);
+	}
 	if (error == 0) {
 		sin = (struct sockaddr_in *)nam;
-		prison_remote_ip(p, 0, &sin->sin_addr.s_addr);
-		error = in_pcbconnect(inp, nam, p);
+		prison_remote_ip(td, 0, &sin->sin_addr.s_addr);
+		error = in_pcbconnect(inp, nam, td);
 	}
 	splx(s);
 	if (error == 0)
@@ -909,7 +912,7 @@ udp_disconnect(struct socket *so)
 
 static int
 udp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
-	    struct mbuf *control, struct proc *p)
+	    struct mbuf *control, struct thread *td)
 {
 	struct inpcb *inp;
 
@@ -918,7 +921,7 @@ udp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 		m_freem(m);
 		return EINVAL;
 	}
-	return udp_output(inp, m, addr, control, p);
+	return udp_output(inp, m, addr, control, td);
 }
 
 int

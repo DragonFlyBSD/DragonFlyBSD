@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.3 2003/06/23 17:55:40 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.4 2003/06/25 03:55:55 dillon Exp $
  */
 
 /*
@@ -124,7 +124,7 @@ linprocfs_open(ap)
 		struct vnode *a_vp;
 		int  a_mode;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
@@ -170,7 +170,7 @@ linprocfs_close(ap)
 		struct vnode *a_vp;
 		int  a_fflag;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
@@ -213,13 +213,14 @@ linprocfs_ioctl(ap)
 	struct vop_ioctl_args *ap;
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
-	struct proc *procp, *p;
+	struct proc *procp;
+	struct thread *td;
 	int error;
 	int signo;
 	struct procfs_status *psp;
 	unsigned char flags;
 
-	p = ap->a_p;
+	td = ap->a_td;
 	procp = pfind(pfs->pfs_pid);
 	if (procp == NULL) {
 		return ENOTTY;
@@ -242,7 +243,7 @@ linprocfs_ioctl(ap)
 	   */
 #define NFLAGS	(PF_ISUGID)
 	  flags = (unsigned char)*(unsigned int*)ap->a_data;
-	  if (flags & NFLAGS && (error = suser_xxx(ap->a_cred, 0)))
+	  if (flags & NFLAGS && (error = suser_cred(ap->a_cred, 0)))
 	    return error;
 	  procp->p_pfsflags = flags;
 	  break;
@@ -337,7 +338,7 @@ linprocfs_inactive(ap)
 {
 	struct vnode *vp = ap->a_vp;
 
-	VOP_UNLOCK(vp, 0, ap->a_p);
+	VOP_UNLOCK(vp, 0, ap->a_td);
 
 	return (0);
 }
@@ -402,7 +403,7 @@ linprocfs_getattr(ap)
 		struct vnode *a_vp;
 		struct vattr *a_vap;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
@@ -548,7 +549,7 @@ linprocfs_setattr(ap)
 		struct vnode *a_vp;
 		struct vattr *a_vap;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 
@@ -586,7 +587,7 @@ linprocfs_access(ap)
 		struct vnode *a_vp;
 		int a_mode;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct vattr *vap;
@@ -601,7 +602,7 @@ linprocfs_access(ap)
 		return (0);
 
 	vap = &vattr;
-	error = VOP_GETATTR(ap->a_vp, vap, ap->a_cred, ap->a_p);
+	error = VOP_GETATTR(ap->a_vp, vap, ap->a_cred, ap->a_td);
 	if (error)
 		return (error);
 

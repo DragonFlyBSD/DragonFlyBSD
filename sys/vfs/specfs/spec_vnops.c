@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.4 2003/06/23 17:55:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.5 2003/06/25 03:56:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -134,10 +134,9 @@ spec_open(ap)
 		struct vnode *a_vp;
 		int  a_mode;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
-	struct proc *p = ap->a_p;
 	struct vnode *vp = ap->a_vp;
 	dev_t dev = vp->v_rdev;
 	int error;
@@ -192,9 +191,9 @@ spec_open(ap)
 	if (dsw->d_flags & D_TTY)
 		vp->v_flag |= VISTTY;
 
-	VOP_UNLOCK(vp, 0, p);
-	error = (*dsw->d_open)(dev, ap->a_mode, S_IFCHR, p->p_thread);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	VOP_UNLOCK(vp, 0, ap->a_td);
+	error = (*dsw->d_open)(dev, ap->a_mode, S_IFCHR, ap->a_td);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, ap->a_td);
 
 	if (error)
 		return (error);
@@ -239,7 +238,7 @@ spec_read(ap)
 	} */ *ap;
 {
 	struct vnode *vp;
-	struct proc *p;
+	struct thread *td;
 	struct uio *uio;
 	dev_t dev;
 	int error;
@@ -247,14 +246,14 @@ spec_read(ap)
 	vp = ap->a_vp;
 	dev = vp->v_rdev;
 	uio = ap->a_uio;
-	p = uio->uio_procp;
+	td = uio->uio_td;
 
 	if (uio->uio_resid == 0)
 		return (0);
 
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	error = (*devsw(dev)->d_read) (dev, uio, ap->a_ioflag);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	return (error);
 }
 
@@ -272,7 +271,7 @@ spec_write(ap)
 	} */ *ap;
 {
 	struct vnode *vp;
-	struct proc *p;
+	struct thread *td;
 	struct uio *uio;
 	dev_t dev;
 	int error;
@@ -280,11 +279,11 @@ spec_write(ap)
 	vp = ap->a_vp;
 	dev = vp->v_rdev;
 	uio = ap->a_uio;
-	p = uio->uio_procp;
+	td = uio->uio_td;
 
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	error = (*devsw(dev)->d_write) (dev, uio, ap->a_ioflag);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	return (error);
 }
 
@@ -300,14 +299,14 @@ spec_ioctl(ap)
 		caddr_t  a_data;
 		int  a_fflag;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	dev_t dev;
 
 	dev = ap->a_vp->v_rdev;
 	return ((*devsw(dev)->d_ioctl)(dev, ap->a_command, 
-	    ap->a_data, ap->a_fflag, ap->a_p->p_thread));
+	    ap->a_data, ap->a_fflag, ap->a_td));
 }
 
 /* ARGSUSED */
@@ -317,13 +316,13 @@ spec_poll(ap)
 		struct vnode *a_vp;
 		int  a_events;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	dev_t dev;
 
 	dev = ap->a_vp->v_rdev;
-	return (*devsw(dev)->d_poll)(dev, ap->a_events, ap->a_p->p_thread);
+	return (*devsw(dev)->d_poll)(dev, ap->a_events, ap->a_td);
 }
 
 /* ARGSUSED */
@@ -352,7 +351,7 @@ spec_fsync(ap)
 		struct vnode *a_vp;
 		struct ucred *a_cred;
 		int  a_waitfor;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
@@ -428,11 +427,11 @@ static int
 spec_inactive(ap)
 	struct vop_inactive_args /* {
 		struct vnode *a_vp;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 
-	VOP_UNLOCK(ap->a_vp, 0, ap->a_p);
+	VOP_UNLOCK(ap->a_vp, 0, ap->a_td);
 	return (0);
 }
 
@@ -462,12 +461,12 @@ spec_strategy(ap)
 	vp = ap->a_vp;
 	if (vn_isdisk(vp, NULL) && (mp = vp->v_specmountpoint) != NULL) {
 		if ((bp->b_flags & B_READ) == 0) {
-			if (bp->b_lock.lk_lockholder == LK_KERNPROC)
+			if (bp->b_lock.lk_lockholder == LK_KERNTHREAD)
 				mp->mnt_stat.f_asyncwrites++;
 			else
 				mp->mnt_stat.f_syncwrites++;
 		} else {
-			if (bp->b_lock.lk_lockholder == LK_KERNPROC)
+			if (bp->b_lock.lk_lockholder == LK_KERNTHREAD)
 				mp->mnt_stat.f_asyncreads++;
 			else
 				mp->mnt_stat.f_syncreads++;
@@ -554,11 +553,11 @@ spec_close(ap)
 		struct vnode *a_vp;
 		int  a_fflag;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
+	struct proc *p = ap->a_td->td_proc;
 	struct vnode *vp = ap->a_vp;
-	struct proc *p = ap->a_p;
 	dev_t dev = vp->v_rdev;
 
 	/*
@@ -591,7 +590,7 @@ spec_close(ap)
 	} else if (vcount(vp) > 1) {
 		return (0);
 	}
-	return (devsw(dev)->d_close(dev, ap->a_fflag, S_IFCHR, p->p_thread));
+	return (devsw(dev)->d_close(dev, ap->a_fflag, S_IFCHR, ap->a_td));
 }
 
 /*

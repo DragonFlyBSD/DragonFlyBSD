@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.3 2003/06/25 03:56:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -96,11 +96,9 @@ ufs_ihashlookup(dev, inum)
  * to it. If it is in core, but locked, wait for it.
  */
 struct vnode *
-ufs_ihashget(dev, inum)
-	dev_t dev;
-	ino_t inum;
+ufs_ihashget(dev_t dev, ino_t inum)
 {
-	struct proc *p = curproc;	/* XXX */
+	struct thread *td = curthread;	/* XXX */
 	struct inode *ip;
 	struct vnode *vp;
 
@@ -111,7 +109,7 @@ loop:
 			vp = ITOV(ip);
 			simple_lock(&vp->v_interlock);
 			simple_unlock(&ufs_ihash_slock);
-			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, p))
+			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td))
 				goto loop;
 			return (vp);
 		}
@@ -124,14 +122,13 @@ loop:
  * Insert the inode into the hash table, and return it locked.
  */
 void
-ufs_ihashins(ip)
-	struct inode *ip;
+ufs_ihashins(struct inode *ip)
 {
-	struct proc *p = curproc;		/* XXX */
+	struct thread *td = curthread;		/* XXX */
 	struct ihashhead *ipp;
 
 	/* lock the inode, then put it on the appropriate hash list */
-	lockmgr(&ip->i_lock, LK_EXCLUSIVE, (struct simplelock *)0, p);
+	lockmgr(&ip->i_lock, LK_EXCLUSIVE, (struct simplelock *)0, td);
 
 	simple_lock(&ufs_ihash_slock);
 	ipp = INOHASH(ip->i_dev, ip->i_number);

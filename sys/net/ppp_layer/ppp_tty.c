@@ -71,7 +71,7 @@
  */
 
 /* $FreeBSD: src/sys/net/ppp_tty.c,v 1.43.2.1 2002/02/13 00:43:11 dillon Exp $ */
-/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.3 2003/06/23 17:55:45 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.4 2003/06/25 03:56:02 dillon Exp $ */
 
 #include "opt_ppp.h"		/* XXX for ppp_defs.h */
 
@@ -195,11 +195,11 @@ pppasyncattach(dummy)
 static int
 pppopen(dev_t dev, struct tty *tp)
 {
-    struct proc *p = curproc;		/* XXX */
+    struct thread *td = curthread;	/* XXX */
     struct ppp_softc *sc;
     int error, s;
 
-    if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+    if ((error = suser(td)) != 0)
 	return (error);
 
     s = spltty();
@@ -212,7 +212,7 @@ pppopen(dev_t dev, struct tty *tp)
 	}
     }
 
-    if ((sc = pppalloc(p->p_pid)) == NULL) {
+    if ((sc = pppalloc(td)) == NULL) {
 	splx(s);
 	return ENXIO;
     }
@@ -455,10 +455,7 @@ static int
 ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
     struct ppp_softc *sc = (struct ppp_softc *) tp->t_sc;
-    struct proc *p = td->td_proc;
     int error, s;
-
-    KKASSERT(p != NULL);
 
     if (sc == NULL || tp != (struct tty *) sc->sc_devp)
 	return (ENOIOCTL);
@@ -466,7 +463,7 @@ ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *td)
     error = 0;
     switch (cmd) {
     case PPPIOCSASYNCMAP:
-	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+	if ((error = suser(td)) != 0)
 	    break;
 	sc->sc_asyncmap[0] = *(u_int *)data;
 	break;
@@ -476,7 +473,7 @@ ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *td)
 	break;
 
     case PPPIOCSRASYNCMAP:
-	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+	if ((error = suser(td)) != 0)
 	    break;
 	sc->sc_rasyncmap = *(u_int *)data;
 	break;
@@ -486,7 +483,7 @@ ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *td)
 	break;
 
     case PPPIOCSXASYNCMAP:
-	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+	if ((error = suser(td)) != 0)
 	    break;
 	s = spltty();
 	bcopy(data, sc->sc_asyncmap, sizeof(sc->sc_asyncmap));
@@ -501,7 +498,7 @@ ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *td)
 	break;
 
     default:
-	error = pppioctl(sc, cmd, data, flag, p);
+	error = pppioctl(sc, cmd, data, flag, td);
 	if (error == 0 && cmd == PPPIOCSMRU)
 	    pppgetm(sc);
     }

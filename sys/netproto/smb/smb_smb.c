@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_smb.c,v 1.1.2.3 2002/12/14 14:44:19 fjoe Exp $
- * $DragonFly: src/sys/netproto/smb/smb_smb.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_smb.c,v 1.3 2003/06/25 03:56:06 dillon Exp $
  */
 /*
  * various SMB requests. Most of the routines merely packs data into mbufs.
@@ -75,7 +75,7 @@ static struct smb_dialect smb_dialects[] = {
 static int
 smb_smb_nomux(struct smb_vc *vcp, struct smb_cred *scred, const char *name)
 {
-	if (scred->scr_p == vcp->vc_iod->iod_p)
+	if (scred->scr_td == vcp->vc_iod->iod_td)
 		return 0;
 	SMBERROR("wrong function called(%s)\n", name);
 	return EINVAL;

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.11 2003/06/23 17:55:38 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.12 2003/06/25 03:55:53 dillon Exp $
  */
 
 #include "apm.h"
@@ -2433,7 +2433,7 @@ set_dbregs(p, dbregs)
 		 * from within kernel mode?
 		 */
 		
-		if (suser_xxx(p->p_ucred, 0) != 0) {
+		if (suser_cred(p->p_ucred, 0) != 0) {
 			if (dbregs->dr7 & 0x3) {
 				/* dr0 is enabled */
 				if (dbregs->dr0 >= VM_MAXUSER_ADDRESS)

@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
- * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.3 2003/06/23 17:55:34 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.4 2003/06/25 03:55:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -162,7 +162,7 @@ snplwrite(tp, uio, flag)
 		uio2.uio_resid = ilen;
 		uio2.uio_segflg = UIO_SYSSPACE;
 		uio2.uio_rw = UIO_WRITE;
-		uio2.uio_procp = uio->uio_procp;
+		uio2.uio_td = uio->uio_td;
 		error = ttwrite(tp, &uio2, flag);
 		if (error != 0)
 			break;

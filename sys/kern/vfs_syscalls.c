@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 /* For 4.3 integer FS ID compatibility */
@@ -50,7 +50,6 @@
 #include <sys/malloc.h>
 #include <sys/mount.h>
 #include <sys/sysproto.h>
-#include <sys/namei.h>
 #include <sys/filedesc.h>
 #include <sys/kernel.h>
 #include <sys/fcntl.h>
@@ -60,6 +59,7 @@
 #include <sys/unistd.h>
 #include <sys/vnode.h>
 #include <sys/proc.h>
+#include <sys/namei.h>
 #include <sys/dirent.h>
 #include <sys/extattr.h>
 
@@ -71,7 +71,9 @@
 #include <vm/vm_zone.h>
 #include <vm/vm_page.h>
 
-static int change_dir __P((struct nameidata *ndp, struct proc *p));
+#include <sys/file2.h>
+
+static int change_dir __P((struct nameidata *ndp, struct thread *td));
 static void checkdirs __P((struct vnode *olddp));
 static int chroot_refuse_vdir_fds __P((struct filedesc *fdp));
 static int getutimes __P((const struct timeval *, struct timespec *));
@@ -81,7 +83,7 @@ static int setfflags __P((struct vnode *, int));
 static int setutimes __P((struct vnode *, const struct timespec *, int));
 static int	usermount = 0;	/* if 1, non-root can mount fs. */
 
-int (*union_dircheckp) __P((struct proc *, struct vnode **, struct file *));
+int (*union_dircheckp) __P((struct thread *, struct vnode **, struct file *));
 
 SYSCTL_INT(_vfs, OID_AUTO, usermount, CTLFLAG_RW, &usermount, 0, "");
 
@@ -107,7 +109,8 @@ struct mount_args {
 int
 mount(struct mount_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	struct mount *mp;
 	struct vfsconf *vfsp;
@@ -119,26 +122,26 @@ mount(struct mount_args *uap)
 	struct nameidata nd;
 	char fstypename[MFSNAMELEN];
 
-	if (usermount == 0 && (error = suser()))
+	if (usermount == 0 && (error = suser(td)))
 		return (error);
 	/*
 	 * Do not allow NFS export by non-root users.
 	 */
 	if (SCARG(uap, flags) & MNT_EXPORTED) {
-		error = suser();
+		error = suser(td);
 		if (error)
 			return (error);
 	}
 	/*
 	 * Silently enforce MNT_NOSUID and MNT_NODEV for non-root users
 	 */
-	if (suser_xxx(p->p_ucred, 0)) 
+	if (suser(td)) 
 		SCARG(uap, flags) |= MNT_NOSUID | MNT_NODEV;
 	/*
 	 * Get vnode to be covered
 	 */
 	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF, UIO_USERSPACE,
-	    SCARG(uap, path), p);
+	    SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
@@ -165,11 +168,11 @@ mount(struct mount_args *uap)
 		 * permitted to update it.
 		 */
 		if (mp->mnt_stat.f_owner != p->p_ucred->cr_uid &&
-		    (error = suser())) {
+		    (error = suser(td))) {
 			vput(vp);
 			return (error);
 		}
-		if (vfs_busy(mp, LK_NOWAIT, 0, p)) {
+		if (vfs_busy(mp, LK_NOWAIT, 0, td)) {
 			vput(vp);
 			return (EBUSY);
 		}
@@ -177,7 +180,7 @@ mount(struct mount_args *uap)
 		if ((vp->v_flag & VMOUNT) != 0 ||
 		    vp->v_mountedhere != NULL) {
 			simple_unlock(&vp->v_interlock);
-			vfs_unbusy(mp, p);
+			vfs_unbusy(mp, td);
 			vput(vp);
 			return (EBUSY);
 		}
@@ -185,20 +188,20 @@ mount(struct mount_args *uap)
 		simple_unlock(&vp->v_interlock);
 		mp->mnt_flag |=
 		    SCARG(uap, flags) & (MNT_RELOAD | MNT_FORCE | MNT_UPDATE);
-		VOP_UNLOCK(vp, 0, p);
+		VOP_UNLOCK(vp, 0, td);
 		goto update;
 	}
 	/*
 	 * If the user is not root, ensure that they own the directory
 	 * onto which we are attempting to mount.
 	 */
-	if ((error = VOP_GETATTR(vp, &va, p->p_ucred, p)) ||
+	if ((error = VOP_GETATTR(vp, &va, p->p_ucred, td)) ||
 	    (va.va_uid != p->p_ucred->cr_uid &&
-	     (error = suser()))) {
+	     (error = suser(td)))) {
 		vput(vp);
 		return (error);
 	}
-	if ((error = vinvalbuf(vp, V_SAVE, p->p_ucred, p, 0, 0)) != 0) {
+	if ((error = vinvalbuf(vp, V_SAVE, p->p_ucred, td, 0, 0)) != 0) {
 		vput(vp);
 		return (error);
 	}
@@ -235,7 +238,7 @@ mount(struct mount_args *uap)
 		linker_file_t lf;
 
 		/* Only load modules for root (very important!) */
-		if ((error = suser()) != 0) {
+		if ((error = suser(td)) != 0) {
 			vput(vp);
 			return error;
 		}
@@ -277,7 +280,7 @@ mount(struct mount_args *uap)
 	TAILQ_INIT(&mp->mnt_reservedvnlist);
 	mp->mnt_nvnodelistsize = 0;
 	lockinit(&mp->mnt_lock, PVFS, "vfslock", 0, LK_NOPAUSE);
-	(void)vfs_busy(mp, LK_NOWAIT, 0, p);
+	(void)vfs_busy(mp, LK_NOWAIT, 0, td);
 	mp->mnt_op = vfsp->vfc_vfsops;
 	mp->mnt_vfc = vfsp;
 	vfsp->vfc_refcount++;
@@ -287,7 +290,7 @@ mount(struct mount_args *uap)
 	mp->mnt_vnodecovered = vp;
 	mp->mnt_stat.f_owner = p->p_ucred->cr_uid;
 	mp->mnt_iosize_max = DFLTPHYS;
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 update:
 	/*
 	 * Set the mount level flags.
@@ -309,7 +312,7 @@ update:
 	 * XXX The final recipients of VFS_MOUNT just overwrite the ndp they
 	 * get.  No freeing of cn_pnbuf.
 	 */
-	error = VFS_MOUNT(mp, SCARG(uap, path), SCARG(uap, data), &nd, p);
+	error = VFS_MOUNT(mp, SCARG(uap, path), SCARG(uap, data), &nd, td);
 	if (mp->mnt_flag & MNT_UPDATE) {
 		if (mp->mnt_kern_flag & MNTK_WANTRDWR)
 			mp->mnt_flag &= ~MNT_RDONLY;
@@ -327,14 +330,14 @@ update:
 				vrele(mp->mnt_syncer);
 			mp->mnt_syncer = NULL;
 		}
-		vfs_unbusy(mp, p);
+		vfs_unbusy(mp, td);
 		simple_lock(&vp->v_interlock);
 		vp->v_flag &= ~VMOUNT;
 		simple_unlock(&vp->v_interlock);
 		vrele(vp);
 		return (error);
 	}
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	/*
 	 * Put the new filesystem on the mount list after root.
 	 */
@@ -348,18 +351,18 @@ update:
 		TAILQ_INSERT_TAIL(&mountlist, mp, mnt_list);
 		simple_unlock(&mountlist_slock);
 		checkdirs(vp);
-		VOP_UNLOCK(vp, 0, p);
+		VOP_UNLOCK(vp, 0, td);
 		if ((mp->mnt_flag & MNT_RDONLY) == 0)
 			error = vfs_allocate_syncvnode(mp);
-		vfs_unbusy(mp, p);
-		if ((error = VFS_START(mp, 0, p)) != 0)
+		vfs_unbusy(mp, td);
+		if ((error = VFS_START(mp, 0, td)) != 0)
 			vrele(vp);
 	} else {
 		simple_lock(&vp->v_interlock);
 		vp->v_flag &= ~VMOUNT;
 		simple_unlock(&vp->v_interlock);
 		mp->mnt_vfc->vfc_refcount--;
-		vfs_unbusy(mp, p);
+		vfs_unbusy(mp, td);
 		free((caddr_t)mp, M_MOUNT);
 		vput(vp);
 	}
@@ -372,8 +375,7 @@ update:
  * mounted. If so, replace them with the new mount point.
  */
 static void
-checkdirs(olddp)
-	struct vnode *olddp;
+checkdirs(struct vnode *olddp)
 {
 	struct filedesc *fdp;
 	struct vnode *newdp;
@@ -423,14 +425,16 @@ struct unmount_args {
 int
 unmount(struct unmount_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	struct mount *mp;
 	int error;
 	struct nameidata nd;
 
+	KKASSERT(p);
 	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF, UIO_USERSPACE,
-	    SCARG(uap, path), p);
+	    SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	vp = nd.ni_vp;
@@ -442,7 +446,7 @@ unmount(struct unmount_args *uap)
 	 * permitted to unmount this filesystem.
 	 */
 	if ((mp->mnt_stat.f_owner != p->p_ucred->cr_uid) &&
-	    (error = suser())) {
+	    (error = suser(td))) {
 		vput(vp);
 		return (error);
 	}
@@ -463,21 +467,21 @@ unmount(struct unmount_args *uap)
 		return (EINVAL);
 	}
 	vput(vp);
-	return (dounmount(mp, SCARG(uap, flags), p));
+	return (dounmount(mp, SCARG(uap, flags), td));
 }
 
 /*
  * Do the actual file system unmount.
  */
 int
-dounmount(mp, flags, p)
-	register struct mount *mp;
-	int flags;
-	struct proc *p;
+dounmount(struct mount *mp, int flags, struct thread *td)
 {
 	struct vnode *coveredvp;
 	int error;
 	int async_flag;
+	struct proc *p = td->td_proc;
+
+	KKASSERT(p);
 
 	simple_lock(&mountlist_slock);
 	if (mp->mnt_kern_flag & MNTK_UNMOUNT) {
@@ -489,7 +493,7 @@ dounmount(mp, flags, p)
 	if (flags & MNT_FORCE)
 		mp->mnt_kern_flag |= MNTK_UNMOUNTF;
 	error = lockmgr(&mp->mnt_lock, LK_DRAIN | LK_INTERLOCK |
-	    ((flags & MNT_FORCE) ? 0 : LK_NOWAIT), &mountlist_slock, p);
+	    ((flags & MNT_FORCE) ? 0 : LK_NOWAIT), &mountlist_slock, td);
 	if (error) {
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
 		if (mp->mnt_kern_flag & MNTK_MWAIT)
@@ -507,9 +511,9 @@ dounmount(mp, flags, p)
 	if (mp->mnt_syncer != NULL)
 		vrele(mp->mnt_syncer);
 	if (((mp->mnt_flag & MNT_RDONLY) ||
-	     (error = VFS_SYNC(mp, MNT_WAIT, p->p_ucred, p)) == 0) ||
+	     (error = VFS_SYNC(mp, MNT_WAIT, p->p_ucred, td)) == 0) ||
 	    (flags & MNT_FORCE))
-		error = VFS_UNMOUNT(mp, flags, p);
+		error = VFS_UNMOUNT(mp, flags, td);
 	simple_lock(&mountlist_slock);
 	if (error) {
 		if ((mp->mnt_flag & MNT_RDONLY) == 0 && mp->mnt_syncer == NULL)
@@ -517,7 +521,7 @@ dounmount(mp, flags, p)
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
 		mp->mnt_flag |= async_flag;
 		lockmgr(&mp->mnt_lock, LK_RELEASE | LK_INTERLOCK | LK_REENABLE,
-		    &mountlist_slock, p);
+		    &mountlist_slock, td);
 		if (mp->mnt_kern_flag & MNTK_MWAIT)
 			wakeup((caddr_t)mp);
 		return (error);
@@ -530,7 +534,7 @@ dounmount(mp, flags, p)
 	mp->mnt_vfc->vfc_refcount--;
 	if (!TAILQ_EMPTY(&mp->mnt_nvnodelist))
 		panic("unmount: dangling vnode");
-	lockmgr(&mp->mnt_lock, LK_RELEASE | LK_INTERLOCK, &mountlist_slock, p);
+	lockmgr(&mp->mnt_lock, LK_RELEASE | LK_INTERLOCK, &mountlist_slock, td);
 	if (mp->mnt_kern_flag & MNTK_MWAIT)
 		wakeup((caddr_t)mp);
 	free((caddr_t)mp, M_MOUNT);
@@ -555,13 +559,14 @@ SYSCTL_INT(_debug, OID_AUTO, syncprt, CTLFLAG_RW, &syncprt, 0, "");
 int
 sync(struct sync_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct mount *mp, *nmp;
 	int asyncflag;
 
 	simple_lock(&mountlist_slock);
 	for (mp = TAILQ_FIRST(&mountlist); mp != NULL; mp = nmp) {
-		if (vfs_busy(mp, LK_NOWAIT, &mountlist_slock, p)) {
+		if (vfs_busy(mp, LK_NOWAIT, &mountlist_slock, td)) {
 			nmp = TAILQ_NEXT(mp, mnt_list);
 			continue;
 		}
@@ -570,12 +575,12 @@ sync(struct sync_args *uap)
 			mp->mnt_flag &= ~MNT_ASYNC;
 			vfs_msync(mp, MNT_NOWAIT);
 			VFS_SYNC(mp, MNT_NOWAIT,
-				((p != NULL) ? p->p_ucred : NOCRED), p);
+				((p != NULL) ? p->p_ucred : NOCRED), td);
 			mp->mnt_flag |= asyncflag;
 		}
 		simple_lock(&mountlist_slock);
 		nmp = TAILQ_NEXT(mp, mnt_list);
-		vfs_unbusy(mp, p);
+		vfs_unbusy(mp, td);
 	}
 	simple_unlock(&mountlist_slock);
 #if 0
@@ -606,21 +611,23 @@ SYSCTL_INT(_kern_prison, OID_AUTO, quotas, CTLFLAG_RW, &prison_quotas, 0, "");
 int
 quotactl(struct quotactl_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct mount *mp;
 	int error;
 	struct nameidata nd;
 
+	KKASSERT(p);
 	if (p->p_ucred->cr_prison && !prison_quotas)
 		return (EPERM);
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	mp = nd.ni_vp->v_mount;
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vrele(nd.ni_vp);
 	return (VFS_QUOTACTL(mp, SCARG(uap, cmd), SCARG(uap, uid),
-	    SCARG(uap, arg), p));
+	    SCARG(uap, arg), td));
 }
 
 /*
@@ -632,25 +639,27 @@ quotactl(struct quotactl_args *uap)
 int
 statfs(struct statfs_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct mount *mp;
 	struct statfs *sp;
 	int error;
 	struct nameidata nd;
 	struct statfs sb;
 
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), p);
+	KKASSERT(p);
+	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	mp = nd.ni_vp->v_mount;
 	sp = &mp->mnt_stat;
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vrele(nd.ni_vp);
-	error = VFS_STATFS(mp, sp, p);
+	error = VFS_STATFS(mp, sp, td);
 	if (error)
 		return (error);
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
-	if (suser_xxx(p->p_ucred, 0)) {
+	if (suser(td)) {
 		bcopy((caddr_t)sp, (caddr_t)&sb, sizeof(sb));
 		sb.f_fsid.val[0] = sb.f_fsid.val[1] = 0;
 		sp = &sb;
@@ -667,24 +676,26 @@ statfs(struct statfs_args *uap)
 int
 fstatfs(struct fstatfs_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct mount *mp;
 	register struct statfs *sp;
 	int error;
 	struct statfs sb;
 
+	KKASSERT(p);
 	if ((error = getvnode(p->p_fd, SCARG(uap, fd), &fp)) != 0)
 		return (error);
 	mp = ((struct vnode *)fp->f_data)->v_mount;
 	if (mp == NULL)
 		return (EBADF);
 	sp = &mp->mnt_stat;
-	error = VFS_STATFS(mp, sp, p);
+	error = VFS_STATFS(mp, sp, td);
 	if (error)
 		return (error);
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
-	if (suser_xxx(p->p_ucred, 0)) {
+	if (suser(td)) {
 		bcopy((caddr_t)sp, (caddr_t)&sb, sizeof(sb));
 		sb.f_fsid.val[0] = sb.f_fsid.val[1] = 0;
 		sp = &sb;
@@ -701,7 +712,8 @@ fstatfs(struct fstatfs_args *uap)
 int
 getfsstat(struct getfsstat_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct mount *mp, *nmp;
 	struct statfs *sp;
 	caddr_t sfsp;
@@ -712,7 +724,7 @@ getfsstat(struct getfsstat_args *uap)
 	count = 0;
 	simple_lock(&mountlist_slock);
 	for (mp = TAILQ_FIRST(&mountlist); mp != NULL; mp = nmp) {
-		if (vfs_busy(mp, LK_NOWAIT, &mountlist_slock, p)) {
+		if (vfs_busy(mp, LK_NOWAIT, &mountlist_slock, td)) {
 			nmp = TAILQ_NEXT(mp, mnt_list);
 			continue;
 		}
@@ -725,16 +737,16 @@ getfsstat(struct getfsstat_args *uap)
 			 */
 			if (((SCARG(uap, flags) & (MNT_LAZY|MNT_NOWAIT)) == 0 ||
 			    (SCARG(uap, flags) & MNT_WAIT)) &&
-			    (error = VFS_STATFS(mp, sp, p))) {
+			    (error = VFS_STATFS(mp, sp, td))) {
 				simple_lock(&mountlist_slock);
 				nmp = TAILQ_NEXT(mp, mnt_list);
-				vfs_unbusy(mp, p);
+				vfs_unbusy(mp, td);
 				continue;
 			}
 			sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 			error = copyout((caddr_t)sp, sfsp, sizeof(*sp));
 			if (error) {
-				vfs_unbusy(mp, p);
+				vfs_unbusy(mp, td);
 				return (error);
 			}
 			sfsp += sizeof(*sp);
@@ -742,7 +754,7 @@ getfsstat(struct getfsstat_args *uap)
 		count++;
 		simple_lock(&mountlist_slock);
 		nmp = TAILQ_NEXT(mp, mnt_list);
-		vfs_unbusy(mp, p);
+		vfs_unbusy(mp, td);
 	}
 	simple_unlock(&mountlist_slock);
 	if (sfsp && count > maxcount)
@@ -761,7 +773,8 @@ getfsstat(struct getfsstat_args *uap)
 int
 fchdir(struct fchdir_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct filedesc *fdp = p->p_fd;
 	struct vnode *vp, *tdp;
 	struct mount *mp;
@@ -772,16 +785,16 @@ fchdir(struct fchdir_args *uap)
 		return (error);
 	vp = (struct vnode *)fp->f_data;
 	VREF(vp);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	if (vp->v_type != VDIR)
 		error = ENOTDIR;
 	else
-		error = VOP_ACCESS(vp, VEXEC, p->p_ucred, p);
+		error = VOP_ACCESS(vp, VEXEC, p->p_ucred, td);
 	while (!error && (mp = vp->v_mountedhere) != NULL) {
-		if (vfs_busy(mp, 0, 0, p))
+		if (vfs_busy(mp, 0, 0, td))
 			continue;
 		error = VFS_ROOT(mp, &tdp);
-		vfs_unbusy(mp, p);
+		vfs_unbusy(mp, td);
 		if (error)
 			break;
 		vput(vp);
@@ -791,7 +804,7 @@ fchdir(struct fchdir_args *uap)
 		vput(vp);
 		return (error);
 	}
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	vrele(fdp->fd_cdir);
 	fdp->fd_cdir = vp;
 	return (0);
@@ -806,14 +819,15 @@ fchdir(struct fchdir_args *uap)
 int
 chdir(struct chdir_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct filedesc *fdp = p->p_fd;
 	int error;
 	struct nameidata nd;
 
 	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF, UIO_USERSPACE,
-	    SCARG(uap, path), p);
-	if ((error = change_dir(&nd, p)) != 0)
+	    SCARG(uap, path), td);
+	if ((error = change_dir(&nd, td)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vrele(fdp->fd_cdir);
@@ -868,12 +882,14 @@ SYSCTL_INT(_kern, OID_AUTO, chroot_allow_open_directories, CTLFLAG_RW,
 int
 chroot(struct chroot_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct filedesc *fdp = p->p_fd;
 	int error;
 	struct nameidata nd;
 
-	error = suser_xxx(0, PRISON_ROOT);
+	KKASSERT(p);
+	error = suser_cred(p->p_ucred, PRISON_ROOT);
 	if (error)
 		return (error);
 	if (chroot_allow_open_directories == 0 ||
@@ -882,8 +898,8 @@ chroot(struct chroot_args *uap)
 	if (error)
 		return (error);
 	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF, UIO_USERSPACE,
-	    SCARG(uap, path), p);
-	if ((error = change_dir(&nd, p)) != 0)
+	    SCARG(uap, path), td);
+	if ((error = change_dir(&nd, td)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vrele(fdp->fd_rdir);
@@ -899,7 +915,7 @@ chroot(struct chroot_args *uap)
  * Common routine for chroot and chdir.
  */
 static int
-change_dir(struct nameidata *ndp, struct proc *p)
+change_dir(struct nameidata *ndp, struct thread *td)
 {
 	struct vnode *vp;
 	int error;
@@ -911,11 +927,11 @@ change_dir(struct nameidata *ndp, struct proc *p)
 	if (vp->v_type != VDIR)
 		error = ENOTDIR;
 	else
-		error = VOP_ACCESS(vp, VEXEC, p->p_ucred, p);
+		error = VOP_ACCESS(vp, VEXEC, ndp->ni_cnd.cn_cred, td);
 	if (error)
 		vput(vp);
 	else
-		VOP_UNLOCK(vp, 0, p);
+		VOP_UNLOCK(vp, 0, td);
 	return (error);
 }
 
@@ -928,7 +944,8 @@ change_dir(struct nameidata *ndp, struct proc *p)
 int
 open(struct open_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct filedesc *fdp = p->p_fd;
 	struct file *fp;
 	struct vnode *vp;
@@ -947,7 +964,7 @@ open(struct open_args *uap)
 		return (error);
 	fp = nfp;
 	cmode = ((SCARG(uap, mode) &~ fdp->fd_cmask) & ALLPERMS) &~ S_ISTXT;
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
 	p->p_dupfd = -indx - 1;			/* XXX check for fdopen */
 	/*
 	 * Bump the ref count to prevent another process from closing
@@ -959,7 +976,7 @@ open(struct open_args *uap)
 		/*
 		 * release our own reference
 		 */
-		fdrop(fp, p);
+		fdrop(fp, td);
 
 		/*
 		 * handle special fdopen() case.  bleh.  dupfdopen() is
@@ -979,7 +996,7 @@ open(struct open_args *uap)
 		 */
 		if (fdp->fd_ofiles[indx] == fp) {
 			fdp->fd_ofiles[indx] = NULL;
-			fdrop(fp, p);
+			fdrop(fp, td);
 		}
 
 		if (error == ERESTART)
@@ -1001,9 +1018,9 @@ open(struct open_args *uap)
 	if (fp->f_count == 1) {
 		KASSERT(fdp->fd_ofiles[indx] != fp,
 		    ("Open file descriptor lost all refs"));
-		VOP_UNLOCK(vp, 0, p);
-		vn_close(vp, flags & FMASK, fp->f_cred, p);
-		fdrop(fp, p);
+		VOP_UNLOCK(vp, 0, td);
+		vn_close(vp, flags & FMASK, fp->f_cred, td);
+		fdrop(fp, td);
 		p->p_retval[0] = indx;
 		return 0;
 	}
@@ -1023,7 +1040,7 @@ open(struct open_args *uap)
 		type = F_FLOCK;
 		if ((flags & FNONBLOCK) == 0)
 			type |= F_WAIT;
-		VOP_UNLOCK(vp, 0, p);
+		VOP_UNLOCK(vp, 0, td);
 		if ((error = VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, type)) != 0) {
 			/*
 			 * lock request failed.  Normally close the descriptor
@@ -1033,24 +1050,24 @@ open(struct open_args *uap)
 			 */
 			if (fdp->fd_ofiles[indx] == fp) {
 				fdp->fd_ofiles[indx] = NULL;
-				fdrop(fp, p);
+				fdrop(fp, td);
 			}
-			fdrop(fp, p);
+			fdrop(fp, td);
 			return (error);
 		}
-		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 		fp->f_flag |= FHASLOCK;
 	}
 	/* assert that vn_open created a backing object if one is needed */
 	KASSERT(!vn_canvmio(vp) || VOP_GETVOBJECT(vp, NULL) == 0,
 		("open: vmio vnode has no backing object after vn_open"));
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 
 	/*
 	 * release our private reference, leaving the one associated with the
 	 * descriptor table intact.
 	 */
-	fdrop(fp, p);
+	fdrop(fp, td);
 	p->p_retval[0] = indx;
 	return (0);
 }
@@ -1086,26 +1103,29 @@ ocreat(struct ocreat_args *uap)
 int
 mknod(struct mknod_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	struct vattr vattr;
 	int error;
 	int whiteout = 0;
 	struct nameidata nd;
 
+	KKASSERT(p);
+
 	switch (SCARG(uap, mode) & S_IFMT) {
 	case S_IFCHR:
 	case S_IFBLK:
-		error = suser();
+		error = suser(td);
 		break;
 	default:
-		error = suser_xxx(0, PRISON_ROOT);
+		error = suser_cred(p->p_ucred, PRISON_ROOT);
 		break;
 	}
 	if (error)
 		return (error);
 	bwillwrite();
-	NDINIT(&nd, CREATE, LOCKPARENT, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, CREATE, LOCKPARENT, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	vp = nd.ni_vp;
@@ -1136,7 +1156,7 @@ mknod(struct mknod_args *uap)
 		}
 	}
 	if (!error) {
-		VOP_LEASE(nd.ni_dvp, p, p->p_ucred, LEASE_WRITE);
+		VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
 		if (whiteout)
 			error = VOP_WHITEOUT(nd.ni_dvp, &nd.ni_cnd, CREATE);
 		else {
@@ -1170,13 +1190,14 @@ mknod(struct mknod_args *uap)
 int
 mkfifo(struct mkfifo_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vattr vattr;
 	int error;
 	struct nameidata nd;
 
 	bwillwrite();
-	NDINIT(&nd, CREATE, LOCKPARENT, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, CREATE, LOCKPARENT, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	if (nd.ni_vp != NULL) {
@@ -1191,7 +1212,7 @@ mkfifo(struct mkfifo_args *uap)
 	VATTR_NULL(&vattr);
 	vattr.va_type = VFIFO;
 	vattr.va_mode = (SCARG(uap, mode) & ALLPERMS) &~ p->p_fd->fd_cmask;
-	VOP_LEASE(nd.ni_dvp, p, p->p_ucred, LEASE_WRITE);
+	VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
 	error = VOP_MKNOD(nd.ni_dvp, &nd.ni_vp, &nd.ni_cnd, &vattr);
 	if (error == 0)
 		vput(nd.ni_vp);
@@ -1209,13 +1230,14 @@ mkfifo(struct mkfifo_args *uap)
 int
 link(struct link_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	struct nameidata nd;
 	int error;
 
 	bwillwrite();
-	NDINIT(&nd, LOOKUP, FOLLOW|NOOBJ, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, LOOKUP, FOLLOW|NOOBJ, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
@@ -1223,7 +1245,7 @@ link(struct link_args *uap)
 	if (vp->v_type == VDIR)
 		error = EPERM;		/* POSIX */
 	else {
-		NDINIT(&nd, CREATE, LOCKPARENT|NOOBJ, UIO_USERSPACE, SCARG(uap, link), p);
+		NDINIT(&nd, CREATE, LOCKPARENT|NOOBJ, UIO_USERSPACE, SCARG(uap, link), td);
 		error = namei(&nd);
 		if (!error) {
 			if (nd.ni_vp != NULL) {
@@ -1231,9 +1253,9 @@ link(struct link_args *uap)
 					vrele(nd.ni_vp);
 				error = EEXIST;
 			} else {
-				VOP_LEASE(nd.ni_dvp, p, p->p_ucred,
+				VOP_LEASE(nd.ni_dvp, td, p->p_ucred,
 				    LEASE_WRITE);
-				VOP_LEASE(vp, p, p->p_ucred, LEASE_WRITE);
+				VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 				error = VOP_LINK(nd.ni_dvp, vp, &nd.ni_cnd);
 			}
 			NDFREE(&nd, NDF_ONLY_PNBUF);
@@ -1258,7 +1280,8 @@ link(struct link_args *uap)
 int
 symlink(struct symlink_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vattr vattr;
 	char *path;
 	int error;
@@ -1268,7 +1291,7 @@ symlink(struct symlink_args *uap)
 	if ((error = copyinstr(SCARG(uap, path), path, MAXPATHLEN, NULL)) != 0)
 		goto out;
 	bwillwrite();
-	NDINIT(&nd, CREATE, LOCKPARENT|NOOBJ, UIO_USERSPACE, SCARG(uap, link), p);
+	NDINIT(&nd, CREATE, LOCKPARENT|NOOBJ, UIO_USERSPACE, SCARG(uap, link), td);
 	if ((error = namei(&nd)) != 0)
 		goto out;
 	if (nd.ni_vp) {
@@ -1283,7 +1306,7 @@ symlink(struct symlink_args *uap)
 	}
 	VATTR_NULL(&vattr);
 	vattr.va_mode = ACCESSPERMS &~ p->p_fd->fd_cmask;
-	VOP_LEASE(nd.ni_dvp, p, p->p_ucred, LEASE_WRITE);
+	VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
 	error = VOP_SYMLINK(nd.ni_dvp, &nd.ni_vp, &nd.ni_cnd, &vattr, path);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	if (error == 0)
@@ -1305,13 +1328,14 @@ out:
 int
 undelete(struct undelete_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	int error;
 	struct nameidata nd;
 
 	bwillwrite();
 	NDINIT(&nd, DELETE, LOCKPARENT|DOWHITEOUT, UIO_USERSPACE,
-	    SCARG(uap, path), p);
+	    SCARG(uap, path), td);
 	error = namei(&nd);
 	if (error)
 		return (error);
@@ -1327,7 +1351,7 @@ undelete(struct undelete_args *uap)
 		return (EEXIST);
 	}
 
-	VOP_LEASE(nd.ni_dvp, p, p->p_ucred, LEASE_WRITE);
+	VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
 	error = VOP_WHITEOUT(nd.ni_dvp, &nd.ni_cnd, DELETE);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vput(nd.ni_dvp);
@@ -1344,18 +1368,19 @@ undelete(struct undelete_args *uap)
 int
 unlink(struct unlink_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	int error;
 	struct nameidata nd;
 
 	bwillwrite();
-	NDINIT(&nd, DELETE, LOCKPARENT, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, DELETE, LOCKPARENT, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	vp = nd.ni_vp;
-	VOP_LEASE(vp, p, p->p_ucred, LEASE_WRITE);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 
 	if (vp->v_type == VDIR)
 		error = EPERM;		/* POSIX */
@@ -1370,7 +1395,7 @@ unlink(struct unlink_args *uap)
 	}
 
 	if (!error) {
-		VOP_LEASE(nd.ni_dvp, p, p->p_ucred, LEASE_WRITE);
+		VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
 		error = VOP_REMOVE(nd.ni_dvp, vp, &nd.ni_cnd);
 	}
 	NDFREE(&nd, NDF_ONLY_PNBUF);
@@ -1393,7 +1418,8 @@ unlink(struct unlink_args *uap)
 int
 lseek(struct lseek_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct ucred *cred = p->p_ucred;
 	struct filedesc *fdp = p->p_fd;
 	struct file *fp;
@@ -1410,7 +1436,7 @@ lseek(struct lseek_args *uap)
 		fp->f_offset += SCARG(uap, offset);
 		break;
 	case L_XTND:
-		error=VOP_GETATTR((struct vnode *)fp->f_data, &vattr, cred, p);
+		error=VOP_GETATTR((struct vnode *)fp->f_data, &vattr, cred, td);
 		if (error)
 			return (error);
 		fp->f_offset = SCARG(uap, offset) + vattr.va_size;
@@ -1458,7 +1484,8 @@ olseek(struct olseek_args *uap)
 int
 access(struct access_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct ucred *cred, *tmpcred;
 	struct vnode *vp;
 	int error, flags;
@@ -1475,7 +1502,7 @@ access(struct access_args *uap)
 	tmpcred->cr_groups[0] = p->p_ucred->cr_rgid;
 	p->p_ucred = tmpcred;
 	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF | NOOBJ, UIO_USERSPACE,
-	    SCARG(uap, path), p);
+	    SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		goto out1;
 	vp = nd.ni_vp;
@@ -1490,7 +1517,7 @@ access(struct access_args *uap)
 		if (SCARG(uap, flags) & X_OK)
 			flags |= VEXEC;
 		if ((flags & VWRITE) == 0 || (error = vn_writechk(vp)) == 0)
-			error = VOP_ACCESS(vp, flags, tmpcred, p);
+			error = VOP_ACCESS(vp, flags, tmpcred, td);
 	}
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vput(vp);
@@ -1510,18 +1537,18 @@ out1:
 int
 ostat(struct ostat_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct stat sb;
 	struct ostat osb;
 	int error;
 	struct nameidata nd;
 
 	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF | NOOBJ, UIO_USERSPACE,
-	    SCARG(uap, path), p);
+	    SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
-	error = vn_stat(nd.ni_vp, &sb, p);
+	error = vn_stat(nd.ni_vp, &sb, td);
 	vput(nd.ni_vp);
 	if (error)
 		return (error);
@@ -1539,7 +1566,7 @@ ostat(struct ostat_args *uap)
 int
 olstat(struct olstat_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct vnode *vp;
 	struct stat sb;
 	struct ostat osb;
@@ -1547,11 +1574,11 @@ olstat(struct olstat_args *uap)
 	struct nameidata nd;
 
 	NDINIT(&nd, LOOKUP, NOFOLLOW | LOCKLEAF | NOOBJ, UIO_USERSPACE,
-	    SCARG(uap, path), p);
+	    SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	vp = nd.ni_vp;
-	error = vn_stat(vp, &sb, p);
+	error = vn_stat(vp, &sb, td);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vput(vp);
 	if (error)
@@ -1599,16 +1626,16 @@ cvtstat(st, ost)
 int
 stat(struct stat_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct stat sb;
 	int error;
 	struct nameidata nd;
 
 	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF | NOOBJ, UIO_USERSPACE,
-	    SCARG(uap, path), p);
+	    SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
-	error = vn_stat(nd.ni_vp, &sb, p);
+	error = vn_stat(nd.ni_vp, &sb, td);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vput(nd.ni_vp);
 	if (error)
@@ -1626,18 +1653,18 @@ stat(struct stat_args *uap)
 int
 lstat(struct lstat_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	int error;
 	struct vnode *vp;
 	struct stat sb;
 	struct nameidata nd;
 
 	NDINIT(&nd, LOOKUP, NOFOLLOW | LOCKLEAF | NOOBJ, UIO_USERSPACE,
-	    SCARG(uap, path), p);
+	    SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	vp = nd.ni_vp;
-	error = vn_stat(vp, &sb, p);
+	error = vn_stat(vp, &sb, td);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vput(vp);
 	if (error)
@@ -1677,18 +1704,18 @@ cvtnstat(sb, nsb)
 int
 nstat(struct nstat_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct stat sb;
 	struct nstat nsb;
 	int error;
 	struct nameidata nd;
 
 	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF | NOOBJ, UIO_USERSPACE,
-	    SCARG(uap, path), p);
+	    SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
-	error = vn_stat(nd.ni_vp, &sb, p);
+	error = vn_stat(nd.ni_vp, &sb, td);
 	vput(nd.ni_vp);
 	if (error)
 		return (error);
@@ -1706,7 +1733,7 @@ nstat(struct nstat_args *uap)
 int
 nlstat(struct nlstat_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	int error;
 	struct vnode *vp;
 	struct stat sb;
@@ -1714,12 +1741,12 @@ nlstat(struct nlstat_args *uap)
 	struct nameidata nd;
 
 	NDINIT(&nd, LOOKUP, NOFOLLOW | LOCKLEAF | NOOBJ, UIO_USERSPACE,
-	    SCARG(uap, path), p);
+	    SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	vp = nd.ni_vp;
 	NDFREE(&nd, NDF_ONLY_PNBUF);
-	error = vn_stat(vp, &sb, p);
+	error = vn_stat(vp, &sb, td);
 	vput(vp);
 	if (error)
 		return (error);
@@ -1737,12 +1764,13 @@ nlstat(struct nlstat_args *uap)
 int
 pathconf(struct pathconf_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	int error;
 	struct nameidata nd;
 
 	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF | NOOBJ, UIO_USERSPACE,
-	    SCARG(uap, path), p);
+	    SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
@@ -1760,7 +1788,8 @@ pathconf(struct pathconf_args *uap)
 int
 readlink(struct readlink_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	struct iovec aiov;
 	struct uio auio;
@@ -1768,7 +1797,7 @@ readlink(struct readlink_args *uap)
 	struct nameidata nd;
 
 	NDINIT(&nd, LOOKUP, NOFOLLOW | LOCKLEAF | NOOBJ, UIO_USERSPACE,
-	    SCARG(uap, path), p);
+	    SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
@@ -1783,7 +1812,7 @@ readlink(struct readlink_args *uap)
 		auio.uio_offset = 0;
 		auio.uio_rw = UIO_READ;
 		auio.uio_segflg = UIO_USERSPACE;
-		auio.uio_procp = p;
+		auio.uio_td = td;
 		auio.uio_resid = SCARG(uap, count);
 		error = VOP_READLINK(vp, &auio, p->p_ucred);
 	}
@@ -1795,7 +1824,8 @@ readlink(struct readlink_args *uap)
 static int
 setfflags(struct vnode *vp, int flags)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	int error;
 	struct vattr vattr;
 
@@ -1806,15 +1836,15 @@ setfflags(struct vnode *vp, int flags)
 	 * chown can't fail when done as root.
 	 */
 	if ((vp->v_type == VCHR || vp->v_type == VBLK) && 
-	    ((error = suser_xxx(p->p_ucred, PRISON_ROOT)) != 0))
+	    ((error = suser_cred(p->p_ucred, PRISON_ROOT)) != 0))
 		return (error);
 
-	VOP_LEASE(vp, p, p->p_ucred, LEASE_WRITE);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	VATTR_NULL(&vattr);
 	vattr.va_flags = flags;
-	error = VOP_SETATTR(vp, &vattr, p->p_ucred, p);
-	VOP_UNLOCK(vp, 0, p);
+	error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
+	VOP_UNLOCK(vp, 0, td);
 	return (error);
 }
 
@@ -1827,11 +1857,11 @@ setfflags(struct vnode *vp, int flags)
 int
 chflags(struct chflags_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	int error;
 	struct nameidata nd;
 
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
@@ -1849,7 +1879,8 @@ chflags(struct chflags_args *uap)
 int
 fchflags(struct fchflags_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct file *fp;
 	int error;
 
@@ -1861,16 +1892,17 @@ fchflags(struct fchflags_args *uap)
 static int
 setfmode(struct vnode *vp, int mode)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	int error;
 	struct vattr vattr;
 
-	VOP_LEASE(vp, p, p->p_ucred, LEASE_WRITE);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	VATTR_NULL(&vattr);
 	vattr.va_mode = mode & ALLPERMS;
-	error = VOP_SETATTR(vp, &vattr, p->p_ucred, p);
-	VOP_UNLOCK(vp, 0, p);
+	error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
+	VOP_UNLOCK(vp, 0, td);
 	return error;
 }
 
@@ -1883,11 +1915,11 @@ setfmode(struct vnode *vp, int mode)
 int
 chmod(struct chmod_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	int error;
 	struct nameidata nd;
 
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
@@ -1905,11 +1937,11 @@ chmod(struct chmod_args *uap)
 int
 lchmod(struct lchmod_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	int error;
 	struct nameidata nd;
 
-	NDINIT(&nd, LOOKUP, NOFOLLOW, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, LOOKUP, NOFOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
@@ -1927,7 +1959,8 @@ lchmod(struct lchmod_args *uap)
 int
 fchmod(struct fchmod_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct file *fp;
 	int error;
 
@@ -1939,17 +1972,18 @@ fchmod(struct fchmod_args *uap)
 static int
 setfown(struct vnode *vp, uid_t uid, gid_t gid)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	int error;
 	struct vattr vattr;
 
-	VOP_LEASE(vp, p, p->p_ucred, LEASE_WRITE);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	VATTR_NULL(&vattr);
 	vattr.va_uid = uid;
 	vattr.va_gid = gid;
-	error = VOP_SETATTR(vp, &vattr, p->p_ucred, p);
-	VOP_UNLOCK(vp, 0, p);
+	error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
+	VOP_UNLOCK(vp, 0, td);
 	return error;
 }
 
@@ -1962,11 +1996,11 @@ setfown(struct vnode *vp, uid_t uid, gid_t gid)
 int
 chown(struct chown_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	int error;
 	struct nameidata nd;
 
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
@@ -1984,11 +2018,11 @@ chown(struct chown_args *uap)
 int
 lchown(struct lchown_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	int error;
 	struct nameidata nd;
 
-	NDINIT(&nd, LOOKUP, NOFOLLOW, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, LOOKUP, NOFOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
@@ -2006,7 +2040,8 @@ lchown(struct lchown_args *uap)
 int
 fchown(struct fchown_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct file *fp;
 	int error;
 
@@ -2038,19 +2073,20 @@ getutimes(const struct timeval *usrtvp, struct timespec *tsp)
 static int
 setutimes(struct vnode *vp, const struct timespec *ts, int nullflag)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	int error;
 	struct vattr vattr;
 
-	VOP_LEASE(vp, p, p->p_ucred, LEASE_WRITE);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	VATTR_NULL(&vattr);
 	vattr.va_atime = ts[0];
 	vattr.va_mtime = ts[1];
 	if (nullflag)
 		vattr.va_vaflags |= VA_UTIMES_NULL;
-	error = VOP_SETATTR(vp, &vattr, p->p_ucred, p);
-	VOP_UNLOCK(vp, 0, p);
+	error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
+	VOP_UNLOCK(vp, 0, td);
 	return error;
 }
 
@@ -2063,7 +2099,7 @@ setutimes(struct vnode *vp, const struct timespec *ts, int nullflag)
 int
 utimes(struct utimes_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct timespec ts[2];
 	struct timeval *usrtvp;
 	int error;
@@ -2072,7 +2108,7 @@ utimes(struct utimes_args *uap)
 	usrtvp = SCARG(uap, tptr);
 	if ((error = getutimes(usrtvp, ts)) != 0)
 		return (error);
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
@@ -2090,7 +2126,7 @@ utimes(struct utimes_args *uap)
 int
 lutimes(struct lutimes_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct timespec ts[2];
 	struct timeval *usrtvp;
 	int error;
@@ -2099,7 +2135,7 @@ lutimes(struct lutimes_args *uap)
 	usrtvp = SCARG(uap, tptr);
 	if ((error = getutimes(usrtvp, ts)) != 0)
 		return (error);
-	NDINIT(&nd, LOOKUP, NOFOLLOW, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, LOOKUP, NOFOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
@@ -2117,7 +2153,8 @@ lutimes(struct lutimes_args *uap)
 int
 futimes(struct futimes_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct timespec ts[2];
 	struct file *fp;
 	struct timeval *usrtvp;
@@ -2140,7 +2177,8 @@ futimes(struct futimes_args *uap)
 int
 truncate(struct truncate_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	struct vattr vattr;
 	int error;
@@ -2148,20 +2186,20 @@ truncate(struct truncate_args *uap)
 
 	if (uap->length < 0)
 		return(EINVAL);
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	vp = nd.ni_vp;
 	NDFREE(&nd, NDF_ONLY_PNBUF);
-	VOP_LEASE(vp, p, p->p_ucred, LEASE_WRITE);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	if (vp->v_type == VDIR)
 		error = EISDIR;
 	else if ((error = vn_writechk(vp)) == 0 &&
-	    (error = VOP_ACCESS(vp, VWRITE, p->p_ucred, p)) == 0) {
+	    (error = VOP_ACCESS(vp, VWRITE, p->p_ucred, td)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_size = SCARG(uap, length);
-		error = VOP_SETATTR(vp, &vattr, p->p_ucred, p);
+		error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
 	}
 	vput(vp);
 	return (error);
@@ -2176,7 +2214,8 @@ truncate(struct truncate_args *uap)
 int
 ftruncate(struct ftruncate_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vattr vattr;
 	struct vnode *vp;
 	struct file *fp;
@@ -2189,16 +2228,16 @@ ftruncate(struct ftruncate_args *uap)
 	if ((fp->f_flag & FWRITE) == 0)
 		return (EINVAL);
 	vp = (struct vnode *)fp->f_data;
-	VOP_LEASE(vp, p, p->p_ucred, LEASE_WRITE);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	if (vp->v_type == VDIR)
 		error = EISDIR;
 	else if ((error = vn_writechk(vp)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_size = SCARG(uap, length);
-		error = VOP_SETATTR(vp, &vattr, fp->f_cred, p);
+		error = VOP_SETATTR(vp, &vattr, fp->f_cred, td);
 	}
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	return (error);
 }
 
@@ -2253,7 +2292,8 @@ oftruncate(struct oftruncate_args *uap)
 int
 fsync(struct fsync_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	struct file *fp;
 	vm_object_t obj;
@@ -2262,14 +2302,14 @@ fsync(struct fsync_args *uap)
 	if ((error = getvnode(p->p_fd, SCARG(uap, fd), &fp)) != 0)
 		return (error);
 	vp = (struct vnode *)fp->f_data;
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	if (VOP_GETVOBJECT(vp, &obj) == 0)
 		vm_object_page_clean(obj, 0, 0, 0);
-	if ((error = VOP_FSYNC(vp, fp->f_cred, MNT_WAIT, p)) == 0 &&
+	if ((error = VOP_FSYNC(vp, fp->f_cred, MNT_WAIT, td)) == 0 &&
 	    vp->v_mount && (vp->v_mount->mnt_flag & MNT_SOFTDEP) &&
 	    bioops.io_fsync)
 		error = (*bioops.io_fsync)(vp);
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	return (error);
 }
 
@@ -2283,19 +2323,20 @@ fsync(struct fsync_args *uap)
 int
 rename(struct rename_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vnode *tvp, *fvp, *tdvp;
 	struct nameidata fromnd, tond;
 	int error;
 
 	bwillwrite();
 	NDINIT(&fromnd, DELETE, WANTPARENT | SAVESTART, UIO_USERSPACE,
-	    SCARG(uap, from), p);
+	    SCARG(uap, from), td);
 	if ((error = namei(&fromnd)) != 0)
 		return (error);
 	fvp = fromnd.ni_vp;
 	NDINIT(&tond, RENAME, LOCKPARENT | LOCKLEAF | NOCACHE | SAVESTART | NOOBJ,
-	    UIO_USERSPACE, SCARG(uap, to), p);
+	    UIO_USERSPACE, SCARG(uap, to), td);
 	if (fromnd.ni_vp->v_type == VDIR)
 		tond.ni_cnd.cn_flags |= WILLBEDIR;
 	if ((error = namei(&tond)) != 0) {
@@ -2328,12 +2369,12 @@ rename(struct rename_args *uap)
 		error = -1;
 out:
 	if (!error) {
-		VOP_LEASE(tdvp, p, p->p_ucred, LEASE_WRITE);
+		VOP_LEASE(tdvp, td, p->p_ucred, LEASE_WRITE);
 		if (fromnd.ni_dvp != tdvp) {
-			VOP_LEASE(fromnd.ni_dvp, p, p->p_ucred, LEASE_WRITE);
+			VOP_LEASE(fromnd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
 		}
 		if (tvp) {
-			VOP_LEASE(tvp, p, p->p_ucred, LEASE_WRITE);
+			VOP_LEASE(tvp, td, p->p_ucred, LEASE_WRITE);
 		}
 		error = VOP_RENAME(fromnd.ni_dvp, fromnd.ni_vp, &fromnd.ni_cnd,
 				   tond.ni_dvp, tond.ni_vp, &tond.ni_cnd);
@@ -2373,14 +2414,15 @@ out1:
 int
 mkdir(struct mkdir_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	struct vattr vattr;
 	int error;
 	struct nameidata nd;
 
 	bwillwrite();
-	NDINIT(&nd, CREATE, LOCKPARENT, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, CREATE, LOCKPARENT, UIO_USERSPACE, SCARG(uap, path), td);
 	nd.ni_cnd.cn_flags |= WILLBEDIR;
 	if ((error = namei(&nd)) != 0)
 		return (error);
@@ -2397,7 +2439,7 @@ mkdir(struct mkdir_args *uap)
 	VATTR_NULL(&vattr);
 	vattr.va_type = VDIR;
 	vattr.va_mode = (SCARG(uap, mode) & ACCESSPERMS) &~ p->p_fd->fd_cmask;
-	VOP_LEASE(nd.ni_dvp, p, p->p_ucred, LEASE_WRITE);
+	VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
 	error = VOP_MKDIR(nd.ni_dvp, &nd.ni_vp, &nd.ni_cnd, &vattr);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vput(nd.ni_dvp);
@@ -2417,14 +2459,15 @@ mkdir(struct mkdir_args *uap)
 int
 rmdir(struct rmdir_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	int error;
 	struct nameidata nd;
 
 	bwillwrite();
 	NDINIT(&nd, DELETE, LOCKPARENT | LOCKLEAF, UIO_USERSPACE,
-	    SCARG(uap, path), p);
+	    SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	vp = nd.ni_vp;
@@ -2445,8 +2488,8 @@ rmdir(struct rmdir_args *uap)
 	if (vp->v_flag & VROOT)
 		error = EBUSY;
 	else {
-		VOP_LEASE(nd.ni_dvp, p, p->p_ucred, LEASE_WRITE);
-		VOP_LEASE(vp, p, p->p_ucred, LEASE_WRITE);
+		VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
+		VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 		error = VOP_RMDIR(nd.ni_dvp, nd.ni_vp, &nd.ni_cnd);
 	}
 out:
@@ -2471,7 +2514,8 @@ out:
 int
 ogetdirentries(struct ogetdirentries_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	struct file *fp;
 	struct uio auio, kuio;
@@ -2498,9 +2542,9 @@ unionread:
 	auio.uio_iovcnt = 1;
 	auio.uio_rw = UIO_READ;
 	auio.uio_segflg = UIO_USERSPACE;
-	auio.uio_procp = p;
+	auio.uio_td = td;
 	auio.uio_resid = SCARG(uap, count);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	loff = auio.uio_offset = fp->f_offset;
 #	if (BYTE_ORDER != LITTLE_ENDIAN)
 		if (vp->v_mount->mnt_maxsymlinklen <= 0) {
@@ -2553,12 +2597,12 @@ unionread:
 		}
 		FREE(dirbuf, M_TEMP);
 	}
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	if (error)
 		return (error);
 	if (SCARG(uap, count) == auio.uio_resid) {
 		if (union_dircheckp) {
-			error = union_dircheckp(p, &vp, fp);
+			error = union_dircheckp(td, &vp, fp);
 			if (error == -1)
 				goto unionread;
 			if (error)
@@ -2590,7 +2634,8 @@ unionread:
 int
 getdirentries(struct getdirentries_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	struct file *fp;
 	struct uio auio;
@@ -2612,19 +2657,19 @@ unionread:
 	auio.uio_iovcnt = 1;
 	auio.uio_rw = UIO_READ;
 	auio.uio_segflg = UIO_USERSPACE;
-	auio.uio_procp = p;
+	auio.uio_td = td;
 	auio.uio_resid = SCARG(uap, count);
-	/* vn_lock(vp, LK_SHARED | LK_RETRY, p); */
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	/* vn_lock(vp, LK_SHARED | LK_RETRY, td); */
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	loff = auio.uio_offset = fp->f_offset;
 	error = VOP_READDIR(vp, &auio, fp->f_cred, &eofflag, NULL, NULL);
 	fp->f_offset = auio.uio_offset;
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	if (error)
 		return (error);
 	if (SCARG(uap, count) == auio.uio_resid) {
 		if (union_dircheckp) {
-			error = union_dircheckp(p, &vp, fp);
+			error = union_dircheckp(td, &vp, fp);
 			if (error == -1)
 				goto unionread;
 			if (error)
@@ -2674,7 +2719,8 @@ getdents(struct getdents_args *uap)
 int
 umask(struct umask_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct filedesc *fdp;
 
 	fdp = p->p_fd;
@@ -2693,13 +2739,14 @@ umask(struct umask_args *uap)
 int
 revoke(struct revoke_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	struct vattr vattr;
 	int error;
 	struct nameidata nd;
 
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	vp = nd.ni_vp;
@@ -2708,10 +2755,10 @@ revoke(struct revoke_args *uap)
 		error = EINVAL;
 		goto out;
 	}
-	if ((error = VOP_GETATTR(vp, &vattr, p->p_ucred, p)) != 0)
+	if ((error = VOP_GETATTR(vp, &vattr, p->p_ucred, td)) != 0)
 		goto out;
 	if (p->p_ucred->cr_uid != vattr.va_uid &&
-	    (error = suser_xxx(0, PRISON_ROOT)))
+	    (error = suser_cred(p->p_ucred, PRISON_ROOT)))
 		goto out;
 	if (vcount(vp) > 1)
 		VOP_REVOKE(vp, REVOKEALL);
@@ -2744,7 +2791,7 @@ getvnode(struct filedesc *fdp, int fd, struct file **fpp)
 int
 getfh(struct getfh_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct nameidata nd;
 	fhandle_t fh;
 	struct vnode *vp;
@@ -2753,10 +2800,10 @@ getfh(struct getfh_args *uap)
 	/*
 	 * Must be super user
 	 */
-	error = suser();
+	error = suser(td);
 	if (error)
 		return (error);
-	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF, UIO_USERSPACE, uap->fname, p);
+	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF, UIO_USERSPACE, uap->fname, td);
 	error = namei(&nd);
 	if (error)
 		return (error);
@@ -2784,7 +2831,8 @@ getfh(struct getfh_args *uap)
 int
 fhopen(struct fhopen_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct mount *mp;
 	struct vnode *vp;
 	struct fhandle fhp;
@@ -2800,7 +2848,7 @@ fhopen(struct fhopen_args *uap)
 	/*
 	 * Must be super user
 	 */
-	error = suser();
+	error = suser(td);
 	if (error)
 		return (error);
 
@@ -2851,28 +2899,28 @@ fhopen(struct fhopen_args *uap)
 	if (fmode & FREAD)
 		mode |= VREAD;
 	if (mode) {
-		error = VOP_ACCESS(vp, mode, p->p_ucred, p);
+		error = VOP_ACCESS(vp, mode, p->p_ucred, td);
 		if (error)
 			goto bad;
 	}
 	if (fmode & O_TRUNC) {
-		VOP_UNLOCK(vp, 0, p);				/* XXX */
-		VOP_LEASE(vp, p, p->p_ucred, LEASE_WRITE);
-		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);	/* XXX */
+		VOP_UNLOCK(vp, 0, td);				/* XXX */
+		VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
+		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);	/* XXX */
 		VATTR_NULL(vap);
 		vap->va_size = 0;
-		error = VOP_SETATTR(vp, vap, p->p_ucred, p);
+		error = VOP_SETATTR(vp, vap, p->p_ucred, td);
 		if (error)
 			goto bad;
 	}
-	error = VOP_OPEN(vp, fmode, p->p_ucred, p);
+	error = VOP_OPEN(vp, fmode, p->p_ucred, td);
 	if (error)
 		goto bad;
 	/*
 	 * Make sure that a VM object is created for VMIO support.
 	 */
 	if (vn_canvmio(vp) == TRUE) {
-		if ((error = vfs_object_create(vp, p, p->p_ucred)) != 0)
+		if ((error = vfs_object_create(vp, td, p->p_ucred)) != 0)
 			goto bad;
 	}
 	if (fmode & FWRITE)
@@ -2909,7 +2957,7 @@ fhopen(struct fhopen_args *uap)
 		type = F_FLOCK;
 		if ((fmode & FNONBLOCK) == 0)
 			type |= F_WAIT;
-		VOP_UNLOCK(vp, 0, p);
+		VOP_UNLOCK(vp, 0, td);
 		if ((error = VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, type)) != 0) {
 			/*
 			 * lock request failed.  Normally close the descriptor
@@ -2918,23 +2966,23 @@ fhopen(struct fhopen_args *uap)
 			 */
 			if (fdp->fd_ofiles[indx] == fp) {
 				fdp->fd_ofiles[indx] = NULL;
-				fdrop(fp, p);
+				fdrop(fp, td);
 			}
 
 			/*
 			 * release our private reference.
 			 */
-			fdrop(fp, p);
+			fdrop(fp, td);
 			return (error);
 		}
-		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 		fp->f_flag |= FHASLOCK;
 	}
 	if ((vp->v_type == VREG) && (VOP_GETVOBJECT(vp, NULL) != 0))
-		vfs_object_create(vp, p, p->p_ucred);
+		vfs_object_create(vp, td, p->p_ucred);
 
-	VOP_UNLOCK(vp, 0, p);
-	fdrop(fp, p);
+	VOP_UNLOCK(vp, 0, td);
+	fdrop(fp, td);
 	p->p_retval[0] = indx;
 	return (0);
 
@@ -2949,7 +2997,7 @@ bad:
 int
 fhstat(struct fhstat_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct stat sb;
 	fhandle_t fh;
 	struct mount *mp;
@@ -2959,7 +3007,7 @@ fhstat(struct fhstat_args *uap)
 	/*
 	 * Must be super user
 	 */
-	error = suser();
+	error = suser(td);
 	if (error)
 		return (error);
 	
@@ -2971,7 +3019,7 @@ fhstat(struct fhstat_args *uap)
 		return (ESTALE);
 	if ((error = VFS_FHTOVP(mp, &fh.fh_fid, &vp)))
 		return (error);
-	error = vn_stat(vp, &sb, p);
+	error = vn_stat(vp, &sb, td);
 	vput(vp);
 	if (error)
 		return (error);
@@ -2985,7 +3033,7 @@ fhstat(struct fhstat_args *uap)
 int
 fhstatfs(struct fhstatfs_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct statfs *sp;
 	struct mount *mp;
 	struct vnode *vp;
@@ -2996,7 +3044,7 @@ fhstatfs(struct fhstatfs_args *uap)
 	/*
 	 * Must be super user
 	 */
-	if ((error = suser()))
+	if ((error = suser(td)))
 		return (error);
 
 	if ((error = copyin(SCARG(uap, u_fhp), &fh, sizeof(fhandle_t))) != 0)
@@ -3009,10 +3057,10 @@ fhstatfs(struct fhstatfs_args *uap)
 	mp = vp->v_mount;
 	sp = &mp->mnt_stat;
 	vput(vp);
-	if ((error = VFS_STATFS(mp, sp, p)) != 0)
+	if ((error = VFS_STATFS(mp, sp, td)) != 0)
 		return (error);
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
-	if (suser_xxx(p->p_ucred, 0)) {
+	if (suser(td)) {
 		bcopy((caddr_t)sp, (caddr_t)&sb, sizeof(sb));
 		sb.f_fsid.val[0] = sb.f_fsid.val[1] = 0;
 		sp = &sb;
@@ -3034,18 +3082,18 @@ fhstatfs(struct fhstatfs_args *uap)
 int
 extattrctl(struct extattrctl_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct nameidata nd;
 	struct mount *mp;
 	int error;
 
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), p);
+	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	mp = nd.ni_vp->v_mount;
 	NDFREE(&nd, 0);
 	return (VFS_EXTATTRCTL(mp, SCARG(uap, cmd), SCARG(uap, attrname),
-	    SCARG(uap, arg), p));
+	    SCARG(uap, arg), td));
 }
 
 /*
@@ -3057,7 +3105,8 @@ extattrctl(struct extattrctl_args *uap)
 int
 extattr_set_file(struct extattr_set_file_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct nameidata nd;
 	struct uio auio;
 	struct iovec *iov, *needfree = NULL, aiov[UIO_SMALLIOV];
@@ -3069,7 +3118,7 @@ extattr_set_file(struct extattr_set_file_args *uap)
 	if (error)
 		return (error);
 	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF, UIO_USERSPACE,
-	    SCARG(uap, path), p);
+	    SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return(error);
 	iovlen = uap->iovcnt * sizeof(struct iovec);
@@ -3086,7 +3135,7 @@ extattr_set_file(struct extattr_set_file_args *uap)
 	auio.uio_iovcnt = uap->iovcnt;
 	auio.uio_rw = UIO_WRITE;
 	auio.uio_segflg = UIO_USERSPACE;
-	auio.uio_procp = p;
+	auio.uio_td = td;
 	auio.uio_offset = 0;
 	if ((error = copyin((caddr_t)uap->iovp, (caddr_t)iov, iovlen)))
 		goto done;
@@ -3100,7 +3149,7 @@ extattr_set_file(struct extattr_set_file_args *uap)
 		iov++;
 	}
 	cnt = auio.uio_resid;
-	error = VOP_SETEXTATTR(nd.ni_vp, attrname, &auio, p->p_ucred, p);
+	error = VOP_SETEXTATTR(nd.ni_vp, attrname, &auio, p->p_ucred, td);
 	cnt -= auio.uio_resid;
 	p->p_retval[0] = cnt;
 done:
@@ -3119,7 +3168,8 @@ done:
 int
 extattr_get_file(struct extattr_get_file_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct nameidata nd;
 	struct uio auio;
 	struct iovec *iov, *needfree, aiov[UIO_SMALLIOV];
@@ -3131,7 +3181,7 @@ extattr_get_file(struct extattr_get_file_args *uap)
 	if (error)
 		return (error);
 	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF, UIO_USERSPACE,
-	    SCARG(uap, path), p);
+	    SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	iovlen = uap->iovcnt * sizeof (struct iovec);
@@ -3150,7 +3200,7 @@ extattr_get_file(struct extattr_get_file_args *uap)
 	auio.uio_iovcnt = uap->iovcnt;
 	auio.uio_rw = UIO_READ;
 	auio.uio_segflg = UIO_USERSPACE;
-	auio.uio_procp = p;
+	auio.uio_td = td;
 	auio.uio_offset = 0;
 	if ((error = copyin((caddr_t)uap->iovp, (caddr_t)iov, iovlen)))
 		goto done;
@@ -3164,7 +3214,7 @@ extattr_get_file(struct extattr_get_file_args *uap)
 		iov++;
 	}
 	cnt = auio.uio_resid;
-	error = VOP_GETEXTATTR(nd.ni_vp, attrname, &auio, p->p_ucred, p);
+	error = VOP_GETEXTATTR(nd.ni_vp, attrname, &auio, p->p_ucred, td);
 	cnt -= auio.uio_resid;
 	p->p_retval[0] = cnt;
 done:
@@ -3181,7 +3231,8 @@ done:
 int
 extattr_delete_file(struct extattr_delete_file_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct nameidata nd;
 	char attrname[EXTATTR_MAXNAMELEN];
 	int	error;
@@ -3190,10 +3241,10 @@ extattr_delete_file(struct extattr_delete_file_args *uap)
 	if (error)
 		return(error);
 	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF, UIO_USERSPACE,
-	    SCARG(uap, path), p);
+	    SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return(error);
-	error = VOP_SETEXTATTR(nd.ni_vp, attrname, NULL, p->p_ucred, p);
+	error = VOP_SETEXTATTR(nd.ni_vp, attrname, NULL, p->p_ucred, td);
 	NDFREE(&nd, 0);
 	return(error);
 }

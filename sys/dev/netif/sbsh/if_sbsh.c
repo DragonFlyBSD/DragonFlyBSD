@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.3 2003/06/23 17:55:34 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.4 2003/06/25 03:55:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -404,17 +404,15 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data)
 	struct ifreq		*ifr = (struct ifreq *) data;
 	struct cx28975_cfg	cfg;
 	struct dsl_stats	ds;
-	struct proc		*p = curproc;
+	struct thread		*td = curthread;
 	int			s, error = 0;
 	u_int8_t		t;
-
-	KKASSERT(p != NULL);
 
 	s = splimp();
 
 	switch(cmd) {
 	case SIOCLOADFIRMW:
-		if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+		if ((error = suser(td)) != 0)
 			break;
 		if (ifp->if_flags & IFF_UP)
 			error = EBUSY;
@@ -434,7 +432,7 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data)
 		break;
 
 	case  SIOCGETSTATS :
-		if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+		if ((error = suser(td)) != 0)
 			break;
 
 		t = 0;
@@ -468,7 +466,7 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data)
 		break;
 
 	case  SIOCCLRSTATS :
-		if (!(error = suser_xxx(p->p_ucred, 0))) {
+		if (!(error = suser(td))) {
 			bzero(&sc->in_stats, sizeof(struct sbni16_stats));
 			t = 2;
 			if (issue_cx28975_cmd(sc, _DSL_CLEAR_ERROR_CTRS, &t, 1))

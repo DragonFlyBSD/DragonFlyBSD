@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.3 2003/06/23 17:55:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.4 2003/06/25 03:56:00 dillon Exp $
  */
 
 /*
@@ -67,7 +67,7 @@
 static int portal_fileid = PORTAL_ROOTFILEID+1;
 
 static int	portal_badop __P((void));
-static void	portal_closefd __P((struct proc *p, int fd));
+static void	portal_closefd __P((struct thread *td, int fd));
 static int	portal_connect __P((struct socket *so, struct socket *so2));
 static int	portal_getattr __P((struct vop_getattr_args *ap));
 static int	portal_inactive __P((struct vop_inactive_args *ap));
@@ -79,8 +79,8 @@ static int	portal_reclaim __P((struct vop_reclaim_args *ap));
 static int	portal_setattr __P((struct vop_setattr_args *ap));
 
 static void
-portal_closefd(p, fd)
-	struct proc *p;
+portal_closefd(td, fd)
+	struct thread *td;
 	int fd;
 {
 	int error;
@@ -207,12 +207,12 @@ portal_open(ap)
 		struct vnode *a_vp;
 		int  a_mode;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct socket *so = 0;
 	struct portalnode *pt;
-	struct proc *p = ap->a_p;
+	struct thread *td = ap->a_td;
 	struct vnode *vp = ap->a_vp;
 	int s;
 	struct uio auio;
@@ -240,7 +240,8 @@ portal_open(ap)
 	 * to deal with the side effects.  Check for this
 	 * by testing whether the p_dupfd has been set.
 	 */
-	if (p->p_dupfd >= 0)
+	KKASSERT(td->td_proc);
+	if (td->td_proc->p_dupfd >= 0)
 		return (ENODEV);
 
 	pt = VTOPORTAL(vp);
@@ -249,7 +250,7 @@ portal_open(ap)
 	/*
 	 * Create a new socket.
 	 */
-	error = socreate(AF_UNIX, &so, SOCK_STREAM, 0, ap->a_p);
+	error = socreate(AF_UNIX, &so, SOCK_STREAM, 0, ap->a_td);
 	if (error)
 		goto bad;
 
@@ -318,12 +319,12 @@ portal_open(ap)
 	auio.uio_iovcnt = 2;
 	auio.uio_rw = UIO_WRITE;
 	auio.uio_segflg = UIO_SYSSPACE;
-	auio.uio_procp = p;
+	auio.uio_td = td;
 	auio.uio_offset = 0;
 	auio.uio_resid = aiov[0].iov_len + aiov[1].iov_len;
 
 	error = sosend(so, (struct sockaddr *) 0, &auio,
-			(struct mbuf *) 0, (struct mbuf *) 0, 0, p);
+			(struct mbuf *) 0, (struct mbuf *) 0, 0, td);
 	if (error)
 		goto bad;
 
@@ -395,7 +396,7 @@ portal_open(ap)
 		int i;
 		printf("portal_open: %d extra fds\n", newfds - 1);
 		for (i = 1; i < newfds; i++) {
-			portal_closefd(p, *ip);
+			portal_closefd(td, *ip);
 			ip++;
 		}
 	}
@@ -404,9 +405,10 @@ portal_open(ap)
 	 * Check that the mode the file is being opened for is a subset
 	 * of the mode of the existing descriptor.
 	 */
- 	fp = p->p_fd->fd_ofiles[fd];
+	KKASSERT(td->td_proc);
+ 	fp = td->td_proc->p_fd->fd_ofiles[fd];
 	if (((ap->a_mode & (FREAD|FWRITE)) | fp->f_flag) != fp->f_flag) {
-		portal_closefd(p, fd);
+		portal_closefd(td, fd);
 		error = EACCES;
 		goto bad;
 	}
@@ -416,7 +418,7 @@ portal_open(ap)
 	 * special error code (ENXIO) which causes magic things to
 	 * happen in vn_open.  The whole concept is, well, hmmm.
 	 */
-	p->p_dupfd = fd;
+	td->td_proc->p_dupfd = fd;
 	error = ENXIO;
 
 bad:;
@@ -440,7 +442,7 @@ portal_getattr(ap)
 		struct vnode *a_vp;
 		struct vattr *a_vap;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
@@ -485,7 +487,7 @@ portal_setattr(ap)
 		struct vnode *a_vp;
 		struct vattr *a_vap;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 
@@ -531,11 +533,11 @@ static int
 portal_inactive(ap)
 	struct vop_inactive_args /* {
 		struct vnode *a_vp;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 
-	VOP_UNLOCK(ap->a_vp, 0, ap->a_p);
+	VOP_UNLOCK(ap->a_vp, 0, ap->a_td);
 	return (0);
 }
 

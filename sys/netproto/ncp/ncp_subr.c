@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_subr.c,v 1.2.2.1 2001/02/22 08:54:11 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_subr.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_subr.c,v 1.3 2003/06/25 03:56:05 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -54,14 +54,15 @@ int ncp_debuglevel = 0;
 
 struct callout_handle ncp_timer_handle;
 
-static void ncp_at_exit(struct proc *p);
+static void ncp_at_exit(struct thread *td);
 static void ncp_timer(void *arg);
 
 /*
  * duplicate string from user space. It should be very-very slow.
  */
 char *
-ncp_str_dup(char *s) {
+ncp_str_dup(char *s) 
+{
 	char *p, bt;
 	int len = 0;
 
@@ -77,26 +78,31 @@ ncp_str_dup(char *s) {
 
 
 void
-ncp_at_exit(struct proc *p) {
+ncp_at_exit(struct thread *td)
+{
 	struct ncp_conn *ncp, *nncp;
+	struct ucred *cred;
 
-	if (ncp_conn_putprochandles(p) == 0) return;
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;
 
-	ncp_conn_locklist(LK_EXCLUSIVE, p);
+	if (ncp_conn_putprochandles(td) == 0) return;
+
+	ncp_conn_locklist(LK_EXCLUSIVE, td);
 	for (ncp = SLIST_FIRST(&conn_list); ncp; ncp = nncp) {
 		nncp = SLIST_NEXT(ncp, nc_next);
 		if (ncp->ref_cnt != 0) continue;
-		if (ncp_conn_lock(ncp, p, p->p_ucred,NCPM_READ|NCPM_EXECUTE|NCPM_WRITE))
+		if (ncp_conn_lock(ncp, td, cred, NCPM_READ|NCPM_EXECUTE|NCPM_WRITE))
 			continue;
 		if (ncp_disconnect(ncp) != 0)
-			ncp_conn_unlock(ncp,p);
+			ncp_conn_unlock(ncp, td);
 	}
-	ncp_conn_unlocklist(p);
-	return;
+	ncp_conn_unlocklist(td);
 }
 
 int
-ncp_init(void) {
+ncp_init(void) 
+{
 	ncp_conn_init();
 	if (at_exit(ncp_at_exit)) {
 		NCPFATAL("can't register at_exit handler\n");
@@ -107,24 +113,29 @@ ncp_init(void) {
 }
 
 void
-ncp_done(void) {
+ncp_done(void) 
+{
 	struct ncp_conn *ncp, *nncp;
-	struct proc *p = curproc;
+	struct thread *td = curthread;	/* XXX */
+	struct ucred *cred;
+
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;
 	
 	untimeout(ncp_timer,NULL,ncp_timer_handle);
 	rm_at_exit(ncp_at_exit);
-	ncp_conn_locklist(LK_EXCLUSIVE, p);
+	ncp_conn_locklist(LK_EXCLUSIVE, td);
 	for (ncp = SLIST_FIRST(&conn_list); ncp; ncp = nncp) {
 		nncp = SLIST_NEXT(ncp, nc_next);
 		ncp->ref_cnt = 0;
-		if (ncp_conn_lock(ncp, p, p->p_ucred,NCPM_READ|NCPM_EXECUTE|NCPM_WRITE)) {
+		if (ncp_conn_lock(ncp, td, cred,NCPM_READ|NCPM_EXECUTE|NCPM_WRITE)) {
 			NCPFATAL("Can't lock connection !\n");
 			continue;
 		}
 		if (ncp_disconnect(ncp) != 0)
-			ncp_conn_unlock(ncp,p);
+			ncp_conn_unlock(ncp, td);
 	}
-	ncp_conn_unlocklist(p);
+	ncp_conn_unlocklist(td);
 }
 
 
@@ -145,12 +156,12 @@ int
 ncp_get_bindery_object_id(struct ncp_conn *conn, 
 		u_int16_t object_type, char *object_name, 
 		struct ncp_bindery_object *target,
-		struct proc *p,struct ucred *cred)
+		struct thread *td,struct ucred *cred)
 {
 	int error;
 	DECLARE_RQ;
 
-	NCP_RQ_HEAD_S(23,53,p,cred);
+	NCP_RQ_HEAD_S(23,53,td,cred);
 	ncp_rq_word_hl(rqp, object_type);
 	ncp_rq_pstring(rqp, object_name);
 	checkbad(ncp_request(conn,rqp));
@@ -182,7 +193,7 @@ ncp_read(struct ncp_conn *conn, ncp_fh *file, struct uio *uiop, struct ucred *cr
 		if (!burstio) {
 			len = min(4096 - (uiop->uio_offset % 4096), tsiz);
 			len = min(len, conn->buffer_size);
-			NCP_RQ_HEAD(72,uiop->uio_procp,cred);
+			NCP_RQ_HEAD(72,uiop->uio_td,cred);
 			ncp_rq_byte(rqp, 0);
 			ncp_rq_mem(rqp, (caddr_t)file, 6);
 			ncp_rq_dword(rqp, htonl(uiop->uio_offset));
@@ -224,7 +235,7 @@ ncp_write(struct ncp_conn *conn, ncp_fh *file, struct uio *uiop, struct ucred *c
 			printf("gotcha!\n");
 		}
 		/* rq head */
-		NCP_RQ_HEAD(73,uiop->uio_procp,cred);
+		NCP_RQ_HEAD(73,uiop->uio_td,cred);
 		ncp_rq_byte(rqp, 0);
 		ncp_rq_mem(rqp, (caddr_t)file, 6);
 		ncp_rq_dword(rqp, htonl(uiop->uio_offset));

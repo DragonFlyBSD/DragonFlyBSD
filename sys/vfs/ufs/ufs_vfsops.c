@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vfsops.c	8.8 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vfsops.c,v 1.17.2.3 2001/10/14 19:08:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.3 2003/06/25 03:56:12 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -61,12 +61,8 @@ MALLOC_DEFINE(M_UFSMNT, "UFS mount", "UFS mount structure");
  */
 /* ARGSUSED */
 int
-ufs_start(mp, flags, p)
-	struct mount *mp;
-	int flags;
-	struct proc *p;
+ufs_start(struct mount *mp, int flags, struct thread *td)
 {
-
 	return (0);
 }
 
@@ -92,48 +88,52 @@ ufs_root(mp, vpp)
  * Do operations associated with quotas
  */
 int
-ufs_quotactl(mp, cmds, uid, arg, p)
+ufs_quotactl(mp, cmds, uid, arg, td)
 	struct mount *mp;
 	int cmds;
 	uid_t uid;
 	caddr_t arg;
-	struct proc *p;
+	struct thread *td;
 {
 #ifndef QUOTA
 	return (EOPNOTSUPP);
 #else
+	struct proc *p = td->td_proc;
 	int cmd, type, error;
 
+	if (p == NULL)
+		return (EOPNOTSUPP);
+
 	if (uid == -1)
-		uid = p->p_cred->p_ruid;
+		uid = p->p_ucred->cr_ruid;
 	cmd = cmds >> SUBCMDSHIFT;
 
 	switch (cmd) {
 	case Q_SYNC:
 		break;
 	case Q_GETQUOTA:
-		if (uid == p->p_cred->p_ruid)
+		if (uid == p->p_ucred->cr_ruid)
 			break;
 		/* fall through */
 	default:
-		if ((error = suser_xxx(0, p, PRISON_ROOT)) != 0)
+		if ((error = suser_cred(p->p_ucred, PRISON_ROOT)) != 0)
 			return (error);
 	}
 
 	type = cmds & SUBCMDMASK;
 	if ((u_int)type >= MAXQUOTAS)
 		return (EINVAL);
-	if (vfs_busy(mp, LK_NOWAIT, 0, p))
+	if (vfs_busy(mp, LK_NOWAIT, 0, td))
 		return (0);
 
 	switch (cmd) {
 
 	case Q_QUOTAON:
-		error = quotaon(p, mp, type, arg);
+		error = quotaon(td, mp, type, arg);
 		break;
 
 	case Q_QUOTAOFF:
-		error = quotaoff(p, mp, type);
+		error = quotaoff(td, mp, type);
 		break;
 
 	case Q_SETQUOTA:
@@ -156,7 +156,7 @@ ufs_quotactl(mp, cmds, uid, arg, p)
 		error = EINVAL;
 		break;
 	}
-	vfs_unbusy(mp, p);
+	vfs_unbusy(mp, td);
 	return (error);
 #endif
 }

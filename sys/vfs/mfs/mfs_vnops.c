@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.4 2003/06/23 17:55:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.5 2003/06/25 03:56:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -107,7 +107,7 @@ mfs_open(ap)
 		struct vnode *a_vp;
 		int  a_mode;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 
@@ -175,7 +175,7 @@ mfs_strategy(ap)
 	register struct buf *bp = ap->a_bp;
 	register struct mfsnode *mfsp;
 	struct vnode *vp;
-	struct proc *p = curproc;		/* XXX */
+	struct thread *td = curthread;		/* XXX */
 	int s;
 
 	if (!vfinddev(bp->b_dev, VBLK, &vp) || vp->v_usecount == 0)
@@ -189,7 +189,7 @@ mfs_strategy(ap)
 
 	s = splbio();
 
-	if (mfsp->mfs_pid == 0) {
+	if (mfsp->mfs_td == NULL) {
 		/*
 		 * mini-root.  Note: B_FREEBUF not supported at the moment,
 		 * I'm not sure what kind of dataspace b_data is in.
@@ -204,7 +204,7 @@ mfs_strategy(ap)
 		else
 			bcopy(bp->b_data, base, bp->b_bcount);
 		biodone(bp);
-	} else if (mfsp->mfs_pid == p->p_pid) {
+	} else if (mfsp->mfs_td == td) {
 		/*
 		 * VOP to self
 		 */
@@ -318,7 +318,7 @@ mfs_close(ap)
 		struct vnode *a_vp;
 		int  a_fflag;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	register struct vnode *vp = ap->a_vp;
@@ -339,7 +339,7 @@ mfs_close(ap)
 	 * we must invalidate any in core blocks, so that
 	 * we can, free up its vnode.
 	 */
-	if ((error = vinvalbuf(vp, 1, ap->a_cred, ap->a_p, 0, 0)) != 0)
+	if ((error = vinvalbuf(vp, 1, ap->a_cred, ap->a_td, 0, 0)) != 0)
 		return (error);
 	/*
 	 * There should be no way to have any more uses of this
@@ -365,7 +365,7 @@ static int
 mfs_inactive(ap)
 	struct vop_inactive_args /* {
 		struct vnode *a_vp;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
@@ -374,7 +374,7 @@ mfs_inactive(ap)
 	if (bufq_first(&mfsp->buf_queue) != NULL)
 		panic("mfs_inactive: not inactive (next buffer %p)",
 			bufq_first(&mfsp->buf_queue));
-	VOP_UNLOCK(vp, 0, ap->a_p);
+	VOP_UNLOCK(vp, 0, ap->a_td);
 	return (0);
 }
 
@@ -405,8 +405,8 @@ mfs_print(ap)
 {
 	register struct mfsnode *mfsp = VTOMFS(ap->a_vp);
 
-	printf("tag VT_MFS, pid %ld, base %p, size %ld\n",
-	    (long)mfsp->mfs_pid, (void *)mfsp->mfs_baseoff, mfsp->mfs_size);
+	printf("tag VT_MFS, td %p, base %p, size %ld\n",
+	    mfsp->mfs_td, (void *)mfsp->mfs_baseoff, mfsp->mfs_size);
 	return (0);
 }
 

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_dev.c,v 1.2.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.3 2003/06/23 17:55:47 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.4 2003/06/25 03:56:06 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -114,6 +114,7 @@ nsmb_dev_open(dev_t dev, int oflags, int devtype, d_thread_t *td)
 
 	KKASSERT(p != NULL);
 	cred = p->p_ucred;
+
 	sdp = SMB_GETDEV(dev);
 	if (sdp && (sdp->sd_flags & NSMBFL_OPEN))
 		return EBUSY;
@@ -144,7 +145,6 @@ nsmb_dev_open(dev_t dev, int oflags, int devtype, d_thread_t *td)
 static int
 nsmb_dev_close(dev_t dev, int flag, int fmt, d_thread_t *td)
 {
-	struct proc *p = td->td_proc;
 	struct smb_dev *sdp;
 	struct smb_vc *vcp;
 	struct smb_share *ssp;
@@ -157,7 +157,7 @@ nsmb_dev_close(dev_t dev, int flag, int fmt, d_thread_t *td)
 		splx(s);
 		return EBADF;
 	}
-	smb_makescred(&scred, p, NULL);
+	smb_makescred(&scred, td, NULL);
 	ssp = sdp->sd_share;
 	if (ssp != NULL)
 		smb_share_rele(ssp, &scred);
@@ -179,7 +179,6 @@ nsmb_dev_close(dev_t dev, int flag, int fmt, d_thread_t *td)
 static int
 nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 {
-	struct proc *p = td->td_proc;
 	struct smb_dev *sdp;
 	struct smb_vc *vcp;
 	struct smb_share *ssp;
@@ -190,7 +189,7 @@ nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 	if ((sdp->sd_flags & NSMBFL_OPEN) == 0)
 		return EBADF;
 
-	smb_makescred(&scred, p, NULL);
+	smb_makescred(&scred, td, NULL);
 	switch (cmd) {
 	    case SMBIOC_OPENSESSION:
 		if (sdp->sd_vc)
@@ -200,7 +199,7 @@ nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		if (error)
 			break;
 		sdp->sd_vc = vcp;
-		smb_vc_unlock(vcp, 0, p);
+		smb_vc_unlock(vcp, 0, td);
 		sdp->sd_level = SMBL_VC;
 		break;
 	    case SMBIOC_OPENSHARE:
@@ -213,7 +212,7 @@ nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		if (error)
 			break;
 		sdp->sd_share = ssp;
-		smb_share_unlock(ssp, 0, p);
+		smb_share_unlock(ssp, 0, td);
 		sdp->sd_level = SMBL_SHARE;
 		break;
 	    case SMBIOC_REQUEST:
@@ -242,7 +241,7 @@ nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 					break;
 				if (on && (vcp->obj.co_flags & SMBV_PERMANENT) == 0) {
 					vcp->obj.co_flags |= SMBV_PERMANENT;
-					smb_vc_ref(vcp, p);
+					smb_vc_ref(vcp, td);
 				} else if (!on && (vcp->obj.co_flags & SMBV_PERMANENT)) {
 					vcp->obj.co_flags &= ~SMBV_PERMANENT;
 					smb_vc_rele(vcp, &scred);
@@ -260,7 +259,7 @@ nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 					break;
 				if (on && (ssp->obj.co_flags & SMBS_PERMANENT) == 0) {
 					ssp->obj.co_flags |= SMBS_PERMANENT;
-					smb_share_ref(ssp, p);
+					smb_share_ref(ssp, td);
 				} else if (!on && (ssp->obj.co_flags & SMBS_PERMANENT)) {
 					ssp->obj.co_flags &= ~SMBS_PERMANENT;
 					smb_share_rele(ssp, &scred);
@@ -283,12 +282,12 @@ nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 			break;
 		if (vcp) {
 			sdp->sd_vc = vcp;
-			smb_vc_unlock(vcp, 0, p);
+			smb_vc_unlock(vcp, 0, td);
 			sdp->sd_level = SMBL_VC;
 		}
 		if (ssp) {
 			sdp->sd_share = ssp;
-			smb_share_unlock(ssp, 0, p);
+			smb_share_unlock(ssp, 0, td);
 			sdp->sd_level = SMBL_SHARE;
 		}
 		break;
@@ -307,7 +306,7 @@ nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		auio.uio_resid = rwrq->ioc_cnt;
 		auio.uio_segflg = UIO_USERSPACE;
 		auio.uio_rw = (cmd == SMBIOC_READ) ? UIO_READ : UIO_WRITE;
-		auio.uio_procp = p;
+		auio.uio_td = td;
 		if (cmd == SMBIOC_READ)
 			error = smb_read(ssp, rwrq->ioc_fh, &auio, &scred);
 		else
@@ -403,8 +402,12 @@ smb_dev2share(int fd, int mode, struct smb_cred *scred,
 	dev_t dev;
 	int error;
 
-	if ((fp = nsmb_getfp(scred->scr_p->p_fd, fd, FREAD | FWRITE)) == NULL)
+	KKASSERT(scred->scr_td->td_proc);
+
+	if ((fp = nsmb_getfp(scred->scr_td->td_proc->p_fd,
+	    fd, FREAD | FWRITE)) == NULL) {
 		return EBADF;
+	}
 	vp = (struct vnode*)fp->f_data;
 	if (vp == NULL)
 		return EBADF;

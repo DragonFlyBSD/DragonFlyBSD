@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -103,7 +103,8 @@ struct execve_args {
 int
 execve(struct execve_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct nameidata nd, *ndp;
 	register_t *stack_base;
 	int error, len, i;
@@ -111,6 +112,7 @@ execve(struct execve_args *uap)
 	struct vattr attr;
 	int (*img_first) __P((struct image_params *));
 
+	KKASSERT(p);
 	imgp = &image_params;
 
 	/*
@@ -158,7 +160,7 @@ execve(struct execve_args *uap)
 	 */
 	ndp = &nd;
 	NDINIT(ndp, LOOKUP, LOCKLEAF | FOLLOW | SAVENAME,
-	    UIO_USERSPACE, uap->fname, p);
+	    UIO_USERSPACE, uap->fname, td);
 
 interpret:
 
@@ -177,12 +179,12 @@ interpret:
 	 */
 	error = exec_check_permissions(imgp);
 	if (error) {
-		VOP_UNLOCK(imgp->vp, 0, p);
+		VOP_UNLOCK(imgp->vp, 0, td);
 		goto exec_fail_dealloc;
 	}
 
 	error = exec_map_first_page(imgp);
-	VOP_UNLOCK(imgp->vp, 0, p);
+	VOP_UNLOCK(imgp->vp, 0, td);
 	if (error)
 		goto exec_fail_dealloc;
 
@@ -225,7 +227,7 @@ interpret:
 		vrele(ndp->ni_vp);
 		/* set new name to that of the interpreter */
 		NDINIT(ndp, LOOKUP, LOCKLEAF | FOLLOW | SAVENAME,
-		    UIO_SYSSPACE, imgp->interpreter_name, p);
+		    UIO_SYSSPACE, imgp->interpreter_name, td);
 		goto interpret;
 	}
 
@@ -319,7 +321,7 @@ interpret:
 		 * we do not regain any tracing during a possible block.
 		 */
 		setsugid();
-		if (p->p_tracep && suser()) {
+		if (p->p_tracep && suser(td)) {
 			struct vnode *vtmp;
 
 			if ((vtmp = p->p_tracep) != NULL) {
@@ -743,10 +745,11 @@ exec_check_permissions(imgp)
 	struct proc *p = imgp->proc;
 	struct vnode *vp = imgp->vp;
 	struct vattr *attr = imgp->attr;
+	struct thread *td = p->p_thread;
 	int error;
 
 	/* Get file attributes */
-	error = VOP_GETATTR(vp, attr, p->p_ucred, p);
+	error = VOP_GETATTR(vp, attr, p->p_ucred, td);
 	if (error)
 		return (error);
 
@@ -773,7 +776,7 @@ exec_check_permissions(imgp)
 	/*
 	 *  Check for execute permission to file based on current credentials.
 	 */
-	error = VOP_ACCESS(vp, VEXEC, p->p_ucred, p);
+	error = VOP_ACCESS(vp, VEXEC, p->p_ucred, td);
 	if (error)
 		return (error);
 
@@ -788,7 +791,7 @@ exec_check_permissions(imgp)
 	 * Call filesystem specific open routine (which does nothing in the
 	 * general case).
 	 */
-	error = VOP_OPEN(vp, FREAD, p->p_ucred, p);
+	error = VOP_OPEN(vp, FREAD, p->p_ucred, td);
 	if (error)
 		return (error);
 

@@ -32,7 +32,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.3 2003/06/23 17:55:45 dillon Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.4 2003/06/25 03:56:02 dillon Exp $
  */
 
 
@@ -102,7 +102,7 @@ rts_abort(struct socket *so)
 /* pru_accept is EOPNOTSUPP */
 
 static int
-rts_attach(struct socket *so, int proto, struct proc *p)
+rts_attach(struct socket *so, int proto, struct thread *td)
 {
 	struct rawcb *rp;
 	int s, error;
@@ -152,21 +152,21 @@ rts_attach(struct socket *so, int proto, struct proc *p)
 }
 
 static int
-rts_bind(struct socket *so, struct sockaddr *nam, struct proc *p)
+rts_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int s, error;
 	s = splnet();
-	error = raw_usrreqs.pru_bind(so, nam, p); /* xxx just EINVAL */
+	error = raw_usrreqs.pru_bind(so, nam, td); /* xxx just EINVAL */
 	splx(s);
 	return error;
 }
 
 static int
-rts_connect(struct socket *so, struct sockaddr *nam, struct proc *p)
+rts_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int s, error;
 	s = splnet();
-	error = raw_usrreqs.pru_connect(so, nam, p); /* XXX just EINVAL */
+	error = raw_usrreqs.pru_connect(so, nam, td); /* XXX just EINVAL */
 	splx(s);
 	return error;
 }
@@ -230,11 +230,11 @@ rts_peeraddr(struct socket *so, struct sockaddr **nam)
 
 static int
 rts_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
-	 struct mbuf *control, struct proc *p)
+	 struct mbuf *control, struct thread *td)
 {
 	int s, error;
 	s = splnet();
-	error = raw_usrreqs.pru_send(so, flags, m, nam, control, p);
+	error = raw_usrreqs.pru_send(so, flags, m, nam, control, td);
 	splx(s);
 	return error;
 }
@@ -331,7 +331,7 @@ route_output(m, so)
 	 * Verify that the caller has the appropriate privilege; RTM_GET
 	 * is the only operation the non-superuser is allowed.
 	 */
-	if (rtm->rtm_type != RTM_GET && suser_xxx(so->so_cred, 0) != 0)
+	if (rtm->rtm_type != RTM_GET && suser_cred(so->so_cred, 0) != 0)
 		senderr(EPERM);
 
 	switch (rtm->rtm_type) {
@@ -966,7 +966,7 @@ sysctl_iflist(af, w)
 		while ((ifa = TAILQ_NEXT(ifa, ifa_link)) != 0) {
 			if (af && af != ifa->ifa_addr->sa_family)
 				continue;
-			if (curproc->p_ucred->cr_prison && prison_if(curproc, ifa->ifa_addr))
+			if (curproc->p_ucred->cr_prison && prison_if(curthread, ifa->ifa_addr))
 				continue;
 			ifaaddr = ifa->ifa_addr;
 			netmask = ifa->ifa_netmask;

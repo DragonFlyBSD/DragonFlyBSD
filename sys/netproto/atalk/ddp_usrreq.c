@@ -22,9 +22,9 @@
 static void at_pcbdisconnect( struct ddpcb *ddp );
 static void at_sockaddr(struct ddpcb *ddp, struct sockaddr **addr);
 static int at_pcbsetaddr(struct ddpcb *ddp, struct sockaddr *addr,
-			  struct proc *p);
+			  struct thread *td);
 static int at_pcbconnect(struct ddpcb *ddp, struct sockaddr *addr, 
-			 struct proc *p);
+			 struct thread *td);
 static void at_pcbdetach(struct socket *so, struct ddpcb *ddp);
 static int at_pcballoc(struct socket *so);
 
@@ -35,7 +35,7 @@ static u_long	ddp_recvspace = 10 * ( 587 + sizeof( struct sockaddr_at ));
 
 
 static int
-ddp_attach(struct socket *so, int proto, struct proc *p)
+ddp_attach(struct socket *so, int proto, struct thread *td)
 {
 	struct ddpcb	*ddp;
 	int		error = 0;
@@ -73,7 +73,7 @@ ddp_detach(struct socket *so)
 }
 
 static int      
-ddp_bind(struct socket *so, struct sockaddr *nam, struct proc *p)
+ddp_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct ddpcb	*ddp;
 	int		error = 0;
@@ -90,7 +90,7 @@ ddp_bind(struct socket *so, struct sockaddr *nam, struct proc *p)
 }
     
 static int
-ddp_connect(struct socket *so, struct sockaddr *nam, struct proc *p)
+ddp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct ddpcb	*ddp;
 	int		error = 0;
@@ -151,7 +151,7 @@ ddp_shutdown(struct socket *so)
 
 static int
 ddp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
-            struct mbuf *control, struct proc *p)
+            struct mbuf *control, struct thread *td)
 {
 	struct ddpcb	*ddp;
 	int		error = 0;
@@ -217,7 +217,7 @@ at_sockaddr(struct ddpcb *ddp, struct sockaddr **addr)
 }
 
 static int 
-at_pcbsetaddr(struct ddpcb *ddp, struct sockaddr *addr, struct proc *p)
+at_pcbsetaddr(struct ddpcb *ddp, struct sockaddr *addr, struct thread *td)
 {
     struct sockaddr_at	lsat, *sat;
     struct at_ifaddr	*aa;
@@ -252,7 +252,7 @@ at_pcbsetaddr(struct ddpcb *ddp, struct sockaddr *addr, struct proc *p)
 		return( EINVAL );
 	    }
 	    if ( sat->sat_port < ATPORT_RESERVED &&
-		 suser(p) ) {
+		 suser(td) ) {
 		return( EACCES );
 	    }
 	}
@@ -311,7 +311,7 @@ at_pcbsetaddr(struct ddpcb *ddp, struct sockaddr *addr, struct proc *p)
 }
 
 static int
-at_pcbconnect(struct ddpcb *ddp, struct sockaddr *addr, struct proc *p)
+at_pcbconnect(struct ddpcb *ddp, struct sockaddr *addr, struct thread *td)
 {
     struct sockaddr_at	*sat = (struct sockaddr_at *)addr;
     struct route	*ro;

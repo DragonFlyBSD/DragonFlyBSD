@@ -32,7 +32,7 @@
  *
  *	@(#)kern_xxx.c	8.2 (Berkeley) 11/14/93
  * $FreeBSD: src/sys/kern/kern_xxx.c,v 1.31 1999/08/28 00:46:15 peter Exp $
- * $DragonFly: src/sys/kern/kern_xxx.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_xxx.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -77,15 +77,17 @@ struct sethostname_args {
 int
 osethostname(struct sethostname_args *uap)
 {
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	int name[2];
 	int error;
 
+	KKASSERT(p);
 	name[0] = CTL_KERN;
 	name[1] = KERN_HOSTNAME;
-	if ((error = suser_xxx(0, PRISON_ROOT)))
+	if ((error = suser_cred(p->p_ucred, PRISON_ROOT)))
 		return (error);
-	return (userland_sysctl(name, 2, 0, 0, 0,
-		uap->hostname, uap->len, 0));
+	return (userland_sysctl(name, 2, 0, 0, 0, uap->hostname, uap->len, 0));
 }
 
 #ifndef _SYS_SYSPROTO_H_
@@ -114,9 +116,10 @@ struct osethostid_args {
 int
 osethostid(struct osethostid_args *uap)
 {
+	struct thread *td = curthread;
 	int error;
 
-	if ((error = suser()))
+	if ((error = suser(td)))
 		return (error);
 	hostid = uap->hostid;
 	return (0);
@@ -227,9 +230,10 @@ struct setdomainname_args {
 int
 setdomainname(struct setdomainname_args *uap)
 {
+	struct thread *td = curthread;
         int error, domainnamelen;
 
-        if ((error = suser()))
+        if ((error = suser(td)))
                 return (error);
         if ((u_int)uap->len > sizeof (domainname) - 1)
                 return EINVAL;

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.2 2003/06/17 04:28:47 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.3 2003/06/25 03:56:01 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -126,7 +126,7 @@ msdosfs_hashget(dev, dirclust, diroff)
 	u_long dirclust;
 	u_long diroff;
 {
-	struct proc *p = curproc;	/* XXX */
+	struct thread *td = curthread;	/* XXX */
 	struct denode *dep;
 	struct vnode *vp;
 
@@ -140,7 +140,7 @@ loop:
 			vp = DETOV(dep);
 			simple_lock(&vp->v_interlock);
 			simple_unlock(&dehash_slock);
-			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, p))
+			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td))
 				goto loop;
 			return (dep);
 		}
@@ -203,6 +203,7 @@ deget(pmp, dirclust, diroffset, depp)
 	u_long diroffset;		/* index of entry within the cluster */
 	struct denode **depp;		/* returns the addr of the gotten denode */
 {
+	struct thread *td = curthread;	/* XXX */
 	int error;
 	dev_t dev = pmp->pm_dev;
 	struct mount *mntp = pmp->pm_mountp;
@@ -210,7 +211,6 @@ deget(pmp, dirclust, diroffset, depp)
 	struct denode *ldep;
 	struct vnode *nvp;
 	struct buf *bp;
-	struct proc *p = curproc;	/* XXX */
 	struct timeval tv;
 
 #ifdef MSDOSFS_DEBUG
@@ -278,7 +278,7 @@ deget(pmp, dirclust, diroffset, depp)
 	 * of at the start of msdosfs_hashins() so that reinsert() can
 	 * call msdosfs_hashins() with a locked denode.
 	 */
-	if (lockmgr(&ldep->de_lock, LK_EXCLUSIVE, (struct simplelock *)0, p))
+	if (lockmgr(&ldep->de_lock, LK_EXCLUSIVE, (struct simplelock *)0, td))
 		panic("deget: unexpected lock failure");
 
 	/*
@@ -425,12 +425,12 @@ deupdat(dep, waitfor)
  * Truncate the file described by dep to the length specified by length.
  */
 int
-detrunc(dep, length, flags, cred, p)
+detrunc(dep, length, flags, cred, td)
 	struct denode *dep;
 	u_long length;
 	int flags;
 	struct ucred *cred;
-	struct proc *p;
+	struct thread *td;
 {
 	int error;
 	int allerror;
@@ -531,7 +531,7 @@ detrunc(dep, length, flags, cred, p)
 	dep->de_FileSize = length;
 	if (!isadir)
 		dep->de_flag |= DE_UPDATE|DE_MODIFIED;
-	allerror = vtruncbuf(DETOV(dep), cred, p, length, pmp->pm_bpcluster);
+	allerror = vtruncbuf(DETOV(dep), cred, td, length, pmp->pm_bpcluster);
 #ifdef MSDOSFS_DEBUG
 	if (allerror)
 		printf("detrunc(): vtruncbuf error %d\n", allerror);
@@ -681,12 +681,11 @@ int
 msdosfs_inactive(ap)
 	struct vop_inactive_args /* {
 		struct vnode *a_vp;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
 	struct denode *dep = VTODE(vp);
-	struct proc *p = ap->a_p;
 	int error = 0;
 
 #ifdef MSDOSFS_DEBUG
@@ -712,14 +711,14 @@ msdosfs_inactive(ap)
 	       dep, dep->de_refcnt, vp->v_mount->mnt_flag, MNT_RDONLY);
 #endif
 	if (dep->de_refcnt <= 0 && (vp->v_mount->mnt_flag & MNT_RDONLY) == 0) {
-		error = detrunc(dep, (u_long) 0, 0, NOCRED, p);
+		error = detrunc(dep, (u_long) 0, 0, NOCRED, ap->a_td);
 		dep->de_flag |= DE_UPDATE;
 		dep->de_Name[0] = SLOT_DELETED;
 	}
 	deupdat(dep, 0);
 
 out:
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, ap->a_td);
 	/*
 	 * If we are done with the denode, reclaim it
 	 * so that it can be reused immediately.
@@ -729,6 +728,6 @@ out:
 	       dep->de_Name[0]);
 #endif
 	if (dep->de_Name[0] == SLOT_DELETED)
-		vrecycle(vp, (struct simplelock *)0, p);
+		vrecycle(vp, (struct simplelock *)0, ap->a_td);
 	return (error);
 }

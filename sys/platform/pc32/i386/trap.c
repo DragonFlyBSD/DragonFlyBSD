@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.7 2003/06/23 23:36:05 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.8 2003/06/25 03:55:53 dillon Exp $
  */
 
 /*
@@ -1071,10 +1071,11 @@ void
 syscall2(frame)
 	struct trapframe frame;
 {
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	caddr_t params;
 	int i;
 	struct sysent *callp;
-	struct proc *p = curproc;
 	register_t orig_tf_eflags;
 	u_quad_t sticks;
 	int error;
@@ -1150,7 +1151,7 @@ syscall2(frame)
 		get_mplock();
 		have_mplock = 1;
 #ifdef KTRACE
-		if (KTRPOINT(p, KTR_SYSCALL))
+		if (KTRPOINT(td, KTR_SYSCALL))
 			ktrsyscall(p->p_tracep, code, narg, args);
 #endif
 		goto bad;
@@ -1167,7 +1168,7 @@ syscall2(frame)
 	}
 
 #ifdef KTRACE
-	if (KTRPOINT(p, KTR_SYSCALL)) {
+	if (KTRPOINT(td, KTR_SYSCALL)) {
 		if (have_mplock == 0) {
 			get_mplock();
 			have_mplock = 1;
@@ -1239,7 +1240,7 @@ bad:
 	have_mplock = userret(p, &frame, sticks, have_mplock);
 
 #ifdef KTRACE
-	if (KTRPOINT(p, KTR_SYSRET)) {
+	if (KTRPOINT(td, KTR_SYSRET)) {
 		if (have_mplock == 0) {
 			get_mplock();
 			have_mplock = 1;
@@ -1278,7 +1279,7 @@ fork_return(p, frame)
 
 	userret(p, &frame, 0, 1);
 #ifdef KTRACE
-	if (KTRPOINT(p, KTR_SYSRET))
+	if (KTRPOINT(p->p_thread, KTR_SYSRET))
 		ktrsysret(p->p_tracep, SYS_fork, 0, 0);
 #endif
 }

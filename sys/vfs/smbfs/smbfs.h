@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs.h,v 1.2.2.2 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs.h,v 1.3 2003/06/25 03:55:52 dillon Exp $
  */
 #ifndef _SMBFS_SMBFS_H_
 #define _SMBFS_SMBFS_H_
@@ -101,9 +101,9 @@ struct smbmount {
 #define	VTOSMBFS(vp)		(VFSTOSMBFS(VTOVFS(vp)))
 
 int smbfs_ioctl(struct vop_ioctl_args *ap);
-int smbfs_doio(struct buf *bp, struct ucred *cr, struct proc *p);
+int smbfs_doio(struct buf *bp, struct ucred *cr, struct thread *td);
 int smbfs_vinvalbuf(struct vnode *vp, int flags, struct ucred *cred, 
-	struct proc *p, int intrflg);
+	struct thread *td, int intrflg);
 #endif	/* KERNEL */
 
 #endif /* _SMBFS_SMBFS_H_ */

@@ -45,7 +45,7 @@
  * 	Last Edit-Date: [Mon Dec 27 14:05:16 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_ext.c,v 1.17 1999/12/30 16:17:09 hm Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_ext.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_ext.c,v 1.3 2003/06/25 03:55:54 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -2667,7 +2667,7 @@ usl_vt_ioctl(Dev_t dev, int cmd, caddr_t data, int flag, struct proc *p)
 		struct syscframe *fp = (struct syscframe *)p->p_regs;
 #endif
 
-		error = suser(p);
+		error = suser(td);
 		if (error != 0)
 			return (error);
 		if (securelevel > 0)

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.3 2003/06/23 17:55:47 dillon Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.4 2003/06/25 03:56:04 dillon Exp $
  */
 
 /*
@@ -554,7 +554,7 @@ rip6_ctloutput(so, sopt)
 }
 
 static int
-rip6_attach(struct socket *so, int proto, struct proc *p)
+rip6_attach(struct socket *so, int proto, struct thread *td)
 {
 	struct inpcb *inp;
 	int error, s;
@@ -562,14 +562,14 @@ rip6_attach(struct socket *so, int proto, struct proc *p)
 	inp = sotoinpcb(so);
 	if (inp)
 		panic("rip6_attach");
-	if (p && (error = suser_xxx(p->p_ucred, 0)) != 0)
+	if ((error = suser(td)) != 0)
 		return error;
 
 	error = soreserve(so, rip_sendspace, rip_recvspace);
 	if (error)
 		return error;
 	s = splnet();
-	error = in_pcballoc(so, &ripcbinfo, p);
+	error = in_pcballoc(so, &ripcbinfo, td);
 	splx(s);
 	if (error)
 		return error;
@@ -622,7 +622,7 @@ rip6_disconnect(struct socket *so)
 }
 
 static int
-rip6_bind(struct socket *so, struct sockaddr *nam, struct proc *p)
+rip6_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct inpcb *inp = sotoinpcb(so);
 	struct sockaddr_in6 *addr = (struct sockaddr_in6 *)nam;
@@ -652,7 +652,7 @@ rip6_bind(struct socket *so, struct sockaddr *nam, struct proc *p)
 }
 
 static int
-rip6_connect(struct socket *so, struct sockaddr *nam, struct proc *p)
+rip6_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct inpcb *inp = sotoinpcb(so);
 	struct sockaddr_in6 *addr = (struct sockaddr_in6 *)nam;
@@ -697,7 +697,7 @@ rip6_shutdown(struct socket *so)
 
 static int
 rip6_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
-	 struct mbuf *control, struct proc *p)
+	 struct mbuf *control, struct thread *td)
 {
 	struct inpcb *inp = sotoinpcb(so);
 	struct sockaddr_in6 tmp;

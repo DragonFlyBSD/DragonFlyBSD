@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.4 2003/06/23 23:36:11 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.5 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -67,7 +67,7 @@ uiomove(cp, n, uio)
 
 	KASSERT(uio->uio_rw == UIO_READ || uio->uio_rw == UIO_WRITE,
 	    ("uiomove: mode"));
-	KASSERT(uio->uio_segflg != UIO_USERSPACE || uio->uio_procp == curproc,
+	KASSERT(uio->uio_segflg != UIO_USERSPACE || uio->uio_td == curthread,
 	    ("uiomove proc"));
 
 	if (curproc) {
@@ -137,7 +137,7 @@ uiomoveco(cp, n, uio, obj)
 
 	KASSERT(uio->uio_rw == UIO_READ || uio->uio_rw == UIO_WRITE,
 	    ("uiomoveco: mode"));
-	KASSERT(uio->uio_segflg != UIO_USERSPACE || uio->uio_procp == curproc,
+	KASSERT(uio->uio_segflg != UIO_USERSPACE || uio->uio_td == curthread,
 	    ("uiomoveco proc"));
 
 	while (n > 0 && uio->uio_resid) {

@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -65,6 +65,7 @@
 #endif
 #include <vm/vm.h>
 #include <vm/vm_page.h>
+#include <sys/file2.h>
 
 #include <machine/limits.h>
 
@@ -108,14 +109,16 @@ struct read_args {
 int
 read(struct read_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct file *fp;
 	int error;
 
+	KKASSERT(p);
 	if ((fp = holdfp(p->p_fd, uap->fd, FREAD)) == NULL)
 		return (EBADF);
 	error = dofileread(fp, uap->fd, uap->buf, uap->nbyte, (off_t)-1, 0);
-	fdrop(fp, p);
+	fdrop(fp, td);
 	return(error);
 }
 
@@ -134,10 +137,12 @@ struct pread_args {
 int
 pread(struct pread_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct file *fp;
 	int error;
 
+	KKASSERT(p);
 	if ((fp = holdfp(p->p_fd, uap->fd, FREAD)) == NULL)
 		return (EBADF);
 	if (fp->f_type != DTYPE_VNODE) {
@@ -146,7 +151,7 @@ pread(struct pread_args *uap)
 	    error = dofileread(fp, uap->fd, uap->buf, uap->nbyte, 
 		uap->offset, FOF_OFFSET);
 	}
-	fdrop(fp, p);
+	fdrop(fp, td);
 	return(error);
 }
 
@@ -161,7 +166,8 @@ dofileread(fp, fd, buf, nbyte, offset, flags)
 	size_t nbyte;
 	off_t offset;
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct uio auio;
 	struct iovec aiov;
 	long cnt, error = 0;
@@ -181,12 +187,12 @@ dofileread(fp, fd, buf, nbyte, offset, flags)
 	auio.uio_resid = nbyte;
 	auio.uio_rw = UIO_READ;
 	auio.uio_segflg = UIO_USERSPACE;
-	auio.uio_procp = p;
+	auio.uio_td = td;
 #ifdef KTRACE
 	/*
 	 * if tracing, save a copy of iovec
 	 */
-	if (KTRPOINT(p, KTR_GENIO)) {
+	if (KTRPOINT(td, KTR_GENIO)) {
 		ktriov = aiov;
 		ktruio = auio;
 		didktr = 1;
@@ -194,7 +200,7 @@ dofileread(fp, fd, buf, nbyte, offset, flags)
 #endif
 	cnt = nbyte;
 
-	if ((error = fo_read(fp, &auio, fp->f_cred, flags, p))) {
+	if ((error = fo_read(fp, &auio, fp->f_cred, flags, td))) {
 		if (auio.uio_resid != cnt && (error == ERESTART ||
 		    error == EINTR || error == EWOULDBLOCK))
 			error = 0;
@@ -224,7 +230,8 @@ struct readv_args {
 int
 readv(struct readv_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct filedesc *fdp = p->p_fd;
 	struct uio auio;
@@ -255,7 +262,7 @@ readv(struct readv_args *uap)
 	auio.uio_iovcnt = uap->iovcnt;
 	auio.uio_rw = UIO_READ;
 	auio.uio_segflg = UIO_USERSPACE;
-	auio.uio_procp = p;
+	auio.uio_td = td;
 	auio.uio_offset = -1;
 	if ((error = copyin((caddr_t)uap->iovp, (caddr_t)iov, iovlen)))
 		goto done;
@@ -272,14 +279,14 @@ readv(struct readv_args *uap)
 	/*
 	 * if tracing, save a copy of iovec
 	 */
-	if (KTRPOINT(p, KTR_GENIO))  {
+	if (KTRPOINT(td, KTR_GENIO))  {
 		MALLOC(ktriov, struct iovec *, iovlen, M_TEMP, M_WAITOK);
 		bcopy((caddr_t)auio.uio_iov, (caddr_t)ktriov, iovlen);
 		ktruio = auio;
 	}
 #endif
 	cnt = auio.uio_resid;
-	if ((error = fo_read(fp, &auio, fp->f_cred, 0, p))) {
+	if ((error = fo_read(fp, &auio, fp->f_cred, 0, td))) {
 		if (auio.uio_resid != cnt && (error == ERESTART ||
 		    error == EINTR || error == EWOULDBLOCK))
 			error = 0;
@@ -298,7 +305,7 @@ readv(struct readv_args *uap)
 #endif
 	p->p_retval[0] = cnt;
 done:
-	fdrop(fp, p);
+	fdrop(fp, td);
 	if (needfree)
 		FREE(needfree, M_IOV);
 	return (error);
@@ -317,14 +324,17 @@ struct write_args {
 int
 write(struct write_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct file *fp;
 	int error;
+
+	KKASSERT(p);
 
 	if ((fp = holdfp(p->p_fd, uap->fd, FWRITE)) == NULL)
 		return (EBADF);
 	error = dofilewrite(fp, uap->fd, uap->buf, uap->nbyte, (off_t)-1, 0);
-	fdrop(fp, p);
+	fdrop(fp, td);
 	return(error);
 }
 
@@ -343,10 +353,12 @@ struct pwrite_args {
 int
 pwrite(struct pwrite_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct file *fp;
 	int error;
 
+	KKASSERT(p);
 	if ((fp = holdfp(p->p_fd, uap->fd, FWRITE)) == NULL)
 		return (EBADF);
 	if (fp->f_type != DTYPE_VNODE) {
@@ -355,7 +367,7 @@ pwrite(struct pwrite_args *uap)
 	    error = dofilewrite(fp, uap->fd, uap->buf, uap->nbyte,
 		uap->offset, FOF_OFFSET);
 	}
-	fdrop(fp, p);
+	fdrop(fp, td);
 	return(error);
 }
 
@@ -368,7 +380,8 @@ dofilewrite(
 	off_t offset,
 	int flags
 ) {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct uio auio;
 	struct iovec aiov;
 	long cnt, error = 0;
@@ -388,12 +401,12 @@ dofilewrite(
 	auio.uio_resid = nbyte;
 	auio.uio_rw = UIO_WRITE;
 	auio.uio_segflg = UIO_USERSPACE;
-	auio.uio_procp = p;
+	auio.uio_td = td;
 #ifdef KTRACE
 	/*
 	 * if tracing, save a copy of iovec and uio
 	 */
-	if (KTRPOINT(p, KTR_GENIO)) {
+	if (KTRPOINT(td, KTR_GENIO)) {
 		ktriov = aiov;
 		ktruio = auio;
 		didktr = 1;
@@ -402,7 +415,7 @@ dofilewrite(
 	cnt = nbyte;
 	if (fp->f_type == DTYPE_VNODE)
 		bwillwrite();
-	if ((error = fo_write(fp, &auio, fp->f_cred, flags, p))) {
+	if ((error = fo_write(fp, &auio, fp->f_cred, flags, td))) {
 		if (auio.uio_resid != cnt && (error == ERESTART ||
 		    error == EINTR || error == EWOULDBLOCK))
 			error = 0;
@@ -434,9 +447,10 @@ struct writev_args {
 int
 writev(struct writev_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct file *fp;
-	struct filedesc *fdp = p->p_fd;
+	struct filedesc *fdp;
 	struct uio auio;
 	struct iovec *iov;
 	struct iovec *needfree;
@@ -447,6 +461,9 @@ writev(struct writev_args *uap)
 	struct iovec *ktriov = NULL;
 	struct uio ktruio;
 #endif
+
+	KKASSERT(p);
+	fdp = p->p_fd;
 
 	if ((fp = holdfp(fdp, uap->fd, FWRITE)) == NULL)
 		return (EBADF);
@@ -468,7 +485,7 @@ writev(struct writev_args *uap)
 	auio.uio_iovcnt = uap->iovcnt;
 	auio.uio_rw = UIO_WRITE;
 	auio.uio_segflg = UIO_USERSPACE;
-	auio.uio_procp = p;
+	auio.uio_td = td;
 	auio.uio_offset = -1;
 	if ((error = copyin((caddr_t)uap->iovp, (caddr_t)iov, iovlen)))
 		goto done;
@@ -485,7 +502,7 @@ writev(struct writev_args *uap)
 	/*
 	 * if tracing, save a copy of iovec and uio
 	 */
-	if (KTRPOINT(p, KTR_GENIO))  {
+	if (KTRPOINT(td, KTR_GENIO))  {
 		MALLOC(ktriov, struct iovec *, iovlen, M_TEMP, M_WAITOK);
 		bcopy((caddr_t)auio.uio_iov, (caddr_t)ktriov, iovlen);
 		ktruio = auio;
@@ -494,7 +511,7 @@ writev(struct writev_args *uap)
 	cnt = auio.uio_resid;
 	if (fp->f_type == DTYPE_VNODE)
 		bwillwrite();
-	if ((error = fo_write(fp, &auio, fp->f_cred, 0, p))) {
+	if ((error = fo_write(fp, &auio, fp->f_cred, 0, td))) {
 		if (auio.uio_resid != cnt && (error == ERESTART ||
 		    error == EINTR || error == EWOULDBLOCK))
 			error = 0;
@@ -515,7 +532,7 @@ writev(struct writev_args *uap)
 #endif
 	p->p_retval[0] = cnt;
 done:
-	fdrop(fp, p);
+	fdrop(fp, td);
 	if (needfree)
 		FREE(needfree, M_IOV);
 	return (error);
@@ -535,7 +552,8 @@ struct ioctl_args {
 int
 ioctl(struct ioctl_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct filedesc *fdp;
 	u_long com;
@@ -549,6 +567,7 @@ ioctl(struct ioctl_args *uap)
 	    long align;
 	} ubuf;
 
+	KKASSERT(p);
 	fdp = p->p_fd;
 	if ((u_int)uap->fd >= fdp->fd_nfiles ||
 	    (fp = fdp->fd_ofiles[uap->fd]) == NULL)
@@ -589,7 +608,7 @@ ioctl(struct ioctl_args *uap)
 			if (error) {
 				if (memp)
 					free(memp, M_IOCTLOPS);
-				fdrop(fp, p);
+				fdrop(fp, td);
 				return (error);
 			}
 		} else {
@@ -612,7 +631,7 @@ ioctl(struct ioctl_args *uap)
 			fp->f_flag |= FNONBLOCK;
 		else
 			fp->f_flag &= ~FNONBLOCK;
-		error = fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, p);
+		error = fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, td);
 		break;
 
 	case FIOASYNC:
@@ -620,11 +639,11 @@ ioctl(struct ioctl_args *uap)
 			fp->f_flag |= FASYNC;
 		else
 			fp->f_flag &= ~FASYNC;
-		error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp, p);
+		error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp, td);
 		break;
 
 	default:
-		error = fo_ioctl(fp, com, data, p);
+		error = fo_ioctl(fp, com, data, td);
 		/*
 		 * Copy any data to user, size was
 		 * already set and checked above.
@@ -635,7 +654,7 @@ ioctl(struct ioctl_args *uap)
 	}
 	if (memp)
 		free(memp, M_IOCTLOPS);
-	fdrop(fp, p);
+	fdrop(fp, td);
 	return (error);
 }
 
@@ -786,11 +805,9 @@ done:
 }
 
 static int
-selscan(p, ibits, obits, nfd)
-	struct proc *p;
-	fd_mask **ibits, **obits;
-	int nfd;
+selscan(struct proc *p, fd_mask **ibits, fd_mask **obits, int nfd)
 {
+	struct thread *td = p->p_thread;
 	struct filedesc *fdp = p->p_fd;
 	int msk, i, fd;
 	fd_mask bits;
@@ -811,7 +828,7 @@ selscan(p, ibits, obits, nfd)
 				fp = fdp->fd_ofiles[fd];
 				if (fp == NULL)
 					return (EBADF);
-				if (fo_poll(fp, flag[msk], fp->f_cred, p)) {
+				if (fo_poll(fp, flag[msk], fp->f_cred, td)) {
 					obits[msk][(fd)/NFDBITS] |=
 					    ((fd_mask)1 << ((fd) % NFDBITS));
 					n++;
@@ -920,12 +937,10 @@ out:
 }
 
 static int
-pollscan(p, fds, nfd)
-	struct proc *p;
-	struct pollfd *fds;
-	u_int nfd;
+pollscan(struct proc *p, struct pollfd *fds, u_int nfd)
 {
-	register struct filedesc *fdp = p->p_fd;
+	struct thread *td = p->p_thread;
+	struct filedesc *fdp = p->p_fd;
 	int i;
 	struct file *fp;
 	int n = 0;
@@ -947,7 +962,7 @@ pollscan(p, fds, nfd)
 				 * POLLERR if appropriate.
 				 */
 				fds->revents = fo_poll(fp, fds->events,
-				    fp->f_cred, p);
+				    fp->f_cred, td);
 				if (fds->revents != 0)
 					n++;
 			}

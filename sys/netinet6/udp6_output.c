@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_output.c,v 1.1.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_output.c,v 1.3 2003/06/23 17:55:47 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_output.c,v 1.4 2003/06/25 03:56:04 dillon Exp $	*/
 /*	$KAME: udp6_output.c,v 1.31 2001/05/21 16:39:15 jinmei Exp $	*/
 
 /*
@@ -121,12 +121,8 @@
 #define udp6s_opackets	udps_opackets
 
 int
-udp6_output(in6p, m, addr6, control, p)
-	struct in6pcb *in6p;
-	struct mbuf *m;
-	struct mbuf *control;
-	struct sockaddr *addr6;
-	struct proc *p;
+udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
+	struct mbuf *control, struct thread *td)
 {
 	u_int32_t ulen = m->m_pkthdr.len;
 	u_int32_t plen = sizeof(struct udphdr) + ulen;
@@ -141,9 +137,7 @@ udp6_output(in6p, m, addr6, control, p)
 	int flags;
 	struct sockaddr_in6 tmp;
 
-	priv = 0;
-	if (p && !suser_xxx(p->p_ucred, 0))
-		priv = 1;
+	priv = !suser(td);	/* 1 if privilaged, 0 if not */
 	if (control) {
 		if ((error = ip6_setpktoptions(control, &opt, priv, 0)) != 0)
 			goto release;
@@ -215,7 +209,7 @@ udp6_output(in6p, m, addr6, control, p)
 			goto release;
 		}
 		if (in6p->in6p_lport == 0 &&
-		    (error = in6_pcbsetport(laddr, in6p, p)) != 0)
+		    (error = in6_pcbsetport(laddr, in6p, td)) != 0)
 			goto release;
 	} else {
 		if (IN6_IS_ADDR_UNSPECIFIED(&in6p->in6p_faddr)) {

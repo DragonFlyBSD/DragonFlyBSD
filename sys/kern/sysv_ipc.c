@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_ipc.c,v 1.13.2.2 2000/07/01 14:33:49 bsd Exp $ */
-/* $DragonFly: src/sys/kern/sysv_ipc.c,v 1.3 2003/06/23 17:55:41 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_ipc.c,v 1.4 2003/06/25 03:55:57 dillon Exp $ */
 /*	$NetBSD: sysv_ipc.c,v 1.7 1994/06/29 06:33:11 cgd Exp $	*/
 
 /*
@@ -53,7 +53,7 @@ ipcperm(struct proc *p, struct ipc_perm *perm, int mode)
 	/* Check for user match. */
 	if (cred->cr_uid != perm->cuid && cred->cr_uid != perm->uid) {
 		if (mode & IPC_M)
-			return (suser() == 0 ? 0 : EPERM);
+			return (suser_cred(cred, 0) == 0 ? 0 : EPERM);
 		/* Check for group match. */
 		mode >>= 3;
 		if (!groupmember(perm->gid, cred) &&
@@ -64,7 +64,8 @@ ipcperm(struct proc *p, struct ipc_perm *perm, int mode)
 
 	if (mode & IPC_M)
 		return (0);
-	return ((mode & perm->mode) == mode || suser() == 0 ? 0 : EACCES);
+	return ((mode & perm->mode) == mode || 
+		suser_cred(cred, 0) == 0 ? 0 : EACCES);
 }
 
 #endif /* defined(SYSVSEM) || defined(SYSVSHM) || defined(SYSVMSG) */

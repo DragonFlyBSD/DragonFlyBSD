@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.3 2003/06/23 17:55:26 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.4 2003/06/25 03:55:44 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -48,6 +48,8 @@
 
 #include <ufs/ufs/quota.h>
 #include <ufs/ufs/ufsmount.h>
+
+#include <sys/file2.h>
 
 #include <machine/../linux/linux.h>
 #include <machine/../linux/linux_proto.h>
@@ -88,7 +90,10 @@ linux_open(struct linux_open_args *args)
     } */ bsd_open_args;
     int error;
     caddr_t sg;
-    struct proc *p;
+    struct thread *td = curthread;
+    struct proc *p = td->td_proc;
+
+    KKASSERT(p);
 
     sg = stackgap_init();
     
@@ -131,14 +136,13 @@ linux_open(struct linux_open_args *args)
     bsd_open_args.mode = args->mode;
 
     error = open(&bsd_open_args);
-    p = curproc;
     if (!error && !(bsd_open_args.flags & O_NOCTTY) && 
 	SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
 	struct filedesc *fdp = p->p_fd;
 	struct file *fp = fdp->fd_ofiles[p->p_retval[0]];
 
 	if (fp->f_type == DTYPE_VNODE)
-	    fo_ioctl(fp, TIOCSCTTY, (caddr_t) 0, p);
+	    fo_ioctl(fp, TIOCSCTTY, (caddr_t) 0, td);
     }
 #ifdef DEBUG
 	if (ldebug(open))
@@ -247,7 +251,8 @@ struct l_dirent64 {
 static int
 getdents_common(struct linux_getdents64_args *args, int is64bit)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct dirent *bdp;
 	struct vnode *vp;
 	caddr_t inp, buf;		/* BSD-format */
@@ -265,6 +270,8 @@ getdents_common(struct linux_getdents64_args *args, int is64bit)
 	u_long *cookies = NULL, *cookiep;
 	int ncookies;
 
+	KKASSERT(p);
+
 	if ((error = getvnode(p->p_fd, args->fd, &fp)) != 0)
 		return (error);
 
@@ -275,7 +282,7 @@ getdents_common(struct linux_getdents64_args *args, int is64bit)
 	if (vp->v_type != VDIR)
 		return (EINVAL);
 
-	if ((error = VOP_GETATTR(vp, &va, p->p_ucred, p)))
+	if ((error = VOP_GETATTR(vp, &va, p->p_ucred, td)))
 		return (error);
 
 	nbytes = args->count;
@@ -293,7 +300,7 @@ getdents_common(struct linux_getdents64_args *args, int is64bit)
 	buflen = max(LINUX_DIRBLKSIZ, nbytes);
 	buflen = min(buflen, MAXBSIZE);
 	buf = malloc(buflen, M_TEMP, M_WAITOK);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 
 again:
 	aiov.iov_base = buf;
@@ -302,7 +309,7 @@ again:
 	auio.uio_iovcnt = 1;
 	auio.uio_rw = UIO_READ;
 	auio.uio_segflg = UIO_SYSSPACE;
-	auio.uio_procp = p;
+	auio.uio_td = td;
 	auio.uio_resid = buflen;
 	auio.uio_offset = off;
 
@@ -432,7 +439,7 @@ out:
 	if (cookies)
 		free(cookies, M_TEMP);
 
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	free(buf, M_TEMP);
 	return (error);
 }

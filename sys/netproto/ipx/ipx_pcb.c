@@ -34,7 +34,7 @@
  *	@(#)ipx_pcb.c
  *
  * $FreeBSD: src/sys/netipx/ipx_pcb.c,v 1.18.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.3 2003/06/25 03:56:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -55,10 +55,7 @@
 static struct	ipx_addr zeroipx_addr;
 
 int
-ipx_pcballoc(so, head, p)
-	struct socket *so;
-	struct ipxpcb *head;
-	struct proc *p;
+ipx_pcballoc(struct socket *so, struct ipxpcb *head, struct thread *td)
 {
 	register struct ipxpcb *ipxp;
 
@@ -74,12 +71,9 @@ ipx_pcballoc(so, head, p)
 }
 	
 int
-ipx_pcbbind(ipxp, nam, p)
-	register struct ipxpcb *ipxp;
-	struct sockaddr *nam;
-	struct proc *p;
+ipx_pcbbind(struct ipxpcb *ipxp, struct sockaddr *nam, struct thread *td)
 {
-	register struct sockaddr_ipx *sipx;
+	struct sockaddr_ipx *sipx;
 	u_short lport = 0;
 
 	if (ipxp->ipxp_lport || !ipx_nullhost(ipxp->ipxp_laddr))
@@ -101,7 +95,7 @@ ipx_pcbbind(ipxp, nam, p)
 		int error;
 
 		if (aport < IPXPORT_RESERVED &&
-		    p != NULL && (error = suser(p)) != 0)
+		    p != NULL && (error = suser(td)) != 0)
 			return (error);
 		if (ipx_pcblookup(&zeroipx_addr, lport, 0))
 			return (EADDRINUSE);
@@ -127,15 +121,12 @@ noname:
  * then pick one.
  */
 int
-ipx_pcbconnect(ipxp, nam, p)
-	struct ipxpcb *ipxp;
-	struct sockaddr *nam;
-	struct proc *p;
+ipx_pcbconnect(struct ipxpcb *ipxp, struct sockaddr *nam, struct thread *td)
 {
 	struct ipx_ifaddr *ia;
-	register struct sockaddr_ipx *sipx = (struct sockaddr_ipx *)nam;
-	register struct ipx_addr *dst;
-	register struct route *ro;
+	struct sockaddr_ipx *sipx = (struct sockaddr_ipx *)nam;
+	struct ipx_addr *dst;
+	struct route *ro;
 	struct ifnet *ifp;
 
 	ia = NULL;
@@ -244,7 +235,7 @@ ipx_pcbconnect(ipxp, nam, p)
 	if (ipx_pcblookup(&sipx->sipx_addr, ipxp->ipxp_lport, 0))
 		return (EADDRINUSE);
 	if (ipxp->ipxp_lport == 0)
-		ipx_pcbbind(ipxp, (struct sockaddr *)NULL, p);
+		ipx_pcbbind(ipxp, (struct sockaddr *)NULL, td);
 
 	/* XXX just leave it zero if we can't find a route */
 
@@ -278,9 +269,7 @@ ipx_pcbdetach(ipxp)
 }
 
 void
-ipx_setsockaddr(ipxp, nam)
-	register struct ipxpcb *ipxp;
-	struct sockaddr **nam;
+ipx_setsockaddr(struct ipxpcb *ipxp, struct sockaddr **nam)
 {
 	struct sockaddr_ipx *sipx, ssipx;
 	

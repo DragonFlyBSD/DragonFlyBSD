@@ -36,7 +36,7 @@
  *	@(#)umap_subr.c	8.9 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_subr.c,v 1.19 1999/09/04 11:51:41 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.2 2003/06/17 04:28:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.3 2003/06/25 03:56:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -141,7 +141,7 @@ umap_node_find(mp, targetvp)
 	struct mount *mp;
 	struct vnode *targetvp;
 {
-	struct proc *p = curproc;		/* XXX */
+	struct thread *td = curthread;		/* XXX */
 	struct umap_node_hashhead *hd;
 	struct umap_node *a;
 	struct vnode *vp;
@@ -168,7 +168,7 @@ loop:
 			 * stuff, but we don't want to lock
 			 * the lower node.
 			 */
-			if (vget(vp, 0, p)) {
+			if (vget(vp, 0, td)) {
 #ifdef DEBUG
 				printf ("umap_node_find: vget failed.\n");
 #endif

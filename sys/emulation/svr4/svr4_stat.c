@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stat.c,v 1.6 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stat.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stat.c,v 1.4 2003/06/25 03:56:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -156,7 +156,7 @@ bsd_to_svr4_stat64(st, st4)
 int
 svr4_sys_stat(struct svr4_sys_stat_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct stat		st;
 	struct svr4_stat	svr4_st;
 	struct stat_args	cup;
@@ -178,7 +178,7 @@ svr4_sys_stat(struct svr4_sys_stat_args *uap)
 	bsd_to_svr4_stat(&st, &svr4_st);
 
 	if (S_ISSOCK(st.st_mode))
-		(void) svr4_add_socket(p, SCARG(uap, path), &st);
+		(void) svr4_add_socket(td, SCARG(uap, path), &st);
 
 	if ((error = copyout(&svr4_st, SCARG(uap, ub), sizeof svr4_st)) != 0)
 		return error;
@@ -190,7 +190,7 @@ svr4_sys_stat(struct svr4_sys_stat_args *uap)
 int
 svr4_sys_lstat(struct svr4_sys_lstat_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct stat		st;
 	struct svr4_stat	svr4_st;
 	struct lstat_args	cup;
@@ -211,7 +211,7 @@ svr4_sys_lstat(struct svr4_sys_lstat_args *uap)
 	bsd_to_svr4_stat(&st, &svr4_st);
 
 	if (S_ISSOCK(st.st_mode))
-		(void) svr4_add_socket(p, SCARG(uap, path), &st);
+		(void) svr4_add_socket(td, SCARG(uap, path), &st);
 
 	if ((error = copyout(&svr4_st, SCARG(uap, ub), sizeof svr4_st)) != 0)
 		return error;
@@ -342,7 +342,7 @@ svr4_sys_fxstat(struct svr4_sys_fxstat_args *uap)
 int
 svr4_sys_stat64(struct svr4_sys_stat64_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct stat		st;
 	struct svr4_stat64	svr4_st;
 	struct stat_args	cup;
@@ -363,7 +363,7 @@ svr4_sys_stat64(struct svr4_sys_stat64_args *uap)
 	bsd_to_svr4_stat64(&st, &svr4_st);
 
 	if (S_ISSOCK(st.st_mode))
-		(void) svr4_add_socket(p, SCARG(uap, path), &st);
+		(void) svr4_add_socket(td, SCARG(uap, path), &st);
 
 	if ((error = copyout(&svr4_st, SCARG(uap, sb), sizeof svr4_st)) != 0)
 		return error;
@@ -375,7 +375,7 @@ svr4_sys_stat64(struct svr4_sys_stat64_args *uap)
 int
 svr4_sys_lstat64(struct svr4_sys_lstat64_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct stat		st;
 	struct svr4_stat64	svr4_st;
 	struct stat_args	cup;
@@ -396,7 +396,7 @@ svr4_sys_lstat64(struct svr4_sys_lstat64_args *uap)
 	bsd_to_svr4_stat64(&st, &svr4_st);
 
 	if (S_ISSOCK(st.st_mode))
-		(void) svr4_add_socket(p, SCARG(uap, path), &st);
+		(void) svr4_add_socket(td, SCARG(uap, path), &st);
 
 	if ((error = copyout(&svr4_st, SCARG(uap, sb), sizeof svr4_st)) != 0)
 		return error;
@@ -481,7 +481,8 @@ svr4_sys_uname(struct svr4_sys_uname_args *uap)
 int
 svr4_sys_systeminfo(struct svr4_sys_systeminfo_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	char		*str = NULL;
 	int		error = 0;
 	register_t	*retval = p->p_retval;
@@ -541,13 +542,13 @@ svr4_sys_systeminfo(struct svr4_sys_systeminfo_args *uap)
 		break;
 #if defined(WHY_DOES_AN_EMULATOR_WANT_TO_SET_HOSTNAMES)
 	case SVR4_SI_SET_HOSTNAME:
-		if ((error = suser(p)) != 0)
+		if ((error = suser(td)) != 0)
 			return error;
 		name = KERN_HOSTNAME;
 		return kern_sysctl(&name, 1, 0, 0, SCARG(uap, buf), rlen, p);
 
 	case SVR4_SI_SET_SRPC_DOMAIN:
-		if ((error = suser(p)) != 0)
+		if ((error = suser(td)) != 0)
 			return error;
 		name = KERN_NISDOMAINNAME;
 		return kern_sysctl(&name, 1, 0, 0, SCARG(uap, buf), rlen, p);

@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.5 2003/06/23 17:55:50 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.6 2003/06/25 03:56:10 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -313,7 +313,7 @@ extern const intrmask_t softtty_imask; /* interrupt masked with splsofttty() */
  */
 
 /* Exit callout list declarations. */
-typedef void (*exitlist_fn) __P((struct proc *procp));
+typedef void (*exitlist_fn) __P((struct thread *td));
 
 int	at_exit __P((exitlist_fn function));
 int	rm_at_exit __P((exitlist_fn function));

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_aout.c,v 1.26 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_aout.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/link_aout.c,v 1.3 2003/06/25 03:55:57 dillon Exp $
  */
 
 #ifndef __alpha__
@@ -188,7 +188,8 @@ static int
 link_aout_load_file(const char* filename, linker_file_t* result)
 {
     struct nameidata nd;
-    struct proc* p = curproc;	/* XXX */
+    struct thread *td = curthread;
+    struct proc *p = td->td_proc;
     int error = 0;
     int resid;
     struct exec header;
@@ -196,10 +197,12 @@ link_aout_load_file(const char* filename, linker_file_t* result)
     linker_file_t lf;
     char *pathname;
 
+    KKASSERT(p != NULL);
+
     pathname = linker_search_path(filename);
     if (pathname == NULL)
 	return ENOENT;
-    NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, pathname, p);
+    NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, pathname, td);
     error = vn_open(&nd, FREAD, 0);
     free(pathname, M_LINKER);
     if (error)
@@ -210,7 +213,7 @@ link_aout_load_file(const char* filename, linker_file_t* result)
      * Read the a.out header from the file.
      */
     error = vn_rdwr(UIO_READ, nd.ni_vp, (void*) &header, sizeof header, 0,
-		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, p);
+		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, td);
     if (error)
 	goto out;
 
@@ -230,7 +233,7 @@ link_aout_load_file(const char* filename, linker_file_t* result)
      */
     error = vn_rdwr(UIO_READ, nd.ni_vp, (void*) af->address,
 		    header.a_text + header.a_data, 0,
-		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, p);
+		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, td);
     if (error)
 	goto out;
     bzero(af->address + header.a_text + header.a_data, header.a_bss);
@@ -267,8 +270,8 @@ link_aout_load_file(const char* filename, linker_file_t* result)
     *result = lf;
 
 out:
-    VOP_UNLOCK(nd.ni_vp, 0, p);
-    vn_close(nd.ni_vp, FREAD, p->p_ucred, p);
+    VOP_UNLOCK(nd.ni_vp, 0, td);
+    vn_close(nd.ni_vp, FREAD, p->p_ucred, td);
 
     return error;
 }

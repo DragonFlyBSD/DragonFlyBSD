@@ -32,7 +32,7 @@
  * Routines to prepare request and fetch reply
  *
  * $FreeBSD: src/sys/netncp/ncp_rq.c,v 1.1.2.1 2001/05/21 16:27:20 ru Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_rq.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_rq.c,v 1.3 2003/06/25 03:56:05 dillon Exp $
  */ 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -48,7 +48,7 @@
 #include <netncp/ncp_nls.h>
 
 int
-ncp_rq_head(struct ncp_rq *rqp, u_int32_t ptype, u_int8_t fn,struct proc *p,
+ncp_rq_head(struct ncp_rq *rqp, u_int32_t ptype, u_int8_t fn,struct thread *td,
     struct ucred *cred)
 {
 	struct mbuf *m;
@@ -57,7 +57,7 @@ ncp_rq_head(struct ncp_rq *rqp, u_int32_t ptype, u_int8_t fn,struct proc *p,
 	caddr_t pstart;
 
 	bzero(rqp, sizeof(*rqp));
-	rqp->p = p;
+	rqp->td = td;
 	rqp->cred = cred;
 	m = m_gethdr(M_WAIT, MT_DATA);
 	if (m == NULL) 

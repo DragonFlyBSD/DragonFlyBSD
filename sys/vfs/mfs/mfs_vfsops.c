@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.3 2003/06/19 01:55:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.4 2003/06/25 03:56:12 dillon Exp $
  */
 
 
@@ -72,10 +72,10 @@ extern vop_t **mfs_vnodeop_p;
 
 static int	mfs_mount __P((struct mount *mp,
 			char *path, caddr_t data, struct nameidata *ndp, 
-			struct proc *p));
-static int	mfs_start __P((struct mount *mp, int flags, struct proc *p));
+			struct thread *td));
+static int	mfs_start __P((struct mount *mp, int flags, struct thread *td));
 static int	mfs_statfs __P((struct mount *mp, struct statfs *sbp, 
-			struct proc *p));
+			struct thread *td));
 static int	mfs_init __P((struct vfsconf *));
 
 static struct cdevsw mfs_cdevsw = {
@@ -157,12 +157,12 @@ VFS_SET(mfs_vfsops, mfs, 0);
  */
 /* ARGSUSED */
 static int
-mfs_mount(mp, path, data, ndp, p)
+mfs_mount(mp, path, data, ndp, td)
 	register struct mount *mp;
 	char *path;
 	caddr_t data;
 	struct nameidata *ndp;
-	struct proc *p;
+	struct thread *td;
 {
 	struct vnode *devvp;
 	struct mfs_args args;
@@ -213,7 +213,7 @@ mfs_mount(mp, path, data, ndp, p)
 			flags = WRITECLOSE;
 			if (mp->mnt_flag & MNT_FORCE)
 				flags |= FORCECLOSE;
-			err = ffs_flushfiles(mp, flags, p);
+			err = ffs_flushfiles(mp, flags, td);
 			if (err)
 				goto error_1;
 		}
@@ -254,7 +254,7 @@ mfs_mount(mp, path, data, ndp, p)
 	mfsp->mfs_baseoff = args.base;
 	mfsp->mfs_size = args.size;
 	mfsp->mfs_vnode = devvp;
-	mfsp->mfs_pid = p->p_pid;
+	mfsp->mfs_td = td;
 	mfsp->mfs_active = 1;
 	bufq_init(&mfsp->buf_queue);
 
@@ -278,7 +278,7 @@ mfs_mount(mp, path, data, ndp, p)
 			&size);				/* real size*/
 	bzero( mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 
-	if ((err = ffs_mountfs(devvp, mp, p, M_MFSNODE)) != 0) { 
+	if ((err = ffs_mountfs(devvp, mp, td, M_MFSNODE)) != 0) { 
 		mfsp->mfs_active = 0;
 		goto error_2;
 	}
@@ -289,7 +289,7 @@ mfs_mount(mp, path, data, ndp, p)
 	 *
 	 * This code is common to root and non-root mounts
 	 */
-	(void) VFS_STATFS(mp, &mp->mnt_stat, p);
+	(void) VFS_STATFS(mp, &mp->mnt_stat, td);
 
 	goto success;
 
@@ -317,10 +317,7 @@ static int	mfs_pri = PWAIT | PCATCH;		/* XXX prob. temp */
  */
 /* ARGSUSED */
 static int
-mfs_start(mp, flags, p)
-	struct mount *mp;
-	int flags;
-	struct proc *p;
+mfs_start(struct mount *mp, int flags, struct thread *td)
 {
 	register struct vnode *vp = VFSTOUFS(mp)->um_devvp;
 	register struct mfsnode *mfsp = VTOMFS(vp);
@@ -364,10 +361,11 @@ mfs_start(mp, flags, p)
 		 */
 		if (gotsig) {
 			gotsig = 0;
-			if (dounmount(mp, 0, p) != 0) {
-				sig = CURSIG(p);
+			if (dounmount(mp, 0, td) != 0) {
+				KKASSERT(td->td_proc);
+				sig = CURSIG(td->td_proc);
 				if (sig)
-					SIGDELSET(p->p_siglist, sig);
+					SIGDELSET(td->td_proc->p_siglist, sig);
 			}
 		}
 		else if (tsleep((caddr_t)vp, mfs_pri, "mfsidl", 0))
@@ -380,14 +378,11 @@ mfs_start(mp, flags, p)
  * Get file system statistics.
  */
 static int
-mfs_statfs(mp, sbp, p)
-	struct mount *mp;
-	struct statfs *sbp;
-	struct proc *p;
+mfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
 	int error;
 
-	error = ffs_statfs(mp, sbp, p);
+	error = ffs_statfs(mp, sbp, td);
 	sbp->f_type = mp->mnt_vfc->vfc_typenum;
 	return (error);
 }

@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf2.h,v 1.1 2003/06/19 01:55:07 dillon Exp $
+ * $DragonFly: src/sys/sys/buf2.h,v 1.2 2003/06/25 03:56:10 dillon Exp $
  */
 
 #ifndef _SYS_BUF2_H_
@@ -67,7 +67,7 @@ BUF_LOCK(struct buf *bp, int locktype)
 	bp->b_lock.lk_wmesg = buf_wmesg;
 	bp->b_lock.lk_prio = PRIBIO + 4;
 	/* bp->b_lock.lk_timo = 0;   not necessary */
-	ret = lockmgr(&(bp)->b_lock, locktype, &buftimelock, curproc);
+	ret = lockmgr(&(bp)->b_lock, locktype, &buftimelock, curthread);
 	splx(s);
 	return ret;
 }
@@ -86,7 +86,7 @@ BUF_TIMELOCK(struct buf *bp, int locktype, char *wmesg, int catch, int timo)
 	bp->b_lock.lk_wmesg = wmesg;
 	bp->b_lock.lk_prio = (PRIBIO + 4) | catch;
 	bp->b_lock.lk_timo = timo;
-	ret = lockmgr(&(bp)->b_lock, (locktype), &buftimelock, curproc);
+	ret = lockmgr(&(bp)->b_lock, (locktype), &buftimelock, curthread);
 	splx(s);
 	return ret;
 }
@@ -101,7 +101,7 @@ BUF_UNLOCK(struct buf *bp)
 	int s;
 
 	s = splbio();
-	lockmgr(&(bp)->b_lock, LK_RELEASE, NULL, curproc);
+	lockmgr(&(bp)->b_lock, LK_RELEASE, NULL, curthread);
 	splx(s);
 }
 
@@ -121,11 +121,11 @@ static __inline void BUF_KERNPROC __P((struct buf *));
 static __inline void
 BUF_KERNPROC(struct buf *bp)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 
-	if (p != NULL && bp->b_lock.lk_lockholder == p->p_pid)
-		p->p_locks--;
-	bp->b_lock.lk_lockholder = LK_KERNPROC;
+	if (bp->b_lock.lk_lockholder == td)
+		td->td_locks--;
+	bp->b_lock.lk_lockholder = LK_KERNTHREAD;
 }
 /*
  * Find out the number of references to a lock.

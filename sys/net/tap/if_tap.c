@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.3 2003/06/23 17:55:45 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.4 2003/06/25 03:56:02 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -268,11 +268,10 @@ tapopen(dev_t dev, int flag, int mode, d_thread_t *td)
 {
 	struct tap_softc	*tp = NULL;
 	int			 error;
-	struct proc *p = td->td_proc;
 
 	KKASSERT(p != NULL);
 
-	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+	if ((error = suser(td)) != 0)
 		return (error);
 
 	tp = dev->si_drv1;
@@ -286,7 +285,7 @@ tapopen(dev_t dev, int flag, int mode, d_thread_t *td)
 
 	bcopy(tp->arpcom.ac_enaddr, tp->ether_addr, sizeof(tp->ether_addr));
 
-	tp->tap_pid = p->p_pid;
+	tp->tap_td = td;
 	tp->tap_flags |= TAP_OPEN;
 	taprefcnt ++;
 
@@ -356,7 +355,7 @@ tapclose(dev_t dev, int foo, int bar, d_thread_t *td)
 	selwakeup(&tp->tap_rsel);
 
 	tp->tap_flags &= ~TAP_OPEN;
-	tp->tap_pid = 0;
+	tp->tap_td = NULL;
 
 	taprefcnt --;
 	if (taprefcnt < 0) {
@@ -430,10 +429,18 @@ tapifioctl(ifp, cmd, data)
 			s = splimp();
 			ifs = (struct ifstat *)data;
 			dummy = strlen(ifs->ascii);
-			if (tp->tap_pid != 0 && dummy < sizeof(ifs->ascii))
-				snprintf(ifs->ascii + dummy,
+			if (tp->tap_td != NULL && dummy < sizeof(ifs->ascii)) {
+				if (tp->tap_td->td_proc) {
+				    snprintf(ifs->ascii + dummy,
 					sizeof(ifs->ascii) - dummy,
-					"\tOpened by PID %d\n", tp->tap_pid);
+					"\tOpened by pid %d\n",
+					(int)tp->tap_td->td_proc->p_pid);
+				} else {
+				    snprintf(ifs->ascii + dummy,
+					sizeof(ifs->ascii) - dummy,
+					"\tOpened by td %p\n", tp->tap_td);
+				}
+			}
 			splx(s);
 		break;
 

@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_sysvec.c,v 1.10.2.2 2002/07/09 14:12:43 robert Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.4 2003/06/25 03:56:10 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -156,7 +156,7 @@ int bsd_to_svr4_errno[ELAST+1] = {
 };
 
 
-static int 	svr4_fixup(long **stack_base, struct image_params *imgp);
+static int 	svr4_fixup(register_t **stack_base, struct image_params *imgp);
 
 extern struct sysent svr4_sysent[];
 #undef szsigcode
@@ -196,10 +196,10 @@ Elf32_Brandinfo svr4_brand = {
 const char      svr4_emul_path[] = "/compat/svr4";
 
 static int
-svr4_fixup(long **stack_base, struct image_params *imgp)
+svr4_fixup(register_t **stack_base, struct image_params *imgp)
 {
 	Elf32_Auxargs *args = (Elf32_Auxargs *)imgp->auxargs;
-	long *pos;
+	register_t *pos;
              
 	pos = *stack_base + (imgp->argc + imgp->envc + 2);  
     
@@ -248,7 +248,7 @@ svr4_emul_find(sgp, prefix, path, pbuf, cflag)
 	char		**pbuf;
 	int		  cflag;
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;	/* XXX */
 	struct nameidata	 nd;
 	struct nameidata	 ndroot;
 	struct vattr		 vat;
@@ -256,6 +256,10 @@ svr4_emul_find(sgp, prefix, path, pbuf, cflag)
 	int			 error;
 	char			*ptr, *buf, *cp;
 	size_t			 sz, len;
+	struct ucred *cred;
+
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;
 
 	buf = (char *) malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 	*pbuf = path;
@@ -295,7 +299,7 @@ svr4_emul_find(sgp, prefix, path, pbuf, cflag)
 		for (cp = &ptr[len] - 1; *cp != '/'; cp--);
 		*cp = '\0';
 
-		NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, buf, p);
+		NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, buf, td);
 
 		if ((error = namei(&nd)) != 0) {
 			free(buf, M_TEMP);
@@ -306,7 +310,7 @@ svr4_emul_find(sgp, prefix, path, pbuf, cflag)
 		*cp = '/';
 	}
 	else {
-		NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, buf, p);
+		NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, buf, td);
 
 		if ((error = namei(&nd)) != 0) {
 			free(buf, M_TEMP);
@@ -322,8 +326,8 @@ svr4_emul_find(sgp, prefix, path, pbuf, cflag)
 		 * root directory and never finding it, because "/" resolves
 		 * to the emulation root directory. This is expensive :-(
 		 */
-		NDINIT(&ndroot, LOOKUP, FOLLOW, UIO_SYSSPACE, svr4_emul_path,
-		       p);
+		NDINIT(&ndroot, LOOKUP, FOLLOW, UIO_SYSSPACE,
+		    svr4_emul_path, td);
 
 		if ((error = namei(&ndroot)) != 0) {
 			/* Cannot happen! */
@@ -333,11 +337,11 @@ svr4_emul_find(sgp, prefix, path, pbuf, cflag)
 		}
 		NDFREE(&ndroot, NDF_ONLY_PNBUF);
 
-		if ((error = VOP_GETATTR(nd.ni_vp, &vat, p->p_ucred, p)) != 0) {
+		if ((error = VOP_GETATTR(nd.ni_vp, &vat, cred, td)) != 0) {
 			goto done;
 		}
 
-		if ((error = VOP_GETATTR(ndroot.ni_vp, &vatroot, p->p_ucred, p))
+		if ((error = VOP_GETATTR(ndroot.ni_vp, &vatroot, cred, td))
 		    != 0) {
 			goto done;
 		}

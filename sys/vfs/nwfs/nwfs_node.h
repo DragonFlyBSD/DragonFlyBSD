@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.h,v 1.3.2.2 2000/10/25 02:28:42 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.h,v 1.3 2003/06/25 03:56:08 dillon Exp $
  */
 #ifndef _NWFS_NODE_H_
 #define _NWFS_NODE_H_
@@ -88,7 +88,7 @@ struct uio;
 void nwfs_hash_init(void);
 void nwfs_hash_free(void);
 int  nwfs_allocvp(struct mount *mp, ncpfid fid, struct vnode **vpp);
-int  nwfs_lookupnp(struct nwmount *nmp, ncpfid fid, struct proc *p,
+int  nwfs_lookupnp(struct nwmount *nmp, ncpfid fid, struct thread *td,
 	struct nwnode **npp);
 int  nwfs_inactive(struct vop_inactive_args *);
 int  nwfs_reclaim(struct vop_reclaim_args *);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.3 2003/06/25 03:55:52 dillon Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -80,13 +80,13 @@ static MALLOC_DEFINE(M_SMBFSHASH, "SMBFS hash", "SMBFS hash table");
 
 
 static int smbfs_mount(struct mount *, char *, caddr_t,
-			struct nameidata *, struct proc *);
-static int smbfs_quotactl(struct mount *, int, uid_t, caddr_t, struct proc *);
+			struct nameidata *, struct thread *);
+static int smbfs_quotactl(struct mount *, int, uid_t, caddr_t, struct thread *);
 static int smbfs_root(struct mount *, struct vnode **);
-static int smbfs_start(struct mount *, int, struct proc *);
-static int smbfs_statfs(struct mount *, struct statfs *, struct proc *);
-static int smbfs_sync(struct mount *, int, struct ucred *, struct proc *);
-static int smbfs_unmount(struct mount *, int, struct proc *);
+static int smbfs_start(struct mount *, int, struct thread *);
+static int smbfs_statfs(struct mount *, struct statfs *, struct thread *);
+static int smbfs_sync(struct mount *, int, struct ucred *, struct thread *);
+static int smbfs_unmount(struct mount *, int, struct thread *);
 static int smbfs_init(struct vfsconf *vfsp);
 static int smbfs_uninit(struct vfsconf *vfsp);
 
@@ -132,7 +132,7 @@ int smbfs_pbuf_freecnt = -1;	/* start out unlimited */
 
 static int
 smbfs_mount(struct mount *mp, char *path, caddr_t data, 
-	struct nameidata *ndp, struct proc *p)
+	struct nameidata *ndp, struct thread *td)
 {
 	struct smbfs_args args; 	  /* will hold data from mount request */
 	struct smbmount *smp = NULL;
@@ -140,9 +140,13 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data,
 	struct smb_share *ssp = NULL;
 	struct vnode *vp;
 	struct smb_cred scred;
+	struct ucred *cred;
 	size_t size;
 	int error;
 	char *pc, *pe;
+
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;
 
 	if (data == NULL) {
 		printf("missing data argument\n");
@@ -160,14 +164,14 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data,
 		    SMBFS_VERSION, args.version);
 		return EINVAL;
 	}
-	smb_makescred(&scred, p, p->p_ucred);
+	smb_makescred(&scred, td, cred);
 	error = smb_dev2share(args.dev, SMBM_EXEC, &scred, &ssp);
 	if (error) {
 		printf("invalid device handle %d (%d)\n", args.dev, error);
 		return error;
 	}
 	vcp = SSTOVC(ssp);
-	smb_share_unlock(ssp, 0, p);
+	smb_share_unlock(ssp, 0, td);
 	mp->mnt_stat.f_iosize = SSTOVC(ssp)->vc_txmax;
 
 #ifdef SMBFS_USEZONE
@@ -220,7 +224,7 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data,
 	error = smbfs_root(mp, &vp);
 	if (error)
 		goto bad;
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	SMBVDEBUG("root.v_usecount = %d\n", vp->v_usecount);
 
 #ifdef DIAGNOSTICS
@@ -245,11 +249,15 @@ bad:
 
 /* Unmount the filesystem described by mp. */
 static int
-smbfs_unmount(struct mount *mp, int mntflags, struct proc *p)
+smbfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
 	struct smbmount *smp = VFSTOSMBFS(mp);
 	struct smb_cred scred;
+	struct ucred *cred;
 	int error, flags;
+
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;
 
 	SMBVDEBUG("smbfs_unmount: flags=%04x\n", mntflags);
 	flags = 0;
@@ -270,7 +278,7 @@ smbfs_unmount(struct mount *mp, int mntflags, struct proc *p)
 	} while (error == EBUSY && smp->sm_didrele != 0);
 	if (error)
 		return error;
-	smb_makescred(&scred, p, p->p_ucred);
+	smb_makescred(&scred, td, cred);
 	smb_share_put(smp->sm_share, &scred);
 	mp->mnt_data = (qaddr_t)0;
 
@@ -292,14 +300,17 @@ smbfs_unmount(struct mount *mp, int mntflags, struct proc *p)
 static int
 smbfs_root(struct mount *mp, struct vnode **vpp)
 {
+	struct thread *td = curthread;	/* XXX */
 	struct smbmount *smp = VFSTOSMBFS(mp);
 	struct vnode *vp;
 	struct smbnode *np;
 	struct smbfattr fattr;
-	struct proc *p = curproc;
-	struct ucred *cred = p->p_ucred;
+	struct ucred *cred;
 	struct smb_cred scred;
 	int error;
+
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;
 
 	if (smp == NULL) {
 		SMBERROR("smp == NULL (bug in umount)\n");
@@ -307,9 +318,9 @@ smbfs_root(struct mount *mp, struct vnode **vpp)
 	}
 	if (smp->sm_root) {
 		*vpp = SMBTOV(smp->sm_root);
-		return vget(*vpp, LK_EXCLUSIVE | LK_RETRY, p);
+		return vget(*vpp, LK_EXCLUSIVE | LK_RETRY, td);
 	}
-	smb_makescred(&scred, p, cred);
+	smb_makescred(&scred, td, cred);
 	error = smbfs_smb_lookup(NULL, NULL, 0, &fattr, &scred);
 	if (error)
 		return error;
@@ -328,10 +339,10 @@ smbfs_root(struct mount *mp, struct vnode **vpp)
  */
 /* ARGSUSED */
 static int
-smbfs_start(mp, flags, p)
+smbfs_start(mp, flags, td)
 	struct mount *mp;
 	int flags;
-	struct proc *p;
+	struct thread *td;
 {
 	SMBVDEBUG("flags=%04x\n", flags);
 	return 0;
@@ -342,12 +353,12 @@ smbfs_start(mp, flags, p)
  */
 /* ARGSUSED */
 static int
-smbfs_quotactl(mp, cmd, uid, arg, p)
+smbfs_quotactl(mp, cmd, uid, arg, td)
 	struct mount *mp;
 	int cmd;
 	uid_t uid;
 	caddr_t arg;
-	struct proc *p;
+	struct thread *td;
 {
 	SMBVDEBUG("return EOPNOTSUPP\n");
 	return EOPNOTSUPP;
@@ -380,20 +391,24 @@ smbfs_uninit(struct vfsconf *vfsp)
  * smbfs_statfs call
  */
 int
-smbfs_statfs(struct mount *mp, struct statfs *sbp, struct proc *p)
+smbfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
 	struct smbmount *smp = VFSTOSMBFS(mp);
 	struct smbnode *np = smp->sm_root;
 	struct smb_share *ssp = smp->sm_share;
 	struct smb_cred scred;
+	struct ucred *cred;
 	int error = 0;
+
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;
 
 	if (np == NULL)
 		return EINVAL;
 	
 	sbp->f_iosize = SSTOVC(ssp)->vc_txmax;		/* optimal transfer block size */
 	sbp->f_spare2 = 0;			/* placeholder */
-	smb_makescred(&scred, p, p->p_ucred);
+	smb_makescred(&scred, td, cred);
 
 	if (SMB_DIALECT(SSTOVC(ssp)) >= SMB_DIALECT_LANMAN2_0)
 		error = smbfs_smb_statfs2(ssp, sbp, &scred);
@@ -418,11 +433,11 @@ smbfs_statfs(struct mount *mp, struct statfs *sbp, struct proc *p)
  */
 /* ARGSUSED */
 static int
-smbfs_sync(mp, waitfor, cred, p)
+smbfs_sync(mp, waitfor, cred, td)
 	struct mount *mp;
 	int waitfor;
 	struct ucred *cred;
-	struct proc *p;
+	struct thread *td;
 {
 	struct vnode *vp;
 	int error, allerror = 0;
@@ -442,9 +457,9 @@ loop:
 		if (VOP_ISLOCKED(vp, NULL) || TAILQ_EMPTY(&vp->v_dirtyblkhd) ||
 		    waitfor == MNT_LAZY)
 			continue;
-		if (vget(vp, LK_EXCLUSIVE, p))
+		if (vget(vp, LK_EXCLUSIVE, td))
 			goto loop;
-		error = VOP_FSYNC(vp, cred, waitfor, p);
+		error = VOP_FSYNC(vp, cred, waitfor, td);
 		if (error)
 			allerror = error;
 		vput(vp);

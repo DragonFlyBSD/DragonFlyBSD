@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.9 2003/06/22 04:30:39 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.10 2003/06/25 03:55:53 dillon Exp $
  */
 
 #include "npx.h"
@@ -308,14 +308,13 @@ cpu_wait(p)
  * Dump the machine specific header information at the start of a core dump.
  */
 int
-cpu_coredump(p, vp, cred)
-	struct proc *p;
-	struct vnode *vp;
-	struct ucred *cred;
+cpu_coredump(struct thread *td, struct vnode *vp, struct ucred *cred)
 {
+	struct proc *p = td->td_proc;
 	int error;
 	caddr_t tempuser;
 
+	KKASSERT(p);
 	tempuser = malloc(ctob(UPAGES), M_TEMP, M_WAITOK);
 	if (!tempuser)
 		return EINVAL;
@@ -328,7 +327,7 @@ cpu_coredump(p, vp, cred)
 	bcopy(p->p_thread->td_pcb, tempuser + ((char *)p->p_thread->td_pcb - (char *)p->p_addr), sizeof(struct pcb));
 
 	error = vn_rdwr(UIO_WRITE, vp, (caddr_t) tempuser, ctob(UPAGES),
-			(off_t)0, UIO_SYSSPACE, IO_UNIT, cred, (int *)NULL, p);
+			(off_t)0, UIO_SYSSPACE, IO_UNIT, cred, (int *)NULL, td);
 
 	free(tempuser, M_TEMP);
 	

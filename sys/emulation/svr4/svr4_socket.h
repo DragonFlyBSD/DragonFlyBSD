@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_socket.h,v 1.4 1999/08/28 00:51:22 peter Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_socket.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_socket.h,v 1.3 2003/06/25 03:56:10 dillon Exp $
  */
 
 #ifndef _SVR4_SOCKET_H_
@@ -48,9 +48,9 @@ struct svr4_sockaddr_in {
         u_char         sin_zero[8];
 };
 
-struct sockaddr_un *svr4_find_socket __P((struct proc *, struct file *,
+struct sockaddr_un *svr4_find_socket __P((struct thread *, struct file *,
     udev_t, ino_t));
-void svr4_delete_socket __P((struct proc *, struct file *));
-int svr4_add_socket __P((struct proc *, const char *, struct stat *));
+void svr4_delete_socket __P((struct thread *, struct file *));
+int svr4_add_socket __P((struct thread *, const char *, struct stat *));
 
 #endif /* _SVR4_SOCKET_H_ */

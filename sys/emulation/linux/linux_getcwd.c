@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/compat/linux/linux_getcwd.c,v 1.2.2.3 2001/11/05 19:08:22 marcel Exp $ */
-/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.3 2003/06/23 17:55:26 dillon Exp $ */
+/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.4 2003/06/25 03:55:44 dillon Exp $ */
 /* $OpenBSD: linux_getcwd.c,v 1.2 2001/05/16 12:50:21 ho Exp $ */
 /* $NetBSD: vfs_getcwd.c,v 1.3.2.3 1999/07/11 10:24:09 sommerfeld Exp $ */
 
@@ -43,7 +43,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/sysproto.h>
-#include <sys/namei.h>
 #include <sys/filedesc.h>
 #include <sys/kernel.h>
 #include <sys/file.h>
@@ -51,6 +50,7 @@
 #include <sys/vnode.h>
 #include <sys/mount.h>
 #include <sys/proc.h>
+#include <sys/namei.h>
 #include <sys/uio.h>
 #include <sys/malloc.h>
 #include <sys/dirent.h>
@@ -62,10 +62,10 @@
 
 static int
 linux_getcwd_scandir __P((struct vnode **, struct vnode **,
-    char **, char *, struct proc *));
+    char **, char *, struct thread *));
 static int
 linux_getcwd_common __P((struct vnode *, struct vnode *,
-		   char **, char *, int, int, struct proc *));
+		   char **, char *, int, int, struct thread *));
 
 #define DIRENT_MINSIZE (sizeof(struct dirent) - (MAXNAMLEN+1) + 4)
 
@@ -105,13 +105,14 @@ linux_getcwd_common __P((struct vnode *, struct vnode *,
  * On exit, *uvpp is either NULL or is a locked vnode reference.
  */
 static int
-linux_getcwd_scandir(lvpp, uvpp, bpp, bufp, p)
+linux_getcwd_scandir(lvpp, uvpp, bpp, bufp, td)
 	struct vnode **lvpp;
 	struct vnode **uvpp;
 	char **bpp;
 	char *bufp;
-	struct proc *p;
+	struct thread *td;
 {
+	struct proc *p = td->td_proc;
 	int     error = 0;
 	int     eofflag;
 	off_t   off;
@@ -128,12 +129,14 @@ linux_getcwd_scandir(lvpp, uvpp, bpp, bufp, p)
 	int len, reclen;
 	tries = 0;
 
+	KKASSERT(p);
+
 	/*
 	 * If we want the filename, get some info we need while the
 	 * current directory is still locked.
 	 */
 	if (bufp != NULL) {
-		error = VOP_GETATTR(lvp, &va, p->p_ucred, p);
+		error = VOP_GETATTR(lvp, &va, p->p_ucred, td);
 		if (error) {
 			vput(lvp);
 			*lvpp = NULL;
@@ -148,7 +151,7 @@ linux_getcwd_scandir(lvpp, uvpp, bpp, bufp, p)
 	 */
 	cn.cn_nameiop = LOOKUP;
 	cn.cn_flags = ISLASTCN | ISDOTDOT | RDONLY;
-	cn.cn_proc = p;
+	cn.cn_td = td;
 	cn.cn_cred = p->p_ucred;
 	cn.cn_pnbuf = NULL;
 	cn.cn_nameptr = "..";
@@ -197,7 +200,7 @@ unionread:
 		uio.uio_resid = dirbuflen;
 		uio.uio_segflg = UIO_SYSSPACE;
 		uio.uio_rw = UIO_READ;
-		uio.uio_procp = p;
+		uio.uio_td = td;
 
 		eofflag = 0;
 
@@ -275,20 +278,24 @@ out:
 #define GETCWD_CHECK_ACCESS 0x0001
 
 static int
-linux_getcwd_common (lvp, rvp, bpp, bufp, limit, flags, p)
+linux_getcwd_common (lvp, rvp, bpp, bufp, limit, flags, td)
 	struct vnode *lvp;
 	struct vnode *rvp;
 	char **bpp;
 	char *bufp;
 	int limit;
 	int flags;
-	struct proc *p;
+	struct thread *td;
 {
-	struct filedesc *fdp = p->p_fd;
+	struct proc *p = td->td_proc;
+	struct filedesc *fdp;
 	struct vnode *uvp = NULL;
 	char *bp = NULL;
 	int error;
 	int perms = VEXEC;
+
+	KKASSERT(p);
+	fdp = p->p_fd;
 
 	if (rvp == NULL) {
 		rvp = fdp->fd_rdir;
@@ -306,7 +313,7 @@ linux_getcwd_common (lvp, rvp, bpp, bufp, limit, flags, p)
 	 *	uvp is either NULL, or locked and held.
 	 */
 
-	error = vn_lock(lvp, LK_EXCLUSIVE | LK_RETRY, p);
+	error = vn_lock(lvp, LK_EXCLUSIVE | LK_RETRY, td);
 	if (error) {
 		vrele(lvp);
 		lvp = NULL;
@@ -336,7 +343,7 @@ linux_getcwd_common (lvp, rvp, bpp, bufp, limit, flags, p)
 		 * whether or not caller cares.
 		 */
 		if (flags & GETCWD_CHECK_ACCESS) {
-			error = VOP_ACCESS(lvp, perms, p->p_ucred, p);
+			error = VOP_ACCESS(lvp, perms, p->p_ucred, td);
 			if (error)
 				goto out;
 			perms = VEXEC|VREAD;
@@ -362,14 +369,14 @@ linux_getcwd_common (lvp, rvp, bpp, bufp, limit, flags, p)
 				goto out;
 			}
 			VREF(lvp);
-			error = vn_lock(lvp, LK_EXCLUSIVE | LK_RETRY, p);
+			error = vn_lock(lvp, LK_EXCLUSIVE | LK_RETRY, td);
 			if (error != 0) {
 				vrele(lvp);
 				lvp = NULL;
 				goto out;
 			}
 		}
-		error = linux_getcwd_scandir(&lvp, &uvp, &bp, bufp, p);
+		error = linux_getcwd_scandir(&lvp, &uvp, &bp, bufp, td);
 		if (error)
 			goto out;
 #if DIAGNOSTIC		
@@ -408,10 +415,13 @@ out:
 int
 linux_getcwd(struct linux_getcwd_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct __getcwd_args bsd;
 	caddr_t sg, bp, bend, path;
 	int error, len, lenused;
+
+	KKASSERT(p);
 
 #ifdef DEBUG
 	printf("Linux-emul(%ld): getcwd(%p, %ld)\n", (long)p->p_pid,
@@ -451,7 +461,7 @@ linux_getcwd(struct linux_getcwd_args *args)
 		 */
 
 		error = linux_getcwd_common (p->p_fd->fd_cdir, NULL,
-		    &bp, path, len/2, GETCWD_CHECK_ACCESS, p);
+		    &bp, path, len/2, GETCWD_CHECK_ACCESS, td);
 
 		if (error)
 			goto out;

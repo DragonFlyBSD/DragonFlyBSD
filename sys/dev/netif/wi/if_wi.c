@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.3 2003/06/23 17:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.4 2003/06/25 03:55:51 dillon Exp $
  */
 
 /*
@@ -1628,11 +1628,7 @@ wi_ioctl(ifp, command, data)
 	struct wi_req		wreq;
 	struct ifreq		*ifr;
 	struct ieee80211req	*ireq;
-#if __FreeBSD_version >= 500000
 	struct thread		*td = curthread;
-#else
-	struct proc		*p = curproc;		/* Little white lie */
-#endif
 	int			s;
 
 	sc = ifp->if_softc;
@@ -1698,7 +1694,7 @@ wi_ioctl(ifp, command, data)
 			break;
 		}
 		/* Don't show WEP keys to non-root users. */
-		if (wreq.wi_type == WI_RID_DEFLT_CRYPT_KEYS && suser_xxx(p->p_ucred, 0))
+		if (wreq.wi_type == WI_RID_DEFLT_CRYPT_KEYS && suser(td))
 			break;
 		if (wreq.wi_type == WI_RID_IFACE_STATS) {
 			bcopy((char *)&sc->wi_stats, (char *)&wreq.wi_val,
@@ -1743,7 +1739,7 @@ wi_ioctl(ifp, command, data)
 		error = copyout(&wreq, ifr->ifr_data, sizeof(wreq));
 		break;
 	case SIOCSWAVELAN:
-		if ((error = suser_xxx(p->p_ucred, 0)))
+		if ((error = suser(td)))
 			goto out;
 		error = copyin(ifr->ifr_data, &wreq, sizeof(wreq));
 		if (error)
@@ -1790,7 +1786,7 @@ wi_ioctl(ifp, command, data)
 			error = copyout(&wreq, ifr->ifr_data, sizeof(wreq));
 		break;
 	case SIOCSPRISM2DEBUG:
-		if ((error = suser_xxx(p->p_ucred, 0)))
+		if ((error = suser(td)))
 			goto out;
 		error = copyin(ifr->ifr_data, &wreq, sizeof(wreq));
 		if (error)
@@ -1839,7 +1835,7 @@ wi_ioctl(ifp, command, data)
 				break;
 			}
 			len = sc->wi_keys.wi_keys[ireq->i_val].wi_keylen;
-			if (suser_xxx(p->p_ucred, 0))
+			if (suser(td))
 				bcopy(sc->wi_keys.wi_keys[ireq->i_val].wi_keydat,
 				    tmpkey, len);
 			else
@@ -1892,7 +1888,7 @@ wi_ioctl(ifp, command, data)
 		}
 		break;
 	case SIOCS80211:
-		if ((error = suser_xxx(p->p_ucred, 0)))
+		if ((error = suser(td)))
 			goto out;
 		switch(ireq->i_type) {
 		case IEEE80211_IOC_SSID:

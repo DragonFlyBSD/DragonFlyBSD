@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 /*
@@ -79,6 +79,8 @@
 #include <vm/vm_page.h>
 #include <vm/vm_zone.h>
 
+#include <sys/file2.h>
+
 /*
  * Use this define if you want to disable *fancy* VM things.  Expect an
  * approx 30% decrease in transfer rate.  This could be useful for
@@ -90,15 +92,15 @@
  * interfaces to the outside world
  */
 static int pipe_read __P((struct file *fp, struct uio *uio, 
-		struct ucred *cred, int flags, struct proc *p));
+		struct ucred *cred, int flags, struct thread *td));
 static int pipe_write __P((struct file *fp, struct uio *uio, 
-		struct ucred *cred, int flags, struct proc *p));
-static int pipe_close __P((struct file *fp, struct proc *p));
+		struct ucred *cred, int flags, struct thread *td));
+static int pipe_close __P((struct file *fp, struct thread *td));
 static int pipe_poll __P((struct file *fp, int events, struct ucred *cred,
-		struct proc *p));
+		struct thread *td));
 static int pipe_kqfilter __P((struct file *fp, struct knote *kn));
-static int pipe_stat __P((struct file *fp, struct stat *sb, struct proc *p));
-static int pipe_ioctl __P((struct file *fp, u_long cmd, caddr_t data, struct proc *p));
+static int pipe_stat __P((struct file *fp, struct stat *sb, struct thread *td));
+static int pipe_ioctl __P((struct file *fp, u_long cmd, caddr_t data, struct thread *td));
 
 static struct fileops pipeops = {
 	pipe_read, pipe_write, pipe_ioctl, pipe_poll, pipe_kqfilter,
@@ -170,11 +172,15 @@ static vm_zone_t pipe_zone;
 int
 pipe(struct pipe_args *uap)
 {
-	struct proc *p = curproc;
-	struct filedesc *fdp = p->p_fd;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct filedesc *fdp;
 	struct file *rf, *wf;
 	struct pipe *rpipe, *wpipe;
 	int fd, error;
+
+	KKASSERT(p);
+	fdp = p->p_fd;
 
 	if (pipe_zone == NULL)
 		pipe_zone = zinit("PIPE", sizeof(struct pipe), 0, 0, 4);
@@ -212,9 +218,9 @@ pipe(struct pipe_args *uap)
 	if (error) {
 		if (fdp->fd_ofiles[p->p_retval[0]] == rf) {
 			fdp->fd_ofiles[p->p_retval[0]] = NULL;
-			fdrop(rf, p);
+			fdrop(rf, td);
 		}
-		fdrop(rf, p);
+		fdrop(rf, td);
 		/* rpipe has been closed by fdrop(). */
 		pipeclose(wpipe);
 		return (error);
@@ -227,7 +233,7 @@ pipe(struct pipe_args *uap)
 
 	rpipe->pipe_peer = wpipe;
 	wpipe->pipe_peer = rpipe;
-	fdrop(rf, p);
+	fdrop(rf, td);
 
 	return (0);
 }
@@ -387,12 +393,8 @@ pipeselwakeup(cpipe)
 
 /* ARGSUSED */
 static int
-pipe_read(fp, uio, cred, flags, p)
-	struct file *fp;
-	struct uio *uio;
-	struct ucred *cred;
-	struct proc *p;
-	int flags;
+pipe_read(struct file *fp, struct uio *uio, struct ucred *cred,
+	int flags, struct thread *td)
 {
 	struct pipe *rpipe = (struct pipe *) fp->f_data;
 	int error;
@@ -749,12 +751,8 @@ error1:
 #endif
 	
 static int
-pipe_write(fp, uio, cred, flags, p)
-	struct file *fp;
-	struct uio *uio;
-	struct ucred *cred;
-	struct proc *p;
-	int flags;
+pipe_write(struct file *fp, struct uio *uio, struct ucred *cred,
+	int flags, struct thread *td)
 {
 	int error = 0;
 	int orig_resid;
@@ -1023,11 +1021,7 @@ pipe_write(fp, uio, cred, flags, p)
  * we implement a very minimal set of ioctls for compatibility with sockets.
  */
 int
-pipe_ioctl(fp, cmd, data, p)
-	struct file *fp;
-	u_long cmd;
-	caddr_t data;
-	struct proc *p;
+pipe_ioctl(struct file *fp, u_long cmd, caddr_t data, struct thread *td)
 {
 	struct pipe *mpipe = (struct pipe *)fp->f_data;
 
@@ -1072,11 +1066,7 @@ pipe_ioctl(fp, cmd, data, p)
 }
 
 int
-pipe_poll(fp, events, cred, p)
-	struct file *fp;
-	int events;
-	struct ucred *cred;
-	struct proc *p;
+pipe_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
 {
 	struct pipe *rpipe = (struct pipe *)fp->f_data;
 	struct pipe *wpipe;
@@ -1102,12 +1092,12 @@ pipe_poll(fp, events, cred, p)
 
 	if (revents == 0) {
 		if (events & (POLLIN | POLLRDNORM)) {
-			selrecord(p->p_thread, &rpipe->pipe_sel);
+			selrecord(td, &rpipe->pipe_sel);
 			rpipe->pipe_state |= PIPE_SEL;
 		}
 
 		if (events & (POLLOUT | POLLWRNORM)) {
-			selrecord(p->p_thread, &wpipe->pipe_sel);
+			selrecord(td, &wpipe->pipe_sel);
 			wpipe->pipe_state |= PIPE_SEL;
 		}
 	}
@@ -1116,10 +1106,7 @@ pipe_poll(fp, events, cred, p)
 }
 
 static int
-pipe_stat(fp, ub, p)
-	struct file *fp;
-	struct stat *ub;
-	struct proc *p;
+pipe_stat(struct file *fp, struct stat *ub, struct thread *td)
 {
 	struct pipe *pipe = (struct pipe *)fp->f_data;
 
@@ -1141,9 +1128,7 @@ pipe_stat(fp, ub, p)
 
 /* ARGSUSED */
 static int
-pipe_close(fp, p)
-	struct file *fp;
-	struct proc *p;
+pipe_close(struct file *fp, struct thread *td)
 {
 	struct pipe *cpipe = (struct pipe *)fp->f_data;
 
@@ -1155,8 +1140,7 @@ pipe_close(fp, p)
 }
 
 static void
-pipe_free_kmem(cpipe)
-	struct pipe *cpipe;
+pipe_free_kmem(struct pipe *cpipe)
 {
 
 	if (cpipe->pipe_buffer.buffer != NULL) {
@@ -1186,8 +1170,7 @@ pipe_free_kmem(cpipe)
  * shutdown the pipe
  */
 static void
-pipeclose(cpipe)
-	struct pipe *cpipe;
+pipeclose(struct pipe *cpipe)
 {
 	struct pipe *ppipe;
 

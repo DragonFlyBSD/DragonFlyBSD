@@ -98,9 +98,8 @@ at_control(struct socket *so, u_long cmd, caddr_t data,
 	/* 
 	 * If we are not superuser, then we don't get to do these ops.
 	 */
-	if ( suser(p) ) {
-	    return( EPERM );
-	}
+	if (suser(td))
+	    return(EPERM);
 
 	sat = satosat( &ifr->ifr_addr );
 	nr = (struct netrange *)sat->sat_zero;

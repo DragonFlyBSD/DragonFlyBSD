@@ -53,7 +53,8 @@ extern int hw_float;
 int
 ibcs2_sysi86(struct ibcs2_sysi86_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 
 	switch (SCARG(args, cmd)) {
 	case SI86_FPHW: {	/* Floating Point information */
@@ -75,7 +76,7 @@ ibcs2_sysi86(struct ibcs2_sysi86_args *args)
 	        int name[2];
 	        int error;
 
-		if ((error = suser()))
+		if ((error = suser(td)))
 		  return (error);
 		name[0] = CTL_KERN;
 		name[1] = KERN_HOSTNAME;

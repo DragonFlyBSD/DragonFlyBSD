@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.3 2003/06/23 17:55:26 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.4 2003/06/25 03:55:44 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -39,9 +39,9 @@
 #include <sys/lock.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
-#include <sys/namei.h>
 #include <sys/poll.h>
 #include <sys/proc.h>
+#include <sys/namei.h>
 #include <sys/blist.h>
 #include <sys/reboot.h>
 #include <sys/resourcevar.h>
@@ -166,10 +166,13 @@ linux_sysinfo(struct linux_sysinfo_args *args)
 int
 linux_alarm(struct linux_alarm_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct itimerval it, old_it;
 	struct timeval tv;
 	int s;
+
+	KKASSERT(p);
 
 #ifdef DEBUG
 	if (ldebug(alarm))
@@ -208,13 +211,16 @@ linux_alarm(struct linux_alarm_args *args)
 int
 linux_brk(struct linux_brk_args *args)
 {
-	struct proc *p = curproc;
-	struct vmspace *vm = p->p_vmspace;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct vmspace *vm;
 	vm_offset_t new, old;
 	struct obreak_args /* {
 		char * nsize;
 	} */ tmp;
 
+	KKASSERT(p);
+	vm = p->p_vmspace;
 #ifdef DEBUG
 	if (ldebug(brk))
 		printf(ARGS(brk, "%p"), (void *)args->dsend);
@@ -233,7 +239,8 @@ linux_brk(struct linux_brk_args *args)
 int
 linux_uselib(struct linux_uselib_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p;
 	struct nameidata ni;
 	struct vnode *vp;
 	struct exec *a_out;
@@ -245,6 +252,9 @@ linux_uselib(struct linux_uselib_args *args)
 	int error;
 	caddr_t sg;
 	int locked;
+
+	KKASSERT(td->td_proc);
+	p = td->td_proc;
 
 	sg = stackgap_init();
 	CHECKALTEXIST(&sg, args->library);
@@ -258,7 +268,7 @@ linux_uselib(struct linux_uselib_args *args)
 	locked = 0;
 	vp = NULL;
 
-	NDINIT(&ni, LOOKUP, FOLLOW|LOCKLEAF, UIO_USERSPACE, args->library, p);
+	NDINIT(&ni, LOOKUP, FOLLOW|LOCKLEAF, UIO_USERSPACE, args->library, td);
 	error = namei(&ni);
 	if (error)
 		goto cleanup;
@@ -286,7 +296,7 @@ linux_uselib(struct linux_uselib_args *args)
 	}
 
 	/* Executable? */
-	error = VOP_GETATTR(vp, &attr, p->p_ucred, p);
+	error = VOP_GETATTR(vp, &attr, p->p_ucred, td);
 	if (error)
 		goto cleanup;
 
@@ -303,18 +313,18 @@ linux_uselib(struct linux_uselib_args *args)
 	}
 
 	/* Can we access it? */
-	error = VOP_ACCESS(vp, VEXEC, p->p_ucred, p);
+	error = VOP_ACCESS(vp, VEXEC, p->p_ucred, td);
 	if (error)
 		goto cleanup;
 
-	error = VOP_OPEN(vp, FREAD, p->p_ucred, p);
+	error = VOP_OPEN(vp, FREAD, p->p_ucred, td);
 	if (error)
 		goto cleanup;
 
 	/*
 	 * Lock no longer needed
 	 */
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	locked = 0;
 
 	/* Pull in executable header into kernel_map */
@@ -452,7 +462,7 @@ linux_uselib(struct linux_uselib_args *args)
 cleanup:
 	/* Unlock vnode if needed */
 	if (locked)
-		VOP_UNLOCK(vp, 0, p);
+		VOP_UNLOCK(vp, 0, td);
 
 	/* Release the kernel mapping. */
 	if (a_out)
@@ -465,11 +475,14 @@ cleanup:
 int
 linux_select(struct linux_select_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct select_args bsa;
 	struct timeval tv0, tv1, utv, *tvp;
 	caddr_t sg;
 	int error;
+
+	KKASSERT(p);
 
 #ifdef DEBUG
 	if (ldebug(select))
@@ -572,12 +585,15 @@ select_out:
 int     
 linux_mremap(struct linux_mremap_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct munmap_args /* {
 		void *addr;
 		size_t len;
 	} */ bsd_args; 
 	int error = 0;
+	struct proc *p = td->td_proc;
+
+	KKASSERT(p);
  
 #ifdef DEBUG
 	if (ldebug(mremap))
@@ -625,10 +641,13 @@ linux_msync(struct linux_msync_args *args)
 int
 linux_time(struct linux_time_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct timeval tv;
 	l_time_t tm;
 	int error;
+
+	KKASSERT(p);
 
 #ifdef DEBUG
 	if (ldebug(time))
@@ -662,12 +681,14 @@ struct l_times_argv {
 int
 linux_times(struct linux_times_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct timeval tv;
 	struct l_times_argv tms;
 	struct rusage ru;
 	int error;
 
+	KKASSERT(p);
 #ifdef DEBUG
 	if (ldebug(times))
 		printf(ARGS(times, "*"));
@@ -692,7 +713,7 @@ linux_times(struct linux_times_args *args)
 int
 linux_newuname(struct linux_newuname_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct l_new_utsname utsname;
 	char *osrelease, *osname;
 
@@ -701,8 +722,8 @@ linux_newuname(struct linux_newuname_args *args)
 		printf(ARGS(newuname, "*"));
 #endif
 
-	osname = linux_get_osname(p);
-	osrelease = linux_get_osrelease(p);
+	osname = linux_get_osname(td);
+	osrelease = linux_get_osrelease(td);
 
 	bzero(&utsname, sizeof(utsname));
 	strncpy(utsname.sysname, osname, LINUX_MAX_UTSNAME-1);
@@ -815,7 +836,8 @@ linux_waitpid(struct linux_waitpid_args *args)
 int
 linux_wait4(struct linux_wait4_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct wait_args /* {
 		int pid;
 		int *status;
@@ -823,6 +845,8 @@ linux_wait4(struct linux_wait4_args *args)
 		struct	rusage *rusage;
 	} */ tmp;
 	int error, tmpstat;
+
+	KKASSERT(p);
 
 #ifdef DEBUG
 	if (ldebug(wait4))
@@ -896,7 +920,10 @@ linux_mknod(struct linux_mknod_args *args)
 int
 linux_personality(struct linux_personality_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+
+	KKASSERT(p);
 #ifdef DEBUG
 	if (ldebug(personality))
 		printf(ARGS(personality, "%d"), args->per);
@@ -973,11 +1000,14 @@ linux_nice(struct linux_nice_args *args)
 int
 linux_setgroups(struct linux_setgroups_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct ucred *newcred, *oldcred;
 	l_gid_t linux_gidset[NGROUPS];
 	gid_t *bsd_gidset;
 	int ngrp, error;
+
+	KKASSERT(p);
 
 	ngrp = args->gidsetsize;
 	oldcred = p->p_ucred;
@@ -988,7 +1018,7 @@ linux_setgroups(struct linux_setgroups_args *args)
 	 * Keep cr_groups[0] unchanged to prevent that.
 	 */
 
-	if ((error = suser_xxx(oldcred, PRISON_ROOT)) != 0)
+	if ((error = suser_cred(oldcred, PRISON_ROOT)) != 0)
 		return (error);
 
 	if (ngrp >= NGROUPS)
@@ -1022,11 +1052,14 @@ linux_setgroups(struct linux_setgroups_args *args)
 int
 linux_getgroups(struct linux_getgroups_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct ucred *cred;
 	l_gid_t linux_gidset[NGROUPS];
 	gid_t *bsd_gidset;
 	int bsd_gidsetsz, ngrp, error;
+
+	KKASSERT(p);
 
 	cred = p->p_ucred;
 	bsd_gidset = cred->cr_groups;
@@ -1192,9 +1225,12 @@ linux_sched_setscheduler(struct linux_sched_setscheduler_args *args)
 int
 linux_sched_getscheduler(struct linux_sched_getscheduler_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct sched_getscheduler_args bsd;
 	int error;
+
+	KKASSERT(p);
 
 #ifdef DEBUG
 	if (ldebug(sched_getscheduler))
@@ -1307,7 +1343,10 @@ linux_reboot(struct linux_reboot_args *args)
 int
 linux_getpid(struct linux_getpid_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+
+	KKASSERT(p);
 
 	p->p_retval[0] = p->p_pid;
 	return (0);
@@ -1316,7 +1355,10 @@ linux_getpid(struct linux_getpid_args *args)
 int
 linux_getgid(struct linux_getgid_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+
+	KKASSERT(p);
 
 	p->p_retval[0] = p->p_ucred->cr_rgid;
 	return (0);
@@ -1325,7 +1367,10 @@ linux_getgid(struct linux_getgid_args *args)
 int
 linux_getuid(struct linux_getuid_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+
+	KKASSERT(p);
 
 	p->p_retval[0] = p->p_ucred->cr_ruid;
 	return (0);

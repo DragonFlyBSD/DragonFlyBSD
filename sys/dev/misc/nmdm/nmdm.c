@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nmdm/nmdm.c,v 1.5.2.1 2001/08/11 00:54:14 mp Exp $
- * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.3 2003/06/23 17:55:33 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.4 2003/06/25 03:55:47 dillon Exp $
  */
 
 /*
@@ -205,7 +205,7 @@ nmdmopen(dev_t dev, int flag, int devtype, struct thread *td)
 		tp->t_lflag = TTYDEF_LFLAG;
 		tp->t_cflag = TTYDEF_CFLAG;
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
-	} else if (tp->t_state & TS_XCLUDE && suser_xxx(p->p_ucred, 0)) {
+	} else if (tp->t_state & TS_XCLUDE && suser(td)) {
 		return (EBUSY);
 	} else if (pti->pt_prison != p->p_ucred->cr_prison) {
 		return (EBUSY);

@@ -37,21 +37,22 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.4 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.5 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_compat.h"
 #include "opt_ktrace.h"
 
 #include <sys/param.h>
+#include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/sysproto.h>
 #include <sys/signalvar.h>
 #include <sys/resourcevar.h>
-#include <sys/namei.h>
 #include <sys/vnode.h>
 #include <sys/event.h>
 #include <sys/proc.h>
+#include <sys/namei.h>
 #include <sys/pioctl.h>
 #include <sys/systm.h>
 #include <sys/acct.h>
@@ -923,13 +924,13 @@ trapsignal(p, sig, code)
 	register int sig;
 	u_long code;
 {
-	register struct sigacts *ps = p->p_sigacts;
+	struct sigacts *ps = p->p_sigacts;
 
 	if ((p->p_flag & P_TRACED) == 0 && SIGISMEMBER(p->p_sigcatch, sig) &&
 	    !SIGISMEMBER(p->p_sigmask, sig)) {
 		p->p_stats->p_ru.ru_nsignals++;
 #ifdef KTRACE
-		if (KTRPOINT(p, KTR_PSIG))
+		if (KTRPOINT(p->p_thread, KTR_PSIG))
 			ktrpsig(p->p_tracep, sig, ps->ps_sigact[_SIG_IDX(sig)],
 				&p->p_sigmask, code);
 #endif
@@ -1363,7 +1364,7 @@ postsig(sig)
 	SIGDELSET(p->p_siglist, sig);
 	action = ps->ps_sigact[_SIG_IDX(sig)];
 #ifdef KTRACE
-	if (KTRPOINT(p, KTR_PSIG))
+	if (KTRPOINT(p->p_thread, KTR_PSIG))
 		ktrpsig(p->p_tracep, sig, action, p->p_flag & P_OLDMASK ?
 		    &p->p_oldsigmask : &p->p_sigmask, 0);
 #endif
@@ -1563,11 +1564,11 @@ const char *name; uid_t uid; pid_t pid; {
  */
 
 static int
-coredump(p)
-	register struct proc *p;
+coredump(struct proc *p)
 {
-	register struct vnode *vp;
-	register struct ucred *cred = p->p_ucred;
+	struct vnode *vp;
+	struct ucred *cred = p->p_ucred;
+	struct thread *td = p->p_thread;
 	struct flock lf;
 	struct nameidata nd;
 	struct vattr vattr;
@@ -1595,7 +1596,7 @@ coredump(p)
 	name = expand_name(p->p_comm, p->p_ucred->cr_uid, p->p_pid);
 	if (name == NULL)
 		return (EINVAL);
-	NDINIT(&nd, LOOKUP, NOFOLLOW, UIO_SYSSPACE, name, p);
+	NDINIT(&nd, LOOKUP, NOFOLLOW, UIO_SYSSPACE, name, td);
 	error = vn_open(&nd, O_CREAT | FWRITE | O_NOFOLLOW, S_IRUSR | S_IWUSR);
 	free(name, M_TEMP);
 	if (error)
@@ -1603,7 +1604,7 @@ coredump(p)
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vp = nd.ni_vp;
 
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	lf.l_whence = SEEK_SET;
 	lf.l_start = 0;
 	lf.l_len = 0;
@@ -1614,18 +1615,18 @@ coredump(p)
 
 	/* Don't dump to non-regular files or files with links. */
 	if (vp->v_type != VREG ||
-	    VOP_GETATTR(vp, &vattr, cred, p) || vattr.va_nlink != 1) {
+	    VOP_GETATTR(vp, &vattr, cred, td) || vattr.va_nlink != 1) {
 		error = EFAULT;
 		goto out1;
 	}
 
 	VATTR_NULL(&vattr);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	vattr.va_size = 0;
-	VOP_LEASE(vp, p, cred, LEASE_WRITE);
-	VOP_SETATTR(vp, &vattr, cred, p);
+	VOP_LEASE(vp, td, cred, LEASE_WRITE);
+	VOP_SETATTR(vp, &vattr, cred, td);
 	p->p_acflag |= ACORE;
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 
 	error = p->p_sysent->sv_coredump ?
 	  p->p_sysent->sv_coredump(p, vp, limit) :
@@ -1635,7 +1636,7 @@ out1:
 	lf.l_type = F_UNLCK;
 	VOP_ADVLOCK(vp, (caddr_t)p, F_UNLCK, &lf, F_FLOCK);
 out2:
-	error1 = vn_close(vp, FWRITE, cred, p);
+	error1 = vn_close(vp, FWRITE, cred, td);
 	if (error == 0)
 		error = error1;
 	return (error);
@@ -1663,9 +1664,7 @@ nosys(struct nosys_args *args)
  * stored credentials rather than those of the current process.
  */
 void
-pgsigio(sigio, sig, checkctty)
-	struct sigio *sigio;
-	int sig, checkctty;
+pgsigio(struct sigio *sigio, int sig, int checkctty)
 {
 	if (sigio == NULL)
 		return;

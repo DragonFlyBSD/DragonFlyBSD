@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.3 2003/06/24 02:12:00 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.4 2003/06/25 03:56:10 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -459,7 +459,7 @@ do {									\
 	int lockstate;							\
 									\
 	if (_vp && IS_LOCKING_VFS(_vp)) {				\
-		lockstate = VOP_ISLOCKED(_vp, curproc);			\
+		lockstate = VOP_ISLOCKED(_vp, curthread);		\
 		if (lockstate == LK_EXCLUSIVE)				\
 			panic("%s: %p is locked but should not be",	\
 			    str, _vp);					\
@@ -471,7 +471,7 @@ do {									\
 	struct vnode *_vp = (vp);					\
 									\
 	if (_vp && IS_LOCKING_VFS(_vp) &&				\
-	    VOP_ISLOCKED(_vp, curproc) != LK_EXCLUSIVE)			\
+	    VOP_ISLOCKED(_vp, curthread) != LK_EXCLUSIVE)		\
 		panic("%s: %p is not exclusive locked but should be",	\
 		    str, _vp);						\
 } while (0)
@@ -481,7 +481,7 @@ do {									\
 	struct vnode *_vp = (vp);					\
 									\
 	if (_vp && IS_LOCKING_VFS(_vp) &&				\
-	    VOP_ISLOCKED(_vp, curproc) != LK_EXCLOTHER)			\
+	    VOP_ISLOCKED(_vp, curthread) != LK_EXCLOTHER)		\
 		panic("%s: %p is not exclusive locked by another proc",	\
 		    str, _vp);						\
 } while (0)
@@ -545,6 +545,7 @@ struct mount;
 struct nameidata;
 struct ostat;
 struct proc;
+struct thread;
 struct stat;
 struct nstat;
 struct ucred;
@@ -581,41 +582,40 @@ int	vfinddev __P((dev_t dev, enum vtype type, struct vnode **vpp));
 void	vfs_add_vnodeops __P((const void *));
 void	vfs_rm_vnodeops __P((const void *));
 int	vflush __P((struct mount *mp, int rootrefs, int flags));
-int 	vget __P((struct vnode *vp, int lockflag, struct proc *p));
+int 	vget __P((struct vnode *vp, int lockflag, struct thread *td));
 void 	vgone __P((struct vnode *vp));
-void	vgonel __P((struct vnode *vp, struct proc *p));
+void	vgonel __P((struct vnode *vp, struct thread *td));
 void	vhold __P((struct vnode *));
 int	vinvalbuf __P((struct vnode *vp, int save, struct ucred *cred,
-
-	    struct proc *p, int slpflag, int slptimeo));
-int	vtruncbuf __P((struct vnode *vp, struct ucred *cred, struct proc *p,
+	    struct thread *td, int slpflag, int slptimeo));
+int	vtruncbuf __P((struct vnode *vp, struct ucred *cred, struct thread *td,
 		off_t length, int blksize));
 void	vprint __P((char *label, struct vnode *vp));
 int	vrecycle __P((struct vnode *vp, struct simplelock *inter_lkp,
-	    struct proc *p));
+	    struct thread *td));
 int 	vn_close __P((struct vnode *vp,
-	    int flags, struct ucred *cred, struct proc *p));
+	    int flags, struct ucred *cred, struct thread *td));
 int	vn_isdisk __P((struct vnode *vp, int *errp));
-int	vn_lock __P((struct vnode *vp, int flags, struct proc *p));
+int	vn_lock __P((struct vnode *vp, int flags, struct thread *td));
 #ifdef	DEBUG_LOCKS
-int	debug_vn_lock __P((struct vnode *vp, int flags, struct proc *p,
+int	debug_vn_lock __P((struct vnode *vp, int flags, struct thread *td,
 	    const char *filename, int line));
 #define vn_lock(vp,flags,p) debug_vn_lock(vp,flags,p,__FILE__,__LINE__)
 #endif
 int 	vn_open __P((struct nameidata *ndp, int fmode, int cmode));
 void	vn_pollevent __P((struct vnode *vp, int events));
 void	vn_pollgone __P((struct vnode *vp));
-int	vn_pollrecord __P((struct vnode *vp, struct proc *p, int events));
+int	vn_pollrecord __P((struct vnode *vp, struct thread *td, int events));
 int 	vn_rdwr __P((enum uio_rw rw, struct vnode *vp, caddr_t base,
 	    int len, off_t offset, enum uio_seg segflg, int ioflg,
-	    struct ucred *cred, int *aresid, struct proc *p));
+	    struct ucred *cred, int *aresid, struct thread *td));
 int	vn_rdwr_inchunks __P((enum uio_rw rw, struct vnode *vp, caddr_t base,
 	    int len, off_t offset, enum uio_seg segflg, int ioflg,
-	    struct ucred *cred, int *aresid, struct proc *p));
-int	vn_stat __P((struct vnode *vp, struct stat *sb, struct proc *p));
+	    struct ucred *cred, int *aresid, struct thread *td));
+int	vn_stat __P((struct vnode *vp, struct stat *sb, struct thread *td));
 dev_t	vn_todev __P((struct vnode *vp));
 int	vfs_cache_lookup __P((struct vop_lookup_args *ap));
-int	vfs_object_create __P((struct vnode *vp, struct proc *p,
+int	vfs_object_create __P((struct vnode *vp, struct thread *td,
                 struct ucred *cred));
 void	vfs_timestamp __P((struct timespec *));
 int 	vn_writechk __P((struct vnode *vp));

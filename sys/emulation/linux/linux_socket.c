@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.3 2003/06/23 17:55:26 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.4 2003/06/25 03:55:44 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -412,7 +412,8 @@ int linux_connect(struct linux_connect_args *);
 int
 linux_connect(struct linux_connect_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;	/* XXX */
+	struct proc *p = td->td_proc;
 	struct linux_connect_args linux_args;
 	struct connect_args /* {
 		int s;
@@ -422,6 +423,8 @@ linux_connect(struct linux_connect_args *args)
 	struct socket *so;
 	struct file *fp;
 	int error;
+
+	KKASSERT(p);
 
 #ifdef __alpha__
 	bcopy(args, &linux_args, sizeof(linux_args));
@@ -453,7 +456,7 @@ linux_connect(struct linux_connect_args *args)
 			error = so->so_error;
 		so->so_emuldata = (void *)1;
 	}
-	fdrop(fp, p);
+	fdrop(fp, td);
 	return (error);
 }
 

@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -167,11 +167,12 @@ struct clock_settime_args {
 int
 clock_settime(struct clock_settime_args *uap)
 {
+	struct thread *td = curthread;
 	struct timeval atv;
 	struct timespec ats;
 	int error;
 
-	if ((error = suser()) != 0)
+	if ((error = suser(td)) != 0)
 		return (error);
 	if (SCARG(uap, clock_id) != CLOCK_REALTIME)
 		return (EINVAL);
@@ -319,11 +320,12 @@ struct settimeofday_args {
 int
 settimeofday(struct settimeofday_args *uap)
 {
+	struct thread *td = curthread;
 	struct timeval atv;
 	struct timezone atz;
 	int error;
 
-	if ((error = suser()))
+	if ((error = suser(td)))
 		return (error);
 	/* Verify all parameters before changing time. */
 	if (uap->tv) {
@@ -357,11 +359,12 @@ struct adjtime_args {
 int
 adjtime(struct adjtime_args *uap)
 {
+	struct thread *td = curthread;
 	struct timeval atv;
-	register long ndelta, ntickdelta, odelta;
+	long ndelta, ntickdelta, odelta;
 	int s, error;
 
-	if ((error = suser()))
+	if ((error = suser(td)))
 		return (error);
 	if ((error =
 	    copyin((caddr_t)uap->delta, (caddr_t)&atv, sizeof(struct timeval))))

@@ -1,6 +1,6 @@
 /*	$NetBSD: usb.c,v 1.33 1999/11/22 21:57:09 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb.c,v 1.26.2.9 2002/11/13 15:15:22 joe Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.3 2003/06/23 17:55:36 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.4 2003/06/25 03:55:50 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -468,7 +468,7 @@ usbioctl(dev_t devt, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
 			uio.uio_rw =
 				ur->ucr_request.bmRequestType & UT_READ ? 
 				UIO_READ : UIO_WRITE;
-			uio.uio_procp = p->td_proc;
+			uio.uio_td = p;
 			ptr = malloc(len, M_TEMP, M_WAITOK);
 			if (uio.uio_rw == UIO_WRITE) {
 				error = uiomove(ptr, len, &uio);

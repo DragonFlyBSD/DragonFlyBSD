@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.3 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -55,9 +55,9 @@
  */
 
 #ifdef SIMPLELOCK_DEBUG
-#define COUNT(p, x) if (p) (p)->p_locks += (x)
+#define COUNT(td, x) (td)->td_locks += (x)
 #else
-#define COUNT(p, x)
+#define COUNT(td, x)
 #endif
 
 #define LOCK_WAIT_TIME 100
@@ -176,29 +176,17 @@ acquire(struct lock *lkp, int extflags, int wanted) {
  */
 int
 #ifndef	DEBUG_LOCKS
-lockmgr(lkp, flags, interlkp, p)
+lockmgr(struct lock *lkp, u_int flags, struct simplelock *interlkp,
+	struct thread *td)
 #else
-debuglockmgr(lkp, flags, interlkp, p, name, file, line)
-#endif
-	struct lock *lkp;
-	u_int flags;
-	struct simplelock *interlkp;
-	struct proc *p;
-#ifdef	DEBUG_LOCKS
-	const char *name;	/* Name of lock function */
-	const char *file;	/* Name of file call is from */
-	int line;		/* Line number in file */
+debuglockmgr(struct lock *lkp, u_int flags, struct simplelock *interlkp,
+	struct thread *td, const char *name, const char *file, int line)
 #endif
 {
 	int error;
-	pid_t pid;
 	int extflags;
 
 	error = 0;
-	if (p == NULL)
-		pid = LK_KERNPROC;
-	else
-		pid = p->p_pid;
 
 	simple_lock(&lkp->lk_interlock);
 	if (flags & LK_INTERLOCK)
@@ -218,8 +206,8 @@ debuglockmgr(lkp, flags, interlkp, p, name, file, line)
 		 * lock requests or upgrade requests ( but not the exclusive
 		 * lock itself ).
 		 */
-		if (lkp->lk_lockholder != pid) {
-			if (p && (p->p_flag & P_DEADLKTREAT)) {
+		if (lkp->lk_lockholder != td) {
+			if (td->td_flags & TDF_DEADLKTREAT) {
 				error = acquire(
 					    lkp,
 					    extflags,
@@ -248,12 +236,12 @@ debuglockmgr(lkp, flags, interlkp, p, name, file, line)
 		/* fall into downgrade */
 
 	case LK_DOWNGRADE:
-		if (lkp->lk_lockholder != pid || lkp->lk_exclusivecount == 0)
+		if (lkp->lk_lockholder != td || lkp->lk_exclusivecount == 0)
 			panic("lockmgr: not holding exclusive lock");
 		sharelock(lkp, lkp->lk_exclusivecount);
 		lkp->lk_exclusivecount = 0;
 		lkp->lk_flags &= ~LK_HAVE_EXCL;
-		lkp->lk_lockholder = LK_NOPROC;
+		lkp->lk_lockholder = LK_NOTHREAD;
 		if (lkp->lk_waitcount)
 			wakeup((void *)lkp);
 		break;
@@ -281,7 +269,7 @@ debuglockmgr(lkp, flags, interlkp, p, name, file, line)
 		 * after the upgrade). If we return an error, the file
 		 * will always be unlocked.
 		 */
-		if ((lkp->lk_lockholder == pid) || (lkp->lk_sharecount <= 0))
+		if ((lkp->lk_lockholder == td) || (lkp->lk_sharecount <= 0))
 			panic("lockmgr: upgrade exclusive lock");
 		shareunlock(lkp, 1);
 		COUNT(p, -1);
@@ -307,7 +295,7 @@ debuglockmgr(lkp, flags, interlkp, p, name, file, line)
 			if (error)
 				break;
 			lkp->lk_flags |= LK_HAVE_EXCL;
-			lkp->lk_lockholder = pid;
+			lkp->lk_lockholder = td;
 			if (lkp->lk_exclusivecount != 0)
 				panic("lockmgr: non-zero exclusive count");
 			lkp->lk_exclusivecount = 1;
@@ -330,7 +318,7 @@ debuglockmgr(lkp, flags, interlkp, p, name, file, line)
 		/* fall into exclusive request */
 
 	case LK_EXCLUSIVE:
-		if (lkp->lk_lockholder == pid && pid != LK_KERNPROC) {
+		if (lkp->lk_lockholder == td && td != LK_KERNTHREAD) {
 			/*
 			 *	Recursive lock.
 			 */
@@ -365,7 +353,7 @@ debuglockmgr(lkp, flags, interlkp, p, name, file, line)
 		if (error)
 			break;
 		lkp->lk_flags |= LK_HAVE_EXCL;
-		lkp->lk_lockholder = pid;
+		lkp->lk_lockholder = td;
 		if (lkp->lk_exclusivecount != 0)
 			panic("lockmgr: non-zero exclusive count");
 		lkp->lk_exclusivecount = 1;
@@ -379,18 +367,19 @@ debuglockmgr(lkp, flags, interlkp, p, name, file, line)
 
 	case LK_RELEASE:
 		if (lkp->lk_exclusivecount != 0) {
-			if (lkp->lk_lockholder != pid &&
-			    lkp->lk_lockholder != LK_KERNPROC) {
-				panic("lockmgr: pid %d, not %s %d unlocking",
-				    pid, "exclusive lock holder",
+			if (lkp->lk_lockholder != td &&
+			    lkp->lk_lockholder != LK_KERNTHREAD) {
+				panic("lockmgr: pid %d, not %s thr %p unlocking",
+				    (td->td_proc ? td->td_proc->p_pid : -99),
+				    "exclusive lock holder",
 				    lkp->lk_lockholder);
 			}
-			if (lkp->lk_lockholder != LK_KERNPROC) {
+			if (lkp->lk_lockholder != LK_KERNTHREAD) {
 				COUNT(p, -1);
 			}
 			if (lkp->lk_exclusivecount == 1) {
 				lkp->lk_flags &= ~LK_HAVE_EXCL;
-				lkp->lk_lockholder = LK_NOPROC;
+				lkp->lk_lockholder = LK_NOTHREAD;
 				lkp->lk_exclusivecount = 0;
 			} else {
 				lkp->lk_exclusivecount--;
@@ -410,14 +399,14 @@ debuglockmgr(lkp, flags, interlkp, p, name, file, line)
 		 * check for holding a shared lock, but at least we can
 		 * check for an exclusive one.
 		 */
-		if (lkp->lk_lockholder == pid)
+		if (lkp->lk_lockholder == td)
 			panic("lockmgr: draining against myself");
 
 		error = acquiredrain(lkp, extflags);
 		if (error)
 			break;
 		lkp->lk_flags |= LK_DRAINING | LK_HAVE_EXCL;
-		lkp->lk_lockholder = pid;
+		lkp->lk_lockholder = td;
 		lkp->lk_exclusivecount = 1;
 #if defined(DEBUG_LOCKS)
 			lkp->lk_filename = file;
@@ -491,22 +480,20 @@ lockinit(lkp, prio, wmesg, timo, flags)
 	lkp->lk_prio = prio;
 	lkp->lk_wmesg = wmesg;
 	lkp->lk_timo = timo;
-	lkp->lk_lockholder = LK_NOPROC;
+	lkp->lk_lockholder = LK_NOTHREAD;
 }
 
 /*
  * Determine the status of a lock.
  */
 int
-lockstatus(lkp, p)
-	struct lock *lkp;
-	struct proc *p;
+lockstatus(struct lock *lkp, struct thread *td)
 {
 	int lock_type = 0;
 
 	simple_lock(&lkp->lk_interlock);
 	if (lkp->lk_exclusivecount != 0) {
-		if (p == NULL || lkp->lk_lockholder == p->p_pid)
+		if (td == NULL || lkp->lk_lockholder == td)
 			lock_type = LK_EXCLUSIVE;
 		else
 			lock_type = LK_EXCLOTHER;
@@ -539,13 +526,21 @@ void
 lockmgr_printinfo(lkp)
 	struct lock *lkp;
 {
+	struct thread *td = lkp->lk_lockholder;
+	struct proc *p;
+
+	if (td && td != LK_KERNTHREAD && td != LK_NOTHREAD)
+		p = td->td_proc;
+	else
+		p = NULL;
 
 	if (lkp->lk_sharecount)
 		printf(" lock type %s: SHARED (count %d)", lkp->lk_wmesg,
 		    lkp->lk_sharecount);
 	else if (lkp->lk_flags & LK_HAVE_EXCL)
-		printf(" lock type %s: EXCL (count %d) by pid %d",
-		    lkp->lk_wmesg, lkp->lk_exclusivecount, lkp->lk_lockholder);
+		printf(" lock type %s: EXCL (count %d) by td %p pid %d",
+		    lkp->lk_wmesg, lkp->lk_exclusivecount, td,
+		    p ? p->p_pid : -99);
 	if (lkp->lk_waitcount > 0)
 		printf(" with %d pending", lkp->lk_waitcount);
 }

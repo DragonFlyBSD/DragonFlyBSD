@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/sysmouse.c,v 1.2.2.2 2001/07/16 05:21:24 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.3 2003/06/23 17:55:35 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.4 2003/06/25 03:55:50 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -103,7 +103,7 @@ smopen(dev_t dev, int flag, int mode, struct thread *td)
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
 		smparam(tp, &tp->t_termios);
 		(*linesw[tp->t_line].l_modem)(tp, 1);
-	} else if (tp->t_state & TS_XCLUDE && suser_xxx(td->td_proc->p_ucred, 0)) {
+	} else if (tp->t_state & TS_XCLUDE && suser(td)) {
 		return EBUSY;
 	}
 

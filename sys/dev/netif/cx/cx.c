@@ -16,7 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.3 2003/06/25 03:55:54 dillon Exp $
  *
  */
 #undef DEBUG
@@ -114,7 +114,7 @@ static void cxoproc (struct tty *tp);
 static void cxstop (struct tty *tp, int flag);
 static int cxparam (struct tty *tp, struct termios *t);
 
-int cxopen (dev_t dev, int flag, int mode, struct proc *p)
+int cxopen (dev_t dev, int flag, int mode, struct thread *td)
 {
 	int unit = UNIT (dev);
 	cx_chan_t *c = cxchan[unit];
@@ -165,7 +165,7 @@ int cxopen (dev_t dev, int flag, int mode, struct proc *p)
 	tp = c->ttyp;
 	tp->t_dev = dev;
 	if ((tp->t_state & TS_ISOPEN) && (tp->t_state & TS_XCLUDE) &&
-	    suser(p))
+	    suser(td))
 		return (EBUSY);
 	if (! (tp->t_state & TS_ISOPEN)) {
 		ttychars (tp);
@@ -250,7 +250,7 @@ int cxopen (dev_t dev, int flag, int mode, struct proc *p)
 	return (error);
 }
 
-int cxclose (dev_t dev, int flag, int mode, struct proc *p)
+int cxclose (dev_t dev, int flag, int mode, struct thread *td)
 {
 	int unit = UNIT (dev);
 	cx_chan_t *c = cxchan[unit];
@@ -286,7 +286,7 @@ int cxclose (dev_t dev, int flag, int mode, struct proc *p)
 	return (0);
 }
 
-int cxioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
+int cxioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
 	int unit = UNIT (dev);
 	cx_chan_t *c, *m;

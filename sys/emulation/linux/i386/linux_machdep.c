@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.3 2003/06/23 17:55:39 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.4 2003/06/25 03:55:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -555,12 +555,15 @@ linux_ioperm(struct linux_ioperm_args *args)
 int
 linux_iopl(struct linux_iopl_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	int error;
+
+	KKASSERT(p);
 
 	if (args->level < 0 || args->level > 3)
 		return (EINVAL);
-	if ((error = suser()) != 0)
+	if ((error = suser(td)) != 0)
 		return (error);
 	if (securelevel > 0)
 		return (EPERM);

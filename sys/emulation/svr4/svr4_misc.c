@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.4 2003/06/25 03:56:10 dillon Exp $
  */
 
 /*
@@ -38,10 +38,10 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/namei.h>
 #include <sys/dirent.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/namei.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -229,7 +229,8 @@ svr4_sys_time(struct svr4_sys_time_args *v)
 int
 svr4_sys_getdents64(struct svr4_sys_getdents64_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;	/* XXX */
+	struct proc *p = td->td_proc;
 	struct dirent *bdp;
 	struct vnode *vp;
 	caddr_t inp, buf;		/* BSD-format */
@@ -246,6 +247,8 @@ svr4_sys_getdents64(struct svr4_sys_getdents64_args *uap)
 	u_long *cookies = NULL, *cookiep;
 	int ncookies;
 
+	KKASSERT(p);
+
 	DPRINTF(("svr4_sys_getdents64(%d, *, %d)\n",
 		p->p_pid, SCARG(uap, fd), SCARG(uap, nbytes)));
 	if ((error = getvnode(p->p_fd, SCARG(uap, fd), &fp)) != 0) {
@@ -260,7 +263,7 @@ svr4_sys_getdents64(struct svr4_sys_getdents64_args *uap)
 	if (vp->v_type != VDIR)
 		return (EINVAL);
 
-	if ((error = VOP_GETATTR(vp, &va, p->p_ucred, p))) {
+	if ((error = VOP_GETATTR(vp, &va, p->p_ucred, td))) {
 		return error;
 	}
 
@@ -277,7 +280,7 @@ svr4_sys_getdents64(struct svr4_sys_getdents64_args *uap)
 	buflen = max(DIRBLKSIZ, nbytes);
 	buflen = min(buflen, MAXBSIZE);
 	buf = malloc(buflen, M_TEMP, M_WAITOK);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 again:
 	aiov.iov_base = buf;
 	aiov.iov_len = buflen;
@@ -285,7 +288,7 @@ again:
 	auio.uio_iovcnt = 1;
 	auio.uio_rw = UIO_READ;
 	auio.uio_segflg = UIO_SYSSPACE;
-	auio.uio_procp = p;
+	auio.uio_td = td;
 	auio.uio_resid = buflen;
 	auio.uio_offset = off;
 
@@ -391,7 +394,7 @@ eof:
 out:
 	if (cookies)
 		free(cookies, M_TEMP);
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	free(buf, M_TEMP);
 	return error;
 }
@@ -400,7 +403,8 @@ out:
 int
 svr4_sys_getdents(struct svr4_sys_getdents_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct dirent *bdp;
 	struct vnode *vp;
 	caddr_t inp, buf;	/* BSD-format */
@@ -416,6 +420,8 @@ svr4_sys_getdents(struct svr4_sys_getdents_args *uap)
 	u_long *cookiebuf = NULL, *cookie;
 	int ncookies = 0, *retval = p->p_retval;
 
+	KKASSERT(p);
+
 	if ((error = getvnode(p->p_fd, SCARG(uap, fd), &fp)) != 0)
 		return (error);
 
@@ -428,7 +434,7 @@ svr4_sys_getdents(struct svr4_sys_getdents_args *uap)
 
 	buflen = min(MAXBSIZE, SCARG(uap, nbytes));
 	buf = malloc(buflen, M_TEMP, M_WAITOK);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	off = fp->f_offset;
 again:
 	aiov.iov_base = buf;
@@ -437,7 +443,7 @@ again:
 	auio.uio_iovcnt = 1;
 	auio.uio_rw = UIO_READ;
 	auio.uio_segflg = UIO_SYSSPACE;
-	auio.uio_procp = p;
+	auio.uio_td = td;
 	auio.uio_resid = buflen;
 	auio.uio_offset = off;
 	/*
@@ -502,7 +508,7 @@ again:
 eof:
 	*retval = SCARG(uap, nbytes) - resid;
 out:
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	if (cookiebuf)
 		free(cookiebuf, M_TEMP);
 	free(buf, M_TEMP);
@@ -574,23 +580,29 @@ svr4_sys_mmap64(struct svr4_sys_mmap64_args *uap)
 int
 svr4_sys_fchroot(struct svr4_sys_fchroot_args *uap)
 {
-	struct proc *p = curproc;
-	struct filedesc	*fdp = p->p_fd;
+	struct thread *td = curthread;	/* XXX */
+	struct proc *p = td->td_proc;
+	struct ucred	*cred;
+	struct filedesc	*fdp;
 	struct vnode	*vp;
 	struct file	*fp;
 	int		 error;
 
-	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+	KKASSERT(p);
+	cred = p->p_ucred;
+	fdp = p->p_fd;
+
+	if ((error = suser(td)) != 0)
 		return error;
 	if ((error = getvnode(fdp, SCARG(uap, fd), &fp)) != 0)
 		return error;
 	vp = (struct vnode *) fp->f_data;
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	if (vp->v_type != VDIR)
 		error = ENOTDIR;
 	else
-		error = VOP_ACCESS(vp, VEXEC, p->p_ucred, p);
-	VOP_UNLOCK(vp, 0, p);
+		error = VOP_ACCESS(vp, VEXEC, cred, td);
+	VOP_UNLOCK(vp, 0, td);
 	if (error)
 		return error;
 	VREF(vp);
@@ -630,9 +642,13 @@ svr4_mknod(retval, path, mode, dev)
 int
 svr4_sys_mknod(struct svr4_sys_mknod_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;	/* XXX */
+	struct proc *p = td->td_proc;
+        int *retval;
 
-        int *retval = p->p_retval;
+	KKASSERT(p);
+	retval = p->p_retval;
+
 	return svr4_mknod(retval, SCARG(uap, path), SCARG(uap, mode),
 			  (svr4_dev_t)svr4_to_bsd_odev_t(SCARG(uap, dev)));
 }
@@ -641,8 +657,13 @@ svr4_sys_mknod(struct svr4_sys_mknod_args *uap)
 int
 svr4_sys_xmknod(struct svr4_sys_xmknod_args *uap)
 {
-	struct proc *p = curproc;
-        int *retval = p->p_retval;
+	struct thread *td = curthread;	/* XXX */
+	struct proc *p = td->td_proc;
+        int *retval;
+
+	KKASSERT(p);
+	retval = p->p_retval;
+
 	return svr4_mknod(retval, SCARG(uap, path), SCARG(uap, mode),
 			  (svr4_dev_t)svr4_to_bsd_dev_t(SCARG(uap, dev)));
 }
@@ -658,9 +679,11 @@ svr4_sys_vhangup(struct svr4_sys_vhangup_args *uap)
 int
 svr4_sys_sysconfig(struct svr4_sys_sysconfig_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;	/* XXX */
+	struct proc *p = td->td_proc;
 	int *retval;
 
+	KKASSERT(p);
 	retval = &(p->p_retval[0]);
 
 	switch (SCARG(uap, name)) {
@@ -759,10 +782,14 @@ extern int swap_pager_full;
 int
 svr4_sys_break(struct svr4_sys_break_args *uap)
 {
-	struct proc *p = curproc;
-	struct vmspace *vm = p->p_vmspace;
+	struct thread *td = curthread;	/* XXX */
+	struct proc *p = td->td_proc;
+	struct vmspace *vm;
 	vm_offset_t new, old, base, ns;
 	int rv;
+
+	KKASSERT(p);
+	vm = p->p_vmspace;
 
 	base = round_page((vm_offset_t) vm->vm_daddr);
 	ns = (vm_offset_t)SCARG(uap, nsize);
@@ -890,7 +917,7 @@ svr4_sys_ulimit(struct svr4_sys_ulimit_args *uap)
 				return error;
 
 			SCARG(&srl, which) = RLIMIT_FSIZE;
-			SCARG(&srl, rlp) = (struct orlimit *)url;
+			SCARG(&srl, rlp) = (struct rlimit *)url;
 
 			error = setrlimit(&srl);
 			if (error)
@@ -1583,12 +1610,17 @@ svr4_sys_nice(struct svr4_sys_nice_args *uap)
 int
 svr4_sys_resolvepath(struct svr4_sys_resolvepath_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;	/* XXX */
+	struct proc *p = td->td_proc;
 	struct nameidata nd;
-	int error, *retval = p->p_retval;
+	int error;
+	int *retval;
+
+	KKASSERT(p);
+	retval = p->p_retval;
 
 	NDINIT(&nd, LOOKUP, NOFOLLOW | SAVENAME, UIO_USERSPACE,
-	    SCARG(uap, path), p);
+	    SCARG(uap, path), td);
 
 	if ((error = namei(&nd)) != 0)
 		return error;

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_rq.h,v 1.4 2000/01/14 19:54:38 bde Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_rq.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_rq.h,v 1.3 2003/06/25 03:56:05 dillon Exp $
  */
 #ifndef _NETNCP_NCP_RQ_H_
 #define _NETNCP_NCP_RQ_H_
@@ -98,7 +98,7 @@ struct ncp_rq {
 	int		rpsize;		/* reply size minus ncp header */
 	int		cc;		/* completion code */
 	int		cs;		/* connection state */
-	struct proc	*p;		/* proc that did rq */
+	struct thread	*td;		/* thread that did rq */
 	struct ucred	*cred;		/* user that did rq */
 	int		rexmit;
 };
@@ -106,16 +106,16 @@ struct ncp_rq {
 #define DECLARE_RQ	struct ncp_rq rq;struct ncp_rq *rqp=&rq
 
 
-int  ncp_rq_head(struct ncp_rq *rqp,u_int32_t ptype, u_int8_t fn,struct proc *p,
-    struct ucred *cred);
+int  ncp_rq_head(struct ncp_rq *rqp,u_int32_t ptype, u_int8_t fn,
+    struct thread *td, struct ucred *cred);
 int  ncp_rq_done(struct ncp_rq *rqp);
 
 /* common case for normal request */
-#define	ncp_rq_init(rqp,fn,p,c)	ncp_rq_head((rqp),NCP_REQUEST,(fn),(p),(c))
+#define	ncp_rq_init(rqp,fn,td,c) ncp_rq_head((rqp),NCP_REQUEST,(fn),(td),(c))
 #define	ncp_rq_close(rqp)	ncp_rq_done((rqp))
 
-#define NCP_RQ_HEAD(fn,p,c)	ncp_rq_init(rqp,fn,p,c)
-#define	NCP_RQ_HEAD_S(fn,sfn,p,c)	NCP_RQ_HEAD(fn,p,c);ncp_rq_word(rqp,0);ncp_rq_byte(rqp,(sfn))
+#define NCP_RQ_HEAD(fn,td,c)	ncp_rq_init(rqp,fn,td,c)
+#define	NCP_RQ_HEAD_S(fn,sfn,td,c)	do { NCP_RQ_HEAD(fn,td,c);ncp_rq_word(rqp,0);ncp_rq_byte(rqp,(sfn)); } while(0)
 #define NCP_RQ_EXIT	bad: ncp_rq_close(rqp)
 #define NCP_RQ_EXIT_NB	ncp_rq_close(rqp)
 #define ncp_rq_word	ncp_rq_word_lh

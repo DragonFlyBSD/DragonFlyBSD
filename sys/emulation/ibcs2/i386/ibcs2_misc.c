@@ -46,7 +46,7 @@
  *	@(#)sun_misc.c	8.1 (Berkeley) 6/18/93
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_misc.c,v 1.34 1999/09/29 15:12:09 marcel Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_misc.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_misc.c,v 1.4 2003/06/25 03:55:53 dillon Exp $
  */
 
 /*
@@ -286,7 +286,8 @@ ibcs2_mount(struct ibcs2_mount_args *uap)
 int
 ibcs2_getdents(struct ibcs2_getdents_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	caddr_t inp, buf;	/* BSD-format */
 	int len, reclen;	/* BSD-format */
@@ -303,6 +304,8 @@ ibcs2_getdents(struct ibcs2_getdents_args *uap)
 #define	BSD_DIRENT(cp)		((struct dirent *)(cp))
 #define	IBCS2_RECLEN(reclen)	(reclen + sizeof(u_short))
 
+	KKASSERT(p);
+
 	if ((error = getvnode(p->p_fd, SCARG(uap, fd), &fp)) != 0)
 		return (error);
 	if ((fp->f_flag & FREAD) == 0)
@@ -316,7 +319,7 @@ ibcs2_getdents(struct ibcs2_getdents_args *uap)
 	buflen = max(DIRBLKSIZ, SCARG(uap, nbytes));
 	buflen = min(buflen, MAXBSIZE);
 	buf = malloc(buflen, M_TEMP, M_WAITOK);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 again:
 	aiov.iov_base = buf;
 	aiov.iov_len = buflen;
@@ -324,7 +327,7 @@ again:
 	auio.uio_iovcnt = 1;
 	auio.uio_rw = UIO_READ;
 	auio.uio_segflg = UIO_SYSSPACE;
-	auio.uio_procp = p;
+	auio.uio_td = td;
 	auio.uio_resid = buflen;
 	auio.uio_offset = off;
 
@@ -418,7 +421,7 @@ eof:
 out:
 	if (cookies)
 		free(cookies, M_TEMP);
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	free(buf, M_TEMP);
 	return (error);
 }
@@ -426,7 +429,8 @@ out:
 int
 ibcs2_read(struct ibcs2_read_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	caddr_t inp, buf;	/* BSD-format */
 	int len, reclen;	/* BSD-format */
@@ -443,6 +447,8 @@ ibcs2_read(struct ibcs2_read_args *uap)
 	int buflen, error, eofflag, size;
 	u_long *cookies = NULL, *cookiep;
 	int ncookies;
+
+	KKASSERT(p);
 
 	if ((error = getvnode(p->p_fd, SCARG(uap, fd), &fp)) != 0) {
 		if (error == EINVAL)
@@ -462,7 +468,7 @@ ibcs2_read(struct ibcs2_read_args *uap)
 	buflen = max(DIRBLKSIZ, SCARG(uap, nbytes));
 	buflen = min(buflen, MAXBSIZE);
 	buf = malloc(buflen, M_TEMP, M_WAITOK);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 again:
 	aiov.iov_base = buf;
 	aiov.iov_len = buflen;
@@ -470,7 +476,7 @@ again:
 	auio.uio_iovcnt = 1;
 	auio.uio_rw = UIO_READ;
 	auio.uio_segflg = UIO_SYSSPACE;
-	auio.uio_procp = p;
+	auio.uio_td = td;
 	auio.uio_resid = buflen;
 	auio.uio_offset = off;
 
@@ -568,7 +574,7 @@ eof:
 out:
 	if (cookies)
 		free(cookies, M_TEMP);
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	free(buf, M_TEMP);
 	return (error);
 }
@@ -959,7 +965,7 @@ ibcs2_plock(struct ibcs2_plock_args *uap)
 #define IBCS2_DATALOCK	4
 
 	
-        if ((error = suser()) != 0)
+        if ((error = suser(curthread)) != 0)
                 return EPERM;
 	switch(SCARG(uap, cmd)) {
 	case IBCS2_UNLOCK:
@@ -992,7 +998,7 @@ ibcs2_uadmin(struct ibcs2_uadmin_args *uap)
 #define SCO_AD_GETBMAJ      0
 #define SCO_AD_GETCMAJ      1
 
-        if (suser())
+        if (suser(curthread))
                 return EPERM;
 
 	switch(SCARG(uap, cmd)) {

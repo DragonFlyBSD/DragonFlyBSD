@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.3 2003/06/25 03:56:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -411,8 +411,8 @@ ffs_rawread(struct vnode *vp,
 	    uio->uio_iovcnt == 1 && 
 	    uio->uio_segflg == UIO_USERSPACE &&
 	    uio->uio_resid == uio->uio_iov->iov_len &&
-	    (((uio->uio_procp != NULL) ? uio->uio_procp : curproc)->p_flag &
-	     P_DEADLKTREAT) == 0) {
+	    (((uio->uio_td != NULL) ? uio->uio_td : curthread)->td_flags &
+	     TDF_DEADLKTREAT) == 0) {
 		int secsize;		/* Media sector size */
 		off_t filebytes;	/* Bytes left of file */
 		int blockbytes;		/* Bytes left of file in full blocks */

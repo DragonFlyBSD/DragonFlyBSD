@@ -26,10 +26,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.3 2003/06/23 17:55:26 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.4 2003/06/25 03:55:44 dillon Exp $
  */
 
 #include <sys/param.h>
+#include <sys/systm.h>
 #include <sys/conf.h>
 #include <sys/dirent.h>
 #include <sys/file.h>
@@ -41,6 +42,7 @@
 #include <sys/sysctl.h>
 #include <sys/systm.h>
 #include <sys/vnode.h>
+#include <sys/file2.h>
 
 #include <machine/../linux/linux.h>
 #include <machine/../linux/linux_proto.h>
@@ -90,7 +92,7 @@ newstat_copyout(struct stat *buf, void *ubuf)
 int
 linux_newstat(struct linux_newstat_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct stat buf;
 	struct nameidata nd;
 	int error;
@@ -105,13 +107,13 @@ linux_newstat(struct linux_newstat_args *args)
 #endif
 
 	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF | NOOBJ, UIO_USERSPACE,
-	    args->path, p);
+	    args->path, td);
 	error = namei(&nd);
 	if (error)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 
-	error = vn_stat(nd.ni_vp, &buf, p);
+	error = vn_stat(nd.ni_vp, &buf, td);
 	vput(nd.ni_vp);
 	if (error)
 		return (error);
@@ -122,7 +124,7 @@ linux_newstat(struct linux_newstat_args *args)
 int
 linux_newlstat(struct linux_newlstat_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	int error;
 	struct stat sb;
 	struct nameidata nd;
@@ -137,13 +139,13 @@ linux_newlstat(struct linux_newlstat_args *args)
 #endif
 
 	NDINIT(&nd, LOOKUP, NOFOLLOW | LOCKLEAF | NOOBJ, UIO_USERSPACE,
-	    args->path, p);
+	    args->path, td);
 	error = namei(&nd);
 	if (error)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF); 
 
-	error = vn_stat(nd.ni_vp, &sb, p);
+	error = vn_stat(nd.ni_vp, &sb, td);
 	vput(nd.ni_vp);
 	if (error)
 		return (error);
@@ -154,11 +156,14 @@ linux_newlstat(struct linux_newlstat_args *args)
 int
 linux_newfstat(struct linux_newfstat_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct filedesc *fdp;
 	struct file *fp;
 	struct stat buf;
 	int error;
+
+	KKASSERT(p);
 
 #ifdef DEBUG
 	if (ldebug(newfstat))
@@ -170,7 +175,7 @@ linux_newfstat(struct linux_newfstat_args *args)
 	    (fp = fdp->fd_ofiles[args->fd]) == NULL)
 		return (EBADF);
 
-	error = fo_stat(fp, &buf, p);
+	error = fo_stat(fp, &buf, td);
 	if (!error)
 		error = newstat_copyout(&buf, args->buf);
 
@@ -229,7 +234,7 @@ bsd_to_linux_ftype(const char *fstypename)
 int
 linux_statfs(struct linux_statfs_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct mount *mp;
 	struct nameidata *ndp;
 	struct statfs *bsd_statfs;
@@ -246,7 +251,7 @@ linux_statfs(struct linux_statfs_args *args)
 		printf(ARGS(statfs, "%s, *"), args->path);
 #endif
 	ndp = &nd;
-	NDINIT(ndp, LOOKUP, FOLLOW, UIO_USERSPACE, args->path, curproc);
+	NDINIT(ndp, LOOKUP, FOLLOW, UIO_USERSPACE, args->path, td);
 	error = namei(ndp);
 	if (error)
 		return error;
@@ -254,7 +259,7 @@ linux_statfs(struct linux_statfs_args *args)
 	mp = ndp->ni_vp->v_mount;
 	bsd_statfs = &mp->mnt_stat;
 	vrele(ndp->ni_vp);
-	error = VFS_STATFS(mp, bsd_statfs, p);
+	error = VFS_STATFS(mp, bsd_statfs, td);
 	if (error)
 		return error;
 	bsd_statfs->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
@@ -275,12 +280,15 @@ linux_statfs(struct linux_statfs_args *args)
 int
 linux_fstatfs(struct linux_fstatfs_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct mount *mp;
 	struct statfs *bsd_statfs;
 	struct l_statfs linux_statfs;
 	int error;
+
+	KKASSERT(p);
 
 #ifdef DEBUG
 	if (ldebug(fstatfs))
@@ -291,7 +299,7 @@ linux_fstatfs(struct linux_fstatfs_args *args)
 		return error;
 	mp = ((struct vnode *)fp->f_data)->v_mount;
 	bsd_statfs = &mp->mnt_stat;
-	error = VFS_STATFS(mp, bsd_statfs, p);
+	error = VFS_STATFS(mp, bsd_statfs, td);
 	if (error)
 		return error;
 	bsd_statfs->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
@@ -320,7 +328,7 @@ struct l_ustat
 int
 linux_ustat(struct linux_ustat_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct l_ustat lu;
 	dev_t dev;
 	struct vnode *vp;
@@ -350,7 +358,7 @@ linux_ustat(struct linux_ustat_args *args)
 		if (vp->v_mount == NULL)
 			return (EINVAL);
 		stat = &(vp->v_mount->mnt_stat);
-		error = VFS_STATFS(vp->v_mount, stat, p);
+		error = VFS_STATFS(vp->v_mount, stat, td);
 		if (error)
 			return (error);
 
@@ -397,7 +405,7 @@ stat64_copyout(struct stat *buf, void *ubuf)
 int
 linux_stat64(struct linux_stat64_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct stat buf;
 	struct nameidata nd;
 	int error;
@@ -412,13 +420,13 @@ linux_stat64(struct linux_stat64_args *args)
 #endif
 
 	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF | NOOBJ, UIO_USERSPACE,
-	    args->filename, p);
+	    args->filename, td);
 	error = namei(&nd);
 	if (error)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 
-	error = vn_stat(nd.ni_vp, &buf, p);
+	error = vn_stat(nd.ni_vp, &buf, td);
 	vput(nd.ni_vp);
 	if (error)
 		return (error);
@@ -429,7 +437,7 @@ linux_stat64(struct linux_stat64_args *args)
 int
 linux_lstat64(struct linux_lstat64_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	int error;
 	struct stat sb;
 	struct nameidata nd;
@@ -444,13 +452,13 @@ linux_lstat64(struct linux_lstat64_args *args)
 #endif
 
 	NDINIT(&nd, LOOKUP, NOFOLLOW | LOCKLEAF | NOOBJ, UIO_USERSPACE,
-	    args->filename, p);
+	    args->filename, td);
 	error = namei(&nd);
 	if (error)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF); 
 
-	error = vn_stat(nd.ni_vp, &sb, p);
+	error = vn_stat(nd.ni_vp, &sb, td);
 	vput(nd.ni_vp);
 	if (error)
 		return (error);
@@ -461,11 +469,14 @@ linux_lstat64(struct linux_lstat64_args *args)
 int
 linux_fstat64(struct linux_fstat64_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct filedesc *fdp;
 	struct file *fp;
 	struct stat buf;
 	int error;
+
+	KKASSERT(p);
 
 #ifdef DEBUG
 	if (ldebug(fstat64))
@@ -477,7 +488,7 @@ linux_fstat64(struct linux_fstat64_args *args)
 	    (fp = fdp->fd_ofiles[args->fd]) == NULL)
 		return (EBADF);
 
-	error = fo_stat(fp, &buf, p);
+	error = fo_stat(fp, &buf, td);
 	if (!error)
 		error = stat64_copyout(&buf, args->statbuf);
 

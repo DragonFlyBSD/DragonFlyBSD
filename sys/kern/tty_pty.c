@@ -32,7 +32,7 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 /*
@@ -204,7 +204,7 @@ ptsopen(dev_t dev, int flag, int devtype, struct thread *td)
 		tp->t_lflag = TTYDEF_LFLAG;
 		tp->t_cflag = TTYDEF_CFLAG;
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
-	} else if (tp->t_state & TS_XCLUDE && suser()) {
+	} else if (tp->t_state & TS_XCLUDE && suser(td)) {
 		return (EBUSY);
 	} else if (pti->pt_prison != p->p_ucred->cr_prison) {
 		return (EBUSY);

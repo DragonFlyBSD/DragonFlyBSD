@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_login.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_login.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_login.c,v 1.3 2003/06/25 03:56:05 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -49,10 +49,10 @@
 
 static int  ncp_login_encrypted(struct ncp_conn *conn, struct ncp_bindery_object *object,
 		    unsigned char *key, unsigned char *passwd,
-		    struct proc *p, struct ucred *cred);
+		    struct thread *td, struct ucred *cred);
 static int ncp_login_unencrypted(struct ncp_conn *conn, u_int16_t object_type, 
 		    char *object_name, unsigned char *passwd,
-		    struct proc *p, struct ucred *cred);
+		    struct thread *td, struct ucred *cred);
 static int  ncp_sign_start(struct ncp_conn *conn, char *logindata);
 static int  ncp_get_encryption_key(struct ncp_conn *conn, char *target);
 
@@ -89,7 +89,7 @@ ncp_get_encryption_key(struct ncp_conn *conn, char *target) {
 	int error;
 	DECLARE_RQ;
 
-	NCP_RQ_HEAD_S(23,23,conn->procp,conn->ucred);
+	NCP_RQ_HEAD_S(23, 23, conn->td, conn->ucred);
 	checkbad(ncp_request(conn,rqp));
 	if (rqp->rpsize < 8) {
 		NCPFATAL("rpsize=%d < 8\n", rqp->rpsize);
@@ -103,7 +103,7 @@ ncp_get_encryption_key(struct ncp_conn *conn, char *target) {
 int
 ncp_login_object(struct ncp_conn *conn, unsigned char *username, 
 		int login_type, unsigned char *password,
-		struct proc *p,struct ucred *cred)
+		struct thread *td,struct ucred *cred)
 {
 	int error;
 	unsigned char ncp_key[8];
@@ -111,19 +111,19 @@ ncp_login_object(struct ncp_conn *conn, unsigned char *username,
 
 	if ((error = ncp_get_encryption_key(conn, ncp_key)) != 0) {
 		printf("%s: Warning: use unencrypted login\n", __FUNCTION__);
-		return ncp_login_unencrypted(conn, login_type, username, password,p,cred);
+		return ncp_login_unencrypted(conn, login_type, username, password,td,cred);
 	}
-	if ((error = ncp_get_bindery_object_id(conn, login_type, username, &user,p,cred)) != 0) {
+	if ((error = ncp_get_bindery_object_id(conn, login_type, username, &user,td,cred)) != 0) {
 		return error;
 	}
-	error = ncp_login_encrypted(conn, &user, ncp_key, password,p,cred);
+	error = ncp_login_encrypted(conn, &user, ncp_key, password,td,cred);
 	return error;
 }
 
 int
 ncp_login_encrypted(struct ncp_conn *conn, struct ncp_bindery_object *object,
 		    unsigned char *key, unsigned char *passwd,
-		    struct proc *p,struct ucred *cred) {
+		    struct thread *td,struct ucred *cred) {
 	u_int32_t tmpID = htonl(object->object_id);
 	u_char buf[16 + 8];
 	u_char encrypted[8];
@@ -133,7 +133,7 @@ ncp_login_encrypted(struct ncp_conn *conn, struct ncp_bindery_object *object,
 	nw_keyhash((u_char*)&tmpID, passwd, strlen(passwd), buf);
 	nw_encrypt(key, buf, encrypted);
 
-	NCP_RQ_HEAD_S(23,24,p,cred);
+	NCP_RQ_HEAD_S(23,24,td,cred);
 	ncp_rq_mem(rqp, encrypted, 8);
 	ncp_rq_word_hl(rqp, object->object_type);
 	ncp_rq_pstring(rqp, object->object_name);
@@ -151,12 +151,12 @@ ncp_login_encrypted(struct ncp_conn *conn, struct ncp_bindery_object *object,
 int
 ncp_login_unencrypted(struct ncp_conn *conn, u_int16_t object_type, 
 		    char *object_name, unsigned char *passwd,
-		    struct proc *p, struct ucred *cred)
+		    struct thread *td, struct ucred *cred)
 {
 	int error;
 	DECLARE_RQ;
 
-	NCP_RQ_HEAD_S(23,20,conn->procp,conn->ucred);
+	NCP_RQ_HEAD_S(23, 20, conn->td, conn->ucred);
 	ncp_rq_word_hl(rqp, object_type);
 	ncp_rq_pstring(rqp, object_name);
 	ncp_rq_pstring(rqp, passwd);
@@ -171,7 +171,7 @@ ncp_login_unencrypted(struct ncp_conn *conn, u_int16_t object_type,
  */
 int
 ncp_login(struct ncp_conn *conn, char *user, int objtype, char *password,
-	  struct proc *p, struct ucred *cred) {
+	  struct thread *td, struct ucred *cred) {
 	int error;
 
 	if (ncp_suser(cred) != 0 && cred->cr_uid != conn->nc_owner->cr_uid)
@@ -187,7 +187,7 @@ ncp_login(struct ncp_conn *conn, char *user, int objtype, char *password,
 	ncp_str_upper(conn->li.user);
 	if ((conn->li.opt & NCP_OPT_NOUPCASEPASS) == 0)
 		ncp_str_upper(conn->li.password);
-	checkbad(ncp_login_object(conn, conn->li.user, objtype, conn->li.password,p,cred));
+	checkbad(ncp_login_object(conn, conn->li.user, objtype, conn->li.password,td,cred));
 	conn->li.objtype = objtype;
 	conn->flags |= NCPFL_LOGGED;
 	return 0;

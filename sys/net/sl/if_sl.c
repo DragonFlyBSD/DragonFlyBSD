@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.3 2003/06/23 17:55:45 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.4 2003/06/25 03:56:02 dillon Exp $
  */
 
 /*
@@ -278,8 +278,9 @@ slopen(dev_t dev, struct tty *tp)
 	struct sl_softc *sc;
 	int nsl;
 	int s, error;
+	struct thread *td = curthread;	/* XXX */
 
-	error = suser();	/* YYY uses curproc */
+	error = suser(td);
 	if (error)
 		return (error);
 

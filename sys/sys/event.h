@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/sys/event.h,v 1.5.2.6 2003/02/09 15:28:13 nectar Exp $
- *	$DragonFly: src/sys/sys/event.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ *	$DragonFly: src/sys/sys/event.h,v 1.3 2003/06/25 03:56:10 dillon Exp $
  */
 
 #ifndef _SYS_EVENT_H_
@@ -164,12 +164,13 @@ struct knote {
 };
 
 struct proc;
+struct thread;
 
 extern void	knote(struct klist *list, long hint);
-extern void	knote_remove(struct proc *p, struct klist *list);
+extern void	knote_remove(struct thread *td, struct klist *list);
 extern void	knote_fdclose(struct proc *p, int fd);
 extern int 	kqueue_register(struct kqueue *kq,
-		    struct kevent *kev, struct proc *p);
+		    struct kevent *kev, struct thread *td);
 
 #else 	/* !_KERNEL */
 

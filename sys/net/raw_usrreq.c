@@ -32,7 +32,7 @@
  *
  *	@(#)raw_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_usrreq.c,v 1.18 1999/08/28 00:48:28 peter Exp $
- * $DragonFly: src/sys/net/raw_usrreq.c,v 1.3 2003/06/23 17:55:45 dillon Exp $
+ * $DragonFly: src/sys/net/raw_usrreq.c,v 1.4 2003/06/25 03:56:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -66,12 +66,12 @@ raw_init()
 void
 raw_input(m0, proto, src, dst)
 	struct mbuf *m0;
-	register struct sockproto *proto;
+	struct sockproto *proto;
 	struct sockaddr *src, *dst;
 {
-	register struct rawcb *rp;
-	register struct mbuf *m = m0;
-	register int sockets = 0;
+	struct rawcb *rp;
+	struct mbuf *m = m0;
+	int sockets = 0;
 	struct socket *last;
 
 	last = 0;
@@ -152,26 +152,26 @@ raw_uabort(struct socket *so)
 /* pru_accept is EOPNOTSUPP */
 
 static int
-raw_uattach(struct socket *so, int proto, struct proc *p)
+raw_uattach(struct socket *so, int proto, struct thread *td)
 {
 	struct rawcb *rp = sotorawcb(so);
 	int error;
 
 	if (rp == 0)
 		return EINVAL;
-	if (p && (error = suser_xxx(p->p_ucred, 0)) != 0)
+	if ((error = suser(td)) != 0)
 		return error;
 	return raw_attach(so, proto);
 }
 
 static int
-raw_ubind(struct socket *so, struct sockaddr *nam, struct proc *p)
+raw_ubind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	return EINVAL;
 }
 
 static int
-raw_uconnect(struct socket *so, struct sockaddr *nam, struct proc *p)
+raw_uconnect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	return EINVAL;
 }
@@ -227,7 +227,7 @@ raw_upeeraddr(struct socket *so, struct sockaddr **nam)
 
 static int
 raw_usend(struct socket *so, int flags, struct mbuf *m,
-	  struct sockaddr *nam, struct mbuf *control, struct proc *p)
+	  struct sockaddr *nam, struct mbuf *control, struct thread *td)
 {
 	int error;
 	struct rawcb *rp = sotorawcb(so);

@@ -32,7 +32,7 @@
  *
  *	@(#)ktrace.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/ktrace.h,v 1.19.2.3 2001/01/06 09:58:23 alfred Exp $
- * $DragonFly: src/sys/sys/ktrace.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/ktrace.h,v 1.3 2003/06/25 03:56:10 dillon Exp $
  */
 
 #ifndef _SYS_KTRACE_H_
@@ -65,8 +65,8 @@ struct ktr_header {
 /*
  * Test for kernel trace point (MP SAFE)
  */
-#define KTRPOINT(p, type)	\
-	(((p)->p_traceflag & ((1<<(type))|KTRFAC_ACTIVE)) == (1<<(type)))
+#define KTRPOINT(td, type)	\
+	((td->td_proc) && (((td)->td_proc->p_traceflag & ((1<<(type))|KTRFAC_ACTIVE)) == (1<<(type))))
 
 /*
  * ktrace record types

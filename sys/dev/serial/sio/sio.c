@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.3 2003/06/23 17:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.4 2003/06/25 03:55:56 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -1519,8 +1519,7 @@ open_top:
 				goto open_top;
 			}
 		}
-		if (tp->t_state & TS_XCLUDE &&
-		    suser_xxx(td->td_proc->p_ucred, 0)) {
+		if (tp->t_state & TS_XCLUDE && suser(td)) {
 			error = EBUSY;
 			goto out;
 		}
@@ -2225,7 +2224,7 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		}
 		switch (cmd) {
 		case TIOCSETA:
-			error = suser_xxx(td->td_proc->p_ucred, 0);
+			error = suser(td);
 			if (error != 0)
 				return (error);
 			*ct = *(struct termios *)data;
@@ -2316,7 +2315,7 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		break;
 	case TIOCMSDTRWAIT:
 		/* must be root since the wait applies to following logins */
-		error = suser_xxx(td->td_proc->p_ucred, 0);
+		error = suser(td);
 		if (error != 0) {
 			splx(s);
 			return (error);

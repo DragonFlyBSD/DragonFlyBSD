@@ -32,7 +32,7 @@
  *
  *	@(#)namei.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/namei.h,v 1.29.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/namei.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/namei.h,v 1.3 2003/06/25 03:56:10 dillon Exp $
  */
 
 #ifndef _SYS_NAMEI_H_
@@ -47,7 +47,7 @@ struct componentname {
 	 */
 	u_long	cn_nameiop;	/* namei operation */
 	u_long	cn_flags;	/* flags to namei */
-	struct	proc *cn_proc;	/* process requesting lookup */
+	struct	thread *cn_td;	/* process requesting lookup */
 	struct	ucred *cn_cred;	/* credentials */
 	/*
 	 * Shared between lookup and commit routines.
@@ -149,28 +149,23 @@ struct nameidata {
  * Initialization of an nameidata structure.
  */
 static void NDINIT __P((struct nameidata *, u_long, u_long, enum uio_seg,
-	    const char *, struct proc *));
+	    const char *, struct thread *));
 static __inline void
-#if defined(__STDC__) || defined(__cplusplus)
 NDINIT(struct nameidata *ndp,
 	u_long op, u_long flags,
 	enum uio_seg segflg,
 	const char *namep,
-	struct proc *p)
-#else
-NDINIT(ndp, op, flags, segflg, namep, p)
-	struct nameidata *ndp;
-	u_long op, flags;
-	enum uio_seg segflg;
-	const char *namep;
-	struct proc *p;
-#endif
-{
+	struct thread *td
+) {
+	struct proc *p = td->td_proc;
+
+	KKASSERT(p != NULL);
 	ndp->ni_cnd.cn_nameiop = op;
 	ndp->ni_cnd.cn_flags = flags;
 	ndp->ni_segflg = segflg;
 	ndp->ni_dirp = namep;
-	ndp->ni_cnd.cn_proc = p;
+	ndp->ni_cnd.cn_td = td;
+	ndp->ni_cnd.cn_cred = p->p_ucred;
 }
 
 #define NDF_NO_DVP_RELE		0x00000001

@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.3 2003/06/22 17:39:48 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.4 2003/06/25 03:56:13 dillon Exp $
  */
 
 /*
@@ -545,7 +545,7 @@ vm_pageout_map_deactivate_pages(map, desired)
 	vm_object_t obj, bigobj;
 	int nothingwired;
 
-	if (lockmgr(&map->lock, LK_EXCLUSIVE | LK_NOWAIT, (void *)0, curproc)) {
+	if (lockmgr(&map->lock, LK_EXCLUSIVE | LK_NOWAIT, (void *)0, curthread)) {
 		return;
 	}
 
@@ -867,7 +867,7 @@ rescan0:
 			if (object->type == OBJT_VNODE) {
 				vp = object->handle;
 
-				if (vget(vp, LK_EXCLUSIVE|LK_NOOBJ|LK_TIMELOCK, curproc)) {
+				if (vget(vp, LK_EXCLUSIVE|LK_NOOBJ|LK_TIMELOCK, curthread)) {
 					++pageout_lock_miss;
 					if (object->flags & OBJ_MIGHTBEDIRTY)
 						    vnodes_skipped++;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_aout.c,v 1.59.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/imgact_aout.c,v 1.3 2003/06/24 02:11:55 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_aout.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -35,15 +35,15 @@
 #include <sys/imgact_aout.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
+#include <sys/systm.h>
+#include <sys/proc.h>
 #include <sys/namei.h>
 #include <sys/pioctl.h>
-#include <sys/proc.h>
 #include <sys/signalvar.h>
 #include <sys/stat.h>
 #include <sys/sysent.h>
 #include <sys/syscall.h>
 #include <sys/vnode.h>
-#include <sys/systm.h>
 #include <machine/md_var.h>
 
 #include <vm/vm.h>
@@ -246,29 +246,31 @@ exec_aout_imgact(imgp)
  */
 int
 aout_coredump(p, vp, limit)
-	register struct proc *p;
-	register struct vnode *vp;
+	struct proc *p;
+	struct vnode *vp;
 	off_t limit;
 {
-	register struct ucred *cred = p->p_ucred;
-	register struct vmspace *vm = p->p_vmspace;
+	struct ucred *cred = p->p_ucred;
+	struct vmspace *vm = p->p_vmspace;
 	int error;
 
 	if (ctob(UPAGES + vm->vm_dsize + vm->vm_ssize) >= limit)
 		return (EFAULT);
 	bcopy(p, &p->p_addr->u_kproc.kp_proc, sizeof(struct proc));
 	fill_eproc(p, &p->p_addr->u_kproc.kp_eproc);
-	error = cpu_coredump(p, vp, cred);
+	error = cpu_coredump(p->p_thread, vp, cred);
 	if (error == 0)
 		error = vn_rdwr_inchunks(UIO_WRITE, vp, vm->vm_daddr,
 		    (int)ctob(vm->vm_dsize), (off_t)ctob(UPAGES), UIO_USERSPACE,
-		    IO_UNIT | IO_DIRECT | IO_CORE, cred, (int *) NULL, p);
+		    IO_UNIT | IO_DIRECT | IO_CORE, cred, (int *) NULL,
+		    p->p_thread);
 	if (error == 0)
 		error = vn_rdwr_inchunks(UIO_WRITE, vp,
 		    (caddr_t) trunc_page(USRSTACK - ctob(vm->vm_ssize)),
 		    round_page(ctob(vm->vm_ssize)),
 		    (off_t)ctob(UPAGES) + ctob(vm->vm_dsize), UIO_USERSPACE,
-		    IO_UNIT | IO_DIRECT | IO_CORE, cred, (int *) NULL, p);
+		    IO_UNIT | IO_DIRECT | IO_CORE, cred, (int *) NULL,
+		    p->p_thread);
 	return (error);
 }
 

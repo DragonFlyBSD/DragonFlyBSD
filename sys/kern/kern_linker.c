@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -318,14 +318,14 @@ linker_find_file_by_name(const char* filename)
 	goto out;
     sprintf(koname, "%s.ko", filename);
 
-    lockmgr(&lock, LK_SHARED, 0, curproc);
+    lockmgr(&lock, LK_SHARED, 0, curthread);
     for (lf = TAILQ_FIRST(&linker_files); lf; lf = TAILQ_NEXT(lf, link)) {
 	if (!strcmp(lf->filename, koname))
 	    break;
 	if (!strcmp(lf->filename, filename))
 	    break;
     }
-    lockmgr(&lock, LK_RELEASE, 0, curproc);
+    lockmgr(&lock, LK_RELEASE, 0, curthread);
 
 out:
     if (koname)
@@ -338,11 +338,11 @@ linker_find_file_by_id(int fileid)
 {
     linker_file_t lf = 0;
 
-    lockmgr(&lock, LK_SHARED, 0, curproc);
+    lockmgr(&lock, LK_SHARED, 0, curthread);
     for (lf = TAILQ_FIRST(&linker_files); lf; lf = TAILQ_NEXT(lf, link))
 	if (lf->id == fileid)
 	    break;
-    lockmgr(&lock, LK_RELEASE, 0, curproc);
+    lockmgr(&lock, LK_RELEASE, 0, curthread);
 
     return lf;
 }
@@ -361,7 +361,7 @@ linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
 	filename = pathname;
 
     KLD_DPF(FILE, ("linker_make_file: new file, filename=%s\n", filename));
-    lockmgr(&lock, LK_EXCLUSIVE, 0, curproc);
+    lockmgr(&lock, LK_EXCLUSIVE, 0, curthread);
     namelen = strlen(filename) + 1;
     lf = malloc(sizeof(struct linker_file) + namelen, M_LINKER, M_WAITOK);
     if (!lf)
@@ -384,7 +384,7 @@ linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
     TAILQ_INSERT_TAIL(&linker_files, lf, link);
 
 out:
-    lockmgr(&lock, LK_RELEASE, 0, curproc);
+    lockmgr(&lock, LK_RELEASE, 0, curthread);
     return lf;
 }
 
@@ -401,7 +401,7 @@ linker_file_unload(linker_file_t file)
 	return EPERM; 
 
     KLD_DPF(FILE, ("linker_file_unload: lf->refs=%d\n", file->refs));
-    lockmgr(&lock, LK_EXCLUSIVE, 0, curproc);
+    lockmgr(&lock, LK_EXCLUSIVE, 0, curthread);
     if (file->refs == 1) {
 	KLD_DPF(FILE, ("linker_file_unload: file is unloading, informing modules\n"));
 	/*
@@ -416,7 +416,7 @@ linker_file_unload(linker_file_t file)
 	    if ((error = module_unload(mod)) != 0) {
 		KLD_DPF(FILE, ("linker_file_unload: module %x vetoes unload\n",
 			       mod));
-		lockmgr(&lock, LK_RELEASE, 0, curproc);
+		lockmgr(&lock, LK_RELEASE, 0, curthread);
 		goto out;
 	    }
 
@@ -426,7 +426,7 @@ linker_file_unload(linker_file_t file)
 
     file->refs--;
     if (file->refs > 0) {
-	lockmgr(&lock, LK_RELEASE, 0, curproc);
+	lockmgr(&lock, LK_RELEASE, 0, curthread);
 	goto out;
     }
 
@@ -437,7 +437,7 @@ linker_file_unload(linker_file_t file)
     }
 
     TAILQ_REMOVE(&linker_files, file, link);
-    lockmgr(&lock, LK_RELEASE, 0, curproc);
+    lockmgr(&lock, LK_RELEASE, 0, curthread);
 
     for (i = 0; i < file->ndeps; i++)
 	linker_file_unload(file->deps[i]);
@@ -651,7 +651,8 @@ linker_ddb_symbol_values(c_linker_sym_t sym, linker_symval_t *symval)
 int
 kldload(struct kldload_args *uap)
 {
-    struct proc *p = curproc;
+    struct thread *td = curthread;
+    struct proc *p = td->td_proc;
     char* filename = NULL, *modulename;
     linker_file_t lf;
     int error = 0;
@@ -661,7 +662,7 @@ kldload(struct kldload_args *uap)
     if (securelevel > 0)	/* redundant, but that's OK */
 	return EPERM;
 
-    if ((error = suser()) != 0)
+    if ((error = suser(td)) != 0)
 	return error;
 
     filename = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
@@ -694,13 +695,14 @@ out:
 int
 kldunload(struct kldunload_args *uap)
 {
+    struct thread *td = curthread;
     linker_file_t lf;
     int error = 0;
 
     if (securelevel > 0)	/* redundant, but that's OK */
 	return EPERM;
 
-    if ((error = suser()) != 0)
+    if ((error = suser(td)) != 0)
 	return error;
 
     lf = linker_find_file_by_id(SCARG(uap, fileid));
@@ -1005,10 +1007,13 @@ char *
 linker_search_path(const char *name)
 {
     struct nameidata	nd;
-    struct proc		*p = curproc;	/* XXX */
+    struct thread	*td = curthread;
+    struct proc		*p = td->td_proc;
     char		*cp, *ep, *result;
     int			error;
     enum vtype		type;
+
+    KKASSERT(p != NULL);
 
     /* qualified at all? */
     if (index(name, '/'))
@@ -1032,13 +1037,13 @@ linker_search_path(const char *name)
 	 * Attempt to open the file, and return the path if we succeed and it's
 	 * a regular file.
 	 */
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, result, p);
+	NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, result, td);
 	error = vn_open(&nd, FREAD, 0);
 	if (error == 0) {
 	    NDFREE(&nd, NDF_ONLY_PNBUF);
 	    type = nd.ni_vp->v_type;
-	    VOP_UNLOCK(nd.ni_vp, 0, p);
-	    vn_close(nd.ni_vp, FREAD, p->p_ucred, p);
+	    VOP_UNLOCK(nd.ni_vp, 0, td);
+	    vn_close(nd.ni_vp, FREAD, p->p_ucred, td);
 	    if (type == VREG)
 		return(result);
 	}

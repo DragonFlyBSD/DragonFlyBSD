@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.14 2003/06/23 23:36:14 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.15 2003/06/25 03:56:10 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -250,7 +250,7 @@ struct	proc {
 #define	P_INMEM		0x00004	/* Loaded into memory. */
 #define	P_PPWAIT	0x00010	/* Parent is waiting for child to exec/exit. */
 #define	P_PROFIL	0x00020	/* Has started profiling. */
-#define	P_SELECT	0x00040	/* Selecting; wakeup/waiting danger. */
+#define P_SELECT	0x00040 /* Selecting; wakeup/waiting danger. */
 #define	P_SINTR		0x00080	/* Sleep is interruptible. */
 #define	P_SUGID		0x00100	/* Had set id privileges since last exec. */
 #define	P_SYSTEM	0x00200	/* System proc: no sigs, stats or swapping. */
@@ -406,9 +406,9 @@ void	schedclock __P((struct proc *));
 void	setrunnable __P((struct proc *));
 void	setrunqueue __P((struct proc *));
 void	sleepinit __P((void));
-int	suser __P((void));
+int	suser __P((struct thread *td));
 int	suser_proc __P((struct proc *p));
-int	suser_xxx __P((struct ucred *cred, int flag));
+int	suser_cred __P((struct ucred *cred, int flag));
 void	remrunqueue __P((struct proc *));
 void	cpu_heavy_switch __P((struct thread *));
 void	cpu_lwkt_switch __P((struct thread *));
@@ -422,7 +422,7 @@ int	fork1 __P((struct proc *, int, struct proc **));
 void	start_forked_proc __P((struct proc *, struct proc *));
 int	trace_req __P((struct proc *));
 void	cpu_wait __P((struct proc *));
-int	cpu_coredump __P((struct proc *, struct vnode *, struct ucred *));
+int	cpu_coredump __P((struct thread *, struct vnode *, struct ucred *));
 void	setsugid __P((void));
 void	faultin __P((struct proc *p));
 

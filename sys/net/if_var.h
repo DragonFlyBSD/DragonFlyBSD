@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.3 2003/06/25 03:56:02 dillon Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -398,7 +398,7 @@ int	if_setlladdr(struct ifnet *, const u_char *, int);
 void	if_unroute(struct ifnet *, int flag, int fam);
 void	if_up(struct ifnet *);
 /*void	ifinit(void);*/ /* declared in systm.h for main() */
-int	ifioctl(struct socket *, u_long, caddr_t, struct proc *);
+int	ifioctl(struct socket *, u_long, caddr_t, struct thread *);
 int	ifpromisc(struct ifnet *, int);
 struct	ifnet *ifunit(const char *);
 struct	ifnet *if_withname(struct sockaddr *);

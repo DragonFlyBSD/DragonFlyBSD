@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_lookup.c,v 1.30.2.1 2000/11/03 15:55:39 bp Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.2 2003/06/17 04:28:47 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.3 2003/06/25 03:56:01 dillon Exp $ */
 /*	$NetBSD: msdosfs_lookup.c,v 1.37 1997/11/17 15:36:54 ws Exp $	*/
 
 /*-
@@ -51,9 +51,10 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/namei.h>
 #include <sys/buf.h>
 #include <sys/vnode.h>
+#include <sys/proc.h>
+#include <sys/namei.h>
 #include <sys/mount.h>
 
 #include <msdosfs/bpb.h>
@@ -110,7 +111,7 @@ msdosfs_lookup(ap)
 	u_char dosfilename[12];
 	int flags = cnp->cn_flags;
 	int nameiop = cnp->cn_nameiop;
-	struct proc *p = cnp->cn_proc;
+	struct thread *td = cnp->cn_td;
 	int unlen;
 
 	int wincnt = 1;
@@ -340,7 +341,7 @@ notfound:
 		 * Access for write is interpreted as allowing
 		 * creation of files in the directory.
 		 */
-		error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred, cnp->cn_proc);
+		error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred, cnp->cn_td);
 		if (error)
 			return (error);
 		/*
@@ -365,7 +366,7 @@ notfound:
 		 */
 		cnp->cn_flags |= SAVENAME;
 		if (!lockparent) {
-			VOP_UNLOCK(vdp, 0, p);
+			VOP_UNLOCK(vdp, 0, td);
 			cnp->cn_flags |= PDIRUNLOCK;
 		}
 		return (EJUSTRETURN);
@@ -438,7 +439,7 @@ foundroot:
 		/*
 		 * Write access to directory required to delete files.
 		 */
-		error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred, cnp->cn_proc);
+		error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred, cnp->cn_td);
 		if (error)
 			return (error);
 
@@ -456,7 +457,7 @@ foundroot:
 			return (error);
 		*vpp = DETOV(tdp);
 		if (!lockparent) {
-			VOP_UNLOCK(vdp, 0, p);
+			VOP_UNLOCK(vdp, 0, td);
 			cnp->cn_flags |= PDIRUNLOCK;
 		}
 		return (0);
@@ -473,7 +474,7 @@ foundroot:
 		if (blkoff == MSDOSFSROOT_OFS)
 			return EROFS;				/* really? XXX */
 
-		error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred, cnp->cn_proc);
+		error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred, cnp->cn_td);
 		if (error)
 			return (error);
 
@@ -489,7 +490,7 @@ foundroot:
 		*vpp = DETOV(tdp);
 		cnp->cn_flags |= SAVENAME;
 		if (!lockparent) {
-			VOP_UNLOCK(vdp, 0, p);
+			VOP_UNLOCK(vdp, 0, td);
 			cnp->cn_flags |= PDIRUNLOCK;
 		}
 		return (0);
@@ -516,16 +517,16 @@ foundroot:
 	 */
 	pdp = vdp;
 	if (flags & ISDOTDOT) {
-		VOP_UNLOCK(pdp, 0, p);
+		VOP_UNLOCK(pdp, 0, td);
 		cnp->cn_flags |= PDIRUNLOCK;
 		error = deget(pmp, cluster, blkoff,  &tdp);
 		if (error) {
-			vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY, p); 
+			vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY, td); 
 			cnp->cn_flags &= ~PDIRUNLOCK;
 			return (error);
 		}
 		if (lockparent && (flags & ISLASTCN)) {
-			error = vn_lock(pdp, LK_EXCLUSIVE, p);
+			error = vn_lock(pdp, LK_EXCLUSIVE, td);
 			if (error) {
 				vput(DETOV(tdp));
 				return (error);
@@ -540,7 +541,7 @@ foundroot:
 		if ((error = deget(pmp, cluster, blkoff, &tdp)) != 0)
 			return (error);
 		if (!lockparent || !(flags & ISLASTCN)) {
-			VOP_UNLOCK(pdp, 0, p);
+			VOP_UNLOCK(pdp, 0, td);
 			cnp->cn_flags |= PDIRUNLOCK;
 		}
 		*vpp = DETOV(tdp);

@@ -1,6 +1,6 @@
 /*-
  * $FreeBSD: src/sys/dev/dgb/dgm.c,v 1.31.2.3 2001/10/07 09:02:25 brian Exp $
- * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.2 2003/06/17 04:28:23 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.3 2003/06/25 03:55:47 dillon Exp $
  *
  *  This driver and the associated header files support the ISA PC/Xem
  *  Digiboards.  Its evolutionary roots are described below.
@@ -920,7 +920,7 @@ dgmshutdown(device_t dev)
 
 /* ARGSUSED */
 static int
-dgmopen(dev_t dev, int flag, int mode, struct proc *p)
+dgmopen(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct dgm_softc *sc;
 	struct tty *tp;
@@ -1008,7 +1008,7 @@ open_top:
 			splx(s);
 			goto open_top;
 		}
-		if (tp->t_state & TS_XCLUDE && suser(p)) {
+		if (tp->t_state & TS_XCLUDE && suser(td)) {
 			error = EBUSY;
 			goto out;
 		}
@@ -1102,7 +1102,7 @@ out:
 
 /*ARGSUSED*/
 static int
-dgmclose(dev_t dev, int flag, int mode, struct proc *p)
+dgmclose(dev_t dev, int flag, int mode, struct thread *td)
 {
 	int		mynor;
 	struct tty	*tp;
@@ -1476,7 +1476,7 @@ dgmpoll(void *unit_c)
 }
 
 static int
-dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
+dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
 	struct dgm_softc *sc;
 	int unit, pnum;
@@ -1519,7 +1519,7 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
 		}
 		switch (cmd) {
 		case TIOCSETA:
-			error = suser(p);
+			error = suser(td);
 			if (error != 0)
 				return (error);
 			*ct = *(struct termios *)data;
@@ -1741,7 +1741,7 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
 		break;
 	case TIOCMSDTRWAIT:
 		/* must be root since the wait applies to following logins */
-		error = suser(p);
+		error = suser(td);
 		if (error != 0) {
 			splx(s);
 			return (error);

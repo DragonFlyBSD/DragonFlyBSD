@@ -32,7 +32,7 @@
  *
  *	@(#)sys_socket.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/sys_socket.c,v 1.28.2.2 2001/02/26 04:23:16 jlemon Exp $
- * $DragonFly: src/sys/kern/sys_socket.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_socket.c,v 1.3 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -58,37 +58,33 @@ struct	fileops socketops = {
 
 /* ARGSUSED */
 int
-soo_read(fp, uio, cred, flags, p)
-	struct file *fp;
-	struct uio *uio;
-	struct ucred *cred;
-	struct proc *p;
-	int flags;
-{
+soo_read(
+	struct file *fp,
+	struct uio *uio,
+	struct ucred *cred,
+	int flags,
+	struct thread *td
+) {
 	struct socket *so = (struct socket *)fp->f_data;
 	return so->so_proto->pr_usrreqs->pru_soreceive(so, 0, uio, 0, 0, 0);
 }
 
 /* ARGSUSED */
 int
-soo_write(fp, uio, cred, flags, p)
-	struct file *fp;
-	struct uio *uio;
-	struct ucred *cred;
-	struct proc *p;
-	int flags;
-{
+soo_write(
+	struct file *fp,
+	struct uio *uio,
+	struct ucred *cred,
+	int flags,
+	struct thread *td
+) {
 	struct socket *so = (struct socket *)fp->f_data;
 	return so->so_proto->pr_usrreqs->pru_sosend(so, 0, uio, 0, 0, 0,
-						    uio->uio_procp);
+						    uio->uio_td);
 }
 
 int
-soo_ioctl(fp, cmd, data, p)
-	struct file *fp;
-	u_long cmd;
-	register caddr_t data;
-	struct proc *p;
+soo_ioctl(struct file *fp, u_long cmd, caddr_t data, struct thread *td)
 {
 	register struct socket *so = (struct socket *)fp->f_data;
 
@@ -141,28 +137,21 @@ soo_ioctl(fp, cmd, data, p)
 	 * different entry since a socket's unnecessary
 	 */
 	if (IOCGROUP(cmd) == 'i')
-		return (ifioctl(so, cmd, data, p));
+		return (ifioctl(so, cmd, data, td));
 	if (IOCGROUP(cmd) == 'r')
-		return (rtioctl(cmd, data, p));
-	return ((*so->so_proto->pr_usrreqs->pru_control)(so, cmd, data, 0, p));
+		return (rtioctl(cmd, data, td));
+	return ((*so->so_proto->pr_usrreqs->pru_control)(so, cmd, data, 0, td));
 }
 
 int
-soo_poll(fp, events, cred, p)
-	struct file *fp;
-	int events;
-	struct ucred *cred;
-	struct proc *p;
+soo_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
 {
 	struct socket *so = (struct socket *)fp->f_data;
-	return so->so_proto->pr_usrreqs->pru_sopoll(so, events, cred, p);
+	return so->so_proto->pr_usrreqs->pru_sopoll(so, events, cred, td);
 }
 
 int
-soo_stat(fp, ub, p)
-	struct file *fp;
-	struct stat *ub;
-	struct proc *p;
+soo_stat(struct file *fp, struct stat *ub, struct thread *td)
 {
 	struct socket *so = (struct socket *)fp->f_data;
 
@@ -185,9 +174,7 @@ soo_stat(fp, ub, p)
 
 /* ARGSUSED */
 int
-soo_close(fp, p)
-	struct file *fp;
-	struct proc *p;
+soo_close(struct file *fp, struct thread *td)
 {
 	int error = 0;
 

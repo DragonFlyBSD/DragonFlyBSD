@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.5 2003/06/22 04:30:43 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.6 2003/06/25 03:56:12 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -491,7 +491,7 @@ retry:
 			 */
 			if (lockmgr(&vm->vm_map.lock,
 					LK_EXCLUSIVE | LK_NOWAIT,
-					(void *)0, curproc)) {
+					(void *)0, curthread)) {
 				vmspace_free(vm);
 				continue;
 			}

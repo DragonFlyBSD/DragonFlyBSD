@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_ioctl.h,v 1.3 1999/08/28 00:51:17 peter Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.h,v 1.3 2003/06/25 03:56:10 dillon Exp $
  */
 
 #ifndef	_SVR4_IOCTL_H_
@@ -47,17 +47,17 @@
 #define	SVR4_IOW(g,n,t)		SVR4_IOC(SVR4_IOC_IN,	(g), (n), sizeof(t))
 #define	SVR4_IOWR(g,n,t)	SVR4_IOC(SVR4_IOC_INOUT,(g), (n), sizeof(t))
 
-int	svr4_stream_ti_ioctl __P((struct file *, struct proc *, register_t *,
+int	svr4_stream_ti_ioctl __P((struct file *, struct thread *, register_t *,
 			          int, u_long, caddr_t));
-int	svr4_stream_ioctl    __P((struct file *, struct proc *, register_t *,
+int	svr4_stream_ioctl    __P((struct file *, struct thread *, register_t *,
 				  int, u_long, caddr_t));
-int	svr4_term_ioctl      __P((struct file *, struct proc *, register_t *,
+int	svr4_term_ioctl      __P((struct file *, struct thread *, register_t *,
 				  int, u_long, caddr_t));
-int	svr4_ttold_ioctl     __P((struct file *, struct proc *, register_t *,
+int	svr4_ttold_ioctl     __P((struct file *, struct thread *, register_t *,
 				  int, u_long, caddr_t));
-int	svr4_fil_ioctl	     __P((struct file *, struct proc *, register_t *,
+int	svr4_fil_ioctl	     __P((struct file *, struct thread *, register_t *,
 				  int, u_long, caddr_t));
-int	svr4_sock_ioctl	     __P((struct file *, struct proc *, register_t *,
+int	svr4_sock_ioctl	     __P((struct file *, struct thread *, register_t *,
 				  int, u_long, caddr_t));
 
 #endif /* !_SVR4_IOCTL_H_ */

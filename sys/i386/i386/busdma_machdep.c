@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
- * $DragonFly: src/sys/i386/i386/Attic/busdma_machdep.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/busdma_machdep.c,v 1.3 2003/06/25 03:55:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -499,7 +499,7 @@ static int
 _bus_dmamap_load_buffer(bus_dma_tag_t dmat,
 			bus_dma_segment_t segs[],
 			void *buf, bus_size_t buflen,
-			struct proc *p,
+			struct thread *td,
 			int flags,
 			vm_offset_t *lastaddrp,
 			int *segp,
@@ -511,8 +511,8 @@ _bus_dmamap_load_buffer(bus_dma_tag_t dmat,
 	int seg;
 	pmap_t pmap;
 
-	if (p != NULL)
-		pmap = vmspace_pmap(p->p_vmspace);
+	if (td->td_proc != NULL)
+		pmap = vmspace_pmap(td->td_proc->p_vmspace);
 	else
 		pmap = NULL;
 
@@ -647,7 +647,7 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 	int nsegs, error, first, i;
 	bus_size_t resid;
 	struct iovec *iov;
-	struct proc *p = NULL;
+	struct thread *td = NULL;
 
 	KASSERT(dmat->lowaddr >= ptoa(Maxmem) || map != NULL,
 		("bus_dmamap_load_uio: No support for bounce pages!"));
@@ -656,8 +656,8 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 	iov = uio->uio_iov;
 
 	if (uio->uio_segflg == UIO_USERSPACE) {
-		p = uio->uio_procp;
-		KASSERT(p != NULL,
+		td = uio->uio_td;
+		KASSERT(td != NULL && td->td_proc != NULL,
 			("bus_dmamap_load_uio: USERSPACE but no proc"));
 	}
 
@@ -676,7 +676,7 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 		error = _bus_dmamap_load_buffer(dmat,
 				dm_segments,
 				addr, minlen,
-				p, flags, &lastaddr, &nsegs, first);
+				td, flags, &lastaddr, &nsegs, first);
 		first = 0;
 
 		resid -= minlen;

@@ -36,7 +36,7 @@
  *
  *	@(#)union.h	8.9 (Berkeley) 12/10/94
  * $FreeBSD: src/sys/miscfs/union/union.h,v 1.17 1999/12/29 04:54:48 peter Exp $
- * $DragonFly: src/sys/vfs/union/union.h,v 1.2 2003/06/17 04:28:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union.h,v 1.3 2003/06/25 03:56:01 dillon Exp $
  */
 
 struct union_args {
@@ -120,23 +120,23 @@ extern int union_allocvp __P((struct vnode **, struct mount *,
 				struct componentname *, struct vnode *,
 				struct vnode *, int));
 extern int union_freevp __P((struct vnode *));
-extern struct vnode *union_dircache __P((struct vnode *, struct proc *));
+extern struct vnode *union_dircache __P((struct vnode *, struct thread *));
 extern int union_copyup __P((struct union_node *, int, struct ucred *,
-				struct proc *));
+				struct thread *));
 extern int union_dowhiteout __P((struct union_node *, struct ucred *,
-					struct proc *));
+					struct thread *));
 extern int union_mkshadow __P((struct union_mount *, struct vnode *,
 				struct componentname *, struct vnode **));
 extern int union_mkwhiteout __P((struct union_mount *, struct vnode *,
 				struct componentname *, char *));
 extern int union_cn_close __P((struct vnode *, int, struct ucred *,
-				struct proc *));
+				struct thread *));
 extern void union_removed_upper __P((struct union_node *un));
 extern struct vnode *union_lowervp __P((struct vnode *));
 extern void union_newsize __P((struct vnode *, off_t, off_t));
 extern void union_vm_coherency __P((struct vnode *, struct uio *, int));
 
-extern int (*union_dircheckp) __P((struct proc *, struct vnode **,
+extern int (*union_dircheckp) __P((struct thread *, struct vnode **,
 				 struct file *));
 
 #define	MOUNTTOUNIONMOUNT(mp) ((struct union_mount *)((mp)->mnt_data))

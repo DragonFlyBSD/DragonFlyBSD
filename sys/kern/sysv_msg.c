@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_msg.c,v 1.23.2.5 2002/12/31 08:54:53 maxim Exp $ */
-/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.3 2003/06/23 17:55:41 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.4 2003/06/25 03:55:57 dillon Exp $ */
 
 /*
  * Implementation of SVID messages
@@ -248,7 +248,8 @@ struct msgctl_args {
 int
 msgctl(struct msgctl_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	int msqid = uap->msqid;
 	int cmd = uap->cmd;
 	struct msqid_ds *user_msqptr = uap->buf;
@@ -329,7 +330,7 @@ msgctl(struct msgctl_args *uap)
 		if ((eval = copyin(user_msqptr, &msqbuf, sizeof(msqbuf))) != 0)
 			return(eval);
 		if (msqbuf.msg_qbytes > msqptr->msg_qbytes) {
-			eval = suser();
+			eval = suser(td);
 			if (eval)
 				return(eval);
 		}

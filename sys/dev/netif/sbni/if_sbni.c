@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.3 2003/06/23 17:55:34 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.4 2003/06/25 03:55:48 dillon Exp $
  */
 
 /*
@@ -1050,7 +1050,7 @@ timeout_change_level(struct sbni_softc *sc)
 static int
 sbni_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;	/* XXX */
 	struct sbni_softc *sc;
 	struct ifreq *ifr;
 	struct sbni_in_stats *in_stats;
@@ -1123,7 +1123,7 @@ sbni_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 
 	case SIOCSHWFLAGS:	/* set flags */
 		/* root only */
-		error = suser_xxx(p->p_ucred, 0);
+		error = suser(td);	/* NOTE: returns EPERM if no proc */
 		if (error)
 			break;
 		flags = *(struct sbni_flags*)&ifr->ifr_data;
@@ -1145,7 +1145,7 @@ sbni_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 		break;
 
 	case SIOCRINSTATS:
-		if (!(error = suser_xxx(p->p_ucred, 0)))	/* root only */
+		if (!(error = suser(td)))	/* root only */
 			bzero(&sc->in_stats, sizeof(struct sbni_in_stats));
 		break;
 

@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.15 2003/01/24 10:52:50 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.3 2003/06/23 17:55:46 dillon Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.4 2003/06/25 03:56:04 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -486,7 +486,7 @@ SYSCTL_INT(_net_inet_raw, OID_AUTO, recvspace, CTLFLAG_RW,
     &rip_recvspace, 0, "Maximum incoming raw IP datagram size");
 
 static int
-rip_attach(struct socket *so, int proto, struct proc *p)
+rip_attach(struct socket *so, int proto, struct thread *td)
 {
 	struct inpcb *inp;
 	int error, s;
@@ -494,14 +494,14 @@ rip_attach(struct socket *so, int proto, struct proc *p)
 	inp = sotoinpcb(so);
 	if (inp)
 		panic("rip_attach");
-	if (p && (error = suser_xxx(p->p_ucred, 0)) != 0)
+	if ((error = suser(td)) != 0)
 		return error;
 
 	error = soreserve(so, rip_sendspace, rip_recvspace);
 	if (error)
 		return error;
 	s = splnet();
-	error = in_pcballoc(so, &ripcbinfo, p);
+	error = in_pcballoc(so, &ripcbinfo, td);
 	splx(s);
 	if (error)
 		return error;
@@ -548,7 +548,7 @@ rip_disconnect(struct socket *so)
 }
 
 static int
-rip_bind(struct socket *so, struct sockaddr *nam, struct proc *p)
+rip_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct inpcb *inp = sotoinpcb(so);
 	struct sockaddr_in *addr = (struct sockaddr_in *)nam;
@@ -566,7 +566,7 @@ rip_bind(struct socket *so, struct sockaddr *nam, struct proc *p)
 }
 
 static int
-rip_connect(struct socket *so, struct sockaddr *nam, struct proc *p)
+rip_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct inpcb *inp = sotoinpcb(so);
 	struct sockaddr_in *addr = (struct sockaddr_in *)nam;
@@ -592,7 +592,7 @@ rip_shutdown(struct socket *so)
 
 static int
 rip_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
-	 struct mbuf *control, struct proc *p)
+	 struct mbuf *control, struct thread *td)
 {
 	struct inpcb *inp = sotoinpcb(so);
 	u_long dst;

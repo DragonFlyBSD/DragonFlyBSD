@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/wfd.c,v 1.35 2000/01/29 16:00:33 peter Exp $
- * $DragonFly: src/sys/dev/disk/wfd/Attic/wfd.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wfd/Attic/wfd.c,v 1.3 2003/06/25 03:55:54 dillon Exp $
  */
 
 /*
@@ -631,21 +631,21 @@ int wfdioctl (dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
 		}
 	switch (cmd) {
 	case CDIOCSETDEBUG:
-		error = suser(p);
+		error = suser(td);
 		if (error)
 			return (error);
 		t->flags |= F_DEBUG;
 		atapi_debug (t->ata, 1);
 		return 0;
 	case CDIOCCLRDEBUG:
-		error = suser(p);
+		error = suser(td);
 		if (error)
 			return (error);
 		t->flags &= ~F_DEBUG;
 		atapi_debug (t->ata, 0);
 		return 0;
 	case CDIOCRESET:
-		error = suser(p);
+		error = suser(td);
 		if (error)
 			return (error);
 		return wfd_request_wait (t, ATAPI_TEST_UNIT_READY,

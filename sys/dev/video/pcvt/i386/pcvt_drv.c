@@ -51,7 +51,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:03:36 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_drv.c,v 1.63.2.1 2001/02/26 04:23:13 jlemon Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.3 2003/06/25 03:55:54 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -472,7 +472,7 @@ pcopen(Dev_t dev, int flag, int mode, struct proc *p)
 		(*linesw[tp->t_line].l_modem)(tp, 1);	/* fake connection */
 		winsz = 1;			/* set winsize later */
 	}
-	else if (tp->t_state & TS_XCLUDE && suser(p))
+	else if (tp->t_state & TS_XCLUDE && suser(td))
 		return (EBUSY);
 
 #if PCVT_NETBSD || (PCVT_FREEBSD >= 200)
@@ -1425,7 +1425,7 @@ pcvt_xmode_set(int on, struct proc *p)
 		 * This prevents us from granting the potential security hole
 		 * `IO priv' to insufficiently privileged processes.
 		 */
-		error = suser(p);
+		error = suser(td);
 		if (error != 0)
 			return (error);
 		if (securelevel > 0)

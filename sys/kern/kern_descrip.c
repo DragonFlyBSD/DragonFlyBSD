@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.17 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -62,6 +62,8 @@
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
+
+#include <sys/file2.h>
 
 static MALLOC_DEFINE(M_FILEDESC, "file desc", "Open file descriptor table");
 static MALLOC_DEFINE(M_FILEDESC_TO_LEADER, "file desc to leader",
@@ -92,14 +94,14 @@ static struct cdevsw fildesc_cdevsw = {
 
 static int do_dup __P((struct filedesc *fdp, int old, int new, register_t *retval, struct proc *p));
 static int badfo_readwrite __P((struct file *fp, struct uio *uio,
-    struct ucred *cred, int flags, struct proc *p));
+    struct ucred *cred, int flags, struct thread *td));
 static int badfo_ioctl __P((struct file *fp, u_long com, caddr_t data,
-    struct proc *p));
+    struct thread *td));
 static int badfo_poll __P((struct file *fp, int events,
-    struct ucred *cred, struct proc *p));
+    struct ucred *cred, struct thread *td));
 static int badfo_kqfilter __P((struct file *fp, struct knote *kn));
-static int badfo_stat __P((struct file *fp, struct stat *sb, struct proc *p));
-static int badfo_close __P((struct file *fp, struct proc *p));
+static int badfo_stat __P((struct file *fp, struct stat *sb, struct thread *td));
+static int badfo_close __P((struct file *fp, struct thread *td));
 
 /*
  * Descriptor management.
@@ -210,7 +212,8 @@ struct fcntl_args {
 int
 fcntl(struct fcntl_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct filedesc *fdp = p->p_fd;
 	struct file *fp;
 	char *pop;
@@ -218,6 +221,8 @@ fcntl(struct fcntl_args *uap)
 	int i, tmp, error, flg = F_POSIX;
 	struct flock fl;
 	u_int newmin;
+
+	KKASSERT(p);
 
 	if ((unsigned)uap->fd >= fdp->fd_nfiles ||
 	    (fp = fdp->fd_ofiles[uap->fd]) == NULL)
@@ -252,33 +257,33 @@ fcntl(struct fcntl_args *uap)
 		fp->f_flag &= ~FCNTLFLAGS;
 		fp->f_flag |= FFLAGS(uap->arg & ~O_ACCMODE) & FCNTLFLAGS;
 		tmp = fp->f_flag & FNONBLOCK;
-		error = fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, p);
+		error = fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, td);
 		if (error) {
-			fdrop(fp, p);
+			fdrop(fp, td);
 			return (error);
 		}
 		tmp = fp->f_flag & FASYNC;
-		error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp, p);
+		error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp, td);
 		if (!error) {
-			fdrop(fp, p);
+			fdrop(fp, td);
 			return (0);
 		}
 		fp->f_flag &= ~FNONBLOCK;
 		tmp = 0;
-		(void)fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, p);
-		fdrop(fp, p);
+		(void)fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, td);
+		fdrop(fp, td);
 		return (error);
 
 	case F_GETOWN:
 		fhold(fp);
-		error = fo_ioctl(fp, FIOGETOWN, (caddr_t)p->p_retval, p);
-		fdrop(fp, p);
+		error = fo_ioctl(fp, FIOGETOWN, (caddr_t)p->p_retval, td);
+		fdrop(fp, td);
 		return(error);
 
 	case F_SETOWN:
 		fhold(fp);
-		error = fo_ioctl(fp, FIOSETOWN, (caddr_t)&uap->arg, p);
-		fdrop(fp, p);
+		error = fo_ioctl(fp, FIOSETOWN, (caddr_t)&uap->arg, td);
+		fdrop(fp, td);
 		return(error);
 
 	case F_SETLKW:
@@ -298,7 +303,7 @@ fcntl(struct fcntl_args *uap)
 		error = copyin((caddr_t)(intptr_t)uap->arg, (caddr_t)&fl,
 		    sizeof(fl));
 		if (error) {
-			fdrop(fp, p);
+			fdrop(fp, td);
 			return (error);
 		}
 		if (fl.l_whence == SEEK_CUR)
@@ -341,7 +346,7 @@ fcntl(struct fcntl_args *uap)
 			(void) VOP_ADVLOCK(vp, (caddr_t)p->p_leader,
 					   F_UNLCK, &fl, F_POSIX);
 		}
-		fdrop(fp, p);
+		fdrop(fp, td);
 		return(error);
 
 	case F_GETLK:
@@ -356,19 +361,19 @@ fcntl(struct fcntl_args *uap)
 		error = copyin((caddr_t)(intptr_t)uap->arg, (caddr_t)&fl,
 		    sizeof(fl));
 		if (error) {
-			fdrop(fp, p);
+			fdrop(fp, td);
 			return (error);
 		}
 		if (fl.l_type != F_RDLCK && fl.l_type != F_WRLCK &&
 		    fl.l_type != F_UNLCK) {
-			fdrop(fp, p);
+			fdrop(fp, td);
 			return (EINVAL);
 		}
 		if (fl.l_whence == SEEK_CUR)
 			fl.l_start += fp->f_offset;
 		error = VOP_ADVLOCK(vp, (caddr_t)p->p_leader, F_GETLK,
 			    &fl, F_POSIX);
-		fdrop(fp, p);
+		fdrop(fp, td);
 		if (error == 0) {
 			error = copyout((caddr_t)&fl,
 				    (caddr_t)(intptr_t)uap->arg, sizeof(fl));
@@ -390,6 +395,7 @@ do_dup(fdp, old, new, retval, p)
 	register_t *retval;
 	struct proc *p;
 {
+	struct thread *td = p->p_thread;
 	struct file *fp;
 	struct file *delfp;
 	int holdleaders;
@@ -431,7 +437,7 @@ do_dup(fdp, old, new, retval, p)
 	 * close() were performed on it).
 	 */
 	if (delfp) {
-		(void) closef(delfp, p);
+		(void) closef(delfp, td);
 		if (holdleaders) {
 			fdp->fd_holdleaderscount--;
 			if (fdp->fd_holdleaderscount == 0 &&
@@ -547,7 +553,7 @@ fsetown(pgid, sigiop)
 		sigio->sio_pgrp = pgrp;
 	}
 	sigio->sio_pgid = pgid;
-	crhold(curproc->p_ucred);
+	curproc->p_ucred = crhold(curproc->p_ucred);
 	sigio->sio_ucred = curproc->p_ucred;
 	/* It would be convenient if p_ruid was in ucred. */
 	sigio->sio_ruid = curproc->p_ucred->cr_ruid;
@@ -580,12 +586,16 @@ struct close_args {
 int
 close(struct close_args *uap)
 {
-	struct proc *p = curproc;
-	struct filedesc *fdp = p->p_fd;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct filedesc *fdp;
 	struct file *fp;
 	int fd = uap->fd;
 	int error;
 	int holdleaders;
+
+	KKASSERT(p);
+	fdp = p->p_fd;
 
 	if ((unsigned)fd >= fdp->fd_nfiles ||
 	    (fp = fdp->fd_ofiles[fd]) == NULL)
@@ -616,7 +626,7 @@ close(struct close_args *uap)
 		fdp->fd_freefile = fd;
 	if (fd < fdp->fd_knlistsize)
 		knote_fdclose(p, fd);
-	error = closef(fp, p);
+	error = closef(fp, td);
 	if (holdleaders) {
 		fdp->fd_holdleaderscount--;
 		if (fdp->fd_holdleaderscount == 0 &&
@@ -642,23 +652,26 @@ struct ofstat_args {
 int
 ofstat(struct ofstat_args *uap)
 {
-	struct proc *p = curproc;
-	struct filedesc *fdp = p->p_fd;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct filedesc *fdp;
 	struct file *fp;
 	struct stat ub;
 	struct ostat oub;
 	int error;
 
+	KKASSERT(p);
+	fdp = p->p_fd;
 	if ((unsigned)uap->fd >= fdp->fd_nfiles ||
 	    (fp = fdp->fd_ofiles[uap->fd]) == NULL)
 		return (EBADF);
 	fhold(fp);
-	error = fo_stat(fp, &ub, p);
+	error = fo_stat(fp, &ub, td);
 	if (error == 0) {
 		cvtstat(&ub, &oub);
 		error = copyout((caddr_t)&oub, (caddr_t)uap->sb, sizeof (oub));
 	}
-	fdrop(fp, p);
+	fdrop(fp, td);
 	return (error);
 }
 #endif /* COMPAT_43 || COMPAT_SUNOS */
@@ -676,20 +689,23 @@ struct fstat_args {
 int
 fstat(struct fstat_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct filedesc *fdp = p->p_fd;
 	struct file *fp;
 	struct stat ub;
 	int error;
 
+	KKASSERT(p);
+	fdp = p->p_fd;
 	if ((unsigned)uap->fd >= fdp->fd_nfiles ||
 	    (fp = fdp->fd_ofiles[uap->fd]) == NULL)
 		return (EBADF);
 	fhold(fp);
-	error = fo_stat(fp, &ub, p);
+	error = fo_stat(fp, &ub, td);
 	if (error == 0)
 		error = copyout((caddr_t)&ub, (caddr_t)uap->sb, sizeof (ub));
-	fdrop(fp, p);
+	fdrop(fp, td);
 	return (error);
 }
 
@@ -706,23 +722,26 @@ struct nfstat_args {
 int
 nfstat(struct nfstat_args *uap)
 {
-	struct proc *p = curproc;
-	struct filedesc *fdp = p->p_fd;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct filedesc *fdp;
 	struct file *fp;
 	struct stat ub;
 	struct nstat nub;
 	int error;
 
+	KKASSERT(p);
+	fdp = p->p_fd;
 	if ((unsigned)uap->fd >= fdp->fd_nfiles ||
 	    (fp = fdp->fd_ofiles[uap->fd]) == NULL)
 		return (EBADF);
 	fhold(fp);
-	error = fo_stat(fp, &ub, p);
+	error = fo_stat(fp, &ub, td);
 	if (error == 0) {
 		cvtnstat(&ub, &nub);
 		error = copyout((caddr_t)&nub, (caddr_t)uap->sb, sizeof (nub));
 	}
-	fdrop(fp, p);
+	fdrop(fp, td);
 	return (error);
 }
 
@@ -739,12 +758,15 @@ struct fpathconf_args {
 int
 fpathconf(struct fpathconf_args *uap)
 {
-	struct proc *p = curproc;
-	struct filedesc *fdp = p->p_fd;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct filedesc *fdp;
 	struct file *fp;
 	struct vnode *vp;
 	int error = 0;
 
+	KKASSERT(p);
+	fdp = p->p_fd;
 	if ((unsigned)uap->fd >= fdp->fd_nfiles ||
 	    (fp = fdp->fd_ofiles[uap->fd]) == NULL)
 		return (EBADF);
@@ -770,7 +792,7 @@ fpathconf(struct fpathconf_args *uap)
 		error = EOPNOTSUPP;
 		break;
 	}
-	fdrop(fp, p);
+	fdrop(fp, td);
 	return(error);
 }
 
@@ -1083,6 +1105,7 @@ fdcopy(p)
 void
 fdfree(struct proc *p)
 {
+	struct thread *td = p->p_thread;
 	struct filedesc *fdp = p->p_fd;
 	struct file **fpp;
 	int i;
@@ -1123,7 +1146,7 @@ fdfree(struct proc *p)
 						   F_UNLCK,
 						   &lf,
 						   F_POSIX);
-				fdrop(fp, p);
+				fdrop(fp, p->p_thread);
 				fpp = fdp->fd_ofiles + i;
 			}
 		}
@@ -1170,7 +1193,7 @@ fdfree(struct proc *p)
 	fpp = fdp->fd_ofiles;
 	for (i = fdp->fd_lastfile; i-- >= 0; fpp++) {
 		if (*fpp)
-			(void) closef(*fpp, p);
+			(void) closef(*fpp, td);
 	}
 	if (fdp->fd_nfiles > NDFILE)
 		FREE(fdp->fd_ofiles, M_FILEDESC);
@@ -1212,9 +1235,9 @@ is_unsafe(struct file *fp)
  * Make this setguid thing safe, if at all possible.
  */
 void
-setugidsafety(p)
-	struct proc *p;
+setugidsafety(struct proc *p)
 {
+	struct thread *td = p->p_thread;
 	struct filedesc *fdp = p->p_fd;
 	int i;
 
@@ -1247,7 +1270,7 @@ setugidsafety(p)
 			fdp->fd_ofileflags[i] = 0;
 			if (i < fdp->fd_freefile)
 				fdp->fd_freefile = i;
-			(void) closef(fp, p);
+			(void) closef(fp, td);
 		}
 	}
 	while (fdp->fd_lastfile > 0 && fdp->fd_ofiles[fdp->fd_lastfile] == NULL)
@@ -1258,9 +1281,9 @@ setugidsafety(p)
  * Close any files on exec?
  */
 void
-fdcloseexec(p)
-	struct proc *p;
+fdcloseexec(struct proc *p)
 {
+	struct thread *td = p->p_thread;
 	struct filedesc *fdp = p->p_fd;
 	int i;
 
@@ -1292,7 +1315,7 @@ fdcloseexec(p)
 			fdp->fd_ofileflags[i] = 0;
 			if (i < fdp->fd_freefile)
 				fdp->fd_freefile = i;
-			(void) closef(fp, p);
+			(void) closef(fp, td);
 		}
 	}
 	while (fdp->fd_lastfile > 0 && fdp->fd_ofiles[fdp->fd_lastfile] == NULL)
@@ -1307,14 +1330,14 @@ fdcloseexec(p)
  * stderr that is not already open.
  */
 int
-fdcheckstd(p)
-       struct proc *p;
+fdcheckstd(struct proc *p)
 {
-       struct nameidata nd;
-       struct filedesc *fdp;
-       struct file *fp;
-       register_t retval;
-       int fd, i, error, flags, devnull;
+	struct thread *td = p->p_thread;
+	struct nameidata nd;
+	struct filedesc *fdp;
+	struct file *fp;
+	register_t retval;
+	int fd, i, error, flags, devnull;
 
        fdp = p->p_fd;
        if (fdp == NULL)
@@ -1328,13 +1351,13 @@ fdcheckstd(p)
                        error = falloc(p, &fp, &fd);
                        if (error != 0)
                                break;
-                       NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, "/dev/null",
-                           p);
+                       NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, 
+			   "/dev/null", td);
                        flags = FREAD | FWRITE;
                        error = vn_open(&nd, flags, 0);
                        if (error != 0) {
                                fdp->fd_ofiles[i] = NULL;
-                               fdrop(fp, p);
+                               fdrop(fp, td);
                                break;
                        }
                        NDFREE(&nd, NDF_ONLY_PNBUF);
@@ -1342,7 +1365,7 @@ fdcheckstd(p)
                        fp->f_flag = flags;
                        fp->f_ops = &vnops;
                        fp->f_type = DTYPE_VNODE;
-                       VOP_UNLOCK(nd.ni_vp, 0, p);
+                       VOP_UNLOCK(nd.ni_vp, 0, td);
                        devnull = fd;
                } else {
                        error = fdalloc(p, 0, &fd);
@@ -1359,20 +1382,25 @@ fdcheckstd(p)
 /*
  * Internal form of close.
  * Decrement reference count on file structure.
- * Note: p may be NULL when closing a file
+ * Note: td and/or p may be NULL when closing a file
  * that was being passed in a message.
  */
 int
-closef(fp, p)
-	struct file *fp;
-	struct proc *p;
+closef(struct file *fp, struct thread *td)
 {
 	struct vnode *vp;
 	struct flock lf;
 	struct filedesc_to_leader *fdtol;
+	struct proc *p;
 
 	if (fp == NULL)
 		return (0);
+	if (td == NULL) {
+		td = curthread;
+		p = NULL;		/* allow no proc association */
+	} else {
+		p = td->td_proc;	/* can also be NULL */
+	}
 	/*
 	 * POSIX record locking dictates that any close releases ALL
 	 * locks owned by this process.  This is handled by setting
@@ -1422,13 +1450,11 @@ closef(fp, p)
 			}
 		}
 	}
-	return (fdrop(fp, p));
+	return (fdrop(fp, td));
 }
 
 int
-fdrop(fp, p)
-	struct file *fp;
-	struct proc *p;
+fdrop(struct file *fp, struct thread *td)
 {
 	struct flock lf;
 	struct vnode *vp;
@@ -1447,7 +1473,7 @@ fdrop(fp, p)
 		(void) VOP_ADVLOCK(vp, (caddr_t)fp, F_UNLCK, &lf, F_FLOCK);
 	}
 	if (fp->f_ops != &badfileops)
-		error = fo_close(fp, p);
+		error = fo_close(fp, td);
 	else
 		error = 0;
 	ffree(fp);
@@ -1582,7 +1608,7 @@ dupfdopen(struct filedesc *fdp, int indx, int dfd, int mode, int error)
 		 * used to own.  Release it.
 		 */
 		if (fp)
-			fdrop(fp, curproc);
+			fdrop(fp, curthread);
 		return (0);
 
 	case ENXIO:
@@ -1604,7 +1630,7 @@ dupfdopen(struct filedesc *fdp, int indx, int dfd, int mode, int error)
 		 * used to own.  Release it.
 		 */
 		if (fp)
-			fdrop(fp, curproc);
+			fdrop(fp, curthread);
 		/*
 		 * Complete the clean up of the filedesc structure by
 		 * recomputing the various hints.
@@ -1722,64 +1748,43 @@ struct fileops badfileops = {
 };
 
 static int
-badfo_readwrite(fp, uio, cred, flags, p)
-	struct file *fp;
-	struct uio *uio;
-	struct ucred *cred;
-	struct proc *p;
-	int flags;
-{
-
+badfo_readwrite(
+	struct file *fp,
+	struct uio *uio,
+	struct ucred *cred,
+	int flags,
+	struct thread *td
+) {
 	return (EBADF);
 }
 
 static int
-badfo_ioctl(fp, com, data, p)
-	struct file *fp;
-	u_long com;
-	caddr_t data;
-	struct proc *p;
+badfo_ioctl(struct file *fp, u_long com, caddr_t data, struct thread *td)
 {
-
 	return (EBADF);
 }
 
 static int
-badfo_poll(fp, events, cred, p)
-	struct file *fp;
-	int events;
-	struct ucred *cred;
-	struct proc *p;
+badfo_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
 {
-
 	return (0);
 }
 
 static int
-badfo_kqfilter(fp, kn)
-	struct file *fp;
-	struct knote *kn;
+badfo_kqfilter(struct file *fp, struct knote *kn)
 {
-
 	return (0);
 }
 
 static int
-badfo_stat(fp, sb, p)
-	struct file *fp;
-	struct stat *sb;
-	struct proc *p;
+badfo_stat(struct file *fp, struct stat *sb, struct thread *td)
 {
-
 	return (EBADF);
 }
 
 static int
-badfo_close(fp, p)
-	struct file *fp;
-	struct proc *p;
+badfo_close(struct file *fp, struct thread *td)
 {
-
 	return (EBADF);
 }
 

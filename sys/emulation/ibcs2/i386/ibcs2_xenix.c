@@ -28,11 +28,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_xenix.c,v 1.20 1999/12/15 23:01:46 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_xenix.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_xenix.c,v 1.4 2003/06/25 03:55:53 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/proc.h>
 #include <sys/namei.h> 
 #include <sys/sysproto.h>
 #include <sys/kernel.h>
@@ -193,6 +194,7 @@ xenix_scoinfo(struct xenix_scoinfo_args *uap)
 int     
 xenix_eaccess(struct xenix_eaccess_args *uap)
 {
+	struct thread *td = curthread;	/* XXX */
 	struct proc *p = curproc;
 	struct ucred *cred = p->p_ucred;
 	struct vnode *vp;
@@ -203,7 +205,7 @@ xenix_eaccess(struct xenix_eaccess_args *uap)
 	CHECKALTEXIST(&sg, SCARG(uap, path));
 
         NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF, UIO_USERSPACE,
-            SCARG(uap, path), p);
+            SCARG(uap, path), td);
         if ((error = namei(&nd)) != 0)
                 return error;
         vp = nd.ni_vp;
@@ -218,7 +220,7 @@ xenix_eaccess(struct xenix_eaccess_args *uap)
                 if (SCARG(uap, flags) & IBCS2_X_OK)
                         flags |= VEXEC;
                 if ((flags & VWRITE) == 0 || (error = vn_writechk(vp)) == 0)
-                        error = VOP_ACCESS(vp, flags, cred, p);
+                        error = VOP_ACCESS(vp, flags, cred, td);
         }
 	NDFREE(&nd, NDF_ONLY_PNBUF);
         vput(vp);

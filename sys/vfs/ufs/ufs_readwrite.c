@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.3 2003/06/25 03:56:12 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -411,12 +411,12 @@ WRITE(ap)
 	register struct inode *ip;
 	register FS *fs;
 	struct buf *bp;
-	struct proc *p;
 	ufs_daddr_t lbn;
 	off_t osize;
 	int seqcount;
 	int blkoffset, error, extended, flags, ioflag, resid, size, xfersize;
 	vm_object_t object;
+	struct thread *td;
 
 	extended = 0;
 	seqcount = ap->a_ioflag >> 16;
@@ -467,11 +467,11 @@ WRITE(ap)
 	 * Maybe this should be above the vnode op call, but so long as
 	 * file servers have no limits, I don't think it matters.
 	 */
-	p = uio->uio_procp;
-	if (vp->v_type == VREG && p &&
+	td = uio->uio_td;
+	if (vp->v_type == VREG && td->td_proc &&
 	    uio->uio_offset + uio->uio_resid >
-	    p->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
-		psignal(p, SIGXFSZ);
+	    td->td_proc->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
+		psignal(td->td_proc, SIGXFSZ);
 		if (object)
 			vm_object_vndeallocate(object);
 		return (EFBIG);
@@ -595,7 +595,7 @@ WRITE(ap)
 	if (error) {
 		if (ioflag & IO_UNIT) {
 			(void)UFS_TRUNCATE(vp, osize,
-			    ioflag & IO_SYNC, ap->a_cred, uio->uio_procp);
+			    ioflag & IO_SYNC, ap->a_cred, uio->uio_td);
 			uio->uio_offset -= resid - uio->uio_resid;
 			uio->uio_resid = resid;
 		}

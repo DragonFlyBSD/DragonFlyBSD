@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.4 2003/06/23 18:11:59 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.5 2003/06/25 03:55:46 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -3882,10 +3882,11 @@ asr_open(
         if (ASR_get_sc (dev) == (Asr_softc_t *)NULL) {
                 return (ENODEV);
         }
+	KKASSERT(td->td_proc);
         s = splcam ();
         if (ASR_ctlr_held) {
                 error = EBUSY;
-        } else if ((error = suser_xxx(td->td_proc->p_ucred, 0)) == 0) {
+        } else if ((error = suser_cred(td->td_proc->p_ucred, 0)) == 0) {
                 ++ASR_ctlr_held;
         }
         splx(s);

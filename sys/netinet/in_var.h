@@ -32,7 +32,7 @@
  *
  *	@(#)in_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in_var.h,v 1.33.2.3 2001/12/14 20:09:34 jlemon Exp $
- * $DragonFly: src/sys/netinet/in_var.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_var.h,v 1.3 2003/06/25 03:56:04 dillon Exp $
  */
 
 #ifndef _NETINET_IN_VAR_H_
@@ -227,7 +227,7 @@ struct	route;
 struct	in_multi *in_addmulti __P((struct in_addr *, struct ifnet *));
 void	in_delmulti __P((struct in_multi *));
 int	in_control __P((struct socket *, u_long, caddr_t, struct ifnet *,
-			struct proc *));
+			struct thread *));
 void	in_rtqdrain __P((void));
 void	ip_input __P((struct mbuf *));
 int	in_ifadown __P((struct ifaddr *ifa, int));

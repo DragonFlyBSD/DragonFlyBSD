@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.3 2003/06/23 17:55:50 dillon Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.4 2003/06/25 03:56:10 dillon Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -105,7 +105,7 @@ struct ctlname {
  * so that we can use the interface from the kernel or from user-space.
  */
 struct sysctl_req {
-	struct proc	*p;
+	struct thread	*td;
 	int		lock;
 	void		*oldptr;
 	size_t		oldlen;

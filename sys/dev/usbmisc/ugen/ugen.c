@@ -1,6 +1,6 @@
 /*	$NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ugen.c,v 1.38.2.9 2002/11/06 14:41:01 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.3 2003/06/23 17:55:36 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.4 2003/06/25 03:55:50 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -1213,7 +1213,7 @@ ugen_do_ioctl(struct ugen_softc *sc, int endpt, u_long cmd,
 		uio.uio_offset = 0;
 		uio.uio_segflg = UIO_USERSPACE;
 		uio.uio_rw = UIO_READ;
-		uio.uio_procp = p->td_proc;
+		uio.uio_td = p;
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 		error = uiomove((caddr_t)cdesc, len, &uio);
 #elif defined(__FreeBSD__)
@@ -1263,7 +1263,7 @@ ugen_do_ioctl(struct ugen_softc *sc, int endpt, u_long cmd,
 			uio.uio_rw =
 				ur->ucr_request.bmRequestType & UT_READ ? 
 				UIO_READ : UIO_WRITE;
-			uio.uio_procp = p->td_proc;
+			uio.uio_td = p;
 			ptr = malloc(len, M_TEMP, M_WAITOK);
 			if (uio.uio_rw == UIO_WRITE) {
 				error = uiomove(ptr, len, &uio);

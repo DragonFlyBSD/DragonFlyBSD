@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.85.2.23 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if.c,v 1.3 2003/06/23 17:55:45 dillon Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.4 2003/06/25 03:56:02 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -941,7 +941,7 @@ if_withname(sa)
  * Interface ioctls.
  */
 int
-ifioctl(struct socket *so, u_long cmd, caddr_t data, struct proc *p)
+ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 {
 	struct ifnet *ifp;
 	struct ifreq *ifr;
@@ -961,7 +961,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct proc *p)
 	switch (cmd) {
 	case SIOCIFCREATE:
 	case SIOCIFDESTROY:
-		if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+		if ((error = suser(td)) != 0)
 			return (error);
 		return ((cmd == SIOCIFCREATE) ?
 			if_clone_create(ifr->ifr_name, sizeof(ifr->ifr_name)) :
@@ -999,7 +999,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct proc *p)
 		break;
 
 	case SIOCSIFFLAGS:
-		error = suser_xxx(p->p_ucred, 0);
+		error = suser(td);
 		if (error)
 			return (error);
 		new_flags = (ifr->ifr_flags & 0xffff) |
@@ -1033,7 +1033,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct proc *p)
 		break;
 
 	case SIOCSIFCAP:
-		error = suser_xxx(p->p_ucred, 0);
+		error = suser(td);
 		if (error)
 			return (error);
 		if (ifr->ifr_reqcap & ~ifp->if_capabilities)
@@ -1042,7 +1042,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct proc *p)
 		break;
 
 	case SIOCSIFMETRIC:
-		error = suser_xxx(p->p_ucred, 0);
+		error = suser(td);
 		if (error)
 			return (error);
 		ifp->if_metric = ifr->ifr_metric;
@@ -1050,7 +1050,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct proc *p)
 		break;
 
 	case SIOCSIFPHYS:
-		error = suser_xxx(p->p_ucred, 0);
+		error = suser(td);
 		if (error)
 			return error;
 		if (!ifp->if_ioctl)
@@ -1064,7 +1064,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct proc *p)
 	{
 		u_long oldmtu = ifp->if_mtu;
 
-		error = suser_xxx(p->p_ucred, 0);
+		error = suser(td);
 		if (error)
 			return (error);
 		if (ifp->if_ioctl == NULL)
@@ -1089,7 +1089,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct proc *p)
 
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		error = suser_xxx(p->p_ucred, 0);
+		error = suser(td);
 		if (error)
 			return (error);
 
@@ -1119,7 +1119,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct proc *p)
 	case SIOCSLIFPHYADDR:
         case SIOCSIFMEDIA:
 	case SIOCSIFGENERIC:
-		error = suser_xxx(p->p_ucred, 0);
+		error = suser(td);
 		if (error)
 			return (error);
 		if (ifp->if_ioctl == 0)
@@ -1143,7 +1143,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct proc *p)
 		return ((*ifp->if_ioctl)(ifp, cmd, data));
 
 	case SIOCSIFLLADDR:
-		error = suser_xxx(p->p_ucred, 0);
+		error = suser(td);
 		if (error)
 			return (error);
 		return if_setlladdr(ifp,
@@ -1194,10 +1194,8 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct proc *p)
 		case OSIOCGIFNETMASK:
 			cmd = SIOCGIFNETMASK;
 		}
-		error =  ((*so->so_proto->pr_usrreqs->pru_control)(so,
-								   cmd,
-								   data,
-								   ifp, p));
+		error =  ((*so->so_proto->pr_usrreqs->pru_control)
+				(so, cmd, data, ifp, td));
 		switch (ocmd) {
 
 		case OSIOCGIFADDR:
@@ -1315,7 +1313,7 @@ ifconf(u_long cmd, caddr_t data)
 			if (space <= sizeof(ifr))
 				break;
 			sa = ifa->ifa_addr;
-			if (curproc->p_ucred->cr_prison && prison_if(curproc, sa))
+			if (curproc->p_ucred->cr_prison && prison_if(curthread, sa))
 				continue;
 			addrs++;
 #ifdef COMPAT_43

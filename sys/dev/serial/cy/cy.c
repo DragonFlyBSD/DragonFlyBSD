@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.3 2003/06/25 03:55:54 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -652,11 +652,7 @@ cyattach_common(cy_iobase, cy_align)
 }
 
 static int
-sioopen(dev, flag, mode, p)
-	dev_t		dev;
-	int		flag;
-	int		mode;
-	struct proc	*p;
+sioopen(dev_t dev; int flag; int mode; struct thread *td)
 {
 	struct com_s	*com;
 	int		error;
@@ -712,7 +708,7 @@ open_top:
 			}
 		}
 		if (tp->t_state & TS_XCLUDE &&
-		    suser(p)) {
+		    suser(td)) {
 			error = EBUSY;
 			goto out;
 		}
@@ -837,11 +833,7 @@ out:
 }
 
 static int
-sioclose(dev, flag, mode, p)
-	dev_t		dev;
-	int		flag;
-	int		mode;
-	struct proc	*p;
+sioclose(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct com_s	*com;
 	int		mynor;
@@ -1568,12 +1560,7 @@ siointr1(com)
 #endif
 
 static int
-sioioctl(dev, cmd, data, flag, p)
-	dev_t		dev;
-	u_long		cmd;
-	caddr_t		data;
-	int		flag;
-	struct proc	*p;
+sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 {
 	struct com_s	*com;
 	int		error;
@@ -1602,7 +1589,7 @@ sioioctl(dev, cmd, data, flag, p)
 		}
 		switch (cmd) {
 		case TIOCSETA:
-			error = suser(p);
+			error = suser(td);
 			if (error != 0)
 				return (error);
 			*ct = *(struct termios *)data;
@@ -1701,7 +1688,7 @@ sioioctl(dev, cmd, data, flag, p)
 		break;
 	case TIOCMSDTRWAIT:
 		/* must be root since the wait applies to following logins */
-		error = suser(p);
+		error = suser(td);
 		if (error != 0) {
 			splx(s);
 			return (error);

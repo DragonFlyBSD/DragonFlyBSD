@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.4 2003/06/22 17:39:48 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.5 2003/06/25 03:56:13 dillon Exp $
  */
 
 /*
@@ -1761,9 +1761,9 @@ again1:
 				vm_page_test_dirty(m);
 				if (m->dirty) {
 					if (m->object->type == OBJT_VNODE) {
-						vn_lock(m->object->handle, LK_EXCLUSIVE | LK_RETRY, curproc);
+						vn_lock(m->object->handle, LK_EXCLUSIVE | LK_RETRY, curthread);
 						vm_object_page_clean(m->object, 0, 0, OBJPC_SYNC);
-						VOP_UNLOCK(m->object->handle, 0, curproc);
+						VOP_UNLOCK(m->object->handle, 0, curthread);
 						goto again1;
 					} else if (m->object->type == OBJT_SWAP ||
 								m->object->type == OBJT_DEFAULT) {
@@ -1788,9 +1788,9 @@ again1:
 				vm_page_test_dirty(m);
 				if (m->dirty) {
 					if (m->object->type == OBJT_VNODE) {
-						vn_lock(m->object->handle, LK_EXCLUSIVE | LK_RETRY, curproc);
+						vn_lock(m->object->handle, LK_EXCLUSIVE | LK_RETRY, curthread);
 						vm_object_page_clean(m->object, 0, 0, OBJPC_SYNC);
-						VOP_UNLOCK(m->object->handle, 0, curproc);
+						VOP_UNLOCK(m->object->handle, 0, curthread);
 						goto again1;
 					} else if (m->object->type == OBJT_SWAP ||
 								m->object->type == OBJT_DEFAULT) {

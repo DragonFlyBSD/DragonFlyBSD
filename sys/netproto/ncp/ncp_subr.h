@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_subr.h,v 1.3 2000/01/14 19:54:39 bde Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_subr.h,v 1.3 2003/06/23 17:55:47 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_subr.h,v 1.4 2003/06/25 03:56:05 dillon Exp $
  */
 #ifndef _NETNCP_NCP_SUBR_H_
 #define _NETNCP_NCP_SUBR_H_
@@ -84,7 +84,7 @@
 
 #define checkbad(fn) {error=(fn);if(error) goto bad;}
 
-#define	ncp_suser(cred)	suser_xxx(cred, 0)
+#define	ncp_suser(cred)	suser_cred(cred, 0)
 
 #define ncp_isowner(conn,cred) ((cred)->cr_uid == (conn)->nc_owner->cr_uid)
 
@@ -107,11 +107,12 @@ struct ncp_open_info {
 extern int ncp_debuglevel;
 
 struct proc;
+struct thread;
 struct ucred;
 
 int  ncp_init(void);
 void ncp_done(void);
-int  ncp_chkintr(struct ncp_conn *conn, struct proc *p);
+int  ncp_chkintr(struct ncp_conn *conn, struct thread *td);
 char*ncp_str_dup(char *s);
 
 /* ncp_crypt.c */
@@ -123,10 +124,10 @@ void ncp_sign(const u_int32_t *state, const char *x, u_int32_t *ostate);
 int ncp_get_bindery_object_id(struct ncp_conn *conn, 
 		u_int16_t object_type, char *object_name, 
 		struct ncp_bindery_object *target,
-		struct proc *p,struct ucred *cred);
+		struct thread *td,struct ucred *cred);
 int  ncp_login_object(struct ncp_conn *conn, unsigned char *username, 
 		int login_type, unsigned char *password,
-		struct proc *p,struct ucred *cred);
+		struct thread *td,struct ucred *cred);
 int  ncp_read(struct ncp_conn *conn, ncp_fh *file, struct uio *uiop, struct ucred *cred);
 int  ncp_write(struct ncp_conn *conn, ncp_fh *file, struct uio *uiop, struct ucred *cred);
 

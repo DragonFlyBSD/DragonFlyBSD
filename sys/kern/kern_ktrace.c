@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -272,7 +272,8 @@ int
 ktrace(struct ktrace_args *uap)
 {
 #ifdef KTRACE
-	struct proc *curp = curproc;
+	struct thread *td = curthread;
+	struct proc *curp = td->td_proc;
 	struct vnode *vp = NULL;
 	struct proc *p;
 	struct pgrp *pg;
@@ -288,7 +289,7 @@ ktrace(struct ktrace_args *uap)
 		/*
 		 * an operation which requires a file argument.
 		 */
-		NDINIT(&nd, LOOKUP, NOFOLLOW, UIO_USERSPACE, uap->fname, curp);
+		NDINIT(&nd, LOOKUP, NOFOLLOW, UIO_USERSPACE, uap->fname, td);
 		error = vn_open(&nd, FREAD|FWRITE|O_NOFOLLOW, 0);
 		if (error) {
 			curp->p_traceflag &= ~KTRFAC_ACTIVE;
@@ -296,9 +297,9 @@ ktrace(struct ktrace_args *uap)
 		}
 		NDFREE(&nd, NDF_ONLY_PNBUF);
 		vp = nd.ni_vp;
-		VOP_UNLOCK(vp, 0, curp);
+		VOP_UNLOCK(vp, 0, td);
 		if (vp->v_type != VREG) {
-			(void) vn_close(vp, FREAD|FWRITE, curp->p_ucred, curp);
+			(void) vn_close(vp, FREAD|FWRITE, curp->p_ucred, td);
 			curp->p_traceflag &= ~KTRFAC_ACTIVE;
 			return (EACCES);
 		}
@@ -314,7 +315,7 @@ ktrace(struct ktrace_args *uap)
 					p->p_tracep = NULL;
 					p->p_traceflag = 0;
 					(void) vn_close(vp, FREAD|FWRITE,
-						p->p_ucred, p);
+						p->p_ucred, td);
 				} else {
 					error = EPERM;
 				}
@@ -365,7 +366,7 @@ ktrace(struct ktrace_args *uap)
 		error = EPERM;
 done:
 	if (vp != NULL)
-		(void) vn_close(vp, FWRITE, curp->p_ucred, curp);
+		(void) vn_close(vp, FWRITE, curp->p_ucred, td);
 	curp->p_traceflag &= ~KTRFAC_ACTIVE;
 	return (error);
 #else
@@ -382,11 +383,12 @@ utrace(struct utrace_args *uap)
 {
 #ifdef KTRACE
 	struct ktr_header *kth;
-	struct proc *p = curproc;	/* XXX */
+	struct thread *td = curthread;	/* XXX */
+	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	register caddr_t cp;
 
-	if (!KTRPOINT(p, KTR_USER))
+	if (!KTRPOINT(td, KTR_USER))
 		return (0);
 	if (SCARG(uap, len) > KTR_USER_MAXLEN)
 		return (EINVAL);
@@ -493,14 +495,12 @@ ktrsetchildren(curp, top, ops, facs, vp)
 }
 
 static void
-ktrwrite(vp, kth, uio)
-	struct vnode *vp;
-	register struct ktr_header *kth;
-	struct uio *uio;
+ktrwrite(struct vnode *vp, struct ktr_header *kth, struct uio *uio)
 {
 	struct uio auio;
 	struct iovec aiov[2];
-	register struct proc *p = curproc;	/* XXX */
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;	/* XXX */
 	int error;
 
 	if (vp == NULL)
@@ -513,7 +513,7 @@ ktrwrite(vp, kth, uio)
 	aiov[0].iov_len = sizeof(struct ktr_header);
 	auio.uio_resid = sizeof(struct ktr_header);
 	auio.uio_iovcnt = 1;
-	auio.uio_procp = curproc;
+	auio.uio_td = curthread;
 	if (kth->ktr_len > 0) {
 		auio.uio_iovcnt++;
 		aiov[1].iov_base = kth->ktr_buf;
@@ -522,14 +522,14 @@ ktrwrite(vp, kth, uio)
 		if (uio != NULL)
 			kth->ktr_len += uio->uio_resid;
 	}
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
-	(void)VOP_LEASE(vp, p, p->p_ucred, LEASE_WRITE);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	(void)VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 	error = VOP_WRITE(vp, &auio, IO_UNIT | IO_APPEND, p->p_ucred);
 	if (error == 0 && uio != NULL) {
-		(void)VOP_LEASE(vp, p, p->p_ucred, LEASE_WRITE);
+		(void)VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 		error = VOP_WRITE(vp, uio, IO_UNIT | IO_APPEND, p->p_ucred);
 	}
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	if (!error)
 		return;
 	/*

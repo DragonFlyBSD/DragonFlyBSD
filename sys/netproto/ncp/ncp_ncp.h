@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_ncp.h,v 1.3 2000/01/14 19:54:38 bde Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_ncp.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_ncp.h,v 1.3 2003/06/25 03:56:05 dillon Exp $
  */
 #ifndef _NETNCP_NCP_NCP_H_
 #define _NETNCP_NCP_NCP_H_
@@ -110,15 +110,16 @@ struct ncp_conn;
 struct ncp_conn_args;
 struct ncp_rq;
 struct proc;
+struct thread;
 struct ucred;
 
 int  ncp_request(struct ncp_conn *conn,struct ncp_rq *rqp);
 int  ncp_ncp_connect(struct ncp_conn *conn);
 int  ncp_ncp_disconnect(struct ncp_conn *conn);
 int  ncp_reconnect(struct ncp_conn *conn);
-int  ncp_connect(struct ncp_conn_args *li,struct proc *p, struct ucred *cred,struct ncp_conn **aconn);
+int  ncp_connect(struct ncp_conn_args *li,struct thread *td, struct ucred *cred,struct ncp_conn **aconn);
 int  ncp_disconnect(struct ncp_conn *conn);
 int  ncp_login(struct ncp_conn *conn, char *user, int objtype, char *password,
-	  struct proc *p, struct ucred *cred);
+	  struct thread *td, struct ucred *cred);
 
 #endif /* _NCP_NCP_H_ */

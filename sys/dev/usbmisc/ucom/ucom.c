@@ -1,6 +1,6 @@
 /*	$NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ucom.c,v 1.24.2.2 2003/01/17 17:32:10 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.3 2003/06/23 17:55:36 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.4 2003/06/25 03:55:50 dillon Exp $	*/
 
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -267,7 +267,6 @@ ucomopen(dev_t dev, int flag, int mode, usb_proc_ptr td)
 	struct tty *tp;
 	int s;
 	int error;
-	struct proc *p = td->td_proc;
 
 	KKASSERT(p != NULL);
 
@@ -282,8 +281,10 @@ ucomopen(dev_t dev, int flag, int mode, usb_proc_ptr td)
 
 	if (ISSET(tp->t_state, TS_ISOPEN) &&
 	    ISSET(tp->t_state, TS_XCLUDE) &&
-	    suser_xxx(p->p_ucred, 0))
+	    suser(td)
+	) {
 		return (EBUSY);
+	}
 
 	/*
 	 * Do the following iff this is a first open.

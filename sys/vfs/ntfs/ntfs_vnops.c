@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.3 2003/06/25 03:56:07 dillon Exp $
  *
  */
 
@@ -48,6 +48,7 @@
 #include <sys/stat.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
+#include <sys/proc.h>
 #include <sys/namei.h>
 #include <sys/malloc.h>
 #include <sys/buf.h>
@@ -228,7 +229,7 @@ ntfs_getattr(ap)
 		struct vnode *a_vp;
 		struct vattr *a_vap;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	register struct vnode *vp = ap->a_vp;
@@ -282,7 +283,7 @@ ntfs_inactive(ap)
 	if (ntfs_prtactive && vp->v_usecount != 0)
 		vprint("ntfs_inactive: pushing active", vp);
 
-	VOP__UNLOCK(vp, 0, ap->a_p);
+	VOP__UNLOCK(vp, 0, ap->a_td);
 
 	/* XXX since we don't support any filesystem changes
 	 * right now, nothing more needs to be done
@@ -460,7 +461,7 @@ ntfs_access(ap)
 		struct vnode *a_vp;
 		int  a_mode;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
@@ -546,7 +547,7 @@ ntfs_open(ap)
 		struct vnode *a_vp;
 		int  a_mode;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 #if NTFS_DEBUG
@@ -575,7 +576,7 @@ ntfs_close(ap)
 		struct vnode *a_vp;
 		int  a_fflag;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 #if NTFS_DEBUG
@@ -749,7 +750,7 @@ ntfs_lookup(ap)
 		(int)cnp->cn_namelen, cnp->cn_nameptr, cnp->cn_namelen,
 		dip->i_number, lockparent, wantparent));
 
-	error = VOP_ACCESS(dvp, VEXEC, cred, cnp->cn_proc);
+	error = VOP_ACCESS(dvp, VEXEC, cred, cnp->cn_td);
 	if(error)
 		return (error);
 
@@ -788,7 +789,7 @@ ntfs_lookup(ap)
 		if(error)
 			return (error);
 
-		VOP__UNLOCK(dvp,0,cnp->cn_proc);
+		VOP__UNLOCK(dvp,0,cnp->cn_td);
 		cnp->cn_flags |= PDIRUNLOCK;
 
 		dprintf(("ntfs_lookup: parentdir: %d\n",
@@ -797,13 +798,13 @@ ntfs_lookup(ap)
 				 vap->va_a_name->n_pnumber,ap->a_vpp); 
 		ntfs_ntvattrrele(vap);
 		if (error) {
-			if (VN_LOCK(dvp,LK_EXCLUSIVE|LK_RETRY,cnp->cn_proc)==0)
+			if (VN_LOCK(dvp,LK_EXCLUSIVE|LK_RETRY,cnp->cn_td)==0)
 				cnp->cn_flags &= ~PDIRUNLOCK;
 			return (error);
 		}
 
 		if (lockparent && (cnp->cn_flags & ISLASTCN)) {
-			error = VN_LOCK(dvp, LK_EXCLUSIVE, cnp->cn_proc);
+			error = VN_LOCK(dvp, LK_EXCLUSIVE, cnp->cn_td);
 			if (error) {
 				vput( *(ap->a_vpp) );
 				return (error);
@@ -821,7 +822,7 @@ ntfs_lookup(ap)
 			VTONT(*ap->a_vpp)->i_number));
 
 		if(!lockparent || !(cnp->cn_flags & ISLASTCN))
-			VOP__UNLOCK(dvp, 0, cnp->cn_proc);
+			VOP__UNLOCK(dvp, 0, cnp->cn_td);
 	}
 
 	if (cnp->cn_flags & MAKEENTRY)
@@ -843,7 +844,7 @@ ntfs_fsync(ap)
 		struct vnode *a_vp;
 		struct ucred *a_cred;
 		int a_waitfor;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	return (0);

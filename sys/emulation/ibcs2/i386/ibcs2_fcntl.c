@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_fcntl.c,v 1.14 1999/09/19 17:00:14 green Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.4 2003/06/25 03:55:53 dillon Exp $
  */
 
 #include "opt_spx_hack.h"
@@ -37,6 +37,8 @@
 #include <sys/filedesc.h>
 #include <sys/ttycom.h>
 #include <sys/sysproto.h>
+#include <sys/proc.h>
+#include <sys/file2.h>
 
 #include <i386/ibcs2/ibcs2_fcntl.h>
 #include <i386/ibcs2/ibcs2_signal.h>
@@ -170,7 +172,8 @@ oflags2ioflags(flags)
 int
 ibcs2_open(struct ibcs2_open_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;	/* XXX */
+	struct proc *p;
 	int noctty = SCARG(uap, flags) & IBCS2_O_NOCTTY;
 	int ret;
 	caddr_t sg = stackgap_init();
@@ -188,13 +191,14 @@ ibcs2_open(struct ibcs2_open_args *uap)
 			ret = spx_open(uap);
 	} else
 #endif /* SPX_HACK */
-	if (!ret && !noctty && SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
+	p = td->td_proc;
+	if (!ret && !noctty && p && SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
 		struct filedesc *fdp = p->p_fd;
 		struct file *fp = fdp->fd_ofiles[p->p_retval[0]];
 
 		/* ignore any error, just give it a try */
 		if (fp->f_type == DTYPE_VNODE)
-			fo_ioctl(fp, TIOCSCTTY, (caddr_t) 0, p);
+			fo_ioctl(fp, TIOCSCTTY, (caddr_t) 0, td);
 	}
 	return ret;
 }

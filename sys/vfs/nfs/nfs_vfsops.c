@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.3 2003/06/25 03:56:07 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -104,14 +104,14 @@ static void	nfs_decode_args __P((struct nfsmount *nmp,
 static int	mountnfs __P((struct nfs_args *,struct mount *,
 			struct sockaddr *,char *,char *,struct vnode **));
 static int	nfs_mount __P(( struct mount *mp, char *path, caddr_t data,
-			struct nameidata *ndp, struct proc *p));
+			struct nameidata *ndp, struct thread *td));
 static int	nfs_unmount __P(( struct mount *mp, int mntflags,
-			struct proc *p));
+			struct thread *td));
 static int	nfs_root __P(( struct mount *mp, struct vnode **vpp));
 static int	nfs_statfs __P(( struct mount *mp, struct statfs *sbp,
-			struct proc *p));
+			struct thread *td));
 static int	nfs_sync __P(( struct mount *mp, int waitfor,
-			struct ucred *cred, struct proc *p));
+			struct ucred *cred, struct thread *td));
 
 /*
  * nfs vfs operations.
@@ -164,7 +164,7 @@ SYSCTL_OPAQUE(_vfs_nfs, OID_AUTO, diskless_swapaddr, CTLFLAG_RD,
 void nfsargs_ntoh __P((struct nfs_args *));
 static int nfs_mountdiskless __P((char *, char *, int,
 				  struct sockaddr_in *, struct nfs_args *,
-				  struct proc *, struct vnode **,
+				  struct thread *, struct vnode **,
 				  struct mount **));
 static void nfs_convert_diskless __P((void));
 static void nfs_convert_oargs __P((struct nfs_args *args,
@@ -244,10 +244,7 @@ nfs_convert_diskless()
  * nfs statfs call
  */
 int
-nfs_statfs(mp, sbp, p)
-	struct mount *mp;
-	register struct statfs *sbp;
-	struct proc *p;
+nfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
 	register struct vnode *vp;
 	register struct nfs_statfs *sfp;
@@ -272,11 +269,11 @@ nfs_statfs(mp, sbp, p)
 	cred = crget();
 	cred->cr_ngroups = 1;
 	if (v3 && (nmp->nm_state & NFSSTA_GOTFSINFO) == 0)
-		(void)nfs_fsinfo(nmp, vp, cred, p);
+		(void)nfs_fsinfo(nmp, vp, cred, td);
 	nfsstats.rpccnt[NFSPROC_FSSTAT]++;
 	nfsm_reqhead(vp, NFSPROC_FSSTAT, NFSX_FH(v3));
 	nfsm_fhtom(vp, v3);
-	nfsm_request(vp, NFSPROC_FSSTAT, p, cred);
+	nfsm_request(vp, NFSPROC_FSSTAT, td, cred);
 	if (v3)
 		nfsm_postop_attr(vp, retattr);
 	if (error) {
@@ -322,11 +319,8 @@ nfs_statfs(mp, sbp, p)
  * nfs version 3 fsinfo rpc call
  */
 int
-nfs_fsinfo(nmp, vp, cred, p)
-	register struct nfsmount *nmp;
-	register struct vnode *vp;
-	struct ucred *cred;
-	struct proc *p;
+nfs_fsinfo(struct nfsmount *nmp, struct vnode *vp, 
+	struct ucred *cred, struct thread *td)
 {
 	register struct nfsv3_fsinfo *fsp;
 	register caddr_t cp;
@@ -340,7 +334,7 @@ nfs_fsinfo(nmp, vp, cred, p)
 	nfsstats.rpccnt[NFSPROC_FSINFO]++;
 	nfsm_reqhead(vp, NFSPROC_FSINFO, NFSX_FH(1));
 	nfsm_fhtom(vp, 1);
-	nfsm_request(vp, NFSPROC_FSINFO, p, cred);
+	nfsm_request(vp, NFSPROC_FSINFO, td, cred);
 	nfsm_postop_attr(vp, retattr);
 	if (!error) {
 		nfsm_dissect(fsp, struct nfsv3_fsinfo *, NFSX_V3FSINFO);
@@ -401,7 +395,7 @@ nfs_mountroot(mp)
 	struct nfsv3_diskless *nd = &nfsv3_diskless;
 	struct socket *so;
 	struct vnode *vp;
-	struct proc *p = curproc;		/* XXX */
+	struct thread *td = curthread;		/* XXX */
 	int error, i;
 	u_long l;
 	char buf[128];
@@ -440,7 +434,7 @@ nfs_mountroot(mp)
 	 * Do enough of ifconfig(8) so that the critical net interface can
 	 * talk to the server.
 	 */
-	error = socreate(nd->myif.ifra_addr.sa_family, &so, SOCK_DGRAM, 0, p);
+	error = socreate(nd->myif.ifra_addr.sa_family, &so, SOCK_DGRAM, 0, td);
 	if (error)
 		panic("nfs_mountroot: socreate(%04x): %d",
 			nd->myif.ifra_addr.sa_family, error);
@@ -456,12 +450,12 @@ nfs_mountroot(mp)
 		nd->myif.ifra_name[i] >= '0' &&
 		nd->myif.ifra_name[i] <= '9';
 		nd->myif.ifra_name[i] ++) {
-		error = ifioctl(so, SIOCAIFADDR, (caddr_t)&nd->myif, p);
+		error = ifioctl(so, SIOCAIFADDR, (caddr_t)&nd->myif, td);
 		if(!error)
 			break;
 	}
 #endif
-	error = ifioctl(so, SIOCAIFADDR, (caddr_t)&nd->myif, p);
+	error = ifioctl(so, SIOCAIFADDR, (caddr_t)&nd->myif, td);
 	if (error)
 		panic("nfs_mountroot: SIOCAIFADDR: %d", error);
 	soclose(so);
@@ -495,7 +489,7 @@ nfs_mountroot(mp)
 		(l >>  8) & 0xff, (l >>  0) & 0xff,nd->root_hostnam);
 	printf("NFS ROOT: %s\n",buf);
 	if ((error = nfs_mountdiskless(buf, "/", MNT_RDONLY,
-	    &nd->root_saddr, &nd->root_args, p, &vp, &mp)) != 0) {
+	    &nd->root_saddr, &nd->root_args, td, &vp, &mp)) != 0) {
 		if (swap_mp) {
 			mp->mnt_vfc->vfc_refcount--;
 			free(swap_mp, M_MOUNT);
@@ -521,9 +515,9 @@ nfs_mountroot(mp)
 			(l >>  8) & 0xff, (l >>  0) & 0xff,nd->swap_hostnam);
 		printf("NFS SWAP: %s\n",buf);
 		if ((error = nfs_mountdiskless(buf, "/swap", 0,
-		    &nd->swap_saddr, &nd->swap_args, p, &vp, &swap_mp)) != 0)
+		    &nd->swap_saddr, &nd->swap_args, td, &vp, &swap_mp)) != 0)
 			return (error);
-		vfs_unbusy(swap_mp, p);
+		vfs_unbusy(swap_mp, td);
 
 		VTONFS(vp)->n_size = VTONFS(vp)->n_vattr.va_size = 
 				nd->swap_nblks * DEV_BSIZE ;
@@ -535,13 +529,13 @@ nfs_mountroot(mp)
 		vp->v_type = VREG;
 		vp->v_flag = 0;
 		VREF(vp);
-		swaponvp(p, vp, NODEV, nd->swap_nblks);
+		swaponvp(td, vp, NODEV, nd->swap_nblks);
 	}
 
 	mp->mnt_flag |= MNT_ROOTFS;
 	mp->mnt_vnodecovered = NULLVP;
 	rootvp = vp;
-	vfs_unbusy(mp, p);
+	vfs_unbusy(mp, td);
 
 	/*
 	 * This is not really an nfs issue, but it is much easier to
@@ -561,15 +555,9 @@ nfs_mountroot(mp)
  * Internal version of mount system call for diskless setup.
  */
 static int
-nfs_mountdiskless(path, which, mountflag, sin, args, p, vpp, mpp)
-	char *path;
-	char *which;
-	int mountflag;
-	struct sockaddr_in *sin;
-	struct nfs_args *args;
-	struct proc *p;
-	struct vnode **vpp;
-	struct mount **mpp;
+nfs_mountdiskless(char *path, char *which, int mountflag,
+	struct sockaddr_in *sin, struct nfs_args *args, struct thread *td,
+	struct vnode **vpp, struct mount **mpp)
 {
 	struct mount *mp;
 	struct sockaddr *nam;
@@ -592,7 +580,7 @@ nfs_mountdiskless(path, which, mountflag, sin, args, p, vpp, mpp)
 	if ((error = mountnfs(args, mp, nam, which, path, vpp)) != 0) {
 		printf("nfs_mountroot: mount %s on %s: %d", path, which, error);
 		mp->mnt_vfc->vfc_refcount--;
-		vfs_unbusy(mp, p);
+		vfs_unbusy(mp, td);
 		if (didalloc)
 			free(mp, M_MOUNT);
 		FREE(nam, M_SONAME);
@@ -762,12 +750,8 @@ nfs_decode_args(nmp, argp)
  */
 /* ARGSUSED */
 static int
-nfs_mount(mp, path, data, ndp, p)
-	struct mount *mp;
-	char *path;
-	caddr_t data;
-	struct nameidata *ndp;
-	struct proc *p;
+nfs_mount(struct mount *mp, char *path, caddr_t data,
+	struct nameidata *ndp, struct thread *td)
 {
 	int error;
 	struct nfs_args args;
@@ -854,12 +838,8 @@ nfs_mount(mp, path, data, ndp, p)
  * Common code for mount and mountroot
  */
 static int
-mountnfs(argp, mp, nam, pth, hst, vpp)
-	register struct nfs_args *argp;
-	register struct mount *mp;
-	struct sockaddr *nam;
-	char *pth, *hst;
-	struct vnode **vpp;
+mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
+	char *pth, char *hst, struct vnode **vpp)
 {
 	register struct nfsmount *nmp;
 	struct nfsnode *np;
@@ -958,12 +938,12 @@ mountnfs(argp, mp, nam, pth, hst, vpp)
 	 * Get file attributes for the mountpoint.  This has the side
 	 * effect of filling in (*vpp)->v_type with the correct value.
 	 */
-	VOP_GETATTR(*vpp, &attrs, curproc->p_ucred, curproc);
+	VOP_GETATTR(*vpp, &attrs, curproc->p_ucred, curthread);
 
 	/*
 	 * Lose the lock but keep the ref.
 	 */
-	VOP_UNLOCK(*vpp, 0, curproc);
+	VOP_UNLOCK(*vpp, 0, curthread);
 
 	return (0);
 bad:
@@ -977,10 +957,7 @@ bad:
  * unmount system call
  */
 static int
-nfs_unmount(mp, mntflags, p)
-	struct mount *mp;
-	int mntflags;
-	struct proc *p;
+nfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
 	register struct nfsmount *nmp;
 	int error, flags = 0;
@@ -1061,13 +1038,9 @@ extern int syncprt;
  */
 /* ARGSUSED */
 static int
-nfs_sync(mp, waitfor, cred, p)
-	struct mount *mp;
-	int waitfor;
-	struct ucred *cred;
-	struct proc *p;
+nfs_sync(struct mount *mp, int waitfor, struct ucred *cred, struct thread *td)
 {
-	register struct vnode *vp;
+	struct vnode *vp;
 	int error, allerror = 0;
 
 	/*
@@ -1086,9 +1059,9 @@ loop:
 		if (VOP_ISLOCKED(vp, NULL) || TAILQ_EMPTY(&vp->v_dirtyblkhd) ||
 		    waitfor == MNT_LAZY)
 			continue;
-		if (vget(vp, LK_EXCLUSIVE, p))
+		if (vget(vp, LK_EXCLUSIVE, td))
 			goto loop;
-		error = VOP_FSYNC(vp, cred, waitfor, p);
+		error = VOP_FSYNC(vp, cred, waitfor, td);
 		if (error)
 			allerror = error;
 		vput(vp);

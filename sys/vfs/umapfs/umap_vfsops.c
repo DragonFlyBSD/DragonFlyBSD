@@ -36,7 +36,7 @@
  *	@(#)umap_vfsops.c	8.8 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vfsops.c,v 1.31.2.2 2001/09/11 09:49:53 kris Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.3 2003/06/23 17:55:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.4 2003/06/25 03:56:01 dillon Exp $
  */
 
 /*
@@ -62,34 +62,30 @@ static int	umapfs_fhtovp __P((struct mount *mp, struct fid *fidp,
 static int	umapfs_checkexp __P((struct mount *mp, struct sockaddr *nam,
 				    int *extflagsp, struct ucred **credanonp));
 static int	umapfs_mount __P((struct mount *mp, char *path, caddr_t data,
-				  struct nameidata *ndp, struct proc *p));
+				  struct nameidata *ndp, struct thread *td));
 static int	umapfs_quotactl __P((struct mount *mp, int cmd, uid_t uid,
-				     caddr_t arg, struct proc *p));
+				     caddr_t arg, struct thread *td));
 static int	umapfs_root __P((struct mount *mp, struct vnode **vpp));
-static int	umapfs_start __P((struct mount *mp, int flags, struct proc *p));
+static int	umapfs_start __P((struct mount *mp, int flags, struct thread *td));
 static int	umapfs_statfs __P((struct mount *mp, struct statfs *sbp,
-				   struct proc *p));
+				   struct thread *td));
 static int	umapfs_sync __P((struct mount *mp, int waitfor,
-				 struct ucred *cred, struct proc *p));
+				 struct ucred *cred, struct thread *td));
 static int	umapfs_unmount __P((struct mount *mp, int mntflags,
-				    struct proc *p));
+				    struct thread *td));
 static int	umapfs_vget __P((struct mount *mp, ino_t ino,
 				 struct vnode **vpp));
 static int	umapfs_vptofh __P((struct vnode *vp, struct fid *fhp));
 static int	umapfs_extattrctl __P((struct mount *mp, int cmd,
 				       const char *attrname, caddr_t arg,
-				       struct proc *p));
+				       struct thread *td));
 
 /*
  * Mount umap layer
  */
 static int
-umapfs_mount(mp, path, data, ndp, p)
-	struct mount *mp;
-	char *path;
-	caddr_t data;
-	struct nameidata *ndp;
-	struct proc *p;
+umapfs_mount(struct mount *mp, char *path, caddr_t data,
+	struct nameidata *ndp, struct thread *td)
 {
 	struct umap_args args;
 	struct vnode *lowerrootvp, *vp;
@@ -104,7 +100,7 @@ umapfs_mount(mp, path, data, ndp, p)
 	/*
 	 * Only for root
 	 */
-	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+	if ((error = suser(td)) != 0)
 		return (error);
 
 #ifdef DEBUG
@@ -116,7 +112,7 @@ umapfs_mount(mp, path, data, ndp, p)
 	 */
 	if (mp->mnt_flag & MNT_UPDATE) {
 		return (EOPNOTSUPP);
-		/* return (VFS_MOUNT(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, path, data, ndp, p));*/
+		/* return (VFS_MOUNT(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, path, data, ndp, td));*/
 	}
 
 	/*
@@ -130,7 +126,7 @@ umapfs_mount(mp, path, data, ndp, p)
 	 * Find lower node
 	 */
 	NDINIT(ndp, LOOKUP, FOLLOW|WANTPARENT|LOCKLEAF,
-		UIO_USERSPACE, args.target, p);
+		UIO_USERSPACE, args.target, td);
 	error = namei(ndp);
 	if (error)
 		return (error);
@@ -208,7 +204,7 @@ umapfs_mount(mp, path, data, ndp, p)
 	/*
 	 * Unlock the node (either the lower or the alias)
 	 */
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	/*
 	 * Make sure the node alias worked
 	 */
@@ -235,7 +231,7 @@ umapfs_mount(mp, path, data, ndp, p)
 	(void) copyinstr(args.target, mp->mnt_stat.f_mntfromname, MNAMELEN - 1,
 	    &size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
-	(void)umapfs_statfs(mp, &mp->mnt_stat, p);
+	(void)umapfs_statfs(mp, &mp->mnt_stat, td);
 #ifdef DEBUG
 	printf("umapfs_mount: lower %s, alias at %s\n",
 		mp->mnt_stat.f_mntfromname, mp->mnt_stat.f_mntonname);
@@ -249,10 +245,7 @@ umapfs_mount(mp, path, data, ndp, p)
  * when that filesystem was mounted.
  */
 static int
-umapfs_start(mp, flags, p)
-	struct mount *mp;
-	int flags;
-	struct proc *p;
+umapfs_start(struct mount *mp, int flags, struct thread *td)
 {
 	return (0);
 	/* return (VFS_START(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, flags, p)); */
@@ -262,10 +255,7 @@ umapfs_start(mp, flags, p)
  * Free reference to umap layer
  */
 static int
-umapfs_unmount(mp, mntflags, p)
-	struct mount *mp;
-	int mntflags;
-	struct proc *p;
+umapfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
 	int error;
 	int flags = 0;
@@ -301,11 +291,9 @@ umapfs_unmount(mp, mntflags, p)
 }
 
 static int
-umapfs_root(mp, vpp)
-	struct mount *mp;
-	struct vnode **vpp;
+umapfs_root(struct mount *mp, struct vnode **vpp)
 {
-	struct proc *p = curproc;	/* XXX */
+	struct thread *td = curthread;	/* XXX */
 	struct vnode *vp;
 
 #ifdef DEBUG
@@ -319,27 +307,20 @@ umapfs_root(mp, vpp)
 	 */
 	vp = MOUNTTOUMAPMOUNT(mp)->umapm_rootvp;
 	VREF(vp);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	*vpp = vp;
 	return (0);
 }
 
 static int
-umapfs_quotactl(mp, cmd, uid, arg, p)
-	struct mount *mp;
-	int cmd;
-	uid_t uid;
-	caddr_t arg;
-	struct proc *p;
+umapfs_quotactl(struct mount *mp, int cmd, uid_t uid, 
+	caddr_t arg, struct thread *td)
 {
-	return (VFS_QUOTACTL(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, cmd, uid, arg, p));
+	return (VFS_QUOTACTL(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, cmd, uid, arg, td));
 }
 
 static int
-umapfs_statfs(mp, sbp, p)
-	struct mount *mp;
-	struct statfs *sbp;
-	struct proc *p;
+umapfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
 	int error;
 	struct statfs mstat;
@@ -352,7 +333,7 @@ umapfs_statfs(mp, sbp, p)
 
 	bzero(&mstat, sizeof(mstat));
 
-	error = VFS_STATFS(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, &mstat, p);
+	error = VFS_STATFS(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, &mstat, td);
 	if (error)
 		return (error);
 
@@ -375,11 +356,7 @@ umapfs_statfs(mp, sbp, p)
 }
 
 static int
-umapfs_sync(mp, waitfor, cred, p)
-	struct mount *mp;
-	int waitfor;
-	struct ucred *cred;
-	struct proc *p;
+umapfs_sync(struct mount *mp, int waitfor, struct ucred *cred, struct thread *td)
 {
 	/*
 	 * XXX - Assumes no data cached at umap layer.
@@ -388,31 +365,22 @@ umapfs_sync(mp, waitfor, cred, p)
 }
 
 static int
-umapfs_vget(mp, ino, vpp)
-	struct mount *mp;
-	ino_t ino;
-	struct vnode **vpp;
+umapfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 {
 
 	return (VFS_VGET(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, ino, vpp));
 }
 
 static int
-umapfs_fhtovp(mp, fidp, vpp)
-	struct mount *mp;
-	struct fid *fidp;
-	struct vnode **vpp;
+umapfs_fhtovp(struct mount *mp, struct fid *fidp, struct vnode **vpp)
 {
 	
 	return (VFS_FHTOVP(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, fidp, vpp));
 }
 
 static int
-umapfs_checkexp(mp, nam, exflagsp, credanonp)
-	struct mount *mp;
-	struct sockaddr *nam;
-	int *exflagsp;
-	struct ucred **credanonp;
+umapfs_checkexp(struct mount *mp, struct sockaddr *nam, int *exflagsp,
+	struct ucred **credanonp)
 {
 
 	return (VFS_CHECKEXP(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, nam, 
@@ -420,23 +388,17 @@ umapfs_checkexp(mp, nam, exflagsp, credanonp)
 }
 
 static int
-umapfs_vptofh(vp, fhp)
-	struct vnode *vp;
-	struct fid *fhp;
+umapfs_vptofh(struct vnode *vp, struct fid *fhp)
 {
 	return (VFS_VPTOFH(UMAPVPTOLOWERVP(vp), fhp));
 }
 
 static int
-umapfs_extattrctl(mp, cmd, attrname, arg, p)
-	struct mount *mp;
-	int cmd;
-	const char *attrname;
-	caddr_t arg;
-	struct proc *p;
+umapfs_extattrctl(struct mount *mp, int cmd, const char *attrname,
+	caddr_t arg, struct thread *td)
 {
 	return (VFS_EXTATTRCTL(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, cmd, attrname,
-	    arg, p));
+	    arg, td));
 } 
 
 

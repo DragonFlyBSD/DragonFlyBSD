@@ -29,7 +29,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/usb/urio.c,v 1.11.2.4 2002/11/06 14:41:01 joe Exp $ */
-/* $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.3 2003/06/23 17:55:36 dillon Exp $ */
+/* $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.4 2003/06/25 03:55:50 dillon Exp $ */
 
 /*
  * 2000/3/24  added NetBSD/OpenBSD support (from Alex Nemirovsky)
@@ -572,7 +572,7 @@ urioioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
 		uio.uio_rw =
 			req.bmRequestType & UT_READ ? 
 			UIO_READ : UIO_WRITE;
-		uio.uio_procp = p->td_proc;
+		uio.uio_td = p;
 		ptr = malloc(len, M_TEMP, M_WAITOK);
 		if (uio.uio_rw == UIO_WRITE) {
 			error = uiomove(ptr, len, &uio);

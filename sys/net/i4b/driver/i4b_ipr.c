@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.3 2003/06/25 03:55:55 dillon Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -617,13 +617,10 @@ i4biprioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 #ifdef IPR_VJ
 		case IPRIOCSMAXCID:
 			{
-			struct proc *p = curproc;	/* XXX */
+			struct thread *td = curthread;	/* XXX */
 
 #if defined(__FreeBSD_version) && __FreeBSD_version >= 400005
-			if((error = suser(p)) != 0)
-#else
-			if((error = suser(p->p_ucred, &p->p_acflag)) != 0)
-#endif
+			if ((error = suser(td)) != 0)
 				return (error);
 		        sl_compress_setup(sc->sc_compr, *(int *)data);
 			}

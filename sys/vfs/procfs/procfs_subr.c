@@ -37,7 +37,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_subr.c,v 1.26.2.3 2002/02/18 21:28:04 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.3 2003/06/25 03:56:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -86,7 +86,7 @@ procfs_allocvp(mp, vpp, pid, pfs_type)
 	long pid;
 	pfstype pfs_type;
 {
-	struct proc *p = curproc;	/* XXX */
+	struct thread *td = curthread;	/* XXX */
 	struct pfsnode *pfs;
 	struct vnode *vp;
 	struct pfsnode **pp;
@@ -98,7 +98,7 @@ loop:
 		if (pfs->pfs_pid == pid &&
 		    pfs->pfs_type == pfs_type &&
 		    vp->v_mount == mp) {
-			if (vget(vp, 0, p))
+			if (vget(vp, 0, td))
 				goto loop;
 			*vpp = vp;
 			return (0);
@@ -239,15 +239,20 @@ procfs_freevp(vp)
 }
 
 int
-procfs_rw(ap)
-	struct vop_read_args *ap;
+procfs_rw(struct vop_read_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct uio *uio = ap->a_uio;
-	struct proc *curp = uio->uio_procp;
+	struct thread *curtd = uio->uio_td;
+	struct proc *curp;
 	struct pfsnode *pfs = VTOPFS(vp);
 	struct proc *p;
 	int rtval;
+
+	if (curtd == NULL)
+		return (EINVAL);
+	if ((curp = curtd->td_proc) == NULL)	/* XXX */
+		return (EINVAL);
 
 	p = PFIND(pfs->pfs_pid);
 	if (p == NULL)
@@ -377,10 +382,13 @@ vfs_findname(nm, buf, buflen)
 }
 
 void
-procfs_exit(struct proc *p)
+procfs_exit(struct thread *td)
 {
 	struct pfsnode *pfs;
-	pid_t pid = p->p_pid;
+	pid_t pid;
+
+	KKASSERT(td->td_proc);
+	pid = td->td_proc->p_pid;
 
 	/*
 	 * The reason for this loop is not obvious -- basicly,

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.3 2003/06/23 17:55:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.4 2003/06/25 03:56:08 dillon Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -68,13 +68,13 @@ SYSCTL_INT(_vfs_nwfs, OID_AUTO, version, CTLFLAG_RD, &nwfs_version, 0, "");
 SYSCTL_INT(_vfs_nwfs, OID_AUTO, debuglevel, CTLFLAG_RW, &nwfs_debuglevel, 0, "");
 
 static int nwfs_mount(struct mount *, char *, caddr_t,
-			struct nameidata *, struct proc *);
-static int nwfs_quotactl(struct mount *, int, uid_t, caddr_t, struct proc *);
+			struct nameidata *, struct thread *);
+static int nwfs_quotactl(struct mount *, int, uid_t, caddr_t, struct thread *);
 static int nwfs_root(struct mount *, struct vnode **);
-static int nwfs_start(struct mount *, int, struct proc *);
-static int nwfs_statfs(struct mount *, struct statfs *, struct proc *);
-static int nwfs_sync(struct mount *, int, struct ucred *, struct proc *);
-static int nwfs_unmount(struct mount *, int, struct proc *);
+static int nwfs_start(struct mount *, int, struct thread *);
+static int nwfs_statfs(struct mount *, struct statfs *, struct thread *);
+static int nwfs_sync(struct mount *, int, struct ucred *, struct thread *);
+static int nwfs_unmount(struct mount *, int, struct thread *);
 static int nwfs_init(struct vfsconf *vfsp);
 static int nwfs_uninit(struct vfsconf *vfsp);
 
@@ -141,7 +141,7 @@ nwfs_initnls(struct nwmount *nmp) {
  * data - addr in user space of mount params 
  */
 static int nwfs_mount(struct mount *mp, char *path, caddr_t data, 
-		      struct nameidata *ndp, struct proc *p)
+		      struct nameidata *ndp, struct thread *td)
 {
 	struct nwfs_args args; 	  /* will hold data from mount request */
 	size_t size;
@@ -151,6 +151,10 @@ static int nwfs_mount(struct mount *mp, char *path, caddr_t data,
 	struct ncp_handle *handle = NULL;
 	struct vnode *vp;
 	char *pc,*pe;
+	struct ucred *cred;
+
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;
 
 	if (data == NULL) {
 		nwfs_printf("missing data argument\n");
@@ -167,7 +171,7 @@ static int nwfs_mount(struct mount *mp, char *path, caddr_t data,
 		nwfs_printf("mount version mismatch: kernel=%d, mount=%d\n",NWFS_VERSION,args.version);
 		return (1);
 	}
-	error = ncp_conn_getbyref(args.connRef,p,p->p_ucred,NCPM_EXECUTE,&conn);
+	error = ncp_conn_getbyref(args.connRef,td,cred,NCPM_EXECUTE,&conn);
 	if (error) {
 		nwfs_printf("invalid connection refernce %d\n",args.connRef);
 		return (error);
@@ -177,7 +181,7 @@ static int nwfs_mount(struct mount *mp, char *path, caddr_t data,
 		nwfs_printf("can't get connection handle\n");
 		return (error);
 	}
-	ncp_conn_unlock(conn,p);	/* we keep the ref */
+	ncp_conn_unlock(conn,td);	/* we keep the ref */
 	mp->mnt_stat.f_iosize = conn->buffer_size;
         /* We must malloc our own mount info */
         MALLOC(nmp,struct nwmount *,sizeof(struct nwmount),M_NWFSDATA,M_USE_RESERVE | M_ZERO);
@@ -220,7 +224,7 @@ static int nwfs_mount(struct mount *mp, char *path, caddr_t data,
 	/*
 	 * Lose the lock but keep the ref.
 	 */
-	VOP_UNLOCK(vp, 0, curproc);
+	VOP_UNLOCK(vp, 0, curthread);
 	NCPVODEBUG("rootvp.vrefcnt=%d\n",vp->v_usecount);
 	return error;
 bad:
@@ -233,11 +237,15 @@ bad:
 
 /* Unmount the filesystem described by mp. */
 static int
-nwfs_unmount(struct mount *mp, int mntflags, struct proc *p)
+nwfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
 	struct nwmount *nmp = VFSTONWFS(mp);
 	struct ncp_conn *conn;
 	int error, flags;
+	struct ucred *cred;
+
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;
 
 	NCPVODEBUG("nwfs_unmount: flags=%04x\n",mntflags);
 	flags = 0;
@@ -249,9 +257,9 @@ nwfs_unmount(struct mount *mp, int mntflags, struct proc *p)
 		return (error);
 	conn = NWFSTOCONN(nmp);
 	ncp_conn_puthandle(nmp->connh,NULL,0);
-	if (ncp_conn_lock(conn,p,p->p_ucred,NCPM_WRITE | NCPM_EXECUTE) == 0) {
+	if (ncp_conn_lock(conn,td,cred,NCPM_WRITE | NCPM_EXECUTE) == 0) {
 		if(ncp_disconnect(conn))
-			ncp_conn_unlock(conn,p);
+			ncp_conn_unlock(conn,td);
 	}
 	mp->mnt_data = (qaddr_t)0;
 	if (nmp->m.flags & NWFS_MOUNT_HAVE_NLS)
@@ -269,25 +277,28 @@ nwfs_root(struct mount *mp, struct vnode **vpp) {
 	struct nwnode *np;
 	struct ncp_conn *conn;
 	struct nw_entry_info fattr;
-	struct proc *p = curproc;
-	struct ucred *cred = p->p_ucred;
+	struct thread *td = curthread;	/* XXX */
+	struct ucred *cred;
 	int error, nsf, opt;
 	u_char vol;
+
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;
 
 	nmp = VFSTONWFS(mp);
 	conn = NWFSTOCONN(nmp);
 	if (nmp->n_root) {
 		*vpp = NWTOV(nmp->n_root);
-		while (vget(*vpp, LK_EXCLUSIVE, curproc) != 0)
+		while (vget(*vpp, LK_EXCLUSIVE, curthread) != 0) /* XXX */
 			;
 		return 0;
 	}
 	error = ncp_lookup_volume(conn, nmp->m.mounted_vol, &vol, 
-		&nmp->n_rootent.f_id, p, cred);
+		&nmp->n_rootent.f_id, td, cred);
 	if (error)
 		return ENOENT;
 	nmp->n_volume = vol;
-	error = ncp_get_namespaces(conn, vol, &nsf, p, cred);
+	error = ncp_get_namespaces(conn, vol, &nsf, td, cred);
 	if (error)
 		return ENOENT;
 	if (nsf & NW_NSB_OS2) {
@@ -313,7 +324,7 @@ nwfs_root(struct mount *mp, struct vnode **vpp) {
 	if (nmp->m.root_path[0]) {
 		nmp->m.root_path[0]--;
 		error = ncp_obtain_info(nmp, nmp->n_rootent.f_id,
-		    -nmp->m.root_path[0], nmp->m.root_path, &fattr, p, cred);
+		    -nmp->m.root_path[0], nmp->m.root_path, &fattr, td, cred);
 		if (error) {
 			NCPFATAL("Invalid root path specified\n");
 			return ENOENT;
@@ -321,7 +332,7 @@ nwfs_root(struct mount *mp, struct vnode **vpp) {
 		nmp->n_rootent.f_parent = fattr.dirEntNum;
 		nmp->m.root_path[0]++;
 		error = ncp_obtain_info(nmp, nmp->n_rootent.f_id,
-		    -nmp->m.root_path[0], nmp->m.root_path, &fattr, p, cred);
+		    -nmp->m.root_path[0], nmp->m.root_path, &fattr, td, cred);
 		if (error) {
 			NCPFATAL("Invalid root path specified\n");
 			return ENOENT;
@@ -329,7 +340,7 @@ nwfs_root(struct mount *mp, struct vnode **vpp) {
 		nmp->n_rootent.f_id = fattr.dirEntNum;
 	} else {
 		error = ncp_obtain_info(nmp, nmp->n_rootent.f_id,
-		    0, NULL, &fattr, p, cred);
+		    0, NULL, &fattr, td, cred);
 		if (error) {
 			NCPFATAL("Can't obtain volume info\n");
 			return ENOENT;
@@ -345,7 +356,7 @@ nwfs_root(struct mount *mp, struct vnode **vpp) {
 	if (nmp->m.root_path[0] == 0)
 		np->n_flag |= NVOLUME;
 	nmp->n_root = np;
-/*	error = VOP_GETATTR(vp, &vattr, cred, p);
+/*	error = VOP_GETATTR(vp, &vattr, cred, td);
 	if (error) {
 		vput(vp);
 		NCPFATAL("Can't get root directory entry\n");
@@ -360,10 +371,10 @@ nwfs_root(struct mount *mp, struct vnode **vpp) {
  */
 /* ARGSUSED */
 static int
-nwfs_start(mp, flags, p)
+nwfs_start(mp, flags, td)
 	struct mount *mp;
 	int flags;
-	struct proc *p;
+	struct thread *td;
 {
 	NCPVODEBUG("flags=%04x\n",flags);
 	return (0);
@@ -374,12 +385,12 @@ nwfs_start(mp, flags, p)
  */
 /* ARGSUSED */
 static int
-nwfs_quotactl(mp, cmd, uid, arg, p)
+nwfs_quotactl(mp, cmd, uid, arg, td)
 	struct mount *mp;
 	int cmd;
 	uid_t uid;
 	caddr_t arg;
-	struct proc *p;
+	struct thread *td;
 {
 	NCPVODEBUG("return EOPNOTSUPP\n");
 	return (EOPNOTSUPP);
@@ -419,18 +430,22 @@ nwfs_uninit(struct vfsconf *vfsp)
  * nwfs_statfs call
  */
 int
-nwfs_statfs(mp, sbp, p)
+nwfs_statfs(mp, sbp, td)
 	struct mount *mp;
 	struct statfs *sbp;
-	struct proc *p;
+	struct thread *td;
 {
 	struct nwmount *nmp = VFSTONWFS(mp);
 	int error = 0, secsize;
 	struct nwnode *np = nmp->n_root;
 	struct ncp_volume_info vi;
+	struct ucred *cred;
+
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;
 
 	if (np == NULL) return EINVAL;
-	error = ncp_get_volume_info_with_number(NWFSTOCONN(nmp), nmp->n_volume, &vi,p,p->p_ucred);
+	error = ncp_get_volume_info_with_number(NWFSTOCONN(nmp), nmp->n_volume, &vi,td,cred);
 	if (error) return error;
 	secsize = 512;			/* XXX how to get real value ??? */
 	sbp->f_spare2=0;		/* placeholder */
@@ -465,11 +480,11 @@ nwfs_statfs(mp, sbp, p)
  */
 /* ARGSUSED */
 static int
-nwfs_sync(mp, waitfor, cred, p)
+nwfs_sync(mp, waitfor, cred, td)
 	struct mount *mp;
 	int waitfor;
 	struct ucred *cred;
-	struct proc *p;
+	struct thread *td;
 {
 	struct vnode *vp;
 	int error, allerror = 0;
@@ -489,9 +504,9 @@ loop:
 		if (VOP_ISLOCKED(vp, NULL) || TAILQ_EMPTY(&vp->v_dirtyblkhd) ||
 		    waitfor == MNT_LAZY)
 			continue;
-		if (vget(vp, LK_EXCLUSIVE, p))
+		if (vget(vp, LK_EXCLUSIVE, td))
 			goto loop;
-		error = VOP_FSYNC(vp, cred, waitfor, p);
+		error = VOP_FSYNC(vp, cred, waitfor, td);
 		if (error)
 			allerror = error;
 		vput(vp);

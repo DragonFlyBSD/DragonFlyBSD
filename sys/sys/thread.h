@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.8 2003/06/23 23:36:14 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.9 2003/06/25 03:56:10 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -135,6 +135,7 @@ struct thread {
     u_int64_t	td_uticks;	/* Statclock hits in user mode (uS) */
     u_int64_t	td_sticks;      /* Statclock hits in system mode (uS) */
     u_int64_t	td_iticks;	/* Statclock hits processing intr (uS) */
+    int		td_locks;	/* lockmgr lock debugging YYY */
     struct mi_thread td_mach;
 };
 
@@ -148,6 +149,7 @@ struct thread {
  */
 #define TDF_RUNNING		0x0001	/* currently running */
 #define TDF_RUNQ		0x0002	/* on run queue */
+#define TDF_DEADLKTREAT		0x1000	/* special lockmgr deadlock treatment */
 
 /*
  * Thread priorities.  Typically only one thread from any given

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 /*
@@ -408,7 +408,7 @@ setuid(struct setuid_args *uap)
 #ifdef POSIX_APPENDIX_B_4_2_2	/* Use BSD-compat clause from B.4.2.2 */
 	    uid != cr->cr_uid &&	/* allow setuid(geteuid()) */
 #endif
-	    (error = suser_xxx(0, PRISON_ROOT)))
+	    (error = suser_cred(cr, PRISON_ROOT)))
 		return (error);
 
 #ifdef _POSIX_SAVED_IDS
@@ -420,7 +420,7 @@ setuid(struct setuid_args *uap)
 #ifdef POSIX_APPENDIX_B_4_2_2	/* Use the clause from B.4.2.2 */
 	    uid == cr->cr_uid ||
 #endif
-	    suser_xxx(0, PRISON_ROOT) == 0) /* we are using privs */
+	    suser_cred(cr, PRISON_ROOT) == 0) /* we are using privs */
 #endif
 	{
 		/*
@@ -475,7 +475,7 @@ seteuid(struct seteuid_args *uap)
 	euid = uap->euid;
 	if (euid != cr->cr_ruid &&		/* allow seteuid(getuid()) */
 	    euid != cr->cr_svuid &&		/* allow seteuid(saved uid) */
-	    (error = suser_xxx(0, PRISON_ROOT)))
+	    (error = suser_cred(cr, PRISON_ROOT)))
 		return (error);
 	/*
 	 * Everything's okay, do it.  Copy credentials so other references do
@@ -525,7 +525,7 @@ setgid(struct setgid_args *uap)
 #ifdef POSIX_APPENDIX_B_4_2_2	/* Use BSD-compat clause from B.4.2.2 */
 	    gid != cr->cr_groups[0] && /* allow setgid(getegid()) */
 #endif
-	    (error = suser_xxx(0, PRISON_ROOT)))
+	    (error = suser_cred(cr, PRISON_ROOT)))
 		return (error);
 
 #ifdef _POSIX_SAVED_IDS
@@ -537,7 +537,7 @@ setgid(struct setgid_args *uap)
 #ifdef POSIX_APPENDIX_B_4_2_2	/* use the clause from B.4.2.2 */
 	    gid == cr->cr_groups[0] ||
 #endif
-	    suser_xxx(0, PRISON_ROOT) == 0) /* we are using privs */
+	    suser_cred(cr, PRISON_ROOT) == 0) /* we are using privs */
 #endif
 	{
 		/*
@@ -592,7 +592,7 @@ setegid(struct setegid_args *uap)
 	egid = uap->egid;
 	if (egid != cr->cr_rgid &&		/* allow setegid(getgid()) */
 	    egid != cr->cr_svgid &&		/* allow setegid(saved gid) */
-	    (error = suser_xxx(0, PRISON_ROOT)))
+	    (error = suser_cred(cr, PRISON_ROOT)))
 		return (error);
 	if (cr->cr_groups[0] != egid) {
 		cr = p->p_ucred = crcopy(cr);
@@ -621,7 +621,7 @@ setgroups(struct setgroups_args *uap)
 		return(EPERM);
 	cr = p->p_ucred;
 
-	if ((error = suser_xxx(0, PRISON_ROOT)))
+	if ((error = suser_cred(cr, PRISON_ROOT)))
 		return (error);
 	ngrp = uap->gidsetsize;
 	if (ngrp > NGROUPS)
@@ -673,7 +673,7 @@ setreuid(struct setreuid_args *uap)
 	if (((ruid != (uid_t)-1 && ruid != cr->cr_ruid && ruid != cr->cr_svuid) ||
 	     (euid != (uid_t)-1 && euid != cr->cr_uid &&
 	     euid != cr->cr_ruid && euid != cr->cr_svuid)) &&
-	    (error = suser_xxx(0, PRISON_ROOT)) != 0)
+	    (error = suser_cred(cr, PRISON_ROOT)) != 0)
 		return (error);
 
 	if (euid != (uid_t)-1 && cr->cr_uid != euid) {
@@ -717,7 +717,7 @@ setregid(struct setregid_args *uap)
 	if (((rgid != (gid_t)-1 && rgid != cr->cr_rgid && rgid != cr->cr_svgid) ||
 	     (egid != (gid_t)-1 && egid != cr->cr_groups[0] &&
 	     egid != cr->cr_rgid && egid != cr->cr_svgid)) &&
-	    (error = suser_xxx(0, PRISON_ROOT)) != 0)
+	    (error = suser_cred(cr, PRISON_ROOT)) != 0)
 		return (error);
 
 	if (egid != (gid_t)-1 && cr->cr_groups[0] != egid) {
@@ -770,7 +770,7 @@ setresuid(struct setresuid_args *uap)
 	      euid != cr->cr_uid) ||
 	     (suid != (uid_t)-1 && suid != cr->cr_ruid && suid != cr->cr_svuid &&
 	      suid != cr->cr_uid)) &&
-	    (error = suser_xxx(0, PRISON_ROOT)) != 0)
+	    (error = suser_cred(cr, PRISON_ROOT)) != 0)
 		return (error);
 	if (euid != (uid_t)-1 && cr->cr_uid != euid) {
 		change_euid(euid);
@@ -819,7 +819,7 @@ setresgid(struct setresgid_args *uap)
 	      egid != cr->cr_groups[0]) ||
 	     (sgid != (gid_t)-1 && sgid != cr->cr_rgid && sgid != cr->cr_svgid &&
 	      sgid != cr->cr_groups[0])) &&
-	    (error = suser_xxx(0, PRISON_ROOT)) != 0)
+	    (error = suser_cred(cr, PRISON_ROOT)) != 0)
 		return (error);
 
 	if (egid != (gid_t)-1 && cr->cr_groups[0] != egid) {
@@ -936,49 +936,35 @@ groupmember(gid_t gid, struct ucred *cred)
 /*
  * Test whether the specified credentials imply "super-user"
  * privilege; if so, and we have accounting info, set the flag
- * indicating use of super-powers.
+ * indicating use of super-powers.  A kernel thread without a process
+ * context is assumed to have super user capabilities.  In situations
+ * where the caller always expect a cred to exist, the cred should be
+ * passed separately and suser_cred()should be used instead of suser().
+ *
  * Returns 0 or error.
  */
 int
-suser(void)
+suser(struct thread *td)
 {
-	struct proc *p = curthread->td_proc;
+	struct proc *p = td->td_proc;
 
 	if (p != NULL) {
-	    return suser_xxx(p->p_ucred, 0);
+		return suser_cred(p->p_ucred, 0);
 	} else {
-	    printf("suser(): wasn't run from a thread with a process context: %p\n", curthread);
-	    return (EPERM);
+		return (0);
 	}
 }
 
 int
-suser_xxx(struct ucred *cred, int flag)
+suser_cred(struct ucred *cred, int flag)
 {
-	struct proc *p = curthread->td_proc;
+	KASSERT(cred != NULL, ("suser_cred: NULL cred!"));
 
-	/*
-	 * Either a cred or a process is required to check for
-	 * superuser permissions (API enforcement).
-	 */
-	if (cred == NULL) {
-		if (p == NULL) {
-			printf("suser_xxx(): THINK!\n");
-			return (EPERM);
-		}
-		cred = p->p_ucred;
-	}
 	if (cred->cr_uid != 0) 
 		return (EPERM);
 	if (cred->cr_prison && !(flag & PRISON_ROOT))
 		return (EPERM);
-	/* 
-	 * YYY for accounting only, but suser_xxx can be called from a
-	 * different process with the cred for the original process and
-	 * this will not work as expected YYY
-	 */
-	if (p)		
-		p->p_acflag |= ASU;
+	/* NOTE: accounting for suser access (p_acflag/ASU) removed */
 	return (0);
 }
 
@@ -1000,7 +986,7 @@ p_trespass(struct ucred *cr1, struct ucred *cr2)
 		return (0);
 	if (cr1->cr_uid == cr2->cr_uid)
 		return (0);
-	if (!suser_xxx(cr1, PRISON_ROOT))
+	if (suser_cred(cr1, PRISON_ROOT) == 0)
 		return (0);
 	return (EPERM);
 }
@@ -1022,10 +1008,11 @@ crget()
 /*
  * Claim another reference to a ucred structure
  */
-void
+struct ucred *
 crhold(struct ucred *cr)
 {
 	cr->cr_ref++;
+	return(cr);
 }
 
 /*
@@ -1161,7 +1148,7 @@ setlogin(struct setlogin_args *uap)
 	char logintmp[MAXLOGNAME];
 
 	KKASSERT(p != NULL);
-	if ((error = suser_xxx(0, PRISON_ROOT)))
+	if ((error = suser_cred(p->p_ucred, PRISON_ROOT)))
 		return (error);
 	error = copyinstr((caddr_t) uap->namebuf, (caddr_t) logintmp,
 	    sizeof(logintmp), (size_t *)0);

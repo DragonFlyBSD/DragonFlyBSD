@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.3 2003/06/23 17:55:51 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.4 2003/06/25 03:56:13 dillon Exp $
  */
 
 /*
@@ -77,6 +77,8 @@
 #include <vm/vm_extern.h>
 #include <vm/vm_page.h>
 #include <vm/vm_kern.h>
+
+#include <sys/file2.h>
 
 #ifndef _SYS_SYSPROTO_H_
 struct sbrk_args {
@@ -166,7 +168,8 @@ ogetpagesize(struct getpagesize_args *uap)
 int
 mmap(struct mmap_args *uap)
 {
- 	struct proc *p = curproc;
+	struct thread *td = curthread;
+ 	struct proc *p = td->td_proc;
 	struct filedesc *fdp = p->p_fd;
 	struct file *fp = NULL;
 	struct vnode *vp;
@@ -179,6 +182,8 @@ mmap(struct mmap_args *uap)
 	off_t pos;
 	struct vmspace *vms = p->p_vmspace;
 	vm_object_t obj;
+
+	KKASSERT(p);
 
 	addr = (vm_offset_t) uap->addr;
 	size = uap->len;
@@ -315,7 +320,7 @@ mmap(struct mmap_args *uap)
 			if (securelevel >= 1)
 				disablexworkaround = 1;
 			else
-				disablexworkaround = suser_xxx(p->p_ucred, 0);
+				disablexworkaround = suser(td);
 			if (vp->v_type == VCHR && disablexworkaround &&
 			    (flags & (MAP_PRIVATE|MAP_COPY))) {
 				error = EINVAL;
@@ -352,8 +357,7 @@ mmap(struct mmap_args *uap)
 				if ((fp->f_flag & FWRITE) != 0) {
 					struct vattr va;
 					if ((error =
-					    VOP_GETATTR(vp, &va,
-						        p->p_ucred, p))) {
+					    VOP_GETATTR(vp, &va, p->p_ucred, td))) {
 						goto done;
 					}
 					if ((va.va_flags &
@@ -391,7 +395,7 @@ mmap(struct mmap_args *uap)
 		p->p_retval[0] = (register_t) (addr + pageoff);
 done:
 	if (fp)
-		fdrop(fp, p);
+		fdrop(fp, td);
 	return (error);
 }
 
@@ -894,7 +898,7 @@ mlock(struct mlock_args *uap)
 	    p->p_rlimit[RLIMIT_MEMLOCK].rlim_cur)
 		return (ENOMEM);
 #else
-	error = suser_xxx(p->p_ucred, 0);
+	error = suser_cred(p->p_ucred, 0);
 	if (error)
 		return (error);
 #endif
@@ -927,10 +931,11 @@ munlockall(struct munlockall_args *uap)
 int
 munlock(struct munlock_args *uap)
 {
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	vm_offset_t addr;
 	vm_size_t size, pageoff;
 	int error;
-	struct proc *p = curproc;
 
 	addr = (vm_offset_t) uap->addr;
 	size = uap->len;
@@ -945,7 +950,7 @@ munlock(struct munlock_args *uap)
 		return (EINVAL);
 
 #ifndef pmap_wired_count
-	error = suser();
+	error = suser(td);
 	if (error)
 		return (error);
 #endif
@@ -972,7 +977,10 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	int rv = KERN_SUCCESS;
 	vm_ooffset_t objsize;
 	int docow;
-	struct proc *p = curproc;
+	struct thread *td = curthread;	/* XXX */
+	struct proc *p = td->td_proc;
+
+	KKASSERT(p);
 
 	if (size == 0)
 		return (0);
@@ -1024,7 +1032,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			struct vattr vat;
 			int error;
 
-			error = VOP_GETATTR(vp, &vat, p->p_ucred, p);
+			error = VOP_GETATTR(vp, &vat, p->p_ucred, td);
 			if (error)
 				return (error);
 			objsize = round_page(vat.va_size);

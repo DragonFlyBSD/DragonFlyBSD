@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.4 2003/06/23 17:55:47 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.5 2003/06/25 03:56:06 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -63,23 +63,23 @@ MALLOC_DEFINE(M_SMBTEMP, "SMBTEMP", "Temp netsmb data");
 smb_unichar smb_unieol = 0;
 
 void
-smb_makescred(struct smb_cred *scred, struct proc *p, struct ucred *cred)
+smb_makescred(struct smb_cred *scred, struct thread *td, struct ucred *cred)
 {
-	if (p) {
-		scred->scr_p = p;
-		scred->scr_cred = cred ? cred : p->p_ucred;
+	scred->scr_td = td;
+	if (td && td->td_proc) {
+		scred->scr_cred = cred ? cred : td->td_proc->p_ucred;
 	} else {
-		scred->scr_p = NULL;
 		scred->scr_cred = cred ? cred : NULL;
 	}
 }
 
 int
-smb_proc_intr(struct proc *p)
+smb_proc_intr(struct thread *td)
 {
 	sigset_t tmpset;
+	struct proc *p;
 
-	if (p == NULL)
+	if ((p = td->td_proc) == NULL)
 		return 0;
 	tmpset = p->p_siglist;
 	SIGSETNAND(tmpset, p->p_sigmask);

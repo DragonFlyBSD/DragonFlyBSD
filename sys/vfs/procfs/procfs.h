@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs.h,v 1.32.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs.h,v 1.3 2003/06/23 17:55:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs.h,v 1.4 2003/06/25 03:56:00 dillon Exp $
  */
 
 /*
@@ -99,7 +99,7 @@ struct pfsnode {
        ((p1)->p_ucred->cr_ruid == (p2)->p_ucred->cr_ruid) && \
        ((p1)->p_ucred->cr_svuid == (p2)->p_ucred->cr_ruid) && \
        ((p2)->p_flag & (P_SUGID|P_INEXEC)) == 0) || \
-      (suser_xxx((p1)->p_ucred, PRISON_ROOT) == 0))
+      (suser_cred((p1)->p_ucred, PRISON_ROOT) == 0))
 
 /*
  * Convert between pfsnode vnode
@@ -123,7 +123,7 @@ struct dbreg;
 
 #define PFIND(pid) ((pid) ? pfind(pid) : &proc0)
 
-void procfs_exit __P((struct proc *));
+void procfs_exit __P((struct thread *));
 int procfs_freevp __P((struct vnode *));
 int procfs_allocvp __P((struct mount *, struct vnode **, long, pfstype));
 struct vnode *procfs_findtextvp __P((struct proc *));

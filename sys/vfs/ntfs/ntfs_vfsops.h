@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.h,v 1.6 2000/01/14 19:54:41 bde Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.h,v 1.3 2003/06/25 03:56:07 dillon Exp $
  */
 #define VG_DONTLOADIN	0x0001	/* Tells ntfs_vgetex to do not call */
 				/* ntfs_loadntnode() on ntnode, even if */
@@ -38,8 +38,9 @@
 struct mount;
 struct ntfsmount;
 struct proc;
+struct thread;
 struct vnode;
 
 int ntfs_vgetex(struct mount *, ino_t, u_int32_t, char *, u_long, u_long,
-		struct proc *, struct vnode **);
+		struct thread *, struct vnode **);
 int ntfs_calccfree(struct ntfsmount *, cn_t *);

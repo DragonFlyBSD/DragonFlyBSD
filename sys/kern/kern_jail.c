@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_jail.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_jail.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  *
  */
 
@@ -57,9 +57,10 @@ jail(struct jail_args *uap)
 	struct prison *pr;
 	struct jail j;
 	struct chroot_args ca;
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 
-	error = suser();
+	error = suser(td);
 	if (error)
 		return (error);
 	error = copyin(uap->jail, &j, sizeof j);
@@ -91,12 +92,14 @@ bail:
 }
 
 int
-prison_ip(struct proc *p, int flag, u_int32_t *ip)
+prison_ip(struct thread *td, int flag, u_int32_t *ip)
 {
 	u_int32_t tmp;
 	struct prison *pr;
 
-	if ((pr = p->p_ucred->cr_prison) == NULL)
+	if (td->td_proc == NULL)
+		return (0);
+	if ((pr = td->td_proc->p_ucred->cr_prison) == NULL)
 		return (0);
 	if (flag) 
 		tmp = *ip;
@@ -122,14 +125,14 @@ prison_ip(struct proc *p, int flag, u_int32_t *ip)
 }
 
 void
-prison_remote_ip(struct proc *p, int flag, u_int32_t *ip)
+prison_remote_ip(struct thread *td, int flag, u_int32_t *ip)
 {
 	u_int32_t tmp;
 	struct prison *pr;
 
-	if (p == NULL)
+	if (td == NULL || td->td_proc == NULL)
 		return;
-	if ((pr = p->p_ucred->cr_prison) == NULL)
+	if ((pr = td->td_proc->p_ucred->cr_prison) == NULL)
 		return;
 	if (flag)
 		tmp = *ip;
@@ -140,19 +143,20 @@ prison_remote_ip(struct proc *p, int flag, u_int32_t *ip)
 			*ip = pr->pr_ip;
 		else
 			*ip = htonl(pr->pr_ip);
-		return;
 	}
 	return;
 }
 
 int
-prison_if(struct proc *p, struct sockaddr *sa)
+prison_if(struct thread *td, struct sockaddr *sa)
 {
 	struct prison *pr;
 	struct sockaddr_in *sai = (struct sockaddr_in*) sa;
 	int ok;
 
-	pr = p->p_ucred->cr_prison;
+	if (td->td_proc == NULL)
+		return(0);
+	pr = td->td_proc->p_ucred->cr_prison;
 
 	if ((sai->sin_family != AF_INET) && jail_socket_unixiproute_only)
 		ok = 1;

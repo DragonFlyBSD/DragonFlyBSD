@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.3 2003/06/25 03:56:10 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -48,6 +48,7 @@
 
 struct stat;
 struct proc;
+struct thread;
 struct uio;
 struct knote;
 
@@ -70,20 +71,20 @@ struct file {
 	struct	fileops {
 		int	(*fo_read)	__P((struct file *fp, struct uio *uio,
 					    struct ucred *cred, int flags,
-					    struct proc *p));
+					    struct thread *td));
 		int	(*fo_write)	__P((struct file *fp, struct uio *uio,
 					    struct ucred *cred, int flags,
-					    struct proc *p));
+					    struct thread *td));
 #define	FOF_OFFSET	1
 		int	(*fo_ioctl)	__P((struct file *fp, u_long com,
-					    caddr_t data, struct proc *p));
+					    caddr_t data, struct thread *td));
 		int	(*fo_poll)	__P((struct file *fp, int events,
-					    struct ucred *cred, struct proc *p));
+					    struct ucred *cred, struct thread *td));
 		int	(*fo_kqfilter)	__P((struct file *fp,
 					    struct knote *kn));
 		int	(*fo_stat)	__P((struct file *fp, struct stat *sb,
-					    struct proc *p));
-		int	(*fo_close)	__P((struct file *fp, struct proc *p));
+					    struct thread *td));
+		int	(*fo_close)	__P((struct file *fp, struct thread *td));
 	} *f_ops;
 	int	f_seqcount;	/*
 				 * count of sequential accesses -- cleared
@@ -102,6 +103,8 @@ struct file {
 MALLOC_DECLARE(M_FILE);
 #endif
 
+extern int fdrop __P((struct file *fp, struct thread *td));
+
 LIST_HEAD(filelist, file);
 extern struct filelist filehead; /* head of list of open files */
 extern struct fileops vnops;
@@ -109,124 +112,6 @@ extern struct fileops badfileops;
 extern int maxfiles;		/* kernel limit on number of open files */
 extern int maxfilesperproc;	/* per process limit on number of open files */
 extern int nfiles;		/* actual number of open files */
-
-static __inline void fhold __P((struct file *fp));
-int fdrop __P((struct file *fp, struct proc *p));
-
-static __inline void
-fhold(fp)
-	struct file *fp;
-{
-
-	fp->f_count++;
-}
-
-static __inline int fo_read __P((struct file *fp, struct uio *uio,
-    struct ucred *cred, int flags, struct proc *p));
-static __inline int fo_write __P((struct file *fp, struct uio *uio,
-    struct ucred *cred, int flags, struct proc *p));
-static __inline int fo_ioctl __P((struct file *fp, u_long com, caddr_t data,
-    struct proc *p));
-static __inline int fo_poll __P((struct file *fp, int events,
-    struct ucred *cred, struct proc *p));
-static __inline int fo_stat __P((struct file *fp, struct stat *sb,
-    struct proc *p));
-static __inline int fo_close __P((struct file *fp, struct proc *p));
-static __inline int fo_kqfilter __P((struct file *fp, struct knote *kn));
-
-static __inline int
-fo_read(fp, uio, cred, flags, p)
-	struct file *fp;
-	struct uio *uio;
-	struct ucred *cred;
-	struct proc *p;
-	int flags;
-{
-	int error;
-
-	fhold(fp);
-	error = (*fp->f_ops->fo_read)(fp, uio, cred, flags, p);
-	fdrop(fp, p);
-	return (error);
-}
-
-static __inline int
-fo_write(fp, uio, cred, flags, p)
-	struct file *fp;
-	struct uio *uio;
-	struct ucred *cred;
-	struct proc *p;
-	int flags;
-{
-	int error;
-
-	fhold(fp);
-	error = (*fp->f_ops->fo_write)(fp, uio, cred, flags, p);
-	fdrop(fp, p);
-	return (error);
-}
-
-static __inline int
-fo_ioctl(fp, com, data, p)
-	struct file *fp;
-	u_long com;
-	caddr_t data;
-	struct proc *p;
-{
-	int error;
-
-	fhold(fp);
-	error = (*fp->f_ops->fo_ioctl)(fp, com, data, p);
-	fdrop(fp, p);
-	return (error);
-}
-
-static __inline int
-fo_poll(fp, events, cred, p)
-	struct file *fp;
-	int events;
-	struct ucred *cred;
-	struct proc *p;
-{
-	int error;
-
-	fhold(fp);
-	error = (*fp->f_ops->fo_poll)(fp, events, cred, p);
-	fdrop(fp, p);
-	return (error);
-}
-
-static __inline int
-fo_stat(fp, sb, p)
-	struct file *fp;
-	struct stat *sb;
-	struct proc *p;
-{
-	int error;
-
-	fhold(fp);
-	error = (*fp->f_ops->fo_stat)(fp, sb, p);
-	fdrop(fp, p);
-	return (error);
-}
-
-static __inline int
-fo_close(fp, p)
-	struct file *fp;
-	struct proc *p;
-{
-
-	return ((*fp->f_ops->fo_close)(fp, p));
-}
-
-static __inline int
-fo_kqfilter(fp, kn)
-	struct file *fp;
-	struct knote *kn;
-{
-
-	return ((*fp->f_ops->fo_kqfilter)(fp, kn));
-}
 
 #endif /* _KERNEL */
 

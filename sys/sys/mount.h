@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.3 2003/06/25 03:56:10 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -50,6 +50,8 @@
 #ifdef _KERNEL
 #include <sys/lock.h>
 #endif
+
+struct thread;
 
 typedef struct fsid { int32_t val[2]; } fsid_t;	/* file system id type */
 
@@ -328,18 +330,18 @@ struct mbuf;
 
 struct vfsops {
 	int	(*vfs_mount)	__P((struct mount *mp, char *path, caddr_t data,
-				    struct nameidata *ndp, struct proc *p));
+				    struct nameidata *ndp, struct thread *td));
 	int	(*vfs_start)	__P((struct mount *mp, int flags,
-				    struct proc *p));
+				    struct thread *td));
 	int	(*vfs_unmount)	__P((struct mount *mp, int mntflags,
-				    struct proc *p));
+				    struct thread *td));
 	int	(*vfs_root)	__P((struct mount *mp, struct vnode **vpp));
 	int	(*vfs_quotactl)	__P((struct mount *mp, int cmds, uid_t uid,
-				    caddr_t arg, struct proc *p));
+				    caddr_t arg, struct thread *td));
 	int	(*vfs_statfs)	__P((struct mount *mp, struct statfs *sbp,
-				    struct proc *p));
+				    struct thread *td));
 	int	(*vfs_sync)	__P((struct mount *mp, int waitfor,
-				    struct ucred *cred, struct proc *p));
+				    struct ucred *cred, struct thread *td));
 	int	(*vfs_vget)	__P((struct mount *mp, ino_t ino,
 				    struct vnode **vpp));
 	int	(*vfs_fhtovp)	__P((struct mount *mp, struct fid *fhp,
@@ -351,7 +353,7 @@ struct vfsops {
 	int	(*vfs_uninit)	__P((struct vfsconf *));
 	int	(*vfs_extattrctl) __P((struct mount *mp, int cmd,
 					const char *attrname, caddr_t arg,
-					struct proc *p));
+					struct thread *td));
 };
 
 #define VFS_MOUNT(MP, PATH, DATA, NDP, P) \
@@ -414,13 +416,13 @@ extern	char *mountrootfsname;
 /*
  * exported vnode operations
  */
-int	dounmount __P((struct mount *, int, struct proc *));
+int	dounmount __P((struct mount *, int, struct thread *));
 int	vfs_setpublicfs			    /* set publicly exported fs */
 	  __P((struct mount *, struct netexport *, struct export_args *));
 int	vfs_lock __P((struct mount *));         /* lock a vfs */
 void	vfs_msync __P((struct mount *, int));
 void	vfs_unlock __P((struct mount *));       /* unlock a vfs */
-int	vfs_busy __P((struct mount *, int, struct simplelock *, struct proc *));
+int	vfs_busy __P((struct mount *, int, struct simplelock *, struct thread *));
 int	vfs_export			    /* process mount export info */
 	  __P((struct mount *, struct netexport *, struct export_args *));
 struct	netcred *vfs_export_lookup	    /* lookup host in fs export list */
@@ -432,7 +434,7 @@ struct	mount *vfs_getvfs __P((fsid_t *));      /* return vfs given fsid */
 int	vfs_modevent __P((module_t, int, void *));
 int	vfs_mountedon __P((struct vnode *));    /* is a vfs mounted on vp */
 int	vfs_rootmountalloc __P((char *, char *, struct mount **));
-void	vfs_unbusy __P((struct mount *, struct proc *));
+void	vfs_unbusy __P((struct mount *, struct thread *));
 void	vfs_unmountall __P((void));
 int	vfs_register __P((struct vfsconf *));
 int	vfs_unregister __P((struct vfsconf *));
@@ -446,15 +448,15 @@ extern	struct nfs_public nfs_pub;
  * functions or casting entries in the VFS op table to "enopnotsupp()".
  */ 
 int	vfs_stdmount __P((struct mount *mp, char *path, caddr_t data, 
-		struct nameidata *ndp, struct proc *p));
-int	vfs_stdstart __P((struct mount *mp, int flags, struct proc *p));
-int	vfs_stdunmount __P((struct mount *mp, int mntflags, struct proc *p));
+		struct nameidata *ndp, struct thread *p));
+int	vfs_stdstart __P((struct mount *mp, int flags, struct thread *p));
+int	vfs_stdunmount __P((struct mount *mp, int mntflags, struct thread *p));
 int	vfs_stdroot __P((struct mount *mp, struct vnode **vpp));
 int	vfs_stdquotactl __P((struct mount *mp, int cmds, uid_t uid,
-		caddr_t arg, struct proc *p));
-int	vfs_stdstatfs __P((struct mount *mp, struct statfs *sbp, struct proc *p));
+		caddr_t arg, struct thread *p));
+int	vfs_stdstatfs __P((struct mount *mp, struct statfs *sbp, struct thread *p));
 int	vfs_stdsync __P((struct mount *mp, int waitfor, struct ucred *cred, 
-		struct proc *p));
+		struct thread *p));
 int	vfs_stdvget __P((struct mount *mp, ino_t ino, struct vnode **vpp));
 int	vfs_stdfhtovp __P((struct mount *mp, struct fid *fhp, struct vnode **vpp));
 int	vfs_stdcheckexp __P((struct mount *mp, struct sockaddr *nam,
@@ -463,7 +465,7 @@ int	vfs_stdvptofh __P((struct vnode *vp, struct fid *fhp));
 int	vfs_stdinit __P((struct vfsconf *));
 int	vfs_stduninit __P((struct vfsconf *));
 int	vfs_stdextattrctl __P((struct mount *mp, int cmd, const char *attrname,
-		caddr_t arg, struct proc *p));
+		caddr_t arg, struct thread *p));
 
 #else /* !_KERNEL */
 

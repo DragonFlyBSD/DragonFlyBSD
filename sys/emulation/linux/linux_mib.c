@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_mib.c,v 1.7.2.2 2001/11/05 19:08:22 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_mib.c,v 1.3 2003/06/23 17:55:26 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_mib.c,v 1.4 2003/06/25 03:55:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -57,11 +57,11 @@ linux_sysctl_osname(SYSCTL_HANDLER_ARGS)
 	char osname[LINUX_MAX_UTSNAME];
 	int error;
 
-	strcpy(osname, linux_get_osname(req->p));
+	strcpy(osname, linux_get_osname(req->td));
 	error = sysctl_handle_string(oidp, osname, LINUX_MAX_UTSNAME, req);
 	if (error || req->newptr == NULL)
 		return (error);
-	error = linux_set_osname(req->p, osname);
+	error = linux_set_osname(req->td, osname);
 	return (error);
 }
 
@@ -78,11 +78,11 @@ linux_sysctl_osrelease(SYSCTL_HANDLER_ARGS)
 	char osrelease[LINUX_MAX_UTSNAME];
 	int error;
 
-	strcpy(osrelease, linux_get_osrelease(req->p));
+	strcpy(osrelease, linux_get_osrelease(req->td));
 	error = sysctl_handle_string(oidp, osrelease, LINUX_MAX_UTSNAME, req);
 	if (error || req->newptr == NULL)
 		return (error);
-	error = linux_set_osrelease(req->p, osrelease);
+	error = linux_set_osrelease(req->td, osrelease);
 	return (error);
 }
 
@@ -99,11 +99,11 @@ linux_sysctl_oss_version(SYSCTL_HANDLER_ARGS)
 	int oss_version;
 	int error;
 
-	oss_version = linux_get_oss_version(req->p);
+	oss_version = linux_get_oss_version(req->td);
 	error = sysctl_handle_int(oidp, &oss_version, 0, req);
 	if (error || req->newptr == NULL)
 		return (error);
-	error = linux_set_oss_version(req->p, oss_version);
+	error = linux_set_oss_version(req->td, oss_version);
 	return (error);
 }
 
@@ -113,12 +113,13 @@ SYSCTL_PROC(_compat_linux, OID_AUTO, oss_version,
 	    "Linux OSS version");
 
 static struct linux_prison *
-get_prison(struct proc *p)
+get_prison(struct thread *td)
 {
 	struct prison *pr;
 	struct linux_prison *lpr;
 
-	pr = p->p_ucred->cr_prison;
+	KKASSERT(td->td_proc);
+	pr = td->td_proc->p_ucred->cr_prison;
 	if (pr == NULL)
 		return (NULL);
 
@@ -132,13 +133,13 @@ get_prison(struct proc *p)
 }
 
 char *
-linux_get_osname(p)
-	struct proc *p;
+linux_get_osname(struct thread *td)
 {
 	register struct prison *pr;
 	register struct linux_prison *lpr;
 
-	pr = p->p_ucred->cr_prison;
+	KKASSERT(td->td_proc);
+	pr = td->td_proc->p_ucred->cr_prison;
 	if (pr != NULL && pr->pr_linux != NULL) {
 		lpr = pr->pr_linux;
 		if (lpr->pr_osname[0])
@@ -149,13 +150,12 @@ linux_get_osname(p)
 }
 
 int
-linux_set_osname(p, osname)
-	struct proc *p;
-	char *osname;
+linux_set_osname(struct thread *td, char *osname)
 {
 	register struct linux_prison *lpr;
 
-	lpr = get_prison(p);
+	KKASSERT(td->td_proc);
+	lpr = get_prison(td);
 	if (lpr != NULL)
 		strcpy(lpr->pr_osname, osname);
 	else
@@ -165,13 +165,13 @@ linux_set_osname(p, osname)
 }
 
 char *
-linux_get_osrelease(p)
-	struct proc *p;
+linux_get_osrelease(struct thread *td)
 {
 	register struct prison *pr;
 	register struct linux_prison *lpr;
 
-	pr = p->p_ucred->cr_prison;
+	KKASSERT(td->td_proc);
+	pr = td->td_proc->p_ucred->cr_prison;
 	if (pr != NULL && pr->pr_linux != NULL) {
 		lpr = pr->pr_linux;
 		if (lpr->pr_osrelease[0])
@@ -182,13 +182,11 @@ linux_get_osrelease(p)
 }
 
 int
-linux_set_osrelease(p, osrelease)
-	struct proc *p;
-	char *osrelease;
+linux_set_osrelease(struct thread *td, char *osrelease)
 {
 	register struct linux_prison *lpr;
 
-	lpr = get_prison(p);
+	lpr = get_prison(td);
 	if (lpr != NULL)
 		strcpy(lpr->pr_osrelease, osrelease);
 	else
@@ -198,13 +196,13 @@ linux_set_osrelease(p, osrelease)
 }
 
 int
-linux_get_oss_version(p)
-	struct proc *p;
+linux_get_oss_version(struct thread *td)
 {
 	register struct prison *pr;
 	register struct linux_prison *lpr;
 
-	pr = p->p_ucred->cr_prison;
+	KKASSERT(td->td_proc);
+	pr = td->td_proc->p_ucred->cr_prison;
 	if (pr != NULL && pr->pr_linux != NULL) {
 		lpr = pr->pr_linux;
 		if (lpr->pr_oss_version)
@@ -215,13 +213,11 @@ linux_get_oss_version(p)
 }
 
 int
-linux_set_oss_version(p, oss_version)
-	struct proc *p;
-	int oss_version;
+linux_set_oss_version(struct thread *td, int oss_version)
 {
 	register struct linux_prison *lpr;
 
-	lpr = get_prison(p);
+	lpr = get_prison(td);
 	if (lpr != NULL)
 		lpr->pr_oss_version = oss_version;
 	else

@@ -35,7 +35,7 @@
  *
  *	@(#)umap_vnops.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vnops.c,v 1.30 1999/08/30 07:08:04 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.2 2003/06/17 04:28:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.3 2003/06/25 03:56:01 dillon Exp $
  */
 
 /*
@@ -48,6 +48,7 @@
 #include <sys/sysctl.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
+#include <sys/proc.h>
 #include <sys/namei.h>
 #include <sys/malloc.h>
 #include <sys/buf.h>
@@ -283,7 +284,7 @@ umap_getattr(ap)
 		struct vnode *a_vp;
 		struct vattr *a_vap;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	short uid, gid;
@@ -359,7 +360,7 @@ umap_lock(ap)
 	struct vop_lock_args /* {
 		struct vnode *a_vp;
 		int a_flags;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 
@@ -380,7 +381,7 @@ umap_unlock(ap)
 	struct vop_unlock_args /* {
 		struct vnode *a_vp;
 		int a_flags;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	vop_nounlock(ap);
@@ -392,7 +393,7 @@ static int
 umap_inactive(ap)
 	struct vop_inactive_args /* {
 		struct vnode *a_vp;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
@@ -405,8 +406,8 @@ umap_inactive(ap)
 	 * cache and reusable.
 	 *
 	 */
-	VOP_INACTIVE(lowervp, ap->a_p);
-	VOP_UNLOCK(ap->a_vp, 0, ap->a_p);
+	VOP_INACTIVE(lowervp, ap->a_td);
+	VOP_UNLOCK(ap->a_vp, 0, ap->a_td);
 	return (0);
 }
 

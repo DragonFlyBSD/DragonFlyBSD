@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.3 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -133,11 +133,10 @@ uprintf(const char *fmt, ...)
 }
 
 tpr_t
-tprintf_open(p)
-	register struct proc *p;
+tprintf_open(struct proc *p)
 {
 
-	if (p->p_flag & P_CONTROLT && p->p_session->s_ttyvp) {
+	if ((p->p_flag & P_CONTROLT) && p->p_session->s_ttyvp) {
 		SESSHOLD(p->p_session);
 		return ((tpr_t) p->p_session);
 	}
@@ -145,10 +144,8 @@ tprintf_open(p)
 }
 
 void
-tprintf_close(sess)
-	tpr_t sess;
+tprintf_close(tpr_t sess)
 {
-
 	if (sess)
 		SESSRELE((struct session *) sess);
 }

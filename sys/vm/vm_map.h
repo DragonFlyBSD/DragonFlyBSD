@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.3 2003/06/25 03:56:13 dillon Exp $
  */
 
 /*
@@ -216,7 +216,7 @@ struct vmspace {
 #define	vm_map_lock_drain_interlock(map) \
 	do { \
 		lockmgr(&(map)->lock, LK_DRAIN|LK_INTERLOCK, \
-			&(map)->ref_lock, curproc); \
+			&(map)->ref_lock, curthread); \
 		(map)->timestamp++; \
 	} while(0)
 
@@ -226,7 +226,7 @@ struct vmspace {
 #define	vm_map_lock(map) \
 	do { \
 		printf ("locking map LK_EXCLUSIVE: 0x%x\n", map); \
-		if (lockmgr(&(map)->lock, LK_EXCLUSIVE, (void *)0, curproc) != 0) { \
+		if (lockmgr(&(map)->lock, LK_EXCLUSIVE, (void *)0, curthread) != 0) { \
 			panic("vm_map_lock: failed to get lock"); \
 		} \
 		(map)->timestamp++; \
@@ -234,7 +234,7 @@ struct vmspace {
 #else
 #define	vm_map_lock(map) \
 	do { \
-		if (lockmgr(&(map)->lock, LK_EXCLUSIVE, (void *)0, curproc) != 0) { \
+		if (lockmgr(&(map)->lock, LK_EXCLUSIVE, (void *)0, curthread) != 0) { \
 			panic("vm_map_lock: failed to get lock"); \
 		} \
 		(map)->timestamp++; \
@@ -243,7 +243,7 @@ struct vmspace {
 #else
 #define	vm_map_lock(map) \
 	do { \
-		lockmgr(&(map)->lock, LK_EXCLUSIVE, (void *)0, curproc); \
+		lockmgr(&(map)->lock, LK_EXCLUSIVE, (void *)0, curthread); \
 		(map)->timestamp++; \
 	} while(0)
 #endif /* DIAGNOSTIC */
@@ -252,50 +252,50 @@ struct vmspace {
 #define	vm_map_unlock(map) \
 	do { \
 		printf ("locking map LK_RELEASE: 0x%x\n", map); \
-		lockmgr(&(map)->lock, LK_RELEASE, (void *)0, curproc); \
+		lockmgr(&(map)->lock, LK_RELEASE, (void *)0, curthread); \
 	} while (0)
 #define	vm_map_lock_read(map) \
 	do { \
 		printf ("locking map LK_SHARED: 0x%x\n", map); \
-		lockmgr(&(map)->lock, LK_SHARED, (void *)0, curproc); \
+		lockmgr(&(map)->lock, LK_SHARED, (void *)0, curthread); \
 	} while (0)
 #define	vm_map_unlock_read(map) \
 	do { \
 		printf ("locking map LK_RELEASE: 0x%x\n", map); \
-		lockmgr(&(map)->lock, LK_RELEASE, (void *)0, curproc); \
+		lockmgr(&(map)->lock, LK_RELEASE, (void *)0, curthread); \
 	} while (0)
 #else
 #define	vm_map_unlock(map) \
-	lockmgr(&(map)->lock, LK_RELEASE, (void *)0, curproc)
+	lockmgr(&(map)->lock, LK_RELEASE, (void *)0, curthread)
 #define	vm_map_lock_read(map) \
-	lockmgr(&(map)->lock, LK_SHARED, (void *)0, curproc) 
+	lockmgr(&(map)->lock, LK_SHARED, (void *)0, curthread) 
 #define	vm_map_unlock_read(map) \
-	lockmgr(&(map)->lock, LK_RELEASE, (void *)0, curproc)
+	lockmgr(&(map)->lock, LK_RELEASE, (void *)0, curthread)
 #endif
 
 static __inline__ int
-_vm_map_lock_upgrade(vm_map_t map, struct proc *p) {
+_vm_map_lock_upgrade(vm_map_t map, struct thread *td) {
 	int error;
 #if defined(MAP_LOCK_DIAGNOSTIC)
 	printf("locking map LK_EXCLUPGRADE: 0x%x\n", map); 
 #endif
-	error = lockmgr(&map->lock, LK_EXCLUPGRADE, (void *)0, p);
+	error = lockmgr(&map->lock, LK_EXCLUPGRADE, (void *)0, td);
 	if (error == 0)
 		map->timestamp++;
 	return error;
 }
 
-#define vm_map_lock_upgrade(map) _vm_map_lock_upgrade(map, curproc)
+#define vm_map_lock_upgrade(map) _vm_map_lock_upgrade(map, curthread)
 
 #if defined(MAP_LOCK_DIAGNOSTIC)
 #define vm_map_lock_downgrade(map) \
 	do { \
 		printf ("locking map LK_DOWNGRADE: 0x%x\n", map); \
-		lockmgr(&(map)->lock, LK_DOWNGRADE, (void *)0, curproc); \
+		lockmgr(&(map)->lock, LK_DOWNGRADE, (void *)0, curthread); \
 	} while (0)
 #else
 #define vm_map_lock_downgrade(map) \
-	lockmgr(&(map)->lock, LK_DOWNGRADE, (void *)0, curproc)
+	lockmgr(&(map)->lock, LK_DOWNGRADE, (void *)0, curthread)
 #endif
 
 #define vm_map_set_recursive(map) \

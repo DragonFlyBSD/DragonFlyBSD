@@ -37,7 +37,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vfsops.c,v 1.32.2.1 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.3 2003/06/25 03:56:00 dillon Exp $
  */
 
 /*
@@ -53,11 +53,11 @@
 #include <miscfs/procfs/procfs.h>
 
 static int	procfs_mount __P((struct mount *mp, char *path, caddr_t data,
-				  struct nameidata *ndp, struct proc *p));
+				  struct nameidata *ndp, struct thread *td));
 static int	procfs_statfs __P((struct mount *mp, struct statfs *sbp,
-				   struct proc *p));
+				   struct thread *td));
 static int	procfs_unmount __P((struct mount *mp, int mntflags,
-				    struct proc *p));
+				    struct thread *td));
 
 /*
  * VFS Operations.
@@ -66,12 +66,12 @@ static int	procfs_unmount __P((struct mount *mp, int mntflags,
  */
 /* ARGSUSED */
 static int
-procfs_mount(mp, path, data, ndp, p)
+procfs_mount(mp, path, data, ndp, td)
 	struct mount *mp;
 	char *path;
 	caddr_t data;
 	struct nameidata *ndp;
-	struct proc *p;
+	struct thread *td;
 {
 	size_t size;
 	int error;
@@ -94,7 +94,7 @@ procfs_mount(mp, path, data, ndp, p)
 	size = sizeof("procfs") - 1;
 	bcopy("procfs", mp->mnt_stat.f_mntfromname, size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
-	(void)procfs_statfs(mp, &mp->mnt_stat, p);
+	(void)procfs_statfs(mp, &mp->mnt_stat, td);
 
 	return (0);
 }
@@ -103,10 +103,10 @@ procfs_mount(mp, path, data, ndp, p)
  * unmount system call
  */
 static int
-procfs_unmount(mp, mntflags, p)
+procfs_unmount(mp, mntflags, td)
 	struct mount *mp;
 	int mntflags;
-	struct proc *p;
+	struct thread *td;
 {
 	int error;
 	int flags = 0;
@@ -137,10 +137,7 @@ procfs_root(mp, vpp)
  * Get file system statistics.
  */
 static int
-procfs_statfs(mp, sbp, p)
-	struct mount *mp;
-	struct statfs *sbp;
-	struct proc *p;
+procfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
 	sbp->f_bsize = PAGE_SIZE;
 	sbp->f_iosize = PAGE_SIZE;

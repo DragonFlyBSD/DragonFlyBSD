@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_namecache.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_namecache.c,v 1.10 1999/08/28 00:40:53 peter Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_namecache.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_namecache.c,v 1.3 2003/06/25 03:55:44 dillon Exp $
  * 
  */
 
@@ -277,7 +277,7 @@ coda_nc_enter(dcp, name, namelen, cred, cp)
      */
     vref(CTOV(cp));
     vref(CTOV(dcp));
-    crhold(cred); 
+    cred = crhold(cred); 
     cncp->dcp = dcp;
     cncp->cp = cp;
     cncp->namelen = namelen;

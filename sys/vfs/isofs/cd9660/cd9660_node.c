@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.c,v 1.29.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.3 2003/06/25 03:55:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -99,7 +99,7 @@ cd9660_ihashget(dev, inum)
 	dev_t dev;
 	ino_t inum;
 {
-	struct proc *p = curproc;		/* XXX */
+	struct thread *td = curthread;		/* XXX */
 	struct iso_node *ip;
 	struct vnode *vp;
 
@@ -110,7 +110,7 @@ loop:
 			vp = ITOV(ip);
 			simple_lock(&vp->v_interlock);
 			simple_unlock(&cd9660_ihash_slock);
-			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, p))
+			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td))
 				goto loop;
 			return (vp);
 		}
@@ -123,10 +123,9 @@ loop:
  * Insert the inode into the hash table, and return it locked.
  */
 void
-cd9660_ihashins(ip)
-	struct iso_node *ip;
+cd9660_ihashins(struct iso_node *ip)
 {
-	struct proc *p = curproc;		/* XXX */
+	struct thread *td = curthread;	/* XXX */
 	struct iso_node **ipp, *iq;
 
 	simple_lock(&cd9660_ihash_slock);
@@ -138,7 +137,7 @@ cd9660_ihashins(ip)
 	*ipp = ip;
 	simple_unlock(&cd9660_ihash_slock);
 
-	lockmgr(&ip->i_lock, LK_EXCLUSIVE, (struct simplelock *)0, p);
+	lockmgr(&ip->i_lock, LK_EXCLUSIVE, (struct simplelock *)0, td);
 }
 
 /*
@@ -169,11 +168,11 @@ int
 cd9660_inactive(ap)
 	struct vop_inactive_args /* {
 		struct vnode *a_vp;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
-	struct proc *p = ap->a_p;
+	struct thread *td = ap->a_td;
 	register struct iso_node *ip = VTOI(vp);
 	int error = 0;
 
@@ -181,13 +180,13 @@ cd9660_inactive(ap)
 		vprint("cd9660_inactive: pushing active", vp);
 
 	ip->i_flag = 0;
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	/*
 	 * If we are done with the inode, reclaim it
 	 * so that it can be reused immediately.
 	 */
 	if (ip->inode.iso_mode == 0)
-		vrecycle(vp, (struct simplelock *)0, p);
+		vrecycle(vp, (struct simplelock *)0, td);
 	return error;
 }
 

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.7 2003/06/23 23:36:11 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.8 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -418,13 +418,14 @@ tsleep(ident, priority, wmesg, timo)
 	int priority, timo;
 	const char *wmesg;
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	int s, sig, catch = priority & PCATCH;
 	int id = LOOKUP(ident);
 	struct callout_handle thandle;
 
 #ifdef KTRACE
-	if (p && KTRPOINT(p, KTR_CSW))
+	if (KTRPOINT(td, KTR_CSW))
 		ktrcsw(p->p_tracep, 1, 0);
 #endif
 	s = splhigh();
@@ -484,7 +485,7 @@ resume:
 		p->p_flag &= ~P_TIMEOUT;
 		if (sig == 0) {
 #ifdef KTRACE
-			if (KTRPOINT(p, KTR_CSW))
+			if (KTRPOINT(td, KTR_CSW))
 				ktrcsw(p->p_tracep, 0, 0);
 #endif
 			return (EWOULDBLOCK);
@@ -493,7 +494,7 @@ resume:
 		untimeout(endtsleep, (void *)p, thandle);
 	if (catch && (sig != 0 || (sig = CURSIG(p)))) {
 #ifdef KTRACE
-		if (KTRPOINT(p, KTR_CSW))
+		if (KTRPOINT(td, KTR_CSW))
 			ktrcsw(p->p_tracep, 0, 0);
 #endif
 		if (SIGISMEMBER(p->p_sigacts->ps_sigintr, sig))
@@ -501,7 +502,7 @@ resume:
 		return (ERESTART);
 	}
 #ifdef KTRACE
-	if (KTRPOINT(p, KTR_CSW))
+	if (KTRPOINT(td, KTR_CSW))
 		ktrcsw(p->p_tracep, 0, 0);
 #endif
 	return (0);
@@ -524,12 +525,13 @@ resume:
 int
 xsleep(struct xwait *w, int priority, const char *wmesg, int timo, int *gen)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	int s, sig, catch = priority & PCATCH;
 	struct callout_handle thandle;
 
 #ifdef KTRACE
-	if (p && KTRPOINT(p, KTR_CSW))
+	if (KTRPOINT(td, KTR_CSW))
 		ktrcsw(p->p_tracep, 1, 0);
 #endif
 	s = splhigh();
@@ -555,7 +557,7 @@ xsleep(struct xwait *w, int priority, const char *wmesg, int timo, int *gen)
 		*gen = w->gen;
 		splx(s);
 #ifdef KTRACE
-		if (p && KTRPOINT(p, KTR_CSW))
+		if (KTRPOINT(td, KTR_CSW))
 			ktrcsw(p->p_tracep, 0, 0);
 #endif
 		return(0);
@@ -604,7 +606,7 @@ resume:
 		p->p_flag &= ~P_TIMEOUT;
 		if (sig == 0) {
 #ifdef KTRACE
-			if (KTRPOINT(p, KTR_CSW))
+			if (KTRPOINT(td, KTR_CSW))
 				ktrcsw(p->p_tracep, 0, 0);
 #endif
 			return (EWOULDBLOCK);
@@ -613,7 +615,7 @@ resume:
 		untimeout(endtsleep, (void *)p, thandle);
 	if (catch && (sig != 0 || (sig = CURSIG(p)))) {
 #ifdef KTRACE
-		if (KTRPOINT(p, KTR_CSW))
+		if (KTRPOINT(td, KTR_CSW))
 			ktrcsw(p->p_tracep, 0, 0);
 #endif
 		if (SIGISMEMBER(p->p_sigacts->ps_sigintr, sig))
@@ -621,7 +623,7 @@ resume:
 		return (ERESTART);
 	}
 #ifdef KTRACE
-	if (KTRPOINT(p, KTR_CSW))
+	if (KTRPOINT(td, KTR_CSW))
 		ktrcsw(p->p_tracep, 0, 0);
 #endif
 	return (0);

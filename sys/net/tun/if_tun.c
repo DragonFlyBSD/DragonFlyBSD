@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.3 2003/06/23 17:55:45 dillon Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.4 2003/06/25 03:56:02 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -141,8 +141,7 @@ tunopen(dev_t dev, int flag, int mode, struct thread *td)
 	register int	error;
 
 	KKASSERT(td->td_proc);
-	error = suser_xxx(td->td_proc->p_ucred, 0);
-	if (error)
+	if ((error = suser(td)) != NULL)
 		return (error);
 
 	tp = dev->si_drv1;

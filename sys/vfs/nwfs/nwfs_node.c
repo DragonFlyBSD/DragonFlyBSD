@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.3 2003/06/25 03:56:08 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -137,7 +137,7 @@ nwfs_hashlookup(struct nwmount *nmp, ncpfid fid, struct nwnode **npp)
 int
 nwfs_allocvp(struct mount *mp, ncpfid fid, struct vnode **vpp)
 {
-	struct proc *p = curproc;	/* XXX */
+	struct thread *td = curthread;	/* XXX */
 	struct nwnode *np;
 	struct nwnode_hash_head *nhpp;
 	struct nwmount *nmp = VFSTONWFS(mp);
@@ -145,18 +145,18 @@ nwfs_allocvp(struct mount *mp, ncpfid fid, struct vnode **vpp)
 	int error;
 
 loop:
-	lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, p);
+	lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, td);
 rescan:
 	if (nwfs_hashlookup(nmp, fid, &np) == 0) {
 		vp = NWTOV(np);
 		simple_lock(&vp->v_interlock);
-		lockmgr(&nwhashlock, LK_RELEASE, NULL, p);
-		if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, p))
+		lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
+		if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td))
 			goto loop;
 		*vpp = vp;
 		return(0);
 	}
-	lockmgr(&nwhashlock, LK_RELEASE, NULL, p);
+	lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
 
 	/*
 	 * Do the MALLOC before the getnewvnode since doing so afterward
@@ -173,7 +173,7 @@ rescan:
 	vp->v_data = np;
 	np->n_vnode = vp;
 	np->n_mount = nmp;
-	lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, p);
+	lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, td);
 	/*
 	 * Another process can create vnode while we blocked in malloc() or
 	 * getnewvnode(). Rescan list again.
@@ -191,20 +191,20 @@ rescan:
 	lockinit(&np->n_lock, PINOD, "nwnode", VLKTIMEOUT, LK_CANRECURSE);
 	nhpp = NWNOHASH(fid);
 	LIST_INSERT_HEAD(nhpp, np, n_hash);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
-	lockmgr(&nwhashlock, LK_RELEASE, NULL, p);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
 	return 0;
 }
 
 int
-nwfs_lookupnp(struct nwmount *nmp, ncpfid fid, struct proc *p,
+nwfs_lookupnp(struct nwmount *nmp, ncpfid fid, struct thread *td,
 	struct nwnode **npp)
 {
 	int error;
 
-	lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, p);
+	lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, td);
 	error = nwfs_hashlookup(nmp, fid, npp);
-	lockmgr(&nwhashlock, LK_RELEASE, NULL, p);
+	lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
 	return error;
 }
 
@@ -215,26 +215,26 @@ int
 nwfs_reclaim(ap)                     
         struct vop_reclaim_args /* {
     		struct vnode *a_vp;
-		struct proc *a_p;
+		struct thread *a_td;
         } */ *ap;
 {
 	struct vnode *dvp = NULL, *vp = ap->a_vp;
 	struct nwnode *dnp, *np = VTONW(vp);
 	struct nwmount *nmp = VTONWFS(vp);
-	struct proc *p = ap->a_p;
+	struct thread *td = ap->a_td;
 	
 	NCPVNDEBUG("%s,%d\n", np->n_name, vp->v_usecount);
 	if (np->n_refparent) {
 		np->n_refparent = 0;
-		if (nwfs_lookupnp(nmp, np->n_parent, p, &dnp) == 0) {
+		if (nwfs_lookupnp(nmp, np->n_parent, td, &dnp) == 0) {
 			dvp = dnp->n_vnode;
 		} else {
 			NCPVNDEBUG("%s: has no parent ?\n",np->n_name);
 		}
 	}
-	lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, p);
+	lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, td);
 	LIST_REMOVE(np, n_hash);
-	lockmgr(&nwhashlock, LK_RELEASE, NULL, p);
+	lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
 	cache_purge(vp);
 	if (nmp->n_root == np) {
 		nmp->n_root = NULL;
@@ -251,22 +251,25 @@ int
 nwfs_inactive(ap)
 	struct vop_inactive_args /* {
 		struct vnode *a_vp;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
-	struct proc *p = ap->a_p;
-	struct ucred *cred = p->p_ucred;
+	struct thread *td = ap->a_td;
+	struct ucred *cred;
 	struct vnode *vp = ap->a_vp;
 	struct nwnode *np = VTONW(vp);
 	int error;
 
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;
+
 	NCPVNDEBUG("%s: %d\n", VTONW(vp)->n_name, vp->v_usecount);
 	if (np->opened) {
-		error = nwfs_vinvalbuf(vp, V_SAVE, cred, p, 1);
-		error = ncp_close_file(NWFSTOCONN(VTONWFS(vp)), &np->n_fh, p, cred);
+		error = nwfs_vinvalbuf(vp, V_SAVE, cred, td, 1);
+		error = ncp_close_file(NWFSTOCONN(VTONWFS(vp)), &np->n_fh, td, cred);
 		np->opened = 0;
 	}
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	if (np->n_flag & NSHOULDFREE) {
 		cache_purge(vp);
 		vgone(vp);

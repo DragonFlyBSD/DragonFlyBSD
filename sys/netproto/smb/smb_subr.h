@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.h,v 1.1.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.3 2003/06/23 17:55:47 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.4 2003/06/25 03:56:06 dillon Exp $
  */
 #ifndef _NETSMB_SMB_SUBR_H_
 #define _NETSMB_SMB_SUBR_H_
@@ -75,7 +75,7 @@ void m_dumpm(struct mbuf *m);
 	 SIGISMEMBER(set, SIGHUP) || SIGISMEMBER(set, SIGKILL) ||	\
 	 SIGISMEMBER(set, SIGQUIT))
 
-#define	smb_suser(cred)	suser_xxx(cred, 0)
+#define	smb_suser(cred)	suser_cred(cred, 0)
 
 #include <sys/lock.h>
 
@@ -131,7 +131,7 @@ typedef	smb_unichar	*smb_uniptr;
  * Crediantials of user/process being processing in the connection procedures
  */
 struct smb_cred {
-	struct proc *	scr_p;
+	struct thread *	scr_td;
 	struct ucred *	scr_cred;
 };
 
@@ -139,13 +139,14 @@ extern smb_unichar smb_unieol;
 
 struct mbchain;
 struct proc;
+struct thread;
 struct simplelock;
 struct smb_vc;
 struct smb_rq;
 
 
-void smb_makescred(struct smb_cred *scred, struct proc *p, struct ucred *cred);
-int  smb_proc_intr(struct proc *);
+void smb_makescred(struct smb_cred *scred, struct thread *td, struct ucred *cred);
+int  smb_proc_intr(struct thread *td);
 char *smb_strdup(const char *s);
 void *smb_memdup(const void *umem, int len);
 char *smb_strdupin(char *s, int maxlen);

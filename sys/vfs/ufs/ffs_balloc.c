@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_balloc.c	8.8 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_balloc.c,v 1.26.2.1 2002/10/10 19:48:20 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.3 2003/06/19 01:55:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.4 2003/06/25 03:56:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -80,7 +80,7 @@ ffs_balloc(ap)
 	int deallocated, osize, nsize, num, i, error;
 	ufs_daddr_t *allocib, *blkp, *allocblk, allociblk[NIADDR + 1];
 	int unwindidx = -1;
-	struct proc *p = curproc;	/* XXX */
+	struct thread *td = curthread;	/* XXX */
 
 	vp = ap->a_vp;
 	ip = VTOI(vp);
@@ -363,7 +363,7 @@ fail:
 	 * occurence. The error return from fsync is ignored as we already
 	 * have an error to return to the user.
 	 */
-	(void) VOP_FSYNC(vp, cred, MNT_WAIT, p);
+	(void) VOP_FSYNC(vp, cred, MNT_WAIT, td);
 	for (deallocated = 0, blkp = allociblk; blkp < allocblk; blkp++) {
 		ffs_blkfree(ip, *blkp, fs->fs_bsize);
 		deallocated += fs->fs_bsize;
@@ -400,6 +400,6 @@ fail:
 		ip->i_blocks -= btodb(deallocated);
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 	}
-	(void) VOP_FSYNC(vp, cred, MNT_WAIT, p);
+	(void) VOP_FSYNC(vp, cred, MNT_WAIT, td);
 	return (error);
 }

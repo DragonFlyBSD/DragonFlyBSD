@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.4 2003/06/23 17:55:30 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.5 2003/06/25 03:55:47 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -200,8 +200,8 @@ static	void ccdiodone __P((struct ccdbuf *cbp));
 static	void ccdstart __P((struct ccd_softc *, struct buf *));
 static	void ccdinterleave __P((struct ccd_softc *, int));
 static	void ccdintr __P((struct ccd_softc *, struct buf *));
-static	int ccdinit __P((struct ccddevice *, char **, struct proc *));
-static	int ccdlookup __P((char *, struct proc *p, struct vnode **));
+static	int ccdinit __P((struct ccddevice *, char **, struct thread *));
+static	int ccdlookup __P((char *, struct thread *td, struct vnode **));
 static	void ccdbuffer __P((struct ccdbuf **ret, struct ccd_softc *,
 		struct buf *, daddr_t, caddr_t, long));
 static	void ccdgetdisklabel __P((dev_t));
@@ -358,10 +358,7 @@ ccd_modevent(mod, type, data)
 DEV_MODULE(ccd, ccd_modevent, NULL);
 
 static int
-ccdinit(ccd, cpaths, p)
-	struct ccddevice *ccd;
-	char **cpaths;
-	struct proc *p;
+ccdinit(struct ccddevice *ccd, char **cpaths, struct thread *td)
 {
 	struct ccd_softc *cs = &ccd_softc[ccd->ccd_unit];
 	struct ccdcinfo *ci = NULL;	/* XXX */
@@ -374,6 +371,10 @@ ccdinit(ccd, cpaths, p)
 	struct ccdgeom *ccg = &cs->sc_geom;
 	char tmppath[MAXPATHLEN];
 	int error = 0;
+	struct ucred *cred;
+
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;
 
 #ifdef DEBUG
 	if (ccddebug & (CCDB_FOLLOW|CCDB_INIT))
@@ -421,7 +422,7 @@ ccdinit(ccd, cpaths, p)
 		 * Get partition information for the component.
 		 */
 		if ((error = VOP_IOCTL(vp, DIOCGPART, (caddr_t)&dpart,
-		    FREAD, p->p_ucred, p)) != 0) {
+		    FREAD, cred, td)) != 0) {
 #ifdef DEBUG
 			if (ccddebug & (CCDB_FOLLOW|CCDB_INIT))
 				 printf("ccd%d: %s: ioctl failed, error = %d\n",
@@ -1253,9 +1254,10 @@ ccdioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 	struct ccddevice ccd;
 	char **cpp;
 	struct vnode **vpp;
-	struct proc *p = td->td_proc;
+	struct ucred *cred;
 
-	KKASSERT(p != NULL);
+	KKASSERT(td->td_proc != NULL);
+	cred = td->td_proc->p_ucred;
 
 	if (unit >= numccd)
 		return (ENXIO);
@@ -1329,10 +1331,10 @@ ccdioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 			if (ccddebug & CCDB_INIT)
 				printf("ccdioctl: lookedup = %d\n", lookedup);
 #endif
-			if ((error = ccdlookup(cpp[i], p, &vpp[i])) != 0) {
+			if ((error = ccdlookup(cpp[i], td, &vpp[i])) != 0) {
 				for (j = 0; j < lookedup; ++j)
 					(void)vn_close(vpp[j], FREAD|FWRITE,
-					    p->p_ucred, p);
+					    cred, td);
 				free(vpp, M_DEVBUF);
 				free(cpp, M_DEVBUF);
 				ccdunlock(cs);
@@ -1347,10 +1349,10 @@ ccdioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		/*
 		 * Initialize the ccd.  Fills in the softc for us.
 		 */
-		if ((error = ccdinit(&ccd, cpp, p)) != 0) {
+		if ((error = ccdinit(&ccd, cpp, td)) != 0) {
 			for (j = 0; j < lookedup; ++j)
 				(void)vn_close(vpp[j], FREAD|FWRITE,
-				    p->p_ucred, p);
+				    cred, td);
 			bzero(&ccd_softc[unit], sizeof(struct ccd_softc));
 			free(vpp, M_DEVBUF);
 			free(cpp, M_DEVBUF);
@@ -1406,7 +1408,7 @@ ccdioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 				    cs->sc_cinfo[i].ci_vp);
 #endif
 			(void)vn_close(cs->sc_cinfo[i].ci_vp, FREAD|FWRITE,
-			    p->p_ucred, p);
+			    cred, td);
 			free(cs->sc_cinfo[i].ci_path, M_DEVBUF);
 		}
 
@@ -1545,16 +1547,17 @@ ccddump(dev)
  * set *vpp to the file's vnode.
  */
 static int
-ccdlookup(path, p, vpp)
-	char *path;
-	struct proc *p;
-	struct vnode **vpp;	/* result */
+ccdlookup(char *path, struct thread *td, struct vnode **vpp)
 {
 	struct nameidata nd;
 	struct vnode *vp;
 	int error;
+	struct ucred *cred;
 
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, path, p);
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;
+
+	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, path, td);
 	if ((error = vn_open(&nd, FREAD|FWRITE, 0)) != 0) {
 #ifdef DEBUG
 		if (ccddebug & CCDB_FOLLOW|CCDB_INIT)
@@ -1577,15 +1580,15 @@ ccdlookup(path, p, vpp)
 		vprint("ccdlookup: vnode info", vp);
 #endif
 
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	*vpp = vp;
 	return (0);
 bad:
-	VOP_UNLOCK(vp, 0, p);
+	VOP_UNLOCK(vp, 0, td);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	/* vn_close does vrele() for vp */
-	(void)vn_close(vp, FREAD|FWRITE, p->p_ucred, p);
+	(void)vn_close(vp, FREAD|FWRITE, cred, td);
 	return (error);
 }
 

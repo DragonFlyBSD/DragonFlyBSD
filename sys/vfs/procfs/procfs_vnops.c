@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.3 2003/06/23 17:55:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.4 2003/06/25 03:56:00 dillon Exp $
  */
 
 /*
@@ -130,7 +130,7 @@ procfs_open(ap)
 		struct vnode *a_vp;
 		int  a_mode;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
@@ -148,7 +148,8 @@ procfs_open(ap)
 		    ((pfs->pfs_flags & O_EXCL) && (ap->a_mode & FWRITE)))
 			return (EBUSY);
 
-		p1 = ap->a_p;
+		p1 = ap->a_td->td_proc;
+		KKASSERT(p1);
 		/* Can't trace a process that's currently exec'ing. */ 
 		if ((p2->p_flag & P_INEXEC) != 0)
 			return EAGAIN;
@@ -180,7 +181,7 @@ procfs_close(ap)
 		struct vnode *a_vp;
 		int  a_fflag;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
@@ -231,17 +232,19 @@ procfs_ioctl(ap)
 	struct vop_ioctl_args *ap;
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
-	struct proc *procp, *p;
+	struct proc *procp;
+	struct proc *p;
 	int error;
 	int signo;
 	struct procfs_status *psp;
 	unsigned char flags;
 
-	p = ap->a_p;
 	procp = pfind(pfs->pfs_pid);
-	if (procp == NULL) {
+	if (procp == NULL)
 		return ENOTTY;
-	}
+	p = ap->a_td->td_proc;
+	if (p == NULL)
+		return EINVAL;
 
 	/* Can't trace a process that's currently exec'ing. */ 
 	if ((procp->p_flag & P_INEXEC) != 0)
@@ -263,7 +266,7 @@ procfs_ioctl(ap)
 	   */
 #define NFLAGS	(PF_ISUGID)
 	  flags = (unsigned char)*(unsigned int*)ap->a_data;
-	  if (flags & NFLAGS && (error = suser_xxx(ap->a_cred, 0)))
+	  if (flags & NFLAGS && (error = suser_cred(ap->a_cred, 0)))
 	    return error;
 	  procp->p_pfsflags = flags;
 	  break;
@@ -355,11 +358,12 @@ static int
 procfs_inactive(ap)
 	struct vop_inactive_args /* {
 		struct vnode *a_vp;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
 
-	VOP_UNLOCK(vp, 0, ap->a_p);
+	VOP_UNLOCK(vp, 0, ap->a_td);
 
 	return (0);
 }
@@ -424,7 +428,7 @@ procfs_getattr(ap)
 		struct vnode *a_vp;
 		struct vattr *a_vap;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
@@ -595,7 +599,7 @@ procfs_setattr(ap)
 		struct vnode *a_vp;
 		struct vattr *a_vap;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 
@@ -633,7 +637,7 @@ procfs_access(ap)
 		struct vnode *a_vp;
 		int a_mode;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct vattr *vap;
@@ -648,7 +652,7 @@ procfs_access(ap)
 		return (0);
 
 	vap = &vattr;
-	error = VOP_GETATTR(ap->a_vp, vap, ap->a_cred, ap->a_p);
+	error = VOP_GETATTR(ap->a_vp, vap, ap->a_cred, ap->a_td);
 	if (error)
 		return (error);
 

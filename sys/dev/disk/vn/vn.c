@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.3 2003/06/23 17:55:36 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.4 2003/06/25 03:55:51 dillon Exp $
  */
 
 /*
@@ -64,8 +64,8 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/namei.h>
 #include <sys/proc.h>
+#include <sys/namei.h>
 #include <sys/buf.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
@@ -385,13 +385,13 @@ vnstrategy(struct buf *bp)
 		else
 			auio.uio_rw = UIO_WRITE;
 		auio.uio_resid = bp->b_bcount;
-		auio.uio_procp = curproc;
-		vn_lock(vn->sc_vp, LK_EXCLUSIVE | LK_RETRY, curproc);
+		auio.uio_td = curthread;
+		vn_lock(vn->sc_vp, LK_EXCLUSIVE | LK_RETRY, curthread);
 		if (bp->b_flags & B_READ)
 			error = VOP_READ(vn->sc_vp, &auio, IO_DIRECT, vn->sc_cred);
 		else
 			error = VOP_WRITE(vn->sc_vp, &auio, IO_NOWDRAIN, vn->sc_cred);
-		VOP_UNLOCK(vn->sc_vp, 0, curproc);
+		VOP_UNLOCK(vn->sc_vp, 0, curthread);
 		bp->b_resid = auio.uio_resid;
 
 		if (error) {
@@ -460,7 +460,7 @@ vnioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 
     vn_specific:
 
-	error = suser();
+	error = suser(td);
 	if (error)
 		return (error);
 
@@ -544,25 +544,25 @@ vniocattach_file(vn, vio, dev, flag, td)
 	KKASSERT(p != NULL);
 
 	flags = FREAD|FWRITE;
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, vio->vn_file, p);
+	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, vio->vn_file, td);
 	error = vn_open(&nd, flags, 0);
 	if (error) {
 		if (error != EACCES && error != EPERM && error != EROFS)
 			return (error);
 		flags &= ~FWRITE;
-		NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, vio->vn_file, p);
+		NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, vio->vn_file, td);
 		error = vn_open(&nd, flags, 0);
 		if (error)
 			return (error);
 	}
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	if (nd.ni_vp->v_type != VREG ||
-	    (error = VOP_GETATTR(nd.ni_vp, &vattr, p->p_ucred, p))) {
-		VOP_UNLOCK(nd.ni_vp, 0, p);
-		(void) vn_close(nd.ni_vp, flags, p->p_ucred, p);
+	    (error = VOP_GETATTR(nd.ni_vp, &vattr, p->p_ucred, td))) {
+		VOP_UNLOCK(nd.ni_vp, 0, td);
+		(void) vn_close(nd.ni_vp, flags, p->p_ucred, td);
 		return (error ? error : EINVAL);
 	}
-	VOP_UNLOCK(nd.ni_vp, 0, p);
+	VOP_UNLOCK(nd.ni_vp, 0, td);
 	vn->sc_secsize = DEV_BSIZE;
 	vn->sc_vp = nd.ni_vp;
 
@@ -576,7 +576,7 @@ vniocattach_file(vn, vio, dev, flag, td)
 		vn->sc_size = vattr.va_size / vn->sc_secsize;
 	error = vnsetcred(vn, p->p_ucred);
 	if (error) {
-		(void) vn_close(nd.ni_vp, flags, p->p_ucred, p);
+		(void) vn_close(nd.ni_vp, flags, p->p_ucred, td);
 		return(error);
 	}
 	vn->sc_flags |= VNF_INITED;
@@ -713,9 +713,9 @@ vnsetcred(struct vn_softc *vn, struct ucred *cred)
 		auio.uio_rw = UIO_READ;
 		auio.uio_segflg = UIO_SYSSPACE;
 		auio.uio_resid = aiov.iov_len;
-		vn_lock(vn->sc_vp, LK_EXCLUSIVE | LK_RETRY, curproc);
+		vn_lock(vn->sc_vp, LK_EXCLUSIVE | LK_RETRY, curthread);
 		error = VOP_READ(vn->sc_vp, &auio, 0, vn->sc_cred);
-		VOP_UNLOCK(vn->sc_vp, 0, curproc);
+		VOP_UNLOCK(vn->sc_vp, 0, curthread);
 		free(tmpbuf, M_TEMP);
 	}
 	return (error);
@@ -724,7 +724,7 @@ vnsetcred(struct vn_softc *vn, struct ucred *cred)
 void
 vnclear(struct vn_softc *vn)
 {
-	struct proc *p = curproc;		/* XXX */
+	struct thread *td = curthread;		/* XXX */
 
 	IFOPT(vn, VN_FOLLOW)
 		printf("vnclear(%p): vp=%p\n", vn, vn->sc_vp);
@@ -733,7 +733,7 @@ vnclear(struct vn_softc *vn)
 	vn->sc_flags &= ~VNF_INITED;
 	if (vn->sc_vp != NULL) {
 		(void)vn_close(vn->sc_vp, vn->sc_flags & VNF_READONLY ?
-		    FREAD : (FREAD|FWRITE), vn->sc_cred, p);
+		    FREAD : (FREAD|FWRITE), vn->sc_cred, td);
 		vn->sc_vp = NULL;
 	}
 	vn->sc_flags &= ~VNF_READONLY;

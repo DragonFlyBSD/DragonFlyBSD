@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_io.c,v 1.6.2.1 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.3 2003/06/25 03:56:08 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -93,7 +93,7 @@ nwfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred) {
 	count = 0;
 	i = uio->uio_offset / DE_SIZE; /* offset in directory */
 	if (i == 0) {
-		error = ncp_initsearch(vp, uio->uio_procp, cred);
+		error = ncp_initsearch(vp, uio->uio_td, cred);
 		if (error) {
 			NCPVNDEBUG("cannot initialize search, error=%d",error);
 			return( error );
@@ -115,7 +115,7 @@ nwfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred) {
 			dp.d_type = DT_DIR;
 			break;
 		    default:
-			error = ncp_search_for_file_or_subdir(nmp, &np->n_seq, &fattr, uio->uio_procp, cred);
+			error = ncp_search_for_file_or_subdir(nmp, &np->n_seq, &fattr, uio->uio_td, cred);
 			if (error && error < 0x80) break;
 			dp.d_fileno = fattr.dirEntNum;
 			dp.d_type = (fattr.attributes & aDIR) ? DT_DIR : DT_REG;
@@ -159,7 +159,7 @@ int
 nwfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred) {
 	struct nwmount *nmp = VFSTONWFS(vp->v_mount);
 	struct nwnode *np = VTONW(vp);
-	struct proc *p;
+	struct thread *td;
 	struct vattr vattr;
 	int error, biosize;
 
@@ -171,7 +171,7 @@ nwfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred) {
 	if (uiop->uio_offset < 0) return EINVAL;
 /*	if (uiop->uio_offset + uiop->uio_resid > nmp->nm_maxfilesize)
 		return (EFBIG);*/
-	p = uiop->uio_procp;
+	td = uiop->uio_td;
 	if (vp->v_type == VDIR) {
 		error = nwfs_readvdir(vp, uiop, cred);
 		return error;
@@ -179,14 +179,14 @@ nwfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred) {
 	biosize = NWFSTOCONN(nmp)->buffer_size;
 	if (np->n_flag & NMODIFIED) {
 		nwfs_attr_cacheremove(vp);
-		error = VOP_GETATTR(vp, &vattr, cred, p);
+		error = VOP_GETATTR(vp, &vattr, cred, td);
 		if (error) return (error);
 		np->n_mtime = vattr.va_mtime.tv_sec;
 	} else {
-		error = VOP_GETATTR(vp, &vattr, cred, p);
+		error = VOP_GETATTR(vp, &vattr, cred, td);
 		if (error) return (error);
 		if (np->n_mtime != vattr.va_mtime.tv_sec) {
-			error = nwfs_vinvalbuf(vp, V_SAVE, cred, p, 1);
+			error = nwfs_vinvalbuf(vp, V_SAVE, cred, td, 1);
 			if (error) return (error);
 			np->n_mtime = vattr.va_mtime.tv_sec;
 		}
@@ -204,7 +204,7 @@ nwfs_writevnode(vp, uiop, cred, ioflag)
 {
 	struct nwmount *nmp = VTONWFS(vp);
 	struct nwnode *np = VTONW(vp);
-	struct proc *p;
+	struct thread *td;
 /*	struct vattr vattr;*/
 	int error = 0;
 
@@ -216,11 +216,11 @@ nwfs_writevnode(vp, uiop, cred, ioflag)
 	if (uiop->uio_offset < 0) return EINVAL;
 /*	if (uiop->uio_offset + uiop->uio_resid > nmp->nm_maxfilesize)
 		return (EFBIG);*/
-	p = uiop->uio_procp;
+	td = uiop->uio_td;
 	if (ioflag & (IO_APPEND | IO_SYNC)) {
 		if (np->n_flag & NMODIFIED) {
 			nwfs_attr_cacheremove(vp);
-			error = nwfs_vinvalbuf(vp, V_SAVE, cred, p, 1);
+			error = nwfs_vinvalbuf(vp, V_SAVE, cred, td, 1);
 			if (error) return (error);
 		}
 		if (ioflag & IO_APPEND) {
@@ -229,15 +229,16 @@ nwfs_writevnode(vp, uiop, cred, ioflag)
 		 * the correct size. */
 #if notyet
 			nwfs_attr_cacheremove(vp);
-			error = VOP_GETATTR(vp, &vattr, cred, p);
+			error = VOP_GETATTR(vp, &vattr, cred, td);
 			if (error) return (error);
 #endif
 			uiop->uio_offset = np->n_size;
 		}
 	}
 	if (uiop->uio_resid == 0) return 0;
-	if (p && uiop->uio_offset + uiop->uio_resid > p->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
-		psignal(p, SIGXFSZ);
+	if (td->td_proc && uiop->uio_offset + uiop->uio_resid > 
+	    td->td_proc->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
+		psignal(td->td_proc, SIGXFSZ);
 		return (EFBIG);
 	}
 	error = ncp_write(NWFSTOCONN(nmp), &np->n_fh, uiop, cred);
@@ -255,10 +256,7 @@ nwfs_writevnode(vp, uiop, cred, ioflag)
  * Do an I/O operation to/from a cache block.
  */
 int
-nwfs_doio(bp, cr, p)
-	struct buf *bp;
-	struct ucred *cr;
-	struct proc *p;
+nwfs_doio(struct buf *bp, struct ucred *cr, struct thread *td)
 {
 	struct uio *uiop;
 	struct vnode *vp;
@@ -275,7 +273,7 @@ nwfs_doio(bp, cr, p)
 	uiop->uio_iov = &io;
 	uiop->uio_iovcnt = 1;
 	uiop->uio_segflg = UIO_SYSSPACE;
-	uiop->uio_procp = p;
+	uiop->uio_td = td;
 	if (bp->b_flags & B_READ) {
 	    io.iov_len = uiop->uio_resid = bp->b_bcount;
 	    io.iov_base = bp->b_data;
@@ -399,15 +397,16 @@ nwfs_getpages(ap)
 	vm_offset_t kva;
 	struct buf *bp;
 	struct vnode *vp;
-	struct proc *p;
+	struct thread *td = curthread;	/* XXX */
 	struct ucred *cred;
 	struct nwmount *nmp;
 	struct nwnode *np;
 	vm_page_t *pages;
 
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;
+
 	vp = ap->a_vp;
-	p = curproc;				/* XXX */
-	cred = curproc->p_ucred;		/* XXX */
 	np = VTONW(vp);
 	nmp = VFSTONWFS(vp->v_mount);
 	pages = ap->a_m;
@@ -431,7 +430,7 @@ nwfs_getpages(ap)
 	uio.uio_resid = count;
 	uio.uio_segflg = UIO_SYSSPACE;
 	uio.uio_rw = UIO_READ;
-	uio.uio_procp = p;
+	uio.uio_td = td;
 
 	error = ncp_read(NWFSTOCONN(nmp), &np->n_fh, &uio,cred);
 	pmap_qremove(kva, npages);
@@ -510,17 +509,17 @@ nwfs_putpages(ap)
 	} */ *ap;
 {
 	int error;
+	struct thread *td = curthread;	/* XXX */
 	struct vnode *vp = ap->a_vp;
-	struct proc *p;
 	struct ucred *cred;
 
 #ifndef NWFS_RWCACHE
-	p = curproc;			/* XXX */
-	cred = p->p_ucred;		/* XXX */
-	VOP_OPEN(vp, FWRITE, cred, p);
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;		/* XXX */
+	VOP_OPEN(vp, FWRITE, cred, td);
 	error = vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
 		ap->a_sync, ap->a_rtvals);
-	VOP_CLOSE(vp, FWRITE, cred, p);
+	VOP_CLOSE(vp, FWRITE, cred, td);
 	return error;
 #else
 	struct uio uio;
@@ -533,9 +532,10 @@ nwfs_putpages(ap)
 	struct nwnode *np;
 	vm_page_t *pages;
 
-	p = curproc;			/* XXX */
-	cred = p->p_ucred;		/* XXX */
-/*	VOP_OPEN(vp, FWRITE, cred, p);*/
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;		/* XXX */
+
+/*	VOP_OPEN(vp, FWRITE, cred, td);*/
 	np = VTONW(vp);
 	nmp = VFSTONWFS(vp->v_mount);
 	pages = ap->a_m;
@@ -559,11 +559,11 @@ nwfs_putpages(ap)
 	uio.uio_resid = count;
 	uio.uio_segflg = UIO_SYSSPACE;
 	uio.uio_rw = UIO_WRITE;
-	uio.uio_procp = p;
+	uio.uio_td = td;
 	NCPVNDEBUG("ofs=%d,resid=%d\n",(int)uio.uio_offset, uio.uio_resid);
 
 	error = ncp_write(NWFSTOCONN(nmp), &np->n_fh, &uio, cred);
-/*	VOP_CLOSE(vp, FWRITE, cred, p);*/
+/*	VOP_CLOSE(vp, FWRITE, cred, td);*/
 	NCPVNDEBUG("paged write done: %d\n", error);
 
 	pmap_qremove(kva, npages);
@@ -584,11 +584,11 @@ nwfs_putpages(ap)
  * doing the flush, just wait for completion.
  */
 int
-nwfs_vinvalbuf(vp, flags, cred, p, intrflg)
+nwfs_vinvalbuf(vp, flags, cred, td, intrflg)
 	struct vnode *vp;
 	int flags;
 	struct ucred *cred;
-	struct proc *p;
+	struct thread *td;
 	int intrflg;
 {
 	struct nwnode *np = VTONW(vp);
@@ -608,12 +608,12 @@ nwfs_vinvalbuf(vp, flags, cred, p, intrflg)
 	while (np->n_flag & NFLUSHINPROG) {
 		np->n_flag |= NFLUSHWANT;
 		error = tsleep((caddr_t)&np->n_flag, PRIBIO + 2, "nwfsvinv", slptimeo);
-		error = ncp_chkintr(NWFSTOCONN(VTONWFS(vp)), p);
+		error = ncp_chkintr(NWFSTOCONN(VTONWFS(vp)), td);
 		if (error == EINTR && intrflg)
 			return EINTR;
 	}
 	np->n_flag |= NFLUSHINPROG;
-	error = vinvalbuf(vp, flags, cred, p, slpflag, 0);
+	error = vinvalbuf(vp, flags, cred, td, slpflag, 0);
 	while (error) {
 		if (intrflg && (error == ERESTART || error == EINTR)) {
 			np->n_flag &= ~NFLUSHINPROG;
@@ -623,7 +623,7 @@ nwfs_vinvalbuf(vp, flags, cred, p, intrflg)
 			}
 			return EINTR;
 		}
-		error = vinvalbuf(vp, flags, cred, p, slpflag, 0);
+		error = vinvalbuf(vp, flags, cred, td, slpflag, 0);
 	}
 	np->n_flag &= ~(NMODIFIED | NFLUSHINPROG);
 	if (np->n_flag & NFLUSHWANT) {

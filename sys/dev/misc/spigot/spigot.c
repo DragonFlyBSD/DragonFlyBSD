@@ -43,7 +43,7 @@
  * Version 1.7, December 1995.
  *
  * $FreeBSD: src/sys/i386/isa/spigot.c,v 1.44 2000/01/29 16:17:36 peter Exp $
- * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.3 2003/06/25 03:55:54 dillon Exp $
  *
  */
 
@@ -171,7 +171,7 @@ struct	spigot_softc	*ss = (struct spigot_softc *)&spigot_softc[UNIT(dev)];
 	 * require sufficient privilege soon and nothing much can be done
 	 * without them.
 	 */
-	error = suser(p);
+	error = suser(td);
 	if (error != 0)
 		return error;
 	if (securelevel > 0)
@@ -227,7 +227,7 @@ struct	spigot_info	*info;
 		break;
 	case	SPIGOT_IOPL_ON:	/* allow access to the IO PAGE */
 #if !defined(SPIGOT_UNSECURE)
-		error = suser(p);
+		error = suser(td);
 		if (error != 0)
 			return error;
 		if (securelevel > 0)

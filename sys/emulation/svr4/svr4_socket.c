@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_socket.c,v 1.7 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_socket.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_socket.c,v 1.4 2003/06/25 03:56:10 dillon Exp $
  */
 
 /*
@@ -64,7 +64,7 @@
 #include <svr4/svr4_proto.h>
 
 struct svr4_sockcache_entry {
-	struct proc *p;		/* Process for the socket		*/
+	struct thread *td;	/* Process for the socket		*/
 	void *cookie;		/* Internal cookie used for matching	*/
 	struct sockaddr_un sock;/* Pathname for the socket		*/
 	udev_t dev;		/* Device where the socket lives on	*/
@@ -76,8 +76,8 @@ extern TAILQ_HEAD(svr4_sockcache_head, svr4_sockcache_entry) svr4_head;
 extern int svr4_str_initialized;
 
 struct sockaddr_un *
-svr4_find_socket(p, fp, dev, ino)
-	struct proc *p;
+svr4_find_socket(td, fp, dev, ino)
+	struct thread *td;
 	struct file *fp;
 	udev_t dev;
 	ino_t ino;
@@ -87,16 +87,16 @@ svr4_find_socket(p, fp, dev, ino)
 
 	if (!svr4_str_initialized) {
 		DPRINTF(("svr4_find_socket: uninitialized [%p,%d,%d]\n",
-		    p, dev, ino));
+		    td, dev, ino));
 		TAILQ_INIT(&svr4_head);
 		svr4_str_initialized = 1;
 		return NULL;
 	}
 
 
-	DPRINTF(("svr4_find_socket: [%p,%d,%d]: ", p, dev, ino));
+	DPRINTF(("svr4_find_socket: [%p,%d,%d]: ", td, dev, ino));
 	for (e = svr4_head.tqh_first; e != NULL; e = e->entries.tqe_next)
-		if (e->p == p && e->dev == dev && e->ino == ino) {
+		if (e->td == td && e->dev == dev && e->ino == ino) {
 #ifdef DIAGNOSTIC
 			if (e->cookie != NULL && e->cookie != cookie)
 				panic("svr4 socket cookie mismatch");
@@ -116,8 +116,8 @@ svr4_find_socket(p, fp, dev, ino)
  * the streams "soo_close()" routine).
  */
 int
-svr4_add_socket(p, path, st)
-	struct proc *p;
+svr4_add_socket(td, path, st)
+	struct thread *td;
 	const char *path;
 	struct stat *st;
 {
@@ -133,7 +133,7 @@ svr4_add_socket(p, path, st)
 	e->cookie = NULL;
 	e->dev = st->st_dev;
 	e->ino = st->st_ino;
-	e->p = p;
+	e->td = td;
 
 	if ((error = copyinstr(path, e->sock.sun_path,
 	    sizeof(e->sock.sun_path), &len)) != 0) {
@@ -147,7 +147,7 @@ svr4_add_socket(p, path, st)
 
 	TAILQ_INSERT_HEAD(&svr4_head, e, entries);
 	DPRINTF(("svr4_add_socket: %s [%p,%d,%d]\n", e->sock.sun_path,
-		 p, e->dev, e->ino));
+		 td, e->dev, e->ino));
 	return 0;
 }
 

@@ -32,7 +32,7 @@
  *
  *	@(#)ucred.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/ucred.h,v 1.14.2.5 2002/03/09 05:20:25 dd Exp $
- * $DragonFly: src/sys/sys/ucred.h,v 1.3 2003/06/23 17:55:50 dillon Exp $
+ * $DragonFly: src/sys/sys/ucred.h,v 1.4 2003/06/25 03:56:10 dillon Exp $
  */
 
 #ifndef _SYS_UCRED_H_
@@ -44,7 +44,7 @@ struct prison;
  * Credentials.
  *
  * Please do not inspect cr_uid directly to determine superuserness.
- * Only the suser()/suser_xxx() function should be used for this.
+ * Only the suser()/suser_cred() function should be used for this.
  */
 struct ucred {
 	u_int	cr_ref;			/* reference count */
@@ -88,7 +88,7 @@ struct ucred	*crcopy __P((struct ucred *cr));
 struct ucred	*crdup __P((struct ucred *cr));
 void		crfree __P((struct ucred *cr));
 struct ucred	*crget __P((void));
-void		crhold __P((struct ucred *cr));
+struct ucred	*crhold __P((struct ucred *cr));
 void		cru2x __P((struct ucred *cr, struct xucred *xcr));
 int		groupmember __P((gid_t gid, struct ucred *cred));
 #endif /* _KERNEL */

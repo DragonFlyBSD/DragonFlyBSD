@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mem.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mem.c,v 1.4 2003/06/25 03:55:53 dillon Exp $
  */
 
 /*
@@ -135,7 +135,7 @@ mmopen(dev_t dev, int flags, int fmt, struct thread *td)
 			return (EPERM);
 		break;
 	case 14:
-		error = suser_xxx(p->p_ucred, 0);
+		error = suser(td);
 		if (error != 0)
 			return (error);
 		if (securelevel > 0)
@@ -440,7 +440,6 @@ mem_range_AP_init(void)
 static int 
 random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 {
-	struct proc *p = td->td_proc;
 	static intrmask_t interrupt_allowed;
 	intrmask_t interrupt_mask;
 	int error, intr;
@@ -471,7 +470,7 @@ random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 	case FIONBIO:
 		break;
 	case MEM_SETIRQ:
-		error = suser_xxx(p->p_ucred, 0);
+		error = suser(td);
 		if (error != 0)
 			return (error);
 		if (intr < 0 || intr >= 16)
@@ -488,7 +487,7 @@ random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 		enable_intr();
 		break;
 	case MEM_CLEARIRQ:
-		error = suser_xxx(p->p_ucred, 0);
+		error = suser(td);
 		if (error != 0)
 			return (error);
 		if (intr < 0 || intr >= 16)
@@ -502,7 +501,7 @@ random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 		enable_intr();
 		break;
 	case MEM_RETURNIRQ:
-		error = suser_xxx(p->p_ucred, 0);
+		error = suser(td);
 		if (error != 0)
 			return (error);
 		*(u_int16_t *)data = interrupt_allowed;

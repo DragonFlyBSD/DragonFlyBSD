@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_socket.c,v 1.11.2.6 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.3 2003/06/23 17:55:46 dillon Exp $
+ * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.4 2003/06/25 03:56:03 dillon Exp $
  * $Whistle: ng_socket.c,v 1.28 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -110,7 +110,7 @@ static int	ng_attach_data(struct socket *so);
 static int	ng_attach_cntl(struct socket *so);
 static int	ng_attach_common(struct socket *so, int type);
 static void	ng_detach_common(struct ngpcb *pcbp, int type);
-/*static int	ng_internalize(struct mbuf *m, struct proc *p); */
+/*static int	ng_internalize(struct mbuf *m, struct thread *td); */
 
 static int	ng_connect_data(struct sockaddr *nam, struct ngpcb *pcbp);
 static int	ng_connect_cntl(struct sockaddr *nam, struct ngpcb *pcbp);
@@ -157,11 +157,11 @@ LIST_HEAD(, ngpcb) ngsocklist;
 ***************************************************************/
 
 static int
-ngc_attach(struct socket *so, int proto, struct proc *p)
+ngc_attach(struct socket *so, int proto, struct thread *td)
 {
 	struct ngpcb *const pcbp = sotongpcb(so);
 
-	if (suser_xxx(p->p_ucred, 0))
+	if (suser(td))
 		return (EPERM);
 	if (pcbp != NULL)
 		return (EISCONN);
@@ -181,7 +181,7 @@ ngc_detach(struct socket *so)
 
 static int
 ngc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
-	 struct mbuf *control, struct proc *p)
+	 struct mbuf *control, struct thread *td)
 {
 	struct ngpcb *const pcbp = sotongpcb(so);
 	struct sockaddr_ng *const sap = (struct sockaddr_ng *) addr;
@@ -259,7 +259,7 @@ release:
 }
 
 static int
-ngc_bind(struct socket *so, struct sockaddr *nam, struct proc *p)
+ngc_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct ngpcb *const pcbp = sotongpcb(so);
 
@@ -269,7 +269,7 @@ ngc_bind(struct socket *so, struct sockaddr *nam, struct proc *p)
 }
 
 static int
-ngc_connect(struct socket *so, struct sockaddr *nam, struct proc *p)
+ngc_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct ngpcb *const pcbp = sotongpcb(so);
 
@@ -283,7 +283,7 @@ ngc_connect(struct socket *so, struct sockaddr *nam, struct proc *p)
 ***************************************************************/
 
 static int
-ngd_attach(struct socket *so, int proto, struct proc *p)
+ngd_attach(struct socket *so, int proto, struct thread *td)
 {
 	struct ngpcb *const pcbp = sotongpcb(so);
 
@@ -305,7 +305,7 @@ ngd_detach(struct socket *so)
 
 static int
 ngd_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
-	 struct mbuf *control, struct proc *p)
+	 struct mbuf *control, struct thread *td)
 {
 	struct ngpcb *const pcbp = sotongpcb(so);
 	struct sockaddr_ng *const sap = (struct sockaddr_ng *) addr;
@@ -372,7 +372,7 @@ release:
 }
 
 static int
-ngd_connect(struct socket *so, struct sockaddr *nam, struct proc *p)
+ngd_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct ngpcb *const pcbp = sotongpcb(so);
 
@@ -541,7 +541,7 @@ ng_detach_common(struct ngpcb *pcbp, int which)
  * which after all is the purpose of this whole system.
  */
 static int
-ng_internalize(struct mbuf *control, struct proc *p)
+ng_internalize(struct mbuf *control, struct thread *td)
 {
 	struct filedesc *fdp = p->p_fd;
 	const struct cmsghdr *cm = mtod(control, const struct cmsghdr *);

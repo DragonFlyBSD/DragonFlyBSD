@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.3 2003/06/24 02:11:55 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,9 +38,10 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mman.h>
+#include <sys/systm.h>
+#include <sys/proc.h>
 #include <sys/namei.h>
 #include <sys/pioctl.h>
-#include <sys/proc.h>
 #include <sys/procfs.h>
 #include <sys/resourcevar.h>
 #include <sys/signalvar.h>
@@ -48,7 +49,6 @@
 #include <sys/syscall.h>
 #include <sys/sysctl.h>
 #include <sys/sysent.h>
-#include <sys/systm.h>
 #include <sys/vnode.h>
 
 #include <vm/vm.h>
@@ -341,6 +341,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	u_long rbase;
 	u_long base_addr = 0;
 	int error, i, numsegs;
+	struct thread *td = p->p_thread;
 
 	tempdata = malloc(sizeof(*tempdata), M_TEMP, M_WAITOK);
 	nd = &tempdata->nd;
@@ -362,7 +363,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 		goto fail;
 	}
 
-        NDINIT(nd, LOOKUP, LOCKLEAF|FOLLOW, UIO_SYSSPACE, file, p);   
+        NDINIT(nd, LOOKUP, LOCKLEAF|FOLLOW, UIO_SYSSPACE, file, td);
 			 
 	if ((error = namei(nd)) != 0) {
 		nd->ni_vp = NULL;
@@ -376,7 +377,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	 */
 	error = exec_check_permissions(imgp);
 	if (error) {
-		VOP_UNLOCK(nd->ni_vp, 0, p);
+		VOP_UNLOCK(nd->ni_vp, 0, td);
 		goto fail;
 	}
 
@@ -387,7 +388,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	 */
 	if (error == 0)
 		nd->ni_vp->v_flag |= VTEXT;
-	VOP_UNLOCK(nd->ni_vp, 0, p);
+	VOP_UNLOCK(nd->ni_vp, 0, td);
 	if (error)
                 goto fail;
 
@@ -422,12 +423,14 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 			if (phdr[i].p_flags & PF_R)
   				prot |= VM_PROT_READ;
 
-			if ((error = elf_load_section(p, vmspace, nd->ni_vp,
-  						     phdr[i].p_offset,
-  						     (caddr_t)phdr[i].p_vaddr +
-							rbase,
-  						     phdr[i].p_memsz,
-  						     phdr[i].p_filesz, prot)) != 0)
+			error = elf_load_section(
+				    p, vmspace, nd->ni_vp,
+				    phdr[i].p_offset,
+				    (caddr_t)phdr[i].p_vaddr +
+				    rbase,
+				    phdr[i].p_memsz,
+				    phdr[i].p_filesz, prot);
+			if (error != 0)
 				goto fail;
 			/*
 			 * Establish the base address if this is the
@@ -768,11 +771,12 @@ extern int osreldate;
 
 int
 elf_coredump(p, vp, limit)
-	register struct proc *p;
-	register struct vnode *vp;
+	struct proc *p;
+	struct vnode *vp;
 	off_t limit;
 {
-	register struct ucred *cred = p->p_ucred;
+	struct ucred *cred = p->p_ucred;
+	struct thread *td = p->p_thread;
 	int error = 0;
 	struct sseg_closure seginfo;
 	void *hdr;
@@ -818,7 +822,8 @@ elf_coredump(p, vp, limit)
 			error = vn_rdwr_inchunks(UIO_WRITE, vp, 
 			    (caddr_t)php->p_vaddr,
 			    php->p_filesz, offset, UIO_USERSPACE,
-			    IO_UNIT | IO_DIRECT | IO_CORE, cred, (int *)NULL, p);
+			    IO_UNIT | IO_DIRECT | IO_CORE, cred, 
+			    (int *)NULL, td);
 			if (error != 0)
 				break;
 			offset += php->p_filesz;
@@ -959,6 +964,7 @@ elf_corehdr(p, vp, cred, numsegs, hdr, hdrsize)
 	prstatus_t *status;
 	prfpregset_t *fpregset;
 	prpsinfo_t *psinfo;
+	struct thread *td = p->p_thread;
 
 	tempdata = malloc(sizeof(*tempdata), M_TEMP, M_ZERO | M_WAITOK);
 	status = &tempdata->status;
@@ -993,7 +999,7 @@ elf_corehdr(p, vp, cred, numsegs, hdr, hdrsize)
 
 	/* Write it to the core file. */
 	return vn_rdwr_inchunks(UIO_WRITE, vp, hdr, hdrsize, (off_t)0,
-	    UIO_SYSSPACE, IO_UNIT | IO_DIRECT | IO_CORE, cred, NULL, p);
+	    UIO_SYSSPACE, IO_UNIT | IO_DIRECT | IO_CORE, cred, NULL, td);
 }
 
 static void

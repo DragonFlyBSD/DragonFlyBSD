@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.22 2002/12/15 09:24:23 maxim Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -122,16 +122,13 @@ soalloc(waitok)
 }
 
 int
-socreate(dom, aso, type, proto, p)
-	int dom;
-	struct socket **aso;
-	register int type;
-	int proto;
-	struct proc *p;
+socreate(int dom, struct socket **aso, int type,
+	int proto, struct thread *td)
 {
-	register struct protosw *prp;
-	register struct socket *so;
-	register int error;
+	struct proc *p = td->td_proc;
+	struct protosw *prp;
+	struct socket *so;
+	int error;
 
 	if (proto)
 		prp = pffindproto(dom, proto, type);
@@ -160,7 +157,7 @@ socreate(dom, aso, type, proto, p)
 	so->so_cred = p->p_ucred;
 	crhold(so->so_cred);
 	so->so_proto = prp;
-	error = (*prp->pr_usrreqs->pru_attach)(so, proto, p);
+	error = (*prp->pr_usrreqs->pru_attach)(so, proto, td);
 	if (error) {
 		so->so_state |= SS_NOFDREF;
 		sofree(so);
@@ -171,22 +168,18 @@ socreate(dom, aso, type, proto, p)
 }
 
 int
-sobind(so, nam, p)
-	struct socket *so;
-	struct sockaddr *nam;
-	struct proc *p;
+sobind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int s = splnet();
 	int error;
 
-	error = (*so->so_proto->pr_usrreqs->pru_bind)(so, nam, p);
+	error = (*so->so_proto->pr_usrreqs->pru_bind)(so, nam, td);
 	splx(s);
 	return (error);
 }
 
 void
-sodealloc(so)
-	struct socket *so;
+sodealloc(struct socket *so)
 {
 
 	so->so_gencnt = ++so_gencnt;
@@ -212,15 +205,12 @@ sodealloc(so)
 }
 
 int
-solisten(so, backlog, p)
-	register struct socket *so;
-	int backlog;
-	struct proc *p;
+solisten(struct socket *so, int backlog, struct thread *td)
 {
 	int s, error;
 
 	s = splnet();
-	error = (*so->so_proto->pr_usrreqs->pru_listen)(so, p);
+	error = (*so->so_proto->pr_usrreqs->pru_listen)(so, td);
 	if (error) {
 		splx(s);
 		return (error);
@@ -235,8 +225,7 @@ solisten(so, backlog, p)
 }
 
 void
-sofree(so)
-	register struct socket *so;
+sofree(struct socket *so)
 {
 	struct socket *head = so->so_head;
 
@@ -271,8 +260,7 @@ sofree(so)
  * Free socket when disconnect complete.
  */
 int
-soclose(so)
-	register struct socket *so;
+soclose(struct socket *so)
 {
 	int s = splnet();		/* conservative */
 	int error = 0;
@@ -349,9 +337,7 @@ soabort(so)
 }
 
 int
-soaccept(so, nam)
-	register struct socket *so;
-	struct sockaddr **nam;
+soaccept(struct socket *so, struct sockaddr **nam)
 {
 	int s = splnet();
 	int error;
@@ -365,10 +351,7 @@ soaccept(so, nam)
 }
 
 int
-soconnect(so, nam, p)
-	register struct socket *so;
-	struct sockaddr *nam;
-	struct proc *p;
+soconnect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int s;
 	int error;
@@ -387,15 +370,13 @@ soconnect(so, nam, p)
 	    (error = sodisconnect(so))))
 		error = EISCONN;
 	else
-		error = (*so->so_proto->pr_usrreqs->pru_connect)(so, nam, p);
+		error = (*so->so_proto->pr_usrreqs->pru_connect)(so, nam, td);
 	splx(s);
 	return (error);
 }
 
 int
-soconnect2(so1, so2)
-	register struct socket *so1;
-	struct socket *so2;
+soconnect2(struct socket *so1, struct socket *so2)
 {
 	int s = splnet();
 	int error;
@@ -406,8 +387,7 @@ soconnect2(so1, so2)
 }
 
 int
-sodisconnect(so)
-	register struct socket *so;
+sodisconnect(struct socket *so)
 {
 	int s = splnet();
 	int error;
@@ -445,18 +425,13 @@ bad:
  * Data and control buffers are freed on return.
  */
 int
-sosend(so, addr, uio, top, control, flags, p)
-	register struct socket *so;
-	struct sockaddr *addr;
-	struct uio *uio;
-	struct mbuf *top;
-	struct mbuf *control;
-	int flags;
-	struct proc *p;
+sosend(struct socket *so, struct sockaddr *addr, struct uio *uio,
+	struct mbuf *top, struct mbuf *control, int flags,
+	struct thread *td)
 {
 	struct mbuf **mp;
-	register struct mbuf *m;
-	register long space, len, resid;
+	struct mbuf *m;
+	long space, len, resid;
 	int clen = 0, error, s, dontroute, mlen;
 	int atomic = sosendallatonce(so) || top;
 
@@ -482,8 +457,8 @@ sosend(so, addr, uio, top, control, flags, p)
 	dontroute =
 	    (flags & MSG_DONTROUTE) && (so->so_options & SO_DONTROUTE) == 0 &&
 	    (so->so_proto->pr_flags & PR_ATOMIC);
-	if (p)
-		p->p_stats->p_ru.ru_msgsnd++;
+	if (td->td_proc && td->td_proc->p_stats)
+		td->td_proc->p_stats->p_ru.ru_msgsnd++;
 	if (control)
 		clen = control->m_len;
 #define	snderr(errno)	{ error = errno; splx(s); goto release; }
@@ -620,7 +595,7 @@ nopages:
 				PRUS_EOF :
 			/* If there is more to send set PRUS_MORETOCOME */
 			(resid > 0 && space > 0) ? PRUS_MORETOCOME : 0,
-			top, addr, control, p);
+			top, addr, control, td);
 		    splx(s);
 		    if (dontroute)
 			    so->so_options &= ~SO_DONTROUTE;
@@ -768,8 +743,8 @@ restart:
 		goto restart;
 	}
 dontblock:
-	if (uio->uio_procp)
-		uio->uio_procp->p_stats->p_ru.ru_msgrcv++;
+	if (uio->uio_td && uio->uio_td->td_proc)
+		uio->uio_td->td_proc->p_stats->p_ru.ru_msgrcv++;
 	nextrecord = m->m_nextpkt;
 	if (pr->pr_flags & PR_ADDR) {
 		KASSERT(m->m_type == MT_SONAME, ("receive 1a"));
@@ -1103,7 +1078,7 @@ sooptcopyin(sopt, buf, len, minlen)
 	if (valsize > len)
 		sopt->sopt_valsize = valsize = len;
 
-	if (sopt->sopt_p != 0)
+	if (sopt->sopt_td != NULL)
 		return (copyin(sopt->sopt_val, buf, valsize));
 
 	bcopy(sopt->sopt_val, buf, valsize);
@@ -1281,7 +1256,7 @@ sooptcopyout(sopt, buf, len)
 	valsize = min(len, sopt->sopt_valsize);
 	sopt->sopt_valsize = valsize;
 	if (sopt->sopt_val != 0) {
-		if (sopt->sopt_p != 0)
+		if (sopt->sopt_td != NULL)
 			error = copyout(buf, sopt->sopt_val, valsize);
 		else
 			bcopy(buf, sopt->sopt_val, valsize);
@@ -1395,11 +1370,11 @@ soopt_getm(struct sockopt *sopt, struct mbuf **mp)
 	struct mbuf *m, *m_prev;
 	int sopt_size = sopt->sopt_valsize;
 
-	MGET(m, sopt->sopt_p ? M_WAIT : M_DONTWAIT, MT_DATA);
+	MGET(m, sopt->sopt_td ? M_WAIT : M_DONTWAIT, MT_DATA);
 	if (m == 0)
 		return ENOBUFS;
 	if (sopt_size > MLEN) {
-		MCLGET(m, sopt->sopt_p ? M_WAIT : M_DONTWAIT);
+		MCLGET(m, sopt->sopt_td ? M_WAIT : M_DONTWAIT);
 		if ((m->m_flags & M_EXT) == 0) {
 			m_free(m);
 			return ENOBUFS;
@@ -1413,13 +1388,13 @@ soopt_getm(struct sockopt *sopt, struct mbuf **mp)
 	m_prev = m;
 
 	while (sopt_size) {
-		MGET(m, sopt->sopt_p ? M_WAIT : M_DONTWAIT, MT_DATA);
+		MGET(m, sopt->sopt_td ? M_WAIT : M_DONTWAIT, MT_DATA);
 		if (m == 0) {
 			m_freem(*mp);
 			return ENOBUFS;
 		}
 		if (sopt_size > MLEN) {
-			MCLGET(m, sopt->sopt_p ? M_WAIT : M_DONTWAIT);
+			MCLGET(m, sopt->sopt_td ? M_WAIT : M_DONTWAIT);
 			if ((m->m_flags & M_EXT) == 0) {
 				m_freem(*mp);
 				return ENOBUFS;
@@ -1444,7 +1419,7 @@ soopt_mcopyin(struct sockopt *sopt, struct mbuf *m)
 	if (sopt->sopt_val == NULL)
 		return 0;
 	while (m != NULL && sopt->sopt_valsize >= m->m_len) {
-		if (sopt->sopt_p != NULL) {
+		if (sopt->sopt_td != NULL) {
 			int error;
 
 			error = copyin(sopt->sopt_val, mtod(m, char *),
@@ -1474,7 +1449,7 @@ soopt_mcopyout(struct sockopt *sopt, struct mbuf *m)
 	if (sopt->sopt_val == NULL)
 		return 0;
 	while (m != NULL && sopt->sopt_valsize >= m->m_len) {
-		if (sopt->sopt_p != NULL) {
+		if (sopt->sopt_td != NULL) {
 			int error;
 
 			error = copyout(mtod(m, char *), sopt->sopt_val,
@@ -1509,7 +1484,7 @@ sohasoutofband(so)
 }
 
 int
-sopoll(struct socket *so, int events, struct ucred *cred, struct proc *p)
+sopoll(struct socket *so, int events, struct ucred *cred, struct thread *td)
 {
 	int revents = 0;
 	int s = splnet();
@@ -1528,12 +1503,12 @@ sopoll(struct socket *so, int events, struct ucred *cred, struct proc *p)
 
 	if (revents == 0) {
 		if (events & (POLLIN | POLLPRI | POLLRDNORM | POLLRDBAND)) {
-			selrecord(p->p_thread, &so->so_rcv.sb_sel);
+			selrecord(td, &so->so_rcv.sb_sel);
 			so->so_rcv.sb_flags |= SB_SEL;
 		}
 
 		if (events & (POLLOUT | POLLWRNORM)) {
-			selrecord(p->p_thread, &so->so_snd.sb_sel);
+			selrecord(td, &so->so_snd.sb_sel);
 			so->so_snd.sb_flags |= SB_SEL;
 		}
 	}

@@ -32,7 +32,7 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.3 2003/06/25 03:56:04 dillon Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -314,9 +314,9 @@ extern int	ipport_hilastauto;
 void	in_pcbpurgeif0 __P((struct inpcb *, struct ifnet *));
 void	in_losing __P((struct inpcb *));
 void	in_rtchange __P((struct inpcb *, int));
-int	in_pcballoc __P((struct socket *, struct inpcbinfo *, struct proc *));
-int	in_pcbbind __P((struct inpcb *, struct sockaddr *, struct proc *));
-int	in_pcbconnect __P((struct inpcb *, struct sockaddr *, struct proc *));
+int	in_pcballoc __P((struct socket *, struct inpcbinfo *, struct thread *));
+int	in_pcbbind __P((struct inpcb *, struct sockaddr *, struct thread *));
+int	in_pcbconnect __P((struct inpcb *, struct sockaddr *, struct thread *));
 void	in_pcbdetach __P((struct inpcb *));
 void	in_pcbdisconnect __P((struct inpcb *));
 int	in_pcbinshash __P((struct inpcb *));
@@ -335,7 +335,7 @@ void	in_pcbrehash __P((struct inpcb *));
 int	in_setpeeraddr __P((struct socket *so, struct sockaddr **nam));
 int	in_setsockaddr __P((struct socket *so, struct sockaddr **nam));
 void	in_pcbremlists __P((struct inpcb *inp));
-int	prison_xinpcb __P((struct proc *p, struct inpcb *inp));
+int	prison_xinpcb __P((struct thread *p, struct inpcb *inp));
 #endif /* _KERNEL */
 
 #endif /* !_NETINET_IN_PCB_H_ */

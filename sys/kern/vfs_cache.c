@@ -35,7 +35,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,10 +44,10 @@
 #include <sys/sysctl.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
-#include <sys/namei.h>
 #include <sys/malloc.h>
 #include <sys/sysproto.h>
 #include <sys/proc.h>
+#include <sys/namei.h>
 #include <sys/filedesc.h>
 #include <sys/fnv_hash.h>
 
@@ -450,7 +450,7 @@ vfs_cache_lookup(ap)
 	struct componentname *cnp = ap->a_cnp;
 	struct ucred *cred = cnp->cn_cred;
 	int flags = cnp->cn_flags;
-	struct proc *p = cnp->cn_proc;
+	struct thread *td = cnp->cn_td;
 	u_long vpid;	/* capability number of vnode */
 
 	*vpp = NULL;
@@ -464,7 +464,7 @@ vfs_cache_lookup(ap)
 	    (cnp->cn_nameiop == DELETE || cnp->cn_nameiop == RENAME))
 		return (EROFS);
 
-	error = VOP_ACCESS(dvp, VEXEC, cred, p);
+	error = VOP_ACCESS(dvp, VEXEC, cred, td);
 
 	if (error)
 		return (error);
@@ -484,17 +484,17 @@ vfs_cache_lookup(ap)
 		VREF(vp);
 		error = 0;
 	} else if (flags & ISDOTDOT) {
-		VOP_UNLOCK(dvp, 0, p);
+		VOP_UNLOCK(dvp, 0, td);
 		cnp->cn_flags |= PDIRUNLOCK;
-		error = vget(vp, LK_EXCLUSIVE, p);
+		error = vget(vp, LK_EXCLUSIVE, td);
 		if (!error && lockparent && (flags & ISLASTCN)) {
-			if ((error = vn_lock(dvp, LK_EXCLUSIVE, p)) == 0)
+			if ((error = vn_lock(dvp, LK_EXCLUSIVE, td)) == 0)
 				cnp->cn_flags &= ~PDIRUNLOCK;
 		}
 	} else {
-		error = vget(vp, LK_EXCLUSIVE, p);
+		error = vget(vp, LK_EXCLUSIVE, td);
 		if (!lockparent || error || !(flags & ISLASTCN)) {
-			VOP_UNLOCK(dvp, 0, p);
+			VOP_UNLOCK(dvp, 0, td);
 			cnp->cn_flags |= PDIRUNLOCK;
 		}
 	}
@@ -507,12 +507,12 @@ vfs_cache_lookup(ap)
 			return (0);
 		vput(vp);
 		if (lockparent && dvp != vp && (flags & ISLASTCN)) {
-			VOP_UNLOCK(dvp, 0, p);
+			VOP_UNLOCK(dvp, 0, td);
 			cnp->cn_flags |= PDIRUNLOCK;
 		}
 	}
 	if (cnp->cn_flags & PDIRUNLOCK) {
-		error = vn_lock(dvp, LK_EXCLUSIVE, p);
+		error = vn_lock(dvp, LK_EXCLUSIVE, td);
 		if (error)
 			return (error);
 		cnp->cn_flags &= ~PDIRUNLOCK;

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.3 2003/06/25 03:56:13 dillon Exp $
  */
 
 /*
@@ -264,7 +264,7 @@ vm_object_reference(object)
 
 	object->ref_count++;
 	if (object->type == OBJT_VNODE) {
-		while (vget((struct vnode *) object->handle, LK_RETRY|LK_NOOBJ, curproc)) {
+		while (vget((struct vnode *) object->handle, LK_RETRY|LK_NOOBJ, curthread)) {
 			printf("vm_object_reference: delay in getting object\n");
 		}
 	}

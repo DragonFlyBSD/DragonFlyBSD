@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_ioctl.c,v 1.2.2.1 2001/02/22 09:14:12 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_ioctl.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_ioctl.c,v 1.3 2003/06/25 03:56:08 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -52,13 +52,13 @@ nwfs_ioctl(ap)
 		struct vnode *a_vp;
 		u_long a_command;
 		caddr_t a_data;
-		int fflag;
-		struct ucred *cred;
-		struct proc *p;
+		int a_fflag;
+		struct ucred *a_cred;
+		struct thread *a_td;
 	} */ *ap;
 {
 	int error;
-	struct proc *p = ap->a_p;
+	struct thread *td = ap->a_td;
 	struct ucred *cred = ap->a_cred;
 	struct vnode *vp = ap->a_vp;
 	struct nwnode *np = VTONW(vp);
@@ -70,23 +70,23 @@ nwfs_ioctl(ap)
 
 	switch (ap->a_command) {
 	    case NWFSIOC_GETCONN:
-		error = ncp_conn_lock(conn, p, cred, NCPM_READ);
+		error = ncp_conn_lock(conn, td, cred, NCPM_READ);
 		if (error) break;
-		error = ncp_conn_gethandle(conn, p, &hp);
-		ncp_conn_unlock(conn, p);
+		error = ncp_conn_gethandle(conn, td, &hp);
+		ncp_conn_unlock(conn, td);
 		if (error) break;
 		*(int*)data = hp->nh_id;
 		break;
 	    case NWFSIOC_GETEINFO:
-		if ((error = VOP_ACCESS(vp, VEXEC, cred, p))) break;
+		if ((error = VOP_ACCESS(vp, VEXEC, cred, td))) break;
 		fap = data;
 		error = ncp_obtain_info(nmp, np->n_fid.f_id, 0, NULL, fap,
-		    ap->a_p,ap->a_cred);
+		    ap->a_td, ap->a_cred);
 		strcpy(fap->entryName, np->n_name);
 		fap->nameLen = np->n_nmlen;
 		break;
 	    case NWFSIOC_GETNS:
-		if ((error = VOP_ACCESS(vp, VEXEC, cred, p))) break;
+		if ((error = VOP_ACCESS(vp, VEXEC, cred, td))) break;
 		*(int*)data = nmp->name_space;
 		break;
 	    default:

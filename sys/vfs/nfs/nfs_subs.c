@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_subs.c,v 1.90.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.3 2003/06/19 01:55:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.4 2003/06/25 03:56:07 dillon Exp $
  */
 
 /*
@@ -1128,7 +1128,7 @@ nfs_init(vfsp)
 		nfs_ticks = 1;
 	/* Ensure async daemons disabled */
 	for (i = 0; i < NFS_MAXASYNCDAEMON; i++) {
-		nfs_iodwant[i] = (struct proc *)0;
+		nfs_iodwant[i] = NULL;
 		nfs_iodmount[i] = (struct nfsmount *)0;
 	}
 	nfs_nhinit();			/* Init the nfsnode table */
@@ -1466,7 +1466,7 @@ nfs_getattrcache(vp, vaper)
  * released by the caller.
  */
 int
-nfs_namei(ndp, fhp, len, slp, nam, mdp, dposp, retdirp, p, kerbflag, pubflag)
+nfs_namei(ndp, fhp, len, slp, nam, mdp, dposp, retdirp, td, kerbflag, pubflag)
 	register struct nameidata *ndp;
 	fhandle_t *fhp;
 	int len;
@@ -1475,7 +1475,7 @@ nfs_namei(ndp, fhp, len, slp, nam, mdp, dposp, retdirp, p, kerbflag, pubflag)
 	struct mbuf **mdp;
 	caddr_t *dposp;
 	struct vnode **retdirp;
-	struct proc *p;
+	struct thread *td;
 	int kerbflag, pubflag;
 {
 	register int i, rem;
@@ -1615,7 +1615,7 @@ nfs_namei(ndp, fhp, len, slp, nam, mdp, dposp, retdirp, p, kerbflag, pubflag)
 	 * becuase lookup() will dereference ni_startdir.
 	 */
 
-	cnp->cn_proc = p;
+	cnp->cn_td = td;
 	VREF(dp);
 	ndp->ni_startdir = dp;
 
@@ -1651,7 +1651,7 @@ nfs_namei(ndp, fhp, len, slp, nam, mdp, dposp, retdirp, p, kerbflag, pubflag)
 		 * Validate symlink
 		 */
 		if ((cnp->cn_flags & LOCKPARENT) && ndp->ni_pathlen == 1)
-			VOP_UNLOCK(ndp->ni_dvp, 0, p);
+			VOP_UNLOCK(ndp->ni_dvp, 0, td);
 		if (!pubflag) {
 			error = EINVAL;
 			goto badlink2;
@@ -1672,7 +1672,7 @@ nfs_namei(ndp, fhp, len, slp, nam, mdp, dposp, retdirp, p, kerbflag, pubflag)
 		auio.uio_offset = 0;
 		auio.uio_rw = UIO_READ;
 		auio.uio_segflg = UIO_SYSSPACE;
-		auio.uio_procp = (struct proc *)0;
+		auio.uio_td = NULL;
 		auio.uio_resid = MAXPATHLEN;
 		error = VOP_READLINK(ndp->ni_vp, &auio, cnp->cn_cred);
 		if (error) {
@@ -1926,7 +1926,7 @@ nfsrv_fhtovp(fhp, lockflag, vpp, cred, slp, nam, rdonlyp, kerbflag, pubflag)
 	int kerbflag;
 	int pubflag;
 {
-	struct proc *p = curproc; /* XXX */
+	struct thread *td = curthread; /* XXX */
 	register struct mount *mp;
 	register int i;
 	struct ucred *credanon;
@@ -1990,7 +1990,7 @@ nfsrv_fhtovp(fhp, lockflag, vpp, cred, slp, nam, rdonlyp, kerbflag, pubflag)
 	nfsrv_object_create(*vpp);
 
 	if (!lockflag)
-		VOP_UNLOCK(*vpp, 0, p);
+		VOP_UNLOCK(*vpp, 0, td);
 	return (0);
 }
 
@@ -2188,14 +2188,14 @@ nfsrv_errmap(nd, err)
 }
 
 int
-nfsrv_object_create(vp)
-	struct vnode *vp;
+nfsrv_object_create(struct vnode *vp)
 {
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 
 	if (vp == NULL || vp->v_type != VREG)
 		return (1);
-	return (vfs_object_create(vp, curproc,
-				  curproc ? curproc->p_ucred : NULL));
+	return (vfs_object_create(vp, td, p ? p->p_ucred : NULL));
 }
 
 /*

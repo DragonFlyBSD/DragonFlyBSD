@@ -1,20 +1,21 @@
 /*	$NetBSD: krpc.h,v 1.4 1995/12/19 23:07:11 cgd Exp $	*/
 /* $FreeBSD: src/sys/nfs/krpc.h,v 1.6 1999/08/28 00:49:55 peter Exp $	*/
-/* $DragonFly: src/sys/vfs/nfs/krpc.h,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/krpc.h,v 1.3 2003/06/25 03:56:07 dillon Exp $	*/
 
 #include <sys/cdefs.h>
 
 struct mbuf;
 struct proc;
+struct thread;
 struct sockaddr;
 struct sockaddr_in;
 
 int krpc_call __P((struct sockaddr_in *_sin,
 	u_int prog, u_int vers, u_int func,
-	struct mbuf **data, struct sockaddr **from, struct proc *procp));
+	struct mbuf **data, struct sockaddr **from, struct thread *td));
 
 int krpc_portmap __P((struct sockaddr_in *_sin,
-	u_int prog, u_int vers, u_int16_t *portp,struct proc *procp));
+	u_int prog, u_int vers, u_int16_t *portp,struct thread *td));
 
 struct mbuf *xdr_string_encode __P((char *str, int len));
 

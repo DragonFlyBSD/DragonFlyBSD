@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.3 2003/06/23 17:55:46 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.4 2003/06/25 03:56:04 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -336,7 +336,7 @@ cantsend:
 }
 
 static int
-div_attach(struct socket *so, int proto, struct proc *p)
+div_attach(struct socket *so, int proto, struct thread *td)
 {
 	struct inpcb *inp;
 	int error, s;
@@ -344,14 +344,14 @@ div_attach(struct socket *so, int proto, struct proc *p)
 	inp  = sotoinpcb(so);
 	if (inp)
 		panic("div_attach");
-	if (p && (error = suser_xxx(p->p_ucred, 0)) != 0)
+	if ((error = suser(td)) != 0)
 		return error;
 
 	error = soreserve(so, div_sendspace, div_recvspace);
 	if (error)
 		return error;
 	s = splnet();
-	error = in_pcballoc(so, &divcbinfo, p);
+	error = in_pcballoc(so, &divcbinfo, td);
 	splx(s);
 	if (error)
 		return error;
@@ -393,7 +393,7 @@ div_disconnect(struct socket *so)
 }
 
 static int
-div_bind(struct socket *so, struct sockaddr *nam, struct proc *p)
+div_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct inpcb *inp;
 	int s;
@@ -412,7 +412,7 @@ div_bind(struct socket *so, struct sockaddr *nam, struct proc *p)
 		error = EAFNOSUPPORT;
 	else {
 		((struct sockaddr_in *)nam)->sin_addr.s_addr = INADDR_ANY;
-		error = in_pcbbind(inp, nam, p);
+		error = in_pcbbind(inp, nam, td);
 	}
 	splx(s);
 	return error;
@@ -427,7 +427,7 @@ div_shutdown(struct socket *so)
 
 static int
 div_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
-	 struct mbuf *control, struct proc *p)
+	 struct mbuf *control, struct thread *td)
 {
 	/* Packet must have a header (but that's about it) */
 	if (m->m_len < sizeof (struct ip) &&
@@ -486,7 +486,7 @@ div_pcblist(SYSCTL_HANDLER_ARGS)
 	s = splnet();
 	for (inp = LIST_FIRST(divcbinfo.listhead), i = 0; inp && i < n;
 	     inp = LIST_NEXT(inp, inp_list)) {
-		if (inp->inp_gencnt <= gencnt && !prison_xinpcb(req->p, inp))/*YYY*/
+		if (inp->inp_gencnt <= gencnt && !prison_xinpcb(req->td, inp))
 			inp_list[i++] = inp;
 	}
 	splx(s);

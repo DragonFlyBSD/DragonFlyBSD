@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_extern.h	8.4 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_extern.h,v 1.15 1999/08/28 00:52:24 peter Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_extern.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_extern.h,v 1.3 2003/06/25 03:56:12 dillon Exp $
  */
 
 #ifndef _UFS_MFS_MFS_EXTERN_H_
@@ -41,12 +41,12 @@
 struct buf;
 struct mfsnode;
 struct mount;
-struct proc;
+struct thread;
 struct vnode;
 
 void	mfs_doio __P((struct buf *bp, struct mfsnode *mfsnode));
 u_char *mfs_getimage __P((void));
-int	mfs_mountfs __P((struct vnode *, struct mount *, struct proc *));
+int	mfs_mountfs __P((struct vnode *, struct mount *, struct thread *));
 int	mfs_mountroot __P((void));
 
 #endif /* !_UFS_MFS_MFS_EXTERN_H_ */

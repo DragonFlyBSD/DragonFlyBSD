@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_ncp.c,v 1.3 1999/10/29 10:21:07 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.3 2003/06/25 03:56:05 dillon Exp $
  *
  * Core of NCP protocol
  */
@@ -84,9 +84,10 @@ void m_dumpm(struct mbuf *m) {
 #endif /* NCP_DATA_DEBUG */
 
 int
-ncp_chkintr(struct ncp_conn *conn, struct proc *p)
+ncp_chkintr(struct ncp_conn *conn, struct thread *td)
 {
 	sigset_t tmpset;
+	struct proc *p = td->td_proc;
 
 	if (p == NULL)
 		return 0;
@@ -101,7 +102,7 @@ ncp_chkintr(struct ncp_conn *conn, struct proc *p)
 /*
  * Process initial NCP handshake (attach)
  * NOTE: Since all functions below may change conn attributes, they
- * should be called with LOCKED connection, also they use procp & ucred
+ * should be called with LOCKED connection, also they use td & ucred
  */
 int
 ncp_ncp_connect(struct ncp_conn *conn) {
@@ -111,7 +112,7 @@ ncp_ncp_connect(struct ncp_conn *conn) {
 	
 	conn->flags &= ~(NCPFL_INVALID | NCPFL_SIGNACTIVE | NCPFL_SIGNWANTED);
 	conn->seq = 0;
-	checkbad(ncp_rq_head(rqp,NCP_ALLOC_SLOT,0,conn->procp,conn->ucred));
+	checkbad(ncp_rq_head(rqp,NCP_ALLOC_SLOT,0,conn->td,conn->ucred));
 	error=ncp_do_request(conn,rqp);
 	if (!error) {
 		rp = mtod(rqp->rp, struct ncp_rphdr*);
@@ -147,7 +148,7 @@ ncp_ncp_disconnect(struct ncp_conn *conn) {
 #ifdef NCPBURST
 	ncp_burst_disconnect(conn);
 #endif
-	error=ncp_rq_head(rqp,NCP_FREE_SLOT,0,conn->procp,conn->ucred);
+	error=ncp_rq_head(rqp,NCP_FREE_SLOT,0,conn->td,conn->ucred);
 	ncprq = mtod(rqp->rq,struct ncp_rqhdr*);
 	error=ncp_do_request(conn,rqp);
 	ncp_rq_done(rqp);
@@ -181,7 +182,7 @@ static int
 ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 	int error=EIO,len, dosend, plen = 0, gotpacket, s;
 	struct socket *so;
-	struct proc *p = conn->procp;
+	struct thread *td = conn->td;
 	struct ncp_rqhdr *rq;
 	struct ncp_rphdr *rp=NULL;
 	struct timeval tv;
@@ -189,8 +190,8 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 	
 	conn->nc_rq = rqp;
 	rqp->conn = conn;
-	if (p == NULL)
-		p = curproc;	/* XXX maybe procpage ? */
+	if (td == NULL)
+		td = curthread;	/* XXX maybe procpage ? */
 	if (!ncp_conn_valid(conn)) {
 		printf("%s: conn not valid\n",__FUNCTION__);
 		return (error);
@@ -250,10 +251,10 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 		}
 		tv.tv_sec = conn->li.timeout;
 		tv.tv_usec = 0;
-		error = ncp_sock_rselect(so, p, &tv, POLLIN);
+		error = ncp_sock_rselect(so, td, &tv, POLLIN);
 		if (error == EWOULDBLOCK )	/* timeout expired */
 			continue;
-		error = ncp_chkintr(conn, p);
+		error = ncp_chkintr(conn, td);
 		if (error == EINTR) 		/* we dont restart */
 			break;
 		if (error) break;
@@ -374,7 +375,7 @@ ncp_restore_login(struct ncp_conn *conn) {
 		error = ncp_reconnect(conn);
 		if (error) break;
 		if (conn->li.user)
-			error = ncp_login_object(conn, conn->li.user, conn->li.objtype, conn->li.password,conn->procp,conn->ucred);
+			error = ncp_login_object(conn, conn->li.user, conn->li.objtype, conn->li.password,conn->td,conn->ucred);
 		if (error) break;
 		conn->flags |= NCPFL_LOGGED;
 	} while(0);
@@ -390,7 +391,7 @@ ncp_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 	int error, rcnt;
 /*	struct ncp_rqhdr *rq = mtod(rqp->rq,struct ncp_rqhdr*);*/
 
-	error = ncp_conn_lock(conn,rqp->p,rqp->cred,NCPM_EXECUTE);
+	error = ncp_conn_lock(conn,rqp->td,rqp->cred,NCPM_EXECUTE);
 	if  (error) return error;
 	rcnt = NCP_RESTORE_COUNT;
 	for(;;) {
@@ -408,7 +409,7 @@ ncp_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 		if (ncp_conn_valid(conn))	/* not just error ! */
 			break;
 	}
-	ncp_conn_unlock(conn,rqp->p);
+	ncp_conn_unlock(conn,rqp->td);
 	return error;
 }
 
@@ -420,7 +421,7 @@ ncp_negotiate_buffersize(struct ncp_conn *conn, int size, int *target) {
 	int error;
 	DECLARE_RQ;
 
-	NCP_RQ_HEAD(0x21,conn->procp,conn->ucred);
+	NCP_RQ_HEAD(0x21,conn->td,conn->ucred);
 	ncp_rq_word_hl(rqp, size);
 	checkbad(ncp_request(conn,rqp));
 	*target = min(ncp_rp_word_hl(rqp), size);
@@ -435,7 +436,7 @@ ncp_negotiate_size_and_options(struct ncp_conn *conn, int size, int options,
 	int rs;
 	DECLARE_RQ;
 
-	NCP_RQ_HEAD(0x61,conn->procp,conn->ucred);
+	NCP_RQ_HEAD(0x61,conn->td,conn->ucred);
 	ncp_rq_word_hl(rqp, size);
 	ncp_rq_byte(rqp, options);
 	checkbad(ncp_request(conn, rqp));
@@ -534,7 +535,7 @@ ncp_reconnect(struct ncp_conn *conn) {
  * Server addr should be filled in.
  */
 int
-ncp_connect(struct ncp_conn_args *li, struct proc *p, struct ucred *cred,
+ncp_connect(struct ncp_conn_args *li, struct thread *td, struct ucred *cred,
 	struct ncp_conn **aconn)
 {
 	struct ncp_conn *conn;
@@ -559,7 +560,7 @@ ncp_connect(struct ncp_conn_args *li, struct proc *p, struct ucred *cred,
 		owner = cred;
 		crhold(owner);
 	}
-	error = ncp_conn_alloc(p, owner, &conn);
+	error = ncp_conn_alloc(td, owner, &conn);
 	if (error)
 		return (error);
 	if (error) {
@@ -605,7 +606,7 @@ ncp_check_rq(struct ncp_conn *conn){
 	return;
 	if (conn->flags & NCPFL_INTR) return;
 	/* first, check for signals */
-	if (ncp_chkintr(conn,conn->procp)) {
+	if (ncp_chkintr(conn,conn->td)) {
 		conn->flags |= NCPFL_INTR;
 	}
 	return;

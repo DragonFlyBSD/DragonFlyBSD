@@ -36,7 +36,7 @@
  *
  *	@(#)lock.h	8.12 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/lock.h,v 1.17.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/sys/lock.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/lock.h,v 1.3 2003/06/25 03:56:10 dillon Exp $
  */
 
 #ifndef	_LOCK_H_
@@ -50,6 +50,8 @@
  * upgrading from shared to exclusive, and sleeping until the lock
  * can be gained. The simple locks are defined in <machine/param.h>.
  */
+struct thread;
+
 struct lock {
 	struct	simplelock lk_interlock; /* lock on remaining fields */
 	u_int	lk_flags;		/* see below */
@@ -59,7 +61,7 @@ struct lock {
 	short	lk_prio;		/* priority at which to sleep */
 	char	*lk_wmesg;		/* resource sleeping (for tsleep) */
 	int	lk_timo;		/* maximum sleep time (for tsleep) */
-	pid_t	lk_lockholder;		/* pid of exclusive lock holder */
+	struct thread *lk_lockholder;	/* thread of excl lock holder */
 #ifdef	DEBUG_LOCKS
 	const char *lk_filename;
 	const char *lk_lockername;
@@ -171,8 +173,8 @@ struct lock {
 /*
  * Indicator that no process holds exclusive lock
  */
-#define LK_KERNPROC ((pid_t) -2)
-#define LK_NOPROC ((pid_t) -1)
+#define LK_KERNTHREAD ((struct thread *)-2)
+#define LK_NOTHREAD ((struct thread *)-1)
 
 void dumplockinfo(struct lock *lkp);
 struct proc;
@@ -181,19 +183,19 @@ void	lockinit __P((struct lock *, int prio, char *wmesg, int timo,
 			int flags));
 #ifdef DEBUG_LOCKS
 int	debuglockmgr __P((struct lock *, u_int flags,
-			struct simplelock *, struct proc *p,
+			struct simplelock *, struct thread *p,
 			const char *,
 			const char *,
 			int));
-#define lockmgr(lockp, flags, slockp, proc) \
-	debuglockmgr((lockp), (flags), (slockp), (proc), \
+#define lockmgr(lockp, flags, slockp, td) \
+	debuglockmgr((lockp), (flags), (slockp), (td), \
 	    "lockmgr", __FILE__, __LINE__)
 #else
 int	lockmgr __P((struct lock *, u_int flags,
-			struct simplelock *, struct proc *p));
+			struct simplelock *, struct thread *td));
 #endif
 void	lockmgr_printinfo __P((struct lock *));
-int	lockstatus __P((struct lock *, struct proc *));
+int	lockstatus __P((struct lock *, struct thread *));
 int	lockcount __P((struct lock *));
 
 #ifdef SIMPLELOCK_DEBUG

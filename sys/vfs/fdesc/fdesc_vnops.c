@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.3 2003/06/23 17:55:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.4 2003/06/25 03:55:58 dillon Exp $
  */
 
 /*
@@ -53,11 +53,12 @@
 #include <sys/malloc.h>
 #include <sys/file.h>	/* Must come after sys/malloc.h */
 #include <sys/mount.h>
-#include <sys/namei.h>
 #include <sys/proc.h>
+#include <sys/namei.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/vnode.h>
+#include <sys/file2.h>
 
 #include <miscfs/fdesc/fdesc.h>
 
@@ -96,12 +97,12 @@ fdesc_init(vfsp)
 }
 
 int
-fdesc_allocvp(ftype, ix, mp, vpp, p)
+fdesc_allocvp(ftype, ix, mp, vpp, td)
 	fdntype ftype;
 	int ix;
 	struct mount *mp;
 	struct vnode **vpp;
-	struct proc *p;
+	struct thread *td;
 {
 	struct fdhashhead *fc;
 	struct fdescnode *fd;
@@ -111,7 +112,7 @@ fdesc_allocvp(ftype, ix, mp, vpp, p)
 loop:
 	LIST_FOREACH(fd, fc, fd_hash) {
 		if (fd->fd_ix == ix && fd->fd_vnode->v_mount == mp) {
-			if (vget(fd->fd_vnode, 0, p))
+			if (vget(fd->fd_vnode, 0, td))
 				goto loop;
 			*vpp = fd->fd_vnode;
 			return (error);
@@ -171,27 +172,30 @@ fdesc_lookup(ap)
 		struct componentname * a_cnp;
 	} */ *ap;
 {
+	struct componentname *cnp = ap->a_cnp;
+	struct thread *td = cnp->cn_td;
+	struct proc *p = td->td_proc;
 	struct vnode **vpp = ap->a_vpp;
 	struct vnode *dvp = ap->a_dvp;
-	struct componentname *cnp = ap->a_cnp;
 	char *pname = cnp->cn_nameptr;
-	struct proc *p = cnp->cn_proc;
 	int nlen = cnp->cn_namelen;
-	int nfiles = p->p_fd->fd_nfiles;
+	int nfiles;
 	u_int fd;
 	int error;
 	struct vnode *fvp;
 
+	KKASSERT(p);
+	nfiles = p->p_fd->fd_nfiles;
 	if (cnp->cn_nameiop == DELETE || cnp->cn_nameiop == RENAME) {
 		error = EROFS;
 		goto bad;
 	}
 
-	VOP_UNLOCK(dvp, 0, p);
+	VOP_UNLOCK(dvp, 0, td);
 	if (cnp->cn_namelen == 1 && *pname == '.') {
 		*vpp = dvp;
 		VREF(dvp);	
-		vn_lock(dvp, LK_SHARED | LK_RETRY, p);
+		vn_lock(dvp, LK_SHARED | LK_RETRY, td);
 		return (0);
 	}
 
@@ -219,16 +223,16 @@ fdesc_lookup(ap)
 		goto bad;
 	}
 
-	error = fdesc_allocvp(Fdesc, FD_DESC+fd, dvp->v_mount, &fvp, p);
+	error = fdesc_allocvp(Fdesc, FD_DESC+fd, dvp->v_mount, &fvp, td);
 	if (error)
 		goto bad;
 	VTOFDESC(fvp)->fd_fd = fd;
-	vn_lock(fvp, LK_SHARED | LK_RETRY, p);
+	vn_lock(fvp, LK_SHARED | LK_RETRY, td);
 	*vpp = fvp;
 	return (0);
 
 bad:
-	vn_lock(dvp, LK_SHARED | LK_RETRY, p);
+	vn_lock(dvp, LK_SHARED | LK_RETRY, td);
 	*vpp = NULL;
 	return (error);
 }
@@ -239,10 +243,13 @@ fdesc_open(ap)
 		struct vnode *a_vp;
 		int  a_mode;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
+	struct proc *p = ap->a_td->td_proc;
+
+	KKASSERT(p);
 
 	if (VTOFDESC(vp)->fd_type == Froot)
 		return (0);
@@ -255,7 +262,7 @@ fdesc_open(ap)
 	 * Other callers of vn_open or VOP_OPEN will simply report the
 	 * error.
 	 */
-	ap->a_p->p_dupfd = VTOFDESC(vp)->fd_fd;	/* XXX */
+	p->p_dupfd = VTOFDESC(vp)->fd_fd;	/* XXX */
 	return (ENODEV);
 }
 
@@ -265,17 +272,20 @@ fdesc_getattr(ap)
 		struct vnode *a_vp;
 		struct vattr *a_vap;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
+	struct proc *p = ap->a_td->td_proc;
 	struct vnode *vp = ap->a_vp;
 	struct vattr *vap = ap->a_vap;
-	struct filedesc *fdp = ap->a_p->p_fd;
+	struct filedesc *fdp;
 	struct file *fp;
 	struct stat stb;
 	u_int fd;
 	int error = 0;
 
+	KKASSERT(p);
+	fdp = p->p_fd;
 	switch (VTOFDESC(vp)->fd_type) {
 	case Froot:
 		VATTR_NULL(vap);
@@ -305,7 +315,7 @@ fdesc_getattr(ap)
 			return (EBADF);
 
 		bzero(&stb, sizeof(stb));
-		error = fo_stat(fp, &stb, ap->a_p);
+		error = fo_stat(fp, &stb, ap->a_td);
 		if (error == 0) {
 			VATTR_NULL(vap);
 			vap->va_type = IFTOVT(stb.st_mode);
@@ -361,9 +371,10 @@ fdesc_setattr(ap)
 		struct vnode *a_vp;
 		struct vattr *a_vap;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
+	struct proc *p = ap->a_td->td_proc;
 	struct vattr *vap = ap->a_vap;
 	struct file *fp;
 	unsigned fd;
@@ -376,11 +387,12 @@ fdesc_setattr(ap)
 		return (EACCES);
 
 	fd = VTOFDESC(ap->a_vp)->fd_fd;
+	KKASSERT(p);
 
 	/*
 	 * Allow setattr where there is an underlying vnode.
 	 */
-	error = getvnode(ap->a_p->p_fd, fd, &fp);
+	error = getvnode(p->p_fd, fd, &fp);
 	if (error) {
 		/*
 		 * getvnode() returns EINVAL if the file descriptor is not
@@ -432,7 +444,8 @@ fdesc_readdir(ap)
 	    uio->uio_resid < UIO_MX)
 		return (EINVAL);
 	i = (u_int)off / UIO_MX;
-	fdp = uio->uio_procp->p_fd;
+	KKASSERT(uio->uio_td->td_proc);
+	fdp = uio->uio_td->td_proc->p_fd;
 	error = 0;
 
 	fcnt = i - 2;		/* The first two nodes are `.' and `..' */
@@ -482,17 +495,17 @@ fdesc_poll(ap)
 		struct vnode *a_vp;
 		int  a_events;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
-	return seltrue(0, ap->a_events, ap->a_p->p_thread);
+	return seltrue(0, ap->a_events, ap->a_td);
 }
 
 static int
 fdesc_inactive(ap)
 	struct vop_inactive_args /* {
 		struct vnode *a_vp;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
@@ -501,7 +514,7 @@ fdesc_inactive(ap)
 	 * Clear out the v_type field to avoid
 	 * nasty things happening in vgone().
 	 */
-	VOP_UNLOCK(vp, 0, ap->a_p);
+	VOP_UNLOCK(vp, 0, ap->a_td);
 	vp->v_type = VNON;
 	return (0);
 }

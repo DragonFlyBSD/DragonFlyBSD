@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.11 2003/06/23 23:36:11 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.12 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -62,6 +62,7 @@
 #include <sys/vmmeter.h>
 #include <sys/unistd.h>
 #include <sys/malloc.h>
+#include <sys/file2.h>
 
 #include <machine/cpu.h>
 
@@ -443,7 +444,7 @@ start_init(void *dummy)
 	VREF(p->p_fd->fd_cdir);
 	p->p_fd->fd_rdir = rootvnode;
 	VREF(p->p_fd->fd_rdir);
-	VOP_UNLOCK(rootvnode, 0, p);
+	VOP_UNLOCK(rootvnode, 0, curthread);
 
 	/*
 	 * Need just enough stack to hold the faked-up "execve()" arguments.

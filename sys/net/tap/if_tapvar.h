@@ -35,7 +35,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tapvar.h,v 1.3.2.1 2000/07/27 13:57:05 nsayer Exp $
- * $DragonFly: src/sys/net/tap/if_tapvar.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tapvar.h,v 1.3 2003/06/25 03:56:02 dillon Exp $
  * $Id: if_tapvar.h,v 0.6 2000/07/11 02:16:08 max Exp $
  */
 
@@ -57,7 +57,7 @@ struct tap_softc {
 
 	u_int8_t 	ether_addr[ETHER_ADDR_LEN]; /* ether addr of the remote side */
 
-	pid_t		 tap_pid;		/* PID of process to open    */
+	struct thread	 *tap_td;		/* thread of process to open  */
 	struct sigio	*tap_sigio;		/* information for async I/O */
 	struct selinfo	 tap_rsel;		/* read select               */
 };

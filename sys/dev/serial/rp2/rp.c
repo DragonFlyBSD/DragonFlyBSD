@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rp.c,v 1.33.2.2 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.3 2003/06/25 03:55:54 dillon Exp $
  */
 
 /* 
@@ -1333,7 +1333,7 @@ open_top:
 			}
 		}
 		if(tp->t_state & TS_XCLUDE &&
-		    suser(p)) {
+		    suser(td)) {
 			splx(oldspl);
 			return(EBUSY);
 		}
@@ -1582,7 +1582,7 @@ rpioctl(dev, cmd, data, flag, p)
 		}
 		switch (cmd) {
 		case TIOCSETA:
-			error = suser(p);
+			error = suser(td);
 			if(error != 0)
 				return(error);
 			*ct = *(struct termios *)data;
@@ -1727,7 +1727,7 @@ rpioctl(dev, cmd, data, flag, p)
 		*(int *)data = result;
 		break;
 	case TIOCMSDTRWAIT:
-		error = suser(p);
+		error = suser(td);
 		if(error != 0) {
 			splx(oldspl);
 			return(error);

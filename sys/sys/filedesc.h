@@ -32,7 +32,7 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/filedesc.h,v 1.3 2003/06/23 17:55:50 dillon Exp $
+ * $DragonFly: src/sys/sys/filedesc.h,v 1.4 2003/06/25 03:56:10 dillon Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_
@@ -150,6 +150,10 @@ struct	sigio {
 SLIST_HEAD(sigiolst, sigio);
 
 #ifdef _KERNEL
+
+struct thread;
+struct proc;
+
 /*
  * Kernel global variables and routines.
  */
@@ -162,10 +166,10 @@ struct	filedesc *fdinit __P((struct proc *p));
 struct	filedesc *fdshare __P((struct proc *p));
 struct	filedesc *fdcopy __P((struct proc *p));
 void	fdfree __P((struct proc *p));
-int	closef __P((struct file *fp,struct proc *p));
+int	closef __P((struct file *fp, struct thread *td));
 void	fdcloseexec __P((struct proc *p));
 int	fdcheckstd __P((struct proc *p));
-struct	file *holdfp __P((struct filedesc* fdp, int fd, int flag));
+struct	file *holdfp __P((struct filedesc *fdp, int fd, int flag));
 int	getvnode __P((struct filedesc *fdp, int fd, struct file **fpp));
 int	fdissequential __P((struct file *));
 void	fdsequential __P((struct file *, int));

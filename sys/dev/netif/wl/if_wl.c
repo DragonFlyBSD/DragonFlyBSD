@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.2 2003/06/17 04:28:37 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.3 2003/06/25 03:55:54 dillon Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -1139,10 +1139,10 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
     short		base = sc->base;
     short		mode = 0;
     int			opri, error = 0;
-    struct proc		*p = curproc;	/* XXX */
     int			irq, irqval, i, isroot, size;
     caddr_t		up;
     char * 	        cpt;
+    struct thread *td = curthread; /* XXX */
 	
 
 #ifdef WLDEBUG
@@ -1246,7 +1246,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 	/* pointer to buffer in user space */
 	up = (void *)ifr->ifr_data;
 	/* work out if they're root */
-	isroot = (suser(p) == 0);
+	isroot = (suser(td) == 0);
 	
 	for (i = 0; i < 0x40; i++) {
 	    /* don't hand the DES key out to non-root users */
@@ -1261,7 +1261,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 	/* copy the PSA in from the caller; we only copy _some_ values */
     case SIOCSWLPSA:
 	/* root only */
-	if ((error = suser(p)))
+	if ((error = suser(td)))
 	    break;
 	error = EINVAL;	/* assume the worst */
 	/* pointer to buffer in user space containing data */
@@ -1315,7 +1315,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 	 */
     case SIOCSWLCNWID:
 	/* root only */
-	if ((error = suser(p)))
+	if ((error = suser(td)))
 	    break;
 	if (!(ifp->if_flags & IFF_UP)) {
 	    error = EIO;	/* only allowed while up */
@@ -1333,7 +1333,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 	/* copy the EEPROM in 2.4 Gz WaveMODEM  out to the caller */
     case SIOCGWLEEPROM:
 	/* root only */
-	if ((error = suser(p)))
+	if ((error = suser(td)))
 	    break;
 	/* pointer to buffer in user space */
 	up = (void *)ifr->ifr_data;
@@ -1356,7 +1356,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 	/* zero (Delete) the wl cache */
     case SIOCDWLCACHE:
 	/* root only */
-	if ((error = suser(p)))
+	if ((error = suser(td)))
 	    break;
 	wl_cache_zero(unit);
 	break;

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_inode.c	8.13 (Berkeley) 4/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_inode.c,v 1.56.2.5 2002/02/05 18:35:03 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.3 2003/06/25 03:56:11 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -129,12 +129,12 @@ ffs_update(vp, waitfor)
  * disk blocks.
  */
 int
-ffs_truncate(vp, length, flags, cred, p)
+ffs_truncate(vp, length, flags, cred, td)
 	struct vnode *vp;
 	off_t length;
 	int flags;
 	struct ucred *cred;
-	struct proc *p;
+	struct thread *td;
 {
 	register struct vnode *ovp = vp;
 	ufs_daddr_t lastblock;
@@ -190,14 +190,14 @@ ffs_truncate(vp, length, flags, cred, p)
 			 * so that it will have no data structures left.
 			 */
 			if ((error = VOP_FSYNC(ovp, cred, MNT_WAIT,
-			    p)) != 0)
+			    td)) != 0)
 				return (error);
 		} else {
 #ifdef QUOTA
 			(void) chkdq(oip, -oip->i_blocks, NOCRED, 0);
 #endif
 			softdep_setup_freeblocks(oip, length);
-			vinvalbuf(ovp, 0, cred, p, 0, 0);
+			vinvalbuf(ovp, 0, cred, td, 0, 0);
 			oip->i_flag |= IN_CHANGE | IN_UPDATE;
 			return (ffs_update(ovp, 0));
 		}
@@ -257,7 +257,7 @@ ffs_truncate(vp, length, flags, cred, p)
 		 */
 		if (DOINGSOFTDEP(ovp) && lbn < NDADDR &&
 		    fragroundup(fs, blkoff(fs, length)) < fs->fs_bsize &&
-		    (error = VOP_FSYNC(ovp, cred, MNT_WAIT, p)) != 0) {
+		    (error = VOP_FSYNC(ovp, cred, MNT_WAIT, td)) != 0) {
 				return (error);
 		}
 		oip->i_size = length;
@@ -312,7 +312,7 @@ ffs_truncate(vp, length, flags, cred, p)
 	bcopy((caddr_t)oldblks, (caddr_t)&oip->i_db[0], sizeof oldblks);
 	oip->i_size = osize;
 
-	error = vtruncbuf(ovp, cred, p, length, fs->fs_bsize);
+	error = vtruncbuf(ovp, cred, td, length, fs->fs_bsize);
 	if (error && (allerror == 0))
 		allerror = error;
 

@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
- * $DragonFly: src/sys/kern/tty_cons.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_cons.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -388,7 +388,7 @@ cnioctl(dev, cmd, data, flag, td)
 	 * output from the "virtual" console.
 	 */
 	if (cmd == TIOCCONS && constty) {
-		error = suser_xxx(td->td_proc->p_ucred, 0);
+		error = suser(td);
 		if (error)
 			return (error);
 		constty = NULL;

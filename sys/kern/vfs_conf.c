@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.3 2003/06/25 03:55:57 dillon Exp $
  */
 
 /*
@@ -171,6 +171,7 @@ vfs_mountroot(void *junk)
 static int
 vfs_mountroot_try(char *mountfrom)
 {
+	struct thread	*td = curthread;
         struct mount	*mp;
 	char		*vfsname, *path;
 	int		error;
@@ -216,7 +217,7 @@ vfs_mountroot_try(char *mountfrom)
 	    (devsw(rootdev)->d_flags & D_MEMDISK))
 		mp->mnt_flag &= ~MNT_RDONLY;
 
-	error = VFS_MOUNT(mp, NULL, NULL, NULL, curproc);
+	error = VFS_MOUNT(mp, NULL, NULL, NULL, td);
 
 done:
 	if (vfsname != NULL)
@@ -225,7 +226,7 @@ done:
 		free(path, M_MOUNT);
 	if (error != 0) {
 		if (mp != NULL) {
-			vfs_unbusy(mp, curproc);
+			vfs_unbusy(mp, td);
 			free(mp, M_MOUNT);
 		}
 		printf("Root mount failed: %d\n", error);
@@ -238,7 +239,7 @@ done:
 
 		/* sanity check system clock against root filesystem timestamp */
 		inittodr(mp->mnt_time);
-		vfs_unbusy(mp, curproc);
+		vfs_unbusy(mp, td);
 	}
 	return(error);
 }

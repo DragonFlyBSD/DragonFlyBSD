@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.13 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.7 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.8 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -356,8 +356,7 @@ again:
 	p2->p_flag = P_INMEM;
 	if (p1->p_flag & P_PROFIL)
 		startprofclock(p2);
-	crhold(p1->p_ucred);
-	p2->p_ucred = p1->p_ucred;
+	p2->p_ucred = crhold(p1->p_ucred);
 
 	if (p2->p_ucred->cr_prison) {
 		p2->p_ucred->cr_prison->pr_ref++;

@@ -39,7 +39,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_subr.c,v 1.3.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.3 2003/06/25 03:55:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -87,7 +87,7 @@ linprocfs_allocvp(mp, vpp, pid, pfs_type)
 	long pid;
 	pfstype pfs_type;
 {
-	struct proc *p = curproc;	/* XXX */
+	struct thread *td = curthread;	/* XXX */
 	struct pfsnode *pfs;
 	struct vnode *vp;
 	struct pfsnode **pp;
@@ -99,7 +99,7 @@ loop:
 		if (pfs->pfs_pid == pid &&
 		    pfs->pfs_type == pfs_type &&
 		    vp->v_mount == mp) {
-			if (vget(vp, 0, p))
+			if (vget(vp, 0, td))
 				goto loop;
 			*vpp = vp;
 			return (0);
@@ -137,7 +137,7 @@ loop:
 	pfs->pfs_type = pfs_type;
 	pfs->pfs_vnode = vp;
 	pfs->pfs_flags = 0;
-	pfs->pfs_lockowner = 0;
+	pfs->pfs_lockowner = NULL;
 	pfs->pfs_fileno = PROCFS_FILENO(pid, pfs_type);
 
 	switch (pfs_type) {
@@ -237,10 +237,14 @@ linprocfs_rw(ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct uio *uio = ap->a_uio;
-	struct proc *curp = uio->uio_procp;
+	struct thread *td = uio->uio_td;
 	struct pfsnode *pfs = VTOPFS(vp);
 	struct proc *p;
+	struct proc *curp;
 	int rtval;
+
+	curp = td->td_proc;
+	KKASSERT(curp);
 
 	p = PFIND(pfs->pfs_pid);
 	if (p == 0)
@@ -251,7 +255,7 @@ linprocfs_rw(ap)
 	while (pfs->pfs_lockowner) {
 		tsleep(&pfs->pfs_lockowner, PRIBIO, "pfslck", 0);
 	}
-	pfs->pfs_lockowner = curproc->p_pid;
+	pfs->pfs_lockowner = curthread;
 
 	switch (pfs->pfs_type) {
 	case Pmem:
@@ -285,7 +289,7 @@ linprocfs_rw(ap)
 		rtval = EOPNOTSUPP;
 		break;
 	}
-	pfs->pfs_lockowner = 0;
+	pfs->pfs_lockowner = NULL;
 	wakeup(&pfs->pfs_lockowner);
 	return rtval;
 }
@@ -354,10 +358,10 @@ vfs_findname(nm, buf, buflen)
 #endif
 
 void
-linprocfs_exit(struct proc *p)
+linprocfs_exit(struct thread *td)
 {
 	struct pfsnode *pfs;
-	pid_t pid = p->p_pid;
+	pid_t pid = (td->td_proc) ? td->td_proc->p_pid : -1; /* YYY */
 
 	/*
 	 * The reason for this loop is not obvious -- basicly,

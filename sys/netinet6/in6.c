@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.3 2003/06/23 17:55:46 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.4 2003/06/25 03:56:04 dillon Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -132,7 +132,7 @@ const struct sockaddr_in6 sa6_any = {sizeof(sa6_any), AF_INET6,
 				     0, 0, IN6ADDR_ANY_INIT, 0};
 
 static int in6_lifaddr_ioctl __P((struct socket *, u_long, caddr_t,
-	struct ifnet *, struct proc *));
+	struct ifnet *, struct thread *));
 static int in6_ifinit __P((struct ifnet *, struct in6_ifaddr *,
 			   struct sockaddr_in6 *, int));
 static void in6_unlink_ifa __P((struct in6_ifaddr *, struct ifnet *));
@@ -364,12 +364,8 @@ in6_len2mask(mask, len)
 #define ia62ifa(ia6)	(&((ia6)->ia_ifa))
 
 int
-in6_control(so, cmd, data, ifp, p)
-	struct	socket *so;
-	u_long cmd;
-	caddr_t	data;
-	struct ifnet *ifp;
-	struct proc *p;
+in6_control(struct socket *so, u_long cmd, caddr_t data,
+	struct ifnet *ifp, struct thread *td)
 {
 	struct	in6_ifreq *ifr = (struct in6_ifreq *)data;
 	struct	in6_ifaddr *ia = NULL;
@@ -377,7 +373,7 @@ in6_control(so, cmd, data, ifp, p)
 	int privileged;
 
 	privileged = 0;
-	if (p == NULL || !suser_xxx(p->p_ucred, 0))
+	if (suser(td) == 0)
 		privileged++;
 
 	switch (cmd) {
@@ -1321,12 +1317,8 @@ in6_purgeif(ifp)
  * address encoding scheme. (see figure on page 8)
  */
 static int
-in6_lifaddr_ioctl(so, cmd, data, ifp, p)
-	struct socket *so;
-	u_long cmd;
-	caddr_t	data;
-	struct ifnet *ifp;
-	struct proc *p;
+in6_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data,
+	struct ifnet *ifp, struct thread *td)
 {
 	struct if_laddrreq *iflr = (struct if_laddrreq *)data;
 	struct ifaddr *ifa;

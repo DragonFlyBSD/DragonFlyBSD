@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.3 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -171,19 +171,7 @@ soisdisconnected(so)
  * Connstatus may be 0, or SO_ISCONFIRMING, or SO_ISCONNECTED.
  */
 struct socket *
-sonewconn(head, connstatus)
-	register struct socket *head;
-	int connstatus;
-{
-
-	return (sonewconn3(head, connstatus, NULL));
-}
-
-struct socket *
-sonewconn3(head, connstatus, p)
-	register struct socket *head;
-	int connstatus;
-	struct proc *p;
+sonewconn(struct socket *head, int connstatus)
 {
 	register struct socket *so;
 
@@ -201,8 +189,7 @@ sonewconn3(head, connstatus, p)
 	so->so_state = head->so_state | SS_NOFDREF;
 	so->so_proto = head->so_proto;
 	so->so_timeo = head->so_timeo;
-	so->so_cred = p ? p->p_ucred : head->so_cred;
-	crhold(so->so_cred);
+	so->so_cred = crhold(head->so_cred);
 	if (soreserve(so, head->so_snd.sb_hiwat, head->so_rcv.sb_hiwat) ||
 	    (*so->so_proto->pr_usrreqs->pru_attach)(so, 0, NULL)) {
 		sodealloc(so);
@@ -869,7 +856,7 @@ pru_accept_notsupp(struct socket *so, struct sockaddr **nam)
 }
 
 int
-pru_connect_notsupp(struct socket *so, struct sockaddr *nam, struct proc *p)
+pru_connect_notsupp(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	return EOPNOTSUPP;
 }
@@ -882,13 +869,13 @@ pru_connect2_notsupp(struct socket *so1, struct socket *so2)
 
 int
 pru_control_notsupp(struct socket *so, u_long cmd, caddr_t data,
-		    struct ifnet *ifp, struct proc *p)
+		    struct ifnet *ifp, struct thread *td)
 {
 	return EOPNOTSUPP;
 }
 
 int
-pru_listen_notsupp(struct socket *so, struct proc *p)
+pru_listen_notsupp(struct socket *so, struct thread *td)
 {
 	return EOPNOTSUPP;
 }

@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -474,7 +474,7 @@ sysctl_sysctl_debug(SYSCTL_HANDLER_ARGS)
 {
 	int error;
 
-	error = suser_xxx(req->p->p_ucred, 0);
+	error = suser(req->td);
 	if (error)
 		return error;
 	sysctl_sysctl_debug_dump_node(&sysctl__children, 0);
@@ -888,7 +888,7 @@ kernel_sysctl(int *name, u_int namelen, void *old, size_t *oldlenp, void *new, s
 
 	bzero(&req, sizeof req);
 
-	req.p = curproc;
+	req.td = curthread;
 
 	if (oldlenp) {
 		req.oldlen = *oldlenp;
@@ -1051,7 +1051,8 @@ sysctl_find_oid(int *name, u_int namelen, struct sysctl_oid **noid,
 int
 sysctl_root(SYSCTL_HANDLER_ARGS)
 {
-	struct proc *p = req->p;
+	struct thread *td = req->td;
+	struct proc *p = td ? td->td_proc : NULL;
 	struct sysctl_oid *oid;
 	int error, indx;
 
@@ -1076,7 +1077,7 @@ sysctl_root(SYSCTL_HANDLER_ARGS)
 
 	/* Most likely only root can write */
 	if (!(oid->oid_kind & CTLFLAG_ANYBODY) && p &&
-	    (error = suser_xxx(p->p_ucred, 
+	    (error = suser_cred(p->p_ucred, 
 	     (oid->oid_kind & CTLFLAG_PRISON) ? PRISON_ROOT : 0)))
 		return (error);
 

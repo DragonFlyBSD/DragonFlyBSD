@@ -28,13 +28,13 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/compat/linux/linux_util.c,v 1.12.2.2 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.3 2003/06/23 17:55:27 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.4 2003/06/25 03:55:44 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/namei.h>
 #include <sys/proc.h>
+#include <sys/namei.h>
 #include <sys/malloc.h>
 #include <sys/vnode.h>
 
@@ -51,13 +51,13 @@ const char      linux_emul_path[] = "/compat/linux";
  * be in exists.
  */
 int
-linux_emul_find(p, sgp, prefix, path, pbuf, cflag)
-	struct proc	*p;
-	caddr_t		 *sgp;		/* Pointer to stackgap memory */
-	const char	 *prefix;
-	char		 *path;
+linux_emul_find(td, sgp, prefix, path, pbuf, cflag)
+	struct thread	*td;
+	caddr_t		*sgp;		/* Pointer to stackgap memory */
+	const char	*prefix;
+	char		*path;
 	char		**pbuf;
-	int		  cflag;
+	int		cflag;
 {
 	struct nameidata	 nd;
 	struct nameidata	 ndroot;
@@ -66,6 +66,10 @@ linux_emul_find(p, sgp, prefix, path, pbuf, cflag)
 	int			 error;
 	char			*ptr, *buf, *cp;
 	size_t			 sz, len;
+	struct ucred		*cred;
+
+	KKASSERT(td->td_proc);
+	cred = td->td_proc->p_ucred;
 
 	buf = (char *) malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 	*pbuf = path;
@@ -105,7 +109,7 @@ linux_emul_find(p, sgp, prefix, path, pbuf, cflag)
 		for (cp = &ptr[len] - 1; *cp != '/'; cp--);
 		*cp = '\0';
 
-		NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, buf, p);
+		NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, buf, td);
 
 		if ((error = namei(&nd)) != 0) {
 			free(buf, M_TEMP);
@@ -115,7 +119,7 @@ linux_emul_find(p, sgp, prefix, path, pbuf, cflag)
 		*cp = '/';
 	}
 	else {
-		NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, buf, p);
+		NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, buf, td);
 
 		if ((error = namei(&nd)) != 0) {
 			free(buf, M_TEMP);
@@ -130,8 +134,8 @@ linux_emul_find(p, sgp, prefix, path, pbuf, cflag)
 		 * root directory and never finding it, because "/" resolves
 		 * to the emulation root directory. This is expensive :-(
 		 */
-		NDINIT(&ndroot, LOOKUP, FOLLOW, UIO_SYSSPACE, linux_emul_path,
-		    p);
+		NDINIT(&ndroot, LOOKUP, FOLLOW, UIO_SYSSPACE,
+			linux_emul_path, td);
 
 		if ((error = namei(&ndroot)) != 0) {
 			/* Cannot happen! */
@@ -141,11 +145,11 @@ linux_emul_find(p, sgp, prefix, path, pbuf, cflag)
 			return error;
 		}
 
-		if ((error = VOP_GETATTR(nd.ni_vp, &vat, p->p_ucred, p)) != 0) {
+		if ((error = VOP_GETATTR(nd.ni_vp, &vat, cred, td)) != 0) {
 			goto bad;
 		}
 
-		if ((error = VOP_GETATTR(ndroot.ni_vp, &vatroot, p->p_ucred, p))
+		if ((error = VOP_GETATTR(ndroot.ni_vp, &vatroot, cred, td))
 		    != 0) {
 			goto bad;
 		}

@@ -32,7 +32,7 @@
  *
  *	@(#)in.h	8.3 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/in.h,v 1.48.2.9 2002/12/01 14:03:10 sobomax Exp $
- * $DragonFly: src/sys/netinet/in.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/in.h,v 1.3 2003/06/25 03:56:04 dillon Exp $
  */
 
 #ifndef _NETINET_IN_H_
@@ -472,14 +472,16 @@ struct ifnet; struct mbuf;	/* forward declarations for Standard C */
 
 #ifdef _KERNEL
 
+struct thread;
+
 int	 in_broadcast __P((struct in_addr, struct ifnet *));
 int	 in_canforward __P((struct in_addr));
 int	 in_cksum __P((struct mbuf *, int));
 int	 in_localaddr __P((struct in_addr));
 char 	*inet_ntoa __P((struct in_addr)); /* in libkern */
 
-int	prison_ip __P((struct proc *p, int flag, u_int32_t *ip));
-void	prison_remote_ip __P((struct proc *p, int flag, u_int32_t *ip));
+int	prison_ip __P((struct thread *td, int flag, u_int32_t *ip));
+void	prison_remote_ip __P((struct thread *td, int flag, u_int32_t *ip));
 
 #define in_hosteq(s, t)	((s).s_addr == (t).s_addr)
 #define in_nullhost(x)	((x).s_addr == INADDR_ANY)

@@ -161,7 +161,7 @@ ibcs2_setipdomainname(struct setipdomainname_args *uap)
 	char hname[MAXHOSTNAMELEN], *ptr;
 	int error, sctl[2], hlen;
 
-	if ((error = suser()))
+	if ((error = suser(curthread)))
 		return (error);
 
 	/* W/out a hostname a domain-name is nonsense */

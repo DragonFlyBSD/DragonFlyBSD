@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_ioctl.c,v 1.6 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.5 2003/06/23 18:22:07 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.6 2003/06/25 03:56:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -81,18 +81,21 @@ svr4_decode_cmd(cmd, dir, c, num, argsiz)
 int
 svr4_sys_ioctl(struct svr4_sys_ioctl_args *uap)
 {
-	struct proc 	*p = curproc;
+	struct thread	*td = curthread;
+	struct proc 	*p = td->td_proc;
 	int             *retval;
 	struct file	*fp;
 	struct filedesc	*fdp;
 	u_long		 cmd;
-	int (*fun) __P((struct file *, struct proc *, register_t *,
+	int (*fun) __P((struct file *, struct thread *, register_t *,
 			int, u_long, caddr_t));
 #ifdef DEBUG_SVR4
 	char		 dir[4];
 	char		 c;
 	int		 num;
 	int		 argsiz;
+
+	KKASSERT(p);
 
 	svr4_decode_cmd(SCARG(uap, com), dir, &c, &num, &argsiz);
 
@@ -158,5 +161,5 @@ svr4_sys_ioctl(struct svr4_sys_ioctl_args *uap)
 		DPRINTF((">>> OUT: so_state = 0x%x\n", so->so_state));
 	}
 #endif
-	return (*fun)(fp, p, retval, SCARG(uap, fd), cmd, SCARG(uap, data));
+	return (*fun)(fp, td, retval, SCARG(uap, fd), cmd, SCARG(uap, data));
 }

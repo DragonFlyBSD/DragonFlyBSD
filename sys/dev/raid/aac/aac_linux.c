@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_linux.c,v 1.1.4.1 2003/03/28 19:50:17 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_linux.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_linux.c,v 1.3 2003/06/25 03:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -36,6 +36,7 @@
 #include <sys/kernel.h>
 #include <sys/file.h>
 #include <sys/proc.h>
+#include <sys/file2.h>
 #include <machine/../linux/linux.h>
 #include <machine/../linux/linux_proto.h>
 #include <compat/linux/linux_ioctl.h>
@@ -65,10 +66,13 @@ DEV_MODULE(aac_linux, aac_linux_modevent, NULL);
 MODULE_DEPEND(aac, linux, 1, 1, 1);
 
 static int
-aac_linux_ioctl(struct proc *p, struct linux_ioctl_args *args)
+aac_linux_ioctl(struct thread *td, struct linux_ioctl_args *args)
 {
+	struct proc *p = td->td_proc;
 	struct file *fp;
 	u_long cmd;
+
+	KKASSERT(p);
 
 	fp = p->p_fd->fd_ofiles[args->fd];
 	cmd = args->cmd;
@@ -76,6 +80,6 @@ aac_linux_ioctl(struct proc *p, struct linux_ioctl_args *args)
 	/*
 	 * Pass the ioctl off to our standard handler.
 	 */
-	return(fo_ioctl(fp, cmd, (caddr_t)args->arg, p));
+	return(fo_ioctl(fp, cmd, (caddr_t)args->arg, td));
 }
 

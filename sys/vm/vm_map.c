@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.3 2003/06/25 03:56:12 dillon Exp $
  */
 
 /*
@@ -1994,14 +1994,14 @@ vm_map_clean(map, start, end, syncio, invalidate)
 			int flags;
 
 			vm_object_reference(object);
-			vn_lock(object->handle, LK_EXCLUSIVE | LK_RETRY, curproc);
+			vn_lock(object->handle, LK_EXCLUSIVE | LK_RETRY, curthread);
 			flags = (syncio || invalidate) ? OBJPC_SYNC : 0;
 			flags |= invalidate ? OBJPC_INVAL : 0;
 			vm_object_page_clean(object,
 			    OFF_TO_IDX(offset),
 			    OFF_TO_IDX(offset + size + PAGE_MASK),
 			    flags);
-			VOP_UNLOCK(object->handle, 0, curproc);
+			VOP_UNLOCK(object->handle, 0, curthread);
 			vm_object_deallocate(object);
 		}
 		if (object && invalidate &&

@@ -32,7 +32,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.26 2003/01/24 05:11:33 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.3 2003/06/23 17:55:46 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.4 2003/06/25 03:56:04 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -145,12 +145,9 @@ SYSCTL_PROC(_net_inet_ip_portrange, OID_AUTO, hilast, CTLTYPE_INT|CTLFLAG_RW,
  * Allocate a PCB and associate it with the socket.
  */
 int
-in_pcballoc(so, pcbinfo, p)
-	struct socket *so;
-	struct inpcbinfo *pcbinfo;
-	struct proc *p;
+in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo, struct thread *td)
 {
-	register struct inpcb *inp;
+	struct inpcb *inp;
 #ifdef IPSEC
 	int error;
 #endif
@@ -184,18 +181,18 @@ in_pcballoc(so, pcbinfo, p)
 }
 
 int
-in_pcbbind(inp, nam, p)
-	register struct inpcb *inp;
-	struct sockaddr *nam;
-	struct proc *p;
+in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 {
-	register struct socket *so = inp->inp_socket;
+	struct socket *so = inp->inp_socket;
+	struct proc *p = td->td_proc;
 	unsigned short *lastport;
 	struct sockaddr_in *sin;
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 	u_short lport = 0;
 	int wild = 0, reuseport = (so->so_options & SO_REUSEPORT);
 	int error, prison = 0;
+
+	KKASSERT(p);
 
 	if (TAILQ_EMPTY(&in_ifaddrhead)) /* XXX broken! */
 		return (EADDRNOTAVAIL);
@@ -216,7 +213,7 @@ in_pcbbind(inp, nam, p)
 			return (EAFNOSUPPORT);
 #endif
 		if (sin->sin_addr.s_addr != INADDR_ANY)
-			if (prison_ip(p, 0, &sin->sin_addr.s_addr))
+			if (prison_ip(td, 0, &sin->sin_addr.s_addr))
 				return(EINVAL);
 		lport = sin->sin_port;
 		if (IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
@@ -240,7 +237,7 @@ in_pcbbind(inp, nam, p)
 
 			/* GROSS */
 			if (ntohs(lport) < IPPORT_RESERVED && p &&
-			    suser_xxx(p->p_ucred, PRISON_ROOT))
+			    suser_cred(p->p_ucred, PRISON_ROOT))
 				return (EACCES);
 			if (p && p->p_ucred->cr_prison)
 				prison = 1;
@@ -268,7 +265,7 @@ in_pcbbind(inp, nam, p)
 				}
 			}
 			if (prison &&
-			    prison_ip(p, 0, &sin->sin_addr.s_addr))
+			    prison_ip(td, 0, &sin->sin_addr.s_addr))
 				return (EADDRNOTAVAIL);
 			t = in_pcblookup_local(pcbinfo, sin->sin_addr,
 			    lport, prison ? 0 : wild);
@@ -292,7 +289,7 @@ in_pcbbind(inp, nam, p)
 		int count;
 
 		if (inp->inp_laddr.s_addr != INADDR_ANY)
-			if (prison_ip(p, 0, &inp->inp_laddr.s_addr )) {
+			if (prison_ip(td, 0, &inp->inp_laddr.s_addr )) {
 				inp->inp_laddr.s_addr = INADDR_ANY;
 				return (EINVAL);
 			}
@@ -303,7 +300,7 @@ in_pcbbind(inp, nam, p)
 			last  = ipport_hilastauto;
 			lastport = &pcbinfo->lasthi;
 		} else if (inp->inp_flags & INP_LOWPORT) {
-			if (p && (error = suser_xxx(p->p_ucred, PRISON_ROOT))) {
+			if (p && (error = suser_cred(p->p_ucred, PRISON_ROOT))) {
 				inp->inp_laddr.s_addr = INADDR_ANY;
 				return error;
 			}
@@ -359,7 +356,7 @@ in_pcbbind(inp, nam, p)
 		}
 	}
 	inp->inp_lport = lport;
-	if (prison_ip(p, 0, &inp->inp_laddr.s_addr)) {
+	if (prison_ip(td, 0, &inp->inp_laddr.s_addr)) {
 		inp->inp_laddr.s_addr = INADDR_ANY;
 		inp->inp_lport = 0;
 		return (EINVAL);
@@ -502,22 +499,20 @@ in_pcbladdr(inp, nam, plocal_sin)
  * then pick one.
  */
 int
-in_pcbconnect(inp, nam, p)
-	register struct inpcb *inp;
-	struct sockaddr *nam;
-	struct proc *p;
+in_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 {
 	struct sockaddr_in *ifaddr;
 	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
 	struct sockaddr_in sa;
+	struct ucred *cr = td->td_proc ? td->td_proc->p_ucred : NULL;
 	int error;
 
-	if (inp->inp_laddr.s_addr == INADDR_ANY && p->p_ucred->cr_prison != NULL) {
+	if (inp->inp_laddr.s_addr == INADDR_ANY && cr && cr->cr_prison != NULL) {
 		bzero(&sa, sizeof (sa));
-		sa.sin_addr.s_addr = htonl(p->p_ucred->cr_prison->pr_ip);
+		sa.sin_addr.s_addr = htonl(cr->cr_prison->pr_ip);
 		sa.sin_len=sizeof (sa);
 		sa.sin_family = AF_INET;
-		error = in_pcbbind(inp, (struct sockaddr *)&sa, p);
+		error = in_pcbbind(inp, (struct sockaddr *)&sa, td);
 		if (error)
 			return (error);
 	}
@@ -534,7 +529,7 @@ in_pcbconnect(inp, nam, p)
 	}
 	if (inp->inp_laddr.s_addr == INADDR_ANY) {
 		if (inp->inp_lport == 0) {
-			error = in_pcbbind(inp, (struct sockaddr *)0, p);
+			error = in_pcbbind(inp, (struct sockaddr *)0, td);
 			if (error)
 			    return (error);
 		}
@@ -1036,11 +1031,17 @@ in_pcbremlists(inp)
 }
 
 int
-prison_xinpcb(struct proc *p, struct inpcb *inp)
+prison_xinpcb(struct thread *td, struct inpcb *inp)
 {
-	if (!p->p_ucred->cr_prison)
+	struct ucred *cr;
+
+	if (td->td_proc == NULL)
 		return (0);
-	if (ntohl(inp->inp_laddr.s_addr) == p->p_ucred->cr_prison->pr_ip)
+	cr = td->td_proc->p_ucred;
+	if (cr->cr_prison == NULL)
+		return (0);
+	if (ntohl(inp->inp_laddr.s_addr) == cr->cr_prison->pr_ip)
 		return (0);
 	return (1);
 }
+

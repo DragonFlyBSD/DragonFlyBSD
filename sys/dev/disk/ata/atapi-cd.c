@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.4 2003/06/23 17:55:29 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.5 2003/06/25 03:55:46 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -599,7 +599,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	break;
 
     case CDIOCRESET:
-	error = suser();
+	error = suser(td);	/* note: if no proc EPERM will be returned */
 	if (error)
 	    break;
 	error = atapi_test_ready(cdp->device);

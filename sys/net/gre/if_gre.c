@@ -1,6 +1,6 @@
 /*	$NetBSD: if_gre.c,v 1.42 2002/08/14 00:23:27 itojun Exp $ */
 /*	$FreeBSD: src/sys/net/if_gre.c,v 1.9.2.3 2003/01/23 21:06:44 sam Exp $ */
-/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.3 2003/06/23 17:55:45 dillon Exp $ */
+/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.4 2003/06/25 03:56:02 dillon Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -433,7 +433,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 	struct sockaddr *sa = NULL;
 	int error;
 	struct sockaddr_in sp, sm, dp, dm;
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 
 	error = 0;
 
@@ -445,7 +445,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 	case SIOCSIFDSTADDR: 
 		break;
 	case SIOCSIFFLAGS:
-		if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+		if ((error = suser(td)) != 0)
 			break;
 		if ((ifr->ifr_flags & IFF_LINK0) != 0)
 			sc->g_proto = IPPROTO_GRE;
@@ -453,7 +453,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 			sc->g_proto = IPPROTO_MOBILE;
 		goto recompute;
 	case SIOCSIFMTU:
-		if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+		if ((error = suser(td)) != 0)
 			break;
 		if (ifr->ifr_mtu < 576) {
 			error = EINVAL;
@@ -466,7 +466,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 		break;
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+		if ((error = suser(td)) != 0)
 			break;
 		if (ifr == 0) {
 			error = EAFNOSUPPORT;
@@ -483,7 +483,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 		}
 		break;
 	case GRESPROTO:
-		if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+		if ((error = suser(td)) != 0)
 			break;
 		sc->g_proto = ifr->ifr_flags;
 		switch (sc->g_proto) {
@@ -503,7 +503,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 		break;
 	case GRESADDRS:
 	case GRESADDRD:
-		if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+		if ((error = suser(td)) != 0)
 			break;
 		/*
 		 * set tunnel endpoints, compute a less specific route
@@ -569,7 +569,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 		ifr->ifr_addr = *sa;
 		break;
 	case SIOCSIFPHYADDR:
-		if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+		if ((error = suser(td)) != 0)
 			break;
 		if (aifr->ifra_addr.sin_family != AF_INET ||
 		    aifr->ifra_dstaddr.sin_family != AF_INET) {
@@ -585,7 +585,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 		sc->g_dst = aifr->ifra_dstaddr.sin_addr;
 		goto recompute;
 	case SIOCSLIFPHYADDR:
-		if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+		if ((error = suser(td)) != 0)
 			break;
 		if (lifr->addr.ss_family != AF_INET ||
 		    lifr->dstaddr.ss_family != AF_INET) {
@@ -602,7 +602,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 		    (satosin((struct sockadrr *)&lifr->dstaddr))->sin_addr;
 		goto recompute;
 	case SIOCDIFPHYADDR:
-		if ((error = suser_xxx(p->p_ucred, 0)) != 0)
+		if ((error = suser(td)) != 0)
 			break;
 		sc->g_src.s_addr = INADDR_ANY;
 		sc->g_dst.s_addr = INADDR_ANY;

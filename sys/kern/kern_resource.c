@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.5 2003/06/23 23:36:11 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.6 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -212,7 +212,7 @@ donice(struct proc *chgp, int n)
 		n = PRIO_MAX;
 	if (n < PRIO_MIN)
 		n = PRIO_MIN;
-	if (n < chgp->p_nice && suser())
+	if (n < chgp->p_nice && suser_cred(cr, 0))
 		return (EACCES);
 	chgp->p_nice = n;
 	(void)resetpriority(chgp);
@@ -263,7 +263,7 @@ rtprio(register struct rtprio_args *uap)
 		    cr->cr_ruid != p->p_ucred->cr_uid)
 		        return (EPERM);
 		/* disallow setting rtprio in most cases if not superuser */
-		if (suser()) {
+		if (suser_cred(cr, 0)) {
 			/* can't set someone else's */
 			if (uap->pid)
 				return (EPERM);
@@ -389,7 +389,7 @@ dosetrlimit(u_int which, struct rlimit *limp)
 
 	if (limp->rlim_cur > alimp->rlim_max ||
 	    limp->rlim_max > alimp->rlim_max)
-		if ((error = suser_xxx(0, PRISON_ROOT)))
+		if ((error = suser_cred(p->p_ucred, PRISON_ROOT)))
 			return (error);
 	if (limp->rlim_cur > limp->rlim_max)
 		limp->rlim_cur = limp->rlim_max;

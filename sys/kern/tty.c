@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 /*-
@@ -700,14 +700,13 @@ ttyoutput(c, tp)
  */
 /* ARGSUSED */
 int
-ttioctl(tp, cmd, data, flag)
-	struct tty *tp;
-	u_long cmd;
-	int flag;
-	void *data;
+ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	int s, error;
+
+	KKASSERT(p);
 
 	/* If the ioctl involves modification, hang if in the background. */
 	switch (cmd) {
@@ -813,7 +812,7 @@ ttioctl(tp, cmd, data, flag)
 			    ISSET(constty->t_state, TS_CONNECTED))
 				return (EBUSY);
 #ifndef	UCONSOLE
-			if ((error = suser()) != 0)
+			if ((error = suser(td)) != 0)
 				return (error);
 #endif
 			constty = tp;
@@ -985,9 +984,9 @@ ttioctl(tp, cmd, data, flag)
 		splx(s);
 		break;
 	case TIOCSTI:			/* simulate terminal input */
-		if ((flag & FREAD) == 0 && suser())
+		if ((flag & FREAD) == 0 && suser(td))
 			return (EPERM);
-		if (!isctty(p, tp) && suser())
+		if (!isctty(p, tp) && suser(td))
 			return (EACCES);
 		s = spltty();
 		(*linesw[tp->t_line].l_rint)(*(u_char *)data, tp);
@@ -1035,7 +1034,7 @@ ttioctl(tp, cmd, data, flag)
 		}
 		break;
 	case TIOCSDRAINWAIT:
-		error = suser();
+		error = suser(td);
 		if (error)
 			return (error);
 		tp->t_timeout = *(int *)data * hz;

@@ -29,7 +29,7 @@
  * confusing and/or plain wrong in that context.
  *
  * $FreeBSD: src/sys/kern/kern_ntptime.c,v 1.32.2.2 2001/04/22 11:19:46 jhay Exp $
- * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -273,6 +273,7 @@ struct ntp_adjtime_args {
 int
 ntp_adjtime(struct ntp_adjtime_args *uap)
 {
+	struct thread *td = curthread;
 	struct timex ntv;	/* temporary structure */
 	long freq;		/* frequency ns/s) */
 	int modes;		/* mode bits from structure */
@@ -294,7 +295,7 @@ ntp_adjtime(struct ntp_adjtime_args *uap)
 	 */
 	modes = ntv.modes;
 	if (modes)
-		error = suser();
+		error = suser(td);
 	if (error)
 		return (error);
 	s = splclock();

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.5 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.6 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -141,9 +141,10 @@ SYSINIT(shutdown_conf, SI_SUB_INTRINSIC, SI_ORDER_ANY, shutdown_conf, NULL)
 int
 reboot(struct reboot_args *uap)
 {
+	struct thread *td = curthread;
 	int error;
 
-	if ((error = suser()))
+	if ((error = suser(td)))
 		return (error);
 
 	boot(uap->opt);

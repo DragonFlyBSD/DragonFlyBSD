@@ -35,7 +35,7 @@
  *
  *	@(#)nfsnode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/nfs/nfsnode.h,v 1.32.2.1 2001/06/26 04:20:11 bp Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.3 2003/06/25 03:56:07 dillon Exp $
  */
 
 
@@ -156,7 +156,7 @@ struct nfsnode {
  * Queue head for nfsiod's
  */
 extern TAILQ_HEAD(nfs_bufq, buf) nfs_bufq;
-extern struct proc *nfs_iodwant[NFS_MAXASYNCDAEMON];
+extern struct thread *nfs_iodwant[NFS_MAXASYNCDAEMON];
 extern struct nfsmount *nfs_iodmount[NFS_MAXASYNCDAEMON];
 
 #if defined(_KERNEL)
@@ -173,16 +173,16 @@ extern struct nfsmount *nfs_iodmount[NFS_MAXASYNCDAEMON];
 
 static __inline
 int
-nfs_rslock(struct nfsnode *np, struct proc *p)
+nfs_rslock(struct nfsnode *np, struct thread *td)
 {
-        return(lockmgr(&np->n_rslock, LK_EXCLUSIVE | LK_CANRECURSE | LK_SLEEPFAIL, NULL, p));
+        return(lockmgr(&np->n_rslock, LK_EXCLUSIVE | LK_CANRECURSE | LK_SLEEPFAIL, NULL, td));
 }
 
 static __inline
 void
-nfs_rsunlock(struct nfsnode *np, struct proc *p)
+nfs_rsunlock(struct nfsnode *np, struct thread *td)
 {
-	(void)lockmgr(&np->n_rslock, LK_RELEASE, NULL, p);
+	(void)lockmgr(&np->n_rslock, LK_RELEASE, NULL, td);
 }
 
 extern	vop_t	**fifo_nfsv2nodeop_p;

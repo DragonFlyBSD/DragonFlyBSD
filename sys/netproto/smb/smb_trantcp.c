@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_trantcp.c,v 1.3.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.3 2003/06/25 03:56:06 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -71,11 +71,11 @@ SYSCTL_INT(_net_smb, OID_AUTO, tcpsndbuf, CTLFLAG_RW, &smb_tcpsndbuf, 0, "");
 SYSCTL_INT(_net_smb, OID_AUTO, tcprcvbuf, CTLFLAG_RW, &smb_tcprcvbuf, 0, "");
 
 #define nb_sosend(so,m,flags,p)	(so)->so_proto->pr_usrreqs->pru_sosend( \
-				    so, NULL, 0, m, 0, flags, p)
+				    so, NULL, 0, m, 0, flags, td)
 
 static int  nbssn_recv(struct nbpcb *nbp, struct mbuf **mpp, int *lenp,
-	u_int8_t *rpcodep, struct proc *p);
-static int  smb_nbst_disconnect(struct smb_vc *vcp, struct proc *p);
+	u_int8_t *rpcodep, struct thread *td);
+static int  smb_nbst_disconnect(struct smb_vc *vcp, struct thread *td);
 
 static int
 nb_setsockopt_int(struct socket *so, int level, int name, int val)
@@ -91,15 +91,16 @@ nb_setsockopt_int(struct socket *so, int level, int name, int val)
 }
 
 static __inline int
-nb_poll(struct nbpcb *nbp, int events, struct proc *p)
+nb_poll(struct nbpcb *nbp, int events, struct thread *td)
 {
 	return nbp->nbp_tso->so_proto->pr_usrreqs->pru_sopoll(nbp->nbp_tso,
-	    events, NULL, p);
+	    events, NULL, td);
 }
 
 static int
-nbssn_rselect(struct nbpcb *nbp, struct timeval *tv, int events, struct proc *p)
+nbssn_rselect(struct nbpcb *nbp, struct timeval *tv, int events, struct thread *td)
 {
+	struct proc *p = td->td_proc;
 	struct timeval atv, rtv, ttv;
 	int s, timo, error;
 
@@ -113,9 +114,10 @@ nbssn_rselect(struct nbpcb *nbp, struct timeval *tv, int events, struct proc *p)
 		timevaladd(&atv, &rtv);
 	}
 	timo = 0;
+	KKASSERT(p);
 retry:
 	p->p_flag |= P_SELECT;
-	error = nb_poll(nbp, events, p);
+	error = nb_poll(nbp, events, td);
 	if (error) {
 		error = 0;
 		goto done;
@@ -144,7 +146,7 @@ done:
 }
 
 static int
-nb_intr(struct nbpcb *nbp, struct proc *p)
+nb_intr(struct nbpcb *nbp, struct thread *td)
 {
 	return 0;
 }
@@ -191,12 +193,12 @@ nb_put_name(struct mbchain *mbp, struct sockaddr_nb *snb)
 }
 
 static int
-nb_connect_in(struct nbpcb *nbp, struct sockaddr_in *to, struct proc *p)
+nb_connect_in(struct nbpcb *nbp, struct sockaddr_in *to, struct thread *td)
 {
 	struct socket *so;
 	int error, s;
 
-	error = socreate(AF_INET, &so, SOCK_STREAM, IPPROTO_TCP, p);
+	error = socreate(AF_INET, &so, SOCK_STREAM, IPPROTO_TCP, td);
 	if (error)
 		return error;
 	nbp->nbp_tso = so;
@@ -212,14 +214,14 @@ nb_connect_in(struct nbpcb *nbp, struct sockaddr_in *to, struct proc *p)
 	nb_setsockopt_int(so, IPPROTO_TCP, TCP_NODELAY, 1);
 	so->so_rcv.sb_flags &= ~SB_NOINTR;
 	so->so_snd.sb_flags &= ~SB_NOINTR;
-	error = soconnect(so, (struct sockaddr*)to, p);
+	error = soconnect(so, (struct sockaddr*)to, td);
 	if (error)
 		goto bad;
 	s = splnet();
 	while ((so->so_state & SS_ISCONNECTING) && so->so_error == 0) {
 		tsleep(&so->so_timeo, PSOCK, "nbcon", 2 * hz);
 		if ((so->so_state & SS_ISCONNECTING) && so->so_error == 0 &&
-			(error = nb_intr(nbp, p)) != 0) {
+			(error = nb_intr(nbp, td)) != 0) {
 			so->so_state &= ~SS_ISCONNECTING;
 			splx(s);
 			goto bad;
@@ -234,12 +236,12 @@ nb_connect_in(struct nbpcb *nbp, struct sockaddr_in *to, struct proc *p)
 	splx(s);
 	return 0;
 bad:
-	smb_nbst_disconnect(nbp->nbp_vc, p);
+	smb_nbst_disconnect(nbp->nbp_vc, td);
 	return error;
 }
 
 static int
-nbssn_rq_request(struct nbpcb *nbp, struct proc *p)
+nbssn_rq_request(struct nbpcb *nbp, struct thread *td)
 {
 	struct mbchain mb, *mbp = &mb;
 	struct mdchain md, *mdp = &md;
@@ -257,7 +259,7 @@ nbssn_rq_request(struct nbpcb *nbp, struct proc *p)
 	nb_put_name(mbp, nbp->nbp_paddr);
 	nb_put_name(mbp, nbp->nbp_laddr);
 	nb_sethdr(mbp->mb_top, NB_SSN_REQUEST, mb_fixhdr(mbp) - 4);
-	error = nb_sosend(nbp->nbp_tso, mbp->mb_top, 0, p);
+	error = nb_sosend(nbp->nbp_tso, mbp->mb_top, 0, td);
 	if (!error) {
 		nbp->nbp_state = NBST_RQSENT;
 	}
@@ -266,14 +268,14 @@ nbssn_rq_request(struct nbpcb *nbp, struct proc *p)
 	if (error)
 		return error;
 	TIMESPEC_TO_TIMEVAL(&tv, &nbp->nbp_timo);
-	error = nbssn_rselect(nbp, &tv, POLLIN, p);
+	error = nbssn_rselect(nbp, &tv, POLLIN, td);
 	if (error == EWOULDBLOCK) {	/* Timeout */
 		NBDEBUG("initial request timeout\n");
 		return ETIMEDOUT;
 	}
 	if (error)			/* restart or interrupt */
 		return error;
-	error = nbssn_recv(nbp, &m0, &rplen, &rpcode, p);
+	error = nbssn_recv(nbp, &m0, &rplen, &rpcode, td);
 	if (error) {
 		NBDEBUG("recv() error %d\n", error);
 		return error;
@@ -302,12 +304,12 @@ nbssn_rq_request(struct nbpcb *nbp, struct proc *p)
 		md_get_uint16(mdp, &port);
 		sin.sin_port = port;
 		nbp->nbp_state = NBST_RETARGET;
-		smb_nbst_disconnect(nbp->nbp_vc, p);
-		error = nb_connect_in(nbp, &sin, p);
+		smb_nbst_disconnect(nbp->nbp_vc, td);
+		error = nb_connect_in(nbp, &sin, td);
 		if (!error)
-			error = nbssn_rq_request(nbp, p);
+			error = nbssn_rq_request(nbp, td);
 		if (error) {
-			smb_nbst_disconnect(nbp->nbp_vc, p);
+			smb_nbst_disconnect(nbp->nbp_vc, td);
 			break;
 		}
 	} while(0);
@@ -318,7 +320,7 @@ nbssn_rq_request(struct nbpcb *nbp, struct proc *p)
 
 static int
 nbssn_recvhdr(struct nbpcb *nbp, int *lenp,
-	u_int8_t *rpcodep, int flags, struct proc *p)
+	u_int8_t *rpcodep, int flags, struct thread *td)
 {
 	struct socket *so = nbp->nbp_tso;
 	struct uio auio;
@@ -334,7 +336,7 @@ nbssn_recvhdr(struct nbpcb *nbp, int *lenp,
 	auio.uio_rw = UIO_READ;
 	auio.uio_offset = 0;
 	auio.uio_resid = sizeof(len);
-	auio.uio_procp = p;
+	auio.uio_td = td;
 	error = so->so_proto->pr_usrreqs->pru_soreceive
 	    (so, (struct sockaddr **)NULL, &auio,
 	    (struct mbuf **)NULL, (struct mbuf **)NULL, &flags);
@@ -357,7 +359,7 @@ nbssn_recvhdr(struct nbpcb *nbp, int *lenp,
 
 static int
 nbssn_recv(struct nbpcb *nbp, struct mbuf **mpp, int *lenp,
-	u_int8_t *rpcodep, struct proc *p)
+	u_int8_t *rpcodep, struct thread *td)
 {
 	struct socket *so = nbp->nbp_tso;
 	struct uio auio;
@@ -373,7 +375,7 @@ nbssn_recv(struct nbpcb *nbp, struct mbuf **mpp, int *lenp,
 		*mpp = NULL;
 	for(;;) {
 		m = NULL;
-		error = nbssn_recvhdr(nbp, &len, &rpcode, MSG_DONTWAIT, p);
+		error = nbssn_recvhdr(nbp, &len, &rpcode, MSG_DONTWAIT, td);
 		if (so->so_state &
 		    (SS_ISDISCONNECTING | SS_ISDISCONNECTED | SS_CANTRCVMORE)) {
 			nbp->nbp_state = NBST_CLOSED;
@@ -388,7 +390,7 @@ nbssn_recv(struct nbpcb *nbp, struct mbuf **mpp, int *lenp,
 			continue;
 		bzero(&auio, sizeof(auio));
 		auio.uio_resid = len;
-		auio.uio_procp = p;
+		auio.uio_td = td;
 		do {
 			rcvflg = MSG_WAITALL;
 			error = so->so_proto->pr_usrreqs->pru_soreceive
@@ -428,7 +430,7 @@ nbssn_recv(struct nbpcb *nbp, struct mbuf **mpp, int *lenp,
  * SMB transport interface
  */
 static int
-smb_nbst_create(struct smb_vc *vcp, struct proc *p)
+smb_nbst_create(struct smb_vc *vcp, struct thread *td)
 {
 	struct nbpcb *nbp;
 
@@ -444,13 +446,13 @@ smb_nbst_create(struct smb_vc *vcp, struct proc *p)
 }
 
 static int
-smb_nbst_done(struct smb_vc *vcp, struct proc *p)
+smb_nbst_done(struct smb_vc *vcp, struct thread *td)
 {
 	struct nbpcb *nbp = vcp->vc_tdata;
 
 	if (nbp == NULL)
 		return ENOTCONN;
-	smb_nbst_disconnect(vcp, p);
+	smb_nbst_disconnect(vcp, td);
 	if (nbp->nbp_laddr)
 		free(nbp->nbp_laddr, M_SONAME);
 	if (nbp->nbp_paddr)
@@ -460,7 +462,7 @@ smb_nbst_done(struct smb_vc *vcp, struct proc *p)
 }
 
 static int
-smb_nbst_bind(struct smb_vc *vcp, struct sockaddr *sap, struct proc *p)
+smb_nbst_bind(struct smb_vc *vcp, struct sockaddr *sap, struct thread *td)
 {
 	struct nbpcb *nbp = vcp->vc_tdata;
 	struct sockaddr_nb *snb;
@@ -493,7 +495,7 @@ smb_nbst_bind(struct smb_vc *vcp, struct sockaddr *sap, struct proc *p)
 }
 
 static int
-smb_nbst_connect(struct smb_vc *vcp, struct sockaddr *sap, struct proc *p)
+smb_nbst_connect(struct smb_vc *vcp, struct sockaddr *sap, struct thread *td)
 {
 	struct nbpcb *nbp = vcp->vc_tdata;
 	struct sockaddr_in sin;
@@ -519,7 +521,7 @@ smb_nbst_connect(struct smb_vc *vcp, struct sockaddr *sap, struct proc *p)
 	nbp->nbp_paddr = snb;
 	sin = snb->snb_addrin;
 	getnanotime(&ts1);
-	error = nb_connect_in(nbp, &sin, p);
+	error = nb_connect_in(nbp, &sin, td);
 	if (error)
 		return error;
 	getnanotime(&ts2);
@@ -530,14 +532,14 @@ smb_nbst_connect(struct smb_vc *vcp, struct sockaddr *sap, struct proc *p)
 	timespecadd(&nbp->nbp_timo, &ts2);
 	timespecadd(&nbp->nbp_timo, &ts2);
 	timespecadd(&nbp->nbp_timo, &ts2);	/*  * 4 */
-	error = nbssn_rq_request(nbp, p);
+	error = nbssn_rq_request(nbp, td);
 	if (error)
-		smb_nbst_disconnect(vcp, p);
+		smb_nbst_disconnect(vcp, td);
 	return error;
 }
 
 static int
-smb_nbst_disconnect(struct smb_vc *vcp, struct proc *p)
+smb_nbst_disconnect(struct smb_vc *vcp, struct thread *td)
 {
 	struct nbpcb *nbp = vcp->vc_tdata;
 	struct socket *so;
@@ -557,7 +559,7 @@ smb_nbst_disconnect(struct smb_vc *vcp, struct proc *p)
 }
 
 static int
-smb_nbst_send(struct smb_vc *vcp, struct mbuf *m0, struct proc *p)
+smb_nbst_send(struct smb_vc *vcp, struct mbuf *m0, struct thread *td)
 {
 	struct nbpcb *nbp = vcp->vc_tdata;
 	int error;
@@ -570,7 +572,7 @@ smb_nbst_send(struct smb_vc *vcp, struct mbuf *m0, struct proc *p)
 	if (m0 == NULL)
 		return ENOBUFS;
 	nb_sethdr(m0, NB_SSN_MESSAGE, m_fixhdr(m0) - 4);
-	error = nb_sosend(nbp->nbp_tso, m0, 0, p);
+	error = nb_sosend(nbp->nbp_tso, m0, 0, td);
 	return error;
 abort:
 	if (m0)
@@ -580,14 +582,14 @@ abort:
 
 
 static int
-smb_nbst_recv(struct smb_vc *vcp, struct mbuf **mpp, struct proc *p)
+smb_nbst_recv(struct smb_vc *vcp, struct mbuf **mpp, struct thread *td)
 {
 	struct nbpcb *nbp = vcp->vc_tdata;
 	u_int8_t rpcode;
 	int error, rplen;
 
 	nbp->nbp_flags |= NBF_RECVLOCK;
-	error = nbssn_recv(nbp, mpp, &rplen, &rpcode, p);
+	error = nbssn_recv(nbp, mpp, &rplen, &rpcode, td);
 	nbp->nbp_flags &= ~NBF_RECVLOCK;
 	return error;
 }

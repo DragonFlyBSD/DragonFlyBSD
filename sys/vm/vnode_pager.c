@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.3 2003/06/25 03:56:13 dillon Exp $
  */
 
 /*
@@ -549,7 +549,7 @@ vnode_pager_input_old(object, m)
 		auio.uio_segflg = UIO_SYSSPACE;
 		auio.uio_rw = UIO_READ;
 		auio.uio_resid = size;
-		auio.uio_procp = curproc;
+		auio.uio_td = curthread;
 
 		error = VOP_READ(object->handle, &auio, 0, curproc->p_ucred);
 		if (!error) {
@@ -1031,7 +1031,7 @@ vnode_pager_generic_putpages(vp, m, bytecount, flags, rtvals)
 	auio.uio_segflg = UIO_NOCOPY;
 	auio.uio_rw = UIO_WRITE;
 	auio.uio_resid = maxsize;
-	auio.uio_procp = (struct proc *) 0;
+	auio.uio_td = NULL;
 	error = VOP_WRITE(vp, &auio, ioflags, curproc->p_ucred);
 	cnt.v_vnodeout++;
 	cnt.v_vnodepgsout += ncount;
@@ -1050,10 +1050,9 @@ vnode_pager_generic_putpages(vp, m, bytecount, flags, rtvals)
 }
 
 struct vnode *
-vnode_pager_lock(object)
-	vm_object_t object;
+vnode_pager_lock(vm_object_t object)
 {
-	struct proc *p = curproc;	/* XXX */
+	struct thread *td = curthread;	/* XXX */
 
 	for (; object != NULL; object = object->backing_object) {
 		if (object->type != OBJT_VNODE)
@@ -1062,9 +1061,11 @@ vnode_pager_lock(object)
 			return NULL;
 
 		while (vget(object->handle,
-			LK_NOPAUSE | LK_SHARED | LK_RETRY | LK_CANRECURSE, p)) {
-			if ((object->flags & OBJ_DEAD) || (object->type != OBJT_VNODE))
+			LK_NOPAUSE | LK_SHARED | LK_RETRY | LK_CANRECURSE, td)) {
+			if ((object->flags & OBJ_DEAD) ||
+			    (object->type != OBJT_VNODE)) {
 				return NULL;
+			}
 			printf("vnode_pager_lock: retrying\n");
 		}
 		return object->handle;

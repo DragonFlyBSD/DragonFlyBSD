@@ -32,7 +32,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.3 2003/06/25 03:56:04 dillon Exp $
  */
 
 #define _IP_VHL
@@ -1347,7 +1347,7 @@ ip_ctloutput(so, sopt)
 				error = EMSGSIZE;
 				break;
 			}
-			MGET(m, sopt->sopt_p ? M_WAIT : M_DONTWAIT, MT_HEADER);
+			MGET(m, sopt->sopt_td ? M_WAIT : M_DONTWAIT, MT_HEADER);
 			if (m == 0) {
 				error = ENOBUFS;
 				break;
@@ -1460,7 +1460,7 @@ ip_ctloutput(so, sopt)
 			if ((error = soopt_mcopyin(sopt, m)) != 0) /* XXX */
 				break;
 			priv = (sopt->sopt_p != NULL &&
-				suser(sopt->sopt_p) != 0) ? 0 : 1;
+				suser(sopt->sopt_p->p_thread) != 0) ? 0 : 1;
 			req = mtod(m, caddr_t);
 			len = m->m_len;
 			optname = sopt->sopt_name;

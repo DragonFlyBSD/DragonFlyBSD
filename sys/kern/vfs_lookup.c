@@ -37,18 +37,18 @@
  *
  *	@(#)vfs_lookup.c	8.4 (Berkeley) 2/16/94
  * $FreeBSD: src/sys/kern/vfs_lookup.c,v 1.38.2.3 2001/08/31 19:36:49 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.3 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include "opt_ktrace.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/namei.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
 #include <sys/filedesc.h>
 #include <sys/proc.h>
+#include <sys/namei.h>
 
 #ifdef KTRACE
 #include <sys/ktrace.h>
@@ -77,25 +77,27 @@
  *	}
  */
 int
-namei(ndp)
-	register struct nameidata *ndp;
+namei(struct nameidata *ndp)
 {
-	register struct filedesc *fdp;	/* pointer to file descriptor state */
-	register char *cp;		/* pointer into pathname argument */
-	register struct vnode *dp;	/* the directory we are searching */
+	struct filedesc *fdp;	/* pointer to file descriptor state */
+	char *cp;		/* pointer into pathname argument */
+	struct vnode *dp;	/* the directory we are searching */
 	struct iovec aiov;		/* uio for reading symbolic links */
 	struct uio auio;
 	int error, linklen;
 	struct componentname *cnp = &ndp->ni_cnd;
-	struct proc *p = cnp->cn_proc;
+	struct proc *p;
 
-	ndp->ni_cnd.cn_cred = ndp->ni_cnd.cn_proc->p_ucred;
-	KASSERT(cnp->cn_cred && cnp->cn_proc, ("namei: bad cred/proc"));
+	KKASSERT(ndp->ni_cnd.cn_td != NULL);
+	p = cnp->cn_td->td_proc;
+	KKASSERT(p != NULL);
+	KASSERT(cnp->cn_cred, ("namei: bad cred/proc"));
+	KKASSERT(cnp->cn_cred == p->p_ucred); /* YYY */
 	KASSERT((cnp->cn_nameiop & (~OPMASK)) == 0,
 	    ("namei: nameiop contaminated with flags"));
 	KASSERT((cnp->cn_flags & OPMASK) == 0,
 	    ("namei: flags contaminated with nameiops"));
-	fdp = cnp->cn_proc->p_fd;
+	fdp = p->p_fd;
 
 	/*
 	 * Get a buffer for the name to be translated, and copy the
@@ -123,8 +125,8 @@ namei(ndp)
 	}
 	ndp->ni_loopcnt = 0;
 #ifdef KTRACE
-	if (KTRPOINT(cnp->cn_proc, KTR_NAMEI))
-		ktrnamei(cnp->cn_proc->p_tracep, cnp->cn_pnbuf);
+	if (KTRPOINT(cnp->cn_td, KTR_NAMEI))
+		ktrnamei(cnp->cn_td->td_proc->p_tracep, cnp->cn_pnbuf);
 #endif
 
 	/*
@@ -170,13 +172,13 @@ namei(ndp)
 				((cnp->cn_flags & (NOOBJ|LOCKLEAF)) ==
 				 LOCKLEAF))
 				vfs_object_create(ndp->ni_vp,
-					ndp->ni_cnd.cn_proc,
+					ndp->ni_cnd.cn_td,
 					ndp->ni_cnd.cn_cred);
 
 			return (0);
 		}
 		if ((cnp->cn_flags & LOCKPARENT) && ndp->ni_pathlen == 1)
-			VOP_UNLOCK(ndp->ni_dvp, 0, p);
+			VOP_UNLOCK(ndp->ni_dvp, 0, cnp->cn_td);
 		if (ndp->ni_loopcnt++ >= MAXSYMLINKS) {
 			error = ELOOP;
 			break;
@@ -192,7 +194,7 @@ namei(ndp)
 		auio.uio_offset = 0;
 		auio.uio_rw = UIO_READ;
 		auio.uio_segflg = UIO_SYSSPACE;
-		auio.uio_procp = (struct proc *)0;
+		auio.uio_td = NULL;
 		auio.uio_resid = MAXPATHLEN;
 		error = VOP_READLINK(ndp->ni_vp, &auio, cnp->cn_cred);
 		if (error) {
@@ -283,7 +285,7 @@ lookup(ndp)
 	int error = 0;
 	int dpunlocked = 0;		/* dp has already been unlocked */
 	struct componentname *cnp = &ndp->ni_cnd;
-	struct proc *p = cnp->cn_proc;
+	struct thread *td = cnp->cn_td;
 
 	/*
 	 * Setup: break out flag bits into variables.
@@ -299,7 +301,7 @@ lookup(ndp)
 	cnp->cn_flags &= ~ISSYMLINK;
 	dp = ndp->ni_startdir;
 	ndp->ni_startdir = NULLVP;
-	vn_lock(dp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(dp, LK_EXCLUSIVE | LK_RETRY, td);
 
 dirloop:
 	/*
@@ -379,7 +381,7 @@ dirloop:
 		}
 		ndp->ni_vp = dp;
 		if (!(cnp->cn_flags & (LOCKPARENT | LOCKLEAF)))
-			VOP_UNLOCK(dp, 0, p);
+			VOP_UNLOCK(dp, 0, cnp->cn_td);
 		/* XXX This should probably move to the top of function. */
 		if (cnp->cn_flags & SAVESTART)
 			panic("lookup: SAVESTART");
@@ -419,7 +421,7 @@ dirloop:
 			dp = dp->v_mount->mnt_vnodecovered;
 			vput(tdp);
 			VREF(dp);
-			vn_lock(dp, LK_EXCLUSIVE | LK_RETRY, p);
+			vn_lock(dp, LK_EXCLUSIVE | LK_RETRY, td);
 		}
 	}
 
@@ -446,7 +448,7 @@ unionlookup:
 			else
 				vput(tdp);
 			VREF(dp);
-			vn_lock(dp, LK_EXCLUSIVE | LK_RETRY, p);
+			vn_lock(dp, LK_EXCLUSIVE | LK_RETRY, td);
 			goto unionlookup;
 		}
 
@@ -501,11 +503,11 @@ unionlookup:
 	 */
 	while (dp->v_type == VDIR && (mp = dp->v_mountedhere) &&
 	       (cnp->cn_flags & NOCROSSMOUNT) == 0) {
-		if (vfs_busy(mp, 0, 0, p))
+		if (vfs_busy(mp, 0, 0, td))
 			continue;
-		VOP_UNLOCK(dp, 0, p);
+		VOP_UNLOCK(dp, 0, td);
 		error = VFS_ROOT(mp, &tdp);
-		vfs_unbusy(mp, p);
+		vfs_unbusy(mp, td);
 		if (error) {
 			dpunlocked = 1;
 			goto bad2;
@@ -574,13 +576,13 @@ nextname:
 		vrele(ndp->ni_dvp);
 
 	if ((cnp->cn_flags & LOCKLEAF) == 0)
-		VOP_UNLOCK(dp, 0, p);
+		VOP_UNLOCK(dp, 0, td);
 	return (0);
 
 bad2:
 	if ((cnp->cn_flags & (LOCKPARENT | PDIRUNLOCK)) == LOCKPARENT &&
 	    *ndp->ni_next == '\0')
-		VOP_UNLOCK(ndp->ni_dvp, 0, p);
+		VOP_UNLOCK(ndp->ni_dvp, 0, td);
 	vrele(ndp->ni_dvp);
 bad:
 	if (dpunlocked)
@@ -600,7 +602,7 @@ relookup(dvp, vpp, cnp)
 	struct vnode *dvp, **vpp;
 	struct componentname *cnp;
 {
-	struct proc *p = cnp->cn_proc;
+	struct thread *td = cnp->cn_td;
 	struct vnode *dp = 0;		/* the directory we are searching */
 	int docache;			/* == 0 do not cache last component */
 	int wantparent;			/* 1 => wantparent or lockparent flag */
@@ -622,7 +624,7 @@ relookup(dvp, vpp, cnp)
 	rdonly = cnp->cn_flags & RDONLY;
 	cnp->cn_flags &= ~ISSYMLINK;
 	dp = dvp;
-	vn_lock(dp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(dp, LK_EXCLUSIVE | LK_RETRY, td);
 
 /* dirloop: */
 	/*
@@ -656,7 +658,7 @@ relookup(dvp, vpp, cnp)
 			goto bad;
 		}
 		if (!(cnp->cn_flags & LOCKLEAF))
-			VOP_UNLOCK(dp, 0, p);
+			VOP_UNLOCK(dp, 0, td);
 		*vpp = dp;
 		/* XXX This should probably move to the top of function. */
 		if (cnp->cn_flags & SAVESTART)
@@ -717,15 +719,15 @@ relookup(dvp, vpp, cnp)
 
 	if (vn_canvmio(dp) == TRUE &&
 		((cnp->cn_flags & (NOOBJ|LOCKLEAF)) == LOCKLEAF))
-		vfs_object_create(dp, cnp->cn_proc, cnp->cn_cred);
+		vfs_object_create(dp, cnp->cn_td, cnp->cn_cred);
 
 	if ((cnp->cn_flags & LOCKLEAF) == 0)
-		VOP_UNLOCK(dp, 0, p);
+		VOP_UNLOCK(dp, 0, td);
 	return (0);
 
 bad2:
 	if ((cnp->cn_flags & LOCKPARENT) && (cnp->cn_flags & ISLASTCN))
-		VOP_UNLOCK(dvp, 0, p);
+		VOP_UNLOCK(dvp, 0, td);
 	vrele(dvp);
 bad:
 	vput(dp);

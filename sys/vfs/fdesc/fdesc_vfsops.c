@@ -36,7 +36,7 @@
  *	@(#)fdesc_vfsops.c	8.4 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vfsops.c,v 1.22.2.3 2002/08/23 17:42:39 njl Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.3 2003/06/25 03:55:58 dillon Exp $
  */
 
 /*
@@ -60,22 +60,18 @@
 static MALLOC_DEFINE(M_FDESCMNT, "FDESC mount", "FDESC mount structure");
 
 static int	fdesc_mount __P((struct mount *mp, char *path, caddr_t data,
-				 struct nameidata *ndp, struct proc *p));
+				 struct nameidata *ndp, struct thread *td));
 static int	fdesc_unmount __P((struct mount *mp, int mntflags,
-				   struct proc *p));
+				   struct thread *td));
 static int	fdesc_statfs __P((struct mount *mp, struct statfs *sbp,
-				  struct proc *p));
+				  struct thread *td));
   
 /*
  * Mount the per-process file descriptors (/dev/fd)
  */
 static int
-fdesc_mount(mp, path, data, ndp, p)
-	struct mount *mp;
-	char *path;
-	caddr_t data;
-	struct nameidata *ndp;
-	struct proc *p;
+fdesc_mount(struct mount *mp, char *path, caddr_t data,
+	struct nameidata *ndp, struct thread *td)
 {
 	int error = 0;
 	struct fdescmount *fmp;
@@ -91,7 +87,7 @@ fdesc_mount(mp, path, data, ndp, p)
 	if (mp->mnt_flag & MNT_UPDATE)
 		return (EOPNOTSUPP);
 
-	error = fdesc_allocvp(Froot, FD_ROOT, mp, &rvp, p);
+	error = fdesc_allocvp(Froot, FD_ROOT, mp, &rvp, td);
 	if (error)
 		return (error);
 
@@ -109,15 +105,12 @@ fdesc_mount(mp, path, data, ndp, p)
 	bzero(mp->mnt_stat.f_mntonname + size, MNAMELEN - size);
 	bzero(mp->mnt_stat.f_mntfromname, MNAMELEN);
 	bcopy("fdesc", mp->mnt_stat.f_mntfromname, sizeof("fdesc"));
-	(void)fdesc_statfs(mp, &mp->mnt_stat, p);
+	(void)fdesc_statfs(mp, &mp->mnt_stat, td);
 	return (0);
 }
 
 static int
-fdesc_unmount(mp, mntflags, p)
-	struct mount *mp;
-	int mntflags;
-	struct proc *p;
+fdesc_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
 	int error;
 	int flags = 0;
@@ -146,11 +139,9 @@ fdesc_unmount(mp, mntflags, p)
 }
 
 int
-fdesc_root(mp, vpp)
-	struct mount *mp;
-	struct vnode **vpp;
+fdesc_root(struct mount *mp, struct vnode **vpp)
 {
-	struct proc *p = curproc;	/* XXX */
+	struct thread *td = curthread;	/* XXX */
 	struct vnode *vp;
 
 	/*
@@ -158,22 +149,22 @@ fdesc_root(mp, vpp)
 	 */
 	vp = VFSTOFDESC(mp)->f_root;
 	VREF(vp);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	*vpp = vp;
 	return (0);
 }
 
 static int
-fdesc_statfs(mp, sbp, p)
-	struct mount *mp;
-	struct statfs *sbp;
-	struct proc *p;
+fdesc_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
+	struct proc *p = td->td_proc;
 	struct filedesc *fdp;
 	int lim;
 	int i;
 	int last;
 	int freefd;
+
+	KKASSERT(p);
 
 	/*
 	 * Compute number of free file descriptors.

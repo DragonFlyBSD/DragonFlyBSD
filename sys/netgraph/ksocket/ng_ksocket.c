@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ksocket.c,v 1.5.2.13 2003/04/28 20:41:09 archie Exp $
- * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.2 2003/06/17 04:28:50 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.3 2003/06/25 03:56:03 dillon Exp $
  * $Whistle: ng_ksocket.c,v 1.1 1999/11/16 20:04:40 archie Exp $
  */
 
@@ -561,7 +561,7 @@ ng_ksocket_constructor(node_p *nodep)
 static int
 ng_ksocket_newhook(node_p node, hook_p hook, const char *name0)
 {
-	struct proc *p = curproc ? curproc : &proc0;	/* XXX broken */
+	struct thread *td = curthread;	/* XXX broken */
 	const priv_p priv = node->private;
 	struct ng_mesg *msg;
 	char *s1, *s2, name[NG_HOOKLEN+1];
@@ -600,7 +600,7 @@ ng_ksocket_newhook(node_p node, hook_p hook, const char *name0)
 			return (EINVAL);
 
 		/* Create the socket */
-		error = socreate(family, &priv->so, type, protocol, p);
+		error = socreate(family, &priv->so, type, protocol, td);
 		if (error != 0)
 			return (error);
 
@@ -643,7 +643,7 @@ static int
 ng_ksocket_rcvmsg(node_p node, struct ng_mesg *msg,
 	      const char *raddr, struct ng_mesg **rptr)
 {
-	struct proc *p = curproc ? curproc : &proc0;	/* XXX broken */
+	struct thread *td = curthread;	/* XXX broken */
 	const priv_p priv = node->private;
 	struct socket *const so = priv->so;
 	struct ng_mesg *resp = NULL;
@@ -665,7 +665,7 @@ ng_ksocket_rcvmsg(node_p node, struct ng_mesg *msg,
 				ERROUT(ENXIO);
 
 			/* Bind */
-			error = sobind(so, sa, p);
+			error = sobind(so, sa, td);
 			break;
 		    }
 		case NGM_KSOCKET_LISTEN:
@@ -677,7 +677,7 @@ ng_ksocket_rcvmsg(node_p node, struct ng_mesg *msg,
 				ERROUT(ENXIO);
 
 			/* Listen */
-			error = solisten(so, *((int32_t *)msg->data), p);
+			error = solisten(so, *((int32_t *)msg->data), td);
 			break;
 		    }
 
@@ -729,7 +729,7 @@ ng_ksocket_rcvmsg(node_p node, struct ng_mesg *msg,
 			/* Do connect */
 			if ((so->so_state & SS_ISCONNECTING) != 0)
 				ERROUT(EALREADY);
-			if ((error = soconnect(so, sa, p)) != 0) {
+			if ((error = soconnect(so, sa, td)) != 0) {
 				so->so_state &= ~SS_ISCONNECTING;
 				ERROUT(error);
 			}
@@ -807,7 +807,7 @@ ng_ksocket_rcvmsg(node_p node, struct ng_mesg *msg,
 			sopt.sopt_dir = SOPT_GET;
 			sopt.sopt_level = ksopt->level;
 			sopt.sopt_name = ksopt->name;
-			sopt.sopt_p = NULL;
+			sopt.sopt_td = NULL;
 			sopt.sopt_valsize = NG_KSOCKET_MAX_OPTLEN;
 			ksopt = (struct ng_ksocket_sockopt *)resp->data;
 			sopt.sopt_val = ksopt->value;
@@ -841,7 +841,7 @@ ng_ksocket_rcvmsg(node_p node, struct ng_mesg *msg,
 			sopt.sopt_name = ksopt->name;
 			sopt.sopt_val = ksopt->value;
 			sopt.sopt_valsize = valsize;
-			sopt.sopt_p = NULL;
+			sopt.sopt_td = NULL;
 			error = sosetopt(so, &sopt);
 			break;
 		    }
@@ -883,7 +883,7 @@ done:
 static int
 ng_ksocket_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 {
-	struct proc *p = curproc ? curproc : &proc0;	/* XXX broken */
+	struct thread *td = curthread;	/* XXX broken */
 	const node_p node = hook->node;
 	const priv_p priv = node->private;
 	struct socket *const so = priv->so;
@@ -915,7 +915,7 @@ ng_ksocket_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 
 	/* Send packet */
 	priv->flags |= KSF_SENDING;
-	error = (*so->so_proto->pr_usrreqs->pru_sosend)(so, sa, 0, m, 0, 0, p);
+	error = (*so->so_proto->pr_usrreqs->pru_sosend)(so, sa, 0, m, 0, 0, td);
 	priv->flags &= ~KSF_SENDING;
 
 	/* Clean up and exit */
@@ -1049,7 +1049,7 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 	}
 
 	/* Read and forward available mbuf's */
-	auio.uio_procp = NULL;
+	auio.uio_td = NULL;
 	auio.uio_resid = 1000000000;
 	flags = MSG_DONTWAIT;
 	while (1) {

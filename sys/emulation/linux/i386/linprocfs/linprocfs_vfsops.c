@@ -39,7 +39,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vfsops.c,v 1.2.2.3 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vfsops.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vfsops.c,v 1.3 2003/06/25 03:55:55 dillon Exp $
  */
 
 /*
@@ -56,11 +56,11 @@
 #include <i386/linux/linprocfs/linprocfs.h>
 
 static int	linprocfs_mount __P((struct mount *mp, char *path, caddr_t data,
-				  struct nameidata *ndp, struct proc *p));
+				  struct nameidata *ndp, struct thread *td));
 static int	linprocfs_statfs __P((struct mount *mp, struct statfs *sbp,
-				   struct proc *p));
+				   struct thread *td));
 static int	linprocfs_unmount __P((struct mount *mp, int mntflags,
-				    struct proc *p));
+				    struct thread *td));
 
 /*
  * VFS Operations.
@@ -69,12 +69,12 @@ static int	linprocfs_unmount __P((struct mount *mp, int mntflags,
  */
 /* ARGSUSED */
 static int
-linprocfs_mount(mp, path, data, ndp, p)
+linprocfs_mount(mp, path, data, ndp, td)
 	struct mount *mp;
 	char *path;
 	caddr_t data;
 	struct nameidata *ndp;
-	struct proc *p;
+	struct thread *td;
 {
 	size_t size;
 	int error;
@@ -97,7 +97,7 @@ linprocfs_mount(mp, path, data, ndp, p)
 	size = sizeof("linprocfs") - 1;
 	bcopy("linprocfs", mp->mnt_stat.f_mntfromname, size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
-	(void)linprocfs_statfs(mp, &mp->mnt_stat, p);
+	(void)linprocfs_statfs(mp, &mp->mnt_stat, td);
 
 	return (0);
 }
@@ -106,10 +106,10 @@ linprocfs_mount(mp, path, data, ndp, p)
  * unmount system call
  */
 static int
-linprocfs_unmount(mp, mntflags, p)
+linprocfs_unmount(mp, mntflags, td)
 	struct mount *mp;
 	int mntflags;
-	struct proc *p;
+	struct thread *td;
 {
 	int error;
 	int flags = 0;
@@ -140,10 +140,10 @@ linprocfs_root(mp, vpp)
  * Get file system statistics.
  */
 static int
-linprocfs_statfs(mp, sbp, p)
+linprocfs_statfs(mp, sbp, td)
 	struct mount *mp;
 	struct statfs *sbp;
-	struct proc *p;
+	struct thread *td;
 {
 	sbp->f_bsize = PAGE_SIZE;
 	sbp->f_iosize = PAGE_SIZE;

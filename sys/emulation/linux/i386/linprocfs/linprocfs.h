@@ -39,7 +39,7 @@
  *	@(#)procfs.h	8.9 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs.h,v 1.2.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs.h,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs.h,v 1.3 2003/06/25 03:55:55 dillon Exp $
  */
 
 /*
@@ -72,7 +72,7 @@ struct pfsnode {
 	u_short		pfs_mode;	/* mode bits for stat() */
 	u_long		pfs_flags;	/* open flags */
 	u_long		pfs_fileno;	/* unique file id */
-	pid_t		pfs_lockowner;	/* pfs lock owner */
+	struct thread	*pfs_lockowner;	/* pfs lock owner */
 };
 
 #define PROCFS_NAMELEN 	8	/* max length of a filename component */
@@ -114,7 +114,7 @@ struct dbreg;
 
 #define PFIND(pid) ((pid) ? pfind(pid) : &proc0)
 
-void linprocfs_exit __P((struct proc *));
+void linprocfs_exit __P((struct thread *));
 int linprocfs_freevp __P((struct vnode *));
 int linprocfs_allocvp __P((struct mount *, struct vnode **, long, pfstype));
 int linprocfs_sstep __P((struct proc *));

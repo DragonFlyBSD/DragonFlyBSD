@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -318,7 +318,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data)
 		/* not owned by you, has done setuid (unless you're root) */
 		if ((p->p_ucred->cr_ruid != curp->p_ucred->cr_ruid) ||
 		     (p->p_flag & P_SUGID)) {
-			if ((error = suser()) != 0)
+			if ((error = suser(curp->p_thread)) != 0)
 				return error;
 		}
 
@@ -471,7 +471,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data)
 		uio.uio_resid = sizeof(int);
 		uio.uio_segflg = UIO_SYSSPACE;
 		uio.uio_rw = write ? UIO_WRITE : UIO_READ;
-		uio.uio_procp = p;
+		uio.uio_td = p->p_thread;
 		error = procfs_domem(curp, p, NULL, &uio);
 		if (uio.uio_resid != 0) {
 			/*
@@ -499,7 +499,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data)
 		uio.uio_offset = (off_t)(uintptr_t)piod->piod_offs;
 		uio.uio_resid = piod->piod_len;
 		uio.uio_segflg = UIO_USERSPACE;
-		uio.uio_procp = p;
+		uio.uio_td = p->p_thread;
 		switch (piod->piod_op) {
 		case PIOD_READ_D:
 		case PIOD_READ_I:
@@ -541,7 +541,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data)
 			uio.uio_resid = sizeof(struct reg);
 			uio.uio_segflg = UIO_SYSSPACE;
 			uio.uio_rw = write ? UIO_WRITE : UIO_READ;
-			uio.uio_procp = curp;
+			uio.uio_td = curp->p_thread;
 			return (procfs_doregs(curp, p, NULL, &uio));
 		}
 #endif /* defined(PT_SETREGS) || defined(PT_GETREGS) */
@@ -567,7 +567,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data)
 			uio.uio_resid = sizeof(struct fpreg);
 			uio.uio_segflg = UIO_SYSSPACE;
 			uio.uio_rw = write ? UIO_WRITE : UIO_READ;
-			uio.uio_procp = curp;
+			uio.uio_td = curp->p_thread;
 			return (procfs_dofpregs(curp, p, NULL, &uio));
 		}
 #endif /* defined(PT_SETFPREGS) || defined(PT_GETFPREGS) */
@@ -593,7 +593,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data)
 			uio.uio_resid = sizeof(struct dbreg);
 			uio.uio_segflg = UIO_SYSSPACE;
 			uio.uio_rw = write ? UIO_WRITE : UIO_READ;
-			uio.uio_procp = curp;
+			uio.uio_td = curp->p_thread;
 			return (procfs_dodbregs(curp, p, NULL, &uio));
 		}
 #endif /* defined(PT_SETDBREGS) || defined(PT_GETDBREGS) */

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_src.c,v 1.1.2.3 2002/02/26 18:02:06 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.3 2003/06/23 17:55:47 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.4 2003/06/25 03:56:04 dillon Exp $	*/
 /*	$KAME: in6_src.c,v 1.37 2001/03/29 05:34:31 itojun Exp $	*/
 
 /*
@@ -333,10 +333,7 @@ in6_selecthlim(in6p, ifp)
  * share this function by all *bsd*...
  */
 int
-in6_pcbsetport(laddr, inp, p)
-	struct in6_addr *laddr;
-	struct inpcb *inp;
-	struct proc *p;
+in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 {
 	struct socket *so = inp->inp_socket;
 	u_int16_t lport = 0, first, last, *lastport;
@@ -354,7 +351,7 @@ in6_pcbsetport(laddr, inp, p)
 		last  = ipport_hilastauto;
 		lastport = &pcbinfo->lasthi;
 	} else if (inp->inp_flags & INP_LOWPORT) {
-		if (p && (error = suser_xxx(p->p_ucred, 0)))
+		if ((error = suser(td)) != 0)
 			return error;
 		first = ipport_lowfirstauto;	/* 1023 */
 		last  = ipport_lowlastauto;	/* 600 */
