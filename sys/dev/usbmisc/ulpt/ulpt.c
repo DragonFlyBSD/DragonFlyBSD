@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.10 2004/05/19 22:52:51 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.11 2004/12/24 04:52:19 dillon Exp $
  */
 
 /*
@@ -392,11 +392,18 @@ USB_DETACH(ulpt)
 	if (sc->sc_in_pipe != NULL)
 		usbd_abort_pipe(sc->sc_in_pipe);
 
+	/*
+	 * Wait for any ongoing operations to complete before we actually
+	 * close things down.
+	 */
+
 	s = splusb();
-	if (--sc->sc_refcnt >= 0) {
-		/* There is noone to wake, aborting the pipe is enough */
-		/* Wait for processes to go away. */
-		usb_detach_wait(USBDEV(sc->sc_dev));
+	--sc->sc_refcnt;
+	if (sc->sc_refcnt >= 0) {
+		printf("%s: waiting for idle\n", USBDEVNAME(sc->sc_dev));
+		while (sc->sc_refcnt >= 0)
+			usb_detach_wait(USBDEV(sc->sc_dev));
+		printf("%s: idle wait done\n", USBDEVNAME(sc->sc_dev));
 	}
 	splx(s);
 
