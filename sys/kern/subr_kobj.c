@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_kobj.c,v 1.4.2.1 2001/02/02 19:49:13 cg Exp $
- * $DragonFly: src/sys/kern/subr_kobj.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_kobj.c,v 1.3 2003/11/22 08:39:46 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -48,12 +48,12 @@ static MALLOC_DEFINE(M_KOBJ, "kobj", "Kernel object structures");
 
 #include <sys/sysctl.h>
 
-int kobj_lookup_hits;
-int kobj_lookup_misses;
+u_int kobj_lookup_hits;
+u_int kobj_lookup_misses;
 
-SYSCTL_INT(_kern, OID_AUTO, kobj_hits, CTLFLAG_RD,
+SYSCTL_UINT(_kern, OID_AUTO, kobj_hits, CTLFLAG_RD,
 	   &kobj_lookup_hits, 0, "")
-SYSCTL_INT(_kern, OID_AUTO, kobj_misses, CTLFLAG_RD,
+SYSCTL_UINT(_kern, OID_AUTO, kobj_misses, CTLFLAG_RD,
 	   &kobj_lookup_misses, 0, "")
 
 #endif

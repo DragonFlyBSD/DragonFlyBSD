@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/kobj.h,v 1.5.2.1 2001/02/02 19:49:14 cg Exp $
- * $DragonFly: src/sys/sys/kobj.h,v 1.3 2003/11/22 08:16:45 asmodai Exp $
+ * $DragonFly: src/sys/sys/kobj.h,v 1.4 2003/11/22 08:39:46 asmodai Exp $
  */
 
 #ifndef _SYS_KOBJ_H_
@@ -137,8 +137,8 @@ void		kobj_delete(kobj_t obj, struct malloc_type *mtype);
  * Maintain stats on hits/misses in lookup caches.
  */
 #ifdef KOBJ_STATS
-extern int kobj_lookup_hits;
-extern int kobj_lookup_misses;
+extern u_int kobj_lookup_hits;
+extern u_int kobj_lookup_misses;
 #define KOBJOPHIT	do { kobj_lookup_hits++; } while (0)
 #define KOBJOPMISS	do { kobj_lookup_misses++; } while (0)
 #else
