@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.15 2004/11/30 15:52:57 joerg Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.16 2004/12/09 19:16:03 okumoto Exp $
  */
 
 /*-
@@ -230,10 +230,12 @@ Dir_Init (void)
 void
 Dir_InitDot (void)
 {
+    LstNode ln;
+
     Dir_AddDir (openDirectories, ".");
-    dot = (Path *)Lst_Datum(Lst_Last(openDirectories));
-    if (dot == (Path *) NULL)
+    if ((ln = Lst_Last(openDirectories)) == NULL)
 	err(1, "cannot open current directory");
+    dot = Lst_Datum(ln);
 
     /*
      * We always need to have dot around, so we increment its reference count
