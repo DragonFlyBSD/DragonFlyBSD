@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/kobj.h,v 1.5.2.1 2001/02/02 19:49:14 cg Exp $
- * $DragonFly: src/sys/sys/kobj.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/kobj.h,v 1.3 2003/11/22 08:16:45 asmodai Exp $
  */
 
 #ifndef _SYS_KOBJ_H_
@@ -117,7 +117,7 @@ void		kobj_class_compile_static(kobj_class_t cls, kobj_ops_t ops);
 void		kobj_class_free(kobj_class_t cls);
 
 /*
- * Allocate memory for and initalise a new object.
+ * Allocate memory for and initialise a new object.
  */
 kobj_t		kobj_create(kobj_class_t cls,
 			    struct malloc_type *mtype,
