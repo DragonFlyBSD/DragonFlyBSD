@@ -1,6 +1,6 @@
 #       @(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/bin/pax/Makefile,v 1.5.2.1 2001/08/01 05:03:11 obrien Exp $
-# $DragonFly: src/bin/pax/Makefile,v 1.2 2003/06/17 04:22:50 dillon Exp $
+# $DragonFly: src/bin/pax/Makefile,v 1.3 2004/09/26 15:58:51 asmodai Exp $
 
 # To install on versions prior to BSD 4.4 the following may have to be
 # defined with CFLAGS +=
@@ -30,6 +30,8 @@ PROG=   pax
 SRCS=	ar_io.c ar_subs.c buf_subs.c cache.c cpio.c file_subs.c ftree.c \
 	gen_subs.c getoldopt.c options.c pat_rep.c pax.c sel_subs.c \
 	tables.c tar.c tty_subs.c
+
+WARNS?=	0
 #XXX NOTYET
 #MAN=	pax.1 tar.1 cpio.1
 #LINKS=	${BINDIR}/pax ${BINDIR}/tar ${BINDIR}/pax ${BINDIR}/cpio
