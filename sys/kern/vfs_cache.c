@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.43 2004/11/18 20:04:24 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.44 2004/11/21 19:39:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -131,6 +131,9 @@ SYSCTL_ULONG(_debug, OID_AUTO, nchash, CTLFLAG_RD, &nchash, 0, "");
 
 static u_long	ncnegfactor = 16;	/* ratio of negative entries */
 SYSCTL_ULONG(_debug, OID_AUTO, ncnegfactor, CTLFLAG_RW, &ncnegfactor, 0, "");
+
+static int	nclockwarn;		/* warn on locked entries in ticks */
+SYSCTL_INT(_debug, OID_AUTO, nclockwarn, CTLFLAG_RW, &nclockwarn, 0, "");
 
 static u_long	numneg;		/* number of cache entries allocated */
 SYSCTL_ULONG(_debug, OID_AUTO, numneg, CTLFLAG_RD, &numneg, 0, "");
@@ -370,7 +373,7 @@ cache_lock(struct namecache *ncp)
 			break;
 		}
 		ncp->nc_flag |= NCF_LOCKREQ;
-		if (tsleep(ncp, 0, "clock", hz) == EWOULDBLOCK) {
+		if (tsleep(ncp, 0, "clock", nclockwarn) == EWOULDBLOCK) {
 			if (didwarn)
 				continue;
 			didwarn = 1;
@@ -429,7 +432,7 @@ cache_unlock(struct namecache *ncp)
 		ncp->nc_locktd = NULL;
 		if (ncp->nc_flag & NCF_LOCKREQ) {
 			ncp->nc_flag &= ~NCF_LOCKREQ;
-			wakeup_one(ncp);
+			wakeup(ncp);
 		}
 	}
 }
@@ -1499,9 +1502,9 @@ nchinit(void)
 		gd = globaldata_find(i);
 		gd->gd_nchstats = &nchstats[i];
 	}
-	
 	TAILQ_INIT(&ncneglist);
 	nchashtbl = hashinit(desiredvnodes*2, M_VFSCACHE, &nchash);
+	nclockwarn = 1 * hz;
 }
 
 /*
