@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.34 2003/12/10 00:29:23 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.35 2003/12/10 22:27:26 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1287,6 +1287,7 @@ libkern/strtol.c			standard
 libkern/strtoq.c			standard
 libkern/strtoul.c			standard
 libkern/strtouq.c			standard
+libkern/stack_protector.c		standard
 crypto/blowfish/bf_skey.c		optional crypto
 crypto/blowfish/bf_skey.c		optional crypto
 crypto/cast128/cast128.c		optional crypto
