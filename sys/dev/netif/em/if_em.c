@@ -34,9 +34,9 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.21 2004/10/20 09:17:22 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.22 2004/11/22 00:46:14 dillon Exp $*/
 
-#include <dev/netif/em/if_em.h>
+#include "if_em.h"
 
 /*********************************************************************
  *  Set this to one to display debug statistics                                                   
@@ -166,6 +166,7 @@ static int	em_sysctl_debug_info(SYSCTL_HANDLER_ARGS);
 static uint32_t	em_fill_descriptors(uint64_t address, uint32_t length, 
 				   PDESC_ARRAY desc_array);
 static int	em_sysctl_int_delay(SYSCTL_HANDLER_ARGS);
+static int	em_sysctl_int_throttle(SYSCTL_HANDLER_ARGS);
 static void	em_add_int_delay_sysctl(struct adapter *, const char *,
 					const char *,
 					struct em_int_delay_info *, int, int);
@@ -203,11 +204,13 @@ static int em_tx_int_delay_dflt = E1000_TICKS_TO_USECS(EM_TIDV);
 static int em_rx_int_delay_dflt = E1000_TICKS_TO_USECS(EM_RDTR);
 static int em_tx_abs_int_delay_dflt = E1000_TICKS_TO_USECS(EM_TADV);
 static int em_rx_abs_int_delay_dflt = E1000_TICKS_TO_USECS(EM_RADV);
+static int em_int_throttle_ceil = 10000;
 
 TUNABLE_INT("hw.em.tx_int_delay", &em_tx_int_delay_dflt);
 TUNABLE_INT("hw.em.rx_int_delay", &em_rx_int_delay_dflt);
 TUNABLE_INT("hw.em.tx_abs_int_delay", &em_tx_abs_int_delay_dflt);
 TUNABLE_INT("hw.em.rx_abs_int_delay", &em_rx_abs_int_delay_dflt);
+TUNABLE_INT("hw.em.int_throttle_ceil", &em_int_throttle_ceil);
 
 /*********************************************************************
  *  Device identification routine
@@ -342,6 +345,10 @@ em_attach(device_t dev)
 					&adapter->tx_abs_int_delay,
 					E1000_REG_OFFSET(&adapter->hw, TADV),
 					em_tx_abs_int_delay_dflt);
+		SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
+			SYSCTL_CHILDREN(adapter->sysctl_tree),
+			OID_AUTO, "int_throttle_ceil", CTLTYPE_INT|CTLFLAG_RW,
+			adapter, 0, em_sysctl_int_throttle, "I", NULL);
 	}
      
 	/* Parameters (to be read from user) */   
@@ -2310,12 +2317,13 @@ em_initialize_receive_unit(struct adapter *adapter)
 		E1000_WRITE_REG(&adapter->hw, RADV,
 				adapter->rx_abs_int_delay.value);
 
-		/* Set the interrupt throttling rate.  Value is calculated
-		 * as DEFAULT_ITR = 1/(MAX_INTS_PER_SEC * 256ns)
-		 */
-#define MAX_INTS_PER_SEC	8000
-#define DEFAULT_ITR		1000000000/(MAX_INTS_PER_SEC * 256)
-		E1000_WRITE_REG(&adapter->hw, ITR, DEFAULT_ITR);
+		/* Set the interrupt throttling rate in 256ns increments */  
+		if (em_int_throttle_ceil) {
+			E1000_WRITE_REG(&adapter->hw, ITR,
+				1000000000 / 256 / em_int_throttle_ceil);
+		} else {
+			E1000_WRITE_REG(&adapter->hw, ITR, 0);
+		}
 	}
 
 	/* Setup the Base and Length of the Rx Descriptor Ring */
@@ -3032,3 +3040,38 @@ em_add_int_delay_sysctl(struct adapter *adapter, const char *name,
 			OID_AUTO, name, CTLTYPE_INT|CTLFLAG_RW,
 			info, 0, em_sysctl_int_delay, "I", description);
 }
+
+static int
+em_sysctl_int_throttle(SYSCTL_HANDLER_ARGS)
+{
+	struct adapter *adapter = (void *)arg1;
+	int error;
+	int throttle;
+
+	throttle = em_int_throttle_ceil;
+	error = sysctl_handle_int(oidp, &throttle, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (throttle < 0 || throttle > 1000000000 / 256)
+		return EINVAL;
+	if (throttle) {
+		/*
+		 * Set the interrupt throttling rate in 256ns increments,
+		 * recalculate sysctl value assignment to get exact frequency.
+		 */
+		throttle = 1000000000 / 256 / throttle;
+		em_int_throttle_ceil = 1000000000 / 256 / throttle;
+		crit_enter();
+		E1000_WRITE_REG(&adapter->hw, ITR, throttle);
+		crit_exit();
+	} else {
+		em_int_throttle_ceil = 0;
+		crit_enter();
+		E1000_WRITE_REG(&adapter->hw, ITR, 0);
+		crit_exit();
+	}
+	device_printf(adapter->dev, "Interrupt moderation set to %d/sec\n", 
+			em_int_throttle_ceil);
+	return 0;
+}
+

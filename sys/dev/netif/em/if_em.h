@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.h,v 1.1.2.13 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.7 2004/06/04 16:32:11 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.8 2004/11/22 00:46:14 dillon Exp $*/
 
 #ifndef _EM_H_DEFINED_
 #define _EM_H_DEFINED_
@@ -74,6 +74,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <bus/pci/pcireg.h>
 #include <sys/proc.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 #include "opt_bdg.h"
 
 #include <dev/netif/em/if_em_hw.h>
