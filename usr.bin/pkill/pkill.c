@@ -1,5 +1,5 @@
 /*	$NetBSD: pkill.c,v 1.7 2004/02/15 17:03:30 soren Exp $	*/
-/*	$DragonFly: src/usr.bin/pkill/pkill.c,v 1.5 2005/01/06 21:00:33 cpressey Exp $ */
+/*	$DragonFly: src/usr.bin/pkill/pkill.c,v 1.6 2005/01/06 22:37:46 cpressey Exp $ */
 
 /*-
  * Copyright (c) 2002 The NetBSD Foundation, Inc.
@@ -66,17 +66,22 @@
 #define	STATUS_ERROR	3
 
 enum listtype {
-	LT_GENERIC,
 	LT_USER,
 	LT_GROUP,
 	LT_TTY,
+	LT_PPID,
 	LT_PGRP,
 	LT_SID
 };
 
 struct list {
 	SLIST_ENTRY(list) li_chain;
-	long	li_number;
+	union {
+		uid_t	ld_uid;
+		gid_t	ld_gid;
+		pid_t	ld_pid;
+		dev_t	ld_dev;
+	} li_datum;
 };
 
 SLIST_HEAD(listhead, list);
@@ -106,6 +111,7 @@ struct listhead sidlist = SLIST_HEAD_INITIALIZER(list);
 void	usage(void);
 void	killact(struct kinfo_proc *);
 void	grepact(struct kinfo_proc *);
+int	parse_pid(const char *, char **, struct list *, pid_t);
 void	makelist(struct listhead *, enum listtype, char *);
 
 int
@@ -161,7 +167,7 @@ main(int argc, char **argv)
 			criteria = 1;
 			break;
 		case 'P':
-			makelist(&ppidlist, LT_GENERIC, optarg);
+			makelist(&ppidlist, LT_PPID, optarg);
 			criteria = 1;
 			break;
 		case 'U':
@@ -292,7 +298,7 @@ main(int argc, char **argv)
 			continue;
 
 		SLIST_FOREACH(li, &ruidlist, li_chain) {
-			if (kp->kp_eproc.e_ucred.cr_ruid == (uid_t)li->li_number)
+			if (kp->kp_eproc.e_ucred.cr_ruid == li->li_datum.ld_uid)
 				break;
 		}
 		if (SLIST_FIRST(&ruidlist) != NULL && li == NULL) {
@@ -301,7 +307,7 @@ main(int argc, char **argv)
 		}
 	
 		SLIST_FOREACH(li, &rgidlist, li_chain) {
-			if (kp->kp_eproc.e_ucred.cr_rgid == (gid_t)li->li_number)
+			if (kp->kp_eproc.e_ucred.cr_rgid == li->li_datum.ld_gid)
 				break;
 		}
 		if (SLIST_FIRST(&rgidlist) != NULL && li == NULL) {
@@ -310,7 +316,7 @@ main(int argc, char **argv)
 		}
 
 		SLIST_FOREACH(li, &euidlist, li_chain) {
-			if (kp->kp_eproc.e_ucred.cr_uid == (uid_t)li->li_number)
+			if (kp->kp_eproc.e_ucred.cr_uid == li->li_datum.ld_uid)
 				break;
 		}
 		if (SLIST_FIRST(&euidlist) != NULL && li == NULL) {
@@ -319,7 +325,7 @@ main(int argc, char **argv)
 		}
 
 		SLIST_FOREACH(li, &ppidlist, li_chain) {
-			if (kp->kp_eproc.e_ppid == (pid_t)li->li_number)
+			if (kp->kp_eproc.e_ppid == li->li_datum.ld_pid)
 				break;
 		}
 		if (SLIST_FIRST(&ppidlist) != NULL && li == NULL) {
@@ -328,7 +334,7 @@ main(int argc, char **argv)
 		}
 
 		SLIST_FOREACH(li, &pgrplist, li_chain) {
-			if (kp->kp_eproc.e_pgid == (pid_t)li->li_number)
+			if (kp->kp_eproc.e_pgid == li->li_datum.ld_pid)
 				break;
 		}
 		if (SLIST_FIRST(&pgrplist) != NULL && li == NULL) {
@@ -337,10 +343,10 @@ main(int argc, char **argv)
 		}
 
 		SLIST_FOREACH(li, &tdevlist, li_chain) {
-			if (li->li_number == -1 &&
+			if (li->li_datum.ld_dev == NODEV &&
 			    (kp->kp_proc.p_flag & P_CONTROLT) == 0)
 				break;
-			if (kp->kp_eproc.e_tdev == (uid_t)li->li_number)
+			if (kp->kp_eproc.e_tdev == li->li_datum.ld_dev)
 				break;
 		}
 		if (SLIST_FIRST(&tdevlist) != NULL && li == NULL) {
@@ -349,7 +355,7 @@ main(int argc, char **argv)
 		}
 
 		SLIST_FOREACH(li, &sidlist, li_chain) {
-			if (kp->kp_eproc.e_sess->s_sid == (pid_t)li->li_number)
+			if (kp->kp_eproc.e_sess->s_sid == li->li_datum.ld_pid)
 				break;
 		}
 		if (SLIST_FIRST(&sidlist) != NULL && li == NULL) {
@@ -454,6 +460,16 @@ grepact(struct kinfo_proc *kp)
 	printf("%s", delim);
 }
 
+int
+parse_pid(const char *string, char **p, struct list *li, pid_t default_pid)
+{
+	long l;
+
+	l = strtol(string, p, 0);
+	li->li_datum.ld_pid = (l == 0 ? default_pid : (pid_t)l);
+	return(**p == '\0');
+}
+
 void
 makelist(struct listhead *head, enum listtype type, char *src)
 {
@@ -476,41 +492,42 @@ makelist(struct listhead *head, enum listtype type, char *src)
 		SLIST_INSERT_HEAD(head, li, li_chain);
 		empty = 0;
 
-		li->li_number = (uid_t)strtol(sp, &p, 0);
-		if (*p == '\0') {
-			switch (type) {
-			case LT_PGRP:
-				if (li->li_number == 0)
-					li->li_number = getpgrp();
-				break;
-			case LT_SID:
-				if (li->li_number == 0)
-					li->li_number = getsid(mypid);
-				break;
-			case LT_TTY:
-				usage();
-			default:
-				break;
-			}
-			continue;
-		}
-
 		switch (type) {
+		case LT_PPID:
+			if (!parse_pid(sp, &p, li, (pid_t)0))
+				usage();
+			break;
+		case LT_PGRP:
+			if (!parse_pid(sp, &p, li, getpgrp()))
+				usage();
+			break;
+		case LT_SID:
+			if (!parse_pid(sp, &p, li, getsid(mypid)))
+				usage();
+			break;
 		case LT_USER:
-			if ((pw = getpwnam(sp)) == NULL)
-				errx(STATUS_BADUSAGE, "unknown user `%s'",
-				    optarg);
-			li->li_number = pw->pw_uid;
+			li->li_datum.ld_uid = (uid_t)strtol(sp, &p, 0);
+			if (*p != '\0') {
+				if ((pw = getpwnam(sp)) == NULL) {
+					errx(STATUS_BADUSAGE,
+					     "unknown user `%s'", optarg);
+				}
+				li->li_datum.ld_uid = pw->pw_uid;
+			}
 			break;
 		case LT_GROUP:
-			if ((gr = getgrnam(sp)) == NULL)
-				errx(STATUS_BADUSAGE, "unknown group `%s'",
-				    optarg);
-			li->li_number = gr->gr_gid;
+			li->li_datum.ld_gid = (gid_t)strtol(sp, &p, 0);
+			if (*p != '\0') {
+				if ((gr = getgrnam(sp)) == NULL) {
+					errx(STATUS_BADUSAGE,
+					     "unknown group `%s'", optarg);
+				}
+				li->li_datum.ld_gid = gr->gr_gid;
+			}
 			break;
 		case LT_TTY:
 			if (strcmp(sp, "-") == 0) {
-				li->li_number = -1;
+				li->li_datum.ld_dev = NODEV;
 				break;
 			} else if (strcmp(sp, "co") == 0)
 				tty_name = "console";
@@ -534,7 +551,7 @@ makelist(struct listhead *head, enum listtype type, char *src)
 			if ((st.st_mode & S_IFCHR) == 0)
 				errx(STATUS_BADUSAGE, "not a tty: `%s'", sp);
 
-			li->li_number = st.st_rdev;
+			li->li_datum.ld_dev = st.st_rdev;
 			break;
 		default:
 			usage();
