@@ -39,19 +39,20 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/games/caesar/caesar.c,v 1.8.2.1 2000/08/17 06:13:06 jhb Exp $
- * $DragonFly: src/games/caesar/caesar.c,v 1.3 2003/11/12 14:53:52 eirikn Exp $
+ * $DragonFly: src/games/caesar/caesar.c,v 1.4 2005/03/01 22:47:10 joerg Exp $
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)caesar.c    8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/caesar/caesar.c,v 1.8.2.1 2000/08/17 06:13:06 jhb Exp $
  */
 
+#include <ctype.h>
+#include <err.h>
 #include <errno.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include <unistd.h>
 
 #define	LINELENGTH	2048
@@ -64,18 +65,16 @@
  * letter frequencies (taken from some unix(tm) documentation)
  * (unix is a trademark of Bell Laboratories)
  */
-double stdf[26] = {
+static double stdf[26] = {
 	7.97, 1.35, 3.61, 4.78, 12.37, 2.01, 1.46, 4.49, 6.39, 0.04,
 	0.42, 3.81, 2.69, 5.92,  6.96, 2.91, 0.08, 6.63, 8.77, 9.68,
 	2.62, 0.81, 1.88, 0.23,  2.07, 0.06,
 };
 
-void printit (char *);
+static void	printit(const char *);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	int ch, dot, i, nread, winnerdot = 0;
 	char *inbuf;
@@ -87,10 +86,8 @@ main(argc, argv)
 	if (argc > 1)
 		printit(argv[1]);
 
-	if (!(inbuf = malloc(LINELENGTH))) {
-		(void)fprintf(stderr, "caesar: out of memory.\n");
-		exit(1);
-	}
+	if ((inbuf = malloc(LINELENGTH)) == NULL)
+		err(1, "malloc failed");
 
 	/* adjust frequency table to weight low probs REAL low */
 	for (i = 0; i < 26; ++i)
@@ -99,10 +96,8 @@ main(argc, argv)
 	/* zero out observation table */
 	bzero(obs, 26 * sizeof(int));
 
-	if ((nread = read(STDIN_FILENO, inbuf, LINELENGTH)) < 0) {
-		(void)fprintf(stderr, "caesar: %s\n", strerror(errno));
-		exit(1);
-	}
+	if ((nread = read(STDIN_FILENO, inbuf, LINELENGTH)) < 0)
+		err(1, "read failed");
 	for (i = nread; i--;) {
 		ch = (unsigned char) inbuf[i];
 		if (isascii(ch)) {
@@ -138,23 +133,20 @@ main(argc, argv)
 		}
 		if (nread < LINELENGTH)
 			break;
-		if ((nread = read(STDIN_FILENO, inbuf, LINELENGTH)) < 0) {
-			(void)fprintf(stderr, "caesar: %s\n", strerror(errno));
-			exit(1);
-		}
+		if ((nread = read(STDIN_FILENO, inbuf, LINELENGTH)) < 0)
+			err(1, "read failed");
 	}
 	exit(0);
 }
 
-void printit(arg)
-	char *arg;
+static void
+printit(const char *arg)
 {
 	int ch, rot;
 
-	if ((rot = atoi(arg)) < 0) {
-		(void)fprintf(stderr, "caesar: bad rotation value.\n");
-		exit(1);
-	}
+	if ((rot = atoi(arg)) < 0)
+		errx(1, "bad rotation value");
+
 	while ((ch = getchar()) != EOF)
 		putchar(ROTATE(ch, rot));
 	exit(0);
