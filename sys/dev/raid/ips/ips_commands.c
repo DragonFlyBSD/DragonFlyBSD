@@ -25,22 +25,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_commands.c,v 1.10 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.7 2004/09/06 16:39:47 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.8 2004/12/10 04:09:46 y0netan1 Exp $
  */
 
 #include <dev/raid/ips/ips.h>
-
-static int
-ips_msleep(void *ident, struct ips_softc *sc, int priority, const char *wmesg,
-	   int timo)
-{
-	int	r;
-
-	IPS_UNLOCK(sc);
-	r = tsleep(ident, priority, wmesg, timo);
-	IPS_LOCK(sc);
-	return r;
-}
 
 /*
  * This is an interrupt callback.  It is called from
@@ -58,9 +46,7 @@ ips_wakeup_callback(ips_command_t *command)
 	status->value = command->status.value;
 	bus_dmamap_sync(command->sc->command_dmatag, command->command_dmamap,
 			BUS_DMASYNC_POSTWRITE);
-	IPS_LOCK(command->sc);
 	wakeup(status);
-	IPS_UNLOCK(command->sc);
 }
 
 /*
@@ -264,14 +250,12 @@ ips_send_adapter_info_cmd(ips_command_t *command)
 		goto exit;
 	}
 	command->callback = ips_wakeup_callback;
-	IPS_LOCK(sc);
 	bus_dmamap_load(command->data_dmatag, command->data_dmamap,
 	    command->data_buffer, IPS_ADAPTER_INFO_LEN,
 	    ips_adapter_info_callback, command, BUS_DMA_NOWAIT);
 	if ((status->value == IPS_ERROR_STATUS) ||
-	    ips_msleep(status, sc, 0, "ips", 30 * hz) == EWOULDBLOCK)
+	    tsleep(status, 0, "ips", 30 * hz) == EWOULDBLOCK)
 		error = ETIMEDOUT;
-	IPS_UNLOCK(sc);
 	if (error == 0) {
 		bus_dmamap_sync(command->data_dmatag, command->data_dmamap,
 		    BUS_DMASYNC_POSTREAD);
@@ -371,14 +355,12 @@ ips_send_drive_info_cmd(ips_command_t *command)
 		goto exit;
 	}
 	command->callback = ips_wakeup_callback;
-	IPS_LOCK(sc);
 	bus_dmamap_load(command->data_dmatag, command->data_dmamap,
 	    command->data_buffer,IPS_DRIVE_INFO_LEN,
 	    ips_drive_info_callback, command, BUS_DMA_NOWAIT);
 	if ((status->value == IPS_ERROR_STATUS) ||
-	    ips_msleep(status, sc, 0, "ips", 10 * hz) == EWOULDBLOCK)
+	    tsleep(status, 0, "ips", 10 * hz) == EWOULDBLOCK)
 		error = ETIMEDOUT;
-	IPS_UNLOCK(sc);
 
 	if (error == 0) {
 		bus_dmamap_sync(command->data_dmatag, command->data_dmamap,
@@ -435,11 +417,9 @@ ips_send_flush_cache_cmd(ips_command_t *command)
 	command_struct->id = command->id;
 	bus_dmamap_sync(sc->command_dmatag, command->command_dmamap,
 	    BUS_DMASYNC_PREWRITE);
-	IPS_LOCK(sc);
 	sc->ips_issue_cmd(command);
 	if (status->value != IPS_ERROR_STATUS)
-		ips_msleep(status, sc, 0, "flush2", 0);
-	IPS_UNLOCK(sc);
+		tsleep(status, 0, "flush2", 0);
 	ips_insert_free_cmd(sc, command);
 	return 0;
 }
@@ -529,11 +509,9 @@ ips_send_ffdc_reset_cmd(ips_command_t *command)
 	ips_ffdc_settime(command_struct, sc->ffdc_resettime.tv_sec);
 	bus_dmamap_sync(sc->command_dmatag, command->command_dmamap,
 	    BUS_DMASYNC_PREWRITE);
-	IPS_LOCK(sc);
 	sc->ips_issue_cmd(command);
 	if (status->value != IPS_ERROR_STATUS)
-		ips_msleep(status, sc, 0, "ffdc", 0);
-	IPS_UNLOCK(sc);
+		tsleep(status, 0, "ffdc", 0);
 	ips_insert_free_cmd(sc, command);
 	return 0;
 }
@@ -647,14 +625,12 @@ ips_read_nvram(ips_command_t *command)
 		goto exit;
 	}
 	command->callback = ips_write_nvram;
-	IPS_LOCK(sc);
 	bus_dmamap_load(command->data_dmatag, command->data_dmamap,
 	    command->data_buffer, IPS_NVRAM_PAGE_SIZE, ips_read_nvram_callback,
 	    command, BUS_DMA_NOWAIT);
 	if ((status->value == IPS_ERROR_STATUS) ||
-	    ips_msleep(status, sc, 0, "ips", 0) == EWOULDBLOCK)
+	    tsleep(status, 0, "ips", 0) == EWOULDBLOCK)
 		error = ETIMEDOUT;
-	IPS_UNLOCK(sc);
 	if (error == 0) {
 		bus_dmamap_sync(command->data_dmatag, command->data_dmamap,
 				BUS_DMASYNC_POSTWRITE);
@@ -704,11 +680,9 @@ ips_send_config_sync_cmd(ips_command_t *command)
 	command_struct->reserve2 = IPS_POCL;
 	bus_dmamap_sync(sc->command_dmatag, command->command_dmamap,
 	    BUS_DMASYNC_PREWRITE);
-	IPS_LOCK(sc);
 	sc->ips_issue_cmd(command);
 	if (status->value != IPS_ERROR_STATUS)
-		ips_msleep(status, sc, 0, "ipssyn", 0);
-	IPS_UNLOCK(sc);
+		tsleep(status, 0, "ipssyn", 0);
 	ips_insert_free_cmd(sc, command);
 	return 0;
 }
@@ -728,11 +702,9 @@ ips_send_error_table_cmd(ips_command_t *command)
 	command_struct->reserve2 = IPS_CSL;
 	bus_dmamap_sync(sc->command_dmatag, command->command_dmamap,
 	    BUS_DMASYNC_PREWRITE);
-	IPS_LOCK(sc);
 	sc->ips_issue_cmd(command);
 	if (status->value != IPS_ERROR_STATUS)
-		ips_msleep(status, sc, 0, "ipsetc", 0);
-	IPS_UNLOCK(sc);
+		tsleep(status, 0, "ipsetc", 0);
 	ips_insert_free_cmd(sc, command);
 	return 0;
 }

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.c,v 1.12 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.9 2004/09/15 15:22:02 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.10 2004/12/10 04:09:46 y0netan1 Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -454,7 +454,6 @@ ips_adapter_init(ips_softc_t *sc)
 	callout_init(&sc->timer);
 	if (sc->ips_adapter_reinit(sc, 0))
 		goto error;
-	IPS_LOCK_INIT(sc);
 	/* initialize ffdc values */
 	microtime(&sc->ffdc_resettime);
 	sc->ffdc_resetcount = 1;
@@ -578,7 +577,6 @@ ips_adapter_free(ips_softc_t *sc)
 	mask = splbio();
 	callout_stop(&sc->timer);
 	splx(mask);
-	IPS_LOCK_FREE(sc);
 	if (sc->sg_dmatag)
 		bus_dma_tag_destroy(sc->sg_dmatag);
 	if (sc->command_dmatag)

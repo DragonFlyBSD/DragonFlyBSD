@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.h,v 1.10 2004/05/30 20:08:34 phk Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.4 2004/09/15 15:22:02 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.5 2004/12/10 04:09:46 y0netan1 Exp $
  */
 
 
@@ -216,21 +216,6 @@ struct mtx {
 	intrmask_t	spl;
 };
 
-#define IPS_LOCK_INIT(sc)	(sc)->cmd_mtx.locked = 0
-#define IPS_LOCK(sc) do { 			\
-	int	s = splbio();			\
-	if ((sc)->cmd_mtx.locked++ == 0)	\
-		(sc)->cmd_mtx.spl = s;		\
-	else					\
-		splx(s);			\
-} while (0)
-#define IPS_UNLOCK(sc) do { 				\
-	if ((sc)->cmd_mtx.locked) {			\
-		if (--((sc)->cmd_mtx.locked) == 0)	\
-			splx((sc)->cmd_mtx.spl);	\
-	}						\
-} while (0)
-#define IPS_LOCK_FREE(sc)
 
 #define disk_open_t	d_open_t
 #define disk_close_t	d_close_t
@@ -484,7 +469,6 @@ typedef struct ips_softc {
 	void			(*ips_adapter_intr)(void *sc);
 	void			(*ips_issue_cmd)(ips_command_t *command);
 	ips_copper_queue_t	*copper_queue;
-	struct mtx		cmd_mtx;
 } ips_softc_t;
 
 /* function defines from ips_ioctl.c */

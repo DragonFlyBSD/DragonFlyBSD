@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_pci.c,v 1.10 2004/03/19 17:36:47 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.8 2004/09/26 05:30:24 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.9 2004/12/10 04:09:46 y0netan1 Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -199,7 +199,6 @@ ips_pci_detach(device_t dev)
 		if (ips_adapter_free(sc))
 			return EBUSY;
 		ips_pci_free(sc);
-		IPS_LOCK_FREE(sc);
 	}
 	return 0;
 }
