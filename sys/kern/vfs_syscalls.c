@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.35 2004/05/21 15:41:23 drhodus Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.36 2004/05/21 16:21:57 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -328,7 +328,7 @@ update:
 		lwkt_reltoken(&vlock);
 		mp->mnt_vfc->vfc_refcount--;
 		vfs_unbusy(mp, td);
-		free((caddr_t)mp, M_MOUNT);
+		free(mp, M_MOUNT);
 		vput(vp);
 	}
 	return (error);
@@ -460,7 +460,7 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	if (error) {
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
 		if (mp->mnt_kern_flag & MNTK_MWAIT)
-			wakeup((caddr_t)mp);
+			wakeup(mp);
 		return (error);
 	}
 
@@ -486,7 +486,7 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 		lockmgr(&mp->mnt_lock, LK_RELEASE | LK_INTERLOCK | LK_REENABLE,
 		    &ilock, td);
 		if (mp->mnt_kern_flag & MNTK_MWAIT)
-			wakeup((caddr_t)mp);
+			wakeup(mp);
 		return (error);
 	}
 	TAILQ_REMOVE(&mountlist, mp, mnt_list);
@@ -499,8 +499,8 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 		panic("unmount: dangling vnode");
 	lockmgr(&mp->mnt_lock, LK_RELEASE | LK_INTERLOCK, &ilock, td);
 	if (mp->mnt_kern_flag & MNTK_MWAIT)
-		wakeup((caddr_t)mp);
-	free((caddr_t)mp, M_MOUNT);
+		wakeup(mp);
+	free(mp, M_MOUNT);
 	return (0);
 }
 
@@ -721,7 +721,7 @@ getfsstat(struct getfsstat_args *uap)
 				continue;
 			}
 			sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
-			error = copyout((caddr_t)sp, sfsp, sizeof(*sp));
+			error = copyout(sp, sfsp, sizeof(*sp));
 			if (error) {
 				vfs_unbusy(mp, td);
 				return (error);
@@ -1705,7 +1705,7 @@ nstat(struct nstat_args *uap)
 	if (error)
 		return (error);
 	cvtnstat(&sb, &nsb);
-	error = copyout((caddr_t)&nsb, (caddr_t)SCARG(uap, ub), sizeof (nsb));
+	error = copyout(&nsb, SCARG(uap, ub), sizeof (nsb));
 	return (error);
 }
 
@@ -1736,7 +1736,7 @@ nlstat(struct nlstat_args *uap)
 	if (error)
 		return (error);
 	cvtnstat(&sb, &nsb);
-	error = copyout((caddr_t)&nsb, (caddr_t)SCARG(uap, ub), sizeof (nsb));
+	error = copyout(&nsb, SCARG(uap, ub), sizeof (nsb));
 	return (error);
 }
 
@@ -2628,7 +2628,7 @@ unionread:
 			struct vnode *tvp = vp;
 			vp = vp->v_mount->mnt_vnodecovered;
 			vref(vp);
-			fp->f_data = (caddr_t) vp;
+			fp->f_data = (caddr_t)vp;
 			fp->f_offset = 0;
 			vrele(tvp);
 			goto unionread;
@@ -3026,7 +3026,7 @@ fhstatfs(struct fhstatfs_args *uap)
 		return (error);
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 	if (suser(td)) {
-		bcopy((caddr_t)sp, (caddr_t)&sb, sizeof(sb));
+		bcopy(sp, &sb, sizeof(sb));
 		sb.f_fsid.val[0] = sb.f_fsid.val[1] = 0;
 		sp = &sb;
 	}
@@ -3102,7 +3102,7 @@ extattr_set_file(struct extattr_set_file_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 	auio.uio_offset = 0;
-	if ((error = copyin((caddr_t)uap->iovp, (caddr_t)iov, iovlen)))
+	if ((error = copyin(uap->iovp, iov, iovlen)))
 		goto done;
 	auio.uio_resid = 0;
 	for (i = 0; i < uap->iovcnt; i++) {
@@ -3167,7 +3167,7 @@ extattr_get_file(struct extattr_get_file_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 	auio.uio_offset = 0;
-	if ((error = copyin((caddr_t)uap->iovp, (caddr_t)iov, iovlen)))
+	if ((error = copyin(uap->iovp, iov, iovlen)))
 		goto done;
 	auio.uio_resid = 0;
 	for (i = 0; i < uap->iovcnt; i++) {
