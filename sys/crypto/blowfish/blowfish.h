@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/crypto/blowfish/blowfish.h,v 1.1.2.3 2002/03/26 10:12:23 ume Exp $	*/
-/*	$DragonFly: src/sys/crypto/blowfish/blowfish.h,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
+/*	$DragonFly: src/sys/crypto/blowfish/blowfish.h,v 1.3 2003/08/27 10:59:04 rob Exp $	*/
 /*	$KAME: blowfish.h,v 1.12 2002/02/27 01:33:59 itojun Exp $	*/
 
 /* crypto/bf/blowfish.h */
@@ -81,9 +81,9 @@ typedef struct bf_key_st {
 	BF_LONG S[4*256];
 } BF_KEY;
 
-void BF_set_key __P((BF_KEY *, int, unsigned char *));
-void BF_encrypt __P((BF_LONG *, BF_KEY *));
-void BF_decrypt __P((BF_LONG *, BF_KEY *));
+void BF_set_key (BF_KEY *, int, unsigned char *);
+void BF_encrypt (BF_LONG *, BF_KEY *);
+void BF_decrypt (BF_LONG *, BF_KEY *);
 void BF_cbc_encrypt(const unsigned char *, unsigned char *, long,
 		    const BF_KEY *, unsigned char *, int);
 

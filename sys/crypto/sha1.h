@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/crypto/sha1.h,v 1.3.2.3 2000/10/12 18:59:31 archie Exp $	*/
-/*	$DragonFly: src/sys/crypto/sha1.h,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
+/*	$DragonFly: src/sys/crypto/sha1.h,v 1.3 2003/08/27 10:59:04 rob Exp $	*/
 /*	$KAME: sha1.h,v 1.5 2000/03/27 04:36:23 sumikawa Exp $	*/
 
 /*
@@ -56,10 +56,10 @@ struct sha1_ctxt {
 };
 
 #ifdef _KERNEL
-extern void sha1_init __P((struct sha1_ctxt *));
-extern void sha1_pad __P((struct sha1_ctxt *));
-extern void sha1_loop __P((struct sha1_ctxt *, const u_int8_t *, size_t));
-extern void sha1_result __P((struct sha1_ctxt *, caddr_t));
+extern void sha1_init (struct sha1_ctxt *);
+extern void sha1_pad (struct sha1_ctxt *);
+extern void sha1_loop (struct sha1_ctxt *, const u_int8_t *, size_t);
+extern void sha1_result (struct sha1_ctxt *, caddr_t);
 
 /* compatibilty with other SHA1 source codes */
 typedef struct sha1_ctxt SHA1_CTX;

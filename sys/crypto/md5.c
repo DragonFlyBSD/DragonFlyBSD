@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/crypto/md5.c,v 1.1.2.2 2001/07/03 11:01:27 ume Exp $	*/
-/*	$DragonFly: src/sys/crypto/md5.c,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
+/*	$DragonFly: src/sys/crypto/md5.c,v 1.3 2003/08/27 10:59:04 rob Exp $	*/
 /*	$KAME: md5.c,v 1.5 2000/11/08 06:13:08 itojun Exp $	*/
 
 /*
@@ -128,7 +128,7 @@ static const u_int8_t md5_paddat[MD5_BUFLEN] = {
 	0,	0,	0,	0,	0,	0,	0,	0,	
 };
 
-static void md5_calc __P((u_int8_t *, md5_ctxt *));
+static void md5_calc (u_int8_t *, md5_ctxt *);
 
 void md5_init(ctxt)
 	md5_ctxt *ctxt;

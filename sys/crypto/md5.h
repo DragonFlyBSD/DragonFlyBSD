@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/crypto/md5.h,v 1.1.2.1 2000/07/15 07:14:18 kris Exp $	*/
-/*	$DragonFly: src/sys/crypto/md5.h,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
+/*	$DragonFly: src/sys/crypto/md5.h,v 1.3 2003/08/27 10:59:04 rob Exp $	*/
 /*	$KAME: md5.h,v 1.4 2000/03/27 04:36:22 sumikawa Exp $	*/
 
 /*
@@ -59,10 +59,10 @@ typedef struct {
 	u_int8_t	md5_buf[MD5_BUFLEN];
 } md5_ctxt;
 
-extern void md5_init __P((md5_ctxt *));
-extern void md5_loop __P((md5_ctxt *, u_int8_t *, u_int));
-extern void md5_pad __P((md5_ctxt *));
-extern void md5_result __P((u_int8_t *, md5_ctxt *));
+extern void md5_init (md5_ctxt *);
+extern void md5_loop (md5_ctxt *, u_int8_t *, u_int);
+extern void md5_pad (md5_ctxt *);
+extern void md5_result (u_int8_t *, md5_ctxt *);
 
 /* compatibility */
 #define MD5_CTX		md5_ctxt

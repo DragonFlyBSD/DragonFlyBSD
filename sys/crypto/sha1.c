@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/crypto/sha1.c,v 1.2.2.4 2001/07/03 11:01:27 ume Exp $	*/
-/*	$DragonFly: src/sys/crypto/sha1.c,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
+/*	$DragonFly: src/sys/crypto/sha1.c,v 1.3 2003/08/27 10:59:04 rob Exp $	*/
 /*	$KAME: sha1.c,v 1.5 2000/11/08 06:13:08 itojun Exp $	*/
 
 /*
@@ -85,7 +85,7 @@ static u_int32_t _K[] = { 0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xca62c1d6 };
 		sha1_step(ctxt);		\
      }
 
-static void sha1_step __P((struct sha1_ctxt *));
+static void sha1_step (struct sha1_ctxt *);
 
 static void
 sha1_step(ctxt)
