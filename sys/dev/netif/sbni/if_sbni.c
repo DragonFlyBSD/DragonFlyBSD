@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.17 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.18 2005/02/19 22:49:34 joerg Exp $
  */
 
 /*
@@ -76,6 +76,7 @@
 #include <machine/resource.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/ethernet.h>
 #include <net/if_arp.h>
 #include <net/bpf.h>
@@ -234,7 +235,8 @@ sbni_attach(struct sbni_softc *sc, int unit, struct sbni_flags flags)
 	ifp->if_start	= sbni_start;
 	ifp->if_ioctl	= sbni_ioctl;
 	ifp->if_watchdog	= sbni_watchdog;
-	ifp->if_snd.ifq_maxlen	= IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	/* report real baud rate */
 	csr0 = sbni_inb(sc, CSR0);
@@ -664,8 +666,8 @@ prepare_to_send(struct sbni_softc *sc)
 	sc->state &= ~(FL_WAIT_ACK | FL_NEED_RESEND);
 
 	for (;;) {
-		IF_DEQUEUE(&sc->arpcom.ac_if.if_snd, sc->tx_buf_p);
-		if (!sc->tx_buf_p) {
+		sc->tx_buf_p = ifq_dequeue(&sc->arpcom.ac_if.if_snd);
+		if (sc->tx_buf_p == NULL) {
 			/* nothing to transmit... */
 			sc->pktlen     = 0;
 			sc->tx_frameno = 0;
@@ -698,21 +700,13 @@ prepare_to_send(struct sbni_softc *sc)
 static void
 drop_xmit_queue(struct sbni_softc *sc)
 {
-	struct mbuf *m;
-
 	if (sc->tx_buf_p) {
 		m_freem(sc->tx_buf_p);
 		sc->tx_buf_p = NULL;
 		sc->arpcom.ac_if.if_oerrors++;
 	}
 
-	for (;;) {
-		IF_DEQUEUE(&sc->arpcom.ac_if.if_snd, m);
-		if (m == NULL)
-			break;
-		m_freem(m);
-		sc->arpcom.ac_if.if_oerrors++;
-	}
+	ifq_purge(&sc->arpcom.ac_if.if_snd);
 
 	sc->tx_frameno	= 0;
 	sc->framelen	= 0;
