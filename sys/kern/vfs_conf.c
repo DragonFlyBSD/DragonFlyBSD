@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.10 2004/07/04 05:16:30 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.11 2004/07/20 03:08:23 dillon Exp $
  */
 
 /*
@@ -72,13 +72,15 @@ MALLOC_DEFINE(M_MOUNT, "mount", "vfs mount structure");
 struct vnode	*rootvnode;
 
 /* 
- * The root specifiers we will try if RB_CDROM is specified.
+ * The root specifiers we will try if RB_CDROM is specified.  Note that
+ * the ATA driver will accept acd*a and acd*c, but the SCSI driver
+ * will only accept cd*c, so use 'c'.
  */
 static char *cdrom_rootdevnames[] = {
-	"cd9660:cd0a",
-	"cd9660:acd0a",
-	"cd9660:cd1a",
-	"cd9660:acd1a",
+	"cd9660:cd0c",
+	"cd9660:acd0c",
+	"cd9660:cd1c",
+	"cd9660:acd1c",
 	NULL
 };
 
