@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.2 2004/06/10 13:07:53 ru Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.22 2004/12/17 08:13:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.23 2004/12/17 21:09:04 okumoto Exp $
  */
 
 /*-
@@ -660,7 +660,7 @@ Suff_EndTransform(void *gnp, void *dummy __unused)
 	 * actual transformation rules (e.g., .DEFAULT).
 	 */
 	if (!SuffParseTransform(gn->name, &s, &t))
-		return (0);
+	    return (0);
 
 	DEBUGF(SUFF, ("deleting transformation from `%s' to `%s'\n",
 	       s->name, t->name));
@@ -719,7 +719,7 @@ SuffRebuildGraph(void *transformp, void *sp)
      */
     cp = SuffStrIsPrefix(s->name, transform->name);
     if (cp != (char *)NULL) {
-	if (cp[0] == '\0')  /* null rule */
+        if (cp[0] == '\0')  /* null rule */
 	    s2 = suffNull;
 	else {
 	    ln = Lst_Find(&sufflist, cp, SuffSuffHasNameP);

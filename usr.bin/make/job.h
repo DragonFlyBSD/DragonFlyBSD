@@ -38,7 +38,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.11 2000/01/17 06:43:41 kris Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.16 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.17 2004/12/17 21:09:04 okumoto Exp $
  */
 
 /*-
@@ -204,7 +204,7 @@ typedef DEF_SHELL_STRUCT(Shell,) Shell;
 
 extern char *shellPath;
 extern char *shellName;
-extern int	maxJobs;        /* Number of jobs that may run */
+extern int	maxJobs;	/* Number of jobs that may run */
 
 
 void Shell_Init(void);

@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/var.h,v 1.1 2002/10/28 23:33:57 jmallett Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.3 2004/12/16 22:20:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.4 2004/12/17 21:09:04 okumoto Exp $
  */
 
 typedef struct Var {
@@ -51,7 +51,7 @@ typedef struct Var {
 				     * should be destroyed when done with
 				     * it. Used by Var_Parse for undefined,
 				     * modified variables */
-#define VAR_TO_ENV	8	/* Place variable in environment */
+#define	VAR_TO_ENV  	8   	    /* Place variable in environment */
 } Var;
 
 /* Var*Pattern flags */

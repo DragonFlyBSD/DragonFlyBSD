@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.27 2004/12/17 08:13:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.28 2004/12/17 21:09:04 okumoto Exp $
  */
 
 /*-
@@ -120,21 +120,22 @@ static char	varNoError[] = "";
  * The four contexts are searched in the reverse order from which they are
  * listed.
  */
-GNode	*VAR_GLOBAL;	/* variables from the makefile */
-GNode	*VAR_CMD;	/* variables defined on the command-line */
+GNode          *VAR_GLOBAL;   /* variables from the makefile */
+GNode          *VAR_CMD;      /* variables defined on the command-line */
 
-#define	FIND_CMD	0x1	/* look in VAR_CMD when searching */
-#define	FIND_GLOBAL	0x2	/* look in VAR_GLOBAL as well */
-#define	FIND_ENV	0x4	/* look in the environment also */
+#define	FIND_CMD	0x1   /* look in VAR_CMD when searching */
+#define	FIND_GLOBAL	0x2   /* look in VAR_GLOBAL as well */
+#define	FIND_ENV  	0x4   /* look in the environment also */
 
 static void VarPossiblyExpand(char **, GNode *);
 static Var *VarFind(char *, GNode *, int);
 static void VarAdd(char *, char *, GNode *);
 static void VarDelete(void *);
 static char *VarGetPattern(GNode *, int, char **, int, int *, size_t *,
-				VarPattern *);
-static char *VarModify(char *, Boolean (*)(const char *, Boolean, Buffer, void *),
-			    void *);
+			   VarPattern *);
+static char *VarModify(char *,
+		       Boolean (*)(const char *, Boolean, Buffer, void *),
+		       void *);
 static int VarPrintVar(void *, void *);
 
 /*-
@@ -160,23 +161,23 @@ VarCmp(const void *v, const void *name)
 /*-
  *-----------------------------------------------------------------------
  * VarPossiblyExpand --
- *     Expand a variable name's embedded variables in the given context.
+ *	Expand a variable name's embedded variables in the given context.
  *
  * Results:
- *     The contents of name, possibly expanded.
+ *	The contents of name, possibly expanded.
  *
  * Side Effects:
- *     The caller must free the new contents or old contents of name.
+ *	The caller must free the new contents or old contents of name.
  *-----------------------------------------------------------------------
  */
 static void
 VarPossiblyExpand(char **name, GNode *ctxt)
 {
 
-	if (strchr(*name, '$') != NULL)
-		*name = Var_Subst(NULL, *name, ctxt, 0);
-	else
-		*name = estrdup(*name);
+    if (strchr(*name, '$') != NULL)
+        *name = Var_Subst(NULL, *name, ctxt, 0);
+    else
+        *name = estrdup(*name);
 }
 
 /*-
@@ -822,7 +823,7 @@ char *
 Var_Quote(const char *str)
 {
     Buffer  	  buf;
-    char	 *retstr;
+    char  	 *retstr;
     /* This should cover most shells :-( */
     static char meta[] = "\n \t'`\";&<>()|*?{}[]\\$!#^~";
 

@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.27 2004/12/17 08:13:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.28 2004/12/17 21:09:04 okumoto Exp $
  */
 
 /*-
@@ -292,8 +292,8 @@ void
 Parse_Error(int type, const char *fmt, ...)
 {
 	va_list ap;
-	va_start(ap, fmt);
 
+	va_start(ap, fmt);
 	fprintf(stderr, "\"%s\", line %d: ",
 	    curFile.fname, curFile.lineno);
 	if (type == PARSE_WARNING)
@@ -2399,10 +2399,10 @@ Parse_File(char *name, FILE *stream)
 		    goto nextLine;
 		} else if (strncmp(cp, "error", 5) == 0) {
 		    ParseDoError(cp + 5);
-	            goto nextLine;	    
+	            goto nextLine;
 		} else if (strncmp(cp, "warning", 7) == 0) {
 		    ParseDoWarning(cp + 7);
-	            goto nextLine;	    
+	            goto nextLine;
 		} else if (strncmp(cp, "undef", 5) == 0) {
 		    cp = stripvarname(cp + 5);
 		    cp = Var_Subst(NULL, cp, VAR_CMD, FALSE);

@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.21 2004/12/17 08:13:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.22 2004/12/17 21:09:04 okumoto Exp $
  */
 
 /*-
@@ -301,8 +301,10 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 	     * variables and multi-word variable values.... The results
 	     * are just placed at the end of the nodeLst we're returning.
 	     */
+
 	    sz = strlen(memName) + strlen(libName) + 3;
 	    buf = sacrifice = emalloc(sz);
+
 	    snprintf(buf, sz, "%s(%s)", libName, memName);
 
 	    if (strchr(memName, '$') && strcmp(memName, oldMemName) == 0) {
@@ -728,7 +730,7 @@ ArchSVR4Entry(Arch *ar, char *name, size_t size, FILE *arch)
     }
     if (entry >= ar->fnamesize) {
 	DEBUGF(ARCH, ("SVR4 entry offset %s is greater than %zu\n",
-		name, ar->fnamesize));
+	       name, ar->fnamesize));
 	return (2);
     }
 

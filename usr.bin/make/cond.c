@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.17 2004/12/17 08:13:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.18 2004/12/17 21:09:04 okumoto Exp $
  */
 
 /*-
@@ -123,7 +123,7 @@ static struct If {
 
 static Boolean	  condInvert;	    	/* Invert the default function */
 static Boolean	  (*condDefProc)	/* Default function to apply */
-		   (int, char *);
+(int, char *);
 static char 	  *condExpr;	    	/* The expression to parse */
 static Token	  condPushBack=None;	/* Single push-back token used in
 					 * parsing */

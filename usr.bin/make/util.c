@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2002 Juli Mallett.  All rights reserved.
  * Copyright (c) 1988, 1989, 1990, 1993
- *      The Regents of the University of California.  All rights reserved.
+ *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1989 by Berkeley Softworks
  * All rights reserved.
  *
@@ -18,14 +18,14 @@
  *    documentation and/or other materials provided with the distribution.
  * 3. All advertising materials mentioning features or use of this software
  *    must display the following acknowledgement:
- *      This product includes software developed by the University of
- *      California, Berkeley and its contributors.
+ *	This product includes software developed by the University of
+ *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
  * $FreeBSD: src/usr.bin/make/util.c,v 1.5.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/util.c,v 1.9 2004/12/10 19:22:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.c,v 1.10 2004/12/17 21:09:04 okumoto Exp $
  */
 
 #include <sys/types.h>
@@ -82,6 +82,7 @@ void
 Error(const char *fmt, ...)
 {
 	va_list ap;
+
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
 	va_end(ap);
@@ -105,6 +106,7 @@ void
 Fatal(const char *fmt, ...)
 {
 	va_list ap;
+
 	va_start(ap, fmt);
 	if (jobsRunning)
 		Job_Wait();
@@ -135,8 +137,8 @@ void
 Punt(const char *fmt, ...)
 {
 	va_list ap;
-	va_start(ap, fmt);
 
+	va_start(ap, fmt);
 	fprintf(stderr, "make: ");
 	vfprintf(stderr, fmt, ap);
 	va_end(ap);

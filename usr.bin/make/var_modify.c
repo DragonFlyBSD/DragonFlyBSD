@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.10 2004/12/16 23:52:16 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.11 2004/12/17 21:09:04 okumoto Exp $
  */
 
 #include    <ctype.h>
@@ -108,7 +108,7 @@ VarTail(const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
     const char *slash;
 
     if (addSpace) {
-	Buf_AddByte(buf, (Byte)' ');
+	Buf_AddByte (buf, (Byte)' ');
     }
 
     slash = strrchr(word, '/');

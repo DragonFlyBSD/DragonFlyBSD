@@ -38,11 +38,11 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.34 2004/12/17 08:13:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.35 2004/12/17 21:09:04 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
-#define OLD_JOKE 0
+#define	OLD_JOKE 0
 #endif /* OLD_JOKE */
 
 /*-
@@ -2563,12 +2563,12 @@ Job_ParseShell(char *line)
 	shellPath = estrdup(path);
 	if (newShell.name == NULL) {
 	    /* get the base name as the name */
-	path = strrchr(path, '/');
-	if (path == NULL) {
-	    path = shellPath;
-	} else {
-	    path += 1;
-	}
+	    path = strrchr(path, '/');
+	    if (path == NULL) {
+	        path = shellPath;
+	    } else {
+	        path += 1;
+	    }
 	    newShell.name = path;
 	}
 
