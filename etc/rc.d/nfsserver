@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/nfsserver,v 1.2 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/nfsserver,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/nfsserver,v 1.2 2003/11/19 20:11:58 dillon Exp $
 #
 
 # PROVIDE: nfsserver
@@ -18,9 +18,9 @@ stop_cmd=":"
 # Load nfs modules if they were not compiled into the kernel
 nfsserver_start()
 {
-	if ! sysctl vfs.nfsrv >/dev/null 2>&1; then
-		if ! kldload nfsserver; then
-			warn 'Could not load NFS server module'
+	if ! sysctl vfs.nfs >/dev/null 2>&1; then
+		if ! kldload nfs; then
+			warn 'Could not load NFS module'
 			return 1
 		fi
 	fi

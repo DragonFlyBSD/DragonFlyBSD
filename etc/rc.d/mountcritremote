@@ -2,7 +2,7 @@
 #
 # $NetBSD: mountcritremote,v 1.7 2002/04/29 12:29:53 lukem Exp $
 # $FreeBSD: src/etc/rc.d/mountcritremote,v 1.6 2003/06/01 01:43:37 gordon Exp $
-# $DragonFly: src/etc/rc.d/mountcritremote,v 1.2 2003/11/19 10:32:45 eirikn Exp $
+# $DragonFly: src/etc/rc.d/mountcritremote,v 1.3 2003/11/19 20:11:58 dillon Exp $
 #
 
 # PROVIDE: mountcritremote
@@ -41,7 +41,7 @@ mountcritremote_precmd()
 	*mount_nfs*)
 		# Handle absent nfs client support
 		if ! sysctl vfs.nfs >/dev/null 2>&1; then
-			kldload nfsclient || warn 'nfs mount ' \
+			kldload nfs || warn 'nfs mount ' \
 			    'requested, but no nfs client in kernel' \
 			return 1
 		fi
