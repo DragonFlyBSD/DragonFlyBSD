@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.37 2004/11/30 19:21:26 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.38 2004/12/20 01:26:44 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -747,6 +747,8 @@ pass:
 	 */
 	if (m->m_pkthdr.rcvif->if_flags & IFF_BROADCAST) {
 		TAILQ_FOREACH(ifa, &m->m_pkthdr.rcvif->if_addrhead, ifa_link) {
+			if (ifa->ifa_addr == NULL) /* shutdown/startup race */
+				continue;
 			if (ifa->ifa_addr->sa_family != AF_INET)
 				continue;
 			ia = ifatoia(ifa);
