@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.16 2004/06/25 15:32:18 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.17 2004/06/26 08:35:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -317,6 +317,7 @@ restart:
 		 */
 		if (brange->lf_flags == 0)
 			TAILQ_REMOVE(&lock->lf_blocked, brange, lf_link);
+		tsleep(brange, 0, "lockfz", 2); /* XXX debug livelock */
 		lf_destroy_range(brange, 0);
 
 		if (error)
