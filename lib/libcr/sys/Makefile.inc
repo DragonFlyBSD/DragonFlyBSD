@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libcr/sys/Attic/Makefile.inc,v 1.3 2003/07/24 21:41:56 dillon Exp $
+# $DragonFly: src/lib/libcr/sys/Attic/Makefile.inc,v 1.4 2003/12/08 13:56:36 eirikn Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libcr/${MACHINE_ARCH}/sys ${.CURDIR}/../libcr/sys
@@ -27,7 +27,7 @@ SRCS+=	__error.c
 # Add machine dependent asm sources:
 SRCS+=${MDASM}
 
-# Look though the complete list of syscalls (MIASM) for names that are
+# Look through the complete list of syscalls (MIASM) for names that are
 # not defined with machine dependent implementations (MDASM) and are
 # not declared for no generation of default code (NOASM). If the
 # syscall is not hidden, add it to the ASM list, otherwise add it
@@ -59,6 +59,7 @@ SRCS+=	${SASM} ${SASMR} ${SPSEUDO} ${SPSEUDOR}
 # Generated files
 CLEANFILES+=	${SASM} ${SASMR} ${SPSEUDO} ${SPSEUDOR}
 
+# Generate the syscalls source-files
 ${SASM}:
 	printf '#include "SYS.h"\nRSYSCALL(${.PREFIX})\n' > ${.TARGET}
 
@@ -102,7 +103,7 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	sigstack.2 sigsuspend.2 socket.2 socketpair.2 stat.2 statfs.2 \
 	swapon.2 symlink.2 sync.2 sysarch.2 syscall.2 \
 	truncate.2 umask.2 undelete.2 \
-	unlink.2 utimes.2 vfork.2 wait.2 write.2
+	unlink.2 utimes.2 upc_register.2 vfork.2 wait.2 write.2
 .if !defined(NO_P1003_1B)
 MAN+=	sched_get_priority_max.2 sched_setparam.2 \
 	sched_setscheduler.2 sched_yield.2

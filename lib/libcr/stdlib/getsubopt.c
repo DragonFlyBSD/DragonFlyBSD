@@ -30,6 +30,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $DragonFly: src/lib/libcr/stdlib/Attic/getsubopt.c,v 1.3 2003/12/08 13:56:35 eirikn Exp $
+ *
  * @(#)getsubopt.c	8.1 (Berkeley) 6/4/93
  */
 
@@ -46,11 +48,11 @@ char *suboptarg;
 
 int
 getsubopt(optionp, tokens, valuep)
-	register char **optionp, **valuep;
-	register char * const *tokens;
+	char **optionp, **valuep;
+	char * const *tokens;
 {
-	register int cnt;
-	register char *p;
+	int cnt;
+	char *p;
 
 	suboptarg = *valuep = NULL;
 

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/atexit.c,v 1.3.6.1 2002/03/10 20:28:40 tegge Exp $
- * $DragonFly: src/lib/libcr/stdlib/Attic/atexit.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdlib/Attic/atexit.c,v 1.3 2003/12/08 13:56:35 eirikn Exp $
  *
  * @(#)atexit.c	8.2 (Berkeley) 7/3/94
  */
@@ -62,7 +62,7 @@ atexit(fn)
 	void (*fn)();
 {
 	static struct atexit __atexit0;	/* one guaranteed table */
-	register struct atexit *p;
+	struct atexit *p;
 
 	THREAD_LOCK();
 	if ((p = __atexit) == NULL)

@@ -23,7 +23,7 @@
  *  without specific, written prior permission.
  *
  * $FreeBSD: src/lib/libc/stdlib/strhash.c,v 1.8 1999/09/05 17:42:45 peter Exp $
- * $DragonFly: src/lib/libcr/stdlib/Attic/strhash.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdlib/Attic/strhash.c,v 1.3 2003/12/08 13:56:35 eirikn Exp $
  */
 
 /*
@@ -97,7 +97,7 @@ static hash_node *list_find(caddr_t key, hash_node *head);
 hash_table *
 hash_create(int size)
 {
-    register int i;
+    int i;
     hash_table *new = (hash_table *)malloc(sizeof(hash_table));
 
     if (!new || size < 0){
@@ -290,8 +290,8 @@ assign_key(char *key, hash_node *node)
 void
 hash_traverse(hash_table *table, int (*func)(), void *arg)
 {
-    register int i;
-    register int size = table->size;
+    int i;
+    int size = table->size;
 
     if (!func)
 	return;
@@ -317,8 +317,8 @@ hash_traverse(hash_table *table, int (*func)(), void *arg)
 void
 hash_purge(hash_table *table, void (*purge_func)(char *p1, void *p2))
 {
-    register int i;
-    register int size = table->size;
+    int i;
+    int size = table->size;
 
     for (i = 0; i < size; i++) {
 	hash_node *n = table->buckets[i];
@@ -347,7 +347,7 @@ hash_purge(hash_table *table, void (*purge_func)(char *p1, void *p2))
 void
 hash_stats(hash_table *table, int verbose)
 {
-    register int i;
+    int i;
     int total_elements = 0;
     int non_empty_buckets = 0;
     int max_count = 0;

@@ -35,7 +35,7 @@
 .\"
 .\"     @(#)getenv.3	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/lib/libc/stdlib/getenv.3,v 1.4.2.7 2001/12/14 18:33:58 ru Exp $
-.\" $DragonFly: src/lib/libcr/stdlib/Attic/getenv.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
+.\" $DragonFly: src/lib/libcr/stdlib/Attic/getenv.3,v 1.3 2003/12/08 13:56:35 eirikn Exp $
 .\"
 .Dd December 11, 1993
 .Dt GETENV 3
@@ -116,6 +116,13 @@ deletes all instances of the variable name pointed to by
 from the list.
 .Sh RETURN VALUES
 .Rv -std setenv putenv
+.Pp
+The
+.Fn getenv
+function returns NULL if the environment variable was not found.
+If the variable was found,
+it returns the value of the variable as a NULL terminated string.
+This string should not be modified or freed.
 .Sh ERRORS
 .Bl -tag -width Er
 .It Bq Er ENOMEM

@@ -32,7 +32,7 @@
  *
  * @(#)qsort.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdlib/qsort.c,v 1.8 1999/08/28 00:01:35 peter Exp $
- * $DragonFly: src/lib/libcr/stdlib/Attic/qsort.c,v 1.3 2003/11/12 20:21:29 eirikn Exp $
+ * $DragonFly: src/lib/libcr/stdlib/Attic/qsort.c,v 1.4 2003/12/08 13:56:35 eirikn Exp $
  */
 
 #include <stdlib.h>
@@ -48,10 +48,10 @@ static inline void	 swapfunc (char *, char *, int, int);
  */
 #define swapcode(TYPE, parmi, parmj, n) { 		\
 	long i = (n) / sizeof (TYPE); 			\
-	register TYPE *pi = (TYPE *) (parmi); 		\
-	register TYPE *pj = (TYPE *) (parmj); 		\
+	TYPE *pi = (TYPE *) (parmi); 		\
+	TYPE *pj = (TYPE *) (parmj); 		\
 	do { 						\
-		register TYPE	t = *pi;		\
+		TYPE	t = *pi;		\
 		*pi++ = *pj;				\
 		*pj++ = t;				\
         } while (--i > 0);				\

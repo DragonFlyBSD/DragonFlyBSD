@@ -36,8 +36,12 @@
  *	@(#)local.h	8.3 (Berkeley) 7/3/94
  *
  * $FreeBSD: src/lib/libc/stdio/local.h,v 1.1.1.2.6.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/local.h,v 1.3 2003/11/12 20:21:28 eirikn Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/local.h,v 1.4 2003/12/08 13:56:35 eirikn Exp $
  */
+
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>	/* __size_t */
+#endif
 
 /*
  * Information local to this implementation of stdio,
@@ -55,7 +59,7 @@ extern void	__sinit (void);
 extern void	_cleanup (void);
 extern void	(*__cleanup) (void);
 extern void	__smakebuf (FILE *);
-extern int	__swhatbuf (FILE *, size_t *, int *);
+extern int	__swhatbuf (FILE *, __size_t *, int *);
 extern int	_fwalk (int (*)(FILE *));
 extern int	__swsetup (FILE *);
 extern int	__sflags (const char *, int *);

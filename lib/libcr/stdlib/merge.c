@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)merge.c	8.2 (Berkeley) 2/14/94
- * $DragonFly: src/lib/libcr/stdlib/Attic/merge.c,v 1.3 2003/11/12 20:21:29 eirikn Exp $
+ * $DragonFly: src/lib/libcr/stdlib/Attic/merge.c,v 1.4 2003/12/08 13:56:35 eirikn Exp $
  */
 
 /*
@@ -97,12 +97,12 @@ int
 mergesort(base, nmemb, size, cmp)
 	void *base;
 	size_t nmemb;
-	register size_t size;
+	size_t size;
 	int (*cmp) (const void *, const void *);
 {
-	register int i, sense;
+	int i, sense;
 	int big, iflag;
-	register u_char *f1, *f2, *t, *b, *tp2, *q, *l1, *l2;
+	u_char *f1, *f2, *t, *b, *tp2, *q, *l1, *l2;
 	u_char *list2, *list1, *p2, *p, *last, **p1;
 
 	if (size < PSIZE / 2) {		/* Pointers must fit into 2 * size. */

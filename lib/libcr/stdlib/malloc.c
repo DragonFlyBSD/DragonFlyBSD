@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libc/stdlib/malloc.c,v 1.49.2.4 2001/12/29 08:10:14 knu Exp $
- * $DragonFly: src/lib/libcr/stdlib/Attic/malloc.c,v 1.3 2003/11/12 20:21:29 eirikn Exp $
+ * $DragonFly: src/lib/libcr/stdlib/Attic/malloc.c,v 1.4 2003/12/08 13:56:35 eirikn Exp $
  *
  */
 
@@ -1059,7 +1059,7 @@ ifree(void *ptr)
 void *
 malloc(size_t size)
 {
-    register void *r;
+    void *r;
 
     THREAD_LOCK();
     malloc_func = " in malloc():";

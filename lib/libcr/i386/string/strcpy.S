@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/string/strcpy.S,v 1.5 1999/08/27 23:59:34 peter Exp $
- * $DragonFly: src/lib/libcr/i386/string/Attic/strcpy.S,v 1.2 2003/06/17 04:26:43 dillon Exp $
+ * $DragonFly: src/lib/libcr/i386/string/Attic/strcpy.S,v 1.3 2003/12/08 13:56:35 eirikn Exp $
  *
  * $FreeBSD: src/lib/libc/i386/string/strcpy.S,v 1.5 1999/08/27 23:59:34 peter Exp $
  */
@@ -46,7 +46,7 @@
 /*
  * I've unrolled the loop eight times: large enough to make a
  * significant difference, and small enough not to totally trash the
- * cashe.
+ * cache.
  */
 
 ENTRY(strcpy)

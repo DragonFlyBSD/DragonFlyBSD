@@ -1,6 +1,9 @@
 /*-
- * Copyright (c) 1992, 1993
+ * Copyright (c) 1993
  *	The Regents of the University of California.  All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * Paul Borman at Krystal Technologies.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,88 +32,84 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)strtouq.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdlib/strtoull.c,v 1.5.2.1 2001/03/02 09:45:20 obrien Exp $
- * $DragonFly: src/lib/libcr/stdlib/Attic/strtoull.c,v 1.3 2003/12/08 13:56:35 eirikn Exp $
+ * $DragonFly: src/lib/libcr/locale/Attic/gbk.c,v 1.1 2003/12/08 13:56:35 eirikn Exp $
  */
 
+#include <sys/cdefs.h>
+
+#include <rune.h>
+#include <stdlib.h>
 #include <sys/types.h>
 
-#include <limits.h>
-#include <errno.h>
-#include <ctype.h>
-#include <stdlib.h>
+rune_t  _GBK_sgetrune(const char *, size_t, char const **);
+int     _GBK_sputrune(rune_t, char *, size_t, char **);
 
-/*
- * Convert a string to an unsigned long long integer.
- *
- * Ignores `locale' stuff.  Assumes that the upper and lower case
- * alphabets and digits are each contiguous.
- */
-unsigned long long
-strtoull(nptr, endptr, base)
-	const char *nptr;
-	char **endptr;
-	int base;
+int
+_GBK_init(rl)
+	_RuneLocale *rl;
 {
-	const char *s = nptr;
-	unsigned long long acc;
-	unsigned char c;
-	unsigned long long qbase, cutoff;
-	int neg, any, cutlim;
+	rl->sgetrune = _GBK_sgetrune;
+	rl->sputrune = _GBK_sputrune;
+	_CurrentRuneLocale = rl;
+	__mb_cur_max = 2;
+	return (0);
+}
 
-	/*
-	 * See strtoq for comments as to the logic used.
-	 */
-	s = nptr;
-	do {
-		c = *s++;
-	} while (isspace(c));
-	if (c == '-') {
-		neg = 1;
-		c = *s++;
-	} else {
-		neg = 0;
-		if (c == '+')
-			c = *s++;
+static inline int
+_gbk_check(c)
+	u_int c;
+{
+	c &= 0xff;
+	return ((c >= 0x80 && c <= 0xfe) ? 2 : 1);
+}
+
+rune_t
+_GBK_sgetrune(string, n, result)
+	const char *string;
+	size_t n;
+	char const **result;
+{
+	rune_t rune = 0;
+	int len;
+
+	if (n < 1 || (len = _gbk_check(*string)) > n) {
+		if (result)
+			*result = string;
+		return (_INVALID_RUNE);
 	}
-	if ((base == 0 || base == 16) &&
-	    c == '0' && (*s == 'x' || *s == 'X')) {
-		c = s[1];
-		s += 2;
-		base = 16;
-	}
-	if (base == 0)
-		base = c == '0' ? 8 : 10;
-	qbase = (unsigned)base;
-	cutoff = (unsigned long long)ULLONG_MAX / qbase;
-	cutlim = (unsigned long long)ULLONG_MAX % qbase;
-	for (acc = 0, any = 0;; c = *s++) {
-		if (!isascii(c))
-			break;
-		if (isdigit(c))
-			c -= '0';
-		else if (isalpha(c))
-			c -= isupper(c) ? 'A' - 10 : 'a' - 10;
-		else
-			break;
-		if (c >= base)
-			break;
-		if (any < 0 || acc > cutoff || (acc == cutoff && c > cutlim))
-			any = -1;
-		else {
-			any = 1;
-			acc *= qbase;
-			acc += c;
+	while (--len >= 0)
+		rune = (rune << 8) | ((u_int)(*string++) & 0xff);
+	if (result)
+		*result = string;
+	return rune;
+}
+
+int
+_GBK_sputrune(c, string, n, result)
+	rune_t c;
+	char *string, **result;
+	size_t n;
+{
+	if (c & 0x8000) {
+		if (n >= 2) {
+			string[0] = (c >> 8) & 0xff;
+			string[1] = c & 0xff;
+			if (result)
+				*result = string + 2;
+			return (2);
 		}
 	}
-	if (any < 0) {
-		acc = ULLONG_MAX;
-		errno = ERANGE;
-	} else if (neg)
-		acc = -acc;
-	if (endptr != 0)
-		*endptr = (char *)(any ? s - 1 : nptr);
-	return (acc);
+	else {
+		if (n >= 1) {
+			*string = c & 0xff;
+			if (result)
+				*result = string + 1;
+			return (1);
+		}
+	}
+	if (result)
+		*result = string;
+	return (0);
+	
 }
+
