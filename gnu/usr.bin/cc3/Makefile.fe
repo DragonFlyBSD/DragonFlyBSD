@@ -1,6 +1,0 @@
-# $FreeBSD: src/gnu/usr.bin/cc/Makefile.fe,v 1.2 2002/05/10 08:54:43 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile.fe,v 1.2 2004/02/02 23:35:09 dillon Exp $
-
-#	Front-end-only bits
-
-version!=	sed -n /version_string/p ${GCCDIR}/gcc/version.c | sed -e 's/.*\"\([^ \"]*\)[ \"].*/\1/'
