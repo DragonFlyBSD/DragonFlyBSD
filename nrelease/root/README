@@ -5,8 +5,9 @@
     read-write using MFS.  Your existing hard drive is not effected by
     booting this CDROM.
 
-    NOTE!!! DRAGONFLY IS UNDERGOING DEVELOPMENT AND CONSIDERED EXPERIMENTAL!
-    BSD RELATED EXPERIENCE IS REQUIRED TO USE THIS CDROM.
+    NOTE!!! DRAGONFLY IS UNDERGOING DEVELOPMENT AND IS CONSIDERED
+    EXPERIMENTAL!  BSD RELATED EXPERIENCE IS RECOMMENDED WHEN USING
+    THIS CDROM.
 
     If you just want to play with DragonFly and not mess with your hard disk,
     this CDROM boots into a fully operational console-based system, though
@@ -22,15 +23,17 @@
     Manual installation of DragonFly onto an HD involve the following sequence
     of commands.  You must be familiar with BSD style UNIX systems to do
     installations manually.  The primary IDE hard drive is typically 'ad0'
-    and DragonFly is typically installed onto the first slice.  SCSI disks
-    are named 'da[0-9]'.
+    and DragonFly is typically installed onto the first slice (ad0s1).
+    SCSI disks are named 'da[0-9]'.
 
 
-	# This COMPLETE WIPES and repartitions your hard drive
+	# This COMPLETELY WIPES and repartitions your hard drive
 	fdisk -IB ad0
 
 	# This installs boot blocks onto the HD and verifies their 
-	# installation.
+	# installation.  See note just above the 'reboot' below for
+	# things to try if it does not boot from your HD.
+	#
 	boot0cfg -B ad0
 	boot0cfg -v ad0
 
@@ -126,6 +129,11 @@
     all the pending data to your HD.  Either unmount the HD partitions
     or type reboot.
 
+    WHAT TO TRY IF IT WONT BOOT FROM YOUR HD.  There are a couple of things
+    to try.  If you can select CHS or LBA mode in your BIOS, try changing the
+    mode to LBA.  If that doesn't work boot from the CD again and use 
+    boot0cfg to turn on packet mode (boot0cfg -o packet ad0).
+
 	# reboot
 	reboot
 	(remove CD when convenient, be careful of the CD drawer closing on you)
@@ -207,5 +215,5 @@
     what they are, simply cat /mnt/etc/fstab after mounting the root
     partition.
 
-$DragonFly: src/nrelease/root/README,v 1.6 2004/01/18 19:13:09 dillon Exp $
+$DragonFly: src/nrelease/root/README,v 1.7 2004/01/23 00:36:22 dillon Exp $
 
