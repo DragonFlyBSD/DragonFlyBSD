@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/tcp_sack.c,v 1.1 2004/11/14 00:49:08 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_sack.c,v 1.2 2005/03/09 06:54:34 hsu Exp $
  */
 
 /*
@@ -437,6 +437,23 @@ tcp_sack_has_sacked(struct scoreboard *scb, u_int amount)
 			return TRUE;
 	}
 	return FALSE;
+}
+
+/*
+ * Number of bytes SACKed below seq.
+ */
+int
+tcp_sack_bytes_below(struct scoreboard *scb, tcp_seq seq)
+{
+	struct sackblock *sb;
+	int bytes_sacked = 0;
+
+	sb = TAILQ_FIRST(&scb->sackblocks);
+	while (sb && SEQ_GT(seq, sb->sblk_start)) {
+		bytes_sacked += seq_min(seq, sb->sblk_end) - sb->sblk_start;
+		sb = TAILQ_NEXT(sb, sblk_list);
+	}
+	return bytes_sacked;
 }
 
 /*

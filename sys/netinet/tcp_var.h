@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.29 2005/03/04 05:57:50 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.30 2005/03/09 06:54:34 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -605,6 +605,7 @@ void	 tcp_respond (struct tcpcb *, void *,
 	    struct tcphdr *, struct mbuf *, tcp_seq, tcp_seq, int);
 struct rtentry *
 	 tcp_rtlookup (struct in_conninfo *);
+int	 tcp_sack_bytes_below(struct scoreboard *scb, tcp_seq seq);
 void	 tcp_sack_cleanup(struct scoreboard *scb);
 int	 tcp_sack_ndsack_blocks(struct raw_sackblock *blocks,
 	    const int numblocks, tcp_seq snd_una);

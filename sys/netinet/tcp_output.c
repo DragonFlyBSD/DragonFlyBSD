@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.24 2005/02/04 01:49:30 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.25 2005/03/09 06:54:34 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -154,6 +154,7 @@ tcp_output(tp)
 	struct inpcb * const inp = tp->t_inpcb;
 	struct socket *so = inp->inp_socket;
 	long len, recvwin, sendwin;
+	int nsacked = 0;
 	int off, flags, error;
 	struct mbuf *m;
 	struct ip *ip = NULL;
@@ -192,15 +193,23 @@ tcp_output(tp)
 	else
 		tp->t_flags &= ~TF_LASTIDLE;
 
+	if (TCP_DO_SACK(tp) && tp->snd_nxt != tp->snd_max &&
+	    !IN_FASTRECOVERY(tp))
+		nsacked = tcp_sack_bytes_below(&tp->scb, tp->snd_nxt);
+
 again:
 	/* Make use of SACK information when slow-starting after a RTO. */
 	if (TCP_DO_SACK(tp) && tp->snd_nxt != tp->snd_max &&
-	    !IN_FASTRECOVERY(tp))
+	    !IN_FASTRECOVERY(tp)) {
+		tcp_seq old_snd_nxt = tp->snd_nxt;
+
 		tcp_sack_skip_sacked(&tp->scb, &tp->snd_nxt);
+		nsacked += tp->snd_nxt - old_snd_nxt;
+	}
 
 	sendalot = FALSE;
 	off = tp->snd_nxt - tp->snd_una;
-	sendwin = min(tp->snd_wnd, tp->snd_cwnd);
+	sendwin = min(tp->snd_wnd, tp->snd_cwnd + nsacked);
 	sendwin = min(sendwin, tp->snd_bwnd);
 
 	flags = tcp_outflags[tp->t_state];
