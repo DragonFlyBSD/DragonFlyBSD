@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.42 2005/01/06 13:18:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.43 2005/01/08 13:13:22 okumoto Exp $
  */
 
 /*-
@@ -78,6 +78,7 @@
 #include "job.h"
 #include "lst.h"
 #include "make.h"
+#include "nonints.h"
 #include "parse.h"
 #include "pathnames.h"
 #include "str.h"
