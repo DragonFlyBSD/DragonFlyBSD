@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/debug.c,v 1.2 1999/08/28 00:10:09 peter Exp $
- * $DragonFly: src/libexec/rtld-elf/debug.c,v 1.3 2005/02/03 23:28:24 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/debug.c,v 1.4 2005/03/30 00:53:59 joerg Exp $
  */
 
 /*
@@ -108,7 +108,7 @@ dump_Elf_Rel (Obj_Entry *obj, const Elf_Rel *rel0, u_long relsize)
     Elf_Addr *dstaddr;
 
     printf("%s", rel_header);
-    rellim = (const Elf_Rel *)((char *)rel0 + relsize);
+    rellim = (const Elf_Rel *)((const char *)rel0 + relsize);
     for (rel = rel0; rel < rellim; rel++) {
 	dstaddr = (Elf_Addr *)(obj->relocbase + rel->r_offset);
         sym = obj->symtab + ELF_R_SYM(rel->r_info);
@@ -130,7 +130,7 @@ dump_Elf_Rela (Obj_Entry *obj, const Elf_Rela *rela0, u_long relasize)
     Elf_Addr *dstaddr;
 
     printf("%s", rel_header);
-    relalim = (const Elf_Rela *)((char *)rela0 + relasize);
+    relalim = (const Elf_Rela *)((const char *)rela0 + relasize);
     for (rela = rela0; rela < relalim; rela++) {
 	dstaddr = (Elf_Addr *)(obj->relocbase + rela->r_offset);
         sym = obj->symtab + ELF_R_SYM(rela->r_info);
