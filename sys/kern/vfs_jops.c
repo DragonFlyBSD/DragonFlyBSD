@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_jops.c,v 1.5 2004/12/31 23:48:08 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_jops.c,v 1.6 2005/01/09 03:04:51 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -104,6 +104,10 @@ static int journal_install_vfs_journal(struct mount *mp, struct file *fp,
 static int journal_remove_vfs_journal(struct mount *mp,
 			    const struct mountctl_remove_journal *info);
 static int journal_resync_vfs_journal(struct mount *mp, const void *ctl);
+static int journal_status_vfs_journal(struct mount *mp,
+		       const struct mountctl_status_journal *info,
+		       struct mountctl_journal_ret_status *rstat,
+		       int buflen, int *res);
 static void journal_thread(void *info);
 
 static void *journal_reserve(struct journal *jo, 
@@ -197,7 +201,8 @@ journal_mountctl(struct vop_mountctl_args *ap)
 	    break;
 	case MOUNTCTL_REMOVE_VFS_JOURNAL:
 	case MOUNTCTL_RESYNC_VFS_JOURNAL:
-	    error = EINVAL;
+	case MOUNTCTL_STATUS_VFS_JOURNAL:
+	    error = ENOENT;
 	    break;
 	default:
 	    error = EOPNOTSUPP;
@@ -225,6 +230,14 @@ journal_mountctl(struct vop_mountctl_args *ap)
 	    if (ap->a_ctllen != 0)
 		error = EINVAL;
 	    error = journal_resync_vfs_journal(mp, ap->a_ctl);
+	    break;
+	case MOUNTCTL_STATUS_VFS_JOURNAL:
+	    if (ap->a_ctllen != sizeof(struct mountctl_status_journal))
+		error = EINVAL;
+	    if (error == 0) {
+		error = journal_status_vfs_journal(mp, ap->a_ctl, 
+					ap->a_buf, ap->a_buflen, ap->a_res);
+	    }
 	    break;
 	default:
 	    error = EOPNOTSUPP;
@@ -378,6 +391,50 @@ journal_resync_vfs_journal(struct mount *mp, const void *ctl)
     return(EINVAL);
 }
 
+static int
+journal_status_vfs_journal(struct mount *mp, 
+		       const struct mountctl_status_journal *info,
+		       struct mountctl_journal_ret_status *rstat,
+		       int buflen, int *res)
+{
+    struct journal *jo;
+    int error = 0;
+    int index;
+
+    index = 0;
+    *res = 0;
+    TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
+	if (info->index == MC_JOURNAL_INDEX_ID) {
+	    if (bcmp(jo->id, info->id, sizeof(jo->id)) != 0)
+		continue;
+	} else if (info->index >= 0) {
+	    if (info->index < index)
+		continue;
+	} else if (info->index != MC_JOURNAL_INDEX_ALL) {
+	    continue;
+	}
+	if (buflen < sizeof(*rstat)) {
+	    if (*res)
+		rstat[-1].flags |= MC_JOURNAL_STATUS_MORETOCOME;
+	    else
+		error = EINVAL;
+	    break;
+	}
+	bzero(rstat, sizeof(*rstat));
+	rstat->recsize = sizeof(*rstat);
+	bcopy(jo->id, rstat->id, sizeof(jo->id));
+	rstat->index = index;
+	rstat->membufsize = jo->fifo.size;
+	rstat->membufused = jo->fifo.xindex - jo->fifo.rindex;
+	rstat->membufiopend = jo->fifo.windex - jo->fifo.rindex;
+	rstat->bytessent = jo->total_acked;
+	++rstat;
+	++index;
+	*res += sizeof(*rstat);
+	buflen -= sizeof(*rstat);
+    }
+    return(error);
+}
 /*
  * The per-journal worker thread is responsible for writing out the
  * journal's FIFO to the target stream.
@@ -465,6 +522,7 @@ journal_thread(void *info)
 	 */
 	jo->fifo.rindex += bytes;
 	jo->fifo.xindex += bytes;
+	jo->total_acked += bytes;
 	if (jo->flags & MC_JOURNAL_WWAIT) {
 	    jo->flags &= ~MC_JOURNAL_WWAIT;	/* XXX hysteresis */
 	    wakeup(&jo->fifo.windex);

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.52 2004/12/29 02:40:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.53 2005/01/09 03:04:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -706,9 +706,9 @@ mountctl(struct mountctl_args *uap)
 	/*
 	 * Argument length checks
 	 */
-	if (uap->ctllen < 0 || uap->ctllen > MAXPATHLEN)
+	if (uap->ctllen < 0 || uap->ctllen > 1024)
 		return (EINVAL);
-	if (uap->buflen < 0 || uap->buflen > MAXPATHLEN)
+	if (uap->buflen < 0 || uap->buflen > 16 * 1024)
 		return (EINVAL);
 	if (uap->path == NULL)
 		return (EINVAL);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/mountctl.h,v 1.4 2004/12/31 23:48:06 dillon Exp $
+ * $DragonFly: src/sys/sys/mountctl.h,v 1.5 2005/01/09 03:04:53 dillon Exp $
  */
 
 /*
@@ -47,12 +47,12 @@
 #define MOUNTCTL_INSTALL_VFS_JOURNAL	1
 #define MOUNTCTL_REMOVE_VFS_JOURNAL	2
 #define MOUNTCTL_RESYNC_VFS_JOURNAL	3
-#define MOUNTCTL_JOURNAL_VFS_STATUS	4
+#define MOUNTCTL_STATUS_VFS_JOURNAL	4
 
 #define MOUNTCTL_INSTALL_BLK_JOURNAL	8
 #define MOUNTCTL_REMOVE_BLK_JOURNAL	9
 #define MOUNTCTL_RESYNC_BLK_JOURNAL	10
-#define MOUNTCTL_JOURNAL_BLK_STATUS	11
+#define MOUNTCTL_STATUS_BLK_JOURNAL	11
 
 struct mountctl_install_journal {
 	char	id[JIDMAX];
@@ -83,25 +83,35 @@ struct mountctl_remove_journal {
 #define MC_JOURNAL_REMOVE_TRASH		0x00000001	/* data -> trash */
 #define MC_JOURNAL_REMOVE_ASSYNC	0x00000002	/* asynchronous op */
 
-struct mountctl_journal_status {
+struct mountctl_status_journal {
 	char	id[JIDMAX];
+	int	index;
+};
+
+#define MC_JOURNAL_INDEX_ALL		-2
+#define MC_JOURNAL_INDEX_ID		-1
+
+struct mountctl_journal_ret_status {
+	int	recsize;
+	char	id[JIDMAX];
+	int	index;
 	int	flags;
 	int64_t	membufsize;
 	int64_t	membufused;
-	int64_t	membufqueued;
+	int64_t	membufiopend;
 	int64_t	swapbufsize;
 	int64_t	swapbufused;
-	int64_t	swapbufqueued;
+	int64_t	swapbufiopend;
 	int64_t transidstart;
 	int64_t transidcurrent;
-	int64_t transidqueued;
+	int64_t transidiopend;
 	int64_t transidacked;
 	int64_t bytessent;
 	int64_t bytesacked;
 	struct timeval lastack;
 };
 
-#define MC_JOURNAL_STATUS_NEXT		0x80000000	/* find next id */
+#define MC_JOURNAL_STATUS_MORETOCOME	0x00000001
 
 /*
  * Physical file format (binary)
@@ -354,6 +364,7 @@ struct journal {
 	char		id[JIDMAX];
 	int		flags;		/* journaling flags */
 	int64_t		transid;
+	int64_t		total_acked;
 	struct journal_memfifo fifo;
 	struct thread	thread;
 };
