@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
- * $DragonFly: src/sys/net/if_atmsubr.c,v 1.5 2003/09/15 23:38:13 hsu Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.6 2003/09/16 05:03:13 hsu Exp $
  */
 
 /*
@@ -299,7 +299,7 @@ atm_input(ifp, ah, m, rxhand)
 		}
 	}
 
-	netisr_dipatch(isr, m);
+	netisr_dispatch(isr, m);
 }
 
 /*

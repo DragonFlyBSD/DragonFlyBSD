@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.4 2003/09/03 14:30:57 hmp Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.5 2003/09/16 05:03:13 hsu Exp $
  */
 
 #include "opt_atalk.h"
@@ -254,12 +254,13 @@ aarpresolve( ac, m, destsat, desten )
 }
 
 void
-aarpinput( ac, m )
-    struct arpcom	*ac;
+aarpintr( m )
     struct mbuf		*m;
 {
     struct arphdr	*ar;
+    struct arpcom	*ac;
 
+    ac = (struct arpcom *)m->m_pkthdr.rcvif;
     if ( ac->ac_if.if_flags & IFF_NOARP )
 	goto out;
 

@@ -2,7 +2,7 @@
  * Copyright (c) 1990,1994 Regents of The University of Michigan.
  * All Rights Reserved.  See COPYRIGHT.
  *
- * $DragonFly: src/sys/netproto/atalk/ddp_usrreq.c,v 1.4 2003/08/07 21:17:33 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_usrreq.c,v 1.5 2003/09/16 05:03:13 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -14,6 +14,7 @@
 #include <sys/socketvar.h>
 #include <sys/protosw.h>
 #include <net/if.h>
+#include <net/netisr.h>
 #include <net/route.h>
 
 #include "at.h"
@@ -35,6 +36,7 @@ struct ddpcb	*ddpcb = NULL;
 static u_long	ddp_sendspace = DDP_MAXSZ; /* Max ddp size + 1 (ddp_type) */
 static u_long	ddp_recvspace = 10 * ( 587 + sizeof( struct sockaddr_at ));
 
+static struct ifqueue atintrq1, atintrq2, aarpintrq;
 
 static int
 ddp_attach(struct socket *so, int proto, struct thread *td)
@@ -547,8 +549,12 @@ at_setsockaddr(struct socket *so, struct sockaddr **nam)
 void 
 ddp_init(void )
 {
-    atintrq1.ifq_maxlen = IFQ_MAXLEN;
-    atintrq2.ifq_maxlen = IFQ_MAXLEN;
+	atintrq1.ifq_maxlen = IFQ_MAXLEN;
+	atintrq2.ifq_maxlen = IFQ_MAXLEN;
+	aarpintrq.ifq_maxlen = IFQ_MAXLEN;
+	netisr_register(NETISR_ATALK1, at1intr, &atintrq1);
+	netisr_register(NETISR_ATALK2, at2intr, &atintrq2);
+	netisr_register(NETISR_AARP, aarpintr, &aarpintrq);
 }
 
 #if 0

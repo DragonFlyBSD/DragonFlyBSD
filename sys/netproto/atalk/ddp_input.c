@@ -3,13 +3,12 @@
  * All Rights Reserved.  See COPYRIGHT.
  *
  * $FreeBSD: src/sys/netatalk/ddp_input.c,v 1.12 2000/02/13 03:31:58 peter Exp $
- * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.4 2003/09/15 23:38:14 hsu Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.5 2003/09/16 05:03:13 hsu Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <net/netisr.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -35,7 +34,7 @@ static void     ddp_input(struct mbuf *, struct ifnet *, struct elaphdr *, int);
 /*
  * Could probably merge these two code segments a little better...
  */
-static void
+void
 at2intr(struct mbuf *m)
 {
 
@@ -46,7 +45,7 @@ at2intr(struct mbuf *m)
 	return;
 }
 
-static void
+void
 at1intr(struct mbuf *m)
 {
 	struct elaphdr *elhp, elh;
@@ -73,15 +72,6 @@ at1intr(struct mbuf *m)
 	}
 	return;
 }
-
-static void
-netisr_atalk_setup(void *dummy __unused)
-{
-	
-	netisr_register(NETISR_ATALK1, at1intr, &atintrq1);
-	netisr_register(NETISR_ATALK2, at2intr, &atintrq2);
-}
-SYSINIT(atalk_setup, SI_SUB_CPU, SI_ORDER_ANY, netisr_atalk_setup, NULL);
 
 static void
 ddp_input( m, ifp, elh, phase )

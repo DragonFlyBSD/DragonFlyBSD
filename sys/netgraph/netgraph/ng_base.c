@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.7 2003/09/15 23:38:14 hsu Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.8 2003/09/16 05:03:13 hsu Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -84,7 +84,7 @@ static int	ng_generic_msg(node_p here, struct ng_mesg *msg,
 			const char *retaddr, struct ng_mesg ** resp);
 static ng_ID_t	ng_decodeidname(const char *name);
 static int	ngb_mod_event(module_t mod, int event, void *data);
-static void	ngintr(void);
+static void	ngintr(struct mbuf *);
 
 /* Our own netgraph malloc type */
 MALLOC_DEFINE(M_NETGRAPH, "netgraph", "netgraph structures and ctrl messages");
@@ -1982,11 +1982,10 @@ ng_queue_msg(node_p here, struct ng_mesg *msg, const char *address)
  * Should be running at splnet.
  */
 static void
-ngintr(void)
+ngintr(struct mbuf *m)
 {
 	hook_p  hook;
 	struct ng_queue_entry *ngq;
-	struct mbuf *m;
 	meta_p  meta;
 	void   *retaddr;
 	struct ng_mesg *msg;

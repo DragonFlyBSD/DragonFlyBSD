@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.h,v 1.2 1999/08/28 00:48:36 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.h,v 1.3 2003/08/23 10:06:21 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.h,v 1.4 2003/09/16 05:03:13 hsu Exp $
  *
  */
 
@@ -382,7 +382,6 @@ typedef	atm_intr_t	*atm_intr_func_t; /* Pointer to callback function */
 #endif
 #ifdef __FreeBSD__
 #define	NETISR_ATM	AF_ATM
-#define	SCHED_ATM	schednetisr(NETISR_ATM) 
 #endif
 #ifdef sgi
 extern	int	atm_intr_index;

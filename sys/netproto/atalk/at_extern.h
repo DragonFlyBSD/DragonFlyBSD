@@ -1,5 +1,5 @@
 /*
- * $DragonFly: src/sys/netproto/atalk/at_extern.h,v 1.3 2003/08/23 10:06:21 rob Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_extern.h,v 1.4 2003/09/16 05:03:13 hsu Exp $
  */
 struct mbuf;
 struct sockaddr_at;
@@ -10,7 +10,6 @@ extern int	aarpresolve	(struct arpcom *,
 					struct mbuf *,
 					struct sockaddr_at *,
 					u_char *);
-extern void	aarpinput	( struct arpcom *, struct mbuf *);
 extern int	at_broadcast	(struct sockaddr_at  *);
 #endif
 
@@ -22,6 +21,9 @@ struct ifnet;
 struct proc;
 struct socket;
 
+extern void	aarpintr	(struct mbuf *);
+extern void	at1intr		(struct mbuf *);
+extern void	at2intr		(struct mbuf *);
 extern void	aarp_clean	(void);
 extern int	at_control	( struct socket *so,
 					u_long cmd,
@@ -43,5 +45,3 @@ extern struct ddpcb  *ddp_search (struct sockaddr_at *,
 #ifdef _NET_ROUTE_H_
 int     ddp_route( struct mbuf *m, struct route *ro);
 #endif
-
-

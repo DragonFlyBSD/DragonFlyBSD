@@ -32,7 +32,7 @@
  *
  *	@(#)ns_input.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_input.c,v 1.13 2000/02/13 03:32:04 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.6 2003/09/15 23:38:15 hsu Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.7 2003/09/16 05:03:13 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -114,13 +114,12 @@ nsintr(struct mbuf *m)
 	struct idp *idp;
 	struct nspcb *nsp;
 	int i;
-	int len, s, error;
+	int len, error;
 	char oddpacketp;
 
 	/*
 	 * Get IDP header in first mbuf.
 	 */
-	splx(s);
 	nsintr_getpck++;
 	if ((m->m_flags & M_EXT || m->m_len < sizeof (struct idp)) &&
 	    (m = m_pullup(m, sizeof (struct idp))) == 0) {
