@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.49 2004/12/17 00:18:07 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.50 2004/12/24 05:00:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -667,6 +667,119 @@ quotactl(struct quotactl_args *uap)
 				    SCARG(uap, arg), nd.nl_td);
 	}
 	nlookup_done(&nd);
+	return (error);
+}
+
+/*
+ * mountctl(char *path, int op, const void *ctl, int ctllen,
+ *		void *buf, int buflen)
+ *
+ * This function operates on a mount point and executes the specified
+ * operation using the specified control data, and possibly returns data.
+ *
+ * The actual number of bytes stored in the result buffer is returned, 0
+ * if none, otherwise an error is returned.
+ */
+/* ARGSUSED */
+int
+mountctl(struct mountctl_args *uap)
+{
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	void *ctl = NULL;
+	void *buf = NULL;
+	char *path = NULL;
+	int error;
+
+	/*
+	 * Sanity and permissions checks.  We must be root.
+	 */
+	KKASSERT(p);
+	if (p->p_ucred->cr_prison != NULL)
+		return (EPERM);
+	if ((error = suser(td)) != 0)
+		return (error);
+
+	/*
+	 * Argument length checks
+	 */
+	if (uap->ctllen < 0 || uap->ctllen > MAXPATHLEN)
+		return (EINVAL);
+	if (uap->buflen < 0 || uap->buflen > MAXPATHLEN)
+		return (EINVAL);
+	if (uap->path == NULL)
+		return (EINVAL);
+
+	/*
+	 * Allocate the necessary buffers and copyin data
+	 */
+	path = zalloc(namei_zone);
+	error = copyinstr(uap->path, path, MAXPATHLEN, NULL);
+	if (error)
+		goto done;
+
+	if (uap->ctllen) {
+		ctl = malloc(uap->ctllen + 1, M_TEMP, M_WAITOK|M_ZERO);
+		error = copyin(uap->ctl, ctl, uap->ctllen);
+		if (error)
+			goto done;
+	}
+	if (uap->buflen)
+		buf = malloc(uap->buflen + 1, M_TEMP, M_WAITOK|M_ZERO);
+
+	/*
+	 * Execute the internal kernel function and clean up.
+	 */
+	error = kern_mountctl(path, uap->op, ctl, uap->ctllen, buf, uap->buflen, &uap->sysmsg_result);
+	if (error == 0 && uap->sysmsg_result > 0)
+		error = copyout(buf, uap->buf, uap->sysmsg_result);
+done:
+	if (path)
+		zfree(namei_zone, path);
+	if (ctl)
+		free(ctl, M_TEMP);
+	if (buf)
+		free(buf, M_TEMP);
+	return (error);
+}
+
+/*
+ * Execute a mount control operation by resolving the path to a mount point
+ * and calling vop_mountctl().  
+ */
+int
+kern_mountctl(const char *path, int op, const void *ctl, int ctllen, 
+		void *buf, int buflen, int *res)
+{
+	struct thread *td = curthread;
+	struct vnode *vp;
+	struct mount *mp;
+	struct nlookupdata nd;
+	int error;
+
+	*res = 0;
+	vp = NULL;
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
+	nlookup_done(&nd);
+	if (error)
+		return (error);
+
+	mp = vp->v_mount;
+
+	/*
+	 * Must be the root of the filesystem
+	 */
+	if ((vp->v_flag & VROOT) == 0) {
+		vput(vp);
+		return (EINVAL);
+	}
+	error = vop_mountctl(mp->mnt_vn_use_ops, op, ctl, ctllen, 
+				buf, buflen, res);
+	vput(vp);
 	return (error);
 }
 

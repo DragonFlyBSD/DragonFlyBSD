@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.1 2004/12/17 00:18:07 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.2 2004/12/24 05:00:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -56,6 +56,7 @@
 
 static struct vnodeopv_entry_desc journal_vnodeop_entries[] = {
 	{ &vop_default_desc,		vop_journal_operate_ap },
+/*	{ &vop_mountctl_desc,		 NULL },*/
 	{ NULL, NULL }
 };
 

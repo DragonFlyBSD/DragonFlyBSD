@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.10 2004/12/17 00:18:09 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.11 2004/12/24 05:00:22 dillon Exp $
  */
 
 /*
@@ -470,10 +470,14 @@ struct vop_getvobject_args {
 	struct vm_object **a_objpp;
 };
 
-struct vop_vfsset_args {
+struct vop_mountctl_args {
 	struct vop_generic_args a_head;
 	int a_op;
-	const char *a_opstr;
+	const void *a_ctl;
+	int a_ctllen;
+	void *a_buf;
+	int a_buflen;
+	int *a_res;
 };
 
 /*
@@ -632,7 +636,7 @@ struct vop_ops {
 	int	(*vop_createvobject)(struct vop_createvobject_args *);
 	int	(*vop_destroyvobject)(struct vop_destroyvobject_args *);
 	int	(*vop_getvobject)(struct vop_getvobject_args *);
-	int	(*vop_vfsset)(struct vop_vfsset_args *);
+	int	(*vop_mountctl)(struct vop_mountctl_args *);
 
 	int	(*vop_nresolve)(struct vop_nresolve_args *);
 	int	(*vop_nlookupdotdot)(struct vop_nlookupdotdot_args *);
@@ -658,7 +662,7 @@ struct vop_ops {
 #define VVF_SUIDDIR		0x0080		/* FUTURE */
 
 /*
- * vop_vfsset() operations
+ * vop_mountctl() operations
  */
 #define VFSSET_DETACH		0
 #define VFSSET_ATTACH		1
@@ -721,7 +725,7 @@ union vop_args_union {
 	struct vop_createvobject_args vu_createvobject;
 	struct vop_destroyvobject_args vu_destroyvobject;
 	struct vop_getvobject_args vu_getvobject;
-	struct vop_vfsset_args vu_vfsset;
+	struct vop_mountctl_args vu_mountctl;
 
 	struct vop_nresolve_args vu_nresolve;
 	struct vop_nlookupdotdot_args vu_nlookupdotdot;
@@ -846,7 +850,7 @@ int vop_createvobject(struct vop_ops *ops,
 int vop_destroyvobject(struct vop_ops *ops, struct vnode *vp);
 int vop_getvobject(struct vop_ops *ops,
 		struct vnode *vp, struct vm_object **objpp);
-int vop_vfsset(struct vop_ops *ops, int op, const char *opstr);
+int vop_mountctl(struct vop_ops *ops, int op, const void *ctl, int ctllen, void *buf, int buflen, int *res);
 
 int vop_nresolve(struct vop_ops *ops, struct namecache *ncp,
 		struct ucred *cred);
@@ -934,7 +938,7 @@ int vop_setextattr_ap(struct vop_setextattr_args *ap);
 int vop_createvobject_ap(struct vop_createvobject_args *ap);
 int vop_destroyvobject_ap(struct vop_destroyvobject_args *ap);
 int vop_getvobject_ap(struct vop_getvobject_args *ap);
-int vop_vfsset_ap(struct vop_vfsset_args *ap);
+int vop_mountctl_ap(struct vop_mountctl_args *ap);
 
 int vop_nresolve_ap(struct vop_nresolve_args *ap);
 int vop_nlookupdotdot_ap(struct vop_nlookupdotdot_args *ap);
@@ -1004,7 +1008,7 @@ extern struct vnodeop_desc vop_setextattr_desc;
 extern struct vnodeop_desc vop_createvobject_desc;
 extern struct vnodeop_desc vop_destroyvobject_desc;
 extern struct vnodeop_desc vop_getvobject_desc;
-extern struct vnodeop_desc vop_vfsset_desc;
+extern struct vnodeop_desc vop_mountctl_desc;
 
 extern struct vnodeop_desc vop_nresolve_desc;
 extern struct vnodeop_desc vop_nlookupdotdot_desc;

@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.13 2004/11/23 06:32:32 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.14 2004/12/24 05:00:17 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -630,3 +630,4 @@
 465	STD	BSD	{ int exec_sys_register(void *entry); }
 466	STD	BSD	{ int exec_sys_unregister(int id); }
 467	STD	BSD	{ int sys_checkpoint(int type, int fd, pid_t pid, int retval); }
+468	STD	BSD	{ int mountctl(char *path, int op, const void *ctl, int ctllen, void *buf, int buflen); }

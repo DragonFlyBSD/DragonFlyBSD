@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.11 2004/12/17 00:18:07 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.12 2004/12/24 05:00:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -279,7 +279,7 @@ VNODEOP_DESC_INIT_VP_CRED(setextattr);
 VNODEOP_DESC_INIT_VP(createvobject);
 VNODEOP_DESC_INIT_VP(destroyvobject);
 VNODEOP_DESC_INIT_VP(getvobject);
-VNODEOP_DESC_INIT_SIMPLE(vfsset);
+VNODEOP_DESC_INIT_SIMPLE(mountctl);
 
 VNODEOP_DESC_INIT_NCP_CRED(nresolve);
 VNODEOP_DESC_INIT_DVP_VPP_CRED(nlookupdotdot);
@@ -1176,17 +1176,21 @@ vop_getvobject(struct vop_ops *ops, struct vnode *vp, struct vm_object **objpp)
 }
 
 int
-vop_vfsset(struct vop_ops *ops, int op, const char *opstr)
+vop_mountctl(struct vop_ops *ops, int op, const void *ctl, int ctllen, void *buf, int buflen, int *res)
 {
-	struct vop_vfsset_args ap;
+	struct vop_mountctl_args ap;
 	int error;
 
-	ap.a_head.a_desc = &vop_vfsset_desc;
+	ap.a_head.a_desc = &vop_mountctl_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_op = op;
-	ap.a_opstr = opstr;
+	ap.a_ctl = ctl;
+	ap.a_ctllen = ctllen;
+	ap.a_buf = buf;
+	ap.a_buflen = buflen;
+	ap.a_res = res;
 
-	DO_OPS(ops, error, &ap, vop_vfsset);
+	DO_OPS(ops, error, &ap, vop_mountctl);
 	return(error);
 }
 
@@ -1972,11 +1976,11 @@ vop_getvobject_ap(struct vop_getvobject_args *ap)
 }
 
 int
-vop_vfsset_ap(struct vop_vfsset_args *ap)
+vop_mountctl_ap(struct vop_mountctl_args *ap)
 {
 	int error;
 
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_vfsset);
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_mountctl);
 	return(error);
 }
 
