@@ -93,7 +93,7 @@
 .nr % 0
 .rr F
 .\}
-.TH DSA_generate_parameters 3 "0.9.7d" "2/Sep/2004" "OpenSSL"
+.TH OPENSSL_config 3 "0.9.7d" "2/Sep/2004" "OpenSSL"
 .UC
 .if n .hy 0
 .if n .na
@@ -188,85 +188,76 @@
 .\}
 .rm #[ #] #H #V #F C
 .SH "NAME"
-DSA_generate_parameters \- generate DSA parameters
+OPENSSL_config, OPENSSL_no_config \- simple OpenSSL configuration functions
 .SH "SYNOPSIS"
 .PP
 .Vb 1
-\& #include <openssl/dsa.h>
+\& #include <openssl/conf.h>
 .Ve
-.Vb 3
-\& DSA *DSA_generate_parameters(int bits, unsigned char *seed,
-\&                int seed_len, int *counter_ret, unsigned long *h_ret,
-\&                void (*callback)(int, int, void *), void *cb_arg);
+.Vb 2
+\& void OPENSSL_config(const char *config_name);
+\& void OPENSSL_no_config(void);
 .Ve
 .SH "DESCRIPTION"
-\fIDSA_generate_parameters()\fR generates primes p and q and a generator g
-for use in the DSA.
+\fIOPENSSL_config()\fR configures OpenSSL using the standard \fBopenssl.cnf\fR
+configuration file name using \fBconfig_name\fR. If \fBconfig_name\fR is NULL then
+the default name \fBopenssl_conf\fR will be used. Any errors are ignored. Further
+calls to \fIOPENSSL_config()\fR will have no effect. The configuration file format
+is documented in the conf(5) manual page.
 .PP
-\fBbits\fR is the length of the prime to be generated; the DSS allows a
-maximum of 1024 bits.
+\fIOPENSSL_no_config()\fR disables configuration. If called before \fIOPENSSL_config()\fR
+no configuration takes place.
+.SH "NOTES"
+It is \fBstrongly\fR recommended that \fBall\fR new applications call \fIOPENSSL_config()\fR
+or the more sophisticated functions such as \fICONF_modules_load()\fR during
+initialization (that is before starting any threads). By doing this
+an application does not need to keep track of all configuration options
+and some new functionality can be supported automatically.
 .PP
-If \fBseed\fR is \fBNULL\fR or \fBseed_len\fR < 20, the primes will be
-generated at random. Otherwise, the seed is used to generate
-them. If the given seed does not yield a prime q, a new random
-seed is chosen and placed at \fBseed\fR.
+It is also possible to automatically call \fIOPENSSL_config()\fR when an application
+calls \fIOPENSSL_add_all_algorithms()\fR by compiling an application with the
+preprocessor symbol \fBOPENSSL_LOAD_CONF\fR #define'd. In this way configuration
+can be added without source changes.
 .PP
-\fIDSA_generate_parameters()\fR places the iteration count in
-*\fBcounter_ret\fR and a counter used for finding a generator in
-*\fBh_ret\fR, unless these are \fBNULL\fR.
+The environment variable \fBOPENSSL_CONFIG\fR can be set to specify the location
+of the configuration file.
+ 
+Currently ASN1 OBJECTs and ENGINE configuration can be performed future
+versions of OpenSSL will add new configuration options.
 .PP
-A callback function may be used to provide feedback about the progress
-of the key generation. If \fBcallback\fR is not \fBNULL\fR, it will be
-called as follows:
-.Ip "\(bu" 4
-When a candidate for q is generated, \fBcallback(0, m++, cb_arg)\fR is called
-(m is 0 for the first candidate).
-.Ip "\(bu" 4
-When a candidate for q has passed a test by trial division,
-\fBcallback(1, \-1, cb_arg)\fR is called.
-While a candidate for q is tested by Miller-Rabin primality tests,
-\fBcallback(1, i, cb_arg)\fR is called in the outer loop
-(once for each witness that confirms that the candidate may be prime);
-i is the loop counter (starting at 0).
-.Ip "\(bu" 4
-When a prime q has been found, \fBcallback(2, 0, cb_arg)\fR and
-\fBcallback(3, 0, cb_arg)\fR are called.
-.Ip "\(bu" 4
-Before a candidate for p (other than the first) is generated and tested,
-\fBcallback(0, counter, cb_arg)\fR is called.
-.Ip "\(bu" 4
-When a candidate for p has passed the test by trial division,
-\fBcallback(1, \-1, cb_arg)\fR is called.
-While it is tested by the Miller-Rabin primality test,
-\fBcallback(1, i, cb_arg)\fR is called in the outer loop
-(once for each witness that confirms that the candidate may be prime).
-i is the loop counter (starting at 0).
-.Ip "\(bu" 4
-When p has been found, \fBcallback(2, 1, cb_arg)\fR is called.
-.Ip "\(bu" 4
-When the generator has been found, \fBcallback(3, 1, cb_arg)\fR is called.
-.SH "RETURN VALUE"
-\fIDSA_generate_parameters()\fR returns a pointer to the DSA structure, or
-\fBNULL\fR if the parameter generation fails. The error codes can be
-obtained by ERR_get_error(3).
-.SH "BUGS"
-Seed lengths > 20 are not supported.
+There are several reasons why calling the OpenSSL configuration routines is
+advisable. For example new ENGINE functionality was added to OpenSSL 0.9.7.
+In OpenSSL 0.9.7 control functions can be supported by ENGINEs, this can be
+used (among other things) to load dynamic ENGINEs from shared libraries (DSOs).
+However very few applications currently support the control interface and so
+very few can load and use dynamic ENGINEs. Equally in future more sophisticated
+ENGINEs will require certain control operations to customize them. If an
+application calls \fIOPENSSL_config()\fR it doesn't need to know or care about
+ENGINE control operations because they can be performed by editing a
+configuration file.
+.PP
+Applications should free up configuration at application closedown by calling
+\fICONF_modules_free()\fR.
+.SH "RESTRICTIONS"
+The \fIOPENSSL_config()\fR function is designed to be a very simple \*(L"call it and
+forget it\*(R" function. As a result its behaviour is somewhat limited. It ignores
+all errors silently and it can only load from the standard configuration file
+location for example.
+.PP
+It is however \fBmuch\fR better than nothing. Applications which need finer
+control over their configuration functionality should use the configuration
+functions such as \fICONF_load_modules()\fR directly.
+.SH "RETURN VALUES"
+Neither \fIOPENSSL_config()\fR nor \fIOPENSSL_no_config()\fR return a value.
 .SH "SEE ALSO"
-dsa(3), ERR_get_error(3), rand(3),
-DSA_free(3)
+conf(5), CONF_load_modules_file(3),
+the \fICONF_modules_free(3),CONF_modules_free(3)\fR manpage
 .SH "HISTORY"
-\fIDSA_generate_parameters()\fR appeared in SSLeay 0.8. The \fBcb_arg\fR
-argument was added in SSLeay 0.9.0.
-In versions up to OpenSSL 0.9.4, \fBcallback(1, ...)\fR was called
-in the inner loop of the Miller-Rabin test whenever it reached the
-squaring step (the parameters to \fBcallback\fR did not reveal how many
-witnesses had been tested); since OpenSSL 0.9.5, \fBcallback(1, ...)\fR
-is called as in \fIBN_is_prime\fR\|(3), i.e. once for each witness.
-=cut
+\fIOPENSSL_config()\fR and \fIOPENSSL_no_config()\fR first appeared in OpenSSL 0.9.7
 
 .rn }` ''
-.IX Title "DSA_generate_parameters 3"
-.IX Name "DSA_generate_parameters - generate DSA parameters"
+.IX Title "OPENSSL_config 3"
+.IX Name "OPENSSL_config, OPENSSL_no_config - simple OpenSSL configuration functions"
 
 .IX Header "NAME"
 
@@ -274,23 +265,11 @@ is called as in \fIBN_is_prime\fR\|(3), i.e. once for each witness.
 
 .IX Header "DESCRIPTION"
 
-.IX Item "\(bu"
+.IX Header "NOTES"
 
-.IX Item "\(bu"
+.IX Header "RESTRICTIONS"
 
-.IX Item "\(bu"
-
-.IX Item "\(bu"
-
-.IX Item "\(bu"
-
-.IX Item "\(bu"
-
-.IX Item "\(bu"
-
-.IX Header "RETURN VALUE"
-
-.IX Header "BUGS"
+.IX Header "RETURN VALUES"
 
 .IX Header "SEE ALSO"
 

@@ -93,7 +93,7 @@
 .nr % 0
 .rr F
 .\}
-.TH DSA_generate_parameters 3 "0.9.7d" "2/Sep/2004" "OpenSSL"
+.TH OPENSSL_load_builtin_modules 3 "0.9.7d" "2/Sep/2004" "OpenSSL"
 .UC
 .if n .hy 0
 .if n .na
@@ -188,85 +188,47 @@
 .\}
 .rm #[ #] #H #V #F C
 .SH "NAME"
-DSA_generate_parameters \- generate DSA parameters
+OPENSSL_load_builtin_modules \- add standard configuration modules
 .SH "SYNOPSIS"
 .PP
 .Vb 1
-\& #include <openssl/dsa.h>
+\& #include <openssl/conf.h>
 .Ve
 .Vb 3
-\& DSA *DSA_generate_parameters(int bits, unsigned char *seed,
-\&                int seed_len, int *counter_ret, unsigned long *h_ret,
-\&                void (*callback)(int, int, void *), void *cb_arg);
+\& void OPENSSL_load_builtin_modules(void);
+\& void ASN1_add_oid_module(void);
+\& ENGINE_add_conf_module();
 .Ve
 .SH "DESCRIPTION"
-\fIDSA_generate_parameters()\fR generates primes p and q and a generator g
-for use in the DSA.
+The function \fIOPENSSL_load_builtin_modules()\fR adds all the standard OpenSSL
+configuration modules to the internal list. They can then be used by the
+OpenSSL configuration code.
 .PP
-\fBbits\fR is the length of the prime to be generated; the DSS allows a
-maximum of 1024 bits.
+\fIASN1_add_oid_module()\fR adds just the ASN1 OBJECT module.
 .PP
-If \fBseed\fR is \fBNULL\fR or \fBseed_len\fR < 20, the primes will be
-generated at random. Otherwise, the seed is used to generate
-them. If the given seed does not yield a prime q, a new random
-seed is chosen and placed at \fBseed\fR.
+\fIENGINE_add_conf_module()\fR adds just the ENGINE configuration module.
+.SH "NOTES"
+If the simple configuration function \fIOPENSSL_config()\fR is called then 
+\fIOPENSSL_load_builtin_modules()\fR is called automatically.
 .PP
-\fIDSA_generate_parameters()\fR places the iteration count in
-*\fBcounter_ret\fR and a counter used for finding a generator in
-*\fBh_ret\fR, unless these are \fBNULL\fR.
+Applications which use the configuration functions directly will need to
+call \fIOPENSSL_load_builtin_modules()\fR themselves \fIbefore\fR any other 
+configuration code.
 .PP
-A callback function may be used to provide feedback about the progress
-of the key generation. If \fBcallback\fR is not \fBNULL\fR, it will be
-called as follows:
-.Ip "\(bu" 4
-When a candidate for q is generated, \fBcallback(0, m++, cb_arg)\fR is called
-(m is 0 for the first candidate).
-.Ip "\(bu" 4
-When a candidate for q has passed a test by trial division,
-\fBcallback(1, \-1, cb_arg)\fR is called.
-While a candidate for q is tested by Miller-Rabin primality tests,
-\fBcallback(1, i, cb_arg)\fR is called in the outer loop
-(once for each witness that confirms that the candidate may be prime);
-i is the loop counter (starting at 0).
-.Ip "\(bu" 4
-When a prime q has been found, \fBcallback(2, 0, cb_arg)\fR and
-\fBcallback(3, 0, cb_arg)\fR are called.
-.Ip "\(bu" 4
-Before a candidate for p (other than the first) is generated and tested,
-\fBcallback(0, counter, cb_arg)\fR is called.
-.Ip "\(bu" 4
-When a candidate for p has passed the test by trial division,
-\fBcallback(1, \-1, cb_arg)\fR is called.
-While it is tested by the Miller-Rabin primality test,
-\fBcallback(1, i, cb_arg)\fR is called in the outer loop
-(once for each witness that confirms that the candidate may be prime).
-i is the loop counter (starting at 0).
-.Ip "\(bu" 4
-When p has been found, \fBcallback(2, 1, cb_arg)\fR is called.
-.Ip "\(bu" 4
-When the generator has been found, \fBcallback(3, 1, cb_arg)\fR is called.
+Applications should call \fIOPENSSL_load_builtin_modules()\fR to load all
+configuration modules instead of adding modules selectively: otherwise 
+functionality may be missing from the application if an when new
+modules are added.
 .SH "RETURN VALUE"
-\fIDSA_generate_parameters()\fR returns a pointer to the DSA structure, or
-\fBNULL\fR if the parameter generation fails. The error codes can be
-obtained by ERR_get_error(3).
-.SH "BUGS"
-Seed lengths > 20 are not supported.
+None of the functions return a value.
 .SH "SEE ALSO"
-dsa(3), ERR_get_error(3), rand(3),
-DSA_free(3)
+conf(3), OPENSSL_config(3)
 .SH "HISTORY"
-\fIDSA_generate_parameters()\fR appeared in SSLeay 0.8. The \fBcb_arg\fR
-argument was added in SSLeay 0.9.0.
-In versions up to OpenSSL 0.9.4, \fBcallback(1, ...)\fR was called
-in the inner loop of the Miller-Rabin test whenever it reached the
-squaring step (the parameters to \fBcallback\fR did not reveal how many
-witnesses had been tested); since OpenSSL 0.9.5, \fBcallback(1, ...)\fR
-is called as in \fIBN_is_prime\fR\|(3), i.e. once for each witness.
-=cut
+These functions first appeared in OpenSSL 0.9.7.
 
 .rn }` ''
-.IX Title "DSA_generate_parameters 3"
-.IX Name "DSA_generate_parameters - generate DSA parameters"
+.IX Title "OPENSSL_load_builtin_modules 3"
+.IX Name "OPENSSL_load_builtin_modules - add standard configuration modules"
 
 .IX Header "NAME"
 
@@ -274,23 +236,9 @@ is called as in \fIBN_is_prime\fR\|(3), i.e. once for each witness.
 
 .IX Header "DESCRIPTION"
 
-.IX Item "\(bu"
-
-.IX Item "\(bu"
-
-.IX Item "\(bu"
-
-.IX Item "\(bu"
-
-.IX Item "\(bu"
-
-.IX Item "\(bu"
-
-.IX Item "\(bu"
+.IX Header "NOTES"
 
 .IX Header "RETURN VALUE"
-
-.IX Header "BUGS"
 
 .IX Header "SEE ALSO"
 
