@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.27.2.22 2003/01/26 03:33:56 keramida Exp $
-.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.3 2004/03/11 12:28:54 hmp Exp $
+.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.4 2004/11/13 04:13:22 cpressey Exp $
 .\"
 .Dd July 2, 2001
 .Dt IFCONFIG 8
@@ -201,7 +201,9 @@ Usually
 .Li 0xffffffff
 is most appropriate.
 .It Fl alias
-Remove the network address specified.
+Remove the specified network address from this interface
+(if none is specified, all network addresses for the interface
+are removed.)
 This would be used if you incorrectly specified an alias, or it
 was no longer needed.
 If you have incorrectly set an NS address having the side effect
