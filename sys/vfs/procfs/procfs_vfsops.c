@@ -37,7 +37,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vfsops.c,v 1.32.2.1 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.5 2003/08/20 09:56:33 rob Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.6 2004/05/02 03:05:11 cpressey Exp $
  */
 
 /*
@@ -66,12 +66,8 @@ static int	procfs_unmount (struct mount *mp, int mntflags,
  */
 /* ARGSUSED */
 static int
-procfs_mount(mp, path, data, ndp, td)
-	struct mount *mp;
-	char *path;
-	caddr_t data;
-	struct nameidata *ndp;
-	struct thread *td;
+procfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
+	     struct thread *td)
 {
 	size_t size;
 	int error;
@@ -103,10 +99,7 @@ procfs_mount(mp, path, data, ndp, td)
  * unmount system call
  */
 static int
-procfs_unmount(mp, mntflags, td)
-	struct mount *mp;
-	int mntflags;
-	struct thread *td;
+procfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
 	int error;
 	int flags = 0;
@@ -125,9 +118,7 @@ procfs_unmount(mp, mntflags, td)
 }
 
 int
-procfs_root(mp, vpp)
-	struct mount *mp;
-	struct vnode **vpp;
+procfs_root(struct mount *mp, struct vnode **vpp)
 {
 
 	return (procfs_allocvp(mp, vpp, 0, Proot));

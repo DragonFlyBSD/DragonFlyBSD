@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_regs.c,v 1.10.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_regs.c,v 1.6 2003/10/05 20:08:41 drhodus Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_regs.c,v 1.7 2004/05/02 03:05:11 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -50,11 +50,8 @@
 #include <vm/vm_extern.h>
 
 int
-procfs_doregs(curp, p, pfs, uio)
-	struct proc *curp;
-	struct proc *p;
-	struct pfsnode *pfs;
-	struct uio *uio;
+procfs_doregs(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+	      struct uio *uio)
 {
 	int error;
 	struct reg r;
@@ -92,9 +89,7 @@ procfs_doregs(curp, p, pfs, uio)
 }
 
 int
-procfs_validregs(p)
-	struct proc *p;
+procfs_validregs(struct proc *p)
 {
-
 	return ((p->p_flag & P_SYSTEM) == 0);
 }

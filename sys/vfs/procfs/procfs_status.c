@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_status.c,v 1.20.2.4 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.5 2003/10/02 19:21:06 drhodus Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.6 2004/05/02 03:05:11 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -58,11 +58,8 @@
 
 #define DOCHECK() do { if (ps >= psbuf+sizeof(psbuf)) goto bailout; } while (0)
 int
-procfs_dostatus(curp, p, pfs, uio)
-	struct proc *curp;
-	struct proc *p;
-	struct pfsnode *pfs;
-	struct uio *uio;
+procfs_dostatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		struct uio *uio)
 {
 	struct session *sess;
 	struct tty *tp;
@@ -183,11 +180,8 @@ bailout:
 }
 
 int
-procfs_docmdline(curp, p, pfs, uio)
-	struct proc *curp;
-	struct proc *p;
-	struct pfsnode *pfs;
-	struct uio *uio;
+procfs_docmdline(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		 struct uio *uio)
 {
 	char *ps;
 	int xlen;

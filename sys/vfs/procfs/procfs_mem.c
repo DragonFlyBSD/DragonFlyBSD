@@ -38,7 +38,7 @@
  *	@(#)procfs_mem.c	8.5 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_mem.c,v 1.46.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.7 2003/09/03 11:47:04 hmp Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.8 2004/05/02 03:05:11 cpressey Exp $
  */
 
 /*
@@ -67,10 +67,7 @@ static int	procfs_rwmem (struct proc *curp,
 				  struct proc *p, struct uio *uio);
 
 static int
-procfs_rwmem(curp, p, uio)
-	struct proc *curp;
-	struct proc *p;
-	struct uio *uio;
+procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 {
 	int error;
 	int writing;
@@ -235,13 +232,9 @@ procfs_rwmem(curp, p, uio)
  * from the kernel address space.
  */
 int
-procfs_domem(curp, p, pfs, uio)
-	struct proc *curp;
-	struct proc *p;
-	struct pfsnode *pfs;
-	struct uio *uio;
+procfs_domem(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+	     struct uio *uio)
 {
-
 	if (uio->uio_resid == 0)
 		return (0);
 
@@ -280,9 +273,7 @@ procfs_domem(curp, p, pfs, uio)
  *
  */
 struct vnode *
-procfs_findtextvp(p)
-	struct proc *p;
+procfs_findtextvp(struct proc *p)
 {
-
 	return (p->p_textvp);
 }

@@ -37,7 +37,7 @@
  *	@(#)procfs_status.c	8.3 (Berkeley) 2/17/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_map.c,v 1.24.2.1 2001/08/04 13:12:24 rwatson Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_map.c,v 1.3 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_map.c,v 1.4 2004/05/02 03:05:11 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -67,11 +67,8 @@
  * can try a bigger buffer.
  */
 int
-procfs_domap(curp, p, pfs, uio)
-	struct proc *curp;
-	struct proc *p;
-	struct pfsnode *pfs;
-	struct uio *uio;
+procfs_domap(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+	     struct uio *uio)
 {
 	int len;
 	int error;
@@ -179,8 +176,7 @@ case OBJT_DEVICE:
 }
 
 int
-procfs_validmap(p)
-	struct proc *p;
+procfs_validmap(struct proc *p)
 {
 	return ((p->p_flag & P_SYSTEM) == 0);
 }

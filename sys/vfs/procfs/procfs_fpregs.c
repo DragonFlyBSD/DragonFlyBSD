@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_fpregs.c,v 1.11.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_fpregs.c,v 1.5 2003/10/02 19:21:06 drhodus Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_fpregs.c,v 1.6 2004/05/02 03:05:11 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -49,11 +49,8 @@
 #include <vm/vm.h>
 
 int
-procfs_dofpregs(curp, p, pfs, uio)
-	struct proc *curp;
-	struct proc *p;
-	struct pfsnode *pfs;
-	struct uio *uio;
+procfs_dofpregs(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		struct uio *uio)
 {
 	int error;
 	struct fpreg r;
@@ -90,9 +87,7 @@ procfs_dofpregs(curp, p, pfs, uio)
 }
 
 int
-procfs_validfpregs(p)
-	struct proc *p;
+procfs_validfpregs(struct proc *p)
 {
-
 	return ((p->p_flag & P_SYSTEM) == 0);
 }

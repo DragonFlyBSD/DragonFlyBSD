@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.12 2004/04/24 04:32:05 drhodus Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.13 2004/05/02 03:05:11 cpressey Exp $
  */
 
 /*
@@ -123,15 +123,12 @@ static pid_t atopid (const char *, u_int);
  * in particular for i/o.  all that is done
  * is to support exclusive open on process
  * memory images.
+ *
+ * procfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *		struct thread *a_td)
  */
 static int
-procfs_open(ap)
-	struct vop_open_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+procfs_open(struct vop_open_args *ap)
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 	struct proc *p1, *p2;
@@ -174,15 +171,12 @@ procfs_open(ap)
  *
  * nothing to do for procfs other than undo
  * any exclusive open flag (see _open above).
+ *
+ * procfs_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
+ *		struct thread *a_td)
  */
 static int
-procfs_close(ap)
-	struct vop_close_args /* {
-		struct vnode *a_vp;
-		int  a_fflag;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+procfs_close(struct vop_close_args *ap)
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 	struct proc *p;
@@ -228,8 +222,7 @@ procfs_close(ap)
  * (vp) is not locked on entry or exit.
  */
 static int
-procfs_ioctl(ap)
-	struct vop_ioctl_args *ap;
+procfs_ioctl(struct vop_ioctl_args *ap)
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 	struct proc *procp;
@@ -324,18 +317,13 @@ procfs_ioctl(ap)
  * of this function.  for sanity, this is the
  * usual no-op bmap, although returning
  * (EIO) would be a reasonable alternative.
+ *
+ * procfs_bmap(struct vnode *a_vp, daddr_t a_bn, struct vnode **a_vpp,
+ *		daddr_t *a_bnp, int *a_runp)
  */
 static int
-procfs_bmap(ap)
-	struct vop_bmap_args /* {
-		struct vnode *a_vp;
-		daddr_t  a_bn;
-		struct vnode **a_vpp;
-		daddr_t *a_bnp;
-		int *a_runp;
-	} */ *ap;
+procfs_bmap(struct vop_bmap_args *ap)
 {
-
 	if (ap->a_vpp != NULL)
 		*ap->a_vpp = ap->a_vp;
 	if (ap->a_bnp != NULL)
@@ -353,13 +341,11 @@ procfs_bmap(ap)
  * used.
  *
  * (vp) is locked on entry, but must be unlocked on exit.
+ *
+ * procfs_inactive(struct vnode *a_vp, struct thread *a_td)
  */
 static int
-procfs_inactive(ap)
-	struct vop_inactive_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-	} */ *ap;
+procfs_inactive(struct vop_inactive_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
@@ -374,14 +360,12 @@ procfs_inactive(ap)
  * free list.  at this time the filesystem needs
  * to free any private data and remove the node
  * from any private lists.
+ *
+ * procfs_reclaim(struct vnode *a_vp)
  */
 static int
-procfs_reclaim(ap)
-	struct vop_reclaim_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+procfs_reclaim(struct vop_reclaim_args *ap)
 {
-
 	return (procfs_freevp(ap->a_vp));
 }
 
@@ -389,12 +373,11 @@ procfs_reclaim(ap)
  * _print is used for debugging.
  * just print a readable description
  * of (vp).
+ *
+ * procfs_print(struct vnode *a_vp)
  */
 static int
-procfs_print(ap)
-	struct vop_print_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+procfs_print(struct vop_print_args *ap)
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 
@@ -407,9 +390,8 @@ procfs_print(ap)
  * generic entry point for unsupported operations
  */
 static int
-procfs_badop()
+procfs_badop(void)
 {
-
 	return (EIO);
 }
 
@@ -421,15 +403,12 @@ procfs_badop()
  * to be computed, and nothing cares anyway.
  *
  * this is relatively minimal for procfs.
+ *
+ * procfs_getattr(struct vnode *a_vp, struct vattr *a_vap,
+ *		  struct ucred *a_cred,	struct thread *a_td)
  */
 static int
-procfs_getattr(ap)
-	struct vop_getattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+procfs_getattr(struct vop_getattr_args *ap)
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 	struct vattr *vap = ap->a_vap;
@@ -593,16 +572,13 @@ procfs_getattr(ap)
 	return (error);
 }
 
+/*
+ * procfs_setattr(struct vnode *a_vp, struct vattr *a_vap,
+ *		  struct ucred *a_cred,	struct thread *a_td)
+ */
 static int
-procfs_setattr(ap)
-	struct vop_setattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+procfs_setattr(struct vop_setattr_args *ap)
 {
-
 	if (ap->a_vap->va_flags != VNOVAL)
 		return (EOPNOTSUPP);
 
@@ -630,15 +606,12 @@ procfs_setattr(ap)
  * objects.  this doesn't cause any particular trouble
  * but does mean that the i/o entry points need to check
  * that the operation really does make sense.
+ *
+ * procfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *		 struct thread *a_td)
  */
 static int
-procfs_access(ap)
-	struct vop_access_args /* {
-		struct vnode *a_vp;
-		int a_mode;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+procfs_access(struct vop_access_args *ap)
 {
 	struct vattr *vap;
 	struct vattr vattr;
@@ -689,14 +662,12 @@ found:
  * unless you want to get a migraine, just make sure your
  * filesystem doesn't do any locking of its own.  otherwise
  * read and inwardly digest ufs_lookup().
+ *
+ * procfs_lookup(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		 struct componentname *a_cnp)
  */
 static int
-procfs_lookup(ap)
-	struct vop_lookup_args /* {
-		struct vnode * a_dvp;
-		struct vnode ** a_vpp;
-		struct componentname * a_cnp;
-	} */ *ap;
+procfs_lookup(struct vop_lookup_args *ap)
 {
 	struct componentname *cnp = ap->a_cnp;
 	struct vnode **vpp = ap->a_vpp;
@@ -778,10 +749,8 @@ procfs_lookup(ap)
  * Does this process have a text file?
  */
 int
-procfs_validfile(p)
-	struct proc *p;
+procfs_validfile(struct proc *p)
 {
-
 	return (procfs_findtextvp(p) != NULLVP);
 }
 
@@ -790,17 +759,12 @@ procfs_validfile(p)
  *
  * We generate just one directory entry at a time, as it would probably
  * not pay off to buffer several entries locally to save uiomove calls.
+ *
+ * procfs_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
+ *		  int *a_eofflag, int *a_ncookies, u_long **a_cookies)
  */
 static int
-procfs_readdir(ap)
-	struct vop_readdir_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		struct ucred *a_cred;
-		int *a_eofflag;
-		int *a_ncookies;
-		u_long **a_cookies;
-	} */ *ap;
+procfs_readdir(struct vop_readdir_args *ap)
 {
 	struct uio *uio = ap->a_uio;
 	struct dirent d;
@@ -960,8 +924,7 @@ procfs_readdir(ap)
  * readlink reads the link of `curproc' or `file'
  */
 static int
-procfs_readlink(ap)
-	struct vop_readlink_args *ap;
+procfs_readlink(struct vop_readlink_args *ap)
 {
 	char buf[16];		/* should be enough */
 	struct proc *procp;
@@ -1006,9 +969,7 @@ procfs_readlink(ap)
  * convert decimal ascii to pid_t
  */
 static pid_t
-atopid(b, len)
-	const char *b;
-	u_int len;
+atopid(const char *b, u_int len)
 {
 	pid_t p = 0;
 

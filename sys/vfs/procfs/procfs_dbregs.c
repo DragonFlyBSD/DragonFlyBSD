@@ -41,7 +41,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_dbregs.c,v 1.4.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_dbregs.c,v 1.5 2003/10/02 19:21:06 drhodus Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_dbregs.c,v 1.6 2004/05/02 03:05:11 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -52,11 +52,8 @@
 #include <vm/vm.h>
 
 int
-procfs_dodbregs(curp, p, pfs, uio)
-	struct proc *curp;
-	struct proc *p;
-	struct pfsnode *pfs;
-	struct uio *uio;
+procfs_dodbregs(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		struct uio *uio)
 {
 	int error;
 	struct dbreg r;
@@ -93,9 +90,7 @@ procfs_dodbregs(curp, p, pfs, uio)
 }
 
 int
-procfs_validdbregs(p)
-	struct proc *p;
+procfs_validdbregs(struct proc *p)
 {
-
 	return ((p->p_flag & P_SYSTEM) == 0);
 }

@@ -37,7 +37,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_subr.c,v 1.26.2.3 2002/02/18 21:28:04 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.6 2004/03/01 06:33:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.7 2004/05/02 03:05:11 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -80,11 +80,7 @@ static int pfsvplock;
  * the vnode free list.
  */
 int
-procfs_allocvp(mp, vpp, pid, pfs_type)
-	struct mount *mp;
-	struct vnode **vpp;
-	long pid;
-	pfstype pfs_type;
+procfs_allocvp(struct mount *mp, struct vnode **vpp, long pid, pfstype pfs_type)
 {
 	struct thread *td = curthread;	/* XXX */
 	struct pfsnode *pfs;
@@ -220,8 +216,7 @@ out:
 }
 
 int
-procfs_freevp(vp)
-	struct vnode *vp;
+procfs_freevp(struct vnode *vp)
 {
 	struct pfsnode **pfspp;
 	struct pfsnode *pfs = VTOPFS(vp);
@@ -333,10 +328,7 @@ procfs_rw(struct vop_read_args *ap)
  * EFAULT:    user i/o buffer is not addressable
  */
 int
-vfs_getuserstr(uio, buf, buflenp)
-	struct uio *uio;
-	char *buf;
-	int *buflenp;
+vfs_getuserstr(struct uio *uio, char *buf, int *buflenp)
 {
 	int xlen;
 	int error;
@@ -368,10 +360,7 @@ vfs_getuserstr(uio, buf, buflenp)
 }
 
 vfs_namemap_t *
-vfs_findname(nm, buf, buflen)
-	vfs_namemap_t *nm;
-	char *buf;
-	int buflen;
+vfs_findname(vfs_namemap_t *nm, char *buf, int buflen)
 {
 
 	for (; nm->nm_name; nm++)
