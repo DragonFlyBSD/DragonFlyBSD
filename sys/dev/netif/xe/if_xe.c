@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.10 2004/06/02 14:42:56 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.11 2004/06/30 12:14:39 eirikn Exp $
  */
 
 /*
@@ -321,6 +321,7 @@ xe_probe(device_t dev)
       PCCARD_A_MEM_ATTR);
 
   /* Grep through CIS looking for relevant tuples */
+  rc = 0;
   offs = 0;
   do {
     u_int16_t vendor;
@@ -439,6 +440,9 @@ xe_probe(device_t dev)
 
   /* unmap the cis */
   bus_release_resource(dev, SYS_RES_MEMORY, rid, r);
+
+  if (rc)
+    return(rc);
 
   /* Die now if something went wrong above */
   if (success < 3)
