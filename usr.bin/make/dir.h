@@ -38,7 +38,7 @@
  *
  *	from: @(#)dir.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/dir.h,v 1.18 2005/02/04 07:50:59 harti Exp $
- * $DragonFly: src/usr.bin/make/dir.h,v 1.15 2005/02/15 01:01:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.h,v 1.16 2005/02/23 10:02:27 okumoto Exp $
  */
 
 #ifndef dir_h_6002e3b8
@@ -64,11 +64,11 @@ void Dir_Expand(char *, struct Lst *, struct Lst *);
 char *Dir_FindFile(char *, struct Lst *);
 int Dir_MTime(struct GNode *);
 void Dir_AddDir(struct Lst *, const char *);
-char *Dir_MakeFlags(const char *, struct Lst *);
+char *Dir_MakeFlags(const char *, const struct Lst *);
 void Dir_ClearPath(struct Lst *);
 void Dir_Concat(struct Lst *, struct Lst *);
 void Dir_PrintDirectories(void);
-void Dir_PrintPath(struct Lst *);
+void Dir_PrintPath(const struct Lst *);
 void Dir_Destroy(void *);
 void *Dir_CopyDir(void *);
 

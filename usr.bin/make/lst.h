@@ -38,7 +38,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.28 2005/02/10 14:25:12 harti Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.22 2005/02/15 01:01:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.23 2005/02/23 10:02:27 okumoto Exp $
  */
 
 #ifndef lst_h_38f3ead1
@@ -163,6 +163,10 @@ LstNode		*Lst_Member(Lst *, void *);
 void		Lst_ForEach(Lst *, DoProc *, void *);
 #define	Lst_ForEach(LST, FN, D)	(Lst_ForEachFrom((LST), Lst_First(LST), \
 				    (FN), (D)))
+
+#define	LST_FOREACH(PTR, LST)						\
+	for ((PTR) = (LST)->firstPtr; (PTR) != NULL; (PTR) = (PTR)->nextPtr)
+
 /*
  * Apply a function to all elements of a lst starting from a certain point.
  * If the list is circular, the application will wrap around to the
