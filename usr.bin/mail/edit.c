@@ -32,7 +32,7 @@
  *
  * @(#)edit.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/edit.c,v 1.2.6.4 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/edit.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
+ * $DragonFly: src/usr.bin/mail/edit.c,v 1.4 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -51,7 +51,6 @@
 int
 editor(int *msgvec)
 {
-
 	return (edit1(msgvec, 'e'));
 }
 
@@ -61,7 +60,6 @@ editor(int *msgvec)
 int
 visual(int *msgvec)
 {
-
 	return (edit1(msgvec, 'v'));
 }
 
@@ -103,7 +101,7 @@ edit1(int *msgvec, int type)
 		sigint = signal(SIGINT, SIG_IGN);
 		fp = run_editor(setinput(mp), mp->m_size, type, readonly);
 		if (fp != NULL) {
-			(void)fseeko(otf, (off_t)0, SEEK_END);
+			fseeko(otf, (off_t)0, SEEK_END);
 			size = ftello(otf);
 			mp->m_block = blockof(size);
 			mp->m_offset = boffsetof(size);
@@ -119,9 +117,9 @@ edit1(int *msgvec, int type)
 			}
 			if (ferror(otf))
 				warnx("/tmp");
-			(void)Fclose(fp);
+			Fclose(fp);
 		}
-		(void)signal(SIGINT, sigint);
+		signal(SIGINT, sigint);
 	}
 	return (0);
 }
@@ -141,8 +139,7 @@ run_editor(FILE *fp, off_t size, int type, int readonly)
 	char *edit, tempname[PATHSIZE];
 	struct stat statb;
 
-	(void)snprintf(tempname, sizeof(tempname),
-	    "%s/mail.ReXXXXXXXXXX", tmpdir);
+	snprintf(tempname, sizeof(tempname), "%s/mail.ReXXXXXXXXXX", tmpdir);
 	if ((t = mkstemp(tempname)) == -1 ||
 	    (nf = Fdopen(t, "w")) == NULL) {
 		warn("%s", tempname);
@@ -150,30 +147,30 @@ run_editor(FILE *fp, off_t size, int type, int readonly)
 	}
 	if (readonly && fchmod(t, 0400) == -1) {
 		warn("%s", tempname);
-		(void)rm(tempname);
+		rm(tempname);
 		goto out;
 	}
 	if (size >= 0)
 		while (--size >= 0 && (t = getc(fp)) != EOF)
-			(void)putc(t, nf);
+			putc(t, nf);
 	else
 		while ((t = getc(fp)) != EOF)
-			(void)putc(t, nf);
-	(void)fflush(nf);
+			putc(t, nf);
+	fflush(nf);
 	if (fstat(fileno(nf), &statb) < 0)
 		modtime = 0;
 	else
 		modtime = statb.st_mtime;
 	if (ferror(nf)) {
-		(void)Fclose(nf);
+		Fclose(nf);
 		warnx("%s", tempname);
-		(void)rm(tempname);
+		rm(tempname);
 		nf = NULL;
 		goto out;
 	}
 	if (Fclose(nf) < 0) {
 		warn("%s", tempname);
-		(void)rm(tempname);
+		rm(tempname);
 		nf = NULL;
 		goto out;
 	}
@@ -181,7 +178,7 @@ run_editor(FILE *fp, off_t size, int type, int readonly)
 	if ((edit = value(type == 'e' ? "EDITOR" : "VISUAL")) == NULL)
 		edit = type == 'e' ? _PATH_EX : _PATH_VI;
 	if (run_command(edit, 0, -1, -1, tempname, NULL, NULL) < 0) {
-		(void)rm(tempname);
+		rm(tempname);
 		goto out;
 	}
 	/*
@@ -189,7 +186,7 @@ run_editor(FILE *fp, off_t size, int type, int readonly)
 	 * temporary and return.
 	 */
 	if (readonly) {
-		(void)rm(tempname);
+		rm(tempname);
 		goto out;
 	}
 	if (stat(tempname, &statb) < 0) {
@@ -197,7 +194,7 @@ run_editor(FILE *fp, off_t size, int type, int readonly)
 		goto out;
 	}
 	if (modtime == statb.st_mtime) {
-		(void)rm(tempname);
+		rm(tempname);
 		goto out;
 	}
 	/*
@@ -205,10 +202,10 @@ run_editor(FILE *fp, off_t size, int type, int readonly)
 	 */
 	if ((nf = Fopen(tempname, "a+")) == NULL) {
 		warn("%s", tempname);
-		(void)rm(tempname);
+		rm(tempname);
 		goto out;
 	}
-	(void)rm(tempname);
+	rm(tempname);
 out:
 	return (nf);
 }

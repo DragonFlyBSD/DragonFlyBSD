@@ -32,7 +32,7 @@
  *
  * @(#)cmd2.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/cmd2.c,v 1.5.6.3 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/cmd2.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
+ * $DragonFly: src/usr.bin/mail/cmd2.c,v 1.4 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -132,7 +132,6 @@ hitit:
 int
 save(char *str)
 {
-
 	return (save1(str, 1, "save", saveignore));
 }
 
@@ -142,7 +141,6 @@ save(char *str)
 int
 copycmd(char *str)
 {
-
 	return (save1(str, 0, "copy", saveignore));
 }
 
@@ -175,7 +173,7 @@ save1(char *str, int mark, const char *cmd, struct ignoretab *ignore)
 	if ((file = expand(file)) == NULL)
 		return (1);
 	printf("\"%s\" ", file);
-	(void)fflush(stdout);
+	fflush(stdout);
 	if (access(file, 0) >= 0)
 		disp = "[Appended]";
 	else
@@ -189,16 +187,16 @@ save1(char *str, int mark, const char *cmd, struct ignoretab *ignore)
 		touch(mp);
 		if (sendmessage(mp, obuf, ignore, NULL) < 0) {
 			warnx("%s", file);
-			(void)Fclose(obuf);
+			Fclose(obuf);
 			return (1);
 		}
 		if (mark)
 			mp->m_flag |= MSAVED;
 	}
-	(void)fflush(obuf);
+	fflush(obuf);
 	if (ferror(obuf))
 		warn("%s", file);
-	(void)Fclose(obuf);
+	Fclose(obuf);
 	printf("%s\n", disp);
 	return (0);
 }
@@ -210,7 +208,6 @@ save1(char *str, int mark, const char *cmd, struct ignoretab *ignore)
 int
 swrite(char *str)
 {
-
 	return (save1(str, 1, "write", ignoreall));
 }
 
@@ -262,7 +259,6 @@ snarf(char *linebuf, int *flag)
 int
 delete(int *msgvec)
 {
-
 	delm(msgvec);
 	return (0);
 }
@@ -364,7 +360,7 @@ core(void)
 		_exit(1);
 	}
 	printf("Okie dokie");
-	(void)fflush(stdout);
+	fflush(stdout);
 	wait_child(pid);
 	if (WIFSIGNALED(wait_status) && WCOREDUMP(wait_status))
 		printf(" -- Core dumped.\n");
@@ -412,7 +408,6 @@ clob1(int n)
 int
 retfield(char **list)
 {
-
 	return (ignore1(list, ignore + 1, "retained"));
 }
 
@@ -423,21 +418,18 @@ retfield(char **list)
 int
 igfield(char **list)
 {
-
 	return (ignore1(list, ignore, "ignored"));
 }
 
 int
 saveretfield(char **list)
 {
-
 	return (ignore1(list, saveignore + 1, "retained"));
 }
 
 int
 saveigfield(char **list)
 {
-
 	return (ignore1(list, saveignore, "ignored"));
 }
 
@@ -499,6 +491,5 @@ igshow(struct ignoretab *tab, const char *which)
 int
 igcomp(const void *l, const void *r)
 {
-
 	return (strcmp(*(const char **)l, *(const char **)r));
 }

@@ -32,7 +32,7 @@
  *
  * @(#)names.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/names.c,v 1.4.6.3 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/names.c,v 1.4 2004/09/07 21:31:45 joerg Exp $
+ * $DragonFly: src/usr.bin/mail/names.c,v 1.5 2004/09/08 03:01:11 joerg Exp $
  */
 
 /*
@@ -106,7 +106,7 @@ extract(char *line, int ntype)
 		t->n_blink = np;
 		np = t;
 	}
-	(void)free(nbuf);
+	free(nbuf);
 	return (top);
 }
 
@@ -289,7 +289,7 @@ outof(struct name *names, FILE *fo, struct header *hp)
 
 	top = names;
 	np = names;
-	(void)time(&now);
+	time(&now);
 	date = ctime(&now);
 	while (np != NULL) {
 		if (!isfileaddr(np->n_name) && np->n_name[0] != '|') {
@@ -311,8 +311,8 @@ outof(struct name *names, FILE *fo, struct header *hp)
 			int fd;
 			char tempname[PATHSIZE];
 
-			(void)snprintf(tempname, sizeof(tempname),
-			    "%s/mail.ReXXXXXXXXXX", tmpdir);
+			snprintf(tempname, sizeof(tempname),
+				 "%s/mail.ReXXXXXXXXXX", tmpdir);
 			if ((fd = mkstemp(tempname)) == -1 ||
 			    (fout = Fdopen(fd, "a")) == NULL) {
 				warn("%s", tempname);
@@ -320,29 +320,29 @@ outof(struct name *names, FILE *fo, struct header *hp)
 				goto cant;
 			}
 			image = open(tempname, O_RDWR);
-			(void)rm(tempname);
+			rm(tempname);
 			if (image < 0) {
 				warn("%s", tempname);
 				senderr++;
-				(void)Fclose(fout);
+				Fclose(fout);
 				goto cant;
 			}
-			(void)fcntl(image, F_SETFD, 1);
+			fcntl(image, F_SETFD, 1);
 			fprintf(fout, "From %s %s", myname, date);
 			puthead(hp, fout,
 			    GTO|GSUBJECT|GCC|GREPLYTO|GINREPLYTO|GNL);
 			while ((c = getc(fo)) != EOF)
-				(void)putc(c, fout);
+				putc(c, fout);
 			rewind(fo);
 			fprintf(fout, "\n");
-			(void)fflush(fout);
+			fflush(fout);
 			if (ferror(fout)) {
 				warn("%s", tempname);
 				senderr++;
-				(void)Fclose(fout);
+				Fclose(fout);
 				goto cant;
 			}
-			(void)Fclose(fout);
+			Fclose(fout);
 		}
 
 		/*
@@ -365,10 +365,10 @@ outof(struct name *names, FILE *fo, struct header *hp)
 			 */
 			if ((sh = value("SHELL")) == NULL)
 				sh = _PATH_CSHELL;
-			(void)sigemptyset(&nset);
-			(void)sigaddset(&nset, SIGHUP);
-			(void)sigaddset(&nset, SIGINT);
-			(void)sigaddset(&nset, SIGQUIT);
+			sigemptyset(&nset);
+			sigaddset(&nset, SIGHUP);
+			sigaddset(&nset, SIGINT);
+			sigaddset(&nset, SIGQUIT);
 			pid = start_command(sh, &nset, image, -1, "-c", fname,
 			    NULL);
 			if (pid < 0) {
@@ -390,22 +390,22 @@ outof(struct name *names, FILE *fo, struct header *hp)
 				fin = Fdopen(f, "r");
 			if (fin == NULL) {
 				fprintf(stderr, "Can't reopen image\n");
-				(void)Fclose(fout);
+				Fclose(fout);
 				senderr++;
 				goto cant;
 			}
 			rewind(fin);
 			while ((c = getc(fin)) != EOF)
-				(void)putc(c, fout);
+				putc(c, fout);
 			if (ferror(fout)) {
 				warnx("%s", fname);
 				senderr++;
-				(void)Fclose(fout);
-				(void)Fclose(fin);
+				Fclose(fout);
+				Fclose(fin);
 				goto cant;
 			}
-			(void)Fclose(fout);
-			(void)Fclose(fin);
+			Fclose(fout);
+			Fclose(fin);
 		}
 cant:
 		/*
@@ -417,7 +417,7 @@ cant:
 		np = np->n_flink;
 	}
 	if (image >= 0) {
-		(void)close(image);
+		close(image);
 		image = -1;
 	}
 	return (top);

@@ -32,7 +32,7 @@
  *
  * @(#)send.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/send.c,v 1.5.6.5 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/send.c,v 1.4 2004/09/07 21:31:45 joerg Exp $
+ * $DragonFly: src/usr.bin/mail/send.c,v 1.5 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -133,7 +133,7 @@ sendmessage(struct message *mp, FILE *obuf, struct ignoretab *doign,
 				}
 				if (doign != ignoreall)
 					/* add blank line */
-					(void)putc('\n', obuf);
+					putc('\n', obuf);
 				ishead = 0;
 				ignoring = 0;
 			} else {
@@ -171,10 +171,10 @@ sendmessage(struct message *mp, FILE *obuf, struct ignoretab *doign,
 				if (length > 1)
 					fputs(prefix, obuf);
 				else
-					(void)fwrite(prefix, sizeof(*prefix),
+					fwrite(prefix, sizeof(*prefix),
 					    prefixlen, obuf);
 			}
-			(void)fwrite(line, sizeof(*line), length, obuf);
+			fwrite(line, sizeof(*line), length, obuf);
 			if (ferror(obuf))
 				return (-1);
 		}
@@ -198,9 +198,9 @@ sendmessage(struct message *mp, FILE *obuf, struct ignoretab *doign,
 			if (c > 1)
 				fputs(prefix, obuf);
 			else
-				(void)fwrite(prefix, sizeof(*prefix),
+				fwrite(prefix, sizeof(*prefix),
 				    prefixlen, obuf);
-			(void)fwrite(line, sizeof(*line), c, obuf);
+			fwrite(line, sizeof(*line), c, obuf);
 			if (ferror(obuf))
 				return (-1);
 		}
@@ -309,7 +309,7 @@ mail1(struct header *hp, int printheaders)
 				grabh(hp, GBCC);
 		} else {
 			printf("EOT\n");
-			(void)fflush(stdout);
+			fflush(stdout);
 		}
 	}
 	if (fsize(mtf) == 0) {
@@ -380,7 +380,7 @@ mail1(struct header *hp, int printheaders)
 		free(nbuf);
 		free(nsto);
 	} else if ((cp = value("record")) != NULL)
-		(void)savemail(expand(cp), mtf);
+		savemail(expand(cp), mtf);
 	/*
 	 * Fork, set up the temporary mail file as standard
 	 * input for "mail", and exec with the user list we generated
@@ -394,13 +394,13 @@ mail1(struct header *hp, int printheaders)
 	}
 	if (pid == 0) {
 		sigset_t nset;
-		(void)sigemptyset(&nset);
-		(void)sigaddset(&nset, SIGHUP);
-		(void)sigaddset(&nset, SIGINT);
-		(void)sigaddset(&nset, SIGQUIT);
-		(void)sigaddset(&nset, SIGTSTP);
-		(void)sigaddset(&nset, SIGTTIN);
-		(void)sigaddset(&nset, SIGTTOU);
+		sigemptyset(&nset);
+		sigaddset(&nset, SIGHUP);
+		sigaddset(&nset, SIGINT);
+		sigaddset(&nset, SIGQUIT);
+		sigaddset(&nset, SIGTSTP);
+		sigaddset(&nset, SIGTTIN);
+		sigaddset(&nset, SIGTTOU);
 		prepare_child(&nset, fileno(mtf), -1);
 		if ((cp = value("sendmail")) != NULL)
 			cp = expand(cp);
@@ -411,11 +411,11 @@ mail1(struct header *hp, int printheaders)
 		_exit(1);
 	}
 	if (value("verbose") != NULL)
-		(void)wait_child(pid);
+		wait_child(pid);
 	else
 		free_child(pid);
 out:
-	(void)Fclose(mtf);
+	Fclose(mtf);
 }
 
 /*
@@ -457,8 +457,7 @@ infix(struct header *hp, FILE *fi)
 	int c, fd;
 	char tempname[PATHSIZE];
 
-	(void)snprintf(tempname, sizeof(tempname),
-	    "%s/mail.RsXXXXXXXXXX", tmpdir);
+	snprintf(tempname, sizeof(tempname), "%s/mail.RsXXXXXXXXXX", tmpdir);
 	if ((fd = mkstemp(tempname)) == -1 ||
 	    (nfo = Fdopen(fd, "w")) == NULL) {
 		warn("%s", tempname);
@@ -466,16 +465,15 @@ infix(struct header *hp, FILE *fi)
 	}
 	if ((nfi = Fopen(tempname, "r")) == NULL) {
 		warn("%s", tempname);
-		(void)Fclose(nfo);
-		(void)rm(tempname);
+		Fclose(nfo);
+		rm(tempname);
 		return (fi);
 	}
-	(void)rm(tempname);
-	(void)puthead(hp, nfo,
-	    GTO|GSUBJECT|GCC|GBCC|GREPLYTO|GINREPLYTO|GNL|GCOMMA);
+	rm(tempname);
+	puthead(hp, nfo, GTO|GSUBJECT|GCC|GBCC|GREPLYTO|GINREPLYTO|GNL|GCOMMA);
 	c = getc(fi);
 	while (c != EOF) {
-		(void)putc(c, nfo);
+		putc(c, nfo);
 		c = getc(fi);
 	}
 	if (ferror(fi)) {
@@ -483,16 +481,16 @@ infix(struct header *hp, FILE *fi)
 		rewind(fi);
 		return (fi);
 	}
-	(void)fflush(nfo);
+	fflush(nfo);
 	if (ferror(nfo)) {
 		warn("%s", tempname);
-		(void)Fclose(nfo);
-		(void)Fclose(nfi);
+		Fclose(nfo);
+		Fclose(nfi);
 		rewind(fi);
 		return (fi);
 	}
-	(void)Fclose(nfo);
-	(void)Fclose(fi);
+	Fclose(nfo);
+	Fclose(fi);
 	rewind(nfi);
 	return (nfi);
 }
@@ -520,7 +518,7 @@ puthead(struct header *hp, FILE *fo, int w)
 	if (hp->h_inreplyto != NULL && w & GINREPLYTO)
 		fprintf(fo, "In-Reply-To: <%s>\n", hp->h_inreplyto), gotcha++;
 	if (gotcha && w & GNL)
-		(void)putc('\n', fo);
+		putc('\n', fo);
 	return (0);
 }
 
@@ -571,15 +569,15 @@ savemail(char *name, FILE *fi)
 		warn("%s", name);
 		return (-1);
 	}
-	(void)time(&now);
+	time(&now);
 	fprintf(fo, "From %s %s", myname, ctime(&now));
 	while ((i = fread(buf, 1, sizeof(buf), fi)) > 0)
-		(void)fwrite(buf, 1, i, fo);
+		fwrite(buf, 1, i, fo);
 	fprintf(fo, "\n");
-	(void)fflush(fo);
+	fflush(fo);
 	if (ferror(fo))
 		warn("%s", name);
-	(void)Fclose(fo);
+	Fclose(fo);
 	rewind(fi);
 	return (0);
 }

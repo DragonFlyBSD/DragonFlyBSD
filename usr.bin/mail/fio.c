@@ -32,7 +32,7 @@
  *
  * @(#)fio.c	8.2 (Berkeley) 4/20/95
  * $FreeBSD: src/usr.bin/mail/fio.c,v 1.2.6.4 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/fio.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
+ * $DragonFly: src/usr.bin/mail/fio.c,v 1.4 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -67,23 +67,23 @@ setptr(FILE *ibuf, off_t offset)
 	int omsgCount;
 
 	/* Get temporary file. */
-	(void)snprintf(pathbuf, sizeof(pathbuf), "%s/mail.XXXXXXXXXX", tmpdir);
+	snprintf(pathbuf, sizeof(pathbuf), "%s/mail.XXXXXXXXXX", tmpdir);
 	if ((c = mkstemp(pathbuf)) == -1 || (mestmp = Fdopen(c, "r+")) == NULL)
 		err(1, "can't open %s", pathbuf);
-	(void)rm(pathbuf);
+	rm(pathbuf);
 
 	if (offset == 0) {
 		 msgCount = 0;
 	} else {
 		/* Seek into the file to get to the new messages */
-		(void)fseeko(ibuf, offset, SEEK_SET);
+		fseeko(ibuf, offset, SEEK_SET);
 		/*
 		 * We need to make "offset" a pointer to the end of
 		 * the temp file that has the copy of the mail file.
 		 * If any messages have been edited, this will be
 		 * different from the offset into the mail file.
 		 */
-		(void)fseeko(otf, (off_t)0, SEEK_END);
+		fseeko(otf, (off_t)0, SEEK_END);
 		offset = ftello(otf);
 	}
 	omsgCount = msgCount;
@@ -112,7 +112,7 @@ setptr(FILE *ibuf, off_t offset)
 			linebuf[count - 1] = '\n';
 		}
 
-		(void)fwrite(linebuf, sizeof(*linebuf), count, otf);
+		fwrite(linebuf, sizeof(*linebuf), count, otf);
 		if (ferror(otf))
 			errx(1, "/tmp");
 		if (count)
@@ -166,7 +166,7 @@ putline(FILE *obuf, char *linebuf, int outlf)
 	int c;
 
 	c = strlen(linebuf);
-	(void)fwrite(linebuf, sizeof(*linebuf), c, obuf);
+	fwrite(linebuf, sizeof(*linebuf), c, obuf);
 	if (outlf) {
 		fprintf(obuf, "\n");
 		c++;
@@ -204,8 +204,7 @@ readline(FILE *ibuf, char *linebuf, int linesize)
 FILE *
 setinput(struct message *mp)
 {
-
-	(void)fflush(otf);
+	fflush(otf);
 	if (fseeko(itf,
 		   positionof(mp->m_block, mp->m_offset), SEEK_SET) < 0)
 		err(1, "fseeko");
@@ -233,13 +232,13 @@ makemessage(FILE *f, int omsgCount)
 		dot = nmessage + (dot - message);
 	message = nmessage;
 	size -= (omsgCount + 1) * sizeof(struct message);
-	(void)fflush(f);
-	(void)lseek(fileno(f), (off_t)sizeof(*message), 0);
+	fflush(f);
+	lseek(fileno(f), (off_t)sizeof(*message), 0);
 	if (read(fileno(f), (char *)&message[omsgCount], size) != size)
 		errx(1, "Message temporary file corrupted");
 	message[msgCount].m_size = 0;
 	message[msgCount].m_lines = 0;
-	(void)Fclose(f);
+	Fclose(f);
 }
 
 /*
@@ -277,13 +276,12 @@ static sigset_t nset, oset;
 void
 holdsigs(void)
 {
-
 	if (sigdepth++ == 0) {
-		(void)sigemptyset(&nset);
-		(void)sigaddset(&nset, SIGHUP);
-		(void)sigaddset(&nset, SIGINT);
-		(void)sigaddset(&nset, SIGQUIT);
-		(void)sigprocmask(SIG_BLOCK, &nset, &oset);
+		sigemptyset(&nset);
+		sigaddset(&nset, SIGHUP);
+		sigaddset(&nset, SIGINT);
+		sigaddset(&nset, SIGQUIT);
+		sigprocmask(SIG_BLOCK, &nset, &oset);
 	}
 }
 
@@ -293,9 +291,8 @@ holdsigs(void)
 void
 relsesigs(void)
 {
-
 	if (--sigdepth == 0)
-		(void)sigprocmask(SIG_SETMASK, &oset, NULL);
+		sigprocmask(SIG_SETMASK, &oset, NULL);
 }
 
 /*
@@ -357,13 +354,13 @@ expand(char *name)
 		/* fall through */
 	}
 	if (name[0] == '+' && getfold(cmdbuf, sizeof(cmdbuf)) >= 0) {
-		(void)snprintf(xname, sizeof(xname), "%s/%s", cmdbuf, name + 1);
+		snprintf(xname, sizeof(xname), "%s/%s", cmdbuf, name + 1);
 		name = savestr(xname);
 	}
 	/* catch the most common shell meta character */
 	if (name[0] == '~' && homedir != NULL &&
 	    (name[1] == '/' || name[1] == '\0')) {
-		(void)snprintf(xname, sizeof(xname), "%s%s", homedir, name + 1);
+		snprintf(xname, sizeof(xname), "%s%s", homedir, name + 1);
 		name = savestr(xname);
 	}
 	if (!strpbrk(name, "~{[*?$`'\"\\"))
@@ -372,18 +369,18 @@ expand(char *name)
 		warn("pipe");
 		return (name);
 	}
-	(void)snprintf(cmdbuf, sizeof(cmdbuf), "echo %s", name);
+	snprintf(cmdbuf, sizeof(cmdbuf), "echo %s", name);
 	if ((sh = value("SHELL")) == NULL)
 		sh = _PATH_CSHELL;
 	pid = start_command(sh, 0, -1, pivec[1], "-c", cmdbuf, NULL);
 	if (pid < 0) {
-		(void)close(pivec[0]);
-		(void)close(pivec[1]);
+		close(pivec[0]);
+		close(pivec[1]);
 		return (NULL);
 	}
-	(void)close(pivec[1]);
+	close(pivec[1]);
 	l = read(pivec[0], xname, BUFSIZ);
-	(void)close(pivec[0]);
+	close(pivec[0]);
 	if (wait_child(pid) < 0 && WIFSIGNALED(wait_status) &&
 	    WTERMSIG(wait_status) != SIGPIPE) {
 		fprintf(stderr, "\"%s\": Expansion failed.\n", name);
@@ -444,7 +441,7 @@ getdeadletter(void)
 	else if (*cp != '/') {
 		char buf[PATHSIZE];
 
-		(void)snprintf(buf, sizeof(buf), "~/%s", cp);
+		snprintf(buf, sizeof(buf), "~/%s", cp);
 		cp = expand(buf);
 	}
 	return (cp);

@@ -32,7 +32,7 @@
  *
  * @(#)popen.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/popen.c,v 1.2.6.3 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/popen.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
+ * $DragonFly: src/usr.bin/mail/popen.c,v 1.4 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -70,7 +70,7 @@ Fopen(const char *path, const char *mode)
 
 	if ((fp = fopen(path, mode)) != NULL) {
 		register_file(fp, 0, 0);
-		(void)fcntl(fileno(fp), F_SETFD, 1);
+		fcntl(fileno(fp), F_SETFD, 1);
 	}
 	return (fp);
 }
@@ -82,7 +82,7 @@ Fdopen(int fd, const char *mode)
 
 	if ((fp = fdopen(fd, mode)) != NULL) {
 		register_file(fp, 0, 0);
-		(void)fcntl(fileno(fp), F_SETFD, 1);
+		fcntl(fileno(fp), F_SETFD, 1);
 	}
 	return (fp);
 }
@@ -105,8 +105,8 @@ Popen(char *cmd, const char *mode)
 
 	if (pipe(p) < 0)
 		return (NULL);
-	(void)fcntl(p[READ], F_SETFD, 1);
-	(void)fcntl(p[WRITE], F_SETFD, 1);
+	fcntl(p[READ], F_SETFD, 1);
+	fcntl(p[WRITE], F_SETFD, 1);
 	if (*mode == 'r') {
 		myside = p[READ];
 		fd0 = -1;
@@ -116,13 +116,13 @@ Popen(char *cmd, const char *mode)
 		hisside = fd0 = p[READ];
 		fd1 = -1;
 	}
-	(void)sigemptyset(&nset);
+	sigemptyset(&nset);
 	if ((pid = start_command(cmd, &nset, fd0, fd1, NULL, NULL, NULL)) < 0) {
-		(void)close(p[READ]);
-		(void)close(p[WRITE]);
+		close(p[READ]);
+		close(p[WRITE]);
 		return (NULL);
 	}
-	(void)close(hisside);
+	close(hisside);
 	if ((fp = fdopen(myside, mode)) != NULL)
 		register_file(fp, 1, pid);
 	return (fp);
@@ -136,13 +136,13 @@ Pclose(FILE *ptr)
 
 	i = file_pid(ptr);
 	unregister_file(ptr);
-	(void)fclose(ptr);
-	(void)sigemptyset(&nset);
-	(void)sigaddset(&nset, SIGINT);
-	(void)sigaddset(&nset, SIGHUP);
-	(void)sigprocmask(SIG_BLOCK, &nset, &oset);
+	fclose(ptr);
+	sigemptyset(&nset);
+	sigaddset(&nset, SIGINT);
+	sigaddset(&nset, SIGHUP);
+	sigprocmask(SIG_BLOCK, &nset, &oset);
 	i = wait_child(i);
-	(void)sigprocmask(SIG_SETMASK, &oset, NULL);
+	sigprocmask(SIG_SETMASK, &oset, NULL);
 	return (i);
 }
 
@@ -263,14 +263,13 @@ prepare_child(sigset_t *nset, int infd, int outfd)
 			(void)signal(i, SIG_IGN);
 	if (nset == NULL || !sigismember(nset, SIGINT))
 		(void)signal(SIGINT, SIG_DFL);
-	(void)sigemptyset(&eset);
-	(void)sigprocmask(SIG_SETMASK, &eset, NULL);
+	sigemptyset(&eset);
+	sigprocmask(SIG_SETMASK, &eset, NULL);
 }
 
 int
 wait_command(int pid)
 {
-
 	if (wait_child(pid) < 0) {
 		printf("Fatal error in process.\n");
 		return (-1);
@@ -305,7 +304,7 @@ delchild(struct child *cp)
 	for (cpp = &child; *cpp != cp; cpp = &(*cpp)->link)
 		;
 	*cpp = cp->link;
-	(void)free(cp);
+	free(cp);
 }
 
 /*ARGSUSED*/
@@ -338,15 +337,15 @@ wait_child(int pid)
 	sigset_t nset, oset;
 	struct child *cp = findchild(pid);
 
-	(void)sigemptyset(&nset);
-	(void)sigaddset(&nset, SIGCHLD);
-	(void)sigprocmask(SIG_BLOCK, &nset, &oset);	
+	sigemptyset(&nset);
+	sigaddset(&nset, SIGCHLD);
+	sigprocmask(SIG_BLOCK, &nset, &oset);	
 
 	while (!cp->done)
 		(void)sigsuspend(&oset);
 	wait_status = cp->status;
 	delchild(cp);
-	(void)sigprocmask(SIG_SETMASK, &oset, NULL);
+	sigprocmask(SIG_SETMASK, &oset, NULL);
 	return ((WIFEXITED(wait_status) && WEXITSTATUS(wait_status)) ? -1 : 0);
 }
 
@@ -359,13 +358,13 @@ free_child(int pid)
 	sigset_t nset, oset;
 	struct child *cp = findchild(pid);
 
-	(void)sigemptyset(&nset);
-	(void)sigaddset(&nset, SIGCHLD);
-	(void)sigprocmask(SIG_BLOCK, &nset, &oset);	
+	sigemptyset(&nset);
+	sigaddset(&nset, SIGCHLD);
+	sigprocmask(SIG_BLOCK, &nset, &oset);	
 
 	if (cp->done)
 		delchild(cp);
 	else
 		cp->free = 1;
-	(void)sigprocmask(SIG_SETMASK, &oset, NULL);
+	sigprocmask(SIG_SETMASK, &oset, NULL);
 }

@@ -32,7 +32,7 @@
  *
  * @(#)v7.local.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/v7.local.c,v 1.2.8.3 2003/01/06 05:46:04 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/v7.local.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
+ * $DragonFly: src/usr.bin/mail/v7.local.c,v 1.4 2004/09/08 03:01:11 joerg Exp $
  */
 
 /*
@@ -57,9 +57,9 @@ findmail(char *user, char *buf, int buflen)
 	char *tmp = getenv("MAIL");
 
 	if (tmp == NULL)
-		(void)snprintf(buf, buflen, "%s/%s", _PATH_MAILDIR, user);
+		snprintf(buf, buflen, "%s/%s", _PATH_MAILDIR, user);
 	else
-		(void)strlcpy(buf, tmp, buflen);
+		strlcpy(buf, tmp, buflen);
 }
 
 /*
@@ -68,9 +68,8 @@ findmail(char *user, char *buf, int buflen)
 void
 demail(void)
 {
-
 	if (value("keep") != NULL || rm(mailname) < 0)
-		(void)close(open(mailname, O_CREAT | O_TRUNC | O_WRONLY, 0600));
+		close(open(mailname, O_CREAT | O_TRUNC | O_WRONLY, 0600));
 }
 
 /*

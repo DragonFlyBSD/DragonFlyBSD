@@ -32,7 +32,7 @@
  *
  * @(#)cmd3.c	8.2 (Berkeley) 4/20/95
  * $FreeBSD: src/usr.bin/mail/cmd3.c,v 1.4.6.4 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/cmd3.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
+ * $DragonFly: src/usr.bin/mail/cmd3.c,v 1.4 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -61,8 +61,8 @@ shell(char *str)
 		return (1);
 	if ((sh = value("SHELL")) == NULL)
 		sh = _PATH_CSHELL;
-	(void)run_command(sh, 0, -1, -1, "-c", cmd, NULL);
-	(void)signal(SIGINT, sigint);
+	run_command(sh, 0, -1, -1, "-c", cmd, NULL);
+	signal(SIGINT, sigint);
 	printf("!\n");
 	return (0);
 }
@@ -79,8 +79,8 @@ dosh(char *str)
 
 	if ((sh = value("SHELL")) == NULL)
 		sh = _PATH_CSHELL;
-	(void)run_command(sh, 0, -1, -1, NULL, NULL, NULL);
-	(void)signal(SIGINT, sigint);
+	run_command(sh, 0, -1, -1, NULL, NULL, NULL);
+	signal(SIGINT, sigint);
 	printf("\n");
 	return (0);
 }
@@ -130,7 +130,7 @@ overf:
 	*cp2 = 0;
 	if (changed) {
 		printf("!%s\n", bangbuf);
-		(void)fflush(stdout);
+		fflush(stdout);
 	}
 	if (strlcpy(str, bangbuf, strsize) >= strsize)
 		goto overf;
@@ -155,7 +155,7 @@ help(void)
 	}
 	while ((c = getc(f)) != EOF)
 		putchar(c);
-	(void)Fclose(f);
+	Fclose(f);
 	return (0);
 }
 
@@ -418,7 +418,7 @@ unset(char **arglist)
 			variables[h] = variables[h]->v_link;
 			vfree(vp2->v_name);
 			vfree(vp2->v_value);
-			(void)free(vp2);
+			free(vp2);
 			continue;
 		}
 		for (vp = variables[h]; vp->v_link != vp2; vp = vp->v_link)
@@ -426,7 +426,7 @@ unset(char **arglist)
 		vp->v_link = vp2->v_link;
 		vfree(vp2->v_name);
 		vfree(vp2->v_value);
-		(void)free(vp2);
+		free(vp2);
 	}
 	return (errs);
 }
@@ -529,7 +529,6 @@ null(int e)
 int
 file(char **argv)
 {
-
 	if (argv[0] == NULL) {
 		newfileinfo(0);
 		return (0);
@@ -645,7 +644,6 @@ ifcmd(char **argv)
 int
 elsecmd(void)
 {
-
 	switch (cond) {
 	case CANY:
 		printf("\"Else\" without matching \"if\"\n");
@@ -673,7 +671,6 @@ elsecmd(void)
 int
 endifcmd(void)
 {
-
 	if (cond == CANY) {
 		printf("\"Endif\" without matching \"if\"\n");
 		return (1);
@@ -701,7 +698,7 @@ alternates(char **namelist)
 		return (0);
 	}
 	if (altnames != 0)
-		(void)free(altnames);
+		free(altnames);
 	altnames = calloc((unsigned)c, sizeof(char *));
 	for (ap = namelist, ap2 = altnames; *ap != NULL; ap++, ap2++) {
 		cp = calloc((unsigned)strlen(*ap) + 1, sizeof(char));

@@ -32,7 +32,7 @@
  *
  * @(#)lex.c	8.2 (Berkeley) 4/20/95
  * $FreeBSD: src/usr.bin/mail/lex.c,v 1.5.6.5 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/lex.c,v 1.5 2004/09/07 21:31:45 joerg Exp $
+ * $DragonFly: src/usr.bin/mail/lex.c,v 1.6 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -86,12 +86,12 @@ setfile(char *name)
 
 	if (fstat(fileno(ibuf), &stb) < 0) {
 		warn("fstat");
-		(void)Fclose(ibuf);
+		Fclose(ibuf);
 		return (-1);
 	}
 
 	if (S_ISDIR(stb.st_mode) || !S_ISREG(stb.st_mode)) {
-		(void)Fclose(ibuf);
+		Fclose(ibuf);
 		errno = S_ISDIR(stb.st_mode) ? EISDIR : EINVAL;
 		warn("%s", name);
 		return (-1);
@@ -117,10 +117,10 @@ setfile(char *name)
 	if ((i = open(name, 1)) < 0)
 		readonly++;
 	else
-		(void)close(i);
+		close(i);
 	if (shudclob) {
-		(void)fclose(itf);
-		(void)fclose(otf);
+		fclose(itf);
+		fclose(otf);
 	}
 	shudclob = 1;
 	edit = isedit;
@@ -128,15 +128,14 @@ setfile(char *name)
 	if (name != mailname)
 		strlcpy(mailname, name, sizeof(mailname));
 	mailsize = fsize(ibuf);
-	(void)snprintf(tempname, sizeof(tempname),
-	    "%s/mail.RxXXXXXXXXXX", tmpdir);
+	snprintf(tempname, sizeof(tempname), "%s/mail.RxXXXXXXXXXX", tmpdir);
 	if ((fd = mkstemp(tempname)) == -1 || (otf = fdopen(fd, "w")) == NULL)
 		err(1, "%s", tempname);
-	(void)fcntl(fileno(otf), F_SETFD, 1);
+	fcntl(fileno(otf), F_SETFD, 1);
 	if ((itf = fopen(tempname, "r")) == NULL)
 		err(1, "%s", tempname);
-	(void)fcntl(fileno(itf), F_SETFD, 1);
-	(void)rm(tempname);
+	fcntl(fileno(itf), F_SETFD, 1);
+	rm(tempname);
 	setptr(ibuf, 0);
 	setmsize(msgCount);
 	/*
@@ -145,7 +144,7 @@ setfile(char *name)
 	 * we really are in the file...
 	 */
 	mailsize = ftello(ibuf);
-	(void)Fclose(ibuf);
+	Fclose(ibuf);
 	relsesigs();
 	sawcom = 0;
 	if ((checkmode || !edit) && msgCount == 0) {
@@ -185,7 +184,7 @@ incfile(void)
 	setptr(ibuf, mailsize);
 	setmsize(msgCount);
 	mailsize = ftello(ibuf);
-	(void)Fclose(ibuf);
+	Fclose(ibuf);
 	relsesigs();
 	return (msgCount - omsgCount);
 }
@@ -205,12 +204,12 @@ commands(void)
 
 	if (!sourcing) {
 		if (signal(SIGINT, SIG_IGN) != SIG_IGN)
-			(void)signal(SIGINT, intr);
+			signal(SIGINT, intr);
 		if (signal(SIGHUP, SIG_IGN) != SIG_IGN)
-			(void)signal(SIGHUP, hangup);
-		(void)signal(SIGTSTP, stop);
-		(void)signal(SIGTTOU, stop);
-		(void)signal(SIGTTIN, stop);
+			signal(SIGHUP, hangup);
+		signal(SIGTSTP, stop);
+		signal(SIGTTOU, stop);
+		signal(SIGTTIN, stop);
 	}
 	setexit();
 	for (;;) {
@@ -224,7 +223,7 @@ commands(void)
 			reset_on_stop = 1;
 			printf("%s", prompt);
 		}
-		(void)fflush(stdout);
+		fflush(stdout);
 		sreset();
 		/*
 		 * Read a line of commands from the current input
@@ -472,9 +471,8 @@ out:
 void
 setmsize(int sz)
 {
-
 	if (msgvec != NULL)
-		(void)free(msgvec);
+		free(msgvec);
 	msgvec = calloc((unsigned)(sz + 1), sizeof(*msgvec));
 }
 
@@ -536,7 +534,6 @@ int	inithdr;			/* am printing startup headers */
 void
 intr(int s)
 {
-
 	noreset = 0;
 	if (!inithdr)
 		sawcom++;
@@ -547,7 +544,7 @@ intr(int s)
 	close_all_files();
 
 	if (image >= 0) {
-		(void)close(image);
+		close(image);
 		image = -1;
 	}
 	fprintf(stderr, "Interrupt\n");
@@ -563,12 +560,12 @@ stop(int s)
 	sig_t old_action = signal(s, SIG_DFL);
 	sigset_t nset;
 
-	(void)sigemptyset(&nset);
-	(void)sigaddset(&nset, s);
-	(void)sigprocmask(SIG_UNBLOCK, &nset, NULL);
-	(void)kill(0, s);
-	(void)sigprocmask(SIG_BLOCK, &nset, NULL);
-	(void)signal(s, old_action);
+	sigemptyset(&nset);
+	sigaddset(&nset, s);
+	sigprocmask(SIG_UNBLOCK, &nset, NULL);
+	kill(0, s);
+	sigprocmask(SIG_BLOCK, &nset, NULL);
+	signal(s, old_action);
 	if (reset_on_stop) {
 		reset_on_stop = 0;
 		reset(0);
@@ -582,7 +579,6 @@ stop(int s)
 void
 hangup(int s)
 {
-
 	/* nothing to do? */
 	exit(1);
 }
@@ -644,7 +640,7 @@ newfileinfo(int omsgCount)
 	if (getfold(fname, sizeof(fname) - 1) >= 0) {
 		strcat(fname, "/");
 		if (strncmp(fname, mailname, strlen(fname)) == 0) {
-			(void)snprintf(zname, sizeof(zname), "+%s",
+			snprintf(zname, sizeof(zname), "+%s",
 			    mailname + strlen(fname));
 			ename = zname;
 		}
@@ -676,7 +672,6 @@ newfileinfo(int omsgCount)
 int
 pversion(int e)
 {
-
 	printf("Version %s\n", version);
 	return (0);
 }
@@ -699,5 +694,5 @@ load(char *name)
 	loading = 0;
 	sourcing = 0;
 	input = oldin;
-	(void)Fclose(in);
+	Fclose(in);
 }

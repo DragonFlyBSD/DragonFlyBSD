@@ -32,7 +32,7 @@
  *
  * @(#)tty.c	8.2 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/tty.c,v 1.2.8.3 2003/01/06 05:46:04 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/tty.c,v 1.4 2004/09/07 22:59:07 joerg Exp $
+ * $DragonFly: src/usr.bin/mail/tty.c,v 1.5 2004/09/08 03:01:11 joerg Exp $
  */
 
 /*
@@ -44,10 +44,10 @@
 #include "rcv.h"
 #include "extern.h"
 
-static	cc_t	c_erase;		/* Current erase char */
-static	cc_t	c_kill;			/* Current kill char */
-static	jmp_buf	rewrite;		/* Place to go when continued */
-static	jmp_buf	intjmp;			/* Place to go when interrupted */
+static cc_t	c_erase;		/* Current erase char */
+static cc_t	c_kill;			/* Current kill char */
+static jmp_buf	rewrite;		/* Place to go when continued */
+static jmp_buf	intjmp;			/* Place to go when interrupted */
 
 /*
  * Read all relevant header fields.
@@ -99,15 +99,15 @@ grabh(struct header *hp, int gflags)
 			extract(readtty("Bcc: ", detract(hp->h_bcc, 0)), GBCC);
 	}
 out:
-	(void)signal(SIGTSTP, savetstp);
-	(void)signal(SIGTTOU, savettou);
-	(void)signal(SIGTTIN, savettin);
+	signal(SIGTSTP, savetstp);
+	signal(SIGTTOU, savettou);
+	signal(SIGTTIN, savettin);
 	if (extproc) {
 		flag = 1;
 		if (ioctl(fileno(stdin), TIOCEXT, &flag) < 0)
 			warn("TIOCEXT: on");
 	}
-	(void)signal(SIGINT, saveint);
+	signal(SIGINT, saveint);
 	return (errs);
 }
 
@@ -126,7 +126,7 @@ readtty(const char *pr, char *src)
 	char *cp, *cp2;
 
 	fputs(pr, stdout);
-	(void)fflush(stdout);
+	fflush(stdout);
 	if (src != NULL && strlen(src) > BUFSIZ - 2) {
 		printf("too long to edit\n");
 		return (src);
@@ -149,9 +149,9 @@ readtty(const char *pr, char *src)
 	cp2 = cp;
 	if (setjmp(rewrite))
 		goto redo;
-	(void)signal(SIGTSTP, ttystop);
-	(void)signal(SIGTTOU, ttystop);
-	(void)signal(SIGTTIN, ttystop);
+	signal(SIGTSTP, ttystop);
+	signal(SIGTTOU, ttystop);
+	signal(SIGTTIN, ttystop);
 	clearerr(stdin);
 	while (cp2 < canonb + BUFSIZ) {
 		c = getc(stdin);
@@ -160,9 +160,9 @@ readtty(const char *pr, char *src)
 		*cp2++ = c;
 	}
 	*cp2 = '\0';
-	(void)signal(SIGTSTP, SIG_DFL);
-	(void)signal(SIGTTOU, SIG_DFL);
-	(void)signal(SIGTTIN, SIG_DFL);
+	signal(SIGTSTP, SIG_DFL);
+	signal(SIGTTOU, SIG_DFL);
+	signal(SIGTTIN, SIG_DFL);
 	if (c == EOF && ferror(stdin)) {
 redo:
 		cp = strlen(canonb) > 0 ? canonb : NULL;
@@ -183,12 +183,12 @@ ttystop(int s)
 	sig_t old_action = signal(s, SIG_DFL);
 	sigset_t nset;
 
-	(void)sigemptyset(&nset);
-	(void)sigaddset(&nset, s);
-	(void)sigprocmask(SIG_BLOCK, &nset, NULL);
+	sigemptyset(&nset);
+	sigaddset(&nset, s);
+	sigprocmask(SIG_BLOCK, &nset, NULL);
 	kill(0, s);
-	(void)sigprocmask(SIG_UNBLOCK, &nset, NULL);
-	(void)signal(s, old_action);
+	sigprocmask(SIG_UNBLOCK, &nset, NULL);
+	signal(s, old_action);
 	longjmp(rewrite, 1);
 }
 

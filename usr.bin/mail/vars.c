@@ -32,7 +32,7 @@
  *
  * @(#)vars.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/vars.c,v 1.1.1.1.14.3 2003/01/06 05:46:04 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/vars.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
+ * $DragonFly: src/usr.bin/mail/vars.c,v 1.4 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -75,7 +75,7 @@ void
 vfree(char *cp)
 {
 	if (*cp != '\0')
-		(void)free(cp);
+		free(cp);
 }
 
 /*

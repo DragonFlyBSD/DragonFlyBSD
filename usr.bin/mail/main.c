@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.2 (Berkeley) 4/20/95
  * $FreeBSD: src/usr.bin/mail/main.c,v 1.6.2.5 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/main.c,v 1.5 2004/09/07 22:33:35 joerg Exp $
+ * $DragonFly: src/usr.bin/mail/main.c,v 1.6 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -66,7 +66,7 @@ main(int argc, char **argv)
 	 * Figure out whether we are being run interactively,
 	 * start the SIGCHLD catcher, and so forth.
 	 */
-	(void)signal(SIGCHLD, sigchild);
+	signal(SIGCHLD, sigchild);
 	if (isatty(0))
 		assign("interactive", "");
 	image = -1;
@@ -94,7 +94,7 @@ main(int argc, char **argv)
 			if ((i = open(Tflag, O_CREAT | O_TRUNC | O_WRONLY,
 			    0600)) < 0)
 				err(1, "%s", Tflag);
-			(void)close(i);
+			close(i);
 			break;
 		case 'u':
 			/*
@@ -275,13 +275,13 @@ main(int argc, char **argv)
 		exit(1);		/* error already reported */
 	if (setjmp(hdrjmp) == 0) {
 		if ((prevint = signal(SIGINT, SIG_IGN)) != SIG_IGN)
-			(void)signal(SIGINT, hdrstop);
+			signal(SIGINT, hdrstop);
 		if (value("quiet") == NULL)
 			printf("Mail version %s.  Type ? for help.\n",
 				version);
 		announce();
-		(void)fflush(stdout);
-		(void)signal(SIGINT, prevint);
+		fflush(stdout);
+		signal(SIGINT, prevint);
 	}
 
 	/* If we were in header summary mode, it's time to exit. */
@@ -289,9 +289,9 @@ main(int argc, char **argv)
 		exit(0);
 
 	commands();
-	(void)signal(SIGHUP, SIG_IGN);
-	(void)signal(SIGINT, SIG_IGN);
-	(void)signal(SIGQUIT, SIG_IGN);
+	signal(SIGHUP, SIG_IGN);
+	signal(SIGINT, SIG_IGN);
+	signal(SIGQUIT, SIG_IGN);
 	quit();
 	exit(0);
 }
@@ -303,8 +303,7 @@ main(int argc, char **argv)
 void
 hdrstop(int signo)
 {
-
-	(void)fflush(stdout);
+	fflush(stdout);
 	fprintf(stderr, "\nInterrupt\n");
 	longjmp(hdrjmp, 1);
 }

@@ -32,7 +32,7 @@
  *
  * @(#)aux.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/aux.c,v 1.4.6.4 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/aux.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
+ * $DragonFly: src/usr.bin/mail/aux.c,v 1.4 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include <sys/time.h>
@@ -90,7 +90,6 @@ save2str(char *str, char *old)
 void
 touch(struct message *mp)
 {
-
 	mp->m_flag |= MTOUCH;
 	if ((mp->m_flag & MREAD) == 0)
 		mp->m_flag |= MREAD|MSTATUS;
@@ -274,7 +273,7 @@ source(char **arglist)
 	}
 	if (ssp >= SSTACK_SIZE - 1) {
 		printf("Too much \"sourcing\" going on.\n");
-		(void)Fclose(fi);
+		Fclose(fi);
 		return (1);
 	}
 	sstack[ssp].s_file = input;
@@ -300,7 +299,7 @@ unstack(void)
 		sourcing = 0;
 		return (1);
 	}
-	(void)Fclose(input);
+	Fclose(input);
 	if (cond != CANY)
 		printf("Unmatched \"if\"\n");
 	ssp--;
@@ -324,10 +323,10 @@ alter(char *name)
 
 	if (stat(name, &sb))
 		return;
-	(void)gettimeofday(&tv[0], (struct timezone *)NULL);
+	gettimeofday(&tv[0], (struct timezone *)NULL);
 	tv[0].tv_sec++;
 	TIMESPEC_TO_TIMEVAL(&tv[1], &sb.st_mtimespec);
-	(void)utimes(name, tv);
+	utimes(name, tv);
 }
 
 /*

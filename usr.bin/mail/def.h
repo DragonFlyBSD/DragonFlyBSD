@@ -33,7 +33,7 @@
  *	@(#)def.h	8.4 (Berkeley) 4/20/95
  *
  * $FreeBSD: src/usr.bin/mail/def.h,v 1.4.6.4 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/def.h,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/mail/def.h,v 1.3 2004/09/08 03:01:11 joerg Exp $
  */
 
 /*
@@ -274,6 +274,6 @@ struct ignoretab {
  * for read/write.
  */
 #define trunc(stream) {							\
-	(void)fflush(stream); 						\
-	(void)ftruncate(fileno(stream), (off_t)ftell(stream));		\
+	fflush(stream); 						\
+	ftruncate(fileno(stream), (off_t)ftell(stream));		\
 }

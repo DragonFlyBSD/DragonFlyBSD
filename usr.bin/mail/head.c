@@ -32,7 +32,7 @@
  *
  * @(#)head.c	8.2 (Berkeley) 4/20/95
  * $FreeBSD: src/usr.bin/mail/head.c,v 1.1.1.1.14.5 2003/06/17 04:25:07 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/head.c,v 1.4 2004/07/24 06:25:29 hmp Exp $
+ * $DragonFly: src/usr.bin/mail/head.c,v 1.5 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -76,7 +76,6 @@ ishead(char *linebuf)
 void
 fail(const char *linebuf, const char *reason)
 {
-
 	/*
 	if (value("debug") == NULL)
 		return;

@@ -32,7 +32,7 @@
  *
  * @(#)cmd1.c	8.2 (Berkeley) 4/20/95
  * $FreeBSD: src/usr.bin/mail/cmd1.c,v 1.3.6.3 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/cmd1.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
+ * $DragonFly: src/usr.bin/mail/cmd1.c,v 1.4 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -172,7 +172,7 @@ printhead(int mesg)
 	char *name;
 
 	mp = &message[mesg-1];
-	(void)readline(setinput(mp), headline, LINESIZE);
+	readline(setinput(mp), headline, LINESIZE);
 	if ((subjline = hfield("subject", mp)) == NULL)
 		subjline = hfield("subj", mp);
 	/*
@@ -244,7 +244,6 @@ pcmdlist(void)
 int
 more(int *msgvec)
 {
-
 	return (type1(msgvec, 1, 1));
 }
 
@@ -254,7 +253,6 @@ more(int *msgvec)
 int
 More(int *msgvec)
 {
-
 	return (type1(msgvec, 0, 1));
 }
 
@@ -264,7 +262,6 @@ More(int *msgvec)
 int
 type(int *msgvec)
 {
-
 	return (type1(msgvec, 1, 0));
 }
 
@@ -274,7 +271,6 @@ type(int *msgvec)
 int
 Type(int *msgvec)
 {
-
 	return (type1(msgvec, 0, 0));
 }
 
@@ -309,7 +305,7 @@ type1(int *msgvec, int doign, int page)
 				warnx("%s", cp);
 				obuf = stdout;
 			} else
-				(void)signal(SIGPIPE, brokpipe);
+				signal(SIGPIPE, brokpipe);
 		}
 	}
 
@@ -323,7 +319,7 @@ type1(int *msgvec, int doign, int page)
 		dot = mp;
 		if (value("quiet") == NULL)
 			fprintf(obuf, "Message %d:\n", *ip);
-		(void)sendmessage(mp, obuf, doign ? ignore : 0, NULL);
+		sendmessage(mp, obuf, doign ? ignore : 0, NULL);
 	}
 
 close_pipe:
@@ -331,9 +327,9 @@ close_pipe:
 		/*
 		 * Ignore SIGPIPE so it can't cause a duplicate close.
 		 */
-		(void)signal(SIGPIPE, SIG_IGN);
-		(void)Pclose(obuf);
-		(void)signal(SIGPIPE, SIG_DFL);
+		signal(SIGPIPE, SIG_IGN);
+		Pclose(obuf);
+		signal(SIGPIPE, SIG_DFL);
 	}
 	return (0);
 }
@@ -439,7 +435,7 @@ folders(void)
 	}
 	if ((cmd = value("LISTER")) == NULL)
 		cmd = "ls";
-	(void)run_command(cmd, 0, -1, -1, dirname, NULL, NULL);
+	run_command(cmd, 0, -1, -1, dirname, NULL, NULL);
 	return (0);
 }
 
