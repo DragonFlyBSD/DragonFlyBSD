@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/table.c,v 1.9.2.2 2000/08/14 17:00:04 sheldonh Exp $
- * $DragonFly: src/sbin/routed/table.c,v 1.3 2004/02/04 17:40:01 joerg Exp $
+ * $DragonFly: src/sbin/routed/table.c,v 1.4 2004/07/28 12:27:40 joerg Exp $
  */
 
 #include "defs.h"
@@ -299,7 +299,7 @@ ag_check(naddr	dst,
 	naddr xaddr;
 	int x;
 
-	NTOHL(dst);
+	dst = ntohl(dst);
 
 	/* Punt non-contiguous subnet masks.
 	 *

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/rtquery/rtquery.c,v 1.13 1999/08/28 00:14:21 peter Exp $
- * $DragonFly: src/sbin/routed/rtquery/rtquery.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/routed/rtquery/rtquery.c,v 1.3 2004/07/28 12:27:40 joerg Exp $
  */
 
 char copyright[] =
@@ -783,7 +783,7 @@ rip_input(struct sockaddr_in *from,
 static u_int
 std_mask(u_int addr)			/* in network order */
 {
-	NTOHL(addr);			/* was a host, not a network */
+	addr = ntohl(addr);		/* was a host, not a network */
 
 	if (addr == 0)			/* default route has mask 0 */
 		return 0;
@@ -826,7 +826,7 @@ getnet(char *name,
 	if (nentp != 0) {
 		in.s_addr = nentp->n_net;
 	} else if (inet_aton(name, &in) == 1) {
-		NTOHL(in.s_addr);
+		in.s_addr = ntohl(in.s_addr);
 	} else {
 		return 0;
 	}

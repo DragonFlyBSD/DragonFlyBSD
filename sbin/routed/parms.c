@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/parms.c,v 1.7.2.1 2000/08/14 17:00:03 sheldonh Exp $
- * $DragonFly: src/sbin/routed/parms.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/routed/parms.c,v 1.3 2004/07/28 12:27:40 joerg Exp $
  */
 
 #include "defs.h"
@@ -250,7 +250,7 @@ gwkludge(void)
 				       dname, lptr);
 				continue;
 			}
-			HTONL(dst);	/* make network # into IP address */
+			dst = htonl(dst); /* make network # into IP address */
 		} else {
 			msglog("bad \"%s\" in "_PATH_GATEWAYS
 			       " entry \"%s\"", net_host, lptr);
@@ -613,7 +613,7 @@ parse_parms(char *line,
 			free(intnetp);
 			return bad_str(line);
 		}
-		HTONL(intnetp->intnet_addr);
+		intnetp->intnet_addr = htonl(intnetp->intnet_addr);
 		intnetp->intnet_next = intnets;
 		intnets = intnetp;
 		return 0;
@@ -946,7 +946,7 @@ getnet(char *name,
 		if (0 == (in.s_addr & 0xff000000))
 			in.s_addr <<= 8;
 	} else if (inet_aton(name, &in) == 1) {
-		NTOHL(in.s_addr);
+		in.s_addr = ntohl(in.s_addr);
 	} else if (!mname && !strcasecmp(name,"default")) {
 		in.s_addr = RIP_DEFAULT;
 	} else {
