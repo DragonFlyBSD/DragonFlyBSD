@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.18 2004/08/24 13:52:59 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.19 2004/08/25 00:05:11 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -861,7 +861,8 @@ ufs_rename(struct vop_rename_args *ap)
 	struct thread *td = fcnp->cn_td;
 	struct inode *ip, *xp, *dp;
 	struct direct newdir;
-	ino_t doingdirectory = 0, oldparent = 0, newparent = 0;
+	ino_t oldparent = 0, newparent = 0;
+	int doingdirectory = 0;
 	int error = 0, ioflag;
 
 #ifdef DIAGNOSTIC
@@ -1081,9 +1082,16 @@ abortit:
 			error = EISDIR;
 			goto bad;
 		}
+		/*
+		 * note: inode passed to ufs_dirrewrite() is 0 for a 
+		 * non-directory file rename, 1 for a directory rename
+		 * in the same directory, and > 1 for an inode representing
+		 * the new directory.
+		 */
 		error = ufs_dirrewrite(dp, xp, ip->i_number,
 		    IFTODT(ip->i_mode),
-		    (doingdirectory && newparent) ? newparent : doingdirectory);
+		    (doingdirectory && newparent) ?
+			newparent : (ino_t)doingdirectory);
 		if (error)
 			goto bad;
 		if (doingdirectory) {
@@ -1701,10 +1709,10 @@ ufs_strategy(struct vop_strategy_args *ap)
 			biodone(bp);
 			return (error);
 		}
-		if (bp->b_blkno == -1)
+		if (bp->b_blkno == (daddr_t)-1)
 			vfs_bio_clrbuf(bp);
 	}
-	if (bp->b_blkno == -1) {
+	if (bp->b_blkno == (daddr_t)-1) {
 		biodone(bp);
 		return (0);
 	}
