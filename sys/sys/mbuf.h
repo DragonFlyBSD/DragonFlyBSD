@@ -32,7 +32,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.8 2003/12/28 06:11:33 dillon Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.9 2004/03/27 11:50:45 hsu Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -459,6 +459,8 @@ extern	struct mbuf	*mmbfree;
 extern	int		 nmbclusters;
 extern	int		 nmbufs;
 
+struct uio;
+
 void		 m_adj(struct mbuf *, int);
 void		 m_cat(struct mbuf *, struct mbuf *);
 int		 m_clalloc(int, int);
@@ -489,6 +491,7 @@ struct	mbuf	*m_pullup(struct mbuf *, int);
 struct	mbuf	*m_retry(int, int);
 struct	mbuf	*m_retryhdr(int, int);
 struct	mbuf	*m_split(struct mbuf *, int, int);
+struct	mbuf 	*m_uiomove(struct uio *, int, int);
 caddr_t		m_mclalloc(int how);
 void		m_mclget(struct mbuf *m, int how);
 void		m_mclfree(caddr_t data);

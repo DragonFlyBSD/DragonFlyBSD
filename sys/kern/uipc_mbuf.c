@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 1982, 1986, 1988, 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +33,7 @@
  *
  *	@(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.14 2003/12/28 06:11:32 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.15 2004/03/27 11:50:45 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -45,6 +46,7 @@
 #include <sys/sysctl.h>
 #include <sys/domain.h>
 #include <sys/protosw.h>
+#include <sys/uio.h>
 #include <sys/thread.h>
 #include <sys/globaldata.h>
 
@@ -1672,5 +1674,64 @@ nospace:
 		m_free(m_new);
 	if (m_final)
 		m_freem(m_final);
+	return (NULL);
+}
+
+/*
+ * Move data from uio into mbufs.
+ * A length of zero means copy the whole uio.
+ */
+struct mbuf *
+m_uiomove(struct uio *uio, int wait, int len0)
+{
+	struct mbuf *head;		/* result mbuf chain */
+	struct mbuf *m;			/* current working mbuf */
+	struct mbuf **mp;
+	int resid, datalen, error;
+
+	resid = (len0 == 0) ? uio->uio_resid : min(len0, uio->uio_resid);
+
+	head = NULL;
+	mp = &head;
+	do {
+		if (resid > MHLEN) {
+			m = m_getcl(wait, MT_DATA, head == NULL ? M_PKTHDR : 0);
+			if (m == NULL)
+				goto failed;
+			if (m->m_flags & M_PKTHDR)
+				m->m_pkthdr.len = 0;
+		} else {
+			if (head == NULL) {
+				MGETHDR(m, wait, MT_DATA);
+				if (m == NULL)
+					goto failed;
+				m->m_pkthdr.len = 0;
+				/* Leave room for protocol headers. */
+				if (resid < MHLEN)
+					MH_ALIGN(m, resid);
+			} else {
+				MGET(m, wait, MT_DATA);
+				if (m == NULL)
+					goto failed;
+			}
+		}
+		datalen = min(MCLBYTES, resid);
+		error = uiomove(mtod(m, caddr_t), datalen, uio);
+		if (error) {
+			m_free(m);
+			goto failed;
+		}
+		m->m_len = datalen;
+		*mp = m;
+		mp = &m->m_next;
+		head->m_pkthdr.len += datalen;
+		resid -= datalen;
+	} while (resid > 0);
+
+	return (head);
+
+failed:
+	if (head)
+		m_freem(head);
 	return (NULL);
 }
