@@ -1,6 +1,6 @@
 /* Copyright (c) 2003 Stuart Walsh */
 /* $FreeBSD: src/sys/dev/bfe/if_bfereg.h,v 1.1.4.3 2004/02/13 21:36:34 julian Exp $ */
-/* $DragonFly: src/sys/dev/netif/bfe/if_bfereg.h,v 1.1 2004/02/27 11:56:12 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/bfe/if_bfereg.h,v 1.2 2004/03/14 14:37:39 joerg Exp $ */
 
 #ifndef _BFE_H
 #define _BFE_H
@@ -421,11 +421,6 @@
 #define BFE_AND(sc, name, val)						\
 	CSR_WRITE_4(sc, name, CSR_READ_4(sc, name) & val)
 
-#define BPF_MTAP(_ifp,_m)						\
-	do {								\
-		if ((_ifp)->if_bpf)					\
-			bpf_mtap((_ifp), (_m));				\
-	} while (0)
 #define ETHER_ALIGN		2
 
 #define BFE_INC(x, y)		(x) = ((x) == ((y)-1)) ? 0 : (x)+1

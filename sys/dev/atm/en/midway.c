@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.7 2004/02/13 19:06:15 joerg Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.8 2004/03/14 14:37:39 joerg Exp $
  */
 
 /*
@@ -169,17 +169,13 @@
 
 #endif	/* __FreeBSD__ */
 
-#include "use_bpf.h"
-#if NBPF > 0
 #include <net/bpf.h>
 #if defined(__DragonFly__) || defined(__FreeBSD__)
 #define BPFATTACH(ifp, dlt, hlen)	bpfattach((ifp), (dlt), (hlen))
-#define BPF_MTAP(ifp, m)		bpf_mtap((ifp), (m))
 #else
 #define BPFATTACH(ifp, dlt, hlen)	bpfattach(&(ifp)->if_bpf, (ifp), (dlt), (hlen))
 #define BPF_MTAP(ifp, m)		bpf_mtap((ifp)->if_bpf, (m))
 #endif
-#endif /* NBPF > 0 */
 
 /*
  * params
