@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.7 2004/03/08 19:44:32 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.8 2004/03/14 08:21:53 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -228,6 +228,15 @@ udp_addrcpu(in_addr_t src, in_port_t sport, in_addr_t dst, in_port_t dport)
 		return (0);
 	else
 		return (INP_MPORT_HASH(src, dst, sport, dport));
+}
+
+/*
+ * Return LWKT port for cpu.
+ */
+lwkt_port_t
+tcp_cport(int cpu)
+{
+	return (&tcp_thread[cpu].td_msgport);
 }
 
 void

@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.14 2004/03/08 19:44:32 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.15 2004/03/14 08:21:53 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -472,6 +472,8 @@ struct tcpcb *
 	 tcp_close (struct tcpcb *);
 void	 tcp_ctlinput (int, struct sockaddr *, void *);
 int	 tcp_ctloutput (struct socket *, struct sockopt *);
+struct lwkt_port *
+	 tcp_cport(int cpu);
 struct tcpcb *
 	 tcp_drop (struct tcpcb *, int);
 void	 tcp_drain (void);

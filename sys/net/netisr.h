@@ -32,7 +32,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.10 2004/03/14 07:57:26 hsu Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.11 2004/03/14 08:21:53 hsu Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -141,6 +141,8 @@ int netmsg_pr_dispatcher(struct netmsg *);
 
 #define CMD_NETMSG_PR_CTLOUTPUT		(MSG_CMD_NETMSG | 0x0017)
 #define CMD_NETMSG_PR_TIMEOUT		(MSG_CMD_NETMSG | 0x0018)
+
+#define	CMD_NETMSG_ONCPU		(MSG_CMD_NETMSG | 0x0019)
 
 typedef lwkt_port_t (*lwkt_portfn_t)(struct mbuf *);
 
