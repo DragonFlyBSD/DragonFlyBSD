@@ -2,7 +2,7 @@
 
 # installer - start installer frontend and backend as per pfi config.
 # $Id: installer,v 1.17 2005/02/06 02:53:44 cpressey Exp $
-# $DragonFly: src/nrelease/installer/usr/local/bin/installer,v 1.7 2005/03/03 23:17:11 cpressey Exp $
+# $DragonFly: src/nrelease/installer/usr/local/bin/installer,v 1.8 2005/03/20 03:54:01 cpressey Exp $
 
 ### SUBS ###
 
@@ -72,9 +72,11 @@ installer_start()
 	if [ "X$SERIAL" = "XYES" ]; then
 		background_backend $RENDEZVOUS $pfi_dfui_transport &
 		sleep 1
-		/usr/local/sbin/dfuife_curses -r $RENDEZVOUS \
-		    -t $pfi_dfui_transport \
-		    -b /usr/local/share/dfuife_curses/fred.txt \
+		ESCDELAY=$pfi_curses_escdelay \
+		    /usr/local/sbin/dfuife_curses \
+			-r $RENDEZVOUS \
+			-t $pfi_dfui_transport \
+			-b /usr/local/share/dfuife_curses/fred.txt \
 		    2>/dev/null
 		pfi_frontend=none
 	fi
@@ -89,9 +91,11 @@ installer_start()
 		if grep -q dfuife_curses /tmp/ps.txt; then
 			# Frontend is already running.
 		else
-			/usr/local/sbin/dfuife_curses -r $RENDEZVOUS \
-			    -t $pfi_dfui_transport \
-			    -b /usr/local/share/dfuife_curses/fred.txt \
+			ESCDELAY=$pfi_curses_escdelay \
+			    /usr/local/sbin/dfuife_curses \
+				-r $RENDEZVOUS \
+				-t $pfi_dfui_transport \
+				-b /usr/local/share/dfuife_curses/fred.txt \
 			    2>/dev/ttyv0 </dev/ttyv1 >/dev/ttyv1 &
 		fi
 		rm -f /tmp/ps.txt
