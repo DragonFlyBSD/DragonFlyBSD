@@ -37,8 +37,8 @@
  * SUCH DAMAGE.
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
- * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.28 2005/02/03 18:36:26 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/cond.c,v 1.39 2005/02/07 07:49:16 harti Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.29 2005/02/15 01:01:17 okumoto Exp $
  */
 
 /*-

@@ -37,8 +37,8 @@
  * SUCH DAMAGE.
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
- * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.30 2005/02/01 22:05:36 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/dir.c,v 1.47 2005/02/04 07:50:59 harti Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.31 2005/02/15 01:01:18 okumoto Exp $
  */
 
 /*-

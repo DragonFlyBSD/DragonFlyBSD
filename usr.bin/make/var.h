@@ -36,8 +36,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/make/var.h,v 1.1 2002/10/28 23:33:57 jmallett Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.14 2005/02/08 02:07:03 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/var.h,v 1.8 2005/02/07 16:27:19 harti Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.15 2005/02/15 01:01:18 okumoto Exp $
  */
 
 #ifndef var_h_9cccafce

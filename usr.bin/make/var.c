@@ -36,8 +36,8 @@
  * SUCH DAMAGE.
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
- * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.90 2005/02/14 09:58:28 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.91 2005/02/15 01:01:18 okumoto Exp $
  */
 
 /*-

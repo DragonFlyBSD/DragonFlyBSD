@@ -37,8 +37,8 @@
  * SUCH DAMAGE.
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
- * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.29 2005/02/04 23:18:42 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/compat.c,v 1.50 2005/02/10 14:39:05 harti Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.30 2005/02/15 01:01:17 okumoto Exp $
  */
 
 /*-

@@ -37,8 +37,8 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)config.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/make/config.h,v 1.9 1999/09/10 20:51:59 julian Exp $
- * $DragonFly: src/usr.bin/make/config.h,v 1.9 2005/02/01 22:05:36 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/config.h,v 1.16 2005/02/01 10:50:35 harti Exp $
+ * $DragonFly: src/usr.bin/make/config.h,v 1.10 2005/02/15 01:01:18 okumoto Exp $
  */
 
 #ifndef config_h_efe0765e

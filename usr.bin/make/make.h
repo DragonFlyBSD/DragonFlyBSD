@@ -36,8 +36,8 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
- * $FreeBSD: src/usr.bin/make/make.h,v 1.12.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.20 2005/02/01 22:05:36 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/make.h,v 1.29 2005/02/01 10:50:36 harti Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.21 2005/02/15 01:01:18 okumoto Exp $
  */
 
 #ifndef make_h_a91074b9

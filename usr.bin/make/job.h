@@ -37,8 +37,8 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/make/job.h,v 1.11 2000/01/17 06:43:41 kris Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.19 2005/02/01 22:05:36 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/job.h,v 1.30 2005/02/01 10:50:35 harti Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.20 2005/02/15 01:01:18 okumoto Exp $
  */
 
 #ifndef job_h_4678dfd1

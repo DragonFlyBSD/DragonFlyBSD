@@ -36,8 +36,8 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)sprite.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/make/sprite.h,v 1.9 1999/08/28 01:03:36 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/sprite.h,v 1.6 2005/02/01 22:05:36 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/sprite.h,v 1.14 2005/02/01 10:50:36 harti Exp $
+ * $DragonFly: src/usr.bin/make/Attic/sprite.h,v 1.7 2005/02/15 01:01:18 okumoto Exp $
  */
 
 #ifndef sprite_h_000823c6

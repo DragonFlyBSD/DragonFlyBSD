@@ -27,8 +27,8 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)pathnames.h	5.2 (Berkeley) 6/1/90
- * $FreeBSD: src/usr.bin/make/pathnames.h,v 1.9 1999/08/28 01:03:36 peter Exp $
- * $DragonFly: src/usr.bin/make/pathnames.h,v 1.4 2005/02/01 22:05:36 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/pathnames.h,v 1.13 2005/02/01 10:50:36 harti Exp $
+ * $DragonFly: src/usr.bin/make/pathnames.h,v 1.5 2005/02/15 01:01:18 okumoto Exp $
  */
 
 #ifndef pathnames_h_235b888a

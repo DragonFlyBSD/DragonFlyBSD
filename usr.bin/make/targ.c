@@ -36,8 +36,8 @@
  * SUCH DAMAGE.
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
- * $FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.24 2005/02/01 22:05:36 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/targ.c,v 1.37 2005/02/04 12:38:57 harti Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.25 2005/02/15 01:01:18 okumoto Exp $
  */
 
 /*-

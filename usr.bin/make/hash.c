@@ -37,8 +37,8 @@
  * SUCH DAMAGE.
  *
  * @(#)hash.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/make/hash.c,v 1.9 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/hash.c,v 1.15 2005/02/01 22:05:36 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/hash.c,v 1.24 2005/02/01 10:50:35 harti Exp $
+ * $DragonFly: src/usr.bin/make/hash.c,v 1.16 2005/02/15 01:01:18 okumoto Exp $
  */
 
 /* hash.c --

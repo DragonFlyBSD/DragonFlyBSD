@@ -36,8 +36,8 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)nonints.h	8.3 (Berkeley) 3/19/94
- * $FreeBSD: src/usr.bin/make/nonints.h,v 1.8 1999/08/28 01:03:35 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.28 2005/02/01 22:05:36 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/nonints.h,v 1.32 2005/02/07 11:27:47 harti Exp $
+ * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.29 2005/02/15 01:01:18 okumoto Exp $
  */
 
 #ifndef nonints_h_33c5dafb

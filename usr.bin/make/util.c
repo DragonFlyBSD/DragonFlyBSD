@@ -36,8 +36,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/make/util.c,v 1.5.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/util.c,v 1.16 2005/02/02 12:29:43 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/util.c,v 1.16 2005/02/04 13:23:39 harti Exp $
+ * $DragonFly: src/usr.bin/make/util.c,v 1.17 2005/02/15 01:01:18 okumoto Exp $
  */
 
 /*-

@@ -37,8 +37,8 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/make/lst.h,v 1.9 1999/08/28 01:03:32 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.21 2005/02/11 01:07:09 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/lst.h,v 1.28 2005/02/10 14:25:12 harti Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.22 2005/02/15 01:01:18 okumoto Exp $
  */
 
 #ifndef lst_h_38f3ead1

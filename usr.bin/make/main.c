@@ -37,8 +37,8 @@
  *
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
- * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.54 2005/02/04 22:35:42 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.55 2005/02/15 01:01:18 okumoto Exp $
  */
 
 /*-

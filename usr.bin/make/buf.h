@@ -37,8 +37,8 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)buf.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/make/buf.h,v 1.9 1999/08/28 01:03:26 peter Exp $
- * $DragonFly: src/usr.bin/make/buf.h,v 1.27 2005/02/07 20:09:45 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/buf.h,v 1.24 2005/02/07 11:27:47 harti Exp $
+ * $DragonFly: src/usr.bin/make/buf.h,v 1.28 2005/02/15 01:01:17 okumoto Exp $
  */
 
 #ifndef buf_h_a61a6812

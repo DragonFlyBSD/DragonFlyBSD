@@ -36,8 +36,8 @@
  * SUCH DAMAGE.
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
- * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.45 2005/02/07 20:46:19 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.46 2005/02/15 01:01:18 okumoto Exp $
  */
 
 /*-

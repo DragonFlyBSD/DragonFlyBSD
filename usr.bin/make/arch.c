@@ -36,8 +36,8 @@
  * SUCH DAMAGE.
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
- * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.32 2005/02/05 00:58:47 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/arch.c,v 1.48 2005/02/10 14:39:05 harti Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.33 2005/02/15 01:01:17 okumoto Exp $
  */
 
 /*-

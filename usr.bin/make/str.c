@@ -36,8 +36,8 @@
  * SUCH DAMAGE.
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
- * $FreeBSD: src/usr.bin/make/str.c,v 1.12.2.2 2004/02/23 12:10:57 ru Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.24 2005/02/04 23:09:06 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/str.c,v 1.40 2005/02/07 07:54:23 harti Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.25 2005/02/15 01:01:18 okumoto Exp $
  */
 
 #include <ctype.h>

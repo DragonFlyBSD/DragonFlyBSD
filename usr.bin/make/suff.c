@@ -36,8 +36,8 @@
  * SUCH DAMAGE.
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
- * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.2 2004/06/10 13:07:53 ru Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.32 2005/02/04 22:35:42 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.33 2005/02/15 01:01:18 okumoto Exp $
  */
 
 /*-

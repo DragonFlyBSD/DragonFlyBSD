@@ -36,8 +36,8 @@
  * SUCH DAMAGE.
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/make/make.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.20 2005/02/01 22:05:36 okumoto Exp $
+ * $FreeBSD: src/usr.bin/make/make.c,v 1.33 2005/02/04 12:38:57 harti Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.21 2005/02/15 01:01:18 okumoto Exp $
  */
 
 /*-
