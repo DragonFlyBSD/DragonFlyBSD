@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.7 2003/08/07 21:17:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.8 2003/08/20 09:56:33 rob Exp $
  */
 
 /*
@@ -149,21 +149,21 @@ int nfsrtton = 0;
 struct nfsrtt nfsrtt;
 struct callout_handle	nfs_timer_handle;
 
-static int	nfs_msg __P((struct thread *,char *,char *));
-static int	nfs_rcvlock __P((struct nfsreq *));
-static void	nfs_rcvunlock __P((struct nfsreq *));
-static void	nfs_realign __P((struct mbuf **pm, int hsiz));
-static int	nfs_receive __P((struct nfsreq *rep, struct sockaddr **aname,
-				 struct mbuf **mp));
-static void	nfs_softterm __P((struct nfsreq *rep));
-static int	nfs_reconnect __P((struct nfsreq *rep));
+static int	nfs_msg (struct thread *,char *,char *);
+static int	nfs_rcvlock (struct nfsreq *);
+static void	nfs_rcvunlock (struct nfsreq *);
+static void	nfs_realign (struct mbuf **pm, int hsiz);
+static int	nfs_receive (struct nfsreq *rep, struct sockaddr **aname,
+				 struct mbuf **mp);
+static void	nfs_softterm (struct nfsreq *rep);
+static int	nfs_reconnect (struct nfsreq *rep);
 #ifndef NFS_NOSERVER 
-static int	nfsrv_getstream __P((struct nfssvc_sock *,int));
+static int	nfsrv_getstream (struct nfssvc_sock *,int);
 
-int (*nfsrv3_procs[NFS_NPROCS]) __P((struct nfsrv_descript *nd,
+int (*nfsrv3_procs[NFS_NPROCS]) (struct nfsrv_descript *nd,
 				    struct nfssvc_sock *slp,
 				    struct thread *td,
-				    struct mbuf **mreqp)) = {
+				    struct mbuf **mreqp) = {
 	nfsrv_null,
 	nfsrv_getattr,
 	nfsrv_setattr,

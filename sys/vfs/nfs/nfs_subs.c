@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_subs.c,v 1.90.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.7 2003/08/07 21:17:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.8 2003/08/20 09:56:33 rob Exp $
  */
 
 /*
@@ -110,7 +110,7 @@ struct nqtimerhead nqtimerhead;
 struct nqfhhashhead *nqfhhashtbl;
 u_long nqfhhash;
 
-static void (*nfs_prev_lease_updatetime) __P((int));
+static void (*nfs_prev_lease_updatetime) (int);
 static int nfs_prev_nfssvc_sy_narg;
 static sy_call_t *nfs_prev_nfssvc_sy_call;
 
@@ -561,7 +561,7 @@ extern int nfssvc(struct proc *, struct nfssvc_args *, int *);
 
 LIST_HEAD(nfsnodehashhead, nfsnode);
 
-int nfs_webnamei __P((struct nameidata *, struct vnode *, struct proc *));
+int nfs_webnamei (struct nameidata *, struct vnode *, struct proc *);
 
 u_quad_t
 nfs_curusec() 

@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_subr.c	8.2 (Berkeley) 9/21/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_subr.c,v 1.13.2.2 2000/08/03 18:48:27 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_subr.c,v 1.5 2003/08/07 21:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_subr.c,v 1.6 2003/08/20 09:56:31 rob Exp $
  */
 
 #include <sys/param.h>
@@ -57,7 +57,7 @@
 #include "opt_ddb.h"
 
 #ifdef DDB
-void	ext2_checkoverlap __P((struct buf *, struct inode *));
+void	ext2_checkoverlap (struct buf *, struct inode *);
 #endif
 
 /*

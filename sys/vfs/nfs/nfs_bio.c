@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_bio.c,v 1.83.2.4 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.10 2003/08/07 21:17:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.11 2003/08/20 09:56:33 rob Exp $
  */
 
 
@@ -65,8 +65,8 @@
 #include "nqnfs.h"
 #include "nfsnode.h"
 
-static struct buf *nfs_getcacheblk __P((struct vnode *vp, daddr_t bn, int size,
-					struct thread *td));
+static struct buf *nfs_getcacheblk (struct vnode *vp, daddr_t bn, int size,
+					struct thread *td);
 
 extern int nfs_numasync;
 extern int nfs_pbuf_freecnt;

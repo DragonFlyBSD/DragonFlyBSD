@@ -35,7 +35,7 @@
  *
  *	@(#)nfsm_subs.h	8.2 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfsm_subs.h,v 1.27.2.1 2000/10/28 16:27:27 dwmalone Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsm_subs.h,v 1.3 2003/07/01 18:48:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsm_subs.h,v 1.4 2003/08/20 09:56:33 rob Exp $
  */
 
 
@@ -54,13 +54,13 @@ struct vnode;
 /*
  * First define what the actual subs. return
  */
-struct mbuf *nfsm_reqh __P((struct vnode *vp, u_long procid, int hsiz,
-			    caddr_t *bposp));
-struct mbuf *nfsm_rpchead __P((struct ucred *cr, int nmflag, int procid,
+struct mbuf *nfsm_reqh (struct vnode *vp, u_long procid, int hsiz,
+			    caddr_t *bposp);
+struct mbuf *nfsm_rpchead (struct ucred *cr, int nmflag, int procid,
 			       int auth_type, int auth_len, char *auth_str,
 			       int verf_len, char *verf_str,
 			       struct mbuf *mrest, int mrest_len,
-			       struct mbuf **mbp, u_int32_t *xidp));
+			       struct mbuf **mbp, u_int32_t *xidp);
 
 #define	M_HASCL(m)	((m)->m_flags & M_EXT)
 #define	NFSMINOFF(m) \

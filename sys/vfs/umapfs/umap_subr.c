@@ -36,7 +36,7 @@
  *	@(#)umap_subr.c	8.9 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_subr.c,v 1.19 1999/09/04 11:51:41 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.4 2003/08/07 21:17:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.5 2003/08/20 09:56:34 rob Exp $
  */
 
 #include <sys/param.h>
@@ -64,11 +64,11 @@
 static LIST_HEAD(umap_node_hashhead, umap_node) *umap_node_hashtbl;
 static u_long umap_node_hash;
 
-static u_long	umap_findid __P((u_long id, u_long map[][2], int nentries));
-static int	umap_node_alloc __P((struct mount *mp, struct vnode *lowervp,
-				     struct vnode **vpp));
+static u_long	umap_findid (u_long id, u_long map[][2], int nentries);
+static int	umap_node_alloc (struct mount *mp, struct vnode *lowervp,
+				     struct vnode **vpp);
 static struct vnode *
-		umap_node_find __P((struct mount *mp, struct vnode *targetvp));
+		umap_node_find (struct mount *mp, struct vnode *targetvp);
 
 /*
  * Initialise cache headers

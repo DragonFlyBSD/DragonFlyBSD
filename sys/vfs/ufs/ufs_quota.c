@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.9 2003/08/07 21:17:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.10 2003/08/20 09:56:34 rob Exp $
  */
 
 #include <sys/param.h>
@@ -60,16 +60,16 @@ static MALLOC_DEFINE(M_DQUOT, "UFS quota", "UFS quota entries");
  */
 static char *quotatypes[] = INITQFNAMES;
 
-static int chkdqchg __P((struct inode *, long, struct ucred *, int));
-static int chkiqchg __P((struct inode *, long, struct ucred *, int));
-static int dqget __P((struct vnode *,
-		u_long, struct ufsmount *, int, struct dquot **));
-static int dqsync __P((struct vnode *, struct dquot *));
-static void dqflush __P((struct vnode *));
+static int chkdqchg (struct inode *, long, struct ucred *, int);
+static int chkiqchg (struct inode *, long, struct ucred *, int);
+static int dqget (struct vnode *,
+		u_long, struct ufsmount *, int, struct dquot **);
+static int dqsync (struct vnode *, struct dquot *);
+static void dqflush (struct vnode *);
 
 #ifdef DIAGNOSTIC
-static void dqref __P((struct dquot *));
-static void chkdquot __P((struct inode *));
+static void dqref (struct dquot *);
+static void chkdquot (struct inode *);
 #endif
 
 /*

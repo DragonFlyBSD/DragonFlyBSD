@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.6 2003/08/07 21:17:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.7 2003/08/20 09:56:33 rob Exp $
  *
  */
 
@@ -80,27 +80,27 @@
 
 #include <sys/unistd.h> /* for pathconf(2) constants */
 
-static int	ntfs_read __P((struct vop_read_args *));
-static int	ntfs_write __P((struct vop_write_args *ap));
-static int	ntfs_getattr __P((struct vop_getattr_args *ap));
-static int	ntfs_inactive __P((struct vop_inactive_args *ap));
-static int	ntfs_print __P((struct vop_print_args *ap));
-static int	ntfs_reclaim __P((struct vop_reclaim_args *ap));
-static int	ntfs_strategy __P((struct vop_strategy_args *ap));
-static int	ntfs_access __P((struct vop_access_args *ap));
-static int	ntfs_open __P((struct vop_open_args *ap));
-static int	ntfs_close __P((struct vop_close_args *ap));
-static int	ntfs_readdir __P((struct vop_readdir_args *ap));
-static int	ntfs_lookup __P((struct vop_lookup_args *ap));
-static int	ntfs_bmap __P((struct vop_bmap_args *ap));
+static int	ntfs_read (struct vop_read_args *);
+static int	ntfs_write (struct vop_write_args *ap);
+static int	ntfs_getattr (struct vop_getattr_args *ap);
+static int	ntfs_inactive (struct vop_inactive_args *ap);
+static int	ntfs_print (struct vop_print_args *ap);
+static int	ntfs_reclaim (struct vop_reclaim_args *ap);
+static int	ntfs_strategy (struct vop_strategy_args *ap);
+static int	ntfs_access (struct vop_access_args *ap);
+static int	ntfs_open (struct vop_open_args *ap);
+static int	ntfs_close (struct vop_close_args *ap);
+static int	ntfs_readdir (struct vop_readdir_args *ap);
+static int	ntfs_lookup (struct vop_lookup_args *ap);
+static int	ntfs_bmap (struct vop_bmap_args *ap);
 #if defined(__FreeBSD__)
-static int	ntfs_getpages __P((struct vop_getpages_args *ap));
-static int	ntfs_putpages __P((struct vop_putpages_args *));
-static int	ntfs_fsync __P((struct vop_fsync_args *ap));
+static int	ntfs_getpages (struct vop_getpages_args *ap);
+static int	ntfs_putpages (struct vop_putpages_args *);
+static int	ntfs_fsync (struct vop_fsync_args *ap);
 #else
-static int	ntfs_bypass __P((struct vop_generic_args *ap));
+static int	ntfs_bypass (struct vop_generic_args *ap);
 #endif
-static int	ntfs_pathconf __P((void *));
+static int	ntfs_pathconf (void *);
 
 int	ntfs_prtactive = 1;	/* 1 => print out reclaim of active vnodes */
 
@@ -986,7 +986,7 @@ struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
 	{ &vop_truncate_desc, genfs_eopnotsupp },	/* truncate */
 	{ &vop_update_desc, genfs_eopnotsupp },		/* update */
 	{ &vop_bwrite_desc, vn_bwrite },		/* bwrite */
-	{ (struct vnodeop_desc *)NULL, (int (*) __P((void *)))NULL }
+	{ (struct vnodeop_desc *)NULL, (int (*) (void *))NULL }
 };
 struct vnodeopv_desc ntfs_vnodeop_opv_desc =
 	{ &ntfs_vnodeop_p, ntfs_vnodeop_entries };

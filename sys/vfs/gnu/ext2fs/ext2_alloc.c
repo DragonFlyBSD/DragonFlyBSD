@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_alloc.c	8.8 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_alloc.c,v 1.28.2.2 2002/07/01 00:18:51 iedowse Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.4 2003/08/07 21:17:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.5 2003/08/20 09:56:31 rob Exp $
  */
 
 #include "opt_quota.h"
@@ -60,7 +60,7 @@
 #include "fs.h"
 #include "ext2_extern.h"
 
-static void	ext2_fserr __P((struct ext2_sb_info *, u_int, char *));
+static void	ext2_fserr (struct ext2_sb_info *, u_int, char *);
 
 /*
  * Linux calls this functions at the following locations:

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vnops.c	8.15 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vnops.c,v 1.64 2000/01/10 12:04:25 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.5 2003/08/07 21:17:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.6 2003/08/20 09:56:34 rob Exp $
  */
 
 #include <sys/param.h>
@@ -64,11 +64,11 @@
 #include "fs.h"
 #include "ffs_extern.h"
 
-static int	ffs_fsync __P((struct vop_fsync_args *));
-static int	ffs_getpages __P((struct vop_getpages_args *));
-static int	ffs_putpages __P((struct vop_putpages_args *));
-static int	ffs_read __P((struct vop_read_args *));
-static int	ffs_write __P((struct vop_write_args *));
+static int	ffs_fsync (struct vop_fsync_args *);
+static int	ffs_getpages (struct vop_getpages_args *);
+static int	ffs_putpages (struct vop_putpages_args *);
+static int	ffs_read (struct vop_read_args *);
+static int	ffs_write (struct vop_write_args *);
 
 /* Global vfs data structures for ufs. */
 vop_t **ffs_vnodeop_p;

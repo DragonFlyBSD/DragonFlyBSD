@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_subr.c	8.5 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_subr.c,v 1.25 1999/12/29 04:55:04 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.5 2003/08/07 21:17:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.6 2003/08/20 09:56:34 rob Exp $
  */
 
 #include <sys/param.h>
@@ -54,7 +54,7 @@
 #include "ffs_extern.h"
 
 #ifdef DDB
-void	ffs_checkoverlap __P((struct buf *, struct inode *));
+void	ffs_checkoverlap (struct buf *, struct inode *);
 #endif
 
 /*

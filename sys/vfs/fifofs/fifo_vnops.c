@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.7 2003/08/07 21:17:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.8 2003/08/20 09:56:31 rob Exp $
  */
 
 #include <sys/param.h>
@@ -63,20 +63,20 @@ struct fifoinfo {
 	long		fi_writers;
 };
 
-static int	fifo_badop __P((void));
-static int	fifo_print __P((struct vop_print_args *));
-static int	fifo_lookup __P((struct vop_lookup_args *));
-static int	fifo_open __P((struct vop_open_args *));
-static int	fifo_close __P((struct vop_close_args *));
-static int	fifo_read __P((struct vop_read_args *));
-static int	fifo_write __P((struct vop_write_args *));
-static int	fifo_ioctl __P((struct vop_ioctl_args *));
-static int	fifo_poll __P((struct vop_poll_args *));
-static int	fifo_kqfilter __P((struct vop_kqfilter_args *));
-static int	fifo_inactive __P((struct  vop_inactive_args *));
-static int	fifo_bmap __P((struct vop_bmap_args *));
-static int	fifo_pathconf __P((struct vop_pathconf_args *));
-static int	fifo_advlock __P((struct vop_advlock_args *));
+static int	fifo_badop (void);
+static int	fifo_print (struct vop_print_args *);
+static int	fifo_lookup (struct vop_lookup_args *);
+static int	fifo_open (struct vop_open_args *);
+static int	fifo_close (struct vop_close_args *);
+static int	fifo_read (struct vop_read_args *);
+static int	fifo_write (struct vop_write_args *);
+static int	fifo_ioctl (struct vop_ioctl_args *);
+static int	fifo_poll (struct vop_poll_args *);
+static int	fifo_kqfilter (struct vop_kqfilter_args *);
+static int	fifo_inactive (struct  vop_inactive_args *);
+static int	fifo_bmap (struct vop_bmap_args *);
+static int	fifo_pathconf (struct vop_pathconf_args *);
+static int	fifo_advlock (struct vop_advlock_args *);
 
 static void	filt_fifordetach(struct knote *kn);
 static int	filt_fiforead(struct knote *kn, long hint);

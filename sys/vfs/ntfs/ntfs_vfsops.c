@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.8 2003/08/07 21:17:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.9 2003/08/20 09:56:33 rob Exp $
  */
 
 
@@ -75,42 +75,42 @@ MALLOC_DEFINE(M_NTFSFNODE,"NTFS fnode",  "NTFS fnode information");
 MALLOC_DEFINE(M_NTFSDIR,"NTFS dir",  "NTFS dir buffer");
 #endif
 
-static int	ntfs_root __P((struct mount *, struct vnode **));
-static int	ntfs_statfs __P((struct mount *, struct statfs *,
-				 struct thread *));
-static int	ntfs_unmount __P((struct mount *, int, struct thread *));
-static int	ntfs_vget __P((struct mount *mp, ino_t ino,
-			       struct vnode **vpp));
-static int	ntfs_mountfs __P((struct vnode *, struct mount *, 
-				  struct ntfs_args *, struct thread *));
-static int	ntfs_vptofh __P((struct vnode *, struct fid *));
-static int	ntfs_fhtovp __P((struct mount *, struct fid *,
-				 struct vnode **));
+static int	ntfs_root (struct mount *, struct vnode **);
+static int	ntfs_statfs (struct mount *, struct statfs *,
+				 struct thread *);
+static int	ntfs_unmount (struct mount *, int, struct thread *);
+static int	ntfs_vget (struct mount *mp, ino_t ino,
+			       struct vnode **vpp);
+static int	ntfs_mountfs (struct vnode *, struct mount *, 
+				  struct ntfs_args *, struct thread *);
+static int	ntfs_vptofh (struct vnode *, struct fid *);
+static int	ntfs_fhtovp (struct mount *, struct fid *,
+				 struct vnode **);
 
 #if !defined (__FreeBSD__)
-static int	ntfs_quotactl __P((struct mount *, int, uid_t, caddr_t,
-				   struct thread *));
-static int	ntfs_start __P((struct mount *, int, struct thread *));
-static int	ntfs_sync __P((struct mount *, int, struct ucred *,
-			       struct thread *));
+static int	ntfs_quotactl (struct mount *, int, uid_t, caddr_t,
+				   struct thread *);
+static int	ntfs_start (struct mount *, int, struct thread *);
+static int	ntfs_sync (struct mount *, int, struct ucred *,
+			       struct thread *);
 #endif
 
 #if defined(__FreeBSD__)
 struct sockaddr;
-static int	ntfs_mount __P((struct mount *, char *, caddr_t,
-				struct nameidata *, struct thread *));
-static int	ntfs_init __P((struct vfsconf *));
-static int	ntfs_checkexp __P((struct mount *, struct sockaddr *,
-				   int *, struct ucred **));
+static int	ntfs_mount (struct mount *, char *, caddr_t,
+				struct nameidata *, struct thread *);
+static int	ntfs_init (struct vfsconf *);
+static int	ntfs_checkexp (struct mount *, struct sockaddr *,
+				   int *, struct ucred **);
 #elif defined(__NetBSD__)
-static int	ntfs_mount __P((struct mount *, const char *, void *,
-				struct nameidata *, struct thread *));
-static void	ntfs_init __P((void));
-static int	ntfs_mountroot __P((void));
-static int	ntfs_sysctl __P((int *, u_int, void *, size_t *, void *,
-				 size_t, struct thread *));
-static int	ntfs_checkexp __P((struct mount *, struct mbuf *,
-				   int *, struct ucred **));
+static int	ntfs_mount (struct mount *, const char *, void *,
+				struct nameidata *, struct thread *);
+static void	ntfs_init (void);
+static int	ntfs_mountroot (void);
+static int	ntfs_sysctl (int *, u_int, void *, size_t *, void *,
+				 size_t, struct thread *);
+static int	ntfs_checkexp (struct mount *, struct mbuf *,
+				   int *, struct ucred **);
 #endif
 
 /*

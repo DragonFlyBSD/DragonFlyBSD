@@ -35,7 +35,7 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.4 2003/06/26 05:55:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.5 2003/08/20 09:56:32 rob Exp $
  */
 
 #ifndef _NFS_NFS_H_
@@ -577,150 +577,150 @@ extern int nfs_debug;
 
 #endif
 
-u_quad_t nfs_curusec __P((void));
-int	nfs_init __P((struct vfsconf *vfsp));
-int	nfs_uninit __P((struct vfsconf *vfsp));
-int	nfs_reply __P((struct nfsreq *));
-int	nfs_getreq __P((struct nfsrv_descript *,struct nfsd *,int));
-int	nfs_send __P((struct socket *, struct sockaddr *, struct mbuf *, 
-		      struct nfsreq *));
-int	nfs_rephead __P((int, struct nfsrv_descript *, struct nfssvc_sock *,
+u_quad_t nfs_curusec (void);
+int	nfs_init (struct vfsconf *vfsp);
+int	nfs_uninit (struct vfsconf *vfsp);
+int	nfs_reply (struct nfsreq *);
+int	nfs_getreq (struct nfsrv_descript *,struct nfsd *,int);
+int	nfs_send (struct socket *, struct sockaddr *, struct mbuf *, 
+		      struct nfsreq *);
+int	nfs_rephead (int, struct nfsrv_descript *, struct nfssvc_sock *,
 			 int, int, u_quad_t *, struct mbuf **, struct mbuf **,
-			 caddr_t *));
-int	nfs_sndlock __P((struct nfsreq *));
-void	nfs_sndunlock __P((struct nfsreq *));
-int	nfs_slplock __P((struct nfssvc_sock *, int));
-void	nfs_slpunlock __P((struct nfssvc_sock *));
-int	nfs_disct __P((struct mbuf **, caddr_t *, int, int, caddr_t *));
-int	nfs_vinvalbuf __P((struct vnode *, int, struct thread *, int));
-int	nfs_readrpc __P((struct vnode *, struct uio *));
-int	nfs_writerpc __P((struct vnode *, struct uio *, int *, int *));
-int	nfs_commit __P((struct vnode *vp, u_quad_t offset, int cnt, 
-			struct thread *td));
-int	nfs_readdirrpc __P((struct vnode *, struct uio *));
-int	nfs_asyncio __P((struct buf *, struct thread *));
-int	nfs_doio __P((struct buf *, struct thread *));
-int	nfs_readlinkrpc __P((struct vnode *, struct uio *));
-int	nfs_sigintr __P((struct nfsmount *, struct nfsreq *, struct thread *));
-int	nfs_readdirplusrpc __P((struct vnode *, struct uio *));
-int	nfsm_disct __P((struct mbuf **, caddr_t *, int, int, caddr_t *));
-void	nfsm_srvfattr __P((struct nfsrv_descript *, struct vattr *, 
-			   struct nfs_fattr *));
-void	nfsm_srvwcc __P((struct nfsrv_descript *, int, struct vattr *, int,
-			 struct vattr *, struct mbuf **, char **));
-void	nfsm_srvpostopattr __P((struct nfsrv_descript *, int, struct vattr *,
-				struct mbuf **, char **));
-int	netaddr_match __P((int, union nethostaddr *, struct sockaddr *));
-int	nfs_request __P((struct vnode *, struct mbuf *, int, struct thread *,
+			 caddr_t *);
+int	nfs_sndlock (struct nfsreq *);
+void	nfs_sndunlock (struct nfsreq *);
+int	nfs_slplock (struct nfssvc_sock *, int);
+void	nfs_slpunlock (struct nfssvc_sock *);
+int	nfs_disct (struct mbuf **, caddr_t *, int, int, caddr_t *);
+int	nfs_vinvalbuf (struct vnode *, int, struct thread *, int);
+int	nfs_readrpc (struct vnode *, struct uio *);
+int	nfs_writerpc (struct vnode *, struct uio *, int *, int *);
+int	nfs_commit (struct vnode *vp, u_quad_t offset, int cnt, 
+			struct thread *td);
+int	nfs_readdirrpc (struct vnode *, struct uio *);
+int	nfs_asyncio (struct buf *, struct thread *);
+int	nfs_doio (struct buf *, struct thread *);
+int	nfs_readlinkrpc (struct vnode *, struct uio *);
+int	nfs_sigintr (struct nfsmount *, struct nfsreq *, struct thread *);
+int	nfs_readdirplusrpc (struct vnode *, struct uio *);
+int	nfsm_disct (struct mbuf **, caddr_t *, int, int, caddr_t *);
+void	nfsm_srvfattr (struct nfsrv_descript *, struct vattr *, 
+			   struct nfs_fattr *);
+void	nfsm_srvwcc (struct nfsrv_descript *, int, struct vattr *, int,
+			 struct vattr *, struct mbuf **, char **);
+void	nfsm_srvpostopattr (struct nfsrv_descript *, int, struct vattr *,
+				struct mbuf **, char **);
+int	netaddr_match (int, union nethostaddr *, struct sockaddr *);
+int	nfs_request (struct vnode *, struct mbuf *, int, struct thread *,
 			 struct ucred *, struct mbuf **, struct mbuf **,
-			 caddr_t *));
-int	nfs_loadattrcache __P((struct vnode **, struct mbuf **, caddr_t *,
-			       struct vattr *, int));
-int	nfs_namei __P((struct nameidata *, fhandle_t *, int,
+			 caddr_t *);
+int	nfs_loadattrcache (struct vnode **, struct mbuf **, caddr_t *,
+			       struct vattr *, int);
+int	nfs_namei (struct nameidata *, fhandle_t *, int,
 		       struct nfssvc_sock *, struct sockaddr *, struct mbuf **,
-		       caddr_t *, struct vnode **, struct thread *, int, int));
-void	nfsm_adj __P((struct mbuf *, int, int));
-int	nfsm_mbuftouio __P((struct mbuf **, struct uio *, int, caddr_t *));
-void	nfsrv_initcache __P((void));
-int	nfs_getauth __P((struct nfsmount *, struct nfsreq *, struct ucred *, 
-			 char **, int *, char *, int *, NFSKERBKEY_T));
-int	nfs_getnickauth __P((struct nfsmount *, struct ucred *, char **, 
-			     int *, char *, int));
-int	nfs_savenickauth __P((struct nfsmount *, struct ucred *, int, 
+		       caddr_t *, struct vnode **, struct thread *, int, int);
+void	nfsm_adj (struct mbuf *, int, int);
+int	nfsm_mbuftouio (struct mbuf **, struct uio *, int, caddr_t *);
+void	nfsrv_initcache (void);
+int	nfs_getauth (struct nfsmount *, struct nfsreq *, struct ucred *, 
+			 char **, int *, char *, int *, NFSKERBKEY_T);
+int	nfs_getnickauth (struct nfsmount *, struct ucred *, char **, 
+			     int *, char *, int);
+int	nfs_savenickauth (struct nfsmount *, struct ucred *, int, 
 			      NFSKERBKEY_T, struct mbuf **, char **,
-			      struct mbuf *));
-int	nfs_adv __P((struct mbuf **, caddr_t *, int, int));
-void	nfs_nhinit __P((void));
-int	nfs_nmcancelreqs __P((struct nfsmount *));
-void	nfs_timer __P((void*));
-int	nfsrv_dorec __P((struct nfssvc_sock *, struct nfsd *, 
-			 struct nfsrv_descript **));
-int	nfsrv_getcache __P((struct nfsrv_descript *, struct nfssvc_sock *,
-			    struct mbuf **));
-void	nfsrv_updatecache __P((struct nfsrv_descript *, int, struct mbuf *));
-void	nfsrv_cleancache __P((void));
-int	nfs_connect __P((struct nfsmount *, struct nfsreq *));
-void	nfs_disconnect __P((struct nfsmount *));
-void	nfs_safedisconnect __P((struct nfsmount *));
-int	nfs_getattrcache __P((struct vnode *, struct vattr *));
-int	nfsm_strtmbuf __P((struct mbuf **, char **, const char *, long));
-int	nfs_bioread __P((struct vnode *, struct uio *, int));
-int	nfsm_uiotombuf __P((struct uio *, struct mbuf **, int, caddr_t *));
-void	nfsrv_init __P((int));
-void	nfs_clearcommit __P((struct mount *));
-int	nfsrv_errmap __P((struct nfsrv_descript *, int));
-void	nfsrvw_sort __P((gid_t *, int));
-void	nfsrv_setcred __P((struct ucred *, struct ucred *));
-int	nfs_writebp __P((struct buf *, int, struct thread *));
-int	nfsrv_object_create __P((struct vnode *));
-void	nfsrv_wakenfsd __P((struct nfssvc_sock *slp));
-int	nfsrv_writegather __P((struct nfsrv_descript **, struct nfssvc_sock *,
-			       struct thread *, struct mbuf **));
-int	nfs_fsinfo __P((struct nfsmount *, struct vnode *, struct thread *p));
+			      struct mbuf *);
+int	nfs_adv (struct mbuf **, caddr_t *, int, int);
+void	nfs_nhinit (void);
+int	nfs_nmcancelreqs (struct nfsmount *);
+void	nfs_timer (void*);
+int	nfsrv_dorec (struct nfssvc_sock *, struct nfsd *, 
+			 struct nfsrv_descript **);
+int	nfsrv_getcache (struct nfsrv_descript *, struct nfssvc_sock *,
+			    struct mbuf **);
+void	nfsrv_updatecache (struct nfsrv_descript *, int, struct mbuf *);
+void	nfsrv_cleancache (void);
+int	nfs_connect (struct nfsmount *, struct nfsreq *);
+void	nfs_disconnect (struct nfsmount *);
+void	nfs_safedisconnect (struct nfsmount *);
+int	nfs_getattrcache (struct vnode *, struct vattr *);
+int	nfsm_strtmbuf (struct mbuf **, char **, const char *, long);
+int	nfs_bioread (struct vnode *, struct uio *, int);
+int	nfsm_uiotombuf (struct uio *, struct mbuf **, int, caddr_t *);
+void	nfsrv_init (int);
+void	nfs_clearcommit (struct mount *);
+int	nfsrv_errmap (struct nfsrv_descript *, int);
+void	nfsrvw_sort (gid_t *, int);
+void	nfsrv_setcred (struct ucred *, struct ucred *);
+int	nfs_writebp (struct buf *, int, struct thread *);
+int	nfsrv_object_create (struct vnode *);
+void	nfsrv_wakenfsd (struct nfssvc_sock *slp);
+int	nfsrv_writegather (struct nfsrv_descript **, struct nfssvc_sock *,
+			       struct thread *, struct mbuf **);
+int	nfs_fsinfo (struct nfsmount *, struct vnode *, struct thread *p);
 
-int	nfsrv3_access __P((struct nfsrv_descript *nfsd, 
+int	nfsrv3_access (struct nfsrv_descript *nfsd, 
 			   struct nfssvc_sock *slp,
-			   struct thread *td, struct mbuf **mrq));
-int	nfsrv_commit __P((struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-			  struct thread *td, struct mbuf **mrq));
-int	nfsrv_create __P((struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-			  struct thread *td, struct mbuf **mrq));
-int	nfsrv_fhtovp __P((fhandle_t *, int, struct vnode **, struct ucred *,
+			   struct thread *td, struct mbuf **mrq);
+int	nfsrv_commit (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+			  struct thread *td, struct mbuf **mrq);
+int	nfsrv_create (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+			  struct thread *td, struct mbuf **mrq);
+int	nfsrv_fhtovp (fhandle_t *, int, struct vnode **, struct ucred *,
 			  struct nfssvc_sock *, struct sockaddr *, int *, 
-			  int, int));
-int	nfsrv_setpublicfs __P((struct mount *, struct netexport *,
-			       struct export_args *));
-int	nfs_ispublicfh __P((fhandle_t *));
-int	nfsrv_fsinfo __P((struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-			  struct thread *td, struct mbuf **mrq));
-int	nfsrv_getattr __P((struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-			   struct thread *td, struct mbuf **mrq));
-int	nfsrv_link __P((struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-			struct thread *td, struct mbuf **mrq));
-int	nfsrv_lookup __P((struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-			  struct thread *td, struct mbuf **mrq));
-int	nfsrv_mkdir __P((struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-			 struct thread *td, struct mbuf **mrq));
-int	nfsrv_mknod __P((struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-			 struct thread *td, struct mbuf **mrq));
-int	nfsrv_noop __P((struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-			struct thread *td, struct mbuf **mrq));
-int	nfsrv_null __P((struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-			struct thread *td, struct mbuf **mrq));
-int	nfsrv_pathconf __P((struct nfsrv_descript *nfsd,
+			  int, int);
+int	nfsrv_setpublicfs (struct mount *, struct netexport *,
+			       struct export_args *);
+int	nfs_ispublicfh (fhandle_t *);
+int	nfsrv_fsinfo (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+			  struct thread *td, struct mbuf **mrq);
+int	nfsrv_getattr (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+			   struct thread *td, struct mbuf **mrq);
+int	nfsrv_link (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+			struct thread *td, struct mbuf **mrq);
+int	nfsrv_lookup (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+			  struct thread *td, struct mbuf **mrq);
+int	nfsrv_mkdir (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+			 struct thread *td, struct mbuf **mrq);
+int	nfsrv_mknod (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+			 struct thread *td, struct mbuf **mrq);
+int	nfsrv_noop (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+			struct thread *td, struct mbuf **mrq);
+int	nfsrv_null (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+			struct thread *td, struct mbuf **mrq);
+int	nfsrv_pathconf (struct nfsrv_descript *nfsd,
 			    struct nfssvc_sock *slp, struct thread *td,
-			    struct mbuf **mrq));
-int	nfsrv_read __P((struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-			struct thread *td, struct mbuf **mrq));
-int	nfsrv_readdir __P((struct nfsrv_descript *nfsd, 
+			    struct mbuf **mrq);
+int	nfsrv_read (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+			struct thread *td, struct mbuf **mrq);
+int	nfsrv_readdir (struct nfsrv_descript *nfsd, 
 			   struct nfssvc_sock *slp,
-			   struct thread *td, struct mbuf **mrq));
-int	nfsrv_readdirplus __P((struct nfsrv_descript *nfsd,
+			   struct thread *td, struct mbuf **mrq);
+int	nfsrv_readdirplus (struct nfsrv_descript *nfsd,
 			       struct nfssvc_sock *slp, struct thread *td,
-			       struct mbuf **mrq));
-int	nfsrv_readlink __P((struct nfsrv_descript *nfsd,
+			       struct mbuf **mrq);
+int	nfsrv_readlink (struct nfsrv_descript *nfsd,
 			    struct nfssvc_sock *slp, struct thread *td,
-			    struct mbuf **mrq));
-int	nfsrv_remove __P((struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-			  struct thread *td, struct mbuf **mrq));
-int	nfsrv_rename __P((struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-			  struct thread *td, struct mbuf **mrq));
-int	nfsrv_rmdir __P((struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-			 struct thread *td, struct mbuf **mrq));
-int	nfsrv_setattr __P((struct nfsrv_descript *nfsd, 
+			    struct mbuf **mrq);
+int	nfsrv_remove (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+			  struct thread *td, struct mbuf **mrq);
+int	nfsrv_rename (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+			  struct thread *td, struct mbuf **mrq);
+int	nfsrv_rmdir (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+			 struct thread *td, struct mbuf **mrq);
+int	nfsrv_setattr (struct nfsrv_descript *nfsd, 
 			   struct nfssvc_sock *slp,
-			   struct thread *td, struct mbuf **mrq));
-int	nfsrv_statfs __P((struct nfsrv_descript *nfsd, 
+			   struct thread *td, struct mbuf **mrq);
+int	nfsrv_statfs (struct nfsrv_descript *nfsd, 
 			  struct nfssvc_sock *slp,
-			  struct thread *td, struct mbuf **mrq));
-int	nfsrv_symlink __P((struct nfsrv_descript *nfsd, 
+			  struct thread *td, struct mbuf **mrq);
+int	nfsrv_symlink (struct nfsrv_descript *nfsd, 
 			   struct nfssvc_sock *slp,
-			   struct thread *td, struct mbuf **mrq));
-int	nfsrv_write __P((struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-			 struct thread *td, struct mbuf **mrq));
-void	nfsrv_rcv __P((struct socket *so, void *arg, int waitflag));
-void	nfsrv_slpderef __P((struct nfssvc_sock *slp));
-int	nfs_meta_setsize __P((struct vnode *vp, struct thread *td, u_quad_t nsize));
+			   struct thread *td, struct mbuf **mrq);
+int	nfsrv_write (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+			 struct thread *td, struct mbuf **mrq);
+void	nfsrv_rcv (struct socket *so, void *arg, int waitflag);
+void	nfsrv_slpderef (struct nfssvc_sock *slp);
+int	nfs_meta_setsize (struct vnode *vp, struct thread *td, u_quad_t nsize);
 
 #endif	/* _KERNEL */
 

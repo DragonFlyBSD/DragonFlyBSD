@@ -35,7 +35,7 @@
  *
  *	@(#)umap_vnops.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vnops.c,v 1.30 1999/08/30 07:08:04 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.4 2003/08/07 21:17:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.5 2003/08/20 09:56:34 rob Exp $
  */
 
 /*
@@ -59,14 +59,14 @@ static int umap_bug_bypass = 0;   /* for debugging: enables bypass printf'ing */
 SYSCTL_INT(_debug, OID_AUTO, umapfs_bug_bypass, CTLFLAG_RW,
 	&umap_bug_bypass, 0, "");
 
-static int	umap_bypass __P((struct vop_generic_args *ap));
-static int	umap_getattr __P((struct vop_getattr_args *ap));
-static int	umap_inactive __P((struct vop_inactive_args *ap));
-static int	umap_lock __P((struct vop_lock_args *ap));
-static int	umap_print __P((struct vop_print_args *ap));
-static int	umap_reclaim __P((struct vop_reclaim_args *ap));
-static int	umap_rename __P((struct vop_rename_args *ap));
-static int	umap_unlock __P((struct vop_unlock_args *ap));
+static int	umap_bypass (struct vop_generic_args *ap);
+static int	umap_getattr (struct vop_getattr_args *ap);
+static int	umap_inactive (struct vop_inactive_args *ap);
+static int	umap_lock (struct vop_lock_args *ap);
+static int	umap_print (struct vop_print_args *ap);
+static int	umap_reclaim (struct vop_reclaim_args *ap);
+static int	umap_rename (struct vop_rename_args *ap);
+static int	umap_unlock (struct vop_unlock_args *ap);
 
 /*
  * This is the 10-Apr-92 bypass routine.

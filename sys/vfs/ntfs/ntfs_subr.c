@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.7 2003/08/07 21:17:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.8 2003/08/20 09:56:33 rob Exp $
  */
 
 #include <sys/param.h>
@@ -62,10 +62,10 @@ MALLOC_DEFINE(M_NTFSRUN, "NTFS vrun", "NTFS vrun storage");
 MALLOC_DEFINE(M_NTFSDECOMP, "NTFS decomp", "NTFS decompression temporary");
 #endif
 
-static int ntfs_ntlookupattr __P((struct ntfsmount *, const char *, int, int *, char **));
-static int ntfs_findvattr __P((struct ntfsmount *, struct ntnode *, struct ntvattr **, struct ntvattr **, u_int32_t, const char *, size_t, cn_t));
-static int ntfs_uastricmp __P((struct ntfsmount *, const wchar *, size_t, const char *, size_t));
-static int ntfs_uastrcmp __P((struct ntfsmount *, const wchar *, size_t, const char *, size_t));
+static int ntfs_ntlookupattr (struct ntfsmount *, const char *, int, int *, char **);
+static int ntfs_findvattr (struct ntfsmount *, struct ntnode *, struct ntvattr **, struct ntvattr **, u_int32_t, const char *, size_t, cn_t);
+static int ntfs_uastricmp (struct ntfsmount *, const wchar *, size_t, const char *, size_t);
+static int ntfs_uastrcmp (struct ntfsmount *, const wchar *, size_t, const char *, size_t);
 
 /* table for mapping Unicode chars into uppercase; it's filled upon first
  * ntfs mount, freed upon last ntfs umount */

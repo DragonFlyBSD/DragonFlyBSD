@@ -37,7 +37,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vfsops.c,v 1.32.2.1 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.4 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.5 2003/08/20 09:56:33 rob Exp $
  */
 
 /*
@@ -52,12 +52,12 @@
 #include <sys/vnode.h>
 #include <vfs/procfs/procfs.h>
 
-static int	procfs_mount __P((struct mount *mp, char *path, caddr_t data,
-				  struct nameidata *ndp, struct thread *td));
-static int	procfs_statfs __P((struct mount *mp, struct statfs *sbp,
-				   struct thread *td));
-static int	procfs_unmount __P((struct mount *mp, int mntflags,
-				    struct thread *td));
+static int	procfs_mount (struct mount *mp, char *path, caddr_t data,
+				  struct nameidata *ndp, struct thread *td);
+static int	procfs_statfs (struct mount *mp, struct statfs *sbp,
+				   struct thread *td);
+static int	procfs_unmount (struct mount *mp, int mntflags,
+				    struct thread *td);
 
 /*
  * VFS Operations.

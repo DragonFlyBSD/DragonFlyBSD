@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.c,v 1.29.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.6 2003/08/07 21:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.7 2003/08/20 09:56:32 rob Exp $
  */
 
 #include <sys/param.h>
@@ -63,8 +63,8 @@ static u_long isohash;
 static struct lwkt_token cd9660_ihash_token;
 #endif
 
-static void cd9660_ihashrem __P((struct iso_node *));
-static unsigned	cd9660_chars2ui __P((unsigned char *begin, int len));
+static void cd9660_ihashrem (struct iso_node *);
+static unsigned	cd9660_chars2ui (unsigned char *begin, int len);
 
 /*
  * Initialize hash links for inodes and dnodes.

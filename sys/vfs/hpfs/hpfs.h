@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs.h,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.5 2003/08/15 07:26:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.6 2003/08/20 09:56:32 rob Exp $
  */
 
 /*#define HPFS_DEBUG 10*/
@@ -392,7 +392,7 @@ MALLOC_DECLARE(M_HPFSNO);
 #define MALLOC_DEFINE(a, b, c)
 #define M_HPFSMNT	M_TEMP
 #define M_HPFSNO	M_TEMP
-typedef int (vop_t) __P((void *));
+typedef int (vop_t) (void *);
 #define HASHINIT(a, b, c, d)	hashinit((a), (b), (c), (d))
 #define bqrelse(bp)		brelse(bp)
 #define VOP__LOCK(a, b, c)	VOP_LOCK((a), (b) ? LK_EXCLUSIVE : LK_SHARED)
@@ -412,10 +412,10 @@ typedef int (vop_t) __P((void *));
 extern vop_t ** hpfs_vnodeop_p;
 
 /* Hash routines, too small to be separate header */
-void hpfs_hphashinit __P((void));
-struct hpfsnode *hpfs_hphashlookup __P((dev_t, lsn_t));
-struct hpfsnode *hpfs_hphashget __P((dev_t, lsn_t));
-struct vnode *hpfs_hphashvget __P((dev_t, lsn_t, struct thread *));
-void hpfs_hphashins __P((struct hpfsnode *));
-void hpfs_hphashrem __P((struct hpfsnode *));
+void hpfs_hphashinit (void);
+struct hpfsnode *hpfs_hphashlookup (dev_t, lsn_t);
+struct hpfsnode *hpfs_hphashget (dev_t, lsn_t);
+struct vnode *hpfs_hphashvget (dev_t, lsn_t, struct thread *);
+void hpfs_hphashins (struct hpfsnode *);
+void hpfs_hphashrem (struct hpfsnode *);
 extern struct lock hpfs_hphash_lock;

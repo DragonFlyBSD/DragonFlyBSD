@@ -36,7 +36,7 @@
  *	@(#)portal_vfsops.c	8.11 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vfsops.c,v 1.26.2.2 2001/07/26 20:37:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.4 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.5 2003/08/20 09:56:33 rob Exp $
  */
 
 /*
@@ -60,13 +60,13 @@
 
 static MALLOC_DEFINE(M_PORTALFSMNT, "PORTAL mount", "PORTAL mount structure");
 
-static int	portal_mount __P((struct mount *mp, char *path, caddr_t data,
-				  struct nameidata *ndp, struct thread *td));
-static int	portal_unmount __P((struct mount *mp, int mntflags,
-				    struct thread *td));
-static int	portal_root __P((struct mount *mp, struct vnode **vpp));
-static int	portal_statfs __P((struct mount *mp, struct statfs *sbp,
-				   struct thread *td));
+static int	portal_mount (struct mount *mp, char *path, caddr_t data,
+				  struct nameidata *ndp, struct thread *td);
+static int	portal_unmount (struct mount *mp, int mntflags,
+				    struct thread *td);
+static int	portal_root (struct mount *mp, struct vnode **vpp);
+static int	portal_statfs (struct mount *mp, struct statfs *sbp,
+				   struct thread *td);
 
 /*
  * Mount the per-process file descriptors (/dev/fd)

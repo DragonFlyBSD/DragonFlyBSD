@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.10 2003/08/08 21:42:06 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.11 2003/08/20 09:56:33 rob Exp $
  */
 
 
@@ -98,43 +98,43 @@
 #define vfs_busy_pages(bp, f)
 #endif
 
-static int	nfsspec_read __P((struct vop_read_args *));
-static int	nfsspec_write __P((struct vop_write_args *));
-static int	nfsfifo_read __P((struct vop_read_args *));
-static int	nfsfifo_write __P((struct vop_write_args *));
-static int	nfsspec_close __P((struct vop_close_args *));
-static int	nfsfifo_close __P((struct vop_close_args *));
+static int	nfsspec_read (struct vop_read_args *);
+static int	nfsspec_write (struct vop_write_args *);
+static int	nfsfifo_read (struct vop_read_args *);
+static int	nfsfifo_write (struct vop_write_args *);
+static int	nfsspec_close (struct vop_close_args *);
+static int	nfsfifo_close (struct vop_close_args *);
 #define nfs_poll vop_nopoll
-static int	nfs_flush __P((struct vnode *,int,struct thread *,int));
-static int	nfs_setattrrpc __P((struct vnode *,struct vattr *,struct ucred *,struct thread *));
-static	int	nfs_lookup __P((struct vop_lookup_args *));
-static	int	nfs_create __P((struct vop_create_args *));
-static	int	nfs_mknod __P((struct vop_mknod_args *));
-static	int	nfs_open __P((struct vop_open_args *));
-static	int	nfs_close __P((struct vop_close_args *));
-static	int	nfs_access __P((struct vop_access_args *));
-static	int	nfs_getattr __P((struct vop_getattr_args *));
-static	int	nfs_setattr __P((struct vop_setattr_args *));
-static	int	nfs_read __P((struct vop_read_args *));
-static	int	nfs_mmap __P((struct vop_mmap_args *));
-static	int	nfs_fsync __P((struct vop_fsync_args *));
-static	int	nfs_remove __P((struct vop_remove_args *));
-static	int	nfs_link __P((struct vop_link_args *));
-static	int	nfs_rename __P((struct vop_rename_args *));
-static	int	nfs_mkdir __P((struct vop_mkdir_args *));
-static	int	nfs_rmdir __P((struct vop_rmdir_args *));
-static	int	nfs_symlink __P((struct vop_symlink_args *));
-static	int	nfs_readdir __P((struct vop_readdir_args *));
-static	int	nfs_bmap __P((struct vop_bmap_args *));
-static	int	nfs_strategy __P((struct vop_strategy_args *));
-static	int	nfs_lookitup __P((struct vnode *, const char *, int,
-			struct ucred *, struct thread *, struct nfsnode **));
-static	int	nfs_sillyrename __P((struct vnode *,struct vnode *,struct componentname *));
-static int	nfsspec_access __P((struct vop_access_args *));
-static int	nfs_readlink __P((struct vop_readlink_args *));
-static int	nfs_print __P((struct vop_print_args *));
-static int	nfs_advlock __P((struct vop_advlock_args *));
-static int	nfs_bwrite __P((struct vop_bwrite_args *));
+static int	nfs_flush (struct vnode *,int,struct thread *,int);
+static int	nfs_setattrrpc (struct vnode *,struct vattr *,struct ucred *,struct thread *);
+static	int	nfs_lookup (struct vop_lookup_args *);
+static	int	nfs_create (struct vop_create_args *);
+static	int	nfs_mknod (struct vop_mknod_args *);
+static	int	nfs_open (struct vop_open_args *);
+static	int	nfs_close (struct vop_close_args *);
+static	int	nfs_access (struct vop_access_args *);
+static	int	nfs_getattr (struct vop_getattr_args *);
+static	int	nfs_setattr (struct vop_setattr_args *);
+static	int	nfs_read (struct vop_read_args *);
+static	int	nfs_mmap (struct vop_mmap_args *);
+static	int	nfs_fsync (struct vop_fsync_args *);
+static	int	nfs_remove (struct vop_remove_args *);
+static	int	nfs_link (struct vop_link_args *);
+static	int	nfs_rename (struct vop_rename_args *);
+static	int	nfs_mkdir (struct vop_mkdir_args *);
+static	int	nfs_rmdir (struct vop_rmdir_args *);
+static	int	nfs_symlink (struct vop_symlink_args *);
+static	int	nfs_readdir (struct vop_readdir_args *);
+static	int	nfs_bmap (struct vop_bmap_args *);
+static	int	nfs_strategy (struct vop_strategy_args *);
+static	int	nfs_lookitup (struct vnode *, const char *, int,
+			struct ucred *, struct thread *, struct nfsnode **);
+static	int	nfs_sillyrename (struct vnode *,struct vnode *,struct componentname *);
+static int	nfsspec_access (struct vop_access_args *);
+static int	nfs_readlink (struct vop_readlink_args *);
+static int	nfs_print (struct vop_print_args *);
+static int	nfs_advlock (struct vop_advlock_args *);
+static int	nfs_bwrite (struct vop_bwrite_args *);
 /*
  * Global vfs data structures for nfs
  */
@@ -228,19 +228,19 @@ static struct vnodeopv_desc fifo_nfsv2nodeop_opv_desc =
 	{ &fifo_nfsv2nodeop_p, nfsv2_fifoop_entries };
 VNODEOP_SET(fifo_nfsv2nodeop_opv_desc);
 
-static int	nfs_mknodrpc __P((struct vnode *dvp, struct vnode **vpp,
+static int	nfs_mknodrpc (struct vnode *dvp, struct vnode **vpp,
 				  struct componentname *cnp,
-				  struct vattr *vap));
-static int	nfs_removerpc __P((struct vnode *dvp, const char *name,
+				  struct vattr *vap);
+static int	nfs_removerpc (struct vnode *dvp, const char *name,
 				   int namelen,
-				   struct ucred *cred, struct thread *td));
-static int	nfs_renamerpc __P((struct vnode *fdvp, const char *fnameptr,
+				   struct ucred *cred, struct thread *td);
+static int	nfs_renamerpc (struct vnode *fdvp, const char *fnameptr,
 				   int fnamelen, struct vnode *tdvp,
 				   const char *tnameptr, int tnamelen,
-				   struct ucred *cred, struct thread *td));
-static int	nfs_renameit __P((struct vnode *sdvp,
+				   struct ucred *cred, struct thread *td);
+static int	nfs_renameit (struct vnode *sdvp,
 				  struct componentname *scnp,
-				  struct sillyrename *sp));
+				  struct sillyrename *sp);
 
 /*
  * Global variables

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.7 2003/08/07 21:17:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.8 2003/08/20 09:56:33 rob Exp $
  */
 
 #include "opt_bootp.h"
@@ -71,7 +71,7 @@
 #include "nfsdiskless.h"
 #include "nqnfs.h"
 
-extern int	nfs_mountroot __P((struct mount *mp));
+extern int	nfs_mountroot (struct mount *mp);
 
 extern int	nfs_ticks;
 
@@ -98,20 +98,20 @@ int nfs_debug;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, debug, CTLFLAG_RW, &nfs_debug, 0, "");
 #endif
 
-static int	nfs_iosize __P((struct nfsmount *nmp));
-static void	nfs_decode_args __P((struct nfsmount *nmp,
-			struct nfs_args *argp));
-static int	mountnfs __P((struct nfs_args *,struct mount *,
-			struct sockaddr *,char *,char *,struct vnode **));
-static int	nfs_mount __P(( struct mount *mp, char *path, caddr_t data,
-			struct nameidata *ndp, struct thread *td));
-static int	nfs_unmount __P(( struct mount *mp, int mntflags,
-			struct thread *td));
-static int	nfs_root __P(( struct mount *mp, struct vnode **vpp));
-static int	nfs_statfs __P(( struct mount *mp, struct statfs *sbp,
-			struct thread *td));
-static int	nfs_sync __P(( struct mount *mp, int waitfor,
-			struct thread *td));
+static int	nfs_iosize (struct nfsmount *nmp);
+static void	nfs_decode_args (struct nfsmount *nmp,
+			struct nfs_args *argp);
+static int	mountnfs (struct nfs_args *,struct mount *,
+			struct sockaddr *,char *,char *,struct vnode **);
+static int	nfs_mount ( struct mount *mp, char *path, caddr_t data,
+			struct nameidata *ndp, struct thread *td);
+static int	nfs_unmount ( struct mount *mp, int mntflags,
+			struct thread *td);
+static int	nfs_root ( struct mount *mp, struct vnode **vpp);
+static int	nfs_statfs ( struct mount *mp, struct statfs *sbp,
+			struct thread *td);
+static int	nfs_sync ( struct mount *mp, int waitfor,
+			struct thread *td);
 
 /*
  * nfs vfs operations.
@@ -161,14 +161,14 @@ SYSCTL_OPAQUE(_vfs_nfs, OID_AUTO, diskless_swapaddr, CTLFLAG_RD,
 	"%Ssockaddr_in","");
 
 
-void nfsargs_ntoh __P((struct nfs_args *));
-static int nfs_mountdiskless __P((char *, char *, int,
+void nfsargs_ntoh (struct nfs_args *);
+static int nfs_mountdiskless (char *, char *, int,
 				  struct sockaddr_in *, struct nfs_args *,
 				  struct thread *, struct vnode **,
-				  struct mount **));
-static void nfs_convert_diskless __P((void));
-static void nfs_convert_oargs __P((struct nfs_args *args,
-				   struct onfs_args *oargs));
+				  struct mount **);
+static void nfs_convert_diskless (void);
+static void nfs_convert_oargs (struct nfs_args *args,
+				   struct onfs_args *oargs);
 
 static int
 nfs_iosize(nmp)

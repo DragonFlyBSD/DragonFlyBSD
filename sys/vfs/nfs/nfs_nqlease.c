@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.8 2003/08/07 21:17:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.9 2003/08/20 09:56:33 rob Exp $
  */
 
 
@@ -89,21 +89,21 @@ static int nqsrv_maxnumlease = NQ_MAXNUMLEASE;
 struct vop_lease_args;
 
 #ifndef NFS_NOSERVER
-static int	nqsrv_cmpnam __P((struct nfssvc_sock *, struct sockaddr *,
-			struct nqhost *));
-static int	nqnfs_vacated __P((struct vnode *vp, struct ucred *cred));
-static void	nqsrv_addhost __P((struct nqhost *lph, struct nfssvc_sock *slp,
-				   struct sockaddr *nam));
-static void	nqsrv_instimeq __P((struct nqlease *lp, u_int32_t duration));
-static void	nqsrv_locklease __P((struct nqlease *lp));
-static void	nqsrv_send_eviction __P((struct vnode *vp, struct nqlease *lp,
+static int	nqsrv_cmpnam (struct nfssvc_sock *, struct sockaddr *,
+			struct nqhost *);
+static int	nqnfs_vacated (struct vnode *vp, struct ucred *cred);
+static void	nqsrv_addhost (struct nqhost *lph, struct nfssvc_sock *slp,
+				   struct sockaddr *nam);
+static void	nqsrv_instimeq (struct nqlease *lp, u_int32_t duration);
+static void	nqsrv_locklease (struct nqlease *lp);
+static void	nqsrv_send_eviction (struct vnode *vp, struct nqlease *lp,
 					 struct nfssvc_sock *slp,
 					 struct sockaddr *nam, 
-					 struct ucred *cred));
-static void	nqsrv_unlocklease __P((struct nqlease *lp));
-static void	nqsrv_waitfor_expiry __P((struct nqlease *lp));
+					 struct ucred *cred);
+static void	nqsrv_unlocklease (struct nqlease *lp);
+static void	nqsrv_waitfor_expiry (struct nqlease *lp);
 #endif
-extern void	nqnfs_lease_updatetime __P((int deltat));
+extern void	nqnfs_lease_updatetime (int deltat);
 
 /*
  * Signifies which rpcs can have piggybacked lease requests

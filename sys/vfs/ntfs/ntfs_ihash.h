@@ -26,12 +26,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_ihash.h,v 1.5 1999/12/03 20:37:39 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.h,v 1.3 2003/08/20 09:56:33 rob Exp $
  */
 
 extern struct lock ntfs_hashlock;
-void ntfs_nthashinit __P((void));
-struct ntnode   *ntfs_nthashlookup __P((dev_t, ino_t));
-struct ntnode   *ntfs_nthashget __P((dev_t, ino_t));
-void ntfs_nthashins __P((struct ntnode *));
-void ntfs_nthashrem __P((register struct ntnode *));
+void ntfs_nthashinit (void);
+struct ntnode   *ntfs_nthashlookup (dev_t, ino_t);
+struct ntnode   *ntfs_nthashget (dev_t, ino_t);
+void ntfs_nthashins (struct ntnode *);
+void ntfs_nthashrem (register struct ntnode *);

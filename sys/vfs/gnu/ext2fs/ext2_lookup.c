@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_lookup.c,v 1.21.2.3 2002/11/17 02:02:42 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.5 2003/08/07 21:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.6 2003/08/20 09:56:31 rob Exp $
  */
 /*
  * Copyright (c) 1989, 1993
@@ -110,9 +110,9 @@ static u_char dt_to_ext2_ft[] = {
     ((dt) > sizeof(dt_to_ext2_ft) / sizeof(dt_to_ext2_ft[0]) ?	\
     EXT2_FT_UNKNOWN : dt_to_ext2_ft[(dt)])
 
-static int	ext2_dirbadentry __P((struct vnode *dp,
+static int	ext2_dirbadentry (struct vnode *dp,
 				      struct ext2_dir_entry_2 *de,
-				      int entryoffsetinblock));
+				      int entryoffsetinblock);
 
 /*
  * Vnode op for reading directories.

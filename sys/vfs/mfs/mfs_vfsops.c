@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.10 2003/08/07 21:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.11 2003/08/20 09:56:32 rob Exp $
  */
 
 
@@ -69,13 +69,13 @@ static int mfs_minor;		/* used for building internal dev_t */
 
 extern vop_t **mfs_vnodeop_p;
 
-static int	mfs_mount __P((struct mount *mp,
+static int	mfs_mount (struct mount *mp,
 			char *path, caddr_t data, struct nameidata *ndp, 
-			struct thread *td));
-static int	mfs_start __P((struct mount *mp, int flags, struct thread *td));
-static int	mfs_statfs __P((struct mount *mp, struct statfs *sbp, 
-			struct thread *td));
-static int	mfs_init __P((struct vfsconf *));
+			struct thread *td);
+static int	mfs_start (struct mount *mp, int flags, struct thread *td);
+static int	mfs_statfs (struct mount *mp, struct statfs *sbp, 
+			struct thread *td);
+static int	mfs_init (struct vfsconf *);
 
 #define MFS_CDEV_MAJOR	253
 

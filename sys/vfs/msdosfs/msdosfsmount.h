@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfsmount.h,v 1.20.2.2 2000/10/27 09:45:07 bde Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfsmount.h,v 1.2 2003/06/17 04:28:47 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfsmount.h,v 1.3 2003/08/20 09:56:32 rob Exp $ */
 /*	$NetBSD: msdosfsmount.h,v 1.17 1997/11/17 15:37:07 ws Exp $	*/
 
 /*-
@@ -198,9 +198,9 @@ struct msdosfsmount {
 #define	fsi_size(pmp) \
 	(1024 << ((pmp)->pm_BlkPerSec >> 2))
 
-int msdosfs_init __P((struct vfsconf *vfsp));
-int msdosfs_uninit __P((struct vfsconf *vfsp));
-int msdosfs_mountroot __P((void));
+int msdosfs_init (struct vfsconf *vfsp);
+int msdosfs_uninit (struct vfsconf *vfsp);
+int msdosfs_mountroot (void);
 
 #endif /* _KERNEL */
 

@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.9 2003/08/07 21:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.10 2003/08/20 09:56:32 rob Exp $
  */
 
 #include <sys/param.h>
@@ -51,17 +51,17 @@
 #include "mfsnode.h"
 #include "mfs_extern.h"
 
-static int	mfs_badop __P((struct vop_generic_args *));
-static int	mfs_bmap __P((struct vop_bmap_args *));
-static int	mfs_close __P((struct vop_close_args *));
-static int	mfs_fsync __P((struct vop_fsync_args *));
-static int	mfs_freeblks __P((struct vop_freeblks_args *));
-static int	mfs_inactive __P((struct vop_inactive_args *)); /* XXX */
-static int	mfs_open __P((struct vop_open_args *));
-static int	mfs_reclaim __P((struct vop_reclaim_args *)); /* XXX */
-static int	mfs_print __P((struct vop_print_args *)); /* XXX */
-static int	mfs_strategy __P((struct vop_strategy_args *)); /* XXX */
-static int	mfs_getpages __P((struct vop_getpages_args *)); /* XXX */
+static int	mfs_badop (struct vop_generic_args *);
+static int	mfs_bmap (struct vop_bmap_args *);
+static int	mfs_close (struct vop_close_args *);
+static int	mfs_fsync (struct vop_fsync_args *);
+static int	mfs_freeblks (struct vop_freeblks_args *);
+static int	mfs_inactive (struct vop_inactive_args *); /* XXX */
+static int	mfs_open (struct vop_open_args *);
+static int	mfs_reclaim (struct vop_reclaim_args *); /* XXX */
+static int	mfs_print (struct vop_print_args *); /* XXX */
+static int	mfs_strategy (struct vop_strategy_args *); /* XXX */
+static int	mfs_getpages (struct vop_getpages_args *); /* XXX */
 /*
  * mfs vnode operations.
  */

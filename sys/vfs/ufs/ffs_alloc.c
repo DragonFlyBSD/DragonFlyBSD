@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.6 2003/08/07 21:17:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.7 2003/08/20 09:56:34 rob Exp $
  */
 
 #include "opt_quota.h"
@@ -56,27 +56,27 @@
 #include "fs.h"
 #include "ffs_extern.h"
 
-typedef ufs_daddr_t allocfcn_t __P((struct inode *ip, int cg, ufs_daddr_t bpref,
-				  int size));
+typedef ufs_daddr_t allocfcn_t (struct inode *ip, int cg, ufs_daddr_t bpref,
+				  int size);
 
-static ufs_daddr_t ffs_alloccg __P((struct inode *, int, ufs_daddr_t, int));
+static ufs_daddr_t ffs_alloccg (struct inode *, int, ufs_daddr_t, int);
 static ufs_daddr_t
-	      ffs_alloccgblk __P((struct inode *, struct buf *, ufs_daddr_t));
+	      ffs_alloccgblk (struct inode *, struct buf *, ufs_daddr_t);
 #ifdef DIAGNOSTIC
-static int	ffs_checkblk __P((struct inode *, ufs_daddr_t, long));
+static int	ffs_checkblk (struct inode *, ufs_daddr_t, long);
 #endif
-static void	ffs_clusteracct	__P((struct fs *, struct cg *, ufs_daddr_t,
-				     int));
-static ufs_daddr_t ffs_clusteralloc __P((struct inode *, int, ufs_daddr_t,
-	    int));
-static ino_t	ffs_dirpref __P((struct inode *));
-static ufs_daddr_t ffs_fragextend __P((struct inode *, int, long, int, int));
-static void	ffs_fserr __P((struct fs *, u_int, char *));
+static void	ffs_clusteracct	(struct fs *, struct cg *, ufs_daddr_t,
+				     int);
+static ufs_daddr_t ffs_clusteralloc (struct inode *, int, ufs_daddr_t,
+	    int);
+static ino_t	ffs_dirpref (struct inode *);
+static ufs_daddr_t ffs_fragextend (struct inode *, int, long, int, int);
+static void	ffs_fserr (struct fs *, u_int, char *);
 static u_long	ffs_hashalloc
-		    __P((struct inode *, int, long, int, allocfcn_t *));
-static ino_t	ffs_nodealloccg __P((struct inode *, int, ufs_daddr_t, int));
-static ufs_daddr_t ffs_mapsearch __P((struct fs *, struct cg *, ufs_daddr_t,
-	    int));
+		    (struct inode *, int, long, int, allocfcn_t *);
+static ino_t	ffs_nodealloccg (struct inode *, int, ufs_daddr_t, int);
+static ufs_daddr_t ffs_mapsearch (struct fs *, struct cg *, ufs_daddr_t,
+	    int);
 
 /*
  * Allocate a block in the file system.

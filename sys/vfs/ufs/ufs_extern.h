@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_extern.h	8.10 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_extern.h,v 1.27.2.1 2000/12/28 11:01:46 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_extern.h,v 1.4 2003/07/26 22:04:27 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_extern.h,v 1.5 2003/08/20 09:56:34 rob Exp $
  */
 
 #ifndef _UFS_UFS_EXTERN_H_
@@ -55,55 +55,55 @@ struct vop_generic_args;
 struct vop_inactive_args;
 struct vop_reclaim_args;
 
-int	ufs_vnoperate __P((struct vop_generic_args *));
-int	ufs_vnoperatefifo __P((struct vop_generic_args *));
-int	ufs_vnoperatespec __P((struct vop_generic_args *));
+int	ufs_vnoperate (struct vop_generic_args *);
+int	ufs_vnoperatefifo (struct vop_generic_args *);
+int	ufs_vnoperatespec (struct vop_generic_args *);
 
-int	 ufs_bmap __P((struct vop_bmap_args *));
-int	 ufs_bmaparray __P((struct vnode *, daddr_t, daddr_t *, struct indir *,
-		int *, int *, int *));
-int	 ufs_check_export __P((struct mount *, struct sockaddr *, 
-			       int *, struct ucred **));
+int	 ufs_bmap (struct vop_bmap_args *);
+int	 ufs_bmaparray (struct vnode *, daddr_t, daddr_t *, struct indir *,
+		int *, int *, int *);
+int	 ufs_check_export (struct mount *, struct sockaddr *, 
+			       int *, struct ucred **);
 int	 ufs_fhtovp(struct mount *, struct ufid *, struct vnode **);
-int	 ufs_checkpath __P((struct inode *, struct inode *, struct ucred *));
-void	 ufs_dirbad __P((struct inode *, doff_t, char *));
-int	 ufs_dirbadentry __P((struct vnode *, struct direct *, int));
-int	 ufs_dirempty __P((struct inode *, ino_t, struct ucred *));
-void	 ufs_makedirentry __P((struct inode *, struct componentname *,
-	    struct direct *));
-int	 ufs_direnter __P((struct vnode *, struct vnode *, struct direct *,
-	    struct componentname *, struct buf *));
-int	 ufs_dirremove __P((struct vnode *, struct inode *, int, int));
-int	 ufs_dirrewrite __P((struct inode *, struct inode *, ino_t, int, int));
-int	 ufs_getlbns __P((struct vnode *, ufs_daddr_t, struct indir *, int *));
+int	 ufs_checkpath (struct inode *, struct inode *, struct ucred *);
+void	 ufs_dirbad (struct inode *, doff_t, char *);
+int	 ufs_dirbadentry (struct vnode *, struct direct *, int);
+int	 ufs_dirempty (struct inode *, ino_t, struct ucred *);
+void	 ufs_makedirentry (struct inode *, struct componentname *,
+	    struct direct *);
+int	 ufs_direnter (struct vnode *, struct vnode *, struct direct *,
+	    struct componentname *, struct buf *);
+int	 ufs_dirremove (struct vnode *, struct inode *, int, int);
+int	 ufs_dirrewrite (struct inode *, struct inode *, ino_t, int, int);
+int	 ufs_getlbns (struct vnode *, ufs_daddr_t, struct indir *, int *);
 struct vnode *
-	 ufs_ihashget __P((dev_t, ino_t));
-void	 ufs_ihashinit __P((void));
-void	 ufs_ihashins __P((struct inode *));
+	 ufs_ihashget (dev_t, ino_t);
+void	 ufs_ihashinit (void);
+void	 ufs_ihashins (struct inode *);
 struct vnode *
-	 ufs_ihashlookup __P((dev_t, ino_t));
-void	 ufs_ihashrem __P((struct inode *));
-int	 ufs_inactive __P((struct vop_inactive_args *));
-int	 ufs_init __P((struct vfsconf *));
-void	 ufs_itimes __P((struct vnode *vp));
-int	 ufs_lookup __P((struct vop_cachedlookup_args *));
-int	 ufs_reclaim __P((struct vop_reclaim_args *));
-int	 ufs_root __P((struct mount *, struct vnode **));
-int	 ufs_start __P((struct mount *, int, struct thread *));
-int	 ufs_vinit __P((struct mount *, vop_t **, vop_t **, struct vnode **));
+	 ufs_ihashlookup (dev_t, ino_t);
+void	 ufs_ihashrem (struct inode *);
+int	 ufs_inactive (struct vop_inactive_args *);
+int	 ufs_init (struct vfsconf *);
+void	 ufs_itimes (struct vnode *vp);
+int	 ufs_lookup (struct vop_cachedlookup_args *);
+int	 ufs_reclaim (struct vop_reclaim_args *);
+int	 ufs_root (struct mount *, struct vnode **);
+int	 ufs_start (struct mount *, int, struct thread *);
+int	 ufs_vinit (struct mount *, vop_t **, vop_t **, struct vnode **);
 
 /*
  * Soft update function prototypes.
  */
-void	softdep_setup_directory_add __P((struct buf *, struct inode *, off_t,
-	    long, struct buf *));
-void	softdep_change_directoryentry_offset __P((struct inode *, caddr_t,
-	    caddr_t, caddr_t, int));
-void	softdep_setup_remove __P((struct buf *,struct inode *, struct inode *,
-	    int));
-void	softdep_setup_directory_change __P((struct buf *, struct inode *,
-	    struct inode *, long, int));
-void	softdep_change_linkcnt __P((struct inode *));
-int	softdep_slowdown __P((struct vnode *));
+void	softdep_setup_directory_add (struct buf *, struct inode *, off_t,
+	    long, struct buf *);
+void	softdep_change_directoryentry_offset (struct inode *, caddr_t,
+	    caddr_t, caddr_t, int);
+void	softdep_setup_remove (struct buf *,struct inode *, struct inode *,
+	    int);
+void	softdep_setup_directory_change (struct buf *, struct inode *,
+	    struct inode *, long, int);
+void	softdep_change_linkcnt (struct inode *);
+int	softdep_slowdown (struct vnode *);
 
 #endif /* !_UFS_UFS_EXTERN_H_ */

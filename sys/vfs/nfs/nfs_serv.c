@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.7 2003/08/07 21:17:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.8 2003/08/20 09:56:33 rob Exp $
  */
 
 /*
@@ -147,10 +147,10 @@ static int nfs_commit_miss;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, commit_blks, CTLFLAG_RW, &nfs_commit_blks, 0, "");
 SYSCTL_INT(_vfs_nfs, OID_AUTO, commit_miss, CTLFLAG_RW, &nfs_commit_miss, 0, "");
 
-static int nfsrv_access __P((struct vnode *,int,struct ucred *,int,
-		struct thread *, int));
-static void nfsrvw_coalesce __P((struct nfsrv_descript *,
-		struct nfsrv_descript *));
+static int nfsrv_access (struct vnode *,int,struct ucred *,int,
+		struct thread *, int);
+static void nfsrvw_coalesce (struct nfsrv_descript *,
+		struct nfsrv_descript *);
 
 /*
  * Clear nameidata fields that are tested in nsfmout cleanup code prior

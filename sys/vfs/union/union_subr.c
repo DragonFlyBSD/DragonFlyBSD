@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.6 2003/08/07 21:17:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.7 2003/08/20 09:56:34 rob Exp $
  */
 
 #include <sys/param.h>
@@ -58,7 +58,7 @@
 #include <vm/vm_object.h>	/* for vm cache coherency */
 #include "union.h"
 
-extern int	union_init __P((void));
+extern int	union_init (void);
 
 /* must be power of two, otherwise change UNION_HASH() */
 #define NHASH 32
@@ -70,26 +70,26 @@ extern int	union_init __P((void));
 static LIST_HEAD(unhead, union_node) unhead[NHASH];
 static int unvplock[NHASH];
 
-static void	union_dircache_r __P((struct vnode *vp, struct vnode ***vppp,
-				      int *cntp));
-static int	union_list_lock __P((int ix));
-static void	union_list_unlock __P((int ix));
-static int	union_relookup __P((struct union_mount *um, struct vnode *dvp,
+static void	union_dircache_r (struct vnode *vp, struct vnode ***vppp,
+				      int *cntp);
+static int	union_list_lock (int ix);
+static void	union_list_unlock (int ix);
+static int	union_relookup (struct union_mount *um, struct vnode *dvp,
 				    struct vnode **vpp,
 				    struct componentname *cnp,
 				    struct componentname *cn, char *path,
-				    int pathlen));
-static void	union_updatevp __P((struct union_node *un,
+				    int pathlen);
+static void	union_updatevp (struct union_node *un,
 				    struct vnode *uppervp,
-				    struct vnode *lowervp));
-static void union_newlower __P((struct union_node *, struct vnode *));
-static void union_newupper __P((struct union_node *, struct vnode *));
-static int union_copyfile __P((struct vnode *, struct vnode *,
-					struct ucred *, struct thread *));
-static int union_vn_create __P((struct vnode **, struct union_node *,
-				struct thread *));
-static int union_vn_close __P((struct vnode *, int, struct ucred *,
-				struct thread *));
+				    struct vnode *lowervp);
+static void union_newlower (struct union_node *, struct vnode *);
+static void union_newupper (struct union_node *, struct vnode *);
+static int union_copyfile (struct vnode *, struct vnode *,
+					struct ucred *, struct thread *);
+static int union_vn_create (struct vnode **, struct union_node *,
+				struct thread *);
+static int union_vn_close (struct vnode *, int, struct ucred *,
+				struct thread *);
 
 int
 union_init()

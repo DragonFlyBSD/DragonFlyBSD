@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.8 2003/08/07 21:17:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.9 2003/08/20 09:56:33 rob Exp $
  */
 
 #include <sys/param.h>
@@ -74,10 +74,10 @@
 static MALLOC_DEFINE(M_NFSSVC, "NFS srvsock", "Nfs server structure");
 
 /* Global defs. */
-extern int32_t (*nfsrv3_procs[NFS_NPROCS]) __P((struct nfsrv_descript *nd,
+extern int32_t (*nfsrv3_procs[NFS_NPROCS]) (struct nfsrv_descript *nd,
 					    struct nfssvc_sock *slp,
 					    struct thread *td,
-					    struct mbuf **mreqp));
+					    struct mbuf **mreqp);
 extern int nfs_numasync;
 extern time_t nqnfsstarttime;
 extern int nqsrv_writeslack;
@@ -88,9 +88,9 @@ extern int nfsrvw_procrastinate_v3;
 static int nuidhash_max = NFS_MAXUIDHASH;
 
 #ifndef NFS_NOSERVER
-static void	nfsrv_zapsock __P((struct nfssvc_sock *slp));
+static void	nfsrv_zapsock (struct nfssvc_sock *slp);
 #endif
-static int	nfssvc_iod __P((struct thread *));
+static int	nfssvc_iod (struct thread *);
 
 #define	TRUE	1
 #define	FALSE	0
@@ -105,11 +105,11 @@ static struct nfsdrt nfsdrt;
 static int nfs_numnfsd = 0;
 static int notstarted = 1;
 static int modify_flag = 0;
-static void	nfsd_rt __P((int sotype, struct nfsrv_descript *nd,
-			     int cacherep));
-static int	nfssvc_addsock __P((struct file *, struct sockaddr *,
-				    struct thread *));
-static int	nfssvc_nfsd __P((struct nfsd_srvargs *,caddr_t,struct thread *));
+static void	nfsd_rt (int sotype, struct nfsrv_descript *nd,
+			     int cacherep);
+static int	nfssvc_addsock (struct file *, struct sockaddr *,
+				    struct thread *);
+static int	nfssvc_nfsd (struct nfsd_srvargs *,caddr_t,struct thread *);
 
 static int nfs_privport = 0;
 SYSCTL_INT(_vfs_nfs, NFS_NFSPRIVPORT, nfs_privport, CTLFLAG_RW, &nfs_privport, 0, "");

@@ -32,7 +32,7 @@
  *
  *	@(#)ufsmount.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ufs/ufsmount.h,v 1.17 1999/12/29 04:55:06 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufsmount.h,v 1.3 2003/06/25 03:56:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufsmount.h,v 1.4 2003/08/20 09:56:34 rob Exp $
  */
 
 #ifndef _UFS_UFS_UFSMOUNT_H_
@@ -97,11 +97,11 @@ struct ufsmount {
 	int64_t	um_savedmaxfilesize;		/* XXX - limit maxfilesize */
 	struct malloc_type *um_malloctype;	/* The inodes malloctype */
 	int	um_i_effnlink_valid;		/* i_effnlink valid? */
-	int	(*um_blkatoff) __P((struct vnode *, off_t, char **, struct buf **));
-	int	(*um_truncate) __P((struct vnode *, off_t, int, struct ucred *, struct thread *));
-	int	(*um_update) __P((struct vnode *, int));
-	int	(*um_valloc) __P((struct vnode *, int, struct ucred *, struct vnode **));
-	int	(*um_vfree) __P((struct vnode *, ino_t, int));
+	int	(*um_blkatoff) (struct vnode *, off_t, char **, struct buf **);
+	int	(*um_truncate) (struct vnode *, off_t, int, struct ucred *, struct thread *);
+	int	(*um_update) (struct vnode *, int);
+	int	(*um_valloc) (struct vnode *, int, struct ucred *, struct vnode **);
+	int	(*um_vfree) (struct vnode *, ino_t, int);
 };
 
 #define UFS_BLKATOFF(aa, bb, cc, dd) VFSTOUFS((aa)->v_mount)->um_blkatoff(aa, bb, cc, dd)

@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.6 2003/08/07 21:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.7 2003/08/20 09:56:32 rob Exp $
  */
 
 #include <sys/param.h>
@@ -63,22 +63,22 @@
 #include "cd9660_node.h"
 #include "iso_rrip.h"
 
-static int cd9660_setattr __P((struct vop_setattr_args *));
-static int cd9660_access __P((struct vop_access_args *));
-static int cd9660_getattr __P((struct vop_getattr_args *));
-static int cd9660_ioctl __P((struct vop_ioctl_args *));
-static int cd9660_pathconf __P((struct vop_pathconf_args *));
-static int cd9660_read __P((struct vop_read_args *));
+static int cd9660_setattr (struct vop_setattr_args *);
+static int cd9660_access (struct vop_access_args *);
+static int cd9660_getattr (struct vop_getattr_args *);
+static int cd9660_ioctl (struct vop_ioctl_args *);
+static int cd9660_pathconf (struct vop_pathconf_args *);
+static int cd9660_read (struct vop_read_args *);
 struct isoreaddir;
-static int iso_uiodir __P((struct isoreaddir *idp, struct dirent *dp,
-			   off_t off));
-static int iso_shipdir __P((struct isoreaddir *idp));
-static int cd9660_readdir __P((struct vop_readdir_args *));
-static int cd9660_readlink __P((struct vop_readlink_args *ap));
-static int cd9660_strategy __P((struct vop_strategy_args *));
-static int cd9660_print __P((struct vop_print_args *));
-static int cd9660_getpages __P((struct vop_getpages_args *));
-static int cd9660_putpages __P((struct vop_putpages_args *));
+static int iso_uiodir (struct isoreaddir *idp, struct dirent *dp,
+			   off_t off);
+static int iso_shipdir (struct isoreaddir *idp);
+static int cd9660_readdir (struct vop_readdir_args *);
+static int cd9660_readlink (struct vop_readlink_args *ap);
+static int cd9660_strategy (struct vop_strategy_args *);
+static int cd9660_print (struct vop_print_args *);
+static int cd9660_getpages (struct vop_getpages_args *);
+static int cd9660_putpages (struct vop_putpages_args *);
 
 /*
  * Setattr call. Only allowed for block and character special devices.

@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.7 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.8 2003/08/20 09:56:33 rob Exp $
  */
 
 /*
@@ -63,20 +63,20 @@
 #include <vfs/procfs/procfs.h>
 #include <sys/pioctl.h>
 
-static int	procfs_access __P((struct vop_access_args *));
-static int	procfs_badop __P((void));
-static int	procfs_bmap __P((struct vop_bmap_args *));
-static int	procfs_close __P((struct vop_close_args *));
-static int	procfs_getattr __P((struct vop_getattr_args *));
-static int	procfs_inactive __P((struct vop_inactive_args *));
-static int	procfs_ioctl __P((struct vop_ioctl_args *));
-static int	procfs_lookup __P((struct vop_lookup_args *));
-static int	procfs_open __P((struct vop_open_args *));
-static int	procfs_print __P((struct vop_print_args *));
-static int	procfs_readdir __P((struct vop_readdir_args *));
-static int	procfs_readlink __P((struct vop_readlink_args *));
-static int	procfs_reclaim __P((struct vop_reclaim_args *));
-static int	procfs_setattr __P((struct vop_setattr_args *));
+static int	procfs_access (struct vop_access_args *);
+static int	procfs_badop (void);
+static int	procfs_bmap (struct vop_bmap_args *);
+static int	procfs_close (struct vop_close_args *);
+static int	procfs_getattr (struct vop_getattr_args *);
+static int	procfs_inactive (struct vop_inactive_args *);
+static int	procfs_ioctl (struct vop_ioctl_args *);
+static int	procfs_lookup (struct vop_lookup_args *);
+static int	procfs_open (struct vop_open_args *);
+static int	procfs_print (struct vop_print_args *);
+static int	procfs_readdir (struct vop_readdir_args *);
+static int	procfs_readlink (struct vop_readlink_args *);
+static int	procfs_reclaim (struct vop_reclaim_args *);
+static int	procfs_setattr (struct vop_setattr_args *);
 
 /*
  * This is a list of the valid names in the
@@ -88,7 +88,7 @@ static struct proc_target {
 	u_char	pt_namlen;
 	char	*pt_name;
 	pfstype	pt_pfstype;
-	int	(*pt_valid) __P((struct proc *p));
+	int	(*pt_valid) (struct proc *p);
 } proc_targets[] = {
 #define N(s) sizeof(s)-1, s
 	/*	  name		type		validp */
@@ -111,7 +111,7 @@ static struct proc_target {
 };
 static const int nproc_targets = sizeof(proc_targets) / sizeof(proc_targets[0]);
 
-static pid_t atopid __P((const char *, u_int));
+static pid_t atopid (const char *, u_int);
 
 /*
  * set things up for doing i/o on

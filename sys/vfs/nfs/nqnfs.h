@@ -35,7 +35,7 @@
  *
  *	@(#)nqnfs.h	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nqnfs.h,v 1.22 2000/02/13 03:32:07 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nqnfs.h,v 1.4 2003/06/26 05:55:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nqnfs.h,v 1.5 2003/08/20 09:56:33 rob Exp $
  */
 
 
@@ -190,20 +190,20 @@ extern u_long nqfhhash;
 #define	NQNFS_EXPIRED	500
 #define	NQNFS_TRYLATER	501
 
-void	nqnfs_lease_check __P((struct vnode *, struct thread *, struct ucred *, int));
-void	nqnfs_lease_updatetime __P((int));
-int	nqsrv_getlease __P((struct vnode *, u_int32_t *, int,
+void	nqnfs_lease_check (struct vnode *, struct thread *, struct ucred *, int);
+void	nqnfs_lease_updatetime (int);
+int	nqsrv_getlease (struct vnode *, u_int32_t *, int,
 			    struct nfssvc_sock *, struct thread *,
 			    struct sockaddr *, int *, u_quad_t *,
-			    struct ucred *));
-int	nqnfs_getlease __P((struct vnode *,int,struct thread *));
-int	nqnfs_callback __P((struct nfsmount *,struct mbuf *,struct mbuf *,caddr_t));
-int	nqnfs_clientd __P((struct nfsmount *,struct ucred *,struct nfsd_cargs *,int,caddr_t,struct thread *));
+			    struct ucred *);
+int	nqnfs_getlease (struct vnode *,int,struct thread *);
+int	nqnfs_callback (struct nfsmount *,struct mbuf *,struct mbuf *,caddr_t);
+int	nqnfs_clientd (struct nfsmount *,struct ucred *,struct nfsd_cargs *,int,caddr_t,struct thread *);
 struct nfsnode;
-void	nqnfs_clientlease __P((struct nfsmount *, struct nfsnode *, int, int, time_t, u_quad_t));
-void	nqnfs_serverd __P((void));
-int	nqnfsrv_getlease __P((struct nfsrv_descript *, struct nfssvc_sock *, struct thread *, struct mbuf **));
-int	nqnfsrv_vacated __P((struct nfsrv_descript *, struct nfssvc_sock *, struct thread *, struct mbuf **));
+void	nqnfs_clientlease (struct nfsmount *, struct nfsnode *, int, int, time_t, u_quad_t);
+void	nqnfs_serverd (void);
+int	nqnfsrv_getlease (struct nfsrv_descript *, struct nfssvc_sock *, struct thread *, struct mbuf **);
+int	nqnfsrv_vacated (struct nfsrv_descript *, struct nfssvc_sock *, struct thread *, struct mbuf **);
 #endif
 
 #endif

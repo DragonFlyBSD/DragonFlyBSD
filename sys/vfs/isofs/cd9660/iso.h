@@ -37,7 +37,7 @@
  *
  *	@(#)iso.h	8.6 (Berkeley) 5/10/95
  * $FreeBSD: src/sys/isofs/cd9660/iso.h,v 1.19.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/iso.h,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/iso.h,v 1.3 2003/08/20 09:56:32 rob Exp $
  */
 
 #define ISODCL(from, to) (to - from + 1)
@@ -256,21 +256,21 @@ struct iso_mnt {
 #define lblkno(imp, loc)	((loc) >> (imp)->im_bshift)
 #define blksize(imp, ip, lbn)	((imp)->logical_block_size)
 
-int cd9660_vget_internal __P((struct mount *, ino_t, struct vnode **, int,
-			      struct iso_directory_record *));
-int cd9660_init __P((struct vfsconf *));
-int cd9660_uninit __P((struct vfsconf *));
-#define cd9660_sysctl ((int (*) __P((int *, u_int, void *, size_t *, void *, \
-                                    size_t, struct proc *)))eopnotsupp)
+int cd9660_vget_internal (struct mount *, ino_t, struct vnode **, int,
+			      struct iso_directory_record *);
+int cd9660_init (struct vfsconf *);
+int cd9660_uninit (struct vfsconf *);
+#define cd9660_sysctl ((int (*) (int *, u_int, void *, size_t *, void *, \
+                                    size_t, struct proc *))eopnotsupp)
 
 extern vop_t **cd9660_vnodeop_p;
 extern vop_t **cd9660_specop_p;
 extern vop_t **cd9660_fifoop_p;
 
-int isochar __P((u_char *, u_char *, int, u_char *));
-int isofncmp __P((u_char *, int, u_char *, int, int));
-void isofntrans __P((u_char *, int, u_char *, u_short *, int, int, int));
-ino_t isodirino __P((struct iso_directory_record *, struct iso_mnt *));
+int isochar (u_char *, u_char *, int, u_char *);
+int isofncmp (u_char *, int, u_char *, int, int);
+void isofntrans (u_char *, int, u_char *, u_short *, int, int, int);
+ino_t isodirino (struct iso_directory_record *, struct iso_mnt *);
 
 #endif /* _KERNEL */
 
@@ -279,7 +279,7 @@ ino_t isodirino __P((struct iso_directory_record *, struct iso_mnt *));
  * outside the kernel.  Thus we don't hide them here.
  */
 
-static __inline int isonum_711 __P((u_char *));
+static __inline int isonum_711 (u_char *);
 static __inline int
 isonum_711(p)
 	u_char *p;
@@ -287,7 +287,7 @@ isonum_711(p)
 	return *p;
 }
 
-static __inline int isonum_712 __P((char *));
+static __inline int isonum_712 (char *);
 static __inline int
 isonum_712(p)
 	char *p;
@@ -297,7 +297,7 @@ isonum_712(p)
 
 #ifndef UNALIGNED_ACCESS
 
-static __inline int isonum_723 __P((u_char *));
+static __inline int isonum_723 (u_char *);
 static __inline int
 isonum_723(p)
 	u_char *p;
@@ -305,7 +305,7 @@ isonum_723(p)
 	return *p|(p[1] << 8);
 }
 
-static __inline int isonum_733 __P((u_char *));
+static __inline int isonum_733 (u_char *);
 static __inline int
 isonum_733(p)
 	u_char *p;

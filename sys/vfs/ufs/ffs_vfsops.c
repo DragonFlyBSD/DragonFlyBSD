@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.10 2003/08/07 21:17:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.11 2003/08/20 09:56:34 rob Exp $
  */
 
 #include "opt_quota.h"
@@ -64,12 +64,12 @@
 
 static MALLOC_DEFINE(M_FFSNODE, "FFS node", "FFS vnode private part");
 
-static int	ffs_sbupdate __P((struct ufsmount *, int));
-static int	ffs_reload __P((struct mount *,struct ucred *,struct thread *));
-static int	ffs_oldfscompat __P((struct fs *));
-static int	ffs_mount __P((struct mount *, char *, caddr_t,
-				struct nameidata *, struct thread *));
-static int	ffs_init __P((struct vfsconf *));
+static int	ffs_sbupdate (struct ufsmount *, int);
+static int	ffs_reload (struct mount *,struct ucred *,struct thread *);
+static int	ffs_oldfscompat (struct fs *);
+static int	ffs_mount (struct mount *, char *, caddr_t,
+				struct nameidata *, struct thread *);
+static int	ffs_init (struct vfsconf *);
 
 static struct vfsops ufs_vfsops = {
 	ffs_mount,

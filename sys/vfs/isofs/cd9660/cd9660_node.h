@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.h	8.6 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.h,v 1.20 1999/12/29 04:54:37 peter Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.h,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.h,v 1.3 2003/08/20 09:56:32 rob Exp $
  */
 
 /*
@@ -109,19 +109,19 @@ struct vop_reclaim_args;
 /*
  * Prototypes for ISOFS vnode operations
  */
-int cd9660_lookup __P((struct vop_cachedlookup_args *));
-int cd9660_inactive __P((struct vop_inactive_args *));
-int cd9660_reclaim __P((struct vop_reclaim_args *));
-int cd9660_bmap __P((struct vop_bmap_args *));
-int cd9660_blkatoff __P((struct vnode *vp, off_t offset, char **res, struct buf **bpp));
+int cd9660_lookup (struct vop_cachedlookup_args *);
+int cd9660_inactive (struct vop_inactive_args *);
+int cd9660_reclaim (struct vop_reclaim_args *);
+int cd9660_bmap (struct vop_bmap_args *);
+int cd9660_blkatoff (struct vnode *vp, off_t offset, char **res, struct buf **bpp);
 
-void cd9660_defattr __P((struct iso_directory_record *,
-			struct iso_node *, struct buf *, enum ISO_FTYPE));
-void cd9660_deftstamp __P((struct iso_directory_record *,
-			struct iso_node *, struct buf *, enum ISO_FTYPE));
-struct vnode *cd9660_ihashget __P((dev_t, ino_t));
-void cd9660_ihashins __P((struct iso_node *));
-int cd9660_tstamp_conv7 __P((u_char *, struct timespec *, enum ISO_FTYPE));
-int cd9660_tstamp_conv17 __P((u_char *, struct timespec *));
+void cd9660_defattr (struct iso_directory_record *,
+			struct iso_node *, struct buf *, enum ISO_FTYPE);
+void cd9660_deftstamp (struct iso_directory_record *,
+			struct iso_node *, struct buf *, enum ISO_FTYPE);
+struct vnode *cd9660_ihashget (dev_t, ino_t);
+void cd9660_ihashins (struct iso_node *);
+int cd9660_tstamp_conv7 (u_char *, struct timespec *, enum ISO_FTYPE);
+int cd9660_tstamp_conv17 (u_char *, struct timespec *);
 
 #endif /* _KERNEL */

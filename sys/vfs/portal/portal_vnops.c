@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.6 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.7 2003/08/20 09:56:33 rob Exp $
  */
 
 /*
@@ -66,17 +66,17 @@
 
 static int portal_fileid = PORTAL_ROOTFILEID+1;
 
-static int	portal_badop __P((void));
-static void	portal_closefd __P((struct thread *td, int fd));
-static int	portal_connect __P((struct socket *so, struct socket *so2));
-static int	portal_getattr __P((struct vop_getattr_args *ap));
-static int	portal_inactive __P((struct vop_inactive_args *ap));
-static int	portal_lookup __P((struct vop_lookup_args *ap));
-static int	portal_open __P((struct vop_open_args *ap));
-static int	portal_print __P((struct vop_print_args *ap));
-static int	portal_readdir __P((struct vop_readdir_args *ap));
-static int	portal_reclaim __P((struct vop_reclaim_args *ap));
-static int	portal_setattr __P((struct vop_setattr_args *ap));
+static int	portal_badop (void);
+static void	portal_closefd (struct thread *td, int fd);
+static int	portal_connect (struct socket *so, struct socket *so2);
+static int	portal_getattr (struct vop_getattr_args *ap);
+static int	portal_inactive (struct vop_inactive_args *ap);
+static int	portal_lookup (struct vop_lookup_args *ap);
+static int	portal_open (struct vop_open_args *ap);
+static int	portal_print (struct vop_print_args *ap);
+static int	portal_readdir (struct vop_readdir_args *ap);
+static int	portal_reclaim (struct vop_reclaim_args *ap);
+static int	portal_setattr (struct vop_setattr_args *ap);
 
 static void
 portal_closefd(td, fd)

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.8 2003/08/15 07:26:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.9 2003/08/20 09:56:32 rob Exp $
  */
 
 
@@ -63,42 +63,42 @@ MALLOC_DEFINE(M_HPFSMNT, "HPFS mount", "HPFS mount structure");
 MALLOC_DEFINE(M_HPFSNO, "HPFS node", "HPFS node structure");
 #endif
 
-static int	hpfs_root __P((struct mount *, struct vnode **));
-static int	hpfs_statfs __P((struct mount *, struct statfs *,
-				 struct thread *));
-static int	hpfs_unmount __P((struct mount *, int, struct thread *));
-static int	hpfs_vget __P((struct mount *mp, ino_t ino,
-			       struct vnode **vpp));
-static int	hpfs_mountfs __P((struct vnode *, struct mount *, 
-				  struct hpfs_args *, struct thread *));
-static int	hpfs_vptofh __P((struct vnode *, struct fid *));
-static int	hpfs_fhtovp __P((struct mount *, struct fid *,
-				 struct vnode **));
+static int	hpfs_root (struct mount *, struct vnode **);
+static int	hpfs_statfs (struct mount *, struct statfs *,
+				 struct thread *);
+static int	hpfs_unmount (struct mount *, int, struct thread *);
+static int	hpfs_vget (struct mount *mp, ino_t ino,
+			       struct vnode **vpp);
+static int	hpfs_mountfs (struct vnode *, struct mount *, 
+				  struct hpfs_args *, struct thread *);
+static int	hpfs_vptofh (struct vnode *, struct fid *);
+static int	hpfs_fhtovp (struct mount *, struct fid *,
+				 struct vnode **);
 
 #if !defined(__FreeBSD__)
-static int	hpfs_quotactl __P((struct mount *, int, uid_t, caddr_t,
-				   struct proc *));
-static int	hpfs_start __P((struct mount *, int, struct proc *));
-static int	hpfs_sync __P((struct mount *, int, struct ucred *,
-			       struct proc *));
+static int	hpfs_quotactl (struct mount *, int, uid_t, caddr_t,
+				   struct proc *);
+static int	hpfs_start (struct mount *, int, struct proc *);
+static int	hpfs_sync (struct mount *, int, struct ucred *,
+			       struct proc *);
 #endif
 
 #if defined(__FreeBSD__)
 struct sockaddr;
-static int	hpfs_mount __P((struct mount *, char *, caddr_t,
-				struct nameidata *, struct thread *));
-static int	hpfs_init __P((struct vfsconf *));
-static int	hpfs_checkexp __P((struct mount *, struct sockaddr *,
-				   int *, struct ucred **));
+static int	hpfs_mount (struct mount *, char *, caddr_t,
+				struct nameidata *, struct thread *);
+static int	hpfs_init (struct vfsconf *);
+static int	hpfs_checkexp (struct mount *, struct sockaddr *,
+				   int *, struct ucred **);
 #else /* defined(__NetBSD__) */
-static int	hpfs_mount __P((struct mount *, const char *, void *,
-				struct nameidata *, struct proc *));
-static void	hpfs_init __P((void));
-static int	hpfs_mountroot __P((void));
-static int	hpfs_sysctl __P((int *, u_int, void *, size_t *, void *,
-				 size_t, struct proc *));
-static int	hpfs_checkexp __P((struct mount *, struct mbuf *,
-				   int *, struct ucred **));
+static int	hpfs_mount (struct mount *, const char *, void *,
+				struct nameidata *, struct proc *);
+static void	hpfs_init (void);
+static int	hpfs_mountroot (void);
+static int	hpfs_sysctl (int *, u_int, void *, size_t *, void *,
+				 size_t, struct proc *);
+static int	hpfs_checkexp (struct mount *, struct mbuf *,
+				   int *, struct ucred **);
 #endif
 
 /*ARGSUSED*/

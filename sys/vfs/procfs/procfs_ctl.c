@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_ctl.c,v 1.20.2.2 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.5 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.6 2003/08/20 09:56:33 rob Exp $
  */
 
 #include <sys/param.h>
@@ -101,7 +101,7 @@ static vfs_namemap_t signames[] = {
 	{ 0 },
 };
 
-static int	procfs_control __P((struct proc *curp, struct proc *p, int op));
+static int	procfs_control (struct proc *curp, struct proc *p, int op);
 
 static int
 procfs_control(curp, p, op)

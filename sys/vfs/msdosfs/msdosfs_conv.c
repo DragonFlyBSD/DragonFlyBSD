@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_conv.c,v 1.29.2.1 2002/11/08 22:01:22 semenu Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_conv.c,v 1.3 2003/08/07 21:17:41 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_conv.c,v 1.4 2003/08/20 09:56:32 rob Exp $ */
 /*	$NetBSD: msdosfs_conv.c,v 1.25 1997/11/17 15:36:40 ws Exp $	*/
 
 /*-
@@ -89,7 +89,7 @@ static u_long  lastday;
 static u_short lastddate;
 static u_short lastdtime;
 
-static __inline u_int8_t find_lcode __P((u_int16_t code, u_int16_t *u2w));
+static __inline u_int8_t find_lcode (u_int16_t code, u_int16_t *u2w);
 
 /*
  * Convert the unix version of time to dos's idea of time to be used in
