@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_shell.c,v 1.21.2.2 2001/12/22 01:21:39 jwd Exp $
- * $DragonFly: src/sys/kern/imgact_shell.c,v 1.5 2005/02/25 08:49:10 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_shell.c,v 1.6 2005/02/28 05:44:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +71,7 @@ exec_shell_imgact(struct image_params *imgp)
 	 */
 	ihp = &image_header[2];
 	offset = 0;
-	while (ihp < &image_header[MAXSHELLCMDLEN]) {
+	while (ihp < &image_header[PAGE_SIZE]) {
 		/* Skip any whitespace */
 		if (*ihp == ' ' || *ihp == '\t') {
 			++ihp;
@@ -79,16 +79,16 @@ exec_shell_imgact(struct image_params *imgp)
 		}
 
 		/* End of line? */
-		if (*ihp == '\n' || *ihp == '#')
+		if (*ihp == '\n' || *ihp == '#' || *ihp == '\0')
 			break;
 
 		/* Found a token */
 		do {
 			++offset;
 			++ihp;
-		} while (ihp < &image_header[MAXSHELLCMDLEN] &&
+		} while (ihp < &image_header[PAGE_SIZE] &&
 			 *ihp != ' ' && *ihp != '\t' && 
-			 *ihp != '\n' && *ihp != '#');
+			 *ihp != '\n' && *ihp != '#' && *ihp != '\0');
 
 		/* Take into account the \0 that will terminate the token */
 		++offset;
@@ -98,8 +98,12 @@ exec_shell_imgact(struct image_params *imgp)
 	if (offset == 0)
 		return (ENOEXEC);
 
-	/* It should not be possible for offset to exceed MAXSHELLCMDLEN */
-	KKASSERT(offset <= MAXSHELLCMDLEN);
+	/* It should not be possible for offset to exceed PAGE_SIZE */
+	KKASSERT(offset <= PAGE_SIZE);
+
+	/* Check that we aren't too big */
+	if (ihp == &image_header[PAGE_SIZE])
+		return (ENAMETOOLONG);
 
 	/*
 	 * The full path name of the original script file must be tagged
@@ -130,15 +134,15 @@ exec_shell_imgact(struct image_params *imgp)
 	 */
 	ihp = &image_header[2];
 	offset = 0;
-	while (ihp < &image_header[MAXSHELLCMDLEN]) {
+	while (ihp < &image_header[PAGE_SIZE]) {
 		/* Skip whitespace */
-		if ((*ihp == ' ' || *ihp == '\t')) {
+		if (*ihp == ' ' || *ihp == '\t') {
 			++ihp;
 			continue;
 		}
 
 		/* End of line? */
-		if ((*ihp == '\n') || (*ihp == '#'))
+		if (*ihp == '\n' || *ihp == '#' || *ihp == '\0')
 			break;
 
 		/* Found a token, copy it */
@@ -146,9 +150,9 @@ exec_shell_imgact(struct image_params *imgp)
 			imgp->args->begin_argv[offset] = *ihp;
 			++ihp;
 			++offset;
-		} while (ihp < &image_header[MAXSHELLCMDLEN] &&
+		} while (ihp < &image_header[PAGE_SIZE] &&
 			 *ihp != ' ' && *ihp != '\t' && 
-			 *ihp != '\n' && *ihp != '#');
+			 *ihp != '\n' && *ihp != '#' && *ihp != '\0');
 
 		/* And terminate the argument */
 		imgp->args->begin_argv[offset] = '\0';
