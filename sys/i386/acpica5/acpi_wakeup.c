@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_wakeup.c,v 1.33 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/i386/acpica5/Attic/acpi_wakeup.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
+ * $DragonFly: src/sys/i386/acpica5/Attic/acpi_wakeup.c,v 1.4 2004/07/05 00:14:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -184,6 +184,7 @@ acpi_sleep_machdep(struct acpi_softc *sc, int state)
 	vm_page_t		page;
 	static vm_page_t	opage = NULL;
 	int			ret = 0;
+	int			pteobj_allocated = 0;
 	uint32_t		cr3;
 	u_long			ef;
 	struct proc		*p;
@@ -206,6 +207,14 @@ acpi_sleep_machdep(struct acpi_softc *sc, int state)
 #else
 	load_cr3(vtophys(pm->pm_pdir));
 #endif
+	/*
+	 * note: DragonFly still uses the VM object (FreeBSD-5 no longer uses
+	 * the VM object).
+	 */
+	if (pm->pm_pteobj == NULL) {
+		pm->pm_pteobj = vm_object_allocate(OBJT_DEFAULT, PTDPTDI + 1);
+		pteobj_allocated = 1;
+	}
 
 	oldphys = pmap_extract(pm, sc->acpi_wakephys);
 	if (oldphys)
@@ -285,6 +294,10 @@ out:
 			   VM_PROT_READ | VM_PROT_WRITE, 0);
 	}
 
+	if (pteobj_allocated) {
+		vm_object_deallocate(pm->pm_pteobj);
+		pm->pm_pteobj = NULL;
+	}
 	load_cr3(cr3);
 
 	write_eflags(ef);
