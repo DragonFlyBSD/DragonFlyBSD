@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rsh.c	8.3 (Berkeley) 4/6/94
  * $FreeBSD: src/usr.bin/rsh/rsh.c,v 1.21.2.4 2002/09/17 15:34:41 nectar Exp $
- * $DragonFly: src/usr.bin/rsh/rsh.c,v 1.5 2004/07/22 14:50:19 eirikn Exp $
+ * $DragonFly: src/usr.bin/rsh/rsh.c,v 1.6 2005/01/01 22:00:15 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -83,10 +83,10 @@ void	sendsig(int);
 void	talk(int, long, pid_t, int, int);
 void	usage(void);
 
+static char rlogin[] = "rlogin";
+
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	struct passwd *pw;
 	struct servent *sp;
@@ -187,7 +187,7 @@ main(argc, argv)
 	/* if no further arguments, must have been called as rlogin. */
 	if (!argv[optind]) {
 		if (asrsh)
-			*argv = "rlogin";
+			*argv = rlogin;
 		execv(_PATH_RLOGIN, argv);
 		err(1, "can't exec %s", _PATH_RLOGIN);
 	}
@@ -300,14 +300,14 @@ try_connect:
 			warn("setsockopt");
 	}
 
-	(void)setuid(uid);
+	setuid(uid);
 	omask = sigblock(sigmask(SIGINT)|sigmask(SIGQUIT)|sigmask(SIGTERM));
 	if (signal(SIGINT, SIG_IGN) != SIG_IGN)
-		(void)signal(SIGINT, sendsig);
+		signal(SIGINT, sendsig);
 	if (signal(SIGQUIT, SIG_IGN) != SIG_IGN)
-		(void)signal(SIGQUIT, sendsig);
+		signal(SIGQUIT, sendsig);
 	if (signal(SIGTERM, SIG_IGN) != SIG_IGN)
-		(void)signal(SIGTERM, sendsig);
+		signal(SIGTERM, sendsig);
 
 	if (!nflag) {
 		pid = fork();
@@ -315,7 +315,7 @@ try_connect:
 			err(1, "fork");
 	}
         else
-		(void)shutdown(rem, 1);
+		shutdown(rem, 1);
 
 #ifdef KERBEROS
 #ifdef CRYPT
@@ -323,23 +323,19 @@ try_connect:
 #endif
 #endif
 	{
-		(void)ioctl(rfd2, FIONBIO, &one);
-		(void)ioctl(rem, FIONBIO, &one);
+		ioctl(rfd2, FIONBIO, &one);
+		ioctl(rem, FIONBIO, &one);
 	}
 
 	talk(nflag, omask, pid, rem, timeout);
 
 	if (!nflag)
-		(void)kill(pid, SIGKILL);
+		kill(pid, SIGKILL);
 	exit(0);
 }
 
 void
-talk(nflag, omask, pid, rem, timeout)
-	int nflag;
-	long omask;
-	pid_t pid;
-	int rem;
+talk(int nflag, long omask, pid_t pid, int rem, int timeout)
 {
 	int cc, wc;
 	fd_set readfrom, ready, rembits;
@@ -348,10 +344,10 @@ talk(nflag, omask, pid, rem, timeout)
 	int nfds, srval;
 
 	if (!nflag && pid == 0) {
-		(void)close(rfd2);
+		close(rfd2);
 
 reread:		errno = 0;
-		if ((cc = read(0, buf, sizeof buf)) <= 0)
+		if ((cc = read(STDIN_FILENO, buf, sizeof(buf))) <= 0)
 			goto done;
 		bp = buf;
 
@@ -387,14 +383,14 @@ rewrite:
 			goto reread;
 		goto rewrite;
 done:
-		(void)shutdown(rem, 1);
+		shutdown(rem, 1);
 		exit(0);
 	}
 
 	tvtimeout.tv_sec = timeout;
 	tvtimeout.tv_usec = 0;
 
-	(void)sigsetmask(omask);
+	sigsetmask(omask);
 	if (rfd2 >= FD_SETSIZE || rem >= FD_SETSIZE)
 		errx(1, "descriptor too big");
 	FD_ZERO(&readfrom);
@@ -421,38 +417,38 @@ done:
 #ifdef KERBEROS
 #ifdef CRYPT
 			if (doencrypt)
-				cc = des_enc_read(rfd2, buf, sizeof buf, schedule, &cred.session);
+				cc = des_enc_read(rfd2, buf, sizeof(buf), schedule, &cred.session);
 			else
 #endif
 #endif
-				cc = read(rfd2, buf, sizeof buf);
+				cc = read(rfd2, buf, sizeof(buf));
 			if (cc <= 0) {
 				if (errno != EWOULDBLOCK)
 					FD_CLR(rfd2, &readfrom);
 			} else
-				(void)write(2, buf, cc);
+				write(STDERR_FILENO, buf, cc);
 		}
 		if (FD_ISSET(rem, &ready)) {
 			errno = 0;
 #ifdef KERBEROS
 #ifdef CRYPT
 			if (doencrypt)
-				cc = des_enc_read(rem, buf, sizeof buf, schedule, &cred.session);
+				cc = des_enc_read(rem, buf, sizeof(buf), schedule, &cred.session);
 			else
 #endif
 #endif
-				cc = read(rem, buf, sizeof buf);
+				cc = read(rem, buf, sizeof(buf));
 			if (cc <= 0) {
 				if (errno != EWOULDBLOCK)
 					FD_CLR(rem, &readfrom);
 			} else
-				(void)write(1, buf, cc);
+				write(STDOUT_FILENO, buf, cc);
 		}
 	} while (FD_ISSET(rfd2, &readfrom) || FD_ISSET(rem, &readfrom));
 }
 
 void
-connect_timeout(int sig)
+connect_timeout(__unused int sig)
 {
 	char message[] = "timeout reached before connection completed.\n";
 
@@ -461,8 +457,7 @@ connect_timeout(int sig)
 }
 
 void
-sendsig(sig)
-	int sig;
+sendsig(int sig)
 {
 	char signo;
 
@@ -470,16 +465,15 @@ sendsig(sig)
 #ifdef KERBEROS
 #ifdef CRYPT
 	if (doencrypt)
-		(void)des_enc_write(rfd2, &signo, 1, schedule, &cred.session);
+		des_enc_write(rfd2, &signo, 1, schedule, &cred.session);
 	else
 #endif
 #endif
-		(void)write(rfd2, &signo, 1);
+		write(rfd2, &signo, 1);
 }
 
 char *
-copyargs(argv)
-	char **argv;
+copyargs(char **argv)
 {
 	int cc;
 	char **ap, *args, *p;
@@ -490,7 +484,7 @@ copyargs(argv)
 	if (!(args = malloc((u_int)cc)))
 		err(1, NULL);
 	for (p = args, ap = argv; *ap; ++ap) {
-		(void)strcpy(p, *ap);
+		strcpy(p, *ap);
 		for (p = strcpy(p, *ap); *p; ++p);
 		if (ap[1])
 			*p++ = ' ';
@@ -499,10 +493,10 @@ copyargs(argv)
 }
 
 void
-usage()
+usage(void)
 {
 
-	(void)fprintf(stderr,
+	fprintf(stderr,
 	    "usage: rsh [-46] [-ndK%s]%s[-l login] [-t timeout] host [command]\n",
 #ifdef KERBEROS
 #ifdef CRYPT
