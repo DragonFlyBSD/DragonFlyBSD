@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mesg.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/usr.bin/mesg/mesg.c,v 1.4 1999/08/28 01:03:59 peter Exp $
- * $DragonFly: src/usr.bin/mesg/mesg.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
+ * $DragonFly: src/usr.bin/mesg/mesg.c,v 1.4 2005/02/19 19:39:05 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -47,7 +47,6 @@
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 static void usage(void);
@@ -69,27 +68,27 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if ((tty = ttyname(STDERR_FILENO)) == NULL)
-		err(1, "ttyname");
+		err(2, "ttyname failed");
 	if (stat(tty, &sb) < 0)
-		err(1, "%s", tty);
+		err(2, "%s", tty);
 
 	if (*argv == NULL) {
 		if (sb.st_mode & S_IWGRP) {
-			(void)fprintf(stderr, "is y\n");
+			fprintf(stderr, "is y\n");
 			exit(0);
 		}
-		(void)fprintf(stderr, "is n\n");
+		fprintf(stderr, "is n\n");
 		exit(1);
 	}
 
 	switch (*argv[0]) {
 	case 'y':
 		if (chmod(tty, sb.st_mode | S_IWGRP) < 0)
-			err(1, "%s", tty);
+			err(2, "%s", tty);
 		exit(0);
 	case 'n':
 		if (chmod(tty, sb.st_mode & ~S_IWGRP) < 0)
-			err(1, "%s", tty);
+			err(2, "%s", tty);
 		exit(1);
 	}
 
@@ -100,6 +99,6 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: mesg [y | n]\n");
+	fprintf(stderr, "usage: mesg [y | n]\n");
 	exit(2);
 }
