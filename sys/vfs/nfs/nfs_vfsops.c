@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.11 2004/01/30 06:18:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.12 2004/02/24 19:22:38 joerg Exp $
  */
 
 #include "opt_bootp.h"
@@ -71,7 +71,8 @@
 #include "nfsdiskless.h"
 #include "nqnfs.h"
 
-extern int	nfs_mountroot (struct mount *mp);
+extern int	nfs_mountroot(struct mount *mp);
+extern void	bootpc_init(void);
 
 extern int	nfs_ticks;
 
