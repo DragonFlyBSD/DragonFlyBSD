@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.5 2003/08/23 16:58:36 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.6 2003/11/20 06:05:30 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -66,7 +66,7 @@ static void
 init_default_cdevsw_port(lwkt_port_t port)
 {
     lwkt_init_port(port, NULL);
-    port->mp_beginmsg = cdevsw_putport;
+    port->mp_putport = cdevsw_putport;
 }
 
 static
@@ -586,7 +586,7 @@ compile_devsw(struct cdevsw *devsw)
 {
     static lwkt_port devsw_compat_port;
 
-    if (devsw_compat_port.mp_beginmsg == NULL)
+    if (devsw_compat_port.mp_putport == NULL)
 	init_default_cdevsw_port(&devsw_compat_port);
     
     if (devsw->old_open == NULL)

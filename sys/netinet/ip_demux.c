@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.2 2003/11/10 18:32:59 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.3 2003/11/20 06:05:31 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -105,7 +105,7 @@ ip_mport(struct mbuf *m)
 		port = &netisr_cpu[0].td_msgport;
 		break;
 	}
-	KKASSERT(port->mp_beginmsg != NULL);
+	KKASSERT(port->mp_putport != NULL);
 
 	return (port);
 }

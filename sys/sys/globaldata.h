@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.18 2003/10/17 07:30:40 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.19 2003/11/20 06:05:31 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -72,7 +72,7 @@
  * of unreserved structures in the cache.  See vm_map_entry_reserve().
  */
 
-union sysmsg;
+struct sysmsg;
 struct privatespace;
 struct vm_map_entry;
 

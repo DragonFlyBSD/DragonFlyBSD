@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stat.c,v 1.6 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stat.c,v 1.8 2003/08/27 06:07:10 rob Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stat.c,v 1.9 2003/11/20 06:05:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -68,7 +68,7 @@
 #endif
 
 struct svr4_ustat_args {
-	union sysmsg		sysmsg;
+	struct sysmsg		sysmsg;
 	svr4_dev_t		dev;
 	struct svr4_ustat * name;
 };

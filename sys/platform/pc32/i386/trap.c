@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.41 2003/11/10 18:29:33 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.42 2003/11/20 06:05:30 dillon Exp $
  */
 
 /*
@@ -1317,6 +1317,7 @@ syscall2(struct trapframe frame)
 	 * system call returns we pre-set it here.
 	 */
 	lwkt_initmsg(&args.lmsg, &td->td_msgport, code);
+	args.sysmsg_copyout = NULL;
 	args.sysmsg_fds[0] = 0;
 	args.sysmsg_fds[1] = frame.tf_edx;
 
@@ -1484,8 +1485,8 @@ sendsys2(struct trapframe frame)
 			gd = td->td_gd;
 			umsg = sysun->lmsg.opaque.ms_umsg;
 			frame.tf_eax = (register_t)umsg;
-			if (sysun->lmsg.ms_cleanupmsg)
-				sysun->lmsg.ms_cleanupmsg(&td->td_msgport, &sysun->lmsg);
+			if (sysun->sysmsg_copyout)
+				sysun->sysmsg_copyout(sysun);
 			atomic_add_int_nonlocked(&td->td_msgport.mp_refs, -1);
 			sysun->nosys.usrmsg.umsg.u.ms_fds[0] = sysun->lmsg.u.ms_fds[0];
 			sysun->nosys.usrmsg.umsg.u.ms_fds[1] = sysun->lmsg.u.ms_fds[1];
@@ -1527,7 +1528,7 @@ sendsys2(struct trapframe frame)
 	 * Bad message size
 	 */
 	if (msgsize < sizeof(struct lwkt_msg) ||
-	    msgsize > sizeof(union sysunion) - sizeof(union sysmsg)
+	    msgsize > sizeof(union sysunion) - sizeof(struct sysmsg)
 	) {
 		error = ENOSYS;
 		goto bad2;
@@ -1569,6 +1570,7 @@ sendsys2(struct trapframe frame)
 	 */
 	lwkt_initmsg(&sysun->lmsg, &td->td_msgport, 
 	    sysun->nosys.usrmsg.umsg.ms_cmd);
+	sysun->sysmsg_copyout = NULL;
 	sysun->lmsg.opaque.ms_umsg = umsg;
 	sysun->lmsg.ms_flags |= sysun->nosys.usrmsg.umsg.ms_flags & MSGF_ASYNC;
 

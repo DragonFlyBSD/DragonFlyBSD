@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.10 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.11 2003/11/20 06:05:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,7 @@
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/sysent.h>
+#include <sys/sysunion.h>
 #include <sys/proc.h>
 #include <sys/time.h>
 #include <sys/vnode.h>
@@ -236,37 +237,37 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 }
 
 static void nanosleep_done(void *arg);
-static void nanosleep_return(lwkt_port_t port, lwkt_msg_t msg);
+static void nanosleep_copyout(union sysunion *sysun);
 
 /* ARGSUSED */
 int
 nanosleep(struct nanosleep_args *uap)
 {
 	int error;
-	struct sysmsg_sleep *sysmsg = &uap->sysmsg.sm_sleep;
+	struct sysmsg_sleep *smsleep = &uap->sysmsg.sm.sleep;
 
-	error = copyin(uap->rqtp, &sysmsg->rqt, sizeof(sysmsg->rqt));
+	error = copyin(uap->rqtp, &smsleep->rqt, sizeof(smsleep->rqt));
 	if (error)
 		return (error);
 	/*
 	 * YYY clean this up to always use the callout, note that an abort
 	 * implementation should record the residual in the async case.
 	 */
-	if (sysmsg->lmsg.ms_flags & MSGF_ASYNC) {
+	if (uap->sysmsg.lmsg.ms_flags & MSGF_ASYNC) {
 		quad_t ticks;
 
-		ticks = (quad_t)sysmsg->rqt.tv_nsec * hz / 1000000000LL;
-		if (sysmsg->rqt.tv_sec)
-			ticks += (quad_t)sysmsg->rqt.tv_sec * hz;
+		ticks = (quad_t)smsleep->rqt.tv_nsec * hz / 1000000000LL;
+		if (smsleep->rqt.tv_sec)
+			ticks += (quad_t)smsleep->rqt.tv_sec * hz;
 		if (ticks <= 0) {
 			if (ticks == 0)
 				error = 0;
 			else
 				error = EINVAL;
 		} else {
-			sysmsg->lmsg.ms_cleanupmsg = nanosleep_return;
-			callout_init(&sysmsg->timer);
-			callout_reset(&sysmsg->timer, ticks, nanosleep_done, uap);
+			uap->sysmsg.copyout = nanosleep_copyout;
+			callout_init(&smsleep->timer);
+			callout_reset(&smsleep->timer, ticks, nanosleep_done, uap);
 			error = EASYNC;
 		}
 	} else {
@@ -274,9 +275,9 @@ nanosleep(struct nanosleep_args *uap)
 		 * Old synchronous sleep code, copyout the residual if
 		 * nanosleep was interrupted.
 		 */
-		error = nanosleep1(&sysmsg->rqt, &sysmsg->rmt);
+		error = nanosleep1(&smsleep->rqt, &smsleep->rmt);
 		if (error && SCARG(uap, rmtp))
-			error = copyout(&sysmsg->rmt, SCARG(uap, rmtp), sizeof(sysmsg->rmt));
+			error = copyout(&smsleep->rmt, SCARG(uap, rmtp), sizeof(smsleep->rmt));
 	}
 	return (error);
 }
@@ -305,14 +306,14 @@ nanosleep_done(void *arg)
  * function.
  */
 static void
-nanosleep_return(lwkt_port_t port, lwkt_msg_t msg)
+nanosleep_copyout(union sysunion *sysun)
 {
-	struct nanosleep_args *uap = (void *)msg;
-	struct sysmsg_sleep *sysmsg = &uap->sysmsg.sm_sleep;
+	struct nanosleep_args *uap = &sysun->nanosleep;
+	struct sysmsg_sleep *smsleep = &uap->sysmsg.sm.sleep;
 
-	if (sysmsg->lmsg.ms_error && uap->rmtp) {
-		sysmsg->lmsg.ms_error = 
-		    copyout(&sysmsg->rmt, uap->rmtp, sizeof(sysmsg->rmt));
+	if (sysun->lmsg.ms_error && uap->rmtp) {
+		sysun->lmsg.ms_error = 
+		    copyout(&smsleep->rmt, uap->rmtp, sizeof(smsleep->rmt));
 	}
 }
 

@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/checkpt/Attic/checkpt.h,v 1.1 2003/10/20 04:48:42 dillon Exp $
+ * $DragonFly: src/sys/checkpt/Attic/checkpt.h,v 1.2 2003/11/20 06:05:27 dillon Exp $
  */
 
 #ifndef PRIVATE_CKPT_H_
@@ -61,7 +61,7 @@ struct ckpt_thaw_bin_args {
 };
 
 struct ckpt_args {
-	union sysmsg sysmsg;
+	struct sysmsg sysmsg;
 	union usrmsg usrmsg;
 	union {
 		struct ckpt_generic_args gen;

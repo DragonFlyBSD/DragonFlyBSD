@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.5 2003/07/22 17:03:33 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.6 2003/11/20 06:05:30 dillon Exp $
  *
  */
 
@@ -60,7 +60,7 @@ disk_create(int unit, struct disk *dp, int flags, struct cdevsw *cdevsw)
 
 	bzero(dp, sizeof(*dp));
 	lwkt_init_port(&dp->d_port, NULL);	/* intercept port */
-	dp->d_port.mp_beginmsg = disk_putport;
+	dp->d_port.mp_putport = disk_putport;
 
 	dev = makedev(cdevsw->d_maj, 0);	/* base device */
 	dev->si_disk = dp;

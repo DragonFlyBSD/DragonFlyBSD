@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
- * $DragonFly: src/sys/kern/tty_cons.c,v 1.8 2003/11/10 06:12:13 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_cons.c,v 1.9 2003/11/20 06:05:30 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -127,7 +127,7 @@ cninit()
 	 * Our port intercept
 	 */
 	lwkt_init_port(&cn_port, NULL);
-	cn_port.mp_beginmsg = console_putport;
+	cn_port.mp_putport = console_putport;
 
 	/*
 	 * Find the first console with the highest priority.

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_mod.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_mod.c,v 1.7 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_mod.c,v 1.8 2003/11/20 06:05:31 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -66,7 +66,7 @@ ncp_conn_frag_rq(struct ncp_conn *conn, struct thread *td, struct ncp_conn_frag 
  * Attach to NCP server
  */
 struct sncp_connect_args {
-	union sysmsg sysmsg;
+	struct sysmsg sysmsg;
 	struct ncp_conn_args *li;
 	int *connHandle;
 };
@@ -102,7 +102,7 @@ bad:
 }
 
 struct sncp_request_args {
-	union sysmsg sysmsg;
+	struct sysmsg sysmsg;
 	int connHandle;
 	int fn;
 	struct ncp_buf *ncpbuf;
@@ -313,7 +313,7 @@ ncp_conn_handler(struct thread *td, struct sncp_request_args *uap,
 }
 
 struct sncp_conn_scan_args {
-	union sysmsg sysmsg;
+	struct sysmsg sysmsg;
 	struct ncp_conn_args *li;
 	int *connHandle;
 };
@@ -412,7 +412,7 @@ ncp_conn_frag_rq(struct ncp_conn *conn, struct thread *td, struct ncp_conn_frag 
  * Pretty much of this stolen from ioctl() function.
  */
 struct sncp_intfn_args {
-	union sysmsg sysmsg;
+	struct sysmsg sysmsg;
 	u_long	com;
 	caddr_t	data;
 };

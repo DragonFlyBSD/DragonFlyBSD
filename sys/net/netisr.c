@@ -3,7 +3,7 @@
  * Copyright (c) 2003 Jonathan Lemon
  * Copyright (c) 2003 Matthew Dillon
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.5 2003/11/14 00:45:20 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.6 2003/11/20 06:05:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,7 +53,7 @@ netmsg_service_loop(void *arg)
 {
     struct netmsg *msg;
 
-    while ((msg = lwkt_waitport(&curthread->td_msgport))) {
+    while ((msg = lwkt_waitport(&curthread->td_msgport, NULL))) {
 	struct mbuf *m = msg->nm_packet;
 	netisr_fn_t handler = msg->nm_handler;
 

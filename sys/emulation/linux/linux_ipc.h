@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ipc.h,v 1.2.2.4 2001/11/05 19:08:22 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ipc.h,v 1.6 2003/08/27 06:30:03 rob Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ipc.h,v 1.7 2003/11/20 06:05:29 dillon Exp $
  */
 
 #ifndef _LINUX_IPC_H_
@@ -36,7 +36,7 @@
 
 struct linux_msgctl_args 
 {
-	union sysmsg	sysmsg;
+	struct sysmsg	sysmsg;
 	l_int		msqid;
 	l_int		cmd;
 	struct l_msqid_ds *buf;
@@ -44,14 +44,14 @@ struct linux_msgctl_args
 
 struct linux_msgget_args
 {
-	union sysmsg	sysmsg;
+	struct sysmsg	sysmsg;
 	l_key_t		key;
 	l_int		msgflg;
 };
 
 struct linux_msgrcv_args
 {
-	union sysmsg	sysmsg;
+	struct sysmsg	sysmsg;
 	l_int		msqid;
 	struct l_msgbuf *msgp;
 	l_size_t	msgsz;
@@ -61,7 +61,7 @@ struct linux_msgrcv_args
 
 struct linux_msgsnd_args
 {
-	union sysmsg	sysmsg;
+	struct sysmsg	sysmsg;
 	l_int		msqid;
 	struct l_msgbuf *msgp;
 	l_size_t	msgsz;
@@ -70,7 +70,7 @@ struct linux_msgsnd_args
 
 struct linux_semctl_args
 {
-	union sysmsg	sysmsg;
+	struct sysmsg	sysmsg;
 	l_int		semid;
 	l_int		semnum;
 	l_int		cmd;
@@ -79,7 +79,7 @@ struct linux_semctl_args
 
 struct linux_semget_args
 {
-	union sysmsg	sysmsg;
+	struct sysmsg	sysmsg;
 	l_key_t		key;
 	l_int		nsems;
 	l_int		semflg;
@@ -87,7 +87,7 @@ struct linux_semget_args
 
 struct linux_semop_args
 {
-	union sysmsg	sysmsg;
+	struct sysmsg	sysmsg;
 	l_int		semid;
 	struct l_sembuf *tsops;
 	l_uint		nsops;
@@ -95,7 +95,7 @@ struct linux_semop_args
 
 struct linux_shmat_args
 {
-	union sysmsg	sysmsg;
+	struct sysmsg	sysmsg;
 	l_int		shmid;
 	char		*shmaddr;
 	l_int		shmflg;
@@ -104,7 +104,7 @@ struct linux_shmat_args
 
 struct linux_shmctl_args
 {
-	union sysmsg	sysmsg;
+	struct sysmsg	sysmsg;
 	l_int		shmid;
 	l_int		cmd;
 	struct l_shmid_ds *buf;
@@ -112,13 +112,13 @@ struct linux_shmctl_args
 
 struct linux_shmdt_args
 {
-	union sysmsg	sysmsg;
+	struct sysmsg	sysmsg;
 	char *shmaddr;
 };
 
 struct linux_shmget_args
 {
-	union sysmsg	sysmsg;
+	struct sysmsg	sysmsg;
 	l_key_t		key;
 	l_size_t	size;
 	l_int		shmflg;

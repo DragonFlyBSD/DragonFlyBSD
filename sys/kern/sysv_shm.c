@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.11 2003/08/26 21:09:02 rob Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.12 2003/11/20 06:05:30 dillon Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -328,7 +328,7 @@ struct oshmid_ds {
 };
 
 struct oshmctl_args {
-	union sysmsg sysmsg;
+	struct sysmsg sysmsg;
 	int shmid;
 	int cmd;
 	struct oshmid_ds *ubuf;

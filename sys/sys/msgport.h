@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.8 2003/11/08 07:57:43 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.9 2003/11/20 06:05:31 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -27,10 +27,6 @@ typedef TAILQ_HEAD(lwkt_msg_queue, lwkt_msg) lwkt_msg_queue;
  * threads.  See kern/lwkt_msgport.c for documentation on how messages and
  * ports work.
  *
- * NOTE: ms_cleanupmsg() is typically used to finish up the handling of a
- * message in the context of the caller.  For example, so a sycall can 
- * copyout() information to userland.
- *
  * NOTE! 64-bit-align this structure.
  */
 typedef struct lwkt_msg {
@@ -40,17 +36,16 @@ typedef struct lwkt_msg {
 	union sysunion	*ms_sysunnext;	/* chaining / cache */
 	struct lwkt_msg	*ms_umsg;	/* user message (UVA address) */
     } opaque;
-    lwkt_port_t ms_target_port;		/* only used in certain situations */
+    lwkt_port_t ms_target_port;		/* current target or relay port */
     lwkt_port_t	ms_reply_port;		/* asynch replies returned here */
-    void	(*ms_cleanupmsg)(lwkt_port_t port, lwkt_msg_t msg);
-    void	*ms_unused;		/* (alignment) */
-    int		ms_abortreq;		/* set asynchronously */
-    int		ms_cmd;
-    int		ms_flags;
-#define ms_copyout_start	ms_error
-    int		ms_error;
+    int		ms_maxsize;		/* maximum returned message size */
+    int		ms_cmd;			/* message command */
+    int		ms_flags;		/* message flags */
+#define ms_copyout_start	ms_msgsize
+    int		ms_msgsize;		/* sent/returned size of message */
+    int		ms_error;		/* positive error code or 0 */
     union {
-	void	*ms_resultp;		/* misc pointer result */
+	void	*ms_resultp;		/* misc pointer data or result */
 	int	ms_result;		/* standard 'int'eger result */
 	long	ms_lresult;		/* long result */
 	int	ms_fds[2];		/* two int bit results */
@@ -68,6 +63,7 @@ typedef struct lwkt_msg {
 #define MSGF_REPLY	0x0002		/* asynch message has been returned */
 #define MSGF_QUEUED	0x0004		/* message has been queued sanitychk */
 #define MSGF_ASYNC	0x0008		/* sync/async hint */
+#define MSGF_ABORTED	0x0010		/* message was aborted flag */
 
 #define MSG_CMD_CDEV	0x00010000
 #define MSG_CMD_VFS	0x00020000
@@ -80,26 +76,28 @@ typedef struct lwkt_port {
     int			mp_flags;
     int			mp_refs;	/* references to port structure */
     struct thread	*mp_td;
-    int			(*mp_beginmsg)(lwkt_port_t port, lwkt_msg_t msg);
-    void		(*mp_abortmsg)(lwkt_port_t port, lwkt_msg_t msg);
-    void		(*mp_returnmsg)(lwkt_port_t port, lwkt_msg_t msg);
+    int			(*mp_putport)(lwkt_port_t, lwkt_msg_t);
+    void *		(*mp_waitport)(lwkt_port_t, lwkt_msg_t);
+    void		(*mp_replyport)(lwkt_port_t, lwkt_msg_t);
+    void		(*mp_abortport)(lwkt_port_t, lwkt_msg_t);
 } lwkt_port;
 
 #define MSGPORTF_WAITING	0x0001
 
-#ifdef _KERNEL
+/*
+ * These functions are good for userland as well as the kernel.  The 
+ * messaging function support for userland is provided by the kernel's
+ * kern/lwkt_msgport.c.  The port functions are provided by userland.
+ */
+extern void lwkt_init_port(lwkt_port_t, struct thread *);
+extern void lwkt_initmsg_td(lwkt_msg_t, struct thread *);
+extern void lwkt_sendmsg(lwkt_port_t, lwkt_msg_t);
+extern int lwkt_domsg(lwkt_port_t, lwkt_msg_t);
+extern void *lwkt_getport(lwkt_port_t);
 
-extern void lwkt_init_port(lwkt_port_t port, struct thread *td);
-extern void lwkt_initmsg_td(lwkt_msg_t msg, struct thread *td);
-extern void lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg);
-extern int lwkt_domsg(lwkt_port_t port, lwkt_msg_t msg);
-extern int lwkt_waitmsg(lwkt_msg_t msg);
-extern void lwkt_replyport(lwkt_port_t port, lwkt_msg_t msg);
-extern void lwkt_abortport(lwkt_port_t port, lwkt_msg_t msg);
-extern int lwkt_putport(lwkt_port_t port, lwkt_msg_t msg);
-extern void *lwkt_getport(lwkt_port_t port);
-extern void *lwkt_waitport(lwkt_port_t port);
-
-#endif
+extern int lwkt_putport(lwkt_port_t, lwkt_msg_t);
+extern void *lwkt_waitport(lwkt_port_t, lwkt_msg_t);
+extern void lwkt_replyport(lwkt_port_t, lwkt_msg_t);
+extern void lwkt_abortport(lwkt_port_t, lwkt_msg_t);
 
 #endif

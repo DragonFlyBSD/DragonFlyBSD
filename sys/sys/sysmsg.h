@@ -1,7 +1,7 @@
 /*
  * SYS/SYSMSG.H
  *
- * $DragonFly: src/sys/sys/sysmsg.h,v 1.3 2003/08/12 04:58:23 dillon Exp $
+ * $DragonFly: src/sys/sys/sysmsg.h,v 1.4 2003/11/20 06:05:31 dillon Exp $
  */
 
 #ifndef _SYS_SYSMSG_H_
@@ -21,14 +21,19 @@
  * It typically preceeds the usrmsg and syscall arguments in sysunion
  * (see sys/sysunion.h)
  */
-union sysmsg {
+union sysunion;
+
+struct sysmsg {
 	struct lwkt_msg	lmsg;
-	struct sysmsg_sleep {
-	    struct lwkt_msg lmsg;
-	    struct timespec rmt;
-	    struct timespec rqt;
-	    struct callout  timer;
-	} sm_sleep;
+	void 		(*copyout)(union sysunion *sysun);
+	union {
+	    struct sysmsg_sleep {
+		struct lwkt_msg lmsg;
+		struct timespec rmt;
+		struct timespec rqt;
+		struct callout  timer;
+	    } sleep;
+	} sm;
 };
 
 #endif
@@ -44,7 +49,9 @@ union usrmsg {
 };
 
 #ifdef _KERNEL
-typedef union sysmsg *sysmsg_t;
+typedef struct sysmsg *sysmsg_t;
+#define sysmsg_copyout	sysmsg.copyout
+#define sysmsg_lmsg	sysmsg.lmsg
 #define sysmsg_result	sysmsg.lmsg.u.ms_result
 #define sysmsg_lresult	sysmsg.lmsg.u.ms_lresult
 #define sysmsg_resultp	sysmsg.lmsg.u.ms_resultp
