@@ -32,7 +32,7 @@
  *
  * @(#)tty.c	8.2 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/tty.c,v 1.2.8.3 2003/01/06 05:46:04 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/tty.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
+ * $DragonFly: src/usr.bin/mail/tty.c,v 1.4 2004/09/07 22:59:07 joerg Exp $
  */
 
 /*
@@ -48,9 +48,6 @@ static	cc_t	c_erase;		/* Current erase char */
 static	cc_t	c_kill;			/* Current kill char */
 static	jmp_buf	rewrite;		/* Place to go when continued */
 static	jmp_buf	intjmp;			/* Place to go when interrupted */
-#ifndef TIOCSTI
-static	int	ttyset;			/* We must now do erase/kill */
-#endif
 
 /*
  * Read all relevant header fields.
@@ -65,75 +62,39 @@ grabh(struct header *hp, int gflags)
 	sig_t savettou;
 	sig_t savettin;
 	int errs;
-#ifndef TIOCSTI
-	sig_t savequit;
-#else
-# ifdef TIOCEXT
 	int extproc, flag;
-# endif /* TIOCEXT */
-#endif /* TIOCSTI */
 
 	savetstp = signal(SIGTSTP, SIG_DFL);
 	savettou = signal(SIGTTOU, SIG_DFL);
 	savettin = signal(SIGTTIN, SIG_DFL);
 	errs = 0;
-#ifndef TIOCSTI
-	ttyset = 0;
-#endif
 	if (tcgetattr(fileno(stdin), &ttybuf) < 0) {
 		warn("tcgetattr(stdin)");
 		return (-1);
 	}
 	c_erase = ttybuf.c_cc[VERASE];
 	c_kill = ttybuf.c_cc[VKILL];
-#ifndef TIOCSTI
-	ttybuf.c_cc[VERASE] = _POSIX_VDISABLE;
-	ttybuf.c_cc[VKILL] = _POSIX_VDISABLE;
-	if ((saveint = signal(SIGINT, SIG_IGN)) == SIG_DFL)
-		(void)signal(SIGINT, SIG_DFL);
-	if ((savequit = signal(SIGQUIT, SIG_IGN)) == SIG_DFL)
-		(void)signal(SIGQUIT, SIG_DFL);
-#else
-# ifdef		TIOCEXT
 	extproc = ((ttybuf.c_lflag & EXTPROC) ? 1 : 0);
 	if (extproc) {
 		flag = 0;
 		if (ioctl(fileno(stdin), TIOCEXT, &flag) < 0)
 			warn("TIOCEXT: off");
 	}
-# endif	/* TIOCEXT */
 	if (setjmp(intjmp))
 		goto out;
 	saveint = signal(SIGINT, ttyint);
-#endif
 	if (gflags & GTO) {
-#ifndef TIOCSTI
-		if (!ttyset && hp->h_to != NULL)
-			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-#endif
 		hp->h_to =
 			extract(readtty("To: ", detract(hp->h_to, 0)), GTO);
 	}
 	if (gflags & GSUBJECT) {
-#ifndef TIOCSTI
-		if (!ttyset && hp->h_subject != NULL)
-			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-#endif
 		hp->h_subject = readtty("Subject: ", hp->h_subject);
 	}
 	if (gflags & GCC) {
-#ifndef TIOCSTI
-		if (!ttyset && hp->h_cc != NULL)
-			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-#endif
 		hp->h_cc =
 			extract(readtty("Cc: ", detract(hp->h_cc, 0)), GCC);
 	}
 	if (gflags & GBCC) {
-#ifndef TIOCSTI
-		if (!ttyset && hp->h_bcc != NULL)
-			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-#endif
 		hp->h_bcc =
 			extract(readtty("Bcc: ", detract(hp->h_bcc, 0)), GBCC);
 	}
@@ -141,21 +102,11 @@ out:
 	(void)signal(SIGTSTP, savetstp);
 	(void)signal(SIGTTOU, savettou);
 	(void)signal(SIGTTIN, savettin);
-#ifndef TIOCSTI
-	ttybuf.c_cc[VERASE] = c_erase;
-	ttybuf.c_cc[VKILL] = c_kill;
-	if (ttyset)
-		tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-	(void)signal(SIGQUIT, savequit);
-#else
-# ifdef		TIOCEXT
 	if (extproc) {
 		flag = 1;
 		if (ioctl(fileno(stdin), TIOCEXT, &flag) < 0)
 			warn("TIOCEXT: on");
 	}
-# endif	/* TIOCEXT */
-#endif
 	(void)signal(SIGINT, saveint);
 	return (errs);
 }
@@ -180,14 +131,6 @@ readtty(const char *pr, char *src)
 		printf("too long to edit\n");
 		return (src);
 	}
-#ifndef TIOCSTI
-	if (src != NULL)
-		strlcpy(canonb, src, sizeof(canonb));
-	else
-		*canonb = '\0';
-	fputs(canonb, stdout);
-	(void)fflush(stdout);
-#else
 	cp = src == NULL ? "" : src;
 	while ((c = *cp++) != '\0') {
 		if ((c_erase != _POSIX_VDISABLE && c == c_erase) ||
@@ -200,7 +143,6 @@ readtty(const char *pr, char *src)
 	}
 	cp = canonb;
 	*cp = '\0';
-#endif
 	cp2 = cp;
 	while (cp2 < canonb + BUFSIZ)
 		*cp2++ = '\0';
@@ -227,38 +169,6 @@ redo:
 		clearerr(stdin);
 		return (readtty(pr, cp));
 	}
-#ifndef TIOCSTI
-	if (cp == NULL || *cp == '\0')
-		return (src);
-	cp2 = cp;
-	if (!ttyset)
-		return (strlen(canonb) > 0 ? savestr(canonb) : NULL);
-	while (*cp != '\0') {
-		c = *cp++;
-		if (c_erase != _POSIX_VDISABLE && c == c_erase) {
-			if (cp2 == canonb)
-				continue;
-			if (cp2[-1] == '\\') {
-				cp2[-1] = c;
-				continue;
-			}
-			cp2--;
-			continue;
-		}
-		if (c_kill != _POSIX_VDISABLE && c == c_kill) {
-			if (cp2 == canonb)
-				continue;
-			if (cp2[-1] == '\\') {
-				cp2[-1] = c;
-				continue;
-			}
-			cp2 = canonb;
-			continue;
-		}
-		*cp2++ = c;
-	}
-	*cp2 = '\0';
-#endif
 	if (equal("", canonb))
 		return (NULL);
 	return (savestr(canonb));
