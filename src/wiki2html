@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $DragonFly: site/src/wiki2html,v 1.5 2005/01/15 21:28:08 okumoto Exp $
+# $DragonFly: site/src/wiki2html,v 1.6 2005/01/20 10:17:34 okumoto Exp $
 
 cat << EOF
 #!/usr/local/www/cgi-bin/tablecg
@@ -29,7 +29,7 @@ sed	-e '1,/<!-- start content -->/d' \
         -e 's,^<div class="editsection" style="float:right;margin-left:5px;">.*<\/div>,,' \
         -e 's/<h1>/<b>/g' \
         -e 's/<\/h1>/<\/b>/g' \
-	-e 's,a href="/dfwiki/index\.php/Main_Page" title ="Main Page",a href="http://www.sitetronics.com/dfwiki/index.php/Main_Page" title ="http://www.sitetronics.com/dfwiki/index.php/Main_Page",g' \
+	-e 's,a href="/dfwiki/index\.php/Main_Page" title ="Main Page",a href="http://wiki.dragonflybsd.org/dfwiki/index.php/Main_Page" title ="http://wiki.dragonflybsd.org/dfwiki/index.php/Main_Page",g' \
 	-e 's,dfwiki/index.php/DragonFly_FAQ\([^"]*\)",main/FAQ\1.cgi",g' \
 	-e "s,<span class='urlexpansion'> ([^)]*)</span>,,g" \
 	-e '/<\/p><div class="printfooter">/,/<\/dvi>/d'

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $DragonFly: site/src/updatefaq,v 1.1 2005/01/15 08:39:26 dillon Exp $
+# $DragonFly: site/src/updatefaq,v 1.2 2005/01/20 10:17:34 okumoto Exp $
 
 targ=/usr/local/www/site/data/main
 wiki2html=/usr/local/www/site/src/wiki2html
@@ -10,9 +10,9 @@ cd /tmp
 rm -f DragonFly_FAQ*
 rm -f $targ/FAQ*.new
 
-fetch http://www.sitetronics.com/dfwiki/index.php/DragonFly_FAQ
-fetch http://www.sitetronics.com/dfwiki/index.php/DragonFly_FAQ_Spanish
-fetch http://www.sitetronics.com/dfwiki/index.php/DragonFly_FAQ_Russian
+fetch http://wiki.dragonflybsd.org/dfwiki/index.php/DragonFly_FAQ
+fetch http://wiki.dragonflybsd.org/dfwiki/index.php/DragonFly_FAQ_Spanish
+fetch http://wiki.dragonflybsd.org/dfwiki/index.php/DragonFly_FAQ_Russian
 
 cat DragonFly_FAQ | $wiki2html > $targ/FAQ.cgi.new
 chmod 555 $targ/FAQ.cgi.new
