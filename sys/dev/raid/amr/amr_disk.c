@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/amr/amr_disk.c,v 1.5.2.5 2002/12/20 15:12:04 emoore Exp $
- * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.5 2003/08/07 21:17:08 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.6 2003/10/13 06:56:13 hmp Exp $
  */
 
 /*
@@ -71,7 +71,11 @@
 #include <sys/devicestat.h>
 #include <sys/disk.h>
 
+#include <vm/vm.h>
+#include <vm/pmap.h>
+
 #include <machine/bus.h>
+#include <machine/md_var.h>
 #include <sys/rman.h>
 
 #include "amrio.h"
@@ -88,6 +92,7 @@ static	d_open_t	amrd_open;
 static	d_close_t	amrd_close;
 static	d_strategy_t	amrd_strategy;
 static	d_ioctl_t	amrd_ioctl;
+static	d_dump_t	amrd_dump;
 
 #define AMRD_CDEV_MAJOR	133
 
@@ -106,7 +111,7 @@ static struct cdevsw amrd_cdevsw = {
 		/* poll */	nopoll,
 		/* mmap */	nommap,
 		/* strategy */	amrd_strategy,
-		/* dump */	nodump,
+		/* dump */	amrd_dump,
 		/* psize */ 	nopsize
 };
 
@@ -185,6 +190,65 @@ amrd_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
     return (ENOTTY);
 }
 
+
+/********************************************************************************
+ * System crashdump support
+ */
+int
+amrd_dump(dev_t dev)
+{
+    
+    struct amrd_softc	*amrd_sc = (struct amrd_softc *)dev->si_drv1;
+    struct amr_softc	*amr_sc;
+    u_int		count, blkno, secsize;
+    vm_paddr_t		addr = 0;
+    long		blkcnt;
+    int			dumppages = MAXDUMPPGS;
+    int			error = 0;
+    int			driveno;
+    int			i;
+
+    debug_called(1);
+
+    if ((error = disk_dumpcheck(dev, &count, &blkno, &secsize)))
+        return(error);
+
+    amr_sc  = (struct amr_softc *)amrd_sc->amrd_controller;
+
+    if (!amrd_sc || !amr_sc)
+	return(ENXIO);
+
+    blkcnt = howmany(PAGE_SIZE, secsize);
+
+    driveno = amrd_sc->amrd_drive - amr_sc->amr_drive;
+
+    while (count > 0) {
+    	caddr_t	va = NULL;
+
+	if ((count / blkcnt) < dumppages)
+	    dumppages = count / blkcnt;
+
+	for (i = 0; i < dumppages; ++i) {
+	    vm_paddr_t a = addr + (i * PAGE_SIZE);
+	    if (is_physical_memory(a))
+		va = pmap_kenter_temporary(trunc_page(a), i);
+	    else
+		va = pmap_kenter_temporary(trunc_page(0), i);
+	}
+
+	if ((error = amr_dump_blocks(amr_sc, driveno, blkno, (void *)va,
+				      (PAGE_SIZE * dumppages) / AMR_BLKSIZE)) != 0)
+	    	return(error);
+
+	if (dumpstatus(addr, (off_t)count * DEV_BSIZE) < 0)
+	    return(EINTR);
+
+	blkno += blkcnt * dumppages;
+	count -= blkcnt * dumppages;
+	addr += PAGE_SIZE * dumppages;
+    }
+    return (0);
+}
 /*
  * Read/write routine for a buffer.  Finds the proper unit, range checks
  * arguments, and schedules the transfer.  Does not wait for the transfer
