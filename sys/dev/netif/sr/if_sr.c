@@ -28,6 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 /*

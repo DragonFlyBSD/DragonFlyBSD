@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/release/scripts/catpages-make.sh,v 1.3.6.1 2002/07/25 09:33:17 ru Exp $
+# $DragonFly: src/release/scripts/Attic/catpages-make.sh,v 1.2 2003/06/17 04:27:21 dillon Exp $
 #
 
 # Move all the catpages out to their own dist, using the bin dist as a

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)network.c	8.2 (Berkeley) 12/15/93
+ * $FreeBSD: src/crypto/telnet/telnet/network.c,v 1.2.8.2 2002/04/13 10:59:08 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnet/network.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-
-__FBSDID("$FreeBSD: src/crypto/telnet/telnet/network.c,v 1.2.8.2 2002/04/13 10:59:08 markm Exp $");
-
-#ifndef lint
-static const char sccsid[] = "@(#)network.c	8.2 (Berkeley) 12/15/93";
-#endif
 
 #include <sys/types.h>
 #include <sys/socket.h>

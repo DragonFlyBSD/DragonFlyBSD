@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)get_addrs.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/talk/get_addrs.c,v 1.4 1999/08/28 01:06:11 peter Exp $
+ * $DragonFly: src/usr.bin/talk/get_addrs.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)get_addrs.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/talk/get_addrs.c,v 1.4 1999/08/28 01:06:11 peter Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <netdb.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 

@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/release/scripts/games-make.sh,v 1.3.2.1 2002/08/08 08:23:53 ru Exp $
+# $DragonFly: src/release/scripts/Attic/games-make.sh,v 1.2 2003/06/17 04:27:21 dillon Exp $
 #
 
 # Move all the games out to their own dist

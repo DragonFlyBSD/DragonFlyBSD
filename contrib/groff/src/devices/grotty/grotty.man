@@ -1,5 +1,6 @@
 .ig
 $FreeBSD: src/contrib/groff/src/devices/grotty/grotty.man,v 1.4.2.3 2003/02/14 15:22:03 ru Exp $
+$DragonFly: src/contrib/groff/src/devices/grotty/Attic/grotty.man,v 1.2 2003/06/17 04:24:02 dillon Exp $
 Copyright (C) 1989-2000, 2001, 2002 Free Software Foundation, Inc.
 
 Permission is granted to make and distribute verbatim copies of

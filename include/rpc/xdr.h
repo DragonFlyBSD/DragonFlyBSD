@@ -29,6 +29,7 @@
  *	from: @(#)xdr.h 1.19 87/04/22 SMI
  *	from: @(#)xdr.h	2.2 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/xdr.h,v 1.14.2.1 2003/03/20 12:59:55 jedgar Exp $
+ * $DragonFly: src/include/rpc/xdr.h,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 /*

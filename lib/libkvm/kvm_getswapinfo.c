@@ -4,18 +4,11 @@
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided under the terms of the BSD
  * Copyright as found in /usr/src/COPYRIGHT in the FreeBSD source tree.
+ *
+ * @(#) Copyright (c) 1999
+ * $FreeBSD: src/lib/libkvm/kvm_getswapinfo.c,v 1.10.2.4 2003/01/12 09:23:13 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_getswapinfo.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-    "@(#) Copyright (c) 1999\n"
-    "Matthew Dillon.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libkvm/kvm_getswapinfo.c,v 1.10.2.4 2003/01/12 09:23:13 dillon Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/time.h>

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)varpush.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/mille/varpush.c,v 1.6 1999/12/12 06:17:25 billf Exp $
+ * $DragonFly: src/games/mille/varpush.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)varpush.c	8.1 (Berkeley) 5/31/93";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/mille/varpush.c,v 1.6 1999/12/12 06:17:25 billf Exp $";
-#endif /* not lint */
 
 # include	<paths.h>
 # include	"mille.h"

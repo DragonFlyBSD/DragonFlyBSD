@@ -12,11 +12,10 @@
  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
  * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
  * SOFTWARE.
+ *
+ * $FreeBSD: src/lib/libc/net/inet_ntop.c,v 1.6.2.2 2002/12/16 15:19:35 robert Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/inet_ntop.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char rcsid[] = "$FreeBSD: src/lib/libc/net/inet_ntop.c,v 1.6.2.2 2002/12/16 15:19:35 robert Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/types.h>

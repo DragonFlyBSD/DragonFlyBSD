@@ -1,6 +1,7 @@
 /*	OpenBSD: qsphyreg.h,v 1.2 1999/03/09 00:02:45 jason Exp 	*/
 /*	NetBSD: qsphyreg.h,v 1.1 1998/08/11 00:01:03 thorpej Exp 	*/
 /*	$FreeBSD: src/sys/dev/mii/qsphyreg.h,v 1.1.2.1 2001/06/08 19:58:33 semenu Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/mii_layer/qsphyreg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $	*/
 
 /*-
  * Copyright (c) 1998 The NetBSD Foundation, Inc.

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/getnameinfo.c,v 1.4.2.5 2002/07/31 10:11:09 ume Exp $	*/
+/*	$DragonFly: src/lib/libcr/net/Attic/getnameinfo.c,v 1.2 2003/06/17 04:26:44 dillon Exp $	*/
 /*	$KAME: getnameinfo.c,v 1.61 2002/06/27 09:25:47 itojun Exp $	*/
 
 /*

@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/libstand/Makefile,v 1.14.2.10 2002/07/22 14:21:50 ru Exp $
+# $DragonFly: src/lib/libstand/Makefile,v 1.2 2003/06/17 04:26:51 dillon Exp $
 #
 # Originally from	$NetBSD: Makefile,v 1.21 1997/10/26 22:08:38 lukem Exp $
 #

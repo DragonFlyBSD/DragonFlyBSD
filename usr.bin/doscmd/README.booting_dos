@@ -1,5 +1,6 @@
 /* BSDI README.booting_dos,v 2.2 1996/04/08 19:32:18 bostic Exp*/
 /* $FreeBSD: src/usr.bin/doscmd/README.booting_dos,v 1.3.2.1 2000/06/29 23:47:28 ps Exp $ */
+/* $DragonFly: src/usr.bin/doscmd/README.booting_dos,v 1.2 2003/06/17 04:29:25 dillon Exp $ */
 
 To install DOS on a pseudo hard disk under doscmd:
 

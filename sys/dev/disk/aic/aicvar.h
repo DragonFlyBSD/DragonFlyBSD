@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aicvar.h,v 1.2.2.1 2000/08/08 23:51:23 peter Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aicvar.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
 struct aic_transinfo {

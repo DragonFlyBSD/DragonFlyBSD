@@ -37,6 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include <sys/param.h>

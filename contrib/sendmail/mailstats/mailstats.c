@@ -10,6 +10,7 @@
  * the sendmail distribution.
  *
  * $FreeBSD: src/contrib/sendmail/mailstats/mailstats.c,v 1.5.2.7 2002/09/03 01:50:05 gshapiro Exp $
+ * $DragonFly: src/contrib/sendmail/mailstats/Attic/mailstats.c,v 1.2 2003/06/17 04:24:06 dillon Exp $
  *
  */
 

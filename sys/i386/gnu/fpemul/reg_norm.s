@@ -62,6 +62,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/reg_norm.s,v 1.8 1999/08/28 00:42:57 peter Exp $
+ * $DragonFly: src/sys/i386/gnu/fpemul/Attic/reg_norm.s,v 1.2 2003/06/17 04:28:34 dillon Exp $
  *
  */
 

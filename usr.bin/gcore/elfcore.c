@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/gcore/elfcore.c,v 1.5.2.3 2001/07/11 23:59:11 obrien Exp $
+ * $DragonFly: src/usr.bin/gcore/elfcore.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
 
 #include <sys/param.h>

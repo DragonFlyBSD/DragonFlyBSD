@@ -1,4 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/patch/util.c,v 1.7.6.2 2002/04/30 20:40:02 gad Exp $ */
+/* $DragonFly: src/gnu/usr.bin/patch/Attic/util.c,v 1.2 2003/06/17 04:25:47 dillon Exp $ */
 
 #include <paths.h>
 

@@ -13,12 +13,10 @@
  *
  * I would appreciate (though I do not require) receiving a copy of any
  * improvements you might make to this program.
+ *
+ * $FreeBSD: src/usr.bin/units/units.c,v 1.6.2.2 2001/03/04 09:22:35 kris Exp $
+ * $DragonFly: src/usr.bin/units/units.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/units/units.c,v 1.6.2.2 2001/03/04 09:22:35 kris Exp $";
-#endif /* not lint */
 
 #include <ctype.h>
 #include <err.h>

@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/stallion/bootcode/Makefile,v 1.9.2.3 2002/02/18 15:03:37 ru Exp $
+# $DragonFly: src/usr.sbin/stallion/bootcode/Makefile,v 1.2 2003/06/17 04:30:03 dillon Exp $
 
 .SUFFIXES: .uu
 .uu:

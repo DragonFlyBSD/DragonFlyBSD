@@ -1,5 +1,6 @@
 /*
  * $FreeBSD: src/sys/boot/alpha/libalpha/OSFpal.c,v 1.2.2.1 2000/07/07 00:20:49 obrien Exp $
+ * $DragonFly: src/sys/boot/alpha/libalpha/Attic/OSFpal.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  * From	$NetBSD: OSFpal.c,v 1.5 1998/06/24 01:33:19 ross Exp $ 
  */
 

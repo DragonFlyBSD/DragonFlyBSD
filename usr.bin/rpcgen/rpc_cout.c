@@ -25,17 +25,13 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)rpc_cout.c 1.13 89/02/22 (C) 1987 SMI
+ * $FreeBSD: src/usr.bin/rpcgen/rpc_cout.c,v 1.7 1999/08/28 01:05:16 peter Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_cout.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
  */
 
 #ident	"@(#)rpc_cout.c	1.14	93/07/05 SMI" 
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)rpc_cout.c 1.13 89/02/22 (C) 1987 SMI";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/rpcgen/rpc_cout.c,v 1.7 1999/08/28 01:05:16 peter Exp $";
-#endif
 
 /*
  * rpc_cout.c, XDR routine outputter for the RPC protocol compiler

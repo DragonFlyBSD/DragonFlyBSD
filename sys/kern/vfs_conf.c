@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 /*

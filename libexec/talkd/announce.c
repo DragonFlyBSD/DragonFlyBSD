@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)announce.c	8.3 (Berkeley) 4/28/95
+ * $FreeBSD: src/libexec/talkd/announce.c,v 1.11.2.3 2001/10/18 12:30:42 des Exp $
+ * $DragonFly: src/libexec/talkd/announce.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)announce.c	8.3 (Berkeley) 4/28/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/libexec/talkd/announce.c,v 1.11.2.3 2001/10/18 12:30:42 des Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/uio.h>

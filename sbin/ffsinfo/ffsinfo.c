@@ -37,20 +37,11 @@
  *
  * $TSHeader: src/sbin/ffsinfo/ffsinfo.c,v 1.4 2000/12/12 19:30:55 tomsoft Exp $
  * $FreeBSD: src/sbin/ffsinfo/ffsinfo.c,v 1.3.2.1 2001/07/16 15:01:56 tomsoft Exp $
+ * $DragonFly: src/sbin/ffsinfo/ffsinfo.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  *
+ * @(#) Copyright (c) 2000 Christoph Herrmann, Thomas-Henning von Kamptz Copyright (c) 1980, 1989, 1993 The Regents of the University of California. All rights reserved.
+ * $FreeBSD: src/sbin/ffsinfo/ffsinfo.c,v 1.3.2.1 2001/07/16 15:01:56 tomsoft Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 2000 Christoph Herrmann, Thomas-Henning von Kamptz\n\
-Copyright (c) 1980, 1989, 1993 The Regents of the University of California.\n\
-All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/ffsinfo/ffsinfo.c,v 1.3.2.1 2001/07/16 15:01:56 tomsoft Exp $";
-#endif /* not lint */
 
 /* ********************************************************** INCLUDES ***** */
 #include <sys/param.h>

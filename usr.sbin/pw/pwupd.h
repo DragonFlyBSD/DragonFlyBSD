@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pw/pwupd.h,v 1.7 2000/01/15 00:20:22 davidn Exp $
+ * $DragonFly: src/usr.sbin/pw/pwupd.h,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
 
 #ifndef _PWUPD_H_

@@ -2,6 +2,7 @@
  * Miscellaneous support routines..
  *
  * $FreeBSD: src/release/sysinstall/misc.c,v 1.40.2.1 2001/09/27 06:51:09 murray Exp $
+ * $DragonFly: src/release/sysinstall/Attic/misc.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.

@@ -23,12 +23,10 @@
  * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sbin/newfs_msdos/newfs_msdos.c,v 1.9.2.4 2001/08/01 08:43:04 obrien Exp $
+ * $DragonFly: src/sbin/newfs_msdos/newfs_msdos.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/newfs_msdos/newfs_msdos.c,v 1.9.2.4 2001/08/01 08:43:04 obrien Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/diskslice.h>

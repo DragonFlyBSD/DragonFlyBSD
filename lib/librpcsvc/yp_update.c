@@ -36,6 +36,9 @@
  * Columbia University, New York City
  *
  * $FreeBSD: src/lib/librpcsvc/yp_update.c,v 1.2.2.1 2002/02/15 00:46:54 des Exp $
+ * $DragonFly: src/lib/librpcsvc/yp_update.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ *
+ * $FreeBSD: src/lib/librpcsvc/yp_update.c,v 1.2.2.1 2002/02/15 00:46:54 des Exp $
  */
 
 #include <stdlib.h>
@@ -44,10 +47,6 @@
 #include <rpcsvc/ypclnt.h>
 #include <rpcsvc/ypupdate_prot.h>
 #include <rpc/key_prot.h>
-
-#ifndef lint
-static const char rcsid[] = "$FreeBSD: src/lib/librpcsvc/yp_update.c,v 1.2.2.1 2002/02/15 00:46:54 des Exp $";
-#endif
 
 #ifndef WINDOW
 #define WINDOW (60*60)

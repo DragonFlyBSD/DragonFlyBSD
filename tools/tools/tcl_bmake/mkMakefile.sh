@@ -1,5 +1,6 @@
 #! /bin/sh
 # $FreeBSD: src/tools/tools/tcl_bmake/mkMakefile.sh,v 1.30 1999/08/28 00:54:33 peter Exp $
+# $DragonFly: src/tools/tools/tcl_bmake/Attic/mkMakefile.sh,v 1.2 2003/06/17 04:29:11 dillon Exp $
 #
 # This script generates a bmake Makefile for src/lib/libtcl
 #

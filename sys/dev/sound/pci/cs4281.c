@@ -27,6 +27,9 @@
  * driver by Thomas Sailer, gw boynton (wesb@crystal.cirrus.com), tom
  * woller (twoller@crystal.cirrus.com).  Shingo Watanabe (nabe@nabechan.org)
  * contributed towards power management.
+ *
+ * $FreeBSD: src/sys/dev/sound/pci/cs4281.c,v 1.2.2.8 2002/08/27 00:25:55 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -37,7 +40,7 @@
 
 #include <dev/sound/pci/cs4281.h>
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pci/cs4281.c,v 1.2.2.8 2002/08/27 00:25:55 orion Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
 
 #define CS4281_DEFAULT_BUFSZ 16384
 

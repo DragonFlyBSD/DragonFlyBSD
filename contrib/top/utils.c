@@ -9,6 +9,7 @@
  *  Copyright (c) 1989, 1990, 1992, William LeFebvre, Northwestern University
  *
  * $FreeBSD: src/contrib/top/utils.c,v 1.3.6.1 2002/08/11 17:09:25 dwmalone Exp $
+ * $DragonFly: src/contrib/top/utils.c,v 1.2 2003/06/17 04:24:07 dillon Exp $
  */
 
 /*

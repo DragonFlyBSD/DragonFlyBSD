@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.32.2.6 2003/01/21 23:06:51 peter Exp $
+# $DragonFly: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.2 2003/06/17 04:25:45 dillon Exp $
 
 MAINTAINER=	peter@FreeBSD.org
 

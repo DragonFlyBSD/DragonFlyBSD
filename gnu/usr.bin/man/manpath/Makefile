@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/man/manpath/Makefile,v 1.22.2.3 2002/02/01 09:00:02 ru Exp $
+# $DragonFly: src/gnu/usr.bin/man/manpath/Makefile,v 1.2 2003/06/17 04:25:46 dillon Exp $
 
 PROG=	manpath
 

@@ -2,6 +2,7 @@
 
 /* $Id: pam_misc.c,v 1.9 1997/04/05 06:56:19 morgan Exp $
  * $FreeBSD: src/contrib/libpam/libpam/pam_misc.c,v 1.1.1.1.6.3 2001/09/13 08:24:14 roam Exp $
+ * $DragonFly: src/contrib/libpam/libpam/Attic/pam_misc.c,v 1.2 2003/06/17 04:24:03 dillon Exp $
  *
  * $Log: pam_misc.c,v $
  * Revision 1.9  1997/04/05 06:56:19  morgan

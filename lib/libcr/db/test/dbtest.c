@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)dbtest.c	8.17 (Berkeley) 9/1/94
+ * $FreeBSD: src/lib/libc/db/test/dbtest.c,v 1.3.8.1 2000/08/21 22:44:47 jhb Exp $
+ * $DragonFly: src/lib/libcr/db/test/Attic/dbtest.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#ifndef lint
-static char copyright[] =
-"@(#) Copyright (c) 1992, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)dbtest.c	8.17 (Berkeley) 9/1/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/db/test/dbtest.c,v 1.3.8.1 2000/08/21 22:44:47 jhb Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

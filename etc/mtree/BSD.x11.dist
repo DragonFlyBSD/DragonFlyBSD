@@ -1,4 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.x11.dist,v 1.9.2.6 2002/04/15 00:44:15 dougb Exp $
+# $DragonFly: src/etc/mtree/Attic/BSD.x11.dist,v 1.2 2003/06/17 04:24:48 dillon Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #

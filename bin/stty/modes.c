@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)modes.c	8.3 (Berkeley) 4/2/94
+ * $FreeBSD: src/bin/stty/modes.c,v 1.8.2.2 2001/07/04 22:40:00 kris Exp $
+ * $DragonFly: src/bin/stty/modes.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)modes.c	8.3 (Berkeley) 4/2/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/bin/stty/modes.c,v 1.8.2.2 2001/07/04 22:40:00 kris Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <stddef.h>

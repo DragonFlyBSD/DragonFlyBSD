@@ -37,6 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * $FreeBSD: src/contrib/libpam/modules/pam_rhosts/pam_rhosts_auth.c,v 1.3.2.2 2001/06/11 15:28:24 markm Exp $
+ * $DragonFly: src/contrib/libpam/modules/pam_rhosts/Attic/pam_rhosts_auth.c,v 1.2 2003/06/17 04:24:03 dillon Exp $
  */
 
 #define _BSD_SOURCE

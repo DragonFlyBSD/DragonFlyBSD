@@ -37,6 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/miivar.h,v 1.3.2.1 2000/12/12 19:29:14 wpaul Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/miivar.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 #ifndef _DEV_MII_MIIVAR_H_

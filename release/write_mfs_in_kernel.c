@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/release/write_mfs_in_kernel.c,v 1.7 1999/12/16 02:14:30 jkh Exp $
+ * $DragonFly: src/release/Attic/write_mfs_in_kernel.c,v 1.2 2003/06/17 04:27:17 dillon Exp $
  *
  * This program patches a filesystem into a kernel made with MD_ROOT
  * option.

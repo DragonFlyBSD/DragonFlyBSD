@@ -1,5 +1,6 @@
 # From:	@(#)Makefile	8.3 (Berkeley) 4/2/94
 # $FreeBSD: src/usr.bin/passwd/Makefile,v 1.40.2.3 2002/07/17 19:08:22 ru Exp $
+# $DragonFly: src/usr.bin/passwd/Makefile,v 1.2 2003/06/17 04:29:30 dillon Exp $
 
 # NOPAM is used by PicoBSD
 

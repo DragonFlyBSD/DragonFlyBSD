@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/ic/wd33c93reg.h,v 1.1.2.1 2001/07/26 02:32:18 nyan Exp $ */
+/* $DragonFly: src/sys/dev/disk/ic_layer/wd33c93reg.h,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
 /*	$NecBSD: wd33c93reg.h,v 1.21.24.1 2001/06/13 05:52:05 honda Exp $	*/
 /*	$NetBSD$	*/
 /*

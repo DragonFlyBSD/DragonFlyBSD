@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberosIV/libexec/kauthd/Makefile,v 1.5.2.1 2001/04/25 09:36:00 ru Exp $
+# $DragonFly: src/kerberosIV/libexec/kauthd/Attic/Makefile,v 1.2 2003/06/17 04:26:25 dillon Exp $
 
 PROG=		kauthd
 MAN=		${KRB4DIR}/man/kauthd.8

@@ -7,13 +7,10 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libcrypt/crypt-md5.c,v 1.5.2.1 2001/05/24 12:20:02 markm Exp $
+ * $DragonFly: src/lib/libcrypt/crypt-md5.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
  *
+ * $FreeBSD: src/lib/libcrypt/crypt-md5.c,v 1.5.2.1 2001/05/24 12:20:02 markm Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static const char rcsid[] = \
-"$FreeBSD: src/lib/libcrypt/crypt-md5.c,v 1.5.2.1 2001/05/24 12:20:02 markm Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <unistd.h>
 #include <stdio.h>

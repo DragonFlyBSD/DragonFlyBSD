@@ -37,6 +37,7 @@
  *
  *	@(#)ttydefaults.h	8.4 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/ttydefaults.h,v 1.13.2.1 2001/03/06 03:37:08 jkh Exp $
+ * $DragonFly: src/sys/sys/ttydefaults.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 /*

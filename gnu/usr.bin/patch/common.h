@@ -1,4 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/patch/common.h,v 1.7.2.2 2003/02/15 05:33:42 kris Exp $
+/* $DragonFly: src/gnu/usr.bin/patch/Attic/common.h,v 1.2 2003/06/17 04:25:46 dillon Exp $
  *
  * $Log: common.h,v $
  * Revision 2.0.1.2  88/06/22  20:44:53  lwall

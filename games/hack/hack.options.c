@@ -1,6 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.options.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.options.c,v 1.5 1999/11/16 02:57:08 billf Exp $ */
+/* $DragonFly: src/games/hack/hack.options.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
 
 #include <stdlib.h>
 #include "config.h"

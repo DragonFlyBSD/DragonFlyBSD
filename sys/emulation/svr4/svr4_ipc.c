@@ -1,5 +1,6 @@
 /*
  * $FreeBSD: src/sys/svr4/svr4_ipc.c,v 1.5 1999/12/08 10:51:16 newton Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ipc.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  *	Derived from:
  *	$NetBSD: svr4_ipc.c,v 1.7 1998/10/19 22:43:00 tron Exp $	*/
 

@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/posix4_mib.c,v 1.3.2.1 2000/08/03 01:09:59 peter Exp $
+ * $DragonFly: src/sys/kern/kern_posix4_mib.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 #include <sys/param.h>

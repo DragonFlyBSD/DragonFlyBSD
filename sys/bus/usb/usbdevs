@@ -1,4 +1,5 @@
 $FreeBSD: src/sys/dev/usb/usbdevs,v 1.11.2.42 2003/05/11 00:12:29 murray Exp $
+$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.2 2003/06/17 04:28:32 dillon Exp $
 
 /*
  * Copyright (c) 1998, 1999, 2000 The NetBSD Foundation, Inc.

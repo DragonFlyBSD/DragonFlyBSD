@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/device_port.h,v 1.1.2.1 2000/10/29 11:05:45 non Exp $
+ * $DragonFly: src/sys/sys/device_port.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #if defined(__NetBSD__)

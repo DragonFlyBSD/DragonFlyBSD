@@ -34,6 +34,7 @@
 #include "krb5_locl.h"
 RCSID("$Id: crypto.c,v 1.66 2002/09/03 19:58:15 joda Exp $");
 /* RCSID("$FreeBSD: src/crypto/heimdal/lib/krb5/crypto.c,v 1.2.2.4 2002/09/20 10:50:25 nectar Exp $"); */
+/* RCSID("$DragonFly: src/crypto/heimdal/lib/krb5/Attic/crypto.c,v 1.2 2003/06/17 04:24:35 dillon Exp $"); */
 
 #undef CRYPTO_DEBUG
 #ifdef CRYPTO_DEBUG

@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)popen.c	8.3 (Berkeley) 4/6/94
+ * $FreeBSD: src/libexec/ftpd/popen.c,v 1.18.2.3 2001/08/09 00:53:18 mikeh Exp $
+ * $DragonFly: src/libexec/ftpd/popen.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)popen.c	8.3 (Berkeley) 4/6/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/libexec/ftpd/popen.c,v 1.18.2.3 2001/08/09 00:53:18 mikeh Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/wait.h>

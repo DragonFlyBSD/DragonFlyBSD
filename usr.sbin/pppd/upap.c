@@ -15,11 +15,10 @@
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * $FreeBSD: src/usr.sbin/pppd/upap.c,v 1.8 1999/08/28 01:19:08 peter Exp $
+ * $DragonFly: src/usr.sbin/pppd/upap.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/usr.sbin/pppd/upap.c,v 1.8 1999/08/28 01:19:08 peter Exp $";
-#endif
 
 /*
  * TODO:

@@ -37,6 +37,7 @@
  *
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
+ * $DragonFly: src/sys/vfs/ufs/Attic/ufs_disksubr.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #include <sys/param.h>

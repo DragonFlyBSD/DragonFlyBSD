@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/inetd/inetd.h,v 1.4.2.4 2002/08/21 10:00:24 ume Exp $
+ * $DragonFly: src/usr.sbin/inetd/inetd.h,v 1.2 2003/06/17 04:29:55 dillon Exp $
  */
 
 #include <sys/time.h>

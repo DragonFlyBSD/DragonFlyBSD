@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_src.c,v 1.1.2.3 2002/02/26 18:02:06 ume Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
 /*	$KAME: in6_src.c,v 1.37 2001/03/29 05:34:31 itojun Exp $	*/
 
 /*

@@ -2,6 +2,10 @@
  * Copyright (C) 1993-2001 by Darren Reed.
  *
  * See the IPFILTER.LICENCE file for details on licencing.
+ *
+ * @(#)fil.c        1.36 6/5/96 (C) 1993-2000 Darren Reed
+ * $FreeBSD: src/sys/contrib/ipfilter/netinet/fil.c,v 1.23.2.6 2003/03/01 03:55:54 darrenr Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/fil.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
@@ -97,10 +101,7 @@
 
 #include <machine/in_cksum.h>
 
-#if !defined(lint)
-static const char sccsid[] = "@(#)fil.c	1.36 6/5/96 (C) 1993-2000 Darren Reed";
-static const char rcsid[] = "@(#)$FreeBSD: src/sys/contrib/ipfilter/netinet/fil.c,v 1.23.2.6 2003/03/01 03:55:54 darrenr Exp $";
-#endif
+static const char sccsid[] = "@(#)fil.c        1.36 6/5/96 (C) 1993-2000 Darren Reed";
 
 #ifndef	_KERNEL
 # include "ipf.h"

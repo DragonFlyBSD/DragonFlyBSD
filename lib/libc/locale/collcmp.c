@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/collcmp.c,v 1.12.2.1 2000/08/22 01:54:39 jhb Exp $
+ * $DragonFly: src/lib/libc/locale/collcmp.c,v 1.2 2003/06/17 04:26:43 dillon Exp $
  */
 
 #define ASCII_COMPATIBLE_COLLATE        /* see share/colldef */

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/ncpaddr.c,v 1.10.2.3 2003/04/29 16:05:55 ume Exp $
+ * $DragonFly: src/usr.sbin/ppp/ncpaddr.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #include <sys/types.h>

@@ -5,6 +5,7 @@
  * generation being essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/dispatch.c,v 1.35.2.7 2002/07/02 21:37:49 jhb Exp $
+ * $DragonFly: src/release/sysinstall/Attic/dispatch.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.

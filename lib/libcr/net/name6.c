@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/name6.c,v 1.6.2.9 2002/11/02 18:54:57 ume Exp $	*/
+/*	$DragonFly: src/lib/libcr/net/Attic/name6.c,v 1.2 2003/06/17 04:26:44 dillon Exp $	*/
 /*	$KAME: name6.c,v 1.25 2000/06/26 16:44:40 itojun Exp $	*/
 
 /*

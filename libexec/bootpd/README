@@ -1,4 +1,5 @@
 # $FreeBSD: src/libexec/bootpd/README,v 1.5 1999/08/28 00:09:15 peter Exp $
+# $DragonFly: src/libexec/bootpd/README,v 1.2 2003/06/17 04:27:07 dillon Exp $
 
 This is an enhanced version of the CMU BOOTP server which was derived
 from the original BOOTP server created by Bill Croft at Stanford.

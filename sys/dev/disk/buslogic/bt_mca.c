@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt_mca.c,v 1.4 1999/10/09 04:02:02 mdodd Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/Attic/bt_mca.c,v 1.2 2003/06/17 04:28:23 dillon Exp $
  */
 
 /*

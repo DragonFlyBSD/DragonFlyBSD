@@ -53,6 +53,7 @@
  *	@(#)inet.h	8.1 (Berkeley) 6/2/93
  *	From: Id: inet.h,v 8.5 1997/01/29 08:48:09 vixie Exp $
  * $FreeBSD: src/include/arpa/inet.h,v 1.11.2.1 2001/04/21 14:53:03 ume Exp $
+ * $DragonFly: src/include/arpa/inet.h,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 #ifndef _ARPA_INET_H_

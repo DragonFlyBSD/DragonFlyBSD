@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.h,v 1.2 2000/01/15 22:40:04 mjacob Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.h,v 1.2 2003/06/17 04:28:19 dillon Exp $ */
 /*
  * Copyright (c) 2000 by Matthew Jacob
  * All rights reserved.

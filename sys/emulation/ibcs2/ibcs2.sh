@@ -25,6 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/modules/ibcs2/ibcs2.sh,v 1.9 1999/08/28 00:47:15 peter Exp $
+# $DragonFly: src/sys/emulation/ibcs2/Attic/ibcs2.sh,v 1.2 2003/06/17 04:28:44 dillon Exp $
 
 
 PATH=/bin:/sbin:/usr/bin:/usr/sbin; export PATH

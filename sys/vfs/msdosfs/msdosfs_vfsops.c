@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vfsops.c,v 1.60.2.6 2002/09/12 21:33:38 trhodes Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.2 2003/06/17 04:28:47 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-

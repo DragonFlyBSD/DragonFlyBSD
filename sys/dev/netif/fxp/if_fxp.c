@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.2 2003/06/17 04:28:26 dillon Exp $
  */
 
 /*

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)interactive.c	8.5 (Berkeley) 5/1/95
+ * $FreeBSD: src/sbin/restore/interactive.c,v 1.8.2.1 2001/01/03 14:36:08 iedowse Exp $
+ * $DragonFly: src/sbin/restore/interactive.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)interactive.c	8.5 (Berkeley) 5/1/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/restore/interactive.c,v 1.8.2.1 2001/01/03 14:36:08 iedowse Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

@@ -20,6 +20,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/gcc/dwarfout.c,v 1.4 1999/10/26 08:38:21 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/dwarfout.c,v 1.2 2003/06/17 04:23:59 dillon Exp $ */
 
 #include "config.h"
 

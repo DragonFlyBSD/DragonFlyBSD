@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/posixshm.c,v 1.2.2.1 2000/08/22 01:48:12 jhb Exp $
+ * $DragonFly: src/lib/libc/gen/posixshm.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
 
 #include <sys/types.h>

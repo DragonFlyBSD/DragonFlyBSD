@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #include "opt_inet.h"

@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/burncd/burncd.c,v 1.10.2.6 2002/11/20 00:26:18 njl Exp $
+ * $DragonFly: src/usr.sbin/burncd/burncd.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
  */
 
 #include <unistd.h>

@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypserv/yp_extern.h,v 1.14.2.2 2002/02/15 00:47:00 des Exp $
+ * $DragonFly: src/usr.sbin/ypserv/yp_extern.h,v 1.2 2003/06/17 04:30:04 dillon Exp $
  */
 
 #include <db.h>

@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni_isa.c,v 1.1.2.5 2002/08/11 09:32:00 fjoe Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/Attic/if_sbni_isa.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 

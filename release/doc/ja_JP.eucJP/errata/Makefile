@@ -1,4 +1,5 @@
 # $FreeBSD: src/release/doc/ja_JP.eucJP/errata/Makefile,v 1.2.2.2 2002/11/02 08:22:57 hrs Exp $
+# $DragonFly: src/release/doc/ja_JP.eucJP/errata/Attic/Makefile,v 1.2 2003/06/17 04:27:20 dillon Exp $
 # Original revision: 1.3.2.3
 
 RELN_ROOT?= ${.CURDIR}/../..

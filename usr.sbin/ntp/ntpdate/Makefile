@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/ntp/ntpdate/Makefile,v 1.2.2.1 2001/12/21 17:42:34 roberto Exp $
+# $DragonFly: src/usr.sbin/ntp/ntpdate/Attic/Makefile,v 1.2 2003/06/17 04:29:58 dillon Exp $
 
 .PATH: ${.CURDIR}/../../../contrib/ntp/ntpdate
 

@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/lpr/chkprintcap/Makefile,v 1.7.2.4 2002/06/30 03:59:14 gad Exp $
+# $DragonFly: src/usr.sbin/lpr/chkprintcap/Makefile,v 1.2 2003/06/17 04:29:55 dillon Exp $
 
 .PATH: ${.CURDIR}/../common_source
 

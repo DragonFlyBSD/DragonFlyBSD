@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/crypto/rijndael/rijndael-alg-fst.c,v 1.3.2.1 2001/07/03 11:01:35 ume Exp $	*/
+/*	$DragonFly: src/sys/crypto/rijndael/rijndael-alg-fst.c,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
 /*	$KAME: rijndael-alg-fst.c,v 1.7 2001/05/27 00:23:23 itojun Exp $	*/
 
 /*

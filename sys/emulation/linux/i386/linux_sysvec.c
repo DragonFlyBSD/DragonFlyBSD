@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */

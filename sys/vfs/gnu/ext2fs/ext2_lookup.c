@@ -5,6 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_lookup.c,v 1.21.2.3 2002/11/17 02:02:42 bde Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 /*
  * Copyright (c) 1989, 1993

@@ -38,6 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include "opt_compat.h"

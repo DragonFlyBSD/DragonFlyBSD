@@ -32,16 +32,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)crc.c	5.2 (Berkeley) 4/4/91
+ * @(#)crc.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/adventure/crc.c,v 1.6 1999/12/19 00:21:50 billf Exp $
+ * $DragonFly: src/games/adventure/crc.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)crc.c	8.1 (Berkeley) 5/31/93";
-static char ORIGINAL_sccsid[] = "@(#)crc.c	5.2 (Berkeley) 4/4/91";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/adventure/crc.c,v 1.6 1999/12/19 00:21:50 billf Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include "hdr.h"

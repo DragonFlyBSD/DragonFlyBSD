@@ -5,6 +5,7 @@
  * AT&T, March 12, 1986
  *
  * $FreeBSD: src/games/phantasia/main.c,v 1.8 1999/11/16 02:57:34 billf Exp $
+ * $DragonFly: src/games/phantasia/main.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
 
 /* DISCLAIMER:

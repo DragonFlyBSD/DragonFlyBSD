@@ -23,8 +23,12 @@ If not, write to the Free Software Foundation,
 Report problems and direct all questions to:
 
     rcs-bugs@cs.purdue.edu
-
 */
+
+/*
+ * $FreeBSD: src/gnu/usr.bin/rcs/lib/maketime.c,v 1.7 1999/08/27 23:36:43 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/lib/maketime.c,v 1.2 2003/06/17 04:25:47 dillon Exp $
+ */
 
 #if has_conf_h
 #	include "conf.h"
@@ -41,9 +45,6 @@ Report problems and direct all questions to:
 
 #include "partime.h"
 #include "maketime.h"
-
-char const maketId[]
-  = "$FreeBSD: src/gnu/usr.bin/rcs/lib/maketime.c,v 1.7 1999/08/27 23:36:43 peter Exp $";
 
 static int isleap P((int));
 static int month_days P((struct tm const*));

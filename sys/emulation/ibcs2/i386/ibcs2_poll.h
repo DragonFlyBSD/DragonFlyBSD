@@ -22,6 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_poll.h,v 1.4 1999/08/28 00:43:59 peter Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_poll.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 

@@ -1,4 +1,5 @@
 $FreeBSD: src/usr.bin/ee/FREEBSD-upgrade,v 1.1.2.1 2001/06/10 11:06:06 sobomax Exp $
+$DragonFly: src/usr.bin/ee/FREEBSD-upgrade,v 1.2 2003/06/17 04:29:26 dillon Exp $
 
 Hugh F. Mahon's EasyEditor
 	originals can be found at: 	http://mahon.cwx.net/

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)commands.c	8.4 (Berkeley) 5/30/95
+ * $FreeBSD: src/usr.bin/telnet/commands.c,v 1.21.2.6 2002/11/30 05:35:13 eric Exp $
+ * $DragonFly: src/usr.bin/telnet/commands.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-
-__FBSDID("$FreeBSD: src/usr.bin/telnet/commands.c,v 1.21.2.6 2002/11/30 05:35:13 eric Exp $");
-
-#ifndef lint
-static const char sccsid[] = "@(#)commands.c	8.4 (Berkeley) 5/30/95";
-#endif
 
 #include <sys/param.h>
 #include <sys/un.h>

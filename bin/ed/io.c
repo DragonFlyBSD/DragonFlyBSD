@@ -23,16 +23,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)io.c,v 1.1 1994/02/01 00:34:41 alm Exp
+ * $FreeBSD: src/bin/ed/io.c,v 1.10 1999/08/27 23:14:14 peter Exp $
+ * $DragonFly: src/bin/ed/io.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char * const rcsid = "@(#)io.c,v 1.1 1994/02/01 00:34:41 alm Exp";
-#else
-static char * const rcsid =
-  "$FreeBSD: src/bin/ed/io.c,v 1.10 1999/08/27 23:14:14 peter Exp $";
-#endif
-#endif /* not lint */
 
 #include "ed.h"
 

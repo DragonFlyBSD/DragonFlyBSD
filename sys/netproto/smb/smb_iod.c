@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_iod.c,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
  
 #include <sys/param.h>

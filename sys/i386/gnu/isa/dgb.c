@@ -1,5 +1,6 @@
 /*-
  *  dgb.c $FreeBSD: src/sys/gnu/i386/isa/dgb.c,v 1.56.2.1 2001/02/26 04:23:09 jlemon Exp $
+ *  dgb.c $DragonFly: src/sys/i386/gnu/isa/Attic/dgb.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
  *
  *  Digiboard driver.
  *

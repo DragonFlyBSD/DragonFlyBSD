@@ -18,10 +18,9 @@
  *   int isinhardint(int irql)
  *   void set_eoir(int irql, void (*eoir)(void *), void *arg);
  *
+ * $FreeBSD: src/usr.bin/doscmd/int.c,v 1.3.2.2 2002/04/25 11:04:51 tg Exp $
+ * $DragonFly: src/usr.bin/doscmd/int.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/doscmd/int.c,v 1.3.2.2 2002/04/25 11:04:51 tg Exp $");
 
 #include "doscmd.h"
 

@@ -3,6 +3,7 @@
 /*
  * $Id: pam_warn.c,v 1.1.1.1 2000/06/20 22:12:10 agmorgan Exp $
  * $FreeBSD: src/contrib/libpam/modules/pam_warn/pam_warn.c,v 1.3.2.2 2001/06/11 15:28:34 markm Exp $
+ * $DragonFly: src/contrib/libpam/modules/pam_warn/Attic/pam_warn.c,v 1.2 2003/06/17 04:24:03 dillon Exp $
  *
  * Written by Andrew Morgan <morgan@linux.kernel.org> 1996/3/11
  */

@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/lib/libg2c/Makefile,v 1.8.2.1 2002/07/22 14:21:44 ru Exp $
+# $DragonFly: src/gnu/lib/libg2c/Attic/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
 
 SRCDIR=	${.CURDIR}/../../../contrib/libf2c
 

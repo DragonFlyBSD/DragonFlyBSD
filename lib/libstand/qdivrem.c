@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/qdivrem.c,v 1.2 1999/08/28 00:05:33 peter Exp $
+ * $DragonFly: src/lib/libstand/qdivrem.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  * 	From: Id: qdivrem.c,v 1.7 1997/11/07 09:20:40 phk Exp
  */
 

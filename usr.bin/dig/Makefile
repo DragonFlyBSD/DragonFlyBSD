@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.bin/dig/Makefile,v 1.7 1999/11/30 06:25:16 peter Exp $
+# $DragonFly: src/usr.bin/dig/Makefile,v 1.2 2003/06/17 04:29:25 dillon Exp $
 
 USE_LIBBIND=	yes
 .include "${.CURDIR}/../../usr.sbin/named/Makefile.inc"

@@ -37,6 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
  */
 
 #include "opt_ufs.h"

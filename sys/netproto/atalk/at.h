@@ -21,6 +21,7 @@
  *	netatalk@itd.umich.edu
  *
  * $FreeBSD: src/sys/netatalk/at.h,v 1.5.6.1 2002/12/01 14:03:09 sobomax Exp $
+ * $DragonFly: src/sys/netproto/atalk/at.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 #ifndef __AT_HEADER__

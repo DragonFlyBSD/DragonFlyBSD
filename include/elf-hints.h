@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/elf-hints.h,v 1.4.2.1 2001/07/11 23:59:09 obrien Exp $
+ * $DragonFly: src/include/elf-hints.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef	_ELF_HINTS_H_

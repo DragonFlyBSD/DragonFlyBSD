@@ -9,6 +9,7 @@
  *	for damages incurred with its use.
  *
  * $FreeBSD: src/sys/i386/isa/ctx.c,v 1.36 2000/01/29 16:17:31 peter Exp $
+ * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 /*

@@ -53,6 +53,7 @@
  * or implied warranty.
  *
  * $FreeBSD: src/crypto/telnet/libtelnet/key-proto.h,v 1.1.1.1.8.1 2002/04/13 10:59:07 markm Exp $
+ * $DragonFly: src/crypto/telnet/libtelnet/key-proto.h,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #ifndef	__KEY_PROTO__

@@ -5,6 +5,7 @@
  * by Noriyuki Hosobuchi <hoso@ce.mbn.or.jp>
  *
  * $FreeBSD: src/sys/pccard/meciareg.h,v 1.2.2.1 2001/07/06 22:58:49 imp Exp $
+ * $DragonFly: src/sys/bus/pccard/Attic/meciareg.h,v 1.2 2003/06/17 04:28:55 dillon Exp $
  */
 
 /*--- I/O port definition */

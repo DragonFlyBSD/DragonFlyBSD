@@ -4,6 +4,7 @@
 #	---------------------------------------------------
 #
 # $FreeBSD: src/etc/isdn/isdnd.rc.sample,v 1.2.2.1 2001/08/01 20:34:38 obrien Exp $
+# $DragonFly: src/etc/isdn/isdnd.rc.sample,v 1.2 2003/06/17 04:24:47 dillon Exp $
 #
 #	last edit-date: [Sun May 27 09:33:59 2001]
 #

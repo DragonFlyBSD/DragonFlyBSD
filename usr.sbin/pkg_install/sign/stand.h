@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.sbin/pkg_install/sign/stand.h,v 1.1.2.1 2001/03/05 03:43:53 wes Exp $ */
+/* $DragonFly: src/usr.sbin/pkg_install/sign/Attic/stand.h,v 1.2 2003/06/17 04:29:59 dillon Exp $ */
 /* $OpenBSD: stand.h,v 1.2 1999/10/04 21:46:30 espie Exp $ */
 
 /* provided to cater for BSD idiosyncrasies */

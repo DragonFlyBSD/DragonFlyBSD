@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
 # $FreeBSD: src/usr.bin/colcrt/Makefile,v 1.2.6.1 2001/08/02 01:29:07 obrien Exp $
+# $DragonFly: src/usr.bin/colcrt/Makefile,v 1.2 2003/06/17 04:29:25 dillon Exp $
 
 PROG=	colcrt
 WARNS?=	2

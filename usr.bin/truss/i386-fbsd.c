@@ -27,12 +27,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.bin/truss/i386-fbsd.c,v 1.7.2.2 2001/10/29 20:12:56 des Exp $
+ * $DragonFly: src/usr.bin/truss/i386-fbsd.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/truss/i386-fbsd.c,v 1.7.2.2 2001/10/29 20:12:56 des Exp $";
-#endif /* not lint */
 
 /*
  * FreeBSD/386-specific system call handling.  This is probably the most

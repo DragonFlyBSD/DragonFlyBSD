@@ -1,4 +1,8 @@
-/*	$NetBSD: puc.c,v 1.7 2000/07/29 17:43:38 jlam Exp $	*/
+/*
+ * $NetBSD: puc.c,v 1.7 2000/07/29 17:43:38 jlam Exp $
+ * $FreeBSD: src/sys/dev/puc/puc.c,v 1.3.2.5 2003/04/04 08:42:17 sobomax Exp $
+ * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ */
 
 /*-
  * Copyright (c) 2002 JF Hay.  All rights reserved.
@@ -56,9 +60,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/puc/puc.c,v 1.3.2.5 2003/04/04 08:42:17 sobomax Exp $");
 
 /*
  * PCI "universal" communication card device driver, glues com, lpt,

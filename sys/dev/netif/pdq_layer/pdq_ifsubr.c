@@ -22,6 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq_ifsubr.c,v 1.11.2.1 2000/08/02 22:39:30 peter Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  *
  */
 

@@ -1,5 +1,6 @@
 #!/bin/sh
 # $FreeBSD: src/release/picobsd/mfs_tree/stand/update,v 1.2.2.3 2002/03/13 18:15:52 luigi Exp $
+# $DragonFly: src/release/picobsd/mfs_tree/stand/Attic/update,v 1.2 2003/06/17 04:27:20 dillon Exp $
 # script to edit and save some config file(s).
 # If called with no arguments, it edits 3 files in /etc
 thefiles=$*

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/loader/conf.c,v 1.11.2.6 2002/04/08 13:50:09 sobomax Exp $
+ * $DragonFly: src/sys/boot/pc32/loader/conf.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 #include <stand.h>

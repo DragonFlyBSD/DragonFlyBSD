@@ -32,16 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)find.c	8.5 (Berkeley) 8/5/94
+ * $FreeBSD: src/usr.bin/find/find.c,v 1.7.6.3 2001/05/06 09:53:22 phk Exp $
+ * $DragonFly: src/usr.bin/find/find.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)find.c	8.5 (Berkeley) 8/5/94";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/find/find.c,v 1.7.6.3 2001/05/06 09:53:22 phk Exp $";
-#endif
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

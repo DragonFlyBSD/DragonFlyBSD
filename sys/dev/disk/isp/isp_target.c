@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_target.c,v 1.5.4.10 2002/07/29 04:25:59 mjacob Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_target.c,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
 /*
  * Machine and OS Independent Target Mode Code for the Qlogic SCSI/FC adapters.
  *

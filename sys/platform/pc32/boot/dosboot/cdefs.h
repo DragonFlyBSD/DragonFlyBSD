@@ -32,6 +32,7 @@
  *
  *      from: @(#)cdefs.h       8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/i386/boot/dosboot/cdefs.h,v 1.5 1999/08/28 00:43:21 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/cdefs.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #ifndef _CDEFS_H_

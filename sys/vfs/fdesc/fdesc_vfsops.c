@@ -36,6 +36,7 @@
  *	@(#)fdesc_vfsops.c	8.4 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vfsops.c,v 1.22.2.3 2002/08/23 17:42:39 njl Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 /*

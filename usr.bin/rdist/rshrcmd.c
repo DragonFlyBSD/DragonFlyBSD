@@ -2,12 +2,10 @@
 /*
  * This is an rcmd() replacement originally by 
  * Chris Siebenmann <cks@utcc.utoronto.ca>.
+ *
+ * $FreeBSD: src/usr.bin/rdist/rshrcmd.c,v 1.6 1999/08/28 01:05:08 peter Exp $
+ * $DragonFly: src/usr.bin/rdist/rshrcmd.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/rdist/rshrcmd.c,v 1.6 1999/08/28 01:05:08 peter Exp $";
-#endif /* not lint */
 
 #include	"defs.h"
 

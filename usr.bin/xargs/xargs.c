@@ -34,22 +34,12 @@
  * SUCH DAMAGE.
  *
  * $xMach: xargs.c,v 1.6 2002/02/23 05:27:47 tim Exp $
+ *
+ * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)xargs.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/xargs/xargs.c,v 1.9.2.6 2003/06/01 21:40:35 mux Exp $
+ * $DragonFly: src/usr.bin/xargs/xargs.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1990, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#if 0
-#ifndef lint
-static char sccsid[] = "@(#)xargs.c	8.1 (Berkeley) 6/6/93";
-#endif /* not lint */
-#endif
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/xargs/xargs.c,v 1.9.2.6 2003/06/01 21:40:35 mux Exp $");
 
 #include <sys/types.h>
 #include <sys/wait.h>

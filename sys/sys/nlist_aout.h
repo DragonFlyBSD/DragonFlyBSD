@@ -38,6 +38,7 @@
  *	@(#)nlist.h	8.2 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/sys/nlist_aout.h,v 1.7 1999/08/27 23:44:51 peter Exp $
+ * $DragonFly: src/sys/sys/nlist_aout.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _NLIST_H_

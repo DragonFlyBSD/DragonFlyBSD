@@ -29,11 +29,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)log__L.c	8.1 (Berkeley) 6/4/93
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)log__L.c	8.1 (Berkeley) 6/4/93";
-#endif /* not lint */
 
 /* log__L(Z)
  *		LOG(1+X) - 2S			       X

@@ -24,6 +24,7 @@ you didn't get a copy, you may request one from <license@inner.net>.
 	Originally from BSD.
 
 $FreeBSD: src/contrib/opie/ftpcmd.y,v 1.2.6.4 2002/07/15 14:48:43 des Exp $
+$DragonFly: src/contrib/opie/ftpcmd.y,v 1.2 2003/06/17 04:24:04 dillon Exp $
 */
 /*
  * Copyright (c) 1985, 1988 Regents of the University of California.

@@ -4,6 +4,7 @@
 # the correct output
 #
 # $FreeBSD: src/bin/ed/test/ckscripts.sh,v 1.6 1999/08/27 23:14:18 peter Exp $
+# $DragonFly: src/bin/ed/test/ckscripts.sh,v 1.2 2003/06/17 04:22:50 dillon Exp $
 
 PATH="/bin:/usr/bin:/usr/local/bin/:."
 ED=$1

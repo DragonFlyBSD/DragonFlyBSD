@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberosIV/usr.bin/kdestroy/Makefile,v 1.6.2.1 2001/04/25 09:36:02 ru Exp $
+# $DragonFly: src/kerberosIV/usr.bin/kdestroy/Attic/Makefile,v 1.2 2003/06/17 04:26:25 dillon Exp $
 
 PROG=		kdestroy
 MAN=		${KRB4DIR}/man/kdestroy.1

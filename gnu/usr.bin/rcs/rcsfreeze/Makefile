@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/rcs/rcsfreeze/Makefile,v 1.5.8.3 2002/08/07 16:31:45 ru Exp $
+# $DragonFly: src/gnu/usr.bin/rcs/rcsfreeze/Makefile,v 1.2 2003/06/17 04:25:48 dillon Exp $
 
 MAN=	rcsfreeze.1
 

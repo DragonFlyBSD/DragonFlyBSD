@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)error.c	8.2 (Berkeley) 5/4/95
+ * $FreeBSD: src/bin/sh/error.c,v 1.15.2.4 2002/08/27 01:36:28 tjr Exp $
+ * $DragonFly: src/bin/sh/error.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)error.c	8.2 (Berkeley) 5/4/95";
-#endif
-#endif /* not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/bin/sh/error.c,v 1.15.2.4 2002/08/27 01:36:28 tjr Exp $");
 
 /*
  * Errors and exceptions.

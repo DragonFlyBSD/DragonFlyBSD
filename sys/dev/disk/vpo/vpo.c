@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/vpo.c,v 1.20.2.1 2000/05/07 21:08:18 n_hibma Exp $
+ * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 #include <sys/param.h>

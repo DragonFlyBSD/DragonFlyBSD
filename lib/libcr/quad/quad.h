@@ -36,6 +36,7 @@
  *
  *	@(#)quad.h	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/quad/quad.h,v 1.5 1999/08/28 00:00:29 peter Exp $
+ * $DragonFly: src/lib/libcr/quad/Attic/quad.h,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 
 /*

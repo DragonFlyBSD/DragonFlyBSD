@@ -31,6 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************
  * $FreeBSD: src/sys/pci/amd.c,v 1.3.2.2 2001/06/02 04:32:50 nyan Exp $
+ * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.2 2003/06/17 04:28:56 dillon Exp $
  */
 
 /*

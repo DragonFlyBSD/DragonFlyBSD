@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)print.c	8.4 (Berkeley) 4/17/94
+ * $FreeBSD: src/bin/ls/print.c,v 1.19.2.7 2002/11/17 10:27:34 tjr Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#if 0
-#ifndef lint
-static char sccsid[] = "@(#)print.c	8.4 (Berkeley) 4/17/94";
-#endif /* not lint */
-#endif
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/bin/ls/print.c,v 1.19.2.7 2002/11/17 10:27:34 tjr Exp $");
 
 #include <sys/param.h>
 #include <sys/stat.h>

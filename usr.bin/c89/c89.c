@@ -25,11 +25,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: src/usr.bin/c89/c89.c,v 1.1.2.1 2001/05/22 19:05:01 schweikh Exp $
+ * $DragonFly: src/usr.bin/c89/c89.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/c89/c89.c,v 1.1.2.1 2001/05/22 19:05:01 schweikh Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <stdio.h>

@@ -25,6 +25,7 @@
  * OR MODIFICATIONS.
  *
  * $FreeBSD: src/usr.sbin/pppd/ccp.h,v 1.8 1999/08/28 01:19:00 peter Exp $
+ * $DragonFly: src/usr.sbin/pppd/ccp.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 typedef struct ccp_options {

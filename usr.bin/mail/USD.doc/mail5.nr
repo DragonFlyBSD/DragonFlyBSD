@@ -31,6 +31,7 @@
 .\"
 .\"	@(#)mail5.nr	8.1 (Berkeley) 6/8/93
 .\" $FreeBSD: src/usr.bin/mail/USD.doc/mail5.nr,v 1.3.6.2 2002/03/15 19:46:42 mikeh Exp $
+.\" $DragonFly: src/usr.bin/mail/USD.doc/mail5.nr,v 1.2 2003/06/17 04:29:28 dillon Exp $
 .\"
 .bp
 .sh 1 "Additional features"

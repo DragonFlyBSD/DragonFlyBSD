@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-card.c,v 1.4.2.1 2002/03/18 08:37:33 sos Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-card.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 #include <sys/param.h>

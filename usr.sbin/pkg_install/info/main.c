@@ -17,10 +17,9 @@
  *
  * This is the info module.
  *
+ * $FreeBSD: src/usr.sbin/pkg_install/info/main.c,v 1.22.2.14 2002/08/20 06:35:08 obrien Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/info/Attic/main.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.sbin/pkg_install/info/main.c,v 1.22.2.14 2002/08/20 06:35:08 obrien Exp $");
 
 #include "lib.h"
 #include "info.h"

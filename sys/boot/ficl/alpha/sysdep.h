@@ -33,6 +33,7 @@
 */
 
 /* $FreeBSD: src/sys/boot/ficl/alpha/sysdep.h,v 1.5.2.1 2000/07/06 23:51:46 obrien Exp $ */
+/* $DragonFly: src/sys/boot/ficl/alpha/Attic/sysdep.h,v 1.2 2003/06/17 04:28:18 dillon Exp $ */
 
 #if !defined (__SYSDEP_H__)
 #define __SYSDEP_H__ 

@@ -6,12 +6,9 @@
  * this stuff is worth it, you can buy me a beer in return.   Poul-Henning Kamp
  * ----------------------------------------------------------------------------
  *
+ * $FreeBSD: src/usr.sbin/kernbb/kernbb.c,v 1.11.2.1 2001/07/19 04:17:03 kris Exp $
+ * $DragonFly: src/usr.sbin/kernbb/kernbb.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/kernbb/kernbb.c,v 1.11.2.1 2001/07/19 04:17:03 kris Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <fcntl.h>

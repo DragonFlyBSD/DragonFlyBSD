@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500hw.h,v 1.1.2.2 2001/07/22 00:21:39 non Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500hw.h,v 1.2 2003/06/17 04:28:28 dillon Exp $	*/
 /*	$NecBSD: ncr53c500hw.h,v 1.6 1998/11/26 01:59:12 honda Exp $	*/
 /*	$NetBSD$	*/
 

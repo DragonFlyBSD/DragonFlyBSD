@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt.c,v 1.3.2.3 2002/09/24 21:37:24 mjacob Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt.c,v 1.2 2003/06/17 04:28:28 dillon Exp $ */
 /*
  * Generic routines for LSI '909 FC  adapters.
  * FreeBSD Version.

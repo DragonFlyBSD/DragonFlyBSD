@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha_isa.c,v 1.17.2.1 2000/08/02 22:24:40 peter Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha_isa.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
 #include <sys/param.h>

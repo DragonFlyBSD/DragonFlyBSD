@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)w.c	8.4 (Berkeley) 4/16/94
+ * $FreeBSD: src/usr.bin/w/w.c,v 1.38.2.6 2002/03/12 19:51:51 phantom Exp $
+ * $DragonFly: src/usr.bin/w/w.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1980, 1991, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)w.c	8.4 (Berkeley) 4/16/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/w/w.c,v 1.38.2.6 2002/03/12 19:51:51 phantom Exp $";
-#endif /* not lint */
 
 /*
  * w - print system status (who and what)

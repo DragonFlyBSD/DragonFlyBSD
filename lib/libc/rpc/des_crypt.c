@@ -25,6 +25,10 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)des_crypt.c	2.2 88/08/10 4.0 RPCSRC; from 1.13 88/02/08 SMI
+ * $FreeBSD: src/lib/libc/rpc/des_crypt.c,v 1.3 1999/08/28 00:00:38 peter Exp $
+ * $DragonFly: src/lib/libc/rpc/des_crypt.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 /*
  * des_crypt.c, DES encryption library routines
@@ -34,11 +38,6 @@
 #include <sys/types.h>
 #include <rpc/des_crypt.h>
 #include <rpc/des.h>
-
-#ifndef lint
-/* from: static char sccsid[] = "@(#)des_crypt.c	2.2 88/08/10 4.0 RPCSRC; from 1.13 88/02/08 SMI"; */
-static const char rcsid[] = "$FreeBSD: src/lib/libc/rpc/des_crypt.c,v 1.3 1999/08/28 00:00:38 peter Exp $";
-#endif
 
 static int common_crypt	__P(( char *, char *, register unsigned, unsigned, struct desparams * ));
 int (*__des_crypt_LOCAL)() = 0;

@@ -5,6 +5,7 @@
  * generation being essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/msg.c,v 1.52.2.4 2001/09/11 20:42:42 jkh Exp $
+ * $DragonFly: src/release/sysinstall/Attic/msg.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.

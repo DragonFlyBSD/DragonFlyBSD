@@ -2,6 +2,7 @@
  * gamesupport.c - auxiliary routines for support of Phantasia
  *
  * $FreeBSD: src/games/phantasia/gamesupport.c,v 1.6 1999/11/16 02:57:33 billf Exp $
+ * $DragonFly: src/games/phantasia/gamesupport.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
 
 #include <string.h>

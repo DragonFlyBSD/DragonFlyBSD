@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/i386/isa/sound/gus_wave.c,v 1.32 1999/12/20 18:05:00 eivind Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/gus/Attic/gus_wave.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
  */
 
 #include <stddef.h>

@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libc/stdlib/malloc.c,v 1.49.2.4 2001/12/29 08:10:14 knu Exp $
+ * $DragonFly: src/lib/libc/stdlib/malloc.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  *
  */
 

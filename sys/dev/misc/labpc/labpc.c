@@ -39,6 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  *
  */
 

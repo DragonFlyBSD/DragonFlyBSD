@@ -1,6 +1,7 @@
 #
 # $Id: Makefile,v 1.2 2000/11/19 23:54:03 agmorgan Exp $
 # $FreeBSD: src/contrib/libpam/modules/pam_ftp/Makefile,v 1.3.2.2 2001/06/11 15:28:17 markm Exp $
+# $DragonFly: src/contrib/libpam/modules/pam_ftp/Attic/Makefile,v 1.2 2003/06/17 04:24:03 dillon Exp $
 #
 # This Makefile controls a build process of $(TITLE) module for
 # Linux-PAM. You should not modify this Makefile (unless you know

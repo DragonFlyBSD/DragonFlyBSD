@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxpreg.h,v 1.23.2.5 2001/11/02 16:50:41 jlemon Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxpreg.h,v 1.2 2003/06/17 04:28:26 dillon Exp $
  */
 
 #define FXP_VENDORID_INTEL	0x8086

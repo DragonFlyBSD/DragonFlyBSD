@@ -1,4 +1,5 @@
 #	$FreeBSD: src/secure/lib/libtelnet/Makefile,v 1.17.2.7 2002/07/22 14:21:51 ru Exp $
+#	$DragonFly: src/secure/lib/libtelnet/Makefile,v 1.2 2003/06/17 04:27:48 dillon Exp $
 
 LIB=		telnet
 

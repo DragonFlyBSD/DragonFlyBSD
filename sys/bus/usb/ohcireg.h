@@ -1,5 +1,6 @@
 /*	$NetBSD: ohcireg.h,v 1.11 2000/01/16 10:35:24 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ohcireg.h,v 1.13.2.1 2000/07/02 11:43:58 n_hibma Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ohcireg.h,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
 
 
 /*

@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/route6d/misc/cksum.c,v 1.1 1999/12/28 02:37:10 shin Exp $
+ * $DragonFly: src/usr.sbin/route6d/misc/cksum.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
 
 #include <stdio.h>

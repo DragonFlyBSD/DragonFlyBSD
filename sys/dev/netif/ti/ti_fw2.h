@@ -8,6 +8,7 @@
  * modes in some cases.
  *
  * $FreeBSD: src/sys/pci/ti_fw2.h,v 1.6.2.3 2000/08/24 00:07:57 wpaul Exp $
+ * $DragonFly: src/sys/dev/netif/ti/ti_fw2.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 static int tigon2FwReleaseMajor = 0xc;
 static int tigon2FwReleaseMinor = 0x4;

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/mii/e1000phy.c,v 1.1.2.2 2002/11/08 21:53:49 semenu Exp $ */
+/* $DragonFly: src/sys/dev/netif/mii_layer/e1000phy.c,v 1.2 2003/06/17 04:28:28 dillon Exp $ */
 /*
  * Principal Author: Parag Patel
  * Copyright (c) 2001

@@ -16,6 +16,7 @@ A copy of the Free Documentation License is included as a file called
 FDL in the main directory of the groff source package.
 
 $FreeBSD: src/contrib/groff/src/roff/groff/groff.man,v 1.6.2.3 2003/02/14 15:22:08 ru Exp $
+$DragonFly: src/contrib/groff/src/roff/groff/Attic/groff.man,v 1.2 2003/06/17 04:24:02 dillon Exp $
 
 ..
 .

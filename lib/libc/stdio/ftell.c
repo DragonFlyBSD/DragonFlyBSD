@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)ftell.c	8.2 (Berkeley) 5/4/95
+ * $FreeBSD: src/lib/libc/stdio/ftell.c,v 1.11 1999/08/28 00:01:06 peter Exp $
+ * $DragonFly: src/lib/libc/stdio/ftell.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)ftell.c	8.2 (Berkeley) 5/4/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/stdio/ftell.c,v 1.11 1999/08/28 00:01:06 peter Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <stdio.h>

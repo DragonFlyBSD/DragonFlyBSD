@@ -38,6 +38,7 @@
  *
  *	@(#)ffs_extern.h	8.3 (Berkeley) 4/16/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_extern.h,v 1.22.6.1 2000/11/05 19:17:40 bde Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_extern.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 #ifndef _SYS_GNU_EXT2FS_EXT2_EXTERN_H_

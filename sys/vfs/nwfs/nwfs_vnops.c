@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>

@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/gx/if_gxreg.h,v 1.1.2.1 2001/11/15 03:09:23 jlemon Exp $
+ *	$DragonFly: src/sys/dev/netif/gx/Attic/if_gxreg.h,v 1.2 2003/06/17 04:28:26 dillon Exp $
  */
 
 /*

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500_pccard.c,v 1.2.2.5 2001/12/17 13:30:18 non Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.2 2003/06/17 04:28:28 dillon Exp $	*/
 /*	$NecBSD: ncr53c500_pisa.c,v 1.28 1998/11/26 01:59:11 honda Exp $	*/
 /*	$NetBSD$	*/
 

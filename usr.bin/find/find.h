@@ -35,6 +35,7 @@
  *
  *	@(#)find.h	8.1 (Berkeley) 6/6/93
  *	$FreeBSD: src/usr.bin/find/find.h,v 1.6.2.7 2002/11/15 11:38:15 sheldonh Exp $
+ *	$DragonFly: src/usr.bin/find/find.h,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
 
 #include <regex.h>

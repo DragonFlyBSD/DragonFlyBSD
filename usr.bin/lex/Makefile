@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.bin/lex/Makefile,v 1.15.2.3 2002/07/22 14:21:52 ru Exp $
+# $DragonFly: src/usr.bin/lex/Makefile,v 1.2 2003/06/17 04:29:27 dillon Exp $
 #
 # By default, flex will be configured to generate 8-bit scanners only if the
 # -8 flag is given.  If you want it to always generate 8-bit scanners, add

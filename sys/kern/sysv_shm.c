@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.2 2003/06/17 04:28:41 dillon Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*

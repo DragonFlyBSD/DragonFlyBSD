@@ -32,6 +32,7 @@
  * Character conversion routines
  *
  * $FreeBSD: src/sys/netncp/ncp_nls.c,v 1.4 2000/01/29 02:10:37 bp Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_nls.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>

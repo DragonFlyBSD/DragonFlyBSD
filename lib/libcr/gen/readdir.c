@@ -31,12 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/readdir.c,v 1.5.2.4 2002/02/26 22:53:57 alfred Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/readdir.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  *
+ * @(#)readdir.c	8.3 (Berkeley) 9/29/94
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)readdir.c	8.3 (Berkeley) 9/29/94";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <dirent.h>

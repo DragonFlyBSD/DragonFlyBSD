@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/ct/ct_isa.c,v 1.3.2.3 2003/06/01 04:26:44 nyan Exp $ */
+/* $DragonFly: src/sys/dev/disk/ct/Attic/ct_isa.c,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
 /*	$NecBSD: ct_isa.c,v 1.6 1999/07/26 06:32:01 honda Exp $	*/
 /*	$NetBSD$	*/
 

@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/texinfo/info/Makefile,v 1.10.2.4 2002/08/07 16:53:35 ru Exp $
+# $DragonFly: src/gnu/usr.bin/texinfo/info/Makefile,v 1.2 2003/06/17 04:25:49 dillon Exp $
 
 PROG=	info
 MAN=	info.1 info.5 texinfo.5

@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getcwd.c,v 1.18 1999/09/28 13:24:13 marcel Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/getcwd.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)getcwd.c	8.5 (Berkeley) 2/7/95
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)getcwd.c	8.5 (Berkeley) 2/7/95";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

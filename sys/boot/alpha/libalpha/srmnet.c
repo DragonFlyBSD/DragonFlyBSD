@@ -1,5 +1,6 @@
 /* 
  * $FreeBSD: src/sys/boot/alpha/libalpha/srmnet.c,v 1.4 1999/09/06 18:32:40 dfr Exp $
+ * $DragonFly: src/sys/boot/alpha/libalpha/Attic/srmnet.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  * From: $NetBSD: if_prom.c,v 1.10 1997/09/06 14:08:33 drochner Exp $ 
  */
 

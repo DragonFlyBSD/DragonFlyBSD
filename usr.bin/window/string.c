@@ -32,13 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)string.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/window/string.c,v 1.2.6.2 2001/05/17 09:45:00 obrien Exp $
+ * $DragonFly: src/usr.bin/window/string.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)string.c	8.1 (Berkeley) 6/6/93";
-static char rcsid[] =
-  "$FreeBSD: src/usr.bin/window/string.c,v 1.2.6.2 2001/05/17 09:45:00 obrien Exp $";
-#endif /* not lint */
 
 #include <string.h> /* System string definitions. */
 #include "mystring.h" /* Local string definitions. */

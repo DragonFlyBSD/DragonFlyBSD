@@ -2,6 +2,7 @@
 /* include/config.h.in.  Generated automatically from configure.in by autoheader.  */
 
 /* $FreeBSD: src/kerberos5/include/config.h,v 1.2.2.7 2002/12/01 17:45:32 nectar Exp $ */
+/* $DragonFly: src/kerberos5/include/config.h,v 1.2 2003/06/17 04:26:17 dillon Exp $ */
 
 #include <osreldate.h>
 

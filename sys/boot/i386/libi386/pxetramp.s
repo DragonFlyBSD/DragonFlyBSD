@@ -13,6 +13,7 @@
 # purpose.
 #
 # $FreeBSD: src/sys/boot/i386/libi386/pxetramp.s,v 1.2.2.1 2000/05/04 13:51:24 ps Exp $
+# $DragonFly: src/sys/boot/i386/libi386/Attic/pxetramp.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 # ph33r this
 

@@ -25,6 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed98.h,v 1.1.2.1 2000/09/10 08:45:11 nyan Exp $
+ * $DragonFly: src/sys/dev/netif/ed/Attic/if_ed98.h,v 1.2 2003/06/17 04:28:24 dillon Exp $
  */
 
 /*

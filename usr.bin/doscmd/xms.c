@@ -24,10 +24,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.bin/doscmd/xms.c,v 1.6.2.1 2002/04/25 11:04:51 tg Exp $
+ * $DragonFly: src/usr.bin/doscmd/xms.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/doscmd/xms.c,v 1.6.2.1 2002/04/25 11:04:51 tg Exp $");
 
 /*
  * XMS memory manmagement 

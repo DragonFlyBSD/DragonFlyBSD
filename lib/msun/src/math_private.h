@@ -12,6 +12,7 @@
 /*
  * from: @(#)fdlibm.h 5.1 93/09/24
  * $FreeBSD: src/lib/msun/src/math_private.h,v 1.6 1999/08/28 00:06:43 peter Exp $
+ * $DragonFly: src/lib/msun/src/Attic/math_private.h,v 1.2 2003/06/17 04:26:53 dillon Exp $
  */
 
 #ifndef _MATH_PRIVATE_H_

@@ -29,11 +29,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)remcap.c	8.1 (Berkeley) 6/6/93
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)remcap.c	8.1 (Berkeley) 6/6/93";
-#endif /* not lint */
 
 /*
  * remcap - routines for dealing with the remote host data base

@@ -34,15 +34,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)fnmatch.c	8.2 (Berkeley) 4/16/94
+ * $NetBSD: fnmatch.c,v 1.11 1995/02/27 03:43:06 cgd Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)fnmatch.c	8.2 (Berkeley) 4/16/94";
-#else
-static char rcsid[] = "$NetBSD: fnmatch.c,v 1.11 1995/02/27 03:43:06 cgd Exp $";
-#endif
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * Function fnmatch() as specified in POSIX 1003.2-1992, section B.6.

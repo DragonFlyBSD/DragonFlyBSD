@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/passwd/local_passwd.c,v 1.24.2.3 2002/03/24 09:00:11 cjc Exp $
+ * $DragonFly: src/usr.bin/passwd/local_passwd.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ *
+ * @(#)local_passwd.c	8.3 (Berkeley) 4/2/94
  */
-
-#ifndef lint
-static const char sccsid[] = "@(#)local_passwd.c	8.3 (Berkeley) 4/2/94";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/time.h>

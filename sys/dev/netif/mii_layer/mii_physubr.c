@@ -35,6 +35,9 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/mii/mii_physubr.c,v 1.2.2.1 2000/12/12 19:29:14 wpaul Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 /*
@@ -58,11 +61,6 @@
 #include <dev/mii/miivar.h>
 
 #include "miibus_if.h"
-
-#if !defined(lint)
-static const char rcsid[] =
-  "$FreeBSD: src/sys/dev/mii/mii_physubr.c,v 1.2.2.1 2000/12/12 19:29:14 wpaul Exp $";
-#endif
 
 void	mii_phy_auto_timeout __P((void *));
 

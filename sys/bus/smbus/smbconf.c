@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/smbus/smbconf.c,v 1.9 1999/12/03 08:41:08 mdodd Exp $
+ * $DragonFly: src/sys/bus/smbus/smbconf.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  *
  */
 #include <sys/param.h>

@@ -1,5 +1,6 @@
 /*
  * $FreeBSD: src/sys/svr4/svr4_fuser.h,v 1.3 1999/08/28 00:51:16 peter Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fuser.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  *	Derived from:
  *	$NetBSD: svr4_fuser.h,v 1.4 1998/09/04 19:54:38 christos Exp $	 */
 

@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)apply.c	8.4 (Berkeley) 4/4/94
+ * $FreeBSD: src/usr.bin/apply/apply.c,v 1.8.2.3 2001/08/01 23:28:04 obrien Exp $
+ * $DragonFly: src/usr.bin/apply/apply.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)apply.c	8.4 (Berkeley) 4/4/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/apply/apply.c,v 1.8.2.3 2001/08/01 23:28:04 obrien Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 

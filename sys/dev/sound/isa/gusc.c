@@ -23,6 +23,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/isa/gusc.c,v 1.5.2.6 2002/04/22 15:49:30 cg Exp $
+ * $DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +48,7 @@
 #include <alpha/isa/isavar.h>
 #endif
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/isa/gusc.c,v 1.5.2.6 2002/04/22 15:49:30 cg Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
 
 #define LOGICALID_NOPNP 0
 #define LOGICALID_PCM   0x0000561e

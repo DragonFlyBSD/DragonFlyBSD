@@ -19,6 +19,7 @@ or implied warranty.
 
   */
 /* $FreeBSD: src/crypto/kerberosIV/lib/krb/recvauth.c,v 1.1.1.2.2.1 2003/02/13 21:34:36 nectar Exp $ */
+/* $DragonFly: src/crypto/kerberosIV/lib/krb/Attic/recvauth.c,v 1.2 2003/06/17 04:24:36 dillon Exp $ */
 
 #include "krb_locl.h"
 

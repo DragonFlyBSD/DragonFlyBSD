@@ -29,6 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor_reg.h,v 1.5.2.1 2000/08/03 01:09:11 peter Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor_reg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 #ifndef PCI_LATENCY_TIMER
 #define	PCI_LATENCY_TIMER		0x0c	/* pci timer register */

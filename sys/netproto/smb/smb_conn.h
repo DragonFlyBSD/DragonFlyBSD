@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_conn.h,v 1.1.2.3 2002/04/23 03:45:01 bp Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_conn.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 #ifndef _NETINET_IN_H_
 #include <netinet/in.h>

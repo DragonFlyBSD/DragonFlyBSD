@@ -17,6 +17,7 @@
  *   -p
  *
  * $FreeBSD: src/crypto/kerberosIV/kuser/kinit.c,v 1.5 1999/09/19 21:56:05 markm Exp $
+ * $DragonFly: src/crypto/kerberosIV/kuser/Attic/kinit.c,v 1.2 2003/06/17 04:24:36 dillon Exp $
  */
 
 #include "kuser_locl.h"

@@ -4,6 +4,7 @@
  * This file is in the public domain.
  *
  * $FreeBSD: src/lib/libc/gen/getvfsent.c,v 1.14.2.1 2001/03/05 09:19:38 obrien Exp $
+ * $DragonFly: src/lib/libc/gen/getvfsent.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
 
 #include <sys/param.h>

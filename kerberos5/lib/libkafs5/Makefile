@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberos5/lib/libkafs5/Makefile,v 1.2 2000/03/01 13:50:30 markm Exp $
+# $DragonFly: src/kerberos5/lib/libkafs5/Makefile,v 1.2 2003/06/17 04:26:17 dillon Exp $
 
 LIB=	kafs5
 CFLAGS+=-I${KRB5DIR}/lib/kafs \

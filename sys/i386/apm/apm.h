@@ -16,6 +16,7 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.h,v 1.1 1999/10/02 03:34:15 nsayer Exp $
+ * $DragonFly: src/sys/i386/apm/Attic/apm.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #define APM_NEVENTS 16

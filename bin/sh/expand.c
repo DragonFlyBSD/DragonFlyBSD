@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)expand.c	8.5 (Berkeley) 5/15/95
+ * $FreeBSD: src/bin/sh/expand.c,v 1.31.2.5 2003/01/17 07:44:01 tjr Exp $
+ * $DragonFly: src/bin/sh/expand.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)expand.c	8.5 (Berkeley) 5/15/95";
-#endif
-#endif /* not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/bin/sh/expand.c,v 1.31.2.5 2003/01/17 07:44:01 tjr Exp $");
 
 #include <sys/types.h>
 #include <sys/time.h>

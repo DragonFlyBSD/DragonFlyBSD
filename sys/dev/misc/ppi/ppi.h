@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppi.h,v 1.5 1999/12/29 04:35:43 peter Exp $
+ * $DragonFly: src/sys/dev/misc/ppi/ppi.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
  *
  */
 #ifndef __PPI_H

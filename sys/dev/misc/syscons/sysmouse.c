@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/sysmouse.c,v 1.2.2.2 2001/07/16 05:21:24 yokota Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
  */
 
 #include "opt_syscons.h"

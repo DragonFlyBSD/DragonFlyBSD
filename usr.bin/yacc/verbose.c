@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/verbose.c,v 1.6 1999/08/28 01:08:03 peter Exp $
+ * $DragonFly: src/usr.bin/yacc/verbose.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ *
+ * @(#)verbose.c	5.3 (Berkeley) 1/20/91
  */
-
-#ifndef lint
-static char const sccsid[] = "@(#)verbose.c	5.3 (Berkeley) 1/20/91";
-#endif /* not lint */
 
 #include <stdlib.h>
 #include "defs.h"

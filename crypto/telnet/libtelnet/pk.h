@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/crypto/telnet/libtelnet/pk.h,v 1.1.2.3 2002/04/13 10:59:07 markm Exp $
+ * $DragonFly: src/crypto/telnet/libtelnet/pk.h,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 /* header for the des routines that we will use */

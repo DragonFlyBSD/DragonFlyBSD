@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/datalink.h,v 1.12.2.2 2002/09/01 02:12:26 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/datalink.h,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #define DATALINK_CLOSED  (0)

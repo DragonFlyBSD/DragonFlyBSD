@@ -1,6 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/vector.s,v 1.32 1999/08/28 00:45:04 peter Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/vector.s,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /*

@@ -39,11 +39,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/isctype.c,v 1.7 2000/02/08 07:43:24 obrien Exp $
+ * $DragonFly: src/lib/libc/gen/isctype.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ *
+ * @(#)isctype.c	8.3 (Berkeley) 2/24/94
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)isctype.c	8.3 (Berkeley) 2/24/94";
-#endif /* LIBC_SCCS and not lint */
 
 #include <ctype.h>
 

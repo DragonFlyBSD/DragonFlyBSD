@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/ide_pci.c,v 1.42 2000/01/29 16:59:53 peter Exp $
+ * $DragonFly: src/sys/bus/pci/Attic/ide_pci.c,v 1.2 2003/06/17 04:28:56 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -25,6 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/sys/pciio.h,v 1.5 1999/12/08 17:44:04 ken Exp $
+ *	$DragonFly: src/sys/sys/pciio.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  *
  */
 

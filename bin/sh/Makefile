@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.4 (Berkeley) 5/5/95
 # $FreeBSD: src/bin/sh/Makefile,v 1.30.2.1 2001/12/15 10:05:18 knu Exp $
+# $DragonFly: src/bin/sh/Makefile,v 1.2 2003/06/17 04:22:50 dillon Exp $
 
 PROG=	sh
 SHSRCS=	alias.c arith.y arith_lex.l cd.c echo.c error.c eval.c exec.c expand.c \

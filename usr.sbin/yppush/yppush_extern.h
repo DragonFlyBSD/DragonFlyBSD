@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/yppush/yppush_extern.h,v 1.4.2.1 2002/02/15 00:46:59 des Exp $
+ * $DragonFly: src/usr.sbin/yppush/yppush_extern.h,v 1.2 2003/06/17 04:30:04 dillon Exp $
  */
 
 /* Privately defined error codes. */

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libpam/modules/pam_cleartext_pass_ok/pam_cleartext_pass_ok.c,v 1.2 1999/01/20 21:55:24 jdp Exp $
+ *	$DragonFly: src/lib/libpam/modules/pam_cleartext_pass_ok/Attic/pam_cleartext_pass_ok.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
 
 #include <stdio.h>

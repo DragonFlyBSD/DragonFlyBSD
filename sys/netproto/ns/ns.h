@@ -32,6 +32,7 @@
  *
  *	@(#)ns.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns.h,v 1.13.2.1 2002/12/01 14:03:09 sobomax Exp $
+ * $DragonFly: src/sys/netproto/ns/ns.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 #ifndef _NETNS_NS_H_

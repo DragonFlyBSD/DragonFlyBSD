@@ -32,6 +32,7 @@
  *
  *	@(#)resourcevar.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/resourcevar.h,v 1.16.2.1 2000/09/07 19:13:55 truckman Exp $
+ * $DragonFly: src/sys/sys/resourcevar.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef	_SYS_RESOURCEVAR_H_

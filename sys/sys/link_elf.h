@@ -28,6 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/link_elf.h,v 1.20.2.2 2003/02/20 20:42:46 kan Exp $
+ * $DragonFly: src/sys/sys/link_elf.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 /*

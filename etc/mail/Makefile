@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/etc/mail/Makefile,v 1.9.2.23 2003/02/12 03:57:52 gshapiro Exp $
+# $DragonFly: src/etc/mail/Makefile,v 1.2 2003/06/17 04:24:47 dillon Exp $
 #
 # This Makefile provides an easy way to generate the configuration
 # file and database maps for the sendmail(8) daemon.

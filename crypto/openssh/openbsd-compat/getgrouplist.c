@@ -29,15 +29,13 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $OpenBSD: getgrouplist.c,v 1.7 1997/08/19 19:13:27 deraadt Exp $
  */
 
 #include "includes.h"
 
 #ifndef HAVE_GETGROUPLIST
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char rcsid[] = "$OpenBSD: getgrouplist.c,v 1.7 1997/08/19 19:13:27 deraadt Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * get credential

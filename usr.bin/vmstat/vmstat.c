@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1980, 1986, 1991, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)vmstat.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/time.h>

@@ -18,6 +18,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/gdb/gdb/utils.c,v 1.1.1.2.2.1 2002/09/01 23:30:00 obrien Exp $ */
+/* $DragonFly: src/contrib/gdb/gdb/Attic/utils.c,v 1.2 2003/06/17 04:24:02 dillon Exp $ */
 
 #include "defs.h"
 #include <ctype.h>

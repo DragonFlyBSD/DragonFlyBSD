@@ -32,21 +32,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)ls.c	8.5 (Berkeley) 4/2/94
+ * $FreeBSD: src/bin/ls/ls.c,v 1.32.2.8 2002/11/17 10:27:34 tjr Exp $
+ * $DragonFly: src/bin/ls/ls.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1989, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#if 0
-#ifndef lint
-static char sccsid[] = "@(#)ls.c	8.5 (Berkeley) 4/2/94";
-#endif /* not lint */
-#endif
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/bin/ls/ls.c,v 1.32.2.8 2002/11/17 10:27:34 tjr Exp $");
 
 #include <sys/types.h>
 #include <sys/stat.h>

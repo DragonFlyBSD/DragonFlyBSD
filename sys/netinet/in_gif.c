@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/in_gif.c,v 1.5.2.11 2003/01/23 21:06:45 sam Exp $	*/
+/*	$DragonFly: src/sys/netinet/in_gif.c,v 1.2 2003/06/17 04:28:51 dillon Exp $	*/
 /*	$KAME: in_gif.c,v 1.54 2001/05/14 14:02:16 itojun Exp $	*/
 
 /*

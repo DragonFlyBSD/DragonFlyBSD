@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/wfd.c,v 1.35 2000/01/29 16:00:33 peter Exp $
+ * $DragonFly: src/sys/dev/disk/wfd/Attic/wfd.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /*

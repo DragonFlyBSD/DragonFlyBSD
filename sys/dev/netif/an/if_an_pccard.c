@@ -30,6 +30,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pccard.c,v 1.1.2.6 2003/02/01 03:25:12 ambrisko Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ *
+ * $FreeBSD: src/sys/dev/an/if_an_pccard.c,v 1.1.2.6 2003/02/01 03:25:12 ambrisko Exp $
  */
 
 /*
@@ -63,11 +66,6 @@
 #include <net/if_dl.h>
 #include <net/if_types.h>
 #include <net/if_media.h>
-
-#ifndef lint
-static const char rcsid[] =
- "$FreeBSD: src/sys/dev/an/if_an_pccard.c,v 1.1.2.6 2003/02/01 03:25:12 ambrisko Exp $";
-#endif
 
 #include <dev/an/if_aironet_ieee.h>
 #include <dev/an/if_anreg.h>

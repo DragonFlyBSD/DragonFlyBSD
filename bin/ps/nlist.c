@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)nlist.c	8.4 (Berkeley) 4/2/94
+ * $FreeBSD: src/bin/ps/nlist.c,v 1.12.6.2 2001/08/01 05:04:48 obrien Exp $
+ * $DragonFly: src/bin/ps/nlist.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)nlist.c	8.4 (Berkeley) 4/2/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/bin/ps/nlist.c,v 1.12.6.2 2001/08/01 05:04:48 obrien Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/sysctl.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/interp.c,v 1.22.2.5 2001/03/04 04:46:18 obrien Exp $
+ * $DragonFly: src/sys/boot/common/interp.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 /*
  * Simple commandline interpreter, toplevel and misc.

@@ -24,6 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_output.h,v 1.11 1999/08/28 00:41:09 peter Exp $
+ * $DragonFly: src/sys/ddb/db_output.h,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 
 #ifndef _DDB_DB_OUTPUT_H_

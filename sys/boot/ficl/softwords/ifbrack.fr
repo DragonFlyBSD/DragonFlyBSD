@@ -3,6 +3,7 @@
 \ ** Requires ficl 2.0 or greater...
 
 \ $FreeBSD: src/sys/boot/ficl/softwords/ifbrack.fr,v 1.1 1999/09/29 04:43:16 dcs Exp $
+\ $DragonFly: src/sys/boot/ficl/softwords/ifbrack.fr,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 hidden dup >search ficl-set-current
 

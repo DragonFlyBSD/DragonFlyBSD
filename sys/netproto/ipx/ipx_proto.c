@@ -34,6 +34,7 @@
  *	@(#)ipx_proto.c
  *
  * $FreeBSD: src/sys/netipx/ipx_proto.c,v 1.15 1999/08/28 00:49:41 peter Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_proto.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 #include "opt_ipx.h"

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)sleep.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/gen/sleep.c,v 1.28.2.1 2000/03/18 23:13:24 jasone Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/sleep.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)sleep.c	8.1 (Berkeley) 6/4/93";
-#endif
-static char rcsid[] =
-  "$FreeBSD: src/lib/libc/gen/sleep.c,v 1.28.2.1 2000/03/18 23:13:24 jasone Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <errno.h>
 #include <limits.h>

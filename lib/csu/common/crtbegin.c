@@ -23,6 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/csu/common/crtbegin.c,v 1.5.2.3 2002/01/28 19:03:45 obrien Exp $
+ * $DragonFly: src/lib/csu/common/Attic/crtbegin.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
 
 #include <sys/param.h>

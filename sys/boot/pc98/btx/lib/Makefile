@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/boot/pc98/btx/lib/Makefile,v 1.2.2.2 2002/12/01 08:31:57 nyan Exp $
+# $DragonFly: src/sys/boot/pc98/btx/lib/Attic/Makefile,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 OBJS=		btxcsu.o btxsys.o btxv86.o
 CLEANFILES+=	crt0.o ${OBJS}

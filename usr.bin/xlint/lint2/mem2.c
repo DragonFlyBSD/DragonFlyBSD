@@ -29,11 +29,9 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $NetBSD: mem2.c,v 1.3 1995/10/02 17:27:11 jpo Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$NetBSD: mem2.c,v 1.3 1995/10/02 17:27:11 jpo Exp $";
-#endif
 
 #include <sys/param.h>
 #include <sys/types.h>

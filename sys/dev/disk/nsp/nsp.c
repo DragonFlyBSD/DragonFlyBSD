@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nsp.c,v 1.1.2.6 2001/12/17 13:30:18 non Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.2 2003/06/17 04:28:28 dillon Exp $	*/
 /*	$NecBSD: nsp.c,v 1.21.12.6 2001/06/29 06:27:52 honda Exp $	*/
 /*	$NetBSD$	*/
 

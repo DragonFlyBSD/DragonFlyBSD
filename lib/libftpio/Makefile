@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/libftpio/Makefile,v 1.9.2.2 2001/04/25 10:04:30 ru Exp $
+# $DragonFly: src/lib/libftpio/Makefile,v 1.2 2003/06/17 04:26:49 dillon Exp $
 
 LIB=		ftpio
 SHLIB_MAJOR=	5

@@ -1,4 +1,5 @@
 # $FreeBSD: src/secure/lib/libssl/Makefile,v 1.4.2.8 2003/02/14 22:38:20 nectar Exp $
+# $DragonFly: src/secure/lib/libssl/Makefile,v 1.2 2003/06/17 04:27:48 dillon Exp $
 
 LIB=		ssl
 SHLIB_MAJOR=	3

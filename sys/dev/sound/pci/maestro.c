@@ -23,7 +23,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: maestro.c,v 1.12 2000/09/06 03:32:34 taku Exp $
+ * $Id: maestro.c,v 1.12 2000/09/06 03:32:34 taku Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/maestro.c,v 1.2.2.5 2002/04/22 15:49:32 cg Exp $
+ * $DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 /*
@@ -51,7 +53,7 @@
 
 #include <dev/sound/pci/maestro_reg.h>
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pci/maestro.c,v 1.2.2.5 2002/04/22 15:49:32 cg Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
 
 #define inline __inline
 

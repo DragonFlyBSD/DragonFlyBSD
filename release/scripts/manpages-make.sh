@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/release/scripts/manpages-make.sh,v 1.1.8.1 2002/07/25 09:33:17 ru Exp $
+# $DragonFly: src/release/scripts/Attic/manpages-make.sh,v 1.2 2003/06/17 04:27:21 dillon Exp $
 #
 
 # Move all the manpages out to their own dist, using the bin dist as a

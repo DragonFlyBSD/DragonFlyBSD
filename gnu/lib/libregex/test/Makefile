@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/lib/libregex/test/Makefile,v 1.6 1999/08/27 23:32:58 peter Exp $
+# $DragonFly: src/gnu/lib/libregex/test/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
 
 # Generated automatically from Makefile.in by configure.
 # Makefile for regex testing.

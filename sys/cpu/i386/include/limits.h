@@ -32,6 +32,7 @@
  *
  *	@(#)limits.h	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/i386/include/limits.h,v 1.14.2.2 2000/11/05 09:21:42 obrien Exp $
+ * $DragonFly: src/sys/cpu/i386/include/limits.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef _MACHINE_LIMITS_H_

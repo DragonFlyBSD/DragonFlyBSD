@@ -27,6 +27,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/test/join_leak_d.c,v 1.1.2.1 2001/06/22 21:44:27 jasone Exp $
+ * $DragonFly: src/lib/libc_r/test/join_leak_d.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  *
  * Test for leaked joined threads.
  */

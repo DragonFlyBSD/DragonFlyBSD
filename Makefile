@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
+# $DragonFly: src/Makefile,v 1.2 2003/06/17 04:21:10 dillon Exp $
 #
 # The user-driven targets are:
 #

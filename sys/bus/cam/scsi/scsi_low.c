@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.4 2001/12/17 13:30:20 non Exp $	*/
+/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.2 2003/06/17 04:28:19 dillon Exp $	*/
 /*	$NecBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $	*/
 /*	$NetBSD$	*/
 

@@ -2,6 +2,7 @@
  * ntp_proto.c - NTP version 4 protocol machinery
  *
  * $FreeBSD: src/contrib/ntp/ntpd/ntp_proto.c,v 1.3.2.1 2001/12/21 17:39:13 roberto Exp $
+ * $DragonFly: src/contrib/ntp/ntpd/Attic/ntp_proto.c,v 1.2 2003/06/17 04:24:04 dillon Exp $
  */
 #ifdef HAVE_CONFIG_H
 #include <config.h>

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cast.c,v 1.1.2.1 2002/11/21 23:34:23 sam Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cast.c,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
 /*      $OpenBSD: cast.c,v 1.2 2000/06/06 06:49:47 deraadt Exp $       */
 
 /*

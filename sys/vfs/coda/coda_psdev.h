@@ -28,6 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_psdev.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_psdev.h,v 1.2 1999/08/28 00:40:55 peter Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.h,v 1.2 2003/06/17 04:28:19 dillon Exp $
  * 
  */
 

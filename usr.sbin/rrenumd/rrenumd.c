@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rrenumd/rrenumd.c,v 1.1.2.4 2001/07/09 09:49:49 ume Exp $
+ * $DragonFly: src/usr.sbin/rrenumd/rrenumd.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
 
 #include <sys/param.h>

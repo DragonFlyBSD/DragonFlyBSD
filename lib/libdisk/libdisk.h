@@ -7,6 +7,7 @@
 * ----------------------------------------------------------------------------
 *
 * $FreeBSD: src/lib/libdisk/libdisk.h,v 1.32.2.8 2002/01/07 07:53:29 dillon Exp $
+* $DragonFly: src/lib/libdisk/Attic/libdisk.h,v 1.2 2003/06/17 04:26:49 dillon Exp $
 *
 */
 

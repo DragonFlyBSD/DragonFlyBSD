@@ -32,6 +32,7 @@
  *
  *	@(#)disklabel.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/i386/boot/dosboot/disklabe.h,v 1.8 1999/12/29 04:32:50 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/disklabe.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_

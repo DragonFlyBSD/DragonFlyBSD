@@ -1,5 +1,6 @@
 /*	$NetBSD: usbd.c,v 1.4 1998/12/09 00:57:19 augustss Exp $	*/
 /*	$FreeBSD: src/usr.sbin/usbd/usbd.c,v 1.10.2.6 2002/12/31 09:05:27 maxim Exp $	*/
+/*	$DragonFly: src/usr.sbin/usbd/usbd.c,v 1.2 2003/06/17 04:30:03 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.

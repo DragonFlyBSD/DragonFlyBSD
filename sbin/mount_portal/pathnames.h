@@ -37,6 +37,7 @@
  *	@(#)pathnames.h	8.1 (Berkeley) 6/5/93
  *
  * $FreeBSD: src/sbin/mount_portal/pathnames.h,v 1.5 2000/01/10 09:33:37 kris Exp $
+ * $DragonFly: src/sbin/mount_portal/pathnames.h,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
 
 #include <paths.h>

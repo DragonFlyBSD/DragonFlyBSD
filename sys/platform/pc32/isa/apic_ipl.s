@@ -23,6 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.s,v 1.27.2.2 2000/09/30 02:49:35 ps Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/apic_ipl.s,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 

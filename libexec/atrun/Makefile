@@ -1,4 +1,5 @@
 # $FreeBSD: src/libexec/atrun/Makefile,v 1.7.2.2 2001/04/25 10:40:47 ru Exp $
+# $DragonFly: src/libexec/atrun/Makefile,v 1.2 2003/06/17 04:27:07 dillon Exp $
 
 MAINSRC=${.CURDIR}/../../usr.bin/at
 

@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_connect.c,v 1.10.2.5 2003/01/17 07:56:43 ru Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_connect.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 #include <errno.h>
 #include <sys/types.h>

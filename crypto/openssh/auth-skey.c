@@ -24,6 +24,7 @@
 #include "includes.h"
 RCSID("$OpenBSD: auth-skey.c,v 1.20 2002/06/30 21:59:45 deraadt Exp $");
 RCSID("$FreeBSD: src/crypto/openssh/auth-skey.c,v 1.1.1.1.2.7 2003/02/03 17:31:06 des Exp $");
+RCSID("$DragonFly: src/crypto/openssh/Attic/auth-skey.c,v 1.2 2003/06/17 04:24:36 dillon Exp $");
 
 #ifdef SKEY
 

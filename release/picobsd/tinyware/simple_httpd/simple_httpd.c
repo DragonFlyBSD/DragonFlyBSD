@@ -28,6 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/release/picobsd/tinyware/simple_httpd/simple_httpd.c,v 1.6 1999/08/28 01:33:59 peter Exp $
+ * $DragonFly: src/release/picobsd/tinyware/simple_httpd/Attic/simple_httpd.c,v 1.2 2003/06/17 04:27:20 dillon Exp $
  */
 
 #include <sys/stat.h>

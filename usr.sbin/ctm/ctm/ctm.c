@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/usr.sbin/ctm/ctm/ctm.c,v 1.19.2.1 2000/08/23 08:51:25 kris Exp $
+ * $DragonFly: src/usr.sbin/ctm/ctm/Attic/ctm.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  *
  * This is the client program of 'CTM'.  It will apply a CTM-patch to a
  * collection of files.

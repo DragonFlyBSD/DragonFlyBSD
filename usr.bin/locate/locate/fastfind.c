@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/locate/locate/fastfind.c,v 1.12.2.1 2001/02/22 13:28:52 wosch Exp $
+ * $DragonFly: src/usr.bin/locate/locate/fastfind.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
 
 

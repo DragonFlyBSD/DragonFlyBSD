@@ -37,6 +37,7 @@
 #include "includes.h"
 RCSID("$OpenBSD: authfd.c,v 1.57 2002/09/11 18:27:26 stevesk Exp $");
 RCSID("$FreeBSD: src/crypto/openssh/authfd.c,v 1.2.2.7 2003/02/03 17:31:06 des Exp $");
+RCSID("$DragonFly: src/crypto/openssh/Attic/authfd.c,v 1.2 2003/06/17 04:24:36 dillon Exp $");
 
 #include <openssl/evp.h>
 

@@ -42,6 +42,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:06:31 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_hdr.h,v 1.36.2.3 2001/08/06 15:30:21 joerg Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_hdr.h,v 1.2 2003/06/17 04:28:38 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 

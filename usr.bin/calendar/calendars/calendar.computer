@@ -2,6 +2,7 @@
  * Computer
  *
  * $FreeBSD: src/usr.bin/calendar/calendars/calendar.computer,v 1.7.2.1 2001/07/19 06:08:38 dd Exp $
+ * $DragonFly: src/usr.bin/calendar/calendars/calendar.computer,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
 
 #ifndef _calendar_computer_

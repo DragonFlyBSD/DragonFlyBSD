@@ -39,6 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 /*

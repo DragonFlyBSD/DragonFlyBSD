@@ -9,6 +9,7 @@
  */
 
 /* $FreeBSD: src/gnu/usr.bin/gzip/tailor.h,v 1.7 1999/08/27 23:35:53 peter Exp $ */
+/* $DragonFly: src/gnu/usr.bin/gzip/Attic/tailor.h,v 1.2 2003/06/17 04:25:46 dillon Exp $ */
 
 #if defined(__MSDOS__) && !defined(MSDOS)
 #  define MSDOS

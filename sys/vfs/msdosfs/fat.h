@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/fat.h,v 1.9 1999/12/29 04:54:53 peter Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/fat.h,v 1.2 2003/06/17 04:28:47 dillon Exp $ */
 /*	$NetBSD: fat.h,v 1.12 1997/11/17 15:36:36 ws Exp $	*/
 
 /*-

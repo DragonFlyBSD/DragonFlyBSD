@@ -35,6 +35,9 @@ Report problems and direct all questions to:
 */
 
 /*
+ * $FreeBSD: src/gnu/usr.bin/rcs/lib/rcsedit.c,v 1.11.2.1 2001/05/12 10:29:42 kris Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/lib/rcsedit.c,v 1.2 2003/06/17 04:25:47 dillon Exp $
+ *
  * Revision 5.19  1995/06/16 06:19:24  eggert
  * Update FSF address.
  *
@@ -201,7 +204,7 @@ Report problems and direct all questions to:
 
 #include "rcsbase.h"
 
-libId(editId, "$FreeBSD: src/gnu/usr.bin/rcs/lib/rcsedit.c,v 1.11.2.1 2001/05/12 10:29:42 kris Exp $")
+libId(editId, "$DragonFly: src/gnu/usr.bin/rcs/lib/rcsedit.c,v 1.2 2003/06/17 04:25:47 dillon Exp $")
 
 static void editEndsPrematurely P((void)) exiting;
 static void editLineNumberOverflow P((void)) exiting;

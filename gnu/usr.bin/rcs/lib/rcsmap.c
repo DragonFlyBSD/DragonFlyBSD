@@ -26,10 +26,14 @@ Report problems and direct all questions to:
     rcs-bugs@cs.purdue.edu
 
 */
+/*
+ * $FreeBSD: src/gnu/usr.bin/rcs/lib/rcsmap.c,v 1.5 1999/08/27 23:36:47 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/lib/rcsmap.c,v 1.2 2003/06/17 04:25:47 dillon Exp $
+ */
 
 #include "rcsbase.h"
 
-libId(mapId, "$FreeBSD: src/gnu/usr.bin/rcs/lib/rcsmap.c,v 1.5 1999/08/27 23:36:47 peter Exp $")
+libId(mapId, "$DragonFly: src/gnu/usr.bin/rcs/lib/rcsmap.c,v 1.2 2003/06/17 04:25:47 dillon Exp $")
 
 /* map of character types */
 /* ISO 8859/1 (Latin-1) */

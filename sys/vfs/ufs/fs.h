@@ -32,6 +32,7 @@
  *
  *	@(#)fs.h	8.13 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ffs/fs.h,v 1.14.2.3 2001/09/21 19:15:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/fs.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _UFS_FFS_FS_H_

@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/ld/Makefile,v 1.30.2.1 2001/04/25 12:03:51 ru Exp $
+# $DragonFly: src/gnu/usr.bin/ld/Attic/Makefile,v 1.2 2003/06/17 04:25:46 dillon Exp $
 #
 
 RTLD=	${.CURDIR}/../../../libexec/rtld-aout

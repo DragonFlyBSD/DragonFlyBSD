@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/yp_mkdb/Makefile,v 1.5.2.1 2001/04/25 12:11:13 ru Exp $
+# $DragonFly: src/usr.sbin/yp_mkdb/Makefile,v 1.2 2003/06/17 04:30:04 dillon Exp $
 
 PROG=	yp_mkdb
 SRCS=	yp_mkdb.c yp_dblookup.c yp_dbwrite.c

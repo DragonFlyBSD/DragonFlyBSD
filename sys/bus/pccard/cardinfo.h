@@ -29,6 +29,7 @@
  */
 
 /* $FreeBSD: src/sys/pccard/cardinfo.h,v 1.16.2.6 2002/09/22 20:26:58 imp Exp $ */
+/* $DragonFly: src/sys/bus/pccard/Attic/cardinfo.h,v 1.2 2003/06/17 04:28:55 dillon Exp $ */
 
 #ifndef	_PCCARD_CARDINFO_H_
 #define	_PCCARD_CARDINFO_H_

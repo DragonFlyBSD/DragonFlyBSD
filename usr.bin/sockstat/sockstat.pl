@@ -27,6 +27,7 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # $FreeBSD: src/usr.bin/sockstat/sockstat.pl,v 1.6.2.6 2003/05/05 06:44:26 murray Exp $
+# $DragonFly: src/usr.bin/sockstat/Attic/sockstat.pl,v 1.2 2003/06/17 04:29:31 dillon Exp $
 #
 
 use strict;

@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 9/21/96
 # $FreeBSD: src/usr.sbin/mailstats/Makefile,v 1.1.6.6 2002/03/25 21:31:43 gshapiro Exp $
+# $DragonFly: src/usr.sbin/mailstats/Makefile,v 1.2 2003/06/17 04:29:57 dillon Exp $
 
 MAINTAINER=	gshapiro@FreeBSD.org
 

@@ -29,6 +29,7 @@
  * confusing and/or plain wrong in that context.
  *
  * $FreeBSD: src/sys/kern/kern_ntptime.c,v 1.32.2.2 2001/04/22 11:19:46 jhay Exp $
+ * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include "opt_ntp.h"

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)io.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/talk/io.c,v 1.9.2.2 2001/10/15 13:42:07 dd Exp $
+ * $DragonFly: src/usr.bin/talk/io.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)io.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/talk/io.c,v 1.9.2.2 2001/10/15 13:42:07 dd Exp $";
-#endif /* not lint */
 
 /*
  * This file contains the I/O handling and the exchange of

@@ -32,6 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
+ * $DragonFly: src/sys/sys/disklabel.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_

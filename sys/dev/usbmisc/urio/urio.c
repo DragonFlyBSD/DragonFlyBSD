@@ -29,6 +29,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/usb/urio.c,v 1.11.2.4 2002/11/06 14:41:01 joe Exp $ */
+/* $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.2 2003/06/17 04:28:32 dillon Exp $ */
 
 /*
  * 2000/3/24  added NetBSD/OpenBSD support (from Alex Nemirovsky)

@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 /*

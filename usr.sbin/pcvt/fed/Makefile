@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/pcvt/fed/Makefile,v 1.5.6.2 2002/08/07 16:32:02 ru Exp $
+# $DragonFly: src/usr.sbin/pcvt/fed/Attic/Makefile,v 1.2 2003/06/17 04:29:59 dillon Exp $
 
 .if !exists(${.CURDIR}/../Makefile.inc)
 error:

@@ -37,6 +37,7 @@
  *
  * $Id: vinumutil.c,v 1.14 1999/12/30 07:04:02 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumutil.c,v 1.15 2000/02/29 06:16:44 grog Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumutil.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 /* This file contains utility routines used both in kernel and user context */

@@ -29,19 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)chpass.c	8.4 (Berkeley) 4/2/94
+ * $FreeBSD: src/usr.bin/chpass/chpass.c,v 1.16.2.4 2002/08/11 14:16:42 dwmalone Exp $
+ * $DragonFly: src/usr.bin/chpass/chpass.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1988, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static const char sccsid[] = "From: @(#)chpass.c	8.4 (Berkeley) 4/2/94";
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/chpass/chpass.c,v 1.16.2.4 2002/08/11 14:16:42 dwmalone Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

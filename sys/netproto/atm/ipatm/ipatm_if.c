@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_if.c,v 1.4 2000/01/17 20:49:43 mks Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_if.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -39,11 +39,6 @@
 
 #include <netatm/ipatm/ipatm_var.h>
 #include <netatm/ipatm/ipatm_serv.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_if.c,v 1.4 2000/01/17 20:49:43 mks Exp $");
-#endif
-
 
 /*
  * Local functions

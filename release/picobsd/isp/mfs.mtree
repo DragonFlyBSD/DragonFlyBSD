@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/release/picobsd/isp/mfs.mtree,v 1.2.2.2 2001/02/20 00:45:51 luigi Exp $
+# $DragonFly: src/release/picobsd/isp/Attic/mfs.mtree,v 1.2 2003/06/17 04:27:20 dillon Exp $
 #
 /set type=dir uname=root gname=wheel mode=0755
 .              

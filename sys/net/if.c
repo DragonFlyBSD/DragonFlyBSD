@@ -32,6 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.85.2.23 2003/04/15 18:11:19 fjoe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
  */
 
 #include "opt_compat.h"

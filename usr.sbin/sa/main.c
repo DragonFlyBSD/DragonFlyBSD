@@ -26,18 +26,11 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1994 Christopher G. Demetriou All rights reserved.
+ * $FreeBSD: src/usr.sbin/sa/main.c,v 1.8.2.2 2001/07/19 05:20:49 kris Exp $
+ * $DragonFly: src/usr.sbin/sa/main.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1994 Christopher G. Demetriou\n\
- All rights reserved.\n";
-#endif
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/sa/main.c,v 1.8.2.2 2001/07/19 05:20:49 kris Exp $";
-#endif /* not lint */
 
 /*
  * sa:	system accounting

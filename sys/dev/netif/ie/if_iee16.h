@@ -29,6 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_iee16.h,v 1.1.10.1 2000/08/02 22:36:29 peter Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_iee16.h,v 1.2 2003/06/17 04:28:27 dillon Exp $
  */
 
 /*

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/games/random/randomize_fd.h,v 1.2.2.1 2003/02/15 10:34:35 seanc Exp $
+ * $DragonFly: src/games/random/randomize_fd.h,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
 
 #ifndef __RANDOMIZE_FD__

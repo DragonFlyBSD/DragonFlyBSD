@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipip.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$OpenBSD: ip_ipip.c,v 1.25 2002/06/10 18:04:55 itojun Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),

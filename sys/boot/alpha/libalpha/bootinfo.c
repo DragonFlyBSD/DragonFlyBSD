@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/alpha/libalpha/bootinfo.c,v 1.9.2.1 2001/03/04 05:20:26 obrien Exp $
+ * $DragonFly: src/sys/boot/alpha/libalpha/Attic/bootinfo.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 
 #include <stand.h>

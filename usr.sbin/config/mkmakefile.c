@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)mkmakefile.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.sbin/config/mkmakefile.c,v 1.51.2.3 2001/01/23 00:09:32 peter Exp $
+ * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)mkmakefile.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/config/mkmakefile.c,v 1.51.2.3 2001/01/23 00:09:32 peter Exp $";
-#endif /* not lint */
 
 /*
  * Build the makefile for the system, from

@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1988, 1989, 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)rshd.c	8.2 (Berkeley) 4/6/94
+ * $FreeBSD: src/libexec/rshd/rshd.c,v 1.30.2.5 2002/05/14 22:27:21 des Exp $
+ * $DragonFly: src/libexec/rshd/rshd.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1988, 1989, 1992, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)rshd.c	8.2 (Berkeley) 4/6/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/libexec/rshd/rshd.c,v 1.30.2.5 2002/05/14 22:27:21 des Exp $";
-#endif /* not lint */
 
 /*
  * remote shell server:

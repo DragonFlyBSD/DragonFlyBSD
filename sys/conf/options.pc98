@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/conf/options.pc98,v 1.103.2.17 2003/03/14 21:22:35 jhb Exp $
+# $DragonFly: src/sys/conf/Attic/options.pc98,v 1.2 2003/06/17 04:28:20 dillon Exp $
 
 DISABLE_PSE
 IDE_DELAY

@@ -31,6 +31,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)strsep.c	8.1 (Berkeley) 6/4/93
+ * $OpenBSD: strsep.c,v 1.3 1997/08/20 04:28:14 millert Exp $
  */
 
 #include "includes.h"
@@ -39,14 +42,6 @@
 
 #include <string.h>
 #include <stdio.h>
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)strsep.c	8.1 (Berkeley) 6/4/93";
-#else
-static char *rcsid = "$OpenBSD: strsep.c,v 1.3 1997/08/20 04:28:14 millert Exp $";
-#endif
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * Get next token from string *stringp, where tokens are possibly-empty

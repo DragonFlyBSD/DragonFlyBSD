@@ -38,6 +38,7 @@
  *
  *	@(#)ffs_balloc.c	8.4 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_balloc.c,v 1.9.2.1 2000/08/03 00:52:57 peter Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_balloc.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 #include <sys/param.h>

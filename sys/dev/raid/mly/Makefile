@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/mly/Makefile,v 1.1.2.1 2000/10/27 10:07:02 msmith Exp $
+# $DragonFly: src/sys/dev/raid/mly/Makefile,v 1.2 2003/06/17 04:28:45 dillon Exp $
 
 .PATH:		${.CURDIR}/../../dev/mly
 KMOD		=  mly

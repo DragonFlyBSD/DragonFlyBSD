@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/periodic/daily/500.queuerun,v 1.1.2.3 2002/04/15 01:56:15 gshapiro Exp $
+# $DragonFly: src/etc/periodic/daily/500.queuerun,v 1.2 2003/06/17 04:24:48 dillon Exp $
 #
 
 # If there is a global system configuration file, suck it in.

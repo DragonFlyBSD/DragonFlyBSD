@@ -1,4 +1,5 @@
 /* $FreeBSD: src/release/sysinstall/dist.h,v 1.48.2.3 2001/03/22 01:43:46 ps Exp $  */
+/* $DragonFly: src/release/sysinstall/Attic/dist.h,v 1.2 2003/06/17 04:27:21 dillon Exp $  */
 
 #ifndef _DIST_H_INCLUDE
 #define _DIST_H_INCLUDE

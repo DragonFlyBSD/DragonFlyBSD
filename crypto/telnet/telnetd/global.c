@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)global.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/crypto/telnet/telnetd/global.c,v 1.4 1999/08/28 01:26:15 peter Exp $
+ * $DragonFly: src/crypto/telnet/telnetd/global.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)global.c	8.1 (Berkeley) 6/4/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/crypto/telnet/telnetd/global.c,v 1.4 1999/08/28 01:26:15 peter Exp $";
-#endif /* not lint */
 
 /*
  * Allocate global variables.  We do this

@@ -29,16 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)krb4encpwd.c	8.3 (Berkeley) 5/30/95
+ * $FreeBSD: src/crypto/telnet/libtelnet/krb4encpwd.c,v 1.3.2.1 2002/04/13 10:59:07 markm Exp $
+ * $DragonFly: src/crypto/telnet/libtelnet/krb4encpwd.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-
-__FBSDID("$FreeBSD: src/crypto/telnet/libtelnet/krb4encpwd.c,v 1.3.2.1 2002/04/13 10:59:07 markm Exp $");
-
-#ifndef lint
-static char sccsid[] = "@(#)krb4encpwd.c	8.3 (Berkeley) 5/30/95";
-#endif /* not lint */
-
 
 #ifdef	KRB4_ENCPWD
 /*

@@ -15,11 +15,10 @@
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * $FreeBSD: src/usr.sbin/pppd/options.c,v 1.20.2.2 2002/08/31 18:16:01 dwmalone Exp $
+ * $DragonFly: src/usr.sbin/pppd/options.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/usr.sbin/pppd/options.c,v 1.20.2.2 2002/08/31 18:16:01 dwmalone Exp $";
-#endif
 
 #include <ctype.h>
 #include <stdio.h>

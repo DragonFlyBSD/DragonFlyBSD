@@ -42,6 +42,7 @@
  *
  *	@(#)ipc.h	8.4 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/ipc.h,v 1.15 1999/12/29 04:24:43 peter Exp $
+ * $DragonFly: src/sys/sys/ipc.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 /*

@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberos5/libexec/hprop/Makefile,v 1.3.2.3 2002/07/25 09:33:14 ru Exp $
+# $DragonFly: src/kerberos5/libexec/hprop/Makefile,v 1.2 2003/06/17 04:26:17 dillon Exp $
 
 PROG=		hprop
 SRCS=		hprop.c mit_dump.c v4_dump.c hprop.h kadb.h hdb_err.h

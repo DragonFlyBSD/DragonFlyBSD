@@ -22,12 +22,10 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/btxld/btxld.c,v 1.4 2000/01/04 14:10:36 marcel Exp $
+ * $DragonFly: src/usr.sbin/btxld/btxld.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/btxld/btxld.c,v 1.4 2000/01/04 14:10:36 marcel Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

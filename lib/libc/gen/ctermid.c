@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/lib/libc/gen/ctermid.c,v 1.2 1999/11/28 23:28:49 wes Exp $
+ * $DragonFly: src/lib/libc/gen/ctermid.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)ctermid.c	8.1 (Berkeley) 6/4/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)ctermid.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <stdio.h>
 #include <paths.h>

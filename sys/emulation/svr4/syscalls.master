@@ -1,5 +1,6 @@
- $FreeBSD: src/sys/svr4/syscalls.master,v 1.6.2.2 2001/10/05 07:34:37 peter Exp $
-;	from: @(#)syscalls.master	8.1 (Berkeley) 7/19/93
+ $DragonFly: src/sys/emulation/svr4/Attic/syscalls.master,v 1.2 2003/06/17 04:28:58 dillon Exp $
+; from: @(#)syscalls.master	8.1 (Berkeley) 7/19/93
+; $FreeBSD: src/sys/svr4/syscalls.master,v 1.6.2.2 2001/10/05 07:34:37 peter Exp $
 ;
 ; System call name/number master file (or rather, slave, from SVR4).
 ; Processed to create svr4_sysent.c, svr4_syscalls.c and svr4_syscall.h.

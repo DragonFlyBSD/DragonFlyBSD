@@ -4,6 +4,7 @@
  */
 
 /* @(#) $FreeBSD: src/lib/libz/zconf.h,v 1.6.2.1 2003/02/01 13:33:12 sobomax Exp $ */
+/* @(#) $DragonFly: src/lib/libz/Attic/zconf.h,v 1.2 2003/06/17 04:26:52 dillon Exp $ */
 
 #ifndef _ZCONF_H
 #define _ZCONF_H

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libstand/ext2fs.c,v 1.1.2.2 2001/03/05 06:26:07 kris Exp $
+ *	$DragonFly: src/lib/libstand/ext2fs.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 /*-
  * Copyright (c) 1993

@@ -13,16 +13,15 @@
  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
  * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
  * SOFTWARE.
+ *
+ * $FreeBSD: src/lib/libc/net/res_mkupdate.c,v 1.2.2.1 2001/03/05 10:47:11 obrien Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/res_mkupdate.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 
 /*
  * Based on the Dynamic DNS reference implementation by Viraj Bais
  * <viraj_bais@ccm.fm.intel.com>
  */
-
-#if !defined(lint) && !defined(SABER)
-static char rcsid[] = "$FreeBSD: src/lib/libc/net/res_mkupdate.c,v 1.2.2.1 2001/03/05 10:47:11 obrien Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/param.h>

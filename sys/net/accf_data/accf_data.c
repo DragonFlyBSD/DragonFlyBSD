@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/netinet/accf_data.c,v 1.1.2.2 2000/09/20 21:34:13 ps Exp $
+ *	$DragonFly: src/sys/net/accf_data/accf_data.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #define ACCEPT_FILTER_MOD

@@ -32,6 +32,7 @@
  *
  *	@(#)extern.h	8.3 (Berkeley) 4/16/94
  *	$FreeBSD: src/usr.bin/find/extern.h,v 1.9.2.4 2001/05/06 09:53:22 phk Exp $
+ *	$DragonFly: src/usr.bin/find/extern.h,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
 
 #include <sys/cdefs.h>

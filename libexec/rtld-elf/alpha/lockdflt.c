@@ -23,6 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/alpha/lockdflt.c,v 1.5.2.3 2002/07/11 23:52:27 jdp Exp $
+ * $DragonFly: src/libexec/rtld-elf/alpha/Attic/lockdflt.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
 
 /*

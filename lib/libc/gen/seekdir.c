@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/seekdir.c,v 1.2.8.1 2001/03/05 09:52:13 obrien Exp $
+ * $DragonFly: src/lib/libc/gen/seekdir.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)seekdir.c	8.1 (Berkeley) 6/4/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)seekdir.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <dirent.h>

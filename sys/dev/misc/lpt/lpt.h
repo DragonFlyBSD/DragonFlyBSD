@@ -35,6 +35,7 @@
  *	From Id: nlpt.h,v 1.3 1999/01/10 12:04:54 nsouch Exp
  *
  * $FreeBSD: src/sys/dev/ppbus/lpt.h,v 1.4 1999/08/28 00:42:23 peter Exp $
+ * $DragonFly: src/sys/dev/misc/lpt/lpt.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 /*

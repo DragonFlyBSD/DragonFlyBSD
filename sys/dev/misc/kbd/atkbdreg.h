@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbdreg.h,v 1.5.2.1 2000/03/31 12:51:57 yokota Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbdreg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 #ifndef _DEV_KBD_ATKBDREG_H_

@@ -1,4 +1,5 @@
 $FreeBSD: src/sys/netgraph/NOTES,v 1.1 1999/10/21 09:05:51 julian Exp $
+$DragonFly: src/sys/netgraph/NOTES,v 1.2 2003/06/17 04:28:49 dillon Exp $
 Development ideas..
 
 Archie's suggestions... :-)

@@ -26,6 +26,7 @@
  *	from: Mach, Revision 2.2  92/04/04  11:36:34  rpd
  *	fromL Id: sys.c,v 1.21 1997/06/09 05:10:56 bde Exp
  * $FreeBSD: src/sys/boot/alpha/boot1/sys.c,v 1.4.2.2 2002/01/19 02:16:09 iedowse Exp $
+ * $DragonFly: src/sys/boot/alpha/boot1/Attic/sys.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 
 #include <string.h>

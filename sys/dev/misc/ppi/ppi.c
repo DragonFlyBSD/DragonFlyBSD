@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppi.c,v 1.21.2.3 2000/08/07 18:24:43 peter Exp $
+ * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  *
  */
 #include "opt_ppb_1284.h"

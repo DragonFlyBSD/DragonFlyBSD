@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/snc/if_snc_pccard.c,v 1.1.2.1 2000/10/21 03:30:03 nyan Exp $
+ * $DragonFly: src/sys/dev/netif/snc/Attic/if_snc_pccard.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 /*

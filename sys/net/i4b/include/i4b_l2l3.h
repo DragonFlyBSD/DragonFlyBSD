@@ -30,6 +30,7 @@
  *	$Id: i4b_l2l3.h,v 1.8 2000/06/02 16:14:35 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/include/i4b_l2l3.h,v 1.6.2.1 2001/08/10 14:08:36 obrien Exp $
+ * $DragonFly: src/sys/net/i4b/include/i4b_l2l3.h,v 1.2 2003/06/17 04:28:39 dillon Exp $
  *
  *	last edit-date: [Fri Jun  2 14:33:34 2000]
  *

@@ -19,12 +19,10 @@
  *
  *	Van Jacobson (van@ee.lbl.gov), Dec 31, 1989:
  *	- Initial distribution.
+ *
+ * $FreeBSD: src/usr.sbin/slstat/slstat.c,v 1.14 1999/08/28 01:20:00 peter Exp $
+ * $DragonFly: src/usr.sbin/slstat/slstat.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/slstat/slstat.c,v 1.14 1999/08/28 01:20:00 peter Exp $";
-#endif
 
 #include <sys/param.h>
 #include <sys/mbuf.h>

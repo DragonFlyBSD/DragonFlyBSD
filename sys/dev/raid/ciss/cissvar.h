@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/cissvar.h,v 1.3.2.2 2003/02/06 21:42:59 ps Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/cissvar.h,v 1.2 2003/06/17 04:28:23 dillon Exp $
  */
 
 /*

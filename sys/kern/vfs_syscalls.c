@@ -37,6 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 /* For 4.3 integer FS ID compatibility */

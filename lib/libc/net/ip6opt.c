@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/ip6opt.c,v 1.1 1999/12/16 18:32:01 shin Exp $
+ * $DragonFly: src/lib/libc/net/ip6opt.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 
 #include <sys/param.h>

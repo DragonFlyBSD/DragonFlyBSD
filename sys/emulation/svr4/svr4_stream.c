@@ -28,6 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stream.c,v 1.12.2.2 2000/11/26 04:42:27 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /*

@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */

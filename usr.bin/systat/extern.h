@@ -32,6 +32,7 @@
  *
  *      @(#)extern.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/extern.h,v 1.7.6.1 2001/07/04 22:54:14 kris Exp $
+ * $DragonFly: src/usr.bin/systat/extern.h,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
 
 #include <sys/cdefs.h>

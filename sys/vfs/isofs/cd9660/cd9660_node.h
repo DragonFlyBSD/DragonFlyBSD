@@ -37,6 +37,7 @@
  *
  *	@(#)cd9660_node.h	8.6 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.h,v 1.20 1999/12/29 04:54:37 peter Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.h,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 /*

@@ -20,6 +20,7 @@
    or (US mail) as Mike Haertel c/o Free Software Foundation. */
 
 /* $FreeBSD: src/gnu/usr.bin/sort/sort.c,v 1.15.2.4 2002/04/17 11:41:42 ache Exp $ */
+/* $DragonFly: src/gnu/usr.bin/sort/sort.c,v 1.2 2003/06/17 04:25:49 dillon Exp $ */
 
 #include <config.h>
 

@@ -35,6 +35,7 @@
  *
  *	from: @(#)psl.h	5.2 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/psl.h,v 1.10.2.1 2001/11/22 08:53:35 sobomax Exp $
+ * $DragonFly: src/sys/cpu/i386/include/psl.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 #ifndef _MACHINE_PSL_H_

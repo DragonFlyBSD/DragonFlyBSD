@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberosIV/libexec/telnetd/Makefile,v 1.7.2.4 2002/04/13 11:00:51 markm Exp $
+# $DragonFly: src/kerberosIV/libexec/telnetd/Attic/Makefile,v 1.2 2003/06/17 04:26:25 dillon Exp $
 
 # Do not define -DKLUDGELINEMODE, as it does not interact well with many
 # telnet implementations.

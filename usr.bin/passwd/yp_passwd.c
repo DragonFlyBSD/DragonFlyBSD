@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/passwd/yp_passwd.c,v 1.15.6.1 2002/02/15 00:46:56 des Exp $
+ * $DragonFly: src/usr.bin/passwd/yp_passwd.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
 
 #ifdef YP

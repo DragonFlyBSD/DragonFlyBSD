@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.bin/rpcgen/Makefile,v 1.5.6.1 2001/04/25 11:29:34 ru Exp $
+# $DragonFly: src/usr.bin/rpcgen/Makefile,v 1.2 2003/06/17 04:29:31 dillon Exp $
 
 PROG=	rpcgen
 SRCS=	rpc_main.c  rpc_clntout.c rpc_cout.c rpc_hout.c rpc_parse.c \

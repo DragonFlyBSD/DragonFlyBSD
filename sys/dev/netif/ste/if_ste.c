@@ -30,6 +30,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ *
+ * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
  */
 
 #include <sys/param.h>
@@ -71,11 +74,6 @@
 #define STE_USEIOSPACE
 
 #include <pci/if_stereg.h>
-
-#if !defined(lint)
-static const char rcsid[] =
-  "$FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $";
-#endif
 
 /*
  * Various supported device vendors/types and their names.

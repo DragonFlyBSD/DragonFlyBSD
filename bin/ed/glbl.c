@@ -24,16 +24,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)glob.c,v 1.1 1994/02/01 00:34:40 alm Exp
+ * $FreeBSD: src/bin/ed/glbl.c,v 1.9.2.1 2001/01/23 14:38:31 asmodai Exp $
+ * $DragonFly: src/bin/ed/glbl.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char * const rcsid = "@(#)glob.c,v 1.1 1994/02/01 00:34:40 alm Exp";
-#else
-static char * const rcsid =
-  "$FreeBSD: src/bin/ed/glbl.c,v 1.9.2.1 2001/01/23 14:38:31 asmodai Exp $";
-#endif
-#endif /* not lint */
 
 #include <sys/types.h>
 

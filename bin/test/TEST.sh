@@ -27,6 +27,7 @@
 # TEST.sh - check if test(1) or builtin test works
 #
 # $FreeBSD: src/bin/test/TEST.sh,v 1.6.2.1 2000/07/01 03:13:10 ps Exp $
+# $DragonFly: src/bin/test/TEST.sh,v 1.2 2003/06/17 04:22:50 dillon Exp $
 
 # force a specified test program, e.g. `env test=/bin/test sh TEST.sh'
 : ${test=test}		

@@ -35,6 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cpu.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef _MACHINE_CPU_H_

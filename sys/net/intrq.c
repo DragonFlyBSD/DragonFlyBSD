@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/intrq.c,v 1.3 2000/01/29 16:13:08 peter Exp $
+ * $DragonFly: src/sys/net/Attic/intrq.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 #include <sys/param.h>

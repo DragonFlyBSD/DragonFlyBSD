@@ -33,6 +33,7 @@
  *      $Id: alias.c,v 1.8 1999/12/13 21:25:24 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/alias.c,v 1.6.2.1 2001/08/01 17:45:03 obrien Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/alias.c,v 1.2 2003/06/17 04:29:54 dillon Exp $
  *
  *      last edit-date: [Mon Dec 13 21:45:19 1999]
  *

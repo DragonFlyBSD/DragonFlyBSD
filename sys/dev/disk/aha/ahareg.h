@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/ahareg.h,v 1.8.2.1 2000/08/02 22:24:40 peter Exp $
+ * $DragonFly: src/sys/dev/disk/aha/ahareg.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
 #ifndef _AHAREG_H_

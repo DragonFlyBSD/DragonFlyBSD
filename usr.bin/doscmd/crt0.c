@@ -28,10 +28,10 @@
  * SUCH DAMAGE.
  *
  *	BSDI crt0.c,v 2.2 1996/04/08 19:32:24 bostic Exp
+ *
+ * $FreeBSD: src/usr.bin/doscmd/crt0.c,v 1.2.2.1 2002/04/25 11:04:50 tg Exp $
+ * $DragonFly: src/usr.bin/doscmd/crt0.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/doscmd/crt0.c,v 1.2.2.1 2002/04/25 11:04:50 tg Exp $");
 
 char **environ;
 char *__progname;

@@ -23,6 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/reloc.c,v 1.6.2.2 2002/06/16 20:02:09 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/i386/reloc.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
 
 /*

@@ -6,6 +6,7 @@
 # foo is renamed to foo.gz
 #
 # $FreeBSD: src/gnu/usr.bin/gzip/zforce,v 1.5 1999/08/27 23:35:55 peter Exp $
+# $DragonFly: src/gnu/usr.bin/gzip/Attic/zforce,v 1.2 2003/06/17 04:25:46 dillon Exp $
 
 x=`basename $0`
 if test $# = 0; then

@@ -1,5 +1,6 @@
 #!/bin/sh
 # $FreeBSD: src/release/picobsd/mfs_tree/etc/rc.serial,v 1.1.2.1 2001/02/14 23:47:02 luigi Exp $
+# $DragonFly: src/release/picobsd/mfs_tree/etc/Attic/rc.serial,v 1.2 2003/06/17 04:27:20 dillon Exp $
 
 # Change some defaults for serial devices.
 # Standard defaults are:

@@ -37,6 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_lmi.c,v 1.5.2.3 2002/07/02 22:17:18 archie Exp $
+ * $DragonFly: src/sys/netgraph/lmi/ng_lmi.c,v 1.2 2003/06/17 04:28:50 dillon Exp $
  * $Whistle: ng_lmi.c,v 1.38 1999/11/01 09:24:52 julian Exp $
  */
 

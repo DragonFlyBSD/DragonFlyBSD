@@ -35,6 +35,7 @@
  *
  *	from: @(#)reg.h	5.5 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/reg.h,v 1.22.2.2 2002/11/07 22:47:55 alfred Exp $
+ * $DragonFly: src/sys/i386/include/Attic/reg.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 #ifndef _MACHINE_REG_H_

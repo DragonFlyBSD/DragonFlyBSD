@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/cdrio.h,v 1.1.2.3 2002/11/20 00:26:18 njl Exp $
+ * $DragonFly: src/sys/sys/cdrio.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef	_SYS_CDRIO_H_

@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/rman.h,v 1.5.2.1 2001/06/05 08:06:07 imp Exp $
+ * $DragonFly: src/sys/sys/rman.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_RMAN_H_

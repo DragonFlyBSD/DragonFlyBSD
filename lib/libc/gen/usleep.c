@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)usleep.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/gen/usleep.c,v 1.25 2000/01/27 23:06:22 jasone Exp $
+ * $DragonFly: src/lib/libc/gen/usleep.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)usleep.c	8.1 (Berkeley) 6/4/93";
-#endif
-static char rcsid[] =
-  "$FreeBSD: src/lib/libc/gen/usleep.c,v 1.25 2000/01/27 23:06:22 jasone Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <time.h>
 #include <unistd.h>

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key_debug.c,v 1.10.2.5 2002/04/28 05:40:28 suz Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key_debug.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$KAME: key_debug.c,v 1.26 2001/06/27 10:46:50 sakane Exp $	*/
 
 /*

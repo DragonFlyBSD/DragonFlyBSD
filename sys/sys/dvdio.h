@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/dvdio.h,v 1.2.2.2 2002/03/18 08:34:53 sos Exp $
+ * $DragonFly: src/sys/sys/dvdio.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_DVDIO_H_

@@ -28,6 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
  * 
  */
 

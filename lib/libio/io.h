@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libio/io.h,v 1.2 1999/08/28 00:04:44 peter Exp $
+ * $DragonFly: src/lib/libio/Attic/io.h,v 1.2 2003/06/17 04:26:49 dillon Exp $
  */
 
 struct io_ops {

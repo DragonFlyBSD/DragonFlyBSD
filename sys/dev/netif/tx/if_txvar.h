@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_txvar.h,v 1.14.2.1 2002/10/29 01:43:50 semenu Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_txvar.h,v 1.2 2003/06/17 04:28:32 dillon Exp $
  */
 
 /*

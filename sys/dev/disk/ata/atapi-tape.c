@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.c,v 1.36.2.12 2002/07/31 11:19:26 sos Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 #include "opt_ata.h"

@@ -31,6 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_ngereg.h,v 1.4.2.5 2002/11/13 12:54:06 simokawa Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_ngereg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 #define NGE_CSR			0x00

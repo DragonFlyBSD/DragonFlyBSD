@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/pc98/libpc98/biosmem.c,v 1.3.2.1 2000/12/30 12:01:06 nyan Exp $
+ * $DragonFly: src/sys/boot/pc98/libpc98/Attic/biosmem.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 /*

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/binutils/libopcodes/config.h,v 1.1.1.1.6.3 2002/09/01 23:39:17 obrien Exp $ */
+/* $DragonFly: src/gnu/usr.bin/binutils/libopcodes/Attic/config.h,v 1.2 2003/06/17 04:25:45 dillon Exp $ */
 
 /* config.h.  Generated automatically by configure.  */
 /* config.in.  Generated automatically from configure.in by autoheader.  */

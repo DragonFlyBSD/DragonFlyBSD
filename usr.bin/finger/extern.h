@@ -32,6 +32,7 @@
  *
  *	@(#)extern.h	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/finger/extern.h,v 1.2.6.3 2002/07/03 01:14:24 des Exp $
+ * $DragonFly: src/usr.bin/finger/extern.h,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
 
 extern char tbuf[1024];			/* Temp buffer for anybody. */

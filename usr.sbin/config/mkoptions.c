@@ -30,15 +30,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.sbin/config/mkoptions.c,v 1.17.2.3 2001/12/13 19:18:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)mkheaders.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/config/mkoptions.c,v 1.17.2.3 2001/12/13 19:18:01 dillon Exp $";
-#endif /* not lint */
 
 /*
  * Make all the .h files for the optional entries

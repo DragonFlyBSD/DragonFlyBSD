@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/libalias/Makefile,v 1.13.2.5 2002/07/24 03:21:24 luigi Exp $
+# $DragonFly: src/lib/libalias/Makefile,v 1.2 2003/06/17 04:26:41 dillon Exp $
 
 LIB=		alias
 SHLIB_MAJOR=	4

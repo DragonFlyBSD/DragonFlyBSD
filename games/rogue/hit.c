@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)hit.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/rogue/hit.c,v 1.6 1999/11/30 03:49:22 billf Exp $
+ * $DragonFly: src/games/rogue/hit.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)hit.c	8.1 (Berkeley) 5/31/93";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/rogue/hit.c,v 1.6 1999/11/30 03:49:22 billf Exp $";
-#endif /* not lint */
 
 /*
  * hit.c

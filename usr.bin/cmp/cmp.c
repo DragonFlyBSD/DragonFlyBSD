@@ -31,18 +31,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/cmp/cmp.c,v 1.6.6.4 2001/11/21 10:47:54 dwmalone Exp $
+ * $DragonFly: src/usr.bin/cmp/cmp.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  *
+ * @(#) Copyright (c) 1987, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)cmp.c	8.3 (Berkeley) 4/2/94
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1987, 1990, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static const char sccsid[] = "@(#)cmp.c	8.3 (Berkeley) 4/2/94";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/realhostname.c,v 1.6.2.6 2002/06/29 18:26:37 ume Exp $
+ * $DragonFly: src/lib/libutil/realhostname.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
 
 #include <sys/param.h>

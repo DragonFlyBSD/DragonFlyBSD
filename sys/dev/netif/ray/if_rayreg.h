@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_rayreg.h,v 1.10.2.3 2001/01/03 10:45:39 dmlb Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_rayreg.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
  *
  */
 

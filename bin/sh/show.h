@@ -32,6 +32,7 @@
  *
  *	@(#)show.h	1.1 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/show.h,v 1.7.2.3 2002/07/19 04:38:52 tjr Exp $
+ * $DragonFly: src/bin/sh/show.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
 
 void showtree(union node *);

@@ -1,4 +1,5 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile.asm,v 1.3.2.1 2003/02/14 22:38:14 nectar Exp $
+# $DragonFly: src/secure/lib/libcrypto/Attic/Makefile.asm,v 1.2 2003/06/17 04:27:48 dillon Exp $
 # Use this to help generate the asm *.s files after an import.  It is not
 # perfect by any means, but does what is needed.
 # Do a 'make -f Makefile.asm all' and it will generate *.s.  Move them

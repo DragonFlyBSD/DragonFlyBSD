@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/kthread.h,v 1.2 2000/01/07 08:36:44 luoqi Exp $
+ * $DragonFly: src/sys/sys/kthread.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_KTHREAD_H_

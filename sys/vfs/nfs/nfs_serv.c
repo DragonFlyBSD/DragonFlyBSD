@@ -35,6 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 
 /*

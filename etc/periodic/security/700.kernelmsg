@@ -25,6 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/periodic/security/700.kernelmsg,v 1.1.2.7 2002/11/19 18:54:54 thomas Exp $
+# $DragonFly: src/etc/periodic/security/700.kernelmsg,v 1.2 2003/06/17 04:24:48 dillon Exp $
 #
 
 # Show kernel log messages

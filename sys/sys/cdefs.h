@@ -35,6 +35,7 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
+ * $DragonFly: src/sys/sys/cdefs.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_

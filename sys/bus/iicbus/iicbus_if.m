@@ -24,6 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/dev/iicbus/iicbus_if.m,v 1.4 1999/08/28 00:41:59 peter Exp $
+# $DragonFly: src/sys/bus/iicbus/iicbus_if.m,v 1.2 2003/06/17 04:28:27 dillon Exp $
 #
 
 INTERFACE iicbus;

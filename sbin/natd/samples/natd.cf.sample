@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/sbin/natd/samples/natd.cf.sample,v 1.5 1999/09/13 18:18:33 ru Exp $
+# $DragonFly: src/sbin/natd/samples/natd.cf.sample,v 1.2 2003/06/17 04:27:34 dillon Exp $
 #
 #
 # Configuration file for natd.

@@ -63,6 +63,7 @@
  *                        <junichi@junichi.org>
  *
  * $FreeBSD: src/lib/libalias/alias_smedia.c,v 1.1.2.4 2001/03/05 03:48:00 kris Exp $
+ * $DragonFly: src/lib/libalias/alias_smedia.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
 
 /*

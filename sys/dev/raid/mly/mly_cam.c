@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly_cam.c,v 1.1.2.3 2001/04/21 04:09:06 msmith Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_cam.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 /*
  * CAM interface for FreeBSD

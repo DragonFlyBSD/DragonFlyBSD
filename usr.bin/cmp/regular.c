@@ -31,12 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/cmp/regular.c,v 1.7.2.3 2001/11/21 10:47:54 dwmalone Exp $
+ * $DragonFly: src/usr.bin/cmp/regular.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  *
+ * @(#)regular.c	8.3 (Berkeley) 4/2/94
  */
-
-#ifndef lint
-static const char sccsid[] = "@(#)regular.c	8.3 (Berkeley) 4/2/94";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/mman.h>

@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1980, 1989, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)umount.c	8.8 (Berkeley) 5/8/95
+ * $FreeBSD: src/sbin/umount/umount.c,v 1.22.2.1 2001/12/13 01:27:15 iedowse Exp $
+ * $DragonFly: src/sbin/umount/umount.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1980, 1989, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)umount.c	8.8 (Berkeley) 5/8/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/umount/umount.c,v 1.22.2.1 2001/12/13 01:27:15 iedowse Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/mount.h>

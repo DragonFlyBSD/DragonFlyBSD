@@ -35,6 +35,7 @@
  *
  *	from: @(#)rtc.h	7.1 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/isa/rtc.h,v 1.12 1999/08/28 00:46:01 peter Exp $
+ * $DragonFly: src/sys/bus/isa/rtc.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
  */
 
 #ifndef _I386_ISA_RTC_H_

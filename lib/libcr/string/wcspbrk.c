@@ -23,17 +23,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	citrus Id: wcspbrk.c,v 1.2 2000/12/21 05:07:25 itojun Exp
+ * citrus Id: wcspbrk.c,v 1.2 2000/12/21 05:07:25 itojun Exp
+ * $NetBSD: wcspbrk.c,v 1.1 2000/12/23 23:14:37 itojun Exp $
+ * $FreeBSD: src/lib/libc/string/wcspbrk.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
+ * $DragonFly: src/lib/libcr/string/Attic/wcspbrk.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-#if defined(LIBC_SCCS) && !defined(lint)
-__RCSID("$NetBSD: wcspbrk.c,v 1.1 2000/12/23 23:14:37 itojun Exp $");
-#endif /* LIBC_SCCS and not lint */
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/string/wcspbrk.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $";
-#endif
 
 #include <assert.h>
 #include <wchar.h>

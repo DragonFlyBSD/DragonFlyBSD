@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/usr.sbin/fdwrite/fdwrite.c,v 1.8.2.3 2001/07/19 13:21:19 joerg Exp $
+ * $DragonFly: src/usr.sbin/fdwrite/fdwrite.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  *
  */
 

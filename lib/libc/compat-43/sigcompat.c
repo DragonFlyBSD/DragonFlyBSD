@@ -31,15 +31,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/compat-43/sigcompat.c,v 1.7 2000/01/27 23:06:04 jasone Exp $
+ * $DragonFly: src/lib/libc/compat-43/sigcompat.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ *
+ * @(#)sigcompat.c	8.1 (Berkeley) 6/2/93
+ * $FreeBSD: src/lib/libc/compat-43/sigcompat.c,v 1.7 2000/01/27 23:06:04 jasone Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)sigcompat.c	8.1 (Berkeley) 6/2/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/compat-43/sigcompat.c,v 1.7 2000/01/27 23:06:04 jasone Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <signal.h>

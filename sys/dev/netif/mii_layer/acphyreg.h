@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/acphyreg.h,v 1.1.2.1 2001/06/08 19:58:33 semenu Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/acphyreg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 #ifndef _DEV_MII_ACPHYREG_H_

@@ -29,10 +29,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.bin/calendar/day.c,v 1.13.2.5 2003/04/06 20:04:57 dwmalone Exp $
+ * $DragonFly: src/usr.bin/calendar/day.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/calendar/day.c,v 1.13.2.5 2003/04/06 20:04:57 dwmalone Exp $");
 
 #include <sys/types.h>
 #include <sys/uio.h>

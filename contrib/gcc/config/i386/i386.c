@@ -19,6 +19,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA. */
 
 /* $FreeBSD: src/contrib/gcc/config/i386/i386.c,v 1.7 2000/01/29 13:06:33 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/config/i386/Attic/i386.c,v 1.2 2003/06/17 04:24:01 dillon Exp $ */
 
 #include <setjmp.h>
 #include "config.h"

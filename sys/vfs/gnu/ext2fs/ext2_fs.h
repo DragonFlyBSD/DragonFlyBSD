@@ -5,6 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_fs.h,v 1.8.2.2 2001/09/29 12:52:47 iedowse Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_fs.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 /*
  *  linux/include/linux/ext2_fs.h

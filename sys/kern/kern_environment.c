@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_environment.c,v 1.10.2.7 2002/05/07 09:57:16 bde Exp $
+ * $DragonFly: src/sys/kern/kern_environment.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 /*

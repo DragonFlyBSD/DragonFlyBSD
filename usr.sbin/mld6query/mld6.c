@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/mld6query/mld6.c,v 1.1.1.1.2.2 2001/07/03 11:02:06 ume Exp $
+ * $DragonFly: src/usr.sbin/mld6query/mld6.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/uio.h>

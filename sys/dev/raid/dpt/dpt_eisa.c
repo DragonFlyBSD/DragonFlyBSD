@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/dpt/dpt_eisa.c,v 1.12.2.1 2000/08/07 18:48:14 peter Exp $
+ *	$DragonFly: src/sys/dev/raid/dpt/dpt_eisa.c,v 1.2 2003/06/17 04:28:23 dillon Exp $
  */
 
 #include <sys/param.h>

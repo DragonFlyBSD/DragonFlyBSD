@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_nwfs/mount_nwfs.c,v 1.4.2.1 2000/04/17 08:34:18 bp Exp $
+ * $DragonFly: src/sbin/mount_nwfs/mount_nwfs.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/stat.h>

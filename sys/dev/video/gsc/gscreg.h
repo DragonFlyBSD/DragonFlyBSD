@@ -29,6 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/gscreg.h,v 1.2.16.1 2000/08/03 01:01:20 peter Exp $
+ * $DragonFly: src/sys/dev/video/gsc/gscreg.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /*

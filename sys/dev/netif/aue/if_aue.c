@@ -30,6 +30,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ *
+ * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
  */
 
 /*
@@ -94,11 +97,6 @@
 
 /* "controller miibus0" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $";
-#endif
 
 /*
  * Various supported device vendors/products.

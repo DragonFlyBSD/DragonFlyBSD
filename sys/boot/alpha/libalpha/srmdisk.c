@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/alpha/libalpha/srmdisk.c,v 1.8.2.2 2001/08/01 20:52:03 mjacob Exp $
+ * $DragonFly: src/sys/boot/alpha/libalpha/Attic/srmdisk.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 
 /*

@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)fgetln.c	8.2 (Berkeley) 1/2/94
+ * $FreeBSD: src/lib/libc/stdio/fgetln.c,v 1.6 1999/08/28 00:00:59 peter Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/fgetln.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)fgetln.c	8.2 (Berkeley) 1/2/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/stdio/fgetln.c,v 1.6 1999/08/28 00:00:59 peter Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <stdio.h>
 #include <stdlib.h>

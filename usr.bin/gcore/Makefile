@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
 # $FreeBSD: src/usr.bin/gcore/Makefile,v 1.6 1999/11/14 13:54:43 marcel Exp $
+# $DragonFly: src/usr.bin/gcore/Makefile,v 1.2 2003/06/17 04:29:26 dillon Exp $
 
 PROG=	gcore
 SRCS=	elfcore.c gcore.c

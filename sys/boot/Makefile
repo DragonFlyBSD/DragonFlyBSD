@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/boot/Makefile,v 1.6.2.1 2002/07/17 14:23:14 ru Exp $
+# $DragonFly: src/sys/boot/Makefile,v 1.2 2003/06/17 04:28:16 dillon Exp $
 
 # Build the add-in FORTH interpreter
 SUBDIR+=		ficl

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/pager.c,v 1.4.2.1 2001/03/05 06:27:44 kris Exp $
+ * $DragonFly: src/lib/libstand/pager.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 /*
  * Simple paged-output and paged-viewing functions

@@ -32,6 +32,7 @@
  *
  *	@(#)ns.c	8.2 (Berkeley) 11/15/93
  * $FreeBSD: src/sys/netns/ns.c,v 1.9 1999/08/28 00:49:47 peter Exp $
+ * $DragonFly: src/sys/netproto/ns/ns.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 #include <sys/param.h>

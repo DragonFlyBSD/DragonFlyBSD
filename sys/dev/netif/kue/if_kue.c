@@ -30,6 +30,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ *
+ * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
  */
 
 /*
@@ -92,11 +95,6 @@
 
 #include <dev/usb/if_kuereg.h>
 #include <dev/usb/kue_fw.h>
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $";
-#endif
 
 /*
  * Various supported device vendors/products.

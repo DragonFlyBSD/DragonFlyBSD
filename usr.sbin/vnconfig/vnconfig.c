@@ -36,15 +36,11 @@
  * SUCH DAMAGE.
  *
  * from: Utah $Hdr: vnconfig.c 1.1 93/12/15$
+ *
+ * @(#)vnconfig.c	8.1 (Berkeley) 12/15/93
+ * $FreeBSD: src/usr.sbin/vnconfig/vnconfig.c,v 1.13.2.7 2003/06/02 09:10:27 maxim Exp $
+ * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)vnconfig.c	8.1 (Berkeley) 12/15/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/vnconfig/vnconfig.c,v 1.13.2.7 2003/06/02 09:10:27 maxim Exp $";
-#endif /* not lint */
 
 #include <ctype.h>
 #include <err.h>

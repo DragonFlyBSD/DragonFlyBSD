@@ -1,5 +1,6 @@
 /*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.2 2003/06/17 04:28:22 dillon Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.

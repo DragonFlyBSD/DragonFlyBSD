@@ -1,4 +1,5 @@
 /* $FreeBSD: src/lib/libstand/nfs.c,v 1.2.6.3 2000/09/10 01:33:25 ps Exp $ */
+/* $DragonFly: src/lib/libstand/nfs.c,v 1.2 2003/06/17 04:26:51 dillon Exp $ */
 /*	$NetBSD: nfs.c,v 1.2 1998/01/24 12:43:09 drochner Exp $	*/
 
 /*-

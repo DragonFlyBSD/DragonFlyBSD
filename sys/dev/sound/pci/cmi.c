@@ -38,6 +38,9 @@
  * rate drifts slightly between recordings (usually 0-3%).  No
  * differences visible in register dumps between times that work and
  * those that don't.
+ *
+ * $FreeBSD: src/sys/dev/sound/pci/cmi.c,v 1.1.2.8 2002/08/27 00:17:34 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -51,7 +54,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pci/cmi.c,v 1.1.2.8 2002/08/27 00:17:34 orion Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
 
 /* Supported chip ID's */
 #define CMI8338A_PCI_ID   0x010013f6

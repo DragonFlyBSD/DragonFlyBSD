@@ -19,14 +19,9 @@
 ** ID
 */
 
-#ifndef lint
-#ifndef NOID
 /*
-static char	tzfilehid[] = "@(#)tzfile.h	7.14";
-*/
-#endif /* !defined NOID */
-#endif /* !defined lint */
-
+ * @(#)tzfile.h	7.14
+ */
 /*
 ** Information about time zone files.
 */

@@ -22,6 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fpa.c,v 1.13 1999/08/28 00:50:50 peter Exp $
+ * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  *
  */
 

@@ -1,5 +1,6 @@
 /*	$NetBSD: smc90cx6reg.h,v 1.7 1999/02/16 23:34:13 is Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6reg.h,v 1.1.2.1 2002/02/13 22:33:41 fjoe Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6reg.h,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.

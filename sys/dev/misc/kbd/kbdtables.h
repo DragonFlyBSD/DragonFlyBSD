@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbdtables.h,v 1.47.2.1 2000/03/19 08:07:09 nyan Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbdtables.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 #ifndef KBD_DFLT_KEYMAP

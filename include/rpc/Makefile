@@ -1,4 +1,5 @@
 # $FreeBSD: src/include/rpc/Makefile,v 1.2.2.1 2002/07/22 14:21:46 ru Exp $
+# $DragonFly: src/include/rpc/Makefile,v 1.2 2003/06/17 04:25:58 dillon Exp $
 
 NOOBJ=	noobj
 INCS=	auth.h auth_unix.h clnt.h pmap_clnt.h pmap_prot.h pmap_rmt.h \

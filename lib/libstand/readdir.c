@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libstand/readdir.c,v 1.1.2.1 2000/05/04 13:47:52 ps Exp $
+ *	$DragonFly: src/lib/libstand/readdir.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 
 #include <sys/param.h>

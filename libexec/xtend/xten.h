@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/xtend/xten.h,v 1.6 1999/08/28 00:10:31 peter Exp $
+ * $DragonFly: src/libexec/xtend/xten.h,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
 
 extern char *X10housenames[];

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.h,v 1.1.2.2 2002/04/28 05:40:25 suz Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.h,v 1.2 2003/06/17 04:28:48 dillon Exp $	*/
 /*	$KAME: if_stf.h,v 1.5 2001/10/12 10:09:17 keiichi Exp $	*/
 
 /*

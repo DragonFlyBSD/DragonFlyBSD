@@ -37,6 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/lib/libstand/printf.c,v 1.4 1999/12/27 08:45:14 peter Exp $
+ * $DragonFly: src/lib/libstand/printf.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 
 /*

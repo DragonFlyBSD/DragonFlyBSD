@@ -15,6 +15,7 @@
 
 /*
  * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.28.2.7 2002/10/10 15:53:24 iwasaki Exp $
+ * $DragonFly: src/sys/boot/i386/boot2/Attic/boot2.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 #include <sys/param.h>

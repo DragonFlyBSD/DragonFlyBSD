@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP

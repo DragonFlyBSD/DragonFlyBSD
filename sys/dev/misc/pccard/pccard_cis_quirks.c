@@ -1,5 +1,6 @@
 /*	$NetBSD: pcmcia_cis_quirks.c,v 1.5 1999/10/11 17:50:21 thorpej Exp $	*/
 /* $FreeBSD: src/sys/dev/pccard/pccard_cis_quirks.c,v 1.2.2.1 2000/05/23 03:57:00 imp Exp $ */
+/* $DragonFly: src/sys/dev/misc/pccard/Attic/pccard_cis_quirks.c,v 1.2 2003/06/17 04:28:29 dillon Exp $ */
 
 #define	PCCARDDEBUG
 

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)mkioconf.c	8.2 (Berkeley) 1/21/94
+ * $FreeBSD: src/usr.sbin/config/mkioconf.c,v 1.62 2000/01/29 18:14:59 peter Exp $
+ * $DragonFly: src/usr.sbin/config/mkioconf.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)mkioconf.c	8.2 (Berkeley) 1/21/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/config/mkioconf.c,v 1.62 2000/01/29 18:14:59 peter Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <stdio.h>

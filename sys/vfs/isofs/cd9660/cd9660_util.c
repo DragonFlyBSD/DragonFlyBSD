@@ -38,6 +38,7 @@
  *
  *	@(#)cd9660_util.c	8.3 (Berkeley) 12/5/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_util.c,v 1.13.2.1 2001/02/27 12:36:34 sobomax Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_util.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/splash/bmp/splash_bmp.c,v 1.10.2.3 2000/10/31 08:00:06 nyan Exp $
+ * $DragonFly: src/sys/dev/video/fb/bmp/splash_bmp.c,v 1.2 2003/06/17 04:28:46 dillon Exp $
  */
 
 #include <sys/param.h>

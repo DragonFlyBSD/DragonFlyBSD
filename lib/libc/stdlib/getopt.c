@@ -29,14 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)getopt.c	8.3 (Berkeley) 4/27/95
+ * $FreeBSD: src/lib/libc/stdlib/getopt.c,v 1.2.2.2 2001/08/26 03:36:04 jkoshy Exp $
+ * $DragonFly: src/lib/libc/stdlib/getopt.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)getopt.c	8.3 (Berkeley) 4/27/95";
-#endif
-static const char rcsid[] = "$FreeBSD: src/lib/libc/stdlib/getopt.c,v 1.2.2.2 2001/08/26 03:36:04 jkoshy Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <stdio.h>
 #include <stdlib.h>

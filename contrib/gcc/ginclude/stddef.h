@@ -1,4 +1,5 @@
 /* $FreeBSD: src/contrib/gcc/ginclude/stddef.h,v 1.3 1999/10/13 15:55:31 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/ginclude/Attic/stddef.h,v 1.2 2003/06/17 04:24:02 dillon Exp $ */
 
 #if (!defined(_STDDEF_H) && !defined(_STDDEF_H_) && !defined(_ANSI_STDDEF_H) \
      && !defined(__STDDEF_H__)) \

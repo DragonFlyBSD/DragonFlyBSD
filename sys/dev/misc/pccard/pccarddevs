@@ -1,4 +1,5 @@
 $FreeBSD: src/sys/dev/pccard/pccarddevs,v 1.3.2.1 2000/05/23 03:57:00 imp Exp $
+$DragonFly: src/sys/dev/misc/pccard/Attic/pccarddevs,v 1.2 2003/06/17 04:28:29 dillon Exp $
 /* $NetBSD: pcmciadevs,v 1.60 1999/11/29 02:28:19 jun Exp $ */
 
 /*-

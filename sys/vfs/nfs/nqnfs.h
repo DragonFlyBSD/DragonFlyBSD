@@ -35,6 +35,7 @@
  *
  *	@(#)nqnfs.h	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nqnfs.h,v 1.22 2000/02/13 03:32:07 peter Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nqnfs.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 
 

@@ -1,6 +1,7 @@
 # The files usbdevs.h and usbdevs_data.h are generated from usbdevs
 #
 # $FreeBSD: src/sys/dev/usb/Makefile.usbdevs,v 1.1.2.2 2000/05/07 14:36:41 n_hibma Exp $
+# $DragonFly: src/sys/bus/usb/Makefile,v 1.2 2003/06/17 04:28:32 dillon Exp $
 
 AWK=	awk
 UNAME=	uname

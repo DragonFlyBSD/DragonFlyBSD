@@ -17,6 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 /*

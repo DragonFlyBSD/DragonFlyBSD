@@ -19,6 +19,7 @@
 .ND \\$4
 ..
 .Id $FreeBSD: src/gnu/usr.bin/rcs/doc/rcs.ms,v 1.5 1999/08/27 23:36:41 peter Exp $
+.Id $DragonFly: src/gnu/usr.bin/rcs/doc/rcs.ms,v 1.2 2003/06/17 04:25:47 dillon Exp $
 .RP
 .TL
 RCS\*-A System for Version Control

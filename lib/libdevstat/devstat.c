@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libdevstat/devstat.c,v 1.6 1999/08/28 00:04:26 peter Exp $
+ * $DragonFly: src/lib/libdevstat/devstat.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
  */
 
 #include <sys/types.h>

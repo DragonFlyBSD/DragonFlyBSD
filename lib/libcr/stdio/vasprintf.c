@@ -25,11 +25,10 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libc/stdio/vasprintf.c,v 1.11 1999/08/28 00:01:19 peter Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/vasprintf.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
-
-#if defined(LIBC_RCS) && !defined(lint)
-static char rcsid[] = "$FreeBSD: src/lib/libc/stdio/vasprintf.c,v 1.11 1999/08/28 00:01:19 peter Exp $";
-#endif /* LIBC_RCS and not lint */
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -35,6 +35,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/types.c,v 1.1.4.1 2000/05/05 02:54:16 archie Exp $
+ * $DragonFly: src/usr.sbin/ngctl/types.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
 
 #include "ngctl.h"

@@ -36,6 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.2 2003/06/17 04:28:43 dillon Exp $
  */
 
 #include <sys/param.h>

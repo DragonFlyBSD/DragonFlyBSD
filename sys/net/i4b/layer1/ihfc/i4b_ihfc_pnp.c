@@ -36,6 +36,7 @@
  *      $Id: i4b_ihfc_pnp.c,v 1.9 2000/09/19 13:50:36 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_pnp.c,v 1.5.2.1 2001/08/10 14:08:37 obrien Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_pnp.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
  *     
  *---------------------------------------------------------------------------*/
 

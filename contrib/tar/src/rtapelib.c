@@ -33,6 +33,7 @@
    code, courtesy of Dan Kegel.  */
 
 /* $FreeBSD: src/contrib/tar/src/rtapelib.c,v 1.2.2.1 2002/07/14 13:19:44 sobomax Exp $ */
+/* $DragonFly: src/contrib/tar/src/Attic/rtapelib.c,v 1.2 2003/06/17 04:24:06 dillon Exp $ */
 
 #include "system.h"
 

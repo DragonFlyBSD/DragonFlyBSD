@@ -45,6 +45,7 @@ divert(-1)
 
 divert(0)
 VERSIONID(`$FreeBSD: src/etc/sendmail/freebsd.mc,v 1.10.2.18 2003/04/24 16:57:30 gshapiro Exp $')
+VERSIONID(`$DragonFly: src/etc/sendmail/Attic/freebsd.mc,v 1.2 2003/06/17 04:24:48 dillon Exp $')
 OSTYPE(freebsd4)
 DOMAIN(generic)
 

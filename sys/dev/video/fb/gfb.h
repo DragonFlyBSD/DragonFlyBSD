@@ -27,6 +27,7 @@
  * Copyright (c) 2000 Andrew Miklic
  *
  * $FreeBSD: src/sys/dev/fb/gfb.h,v 1.1.2.1 2001/11/01 08:33:14 obrien Exp $
+ * $DragonFly: src/sys/dev/video/fb/Attic/gfb.h,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 #ifndef _FB_GFB_H_

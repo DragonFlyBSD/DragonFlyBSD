@@ -2,6 +2,9 @@
  * Written by Pavel Curtis <Pavel@PARC.Xerox.Com>
  *
  * mapper.c,v 3.8.4.3 1998/01/06 01:57:47 fenner Exp
+ *
+ * $FreeBSD: src/usr.sbin/mrouted/mapper.c,v 1.15.2.1 2002/09/12 16:27:49 nectar Exp $
+ * $DragonFly: src/usr.sbin/mrouted/mapper.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
 
 /*
@@ -20,11 +23,6 @@
  *  
  * These notices must be retained in any copies of any part of this software.
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/mrouted/mapper.c,v 1.15.2.1 2002/09/12 16:27:49 nectar Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <string.h>

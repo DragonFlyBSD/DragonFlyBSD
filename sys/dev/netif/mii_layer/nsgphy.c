@@ -31,6 +31,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/nsgphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/nsgphy.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ *
+ * $FreeBSD: src/sys/dev/mii/nsgphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
  */
 
 /*
@@ -65,11 +68,6 @@
 #include <dev/mii/nsgphyreg.h>
 
 #include "miibus_if.h"
-
-#if !defined(lint)
-static const char rcsid[] =
-  "$FreeBSD: src/sys/dev/mii/nsgphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $";
-#endif
 
 static int nsgphy_probe		__P((device_t));
 static int nsgphy_attach	__P((device_t));

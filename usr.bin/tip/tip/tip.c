@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)tip.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/tip/tip/tip.c,v 1.12.2.2 2001/06/02 08:08:24 phk Exp $
+ * $DragonFly: src/usr.bin/tip/tip/tip.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1983, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)tip.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/tip/tip/tip.c,v 1.12.2.2 2001/06/02 08:08:24 phk Exp $";
-#endif /* not lint */
 
 /*
 	Forward declarations

@@ -30,6 +30,7 @@
  *	$Id: i4b_tel_ioctl.h,v 1.13 2000/01/12 14:49:36 hm Exp $ 
  *
  * $FreeBSD: src/sys/i386/include/i4b_tel_ioctl.h,v 1.6.2.2 2001/12/16 15:12:10 hm Exp $
+ * $DragonFly: src/sys/net/i4b/include/i386/i4b_tel_ioctl.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  *
  *      last edit-date: [Wed Jan 12 15:47:11 2000]
  *

@@ -8,11 +8,10 @@
  *
  * Written 25 August 1985 by John Gilmore (ihnp4!hoptoad!gnu) and placed
  * in the Pubic Domain for your edification and enjoyment.
+ *
+ * $FreeBSD: src/bin/pax/getoldopt.c,v 1.1.2.1 2001/08/01 05:03:11 obrien Exp $
+ * $DragonFly: src/bin/pax/getoldopt.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] = "$FreeBSD: src/bin/pax/getoldopt.c,v 1.1.2.1 2001/08/01 05:03:11 obrien Exp $";
-#endif /* not lint */
 
 #include <stdio.h>
 #include <string.h>

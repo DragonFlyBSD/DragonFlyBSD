@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_iso88025subr.c,v 1.7.2.7 2002/06/18 00:15:31 kbyanc Exp $
+ * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
  *
  */
 

@@ -38,6 +38,7 @@
  |	All are rights reserved.
  |
  | $FreeBSD: src/usr.bin/ee/new_curse.h,v 1.2.8.1 2001/06/10 11:06:06 sobomax Exp $
+ | $DragonFly: src/usr.bin/ee/new_curse.h,v 1.2 2003/06/17 04:29:26 dillon Exp $
  |
  */
 

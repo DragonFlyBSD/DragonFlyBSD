@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.13 2002/11/25 05:30:31 njl Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.

@@ -25,12 +25,11 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (C) 1997, Massachusetts Institute of Technology
+ * $FreeBSD: src/usr.sbin/lpr/chkprintcap/chkprintcap.c,v 1.3.2.2 2002/04/18 20:45:23 gad Exp $
+ * $DragonFly: src/usr.sbin/lpr/chkprintcap/chkprintcap.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
  */
-
-static const char copyright[] =
-	"Copyright (C) 1997, Massachusetts Institute of Technology\r\n";
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/lpr/chkprintcap/chkprintcap.c,v 1.3.2.2 2002/04/18 20:45:23 gad Exp $";
 
 #include <sys/types.h>
 #include <sys/queue.h>

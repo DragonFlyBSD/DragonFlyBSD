@@ -25,12 +25,16 @@ Report problems and direct all questions to:
     rcs-bugs@cs.purdue.edu
 
 */
+/*
+ * $FreeBSD: src/gnu/usr.bin/rcs/lib/rcstime.c,v 1.5 1999/08/27 23:36:48 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/lib/rcstime.c,v 1.2 2003/06/17 04:25:47 dillon Exp $
+ */
 
 #include "rcsbase.h"
 #include "partime.h"
 #include "maketime.h"
 
-libId(rcstimeId, "$FreeBSD: src/gnu/usr.bin/rcs/lib/rcstime.c,v 1.5 1999/08/27 23:36:48 peter Exp $")
+libId(rcstimeId, "$DragonFly: src/gnu/usr.bin/rcs/lib/rcstime.c,v 1.2 2003/06/17 04:25:47 dillon Exp $")
 
 static long zone_offset; /* seconds east of UTC, or TM_LOCAL_ZONE */
 static int use_zone_offset; /* if zero, use UTC without zone indication */

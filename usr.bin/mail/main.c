@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)main.c	8.2 (Berkeley) 4/20/95
+ * $FreeBSD: src/usr.bin/mail/main.c,v 1.6.2.5 2003/01/06 05:46:03 mikeh Exp $
+ * $DragonFly: src/usr.bin/mail/main.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
-
-#ifndef lint
-static char copyright[] =
-"@(#) Copyright (c) 1980, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)main.c	8.2 (Berkeley) 4/20/95";
-#endif
-#endif /* not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/mail/main.c,v 1.6.2.5 2003/01/06 05:46:03 mikeh Exp $");
 
 #include "rcv.h"
 #include <fcntl.h>

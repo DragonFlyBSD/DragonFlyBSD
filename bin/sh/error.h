@@ -35,6 +35,7 @@
  *
  *	@(#)error.h	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/error.h,v 1.11.2.4 2002/08/27 01:36:28 tjr Exp $
+ * $DragonFly: src/bin/sh/error.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
 
 /*

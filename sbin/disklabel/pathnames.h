@@ -32,6 +32,7 @@
  *
  *	@(#)pathnames.h	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/disklabel/pathnames.h,v 1.4 2000/01/11 07:28:46 bde Exp $
+ * $DragonFly: src/sbin/disklabel/pathnames.h,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
 
 #include <paths.h>

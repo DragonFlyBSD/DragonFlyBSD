@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/locate/locate/util.c,v 1.6.2.1 2001/12/20 04:21:48 mikeh Exp $
+ * $DragonFly: src/usr.bin/locate/locate/util.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
 
 

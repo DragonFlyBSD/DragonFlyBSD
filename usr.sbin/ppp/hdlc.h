@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/hdlc.h,v 1.21.2.1 2001/06/13 21:56:35 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/hdlc.h,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 /*

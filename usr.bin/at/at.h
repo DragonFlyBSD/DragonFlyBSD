@@ -23,6 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/at/at.h,v 1.4.8.1 2001/08/02 00:55:58 obrien Exp $
+ * $DragonFly: src/usr.bin/at/at.h,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
 
 extern int fcreated;

@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pci_cfgreg.c,v 1.1.2.7 2001/11/28 05:47:03 imp Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  *
  */
 

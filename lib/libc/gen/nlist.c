@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libc/gen/nlist.c,v 1.12.2.1 2001/07/11 23:59:09 obrien Exp $
+ *	$DragonFly: src/lib/libc/gen/nlist.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)nlist.c	8.1 (Berkeley) 6/4/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)nlist.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/mman.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/eventhandler.h,v 1.5 2000/01/16 06:11:33 bde Exp $
+ * $DragonFly: src/sys/sys/eventhandler.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #include <sys/queue.h>

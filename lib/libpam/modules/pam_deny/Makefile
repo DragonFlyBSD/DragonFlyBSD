@@ -23,6 +23,7 @@
 # SUCH DAMAGE.
 #
 #	$FreeBSD: src/lib/libpam/modules/pam_deny/Makefile,v 1.1.4.5 2002/07/03 23:04:11 des Exp $
+#	$DragonFly: src/lib/libpam/modules/pam_deny/Attic/Makefile,v 1.2 2003/06/17 04:26:50 dillon Exp $
 
 
 LIB=		pam_deny

@@ -5,6 +5,7 @@
  * generation being essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/devices.c,v 1.117.2.19 2003/01/29 20:59:10 trhodes Exp $
+ * $DragonFly: src/release/sysinstall/Attic/devices.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.

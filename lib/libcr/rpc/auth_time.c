@@ -30,6 +30,7 @@
  *       it from TI-RPC back to TD-RPC for use on FreeBSD.
  *
  * $FreeBSD: src/lib/libc/rpc/auth_time.c,v 1.4 2000/01/27 23:06:35 jasone Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/auth_time.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 #include <stdio.h>
 #include <syslog.h>

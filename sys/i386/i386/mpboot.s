@@ -32,6 +32,7 @@
  *		multiprocessor systems.
  *
  * $FreeBSD: src/sys/i386/i386/mpboot.s,v 1.13.2.3 2000/09/07 01:18:26 tegge Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mpboot.s,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */

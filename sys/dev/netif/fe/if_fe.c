@@ -22,6 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>

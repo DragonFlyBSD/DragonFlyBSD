@@ -25,6 +25,11 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)rstat.x 1.2 87/09/18 Copyr 1987 Sun Micro
+ * @(#)rstat.x	2.2 88/08/01 4.0 RPCSRC
+ * $FreeBSD: src/include/rpcsvc/rstat.x,v 1.6 1999/08/27 23:45:11 peter Exp $
+ * $DragonFly: src/include/rpcsvc/rstat.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 /*
@@ -42,16 +47,7 @@
 %
 %#endif /* ndef FSCALE */
 
-#else
-
-%#ifndef lint
-%/*static char sccsid[] = "from: @(#)rstat.x 1.2 87/09/18 Copyr 1987 Sun Micro";*/
-%/*static char sccsid[] = "from: @(#)rstat.x	2.2 88/08/01 4.0 RPCSRC";*/
-%static const char rcsid[] =
-%  "$FreeBSD: src/include/rpcsvc/rstat.x,v 1.6 1999/08/27 23:45:11 peter Exp $";
-%#endif /* not lint */
-
-#endif /* def RPC_HDR */
+#endif
 
 const RSTAT_CPUSTATES = 4;
 const RSTAT_DK_NDRIVE = 4;

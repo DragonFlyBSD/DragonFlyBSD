@@ -26,6 +26,7 @@
  *	from: Mach, Revision 2.2  92/04/04  11:35:26  rpd
  *	boot2.S,v 1.6 1995/01/25 21:37:40 bde Exp
  * $FreeBSD: src/sys/boot/pc98/boot2/boot2.S,v 1.1.4.2 2001/10/07 13:22:38 nyan Exp $
+ * $DragonFly: src/sys/boot/pc98/boot2/Attic/boot2.S,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 /*
  * Ported to PC-9801 by Yoshio Kimura

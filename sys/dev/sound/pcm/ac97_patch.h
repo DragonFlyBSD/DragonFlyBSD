@@ -23,6 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/ac97_patch.h,v 1.1.2.1 2003/02/07 16:26:45 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/ac97_patch.h,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 typedef void (*ac97_patch)(struct ac97_info*);

@@ -13,6 +13,7 @@
 /* SUPPRESS 288 on yyerrlab *//* Label unused */
 
 /* $FreeBSD: src/usr.bin/find/getdate.y,v 1.2.4.1 2003/01/22 03:26:34 peter Exp $ */
+/* $DragonFly: src/usr.bin/find/getdate.y,v 1.2 2003/06/17 04:29:26 dillon Exp $ */
 
 #include <stdio.h>
 #include <ctype.h>

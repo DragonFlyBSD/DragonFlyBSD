@@ -33,6 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_faith.c,v 1.3.2.6 2002/04/28 05:40:25 suz Exp $
+ * $DragonFly: src/sys/net/faith/if_faith.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
  */
 /*
  * derived from

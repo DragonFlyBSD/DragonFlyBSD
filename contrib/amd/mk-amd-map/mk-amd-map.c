@@ -40,6 +40,7 @@
  *
  * $Id: mk-amd-map.c,v 1.4 1999/02/04 07:24:50 ezk Exp $
  * $FreeBSD: src/contrib/amd/mk-amd-map/mk-amd-map.c,v 1.7 1999/09/15 05:45:16 obrien Exp $
+ * $DragonFly: src/contrib/amd/mk-amd-map/mk-amd-map.c,v 1.2 2003/06/17 04:23:58 dillon Exp $
  */
 
 /*

@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)reverse.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/tail/reverse.c,v 1.9.2.3 2001/12/19 20:29:31 iedowse Exp $
+ * $DragonFly: src/usr.bin/tail/reverse.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)reverse.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/tail/reverse.c,v 1.9.2.3 2001/12/19 20:29:31 iedowse Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

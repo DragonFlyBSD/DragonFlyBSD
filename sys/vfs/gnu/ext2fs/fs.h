@@ -38,6 +38,7 @@
  *
  *	@(#)fs.h	8.7 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/gnu/ext2fs/fs.h,v 1.5.2.1 2000/11/11 13:12:45 bde Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/fs.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 /*

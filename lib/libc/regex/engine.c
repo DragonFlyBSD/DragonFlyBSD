@@ -37,6 +37,7 @@
  *	@(#)engine.c	8.5 (Berkeley) 3/20/94
  *
  * $FreeBSD: src/lib/libc/regex/engine.c,v 1.5.8.1 2000/07/31 06:30:37 dcs Exp $
+ * $DragonFly: src/lib/libc/regex/engine.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 
 /*

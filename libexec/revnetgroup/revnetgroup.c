@@ -34,12 +34,10 @@
  * Written by Bill Paul <wpaul@ctr.columbia.edu>
  * Center for Telecommunications Research
  * Columbia University, New York City
+ *
+ * $FreeBSD: src/libexec/revnetgroup/revnetgroup.c,v 1.10.2.1 2000/07/20 10:35:08 kris Exp $
+ * $DragonFly: src/libexec/revnetgroup/revnetgroup.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/libexec/revnetgroup/revnetgroup.c,v 1.10.2.1 2000/07/20 10:35:08 kris Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <stdio.h>

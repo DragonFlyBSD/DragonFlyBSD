@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/send.c,v 1.1.1.1.14.1 2001/03/05 10:47:11 obrien Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/send.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ *
+ * @(#)send.c	8.2 (Berkeley) 2/21/94
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)send.c	8.2 (Berkeley) 2/21/94";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/socket.h>

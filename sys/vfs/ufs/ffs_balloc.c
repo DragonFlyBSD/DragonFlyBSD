@@ -32,6 +32,7 @@
  *
  *	@(#)ffs_balloc.c	8.8 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_balloc.c,v 1.26.2.1 2002/10/10 19:48:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #include <sys/param.h>

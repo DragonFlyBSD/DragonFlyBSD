@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/contrib/dev/fla/fla.c,v 1.16 1999/12/08 04:45:16 ken Exp $ 
+ * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.2 2003/06/17 04:28:20 dillon Exp $ 
  *
  */
 

@@ -12,12 +12,10 @@
  * Department of Chemical Engineering
  * The University of Texas at Austin
  * Austin, Texas  78712
+ *
+ * $FreeBSD: src/gnu/usr.bin/man/man/man.c,v 1.37.2.10 2003/02/14 15:38:51 ru Exp $
+ * $DragonFly: src/gnu/usr.bin/man/man/man.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/gnu/usr.bin/man/man/man.c,v 1.37.2.10 2003/02/14 15:38:51 ru Exp $";
-#endif /* not lint */
 
 #define MAN_MAIN
 

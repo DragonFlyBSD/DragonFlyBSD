@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/raycontrol/raycontrol.c,v 1.1.2.3 2002/12/16 08:39:41 roam Exp $
+ * $DragonFly: src/usr.sbin/raycontrol/Attic/raycontrol.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
 
 #include <sys/types.h>

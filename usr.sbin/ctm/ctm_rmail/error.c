@@ -10,12 +10,10 @@
  * NOTICE: This is free software.  I hope you get some use from this program.
  * In return you should think about all the nice people who give away software.
  * Maybe you should write some free software too.
+ *
+ * $FreeBSD: src/usr.sbin/ctm/ctm_rmail/error.c,v 1.2.12.1 2001/07/05 07:47:00 kris Exp $
+ * $DragonFly: src/usr.sbin/ctm/ctm_rmail/Attic/error.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/ctm/ctm_rmail/error.c,v 1.2.12.1 2001/07/05 07:47:00 kris Exp $";
-#endif /* not lint */
 
 #include <stdio.h>
 #include <string.h>

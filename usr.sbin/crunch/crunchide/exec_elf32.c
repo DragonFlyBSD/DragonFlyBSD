@@ -26,16 +26,13 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $NetBSD: exec_elf32.c,v 1.4 1997/08/12 06:07:24 mikel Exp $
+ * $FreeBSD: src/usr.sbin/crunch/crunchide/exec_elf32.c,v 1.1.6.2 2002/07/25 09:33:17 ru Exp $
+ * $DragonFly: src/usr.sbin/crunch/crunchide/exec_elf32.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 
 #include <sys/cdefs.h>
-#ifndef lint
-#if 0
-__RCSID("$NetBSD: exec_elf32.c,v 1.4 1997/08/12 06:07:24 mikel Exp $");
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/crunch/crunchide/exec_elf32.c,v 1.1.6.2 2002/07/25 09:33:17 ru Exp $";
-#endif
  
 #ifndef ELFSIZE
 #define ELFSIZE         32

@@ -30,6 +30,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ *
+ * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
  */
 
 /*
@@ -221,11 +224,6 @@
 
 /* "controller miibus0" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
-
-#if !defined(lint)
-static const char rcsid[] =
-  "$FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $";
-#endif
 
 /*
  * Various supported device vendors/types and their names.

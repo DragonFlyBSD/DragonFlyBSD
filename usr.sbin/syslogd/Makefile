@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
 # $FreeBSD: src/usr.sbin/syslogd/Makefile,v 1.3.6.4 2003/05/19 16:23:03 gshapiro Exp $
+# $DragonFly: src/usr.sbin/syslogd/Makefile,v 1.2 2003/06/17 04:30:03 dillon Exp $
 
 .PATH: ${.CURDIR}/../../usr.bin/wall
 

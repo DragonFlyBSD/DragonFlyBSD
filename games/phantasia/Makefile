@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/phantasia/Makefile,v 1.16.2.2 2002/08/07 16:31:42 ru Exp $
+# $DragonFly: src/games/phantasia/Makefile,v 1.2 2003/06/17 04:25:24 dillon Exp $
 
 PROG=	phantasia
 SRCS=	main.c fight.c io.c interplayer.c gamesupport.c misc.c phantglobs.c

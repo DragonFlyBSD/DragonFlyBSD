@@ -37,6 +37,9 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pci/es137x.c,v 1.13.2.10 2002/05/07 17:02:25 greid Exp $
+ * $DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 /*
@@ -59,7 +62,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pci/es137x.c,v 1.13.2.10 2002/05/07 17:02:25 greid Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
 
 static int debug = 0;
 SYSCTL_INT(_debug, OID_AUTO, es_debug, CTLFLAG_RW, &debug, 0, "");

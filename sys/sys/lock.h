@@ -36,6 +36,7 @@
  *
  *	@(#)lock.h	8.12 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/lock.h,v 1.17.2.3 2001/12/25 01:44:44 dillon Exp $
+ * $DragonFly: src/sys/sys/lock.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef	_LOCK_H_

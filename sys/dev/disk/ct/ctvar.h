@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/ct/ctvar.h,v 1.2.2.1 2001/07/26 02:32:18 nyan Exp $ */
+/* $DragonFly: src/sys/dev/disk/ct/Attic/ctvar.h,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
 /*	$NecBSD: ctvar.h,v 1.4.14.3 2001/06/20 06:13:34 honda Exp $	*/
 /*	$NetBSD$	*/
 

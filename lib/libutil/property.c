@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/property.c,v 1.5.6.1 2000/11/22 03:49:49 murray Exp $
+ * $DragonFly: src/lib/libutil/property.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  *
  */
 

@@ -8,6 +8,9 @@
  *
  *
  * main.c,v 3.8.4.29 1998/03/01 01:49:00 fenner Exp
+ *
+ * $FreeBSD: src/usr.sbin/mrouted/main.c,v 1.16.2.4 2002/09/12 16:27:49 nectar Exp $
+ * $DragonFly: src/usr.sbin/mrouted/main.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
 
 /*
@@ -19,11 +22,6 @@
  *  original routed code has been adopted.)
  */
 
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/mrouted/main.c,v 1.16.2.4 2002/09/12 16:27:49 nectar Exp $";
-#endif
 
 #include <err.h>
 #include "defs.h"

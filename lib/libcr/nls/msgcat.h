@@ -1,4 +1,5 @@
 /* $FreeBSD: src/lib/libc/nls/msgcat.h,v 1.6.2.1 2000/09/07 16:46:33 ache Exp $ */
+/* $DragonFly: src/lib/libcr/nls/Attic/msgcat.h,v 1.2 2003/06/17 04:26:44 dillon Exp $ */
 
 #ifndef _MSGCAT_H_
 #define _MSGCAT_H_

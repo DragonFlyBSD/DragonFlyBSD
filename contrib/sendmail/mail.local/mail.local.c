@@ -9,6 +9,7 @@
  * the sendmail distribution.
  *
  * $FreeBSD: src/contrib/sendmail/mail.local/mail.local.c,v 1.6.6.14 2003/03/29 19:33:16 gshapiro Exp $
+ * $DragonFly: src/contrib/sendmail/mail.local/Attic/mail.local.c,v 1.2 2003/06/17 04:24:06 dillon Exp $
  *
  */
 

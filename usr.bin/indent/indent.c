@@ -31,23 +31,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1985 Sun Microsystems, Inc. @(#) Copyright (c) 1976 Board of Trustees of the University of Illinois. @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)indent.c	5.17 (Berkeley) 6/7/93
+ * $FreeBSD: src/usr.bin/indent/indent.c,v 1.5.2.6 2001/12/06 19:28:47 schweikh Exp $
+ * $DragonFly: src/usr.bin/indent/indent.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1985 Sun Microsystems, Inc.\n\
-@(#) Copyright (c) 1976 Board of Trustees of the University of Illinois.\n\
-@(#) Copyright (c) 1980, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)indent.c	5.17 (Berkeley) 6/7/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/indent/indent.c,v 1.5.2.6 2001/12/06 19:28:47 schweikh Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <err.h>

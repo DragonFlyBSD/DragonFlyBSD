@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_subr.h,v 1.2.2.1 2000/04/17 08:34:20 bp Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_subr.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 #ifndef _NWFS_SUBR_H_
 #define _NWFS_SUBR_H_

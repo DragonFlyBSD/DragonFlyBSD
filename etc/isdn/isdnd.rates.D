@@ -4,6 +4,7 @@
 #	-------------------------------------------------
 #
 # $FreeBSD: src/etc/isdn/isdnd.rates.D,v 1.3 1999/08/27 23:23:58 peter Exp $
+# $DragonFly: src/etc/isdn/isdnd.rates.D,v 1.2 2003/06/17 04:24:47 dillon Exp $
 #
 #	last edit-date: [Sun Jan 17 18:38:29 1999]
 #

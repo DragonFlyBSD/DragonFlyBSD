@@ -20,6 +20,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.    */
 
 /* $FreeBSD: src/contrib/gcc/config/alpha/elf.h,v 1.3.2.2 2001/03/02 06:06:12 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/config/alpha/Attic/elf.h,v 1.2 2003/06/17 04:24:01 dillon Exp $ */
 
 #undef OBJECT_FORMAT_COFF
 #undef EXTENDED_COFF

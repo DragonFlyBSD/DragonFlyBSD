@@ -29,16 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)for.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/make/for.c,v 1.10 1999/09/11 13:08:01 hoek Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)for.c	8.1 (Berkeley) 6/6/93";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/make/for.c,v 1.10 1999/09/11 13:08:01 hoek Exp $";
-#endif
-#endif /* not lint */
 
 /*-
  * for.c --

@@ -36,6 +36,7 @@
  *
  *	@(#)kvm_private.h	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libkvm/kvm_private.h,v 1.5 1999/12/27 07:14:58 peter Exp $
+ * $DragonFly: src/lib/libkvm/kvm_private.h,v 1.2 2003/06/17 04:26:49 dillon Exp $
  */
 
 struct __kvm {

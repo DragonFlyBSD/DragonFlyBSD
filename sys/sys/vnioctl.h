@@ -40,6 +40,7 @@
  *	@(#)vnioctl.h	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/sys/vnioctl.h,v 1.4 1999/09/17 05:33:58 dillon Exp $
+ * $DragonFly: src/sys/sys/vnioctl.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _SYS_VNIOCTL_H_

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libposix1e/acl_support.c,v 1.3 2000/01/26 04:19:37 rwatson Exp $
+ *	$DragonFly: src/lib/libposix1e/acl_support.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 /*
  * Support functionality for the POSIX.1e ACL interface

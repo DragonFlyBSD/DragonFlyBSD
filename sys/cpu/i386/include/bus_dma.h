@@ -68,6 +68,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /* $FreeBSD: src/sys/i386/include/bus_dma.h,v 1.15.2.2 2002/11/21 23:36:01 sam Exp $ */
+/* $DragonFly: src/sys/cpu/i386/include/bus_dma.h,v 1.2 2003/06/17 04:28:35 dillon Exp $ */
 
 #ifndef _I386_BUS_DMA_H_
 #define _I386_BUS_DMA_H_

@@ -38,6 +38,7 @@
  *	    Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ether.c,v 1.2.2.13 2002/07/02 20:10:25 archie Exp $
+ * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*

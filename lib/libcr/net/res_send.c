@@ -29,6 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)res_send.c	8.1 (Berkeley) 6/4/93
+ * $From: Id: res_send.c,v 8.20 1998/04/06 23:27:51 halley Exp $
+ * $FreeBSD: src/lib/libc/net/res_send.c,v 1.31.2.9 2002/04/11 17:30:24 ume Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/res_send.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 
 /*
@@ -67,12 +72,6 @@
  * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
  * SOFTWARE.
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)res_send.c	8.1 (Berkeley) 6/4/93";
-static char orig_rcsid[] = "From: Id: res_send.c,v 8.20 1998/04/06 23:27:51 halley Exp $";
-static char rcsid[] = "$FreeBSD: src/lib/libc/net/res_send.c,v 1.31.2.9 2002/04/11 17:30:24 ume Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * Send query to name server and wait for reply.

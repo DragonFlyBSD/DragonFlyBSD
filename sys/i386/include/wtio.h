@@ -20,6 +20,7 @@
  * made by Robert Baron at CMU, based on Intel sources.
  *
  * $FreeBSD: src/sys/i386/include/wtio.h,v 1.4 1999/08/28 00:44:28 peter Exp $
+ * $DragonFly: src/sys/i386/include/Attic/wtio.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  *
  */
 

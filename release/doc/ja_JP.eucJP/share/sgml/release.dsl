@@ -1,4 +1,5 @@
 <!-- $FreeBSD: src/release/doc/ja_JP.eucJP/share/sgml/release.dsl,v 1.2.2.7 2003/06/11 21:04:43 hrs Exp $ -->
+<!-- $DragonFly: src/release/doc/ja_JP.eucJP/share/sgml/Attic/release.dsl,v 1.2 2003/06/17 04:27:20 dillon Exp $ -->
 <!-- Original revision: 1.1.2.7 -->
 
 <!DOCTYPE style-sheet PUBLIC "-//James Clark//DTD DSSSL Style Sheet//EN" [

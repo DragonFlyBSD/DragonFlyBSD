@@ -25,6 +25,7 @@
  *
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  * $FreeBSD: src/sys/dev/ppbus/if_plip.c,v 1.19.2.1 2000/05/24 00:20:57 n_hibma Exp $
+ * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 /*

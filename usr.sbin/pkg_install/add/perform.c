@@ -16,10 +16,9 @@
  *
  * This is the main body of the add module.
  *
+ * $FreeBSD: src/usr.sbin/pkg_install/add/perform.c,v 1.57.2.15 2002/09/25 23:22:13 bmah Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/add/Attic/perform.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.sbin/pkg_install/add/perform.c,v 1.57.2.15 2002/09/25 23:22:13 bmah Exp $");
 
 #include <err.h>
 #include <paths.h>

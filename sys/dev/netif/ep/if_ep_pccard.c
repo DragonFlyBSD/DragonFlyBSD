@@ -28,6 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_pccard.c,v 1.12.2.2 2000/08/08 23:55:02 peter Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_pccard.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 /*

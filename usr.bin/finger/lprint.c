@@ -32,16 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)lprint.c	8.3 (Berkeley) 4/28/95
+ * $FreeBSD: src/usr.bin/finger/lprint.c,v 1.10.2.4 2002/07/03 01:14:24 des Exp $
+ * $DragonFly: src/usr.bin/finger/lprint.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
-
-#if 0
-#ifndef lint
-static char sccsid[] = "@(#)lprint.c	8.3 (Berkeley) 4/28/95";
-#endif
-#endif
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/finger/lprint.c,v 1.10.2.4 2002/07/03 01:14:24 des Exp $");
 
 #include <sys/types.h>
 #include <sys/stat.h>

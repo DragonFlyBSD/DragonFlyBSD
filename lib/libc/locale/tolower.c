@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/tolower.c,v 1.5.8.1 2000/06/04 21:47:39 ache Exp $
+ * $DragonFly: src/lib/libc/locale/Attic/tolower.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 
 #include <stdio.h>

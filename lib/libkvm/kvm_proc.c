@@ -35,11 +35,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libkvm/kvm_proc.c,v 1.25.2.3 2002/08/24 07:27:46 kris Exp $
+ * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ *
+ * @(#)kvm_proc.c	8.3 (Berkeley) 9/23/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)kvm_proc.c	8.3 (Berkeley) 9/23/93";
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * Proc traversal interface for kvm.  ps and w are (probably) the exclusive

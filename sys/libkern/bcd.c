@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/libkern/bcd.c,v 1.4.12.1 2000/08/03 01:03:45 peter Exp $ */
+/* $DragonFly: src/sys/libkern/bcd.c,v 1.2 2003/06/17 04:28:42 dillon Exp $ */
 /*
  * Some data-tables that are often used.
  * Cannot be copyrighted.

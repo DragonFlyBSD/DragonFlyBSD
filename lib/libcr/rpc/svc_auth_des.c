@@ -1,6 +1,10 @@
 
 /*
  * Copyright (c) 1988 by Sun Microsystems, Inc.
+ *
+ * @(#)svcauth_des.c	2.3 89/07/11 4.0 RPCSRC; from 1.15 88/02/08 SMI
+ * $FreeBSD: src/lib/libc/rpc/svc_auth_des.c,v 1.3 1999/08/28 00:00:48 peter Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/svc_auth_des.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
  */
 
 /*
@@ -59,11 +63,6 @@
 #include <rpc/svc.h>
 #include <rpc/rpc_msg.h>
 #include <rpc/svc_auth.h>
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/* from: static char sccsid[] = 	"@(#)svcauth_des.c	2.3 89/07/11 4.0 RPCSRC; from 1.15 88/02/08 SMI"; */
-static const char rcsid[] = "$FreeBSD: src/lib/libc/rpc/svc_auth_des.c,v 1.3 1999/08/28 00:00:48 peter Exp $";
-#endif
 
 #define debug(msg)	 printf("svcauth_des: %s\n", msg) 
 

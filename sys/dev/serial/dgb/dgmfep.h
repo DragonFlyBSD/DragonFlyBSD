@@ -1,5 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/dgb/dgmfep.h,v 1.4.2.1 2001/09/23 19:54:54 brian Exp $
+ * $DragonFly: src/sys/dev/serial/dgb/dgmfep.h,v 1.2 2003/06/17 04:28:23 dillon Exp $
  *
  * This file is an ascii copy of the file sxbios.bin included in the
  * Digiboard PC/Xem driver for Linux.  It is copyright 1992, DIGI 

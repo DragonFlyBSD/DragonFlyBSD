@@ -56,6 +56,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha.c,v 1.34.2.1 2000/08/02 22:24:39 peter Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -41,6 +41,7 @@
 
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt.h,v 1.8.2.1 2000/08/07 18:48:14 peter Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt.h,v 1.2 2003/06/17 04:28:23 dillon Exp $"
 
 #ifndef _DPT_H
 #define _DPT_H

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/contrib/ipfilter/ipsend/sbpf.c,v 1.3.2.2 2002/04/27 17:30:57 darrenr Exp $ */
+/* $DragonFly: src/contrib/ipfilter/ipsend/sbpf.c,v 1.2 2003/06/17 04:24:02 dillon Exp $ */
 /*
  * (C)opyright 1995-1998 Darren Reed. (from tcplog)
  *

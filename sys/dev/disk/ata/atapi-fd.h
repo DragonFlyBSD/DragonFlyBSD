@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.h,v 1.10.2.5 2002/07/31 11:19:26 sos Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-fd.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 /* ATAPI Rewriteable drive Capabilities and Mechanical Status Page */

@@ -9,6 +9,7 @@
  */
 
 /* @(#) $FreeBSD: src/lib/libz/deflate.h,v 1.5.2.1 2003/02/01 13:33:12 sobomax Exp $ */
+/* @(#) $DragonFly: src/lib/libz/Attic/deflate.h,v 1.2 2003/06/17 04:26:52 dillon Exp $ */
 
 #ifndef _DEFLATE_H
 #define _DEFLATE_H

@@ -7,6 +7,7 @@
  *
  *      form: @(#)lptreg.h	1.1 (Berkeley) 12/19/90
  * $FreeBSD: src/sys/i386/isa/lptreg.h,v 1.7 1999/08/28 00:44:57 peter Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/lptreg.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /*

@@ -1,4 +1,5 @@
 $FreeBSD: src/lib/compat/compat3x.i386/libedit.so.2.gz.uu,v 1.1.2.2 2002/11/10 15:38:42 imp Exp $
+$DragonFly: src/lib/compat/compat3x.i386/Attic/libedit.so.2.gz.uu,v 1.2 2003/06/17 04:26:40 dillon Exp $
 
 begin 444 libedit.so.2.gz
 M'XL("!=@=CD"`VQI8F5D:70N<V\N,@",F@]47/65QQ]D@$F<R$0QP4@5%948

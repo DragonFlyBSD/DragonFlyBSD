@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/release/sysinstall/wizard.c,v 1.15.2.5 2002/07/02 21:27:28 jhb Exp $
+ * $DragonFly: src/release/sysinstall/Attic/wizard.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  */
 

@@ -23,6 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/csu/common/crtend.c,v 1.3.4.1 2000/07/10 09:15:28 obrien Exp $
+ * $DragonFly: src/lib/csu/common/Attic/crtend.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
 
 #include <sys/cdefs.h>

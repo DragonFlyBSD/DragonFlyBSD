@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/bootinfo.c,v 1.23.2.6 2002/01/07 07:37:52 jhb Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/bootinfo.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 #include <stand.h>

@@ -36,12 +36,10 @@
  * SUCH DAMAGE.
  *
  * 	From: @(#)common.c	8.5 (Berkeley) 4/28/95
+ *
+ * $FreeBSD: src/usr.sbin/lpr/common_source/printcap.c,v 1.6.2.3 2002/04/28 23:29:10 gad Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/printcap.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/lpr/common_source/printcap.c,v 1.6.2.3 2002/04/28 23:29:10 gad Exp $";
-#endif /* not lint */
 
 #include <errno.h>
 #include <stdio.h>

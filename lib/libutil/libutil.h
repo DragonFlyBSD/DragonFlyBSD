@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/libutil.h,v 1.26.2.3 2000/11/22 03:49:49 murray Exp $
+ * $DragonFly: src/lib/libutil/libutil.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 
 #ifndef _LIBUTIL_H_

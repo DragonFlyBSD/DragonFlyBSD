@@ -23,13 +23,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pcm/channel.c,v 1.19.2.19 2003/03/11 15:15:41 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pcm/channel.c,v 1.19.2.19 2003/03/11 15:15:41 orion Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
 
 #define MIN_CHUNK_SIZE 		256	/* for uiomove etc. */
 #define	DMA_ALIGN_THRESHOLD	4

@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_mchain.c,v 1.2.2.2 2002/04/13 12:46:40 bp Exp $
+ * $DragonFly: src/sys/kern/libmchain/subr_mchain.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 

@@ -25,6 +25,7 @@
  *		eats around 32 KBytes of memory. 
  *
  * $FreeBSD: src/sys/sys/blist.h,v 1.2.2.1 2003/01/12 09:23:12 dillon Exp $
+ * $DragonFly: src/sys/sys/blist.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_BLIST_H_

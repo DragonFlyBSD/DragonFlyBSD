@@ -55,6 +55,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/fpu_emu.h,v 1.7 1999/08/28 00:42:50 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/fpu_emu.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  *
  */
 

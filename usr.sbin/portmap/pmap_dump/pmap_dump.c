@@ -5,14 +5,11 @@
   * Computing Science, Eindhoven University of Technology, The Netherlands.
   */
 
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#) pmap_dump.c 1.1 92/06/11 22:53:15";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/portmap/pmap_dump/pmap_dump.c,v 1.6 2000/01/15 23:08:30 brian Exp $";
-#endif
-
+/*
+ * @(#) pmap_dump.c 1.1 92/06/11 22:53:15
+ * $FreeBSD: src/usr.sbin/portmap/pmap_dump/pmap_dump.c,v 1.6 2000/01/15 23:08:30 brian Exp $
+ * $DragonFly: src/usr.sbin/portmap/pmap_dump/pmap_dump.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ */
 #include <stdio.h>
 #include <sys/types.h>
 #ifdef SYSV40

@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libdisk/disklabel.c,v 1.5.2.3 2001/05/13 21:01:38 jkh Exp $
+ * $DragonFly: src/lib/libdisk/Attic/disklabel.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
  *
  */
 

@@ -1,6 +1,7 @@
 #! /usr/bin/awk -f
 #	$NetBSD: devlist2h.awk,v 1.3 1998/09/05 14:42:06 christos Exp $
 # $FreeBSD: src/sys/dev/pccard/devlist2h.awk,v 1.1 1999/10/26 06:52:28 imp Exp $
+# $DragonFly: src/sys/dev/misc/pccard/Attic/devlist2h.awk,v 1.2 2003/06/17 04:28:29 dillon Exp $
 #
 # Copyright (c) 1998 The NetBSD Foundation, Inc.
 # All rights reserved.

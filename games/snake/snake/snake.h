@@ -33,6 +33,7 @@
  *	@(#)snake.h	8.1 (Berkeley) 5/31/93
  *
  * $FreeBSD: src/games/snake/snake/snake.h,v 1.1.1.1.14.1 2000/08/17 06:21:44 jhb Exp $
+ * $DragonFly: src/games/snake/snake/Attic/snake.h,v 1.2 2003/06/17 04:25:25 dillon Exp $
  */
 
 # include <stdio.h>

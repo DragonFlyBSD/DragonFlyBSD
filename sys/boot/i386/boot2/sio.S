@@ -14,6 +14,7 @@
 #
 
 # $FreeBSD: src/sys/boot/i386/boot2/sio.s,v 1.4 1999/08/28 00:40:02 peter Exp $
+# $DragonFly: src/sys/boot/i386/boot2/Attic/sio.S,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 		.set SIO_PRT,SIOPRT		# Base port
 		.set SIO_FMT,SIOFMT		# 8N1

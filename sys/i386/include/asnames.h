@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/asnames.h,v 1.44.2.8 2003/01/22 20:14:53 jhb Exp $
+ * $DragonFly: src/sys/i386/include/Attic/asnames.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef _MACHINE_ASNAMES_H_

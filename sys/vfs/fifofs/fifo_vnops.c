@@ -32,6 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 #include <sys/param.h>

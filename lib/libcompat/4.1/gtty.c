@@ -26,11 +26,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libcompat/4.1/gtty.c,v 1.5 1999/08/28 00:04:13 peter Exp $
+ * $DragonFly: src/lib/libcompat/4.1/gtty.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/lib/libcompat/4.1/gtty.c,v 1.5 1999/08/28 00:04:13 peter Exp $";
-#endif /* not lint */
 
 #include <sgtty.h>
 

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/pci/if_wxreg.h,v 1.3.2.6 2001/10/20 17:44:12 mjacob Exp $ */
+/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wxreg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $ */
 /*
  * Principal Author: Matthew Jacob
  * Copyright (c) 1999, 2001 by Traakan Software

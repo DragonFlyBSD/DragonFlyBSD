@@ -33,6 +33,7 @@
  *	@(#)dump.h	8.2 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/dump/dump.h,v 1.7.6.4 2003/01/25 18:54:59 dillon Exp $
+ * $DragonFly: src/sbin/dump/dump.h,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
 
 #define MAXINOPB	(MAXBSIZE / sizeof(struct dinode))

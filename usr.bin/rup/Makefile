@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.bin/rup/Makefile,v 1.4.2.1 2001/04/25 11:29:37 ru Exp $
+# $DragonFly: src/usr.bin/rup/Makefile,v 1.2 2003/06/17 04:29:31 dillon Exp $
 
 PROG=	rup
 

@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libdisk/chunk.c,v 1.21.2.6 2002/01/07 07:53:29 dillon Exp $
+ * $DragonFly: src/lib/libdisk/Attic/chunk.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
  *
  */
 

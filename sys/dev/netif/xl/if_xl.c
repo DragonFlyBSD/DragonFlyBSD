@@ -30,6 +30,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.25 2003/02/05 22:03:58 mbr Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ *
+ * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.25 2003/02/05 22:03:58 mbr Exp $
  */
 
 /*
@@ -151,11 +154,6 @@ MODULE_DEPEND(xl, miibus, 1, 1, 1);
 #define XL_USEIOSPACE
 
 #include <pci/if_xlreg.h>
-
-#if !defined(lint)
-static const char rcsid[] =
-  "$FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.25 2003/02/05 22:03:58 mbr Exp $";
-#endif
 
 #define XL905B_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
 

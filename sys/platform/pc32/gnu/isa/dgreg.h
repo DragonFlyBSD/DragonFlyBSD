@@ -1,5 +1,6 @@
 /*-
  *  dgreg.h $FreeBSD: src/sys/gnu/i386/isa/dgreg.h,v 1.9 1999/08/28 00:43:05 peter Exp $
+ *  dgreg.h $DragonFly: src/sys/platform/pc32/gnu/isa/dgreg.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  *
  *  Digiboard driver.
  *

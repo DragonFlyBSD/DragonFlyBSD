@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/auth.c,v 1.3.6.1 2001/03/05 06:29:52 kris Exp $
+ * $DragonFly: src/lib/libutil/auth.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  *
  */
 

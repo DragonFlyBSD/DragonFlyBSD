@@ -13,6 +13,7 @@
 .\" Austin, Texas  78712
 .\"
 .\" $FreeBSD: src/gnu/usr.bin/man/man/man.man,v 1.10.2.8 2002/06/25 00:02:55 eric Exp $
+.\" $DragonFly: src/gnu/usr.bin/man/man/man.man,v 1.2 2003/06/17 04:25:46 dillon Exp $
 .\"
 .Dd January 5, 1991
 .Dt MAN 1

@@ -34,16 +34,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)compat.c	8.2 (Berkeley) 3/19/94
+ * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)compat.c	8.2 (Berkeley) 3/19/94";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $";
-#endif
-#endif /* not lint */
 
 /*-
  * compat.c --

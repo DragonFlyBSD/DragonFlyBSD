@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/psignal.c,v 1.5 2000/01/27 23:06:19 jasone Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/psignal.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)psignal.c	8.1 (Berkeley) 6/4/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)psignal.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * Print the name of the signal indicated

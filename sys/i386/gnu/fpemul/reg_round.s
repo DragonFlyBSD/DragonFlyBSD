@@ -66,6 +66,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/reg_round.s,v 1.9.2.1 2000/07/07 00:38:42 obrien Exp $
+ * $DragonFly: src/sys/i386/gnu/fpemul/Attic/reg_round.s,v 1.2 2003/06/17 04:28:34 dillon Exp $
  *
  */
 

@@ -42,6 +42,7 @@
  *
  *	from: scsi_cd.h,v 1.10 1997/02/22 09:44:28 peter Exp $
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.h,v 1.2.6.2 2002/11/20 00:26:18 njl Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.h,v 1.2 2003/06/17 04:28:19 dillon Exp $
  */
 #ifndef	_SCSI_SCSI_CD_H
 #define _SCSI_SCSI_CD_H 1

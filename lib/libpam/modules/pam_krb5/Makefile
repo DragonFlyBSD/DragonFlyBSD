@@ -23,6 +23,7 @@
 # SUCH DAMAGE.
 #
 #	$FreeBSD: src/lib/libpam/modules/pam_krb5/Makefile,v 1.2.2.5 2002/07/23 09:29:53 ru Exp $
+#	$DragonFly: src/lib/libpam/modules/pam_krb5/Attic/Makefile,v 1.2 2003/06/17 04:26:50 dillon Exp $
 
 
 LIB=		pam_krb5

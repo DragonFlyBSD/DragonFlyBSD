@@ -32,6 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em_osdep.h,v 1.1.2.11 2003/06/09 21:43:41 pdeuskar Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em_osdep.h,v 1.2 2003/06/17 04:28:25 dillon Exp $*/
 
 #ifndef _FREEBSD_OS_H_
 #define _FREEBSD_OS_H_

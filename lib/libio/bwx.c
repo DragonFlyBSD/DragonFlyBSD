@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libio/bwx.c,v 1.4.2.1 2000/12/11 01:03:20 obrien Exp $
+ * $DragonFly: src/lib/libio/Attic/bwx.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
  */
 
 #include <sys/param.h>

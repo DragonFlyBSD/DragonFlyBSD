@@ -32,6 +32,7 @@
 *******************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em_hw.h,v 1.1.2.8 2003/06/09 21:43:41 pdeuskar Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em_hw.h,v 1.2 2003/06/17 04:28:25 dillon Exp $*/
 /* if_em_hw.h
  * Structures, enums, and macros for the MAC
  */

@@ -32,6 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #include "opt_quota.h"

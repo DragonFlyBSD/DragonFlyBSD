@@ -29,17 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)getent.c	8.2 (Berkeley) 12/15/93
+ * $FreeBSD: src/crypto/telnet/libtelnet/getent.c,v 1.2.6.2 2002/04/13 10:59:07 markm Exp $
+ * $DragonFly: src/crypto/telnet/libtelnet/getent.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-
-__FBSDID("$FreeBSD: src/crypto/telnet/libtelnet/getent.c,v 1.2.6.2 2002/04/13 10:59:07 markm Exp $");
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)getent.c	8.2 (Berkeley) 12/15/93";
-#endif
-#endif /* not lint */
 
 #include <stdlib.h>
 #include <string.h>

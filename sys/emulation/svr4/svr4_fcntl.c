@@ -29,6 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_fcntl.c,v 1.7 1999/12/12 10:27:04 newton Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>

@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.bin/telnet/Makefile,v 1.14.2.2 2002/04/13 11:03:30 markm Exp $
+# $DragonFly: src/usr.bin/telnet/Makefile,v 1.2 2003/06/17 04:29:32 dillon Exp $
 
 PROG=		telnet
 

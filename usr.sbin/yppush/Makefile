@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/yppush/Makefile,v 1.6.2.1 2001/04/25 12:11:14 ru Exp $
+# $DragonFly: src/usr.sbin/yppush/Makefile,v 1.2 2003/06/17 04:30:04 dillon Exp $
 
 PROG=	yppush
 SRCS=	ypxfr_getmap.c yp_dblookup.c yp_error.c ypxfr_misc.c yppush_main.c \

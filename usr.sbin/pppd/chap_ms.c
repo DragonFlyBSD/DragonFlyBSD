@@ -18,6 +18,9 @@
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * $FreeBSD: src/usr.sbin/pppd/chap_ms.c,v 1.8 2000/02/24 21:10:28 markm Exp $
+ * $DragonFly: src/usr.sbin/pppd/chap_ms.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 /*
@@ -30,10 +33,6 @@
  *
  *   You should also use DOMAIN\\USERNAME as described in README.MSCHAP80
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/usr.sbin/pppd/chap_ms.c,v 1.8 2000/02/24 21:10:28 markm Exp $";
-#endif
 
 #ifdef CHAPMS
 

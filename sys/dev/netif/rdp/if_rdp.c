@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /*

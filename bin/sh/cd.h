@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/bin/sh/cd.h,v 1.5.2.1 2002/07/19 04:38:51 tjr Exp $
+ * $DragonFly: src/bin/sh/cd.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
 
 char	*getpwd(void);

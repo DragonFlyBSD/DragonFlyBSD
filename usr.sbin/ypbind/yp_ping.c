@@ -28,6 +28,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)from: clnt_udp.c 1.39 87/08/11 Copyr 1984 Sun Micro
+ * @(#)from: clnt_udp.c	2.2 88/08/01 4.0 RPCSRC
+ * $FreeBSD: src/usr.sbin/ypbind/yp_ping.c,v 1.6.2.1 2002/02/15 00:46:59 des Exp $
+ * $DragonFly: src/usr.sbin/ypbind/yp_ping.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
  */
 
 /*
@@ -65,15 +70,6 @@
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  */
-
-#ifndef lint
-#if 0
-static char *sccsid = "@(#)from: clnt_udp.c 1.39 87/08/11 Copyr 1984 Sun Micro";
-static char *sccsid = "@(#)from: clnt_udp.c	2.2 88/08/01 4.0 RPCSRC";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/ypbind/yp_ping.c,v 1.6.2.1 2002/02/15 00:46:59 des Exp $";
-#endif
 
 /*
  * clnt_udp.c, Implements a UDP/IP based, client side RPC.

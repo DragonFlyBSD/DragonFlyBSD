@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pccard/pccardd/readcis.h,v 1.11.2.2 2000/06/05 14:59:03 iwasaki Exp $
+ * $DragonFly: src/usr.sbin/pccard/pccardd/Attic/readcis.h,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
 
 struct tuple {

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs.h,v 1.1 1999/12/09 19:09:58 semenu Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 /*#define HPFS_DEBUG 10*/

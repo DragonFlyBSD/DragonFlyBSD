@@ -35,6 +35,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/crypto/rc4/rc4.c,v 1.2.2.1 2000/04/18 04:48:31 archie Exp $
+ * $DragonFly: src/sys/crypto/rc4/rc4.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 
 #include <sys/types.h>

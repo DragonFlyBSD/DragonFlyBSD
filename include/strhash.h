@@ -2,6 +2,7 @@
 #define _STRHASH_H_INCLUDE
 
 /* $FreeBSD: src/include/strhash.h,v 1.3 1999/08/28 04:59:30 peter Exp $ */
+/* $DragonFly: src/include/Attic/strhash.h,v 1.2 2003/06/17 04:25:56 dillon Exp $ */
 
 /*
  *

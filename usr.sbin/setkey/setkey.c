@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/setkey/setkey.c,v 1.1.2.3 2003/04/26 23:53:54 sumikawa Exp $	*/
+/*	$DragonFly: src/usr.sbin/setkey/setkey.c,v 1.2 2003/06/17 04:30:03 dillon Exp $	*/
 /*	$KAME: setkey.c,v 1.18 2001/05/08 04:36:39 itojun Exp $	*/
 
 /*

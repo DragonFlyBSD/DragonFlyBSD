@@ -1,4 +1,5 @@
 .\" $FreeBSD: src/games/trek/DOC/read_me.nr,v 1.1.1.1.14.1 2001/03/05 12:11:40 kris Exp $
+.\" $DragonFly: src/games/trek/DOC/read_me.nr,v 1.2 2003/06/17 04:25:25 dillon Exp $
 .de @h
 'sp 4
 'tl 'TREK SETUP INSTRUCTIONS''%'

@@ -29,6 +29,7 @@
  *	from: @(#)svc.h 1.20 88/02/08 SMI
  *	from: @(#)svc.h	2.2 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/svc.h,v 1.16 1999/12/29 05:00:43 peter Exp $
+ * $DragonFly: src/include/rpc/svc.h,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 /*

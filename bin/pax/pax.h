@@ -36,6 +36,7 @@
  *
  *	@(#)pax.h	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/pax.h,v 1.8.2.1 2001/08/01 05:03:11 obrien Exp $
+ * $DragonFly: src/bin/pax/pax.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
 
 /*

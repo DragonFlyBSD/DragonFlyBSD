@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_ioctl.c,v 1.2.2.1 2001/02/22 09:14:12 bp Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_ioctl.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>

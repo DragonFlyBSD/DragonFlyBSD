@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)tunefs.c	8.2 (Berkeley) 4/19/94
+ * $FreeBSD: src/sbin/tunefs/tunefs.c,v 1.11.2.5 2001/10/14 21:50:39 iedowse Exp $
+ * $DragonFly: src/sbin/tunefs/tunefs.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1983, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)tunefs.c	8.2 (Berkeley) 4/19/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/tunefs/tunefs.c,v 1.11.2.5 2001/10/14 21:50:39 iedowse Exp $";
-#endif /* not lint */
 
 /*
  * tunefs: change layout parameters to an existing file system.

@@ -24,6 +24,7 @@
  *			   University of Maryland at College Park
  *
  * $FreeBSD: src/usr.sbin/crunch/crunchgen/crunched_main.c,v 1.6.6.2 2002/08/09 02:42:02 gshapiro Exp $
+ * $DragonFly: src/usr.sbin/crunch/crunchgen/crunched_main.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 /*
  * crunched_main.c - main program for crunched binaries, it branches to a

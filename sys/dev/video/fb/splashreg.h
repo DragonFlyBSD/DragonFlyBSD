@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/splashreg.h,v 1.4 1999/08/28 00:41:41 peter Exp $
+ * $DragonFly: src/sys/dev/video/fb/splashreg.h,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 #ifndef _DEV_FB_SPLASHREG_H_

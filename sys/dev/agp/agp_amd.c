@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_amd.c,v 1.3.2.4 2002/04/25 23:41:36 cokane Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_amd.c,v 1.2 2003/06/17 04:28:56 dillon Exp $
  */
 
 #include "opt_bus.h"

@@ -32,6 +32,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)input.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/atc/input.c,v 1.7 2000/02/27 23:02:47 mph Exp $
+ * $DragonFly: src/games/atc/input.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
  */
 
 /*
@@ -42,14 +46,6 @@
  *
  * For more info on this and all of my stuff, mail edjames@berkeley.edu.
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)input.c	8.1 (Berkeley) 5/31/93";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/atc/input.c,v 1.7 2000/02/27 23:02:47 mph Exp $";
-#endif not lint
 
 #include <stdlib.h>
 #include <string.h>

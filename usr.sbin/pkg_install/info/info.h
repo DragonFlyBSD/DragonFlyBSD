@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.sbin/pkg_install/info/info.h,v 1.11.2.10 2002/08/02 11:09:05 sobomax Exp $ */
+/* $DragonFly: src/usr.sbin/pkg_install/info/Attic/info.h,v 1.2 2003/06/17 04:29:59 dillon Exp $ */
 
 /*
  * FreeBSD install - a package for the installation and maintainance

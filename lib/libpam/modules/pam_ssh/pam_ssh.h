@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpam/modules/pam_ssh/pam_ssh.h,v 1.1.2.2 2002/07/03 21:41:30 des Exp $
+ * $DragonFly: src/lib/libpam/modules/pam_ssh/Attic/pam_ssh.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
  *
  */
 

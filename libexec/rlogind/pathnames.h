@@ -32,6 +32,7 @@
  *
  *	@(#)pathnames.h	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/rlogind/pathnames.h,v 1.2 1999/09/19 22:05:30 markm Exp $
+ * $DragonFly: src/libexec/rlogind/pathnames.h,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 #include <paths.h>

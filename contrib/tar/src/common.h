@@ -18,6 +18,7 @@
    59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/tar/src/common.h,v 1.2.2.1 2002/07/14 13:19:44 sobomax Exp $ */
+/* $DragonFly: src/contrib/tar/src/Attic/common.h,v 1.2 2003/06/17 04:24:06 dillon Exp $ */
 
 /* Declare the GNU tar archive format.  */
 #include "tar.h"

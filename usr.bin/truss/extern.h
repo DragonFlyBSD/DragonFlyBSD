@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truss/extern.h,v 1.1.2.1 2002/02/15 11:43:51 des Exp $
+ * $DragonFly: src/usr.bin/truss/extern.h,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
 
 extern int setup_and_wait(char **);

@@ -36,6 +36,7 @@
  *	@(#)umap.h	8.4 (Berkeley) 8/20/94
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap.h,v 1.13 1999/12/29 04:54:47 peter Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap.h,v 1.2 2003/06/17 04:28:43 dillon Exp $
  */
 
 #define MAPFILEENTRIES 64

@@ -1,5 +1,8 @@
 /* s_asinhf.c -- float version of s_asinh.c.
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ *
+ * $FreeBSD: src/lib/msun/src/s_asinhf.c,v 1.6 1999/08/28 00:06:43 peter Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_asinhf.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
  */
 
 /*
@@ -12,10 +15,6 @@
  * is preserved.
  * ====================================================
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/lib/msun/src/s_asinhf.c,v 1.6 1999/08/28 00:06:43 peter Exp $";
-#endif
 
 #include "math.h"
 #include "math_private.h"

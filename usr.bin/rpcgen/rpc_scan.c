@@ -27,13 +27,12 @@
  * Mountain View, California  94043
  *
  * $FreeBSD: src/usr.bin/rpcgen/rpc_scan.c,v 1.4.8.1 2001/03/04 08:59:50 kris Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_scan.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ *
+ * @(#)rpc_scan.c 1.11 89/02/22 (C) 1987 SMI
  */
 
 #ident	"@(#)rpc_scan.c	1.13	93/07/05 SMI"
-
-#ifndef lint
-static char sccsid[] = "@(#)rpc_scan.c 1.11 89/02/22 (C) 1987 SMI";
-#endif
 
 /*
  * rpc_scan.c, Scanner for the RPC protocol compiler 

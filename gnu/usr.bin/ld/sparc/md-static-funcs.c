@@ -1,6 +1,7 @@
 
 /*
  * $FreeBSD: src/gnu/usr.bin/ld/sparc/md-static-funcs.c,v 1.5 1999/08/27 23:36:04 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/ld/sparc/Attic/md-static-funcs.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
  *
  * Simple SPARC relocations for the benefit of self-relocation of ld.so
  * avoiding the use of global variables (ie. reloc_bitshift[] et. al.).

@@ -31,17 +31,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/last/last.c,v 1.10.6.11 2002/11/02 23:00:26 mux Exp $
+ * $DragonFly: src/usr.bin/last/last.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ *
+ * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)last.c	8.2 (Berkeley) 4/2/94
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1987, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static const char sccsid[] = "@(#)last.c	8.2 (Berkeley) 4/2/94";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

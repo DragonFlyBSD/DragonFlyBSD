@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/coda/Makefile,v 1.7.2.1 2001/07/24 09:49:42 dd Exp $
+# $DragonFly: src/sys/vfs/coda/Attic/Makefile,v 1.2 2003/06/17 04:28:43 dillon Exp $
 
 .PATH:	${.CURDIR}/../../coda
 KMOD=	coda

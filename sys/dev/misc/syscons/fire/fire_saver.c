@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/fire/fire_saver.c,v 1.6.2.1 2000/05/10 14:01:23 obrien Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/fire/fire_saver.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
  */
 
 /*

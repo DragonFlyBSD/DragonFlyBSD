@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/release/scripts/doFS.sh,v 1.24.2.12 2003/04/04 11:58:05 ru Exp $
+# $DragonFly: src/release/scripts/Attic/doFS.sh,v 1.2 2003/06/17 04:27:21 dillon Exp $
 #
 
 set -e

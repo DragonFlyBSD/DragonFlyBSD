@@ -1,5 +1,6 @@
 #	$NetBSD: Makefile.miidevs,v 1.1 1998/08/10 23:55:17 thorpej Exp $
 # $FreeBSD: src/sys/dev/mii/Makefile.miidevs,v 1.2 1999/08/28 00:42:12 peter Exp $
+# $DragonFly: src/sys/dev/netif/mii_layer/Makefile.miidevs,v 1.2 2003/06/17 04:28:28 dillon Exp $
 
 AWK=	awk
 

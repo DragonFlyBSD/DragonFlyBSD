@@ -22,6 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pci/via82c686.c,v 1.4.2.10 2003/05/11 01:45:53 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -33,7 +36,7 @@
 
 #include <dev/sound/pci/via82c686.h>
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pci/via82c686.c,v 1.4.2.10 2003/05/11 01:45:53 orion Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
 
 #define VIA_PCI_ID 0x30581106
 #define	NSEGS		4	/* Number of segments in SGD table */

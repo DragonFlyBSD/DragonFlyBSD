@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)pass3.c	8.2 (Berkeley) 4/27/95
+ * $FreeBSD: src/sbin/fsck/pass3.c,v 1.7.2.1 2001/01/23 23:11:07 iedowse Exp $
+ * $DragonFly: src/sbin/fsck/pass3.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)pass3.c	8.2 (Berkeley) 4/27/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/fsck/pass3.c,v 1.7.2.1 2001/01/23 23:11:07 iedowse Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 

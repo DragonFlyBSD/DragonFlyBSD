@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/_flock_stub.c,v 1.3 1999/08/28 00:00:55 peter Exp $
+ * $DragonFly: src/lib/libc/stdio/_flock_stub.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
  *
  */
 

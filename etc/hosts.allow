@@ -1,6 +1,7 @@
 #
 # hosts.allow access control file for "tcp wrapped" applications.
 # $FreeBSD: src/etc/hosts.allow,v 1.8.2.7 2002/04/17 19:44:22 dougb Exp $
+# $DragonFly: src/etc/hosts.allow,v 1.2 2003/06/17 04:24:45 dillon Exp $
 #
 # NOTE: The hosts.deny file is deprecated.
 #       Place both 'allow' and 'deny' rules in the hosts.allow file.

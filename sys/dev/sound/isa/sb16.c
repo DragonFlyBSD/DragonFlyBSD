@@ -27,6 +27,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/isa/sb16.c,v 1.64.2.7 2002/12/24 21:17:42 semenu Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/isa/sb16.c,v 1.64.2.7 2002/12/24 21:17:42 semenu Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
 
 #define SB16_BUFFSIZE	4096
 #define PLAIN_SB16(x) ((((x)->bd_flags) & (BD_F_SB16|BD_F_SB16X)) == BD_F_SB16)

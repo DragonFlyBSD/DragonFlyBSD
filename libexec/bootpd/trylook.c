@@ -2,6 +2,7 @@
  * trylook.c - test program for lookup.c
  *
  * $FreeBSD: src/libexec/bootpd/trylook.c,v 1.5 1999/08/28 00:09:20 peter Exp $
+ * $DragonFly: src/libexec/bootpd/trylook.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 #include <sys/types.h>

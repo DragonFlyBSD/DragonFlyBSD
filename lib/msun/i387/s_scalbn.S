@@ -36,6 +36,7 @@
 #include <machine/asm.h>
 
 RCSID("$FreeBSD: src/lib/msun/i387/s_scalbn.S,v 1.7 1999/08/28 00:06:13 peter Exp $")
+RCSID("$DragonFly: src/lib/msun/i387/Attic/s_scalbn.S,v 1.2 2003/06/17 04:26:52 dillon Exp $")
 
 ENTRY(scalbn)
 	fildl	12(%esp)

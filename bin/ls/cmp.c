@@ -32,16 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)cmp.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/bin/ls/cmp.c,v 1.9.2.2 2002/07/08 06:59:27 tjr Exp $
+ * $DragonFly: src/bin/ls/cmp.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#if 0
-#ifndef lint
-static char sccsid[] = "@(#)cmp.c	8.1 (Berkeley) 5/31/93";
-#endif /* not lint */
-#endif
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/bin/ls/cmp.c,v 1.9.2.2 2002/07/08 06:59:27 tjr Exp $");
-
 
 #include <sys/types.h>
 #include <sys/stat.h>

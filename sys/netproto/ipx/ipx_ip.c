@@ -34,6 +34,7 @@
  *	@(#)ipx_ip.c
  *
  * $FreeBSD: src/sys/netipx/ipx_ip.c,v 1.24.2.2 2003/01/23 21:06:48 sam Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 /*

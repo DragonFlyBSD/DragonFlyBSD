@@ -25,6 +25,7 @@
  *
  *	from: Mach, Revision 2.2  92/04/04  11:35:03  rpd
  * $FreeBSD: src/sys/i386/boot/cdboot/boot.h,v 1.3 1999/08/28 00:43:17 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/cdboot/Attic/boot.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 /*
  * Extensions for El Torito CD-ROM booting:

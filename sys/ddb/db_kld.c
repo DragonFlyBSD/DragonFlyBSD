@@ -24,6 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_kld.c,v 1.9 2000/01/11 13:25:12 peter Exp $
+ * $DragonFly: src/sys/ddb/db_kld.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
  *	from db_aout.c,v 1.20 1998/06/07 17:09:36 dfr Exp
  */
 

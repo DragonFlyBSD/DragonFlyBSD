@@ -1,4 +1,5 @@
 $FreeBSD: src/sys/dev/em/LICENSE,v 1.1.2.2 2003/04/04 18:39:28 pdeuskar Exp $
+$DragonFly: src/sys/dev/netif/em/LICENSE,v 1.2 2003/06/17 04:28:24 dillon Exp $
 Copyright (c) 2001-2003, Intel Corporation 
 All rights reserved.
 

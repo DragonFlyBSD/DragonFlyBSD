@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mca/mca_busreg.h,v 1.1 1999/09/03 03:40:00 mdodd Exp $
+ * $DragonFly: src/sys/bus/mca/Attic/mca_busreg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 /*

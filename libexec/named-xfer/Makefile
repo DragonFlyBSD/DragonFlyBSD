@@ -1,4 +1,5 @@
 # $FreeBSD: src/libexec/named-xfer/Makefile,v 1.9.2.2 2001/04/25 10:40:53 ru Exp $
+# $DragonFly: src/libexec/named-xfer/Attic/Makefile,v 1.2 2003/06/17 04:27:07 dillon Exp $
 
 USE_LIBBIND=	true
 .include "${.CURDIR}/../../usr.sbin/named/Makefile.inc"

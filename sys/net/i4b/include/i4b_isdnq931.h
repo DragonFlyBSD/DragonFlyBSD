@@ -30,6 +30,7 @@
  *	$Id: i4b_isdnq931.h,v 1.7 2000/04/27 07:42:43 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/include/i4b_isdnq931.h,v 1.6.2.1 2001/08/10 14:08:36 obrien Exp $
+ * $DragonFly: src/sys/net/i4b/include/i4b_isdnq931.h,v 1.2 2003/06/17 04:28:39 dillon Exp $
  *
  *	last edit-date: [Thu Apr 27 09:46:13 2000]
  *

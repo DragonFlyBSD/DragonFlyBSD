@@ -32,6 +32,7 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/protosw.h,v 1.28.2.2 2001/07/03 11:02:01 ume Exp $
+ * $DragonFly: src/sys/sys/protosw.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_PROTOSW_H_

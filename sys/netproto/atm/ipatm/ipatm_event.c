@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_event.c,v 1.4 1999/08/28 00:48:43 peter Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_event.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -40,11 +40,6 @@
 #include <netatm/ipatm/ipatm.h>
 #include <netatm/ipatm/ipatm_var.h>
 #include <netatm/ipatm/ipatm_serv.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_event.c,v 1.4 1999/08/28 00:48:43 peter Exp $");
-#endif
-
 
 /*
  * Process an IP VCC timeout

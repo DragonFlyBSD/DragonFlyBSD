@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.bin/ee/Makefile,v 1.11.6.4 2002/02/18 15:03:35 ru Exp $
+# $DragonFly: src/usr.bin/ee/Makefile,v 1.2 2003/06/17 04:29:26 dillon Exp $
 
 CFLAGS+= -DCAP -DHAS_NCURSES -DHAS_UNISTD -DHAS_STDARG -DHAS_STDLIB \
 	 -DHAS_CTYPE -DHAS_SYS_IOCTL -DHAS_SYS_WAIT -DSLCT_HDR

@@ -29,11 +29,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $NetBSD: stringlist.c,v 1.2 1997/01/17 07:26:20 lukem Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char *rcsid = "$NetBSD: stringlist.c,v 1.2 1997/01/17 07:26:20 lukem Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <stdio.h>
 #include <string.h>

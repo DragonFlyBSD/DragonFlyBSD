@@ -1,4 +1,5 @@
 $FreeBSD: src/contrib/gperf/FREEBSD-Xlist,v 1.1.2.1 2001/02/15 12:32:00 obrien Exp $
+$DragonFly: src/contrib/gperf/Attic/FREEBSD-Xlist,v 1.2 2003/06/17 04:24:02 dillon Exp $
 */*.dvi
 */*.html
 */*.info

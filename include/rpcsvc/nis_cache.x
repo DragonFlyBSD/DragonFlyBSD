@@ -26,6 +26,10 @@
 % * Sun Microsystems, Inc.
 % * 2550 Garcia Avenue
 % * Mountain View, California  94043
+% *
+% * @(#)nis_cache.x	1.11	94/05/03 SMI
+% * $FreeBSD: src/include/rpcsvc/nis_cache.x,v 1.3 1999/08/27 23:45:09 peter Exp $
+% * $DragonFly: src/include/rpcsvc/nis_cache.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
 % */
 
 /*
@@ -34,15 +38,6 @@
  *	Copyright (c) 1988-1992 Sun Microsystems Inc
  *	All Rights Reserved.
  */
-
-/* From: %#pragma ident	"@(#)nis_cache.x	1.11	94/05/03 SMI" */
-
-#ifndef RPC_HDR
-%#ifndef lint
-%static const char rcsid[] =
-%  "$FreeBSD: src/include/rpcsvc/nis_cache.x,v 1.3 1999/08/27 23:45:09 peter Exp $";
-%#endif /* not lint */
-#endif
 
 #ifdef RPC_HDR
 %#include <rpc/types.h>

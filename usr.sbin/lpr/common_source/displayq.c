@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)displayq.c	8.4 (Berkeley) 4/28/95
+ * $FreeBSD: src/usr.sbin/lpr/common_source/displayq.c,v 1.15.2.8 2001/08/30 09:27:41 kris Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/displayq.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
  */
-
-#ifndef lint
-/*
-static char sccsid[] = "@(#)displayq.c	8.4 (Berkeley) 4/28/95";
-*/
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/lpr/common_source/displayq.c,v 1.15.2.8 2001/08/30 09:27:41 kris Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

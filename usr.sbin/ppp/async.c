@@ -25,10 +25,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: src/usr.sbin/ppp/async.c,v 1.23.2.3 2002/09/01 02:12:22 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/async.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.sbin/ppp/async.c,v 1.23.2.3 2002/09/01 02:12:22 brian Exp $");
 
 #include <sys/types.h>
 

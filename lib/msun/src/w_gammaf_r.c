@@ -1,5 +1,8 @@
 /* w_gammaf_r.c -- float version of w_gamma_r.c.
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ *
+ * $FreeBSD: src/lib/msun/src/w_gammaf_r.c,v 1.5 1999/08/28 00:07:02 peter Exp $
+ * $DragonFly: src/lib/msun/src/Attic/w_gammaf_r.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
  */
 
 /*
@@ -12,10 +15,6 @@
  * is preserved.
  * ====================================================
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/lib/msun/src/w_gammaf_r.c,v 1.5 1999/08/28 00:07:02 peter Exp $";
-#endif
 
 /*
  * wrapper float gammaf_r(float x, int *signgamp)

@@ -29,6 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_ntfs/mount_ntfs.c,v 1.3.2.2 2001/10/12 22:08:43 semenu Exp $
+ * $DragonFly: src/sbin/mount_ntfs/mount_ntfs.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  *
  */
 

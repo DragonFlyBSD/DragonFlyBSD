@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/lalr.c,v 1.7 1999/08/28 01:07:59 peter Exp $
+ * $DragonFly: src/usr.bin/yacc/lalr.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ *
+ * @(#)lalr.c	5.3 (Berkeley) 6/1/90
  */
-
-#ifndef lint
-static char const sccsid[] = "@(#)lalr.c	5.3 (Berkeley) 6/1/90";
-#endif /* not lint */
 
 #include <stdlib.h>
 #include "defs.h"

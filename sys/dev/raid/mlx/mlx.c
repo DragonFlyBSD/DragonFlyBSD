@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 /*

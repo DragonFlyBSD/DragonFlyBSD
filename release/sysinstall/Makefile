@@ -1,4 +1,5 @@
 # $FreeBSD: src/release/sysinstall/Makefile,v 1.92.2.22 2003/03/07 08:17:59 ru Exp $
+# $DragonFly: src/release/sysinstall/Attic/Makefile,v 1.2 2003/06/17 04:27:21 dillon Exp $
 
 PROG=	sysinstall
 MAN=	sysinstall.8

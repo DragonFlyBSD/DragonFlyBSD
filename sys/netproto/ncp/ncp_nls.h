@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_nls.h,v 1.4.2.1 2002/04/30 08:18:25 bp Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_nls.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 #ifndef _NETNCP_NCP_NLS_H_
 #define _NETNCP_NCP_NLS_H_

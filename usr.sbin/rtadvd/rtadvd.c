@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/rtadvd.c,v 1.3.2.4 2003/04/05 10:31:58 ume Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/rtadvd.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -32,13 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)misc.c	8.3 (Berkeley) 4/2/94
+ * $FreeBSD: src/usr.bin/ar/misc.c,v 1.6.6.1 2001/08/02 00:51:00 obrien Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/misc.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#ifndef lint
-static const char sccsid[] = "@(#)misc.c	8.3 (Berkeley) 4/2/94";
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/ar/misc.c,v 1.6.6.1 2001/08/02 00:51:00 obrien Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 

@@ -33,6 +33,7 @@
  *	@(#)externs.h	8.1 (Berkeley) 5/31/93
  *
  *	$FreeBSD: src/games/battlestar/externs.h,v 1.9.2.1 2001/03/05 11:45:36 kris Exp $
+ *	$DragonFly: src/games/battlestar/externs.h,v 1.2 2003/06/17 04:25:22 dillon Exp $
  */
 
 #include <errno.h>

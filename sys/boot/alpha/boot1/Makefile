@@ -1,5 +1,6 @@
 # $NetBSD: Makefile,v 1.15 1998/03/28 00:21:35 thorpej Exp $
 # $FreeBSD: src/sys/boot/alpha/boot1/Makefile,v 1.10.2.1 2001/03/04 05:12:40 obrien Exp $
+# $DragonFly: src/sys/boot/alpha/boot1/Attic/Makefile,v 1.2 2003/06/17 04:28:16 dillon Exp $
 
 .include <../Makefile.inc>
 

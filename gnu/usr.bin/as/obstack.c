@@ -15,10 +15,10 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/as/obstack.c,v 1.5 1999/08/27 23:34:19 peter Exp $";
-#endif
-
+/*
+ * $FreeBSD: src/gnu/usr.bin/as/obstack.c,v 1.5 1999/08/27 23:34:19 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/as/Attic/obstack.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
+ */
 #include "obstack.h"
 
 #ifdef __STDC__

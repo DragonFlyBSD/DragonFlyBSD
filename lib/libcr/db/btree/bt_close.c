@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/btree/bt_close.c,v 1.5 2000/01/27 23:06:05 jasone Exp $
+ * $DragonFly: src/lib/libcr/db/btree/Attic/bt_close.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ *
+ * @(#)bt_close.c	8.7 (Berkeley) 8/17/94
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)bt_close.c	8.7 (Berkeley) 8/17/94";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 

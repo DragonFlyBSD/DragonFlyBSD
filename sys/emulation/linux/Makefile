@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/linux/Makefile,v 1.34.2.12 2003/01/02 20:41:34 kan Exp $
+# $DragonFly: src/sys/emulation/linux/Makefile,v 1.2 2003/06/17 04:28:44 dillon Exp $
 
 MAINTAINER=	marcel@FreeBSD.org
 

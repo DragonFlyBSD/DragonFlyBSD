@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/libncp/Makefile,v 1.3 1999/11/12 15:09:56 peter Exp $
+# $DragonFly: src/lib/libncp/Makefile,v 1.2 2003/06/17 04:26:50 dillon Exp $
 
 NCPLIB=${.CURDIR}
 

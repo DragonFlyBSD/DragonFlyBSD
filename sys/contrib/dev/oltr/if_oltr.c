@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 
 #include <sys/param.h>

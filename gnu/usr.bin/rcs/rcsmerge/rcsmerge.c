@@ -28,6 +28,9 @@ Report problems and direct all questions to:
 */
 
 /*
+ * $FreeBSD: src/gnu/usr.bin/rcs/rcsmerge/rcsmerge.c,v 1.7 1999/08/27 23:36:58 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/rcsmerge/rcsmerge.c,v 1.2 2003/06/17 04:25:48 dillon Exp $
+ *
  * Revision 5.15  1995/06/16 06:19:24  eggert
  * Update FSF address.
  *
@@ -117,7 +120,7 @@ Report problems and direct all questions to:
 
 static char const co[] = CO;
 
-mainProg(rcsmergeId, "rcsmerge", "$FreeBSD: src/gnu/usr.bin/rcs/rcsmerge/rcsmerge.c,v 1.7 1999/08/27 23:36:58 peter Exp $")
+mainProg(rcsmergeId, "rcsmerge", "$DragonFly: src/gnu/usr.bin/rcs/rcsmerge/rcsmerge.c,v 1.2 2003/06/17 04:25:48 dillon Exp $")
 {
 	static char const cmdusage[] =
 		"\nrcsmerge usage: rcsmerge -rrev1 [-rrev2] -ksubst -{pq}[rev] -Vn -xsuff -zzone file";

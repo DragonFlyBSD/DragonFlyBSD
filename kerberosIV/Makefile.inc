@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberosIV/Makefile.inc,v 1.8.2.4 2002/07/25 09:33:16 ru Exp $
+# $DragonFly: src/kerberosIV/Attic/Makefile.inc,v 1.2 2003/06/17 04:26:23 dillon Exp $
 
 DISTRIBUTION?=	krb4
 

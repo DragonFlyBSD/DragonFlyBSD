@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1980 The Regents of the University of California. All rights reserved.
+ * @(#)symorder.c	5.8 (Berkeley) 4/1/91
+ * $FreeBSD: src/usr.bin/symorder/symorder.c,v 1.15 1999/08/28 01:05:57 peter Exp $
+ * $DragonFly: src/usr.bin/symorder/symorder.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-char const copyright[] =
-"@(#) Copyright (c) 1980 The Regents of the University of California.\n\
- All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)symorder.c	5.8 (Berkeley) 4/1/91";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/symorder/symorder.c,v 1.15 1999/08/28 01:05:57 peter Exp $";
-#endif /* not lint */
 
 /*
  * symorder - reorder symbol table

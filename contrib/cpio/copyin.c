@@ -16,6 +16,7 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 $FreeBSD: src/contrib/cpio/copyin.c,v 1.6.6.1 2002/03/12 19:10:14 phantom Exp $
+$DragonFly: src/contrib/cpio/copyin.c,v 1.2 2003/06/17 04:23:58 dillon Exp $
 */
 
 #include <stdio.h>

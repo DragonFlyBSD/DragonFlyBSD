@@ -28,6 +28,7 @@
  *	---------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_isic.h,v 1.3.2.1 2001/08/10 14:08:38 obrien Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
  *
  *      last edit-date: [Fri Jan 26 13:55:12 2001]
  *

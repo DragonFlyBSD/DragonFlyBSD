@@ -56,6 +56,7 @@
  * [including the GNU Public Licence.]
  *
  * $FreeBSD: src/lib/libmd/rmd160c.c,v 1.4 1999/08/28 00:05:07 peter Exp $
+ * $DragonFly: src/lib/libmd/rmd160c.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
 
 #include <sys/types.h>

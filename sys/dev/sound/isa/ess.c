@@ -27,6 +27,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/isa/ess.c,v 1.3.2.8 2002/12/24 21:17:41 semenu Exp $
+ * $DragonFly: src/sys/dev/sound/isa/ess.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/isa/ess.c,v 1.3.2.8 2002/12/24 21:17:41 semenu Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ess.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
 
 #define ESS_BUFFSIZE (4096)
 #define ABS(x) (((x) < 0)? -(x) : (x))

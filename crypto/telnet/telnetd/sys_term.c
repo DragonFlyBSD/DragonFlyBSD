@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)sys_term.c	8.4+1 (Berkeley) 5/30/95
+ * $FreeBSD: src/crypto/telnet/telnetd/sys_term.c,v 1.7.2.5 2002/06/17 02:48:02 jmallett Exp $
+ * $DragonFly: src/crypto/telnet/telnetd/sys_term.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-
-__FBSDID("$FreeBSD: src/crypto/telnet/telnetd/sys_term.c,v 1.7.2.5 2002/06/17 02:48:02 jmallett Exp $");
-
-#ifndef lint
-static const char sccsid[] = "@(#)sys_term.c	8.4+1 (Berkeley) 5/30/95";
-#endif
 
 #include <sys/types.h>
 #include <sys/tty.h>

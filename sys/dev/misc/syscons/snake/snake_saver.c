@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/snake/snake_saver.c,v 1.26.2.2 2001/05/06 05:44:29 nyan Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/snake/snake_saver.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -32,6 +32,7 @@
  *
  *	@(#)kvm.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/lib/libkvm/kvm.h,v 1.11 1999/08/27 23:44:50 peter Exp $
+ * $DragonFly: src/lib/libkvm/kvm.h,v 1.2 2003/06/17 04:26:49 dillon Exp $
  */
 
 #ifndef _KVM_H_

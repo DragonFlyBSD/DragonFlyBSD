@@ -24,6 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/dev/ppbus/ppbus_if.m,v 1.1.2.1 2000/05/24 00:20:57 n_hibma Exp $
+# $DragonFly: src/sys/bus/ppbus/ppbus_if.m,v 1.2 2003/06/17 04:28:29 dillon Exp $
 #
 
 #include <sys/bus.h>

@@ -25,6 +25,9 @@
 % * Sun Microsystems, Inc.
 % * 2550 Garcia Avenue
 % * Mountain View, California  94043
+% *
+% * @(#)key_prot.x	1.7	94/04/29 SMI
+% * $DragonFly: src/include/rpcsvc/key_prot.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
 % */
 /*
  * Key server protocol definition
@@ -43,7 +46,6 @@
  * requirements.
  */
 
-%/* From: #pragma ident	"@(#)key_prot.x	1.7	94/04/29 SMI" */
 %
 %/* Copyright (c)  1990, 1991 Sun Microsystems, Inc. */
 %

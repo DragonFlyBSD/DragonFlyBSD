@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)lo_main.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/sail/lo_main.c,v 1.2 1999/11/30 03:49:34 billf Exp $
+ * $DragonFly: src/games/sail/lo_main.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)lo_main.c	8.1 (Berkeley) 5/31/93";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/sail/lo_main.c,v 1.2 1999/11/30 03:49:34 billf Exp $";
-#endif /* not lint */
 
 /*
  * Print out the top ten SAILors

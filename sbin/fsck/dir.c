@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)dir.c	8.8 (Berkeley) 4/28/95
+ * $FreeBSD: src/sbin/fsck/dir.c,v 1.15 1999/08/28 00:12:45 peter Exp $
+ * $DragonFly: src/sbin/fsck/dir.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)dir.c	8.8 (Berkeley) 4/28/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/fsck/dir.c,v 1.15 1999/08/28 00:12:45 peter Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/time.h>

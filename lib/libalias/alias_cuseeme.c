@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libalias/alias_cuseeme.c,v 1.2.2.2 2000/10/31 08:48:21 ru Exp $
+ * $DragonFly: src/lib/libalias/alias_cuseeme.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
 
 #include <sys/types.h>

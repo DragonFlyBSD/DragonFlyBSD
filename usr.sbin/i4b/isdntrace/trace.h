@@ -38,6 +38,7 @@
  *	$Id: trace.h,v 1.12 2000/02/14 16:25:22 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdntrace/trace.h,v 1.6.2.1 2001/08/01 17:45:08 obrien Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdntrace/trace.h,v 1.2 2003/06/17 04:29:55 dillon Exp $
  *
  *      last edit-date: [Mon Feb 14 14:43:40 2000]
  *

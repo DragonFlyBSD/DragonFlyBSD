@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/xmaciireg.h,v 1.2.4.1 2000/04/27 14:48:07 wpaul Exp $
+ * $DragonFly: src/sys/dev/netif/sk/xmaciireg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /*

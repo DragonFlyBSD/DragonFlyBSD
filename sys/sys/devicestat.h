@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/devicestat.h,v 1.9 1999/12/29 04:24:39 peter Exp $
+ * $DragonFly: src/sys/sys/devicestat.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _DEVICESTAT_H

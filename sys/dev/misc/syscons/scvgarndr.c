@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvgarndr.c,v 1.5.2.3 2001/07/28 12:51:47 yokota Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #include "opt_syscons.h"

@@ -29,15 +29,13 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $OpenBSD: daemon.c,v 1.2 1996/08/19 08:22:13 tholo Exp $
  */
 
 #include "includes.h"
 
 #ifndef HAVE_DAEMON
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char rcsid[] = "$OpenBSD: daemon.c,v 1.2 1996/08/19 08:22:13 tholo Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 int
 daemon(nochdir, noclose)

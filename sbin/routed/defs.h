@@ -33,6 +33,7 @@
  *	@(#)defs.h	8.1 (Berkeley) 6/5/93
  *
  * $FreeBSD: src/sbin/routed/defs.h,v 1.13 1999/09/05 17:49:11 peter Exp $
+ * $DragonFly: src/sbin/routed/defs.h,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
 
 #ifdef  sgi

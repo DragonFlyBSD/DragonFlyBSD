@@ -1,5 +1,8 @@
 /* e_expf.c -- float version of e_exp.c.
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ *
+ * $FreeBSD: src/lib/msun/src/e_expf.c,v 1.6 1999/08/28 00:06:30 peter Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_expf.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
 
 /*
@@ -12,10 +15,6 @@
  * is preserved.
  * ====================================================
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/lib/msun/src/e_expf.c,v 1.6 1999/08/28 00:06:30 peter Exp $";
-#endif
 
 #include "math.h"
 #include "math_private.h"

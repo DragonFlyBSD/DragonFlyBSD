@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvesactl.c,v 1.15 2000/01/29 15:08:47 peter Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/Attic/scvesactl.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #include "opt_vga.h"

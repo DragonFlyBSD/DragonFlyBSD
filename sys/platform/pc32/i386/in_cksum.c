@@ -33,6 +33,7 @@
  *	from tahoe:	in_cksum.c	1.2	86/01/05
  *	from:		@(#)in_cksum.c	1.3 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/in_cksum.c,v 1.17.2.3 2002/07/02 04:03:00 jdp Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/Attic/in_cksum.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/chap_ms.c,v 1.9.2.6 2002/09/01 02:12:23 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/chap_ms.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #include <ctype.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_subr.h,v 1.1 1999/12/09 19:09:59 semenu Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_subr.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 #define	hpfs_bmmarkfree(hpmp, bn,bl) hpfs_bmmark(hpmp, bn, bl, 1)

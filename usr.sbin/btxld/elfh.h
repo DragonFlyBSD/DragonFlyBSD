@@ -24,6 +24,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/btxld/elfh.h,v 1.3 2000/01/04 14:10:36 marcel Exp $
+ * $DragonFly: src/usr.sbin/btxld/elfh.h,v 1.2 2003/06/17 04:29:52 dillon Exp $
  */
 
 #include <sys/elf32.h>

@@ -28,6 +28,7 @@
  *
  *	From: wd82371reg.h,v 1.3 1997/02/22 09:44:15 peter Exp $
  * $FreeBSD: src/sys/pci/ide_pcireg.h,v 1.2 1999/08/28 00:50:47 peter Exp $
+ * $DragonFly: src/sys/bus/pci/Attic/ide_pcireg.h,v 1.2 2003/06/17 04:28:56 dillon Exp $
  */
 
 #ifndef _PCI_IDEPCIREG_H_

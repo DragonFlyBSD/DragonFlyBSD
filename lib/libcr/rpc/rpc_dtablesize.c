@@ -25,13 +25,12 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)rpc_dtablesize.c 1.2 87/08/11 Copyr 1987 Sun Micro
+ * @(#)rpc_dtablesize.c	2.1 88/07/29 4.0 RPCSRC
+ * $FreeBSD: src/lib/libc/rpc/rpc_dtablesize.c,v 1.10 1999/08/28 00:00:45 peter Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/rpc_dtablesize.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/*static char *sccsid = "from: @(#)rpc_dtablesize.c 1.2 87/08/11 Copyr 1987 Sun Micro";*/
-/*static char *sccsid = "from: @(#)rpc_dtablesize.c	2.1 88/07/29 4.0 RPCSRC";*/
-static char *rcsid = "$FreeBSD: src/lib/libc/rpc/rpc_dtablesize.c,v 1.10 1999/08/28 00:00:45 peter Exp $";
-#endif
 
 #include <sys/types.h>
 #include <unistd.h>

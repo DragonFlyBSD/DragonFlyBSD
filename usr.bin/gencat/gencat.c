@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.bin/gencat/gencat.c,v 1.5.2.1 2001/12/17 12:09:35 phantom Exp $ */
+/* $DragonFly: src/usr.bin/gencat/gencat.c,v 1.2 2003/06/17 04:29:27 dillon Exp $ */
 
 /***********************************************************
 Copyright 1990, by Alfalfa Software Incorporated, Cambridge, Massachusetts.

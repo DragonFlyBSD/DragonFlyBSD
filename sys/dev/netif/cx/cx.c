@@ -16,6 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.2 2003/06/17 04:28:36 dillon Exp $
  *
  */
 #undef DEBUG

@@ -2,6 +2,7 @@
 ############
 # Setup system for IPv6 firewall service.
 # $FreeBSD: src/etc/rc.firewall6,v 1.1.2.11 2003/02/10 05:45:06 trhodes Exp $
+# $DragonFly: src/etc/rc.firewall6,v 1.2 2003/06/17 04:24:45 dillon Exp $
 
 # Suck in the configuration variables.
 if [ -z "${source_rc_confs_defined}" ]; then

@@ -3,6 +3,7 @@
 /*
  * $Id: pam_ftp.c,v 1.2 2000/11/19 23:54:03 agmorgan Exp $
  * $FreeBSD: src/contrib/libpam/modules/pam_ftp/pam_ftp.c,v 1.3.2.2 2001/06/11 15:28:17 markm Exp $
+ * $DragonFly: src/contrib/libpam/modules/pam_ftp/Attic/pam_ftp.c,v 1.2 2003/06/17 04:24:03 dillon Exp $
  *
  * Written by Andrew Morgan <morgan@linux.kernel.org> 1996/3/11
  *

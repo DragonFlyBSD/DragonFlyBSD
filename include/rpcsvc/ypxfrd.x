@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/rpcsvc/ypxfrd.x,v 1.7 1999/08/27 23:45:13 peter Exp $
+ * $DragonFly: src/include/rpcsvc/ypxfrd.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 /*
@@ -65,13 +66,6 @@
  * can take a couple of minutes, but to just copy the file takes only a few
  * seconds.
  */
-
-#ifndef RPC_HDR
-%#ifndef lint
-%static const char rcsid[] =
-%  "$FreeBSD: src/include/rpcsvc/ypxfrd.x,v 1.7 1999/08/27 23:45:13 peter Exp $";
-%#endif /* not lint */
-#endif
 
 /* XXX cribbed from yp.x */
 const _YPMAXRECORD = 1024;

@@ -26,6 +26,9 @@
  * This card has the annoying habit of "clicking" when attached and
  * detached, haven't been able to remedy this with any combination of
  * muting.
+ * 
+ * $FreeBSD: src/sys/dev/sound/pci/vibes.c,v 1.4.2.6 2002/04/22 15:49:33 cg Exp $
+ * $DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pci/vibes.c,v 1.4.2.6 2002/04/22 15:49:33 cg Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
 
 /* ------------------------------------------------------------------------- */
 /* Constants */

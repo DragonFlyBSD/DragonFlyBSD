@@ -36,6 +36,7 @@ eval 'exec /usr/bin/perl -S $0 ${1+"$@"}'
 #
 #	@(#)vnode_if.sh	8.1 (Berkeley) 6/10/93
 # $FreeBSD: src/sys/kern/vnode_if.pl,v 1.21.2.1 2002/01/06 06:46:21 silby Exp $
+# $DragonFly: src/sys/kern/Attic/vnode_if.pl,v 1.2 2003/06/17 04:28:42 dillon Exp $
 #
 # Script to produce VFS front-end sugar.
 #

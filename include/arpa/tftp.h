@@ -32,6 +32,7 @@
  *
  *	@(#)tftp.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/arpa/tftp.h,v 1.3.6.1 2002/08/14 21:59:26 peter Exp $
+ * $DragonFly: src/include/arpa/tftp.h,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 #ifndef _ARPA_TFTP_H_

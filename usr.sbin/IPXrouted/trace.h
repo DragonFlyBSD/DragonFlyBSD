@@ -38,6 +38,7 @@
  *	@(#)trace.h	8.1 (Berkeley) 6/5/93
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/trace.h,v 1.7 1999/08/28 01:15:07 peter Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/trace.h,v 1.2 2003/06/17 04:29:52 dillon Exp $
  */
 
 /*

@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_tables.h,v 1.1.2.3 2001/12/04 02:38:04 scottl Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_tables.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
 /*

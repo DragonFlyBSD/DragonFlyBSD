@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/release/picobsd/router/PICOBSD,v 1.6.2.3 2002/03/13 18:16:53 luigi Exp $
+# $DragonFly: src/release/picobsd/router/Attic/PICOBSD,v 1.2 2003/06/17 04:27:20 dillon Exp $
 #
 #Line starting with #PicoBSD contains PicoBSD build parameters
 #marker        def_sz  init    MFS_inodes      floppy_inodes

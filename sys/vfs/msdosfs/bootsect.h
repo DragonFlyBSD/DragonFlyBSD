@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/bootsect.h,v 1.7 1999/08/28 00:48:06 peter Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/bootsect.h,v 1.2 2003/06/17 04:28:47 dillon Exp $ */
 /*	$NetBSD: bootsect.h,v 1.9 1997/11/17 15:36:17 ws Exp $	*/
 
 /*

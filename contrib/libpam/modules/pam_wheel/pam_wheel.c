@@ -21,6 +21,7 @@
  *    a wheel member.
  *
  * $FreeBSD: src/contrib/libpam/modules/pam_wheel/pam_wheel.c,v 1.3.2.2 2001/06/11 15:28:35 markm Exp $
+ * $DragonFly: src/contrib/libpam/modules/pam_wheel/Attic/pam_wheel.c,v 1.2 2003/06/17 04:24:03 dillon Exp $
  */
 
 #define _BSD_SOURCE

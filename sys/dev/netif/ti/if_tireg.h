@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tireg.h,v 1.13.2.4 2001/04/26 16:41:15 wpaul Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_tireg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /*

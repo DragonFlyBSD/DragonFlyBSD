@@ -31,6 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/sireg.h,v 1.9 2000/01/23 22:51:49 peter Exp $
+ * $DragonFly: src/sys/dev/serial/si/sireg.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 /*

@@ -37,6 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_cisco.c,v 1.4.2.6 2002/07/02 23:44:02 archie Exp $
+ * $DragonFly: src/sys/netgraph/cisco/ng_cisco.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  * $Whistle: ng_cisco.c,v 1.25 1999/11/01 09:24:51 julian Exp $
  */
 

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/lib/libipsec/ipsec_strerror.h,v 1.1.2.2 2001/07/03 11:01:14 ume Exp $	*/
+/*	$DragonFly: src/lib/libipsec/ipsec_strerror.h,v 1.2 2003/06/17 04:26:49 dillon Exp $	*/
 /*	$KAME: ipsec_strerror.h,v 1.8 2000/07/30 00:45:12 itojun Exp $	*/
 
 /*

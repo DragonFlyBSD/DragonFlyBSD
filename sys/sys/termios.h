@@ -32,6 +32,7 @@
  *
  *	@(#)termios.h	8.3 (Berkeley) 3/28/94
  * $FreeBSD: src/sys/sys/termios.h,v 1.13.2.1 2001/03/06 06:31:44 jhb Exp $
+ * $DragonFly: src/sys/sys/termios.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _SYS_TERMIOS_H_

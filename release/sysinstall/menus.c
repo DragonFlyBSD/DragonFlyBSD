@@ -30,12 +30,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: src/release/sysinstall/menus.c,v 1.252.2.67 2003/05/15 02:05:31 murray Exp $
+ * $DragonFly: src/release/sysinstall/Attic/menus.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/release/sysinstall/menus.c,v 1.252.2.67 2003/05/15 02:05:31 murray Exp $";
-#endif
 
 #include "sysinstall.h"
 

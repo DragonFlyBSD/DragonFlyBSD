@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/rmd160.c,v 1.1.2.1 2002/11/21 23:34:23 sam Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/rmd160.c,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
 /*	$OpenBSD: rmd160.c,v 1.3 2001/09/26 21:40:13 markus Exp $	*/
 /*
  * Copyright (c) 2001 Markus Friedl.  All rights reserved.

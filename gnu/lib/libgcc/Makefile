@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/lib/libgcc/Makefile,v 1.31.2.2 2002/06/20 23:13:29 obrien Exp $
+# $DragonFly: src/gnu/lib/libgcc/Attic/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
 
 GCCDIR=	${.CURDIR}/../../../contrib/gcc
 

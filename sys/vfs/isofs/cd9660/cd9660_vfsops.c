@@ -37,6 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include <sys/param.h>

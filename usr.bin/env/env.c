@@ -29,22 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)env.c	8.3 (Berkeley) 4/2/94
+ * $FreeBSD: src/usr.bin/env/env.c,v 1.5.2.3 2002/06/26 08:23:36 tjr Exp $
+ * $DragonFly: src/usr.bin/env/env.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1988, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#if 0
-#ifndef lint
-static char sccsid[] = "@(#)env.c	8.3 (Berkeley) 4/2/94";
-#endif /* not lint */
-#endif
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/env/env.c,v 1.5.2.3 2002/06/26 08:23:36 tjr Exp $");
 
 #include <err.h>
 #include <errno.h>

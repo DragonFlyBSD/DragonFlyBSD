@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/dev/mii/miidevs.h,v 1.4.2.12 2003/05/13 21:21:33 ps Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.2 2003/06/17 04:28:28 dillon Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.

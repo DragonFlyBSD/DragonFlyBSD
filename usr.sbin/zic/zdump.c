@@ -4,11 +4,11 @@ static char	elsieid[] = "@(#)zdump.c	7.28";
 #endif /* !defined NOID */
 #endif /* !defined lint */
 
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/zic/zdump.c,v 1.7 1999/08/28 01:21:19 peter Exp $";
-#endif /* not lint */
-
+/*
+ * @(#)zdump.c	7.28
+ * $FreeBSD: src/usr.sbin/zic/zdump.c,v 1.7 1999/08/28 01:21:19 peter Exp $
+ * $DragonFly: src/usr.sbin/zic/zdump.c,v 1.2 2003/06/17 04:30:05 dillon Exp $
+ */
 /*
 ** This code has been made independent of the rest of the time
 ** conversion package to increase confidence in the verification it provides.

@@ -35,6 +35,7 @@
  *
  *	@(#)rogue.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/rogue.h,v 1.3.2.1 2001/12/17 12:43:23 phantom Exp $
+ * $DragonFly: src/games/rogue/rogue.h,v 1.2 2003/06/17 04:25:25 dillon Exp $
  */
 
 #include <curses.h>

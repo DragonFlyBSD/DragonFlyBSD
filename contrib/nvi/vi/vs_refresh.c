@@ -5,17 +5,13 @@
  *	Keith Bostic.  All rights reserved.
  *
  * See the LICENSE file for redistribution information.
+ *
+ * @(#)vs_refresh.c	10.44 (Berkeley) 10/13/96
+ * $FreeBSD: src/contrib/nvi/vi/vs_refresh.c,v 1.2.6.1 2001/07/31 00:03:41 dd Exp $
+ * $DragonFly: src/contrib/nvi/vi/vs_refresh.c,v 1.2 2003/06/17 04:24:04 dillon Exp $
  */
 
 #include "config.h"
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)vs_refresh.c	10.44 (Berkeley) 10/13/96";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/contrib/nvi/vi/vs_refresh.c,v 1.2.6.1 2001/07/31 00:03:41 dd Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/queue.h>

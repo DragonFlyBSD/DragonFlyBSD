@@ -1,5 +1,6 @@
 /* $Id: acconfig.h,v 1.145 2002/09/26 00:38:48 tim Exp $ */
 /* $FreeBSD: src/crypto/openssh/acconfig.h,v 1.3.2.2 2003/02/03 17:31:06 des Exp $ */
+/* $DragonFly: src/crypto/openssh/Attic/acconfig.h,v 1.2 2003/06/17 04:24:36 dillon Exp $ */
 
 #ifndef _CONFIG_H
 #define _CONFIG_H

@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ic/hd64570.h,v 1.6 1999/08/28 00:45:13 peter Exp $
+ * $DragonFly: src/sys/i386/isa/ic/Attic/hd64570.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 #ifndef _HD64570_H_
 #define _HD64570_H_

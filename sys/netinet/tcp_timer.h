@@ -32,6 +32,7 @@
  *
  *	@(#)tcp_timer.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp_timer.h,v 1.18.2.1 2002/08/16 22:16:39 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_timer.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #ifndef _NETINET_TCP_TIMER_H_

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/release/picobsd/tinyware/msg/msg.c,v 1.2 1999/08/28 01:33:55 peter Exp $
+ * $DragonFly: src/release/picobsd/tinyware/msg/Attic/msg.c,v 1.2 2003/06/17 04:27:20 dillon Exp $
  */
 
 /*

@@ -40,6 +40,7 @@
  *
  * $Id: fixmount.c,v 1.4 1999/02/04 07:24:42 ezk Exp $
  * $FreeBSD: src/contrib/amd/fixmount/fixmount.c,v 1.5 1999/09/15 05:45:14 obrien Exp $
+ * $DragonFly: src/contrib/amd/fixmount/fixmount.c,v 1.2 2003/06/17 04:23:57 dillon Exp $
  *
  */
 

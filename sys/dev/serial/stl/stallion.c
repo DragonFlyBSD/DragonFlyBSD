@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /*****************************************************************************/

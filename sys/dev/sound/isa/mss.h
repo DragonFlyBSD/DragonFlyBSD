@@ -304,6 +304,7 @@ MIX_NONE(SOUND_MIXER_LINE3),
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/mss.h,v 1.7.2.6 2002/04/22 15:49:31 cg Exp $
+ * $DragonFly: src/sys/dev/sound/isa/mss.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 /*

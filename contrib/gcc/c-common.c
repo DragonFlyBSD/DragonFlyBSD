@@ -19,6 +19,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/gcc/c-common.c,v 1.8.2.5 2002/06/20 23:12:24 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/c-common.c,v 1.2 2003/06/17 04:23:59 dillon Exp $ */
 
 #include "config.h"
 #include "system.h"

@@ -37,6 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_rfc1490.h,v 1.2.2.1 2000/10/24 18:36:46 julian Exp $
+ * $DragonFly: src/sys/netgraph/rfc1490/ng_rfc1490.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
  * $Whistle: ng_rfc1490.h,v 1.7 1999/01/20 00:54:15 archie Exp $
  */
 

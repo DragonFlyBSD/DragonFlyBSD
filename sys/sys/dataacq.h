@@ -2,6 +2,7 @@
  * Header for general data acquisition definitions.
  *
  * $FreeBSD: src/sys/sys/dataacq.h,v 1.4.6.1 2000/08/02 21:27:07 peter Exp $
+ * $DragonFly: src/sys/sys/dataacq.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef	_SYS_DATAACQ_H_

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globals.h,v 1.5.2.1 2000/05/16 06:58:10 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/globals.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef	_MACHINE_GLOBALS_H_

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/sound/snd/Makefile,v 1.1.2.3 2001/08/01 05:37:31 cg Exp $
+# $DragonFly: src/sys/dev/sound/snd/Attic/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
 
 .PATH: ${.CURDIR}/../../../dev/sound
 

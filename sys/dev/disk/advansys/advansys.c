@@ -33,6 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advansys.c,v 1.14.2.4 2002/01/06 21:21:42 dwmalone Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 /*
  * Ported from:

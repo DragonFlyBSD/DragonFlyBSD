@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/domacro.c,v 1.6 1999/08/28 01:01:31 peter Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/domacro.c,v 1.2 2003/06/17 04:29:26 dillon Exp $	*/
 /*	$NetBSD: domacro.c,v 1.10 1997/07/20 09:45:45 lukem Exp $	*/
 
 /*
@@ -32,17 +33,13 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)domacro.c	8.3 (Berkeley) 4/2/94
+ * $NetBSD: domacro.c,v 1.10 1997/07/20 09:45:45 lukem Exp $
+ * $FreeBSD: src/usr.bin/ftp/domacro.c,v 1.6 1999/08/28 01:01:31 peter Exp $
  */
 
 #include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)domacro.c	8.3 (Berkeley) 4/2/94";
-#else
-__RCSID("$FreeBSD: src/usr.bin/ftp/domacro.c,v 1.6 1999/08/28 01:01:31 peter Exp $");
-__RCSID_SOURCE("$NetBSD: domacro.c,v 1.10 1997/07/20 09:45:45 lukem Exp $");
-#endif
-#endif /* not lint */
 
 #include <ctype.h>
 #include <signal.h>

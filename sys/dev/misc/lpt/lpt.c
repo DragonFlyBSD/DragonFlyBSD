@@ -49,6 +49,7 @@
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  *	From Id: nlpt.c,v 1.14 1999/02/08 13:55:43 des Exp
  * $FreeBSD: src/sys/dev/ppbus/lpt.c,v 1.15.2.3 2000/07/07 00:30:40 obrien Exp $
+ * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 /*

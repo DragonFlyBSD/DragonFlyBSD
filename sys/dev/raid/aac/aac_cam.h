@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_cam.h,v 1.1.2.1 2002/04/30 22:58:37 scottl Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/Attic/aac_cam.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
 struct aac_cam_inf {

@@ -1,5 +1,6 @@
 #       @(#)Makefile    5.3 (Berkeley) 5/12/90
 # $FreeBSD: src/gnu/usr.bin/gzip/Makefile,v 1.21.2.2 2001/04/25 14:04:12 ru Exp $
+# $DragonFly: src/gnu/usr.bin/gzip/Attic/Makefile,v 1.2 2003/06/17 04:25:46 dillon Exp $
 
 PROG=	gzip
 SRCS=	gzip.c zip.c deflate.c trees.c bits.c unzip.c inflate.c util.c \

@@ -32,20 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)strcmp.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/string/wcscmp.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
+ * $DragonFly: src/lib/libc/string/wcscmp.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)strcmp.c	8.1 (Berkeley) 6/4/93";
-#else
-__RCSID("$NetBSD$");
-#endif
-#endif /* LIBC_SCCS and not lint */
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/string/wcscmp.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $";
-#endif
 
 #include <assert.h>
 #include <wchar.h>

@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rp.c,v 1.33.2.2 2001/02/26 04:23:10 jlemon Exp $
+ * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /* 

@@ -13,11 +13,10 @@
  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
  * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
  * SOFTWARE.
+ *
+ * $FreeBSD: src/lib/libc/net/nsap_addr.c,v 1.7 1999/08/28 00:00:15 peter Exp $
+ * $DragonFly: src/lib/libc/net/nsap_addr.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char rcsid[] = "$FreeBSD: src/lib/libc/net/nsap_addr.c,v 1.7 1999/08/28 00:00:15 peter Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/param.h>

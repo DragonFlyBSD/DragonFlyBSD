@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/gnu/usr.bin/perl/pod/pod/Makefile,v 1.5.2.3 2002/08/07 16:31:45 ru Exp $
+# $DragonFly: src/gnu/usr.bin/perl/pod/pod/Attic/Makefile,v 1.2 2003/06/17 04:25:47 dillon Exp $
 #
 
 PODS=	perl.pod perl5004delta.pod perlapio.pod perlbook.pod perlbot.pod \

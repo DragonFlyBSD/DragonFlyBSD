@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.h,v 1.4.2.1 2002/11/06 14:23:20 joe Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.h,v 1.2 2003/06/17 04:28:32 dillon Exp $
  */
 
 #ifndef _USB_ETHERSUBR_H_

@@ -23,6 +23,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.diskless2,v 1.5.2.14 2002/12/23 17:39:06 dillon Exp $
+# $DragonFly: src/etc/Attic/rc.diskless2,v 1.2 2003/06/17 04:24:45 dillon Exp $
 #
 
 #

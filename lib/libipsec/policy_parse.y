@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/lib/libipsec/policy_parse.y,v 1.1.2.1 2000/07/15 07:24:04 kris Exp $	*/
+/*	$DragonFly: src/lib/libipsec/policy_parse.y,v 1.2 2003/06/17 04:26:49 dillon Exp $	*/
 /*	$KAME: policy_parse.y,v 1.10 2000/05/07 05:25:03 itojun Exp $	*/
 
 /*

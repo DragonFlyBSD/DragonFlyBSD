@@ -1,5 +1,6 @@
 #!/bin/sh
 # $FreeBSD: src/release/picobsd/floppy.tree/etc/rc1,v 1.1.2.4 2002/07/01 21:32:40 luigi Exp $
+# $DragonFly: src/release/picobsd/floppy.tree/etc/Attic/rc1,v 1.2 2003/06/17 04:27:20 dillon Exp $
 ### rc1, next stage 'rc' for PicoBSD -- THIS IS NOT THE NORMAL /etc/rc 
 
 . /etc/rc.conf.defaults		# Load default procedures

@@ -6,6 +6,7 @@
  * @(#)ip_state.h	1.3 1/12/96 (C) 1995 Darren Reed
  * $Id: ip_state.h,v 2.13.2.13 2002/06/27 14:40:29 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_state.h,v 1.10.2.4 2002/08/31 16:24:52 darrenr Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_state.h,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 #ifndef	__IP_STATE_H__
 #define	__IP_STATE_H__

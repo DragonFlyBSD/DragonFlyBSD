@@ -37,6 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_message.h,v 1.4.2.5 2002/07/02 23:44:02 archie Exp $
+ * $DragonFly: src/sys/netgraph/ng_message.h,v 1.2 2003/06/17 04:28:50 dillon Exp $
  * $Whistle: ng_message.h,v 1.12 1999/01/25 01:17:44 archie Exp $
  */
 

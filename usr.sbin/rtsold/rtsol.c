@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/rtsol.c,v 1.1.2.4 2002/04/24 10:22:30 suz Exp $
+ * $DragonFly: src/usr.sbin/rtsold/rtsol.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -8,6 +8,7 @@
 # ----------------------------------------------------------------------------
 #
 # $FreeBSD: src/tools/tools/kernxref/kernxref.sh,v 1.13 1999/08/28 00:54:30 peter Exp $
+# $DragonFly: src/tools/tools/kernxref/kernxref.sh,v 1.2 2003/06/17 04:29:11 dillon Exp $
 #
 # This shellscript will make a cross reference of the symbols of the LINT 
 # kernel.

@@ -7,6 +7,7 @@
  * See the LICENSE file for redistribution information.
  *
  * $FreeBSD: src/contrib/nvi/cl/cl_screen.c,v 1.1.1.1.8.1 2001/11/24 00:02:11 rwatson Exp $
+ * $DragonFly: src/contrib/nvi/cl/cl_screen.c,v 1.2 2003/06/17 04:24:04 dillon Exp $
  */
 
 #include "config.h"

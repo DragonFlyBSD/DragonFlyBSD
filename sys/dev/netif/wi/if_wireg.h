@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wireg.h,v 1.31.2.2 2002/08/02 07:11:34 imp Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wireg.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 #define WI_DELAY	5

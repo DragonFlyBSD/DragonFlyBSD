@@ -28,6 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ccbque.h,v 1.3.6.2 2000/10/21 07:44:24 nyan Exp $
+ * $DragonFly: src/sys/sys/ccbque.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 /*
  * Common command control queue funcs.

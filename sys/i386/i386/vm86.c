@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm86.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #include <sys/param.h>

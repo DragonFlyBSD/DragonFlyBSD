@@ -32,6 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -28,6 +28,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/dfa.c,v 2.26 95/04/20 13:53:14 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/dfa.c,v 1.5 1999/10/27 07:56:43 obrien Exp $ */
+/* $DragonFly: src/usr.bin/lex/dfa.c,v 1.2 2003/06/17 04:29:27 dillon Exp $ */
 
 #include "flexdef.h"
 

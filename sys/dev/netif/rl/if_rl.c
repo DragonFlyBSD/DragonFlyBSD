@@ -30,6 +30,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ *
+ * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
  */
 
 /*
@@ -129,11 +132,6 @@
 #define RL_USEIOSPACE
 
 #include <pci/if_rlreg.h>
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $";
-#endif
 
 /*
  * Various supported device vendors/types and their names.

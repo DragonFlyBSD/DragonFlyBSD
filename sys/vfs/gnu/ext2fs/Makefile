@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/ext2fs/Makefile,v 1.4.2.1 2002/08/06 14:14:25 mdodd Exp $
+# $DragonFly: src/sys/vfs/gnu/ext2fs/Makefile,v 1.2 2003/06/17 04:28:43 dillon Exp $
 
 .PATH:	${.CURDIR}/../../gnu/ext2fs
 KMOD=	ext2fs

@@ -58,6 +58,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/load_store.c,v 1.13 1999/08/28 00:42:52 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/load_store.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
  *
  */
 

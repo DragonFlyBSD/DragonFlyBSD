@@ -25,17 +25,13 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)rpc_tblout.c 1.4 89/02/22 (C) 1988 SMI
+ * $FreeBSD: src/usr.bin/rpcgen/rpc_tblout.c,v 1.4 1999/08/28 01:05:17 peter Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_tblout.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
  */
 
 #ident	"@(#)rpc_tblout.c	1.11	93/07/05 SMI" 
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)rpc_tblout.c 1.4 89/02/22 (C) 1988 SMI";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/rpcgen/rpc_tblout.c,v 1.4 1999/08/28 01:05:17 peter Exp $";
-#endif
 
 /*
  * rpc_tblout.c, Dispatch table outputter for the RPC protocol compiler

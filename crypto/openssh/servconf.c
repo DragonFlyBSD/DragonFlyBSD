@@ -12,6 +12,7 @@
 #include "includes.h"
 RCSID("$OpenBSD: servconf.c,v 1.115 2002/09/04 18:52:42 stevesk Exp $");
 RCSID("$FreeBSD: src/crypto/openssh/servconf.c,v 1.3.2.15 2003/02/03 17:31:07 des Exp $");
+RCSID("$DragonFly: src/crypto/openssh/Attic/servconf.c,v 1.2 2003/06/17 04:24:36 dillon Exp $");
 
 #if defined(KRB4)
 #include <krb.h>

@@ -28,6 +28,7 @@
  *      =============================
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/holiday.c,v 1.3.2.1 2001/08/01 17:45:03 obrien Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/holiday.c,v 1.2 2003/06/17 04:29:54 dillon Exp $
  *
  *      last edit-date: [Wed May  2 09:42:56 2001]
  *

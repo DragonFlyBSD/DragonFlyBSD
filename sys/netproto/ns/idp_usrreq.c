@@ -32,6 +32,7 @@
  *
  *	@(#)idp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/idp_usrreq.c,v 1.9 1999/08/28 00:49:47 peter Exp $
+ * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -28,6 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_isa.c,v 1.8.2.1 2000/12/16 03:47:57 nyan Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 #include <sys/param.h>

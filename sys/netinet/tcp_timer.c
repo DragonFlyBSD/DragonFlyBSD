@@ -32,6 +32,7 @@
  *
  *	@(#)tcp_timer.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_timer.c,v 1.34.2.14 2003/02/03 02:33:41 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #include "opt_compat.h"

@@ -32,6 +32,7 @@
  *
  *	from: @(#)ansi.h	7.1 (Berkeley) 3/9/91
  * $FreeBSD: src/sys/i386/boot/dosboot/ansi.h,v 1.5 1999/08/28 00:43:19 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/ansi.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #ifndef	_ANSI_H_

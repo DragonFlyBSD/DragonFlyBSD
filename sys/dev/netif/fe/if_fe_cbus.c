@@ -20,6 +20,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fe_cbus.c,v 1.2.2.5 2002/02/09 03:12:27 nyan Exp $
+ * $DragonFly: src/sys/dev/netif/fe/Attic/if_fe_cbus.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 #include "opt_fe.h"

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/pathnames.h,v 1.4 1999/08/28 01:01:33 peter Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/pathnames.h,v 1.2 2003/06/17 04:29:26 dillon Exp $	*/
 /*	$NetBSD: pathnames.h,v 1.7 1997/01/09 20:19:40 tls Exp $	*/
 
 /*

@@ -14,6 +14,7 @@
  * ISBN 3-924521-59-X
  * 
  * $FreeBSD: src/usr.bin/calendar/calendars/de_DE.ISO8859-1/calendar.geschichte,v 1.8.2.3 2003/04/06 20:04:57 dwmalone Exp $
+ * $DragonFly: src/usr.bin/calendar/calendars/de_DE.ISO8859-1/calendar.geschichte,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
 
 #ifndef _de_DE_ISO8859_1_geschichte_

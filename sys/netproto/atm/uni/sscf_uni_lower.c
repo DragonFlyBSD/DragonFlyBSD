@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscf_uni_lower.c,v 1.4 1999/08/28 00:48:56 peter Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscf_uni_lower.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -41,11 +41,6 @@
 #include <netatm/uni/sscop.h>
 #include <netatm/uni/sscf_uni.h>
 #include <netatm/uni/sscf_uni_var.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/uni/sscf_uni_lower.c,v 1.4 1999/08/28 00:48:56 peter Exp $");
-#endif
-
 
 /*
  * Local variables

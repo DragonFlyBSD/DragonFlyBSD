@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)cmdtab.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/systat/cmdtab.c,v 1.5 1999/08/28 01:05:59 peter Exp $
+ * $DragonFly: src/usr.bin/systat/cmdtab.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-/*
-static char sccsid[] = "@(#)cmdtab.c	8.1 (Berkeley) 6/6/93";
-*/
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/systat/cmdtab.c,v 1.5 1999/08/28 01:05:59 peter Exp $";
-#endif /* not lint */
 
 #include "systat.h"
 #include "extern.h"

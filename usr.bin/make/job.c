@@ -34,16 +34,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)job.c	8.2 (Berkeley) 3/19/94
+ * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)job.c	8.2 (Berkeley) 3/19/94";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $";
-#endif
-#endif /* not lint */
 
 #ifndef OLD_JOKE
 #define OLD_JOKE 0

@@ -51,6 +51,7 @@
  * "glorkz" in the directory where the program is first run.
  *
  * $FreeBSD: src/games/adventure/hdr.h,v 1.5.2.1 2001/03/05 11:43:11 kris Exp $
+ * $DragonFly: src/games/adventure/hdr.h,v 1.2 2003/06/17 04:25:22 dillon Exp $
  */
 
 /* hdr.h: included by c advent files */

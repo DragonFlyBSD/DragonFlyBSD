@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/viapm.c,v 1.1.2.1 2002/04/19 05:52:15 nsouch Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/viapm/viapm.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  *
  */
 #include <sys/param.h>

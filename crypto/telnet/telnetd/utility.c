@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)utility.c	8.4 (Berkeley) 5/30/95
+ * $FreeBSD: src/crypto/telnet/telnetd/utility.c,v 1.5.2.4 2002/04/13 10:59:09 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnetd/utility.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)utility.c	8.4 (Berkeley) 5/30/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/crypto/telnet/telnetd/utility.c,v 1.5.2.4 2002/04/13 10:59:09 markm Exp $";
-#endif /* not lint */
 
 #ifdef __FreeBSD__
 #include <locale.h>

@@ -31,12 +31,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
  * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
  * DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/wormcontrol/wormcontrol.c,v 1.11 1999/10/01 14:12:46 peter Exp $
+ * $DragonFly: src/usr.sbin/wormcontrol/Attic/wormcontrol.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/wormcontrol/wormcontrol.c,v 1.11 1999/10/01 14:12:46 peter Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <fcntl.h>

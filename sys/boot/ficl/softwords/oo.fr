@@ -3,6 +3,7 @@
 \ ** john sadler aug 1998
 \
 \ $FreeBSD: src/sys/boot/ficl/softwords/oo.fr,v 1.1.6.1 2000/07/06 23:51:46 obrien Exp $
+\ $DragonFly: src/sys/boot/ficl/softwords/oo.fr,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 
 .( loading ficl O-O extensions ) cr

@@ -1,3 +1,4 @@
 .\" $FreeBSD: src/lib/libc/rpc/PSD.doc/stubs,v 1.1.2.2 2000/12/07 10:01:34 ru Exp $
+.\" $DragonFly: src/lib/libcr/rpc/PSD.doc/Attic/stubs,v 1.2 2003/06/17 04:26:45 dillon Exp $
 .\"
 .if !n .ftr L CR

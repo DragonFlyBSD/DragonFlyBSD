@@ -40,6 +40,7 @@
  *
  *	@(#)ctype.h	8.4 (Berkeley) 1/21/94
  *      $FreeBSD: src/include/ctype.h,v 1.16 2000/02/08 07:43:23 obrien Exp $
+ *      $DragonFly: src/include/ctype.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef _CTYPE_H_

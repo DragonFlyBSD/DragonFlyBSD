@@ -32,6 +32,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/kern/makeops.pl,v 1.1.2.2 2001/02/05 23:04:57 dirk Exp $
+# $DragonFly: src/sys/kern/Attic/makeops.pl,v 1.2 2003/06/17 04:28:41 dillon Exp $
 
 # Process the command line
 #

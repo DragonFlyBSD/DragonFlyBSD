@@ -1,5 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.2 2003/06/17 04:28:32 dillon Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -33,6 +34,8 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $
  */
 
 /*
@@ -85,11 +88,6 @@
 
 #include <dev/txp/if_txpreg.h>
 #include <dev/txp/3c990img.h>
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $";
-#endif
 
 /*
  * Various supported device vendors/types and their names.

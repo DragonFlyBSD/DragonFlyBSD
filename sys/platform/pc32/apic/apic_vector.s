@@ -1,6 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 

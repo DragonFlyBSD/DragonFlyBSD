@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/libvgl/Makefile,v 1.6.2.1 2001/04/25 10:04:43 ru Exp $
+# $DragonFly: src/lib/libvgl/Makefile,v 1.2 2003/06/17 04:26:52 dillon Exp $
 LIB=	vgl
 SHLIB_MAJOR= 2
 SHLIB_MINOR= 0

@@ -1,5 +1,6 @@
 /*	$OpenBSD: myproposal.h,v 1.14 2002/04/03 09:26:11 markus Exp $	*/
 /*	$FreeBSD: src/crypto/openssh/myproposal.h,v 1.1.1.2.2.5 2002/07/03 22:11:42 des Exp $	*/
+/*	$DragonFly: src/crypto/openssh/Attic/myproposal.h,v 1.2 2003/06/17 04:24:36 dillon Exp $	*/
 
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.

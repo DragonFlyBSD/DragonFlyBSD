@@ -4,6 +4,7 @@
 \ ** September, 1998
 
 \ $FreeBSD: src/sys/boot/ficl/softwords/softcore.fr,v 1.8.2.1 2000/07/06 23:51:46 obrien Exp $
+\ $DragonFly: src/sys/boot/ficl/softwords/softcore.fr,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 \ ** Ficl USER variables
 \ ** See words.c for primitive def'n of USER

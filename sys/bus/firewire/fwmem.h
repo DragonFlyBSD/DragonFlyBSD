@@ -32,6 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwmem.h,v 1.1.2.4 2003/04/28 03:29:18 simokawa Exp $
+ * $DragonFly: src/sys/bus/firewire/fwmem.h,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 struct fw_xfer *fwmem_read_quad(struct fw_device *, caddr_t, u_int8_t,

@@ -32,6 +32,7 @@
  *
  *	@(#)pathnames.h	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libncurses/pathnames.h,v 1.1 1999/08/30 07:57:50 peter Exp $
+ * $DragonFly: src/lib/libncurses/Attic/pathnames.h,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
 
 #define	_PATH_DEF	".termcap /usr/share/misc/termcap"

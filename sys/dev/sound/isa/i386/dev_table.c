@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/i386/isa/sound/dev_table.c,v 1.18 1999/12/20 18:04:59 eivind Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/Attic/dev_table.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
  */
 
 #define _DEV_TABLE_C_

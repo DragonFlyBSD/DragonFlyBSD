@@ -1,5 +1,6 @@
 #	@(#)Makefile    1.1 (Julian Elischer)	3/28/93
 # $FreeBSD: src/sbin/i386/nextboot/Makefile,v 1.1.8.1 2001/04/25 10:58:21 ru Exp $
+# $DragonFly: src/sbin/i386/nextboot/Makefile,v 1.2 2003/06/17 04:27:33 dillon Exp $
 
 PROG=	nextboot
 MAN=	nextboot.8

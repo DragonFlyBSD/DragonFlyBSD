@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/pcvt/keycap/Makefile,v 1.9.6.3 2002/08/07 16:32:02 ru Exp $
+# $DragonFly: src/usr.sbin/pcvt/keycap/Attic/Makefile,v 1.2 2003/06/17 04:29:59 dillon Exp $
 
 LIB	=	keycap
 CAPDIR	=	/usr/share/misc

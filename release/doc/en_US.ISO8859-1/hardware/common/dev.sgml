@@ -32,6 +32,7 @@
 <sect1>
   <sect1info>
     <pubdate>$FreeBSD: src/release/doc/en_US.ISO8859-1/hardware/common/dev.sgml,v 1.13.2.85 2003/06/12 18:38:47 bmah Exp $</pubdate>
+    <pubdate>$DragonFly: src/release/doc/en_US.ISO8859-1/hardware/common/Attic/dev.sgml,v 1.2 2003/06/17 04:27:19 dillon Exp $</pubdate>
   </sect1info>
 
   <title>Supported Devices</title>

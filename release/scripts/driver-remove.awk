@@ -26,6 +26,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/release/scripts/driver-remove.awk,v 1.2.2.1 2002/08/08 08:38:18 ru Exp $
+# $DragonFly: src/release/scripts/Attic/driver-remove.awk,v 1.2 2003/06/17 04:27:21 dillon Exp $
 # 
 
 function usage()

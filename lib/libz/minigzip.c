@@ -11,10 +11,10 @@
  * very limited. So use minigzip only for testing; use gzip for the
  * real thing. On MSDOS, use only on file names without extension
  * or in pipe mode.
+ *
+ * $FreeBSD: src/lib/libz/minigzip.c,v 1.6.2.4 2003/02/01 13:33:12 sobomax Exp $
+ * $DragonFly: src/lib/libz/Attic/minigzip.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libz/minigzip.c,v 1.6.2.4 2003/02/01 13:33:12 sobomax Exp $");
 
 #include <stdio.h>
 #include "zlib.h"

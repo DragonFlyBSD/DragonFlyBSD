@@ -58,6 +58,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/poly_div.s,v 1.8 1999/08/28 00:42:53 peter Exp $
+ * $DragonFly: src/sys/i386/gnu/fpemul/Attic/poly_div.s,v 1.2 2003/06/17 04:28:34 dillon Exp $
  *
  */
 

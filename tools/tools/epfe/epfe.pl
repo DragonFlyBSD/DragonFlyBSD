@@ -8,6 +8,7 @@
 #	$ epfe < ../../doc/handbook/printing.sgml
 #
 # $FreeBSD: src/tools/tools/epfe/epfe.pl,v 1.4 1999/08/28 00:54:26 peter Exp $
+# $DragonFly: src/tools/tools/epfe/Attic/epfe.pl,v 1.2 2003/06/17 04:29:11 dillon Exp $
 
 $in = 0; @a = ();
 sub Print { s/\&amp\;/&/g; push(@a,$_); }

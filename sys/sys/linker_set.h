@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/linker_set.h,v 1.4.2.1 2000/08/02 21:52:20 peter Exp $
+ * $DragonFly: src/sys/sys/linker_set.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_LINKER_SET_H_

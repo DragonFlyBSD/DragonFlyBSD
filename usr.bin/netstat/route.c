@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)route.c	8.6 (Berkeley) 4/28/95
+ * $FreeBSD: src/usr.bin/netstat/route.c,v 1.41.2.14 2002/07/17 02:22:22 kbyanc Exp $
+ * $DragonFly: src/usr.bin/netstat/route.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "From: @(#)route.c	8.6 (Berkeley) 4/28/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/netstat/route.c,v 1.41.2.14 2002/07/17 02:22:22 kbyanc Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/protosw.h>

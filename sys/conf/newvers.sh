@@ -33,6 +33,7 @@
 #
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
+# $DragonFly: src/sys/conf/newvers.sh,v 1.2 2003/06/17 04:28:20 dillon Exp $
 
 TYPE="FreeBSD"
 REVISION="4.8"

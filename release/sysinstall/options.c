@@ -5,6 +5,7 @@
  * generation being slated for what's essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/options.c,v 1.70.2.5 2001/09/27 07:38:49 murray Exp $
+ * $DragonFly: src/release/sysinstall/Attic/options.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.

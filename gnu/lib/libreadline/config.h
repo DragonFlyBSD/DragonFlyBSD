@@ -1,4 +1,5 @@
 /* $FreeBSD: src/gnu/lib/libreadline/config.h,v 1.4.6.1 2000/07/06 23:11:07 ache Exp $ */
+/* $DragonFly: src/gnu/lib/libreadline/Attic/config.h,v 1.2 2003/06/17 04:25:44 dillon Exp $ */
 /* config.h.  Generated automatically by configure.  */
 /* config.h.in.  Generated automatically from configure.in by autoheader.  */
 

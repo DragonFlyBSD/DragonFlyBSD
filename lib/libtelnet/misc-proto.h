@@ -32,6 +32,7 @@
  *
  *	@(#)misc-proto.h	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libtelnet/misc-proto.h,v 1.1.1.1.14.1 2002/04/13 11:07:12 markm Exp $
+ * $DragonFly: src/lib/libtelnet/misc-proto.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 
 /*

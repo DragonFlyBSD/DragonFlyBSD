@@ -28,12 +28,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/rpc.yppasswdd/yppasswdd_main.c,v 1.14.2.2 2002/02/15 00:46:57 des Exp $
+ * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_main.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/rpc.yppasswdd/yppasswdd_main.c,v 1.14.2.2 2002/02/15 00:46:57 des Exp $";
-#endif /* not lint */
 
 #include "yppasswd.h"
 #include <stdio.h>

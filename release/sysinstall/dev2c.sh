@@ -8,6 +8,7 @@
 # ----------------------------------------------------------------------------
 #
 # $FreeBSD: src/release/sysinstall/dev2c.sh,v 1.4.2.1 2002/07/02 21:27:28 jhb Exp $
+# $DragonFly: src/release/sysinstall/Attic/dev2c.sh,v 1.2 2003/06/17 04:27:21 dillon Exp $
 #
 # During installation, we suffer badly of we have to run MAKEDEV.  MAKEDEV
 # need sh, ln, chown, mknod, awk, rm, test and probably emacs too when

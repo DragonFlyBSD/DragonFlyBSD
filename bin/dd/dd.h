@@ -36,6 +36,7 @@
  *
  *	@(#)dd.h	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/dd.h,v 1.15.2.1 2000/08/07 08:30:17 ps Exp $
+ * $DragonFly: src/bin/dd/dd.h,v 1.2 2003/06/17 04:22:49 dillon Exp $
  */
 
 /* Input/output stream state. */

@@ -1,10 +1,8 @@
 /* Author: Wietse Venema, Eindhoven University of Technology. 
+ *
+ * $FreeBSD: src/libexec/ftpd/skey-stuff.c,v 1.12 1999/08/28 00:09:32 peter Exp $
+ * $DragonFly: src/libexec/ftpd/skey-stuff.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/libexec/ftpd/skey-stuff.c,v 1.12 1999/08/28 00:09:32 peter Exp $";
-#endif /* not lint */
 
 #include <stdio.h>
 #include <string.h>

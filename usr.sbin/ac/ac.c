@@ -11,12 +11,10 @@
  *      2/ that any changes to this code are clearly commented
  *      as such so that the author does not get blamed for bugs
  *      other than his own.
+ *
+ * $FreeBSD: src/usr.sbin/ac/ac.c,v 1.14.2.2 2002/03/12 19:55:04 phantom Exp $
+ * $DragonFly: src/usr.sbin/ac/ac.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/ac/ac.c,v 1.14.2.2 2002/03/12 19:55:04 phantom Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/file.h>

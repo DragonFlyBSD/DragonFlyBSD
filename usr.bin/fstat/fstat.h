@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fstat/fstat.h,v 1.1.2.1 2000/07/02 10:20:25 ps Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.h,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
 
 #ifndef	__FSTAT_H__

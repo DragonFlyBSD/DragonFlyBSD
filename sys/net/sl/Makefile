@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/if_sl/Makefile,v 1.13 1999/11/28 18:52:53 bde Exp $
+# $DragonFly: src/sys/net/sl/Makefile,v 1.2 2003/06/17 04:28:44 dillon Exp $
 
 .PATH:  ${.CURDIR}/../../net
 KMOD=   if_sl

@@ -32,6 +32,7 @@
  *
  *	@(#)mntopts.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sbin/mount/mntopts.h,v 1.16 1999/10/09 11:54:07 phk Exp $
+ * $DragonFly: src/sbin/mount/mntopts.h,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
 
 struct mntopt {

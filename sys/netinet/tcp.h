@@ -32,6 +32,7 @@
  *
  *	@(#)tcp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp.h,v 1.13.2.3 2001/03/01 22:08:42 jlemon Exp $
+ * $DragonFly: src/sys/netinet/tcp.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #ifndef _NETINET_TCP_H_

@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.h,v 1.4.2.4 2003/05/01 20:16:09 anholt Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.h,v 1.2 2003/06/17 04:28:19 dillon Exp $
  */
 
 #ifndef _LINUX_IOCTL_H_

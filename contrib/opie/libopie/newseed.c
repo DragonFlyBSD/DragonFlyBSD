@@ -15,6 +15,7 @@ you didn't get a copy, you may request one from <license@inner.net>.
 	Created by cmetz for OPIE 2.22.
 
 $FreeBSD: src/contrib/opie/libopie/newseed.c,v 1.2.6.2 2002/07/15 14:48:47 des Exp $
+$DragonFly: src/contrib/opie/libopie/newseed.c,v 1.2 2003/06/17 04:24:05 dillon Exp $
 */
 
 #include "opie_cfg.h"

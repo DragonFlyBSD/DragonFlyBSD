@@ -32,6 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/btreg.h,v 1.10.2.2 2001/09/03 02:45:22 peter Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/btreg.h,v 1.2 2003/06/17 04:28:23 dillon Exp $
  */
 
 #ifndef _BTREG_H_

@@ -1,4 +1,5 @@
 $FreeBSD: src/lib/compat/compat3x.i386/libfetch.so.1.gz.uu,v 1.1.2.2 2002/11/10 15:38:42 imp Exp $
+$DragonFly: src/lib/compat/compat3x.i386/Attic/libfetch.so.1.gz.uu,v 1.2 2003/06/17 04:26:40 dillon Exp $
 
 begin 444 libfetch.so.1.gz
 M'XL("!A@=CD"`VQI8F9E=&-H+G-O+C$`S7Q[8%35M?>9!R%@(`$BHE(='R@H

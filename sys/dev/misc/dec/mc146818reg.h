@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/dec/mc146818reg.h,v 1.2.6.1 2000/08/02 22:34:11 peter Exp $ */
+/* $DragonFly: src/sys/dev/misc/dec/Attic/mc146818reg.h,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
 /*	$NetBSD: mc146818reg.h,v 1.2 1997/03/12 06:53:42 cgd Exp $	*/
 
 /*

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/mfs/Makefile,v 1.8 1999/12/12 16:47:26 peter Exp $
+# $DragonFly: src/sys/vfs/mfs/Makefile,v 1.2 2003/06/17 04:28:44 dillon Exp $
 
 .PATH:	${.CURDIR}/../../ufs/mfs
 KMOD=	mfs

@@ -1,5 +1,6 @@
 /*
  * $FreeBSD: src/sys/boot/pc98/libpc98/gatea20.c,v 1.2.2.1 2000/12/30 12:01:06 nyan Exp $
+ * $DragonFly: src/sys/boot/pc98/libpc98/Attic/gatea20.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
  * From: $NetBSD: gatea20.c,v 1.2 1997/10/29 00:32:49 fvdl Exp $
  */
 

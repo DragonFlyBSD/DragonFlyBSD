@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberosIV/usr.sbin/kip/Makefile,v 1.5 2000/02/24 20:57:01 markm Exp $
+# $DragonFly: src/kerberosIV/usr.sbin/kip/Attic/Makefile,v 1.2 2003/06/17 04:26:25 dillon Exp $
 
 PROG=		kip
 NOMAN=		true

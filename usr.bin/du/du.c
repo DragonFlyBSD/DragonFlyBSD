@@ -32,22 +32,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)du.c	8.5 (Berkeley) 5/4/95
+ * $FreeBSD: src/usr.bin/du/du.c,v 1.17.2.4 2002/12/12 16:29:39 trhodes Exp $
+ * $DragonFly: src/usr.bin/du/du.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1989, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)du.c	8.5 (Berkeley) 5/4/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/du/du.c,v 1.17.2.4 2002/12/12 16:29:39 trhodes Exp $";
-#endif /* not lint */
-
 
 #include <sys/param.h>
 #include <sys/queue.h>

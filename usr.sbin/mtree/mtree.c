@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)mtree.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.sbin/mtree/mtree.c,v 1.8.2.3 2003/05/07 17:55:17 tobez Exp $
+ * $DragonFly: src/usr.sbin/mtree/mtree.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1989, 1990, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)mtree.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/mtree/mtree.c,v 1.8.2.3 2003/05/07 17:55:17 tobez Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

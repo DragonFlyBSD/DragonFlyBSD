@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/crypto/cast128/cast128.c,v 1.1.2.3 2001/12/05 05:54:57 ume Exp $	*/
+/*	$DragonFly: src/sys/crypto/cast128/cast128.c,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
 /*	$KAME: cast128.c,v 1.5 2001/11/27 09:47:32 sakane Exp $	*/
 
 /*

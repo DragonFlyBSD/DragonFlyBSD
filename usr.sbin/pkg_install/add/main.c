@@ -16,10 +16,10 @@
  * 18 July 1993
  *
  * This is the add module.
+ *
+ * $FreeBSD: src/usr.sbin/pkg_install/add/main.c,v 1.29.2.20 2002/10/08 05:35:46 bmah Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/add/Attic/main.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.sbin/pkg_install/add/main.c,v 1.29.2.20 2002/10/08 05:35:46 bmah Exp $");
 
 #include <err.h>
 #include <sys/param.h>

@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/command.c,v 1.230.2.18 2003/04/05 10:48:08 ume Exp $
+ * $DragonFly: src/usr.sbin/ppp/command.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberos5/usr.bin/telnet/Makefile,v 1.16.2.2 2003/04/24 19:14:00 nectar Exp $
+# $DragonFly: src/kerberos5/usr.bin/telnet/Attic/Makefile,v 1.2 2003/06/17 04:26:18 dillon Exp $
 
 PROG=		telnet
 

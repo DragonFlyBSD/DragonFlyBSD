@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/i386/svr4/svr4_genassym.c,v 1.5.2.1 2001/10/09 04:25:26 jlemon Exp $ */
+/* $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_genassym.c,v 1.2 2003/06/17 04:28:39 dillon Exp $ */
 /* Derived from:  Id: linux_genassym.c,v 1.8 1998/07/29 15:50:41 bde Exp */
 
 #include <sys/param.h>

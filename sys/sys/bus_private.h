@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus_private.h,v 1.11.2.2 2000/08/03 00:25:22 peter Exp $
+ * $DragonFly: src/sys/sys/bus_private.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_BUS_PRIVATE_H_

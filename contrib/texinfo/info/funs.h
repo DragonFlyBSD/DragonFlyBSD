@@ -1,4 +1,5 @@
 /* $FreeBSD: src/contrib/texinfo/info/funs.h,v 1.3.2.1 2002/03/30 17:09:18 ru Exp $ */
+/* $DragonFly: src/contrib/texinfo/info/Attic/funs.h,v 1.2 2003/06/17 04:24:07 dillon Exp $ */
 /* funs.h -- Generated declarations for Info commands. */
 
 /* Functions declared in "./session.c". */

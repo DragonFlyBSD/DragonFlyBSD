@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)swap.c	8.3 (Berkeley) 4/29/95
+ * $FreeBSD: src/usr.bin/systat/swap.c,v 1.12.2.2 2001/07/04 22:54:14 kris Exp $
+ * $DragonFly: src/usr.bin/systat/swap.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)swap.c	8.3 (Berkeley) 4/29/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/systat/swap.c,v 1.12.2.2 2001/07/04 22:54:14 kris Exp $";
-#endif /* not lint */
 
 /*
  * swapinfo - based on a program of the same name by Kevin Lahey

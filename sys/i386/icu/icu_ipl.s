@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.s,v 1.6 1999/08/28 00:44:42 peter Exp $
+ * $DragonFly: src/sys/i386/icu/Attic/icu_ipl.s,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 	.data

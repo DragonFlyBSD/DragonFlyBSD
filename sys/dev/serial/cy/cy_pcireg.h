@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/cy_pcireg.h,v 1.7.2.1 2002/03/17 04:14:18 bde Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy_pcireg.h,v 1.2 2003/06/17 04:28:56 dillon Exp $
  */
 
 #define CY_PCI_BASE_ADDR0		0x10

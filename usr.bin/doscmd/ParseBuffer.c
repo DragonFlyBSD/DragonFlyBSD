@@ -28,10 +28,10 @@
  * SUCH DAMAGE.
  *
  *	BSDI ParseBuffer.c,v 2.2 1996/04/08 19:32:15 bostic Exp
+ *
+ * $FreeBSD: src/usr.bin/doscmd/ParseBuffer.c,v 1.2.2.2 2002/04/25 11:04:50 tg Exp $
+ * $DragonFly: src/usr.bin/doscmd/ParseBuffer.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/doscmd/ParseBuffer.c,v 1.2.2.2 2002/04/25 11:04:50 tg Exp $");
 
 #include <stdlib.h>
 #include <string.h>

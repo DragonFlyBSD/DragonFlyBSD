@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe.c,v 1.1.2.6 2002/03/07 09:57:02 msmith Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
  */
 
 /*

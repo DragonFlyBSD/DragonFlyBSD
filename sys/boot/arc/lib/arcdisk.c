@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/arc/lib/arcdisk.c,v 1.3.2.1 2001/01/05 17:37:51 mjacob Exp $
+ * $DragonFly: src/sys/boot/arc/lib/Attic/arcdisk.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 
 /*

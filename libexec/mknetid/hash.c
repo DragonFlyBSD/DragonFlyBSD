@@ -28,6 +28,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/libexec/mknetid/hash.c,v 1.5 1999/08/28 00:09:40 peter Exp $
+ * $DragonFly: src/libexec/mknetid/hash.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 #include <stdio.h>
@@ -35,11 +38,6 @@
 #include <string.h>
 #include <sys/types.h>
 #include "hash.h"
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/libexec/mknetid/hash.c,v 1.5 1999/08/28 00:09:40 peter Exp $";
-#endif /* not lint */
 
 /*
  * This hash function is stolen directly from the

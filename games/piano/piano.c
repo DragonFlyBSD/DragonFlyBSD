@@ -1,8 +1,9 @@
 /*
  * piano.c - a piano emulator
+ *
+ * $FreeBSD: src/games/piano/piano.c,v 1.7 1999/12/12 03:22:37 billf Exp $
+ * $DragonFly: src/games/piano/piano.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
-static const char rcsid[] =
-  "$FreeBSD: src/games/piano/piano.c,v 1.7 1999/12/12 03:22:37 billf Exp $";
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

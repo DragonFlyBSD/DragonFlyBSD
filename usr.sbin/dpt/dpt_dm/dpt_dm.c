@@ -26,11 +26,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: src/usr.sbin/dpt/dpt_dm/dpt_dm.c,v 1.3 1999/08/28 01:16:07 peter Exp $
+ * $DragonFly: src/usr.sbin/dpt/dpt_dm/dpt_dm.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 
 /* dpt_dm.c: Dump a DPT metrics structure */
-
-#ident "$FreeBSD: src/usr.sbin/dpt/dpt_dm/dpt_dm.c,v 1.3 1999/08/28 01:16:07 peter Exp $"
 
 #include <fcntl.h>
 #include <stdio.h>

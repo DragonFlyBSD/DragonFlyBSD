@@ -1,6 +1,7 @@
 /*
  * This file is in the public domain.
  * $FreeBSD: src/sys/cam/scsi/scsi_message.h,v 1.1.6.4 2002/08/30 17:18:06 gibbs Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_message.h,v 1.2 2003/06/17 04:28:19 dillon Exp $
  */
 
 /* Messages (1 byte) */		     /* I/T (M)andatory or (O)ptional */

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)telnetd.c	8.4 (Berkeley) 5/30/95
+ * $FreeBSD: src/libexec/telnetd/telnetd.c,v 1.22.2.8 2002/04/13 11:07:12 markm Exp $
+ * $DragonFly: src/libexec/telnetd/telnetd.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-
-__FBSDID("$FreeBSD: src/libexec/telnetd/telnetd.c,v 1.22.2.8 2002/04/13 11:07:12 markm Exp $");
-
-#ifndef lint
-static const char sccsid[] = "@(#)telnetd.c	8.4 (Berkeley) 5/30/95";
-#endif
 
 #include "telnetd.h"
 #include "pathnames.h"

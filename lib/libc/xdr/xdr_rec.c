@@ -25,12 +25,12 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)xdr_rec.c 1.21 87/08/11 Copyr 1984 Sun Micro
+ * @(#)xdr_rec.c	2.2 88/08/01 4.0 RPCSRC
+ * $FreeBSD: src/lib/libc/xdr/xdr_rec.c,v 1.12 2000/01/19 06:12:32 wpaul Exp $
+ * $DragonFly: src/lib/libc/xdr/xdr_rec.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
  */
-#if defined(LIBC_SCCS) && !defined(lint)
-/*static char *sccsid = "from: @(#)xdr_rec.c 1.21 87/08/11 Copyr 1984 Sun Micro";*/
-/*static char *sccsid = "from: @(#)xdr_rec.c	2.2 88/08/01 4.0 RPCSRC";*/
-static char *rcsid = "$FreeBSD: src/lib/libc/xdr/xdr_rec.c,v 1.12 2000/01/19 06:12:32 wpaul Exp $";
-#endif
 
 /*
  * xdr_rec.c, Implements TCP/IP based XDR streams with a "record marking"

@@ -8,6 +8,7 @@
  *	for damages incurred with its use
  *
  * $FreeBSD: src/sys/i386/isa/ctxreg.h,v 1.5 1999/08/28 00:44:39 peter Exp $
+ * $DragonFly: src/sys/dev/video/ctx/ctxreg.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 /*

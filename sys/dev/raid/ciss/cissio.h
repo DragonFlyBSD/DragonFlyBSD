@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/cissio.h,v 1.1.2.1 2001/12/12 06:38:16 ps Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/cissio.h,v 1.2 2003/06/17 04:28:23 dillon Exp $
  */
 
 /*

@@ -24,6 +24,7 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/isa/ic/if_wl_i82586.h,v 1.1.10.1 2000/08/03 01:01:25 peter Exp $
+ * $DragonFly: src/sys/dev/netif/wl/if_wl_i82586.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 /*
   Copyright 1988, 1989 by Olivetti Advanced Technology Center, Inc.,

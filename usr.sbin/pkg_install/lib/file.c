@@ -16,10 +16,9 @@
  *
  * Miscellaneous file access utilities.
  *
+ * $FreeBSD: src/usr.sbin/pkg_install/lib/file.c,v 1.40.2.14 2002/09/25 23:22:14 bmah Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/file.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.sbin/pkg_install/lib/file.c,v 1.40.2.14 2002/09/25 23:22:14 bmah Exp $");
 
 #include "lib.h"
 #include <err.h>

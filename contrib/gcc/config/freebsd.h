@@ -27,6 +27,7 @@ Boston, MA 02111-1307, USA.  */
    David O'Brien <obrien@FreeBSD.org>.  */
 
 /* $FreeBSD: src/contrib/gcc/config/freebsd.h,v 1.25.2.10 2002/06/20 23:12:36 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/config/Attic/freebsd.h,v 1.2 2003/06/17 04:24:01 dillon Exp $ */
 
 
 /* Cpp, assembler, linker, library, and startfile spec's.  */

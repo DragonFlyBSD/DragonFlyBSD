@@ -3,6 +3,7 @@
  *
  * $Id: _pam_types.h,v 1.10 1997/04/05 06:52:50 morgan Exp morgan $
  * $FreeBSD: src/contrib/libpam/libpam/include/security/_pam_types.h,v 1.1.1.1.6.2 2001/06/11 15:28:14 markm Exp $
+ * $DragonFly: src/contrib/libpam/libpam/include/security/Attic/_pam_types.h,v 1.2 2003/06/17 04:24:03 dillon Exp $
  *
  * This file defines all of the types common to the Linux-PAM library
  * applications and modules.

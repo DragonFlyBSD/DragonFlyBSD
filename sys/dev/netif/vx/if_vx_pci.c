@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_pci.c,v 1.20 2000/01/29 14:50:32 peter Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 #include "vx.h"

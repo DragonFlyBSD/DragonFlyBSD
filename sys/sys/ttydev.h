@@ -32,6 +32,7 @@
  *
  *	@(#)ttydev.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/ttydev.h,v 1.7 1999/08/28 00:52:07 peter Exp $
+ * $DragonFly: src/sys/sys/ttydev.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 /* COMPATIBILITY HEADER FILE */

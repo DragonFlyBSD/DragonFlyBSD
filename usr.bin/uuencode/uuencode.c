@@ -29,22 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)uuencode.c	8.2 (Berkeley) 4/2/94
+ * $FreeBSD: src/usr.bin/uuencode/uuencode.c,v 1.4.2.5 2002/10/21 11:52:15 fanf Exp $
+ * $DragonFly: src/usr.bin/uuencode/uuencode.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1983, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#if 0
-#ifndef lint
-static char sccsid[] = "@(#)uuencode.c	8.2 (Berkeley) 4/2/94";
-#endif /* not lint */
-#endif
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/uuencode/uuencode.c,v 1.4.2.5 2002/10/21 11:52:15 fanf Exp $");
 
 /*
  * uuencode [input] output

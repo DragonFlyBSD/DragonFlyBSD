@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/funopen.c,v 1.1.1.1.14.1 2001/03/05 10:57:52 obrien Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/funopen.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ *
+ * @(#)funopen.c	8.1 (Berkeley) 6/4/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)funopen.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <stdio.h>
 #include <errno.h>

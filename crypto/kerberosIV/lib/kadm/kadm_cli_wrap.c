@@ -31,6 +31,7 @@ or implied warranty.
 
 /* RCSID("$Id: kadm_cli_wrap.c,v 1.27 1999/09/16 20:41:46 assar Exp $");*/
 RCSID("$FreeBSD: src/crypto/kerberosIV/lib/kadm/kadm_cli_wrap.c,v 1.1.1.3.2.2 2003/02/13 21:34:35 nectar Exp $");
+RCSID("$DragonFly: src/crypto/kerberosIV/lib/kadm/Attic/kadm_cli_wrap.c,v 1.2 2003/06/17 04:24:36 dillon Exp $");
 
 static Kadm_Client client_parm;
 

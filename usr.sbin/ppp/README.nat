@@ -23,6 +23,7 @@ OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGE.
 
 $FreeBSD: src/usr.sbin/ppp/README.nat,v 1.4.4.4 2002/09/01 02:12:22 brian Exp $
+$DragonFly: src/usr.sbin/ppp/README.nat,v 1.2 2003/06/17 04:30:00 dillon Exp $
 
 User PPP NAT (Packet Aliasing)
 

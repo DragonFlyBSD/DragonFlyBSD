@@ -25,13 +25,12 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)svc_raw.c 1.15 87/08/11 Copyr 1984 Sun Micro
+ * @(#)svc_raw.c	2.1 88/07/29 4.0 RPCSRC
+ * $FreeBSD: src/lib/libc/rpc/svc_raw.c,v 1.7 1999/08/28 00:00:49 peter Exp $
+ * $DragonFly: src/lib/libc/rpc/svc_raw.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/*static char *sccsid = "from: @(#)svc_raw.c 1.15 87/08/11 Copyr 1984 Sun Micro";*/
-/*static char *sccsid = "from: @(#)svc_raw.c	2.1 88/07/29 4.0 RPCSRC";*/
-static char *rcsid = "$FreeBSD: src/lib/libc/rpc/svc_raw.c,v 1.7 1999/08/28 00:00:49 peter Exp $";
-#endif
 
 /*
  * svc_raw.c,   This a toy for simple testing and timing.

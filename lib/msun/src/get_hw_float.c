@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/msun/src/get_hw_float.c,v 1.3 1999/08/28 00:06:40 peter Exp $
+ * $DragonFly: src/lib/msun/src/Attic/get_hw_float.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
  */
 
 #include <sys/types.h>

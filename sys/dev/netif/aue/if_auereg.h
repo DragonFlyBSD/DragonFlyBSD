@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_auereg.h,v 1.5.2.1 2001/12/11 14:57:04 sumikawa Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_auereg.h,v 1.2 2003/06/17 04:28:32 dillon Exp $
  */
 
 /*

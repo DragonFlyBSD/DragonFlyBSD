@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_execve.c,v 1.11.2.6 2002/11/21 21:53:06 archie Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_execve.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 #include <errno.h>
 #include <fcntl.h>

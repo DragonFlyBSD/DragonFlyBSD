@@ -1,10 +1,10 @@
 /* infcodes.c -- process literals and length/distance pairs
  * Copyright (C) 1995-2002 Mark Adler
  * For conditions of distribution and use, see copyright notice in zlib.h 
+ *
+ * $FreeBSD: src/lib/libz/infcodes.c,v 1.1.1.3.6.1 2003/02/01 13:33:12 sobomax Exp $
+ * $DragonFly: src/lib/libz/Attic/infcodes.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libz/infcodes.c,v 1.1.1.3.6.1 2003/02/01 13:33:12 sobomax Exp $");
 
 #include "zutil.h"
 #include "inftrees.h"

@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/libsmutil/Makefile,v 1.1.2.5 2002/07/19 18:46:26 ru Exp $
+# $DragonFly: src/lib/libsmutil/Makefile,v 1.2 2003/06/17 04:26:51 dillon Exp $
 
 MAINTAINER=	gshapiro@FreeBSD.org
 

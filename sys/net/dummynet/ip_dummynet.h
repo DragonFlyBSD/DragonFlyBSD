@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.h,v 1.10.2.9 2003/05/13 09:31:06 maxim Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #ifndef _IP_DUMMYNET_H

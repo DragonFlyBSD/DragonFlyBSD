@@ -25,6 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/periodic/security/100.chksetuid,v 1.1.2.6 2002/11/07 19:38:46 thomas Exp $
+# $DragonFly: src/etc/periodic/security/100.chksetuid,v 1.2 2003/06/17 04:24:48 dillon Exp $
 #
 
 # If there is a global system configuration file, suck it in.

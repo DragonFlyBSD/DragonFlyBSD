@@ -38,6 +38,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include "opt_ntp.h"

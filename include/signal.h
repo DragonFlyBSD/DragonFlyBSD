@@ -33,6 +33,7 @@
  *	@(#)signal.h	8.3 (Berkeley) 3/30/94
  *
  * $FreeBSD: src/include/signal.h,v 1.14 1999/10/02 19:33:23 marcel Exp $
+ * $DragonFly: src/include/signal.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef _SIGNAL_H_

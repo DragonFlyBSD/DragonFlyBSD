@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mii/inphyreg.h,v 1.1.2.1 2001/05/13 00:16:08 jlemon Exp $
+ *	$DragonFly: src/sys/dev/netif/mii_layer/inphyreg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 #define MII_INPHY_SCR           0x10    /* status and control register */

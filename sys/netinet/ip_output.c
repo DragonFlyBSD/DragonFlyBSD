@@ -32,6 +32,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #define _IP_VHL

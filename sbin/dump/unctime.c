@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)unctime.c	8.2 (Berkeley) 6/14/94
+ * $FreeBSD: src/sbin/dump/unctime.c,v 1.3.2.1 2001/09/19 09:29:39 ru Exp $
+ * $DragonFly: src/sbin/dump/unctime.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)unctime.c	8.2 (Berkeley) 6/14/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/dump/unctime.c,v 1.3.2.1 2001/09/19 09:29:39 ru Exp $";
-#endif /* not lint */
 
 #include <time.h>
 

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/keysock.h,v 1.1.4.1 2003/01/24 05:11:36 sam Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/keysock.h,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$KAME: keysock.h,v 1.8 2000/03/27 05:11:06 sumikawa Exp $	*/
 
 /*

@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/i386/isa/sound/sequencer.c,v 1.25.2.1 2001/06/10 02:02:05 dd Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/Attic/sequencer.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
  */
 
 #define SEQUENCER_C

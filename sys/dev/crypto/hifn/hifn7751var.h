@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/hifn/hifn7751var.h,v 1.1.2.2 2003/06/04 17:56:59 sam Exp $ */
+/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751var.h,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
 /*	$OpenBSD: hifn7751var.h,v 1.42 2002/04/08 17:49:42 jason Exp $	*/
 
 /*

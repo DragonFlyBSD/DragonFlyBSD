@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/reallocf.c,v 1.3 1999/08/28 00:01:37 peter Exp $
+ * $DragonFly: src/lib/libc/stdlib/reallocf.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
 #include <stdlib.h>
 

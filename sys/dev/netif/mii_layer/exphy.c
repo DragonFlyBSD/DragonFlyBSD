@@ -35,6 +35,9 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/mii/exphy.c,v 1.4.2.2 2002/11/08 21:53:49 semenu Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/exphy.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 /*
@@ -85,11 +88,6 @@
 #include <dev/mii/miidevs.h>
 
 #include "miibus_if.h"
-
-#if !defined(lint)
-static const char rcsid[] =
-  "$FreeBSD: src/sys/dev/mii/exphy.c,v 1.4.2.2 2002/11/08 21:53:49 semenu Exp $";
-#endif
 
 static int exphy_probe		__P((device_t));
 static int exphy_attach		__P((device_t));

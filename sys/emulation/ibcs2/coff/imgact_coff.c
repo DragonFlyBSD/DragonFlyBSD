@@ -27,6 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/imgact_coff.c,v 1.40 1999/12/15 23:01:47 eivind Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/coff/Attic/imgact_coff.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #include <sys/param.h>

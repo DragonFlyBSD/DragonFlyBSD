@@ -22,6 +22,7 @@
  * this gadget.
  *
  * $FreeBSD: src/sys/pci/if_mn.c,v 1.11.2.3 2001/01/23 12:47:09 phk Exp $
+ * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /*

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/route6d/route6d.c,v 1.2.2.5 2001/07/03 11:02:09 ume Exp $	*/
+/*	$DragonFly: src/usr.sbin/route6d/route6d.c,v 1.2 2003/06/17 04:30:02 dillon Exp $	*/
 /*	$KAME: route6d.c,v 1.64 2001/05/08 04:36:37 itojun Exp $	*/
 
 /*
@@ -28,11 +29,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $KAME: route6d.c,v 1.64 2001/05/08 04:36:37 itojun Exp $
  */
-
-#ifndef	lint
-static char _rcsid[] = "$KAME: route6d.c,v 1.64 2001/05/08 04:36:37 itojun Exp $";
-#endif
 
 #include <stdio.h>
 

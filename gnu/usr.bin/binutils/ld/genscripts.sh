@@ -10,6 +10,7 @@
 # produces sun3.x sun3.xbn sun3.xn sun3.xr sun3.xu em_sun3.c
 #
 # $FreeBSD: src/gnu/usr.bin/binutils/ld/genscripts.sh,v 1.1.2.3 2002/09/01 23:39:14 obrien Exp $
+# $DragonFly: src/gnu/usr.bin/binutils/ld/Attic/genscripts.sh,v 1.2 2003/06/17 04:25:44 dillon Exp $
 #
 # This is a cut-down version of the GNU script. Instead of jumping through
 # hoops for all possible combinations of paths, just use the libdir

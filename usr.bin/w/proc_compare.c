@@ -29,11 +29,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)proc_compare.c	8.2 (Berkeley) 9/23/93
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)proc_compare.c	8.2 (Berkeley) 9/23/93";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/time.h>

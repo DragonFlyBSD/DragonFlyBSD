@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/hash/hash_page.c,v 1.5 2000/01/27 23:06:08 jasone Exp $
+ * $DragonFly: src/lib/libc/db/hash/hash_page.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ *
+ * @(#)hash_page.c	8.7 (Berkeley) 8/16/94
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)hash_page.c	8.7 (Berkeley) 8/16/94";
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * PACKAGE:  hashing

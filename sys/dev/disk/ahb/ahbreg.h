@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ahb/ahbreg.h,v 1.2 1999/08/28 00:43:37 peter Exp $
+ * $DragonFly: src/sys/dev/disk/ahb/ahbreg.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
 /* Resource Constatns */

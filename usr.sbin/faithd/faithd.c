@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/faithd/faithd.c,v 1.2.2.7 2002/04/28 08:01:39 ume Exp $
+ * $DragonFly: src/usr.sbin/faithd/faithd.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 
 /*

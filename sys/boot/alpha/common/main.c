@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/alpha/common/main.c,v 1.11.2.2 2001/03/04 05:14:50 obrien Exp $
+ * $DragonFly: src/sys/boot/alpha/common/Attic/main.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 
 

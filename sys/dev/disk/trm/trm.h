@@ -28,6 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.	
  *
  * $FreeBSD: src/sys/dev/trm/trm.h,v 1.1.2.2 2002/12/19 20:34:46 cognet Exp $
+ * $DragonFly: src/sys/dev/disk/trm/trm.h,v 1.2 2003/06/17 04:28:32 dillon Exp $
  */
 
 #ifndef trm_H

@@ -29,11 +29,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)log1p.c	8.1 (Berkeley) 6/4/93
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)log1p.c	8.1 (Berkeley) 6/4/93";
-#endif /* not lint */
 
 /* LOG1P(x)
  * RETURN THE LOGARITHM OF 1+x

@@ -25,6 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/mecia.c,v 1.2.2.4 2001/08/14 23:36:18 imp Exp $
+ * $DragonFly: src/sys/bus/pccard/Attic/mecia.c,v 1.2 2003/06/17 04:28:55 dillon Exp $
  *
  * Based heavily on the FreeBSD pcic driver's pcic98 support, derived
  * from PAO3 tree.  This copyright notice likely needs modification for

@@ -31,12 +31,10 @@
  *     |MIDNIGHT                   | |[DAY OF WEEK]                       |
  *     \TEATIME                    / |NUMBER [SLASH NUMBER [SLASH NUMBER]]|
  *                                   \PLUS NUMBER MINUTES|HOURS|DAYS|WEEKS/
+ *
+ * $FreeBSD: src/usr.bin/at/parsetime.c,v 1.19.2.3 2001/12/19 11:19:16 brian Exp $
+ * $DragonFly: src/usr.bin/at/parsetime.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/at/parsetime.c,v 1.19.2.3 2001/12/19 11:19:16 brian Exp $";
-#endif /* not lint */
 
 /* System Headers */
 

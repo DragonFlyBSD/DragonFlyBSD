@@ -1,4 +1,5 @@
 /* $FreeBSD: src/lib/libstand/lseek.c,v 1.1.1.1.6.2 2001/08/30 03:14:16 jdp Exp $ */
+/* $DragonFly: src/lib/libstand/lseek.c,v 1.2 2003/06/17 04:26:51 dillon Exp $ */
 /*	$NetBSD: lseek.c,v 1.4 1997/01/22 00:38:10 cgd Exp $	*/
 
 /*-

@@ -32,6 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/aio.h,v 1.6 1999/12/29 04:55:01 peter Exp $
+ * $DragonFly: src/sys/emulation/posix4/Attic/aio.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /* aio.h: P1003.1B-1993 Asynchronous I/O */

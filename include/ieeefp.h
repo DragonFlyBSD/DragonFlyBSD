@@ -1,5 +1,6 @@
 /*	$NetBSD: ieeefp.h,v 1.4 1998/01/09 08:03:43 perry Exp $	*/
 /* $FreeBSD: src/include/ieeefp.h,v 1.3.2.1 2000/08/17 08:08:14 jhb Exp $ */
+/* $DragonFly: src/include/ieeefp.h,v 1.2 2003/06/17 04:25:56 dillon Exp $ */
 
 /* 
  * Written by J.T. Conklin, Apr 6, 1995

@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/send-pr/Makefile,v 1.13.6.4 2002/08/07 16:31:45 ru Exp $
+# $DragonFly: src/gnu/usr.bin/send-pr/Attic/Makefile,v 1.2 2003/06/17 04:25:48 dillon Exp $
 #
 # Makefile for building a standalone send-pr.
 #

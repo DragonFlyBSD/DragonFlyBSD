@@ -25,6 +25,7 @@
  *
  *	from: Mach, Revision 2.2  92/04/04  11:35:49  rpd
  * $FreeBSD: src/sys/boot/pc98/boot2/disk.c,v 1.4.2.1 2003/01/13 08:52:53 nyan Exp $
+ * $DragonFly: src/sys/boot/pc98/boot2/Attic/disk.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 /*

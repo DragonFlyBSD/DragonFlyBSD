@@ -34,6 +34,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.h,v 1.3.2.1 2002/06/17 15:10:57 jhay Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 #ifndef _I386_ISA_IF_AR_H_

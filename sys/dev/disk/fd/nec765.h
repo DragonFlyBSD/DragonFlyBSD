@@ -32,6 +32,7 @@
  *
  *	from: @(#)nec765.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/isa/ic/nec765.h,v 1.8 1999/08/28 00:46:04 peter Exp $
+ * $DragonFly: src/sys/dev/disk/fd/nec765.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
  */
 
 /*

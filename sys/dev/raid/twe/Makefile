@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/twe/Makefile,v 1.1.2.2 2000/10/27 06:04:54 msmith Exp $
+# $DragonFly: src/sys/dev/raid/twe/Makefile,v 1.2 2003/06/17 04:28:47 dillon Exp $
 
 #
 # The 3ware controller offers a choice of options related to handling of

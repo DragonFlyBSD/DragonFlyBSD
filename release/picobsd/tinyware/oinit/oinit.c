@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/release/picobsd/tinyware/oinit/oinit.c,v 1.4.2.2 2001/07/25 15:57:43 dd Exp $
+ * $DragonFly: src/release/picobsd/tinyware/oinit/Attic/oinit.c,v 1.2 2003/06/17 04:27:20 dillon Exp $
  */
 
 /*

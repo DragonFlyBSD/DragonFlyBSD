@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/pthread.h,v 1.20.2.4 2003/05/27 18:18:01 jdp Exp $
+ * $DragonFly: src/include/pthread.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 #ifndef _PTHREAD_H_
 #define _PTHREAD_H_

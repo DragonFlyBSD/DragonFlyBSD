@@ -33,6 +33,9 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/csu/alpha/crt1.c,v 1.7.2.2 2001/08/01 09:30:36 obrien Exp $
+ * $DragonFly: src/lib/csu/alpha/Attic/crt1.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
 
 #ifndef __GNUC__
@@ -108,7 +111,3 @@ __asm__(".previous");
 /*
  * NOTE: Leave the RCS ID _after_ __start(), in case it gets placed in .text.
  */
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/lib/csu/alpha/crt1.c,v 1.7.2.2 2001/08/01 09:30:36 obrien Exp $";
-#endif

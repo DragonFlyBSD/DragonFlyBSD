@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/release/sysinstall/kget.c,v 1.14.2.1 2000/07/14 10:21:32 jhb Exp $
+ * $DragonFly: src/release/sysinstall/Attic/kget.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  */
 
 #ifdef __alpha__

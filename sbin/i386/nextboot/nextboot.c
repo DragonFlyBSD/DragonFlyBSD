@@ -11,12 +11,10 @@
  * Whistle Communications allows free use of this software in its "as is"
  * condition.  Whistle Communications disclaims any liability of any kind for
  * any damages whatsoever resulting from the use of this software.
+ *
+ * $FreeBSD: src/sbin/i386/nextboot/nextboot.c,v 1.6 1999/08/28 00:13:06 peter Exp $
+ * $DragonFly: src/sbin/i386/nextboot/nextboot.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/i386/nextboot/nextboot.c,v 1.6 1999/08/28 00:13:06 peter Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/disklabel.h>

@@ -22,6 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/release/sysinstall/keymap.c,v 1.5 1999/08/28 01:34:14 peter Exp $
+ * $DragonFly: src/release/sysinstall/Attic/keymap.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  */
 

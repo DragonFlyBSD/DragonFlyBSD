@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_ncp.c,v 1.3 1999/10/29 10:21:07 bp Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  *
  * Core of NCP protocol
  */

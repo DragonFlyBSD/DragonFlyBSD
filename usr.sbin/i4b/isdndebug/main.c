@@ -28,6 +28,7 @@
  *	------------------------------
  *
  * $FreeBSD: src/usr.sbin/i4b/isdndebug/main.c,v 1.8.2.1 2001/08/01 17:45:04 obrien Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdndebug/main.c,v 1.2 2003/06/17 04:29:54 dillon Exp $
  *
  *      last edit-date: [Mon May 21 10:09:23 2001]
  *

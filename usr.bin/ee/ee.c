@@ -48,12 +48,10 @@
  |	This software and documentation contains
  |	proprietary information which is protected by
  |	copyright.  All rights are reserved.
+ *
+ * $FreeBSD: src/usr.bin/ee/ee.c,v 1.16.2.6 2002/05/11 16:33:06 mp Exp $
+ * $DragonFly: src/usr.bin/ee/ee.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/ee/ee.c,v 1.16.2.6 2002/05/11 16:33:06 mp Exp $";
-#endif /* not lint */
 
 char *ee_copyright_message = 
 "Copyright (c) 1986, 1990, 1991, 1992, 1993, 1994, 1995, 1996 Hugh Mahon ";

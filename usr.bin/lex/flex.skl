@@ -3,6 +3,7 @@
 /* Scanner skeleton version:
  * $Header: /home/daffy/u0/vern/flex/RCS/flex.skl,v 2.91 96/09/10 16:58:48 vern Exp $
  * $FreeBSD: src/usr.bin/lex/flex.skl,v 1.4 1999/10/27 07:56:44 obrien Exp $
+ * $DragonFly: src/usr.bin/lex/flex.skl,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
 
 #define FLEX_SCANNER

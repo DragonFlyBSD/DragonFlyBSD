@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/pred.c,v 1.29.2.3 2002/09/01 02:12:31 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/pred.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 #include <sys/types.h>

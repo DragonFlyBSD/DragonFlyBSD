@@ -15,12 +15,9 @@
  * the author assume any responsibility for damages incurred with
  * its use.
  *
+ * $FreeBSD: src/gnu/lib/libdialog/notify.c,v 1.6.12.2 2002/06/18 07:55:55 dougb Exp $
+ * $DragonFly: src/gnu/lib/libdialog/notify.c,v 1.2 2003/06/17 04:25:43 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/gnu/lib/libdialog/notify.c,v 1.6.12.2 2002/06/18 07:55:55 dougb Exp $";
-#endif
 
 #include <dialog.h>
 #include <stdio.h>

@@ -24,6 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/kern_include.h,v 1.3 1999/08/28 00:48:40 peter Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/kern_include.h,v 1.2 2003/06/17 04:28:49 dillon Exp $
  *
  */
 

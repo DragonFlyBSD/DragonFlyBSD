@@ -3,6 +3,7 @@
  * All Rights Reserved.  See COPYRIGHT.
  *
  * $FreeBSD: src/sys/netatalk/ddp_var.h,v 1.4 1999/12/29 04:45:58 peter Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_var.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 #ifndef _NETATALK_DDP_VAR_H_

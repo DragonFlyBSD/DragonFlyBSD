@@ -30,12 +30,10 @@
  * or FreeBSD, Inc.
  *
  * ------+---------+---------+---------+---------+---------+---------+---------*
+ *
+ * $FreeBSD: src/usr.sbin/lpr/common_source/matchjobs.c,v 1.2.2.2 2002/08/15 18:53:17 schweikh Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/matchjobs.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/lpr/common_source/matchjobs.c,v 1.2.2.2 2002/08/15 18:53:17 schweikh Exp $";
-#endif /* not lint */
 
 /*
  * movejobs.c - The lpc commands which move jobs around.

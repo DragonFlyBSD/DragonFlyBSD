@@ -32,6 +32,7 @@
  *
  *	from: @(#)fdreg.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/isa/fdreg.h,v 1.13 2000/01/06 07:13:54 imp Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fdreg.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
  */
 
 /*

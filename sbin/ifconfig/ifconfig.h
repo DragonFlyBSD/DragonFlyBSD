@@ -32,6 +32,7 @@
  * so there!
  *
  * $FreeBSD: src/sbin/ifconfig/ifconfig.h,v 1.5.2.2 2001/07/04 20:49:20 brooks Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.h,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
 
 extern struct ifreq ifr;

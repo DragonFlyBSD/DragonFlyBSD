@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ahb/ahb.c,v 1.18.2.3 2001/03/05 13:08:55 obrien Exp $
+ * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
 #include <sys/param.h>

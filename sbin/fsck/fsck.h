@@ -32,6 +32,7 @@
  *
  *	@(#)fsck.h	8.4 (Berkeley) 5/9/95
  * $FreeBSD: src/sbin/fsck/fsck.h,v 1.12.2.1 2001/01/23 23:11:07 iedowse Exp $
+ * $DragonFly: src/sbin/fsck/fsck.h,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
 
 #include <unistd.h>

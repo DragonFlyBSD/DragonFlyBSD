@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)networkdelta.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.sbin/timed/timed/networkdelta.c,v 1.3.2.1 2000/07/01 01:28:10 ps Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/networkdelta.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)networkdelta.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/timed/timed/networkdelta.c,v 1.3.2.1 2000/07/01 01:28:10 ps Exp $";
-#endif /* not lint */
 
 #include "globals.h"
 

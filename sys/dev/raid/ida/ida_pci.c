@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_pci.c,v 1.7.2.7 2001/07/30 20:29:58 jlemon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida_pci.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
  */
 
 #include <sys/param.h>

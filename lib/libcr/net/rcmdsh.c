@@ -26,15 +26,15 @@
  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
  * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libc/net/rcmdsh.c,v 1.3.2.2 2002/04/22 17:38:53 ume Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/rcmdsh.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 
 /*
  * This is an rcmd() replacement originally by
  * Chris Siebenmann <cks@utcc.utoronto.ca>.
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/net/rcmdsh.c,v 1.3.2.2 2002/04/22 17:38:53 ume Exp $");
 
 #include <sys/types.h>
 #include <sys/socket.h>

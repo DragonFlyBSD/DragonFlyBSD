@@ -1,6 +1,7 @@
-#if defined(LIBC_SCCS) && !defined(lint)
-static char *rcsid = "$FreeBSD: src/lib/libc/gen/shmdt.c,v 1.4 1999/08/27 23:58:57 peter Exp $";
-#endif /* LIBC_SCCS and not lint */
+/*
+ * $FreeBSD: src/lib/libc/gen/shmdt.c,v 1.4 1999/08/27 23:58:57 peter Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/shmdt.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ */
 
 #include <sys/types.h>
 #include <sys/ipc.h>

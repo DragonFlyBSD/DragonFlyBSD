@@ -1,4 +1,5 @@
 /* $FreeBSD: src/lib/libc/stdtime/private.h,v 1.6.8.1 2000/08/23 00:19:15 jhb Exp $ */
+/* $DragonFly: src/lib/libcr/stdtime/Attic/private.h,v 1.2 2003/06/17 04:26:46 dillon Exp $ */
 
 #ifndef PRIVATE_H
 
@@ -33,14 +34,9 @@
 ** ID
 */
 
-#ifndef lint
-#ifndef NOID
 /*
-static char	privatehid[] = "@(#)private.h	7.43";
-*/
-#endif /* !defined NOID */
-#endif /* !defined lint */
-
+ * @(#)private.h	7.43
+ */
 /*
 ** Defaults for preprocessor symbols.
 ** You can override these in your C compiler options, e.g. `-DHAVE_ADJTIME=0'.

@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)findfp.c	8.2 (Berkeley) 1/4/94
+ * $FreeBSD: src/lib/libc/stdio/findfp.c,v 1.7.2.3 2001/08/17 02:56:31 peter Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/findfp.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)findfp.c	8.2 (Berkeley) 1/4/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/stdio/findfp.c,v 1.7.2.3 2001/08/17 02:56:31 peter Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <unistd.h>

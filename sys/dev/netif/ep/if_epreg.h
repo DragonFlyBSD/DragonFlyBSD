@@ -20,6 +20,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_epreg.h,v 1.29 2000/01/12 06:42:49 mdodd Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_epreg.h,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 /*

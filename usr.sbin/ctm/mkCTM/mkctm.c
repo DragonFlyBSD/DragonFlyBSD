@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.sbin/ctm/mkCTM/mkctm.c,v 1.9.6.1 2000/12/11 01:03:30 obrien Exp $ */
+/* $DragonFly: src/usr.sbin/ctm/mkCTM/Attic/mkctm.c,v 1.2 2003/06/17 04:29:53 dillon Exp $ */
 
 /* Still missing:
  *

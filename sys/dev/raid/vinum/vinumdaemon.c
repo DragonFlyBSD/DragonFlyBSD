@@ -36,6 +36,7 @@
  *
  * $Id: vinumdaemon.c,v 1.8 2000/01/03 05:22:03 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumdaemon.c,v 1.16 2000/01/05 06:03:56 grog Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumdaemon.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 #include <dev/vinum/vinumhdr.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.h,v 1.27.2.11 2002/10/05 18:31:48 scottl Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 #include "vt.h"

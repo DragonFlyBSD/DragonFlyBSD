@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.h,v 1.1.2.1 2001/03/04 08:38:20 assar Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.h,v 1.2 2003/06/17 04:28:19 dillon Exp $
  */
 
 #ifndef _LINUX_SOCKET_H_

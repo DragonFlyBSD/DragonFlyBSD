@@ -33,16 +33,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)kvm.c	8.2 (Berkeley) 2/13/94
+ * $FreeBSD: src/lib/libkvm/kvm.c,v 1.12.2.3 2002/09/13 14:53:43 nectar Exp $
+ * $DragonFly: src/lib/libkvm/kvm.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)kvm.c	8.2 (Berkeley) 2/13/94";
-#else
-static const char rcsid[] =
- "$FreeBSD: src/lib/libkvm/kvm.c,v 1.12.2.3 2002/09/13 14:53:43 nectar Exp $";
-#endif
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/user.h>

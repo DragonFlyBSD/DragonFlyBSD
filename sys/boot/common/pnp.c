@@ -2,6 +2,7 @@
  * mjs copyright
  *
  * $FreeBSD: src/sys/boot/common/pnp.c,v 1.9.2.2 2000/12/28 13:12:36 ps Exp $
+ * $DragonFly: src/sys/boot/common/pnp.c,v 1.2 2003/06/17 04:28:17 dillon Exp $
  */
 /*
  * "Plug and Play" functionality.

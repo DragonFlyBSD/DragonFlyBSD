@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/mpool/mpool.c,v 1.5.2.1 2001/03/05 23:05:01 obrien Exp $
+ * $DragonFly: src/lib/libc/db/mpool/mpool.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)mpool.c	8.5 (Berkeley) 7/26/94
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)mpool.c	8.5 (Berkeley) 7/26/94";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/queue.h>

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/mii/Makefile,v 1.11.2.6 2001/06/18 18:49:12 wpaul Exp $
+# $DragonFly: src/sys/dev/netif/mii_layer/Makefile,v 1.2 2003/06/17 04:28:44 dillon Exp $
 
 .PATH:	${.CURDIR}/../../dev/mii
 KMOD	= miibus

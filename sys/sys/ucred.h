@@ -32,6 +32,7 @@
  *
  *	@(#)ucred.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/ucred.h,v 1.14.2.5 2002/03/09 05:20:25 dd Exp $
+ * $DragonFly: src/sys/sys/ucred.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _SYS_UCRED_H_

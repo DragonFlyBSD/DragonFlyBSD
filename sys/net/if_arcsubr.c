@@ -1,5 +1,6 @@
 /*	$NetBSD: if_arcsubr.c,v 1.36 2001/06/14 05:44:23 itojun Exp $	*/
 /*	$FreeBSD: src/sys/net/if_arcsubr.c,v 1.1.2.5 2003/02/05 18:42:15 fjoe Exp $ */
+/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.2 2003/06/17 04:28:47 dillon Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Ignatios Souvatzis

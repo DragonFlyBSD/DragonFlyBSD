@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/gnu/ext2fs/i386-bitops.h,v 1.5 1999/11/15 23:16:06 obrien Exp $ */
+/* $DragonFly: src/sys/vfs/gnu/ext2fs/i386-bitops.h,v 1.2 2003/06/17 04:28:34 dillon Exp $ */
 /*
  * this is mixture of i386/bitops.h and asm/string.h
  * taken from the Linux source tree 

@@ -34,10 +34,9 @@
  * SUCH DAMAGE.
  *
  * $Id: pam_ssh.c,v 1.23 2001/08/20 01:44:02 akorty Exp $
+ * $FreeBSD: src/lib/libpam/modules/pam_ssh/pam_ssh.c,v 1.28.2.4 2002/07/12 09:24:56 des Exp $
+ * $DragonFly: src/lib/libpam/modules/pam_ssh/Attic/pam_ssh.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libpam/modules/pam_ssh/pam_ssh.c,v 1.28.2.4 2002/07/12 09:24:56 des Exp $");
 
 #include <sys/param.h>
 #include <sys/stat.h>

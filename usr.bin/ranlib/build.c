@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)build.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/ranlib/build.c,v 1.7 1999/08/28 01:05:01 peter Exp $
+ * $DragonFly: src/usr.bin/ranlib/Attic/build.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)build.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/ranlib/build.c,v 1.7 1999/08/28 01:05:01 peter Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

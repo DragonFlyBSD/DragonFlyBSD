@@ -26,6 +26,7 @@ SOFTWARE.
 ************************************************************************/
 
 /* $FreeBSD: src/libexec/bootpd/bootpgw/bootpgw.c,v 1.3.2.1 2000/12/11 01:03:21 obrien Exp $ */
+/* $DragonFly: src/libexec/bootpd/bootpgw/bootpgw.c,v 1.2 2003/06/17 04:27:07 dillon Exp $ */
 
 /*
  * BOOTPGW is typically used to forward BOOTP client requests from

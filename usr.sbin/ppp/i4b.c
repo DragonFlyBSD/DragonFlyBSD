@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/i4b.c,v 1.8.2.3 2002/09/01 02:12:27 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/i4b.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/joy.c,v 1.38.2.1 2001/09/01 05:55:31 murray Exp $
+ * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libpam/modules/pam_skey/pam_skey.c,v 1.2.6.2 2003/02/10 12:15:30 des Exp $
+ *	$DragonFly: src/lib/libpam/modules/pam_skey/Attic/pam_skey.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
 
 #include <syslog.h>	/* XXX */

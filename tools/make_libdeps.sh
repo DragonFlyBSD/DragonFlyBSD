@@ -25,6 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/tools/make_libdeps.sh,v 1.2.2.1 2002/07/23 12:12:30 ru Exp $
+# $DragonFly: src/tools/make_libdeps.sh,v 1.2 2003/06/17 04:29:08 dillon Exp $
 
 export PATH=/usr/bin
 

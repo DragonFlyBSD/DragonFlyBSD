@@ -1,6 +1,7 @@
 #!/bin/sh -
 #
 # $FreeBSD: src/usr.sbin/periodic/periodic.sh,v 1.9.2.8 2002/05/21 03:09:35 brian Exp $
+# $DragonFly: src/usr.sbin/periodic/periodic.sh,v 1.2 2003/06/17 04:29:59 dillon Exp $
 #
 # Run nightly periodic scripts
 #

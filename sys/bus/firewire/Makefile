@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/firewire/firewire/Makefile,v 1.2.2.5 2003/04/28 03:29:19 simokawa Exp $
+# $DragonFly: src/sys/bus/firewire/Makefile,v 1.2 2003/06/17 04:28:44 dillon Exp $
 
 # Makefile for the IEEE1394 OHCI chipset
 

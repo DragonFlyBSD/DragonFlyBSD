@@ -32,15 +32,13 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1999 The NetBSD Foundation, Inc.  All rights reserved.
+ * $FreeBSD: src/usr.bin/nl/nl.c,v 1.2.2.2 2002/07/15 06:18:43 tjr Exp $
+ * $DragonFly: src/usr.bin/nl/nl.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
 
 #include <sys/cdefs.h>
-#ifndef lint
-__COPYRIGHT(
-"@(#) Copyright (c) 1999\
- The NetBSD Foundation, Inc.  All rights reserved.");
-__RCSID("$FreeBSD: src/usr.bin/nl/nl.c,v 1.2.2.2 2002/07/15 06:18:43 tjr Exp $");
-#endif    
 
 #include <sys/types.h>
 

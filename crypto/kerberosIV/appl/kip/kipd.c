@@ -1,4 +1,5 @@
 /* $FreeBSD: src/crypto/kerberosIV/appl/kip/kipd.c,v 1.1.1.3.2.2 2001/03/04 12:52:43 markm Exp $ */
+/* $DragonFly: src/crypto/kerberosIV/appl/kip/Attic/kipd.c,v 1.2 2003/06/17 04:24:36 dillon Exp $ */
 
 /*
  * Copyright (c) 1995 - 2000 Kungliga Tekniska Högskolan

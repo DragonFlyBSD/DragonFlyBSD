@@ -13,22 +13,11 @@
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * @(#)strftime.c	7.38
+ * $FreeBSD: src/lib/libc/stdtime/strftime.c,v 1.25.2.4 2002/03/12 17:24:54 phantom Exp $
+ * $DragonFly: src/lib/libc/stdtime/strftime.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
-
-#ifdef LIBC_RCS
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/stdtime/strftime.c,v 1.25.2.4 2002/03/12 17:24:54 phantom Exp $";
-#endif
-
-#ifndef lint
-#ifndef NOID
-static const char	elsieid[] = "@(#)strftime.c	7.38";
-/*
-** Based on the UCB version with the ID appearing below.
-** This is ANSIish only when "multibyte character == plain character".
-*/
-#endif /* !defined NOID */
-#endif /* !defined lint */
 
 #include "private.h"
 

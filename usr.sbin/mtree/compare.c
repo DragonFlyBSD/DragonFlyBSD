@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)compare.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.sbin/mtree/compare.c,v 1.15.2.4 2003/05/07 17:55:17 tobez Exp $
+ * $DragonFly: src/usr.sbin/mtree/compare.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)compare.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/mtree/compare.c,v 1.15.2.4 2003/05/07 17:55:17 tobez Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

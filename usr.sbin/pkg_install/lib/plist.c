@@ -16,10 +16,9 @@
  *
  * General packing list routines.
  *
+ * $FreeBSD: src/usr.sbin/pkg_install/lib/plist.c,v 1.29.2.10 2002/08/31 19:38:55 obrien Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/plist.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.sbin/pkg_install/lib/plist.c,v 1.29.2.10 2002/08/31 19:38:55 obrien Exp $");
 
 #include "lib.h"
 #include <err.h>

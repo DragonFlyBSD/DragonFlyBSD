@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fbreg.h,v 1.6 1999/12/29 04:35:36 peter Exp $
+ * $DragonFly: src/sys/dev/video/fb/fbreg.h,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 #ifndef _DEV_FB_FBREG_H_

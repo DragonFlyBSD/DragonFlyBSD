@@ -29,6 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/mga_drv.c,v 1.5.2.1 2003/04/26 07:05:29 anholt Exp $
+ * $DragonFly: src/sys/dev/drm/mga/Attic/mga_drv.c,v 1.2 2003/06/17 04:28:24 dillon Exp $
  */
 
 #include "dev/drm/mga.h"

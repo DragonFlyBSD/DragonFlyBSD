@@ -17,6 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  *
  */
 #undef DEBUG

@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)rwho.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/rwho/rwho.c,v 1.13.2.1 2002/03/12 19:49:09 phantom Exp $
+ * $DragonFly: src/usr.bin/rwho/rwho.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1983, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)rwho.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/rwho/rwho.c,v 1.13.2.1 2002/03/12 19:49:09 phantom Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/file.h>

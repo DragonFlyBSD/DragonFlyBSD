@@ -16,10 +16,9 @@
  *
  * This is the main body of the info module.
  *
+ * $FreeBSD: src/usr.sbin/pkg_install/info/perform.c,v 1.29.2.14 2002/10/11 14:23:43 sobomax Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/info/Attic/perform.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.sbin/pkg_install/info/perform.c,v 1.29.2.14 2002/10/11 14:23:43 sobomax Exp $");
 
 #include "lib.h"
 #include "info.h"

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/pci/if_wx.c,v 1.5.2.12 2003/03/05 18:42:34 njl Exp $ */
+/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.2 2003/06/17 04:28:57 dillon Exp $ */
 /*
  * Principal Author: Matthew Jacob <mjacob@feral.com>
  * Copyright (c) 1999, 2001 by Traakan Software

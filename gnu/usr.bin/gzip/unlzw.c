@@ -5,11 +5,10 @@
  *
  * This is a temporary version which will be rewritten in some future version
  * to accommodate in-memory decompression.
+ *
+ * $FreeBSD: src/gnu/usr.bin/gzip/unlzw.c,v 1.7 1999/08/27 23:35:53 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/gzip/Attic/unlzw.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
-
-#ifdef RCSID
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/gzip/unlzw.c,v 1.7 1999/08/27 23:35:53 peter Exp $";
-#endif
 
 #include <sys/types.h>
 

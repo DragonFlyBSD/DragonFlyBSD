@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.h,v 1.6.2.1 2000/05/07 18:16:49 n_hibma Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.h,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 #ifndef _CAM_CAM_PERIPH_H

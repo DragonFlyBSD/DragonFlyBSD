@@ -25,13 +25,12 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)clnt_unix.c 1.37 87/10/05 Copyr 1984 Sun Micro
+ * @(#)clnt_unix.c	2.2 88/08/01 4.0 RPCSRC
+ * $FreeBSD: src/lib/libc/rpc/clnt_unix.c,v 1.5 2000/01/27 23:06:37 jasone Exp $
+ * $DragonFly: src/lib/libc/rpc/clnt_unix.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/*static char *sccsid = "from: @(#)clnt_unix.c 1.37 87/10/05 Copyr 1984 Sun Micro";*/
-/*static char *sccsid = "from: @(#)clnt_unix.c	2.2 88/08/01 4.0 RPCSRC";*/
-static char *rcsid = "$FreeBSD: src/lib/libc/rpc/clnt_unix.c,v 1.5 2000/01/27 23:06:37 jasone Exp $";
-#endif
 
 /*
  * clnt_unix.c, Implements a AF_UNIX based, client side RPC.

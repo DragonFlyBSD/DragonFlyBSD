@@ -37,6 +37,7 @@
  *
  *	@(#)dinode.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/ufs/ufs/dinode.h,v 1.7 1999/08/28 00:52:27 peter Exp $
+ * $DragonFly: src/sys/vfs/ufs/dinode.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _UFS_UFS_DINODE_H_

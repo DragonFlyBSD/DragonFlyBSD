@@ -32,6 +32,8 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)regex.c	5.1 (Berkeley) 3/29/92
  */
 
 /*
@@ -40,10 +42,6 @@
  * rely on dark corners of re_comp/re_exec and won't work with this version,
  * but most programs should be fine.
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)regex.c	5.1 (Berkeley) 3/29/92";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <stddef.h>

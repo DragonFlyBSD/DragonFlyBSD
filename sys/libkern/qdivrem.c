@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/qdivrem.c,v 1.8 1999/08/28 00:46:35 peter Exp $
+ * $DragonFly: src/sys/libkern/qdivrem.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 /*

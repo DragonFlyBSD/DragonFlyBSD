@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/async.h,v 1.6.2.2 2002/09/01 02:12:22 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/async.h,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #define HDLCSIZE	(MAX_MRU*2+6)

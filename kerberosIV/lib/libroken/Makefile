@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberosIV/lib/libroken/Makefile,v 1.6.2.2 2002/07/19 18:46:25 ru Exp $
+# $DragonFly: src/kerberosIV/lib/libroken/Attic/Makefile,v 1.2 2003/06/17 04:26:25 dillon Exp $
 
 LIB=		roken
 INTERNALLIB=	YES

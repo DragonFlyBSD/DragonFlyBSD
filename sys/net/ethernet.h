@@ -2,6 +2,7 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
+ * $DragonFly: src/sys/net/ethernet.h,v 1.2 2003/06/17 04:28:47 dillon Exp $
  *
  */
 

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/sys/event.h,v 1.5.2.6 2003/02/09 15:28:13 nectar Exp $
+ *	$DragonFly: src/sys/sys/event.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_EVENT_H_

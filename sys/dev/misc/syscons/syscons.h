@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.h,v 1.60.2.6 2002/09/15 22:30:45 dd Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.2 2003/06/17 04:28:32 dillon Exp $
  */
 
 #ifndef _DEV_SYSCONS_SYSCONS_H_

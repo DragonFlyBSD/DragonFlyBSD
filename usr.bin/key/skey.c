@@ -8,12 +8,10 @@
  *	OMEN US HORN OMIT BACK AHOY
  *	C848 666B 6435 0A93
  *	>
+ *
+ * $FreeBSD: src/usr.bin/key/skey.c,v 1.6.6.1 2001/03/04 08:35:48 kris Exp $
+ * $DragonFly: src/usr.bin/key/skey.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/key/skey.c,v 1.6.6.1 2001/03/04 08:35:48 kris Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <stdio.h>

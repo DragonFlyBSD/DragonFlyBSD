@@ -32,6 +32,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #include "opt_inet6.h"

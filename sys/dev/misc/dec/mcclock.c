@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/dec/mcclock.c,v 1.5.2.2 2001/12/17 14:03:15 gallatin Exp $ */
+/* $DragonFly: src/sys/dev/misc/dec/Attic/mcclock.c,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
 /* $NetBSD: mcclock.c,v 1.11 1998/04/19 07:50:25 jonathan Exp $ */
 
 /*

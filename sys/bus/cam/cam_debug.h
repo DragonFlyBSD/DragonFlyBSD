@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_debug.h,v 1.6 1999/12/29 04:54:25 peter Exp $
+ * $DragonFly: src/sys/bus/cam/cam_debug.h,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 #ifndef	_CAM_CAM_DEBUG_H
 #define _CAM_CAM_DEBUG_H 1

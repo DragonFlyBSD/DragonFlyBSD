@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
+# $DragonFly: src/include/Makefile,v 1.2 2003/06/17 04:25:56 dillon Exp $
 #
 # Doing a make install builds /usr/include
 #

@@ -31,11 +31,10 @@
  * SUCH DAMAGE.  
  *
  * $FreeBSD: src/lib/libc/locale/mskanji.c,v 1.2.8.2 2001/03/05 10:22:45 obrien Exp $
+ * $DragonFly: src/lib/libcr/locale/Attic/mskanji.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ *
+ * @(#)mskanji.c	1.0 (Phase One) 5/5/95
  */  
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)mskanji.c	1.0 (Phase One) 5/5/95";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 

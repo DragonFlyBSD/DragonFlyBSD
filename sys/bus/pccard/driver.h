@@ -4,6 +4,7 @@
  * This file is in the public domain.
  *
  * $FreeBSD: src/sys/pccard/driver.h,v 1.12.2.2 2001/04/21 05:52:30 imp Exp $
+ * $DragonFly: src/sys/bus/pccard/Attic/driver.h,v 1.2 2003/06/17 04:28:55 dillon Exp $
  */
 
 #ifndef _PCCARD_DRIVER_H_

@@ -23,6 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ufs/dirhash.h,v 1.2.2.1 2001/08/01 19:33:39 iedowse Exp $
+ * $DragonFly: src/sys/vfs/ufs/dirhash.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _UFS_UFS_DIRHASH_H_

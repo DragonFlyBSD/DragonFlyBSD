@@ -1,6 +1,3 @@
-/*	From: NetBSD: strtod.c,v 1.26 1998/02/03 18:44:21 perry Exp */
-/* $FreeBSD: src/lib/libc/stdlib/netbsd_strtod.c,v 1.2.2.2 2001/03/02 17:14:15 tegge Exp $	*/
-
 /****************************************************************
  *
  * The author of this software is David M. Gay.
@@ -19,6 +16,12 @@
  * OF THIS SOFTWARE OR ITS FITNESS FOR ANY PARTICULAR PURPOSE.
  *
  ***************************************************************/
+/*
+ * $NetBSD: strtod.c,v 1.26 1998/02/03 18:44:21 perry Exp $
+ * $FreeBSD: src/lib/libc/stdlib/netbsd_strtod.c,v 1.2.2.2 2001/03/02 17:14:15 tegge Exp $
+ * $DragonFly: src/lib/libc/stdlib/Attic/netbsd_strtod.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ */
+
 
 /* Please send bug reports to
 	David M. Gay
@@ -93,9 +96,6 @@
  */
 
 #include <sys/cdefs.h>
-#if defined(LIBC_SCCS) && !defined(lint)
-__RCSID("$NetBSD: strtod.c,v 1.26 1998/02/03 18:44:21 perry Exp $");
-#endif /* LIBC_SCCS and not lint */
 
 #if defined(__m68k__) || defined(__sparc__) || defined(__i386__) || \
     defined(__mips__) || defined(__ns32k__) || defined(__alpha__) || \

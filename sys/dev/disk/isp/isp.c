@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp.c,v 1.41.2.23 2002/10/11 17:34:28 mjacob Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp.c,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
 /*
  * Machine and OS Independent (well, as best as possible)
  * code for the Qlogic ISP SCSI adapters.

@@ -8,12 +8,10 @@
  *	A public-domain replacement for the UNIX "crypt" command.
  *
  *	Upgraded to function properly on 64-bit machines.
+ *
+ * $FreeBSD: src/usr.bin/enigma/enigma.c,v 1.2.6.3 2001/08/01 23:51:34 obrien Exp $
+ * $DragonFly: src/usr.bin/enigma/enigma.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/enigma/enigma.c,v 1.2.6.3 2001/08/01 23:51:34 obrien Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/wait.h>

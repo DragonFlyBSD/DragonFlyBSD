@@ -2,11 +2,10 @@
  * Copyright (C) 1992-1993 Jean-loup Gailly
  * This is free software; you can redistribute it and/or modify it under the
  * terms of the GNU General Public License, see the file COPYING.
+ *
+ * $FreeBSD: src/gnu/usr.bin/gzip/unpack.c,v 1.6 1999/08/27 23:35:54 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/gzip/Attic/unpack.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
-
-#ifdef RCSID
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/gzip/unpack.c,v 1.6 1999/08/27 23:35:54 peter Exp $";
-#endif
 
 #include "tailor.h"
 #include "gzip.h"

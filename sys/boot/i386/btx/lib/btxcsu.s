@@ -14,6 +14,7 @@
 #
 
 # $FreeBSD: src/sys/boot/i386/btx/lib/btxcsu.s,v 1.3 1999/08/28 00:40:07 peter Exp $
+# $DragonFly: src/sys/boot/i386/btx/lib/Attic/btxcsu.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 #
 # BTX C startup code (ELF).

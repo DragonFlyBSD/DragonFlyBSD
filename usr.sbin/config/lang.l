@@ -33,6 +33,7 @@
  *
  *	@(#)lang.l	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/lang.l,v 1.27 1999/11/09 07:20:22 peter Exp $
+ * $DragonFly: src/usr.sbin/config/lang.l,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 
 #include <ctype.h>

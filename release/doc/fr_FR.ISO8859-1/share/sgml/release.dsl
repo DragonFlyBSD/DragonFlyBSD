@@ -4,6 +4,7 @@
 
      $Id$
      $FreeBSD: src/release/doc/fr_FR.ISO8859-1/share/sgml/release.dsl,v 1.1.2.5 2003/06/11 21:04:43 hrs Exp $
+     $DragonFly: src/release/doc/fr_FR.ISO8859-1/share/sgml/Attic/release.dsl,v 1.2 2003/06/17 04:27:20 dillon Exp $
      Original revision: 1.1.2.6
 -->
 

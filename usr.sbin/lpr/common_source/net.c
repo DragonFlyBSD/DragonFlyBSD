@@ -36,12 +36,10 @@
  * SUCH DAMAGE.
  *
  *	From: @(#)common.c	8.5 (Berkeley) 4/28/95
+ *
+ * $FreeBSD: src/usr.sbin/lpr/common_source/net.c,v 1.3.2.4 2001/06/25 01:00:56 gad Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/net.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/lpr/common_source/net.c,v 1.3.2.4 2001/06/25 01:00:56 gad Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/socket.h>

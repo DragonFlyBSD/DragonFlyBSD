@@ -4,6 +4,7 @@
 
      $Id$
      $FreeBSD: src/release/doc/fr_FR.ISO8859-1/relnotes/common/relnotes.ent,v 1.1.2.1 2002/02/23 22:59:00 gioria Exp $
+     $DragonFly: src/release/doc/fr_FR.ISO8859-1/relnotes/common/Attic/relnotes.ent,v 1.2 2003/06/17 04:27:20 dillon Exp $
      Original revision: 1.1.2.3
 -->
 <!-- Text constants which probably don't need to be changed.-->

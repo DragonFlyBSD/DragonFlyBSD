@@ -7,6 +7,7 @@
 # ----------------------------------------------------------------------------
 #
 # $FreeBSD: src/usr.sbin/ctm/ctm/Makefile,v 1.13.2.1 2001/04/25 12:09:24 ru Exp $
+# $DragonFly: src/usr.sbin/ctm/ctm/Attic/Makefile,v 1.2 2003/06/17 04:29:53 dillon Exp $
 #
 
 PROG=		ctm

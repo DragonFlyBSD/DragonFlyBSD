@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/gnu/lib/libmp/Makefile,v 1.18.2.1 2002/07/22 14:21:44 ru Exp $
+# $DragonFly: src/gnu/lib/libmp/Attic/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
 #
 
 LIB=	mp

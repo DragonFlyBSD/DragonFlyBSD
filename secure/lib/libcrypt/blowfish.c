@@ -31,6 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/secure/lib/libcrypt/blowfish.c,v 1.1.2.1 2001/05/24 12:20:03 markm Exp $
+ * $DragonFly: src/secure/lib/libcrypt/blowfish.c,v 1.2 2003/06/17 04:27:48 dillon Exp $
  */
 
 /*

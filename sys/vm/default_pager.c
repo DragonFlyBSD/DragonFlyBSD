@@ -37,6 +37,7 @@
  * is maintained whenever a resident page also has swap backing store.
  *
  * $FreeBSD: src/sys/vm/default_pager.c,v 1.23 1999/11/07 20:03:53 alc Exp $
+ * $DragonFly: src/sys/vm/default_pager.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -36,6 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/sched.h,v 1.4 1999/12/29 04:55:02 peter Exp $
+ * $DragonFly: src/sys/sys/sched.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 #include <sys/types.h>	/* For pid_t */

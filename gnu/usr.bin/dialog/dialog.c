@@ -18,6 +18,7 @@
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * $FreeBSD: src/gnu/usr.bin/dialog/dialog.c,v 1.12.6.1 2001/03/05 10:28:10 kris Exp $
+ * $DragonFly: src/gnu/usr.bin/dialog/dialog.c,v 1.2 2003/06/17 04:25:45 dillon Exp $
  *
  *
  *  HISTORY:

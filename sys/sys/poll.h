@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/poll.h,v 1.6.2.1 2000/08/21 12:25:58 sheldonh Exp $
+ * $DragonFly: src/sys/sys/poll.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_POLL_H_

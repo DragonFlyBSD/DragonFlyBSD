@@ -32,6 +32,7 @@
  *
  *	from: @(#)dinode.h	7.10 (Berkeley) 5/8/91
  * $FreeBSD: src/sys/i386/boot/dosboot/dinode.h,v 1.5 1999/08/28 00:43:21 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/dinode.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #ifndef _UFS_DINODE_H_

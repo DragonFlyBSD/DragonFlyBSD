@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/advcap.h,v 1.1.2.2 2001/07/03 11:02:14 ume Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/advcap.h,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
 
 /* Based on Id: termcap.h,v 1.8 1996/09/10 12:42:10 peter Exp */

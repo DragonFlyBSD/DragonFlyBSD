@@ -32,6 +32,7 @@
  *
  *	from: @(#)extern.h	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/getty/extern.h,v 1.7 2000/01/28 07:12:02 bde Exp $
+ * $DragonFly: src/libexec/getty/extern.h,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 struct delayval;

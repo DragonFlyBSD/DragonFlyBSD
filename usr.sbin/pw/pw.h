@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pw/pw.h,v 1.10.2.2 2001/07/19 01:46:55 kris Exp $
+ * $DragonFly: src/usr.sbin/pw/pw.h,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
 
 #include <stdio.h>

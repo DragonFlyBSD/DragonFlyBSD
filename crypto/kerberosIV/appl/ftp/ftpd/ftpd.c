@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/crypto/kerberosIV/appl/ftp/ftpd/ftpd.c,v 1.5.2.2 2001/03/04 12:52:41 markm Exp $
+ * $DragonFly: src/crypto/kerberosIV/appl/ftp/ftpd/Attic/ftpd.c,v 1.2 2003/06/17 04:24:36 dillon Exp $
  */
 
 #define	FTP_NAMES

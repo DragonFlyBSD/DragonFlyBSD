@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libfetch/fetch.h,v 1.10.2.8 2002/07/26 11:10:54 des Exp $
+ * $DragonFly: src/lib/libfetch/fetch.h,v 1.2 2003/06/17 04:26:49 dillon Exp $
  */
 
 #ifndef _FETCH_H_INCLUDED

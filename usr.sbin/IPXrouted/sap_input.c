@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/sap_input.c,v 1.7 1999/08/28 01:15:04 peter Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/sap_input.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
  */
 
 /*

@@ -35,6 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include "opt_compat.h"

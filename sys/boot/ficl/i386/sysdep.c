@@ -8,6 +8,7 @@
 *******************************************************************/
 
 /* $FreeBSD: src/sys/boot/ficl/i386/sysdep.c,v 1.7 1999/09/29 04:43:07 dcs Exp $ */
+/* $DragonFly: src/sys/boot/ficl/i386/sysdep.c,v 1.2 2003/06/17 04:28:18 dillon Exp $ */
 
 #ifdef TESTMAIN
 #include <stdio.h>

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip_encap.h,v 1.1.2.2 2002/11/20 23:20:54 luigi Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip_encap.h,v 1.2 2003/06/17 04:28:51 dillon Exp $	*/
 /*	$KAME: ip_encap.h,v 1.7 2000/03/25 07:23:37 sumikawa Exp $	*/
 
 /*

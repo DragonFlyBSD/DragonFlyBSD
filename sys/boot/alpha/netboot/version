@@ -1,4 +1,5 @@
 $FreeBSD: src/sys/boot/alpha/netboot/version,v 1.2 1999/08/28 00:39:32 peter Exp $
+$DragonFly: src/sys/boot/alpha/netboot/Attic/version,v 1.2 2003/06/17 04:28:16 dillon Exp $
 
 NOTE ANY CHANGES YOU MAKE TO THE BOOTBLOCKS HERE.  The format of this
 file is important.  Make sure the current version number is on line 6.

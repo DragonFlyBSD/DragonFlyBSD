@@ -1,5 +1,6 @@
 /*-
  * $FreeBSD: src/sys/dev/dgb/dgmreg.h,v 1.4.2.1 2001/09/23 19:54:54 brian Exp $
+ * $DragonFly: src/sys/dev/serial/dgb/dgmreg.h,v 1.2 2003/06/17 04:28:23 dillon Exp $
  *
  *  Digiboard driver.
  *

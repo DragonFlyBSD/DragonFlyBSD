@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nmdm/nmdm.c,v 1.5.2.1 2001/08/11 00:54:14 mp Exp $
+ * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 /*

@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/raycontrol/Makefile,v 1.1.2.2 2001/04/25 12:10:42 ru Exp $
+# $DragonFly: src/usr.sbin/raycontrol/Attic/Makefile,v 1.2 2003/06/17 04:30:02 dillon Exp $
 PROG=	raycontrol
 MAN=	raycontrol.8
 

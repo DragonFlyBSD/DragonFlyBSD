@@ -1,5 +1,6 @@
 /*	$NetBSD: uhci.c,v 1.80 2000/01/19 01:16:38 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhci.c,v 1.40.2.10 2003/01/12 02:13:58 iedowse Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.

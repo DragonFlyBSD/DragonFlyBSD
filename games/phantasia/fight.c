@@ -2,6 +2,7 @@
  * fight.c   Phantasia monster fighting routines
  *
  * $FreeBSD: src/games/phantasia/fight.c,v 1.7 1999/11/16 02:57:33 billf Exp $
+ * $DragonFly: src/games/phantasia/fight.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
 
 #include <string.h>

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/binutils/gdb/alpha/tm.h,v 1.2.2.1 2000/07/06 22:08:07 obrien Exp $ */
+/* $DragonFly: src/gnu/usr.bin/binutils/gdb/alpha/Attic/tm.h,v 1.2 2003/06/17 04:25:44 dillon Exp $ */
 /* Definitions to make GDB run on an Alpha box under FreeBSD.  The
    definitions here are used when the _target_ system is running Linux.
    Copyright 1996 Free Software Foundation, Inc.

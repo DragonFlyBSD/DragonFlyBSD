@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libncp/ncpl_nls.c,v 1.2.2.1 2002/04/30 08:18:24 bp Exp $
+ * $DragonFly: src/lib/libncp/ncpl_nls.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
 
 /*

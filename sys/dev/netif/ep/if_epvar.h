@@ -20,6 +20,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_epvar.h,v 1.4.2.1 2000/05/24 01:47:45 archie Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_epvar.h,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 struct ep_board {

@@ -23,6 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/csu/i386-elf/crt1.c,v 1.4.2.2 2002/11/18 04:57:13 bde Exp $
+ * $DragonFly: src/lib/csu/i386-elf/Attic/crt1.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
 
 #ifndef __GNUC__

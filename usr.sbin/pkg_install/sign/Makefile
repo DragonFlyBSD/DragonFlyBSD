@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/pkg_install/sign/Makefile,v 1.1.2.2 2001/07/19 06:08:21 kris Exp $
+# $DragonFly: src/usr.sbin/pkg_install/sign/Attic/Makefile,v 1.2 2003/06/17 04:29:59 dillon Exp $
 # $OpenBSD: Makefile.bsd-wrapper,v 1.2 1999/10/07 16:30:32 espie Exp $
 
 PROG=	pkg_sign

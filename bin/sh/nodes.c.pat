@@ -35,6 +35,7 @@
  *
  *	@(#)nodes.c.pat	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/nodes.c.pat,v 1.7.2.1 2002/07/19 04:38:52 tjr Exp $
+ * $DragonFly: src/bin/sh/nodes.c.pat,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
 
 #include <stdlib.h>

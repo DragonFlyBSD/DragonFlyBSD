@@ -29,16 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)rsaencpwd.c	8.3 (Berkeley) 5/30/95
+ * $FreeBSD: src/crypto/telnet/libtelnet/rsaencpwd.c,v 1.1.1.1.8.1 2002/04/13 10:59:07 markm Exp $
+ * $DragonFly: src/crypto/telnet/libtelnet/rsaencpwd.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-
-__FBSDID("$FreeBSD: src/crypto/telnet/libtelnet/rsaencpwd.c,v 1.1.1.1.8.1 2002/04/13 10:59:07 markm Exp $");
-
-#ifndef lint
-static char sccsid[] = "@(#)rsaencpwd.c	8.3 (Berkeley) 5/30/95";
-#endif /* not lint */
-
 
 #ifdef	RSA_ENCPWD
 /*

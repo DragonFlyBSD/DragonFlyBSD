@@ -8,12 +8,10 @@
  *
  *
  * vif.c,v 3.8.4.56.2.1 1999/01/20 05:18:50 fenner Exp
+ *
+ * $FreeBSD: src/usr.sbin/mrouted/vif.c,v 1.15 1999/08/28 01:17:09 peter Exp $
+ * $DragonFly: src/usr.sbin/mrouted/vif.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/mrouted/vif.c,v 1.15 1999/08/28 01:17:09 peter Exp $";
-#endif /* not lint */
 
 #include "defs.h"
 #include <fcntl.h>

@@ -1,5 +1,7 @@
- $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
-;	from: @(#)syscalls.master	8.2 (Berkeley) 1/13/94
+ $DragonFly: src/sys/kern/syscalls.master,v 1.2 2003/06/17 04:28:41 dillon Exp $
+
+; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
+; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
 ;
 ; System call name/number master file.
 ; Processed to created init_sysent.c, syscalls.c and syscall.h.

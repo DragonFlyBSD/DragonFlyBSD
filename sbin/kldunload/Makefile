@@ -24,6 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sbin/kldunload/Makefile,v 1.4.2.1 2001/04/25 10:58:31 ru Exp $
+# $DragonFly: src/sbin/kldunload/Makefile,v 1.2 2003/06/17 04:27:33 dillon Exp $
 #
 
 PROG=	kldunload

@@ -1,5 +1,6 @@
 /* io.c			 Larn is copyrighted 1986 by Noah Morgan.
  * $FreeBSD: src/games/larn/io.c,v 1.7 1999/11/16 02:57:22 billf Exp $
+ * $DragonFly: src/games/larn/io.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  *
  *	Below are the functions in this file:
  *

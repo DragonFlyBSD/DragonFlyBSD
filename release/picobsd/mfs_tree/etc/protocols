@@ -1,4 +1,5 @@
 # $FreeBSD: src/release/picobsd/mfs_tree/etc/protocols,v 1.1.2.2 2002/03/24 21:15:12 luigi Exp $
+# $DragonFly: src/release/picobsd/mfs_tree/etc/Attic/protocols,v 1.2 2003/06/17 04:27:20 dillon Exp $
 # Internet (IP) protocols
 ip	0	IP		# internet protocol, pseudo protocol number
 icmp	1	ICMP		# internet control message protocol

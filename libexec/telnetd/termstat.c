@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)termstat.c	8.2 (Berkeley) 5/30/95
+ * $FreeBSD: src/libexec/telnetd/termstat.c,v 1.9.2.4 2002/04/13 11:07:12 markm Exp $
+ * $DragonFly: src/libexec/telnetd/termstat.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-
-__FBSDID("$FreeBSD: src/libexec/telnetd/termstat.c,v 1.9.2.4 2002/04/13 11:07:12 markm Exp $");
-
-#ifndef lint
-static const char sccsid[] = "@(#)termstat.c	8.2 (Berkeley) 5/30/95";
-#endif
 
 #include "telnetd.h"
 

@@ -22,6 +22,7 @@
 
 
 /* $FreeBSD: src/contrib/binutils/gas/config/tc-i386.h,v 1.3.6.4 2002/09/01 23:44:04 obrien Exp $ */
+/* $DragonFly: src/contrib/binutils/gas/config/Attic/tc-i386.h,v 1.2 2003/06/17 04:23:58 dillon Exp $ */
 
 
 #ifndef TC_I386

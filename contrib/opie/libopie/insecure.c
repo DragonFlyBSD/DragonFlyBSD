@@ -29,6 +29,7 @@ License Agreement applies to this software.
              assignment that should have been a comparison.
 
 $FreeBSD: src/contrib/opie/libopie/insecure.c,v 1.1.1.2.6.2 2002/07/15 14:48:47 des Exp $
+$DragonFly: src/contrib/opie/libopie/insecure.c,v 1.2 2003/06/17 04:24:05 dillon Exp $
 
 */
 #include "opie_cfg.h"

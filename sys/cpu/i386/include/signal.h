@@ -32,6 +32,7 @@
  *
  *	@(#)signal.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/signal.h,v 1.12 1999/11/12 13:52:11 marcel Exp $
+ * $DragonFly: src/sys/cpu/i386/include/signal.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 #ifndef _MACHINE_SIGNAL_H_

@@ -47,6 +47,7 @@
  ** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **
  ** $FreeBSD: src/sys/i386/include/uc_device.h,v 1.1.2.1 2000/07/14 10:21:34 jhb Exp $
+ ** $DragonFly: src/sys/i386/include/Attic/uc_device.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  **/
 
 #ifndef _I386_MACHINE_UC_DEVICE_H

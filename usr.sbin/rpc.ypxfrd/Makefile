@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/rpc.ypxfrd/Makefile,v 1.8.2.1 2001/04/25 12:10:47 ru Exp $
+# $DragonFly: src/usr.sbin/rpc.ypxfrd/Makefile,v 1.2 2003/06/17 04:30:02 dillon Exp $
 
 PROG=	rpc.ypxfrd
 SRCS=	ypxfrd_svc.c ypxfrd.h ypxfrd_server.c yp_error.c \

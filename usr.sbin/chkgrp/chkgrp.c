@@ -24,12 +24,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/chkgrp/chkgrp.c,v 1.3.2.2 2001/07/12 22:57:35 mjacob Exp $
+ * $DragonFly: src/usr.sbin/chkgrp/chkgrp.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/chkgrp/chkgrp.c,v 1.3.2.2 2001/07/12 22:57:35 mjacob Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <ctype.h>

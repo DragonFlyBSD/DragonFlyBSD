@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  */
 /* $FreeBSD: src/crypto/kerberosIV/appl/telnet/libtelnet/kerberos.c,v 1.2.2.2 2003/02/13 21:34:35 nectar Exp $ */
+/* $DragonFly: src/crypto/kerberosIV/appl/telnet/libtelnet/Attic/kerberos.c,v 1.2 2003/06/17 04:24:36 dillon Exp $ */
 
 /*
  * Copyright (C) 1990 by the Massachusetts Institute of Technology

@@ -1,6 +1,6 @@
 /* RCS common definitions and data structures */
 
-#define RCSBASE "$FreeBSD: src/gnu/usr.bin/rcs/lib/rcsbase.h,v 1.10 1999/08/27 23:36:44 peter Exp $"
+#define RCSBASE "$DragonFly: src/gnu/usr.bin/rcs/lib/rcsbase.h,v 1.2 2003/06/17 04:25:47 dillon Exp $"
 
 /* Copyright 1982, 1988, 1989 Walter Tichy
    Copyright 1990, 1991, 1992, 1993, 1994, 1995 Paul Eggert
@@ -30,6 +30,9 @@ Report problems and direct all questions to:
 */
 
 /*
+ * $FreeBSD: src/gnu/usr.bin/rcs/lib/rcsbase.h,v 1.10 1999/08/27 23:36:44 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/lib/rcsbase.h,v 1.2 2003/06/17 04:25:47 dillon Exp $
+ *
  * Revision 5.20  1995/06/16 06:19:24  eggert
  * Update FSF address.
  *

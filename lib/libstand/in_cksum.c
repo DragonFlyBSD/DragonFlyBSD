@@ -37,10 +37,9 @@
  * SUCH DAMAGE.
  *
  * @(#) Header: in_cksum.c,v 1.1 92/09/11 01:15:55 leres Exp  (LBL)
+ * $FreeBSD: src/lib/libstand/in_cksum.c,v 1.1.1.1.6.1 2002/07/22 09:28:50 peter Exp $
+ * $DragonFly: src/lib/libstand/in_cksum.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libstand/in_cksum.c,v 1.1.1.1.6.1 2002/07/22 09:28:50 peter Exp $");
 
 #include <sys/types.h>
 #include <machine/endian.h>

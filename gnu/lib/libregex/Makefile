@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/lib/libregex/Makefile,v 1.22.2.1 2002/07/22 14:21:45 ru Exp $
+# $DragonFly: src/gnu/lib/libregex/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
 
 SUBDIR+= doc
 

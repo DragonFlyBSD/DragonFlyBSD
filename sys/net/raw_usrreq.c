@@ -32,6 +32,7 @@
  *
  *	@(#)raw_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_usrreq.c,v 1.18 1999/08/28 00:48:28 peter Exp $
+ * $DragonFly: src/sys/net/raw_usrreq.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 #include <sys/param.h>

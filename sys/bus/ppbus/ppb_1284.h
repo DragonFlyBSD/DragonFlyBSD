@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppb_1284.h,v 1.7 2000/01/14 08:03:14 nsouch Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppb_1284.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
  *
  */
 #ifndef __1284_H

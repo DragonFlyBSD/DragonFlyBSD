@@ -25,6 +25,7 @@
  * OR MODIFICATIONS.
  *
  * $FreeBSD: src/sys/net/ppp_defs.h,v 1.6.2.1 2001/07/03 11:01:41 ume Exp $
+ * $DragonFly: src/sys/net/ppp_layer/ppp_defs.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 #ifndef _PPP_DEFS_H_

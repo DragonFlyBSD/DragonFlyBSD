@@ -32,6 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwevar.h,v 1.1.2.3 2003/04/28 03:29:18 simokawa Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwevar.h,v 1.2 2003/06/17 04:28:26 dillon Exp $
  */
 
 #ifndef _NET_IF_FWEVAR_H_

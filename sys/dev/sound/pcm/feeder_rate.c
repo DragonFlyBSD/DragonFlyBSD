@@ -41,6 +41,9 @@
  *
  * Special thanks to Ken Marx for exposing flaws in the code and for
  * testing revisions.
+ *
+ * $FreeBSD: src/sys/dev/sound/pcm/feeder_rate.c,v 1.2.2.3 2003/02/08 02:38:21 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/feeder_rate.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -48,7 +51,7 @@
 #include <dev/sound/pcm/sound.h>
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pcm/feeder_rate.c,v 1.2.2.3 2003/02/08 02:38:21 orion Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/feeder_rate.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
 
 #endif /* _KERNEL */
 

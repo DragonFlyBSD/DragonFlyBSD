@@ -37,6 +37,7 @@
  *
  *	@(#)times.h	8.4 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/times.h,v 1.6 1999/12/29 04:24:48 peter Exp $
+ * $DragonFly: src/sys/sys/times.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef	_SYS_TIMES_H_

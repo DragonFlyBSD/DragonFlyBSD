@@ -22,11 +22,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.bin/indent/indent.h,v 1.1.2.1 2001/12/06 19:28:47 schweikh Exp $
+ * $DragonFly: src/usr.bin/indent/indent.h,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
-
-#if 0
-__FBSDID("$FreeBSD: src/usr.bin/indent/indent.h,v 1.1.2.1 2001/12/06 19:28:47 schweikh Exp $");
-#endif
 
 void	addkey(char *, int);
 int	compute_code_target(void);

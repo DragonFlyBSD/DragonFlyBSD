@@ -33,6 +33,7 @@
 
 /* $Id: kadm_locl.h,v 1.31 1999/12/02 16:58:36 joda Exp $ */
 /* $FreeBSD: src/crypto/kerberosIV/kadmin/kadm_locl.h,v 1.2.2.1 2003/02/13 21:34:35 nectar Exp $ */
+/* $DragonFly: src/crypto/kerberosIV/kadmin/Attic/kadm_locl.h,v 1.2 2003/06/17 04:24:36 dillon Exp $ */
 
 #include "config.h"
 #include "protos.h"

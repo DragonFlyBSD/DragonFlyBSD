@@ -40,6 +40,7 @@
  *
  * $Id: amq.c,v 1.6 1999/09/08 23:36:40 ezk Exp $
  * $FreeBSD: src/contrib/amd/amq/amq.c,v 1.5 1999/09/15 05:45:14 obrien Exp $
+ * $DragonFly: src/contrib/amd/amq/amq.c,v 1.2 2003/06/17 04:23:57 dillon Exp $
  *
  */
 

@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/lib/libregex/doc/Makefile,v 1.4.6.1 2002/11/15 18:27:46 ru Exp $
+# $DragonFly: src/gnu/lib/libregex/doc/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
 
 INFO = regex
 INFOSECTION= "Programming & development tools."

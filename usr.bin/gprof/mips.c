@@ -35,11 +35,9 @@
  * SUCH DAMAGE.
  *
  * From: sparc.c 5.1 (Berkeley) 7/7/92
+ *
+ * @(#)mips.c	8.1 (Berkeley) 6/6/93
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)mips.c	8.1 (Berkeley) 6/6/93";
-#endif /* not lint */
 
 #include	"gprof.h"
 

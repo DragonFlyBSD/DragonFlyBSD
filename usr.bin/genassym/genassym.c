@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/genassym/genassym.c,v 1.1 1999/12/23 11:07:45 marcel Exp $
+ * $DragonFly: src/usr.bin/genassym/Attic/genassym.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
 
 #include <sys/types.h>

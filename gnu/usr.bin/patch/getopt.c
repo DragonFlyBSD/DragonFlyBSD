@@ -19,10 +19,11 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * $FreeBSD: src/gnu/usr.bin/patch/getopt.c,v 1.4.6.2 2002/04/30 20:40:02 gad Exp $
+ * $DragonFly: src/gnu/usr.bin/patch/Attic/getopt.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/gnu/usr.bin/patch/getopt.c,v 1.4.6.2 2002/04/30 20:40:02 gad Exp $");
 /* NOTE!!!  AIX requires this to be the first thing in the file.
    Do not put ANYTHING before it!  */
 #if !defined (__GNUC__) && defined (_AIX)

@@ -21,12 +21,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libc/net/gethostbynis.c,v 1.10.2.1 2000/10/01 16:39:47 nectar Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/gethostbynis.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)$FreeBSD: src/lib/libc/net/gethostbynis.c,v 1.10.2.1 2000/10/01 16:39:47 nectar Exp $";
-static char rcsid[] = "$FreeBSD: src/lib/libc/net/gethostbynis.c,v 1.10.2.1 2000/10/01 16:39:47 nectar Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/socket.h>

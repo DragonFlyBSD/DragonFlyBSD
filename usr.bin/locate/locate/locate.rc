@@ -2,6 +2,7 @@
 # /etc/locate.rc -  command script for updatedb(8)
 #
 # $FreeBSD: src/usr.bin/locate/locate/locate.rc,v 1.8 1999/08/28 01:02:59 peter Exp $
+# $DragonFly: src/usr.bin/locate/locate/locate.rc,v 1.2 2003/06/17 04:29:28 dillon Exp $
 
 #
 # All commented values are the defaults

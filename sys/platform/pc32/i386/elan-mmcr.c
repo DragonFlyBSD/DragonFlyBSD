@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/i386/elan-mmcr.c,v 1.6.2.1 2002/09/17 22:39:53 sam Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/elan-mmcr.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  * The AMD Elan sc520 is a system-on-chip gadget which is used in embedded
  * kind of things, see www.soekris.com for instance, and it has a few quirks
  * we need to deal with.

@@ -32,6 +32,7 @@
  *
  *	@(#)slcompress.c	8.2 (Berkeley) 4/16/94
  * $FreeBSD: src/sys/net/slcompress.c,v 1.16 1999/12/29 04:38:37 peter Exp $
+ * $DragonFly: src/sys/net/ppp_layer/slcompress.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 /*

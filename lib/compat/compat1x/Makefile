@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/compat/compat1x/Makefile,v 1.10.2.1 2002/08/07 16:31:45 ru Exp $
+# $DragonFly: src/lib/compat/compat1x/Attic/Makefile,v 1.2 2003/06/17 04:26:40 dillon Exp $
 
 DISTRIBUTION=	compat1x
 

@@ -32,6 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #include <sys/param.h>

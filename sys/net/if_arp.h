@@ -32,6 +32,7 @@
  *
  *	@(#)if_arp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_arp.h,v 1.14.2.3 2002/02/20 23:34:09 fjoe Exp $
+ * $DragonFly: src/sys/net/if_arp.h,v 1.2 2003/06/17 04:28:47 dillon Exp $
  */
 
 #ifndef _NET_IF_ARP_H_

@@ -20,6 +20,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vxreg.h,v 1.5.6.1 2000/08/02 22:42:34 peter Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vxreg.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  *
  October 2, 1994
 

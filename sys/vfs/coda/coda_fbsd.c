@@ -28,6 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_fbsd.cr,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_fbsd.c,v 1.18 1999/09/25 18:23:43 phk Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
  * 
  */
 

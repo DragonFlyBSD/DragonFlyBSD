@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/as/config/Makefile.pc532,v 1.4 1999/08/27 23:34:27 peter Exp $
+# $DragonFly: src/gnu/usr.bin/as/config/Attic/Makefile.pc532,v 1.2 2003/06/17 04:25:44 dillon Exp $
 
 SRCS+=		tc-ns32k.c atof-ns32k.c
 

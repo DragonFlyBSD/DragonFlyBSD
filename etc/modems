@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/etc/modems,v 1.4 1999/08/27 23:23:42 peter Exp $
+# $DragonFly: src/etc/modems,v 1.2 2003/06/17 04:24:45 dillon Exp $
 #	@(#)modems	3/24/95
 #
 # modems -- modem configuration data base file

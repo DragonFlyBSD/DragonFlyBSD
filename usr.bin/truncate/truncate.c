@@ -23,12 +23,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: src/usr.bin/truncate/truncate.c,v 1.6.2.1 2000/08/04 08:05:52 sheldonh Exp $
+ * $DragonFly: src/usr.bin/truncate/truncate.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-    "$FreeBSD: src/usr.bin/truncate/truncate.c,v 1.6.2.1 2000/08/04 08:05:52 sheldonh Exp $";
-#endif
 
 #include <sys/stat.h>
 

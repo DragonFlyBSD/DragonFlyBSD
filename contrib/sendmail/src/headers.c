@@ -10,6 +10,7 @@
  * the sendmail distribution.
  *
  * $FreeBSD: src/contrib/sendmail/src/headers.c,v 1.4.2.10 2003/03/29 19:33:17 gshapiro Exp $
+ * $DragonFly: src/contrib/sendmail/src/Attic/headers.c,v 1.2 2003/06/17 04:24:06 dillon Exp $
  *
  */
 

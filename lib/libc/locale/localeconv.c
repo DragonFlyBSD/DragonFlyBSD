@@ -30,15 +30,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)localeconv.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/locale/localeconv.c,v 1.1.1.1.14.2 2002/03/12 17:17:48 phantom Exp $
+ * $DragonFly: src/lib/libc/locale/localeconv.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)localeconv.c	8.1 (Berkeley) 6/4/93";
-#endif
-static char rcsid[] =
-  "$FreeBSD: src/lib/libc/locale/localeconv.c,v 1.1.1.1.14.2 2002/03/12 17:17:48 phantom Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <locale.h>
 #include "lmonetary.h"

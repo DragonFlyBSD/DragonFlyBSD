@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
 # $FreeBSD: src/usr.bin/strip/Makefile,v 1.10.6.3 2002/08/07 16:32:01 ru Exp $
+# $DragonFly: src/usr.bin/strip/Attic/Makefile,v 1.2 2003/06/17 04:29:31 dillon Exp $
 
 PROG=	strip
 MAN=	strip.1aout

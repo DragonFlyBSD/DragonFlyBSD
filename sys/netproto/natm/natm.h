@@ -1,5 +1,6 @@
 /*	$NetBSD: natm.h,v 1.1 1996/07/04 03:20:12 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.h,v 1.3 1999/12/29 04:46:14 peter Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.h,v 1.2 2003/06/17 04:28:53 dillon Exp $ */
 
 /*
  *

@@ -22,10 +22,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libc/locale/lnumeric.c,v 1.10.2.2 2002/08/12 11:17:38 ache Exp $
+ * $DragonFly: src/lib/libcr/locale/Attic/lnumeric.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/locale/lnumeric.c,v 1.10.2.2 2002/08/12 11:17:38 ache Exp $");
 
 #include <limits.h>
 #include "lnumeric.h"

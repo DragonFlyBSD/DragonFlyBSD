@@ -35,6 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 /*

@@ -8,11 +8,10 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
+ *
+ * $FreeBSD: src/lib/msun/src/w_lgamma.c,v 1.5 1999/08/28 00:07:04 peter Exp $
+ * $DragonFly: src/lib/msun/src/Attic/w_lgamma.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/lib/msun/src/w_lgamma.c,v 1.5 1999/08/28 00:07:04 peter Exp $";
-#endif
 
 /* double lgamma(double x)
  * Return the logarithm of the Gamma function of x.

@@ -23,6 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sn/if_snvar.h,v 1.2 2000/01/22 17:24:16 hosokawa Exp $
+ * $DragonFly: src/sys/dev/netif/sn/if_snvar.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 #ifndef _IF_SNVAR_H

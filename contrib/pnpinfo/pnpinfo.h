@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/contrib/pnpinfo/pnpinfo.h,v 1.2 1999/09/05 17:27:05 peter Exp $
+ * $DragonFly: src/contrib/pnpinfo/pnpinfo.h,v 1.2 2003/06/17 04:24:06 dillon Exp $
  */
 
 

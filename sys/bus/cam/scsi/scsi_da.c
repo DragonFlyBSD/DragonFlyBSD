@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.36 2003/05/17 21:48:30 njl Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
  */
 
 #ifdef _KERNEL

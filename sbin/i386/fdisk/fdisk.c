@@ -22,12 +22,10 @@
  *
  * any improvements or extensions that they make and grant Carnegie Mellon
  * the rights to redistribute these changes.
+ *
+ * $FreeBSD: src/sbin/i386/fdisk/fdisk.c,v 1.36.2.11 2002/04/25 21:02:21 trhodes Exp $
+ * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/i386/fdisk/fdisk.c,v 1.36.2.11 2002/04/25 21:02:21 trhodes Exp $";
-#endif /* not lint */
 
 #include <sys/disklabel.h>
 #include <sys/stat.h>

@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/rewinddir.c,v 1.2.8.1 2001/03/05 09:52:13 obrien Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/rewinddir.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)rewinddir.c	8.1 (Berkeley) 6/8/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)rewinddir.c	8.1 (Berkeley) 6/8/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <dirent.h>

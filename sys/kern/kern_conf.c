@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_target.h,v 1.3.4.13 2002/07/29 04:25:59 mjacob Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_target.h,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
 /*
  * Qlogic Target Mode Structure and Flag Definitions
  *

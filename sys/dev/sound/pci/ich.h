@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/ich.h,v 1.1.2.3 2002/08/22 16:38:21 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ich.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #define PCIR_NAMBAR 0x10

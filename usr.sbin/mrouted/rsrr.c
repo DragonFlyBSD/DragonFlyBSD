@@ -22,6 +22,9 @@
  *
  * Other copyrights might apply to parts of this software and are so
  * noted when applicable.
+ *
+ * $FreeBSD: src/usr.sbin/mrouted/rsrr.c,v 1.8.2.1 2001/05/12 09:48:20 kris Exp $
+ * $DragonFly: src/usr.sbin/mrouted/rsrr.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
 
 /* RSRR code written by Daniel Zappala, USC Information Sciences Institute,
@@ -29,11 +32,6 @@
  */
 
 /* May 1995 -- Added support for Route Change Notification */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/mrouted/rsrr.c,v 1.8.2.1 2001/05/12 09:48:20 kris Exp $";
-#endif /* not lint */
 
 #ifdef RSRR
 

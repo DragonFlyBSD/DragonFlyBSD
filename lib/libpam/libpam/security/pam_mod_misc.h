@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libpam/libpam/security/pam_mod_misc.h,v 1.10.2.2 2002/07/03 21:45:44 des Exp $
+ *	$DragonFly: src/lib/libpam/libpam/security/Attic/pam_mod_misc.h,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
 
 #ifndef PAM_MOD_MISC_H

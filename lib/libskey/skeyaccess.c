@@ -24,6 +24,7 @@
   * Author: Wietse Venema, Eindhoven University of Technology.
   *
   * $FreeBSD: src/lib/libskey/skeyaccess.c,v 1.9.6.2 2002/08/12 19:42:24 iedowse Exp $
+  * $DragonFly: src/lib/libskey/skeyaccess.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
   */
 
 #include <sys/types.h>

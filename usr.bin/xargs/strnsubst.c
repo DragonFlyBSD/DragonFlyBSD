@@ -6,10 +6,10 @@
  * the above copyright and this notice remain intact, along
  * with the following statement:
  * 	For the man who taught me vi, and who got too old, too young.
+ *
+ * $FreeBSD: src/usr.bin/xargs/strnsubst.c,v 1.5.2.1 2002/06/17 04:44:46 jmallett Exp $
+ * $DragonFly: src/usr.bin/xargs/strnsubst.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/xargs/strnsubst.c,v 1.5.2.1 2002/06/17 04:44:46 jmallett Exp $");
 
 #include <err.h>
 #include <stdlib.h>

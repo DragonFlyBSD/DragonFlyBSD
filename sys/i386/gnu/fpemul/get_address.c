@@ -57,6 +57,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/get_address.c,v 1.10 1999/10/12 02:23:14 msmith Exp $
+ * $DragonFly: src/sys/i386/gnu/fpemul/Attic/get_address.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
  *
  */
 

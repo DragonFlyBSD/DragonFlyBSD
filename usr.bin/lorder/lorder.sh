@@ -34,6 +34,7 @@
 #	@(#)lorder.sh	8.1 (Berkeley) 6/6/93
 #
 # $FreeBSD: src/usr.bin/lorder/lorder.sh,v 1.2.6.2 2002/02/23 00:53:44 jhb Exp $
+# $DragonFly: src/usr.bin/lorder/lorder.sh,v 1.2 2003/06/17 04:29:28 dillon Exp $
 #
 
 # only one argument is a special case, just output the name twice

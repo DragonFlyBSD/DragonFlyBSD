@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.6.2.2 2000/12/11 01:03:24 obrien Exp $
- *
+ *	@(#) $DragonFly: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
 
 /*
@@ -62,10 +62,6 @@
 #include <termio.h>
 #endif	/* !BSD */
 #include <unistd.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.6.2.2 2000/12/11 01:03:24 obrien Exp $");
-#endif
 
 extern u_char pca200e_microcode[];
 extern int pca200e_microcode_size;

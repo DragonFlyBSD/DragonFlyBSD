@@ -30,22 +30,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)printjob.c	8.7 (Berkeley) 5/10/95
+ * $FreeBSD: src/usr.sbin/lpr/lpd/printjob.c,v 1.22.2.32 2002/06/19 23:58:16 gad Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpd/printjob.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1983, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-/*
-static char sccsid[] = "@(#)printjob.c	8.7 (Berkeley) 5/10/95";
-*/
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/lpr/lpd/printjob.c,v 1.22.2.32 2002/06/19 23:58:16 gad Exp $";
-#endif /* not lint */
-
 
 /*
  * printjob -- print jobs in the queue.

@@ -2,6 +2,9 @@
  * Derived from:
  *
  * MDDRIVER.C - test driver for MD2, MD4 and MD5
+ *
+ * $FreeBSD: src/sbin/md5/md5.c,v 1.20.2.5 2001/12/26 09:44:56 phk Exp $
+ * $DragonFly: src/sbin/md5/md5.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
 
 /*
@@ -16,11 +19,6 @@
  *  These notices must be retained in any copies of any part of this
  *  documentation and/or software.
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/md5/md5.c,v 1.20.2.5 2001/12/26 09:44:56 phk Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <err.h>

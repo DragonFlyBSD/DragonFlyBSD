@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_debug.c,v 1.2.2.1 2002/08/23 06:59:05 mjacob Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_debug.c,v 1.2 2003/06/17 04:28:28 dillon Exp $ */
 /*
  * Debug routines for LSI '909 FC  adapters.
  * FreeBSD Version.

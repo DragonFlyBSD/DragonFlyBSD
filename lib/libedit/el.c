@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)el.c	8.2 (Berkeley) 1/3/94
+ * $FreeBSD: src/lib/libedit/el.c,v 1.6.2.1 2000/05/22 06:07:00 imp Exp $
+ * $DragonFly: src/lib/libedit/el.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
  */
-
-#if !defined(lint) && !defined(SCCSID)
-#if 0
-static char sccsid[] = "@(#)el.c	8.2 (Berkeley) 1/3/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libedit/el.c,v 1.6.2.1 2000/05/22 06:07:00 imp Exp $";
-#endif /* not lint && not SCCSID */
 
 /*
  * el.c: EditLine interface functions

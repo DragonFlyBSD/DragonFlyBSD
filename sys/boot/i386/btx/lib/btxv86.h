@@ -15,6 +15,7 @@
 
 /*
  * $FreeBSD: src/sys/boot/i386/btx/lib/btxv86.h,v 1.5 1999/08/28 00:40:08 peter Exp $
+ * $DragonFly: src/sys/boot/i386/btx/lib/Attic/btxv86.h,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 #ifndef _BTXV86_H_

@@ -39,22 +39,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/games/caesar/caesar.c,v 1.8.2.1 2000/08/17 06:13:06 jhb Exp $
+ * $DragonFly: src/games/caesar/caesar.c,v 1.2 2003/06/17 04:25:23 dillon Exp $
+ *
+ * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)caesar.c    8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/caesar/caesar.c,v 1.8.2.1 2000/08/17 06:13:06 jhb Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1989, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)caesar.c    8.1 (Berkeley) 5/31/93";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/games/caesar/caesar.c,v 1.8.2.1 2000/08/17 06:13:06 jhb Exp $";
-#endif
-#endif /* not lint */
 
 #include <errno.h>
 #include <math.h>

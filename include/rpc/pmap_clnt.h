@@ -29,6 +29,7 @@
  *	from: @(#)pmap_clnt.h 1.11 88/02/08 SMI
  *	from: @(#)pmap_clnt.h	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/pmap_clnt.h,v 1.11 1999/08/27 23:45:04 peter Exp $
+ * $DragonFly: src/include/rpc/pmap_clnt.h,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 /*

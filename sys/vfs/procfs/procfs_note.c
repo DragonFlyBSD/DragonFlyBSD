@@ -37,6 +37,7 @@
  *	@(#)procfs_note.c	8.2 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_note.c,v 1.6 1999/08/28 00:46:55 peter Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_note.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/stg/Makefile,v 1.1.2.2 2002/01/02 07:59:12 non Exp $
+# $DragonFly: src/sys/dev/disk/stg/Makefile,v 1.2 2003/06/17 04:28:47 dillon Exp $
 
 .PATH: ${.CURDIR}/../../dev/stg
 

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libio/io.c,v 1.3 2000/02/12 14:57:01 dfr Exp $
+ * $DragonFly: src/lib/libio/Attic/io.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
  */
 
 #include <sys/types.h>

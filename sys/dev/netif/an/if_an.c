@@ -30,6 +30,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ *
+ * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
  */
 
 /*
@@ -131,11 +134,6 @@
 
 #include <dev/an/if_aironet_ieee.h>
 #include <dev/an/if_anreg.h>
-
-#if !defined(lint)
-static const char rcsid[] =
-  "$FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $";
-#endif
 
 /* These are global because we need them in sys/pci/if_an_p.c. */
 static void an_reset		__P((struct an_softc *));

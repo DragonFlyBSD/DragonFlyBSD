@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_proto.c,v 1.3 1999/08/28 00:48:36 peter Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_proto.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -36,11 +36,6 @@
  */
 
 #include <netatm/kern_include.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/atm_proto.c,v 1.3 1999/08/28 00:48:36 peter Exp $");
-#endif
-
 
 struct protosw atmsw[] = {
 {	SOCK_DGRAM,				/* ioctl()-only */

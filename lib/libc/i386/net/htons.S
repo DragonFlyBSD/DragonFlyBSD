@@ -34,12 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/net/htons.S,v 1.5 1999/08/27 23:59:25 peter Exp $
+ * $DragonFly: src/lib/libc/i386/net/htons.S,v 1.2 2003/06/17 04:26:43 dillon Exp $
+ *
+ * $FreeBSD: src/lib/libc/i386/net/htons.S,v 1.5 1999/08/27 23:59:25 peter Exp $
  */
-
-#if defined(LIBC_RCS) && !defined(lint)
-	.text
-	.asciz "$FreeBSD: src/lib/libc/i386/net/htons.S,v 1.5 1999/08/27 23:59:25 peter Exp $"
-#endif /* LIBC_RCS and not lint */
 
 /* netorder = htons(hostorder) */
 

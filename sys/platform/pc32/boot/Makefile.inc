@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/i386/boot/Makefile.inc,v 1.6 1999/08/28 00:43:08 peter Exp $
+# $DragonFly: src/sys/platform/pc32/boot/Attic/Makefile.inc,v 1.2 2003/06/17 04:28:34 dillon Exp $
 
 BINDIR?=	/usr/mdec
 CFLAGS+=	-aout

@@ -29,12 +29,10 @@
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
+ *
+ * $FreeBSD: src/usr.sbin/sicontrol/sicontrol.c,v 1.12.2.1 2000/12/11 01:03:39 obrien Exp $
+ * $DragonFly: src/usr.sbin/sicontrol/sicontrol.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/sicontrol/sicontrol.c,v 1.12.2.1 2000/12/11 01:03:39 obrien Exp $";
-#endif /* not lint */
 
 #include <ctype.h>
 #include <err.h>

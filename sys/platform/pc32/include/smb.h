@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/smb.h,v 1.3 1999/08/28 00:44:24 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/include/smb.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  *
  */
 #ifndef __SMB_H

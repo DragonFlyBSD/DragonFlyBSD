@@ -30,6 +30,7 @@
  *	$Id: i4b_q931.h,v 1.9 2000/04/27 09:25:22 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer3/i4b_q931.h,v 1.6.2.2 2001/12/16 15:12:58 hm Exp $
+ * $DragonFly: src/sys/net/i4b/layer3/i4b_q931.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
  *
  *      last edit-date: [Thu Apr 27 11:07:37 2000]
  *

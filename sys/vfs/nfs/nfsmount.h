@@ -35,6 +35,7 @@
  *
  *	@(#)nfsmount.h	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfsmount.h,v 1.17 1999/12/29 04:54:54 peter Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsmount.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 
 

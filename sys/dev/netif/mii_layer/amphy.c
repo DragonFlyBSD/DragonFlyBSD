@@ -30,6 +30,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/amphy.c,v 1.2.2.2 2002/11/08 21:53:49 semenu Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/amphy.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ *
+ * $FreeBSD: src/sys/dev/mii/amphy.c,v 1.2.2.2 2002/11/08 21:53:49 semenu Exp $
  */
 
 /*
@@ -54,11 +57,6 @@
 #include <dev/mii/amphyreg.h>
 
 #include "miibus_if.h"
-
-#if !defined(lint)
-static const char rcsid[] =
-  "$FreeBSD: src/sys/dev/mii/amphy.c,v 1.2.2.2 2002/11/08 21:53:49 semenu Exp $";
-#endif
 
 static int amphy_probe		__P((device_t));
 static int amphy_attach		__P((device_t));

@@ -1,5 +1,6 @@
 /*	$OpenBSD: servconf.h,v 1.59 2002/07/30 17:03:55 markus Exp $	*/
 /*	$FreeBSD: src/crypto/openssh/servconf.h,v 1.3.2.7 2003/02/03 17:31:07 des Exp $	*/
+/*	$DragonFly: src/crypto/openssh/Attic/servconf.h,v 1.2 2003/06/17 04:24:36 dillon Exp $	*/
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

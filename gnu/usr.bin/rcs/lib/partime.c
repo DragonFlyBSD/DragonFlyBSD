@@ -26,6 +26,11 @@ Report problems and direct all questions to:
 
 */
 
+/*
+ * $FreeBSD: src/gnu/usr.bin/rcs/lib/partime.c,v 1.6 1999/08/27 23:36:44 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/lib/partime.c,v 1.2 2003/06/17 04:25:47 dillon Exp $
+ */
+
 #if has_conf_h
 #	include "conf.h"
 #else
@@ -44,10 +49,6 @@ Report problems and direct all questions to:
 #define isdigit(c) (((unsigned)(c)-'0') <= 9) /* faster than stock */
 
 #include "partime.h"
-
-char const partimeId[]
-  = "$FreeBSD: src/gnu/usr.bin/rcs/lib/partime.c,v 1.6 1999/08/27 23:36:44 peter Exp $";
-
 
 /* Lookup tables for names of months, weekdays, time zones.  */
 

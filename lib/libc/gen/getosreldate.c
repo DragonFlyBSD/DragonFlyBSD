@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)gethostid.c	8.1 (Berkeley) 6/2/93
+ * $FreeBSD: src/lib/libc/gen/getosreldate.c,v 1.4 1999/08/27 23:58:43 peter Exp $
+ * $DragonFly: src/lib/libc/gen/getosreldate.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/* From:
-static char sccsid[] = "@(#)gethostid.c	8.1 (Berkeley) 6/2/93";
-*/
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/gen/getosreldate.c,v 1.4 1999/08/27 23:58:43 peter Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/sysctl.h>

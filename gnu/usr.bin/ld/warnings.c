@@ -31,6 +31,7 @@
 
 /*
  * $FreeBSD: src/gnu/usr.bin/ld/warnings.c,v 1.18 1999/08/27 23:36:02 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/ld/Attic/warnings.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -18,6 +18,7 @@
 # [...]
 # 
 # $FreeBSD: src/tools/tools/html-mv/html-mv,v 1.2 1999/08/28 00:54:26 peter Exp $
+# $DragonFly: src/tools/tools/html-mv/Attic/html-mv,v 1.2 2003/06/17 04:29:11 dillon Exp $
 
 case $# in 0)
 	echo "usage `basename $0` file"

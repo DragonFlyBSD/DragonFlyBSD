@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly_tables.h,v 1.1.2.1 2000/10/27 10:06:56 msmith Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly_tables.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 /*

@@ -1,4 +1,5 @@
 .\" $FreeBSD: src/usr.sbin/timed/SMM.doc/timed/timed.ms,v 1.1.1.1.14.1 2000/11/23 10:18:38 ru Exp $
+.\" $DragonFly: src/usr.sbin/timed/SMM.doc/timed/timed.ms,v 1.2 2003/06/17 04:30:03 dillon Exp $
 .\"
 .\" Copyright (c) 1986, 1993
 .\"	The Regents of the University of California.  All rights reserved.

@@ -25,6 +25,11 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)bootparam_prot.x 1.2 87/06/24 Copyr 1987 Sun Micro
+ * @(#)bootparam_prot.x	2.1 88/08/01 4.0 RPCSRC
+ * $FreeBSD: src/include/rpcsvc/bootparam_prot.x,v 1.5 1999/08/27 23:45:07 peter Exp $
+ * $DragonFly: src/include/rpcsvc/bootparam_prot.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 /*
@@ -44,13 +49,6 @@
 %#include <sys/param.h>
 %#include <sys/syslimits.h>
 %#include <sys/ucred.h>
-#else
-%#ifndef lint
-%/*static char sccsid[] = "from: @(#)bootparam_prot.x 1.2 87/06/24 Copyr 1987 Sun Micro";*/
-%/*static char sccsid[] = "from: @(#)bootparam_prot.x	2.1 88/08/01 4.0 RPCSRC";*/
-%static const char rcsid[] =
-%  "$FreeBSD: src/include/rpcsvc/bootparam_prot.x,v 1.5 1999/08/27 23:45:07 peter Exp $";
-%#endif /* not lint */
 #endif
 
 const MAX_MACHINE_NAME  = 255;

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/i686_mem.c,v 1.8.2.4 2002/09/24 08:12:51 mdodd Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/i686_mem.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nspvar.h,v 1.1.2.4 2001/12/17 13:30:19 non Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nspvar.h,v 1.2 2003/06/17 04:28:28 dillon Exp $	*/
 /*	$NecBSD: nspvar.h,v 1.7.14.5 2001/06/29 06:27:54 honda Exp $	*/
 /*	$NetBSD$	*/
 

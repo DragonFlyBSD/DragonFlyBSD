@@ -27,6 +27,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/lib/libc/alpha/sys/sigreturn.S,v 1.2.6.1 2001/10/19 18:23:33 ru Exp $
+ * $DragonFly: src/lib/libc/alpha/sys/Attic/sigreturn.S,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
 
 #include "SYS.h"

@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)fsetpos.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/stdio/fsetpos.c,v 1.7 1999/08/28 00:01:05 peter Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/fsetpos.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)fsetpos.c	8.1 (Berkeley) 6/4/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/stdio/fsetpos.c,v 1.7 1999/08/28 00:01:05 peter Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <stdio.h>

@@ -1,4 +1,5 @@
 @c $FreeBSD: src/gnu/usr.bin/send-pr/doc/fields.texi,v 1.1.12.1 2001/03/05 10:44:04 kris Exp $
+@c $DragonFly: src/gnu/usr.bin/send-pr/doc/Attic/fields.texi,v 1.2 2003/06/17 04:25:48 dillon Exp $
 
 @node Fields
 @section Problem Report format

@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/perror.c,v 1.3.6.1 2001/03/05 11:27:49 obrien Exp $
+ * $DragonFly: src/lib/libc/stdio/perror.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ *
+ * @(#)perror.c	8.1 (Berkeley) 6/4/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)perror.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/uio.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/release/picobsd/tinyware/view/view.c,v 1.4 1999/08/28 01:34:02 peter Exp $
+ * $DragonFly: src/release/picobsd/tinyware/view/Attic/view.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  */
 
 /*

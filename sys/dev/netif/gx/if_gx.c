@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.2 2003/06/17 04:28:26 dillon Exp $
  */
 
 #include <sys/param.h>

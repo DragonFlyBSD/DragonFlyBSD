@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mca/mca_busvar.h,v 1.2 1999/09/26 07:02:05 mdodd Exp $
+ * $DragonFly: src/sys/bus/mca/Attic/mca_busvar.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 typedef u_int16_t mca_id_t;

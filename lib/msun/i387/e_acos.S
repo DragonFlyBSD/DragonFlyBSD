@@ -36,6 +36,7 @@
 #include <machine/asm.h>
 
 RCSID("$FreeBSD: src/lib/msun/i387/e_acos.S,v 1.7 1999/08/28 00:06:08 peter Exp $")
+RCSID("$DragonFly: src/lib/msun/i387/Attic/e_acos.S,v 1.2 2003/06/17 04:26:52 dillon Exp $")
 
 /*
  * acos(x) = atan2(sqrt(1  - x^2, x).

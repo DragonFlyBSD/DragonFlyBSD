@@ -4,6 +4,7 @@
 #
 #      $Id$
 #      $FreeBSD: src/release/doc/fr_FR.ISO8859-1/hardware/Makefile.inc,v 1.1.2.2 2003/01/18 18:06:34 gioria Exp $
+#      $DragonFly: src/release/doc/fr_FR.ISO8859-1/hardware/Attic/Makefile.inc,v 1.2 2003/06/17 04:27:19 dillon Exp $
 #      Original revision: 1.1.2.2
 
 .ifdef NO_LANGCODE_IN_DESTDIR

@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.10.2.3 2003/05/21 09:24:55 thomas Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 #include <sys/param.h>

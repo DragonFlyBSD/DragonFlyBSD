@@ -36,6 +36,7 @@
  *	@(#)term.h	8.1 (Berkeley) 6/4/93
  *
  * $FreeBSD: src/lib/libedit/term.h,v 1.3.8.1 2000/08/16 14:43:40 ache Exp $
+ * $DragonFly: src/lib/libedit/term.h,v 1.2 2003/06/17 04:26:49 dillon Exp $
  */
 
 /*

@@ -1,5 +1,6 @@
 /*	$NetBSD: infinity.c,v 1.1 1995/02/10 17:50:23 cgd Exp $	*/
 /* $FreeBSD: src/lib/libc/alpha/gen/infinity.c,v 1.1.1.1.6.1 2000/08/21 21:09:28 jhb Exp $ */
+/* $DragonFly: src/lib/libcr/alpha/gen/Attic/infinity.c,v 1.2 2003/06/17 04:26:41 dillon Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Carnegie-Mellon University.

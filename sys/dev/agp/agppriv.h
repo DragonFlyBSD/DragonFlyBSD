@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agppriv.h,v 1.3.2.1 2000/07/19 09:48:04 ru Exp $
+ *	$DragonFly: src/sys/dev/agp/agppriv.h,v 1.2 2003/06/17 04:28:56 dillon Exp $
  */
 
 #ifndef _PCI_AGPPRIV_H_

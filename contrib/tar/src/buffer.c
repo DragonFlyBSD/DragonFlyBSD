@@ -20,6 +20,7 @@
    59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/tar/src/buffer.c,v 1.2.2.2 2002/10/11 14:32:25 sobomax Exp $ */
+/* $DragonFly: src/contrib/tar/src/Attic/buffer.c,v 1.2 2003/06/17 04:24:06 dillon Exp $ */
 
 #include "system.h"
 

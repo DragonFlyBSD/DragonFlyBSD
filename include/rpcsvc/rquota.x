@@ -1,16 +1,12 @@
 /*
  * Remote quota protocol
  * Requires unix authentication
+ *
+ * @(#)rquota.x 1.2 87/09/20 Copyr 1987 Sun Micro
+ * @(#)rquota.x	2.1 88/08/01 4.0 RPCSRC
+ * $FreeBSD: src/include/rpcsvc/rquota.x,v 1.6 1999/08/27 23:45:10 peter Exp $
+ * $DragonFly: src/include/rpcsvc/rquota.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
-
-#ifndef RPC_HDR
-%#ifndef lint
-%/*static char sccsid[] = "from: @(#)rquota.x 1.2 87/09/20 Copyr 1987 Sun Micro";*/
-%/*static char sccsid[] = "from: @(#)rquota.x	2.1 88/08/01 4.0 RPCSRC";*/
-%static const char rcsid[] =
-%  "$FreeBSD: src/include/rpcsvc/rquota.x,v 1.6 1999/08/27 23:45:10 peter Exp $";
-%#endif /* not lint */
-#endif
 
 const RQ_PATHLEN = 1024;
 

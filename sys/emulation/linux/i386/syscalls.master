@@ -1,6 +1,7 @@
- $FreeBSD: src/sys/i386/linux/syscalls.master,v 1.30.2.8 2003/01/02 20:41:33 kan Exp $
+ $DragonFly: src/sys/emulation/linux/i386/syscalls.master,v 1.2 2003/06/17 04:28:39 dillon Exp $
 
 ;	@(#)syscalls.master	8.1 (Berkeley) 7/19/93
+; $FreeBSD: src/sys/i386/linux/syscalls.master,v 1.30.2.8 2003/01/02 20:41:33 kan Exp $
 ; System call name/number master file (or rather, slave, from LINUX).
 ; Processed to create linux_sysent.c, linux_proto.h and linux_syscall.h.
 

@@ -15,10 +15,10 @@
  * responsible for the proper functioning of this software, nor does
  * the author assume any responsibility for damages incurred with
  * its use.
+ *
+ * $FreeBSD: src/gnu/lib/libdialog/gauge.c,v 1.2.12.2 2002/06/18 07:55:55 dougb Exp $
+ * $DragonFly: src/gnu/lib/libdialog/gauge.c,v 1.2 2003/06/17 04:25:43 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/gnu/lib/libdialog/gauge.c,v 1.2.12.2 2002/06/18 07:55:55 dougb Exp $");
 
 #include <stdlib.h>
 

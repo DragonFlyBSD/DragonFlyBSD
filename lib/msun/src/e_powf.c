@@ -1,5 +1,8 @@
 /* e_powf.c -- float version of e_pow.c.
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ *
+ * $FreeBSD: src/lib/msun/src/e_powf.c,v 1.6.2.1 2002/06/24 10:13:43 bde Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_powf.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
  */
 
 /*
@@ -12,10 +15,6 @@
  * is preserved.
  * ====================================================
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/lib/msun/src/e_powf.c,v 1.6.2.1 2002/06/24 10:13:43 bde Exp $";
-#endif
 
 #include "math.h"
 #include "math_private.h"

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/memcontrol/memcontrol.c,v 1.3.4.5 2002/09/16 21:58:41 dwmalone Exp $
+ * $DragonFly: src/usr.sbin/memcontrol/memcontrol.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
 
 #include <sys/types.h>

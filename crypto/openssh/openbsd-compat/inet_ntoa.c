@@ -29,15 +29,13 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $OpenBSD: inet_ntoa.c,v 1.3 2002/06/27 10:14:01 itojun Exp $
  */
 
 #include "includes.h"
 
 #if defined(BROKEN_INET_NTOA) || !defined(HAVE_INET_NTOA)
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char rcsid[] = "$OpenBSD: inet_ntoa.c,v 1.3 2002/06/27 10:14:01 itojun Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * Convert network-format internet address

@@ -35,6 +35,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/nghook/main.c,v 1.4 1999/11/30 02:09:36 archie Exp $
+ * $DragonFly: src/usr.sbin/nghook/main.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  * $Whistle: main.c,v 1.9 1999/01/20 00:26:26 archie Exp $
  */
 

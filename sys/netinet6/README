@@ -1,5 +1,6 @@
 a note to committers about KAME tree
 $FreeBSD: src/sys/netinet6/README,v 1.2.2.1 2000/07/15 07:14:32 kris Exp $
+$DragonFly: src/sys/netinet6/Attic/README,v 1.2 2003/06/17 04:28:51 dillon Exp $
 KAME project
 
 

@@ -36,22 +36,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)bdes.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/secure/usr.bin/bdes/bdes.c,v 1.3.2.1 2000/09/22 09:42:03 kris Exp $
+ * $DragonFly: src/secure/usr.bin/bdes/bdes.c,v 1.2 2003/06/17 04:27:48 dillon Exp $
  */
-
-#ifndef lint
-static char copyright[] =
-"@(#) Copyright (c) 1991, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)bdes.c	8.1 (Berkeley) 6/6/93";
-#else
-static const char rcsid[] =
- "$FreeBSD: src/secure/usr.bin/bdes/bdes.c,v 1.3.2.1 2000/09/22 09:42:03 kris Exp $";
-#endif
-#endif /* not lint */
 
 /*
  * BDES -- DES encryption package for Berkeley Software Distribution 4.4

@@ -4,6 +4,7 @@ $
 $ For ee patchlevel 3
 $
 $ $FreeBSD: src/usr.bin/ee/nls/fr_FR.ISO8859-1/ee.msg,v 1.10.2.1 2002/01/05 15:47:14 phantom Exp $
+$DragonFly: src/usr.bin/ee/nls/fr_FR.ISO8859-1/ee.msg,v 1.2 2003/06/17 04:29:26 dillon Exp $
 $ 
 $ 
 $set 1

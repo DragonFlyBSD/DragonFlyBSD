@@ -31,6 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/nsgphyreg.h,v 1.1.2.1 2001/06/18 18:49:13 wpaul Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/nsgphyreg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 #ifndef _DEV_MII_NSGPHYREG_H_

@@ -51,6 +51,7 @@
 /*
  *	From: Id: nameser.h,v 8.16 1998/02/06 00:35:58 halley Exp
  * $FreeBSD: src/include/arpa/nameser.h,v 1.14.2.1 2001/06/15 22:08:27 ume Exp $
+ * $DragonFly: src/include/arpa/nameser.h,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 #ifndef _ARPA_NAMESER_H_

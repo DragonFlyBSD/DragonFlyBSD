@@ -34,12 +34,10 @@
  * Written by Bill Paul <wpaul@ctr.columbia.edu>
  * Center for Telecommunications Research
  * Columbia University, New York City
+ *
+ * $FreeBSD: src/usr.sbin/rpc.ypupdated/ypupdated_server.c,v 1.3.2.1 2002/02/15 00:46:58 des Exp $
+ * $DragonFly: src/usr.sbin/rpc.ypupdated/ypupdated_server.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/rpc.ypupdated/ypupdated_server.c,v 1.3.2.1 2002/02/15 00:46:58 des Exp $";
-#endif /* not lint */
 
 #include <stdio.h>
 #include <rpc/rpc.h>

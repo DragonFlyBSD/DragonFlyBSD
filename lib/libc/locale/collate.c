@@ -23,10 +23,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libc/locale/collate.c,v 1.21.2.4 2002/10/11 10:36:47 ache Exp $
+ * $DragonFly: src/lib/libc/locale/collate.c,v 1.2 2003/06/17 04:26:43 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/locale/collate.c,v 1.21.2.4 2002/10/11 10:36:47 ache Exp $");
 
 #include <arpa/inet.h>
 #include <rune.h>

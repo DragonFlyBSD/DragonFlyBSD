@@ -1,4 +1,5 @@
 # $FreeBSD: src/etc/periodic/daily/Makefile,v 1.4.2.4 2002/07/18 12:36:07 ru Exp $
+# $DragonFly: src/etc/periodic/daily/Makefile,v 1.2 2003/06/17 04:24:48 dillon Exp $
 
 FILES=	100.clean-disks \
 	110.clean-tmps \

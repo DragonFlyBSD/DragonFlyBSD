@@ -1,4 +1,5 @@
 # $FreeBSD: src/sbin/ipfs/Makefile,v 1.1.2.1 2001/11/14 14:21:03 guido Exp $
+# $DragonFly: src/sbin/ipfs/Makefile,v 1.2 2003/06/17 04:27:33 dillon Exp $
 
 .PATH:  ${.CURDIR}/../../contrib/ipfilter ${.CURDIR}/../../contrib/ipfilter/man
 

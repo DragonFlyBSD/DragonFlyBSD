@@ -39,13 +39,15 @@
  * ``http://www.isc.org/''.  To learn more about Vixie Enterprises,
  * see ``http://www.vix.com''.   To learn more about Nominum, Inc., see
  * ``http://www.nominum.com''.
+ *
+ * @(#) Copyright (c) 1996-2002 The Internet Software Consortium.  All rights reserved.
+ * $Id: clparse.c,v 1.62.2.3 2002/11/17 02:25:43 dhankins Exp $
+ * $FreeBSD: src/contrib/isc-dhcp/client/clparse.c,v 1.4.2.4 2003/03/02 16:42:37 murray Exp $
+ * $DragonFly: src/contrib/isc-dhcp/client/Attic/clparse.c,v 1.2 2003/06/17 04:24:02 dillon Exp $
  */
 
-#ifndef lint
 static char copyright[] =
-"$Id: clparse.c,v 1.62.2.3 2002/11/17 02:25:43 dhankins Exp $ Copyright (c) 1996-2002 The Internet Software Consortium.  All rights reserved.\n"
-"$FreeBSD: src/contrib/isc-dhcp/client/clparse.c,v 1.4.2.4 2003/03/02 16:42:37 murray Exp $\n";
-#endif /* not lint */
+"$Id: clparse.c,v 1.62.2.3 2002/11/17 02:25:43 dhankins Exp $ Copyright (c) 1996-2002 The Internet Software Consortium.  All rights reserved.\n";
 
 #include "dhcpd.h"
 

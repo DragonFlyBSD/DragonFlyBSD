@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/globals.s,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #include "opt_user_ldt.h"

@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwcam.c,v 1.7.2.2 2001/03/05 13:08:55 obrien Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 /*
  * Ported from:

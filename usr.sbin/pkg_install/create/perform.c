@@ -16,10 +16,9 @@
  *
  * This is the main body of the create module.
  *
+ * $FreeBSD: src/usr.sbin/pkg_install/create/perform.c,v 1.49.2.18 2002/08/31 19:25:54 obrien Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/create/Attic/perform.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.sbin/pkg_install/create/perform.c,v 1.49.2.18 2002/08/31 19:25:54 obrien Exp $");
 
 #include "lib.h"
 #include "create.h"

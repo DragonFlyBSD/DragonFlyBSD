@@ -35,6 +35,7 @@
  *
  *	@(#)umap_vnops.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vnops.c,v 1.30 1999/08/30 07:08:04 bde Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.2 2003/06/17 04:28:43 dillon Exp $
  */
 
 /*

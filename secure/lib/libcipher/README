@@ -5,6 +5,7 @@
 	  Release 1.0, March 1994
 
     Document ref: $FreeBSD: src/secure/lib/libcipher/README,v 1.4 1999/08/28 01:30:19 peter Exp $
+    Document ref: $DragonFly: src/secure/lib/libcipher/README,v 1.2 2003/06/17 04:27:48 dillon Exp $
 
 
 Description

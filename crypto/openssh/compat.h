@@ -1,5 +1,6 @@
 /*	$OpenBSD: compat.h,v 1.33 2002/09/27 10:42:09 mickey Exp $	*/
 /*	$FreeBSD: src/crypto/openssh/compat.h,v 1.1.1.1.2.7 2003/02/03 17:31:06 des Exp $	*/
+/*	$DragonFly: src/crypto/openssh/Attic/compat.h,v 1.2 2003/06/17 04:24:36 dillon Exp $	*/
 
 /*
  * Copyright (c) 1999, 2000, 2001 Markus Friedl.  All rights reserved.

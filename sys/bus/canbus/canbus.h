@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pc98/pc98/canbus.h,v 1.3.2.1 2003/02/10 13:11:51 nyan Exp $
+ * $DragonFly: src/sys/bus/canbus/Attic/canbus.h,v 1.2 2003/06/17 04:28:55 dillon Exp $
  */
 
 #ifndef _PC98_PC98_CANBUS_H_

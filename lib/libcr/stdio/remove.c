@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)remove.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/stdio/remove.c,v 1.6.2.1 2000/09/20 04:43:12 jkh Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/remove.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)remove.c	8.1 (Berkeley) 6/4/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/stdio/remove.c,v 1.6.2.1 2000/09/20 04:43:12 jkh Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

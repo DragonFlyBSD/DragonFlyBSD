@@ -28,6 +28,7 @@
  *	----------------------------------------------
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/exec.c,v 1.6.2.4 2001/12/10 09:42:52 hm Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/exec.c,v 1.2 2003/06/17 04:29:54 dillon Exp $
  *
  *      last edit-date: [Mon Dec 10 10:39:53 2001]
  *

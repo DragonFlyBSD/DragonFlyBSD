@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1983, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)from: inetd.c	8.4 (Berkeley) 4/13/94
+ * $FreeBSD: src/usr.sbin/inetd/inetd.c,v 1.80.2.11 2003/04/05 13:39:18 dwmalone Exp $
+ * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1983, 1991, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)from: inetd.c	8.4 (Berkeley) 4/13/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/inetd/inetd.c,v 1.80.2.11 2003/04/05 13:39:18 dwmalone Exp $";
-#endif /* not lint */
 
 /*
  * Inetd - Internet super-server

@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/uipc_accf.c,v 1.2.2.2 2000/09/20 21:19:21 ps Exp $
+ *	$DragonFly: src/sys/kern/uipc_accf.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #define ACCEPT_FILTER_MOD

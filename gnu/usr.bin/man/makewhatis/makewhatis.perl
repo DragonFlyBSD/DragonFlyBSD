@@ -27,6 +27,7 @@
 # makewhatis -- update the whatis database in the man directories.
 #
 # $FreeBSD: src/gnu/usr.bin/man/makewhatis/makewhatis.perl,v 1.21.2.4 2002/03/29 15:38:09 ru Exp $
+# $DragonFly: src/gnu/usr.bin/man/makewhatis/Attic/makewhatis.perl,v 1.2 2003/06/17 04:25:46 dillon Exp $
 
 
 sub usage {

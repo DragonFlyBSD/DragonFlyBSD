@@ -24,6 +24,7 @@
 ** SUCH DAMAGE.
 **
 ** $FreeBSD: src/usr.bin/doscmd/dispatch.h,v 1.2.2.1 2001/08/02 02:17:15 obrien Exp $
+** $DragonFly: src/usr.bin/doscmd/dispatch.h,v 1.2 2003/06/17 04:29:25 dillon Exp $
 */
 
 /*

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sbin/mount_msdos/koi2dos,v 1.2 2000/01/08 16:47:54 ache Exp $
+# $DragonFly: src/sbin/mount_msdos/koi2dos,v 1.2 2003/06/17 04:27:33 dillon Exp $
 #
 # u2w: 16 rows of KOI8-R -> Unicode conversion table (upper half)
 #

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/if_gif/Makefile,v 1.1.2.1 2001/07/24 19:10:17 brooks Exp $
+# $DragonFly: src/sys/net/gif/Makefile,v 1.2 2003/06/17 04:28:44 dillon Exp $
 
 .PATH: ${.CURDIR}/../../net ${.CURDIR}/../../netinet ${.CURDIR}/../../netinet6
 

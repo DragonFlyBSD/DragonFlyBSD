@@ -42,11 +42,10 @@
   realloc ()
   */
 
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/as/xrealloc.c,v 1.6 1999/08/27 23:34:24 peter Exp $";
-#endif
-
-
+/*
+ * $FreeBSD: src/gnu/usr.bin/as/xrealloc.c,v 1.6 1999/08/27 23:34:24 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/as/Attic/xrealloc.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
+ */
 #if __STDC__ == 1
 #include <stdlib.h>
 #else

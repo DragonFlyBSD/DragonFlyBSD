@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_eisa.c,v 1.14 2000/01/29 14:50:31 peter Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_eisa.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -27,6 +27,7 @@
  *
  *	From BSDI: daemon.c,v 1.2 1996/08/15 01:11:09 jch Exp
  * $FreeBSD: src/usr.sbin/daemon/daemon.c,v 1.1.2.1 2002/08/28 17:25:54 sheldonh Exp $
+ * $DragonFly: src/usr.sbin/daemon/daemon.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 
 #include <sys/types.h>

@@ -25,6 +25,7 @@
  *
  *	from: Mach, Revision 2.2  92/04/04  11:35:49  rpd
  * $FreeBSD: src/sys/i386/boot/dosboot/disk.c,v 1.6 1999/12/08 09:32:49 phk Exp $
+ * $DragonFly: src/sys/i386/boot/dosboot/Attic/disk.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 #include <stdio.h>
 #include <memory.h>

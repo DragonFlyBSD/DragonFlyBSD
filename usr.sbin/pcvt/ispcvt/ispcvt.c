@@ -29,6 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pcvt/ispcvt/ispcvt.c,v 1.7.6.1 2001/05/12 10:11:41 kris Exp $
+ * $DragonFly: src/usr.sbin/pcvt/ispcvt/Attic/ispcvt.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
 
 static char *id =

@@ -62,6 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.h,v 1.22 2000/02/16 21:11:31 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.h,v 1.2 2003/06/17 04:29:00 dillon Exp $
  */
 
 #ifndef _VM_VM_KERN_H_

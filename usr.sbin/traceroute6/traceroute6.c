@@ -27,6 +27,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)traceroute.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.sbin/traceroute6/traceroute6.c,v 1.4.2.4 2001/07/03 11:02:18 ume Exp $
+ * $DragonFly: src/usr.sbin/traceroute6/traceroute6.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
 
 /*-
@@ -64,20 +69,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-static char copyright[] =
-"@(#) Copyright (c) 1990, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)traceroute.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/traceroute6/traceroute6.c,v 1.4.2.4 2001/07/03 11:02:18 ume Exp $";
-#endif /* not lint */
 
 /*
  * traceroute host  - trace the route ip packets follow going to "host".

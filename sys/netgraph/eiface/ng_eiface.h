@@ -28,6 +28,7 @@
  *
  * 	$Id: ng_eiface.h,v 1.4 2000/03/06 09:46:14 vitaly Exp $
  * $FreeBSD: src/sys/netgraph/ng_eiface.h,v 1.2.2.4 2002/12/12 23:36:39 julian Exp $
+ * $DragonFly: src/sys/netgraph/eiface/ng_eiface.h,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 #ifndef _NETGRAPH_EIFACE_H_

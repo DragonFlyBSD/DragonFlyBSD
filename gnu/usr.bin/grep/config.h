@@ -1,4 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/grep/config.h,v 1.4.2.1 2000/12/13 15:57:13 ru Exp $ */
+/* $DragonFly: src/gnu/usr.bin/grep/config.h,v 1.2 2003/06/17 04:25:45 dillon Exp $ */
 
 /* config.h.  Generated automatically by configure.  */
 /* config.hin.  Generated automatically from configure.in by autoheader.  */

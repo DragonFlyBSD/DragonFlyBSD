@@ -3,6 +3,7 @@
 # create message-id / in-reply-to database
 #
 # $FreeBSD: src/tools/tools/mid/mid-index,v 1.2 1999/08/28 00:54:31 peter Exp $
+# $DragonFly: src/tools/tools/mid/mid-index,v 1.2 2003/06/17 04:29:11 dillon Exp $
 
 sub usage { die "usage: mid-index name < filelist"; }
 

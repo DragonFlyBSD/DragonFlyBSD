@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/lib/csu/i386-elf/Makefile,v 1.6.2.5 2002/11/23 17:44:29 ru Exp $
+# $DragonFly: src/lib/csu/i386-elf/Attic/Makefile,v 1.2 2003/06/17 04:26:41 dillon Exp $
 #
 
 SRCS=		crt1.c crti.S crtn.S

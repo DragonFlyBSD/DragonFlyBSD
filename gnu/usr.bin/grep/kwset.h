@@ -21,6 +21,7 @@
    or (US mail) as Mike Haertel c/o Free Software Foundation. */
 
 /* $FreeBSD: src/gnu/usr.bin/grep/kwset.h,v 1.4 1999/11/20 23:42:43 obrien Exp $ */
+/* $DragonFly: src/gnu/usr.bin/grep/kwset.h,v 1.2 2003/06/17 04:25:45 dillon Exp $ */
 
 struct kwsmatch
 {

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/sppp/Makefile,v 1.5.2.1 2002/06/17 06:14:40 jhay Exp $
+# $DragonFly: src/sys/net/sppp/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
 
 .PATH: ${.CURDIR}/../../net
 

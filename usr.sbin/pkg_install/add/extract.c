@@ -16,10 +16,9 @@
  *
  * This is the package extraction code for the add module.
  *
+ * $FreeBSD: src/usr.sbin/pkg_install/add/extract.c,v 1.25.2.6 2002/08/31 18:45:32 obrien Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/add/Attic/extract.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.sbin/pkg_install/add/extract.c,v 1.25.2.6 2002/08/31 18:45:32 obrien Exp $");
 
 #include <err.h>
 #include "lib.h"

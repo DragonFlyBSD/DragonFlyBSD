@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_print.c,v 1.4 2000/01/17 20:49:57 mks Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_print.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -40,11 +40,6 @@
 #include <netatm/uni/unisig_var.h>
 #include <netatm/uni/unisig_msg.h>
 #include <netatm/uni/unisig_print.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/uni/unisig_print.c,v 1.4 2000/01/17 20:49:57 mks Exp $");
-#endif
-
 
 /*
  * Local declarations

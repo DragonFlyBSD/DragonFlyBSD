@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libdisk/write_disk.c,v 1.28.2.10 2001/05/13 21:01:38 jkh Exp $
+ * $DragonFly: src/lib/libdisk/Attic/write_disk.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
  *
  */
 

@@ -4,6 +4,7 @@
  * This file is in the public domain.
  *
  * $FreeBSD: src/usr.bin/lsvfs/lsvfs.c,v 1.13.2.1 2001/07/30 09:59:16 dd Exp $
+ * $DragonFly: src/usr.bin/lsvfs/lsvfs.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
 
 #define _NEW_VFSCONF

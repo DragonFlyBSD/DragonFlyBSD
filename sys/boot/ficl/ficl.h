@@ -28,6 +28,7 @@
 */
 
 /* $FreeBSD: src/sys/boot/ficl/ficl.h,v 1.11.2.1 2000/07/06 23:44:58 obrien Exp $ */
+/* $DragonFly: src/sys/boot/ficl/ficl.h,v 1.2 2003/06/17 04:28:17 dillon Exp $ */
 
 #if !defined (__FICL_H__)
 #define __FICL_H__

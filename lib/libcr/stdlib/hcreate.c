@@ -1,6 +1,3 @@
-/* $NetBSD: hcreate.c,v 1.2 2001/02/19 21:26:04 ross Exp $ */
-/* $FreeBSD: src/lib/libc/stdlib/hcreate.c,v 1.1.2.2 2001/10/02 11:22:56 ru Exp $ */
-
 /*
  * Copyright (c) 2001 Christopher G. Demetriou
  * All rights reserved.
@@ -33,6 +30,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * <<Id: LICENSE,v 1.2 2000/06/14 15:57:33 cgd Exp>>
+ *
+ * $NetBSD: hcreate.c,v 1.2 2001/02/19 21:26:04 ross Exp $
+ * $FreeBSD: src/lib/libc/stdlib/hcreate.c,v 1.1.2.2 2001/10/02 11:22:56 ru Exp $
+ * $DragonFly: src/lib/libcr/stdlib/Attic/hcreate.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
 
 /*
@@ -48,9 +49,6 @@
  */
 
 #include <sys/cdefs.h>
-#if defined(LIBC_SCCS) && !defined(lint)
-__RCSID("$NetBSD: hcreate.c,v 1.2 2001/02/19 21:26:04 ross Exp $");
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/queue.h>

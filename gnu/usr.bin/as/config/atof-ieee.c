@@ -17,10 +17,10 @@
    along with GAS; see the file COPYING.  If not, write to
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/as/config/atof-ieee.c,v 1.9 1999/08/27 23:34:28 peter Exp $";
-#endif
-
+/*
+ * $FreeBSD: src/gnu/usr.bin/as/config/atof-ieee.c,v 1.9 1999/08/27 23:34:28 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/as/config/Attic/atof-ieee.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
+ */
 #include "as.h"
 
 extern FLONUM_TYPE generic_floating_point_number; /* Flonums returned here. */

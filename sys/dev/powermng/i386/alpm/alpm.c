@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/alpm.c,v 1.8 1999/12/03 08:41:21 mdodd Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/alpm/alpm.c,v 1.2 2003/06/17 04:28:56 dillon Exp $
  *
  */
 

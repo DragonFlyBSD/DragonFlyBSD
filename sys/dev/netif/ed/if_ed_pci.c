@@ -18,6 +18,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pci.c,v 1.23.2.1 2000/09/10 08:45:11 nyan Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.2 2003/06/17 04:28:24 dillon Exp $
  */
 
 #include <sys/param.h>

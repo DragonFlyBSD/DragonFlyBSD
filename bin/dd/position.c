@@ -33,15 +33,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)position.c	8.3 (Berkeley) 4/2/94
+ * $FreeBSD: src/bin/dd/position.c,v 1.17.2.2 2001/01/23 14:23:55 asmodai Exp $
+ * $DragonFly: src/bin/dd/position.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)position.c	8.3 (Berkeley) 4/2/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/bin/dd/position.c,v 1.17.2.2 2001/01/23 14:23:55 asmodai Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/mtio.h>

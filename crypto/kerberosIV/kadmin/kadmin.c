@@ -19,6 +19,7 @@ or implied warranty.
 
   */
 /* $FreeBSD: src/crypto/kerberosIV/kadmin/kadmin.c,v 1.1.1.3.2.1 2003/02/14 22:37:37 nectar Exp $ */
+/* $DragonFly: src/crypto/kerberosIV/kadmin/Attic/kadmin.c,v 1.2 2003/06/17 04:24:36 dillon Exp $ */
 
 /*
  * Kerberos database administrator's tool.  

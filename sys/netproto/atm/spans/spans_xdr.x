@@ -24,6 +24,7 @@
 % * notice must be reproduced on all copies.
 % *
 % *	@(#) $FreeBSD: src/sys/netatm/spans/spans_xdr.x,v 1.3 1999/11/18 08:18:13 peter Exp $
+% *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_xdr.x,v 1.2 2003/06/17 04:28:49 dillon Exp $
 % *
 % */
 %

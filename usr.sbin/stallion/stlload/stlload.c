@@ -32,14 +32,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/stallion/stlload/stlload.c,v 1.10.2.2 2002/02/13 22:55:45 dbaker Exp $
+ * $DragonFly: src/usr.sbin/stallion/stlload/stlload.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
 
 /*****************************************************************************/
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/stallion/stlload/stlload.c,v 1.10.2.2 2002/02/13 22:55:45 dbaker Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <fcntl.h>

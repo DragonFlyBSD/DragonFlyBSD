@@ -32,6 +32,7 @@
  *
  *	from: @(#)extern.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ls/extern.h,v 1.7.2.6 2002/11/17 10:27:34 tjr Exp $
+ * $DragonFly: src/bin/ls/extern.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
 
 int	 acccmp(const FTSENT *, const FTSENT *);

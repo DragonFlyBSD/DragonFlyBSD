@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/prompt.h,v 1.5.2.3 2002/09/01 02:12:32 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/prompt.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 #define LOCAL_AUTH	0x01

@@ -32,6 +32,7 @@
  *
  *	@(#)mpool.h	8.2 (Berkeley) 7/14/94
  * $FreeBSD: src/include/mpool.h,v 1.5.6.2 2001/03/05 23:05:08 obrien Exp $
+ * $DragonFly: src/include/mpool.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef _MPOOL_H_

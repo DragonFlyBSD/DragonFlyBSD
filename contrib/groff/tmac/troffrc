@@ -1,5 +1,6 @@
 .\" Startup file for troff.
 .\" $FreeBSD: src/contrib/groff/tmac/troffrc,v 1.6.2.3 2003/02/14 15:22:11 ru Exp $
+.\" $DragonFly: src/contrib/groff/tmac/Attic/troffrc,v 1.2 2003/06/17 04:24:02 dillon Exp $
 .
 .\" This is tested by pic.
 .nr 0p 0

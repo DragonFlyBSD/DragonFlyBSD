@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)setup.c	8.10 (Berkeley) 5/9/95
+ * $FreeBSD: src/sbin/fsck/setup.c,v 1.17.2.4 2002/06/24 05:10:41 dillon Exp $
+ * $DragonFly: src/sbin/fsck/setup.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)setup.c	8.10 (Berkeley) 5/9/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/fsck/setup.c,v 1.17.2.4 2002/06/24 05:10:41 dillon Exp $";
-#endif /* not lint */
 
 #define DKTYPENAMES
 #include <sys/param.h>

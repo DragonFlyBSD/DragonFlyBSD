@@ -19,6 +19,7 @@ the suitability of this software for any purpose.  It is
 provided "as is" without express or implied warranty.
 
  $FreeBSD: src/usr.sbin/newsyslog/pathnames.h,v 1.2.2.2 2003/04/27 04:11:22 gad Exp $
+ $DragonFly: src/usr.sbin/newsyslog/pathnames.h,v 1.2 2003/06/17 04:29:57 dillon Exp $
 
 */
 

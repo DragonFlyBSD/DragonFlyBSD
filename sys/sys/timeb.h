@@ -37,6 +37,7 @@
  *
  *	@(#)timeb.h	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/timeb.h,v 1.6.2.1 2001/12/10 20:33:59 dwmalone Exp $
+ * $DragonFly: src/sys/sys/timeb.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _SYS_TIMEB_H_

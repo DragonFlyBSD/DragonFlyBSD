@@ -27,6 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/bs/bsif.c,v 1.10.2.1 2000/08/24 08:06:08 kato Exp $
+ * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 #if	0

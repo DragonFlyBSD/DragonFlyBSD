@@ -32,6 +32,7 @@
  ****************************************************************************/
 
 /* $FreeBSD: src/contrib/ncurses/ncurses/tinfo/lib_termcap.c,v 1.5.2.2 2000/10/12 18:40:51 peter Exp $ */
+/* $DragonFly: src/contrib/ncurses/ncurses/tinfo/Attic/lib_termcap.c,v 1.2 2003/06/17 04:24:03 dillon Exp $ */
 
 #include <curses.priv.h>
 

@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1985, 1987, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)tcopy.c	8.2 (Berkeley) 4/17/94
+ * $FreeBSD: src/usr.bin/tcopy/tcopy.c,v 1.7.2.1 2002/11/07 17:54:42 imp Exp $
+ * $DragonFly: src/usr.bin/tcopy/tcopy.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1985, 1987, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)tcopy.c	8.2 (Berkeley) 4/17/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/tcopy/tcopy.c,v 1.7.2.1 2002/11/07 17:54:42 imp Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

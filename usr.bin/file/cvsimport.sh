@@ -4,6 +4,7 @@
 # of newer versions of file(1)
 #
 # $FreeBSD: src/usr.bin/file/cvsimport.sh,v 1.5 1999/08/28 01:00:56 peter Exp $
+# $DragonFly: src/usr.bin/file/Attic/cvsimport.sh,v 1.2 2003/06/17 04:29:26 dillon Exp $
 if [ $# -ne 2 ] ; then 
 	echo "usage: $0 <major> <minor>" 1>&2
 	exit 1

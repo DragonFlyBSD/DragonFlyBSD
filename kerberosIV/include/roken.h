@@ -40,6 +40,7 @@
 
 /* $Id: roken.h.in,v 1.125 1999/12/02 16:58:52 joda Exp $ */
 /* $FreeBSD: src/kerberosIV/include/roken.h,v 1.2 2000/01/09 08:59:34 markm Exp $ */
+/* $DragonFly: src/kerberosIV/include/Attic/roken.h,v 1.2 2003/06/17 04:26:25 dillon Exp $ */
 
 #include <stdio.h>
 #include <stdlib.h>

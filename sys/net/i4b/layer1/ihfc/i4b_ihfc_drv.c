@@ -33,6 +33,7 @@
  *	last edit-date: [Fri Jan 12 17:06:52 2001]
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_drv.c,v 1.9.2.1 2001/08/10 14:08:37 obrien Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_drv.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 

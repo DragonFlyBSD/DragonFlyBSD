@@ -8,6 +8,7 @@
  *
  *
  * $FreeBSD: src/usr.sbin/mrouted/vif.h,v 1.10 1999/08/28 01:17:09 peter Exp $
+ * $DragonFly: src/usr.sbin/mrouted/vif.h,v 1.2 2003/06/17 04:29:57 dillon Exp $
  * vif.h,v 3.8.4.26 1998/01/14 21:21:19 fenner Exp
  */
 

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ic/rsa.h,v 1.1.2.1 2002/02/03 14:52:02 nyan Exp $
+ * $DragonFly: src/sys/dev/serial/ic_layer/rsa.h,v 1.2 2003/06/17 04:28:27 dillon Exp $
  */
 
 /*

@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/smbfs/Makefile,v 1.1.2.4 2002/03/26 10:12:29 ume Exp $
+# $DragonFly: src/sys/vfs/smbfs/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
 
 .PATH:	${.CURDIR}/../../crypto/des \
 	${.CURDIR}/../../crypto/des/arch/${MACHINE_ARCH} \

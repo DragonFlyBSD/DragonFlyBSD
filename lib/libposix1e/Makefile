@@ -1,4 +1,5 @@
 #	$FreeBSD: src/lib/libposix1e/Makefile,v 1.3.2.1 2001/04/25 10:04:38 ru Exp $
+#	$DragonFly: src/lib/libposix1e/Makefile,v 1.2 2003/06/17 04:26:51 dillon Exp $
 
 LIB=	posix1e
 SRCS+=	acl_delete.c			\

@@ -37,6 +37,7 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
+ * $DragonFly: src/sys/kern/tty_cons.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include "opt_ddb.h"

@@ -28,12 +28,10 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sbin/fsirand/fsirand.c,v 1.7.2.1 2000/07/01 06:23:36 ps Exp $
+ * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/fsirand/fsirand.c,v 1.7.2.1 2000/07/01 06:23:36 ps Exp $";
-#endif /* not lint */
 
 #include <sys/disklabel.h>
 #include <sys/param.h>

@@ -1,5 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.2 2003/06/17 04:28:24 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>

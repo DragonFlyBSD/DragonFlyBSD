@@ -28,12 +28,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: src/usr.sbin/procctl/procctl.c,v 1.6 2000/02/21 10:22:39 ru Exp $
+ * $DragonFly: src/usr.sbin/procctl/procctl.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/procctl/procctl.c,v 1.6 2000/02/21 10:22:39 ru Exp $";
-#endif /* not lint */
 
 /*
  * procctl -- clear the event mask, and continue, any specified processes.

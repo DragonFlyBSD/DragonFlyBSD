@@ -32,6 +32,7 @@
  *
  *	@(#)ip.h	8.2 (Berkeley) 6/1/94
  * $FreeBSD: src/sys/netinet/ip.h,v 1.17 1999/12/22 19:13:20 shin Exp $
+ * $DragonFly: src/sys/netinet/ip.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #ifndef _NETINET_IP_H_

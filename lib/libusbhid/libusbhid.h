@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libusbhid/libusbhid.h,v 1.7.2.1 2002/04/03 15:54:00 joe Exp $
+ * $DragonFly: src/lib/libusbhid/Attic/libusbhid.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
  *
  */
 

@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fb.c,v 1.11.2.2 2000/08/02 22:35:22 peter Exp $
+ * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 #include "opt_fb.h"

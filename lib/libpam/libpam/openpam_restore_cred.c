@@ -33,6 +33,7 @@
  *
  * $P4: //depot/projects/openpam/lib/openpam_restore_cred.c#2 $
  * $FreeBSD: src/lib/libpam/libpam/openpam_restore_cred.c,v 1.1.2.3 2002/07/03 21:45:44 des Exp $
+ * $DragonFly: src/lib/libpam/libpam/Attic/openpam_restore_cred.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
 
 #include <sys/param.h>

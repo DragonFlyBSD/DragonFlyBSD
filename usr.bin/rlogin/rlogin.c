@@ -36,19 +36,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1983, 1990, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)rlogin.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/rlogin/rlogin.c,v 1.24.2.2 2002/07/19 18:03:41 ru Exp $
+ * $DragonFly: src/usr.bin/rlogin/rlogin.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1983, 1990, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static const char sccsid[] = "@(#)rlogin.c	8.1 (Berkeley) 6/6/93";
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/rlogin/rlogin.c,v 1.24.2.2 2002/07/19 18:03:41 ru Exp $";
-#endif /* not lint */
 
 /*
  * rlogin - remote login

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/cmdtab.c,v 1.7.2.2 2002/08/27 09:55:08 yar Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/cmdtab.c,v 1.2 2003/06/17 04:29:26 dillon Exp $	*/
 /*	$NetBSD: cmdtab.c,v 1.17 1997/08/18 10:20:17 lukem Exp $	*/
 
 /*
@@ -32,17 +33,13 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)cmdtab.c	8.4 (Berkeley) 10/9/94
+ * $NetBSD: cmdtab.c,v 1.17 1997/08/18 10:20:17 lukem Exp $
+ * $FreeBSD: src/usr.bin/ftp/cmdtab.c,v 1.7.2.2 2002/08/27 09:55:08 yar Exp $
  */
 
 #include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)cmdtab.c	8.4 (Berkeley) 10/9/94";
-#else
-__RCSID("$FreeBSD: src/usr.bin/ftp/cmdtab.c,v 1.7.2.2 2002/08/27 09:55:08 yar Exp $");
-__RCSID_SOURCE("$NetBSD: cmdtab.c,v 1.17 1997/08/18 10:20:17 lukem Exp $");
-#endif
-#endif /* not lint */
 
 #include <stdio.h>
 #include "ftp_var.h"

@@ -29,17 +29,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)checknr.c	8.1 (Berkeley) 6/6/93
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1980, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static const char sccsid[] = "@(#)checknr.c	8.1 (Berkeley) 6/6/93";
-#endif /* not lint */
 
 /*
  * checknr: check an nroff/troff input file for matching macro calls.

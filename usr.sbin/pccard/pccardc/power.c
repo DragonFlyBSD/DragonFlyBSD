@@ -22,19 +22,16 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $PAO: power.c,v 1.3 1999/02/11 05:00:54 kuriyama Exp $
+ * $FreeBSD: src/usr.sbin/pccard/pccardc/power.c,v 1.2 1999/12/02 05:56:36 imp Exp $
+ * $DragonFly: src/usr.sbin/pccard/pccardc/Attic/power.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
-
-/* $FreeBSD: src/usr.sbin/pccard/pccardc/power.c,v 1.2 1999/12/02 05:56:36 imp Exp $ */
 
 /*
  * Code cleanup, bug-fix and extension
  * by Tatsumi Hosokawa <hosokawa@mt.cs.keio.ac.jp>
  */
-
-#ifndef lint
-static const char rcsid[] =
-	"PAO: power.c,v 1.3 1999/02/11 05:00:54 kuriyama Exp";
-#endif /* not lint */
 
 #include <ctype.h>
 #include <err.h>

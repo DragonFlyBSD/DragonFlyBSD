@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/ccp.h,v 1.22.2.5 2002/09/01 02:12:23 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/ccp.h,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #define	CCP_MAXCODE	CODE_RESETACK

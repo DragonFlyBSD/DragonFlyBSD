@@ -45,6 +45,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adv_isa.c,v 1.14.2.5 2002/01/06 21:21:42 dwmalone Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adv_isa.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
 #include <sys/param.h>

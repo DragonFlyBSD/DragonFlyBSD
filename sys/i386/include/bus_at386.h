@@ -68,6 +68,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /* $FreeBSD: src/sys/i386/include/bus_at386.h,v 1.8.2.3 2002/03/03 05:42:50 nyan Exp $ */
+/* $DragonFly: src/sys/i386/include/Attic/bus_at386.h,v 1.2 2003/06/17 04:28:35 dillon Exp $ */
 
 #ifndef _I386_BUS_AT386_H_
 #define _I386_BUS_AT386_H_

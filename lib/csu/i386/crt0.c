@@ -28,6 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/csu/i386/crt0.c,v 1.36 1999/08/27 23:57:55 peter Exp $
+ * $DragonFly: src/lib/csu/i386/Attic/crt0.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
 
 #include <sys/param.h>

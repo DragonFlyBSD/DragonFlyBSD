@@ -33,6 +33,7 @@
 #
 #	@(#)nologin.sh	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/sbin/nologin/nologin.sh,v 1.4 1999/08/28 00:13:57 peter Exp $
+# $DragonFly: src/sbin/nologin/Attic/nologin.sh,v 1.2 2003/06/17 04:27:34 dillon Exp $
 #
 
 echo 'This account is currently not available.'

@@ -33,6 +33,7 @@
 
 /* $Id: krb5_locl.h,v 1.71 2002/09/10 20:10:45 joda Exp $ */
 /* $FreeBSD: src/crypto/heimdal/lib/krb5/krb5_locl.h,v 1.2.2.4 2002/09/20 10:50:26 nectar Exp $ */
+/* $DragonFly: src/crypto/heimdal/lib/krb5/Attic/krb5_locl.h,v 1.2 2003/06/17 04:24:36 dillon Exp $ */
 
 #ifndef __KRB5_LOCL_H__
 #define __KRB5_LOCL_H__

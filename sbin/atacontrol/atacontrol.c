@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/atacontrol/atacontrol.c,v 1.11.2.5 2002/08/21 13:18:17 sos Exp $
+ * $DragonFly: src/sbin/atacontrol/atacontrol.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
 
 #include <stdio.h>

@@ -29,6 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsck/fsutil.h,v 1.3.2.1 2001/08/01 05:47:55 obrien Exp $
+ * $DragonFly: src/sbin/fsck/fsutil.h,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
 
 void perror __P((const char *));

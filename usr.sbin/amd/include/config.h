@@ -1,5 +1,6 @@
 /* 
  * $FreeBSD: src/usr.sbin/amd/include/config.h,v 1.15.2.1 2001/08/29 08:46:52 alfred Exp $
+ * $DragonFly: src/usr.sbin/amd/include/config.h,v 1.2 2003/06/17 04:29:52 dillon Exp $
  *
  * portions derived from 
  *	$NetBSD: config.h,v 1.11 1998/08/08 22:33:37 christos Exp $

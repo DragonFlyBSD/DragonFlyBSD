@@ -38,6 +38,7 @@
     </corpauthor>
 
     <pubdate>$FreeBSD: src/release/doc/en_US.ISO8859-1/errata/article.sgml,v 1.1.2.105 2003/05/01 15:09:53 trhodes Exp $</pubdate>
+    <pubdate>$DragonFly: src/release/doc/en_US.ISO8859-1/errata/Attic/article.sgml,v 1.2 2003/06/17 04:27:19 dillon Exp $</pubdate>
 
     <copyright>
       <year>2000</year>

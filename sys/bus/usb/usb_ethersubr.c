@@ -30,6 +30,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.4.2.4 2002/11/06 14:23:20 joe Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ *
+ * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.4.2.4 2002/11/06 14:23:20 joe Exp $
  */
 
 /*
@@ -66,11 +69,6 @@
 
 #include <dev/usb/usb.h>
 #include <dev/usb/usb_ethersubr.h>
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.4.2.4 2002/11/06 14:23:20 joe Exp $";
-#endif
 
 Static struct ifqueue usbq_rx;
 Static struct ifqueue usbq_tx;

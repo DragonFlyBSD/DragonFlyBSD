@@ -22,6 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pcm/dsp.c,v 1.15.2.13 2002/08/30 13:53:03 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -29,7 +32,7 @@
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pcm/dsp.c,v 1.15.2.13 2002/08/30 13:53:03 orion Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
 
 #define OLDPCM_IOCTL
 

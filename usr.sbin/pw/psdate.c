@@ -22,12 +22,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/pw/psdate.c,v 1.6.2.1 2000/06/28 19:19:04 ache Exp $
+ * $DragonFly: src/usr.sbin/pw/psdate.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/pw/psdate.c,v 1.6.2.1 2000/06/28 19:19:04 ache Exp $";
-#endif /* not lint */
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -22,10 +22,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.bin/m4/trace.c,v 1.6.2.1 2002/07/15 02:06:15 jmallett Exp $
+ * $DragonFly: src/usr.bin/m4/trace.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/m4/trace.c,v 1.6.2.1 2002/07/15 02:06:15 jmallett Exp $");
 
 #include <sys/types.h>
 #include <stddef.h>

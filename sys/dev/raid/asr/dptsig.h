@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/dptsig.h,v 1.1.2.2 2001/08/23 05:21:29 scottl Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/dptsig.h,v 1.2 2003/06/17 04:28:22 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation.

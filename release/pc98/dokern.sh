@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/release/pc98/dokern.sh,v 1.66.2.2 2003/04/04 17:10:31 ru Exp $
+# $DragonFly: src/release/pc98/Attic/dokern.sh,v 1.2 2003/06/17 04:27:20 dillon Exp $
 #
 
 if [ $# -lt 1 ]; then

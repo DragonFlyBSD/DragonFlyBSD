@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.bin/top/Makefile,v 1.5.6.2 2002/08/11 17:09:54 dwmalone Exp $
+# $DragonFly: src/usr.bin/top/Makefile,v 1.2 2003/06/17 04:29:33 dillon Exp $
 PROG=	top
 
 TOPDIR=	${.CURDIR}/../../contrib/top

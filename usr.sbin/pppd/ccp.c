@@ -23,11 +23,10 @@
  * ON AN "AS IS" BASIS, AND THE AUSTRALIAN NATIONAL UNIVERSITY HAS NO
  * OBLIGATION TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS,
  * OR MODIFICATIONS.
+ *
+ * $FreeBSD: src/usr.sbin/pppd/ccp.c,v 1.10 1999/08/28 01:19:00 peter Exp $
+ * $DragonFly: src/usr.sbin/pppd/ccp.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/usr.sbin/pppd/ccp.c,v 1.10 1999/08/28 01:19:00 peter Exp $";
-#endif
 
 #include <string.h>
 #include <syslog.h>

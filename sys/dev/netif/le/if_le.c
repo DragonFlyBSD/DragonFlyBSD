@@ -22,6 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /*

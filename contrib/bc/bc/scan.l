@@ -1,5 +1,6 @@
 %{
 /* $FreeBSD: src/contrib/bc/bc/scan.l,v 1.4.2.1 2001/03/04 09:34:54 kris Exp $ */
+/* $DragonFly: src/contrib/bc/bc/Attic/scan.l,v 1.2 2003/06/17 04:23:58 dillon Exp $ */
 /* scan.l: the (f)lex description file for the scanner. */
 
 /*  This file is part of GNU bc.

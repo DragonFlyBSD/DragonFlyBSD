@@ -36,21 +36,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1983, 1990, 1992, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)rcp.c	8.2 (Berkeley) 4/2/94
+ * $FreeBSD: src/bin/rcp/rcp.c,v 1.26.2.5 2002/08/16 20:06:34 ume Exp $
+ * $DragonFly: src/bin/rcp/rcp.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-static char const copyright[] =
-"@(#) Copyright (c) 1983, 1990, 1992, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)rcp.c	8.2 (Berkeley) 4/2/94";
-#endif
-#endif /* not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/bin/rcp/rcp.c,v 1.26.2.5 2002/08/16 20:06:34 ume Exp $");
 
 #include <sys/param.h>
 #include <sys/stat.h>

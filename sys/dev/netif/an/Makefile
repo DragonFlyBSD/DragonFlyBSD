@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/an/Makefile,v 1.2 2000/01/28 11:26:26 bde Exp $
+# $DragonFly: src/sys/dev/netif/an/Makefile,v 1.2 2003/06/17 04:28:43 dillon Exp $
 
 .PATH:	${.CURDIR}/../../dev/an
 KMOD	= if_an

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/intpm.c,v 1.16.2.1 2001/12/23 08:17:47 pirzyk Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/intpm/intpm.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 #include <sys/param.h>

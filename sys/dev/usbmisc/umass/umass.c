@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/usb/umass.c,v 1.11.2.19 2003/05/17 21:45:27 njl Exp $
+ *	$DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
  *	$NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  */
 

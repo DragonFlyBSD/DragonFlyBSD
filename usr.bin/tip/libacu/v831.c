@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/tip/libacu/v831.c,v 1.1.12.1 2000/07/01 12:24:22 ps Exp $
+ * $DragonFly: src/usr.bin/tip/libacu/v831.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ *
+ * @(#)v831.c	8.1 (Berkeley) 6/6/93
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)v831.c	8.1 (Berkeley) 6/6/93";
-#endif /* not lint */
 
 /*
  * Routines for dialing up on Vadic 831

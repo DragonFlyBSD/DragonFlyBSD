@@ -1,4 +1,5 @@
 $FreeBSD: src/lib/libalias/HISTORY,v 1.6.2.2 2000/08/18 20:00:00 jhb Exp $
+$DragonFly: src/lib/libalias/HISTORY,v 1.2 2003/06/17 04:26:41 dillon Exp $
 
 Version 1.0: August 11, 1996 (cjm)
 

@@ -29,11 +29,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)field.c	8.4 (Berkeley) 4/2/94
  */
-
-#ifndef lint
-static const char sccsid[] = "@(#)field.c	8.4 (Berkeley) 4/2/94";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

@@ -37,19 +37,10 @@
  *
  * $TSHeader: src/sbin/growfs/growfs.c,v 1.5 2000/12/12 19:31:00 tomsoft Exp $
  *
+ * @(#) Copyright (c) 2000 Christoph Herrmann, Thomas-Henning von Kamptz Copyright (c) 1980, 1989, 1993 The Regents of the University of California. All rights reserved.
+ * $FreeBSD: src/sbin/growfs/growfs.c,v 1.4.2.2 2001/08/14 12:45:11 chm Exp $
+ * $DragonFly: src/sbin/growfs/growfs.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 2000 Christoph Herrmann, Thomas-Henning von Kamptz\n\
-Copyright (c) 1980, 1989, 1993 The Regents of the University of California.\n\
-All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/growfs/growfs.c,v 1.4.2.2 2001/08/14 12:45:11 chm Exp $";
-#endif /* not lint */
 
 /* ********************************************************** INCLUDES ***** */
 #include <sys/param.h>

@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/reader.c,v 1.8.2.1 2001/10/05 03:00:44 obrien Exp $
+ * $DragonFly: src/usr.bin/yacc/reader.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ *
+ * @(#)reader.c	5.7 (Berkeley) 1/20/91
  */
-
-#ifndef lint
-static char const sccsid[] = "@(#)reader.c	5.7 (Berkeley) 1/20/91";
-#endif /* not lint */
 
 #include <stdlib.h>
 #include <string.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/compress/zopen.h,v 1.4.2.1 2002/07/16 00:52:08 tjr Exp $
+ * $DragonFly: src/usr.bin/compress/zopen.h,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
 
 #ifndef _ZOPEN_H_

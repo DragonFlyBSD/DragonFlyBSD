@@ -29,16 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)yacc.c	8.3 (Berkeley) 4/2/94
+ * $FreeBSD: src/usr.bin/ctags/yacc.c,v 1.3.6.3 2002/07/30 00:55:07 tjr Exp $
+ * $DragonFly: src/usr.bin/ctags/yacc.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#if 0
-#ifndef lint
-static char sccsid[] = "@(#)yacc.c	8.3 (Berkeley) 4/2/94";
-#endif
-#endif
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/ctags/yacc.c,v 1.3.6.3 2002/07/30 00:55:07 tjr Exp $");
 
 #include <ctype.h>
 #include <limits.h>

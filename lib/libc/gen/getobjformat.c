@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getobjformat.c,v 1.3 1999/12/18 04:47:43 obrien Exp $
+ * $DragonFly: src/lib/libc/gen/getobjformat.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
 
 #include <sys/param.h>

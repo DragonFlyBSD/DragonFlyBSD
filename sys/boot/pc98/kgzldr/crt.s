@@ -25,6 +25,7 @@
 #
 #	From: btx.s 1.10 1999/02/25 16:27:41 rnordier
 # $FreeBSD: src/sys/boot/pc98/kgzldr/crt.s,v 1.1.2.2 2002/06/19 13:45:19 nyan Exp $
+# $DragonFly: src/sys/boot/pc98/kgzldr/Attic/crt.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
 #
 
 # Screen defaults and assumptions.

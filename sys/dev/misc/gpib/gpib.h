@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/gpib.h,v 1.3.10.1 2000/08/03 01:01:20 peter Exp $ */
+/* $DragonFly: src/sys/dev/misc/gpib/gpib.h,v 1.2 2003/06/17 04:28:37 dillon Exp $ */
 
 #ifndef	_I386_ISA_GPIB_H_
 #define	_I386_ISA_GPIB_H_

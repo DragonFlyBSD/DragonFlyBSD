@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  *
  */
 

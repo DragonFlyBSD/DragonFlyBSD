@@ -14,6 +14,7 @@
 #
 
 # $FreeBSD: src/sys/boot/i386/mbr/mbr.s,v 1.3.2.2 2000/07/07 21:12:34 jhb Exp $
+# $DragonFly: src/sys/boot/i386/mbr/Attic/mbr.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 # A 512 byte MBR boot manager that simply boots the active partition.
 

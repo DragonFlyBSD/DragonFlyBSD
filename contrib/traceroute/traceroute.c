@@ -17,19 +17,12 @@
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * @(#) Copyright (c) 1988, 1989, 1991, 1994, 1995, 1996 The Regents of the University of California.  All rights reserved.
+ * @(#)$Header: traceroute.c,v 1.43 96/09/27 20:08:10 leres Exp $ (LBL)
+ * $FreeBSD: src/contrib/traceroute/traceroute.c,v 1.11.2.6 2002/08/05 23:37:16 fenner Exp $
+ * $DragonFly: src/contrib/traceroute/Attic/traceroute.c,v 1.2 2003/06/17 04:24:07 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-    "@(#) Copyright (c) 1988, 1989, 1991, 1994, 1995, 1996\n\
-The Regents of the University of California.  All rights reserved.\n";
-#if 0
-static const char rcsid[] =
-    "@(#)$Header: traceroute.c,v 1.43 96/09/27 20:08:10 leres Exp $ (LBL)";
-#endif
-static const char rcsid[] =
-    "$FreeBSD: src/contrib/traceroute/traceroute.c,v 1.11.2.6 2002/08/05 23:37:16 fenner Exp $";
-#endif
 
 /*
  * traceroute host  - trace the route ip packets follow going to "host".

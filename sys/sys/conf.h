@@ -37,6 +37,7 @@
  *
  *	@(#)conf.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/conf.h,v 1.103.2.6 2002/03/11 01:14:55 dd Exp $
+ * $DragonFly: src/sys/sys/conf.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_CONF_H_

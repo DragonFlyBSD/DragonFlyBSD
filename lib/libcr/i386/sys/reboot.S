@@ -34,12 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/sys/reboot.S,v 1.5 1999/08/27 23:59:43 peter Exp $
+ * $DragonFly: src/lib/libcr/i386/sys/Attic/reboot.S,v 1.2 2003/06/17 04:26:43 dillon Exp $
+ *
+ * $FreeBSD: src/lib/libc/i386/sys/reboot.S,v 1.5 1999/08/27 23:59:43 peter Exp $
  */
-
-#if defined(SYSLIBC_RCS) && !defined(lint)
-	.text
-	.asciz "$FreeBSD: src/lib/libc/i386/sys/reboot.S,v 1.5 1999/08/27 23:59:43 peter Exp $"
-#endif /* SYSLIBC_RCS and not lint */
 
 #include "SYS.h"
 

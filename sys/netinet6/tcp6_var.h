@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/tcp6_var.h,v 1.3.2.2 2001/12/14 20:21:11 jlemon Exp $
+ * $DragonFly: src/sys/netinet6/tcp6_var.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 /*

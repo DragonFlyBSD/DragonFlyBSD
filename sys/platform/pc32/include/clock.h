@@ -4,6 +4,7 @@
  * This file is in the public domain.
  *
  * $FreeBSD: src/sys/i386/include/clock.h,v 1.38.2.1 2002/11/02 04:41:50 iwasaki Exp $
+ * $DragonFly: src/sys/platform/pc32/include/clock.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef _MACHINE_CLOCK_H_

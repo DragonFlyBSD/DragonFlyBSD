@@ -1,5 +1,6 @@
 /*	$NetBSD: usbdevs.c,v 1.17 2001/02/19 23:22:48 cgd Exp $	*/
 /*	$FreeBSD: src/usr.sbin/usbdevs/usbdevs.c,v 1.5.2.3 2002/11/13 15:15:21 joe Exp $	*/
+/*	$DragonFly: src/usr.sbin/usbdevs/usbdevs.c,v 1.2 2003/06/17 04:30:03 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.

@@ -8,11 +8,10 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
+ *
+ * $FreeBSD: src/lib/msun/src/e_exp.c,v 1.7 1999/08/28 00:06:30 peter Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_exp.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/lib/msun/src/e_exp.c,v 1.7 1999/08/28 00:06:30 peter Exp $";
-#endif
 
 /* __ieee754_exp(x)
  * Returns the exponential of x.

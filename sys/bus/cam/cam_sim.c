@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_sim.c,v 1.3 1999/08/28 00:40:42 peter Exp $
+ * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 #include <sys/param.h>

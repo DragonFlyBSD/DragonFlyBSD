@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932.c,v 1.1.2.2 2003/02/11 08:52:00 nyan Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.2 2003/06/17 04:28:29 dillon Exp $	*/
 /*	$NecBSD: dp83932.c,v 1.5 1999/07/29 05:08:44 kmatsuda Exp $	*/
 /*	$NetBSD: if_snc.c,v 1.18 1998/04/25 21:27:40 scottr Exp $	*/
 

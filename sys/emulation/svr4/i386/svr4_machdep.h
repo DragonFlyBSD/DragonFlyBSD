@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/svr4/svr4_machdep.h,v 1.6 2000/01/09 09:57:19 bde Exp $
+ * $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_machdep.h,v 1.2 2003/06/17 04:28:39 dillon Exp $
  */
 
 #ifndef	_I386_SVR4_MACHDEP_H_

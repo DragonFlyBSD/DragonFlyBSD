@@ -33,6 +33,7 @@
  *	@(#)radix.h	8.2 (Berkeley) 10/31/94
  *
  * $FreeBSD: src/sbin/routed/radix.h,v 1.4 1999/08/28 00:14:17 peter Exp $
+ * $DragonFly: src/sbin/routed/radix.h,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
 
 #ifndef __RADIX_H_

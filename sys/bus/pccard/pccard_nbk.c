@@ -23,6 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/pccard_nbk.c,v 1.15.2.11 2002/09/22 20:26:58 imp Exp $
+ * $DragonFly: src/sys/bus/pccard/Attic/pccard_nbk.c,v 1.2 2003/06/17 04:28:55 dillon Exp $
  */
 
 /*

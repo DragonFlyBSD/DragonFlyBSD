@@ -32,6 +32,7 @@
  *
  *	@(#)radix.h	8.2 (Berkeley) 10/31/94
  * $FreeBSD: src/sys/net/radix.h,v 1.16.2.1 2000/05/03 19:17:11 wollman Exp $
+ * $DragonFly: src/sys/net/radix.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 #ifndef _RADIX_H_

@@ -17,6 +17,7 @@
 
 /*
  * $FreeBSD: src/gnu/usr.bin/patch/getopt.h,v 1.3.6.2 2002/04/30 20:40:02 gad Exp $
+ * $DragonFly: src/gnu/usr.bin/patch/Attic/getopt.h,v 1.2 2003/06/17 04:25:47 dillon Exp $
  */
 
 #ifndef _GETOPT_H

@@ -29,12 +29,10 @@
  * official policies, either expressed or implied, of the FreeBSD Project.
  *
  * ------+---------+---------+---------+---------+---------+---------+---------*
+ *
+ * $FreeBSD: src/usr.sbin/lpr/common_source/ctlinfo.c,v 1.1.2.6 2002/07/14 23:47:09 gad Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/ctlinfo.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/lpr/common_source/ctlinfo.c,v 1.1.2.6 2002/07/14 23:47:09 gad Exp $";
-#endif /* not lint */
 
 /*
  * ctlinfo - This collection of routines will know everything there is to

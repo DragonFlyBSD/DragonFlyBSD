@@ -25,17 +25,15 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/tzsetup/tzsetup.c,v 1.16.2.2 2002/03/06 06:17:41 obrien Exp $
+ * $DragonFly: src/usr.sbin/tzsetup/tzsetup.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
 
 /*
  * Second attempt at a `tzmenu' program, using the separate description
  * files provided in newer tzdata releases.
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/tzsetup/tzsetup.c,v 1.16.2.2 2002/03/06 06:17:41 obrien Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <dialog.h>

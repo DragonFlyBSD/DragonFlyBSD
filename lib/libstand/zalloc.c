@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/zalloc.c,v 1.5.2.1 2002/12/28 18:04:15 dillon Exp $
+ * $DragonFly: src/lib/libstand/zalloc.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 
 /*

@@ -32,6 +32,7 @@
  *
  *	@(#)tcp_fsm.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp_fsm.h,v 1.14 1999/11/07 04:18:30 jlemon Exp $
+ * $DragonFly: src/sys/netinet/tcp_fsm.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #ifndef _NETINET_TCP_FSM_H_

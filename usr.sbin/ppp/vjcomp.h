@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/vjcomp.h,v 1.8 1999/08/28 01:18:51 peter Exp $
+ * $DragonFly: src/usr.sbin/ppp/vjcomp.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 struct mbuf;

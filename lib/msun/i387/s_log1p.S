@@ -36,6 +36,7 @@
 #include <machine/asm.h>
 
 RCSID("$FreeBSD: src/lib/msun/i387/s_log1p.S,v 1.7 1999/08/28 00:06:13 peter Exp $")
+RCSID("$DragonFly: src/lib/msun/i387/Attic/s_log1p.S,v 1.2 2003/06/17 04:26:52 dillon Exp $")
 
 /*
  * The fyl2xp1 instruction has such a limited range:

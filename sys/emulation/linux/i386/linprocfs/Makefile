@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/linprocfs/Makefile,v 1.1.2.3 2000/06/06 11:53:28 des Exp $
+# $DragonFly: src/sys/emulation/linux/i386/linprocfs/Makefile,v 1.2 2003/06/17 04:28:44 dillon Exp $
 
 .PATH:	${.CURDIR}/../../i386/linux/linprocfs
 KMOD=	linprocfs

@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dcreg.h,v 1.4.2.22 2003/06/07 16:55:35 mbr Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dcreg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /*

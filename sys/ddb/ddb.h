@@ -28,6 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/ddb.h,v 1.24.2.2 2002/08/30 22:27:49 gibbs Exp $
+ * $DragonFly: src/sys/ddb/ddb.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
 /*

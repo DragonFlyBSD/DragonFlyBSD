@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/pcvt/vttest/Makefile,v 1.6 1999/10/03 10:35:03 marcel Exp $
+# $DragonFly: src/usr.sbin/pcvt/vttest/Attic/Makefile,v 1.2 2003/06/17 04:29:59 dillon Exp $
 
 PROG=		vttest
 CFLAGS+=	-traditional -DUSEMYSTTY

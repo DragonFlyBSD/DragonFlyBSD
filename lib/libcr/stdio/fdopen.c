@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/fdopen.c,v 1.3 2000/01/27 23:06:44 jasone Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/fdopen.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ *
+ * @(#)fdopen.c	8.1 (Berkeley) 6/4/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)fdopen.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <fcntl.h>

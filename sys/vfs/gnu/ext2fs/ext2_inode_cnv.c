@@ -20,6 +20,7 @@
  *
  *      Utah $Hdr$
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode_cnv.c,v 1.11 2000/01/01 17:39:21 bde Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode_cnv.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 /*

@@ -24,12 +24,12 @@
  * Author: James da Silva, Systems Design and Analysis Group
  *			   Computer Science Department
  *			   University of Maryland at College Park
+ *
+ * $NetBSD: exec_aout.c,v 1.6 1997/08/02 21:30:17 perry Exp $
+ * $FreeBSD: src/usr.sbin/crunch/crunchide/exec_aout.c,v 1.1.6.1 2002/07/25 09:33:17 ru Exp $
+ * $DragonFly: src/usr.sbin/crunch/crunchide/exec_aout.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 #include <sys/cdefs.h>
-#ifndef lint
-__RCSID("$NetBSD: exec_aout.c,v 1.6 1997/08/02 21:30:17 perry Exp $");
-__FBSDID("$FreeBSD: src/usr.sbin/crunch/crunchide/exec_aout.c,v 1.1.6.1 2002/07/25 09:33:17 ru Exp $");
-#endif
  
 #include <unistd.h>
 #include <stdio.h>

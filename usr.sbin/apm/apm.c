@@ -11,12 +11,10 @@
  * use.
  *
  * Sep., 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
+ *
+ * $FreeBSD: src/usr.sbin/apm/apm.c,v 1.22.2.6 2003/04/29 08:53:04 maxim Exp $
+ * $DragonFly: src/usr.sbin/apm/apm.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/apm/apm.c,v 1.22.2.6 2003/04/29 08:53:04 maxim Exp $";
-#endif /* not lint */
 
 #include <sys/file.h>
 #include <sys/ioctl.h>

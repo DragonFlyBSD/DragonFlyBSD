@@ -37,6 +37,7 @@
  *
  *	@(#)iso_rrip.h	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/iso_rrip.h,v 1.6 1999/08/28 00:46:07 peter Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/iso_rrip.h,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 

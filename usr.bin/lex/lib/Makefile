@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.bin/lex/lib/Makefile,v 1.7 1999/08/28 01:02:49 peter Exp $
+# $DragonFly: src/usr.bin/lex/lib/Makefile,v 1.2 2003/06/17 04:29:28 dillon Exp $
 
 LIB=    ln
 SRCS=   libmain.c libyywrap.c

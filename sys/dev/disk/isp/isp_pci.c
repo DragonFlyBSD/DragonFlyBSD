@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_pci.c,v 1.78.2.4 2002/10/11 18:50:53 mjacob Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
 /*
  * PCI specific probe and attach routines for Qlogic ISP SCSI adapters.
  * FreeBSD Version.

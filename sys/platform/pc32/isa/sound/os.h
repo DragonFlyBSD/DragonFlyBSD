@@ -2,6 +2,7 @@
  * os.h -- only included by sound_config.h right after local.h
  *
  * $FreeBSD: src/sys/i386/isa/sound/os.h,v 1.40.2.1 2000/08/03 01:01:27 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/sound/Attic/os.h,v 1.2 2003/06/17 04:28:38 dillon Exp $
  */
 
 #ifndef _OS_H_

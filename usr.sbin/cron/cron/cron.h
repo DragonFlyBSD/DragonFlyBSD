@@ -18,6 +18,7 @@
 /* cron.h - header for vixie's cron
  *
  * $FreeBSD: src/usr.sbin/cron/cron/cron.h,v 1.9.2.3 2001/05/28 23:37:26 babkin Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/cron.h,v 1.2 2003/06/17 04:29:53 dillon Exp $
  *
  * vix 14nov88 [rest of log is in RCS]
  * vix 14jan87 [0 or 7 can be sunday; thanks, mwm@berkeley]

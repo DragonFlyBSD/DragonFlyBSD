@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbbdevid.h,v 1.1.2.6 2003/02/26 18:42:01 imp Exp $
+ * $DragonFly: src/sys/bus/pccard/pccbb/Attic/pccbbdevid.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 /* Vendor/Device IDs */

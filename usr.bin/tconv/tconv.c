@@ -32,6 +32,9 @@
  * taken from the environment variable TERM.
  * Unless compiling to a terminfo binary, output is to stdout.
  *
+ * @(#) mytinfo tconv.c 3.2 92/02/01 public domain, By Ross Ridge
+ * $FreeBSD: src/usr.bin/tconv/tconv.c,v 1.5.2.1 2001/03/04 09:07:50 kris Exp $
+ * $DragonFly: src/usr.bin/tconv/Attic/tconv.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
 
 #define NOTLIB
@@ -52,13 +55,6 @@
 #ifndef __FreeBSD__
 #include "strtok.c"
 #include "mkdir.c"
-#endif
-
-#ifndef lint
-static const char SCCSid[] =
-	"@(#) mytinfo tconv.c 3.2 92/02/01 public domain, By Ross Ridge";
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/tconv/tconv.c,v 1.5.2.1 2001/03/04 09:07:50 kris Exp $";
 #endif
 
 /* the right margin of the output */

@@ -18,6 +18,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si_isa.c,v 1.1 2000/01/24 07:24:01 peter Exp $
+ * $DragonFly: src/sys/dev/serial/si/si_isa.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 #include "opt_debug_si.h"

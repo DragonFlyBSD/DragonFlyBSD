@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/lib/libwrap/Makefile,v 1.5.2.3 2002/07/22 14:21:50 ru Exp $
+# $DragonFly: src/lib/libwrap/Makefile,v 1.2 2003/06/17 04:26:52 dillon Exp $
 #
 
 MAINTAINER=markm@FreeBSD.org

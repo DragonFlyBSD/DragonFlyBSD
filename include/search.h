@@ -1,5 +1,6 @@
 /*	$NetBSD: search.h,v 1.12 1999/02/22 10:34:28 christos Exp $	*/
 /* $FreeBSD: src/include/search.h,v 1.3.2.1 2000/08/17 07:38:34 jhb Exp $ */
+/* $DragonFly: src/include/search.h,v 1.2 2003/06/17 04:25:56 dillon Exp $ */
 
 /*
  * Written by J.T. Conklin <jtc@netbsd.org>

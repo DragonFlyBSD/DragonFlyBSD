@@ -12,6 +12,7 @@
 # 08 Apr 2000
 #
 # $FreeBSD: src/release/scripts/checkindex.pl,v 1.1.2.1 2003/03/03 09:49:13 murray Exp $
+# $DragonFly: src/release/scripts/Attic/checkindex.pl,v 1.2 2003/06/17 04:27:21 dillon Exp $
 #
 
 use Getopt::Long;

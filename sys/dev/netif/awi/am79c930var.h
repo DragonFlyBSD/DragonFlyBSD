@@ -1,5 +1,6 @@
 /* $NetBSD$ */
 /* $FreeBSD: src/sys/dev/awi/am79c930var.h,v 1.1.2.1 2000/12/07 04:09:39 imp Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/am79c930var.h,v 1.2 2003/06/17 04:28:22 dillon Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.

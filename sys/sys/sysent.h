@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/sysent.h,v 1.27.2.5 2002/03/17 11:08:38 alfred Exp $
+ * $DragonFly: src/sys/sys/sysent.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _SYS_SYSENT_H_

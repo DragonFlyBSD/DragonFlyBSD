@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/rtprio.h,v 1.9 1999/12/29 04:24:46 peter Exp $
+ * $DragonFly: src/sys/sys/rtprio.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_RTPRIO_H_

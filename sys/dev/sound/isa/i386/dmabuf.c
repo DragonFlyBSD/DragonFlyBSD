@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/i386/isa/sound/dmabuf.c,v 1.38.2.2 2000/08/08 19:49:54 peter Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/Attic/dmabuf.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
  */
 
 #include <i386/isa/sound/sound_config.h>

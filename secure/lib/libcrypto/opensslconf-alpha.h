@@ -1,4 +1,5 @@
 /* $FreeBSD: src/secure/lib/libcrypto/opensslconf-alpha.h,v 1.1.2.4 2003/02/14 22:38:14 nectar Exp $ */
+/* $DragonFly: src/secure/lib/libcrypto/Attic/opensslconf-alpha.h,v 1.2 2003/06/17 04:27:48 dillon Exp $ */
 /* opensslconf.h */
 
 /* WARNING: Generated automatically from opensslconf.h.in by Configure. */

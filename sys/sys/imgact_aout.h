@@ -32,6 +32,7 @@
  *
  *	from: @(#)exec.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/sys/imgact_aout.h,v 1.13 1999/12/29 04:24:41 peter Exp $
+ * $DragonFly: src/sys/sys/imgact_aout.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef	_IMGACT_AOUT_H_

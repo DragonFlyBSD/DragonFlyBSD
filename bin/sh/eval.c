@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)eval.c	8.9 (Berkeley) 6/8/95
+ * $FreeBSD: src/bin/sh/eval.c,v 1.27.2.5 2002/08/27 01:36:28 tjr Exp $
+ * $DragonFly: src/bin/sh/eval.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)eval.c	8.9 (Berkeley) 6/8/95";
-#endif
-#endif /* not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/bin/sh/eval.c,v 1.27.2.5 2002/08/27 01:36:28 tjr Exp $");
 
 #include <paths.h>
 #include <signal.h>

@@ -32,6 +32,7 @@
  *
  *	@(#)paths.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/paths.h,v 1.9.6.4 2002/07/19 07:53:41 jmallett Exp $
+ * $DragonFly: src/include/paths.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef _PATHS_H_

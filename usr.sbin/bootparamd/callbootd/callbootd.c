@@ -7,11 +7,10 @@ use and modify. Please send modifications and/or suggestions + bug fixes to
 
 */
 
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/bootparamd/callbootd/callbootd.c,v 1.8 1999/08/28 01:15:40 peter Exp $";
-#endif /* not lint */
-
+/*
+ * $FreeBSD: src/usr.sbin/bootparamd/callbootd/callbootd.c,v 1.8 1999/08/28 01:15:40 peter Exp $
+ * $DragonFly: src/usr.sbin/bootparamd/callbootd/callbootd.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ */
 #include "bootparam_prot.h"
 #include <rpc/rpc.h>
 #include <sys/types.h>

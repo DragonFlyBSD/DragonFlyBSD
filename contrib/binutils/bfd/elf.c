@@ -20,6 +20,7 @@
 
 
 /* $FreeBSD: src/contrib/binutils/bfd/elf.c,v 1.3.6.6 2002/09/01 23:43:36 obrien Exp $ */
+/* $DragonFly: src/contrib/binutils/bfd/Attic/elf.c,v 1.2 2003/06/17 04:23:58 dillon Exp $ */
 
 
 /*  SECTION

@@ -2,10 +2,10 @@
  * This file contains routines modified from OpenBSD. Parts are contributed
  * by Todd Miller <millert@openbsd.org>, Theo De Raadt <deraadt@openbsd.org>
  * and possibly others.
+ *
+ * $FreeBSD: src/lib/libopie/opieextra.c,v 1.1.2.2 2002/07/15 14:17:08 des Exp $
+ * $DragonFly: src/lib/libopie/opieextra.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libopie/opieextra.c,v 1.1.2.2 2002/07/15 14:17:08 des Exp $");
 
 #include <sys/types.h>
 #include <stdio.h>

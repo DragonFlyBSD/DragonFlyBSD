@@ -28,6 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/_posix.h,v 1.6 1999/12/29 04:24:36 peter Exp $
+ * $DragonFly: src/sys/sys/_posix.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 /*

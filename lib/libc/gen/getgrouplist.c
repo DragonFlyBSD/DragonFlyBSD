@@ -29,11 +29,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)getgrouplist.c	8.2 (Berkeley) 12/8/94
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)getgrouplist.c	8.2 (Berkeley) 12/8/94";
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * get credential

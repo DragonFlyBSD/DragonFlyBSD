@@ -1,4 +1,5 @@
 /* $FreeBSD: src/contrib/libpam/modules/pam_unix/md5.h,v 1.1.1.1.2.2 2001/06/11 15:28:30 markm Exp $ */
+/* $DragonFly: src/contrib/libpam/modules/pam_unix/Attic/md5.h,v 1.2 2003/06/17 04:24:03 dillon Exp $ */
 
 #ifndef MD5_H
 #define MD5_H

@@ -34,6 +34,7 @@
  *	@(#)spx_var.h
  *
  * $FreeBSD: src/sys/netipx/spx_var.h,v 1.9 1999/08/28 00:49:44 peter Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_var.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 #ifndef _NETIPX_SPX_VAR_H_

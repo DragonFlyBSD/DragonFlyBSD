@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)restore.c	8.3 (Berkeley) 9/13/94
+ * $FreeBSD: src/sbin/restore/restore.c,v 1.7.2.1 2002/03/01 21:32:28 iedowse Exp $
+ * $DragonFly: src/sbin/restore/restore.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)restore.c	8.3 (Berkeley) 9/13/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/restore/restore.c,v 1.7.2.1 2002/03/01 21:32:28 iedowse Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 

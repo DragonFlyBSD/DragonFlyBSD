@@ -34,16 +34,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)cond.c	8.2 (Berkeley) 1/2/94
+ * $FreeBSD: src/usr.bin/make/cond.c,v 1.12 1999/09/11 13:08:01 hoek Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)cond.c	8.2 (Berkeley) 1/2/94";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/make/cond.c,v 1.12 1999/09/11 13:08:01 hoek Exp $";
-#endif
-#endif /* not lint */
 
 /*-
  * cond.c --

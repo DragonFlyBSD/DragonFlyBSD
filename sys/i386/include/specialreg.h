@@ -32,6 +32,7 @@
  *
  *	from: @(#)specialreg.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/specialreg.h,v 1.19.2.3 2003/01/22 17:24:28 jhb Exp $
+ * $DragonFly: src/sys/i386/include/Attic/specialreg.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 #ifndef _MACHINE_SPECIALREG_H_

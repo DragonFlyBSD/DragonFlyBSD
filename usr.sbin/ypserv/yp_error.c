@@ -29,12 +29,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: src/usr.sbin/ypserv/yp_error.c,v 1.7 1999/08/28 01:21:12 peter Exp $
+ * $DragonFly: src/usr.sbin/ypserv/yp_error.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/ypserv/yp_error.c,v 1.7 1999/08/28 01:21:12 peter Exp $";
-#endif /* not lint */
 
 /*
  * error logging/reporting facilities

@@ -30,6 +30,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_isa.c,v 1.1.2.5 2003/02/01 03:25:12 ambrisko Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_isa.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ *
+ * $FreeBSD: src/sys/dev/an/if_an_isa.c,v 1.1.2.5 2003/02/01 03:25:12 ambrisko Exp $
  */
 
 /*
@@ -70,11 +73,6 @@
 
 #include <dev/an/if_aironet_ieee.h>
 #include <dev/an/if_anreg.h>
-
-#ifndef lint
-static const char rcsid[] =
- "$FreeBSD: src/sys/dev/an/if_an_isa.c,v 1.1.2.5 2003/02/01 03:25:12 ambrisko Exp $";
-#endif
 
 static struct isa_pnp_id an_ids[] = {
 	{ 0x0100ec06, "Aironet ISA4500/ISA4800" },

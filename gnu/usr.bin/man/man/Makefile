@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/man/man/Makefile,v 1.27.2.4 2002/07/17 13:25:17 ru Exp $
+# $DragonFly: src/gnu/usr.bin/man/man/Makefile,v 1.2 2003/06/17 04:25:46 dillon Exp $
 #
 
 MAN_LIBZ=YES

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_util.c,v 1.5 1999/08/29 10:28:10 bde Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_util.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -39,11 +39,6 @@
 
 #include "spans_xdr.h"
 #include <netatm/spans/spans_var.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/spans/spans_util.c,v 1.5 1999/08/29 10:28:10 bde Exp $");
-#endif
-
 
 #ifdef NOTDEF
 /* XXX -- Remove all SAP checks? */

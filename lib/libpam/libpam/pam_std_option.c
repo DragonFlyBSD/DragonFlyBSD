@@ -22,10 +22,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libpam/libpam/pam_std_option.c,v 1.1.1.1.6.4 2002/07/03 21:45:44 des Exp $
+ * $DragonFly: src/lib/libpam/libpam/Attic/pam_std_option.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libpam/libpam/pam_std_option.c,v 1.1.1.1.6.4 2002/07/03 21:45:44 des Exp $");
 
 #include <stdio.h>
 #include <string.h>

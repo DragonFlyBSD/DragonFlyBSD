@@ -4,6 +4,7 @@
 #
 #	$dotat: things/unifdefall.sh,v 1.9 2002/09/24 19:43:57 fanf2 Exp $
 # $FreeBSD: src/usr.bin/unifdef/unifdefall.sh,v 1.1.2.2 2002/10/20 13:44:11 fanf Exp $
+# $DragonFly: src/usr.bin/unifdef/unifdefall.sh,v 1.2 2003/06/17 04:29:33 dillon Exp $
 
 set -e
 

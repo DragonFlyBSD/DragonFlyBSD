@@ -18,10 +18,10 @@
    along with GAS; see the file COPYING.  If not, write to
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA. */
 
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/as/read.c,v 1.13 1999/08/27 23:34:20 peter Exp $";
-#endif
-
+/*
+ * $FreeBSD: src/gnu/usr.bin/as/read.c,v 1.13 1999/08/27 23:34:20 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/as/Attic/read.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
+ */
 #define MASK_CHAR (0xFF)	/* If your chars aren't 8 bits, you will
 				   change this a bit.  But then, GNU isn't
 				   spozed to run on your machine anyway.

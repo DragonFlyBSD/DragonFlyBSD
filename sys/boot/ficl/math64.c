@@ -8,6 +8,7 @@
 *******************************************************************/
 
 /* $FreeBSD: src/sys/boot/ficl/math64.c,v 1.2 1999/09/29 04:43:06 dcs Exp $ */
+/* $DragonFly: src/sys/boot/ficl/math64.c,v 1.2 2003/06/17 04:28:17 dillon Exp $ */
 
 #include "ficl.h"
 #include "math64.h"

@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberos5/libexec/k5passwdd/Makefile,v 1.4.2.4 2002/09/01 04:22:02 nectar Exp $
+# $DragonFly: src/kerberos5/libexec/k5passwdd/Attic/Makefile,v 1.2 2003/06/17 04:26:18 dillon Exp $
 
 PROG=		k5passwdd
 SRCS=		kpasswdd.c krb5_err.h heim_err.h hdb_err.h \

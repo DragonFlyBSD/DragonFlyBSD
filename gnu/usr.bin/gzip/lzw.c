@@ -1,10 +1,9 @@
 /* lzw.c -- compress files in LZW format.
  * This is a dummy version avoiding patent problems.
+ *
+ * $FreeBSD: src/gnu/usr.bin/gzip/lzw.c,v 1.6 1999/08/27 23:35:51 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/gzip/Attic/lzw.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
-
-#ifdef RCSID
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/gzip/lzw.c,v 1.6 1999/08/27 23:35:51 peter Exp $";
-#endif
 
 #include "tailor.h"
 #include "gzip.h"

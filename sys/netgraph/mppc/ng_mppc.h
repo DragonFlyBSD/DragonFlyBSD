@@ -38,6 +38,7 @@
  *
  * $Whistle: ng_mppc.h,v 1.3 2000/02/12 01:17:22 archie Exp $
  * $FreeBSD: src/sys/netgraph/ng_mppc.h,v 1.1.2.3 2001/12/18 02:31:54 archie Exp $
+ * $DragonFly: src/sys/netgraph/mppc/ng_mppc.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #ifndef _NETGRAPH_MPPC_H_

@@ -28,6 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_srregs.h,v 1.6.2.1 2002/06/17 15:10:58 jhay Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_srregs.h,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 #ifndef _IF_SRREGS_H_
 #define _IF_SRREGS_H_

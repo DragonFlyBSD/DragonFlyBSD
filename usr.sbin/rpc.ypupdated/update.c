@@ -26,15 +26,11 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)update.c 1.2 91/03/11 Copyr 1986 Sun Micro
+ * $FreeBSD: src/usr.sbin/rpc.ypupdated/update.c,v 1.4.2.1 2002/02/15 00:46:57 des Exp $
+ * $DragonFly: src/usr.sbin/rpc.ypupdated/update.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static	char sccsid[] = "@(#)update.c 1.2 91/03/11 Copyr 1986 Sun Micro";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/rpc.ypupdated/update.c,v 1.4.2.1 2002/02/15 00:46:57 des Exp $";
-#endif /* not lint */
 
 /*
  * Copyright (C) 1986, 1989, Sun Microsystems, Inc.

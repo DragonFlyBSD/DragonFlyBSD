@@ -2,6 +2,7 @@
  * interplayer.c - player to player routines for Phantasia
  *
  * $FreeBSD: src/games/phantasia/interplayer.c,v 1.6 1999/11/16 02:57:33 billf Exp $
+ * $DragonFly: src/games/phantasia/interplayer.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
 
 #include <string.h>

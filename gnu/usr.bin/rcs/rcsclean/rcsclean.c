@@ -25,6 +25,10 @@ Report problems and direct all questions to:
 	rcs-bugs@cs.purdue.edu
 
 */
+/*
+ * $FreeBSD: src/gnu/usr.bin/rcs/rcsclean/rcsclean.c,v 1.5 1999/08/27 23:36:54 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/rcsclean/rcsclean.c,v 1.2 2003/06/17 04:25:48 dillon Exp $
+ */
 
 #include "rcsbase.h"
 
@@ -38,7 +42,7 @@ static void cleanup P((void));
 static RILE *workptr;
 static int exitstatus;
 
-mainProg(rcscleanId, "rcsclean", "$FreeBSD: src/gnu/usr.bin/rcs/rcsclean/rcsclean.c,v 1.5 1999/08/27 23:36:54 peter Exp $")
+mainProg(rcscleanId, "rcsclean", "$DragonFly: src/gnu/usr.bin/rcs/rcsclean/rcsclean.c,v 1.2 2003/06/17 04:25:48 dillon Exp $")
 {
 	static char const usage[] =
 		"\nrcsclean: usage: rcsclean -ksubst -{nqru}[rev] -T -Vn -xsuff -zzone file ...";

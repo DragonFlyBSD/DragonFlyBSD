@@ -23,6 +23,7 @@
  * documentation and/or software.
  *
  * $FreeBSD: src/sys/kern/md5c.c,v 1.17 1999/12/29 04:54:39 peter Exp $
+ * $DragonFly: src/sys/kern/md5c.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  *
  * This code is the same as the code published by RSA Inc.  It has been
  * edited for clarity and style only.

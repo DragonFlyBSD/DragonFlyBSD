@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.umntall/mounttab.h,v 1.1.2.1 2001/12/13 01:27:20 iedowse Exp $
+ * $DragonFly: src/usr.sbin/rpc.umntall/mounttab.h,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
 
 #define STRSIZ  (RPCMNT_NAMELEN+RPCMNT_PATHLEN+100)

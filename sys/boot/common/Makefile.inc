@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/boot/common/Makefile.inc,v 1.9.2.2 2001/04/25 11:24:01 ru Exp $
+# $DragonFly: src/sys/boot/common/Makefile.inc,v 1.2 2003/06/17 04:28:16 dillon Exp $
 
 SRCS+=	bcache.c boot.c commands.c console.c devopen.c interp.c 
 SRCS+=	interp_backslash.c interp_parse.c load_aout.c load_elf.c ls.c misc.c 

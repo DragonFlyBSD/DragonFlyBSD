@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isa_common.h,v 1.5 1999/09/07 08:42:47 dfr Exp $
+ * $DragonFly: src/sys/bus/isa/isa_common.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
  */
 
 /*

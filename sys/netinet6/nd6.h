@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.h,v 1.2.2.5 2002/04/28 05:40:27 suz Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.h,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$KAME: nd6.h,v 1.76 2001/12/18 02:10:31 itojun Exp $	*/
 
 /*

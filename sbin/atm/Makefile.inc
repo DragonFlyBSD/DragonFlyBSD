@@ -24,6 +24,7 @@
 # notice must be reproduced on all copies.
 #
 #	@(#) $FreeBSD: src/sbin/atm/Makefile.inc,v 1.2.2.1 2002/07/17 14:19:29 ru Exp $
+#	@(#) $DragonFly: src/sbin/atm/Makefile.inc,v 1.2 2003/06/17 04:27:32 dillon Exp $
 #
 #
 

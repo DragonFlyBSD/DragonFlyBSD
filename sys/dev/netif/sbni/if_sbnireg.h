@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbnireg.h,v 1.1.2.1 2001/12/19 20:59:28 fjoe Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbnireg.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 /*

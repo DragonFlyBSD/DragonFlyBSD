@@ -13,13 +13,10 @@
  * Send bug reports, bug fixes, enhancements, requests, flames, etc., and
  * I'll try to keep a version up to date.  I can be reached as follows:
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
+ *
+ * $FreeBSD: src/usr.sbin/cron/lib/env.c,v 1.7.2.1 2000/07/01 10:35:07 ps Exp $
+ * $DragonFly: src/usr.sbin/cron/lib/env.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
-
-#if !defined(lint) && !defined(LINT)
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/cron/lib/env.c,v 1.7.2.1 2000/07/01 10:35:07 ps Exp $";
-#endif
-
 
 #include "cron.h"
 

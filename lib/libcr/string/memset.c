@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)memset.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/string/memset.c,v 1.4.2.1 2001/07/09 23:30:03 obrien Exp $
+ * $DragonFly: src/lib/libcr/string/Attic/memset.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)memset.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/string/memset.c,v 1.4.2.1 2001/07/09 23:30:03 obrien Exp $";
-#endif
 
 #include <sys/types.h>
 

@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/collate.h,v 1.9.2.3 2002/10/11 10:36:47 ache Exp $
+ * $DragonFly: src/lib/libcr/locale/Attic/collate.h,v 1.2 2003/06/17 04:26:43 dillon Exp $
  */
 
 #ifndef _COLLATE_H_

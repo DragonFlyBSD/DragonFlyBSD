@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.1.2.1 2002/08/24 08:03:07 nsayer Exp $ */
+/* $DragonFly: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.2 2003/06/17 04:28:31 dillon Exp $ */
 
 /*
  * Copyright (c) 2000-2002 Hiroyuki Aizu <aizu@navi.org>

@@ -37,6 +37,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_control.c,v 1.16 1999/09/25 18:23:48 phk Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.2 2003/06/17 04:28:23 dillon Exp $"
 
 #include "opt_dpt.h"
 

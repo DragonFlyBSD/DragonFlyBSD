@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  *
  * Low level socket routines
  */

@@ -28,6 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/sa/pathnames.h,v 1.4 1999/08/28 01:19:52 peter Exp $
+ * $DragonFly: src/usr.sbin/sa/pathnames.h,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
 
 #define	_PATH_ACCT	"/var/account/acct"

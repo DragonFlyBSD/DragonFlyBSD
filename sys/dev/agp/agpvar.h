@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agpvar.h,v 1.1.2.2 2002/01/10 12:07:08 mdodd Exp $
+ *	$DragonFly: src/sys/dev/agp/agpvar.h,v 1.2 2003/06/17 04:28:56 dillon Exp $
  */
 
 #ifndef _PCI_AGPVAR_H_

@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt_pci.c,v 1.11 2000/01/17 12:38:00 nyan Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt_pci.c,v 1.2 2003/06/17 04:28:23 dillon Exp $
  */
 
 #include <sys/param.h>

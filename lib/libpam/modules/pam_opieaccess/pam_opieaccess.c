@@ -32,10 +32,9 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpam/modules/pam_opieaccess/pam_opieaccess.c,v 1.10.2.2 2002/07/06 14:11:26 des Exp $
+ * $DragonFly: src/lib/libpam/modules/pam_opieaccess/Attic/pam_opieaccess.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ * $FreeBSD: src/lib/libpam/modules/pam_opieaccess/pam_opieaccess.c,v 1.10.2.2 2002/07/06 14:11:26 des Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libpam/modules/pam_opieaccess/pam_opieaccess.c,v 1.10.2.2 2002/07/06 14:11:26 des Exp $");
 
 #define _BSD_SOURCE
 

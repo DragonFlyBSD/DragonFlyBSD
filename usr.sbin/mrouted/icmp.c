@@ -7,15 +7,11 @@
  * Leland Stanford Junior University.
  *
  *
- * icmp.c,v 3.8.4.2 1998/01/06 01:57:42 fenner Exp
+ * @(#) $Id icmp.c,v 3.8.4.2 1998/01/06 01:57:42 fenner Exp $
+ * $DragonFly: src/usr.sbin/mrouted/icmp.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
 
 #include "defs.h"
-
-#ifndef lint
-static char rcsid[] = "@(#) $Id: \
-icmp.c,v 3.8.4.2 1998/01/06 01:57:42 fenner Exp $";
-#endif
 
 static int	icmp_socket;
 

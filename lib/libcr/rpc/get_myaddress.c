@@ -25,13 +25,12 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)get_myaddress.c 1.4 87/08/11 Copyr 1984 Sun Micro
+ * @(#)get_myaddress.c	2.1 88/07/29 4.0 RPCSRC
+ * $FreeBSD: src/lib/libc/rpc/get_myaddress.c,v 1.18.2.1 2003/01/01 23:55:34 jdp Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/get_myaddress.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/*static char *sccsid = "from: @(#)get_myaddress.c 1.4 87/08/11 Copyr 1984 Sun Micro";*/
-/*static char *sccsid = "from: @(#)get_myaddress.c	2.1 88/07/29 4.0 RPCSRC";*/
-static char *rcsid = "$FreeBSD: src/lib/libc/rpc/get_myaddress.c,v 1.18.2.1 2003/01/01 23:55:34 jdp Exp $";
-#endif
 
 /*
  * get_myaddress.c

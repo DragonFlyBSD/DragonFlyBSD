@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/extattr.h,v 1.3 2000/01/19 06:07:34 rwatson Exp $
+ * $DragonFly: src/sys/sys/extattr.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 /*
  * Userland/kernel interface for Extended File System Attributes

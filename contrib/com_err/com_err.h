@@ -38,6 +38,7 @@
 
 /* $Id: com_err.h,v 1.3 1998/05/02 20:13:28 assar Exp $ */
 /* $FreeBSD: src/contrib/com_err/com_err.h,v 1.2 2000/01/14 18:28:23 bde Exp $ */
+/* $DragonFly: src/contrib/com_err/com_err.h,v 1.2 2003/06/17 04:23:58 dillon Exp $ */
 
 /* MIT compatible com_err library */
 

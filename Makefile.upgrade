@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/Makefile.upgrade,v 1.17 1999/08/28 01:35:58 peter Exp $
+# $DragonFly: src/Attic/Makefile.upgrade,v 1.2 2003/06/17 04:21:10 dillon Exp $
 #
 # This makefile contains rules for preforming upgrades that are outside
 # the scope of the normal build world process.

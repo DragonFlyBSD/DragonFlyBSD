@@ -36,6 +36,7 @@
 .\"
 .\"	@(#)tutorial.ms	8.1 (Berkeley) 8/18/93
 .\" $FreeBSD: src/usr.bin/make/PSD.doc/tutorial.ms,v 1.8.2.2 2000/11/24 10:08:45 ru Exp $
+.\" $DragonFly: src/usr.bin/make/PSD.doc/tutorial.ms,v 1.2 2003/06/17 04:29:29 dillon Exp $
 .\"
 .so stubs
 .EH 'PSD:12-%''PMake \*- A Tutorial'

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/rijndael.h,v 1.1.2.1 2002/11/21 23:34:23 sam Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/rijndael.h,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
 /*	$OpenBSD: rijndael.h,v 1.7 2001/12/19 17:42:24 markus Exp $ */
 
 /**

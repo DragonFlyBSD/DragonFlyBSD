@@ -32,6 +32,7 @@
  *
  *	@(#)mfsnode.h	8.3 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfsnode.h,v 1.12.2.2 2001/07/04 17:35:21 tegge Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfsnode.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _UFS_MFS_MFSNODE_H_

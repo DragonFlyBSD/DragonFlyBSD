@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/sbin/route/Makefile,v 1.11.2.3 2002/12/04 14:05:42 ru Exp $
+# $DragonFly: src/sbin/route/Makefile,v 1.2 2003/06/17 04:27:34 dillon Exp $
 
 PROG=	route
 MAN=	route.8

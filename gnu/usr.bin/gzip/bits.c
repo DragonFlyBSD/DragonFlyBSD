@@ -2,8 +2,10 @@
  * Copyright (C) 1992-1993 Jean-loup Gailly
  * This is free software; you can redistribute it and/or modify it under the
  * terms of the GNU General Public License, see the file COPYING.
+ *
+ * $FreeBSD: src/gnu/usr.bin/gzip/bits.c,v 1.7 1999/08/27 23:35:49 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/gzip/Attic/bits.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
-
 
 /*
  *  PURPOSE
@@ -57,10 +59,6 @@
 
 #ifdef DEBUG
 #  include <stdio.h>
-#endif
-
-#ifdef RCSID
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/gzip/bits.c,v 1.7 1999/08/27 23:35:49 peter Exp $";
 #endif
 
 /* ===========================================================================

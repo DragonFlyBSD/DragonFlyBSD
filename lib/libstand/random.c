@@ -32,6 +32,7 @@
  *
  *	@(#)random.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/lib/libstand/random.c,v 1.2.2.1 2000/09/10 01:25:52 ps Exp $
+ * $DragonFly: src/lib/libstand/random.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 
 #include <sys/types.h>

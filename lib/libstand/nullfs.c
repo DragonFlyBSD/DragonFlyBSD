@@ -1,4 +1,5 @@
 /* $FreeBSD: src/lib/libstand/nullfs.c,v 1.3.2.1 2000/05/04 13:47:51 ps Exp $ */
+/* $DragonFly: src/lib/libstand/nullfs.c,v 1.2 2003/06/17 04:26:51 dillon Exp $ */
 /*	$NetBSD: nullfs.c,v 1.1 1996/01/13 22:25:39 leo Exp $	*/
 
 /*-

@@ -32,6 +32,7 @@
  *
  *	@(#)fifo.h	8.6 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo.h,v 1.16 1999/08/28 00:46:46 peter Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo.h,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 extern vop_t **fifo_vnodeop_p;

@@ -22,6 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pcm/ac97.c,v 1.5.2.14 2003/03/11 15:08:30 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -31,7 +34,7 @@
 #include "mixer_if.h"
 
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pcm/ac97.c,v 1.5.2.14 2003/03/11 15:08:30 orion Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
 
 MALLOC_DEFINE(M_AC97, "ac97", "ac97 codec");
 

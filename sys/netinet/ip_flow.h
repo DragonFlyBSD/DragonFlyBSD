@@ -34,6 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.h,v 1.2 1999/08/28 00:49:22 peter Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #ifndef _NETINET_IP_FLOW_H

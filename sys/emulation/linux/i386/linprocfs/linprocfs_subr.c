@@ -39,6 +39,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_subr.c,v 1.3.2.4 2001/06/25 19:46:47 pirzyk Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
  */
 
 #include <sys/param.h>

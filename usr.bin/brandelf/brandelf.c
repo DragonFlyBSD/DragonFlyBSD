@@ -25,12 +25,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.bin/brandelf/brandelf.c,v 1.13.2.4 2001/07/11 23:59:11 obrien Exp $
+ * $DragonFly: src/usr.bin/brandelf/brandelf.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/brandelf/brandelf.c,v 1.13.2.4 2001/07/11 23:59:11 obrien Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/elf_common.h>

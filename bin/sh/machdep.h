@@ -35,6 +35,7 @@
  *
  *	@(#)machdep.h	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/machdep.h,v 1.6 1999/08/27 23:15:15 peter Exp $
+ * $DragonFly: src/bin/sh/Attic/machdep.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
 
 /*

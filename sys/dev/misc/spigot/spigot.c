@@ -43,6 +43,7 @@
  * Version 1.7, December 1995.
  *
  * $FreeBSD: src/sys/i386/isa/spigot.c,v 1.44 2000/01/29 16:17:36 peter Exp $
+ * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  *
  */
 

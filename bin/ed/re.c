@@ -24,16 +24,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)re.c,v 1.6 1994/02/01 00:34:43 alm Exp
+ * $FreeBSD: src/bin/ed/re.c,v 1.15.2.1 2001/08/01 02:36:03 obrien Exp $
+ * $DragonFly: src/bin/ed/re.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char * const rcsid = "@(#)re.c,v 1.6 1994/02/01 00:34:43 alm Exp";
-#else
-static char * const rcsid =
-  "$FreeBSD: src/bin/ed/re.c,v 1.15.2.1 2001/08/01 02:36:03 obrien Exp $";
-#endif
-#endif /* not lint */
 
 #include "ed.h"
 

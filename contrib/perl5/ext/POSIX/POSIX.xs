@@ -1,4 +1,5 @@
 /* $FreeBSD: src/contrib/perl5/ext/POSIX/POSIX.xs,v 1.2.2.1 2000/05/11 23:51:52 ache Exp $ */
+/* $DragonFly: src/contrib/perl5/ext/POSIX/Attic/POSIX.xs,v 1.2 2003/06/17 04:24:06 dillon Exp $ */
 #ifdef WIN32
 #define _POSIX_
 #endif

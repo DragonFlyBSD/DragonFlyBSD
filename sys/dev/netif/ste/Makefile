@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/ste/Makefile,v 1.7 2000/01/28 11:26:37 bde Exp $
+# $DragonFly: src/sys/dev/netif/ste/Makefile,v 1.2 2003/06/17 04:28:47 dillon Exp $
 
 .PATH:	${.CURDIR}/../../pci
 KMOD	= if_ste

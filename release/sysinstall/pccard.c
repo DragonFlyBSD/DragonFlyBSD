@@ -2,6 +2,7 @@
  * PC-card support for sysinstall
  *
  * $FreeBSD: src/release/sysinstall/pccard.c,v 1.10.2.7 2001/09/27 06:53:11 murray Exp $
+ * $DragonFly: src/release/sysinstall/Attic/pccard.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1997-1999
  *	Tatsumi Hosokawa <hosokawa@jp.FreeBSD.org>.  All rights reserved.

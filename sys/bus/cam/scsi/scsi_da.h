@@ -47,6 +47,7 @@
  * Ported to run under 386BSD by Julian Elischer (julian@tfs.com) Sept 1992
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.h,v 1.3.2.2 2000/07/01 23:35:49 ken Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.h,v 1.2 2003/06/17 04:28:19 dillon Exp $
  */
 
 #ifndef	_SCSI_SCSI_DA_H

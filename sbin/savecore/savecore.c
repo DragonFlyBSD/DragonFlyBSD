@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1986, 1992, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)savecore.c	8.3 (Berkeley) 1/2/94
+ * $FreeBSD: src/sbin/savecore/savecore.c,v 1.28.2.13 2002/04/07 21:17:50 asmodai Exp $
+ * $DragonFly: src/sbin/savecore/savecore.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1986, 1992, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)savecore.c	8.3 (Berkeley) 1/2/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/savecore/savecore.c,v 1.28.2.13 2002/04/07 21:17:50 asmodai Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

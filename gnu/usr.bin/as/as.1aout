@@ -1,6 +1,7 @@
 .\" Copyright (c) 1991, 1992 Free Software Foundation
 .\" See section COPYING for conditions for redistribution
 .\" $FreeBSD: src/gnu/usr.bin/as/as.1aout,v 1.9 1999/08/27 23:34:11 peter Exp $
+.\" $DragonFly: src/gnu/usr.bin/as/Attic/as.1aout,v 1.2 2003/06/17 04:25:44 dillon Exp $
 .TH as 1 "21 January 1992" "cygnus support" "GNU Development Tools"
 
 .SH NAME

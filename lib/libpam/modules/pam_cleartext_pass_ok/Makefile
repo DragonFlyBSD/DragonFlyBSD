@@ -23,6 +23,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/lib/libpam/modules/pam_cleartext_pass_ok/Makefile,v 1.2.6.6 2002/07/03 21:41:29 des Exp $
+# $DragonFly: src/lib/libpam/modules/pam_cleartext_pass_ok/Attic/Makefile,v 1.2 2003/06/17 04:26:50 dillon Exp $
 
 
 LIB=		pam_cleartext_pass_ok

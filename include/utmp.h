@@ -37,6 +37,7 @@
  *
  *	@(#)utmp.h	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/include/utmp.h,v 1.9 1999/08/27 23:44:53 peter Exp $
+ * $DragonFly: src/include/utmp.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef	_UTMP_H_

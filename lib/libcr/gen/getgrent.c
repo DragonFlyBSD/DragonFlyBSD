@@ -31,13 +31,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)getgrent.c	8.2 (Berkeley) 3/21/94
+ * $FreeBSD: src/lib/libc/gen/getgrent.c,v 1.17.6.1 2001/03/05 08:56:02 obrien Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/getgrent.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)getgrent.c	8.2 (Berkeley) 3/21/94";
-static char rcsid[] =
-  "$FreeBSD: src/lib/libc/gen/getgrent.c,v 1.17.6.1 2001/03/05 08:56:02 obrien Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <errno.h>
 #include <limits.h>

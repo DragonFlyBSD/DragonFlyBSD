@@ -2,6 +2,7 @@
 # even though it may live in src/gnu/...
 
 # $FreeBSD: src/gnu/usr.bin/cpio/doc/Makefile,v 1.3 1999/08/27 23:35:24 peter Exp $
+# $DragonFly: src/gnu/usr.bin/cpio/doc/Makefile,v 1.2 2003/06/17 04:25:45 dillon Exp $
 
 .PATH:	${.CURDIR}/../../../../contrib/cpio
 

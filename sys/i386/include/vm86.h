@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/vm86.h,v 1.13 1999/09/02 20:59:50 luoqi Exp $
+ * $DragonFly: src/sys/i386/include/Attic/vm86.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 #ifndef _MACHINE_VM86_H_

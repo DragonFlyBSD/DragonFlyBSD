@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/bus_pio.h,v 1.2 1999/08/28 00:44:08 peter Exp $
+ * $DragonFly: src/sys/i386/include/Attic/bus_pio.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef _I386_BUS_PIO_H_

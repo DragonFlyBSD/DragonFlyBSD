@@ -25,13 +25,12 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)svc.c 1.44 88/02/08 Copyr 1984 Sun Micro
+ * @(#)svc.c	2.4 88/08/11 4.0 RPCSRC
+ * $FreeBSD: src/lib/libc/rpc/svc.c,v 1.14.2.1 2001/03/05 10:50:36 obrien Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/svc.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/*static char *sccsid = "from: @(#)svc.c 1.44 88/02/08 Copyr 1984 Sun Micro";*/
-/*static char *sccsid = "from: @(#)svc.c	2.4 88/08/11 4.0 RPCSRC";*/
-static char *rcsid = "$FreeBSD: src/lib/libc/rpc/svc.c,v 1.14.2.1 2001/03/05 10:50:36 obrien Exp $";
-#endif
 
 /*
  * svc.c, Server-side remote procedure call interface.

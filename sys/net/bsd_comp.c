@@ -41,6 +41,7 @@
  * This version is for use with mbufs on BSD-derived systems.
  *
  * $FreeBSD: src/sys/net/bsd_comp.c,v 1.11.2.1 2002/04/14 21:41:48 luigi Exp $
+ * $DragonFly: src/sys/net/bsd_comp.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_rq.h,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_rq.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 #ifndef _NETSMB_SMB_RQ_H_
 #define	_NETSMB_SMB_RQ_H_

@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.3 (Berkeley) 5/8/95
 # $FreeBSD: src/bin/df/Makefile,v 1.9.2.3 2002/04/05 00:19:21 iedowse Exp $
+# $DragonFly: src/bin/df/Makefile,v 1.2 2003/06/17 04:22:49 dillon Exp $
 
 PROG=	df
 SRCS=	df.c vfslist.c

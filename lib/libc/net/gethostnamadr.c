@@ -21,12 +21,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libc/net/gethostnamadr.c,v 1.15.2.2 2001/03/05 10:40:42 obrien Exp $
+ * $DragonFly: src/lib/libc/net/gethostnamadr.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)$FreeBSD: src/lib/libc/net/gethostnamadr.c,v 1.15.2.2 2001/03/05 10:40:42 obrien Exp $";
-static char rcsid[] = "$FreeBSD: src/lib/libc/net/gethostnamadr.c,v 1.15.2.2 2001/03/05 10:40:42 obrien Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/socket.h>

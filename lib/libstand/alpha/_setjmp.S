@@ -1,5 +1,6 @@
 /*	$NetBSD: _setjmp.S,v 1.2 1996/10/17 03:08:03 cgd Exp $	*/
 /* $FreeBSD: src/lib/libstand/alpha/_setjmp.S,v 1.2.2.1 2000/05/18 08:01:16 ps Exp $ */
+/* $DragonFly: src/lib/libstand/alpha/Attic/_setjmp.S,v 1.2 2003/06/17 04:26:51 dillon Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Carnegie-Mellon University.

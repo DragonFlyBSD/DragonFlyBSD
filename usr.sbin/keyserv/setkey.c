@@ -25,15 +25,11 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)setkey.c	1.11	94/04/25 SMI
+ * $FreeBSD: src/usr.sbin/keyserv/setkey.c,v 1.3 1999/08/28 01:16:41 peter Exp $
+ * $DragonFly: src/usr.sbin/keyserv/setkey.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)setkey.c	1.11	94/04/25 SMI";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/keyserv/setkey.c,v 1.3 1999/08/28 01:16:41 peter Exp $";
-#endif /* not lint */
 
 /*
  * Copyright (c) 1986 - 1991 by Sun Microsystems, Inc.

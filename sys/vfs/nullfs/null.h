@@ -36,6 +36,7 @@
  *	@(#)null.h	8.3 (Berkeley) 8/20/94
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null.h,v 1.11.2.3 2001/06/26 04:20:09 bp Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null.h,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 struct null_args {

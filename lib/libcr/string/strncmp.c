@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)strncmp.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/string/strncmp.c,v 1.2.8.1 2001/07/09 23:30:07 obrien Exp $
+ * $DragonFly: src/lib/libcr/string/Attic/strncmp.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)strncmp.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/string/strncmp.c,v 1.2.8.1 2001/07/09 23:30:07 obrien Exp $";
-#endif
 
 #include <sys/cdefs.h>
 #include <string.h>

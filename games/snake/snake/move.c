@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)move.c	8.1 (Berkeley) 7/19/93
+ * $FreeBSD: src/games/snake/snake/move.c,v 1.5.2.1 2000/08/17 06:21:44 jhb Exp $
+ * $DragonFly: src/games/snake/snake/Attic/move.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)move.c	8.1 (Berkeley) 7/19/93";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/snake/snake/move.c,v 1.5.2.1 2000/08/17 06:21:44 jhb Exp $";
-#endif /* not lint */
 
 /*************************************************************************
  *

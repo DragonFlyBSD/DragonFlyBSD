@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iicbb.c,v 1.6.2.2 2002/04/19 05:52:12 nsouch Exp $
+ * $DragonFly: src/sys/bus/iicbus/iicbb.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
  *
  */
 

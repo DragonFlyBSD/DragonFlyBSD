@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/sbin/dump/Makefile,v 1.12.2.4 2003/01/25 18:54:59 dillon Exp $
+# $DragonFly: src/sbin/dump/Makefile,v 1.2 2003/06/17 04:27:32 dillon Exp $
 
 #	dump.h			header file
 #	itime.c			reads /etc/dumpdates

@@ -37,6 +37,7 @@
  *
  *	from: @(#)sprite.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/sprite.h,v 1.9 1999/08/28 01:03:36 peter Exp $
+ * $DragonFly: src/usr.bin/make/Attic/sprite.h,v 1.2 2003/06/17 04:29:29 dillon Exp $
  */
 
 /*

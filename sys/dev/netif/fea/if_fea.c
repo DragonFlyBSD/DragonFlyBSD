@@ -22,6 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fea.c,v 1.19 2000/01/14 07:14:03 peter Exp $
+ * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 /*

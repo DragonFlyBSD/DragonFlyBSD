@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/throughput.h,v 1.8.2.2 2000/09/16 23:09:06 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/throughput.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 #define SAMPLE_PERIOD 5		/* Default sample period */

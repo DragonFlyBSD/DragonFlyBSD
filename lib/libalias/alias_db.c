@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libalias/alias_db.c,v 1.21.2.14 2002/07/24 03:21:24 luigi Exp $
+ * $DragonFly: src/lib/libalias/alias_db.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
 
 /*

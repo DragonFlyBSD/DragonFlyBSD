@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/isapnp.h,v 1.5 1999/12/29 04:54:22 peter Exp $
+ * $DragonFly: src/sys/boot/common/isapnp.h,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 
 #ifndef _I386_ISA_PNP_H_

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/boot/alpha/libalpha/libalpha.h,v 1.5.2.1 2000/12/28 13:12:24 ps Exp $ */
+/* $DragonFly: src/sys/boot/alpha/libalpha/Attic/libalpha.h,v 1.2 2003/06/17 04:28:16 dillon Exp $ */
 
 /*
  * Copyright (c) 1996

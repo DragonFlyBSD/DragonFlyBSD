@@ -91,10 +91,10 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA. */
                         on a line
 */
 
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/as/listing.c,v 1.6 1999/08/27 23:34:18 peter Exp $";
-#endif
-
+/*
+ * $FreeBSD: src/gnu/usr.bin/as/listing.c,v 1.6 1999/08/27 23:34:18 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/as/Attic/listing.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
+ */
 #include <ctype.h>
 
 #include "as.h"

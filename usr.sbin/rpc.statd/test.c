@@ -1,9 +1,8 @@
 
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/rpc.statd/test.c,v 1.3 1999/08/28 01:19:39 peter Exp $";
-#endif /* not lint */
-
+/*
+ * $FreeBSD: src/usr.sbin/rpc.statd/test.c,v 1.3 1999/08/28 01:19:39 peter Exp $
+ * $DragonFly: src/usr.sbin/rpc.statd/test.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ */
 #include <stdio.h>
 #include <rpc/rpc.h>
 #include <rpcsvc/sm_inter.h>

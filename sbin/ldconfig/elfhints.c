@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ldconfig/elfhints.c,v 1.3.2.3 2001/07/11 23:59:10 obrien Exp $
+ * $DragonFly: src/sbin/ldconfig/elfhints.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
 
 #include <sys/param.h>

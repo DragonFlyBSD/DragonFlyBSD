@@ -18,6 +18,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/sivar.h,v 1.1 2000/01/24 07:24:02 peter Exp $
+ * $DragonFly: src/sys/dev/serial/si/sivar.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 int	siattach(device_t dev);

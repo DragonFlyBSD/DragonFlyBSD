@@ -37,6 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_pptpgre.c,v 1.2.2.13 2002/10/10 18:27:54 archie Exp $
+ * $DragonFly: src/sys/netgraph/pptpgre/ng_pptpgre.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
  * $Whistle: ng_pptpgre.c,v 1.7 1999/12/08 00:10:06 archie Exp $
  */
 

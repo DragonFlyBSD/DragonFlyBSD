@@ -1,5 +1,6 @@
 /*	$NetBSD: krpc.h,v 1.4 1995/12/19 23:07:11 cgd Exp $	*/
 /* $FreeBSD: src/sys/nfs/krpc.h,v 1.6 1999/08/28 00:49:55 peter Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/krpc.h,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
 
 #include <sys/cdefs.h>
 

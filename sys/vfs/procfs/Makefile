@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/procfs/Makefile,v 1.18 1999/12/12 20:34:10 peter Exp $
+# $DragonFly: src/sys/vfs/procfs/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
 
 .PATH:	${.CURDIR}/../../miscfs/procfs
 KMOD=	procfs

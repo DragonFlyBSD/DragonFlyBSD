@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)query.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/robots/query.c,v 1.5 1999/11/30 03:49:20 billf Exp $
+ * $DragonFly: src/games/robots/query.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)query.c	8.1 (Berkeley) 5/31/93";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/robots/query.c,v 1.5 1999/11/30 03:49:20 billf Exp $";
-#endif /* not lint */
 
 #include <string.h>
 # include	"robots.h"

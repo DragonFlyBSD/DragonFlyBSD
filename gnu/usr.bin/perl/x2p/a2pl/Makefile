@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/gnu/usr.bin/perl/x2p/a2pl/Makefile,v 1.11.2.1 2000/10/05 09:54:57 markm Exp $
+# $DragonFly: src/gnu/usr.bin/perl/x2p/a2pl/Attic/Makefile,v 1.2 2003/06/17 04:25:47 dillon Exp $
 #
 
 PROG=	a2p

@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/named.reload/Makefile,v 1.6.2.2 2001/04/25 14:04:54 ru Exp $
+# $DragonFly: src/usr.sbin/named.reload/Makefile,v 1.2 2003/06/17 04:29:57 dillon Exp $
 
 .include "${.CURDIR}/../named/Makefile.inc"
 

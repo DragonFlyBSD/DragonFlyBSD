@@ -32,6 +32,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #include "opt_ipsec.h"

@@ -30,6 +30,9 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/rpc/crypt_client.c,v 1.4 1999/08/28 00:00:37 peter Exp $
+ * $DragonFly: src/lib/libc/rpc/crypt_client.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ *
+ * $FreeBSD: src/lib/libc/rpc/crypt_client.c,v 1.4 1999/08/28 00:00:37 peter Exp $
  */
 
 #include <sys/types.h>
@@ -37,10 +40,6 @@
 #include <rpc/des.h>
 #include <string.h>
 #include <rpcsvc/crypt.h>
-
-#ifndef lint
-static const char rcsid[] = "$FreeBSD: src/lib/libc/rpc/crypt_client.c,v 1.4 1999/08/28 00:00:37 peter Exp $";
-#endif
 
 #ifndef KEYSERVSOCK
 #define KEYSERVSOCK "/var/run/keyservsock"

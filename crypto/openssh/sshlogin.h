@@ -1,5 +1,6 @@
 /*	$OpenBSD: sshlogin.h,v 1.4 2002/08/29 15:57:25 stevesk Exp $	*/
 /*	$FreeBSD: src/crypto/openssh/sshlogin.h,v 1.1.1.1.2.4 2003/02/03 17:31:08 des Exp $	*/
+/*	$DragonFly: src/crypto/openssh/Attic/sshlogin.h,v 1.2 2003/06/17 04:24:36 dillon Exp $	*/
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

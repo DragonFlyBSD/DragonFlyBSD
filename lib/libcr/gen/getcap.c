@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getcap.c,v 1.11.2.2 2001/01/15 06:48:09 gad Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/getcap.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)getcap.c	8.3 (Berkeley) 3/25/94
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)getcap.c	8.3 (Berkeley) 3/25/94";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 

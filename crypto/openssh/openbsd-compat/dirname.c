@@ -25,14 +25,12 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $OpenBSD: dirname.c,v 1.7 2002/05/24 21:22:37 deraadt Exp $
  */
 
 #include "includes.h"
 #ifndef HAVE_DIRNAME
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char rcsid[] = "$OpenBSD: dirname.c,v 1.7 2002/05/24 21:22:37 deraadt Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <errno.h>
 #include <string.h>

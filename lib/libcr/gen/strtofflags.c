@@ -29,16 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)stat_flags.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/lib/libc/gen/strtofflags.c,v 1.18.2.1 2000/06/28 01:52:24 joe Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/strtofflags.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)stat_flags.c	8.1 (Berkeley) 5/31/93";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/gen/strtofflags.c,v 1.18.2.1 2000/06/28 01:52:24 joe Exp $";
-#endif
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/vars.c,v 1.1.2.1 2002/04/28 05:40:24 suz Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/vars.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 
 #include <sys/types.h>

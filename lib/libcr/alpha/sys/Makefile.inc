@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/libc/alpha/sys/Makefile.inc,v 1.6.2.1 2002/10/15 19:46:45 fjoe Exp $
+# $DragonFly: src/lib/libcr/alpha/sys/Attic/Makefile.inc,v 1.2 2003/06/17 04:26:41 dillon Exp $
 
 MDASM+=	Ovfork.S brk.S cerror.S exect.S fork.S pipe.S ptrace.S \
 	sbrk.S setlogin.S sigreturn.S syscall.S

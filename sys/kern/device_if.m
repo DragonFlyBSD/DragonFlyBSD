@@ -24,6 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/kern/device_if.m,v 1.7.2.1 2001/07/24 09:49:41 dd Exp $
+# $DragonFly: src/sys/kern/device_if.m,v 1.2 2003/06/17 04:28:41 dillon Exp $
 #
 
 INTERFACE device;

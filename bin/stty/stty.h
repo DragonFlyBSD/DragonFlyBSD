@@ -32,6 +32,7 @@
  *
  *	@(#)stty.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/stty/stty.h,v 1.5.2.1 2001/07/04 22:40:00 kris Exp $
+ * $DragonFly: src/bin/stty/stty.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
 
 #include <sys/ioctl.h>

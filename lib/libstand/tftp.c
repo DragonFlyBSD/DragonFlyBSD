@@ -31,6 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/tftp.c,v 1.2.6.4 2001/07/14 14:00:03 mikeh Exp $
+ * $DragonFly: src/lib/libstand/tftp.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 
 /*

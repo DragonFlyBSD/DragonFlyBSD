@@ -165,6 +165,7 @@
 
 RCSID("$Id: loginrec.c,v 1.44 2002/09/26 00:38:49 tim Exp $");
 RCSID("$FreeBSD: src/crypto/openssh/loginrec.c,v 1.1.1.1.2.3 2003/02/03 17:31:07 des Exp $");
+RCSID("$DragonFly: src/crypto/openssh/Attic/loginrec.c,v 1.2 2003/06/17 04:24:36 dillon Exp $");
 
 #ifdef HAVE_UTIL_H
 #  include <util.h>

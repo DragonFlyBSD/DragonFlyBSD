@@ -1,5 +1,6 @@
 /*	$OpenBSD: ssh.h,v 1.71 2002/06/22 02:00:29 stevesk Exp $	*/
 /*	$FreeBSD: src/crypto/openssh/ssh.h,v 1.6.2.8 2003/02/03 17:31:08 des Exp $	*/
+/*	$DragonFly: src/crypto/openssh/Attic/ssh.h,v 1.2 2003/06/17 04:24:36 dillon Exp $	*/
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

@@ -55,6 +55,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/fpu_system.h,v 1.7.2.1 2001/08/15 01:23:49 peter Exp $
+ * $DragonFly: src/sys/i386/gnu/fpemul/Attic/fpu_system.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  *
  */
 

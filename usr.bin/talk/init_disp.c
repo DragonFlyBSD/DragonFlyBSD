@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)init_disp.c	8.2 (Berkeley) 2/16/94
+ * $FreeBSD: src/usr.bin/talk/init_disp.c,v 1.11.2.1 2001/07/30 10:31:29 dd Exp $
+ * $DragonFly: src/usr.bin/talk/init_disp.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)init_disp.c	8.2 (Berkeley) 2/16/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/talk/init_disp.c,v 1.11.2.1 2001/07/30 10:31:29 dd Exp $";
-#endif /* not lint */
 
 /*
  * Initialization code for the display package,

@@ -2,6 +2,7 @@
  * Memory range attribute operations, peformed on /dev/mem
  *
  * $FreeBSD: src/sys/sys/memrange.h,v 1.4.2.2 2002/09/16 21:58:37 dwmalone Exp $
+ * $DragonFly: src/sys/sys/memrange.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 /* Memory range attributes */

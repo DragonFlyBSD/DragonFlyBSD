@@ -37,6 +37,7 @@
 #include "includes.h"
 RCSID("$OpenBSD: serverloop.c,v 1.104 2002/09/19 16:03:15 stevesk Exp $");
 RCSID("$FreeBSD: src/crypto/openssh/serverloop.c,v 1.1.1.1.2.7 2003/02/03 17:31:07 des Exp $");
+RCSID("$DragonFly: src/crypto/openssh/Attic/serverloop.c,v 1.2 2003/06/17 04:24:36 dillon Exp $");
 
 #include "xmalloc.h"
 #include "packet.h"

@@ -25,6 +25,9 @@
 % * Sun Microsystems, Inc.
 % * 2550 Garcia Avenue
 % * Mountain View, California  94043
+% *
+% * @(#)pmap_prot.x	1.6	94/04/29 SMI
+% * $DragonFly: src/include/rpcsvc/pmap_prot.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
 % */
 %/*
 % * Copyright (c) 1984,1989 by Sun Microsystems, Inc.
@@ -33,8 +36,6 @@
 %/* from pmap_prot.x */
 
 #ifdef RPC_HDR
-%
-%#pragma ident	"@(#)pmap_prot.x	1.6	94/04/29 SMI"
 %
 %#ifndef _KERNEL
 %

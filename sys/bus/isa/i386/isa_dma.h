@@ -32,6 +32,7 @@
  *
  *	from: @(#)isa_device.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/isa_dma.h,v 1.3.2.1 2000/08/08 19:49:53 peter Exp $
+ * $DragonFly: src/sys/bus/isa/i386/Attic/isa_dma.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 #ifndef _I386_ISA_ISA_DMA_H_

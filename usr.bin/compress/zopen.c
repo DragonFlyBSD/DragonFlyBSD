@@ -33,14 +33,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)zopen.c	8.1 (Berkeley) 6/27/93
+ * $FreeBSD: src/usr.bin/compress/zopen.c,v 1.5.6.1 2002/07/16 00:52:08 tjr Exp $
+ * $DragonFly: src/usr.bin/compress/zopen.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)zopen.c	8.1 (Berkeley) 6/27/93";
-#endif /* LIBC_SCCS and not lint */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/compress/zopen.c,v 1.5.6.1 2002/07/16 00:52:08 tjr Exp $");
 
 /*-
  * fcompress.c - File compression ala IEEE Computer, June 1984.

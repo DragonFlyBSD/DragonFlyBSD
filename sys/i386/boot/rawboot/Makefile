@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/i386/boot/rawboot/Makefile,v 1.13.2.1 2002/08/07 16:31:56 ru Exp $
+# $DragonFly: src/sys/i386/boot/rawboot/Attic/Makefile,v 1.2 2003/06/17 04:28:35 dillon Exp $
 #
 
 PROG=	boot

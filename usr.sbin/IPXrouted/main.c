@@ -36,17 +36,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/main.c,v 1.10 1999/08/28 01:15:03 peter Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/main.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *
+ * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)main.c	8.1 (Berkeley) 6/5/93
  */
-
-#ifndef lint
-static char copyright[] =
-"@(#) Copyright (c) 1985, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static char sccsid[] = "@(#)main.c	8.1 (Berkeley) 6/5/93";
-#endif /* not lint */
 
 /*
  * IPX Routing Information Protocol Daemon

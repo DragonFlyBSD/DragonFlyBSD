@@ -1,4 +1,5 @@
 /* $FreeBSD: src/lib/libopie/config.h,v 1.4.2.2 2002/07/15 14:17:08 des Exp $ */
+/* $DragonFly: src/lib/libopie/config.h,v 1.2 2003/06/17 04:26:50 dillon Exp $ */
 /* config.h.  Generated automatically by configure.  */
 /* config.h.in.  Generated automatically from configure.in by autoheader.  */
 

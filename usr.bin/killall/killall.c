@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/killall/killall.c,v 1.5.2.4 2001/05/19 19:22:49 phk Exp $
+ * $DragonFly: src/usr.bin/killall/killall.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
 
 #include <sys/cdefs.h>

@@ -1,4 +1,5 @@
 $FreeBSD: src/usr.sbin/stallion/bootcode/cdk.sys.uu,v 1.2.10.2 2001/09/09 01:41:40 murray Exp $
+$DragonFly: src/usr.sbin/stallion/bootcode/cdk.sys.uu,v 1.2 2003/06/17 04:30:03 dillon Exp $
 
 begin 444 cdk.sys
 M````````````````````````````````````````````````````````````

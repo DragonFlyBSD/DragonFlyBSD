@@ -25,6 +25,7 @@
  *
  *	from: Mach, Revision 2.2  92/04/04  11:36:34  rpd
  * $FreeBSD: src/sys/i386/boot/biosboot/sys.c,v 1.22 1999/08/28 00:43:14 peter Exp $
+ * $DragonFly: src/sys/i386/boot/biosboot/Attic/sys.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #include "boot.h"

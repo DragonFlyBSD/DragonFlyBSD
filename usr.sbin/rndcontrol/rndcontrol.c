@@ -22,12 +22,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/rndcontrol/rndcontrol.c,v 1.11.2.1 2000/05/10 02:04:44 obrien Exp $
+ * $DragonFly: src/usr.sbin/rndcontrol/rndcontrol.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/rndcontrol/rndcontrol.c,v 1.11.2.1 2000/05/10 02:04:44 obrien Exp $";
-#endif /* not lint */
 
 #include <sys/random.h>
 #include <err.h>

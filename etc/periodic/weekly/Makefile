@@ -1,4 +1,5 @@
 # $FreeBSD: src/etc/periodic/weekly/Makefile,v 1.4.2.3 2002/07/18 12:36:07 ru Exp $
+# $DragonFly: src/etc/periodic/weekly/Makefile,v 1.2 2003/06/17 04:24:48 dillon Exp $
 
 FILES=	120.clean-kvmdb \
 	310.locate \

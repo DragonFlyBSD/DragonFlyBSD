@@ -29,6 +29,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/crypto/telnet/libtelnet/kerberos5.c,v 1.1.1.1.8.2 2003/04/24 19:13:59 nectar Exp $
+ * $DragonFly: src/crypto/telnet/libtelnet/kerberos5.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 /*
@@ -50,10 +53,6 @@
  * this software for any purpose.  It is provided "as is" without express
  * or implied warranty.
  */
-
-#include <sys/cdefs.h>
-
-__FBSDID("$FreeBSD: src/crypto/telnet/libtelnet/kerberos5.c,v 1.1.1.1.8.2 2003/04/24 19:13:59 nectar Exp $");
 
 #ifdef	KRB5
 

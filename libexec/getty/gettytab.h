@@ -32,6 +32,7 @@
  *
  *	from: @(#)gettytab.h	8.2 (Berkeley) 3/30/94
  * $FreeBSD: src/libexec/getty/gettytab.h,v 1.10.2.3 2003/02/06 11:45:31 sobomax Exp $
+ * $DragonFly: src/libexec/getty/gettytab.h,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 /*

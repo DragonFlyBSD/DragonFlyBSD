@@ -12,6 +12,7 @@
 # LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 # A PARTICULAR PURPOSE.
 # $FreeBSD: src/usr.sbin/rrenumd/Makefile,v 1.1.2.3 2001/04/25 12:10:47 ru Exp $
+# $DragonFly: src/usr.sbin/rrenumd/Makefile,v 1.2 2003/06/17 04:30:02 dillon Exp $
 
 PROG=	rrenumd
 SRCS=	rrenumd.c  parser.y lexer.l

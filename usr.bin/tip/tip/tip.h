@@ -34,6 +34,7 @@
  *      @(#)tip.h	8.1 (Berkeley) 6/6/93
  *
  * $FreeBSD: src/usr.bin/tip/tip/tip.h,v 1.5.2.1 2000/07/01 12:24:23 ps Exp $
+ * $DragonFly: src/usr.bin/tip/tip/tip.h,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
 
 /*

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/criov.c,v 1.1.2.1 2002/11/21 23:34:23 sam Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/criov.c,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
 /*      $OpenBSD: criov.c,v 1.9 2002/01/29 15:48:29 jason Exp $	*/
 
 /*

@@ -27,6 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/coff.h,v 1.5 1999/08/28 00:43:57 peter Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/coff.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef _COFF_H

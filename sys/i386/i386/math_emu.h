@@ -4,6 +4,7 @@
  * (C) 1991 Linus Torvalds
  *
  * $FreeBSD: src/sys/i386/i386/math_emu.h,v 1.7.2.1 2001/08/15 01:23:50 peter Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/math_emu.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 #ifndef _LINUX_MATH_EMU_H
 #define _LINUX_MATH_EMU_H

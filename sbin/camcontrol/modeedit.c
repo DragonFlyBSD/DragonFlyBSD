@@ -24,12 +24,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT  
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sbin/camcontrol/modeedit.c,v 1.5.2.2 2003/01/08 17:55:02 njl Exp $
+ * $DragonFly: src/sbin/camcontrol/modeedit.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/camcontrol/modeedit.c,v 1.5.2.2 2003/01/08 17:55:02 njl Exp $";
-#endif /* not lint */
 
 #include <sys/queue.h>
 #include <sys/types.h>

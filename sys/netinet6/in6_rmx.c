@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_rmx.c,v 1.1.2.3 2002/04/28 05:40:27 suz Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
 /*	$KAME: in6_rmx.c,v 1.11 2001/07/26 06:53:16 jinmei Exp $	*/
 
 /*

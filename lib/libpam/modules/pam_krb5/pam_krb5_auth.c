@@ -4,6 +4,7 @@
  * PAM authentication management functions for pam_krb5
  *
  * $FreeBSD: src/lib/libpam/modules/pam_krb5/pam_krb5_auth.c,v 1.1.2.2 2001/07/29 18:57:30 markm Exp $
+ * $DragonFly: src/lib/libpam/modules/pam_krb5/Attic/pam_krb5_auth.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
 
 static const char rcsid[] = "$Id: pam_krb5_auth.c,v 1.18 2000/01/04 08:44:08 fcusack Exp $";

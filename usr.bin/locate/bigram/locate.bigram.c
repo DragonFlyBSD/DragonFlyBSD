@@ -35,17 +35,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/locate/bigram/locate.bigram.c,v 1.11 1999/08/28 01:02:54 peter Exp $
+ * $DragonFly: src/usr.bin/locate/bigram/locate.bigram.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ *
+ * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)locate.bigram.c	8.1 (Berkeley) 6/6/93
  */
-
-#ifndef lint
-static char copyright[] =
-"@(#) Copyright (c) 1989, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static char sccsid[] = "@(#)locate.bigram.c	8.1 (Berkeley) 6/6/93";
-#endif /* not lint */
 
 /*
  *  bigram < sorted_file_names | sort -nr | 

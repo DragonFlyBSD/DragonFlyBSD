@@ -26,11 +26,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
+ *
+ * $FreeBSD: src/crypto/telnet/libtelnet/sra.c,v 1.1.2.7 2002/05/16 08:46:49 markm Exp $
+ * $DragonFly: src/crypto/telnet/libtelnet/sra.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-
-__FBSDID("$FreeBSD: src/crypto/telnet/libtelnet/sra.c,v 1.1.2.7 2002/05/16 08:46:49 markm Exp $");
 
 #ifdef	SRA
 #ifdef	ENCRYPTION

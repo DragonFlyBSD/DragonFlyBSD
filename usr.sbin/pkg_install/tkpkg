@@ -1,5 +1,6 @@
 #!/usr/local/bin/wish -f
 #$FreeBSD: src/usr.sbin/pkg_install/tkpkg,v 1.7 1999/08/29 15:54:49 peter Exp $
+#$DragonFly: src/usr.sbin/pkg_install/Attic/tkpkg,v 1.2 2003/06/17 04:29:59 dillon Exp $
 #
 #$Log: tkpkg,v $
 #Revision 1.2  1994/12/06 00:51:21  jkh

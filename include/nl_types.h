@@ -1,4 +1,5 @@
 /* $FreeBSD: src/include/nl_types.h,v 1.7 1999/08/27 23:44:51 peter Exp $ */
+/* $DragonFly: src/include/nl_types.h,v 1.2 2003/06/17 04:25:56 dillon Exp $ */
 
 /***********************************************************
 Copyright 1990, by Alfalfa Software Incorporated, Cambridge, Massachusetts.

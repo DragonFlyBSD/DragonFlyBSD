@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)utils.c	8.3 (Berkeley) 4/1/94
+ * $FreeBSD: src/bin/cp/utils.c,v 1.27.2.6 2002/08/10 13:20:19 johan Exp $
+ * $DragonFly: src/bin/cp/utils.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)utils.c	8.3 (Berkeley) 4/1/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/bin/cp/utils.c,v 1.27.2.6 2002/08/10 13:20:19 johan Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/i4b.h,v 1.4 1999/11/26 22:44:31 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/i4b.h,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 struct physical;

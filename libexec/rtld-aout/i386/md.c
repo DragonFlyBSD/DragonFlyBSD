@@ -28,6 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-aout/i386/md.c,v 1.17 1999/08/28 00:10:07 peter Exp $
+ * $DragonFly: src/libexec/rtld-aout/i386/Attic/md.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
 
 #include <sys/param.h>

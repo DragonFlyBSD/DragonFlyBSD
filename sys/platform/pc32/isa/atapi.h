@@ -13,6 +13,7 @@
  *
  * Version 1.9, Thu Oct 12 15:53:50 MSK 1995
  * $FreeBSD: src/sys/i386/isa/atapi.h,v 1.19.2.1 2000/04/03 20:13:06 n_hibma Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/atapi.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 #define atapi_attach wdc_atapi_attach

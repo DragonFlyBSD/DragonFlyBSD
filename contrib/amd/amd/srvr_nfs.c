@@ -40,6 +40,7 @@
  *
  * $Id: srvr_nfs.c,v 1.5 1999/09/08 23:36:39 ezk Exp $
  * $FreeBSD: src/contrib/amd/amd/srvr_nfs.c,v 1.4 1999/09/15 05:45:13 obrien Exp $
+ * $DragonFly: src/contrib/amd/amd/srvr_nfs.c,v 1.2 2003/06/17 04:23:56 dillon Exp $
  *
  */
 

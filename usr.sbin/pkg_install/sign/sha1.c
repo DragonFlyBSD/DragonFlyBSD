@@ -26,10 +26,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/pkg_install/sign/sha1.c,v 1.1.2.3 2002/08/20 06:35:08 obrien Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/sha1.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.sbin/pkg_install/sign/sha1.c,v 1.1.2.3 2002/08/20 06:35:08 obrien Exp $");
 
 #include <sys/types.h>
 #include <sys/wait.h>

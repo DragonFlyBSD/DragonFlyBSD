@@ -37,6 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 /*

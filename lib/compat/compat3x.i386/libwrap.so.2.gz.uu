@@ -1,4 +1,5 @@
 $FreeBSD: src/lib/compat/compat3x.i386/libwrap.so.2.gz.uu,v 1.1.2.2 2002/11/10 15:38:43 imp Exp $
+$DragonFly: src/lib/compat/compat3x.i386/Attic/libwrap.so.2.gz.uu,v 1.2 2003/06/17 04:26:40 dillon Exp $
 
 begin 444 libwrap.so.2.gz
 M'XL(""%@=CD"`VQI8G=R87`N<V\N,@#M?']\5-6U[YED"`$""1`$%7%`(C^$

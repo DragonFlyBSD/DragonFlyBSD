@@ -31,12 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/uucplock.c,v 1.12.2.1 2000/10/09 20:20:52 brian Exp $
+ * $DragonFly: src/lib/libutil/uucplock.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  *
+ * @(#)uucplock.c	8.1 (Berkeley) 6/6/93
  */
-
-#ifndef lint
-static const char sccsid[] = "@(#)uucplock.c	8.1 (Berkeley) 6/6/93";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/file.h>

@@ -32,6 +32,7 @@
  *
  *	@(#)uio.h	8.5 (Berkeley) 2/22/94
  * $FreeBSD: src/sys/sys/uio.h,v 1.11.2.1 2001/09/28 16:58:35 dillon Exp $
+ * $DragonFly: src/sys/sys/uio.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _SYS_UIO_H_

@@ -1,6 +1,7 @@
 newcode	:
 /* $Header: /src/pub/tcsh/host.defs,v 1.31 2001/06/10 02:19:11 christos Exp $ */
 /* $FreeBSD: src/bin/csh/host.defs,v 1.1.2.2 2001/10/08 21:11:00 mp Exp $ */
+/* $DragonFly: src/bin/csh/host.defs,v 1.2 2003/06/17 04:22:49 dillon Exp $ */
 /*
  * host.defs: Hosttype/Machtype etc.
  */

@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/camcontrol/camcontrol.c,v 1.21.2.13 2003/01/08 17:55:02 njl Exp $
+ * $DragonFly: src/sbin/camcontrol/camcontrol.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
 
 #include <sys/ioctl.h>

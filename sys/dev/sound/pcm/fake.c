@@ -22,11 +22,14 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pcm/fake.c,v 1.4.2.5 2002/04/22 15:49:36 cg Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/fake.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pcm/fake.c,v 1.4.2.5 2002/04/22 15:49:36 cg Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/fake.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
 
 static u_int32_t fk_fmt[] = {
 	AFMT_U8,

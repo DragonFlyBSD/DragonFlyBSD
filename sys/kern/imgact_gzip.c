@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/imgact_gzip.c,v 1.40.2.1 2001/11/03 01:41:08 ps Exp $
+ * $DragonFly: src/sys/kern/imgact_gzip.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  *
  * This module handles execution of a.out files which have been run through
  * "gzip".  This saves diskspace, but wastes cpu-cycles and VM.

@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/periodic/daily/460.status-mail-rejects,v 1.8.2.5 2002/05/13 21:36:44 brian Exp $
+# $DragonFly: src/etc/periodic/daily/460.status-mail-rejects,v 1.2 2003/06/17 04:24:48 dillon Exp $
 #
 
 # If there is a global system configuration file, suck it in.

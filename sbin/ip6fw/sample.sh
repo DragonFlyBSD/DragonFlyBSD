@@ -1,5 +1,6 @@
 #!/bin/sh -
 # $FreeBSD: src/sbin/ip6fw/sample.sh,v 1.1.2.1 2000/05/04 17:35:00 phantom Exp $
+# $DragonFly: src/sbin/ip6fw/sample.sh,v 1.2 2003/06/17 04:27:33 dillon Exp $
 
 fwcmd=/sbin/ip6fw
 

@@ -29,6 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * $FreeBSD: src/sys/netncp/ncp_conn.c,v 1.3.2.5 2001/02/22 08:54:11 bp Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  *
  * Connection tables
  */

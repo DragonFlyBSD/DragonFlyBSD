@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)parse.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/hexdump/parse.c,v 1.4.2.1 2002/07/23 14:27:06 tjr Exp $
+ * $DragonFly: src/usr.bin/hexdump/parse.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)parse.c	8.1 (Berkeley) 6/6/93";
-#endif
-#endif /* not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/hexdump/parse.c,v 1.4.2.1 2002/07/23 14:27:06 tjr Exp $");
 
 #include <sys/types.h>
 

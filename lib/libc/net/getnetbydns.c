@@ -49,6 +49,10 @@
  * SOFTWARE.
  * -
  * --Copyright--
+ *
+ * @(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/net/getnetbydns.c,v 1.13.2.4 2002/10/11 11:07:13 ume Exp $
+ * $DragonFly: src/lib/libc/net/getnetbydns.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 /* Portions Copyright (c) 1993 Carlos Leandro and Rui Salgueiro
  *	Dep. Matematica Universidade de Coimbra, Portugal, Europe
@@ -57,11 +61,6 @@
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93";
-static char rcsid[] = "$FreeBSD: src/lib/libc/net/getnetbydns.c,v 1.13.2.4 2002/10/11 11:07:13 ume Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/socket.h>

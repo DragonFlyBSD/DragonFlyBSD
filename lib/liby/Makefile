@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/liby/Makefile,v 1.7 1999/08/28 00:05:59 peter Exp $
+# $DragonFly: src/lib/liby/Makefile,v 1.2 2003/06/17 04:26:52 dillon Exp $
 
 LIB=		y
 SHLIB_MAJOR=	2

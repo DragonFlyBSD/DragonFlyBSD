@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/calendar/calendar.h,v 1.5.2.3 2003/04/06 20:04:57 dwmalone Exp $
+ * $DragonFly: src/usr.bin/calendar/calendar.h,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
 
 

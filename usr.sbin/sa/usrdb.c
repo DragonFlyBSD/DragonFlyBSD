@@ -26,12 +26,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/sa/usrdb.c,v 1.8.2.2 2000/10/28 02:28:20 gallatin Exp $
+ * $DragonFly: src/usr.sbin/sa/usrdb.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/sa/usrdb.c,v 1.8.2.2 2000/10/28 02:28:20 gallatin Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/types.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/tcpmss.h,v 1.1.4.1 2000/12/18 01:46:45 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/tcpmss.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 extern struct layer tcpmsslayer;

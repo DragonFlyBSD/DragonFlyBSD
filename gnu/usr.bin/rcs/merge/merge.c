@@ -25,6 +25,10 @@ Report problems and direct all questions to:
     rcs-bugs@cs.purdue.edu
 
 */
+/*
+ * $FreeBSD: src/gnu/usr.bin/rcs/merge/merge.c,v 1.5 1999/08/27 23:36:51 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/merge/merge.c,v 1.2 2003/06/17 04:25:47 dillon Exp $
+ */
 
 #include "rcsbase.h"
 
@@ -41,7 +45,7 @@ badoption(a)
 }
 
 
-mainProg(mergeId, "merge", "$FreeBSD: src/gnu/usr.bin/rcs/merge/merge.c,v 1.5 1999/08/27 23:36:51 peter Exp $")
+mainProg(mergeId, "merge", "$DragonFly: src/gnu/usr.bin/rcs/merge/merge.c,v 1.2 2003/06/17 04:25:47 dillon Exp $")
 {
 	register char const *a;
 	char const *arg[3], *label[3], *edarg = 0;

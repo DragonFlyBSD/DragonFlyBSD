@@ -23,10 +23,10 @@
  * SUCH DAMAGE.
  *
  *	BSDI Id: if_indextoname.c,v 2.3 2000/04/17 22:38:05 dab Exp
+ *
+ * $FreeBSD: src/lib/libc/net/if_indextoname.c,v 1.1.2.1 2002/07/29 18:33:18 ume Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/if_indextoname.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/net/if_indextoname.c,v 1.1.2.1 2002/07/29 18:33:18 ume Exp $");
 
 #include <sys/types.h>
 #include <sys/socket.h>

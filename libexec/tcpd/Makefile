@@ -1,4 +1,5 @@
 # $FreeBSD: src/libexec/tcpd/Makefile,v 1.1.2.1 2002/08/31 18:43:41 dwmalone Exp $
+# $DragonFly: src/libexec/tcpd/Makefile,v 1.2 2003/06/17 04:27:08 dillon Exp $
 
 MAINTAINER=	markm@FreeBSD.org
 

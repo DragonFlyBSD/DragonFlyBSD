@@ -1,5 +1,6 @@
 /*	object.c		Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/object.c,v 1.4 1999/11/16 02:57:23 billf Exp $ */
+/* $DragonFly: src/games/larn/object.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
 #include "header.h"
 
 /*

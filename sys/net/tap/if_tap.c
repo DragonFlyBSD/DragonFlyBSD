@@ -32,6 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 

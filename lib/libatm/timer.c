@@ -24,11 +24,11 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/lib/libatm/timer.c,v 1.3.2.1 2001/09/28 16:52:10 dillon Exp $
+ *	@(#) $DragonFly: src/lib/libatm/timer.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
  *
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libatm/timer.c,v 1.3.2.1 2001/09/28 16:52:10 dillon Exp $");
 
 /*
  * User Space Library Functions

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/libkern/alpha/byte_swap_4.S,v 1.1.6.1 2000/08/03 01:03:45 peter Exp $ */
+/* $DragonFly: src/sys/libkern/alpha/Attic/byte_swap_4.S,v 1.2 2003/06/17 04:28:42 dillon Exp $ */
 /*	$NetBSD: byte_swap_4.S,v 1.2 1996/10/17 03:08:09 cgd Exp $	*/
 
 /*

@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/hostcache.h,v 1.4 1999/12/29 04:38:32 peter Exp $
+ * $DragonFly: src/sys/net/Attic/hostcache.h,v 1.2 2003/06/17 04:28:47 dillon Exp $
  */
 
 #ifndef _NET_HOSTCACHE_H

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/tools/diag/dumpvfscache/dumpvfscache.c,v 1.1.6.1 2001/03/05 12:17:00 kris Exp $ */
+/* $DragonFly: src/tools/diag/dumpvfscache/dumpvfscache.c,v 1.2 2003/06/17 04:29:11 dillon Exp $ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

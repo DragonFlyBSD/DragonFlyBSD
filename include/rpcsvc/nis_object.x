@@ -26,6 +26,9 @@
 % * Sun Microsystems, Inc.
 % * 2550 Garcia Avenue
 % * Mountain View, California  94043
+% *
+% * @(#)nis_object.x	1.10	94/05/03 SMI
+% * $DragonFly: src/include/rpcsvc/nis_object.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
 % */
 
 /*
@@ -34,8 +37,6 @@
  *	Copyright (c) 1988-1992 Sun Microsystems Inc
  *	All Rights Reserved.
  */
-
-/* From: %#pragma ident	"@(#)nis_object.x	1.10	94/05/03 SMI" */
 
 #if RPC_HDR
 %

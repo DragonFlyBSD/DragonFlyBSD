@@ -23,6 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/kenv/kenv.c,v 1.1.2.2 2001/12/19 04:52:15 dd Exp $
+ * $DragonFly: src/usr.bin/kenv/kenv.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
 #include <sys/types.h>
 #include <sys/sysctl.h>

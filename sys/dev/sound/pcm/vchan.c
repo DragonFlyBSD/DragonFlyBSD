@@ -22,13 +22,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pcm/vchan.c,v 1.5.2.4 2003/02/11 15:54:16 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/vchan.h>
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pcm/vchan.c,v 1.5.2.4 2003/02/11 15:54:16 orion Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
 
 struct vchinfo {
 	u_int32_t spd, fmt, blksz, bps, run;

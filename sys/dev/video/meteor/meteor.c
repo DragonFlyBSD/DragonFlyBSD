@@ -29,6 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /*		Change History:

@@ -27,6 +27,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/lib/libc/alpha/gen/setjmp.S,v 1.11.2.3 2002/11/13 06:08:44 fjoe Exp $
+ * $DragonFly: src/lib/libcr/alpha/gen/Attic/setjmp.S,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
 
 #include "SYS.h"

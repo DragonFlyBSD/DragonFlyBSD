@@ -1,5 +1,6 @@
 /* tok.c		Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/tok.c,v 1.5 1999/11/16 02:57:25 billf Exp $ */
+/* $DragonFly: src/games/larn/tok.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
 #include <sys/types.h>
 #ifdef SYSV
 #include <fcntl.h>

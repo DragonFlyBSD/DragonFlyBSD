@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/scdreg.h,v 1.5 1999/08/28 00:45:02 peter Exp $
+ * $DragonFly: src/sys/dev/disk/scd/Attic/scdreg.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  *
  */
 

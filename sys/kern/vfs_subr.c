@@ -37,6 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 /*

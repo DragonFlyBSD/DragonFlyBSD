@@ -38,6 +38,7 @@
  *	@(#)procfs_mem.c	8.5 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_mem.c,v 1.46.2.3 2002/01/22 17:22:59 nectar Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 /*

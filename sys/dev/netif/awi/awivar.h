@@ -1,5 +1,6 @@
 /* $NetBSD: awivar.h,v 1.12 2000/07/21 04:48:56 onoe Exp $ */
 /* $FreeBSD: src/sys/dev/awi/awivar.h,v 1.6.2.1 2000/12/07 04:09:39 imp Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awivar.h,v 1.2 2003/06/17 04:28:22 dillon Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.

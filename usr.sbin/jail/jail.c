@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  * 
  * $FreeBSD: src/usr.sbin/jail/jail.c,v 1.5.2.2 2003/05/08 13:04:24 maxim Exp $
+ * $DragonFly: src/usr.sbin/jail/jail.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
  * 
  */
 

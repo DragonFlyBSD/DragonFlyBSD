@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_module.c,v 1.6 1999/10/11 15:19:10 peter Exp $
+ * $DragonFly: src/sys/kern/subr_module.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include <sys/param.h>

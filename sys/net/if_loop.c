@@ -32,6 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 /*

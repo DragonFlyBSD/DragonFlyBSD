@@ -7,6 +7,9 @@
  *
  * See the license_msg below and the file COPYING for the software license.
  * See the file algorithm.doc for the compression algorithms and file formats.
+ *
+ * $FreeBSD: src/gnu/usr.bin/gzip/gzip.c,v 1.10 1999/08/27 23:35:50 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/gzip/Attic/gzip.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
 
 static char  *license_msg[] = {
@@ -43,10 +46,6 @@ static char  *license_msg[] = {
  *
  * For the meaning of all compilation flags, see comments in Makefile.in.
  */
-
-#ifdef RCSID
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/gzip/gzip.c,v 1.10 1999/08/27 23:35:50 peter Exp $";
-#endif
 
 #include <ctype.h>
 #include <sys/types.h>

@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/ctm/ctm_rmail/Makefile,v 1.4.6.1 2001/04/25 12:09:24 ru Exp $
+# $DragonFly: src/usr.sbin/ctm/ctm_rmail/Attic/Makefile,v 1.2 2003/06/17 04:29:53 dillon Exp $
 
 PROG=           ctm_rmail
 SRCS=           ctm_rmail.c error.c

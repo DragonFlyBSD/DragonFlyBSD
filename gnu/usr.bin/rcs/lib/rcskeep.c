@@ -28,6 +28,9 @@ Report problems and direct all questions to:
 */
 
 /*
+ * $FreeBSD: src/gnu/usr.bin/rcs/lib/rcskeep.c,v 1.8 1999/08/27 23:36:46 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/lib/rcskeep.c,v 1.2 2003/06/17 04:25:47 dillon Exp $
+ *
  * Revision 5.10  1995/06/16 06:19:24  eggert
  * Update FSF address.
  *
@@ -98,7 +101,7 @@ Report problems and direct all questions to:
 
 #include  "rcsbase.h"
 
-libId(keepId, "$FreeBSD: src/gnu/usr.bin/rcs/lib/rcskeep.c,v 1.8 1999/08/27 23:36:46 peter Exp $")
+libId(keepId, "$DragonFly: src/gnu/usr.bin/rcs/lib/rcskeep.c,v 1.2 2003/06/17 04:25:47 dillon Exp $")
 
 static int badly_terminated P((void));
 static int checknum P((char const*));

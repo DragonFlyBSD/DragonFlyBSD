@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.sbin/pkg_install/delete/delete.h,v 1.5.2.2 2001/10/03 07:46:02 sobomax Exp $ */
+/* $DragonFly: src/usr.sbin/pkg_install/delete/Attic/delete.h,v 1.2 2003/06/17 04:29:59 dillon Exp $ */
 
 /*
  * FreeBSD install - a package for the installation and maintainance

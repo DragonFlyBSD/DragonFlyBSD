@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/chpass/edit.c,v 1.16.2.2 2001/08/02 01:48:22 obrien Exp $
+ * $DragonFly: src/usr.bin/chpass/edit.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ *
+ * @(#)edit.c	8.3 (Berkeley) 4/2/94
  */
-
-#ifndef lint
-static const char sccsid[] = "@(#)edit.c	8.3 (Berkeley) 4/2/94";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

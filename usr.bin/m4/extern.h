@@ -38,6 +38,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/m4/extern.h,v 1.3.6.3 2002/07/15 02:06:15 jmallett Exp $
+ * $DragonFly: src/usr.bin/m4/extern.h,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
 
 /* eval.c */

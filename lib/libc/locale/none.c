@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/none.c,v 1.2.8.1 2001/03/05 10:25:03 obrien Exp $
+ * $DragonFly: src/lib/libc/locale/Attic/none.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ *
+ * @(#)none.c	8.1 (Berkeley) 6/4/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)none.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <stddef.h>
 #include <stdio.h>

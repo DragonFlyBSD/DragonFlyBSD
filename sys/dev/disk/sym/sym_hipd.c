@@ -56,6 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.2 2003/06/17 04:28:31 dillon Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 

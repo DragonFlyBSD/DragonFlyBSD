@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/console.c,v 1.5 1999/08/28 00:39:46 peter Exp $
+ * $DragonFly: src/sys/boot/common/console.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 
 #include <stand.h>

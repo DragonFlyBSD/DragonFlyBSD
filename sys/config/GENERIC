@@ -16,6 +16,7 @@
 # in doubt as to the purpose or necessity of a line, check first in LINT.
 #
 # $FreeBSD: src/sys/i386/conf/GENERIC,v 1.246.2.54 2003/04/28 03:41:46 simokawa Exp $
+# $DragonFly: src/sys/config/GENERIC,v 1.2 2003/06/17 04:28:35 dillon Exp $
 
 machine		i386
 cpu		I386_CPU

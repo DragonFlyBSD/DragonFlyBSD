@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)chflags.c	8.5 (Berkeley) 4/1/94
+ * $FreeBSD: src/usr.bin/chflags/chflags.c,v 1.7.2.3 2001/08/01 23:09:18 obrien Exp $
+ * $DragonFly: src/usr.bin/chflags/chflags.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1992, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)chflags.c	8.5 (Berkeley) 4/1/94";
-#endif
-static const char rcsid[] =
-	"$FreeBSD: src/usr.bin/chflags/chflags.c,v 1.7.2.3 2001/08/01 23:09:18 obrien Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

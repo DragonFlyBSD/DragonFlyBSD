@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 /*

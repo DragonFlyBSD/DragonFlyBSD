@@ -32,6 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.5.2.19 2003/05/12 04:16:30 simokawa Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.2 2003/06/17 04:28:26 dillon Exp $
  *
  */
 

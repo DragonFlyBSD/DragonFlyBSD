@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.yppasswdd/yppasswdd_extern.h,v 1.9.2.1 2002/02/15 00:46:57 des Exp $
+ * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_extern.h,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
 
 #include <sys/types.h>

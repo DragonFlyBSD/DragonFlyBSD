@@ -24,16 +24,14 @@
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * @(#) Copyright (c) 1990 The Regents of the University of California. All rights reserved.
+ * $Header: /home/daffy/u0/vern/flex/RCS/main.c,v 2.64 96/05/25 20:42:42 vern Exp $
  */
-
-#ifndef lint
-char copyright[] =
-"@(#) Copyright (c) 1990 The Regents of the University of California.\n\
- All rights reserved.\n";
-#endif /* not lint */
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/main.c,v 2.64 96/05/25 20:42:42 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/main.c,v 1.7 1999/10/27 07:56:45 obrien Exp $ */
+/* $DragonFly: src/usr.bin/lex/main.c,v 1.2 2003/06/17 04:29:28 dillon Exp $ */
 
 
 #include "flexdef.h"

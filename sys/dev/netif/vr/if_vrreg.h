@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vrreg.h,v 1.7.2.5 2003/02/06 04:46:20 silby Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vrreg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /*

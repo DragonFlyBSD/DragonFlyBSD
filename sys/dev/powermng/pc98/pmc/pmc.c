@@ -28,6 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pc98/pc98/pmc.c,v 1.2.2.1 2001/11/01 09:42:29 nyan Exp $
+ * $DragonFly: src/sys/dev/powermng/pc98/pmc/Attic/pmc.c,v 1.2 2003/06/17 04:28:55 dillon Exp $
  */
 
 #include <sys/param.h>

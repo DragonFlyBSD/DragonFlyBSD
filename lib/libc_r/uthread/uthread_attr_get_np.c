@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_attr_get_np.c,v 1.2.2.2 2003/02/03 10:13:28 phantom Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_attr_get_np.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 #include <errno.h>
 #include <string.h>

@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/sysarch.h,v 1.13.2.2 2002/10/07 17:17:28 jhb Exp $
+ * $DragonFly: src/sys/cpu/i386/include/sysarch.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 /*

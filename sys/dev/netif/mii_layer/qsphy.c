@@ -36,6 +36,9 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/mii/qsphy.c,v 1.1.2.2 2002/10/21 21:21:42 semenu Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/qsphy.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
  
 /*
@@ -90,11 +93,6 @@
 #include <dev/mii/qsphyreg.h>
 
 #include "miibus_if.h"
-
-#if !defined(lint)
-static const char rcsid[] =
-  "$FreeBSD: src/sys/dev/mii/qsphy.c,v 1.1.2.2 2002/10/21 21:21:42 semenu Exp $";
-#endif
 
 static int qsphy_probe		__P((device_t));
 static int qsphy_attach		__P((device_t));

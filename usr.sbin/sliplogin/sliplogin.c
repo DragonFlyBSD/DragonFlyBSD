@@ -29,18 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)sliplogin.c        8.2 (Berkeley) 2/1/94
+ * $FreeBSD: src/usr.sbin/sliplogin/sliplogin.c,v 1.9.6.2 2001/07/19 05:21:28 kris Exp $
+ * $DragonFly: src/usr.sbin/sliplogin/sliplogin.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
-
-#ifndef lint
-static char copyright[] =
-"@(#) Copyright (c) 1990, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static char sccsid[] = "@(#)sliplogin.c	8.2 (Berkeley) 2/1/94";
-static char rscid[] = "@(#)$FreeBSD: src/usr.sbin/sliplogin/sliplogin.c,v 1.9.6.2 2001/07/19 05:21:28 kris Exp $";
-#endif /* not lint */
 
 /*
  * sliplogin.c

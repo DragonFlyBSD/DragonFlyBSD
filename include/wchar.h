@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/wchar.h,v 1.3.2.2 2002/08/08 02:42:29 imp Exp $
+ * $DragonFly: src/include/wchar.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 /*-

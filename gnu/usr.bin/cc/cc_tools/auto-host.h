@@ -1,4 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/cc/cc_tools/auto-host.h,v 1.2.2.1 2001/03/02 09:23:09 obrien Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc/cc_tools/Attic/auto-host.h,v 1.2 2003/06/17 04:25:45 dillon Exp $ */
 
 /* auto-host.h.  Generated automatically by configure.  */
 /* config.in.  Generated automatically from configure.in by autoheader.  */

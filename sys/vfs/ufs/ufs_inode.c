@@ -37,6 +37,7 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #include "opt_quota.h"

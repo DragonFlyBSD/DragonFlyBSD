@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/module.c,v 1.13.2.4 2002/12/19 12:41:10 thomas Exp $
+ * $DragonFly: src/sys/boot/common/module.c,v 1.2 2003/06/17 04:28:17 dillon Exp $
  */
 
 /*

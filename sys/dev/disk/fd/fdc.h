@@ -32,6 +32,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fdc.h,v 1.20.2.3 2002/02/03 14:08:46 nyan Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fdc.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
  *
  */
 

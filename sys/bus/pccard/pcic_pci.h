@@ -27,6 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/pcic_pci.h,v 1.23.2.12 2003/02/26 18:42:00 imp Exp $
+ * $DragonFly: src/sys/bus/pccard/Attic/pcic_pci.h,v 1.2 2003/06/17 04:28:55 dillon Exp $
  */
 
 /* Share the devid database with NEWCARD */

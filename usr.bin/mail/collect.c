@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)collect.c	8.2 (Berkeley) 4/19/94
+ * $FreeBSD: src/usr.bin/mail/collect.c,v 1.4.6.3 2003/01/06 05:46:03 mikeh Exp $
+ * $DragonFly: src/usr.bin/mail/collect.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)collect.c	8.2 (Berkeley) 4/19/94";
-#endif
-#endif /* not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/mail/collect.c,v 1.4.6.3 2003/01/06 05:46:03 mikeh Exp $");
 
 /*
  * Mail -- a mail program

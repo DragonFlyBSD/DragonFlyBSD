@@ -53,6 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr_pci.c,v 1.1.2.9 2002/12/20 15:12:04 emoore Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr_pci.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 #include <sys/param.h>

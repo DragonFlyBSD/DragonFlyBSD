@@ -1,5 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/bktr/bktr_reg.h,v 1.36.2.4 2000/11/01 09:36:14 roger Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_reg.h,v 1.2 2003/06/17 04:28:23 dillon Exp $
  *
  * Copyright (c) 1999 Roger Hardiman
  * Copyright (c) 1998 Amancio Hasty

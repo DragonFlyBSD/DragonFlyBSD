@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/rtquery/rtquery.c,v 1.13 1999/08/28 00:14:21 peter Exp $
+ * $DragonFly: src/sbin/routed/rtquery/rtquery.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
 
 char copyright[] =

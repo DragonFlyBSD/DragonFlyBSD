@@ -16,10 +16,9 @@
  *
  * This is the main body of the delete module.
  *
+ * $FreeBSD: src/usr.sbin/pkg_install/delete/perform.c,v 1.22.2.12 2003/02/28 13:58:14 des Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/delete/Attic/perform.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.sbin/pkg_install/delete/perform.c,v 1.22.2.12 2003/02/28 13:58:14 des Exp $");
 
 #include <err.h>
 #include "lib.h"

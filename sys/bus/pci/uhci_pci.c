@@ -35,6 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/uhci_pci.c,v 1.26.2.8 2003/05/07 16:46:55 jhb Exp $
+ * $DragonFly: src/sys/bus/pci/Attic/uhci_pci.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /* Universal Host Controller Interface

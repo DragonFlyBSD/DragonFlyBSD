@@ -1,4 +1,5 @@
 /* $FreeBSD: src/contrib/texinfo/util/install-info.c,v 1.11.2.2 2002/08/07 16:53:40 ru Exp $ */
+/* $DragonFly: src/contrib/texinfo/util/Attic/install-info.c,v 1.2 2003/06/17 04:24:07 dillon Exp $ */
 /* install-info -- create Info directory entry(ies) for an Info file.
    $Id: install-info.c,v 1.55 2002/03/11 19:55:23 karl Exp $
 

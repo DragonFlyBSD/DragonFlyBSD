@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_subr.c,v 1.4 1999/08/28 00:48:52 peter Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_subr.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -39,11 +39,6 @@
 
 #include "spans_xdr.h"
 #include <netatm/spans/spans_var.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/spans/spans_subr.c,v 1.4 1999/08/28 00:48:52 peter Exp $");
-#endif
-
 
 /*
  * Open a SPANS VCC

@@ -1,14 +1,11 @@
-#ifndef lint
-/*static char sccsid[] = "from: @(#)rpcinfo.c 1.22 87/08/12 SMI";*/
-/*static char sccsid[] = "from: @(#)rpcinfo.c	2.2 88/08/11 4.0 RPCSRC";*/
-static char rcsid[] =
-  "$FreeBSD: src/usr.bin/rpcinfo/rpcinfo.c,v 1.9.2.1 2001/03/04 09:00:23 kris Exp $";
-#endif
-
 /*
  * Copyright (C) 1986, Sun Microsystems, Inc.
+ *
+ * @(#)rpcinfo.c 1.22 87/08/12 SMI
+ * @(#)rpcinfo.c	2.2 88/08/11 4.0 RPCSRC
+ * $FreeBSD: src/usr.bin/rpcinfo/rpcinfo.c,v 1.9.2.1 2001/03/04 09:00:23 kris Exp $
+ * $DragonFly: src/usr.bin/rpcinfo/rpcinfo.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
  */
-
 /*
  * rpcinfo: ping a particular rpc program
  *     or dump the portmapper

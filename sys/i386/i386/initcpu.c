@@ -27,6 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/initcpu.c,v 1.19.2.9 2003/04/05 13:47:19 dwmalone Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/initcpu.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #include "opt_cpu.h"

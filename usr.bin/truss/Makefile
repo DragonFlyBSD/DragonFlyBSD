@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.bin/truss/Makefile,v 1.10.2.2 2002/07/23 09:18:30 ru Exp $
+# $DragonFly: src/usr.bin/truss/Makefile,v 1.2 2003/06/17 04:29:33 dillon Exp $
 
 PROG=	truss
 SRCS=	main.c setup.c syscalls.c syscalls.h ioctl.c

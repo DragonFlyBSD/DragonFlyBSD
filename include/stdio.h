@@ -35,6 +35,7 @@
  *
  *	@(#)stdio.h	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/include/stdio.h,v 1.24.2.5 2002/11/09 08:07:20 imp Exp $
+ * $DragonFly: src/include/stdio.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef	_STDIO_H_

@@ -19,6 +19,7 @@
 /* Written August 1992 by Mike Haertel. */
 
 /* $FreeBSD: src/gnu/usr.bin/grep/search.c,v 1.10 2000/01/31 13:28:57 ru Exp $ */
+/* $DragonFly: src/gnu/usr.bin/grep/search.c,v 1.2 2003/06/17 04:25:45 dillon Exp $ */
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>

@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_type.c,v 1.6 1999/08/28 00:46:56 peter Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_type.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 #include <sys/param.h>

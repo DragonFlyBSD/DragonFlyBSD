@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 #	$FreeBSD: src/lib/libutil/Makefile,v 1.33.2.4 2001/04/25 10:04:42 ru Exp $
+#	$DragonFly: src/lib/libutil/Makefile,v 1.2 2003/06/17 04:26:51 dillon Exp $
 
 LIB=	util
 SHLIB_MAJOR= 3

@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/timepps.h,v 1.12 1999/12/29 04:24:48 peter Exp $
+ * $DragonFly: src/sys/sys/timepps.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  *
  * The is a FreeBSD protype version of the "draft-mogul-pps-api-05.txt" 
  * specification for Pulse Per Second timing interfaces.  

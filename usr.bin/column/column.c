@@ -31,17 +31,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/column/column.c,v 1.4.6.2 2001/08/02 01:34:19 obrien Exp $
+ * $DragonFly: src/usr.bin/column/column.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ *
+ * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)column.c	8.4 (Berkeley) 5/4/95
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1989, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static const char sccsid[] = "@(#)column.c	8.4 (Berkeley) 5/4/95";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/ioctl.h>

@@ -13,6 +13,7 @@
 # On Ultrix, /bin/sh is too buggy, change the first line to: #!/bin/sh5
 #
 # $FreeBSD: src/gnu/usr.bin/gzip/gzexe,v 1.7.2.1 2001/02/18 02:19:22 kris Exp $
+# $DragonFly: src/gnu/usr.bin/gzip/Attic/gzexe,v 1.2 2003/06/17 04:25:46 dillon Exp $
 
 x=`basename $0`
 if test $# = 0; then

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/asr/Makefile,v 1.1.2.1 2000/09/21 20:33:53 msmith Exp $
+# $DragonFly: src/sys/dev/raid/asr/Makefile,v 1.2 2003/06/17 04:28:43 dillon Exp $
 
 .PATH:		${.CURDIR}/../../dev/asr
 KMOD		=  asr

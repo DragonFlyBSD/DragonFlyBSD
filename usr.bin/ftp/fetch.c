@@ -34,13 +34,13 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $NetBSD: fetch.c,v 1.16.2.1 1997/11/18 01:00:22 mellon Exp $
+ * $FreeBSD: src/usr.bin/ftp/fetch.c,v 1.12.2.6 2002/10/19 12:50:26 roam Exp $
+ * $DragonFly: src/usr.bin/ftp/Attic/fetch.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
 
 #include <sys/cdefs.h>
-#ifndef lint
-__RCSID("$FreeBSD: src/usr.bin/ftp/fetch.c,v 1.12.2.6 2002/10/19 12:50:26 roam Exp $");
-__RCSID_SOURCE("$NetBSD: fetch.c,v 1.16.2.1 1997/11/18 01:00:22 mellon Exp $");
-#endif /* not lint */
 
 /*
  * FTP User Program -- Command line file retrieval

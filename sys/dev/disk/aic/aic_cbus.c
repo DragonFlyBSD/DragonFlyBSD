@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic_cbus.c,v 1.1.2.2 2000/06/21 09:37:09 nyan Exp $
+ * $DragonFly: src/sys/dev/disk/aic/Attic/aic_cbus.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -36,6 +36,7 @@
  * Author: Doug Ambrisko <ambrisko@whistle.com>
  *
  * $FreeBSD: src/sys/boot/i386/libi386/nullconsole.c,v 1.1.2.1 2000/09/22 17:04:46 archie Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/nullconsole.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 #include <stand.h>

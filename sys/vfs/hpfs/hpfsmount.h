@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfsmount.h,v 1.1 1999/12/09 19:10:00 semenu Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfsmount.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 #define HPFSMNT_TABLES		0x0001

@@ -34,12 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/gen/_setjmp.S,v 1.12 2000/01/20 21:58:26 jasone Exp $
+ * $DragonFly: src/lib/libc/i386/gen/_setjmp.S,v 1.2 2003/06/17 04:26:43 dillon Exp $
+ *
+ * $FreeBSD: src/lib/libc/i386/gen/_setjmp.S,v 1.12 2000/01/20 21:58:26 jasone Exp $
  */
-
-#if defined(LIBC_RCS) && !defined(lint)
-	.text
-	.asciz "$FreeBSD: src/lib/libc/i386/gen/_setjmp.S,v 1.12 2000/01/20 21:58:26 jasone Exp $"
-#endif /* LIBC_RCS and not lint */
 
 /*
  * C library -- _setjmp, _longjmp

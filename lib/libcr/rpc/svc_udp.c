@@ -25,13 +25,12 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)svc_udp.c 1.24 87/08/11 Copyr 1984 Sun Micro
+ * @(#)svc_udp.c	2.2 88/07/29 4.0 RPCSRC
+ * $FreeBSD: src/lib/libc/rpc/svc_udp.c,v 1.13 2000/01/27 23:06:41 jasone Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/svc_udp.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/*static char *sccsid = "from: @(#)svc_udp.c 1.24 87/08/11 Copyr 1984 Sun Micro";*/
-/*static char *sccsid = "from: @(#)svc_udp.c	2.2 88/07/29 4.0 RPCSRC";*/
-static char *rcsid = "$FreeBSD: src/lib/libc/rpc/svc_udp.c,v 1.13 2000/01/27 23:06:41 jasone Exp $";
-#endif
 
 /*
  * svc_udp.c,

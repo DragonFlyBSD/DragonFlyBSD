@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/gen/rfork_thread.S,v 1.2.2.1 2001/02/07 00:12:45 peter Exp $
+ * $DragonFly: src/lib/libc/i386/gen/rfork_thread.S,v 1.2 2003/06/17 04:26:43 dillon Exp $
  */
 
 /*

@@ -1,6 +1,7 @@
 # ex:ts=8
 #
 # $FreeBSD: src/usr.sbin/amd/include/Makefile,v 1.2.2.2 2001/07/19 19:06:18 ru Exp $
+# $DragonFly: src/usr.sbin/amd/include/Makefile,v 1.2 2003/06/17 04:29:52 dillon Exp $
 #
 # Makefile for amd
 # 	This file is under a "BSD" copyright (c) by David O'Brien 1998.

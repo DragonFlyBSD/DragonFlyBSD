@@ -1,6 +1,7 @@
 /*
  * file: sbcard.h
  * $FreeBSD: src/sys/dev/sound/isa/sb.h,v 1.12.2.3 2002/04/22 15:49:31 cg Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sb.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #ifndef SB_H

@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/ultrasound.h,v 1.7.6.1 2000/08/03 01:01:19 peter Exp $
+ * $DragonFly: src/sys/i386/include/Attic/ultrasound.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 /*

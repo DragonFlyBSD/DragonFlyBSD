@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_ecn.h,v 1.2.2.2 2001/07/03 11:01:53 ume Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_ecn.h,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
 /*	$KAME: ip_ecn.h,v 1.5 2000/03/27 04:58:38 sumikawa Exp $	*/
 
 /*

@@ -22,12 +22,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sbin/spppcontrol/spppcontrol.c,v 1.7.2.2 2002/04/24 18:47:22 joerg Exp $
+ * $DragonFly: src/sbin/spppcontrol/spppcontrol.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/spppcontrol/spppcontrol.c,v 1.7.2.2 2002/04/24 18:47:22 joerg Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/ioctl.h>

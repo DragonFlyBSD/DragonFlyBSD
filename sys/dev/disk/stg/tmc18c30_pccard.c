@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30_pccard.c,v 1.2.2.6 2001/12/17 13:30:19 non Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_pccard.c,v 1.2 2003/06/17 04:28:31 dillon Exp $	*/
 /*	$NecBSD: tmc18c30_pisa.c,v 1.22 1998/11/26 01:59:21 honda Exp $	*/
 /*	$NetBSD$	*/
 

@@ -13,12 +13,11 @@
  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
  * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
  * SOFTWARE.
+ *
+ * $From Id: inet_net_pton.c,v 1.8 1996/11/21 10:28:12 vixie Exp $
+ * $FreeBSD: src/lib/libc/net/inet_net_pton.c,v 1.6 1999/08/28 00:00:10 peter Exp $
+ * $DragonFly: src/lib/libc/net/inet_net_pton.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static const char orig_rcsid[] = "From Id: inet_net_pton.c,v 1.8 1996/11/21 10:28:12 vixie Exp $";
-static const char rcsid[] = "$FreeBSD: src/lib/libc/net/inet_net_pton.c,v 1.6 1999/08/28 00:00:10 peter Exp $";
-#endif
 
 #include <sys/types.h>
 #include <sys/socket.h>

@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/pc/vesa.h,v 1.7 1999/12/29 04:33:12 peter Exp $
+ * $DragonFly: src/sys/i386/include/pc/Attic/vesa.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 #ifndef _MACHINE_PC_VESA_H

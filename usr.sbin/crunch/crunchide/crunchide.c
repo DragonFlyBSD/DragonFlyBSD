@@ -1,5 +1,6 @@
 /*	$NetBSD: crunchide.c,v 1.8 1997/11/01 06:51:45 lukem Exp $	*/
 /* $FreeBSD: src/usr.sbin/crunch/crunchide/crunchide.c,v 1.6.6.1 2002/07/25 09:33:17 ru Exp $ */
+/* $DragonFly: src/usr.sbin/crunch/crunchide/crunchide.c,v 1.2 2003/06/17 04:29:53 dillon Exp $ */
 /*
  * Copyright (c) 1997 Christopher G. Demetriou.  All rights reserved.
  * Copyright (c) 1994 University of Maryland
@@ -25,6 +26,8 @@
  * Author: James da Silva, Systems Design and Analysis Group
  *			   Computer Science Department
  *			   University of Maryland at College Park
+ *
+ * $NetBSD: crunchide.c,v 1.8 1997/11/01 06:51:45 lukem Exp $
  */
 /*
  * crunchide.c - tiptoes through an a.out symbol table, hiding all defined
@@ -60,9 +63,6 @@
  *	  component programs' BSS sizes, rather than their sum.
  */
 #include <sys/cdefs.h>
-#ifndef lint
-__RCSID("$NetBSD: crunchide.c,v 1.8 1997/11/01 06:51:45 lukem Exp $");
-#endif
 
 #include <unistd.h>
 #include <stdio.h>

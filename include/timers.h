@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/timers.h,v 1.4 1999/08/27 23:44:52 peter Exp $
+ * $DragonFly: src/include/timers.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  *
  * Description : Basic timers header.
  *

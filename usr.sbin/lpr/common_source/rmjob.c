@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)rmjob.c	8.2 (Berkeley) 4/28/95
+ * $FreeBSD: src/usr.sbin/lpr/common_source/rmjob.c,v 1.12.2.5 2001/06/25 01:00:56 gad Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/rmjob.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)rmjob.c	8.2 (Berkeley) 4/28/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/lpr/common_source/rmjob.c,v 1.12.2.5 2001/06/25 01:00:56 gad Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/uio.h>

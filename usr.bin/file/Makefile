@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.bin/file/Makefile,v 1.13.2.8 2003/03/16 04:47:04 obrien Exp $
+# $DragonFly: src/usr.bin/file/Makefile,v 1.2 2003/06/17 04:29:26 dillon Exp $
 # Makefile for file(1) cmd.
 # Copyright (c) Ian F. Darwin 86/09/01 - see LEGAL.NOTICE.
 #

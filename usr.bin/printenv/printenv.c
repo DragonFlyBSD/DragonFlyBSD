@@ -29,17 +29,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)printenv.c	8.2 (Berkeley) 5/4/95
  */
-
-#ifndef lint
-static char copyright[] =
-"@(#) Copyright (c) 1987, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static char sccsid[] = "@(#)printenv.c	8.2 (Berkeley) 5/4/95";
-#endif /* not lint */
 
 #include <sys/types.h>
 

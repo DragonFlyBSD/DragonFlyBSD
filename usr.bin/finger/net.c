@@ -32,16 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)net.c	8.4 (Berkeley) 4/28/95
+ * $FreeBSD: src/usr.bin/finger/net.c,v 1.12.2.4 2002/12/16 08:41:28 roam Exp $
+ * $DragonFly: src/usr.bin/finger/net.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
-
-#if 0
-#ifndef lint
-static char sccsid[] = "@(#)net.c	8.4 (Berkeley) 4/28/95";
-#endif
-#endif
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/finger/net.c,v 1.12.2.4 2002/12/16 08:41:28 roam Exp $");
 
 #include <sys/param.h>
 #include <sys/socket.h>

@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/compat/compat3x.i386/Makefile,v 1.8.2.9 2002/08/07 16:31:46 ru Exp $
+# $DragonFly: src/lib/compat/compat3x.i386/Attic/Makefile,v 1.2 2003/06/17 04:26:40 dillon Exp $
 
 DISTRIBUTION=	compat3x
 

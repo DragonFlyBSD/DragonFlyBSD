@@ -26,12 +26,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/sa/pdb.c,v 1.7 1999/08/28 01:19:53 peter Exp $
+ * $DragonFly: src/usr.sbin/sa/pdb.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/sa/pdb.c,v 1.7 1999/08/28 01:19:53 peter Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/acct.h>

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/uftdi/Makefile,v 1.1.2.1 2002/11/21 01:28:18 ticso Exp $
+# $DragonFly: src/sys/dev/usbmisc/uftdi/Makefile,v 1.2 2003/06/17 04:28:47 dillon Exp $
 
 S=	${.CURDIR}/../..
 .PATH: $S/dev/usb

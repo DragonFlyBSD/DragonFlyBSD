@@ -24,6 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_command.c,v 1.34.2.2 2001/07/29 22:48:36 kris Exp $
+ * $DragonFly: src/sys/ddb/db_command.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 
 /*

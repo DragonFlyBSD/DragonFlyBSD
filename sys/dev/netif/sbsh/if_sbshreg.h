@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbshreg.h,v 1.1.2.1 2003/04/15 18:15:07 fjoe Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbshreg.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 /* SBNI16 controller chip definitions */

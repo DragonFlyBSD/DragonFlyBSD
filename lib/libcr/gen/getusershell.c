@@ -31,13 +31,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getusershell.c,v 1.3.2.1 2001/03/05 09:17:52 obrien Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/getusershell.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)getusershell.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/gen/getusershell.c,v 1.3.2.1 2001/03/05 09:17:52 obrien Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)getusershell.c	8.1 (Berkeley) 6/4/93";
-static char rcsid[] =
-  "$FreeBSD: src/lib/libc/gen/getusershell.c,v 1.3.2.1 2001/03/05 09:17:52 obrien Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/file.h>

@@ -9,12 +9,10 @@
  * be an unsigned long and should be preset to all ones for Ethernet
  * use.  An error-free packet will leave 0xDEBB20E3 in the crc.
  *			Spencer Garrett <srg@quick.com>
+ *
+ * $FreeBSD: src/usr.bin/cksum/crc32.c,v 1.5 1999/12/05 20:03:21 charnier Exp $
+ * $DragonFly: src/usr.bin/cksum/crc32.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/cksum/crc32.c,v 1.5 1999/12/05 20:03:21 charnier Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 

@@ -26,12 +26,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sbin/ldconfig/ldconfig.c,v 1.31.2.3 2001/07/11 23:59:10 obrien Exp $
+ * $DragonFly: src/sbin/ldconfig/ldconfig.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/ldconfig/ldconfig.c,v 1.31.2.3 2001/07/11 23:59:10 obrien Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/types.h>

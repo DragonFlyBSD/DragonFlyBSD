@@ -23,6 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/map_object.c,v 1.7.2.2 2002/12/28 19:49:41 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/map_object.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
 
 #include <sys/param.h>

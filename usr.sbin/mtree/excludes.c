@@ -25,10 +25,10 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/mtree/excludes.c,v 1.1.2.4 2001/01/12 19:17:18 phk Exp $
+ * $DragonFly: src/usr.sbin/mtree/excludes.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
-
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/mtree/excludes.c,v 1.1.2.4 2001/01/12 19:17:18 phk Exp $";
 
 #include <sys/types.h>
 #include <sys/time.h>		/* XXX for mtree.h */

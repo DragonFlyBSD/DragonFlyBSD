@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/zic/zic/Makefile,v 1.5.2.1 2001/04/25 12:11:16 ru Exp $
+# $DragonFly: src/usr.sbin/zic/zic/Makefile,v 1.2 2003/06/17 04:30:05 dillon Exp $
 
 .PATH:	${.CURDIR}/..
 

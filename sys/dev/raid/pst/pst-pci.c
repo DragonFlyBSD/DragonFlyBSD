@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-pci.c,v 1.1.2.1 2002/08/18 12:32:36 sos Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-pci.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 #include <sys/param.h>

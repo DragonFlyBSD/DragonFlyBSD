@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/tty.h,v 1.6 1999/11/26 22:44:33 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/tty.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 struct physical;

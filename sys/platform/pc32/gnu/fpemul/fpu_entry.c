@@ -56,6 +56,7 @@
  * W. Metzenthen   June 1994.
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/fpu_entry.c,v 1.23 1999/10/12 02:23:14 msmith Exp $
+ * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/fpu_entry.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
  *
  */
 

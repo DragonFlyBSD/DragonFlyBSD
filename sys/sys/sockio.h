@@ -32,6 +32,7 @@
  *
  *	@(#)sockio.h	8.1 (Berkeley) 3/28/94
  * $FreeBSD: src/sys/sys/sockio.h,v 1.14.2.6 2002/02/07 15:12:37 ambrisko Exp $
+ * $DragonFly: src/sys/sys/sockio.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef	_SYS_SOCKIO_H_

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppbio.h,v 1.1 2000/01/14 00:17:57 nsouch Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppbio.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
  *
  */
 

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/objformat.h,v 1.2 1999/08/27 23:44:51 peter Exp $
+ * $DragonFly: src/include/objformat.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef _OBJFORMAT_H_

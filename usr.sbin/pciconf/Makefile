@@ -1,5 +1,6 @@
 #	$ANA: Makefile,v 1.1.1.1 1996/09/25 21:12:57 wollman Exp $
 # $FreeBSD: src/usr.sbin/pciconf/Makefile,v 1.6.6.1 2001/04/25 12:10:26 ru Exp $
+# $DragonFly: src/usr.sbin/pciconf/Makefile,v 1.2 2003/06/17 04:29:59 dillon Exp $
 
 PROG=	pciconf
 MAN=	pciconf.8

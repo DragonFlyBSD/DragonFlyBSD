@@ -32,21 +32,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1989 The Regents of the University of California. All rights reserved.
+ * @(#)main.c	5.5 (Berkeley) 5/24/93
+ * $FreeBSD: src/usr.bin/yacc/main.c,v 1.12 2000/01/10 20:26:24 kris Exp $
+ * $DragonFly: src/usr.bin/yacc/main.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
-
-#ifndef lint
-static char const copyright[] =
-"@(#) Copyright (c) 1989 The Regents of the University of California.\n\
- All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char const sccsid[] = "@(#)main.c	5.5 (Berkeley) 5/24/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/yacc/main.c,v 1.12 2000/01/10 20:26:24 kris Exp $";
-#endif /* not lint */
 
 #include <signal.h>
 #include <stdlib.h>

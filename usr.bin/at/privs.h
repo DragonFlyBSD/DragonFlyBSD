@@ -23,6 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/at/privs.h,v 1.7 1999/12/05 19:57:14 charnier Exp $
+ * $DragonFly: src/usr.bin/at/privs.h,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
 
 #ifndef _PRIVS_H

@@ -14,6 +14,7 @@ char *copyright =
  *  Copyright (c) 1996, William LeFebvre, Group sys Consulting
  *
  * $FreeBSD: src/contrib/top/top.c,v 1.4.6.5 2002/08/11 17:09:25 dwmalone Exp $
+ * $DragonFly: src/contrib/top/top.c,v 1.2 2003/06/17 04:24:07 dillon Exp $
  */
 
 /*

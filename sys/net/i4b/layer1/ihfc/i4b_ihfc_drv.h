@@ -32,6 +32,7 @@
  *	$Id: i4b_ihfc_drv.h,v 1.7 2000/09/19 13:50:36 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_drv.h,v 1.1.2.1 2001/08/10 14:08:37 obrien Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_drv.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 #ifndef	I4B_IHFC_DRV_H_

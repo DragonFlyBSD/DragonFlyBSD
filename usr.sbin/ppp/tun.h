@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/tun.h,v 1.8.2.2 2000/12/18 01:46:45 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/tun.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 struct tun_data {

@@ -23,6 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_csvar.h,v 1.1.2.1 2001/01/25 20:13:48 imp Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_csvar.h,v 1.2 2003/06/17 04:28:23 dillon Exp $
  */
 
 #ifndef _IF_CSVAR_H

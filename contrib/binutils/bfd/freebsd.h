@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
 /* $FreeBSD: src/contrib/binutils/bfd/freebsd.h,v 1.2.6.4 2002/09/01 23:43:39 obrien Exp $ */
+/* $DragonFly: src/contrib/binutils/bfd/Attic/freebsd.h,v 1.2 2003/06/17 04:23:58 dillon Exp $ */
 
 /* FreeBSD QMAGIC files have the header in the text. */
 #define	N_HEADER_IN_TEXT(x)	1

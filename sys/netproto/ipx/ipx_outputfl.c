@@ -34,6 +34,7 @@
  *	@(#)ipx_outputfl.c
  *
  * $FreeBSD: src/sys/netipx/ipx_outputfl.c,v 1.14.2.1 2000/05/01 01:10:24 bp Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_outputfl.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_ihash.h,v 1.5 1999/12/03 20:37:39 semenu Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 
 extern struct lock ntfs_hashlock;

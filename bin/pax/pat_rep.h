@@ -36,6 +36,7 @@
  *
  *	@(#)pat_rep.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/pat_rep.h,v 1.5 1999/08/27 23:14:44 peter Exp $
+ * $DragonFly: src/bin/pax/pat_rep.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
 
 /*

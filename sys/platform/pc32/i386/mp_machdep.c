@@ -23,6 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #include "opt_cpu.h"

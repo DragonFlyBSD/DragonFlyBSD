@@ -35,6 +35,7 @@
  *
  *	from: @(#)isa.h	5.7 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/isa/isareg.h,v 1.4.2.1 2000/07/18 20:39:05 dfr Exp $
+ * $DragonFly: src/sys/bus/isa/isareg.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
  */
 
 #ifdef PC98

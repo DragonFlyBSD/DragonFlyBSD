@@ -19,6 +19,7 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 /*
  * $FreeBSD: src/gnu/usr.bin/as/bit_fix.h,v 1.5 1999/08/27 23:34:13 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/as/Attic/bit_fix.h,v 1.2 2003/06/17 04:25:44 dillon Exp $
  */
 
 

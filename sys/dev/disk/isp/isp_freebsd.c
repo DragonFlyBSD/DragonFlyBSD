@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.c,v 1.32.2.20 2002/10/11 18:49:25 mjacob Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
 /*
  * Platform (FreeBSD) dependent common attachment code for Qlogic adapters.
  *

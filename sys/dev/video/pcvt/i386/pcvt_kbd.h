@@ -48,6 +48,7 @@
  *	Last Edit-Date: [Tue Dec 28 08:13:32 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_kbd.h,v 1.10 1999/12/30 16:17:10 hm Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_kbd.h,v 1.2 2003/06/17 04:28:38 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 

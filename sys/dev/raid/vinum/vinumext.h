@@ -35,6 +35,7 @@
  *
  * $Id: vinumext.h,v 1.26 2000/05/16 07:38:08 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumext.h,v 1.25.2.3 2001/05/11 02:11:06 grog Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumext.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 /* vinumext.h: external definitions */

@@ -1,5 +1,6 @@
 /* MD4C.C - RSA Data Security, Inc., MD4 message-digest algorithm
  * $FreeBSD: src/sys/kern/md4c.c,v 1.1.2.1 2001/05/22 08:32:32 bp Exp $
+ * $DragonFly: src/sys/kern/md4c.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 /* Copyright (C) 1990-2, RSA Data Security, Inc. All rights reserved.

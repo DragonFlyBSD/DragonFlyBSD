@@ -32,6 +32,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/9/93
  *	$FreeBSD: src/usr.bin/tset/extern.h,v 1.6.2.1 2000/11/12 07:48:29 dg Exp $
+ *	$DragonFly: src/usr.bin/tset/extern.h,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
 
 #include <termcap.h>

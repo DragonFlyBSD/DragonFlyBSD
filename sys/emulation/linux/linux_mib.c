@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_mib.c,v 1.7.2.2 2001/11/05 19:08:22 marcel Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_mib.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
  */
 
 #include <sys/param.h>

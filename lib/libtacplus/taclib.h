@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libtacplus/taclib.h,v 1.1.1.1.6.1 2002/10/09 08:50:42 pst Exp $
+ *	$DragonFly: src/lib/libtacplus/taclib.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 
 #ifndef _TACLIB_H_

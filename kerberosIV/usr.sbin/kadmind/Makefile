@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberosIV/usr.sbin/kadmind/Makefile,v 1.5.2.1 2001/04/25 09:36:04 ru Exp $
+# $DragonFly: src/kerberosIV/usr.sbin/kadmind/Attic/Makefile,v 1.2 2003/06/17 04:26:25 dillon Exp $
 
 PROG=		kadmind
 MAN=		${KRB4DIR}/man/kadmind.8

@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 #include "opt_kbd.h"

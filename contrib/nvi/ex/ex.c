@@ -8,6 +8,7 @@
  */
 
 /* $FreeBSD: src/contrib/nvi/ex/ex.c,v 1.2 1999/09/14 14:34:58 ru Exp $ */
+/* $DragonFly: src/contrib/nvi/ex/ex.c,v 1.2 2003/06/17 04:24:04 dillon Exp $ */
 
 #include "config.h"
 

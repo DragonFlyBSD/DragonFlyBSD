@@ -28,6 +28,7 @@
  *	-------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ing.c,v 1.10.2.4 2002/07/02 23:44:02 archie Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
  *
  *	last edit-date: [Tue Jan  1 10:43:58 2002]
  *

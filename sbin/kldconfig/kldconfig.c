@@ -22,12 +22,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sbin/kldconfig/kldconfig.c,v 1.3.2.1 2001/08/01 05:52:36 obrien Exp $
+ * $DragonFly: src/sbin/kldconfig/kldconfig.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/kldconfig/kldconfig.c,v 1.3.2.1 2001/08/01 05:52:36 obrien Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/types.h>

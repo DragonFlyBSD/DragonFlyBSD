@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/gen/ldexp.c,v 1.6 1999/08/27 23:59:21 peter Exp $
+ * $DragonFly: src/lib/libcr/i386/gen/Attic/ldexp.c,v 1.2 2003/06/17 04:26:43 dillon Exp $
+ *
+ * $FreeBSD: src/lib/libc/i386/gen/ldexp.c,v 1.6 1999/08/27 23:59:21 peter Exp $
  */
-
-#if defined(LIBC_RCS) && !defined(lint)
-static const char rcsid[] = "$FreeBSD: src/lib/libc/i386/gen/ldexp.c,v 1.6 1999/08/27 23:59:21 peter Exp $";
-#endif /* LIBC_RCS and not lint */
 
 /*
  * ldexp(value, exp): return value * (2 ** exp).

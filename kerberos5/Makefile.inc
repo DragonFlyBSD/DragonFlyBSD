@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberos5/Makefile.inc,v 1.5.2.5 2002/07/25 09:33:14 ru Exp $
+# $DragonFly: src/kerberos5/Makefile.inc,v 1.2 2003/06/17 04:26:16 dillon Exp $
 
 DISTRIBUTION?=	krb5
 

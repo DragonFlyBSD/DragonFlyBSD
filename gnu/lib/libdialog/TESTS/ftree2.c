@@ -9,6 +9,7 @@
  * preprocess editres(1) dump needed !!!
  *
  * $FreeBSD: src/gnu/lib/libdialog/TESTS/ftree2.c,v 1.2 2000/01/10 11:52:05 phantom Exp $
+ * $DragonFly: src/gnu/lib/libdialog/TESTS/ftree2.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
  */
 
 #include <stdio.h>

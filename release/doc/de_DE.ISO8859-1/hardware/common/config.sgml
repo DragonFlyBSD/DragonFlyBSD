@@ -1,5 +1,6 @@
 <!--
 	$FreeBSD: src/release/doc/de_DE.ISO8859-1/hardware/common/config.sgml,v 1.1.2.2 2002/10/12 16:13:20 ue Exp $
+	$DragonFly: src/release/doc/de_DE.ISO8859-1/hardware/common/Attic/config.sgml,v 1.2 2003/06/17 04:27:19 dillon Exp $
 	$FreeBSDde: de-docproj/relnotes/de_DE.ISO8859-1/hardware/common/config.sgml,v 1.1.2.2 2002/10/12 10:16:54 mheinen Exp $
         $Id: config.sgml,v 1.2 2001/08/13 05:46:10 ue Exp $
         basiert auf: 1.1.2.2

@@ -32,6 +32,7 @@
  *
  *	@(#)syslog.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/syslog.h,v 1.19.2.2 2001/05/29 13:15:08 dwmalone Exp $
+ * $DragonFly: src/sys/sys/syslog.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _SYS_SYSLOG_H_

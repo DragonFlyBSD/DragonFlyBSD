@@ -25,6 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.shutdown,v 1.4.2.13 2001/12/19 14:40:28 roam Exp $
+# $DragonFly: src/etc/rc.shutdown,v 1.2 2003/06/17 04:24:45 dillon Exp $
 #
 
 # Site-specific closing actions for daemons run by init on shutdown,

@@ -35,6 +35,7 @@
  *
  *	from: @(#)trap.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/trap.h,v 1.10.2.2 2001/08/15 01:23:52 peter Exp $
+ * $DragonFly: src/sys/cpu/i386/include/trap.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 #ifndef _MACHINE_TRAP_H_

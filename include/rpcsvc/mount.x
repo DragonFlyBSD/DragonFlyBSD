@@ -25,20 +25,16 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)mount.x 1.2 87/09/18 Copyr 1987 Sun Micro
+ * @(#)mount.x	2.1 88/08/01 4.0 RPCSRC
+ * $FreeBSD: src/include/rpcsvc/mount.x,v 1.6 1999/08/27 23:45:08 peter Exp $
+ * $DragonFly: src/include/rpcsvc/mount.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 /*
  * Protocol description for the mount program
  */
-
-#ifndef RPC_HDR
-%#ifndef lint
-%/*static char sccsid[] = "from: @(#)mount.x 1.2 87/09/18 Copyr 1987 Sun Micro";*/
-%/*static char sccsid[] = "from: @(#)mount.x	2.1 88/08/01 4.0 RPCSRC";*/
-%static const char rcsid[] =
-%  "$FreeBSD: src/include/rpcsvc/mount.x,v 1.6 1999/08/27 23:45:08 peter Exp $";
-%#endif /* not lint */
-#endif
 
 const MNTPATHLEN = 1024;	/* maximum bytes in a pathname argument */
 const MNTNAMLEN = 255;		/* maximum bytes in a name argument */

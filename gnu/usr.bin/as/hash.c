@@ -34,6 +34,9 @@
  * code. Use GNU (f)utilities to do this. A few commands assist test.
  * The testing is awkward: it tries to be both batch & interactive.
  * For now, interactive rules!
+ *
+ * $FreeBSD: src/gnu/usr.bin/as/hash.c,v 1.7 1999/08/27 23:34:17 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/as/Attic/hash.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
  */
 
 /*
@@ -121,10 +124,6 @@
  *  old array!)
  *
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/as/hash.c,v 1.7 1999/08/27 23:34:17 peter Exp $";
-#endif
 
 #include <stdio.h>
 

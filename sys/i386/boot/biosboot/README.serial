@@ -194,3 +194,4 @@ CAVEATS:
 
 
 $FreeBSD: src/sys/i386/boot/biosboot/README.serial,v 1.11 1999/08/28 00:43:10 peter Exp $
+$DragonFly: src/sys/i386/boot/biosboot/Attic/README.serial,v 1.2 2003/06/17 04:28:34 dillon Exp $

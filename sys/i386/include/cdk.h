@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cdk.h,v 1.5.2.1 2001/08/30 12:29:57 murray Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cdk.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 /*****************************************************************************/

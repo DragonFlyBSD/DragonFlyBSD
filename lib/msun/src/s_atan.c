@@ -8,11 +8,10 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
+ *
+ * $FreeBSD: src/lib/msun/src/s_atan.c,v 1.6 1999/08/28 00:06:43 peter Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_atan.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/lib/msun/src/s_atan.c,v 1.6 1999/08/28 00:06:43 peter Exp $";
-#endif
 
 /* atan(x)
  * Method

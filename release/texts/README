@@ -1,4 +1,5 @@
 $FreeBSD: src/release/texts/README,v 1.2.2.2 2002/03/12 05:25:12 bmah Exp $
+$DragonFly: src/release/texts/Attic/README,v 1.2 2003/06/17 04:27:21 dillon Exp $
 
 The release notes and other documentation files formerly in this
 directory are now rendered from SGML as part of the release build.

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/ac97.h,v 1.3.2.10 2003/02/07 16:26:45 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/ac97.h,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #define AC97_MUTE	0x8000

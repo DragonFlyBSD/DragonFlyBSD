@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/kbdcontrol/lex.h,v 1.9.2.2 2001/06/08 18:27:32 sobomax Exp $
+ * $DragonFly: src/usr.sbin/kbdcontrol/lex.h,v 1.2 2003/06/17 04:29:55 dillon Exp $
  */
 
 #define TNOP		256

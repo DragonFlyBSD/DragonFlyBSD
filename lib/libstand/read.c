@@ -1,4 +1,5 @@
 /* $FreeBSD: src/lib/libstand/read.c,v 1.1.1.1.6.1 2000/09/10 01:32:06 ps Exp $ */
+/* $DragonFly: src/lib/libstand/read.c,v 1.2 2003/06/17 04:26:51 dillon Exp $ */
 /*	$NetBSD: read.c,v 1.8 1997/01/22 00:38:12 cgd Exp $	*/
 
 /*-

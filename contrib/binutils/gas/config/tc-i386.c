@@ -22,6 +22,7 @@
 
 
 /* $FreeBSD: src/contrib/binutils/gas/config/tc-i386.c,v 1.4.2.4 2002/09/01 23:44:03 obrien Exp $ */
+/* $DragonFly: src/contrib/binutils/gas/config/Attic/tc-i386.c,v 1.2 2003/06/17 04:23:58 dillon Exp $ */
 
 
 /* Intel 80386 machine specific gas.

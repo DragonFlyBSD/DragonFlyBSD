@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_concurrency.c,v 1.1.2.1 2003/05/27 18:18:01 jdp Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_concurrency.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 
 #include <errno.h>

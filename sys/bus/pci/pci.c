@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  *
  */
 

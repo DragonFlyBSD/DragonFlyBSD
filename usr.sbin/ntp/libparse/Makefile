@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/ntp/libparse/Makefile,v 1.2.2.2 2002/07/19 18:46:30 ru Exp $
+# $DragonFly: src/usr.sbin/ntp/libparse/Attic/Makefile,v 1.2 2003/06/17 04:29:58 dillon Exp $
 
 .PATH: ${.CURDIR}/../../../contrib/ntp/libparse
 

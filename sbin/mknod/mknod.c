@@ -32,21 +32,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)mknod.c	8.1 (Berkeley) 6/5/93
+ * $FreeBSD: src/sbin/mknod/mknod.c,v 1.13 2000/01/06 17:51:46 obrien Exp $
+ * $DragonFly: src/sbin/mknod/mknod.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1989, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)mknod.c	8.1 (Berkeley) 6/5/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/mknod/mknod.c,v 1.13 2000/01/06 17:51:46 obrien Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/arc/lib/arch/alpha/rpb.c,v 1.2 1999/08/28 00:39:40 peter Exp $
+ * $DragonFly: src/sys/boot/arc/lib/arch/alpha/Attic/rpb.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 
 #include <stand.h>

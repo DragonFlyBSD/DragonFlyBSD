@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/prompt.c,v 1.20.2.5 2003/04/05 10:51:39 ume Exp $
+ * $DragonFly: src/usr.sbin/ppp/prompt.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 #include <sys/param.h>

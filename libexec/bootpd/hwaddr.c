@@ -3,6 +3,7 @@
  * (i.e. Ethernet)
  *
  * $FreeBSD: src/libexec/bootpd/hwaddr.c,v 1.7.2.1 2003/02/15 05:36:01 kris Exp $
+ * $DragonFly: src/libexec/bootpd/hwaddr.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 #include <sys/types.h>

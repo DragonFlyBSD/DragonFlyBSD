@@ -1,6 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -1306,11 +1307,9 @@ static	int	ncr_attach	(device_t dev);
 */
 
 
-#if !defined(lint)
-static const char ident[] =
-	"\n$FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $\n";
-#endif
-
+/*
+ * $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
+ */
 static const u_long	ncr_version = NCR_VERSION	* 11
 	+ (u_long) sizeof (struct ncb)	*  7
 	+ (u_long) sizeof (struct nccb)	*  5

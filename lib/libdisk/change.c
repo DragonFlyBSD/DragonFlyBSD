@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libdisk/change.c,v 1.14.2.5 2002/10/24 13:03:44 nyan Exp $
+ * $DragonFly: src/lib/libdisk/Attic/change.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
  *
  */
 

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.sbin/pkg_install/lib/lib.h,v 1.29.2.12 2003/06/09 17:01:26 lioux Exp $ */
+/* $DragonFly: src/usr.sbin/pkg_install/lib/Attic/lib.h,v 1.2 2003/06/17 04:29:59 dillon Exp $ */
 
 /*
  * FreeBSD install - a package for the installation and maintainance

@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/syscons_isa.c,v 1.11.2.2 2001/08/01 10:42:28 yokota Exp $
+ * $DragonFly: src/sys/bus/isa/syscons_isa.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
  */
 
 #include "opt_syscons.h"

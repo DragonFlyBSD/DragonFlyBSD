@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/Makefile,v 1.51 2000/01/16 00:11:34 obrien Exp $
+# $DragonFly: src/gnu/usr.bin/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
 
 SUBDIR= awk bc binutils cc cpio dc dialog diff diff3 gperf \
 	grep groff gzip man patch ptx rcs sdiff send-pr sort tar texinfo

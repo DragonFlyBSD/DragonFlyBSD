@@ -1,4 +1,5 @@
 /* $FreeBSD: src/contrib/libreadline/util.c,v 1.5.2.2 2000/07/06 23:04:25 ache Exp $ */
+/* $DragonFly: src/contrib/libreadline/Attic/util.c,v 1.2 2003/06/17 04:24:03 dillon Exp $ */
 /* util.c -- readline utility functions */
 
 /* Copyright (C) 1987, 1989, 1992 Free Software Foundation, Inc.

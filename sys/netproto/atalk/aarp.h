@@ -3,6 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.h,v 1.3 1999/12/29 04:45:57 peter Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 #ifndef _NETATALK_AARP_H_

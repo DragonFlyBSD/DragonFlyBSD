@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key.h,v 1.5.2.3 2002/04/28 05:40:28 suz Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key.h,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$KAME: key.h,v 1.21 2001/07/27 03:51:30 itojun Exp $	*/
 
 /*

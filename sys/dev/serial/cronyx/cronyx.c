@@ -13,6 +13,7 @@
  *
  * Version 1.6, Wed May 31 16:03:20 MSD 1995
  * $FreeBSD: src/sys/i386/isa/cronyx.c,v 1.10.6.1 2000/08/03 01:01:20 peter Exp $
+ * $DragonFly: src/sys/dev/serial/cronyx/cronyx.c,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 #if defined (MSDOS) || defined (__MSDOS__)
 #   include <string.h>

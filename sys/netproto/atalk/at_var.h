@@ -21,6 +21,7 @@
  *	netatalk@itd.umich.edu
  *
  * $FreeBSD: src/sys/netatalk/at_var.h,v 1.10 1999/12/29 04:45:57 peter Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_var.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 #ifndef _NETATALK_AT_VAR_H_

@@ -32,6 +32,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/stty/extern.h,v 1.5 1999/08/27 23:15:40 peter Exp $
+ * $DragonFly: src/bin/stty/extern.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
 
 int	c_cchars __P((const void *, const void *));

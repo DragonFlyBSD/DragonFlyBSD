@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/green/green_saver.c,v 1.17 1999/08/28 00:47:50 peter Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/green/green_saver.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/busdma_machdep.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #include <sys/param.h>

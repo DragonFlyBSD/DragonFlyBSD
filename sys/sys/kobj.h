@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/kobj.h,v 1.5.2.1 2001/02/02 19:49:14 cg Exp $
+ * $DragonFly: src/sys/sys/kobj.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_KOBJ_H_

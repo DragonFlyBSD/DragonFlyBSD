@@ -33,11 +33,10 @@
  * Posix rand_r function added May 1999 by Wes Peters <wes@softweyr.com>.
  *
  * $FreeBSD: src/lib/libc/stdlib/rand.c,v 1.2.2.1 2001/03/05 11:33:57 obrien Exp $
+ * $DragonFly: src/lib/libcr/stdlib/Attic/rand.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ *
+ * @(#)rand.c	8.1 (Berkeley) 6/14/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)rand.c	8.1 (Berkeley) 6/14/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <stdlib.h>

@@ -1,4 +1,5 @@
 # $FreeBSD: src/contrib/binutils/ld/emulparams/elf64alpha.sh,v 1.3.2.2 2002/09/01 23:44:15 obrien Exp $
+# $DragonFly: src/contrib/binutils/ld/emulparams/Attic/elf64alpha.sh,v 1.2 2003/06/17 04:23:58 dillon Exp $
 
 
 ENTRY=_start

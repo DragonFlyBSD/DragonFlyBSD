@@ -5,6 +5,7 @@
  * generation being slated for what's essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/dmenu.c,v 1.44 2000/03/08 14:20:26 jkh Exp $
+ * $DragonFly: src/release/sysinstall/Attic/dmenu.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.

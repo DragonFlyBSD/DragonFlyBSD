@@ -32,6 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/iec13213.h,v 1.1.2.4 2003/05/01 06:24:37 simokawa Exp $
+ * $DragonFly: src/sys/bus/firewire/iec13213.h,v 1.2 2003/06/17 04:28:26 dillon Exp $
  *
  */
 

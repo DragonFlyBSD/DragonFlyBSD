@@ -1,4 +1,5 @@
 /* $FreeBSD: src/contrib/texinfo/info/infomap.c,v 1.4.2.1 2002/03/30 17:09:19 ru Exp $ */
+/* $DragonFly: src/contrib/texinfo/info/Attic/infomap.c,v 1.2 2003/06/17 04:24:07 dillon Exp $ */
 /* infomap.c -- keymaps for Info.
    $Id: infomap.c,v 1.28 2002/02/08 23:02:53 karl Exp $
 

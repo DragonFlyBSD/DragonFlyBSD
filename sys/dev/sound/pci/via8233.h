@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/via8233.h,v 1.1.2.1 2002/08/22 17:32:48 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pci/via8233.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #ifndef _SYS_SOUND_PCI_VIA8233_H_

@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/usr.sbin/ntp/scripts/mkver,v 1.4.2.2 2001/12/21 17:42:35 roberto Exp $
+# $DragonFly: src/usr.sbin/ntp/scripts/Attic/mkver,v 1.2 2003/06/17 04:29:59 dillon Exp $
 #
 PROG=${1-UNKNOWN}
 

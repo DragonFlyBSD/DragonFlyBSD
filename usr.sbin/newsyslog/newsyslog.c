@@ -16,15 +16,14 @@
  * for any purpose.  It is provided "as is" without express or implied
  * warranty.
  *
+ * $FreeBSD: src/usr.sbin/newsyslog/newsyslog.c,v 1.25.2.21 2003/05/12 23:41:29 gad Exp $
+ * $DragonFly: src/usr.sbin/newsyslog/newsyslog.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
 
 /*
  * newsyslog - roll over selected logs at the appropriate time, keeping the a
  * specified number of backup files around.
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.sbin/newsyslog/newsyslog.c,v 1.25.2.21 2003/05/12 23:41:29 gad Exp $");
 
 #define OSF
 #ifndef COMPRESS_POSTFIX

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/direntry.h,v 1.15 1999/12/29 04:54:52 peter Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/direntry.h,v 1.2 2003/06/17 04:28:47 dillon Exp $ */
 /*	$NetBSD: direntry.h,v 1.14 1997/11/17 15:36:32 ws Exp $	*/
 
 /*-

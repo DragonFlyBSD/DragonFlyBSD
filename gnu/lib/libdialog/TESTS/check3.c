@@ -14,6 +14,7 @@
  * its use.
  *
  * $FreeBSD: src/gnu/lib/libdialog/TESTS/check3.c,v 1.6 2000/01/10 11:52:03 phantom Exp $
+ * $DragonFly: src/gnu/lib/libdialog/TESTS/check3.c,v 1.2 2003/06/17 04:25:43 dillon Exp $
  *
  */
 

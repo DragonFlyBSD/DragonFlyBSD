@@ -36,11 +36,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/output.c,v 1.8 1999/08/28 01:15:03 peter Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/output.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *
+ * @(#)output.c	8.1 (Berkeley) 6/5/93
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)output.c	8.1 (Berkeley) 6/5/93";
-#endif /* not lint */
 
 /*
  * Routing Table Management Daemon

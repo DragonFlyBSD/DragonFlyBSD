@@ -32,6 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
  */
 
 /*

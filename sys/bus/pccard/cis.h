@@ -30,6 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/cis.h,v 1.3.10.1 2000/05/23 03:56:58 imp Exp $
+ * $DragonFly: src/sys/bus/pccard/Attic/cis.h,v 1.2 2003/06/17 04:28:55 dillon Exp $
  *
  */
 

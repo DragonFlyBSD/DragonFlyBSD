@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libedit/tty.c,v 1.4.6.1 2000/08/16 14:43:40 ache Exp $
+ * $DragonFly: src/lib/libedit/tty.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ *
+ * @(#)tty.c	8.1 (Berkeley) 6/4/93
  */
-
-#if !defined(lint) && !defined(SCCSID)
-static char sccsid[] = "@(#)tty.c	8.1 (Berkeley) 6/4/93";
-#endif /* not lint && not SCCSID */
 
 /*
  * tty.c: tty interface stuff

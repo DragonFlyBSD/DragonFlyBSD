@@ -20,6 +20,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/gcc/reload.c,v 1.4.2.1 2001/04/10 19:23:12 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/reload.c,v 1.2 2003/06/17 04:24:01 dillon Exp $ */
 
 
 /* This file contains subroutines used only from the file reload1.c.

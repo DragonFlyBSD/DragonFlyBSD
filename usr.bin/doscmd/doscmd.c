@@ -28,10 +28,10 @@
  * SUCH DAMAGE.
  *
  *	BSDI doscmd.c,v 2.3 1996/04/08 19:32:30 bostic Exp
+ *
+ * $FreeBSD: src/usr.bin/doscmd/doscmd.c,v 1.13.2.6 2002/04/25 11:04:51 tg Exp $
+ * $DragonFly: src/usr.bin/doscmd/doscmd.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/doscmd/doscmd.c,v 1.13.2.6 2002/04/25 11:04:51 tg Exp $");
 
 #include <sys/types.h>
 #include <sys/param.h>

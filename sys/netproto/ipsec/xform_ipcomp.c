@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipcomp.c,v 1.1.4.2 2003/02/26 00:14:06 sam Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipcomp.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /* $OpenBSD: ip_ipcomp.c,v 1.1 2001/07/05 12:08:52 jjbg Exp $ */
 
 /*

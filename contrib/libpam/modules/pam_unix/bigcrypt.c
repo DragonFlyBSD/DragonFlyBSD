@@ -23,6 +23,7 @@
  *
  * Andy Phillips <atp@mssl.ucl.ac.uk>
  * $FreeBSD: src/contrib/libpam/modules/pam_unix/bigcrypt.c,v 1.1.1.1.2.2 2001/06/11 15:28:30 markm Exp $
+ * $DragonFly: src/contrib/libpam/modules/pam_unix/Attic/bigcrypt.c,v 1.2 2003/06/17 04:24:03 dillon Exp $
  */
 
 #include <string.h>

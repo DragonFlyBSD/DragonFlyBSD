@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)authenc.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/crypto/telnet/telnet/authenc.c,v 1.2.8.2 2002/04/13 10:59:08 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnet/authenc.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-
-__FBSDID("$FreeBSD: src/crypto/telnet/telnet/authenc.c,v 1.2.8.2 2002/04/13 10:59:08 markm Exp $");
-
-#ifndef lint
-static const char sccsid[] = "@(#)authenc.c	8.1 (Berkeley) 6/6/93";
-#endif
 
 #ifdef	AUTHENTICATION
 #ifdef	ENCRYPTION

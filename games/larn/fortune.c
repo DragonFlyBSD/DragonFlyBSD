@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)fortune.c	5.5 (Berkeley) 6/10/91
+ * $FreeBSD: src/games/larn/fortune.c,v 1.2 1999/11/30 03:48:59 billf Exp $
+ * $DragonFly: src/games/larn/fortune.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)fortune.c	5.5 (Berkeley) 6/10/91";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/larn/fortune.c,v 1.2 1999/11/30 03:48:59 billf Exp $";
-#endif /* not lint */
 
 /* fortune.c		 Larn is copyrighted 1986 by Noah Morgan. */
 

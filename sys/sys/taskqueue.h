@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/taskqueue.h,v 1.3.2.1 2000/07/18 21:12:41 dfr Exp $
+ * $DragonFly: src/sys/sys/taskqueue.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _SYS_TASKQUEUE_H_

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6protosw.h,v 1.2.2.4 2002/04/28 05:40:27 suz Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6protosw.h,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
 /*	$KAME: ip6protosw.h,v 1.25 2001/09/26 06:13:03 keiichi Exp $	*/
 
 /*

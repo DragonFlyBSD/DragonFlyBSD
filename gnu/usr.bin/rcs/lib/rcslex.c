@@ -39,6 +39,9 @@ Report problems and direct all questions to:
 
 
 /*
+ * $FreeBSD: src/gnu/usr.bin/rcs/lib/rcslex.c,v 1.8 1999/08/27 23:36:47 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/lib/rcslex.c,v 1.2 2003/06/17 04:25:47 dillon Exp $
+ *
  * Revision 5.19  1995/06/16 06:19:24  eggert
  * Update FSF address.
  *
@@ -168,7 +171,7 @@ Report problems and direct all questions to:
 
 #include "rcsbase.h"
 
-libId(lexId, "$FreeBSD: src/gnu/usr.bin/rcs/lib/rcslex.c,v 1.8 1999/08/27 23:36:47 peter Exp $")
+libId(lexId, "$DragonFly: src/gnu/usr.bin/rcs/lib/rcslex.c,v 1.2 2003/06/17 04:25:47 dillon Exp $")
 
 static char *checkidentifier P((char*,int,int));
 static void errsay P((char const*));

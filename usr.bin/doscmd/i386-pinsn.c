@@ -1,3 +1,7 @@
+/*
+ * $FreeBSD: src/usr.bin/doscmd/i386-pinsn.c,v 1.1.6.1 2002/04/25 11:04:51 tg Exp $
+ * $DragonFly: src/usr.bin/doscmd/i386-pinsn.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ */
 #ifdef DISASSEMBLER
 
 /* Print i386 instructions for GDB, the GNU debugger.
@@ -32,9 +36,6 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
  * and the small letter tells about the operand size.  Refer to 
  * the Intel manual for details.
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/doscmd/i386-pinsn.c,v 1.1.6.1 2002/04/25 11:04:51 tg Exp $");
 
 #include <stdio.h>
 #include <ctype.h>

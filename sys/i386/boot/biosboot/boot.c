@@ -25,6 +25,7 @@
  *
  *	from: Mach, [92/04/03  16:51:14  rvb]
  * $FreeBSD: src/sys/i386/boot/biosboot/boot.c,v 1.76 1999/12/08 09:32:47 phk Exp $
+ * $DragonFly: src/sys/i386/boot/biosboot/Attic/boot.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 

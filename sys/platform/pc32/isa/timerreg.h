@@ -32,6 +32,7 @@
  *
  *	from: Header: timerreg.h,v 1.2 93/02/28 15:08:58 mccanne Exp
  * $FreeBSD: src/sys/i386/isa/timerreg.h,v 1.6 1999/08/28 00:45:04 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/timerreg.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /*

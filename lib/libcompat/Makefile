@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libcompat/Makefile,v 1.19.2.1 2001/04/25 10:04:23 ru Exp $
+# $DragonFly: src/lib/libcompat/Makefile,v 1.2 2003/06/17 04:26:48 dillon Exp $
 
 LIB=compat
 CFLAGS+=-DLIBC_SCCS -DSYSLIBC_SCCS -I${.CURDIR}/../libc/locale

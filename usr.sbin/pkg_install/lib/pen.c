@@ -16,10 +16,9 @@
  *
  * Routines for managing the "play pen".
  *
+ * $FreeBSD: src/usr.sbin/pkg_install/lib/pen.c,v 1.31.2.7 2002/08/20 06:35:08 obrien Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/pen.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.sbin/pkg_install/lib/pen.c,v 1.31.2.7 2002/08/20 06:35:08 obrien Exp $");
 
 #include "lib.h"
 #include <err.h>

@@ -10,6 +10,7 @@
  * Maybe you should write some free software too.
  *
  * $FreeBSD: src/usr.sbin/ctm/ctm_rmail/ctm_rmail.c,v 1.15.2.2 2002/08/26 18:58:53 iedowse Exp $
+ * $DragonFly: src/usr.sbin/ctm/ctm_rmail/Attic/ctm_rmail.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 
 #include <stdio.h>

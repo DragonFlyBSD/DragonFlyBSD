@@ -37,6 +37,7 @@
  *
  *	from: @(#)cons.h	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/sys/cons.h,v 1.24 2000/01/11 14:54:01 yokota Exp $
+ * $DragonFly: src/sys/sys/cons.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _MACHINE_CONS_H_

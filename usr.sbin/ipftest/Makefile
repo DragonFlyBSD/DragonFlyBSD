@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/ipftest/Makefile,v 1.4.2.5 2002/04/27 18:19:04 darrenr Exp $
+# $DragonFly: src/usr.sbin/ipftest/Makefile,v 1.2 2003/06/17 04:29:55 dillon Exp $
 
 .PATH:	${.CURDIR}/../../sys/netinet \
 	${.CURDIR}/../../contrib/ipfilter ${.CURDIR}/../../contrib/ipfilter/man

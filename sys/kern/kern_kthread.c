@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_kthread.c,v 1.5.2.3 2001/12/25 01:51:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_kthread.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include <sys/param.h>

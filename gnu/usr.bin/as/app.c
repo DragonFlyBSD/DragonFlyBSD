@@ -23,10 +23,10 @@
    # <number> <filename> <garbage> into a .line <number>\n.file <filename>
    pair.  This needs better error-handling.  */
 
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/as/app.c,v 1.7 1999/08/27 23:34:10 peter Exp $";
-#endif
-
+/*
+ * $FreeBSD: src/gnu/usr.bin/as/app.c,v 1.7 1999/08/27 23:34:10 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/as/Attic/app.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
+ */
 #include <stdio.h>
 #include "as.h"			/* For BAD_CASE() only */
 

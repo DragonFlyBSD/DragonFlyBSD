@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>

@@ -28,6 +28,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/keyserv/crypt_server.c,v 1.6.2.1 2001/07/19 04:21:20 kris Exp $
+ * $DragonFly: src/usr.sbin/keyserv/crypt_server.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -41,11 +44,6 @@
 #include <rpc/des_crypt.h>
 #include <rpc/des.h>
 #include "crypt.h"
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/keyserv/crypt_server.c,v 1.6.2.1 2001/07/19 04:21:20 kris Exp $";
-#endif /* not lint */
 
 /*
  * The U.S. government stupidly believes that a) it can keep strong

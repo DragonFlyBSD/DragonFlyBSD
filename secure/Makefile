@@ -1,4 +1,5 @@
 # $FreeBSD: src/secure/Makefile,v 1.16.2.1 2002/07/25 09:33:13 ru Exp $
+# $DragonFly: src/secure/Makefile,v 1.2 2003/06/17 04:27:42 dillon Exp $
 
 # lib must be first, or it will not work.  This is because we reference
 # the lib's in the directory where they are built from the binaries we

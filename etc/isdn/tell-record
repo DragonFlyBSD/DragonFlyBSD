@@ -5,6 +5,7 @@
 #	-----------------------------------------------------------
 #
 # $FreeBSD: src/etc/isdn/tell-record,v 1.4.2.1 2001/03/06 02:42:05 obrien Exp $
+# $DragonFly: src/etc/isdn/tell-record,v 1.2 2003/06/17 04:24:47 dillon Exp $
 #
 #	last edit-date: [Tue Oct 31 10:59:49 2000]
 #

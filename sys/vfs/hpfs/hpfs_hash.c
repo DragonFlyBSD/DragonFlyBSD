@@ -32,6 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/fs/hpfs/hpfs_hash.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -23,6 +23,7 @@
 \ SUCH DAMAGE.
 \
 \ $FreeBSD: src/sys/boot/forth/support.4th,v 1.3.2.1 2000/07/07 00:15:53 obrien Exp $
+\ $DragonFly: src/sys/boot/forth/support.4th,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 \ Loader.rc support functions:
 \

@@ -28,6 +28,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/ccl.c,v 2.9 93/09/16 20:32:14 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/ccl.c,v 1.5 1999/10/27 07:56:43 obrien Exp $ */
+/* $DragonFly: src/usr.bin/lex/ccl.c,v 1.2 2003/06/17 04:29:27 dillon Exp $ */
 
 #include "flexdef.h"
 

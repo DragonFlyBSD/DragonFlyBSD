@@ -1,5 +1,6 @@
 /* $Id: auth-pam.h,v 1.16 2002/07/23 00:44:07 stevesk Exp $ */
 /* $FreeBSD: src/crypto/openssh/auth-pam.h,v 1.2.2.4 2003/02/03 17:31:06 des Exp $ */
+/* $DragonFly: src/crypto/openssh/Attic/auth-pam.h,v 1.2 2003/06/17 04:24:36 dillon Exp $ */
 
 /*
  * Copyright (c) 2000 Damien Miller.  All rights reserved.

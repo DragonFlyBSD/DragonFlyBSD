@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/rijndael.c,v 1.1.2.1 2002/11/21 23:34:23 sam Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/rijndael.c,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
 /*	$OpenBSD: rijndael.c,v 1.12 2002/07/10 17:53:54 deraadt Exp $ */
 
 /**

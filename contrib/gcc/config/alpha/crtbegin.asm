@@ -194,3 +194,4 @@ __do_frame_takedown:
 
 .section	.rodata
 	.ascii "$FreeBSD: src/contrib/gcc/config/alpha/crtbegin.asm,v 1.1.1.2.2.3 2001/08/19 00:01:16 obrien Exp $\0"
+	.ascii "$DragonFly: src/contrib/gcc/config/alpha/Attic/crtbegin.asm,v 1.2 2003/06/17 04:24:01 dillon Exp $\0"

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/ftp_var.h,v 1.11.2.2 2002/08/27 09:55:08 yar Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/ftp_var.h,v 1.2 2003/06/17 04:29:26 dillon Exp $	*/
 /*	$NetBSD: ftp_var.h,v 1.20.2.1 1997/11/18 01:01:37 mellon Exp $	*/
 
 /*

@@ -27,6 +27,7 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # $FreeBSD: src/tools/install.sh,v 1.3.2.1 2001/08/08 07:42:21 ru Exp $
+# $DragonFly: src/tools/install.sh,v 1.2 2003/06/17 04:29:08 dillon Exp $
 
 # parse install's options and ignore them completely.
 # XXX - not all options are recognised.

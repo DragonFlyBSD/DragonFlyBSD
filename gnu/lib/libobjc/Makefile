@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/lib/libobjc/Makefile,v 1.9.2.3 2002/07/22 14:21:45 ru Exp $
+# $DragonFly: src/gnu/lib/libobjc/Attic/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
 
 OBJCDIR=${.CURDIR}/../../../contrib/libobjc
 GCCDIR=	${.CURDIR}/../../../contrib/gcc

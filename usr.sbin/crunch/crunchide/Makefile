@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/crunch/crunchide/Makefile,v 1.2.6.1 2002/07/25 09:33:17 ru Exp $
+# $DragonFly: src/usr.sbin/crunch/crunchide/Makefile,v 1.2 2003/06/17 04:29:53 dillon Exp $
 
 PROG=   crunchide
 SRCS=	crunchide.c exec_elf32.c exec_elf64.c

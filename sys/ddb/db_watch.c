@@ -24,6 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_watch.c,v 1.20.2.1 2001/07/25 01:00:08 bsd Exp $
+ * $DragonFly: src/sys/ddb/db_watch.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 
 /*

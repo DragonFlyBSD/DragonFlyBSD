@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_buffer.c,v 1.5 1999/08/28 00:41:43 peter Exp $
- *
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_buffer.c,v 1.2 2003/06/17 04:28:26 dillon Exp $
  */
 
 /*
@@ -40,10 +40,6 @@
 #include <dev/hea/eni_stats.h>
 #include <dev/hea/eni.h>
 #include <dev/hea/eni_var.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/dev/hea/eni_buffer.c,v 1.5 1999/08/28 00:41:43 peter Exp $");
-#endif
 
 static int	eni_test_memory __P((Eni_unit *));
 

@@ -34,6 +34,7 @@
  *	@(#)ipx_pcb.h
  *
  * $FreeBSD: src/sys/netipx/ipx_pcb.h,v 1.15 1999/12/29 04:46:08 peter Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_pcb.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 #ifndef _NETIPX_IPX_PCB_H_

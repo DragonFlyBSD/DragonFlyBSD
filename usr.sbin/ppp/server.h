@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/server.h,v 1.6.2.2 2001/05/17 19:11:49 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/server.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 struct bundle;

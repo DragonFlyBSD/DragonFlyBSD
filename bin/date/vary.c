@@ -22,12 +22,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/bin/date/vary.c,v 1.8.2.2 2000/12/08 11:42:53 brian Exp $
+ * $DragonFly: src/bin/date/vary.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/bin/date/vary.c,v 1.8.2.2 2000/12/08 11:42:53 brian Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <time.h>

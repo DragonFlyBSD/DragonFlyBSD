@@ -23,6 +23,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
    for FreeBSD/Alpha by Hidetoshi Shimokawa <simokawa@FreeBSD.ORG> */
 
 /* $FreeBSD: src/contrib/gcc/config/alpha/freebsd.h,v 1.9.2.3 2002/06/20 23:12:36 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/config/alpha/Attic/freebsd.h,v 1.2 2003/06/17 04:24:01 dillon Exp $ */
 
 
 /* Names to predefine in the preprocessor for this target machine.

@@ -30,6 +30,7 @@
  *	$Id: i4b_trace.h,v 1.8 2000/03/08 16:08:18 hm Exp $ 
  *
  * $FreeBSD: src/sys/i386/include/i4b_trace.h,v 1.6.2.1 2001/08/01 17:45:01 obrien Exp $
+ * $DragonFly: src/sys/net/i4b/include/i386/i4b_trace.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  *
  *      last edit-date: [Wed Mar  8 16:41:43 2000]
  *

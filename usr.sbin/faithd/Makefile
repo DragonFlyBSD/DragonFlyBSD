@@ -12,6 +12,7 @@
 # LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 # A PARTICULAR PURPOSE.
 # $FreeBSD: src/usr.sbin/faithd/Makefile,v 1.1.2.4 2001/07/03 11:02:04 ume Exp $
+# $DragonFly: src/usr.sbin/faithd/Makefile,v 1.2 2003/06/17 04:29:53 dillon Exp $
 
 PROG=	faithd
 SRCS=	faithd.c tcp.c ftp.c rsh.c prefix.c

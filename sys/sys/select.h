@@ -32,6 +32,7 @@
  *
  *	@(#)select.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/select.h,v 1.6.2.1 2000/05/05 03:50:02 jlemon Exp $
+ * $DragonFly: src/sys/sys/select.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_SELECT_H_

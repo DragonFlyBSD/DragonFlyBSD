@@ -34,6 +34,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ntfs/ntfs_ihash.c,v 1.7 1999/12/03 20:37:39 semenu Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 
 #include <sys/param.h>

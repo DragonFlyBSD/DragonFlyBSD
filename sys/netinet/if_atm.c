@@ -32,6 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/if_atm.c,v 1.8.2.1 2001/12/20 10:30:18 ru Exp $
+ * $DragonFly: src/sys/netinet/if_atm.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 /*

@@ -12,6 +12,7 @@
 /*
  * from: @(#)fdlibm.h 5.1 93/09/24
  * $FreeBSD: src/lib/msun/src/math.h,v 1.8.2.2 2001/11/23 16:16:18 dd Exp $
+ * $DragonFly: src/lib/msun/src/Attic/math.h,v 1.2 2003/06/17 04:26:53 dillon Exp $
  */
 
 #ifndef _MATH_H_

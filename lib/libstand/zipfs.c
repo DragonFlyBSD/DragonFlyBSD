@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/zipfs.c,v 1.4.2.4 2002/04/08 13:50:09 sobomax Exp $
+ * $DragonFly: src/lib/libstand/zipfs.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  *
  */
 

@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 3/27/94
 # $FreeBSD: src/sbin/newfs/Makefile,v 1.6.6.2 2001/04/25 10:58:41 ru Exp $
+# $DragonFly: src/sbin/newfs/Makefile,v 1.2 2003/06/17 04:27:34 dillon Exp $
 
 PROG=	newfs
 SRCS=	getmntopts.c newfs.c mkfs.c

@@ -38,6 +38,7 @@
  *
  *	@(#)ext2_inode.c	8.5 (Berkeley) 12/30/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode.c,v 1.24.2.1 2000/08/03 00:52:57 peter Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #include "opt_quota.h"

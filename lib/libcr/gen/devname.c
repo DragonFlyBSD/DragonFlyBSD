@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/devname.c,v 1.2.2.2 2001/07/31 20:10:19 tmm Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/devname.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)devname.c	8.2 (Berkeley) 4/29/95
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)devname.c	8.2 (Berkeley) 4/29/95";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/sysctl.h>

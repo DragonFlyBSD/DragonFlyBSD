@@ -37,6 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.17 2003/06/06 20:21:32 tegge Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include "opt_compat.h"

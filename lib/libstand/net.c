@@ -38,6 +38,7 @@
  *
  * @(#) Header: net.c,v 1.9 93/08/06 19:32:15 leres Exp  (LBL)
  * $FreeBSD: src/lib/libstand/net.c,v 1.1.1.1.6.1 2000/04/15 03:09:28 ps Exp $
+ * $DragonFly: src/lib/libstand/net.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 
 #include <sys/param.h>

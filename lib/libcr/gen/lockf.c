@@ -36,12 +36,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/lockf.c,v 1.5 2000/01/27 23:06:17 jasone Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/lockf.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * $FreeBSD: src/lib/libc/gen/lockf.c,v 1.5 2000/01/27 23:06:17 jasone Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static const char rcsid[]=
-  "$FreeBSD: src/lib/libc/gen/lockf.c,v 1.5 2000/01/27 23:06:17 jasone Exp $";
-#endif
 
 #include <errno.h>
 #include <fcntl.h>

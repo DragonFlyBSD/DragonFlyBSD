@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rpvar.h,v 1.1.6.1 2000/08/03 01:01:20 peter Exp $
+ * $DragonFly: src/sys/dev/serial/rp2/Attic/rpvar.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /*

@@ -1,5 +1,6 @@
 /* MD5.H - header file for MD5C.C
  * $FreeBSD: src/sys/sys/md5.h,v 1.13 1999/12/29 04:24:44 peter Exp $
+ * $DragonFly: src/sys/sys/md5.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 /* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All

@@ -4,6 +4,7 @@
 */
 
 /* $FreeBSD: src/sys/boot/ficl/testmain.c,v 1.5.2.1 2000/07/06 23:51:45 obrien Exp $ */
+/* $DragonFly: src/sys/boot/ficl/testmain.c,v 1.2 2003/06/17 04:28:17 dillon Exp $ */
 
 #include <stdlib.h>
 #include <stdio.h>

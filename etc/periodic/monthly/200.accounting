@@ -1,6 +1,7 @@
 #!/bin/sh -
 #
 # $FreeBSD: src/etc/periodic/monthly/200.accounting,v 1.4.2.5 2002/05/21 03:17:08 brian Exp $
+# $DragonFly: src/etc/periodic/monthly/200.accounting,v 1.2 2003/06/17 04:24:48 dillon Exp $
 #
 
 # If there is a global system configuration file, suck it in.

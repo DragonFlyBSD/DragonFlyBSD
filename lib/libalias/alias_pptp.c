@@ -36,6 +36,7 @@
  * Author: Erik Salander <erik@whistle.com>
  *
  * $FreeBSD: src/lib/libalias/alias_pptp.c,v 1.1.2.4 2001/08/01 09:52:27 obrien Exp $
+ * $DragonFly: src/lib/libalias/alias_pptp.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
 
 /*

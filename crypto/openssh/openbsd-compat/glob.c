@@ -32,6 +32,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)glob.c	8.3 (Berkeley) 10/13/93
+ * $OpenBSD: glob.c,v 1.20 2002/06/14 21:34:58 todd Exp $
  */
 
 #include "includes.h"
@@ -51,14 +54,6 @@ get_arg_max(void)
 
 #if !defined(HAVE_GLOB) || !defined(GLOB_HAS_ALTDIRFUNC) || \
     !defined(GLOB_HAS_GL_MATCHC)
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)glob.c	8.3 (Berkeley) 10/13/93";
-#else
-static char rcsid[] = "$OpenBSD: glob.c,v 1.20 2002/06/14 21:34:58 todd Exp $";
-#endif
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * glob(3) -- a superset of the one defined in POSIX 1003.2.

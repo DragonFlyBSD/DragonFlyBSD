@@ -29,12 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)malloc.c	5.11 (Berkeley) 2/23/91
+ * $FreeBSD: src/libexec/rtld-elf/malloc.c,v 1.3.2.3 2003/02/20 20:42:46 kan Exp $
+ * $DragonFly: src/libexec/rtld-elf/malloc.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/*static char *sccsid = "from: @(#)malloc.c	5.11 (Berkeley) 2/23/91";*/
-static char *rcsid = "$FreeBSD: src/libexec/rtld-elf/malloc.c,v 1.3.2.3 2003/02/20 20:42:46 kan Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * malloc.c (Caltech) 2/21/82

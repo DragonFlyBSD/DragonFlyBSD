@@ -29,16 +29,13 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)util.c	8.2 (Berkeley) 4/2/94
+ * $FreeBSD: src/crypto/heimdal/appl/rcp/util.c,v 1.1.1.1.2.3 2002/09/20 10:50:16 nectar Exp $
+ * $DragonFly: src/crypto/heimdal/appl/rcp/Attic/util.c,v 1.2 2003/06/17 04:24:35 dillon Exp $
  */
 
 #if 0
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)util.c	8.2 (Berkeley) 4/2/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/crypto/heimdal/appl/rcp/util.c,v 1.1.1.1.2.3 2002/09/20 10:50:16 nectar Exp $";
-#endif /* not lint */
 #endif
 
 #include "rcp_locl.h"

@@ -34,6 +34,7 @@
 /* 
  * $Id: headers.h,v 1.15 2002/09/10 20:04:46 joda Exp $ 
  * $FreeBSD: src/crypto/heimdal/kdc/headers.h,v 1.2.2.3 2002/09/20 10:50:21 nectar Exp $ 
+ * $DragonFly: src/crypto/heimdal/kdc/Attic/headers.h,v 1.2 2003/06/17 04:24:35 dillon Exp $ 
  */
 
 #ifndef __HEADERS_H__

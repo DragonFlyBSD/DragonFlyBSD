@@ -29,6 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/bs/bsvar.h,v 1.6.6.1 2000/03/22 03:36:45 nyan Exp $
+ * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsvar.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 /*
  * Copyright (c) 1994, 1995, 1996 Naofumi HONDA.  All rights reserved.

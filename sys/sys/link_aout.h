@@ -28,6 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/link_aout.h,v 1.20.2.1 2000/09/22 02:08:25 jdp Exp $
+ * $DragonFly: src/sys/sys/link_aout.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 /*

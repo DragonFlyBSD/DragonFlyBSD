@@ -34,6 +34,7 @@
 # PS: this wrapper works also for catman(1)
 #
 # $FreeBSD: src/gnu/usr.bin/man/makewhatis/makewhatis.local.sh,v 1.7 1999/08/27 23:36:10 peter Exp $
+# $DragonFly: src/gnu/usr.bin/man/makewhatis/Attic/makewhatis.local.sh,v 1.2 2003/06/17 04:25:46 dillon Exp $
 
 PATH=/bin:/usr/bin:$PATH; export PATH
 opt= dirs= localdirs=

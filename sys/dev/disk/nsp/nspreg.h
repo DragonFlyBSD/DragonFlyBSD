@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nspreg.h,v 1.1.2.2 2001/07/22 00:21:39 non Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nspreg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $	*/
 /*	$NecBSD: nspreg.h,v 1.4.3 2001/06/29 06:27:53 honda Exp $	*/
 /*	$NetBSD$	*/
 

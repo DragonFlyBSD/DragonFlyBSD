@@ -1,4 +1,5 @@
 # $FreeBSD: src/etc/remote,v 1.10.2.1 2001/03/06 02:22:39 obrien Exp $
+# $DragonFly: src/etc/remote,v 1.2 2003/06/17 04:24:45 dillon Exp $
 #
 #	@(#)remote	5.2 (Berkeley) 6/30/90
 #

@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_mib.c,v 1.8.2.1 2000/08/03 00:09:34 ps Exp $
+ * $DragonFly: src/sys/net/if_mib.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 #include <sys/param.h>

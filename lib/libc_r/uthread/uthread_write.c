@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_write.c,v 1.16.2.6 2002/11/12 20:46:53 archie Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_write.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  *
  */
 #include <sys/types.h>

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/ufm/Makefile,v 1.1.2.1 2002/03/04 04:01:36 alfred Exp $
+# $DragonFly: src/sys/dev/usbmisc/ufm/Makefile,v 1.2 2003/06/17 04:28:47 dillon Exp $
 
 .PATH:	${.CURDIR}/../../dev/usb
 KMOD=	ufm

@@ -28,6 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/amdpm.c,v 1.1.2.1 2001/10/10 12:10:26 murray Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/amdpm/amdpm.c,v 1.2 2003/06/17 04:28:56 dillon Exp $
  *
  */
 

@@ -20,10 +20,9 @@ static int yygrowstack();
 #define YYPREFIX "yy"
 #line 26 "ftp.y"
 
-#ifndef lint
-static char sccsid[] = "@(#)ftpcmd.y	5.20.1.1 (Berkeley) 3/2/89";
-#endif /* not lint */
-
+/*
+ * @(#)ftpcmd.y	5.20.1.1 (Berkeley) 3/2/89
+ */
 #include <sys/param.h>
 #include <sys/socket.h>
 

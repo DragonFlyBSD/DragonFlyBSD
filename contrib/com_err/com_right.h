@@ -38,6 +38,7 @@
 
 /* $Id: com_right.h,v 1.8 1998/02/17 21:19:43 bg Exp $ */
 /* $FreeBSD: src/contrib/com_err/com_right.h,v 1.2 2000/01/14 18:51:30 bde Exp $ */
+/* $DragonFly: src/contrib/com_err/com_right.h,v 1.2 2003/06/17 04:23:58 dillon Exp $ */
 
 #ifndef __COM_RIGHT_H__
 #define __COM_RIGHT_H__

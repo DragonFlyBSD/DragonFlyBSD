@@ -30,21 +30,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)lpq.c	8.3 (Berkeley) 5/10/95
+ * $FreeBSD: src/usr.sbin/lpr/lpq/lpq.c,v 1.7.2.4 2001/07/22 02:51:53 gad Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpq/lpq.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1983, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-/*
-static char sccsid[] = "@(#)lpq.c	8.3 (Berkeley) 5/10/95";
-*/
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/lpr/lpq/lpq.c,v 1.7.2.4 2001/07/22 02:51:53 gad Exp $";
-#endif /* not lint */
 
 /*
  * Spool Queue examination program

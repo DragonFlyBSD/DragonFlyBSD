@@ -20,6 +20,7 @@
    59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/tar/src/extract.c,v 1.4.2.3 2002/10/19 09:37:29 sobomax Exp $ */
+/* $DragonFly: src/contrib/tar/src/Attic/extract.c,v 1.2 2003/06/17 04:24:06 dillon Exp $ */
 
 #include "system.h"
 #include <quotearg.h>

@@ -13,6 +13,7 @@
  * Sep., 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/include/apm_segments.h,v 1.8 1999/08/28 00:44:05 peter Exp $
+ * $DragonFly: src/sys/i386/include/Attic/apm_segments.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef _MACHINE_APM_SEGMENTS_H

@@ -27,12 +27,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.bin/ipcrm/ipcrm.c,v 1.6 1999/08/28 01:02:14 peter Exp $
+ * $DragonFly: src/usr.bin/ipcrm/ipcrm.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/ipcrm/ipcrm.c,v 1.6 1999/08/28 01:02:14 peter Exp $";
-#endif /* not lint */
 
 #include <ctype.h>
 #include <err.h>

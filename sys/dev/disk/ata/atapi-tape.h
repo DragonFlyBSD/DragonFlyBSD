@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.h,v 1.11.2.5 2002/03/18 08:37:34 sos Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-tape.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 /* ATAPI tape drive Capabilities and Mechanical Status Page */

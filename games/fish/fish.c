@@ -34,21 +34,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/games/fish/fish.c,v 1.9 1999/12/10 16:21:50 billf Exp $
+ * $DragonFly: src/games/fish/fish.c,v 1.2 2003/06/17 04:25:23 dillon Exp $
+ *
+ * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)fish.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/fish/fish.c,v 1.9 1999/12/10 16:21:50 billf Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1990, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)fish.c	8.1 (Berkeley) 5/31/93";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/fish/fish.c,v 1.9 1999/12/10 16:21:50 billf Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/errno.h>

@@ -20,6 +20,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/gcc/stmt.c,v 1.1.1.4.2.2 2002/05/01 19:57:46 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/stmt.c,v 1.2 2003/06/17 04:24:01 dillon Exp $ */
 
 
 /* This file handles the generation of rtl code from tree structure

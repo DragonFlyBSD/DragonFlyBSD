@@ -32,6 +32,7 @@
  *
  *	@(#)ufsmount.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ufs/ufsmount.h,v 1.17 1999/12/29 04:55:06 peter Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufsmount.h,v 1.2 2003/06/17 04:29:00 dillon Exp $
  */
 
 #ifndef _UFS_UFS_UFSMOUNT_H_

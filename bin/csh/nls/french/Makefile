@@ -1,4 +1,5 @@
 # $FreeBSD: src/bin/csh/nls/french/Makefile,v 1.4.2.3 2002/08/07 16:31:38 ru Exp $
+# $DragonFly: src/bin/csh/nls/french/Attic/Makefile,v 1.2 2003/06/17 04:22:49 dillon Exp $
 
 NL=     french
 DL=     fr_FR.ISO8859-1

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mca_machdep.h,v 1.1 1999/09/03 02:04:28 mdodd Exp $
+ * $DragonFly: src/sys/bus/mca/i386/Attic/mca_machdep.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 extern int	MCA_system;

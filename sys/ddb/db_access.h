@@ -24,6 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_access.h,v 1.9 1999/08/28 00:41:05 peter Exp $
+ * $DragonFly: src/sys/ddb/db_access.h,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 
 #ifndef _DDB_DB_ACCESS_H_

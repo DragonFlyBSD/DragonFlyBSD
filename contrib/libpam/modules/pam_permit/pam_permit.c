@@ -3,6 +3,7 @@
 /*
  * $Id: pam_permit.c,v 1.5 1997/02/15 19:03:15 morgan Exp $
  * $FreeBSD: src/contrib/libpam/modules/pam_permit/pam_permit.c,v 1.3.4.2 2001/06/11 15:28:23 markm Exp $
+ * $DragonFly: src/contrib/libpam/modules/pam_permit/Attic/pam_permit.c,v 1.2 2003/06/17 04:24:03 dillon Exp $
  *
  * Written by Andrew Morgan <morgan@parc.power.net> 1996/3/11
  *

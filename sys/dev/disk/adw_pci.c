@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/adw_pci.c,v 1.8 1999/08/28 00:50:41 peter Exp $
+ * $DragonFly: src/sys/dev/disk/Attic/adw_pci.c,v 1.2 2003/06/17 04:28:55 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -34,16 +34,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)targ.c	8.2 (Berkeley) 3/19/94
+ * $FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)targ.c	8.2 (Berkeley) 3/19/94";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $";
-#endif
-#endif /* not lint */
 
 /*-
  * targ.c --

@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_ioctl.h,v 1.2.2.2 2001/09/19 19:09:11 scottl Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_ioctl.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
 /*

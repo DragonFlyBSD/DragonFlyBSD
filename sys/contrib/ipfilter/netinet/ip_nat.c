@@ -4,6 +4,11 @@
  * See the IPFILTER.LICENCE file for details on licencing.
  *
  * Added redirect stuff and a LOT of bug fixes. (mcn@EnGarde.com)
+ *
+ * @(#)ip_nat.c     1.11 6/5/96 (C) 1995 Darren Reed
+ * @(#)$Id: ip_nat.c,v 2.37.2.70 2002/08/28 12:45:48 darrenr Exp $
+ * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.22.2.7 2003/03/01 03:55:54 darrenr Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 #if defined(__FreeBSD__) && defined(KERNEL) && !defined(_KERNEL)
 #define _KERNEL
@@ -107,11 +112,7 @@ extern struct ifnet vpnif;
 #undef	SOCKADDR_IN
 #define	SOCKADDR_IN	struct sockaddr_in
 
-#if !defined(lint)
-static const char sccsid[] = "@(#)ip_nat.c	1.11 6/5/96 (C) 1995 Darren Reed";
-/*static const char rcsid[] = "@(#)$Id: ip_nat.c,v 2.37.2.70 2002/08/28 12:45:48 darrenr Exp $";*/
-static const char rcsid[] = "@(#)$FreeBSD: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.22.2.7 2003/03/01 03:55:54 darrenr Exp $";
-#endif
+static const char sccsid[] = "@(#)ip_nat.c     1.11 6/5/96 (C) 1995 Darren Reed";
 
 nat_t	**nat_table[2] = { NULL, NULL },
 	*nat_instances = NULL;

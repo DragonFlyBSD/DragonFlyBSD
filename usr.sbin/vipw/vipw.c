@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)vipw.c	8.3 (Berkeley) 4/2/94
+ * $FreeBSD: src/usr.sbin/vipw/vipw.c,v 1.11 1999/10/25 09:46:57 sheldonh Exp $
+ * $DragonFly: src/usr.sbin/vipw/vipw.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1987, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)vipw.c	8.3 (Berkeley) 4/2/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/vipw/vipw.c,v 1.11 1999/10/25 09:46:57 sheldonh Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

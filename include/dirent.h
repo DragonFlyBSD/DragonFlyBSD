@@ -32,6 +32,7 @@
  *
  *	@(#)dirent.h	8.2 (Berkeley) 7/28/94
  * $FreeBSD: src/include/dirent.h,v 1.7 1999/12/29 05:01:20 peter Exp $
+ * $DragonFly: src/include/dirent.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef _DIRENT_H_

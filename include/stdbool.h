@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/stdbool.h,v 1.4.2.2 2002/06/19 06:05:26 obrien Exp $
+ * $DragonFly: src/include/stdbool.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef _STDBOOL_H_

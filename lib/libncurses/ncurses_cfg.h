@@ -45,6 +45,7 @@
  */
 
 /* $FreeBSD: src/lib/libncurses/ncurses_cfg.h,v 1.1.2.2 2000/10/12 18:41:06 peter Exp $ */
+/* $DragonFly: src/lib/libncurses/Attic/ncurses_cfg.h,v 1.2 2003/06/17 04:26:50 dillon Exp $ */
 
 #ifndef NC_CONFIG_H
 #define NC_CONFIG_H

@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/release/picobsd/doc/src/Makefile,v 1.4 1999/10/08 05:20:06 dwhite Exp $
+# $DragonFly: src/release/picobsd/doc/src/Attic/Makefile,v 1.2 2003/06/17 04:27:20 dillon Exp $
 #
 
 .include "../../Version"

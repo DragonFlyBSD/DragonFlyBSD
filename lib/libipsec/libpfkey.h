@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/lib/libipsec/libpfkey.h,v 1.1.2.2 2001/07/03 11:01:14 ume Exp $	*/
+/*	$DragonFly: src/lib/libipsec/libpfkey.h,v 1.2 2003/06/17 04:26:49 dillon Exp $	*/
 /*	$KAME: libpfkey.h,v 1.6 2001/03/05 18:22:17 thorpej Exp $	*/
 
 /*

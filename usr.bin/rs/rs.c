@@ -29,26 +29,18 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)rs.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/rs/rs.c,v 1.5.2.2 2002/08/03 00:48:43 tjr Exp $
+ * $DragonFly: src/usr.bin/rs/rs.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static const char sccsid[] = "@(#)rs.c	8.1 (Berkeley) 6/6/93";
-#endif /* not lint */
 
 /*
  *	rs - reshape a data array
  *	Author:  John Kunze, Office of Comp. Affairs, UCB
  *		BEWARE: lots of unfinished edges
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/rs/rs.c,v 1.5.2.2 2002/08/03 00:48:43 tjr Exp $");
 
 #include <err.h>
 #include <ctype.h>

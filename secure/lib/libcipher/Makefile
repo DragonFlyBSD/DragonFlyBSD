@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/secure/lib/libcipher/Makefile,v 1.10.2.1 2002/07/19 18:46:27 ru Exp $
+# $DragonFly: src/secure/lib/libcipher/Makefile,v 1.2 2003/06/17 04:27:48 dillon Exp $
 #
 
 LIB=		cipher

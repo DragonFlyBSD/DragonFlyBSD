@@ -1,4 +1,5 @@
 /* $FreeBSD: src/contrib/texinfo/info/terminal.c,v 1.6.2.1 2002/03/30 17:09:19 ru Exp $ */
+/* $DragonFly: src/contrib/texinfo/info/Attic/terminal.c,v 1.2 2003/06/17 04:24:07 dillon Exp $ */
 /* terminal.c -- How to handle the physical terminal for Info.
    $Id: terminal.c,v 1.23 2001/11/16 23:16:04 karl Exp $
 

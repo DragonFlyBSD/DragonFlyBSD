@@ -1,6 +1,3 @@
-/*	$NetBSD: tdelete.c,v 1.2 1999/09/16 11:45:37 lukem Exp $	*/
-/* $FreeBSD: src/lib/libc/stdlib/tdelete.c,v 1.1.2.1 2000/08/17 07:38:39 jhb Exp $ */
-
 /*
  * Tree search generalized from Knuth (6.2.2) Algorithm T just like
  * the AT&T man page says.
@@ -10,12 +7,13 @@
  * Written by reading the System V Interface Definition, not the code.
  *
  * Totally public domain.
+ *
+ * $NetBSD: tdelete.c,v 1.2 1999/09/16 11:45:37 lukem Exp $
+ * $FreeBSD: src/lib/libc/stdlib/tdelete.c,v 1.1.2.1 2000/08/17 07:38:39 jhb Exp $
+ * $DragonFly: src/lib/libc/stdlib/tdelete.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
 
 #include <sys/cdefs.h>
-#if defined(LIBC_SCCS) && !defined(lint)
-__RCSID("$NetBSD: tdelete.c,v 1.2 1999/09/16 11:45:37 lukem Exp $");
-#endif /* LIBC_SCCS and not lint */
 
 #include <assert.h>
 #define _SEARCH_PRIVATE

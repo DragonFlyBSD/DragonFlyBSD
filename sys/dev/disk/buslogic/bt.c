@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt.c,v 1.25.2.1 2000/08/02 22:32:26 peter Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.2 2003/06/17 04:28:23 dillon Exp $
  */
 
  /*

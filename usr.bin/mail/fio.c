@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)fio.c	8.2 (Berkeley) 4/20/95
+ * $FreeBSD: src/usr.bin/mail/fio.c,v 1.2.6.4 2003/01/06 05:46:03 mikeh Exp $
+ * $DragonFly: src/usr.bin/mail/fio.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)fio.c	8.2 (Berkeley) 4/20/95";
-#endif
-#endif /* not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/mail/fio.c,v 1.2.6.4 2003/01/06 05:46:03 mikeh Exp $");
 
 #include "rcv.h"
 #include <sys/file.h>

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)vfslist.c	8.1 (Berkeley) 5/8/95
+ * $FreeBSD: src/sbin/mount/vfslist.c,v 1.4 1999/08/28 00:13:27 peter Exp $
+ * $DragonFly: src/sbin/mount/vfslist.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)vfslist.c	8.1 (Berkeley) 5/8/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/mount/vfslist.c,v 1.4 1999/08/28 00:13:27 peter Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <stdlib.h>

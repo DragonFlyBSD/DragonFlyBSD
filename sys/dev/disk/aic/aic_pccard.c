@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic_pccard.c,v 1.1 2000/01/14 23:42:36 imp Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic_pccard.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/smp.h,v 1.50.2.5 2001/02/13 22:32:45 tegge Exp $
+ * $DragonFly: src/sys/i386/include/Attic/smp.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  *
  */
 

@@ -28,6 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/gnu/usr.bin/ld/sparc/md.c,v 1.12 1999/08/27 23:36:04 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/ld/sparc/Attic/md.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
 
 #include <sys/param.h>

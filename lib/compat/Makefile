@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/compat/Makefile,v 1.6.2.2 2001/03/23 22:09:37 peter Exp $
+# $DragonFly: src/lib/compat/Attic/Makefile,v 1.2 2003/06/17 04:26:40 dillon Exp $
 
 SUBDIR=
 

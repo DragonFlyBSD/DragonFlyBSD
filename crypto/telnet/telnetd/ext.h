@@ -32,6 +32,7 @@
  *
  *	@(#)ext.h	8.2 (Berkeley) 12/15/93
  * $FreeBSD: src/crypto/telnet/telnetd/ext.h,v 1.2.8.4 2002/04/13 10:59:08 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnetd/ext.h,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 /*

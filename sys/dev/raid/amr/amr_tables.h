@@ -53,6 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr_tables.h,v 1.1.2.3 2002/11/11 13:19:10 emoore Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr_tables.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 /*

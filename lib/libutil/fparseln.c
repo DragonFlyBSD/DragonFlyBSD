@@ -1,5 +1,6 @@
 /*	$NetBSD: fparseln.c,v 1.9 1999/09/20 04:48:06 lukem Exp $	*/
 /* $FreeBSD: src/lib/libutil/fparseln.c,v 1.2 1999/12/29 17:50:33 peter Exp $ */
+/* $DragonFly: src/lib/libutil/fparseln.c,v 1.2 2003/06/17 04:26:51 dillon Exp $ */
 
 /*
  * Copyright (c) 1997 Christos Zoulas.  All rights reserved.
@@ -28,12 +29,11 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libutil/fparseln.c,v 1.2 1999/12/29 17:50:33 peter Exp $
  */
 
 #include <sys/cdefs.h>
-#if defined(LIBC_SCCS) && !defined(lint)
-__RCSID("$FreeBSD: src/lib/libutil/fparseln.c,v 1.2 1999/12/29 17:50:33 peter Exp $");
-#endif
 
 #include <sys/types.h>
 #include <assert.h>

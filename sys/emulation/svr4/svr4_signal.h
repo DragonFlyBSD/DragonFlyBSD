@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_signal.h,v 1.6.2.1 2001/02/22 05:15:12 marcel Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_signal.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 #ifndef	_SVR4_SIGNAL_H_

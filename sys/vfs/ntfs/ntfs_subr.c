@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 
 #include <sys/param.h>

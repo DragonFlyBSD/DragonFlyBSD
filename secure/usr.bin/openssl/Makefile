@@ -1,4 +1,5 @@
 # $FreeBSD: src/secure/usr.bin/openssl/Makefile,v 1.11.2.6 2003/02/14 22:38:22 nectar Exp $
+# $DragonFly: src/secure/usr.bin/openssl/Makefile,v 1.2 2003/06/17 04:27:48 dillon Exp $
 
 PROG=	xopenssl
 PROGNAME=	openssl

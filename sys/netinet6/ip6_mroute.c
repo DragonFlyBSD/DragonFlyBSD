@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_mroute.c,v 1.2.2.9 2003/01/23 21:06:47 sam Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
 /*	$KAME: ip6_mroute.c,v 1.58 2001/12/18 02:36:31 itojun Exp $	*/
 
 /*

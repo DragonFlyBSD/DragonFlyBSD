@@ -5,13 +5,12 @@
  *	Keith Bostic.  All rights reserved.
  *
  * See the LICENSE file for redistribution information.
+ *
+ * @(#)getc.c	10.10 (Berkeley) 3/6/96
+ * $DragonFly: src/contrib/nvi/vi/getc.c,v 1.2 2003/06/17 04:24:04 dillon Exp $
  */
 
 #include "config.h"
-
-#ifndef lint
-static const char sccsid[] = "@(#)getc.c	10.10 (Berkeley) 3/6/96";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/queue.h>

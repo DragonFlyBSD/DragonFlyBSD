@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/perl/miniperl/Makefile,v 1.11.2.2 2002/02/19 16:21:34 ru Exp $
+# $DragonFly: src/gnu/usr.bin/perl/miniperl/Attic/Makefile,v 1.2 2003/06/17 04:25:47 dillon Exp $
 
 PROG=	miniperl
 NOMAN=	true

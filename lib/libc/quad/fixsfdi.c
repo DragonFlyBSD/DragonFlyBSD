@@ -33,11 +33,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)fixsfdi.c	5.1 (Berkeley) 7/7/92
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)fixsfdi.c	5.1 (Berkeley) 7/7/92";
-#endif /* LIBC_SCCS and not lint */
 
 #include "quad.h"
 

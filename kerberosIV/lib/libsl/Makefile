@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberosIV/lib/libsl/Makefile,v 1.3.2.1 2002/07/19 18:46:25 ru Exp $
+# $DragonFly: src/kerberosIV/lib/libsl/Attic/Makefile,v 1.2 2003/06/17 04:26:25 dillon Exp $
 
 LIB=		sl
 INTERNALLIB=	YES

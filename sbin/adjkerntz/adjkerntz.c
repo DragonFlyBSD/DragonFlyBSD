@@ -22,18 +22,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)Copyright (C) 1993-1996 by Andrey A. Chernov, Moscow, Russia. All rights reserved.
+ * $FreeBSD: src/sbin/adjkerntz/adjkerntz.c,v 1.25.2.1 2001/07/30 10:38:04 dd Exp $
+ * $DragonFly: src/sbin/adjkerntz/adjkerntz.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#)Copyright (C) 1993-1996 by Andrey A. Chernov, Moscow, Russia.\n\
- All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/adjkerntz/adjkerntz.c,v 1.25.2.1 2001/07/30 10:38:04 dd Exp $";
-#endif /* not lint */
 
 /*
  * Andrey A. Chernov   <ache@astral.msk.su>    Dec 20 1993

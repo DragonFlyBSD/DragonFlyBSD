@@ -32,6 +32,7 @@
  *
  *	@(#)idp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/idp_var.h,v 1.10 1999/12/29 04:46:18 peter Exp $
+ * $DragonFly: src/sys/netproto/ns/idp_var.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 #ifndef _NETNS_IDP_VAR_H_

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/dev/pccard/pccarddevs_data.h,v 1.3.2.1 2000/05/23 03:57:00 imp Exp $	*/
+/*	$DragonFly: src/sys/dev/misc/pccard/Attic/pccarddevs_data.h,v 1.2 2003/06/17 04:28:29 dillon Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.

@@ -22,6 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq.c,v 1.5 1999/08/28 00:42:19 peter Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  *
  */
 

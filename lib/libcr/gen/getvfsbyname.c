@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)kvm_getvfsbyname.c	8.1 (Berkeley) 4/3/95
+ * $FreeBSD: src/lib/libc/gen/getvfsbyname.c,v 1.5 1999/08/27 23:58:45 peter Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/getvfsbyname.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)kvm_getvfsbyname.c	8.1 (Berkeley) 4/3/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/gen/getvfsbyname.c,v 1.5 1999/08/27 23:58:45 peter Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/mount.h>

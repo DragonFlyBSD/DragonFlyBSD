@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_close.c,v 1.10.2.5 2003/06/13 16:04:59 ru Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_close.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 #include <errno.h>
 #include <stdlib.h>

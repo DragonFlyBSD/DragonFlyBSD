@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/usr.sbin/mlxcontrol/mlxcontrol.h,v 1.1.1.1.2.1 2000/04/24 19:44:47 msmith Exp $
+ *	$DragonFly: src/usr.sbin/mlxcontrol/mlxcontrol.h,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
 
 #include <sys/queue.h>

@@ -32,6 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wivar.h,v 1.8.2.3 2002/08/02 07:11:34 imp Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wivar.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 #define WICACHE			/* turn on signal strength cache code */  

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 /*

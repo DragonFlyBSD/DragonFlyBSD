@@ -28,14 +28,14 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 /* 
  * rp.c - for RocketPort FreeBSD
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $");
 
 #include <sys/param.h>
 #include <sys/systm.h>

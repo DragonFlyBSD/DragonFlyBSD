@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/pci/ohci_pci.c,v 1.16.2.5 2002/08/28 20:51:56 joe Exp $ */
+/*	$DragonFly: src/sys/bus/pci/Attic/ohci_pci.c,v 1.2 2003/06/17 04:28:57 dillon Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.

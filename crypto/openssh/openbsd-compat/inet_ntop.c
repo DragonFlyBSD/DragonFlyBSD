@@ -14,19 +14,14 @@
  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
  * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
  * SOFTWARE.
+ *
+ * $From: inet_ntop.c,v 8.7 1996/08/05 08:41:18 vixie Exp $";
+ * $OpenBSD: inet_ntop.c,v 1.5 2002/08/23 16:27:31 itojun Exp $
  */
 
 #include "includes.h"
 
 #ifndef HAVE_INET_NTOP
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char rcsid[] = "$From: inet_ntop.c,v 8.7 1996/08/05 08:41:18 vixie Exp $";
-#else
-static char rcsid[] = "$OpenBSD: inet_ntop.c,v 1.5 2002/08/23 16:27:31 itojun Exp $";
-#endif
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/types.h>

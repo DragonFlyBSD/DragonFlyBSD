@@ -14,6 +14,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/include/cronyx.h,v 1.9 1999/12/29 04:33:00 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/include/cronyx.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 /*
  * Asynchronous channel mode -------------------------------------------------

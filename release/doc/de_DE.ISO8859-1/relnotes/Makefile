@@ -1,4 +1,5 @@
 # $FreeBSD: src/release/doc/de_DE.ISO8859-1/relnotes/Makefile,v 1.1.2.1 2002/03/12 21:27:04 ue Exp $
+# $DragonFly: src/release/doc/de_DE.ISO8859-1/relnotes/Attic/Makefile,v 1.2 2003/06/17 04:27:19 dillon Exp $
 # $FreeBSDde: de-docproj/relnotes/de_DE.ISO8859-1/relnotes/Makefile,v 1.2.2.1 2002/03/11 10:51:26 ue Exp $
 # $Id: Makefile,v 1.4 2002/03/10 16:06:36 ue Exp $
 # basiert auf: 1.2.2.1

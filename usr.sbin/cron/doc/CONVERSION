@@ -1,4 +1,5 @@
 $FreeBSD: src/usr.sbin/cron/doc/CONVERSION,v 1.4 1999/08/28 01:15:52 peter Exp $
+$DragonFly: src/usr.sbin/cron/doc/CONVERSION,v 1.2 2003/06/17 04:29:53 dillon Exp $
 
 Conversion of BSD 4.[23] crontab files:
 

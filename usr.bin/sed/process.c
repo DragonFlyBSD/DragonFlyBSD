@@ -33,14 +33,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)process.c	8.6 (Berkeley) 4/20/94
+ * $FreeBSD: src/usr.bin/sed/process.c,v 1.10.2.10 2003/06/13 07:32:08 fanf Exp $
+ * $DragonFly: src/usr.bin/sed/process.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/sed/process.c,v 1.10.2.10 2003/06/13 07:32:08 fanf Exp $");
-
-#ifndef lint
-static const char sccsid[] = "@(#)process.c	8.6 (Berkeley) 4/20/94";
-#endif
 
 #include <sys/types.h>
 #include <sys/stat.h>

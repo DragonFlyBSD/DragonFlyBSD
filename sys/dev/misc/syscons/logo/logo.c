@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/modules/syscons/logo/logo.c,v 1.1.6.1 2000/08/03 01:05:54 peter Exp $ */
+/* $DragonFly: src/sys/dev/misc/syscons/logo/logo.c,v 1.2 2003/06/17 04:28:47 dillon Exp $ */
 
 #define logo_w 88
 #define logo_h 88

@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/gnu/usr.bin/binutils/libbinutils/Makefile.alpha,v 1.2.2.2 2001/02/21 21:35:41 obrien Exp $
+# $DragonFly: src/gnu/usr.bin/binutils/libbinutils/Attic/Makefile.alpha,v 1.2 2003/06/17 04:25:44 dillon Exp $
 #
 
 TARGET=		alpha-unknown-freebsd

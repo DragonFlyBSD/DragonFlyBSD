@@ -2,6 +2,10 @@
  * Copyright (C) 1998-2001 by Darren Reed & Guido van Rooij.
  *
  * See the IPFILTER.LICENCE file for details on licencing.
+ *
+ * @(#)$Id: ip_auth.c,v 2.11.2.20 2002/06/04 14:40:42 darrenr Exp $
+ * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.21.2.7 2003/03/01 03:55:54 darrenr Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
@@ -102,12 +106,6 @@ extern struct ifqueue   ipintrq;		/* ip packet input queue */
 #  include <sys/systm.h>
 # endif
 #endif
-
-#if !defined(lint)
-/*static const char rcsid[] = "@(#)$Id: ip_auth.c,v 2.11.2.20 2002/06/04 14:40:42 darrenr Exp $";*/
-static const char rcsid[] = "@(#)$FreeBSD: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.21.2.7 2003/03/01 03:55:54 darrenr Exp $";
-#endif
-
 
 #if (SOLARIS || defined(__sgi)) && defined(_KERNEL)
 extern KRWLOCK_T ipf_auth, ipf_mutex;

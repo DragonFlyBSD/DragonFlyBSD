@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_timer.c,v 1.3 1999/08/28 01:15:34 peter Exp $
- *
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_timer.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
  */
 
 /*
@@ -55,11 +55,6 @@
 #include "scsp_msg.h"
 #include "scsp_if.h"
 #include "scsp_var.h"
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_timer.c,v 1.3 1999/08/28 01:15:34 peter Exp $");
-#endif
-
 
 /*
  * Process an SCSP Open timeout

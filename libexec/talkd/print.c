@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)print.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/libexec/talkd/print.c,v 1.9 1999/08/28 00:10:16 peter Exp $
+ * $DragonFly: src/libexec/talkd/print.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)print.c	8.1 (Berkeley) 6/4/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/libexec/talkd/print.c,v 1.9 1999/08/28 00:10:16 peter Exp $";
-#endif /* not lint */
 
 /* debug print routines */
 

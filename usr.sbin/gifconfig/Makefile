@@ -12,6 +12,7 @@
 # LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 # A PARTICULAR PURPOSE.
 # $FreeBSD: src/usr.sbin/gifconfig/Makefile,v 1.1.2.1 2001/04/25 12:09:34 ru Exp $
+# $DragonFly: src/usr.sbin/gifconfig/Makefile,v 1.2 2003/06/17 04:29:53 dillon Exp $
 
 PROG=	gifconfig
 MAN=	gifconfig.8

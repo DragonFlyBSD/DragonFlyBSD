@@ -28,12 +28,10 @@
  *
  * From:
  *  Id: find_interface.c,v 1.1 1995/08/14 16:08:39 wollman Exp
+ *
+ * $FreeBSD: src/usr.bin/talk/get_iface.c,v 1.7 1999/08/28 01:06:12 peter Exp $
+ * $DragonFly: src/usr.bin/talk/get_iface.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/talk/get_iface.c,v 1.7 1999/08/28 01:06:12 peter Exp $";
-#endif /* not lint */
 
 #include <errno.h>
 #include <string.h>

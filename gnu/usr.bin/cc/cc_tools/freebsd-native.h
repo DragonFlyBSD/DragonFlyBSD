@@ -1,4 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/cc/cc_tools/freebsd-native.h,v 1.5.2.9 2002/05/01 20:04:37 obrien Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc/cc_tools/Attic/freebsd-native.h,v 1.2 2003/06/17 04:25:45 dillon Exp $ */
 
 /* FREEBSD_NATIVE is defined when gcc is integrated into the FreeBSD
    source tree so it can be configured appropriately without using

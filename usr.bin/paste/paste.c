@@ -32,22 +32,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)paste.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/paste/paste.c,v 1.6.2.2 2002/07/14 15:16:00 tjr Exp $
+ * $DragonFly: src/usr.bin/paste/paste.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1989, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#if 0
-#ifndef lint
-static char sccsid[] = "@(#)paste.c	8.1 (Berkeley) 6/6/93";
-#endif /* not lint */
-#endif
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/paste/paste.c,v 1.6.2.2 2002/07/14 15:16:00 tjr Exp $");
 
 #include <sys/types.h>
 

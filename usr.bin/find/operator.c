@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/find/operator.c,v 1.5.6.1 2001/05/06 09:53:22 phk Exp $
+ * $DragonFly: src/usr.bin/find/operator.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ *
+ * @(#)operator.c	8.1 (Berkeley) 6/6/93
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)operator.c	8.1 (Berkeley) 6/6/93";
-#endif /* not lint */
 
 #include <sys/types.h>
 

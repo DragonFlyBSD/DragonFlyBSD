@@ -20,6 +20,7 @@
 /* Written by David MacKenzie <djm@gnu.ai.mit.edu>.  */
 
 /* $FreeBSD: src/contrib/tar/lib/error.c,v 1.2.2.1 2002/07/14 13:19:40 sobomax Exp $ */
+/* $DragonFly: src/contrib/tar/lib/Attic/error.c,v 1.2 2003/06/17 04:24:06 dillon Exp $ */
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>

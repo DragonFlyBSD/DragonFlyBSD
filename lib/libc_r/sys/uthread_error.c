@@ -32,6 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/sys/uthread_error.c,v 1.3 1999/08/28 00:03:14 peter Exp $
+ * $DragonFly: src/lib/libc_r/sys/Attic/uthread_error.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 #ifdef _THREAD_SAFE
 #include <pthread.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/crypto/openssh/version.c,v 1.1.2.3 2003/02/03 17:31:08 des Exp $
+ * $DragonFly: src/crypto/openssh/Attic/version.c,v 1.2 2003/06/17 04:24:36 dillon Exp $
  */
 
 #include "includes.h"

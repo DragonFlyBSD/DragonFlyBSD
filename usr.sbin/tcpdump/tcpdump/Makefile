@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.25.2.6 2002/07/05 11:30:32 fenner Exp $
+# $DragonFly: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.2 2003/06/17 04:30:03 dillon Exp $
 
 
 TCPDUMP_DISTDIR?= ${.CURDIR}/../../../contrib/tcpdump

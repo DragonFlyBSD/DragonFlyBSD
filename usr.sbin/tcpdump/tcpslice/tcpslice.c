@@ -17,18 +17,11 @@
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * @(#) Copyright (c) 1987-1990 The Regents of the University of California. All rights reserved.
+ * $FreeBSD: src/usr.sbin/tcpdump/tcpslice/tcpslice.c,v 1.9.2.1 2000/07/01 01:34:11 ps Exp $
+ * $DragonFly: src/usr.sbin/tcpdump/tcpslice/tcpslice.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1987-1990\n\
-	The Regents of the University of California. All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/tcpdump/tcpslice/tcpslice.c,v 1.9.2.1 2000/07/01 01:34:11 ps Exp $";
-#endif /* not lint */
 
 /*
  * tcpslice - extract pieces of and/or glue together tcpdump files

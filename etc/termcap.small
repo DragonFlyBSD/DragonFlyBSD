@@ -31,6 +31,7 @@
 #
 #	@(#)termcap.src	5.88 (Berkeley) 4/30/91
 # $FreeBSD: src/etc/termcap.small,v 1.16.2.7 2002/04/15 17:52:13 ache Exp $
+# $DragonFly: src/etc/termcap.small,v 1.2 2003/06/17 04:24:45 dillon Exp $
 # 
 # for syscons
 # common entry without semigraphics

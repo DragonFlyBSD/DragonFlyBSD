@@ -2,6 +2,7 @@
 #
 #	from named.restart	5.4 (Berkeley) 6/27/89
 # $FreeBSD: src/usr.sbin/named.restart/named.restart.sh,v 1.2.2.1 2001/07/19 05:11:06 kris Exp $
+# $DragonFly: src/usr.sbin/named.restart/named.restart.sh,v 1.2 2003/06/17 04:29:57 dillon Exp $
 #
 
 if [ -r /etc/defaults/rc.conf ]; then

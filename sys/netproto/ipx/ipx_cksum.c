@@ -34,6 +34,7 @@
  *	@(#)ipx_cksum.c
  *
  * $FreeBSD: src/sys/netipx/ipx_cksum.c,v 1.9 1999/08/28 18:21:53 jhay Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_cksum.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 #include <sys/param.h>

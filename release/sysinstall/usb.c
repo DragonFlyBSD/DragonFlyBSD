@@ -2,6 +2,7 @@
  * USB support for sysinstall
  *
  * $FreeBSD: src/release/sysinstall/usb.c,v 1.1.2.1 2000/06/08 23:08:24 jhb Exp $
+ * $DragonFly: src/release/sysinstall/Attic/usb.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 2000 John Baldwin <jhb@FreeBSD.org>.  All rights reserved.
  *

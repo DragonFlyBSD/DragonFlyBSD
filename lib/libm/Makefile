@@ -1,5 +1,6 @@
 #	From: @(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libm/Makefile,v 1.8.2.1 2001/04/25 10:04:32 ru Exp $
+# $DragonFly: src/lib/libm/Makefile,v 1.2 2003/06/17 04:26:49 dillon Exp $
 #
 # ieee		- for most IEEE machines, we hope.
 # mc68881	- the, ahem, mc68881.

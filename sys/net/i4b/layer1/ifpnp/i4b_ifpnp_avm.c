@@ -34,6 +34,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.5.2.1 2001/08/10 14:08:37 obrien Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
  *
  *      last edit-date: [Fri Jan 12 17:05:28 2001]
  *

@@ -24,6 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm.h,v 1.4 1999/08/28 00:12:17 peter Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm.h,v 1.2 2003/06/17 04:27:32 dillon Exp $
  *
  */
 

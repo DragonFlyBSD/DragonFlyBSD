@@ -56,6 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_fw1.h,v 1.2.2.3 2001/11/11 17:58:53 groudier Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_fw1.h,v 1.2 2003/06/17 04:28:31 dillon Exp $ */
 
 /*
  *  Scripts for SYMBIOS-Processor

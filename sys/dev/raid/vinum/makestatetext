@@ -1,6 +1,7 @@
 #!/bin/sh
 # Make statetexts.h from vinumstate.h
 # $FreeBSD: src/sys/dev/vinum/makestatetext,v 1.6 2000/02/29 06:07:01 grog Exp $
+# $DragonFly: src/sys/dev/raid/vinum/makestatetext,v 1.2 2003/06/17 04:28:33 dillon Exp $
 # $Id: makestatetext,v 1.7 1999/12/29 07:24:54 grog Exp grog $
 infile=vinumstate.h
 ofile=statetexts.h

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ldconfig/ldconfig.h,v 1.2.2.2 2001/03/04 07:28:48 kris Exp $
+ * $DragonFly: src/sbin/ldconfig/ldconfig.h,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
 
 #ifndef LDCONFIG_H

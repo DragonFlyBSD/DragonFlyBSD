@@ -8,11 +8,10 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
+ *
+ * $FreeBSD: src/lib/msun/src/e_log.c,v 1.6 1999/08/28 00:06:36 peter Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_log.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/lib/msun/src/e_log.c,v 1.6 1999/08/28 00:06:36 peter Exp $";
-#endif
 
 /* __ieee754_log(x)
  * Return the logrithm of x

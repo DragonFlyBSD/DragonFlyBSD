@@ -29,6 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)res_mkquery.c	8.1 (Berkeley) 6/4/93
+ * $From: Id: res_mkquery.c,v 8.9 1997/04/24 22:22:36 vixie Exp $
+ * $FreeBSD: src/lib/libc/net/res_mkquery.c,v 1.15.2.2 2002/09/20 10:45:35 nectar Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/res_mkquery.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 
 /*
@@ -67,12 +72,6 @@
  * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
  * SOFTWARE.
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)res_mkquery.c	8.1 (Berkeley) 6/4/93";
-static char orig_rcsid[] = "From: Id: res_mkquery.c,v 8.9 1997/04/24 22:22:36 vixie Exp $";
-static char rcsid[] = "$FreeBSD: src/lib/libc/net/res_mkquery.c,v 1.15.2.2 2002/09/20 10:45:35 nectar Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/param.h>

@@ -22,12 +22,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/pw/pw_nis.c,v 1.6 1999/08/28 01:19:20 peter Exp $
+ * $DragonFly: src/usr.sbin/pw/pw_nis.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/pw/pw_nis.c,v 1.6 1999/08/28 01:19:20 peter Exp $";
-#endif /* not lint */
 
 #include <stdio.h>
 #include <stdlib.h>

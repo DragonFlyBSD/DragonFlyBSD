@@ -29,12 +29,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.bin/rusers/rusers.c,v 1.8.2.1 2001/07/02 23:43:05 mikeh Exp $
+ * $DragonFly: src/usr.bin/rusers/rusers.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/rusers/rusers.c,v 1.8.2.1 2001/07/02 23:43:05 mikeh Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/socket.h>

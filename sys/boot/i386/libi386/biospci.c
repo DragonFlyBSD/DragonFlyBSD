@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/biospci.c,v 1.2.2.1 2000/12/28 13:12:39 ps Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/biospci.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 /*

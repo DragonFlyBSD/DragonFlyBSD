@@ -24,11 +24,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libio/alpha_sethae.c,v 1.2 1999/08/28 00:04:42 peter Exp $
+ * $DragonFly: src/lib/libio/Attic/alpha_sethae.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ *
+ * $FreeBSD: src/lib/libio/alpha_sethae.c,v 1.2 1999/08/28 00:04:42 peter Exp $
  */
-
-#if defined(LIBC_RCS) && !defined(lint)
-static const char rcsid[] = "$FreeBSD: src/lib/libio/alpha_sethae.c,v 1.2 1999/08/28 00:04:42 peter Exp $";
-#endif /* LIBC_RCS and not lint */
 
 #include <sys/types.h>
 #include <machine/sysarch.h>

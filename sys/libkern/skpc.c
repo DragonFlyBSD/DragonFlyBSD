@@ -33,6 +33,7 @@
  *	@(#)skpc.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/libkern/skpc.c,v 1.6 1999/08/28 00:46:36 peter Exp $
+ * $DragonFly: src/sys/libkern/skpc.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 #include <sys/libkern.h>

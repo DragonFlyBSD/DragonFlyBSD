@@ -24,16 +24,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)buf.c,v 1.4 1994/02/01 00:34:35 alm Exp
+ * $FreeBSD: src/bin/ed/buf.c,v 1.17 1999/08/27 23:14:12 peter Exp $
+ * $DragonFly: src/bin/ed/buf.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char * const rcsid = "@(#)buf.c,v 1.4 1994/02/01 00:34:35 alm Exp";
-#else
-static char * const rcsid =
-  "$FreeBSD: src/bin/ed/buf.c,v 1.17 1999/08/27 23:14:12 peter Exp $";
-#endif
-#endif /* not lint */
 
 #include <sys/file.h>
 #include <sys/stat.h>

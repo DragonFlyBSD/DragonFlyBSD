@@ -27,12 +27,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/sgsc/sgsc.c,v 1.5 1999/08/28 01:19:57 peter Exp $
+ * $DragonFly: src/usr.sbin/sgsc/sgsc.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/sgsc/sgsc.c,v 1.5 1999/08/28 01:19:57 peter Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <stdio.h>

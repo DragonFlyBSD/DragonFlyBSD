@@ -1,6 +1,7 @@
 #!/bin/sh
 
 # $FreeBSD: src/sys/modules/svr4/svr4.sh,v 1.3 1999/08/28 00:47:42 peter Exp $
+# $DragonFly: src/sys/emulation/svr4/Attic/svr4.sh,v 1.2 2003/06/17 04:28:47 dillon Exp $
 
 STREAMS=`kldstat -v | egrep 'streams'`
 SVR4=`kldstat -v | egrep 'svr4elf'`

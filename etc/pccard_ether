@@ -1,6 +1,7 @@
 #!/bin/sh -
 #
 # $FreeBSD: src/etc/pccard_ether,v 1.15.2.10 2001/09/14 17:28:11 imp Exp $
+# $DragonFly: src/etc/pccard_ether,v 1.2 2003/06/17 04:24:45 dillon Exp $
 #
 # pccard_ether interfacename [start|stop] [ifconfig option]
 #

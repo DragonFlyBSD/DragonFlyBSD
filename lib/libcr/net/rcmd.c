@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/rcmd.c,v 1.23.2.7 2002/08/26 16:17:49 jdp Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/rcmd.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ *
+ * @(#)rcmd.c	8.3 (Berkeley) 3/26/94
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)rcmd.c	8.3 (Berkeley) 3/26/94";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/socket.h>

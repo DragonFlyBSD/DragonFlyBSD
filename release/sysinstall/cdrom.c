@@ -5,6 +5,7 @@
  * generation being slated to essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/cdrom.c,v 1.47.2.5 2002/10/24 12:56:06 nyan Exp $
+ * $DragonFly: src/release/sysinstall/Attic/cdrom.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.

@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/periodic/daily/470.status-named,v 1.1.2.2 2001/07/28 11:44:22 brian Exp $
+# $DragonFly: src/etc/periodic/daily/470.status-named,v 1.2 2003/06/17 04:24:48 dillon Exp $
 #
 
 # If there is a global system configuration file, suck it in.

@@ -34,17 +34,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/tsort/tsort.c,v 1.10.2.1 2001/03/04 09:18:23 kris Exp $
+ * $DragonFly: src/usr.bin/tsort/tsort.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ *
+ * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)tsort.c	8.3 (Berkeley) 5/4/95
  */
-
-#ifndef lint
-static char copyright[] =
-"@(#) Copyright (c) 1989, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static char sccsid[] = "@(#)tsort.c	8.3 (Berkeley) 5/4/95";
-#endif /* not lint */
 
 #include <sys/types.h>
 

@@ -4,6 +4,7 @@
  * with Phil Karns PD DES package.
  *
  * $FreeBSD: src/secure/lib/libcipher/test/cert.c,v 1.5 1999/08/28 01:30:22 peter Exp $
+ * $DragonFly: src/secure/lib/libcipher/test/cert.c,v 1.2 2003/06/17 04:27:48 dillon Exp $
  */
 
 #include <stdio.h>

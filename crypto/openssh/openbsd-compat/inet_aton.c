@@ -53,20 +53,15 @@
  * SOFTWARE.
  * -
  * --Copyright--
+ *
+ * @(#)inet_addr.c	8.1 (Berkeley) 6/17/93
+ * $From: inet_addr.c,v 8.5 1996/08/05 08:31:35 vixie Exp $
+ * $OpenBSD: inet_addr.c,v 1.6 1999/05/03 22:31:14 yanick Exp $
  */
 
 #include "includes.h"
 
 #if !defined(HAVE_INET_ATON)
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)inet_addr.c	8.1 (Berkeley) 6/17/93";
-static char rcsid[] = "$From: inet_addr.c,v 8.5 1996/08/05 08:31:35 vixie Exp $";
-#else
-static char rcsid[] = "$OpenBSD: inet_addr.c,v 1.6 1999/05/03 22:31:14 yanick Exp $";
-#endif
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/param.h>

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_kxdr.c,v 1.3 1999/08/28 00:48:50 peter Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_kxdr.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -36,10 +36,6 @@
  */
 
 #include <netatm/kern_include.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/spans/spans_kxdr.c,v 1.3 1999/08/28 00:48:50 peter Exp $");
-#endif
 
 /*
  * This file contains code that has been copied and/or modified from

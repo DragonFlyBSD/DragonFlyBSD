@@ -22,6 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pci/aureal.c,v 1.8.2.7 2002/04/22 15:49:31 cg Exp $
+ * $DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -31,7 +34,7 @@
 #include <pci/pcireg.h>
 #include <pci/pcivar.h>
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pci/aureal.c,v 1.8.2.7 2002/04/22 15:49:31 cg Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
 
 /* PCI IDs of supported chips */
 #define AU8820_PCI_ID 0x000112eb

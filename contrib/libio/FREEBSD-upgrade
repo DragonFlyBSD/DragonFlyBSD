@@ -1,5 +1,6 @@
 # ex:ts=8
 $FreeBSD: src/contrib/libio/FREEBSD-upgrade,v 1.2 1999/11/01 07:35:24 obrien Exp $
+$DragonFly: src/contrib/libio/Attic/FREEBSD-upgrade,v 1.2 2003/06/17 04:24:02 dillon Exp $
 
 For the import of libio, files were pruned by:
 

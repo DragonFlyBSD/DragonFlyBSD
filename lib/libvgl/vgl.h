@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libvgl/vgl.h,v 1.5.2.1 2001/06/19 06:49:15 sobomax Exp $
+ * $DragonFly: src/lib/libvgl/vgl.h,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
 
 #ifndef _VGL_H_

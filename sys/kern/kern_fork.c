@@ -37,6 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.13 2003/06/06 20:21:32 tegge Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include "opt_ktrace.h"

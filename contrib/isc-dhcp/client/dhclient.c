@@ -37,13 +37,14 @@
  * written by Elliot Poger.  The code has been extensively hacked on
  * by Ted Lemon since then, so any mistakes you find are probably his
  * fault and not Elliot's.
+ *
+ * @(#) Copyright (c) 1995-2002 Internet Software Consortium.  All rights reserved.";
+ * $Id: dhclient.c,v 1.129.2.12 2002/11/07 23:26:38 dhankins Exp $
+ * $FreeBSD: src/contrib/isc-dhcp/client/dhclient.c,v 1.9.2.8 2003/03/23 23:33:05 mbr Exp $
+ * $DragonFly: src/contrib/isc-dhcp/client/Attic/dhclient.c,v 1.2 2003/06/17 04:24:02 dillon Exp $
  */
 
-#ifndef lint
-static char ocopyright[] =
-"$Id: dhclient.c,v 1.129.2.12 2002/11/07 23:26:38 dhankins Exp $ Copyright (c) 1995-2002 Internet Software Consortium.  All rights reserved.\n"
-"$FreeBSD: src/contrib/isc-dhcp/client/dhclient.c,v 1.9.2.8 2003/03/23 23:33:05 mbr Exp $\n";
-#endif /* not lint */
+static char ocopyright[] = "$Id: dhclient.c,v 1.129.2.12 2002/11/07 23:26:38 dhankins Exp $ Copyright (c) 1995-2002 Internet Software Consortium.  All rights reserved.";
 
 #include "dhcpd.h"
 #include "version.h"

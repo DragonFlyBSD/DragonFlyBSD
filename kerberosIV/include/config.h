@@ -3,6 +3,7 @@
 /* include/config.h.in.  Generated automatically from configure.in by autoheader.  */
 
 /* $FreeBSD: src/kerberosIV/include/config.h,v 1.4 2000/01/09 08:59:33 markm Exp $ */
+/* $DragonFly: src/kerberosIV/include/Attic/config.h,v 1.2 2003/06/17 04:26:25 dillon Exp $ */
 
 #define KRB4 1
 

@@ -32,21 +32,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)mv.c	8.2 (Berkeley) 4/2/94
+ * $FreeBSD: src/bin/mv/mv.c,v 1.24.2.5 2002/08/19 00:26:41 johan Exp $
+ * $DragonFly: src/bin/mv/mv.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-static char const copyright[] =
-"@(#) Copyright (c) 1989, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)mv.c	8.2 (Berkeley) 4/2/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/bin/mv/mv.c,v 1.24.2.5 2002/08/19 00:26:41 johan Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/time.h>

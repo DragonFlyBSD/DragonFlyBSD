@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)kill.c	8.4 (Berkeley) 4/28/95
+ * $FreeBSD: src/bin/kill/kill.c,v 1.11.2.2 2002/07/28 10:19:57 tjr Exp $
+ * $DragonFly: src/bin/kill/kill.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-static char const copyright[] =
-"@(#) Copyright (c) 1988, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)kill.c	8.4 (Berkeley) 4/28/95";
-#endif
-#endif /* not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/bin/kill/kill.c,v 1.11.2.2 2002/07/28 10:19:57 tjr Exp $");
 
 #include <ctype.h>
 #include <err.h>

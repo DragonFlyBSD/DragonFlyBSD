@@ -25,6 +25,10 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)xcrypt.c	2.2 88/08/10 4.0 RPCSRC
+ * $FreeBSD: src/lib/librpcsvc/xcrypt.c,v 1.2 1999/08/28 00:05:24 peter Exp $
+ * $DragonFly: src/lib/librpcsvc/xcrypt.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 /*
  * Hex encryption/decryption and utility routines
@@ -37,11 +41,6 @@
 #include <string.h>
 #include <sys/cdefs.h>
 #include <rpc/des_crypt.h>
-
-#ifndef lint
-/*from: static char sccsid[] = "@(#)xcrypt.c	2.2 88/08/10 4.0 RPCSRC"; */
-static const char rcsid[] = "$FreeBSD: src/lib/librpcsvc/xcrypt.c,v 1.2 1999/08/28 00:05:24 peter Exp $";
-#endif
 
 static char hex[];	/* forward */
 static char hexval __P(( char ));

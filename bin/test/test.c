@@ -8,12 +8,10 @@
  * modified by J.T. Conklin for NetBSD.
  *
  * This program is in the Public Domain.
+ *
+ * $FreeBSD: src/bin/test/test.c,v 1.29.2.7 2002/09/10 09:10:57 maxim Exp $
+ * $DragonFly: src/bin/test/test.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/bin/test/test.c,v 1.29.2.7 2002/09/10 09:10:57 maxim Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.bin/objformat/Makefile,v 1.15 1999/12/24 15:18:19 green Exp $
+# $DragonFly: src/usr.bin/objformat/Makefile,v 1.2 2003/06/17 04:29:30 dillon Exp $
 
 PROG=		objformat
 CFLAGS+=	-Wall

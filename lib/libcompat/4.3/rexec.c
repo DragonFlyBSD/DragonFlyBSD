@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcompat/4.3/rexec.c,v 1.5.8.3 2000/11/22 13:36:00 ben Exp $
+ * $DragonFly: src/lib/libcompat/4.3/rexec.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ *
+ * @(#)rexec.c	8.1 (Berkeley) 6/4/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)rexec.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/uio.h>

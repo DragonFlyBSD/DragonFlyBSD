@@ -25,6 +25,7 @@
 #
 #	From: sio.s 1.3 1999/01/10 14:48:03 rnordier
 # $FreeBSD: src/sys/boot/i386/kgzldr/sio.s,v 1.2 1999/08/28 00:40:11 peter Exp $
+# $DragonFly: src/sys/boot/pc32/kgzldr/sio.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
 #
 
 		.set SIO_PRT,SIOPRT		# Base port

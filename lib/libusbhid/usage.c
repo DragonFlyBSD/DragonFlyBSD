@@ -24,10 +24,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libusbhid/usage.c,v 1.6.2.1 2002/04/03 15:54:00 joe Exp $
+ * $DragonFly: src/lib/libusbhid/usage.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libusbhid/usage.c,v 1.6.2.1 2002/04/03 15:54:00 joe Exp $");
 
 #include <ctype.h>
 #include <err.h>

@@ -29,11 +29,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)putenv.c	8.2 (Berkeley) 3/27/94
+ * $DragonFly: src/lib/libc/stdlib/putenv.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)putenv.c	8.2 (Berkeley) 3/27/94";
-#endif /* LIBC_SCCS and not lint */
 
 #include <stdlib.h>
 #include <string.h>

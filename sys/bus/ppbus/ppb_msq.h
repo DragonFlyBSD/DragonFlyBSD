@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppb_msq.h,v 1.8 2000/01/14 00:17:55 nsouch Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppb_msq.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
  *
  */
 #ifndef __PPB_MSQ_H

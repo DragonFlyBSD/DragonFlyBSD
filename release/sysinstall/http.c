@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/release/sysinstall/http.c,v 1.2.2.5 2002/06/24 03:46:55 matusita Exp $
+ * $DragonFly: src/release/sysinstall/Attic/http.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  */
 
 #include "sysinstall.h"

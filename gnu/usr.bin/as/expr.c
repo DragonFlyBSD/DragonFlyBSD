@@ -22,11 +22,10 @@
  * distinguish the world of expressions from the world of statements.
  * (It also gives smaller files to re-compile.)
  * Here, "operand"s are of expressions, not instructions.
+ *
+ * $FreeBSD: src/gnu/usr.bin/as/expr.c,v 1.8 1999/08/27 23:34:14 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/as/Attic/expr.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/as/expr.c,v 1.8 1999/08/27 23:34:14 peter Exp $";
-#endif
 
 #include <ctype.h>
 #include <string.h>

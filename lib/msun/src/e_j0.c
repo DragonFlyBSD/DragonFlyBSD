@@ -8,11 +8,10 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
+ *
+ * $FreeBSD: src/lib/msun/src/e_j0.c,v 1.5 1999/08/28 00:06:32 peter Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_j0.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/lib/msun/src/e_j0.c,v 1.5 1999/08/28 00:06:32 peter Exp $";
-#endif
 
 /* __ieee754_j0(x), __ieee754_y0(x)
  * Bessel function of the first and second kinds of order zero.

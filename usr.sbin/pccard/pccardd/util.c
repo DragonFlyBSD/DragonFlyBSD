@@ -22,6 +22,9 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/pccard/pccardd/util.c,v 1.13.2.4 2001/02/25 20:10:12 gj Exp $
+ * $DragonFly: src/usr.sbin/pccard/pccardd/Attic/util.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
 
 /*
@@ -30,11 +33,6 @@
  *     Tatsumi Hosokawa <hosokawa@jp.FreeBSD.org>
  *     Nate Williams <nate@FreeBSD.org>
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/pccard/pccardd/util.c,v 1.13.2.4 2001/02/25 20:10:12 gj Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <fcntl.h>

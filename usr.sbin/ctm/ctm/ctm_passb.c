@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/usr.sbin/ctm/ctm/ctm_passb.c,v 1.5.2.1 2001/07/05 07:46:57 kris Exp $
+ * $DragonFly: src/usr.sbin/ctm/ctm/Attic/ctm_passb.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  *
  */
 

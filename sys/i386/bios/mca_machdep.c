@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/bios/mca_machdep.c,v 1.4 2000/01/29 16:17:34 peter Exp $
+ * $DragonFly: src/sys/i386/bios/Attic/mca_machdep.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -31,22 +31,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/games/mille/mille.c,v 1.10 1999/12/12 06:17:24 billf Exp $
+ * $DragonFly: src/games/mille/mille.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ *
+ * @(#) Copyright (c) 1982, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)mille.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/mille/mille.c,v 1.10 1999/12/12 06:17:24 billf Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1982, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)mille.c	8.1 (Berkeley) 5/31/93";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/games/mille/mille.c,v 1.10 1999/12/12 06:17:24 billf Exp $";
-#endif
-#endif /* not lint */
 
 # include	"mille.h"
 # include	<signal.h>

@@ -33,6 +33,7 @@
  *	@(#)telnetd.h	8.1 (Berkeley) 6/4/93
  */
 /* $FreeBSD: src/crypto/kerberosIV/appl/telnet/telnetd/telnetd.h,v 1.2.2.2 2003/02/13 21:34:35 nectar Exp $ */
+/* $DragonFly: src/crypto/kerberosIV/appl/telnet/telnetd/Attic/telnetd.h,v 1.2 2003/06/17 04:24:36 dillon Exp $ */
 
 
 #include <config.h>

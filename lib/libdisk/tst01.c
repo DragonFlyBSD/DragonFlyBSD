@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libdisk/tst01.c,v 1.23.2.4 2000/08/07 08:55:19 ps Exp $
+ * $DragonFly: src/lib/libdisk/Attic/tst01.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
  *
  */
 

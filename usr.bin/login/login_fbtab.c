@@ -14,6 +14,7 @@
 * merchantibility and fitness for any particular purpose.
 ************************************************************************/
 /* $FreeBSD: src/usr.bin/login/login_fbtab.c,v 1.6.2.4 2001/12/14 10:58:18 rwatson Exp $ */
+/* $DragonFly: src/usr.bin/login/login_fbtab.c,v 1.2 2003/06/17 04:29:28 dillon Exp $ */
 /*
     SYNOPSIS
 	void login_fbtab(tty, uid, gid)

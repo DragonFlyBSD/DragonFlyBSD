@@ -4,6 +4,7 @@
  *	Block cache for dump
  *
  * $FreeBSD: src/sbin/dump/cache.c,v 1.1.2.1 2003/01/25 18:54:59 dillon Exp $
+ * $DragonFly: src/sbin/dump/cache.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
 
 #include <sys/param.h>

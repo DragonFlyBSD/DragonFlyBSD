@@ -32,6 +32,7 @@
  *
  *	@(#)gmon.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/gmon.h,v 1.15 1999/08/28 00:51:45 peter Exp $
+ * $DragonFly: src/sys/sys/gmon.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_GMON_H_

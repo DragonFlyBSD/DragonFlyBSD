@@ -24,6 +24,7 @@
 ** SUCH DAMAGE.
 **
 ** $FreeBSD: src/usr.bin/doscmd/register.h,v 1.4 1999/10/08 09:02:38 marcel Exp $
+** $DragonFly: src/usr.bin/doscmd/register.h,v 1.2 2003/06/17 04:29:26 dillon Exp $
 */
 
 /******************************************************************************

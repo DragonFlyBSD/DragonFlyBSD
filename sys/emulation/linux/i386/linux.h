@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux.h,v 1.41.2.4 2003/01/06 09:19:43 fjoe Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux.h,v 1.2 2003/06/17 04:28:38 dillon Exp $
  */
 
 #ifndef _I386_LINUX_LINUX_H_

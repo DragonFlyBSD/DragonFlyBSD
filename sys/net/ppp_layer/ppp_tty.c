@@ -71,6 +71,7 @@
  */
 
 /* $FreeBSD: src/sys/net/ppp_tty.c,v 1.43.2.1 2002/02/13 00:43:11 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.2 2003/06/17 04:28:48 dillon Exp $ */
 
 #include "opt_ppp.h"		/* XXX for ppp_defs.h */
 

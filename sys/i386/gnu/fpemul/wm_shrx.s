@@ -63,6 +63,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/wm_shrx.s,v 1.8 1999/08/28 00:42:59 peter Exp $
+ * $DragonFly: src/sys/i386/gnu/fpemul/Attic/wm_shrx.s,v 1.2 2003/06/17 04:28:34 dillon Exp $
  *
  */
 

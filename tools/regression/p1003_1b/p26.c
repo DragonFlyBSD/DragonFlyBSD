@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/tools/regression/p1003_1b/p26.c,v 1.1 2000/02/16 14:28:41 dufault Exp $
+ * $DragonFly: src/tools/regression/p1003_1b/p26.c,v 1.2 2003/06/17 04:29:11 dillon Exp $
  */
 #define _POSIX_SOURCE
 #define _POSIX_C_SOURCE 199309L

@@ -5,6 +5,7 @@
  *
  *	from: @(#)symseg.h	5.4 (Berkeley) 4/30/91
  * $FreeBSD: src/gnu/usr.bin/ld/symseg.h,v 1.7 1999/08/27 23:36:02 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/ld/Attic/symseg.h,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
 
 /* GDB symbol table format definitions.

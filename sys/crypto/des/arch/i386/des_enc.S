@@ -1,5 +1,6 @@
 /* $NetBSD: des_enc.S,v 1.1 2001/09/09 11:01:02 tls Exp $ */
 /* $FreeBSD: src/sys/crypto/des/arch/i386/des_enc.S,v 1.1.2.1 2002/03/26 10:12:25 ume Exp $ */
+/* $DragonFly: src/sys/crypto/des/arch/i386/des_enc.S,v 1.2 2003/06/17 04:28:20 dillon Exp $ */
 
 /* Copyright (C) 1995-1997 Eric Young (eay@cryptsoft.com)
  * All rights reserved.

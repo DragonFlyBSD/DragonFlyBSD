@@ -29,16 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)initgroups.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/gen/initgroups.c,v 1.3.8.1 2001/12/19 15:49:35 tobez Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/initgroups.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)initgroups.c	8.1 (Berkeley) 6/4/93";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/gen/initgroups.c,v 1.3.8.1 2001/12/19 15:49:35 tobez Exp $";
-#endif
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/kue/Makefile,v 1.2 2000/01/28 11:26:30 bde Exp $
+# $DragonFly: src/sys/dev/netif/kue/Makefile,v 1.2 2003/06/17 04:28:44 dillon Exp $
 
 S	= ${.CURDIR}/../..
 .PATH:	$S/dev/usb

@@ -11,12 +11,10 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * Snoop stuff.
+ *
+ * $FreeBSD: src/usr.sbin/watch/watch.c,v 1.18.2.3 2002/08/17 00:59:03 mikeh Exp $
+ * $DragonFly: src/usr.sbin/watch/watch.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/watch/watch.c,v 1.18.2.3 2002/08/17 00:59:03 mikeh Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/fcntl.h>

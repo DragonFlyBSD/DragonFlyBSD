@@ -1,6 +1,7 @@
 # Makefile for syscall tables
 #
 # $FreeBSD: src/sys/i386/linux/Makefile,v 1.4 1999/08/28 00:45:21 peter Exp $
+# $DragonFly: src/sys/emulation/linux/i386/Makefile,v 1.2 2003/06/17 04:28:38 dillon Exp $
 
 all:
 	@echo "make linux_sysent.c only"

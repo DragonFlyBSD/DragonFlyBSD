@@ -2,6 +2,7 @@
  * random.h -- A strong random number generator
  *
  * $FreeBSD: src/sys/sys/random.h,v 1.19.2.2 2002/09/17 17:11:54 sam Exp $
+ * $DragonFly: src/sys/sys/random.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  *
  * Version 0.95, last modified 18-Oct-95
  * 

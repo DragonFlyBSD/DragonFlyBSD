@@ -23,6 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcam/camlib.c,v 1.8.2.2 2002/05/23 04:19:22 ken Exp $
+ * $DragonFly: src/lib/libcam/camlib.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 
 #include <sys/types.h>

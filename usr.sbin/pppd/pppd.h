@@ -17,6 +17,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/pppd.h,v 1.13 1999/08/28 01:19:08 peter Exp $
+ * $DragonFly: src/usr.sbin/pppd/pppd.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 /*

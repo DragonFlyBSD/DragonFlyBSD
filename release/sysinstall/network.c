@@ -5,6 +5,7 @@
  * generation being slated to essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/network.c,v 1.46.2.4 2001/07/19 01:33:02 kris Exp $
+ * $DragonFly: src/release/sysinstall/Attic/network.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.

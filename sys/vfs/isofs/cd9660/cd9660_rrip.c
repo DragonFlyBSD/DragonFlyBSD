@@ -37,6 +37,7 @@
  *
  *	@(#)cd9660_rrip.c	8.6 (Berkeley) 12/5/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_rrip.c,v 1.17 1999/08/28 00:46:06 peter Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_rrip.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include <sys/param.h>

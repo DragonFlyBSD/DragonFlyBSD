@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/support.s,v 1.67.2.5 2001/08/15 01:23:50 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #include "npx.h"

@@ -1,3 +1,4 @@
 @c $FreeBSD: src/gnu/usr.bin/send-pr/doc/version.texi,v 1.1.12.1 2001/03/05 10:44:05 kris Exp $
+@c $DragonFly: src/gnu/usr.bin/send-pr/doc/Attic/version.texi,v 1.2 2003/06/17 04:25:49 dillon Exp $
 
 @set VERSION 3.113

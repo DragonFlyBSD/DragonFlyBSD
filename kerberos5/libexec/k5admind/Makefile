@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberos5/libexec/k5admind/Makefile,v 1.4.2.3 2002/09/23 14:00:48 nectar Exp $
+# $DragonFly: src/kerberos5/libexec/k5admind/Attic/Makefile,v 1.2 2003/06/17 04:26:18 dillon Exp $
 
 PROG=		k5admind
 SRCS=		kadmind.c server.c kadm_conn.c \

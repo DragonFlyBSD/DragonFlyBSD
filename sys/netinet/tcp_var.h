@@ -32,6 +32,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_

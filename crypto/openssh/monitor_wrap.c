@@ -27,6 +27,7 @@
 #include "includes.h"
 RCSID("$OpenBSD: monitor_wrap.c,v 1.19 2002/09/26 11:38:43 markus Exp $");
 RCSID("$FreeBSD: src/crypto/openssh/monitor_wrap.c,v 1.3.2.2 2003/02/03 17:31:07 des Exp $");
+RCSID("$DragonFly: src/crypto/openssh/Attic/monitor_wrap.c,v 1.2 2003/06/17 04:24:36 dillon Exp $");
 
 #include <openssl/bn.h>
 #include <openssl/dh.h>

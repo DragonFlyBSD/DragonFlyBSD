@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_output.c,v 1.4.2.1 2000/06/02 22:39:08 archie Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_output.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -39,11 +39,6 @@
 
 #include <netatm/ipatm/ipatm_var.h>
 #include <netatm/ipatm/ipatm_serv.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_output.c,v 1.4.2.1 2000/06/02 22:39:08 archie Exp $");
-#endif
-
 
 /*
  * Output an IP Packet

@@ -23,6 +23,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
  *
  * $FreeBSD: src/contrib/awk/field.c,v 1.4.2.1 2001/01/23 22:08:31 asmodai Exp $
+ * $DragonFly: src/contrib/awk/Attic/field.c,v 1.2 2003/06/17 04:23:58 dillon Exp $
  */
 
 #include "awk.h"

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/bc/config.h,v 1.4.2.1 2001/03/04 09:36:18 kris Exp $ */
+/* $DragonFly: src/gnu/usr.bin/bc/Attic/config.h,v 1.2 2003/06/17 04:25:44 dillon Exp $ */
 
 /* config.h.  Generated automatically by configure.  */
 /* config.h.in.  Generated automatically from configure.in by autoheader.  */

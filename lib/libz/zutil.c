@@ -1,10 +1,10 @@
 /* zutil.c -- target dependent utility functions for the compression library
  * Copyright (C) 1995-2002 Jean-loup Gailly.
  * For conditions of distribution and use, see copyright notice in zlib.h 
+ *
+ * $FreeBSD: src/lib/libz/zutil.c,v 1.5.2.1 2003/02/01 13:33:12 sobomax Exp $
+ * $DragonFly: src/lib/libz/Attic/zutil.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libz/zutil.c,v 1.5.2.1 2003/02/01 13:33:12 sobomax Exp $");
 
 #include "zutil.h"
 

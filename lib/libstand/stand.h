@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/stand.h,v 1.18.2.8 2002/06/17 11:22:39 sobomax Exp $
+ * $DragonFly: src/lib/libstand/stand.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
  * From	$NetBSD: stand.h,v 1.22 1997/06/26 19:17:40 drochner Exp $	
  */
 

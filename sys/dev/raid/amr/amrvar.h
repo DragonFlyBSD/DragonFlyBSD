@@ -53,6 +53,7 @@
  * SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/dev/amr/amrvar.h,v 1.2.2.5 2002/12/20 15:12:04 emoore Exp $
+ *      $DragonFly: src/sys/dev/raid/amr/amrvar.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 #if __FreeBSD_version >= 500005

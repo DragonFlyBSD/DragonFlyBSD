@@ -13,13 +13,10 @@
  * Send bug reports, bug fixes, enhancements, requests, flames, etc., and
  * I'll try to keep a version up to date.  I can be reached as follows:
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
+ *
+ * $FreeBSD: src/usr.sbin/cron/cron/do_command.c,v 1.15.2.5 2001/05/04 00:59:40 peter Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/do_command.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
-
-#if !defined(lint) && !defined(LINT)
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/cron/cron/do_command.c,v 1.15.2.5 2001/05/04 00:59:40 peter Exp $";
-#endif
-
 
 #include "cron.h"
 #include <sys/signal.h>

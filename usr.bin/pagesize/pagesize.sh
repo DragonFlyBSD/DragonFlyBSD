@@ -33,6 +33,7 @@
 #
 #	@(#)pagesize.sh	8.1 (Berkeley) 4/3/94
 # $FreeBSD: src/usr.bin/pagesize/pagesize.sh,v 1.5 1999/08/28 01:04:48 peter Exp $
+# $DragonFly: src/usr.bin/pagesize/pagesize.sh,v 1.2 2003/06/17 04:29:30 dillon Exp $
 #
 
 PATH=/bin:/usr/bin:/sbin:/usr/sbin; export PATH

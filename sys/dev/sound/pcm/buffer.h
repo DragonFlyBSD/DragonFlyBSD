@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/buffer.h,v 1.1.2.3 2002/04/22 15:49:35 cg Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/buffer.h,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #define ISA_DMA(b) (sndbuf_getflags((b)) & SNDBUF_F_ISADMA)

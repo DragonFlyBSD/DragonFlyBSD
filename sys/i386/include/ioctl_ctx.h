@@ -8,6 +8,7 @@
  *	for damages incurred with its use
  *
  * $FreeBSD: src/sys/i386/include/ioctl_ctx.h,v 1.6 1999/08/28 00:44:17 peter Exp $
+ * $DragonFly: src/sys/i386/include/Attic/ioctl_ctx.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 /*

@@ -33,6 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 /*

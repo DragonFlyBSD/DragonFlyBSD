@@ -37,6 +37,7 @@
  *
  *	@(#)vfs_lookup.c	8.4 (Berkeley) 2/16/94
  * $FreeBSD: src/sys/kern/vfs_lookup.c,v 1.38.2.3 2001/08/31 19:36:49 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 #include "opt_ktrace.h"

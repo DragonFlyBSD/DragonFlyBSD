@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/sys/ftruncate.c,v 1.3.6.1 2001/03/05 11:45:51 obrien Exp $
+ * $DragonFly: src/lib/libc/sys/ftruncate.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ *
+ * @(#)ftruncate.c	8.1 (Berkeley) 6/17/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)ftruncate.c	8.1 (Berkeley) 6/17/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/syscall.h>

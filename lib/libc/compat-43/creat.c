@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/compat-43/creat.c,v 1.4.2.2 2001/03/05 07:28:35 obrien Exp $
+ * $DragonFly: src/lib/libc/compat-43/creat.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ *
+ * @(#)creat.c	8.1 (Berkeley) 6/2/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)creat.c	8.1 (Berkeley) 6/2/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <fcntl.h>
 

@@ -34,4 +34,5 @@
  * advised of the possibility of such damage.
  *
  * $FreeBSD: src/sys/dev/vinum/COPYRIGHT,v 1.4 1999/08/28 00:42:36 peter Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/COPYRIGHT,v 1.2 2003/06/17 04:28:32 dillon Exp $
  */

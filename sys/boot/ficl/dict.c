@@ -18,6 +18,7 @@
 */
 
 /* $FreeBSD: src/sys/boot/ficl/dict.c,v 1.6.2.1 2000/07/06 23:51:45 obrien Exp $ */
+/* $DragonFly: src/sys/boot/ficl/dict.c,v 1.2 2003/06/17 04:28:17 dillon Exp $ */
 
 #ifdef TESTMAIN
 #include <stdio.h>

@@ -13,6 +13,7 @@
  *
  * Released under the GNU LGPL version 2 or later
  * $FreeBSD: src/contrib/libpam/modules/pam_issue/pam_issue.c,v 1.1.1.1.2.2 2001/06/11 15:28:18 markm Exp $
+ * $DragonFly: src/contrib/libpam/modules/pam_issue/Attic/pam_issue.c,v 1.2 2003/06/17 04:24:03 dillon Exp $
  */
 
 #define _GNU_SOURCE

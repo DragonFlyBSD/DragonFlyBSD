@@ -35,6 +35,7 @@
  *
  *	@(#)trap.h	8.3 (Berkeley) 6/5/95
  * $FreeBSD: src/bin/sh/trap.h,v 1.9.2.2 2002/08/27 01:36:28 tjr Exp $
+ * $DragonFly: src/bin/sh/trap.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
 
 extern int pendingsigs;

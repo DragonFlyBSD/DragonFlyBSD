@@ -14,6 +14,7 @@
 #
 
 # $FreeBSD: src/sys/boot/i386/pxeldr/pxeldr.s,v 1.1.2.5 2001/08/10 22:06:18 mp Exp $
+# $DragonFly: src/sys/boot/pc32/pxeldr/pxeldr.S,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 #
 # This simple program is a preloader for the normal boot3 loader.  It is simply

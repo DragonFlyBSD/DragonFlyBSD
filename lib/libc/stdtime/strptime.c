@@ -18,6 +18,11 @@
  * 
  * Kevin Ruddy
  * Powerdog Industries, Inc.
+ *
+ * @(#) Copyright (c) 1994 Powerdog Industries.  All rights reserved.
+ * @(#)strptime.c	0.1 (Powerdog) 94/03/27
+ * $FreeBSD: src/lib/libc/stdtime/strptime.c,v 1.17.2.3 2002/03/12 17:24:54 phantom Exp $
+ * $DragonFly: src/lib/libc/stdtime/strptime.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
 /*
  * Copyright (c) 1994 Powerdog Industries.  All rights reserved.
@@ -50,19 +55,6 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-#ifdef LIBC_RCS
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/stdtime/strptime.c,v 1.17.2.3 2002/03/12 17:24:54 phantom Exp $";
-#endif
-
-#ifndef lint
-#ifndef NOID
-static char copyright[] =
-"@(#) Copyright (c) 1994 Powerdog Industries.  All rights reserved.";
-static char sccsid[] = "@(#)strptime.c	0.1 (Powerdog) 94/03/27";
-#endif /* !defined NOID */
-#endif /* not lint */
 
 #include <time.h>
 #include <ctype.h>

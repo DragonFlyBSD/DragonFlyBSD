@@ -1,6 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.mklev.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.mklev.c,v 1.6 1999/11/16 10:26:36 marcel Exp $ */
+/* $DragonFly: src/games/hack/hack.mklev.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
 
 #include <stdlib.h>
 #include <unistd.h>

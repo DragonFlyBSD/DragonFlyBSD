@@ -23,11 +23,10 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libc/gen/ftok.c,v 1.5 1999/08/27 23:58:35 peter Exp $
+ * $DragonFly: src/lib/libc/gen/ftok.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char *rcsid = "$FreeBSD: src/lib/libc/gen/ftok.c,v 1.5 1999/08/27 23:58:35 peter Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

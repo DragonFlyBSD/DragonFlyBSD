@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)su.c	8.3 (Berkeley) 4/2/94
+ * $FreeBSD: src/usr.bin/su/su.c,v 1.34.2.4 2002/06/16 21:04:15 nectar Exp $
+ * $DragonFly: src/usr.bin/su/su.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1988, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)su.c	8.3 (Berkeley) 4/2/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/su/su.c,v 1.34.2.4 2002/06/16 21:04:15 nectar Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/time.h>

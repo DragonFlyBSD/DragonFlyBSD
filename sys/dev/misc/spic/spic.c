@@ -48,6 +48,7 @@
  * also provided sample code upon which this driver was based.
  *
  * $FreeBSD: src/sys/i386/isa/spic.c,v 1.4.2.1 2002/04/15 00:52:12 will Exp $
+ * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 #include <sys/param.h>

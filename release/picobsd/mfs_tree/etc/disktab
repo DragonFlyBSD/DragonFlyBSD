@@ -1,4 +1,5 @@
 # $FreeBSD: src/release/picobsd/mfs_tree/etc/disktab,v 1.1.2.1 2001/02/14 23:47:02 luigi Exp $
+# $DragonFly: src/release/picobsd/mfs_tree/etc/Attic/disktab,v 1.2 2003/06/17 04:27:20 dillon Exp $
 # Floppy formats:
 #
 # To make a filesystem on a floppy:

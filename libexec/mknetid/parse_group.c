@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)getgrent.c	8.2 (Berkeley) 3/21/94
+ * $FreeBSD: src/libexec/mknetid/parse_group.c,v 1.6 1999/08/28 00:09:42 peter Exp $
+ * $DragonFly: src/libexec/mknetid/parse_group.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)getgrent.c	8.2 (Berkeley) 3/21/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/libexec/mknetid/parse_group.c,v 1.6 1999/08/28 00:09:42 peter Exp $";
-#endif /* not lint */
 
 /*
  * This is a slightly modified chunk of getgrent(3). All the YP support

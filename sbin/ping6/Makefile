@@ -1,4 +1,5 @@
 # $FreeBSD: src/sbin/ping6/Makefile,v 1.1.2.4 2002/03/08 09:18:59 ume Exp $
+# $DragonFly: src/sbin/ping6/Makefile,v 1.2 2003/06/17 04:27:34 dillon Exp $
 
 PROG=	ping6
 MAN=	ping6.8

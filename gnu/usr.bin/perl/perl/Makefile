@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/gnu/usr.bin/perl/perl/Makefile,v 1.27.2.2 2000/10/05 09:54:47 markm Exp $
+# $DragonFly: src/gnu/usr.bin/perl/perl/Attic/Makefile,v 1.2 2003/06/17 04:25:47 dillon Exp $
 #
 
 PROG=	perl

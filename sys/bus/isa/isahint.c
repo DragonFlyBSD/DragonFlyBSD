@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isahint.c,v 1.8.2.1 2001/03/21 11:18:25 nyan Exp $
+ * $DragonFly: src/sys/bus/isa/isahint.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -14,3 +14,4 @@
 #endif
 
 /* $FreeBSD: src/gnu/usr.bin/gzip/revision.h,v 1.6 1999/08/27 23:35:52 peter Exp $ */
+/* $DragonFly: src/gnu/usr.bin/gzip/Attic/revision.h,v 1.2 2003/06/17 04:25:46 dillon Exp $ */

@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/apm/apm_saver.c,v 1.1.4.2 2001/03/07 21:47:24 nsayer Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/apm/apm_saver.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
  */
 
 #include <sys/param.h>

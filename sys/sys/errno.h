@@ -37,6 +37,7 @@
  *
  *	@(#)errno.h	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/errno.h,v 1.14.2.2 2002/01/22 10:46:56 keramida Exp $
+ * $DragonFly: src/sys/sys/errno.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_ERRNO_H_

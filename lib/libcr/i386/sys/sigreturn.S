@@ -34,12 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/sys/sigreturn.S,v 1.8.2.1 2001/10/19 18:23:33 ru Exp $
+ * $DragonFly: src/lib/libcr/i386/sys/Attic/sigreturn.S,v 1.2 2003/06/17 04:26:43 dillon Exp $
+ *
+ * $FreeBSD: src/lib/libc/i386/sys/sigreturn.S,v 1.8.2.1 2001/10/19 18:23:33 ru Exp $
  */
-
-#if defined(SYSLIBC_RCS) && !defined(lint)
-	.text
-	.asciz "$FreeBSD: src/lib/libc/i386/sys/sigreturn.S,v 1.8.2.1 2001/10/19 18:23:33 ru Exp $"
-#endif /* SYSLIBC_RCS and not lint */
 
 #include "SYS.h"
 

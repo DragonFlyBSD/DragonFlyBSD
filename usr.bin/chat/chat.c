@@ -75,12 +75,9 @@
  *		(614)451-1883
  *
  *
+ * $FreeBSD: src/usr.bin/chat/chat.c,v 1.15 1999/11/25 07:28:54 kris Exp $
+ * $DragonFly: src/usr.bin/chat/chat.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/chat/chat.c,v 1.15 1999/11/25 07:28:54 kris Exp $";
-#endif
 
 #include <stdio.h>
 #include <ctype.h>

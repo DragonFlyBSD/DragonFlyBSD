@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)dmesg.c	8.1 (Berkeley) 6/5/93
+ * $FreeBSD: src/sbin/dmesg/dmesg.c,v 1.11.2.3 2001/08/08 22:32:15 obrien Exp $
+ * $DragonFly: src/sbin/dmesg/dmesg.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1991, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)dmesg.c	8.1 (Berkeley) 6/5/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/dmesg/dmesg.c,v 1.11.2.3 2001/08/08 22:32:15 obrien Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/msgbuf.h>

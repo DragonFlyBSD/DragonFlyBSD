@@ -28,10 +28,10 @@
  * Mountain View, California  94043
  *
  * $FreeBSD: src/lib/libc/rpc/netname.c,v 1.2.6.1 2000/08/23 00:05:29 jhb Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/netname.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ *
+ * @(#)netname.c 1.8 91/03/11 Copyr 1986 Sun Micro
  */
-#if !defined(lint) && defined(SCCSIDS)
-static char sccsid[] = "@(#)netname.c 1.8 91/03/11 Copyr 1986 Sun Micro";
-#endif
 
 /*
  * netname utility routines

@@ -25,6 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scterm-sc.c,v 1.4.2.10 2001/06/11 09:05:39 phk Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scterm-sc.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #include "opt_syscons.h"

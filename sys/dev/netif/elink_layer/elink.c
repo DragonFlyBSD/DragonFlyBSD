@@ -27,6 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/elink.c,v 1.10 1999/08/28 00:44:41 peter Exp $
+ * $DragonFly: src/sys/dev/netif/elink_layer/elink.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /*

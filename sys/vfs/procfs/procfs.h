@@ -38,6 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs.h,v 1.32.2.3 2002/01/22 17:22:59 nectar Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs.h,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 /*

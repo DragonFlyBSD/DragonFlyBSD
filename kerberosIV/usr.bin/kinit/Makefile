@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberosIV/usr.bin/kinit/Makefile,v 1.7.2.1 2001/04/25 09:36:02 ru Exp $
+# $DragonFly: src/kerberosIV/usr.bin/kinit/Attic/Makefile,v 1.2 2003/06/17 04:26:25 dillon Exp $
 
 PROG=		kinit
 MAN=		${KRB4DIR}/man/kinit.1

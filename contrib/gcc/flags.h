@@ -19,6 +19,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/gcc/flags.h,v 1.4.2.1 2002/06/21 22:38:04 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/flags.h,v 1.2 2003/06/17 04:23:59 dillon Exp $ */
 
 /* Name of the input .c file being compiled.  */
 extern char *main_input_filename;

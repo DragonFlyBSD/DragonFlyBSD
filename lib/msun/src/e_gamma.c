@@ -9,11 +9,9 @@
  * is preserved.
  * ====================================================
  *
+ * $FreeBSD: src/lib/msun/src/e_gamma.c,v 1.5 1999/08/28 00:06:31 peter Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_gamma.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/lib/msun/src/e_gamma.c,v 1.5 1999/08/28 00:06:31 peter Exp $";
-#endif
 
 /* __ieee754_gamma(x)
  * Return the logarithm of the Gamma function of x.

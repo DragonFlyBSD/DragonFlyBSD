@@ -14,6 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #define        DEB(x)

@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/binutils/libiberty/Makefile,v 1.3.2.6 2002/09/01 23:39:16 obrien Exp $
+# $DragonFly: src/gnu/usr.bin/binutils/libiberty/Attic/Makefile,v 1.2 2003/06/17 04:25:45 dillon Exp $
 
 .include "../Makefile.inc0"
 

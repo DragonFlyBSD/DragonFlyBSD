@@ -7,6 +7,7 @@
 *******************************************************************/
 
 /* $FreeBSD: src/sys/boot/ficl/stack.c,v 1.3 1999/09/29 04:43:07 dcs Exp $ */
+/* $DragonFly: src/sys/boot/ficl/stack.c,v 1.2 2003/06/17 04:28:17 dillon Exp $ */
 
 #ifdef TESTMAIN
 #include <stdlib.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/als4000.h,v 1.1.2.3 2002/04/22 15:49:31 cg Exp $
+ * $DragonFly: src/sys/dev/sound/pci/als4000.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #define ALS_PCI_ID0 		0x40004005

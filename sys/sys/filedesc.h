@@ -32,6 +32,7 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
+ * $DragonFly: src/sys/sys/filedesc.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_

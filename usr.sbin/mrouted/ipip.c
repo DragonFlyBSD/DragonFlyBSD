@@ -7,16 +7,11 @@
  * Leland Stanford Junior University.
  *
  *
- * ipip.c,v 3.8.4.6 1998/01/06 01:57:45 fenner Exp
+ * @(#) $Id ipip.c,v 3.8.4.6 1998/01/06 01:57:45 fenner Exp $
+ * $DragonFly: src/usr.sbin/mrouted/ipip.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
 
-
 #include "defs.h"
-
-#ifndef lint
-static char rcsid[] = "@(#) $Id: \
-ipip.c,v 3.8.4.6 1998/01/06 01:57:45 fenner Exp $";
-#endif
 
 /*
  * Exported variables.

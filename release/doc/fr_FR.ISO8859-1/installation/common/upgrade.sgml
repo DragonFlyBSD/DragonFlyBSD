@@ -4,6 +4,7 @@
 
      $Id$
      $FreeBSD: src/release/doc/fr_FR.ISO8859-1/installation/common/upgrade.sgml,v 1.1.2.1 2002/02/26 13:51:21 gioria Exp $
+     $DragonFly: src/release/doc/fr_FR.ISO8859-1/installation/common/Attic/upgrade.sgml,v 1.2 2003/06/17 04:27:19 dillon Exp $
      Original revision: 1.7
      This section contains the contents of the old UPGRADE.TXT
      file.

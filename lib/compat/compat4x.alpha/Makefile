@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/compat/compat4x.alpha/Makefile,v 1.2.2.5 2003/02/18 22:16:58 nectar Exp $
+# $DragonFly: src/lib/compat/compat4x.alpha/Attic/Makefile,v 1.2 2003/06/17 04:26:40 dillon Exp $
 
 DISTRIBUTION=	compat4x
 

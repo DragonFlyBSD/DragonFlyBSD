@@ -19,6 +19,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/gcc/c-tree.h,v 1.4.2.1 2001/08/01 18:03:24 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/c-tree.h,v 1.2 2003/06/17 04:23:59 dillon Exp $ */
 
 #ifndef _C_TREE_H
 #define _C_TREE_H

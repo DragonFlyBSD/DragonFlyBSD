@@ -20,10 +20,10 @@
 
 /* This thing should be set up to do byteordering correctly.  But... */
 
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/as/write.c,v 1.11 1999/08/27 23:34:23 peter Exp $";
-#endif
-
+/*
+ * $FreeBSD: src/gnu/usr.bin/as/write.c,v 1.11 1999/08/27 23:34:23 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/as/Attic/write.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
+ */
 #include "as.h"
 #include "subsegs.h"
 #include "obstack.h"

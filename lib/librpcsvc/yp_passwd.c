@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/librpcsvc/yp_passwd.c,v 1.2 1999/08/28 00:05:24 peter Exp $
+ * $DragonFly: src/lib/librpcsvc/yp_passwd.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 
 #include <stdlib.h>

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)pw_util.c	8.3 (Berkeley) 4/2/94
+ * $FreeBSD: src/usr.sbin/rpc.yppasswdd/pw_util.c,v 1.4.2.1 2002/02/15 00:46:57 des Exp $
+ * $DragonFly: src/usr.sbin/rpc.yppasswdd/pw_util.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)pw_util.c	8.3 (Berkeley) 4/2/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/rpc.yppasswdd/pw_util.c,v 1.4.2.1 2002/02/15 00:46:57 des Exp $";
-#endif /* not lint */
 
 /*
  * This file is used by all the "password" programs; vipw(8), chpass(1),

@@ -11,6 +11,7 @@
  * - allow strm->next_out to be NULL, meaning discard the output
  *
  * $FreeBSD: src/sys/net/zlib.c,v 1.10.2.3 2002/03/24 23:12:48 jedgar Exp $
+ * $DragonFly: src/sys/net/zlib.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 /* 

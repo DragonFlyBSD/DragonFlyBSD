@@ -35,11 +35,10 @@
  * static char sccsid[] = "@(#)if.c	5.1 (Berkeley) 6/4/85"; (routed/if.c)
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/if.c,v 1.5 1999/08/28 01:15:02 peter Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/if.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *
+ * @(#)if.c	8.1 (Berkeley) 6/5/93
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)if.c	8.1 (Berkeley) 6/5/93";
-#endif /* not lint */
 
 /*
  * Routing Table Management Daemon

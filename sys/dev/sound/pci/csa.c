@@ -26,6 +26,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pci/csa.c,v 1.8.2.12 2002/10/05 19:53:18 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pci/csa.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,7 +51,7 @@
 
 #include <gnu/dev/sound/pci/csaimg.h>
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pci/csa.c,v 1.8.2.12 2002/10/05 19:53:18 orion Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/csa.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
 
 /* This is the pci device id. */
 #define CS4610_PCI_ID 0x60011013

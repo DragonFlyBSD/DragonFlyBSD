@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pccard/pccardd/cardd.h,v 1.18.2.6 2001/05/23 21:56:40 dmlb Exp $
+ * $DragonFly: src/usr.sbin/pccard/pccardd/Attic/cardd.h,v 1.2 2003/06/17 04:29:59 dillon Exp $
  *
  *	Common include file for PCMCIA daemon
  */

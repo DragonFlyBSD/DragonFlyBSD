@@ -20,6 +20,7 @@
    and John Oleynick <juo@klinzhai.rutgers.edu>.  */
 
 /* $FreeBSD: src/contrib/cpio/main.c,v 1.3 1999/09/15 01:47:13 peter Exp $ */
+/* $DragonFly: src/contrib/cpio/main.c,v 1.2 2003/06/17 04:23:58 dillon Exp $ */
 
 #include <stdio.h>
 #include <getopt.h>

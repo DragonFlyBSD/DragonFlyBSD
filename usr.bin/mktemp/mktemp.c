@@ -23,6 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: src/usr.bin/mktemp/mktemp.c,v 1.2.6.1 2000/10/15 11:37:43 alex Exp $
+ * $DragonFly: src/usr.bin/mktemp/mktemp.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
  */
 
 /*
@@ -40,11 +42,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#ifndef lint
-static const char rcsid[] =
-	"$FreeBSD: src/usr.bin/mktemp/mktemp.c,v 1.2.6.1 2000/10/15 11:37:43 alex Exp $";
-#endif /* not lint */
 
 static void usage __P((void));
 

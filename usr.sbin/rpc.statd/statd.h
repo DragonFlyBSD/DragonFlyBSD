@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.statd/statd.h,v 1.2.8.1 2002/04/11 17:08:36 alfred Exp $
+ * $DragonFly: src/usr.sbin/rpc.statd/statd.h,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
 
 

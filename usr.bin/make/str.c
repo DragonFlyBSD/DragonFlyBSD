@@ -34,16 +34,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)str.c	5.8 (Berkeley) 6/1/90
+ * $FreeBSD: src/usr.bin/make/str.c,v 1.12.2.1 2002/06/17 04:30:48 jmallett Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)str.c	5.8 (Berkeley) 6/1/90";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/make/str.c,v 1.12.2.1 2002/06/17 04:30:48 jmallett Exp $";
-#endif
-#endif /* not lint */
 
 #include "make.h"
 

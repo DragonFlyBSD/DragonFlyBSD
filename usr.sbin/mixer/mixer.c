@@ -9,12 +9,10 @@
  * You may do anything you wish with this program.
  *
  * ditto for my modifications (John-Mark Gurney, 1997)
+ *
+ * $FreeBSD: src/usr.sbin/mixer/mixer.c,v 1.11.2.6 2001/07/30 10:22:58 dd Exp $
+ * $DragonFly: src/usr.sbin/mixer/mixer.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/mixer/mixer.c,v 1.11.2.6 2001/07/30 10:22:58 dd Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <fcntl.h>

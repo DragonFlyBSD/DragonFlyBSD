@@ -25,6 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/usr.bin/which/which.pl,v 1.14 1999/08/28 01:07:39 peter Exp $
+# $DragonFly: src/usr.bin/which/Attic/which.pl,v 1.2 2003/06/17 04:29:33 dillon Exp $
 
 $all = $silent = $found = 0;
 @path = split(/:/, $ENV{'PATH'});

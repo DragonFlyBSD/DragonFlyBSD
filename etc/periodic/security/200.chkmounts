@@ -25,6 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/periodic/security/200.chkmounts,v 1.2.2.4 2002/11/07 19:38:46 thomas Exp $
+# $DragonFly: src/etc/periodic/security/200.chkmounts,v 1.2 2003/06/17 04:24:48 dillon Exp $
 #
 
 # Show changes in the way filesystems are mounted

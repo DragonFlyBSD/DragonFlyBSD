@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/load_aout.c,v 1.16.2.2 2000/12/28 13:12:35 ps Exp $
+ * $DragonFly: src/sys/boot/common/Attic/load_aout.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 
 #include <sys/param.h>

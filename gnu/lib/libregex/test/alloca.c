@@ -26,9 +26,9 @@
 	allocating any.  It is a good idea to use alloca(0) in
 	your main control loop, etc. to force garbage collection.
 */
-#ifndef lint
-static char	SCCSid[] = "@(#)alloca.c	1.1";	/* for the "what" utility */
-#endif
+/*
+ * @(#)alloca.c	1.1
+ */
 
 #ifdef emacs
 #include "config.h"

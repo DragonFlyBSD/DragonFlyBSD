@@ -31,11 +31,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/xlint/lint1/emit.c,v 1.1.1.1.8.1 2001/03/04 09:27:26 kris Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/emit.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ *
+ * $NetBSD: emit.c,v 1.2 1995/07/03 21:24:00 cgd Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$NetBSD: emit.c,v 1.2 1995/07/03 21:24:00 cgd Exp $";
-#endif
 
 #include <stdio.h>
 #include <string.h>

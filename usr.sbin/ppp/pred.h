@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/pred.h,v 1.8.2.1 2001/06/13 21:56:36 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/pred.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 extern const struct ccp_algorithm Pred1Algorithm;

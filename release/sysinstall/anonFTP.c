@@ -5,6 +5,7 @@
  * generation being essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/anonFTP.c,v 1.29.2.4 2002/08/09 20:34:23 schweikh Exp $
+ * $DragonFly: src/release/sysinstall/Attic/anonFTP.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1995
  *	Coranth Gryphon.  All rights reserved.

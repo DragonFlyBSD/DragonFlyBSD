@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/libncurses/Makefile,v 1.39.2.13 2002/08/07 16:31:48 ru Exp $
+# $DragonFly: src/lib/libncurses/Makefile,v 1.2 2003/06/17 04:26:50 dillon Exp $
 
 NCURSES=${.CURDIR}/../../contrib/ncurses
 

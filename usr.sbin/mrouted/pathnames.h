@@ -8,6 +8,7 @@
  *
  *
  * $FreeBSD: src/usr.sbin/mrouted/pathnames.h,v 1.7 1999/08/28 01:17:07 peter Exp $
+ * $DragonFly: src/usr.sbin/mrouted/pathnames.h,v 1.2 2003/06/17 04:29:57 dillon Exp $
  * pathnames.h,v 3.8 1995/11/29 22:36:57 fenner Rel
  */
 

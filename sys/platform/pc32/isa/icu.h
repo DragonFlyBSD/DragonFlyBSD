@@ -35,6 +35,7 @@
  *
  *	from: @(#)icu.h	5.6 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/icu.h,v 1.18 1999/12/26 12:43:47 bde Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/icu.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /*

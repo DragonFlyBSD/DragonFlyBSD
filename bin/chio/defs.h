@@ -1,4 +1,5 @@
 /* $FreeBSD: src/bin/chio/defs.h,v 1.2.2.1 2001/07/28 19:22:01 mikeh Exp $	*/
+/* $DragonFly: src/bin/chio/defs.h,v 1.2 2003/06/17 04:22:49 dillon Exp $	*/
 
 /*
  * Copyright (c) 1996 Jason R. Thorpe <thorpej@and.com>

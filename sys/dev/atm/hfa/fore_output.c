@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_output.c,v 1.5 2000/01/15 21:01:04 mks Exp $
- *
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_output.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
  */
 
 /*
@@ -36,11 +36,6 @@
  */
 
 #include <dev/hfa/fore_include.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/dev/hfa/fore_output.c,v 1.5 2000/01/15 21:01:04 mks Exp $");
-#endif
-
 
 /*
  * Local functions

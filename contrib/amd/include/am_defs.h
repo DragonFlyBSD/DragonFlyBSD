@@ -40,6 +40,7 @@
  *
  * $Id: am_defs.h,v 1.11 1999/09/18 08:38:05 ezk Exp $
  * $FreeBSD: src/contrib/amd/include/am_defs.h,v 1.8 1999/11/05 11:58:03 obrien Exp $
+ * $DragonFly: src/contrib/amd/include/am_defs.h,v 1.2 2003/06/17 04:23:57 dillon Exp $
  *
  */
 

@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rc.c,v 1.53.2.1 2001/02/26 04:23:10 jlemon Exp $
+ * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  *
  */
 

@@ -1,4 +1,5 @@
 $FreeBSD: src/lib/libstand/bzlib_private.h.diff,v 1.1.2.1 2002/02/18 09:13:03 sobomax Exp $
+$DragonFly: src/lib/libstand/Attic/bzlib_private.h.diff,v 1.2 2003/06/17 04:26:51 dillon Exp $
 
 --- bzlib_private.h	2002/02/01 15:41:26	1.1
 +++ bzlib_private.h	2002/02/01 15:41:46

@@ -109,12 +109,9 @@
  * 
  * The mtrace program is COPYRIGHT 1998 by Xerox Corporation.
  *
+ * $FreeBSD: src/usr.sbin/mrouted/mtrace.c,v 1.17.2.3 2002/09/12 16:27:49 nectar Exp $
+ * $DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/mrouted/mtrace.c,v 1.17.2.3 2002/09/12 16:27:49 nectar Exp $";
-#endif
 
 #include <ctype.h>
 #include <err.h>
@@ -151,6 +148,8 @@ static const char rcsid[] =
 
 typedef unsigned int u_int32;	/* XXX */
 #include "mtrace.h"
+
+const char version[] = "$DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.2 2003/06/17 04:29:57 dillon Exp $";
 
 #define DEFAULT_TIMEOUT	3	/* How long to wait before retrying requests */
 #define DEFAULT_RETRIES 3	/* How many times to try */
@@ -2490,7 +2489,7 @@ char *argv[];
 		 * XXX new versions!
 		 */
 		{
-		    char *r = strdup(rcsid);
+		    char *r = strdup(version);
 		    char *s = strchr(r, ',');
 
 		    while (s && *(s+1) != 'v')

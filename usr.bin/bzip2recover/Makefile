@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.bin/bzip2recover/Makefile,v 1.1.2.1 2003/01/04 17:17:08 obrien Exp $
+# $DragonFly: src/usr.bin/bzip2recover/Makefile,v 1.2 2003/06/17 04:29:25 dillon Exp $
 
 MAINTAINER=	obrien@FreeBSD.org
 

@@ -26,8 +26,11 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
  *
  * Myson fast ethernet PCI NIC driver
+ *
+ * $Id: if_my.c,v 1.40 2001/11/30 03:55:00 <yen_cw@myson.com.tw> wpaul Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -84,11 +87,6 @@ static int      MY_USEIOSPACE = 1;
 
 
 #include <dev/my/if_myreg.h>
-
-#ifndef lint
-static          const char rcsid[] =
-"$Id: if_my.c,v 1.40 2001/11/30 03:55:00 <yen_cw@myson.com.tw> wpaul Exp $";
-#endif
 
 /*
  * Various supported device vendors/types and their names.

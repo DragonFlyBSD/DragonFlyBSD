@@ -35,6 +35,7 @@
  *
  *	from: @(#)locore.s	7.3 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/locore.s,v 1.132.2.10 2003/02/03 20:54:49 jhb Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/locore.s,v 1.2 2003/06/17 04:28:35 dillon Exp $
  *
  *		originally from: locore.s, by William F. Jolitz
  *

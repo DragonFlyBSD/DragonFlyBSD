@@ -1,5 +1,6 @@
 /* 
  * $FreeBSD: src/sys/netncp/ncp_crypt.c,v 1.3.2.1 2001/02/22 08:57:58 bp Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_crypt.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>

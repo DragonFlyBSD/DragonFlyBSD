@@ -31,17 +31,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/dirname/dirname.c,v 1.5.6.2 2001/08/02 01:49:44 obrien Exp $
+ * $DragonFly: src/usr.bin/dirname/dirname.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ *
+ * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)dirname.c	8.4 (Berkeley) 5/4/95
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1991, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static const char sccsid[] = "@(#)dirname.c	8.4 (Berkeley) 5/4/95";
-#endif /* not lint */
 
 #include <err.h>
 #include <libgen.h>

@@ -24,6 +24,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/kgzip/elfhdr.c,v 1.2 1999/08/28 01:16:43 peter Exp $
+ * $DragonFly: src/usr.sbin/kgzip/elfhdr.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
  */
 
 #include <stddef.h>

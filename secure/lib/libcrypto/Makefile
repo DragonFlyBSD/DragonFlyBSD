@@ -1,4 +1,5 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile,v 1.15.2.14 2003/02/14 22:38:14 nectar Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.2 2003/06/17 04:27:48 dillon Exp $
 
 LIB=		crypto
 SHLIB_MAJOR=	3

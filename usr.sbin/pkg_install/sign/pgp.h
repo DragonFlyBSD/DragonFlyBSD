@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.sbin/pkg_install/sign/pgp.h,v 1.1.2.1 2001/03/05 03:43:53 wes Exp $ */
+/* $DragonFly: src/usr.sbin/pkg_install/sign/Attic/pgp.h,v 1.2 2003/06/17 04:29:59 dillon Exp $ */
 /* $OpenBSD: pgp.h,v 1.2 1999/10/04 21:46:28 espie Exp $ */
 /* Estimate size of pgp signature */
 #define MAXPGPSIGNSIZE	1024

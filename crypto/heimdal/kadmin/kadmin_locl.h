@@ -34,6 +34,7 @@
 /* 
  * $Id: kadmin_locl.h,v 1.41 2002/09/10 20:04:45 joda Exp $
  * $FreeBSD: src/crypto/heimdal/kadmin/kadmin_locl.h,v 1.2.2.3 2002/09/20 10:50:21 nectar Exp $
+ * $DragonFly: src/crypto/heimdal/kadmin/Attic/kadmin_locl.h,v 1.2 2003/06/17 04:24:35 dillon Exp $
  */
 
 #ifndef __ADMIN_LOCL_H__

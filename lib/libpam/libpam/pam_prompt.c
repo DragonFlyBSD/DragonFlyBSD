@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libpam/libpam/pam_prompt.c,v 1.1.1.1.6.2 2002/07/03 21:45:44 des Exp $
+ *	$DragonFly: src/lib/libpam/libpam/Attic/pam_prompt.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
 
 #include <security/pam_modules.h>

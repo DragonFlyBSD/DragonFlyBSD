@@ -34,6 +34,7 @@
  *	from:		@(#)in_cksum.c	1.3 (Berkeley) 1/19/91
  *	from: Id: in_cksum.c,v 1.8 1995/12/03 18:35:19 bde Exp
  * $FreeBSD: src/sys/i386/include/in_cksum.h,v 1.7.2.2 2002/07/02 04:03:04 jdp Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/in_cksum.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef _MACHINE_IN_CKSUM_H_

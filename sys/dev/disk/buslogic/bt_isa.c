@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt_isa.c,v 1.18 1999/10/12 21:35:43 dfr Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt_isa.c,v 1.2 2003/06/17 04:28:23 dillon Exp $
  */
 
 #include <sys/param.h>

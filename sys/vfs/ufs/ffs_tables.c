@@ -32,6 +32,7 @@
  *
  *	@(#)ffs_tables.c	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/ufs/ffs/ffs_tables.c,v 1.7 1999/08/28 00:52:22 peter Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_tables.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #include <sys/param.h>

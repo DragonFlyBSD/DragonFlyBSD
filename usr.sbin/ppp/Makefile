@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/ppp/Makefile,v 1.73.2.8 2002/09/01 02:12:22 brian Exp $
+# $DragonFly: src/usr.sbin/ppp/Makefile,v 1.2 2003/06/17 04:30:00 dillon Exp $
 
 PROG=	ppp
 MAN=	ppp.8

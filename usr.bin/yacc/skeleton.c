@@ -32,11 +32,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)skeleton.c	5.8 (Berkeley) 4/29/95
+ *
+ * $FreeBSD: src/usr.bin/yacc/skeleton.c,v 1.28.2.1 2001/07/19 05:46:39 peter Exp $
+ * $DragonFly: src/usr.bin/yacc/skeleton.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
-
-#ifndef lint
-static char const sccsid[] = "@(#)skeleton.c	5.8 (Berkeley) 4/29/95";
-#endif /* not lint */
 
 #include "defs.h"
 
@@ -54,10 +55,6 @@ static char const sccsid[] = "@(#)skeleton.c	5.8 (Berkeley) 4/29/95";
 
 char *banner[] =
 {
-    "#ifndef lint",
-    "static char const ",
-    "yyrcsid[] = \"$FreeBSD: src/usr.bin/yacc/skeleton.c,v 1.28.2.1 2001/07/19 05:46:39 peter Exp $\";",
-    "#endif",
     "#include <stdlib.h>",
     "#define YYBYACC 1",
     "#define YYMAJOR 1",

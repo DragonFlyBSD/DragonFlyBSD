@@ -1,5 +1,6 @@
 /*	$NetBSD: ohci.c,v 1.64 2000/01/19 00:23:58 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ohci.c,v 1.39.2.9 2003/03/05 17:09:44 shiba Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.

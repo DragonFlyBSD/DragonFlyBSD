@@ -23,6 +23,7 @@ Boston, MA 02111-1307, USA.  */
    Don't change one without the other.  */
 
 /* $FreeBSD: src/contrib/gcc/choose-temp.c,v 1.3 1999/11/04 10:23:25 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/choose-temp.c,v 1.2 2003/06/17 04:23:59 dillon Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"

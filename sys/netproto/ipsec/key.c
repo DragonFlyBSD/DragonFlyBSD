@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key.c,v 1.3.2.1 2003/01/24 05:11:35 sam Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*

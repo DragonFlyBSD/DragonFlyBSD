@@ -20,6 +20,7 @@ ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 
  $FreeBSD: src/libexec/bootpd/tools/bootpef/bootpef.c,v 1.6 1999/08/28 00:09:24 peter Exp $
+ $DragonFly: src/libexec/bootpd/tools/bootpef/bootpef.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
 
 ************************************************************************/
 

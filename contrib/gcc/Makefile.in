@@ -20,6 +20,7 @@
 #Boston MA 02111-1307, USA.
 
 # $FreeBSD: src/contrib/gcc/Makefile.in,v 1.4.2.1 2001/04/10 19:22:57 obrien Exp $
+# $DragonFly: src/contrib/gcc/Attic/Makefile.in,v 1.2 2003/06/17 04:23:59 dillon Exp $
 
 # The targets for external use include:
 # all, doc, proto, install, install-cross, install-cross-rest,

@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)expand.c	8.1 (Berkeley) 6/9/93
+ * $FreeBSD: src/usr.bin/expand/expand.c,v 1.5.2.6 2002/07/09 10:47:59 tjr Exp $
+ * $DragonFly: src/usr.bin/expand/expand.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1980, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)expand.c	8.1 (Berkeley) 6/9/93";
-#endif
-#endif /* not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/expand/expand.c,v 1.5.2.6 2002/07/09 10:47:59 tjr Exp $");
 
 #include <ctype.h>
 #include <err.h>

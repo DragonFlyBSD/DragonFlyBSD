@@ -35,6 +35,7 @@
  *
  * $Id: request.h,v 1.19 2000/11/24 03:41:51 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/request.h,v 1.17.2.1 2001/03/13 02:59:42 grog Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/request.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 /* Information needed to set up a transfer */

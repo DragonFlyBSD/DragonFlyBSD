@@ -7,10 +7,9 @@
  *
  * This is the create module.
  *
+ * $FreeBSD: src/usr.sbin/pkg_install/create/main.c,v 1.21.2.7 2002/05/29 18:31:11 obrien Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/create/Attic/main.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.sbin/pkg_install/create/main.c,v 1.21.2.7 2002/05/29 18:31:11 obrien Exp $");
 
 #include <err.h>
 #include "lib.h"

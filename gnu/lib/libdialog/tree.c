@@ -6,12 +6,9 @@
  * Copyright (c) 1997, Anatoly A. Orehovsky
  * 09/28/98 - patched by Anatoly A. Orehovsky (smart_tree())
  *
+ * $FreeBSD: src/gnu/lib/libdialog/tree.c,v 1.5.2.1 2001/07/31 20:34:00 eric Exp $
+ * $DragonFly: src/gnu/lib/libdialog/tree.c,v 1.2 2003/06/17 04:25:43 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/gnu/lib/libdialog/tree.c,v 1.5.2.1 2001/07/31 20:34:00 eric Exp $";
-#endif
 
 #include <stdlib.h>
 #include <strings.h>

@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.3.2.2 2001/07/03 11:02:06 ume Exp $
+ * $DragonFly: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
  */
 
 #include <stdio.h>

@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/lib/libreadline/readline/Makefile,v 1.5.2.3 2002/07/23 10:20:20 ru Exp $
+# $DragonFly: src/gnu/lib/libreadline/readline/Attic/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
 
 SUBDIR= doc
 

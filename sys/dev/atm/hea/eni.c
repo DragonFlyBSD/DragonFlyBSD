@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni.c,v 1.10 1999/08/28 00:41:42 peter Exp $
- *
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.c,v 1.2 2003/06/17 04:28:26 dillon Exp $
  */
 
 /*
@@ -40,10 +40,6 @@
 #include <dev/hea/eni_stats.h>
 #include <dev/hea/eni.h>
 #include <dev/hea/eni_var.h>
-
-#ifndef	lint
-__RCSID("@(#) $FreeBSD: src/sys/dev/hea/eni.c,v 1.10 1999/08/28 00:41:42 peter Exp $");
-#endif
 
 /*
  * Typedef local functions

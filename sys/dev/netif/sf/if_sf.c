@@ -30,6 +30,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ *
+ * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
  */
 
 /*
@@ -117,11 +120,6 @@
 #define SF_USEIOSPACE
 
 #include <pci/if_sfreg.h>
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $";
-#endif
 
 static struct sf_type sf_devs[] = {
 	{ AD_VENDORID, AD_DEVICEID_STARFIRE,

@@ -32,15 +32,13 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $OpenBSD: mktemp.c,v 1.16 2002/05/27 18:20:45 millert Exp $
  */
 
 #include "includes.h"
 
 #ifndef HAVE_MKDTEMP
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char rcsid[] = "$OpenBSD: mktemp.c,v 1.16 2002/05/27 18:20:45 millert Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #ifdef HAVE_CYGWIN
 #define open binary_open

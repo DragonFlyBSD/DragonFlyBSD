@@ -37,6 +37,7 @@
  *
  *	@(#)inode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/inode.h,v 1.28.2.2 2001/09/29 12:52:52 iedowse Exp $
+ * $DragonFly: src/sys/vfs/ufs/inode.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _UFS_UFS_INODE_H_

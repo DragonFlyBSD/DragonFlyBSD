@@ -5,6 +5,7 @@
  * generation being slated for what's essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/list.h,v 1.2 1999/08/28 01:34:15 peter Exp $
+ * $DragonFly: src/release/sysinstall/Attic/list.h,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1997 FreeBSD, Inc.
  * All rights reserved.

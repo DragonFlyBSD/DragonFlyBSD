@@ -30,21 +30,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1988 Regents of the University of California. All rights reserved.
+ * @(#)wall.c	5.14 (Berkeley) 3/2/91
+ * $FreeBSD: src/usr.bin/rwall/rwall.c,v 1.8.2.1 2001/02/18 02:27:54 kris Exp $
+ * $DragonFly: src/usr.bin/rwall/rwall.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1988 Regents of the University of California.\n\
- All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "from: @(#)wall.c	5.14 (Berkeley) 3/2/91";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/rwall/rwall.c,v 1.8.2.1 2001/02/18 02:27:54 kris Exp $";
-#endif /* not lint */
 
 /*
  * This program is not related to David Wall, whose Stanford Ph.D. thesis

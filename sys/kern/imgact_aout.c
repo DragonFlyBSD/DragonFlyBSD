@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_aout.c,v 1.59.2.5 2001/11/03 01:41:08 ps Exp $
+ * $DragonFly: src/sys/kern/imgact_aout.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include <sys/param.h>

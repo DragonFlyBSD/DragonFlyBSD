@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppb_base.c,v 1.10.2.1 2000/08/01 23:26:26 n_hibma Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppb_base.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  *
  */
 #include <sys/param.h>

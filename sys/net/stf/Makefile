@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/if_stf/Makefile,v 1.1.2.1 2001/07/24 19:10:17 brooks Exp $
+# $DragonFly: src/sys/net/stf/Makefile,v 1.2 2003/06/17 04:28:44 dillon Exp $
 
 .PATH: ${.CURDIR}/../../net
 

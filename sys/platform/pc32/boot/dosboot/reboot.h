@@ -32,6 +32,7 @@
  *
  *	@(#)reboot.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/i386/boot/dosboot/reboot.h,v 1.6 1999/08/28 00:43:24 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/reboot.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #ifndef _SYS_REBOOT_H_

@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/lib/libreadline/readline/doc/Makefile,v 1.2.2.1 2000/07/06 23:11:11 ache Exp $
+# $DragonFly: src/gnu/lib/libreadline/readline/doc/Attic/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
 
 SRCDIR= ${.CURDIR}/../../../../../contrib/libreadline/doc
 

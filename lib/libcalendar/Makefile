@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/libcalendar/Makefile,v 1.4.2.1 2001/04/25 10:04:20 ru Exp $
+# $DragonFly: src/lib/libcalendar/Makefile,v 1.2 2003/06/17 04:26:48 dillon Exp $
 
 LIB=	calendar
 

@@ -14,6 +14,9 @@
  * zic from this file.
  *
  * $FreeBSD: src/usr.sbin/zic/private.h,v 1.3 1999/08/28 01:21:18 peter Exp $
+ * $DragonFly: src/usr.sbin/zic/private.h,v 1.2 2003/06/17 04:30:05 dillon Exp $
+ *
+ * @(#)private.h	7.48
  */
 
 /*
@@ -27,12 +30,6 @@
 /*
 ** ID
 */
-
-#ifndef lint
-#ifndef NOID
-static char	privatehid[] = "@(#)private.h	7.48";
-#endif /* !defined NOID */
-#endif /* !defined lint */
 
 /*
 ** Defaults for preprocessor symbols.

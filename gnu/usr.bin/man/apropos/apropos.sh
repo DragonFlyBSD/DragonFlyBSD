@@ -16,6 +16,7 @@
 # Austin, Texas  78712
 #
 # $FreeBSD: src/gnu/usr.bin/man/apropos/apropos.sh,v 1.12.2.2 2002/08/11 11:20:54 ru Exp $
+# $DragonFly: src/gnu/usr.bin/man/apropos/apropos.sh,v 1.2 2003/06/17 04:25:46 dillon Exp $
 
 
 PATH=/bin:/usr/bin:$PATH

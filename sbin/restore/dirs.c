@@ -34,15 +34,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)dirs.c	8.7 (Berkeley) 5/1/95
+ * $FreeBSD: src/sbin/restore/dirs.c,v 1.14.2.5 2001/10/15 13:44:45 dd Exp $
+ * $DragonFly: src/sbin/restore/dirs.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)dirs.c	8.7 (Berkeley) 5/1/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/restore/dirs.c,v 1.14.2.5 2001/10/15 13:44:45 dd Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/file.h>

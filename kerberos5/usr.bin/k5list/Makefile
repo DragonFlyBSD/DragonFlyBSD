@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberos5/usr.bin/k5list/Makefile,v 1.4.2.3 2002/07/25 09:33:16 ru Exp $
+# $DragonFly: src/kerberos5/usr.bin/k5list/Attic/Makefile,v 1.2 2003/06/17 04:26:18 dillon Exp $
 
 PROG=		k5list
 SRCS=		klist.c krb5_err.h heim_err.h k524_err.h

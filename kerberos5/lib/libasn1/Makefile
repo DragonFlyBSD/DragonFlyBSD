@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberos5/lib/libasn1/Makefile,v 1.3.2.8 2002/08/19 16:10:21 ru Exp $
+# $DragonFly: src/kerberos5/lib/libasn1/Makefile,v 1.2 2003/06/17 04:26:17 dillon Exp $
 
 LIB=	asn1
 CFLAGS+=-I${KRB5DIR}/include \

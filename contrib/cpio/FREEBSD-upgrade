@@ -1,4 +1,5 @@
 $FreeBSD: src/contrib/cpio/FREEBSD-upgrade,v 1.3 1999/09/08 11:16:36 obrien Exp $
+$DragonFly: src/contrib/cpio/FREEBSD-upgrade,v 1.2 2003/06/17 04:23:58 dillon Exp $
 
 GNU cpio 2.4.2
 	originals can be found at: ftp://prep.ai.mit.edu/pub/gnu

@@ -37,6 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/secure/lib/libcrypt/crypt-des.c,v 1.12 1999/09/20 12:39:20 markm Exp $
+ * $DragonFly: src/secure/lib/libcrypt/crypt-des.c,v 1.2 2003/06/17 04:27:48 dillon Exp $
  *
  * This is an original implementation of the DES and the crypt(3) interfaces
  * by David Burren <davidb@werj.com.au>.

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_ipc.c,v 1.13.2.2 2000/07/01 14:33:49 bsd Exp $ */
+/* $DragonFly: src/sys/kern/sysv_ipc.c,v 1.2 2003/06/17 04:28:41 dillon Exp $ */
 /*	$NetBSD: sysv_ipc.c,v 1.7 1994/06/29 06:33:11 cgd Exp $	*/
 
 /*

@@ -29,12 +29,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/libexec/rpc.rstatd/rstatd.c,v 1.8 1999/08/28 00:09:54 peter Exp $
+ * $DragonFly: src/libexec/rpc.rstatd/rstatd.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/libexec/rpc.rstatd/rstatd.c,v 1.8 1999/08/28 00:09:54 peter Exp $";
-#endif /* not lint */
 
 #include <stdlib.h>
 #include <rpc/rpc.h>

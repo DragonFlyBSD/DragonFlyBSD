@@ -32,10 +32,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libpam/modules/pam_radius/pam_radius.c,v 1.2.6.2 2003/04/08 13:20:23 sobomax Exp $
+ * $DragonFly: src/lib/libpam/modules/pam_radius/Attic/pam_radius.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libpam/modules/pam_radius/pam_radius.c,v 1.2.6.2 2003/04/08 13:20:23 sobomax Exp $");
 
 #include <sys/param.h>
 #include <pwd.h>

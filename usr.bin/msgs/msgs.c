@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)msgs.c	8.2 (Berkeley) 4/28/95
+ * $FreeBSD: src/usr.bin/msgs/msgs.c,v 1.15.2.2 2003/02/11 21:31:56 mike Exp $
+ * $DragonFly: src/usr.bin/msgs/msgs.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1980, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)msgs.c	8.2 (Berkeley) 4/28/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/msgs/msgs.c,v 1.15.2.2 2003/02/11 21:31:56 mike Exp $";
-#endif /* not lint */
 
 /*
  * msgs - a user bulletin board program

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/id.h,v 1.13.2.1 2000/08/19 09:30:03 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/id.h,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #ifndef NOSUID

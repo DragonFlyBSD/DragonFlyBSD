@@ -121,6 +121,9 @@
  *   Everything here should work OK even on nasty 16-bit
  *   machines and nice 64-bit ones. However, it's only really
  *   been tested on my FreeBSD machine. Your mileage may vary.
+ *
+ * $FreeBSD: src/usr.bin/fmt/fmt.c,v 1.12.2.2 2002/01/14 09:48:26 ru Exp $
+ * $DragonFly: src/usr.bin/fmt/fmt.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
 
 /* Copyright (c) 1997 Gareth McCaughan. All rights reserved.
@@ -167,13 +170,6 @@
  * Revision 1.1  1997/09/30 11:29:57  gjm11
  * Initial revision
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/fmt/fmt.c,v 1.12.2.2 2002/01/14 09:48:26 ru Exp $";
-static const char copyright[] =
-  "Copyright (c) 1997 Gareth McCaughan. All rights reserved.\n";
-#endif /* not lint */
 
 #include <ctype.h>
 #include <err.h>

@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.h,v 1.22.2.7 2002/03/18 08:37:33 sos Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 /* structure describing an ATA disk request */

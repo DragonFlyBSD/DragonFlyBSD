@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 7/19/93
 # $FreeBSD: src/usr.bin/su/Makefile,v 1.29.2.2 2002/07/17 19:08:23 ru Exp $
+# $DragonFly: src/usr.bin/su/Makefile,v 1.2 2003/06/17 04:29:32 dillon Exp $
 
 PROG=	su
 SRCS=	su.c

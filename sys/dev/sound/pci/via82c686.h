@@ -34,6 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/via82c686.h,v 1.1.2.7 2003/05/11 01:45:49 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pci/via82c686.h,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #ifndef _VIA_H

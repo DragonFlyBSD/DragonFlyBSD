@@ -1,5 +1,6 @@
 /*
  * $FreeBSD: src/sys/boot/common/panic.c,v 1.5 1999/08/28 00:39:51 peter Exp $
+ * $DragonFly: src/sys/boot/common/panic.c,v 1.2 2003/06/17 04:28:17 dillon Exp $
  * From: $NetBSD: panic.c,v 1.2 1997/03/22 01:48:36 thorpej Exp $
  */
 

@@ -32,6 +32,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/crypto/heimdal/appl/rcp/extern.h,v 1.1.1.1.2.3 2002/09/20 10:50:15 nectar Exp $
+ * $DragonFly: src/crypto/heimdal/appl/rcp/Attic/extern.h,v 1.2 2003/06/17 04:24:35 dillon Exp $
  */
 
 typedef struct {

@@ -31,12 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/random.c,v 1.13 2000/01/27 23:06:49 jasone Exp $
+ * $DragonFly: src/lib/libcr/stdlib/Attic/random.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  *
+ * @(#)random.c	8.2 (Berkeley) 5/19/95
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)random.c	8.2 (Berkeley) 5/19/95";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/time.h>          /* for srandomdev() */
 #include <fcntl.h>             /* for srandomdev() */

@@ -27,6 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 #include "opt_vga.h"

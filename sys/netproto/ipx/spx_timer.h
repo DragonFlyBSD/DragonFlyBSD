@@ -34,6 +34,7 @@
  *	@(#)spx_timer.h
  *
  * $FreeBSD: src/sys/netipx/spx_timer.h,v 1.10 1999/08/28 00:49:44 peter Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_timer.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 #ifndef _NETIPX_SPX_TIMER_H_

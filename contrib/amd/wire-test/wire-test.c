@@ -40,6 +40,7 @@
  *
  * $Id: wire-test.c,v 1.4 1999/02/04 07:24:54 ezk Exp $
  * $FreeBSD: src/contrib/amd/wire-test/wire-test.c,v 1.5 1999/09/15 05:45:17 obrien Exp $
+ * $DragonFly: src/contrib/amd/wire-test/wire-test.c,v 1.2 2003/06/17 04:23:58 dillon Exp $
  *
  */
 

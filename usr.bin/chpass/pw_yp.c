@@ -36,6 +36,7 @@
  * Columbia University, New York City
  *
  * $FreeBSD: src/usr.bin/chpass/pw_yp.c,v 1.16.2.1 2002/02/15 00:46:56 des Exp $
+ * $DragonFly: src/usr.bin/chpass/pw_yp.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
 
 #ifdef YP

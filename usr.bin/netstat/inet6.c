@@ -32,13 +32,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/netstat/inet6.c,v 1.3.2.11 2001/09/17 14:53:17 ru Exp $
+ * $DragonFly: src/usr.bin/netstat/inet6.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ *
+ * @(#)inet6.c	8.4 (Berkeley) 4/20/94
  */
-
-#ifndef lint
-/*
-static char sccsid[] = "@(#)inet6.c	8.4 (Berkeley) 4/20/94";
-*/
-#endif /* not lint */
 
 #ifdef INET6
 #include <sys/param.h>

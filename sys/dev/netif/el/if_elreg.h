@@ -5,6 +5,7 @@
  * portions thereof.
  *
  * $FreeBSD: src/sys/i386/isa/if_elreg.h,v 1.7 1999/08/28 00:44:45 peter Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_elreg.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 /* 3COM Etherlink 3C501 Register Definitions */
 

@@ -32,6 +32,7 @@
  *
  *	@(#)tcp_debug.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp_debug.h,v 1.11 2000/01/29 11:49:05 shin Exp $
+ * $DragonFly: src/sys/netinet/tcp_debug.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #ifndef _NETINET_TCP_DEBUG_H_

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/i386/boot/kzipboot/Makefile,v 1.11 1999/08/28 00:43:27 peter Exp $
+# $DragonFly: src/sys/platform/pc32/boot/kzipboot/Attic/Makefile,v 1.2 2003/06/17 04:28:34 dillon Exp $
 
 PROG= kztail.o kzhead.o
 BINMODE = 444	# target is a relocatable object

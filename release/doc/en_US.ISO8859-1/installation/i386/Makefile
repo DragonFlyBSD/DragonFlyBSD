@@ -1,4 +1,5 @@
 # $FreeBSD: src/release/doc/en_US.ISO8859-1/installation/i386/Makefile,v 1.3.2.2 2001/08/27 03:54:49 bmah Exp $
+# $DragonFly: src/release/doc/en_US.ISO8859-1/installation/i386/Attic/Makefile,v 1.2 2003/06/17 04:27:19 dillon Exp $
 
 RELN_ROOT?= ${.CURDIR}/../../..
 

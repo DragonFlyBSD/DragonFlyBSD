@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scspd.c,v 1.3.2.1 2000/12/11 01:03:29 obrien Exp $
- *
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scspd.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
  */
 
 
@@ -62,11 +62,6 @@
 #include "scsp_msg.h"
 #include "scsp_if.h"
 #include "scsp_var.h"
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/usr.sbin/atm/scspd/scspd.c,v 1.3.2.1 2000/12/11 01:03:29 obrien Exp $");
-#endif
-
 
 /*
  * Global variables

@@ -9,12 +9,10 @@
  * Copyright (C) 1993  Hannu Savolainen
  * Ported to 386bsd by Serge Vakulenko
  * based on tools/build.c by Linus Torvalds
+ *
+ * $FreeBSD: src/usr.bin/kzip/kzip.c,v 1.13.2.2 2000/07/20 10:35:20 kris Exp $
+ * $DragonFly: src/usr.bin/kzip/kzip.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/kzip/kzip.c,v 1.13.2.2 2000/07/20 10:35:20 kris Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <stdio.h>

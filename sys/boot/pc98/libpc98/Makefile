@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/boot/pc98/libpc98/Makefile,v 1.3.2.5 2002/07/19 18:46:29 ru Exp $
+# $DragonFly: src/sys/boot/pc98/libpc98/Attic/Makefile,v 1.2 2003/06/17 04:28:18 dillon Exp $
 #
 LIB=			pc98
 INTERNALLIB=		true

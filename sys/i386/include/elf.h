@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/elf.h,v 1.9.2.1 2001/11/03 01:41:08 ps Exp $
+ * $DragonFly: src/sys/i386/include/Attic/elf.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef _MACHINE_ELF_H_

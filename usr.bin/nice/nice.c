@@ -29,22 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)nice.c	8.2 (Berkeley) 4/16/94
+ * $FreeBSD: src/usr.bin/nice/nice.c,v 1.4.2.1 2002/06/18 08:40:28 tjr Exp $
+ * $DragonFly: src/usr.bin/nice/nice.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1989, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#if 0
-#ifndef lint
-static char sccsid[] = "@(#)nice.c	8.2 (Berkeley) 4/16/94";
-#endif /* not lint */
-#endif
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/nice/nice.c,v 1.4.2.1 2002/06/18 08:40:28 tjr Exp $");
 
 #include <sys/types.h>
 #include <sys/time.h>

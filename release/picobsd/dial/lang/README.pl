@@ -105,3 +105,4 @@ Mi³ej zabawy!
 Andrzej Bia³ecki <abial@freebsd.org>
 
 $FreeBSD: src/release/picobsd/dial/lang/README.pl,v 1.5 1999/08/28 01:33:20 peter Exp $
+$DragonFly: src/release/picobsd/dial/lang/Attic/README.pl,v 1.2 2003/06/17 04:27:20 dillon Exp $

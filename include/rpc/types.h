@@ -29,6 +29,7 @@
  *	from: @(#)types.h 1.18 87/07/24 SMI
  *	from: @(#)types.h	2.3 88/08/15 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/types.h,v 1.9 1999/08/27 23:45:06 peter Exp $
+ * $DragonFly: src/include/rpc/types.h,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 /*

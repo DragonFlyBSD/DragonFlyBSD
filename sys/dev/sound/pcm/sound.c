@@ -23,6 +23,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pcm/sound.c,v 1.17.2.14 2002/11/07 23:17:18 cognet Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -31,7 +34,7 @@
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pcm/sound.c,v 1.17.2.14 2002/11/07 23:17:18 cognet Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
 
 struct snddev_channel {
 	SLIST_ENTRY(snddev_channel) link;

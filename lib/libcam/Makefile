@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/libcam/Makefile,v 1.6.2.2 2001/04/25 10:04:22 ru Exp $
+# $DragonFly: src/lib/libcam/Makefile,v 1.2 2003/06/17 04:26:48 dillon Exp $
 
 MAINTAINER=ken@FreeBSD.ORG
 

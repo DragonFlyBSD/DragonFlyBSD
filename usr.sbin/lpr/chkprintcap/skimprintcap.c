@@ -29,12 +29,10 @@
  * official policies, either expressed or implied, of the FreeBSD Project.
  *
  * ------+---------+---------+---------+---------+---------+---------+---------*
+ *
+ * $FreeBSD: src/usr.sbin/lpr/chkprintcap/skimprintcap.c,v 1.1.2.2 2002/06/19 01:53:48 gad Exp $
+ * $DragonFly: src/usr.sbin/lpr/chkprintcap/skimprintcap.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/lpr/chkprintcap/skimprintcap.c,v 1.1.2.2 2002/06/19 01:53:48 gad Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 

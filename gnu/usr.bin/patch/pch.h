@@ -1,4 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/patch/pch.h,v 1.6.2.1 2002/04/30 20:40:02 gad Exp $
+/* $DragonFly: src/gnu/usr.bin/patch/Attic/pch.h,v 1.2 2003/06/17 04:25:47 dillon Exp $
  *
  * $Log: pch.h,v $
  * Revision 2.0.1.1  87/01/30  22:47:16  lwall

@@ -30,6 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *	$NetBSD: ext.h,v 1.6 2000/04/25 23:02:51 jdolecek Exp $
  * $FreeBSD: src/sbin/fsck_msdosfs/ext.h,v 1.1.2.1 2001/08/01 05:47:56 obrien Exp $
+ * $DragonFly: src/sbin/fsck_msdosfs/ext.h,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
 
 #ifndef EXT_H

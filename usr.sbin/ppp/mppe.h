@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/mppe.h,v 1.2.2.1 2000/12/18 01:46:44 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/mppe.h,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #define MPPE_KEY_LEN	16

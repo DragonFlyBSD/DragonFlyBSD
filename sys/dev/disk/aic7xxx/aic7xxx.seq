@@ -38,6 +38,7 @@
  * POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.seq,v 1.94.2.19 2003/06/10 03:26:08 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.seq,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 VERSION = "$Id: //depot/aic7xxx/aic7xxx/aic7xxx.seq#56 $"

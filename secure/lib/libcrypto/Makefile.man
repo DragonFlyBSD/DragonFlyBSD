@@ -1,4 +1,5 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile.man,v 1.1.2.1 2003/02/14 22:38:14 nectar Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile.man,v 1.2 2003/06/17 04:27:48 dillon Exp $
 # DO NOT EDIT: generated from man-makefile-update target
 MAN+= ASN1_OBJECT_new.3
 MAN+= ASN1_STRING_length.3

@@ -32,6 +32,7 @@
  *
  *	@(#)user.h	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/sys/user.h,v 1.24.2.1 2001/10/11 08:20:18 peter Exp $
+ * $DragonFly: src/sys/sys/user.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _SYS_USER_H_

@@ -1,4 +1,5 @@
 # $FreeBSD: src/etc/isdn/Makefile,v 1.4.2.5 2002/08/07 16:31:40 ru Exp $
+# $DragonFly: src/etc/isdn/Makefile,v 1.2 2003/06/17 04:24:47 dillon Exp $
 
 I4BETCPROG=	answer			\
 		isdntel.sh		\

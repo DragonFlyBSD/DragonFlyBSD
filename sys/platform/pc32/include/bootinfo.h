@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/bootinfo.h,v 1.14 1999/12/29 04:32:57 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/include/bootinfo.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef	_MACHINE_BOOTINFO_H_

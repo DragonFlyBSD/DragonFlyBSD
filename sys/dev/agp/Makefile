@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/agp/Makefile,v 1.2.2.4 2000/09/30 02:49:36 ps Exp $
+# $DragonFly: src/sys/dev/agp/Makefile,v 1.2 2003/06/17 04:28:43 dillon Exp $
 
 .PATH:	${.CURDIR}/../../pci
 KMOD	= agp

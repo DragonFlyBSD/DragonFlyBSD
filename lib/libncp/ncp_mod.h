@@ -2,6 +2,7 @@
  * Describes all ncp_lib kernel functions
  *
  * $FreeBSD: src/lib/libncp/ncp_mod.h,v 1.1 1999/10/12 11:56:38 bp Exp $
+ * $DragonFly: src/lib/libncp/ncp_mod.h,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
 #ifndef _NCP_MOD_H_
 #define _NCP_MOD_H_

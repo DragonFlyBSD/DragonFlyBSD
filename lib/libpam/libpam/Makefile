@@ -23,6 +23,7 @@
 # SUCH DAMAGE.
 #
 #	$FreeBSD: src/lib/libpam/libpam/Makefile,v 1.12.2.12 2002/07/22 14:21:49 ru Exp $
+#	$DragonFly: src/lib/libpam/libpam/Attic/Makefile,v 1.2 2003/06/17 04:26:50 dillon Exp $
 
 PAMDIR=		${.CURDIR}/../../../contrib/libpam
 MODOBJDIR=	../modules

@@ -37,6 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_sample.h,v 1.2.2.3 2002/07/02 23:44:03 archie Exp $
+ * $DragonFly: src/sys/netgraph/ng_sample.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
  * $Whistle: ng_sample.h,v 1.3 1999/01/20 00:22:14 archie Exp $
  */
 

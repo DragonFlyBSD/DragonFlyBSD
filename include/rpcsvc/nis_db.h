@@ -27,6 +27,7 @@
  * Mountain View, California  94043
  *
  * $FreeBSD: src/include/rpcsvc/nis_db.h,v 1.5 1999/08/27 23:45:09 peter Exp $
+ * $DragonFly: src/include/rpcsvc/nis_db.h,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 /*

@@ -30,6 +30,7 @@
 # Originally from an idea by "Akinori MUSHA" <knu@iDaemons.org>
 #
 # $FreeBSD: src/usr.sbin/pkg_install/version/test-pkg_version.sh,v 1.1.2.5 2002/06/03 15:34:59 bmah Exp $
+# $DragonFly: src/usr.sbin/pkg_install/version/Attic/test-pkg_version.sh,v 1.2 2003/06/17 04:30:00 dillon Exp $
 #
 
 ECHO=echo

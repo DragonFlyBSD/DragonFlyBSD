@@ -30,6 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pcvt/scon/scon.c,v 1.5.6.1 2001/05/12 10:11:42 kris Exp $
+ * $DragonFly: src/usr.sbin/pcvt/scon/Attic/scon.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
 
 static char *id =

@@ -1,5 +1,6 @@
 # ex:ts=8
 $FreeBSD: src/contrib/file/FREEBSD-upgrade,v 1.1.2.2 2001/08/02 22:51:34 obrien Exp $
+$DragonFly: src/contrib/file/Attic/FREEBSD-upgrade,v 1.2 2003/06/17 04:23:59 dillon Exp $
 
 Christos Zoulas `file'
 	originals can be found at: ftp://ftp.astron.com/pub/file/

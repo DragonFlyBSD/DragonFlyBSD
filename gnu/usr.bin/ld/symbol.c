@@ -32,6 +32,7 @@
 /*
  * symbol table routines
  * $FreeBSD: src/gnu/usr.bin/ld/symbol.c,v 1.10 1999/08/27 23:36:02 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/ld/Attic/symbol.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
 
 /* Create the symbol table entries for `etext', `edata' and `end'.  */

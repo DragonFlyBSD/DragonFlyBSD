@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libvgl/main.c,v 1.6.2.2 2001/07/30 14:31:30 yokota Exp $
+ * $DragonFly: src/lib/libvgl/main.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
 
 #include <stdio.h>

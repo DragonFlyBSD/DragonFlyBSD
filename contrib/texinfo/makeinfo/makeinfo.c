@@ -1,4 +1,5 @@
 /* $FreeBSD: src/contrib/texinfo/makeinfo/makeinfo.c,v 1.9.2.2 2002/08/07 16:53:39 ru Exp $ */
+/* $DragonFly: src/contrib/texinfo/makeinfo/Attic/makeinfo.c,v 1.2 2003/06/17 04:24:07 dillon Exp $ */
 /* makeinfo -- convert Texinfo source into other formats.
    $Id: makeinfo.c,v 1.205 2002/03/28 16:33:48 karl Exp $
 

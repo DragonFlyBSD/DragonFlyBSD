@@ -36,6 +36,7 @@
  *
  *	@(#)union.h	8.9 (Berkeley) 12/10/94
  * $FreeBSD: src/sys/miscfs/union/union.h,v 1.17 1999/12/29 04:54:48 peter Exp $
+ * $DragonFly: src/sys/vfs/union/union.h,v 1.2 2003/06/17 04:28:43 dillon Exp $
  */
 
 struct union_args {

@@ -24,6 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/fdformat/fdformat.c,v 1.11.2.4 2001/07/19 13:20:42 joerg Exp $
+ * $DragonFly: src/usr.sbin/fdformat/fdformat.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 
 /*

@@ -33,10 +33,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libpam/modules/pam_opie/pam_opie.c,v 1.1.2.2 2003/02/10 12:15:30 des Exp $
+ * $DragonFly: src/lib/libpam/modules/pam_opie/Attic/pam_opie.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libpam/modules/pam_opie/pam_opie.c,v 1.1.2.2 2003/02/10 12:15:30 des Exp $");
 
 #include <sys/types.h>
 #include <opie.h>

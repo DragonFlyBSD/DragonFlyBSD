@@ -1,5 +1,6 @@
 /*
  * $FreeBSD: src/sys/boot/arc/loader/conf.c,v 1.2 1999/08/28 00:39:42 peter Exp $
+ * $DragonFly: src/sys/boot/arc/loader/Attic/conf.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  * From	$NetBSD: conf.c,v 1.2 1997/03/22 09:03:29 thorpej Exp $	 
  */
 

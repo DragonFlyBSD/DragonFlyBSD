@@ -22,6 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pci/fm801.c,v 1.3.2.8 2002/12/24 21:17:42 semenu Exp $
+ * $DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -29,7 +32,7 @@
 #include <pci/pcireg.h>
 #include <pci/pcivar.h>
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pci/fm801.c,v 1.3.2.8 2002/12/24 21:17:42 semenu Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
 
 #define PCI_VENDOR_FORTEMEDIA	0x1319
 #define PCI_DEVICE_FORTEMEDIA1	0x08011319

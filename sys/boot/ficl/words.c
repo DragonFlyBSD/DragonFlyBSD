@@ -8,6 +8,7 @@
 *******************************************************************/
 
 /* $FreeBSD: src/sys/boot/ficl/words.c,v 1.23.2.2 2001/10/10 08:05:43 jkh Exp $ */
+/* $DragonFly: src/sys/boot/ficl/words.c,v 1.2 2003/06/17 04:28:17 dillon Exp $ */
 
 #ifdef TESTMAIN
 #include <stdlib.h>

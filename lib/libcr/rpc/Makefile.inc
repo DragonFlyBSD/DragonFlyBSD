@@ -1,5 +1,6 @@
 #	@(#)Makefile	5.11 (Berkeley) 9/6/90
 # $FreeBSD: src/lib/libc/rpc/Makefile.inc,v 1.17.2.2 2001/04/25 10:04:08 ru Exp $
+# $DragonFly: src/lib/libcr/rpc/Attic/Makefile.inc,v 1.2 2003/06/17 04:26:44 dillon Exp $
 
 .PATH: ${.CURDIR}/../libc/rpc ${.CURDIR}/.
 

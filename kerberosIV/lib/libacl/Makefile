@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberosIV/lib/libacl/Makefile,v 1.4.2.2 2002/07/22 14:21:48 ru Exp $
+# $DragonFly: src/kerberosIV/lib/libacl/Attic/Makefile,v 1.2 2003/06/17 04:26:25 dillon Exp $
 
 LIB=		acl
 CFLAGS+=	-I${KRB4DIR}/include \

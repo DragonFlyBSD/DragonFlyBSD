@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/test/sigsuspend_d.c,v 1.1.2.1 2000/07/17 22:18:32 jasone Exp $
+ * $DragonFly: src/lib/libc_r/test/sigsuspend_d.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 #include <stdlib.h>
 #include <unistd.h>

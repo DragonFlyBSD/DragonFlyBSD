@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/release/sysinstall/mouse.c,v 1.7.2.1 2000/07/14 07:51:47 jhb Exp $
+ * $DragonFly: src/release/sysinstall/Attic/mouse.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  */
 
 #include "sysinstall.h"

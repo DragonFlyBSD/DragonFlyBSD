@@ -1,4 +1,5 @@
 /* $FreeBSD: src/tools/tools/crypto/cryptotest.c,v 1.3.2.2 2003/06/03 00:14:44 sam Exp $ */
+/* $DragonFly: src/tools/tools/crypto/Attic/cryptotest.c,v 1.2 2003/06/17 04:29:11 dillon Exp $ */
 
 /*
  * This program repeatedly encrypts and decrypts a buffer with the built-in

@@ -32,21 +32,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1988 Regents of the University of California. All rights reserved.
+ * @(#)slattach.c	4.6 (Berkeley) 6/1/90
+ * $FreeBSD: src/sbin/slattach/slattach.c,v 1.36 1999/08/28 00:14:25 peter Exp $
+ * $DragonFly: src/sbin/slattach/slattach.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1988 Regents of the University of California.\n\
- All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "from: @(#)slattach.c	4.6 (Berkeley) 6/1/90";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/slattach/slattach.c,v 1.36 1999/08/28 00:14:25 peter Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/ioctl.h>

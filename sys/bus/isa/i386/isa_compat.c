@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.c,v 1.18.2.1 2001/05/17 23:05:06 imp Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/25/94
 # $FreeBSD: src/usr.bin/mail/Makefile,v 1.5.6.4 2002/08/07 16:32:01 ru Exp $
+# $DragonFly: src/usr.bin/mail/Makefile,v 1.2 2003/06/17 04:29:28 dillon Exp $
 
 PROG=	mail
 SRCS=	version.c aux.c cmd1.c cmd2.c cmd3.c cmdtab.c collect.c edit.c fio.c \

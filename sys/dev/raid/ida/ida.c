@@ -28,6 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida.c,v 1.7.2.3 2001/03/01 01:57:32 ps Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
  */
 
 /*

@@ -25,10 +25,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.bin/colldef/scan.l,v 1.11.2.2 2002/10/11 10:43:45 ache Exp $
+ * $DragonFly: src/usr.bin/colldef/scan.l,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/colldef/scan.l,v 1.11.2.2 2002/10/11 10:43:45 ache Exp $");
 
 #include <ctype.h>
 #include <err.h>

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/main.c,v 1.25.2.4 2002/08/27 09:55:08 yar Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/main.c,v 1.2 2003/06/17 04:29:26 dillon Exp $	*/
 /*	$NetBSD: main.c,v 1.26 1997/10/14 16:31:22 christos Exp $	*/
 
 /*
@@ -32,22 +33,14 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1985, 1989, 1993, 1994 \tThe Regents of the University of California.  All rights reserved.
+ * @(#)main.c	8.6 (Berkeley) 10/9/94
+ * $NetBSD: main.c,v 1.26 1997/10/14 16:31:22 christos Exp $
+ * $FreeBSD: src/usr.bin/ftp/main.c,v 1.25.2.4 2002/08/27 09:55:08 yar Exp $
  */
 
 #include <sys/cdefs.h>
-#ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1985, 1989, 1993, 1994\
-\tThe Regents of the University of California.  All rights reserved.");
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)main.c	8.6 (Berkeley) 10/9/94";
-#else
-__RCSID("$FreeBSD: src/usr.bin/ftp/main.c,v 1.25.2.4 2002/08/27 09:55:08 yar Exp $");
-__RCSID_SOURCE("$NetBSD: main.c,v 1.26 1997/10/14 16:31:22 christos Exp $");
-#endif
-#endif /* not lint */
 
 /*
  * FTP User Program -- Command Interface.

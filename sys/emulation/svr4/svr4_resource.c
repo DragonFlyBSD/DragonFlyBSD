@@ -40,6 +40,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_resource.c,v 1.4.2.1 2002/09/02 21:22:54 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_resource.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /*

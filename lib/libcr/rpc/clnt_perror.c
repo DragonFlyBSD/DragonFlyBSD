@@ -25,13 +25,12 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)clnt_perror.c 1.15 87/10/07 Copyr 1984 Sun Micro
+ * @(#)clnt_perror.c	2.1 88/07/29 4.0 RPCSRC
+ * $FreeBSD: src/lib/libc/rpc/clnt_perror.c,v 1.11.2.1 2000/08/23 00:02:04 jhb Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/clnt_perror.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/*static char *sccsid = "from: @(#)clnt_perror.c 1.15 87/10/07 Copyr 1984 Sun Micro";*/
-/*static char *sccsid = "from: @(#)clnt_perror.c	2.1 88/07/29 4.0 RPCSRC";*/
-static char *rcsid = "$FreeBSD: src/lib/libc/rpc/clnt_perror.c,v 1.11.2.1 2000/08/23 00:02:04 jhb Exp $";
-#endif
 
 /*
  * clnt_perror.c

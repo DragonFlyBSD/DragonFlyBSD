@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/xform.h,v 1.1.2.1 2002/11/21 23:34:23 sam Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/xform.h,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
 /*	$OpenBSD: xform.h,v 1.8 2001/08/28 12:20:43 ben Exp $	*/
 
 /*

@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/trek/Makefile,v 1.1.1.1.14.1 2001/04/25 09:29:03 ru Exp $
+# $DragonFly: src/games/trek/Makefile,v 1.2 2003/06/17 04:25:25 dillon Exp $
 
 PROG=	trek
 SRCS=	abandon.c attack.c autover.c capture.c check_out.c checkcond.c \

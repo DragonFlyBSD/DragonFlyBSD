@@ -3,6 +3,7 @@
 # Author:	Jordan Hubbard
 # Date:		Mon Jul 10 01:18:20 2000
 # Version:	$FreeBSD: src/release/scripts/print-cdrom-packages.sh,v 1.1.2.27 2003/03/19 16:56:52 obrien Exp $
+# Version:	$DragonFly: src/release/scripts/Attic/print-cdrom-packages.sh,v 1.2 2003/06/17 04:27:21 dillon Exp $
 #
 # MAINTAINER:	re
 #

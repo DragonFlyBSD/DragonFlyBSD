@@ -1,5 +1,6 @@
 /*
  * $FreeBSD: src/release/sysinstall/user.c,v 1.15.2.2 2001/07/19 01:33:02 kris Exp $
+ * $DragonFly: src/release/sysinstall/Attic/user.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1996
  *      Jörg Wunsch. All rights reserved.

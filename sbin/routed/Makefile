@@ -1,5 +1,6 @@
 # Make `routed` for FreeBSD
 # $FreeBSD: src/sbin/routed/Makefile,v 1.8.2.1 2001/04/25 10:58:50 ru Exp $
+# $DragonFly: src/sbin/routed/Makefile,v 1.2 2003/06/17 04:27:34 dillon Exp $
 # $FreeBSD: src/sbin/routed/Makefile,v 1.8.2.1 2001/04/25 10:58:50 ru Exp $
 
 PROG=   routed

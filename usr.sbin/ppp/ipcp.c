@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/ipcp.c,v 1.90.2.12 2002/09/28 10:16:25 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/ipcp.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #include <sys/param.h>

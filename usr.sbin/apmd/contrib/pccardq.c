@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.sbin/apmd/contrib/pccardq.c,v 1.2 1999/08/28 05:11:25 peter Exp $ */
+/* $DragonFly: src/usr.sbin/apmd/contrib/pccardq.c,v 1.2 2003/06/17 04:29:52 dillon Exp $ */
 
 #include <err.h>
 #include <errno.h>

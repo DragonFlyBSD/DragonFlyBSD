@@ -32,6 +32,7 @@
 # Verify that no cancellation points are propagated inside of libc_r.
 #
 # $FreeBSD: src/lib/libc_r/test/propagate_s.pl,v 1.1.2.1 2000/07/17 22:18:32 jasone Exp $
+# $DragonFly: src/lib/libc_r/test/propagate_s.pl,v 1.2 2003/06/17 04:26:48 dillon Exp $
 #
 
 @CPOINTS = ("aio_suspend", "close", "creat", "fcntl", "fsync", "mq_receive",

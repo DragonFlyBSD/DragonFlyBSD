@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/firewire/fwe/Makefile,v 1.2.2.2 2003/04/28 03:29:19 simokawa Exp $
+# $DragonFly: src/sys/dev/netif/fwe/Makefile,v 1.2 2003/06/17 04:28:44 dillon Exp $
 
 # Makefile for the fwe(4) module (Ethernet over IEEE1394)
 

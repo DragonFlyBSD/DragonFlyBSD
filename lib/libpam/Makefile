@@ -23,6 +23,7 @@
 # SUCH DAMAGE.
 #
 #	$FreeBSD: src/lib/libpam/Makefile,v 1.2 1999/01/20 21:55:21 jdp Exp $
+#	$DragonFly: src/lib/libpam/Makefile,v 1.2 2003/06/17 04:26:50 dillon Exp $
 
 # The modules must be built first, because they are built into the
 # static version of libpam.

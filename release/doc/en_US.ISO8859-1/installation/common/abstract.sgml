@@ -1,4 +1,5 @@
 <!-- $FreeBSD: src/release/doc/en_US.ISO8859-1/installation/common/abstract.sgml,v 1.1.2.2 2001/10/25 16:49:35 bmah Exp $ -->
+<!-- $DragonFly: src/release/doc/en_US.ISO8859-1/installation/common/Attic/abstract.sgml,v 1.2 2003/06/17 04:27:19 dillon Exp $ -->
 
 <abstract>
   <para>This article gives some brief instructions on installing

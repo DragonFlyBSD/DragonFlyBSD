@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)pw_copy.c	8.4 (Berkeley) 4/2/94
+ * $FreeBSD: src/usr.sbin/rpc.yppasswdd/pw_copy.c,v 1.4.2.1 2000/07/12 11:09:40 davidn Exp $
+ * $DragonFly: src/usr.sbin/rpc.yppasswdd/pw_copy.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)pw_copy.c	8.4 (Berkeley) 4/2/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/rpc.yppasswdd/pw_copy.c,v 1.4.2.1 2000/07/12 11:09:40 davidn Exp $";
-#endif /* not lint */
 
 /*
  * This module is used to copy the master password file, replacing a single

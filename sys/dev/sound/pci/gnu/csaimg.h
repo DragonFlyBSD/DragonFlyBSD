@@ -19,6 +19,7 @@
  *     USA.
  *
  * $FreeBSD: src/sys/gnu/dev/sound/pci/csaimg.h,v 1.1.2.1 2001/08/01 03:41:09 cg Exp $
+ * $DragonFly: src/sys/dev/sound/pci/gnu/csaimg.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  *
  ***************************************************************************/
 

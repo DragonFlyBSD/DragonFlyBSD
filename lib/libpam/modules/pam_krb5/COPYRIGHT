@@ -1,6 +1,7 @@
 pam_krb5:
 
 $FreeBSD: src/lib/libpam/modules/pam_krb5/COPYRIGHT,v 1.1.2.1 2001/06/07 09:37:05 markm Exp $
+$DragonFly: src/lib/libpam/modules/pam_krb5/Attic/COPYRIGHT,v 1.2 2003/06/17 04:26:50 dillon Exp $
 
 Copyright (c) Frank Cusack, 1999-2000.
 fcusack@fcusack.com

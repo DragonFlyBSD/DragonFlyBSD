@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_tunvar.h,v 1.7 2000/01/23 01:47:12 brian Exp $
+ * $DragonFly: src/sys/net/tun/if_tunvar.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 #ifndef _NET_IF_TUNVAR_H_

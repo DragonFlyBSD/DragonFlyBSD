@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/groff/font/devlbp/Makefile,v 1.1.2.2 2003/02/14 15:22:13 ru Exp $
+# $DragonFly: src/gnu/usr.bin/groff/font/devlbp/Makefile,v 1.2 2003/06/17 04:25:46 dillon Exp $
 
 DEV=		lbp
 LBPPRINT=	${PSPRINT}

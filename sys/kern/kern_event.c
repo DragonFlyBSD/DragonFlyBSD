@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.9 2003/05/08 07:47:16 kbyanc Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include <sys/param.h>

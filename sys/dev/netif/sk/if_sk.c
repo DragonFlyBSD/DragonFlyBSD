@@ -30,6 +30,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ *
+ * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
 
 /*
@@ -109,11 +112,6 @@
 
 /* "controller miibus0" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $";
-#endif
 
 static struct sk_type sk_devs[] = {
 	{ SK_VENDORID, SK_DEVICEID_GE, "SysKonnect Gigabit Ethernet" },

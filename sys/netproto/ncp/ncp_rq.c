@@ -32,6 +32,7 @@
  * Routines to prepare request and fetch reply
  *
  * $FreeBSD: src/sys/netncp/ncp_rq.c,v 1.1.2.1 2001/05/21 16:27:20 ru Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_rq.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */ 
 #include <sys/param.h>
 #include <sys/systm.h>

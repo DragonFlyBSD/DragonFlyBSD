@@ -37,6 +37,7 @@
  *
  *	@(#)vfs_init.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/vfs_init.c,v 1.49 1999/12/12 16:30:34 peter Exp $
+ * $DragonFly: src/sys/kern/vfs_init.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 

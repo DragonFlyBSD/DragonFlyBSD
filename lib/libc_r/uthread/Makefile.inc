@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/libc_r/uthread/Makefile.inc,v 1.23.2.8 2003/05/27 18:18:01 jdp Exp $
+# $DragonFly: src/lib/libc_r/uthread/Makefile.inc,v 1.2 2003/06/17 04:26:48 dillon Exp $
 
 # uthread sources
 .PATH: ${.CURDIR}/uthread

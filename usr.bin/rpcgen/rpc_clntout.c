@@ -25,13 +25,11 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)rpc_clntout.c 1.11 89/02/22 (C) 1987 SMI
  */
 
 #ident	"@(#)rpc_clntout.c	1.15	94/04/25 SMI"
-
-#ifndef lint
-static char sccsid[] = "@(#)rpc_clntout.c 1.11 89/02/22 (C) 1987 SMI";
-#endif
 
 /*
  * rpc_clntout.c, Client-stub outputter for the RPC protocol compiler

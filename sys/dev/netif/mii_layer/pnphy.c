@@ -30,6 +30,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/pnphy.c,v 1.1.2.1 2002/11/08 21:53:49 semenu Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/pnphy.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ *
+ * $FreeBSD: src/sys/dev/mii/pnphy.c,v 1.1.2.1 2002/11/08 21:53:49 semenu Exp $
  */
 
 /*
@@ -65,11 +68,6 @@
 #include <pci/if_dcreg.h>
 
 #include "miibus_if.h"
-
-#if !defined(lint)
-static const char rcsid[] =
-  "$FreeBSD: src/sys/dev/mii/pnphy.c,v 1.1.2.1 2002/11/08 21:53:49 semenu Exp $";
-#endif
 
 #define DC_SETBIT(sc, reg, x)                           \
         CSR_WRITE_4(sc, reg,                            \

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 

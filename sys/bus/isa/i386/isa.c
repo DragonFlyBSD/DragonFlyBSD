@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa.c,v 1.132.2.5 2002/03/03 05:42:50 nyan Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /*

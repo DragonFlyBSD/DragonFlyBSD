@@ -36,6 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 /*

@@ -25,6 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 /*

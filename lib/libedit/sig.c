@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libedit/sig.c,v 1.3.6.1 2000/08/16 14:43:40 ache Exp $
+ * $DragonFly: src/lib/libedit/sig.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ *
+ * @(#)sig.c	8.1 (Berkeley) 6/4/93
  */
-
-#if !defined(lint) && !defined(SCCSID)
-static char sccsid[] = "@(#)sig.c	8.1 (Berkeley) 6/4/93";
-#endif /* not lint && not SCCSID */
 
 /*
  * sig.c: Signal handling stuff.

@@ -9,6 +9,7 @@
  *  Copyright (c) 1989, 1990, 1992, William LeFebvre, Northwestern University
  *
  * $FreeBSD: src/contrib/top/screen.c,v 1.2.6.1 2000/09/20 02:27:57 jkh Exp $
+ * $DragonFly: src/contrib/top/screen.c,v 1.2 2003/06/17 04:24:07 dillon Exp $
  */
 
 /*  This file contains the routines that interface to termcap and stty/gtty.

@@ -25,6 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cputypes.h,v 1.13.2.1 2000/09/30 03:32:20 ps Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cputypes.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef _MACHINE_CPUTYPES_H_

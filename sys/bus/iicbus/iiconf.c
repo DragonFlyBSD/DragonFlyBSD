@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iiconf.c,v 1.10 1999/12/03 08:41:02 mdodd Exp $
+ * $DragonFly: src/sys/bus/iicbus/iiconf.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
  *
  */
 #include <sys/param.h>

@@ -32,6 +32,7 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 /*

@@ -26,6 +26,7 @@
    Structure taken from pam_lastlogin by Andrew Morgan 
      <morgan@parc.power.net> 1996
  * $FreeBSD: src/contrib/libpam/modules/pam_mkhomedir/pam_mkhomedir.c,v 1.1.1.1.2.2 2001/06/11 15:28:20 markm Exp $
+ * $DragonFly: src/contrib/libpam/modules/pam_mkhomedir/Attic/pam_mkhomedir.c,v 1.2 2003/06/17 04:24:03 dillon Exp $
  */
 
 /* I want snprintf dammit */

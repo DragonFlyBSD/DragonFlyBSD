@@ -25,10 +25,10 @@
  * rights to redistribute these changes.
  *
  * Copyright (c) 2000 Andrew Miklic, Andrew Gallatin, and Thomas V. Crimi
+ *
+ * $FreeBSD: src/sys/dev/tga/tga_pci.c,v 1.1.2.1 2001/11/01 08:33:15 obrien Exp $
+ * $DragonFly: src/sys/dev/video/tga/Attic/tga_pci.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/tga/tga_pci.c,v 1.1.2.1 2001/11/01 08:33:15 obrien Exp $");
 
 #include <sys/param.h>
 #include <sys/systm.h>

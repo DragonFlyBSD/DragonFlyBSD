@@ -1,4 +1,5 @@
 # $FreeBSD: src/sbin/pc98/Makefile,v 1.1.2.1 2000/03/31 03:24:30 nyan Exp $
+# $DragonFly: src/sbin/pc98/Attic/Makefile,v 1.2 2003/06/17 04:27:34 dillon Exp $
 
 SUBDIR=	fdisk
 #NOTYET: nextboot

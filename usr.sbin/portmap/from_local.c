@@ -33,15 +33,11 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#) from_local.c 1.2 93/11/16 21:50:02
+ * $FreeBSD: src/usr.sbin/portmap/from_local.c,v 1.10.2.1 2000/08/16 14:04:37 brian Exp $
+ * $DragonFly: src/usr.sbin/portmap/from_local.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#) from_local.c 1.2 93/11/16 21:50:02";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/portmap/from_local.c,v 1.10.2.1 2000/08/16 14:04:37 brian Exp $";
-#endif
 
 #ifdef TEST
 #undef perror

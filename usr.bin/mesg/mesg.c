@@ -34,21 +34,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)mesg.c	8.2 (Berkeley) 1/21/94
+ * $FreeBSD: src/usr.bin/mesg/mesg.c,v 1.4 1999/08/28 01:03:59 peter Exp $
+ * $DragonFly: src/usr.bin/mesg/mesg.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1987, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)mesg.c	8.2 (Berkeley) 1/21/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/mesg/mesg.c,v 1.4 1999/08/28 01:03:59 peter Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

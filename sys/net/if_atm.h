@@ -1,5 +1,6 @@
 /*      $NetBSD: if_atm.h,v 1.7 1996/11/09 23:02:27 chuck Exp $       */
 /* $FreeBSD: src/sys/net/if_atm.h,v 1.4 1999/12/29 04:38:34 peter Exp $ */
+/* $DragonFly: src/sys/net/if_atm.h,v 1.2 2003/06/17 04:28:47 dillon Exp $ */
 
 /*
  *

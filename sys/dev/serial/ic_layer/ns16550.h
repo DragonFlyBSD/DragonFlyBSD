@@ -32,6 +32,7 @@
  *
  *	from: @(#)ns16550.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/dev/ic/ns16550.h,v 1.8.2.1 2002/02/03 14:52:02 nyan Exp $
+ * $DragonFly: src/sys/dev/serial/ic_layer/ns16550.h,v 1.2 2003/06/17 04:28:27 dillon Exp $
  */
 
 /*

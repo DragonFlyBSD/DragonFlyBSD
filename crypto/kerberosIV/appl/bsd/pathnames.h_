@@ -33,6 +33,7 @@
  *	from: @(#)pathnames.h	5.2 (Berkeley) 4/9/90
  *	$Id: pathnames.h,v 1.25 1998/02/03 23:29:30 assar Exp $
  * $FreeBSD: src/crypto/kerberosIV/appl/bsd/pathnames.h_,v 1.1 1999/09/19 21:55:58 markm Exp $
+ * $DragonFly: src/crypto/kerberosIV/appl/bsd/Attic/pathnames.h_,v 1.2 2003/06/17 04:24:36 dillon Exp $
  */
 
 /******* First fix default path, we stick to _PATH_DEFPATH everywhere */

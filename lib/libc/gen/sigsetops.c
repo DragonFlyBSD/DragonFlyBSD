@@ -31,15 +31,11 @@
  * SUCH DAMAGE.
  *
  *	@(#)sigsetops.c	8.1 (Berkeley) 6/4/93
+ *
+ * @(#)sigsetops.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/gen/sigsetops.c,v 1.7 1999/10/02 19:37:14 marcel Exp $
+ * $DragonFly: src/lib/libc/gen/sigsetops.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)sigsetops.c	8.1 (Berkeley) 6/4/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/gen/sigsetops.c,v 1.7 1999/10/02 19:37:14 marcel Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <errno.h>
 #include <signal.h>

@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/ata.h,v 1.8.2.4 2002/04/02 14:47:35 sos Exp $
+ * $DragonFly: src/sys/sys/ata.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_ATA_H_

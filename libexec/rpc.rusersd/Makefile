@@ -1,4 +1,5 @@
 # $FreeBSD: src/libexec/rpc.rusersd/Makefile,v 1.6.2.1 2001/04/25 10:40:57 ru Exp $
+# $DragonFly: src/libexec/rpc.rusersd/Makefile,v 1.2 2003/06/17 04:27:07 dillon Exp $
 
 PROG =	rpc.rusersd
 SRCS =	rusersd.c rusers_proc.c

@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.bin/awk/Makefile,v 1.9.2.1 2002/06/21 20:12:08 obrien Exp $
+# $DragonFly: src/usr.bin/awk/Makefile,v 1.2 2003/06/17 04:29:25 dillon Exp $
 
 AWKSRC=	${.CURDIR}/../../contrib/one-true-awk
 .PATH: ${AWKSRC}

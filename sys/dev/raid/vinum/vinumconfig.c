@@ -47,6 +47,7 @@
  *
  * $Id: vinumconfig.c,v 1.30 2000/05/01 09:45:50 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumconfig.c,v 1.32.2.6 2002/02/03 00:43:35 grog Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 #define STATIC static

@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/perl/library/Makefile,v 1.3.2.3 2002/08/07 16:31:44 ru Exp $
+# $DragonFly: src/gnu/usr.bin/perl/library/Attic/Makefile,v 1.2 2003/06/17 04:25:47 dillon Exp $
 
 SUBDIR=	B DB_File Dumper Errno Fcntl IO SysV NDBM_File Opcode POSIX \
 	SDBM_File Socket attrs re

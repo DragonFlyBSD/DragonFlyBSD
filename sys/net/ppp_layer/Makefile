@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/if_ppp/Makefile,v 1.21 1999/11/28 18:52:51 bde Exp $
+# $DragonFly: src/sys/net/ppp_layer/Makefile,v 1.2 2003/06/17 04:28:44 dillon Exp $
 
 .PATH:  ${.CURDIR}/../../net
 KMOD=   if_ppp

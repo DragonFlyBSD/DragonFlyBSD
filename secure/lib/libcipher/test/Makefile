@@ -3,6 +3,7 @@
 #	but not install anything.
 #
 # $FreeBSD: src/secure/lib/libcipher/test/Makefile,v 1.5 1999/08/28 01:30:21 peter Exp $
+# $DragonFly: src/secure/lib/libcipher/test/Makefile,v 1.2 2003/06/17 04:27:48 dillon Exp $
 #
 LIBCRYPT!=cd $(.CURDIR)/..; \
 	printf "xxx:\n\techo \$${.OBJDIR}/libcipher.a\n" | make -r -s -f - xxx

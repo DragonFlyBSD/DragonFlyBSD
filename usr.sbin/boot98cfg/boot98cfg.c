@@ -29,6 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/boot98cfg/boot98cfg.c,v 1.1.2.2 2001/07/30 10:22:58 dd Exp $
+ * $DragonFly: src/usr.sbin/boot98cfg/Attic/boot98cfg.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
  */
 
 /*

@@ -25,6 +25,7 @@
  *
  *	from: Mach, Revision 2.2  92/04/04  11:35:57  rpd
  * $FreeBSD: src/sys/boot/pc98/boot2/io.c,v 1.2.2.1 2001/10/07 13:22:38 nyan Exp $
+ * $DragonFly: src/sys/boot/pc98/boot2/Attic/io.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 #include "boot.h"

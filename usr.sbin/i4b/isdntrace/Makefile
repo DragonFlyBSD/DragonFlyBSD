@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/i4b/isdntrace/Makefile,v 1.2.2.2 2001/08/01 17:45:08 obrien Exp $
+# $DragonFly: src/usr.sbin/i4b/isdntrace/Makefile,v 1.2 2003/06/17 04:29:55 dillon Exp $
 
 PROG=	isdntrace
 MAN=	isdntrace.8

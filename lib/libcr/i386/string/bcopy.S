@@ -34,6 +34,7 @@
  */
 
 /* $FreeBSD: src/lib/libc/i386/string/bcopy.S,v 1.6.6.2 2002/11/07 19:35:25 sobomax Exp $ */
+/* $DragonFly: src/lib/libcr/i386/string/Attic/bcopy.S,v 1.2 2003/06/17 04:26:43 dillon Exp $ */
 
 #include <machine/asm.h>
 

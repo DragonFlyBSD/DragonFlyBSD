@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/lib/libc_r/test/Makefile,v 1.4.2.2 2001/06/22 21:44:27 jasone Exp $
+# $DragonFly: src/lib/libc_r/test/Makefile,v 1.2 2003/06/17 04:26:48 dillon Exp $
 #
 # Automated test suite for libc_r (pthreads).
 #

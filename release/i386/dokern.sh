@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/release/i386/dokern.sh,v 1.58.2.7 2003/04/04 17:10:31 ru Exp $
+# $DragonFly: src/release/i386/Attic/dokern.sh,v 1.2 2003/06/17 04:27:20 dillon Exp $
 #
 
 sed	-e '/pty/d' \

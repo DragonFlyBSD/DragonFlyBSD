@@ -1,4 +1,5 @@
 /* $FreeBSD: src/lib/libc/alpha/SYS.h,v 1.11.2.2 2002/10/15 19:46:45 fjoe Exp $ */
+/* $DragonFly: src/lib/libc/alpha/Attic/SYS.h,v 1.2 2003/06/17 04:26:41 dillon Exp $ */
 /*	From: NetBSD: SYS.h,v 1.5 1997/05/02 18:15:15 kleink Exp */
 
 /*

@@ -32,14 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)ansi.c	8.1 (Berkeley) 6/27/93
+ * $FreeBSD: src/lib/libc/locale/ansi.c,v 1.3.6.1 2003/04/05 08:28:24 tjr Exp $
+ * $DragonFly: src/lib/libc/locale/Attic/ansi.c,v 1.2 2003/06/17 04:26:43 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)ansi.c	8.1 (Berkeley) 6/27/93";
-#endif /* LIBC_SCCS and not lint */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/locale/ansi.c,v 1.3.6.1 2003/04/05 08:28:24 tjr Exp $");
 
 #include <errno.h>
 #include <stdlib.h>

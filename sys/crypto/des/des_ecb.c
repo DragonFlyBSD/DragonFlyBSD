@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/crypto/des/des_ecb.c,v 1.1.2.3 2002/03/26 10:12:24 ume Exp $	*/
+/*	$DragonFly: src/sys/crypto/des/des_ecb.c,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
 /*	$KAME: des_ecb.c,v 1.6 2001/09/10 04:03:58 itojun Exp $	*/
 
 /* crypto/des/ecb_enc.c */

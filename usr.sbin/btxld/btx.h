@@ -24,6 +24,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/btxld/btx.h,v 1.2 1999/08/28 01:15:41 peter Exp $
+ * $DragonFly: src/usr.sbin/btxld/btx.h,v 1.2 2003/06/17 04:29:52 dillon Exp $
  */
 
 #ifndef _BTX_H_

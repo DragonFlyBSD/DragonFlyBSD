@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/i4b/isdnd/Makefile,v 1.3.2.3 2001/08/01 17:45:03 obrien Exp $
+# $DragonFly: src/usr.sbin/i4b/isdnd/Makefile,v 1.2 2003/06/17 04:29:54 dillon Exp $
 
 PROG=	isdnd
 MAN=	isdnd.rc.5 isdnd.rates.5 isdnd.acct.5 isdnd.8

@@ -1,4 +1,5 @@
 $FreeBSD: src/contrib/groff/FREEBSD-upgrade,v 1.3.2.1 2001/04/26 17:32:38 ru Exp $
+$DragonFly: src/contrib/groff/Attic/FREEBSD-upgrade,v 1.2 2003/06/17 04:24:02 dillon Exp $
 
 This directory contains virgin copies of the original distribution files
 on a "vendor" branch.  Do not, under any circumstances, attempt to upgrade

@@ -5,6 +5,7 @@
  *
  * $Id: ip_auth.h,v 2.1 1999/08/04 17:29:54 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_auth.h,v 1.10.2.4 2003/03/01 03:55:54 darrenr Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.h,v 1.2 2003/06/17 04:28:20 dillon Exp $
  *
  */
 #ifndef	__IP_AUTH_H__

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/usr.bin/netstat/ipsec.c,v 1.1.2.3 2001/08/10 09:07:09 ru Exp $	*/
+/*	$DragonFly: src/usr.bin/netstat/ipsec.c,v 1.2 2003/06/17 04:29:30 dillon Exp $	*/
 /*	$NetBSD: inet.c,v 1.35.2.1 1999/04/29 14:57:08 perry Exp $	*/
 /*	$KAME: ipsec.c,v 1.25 2001/03/12 09:04:39 itojun Exp $	*/
 
@@ -29,6 +30,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)inet.c	8.5 (Berkeley) 5/24/95
+ * $FreeBSD: src/usr.bin/netstat/ipsec.c,v 1.1.2.3 2001/08/10 09:07:09 ru Exp $
  */
 
 /*
@@ -65,13 +69,6 @@
  */
 
 #include <sys/cdefs.h>
-#ifndef lint
-/*
-static char sccsid[] = "@(#)inet.c	8.5 (Berkeley) 5/24/95";
-*/
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/netstat/ipsec.c,v 1.1.2.3 2001/08/10 09:07:09 ru Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/queue.h>

@@ -4,6 +4,7 @@
 # 	This file is under a "BSD" copyright (c) by David O'Brien 1998
 #
 # $FreeBSD: src/usr.sbin/amd/libamu/Makefile,v 1.4.2.1 2002/07/19 18:46:29 ru Exp $
+# $DragonFly: src/usr.sbin/amd/libamu/Makefile,v 1.2 2003/06/17 04:29:52 dillon Exp $
 
 .PATH:		${.CURDIR}/../../../contrib/amd/libamu \
 		${.CURDIR}/../../../contrib/amd/conf/transp \

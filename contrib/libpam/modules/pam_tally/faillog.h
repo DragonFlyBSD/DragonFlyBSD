@@ -26,6 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * $FreeBSD: src/contrib/libpam/modules/pam_tally/faillog.h,v 1.1.1.1.2.2 2001/06/11 15:28:29 markm Exp $
+ * $DragonFly: src/contrib/libpam/modules/pam_tally/Attic/faillog.h,v 1.2 2003/06/17 04:24:03 dillon Exp $
  */
 
 /*

@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/strcmp.c,v 1.7 1999/08/28 00:46:37 peter Exp $
+ * $DragonFly: src/sys/libkern/strcmp.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 #include <string.h>

@@ -36,6 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #include "apm.h"

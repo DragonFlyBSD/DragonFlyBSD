@@ -33,16 +33,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)yacc.y	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/mklocale/yacc.y,v 1.6.2.3 2003/06/03 21:15:48 ache Exp $
+ * $DragonFly: src/usr.bin/mklocale/yacc.y,v 1.2 2003/06/17 04:29:29 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)yacc.y	8.1 (Berkeley) 6/6/93";
-#endif /* 0 */
-#endif /* not lint */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/mklocale/yacc.y,v 1.6.2.3 2003/06/03 21:15:48 ache Exp $");
 
 #include <arpa/inet.h>
 

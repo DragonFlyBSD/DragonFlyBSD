@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libposix1e/acl_to_text.c,v 1.2 2000/01/26 04:19:38 rwatson Exp $
+ *	$DragonFly: src/lib/libposix1e/acl_to_text.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 /*
  * acl_to_text - return a text string with a text representation of the acl

@@ -1,6 +1,7 @@
 #! /bin/sh
 # $Id: ksrvtgt.in,v 1.3 1997/09/13 03:39:03 joda Exp $
 # $FreeBSD: src/crypto/kerberosIV/appl/kauth/ksrvtgt.in,v 1.3 1999/09/19 21:56:04 markm Exp $
+# $DragonFly: src/crypto/kerberosIV/appl/kauth/Attic/ksrvtgt.in,v 1.2 2003/06/17 04:24:36 dillon Exp $
 
 usage="Usage: `basename $0` name instance [[realm] srvtab]"
 

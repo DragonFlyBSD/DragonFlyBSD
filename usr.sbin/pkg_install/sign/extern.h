@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.sbin/pkg_install/sign/extern.h,v 1.1.2.2 2001/05/17 12:33:39 sobomax Exp $ */
+/* $DragonFly: src/usr.sbin/pkg_install/sign/Attic/extern.h,v 1.2 2003/06/17 04:29:59 dillon Exp $ */
 /* $OpenBSD: extern.h,v 1.3 1999/10/07 16:30:32 espie Exp $ */
 /*-
  * Copyright (c) 1999 Marc Espie.

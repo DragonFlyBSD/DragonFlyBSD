@@ -7,6 +7,7 @@
  *
  * Note, the copyright information is at end of file.
  * $FreeBSD: src/contrib/libpam/libpam/include/security/pam_appl.h,v 1.1.1.1.6.2 2001/06/11 15:28:14 markm Exp $
+ * $DragonFly: src/contrib/libpam/libpam/include/security/Attic/pam_appl.h,v 1.2 2003/06/17 04:24:03 dillon Exp $
  *
  * Created: 15-Jan-96 by TYT
  * Last modified: 1996/3/5 by AGM

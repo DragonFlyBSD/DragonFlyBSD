@@ -14,6 +14,7 @@
 #
 
 # $FreeBSD: src/sys/boot/i386/boot2/boot1.s,v 1.10.2.3 2001/08/14 22:55:29 jhb Exp $
+# $DragonFly: src/sys/boot/pc32/boot2/boot1.S,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 # Memory Locations
 		.set MEM_REL,0x700		# Relocation address

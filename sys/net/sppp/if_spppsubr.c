@@ -18,6 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 #include <sys/param.h>

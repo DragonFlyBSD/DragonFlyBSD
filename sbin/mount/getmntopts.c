@@ -29,16 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)getmntopts.c	8.3 (Berkeley) 3/29/95
+ * $FreeBSD: src/sbin/mount/getmntopts.c,v 1.9 1999/10/09 11:54:06 phk Exp $
+ * $DragonFly: src/sbin/mount/getmntopts.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)getmntopts.c	8.3 (Berkeley) 3/29/95";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/mount/getmntopts.c,v 1.9 1999/10/09 11:54:06 phk Exp $";
-#endif
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

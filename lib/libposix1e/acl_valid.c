@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libposix1e/acl_valid.c,v 1.4 2000/01/28 20:07:00 rwatson Exp $
+ *	$DragonFly: src/lib/libposix1e/acl_valid.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 /*
  * acl_valid -- POSIX.1e ACL check routine

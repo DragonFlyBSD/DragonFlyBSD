@@ -29,6 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)res_comp.c	8.1 (Berkeley) 6/4/93
+ * $From: Id: res_comp.c,v 8.11 1997/05/21 19:31:04 halley Exp $
+ * $FreeBSD: src/lib/libc/net/res_comp.c,v 1.16 1999/08/28 00:00:16 peter Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/res_comp.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 
 /*
@@ -67,12 +72,6 @@
  * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
  * SOFTWARE.
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)res_comp.c	8.1 (Berkeley) 6/4/93";
-static char orig_rcsid[] = "From: Id: res_comp.c,v 8.11 1997/05/21 19:31:04 halley Exp $";
-static char rcsid[] = "$FreeBSD: src/lib/libc/net/res_comp.c,v 1.16 1999/08/28 00:00:16 peter Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/param.h>

@@ -36,6 +36,7 @@
  *
  *	@(#)options.h	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/options.h,v 1.5 1999/08/27 23:14:43 peter Exp $
+ * $DragonFly: src/bin/pax/options.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
 
 /*

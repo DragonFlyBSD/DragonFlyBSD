@@ -29,6 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/ioctl_meteor.h,v 1.11 1999/12/29 04:33:02 peter Exp $
+ * $DragonFly: src/sys/i386/include/Attic/ioctl_meteor.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 /*
  *	ioctl constants for Matrox Meteor Capture card.

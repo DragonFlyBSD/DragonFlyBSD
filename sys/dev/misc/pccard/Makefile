@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/pccard/Makefile,v 1.3 1999/11/28 21:11:09 imp Exp $
+# $DragonFly: src/sys/dev/misc/pccard/Attic/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
 
 .PATH:  ${.CURDIR}/../../dev/pccard
 KMOD=   pccard

@@ -33,6 +33,7 @@
  *	@(#)scanc.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/libkern/scanc.c,v 1.8 1999/08/28 00:46:36 peter Exp $
+ * $DragonFly: src/sys/libkern/scanc.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 #include <sys/libkern.h>

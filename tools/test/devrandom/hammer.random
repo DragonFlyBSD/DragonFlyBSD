@@ -6,6 +6,7 @@
 # Try tapping shift/alt/ctrl to get more randomness.
 #
 # $FreeBSD: src/tools/test/devrandom/hammer.random,v 1.4 1999/08/28 00:54:24 peter Exp $
+# $DragonFly: src/tools/test/devrandom/hammer.random,v 1.2 2003/06/17 04:29:11 dillon Exp $
 #
 
 for (;;) {

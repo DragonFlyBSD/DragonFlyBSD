@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)phaser.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/trek/phaser.c,v 1.5.2.1 2000/07/20 10:35:07 kris Exp $
+ * $DragonFly: src/games/trek/phaser.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)phaser.c	8.1 (Berkeley) 5/31/93";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/trek/phaser.c,v 1.5.2.1 2000/07/20 10:35:07 kris Exp $";
-#endif /* not lint */
 
 # include	"trek.h"
 # include	"getpar.h"

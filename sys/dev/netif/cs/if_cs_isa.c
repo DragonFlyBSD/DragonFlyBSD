@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs_isa.c,v 1.1.2.1 2001/01/25 20:13:48 imp Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs_isa.c,v 1.2 2003/06/17 04:28:23 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/alpha/libalpha/alpha_module.c,v 1.3 1999/08/28 00:39:26 peter Exp $
+ * $DragonFly: src/sys/boot/alpha/libalpha/Attic/alpha_module.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 
 /*

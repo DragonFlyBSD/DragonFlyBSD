@@ -28,6 +28,7 @@
  *	--------------------------------------
  *
  * $FreeBSD: src/sys/i4b/include/i4b_global.h,v 1.6.2.2 2002/07/07 10:17:10 hm Exp $
+ * $DragonFly: src/sys/net/i4b/include/i4b_global.h,v 1.2 2003/06/17 04:28:39 dillon Exp $
  *
  *	last edit-date: [Sun Jul  7 12:11:35 2002]
  *

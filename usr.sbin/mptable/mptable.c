@@ -21,16 +21,14 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/mptable/mptable.c,v 1.12.2.3 2000/12/11 01:03:34 obrien Exp $
+ * $DragonFly: src/usr.sbin/mptable/mptable.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
 
 /*
  * mptable.c
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/mptable/mptable.c,v 1.12.2.3 2000/12/11 01:03:34 obrien Exp $";
-#endif /* not lint */
 
 #define VMAJOR			2
 #define VMINOR			0

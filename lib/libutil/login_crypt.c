@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/login_crypt.c,v 1.2.2.2 2000/10/27 01:50:31 green Exp $
+ * $DragonFly: src/lib/libutil/login_crypt.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
 
 #include <sys/types.h>

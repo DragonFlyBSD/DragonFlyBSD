@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
 # $FreeBSD: src/secure/usr.bin/bdes/Makefile,v 1.10 1999/08/28 01:30:30 peter Exp $
+# $DragonFly: src/secure/usr.bin/bdes/Makefile,v 1.2 2003/06/17 04:27:48 dillon Exp $
 
 PROG=	bdes
 SRCS=	bdes.c

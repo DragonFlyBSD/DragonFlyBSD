@@ -22,6 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/fb/gfb.c,v 1.1.2.1 2001/11/01 08:33:14 obrien Exp $
+ * $DragonFly: src/sys/dev/video/fb/Attic/gfb.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 /*
  * Copyright (c) 1995, 1996 Carnegie-Mellon University.
@@ -49,9 +52,6 @@
  * any improvements or extensions that they make and grant Carnegie the
  * rights to redistribute these changes.
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/fb/gfb.c,v 1.1.2.1 2001/11/01 08:33:14 obrien Exp $");
 
 #include <machine/stdarg.h>
 

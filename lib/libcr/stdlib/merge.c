@@ -32,11 +32,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)merge.c	8.2 (Berkeley) 2/14/94
+ * $DragonFly: src/lib/libcr/stdlib/Attic/merge.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)merge.c	8.2 (Berkeley) 2/14/94";
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * Hybrid exponential search/linear search merge sort with hybrid

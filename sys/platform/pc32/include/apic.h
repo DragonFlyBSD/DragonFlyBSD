@@ -23,6 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/apic.h,v 1.14.2.2 2003/03/21 21:46:15 jhb Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/apic.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef _MACHINE_APIC_H_

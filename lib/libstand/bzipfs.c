@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/bzipfs.c,v 1.2.2.3 2002/04/08 13:50:09 sobomax Exp $
+ * $DragonFly: src/lib/libstand/bzipfs.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  *
  */
 

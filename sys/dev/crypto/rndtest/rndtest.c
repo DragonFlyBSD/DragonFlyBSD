@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/dev/rndtest/rndtest.c,v 1.1.4.1 2003/06/04 17:10:30 sam Exp $	*/
+/*	$DragonFly: src/sys/dev/crypto/rndtest/rndtest.c,v 1.2 2003/06/17 04:28:29 dillon Exp $	*/
 /*	$OpenBSD$	*/
 
 /*

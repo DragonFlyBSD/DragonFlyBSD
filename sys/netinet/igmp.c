@@ -36,6 +36,7 @@
  *
  *	@(#)igmp.c	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/sys/netinet/igmp.c,v 1.29.2.2 2003/01/23 21:06:44 sam Exp $
+ * $DragonFly: src/sys/netinet/igmp.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 /*

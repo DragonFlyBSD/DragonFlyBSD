@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/hash/hash_buf.c,v 1.4.8.1 2001/03/05 07:38:05 obrien Exp $
+ * $DragonFly: src/lib/libcr/db/hash/Attic/hash_buf.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ *
+ * @(#)hash_buf.c	8.5 (Berkeley) 7/15/94
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)hash_buf.c	8.5 (Berkeley) 7/15/94";
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * PACKAGE: hash

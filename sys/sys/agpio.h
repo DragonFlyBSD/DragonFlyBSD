@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/sys/agpio.h,v 1.1.2.2 2001/12/20 10:36:57 ru Exp $
+ *	$DragonFly: src/sys/sys/agpio.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_AGPIO_H_

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/route6d/route6d.h,v 1.1.2.2 2001/07/03 11:02:10 ume Exp $	*/
+/*	$DragonFly: src/usr.sbin/route6d/route6d.h,v 1.2 2003/06/17 04:30:02 dillon Exp $	*/
 /*	$KAME: route6d.h,v 1.4 2001/01/15 03:50:54 inoue Exp $	*/
 
 /*

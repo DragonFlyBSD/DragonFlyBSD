@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)fmt.c	8.4 (Berkeley) 4/15/94
+ * $FreeBSD: src/bin/ps/fmt.c,v 1.14.2.1 2002/03/16 01:15:11 mikeh Exp $
+ * $DragonFly: src/bin/ps/fmt.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)fmt.c	8.4 (Berkeley) 4/15/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/bin/ps/fmt.c,v 1.14.2.1 2002/03/16 01:15:11 mikeh Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/time.h>

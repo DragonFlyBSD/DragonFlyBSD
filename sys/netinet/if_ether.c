@@ -32,6 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 /*

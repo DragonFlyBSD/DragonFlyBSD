@@ -32,6 +32,7 @@
  *
  *	@(#)tcp_seq.h	8.3 (Berkeley) 6/21/95
  * $FreeBSD: src/sys/netinet/tcp_seq.h,v 1.11.2.7 2003/02/03 02:33:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_seq.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #ifndef _NETINET_TCP_SEQ_H_

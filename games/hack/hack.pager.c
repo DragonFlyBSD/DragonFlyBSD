@@ -1,6 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.pager.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.pager.c,v 1.7 1999/11/16 02:57:09 billf Exp $ */
+/* $DragonFly: src/games/hack/hack.pager.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
 
 /* This file contains the command routine dowhatis() and a pager. */
 /* Also readmail() and doshell(), and generally the things that

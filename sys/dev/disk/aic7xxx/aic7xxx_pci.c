@@ -42,6 +42,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx_pci.c#69 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_pci.c,v 1.2.2.17 2003/06/10 03:26:09 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_pci.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 #ifdef __linux__

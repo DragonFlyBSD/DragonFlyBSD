@@ -32,6 +32,7 @@
  *
  *	from: @(#)comreg.h	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/isa/sioreg.h,v 1.15.2.3 2003/04/04 08:42:17 sobomax Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sioreg.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
  */
 
 /* Receiver clock frequency for "standard" pc serial ports. */

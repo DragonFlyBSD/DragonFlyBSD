@@ -23,6 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/rtld_start.S,v 1.3 1999/08/28 00:10:15 peter Exp $
+ * $DragonFly: src/libexec/rtld-elf/i386/rtld_start.S,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
 
 	.text

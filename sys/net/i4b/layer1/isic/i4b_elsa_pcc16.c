@@ -28,6 +28,7 @@
  *	================================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_elsa_pcc16.c,v 1.5.2.2 2001/10/24 14:17:20 hm Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_elsa_pcc16.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
  *
  *      last edit-date: [Wed Oct 24 16:15:26 2001]
  *

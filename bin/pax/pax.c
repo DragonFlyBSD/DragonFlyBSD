@@ -33,21 +33,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)pax.c	8.2 (Berkeley) 4/18/94
+ * $FreeBSD: src/bin/pax/pax.c,v 1.13.2.4 2002/11/07 15:29:53 imp Exp $
+ * $DragonFly: src/bin/pax/pax.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-static char const copyright[] =
-"@(#) Copyright (c) 1992, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)pax.c	8.2 (Berkeley) 4/18/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/bin/pax/pax.c,v 1.13.2.4 2002/11/07 15:29:53 imp Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

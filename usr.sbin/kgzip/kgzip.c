@@ -22,12 +22,10 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/kgzip/kgzip.c,v 1.3.2.3 2001/07/19 04:42:38 kris Exp $
+ * $DragonFly: src/usr.sbin/kgzip/kgzip.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/kgzip/kgzip.c,v 1.3.2.3 2001/07/19 04:42:38 kris Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <err.h>

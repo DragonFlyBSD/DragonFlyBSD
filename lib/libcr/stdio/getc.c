@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)getc.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/stdio/getc.c,v 1.7.2.1 2001/03/05 11:27:49 obrien Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/getc.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)getc.c	8.1 (Berkeley) 6/4/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/stdio/getc.c,v 1.7.2.1 2001/03/05 11:27:49 obrien Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <stdio.h>
 #include "libc_private.h"

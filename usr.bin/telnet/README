@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.bin/telnet/README,v 1.1.1.2.6.1 2001/03/04 09:10:39 kris Exp $
+# $DragonFly: src/usr.bin/telnet/README,v 1.2 2003/06/17 04:29:32 dillon Exp $
 
 This is a distribution of both client and server telnet.  These programs
 have been compiled on:

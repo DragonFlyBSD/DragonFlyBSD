@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advlib.c,v 1.15.2.1 2000/04/14 13:32:49 nyan Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advlib.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 /*
  * Ported from:

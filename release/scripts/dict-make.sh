@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/release/scripts/dict-make.sh,v 1.7.2.2 2002/08/08 08:23:53 ru Exp $
+# $DragonFly: src/release/scripts/Attic/dict-make.sh,v 1.2 2003/06/17 04:27:21 dillon Exp $
 #
 
 # Move the dict stuff out to its own dist

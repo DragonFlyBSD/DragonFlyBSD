@@ -16,10 +16,9 @@
  *
  * This is the delete module.
  *
+ * $FreeBSD: src/usr.sbin/pkg_install/delete/main.c,v 1.17.2.8 2002/08/20 06:35:07 obrien Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/delete/Attic/main.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.sbin/pkg_install/delete/main.c,v 1.17.2.8 2002/08/20 06:35:07 obrien Exp $");
 
 #include <sys/types.h>
 #include <sys/stat.h>

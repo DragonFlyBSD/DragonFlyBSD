@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)tape.c	8.4 (Berkeley) 5/1/95
+ * $FreeBSD: src/sbin/dump/tape.c,v 1.12.2.3 2002/02/23 22:32:51 iedowse Exp $
+ * $DragonFly: src/sbin/dump/tape.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)tape.c	8.4 (Berkeley) 5/1/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/dump/tape.c,v 1.12.2.3 2002/02/23 22:32:51 iedowse Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/socket.h>

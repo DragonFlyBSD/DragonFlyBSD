@@ -24,6 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore.h,v 1.2.2.1 2001/07/20 20:43:17 pirzyk Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore.h,v 1.2 2003/06/17 04:28:26 dillon Exp $
  *
  */
 

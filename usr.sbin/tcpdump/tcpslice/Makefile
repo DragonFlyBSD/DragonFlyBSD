@@ -1,5 +1,6 @@
 #	@(#)Makefile	0.1 (RWGrimes) 3/24/93
 # $FreeBSD: src/usr.sbin/tcpdump/tcpslice/Makefile,v 1.10.6.1 2001/04/25 12:11:03 ru Exp $
+# $DragonFly: src/usr.sbin/tcpdump/tcpslice/Makefile,v 1.2 2003/06/17 04:30:03 dillon Exp $
 
 PROG=	tcpslice
 CFLAGS+=-Wall -I.

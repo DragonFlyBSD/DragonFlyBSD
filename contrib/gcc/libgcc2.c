@@ -27,6 +27,7 @@ Boston, MA 02111-1307, USA.  */
    the executable file might be covered by the GNU General Public License.  */
 
 /* $FreeBSD: src/contrib/gcc/libgcc2.c,v 1.4 1999/10/27 09:45:47 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/libgcc2.c,v 1.2 2003/06/17 04:24:01 dillon Exp $ */
 
 /* It is incorrect to include config.h here, because this file is being
    compiled for the target, and hence definitions concerning only the host

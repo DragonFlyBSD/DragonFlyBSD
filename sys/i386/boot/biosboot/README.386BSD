@@ -170,3 +170,4 @@ disktab and bootblock files on it so that if it doesn't work, you can
 re-disklabel from the floppy.
 
 $FreeBSD: src/sys/i386/boot/biosboot/README.386BSD,v 1.11 1999/08/28 00:43:10 peter Exp $
+$DragonFly: src/sys/i386/boot/biosboot/Attic/README.386BSD,v 1.2 2003/06/17 04:28:34 dillon Exp $

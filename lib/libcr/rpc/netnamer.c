@@ -28,10 +28,10 @@
  * Mountain View, California  94043
  *
  * $FreeBSD: src/lib/libc/rpc/netnamer.c,v 1.3.6.1 2000/09/20 04:43:11 jkh Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/netnamer.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ *
+ * @(#)netnamer.c 1.13 91/03/11 Copyr 1986 Sun Micro
  */
-#if !defined(lint) && defined(SCCSIDS)
-static char sccsid[] = "@(#)netnamer.c 1.13 91/03/11 Copyr 1986 Sun Micro";
-#endif
 /*
  * netname utility routines convert from unix names to network names and
  * vice-versa This module is operating system dependent! What we define here

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/lib/libskey/skeysubr.c,v 1.9.6.1 2000/07/20 20:13:42 obrien Exp $ */
+/* $DragonFly: src/lib/libskey/skeysubr.c,v 1.2 2003/06/17 04:26:51 dillon Exp $ */
 
 #include <err.h>
 #include <stdio.h>

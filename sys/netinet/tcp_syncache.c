@@ -32,6 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #include "opt_inet6.h"

@@ -32,6 +32,7 @@
  *
  *	@(#)extern.h	8.2 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/extern.h,v 1.9.2.3 2002/08/10 13:20:19 johan Exp $
+ * $DragonFly: src/bin/cp/extern.h,v 1.2 2003/06/17 04:22:49 dillon Exp $
  */
 
 typedef struct {

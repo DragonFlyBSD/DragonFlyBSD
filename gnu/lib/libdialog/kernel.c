@@ -77,6 +77,7 @@
  *	     - Version 0.4 released.
  *
  * $FreeBSD: src/gnu/lib/libdialog/kernel.c,v 1.26.6.1 2003/02/15 05:32:04 kris Exp $
+ * $DragonFly: src/gnu/lib/libdialog/kernel.c,v 1.2 2003/06/17 04:25:43 dillon Exp $
  */
 
 #define __DIALOG_MAIN__

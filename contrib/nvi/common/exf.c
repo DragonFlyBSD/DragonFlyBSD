@@ -6,17 +6,12 @@
  *
  * See the LICENSE file for redistribution information.
  *
+ * @(#)exf.c	10.49 (Berkeley) 10/10/96
+ * $FreeBSD: src/contrib/nvi/common/exf.c,v 1.3.2.2 2002/10/16 17:01:04 ru Exp $
+ * $DragonFly: src/contrib/nvi/common/exf.c,v 1.2 2003/06/17 04:24:04 dillon Exp $
  */
 
 #include "config.h"
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)exf.c	10.49 (Berkeley) 10/10/96";
-#endif
-static const char rcsid[] = 
-  "$FreeBSD: src/contrib/nvi/common/exf.c,v 1.3.2.2 2002/10/16 17:01:04 ru Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/types.h>		/* XXX: param.h may not have included types.h */

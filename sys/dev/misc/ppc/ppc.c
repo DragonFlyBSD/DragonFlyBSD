@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/ppc.c,v 1.26.2.5 2001/10/02 05:21:45 nsouch Exp $
+ * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
  *
  */
 

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/channel.h,v 1.5.2.6 2002/04/22 15:49:36 cg Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/channel.h,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 struct pcmchan_children {

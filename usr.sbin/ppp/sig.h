@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/sig.h,v 1.14 1999/08/28 01:18:44 peter Exp $
+ * $DragonFly: src/usr.sbin/ppp/sig.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 typedef void (*sig_type)(int);

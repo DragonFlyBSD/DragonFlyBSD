@@ -32,6 +32,7 @@
  *
  *	from: @(#)inode.h	7.17 (Berkeley) 5/8/91
  * $FreeBSD: src/sys/i386/boot/dosboot/inode.h,v 1.7 1999/12/29 04:32:51 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/inode.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #ifndef _UFS_INODE_H_

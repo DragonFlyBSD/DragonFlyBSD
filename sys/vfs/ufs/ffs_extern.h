@@ -32,6 +32,7 @@
  *
  *	@(#)ffs_extern.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_extern.h,v 1.30 2000/01/09 22:40:02 mckusick Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_extern.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _UFS_FFS_EXTERN_H

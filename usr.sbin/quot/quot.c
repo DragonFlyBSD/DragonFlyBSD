@@ -27,12 +27,10 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/quot/quot.c,v 1.11.2.4 2002/03/15 18:12:41 mikeh Exp $
+ * $DragonFly: src/usr.sbin/quot/quot.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/quot/quot.c,v 1.11.2.4 2002/03/15 18:12:41 mikeh Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/mount.h>

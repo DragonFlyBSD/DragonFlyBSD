@@ -1,5 +1,6 @@
 /* RIPEMD160DRIVER.C - test driver for RIPEMD160
  * $FreeBSD: src/lib/libmd/rmddriver.c,v 1.2 1999/08/28 00:05:08 peter Exp $
+ * $DragonFly: src/lib/libmd/rmddriver.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
 
 /* Copyright (C) 1990-2, RSA Data Security, Inc. Created 1990. All

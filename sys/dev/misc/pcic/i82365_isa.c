@@ -1,6 +1,7 @@
 /*	$NetBSD: i82365_isasubr.c,v 1.3 1999/10/15 06:07:27 haya Exp $	*/
 /*	$NetBSD: i82365_isa.c,v 1.11 1998/06/09 07:25:00 thorpej Exp $	*/
 /* $FreeBSD: src/sys/dev/pcic/i82365_isa.c,v 1.13.2.1 2000/05/23 03:57:02 imp Exp $ */
+/* $DragonFly: src/sys/dev/misc/pcic/Attic/i82365_isa.c,v 1.2 2003/06/17 04:28:29 dillon Exp $ */
 
 /*
  * Copyright (c) 1998 Bill Sommerfeld.  All rights reserved.

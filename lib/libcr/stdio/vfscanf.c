@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)vfscanf.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/stdio/vfscanf.c,v 1.14.2.2 2002/04/17 14:58:23 ache Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/vfscanf.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)vfscanf.c	8.1 (Berkeley) 6/4/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/stdio/vfscanf.c,v 1.14.2.2 2002/04/17 14:58:23 ache Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <stdio.h>
 #include <stdlib.h>

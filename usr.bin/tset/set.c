@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)set.c	8.2 (Berkeley) 2/28/94
+ * $FreeBSD: src/usr.bin/tset/set.c,v 1.7.2.1 2000/11/12 07:48:29 dg Exp $
+ * $DragonFly: src/usr.bin/tset/set.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)set.c	8.2 (Berkeley) 2/28/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/tset/set.c,v 1.7.2.1 2000/11/12 07:48:29 dg Exp $";
-#endif /* not lint */
 
 #include <termios.h>
 #include <unistd.h>

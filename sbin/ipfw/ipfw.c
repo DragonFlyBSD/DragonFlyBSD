@@ -16,13 +16,9 @@
  *
  * NEW command line interface for IP firewall facility
  *
+ * $FreeBSD: src/sbin/ipfw/ipfw.c,v 1.80.2.26 2003/01/14 19:15:58 dillon Exp $
+ * $DragonFly: src/sbin/ipfw/Attic/ipfw.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/ipfw/ipfw.c,v 1.80.2.26 2003/01/14 19:15:58 dillon Exp $";
-#endif /* not lint */
-
 
 #include <sys/param.h>
 #include <sys/mbuf.h>

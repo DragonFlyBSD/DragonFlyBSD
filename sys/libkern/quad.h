@@ -36,6 +36,7 @@
  *
  *	@(#)quad.h	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/sys/libkern/quad.h,v 1.9 1999/08/28 00:46:36 peter Exp $
+ * $DragonFly: src/sys/libkern/quad.h,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 /*

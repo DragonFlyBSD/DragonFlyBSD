@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/gifconfig/gifconfig.c,v 1.2.2.4 2002/08/30 14:23:39 sobomax Exp $	*/
+/*	$DragonFly: src/usr.sbin/gifconfig/gifconfig.c,v 1.2 2003/06/17 04:29:53 dillon Exp $	*/
 /*	$KAME: gifconfig.c,v 1.14 2001/01/01 04:04:56 jinmei Exp $	*/
 
 /*

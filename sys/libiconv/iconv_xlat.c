@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/iconv_xlat.c,v 1.1.2.1 2001/05/21 08:28:07 bp Exp $
+ * $DragonFly: src/sys/libiconv/iconv_xlat.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>

@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_stereg.h,v 1.5.2.3 2002/08/21 15:26:01 ambrisko Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_stereg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /*

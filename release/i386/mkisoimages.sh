@@ -5,6 +5,7 @@
 # Date:   22 June 2001
 #
 # $FreeBSD: src/release/i386/mkisoimages.sh,v 1.2.2.4 2002/01/25 05:21:54 murray Exp $
+# $DragonFly: src/release/i386/Attic/mkisoimages.sh,v 1.2 2003/06/17 04:27:20 dillon Exp $
 #
 # This script is used by release/Makefile to build the (optional) ISO images
 # for a FreeBSD release.  It is considered architecture dependent since each

@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/kern/subr_sbuf.c,v 1.11.2.2 2002/03/12 01:01:07 archie Exp $
+ *      $DragonFly: src/sys/kern/subr_sbuf.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include <sys/param.h>

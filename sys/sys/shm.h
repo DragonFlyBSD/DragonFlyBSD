@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/sys/shm.h,v 1.14 1999/12/29 04:24:46 peter Exp $ */
+/* $DragonFly: src/sys/sys/shm.h,v 1.2 2003/06/17 04:28:58 dillon Exp $ */
 /*	$NetBSD: shm.h,v 1.15 1994/06/29 06:45:17 cgd Exp $	*/
 
 /*

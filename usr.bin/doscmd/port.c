@@ -28,10 +28,10 @@
  * SUCH DAMAGE.
  *
  *	BSDI port.c,v 2.2 1996/04/08 19:33:03 bostic Exp
+ *
+ * $FreeBSD: src/usr.bin/doscmd/port.c,v 1.5.2.1 2002/04/25 11:04:51 tg Exp $
+ * $DragonFly: src/usr.bin/doscmd/port.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/doscmd/port.c,v 1.5.2.1 2002/04/25 11:04:51 tg Exp $");
 
 #include <sys/ioctl.h>
 #include <machine/sysarch.h>

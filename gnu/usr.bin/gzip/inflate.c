@@ -1,5 +1,9 @@
 /* inflate.c -- Not copyrighted 1992 by Mark Adler
-   version c10p1, 10 January 1993 */
+ * version c10p1, 10 January 1993
+ *
+ * $FreeBSD: src/gnu/usr.bin/gzip/inflate.c,v 1.8 1999/08/27 23:35:51 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/gzip/Attic/inflate.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
+ */
 
 /* You can do whatever you like with this source file, though I would
    prefer that if you modify it and redistribute it that you include
@@ -95,10 +99,6 @@
       a repeat code (16, 17, or 18) to go across the boundary between
       the two sets of lengths.
  */
-
-#ifdef RCSID
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/gzip/inflate.c,v 1.8 1999/08/27 23:35:51 peter Exp $";
-#endif
 
 #include <sys/types.h>
 

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)if.c	8.3 (Berkeley) 4/28/95
+ * $FreeBSD: src/usr.bin/netstat/if.c,v 1.32.2.9 2001/09/17 14:35:46 ru Exp $
+ * $DragonFly: src/usr.bin/netstat/if.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
-
-#ifndef lint
-/*
-static char sccsid[] = "@(#)if.c	8.3 (Berkeley) 4/28/95";
-*/
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/netstat/if.c,v 1.32.2.9 2001/09/17 14:35:46 ru Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/protosw.h>

@@ -3,6 +3,7 @@
 # Blank lines and lines beginning with '#' are ignored.
 #
 # $FreeBSD: src/libexec/bootpd/bootptab.mcs,v 1.5 1999/08/28 00:09:17 peter Exp $
+# $DragonFly: src/libexec/bootpd/bootptab.mcs,v 1.2 2003/06/17 04:27:07 dillon Exp $
 #
 # Legend:	(see bootptab.5)
 #	first field -- hostname (not indented)

@@ -35,17 +35,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/pr/pr.c,v 1.9.2.4 2002/04/15 17:16:57 jmallett Exp $
+ * $DragonFly: src/usr.bin/pr/pr.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ *
+ * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)pr.c	8.2 (Berkeley) 4/16/94
  */
-
-#ifndef lint
-static char copyright[] =
-"@(#) Copyright (c) 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static char sccsid[] = "@(#)pr.c	8.2 (Berkeley) 4/16/94";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/time.h>

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/net/zlib.h,v 1.7.2.1 2002/07/31 14:13:05 rwatson Exp $	*/
+/* $DragonFly: src/sys/net/zlib.h,v 1.2 2003/06/17 04:28:48 dillon Exp $	*/
 
 /*
  * This file is derived from zlib.h and zconf.h from the zlib-1.0.4

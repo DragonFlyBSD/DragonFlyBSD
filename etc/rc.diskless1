@@ -2,6 +2,7 @@
 # the FreeBSD copyright as found at the base of the source distribution.
 #
 # $FreeBSD: src/etc/rc.diskless1,v 1.5.2.11 2003/04/14 18:12:05 jhay Exp $
+# $DragonFly: src/etc/Attic/rc.diskless1,v 1.2 2003/06/17 04:24:45 dillon Exp $
 #
 # /etc/rc.diskless1 - general BOOTP startup
 #

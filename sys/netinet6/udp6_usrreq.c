@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*

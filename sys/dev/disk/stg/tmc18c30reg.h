@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30reg.h,v 1.1.2.2 2001/07/22 00:21:40 non Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30reg.h,v 1.2 2003/06/17 04:28:31 dillon Exp $	*/
 /*	$NecBSD: tmc18c30reg.h,v 1.4 1998/03/14 07:05:23 kmatsuda Exp $	*/
 /*	$NetBSD$	*/
 

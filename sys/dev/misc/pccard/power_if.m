@@ -24,6 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/dev/pccard/power_if.m,v 1.2.2.1 2000/05/23 03:57:00 imp Exp $
+# $DragonFly: src/sys/dev/misc/pccard/Attic/power_if.m,v 1.2 2003/06/17 04:28:29 dillon Exp $
 #
 
 #include <sys/bus.h>

@@ -3,6 +3,7 @@
 /*
  * $Id: pam_nologin.c,v 1.2 2000/12/04 19:02:34 baggins Exp $
  * $FreeBSD: src/contrib/libpam/modules/pam_nologin/pam_nologin.c,v 1.3.2.2 2001/06/11 15:28:22 markm Exp $
+ * $DragonFly: src/contrib/libpam/modules/pam_nologin/Attic/pam_nologin.c,v 1.2 2003/06/17 04:24:03 dillon Exp $
  *
  * Written by Michael K. Johnson <johnsonm@redhat.com> 1996/10/24
  *

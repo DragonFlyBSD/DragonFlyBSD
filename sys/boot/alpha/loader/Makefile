@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/boot/alpha/loader/Makefile,v 1.2.2.4 2000/10/30 10:02:47 obrien Exp $
+# $DragonFly: src/sys/boot/alpha/loader/Attic/Makefile,v 1.2 2003/06/17 04:28:16 dillon Exp $
 
 BASE= 		loader
 PROG= 		${BASE}

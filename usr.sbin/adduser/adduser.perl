@@ -25,6 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/usr.sbin/adduser/adduser.perl,v 1.44.2.5 2002/08/31 18:29:04 dwmalone Exp $
+# $DragonFly: src/usr.sbin/adduser/Attic/adduser.perl,v 1.2 2003/06/17 04:29:52 dillon Exp $
 
 
 # read variables

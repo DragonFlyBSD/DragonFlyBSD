@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/mbuf.c,v 1.36.2.5 2002/09/01 02:12:28 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/mbuf.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #include <sys/types.h>

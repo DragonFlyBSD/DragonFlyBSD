@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_exreg.h,v 1.1.10.2 2001/03/05 05:33:20 imp Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_exreg.h,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 /*

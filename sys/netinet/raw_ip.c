@@ -32,6 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.15 2003/01/24 10:52:50 hsu Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #include "opt_inet6.h"

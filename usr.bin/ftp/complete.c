@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/complete.c,v 1.5.2.1 2001/11/25 18:28:06 iedowse Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/complete.c,v 1.2 2003/06/17 04:29:26 dillon Exp $	*/
 /*	$NetBSD: complete.c,v 1.11 1997/09/13 09:05:53 lukem Exp $	*/
 
 /*-
@@ -35,15 +36,14 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $NetBSD: complete.c,v 1.11 1997/09/13 09:05:53 lukem Exp $
+ * $FreeBSD: src/usr.bin/ftp/complete.c,v 1.5.2.1 2001/11/25 18:28:06 iedowse Exp $
  */
 
 #ifndef SMALL
 
 #include <sys/cdefs.h>
-#ifndef lint
-__RCSID("$FreeBSD: src/usr.bin/ftp/complete.c,v 1.5.2.1 2001/11/25 18:28:06 iedowse Exp $");
-__RCSID_SOURCE("$NetBSD: complete.c,v 1.11 1997/09/13 09:05:53 lukem Exp $");
-#endif /* not lint */
 
 /*
  * FTP user program - command and file completion routines

@@ -22,10 +22,10 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.bin/doscmd/cpu.c,v 1.2.2.2 2002/05/21 11:49:47 tg Exp $
+ * $DragonFly: src/usr.bin/doscmd/cpu.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/doscmd/cpu.c,v 1.2.2.2 2002/05/21 11:49:47 tg Exp $");
 
 #include "doscmd.h"
 #include "video.h"

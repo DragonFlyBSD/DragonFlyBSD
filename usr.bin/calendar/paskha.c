@@ -22,10 +22,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.bin/calendar/paskha.c,v 1.4.10.2 2002/05/27 12:14:46 dwmalone Exp $
+ * $DragonFly: src/usr.bin/calendar/paskha.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/calendar/paskha.c,v 1.4.10.2 2002/05/27 12:14:46 dwmalone Exp $");
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -14,6 +14,7 @@
 #
 
 # $FreeBSD: src/sys/boot/pc98/btx/btx/btx.s,v 1.6.2.5 2001/12/27 16:53:08 nyan Exp $
+# $DragonFly: src/sys/boot/pc98/btx/btx/Attic/btx.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 #
 # Memory layout.

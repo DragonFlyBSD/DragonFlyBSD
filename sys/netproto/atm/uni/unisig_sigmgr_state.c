@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_sigmgr_state.c,v 1.6 2000/01/17 20:49:58 mks Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_sigmgr_state.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -40,11 +40,6 @@
 #include <netatm/uni/uni.h>
 #include <netatm/uni/unisig.h>
 #include <netatm/uni/unisig_var.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/uni/unisig_sigmgr_state.c,v 1.6 2000/01/17 20:49:58 mks Exp $");
-#endif
-
 
 /*
  * Local functions

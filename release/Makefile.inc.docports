@@ -1,4 +1,5 @@
 # $FreeBSD: src/release/Makefile.inc.docports,v 1.1.2.10 2003/05/04 04:13:19 murray Exp $
+# $DragonFly: src/release/Attic/Makefile.inc.docports,v 1.2 2003/06/17 04:27:17 dillon Exp $
 #
 # List of (dependent) ports that are minimally required to be
 # checked out from CVS in order to get ${DOCPORTS} built and

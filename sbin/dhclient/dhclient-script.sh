@@ -36,6 +36,7 @@
 # $MindStep_Id: dhclient-script.sh,v 1.8 1999/12/07 22:11:08 patrick Exp $
 # $MindStep_Tag: CONTRIB_19991207 $
 # $FreeBSD: src/sbin/dhclient/dhclient-script.sh,v 1.2.2.1 2002/04/11 10:21:20 murray Exp $
+# $DragonFly: src/sbin/dhclient/Attic/dhclient-script.sh,v 1.2 2003/06/17 04:27:32 dillon Exp $
 #############################################################################
 
 

@@ -25,13 +25,12 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)clnt_generic.c 1.4 87/08/11 (C) 1987 SMI
+ * @(#)clnt_generic.c	2.2 88/08/01 4.0 RPCSRC
+ * $FreeBSD: src/lib/libc/rpc/clnt_generic.c,v 1.9.2.1 2001/03/05 10:48:28 obrien Exp $
+ * $DragonFly: src/lib/libc/rpc/clnt_generic.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/*static char *sccsid = "from: @(#)clnt_generic.c 1.4 87/08/11 (C) 1987 SMI";*/
-/*static char *sccsid = "from: @(#)clnt_generic.c	2.2 88/08/01 4.0 RPCSRC";*/
-static char *rcsid = "$FreeBSD: src/lib/libc/rpc/clnt_generic.c,v 1.9.2.1 2001/03/05 10:48:28 obrien Exp $";
-#endif
 
 /*
  * Copyright (C) 1987, Sun Microsystems, Inc.

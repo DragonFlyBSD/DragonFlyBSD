@@ -24,6 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/pci/agp_if.m,v 1.1.2.2 2003/04/12 20:38:37 murray Exp $
+# $DragonFly: src/sys/dev/agp/agp_if.m,v 1.2 2003/06/17 04:28:56 dillon Exp $
 #
 
 #include <sys/bus.h>

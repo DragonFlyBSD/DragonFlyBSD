@@ -56,6 +56,7 @@
  * W. Metzenthen   June 1994.
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/reg_constant.c,v 1.6.8.1 2000/08/03 00:53:55 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/reg_constant.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 

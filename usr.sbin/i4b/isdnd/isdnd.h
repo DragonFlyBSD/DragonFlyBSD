@@ -28,6 +28,7 @@
  *	-----------------------------
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/isdnd.h,v 1.6.2.5 2002/04/24 18:50:07 joerg Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/isdnd.h,v 1.2 2003/06/17 04:29:54 dillon Exp $
  *
  *      last edit-date: [Mon Dec 31 12:42:58 2001]
  *

@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/_spinlock_stub.c,v 1.4 1999/08/27 23:58:27 peter Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/_spinlock_stub.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  *
  */
 

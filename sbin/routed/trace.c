@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/trace.c,v 1.5.2.1 2002/11/07 17:19:13 imp Exp $
+ * $DragonFly: src/sbin/routed/trace.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
 
 #define	RIPCMDS

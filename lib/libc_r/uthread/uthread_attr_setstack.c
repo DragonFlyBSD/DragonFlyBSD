@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_attr_setstack.c,v 1.1.2.1 2003/03/04 16:49:54 phantom Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_attr_setstack.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 #include <errno.h>
 #include <pthread.h>

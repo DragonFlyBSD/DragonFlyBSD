@@ -22,10 +22,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libc/locale/ldpart.c,v 1.7.2.3 2002/08/12 11:17:37 ache Exp $
+ * $DragonFly: src/lib/libc/locale/Attic/ldpart.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/locale/ldpart.c,v 1.7.2.3 2002/08/12 11:17:37 ache Exp $");
 
 #include <sys/types.h>
 #include <sys/stat.h>

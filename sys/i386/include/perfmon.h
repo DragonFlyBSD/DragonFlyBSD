@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/perfmon.h,v 1.7 1999/12/29 04:33:04 peter Exp $
+ * $DragonFly: src/sys/i386/include/Attic/perfmon.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 /*

@@ -33,15 +33,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)conv.c	8.3 (Berkeley) 4/2/94
+ * $FreeBSD: src/bin/dd/conv.c,v 1.15 1999/09/13 21:47:10 green Exp $
+ * $DragonFly: src/bin/dd/conv.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)conv.c	8.3 (Berkeley) 4/2/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/bin/dd/conv.c,v 1.15 1999/09/13 21:47:10 green Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 

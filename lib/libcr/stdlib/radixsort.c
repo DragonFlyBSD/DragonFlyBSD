@@ -32,11 +32,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)radixsort.c	8.2 (Berkeley) 4/28/95
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)radixsort.c	8.2 (Berkeley) 4/28/95";
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * Radixsort routines.

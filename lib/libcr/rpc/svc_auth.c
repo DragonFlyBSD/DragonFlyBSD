@@ -25,21 +25,16 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)svc_auth.c 1.26 89/02/07 Copyr 1984 Sun Micro
+ * $FreeBSD: src/lib/libc/rpc/svc_auth.c,v 1.7 1999/12/29 05:04:16 peter Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/svc_auth.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
  */
 /*
  * Copyright (c) 1986-1991 by Sun Microsystems Inc. 
  */
 
 #ident	"@(#)svc_auth.c	1.16	94/04/24 SMI"
-
-#if !defined(lint) && defined(SCCSIDS)
-#if 0
-static char sccsid[] = "@(#)svc_auth.c 1.26 89/02/07 Copyr 1984 Sun Micro";
-#else
-static const char rcsid[] =
- "$FreeBSD: src/lib/libc/rpc/svc_auth.c,v 1.7 1999/12/29 05:04:16 peter Exp $";
-#endif
-#endif
 
 /*
  * svc_auth.c, Server-side rpc authenticator interface.

@@ -25,13 +25,11 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)rpc_parse.c 1.8 89/02/22 (C) 1987 SMI
  */
 
 #ident	"@(#)rpc_parse.c	1.12	93/07/05 SMI"
-
-#ifndef lint
-static char sccsid[] = "@(#)rpc_parse.c 1.8 89/02/22 (C) 1987 SMI";
-#endif
 
 /*
  * rpc_parse.c, Parser for the RPC protocol compiler

@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/29/93
 #	$FreeBSD: src/usr.bin/gprof/Makefile,v 1.4.6.1 2002/02/18 16:16:56 ru Exp $
+#	$DragonFly: src/usr.bin/gprof/Makefile,v 1.2 2003/06/17 04:29:27 dillon Exp $
 
 PROG=	gprof
 SRCS=	gprof.c aout.c arcs.c dfn.c elf.c lookup.c ${MACHINE_ARCH}.c hertz.c \

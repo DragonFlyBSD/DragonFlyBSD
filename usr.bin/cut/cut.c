@@ -32,16 +32,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)cut.c	8.3 (Berkeley) 5/4/95
+ * $FreeBSD: src/usr.bin/cut/cut.c,v 1.9.2.3 2001/07/30 09:59:16 dd Exp $
+ * $DragonFly: src/usr.bin/cut/cut.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1989, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-static const char sccsid[] = "@(#)cut.c	8.3 (Berkeley) 5/4/95";
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/cut/cut.c,v 1.9.2.3 2001/07/30 09:59:16 dd Exp $";
-#endif /* not lint */
 
 #include <ctype.h>
 #include <err.h>

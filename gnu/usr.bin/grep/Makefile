@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/grep/Makefile,v 1.23 2000/01/18 09:52:00 ru Exp $
+# $DragonFly: src/gnu/usr.bin/grep/Makefile,v 1.2 2003/06/17 04:25:45 dillon Exp $
 
 GREP_LIBZ=YES
 

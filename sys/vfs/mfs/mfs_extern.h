@@ -32,6 +32,7 @@
  *
  *	@(#)mfs_extern.h	8.4 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_extern.h,v 1.15 1999/08/28 00:52:24 peter Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_extern.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _UFS_MFS_MFS_EXTERN_H_

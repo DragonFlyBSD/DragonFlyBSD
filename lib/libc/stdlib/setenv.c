@@ -29,14 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)setenv.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/stdlib/setenv.c,v 1.5.2.1 2000/09/20 19:46:03 brian Exp $
+ * $DragonFly: src/lib/libc/stdlib/setenv.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)setenv.c	8.1 (Berkeley) 6/4/93";
-#endif
-static const char rcsid[] = "$FreeBSD: src/lib/libc/stdlib/setenv.c,v 1.5.2.1 2000/09/20 19:46:03 brian Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <stddef.h>
 #include <stdlib.h>

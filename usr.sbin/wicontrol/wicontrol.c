@@ -28,14 +28,11 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1997, 1998, 1999 Bill Paul. All rights reserved.
+ * $FreeBSD: src/usr.sbin/wicontrol/wicontrol.c,v 1.9.2.7 2002/08/03 07:24:17 imp Exp $
+ * $DragonFly: src/usr.sbin/wicontrol/Attic/wicontrol.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] = "@(#) Copyright (c) 1997, 1998, 1999\
-	Bill Paul. All rights reserved.";
-static const char rcsid[] =
-	"$FreeBSD: src/usr.sbin/wicontrol/wicontrol.c,v 1.9.2.7 2002/08/03 07:24:17 imp Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/cdefs.h>

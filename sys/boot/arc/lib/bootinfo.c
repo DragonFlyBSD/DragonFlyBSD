@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/arc/lib/bootinfo.c,v 1.2.2.1 2001/03/04 04:40:41 obrien Exp $
+ * $DragonFly: src/sys/boot/arc/lib/Attic/bootinfo.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 
 #include <stand.h>

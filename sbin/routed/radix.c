@@ -33,6 +33,7 @@
  *	@(#)radix.c	8.4 (Berkeley) 11/2/94
  *
  * $FreeBSD: src/sbin/routed/radix.c,v 1.5 1999/09/05 17:49:11 peter Exp $
+ * $DragonFly: src/sbin/routed/radix.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
 
 /*

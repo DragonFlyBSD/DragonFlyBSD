@@ -32,6 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netnatm/natm_proto.c,v 1.4.2.2 2000/08/03 18:56:28 peter Exp $
+ * $DragonFly: src/sys/netproto/natm/natm_proto.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 /*

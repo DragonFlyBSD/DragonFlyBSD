@@ -1,6 +1,7 @@
 # /etc/crontab - root's crontab for FreeBSD
 #
 # $FreeBSD: src/etc/crontab,v 1.21.2.3 2000/12/08 10:56:07 obrien Exp $
+# $DragonFly: src/etc/crontab,v 1.2 2003/06/17 04:24:45 dillon Exp $
 #
 SHELL=/bin/sh
 PATH=/etc:/bin:/sbin:/usr/bin:/usr/sbin

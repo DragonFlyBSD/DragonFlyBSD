@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/alpha/libalpha/devicename.c,v 1.4 1999/08/28 00:39:27 peter Exp $
+ * $DragonFly: src/sys/boot/alpha/libalpha/Attic/devicename.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 
 #include <stand.h>

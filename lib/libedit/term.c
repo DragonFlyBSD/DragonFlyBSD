@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libedit/term.c,v 1.11.6.1 2000/08/16 14:43:40 ache Exp $
+ * $DragonFly: src/lib/libedit/term.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ *
+ * @(#)term.c	8.2 (Berkeley) 4/30/95
  */
-
-#if !defined(lint) && !defined(SCCSID)
-static char sccsid[] = "@(#)term.c	8.2 (Berkeley) 4/30/95";
-#endif /* not lint && not SCCSID */
 
 /*
  * term.c: Editor/termcap-curses interface

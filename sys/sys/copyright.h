@@ -23,6 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/copyright.h,v 1.10.2.5 2003/01/07 04:28:55 imp Exp $
+ * $DragonFly: src/sys/sys/copyright.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 

@@ -28,6 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-aout/i386/mdprologue.S,v 1.9 1999/08/28 00:10:08 peter Exp $
+ * $DragonFly: src/libexec/rtld-aout/i386/Attic/mdprologue.S,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
 
 /*

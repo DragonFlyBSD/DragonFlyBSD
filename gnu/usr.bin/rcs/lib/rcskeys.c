@@ -26,8 +26,10 @@ Report problems and direct all questions to:
     rcs-bugs@cs.purdue.edu
 
 */
-
 /*
+ * $FreeBSD: src/gnu/usr.bin/rcs/lib/rcskeys.c,v 1.12.2.1 2002/02/08 11:58:35 ru Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/lib/rcskeys.c,v 1.2 2003/06/17 04:25:47 dillon Exp $
+ *
  * Revision 5.4  1995/06/16 06:19:24  eggert
  * Update FSF address.
  *
@@ -63,7 +65,7 @@ Report problems and direct all questions to:
 
 #include "rcsbase.h"
 
-libId(keysId, "$FreeBSD: src/gnu/usr.bin/rcs/lib/rcskeys.c,v 1.12.2.1 2002/02/08 11:58:35 ru Exp $")
+libId(keysId, "$DragonFly: src/gnu/usr.bin/rcs/lib/rcskeys.c,v 1.2 2003/06/17 04:25:47 dillon Exp $")
 
 
 char const *Keyword[] = {

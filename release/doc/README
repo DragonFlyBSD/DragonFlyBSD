@@ -2,6 +2,7 @@
 RELNOTESng README
 Bruce A. Mah <bmah@freebsd.org>
 $FreeBSD: src/release/doc/README,v 1.7.2.3 2002/03/12 05:25:13 bmah Exp $
+$DragonFly: src/release/doc/Attic/README,v 1.2 2003/06/17 04:27:19 dillon Exp $
 
 This is the top-level directory for RELNOTESng, a re-write of
 FreeBSD's *.TXT documentation files.  They have been converted to

@@ -32,6 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.1.2.19 2003/05/01 06:24:37 simokawa Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
  *
  */
 

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/keyinfo/keyinfo.c,v 1.3.4.1 2001/11/06 03:36:33 imp Exp $
+ * $DragonFly: src/usr.bin/keyinfo/keyinfo.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
 
 #include <sys/param.h>

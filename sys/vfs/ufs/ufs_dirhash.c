@@ -23,6 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ufs/ufs_dirhash.c,v 1.3.2.6 2002/04/10 21:41:14 dwmalone Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_dirhash.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 /*
  * This implements a hash-based lookup scheme for UFS directories.

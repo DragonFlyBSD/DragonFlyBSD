@@ -19,12 +19,9 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
+ * $FreeBSD: src/gnu/lib/libdialog/checklist.c,v 1.35.2.2 2001/08/31 03:04:59 eric Exp $
+ * $DragonFly: src/gnu/lib/libdialog/checklist.c,v 1.2 2003/06/17 04:25:43 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/gnu/lib/libdialog/checklist.c,v 1.35.2.2 2001/08/31 03:04:59 eric Exp $";
-#endif
 
 #include <dialog.h>
 #include "dialog.priv.h"

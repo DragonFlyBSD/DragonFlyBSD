@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isa_common.c,v 1.16.2.1 2000/09/16 15:49:52 roger Exp $
+ * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
  */
 /*
  * Modifications for Intel architecture by Garrett A. Wollman.

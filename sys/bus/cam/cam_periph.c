@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 #include <sys/param.h>

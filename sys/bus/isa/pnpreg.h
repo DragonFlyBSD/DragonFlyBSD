@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/pnpreg.h,v 1.3.2.1 2000/05/11 11:10:35 nyan Exp $
+ *	$DragonFly: src/sys/bus/isa/pnpreg.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
  *      from: pnp.h,v 1.7 1998/09/13 22:15:44 eivind Exp
  */
 

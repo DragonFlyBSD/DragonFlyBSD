@@ -32,6 +32,7 @@
  *
  *	@(#)fts.h	8.3 (Berkeley) 8/14/94
  * $FreeBSD: src/include/fts.h,v 1.3.6.1 2001/08/02 22:34:17 assar Exp $
+ * $DragonFly: src/include/fts.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef	_FTS_H_

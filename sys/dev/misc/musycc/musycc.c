@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/musycc/musycc.c,v 1.17.2.3 2001/03/13 22:05:36 phk Exp $
+ * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
  *
  *
  *

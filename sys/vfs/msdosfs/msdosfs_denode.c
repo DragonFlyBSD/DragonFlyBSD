@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.2 2003/06/17 04:28:47 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-

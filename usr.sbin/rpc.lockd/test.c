@@ -1,11 +1,9 @@
-#ifndef lint
-#if 0
-static char sccsid[] = "from: @(#)nlm_prot.x 1.8 87/09/21 Copyr 1987 Sun Micro";
-static char sccsid[] = "from: * @(#)nlm_prot.x	2.1 88/08/01 4.0 RPCSRC";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/rpc.lockd/test.c,v 1.4.2.1 2001/08/01 06:39:36 alfred Exp $";
-#endif /* not lint */
+/*
+ * @(#)nlm_prot.x 1.8 87/09/21 Copyr 1987 Sun Micro
+ * @(#)nlm_prot.x	2.1 88/08/01 4.0 RPCSRC
+ * $FreeBSD: src/usr.sbin/rpc.lockd/test.c,v 1.4.2.1 2001/08/01 06:39:36 alfred Exp $
+ * $DragonFly: src/usr.sbin/rpc.lockd/test.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ */
 
 #include <rpc/rpc.h>
 #include <rpcsvc/nlm_prot.h>

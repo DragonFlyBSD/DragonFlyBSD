@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/if_disc/Makefile,v 1.12 1999/12/07 17:39:01 shin Exp $
+# $DragonFly: src/sys/net/disc/Makefile,v 1.2 2003/06/17 04:28:44 dillon Exp $
 
 .PATH:  ${.CURDIR}/../../net
 KMOD=   if_disc

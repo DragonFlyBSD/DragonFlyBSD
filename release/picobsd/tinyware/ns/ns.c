@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/release/picobsd/tinyware/ns/ns.c,v 1.8.2.7 2002/03/27 20:42:03 abial Exp $
+ * $DragonFly: src/release/picobsd/tinyware/ns/Attic/ns.c,v 1.2 2003/06/17 04:27:20 dillon Exp $
  */
 
 

@@ -34,6 +34,7 @@
  * advised of the possibility of such damage.
  *
  * $FreeBSD: src/sys/dev/vinum/vinumstate.h,v 1.9 1999/08/28 00:42:43 peter Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumstate.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 /*

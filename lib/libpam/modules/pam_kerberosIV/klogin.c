@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpam/modules/pam_kerberosIV/klogin.c,v 1.11 2000/02/24 22:24:37 markm Exp $
+ * $DragonFly: src/lib/libpam/modules/pam_kerberosIV/Attic/klogin.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ *
+ * @(#)klogin.c	8.3 (Berkeley) 4/2/94
  */
-
-#ifndef lint
-static const char sccsid[] = "@(#)klogin.c	8.3 (Berkeley) 4/2/94";
-#endif /* not lint */
 
 #ifdef KERBEROS
 #include <sys/param.h>

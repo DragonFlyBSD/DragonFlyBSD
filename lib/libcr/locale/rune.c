@@ -32,13 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)rune.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/locale/rune.c,v 1.5.8.2 2002/08/12 11:17:38 ache Exp $
+ * $DragonFly: src/lib/libcr/locale/Attic/rune.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)rune.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/locale/rune.c,v 1.5.8.2 2002/08/12 11:17:38 ache Exp $");
 
 #include <arpa/inet.h>
 #include <errno.h>

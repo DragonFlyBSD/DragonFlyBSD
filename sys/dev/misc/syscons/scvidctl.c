@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvidctl.c,v 1.19.2.2 2000/05/05 09:16:08 nyan Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
  */
 
 #include "opt_syscons.h"

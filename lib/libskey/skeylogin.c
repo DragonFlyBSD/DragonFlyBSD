@@ -5,6 +5,7 @@
  *   Many references for mink  may still be found in this program.
  *
  * $FreeBSD: src/lib/libskey/skeylogin.c,v 1.14.6.1 2000/07/18 11:38:24 sheldonh Exp $
+ * $DragonFly: src/lib/libskey/skeylogin.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -2,6 +2,11 @@
  * Copyright (C) 1993-2001 by Darren Reed.
  *
  * See the IPFILTER.LICENCE file for details on licencing.
+ *
+ * @(#)ip_frag.c    1.11 3/24/96 (C) 1993-2000 Darren Reed
+ * @(#)$Id: ip_frag.c,v 2.10.2.24 2002/08/28 12:41:04 darrenr Exp $
+ * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.15.2.6 2003/03/01 03:55:54 darrenr Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 #if defined(KERNEL) && !defined(_KERNEL)
 # define      _KERNEL
@@ -88,12 +93,7 @@ extern struct callout ipfr_slowtimer_ch;
 extern struct timeout ipfr_slowtimer_ch;
 #endif
 
-#if !defined(lint)
-static const char sccsid[] = "@(#)ip_frag.c	1.11 3/24/96 (C) 1993-2000 Darren Reed";
-/*static const char rcsid[] = "@(#)$Id: ip_frag.c,v 2.10.2.24 2002/08/28 12:41:04 darrenr Exp $";*/
-static const char rcsid[] = "@(#)$FreeBSD: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.15.2.6 2003/03/01 03:55:54 darrenr Exp $";
-#endif
-
+static const char sccsid[] = "@(#)ip_frag.c    1.11 3/24/96 (C) 1993-2000 Darren Reed";
 
 static ipfr_t	*ipfr_heads[IPFT_SIZE];
 static ipfr_t	*ipfr_nattab[IPFT_SIZE];

@@ -18,6 +18,7 @@
    02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/binutils/binutils/strings.c,v 1.2.6.4 2002/09/01 23:43:48 obrien Exp $ */
+/* $DragonFly: src/contrib/binutils/binutils/Attic/strings.c,v 1.2 2003/06/17 04:23:58 dillon Exp $ */
 
 /* Usage: strings [options] file...
 

@@ -83,6 +83,7 @@
  *
  *	@(#)config.y	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.y,v 1.42.2.1 2001/01/23 00:09:32 peter Exp $
+ * $DragonFly: src/usr.sbin/config/config.y,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 
 #include <ctype.h>

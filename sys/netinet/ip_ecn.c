@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip_ecn.c,v 1.1.2.3 2002/04/17 07:50:17 suz Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip_ecn.c,v 1.2 2003/06/17 04:28:51 dillon Exp $	*/
 /*	$KAME: ip_ecn.c,v 1.11 2001/05/03 16:09:29 itojun Exp $	*/
 
 /*

@@ -20,6 +20,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_eisa.c,v 1.18 2000/01/14 07:14:00 peter Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_eisa.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 #include <sys/param.h>

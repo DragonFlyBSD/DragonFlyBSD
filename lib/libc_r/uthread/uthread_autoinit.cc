@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_autoinit.cc,v 1.3 2000/01/06 12:16:16 deischen Exp $
+ * $DragonFly: src/lib/libc_r/uthread/Attic/uthread_autoinit.cc,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 
 /*

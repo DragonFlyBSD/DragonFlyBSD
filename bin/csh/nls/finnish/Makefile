@@ -1,4 +1,5 @@
 # $FreeBSD: src/bin/csh/nls/finnish/Makefile,v 1.5.2.3 2002/08/07 16:31:37 ru Exp $
+# $DragonFly: src/bin/csh/nls/finnish/Attic/Makefile,v 1.2 2003/06/17 04:22:49 dillon Exp $
 
 NL=     finnish
 DL=     fi_FI.ISO8859-1

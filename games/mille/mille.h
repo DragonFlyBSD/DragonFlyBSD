@@ -33,6 +33,7 @@
  *	@(#)mille.h	8.1 (Berkeley) 5/31/93
  *
  * $FreeBSD: src/games/mille/mille.h,v 1.7 1999/12/12 06:17:24 billf Exp $
+ * $DragonFly: src/games/mille/mille.h,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
 
 # include	<sys/types.h>

@@ -33,6 +33,7 @@
  *
  *	@(#)locate.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/locate/locate/locate.h,v 1.7 1999/08/28 01:02:59 peter Exp $
+ * $DragonFly: src/usr.bin/locate/locate/locate.h,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
 
 /* Symbolic constants shared by locate.c and code.c */

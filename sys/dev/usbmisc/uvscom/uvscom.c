@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/uvscom.c,v 1.9.2.3 2003/02/13 13:03:25 sanpei Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
  */
 
 /*

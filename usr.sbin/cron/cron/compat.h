@@ -17,6 +17,7 @@
 
 /*
  * $FreeBSD: src/usr.sbin/cron/cron/compat.h,v 1.5 1999/08/28 01:15:49 peter Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/compat.h,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 
 #ifndef __P

@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_subr.h,v 1.1.2.1 2001/05/22 08:32:28 bp Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_subr.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 #ifndef _FS_SMBFS_SMBFS_SUBR_H_
 #define _FS_SMBFS_SMBFS_SUBR_H_

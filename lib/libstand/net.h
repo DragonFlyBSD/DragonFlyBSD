@@ -38,6 +38,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/net.h,v 1.1.1.1.6.3 2001/03/05 06:27:18 kris Exp $
+ * $DragonFly: src/lib/libstand/net.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 
 #ifndef _KERNEL	/* XXX - see <netinet/in.h> */

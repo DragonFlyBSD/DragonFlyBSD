@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)tempnam.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/stdio/tempnam.c,v 1.8 1999/10/24 11:57:24 ache Exp $
+ * $DragonFly: src/lib/libc/stdio/tempnam.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)tempnam.c	8.1 (Berkeley) 6/4/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/stdio/tempnam.c,v 1.8 1999/10/24 11:57:24 ache Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <errno.h>

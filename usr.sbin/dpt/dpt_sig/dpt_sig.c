@@ -26,11 +26,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: src/usr.sbin/dpt/dpt_sig/dpt_sig.c,v 1.3 1999/08/28 01:16:09 peter Exp $
+ * $DragonFly: src/usr.sbin/dpt/dpt_sig/dpt_sig.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 
 /* dpt_sig.c:  Dunp a DPT Signature */
-
-#ident "$FreeBSD: src/usr.sbin/dpt/dpt_sig/dpt_sig.c,v 1.3 1999/08/28 01:16:09 peter Exp $"
 
 #include <fcntl.h>
 #include <stdio.h>

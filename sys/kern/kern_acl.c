@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_acl.c,v 1.2.2.1 2000/07/28 18:48:16 rwatson Exp $
+ * $DragonFly: src/sys/kern/kern_acl.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 /*

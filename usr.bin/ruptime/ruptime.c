@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1983, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)ruptime.c	8.2 (Berkeley) 4/5/94
+ * $FreeBSD: src/usr.bin/ruptime/ruptime.c,v 1.12.2.1 2000/06/30 09:45:00 ps Exp $
+ * $DragonFly: src/usr.bin/ruptime/ruptime.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1983, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)ruptime.c	8.2 (Berkeley) 4/5/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/ruptime/ruptime.c,v 1.12.2.1 2000/06/30 09:45:00 ps Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 

@@ -25,6 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.network6,v 1.5.2.23 2002/07/24 18:25:42 ume Exp $
+# $DragonFly: src/etc/Attic/rc.network6,v 1.2 2003/06/17 04:24:45 dillon Exp $
 #
 
 # Note that almost all of the user-configurable behavior is not in this

@@ -25,10 +25,14 @@ Report problems and direct all questions to:
     rcs-bugs@cs.purdue.edu
 
 */
+/*
+ * $FreeBSD: src/gnu/usr.bin/rcs/lib/merger.c,v 1.5 1999/08/27 23:36:44 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/lib/merger.c,v 1.2 2003/06/17 04:25:47 dillon Exp $
+ */
 
 #include "rcsbase.h"
 
-libId(mergerId, "$FreeBSD: src/gnu/usr.bin/rcs/lib/merger.c,v 1.5 1999/08/27 23:36:44 peter Exp $")
+libId(mergerId, "$DragonFly: src/gnu/usr.bin/rcs/lib/merger.c,v 1.2 2003/06/17 04:25:47 dillon Exp $")
 
 	static char const *normalize_arg P((char const*,char**));
 	static char const *

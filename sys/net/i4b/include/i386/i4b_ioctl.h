@@ -28,6 +28,7 @@
  *	-------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/i4b_ioctl.h,v 1.6.2.5 2002/04/25 12:29:42 gj Exp $
+ * $DragonFly: src/sys/net/i4b/include/i386/i4b_ioctl.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  *
  *      last edit-date: [Sun Dec 16 15:09:12 2001]
  *

@@ -37,6 +37,7 @@
  *
  *	@(#)cd9660_mount.h	8.1 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_mount.h,v 1.3.2.2 2001/03/14 12:03:50 bp Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_mount.h,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 /*

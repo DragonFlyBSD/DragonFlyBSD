@@ -35,6 +35,7 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 
 #ifndef _NFS_NFS_H_

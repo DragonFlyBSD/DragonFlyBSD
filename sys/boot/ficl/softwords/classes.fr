@@ -4,6 +4,7 @@
 \ Needs oop.fr
 \
 \ $FreeBSD: src/sys/boot/ficl/softwords/classes.fr,v 1.1.6.1 2000/07/06 23:51:46 obrien Exp $
+\ $DragonFly: src/sys/boot/ficl/softwords/classes.fr,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 .( loading ficl utility classes ) cr
 also oop definitions

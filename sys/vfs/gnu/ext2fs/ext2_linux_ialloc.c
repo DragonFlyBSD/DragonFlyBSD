@@ -5,6 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_linux_ialloc.c,v 1.13.2.2 2001/08/14 18:03:19 gallatin Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 /*
  *  linux/fs/ext2/ialloc.c

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libalias/alias_ftp.c,v 1.5.2.7 2001/12/06 09:00:26 ru Exp $
+ * $DragonFly: src/lib/libalias/alias_ftp.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
 
 /*

@@ -1,6 +1,7 @@
 #include "includes.h"
 RCSID("$Id: auth2-pam.c,v 1.14 2002/06/28 16:48:12 mouring Exp $");
 RCSID("$FreeBSD: src/crypto/openssh/auth2-pam.c,v 1.4.2.2 2003/02/03 17:31:06 des Exp $");
+RCSID("$DragonFly: src/crypto/openssh/Attic/auth2-pam.c,v 1.2 2003/06/17 04:24:36 dillon Exp $");
 
 #ifdef USE_PAM
 #include <security/pam_appl.h>

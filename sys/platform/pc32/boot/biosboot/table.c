@@ -25,6 +25,7 @@
  *
  *	from: Mach, Revision 2.2  92/04/04  11:36:43  rpd
  * $FreeBSD: src/sys/i386/boot/biosboot/table.c,v 1.20 1999/08/28 00:43:15 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/biosboot/Attic/table.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 /*

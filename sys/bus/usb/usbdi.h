@@ -1,5 +1,6 @@
 /*	$NetBSD: usbdi.h,v 1.39 2000/01/19 00:23:59 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdi.h,v 1.21.2.3 2002/02/14 02:30:47 joe Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi.h,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.

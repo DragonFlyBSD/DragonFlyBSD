@@ -1,5 +1,6 @@
 /*	$KAME: prefix.c,v 1.9 2001/07/02 14:36:49 itojun Exp $	*/
 /*	$FreeBSD: src/usr.sbin/faithd/prefix.c,v 1.1.2.2 2002/04/28 05:40:29 suz Exp $	*/
+/*	$DragonFly: src/usr.sbin/faithd/prefix.c,v 1.2 2003/06/17 04:29:53 dillon Exp $	*/
 
 /*
  * Copyright (C) 2000 WIDE Project.

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)from: subr.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/libexec/getty/subr.c,v 1.16.2.1 2001/05/12 10:16:51 kris Exp $
+ * $DragonFly: src/libexec/getty/subr.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)from: subr.c	8.1 (Berkeley) 6/4/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/libexec/getty/subr.c,v 1.16.2.1 2001/05/12 10:16:51 kris Exp $";
-#endif /* not lint */
 
 /*
  * Melbourne getty.

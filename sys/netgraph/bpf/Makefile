@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/netgraph/bpf/Makefile,v 1.2.4.3 2001/12/21 09:00:47 ru Exp $
+# $DragonFly: src/sys/netgraph/bpf/Makefile,v 1.2 2003/06/17 04:28:45 dillon Exp $
 # $Whistle: Makefile,v 1.1 1999/12/03 01:44:28 archie Exp $
 
 KMOD=		ng_bpf

@@ -188,9 +188,9 @@ yyloop:
         goto yyreduce;
     }
     if (yyerrflag) goto yyinrecovery;
-#if defined(lint) || defined(__GNUC__)
-    goto yynewerror;
-#endif
+/*
+ * @(#)yaccpar	1.9 (Berkeley) 02/21/93
+ */
 yynewerror:
     yyerror("syntax error");
 #if defined(lint) || defined(__GNUC__)

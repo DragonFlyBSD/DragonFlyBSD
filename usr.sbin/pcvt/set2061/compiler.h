@@ -21,6 +21,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/usr.sbin/pcvt/set2061/compiler.h,v 1.5 1999/08/28 05:11:28 peter Exp $
+ * $DragonFly: src/usr.sbin/pcvt/set2061/Attic/compiler.h,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
 
 

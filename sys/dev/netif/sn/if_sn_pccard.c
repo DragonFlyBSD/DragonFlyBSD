@@ -23,6 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sn/if_sn_pccard.c,v 1.3.2.2 2001/01/25 19:40:27 imp Exp $
+ * $DragonFly: src/sys/dev/netif/sn/if_sn_pccard.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 /*

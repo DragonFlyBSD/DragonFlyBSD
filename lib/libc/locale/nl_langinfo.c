@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/nl_langinfo.c,v 1.13.2.3 2002/03/12 17:23:24 phantom Exp $
+ * $DragonFly: src/lib/libc/locale/nl_langinfo.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 
 #include <locale.h>

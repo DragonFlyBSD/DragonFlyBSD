@@ -1,6 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* makedefs.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/makedefs.c,v 1.4 1999/11/16 02:57:15 billf Exp $ */
+/* $DragonFly: src/games/hack/makedefs.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
 
 #include <stdio.h>
 #include <string.h>

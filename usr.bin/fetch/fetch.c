@@ -24,10 +24,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.bin/fetch/fetch.c,v 1.10.2.21 2003/06/06 06:48:42 des Exp $
+ * $DragonFly: src/usr.bin/fetch/fetch.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/fetch/fetch.c,v 1.10.2.21 2003/06/06 06:48:42 des Exp $");
 
 #include <sys/param.h>
 #include <sys/socket.h>

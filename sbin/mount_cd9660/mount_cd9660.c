@@ -36,21 +36,12 @@
  * SUCH DAMAGE.
  *
  *      @(#)mount_cd9660.c	8.7 (Berkeley) 5/1/95
+ *
+ * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)mount_cd9660.c	8.7 (Berkeley) 5/1/95
+ * $FreeBSD: src/sbin/mount_cd9660/mount_cd9660.c,v 1.15.2.3 2001/03/14 12:05:01 bp Exp $
+ * $DragonFly: src/sbin/mount_cd9660/mount_cd9660.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
-
-#ifndef lint
-static char copyright[] =
-"@(#) Copyright (c) 1992, 1993, 1994\n\
-        The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-/*
-static char sccsid[] = "@(#)mount_cd9660.c	8.7 (Berkeley) 5/1/95";
-*/
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/mount_cd9660/mount_cd9660.c,v 1.15.2.3 2001/03/14 12:05:01 bp Exp $";
-#endif /* not lint */
 
 #include <sys/cdio.h>
 #include <sys/file.h>

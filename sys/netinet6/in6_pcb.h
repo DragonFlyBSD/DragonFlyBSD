@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.h,v 1.2.2.3 2001/08/13 16:26:17 ume Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.h,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
 /*	$KAME: in6_pcb.h,v 1.13 2001/02/06 09:16:53 itojun Exp $	*/
 
 /*

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_mca.c,v 1.2 1999/10/27 06:25:15 mdodd Exp $
+ * $DragonFly: src/sys/dev/netif/ep/Attic/if_ep_mca.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 #include <sys/param.h>

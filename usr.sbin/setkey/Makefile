@@ -25,6 +25,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 # $FreeBSD: src/usr.sbin/setkey/Makefile,v 1.1.2.5 2001/04/25 14:05:11 ru Exp $
+# $DragonFly: src/usr.sbin/setkey/Makefile,v 1.2 2003/06/17 04:30:03 dillon Exp $
 
 PROG=	setkey
 SRCS=	setkey.c parse.y token.l

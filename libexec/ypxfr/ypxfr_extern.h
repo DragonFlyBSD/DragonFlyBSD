@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/ypxfr/ypxfr_extern.h,v 1.7.2.1 2002/02/15 00:46:54 des Exp $
+ * $DragonFly: src/libexec/ypxfr/ypxfr_extern.h,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
 #include <sys/types.h>
 #include <limits.h>

@@ -34,6 +34,7 @@
  *	@(#)spx_usrreq.h
  *
  * $FreeBSD: src/sys/netipx/spx_usrreq.c,v 1.27.2.1 2001/02/22 09:44:18 bp Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 #include <sys/param.h>

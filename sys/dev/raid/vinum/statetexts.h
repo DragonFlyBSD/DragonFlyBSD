@@ -36,6 +36,7 @@
  * advised of the possibility of such damage.
  *
  * $FreeBSD: src/sys/dev/vinum/statetexts.h,v 1.9 2000/02/29 06:07:01 grog Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/statetexts.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 /* Drive state texts */

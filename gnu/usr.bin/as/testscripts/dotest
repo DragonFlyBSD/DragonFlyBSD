@@ -1,6 +1,7 @@
 #!/bin/sh
 # ad hoc debug tool
 # $FreeBSD: src/gnu/usr.bin/as/testscripts/dotest,v 1.4 1999/08/27 23:34:35 peter Exp $
+# $DragonFly: src/gnu/usr.bin/as/testscripts/Attic/dotest,v 1.2 2003/06/17 04:25:44 dillon Exp $
 
 x=$1
 y=$2

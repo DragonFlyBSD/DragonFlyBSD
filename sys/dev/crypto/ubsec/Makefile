@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/ubsec/Makefile,v 1.2.2.2 2003/06/05 04:13:48 sam Exp $
+# $DragonFly: src/sys/dev/crypto/ubsec/Makefile,v 1.2 2003/06/17 04:28:47 dillon Exp $
 
 .PATH:	${.CURDIR}/../../dev/ubsec
 KMOD	= ubsec

@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/ns_addr.c,v 1.3.6.2 2001/07/04 22:34:51 kris Exp $
+ * $DragonFly: src/lib/libc/net/ns_addr.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ *
+ * @(#)ns_addr.c	8.1 (Berkeley) 6/7/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)ns_addr.c	8.1 (Berkeley) 6/7/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <netns/ns.h>

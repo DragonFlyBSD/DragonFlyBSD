@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberosIV/usr.sbin/kdb_edit/Makefile,v 1.7.2.1 2001/04/25 09:36:06 ru Exp $
+# $DragonFly: src/kerberosIV/usr.sbin/kdb_edit/Attic/Makefile,v 1.2 2003/06/17 04:26:25 dillon Exp $
 
 PROG=		kdb_edit
 MAN=		${KRB4DIR}/man/kdb_edit.8

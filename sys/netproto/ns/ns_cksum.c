@@ -32,6 +32,7 @@
  *
  *	@(#)ns_cksum.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_cksum.c,v 1.7 1999/08/28 00:49:49 peter Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_cksum.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 #include <sys/param.h>

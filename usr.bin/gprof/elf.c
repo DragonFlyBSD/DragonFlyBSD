@@ -1,7 +1,7 @@
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/gprof/elf.c,v 1.2.2.1 2001/07/11 23:59:11 obrien Exp $";
-#endif /* not lint */
+/*
+ * $FreeBSD: src/usr.bin/gprof/elf.c,v 1.2.2.1 2001/07/11 23:59:11 obrien Exp $
+ * $DragonFly: src/usr.bin/gprof/elf.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ */
 
 #include <sys/types.h>
 #include <sys/mman.h>

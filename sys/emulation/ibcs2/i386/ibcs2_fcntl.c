@@ -25,6 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_fcntl.c,v 1.14 1999/09/19 17:00:14 green Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #include "opt_spx_hack.h"

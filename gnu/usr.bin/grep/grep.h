@@ -17,6 +17,7 @@
    02111-1307, USA.  */
 
 /* $FreeBSD: src/gnu/usr.bin/grep/grep.h,v 1.5 2000/01/04 03:25:40 obrien Exp $ */
+/* $DragonFly: src/gnu/usr.bin/grep/grep.h,v 1.2 2003/06/17 04:25:45 dillon Exp $ */
 
 #if __GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 6) || __STRICT_ANSI__
 # define __attribute__(x)

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)candidate.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.sbin/timed/timed/candidate.c,v 1.5 1999/08/28 01:20:16 peter Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/candidate.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)candidate.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/timed/timed/candidate.c,v 1.5 1999/08/28 01:20:16 peter Exp $";
-#endif /* not lint */
 
 #include "globals.h"
 

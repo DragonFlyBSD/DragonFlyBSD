@@ -35,12 +35,10 @@
  * SUCH DAMAGE.
  *
  *	@(#)conf.c	8.2 (Berkeley) 3/27/94
+ *
+ * $FreeBSD: src/sbin/mount_portal/conf.c,v 1.8 1999/08/28 00:13:35 peter Exp $
+ * $DragonFly: src/sbin/mount_portal/conf.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/mount_portal/conf.c,v 1.8 1999/08/28 00:13:35 peter Exp $";
-#endif /* not lint */
 
 #include <errno.h>
 #include <limits.h>

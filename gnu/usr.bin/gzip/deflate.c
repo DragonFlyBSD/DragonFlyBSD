@@ -2,7 +2,9 @@
  * Copyright (C) 1992-1993 Jean-loup Gailly
  * This is free software; you can redistribute it and/or modify it under the
  * terms of the GNU General Public License, see the file COPYING.
- */
+ *
+ * $FreeBSD: src/gnu/usr.bin/gzip/deflate.c,v 1.7 1999/08/27 23:35:50 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/gzip/Attic/deflate.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
 
 /*
  *  PURPOSE
@@ -66,10 +68,6 @@
 #include "tailor.h"
 #include "gzip.h"
 #include "lzw.h" /* just for consistency checking */
-
-#ifdef RCSID
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/gzip/deflate.c,v 1.7 1999/08/27 23:35:50 peter Exp $";
-#endif
 
 /* ===========================================================================
  * Configuration parameters

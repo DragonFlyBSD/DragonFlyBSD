@@ -24,13 +24,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)realpath.c	8.1 (Berkeley) 2/16/94
+ * $FreeBSD: src/lib/libc/stdlib/realpath.c,v 1.9.2.2 2003/06/02 13:31:16 fjoe Exp $
+ * $DragonFly: src/lib/libcr/stdlib/Attic/realpath.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)realpath.c	8.1 (Berkeley) 2/16/94";
-#endif /* LIBC_SCCS and not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/stdlib/realpath.c,v 1.9.2.2 2003/06/02 13:31:16 fjoe Exp $");
 
 #include <sys/param.h>
 #include <sys/stat.h>

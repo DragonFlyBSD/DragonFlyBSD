@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/strtod.c,v 1.3.8.4 2002/08/31 22:26:35 dwmalone Exp $
+ * $DragonFly: src/lib/libc/stdlib/strtod.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ *
+ * @(#)strtod.c	8.1 (Berkeley) 6/4/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)strtod.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
 
 /****************************************************************
  *

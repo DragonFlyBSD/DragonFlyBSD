@@ -31,6 +31,7 @@
  * All rights reserved.
  *
  * $FreeBSD: src/sys/dev/advansys/adwvar.h,v 1.3.2.1 2000/08/08 23:50:48 peter Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwvar.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
 #ifndef _ADWVAR_H_

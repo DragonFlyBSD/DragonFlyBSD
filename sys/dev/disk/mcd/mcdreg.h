@@ -42,6 +42,7 @@
  * so this file (and the driver) will then have a better quality.
  *
  * $FreeBSD: src/sys/i386/isa/mcdreg.h,v 1.14 1999/08/28 00:44:57 peter Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcdreg.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 #ifndef MCD_H

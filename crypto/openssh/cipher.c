@@ -37,6 +37,7 @@
 #include "includes.h"
 RCSID("$OpenBSD: cipher.c,v 1.61 2002/07/12 15:50:17 markus Exp $");
 RCSID("$FreeBSD: src/crypto/openssh/cipher.c,v 1.2.2.6 2003/02/03 17:31:06 des Exp $");
+RCSID("$DragonFly: src/crypto/openssh/Attic/cipher.c,v 1.2 2003/06/17 04:24:36 dillon Exp $");
 
 #include "xmalloc.h"
 #include "log.h"

@@ -5,11 +5,9 @@
  * Modified 1991 by Donn Seeley at UUNET Technologies, Inc.
  *
  * Modified 1993 by Paul Kranenburg, Erasmus University
+ *
+ * @(#)ld.c	6.10 (Berkeley) 5/22/91
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)ld.c	6.10 (Berkeley) 5/22/91";
-#endif /* not lint */
 
 /* Linker `ld' for GNU
    Copyright (C) 1988 Free Software Foundation, Inc.
@@ -33,6 +31,7 @@ static char sccsid[] = "@(#)ld.c	6.10 (Berkeley) 5/22/91";
 
 /*
  * $FreeBSD: src/gnu/usr.bin/ld/ld.c,v 1.47 1999/08/27 23:36:00 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/ld/Attic/ld.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
 
 /* Define how to initialize system-dependent header fields.  */

@@ -42,15 +42,11 @@
  *
  * From: Utah Hdr: conf.c 3.1 92/07/06
  * Author: Jeff Forys, University of Utah CSS
+ *
+ * @(#)conf.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/libexec/rbootd/conf.c,v 1.5 1999/08/28 00:09:44 peter Exp $
+ * $DragonFly: src/libexec/rbootd/conf.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)conf.c	8.1 (Berkeley) 6/4/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/libexec/rbootd/conf.c,v 1.5 1999/08/28 00:09:44 peter Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/time.h>

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/mii/e1000phyreg.h,v 1.1.2.1 2001/04/21 16:13:09 mjacob Exp $ */
+/* $DragonFly: src/sys/dev/netif/mii_layer/e1000phyreg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $ */
 /*
  * Principal Author: Parag Patel
  * Copyright (c) 2001

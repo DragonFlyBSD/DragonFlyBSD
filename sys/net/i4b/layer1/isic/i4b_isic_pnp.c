@@ -38,6 +38,7 @@
  *	--------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_isic_pnp.c,v 1.5.2.2 2001/12/10 12:18:11 hm Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic_pnp.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
  *
  *      last edit-date: [Fri Jan 26 14:01:04 2001]
  *

@@ -35,21 +35,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1983, 1989, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)from: lpr.c	8.4 (Berkeley) 4/28/95
+ * $FreeBSD: src/usr.sbin/lpr/lpr/lpr.c,v 1.32.2.11 2002/04/28 23:40:23 gad Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpr/lpr.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1983, 1989, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)from: lpr.c	8.4 (Berkeley) 4/28/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/lpr/lpr/lpr.c,v 1.32.2.11 2002/04/28 23:40:23 gad Exp $";
-#endif /* not lint */
 
 /*
  *      lpr -- off line print

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)misc.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.sbin/mtree/misc.c,v 1.8.2.1 2000/06/28 02:33:17 joe Exp $
+ * $DragonFly: src/usr.sbin/mtree/misc.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)misc.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/mtree/misc.c,v 1.8.2.1 2000/06/28 02:33:17 joe Exp $";
-#endif /*not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

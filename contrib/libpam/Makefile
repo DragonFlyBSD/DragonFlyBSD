@@ -1,6 +1,7 @@
 ##
 ## $Id: Makefile,v 1.31 1997/04/05 07:04:25 morgan Exp morgan $
 ## $FreeBSD: src/contrib/libpam/Makefile,v 1.1.1.1.6.2 2001/06/11 15:28:09 markm Exp $
+## $DragonFly: src/contrib/libpam/Attic/Makefile,v 1.2 2003/06/17 04:24:02 dillon Exp $
 ##
 ## $Log: Makefile,v $
 ##

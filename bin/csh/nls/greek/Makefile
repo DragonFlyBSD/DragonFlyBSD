@@ -1,4 +1,5 @@
 # $FreeBSD: src/bin/csh/nls/greek/Makefile,v 1.4.2.3 2002/08/07 16:31:38 ru Exp $
+# $DragonFly: src/bin/csh/nls/greek/Attic/Makefile,v 1.2 2003/06/17 04:22:49 dillon Exp $
 
 NL=     greek
 DL=     el_GR.ISO8859-7

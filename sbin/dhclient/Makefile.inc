@@ -1,4 +1,5 @@
 # $FreeBSD: src/sbin/dhclient/Makefile.inc,v 1.2.2.1 2002/04/11 10:21:20 murray Exp $
+# $DragonFly: src/sbin/dhclient/Attic/Makefile.inc,v 1.2 2003/06/17 04:27:32 dillon Exp $
 
 MAINTAINER=     murray
 

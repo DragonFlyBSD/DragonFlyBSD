@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/gnu/ext2fs/alpha-bitops.h,v 1.1.2.1 2001/08/14 18:03:19 gallatin Exp $ */
+/* $DragonFly: src/sys/vfs/gnu/ext2fs/Attic/alpha-bitops.h,v 1.2 2003/06/17 04:28:33 dillon Exp $ */
 #ifndef _ALPHA_BITOPS_H
 #define _ALPHA_BITOPS_H
 

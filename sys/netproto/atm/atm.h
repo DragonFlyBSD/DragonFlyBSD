@@ -24,6 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm.h,v 1.2 1999/08/28 00:48:34 peter Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
  *
  */
 

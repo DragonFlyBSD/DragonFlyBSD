@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)getNAME.c	8.1 (Berkeley) 6/30/93
+ * $FreeBSD: src/libexec/getNAME/getNAME.c,v 1.7 1999/08/28 00:09:33 peter Exp $
+ * $DragonFly: src/libexec/getNAME/Attic/getNAME.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1980, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)getNAME.c	8.1 (Berkeley) 6/30/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/libexec/getNAME/getNAME.c,v 1.7 1999/08/28 00:09:33 peter Exp $";
-#endif /* not lint */
 
 /*
  * Get name sections from manual pages.

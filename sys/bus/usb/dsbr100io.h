@@ -29,6 +29,7 @@
  */
 
 /*  $FreeBSD: src/sys/dev/usb/dsbr100io.h,v 1.1.2.1 2002/03/04 04:01:35 alfred Exp $ */
+/*  $DragonFly: src/sys/bus/usb/dsbr100io.h,v 1.2 2003/06/17 04:28:32 dillon Exp $ */
 
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/ioccom.h>

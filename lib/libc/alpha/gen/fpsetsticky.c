@@ -1,5 +1,6 @@
 /*	$NetBSD: fpsetsticky.c,v 1.1 1995/04/29 05:11:04 cgd Exp $	*/
 /* $FreeBSD: src/lib/libc/alpha/gen/fpsetsticky.c,v 1.2.6.1 2000/08/17 08:08:15 jhb Exp $ */
+/* $DragonFly: src/lib/libc/alpha/gen/Attic/fpsetsticky.c,v 1.2 2003/06/17 04:26:41 dillon Exp $ */
 
 /*
  * Copyright (c) 1995 Christopher G. Demetriou

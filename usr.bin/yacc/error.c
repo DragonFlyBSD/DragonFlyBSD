@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)error.c	5.3 (Berkeley) 6/1/90
+ * $FreeBSD: src/usr.bin/yacc/error.c,v 1.7 1999/08/28 01:07:59 peter Exp $
+ * $DragonFly: src/usr.bin/yacc/error.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char const sccsid[] = "@(#)error.c	5.3 (Berkeley) 6/1/90";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/yacc/error.c,v 1.7 1999/08/28 01:07:59 peter Exp $";
-#endif /* not lint */
 
 /* routines for printing error messages  */
 

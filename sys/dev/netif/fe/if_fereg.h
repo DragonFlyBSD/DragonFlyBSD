@@ -25,6 +25,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/fe/if_fereg.h,v 1.8.2.1 2000/09/22 10:01:47 nyan Exp $ */
+/* $DragonFly: src/sys/dev/netif/fe/if_fereg.h,v 1.2 2003/06/17 04:28:25 dillon Exp $ */
 
 /*
  * Registers on FMV-180 series' ISA bus interface ASIC.

@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/libbz2/Makefile,v 1.2.2.2 2002/07/22 14:21:49 ru Exp $
+# $DragonFly: src/lib/libbz2/Makefile,v 1.2 2003/06/17 04:26:41 dillon Exp $
 
 MAINTAINER=	obrien@FreeBSD.org
 

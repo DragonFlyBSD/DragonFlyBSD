@@ -31,6 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lgereg.h,v 1.2.2.1 2001/06/19 19:42:38 wpaul Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lgereg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 

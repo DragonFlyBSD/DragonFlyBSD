@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_usrreq.c,v 1.6 1999/08/28 00:48:39 peter Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_usrreq.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -36,11 +36,6 @@
  */
 
 #include <netatm/kern_include.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/atm_usrreq.c,v 1.6 1999/08/28 00:48:39 peter Exp $");
-#endif
-
 
 /*
  * Local functions

@@ -37,6 +37,7 @@
  *
  *	@(#)iso.h	8.6 (Berkeley) 5/10/95
  * $FreeBSD: src/sys/isofs/cd9660/iso.h,v 1.19.2.1 2000/07/08 14:35:56 bp Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/iso.h,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #define ISODCL(from, to) (to - from + 1)

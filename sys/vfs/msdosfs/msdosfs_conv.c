@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_conv.c,v 1.29.2.1 2002/11/08 22:01:22 semenu Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_conv.c,v 1.2 2003/06/17 04:28:47 dillon Exp $ */
 /*	$NetBSD: msdosfs_conv.c,v 1.25 1997/11/17 15:36:40 ws Exp $	*/
 
 /*-

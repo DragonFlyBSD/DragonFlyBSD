@@ -5,6 +5,7 @@
  * the ad1816 chip
  *
  * $FreeBSD: src/sys/dev/sound/isa/ad1816.h,v 1.1.2.2 2002/04/22 15:49:30 cg Exp $
+ * $DragonFly: src/sys/dev/sound/isa/ad1816.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 /* AD1816 register macros */

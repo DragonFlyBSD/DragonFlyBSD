@@ -34,6 +34,7 @@
  *	@(#)ipx_input.c
  *
  * $FreeBSD: src/sys/netipx/ipx_input.c,v 1.22.2.2 2001/02/22 09:44:18 bp Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 #include <sys/param.h>

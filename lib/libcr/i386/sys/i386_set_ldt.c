@@ -26,11 +26,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/sys/i386_set_ldt.c,v 1.7 1999/09/02 21:03:32 luoqi Exp $
+ * $DragonFly: src/lib/libcr/i386/sys/Attic/i386_set_ldt.c,v 1.2 2003/06/17 04:26:43 dillon Exp $
+ *
+ * $FreeBSD: src/lib/libc/i386/sys/i386_set_ldt.c,v 1.7 1999/09/02 21:03:32 luoqi Exp $
  */
-
-#if defined(LIBC_RCS) && !defined(lint)
-static const char rcsid[] = "$FreeBSD: src/lib/libc/i386/sys/i386_set_ldt.c,v 1.7 1999/09/02 21:03:32 luoqi Exp $";
-#endif /* LIBC_RCS and not lint */
 
 #include <sys/cdefs.h>
 #include <machine/segments.h>

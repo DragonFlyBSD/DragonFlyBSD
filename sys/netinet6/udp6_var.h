@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/udp6_var.h,v 1.3.2.1 2000/07/15 07:14:38 kris Exp $
+ * $DragonFly: src/sys/netinet6/udp6_var.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 /*

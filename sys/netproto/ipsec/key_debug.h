@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key_debug.h,v 1.1.4.1 2003/01/24 05:11:36 sam Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key_debug.h,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$KAME: key_debug.h,v 1.10 2001/08/05 08:37:52 itojun Exp $	*/
 
 /*

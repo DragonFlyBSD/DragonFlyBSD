@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_eventhandler.c,v 1.3 1999/11/16 16:28:57 phk Exp $
+ * $DragonFly: src/sys/kern/subr_eventhandler.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include <sys/param.h>

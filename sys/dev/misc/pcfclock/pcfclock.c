@@ -22,6 +22,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/pcfclock.c,v 1.3.2.1 2000/05/24 00:20:57 n_hibma Exp $
+ * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  *
  */
 

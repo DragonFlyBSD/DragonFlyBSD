@@ -1,4 +1,5 @@
 /* $FreeBSD: src/lib/libc/alpha/sys/cerror.S,v 1.5 1999/08/27 23:58:11 peter Exp $	*/
+/* $DragonFly: src/lib/libcr/alpha/sys/Attic/cerror.S,v 1.2 2003/06/17 04:26:41 dillon Exp $	*/
 /*	From: NetBSD: cerror.S,v 1.4 1996/11/08 00:52:46 cgd Exp 	*/
 
 /*

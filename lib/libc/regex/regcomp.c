@@ -37,11 +37,10 @@
  *	@(#)regcomp.c	8.5 (Berkeley) 3/20/94
  *
  * $FreeBSD: src/lib/libc/regex/regcomp.c,v 1.13.2.2 2002/03/20 13:13:15 dcs Exp $
+ * $DragonFly: src/lib/libc/regex/regcomp.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ *
+ * @(#)regcomp.c	8.5 (Berkeley) 3/20/94
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)regcomp.c	8.5 (Berkeley) 3/20/94";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <stdio.h>

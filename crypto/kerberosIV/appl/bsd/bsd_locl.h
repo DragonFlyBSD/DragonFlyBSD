@@ -33,6 +33,7 @@
 
 /* $Id: bsd_locl.h,v 1.111 1999/12/02 16:58:28 joda Exp $ */
 /* $FreeBSD: src/crypto/kerberosIV/appl/bsd/bsd_locl.h,v 1.4.2.2 2003/02/13 21:34:35 nectar Exp $ */
+/* $DragonFly: src/crypto/kerberosIV/appl/bsd/Attic/bsd_locl.h,v 1.2 2003/06/17 04:24:36 dillon Exp $ */
 
 #define LOGALL
 #ifndef KERBEROS

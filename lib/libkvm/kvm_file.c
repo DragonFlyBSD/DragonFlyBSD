@@ -29,16 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)kvm_file.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libkvm/kvm_file.c,v 1.11 2000/02/18 16:39:00 peter Exp $
+ * $DragonFly: src/lib/libkvm/kvm_file.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)kvm_file.c	8.1 (Berkeley) 6/4/93";
-#else
-static const char rcsid[] =
- "$FreeBSD: src/lib/libkvm/kvm_file.c,v 1.11 2000/02/18 16:39:00 peter Exp $";
-#endif
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * File list interface for kvm.  pstat, fstat and netstat are

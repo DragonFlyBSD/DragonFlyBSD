@@ -1,5 +1,6 @@
 /*	global.c 		Larn is copyrighted 1986 by Noah Morgan.
  * $FreeBSD: src/games/larn/global.c,v 1.5 1999/11/16 02:57:21 billf Exp $
+ * $DragonFly: src/games/larn/global.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  *
  *	raiselevel()		subroutine to raise the player one level
  *	loselevel()		subroutine to lower the player by one level

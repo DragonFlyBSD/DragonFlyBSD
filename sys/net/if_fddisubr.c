@@ -34,6 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
  */
 
 #include "opt_atalk.h"

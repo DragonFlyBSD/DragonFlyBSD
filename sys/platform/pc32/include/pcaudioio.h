@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/pcaudioio.h,v 1.10 1999/08/28 00:44:20 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/include/pcaudioio.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef	_MACHINE_PCAUDIOIO_H_

@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/doscmd/xms.h,v 1.2 1999/08/28 01:00:27 peter Exp $
+ * $DragonFly: src/usr.bin/doscmd/xms.h,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
 
 #ifndef XMS_H

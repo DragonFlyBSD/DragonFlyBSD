@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.h,v 1.2.2.8 2002/04/11 09:31:57 sos Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 /* misc defines */

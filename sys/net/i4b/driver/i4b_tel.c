@@ -28,6 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_tel.c,v 1.10.2.4 2001/12/16 15:12:57 hm Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:07:05 2001]
  *

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)invite.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/talk/invite.c,v 1.6.2.1 2000/10/05 17:40:38 ru Exp $
+ * $DragonFly: src/usr.bin/talk/invite.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)invite.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/talk/invite.c,v 1.6.2.1 2000/10/05 17:40:38 ru Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <errno.h>

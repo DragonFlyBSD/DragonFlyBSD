@@ -8,11 +8,10 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
+ *
+ * $FreeBSD: src/lib/msun/src/e_pow.c,v 1.6.2.1 2002/06/24 10:13:43 bde Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_pow.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/lib/msun/src/e_pow.c,v 1.6.2.1 2002/06/24 10:13:43 bde Exp $";
-#endif
 
 /* __ieee754_pow(x,y) return x**y
  *

@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/istallion.c,v 1.36.2.2 2001/08/30 12:29:57 murray Exp $
+ * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /*****************************************************************************/

@@ -32,6 +32,7 @@
  *
  *	@(#)queue.h	8.5 (Berkeley) 8/20/94
  * $FreeBSD: src/sys/sys/queue.h,v 1.32.2.7 2002/04/17 14:21:02 des Exp $
+ * $DragonFly: src/sys/sys/queue.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_QUEUE_H_

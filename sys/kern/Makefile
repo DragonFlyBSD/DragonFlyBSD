@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/sys/kern/Makefile,v 1.6.2.1 2003/02/10 12:21:08 des Exp $
+# $DragonFly: src/sys/kern/Makefile,v 1.2 2003/06/17 04:28:41 dillon Exp $
 
 # Makefile for kernel tags files, init_sysent, etc.
 

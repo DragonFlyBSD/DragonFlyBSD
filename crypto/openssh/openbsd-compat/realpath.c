@@ -25,15 +25,13 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $OpenBSD: realpath.c,v 1.7 2002/05/24 21:22:37 deraadt Exp $
  */
 
 #include "includes.h"
 
 #if !defined(HAVE_REALPATH) || defined(BROKEN_REALPATH)
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char *rcsid = "$OpenBSD: realpath.c,v 1.7 2002/05/24 21:22:37 deraadt Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

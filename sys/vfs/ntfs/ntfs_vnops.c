@@ -36,6 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
  *
  */
 

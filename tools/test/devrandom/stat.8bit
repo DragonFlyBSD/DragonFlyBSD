@@ -9,6 +9,7 @@
 # it runs. This program is a CPU Hog!
 #
 # $FreeBSD: src/tools/test/devrandom/stat.8bit,v 1.4 1999/08/28 00:54:24 peter Exp $
+# $DragonFly: src/tools/test/devrandom/stat.8bit,v 1.2 2003/06/17 04:29:11 dillon Exp $
 #
 
 for ($i = 0; $i < (1024*32); $i++) {

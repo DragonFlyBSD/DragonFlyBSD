@@ -3,12 +3,10 @@
  *	Copyright (C) 1996 by Tatsumi Hosokawa <hosokawa@mt.cs.keio.ac.jp>
  *
  * $Id: server.c,v 1.3 1999/02/07 08:02:44 kuriyama Exp $
+ *
+ * $FreeBSD: src/usr.sbin/pccard/pccardd/server.c,v 1.2.2.1 2000/08/26 15:49:48 ume Exp $
+ * $DragonFly: src/usr.sbin/pccard/pccardd/Attic/server.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/pccard/pccardd/server.c,v 1.2.2.1 2000/08/26 15:49:48 ume Exp $";
-#endif /* not lint */
 
 #include <stdio.h>
 #include <unistd.h>

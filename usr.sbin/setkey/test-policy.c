@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/setkey/test-policy.c,v 1.1 2000/01/06 12:40:53 shin Exp $
+ * $DragonFly: src/usr.sbin/setkey/test-policy.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
 
 #include <sys/types.h>

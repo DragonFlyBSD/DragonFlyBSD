@@ -6,6 +6,7 @@
  * This file is placed in the public domain by Peter Wemm.
  *
  * $FreeBSD: src/sys/sys/fnv_hash.h,v 1.2.2.1 2001/03/21 10:50:59 peter Exp $
+ * $DragonFly: src/sys/sys/fnv_hash.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 typedef u_int32_t Fnv32_t;

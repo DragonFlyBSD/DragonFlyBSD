@@ -1,6 +1,7 @@
 /*
  * $Id: krb.h,v 1.99 1999/11/16 14:02:47 bg Exp $
  * $FreeBSD: src/crypto/kerberosIV/lib/krb/krb.h,v 1.6.2.2 2003/04/24 21:31:13 nectar Exp $
+ * $DragonFly: src/crypto/kerberosIV/lib/krb/Attic/krb.h,v 1.2 2003/06/17 04:24:36 dillon Exp $
  *
  * Copyright 1987, 1988 by the Massachusetts Institute of Technology. 
  *

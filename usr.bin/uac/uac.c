@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/uac/uac.c,v 1.1 2000/01/19 09:47:19 obrien Exp $
+ * $DragonFly: src/usr.bin/uac/Attic/uac.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
 
 #include <sys/types.h>

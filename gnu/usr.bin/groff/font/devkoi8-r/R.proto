@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/groff/font/devkoi8-r/R.proto,v 1.4.2.2 2001/05/28 07:19:58 ru Exp $
+# $DragonFly: src/gnu/usr.bin/groff/font/devkoi8-r/R.proto,v 1.2 2003/06/17 04:25:46 dillon Exp $
 name R
 internalname 0
 spacewidth 24

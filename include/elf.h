@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/elf.h,v 1.3.2.1 2001/07/31 23:41:46 obrien Exp $
+ * $DragonFly: src/include/elf.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef	_ELF_H_

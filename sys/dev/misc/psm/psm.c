@@ -21,6 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.6 2002/03/27 16:53:35 pb Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
  */
 
 /*

@@ -29,22 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)calendar.c  8.3 (Berkeley) 3/25/94
+ * $FreeBSD: src/usr.bin/calendar/io.c,v 1.13.2.3 2002/08/26 00:32:46 jmallett Exp $
+ * $DragonFly: src/usr.bin/calendar/io.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1989, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif
-
-#if 0
-#ifndef lint
-static char sccsid[] = "@(#)calendar.c  8.3 (Berkeley) 3/25/94";
-#endif
-#endif
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/calendar/io.c,v 1.13.2.3 2002/08/26 00:32:46 jmallett Exp $");
 
 #include <sys/types.h>
 #include <sys/param.h>

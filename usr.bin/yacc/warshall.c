@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/warshall.c,v 1.6 1999/08/28 01:08:04 peter Exp $
+ * $DragonFly: src/usr.bin/yacc/warshall.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ *
+ * @(#)warshall.c	5.4 (Berkeley) 5/24/93
  */
-
-#ifndef lint
-static char const sccsid[] = "@(#)warshall.c	5.4 (Berkeley) 5/24/93";
-#endif /* not lint */
 
 #include "defs.h"
 

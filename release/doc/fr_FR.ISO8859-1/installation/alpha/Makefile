@@ -4,6 +4,7 @@
 #
 #      $Id$
 #      $FreeBSD: src/release/doc/fr_FR.ISO8859-1/installation/alpha/Makefile,v 1.1.2.2 2002/11/01 20:48:57 gioria Exp $
+#      $DragonFly: src/release/doc/fr_FR.ISO8859-1/installation/alpha/Attic/Makefile,v 1.2 2003/06/17 04:27:19 dillon Exp $
 #      Original revision:  1.3.2.2
 
 RELN_ROOT?= ${.CURDIR}/../../..

@@ -32,23 +32,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)quota.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/quota/quota.c,v 1.11.2.5 2002/11/30 23:54:21 iedowse Exp $
+ * $DragonFly: src/usr.bin/quota/quota.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1980, 1990, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif
-
-#ifndef lint
-static const char sccsid[] = "from: @(#)quota.c	8.1 (Berkeley) 6/6/93";
-#endif /* not lint */
 
 /*
  * Disk quota reporting program.
  */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/quota/quota.c,v 1.11.2.5 2002/11/30 23:54:21 iedowse Exp $");
 
 #include <sys/param.h>
 #include <sys/types.h>

@@ -37,11 +37,10 @@
  *	@(#)regfree.c	8.3 (Berkeley) 3/20/94
  *
  * $FreeBSD: src/lib/libc/regex/regfree.c,v 1.1.1.1.14.1 2000/07/31 06:30:37 dcs Exp $
+ * $DragonFly: src/lib/libcr/regex/Attic/regfree.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ *
+ * @(#)regfree.c	8.3 (Berkeley) 3/20/94
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)regfree.c	8.3 (Berkeley) 3/20/94";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <stdio.h>

@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/groff/contrib/mm/Makefile,v 1.1.2.6 2003/02/14 15:22:13 ru Exp $
+# $DragonFly: src/gnu/usr.bin/groff/contrib/mm/Makefile,v 1.2 2003/06/17 04:25:46 dillon Exp $
 
 SCRIPTS=	mmroff.pl
 MAN=		mmroff.1

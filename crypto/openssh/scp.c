@@ -77,6 +77,7 @@
 #include "includes.h"
 RCSID("$OpenBSD: scp.c,v 1.91 2002/06/19 00:27:55 deraadt Exp $");
 RCSID("$FreeBSD: src/crypto/openssh/scp.c,v 1.1.1.1.2.6 2003/02/03 17:31:07 des Exp $");
+RCSID("$DragonFly: src/crypto/openssh/Attic/scp.c,v 1.2 2003/06/17 04:24:36 dillon Exp $");
 
 #include "xmalloc.h"
 #include "atomicio.h"

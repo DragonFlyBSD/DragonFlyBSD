@@ -32,6 +32,7 @@
  *
  *	@(#)pathnames.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/calendar/pathnames.h,v 1.3.2.1 2001/08/02 01:12:55 obrien Exp $
+ * $DragonFly: src/usr.bin/calendar/pathnames.h,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
 
 #include <paths.h>

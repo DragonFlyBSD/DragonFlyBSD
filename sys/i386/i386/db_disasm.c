@@ -24,6 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_disasm.c,v 1.23.2.1 2001/07/29 22:48:37 kris Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/db_disasm.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 /*

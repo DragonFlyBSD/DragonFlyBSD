@@ -35,6 +35,7 @@
  *
  *	from: @(#)tss.h	5.4 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/tss.h,v 1.11 1999/12/29 04:33:09 peter Exp $
+ * $DragonFly: src/sys/i386/include/Attic/tss.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 #ifndef _MACHINE_TSS_H_

@@ -27,6 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcireg.h,v 1.24.2.5 2002/08/31 10:06:51 gibbs Exp $
+ * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  *
  */
 

@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberos5/lib/libkadm5srv/Makefile,v 1.1.1.1.2.1 2001/03/04 13:49:51 markm Exp $
+# $DragonFly: src/kerberos5/lib/libkadm5srv/Makefile,v 1.2 2003/06/17 04:26:17 dillon Exp $
 
 LIB=	kadm5srv
 CFLAGS+=-I${KRB5DIR}/include \

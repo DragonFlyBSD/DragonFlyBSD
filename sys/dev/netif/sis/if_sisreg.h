@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sisreg.h,v 1.1.4.11 2003/02/05 21:49:01 mbr Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sisreg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /*

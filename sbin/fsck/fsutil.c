@@ -33,12 +33,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsck/fsutil.c,v 1.2.2.1 2001/08/01 05:47:55 obrien Exp $
+ * $DragonFly: src/sbin/fsck/fsutil.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ *
+ * $NetBSD: fsutil.c,v 1.7 1998/07/30 17:41:03 thorpej Exp $
  */
 
 #include <sys/cdefs.h>
-#ifndef lint
-__RCSID("$NetBSD: fsutil.c,v 1.7 1998/07/30 17:41:03 thorpej Exp $");
-#endif /* not lint */
 
 #include <stdio.h>
 #include <string.h>

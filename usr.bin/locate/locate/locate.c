@@ -33,22 +33,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1995-1996 Wolfram Schneider, Berlin. @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)locate.c    8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/locate/locate/locate.c,v 1.12.2.1 2001/03/04 08:47:25 kris Exp $
+ * $DragonFly: src/usr.bin/locate/locate/locate.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1995-1996 Wolfram Schneider, Berlin.\n\
-@(#) Copyright (c) 1989, 1993\n\
-        The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)locate.c    8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/locate/locate/locate.c,v 1.12.2.1 2001/03/04 08:47:25 kris Exp $";
-#endif /* not lint */
 
 /*
  * Ref: Usenix ;login:, Vol 8, No 1, February/March, 1983, p. 8.

@@ -1,5 +1,6 @@
 /*
  * $FreeBSD: src/release/sysinstall/dhcp.c,v 1.3.4.1 2001/09/16 23:05:50 murray Exp $
+ * $DragonFly: src/release/sysinstall/Attic/dhcp.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1999
  *	C. Stone.  All rights reserved.

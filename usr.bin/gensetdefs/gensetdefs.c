@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/gensetdefs/gensetdefs.c,v 1.4 1999/12/12 21:16:46 marcel Exp $
+ * $DragonFly: src/usr.bin/gensetdefs/Attic/gensetdefs.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
 
 #include <sys/types.h>

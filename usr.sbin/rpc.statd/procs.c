@@ -29,12 +29,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: src/usr.sbin/rpc.statd/procs.c,v 1.4.2.2 2002/07/11 17:41:28 alfred Exp $
+ * $DragonFly: src/usr.sbin/rpc.statd/procs.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/rpc.statd/procs.c,v 1.4.2.2 2002/07/11 17:41:28 alfred Exp $";
-#endif /* not lint */
 
 #include <errno.h>
 #include <stdio.h>

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/keydb.h,v 1.1.4.1 2003/01/24 05:11:36 sam Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/keydb.h,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$KAME: keydb.h,v 1.14 2000/08/02 17:58:26 sakane Exp $	*/
 
 /*

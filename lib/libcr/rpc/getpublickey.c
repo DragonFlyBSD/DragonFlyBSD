@@ -28,10 +28,10 @@
  * Mountain View, California  94043
  *
  * $FreeBSD: src/lib/libc/rpc/getpublickey.c,v 1.2.6.1 2000/09/20 04:43:11 jkh Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/getpublickey.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ *
+ * @(#)publickey.c 1.10 91/03/11 Copyr 1986 Sun Micro
  */
-#if !defined(lint) && defined(SCCSIDS)
-static char sccsid[] = "@(#)publickey.c 1.10 91/03/11 Copyr 1986 Sun Micro";
-#endif
 
 /*
  * publickey.c

@@ -33,6 +33,7 @@
 
 /* $Id: krb-protos.h,v 1.24.2.1 2000/06/23 03:32:04 assar Exp $ */
 /* $FreeBSD: src/crypto/kerberosIV/lib/krb/krb-protos.h,v 1.1.1.2.2.2 2003/02/13 21:34:36 nectar Exp $ */
+/* $DragonFly: src/crypto/kerberosIV/lib/krb/Attic/krb-protos.h,v 1.2 2003/06/17 04:24:36 dillon Exp $ */
 
 #ifndef __krb_protos_h__
 #define __krb_protos_h__

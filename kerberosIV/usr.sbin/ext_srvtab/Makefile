@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberosIV/usr.sbin/ext_srvtab/Makefile,v 1.7.2.1 2001/04/25 09:36:03 ru Exp $
+# $DragonFly: src/kerberosIV/usr.sbin/ext_srvtab/Attic/Makefile,v 1.2 2003/06/17 04:26:25 dillon Exp $
 
 PROG=		ext_srvtab
 MAN=		${KRB4DIR}/man/ext_srvtab.8

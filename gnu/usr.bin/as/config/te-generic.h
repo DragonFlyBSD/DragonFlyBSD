@@ -7,6 +7,7 @@
  */
 /*
  * $FreeBSD: src/gnu/usr.bin/as/config/te-generic.h,v 1.4 1999/08/27 23:34:31 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/as/config/Attic/te-generic.h,v 1.2 2003/06/17 04:25:44 dillon Exp $
  */
 
 

@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvtb.c,v 1.5.2.1 2001/07/16 05:21:23 yokota Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvtb.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
  */
 
 #include "opt_syscons.h"

@@ -35,12 +35,10 @@
  * SUCH DAMAGE.
  *
  *	@(#)mroute.c	8.2 (Berkeley) 4/28/95
+ *
+ * $FreeBSD: src/usr.bin/netstat/mroute.c,v 1.11.2.4 2001/09/17 14:53:17 ru Exp $
+ * $DragonFly: src/usr.bin/netstat/mroute.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/netstat/mroute.c,v 1.11.2.4 2001/09/17 14:53:17 ru Exp $";
-#endif /* not lint */
 
 /*
  * Print DVMRP multicast routing structures and statistics.

@@ -32,24 +32,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)unifdef.c	8.1 (Berkeley) 6/6/93
+ * $NetBSD: unifdef.c,v 1.8 2000/07/03 02:51:36 matt Exp $
+ * $dotat: things/unifdef.c,v 1.148 2003/01/20 12:05:41 fanf2 Exp $
+ * $FreeBSD: src/usr.bin/unifdef/unifdef.c,v 1.4.2.5 2003/01/29 21:46:39 fanf Exp $
+ * $DragonFly: src/usr.bin/unifdef/unifdef.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
 
 #include <sys/cdefs.h>
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1985, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-
-#ifdef __IDSTRING
-__IDSTRING(Berkeley, "@(#)unifdef.c	8.1 (Berkeley) 6/6/93");
-__IDSTRING(NetBSD, "$NetBSD: unifdef.c,v 1.8 2000/07/03 02:51:36 matt Exp $");
-__IDSTRING(dotat, "$dotat: things/unifdef.c,v 1.148 2003/01/20 12:05:41 fanf2 Exp $");
-#endif
-#ifdef __FBSDID
-__FBSDID("$FreeBSD: src/usr.bin/unifdef/unifdef.c,v 1.4.2.5 2003/01/29 21:46:39 fanf Exp $");
-#endif
-#endif
 
 /*
  * unifdef - remove ifdef'ed lines

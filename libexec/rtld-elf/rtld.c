@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
 
 /*

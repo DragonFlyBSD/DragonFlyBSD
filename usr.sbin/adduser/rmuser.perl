@@ -31,6 +31,7 @@
 # Guy Helmer <ghelmer@cs.iastate.edu>, 02/23/97
 #
 # $FreeBSD: src/usr.sbin/adduser/rmuser.perl,v 1.8.2.9 2002/02/14 10:32:53 yar Exp $
+# $DragonFly: src/usr.sbin/adduser/Attic/rmuser.perl,v 1.2 2003/06/17 04:29:52 dillon Exp $
 
 use Fcntl;
 

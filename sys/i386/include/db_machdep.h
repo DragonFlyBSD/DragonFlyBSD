@@ -24,6 +24,7 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/include/db_machdep.h,v 1.16 1999/10/04 13:55:35 marcel Exp $
+ * $DragonFly: src/sys/i386/include/Attic/db_machdep.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef _MACHINE_DB_MACHDEP_H_

@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/systems.c,v 1.58.2.7 2002/09/01 02:12:32 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/systems.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 #include <sys/param.h>

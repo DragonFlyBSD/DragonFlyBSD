@@ -1,5 +1,6 @@
 #	$NetBSD: Makefile,v 1.12 1998/02/19 14:18:36 drochner Exp $
 # $FreeBSD: src/sys/boot/arc/loader/Makefile,v 1.4.2.1 2000/08/04 08:31:08 obrien Exp $
+# $DragonFly: src/sys/boot/arc/loader/Attic/Makefile,v 1.2 2003/06/17 04:28:16 dillon Exp $
 
 BASE= 		loader
 PROG= 		${BASE}.exe

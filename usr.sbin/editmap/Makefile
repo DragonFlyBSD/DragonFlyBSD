@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/editmap/Makefile,v 1.1.2.1 2002/03/25 21:29:58 gshapiro Exp $
+# $DragonFly: src/usr.sbin/editmap/Makefile,v 1.2 2003/06/17 04:29:53 dillon Exp $
 
 MAINTAINER=	gshapiro@FreeBSD.org
 

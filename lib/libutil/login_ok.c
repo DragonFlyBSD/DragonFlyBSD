@@ -21,6 +21,7 @@
  * Support allow/deny lists in login class capabilities
  *
  * $FreeBSD: src/lib/libutil/login_ok.c,v 1.7.2.1 2001/01/10 21:01:30 ghelmer Exp $
+ * $DragonFly: src/lib/libutil/login_ok.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
 
 #include <stdlib.h>

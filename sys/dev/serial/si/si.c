@@ -31,6 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 #ifndef lint

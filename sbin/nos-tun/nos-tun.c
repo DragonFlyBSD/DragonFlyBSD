@@ -24,6 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: src/sbin/nos-tun/nos-tun.c,v 1.6.2.2 2001/08/01 23:14:00 obrien Exp $
+ * $DragonFly: src/sbin/nos-tun/nos-tun.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
 
 /*
@@ -54,11 +56,6 @@
  * We are using 4 as protocol number in ampr.org.
  *
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/nos-tun/nos-tun.c,v 1.6.2.2 2001/08/01 23:14:00 obrien Exp $";
-#endif /* not lint */
 
 #include <fcntl.h>
 #include <netdb.h>

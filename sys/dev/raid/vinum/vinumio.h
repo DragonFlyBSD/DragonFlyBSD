@@ -35,6 +35,7 @@
  *
  * $Id: vinumio.h,v 1.19 2000/04/26 04:17:33 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.h,v 1.18.2.1 2000/05/11 08:49:22 grog Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 #define L 'F'						    /* ID letter of our ioctls */

@@ -35,6 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -35,6 +35,7 @@ Boston, MA 02111-1307, USA. */
    PRINT_B_I_S, and many that start with ASM_ or end in ASM_OP.  */
 
 /* $FreeBSD: src/contrib/gcc/config/i386/i386.h,v 1.5 1999/10/16 08:10:36 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/config/i386/Attic/i386.h,v 1.2 2003/06/17 04:24:02 dillon Exp $ */
 
 /* Names to predefine in the preprocessor for this target machine.  */
 

@@ -23,6 +23,7 @@
  *
  *	Was login_cap.h,v 1.9 1997/05/07 20:00:01 eivind Exp
  * $FreeBSD: src/lib/libutil/login_cap.h,v 1.3.2.1 2000/09/20 11:19:54 green Exp $
+ * $DragonFly: src/lib/libutil/login_cap.h,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
 
 #ifndef _LOGIN_CAP_H_

@@ -22,6 +22,7 @@
  */
 
 /* $FreeBSD: src/sys/netatalk/ddp_output.c,v 1.13.6.1 2000/06/02 22:39:07 archie Exp $ */
+/* $DragonFly: src/sys/netproto/atalk/ddp_output.c,v 1.2 2003/06/17 04:28:48 dillon Exp $ */
 
 #include <sys/param.h>
 #include <sys/systm.h>

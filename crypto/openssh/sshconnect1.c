@@ -15,6 +15,7 @@
 #include "includes.h"
 RCSID("$OpenBSD: sshconnect1.c,v 1.52 2002/08/08 13:50:23 aaron Exp $");
 RCSID("$FreeBSD: src/crypto/openssh/sshconnect1.c,v 1.2.2.9 2003/02/03 17:31:08 des Exp $");
+RCSID("$DragonFly: src/crypto/openssh/Attic/sshconnect1.c,v 1.2 2003/06/17 04:24:36 dillon Exp $");
 
 #include <openssl/bn.h>
 #include <openssl/md5.h>

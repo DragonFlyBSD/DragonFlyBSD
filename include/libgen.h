@@ -1,5 +1,6 @@
 /*	$OpenBSD: libgen.h,v 1.4 1999/05/28 22:00:22 espie Exp $	*/
 /*	$FreeBSD: src/include/libgen.h,v 1.1.2.1 2000/11/12 18:01:51 adrian Exp $	*/
+/*	$DragonFly: src/include/libgen.h,v 1.2 2003/06/17 04:25:56 dillon Exp $	*/
 
 /*
  * Copyright (c) 1997 Todd C. Miller <Todd.Miller@courtesan.com>

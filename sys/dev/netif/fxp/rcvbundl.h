@@ -30,6 +30,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*
  * $FreeBSD: src/sys/dev/fxp/rcvbundl.h,v 1.1.2.1 2001/11/02 16:50:42 jlemon Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/rcvbundl.h,v 1.2 2003/06/17 04:28:26 dillon Exp $
  */
 /*
 rcvbundl.h

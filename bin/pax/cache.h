@@ -36,6 +36,7 @@
  *
  *      @(#)cache.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/cache.h,v 1.6 1999/08/27 23:14:40 peter Exp $
+ * $DragonFly: src/bin/pax/cache.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
 
 /*

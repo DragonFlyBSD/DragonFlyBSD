@@ -30,6 +30,7 @@
  *	$Id: facility.c,v 1.5 2000/02/21 15:17:17 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/isdndecode/facility.c,v 1.6.2.1 2001/08/01 17:45:05 obrien Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdndecode/facility.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
  *
  *      last edit-date: [Mon Feb 21 16:15:43 2000]
  *

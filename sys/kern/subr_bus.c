@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include "opt_bus.h"

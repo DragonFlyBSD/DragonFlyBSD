@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/if_ic.c,v 1.8 1999/12/29 04:35:39 peter Exp $
+ * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
  */
 
 /*

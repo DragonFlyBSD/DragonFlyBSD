@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)kerberos.c	8.3 (Berkeley) 5/30/95
+ * $FreeBSD: src/crypto/telnet/libtelnet/kerberos.c,v 1.3.2.2 2003/02/14 22:38:13 nectar Exp $
+ * $DragonFly: src/crypto/telnet/libtelnet/Attic/kerberos.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-
-__FBSDID("$FreeBSD: src/crypto/telnet/libtelnet/kerberos.c,v 1.3.2.2 2003/02/14 22:38:13 nectar Exp $");
-
-#ifndef lint
-static const char sccsid[] = "@(#)kerberos.c	8.3 (Berkeley) 5/30/95";
-#endif /* not lint */
 
 /*
  * Copyright (C) 1990 by the Massachusetts Institute of Technology

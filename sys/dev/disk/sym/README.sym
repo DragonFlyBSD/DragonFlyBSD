@@ -55,6 +55,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sym/README.sym,v 1.1.1.5.2.2 2001/11/11 17:58:53 groudier Exp $
+ * $DragonFly: src/sys/dev/disk/sym/README.sym,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 README.sym

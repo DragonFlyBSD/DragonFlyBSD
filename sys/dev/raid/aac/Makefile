@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/aac/Makefile,v 1.2.2.4 2003/03/28 19:51:37 scottl Exp $
+# $DragonFly: src/sys/dev/raid/aac/Makefile,v 1.2 2003/06/17 04:28:43 dillon Exp $
 
 .PATH: ${.CURDIR}/../../dev/aac
 

@@ -31,6 +31,10 @@
  * SUCH DAMAGE.
  *
  *	@(#)ftpcmd.y	8.3 (Berkeley) 4/6/94
+ *
+ * @(#)ftpcmd.y	8.3 (Berkeley) 4/6/94
+ * $FreeBSD: src/libexec/ftpd/ftpcmd.y,v 1.16.2.19 2003/02/11 14:28:28 yar Exp $
+ * $DragonFly: src/libexec/ftpd/ftpcmd.y,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 /*
@@ -39,14 +43,6 @@
  */
 
 %{
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)ftpcmd.y	8.3 (Berkeley) 4/6/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/libexec/ftpd/ftpcmd.y,v 1.16.2.19 2003/02/11 14:28:28 yar Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/socket.h>

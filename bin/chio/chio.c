@@ -29,18 +29,15 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1996 Jason R. Thorpe.  All rights reserved.
+ * $FreeBSD: src/bin/chio/chio.c,v 1.15.2.3 2001/07/28 19:22:01 mikeh Exp $
+ * $DragonFly: src/bin/chio/chio.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
  */
 /*
  * Additional Copyright (c) 1997, by Matthew Jacob, for NASA/Ames Research Ctr.
  * Addidional Copyright (c) 2000, by C. Stephen Gunn, Waterspout Communications
  */
-
-#ifndef lint
-static const char copyright[] =
-	"@(#) Copyright (c) 1996 Jason R. Thorpe.  All rights reserved.";
-static const char rcsid[] =
-  "$FreeBSD: src/bin/chio/chio.c,v 1.15.2.3 2001/07/28 19:22:01 mikeh Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/chio.h> 

@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)rmdir.c	8.3 (Berkeley) 4/2/94
+ * $FreeBSD: src/bin/rmdir/rmdir.c,v 1.9.2.2 2001/08/01 05:16:47 obrien Exp $
+ * $DragonFly: src/bin/rmdir/rmdir.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-static char const copyright[] =
-"@(#) Copyright (c) 1992, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)rmdir.c	8.3 (Berkeley) 4/2/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/bin/rmdir/rmdir.c,v 1.9.2.2 2001/08/01 05:16:47 obrien Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <errno.h>

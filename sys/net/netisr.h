@@ -32,6 +32,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 #ifndef _NET_NETISR_H_

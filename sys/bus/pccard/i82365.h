@@ -34,6 +34,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/i82365.h,v 1.10.2.9 2002/09/22 20:26:58 imp Exp $
+ * $DragonFly: src/sys/bus/pccard/Attic/i82365.h,v 1.2 2003/06/17 04:28:55 dillon Exp $
  */
 
 #define	PCIC_I82365	0		/* Intel i82365SL-A/B or clone */

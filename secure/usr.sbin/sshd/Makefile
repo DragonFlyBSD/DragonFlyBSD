@@ -1,4 +1,5 @@
 # $FreeBSD: src/secure/usr.sbin/sshd/Makefile,v 1.5.2.9 2003/02/03 17:31:12 des Exp $
+# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.2 2003/06/17 04:27:48 dillon Exp $
 #
 
 PROG=	sshd

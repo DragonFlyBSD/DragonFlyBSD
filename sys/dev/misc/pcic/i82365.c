@@ -1,5 +1,6 @@
 /*	$NetBSD: i82365.c,v 1.25 1999/10/15 06:07:27 haya Exp $	*/
 /* $FreeBSD: src/sys/dev/pcic/i82365.c,v 1.16.2.1 2000/05/23 03:57:02 imp Exp $ */
+/* $DragonFly: src/sys/dev/misc/pcic/Attic/i82365.c,v 1.2 2003/06/17 04:28:29 dillon Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.

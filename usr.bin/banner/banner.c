@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1980, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)banner.c	8.4 (Berkeley) 4/29/95
+ * $FreeBSD: src/usr.bin/banner/banner.c,v 1.7.2.4 2001/10/02 11:41:25 ru Exp $
+ * $DragonFly: src/usr.bin/banner/banner.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1980, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)banner.c	8.4 (Berkeley) 4/29/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/banner/banner.c,v 1.7.2.4 2001/10/02 11:41:25 ru Exp $";
-#endif /* not lint */
 
 /*
  * banner - prints large signs

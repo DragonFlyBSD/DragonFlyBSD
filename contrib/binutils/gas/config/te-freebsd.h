@@ -19,6 +19,7 @@
    02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/binutils/gas/config/te-freebsd.h,v 1.1.6.4 2002/09/01 23:44:05 obrien Exp $ */
+/* $DragonFly: src/contrib/binutils/gas/config/Attic/te-freebsd.h,v 1.2 2003/06/17 04:23:58 dillon Exp $ */
 
 /* Target environment for FreeBSD.  It is the same as the generic
    target, except that it arranges via the TE_FreeBSD define to

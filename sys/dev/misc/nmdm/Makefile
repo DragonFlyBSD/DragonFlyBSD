@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/nmdm/Makefile,v 1.1.2.1 2001/08/11 00:54:15 mp Exp $
+# $DragonFly: src/sys/dev/misc/nmdm/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
 
 .PATH: ${.CURDIR}/../../dev/nmdm
 

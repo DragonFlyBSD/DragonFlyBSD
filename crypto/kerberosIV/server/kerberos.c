@@ -6,6 +6,7 @@
  * <mit-copyright.h>.
  */
 /* $FreeBSD: src/crypto/kerberosIV/server/kerberos.c,v 1.2.2.3 2003/02/14 22:37:37 nectar Exp $ */
+/* $DragonFly: src/crypto/kerberosIV/server/Attic/kerberos.c,v 1.2 2003/06/17 04:24:36 dillon Exp $ */
 
 #include "config.h"
 #include "protos.h"

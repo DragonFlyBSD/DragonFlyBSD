@@ -8,11 +8,10 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
+ *
+ * $FreeBSD: src/lib/msun/src/s_copysign.c,v 1.6 1999/08/28 00:06:45 peter Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_copysign.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/lib/msun/src/s_copysign.c,v 1.6 1999/08/28 00:06:45 peter Exp $";
-#endif
 
 /*
  * copysign(double x, double y)

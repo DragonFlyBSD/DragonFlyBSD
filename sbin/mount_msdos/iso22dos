@@ -1,4 +1,5 @@
 # $FreeBSD: src/sbin/mount_msdos/iso22dos,v 1.1 2000/01/08 17:17:32 ache Exp $
+# $DragonFly: src/sbin/mount_msdos/iso22dos,v 1.2 2003/06/17 04:27:33 dillon Exp $
 #
 # u2w: 16 rows of Latin2 -> Unicode conversion table (upper half)
 #

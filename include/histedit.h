@@ -1,4 +1,5 @@
 /* $FreeBSD: src/include/histedit.h,v 1.5 1999/08/27 23:44:50 peter Exp $ */
+/* $DragonFly: src/include/histedit.h,v 1.2 2003/06/17 04:25:56 dillon Exp $ */
 /*	$NetBSD: histedit.h,v 1.5 1997/04/11 17:52:45 christos Exp $	*/
 
 /*-

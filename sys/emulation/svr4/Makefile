@@ -1,6 +1,7 @@
 # Makefile for syscall tables
 #
 # $FreeBSD: src/sys/svr4/Makefile,v 1.3 1999/09/01 00:32:18 newton Exp $
+# $DragonFly: src/sys/emulation/svr4/Attic/Makefile,v 1.2 2003/06/17 04:28:57 dillon Exp $
 
 MAINTAINER=	newton@freebsd.org
 

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ex/if_ex_isa.c,v 1.3.2.1 2001/03/05 05:33:20 imp Exp $
+ *	$DragonFly: src/sys/dev/netif/ex/if_ex_isa.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 #include <sys/param.h>

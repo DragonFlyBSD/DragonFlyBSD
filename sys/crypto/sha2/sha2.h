@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/crypto/sha2/sha2.h,v 1.1.2.1 2001/07/03 11:01:36 ume Exp $	*/
+/*	$DragonFly: src/sys/crypto/sha2/sha2.h,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
 /*	$KAME: sha2.h,v 1.3 2001/03/12 08:27:48 itojun Exp $	*/
 
 /*

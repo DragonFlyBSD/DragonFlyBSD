@@ -30,6 +30,7 @@
  *	$Id$ 
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi2/i4b_ifpi2_l1fsm.c,v 1.1.2.1 2002/04/25 20:26:50 gj Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_l1fsm.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
  *
  *      last edit-date: [Mon May 29 15:23:15 2000]
  *

@@ -31,6 +31,7 @@
  * in 3.0-980524-SNAP then hacked a bit (but probably not enough :-).
  *
  * $FreeBSD: src/sys/dev/streams/streams.c,v 1.16.2.1 2001/02/26 04:23:07 jlemon Exp $
+ * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #include <sys/param.h>

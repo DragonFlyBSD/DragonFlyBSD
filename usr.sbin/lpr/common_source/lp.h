@@ -32,6 +32,7 @@
  *
  * 	From: @(#)lp.h	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/common_source/lp.h,v 1.9.2.12 2002/07/14 23:56:40 gad Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/lp.h,v 1.2 2003/06/17 04:29:56 dillon Exp $
  */
 
 #include <sys/queue.h>

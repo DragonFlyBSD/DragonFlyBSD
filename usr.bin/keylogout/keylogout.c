@@ -26,15 +26,13 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * $FreeBSD: src/usr.bin/keylogout/keylogout.c,v 1.3 1999/08/28 01:02:29 peter Exp $
+ * $DragonFly: src/usr.bin/keylogout/keylogout.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
 /*
  * Copyright (C) 1986, Sun Microsystems, Inc.
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/keylogout/keylogout.c,v 1.3 1999/08/28 01:02:29 peter Exp $";
-#endif /* not lint */
 
 /*
  * unset the secret key on local machine

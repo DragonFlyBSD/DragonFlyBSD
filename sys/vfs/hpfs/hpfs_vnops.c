@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 #include <sys/param.h>

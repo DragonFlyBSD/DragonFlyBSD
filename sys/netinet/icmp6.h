@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/icmp6.h,v 1.2.2.5 2002/06/29 18:31:11 ume Exp $	*/
+/*	$DragonFly: src/sys/netinet/icmp6.h,v 1.2 2003/06/17 04:28:51 dillon Exp $	*/
 /*	$KAME: icmp6.h,v 1.46 2001/04/27 15:09:48 itojun Exp $	*/
 
 /*

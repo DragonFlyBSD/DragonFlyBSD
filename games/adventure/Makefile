@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/12/93
 # $FreeBSD: src/games/adventure/Makefile,v 1.7.6.1 2001/04/25 09:28:42 ru Exp $
+# $DragonFly: src/games/adventure/Makefile,v 1.2 2003/06/17 04:25:22 dillon Exp $
 
 PROG=	adventure
 SRCS=	main.c init.c done.c save.c subr.c vocab.c wizard.c io.c data.c crc.c

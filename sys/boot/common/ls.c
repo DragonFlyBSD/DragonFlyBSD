@@ -1,5 +1,6 @@
 /*
  * $FreeBSD: src/sys/boot/common/ls.c,v 1.8.2.2 2000/07/07 00:09:45 obrien Exp $
+ * $DragonFly: src/sys/boot/common/ls.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  * From: $NetBSD: ls.c,v 1.3 1997/06/13 13:48:47 drochner Exp $
  */
 

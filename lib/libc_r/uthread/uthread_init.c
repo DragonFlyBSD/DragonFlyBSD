@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_init.c,v 1.23.2.11 2003/02/24 23:27:32 das Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_init.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 
 /* Allocate space for global thread variables here: */

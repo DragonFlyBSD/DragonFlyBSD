@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/libbind/Makefile,v 1.5.2.2 2002/07/19 18:46:25 ru Exp $
+# $DragonFly: src/lib/libbind/Makefile,v 1.2 2003/06/17 04:26:41 dillon Exp $
 
 BIND_DIR=${.CURDIR}/../../contrib/bind
 

@@ -29,16 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)startdaemon.c	8.2 (Berkeley) 4/17/94
+ * $FreeBSD: src/usr.sbin/lpr/common_source/startdaemon.c,v 1.8.2.2 2002/04/26 18:24:40 gad Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/startdaemon.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)startdaemon.c	8.2 (Berkeley) 4/17/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/lpr/common_source/startdaemon.c,v 1.8.2.2 2002/04/26 18:24:40 gad Exp $";
-#endif /* not lint */
-
 
 #include <sys/param.h>
 #include <sys/socket.h>

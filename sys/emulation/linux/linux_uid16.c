@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_uid16.c,v 1.4.2.1 2001/10/21 03:57:35 marcel Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_uid16.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
  */
 
 #include "opt_compat.h"

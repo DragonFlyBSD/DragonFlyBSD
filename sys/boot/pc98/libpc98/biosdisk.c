@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/pc98/libpc98/biosdisk.c,v 1.11.2.7 2003/01/13 08:52:53 nyan Exp $
+ * $DragonFly: src/sys/boot/pc98/libpc98/Attic/biosdisk.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 /*

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/binutils/libbfd/alpha/config.h,v 1.3.6.2 2001/08/01 22:54:10 obrien Exp $ */
+/* $DragonFly: src/gnu/usr.bin/binutils/libbfd/alpha/Attic/config.h,v 1.2 2003/06/17 04:25:44 dillon Exp $ */
 
 /* config.h.  Generated automatically by configure.  */
 /* config.in.  Generated automatically from configure.in by autoheader.  */

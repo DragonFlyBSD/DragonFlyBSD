@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/in_rmx.c,v 1.37.2.3 2002/08/09 14:49:23 ru Exp $
+ * $DragonFly: src/sys/netinet/in_rmx.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 /*

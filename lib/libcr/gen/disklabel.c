@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)disklabel.c	8.2 (Berkeley) 5/3/95
+ * $FreeBSD: src/lib/libc/gen/disklabel.c,v 1.9.2.1 2001/03/05 08:40:47 obrien Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/disklabel.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)disklabel.c	8.2 (Berkeley) 5/3/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/gen/disklabel.c,v 1.9.2.1 2001/03/05 08:40:47 obrien Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #define DKTYPENAMES

@@ -29,6 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/bus.h,v 1.7.2.2 2002/03/03 05:42:50 nyan Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/bus.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef _I386_BUS_H_

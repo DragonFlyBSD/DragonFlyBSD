@@ -33,6 +33,7 @@
 
 /* $Id: adm_locl.h,v 1.17 1999/12/02 16:58:27 joda Exp $ */
 /* $FreeBSD: src/crypto/kerberosIV/admin/adm_locl.h,v 1.2.2.1 2003/02/13 21:34:34 nectar Exp $ */
+/* $DragonFly: src/crypto/kerberosIV/admin/Attic/adm_locl.h,v 1.2 2003/06/17 04:24:36 dillon Exp $ */
 
 #ifndef __adm_locl_h
 #define __adm_locl_h

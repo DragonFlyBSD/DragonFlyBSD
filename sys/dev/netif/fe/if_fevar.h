@@ -20,6 +20,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fevar.h,v 1.1.2.1 2000/09/22 10:01:47 nyan Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fevar.h,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 /* How many registers does an fe-supported adapter have at maximum?  */

@@ -31,6 +31,7 @@
 
 /*
  * $FreeBSD: src/gnu/usr.bin/ld/lib.c,v 1.23 1999/08/27 23:36:01 peter Exp $	- library routines
+ * $DragonFly: src/gnu/usr.bin/ld/Attic/lib.c,v 1.2 2003/06/17 04:25:46 dillon Exp $	- library routines
  */
 
 #include <sys/param.h>

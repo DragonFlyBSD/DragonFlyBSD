@@ -30,21 +30,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1983, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)lpd.c	8.7 (Berkeley) 5/10/95
+ * $FreeBSD: src/usr.sbin/lpr/lpd/lpd.c,v 1.12.2.22 2002/06/30 04:09:11 gad Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpd/lpd.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1983, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)lpd.c	8.7 (Berkeley) 5/10/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/lpr/lpd/lpd.c,v 1.12.2.22 2002/06/30 04:09:11 gad Exp $";
-#endif /* not lint */
 
 /*
  * lpd -- line printer daemon.

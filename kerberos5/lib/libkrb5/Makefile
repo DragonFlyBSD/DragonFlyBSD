@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberos5/lib/libkrb5/Makefile,v 1.3.2.5 2002/07/25 09:33:14 ru Exp $
+# $DragonFly: src/kerberos5/lib/libkrb5/Makefile,v 1.2 2003/06/17 04:26:17 dillon Exp $
 
 LIB=	krb5
 CFLAGS+=-I${KRB5DIR}/lib/krb5 \

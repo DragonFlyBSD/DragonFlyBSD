@@ -44,6 +44,7 @@
  * Author: Jeff Forys, University of Utah CSS
  *
  * $FreeBSD: src/libexec/rbootd/defs.h,v 1.2.6.1 2001/02/18 02:54:11 kris Exp $
+ * $DragonFly: src/libexec/rbootd/defs.h,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 #include "rmp.h"

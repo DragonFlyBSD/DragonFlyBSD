@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/tools/tools/upgrade/move_aout_libs.sh,v 1.6 1999/08/28 00:54:34 peter Exp $
+# $DragonFly: src/tools/tools/upgrade/Attic/move_aout_libs.sh,v 1.2 2003/06/17 04:29:11 dillon Exp $
 # 
 # Search for a.out libraries and move them to an aout subdirectory of
 # the elf library directory.

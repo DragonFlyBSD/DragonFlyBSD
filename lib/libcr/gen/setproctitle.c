@@ -15,6 +15,7 @@
  *    Peter Wemm.
  *
  * $FreeBSD: src/lib/libc/gen/setproctitle.c,v 1.12.2.2 2000/12/10 20:27:08 jdp Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/setproctitle.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
 
 #include <sys/types.h>

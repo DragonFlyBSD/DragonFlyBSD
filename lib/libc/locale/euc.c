@@ -32,13 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)euc.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/locale/euc.c,v 1.3.6.2 2002/08/12 11:17:37 ache Exp $
+ * $DragonFly: src/lib/libc/locale/Attic/euc.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)euc.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/locale/euc.c,v 1.3.6.2 2002/08/12 11:17:37 ache Exp $");
 
 #include <sys/types.h>
 

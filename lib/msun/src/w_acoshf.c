@@ -1,5 +1,8 @@
 /* w_acoshf.c -- float version of w_acosh.c.
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ *
+ * $FreeBSD: src/lib/msun/src/w_acoshf.c,v 1.5 1999/08/28 00:06:57 peter Exp $
+ * $DragonFly: src/lib/msun/src/Attic/w_acoshf.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
  */
 
 /*
@@ -13,10 +16,6 @@
  * ====================================================
  *
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/lib/msun/src/w_acoshf.c,v 1.5 1999/08/28 00:06:57 peter Exp $";
-#endif
 
 /*
  * wrapper acoshf(x)

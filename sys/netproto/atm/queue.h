@@ -24,6 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/queue.h,v 1.2 1999/08/28 00:48:41 peter Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/queue.h,v 1.2 2003/06/17 04:28:49 dillon Exp $
  *
  */
 

@@ -29,6 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_socket.c,v 1.7 1999/12/08 12:00:48 newton Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_socket.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /*

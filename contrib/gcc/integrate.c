@@ -20,6 +20,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/gcc/integrate.c,v 1.1.1.3.2.1 2002/05/01 19:57:46 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/integrate.c,v 1.2 2003/06/17 04:24:01 dillon Exp $ */
 
 
 #include "config.h"

@@ -1,5 +1,6 @@
 #	$OpenBSD: sshd_config,v 1.59 2002/09/25 11:17:16 markus Exp $
 #	$FreeBSD: src/crypto/openssh/sshd_config,v 1.4.2.12 2003/02/11 12:11:54 des Exp $
+#	$DragonFly: src/crypto/openssh/Attic/sshd_config,v 1.2 2003/06/17 04:24:36 dillon Exp $
 
 # This is the sshd server system-wide configuration file.  See
 # sshd_config(5) for more information.

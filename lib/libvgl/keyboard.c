@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libvgl/keyboard.c,v 1.3 1999/08/28 00:05:55 peter Exp $
+ * $DragonFly: src/lib/libvgl/keyboard.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
 
 #include <stdio.h>

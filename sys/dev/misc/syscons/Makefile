@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/syscons/Makefile,v 1.11.2.2 2003/05/15 02:02:39 murray Exp $
+# $DragonFly: src/sys/dev/misc/syscons/Makefile,v 1.2 2003/06/17 04:28:47 dillon Exp $
 
 SUBDIR =
 SUBDIR += blank

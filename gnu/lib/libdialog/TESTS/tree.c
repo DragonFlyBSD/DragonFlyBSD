@@ -6,6 +6,7 @@
  * Copyright (c) 1998, Anatoly A. Orehovsky
  *
  * $FreeBSD: src/gnu/lib/libdialog/TESTS/tree.c,v 1.2 2000/01/10 11:52:10 phantom Exp $
+ * $DragonFly: src/gnu/lib/libdialog/TESTS/tree.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
  */
 
 #include <stdio.h>

@@ -38,6 +38,7 @@
 /*
  * $Id: vinumhdr.h,v 1.18 2001/01/04 00:14:14 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumhdr.h,v 1.16.2.1 2001/03/13 02:59:43 grog Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumhdr.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 #include <sys/param.h>

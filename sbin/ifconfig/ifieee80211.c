@@ -23,6 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifieee80211.c,v 1.1.2.3 2002/02/07 15:12:37 ambrisko Exp $
+ * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
 
 /*-

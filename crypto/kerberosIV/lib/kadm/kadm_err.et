@@ -8,6 +8,7 @@
 # Kerberos administration server error table
 #
 # $FreeBSD: src/crypto/kerberosIV/lib/kadm/kadm_err.et,v 1.2 1999/09/19 21:56:05 markm Exp $
+# $DragonFly: src/crypto/kerberosIV/lib/kadm/Attic/kadm_err.et,v 1.2 2003/06/17 04:24:36 dillon Exp $
 #
 	et	kadm
 

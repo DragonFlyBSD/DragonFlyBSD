@@ -14,6 +14,7 @@
  * its use.
  *
  * $FreeBSD: src/gnu/lib/libdialog/TESTS/menu2.c,v 1.8 2000/01/10 11:52:07 phantom Exp $
+ * $DragonFly: src/gnu/lib/libdialog/TESTS/menu2.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
  */
 
 #include <stdio.h>

@@ -40,6 +40,7 @@
  *
  * $Id: fsinfo.c,v 1.4 1999/02/04 07:24:44 ezk Exp $
  * $FreeBSD: src/contrib/amd/fsinfo/fsinfo.c,v 1.4 1999/09/15 05:45:15 obrien Exp $
+ * $DragonFly: src/contrib/amd/fsinfo/fsinfo.c,v 1.2 2003/06/17 04:23:57 dillon Exp $
  *
  */
 

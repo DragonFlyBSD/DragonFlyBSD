@@ -17,6 +17,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/magic.h,v 1.7 1999/08/28 01:19:05 peter Exp $
+ * $DragonFly: src/usr.sbin/pppd/magic.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 void magic_init __P((void));	/* Initialize the magic number generator */

@@ -15,10 +15,10 @@ const
    universe.c (temporal_reality): Began Time.
    */
 
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/as/version.c,v 1.8 1999/09/06 07:28:25 peter Exp $";
-#endif
-
+/*
+ * $FreeBSD: src/gnu/usr.bin/as/version.c,v 1.8 1999/09/06 07:28:25 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/as/Attic/version.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
+ */
 char version_string[] = "GNU assembler version 1.92.3,\n$FreeBSD: src/gnu/usr.bin/as/version.c,v 1.8 1999/09/06 07:28:25 peter Exp $\n";
 
 #ifdef HO_VMS

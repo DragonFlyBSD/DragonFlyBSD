@@ -25,6 +25,7 @@
  *
  *	from: Mach, Revision 2.2  92/04/04  11:34:26  rpd
  * $FreeBSD: src/sys/boot/pc98/boot2/serial_16550.S,v 1.1.2.2 2002/03/08 13:00:22 nyan Exp $
+ * $DragonFly: src/sys/boot/pc98/boot2/Attic/serial_16550.S,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 /*

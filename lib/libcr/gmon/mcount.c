@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)mcount.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/gmon/mcount.c,v 1.17 1999/12/29 05:04:13 peter Exp $
+ * $DragonFly: src/lib/libcr/gmon/Attic/mcount.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#if !defined(lint) && !defined(_KERNEL) && defined(LIBC_SCCS)
-#if 0
-static char sccsid[] = "@(#)mcount.c	8.1 (Berkeley) 6/4/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/gmon/mcount.c,v 1.17 1999/12/29 05:04:13 peter Exp $";
-#endif
 
 #include <sys/param.h>
 #include <sys/gmon.h>

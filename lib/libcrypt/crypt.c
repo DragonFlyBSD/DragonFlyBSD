@@ -24,13 +24,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcrypt/crypt.c,v 1.14.2.2 2001/05/24 12:20:02 markm Exp $
+ * $DragonFly: src/lib/libcrypt/crypt.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
  *
+ * $FreeBSD: src/lib/libcrypt/crypt.c,v 1.14.2.2 2001/05/24 12:20:02 markm Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static const char rcsid[] =
-"$FreeBSD: src/lib/libcrypt/crypt.c,v 1.14.2.2 2001/05/24 12:20:02 markm Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <string.h>

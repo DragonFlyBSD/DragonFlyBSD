@@ -5,6 +5,7 @@
  * generation being slated to essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/ftp.c,v 1.37.2.8 2002/10/24 13:00:52 nyan Exp $
+ * $DragonFly: src/release/sysinstall/Attic/ftp.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.

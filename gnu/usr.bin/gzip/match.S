@@ -10,6 +10,7 @@
  */
  
 /* $FreeBSD: src/gnu/usr.bin/gzip/match.S,v 1.7 1999/08/27 23:35:52 peter Exp $ */
+/* $DragonFly: src/gnu/usr.bin/gzip/Attic/match.S,v 1.2 2003/06/17 04:25:46 dillon Exp $ */
 
 /* Preprocess with -DNO_UNDERLINE if your C compiler does not prefix
  * external symbols with an underline character '_'.

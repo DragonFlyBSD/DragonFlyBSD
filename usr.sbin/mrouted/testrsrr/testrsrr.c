@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/mrouted/testrsrr/testrsrr.c,v 1.4 1999/08/28 01:17:17 peter Exp $
+ * $DragonFly: src/usr.sbin/mrouted/testrsrr/testrsrr.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
 #include <stddef.h>
 #include <stdlib.h>

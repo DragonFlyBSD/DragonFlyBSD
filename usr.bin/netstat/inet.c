@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)inet.c	8.5 (Berkeley) 5/24/95
+ * $FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.9 2001/12/17 20:03:59 jlemon Exp $
+ * $DragonFly: src/usr.bin/netstat/inet.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
-
-#ifndef lint
-/*
-static char sccsid[] = "@(#)inet.c	8.5 (Berkeley) 5/24/95";
-*/
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.9 2001/12/17 20:03:59 jlemon Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/queue.h>

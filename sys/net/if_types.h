@@ -32,6 +32,7 @@
  *
  *	@(#)if_types.h	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sys/net/if_types.h,v 1.8.2.4 2002/12/23 23:02:21 kbyanc Exp $
+ * $DragonFly: src/sys/net/if_types.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
  * $NetBSD: if_types.h,v 1.16 2000/04/19 06:30:53 itojun Exp $
  */
 

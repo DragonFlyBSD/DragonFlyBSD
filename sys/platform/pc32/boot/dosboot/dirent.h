@@ -33,6 +33,7 @@
  *	@(#)dirent.h	5.18 (Berkeley) 2/23/91
  *
  * $FreeBSD: src/sys/i386/boot/dosboot/dirent.h,v 1.2 1999/12/29 04:32:50 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/dirent.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #ifndef _DIRENT_H_

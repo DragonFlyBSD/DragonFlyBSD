@@ -51,3 +51,4 @@ $_fini..ng:
 
 .section	.rodata
 	.ascii "$FreeBSD: src/lib/csu/alpha/crti.S,v 1.1.2.2 2001/08/01 09:30:36 obrien Exp $\0"
+	.ascii "$DragonFly: src/lib/csu/alpha/Attic/crti.S,v 1.2 2003/06/17 04:26:41 dillon Exp $\0"

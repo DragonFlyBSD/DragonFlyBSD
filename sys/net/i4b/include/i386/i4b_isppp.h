@@ -21,6 +21,7 @@
  * $Id: i4b_isppp.h,v 1.5 2000/07/18 15:05:37 hm Exp $
  *
  * $FreeBSD: src/sys/i386/include/i4b_isppp.h,v 1.1.2.2 2001/09/28 07:43:19 gj Exp $
+ * $DragonFly: src/sys/net/i4b/include/i386/i4b_isppp.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef _I4B_ISPPP_H_

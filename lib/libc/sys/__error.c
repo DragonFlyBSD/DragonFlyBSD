@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/sys/__error.c,v 1.1.8.1 2001/03/05 11:45:51 obrien Exp $
+ * $DragonFly: src/lib/libc/sys/Attic/__error.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
  */
 
 #include <sys/cdefs.h>

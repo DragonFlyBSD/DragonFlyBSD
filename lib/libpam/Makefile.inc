@@ -23,6 +23,7 @@
 # SUCH DAMAGE.
 #
 #	$FreeBSD: src/lib/libpam/Makefile.inc,v 1.1.1.1 1998/11/18 01:44:37 jdp Exp $
+#	$DragonFly: src/lib/libpam/Attic/Makefile.inc,v 1.2 2003/06/17 04:26:50 dillon Exp $
 
 SHLIB_MAJOR=	1
 SHLIB_MINOR=	0

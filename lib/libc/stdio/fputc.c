@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)fputc.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/stdio/fputc.c,v 1.7 1999/08/28 00:01:03 peter Exp $
+ * $DragonFly: src/lib/libc/stdio/fputc.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)fputc.c	8.1 (Berkeley) 6/4/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/stdio/fputc.c,v 1.7 1999/08/28 00:01:03 peter Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <stdio.h>
 #include "libc_private.h"

@@ -30,6 +30,7 @@
  *	BSDI cwd.h,v 2.2 1996/04/08 19:32:26 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/cwd.h,v 1.2.2.2 2002/04/25 11:04:50 tg Exp $
+ * $DragonFly: src/usr.bin/doscmd/cwd.h,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
 
 static inline u_char *

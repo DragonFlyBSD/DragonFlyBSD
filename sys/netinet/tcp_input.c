@@ -32,6 +32,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/

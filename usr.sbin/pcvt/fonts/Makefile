@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/pcvt/fonts/Makefile,v 1.10.2.1 2002/02/18 16:24:27 ru Exp $
+# $DragonFly: src/usr.sbin/pcvt/fonts/Attic/Makefile,v 1.2 2003/06/17 04:29:59 dillon Exp $
 
 .SUFFIXES: .uu
 .uu:

@@ -28,6 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/include/link.h,v 1.20.2.2 2003/02/20 20:42:45 kan Exp $
+ * $DragonFly: src/include/link.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 /*

@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/daemon.c,v 1.3 2000/01/27 23:06:14 jasone Exp $
+ * $DragonFly: src/lib/libc/gen/daemon.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)daemon.c	8.1 (Berkeley) 6/4/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)daemon.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <fcntl.h>
 #include <paths.h>

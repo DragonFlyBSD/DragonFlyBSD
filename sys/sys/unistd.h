@@ -32,6 +32,7 @@
  *
  *	@(#)unistd.h	8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sys/sys/unistd.h,v 1.22.2.2 2000/08/22 01:46:30 jhb Exp $
+ * $DragonFly: src/sys/sys/unistd.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _SYS_UNISTD_H_

@@ -35,6 +35,7 @@
  *
  *	@(#)nfsdiskless.h	8.2 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfsdiskless.h,v 1.11 1999/08/28 00:50:02 peter Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsdiskless.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 
 

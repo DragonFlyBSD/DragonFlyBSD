@@ -32,6 +32,7 @@
  *
  *	@(#)mtree.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/mtree.h,v 1.5 1999/12/09 20:38:35 joe Exp $
+ * $DragonFly: src/usr.sbin/mtree/mtree.h,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
 
 #include <string.h>

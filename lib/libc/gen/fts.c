@@ -33,15 +33,11 @@
  * $OpenBSD: fts.c,v 1.22 1999/10/03 19:22:22 millert Exp $
  *
  * $FreeBSD: src/lib/libc/gen/fts.c,v 1.14.2.4 2001/06/01 22:00:34 kris Exp $
+ * $DragonFly: src/lib/libc/gen/fts.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)fts.c	8.6 (Berkeley) 8/14/94
+ * $FreeBSD: src/lib/libc/gen/fts.c,v 1.14.2.4 2001/06/01 22:00:34 kris Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)fts.c	8.6 (Berkeley) 8/14/94";
-#else
-static char rcsid[] = "$FreeBSD: src/lib/libc/gen/fts.c,v 1.14.2.4 2001/06/01 22:00:34 kris Exp $";
-#endif
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

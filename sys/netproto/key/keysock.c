@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keysock.c,v 1.1.2.4 2003/01/11 19:10:59 ume Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*

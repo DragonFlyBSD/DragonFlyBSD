@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_lnc.h,v 1.14.2.1 2000/06/18 08:03:51 gj Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 #include <i386/isa/ic/Am7990.h>

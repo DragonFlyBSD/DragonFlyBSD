@@ -29,6 +29,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)res_debug.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/net/res_debug.c,v 1.18.2.1 2001/06/15 22:08:28 ume Exp $
+ * $DragonFly: src/lib/libc/net/res_debug.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 
 /*
@@ -92,11 +96,6 @@
  * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
  * SOFTWARE.
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)res_debug.c	8.1 (Berkeley) 6/4/93";
-static char rcsid[] = "$FreeBSD: src/lib/libc/net/res_debug.c,v 1.18.2.1 2001/06/15 22:08:28 ume Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/param.h>

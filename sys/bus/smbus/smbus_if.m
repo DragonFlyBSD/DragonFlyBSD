@@ -24,6 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/dev/smbus/smbus_if.m,v 1.5 1999/08/28 00:42:30 peter Exp $
+# $DragonFly: src/sys/bus/smbus/smbus_if.m,v 1.2 2003/06/17 04:28:29 dillon Exp $
 #
 
 INTERFACE smbus;

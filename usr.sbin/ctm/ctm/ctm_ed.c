@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/usr.sbin/ctm/ctm/ctm_ed.c,v 1.10 1999/08/28 01:15:59 peter Exp $
+ * $DragonFly: src/usr.sbin/ctm/ctm/Attic/ctm_ed.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  *
  */
 

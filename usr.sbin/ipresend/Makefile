@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/ipresend/Makefile,v 1.4.2.3 2001/11/14 14:15:04 guido Exp $
+# $DragonFly: src/usr.sbin/ipresend/Makefile,v 1.2 2003/06/17 04:29:55 dillon Exp $
 
 .PATH:	${.CURDIR}/../../contrib/ipfilter/ipsend \
 	${.CURDIR}/../../contrib/ipfilter

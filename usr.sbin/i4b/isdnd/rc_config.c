@@ -28,6 +28,7 @@
  *	-----------------------------------
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/rc_config.c,v 1.6.2.3 2002/04/24 18:50:07 joerg Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/rc_config.c,v 1.2 2003/06/17 04:29:54 dillon Exp $
  *
  *      last edit-date: [Fri Jul 20 19:16:27 2001]
  *

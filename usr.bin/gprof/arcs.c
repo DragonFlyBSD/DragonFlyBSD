@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)arcs.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/gprof/arcs.c,v 1.6 1999/08/28 01:01:54 peter Exp $
+ * $DragonFly: src/usr.bin/gprof/arcs.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)arcs.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/gprof/arcs.c,v 1.6 1999/08/28 01:01:54 peter Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include "gprof.h"

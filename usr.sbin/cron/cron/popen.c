@@ -17,19 +17,14 @@
  * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
+ * @(#)popen.c	5.7 (Berkeley) 2/14/89
+ * $FreeBSD: src/usr.sbin/cron/cron/popen.c,v 1.7.2.3 2000/12/11 01:03:31 obrien Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/popen.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 
 /* this came out of the ftpd sources; it's been modified to avoid the
  * globbing stuff since we don't need it.  also execvp instead of execv.
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)popen.c	5.7 (Berkeley) 2/14/89";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/cron/cron/popen.c,v 1.7.2.3 2000/12/11 01:03:31 obrien Exp $";
-#endif /* not lint */
 
 #include "cron.h"
 #include <sys/signal.h>

@@ -32,12 +32,10 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/netstat/netgraph.c,v 1.3.2.2 2001/08/10 09:07:09 ru Exp $
+ * $DragonFly: src/usr.bin/netstat/netgraph.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ *
+ * $Id: atalk.c,v 1.11 1998/07/06 21:01:22 bde Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-	"$Id: atalk.c,v 1.11 1998/07/06 21:01:22 bde Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/queue.h>

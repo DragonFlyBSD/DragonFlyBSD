@@ -32,6 +32,7 @@
  *
  *	from: @(#)endian.h	7.8 (Berkeley) 4/3/91
  * $FreeBSD: src/sys/i386/include/endian.h,v 1.18 1999/12/29 04:33:01 peter Exp $
+ * $DragonFly: src/sys/cpu/i386/include/endian.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef _MACHINE_ENDIAN_H_

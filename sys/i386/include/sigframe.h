@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/sigframe.h,v 1.5 1999/12/04 10:40:24 marcel Exp $
+ * $DragonFly: src/sys/i386/include/Attic/sigframe.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 #ifndef _MACHINE_SIGFRAME_H_

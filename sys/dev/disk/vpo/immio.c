@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/immio.c,v 1.10.2.3 2001/10/02 05:27:20 nsouch Exp $
+ * $DragonFly: src/sys/dev/disk/vpo/immio.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  *
  */
 

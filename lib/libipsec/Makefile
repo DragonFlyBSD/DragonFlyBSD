@@ -25,6 +25,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 # $FreeBSD: src/lib/libipsec/Makefile,v 1.2.2.3 2001/04/25 10:04:30 ru Exp $
+# $DragonFly: src/lib/libipsec/Makefile,v 1.2 2003/06/17 04:26:49 dillon Exp $
 
 LIB=	ipsec
 SHLIB_MAJOR= 1

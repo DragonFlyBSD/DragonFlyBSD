@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libc/gen/sysctlbyname.c,v 1.4 1999/08/27 23:59:01 peter Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/sysctlbyname.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  *
  */
 #include <sys/types.h>

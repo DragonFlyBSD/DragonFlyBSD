@@ -25,13 +25,11 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $OpenBSD: readpassphrase.c,v 1.12 2001/12/15 05:41:00 millert Exp $
+ * $FreeBSD: src/lib/libc/gen/readpassphrase.c,v 1.6.2.2 2002/06/30 13:54:26 des Exp $
+ * $DragonFly: src/lib/libc/gen/readpassphrase.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static const char rcsid[] = "$OpenBSD: readpassphrase.c,v 1.12 2001/12/15 05:41:00 millert Exp $";
-#endif /* LIBC_SCCS and not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/gen/readpassphrase.c,v 1.6.2.2 2002/06/30 13:54:26 des Exp $");
 
 #include <ctype.h>
 #include <errno.h>

@@ -21,12 +21,10 @@
  *
  * Modem chat module - send/expect style functions for getty
  * For semi-intelligent modem handling.
+ *
+ * $FreeBSD: src/libexec/getty/chat.c,v 1.6 1999/08/28 00:09:34 peter Exp $
+ * $DragonFly: src/libexec/getty/chat.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/libexec/getty/chat.c,v 1.6 1999/08/28 00:09:34 peter Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

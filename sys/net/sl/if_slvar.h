@@ -33,6 +33,7 @@
  *	@(#)if_slvar.h	8.3 (Berkeley) 2/1/94
  *
  * $FreeBSD: src/sys/net/if_slvar.h,v 1.16 1999/08/28 00:48:21 peter Exp $
+ * $DragonFly: src/sys/net/sl/if_slvar.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 #ifndef _NET_IF_SLVAR_H_

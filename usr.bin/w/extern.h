@@ -32,6 +32,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/w/extern.h,v 1.2.6.1 2002/03/12 19:51:51 phantom Exp $
+ * $DragonFly: src/usr.bin/w/extern.h,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
 
 extern int use_ampm;

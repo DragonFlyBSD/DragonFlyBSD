@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/crypto/md5.h,v 1.1.2.1 2000/07/15 07:14:18 kris Exp $	*/
+/*	$DragonFly: src/sys/crypto/md5.h,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
 /*	$KAME: md5.h,v 1.4 2000/03/27 04:36:22 sumikawa Exp $	*/
 
 /*

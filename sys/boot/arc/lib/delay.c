@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/arc/lib/delay.c,v 1.2 1999/08/28 00:39:37 peter Exp $
+ * $DragonFly: src/sys/boot/arc/lib/Attic/delay.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 
 #include <errno.h>

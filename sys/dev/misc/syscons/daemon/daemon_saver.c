@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/daemon/daemon_saver.c,v 1.18.2.2 2001/05/06 05:44:29 nyan Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/daemon/Attic/daemon_saver.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
  */
 
 #include <sys/param.h>

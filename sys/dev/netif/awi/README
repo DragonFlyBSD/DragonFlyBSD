@@ -1,5 +1,6 @@
 # $Id: README,v 1.19 2000/03/24 08:13:24 onoe Exp $
 # $FreeBSD: src/sys/dev/awi/README,v 1.1.2.1 2000/12/07 04:09:39 imp Exp $
+# $DragonFly: src/sys/dev/netif/awi/Attic/README,v 1.2 2003/06/17 04:28:22 dillon Exp $
 
 ===== Configuration
 	ifconfig awi0 link0

@@ -38,6 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_mib.c,v 1.29.2.4 2001/07/30 23:28:00 peter Exp $
+ * $DragonFly: src/sys/kern/kern_mib.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include <sys/param.h>

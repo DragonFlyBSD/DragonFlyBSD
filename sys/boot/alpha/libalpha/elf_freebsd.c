@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/boot/alpha/libalpha/elf_freebsd.c,v 1.8.2.2 2001/03/04 05:21:25 obrien Exp $ */
+/* $DragonFly: src/sys/boot/alpha/libalpha/Attic/elf_freebsd.c,v 1.2 2003/06/17 04:28:16 dillon Exp $ */
 /* $NetBSD: loadfile.c,v 1.10 1998/06/25 06:45:46 ross Exp $ */
 
 /*-

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932var.h,v 1.1.2.2 2003/02/11 08:52:00 nyan Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932var.h,v 1.2 2003/06/17 04:28:29 dillon Exp $	*/
 /*	$NecBSD: dp83932var.h,v 1.3 1999/01/24 01:39:51 kmatsuda Exp $	*/
 /*	$NetBSD: if_snvar.h,v 1.12 1998/05/01 03:42:47 scottr Exp $	*/
 

@@ -25,6 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.serial,v 1.14.2.5 2002/05/07 07:47:17 sobomax Exp $
+# $DragonFly: src/etc/Attic/rc.serial,v 1.2 2003/06/17 04:24:45 dillon Exp $
 #
 
 # Change some defaults for serial devices.

@@ -1,4 +1,5 @@
 #	$FreeBSD: src/tools/tools/crypto/Makefile,v 1.2.2.2 2003/06/03 00:13:13 sam Exp $
+#	$DragonFly: src/tools/tools/crypto/Makefile,v 1.2 2003/06/17 04:29:11 dillon Exp $
 
 ALL=	cryptotest cryptokeytest cryptostats \
 	ubsecstats hifnstats ipsecstats

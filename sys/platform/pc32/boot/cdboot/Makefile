@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/i386/boot/cdboot/Makefile,v 1.7.2.1 2002/08/07 16:31:55 ru Exp $
+# $DragonFly: src/sys/platform/pc32/boot/cdboot/Attic/Makefile,v 1.2 2003/06/17 04:28:34 dillon Exp $
 #
 
 PROG=	boot

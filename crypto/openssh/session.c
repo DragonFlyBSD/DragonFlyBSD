@@ -35,6 +35,7 @@
 #include "includes.h"
 RCSID("$OpenBSD: session.c,v 1.150 2002/09/16 19:55:33 stevesk Exp $");
 RCSID("$FreeBSD: src/crypto/openssh/session.c,v 1.4.2.17 2003/02/03 17:31:07 des Exp $");
+RCSID("$DragonFly: src/crypto/openssh/Attic/session.c,v 1.2 2003/06/17 04:24:36 dillon Exp $");
 
 #include "ssh.h"
 #include "ssh1.h"

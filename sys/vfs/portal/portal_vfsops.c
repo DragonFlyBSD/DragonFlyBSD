@@ -36,6 +36,7 @@
  *	@(#)portal_vfsops.c	8.11 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vfsops.c,v 1.26.2.2 2001/07/26 20:37:16 iedowse Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 /*

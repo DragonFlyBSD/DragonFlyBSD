@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_aironet_ieee.h,v 1.1.2.7 2003/02/01 03:25:12 ambrisko Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_aironet_ieee.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 #ifndef _IF_AIRONET_IEEE_H

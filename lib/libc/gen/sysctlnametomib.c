@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/sysctlnametomib.c,v 1.1.2.1 2001/03/05 08:13:28 obrien Exp $
+ * $DragonFly: src/lib/libc/gen/sysctlnametomib.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
 
 #include <sys/types.h>

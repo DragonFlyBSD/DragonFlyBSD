@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_rman.c,v 1.10.2.1 2001/06/05 08:06:08 imp Exp $
+ * $DragonFly: src/sys/kern/subr_rman.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 /*

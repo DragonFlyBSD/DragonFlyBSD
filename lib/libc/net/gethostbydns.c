@@ -51,13 +51,12 @@
  * SOFTWARE.
  * -
  * --Copyright--
+ *
+ * @(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93
+ * $From: Id: gethnamaddr.c,v 8.23 1998/04/07 04:59:46 vixie Exp $
+ * $FreeBSD: src/lib/libc/net/gethostbydns.c,v 1.27.2.5 2002/11/02 18:54:57 ume Exp $
+ * $DragonFly: src/lib/libc/net/gethostbydns.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93";
-static char fromrcsid[] = "From: Id: gethnamaddr.c,v 8.23 1998/04/07 04:59:46 vixie Exp $";
-static char rcsid[] = "$FreeBSD: src/lib/libc/net/gethostbydns.c,v 1.27.2.5 2002/11/02 18:54:57 ume Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/param.h>

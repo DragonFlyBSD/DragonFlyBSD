@@ -36,6 +36,7 @@
  *
  * $Whistle: msg.c,v 1.2 1999/11/29 23:38:35 archie Exp $
  * $FreeBSD: src/usr.sbin/ngctl/msg.c,v 1.1.4.1 2000/07/27 22:05:36 archie Exp $
+ * $DragonFly: src/usr.sbin/ngctl/msg.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
 
 #include "ngctl.h"

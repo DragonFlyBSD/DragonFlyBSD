@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.3.2.2 2002/07/02 04:10:51 jdp Exp $
+ * $DragonFly: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
 
 #ifndef RTLD_MACHDEP_H

@@ -26,19 +26,15 @@
 % * Sun Microsystems, Inc.
 % * 2550 Garcia Avenue
 % * Mountain View, California  94043
+% *
+% * from @(#)ypupdate_prot.x	1.3 91/03/11 TIRPC 1.0
+% * $FreeBSD: src/include/rpcsvc/ypupdate_prot.x,v 1.3 1999/08/27 23:45:13 peter Exp $
+% * $DragonFly: src/include/rpcsvc/ypupdate_prot.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
 % */
 
 %/*
 % * Copyright (c) 1986, 1990 by Sun Microsystems, Inc.
 % */
-%
-%/* from @(#)ypupdate_prot.x	1.3 91/03/11 TIRPC 1.0 */
-#ifndef RPC_HDR
-%#ifndef lint
-%static const char rcsid[] =
-%  "$FreeBSD: src/include/rpcsvc/ypupdate_prot.x,v 1.3 1999/08/27 23:45:13 peter Exp $";
-%#endif
-#endif
 %
 %/*
 % * Compiled from ypupdate_prot.x using rpcgen

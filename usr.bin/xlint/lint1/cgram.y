@@ -30,11 +30,9 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $NetBSD: cgram.y,v 1.8 1995/10/02 17:31:35 jpo Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$NetBSD: cgram.y,v 1.8 1995/10/02 17:31:35 jpo Exp $";
-#endif
 
 #include <stdlib.h>
 #include <limits.h>

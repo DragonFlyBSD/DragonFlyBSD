@@ -35,6 +35,7 @@
  *
  *	@(#)runetype.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/runetype.h,v 1.3.8.1 2002/08/08 02:42:29 imp Exp $
+ * $DragonFly: src/include/Attic/runetype.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef	_RUNETYPE_H_

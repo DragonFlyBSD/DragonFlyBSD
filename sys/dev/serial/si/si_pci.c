@@ -18,6 +18,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si_pci.c,v 1.2 2000/01/24 08:11:10 peter Exp $
+ * $DragonFly: src/sys/dev/serial/si/si_pci.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 #include <sys/param.h>

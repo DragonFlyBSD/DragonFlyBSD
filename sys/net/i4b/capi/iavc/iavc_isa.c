@@ -23,6 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_isa.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_isa.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
  */
 
 #include "iavc.h"

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_cm.c,v 1.6 1999/08/28 00:48:34 peter Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_cm.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 /*
@@ -36,11 +36,6 @@
  */
 
 #include <netatm/kern_include.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/atm_cm.c,v 1.6 1999/08/28 00:48:34 peter Exp $");
-#endif
-
 
 /*
  * Global variables

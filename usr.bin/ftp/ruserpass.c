@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/ruserpass.c,v 1.9 1999/08/28 01:01:34 peter Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/ruserpass.c,v 1.2 2003/06/17 04:29:26 dillon Exp $	*/
 /*	$NetBSD: ruserpass.c,v 1.14.2.1 1997/11/18 01:02:05 mellon Exp $	*/
 
 /*
@@ -32,17 +33,13 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)ruserpass.c	8.4 (Berkeley) 4/27/95
+ * $NetBSD: ruserpass.c,v 1.14.2.1 1997/11/18 01:02:05 mellon Exp $
+ * $FreeBSD: src/usr.bin/ftp/ruserpass.c,v 1.9 1999/08/28 01:01:34 peter Exp $
  */
 
 #include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)ruserpass.c	8.4 (Berkeley) 4/27/95";
-#else
-__RCSID("$FreeBSD: src/usr.bin/ftp/ruserpass.c,v 1.9 1999/08/28 01:01:34 peter Exp $");
-__RCSID_SOURCE("$NetBSD: ruserpass.c,v 1.14.2.1 1997/11/18 01:02:05 mellon Exp $");
-#endif
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

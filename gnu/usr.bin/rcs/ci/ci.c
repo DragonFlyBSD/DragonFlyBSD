@@ -28,6 +28,9 @@ Report problems and direct all questions to:
 */
 
 /*
+ * $FreeBSD: src/gnu/usr.bin/rcs/ci/ci.c,v 1.7 1999/08/27 23:36:38 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/ci/ci.c,v 1.2 2003/06/17 04:25:47 dillon Exp $
+ *
  * Revision 5.30  1995/06/16 06:19:24  eggert
  * Update FSF address.
  *
@@ -274,7 +277,7 @@ static struct hshentry newdelta;	/* new delta to be inserted	*/
 static struct stat workstat;
 static struct Symrev *assoclst, **nextassoc;
 
-mainProg(ciId, "ci", "$FreeBSD: src/gnu/usr.bin/rcs/ci/ci.c,v 1.7 1999/08/27 23:36:38 peter Exp $")
+mainProg(ciId, "ci", "$DragonFly: src/gnu/usr.bin/rcs/ci/ci.c,v 1.2 2003/06/17 04:25:47 dillon Exp $")
 {
 	static char const cmdusage[] =
 		"\nci usage: ci -{fIklMqru}[rev] -d[date] -mmsg -{nN}name -sstate -ttext -T -Vn -wwho -xsuff -zzone file ...";

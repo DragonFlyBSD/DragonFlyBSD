@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)pathconf.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/sbin/sysctl/pathconf.c,v 1.4 1999/08/28 00:14:30 peter Exp $
+ * $DragonFly: src/sbin/sysctl/Attic/pathconf.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)pathconf.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/sysctl/pathconf.c,v 1.4 1999/08/28 00:14:30 peter Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/sysctl.h>

@@ -1,5 +1,6 @@
 # Microsoft Visual C++ generated build script - Do not modify
 # $FreeBSD: src/sys/i386/boot/dosboot/fbsdboot.mak,v 1.3 1999/12/23 17:52:00 bde Exp $
+# $DragonFly: src/sys/i386/boot/dosboot/Attic/fbsdboot.mak,v 1.2 2003/06/17 04:28:34 dillon Exp $
 
 PROJ = FBSDBOOT
 DEBUG = 0

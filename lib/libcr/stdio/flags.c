@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)flags.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/stdio/flags.c,v 1.6.2.1 2001/03/05 10:51:22 obrien Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/flags.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)flags.c	8.1 (Berkeley) 6/4/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/stdio/flags.c,v 1.6.2.1 2001/03/05 10:51:22 obrien Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/file.h>

@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/pci/xrpu.c,v 1.19.2.1 2000/08/02 22:19:57 peter Exp $
+ * $DragonFly: src/sys/dev/misc/xrpu/Attic/xrpu.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  *
  * A very simple device driver for PCI cards based on Xilinx 6200 series
  * FPGA/RPU devices.  Current Functionality is to allow you to open and

@@ -29,14 +29,13 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)iso.c	8.1 (Berkeley) 6/6/93
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)iso.c	8.1 (Berkeley) 6/6/93";
-#endif /* not lint */
 
 /*
  * $FreeBSD: src/usr.bin/netstat/iso.c,v 1.4.2.2 2001/09/17 14:53:17 ru Exp $
+ * $DragonFly: src/usr.bin/netstat/iso.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
 /*******************************************************************************
 	          Copyright IBM Corporation 1987

@@ -24,6 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni.h,v 1.2 1999/08/28 00:41:43 peter Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.h,v 1.2 2003/06/17 04:28:26 dillon Exp $
  *
  */
 

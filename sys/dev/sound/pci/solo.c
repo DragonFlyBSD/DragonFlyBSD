@@ -21,6 +21,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pci/solo.c,v 1.9.2.8 2002/04/22 15:49:32 cg Exp $
+ * $DragonFly: src/sys/dev/sound/pci/solo.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -33,7 +36,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pci/solo.c,v 1.9.2.8 2002/04/22 15:49:32 cg Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/solo.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
 
 #define SOLO_DEFAULT_BUFSZ 16384
 #define ABS(x) (((x) < 0)? -(x) : (x))

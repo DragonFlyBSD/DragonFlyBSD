@@ -13,6 +13,7 @@
  * functioning of this software in any circumstances.
  *
  * $FreeBSD: src/sys/cam/cam_extend.h,v 1.3 1999/12/29 04:54:25 peter Exp $
+ * $DragonFly: src/sys/bus/cam/cam_extend.h,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 #ifndef _CAM_CAM_EXTEND_H

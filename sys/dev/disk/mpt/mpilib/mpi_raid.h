@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpilib/mpi_raid.h,v 1.1.2.2 2002/09/01 23:08:06 mjacob Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpilib/mpi_raid.h,v 1.2 2003/06/17 04:28:28 dillon Exp $ */
 /*
  * Copyright (c) 2000, 2001 by LSI Logic Corporation
  *

@@ -1,8 +1,3 @@
-#ifndef lint
-static const char *rcsid =
-"$FreeBSD: src/lib/libc/stdlib/strhash.c,v 1.8 1999/09/05 17:42:45 peter Exp $";
-#endif
-
 /*
  *
  *                      Copyright 1990
@@ -27,6 +22,8 @@ static const char *rcsid =
  *  advertising or publicity pertaining to distribution of the software
  *  without specific, written prior permission.
  *
+ * $FreeBSD: src/lib/libc/stdlib/strhash.c,v 1.8 1999/09/05 17:42:45 peter Exp $
+ * $DragonFly: src/lib/libc/stdlib/Attic/strhash.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
 
 /*

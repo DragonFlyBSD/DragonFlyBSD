@@ -4,6 +4,7 @@
 # portsinfo - Generate list of new ports for last two weeks.
 #
 # $FreeBSD: src/tools/tools/portsinfo/portsinfo.sh,v 1.5 1999/08/28 00:54:32 peter Exp $
+# $DragonFly: src/tools/tools/portsinfo/Attic/portsinfo.sh,v 1.2 2003/06/17 04:29:11 dillon Exp $
 
 PATH=/bin:/usr/bin:/usr/local/bin:$PATH; export PATH
 

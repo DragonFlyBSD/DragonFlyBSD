@@ -36,6 +36,7 @@
 #include <machine/asm.h>
 
 RCSID("$FreeBSD: src/lib/msun/i387/e_remainder.S,v 1.6.2.1 2000/07/10 09:16:28 obrien Exp $")
+RCSID("$DragonFly: src/lib/msun/i387/Attic/e_remainder.S,v 1.2 2003/06/17 04:26:52 dillon Exp $")
 
 ENTRY(__ieee754_remainder)
 	fldl	12(%esp)

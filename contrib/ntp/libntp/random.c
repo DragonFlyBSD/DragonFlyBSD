@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/contrib/ntp/libntp/random.c,v 1.1.1.1.2.1 2001/12/21 17:39:09 roberto Exp $
+ * $DragonFly: src/contrib/ntp/libntp/Attic/random.c,v 1.2 2003/06/17 04:24:04 dillon Exp $
  *
  */
 

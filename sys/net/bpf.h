@@ -39,6 +39,7 @@
  *	@(#)bpf.h	1.34 (LBL)     6/16/96
  *
  * $FreeBSD: src/sys/net/bpf.h,v 1.21.2.4 2002/07/05 14:40:00 fenner Exp $
+ * $DragonFly: src/sys/net/bpf.h,v 1.2 2003/06/17 04:28:47 dillon Exp $
  */
 
 #ifndef _NET_BPF_H_

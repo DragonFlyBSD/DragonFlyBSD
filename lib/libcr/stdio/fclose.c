@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)fclose.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/stdio/fclose.c,v 1.8 1999/11/21 22:34:57 dt Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/fclose.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)fclose.c	8.1 (Berkeley) 6/4/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/stdio/fclose.c,v 1.8 1999/11/21 22:34:57 dt Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <errno.h>
 #include <stdio.h>

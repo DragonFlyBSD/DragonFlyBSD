@@ -32,6 +32,7 @@
  *
  *	@(#)in.h	8.3 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/in.h,v 1.48.2.9 2002/12/01 14:03:10 sobomax Exp $
+ * $DragonFly: src/sys/netinet/in.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #ifndef _NETINET_IN_H_

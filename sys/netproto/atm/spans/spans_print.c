@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_print.c,v 1.6 1999/08/28 00:48:50 peter Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_print.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -39,10 +39,6 @@
 
 #include "spans_xdr.h"
 #include <netatm/spans/spans_var.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/spans/spans_print.c,v 1.6 1999/08/28 00:48:50 peter Exp $");
-#endif
 
 /*
  * If LONGPRINT is defined, every field of the SPANS message will be

@@ -39,6 +39,7 @@
  *
  * $Id: vinumlock.c,v 1.13 2000/05/02 23:25:02 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumlock.c,v 1.18.2.3 2001/04/04 06:27:11 grog Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumlock.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 #include <dev/vinum/vinumhdr.h>

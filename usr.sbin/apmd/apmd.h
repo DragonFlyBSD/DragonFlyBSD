@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/apmd/apmd.h,v 1.2.2.1 2001/08/13 17:30:30 nsayer Exp $
+ * $DragonFly: src/usr.sbin/apmd/apmd.h,v 1.2 2003/06/17 04:29:52 dillon Exp $
  */
 
 #define APMD_CONFIGFILE		"/etc/apmd.conf"

@@ -32,21 +32,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)cksum.c	8.2 (Berkeley) 4/28/95
+ * $FreeBSD: src/usr.bin/cksum/cksum.c,v 1.11.2.1 2001/07/30 10:16:29 dd Exp $
+ * $DragonFly: src/usr.bin/cksum/cksum.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1991, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)cksum.c	8.2 (Berkeley) 4/28/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/cksum/cksum.c,v 1.11.2.1 2001/07/30 10:16:29 dd Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 

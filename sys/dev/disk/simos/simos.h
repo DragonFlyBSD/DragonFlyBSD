@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/simos.h,v 1.2 1999/08/28 00:51:06 peter Exp $
+ * $DragonFly: src/sys/dev/disk/simos/Attic/simos.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /*

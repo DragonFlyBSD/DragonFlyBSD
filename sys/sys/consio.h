@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/consio.h,v 1.5.2.7 2002/09/15 22:30:46 dd Exp $
+ * $DragonFly: src/sys/sys/consio.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef	_SYS_CONSIO_H_

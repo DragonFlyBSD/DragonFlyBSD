@@ -32,6 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_

@@ -5,6 +5,7 @@
  * generation being essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/variable.c,v 1.30.2.3 2001/09/27 06:57:45 murray Exp $
+ * $DragonFly: src/release/sysinstall/Attic/variable.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.

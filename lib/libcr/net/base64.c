@@ -38,11 +38,11 @@
  * DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER ARISING
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE, EVEN
  * IF IBM IS APPRISED OF THE POSSIBILITY OF SUCH DAMAGES.
- */
 
-#if !defined(LINT) && !defined(CODECENTER)
-static char rcsid[] = "$FreeBSD: src/lib/libc/net/base64.c,v 1.4 1999/11/04 04:30:43 ache Exp $";
-#endif /* not lint */
+/*
+ * $FreeBSD: src/lib/libc/net/base64.c,v 1.4 1999/11/04 04:30:43 ache Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/base64.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ */
 
 #include <sys/types.h>
 #include <sys/param.h>

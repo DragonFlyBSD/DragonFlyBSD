@@ -1,4 +1,5 @@
 /* $FreeBSD: src/gnu/lib/libstdc++/_G_config.h,v 1.9 2000/01/25 12:23:13 obrien Exp $ */
+/* $DragonFly: src/gnu/lib/libstdc++/Attic/_G_config.h,v 1.2 2003/06/17 04:25:44 dillon Exp $ */
 
 /* XXX _G_VTABLE_LABEL_PREFIX is different between ELF and a.out */
 

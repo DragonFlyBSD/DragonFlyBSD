@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xlreg.h,v 1.25.2.7 2003/01/25 23:00:10 silby Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xlreg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 #define XL_EE_READ	0x0080	/* read, 5 bit address */

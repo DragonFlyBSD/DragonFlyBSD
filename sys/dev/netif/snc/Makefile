@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/snc/Makefile,v 1.1.2.1 2000/10/21 03:30:04 nyan Exp $
+# $DragonFly: src/sys/dev/netif/snc/Attic/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
 
 .PATH:	${.CURDIR}/../../dev/snc
 KMOD	= if_snc

@@ -29,6 +29,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)login.c	8.4 (Berkeley) 4/2/94
+ * $FreeBSD: src/usr.bin/login/login.c,v 1.51.2.15 2003/04/29 14:10:41 des Exp $
+ * $DragonFly: src/usr.bin/login/login.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
 
 #if 0
@@ -36,14 +40,6 @@ static char copyright[] =
 "@(#) Copyright (c) 1980, 1987, 1988, 1991, 1993, 1994\n\
 	The Regents of the University of California.  All rights reserved.\n";
 #endif
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)login.c	8.4 (Berkeley) 4/2/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/login/login.c,v 1.51.2.15 2003/04/29 14:10:41 des Exp $";
-#endif /* not lint */
 
 /*
  * login [ name ]

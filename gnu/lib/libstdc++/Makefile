@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/lib/libstdc++/Makefile,v 1.24.2.1 2001/11/21 18:55:27 obrien Exp $
+# $DragonFly: src/gnu/lib/libstdc++/Attic/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
 
 SRCDIR=	${.CURDIR}/../../../contrib/libstdc++
 

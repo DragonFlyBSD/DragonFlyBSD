@@ -44,6 +44,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
+ * $FreeBSD: src/sys/dev/trm/trm.c,v 1.2.2.2 2002/12/19 20:34:45 cognet Exp $
+ * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
  */
 
 /*
@@ -55,9 +57,6 @@
  * Updated to compile under FreeBSD 5.0-CURRENT by Olivier Houchard
  * <doginou@ci0.org>, 2002-03-04
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/trm/trm.c,v 1.2.2.2 2002/12/19 20:34:45 cognet Exp $");
 
 #include <sys/param.h>
 

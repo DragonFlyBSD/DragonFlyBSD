@@ -1,6 +1,7 @@
 /*
  * $Id: krb_db.h,v 1.15 1996/12/17 20:34:32 assar Exp $ 
  * $FreeBSD: src/crypto/kerberosIV/lib/kdb/krb_db.h,v 1.3 1999/09/19 21:56:06 markm Exp $ 
+ * $DragonFly: src/crypto/kerberosIV/lib/kdb/Attic/krb_db.h,v 1.2 2003/06/17 04:24:36 dillon Exp $ 
  *
  * Copyright 1987, 1988 by the Massachusetts Institute of Technology. 
  *

@@ -48,6 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
  */
 
 /*

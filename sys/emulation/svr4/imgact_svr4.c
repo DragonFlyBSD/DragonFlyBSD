@@ -30,6 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/svr4/imgact_svr4.c,v 1.8.2.1 2001/11/03 01:41:09 ps Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/imgact_svr4.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 #include <sys/param.h>

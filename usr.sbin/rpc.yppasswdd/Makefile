@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/rpc.yppasswdd/Makefile,v 1.13.2.3 2002/08/07 16:32:02 ru Exp $
+# $DragonFly: src/usr.sbin/rpc.yppasswdd/Makefile,v 1.2 2003/06/17 04:30:02 dillon Exp $
 
 PROG=	rpc.yppasswdd
 SRCS=	pw_copy.c pw_util.c util.c yp_access.c yp_dblookup.c yp_dbwrite.c \

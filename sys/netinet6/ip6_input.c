@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*

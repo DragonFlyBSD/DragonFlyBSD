@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp_core.c,v 1.1.2.5 2003/01/11 19:10:59 ume Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipcomp_core.c,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
 /*	$KAME: ipcomp_core.c,v 1.25 2001/07/26 06:53:17 jinmei Exp $	*/
 
 /*

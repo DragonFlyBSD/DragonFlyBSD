@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)rec_get.c	8.9 (Berkeley) 8/18/94
+ * $FreeBSD: src/lib/libc/db/recno/rec_get.c,v 1.2.6.2 2001/01/02 09:11:10 obrien Exp $
+ * $DragonFly: src/lib/libc/db/recno/rec_get.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)rec_get.c	8.9 (Berkeley) 8/18/94";
-#endif /* LIBC_SCCS and not lint */
-
-#if !defined(lint)
-static char rcsid[] = "$FreeBSD: src/lib/libc/db/recno/rec_get.c,v 1.2.6.2 2001/01/02 09:11:10 obrien Exp $";
-#endif
 
 #include <sys/types.h>
 

@@ -28,6 +28,7 @@
  *	----------------------------------------------
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/controller.c,v 1.6.2.4 2002/04/25 12:30:06 gj Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/controller.c,v 1.2 2003/06/17 04:29:54 dillon Exp $
  *
  *      last edit-date: [Mon Dec 10 11:32:05 2001]
  *

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/ldpart.h,v 1.4.2.2 2002/08/12 11:17:37 ache Exp $
+ * $DragonFly: src/lib/libcr/locale/Attic/ldpart.h,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 
 #ifndef _LDPART_H_

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/sigpvc/sigpvc_subr.c,v 1.4 2000/01/17 20:49:46 mks Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/sigpvc/sigpvc_subr.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -38,10 +38,6 @@
 #include <netatm/kern_include.h>
 
 #include <netatm/sigpvc/sigpvc_var.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/sigpvc/sigpvc_subr.c,v 1.4 2000/01/17 20:49:46 mks Exp $");
-#endif
 
 extern struct sp_info sigpvc_vcpool;
 

@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/tools/3.0-upgrade/cvt-wtmp.c,v 1.6 1999/08/28 00:54:20 peter Exp $
+ * $DragonFly: src/tools/3.0-upgrade/Attic/cvt-wtmp.c,v 1.2 2003/06/17 04:29:10 dillon Exp $
  *
  */
 

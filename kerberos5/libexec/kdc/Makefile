@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberos5/libexec/kdc/Makefile,v 1.3.2.4 2002/07/25 09:33:15 ru Exp $
+# $DragonFly: src/kerberos5/libexec/kdc/Makefile,v 1.2 2003/06/17 04:26:18 dillon Exp $
 
 PROG=		kdc
 SRCS=		\

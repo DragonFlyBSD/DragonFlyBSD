@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.2 2003/06/17 04:28:37 dillon Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

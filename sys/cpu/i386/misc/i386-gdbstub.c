@@ -92,6 +92,7 @@
  *
  ****************************************************************************/
 /* $FreeBSD: src/sys/i386/i386/i386-gdbstub.c,v 1.13.2.1 2000/08/03 00:54:41 peter Exp $ */
+/* $DragonFly: src/sys/cpu/i386/misc/i386-gdbstub.c,v 1.2 2003/06/17 04:28:35 dillon Exp $ */
 
 #include <sys/param.h>
 #include <sys/reboot.h>

@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/cron/lib/Makefile,v 1.4.6.1 2002/07/19 18:46:29 ru Exp $
+# $DragonFly: src/usr.sbin/cron/lib/Makefile,v 1.2 2003/06/17 04:29:53 dillon Exp $
 
 LIB=	cron
 INTERNALLIB= YES

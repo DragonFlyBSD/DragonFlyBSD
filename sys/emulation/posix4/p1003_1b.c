@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/p1003_1b.c,v 1.5.2.2 2003/03/25 06:13:35 rwatson Exp $
+ * $DragonFly: src/sys/emulation/posix4/Attic/p1003_1b.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /* p1003_1b: Real Time common code.

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)syslog.c	8.5 (Berkeley) 4/29/95
+ * $FreeBSD: src/lib/libc/gen/syslog.c,v 1.21.2.3 2002/11/18 11:49:55 ru Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/syslog.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/*
-static char sccsid[] = "@(#)syslog.c	8.5 (Berkeley) 4/29/95";
-*/
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/gen/syslog.c,v 1.21.2.3 2002/11/18 11:49:55 ru Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/socket.h>

@@ -18,6 +18,7 @@
 # Makefile for vixie's cron
 #
 # $FreeBSD: src/usr.sbin/cron/doc/Makefile.vixie,v 1.5 1999/08/28 01:15:53 peter Exp $
+# $DragonFly: src/usr.sbin/cron/doc/Makefile.vixie,v 1.2 2003/06/17 04:29:53 dillon Exp $
 #
 # vix 03mar88 [moved to RCS, rest of log is in there]
 # vix 30mar87 [goodbye, time.c; hello, getopt]

@@ -8,11 +8,10 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
+ *
+ * $FreeBSD: src/lib/msun/src/k_tan.c,v 1.5 1999/08/28 00:06:42 peter Exp $
+ * $DragonFly: src/lib/msun/src/Attic/k_tan.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/lib/msun/src/k_tan.c,v 1.5 1999/08/28 00:06:42 peter Exp $";
-#endif
 
 /* __kernel_tan( x, y, k )
  * kernel tan function on [-pi/4, pi/4], pi/4 ~ 0.7854

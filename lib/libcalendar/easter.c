@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcalendar/easter.c,v 1.4 1999/08/28 00:04:04 peter Exp $
+ * $DragonFly: src/lib/libcalendar/easter.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 
 #include "calendar.h"

@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wbreg.h,v 1.7 1999/08/30 23:08:30 wpaul Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wbreg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /*

@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 4/18/94
 # $FreeBSD: src/usr.sbin/arp/Makefile,v 1.4.6.2 2002/03/15 22:50:14 mikeh Exp $
+# $DragonFly: src/usr.sbin/arp/Makefile,v 1.2 2003/06/17 04:29:52 dillon Exp $
 
 PROG=	arp
 WARNS?=	2

@@ -1,6 +1,7 @@
 # ex:ts=8
 #
 # $FreeBSD: src/contrib/ntp/FREEBSD-upgrade,v 1.2.2.1 2001/12/21 17:38:53 roberto Exp $
+# $DragonFly: src/contrib/ntp/Attic/FREEBSD-upgrade,v 1.2 2003/06/17 04:24:03 dillon Exp $
 
 NTP 4.1.0
 	originals can be found on ftp://louie.udel.edu/pub/ntp/testing

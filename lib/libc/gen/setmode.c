@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)setmode.c	8.2 (Berkeley) 3/25/94
+ * $FreeBSD: src/lib/libc/gen/setmode.c,v 1.5.2.1 2001/03/05 09:34:10 obrien Exp $
+ * $DragonFly: src/lib/libc/gen/setmode.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)setmode.c	8.2 (Berkeley) 3/25/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/gen/setmode.c,v 1.5.2.1 2001/03/05 09:34:10 obrien Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

@@ -1,12 +1,10 @@
 /*
  * Written by Manuel Bouyer <bouyer@netbsd.org>.
  * Public domain.
+ *
+ * $NetBSD: bswap32.c,v 1.1 1997/10/09 15:42:33 bouyer Exp $
+ * $NetBSD: bswap64.c,v 1.1 1997/10/09 15:42:33 bouyer Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char *rcsid = "$NetBSD: bswap32.c,v 1.1 1997/10/09 15:42:33 bouyer Exp $";
-static char *rcsid = "$NetBSD: bswap64.c,v 1.1 1997/10/09 15:42:33 bouyer Exp $";
-#endif
 
 #include <sys/types.h>
 

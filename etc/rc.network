@@ -25,6 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.network,v 1.74.2.43 2003/02/08 21:10:25 gshapiro Exp $
+# $DragonFly: src/etc/Attic/rc.network,v 1.2 2003/06/17 04:24:45 dillon Exp $
 #	From: @(#)netstart	5.9 (Berkeley) 3/30/91
 #
 

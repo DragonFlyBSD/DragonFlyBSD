@@ -31,17 +31,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/biff/biff.c,v 1.6.2.4 2002/08/09 02:56:31 johan Exp $
+ * $DragonFly: src/usr.bin/biff/biff.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ *
+ * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)biff.c	8.1 (Berkeley) 6/6/93
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1980, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static const char sccsid[] = "@(#)biff.c	8.1 (Berkeley) 6/6/93";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

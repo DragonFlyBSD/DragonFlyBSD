@@ -5,6 +5,7 @@
  *
  * $Id: ip_proxy.h,v 2.8.2.13 2002/07/04 11:07:37 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_proxy.h,v 1.9.2.5 2003/03/01 03:55:54 darrenr Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_proxy.h,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 
 #ifndef	__IP_PROXY_H__

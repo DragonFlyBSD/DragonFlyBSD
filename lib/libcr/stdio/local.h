@@ -36,6 +36,7 @@
  *	@(#)local.h	8.3 (Berkeley) 7/3/94
  *
  * $FreeBSD: src/lib/libc/stdio/local.h,v 1.1.1.2.6.1 2001/03/05 11:27:49 obrien Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/local.h,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
 
 /*

@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)pwd.c	8.3 (Berkeley) 4/1/94
+ * $FreeBSD: src/bin/pwd/pwd.c,v 1.9.2.3 2002/06/17 11:04:22 tjr Exp $
+ * $DragonFly: src/bin/pwd/pwd.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-static char const copyright[] =
-"@(#) Copyright (c) 1991, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)pwd.c	8.3 (Berkeley) 4/1/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/bin/pwd/pwd.c,v 1.9.2.3 2002/06/17 11:04:22 tjr Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

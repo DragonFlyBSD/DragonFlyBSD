@@ -32,6 +32,7 @@
  *
  *	@(#)vmmeter.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/vmmeter.h,v 1.21.2.2 2002/10/10 19:28:21 dillon Exp $
+ * $DragonFly: src/sys/sys/vmmeter.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _SYS_VMMETER_H_

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/sync.h,v 1.2 1999/08/28 01:18:45 peter Exp $
+ * $DragonFly: src/usr.sbin/ppp/sync.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 extern struct layer synclayer;

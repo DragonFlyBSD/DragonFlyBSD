@@ -31,6 +31,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/rc_scan.l,v 1.6.2.2 2001/08/10 23:17:32 obrien Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/rc_scan.l,v 1.2 2003/06/17 04:29:54 dillon Exp $
  *
  *      last edit-date: [Fri Jul 20 19:14:55 2001]
  *

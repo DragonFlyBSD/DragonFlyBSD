@@ -32,6 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)finger.c	8.5 (Berkeley) 5/4/95
+ * $FreeBSD: src/usr.bin/finger/finger.c,v 1.15.2.9 2002/07/29 18:52:52 ume Exp $
+ * $DragonFly: src/usr.bin/finger/finger.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
 
 /*
@@ -43,21 +48,6 @@
  *    - short day names (`Tue' printed instead of `Jun 21' if the
  *	login time is < 6 days.
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1989, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#if 0
-#ifndef lint
-static char sccsid[] = "@(#)finger.c	8.5 (Berkeley) 5/4/95";
-#endif
-#endif
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/finger/finger.c,v 1.15.2.9 2002/07/29 18:52:52 ume Exp $");
 
 /*
  * Finger prints out information about users.  It is not portable since

@@ -1,5 +1,6 @@
 #	$OpenBSD: ssh_config,v 1.16 2002/07/03 14:21:05 markus Exp $
 #	$FreeBSD: src/crypto/openssh/ssh_config,v 1.2.2.8 2003/02/11 12:11:54 des Exp $
+#	$DragonFly: src/crypto/openssh/Attic/ssh_config,v 1.2 2003/06/17 04:24:36 dillon Exp $
 
 # This is the ssh client system-wide configuration file.  See
 # ssh_config(5) for more information.  This file provides defaults for

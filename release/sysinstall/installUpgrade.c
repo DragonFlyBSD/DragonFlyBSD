@@ -5,6 +5,7 @@
  * generation being essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/installUpgrade.c,v 1.71.2.12 2002/06/10 04:28:53 obrien Exp $
+ * $DragonFly: src/release/sysinstall/Attic/installUpgrade.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.

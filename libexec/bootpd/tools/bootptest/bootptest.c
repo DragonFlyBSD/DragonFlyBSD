@@ -32,6 +32,7 @@
  * 09/93 Original developed by Gordon W. Ross <gwr@mc.com>
  *
  * $FreeBSD: src/libexec/bootpd/tools/bootptest/bootptest.c,v 1.7 1999/08/28 00:09:25 peter Exp $
+ * $DragonFly: src/libexec/bootpd/tools/bootptest/bootptest.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 char *usage = "bootptest [-h] server-name [vendor-data-template-file]";

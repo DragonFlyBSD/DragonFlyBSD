@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getttyent.c,v 1.11 1999/11/04 04:16:27 ache Exp $
+ * $DragonFly: src/lib/libc/gen/getttyent.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)getttyent.c	8.1 (Berkeley) 6/4/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)getttyent.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <ttyent.h>
 #include <stdio.h>

@@ -33,6 +33,7 @@
 # NOTE for iso-* (latin1) fonts: use TERM=cons25-iso8859-1
 #
 # $FreeBSD: src/usr.sbin/spkrtest/spkrtest.pl,v 1.7 1999/08/28 01:20:02 peter Exp $
+# $DragonFly: src/usr.sbin/spkrtest/Attic/spkrtest.pl,v 1.2 2003/06/17 04:30:03 dillon Exp $
 
 $title = qq{
 reveille   -- Reveille

@@ -13,11 +13,10 @@
  * Send bug reports, bug fixes, enhancements, requests, flames, etc., and
  * I'll try to keep a version up to date.  I can be reached as follows:
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
+ *
+ * $FreeBSD: src/usr.sbin/cron/lib/compat.c,v 1.6.2.1 2000/12/11 01:03:31 obrien Exp $
+ * $DragonFly: src/usr.sbin/cron/lib/compat.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
-
-#if !defined(lint) && !defined(LINT)
-static char rcsid[] = "$FreeBSD: src/usr.sbin/cron/lib/compat.c,v 1.6.2.1 2000/12/11 01:03:31 obrien Exp $";
-#endif
 
 /* vix 30dec93 [broke this out of misc.c - see RCS log for history]
  * vix 15jan87 [added TIOCNOTTY, thanks csg@pyramid]

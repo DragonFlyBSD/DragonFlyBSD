@@ -7,6 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)

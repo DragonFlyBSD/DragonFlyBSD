@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/amphyreg.h,v 1.1 1999/09/06 05:27:55 wpaul Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/amphyreg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 #ifndef _DEV_MII_AMTPHYREG_H_

@@ -32,19 +32,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)main.c	8.2 (Berkeley) 4/2/94
+ * $FreeBSD: src/usr.bin/window/main.c,v 1.5.6.2 2001/05/17 09:45:00 obrien Exp $
+ * $DragonFly: src/usr.bin/window/main.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
-
-#ifndef lint
-char copyright[] =
-"@(#) Copyright (c) 1983, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static char sccsid[] = "@(#)main.c	8.2 (Berkeley) 4/2/94";
-static char rcsid[] =
-  "$FreeBSD: src/usr.bin/window/main.c,v 1.5.6.2 2001/05/17 09:45:00 obrien Exp $";
-#endif /* not lint */
 
 #include "defs.h"
 #include <paths.h>

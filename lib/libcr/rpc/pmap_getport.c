@@ -25,13 +25,12 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)pmap_getport.c 1.9 87/08/11 Copyr 1984 Sun Micro
+ * @(#)pmap_getport.c	2.2 88/08/01 4.0 RPCSRC
+ * $FreeBSD: src/lib/libc/rpc/pmap_getport.c,v 1.10 2000/01/27 23:06:40 jasone Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/pmap_getport.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/*static char *sccsid = "from: @(#)pmap_getport.c 1.9 87/08/11 Copyr 1984 Sun Micro";*/
-/*static char *sccsid = "from: @(#)pmap_getport.c	2.2 88/08/01 4.0 RPCSRC";*/
-static char *rcsid = "$FreeBSD: src/lib/libc/rpc/pmap_getport.c,v 1.10 2000/01/27 23:06:40 jasone Exp $";
-#endif
 
 /*
  * pmap_getport.c

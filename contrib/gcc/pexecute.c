@@ -24,6 +24,7 @@ Boston, MA 02111-1307, USA.  */
    Don't change one without the other.  */
 
 /* $FreeBSD: src/contrib/gcc/pexecute.c,v 1.3 1999/11/04 10:26:31 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/pexecute.c,v 1.2 2003/06/17 04:24:01 dillon Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"

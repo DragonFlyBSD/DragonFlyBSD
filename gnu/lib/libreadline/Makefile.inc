@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/lib/libreadline/Makefile.inc,v 1.4.2.1 2000/07/06 23:11:07 ache Exp $
+# $DragonFly: src/gnu/lib/libreadline/Attic/Makefile.inc,v 1.2 2003/06/17 04:25:44 dillon Exp $
 
 SHLIB_MAJOR= 4
 SHLIB_MINOR= 1

@@ -31,13 +31,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)parse.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/indent/parse.c,v 1.3.2.3 2001/12/06 19:28:47 schweikh Exp $
+ * $DragonFly: src/usr.bin/indent/parse.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
 #if 0
-#ifndef lint
-static char sccsid[] = "@(#)parse.c	8.1 (Berkeley) 6/6/93";
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/indent/parse.c,v 1.3.2.3 2001/12/06 19:28:47 schweikh Exp $";
-#endif /* not lint */
 #endif
 
 #include <stdio.h>

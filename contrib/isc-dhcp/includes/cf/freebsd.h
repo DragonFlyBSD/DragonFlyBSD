@@ -41,6 +41,7 @@
  * ``http://www.nominum.com''.
  *
  * $FreeBSD: src/contrib/isc-dhcp/includes/cf/freebsd.h,v 1.3.4.2 2003/03/02 16:42:40 murray Exp $
+ * $DragonFly: src/contrib/isc-dhcp/includes/cf/Attic/freebsd.h,v 1.2 2003/06/17 04:24:02 dillon Exp $
  */
 
 #include <syslog.h>

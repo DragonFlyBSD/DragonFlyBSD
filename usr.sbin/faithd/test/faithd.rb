@@ -5,6 +5,7 @@
 #
 # $Id: faithd.rb,v 1.1.1.1 1999/08/08 23:29:31 itojun Exp $
 # $FreeBSD: src/usr.sbin/faithd/test/faithd.rb,v 1.1 2000/01/27 09:28:38 shin Exp $
+# $DragonFly: src/usr.sbin/faithd/test/faithd.rb,v 1.2 2003/06/17 04:29:53 dillon Exp $
 
 require "socket"
 require "thread"

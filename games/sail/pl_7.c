@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)pl_7.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/sail/pl_7.c,v 1.7 1999/11/30 03:49:37 billf Exp $
+ * $DragonFly: src/games/sail/pl_7.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)pl_7.c	8.1 (Berkeley) 5/31/93";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/sail/pl_7.c,v 1.7 1999/11/30 03:49:37 billf Exp $";
-#endif /* not lint */
 
 #include <sys/ttydefaults.h>
 #include <string.h>

@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)from: sysctl.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/sbin/sysctl/sysctl.c,v 1.25.2.11 2003/05/01 22:48:08 trhodes Exp $
+ * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)from: sysctl.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/sysctl/sysctl.c,v 1.25.2.11 2003/05/01 22:48:08 trhodes Exp $";
-#endif /* not lint */
 
 #ifdef __i386__
 #include <sys/diskslice.h>	/* used for bootdev parsing */

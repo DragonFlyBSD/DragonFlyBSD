@@ -1,5 +1,6 @@
 #!/bin/sh
 # $FreeBSD: src/sys/contrib/dev/fla/prep.fla.sh,v 1.2 1999/09/08 12:42:15 phk Exp $
+# $DragonFly: src/sys/contrib/dev/fla/Attic/prep.fla.sh,v 1.2 2003/06/17 04:28:20 dillon Exp $
 
 dev=fla0
 

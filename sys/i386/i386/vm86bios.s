@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86bios.s,v 1.15.2.1 2000/05/16 06:58:07 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm86bios.s,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */

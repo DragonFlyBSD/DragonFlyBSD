@@ -57,6 +57,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/reg_compare.c,v 1.11 1999/08/28 00:42:55 peter Exp $
+ * $DragonFly: src/sys/i386/gnu/fpemul/Attic/reg_compare.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
  *
  */
 

@@ -42,15 +42,11 @@
  *
  * From: Utah Hdr: rmpproto.c 3.1 92/07/06
  * Author: Jeff Forys, University of Utah CSS
+ *
+ * @(#)rmpproto.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/libexec/rbootd/rmpproto.c,v 1.6.2.1 2001/02/18 02:54:11 kris Exp $
+ * $DragonFly: src/libexec/rbootd/rmpproto.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)rmpproto.c	8.1 (Berkeley) 6/4/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/libexec/rbootd/rmpproto.c,v 1.6.2.1 2001/02/18 02:54:11 kris Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/time.h>

@@ -33,6 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 #include "opt_cpu.h"

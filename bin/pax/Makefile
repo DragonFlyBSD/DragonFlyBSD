@@ -1,5 +1,6 @@
 #       @(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/bin/pax/Makefile,v 1.5.2.1 2001/08/01 05:03:11 obrien Exp $
+# $DragonFly: src/bin/pax/Makefile,v 1.2 2003/06/17 04:22:50 dillon Exp $
 
 # To install on versions prior to BSD 4.4 the following may have to be
 # defined with CFLAGS +=

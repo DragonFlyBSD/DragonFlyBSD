@@ -23,6 +23,7 @@
  * documentation and/or software.
  *
  * $FreeBSD: src/lib/libmd/md5c.c,v 1.11 1999/12/29 05:04:20 peter Exp $
+ * $DragonFly: src/lib/libmd/md5c.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  *
  * This code is the same as the code published by RSA Inc.  It has been
  * edited for clarity and style only.

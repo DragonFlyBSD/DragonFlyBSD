@@ -53,6 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 /*

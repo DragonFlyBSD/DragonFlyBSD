@@ -1,7 +1,9 @@
-/* No copyright?! */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/doscmd/callback.c,v 1.2.2.2 2002/04/25 11:04:50 tg Exp $");
+/*
+ * No copyright?!
+ *
+ * $FreeBSD: src/usr.bin/doscmd/callback.c,v 1.2.2.2 2002/04/25 11:04:50 tg Exp $
+ * $DragonFly: src/usr.bin/doscmd/callback.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ */
 
 #include <sys/queue.h>
 #include "doscmd.h"

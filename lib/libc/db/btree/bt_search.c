@@ -32,11 +32,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)bt_search.c	8.8 (Berkeley) 7/31/94
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)bt_search.c	8.8 (Berkeley) 7/31/94";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 

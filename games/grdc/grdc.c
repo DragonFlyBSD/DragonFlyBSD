@@ -7,6 +7,7 @@
  * 10-18-89 added signal handling
  *
  * $FreeBSD: src/games/grdc/grdc.c,v 1.8.2.1 2001/10/02 11:51:49 ru Exp $
+ * $DragonFly: src/games/grdc/grdc.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
 
 #include <err.h>

@@ -15,6 +15,7 @@
  * `state' of FTP_t
  *
  * $FreeBSD: src/lib/libftpio/ftpio.c,v 1.33.2.4 2002/07/25 15:25:32 ume Exp $
+ * $DragonFly: src/lib/libftpio/ftpio.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
  *
  */
 

@@ -1,5 +1,6 @@
 /* MD2.H - header file for MD2C.C
  * $FreeBSD: src/lib/libmd/md2.h,v 1.8 1999/08/28 00:05:04 peter Exp $
+ * $DragonFly: src/lib/libmd/md2.h,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
 
 /* Copyright (C) 1990-2, RSA Data Security, Inc. Created 1990. All

@@ -1,4 +1,5 @@
 .\" $FreeBSD: src/games/trek/DOC/trekmanual.nr,v 1.1.1.1.14.1 2002/08/15 18:10:56 schweikh Exp $
+.\" $DragonFly: src/games/trek/DOC/trekmanual.nr,v 1.2 2003/06/17 04:25:25 dillon Exp $
 .br
 .po 10
 .if n \!.

@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/kue_fw.h,v 1.1 2000/01/05 04:27:07 wpaul Exp $
+ * $DragonFly: src/sys/bus/usb/kue_fw.h,v 1.2 2003/06/17 04:28:32 dillon Exp $
  */
 
 /*

@@ -20,6 +20,7 @@ ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 
  $FreeBSD: src/libexec/bootpd/readfile.c,v 1.6.2.2 2001/10/14 21:25:02 iedowse Exp $
+ $DragonFly: src/libexec/bootpd/readfile.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
 
 ************************************************************************/
 

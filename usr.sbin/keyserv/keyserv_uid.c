@@ -28,6 +28,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/keyserv/keyserv_uid.c,v 1.3 1999/08/28 01:16:41 peter Exp $
+ * $DragonFly: src/usr.sbin/keyserv/keyserv_uid.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
  */
 
 #include <signal.h>
@@ -41,11 +44,6 @@
 #include <sys/param.h>
 
 #include "keyserv.h"
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/keyserv/keyserv_uid.c,v 1.3 1999/08/28 01:16:41 peter Exp $";
-#endif
 
 /*
  * XXX should be declared somewhere

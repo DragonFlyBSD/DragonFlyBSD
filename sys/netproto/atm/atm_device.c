@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_device.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_device.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 /*
@@ -36,11 +36,6 @@
  */
 
 #include <netatm/kern_include.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/atm_device.c,v 1.5 1999/08/28 00:48:35 peter Exp $");
-#endif
-
 
 /*
  * Private structures for managing allocated kernel memory resources

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/contrib/libreadline/display.c,v 1.3.2.2 2000/07/06 23:04:23 ache Exp $ */
+/* $DragonFly: src/contrib/libreadline/Attic/display.c,v 1.2 2003/06/17 04:24:03 dillon Exp $ */
 /* display.c -- readline redisplay facility. */
 
 /* Copyright (C) 1987, 1989, 1992 Free Software Foundation, Inc.

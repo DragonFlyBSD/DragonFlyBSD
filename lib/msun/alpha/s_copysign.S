@@ -1,4 +1,5 @@
 /* $FreeBSD: src/lib/msun/alpha/s_copysign.S,v 1.2 1999/08/28 00:06:07 peter Exp $ */
+/* $DragonFly: src/lib/msun/alpha/Attic/s_copysign.S,v 1.2 2003/06/17 04:26:52 dillon Exp $ */
 /*	From: NetBSD: s_copysign.S,v 1.3 1997/07/30 23:58:38 jtc Exp	*/
 
 /*-

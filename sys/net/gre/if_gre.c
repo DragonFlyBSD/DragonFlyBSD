@@ -1,5 +1,6 @@
 /*	$NetBSD: if_gre.c,v 1.42 2002/08/14 00:23:27 itojun Exp $ */
 /*	$FreeBSD: src/sys/net/if_gre.c,v 1.9.2.3 2003/01/23 21:06:44 sam Exp $ */
+/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.2 2003/06/17 04:28:48 dillon Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.

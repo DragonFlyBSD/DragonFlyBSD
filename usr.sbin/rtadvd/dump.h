@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/dump.h,v 1.1.2.2 2001/07/03 11:02:14 ume Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/dump.h,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
 
 extern void rtadvd_dump_file __P((char *));

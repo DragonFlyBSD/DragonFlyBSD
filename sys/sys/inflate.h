@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/inflate.h,v 1.11 1999/12/29 04:24:42 peter Exp $
+ * $DragonFly: src/sys/sys/inflate.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  *
  */
 #ifndef	_SYS_INFLATE_H_

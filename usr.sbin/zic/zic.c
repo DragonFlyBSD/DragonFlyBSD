@@ -4,11 +4,11 @@ static char	elsieid[] = "@(#)zic.c	7.96";
 #endif /* !defined NOID */
 #endif /* !defined lint */
 
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/zic/zic.c,v 1.11 1999/08/28 01:21:20 peter Exp $";
-#endif /* not lint */
-
+/*
+ * @(#)zic.c	7.96
+ * $FreeBSD: src/usr.sbin/zic/zic.c,v 1.11 1999/08/28 01:21:20 peter Exp $
+ * $DragonFly: src/usr.sbin/zic/zic.c,v 1.2 2003/06/17 04:30:05 dillon Exp $
+ */
 #include "private.h"
 #include "tzfile.h"
 #include <err.h>

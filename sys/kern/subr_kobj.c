@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_kobj.c,v 1.4.2.1 2001/02/02 19:49:13 cg Exp $
+ * $DragonFly: src/sys/kern/subr_kobj.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include <sys/param.h>

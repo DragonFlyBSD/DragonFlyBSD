@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/chip.h,v 1.2 2000/01/03 02:51:14 tanimura Exp $
+ * $DragonFly: src/sys/dev/sound/chip.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 /*

@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)read.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/tail/read.c,v 1.6.8.1 2001/01/24 08:41:14 ru Exp $
+ * $DragonFly: src/usr.bin/tail/read.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)read.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/tail/read.c,v 1.6.8.1 2001/01/24 08:41:14 ru Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

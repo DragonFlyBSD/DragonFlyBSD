@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/dlfcn.h,v 1.10.2.3 2003/02/20 20:42:45 kan Exp $
+ * $DragonFly: src/include/dlfcn.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef _DLFCN_H_

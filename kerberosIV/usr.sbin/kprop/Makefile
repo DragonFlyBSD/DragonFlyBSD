@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberosIV/usr.sbin/kprop/Makefile,v 1.6.2.1 2001/04/25 09:36:08 ru Exp $
+# $DragonFly: src/kerberosIV/usr.sbin/kprop/Attic/Makefile,v 1.2 2003/06/17 04:26:25 dillon Exp $
 
 PROG=		kprop
 MAN=		${KRB4DIR}/man/kprop.8

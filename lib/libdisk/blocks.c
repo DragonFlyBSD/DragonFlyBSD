@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libdisk/blocks.c,v 1.7.2.3 2001/05/13 21:01:37 jkh Exp $
+ * $DragonFly: src/lib/libdisk/Attic/blocks.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
  *
  */
 

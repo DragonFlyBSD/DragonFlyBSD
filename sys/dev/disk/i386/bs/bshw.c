@@ -32,6 +32,7 @@
  * Copyright (c) 1994, 1995, 1996 Naofumi HONDA.  All rights reserved.
  *
  * $FreeBSD: src/sys/i386/isa/bs/bshw.c,v 1.7.2.1 2001/07/26 02:32:18 nyan Exp $
+ * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bshw.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 #ifdef	__NetBSD__

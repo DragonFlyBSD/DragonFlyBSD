@@ -37,6 +37,7 @@
  *	@(#)table.h	8.1 (Berkeley) 6/5/93
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/table.h,v 1.6 1999/08/28 01:15:05 peter Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/table.h,v 1.2 2003/06/17 04:29:52 dillon Exp $
  */
 
 /*

@@ -1,5 +1,6 @@
 /*
  * $FreeBSD: src/gnu/usr.bin/ld/ld.h,v 1.21 1999/08/27 23:36:01 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/ld/Attic/ld.h,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
 /*-
  * This code is derived from software copyrighted by the Free Software

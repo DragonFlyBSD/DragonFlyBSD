@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 4/2/94
 # $FreeBSD: src/usr.bin/chpass/Makefile,v 1.20.2.3 2001/12/19 04:49:11 dd Exp $
+# $DragonFly: src/usr.bin/chpass/Makefile,v 1.2 2003/06/17 04:29:25 dillon Exp $
 
 PROG=	chpass
 CFLAGS+=-Wall

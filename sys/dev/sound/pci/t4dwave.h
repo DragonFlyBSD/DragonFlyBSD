@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/t4dwave.h,v 1.3.2.4 2002/04/22 15:49:33 cg Exp $
+ * $DragonFly: src/sys/dev/sound/pci/t4dwave.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #ifndef _T4DWAVE_REG_H

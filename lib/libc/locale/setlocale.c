@@ -33,13 +33,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)setlocale.c	8.1 (Berkeley) 7/4/93
+ * $FreeBSD: src/lib/libc/locale/setlocale.c,v 1.25.2.8 2002/08/12 11:17:38 ache Exp $
+ * $DragonFly: src/lib/libc/locale/setlocale.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)setlocale.c	8.1 (Berkeley) 7/4/93";
-#endif /* LIBC_SCCS and not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/locale/setlocale.c,v 1.25.2.8 2002/08/12 11:17:38 ache Exp $");
 
 #include <sys/types.h>
 #include <sys/stat.h>

@@ -12,6 +12,7 @@
 # LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 # A PARTICULAR PURPOSE.
 # $FreeBSD: src/usr.sbin/ndp/Makefile,v 1.1.2.1 2001/04/25 12:10:20 ru Exp $
+# $DragonFly: src/usr.sbin/ndp/Makefile,v 1.2 2003/06/17 04:29:57 dillon Exp $
 
 .PATH:	${.CURDIR}/../../contrib/tcpdump
 

@@ -1,4 +1,3 @@
-/* $FreeBSD: src/gnu/usr.bin/binutils/gdb/freebsd-uthread.c,v 1.3.2.4 2003/01/06 11:28:54 fjoe Exp $ */
 /* Low level interface for debugging FreeBSD user threads for GDB, the GNU debugger.
    Copyright 1996, 1999 Free Software Foundation, Inc.
 
@@ -32,6 +31,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
    */
 
+/*
+ * $FreeBSD: src/gnu/usr.bin/binutils/gdb/freebsd-uthread.c,v 1.3.2.4 2003/01/06 11:28:54 fjoe Exp $
+ * $DragonFly: src/gnu/usr.bin/binutils/gdb/Attic/freebsd-uthread.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
+ */
 
 #include "defs.h"
 #include <sys/queue.h>

@@ -48,6 +48,7 @@
  * initialization routine.
  *
  * $FreeBSD: src/sys/i386/isa/sound/ad1848.c,v 1.30 1999/12/01 14:15:30 nyan Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/Attic/ad1848.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
  */
 
 #define DEB(x)

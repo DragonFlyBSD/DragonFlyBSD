@@ -1,6 +1,7 @@
 # Makefile for the bktr Brooktree Bt848/Bt878 PCI video capture device
 
 # $FreeBSD: src/sys/modules/bktr/bktr/Makefile,v 1.1.2.3 2001/07/24 09:51:06 dd Exp $
+# $DragonFly: src/sys/dev/video/bktr/bktr/Makefile,v 1.2 2003/06/17 04:28:43 dillon Exp $
 
 .PATH:  ${.CURDIR}/../../../dev/bktr
 KMOD=	bktr 

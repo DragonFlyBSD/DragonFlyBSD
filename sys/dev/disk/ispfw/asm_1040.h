@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/ispfw/asm_1040.h,v 1.1.2.3 2001/02/12 01:11:46 mjacob Exp $ */
+/* $DragonFly: src/sys/dev/disk/ispfw/asm_1040.h,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
 /*
  * Copyright (C) 1995, 1996, 1997, 1998, 1999, 2000 Qlogic, Inc.
  * All rights reserved.

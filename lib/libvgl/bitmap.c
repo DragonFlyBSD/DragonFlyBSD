@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libvgl/bitmap.c,v 1.4 1999/11/08 11:37:39 yokota Exp $
+ * $DragonFly: src/lib/libvgl/bitmap.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
 
 #include <sys/types.h>

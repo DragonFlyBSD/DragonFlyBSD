@@ -36,6 +36,7 @@
  *
  *	from: @(#)ls.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ls/ls.h,v 1.11.2.4 2002/07/08 06:59:27 tjr Exp $
+ * $DragonFly: src/bin/ls/ls.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
 
 #define NO_PRINT	1

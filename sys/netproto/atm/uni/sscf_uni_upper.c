@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscf_uni_upper.c,v 1.5 2000/01/17 20:49:50 mks Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscf_uni_upper.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -40,11 +40,6 @@
 #include <netatm/uni/uni.h>
 #include <netatm/uni/sscop.h>
 #include <netatm/uni/sscf_uni_var.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/uni/sscf_uni_upper.c,v 1.5 2000/01/17 20:49:50 mks Exp $");
-#endif
-
 
 /*
  * SSCF_UNI Upper Stack Command Handler

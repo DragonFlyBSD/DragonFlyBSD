@@ -3,6 +3,10 @@
  *
  * Unlimited redistribution allowed as long as this notice
  * is kept intact.
+ *
+ * @(#)ttwyse60.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/window/ttwyse60.c,v 1.1.1.1.14.1 2001/05/17 09:45:01 obrien Exp $
+ * $DragonFly: src/usr.bin/window/ttwyse60.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
 /*
@@ -40,12 +44,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)ttwyse60.c	8.1 (Berkeley) 6/6/93";
-static char rcsid[] =
-  "$FreeBSD: src/usr.bin/window/ttwyse60.c,v 1.1.1.1.14.1 2001/05/17 09:45:01 obrien Exp $";
-#endif /* not lint */
 
 #include "ww.h"
 #include "tt.h"

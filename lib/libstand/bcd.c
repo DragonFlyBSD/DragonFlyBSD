@@ -3,6 +3,7 @@
  * Cannot be copyrighted.
  *
  * $FreeBSD: src/lib/libstand/bcd.c,v 1.1.1.1.6.1 2000/09/10 01:25:52 ps Exp $
+ * $DragonFly: src/lib/libstand/bcd.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 
 #include <sys/types.h>

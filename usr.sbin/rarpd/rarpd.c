@@ -17,18 +17,11 @@
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * @(#) Copyright (c) 1990, 1991, 1992, 1993, 1996 The Regents of the University of California.  All rights reserved.
+ * $FreeBSD: src/usr.sbin/rarpd/rarpd.c,v 1.23.2.4 2002/12/01 19:19:34 dwmalone Exp $
+ * $DragonFly: src/usr.sbin/rarpd/rarpd.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1990, 1991, 1992, 1993, 1996\n\
-The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/rarpd/rarpd.c,v 1.23.2.4 2002/12/01 19:19:34 dwmalone Exp $";
-#endif /* not lint */
 
 /*
  * rarpd - Reverse ARP Daemon

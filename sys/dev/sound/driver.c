@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/driver.c,v 1.7.2.1 2001/02/27 04:47:47 cg Exp $
+ * $DragonFly: src/sys/dev/sound/driver.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>

@@ -17,11 +17,10 @@
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * $FreeBSD: src/usr.sbin/tcpdump/tcpslice/search.c,v 1.4 1999/08/28 05:11:32 peter Exp $
+ * $DragonFly: src/usr.sbin/tcpdump/tcpslice/search.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
-#if !defined(lint) && !defined(__GNUC__)
-static char rcsid[] =
-    "@(#)$FreeBSD: src/usr.sbin/tcpdump/tcpslice/search.c,v 1.4 1999/08/28 05:11:32 peter Exp $ (LBL)";
-#endif
 
 /*
  * search.c - supports fast searching through tcpdump files for timestamps

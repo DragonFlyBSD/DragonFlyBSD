@@ -29,6 +29,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/usb/ufm.c,v 1.1.2.3 2002/11/06 14:41:01 joe Exp $ */
+/* $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.2 2003/06/17 04:28:32 dillon Exp $ */
 
 #include <sys/param.h>
 #include <sys/systm.h>

@@ -29,6 +29,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)getnetent.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/net/getnetbyht.c,v 1.7.2.1 2002/07/07 11:34:42 robert Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/getnetbyht.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 
 /* Portions Copyright (c) 1993 Carlos Leandro and Rui Salgueiro
@@ -40,12 +44,6 @@
  *
  * from getnetent.c	1.1 (Coimbra) 93/06/02
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)getnetent.c	8.1 (Berkeley) 6/4/93";
-static char orig_rcsid[] = "From: Id: getnetent.c,v 8.4 1997/06/01 20:34:37 vixie Exp";
-static char rcsid[] = "$FreeBSD: src/lib/libc/net/getnetbyht.c,v 1.7.2.1 2002/07/07 11:34:42 robert Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/socket.h>

@@ -1,5 +1,6 @@
 # common
 # $FreeBSD: src/sbin/dhclient/common/Makefile,v 1.2.2.2 2002/07/19 18:46:27 ru Exp $
+# $DragonFly: src/sbin/dhclient/common/Attic/Makefile,v 1.2 2003/06/17 04:27:32 dillon Exp $
 
 DIST_DIR= ${.CURDIR}/../../../contrib/isc-dhcp
 

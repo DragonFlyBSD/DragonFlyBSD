@@ -22,13 +22,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pcm/feeder.c,v 1.8.2.9 2003/02/08 01:43:07 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pcm/feeder.c,v 1.8.2.9 2003/02/08 01:43:07 orion Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
 
 MALLOC_DEFINE(M_FEEDER, "feeder", "pcm feeder");
 

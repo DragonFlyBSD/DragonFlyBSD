@@ -32,21 +32,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)tail.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/tail/tail.c,v 1.6.2.2 2001/12/19 20:29:31 iedowse Exp $
+ * $DragonFly: src/usr.bin/tail/tail.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1991, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)tail.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/tail/tail.c,v 1.6.2.2 2001/12/19 20:29:31 iedowse Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

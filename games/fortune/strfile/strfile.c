@@ -34,22 +34,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/games/fortune/strfile/strfile.c,v 1.15.2.2 2001/03/05 11:52:37 kris Exp $
+ * $DragonFly: src/games/fortune/strfile/strfile.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ *
+ * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)strfile.c   8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/fortune/strfile/strfile.c,v 1.15.2.2 2001/03/05 11:52:37 kris Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1989, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)strfile.c   8.1 (Berkeley) 5/31/93";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/games/fortune/strfile/strfile.c,v 1.15.2.2 2001/03/05 11:52:37 kris Exp $";
-#endif
-#endif /* not lint */
 
 # include	<sys/param.h>
 # include	<stdio.h>

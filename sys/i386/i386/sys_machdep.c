@@ -32,6 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  *
  */
 

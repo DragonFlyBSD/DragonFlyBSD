@@ -5,6 +5,7 @@
  * generation being essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/disks.c,v 1.118.2.14 2002/10/24 13:03:44 nyan Exp $
+ * $DragonFly: src/release/sysinstall/Attic/disks.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.

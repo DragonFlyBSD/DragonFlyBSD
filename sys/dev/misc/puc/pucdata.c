@@ -28,10 +28,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/puc/pucdata.c,v 1.2.2.12 2003/05/14 09:43:22 wilko Exp $
+ * $DragonFly: src/sys/dev/misc/puc/pucdata.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/puc/pucdata.c,v 1.2.2.12 2003/05/14 09:43:22 wilko Exp $");
 
 /*
  * PCI "universal" communications card driver configuration data (used to

@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.14.2.5 2003/03/02 20:58:54 dan Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rlreg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /*

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/boot/pc98/kgzldr/Makefile,v 1.1.2.1 2002/02/03 11:37:20 nyan Exp $
+# $DragonFly: src/sys/boot/pc98/kgzldr/Attic/Makefile,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 PROG=	kgzldr.o
 SRCS=	start.s boot.c inflate.c lib.c crt.s sio.s

@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/ypserv/Makefile,v 1.17.2.3 2002/08/07 16:32:02 ru Exp $
+# $DragonFly: src/usr.sbin/ypserv/Makefile,v 1.2 2003/06/17 04:30:04 dillon Exp $
 
 PROG=	ypserv
 SRCS=	yp_svc.c yp_server.c yp_dblookup.c yp_dnslookup.c \

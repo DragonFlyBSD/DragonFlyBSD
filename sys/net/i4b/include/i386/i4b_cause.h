@@ -30,6 +30,7 @@
  *	$Id: i4b_cause.h,v 1.13 2000/02/06 19:01:14 hm Exp $
  *
  * $FreeBSD: src/sys/i386/include/i4b_cause.h,v 1.6.2.1 2001/08/01 17:45:01 obrien Exp $
+ * $DragonFly: src/sys/net/i4b/include/i386/i4b_cause.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  *
  *      last edit-date: [Sun Feb  6 19:46:41 2000]
  *

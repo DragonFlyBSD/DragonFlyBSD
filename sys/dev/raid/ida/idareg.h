@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/idareg.h,v 1.3.2.2 2000/07/27 22:27:39 jlemon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/idareg.h,v 1.2 2003/06/17 04:28:27 dillon Exp $
  */
 
 /*

@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.3 (Berkeley) 3/27/94
 # $FreeBSD: src/sbin/mount_union/Makefile,v 1.6.6.1 2001/04/25 10:58:40 ru Exp $
+# $DragonFly: src/sbin/mount_union/Makefile,v 1.2 2003/06/17 04:27:33 dillon Exp $
 
 PROG=	mount_union
 SRCS=	mount_union.c getmntopts.c

@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_subr.h,v 1.3 2000/01/14 19:54:39 bde Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_subr.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 #ifndef _NETNCP_NCP_SUBR_H_
 #define _NETNCP_NCP_SUBR_H_

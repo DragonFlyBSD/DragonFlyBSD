@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /*

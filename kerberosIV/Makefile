@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberosIV/Makefile,v 1.13.2.1 2002/07/25 09:33:16 ru Exp $
+# $DragonFly: src/kerberosIV/Attic/Makefile,v 1.2 2003/06/17 04:26:23 dillon Exp $
 
 MAINTAINER=	markm@FreeBSD.org
 

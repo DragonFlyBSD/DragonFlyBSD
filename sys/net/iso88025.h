@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/iso88025.h,v 1.3.2.2 2002/06/18 00:15:31 kbyanc Exp $
+ * $DragonFly: src/sys/net/Attic/iso88025.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
  *
  * Information gathered from tokenring@freebsd, /sys/net/ethernet.h and
  * the Mach token ring driver.

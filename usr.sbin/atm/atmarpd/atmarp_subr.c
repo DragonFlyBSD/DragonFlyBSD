@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/atmarpd/atmarp_subr.c,v 1.3 1999/08/28 01:15:30 peter Exp $
- *
+ *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_subr.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
  */
 
 
@@ -66,11 +66,6 @@
 #include "../scspd/scsp_if.h"
 #include "../scspd/scsp_var.h"
 #include "atmarp_var.h"
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/usr.sbin/atm/atmarpd/atmarp_subr.c,v 1.3 1999/08/28 01:15:30 peter Exp $");
-#endif
-
 
 /*
  * Find an ATMARP interface, given its socket number

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/pnp.c,v 1.5.2.1 2002/10/14 09:31:09 nyan Exp $
+ *	$DragonFly: src/sys/bus/isa/pnp.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
  *      from: pnp.c,v 1.11 1999/05/06 22:11:19 peter Exp
  */
 

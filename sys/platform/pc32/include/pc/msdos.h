@@ -4,6 +4,7 @@
  * how to decipher DOS disk structures in coexisting with DOS
  *
  * $FreeBSD: src/sys/i386/include/pc/msdos.h,v 1.5 1999/08/28 00:44:34 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/include/pc/msdos.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 #define MSECTOR_SIZE	512		/* MSDOS sector size in bytes */

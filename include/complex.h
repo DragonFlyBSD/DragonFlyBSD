@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/complex.h,v 1.1.2.1 2001/11/23 16:16:18 dd Exp $
+ * $DragonFly: src/include/complex.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef _COMPLEX_H

@@ -2,6 +2,10 @@
  * Copyright (C) 1997-2002 by Darren Reed.
  *
  * See the IPFILTER.LICENCE file for details on licencing.
+ *
+ * @(#)$Id: ip_proxy.c,v 2.9.2.24 2002/08/28 12:45:51 darrenr Exp $
+ * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.11.2.5 2003/03/01 03:55:54 darrenr Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 #if defined(__FreeBSD__) && defined(KERNEL) && !defined(_KERNEL)
 # define	_KERNEL
@@ -72,11 +76,6 @@
 #include "netinet/ip_proxy.h"
 #if (__FreeBSD_version >= 300000)
 # include <sys/malloc.h>
-#endif
-
-#if !defined(lint)
-/*static const char rcsid[] = "@(#)$Id: ip_proxy.c,v 2.9.2.24 2002/08/28 12:45:51 darrenr Exp $";*/
-static const char rcsid[] = "@(#)$FreeBSD: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.11.2.5 2003/03/01 03:55:54 darrenr Exp $";
 #endif
 
 #if defined(_KERNEL) && (SOLARIS || defined(__sgi))

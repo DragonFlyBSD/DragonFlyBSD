@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/netbios.h,v 1.1.2.2 2002/04/22 04:24:25 bp Exp $
+ * $DragonFly: src/sys/netproto/smb/netbios.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 #ifndef _NETSMB_NETBIOS_H_
 #define	_NETSMB_NETBIOS_H_

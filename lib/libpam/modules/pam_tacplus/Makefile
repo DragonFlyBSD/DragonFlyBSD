@@ -23,6 +23,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/lib/libpam/modules/pam_tacplus/Makefile,v 1.2.6.4 2002/07/03 21:41:31 des Exp $
+# $DragonFly: src/lib/libpam/modules/pam_tacplus/Attic/Makefile,v 1.2 2003/06/17 04:26:51 dillon Exp $
 
 LIB=		pam_tacplus
 SRCS=		pam_tacplus.c

@@ -25,6 +25,7 @@
  *
  *	from: Mach, Revision 2.2  92/04/04  11:33:55  rpd
  * $FreeBSD: src/sys/i386/boot/biosboot/README.MACH,v 1.7 1999/08/28 00:43:10 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/biosboot/Attic/README.MACH,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 ********NOTE: This is not all relevant to the 386BSD version**********

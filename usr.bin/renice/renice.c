@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1983, 1989, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)renice.c	8.1 (Berkeley) 6/9/93
+ * $FreeBSD: src/usr.bin/renice/renice.c,v 1.4.2.3 2002/06/17 23:58:46 tjr Exp $
+ * $DragonFly: src/usr.bin/renice/renice.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1983, 1989, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)renice.c	8.1 (Berkeley) 6/9/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/renice/renice.c,v 1.4.2.3 2002/06/17 23:58:46 tjr Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/time.h>

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -36,11 +36,6 @@
  */
 
 #include <netatm/kern_include.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/atm_if.c,v 1.5 1999/08/28 00:48:35 peter Exp $");
-#endif
-
 
 #if (defined(BSD) && (BSD < 199506))
 extern int		ifqmaxlen;

@@ -16,12 +16,10 @@
  * 11-Oct-1995: Serge V.Vakulenko <vak@cronyx.ru>
  *              New eject algorithm.
  *              Some code style reformatting.
+ *
+ * $FreeBSD: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.24.2.11 2002/11/20 00:26:19 njl Exp $
+ * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.24.2.11 2002/11/20 00:26:19 njl Exp $";
-#endif /* not lint */
 
 #include <sys/cdio.h>
 #include <sys/cdrio.h>

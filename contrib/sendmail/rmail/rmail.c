@@ -9,6 +9,7 @@
  * the sendmail distribution.
  *
  * $FreeBSD: src/contrib/sendmail/rmail/rmail.c,v 1.4.6.7 2002/09/03 01:50:11 gshapiro Exp $
+ * $DragonFly: src/contrib/sendmail/rmail/Attic/rmail.c,v 1.2 2003/06/17 04:24:06 dillon Exp $
  *
  */
 

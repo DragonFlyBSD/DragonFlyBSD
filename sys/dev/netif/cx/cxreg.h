@@ -14,6 +14,7 @@
  *
  * Version 1.0, Fri Oct  7 19:34:06 MSD 1994
  * $FreeBSD: src/sys/i386/isa/cxreg.h,v 1.3.12.1 2000/08/03 01:01:20 peter Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cxreg.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 #define NBRD      3		/* the maximum number of installed boards */
 #define NPORT     16		/* the number of i/o ports per board */

@@ -20,6 +20,7 @@
    59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/tar/src/list.c,v 1.2.2.1 2002/07/14 13:19:44 sobomax Exp $ */
+/* $DragonFly: src/contrib/tar/src/Attic/list.c,v 1.2 2003/06/17 04:24:06 dillon Exp $ */
 
 /* Define to non-zero for forcing old ctime format instead of ISO format.  */
 #undef USE_OLD_CTIME

@@ -8,12 +8,10 @@
  *
  *
  * igmp.c,v 3.8.4.19 1998/01/06 01:57:43 fenner Exp
+ *
+ * $FreeBSD: src/usr.sbin/mrouted/igmp.c,v 1.16 1999/08/28 01:17:04 peter Exp $
+ * $DragonFly: src/usr.sbin/mrouted/igmp.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/mrouted/igmp.c,v 1.16 1999/08/28 01:17:04 peter Exp $";
-#endif /* not lint */
 
 #include "defs.h"
 

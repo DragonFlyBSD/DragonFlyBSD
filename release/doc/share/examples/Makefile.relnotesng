@@ -1,6 +1,7 @@
 # -*- makefile -*-
 #
 # $FreeBSD: src/release/doc/share/examples/Makefile.relnotesng,v 1.1.2.2 2001/09/28 17:50:16 bmah Exp $
+# $DragonFly: src/release/doc/share/examples/Attic/Makefile.relnotesng,v 1.2 2003/06/17 04:27:20 dillon Exp $
 #
 # Sample makefile for rendering and uploading RELNOTESng files outside
 # the build tree.

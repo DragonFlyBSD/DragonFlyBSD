@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/sbrk.c,v 1.2.2.1 2000/05/18 08:00:57 ps Exp $
+ * $DragonFly: src/lib/libstand/sbrk.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 
 /*

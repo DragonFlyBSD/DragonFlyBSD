@@ -13,6 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/sys/snoop.h,v 1.14.2.1 2002/03/11 01:23:05 dd Exp $
+ * $DragonFly: src/sys/sys/snoop.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_SNOOP_H_

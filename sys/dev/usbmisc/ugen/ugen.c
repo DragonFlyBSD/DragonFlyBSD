@@ -1,5 +1,6 @@
 /*	$NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ugen.c,v 1.38.2.9 2002/11/06 14:41:01 joe Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.

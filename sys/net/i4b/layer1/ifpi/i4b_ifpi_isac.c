@@ -30,6 +30,7 @@
  *	$Id: i4b_ifpi_isac.c,v 1.3 2000/05/29 15:41:41 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi/i4b_ifpi_isac.c,v 1.4.2.1 2001/08/10 14:08:36 obrien Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi/i4b_ifpi_isac.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
  *
  *      last edit-date: [Mon May 29 15:22:52 2000]
  *

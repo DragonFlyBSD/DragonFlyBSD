@@ -31,15 +31,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/crypto/telnet/libtelnet/auth.c,v 1.3.2.5 2002/04/13 10:59:07 markm Exp $
+ * $DragonFly: src/crypto/telnet/libtelnet/auth.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
+ *
+ * @(#)auth.c	8.3 (Berkeley) 5/30/95
+ * $FreeBSD: src/crypto/telnet/libtelnet/auth.c,v 1.3.2.5 2002/04/13 10:59:07 markm Exp $
  */
-
-#include <sys/cdefs.h>
-
-__FBSDID("$FreeBSD: src/crypto/telnet/libtelnet/auth.c,v 1.3.2.5 2002/04/13 10:59:07 markm Exp $");
-
-#ifndef lint
-static const char sccsid[] = "@(#)auth.c	8.3 (Berkeley) 5/30/95";
-#endif /* not lint */
 
 /*
  * Copyright (C) 1990 by the Massachusetts Institute of Technology

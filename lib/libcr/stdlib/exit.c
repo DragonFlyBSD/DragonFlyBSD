@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/exit.c,v 1.3.6.1 2001/03/05 11:33:57 obrien Exp $
+ * $DragonFly: src/lib/libcr/stdlib/Attic/exit.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ *
+ * @(#)exit.c	8.1 (Berkeley) 6/4/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)exit.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <stdlib.h>
 #include <unistd.h>

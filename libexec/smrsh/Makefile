@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 7/2/95
 # $FreeBSD: src/libexec/smrsh/Makefile,v 1.1.6.6 2002/03/25 21:31:40 gshapiro Exp $
+# $DragonFly: src/libexec/smrsh/Makefile,v 1.2 2003/06/17 04:27:08 dillon Exp $
 
 MAINTAINER=	gshapiro@FreeBSD.org
 

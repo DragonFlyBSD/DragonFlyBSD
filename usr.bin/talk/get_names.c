@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)get_names.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/talk/get_names.c,v 1.6.2.1 2001/07/30 10:31:29 dd Exp $
+ * $DragonFly: src/usr.bin/talk/get_names.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)get_names.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/talk/get_names.c,v 1.6.2.1 2001/07/30 10:31:29 dd Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <pwd.h>

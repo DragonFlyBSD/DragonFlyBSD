@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keydb.c,v 1.1.2.1 2000/07/15 07:14:42 kris Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keydb.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$KAME: keydb.c,v 1.64 2000/05/11 17:02:30 itojun Exp $	*/
 
 /*

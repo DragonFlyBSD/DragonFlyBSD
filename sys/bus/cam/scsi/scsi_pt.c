@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
  */
 
 #include <sys/param.h>

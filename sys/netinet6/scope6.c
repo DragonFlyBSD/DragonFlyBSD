@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/scope6.c,v 1.1.2.3 2002/04/01 15:29:04 ume Exp $	*/
+/*	$DragonFly: src/sys/netinet6/scope6.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$KAME: scope6.c,v 1.10 2000/07/24 13:29:31 itojun Exp $	*/
 
 /*

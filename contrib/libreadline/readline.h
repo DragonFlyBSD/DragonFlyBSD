@@ -1,4 +1,5 @@
 /* $FreeBSD: src/contrib/libreadline/readline.h,v 1.9.2.2 2000/07/06 23:04:24 ache Exp $ */
+/* $DragonFly: src/contrib/libreadline/Attic/readline.h,v 1.2 2003/06/17 04:24:03 dillon Exp $ */
 /* Readline.h -- the names of functions callable from within readline. */
 
 /* Copyright (C) 1987, 1989, 1992 Free Software Foundation, Inc.

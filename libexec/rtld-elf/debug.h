@@ -23,6 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/debug.h,v 1.4 1999/12/27 04:44:01 jdp Exp $
+ * $DragonFly: src/libexec/rtld-elf/debug.h,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
 
 /*

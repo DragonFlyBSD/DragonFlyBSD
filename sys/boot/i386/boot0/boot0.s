@@ -14,6 +14,7 @@
 #
 
 # $FreeBSD: src/sys/boot/i386/boot0/boot0.s,v 1.14.2.6 2000/12/19 00:32:19 rnordier Exp $
+# $DragonFly: src/sys/boot/i386/boot0/Attic/boot0.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 # A 512-byte boot manager.
 

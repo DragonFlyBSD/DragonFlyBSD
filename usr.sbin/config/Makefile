@@ -1,5 +1,6 @@
 # 	@(#)Makefile	8.1 (Berkeley) 6/6/93
 # $FreeBSD: src/usr.sbin/config/Makefile,v 1.26.2.1 2001/04/25 12:09:23 ru Exp $
+# $DragonFly: src/usr.sbin/config/Makefile,v 1.2 2003/06/17 04:29:52 dillon Exp $
 
 PROG=	config
 CFLAGS+=-I. -I${.CURDIR}

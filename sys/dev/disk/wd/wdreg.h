@@ -35,6 +35,7 @@
  *
  *	from: @(#)wdreg.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/wdreg.h,v 1.30 1999/12/29 04:33:16 peter Exp $
+ * $DragonFly: src/sys/dev/disk/wd/Attic/wdreg.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /*

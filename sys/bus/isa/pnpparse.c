@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/pnpparse.c,v 1.2.2.3 2000/11/07 05:53:55 msmith Exp $
+ *	$DragonFly: src/sys/bus/isa/pnpparse.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
  */
 
 #include <sys/param.h>

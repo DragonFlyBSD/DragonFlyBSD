@@ -37,6 +37,7 @@
 #include "openbsd-compat/sys-queue.h"
 RCSID("$OpenBSD: ssh-agent.c,v 1.105 2002/10/01 20:34:12 markus Exp $");
 RCSID("$FreeBSD: src/crypto/openssh/ssh-agent.c,v 1.2.2.10 2003/02/11 08:27:40 des Exp $");
+RCSID("$DragonFly: src/crypto/openssh/Attic/ssh-agent.c,v 1.2 2003/06/17 04:24:36 dillon Exp $");
 
 #include <openssl/evp.h>
 #include <openssl/md5.h>

@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_ccb.h,v 1.15.2.2 2000/09/22 23:09:19 gibbs Exp $
+ * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 #ifndef _CAM_CAM_CCB_H

@@ -25,6 +25,7 @@
  *
  * Version 1.2, Aug 30, 1995.
  * $FreeBSD: src/sys/i386/include/spigot.h,v 1.5 1999/12/29 04:33:08 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/include/spigot.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 #ifndef	_MACHINE_SPIGOT_H_

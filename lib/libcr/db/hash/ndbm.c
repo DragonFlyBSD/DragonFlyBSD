@@ -32,11 +32,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)ndbm.c	8.4 (Berkeley) 7/21/94
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)ndbm.c	8.4 (Berkeley) 7/21/94";
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * This package provides a dbm compatible interface to the new hashing

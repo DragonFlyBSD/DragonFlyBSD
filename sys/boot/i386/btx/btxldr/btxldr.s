@@ -14,6 +14,7 @@
 #
 
 # $FreeBSD: src/sys/boot/i386/btx/btxldr/btxldr.s,v 1.8.2.2 2000/07/06 23:04:29 obrien Exp $
+# $DragonFly: src/sys/boot/i386/btx/btxldr/Attic/btxldr.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 #
 # Prototype BTX loader program, written in a couple of hours.  The

@@ -33,21 +33,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)wump.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/wump/wump.c,v 1.13.2.1 2000/08/17 06:24:54 jhb Exp $
+ * $DragonFly: src/games/wump/wump.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1989, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)wump.c	8.1 (Berkeley) 5/31/93";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/wump/wump.c,v 1.13.2.1 2000/08/17 06:24:54 jhb Exp $";
-#endif /* not lint */
 
 /*
  * A very new version of the age old favorite Hunt-The-Wumpus game that has

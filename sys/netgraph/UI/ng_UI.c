@@ -37,6 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_UI.c,v 1.6.2.2 2000/10/24 18:36:44 julian Exp $
+ * $DragonFly: src/sys/netgraph/UI/ng_UI.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  * $Whistle: ng_UI.c,v 1.14 1999/11/01 09:24:51 julian Exp $
  */
 

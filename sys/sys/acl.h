@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/acl.h,v 1.8 2000/01/28 15:22:51 rwatson Exp $
+ * $DragonFly: src/sys/sys/acl.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 /* 

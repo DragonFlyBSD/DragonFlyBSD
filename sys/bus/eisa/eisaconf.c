@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/eisa/eisaconf.c,v 1.55 2000/01/14 07:13:57 peter Exp $
+ * $DragonFly: src/sys/bus/eisa/eisaconf.c,v 1.2 2003/06/17 04:28:24 dillon Exp $
  */
 
 #include "opt_eisa.h"

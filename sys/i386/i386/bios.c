@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/bios.c,v 1.29.2.3 2001/07/19 18:07:35 imp Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/bios.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 /*

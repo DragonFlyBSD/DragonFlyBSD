@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/atexit.c,v 1.3.6.1 2002/03/10 20:28:40 tegge Exp $
+ * $DragonFly: src/lib/libc/stdlib/atexit.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ *
+ * @(#)atexit.c	8.2 (Berkeley) 7/3/94
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)atexit.c	8.2 (Berkeley) 7/3/94";
-#endif /* LIBC_SCCS and not lint */
 
 #include <stddef.h>
 #include <stdlib.h>

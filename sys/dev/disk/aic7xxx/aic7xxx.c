@@ -40,6 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#134 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.41.2.27 2003/06/10 03:26:08 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 #ifdef __linux__

@@ -2,6 +2,7 @@
 
 #	$KAME: prefix.sh,v 1.12 2001/05/26 23:38:10 itojun Exp $
 #	$FreeBSD: src/usr.sbin/prefix/prefix.sh,v 1.1.2.1 2001/07/03 11:02:08 ume Exp $
+#	$DragonFly: src/usr.sbin/prefix/prefix.sh,v 1.2 2003/06/17 04:30:01 dillon Exp $
 
 # Copyright (c) 2001 WIDE Project. All rights reserved.
 #

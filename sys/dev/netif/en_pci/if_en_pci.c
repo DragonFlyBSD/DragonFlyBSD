@@ -32,6 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_en_pci.c,v 1.12 1999/08/21 22:10:49 msmith Exp $
+ * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /*

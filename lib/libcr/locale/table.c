@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/table.c,v 1.13.2.1 2000/06/04 21:47:39 ache Exp $
+ * $DragonFly: src/lib/libcr/locale/Attic/table.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ *
+ * @(#)table.c	8.1 (Berkeley) 6/27/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)table.c	8.1 (Berkeley) 6/27/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <ctype.h>
 #include <rune.h>

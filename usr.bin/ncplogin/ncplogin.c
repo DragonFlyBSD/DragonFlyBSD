@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ncplogin/ncplogin.c,v 1.1 1999/10/31 02:14:59 bp Exp $
+ * $DragonFly: src/usr.bin/ncplogin/ncplogin.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
 #include <sys/types.h>
 #include <sys/errno.h>

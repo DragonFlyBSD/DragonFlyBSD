@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/inet_lnaof.c,v 1.2.6.1 2001/04/21 14:53:04 ume Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/inet_lnaof.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ *
+ * @(#)inet_lnaof.c	8.1 (Berkeley) 6/4/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)inet_lnaof.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <netinet/in.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/boot/alpha/common/conf.c,v 1.1.2.1 2000/05/04 13:50:47 ps Exp $
+ *	$DragonFly: src/sys/boot/alpha/common/Attic/conf.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 
 #include <stand.h>

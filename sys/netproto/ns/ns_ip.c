@@ -32,6 +32,7 @@
  *
  *	@(#)ns_ip.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_ip.c,v 1.9 1999/08/28 00:49:50 peter Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 /*

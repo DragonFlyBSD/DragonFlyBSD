@@ -32,6 +32,7 @@
  *
  *	from: @(#)dir.h	7.3 (Berkeley) 2/5/91
  * $FreeBSD: src/sys/i386/boot/dosboot/dir.h,v 1.5 1999/08/28 00:43:21 peter Exp $
+ * $DragonFly: src/sys/i386/boot/dosboot/Attic/dir.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 /*

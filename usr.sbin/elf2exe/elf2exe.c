@@ -22,16 +22,14 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/elf2exe/elf2exe.c,v 1.6.2.1 2000/07/20 10:35:23 kris Exp $
+ * $DragonFly: src/usr.sbin/elf2exe/Attic/elf2exe.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 
 /*
  * Make an ARC firmware executable from an ELF file.
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/elf2exe/elf2exe.c,v 1.6.2.1 2000/07/20 10:35:23 kris Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/elf64.h>

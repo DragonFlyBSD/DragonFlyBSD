@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/ip6fw/Makefile,v 1.1.2.1 2000/10/24 19:27:43 ume Exp $
+# $DragonFly: src/sys/net/ip6fw/Makefile,v 1.2 2003/06/17 04:28:44 dillon Exp $
 
 .PATH:	${.CURDIR}/../../netinet6
 KMOD=	ip6fw

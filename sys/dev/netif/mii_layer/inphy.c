@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mii/inphy.c,v 1.4.2.2 2002/11/08 21:53:49 semenu Exp $
+ *	$DragonFly: src/sys/dev/netif/mii_layer/inphy.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 /*

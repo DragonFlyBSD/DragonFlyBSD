@@ -23,6 +23,7 @@
 # SUCH DAMAGE.
 #
 #	$FreeBSD: src/lib/libpam/modules/pam_kerberosIV/Makefile,v 1.5.2.4 2002/07/03 21:41:29 des Exp $
+#	$DragonFly: src/lib/libpam/modules/pam_kerberosIV/Attic/Makefile,v 1.2 2003/06/17 04:26:50 dillon Exp $
 
 
 LIB=		pam_kerberosIV

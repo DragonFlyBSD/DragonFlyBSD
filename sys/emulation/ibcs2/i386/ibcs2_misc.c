@@ -46,6 +46,7 @@
  *	@(#)sun_misc.c	8.1 (Berkeley) 6/18/93
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_misc.c,v 1.34 1999/09/29 15:12:09 marcel Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_misc.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 /*

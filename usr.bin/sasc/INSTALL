@@ -1,4 +1,5 @@
 $FreeBSD: src/usr.bin/sasc/INSTALL,v 1.2.6.1 2001/03/04 09:04:15 kris Exp $
+$DragonFly: src/usr.bin/sasc/INSTALL,v 1.2 2003/06/17 04:29:31 dillon Exp $
 
 To install the device driver, please do the following steps:
 

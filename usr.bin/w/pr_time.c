@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)pr_time.c	8.2 (Berkeley) 4/4/94
+ * $FreeBSD: src/usr.bin/w/pr_time.c,v 1.14.2.1 2002/03/12 19:51:51 phantom Exp $
+ * $DragonFly: src/usr.bin/w/pr_time.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)pr_time.c	8.2 (Berkeley) 4/4/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/w/pr_time.c,v 1.14.2.1 2002/03/12 19:51:51 phantom Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/time.h>

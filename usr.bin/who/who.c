@@ -22,10 +22,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.bin/who/who.c,v 1.9.2.4 2002/12/21 00:44:58 tjr Exp $
+ * $DragonFly: src/usr.bin/who/who.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/who/who.c,v 1.9.2.4 2002/12/21 00:44:58 tjr Exp $");
 
 #include <sys/types.h>
 #include <sys/ioctl.h>

@@ -1,5 +1,6 @@
 /*	$OpenBSD: dirname.c,v 1.4 1999/05/30 17:10:30 espie Exp $	*/
 /*	$FreeBSD: src/lib/libc/gen/dirname.c,v 1.1.2.2 2001/07/23 10:13:04 dd Exp $	*/
+/*	$DragonFly: src/lib/libc/gen/dirname.c,v 1.2 2003/06/17 04:26:42 dillon Exp $	*/
 
 /*
  * Copyright (c) 1997 Todd C. Miller <Todd.Miller@courtesan.com>
@@ -26,11 +27,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $OpenBSD: dirname.c,v 1.4 1999/05/30 17:10:30 espie Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$OpenBSD: dirname.c,v 1.4 1999/05/30 17:10:30 espie Exp $";
-#endif /* not lint */
 
 #include <errno.h>
 #include <libgen.h>

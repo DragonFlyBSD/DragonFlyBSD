@@ -24,6 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/dev/pccard/card_if.m,v 1.1.2.2 2001/01/02 22:49:15 dmlb Exp $
+# $DragonFly: src/sys/dev/misc/pccard/Attic/card_if.m,v 1.2 2003/06/17 04:28:28 dillon Exp $
 #
 
 #include <sys/bus.h>

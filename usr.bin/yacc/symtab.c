@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/symtab.c,v 1.6 1999/08/28 01:08:03 peter Exp $
+ * $DragonFly: src/usr.bin/yacc/symtab.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ *
+ * @(#)symtab.c	5.3 (Berkeley) 6/1/90
  */
-
-#ifndef lint
-static char const sccsid[] = "@(#)symtab.c	5.3 (Berkeley) 6/1/90";
-#endif /* not lint */
 
 #include <stdlib.h>
 #include <string.h>

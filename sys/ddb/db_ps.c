@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>

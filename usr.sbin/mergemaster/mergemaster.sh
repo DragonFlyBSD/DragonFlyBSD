@@ -9,6 +9,7 @@
 # DougB@FreeBSD.org
 
 # $FreeBSD: src/usr.sbin/mergemaster/mergemaster.sh,v 1.6.2.17 2003/03/10 06:55:48 dougb Exp $
+# $DragonFly: src/usr.sbin/mergemaster/mergemaster.sh,v 1.2 2003/06/17 04:29:57 dillon Exp $
 
 PATH=/bin:/usr/bin:/usr/sbin
 

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/sys/ccdvar.h,v 1.11.2.1 2001/09/11 09:49:54 kris Exp $ */
+/* $DragonFly: src/sys/sys/ccdvar.h,v 1.2 2003/06/17 04:28:58 dillon Exp $ */
 
 /*	$NetBSD: ccdvar.h,v 1.7.2.1 1995/10/12 21:30:18 thorpej Exp $	*/
 

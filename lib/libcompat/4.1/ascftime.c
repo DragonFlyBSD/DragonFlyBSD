@@ -32,6 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcompat/4.1/ascftime.c,v 1.4 1999/08/28 00:04:10 peter Exp $
+ * $DragonFly: src/lib/libcompat/4.1/ascftime.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 
 #include <time.h>

@@ -11,12 +11,10 @@
  *
  * This program requires version 3.5-beta7 or later of OSS
  * (3.8-beta16 or later in FreeBSD and BSD/OS).
+ *
+ * $FreeBSD: src/sys/i386/isa/sound/mmap_test.c,v 1.6 1999/09/04 15:21:28 peter Exp $
+ * $DragonFly: src/sys/i386/isa/sound/Attic/mmap_test.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sys/i386/isa/sound/mmap_test.c,v 1.6 1999/09/04 15:21:28 peter Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <fcntl.h>

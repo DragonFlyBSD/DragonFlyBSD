@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/rain/rain_saver.c,v 1.5.2.1 2000/05/10 16:26:47 obrien Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/rain/rain_saver.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
  */
 
 #include <sys/param.h>

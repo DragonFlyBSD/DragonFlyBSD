@@ -24,6 +24,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pci/via8233.c,v 1.2.2.2 2003/02/06 17:35:56 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 /* Some Credits:
@@ -43,7 +46,7 @@
 
 #include <dev/sound/pci/via8233.h>
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pci/via8233.c,v 1.2.2.2 2003/02/06 17:35:56 orion Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
 
 #define VIA8233_PCI_ID 0x30591106
 

@@ -24,6 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_input.c,v 1.28.2.1 2002/03/08 16:37:10 yar Exp $
+ * $DragonFly: src/sys/ddb/db_input.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 
 /*

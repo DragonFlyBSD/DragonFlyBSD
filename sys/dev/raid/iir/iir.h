@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.h,v 1.3.2.2 2002/05/04 08:49:50 msmith Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.h,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved

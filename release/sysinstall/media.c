@@ -5,6 +5,7 @@
  * generation being slated to essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/media.c,v 1.107.2.9 2002/07/02 22:24:20 jhb Exp $
+ * $DragonFly: src/release/sysinstall/Attic/media.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.

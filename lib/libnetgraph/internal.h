@@ -37,6 +37,7 @@
  * Author: Archie Cobbs <archie@whistle.com>
  *
  * $FreeBSD: src/lib/libnetgraph/internal.h,v 1.3 2000/01/28 00:48:27 archie Exp $
+ * $DragonFly: src/lib/libnetgraph/internal.h,v 1.2 2003/06/17 04:26:50 dillon Exp $
  * $Whistle: internal.h,v 1.5 1999/01/20 00:57:22 archie Exp $
  */
 

@@ -28,6 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_sysvec.c,v 1.10.2.2 2002/07/09 14:12:43 robert Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */

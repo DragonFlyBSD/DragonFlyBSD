@@ -25,13 +25,12 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)clnt_udp.c 1.39 87/08/11 Copyr 1984 Sun Micro
+ * @(#)clnt_udp.c	2.2 88/08/01 4.0 RPCSRC
+ * $FreeBSD: src/lib/libc/rpc/clnt_udp.c,v 1.15.2.1 2001/06/28 21:44:24 iedowse Exp $
+ * $DragonFly: src/lib/libc/rpc/clnt_udp.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/*static char *sccsid = "from: @(#)clnt_udp.c 1.39 87/08/11 Copyr 1984 Sun Micro";*/
-/*static char *sccsid = "from: @(#)clnt_udp.c	2.2 88/08/01 4.0 RPCSRC";*/
-static char *rcsid = "$FreeBSD: src/lib/libc/rpc/clnt_udp.c,v 1.15.2.1 2001/06/28 21:44:24 iedowse Exp $";
-#endif
 
 /*
  * clnt_udp.c, Implements a UDP/IP based, client side RPC.

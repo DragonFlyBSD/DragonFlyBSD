@@ -33,6 +33,7 @@
  *	@(#)pathnames.h	8.1 (Berkeley) 6/5/93
  *
  * $FreeBSD: src/sbin/routed/pathnames.h,v 1.5 1999/08/28 00:14:16 peter Exp $
+ * $DragonFly: src/sbin/routed/pathnames.h,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
 
 #include <paths.h>

@@ -14,6 +14,7 @@
  * its use.
  *
  * $FreeBSD: src/gnu/lib/libdialog/TESTS/yesno.c,v 1.5.2.1 2000/12/15 05:54:37 jkh Exp $
+ * $DragonFly: src/gnu/lib/libdialog/TESTS/yesno.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
  */
 
 #include <stdio.h>

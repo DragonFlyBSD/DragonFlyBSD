@@ -1,5 +1,6 @@
 #	from @(#)Makefile.inc	8.3 (Berkeley) 2/4/95
 # $FreeBSD: src/lib/libc/stdlib/Makefile.inc,v 1.19.2.4 2001/10/02 11:15:38 ru Exp $
+# $DragonFly: src/lib/libcr/stdlib/Attic/Makefile.inc,v 1.2 2003/06/17 04:26:46 dillon Exp $
 
 # machine-independent stdlib sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/stdlib ${.CURDIR}/../libc/stdlib

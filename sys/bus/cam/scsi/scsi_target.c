@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
  */
 
 #include <sys/param.h>

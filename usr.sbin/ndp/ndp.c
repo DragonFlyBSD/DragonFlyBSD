@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/ndp/ndp.c,v 1.2.2.5 2001/08/13 02:58:26 sumikawa Exp $	*/
+/*	$DragonFly: src/usr.sbin/ndp/ndp.c,v 1.2 2003/06/17 04:29:57 dillon Exp $	*/
 /*	$KAME: ndp.c,v 1.65 2001/05/08 04:36:34 itojun Exp $	*/
 
 /*

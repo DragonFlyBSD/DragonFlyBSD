@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/getaddrinfo.c,v 1.9.2.14 2002/11/08 17:49:31 ume Exp $	*/
+/*	$DragonFly: src/lib/libcr/net/Attic/getaddrinfo.c,v 1.2 2003/06/17 04:26:44 dillon Exp $	*/
 /*	$KAME: getaddrinfo.c,v 1.15 2000/07/09 04:37:24 itojun Exp $	*/
 
 /*

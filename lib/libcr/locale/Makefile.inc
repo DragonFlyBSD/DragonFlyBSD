@@ -1,5 +1,6 @@
 #	from @(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libc/locale/Makefile.inc,v 1.16.2.5 2002/10/24 11:00:52 tjr Exp $
+# $DragonFly: src/lib/libcr/locale/Attic/Makefile.inc,v 1.2 2003/06/17 04:26:43 dillon Exp $
 
 # locale sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/locale ${.CURDIR}/../libc/locale

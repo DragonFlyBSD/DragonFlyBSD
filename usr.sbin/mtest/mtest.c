@@ -3,12 +3,10 @@
  * Ethernet multicast address filters.
  *
  * Written by Steve Deering, Stanford University, February 1989.
+ *
+ * $FreeBSD: src/usr.sbin/mtest/mtest.c,v 1.4.6.1 2001/07/19 05:09:25 kris Exp $
+ * $DragonFly: src/usr.sbin/mtest/mtest.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/mtest/mtest.c,v 1.4.6.1 2001/07/19 05:09:25 kris Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <stdio.h>

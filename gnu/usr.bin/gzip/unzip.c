@@ -5,6 +5,9 @@
  *
  * The code in this file is derived from the file funzip.c written
  * and put in the public domain by Mark Adler.
+ *
+ * $FreeBSD: src/gnu/usr.bin/gzip/unzip.c,v 1.6 1999/08/27 23:35:54 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/gzip/Attic/unzip.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
 
 /*
@@ -12,10 +15,6 @@
    For the latter, only the first entry is extracted, and it has to be
    either deflated or stored.
  */
-
-#ifdef RCSID
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/gzip/unzip.c,v 1.6 1999/08/27 23:35:54 peter Exp $";
-#endif
 
 #include "tailor.h"
 #include "gzip.h"

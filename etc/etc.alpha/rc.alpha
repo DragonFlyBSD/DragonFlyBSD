@@ -1,6 +1,7 @@
 #!/bin/sh -
 #
 # $FreeBSD: src/etc/etc.alpha/rc.alpha,v 1.7.2.5 2001/12/19 17:52:18 ru Exp $
+# $DragonFly: src/etc/etc.alpha/Attic/rc.alpha,v 1.2 2003/06/17 04:24:47 dillon Exp $
 #	Do alpha specific processing
 #
 

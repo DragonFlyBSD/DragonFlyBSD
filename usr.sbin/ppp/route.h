@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/route.h,v 1.13.2.4 2002/09/01 02:12:32 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/route.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 struct bundle;

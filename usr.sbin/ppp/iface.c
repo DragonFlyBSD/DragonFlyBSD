@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/iface.c,v 1.13.2.9 2003/04/29 16:04:41 ume Exp $
+ * $DragonFly: src/usr.sbin/ppp/iface.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #include <sys/param.h>

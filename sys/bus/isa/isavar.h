@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isavar.h,v 1.16.2.2 2000/10/29 13:07:56 nyan Exp $
+ * $DragonFly: src/sys/bus/isa/isavar.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
  */
 
 #ifndef _ISA_ISAVAR_H_

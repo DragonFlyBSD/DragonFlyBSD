@@ -37,6 +37,7 @@
  *
  *	@(#)tty.h	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/tty.h,v 1.53.2.1 2001/02/26 04:23:21 jlemon Exp $
+ * $DragonFly: src/sys/sys/tty.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _SYS_TTY_H_

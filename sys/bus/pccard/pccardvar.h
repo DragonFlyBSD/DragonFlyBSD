@@ -1,5 +1,6 @@
 /*	$NetBSD: pcmciavar.h,v 1.9 1998/12/29 09:00:28 marc Exp $	*/
 /* $FreeBSD: src/sys/dev/pccard/pccardvar.h,v 1.6.2.3 2002/09/01 05:45:51 imp Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccardvar.h,v 1.2 2003/06/17 04:28:29 dillon Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.

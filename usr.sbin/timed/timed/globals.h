@@ -32,6 +32,7 @@
  *
  *	@(#)globals.h	8.1 (Berkeley) 6/6/93
  *	$FreeBSD: src/usr.sbin/timed/timed/globals.h,v 1.5 2000/03/03 13:01:56 shin Exp $
+ *	$DragonFly: src/usr.sbin/timed/timed/globals.h,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
 
 #include <sys/param.h>

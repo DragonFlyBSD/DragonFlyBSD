@@ -32,6 +32,7 @@
  *
  *	@(#)pathnames.h	8.1 (Berkeley) 6/5/93
  # $FreeBSD: src/sbin/dump/pathnames.h,v 1.5.6.2 2001/10/05 15:49:11 ru Exp $
+ # $DragonFly: src/sbin/dump/pathnames.h,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
 
 #include <paths.h>

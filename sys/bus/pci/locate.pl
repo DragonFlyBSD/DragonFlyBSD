@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 # $FreeBSD: src/sys/pci/locate.pl,v 1.2.2.1 2000/08/03 01:09:11 peter Exp $
+# $DragonFly: src/sys/bus/pci/Attic/locate.pl,v 1.2 2003/06/17 04:28:57 dillon Exp $
 
 $errpos = hex($ARGV[0])/4;
 $ofs=0;

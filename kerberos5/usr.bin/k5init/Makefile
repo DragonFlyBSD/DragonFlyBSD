@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberos5/usr.bin/k5init/Makefile,v 1.4.2.3 2002/07/25 09:33:16 ru Exp $
+# $DragonFly: src/kerberos5/usr.bin/k5init/Attic/Makefile,v 1.2 2003/06/17 04:26:18 dillon Exp $
 
 PROG=		k5init
 SRCS=		kinit.c asn1_err.h krb5_err.h heim_err.h \

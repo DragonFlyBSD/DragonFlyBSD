@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/i386/linux/linux_locore.s,v 1.5.2.3 2001/11/05 19:08:23 marcel Exp $ */
+/* $DragonFly: src/sys/emulation/linux/i386/linux_locore.s,v 1.2 2003/06/17 04:28:38 dillon Exp $ */
 
 #include "linux_assym.h"			/* system definitions */
 #include <machine/asmacros.h>			/* miscellaneous asm macros */

@@ -10,6 +10,7 @@
  * Ari Suutari <suutari@iki.fi>
  *
  * $FreeBSD: src/sbin/natd/icmp.c,v 1.6 1999/08/28 00:13:45 peter Exp $
+ * $DragonFly: src/sbin/natd/icmp.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
 
 #include <stdlib.h>

@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_create.c,v 1.24.2.6 2003/01/08 05:04:26 fjoe Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_create.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 #include <errno.h>
 #include <stdlib.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/k6_mem.c,v 1.4.2.2 2002/09/16 21:58:41 dwmalone Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/k6_mem.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  *
  */
 

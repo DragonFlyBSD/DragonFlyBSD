@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/tools/tools/ifinfo/ifinfo.c,v 1.5.2.1 2000/09/13 19:55:30 wollman Exp $
+ * $DragonFly: src/tools/tools/ifinfo/ifinfo.c,v 1.2 2003/06/17 04:29:11 dillon Exp $
  */
 #include <sys/types.h>
 #include <sys/socket.h>		/* for PF_LINK */

@@ -10,6 +10,7 @@
  * Ari Suutari <suutari@iki.fi>
  *
  * $FreeBSD: src/sbin/natd/natd.h,v 1.4 1999/08/28 00:13:46 peter Exp $
+ * $DragonFly: src/sbin/natd/natd.h,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
 
 #define PIDFILE	"/var/run/natd.pid"

@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/popen.c,v 1.14 2000/01/27 23:06:19 jasone Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/popen.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)popen.c	8.3 (Berkeley) 5/3/95
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)popen.c	8.3 (Berkeley) 5/3/95";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/wait.h>

@@ -26,10 +26,9 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)rpcdname.c 1.7 91/03/11 Copyr 1989 Sun Micro
  */
-#if !defined(lint) && defined(SCCSIDS)
-static char sccsid[] = "@(#)rpcdname.c 1.7 91/03/11 Copyr 1989 Sun Micro";
-#endif
 
 /*
  * rpcdname.c

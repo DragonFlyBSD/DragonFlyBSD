@@ -37,6 +37,7 @@
  * Author: Archie Cobbs <archie@whistle.com>
  *
  * $FreeBSD: src/lib/libnetgraph/sock.c,v 1.2 2000/01/28 00:48:27 archie Exp $
+ * $DragonFly: src/lib/libnetgraph/sock.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  * $Whistle: sock.c,v 1.12 1999/01/20 00:57:23 archie Exp $
  */
 

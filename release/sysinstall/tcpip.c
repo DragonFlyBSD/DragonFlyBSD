@@ -1,5 +1,6 @@
 /*
  * $FreeBSD: src/release/sysinstall/tcpip.c,v 1.103.2.22 2003/03/22 23:03:22 mbr Exp $
+ * $DragonFly: src/release/sysinstall/Attic/tcpip.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1995
  *      Gary J Palmer. All rights reserved.

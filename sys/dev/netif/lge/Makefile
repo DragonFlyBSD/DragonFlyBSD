@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/lge/Makefile,v 1.1.2.1 2001/06/19 19:42:41 wpaul Exp $
+# $DragonFly: src/sys/dev/netif/lge/Makefile,v 1.2 2003/06/17 04:28:44 dillon Exp $
 
 .PATH: ${.CURDIR}/../../dev/lge
 

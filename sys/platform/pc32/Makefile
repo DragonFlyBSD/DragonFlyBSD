@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/i386/Makefile,v 1.8 2000/01/27 01:22:06 mckusick Exp $
+# $DragonFly: src/sys/platform/pc32/Makefile,v 1.2 2003/06/17 04:28:34 dillon Exp $
 #	@(#)Makefile	8.1 (Berkeley) 6/11/93
 
 # Makefile for i386 links, tags file

@@ -32,6 +32,7 @@
  *
  *	from: @(#)fs.h	7.12 (Berkeley) 5/8/91
  * $FreeBSD: src/sys/i386/boot/dosboot/fs.h,v 1.6 1999/12/29 04:32:50 peter Exp $
+ * $DragonFly: src/sys/i386/boot/dosboot/Attic/fs.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #ifndef _UFS_FS_H_

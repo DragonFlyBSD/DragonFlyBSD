@@ -25,11 +25,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $OpenBSD: readpassphrase.c,v 1.14 2002/06/28 01:43:58 millert Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static const char rcsid[] = "$OpenBSD: readpassphrase.c,v 1.14 2002/06/28 01:43:58 millert Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include "includes.h"
 

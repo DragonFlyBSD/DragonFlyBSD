@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)jot.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/jot/jot.c,v 1.13.2.3 2001/12/17 13:49:50 gallatin Exp $
+ * $DragonFly: src/usr.bin/jot/jot.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)jot.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/jot/jot.c,v 1.13.2.3 2001/12/17 13:49:50 gallatin Exp $";
-#endif /* not lint */
 
 /*
  * jot - print sequential or random data

@@ -2,6 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.alpha,v 1.43.2.9 2002/11/21 23:45:37 sam Exp $
+# $DragonFly: src/sys/conf/Attic/files.alpha,v 1.2 2003/06/17 04:28:19 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and

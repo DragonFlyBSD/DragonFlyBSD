@@ -4,6 +4,7 @@
 # modified for PC-9801
 #
 # $FreeBSD: src/sys/conf/files.pc98,v 1.140.2.44 2003/02/10 13:11:50 nyan Exp $
+# $DragonFly: src/sys/conf/Attic/files.pc98,v 1.2 2003/06/17 04:28:20 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and

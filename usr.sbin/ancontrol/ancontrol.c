@@ -30,6 +30,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ancontrol/ancontrol.c,v 1.1.2.9 2003/02/01 03:25:13 ambrisko Exp $
+ * $DragonFly: src/usr.sbin/ancontrol/ancontrol.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *
+ * @(#) Copyright (c) 1997, 1998, 1999 Bill Paul. All rights reserved.
+ * @(#) $FreeBSD: src/usr.sbin/ancontrol/ancontrol.c,v 1.1.2.9 2003/02/01 03:25:13 ambrisko Exp
+ * $FreeBSD: src/usr.sbin/ancontrol/ancontrol.c,v 1.1.2.9 2003/02/01 03:25:13 ambrisko Exp $
  */
 
 #include <sys/types.h>
@@ -53,13 +58,6 @@
 #include <err.h>
 #include <md4.h>
 #include <ctype.h>
-
-#if !defined(lint)
-static const char copyright[] = "@(#) Copyright (c) 1997, 1998, 1999\
-	Bill Paul. All rights reserved.";
-static const char rcsid[] =
-  "@(#) $FreeBSD: src/usr.sbin/ancontrol/ancontrol.c,v 1.1.2.9 2003/02/01 03:25:13 ambrisko Exp $";
-#endif
 
 static int an_getval		__P((const char *, struct an_req *));
 static void an_setval		__P((const char *, struct an_req *));

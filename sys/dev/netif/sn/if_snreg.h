@@ -29,6 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_snreg.h,v 1.2.2.1 2001/02/04 04:38:38 toshi Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_snreg.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
  */
 
 /*

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sbin/mount_nwfs/Makefile,v 1.1.2.2 2001/04/25 10:58:39 ru Exp $
+# $DragonFly: src/sbin/mount_nwfs/Makefile,v 1.2 2003/06/17 04:27:33 dillon Exp $
 
 PROG=	mount_nwfs
 SRCS=	mount_nwfs.c getmntopts.c

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/orm.c,v 1.1.2.1 2001/06/19 05:48:29 imp Exp $
+ *	$DragonFly: src/sys/dev/misc/orm/orm.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
  */
 
 /*

@@ -20,6 +20,7 @@
  * SUCH DAMAGE.    
  *
  * $FreeBSD: src/lib/libc_r/arch/alpha/_atomic_lock.S,v 1.3 1999/08/28 00:03:00 peter Exp $
+ * $DragonFly: src/lib/libc_r/arch/alpha/Attic/_atomic_lock.S,v 1.2 2003/06/17 04:26:47 dillon Exp $
  *
  */
 

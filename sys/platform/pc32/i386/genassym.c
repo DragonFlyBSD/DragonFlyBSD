@@ -35,6 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #include "opt_user_ldt.h"

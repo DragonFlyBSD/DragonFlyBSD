@@ -28,6 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_sysvec.c,v 1.17.2.1 2001/02/22 05:15:01 marcel Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_sysvec.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #include <sys/param.h>

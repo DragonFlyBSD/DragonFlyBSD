@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/ntp/doc/Makefile,v 1.5.2.3 2002/02/18 16:24:26 ru Exp $
+# $DragonFly: src/usr.sbin/ntp/doc/Attic/Makefile,v 1.2 2003/06/17 04:29:58 dillon Exp $
 
 MAINTAINER=	sheldonh
 

@@ -40,6 +40,7 @@
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/sys/net/if_pppvar.h,v 1.15 2000/01/29 16:56:23 peter Exp $
+ * $DragonFly: src/sys/net/ppp/if_pppvar.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 /*

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdtime/timelocal.h,v 1.5.2.2 2002/03/12 17:24:54 phantom Exp $
+ * $DragonFly: src/lib/libcr/stdtime/Attic/timelocal.h,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
 
 #ifndef _TIMELOCAL_H_

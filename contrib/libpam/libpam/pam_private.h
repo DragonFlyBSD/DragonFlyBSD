@@ -3,6 +3,7 @@
  *
  * $Id: pam_private.h,v 1.12 1997/04/05 06:57:37 morgan Exp morgan $
  * $FreeBSD: src/contrib/libpam/libpam/pam_private.h,v 1.1.1.1.6.2 2001/06/11 15:28:12 markm Exp $
+ * $DragonFly: src/contrib/libpam/libpam/Attic/pam_private.h,v 1.2 2003/06/17 04:24:03 dillon Exp $
  *
  * This is the Linux-PAM Library Private Header. It contains things
  * internal to the Linux-PAM library. Things not needed by either an

@@ -61,6 +61,7 @@
  *	This code can be compiled stand-alone for debugging.
  *
  * $FreeBSD: src/sys/kern/subr_blist.c,v 1.5.2.2 2003/01/12 09:23:12 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_blist.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #ifdef _KERNEL

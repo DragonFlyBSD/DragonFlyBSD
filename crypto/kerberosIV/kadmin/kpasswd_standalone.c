@@ -5,16 +5,10 @@
  * Copyright.MIT.
  *
  * change your password with kerberos
+ *
+ * $FreeBSD: src/crypto/kerberosIV/kadmin/kpasswd_standalone.c,v 1.1.8.3 2003/02/14 22:37:37 nectar Exp $
+ * $DragonFly: src/crypto/kerberosIV/kadmin/Attic/kpasswd_standalone.c,v 1.2 2003/06/17 04:24:36 dillon Exp $
  */
-
-#ifndef	lint
-#if 0
-static char rcsid_kpasswd_c[] =
-    "BonesHeader: /afs/athena.mit.edu/astaff/project/kerberos/src/kadmin/RCS/kpasswd.c,v 4.3 89/09/26 09:33:02 jtkohl Exp ";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/crypto/kerberosIV/kadmin/kpasswd_standalone.c,v 1.1.8.3 2003/02/14 22:37:37 nectar Exp $";
-#endif	lint
 
 /*
  * kpasswd

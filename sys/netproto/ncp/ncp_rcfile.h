@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_rcfile.h,v 1.2 1999/10/31 03:39:03 bp Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_rcfile.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 #ifndef _NETNCP_NCP_RCFILE_H_
 #define _NETNCP_NCP_RCFILE_H_

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)vmstat.c	8.2 (Berkeley) 1/12/94
+ * $FreeBSD: src/usr.bin/systat/vmstat.c,v 1.38.2.4 2002/03/12 19:50:23 phantom Exp $
+ * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)vmstat.c	8.2 (Berkeley) 1/12/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/systat/vmstat.c,v 1.38.2.4 2002/03/12 19:50:23 phantom Exp $";
-#endif /* not lint */
 
 /*
  * Cursed vmstat -- from Robert Elz.

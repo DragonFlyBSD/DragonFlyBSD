@@ -17,6 +17,7 @@
 
 /*
  * $FreeBSD: src/gnu/usr.bin/patch/backupfile.h,v 1.3.6.2 2002/04/30 20:40:02 gad Exp $
+ * $DragonFly: src/gnu/usr.bin/patch/Attic/backupfile.h,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
 
 /* When to make backup files. */

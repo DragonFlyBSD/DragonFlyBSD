@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)strncpy.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/string/wcsncpy.c,v 1.3.2.2 2002/11/12 11:24:24 tjr Exp $
+ * $DragonFly: src/lib/libcr/string/Attic/wcsncpy.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
  */
-
-#if 0
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)strncpy.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
-#endif
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/string/wcsncpy.c,v 1.3.2.2 2002/11/12 11:24:24 tjr Exp $");
 
 #include <wchar.h>
 

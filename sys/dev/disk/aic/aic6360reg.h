@@ -30,6 +30,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic6360reg.h,v 1.1 1999/10/21 08:56:52 luoqi Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic6360reg.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
 #define SCSISEQ		0x00	/* SCSI sequence control */

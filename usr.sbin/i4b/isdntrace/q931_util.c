@@ -30,6 +30,7 @@
  *	$Id: q931_util.c,v 1.11 2000/02/15 12:48:14 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdntrace/q931_util.c,v 1.6.2.1 2001/08/01 17:45:08 obrien Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdntrace/q931_util.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
  *
  *      last edit-date: [Tue Feb 15 13:52:09 2000]
  *

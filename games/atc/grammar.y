@@ -32,6 +32,8 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)grammar.y	8.1 (Berkeley) 5/31/93
  */
 
 /*
@@ -60,10 +62,6 @@
 
 %{
 #include "include.h"
-
-#ifndef lint
-static char sccsid[] = "@(#)grammar.y	8.1 (Berkeley) 5/31/93";
-#endif /* not lint */
 
 int	errors = 0;
 int	line = 1;

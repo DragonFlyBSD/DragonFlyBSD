@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 4/27/95
 # $FreeBSD: src/sbin/fsck/Makefile,v 1.5.6.1 2001/04/25 10:58:17 ru Exp $
+# $DragonFly: src/sbin/fsck/Makefile,v 1.2 2003/06/17 04:27:32 dillon Exp $
 
 PROG=	fsck
 MAN=	fsck.8

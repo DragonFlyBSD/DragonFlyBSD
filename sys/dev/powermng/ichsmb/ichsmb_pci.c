@@ -37,6 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/dev/ichsmb/ichsmb_pci.c,v 1.1.2.3 2002/10/20 14:57:19 nyan Exp $
+ * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb_pci.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
  */
 
 /*

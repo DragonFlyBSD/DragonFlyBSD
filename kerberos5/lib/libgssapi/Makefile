@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberos5/lib/libgssapi/Makefile,v 1.2.2.4 2002/07/25 09:33:14 ru Exp $
+# $DragonFly: src/kerberos5/lib/libgssapi/Makefile,v 1.2 2003/06/17 04:26:17 dillon Exp $
 
 LIB=	gssapi
 CFLAGS+=-I${KRB5DIR}/lib/gssapi	\

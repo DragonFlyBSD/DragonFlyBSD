@@ -39,6 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
+ * $DragonFly: src/sys/kern/kern_memio.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 /*

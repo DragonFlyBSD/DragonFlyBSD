@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/kern/uipc_mbuf2.c,v 1.2.2.5 2003/01/23 21:06:44 sam Exp $	*/
+/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.2 2003/06/17 04:28:41 dillon Exp $	*/
 /*	$KAME: uipc_mbuf2.c,v 1.31 2001/11/28 11:08:53 itojun Exp $	*/
 /*	$NetBSD: uipc_mbuf.c,v 1.40 1999/04/01 00:23:25 thorpej Exp $	*/
 

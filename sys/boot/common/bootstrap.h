@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/bootstrap.h,v 1.24.2.4 2001/12/21 22:19:13 jhb Exp $
+ * $DragonFly: src/sys/boot/common/bootstrap.h,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 
 #include <sys/types.h>

@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/rpc.ypupdated/Makefile,v 1.6 1999/08/28 01:19:43 peter Exp $
+# $DragonFly: src/usr.sbin/rpc.ypupdated/Makefile,v 1.2 2003/06/17 04:30:02 dillon Exp $
 
 PROG=	rpc.ypupdated
 SRCS=	ypupdate_prot_svc.c ypupdate_prot.h ypupdated_main.c \

@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mlyvar.h,v 1.1.2.2 2001/03/05 20:17:24 msmith Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mlyvar.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 /********************************************************************************

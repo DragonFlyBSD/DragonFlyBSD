@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cpufunc.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 /*

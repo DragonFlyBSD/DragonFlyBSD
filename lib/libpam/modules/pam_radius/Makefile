@@ -23,6 +23,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/lib/libpam/modules/pam_radius/Makefile,v 1.4.2.5 2002/07/03 21:41:30 des Exp $
+# $DragonFly: src/lib/libpam/modules/pam_radius/Attic/Makefile,v 1.2 2003/06/17 04:26:50 dillon Exp $
 
 LIB=		pam_radius
 SRCS=		pam_radius.c

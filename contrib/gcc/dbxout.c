@@ -19,6 +19,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/gcc/dbxout.c,v 1.4.2.1 2003/05/07 16:47:53 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/dbxout.c,v 1.2 2003/06/17 04:23:59 dillon Exp $ */
 
 
 /* Output dbx-format symbol table data.

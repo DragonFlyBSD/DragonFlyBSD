@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)optr.c	8.2 (Berkeley) 1/6/94
+ * $FreeBSD: src/sbin/dump/optr.c,v 1.9.2.5 2002/02/23 22:32:51 iedowse Exp $
+ * $DragonFly: src/sbin/dump/optr.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)optr.c	8.2 (Berkeley) 1/6/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/dump/optr.c,v 1.9.2.5 2002/02/23 22:32:51 iedowse Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/queue.h>

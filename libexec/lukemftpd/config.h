@@ -1,4 +1,5 @@
 /* $FreeBSD: src/libexec/lukemftpd/config.h,v 1.1.2.1 2002/06/20 21:13:33 obrien Exp $ */
+/* $DragonFly: src/libexec/lukemftpd/Attic/config.h,v 1.2 2003/06/17 04:27:07 dillon Exp $ */
 
 
 /* config.h.  Generated automatically by configure.  */

@@ -25,6 +25,7 @@
  *
  *
  * $FreeBSD: src/sys/netgraph/ng_device.h,v 1.1.2.1 2002/08/23 07:15:44 julian Exp $
+ * $DragonFly: src/sys/netgraph/ng_device.h,v 1.2 2003/06/17 04:28:49 dillon Exp $
  *
  */
 

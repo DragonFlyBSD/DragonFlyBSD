@@ -32,6 +32,7 @@
  *
  *	@(#)in_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in_var.h,v 1.33.2.3 2001/12/14 20:09:34 jlemon Exp $
+ * $DragonFly: src/sys/netinet/in_var.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #ifndef _NETINET_IN_VAR_H_

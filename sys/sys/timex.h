@@ -45,6 +45,7 @@
  *      Created file
  *
  * $FreeBSD: src/sys/sys/timex.h,v 1.12.2.1 2001/04/22 11:19:39 jhay Exp $
+ * $DragonFly: src/sys/sys/timex.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 /*
  * This header file defines the Network Time Protocol (NTP) interfaces

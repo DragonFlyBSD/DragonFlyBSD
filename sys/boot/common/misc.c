@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/misc.c,v 1.6.2.1 2000/07/06 00:34:02 ps Exp $
+ * $DragonFly: src/sys/boot/common/misc.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 
 #include <string.h>

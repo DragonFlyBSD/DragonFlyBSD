@@ -44,11 +44,10 @@
  ** 
  **/
 
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/moused/moused.c,v 1.37.2.11 2002/04/15 00:52:08 will Exp $";
-#endif /* not lint */
-
+/*
+ * $FreeBSD: src/usr.sbin/moused/moused.c,v 1.37.2.11 2002/04/15 00:52:08 will Exp $
+ * $DragonFly: src/usr.sbin/moused/moused.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ */
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>

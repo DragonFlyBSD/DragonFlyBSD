@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libpam/modules/pam_kerberosIV/pam_kerberosIV.c,v 1.4.2.2 2002/07/06 14:14:06 des Exp $
+ *	$DragonFly: src/lib/libpam/modules/pam_kerberosIV/Attic/pam_kerberosIV.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -34,6 +34,7 @@
  */
 
 #ident "$FreeBSD: src/usr.sbin/pcvt/vgaio/lex.l,v 1.5 1999/09/06 07:39:30 peter Exp $"
+#ident "$DragonFly: src/usr.sbin/pcvt/vgaio/Attic/lex.l,v 1.2 2003/06/17 04:29:59 dillon Exp $"
 
 /*
  * $Log: lex.l,v $

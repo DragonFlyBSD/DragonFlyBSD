@@ -1,5 +1,6 @@
 /*	$NetBSD: usbhid.h,v 1.9 2000/09/03 19:09:14 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbhid.h,v 1.7.2.2 2000/10/31 23:03:00 n_hibma Exp $ */
+/*	$DragonFly: src/sys/bus/usb/usbhid.h,v 1.2 2003/06/17 04:28:32 dillon Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.

@@ -2,6 +2,7 @@
   <title>&os;/&arch; &release.current; Release Notes</title>
 
   <pubdate>$FreeBSD: src/release/doc/en_US.ISO8859-1/relnotes/common/new.sgml,v 1.22.2.355 2003/05/23 15:05:23 bmah Exp $</pubdate>
+  <pubdate>$DragonFly: src/release/doc/en_US.ISO8859-1/relnotes/common/Attic/new.sgml,v 1.2 2003/06/17 04:27:19 dillon Exp $</pubdate>
 
   <corpauthor>The FreeBSD Project</corpauthor>
 

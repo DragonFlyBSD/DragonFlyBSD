@@ -20,6 +20,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/gcc/toplev.c,v 1.6.2.8 2002/07/03 17:56:20 ambrisko Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/toplev.c,v 1.2 2003/06/17 04:24:01 dillon Exp $ */
 
 /* This is the top level of cc1/c++.
    It parses command args, opens files, invokes the various passes

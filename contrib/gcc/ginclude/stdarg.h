@@ -4,6 +4,7 @@
    Thus, va_arg (..., short) is not valid.  */
 
 /* $FreeBSD: src/contrib/gcc/ginclude/stdarg.h,v 1.4 1999/10/16 07:12:34 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/ginclude/Attic/stdarg.h,v 1.2 2003/06/17 04:24:02 dillon Exp $ */
 
 #ifndef _STDARG_H
 #ifndef _ANSI_STDARG_H_

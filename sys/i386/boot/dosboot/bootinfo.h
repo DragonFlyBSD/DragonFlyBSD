@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/boot/dosboot/bootinfo.h,v 1.5 1999/08/28 00:43:20 peter Exp $
+ * $DragonFly: src/sys/i386/boot/dosboot/Attic/bootinfo.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #ifndef	_MACHINE_BOOTINFO_H_

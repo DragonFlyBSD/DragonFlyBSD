@@ -53,12 +53,11 @@
  * SOFTWARE.
  * -
  * --Copyright--
+ *
+ * @(#)inet_addr.c	8.1 (Berkeley) 6/17/93
+ * $FreeBSD: src/lib/libc/net/inet_addr.c,v 1.12.2.2 2002/04/28 05:40:24 suz Exp $
+ * $DragonFly: src/lib/libc/net/inet_addr.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)inet_addr.c	8.1 (Berkeley) 6/17/93";
-static char rcsid[] = "$FreeBSD: src/lib/libc/net/inet_addr.c,v 1.12.2.2 2002/04/28 05:40:24 suz Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 

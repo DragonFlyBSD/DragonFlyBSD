@@ -30,6 +30,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifvlan.c,v 1.2 1999/08/28 00:13:09 peter Exp $
+ * $DragonFly: src/sbin/ifconfig/ifvlan.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ *
+ * $FreeBSD: src/sbin/ifconfig/ifvlan.c,v 1.2 1999/08/28 00:13:09 peter Exp $
  */
 
 #include <sys/param.h>
@@ -57,10 +60,6 @@
 
 #include "ifconfig.h"
 
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/ifconfig/ifvlan.c,v 1.2 1999/08/28 00:13:09 peter Exp $";
-#endif
 static int			__tag = 0;
 static int			__have_tag = 0;
 

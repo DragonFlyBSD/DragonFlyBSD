@@ -22,12 +22,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sbin/kldunload/kldunload.c,v 1.10 1999/09/08 05:46:47 bde Exp $
+ * $DragonFly: src/sbin/kldunload/kldunload.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/kldunload/kldunload.c,v 1.10 1999/09/08 05:46:47 bde Exp $";
-#endif /* not lint */
 
 #include <err.h>
 #include <stdio.h>

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key_var.h,v 1.2.2.4 2001/12/12 15:27:45 ume Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key_var.h,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$KAME: key_var.h,v 1.11 2001/09/12 23:05:07 sakane Exp $	*/
 
 /*

@@ -34,16 +34,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)var.c	8.3 (Berkeley) 3/19/94
+ * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)var.c	8.3 (Berkeley) 3/19/94";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $";
-#endif
-#endif /* not lint */
 
 /*-
  * var.c --

@@ -22,10 +22,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/games/random/randomize_fd.c,v 1.2.2.1 2003/02/15 10:34:35 seanc Exp $
+ * $DragonFly: src/games/random/randomize_fd.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/games/random/randomize_fd.c,v 1.2.2.1 2003/02/15 10:34:35 seanc Exp $");
 
 #include <sys/types.h>
 #include <sys/param.h>

@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi_pci.c,v 1.8.2.3 2002/06/16 18:07:18 nsayer Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi_pci.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 /*

@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)chmod.c	8.8 (Berkeley) 4/1/94
+ * $FreeBSD: src/bin/chmod/chmod.c,v 1.16.2.6 2002/10/18 01:36:38 trhodes Exp $
+ * $DragonFly: src/bin/chmod/chmod.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
  */
-
-#ifndef lint
-static char const copyright[] =
-"@(#) Copyright (c) 1989, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)chmod.c	8.8 (Berkeley) 4/1/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/bin/chmod/chmod.c,v 1.16.2.6 2002/10/18 01:36:38 trhodes Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/vga_isa.c,v 1.17 2000/01/29 15:08:56 peter Exp $
+ * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
  */
 
 #include "opt_vga.h"

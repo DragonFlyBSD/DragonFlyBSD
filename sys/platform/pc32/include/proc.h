@@ -32,6 +32,7 @@
  *
  *	from: @(#)proc.h	7.1 (Berkeley) 5/15/91
  * $FreeBSD: src/sys/i386/include/proc.h,v 1.10 1999/08/28 00:44:21 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/include/proc.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 #ifndef _MACHINE_PROC_H_

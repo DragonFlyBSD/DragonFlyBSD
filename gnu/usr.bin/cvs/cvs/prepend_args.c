@@ -17,6 +17,7 @@
    02111-1307, USA.  */
 
 /* $FreeBSD: src/gnu/usr.bin/cvs/cvs/prepend_args.c,v 1.3.2.2 2002/12/19 21:18:01 peter Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cvs/cvs/prepend_args.c,v 1.2 2003/06/17 04:25:45 dillon Exp $ */
 
 
 #ifdef HAVE_CONFIG_H

@@ -16,12 +16,10 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * $FreeBSD: src/gnu/lib/libdialog/textbox.c,v 1.18.6.2 2002/06/18 07:59:59 dougb Exp $
+ * $DragonFly: src/gnu/lib/libdialog/textbox.c,v 1.2 2003/06/17 04:25:43 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/gnu/lib/libdialog/textbox.c,v 1.18.6.2 2002/06/18 07:59:59 dougb Exp $";
-#endif
 
 #include <dialog.h>
 #include "dialog.priv.h"

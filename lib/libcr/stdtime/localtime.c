@@ -3,14 +3,12 @@
 ** June 5, 1996 by Arthur David Olson (arthur_david_olson@nih.gov).
 **
 ** $FreeBSD: src/lib/libc/stdtime/localtime.c,v 1.25.2.2 2002/08/13 16:08:07 bmilekic Exp $
+** $DragonFly: src/lib/libcr/stdtime/Attic/localtime.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
 */
 
-#ifndef lint
-#ifndef NOID
-static char	elsieid[] = "@(#)localtime.c	7.57";
-#endif /* !defined NOID */
-#endif /* !defined lint */
-
+/*
+ * @(#)localtime.c	7.57
+ */
 /*
 ** Leap second handling from Bradley White (bww@k.gp.cs.cmu.edu).
 ** POSIX-style TZ environment variable handling from Guy Harris

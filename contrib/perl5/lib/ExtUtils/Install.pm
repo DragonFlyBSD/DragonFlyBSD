@@ -3,6 +3,7 @@ package ExtUtils::Install;
 $VERSION = substr q$Revision: 1.28 $, 10;
 # $Date: 1998/01/25 07:08:24 $
 # $FreeBSD: src/contrib/perl5/lib/ExtUtils/Install.pm,v 1.2 2000/01/29 17:27:17 markm Exp $
+# $DragonFly: src/contrib/perl5/lib/ExtUtils/Attic/Install.pm,v 1.2 2003/06/17 04:24:06 dillon Exp $
 
 use Exporter;
 use Carp ();

@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/defs.h,v 1.52.2.11 2002/09/01 02:12:26 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/defs.h,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 /* Check the following definitions for your machine environment */

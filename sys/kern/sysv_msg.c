@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_msg.c,v 1.23.2.5 2002/12/31 08:54:53 maxim Exp $ */
+/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.2 2003/06/17 04:28:41 dillon Exp $ */
 
 /*
  * Implementation of SVID messages

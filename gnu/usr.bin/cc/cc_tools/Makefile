@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc_tools/Makefile,v 1.48.2.6 2002/06/20 23:13:31 obrien Exp $
+# $DragonFly: src/gnu/usr.bin/cc/cc_tools/Attic/Makefile,v 1.2 2003/06/17 04:25:45 dillon Exp $
 
 #
 # This could probably be merged with ../cc_int/Makefile, but bsd.lib.mk

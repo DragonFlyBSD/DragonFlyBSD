@@ -22,6 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/pcic_isa.c,v 1.13.2.8 2003/02/26 18:42:00 imp Exp $
+ * $DragonFly: src/sys/bus/pccard/Attic/pcic_isa.c,v 1.2 2003/06/17 04:28:55 dillon Exp $
  */
 
 #include <sys/param.h>

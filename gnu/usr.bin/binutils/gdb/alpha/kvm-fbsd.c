@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
 /* $FreeBSD: src/gnu/usr.bin/binutils/gdb/alpha/kvm-fbsd.c,v 1.1.2.1 2000/12/11 01:03:18 obrien Exp $ */
+/* $DragonFly: src/gnu/usr.bin/binutils/gdb/alpha/Attic/kvm-fbsd.c,v 1.2 2003/06/17 04:25:44 dillon Exp $ */
 
 /*
  * This works like "remote" but, you use it like this:

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)cmds.c	8.2 (Berkeley) 4/29/95
+ * $FreeBSD: src/usr.bin/systat/cmds.c,v 1.3 1999/08/28 01:05:58 peter Exp $
+ * $DragonFly: src/usr.bin/systat/cmds.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)cmds.c	8.2 (Berkeley) 4/29/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/systat/cmds.c,v 1.3 1999/08/28 01:05:58 peter Exp $";
-#endif /* not lint */
 
 #include <stdlib.h>
 #include <unistd.h>

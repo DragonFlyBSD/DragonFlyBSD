@@ -58,14 +58,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)termcap.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libncurses/termcap.c,v 1.2.2.2 2002/08/15 08:30:26 ru Exp $
+ * $DragonFly: src/lib/libncurses/Attic/termcap.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libncurses/termcap.c,v 1.2.2.2 2002/08/15 08:30:26 ru Exp $");
-
-#ifndef lint
-static const char sccsid[] = "@(#)termcap.c	8.1 (Berkeley) 6/4/93";
-#endif /* not lint */
 
 #include <stdio.h>
 #include <ctype.h>

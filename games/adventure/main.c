@@ -34,21 +34,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)main.c	8.1 (Berkeley) 6/2/93
+ * $FreeBSD: src/games/adventure/main.c,v 1.9.2.1 2001/03/05 11:43:11 kris Exp $
+ * $DragonFly: src/games/adventure/main.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1991, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)main.c	8.1 (Berkeley) 6/2/93";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/adventure/main.c,v 1.9.2.1 2001/03/05 11:43:11 kris Exp $";
-#endif /* not lint */
 
 /*      Re-coding of advent in C: main program                          */
 

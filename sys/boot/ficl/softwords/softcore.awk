@@ -11,6 +11,7 @@
 # POSIX [[:space:]] character class.
 #
 # $FreeBSD: src/sys/boot/ficl/softwords/softcore.awk,v 1.3.2.2 2001/03/04 04:55:10 obrien Exp $
+# $DragonFly: src/sys/boot/ficl/softwords/softcore.awk,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 BEGIN \
 {

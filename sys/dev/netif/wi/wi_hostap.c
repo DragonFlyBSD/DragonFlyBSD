@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/wi_hostap.c,v 1.7.2.4 2002/08/02 07:11:34 imp Exp $
+ * $DragonFly: src/sys/dev/netif/wi/Attic/wi_hostap.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 /* This is experimental Host AP software for Prism 2 802.11b interfaces.

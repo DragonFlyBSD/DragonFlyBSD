@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcf.c,v 1.14 2000/01/14 00:18:05 nsouch Exp $
+ * $DragonFly: src/sys/bus/iicbus/i386/pcf.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  *
  */
 #include <sys/param.h>

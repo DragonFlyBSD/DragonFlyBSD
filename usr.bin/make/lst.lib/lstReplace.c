@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstReplace.c,v 1.5 1999/08/28 01:03:56 peter Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstReplace.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ *
+ * @(#)lstReplace.c	8.1 (Berkeley) 6/6/93
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)lstReplace.c	8.1 (Berkeley) 6/6/93";
-#endif /* not lint */
 
 /*-
  * LstReplace.c --

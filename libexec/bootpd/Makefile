@@ -1,5 +1,6 @@
 # bootpd/Makefile
 # $FreeBSD: src/libexec/bootpd/Makefile,v 1.8.2.1 2001/04/25 10:40:49 ru Exp $
+# $DragonFly: src/libexec/bootpd/Makefile,v 1.2 2003/06/17 04:27:07 dillon Exp $
 
 PROG=	bootpd
 CFLAGS+= -DETC_ETHERS

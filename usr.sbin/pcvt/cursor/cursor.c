@@ -31,10 +31,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
+ * @(#)cursor.c, 3.20, Last Edit-Date: [Tue Apr  4 12:27:54 1995]
+ * $FreeBSD: src/usr.sbin/pcvt/cursor/cursor.c,v 1.7.6.2 2001/05/12 10:11:41 kris Exp $
+ * $DragonFly: src/usr.sbin/pcvt/cursor/Attic/cursor.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
-
-static char *id =
-	"@(#)cursor.c, 3.20, Last Edit-Date: [Tue Apr  4 12:27:54 1995]\n$FreeBSD: src/usr.sbin/pcvt/cursor/cursor.c,v 1.7.6.2 2001/05/12 10:11:41 kris Exp $";
 
 /*---------------------------------------------------------------------------*
  *

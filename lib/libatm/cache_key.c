@@ -22,10 +22,10 @@
  *
  * Copies of this Software may be made, however, the above copyright
  * notice must be reproduced on all copies.
+ *
+ * $FreeBSD: src/lib/libatm/cache_key.c,v 1.3.2.1 2001/09/28 16:52:10 dillon Exp $
+ * $DragonFly: src/lib/libatm/cache_key.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libatm/cache_key.c,v 1.3.2.1 2001/09/28 16:52:10 dillon Exp $");
 
 /*
  * User Space Library Functions

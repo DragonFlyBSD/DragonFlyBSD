@@ -21,13 +21,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pcm/ac97_patch.c,v 1.1.2.1 2003/02/07 16:26:45 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 #include <dev/sound/pcm/ac97_patch.h>
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pcm/ac97_patch.c,v 1.1.2.1 2003/02/07 16:26:45 orion Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
 
 void ad1886_patch(struct ac97_info* codec)
 {

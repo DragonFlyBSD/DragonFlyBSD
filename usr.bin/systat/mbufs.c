@@ -29,13 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)mbufs.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/systat/mbufs.c,v 1.10.2.1 2000/08/26 09:36:55 ps Exp $
+ * $DragonFly: src/usr.bin/systat/mbufs.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)mbufs.c	8.1 (Berkeley) 6/6/93";
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/systat/mbufs.c,v 1.10.2.1 2000/08/26 09:36:55 ps Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/types.h>

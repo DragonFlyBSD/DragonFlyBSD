@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/sys/sbuf.h,v 1.7.2.2 2002/03/12 01:00:28 archie Exp $
+ *      $DragonFly: src/sys/sys/sbuf.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_SBUF_H_

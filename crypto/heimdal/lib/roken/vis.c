@@ -32,6 +32,8 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $NetBSD: vis.c,v 1.19 2000/01/22 22:42:45 mycroft Exp $
  */
 
 
@@ -46,9 +48,6 @@ RCSID("$Id: vis.c,v 1.5 2001/09/03 05:37:23 assar Exp $");
 #endif
 #else
 #include <sys/cdefs.h>
-#if !defined(lint)
-__RCSID("$NetBSD: vis.c,v 1.19 2000/01/22 22:42:45 mycroft Exp $");
-#endif /* not lint */
 #endif
 
 #if 0

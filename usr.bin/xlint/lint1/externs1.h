@@ -31,6 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/xlint/lint1/externs1.h,v 1.1.1.1.8.1 2001/07/19 01:28:12 kris Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/externs1.h,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
 /*

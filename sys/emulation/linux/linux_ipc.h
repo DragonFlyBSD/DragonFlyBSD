@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ipc.h,v 1.2.2.4 2001/11/05 19:08:22 marcel Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ipc.h,v 1.2 2003/06/17 04:28:19 dillon Exp $
  */
 
 #ifndef _LINUX_IPC_H_

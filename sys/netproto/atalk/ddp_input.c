@@ -3,6 +3,7 @@
  * All Rights Reserved.  See COPYRIGHT.
  *
  * $FreeBSD: src/sys/netatalk/ddp_input.c,v 1.12 2000/02/13 03:31:58 peter Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 #include <sys/param.h>

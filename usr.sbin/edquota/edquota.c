@@ -32,21 +32,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)edquota.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.sbin/edquota/edquota.c,v 1.9.2.6 2002/10/31 22:38:43 iedowse Exp $
+ * $DragonFly: src/usr.sbin/edquota/edquota.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1980, 1990, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)edquota.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/edquota/edquota.c,v 1.9.2.6 2002/10/31 22:38:43 iedowse Exp $";
-#endif /* not lint */
 
 /*
  * Disk quota editor.

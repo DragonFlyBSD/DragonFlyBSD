@@ -32,6 +32,7 @@
  *
  *	@(#)reboot.h	8.3 (Berkeley) 12/13/94
  * $FreeBSD: src/sys/sys/reboot.h,v 1.18.2.1 2001/12/17 18:44:43 guido Exp $
+ * $DragonFly: src/sys/sys/reboot.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_REBOOT_H_

@@ -25,6 +25,7 @@
  	-hm	minor modifications for pcvt 2.0 release
 
 $FreeBSD: src/usr.sbin/pcvt/userkeys/vt220keys.c,v 1.5.6.1 2001/05/12 10:11:42 kris Exp $
+$DragonFly: src/usr.sbin/pcvt/userkeys/Attic/vt220keys.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
 */
 
 #include <stdio.h>

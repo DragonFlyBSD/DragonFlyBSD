@@ -29,6 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_hpfs/mount_hpfs.c,v 1.1 1999/12/09 19:09:15 semenu Exp $
+ * $DragonFly: src/sbin/mount_hpfs/mount_hpfs.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
  */
 
 #include <sys/cdefs.h>

@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/in_hostcache.c,v 1.3 1999/08/28 00:49:16 peter Exp $
+ * $DragonFly: src/sys/netinet/Attic/in_hostcache.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #include <sys/param.h>

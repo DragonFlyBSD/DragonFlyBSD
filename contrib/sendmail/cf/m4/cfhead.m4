@@ -10,6 +10,7 @@
 # the sendmail distribution.
 #
 # $FreeBSD: src/contrib/sendmail/cf/m4/cfhead.m4,v 1.3.6.8 2003/03/29 19:33:14 gshapiro Exp $
+# $DragonFly: src/contrib/sendmail/cf/m4/Attic/cfhead.m4,v 1.2 2003/06/17 04:24:06 dillon Exp $
 #
 
 ######################################################################

@@ -23,6 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcam/camlib.h,v 1.2 1999/08/28 00:04:06 peter Exp $
+ * $DragonFly: src/lib/libcam/camlib.h,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 /*
  * Buffer encoding/decoding routines taken from the original FreeBSD SCSI

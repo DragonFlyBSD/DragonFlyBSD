@@ -29,13 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)uname.c	8.1 (Berkeley) 1/4/94
+ * $FreeBSD: src/lib/libc/gen/uname.c,v 1.7 1999/08/27 23:59:06 peter Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/uname.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/*static char sccsid[] = "From: @(#)uname.c	8.1 (Berkeley) 1/4/94";*/
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/gen/uname.c,v 1.7 1999/08/27 23:59:06 peter Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/sysctl.h>

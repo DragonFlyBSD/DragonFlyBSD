@@ -40,6 +40,7 @@
  *
  * $Id: hlfsd.c,v 1.5 1999/09/08 23:36:51 ezk Exp $
  * $FreeBSD: src/contrib/amd/hlfsd/hlfsd.c,v 1.5 1999/09/15 05:45:15 obrien Exp $
+ * $DragonFly: src/contrib/amd/hlfsd/hlfsd.c,v 1.2 2003/06/17 04:23:57 dillon Exp $
  *
  * HLFSD was written at Columbia University Computer Science Department, by
  * Erez Zadok <ezk@cs.columbia.edu> and Alexander Dupuy <dupuy@cs.columbia.edu>

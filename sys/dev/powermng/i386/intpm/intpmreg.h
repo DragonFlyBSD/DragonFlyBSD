@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/intpmreg.h,v 1.2 1999/08/28 00:51:01 peter Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/intpm/intpmreg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /*Register Difinition for Intel Chipset with ACPI Support*/

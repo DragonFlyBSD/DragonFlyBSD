@@ -28,6 +28,7 @@
  *      ------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/itjc/i4b_itjc_ext.h,v 1.1.2.1 2001/08/10 14:08:39 obrien Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_ext.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
  *
  *      last edit-date: [Wed Jan 10 17:15:31 2001]
  *

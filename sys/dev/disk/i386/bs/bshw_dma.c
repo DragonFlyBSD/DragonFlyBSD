@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/bs/bshw_dma.c,v 1.6.6.1 2000/10/21 07:44:26 nyan Exp $ */
+/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bshw_dma.c,v 1.2 2003/06/17 04:28:37 dillon Exp $ */
 /*	$NecBSD: bshw_dma.c,v 1.3 1997/07/26 06:03:16 honda Exp $	*/
 /*	$NetBSD$	*/
 /*

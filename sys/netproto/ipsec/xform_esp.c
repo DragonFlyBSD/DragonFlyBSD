@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_esp.c,v 1.2.2.2 2003/02/26 00:14:05 sam Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$OpenBSD: ip_esp.c,v 1.69 2001/06/26 06:18:59 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),

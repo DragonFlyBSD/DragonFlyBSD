@@ -12,6 +12,7 @@
  * 29 August 1998
  *
  * $FreeBSD: src/sys/boot/common/interp_parse.c,v 1.8.2.1 2000/12/28 13:12:35 ps Exp $
+ * $DragonFly: src/sys/boot/common/interp_parse.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  * 
  * The meat of the simple parser.
  */

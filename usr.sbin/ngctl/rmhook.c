@@ -35,6 +35,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/rmhook.c,v 1.2 1999/11/30 02:45:31 archie Exp $
+ * $DragonFly: src/usr.sbin/ngctl/rmhook.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
 
 #include "ngctl.h"

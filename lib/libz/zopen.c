@@ -1,9 +1,9 @@
 /*
  * Public domain stdio wrapper for libz, written by Johan Danielsson.
+ *
+ * $FreeBSD: src/lib/libz/zopen.c,v 1.2.2.2 2003/02/01 13:33:12 sobomax Exp $
+ * $DragonFly: src/lib/libz/zopen.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libz/zopen.c,v 1.2.2.2 2003/02/01 13:33:12 sobomax Exp $");
 
 #include <stdio.h>
 #include <zlib.h>

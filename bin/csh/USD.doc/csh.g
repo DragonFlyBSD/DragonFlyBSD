@@ -31,6 +31,7 @@
 .\"
 .\"	@(#)csh.g	8.1 (Berkeley) 6/8/93
 .\" $FreeBSD: src/bin/csh/USD.doc/csh.g,v 1.5.2.2 2003/01/24 02:08:54 keramida Exp $
+.\" $DragonFly: src/bin/csh/USD.doc/csh.g,v 1.2 2003/06/17 04:22:49 dillon Exp $
 .\"
 .SH
 Glossary

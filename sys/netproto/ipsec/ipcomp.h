@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipcomp.h,v 1.1.4.1 2003/01/24 05:11:35 sam Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipcomp.h,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$KAME: ipcomp.h,v 1.8 2000/09/26 07:55:14 itojun Exp $	*/
 
 /*

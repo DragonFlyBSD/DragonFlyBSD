@@ -1,11 +1,10 @@
 /* unlzh.c -- decompress files in SCO compress -H (LZH) format.
  * The code in this file is directly derived from the public domain 'ar002'
  * written by Haruhiko Okumura.
+ *
+ * $FreeBSD: src/gnu/usr.bin/gzip/unlzh.c,v 1.5 1999/08/27 23:35:53 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/gzip/Attic/unlzh.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
-
-#ifdef RCSID
-static char rcsid[] = "$FreeBSD: src/gnu/usr.bin/gzip/unlzh.c,v 1.5 1999/08/27 23:35:53 peter Exp $";
-#endif
 
 #include <stdio.h>
 

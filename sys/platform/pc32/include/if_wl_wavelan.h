@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/i386/include/if_wl_wavelan.h,v 1.4 1999/08/28 00:44:15 peter Exp $ */
+/* $DragonFly: src/sys/platform/pc32/include/if_wl_wavelan.h,v 1.2 2003/06/17 04:28:35 dillon Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

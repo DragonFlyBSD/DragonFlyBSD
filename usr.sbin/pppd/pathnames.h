@@ -2,6 +2,7 @@
  * define path names
  *
  * $FreeBSD: src/usr.sbin/pppd/pathnames.h,v 1.9.2.1 2002/07/01 03:02:03 mdodd Exp $
+ * $DragonFly: src/usr.sbin/pppd/pathnames.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 #ifdef HAVE_PATHS_H

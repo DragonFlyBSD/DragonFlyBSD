@@ -1,4 +1,5 @@
 # $FreeBSD: src/bin/ps/Makefile,v 1.13 1999/11/17 13:37:30 peter Exp $
+# $DragonFly: src/bin/ps/Makefile,v 1.2 2003/06/17 04:22:50 dillon Exp $
 #	@(#)Makefile	8.1 (Berkeley) 6/2/93
 
 PROG=	ps

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_freebsd.h,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.h,v 1.2 2003/06/17 04:28:28 dillon Exp $ */
 /*
  * LSI MPT Host Adapter FreeBSD Wrapper Definitions (CAM version)
  *

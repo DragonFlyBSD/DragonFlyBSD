@@ -26,6 +26,7 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/boot/pc98/boot0.5/syscons.s,v 1.1.2.1 2000/09/11 09:19:46 kato Exp $
+# $DragonFly: src/sys/boot/pc98/boot0.5/Attic/syscons.s,v 1.2 2003/06/17 04:28:18 dillon Exp $
 #
 
 	.code16

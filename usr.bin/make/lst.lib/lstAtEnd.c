@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstAtEnd.c,v 1.6 1999/08/28 01:03:46 peter Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstAtEnd.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ *
+ * @(#)lstAtEnd.c	8.1 (Berkeley) 6/6/93
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)lstAtEnd.c	8.1 (Berkeley) 6/6/93";
-#endif /* not lint */
 
 /*-
  * LstAtEnd.c --

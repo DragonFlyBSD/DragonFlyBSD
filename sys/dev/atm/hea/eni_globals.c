@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_globals.c,v 1.5 2000/01/17 20:49:41 mks Exp $
- *
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_globals.c,v 1.2 2003/06/17 04:28:26 dillon Exp $
  */
 
 /*
@@ -39,10 +39,6 @@
 
 #include <dev/hea/eni_stats.h>
 #include <dev/hea/eni.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/dev/hea/eni_globals.c,v 1.5 2000/01/17 20:49:41 mks Exp $");
-#endif
 
 /*
  * Device unit table

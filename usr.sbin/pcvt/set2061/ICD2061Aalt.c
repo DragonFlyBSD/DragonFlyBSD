@@ -2,6 +2,7 @@
  * This code is derived from code available from the STB bulletin board
  *
  * $FreeBSD: src/usr.sbin/pcvt/set2061/ICD2061Aalt.c,v 1.5 1999/12/29 05:07:54 peter Exp $
+ * $DragonFly: src/usr.sbin/pcvt/set2061/Attic/ICD2061Aalt.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
 
 /* $XFree86: mit/server/ddx/x386/common_hw/ICD2061Aalt.c,v 2.6 1994/04/15 05:10:30 dawes Exp $ */

@@ -4,6 +4,7 @@
  * Heimdal compatability layer.
  *
  * $FreeBSD: src/lib/libpam/modules/pam_krb5/compat_heimdal.c,v 1.1.2.2 2001/07/29 18:57:30 markm Exp $
+ * $DragonFly: src/lib/libpam/modules/pam_krb5/Attic/compat_heimdal.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
 
 #include <errno.h>

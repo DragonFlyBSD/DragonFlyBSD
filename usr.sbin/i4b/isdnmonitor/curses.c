@@ -30,6 +30,7 @@
  *	$Id: curses.c,v 1.10 1999/12/13 21:25:25 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnmonitor/curses.c,v 1.1.2.1 2001/08/01 17:45:06 obrien Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnmonitor/curses.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
  *
  *      last edit-date: [Mon Dec 13 21:51:47 1999]
  *

@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_i810.c,v 1.1.2.5 2002/09/15 08:45:41 anholt Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.2 2003/06/17 04:28:56 dillon Exp $
  */
 
 /*

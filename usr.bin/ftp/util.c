@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/util.c,v 1.12.2.4 2002/08/27 09:55:08 yar Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/util.c,v 1.2 2003/06/17 04:29:26 dillon Exp $	*/
 /*	$NetBSD: util.c,v 1.16.2.1 1997/11/18 01:02:33 mellon Exp $	*/
 
 /*
@@ -32,13 +33,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $NetBSD: util.c,v 1.16.2.1 1997/11/18 01:02:33 mellon Exp $
+ * $FreeBSD: src/usr.bin/ftp/util.c,v 1.12.2.4 2002/08/27 09:55:08 yar Exp $
  */
 
 #include <sys/cdefs.h>
-#ifndef lint
-__RCSID("$FreeBSD: src/usr.bin/ftp/util.c,v 1.12.2.4 2002/08/27 09:55:08 yar Exp $");
-__RCSID_SOURCE("$NetBSD: util.c,v 1.16.2.1 1997/11/18 01:02:33 mellon Exp $");
-#endif /* not lint */
 
 /*
  * FTP User Program -- Misc support routines

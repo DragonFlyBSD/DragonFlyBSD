@@ -34,12 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/gen/sigsetjmp.S,v 1.19.2.2 2001/07/06 12:41:44 deischen Exp $
+ * $DragonFly: src/lib/libcr/i386/gen/Attic/sigsetjmp.S,v 1.2 2003/06/17 04:26:43 dillon Exp $
+ *
+ * $FreeBSD: src/lib/libc/i386/gen/sigsetjmp.S,v 1.19.2.2 2001/07/06 12:41:44 deischen Exp $
  */
-
-#if defined(LIBC_RCS) && !defined(lint)
-	.text
-	.asciz "$FreeBSD: src/lib/libc/i386/gen/sigsetjmp.S,v 1.19.2.2 2001/07/06 12:41:44 deischen Exp $"
-#endif /* LIBC_RCS and not lint */
 
 #include "DEFS.h"
 #include "SYS.h"

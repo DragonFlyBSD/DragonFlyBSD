@@ -29,17 +29,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)sys_bsd.c	8.4 (Berkeley) 5/30/95
+ * $FreeBSD: src/usr.bin/telnet/sys_bsd.c,v 1.5.6.1 2002/04/13 11:07:13 markm Exp $
+ * $DragonFly: src/usr.bin/telnet/sys_bsd.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
 
 #include <sys/cdefs.h>
 #include <stdlib.h>
 #include <err.h>
-
-__FBSDID("$FreeBSD: src/usr.bin/telnet/sys_bsd.c,v 1.5.6.1 2002/04/13 11:07:13 markm Exp $");
-
-#ifndef lint
-static const char sccsid[] = "@(#)sys_bsd.c	8.4 (Berkeley) 5/30/95";
-#endif
 
 /*
  * The following routines try to encapsulate what is system dependent

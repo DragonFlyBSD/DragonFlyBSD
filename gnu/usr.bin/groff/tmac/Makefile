@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/groff/tmac/Makefile,v 1.21.2.8 2003/02/14 15:22:14 ru Exp $
+# $DragonFly: src/gnu/usr.bin/groff/tmac/Makefile,v 1.2 2003/06/17 04:25:46 dillon Exp $
 
 TMACOWN?=	${BINOWN}
 TMACGRP?=	${BINGRP}

@@ -87,15 +87,11 @@ expr:	ARITH_LPAREN expr ARITH_RPAREN = { $$ = $2; }
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)arith.y	8.3 (Berkeley) 5/4/95
+ * $FreeBSD: src/bin/sh/arith.y,v 1.10.2.2 2002/07/19 04:38:51 tjr Exp $
+ * $DragonFly: src/bin/sh/arith.y,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)arith.y	8.3 (Berkeley) 5/4/95";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/bin/sh/arith.y,v 1.10.2.2 2002/07/19 04:38:51 tjr Exp $";
-#endif /* not lint */
 
 #include "shell.h"
 #include "error.h"

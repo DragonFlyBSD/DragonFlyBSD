@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.bin/less/defines.h,v 1.1.2.2 2000/07/19 09:24:25 ps Exp $ */
+/* $DragonFly: src/usr.bin/less/defines.h,v 1.2 2003/06/17 04:29:27 dillon Exp $ */
 /* defines.h.  Generated automatically by configure.  */
 /* defines.h.in.  Generated automatically from configure.in by autoheader.  */
 /* Unix definition file for less.  -*- C -*-

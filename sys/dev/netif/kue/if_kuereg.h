@@ -30,6 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_kuereg.h,v 1.5 2000/01/28 02:15:31 wpaul Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kuereg.h,v 1.2 2003/06/17 04:28:32 dillon Exp $
  */
 
 /*

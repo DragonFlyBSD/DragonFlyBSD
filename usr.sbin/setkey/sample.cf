@@ -26,6 +26,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/usr.sbin/setkey/sample.cf,v 1.1.2.1 2000/07/15 07:37:03 kris Exp $
+# $DragonFly: src/usr.sbin/setkey/sample.cf,v 1.2 2003/06/17 04:30:03 dillon Exp $
 
 # There are sample scripts for IPsec configuration by manual keying.
 # A security association is uniquely identified by a triple consisting

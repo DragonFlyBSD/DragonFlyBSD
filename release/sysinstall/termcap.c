@@ -11,6 +11,7 @@
  * incurred with its use.
  *
  * $FreeBSD: src/release/sysinstall/termcap.c,v 1.24.6.5 2002/07/02 22:35:25 jhb Exp $
+ * $DragonFly: src/release/sysinstall/Attic/termcap.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  */
 
 #include "sysinstall.h"

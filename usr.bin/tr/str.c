@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)str.c	8.2 (Berkeley) 4/28/95
+ * $FreeBSD: src/usr.bin/tr/str.c,v 1.10.2.2 2002/07/29 12:59:33 tjr Exp $
+ * $DragonFly: src/usr.bin/tr/str.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-
-__FBSDID("$FreeBSD: src/usr.bin/tr/str.c,v 1.10.2.2 2002/07/29 12:59:33 tjr Exp $");
-
-#ifndef lint
-static const char sccsid[] = "@(#)str.c	8.2 (Berkeley) 4/28/95";
-#endif
 
 #include <sys/cdefs.h>
 #include <sys/types.h>

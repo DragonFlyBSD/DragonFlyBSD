@@ -1,5 +1,6 @@
 /*	$NetBSD: umodem.c,v 1.5 1999/01/08 11:58:25 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/umodem.c,v 1.17.2.9 2002/11/06 20:23:50 joe Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.

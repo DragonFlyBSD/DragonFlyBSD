@@ -1,6 +1,7 @@
 #!/bin/sh -
 #
 # $FreeBSD: src/etc/etc.i386/rc.i386,v 1.51.2.5 2001/02/27 20:03:30 jhb Exp $
+# $DragonFly: src/etc/etc.i386/Attic/rc.i386,v 1.2 2003/06/17 04:24:47 dillon Exp $
 #	Do i386 specific processing
 #
 

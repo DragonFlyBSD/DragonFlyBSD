@@ -28,10 +28,10 @@
  * SUCH DAMAGE.
  *
  *	BSDI trace.c,v 2.2 1996/04/08 19:33:07 bostic Exp
+ *
+ * $FreeBSD: src/usr.bin/doscmd/trace.c,v 1.3.2.1 2002/04/25 11:04:51 tg Exp $
+ * $DragonFly: src/usr.bin/doscmd/trace.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/doscmd/trace.c,v 1.3.2.1 2002/04/25 11:04:51 tg Exp $");
 
 #include "doscmd.h"
 #include "trap.h"

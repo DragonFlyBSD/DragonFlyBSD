@@ -29,9 +29,10 @@ up-to-date.  Many thanks.
 				nazgul@alfalfa.com
 
 ******************************************************************/
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/nls/msgcat.c,v 1.21.2.6 2002/08/12 11:23:54 ache Exp $");
+/*
+ * $FreeBSD: src/lib/libc/nls/msgcat.c,v 1.21.2.6 2002/08/12 11:23:54 ache Exp $
+ * $DragonFly: src/lib/libcr/nls/Attic/msgcat.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ */
 
 /*
  * We need a better way of handling errors than printing text.  I need

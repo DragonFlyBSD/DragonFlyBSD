@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_prefix.h,v 1.1.2.2 2001/07/03 11:01:52 ume Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_prefix.h,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
 /*	$KAME: in6_prefix.h,v 1.10 2001/02/08 16:30:30 itojun Exp $	*/
 
 /*

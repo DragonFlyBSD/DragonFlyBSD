@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #include "npx.h"

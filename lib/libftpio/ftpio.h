@@ -23,6 +23,7 @@
  * `state' of FTP_t
  *
  * $FreeBSD: src/lib/libftpio/ftpio.h,v 1.15.2.1 2000/07/15 07:24:03 kris Exp $
+ * $DragonFly: src/lib/libftpio/ftpio.h,v 1.2 2003/06/17 04:26:49 dillon Exp $
  */
 
 /* Internal housekeeping data structure for FTP sessions */

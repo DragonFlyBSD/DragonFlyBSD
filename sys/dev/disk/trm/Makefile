@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/trm/Makefile,v 1.1.2.1 2002/11/19 20:47:01 cognet Exp $
+# $DragonFly: src/sys/dev/disk/trm/Makefile,v 1.2 2003/06/17 04:28:47 dillon Exp $
 
 .PATH: ${.CURDIR}/../../dev/trm
 

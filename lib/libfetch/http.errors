@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/libfetch/http.errors,v 1.4.2.1 2001/05/26 17:31:50 des Exp $
+# $DragonFly: src/lib/libfetch/http.errors,v 1.2 2003/06/17 04:26:49 dillon Exp $
 #
 # This list is taken from RFC 2068.
 #

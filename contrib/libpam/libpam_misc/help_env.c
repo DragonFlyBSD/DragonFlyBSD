@@ -1,6 +1,7 @@
 /*
  * $Id: help_env.c,v 1.2 1997/01/04 20:19:20 morgan Exp morgan $
  * $FreeBSD: src/contrib/libpam/libpam_misc/help_env.c,v 1.1.1.1.6.2 2001/06/11 15:28:15 markm Exp $
+ * $DragonFly: src/contrib/libpam/libpam_misc/Attic/help_env.c,v 1.2 2003/06/17 04:24:03 dillon Exp $
  *
  * This file was written by Andrew G. Morgan <morgan@parc.power.net>
  *

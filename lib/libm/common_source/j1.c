@@ -29,11 +29,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)j1.c	8.2 (Berkeley) 11/30/93
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)j1.c	8.2 (Berkeley) 11/30/93";
-#endif /* not lint */
 
 /*
  * 16 December 1992

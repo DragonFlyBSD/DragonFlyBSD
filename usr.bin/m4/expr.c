@@ -35,20 +35,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)expr.c	8.2 (Berkeley) 4/29/95
+ * $OpenBSD: expr.c,v 1.14 2002/04/26 16:15:16 espie Exp $
+ * $FreeBSD: src/usr.bin/m4/expr.c,v 1.3.12.1 2002/07/15 02:06:15 jmallett Exp $
+ * $DragonFly: src/usr.bin/m4/expr.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)expr.c	8.2 (Berkeley) 4/29/95";
-#else
-#if 0
-static char rcsid[] = "$OpenBSD: expr.c,v 1.14 2002/04/26 16:15:16 espie Exp $";
-#endif
-#endif
-#endif /* not lint */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/m4/expr.c,v 1.3.12.1 2002/07/15 02:06:15 jmallett Exp $");
 
 #include <sys/types.h>
 #include <ctype.h>

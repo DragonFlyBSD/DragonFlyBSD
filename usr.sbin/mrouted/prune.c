@@ -8,12 +8,10 @@
  *
  *
  * prune.c,v 3.8.4.59 1998/03/01 02:06:32 fenner Exp
+ *
+ * $FreeBSD: src/usr.sbin/mrouted/prune.c,v 1.17.2.1 2000/10/29 03:59:57 kris Exp $
+ * $DragonFly: src/usr.sbin/mrouted/prune.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/mrouted/prune.c,v 1.17.2.1 2000/10/29 03:59:57 kris Exp $";
-#endif /* not lint */
 
 #include "defs.h"
 

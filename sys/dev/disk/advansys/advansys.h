@@ -31,6 +31,7 @@
  * All rights reserved.
  *
  * $FreeBSD: src/sys/dev/advansys/advansys.h,v 1.2.2.1 2000/04/14 13:32:48 nyan Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advansys.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
 #ifndef _ADVANSYS_H_

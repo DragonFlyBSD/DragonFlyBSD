@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)parser.c	8.7 (Berkeley) 5/16/95
+ * $FreeBSD: src/bin/sh/parser.c,v 1.29.2.9 2002/10/18 11:24:04 tjr Exp $
+ * $DragonFly: src/bin/sh/parser.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)parser.c	8.7 (Berkeley) 5/16/95";
-#endif
-#endif /* not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/bin/sh/parser.c,v 1.29.2.9 2002/10/18 11:24:04 tjr Exp $");
 
 #include <stdlib.h>
 

@@ -29,16 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)login.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libutil/login.c,v 1.6 1999/08/28 00:05:45 peter Exp $
+ * $DragonFly: src/lib/libutil/login.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)login.c	8.1 (Berkeley) 6/4/93";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libutil/login.c,v 1.6 1999/08/28 00:05:45 peter Exp $";
-#endif
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 

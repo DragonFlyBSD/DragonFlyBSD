@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.173.2.13 2001/11/03 00:36:07 luigi Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.2 2003/06/17 04:28:24 dillon Exp $
  */
 
 /*

@@ -27,6 +27,7 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcrypt/misc.c,v 1.1 1999/09/20 12:45:49 markm Exp $
+ * $DragonFly: src/lib/libcrypt/misc.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
  *
  */
 

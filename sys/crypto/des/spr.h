@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/crypto/des/spr.h,v 1.1.2.2 2002/03/26 10:12:25 ume Exp $	*/
+/*	$DragonFly: src/sys/crypto/des/spr.h,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
 /*	$KAME: spr.h,v 1.4 2001/09/10 04:03:58 itojun Exp $	*/
 
 /* crypto/des/spr.h */

@@ -32,6 +32,7 @@
  *
  *	@(#)msgbuf.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/msgbuf.h,v 1.14.2.1 2001/01/16 12:26:21 phk Exp $
+ * $DragonFly: src/sys/sys/msgbuf.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_MSGBUF_H_

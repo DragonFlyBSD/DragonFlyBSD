@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/environment.c,v 1.3.2.1 2000/09/10 01:24:16 ps Exp $
+ * $DragonFly: src/lib/libstand/environment.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  *
  */
 

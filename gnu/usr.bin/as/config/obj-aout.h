@@ -16,8 +16,11 @@
    You should have received a copy of the GNU General Public
    License along with GAS; see the file COPYING.  If not, write
    to the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+*/
 
- $FreeBSD: src/gnu/usr.bin/as/config/obj-aout.h,v 1.9 1999/08/27 23:34:29 peter Exp $
+/*
+ * $FreeBSD: src/gnu/usr.bin/as/config/obj-aout.h,v 1.9 1999/08/27 23:34:29 peter Exp $
+ * $DragonFly: src/gnu/usr.bin/as/config/Attic/obj-aout.h,v 1.2 2003/06/17 04:25:44 dillon Exp $
  */
 
 

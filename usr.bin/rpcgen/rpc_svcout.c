@@ -25,17 +25,13 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)rpc_svcout.c 1.29 89/03/30 (C) 1987 SMI
+ * $FreeBSD: src/usr.bin/rpcgen/rpc_svcout.c,v 1.6.6.1 2001/07/19 01:38:22 kris Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_svcout.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
  */
 
 #ident	"@(#)rpc_svcout.c	1.4	90/04/13 SMI"
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)rpc_svcout.c 1.29 89/03/30 (C) 1987 SMI";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/rpcgen/rpc_svcout.c,v 1.6.6.1 2001/07/19 01:38:22 kris Exp $";
-#endif
 
 /*
  * rpc_svcout.c, Server-skeleton outputter for the RPC protocol compiler

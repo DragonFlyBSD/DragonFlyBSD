@@ -1,4 +1,5 @@
 # $FreeBSD: src/release/doc/Makefile,v 1.2.2.3 2001/06/22 00:35:10 bmah Exp $
+# $DragonFly: src/release/doc/Attic/Makefile,v 1.2 2003/06/17 04:27:19 dillon Exp $
 #
 # The user can override the default language to build and install
 # with the RELNOTES_LANG variable.

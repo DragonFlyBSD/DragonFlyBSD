@@ -17,10 +17,10 @@
 
 /* Written by David MacKenzie <djm@gnu.ai.mit.edu>.
    Some algorithms adapted from GNU Emacs.
+ *
+ * $FreeBSD: src/gnu/usr.bin/patch/backupfile.c,v 1.4.6.2 2002/04/30 20:40:02 gad Exp $
+ * $DragonFly: src/gnu/usr.bin/patch/Attic/backupfile.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/gnu/usr.bin/patch/backupfile.c,v 1.4.6.2 2002/04/30 20:40:02 gad Exp $");
 
 #include "config.h"
 #include <stdio.h>

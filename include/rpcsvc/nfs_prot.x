@@ -25,16 +25,12 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)nfs_prot.x 1.2 87/10/12 Copyr 1987 Sun Micro
+ * @(#)nfs_prot.x	2.1 88/08/01 4.0 RPCSRC
+ * $FreeBSD: src/include/rpcsvc/nfs_prot.x,v 1.7 1999/08/27 23:45:08 peter Exp $
+ * $DragonFly: src/include/rpcsvc/nfs_prot.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
-
-#ifndef RPC_HDR
-%#ifndef lint
-%/*static char sccsid[] = "from: @(#)nfs_prot.x 1.2 87/10/12 Copyr 1987 Sun Micro";*/
-%/*static char sccsid[] = "from: @(#)nfs_prot.x	2.1 88/08/01 4.0 RPCSRC";*/
-%static const char rcsid[] =
-%  "$FreeBSD: src/include/rpcsvc/nfs_prot.x,v 1.7 1999/08/27 23:45:08 peter Exp $";
-%#endif /* not lint */
-#endif
 
 const NFS_PORT          = 2049;
 const NFS_MAXDATA       = 8192;

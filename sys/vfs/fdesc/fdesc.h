@@ -36,6 +36,7 @@
  *	@(#)fdesc.h	8.5 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc.h,v 1.8.2.1 2001/10/22 22:49:26 chris Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc.h,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 #ifdef _KERNEL

@@ -1,4 +1,5 @@
 # $FreeBSD: src/secure/Makefile.inc,v 1.13.2.5 2002/07/03 22:13:19 des Exp $
+# $DragonFly: src/secure/Makefile.inc,v 1.2 2003/06/17 04:27:42 dillon Exp $
 
 DISTRIBUTION?=crypto
 

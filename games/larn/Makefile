@@ -1,5 +1,6 @@
 #	@(#)Makefile	5.12 (Berkeley) 5/30/93
 # $FreeBSD: src/games/larn/Makefile,v 1.6.2.5 2002/08/07 16:31:42 ru Exp $
+# $DragonFly: src/games/larn/Makefile,v 1.2 2003/06/17 04:25:24 dillon Exp $
 
 # EXTRA
 #	Incorporates code to gather additional performance statistics

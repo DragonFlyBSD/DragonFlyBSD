@@ -32,6 +32,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/extern.h,v 1.3.2.2 2000/06/28 02:33:17 joe Exp $
+ * $DragonFly: src/usr.sbin/mtree/extern.h,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
 
 int	 compare __P((char *, NODE *, FTSENT *));

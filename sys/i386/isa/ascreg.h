@@ -32,6 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/i386/isa/ascreg.h,v 1.5 1999/08/28 00:44:37 peter Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/ascreg.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
     /***    Registers (base=3EB): ************/

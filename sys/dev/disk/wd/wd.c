@@ -35,6 +35,7 @@
  *
  *	from: @(#)wd.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/wd.c,v 1.219.2.2 2000/08/04 22:31:07 peter Exp $
+ * $DragonFly: src/sys/dev/disk/wd/Attic/wd.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /* TODO:

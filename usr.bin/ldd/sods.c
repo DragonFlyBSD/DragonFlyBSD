@@ -21,12 +21,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.bin/ldd/sods.c,v 1.9.2.2 2001/07/11 23:59:11 obrien Exp $
+ * $DragonFly: src/usr.bin/ldd/sods.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/ldd/sods.c,v 1.9.2.2 2001/07/11 23:59:11 obrien Exp $";
-#endif /* not lint */
 
 #include <assert.h>
 #include <ctype.h>

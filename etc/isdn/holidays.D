@@ -16,6 +16,7 @@
 #	search for keyword "valid".
 #
 # $FreeBSD: src/etc/isdn/holidays.D,v 1.2.2.2 2002/04/15 00:44:15 dougb Exp $
+# $DragonFly: src/etc/isdn/holidays.D,v 1.2 2003/06/17 04:24:47 dillon Exp $
 #
 #---------------------------------------------------------------------------
 #

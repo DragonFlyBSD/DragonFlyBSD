@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)crc.c	8.1 (Berkeley) 6/17/93
+ * $FreeBSD: src/usr.bin/cksum/crc.c,v 1.4 1999/12/05 20:03:21 charnier Exp $
+ * $DragonFly: src/usr.bin/cksum/crc.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)crc.c	8.1 (Berkeley) 6/17/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/cksum/crc.c,v 1.4 1999/12/05 20:03:21 charnier Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <unistd.h>

@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/iconv.h,v 1.1.2.1 2001/05/21 08:28:07 bp Exp $
+ * $DragonFly: src/sys/sys/iconv.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 #ifndef _SYS_ICONV_H_
 #define _SYS_ICONV_H_

@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_core.c,v 1.1.2.4 2002/03/26 10:12:29 ume Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_core.c,v 1.2 2003/06/17 04:28:51 dillon Exp $	*/
 /*	$KAME: esp_core.c,v 1.50 2000/11/02 12:27:38 itojun Exp $	*/
 
 /*

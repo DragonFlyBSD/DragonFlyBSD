@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.sbin/pkg_install/sign/gzip.h,v 1.1.2.2 2001/05/17 12:33:39 sobomax Exp $ */
+/* $DragonFly: src/usr.sbin/pkg_install/sign/Attic/gzip.h,v 1.2 2003/06/17 04:29:59 dillon Exp $ */
 /* $OpenBSD: gzip.h,v 1.2 1999/10/04 21:46:28 espie Exp $ */
 /*-
  * Copyright (c) 1999 Marc Espie.

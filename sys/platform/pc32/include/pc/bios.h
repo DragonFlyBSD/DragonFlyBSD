@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/pc/bios.h,v 1.7.2.3 2001/10/21 03:16:56 yokota Exp $
+ * $DragonFly: src/sys/platform/pc32/include/pc/bios.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 /* 

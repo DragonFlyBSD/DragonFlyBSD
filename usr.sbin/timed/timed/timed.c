@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)timed.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.sbin/timed/timed/timed.c,v 1.9 1999/08/28 01:20:19 peter Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/timed.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1985, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)timed.c	8.1 (Berkeley) 6/6/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/timed/timed/timed.c,v 1.9 1999/08/28 01:20:19 peter Exp $";
-#endif /* not lint */
 
 #define TSPTYPES
 #include "globals.h"

@@ -28,6 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/sa/extern.h,v 1.4 1999/08/28 01:19:52 peter Exp $
+ * $DragonFly: src/usr.sbin/sa/extern.h,v 1.2 2003/06/17 04:30:03 dillon Exp $
  */
 
 #include <sys/types.h>

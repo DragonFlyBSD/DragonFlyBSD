@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mlx/mlx_compat.h,v 1.1.2.1 2001/06/25 04:37:51 msmith Exp $
+ * $DragonFly: src/sys/dev/raid/mlx/mlx_compat.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 /*
  * Portability and compatibility interfaces.

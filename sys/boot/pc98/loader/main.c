@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/pc98/loader/main.c,v 1.7.2.6 2001/12/22 15:08:49 nyan Exp $
+ * $DragonFly: src/sys/boot/pc98/loader/Attic/main.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 /*

@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/tw.c,v 1.38 2000/01/29 16:00:32 peter Exp $
+ * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  *
  */
 

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/aha/Makefile,v 1.4 2000/01/28 11:26:23 bde Exp $
+# $DragonFly: src/sys/dev/disk/aha/Makefile,v 1.2 2003/06/17 04:28:43 dillon Exp $
 
 .PATH:	${.CURDIR}/../../dev/aha
 KMOD	= aha

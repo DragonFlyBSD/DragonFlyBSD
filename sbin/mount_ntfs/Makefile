@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/sbin/mount_ntfs/Makefile,v 1.2.2.2 2001/10/12 22:08:43 semenu Exp $
+# $DragonFly: src/sbin/mount_ntfs/Makefile,v 1.2 2003/06/17 04:27:33 dillon Exp $
 #
 
 PROG=	mount_ntfs

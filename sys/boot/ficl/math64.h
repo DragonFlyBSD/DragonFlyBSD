@@ -31,6 +31,7 @@
 */
 
 /* $FreeBSD: src/sys/boot/ficl/math64.h,v 1.2 1999/09/29 04:43:06 dcs Exp $ */
+/* $DragonFly: src/sys/boot/ficl/math64.h,v 1.2 2003/06/17 04:28:17 dillon Exp $ */
 
 #if !defined (__MATH64_H__)
 #define __MATH64_H__

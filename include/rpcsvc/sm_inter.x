@@ -1,6 +1,3 @@
-/* @(#)sm_inter.x	2.2 88/08/01 4.0 RPCSRC */
-/* @(#)sm_inter.x 1.7 87/06/24 Copyr 1987 Sun Micro */
-
 /*
  * Sun RPC is a product of Sun Microsystems, Inc. and is provided for
  * unrestricted use provided that this legend is included on all tape
@@ -28,6 +25,11 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)sm_inter.x	2.2 88/08/01 4.0 RPCSRC
+ * @(#)sm_inter.x 1.7 87/06/24 Copyr 1987 Sun Micro
+ * $FreeBSD: src/include/rpcsvc/sm_inter.x,v 1.8.2.1 2002/04/11 17:08:33 alfred Exp $
+ * $DragonFly: src/include/rpcsvc/sm_inter.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 /*
@@ -35,13 +37,6 @@
  * Copyright (C) 1986 Sun Microsystems, Inc.
  *
  */
-
-#ifndef RPC_HDR
-%#ifndef lint
-%static const char rcsid[] =
-%  "$FreeBSD: src/include/rpcsvc/sm_inter.x,v 1.8.2.1 2002/04/11 17:08:33 alfred Exp $";
-%#endif /* not lint */
-#endif
 
 program SM_PROG { 
 	version SM_VERS  {

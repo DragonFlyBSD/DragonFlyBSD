@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/boot/pc98/boot2/Makefile,v 1.4.2.2 2002/08/07 16:31:53 ru Exp $
+# $DragonFly: src/sys/boot/pc98/boot2/Attic/Makefile,v 1.2 2003/06/17 04:28:18 dillon Exp $
 #
 
 PROG=	boot

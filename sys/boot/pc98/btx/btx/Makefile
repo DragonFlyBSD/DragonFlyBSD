@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/boot/pc98/btx/btx/Makefile,v 1.3.2.2 2000/12/30 12:01:05 nyan Exp $
+# $DragonFly: src/sys/boot/pc98/btx/btx/Attic/Makefile,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 M4?=	m4
 

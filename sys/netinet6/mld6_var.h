@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/mld6_var.h,v 1.1.2.1 2000/07/15 07:14:36 kris Exp $	*/
+/*	$DragonFly: src/sys/netinet6/mld6_var.h,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$KAME: mld6_var.h,v 1.4 2000/03/25 07:23:54 sumikawa Exp $	*/
 
 /*

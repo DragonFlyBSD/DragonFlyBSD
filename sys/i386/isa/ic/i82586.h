@@ -32,6 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ic/i82586.h,v 1.9 1999/08/28 00:45:14 peter Exp $
+ * $DragonFly: src/sys/i386/isa/ic/Attic/i82586.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /*

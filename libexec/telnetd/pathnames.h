@@ -32,6 +32,7 @@
  *
  *	@(#)pathnames.h	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/telnetd/pathnames.h,v 1.6 1999/08/28 00:10:23 peter Exp $
+ * $DragonFly: src/libexec/telnetd/pathnames.h,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
 
 #if BSD > 43

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)table.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/libexec/talkd/table.c,v 1.7 1999/08/28 00:10:17 peter Exp $
+ * $DragonFly: src/libexec/talkd/table.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)table.c	8.1 (Berkeley) 6/4/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/libexec/talkd/table.c,v 1.7 1999/08/28 00:10:17 peter Exp $";
-#endif /* not lint */
 
 /*
  * Routines to handle insertion, deletion, etc on the table

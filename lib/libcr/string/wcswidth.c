@@ -24,16 +24,11 @@
  * SUCH DAMAGE.
  *
  *	citrus Id: wcswidth.c,v 1.1 1999/12/29 21:47:45 tshiozak Exp
+ *
+ * $NetBSD: wcswidth.c,v 1.1 2000/12/23 23:14:37 itojun Exp $
+ * $FreeBSD: src/lib/libc/string/wcswidth.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
+ * $DragonFly: src/lib/libcr/string/Attic/wcswidth.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-#if defined(LIBC_SCCS) && !defined(lint)
-__RCSID("$NetBSD: wcswidth.c,v 1.1 2000/12/23 23:14:37 itojun Exp $");
-#endif /* LIBC_SCCS and not lint */
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/string/wcswidth.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $";
-#endif
 
 #include <assert.h>
 #include <wchar.h>

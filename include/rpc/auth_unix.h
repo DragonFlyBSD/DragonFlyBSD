@@ -29,6 +29,7 @@
  *	from: @(#)auth_unix.h 1.8 88/02/08 SMI
  *	from: @(#)auth_unix.h	2.2 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/auth_unix.h,v 1.10 1999/08/27 23:45:03 peter Exp $
+ * $DragonFly: src/include/rpc/auth_unix.h,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 /*

@@ -40,6 +40,7 @@ extern int use_privsep;
 
 RCSID("$Id: auth-pam.c,v 1.54 2002/07/28 20:24:08 stevesk Exp $");
 RCSID("$FreeBSD: src/crypto/openssh/auth-pam.c,v 1.2.2.4 2003/02/03 17:31:06 des Exp $");
+RCSID("$DragonFly: src/crypto/openssh/Attic/auth-pam.c,v 1.2 2003/06/17 04:24:36 dillon Exp $");
 
 #define NEW_AUTHTOK_MSG \
 	"Warning: Your password has expired, please change it now."

@@ -7,6 +7,7 @@
 # ----------------------------------------------------------------------------
 #
 # $FreeBSD: src/tools/tools/kerninclude/kerninclude.sh,v 1.1.2.1 2001/03/05 12:18:27 kris Exp $
+# $DragonFly: src/tools/tools/kerninclude/kerninclude.sh,v 1.2 2003/06/17 04:29:11 dillon Exp $
 #
 # This script tries to find #include statements which are not needed in
 # the FreeBSD kernel tree.

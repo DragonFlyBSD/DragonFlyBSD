@@ -1,5 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/ie/if_ie507.h,v 1.4 1999/08/28 00:44:47 peter Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie507.h,v 1.2 2003/06/17 04:28:27 dillon Exp $
  * Definitions for 3C507
  */
 

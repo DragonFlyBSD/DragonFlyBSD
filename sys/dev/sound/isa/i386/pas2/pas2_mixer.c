@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/i386/isa/sound/pas2_mixer.c,v 1.22 1999/12/20 18:05:00 eivind Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/pas2/Attic/pas2_mixer.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
  */
 
 #define _PAS2_MIXER_C_

@@ -23,6 +23,7 @@
 \ SUCH DAMAGE.
 \
 \ $FreeBSD: src/sys/boot/forth/loader.4th,v 1.5.2.1 2000/07/07 00:14:34 obrien Exp $
+\ $DragonFly: src/sys/boot/forth/loader.4th,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 s" arch-alpha" environment? [if] [if]
 	s" loader_version" environment?  [if]

@@ -1,4 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.local.dist,v 1.55.2.20 2003/04/10 18:10:28 ru Exp $
+# $DragonFly: src/etc/mtree/BSD.local.dist,v 1.2 2003/06/17 04:24:47 dillon Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #

@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libalias/alias.h,v 1.12.2.6 2001/11/23 13:10:15 brian Exp $
+ * $DragonFly: src/lib/libalias/alias.h,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
 
 /*-

@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)vars.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/mail/vars.c,v 1.1.1.1.14.3 2003/01/06 05:46:04 mikeh Exp $
+ * $DragonFly: src/usr.bin/mail/vars.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)vars.c	8.1 (Berkeley) 6/6/93";
-#endif
-#endif /* not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/mail/vars.c,v 1.1.1.1.14.3 2003/01/06 05:46:04 mikeh Exp $");
 
 #include "rcv.h"
 #include "extern.h"

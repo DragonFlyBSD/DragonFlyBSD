@@ -39,6 +39,7 @@
  *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include <sys/param.h>

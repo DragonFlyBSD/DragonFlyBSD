@@ -13,12 +13,10 @@
  * Send bug reports, bug fixes, enhancements, requests, flames, etc., and
  * I'll try to keep a version up to date.  I can be reached as follows:
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
+ *
+ * $FreeBSD: src/usr.sbin/cron/cron/user.c,v 1.8 1999/08/28 01:15:50 peter Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/user.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
-
-#if !defined(lint) && !defined(LINT)
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/cron/cron/user.c,v 1.8 1999/08/28 01:15:50 peter Exp $";
-#endif
 
 /* vix 26jan87 [log is in RCS file]
  */

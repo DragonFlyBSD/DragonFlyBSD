@@ -35,6 +35,7 @@
  *
  *	@(#)finger.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/finger/finger.h,v 1.4.2.1 2002/07/03 01:14:24 des Exp $
+ * $DragonFly: src/usr.bin/finger/finger.h,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
 
 typedef struct person {

@@ -39,6 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include "opt_lint.h"

@@ -44,6 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #include "opt_quota.h"

@@ -36,6 +36,7 @@
  *	@(#)null_subr.c	8.7 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null_subr.c,v 1.21.2.4 2001/06/26 04:20:09 bp Exp $
+ * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -3,6 +3,7 @@
 .\"
 .\" @(#)rpcgen.ms	2.2 88/08/04 4.0 RPCSRC
 .\" $FreeBSD: src/lib/libc/rpc/PSD.doc/rpcgen.ms,v 1.1.14.1 2000/11/24 09:36:30 ru Exp $
+.\" $DragonFly: src/lib/libc/rpc/PSD.doc/rpcgen.ms,v 1.2 2003/06/17 04:26:45 dillon Exp $
 .\"
 .so stubs
 .de BT

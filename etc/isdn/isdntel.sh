@@ -5,6 +5,7 @@
 #	-------------------------
 #
 # $FreeBSD: src/etc/isdn/isdntel.sh,v 1.4 1999/09/13 15:44:20 sheldonh Exp $
+# $DragonFly: src/etc/isdn/isdntel.sh,v 1.2 2003/06/17 04:24:47 dillon Exp $
 #
 #	last edit-date: [Thu May 20 11:45:04 1999]
 #

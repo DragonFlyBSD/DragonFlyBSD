@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/mklocale/extern.h,v 1.1.2.1 2002/10/23 17:18:39 ache Exp $
+ * $DragonFly: src/usr.bin/mklocale/Attic/extern.h,v 1.2 2003/06/17 04:29:29 dillon Exp $
  */
 
 int yylex(void);

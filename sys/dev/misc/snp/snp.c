@@ -13,6 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
+ * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #include <sys/param.h>

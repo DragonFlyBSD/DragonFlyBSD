@@ -32,6 +32,7 @@
  *
  *	@(#)wait.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/wait.h,v 1.11 1999/12/29 04:24:50 peter Exp $
+ * $DragonFly: src/sys/sys/wait.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _SYS_WAIT_H_

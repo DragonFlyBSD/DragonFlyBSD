@@ -1,6 +1,7 @@
 /* Record that this is varargs.h; this turns off stdarg.h.  */
 
 /* $FreeBSD: src/contrib/gcc/ginclude/varargs.h,v 1.4 1999/10/16 07:12:34 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/ginclude/Attic/varargs.h,v 1.2 2003/06/17 04:24:02 dillon Exp $ */
 
 #ifndef _VARARGS_H
 #define _VARARGS_H

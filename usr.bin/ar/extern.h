@@ -32,6 +32,7 @@
  *
  *	@(#)extern.h	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/ar/extern.h,v 1.1.1.1.14.1 2001/08/02 00:51:00 obrien Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/extern.h,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
 
 int	append __P((char **));

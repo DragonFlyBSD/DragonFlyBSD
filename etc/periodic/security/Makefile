@@ -1,4 +1,5 @@
 # $FreeBSD: src/etc/periodic/security/Makefile,v 1.1.2.3 2002/11/07 19:38:46 thomas Exp $
+# $DragonFly: src/etc/periodic/security/Makefile,v 1.2 2003/06/17 04:24:48 dillon Exp $
 
 FILES=	100.chksetuid \
 	200.chkmounts \

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/ubsec/ubsec.c,v 1.6.2.12 2003/06/04 17:56:59 sam Exp $ */
+/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.2 2003/06/17 04:28:32 dillon Exp $ */
 /*	$OpenBSD: ubsec.c,v 1.115 2002/09/24 18:33:26 jason Exp $	*/
 
 /*

@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/rcs/rcs/Makefile,v 1.7.12.1 2001/04/25 12:03:54 ru Exp $
+# $DragonFly: src/gnu/usr.bin/rcs/rcs/Makefile,v 1.2 2003/06/17 04:25:47 dillon Exp $
 
 PROG=	rcs
 MAN=	rcs.1 rcsintro.1 rcsfile.5

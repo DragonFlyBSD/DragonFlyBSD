@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ic/hd64570.h,v 1.6.4.1 2002/06/17 15:10:57 jhay Exp $
+ * $DragonFly: src/sys/dev/netif/ic_layer/hd64570.h,v 1.2 2003/06/17 04:28:27 dillon Exp $
  */
 #ifndef _HD64570_H_
 #define _HD64570_H_

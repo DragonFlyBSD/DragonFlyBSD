@@ -39,6 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select

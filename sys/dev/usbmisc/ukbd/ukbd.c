@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/ukbd.c,v 1.24.2.6 2002/11/06 20:23:50 joe Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.

@@ -3,6 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 #include "opt_atalk.h"

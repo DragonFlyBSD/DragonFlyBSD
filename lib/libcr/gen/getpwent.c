@@ -29,13 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)getpwent.c	8.2 (Berkeley) 4/27/95
+ * $FreeBSD: src/lib/libc/gen/getpwent.c,v 1.53.2.2 2001/03/05 09:52:13 obrien Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/getpwent.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)getpwent.c	8.2 (Berkeley) 4/27/95";
-static char rcsid[] =
-  "$FreeBSD: src/lib/libc/gen/getpwent.c,v 1.53.2.2 2001/03/05 09:52:13 obrien Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <stdio.h>
 #include <sys/param.h>

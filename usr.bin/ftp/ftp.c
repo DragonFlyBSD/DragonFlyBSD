@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/ftp.c,v 1.28.2.5 2002/07/25 15:29:18 ume Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/ftp.c,v 1.2 2003/06/17 04:29:26 dillon Exp $	*/
 /*	$NetBSD: ftp.c,v 1.29.2.1 1997/11/18 01:01:04 mellon Exp $	*/
 
 /*
@@ -32,17 +33,13 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)ftp.c	8.6 (Berkeley) 10/27/94
+ * $NetBSD: ftp.c,v 1.29.2.1 1997/11/18 01:01:04 mellon Exp $
+ * $FreeBSD: src/usr.bin/ftp/ftp.c,v 1.28.2.5 2002/07/25 15:29:18 ume Exp $
  */
 
 #include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)ftp.c	8.6 (Berkeley) 10/27/94";
-#else
-__RCSID("$FreeBSD: src/usr.bin/ftp/ftp.c,v 1.28.2.5 2002/07/25 15:29:18 ume Exp $");
-__RCSID_SOURCE("$NetBSD: ftp.c,v 1.29.2.1 1997/11/18 01:01:04 mellon Exp $");
-#endif
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/stat.h>

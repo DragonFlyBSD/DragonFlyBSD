@@ -1,6 +1,7 @@
 /*
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/math_emu.h,v 1.5 1999/08/28 00:42:52 peter Exp $
+ * $DragonFly: src/sys/i386/gnu/fpemul/Attic/math_emu.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  *
  */
 

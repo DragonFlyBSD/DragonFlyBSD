@@ -27,6 +27,7 @@
  * Copyright (c) 2000 Andrew Miklic
  *
  * $FreeBSD: src/sys/dev/tga/tga_pci.h,v 1.1.2.1 2001/11/01 08:33:15 obrien Exp $
+ * $DragonFly: src/sys/dev/video/tga/Attic/tga_pci.h,v 1.2 2003/06/17 04:28:32 dillon Exp $
  */
 
 #ifndef _PCI_TGA_H_

@@ -2,6 +2,7 @@
 #
 #	@(#)hanoi.sed	8.1 (Berkeley) 6/6/93
 # $FreeBSD: src/usr.bin/sed/TEST/hanoi.sed,v 1.1.1.1.14.1 2002/07/17 09:35:56 tjr Exp $
+# $DragonFly: src/usr.bin/sed/TEST/hanoi.sed,v 1.2 2003/06/17 04:29:31 dillon Exp $
 #
 #
 # Ex:

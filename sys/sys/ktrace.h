@@ -32,6 +32,7 @@
  *
  *	@(#)ktrace.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/ktrace.h,v 1.19.2.3 2001/01/06 09:58:23 alfred Exp $
+ * $DragonFly: src/sys/sys/ktrace.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_KTRACE_H_

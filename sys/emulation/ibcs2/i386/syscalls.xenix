@@ -1,4 +1,5 @@
- $FreeBSD: src/sys/i386/ibcs2/syscalls.xenix,v 1.6 1999/08/28 00:44:02 peter Exp $
+ $DragonFly: src/sys/emulation/ibcs2/i386/Attic/syscalls.xenix,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ ; $FreeBSD: src/sys/i386/ibcs2/syscalls.xenix,v 1.6 1999/08/28 00:44:02 peter Exp $
 
 #include <sys/param.h>
 #include <sys/sysent.h>

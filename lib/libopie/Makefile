@@ -1,6 +1,7 @@
 # Makefile for libopie
 #
 # $FreeBSD: src/lib/libopie/Makefile,v 1.10.2.3 2002/07/15 14:17:08 des Exp $
+# $DragonFly: src/lib/libopie/Makefile,v 1.2 2003/06/17 04:26:50 dillon Exp $
 #
 OPIE_DIST?=	${.CURDIR}/../../contrib/opie
 DIST_DIR=	${OPIE_DIST}/${.CURDIR:T}

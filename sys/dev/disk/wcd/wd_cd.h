@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/wd_cd.h,v 1.6 1999/10/03 04:12:07 bde Exp $
+ * $DragonFly: src/sys/dev/disk/wcd/Attic/wd_cd.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /*

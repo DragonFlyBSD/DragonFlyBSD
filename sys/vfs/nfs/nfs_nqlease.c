@@ -35,6 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 
 

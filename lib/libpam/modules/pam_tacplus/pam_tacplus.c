@@ -32,10 +32,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libpam/modules/pam_tacplus/pam_tacplus.c,v 1.2.6.1 2002/07/03 21:41:31 des Exp $
+ * $DragonFly: src/lib/libpam/modules/pam_tacplus/Attic/pam_tacplus.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libpam/modules/pam_tacplus/pam_tacplus.c,v 1.2.6.1 2002/07/03 21:41:31 des Exp $");
 
 #include <sys/param.h>
 

@@ -4,6 +4,7 @@
  *  Please note that ncpl_crypt.c file should be indentical to this one
  *
  * $FreeBSD: src/lib/libncp/ncpl_crypt.c,v 1.1 1999/10/12 11:56:39 bp Exp $
+ * $DragonFly: src/lib/libncp/ncpl_crypt.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>

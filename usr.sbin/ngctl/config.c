@@ -34,6 +34,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/config.c,v 1.2.2.1 2001/01/09 06:52:25 phk Exp $
+ * $DragonFly: src/usr.sbin/ngctl/config.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
 
 #include "ngctl.h"

@@ -1,6 +1,8 @@
 /*
  * Modified for OpenSSH by Kevin Steves
  * October 2000
+ *
+ * $OpenBSD: setproctitle.c,v 1.8 2001/11/06 19:21:40 art Exp $
  */
 
 /*
@@ -33,10 +35,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char rcsid[] = "$OpenBSD: setproctitle.c,v 1.8 2001/11/06 19:21:40 art Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include "includes.h"
 

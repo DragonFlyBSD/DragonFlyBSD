@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/subr_taskqueue.c,v 1.1.2.2 2001/03/31 03:33:44 hsu Exp $
+ *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include <sys/param.h>

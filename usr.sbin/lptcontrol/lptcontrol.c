@@ -26,12 +26,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/lptcontrol/lptcontrol.c,v 1.9.2.2 2001/07/30 10:22:57 dd Exp $
+ * $DragonFly: src/usr.sbin/lptcontrol/lptcontrol.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/lptcontrol/lptcontrol.c,v 1.9.2.2 2001/07/30 10:22:57 dd Exp $";
-#endif /* not lint */
 
 #include <ctype.h>
 #include <err.h>

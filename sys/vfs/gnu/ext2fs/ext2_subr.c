@@ -38,6 +38,7 @@
  *
  *	@(#)ext2_subr.c	8.2 (Berkeley) 9/21/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_subr.c,v 1.13.2.2 2000/08/03 18:48:27 peter Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_subr.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #include <sys/param.h>

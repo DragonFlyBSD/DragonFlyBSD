@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 #include <sys/param.h>

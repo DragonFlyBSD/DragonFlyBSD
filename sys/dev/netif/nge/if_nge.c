@@ -31,6 +31,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ *
+ * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
  */
 
 /*
@@ -129,11 +132,6 @@ MODULE_DEPEND(nge, miibus, 1, 1, 1);
 
 /* "controller miibus0" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $";
-#endif
 
 #define NGE_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
 

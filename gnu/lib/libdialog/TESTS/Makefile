@@ -3,6 +3,7 @@
 # directory.
 #
 # $FreeBSD: src/gnu/lib/libdialog/TESTS/Makefile,v 1.10 2000/01/10 11:54:55 phantom Exp $
+# $DragonFly: src/gnu/lib/libdialog/TESTS/Makefile,v 1.2 2003/06/17 04:25:43 dillon Exp $
 
 PROGS=	msg yesno prgbox gauge dselect fselect text menu1 menu2 menu3 \
 	input1 input2 check1 check2 check3 radio1 radio2 radio3 \

@@ -30,12 +30,10 @@
  * or FreeBSD, Inc.
  *
  * ------+---------+---------+---------+---------+---------+---------+---------*
+ *
+ * $FreeBSD: src/usr.sbin/lpr/lpc/movejobs.c,v 1.1.2.1 2002/07/26 03:12:07 gad Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpc/movejobs.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/lpr/lpc/movejobs.c,v 1.1.2.1 2002/07/26 03:12:07 gad Exp $";
-#endif /* not lint */
 
 /*
  * movejobs.c - The lpc commands which move jobs around.

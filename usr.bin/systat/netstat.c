@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)netstat.c	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/systat/netstat.c,v 1.13 1999/08/30 08:18:08 peter Exp $
+ * $DragonFly: src/usr.bin/systat/netstat.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#ifndef lint
-/*
-static char sccsid[] = "@(#)netstat.c	8.1 (Berkeley) 6/6/93";
-*/
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/systat/netstat.c,v 1.13 1999/08/30 08:18:08 peter Exp $";
-#endif /* not lint */
 
 /*
  * netstat

@@ -33,15 +33,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)sel_subs.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/bin/pax/sel_subs.c,v 1.11.2.1 2001/08/01 05:03:11 obrien Exp $
+ * $DragonFly: src/bin/pax/sel_subs.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)sel_subs.c	8.1 (Berkeley) 5/31/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/bin/pax/sel_subs.c,v 1.11.2.1 2001/08/01 05:03:11 obrien Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/time.h>

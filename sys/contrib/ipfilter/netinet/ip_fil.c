@@ -2,6 +2,11 @@
  * Copyright (C) 1993-2001 by Darren Reed.
  *
  * See the IPFILTER.LICENCE file for details on licencing.
+ *
+ * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
+ * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
+ * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.6 2003/03/01 03:55:54 darrenr Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -124,12 +129,7 @@ extern	int	ip6_getpmtu(struct route_in6 *, struct route_in6 *,
 
 #include <machine/in_cksum.h>
 
-#if !defined(lint)
-static const char sccsid[] = "@(#)ip_fil.c	2.41 6/5/96 (C) 1993-2000 Darren Reed";
-/*static const char rcsid[] = "@(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $";*/
-static const char rcsid[] = "@(#)$FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.6 2003/03/01 03:55:54 darrenr Exp $";
-#endif
-
+static const char sccsid[] = "@(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed";
 
 extern	struct	protosw	inetsw[];
 

@@ -2,6 +2,11 @@
  * Copyright (C) 1995-2002 by Darren Reed.
  *
  * See the IPFILTER.LICENCE file for details on licencing.
+ *
+ * @(#)ip_state.c   1.8 6/5/96 (C) 1993-2000 Darren Reed
+ * @(#)$Id: ip_state.c,v 2.30.2.74 2002/07/27 15:58:10 darrenr Exp $
+ * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.21.2.5 2003/03/01 03:55:54 darrenr Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 
 #if defined(__sgi) && (IRIX > 602)
@@ -92,11 +97,7 @@
 # endif
 #endif
 
-#if !defined(lint)
-static const char sccsid[] = "@(#)ip_state.c	1.8 6/5/96 (C) 1993-2000 Darren Reed";
-/*static const char rcsid[] = "@(#)$Id: ip_state.c,v 2.30.2.74 2002/07/27 15:58:10 darrenr Exp $";*/
-static const char rcsid[] = "@(#)$FreeBSD: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.21.2.5 2003/03/01 03:55:54 darrenr Exp $";
-#endif
+static const char sccsid[] = "@(#)ip_state.c   1.8 6/5/96 (C) 1993-2000 Darren Reed";
 
 #ifndef	MIN
 # define	MIN(a,b)	(((a)<(b))?(a):(b))

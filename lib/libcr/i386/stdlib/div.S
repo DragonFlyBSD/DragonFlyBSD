@@ -28,12 +28,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/stdlib/div.S,v 1.4 1999/08/27 23:59:27 peter Exp $
+ * $DragonFly: src/lib/libcr/i386/stdlib/Attic/div.S,v 1.2 2003/06/17 04:26:43 dillon Exp $
+ *
+ * $FreeBSD: src/lib/libc/i386/stdlib/div.S,v 1.4 1999/08/27 23:59:27 peter Exp $
  */
-
-#if defined(LIBC_RCS) && !defined(lint)
-	.text
-        .asciz "$FreeBSD: src/lib/libc/i386/stdlib/div.S,v 1.4 1999/08/27 23:59:27 peter Exp $"
-#endif /* LIBC_RCS and not lint */
 
 #include "DEFS.h"
 

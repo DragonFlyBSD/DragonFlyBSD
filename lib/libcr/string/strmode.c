@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)strmode.c	8.3 (Berkeley) 8/15/94
+ * $FreeBSD: src/lib/libc/string/strmode.c,v 1.1.1.2.6.1 2001/07/09 23:30:07 obrien Exp $
+ * $DragonFly: src/lib/libcr/string/Attic/strmode.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)strmode.c	8.3 (Berkeley) 8/15/94";
-#endif /* LIBC_SCCS and not lint */
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/string/strmode.c,v 1.1.1.2.6.1 2001/07/09 23:30:07 obrien Exp $";
-#endif
 
 #include <sys/types.h>
 #include <sys/stat.h>

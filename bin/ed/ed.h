@@ -26,6 +26,7 @@
  *
  *	@(#)ed.h,v 1.5 1994/02/01 00:34:39 alm Exp
  * $FreeBSD: src/bin/ed/ed.h,v 1.13.2.1 2001/08/01 02:36:03 obrien Exp $
+ * $DragonFly: src/bin/ed/ed.h,v 1.2 2003/06/17 04:22:49 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -8,6 +8,7 @@
  */
 
 /* $FreeBSD: src/bin/csh/config.h,v 1.5.2.3 2001/10/08 21:11:00 mp Exp $ */
+/* $DragonFly: src/bin/csh/config.h,v 1.2 2003/06/17 04:22:49 dillon Exp $ */
 
 #ifndef _h_config
 #define _h_config

@@ -17,6 +17,7 @@ translations approved by the Free Software Foundation instead of in
 the original English.
 
 	$FreeBSD: src/contrib/groff/src/roff/nroff/nroff.man,v 1.7.2.3 2003/02/14 15:22:08 ru Exp $
+	$DragonFly: src/contrib/groff/src/roff/nroff/Attic/nroff.man,v 1.2 2003/06/17 04:24:02 dillon Exp $
 
 ..
 .TH @G@NROFF @MAN1EXT@ "@MDATE@" "Groff Version @VERSION@"

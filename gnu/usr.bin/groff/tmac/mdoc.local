@@ -23,6 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/gnu/usr.bin/groff/tmac/mdoc.local,v 1.2.2.19 2003/03/25 10:20:12 murray Exp $
+.\" $DragonFly: src/gnu/usr.bin/groff/tmac/mdoc.local,v 1.2 2003/06/17 04:25:46 dillon Exp $
 .\"
 .\"     %beginstrip%
 .

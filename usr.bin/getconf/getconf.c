@@ -25,10 +25,10 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.bin/getconf/getconf.c,v 1.6.2.1 2002/10/27 04:18:40 wollman Exp $
+ * $DragonFly: src/usr.bin/getconf/getconf.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/getconf/getconf.c,v 1.6.2.1 2002/10/27 04:18:40 wollman Exp $");
 
 #include <sys/types.h>
 

@@ -22,6 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pci/t4dwave.c,v 1.9.2.11 2002/10/22 08:27:13 cognet Exp $
+ * $DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -31,7 +34,7 @@
 #include <pci/pcireg.h>
 #include <pci/pcivar.h>
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pci/t4dwave.c,v 1.9.2.11 2002/10/22 08:27:13 cognet Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
 /* -------------------------------------------------------------------- */
 
 #define TDX_PCI_ID 	0x20001023

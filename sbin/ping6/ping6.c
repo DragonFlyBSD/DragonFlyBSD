@@ -27,6 +27,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)ping.c	8.1 (Berkeley) 6/5/93
+ * $FreeBSD: src/sbin/ping6/ping6.c,v 1.4.2.10 2002/12/09 03:04:44 suz Exp $
+ * $DragonFly: src/sbin/ping6/ping6.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
 
 /*	BSDI	ping.c,v 2.3 1996/01/21 17:56:50 jch Exp	*/
@@ -66,20 +71,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-static char copyright[] =
-"@(#) Copyright (c) 1989, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)ping.c	8.1 (Berkeley) 6/5/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/ping6/ping6.c,v 1.4.2.10 2002/12/09 03:04:44 suz Exp $";
-#endif /* not lint */
 
 /*
  * Using the InterNet Control Message Protocol (ICMP) "ECHO" facility,

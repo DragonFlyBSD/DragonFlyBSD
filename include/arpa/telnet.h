@@ -32,6 +32,7 @@
  *
  *	@(#)telnet.h	8.2 (Berkeley) 12/15/93
  * $FreeBSD: src/include/arpa/telnet.h,v 1.5.6.2 2002/04/13 11:07:13 markm Exp $
+ * $DragonFly: src/include/arpa/telnet.h,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 #ifndef _ARPA_TELNET_H_

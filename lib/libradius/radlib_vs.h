@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libradius/radlib_vs.h,v 1.2.2.1 2002/06/17 02:24:57 brian Exp $
+ * $DragonFly: src/lib/libradius/radlib_vs.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 
 #ifndef _RADLIB_VS_H_

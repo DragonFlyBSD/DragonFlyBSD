@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/inetd/builtins.c,v 1.19.2.7 2002/07/22 14:05:56 fanf Exp $
+ * $DragonFly: src/usr.sbin/inetd/builtins.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
  *
  */
 

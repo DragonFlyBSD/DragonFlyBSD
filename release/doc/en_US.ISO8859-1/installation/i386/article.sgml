@@ -1,4 +1,5 @@
 <!-- $FreeBSD: src/release/doc/en_US.ISO8859-1/installation/i386/article.sgml,v 1.1.2.4 2002/12/05 16:57:27 bmah Exp $ -->
+<!-- $DragonFly: src/release/doc/en_US.ISO8859-1/installation/i386/Attic/article.sgml,v 1.2 2003/06/17 04:27:19 dillon Exp $ -->
 
 <!DOCTYPE article PUBLIC "-//FreeBSD//DTD DocBook V4.1-Based Extension//EN" [
 <!ENTITY % man PUBLIC "-//FreeBSD//ENTITIES DocBook Manual Page Entities//EN">

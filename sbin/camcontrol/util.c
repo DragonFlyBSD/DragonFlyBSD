@@ -38,15 +38,14 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sbin/camcontrol/util.c,v 1.6.2.2 2001/03/04 07:20:33 kris Exp $
+ * $DragonFly: src/sbin/camcontrol/util.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
 /*
  * Taken from the original scsi(8) program.
  * from: scsi.c,v 1.17 1998/01/12 07:57:57 charnier Exp $";
  */
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/camcontrol/util.c,v 1.6.2.2 2001/03/04 07:20:33 kris Exp $";
-#endif /* not lint */
 
 #include <stdlib.h>
 #include <stdio.h>

@@ -20,6 +20,7 @@
  *          Wolfram Schneider <wosch@FreeBSD.org>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
 
 

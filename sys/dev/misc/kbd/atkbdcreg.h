@@ -28,6 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbdcreg.h,v 1.4.2.2 2000/03/31 12:51:57 yokota Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbdcreg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
  * from kbdio.h,v 1.8 1998/09/25 11:55:46 yokota Exp
  */
 

@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getnetgrent.c,v 1.26 1999/11/04 04:16:27 ache Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/getnetgrent.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)getnetgrent.c	8.2 (Berkeley) 4/27/95
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)getnetgrent.c	8.2 (Berkeley) 4/27/95";
-#endif /* LIBC_SCCS and not lint */
 
 #include <stdio.h>
 #include <strings.h>

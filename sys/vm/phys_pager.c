@@ -23,6 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/vm/phys_pager.c,v 1.3.2.3 2000/12/17 02:05:41 alfred Exp $
+ * $DragonFly: src/sys/vm/phys_pager.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/ksched.c,v 1.7.2.1 2000/05/16 06:58:13 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sched.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 /* ksched: Soft real time scheduling based on "rtprio".

@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)cfscores.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/canfield/cfscores/cfscores.c,v 1.9 1999/12/12 07:25:14 billf Exp $
+ * $DragonFly: src/games/canfield/cfscores/cfscores.c,v 1.2 2003/06/17 04:25:23 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1983, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)cfscores.c	8.1 (Berkeley) 5/31/93";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/canfield/cfscores/cfscores.c,v 1.9 1999/12/12 07:25:14 billf Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <pwd.h>

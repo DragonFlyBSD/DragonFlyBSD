@@ -1,5 +1,6 @@
 #       from @(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libc/db/man/Makefile.inc,v 1.8.2.2 2001/04/25 10:04:04 ru Exp $
+# $DragonFly: src/lib/libc/db/man/Makefile.inc,v 1.2 2003/06/17 04:26:41 dillon Exp $
 
 .PATH: ${.CURDIR}/../libc/db/man
 

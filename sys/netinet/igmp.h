@@ -36,6 +36,7 @@
  *
  *	@(#)igmp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/igmp.h,v 1.10 1999/08/28 00:49:15 peter Exp $
+ * $DragonFly: src/sys/netinet/igmp.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
  */
 
 #ifndef _NETINET_IGMP_H_

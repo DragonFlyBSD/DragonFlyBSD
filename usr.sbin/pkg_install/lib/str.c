@@ -16,10 +16,9 @@
  *
  * Miscellaneous string utilities.
  *
+ * $FreeBSD: src/usr.sbin/pkg_install/lib/str.c,v 1.6.2.6 2003/06/09 17:02:31 lioux Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/str.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.sbin/pkg_install/lib/str.c,v 1.6.2.6 2003/06/09 17:02:31 lioux Exp $");
 
 #include "lib.h"
 

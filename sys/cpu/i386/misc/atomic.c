@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/atomic.c,v 1.3 1999/08/28 00:43:40 peter Exp $
+ * $DragonFly: src/sys/cpu/i386/misc/atomic.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 /* This file creates publically callable functions to perform various

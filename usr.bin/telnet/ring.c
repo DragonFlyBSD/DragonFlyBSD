@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)ring.c	8.2 (Berkeley) 5/30/95
+ * $FreeBSD: src/usr.bin/telnet/ring.c,v 1.3.6.1 2002/04/13 11:07:13 markm Exp $
+ * $DragonFly: src/usr.bin/telnet/ring.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-
-__FBSDID("$FreeBSD: src/usr.bin/telnet/ring.c,v 1.3.6.1 2002/04/13 11:07:13 markm Exp $");
-
-#ifndef lint
-static const char sccsid[] = "@(#)ring.c	8.2 (Berkeley) 5/30/95";
-#endif
 
 /*
  * This defines a structure for a ring buffer.

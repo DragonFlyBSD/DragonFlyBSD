@@ -3,6 +3,7 @@
 /*
  * $Id: pam_password.c,v 1.7 1997/04/05 06:56:45 morgan Exp $
  * $FreeBSD: src/contrib/libpam/libpam/pam_password.c,v 1.1.1.1.6.2 2001/06/11 15:28:12 markm Exp $
+ * $DragonFly: src/contrib/libpam/libpam/Attic/pam_password.c,v 1.2 2003/06/17 04:24:03 dillon Exp $
  *
  * $Log: pam_password.c,v $
  */

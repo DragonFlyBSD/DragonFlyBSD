@@ -24,6 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_interface.c,v 1.48.2.1 2000/07/07 00:38:46 obrien Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/db_interface.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 /*

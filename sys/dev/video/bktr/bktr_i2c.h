@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_i2c.h,v 1.2.4.2 2000/09/11 07:59:57 roger Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_i2c.h,v 1.2 2003/06/17 04:28:23 dillon Exp $
  *
  */
 #ifndef _BT848_I2C_H

@@ -35,6 +35,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/main.c,v 1.4.2.4 2002/02/01 18:17:43 archie Exp $
+ * $DragonFly: src/usr.sbin/ngctl/main.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  * $Whistle: main.c,v 1.12 1999/11/29 19:17:46 archie Exp $
  */
 

@@ -6,6 +6,7 @@
 
 /*
  * $FreeBSD: src/gnu/usr.bin/awk/config.h,v 1.5.2.1 2001/01/23 22:09:01 asmodai Exp $
+ * $DragonFly: src/gnu/usr.bin/awk/Attic/config.h,v 1.2 2003/06/17 04:25:44 dillon Exp $
  */
 
 /* 

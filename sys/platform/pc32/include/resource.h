@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/i386/include/resource.h,v 1.3 1999/10/14 21:38:30 dfr Exp $ */
+/* $DragonFly: src/sys/platform/pc32/include/Attic/resource.h,v 1.2 2003/06/17 04:28:36 dillon Exp $ */
 /*
  * Copyright 1998 Massachusetts Institute of Technology
  *

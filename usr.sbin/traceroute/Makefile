@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/traceroute/Makefile,v 1.11.2.3 2001/06/23 10:07:29 ru Exp $
+# $DragonFly: src/usr.sbin/traceroute/Makefile,v 1.2 2003/06/17 04:30:03 dillon Exp $
 
 PROG=	traceroute
 MAN=	traceroute.8

@@ -34,6 +34,7 @@
  *	@(#)ipx_tun.c
  *
  * $FreeBSD: src/sys/netipx/ipx_tun.c,v 1.9 1999/08/28 00:49:42 peter Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_tun.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 /*

@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
+ * $DragonFly: src/sys/kern/kern_jail.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  *
  */
 

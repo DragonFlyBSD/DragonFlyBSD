@@ -1,4 +1,5 @@
 /* $FreeBSD: src/crypto/kerberosIV/appl/sample/sample_server.c,v 1.1.1.2.2.1 2000/07/20 14:04:34 assar Exp $ */
+/* $DragonFly: src/crypto/kerberosIV/appl/sample/Attic/sample_server.c,v 1.2 2003/06/17 04:24:36 dillon Exp $ */
 
 /*
  *

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/lib/libstand/ufs.c,v 1.5.6.1 2000/05/04 13:47:53 ps Exp $ */
+/* $DragonFly: src/lib/libstand/ufs.c,v 1.2 2003/06/17 04:26:51 dillon Exp $ */
 /*	$NetBSD: ufs.c,v 1.20 1998/03/01 07:15:39 ross Exp $	*/
 
 /*-

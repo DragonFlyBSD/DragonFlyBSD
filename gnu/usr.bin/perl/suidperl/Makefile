@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/gnu/usr.bin/perl/suidperl/Makefile,v 1.13.2.2 2000/10/05 09:54:52 markm Exp $
+# $DragonFly: src/gnu/usr.bin/perl/suidperl/Attic/Makefile,v 1.2 2003/06/17 04:25:47 dillon Exp $
 #
 
 PROG=	suidperl

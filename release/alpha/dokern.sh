@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/release/alpha/dokern.sh,v 1.56.2.6 2003/04/04 17:10:30 ru Exp $
+# $DragonFly: src/release/alpha/Attic/dokern.sh,v 1.2 2003/06/17 04:27:19 dillon Exp $
 #
 
 sed	\

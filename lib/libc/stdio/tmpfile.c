@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/tmpfile.c,v 1.4.2.2 2003/02/15 05:34:52 kris Exp $
+ * $DragonFly: src/lib/libc/stdio/tmpfile.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ *
+ * @(#)tmpfile.c	8.1 (Berkeley) 6/4/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)tmpfile.c	8.1 (Berkeley) 6/4/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <signal.h>

@@ -32,6 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.9 2002/08/14 22:23:10 dg Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_

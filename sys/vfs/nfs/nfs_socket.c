@@ -35,6 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 
 /*

@@ -23,6 +23,7 @@ This paragraph is here to try to keep Sun CC from dying.
 The number of chars here seems crucial!!!!  */
 
 /* $FreeBSD: src/contrib/gcc/gcc.c,v 1.17.2.9 2002/06/20 23:12:28 obrien Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/gcc.c,v 1.2 2003/06/17 04:24:01 dillon Exp $ */
 
 /* This program is the user interface to the C compiler and possibly to
 other compilers.  It is used because compilation is a complicated procedure

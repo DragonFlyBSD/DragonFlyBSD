@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec6.h,v 1.1.4.1 2003/01/24 05:11:35 sam Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec6.h,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$KAME: ipsec.h,v 1.44 2001/03/23 08:08:47 itojun Exp $	*/
 
 /*

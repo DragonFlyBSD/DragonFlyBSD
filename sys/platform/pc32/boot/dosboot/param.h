@@ -35,6 +35,7 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/boot/dosboot/param.h,v 1.6 1999/09/26 19:05:39 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/param.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #ifndef _MACHINE_PARAM_H_

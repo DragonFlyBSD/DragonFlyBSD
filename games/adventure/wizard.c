@@ -34,15 +34,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)wizard.c	8.1 (Berkeley) 6/2/93
+ * $FreeBSD: src/games/adventure/wizard.c,v 1.10.2.1 2001/03/05 11:43:11 kris Exp $
+ * $DragonFly: src/games/adventure/wizard.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)wizard.c	8.1 (Berkeley) 6/2/93";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/adventure/wizard.c,v 1.10.2.1 2001/03/05 11:43:11 kris Exp $";
-#endif /* not lint */
 
 /*      Re-coding of advent in C: privileged operations                 */
 

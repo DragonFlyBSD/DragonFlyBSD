@@ -14,6 +14,7 @@
  * Version 1.9, Mon Oct  9 22:34:47 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/atapi.c,v 1.36.2.1 2000/04/03 20:13:06 n_hibma Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/atapi.c,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 /*

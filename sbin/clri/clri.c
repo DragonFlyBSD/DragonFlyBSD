@@ -32,21 +32,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)clri.c	8.2 (Berkeley) 9/23/93
+ * $FreeBSD: src/sbin/clri/clri.c,v 1.4 1999/08/28 00:12:32 peter Exp $
+ * $DragonFly: src/sbin/clri/clri.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1990, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)clri.c	8.2 (Berkeley) 9/23/93";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/clri/clri.c,v 1.4 1999/08/28 00:12:32 peter Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 

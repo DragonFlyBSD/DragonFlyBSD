@@ -22,12 +22,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pcm/sndstat.c,v 1.4.2.2 2002/04/22 15:49:36 cg Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/vchan.h>
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pcm/sndstat.c,v 1.4.2.2 2002/04/22 15:49:36 cg Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
 
 #define	SS_TYPE_MODULE		0
 #define	SS_TYPE_FIRST		1

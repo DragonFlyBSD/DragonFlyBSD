@@ -19,6 +19,7 @@
    Modified July, 1988 by Arthur David Olson to assist BMG speedups  */
 
 /* $FreeBSD: src/gnu/usr.bin/grep/dfa.c,v 1.12 2000/01/31 13:28:08 ru Exp $ */
+/* $DragonFly: src/gnu/usr.bin/grep/dfa.c,v 1.2 2003/06/17 04:25:45 dillon Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>

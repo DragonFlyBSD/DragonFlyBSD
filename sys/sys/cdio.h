@@ -2,6 +2,7 @@
  * 16 Feb 93	Julian Elischer	(julian@dialix.oz.au)
  *
  * $FreeBSD: src/sys/sys/cdio.h,v 1.21 1999/12/29 04:24:38 peter Exp $
+ * $DragonFly: src/sys/sys/cdio.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 /*

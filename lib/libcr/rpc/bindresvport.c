@@ -25,14 +25,12 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)bindresvport.c 1.8 88/02/08 SMI
+ * @(#)bindresvport.c	2.2 88/07/29 4.0 RPCSRC
+ * $FreeBSD: src/lib/libc/rpc/bindresvport.c,v 1.12 2000/01/26 09:02:42 shin Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/bindresvport.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/*static char *sccsid = "from: @(#)bindresvport.c 1.8 88/02/08 SMI";*/
-/*static char *sccsid = "from: @(#)bindresvport.c	2.2 88/07/29 4.0 RPCSRC";*/
-/*from: OpenBSD: bindresvport.c,v 1.7 1996/07/30 16:25:47 downsj Exp */
-static char *rcsid = "$FreeBSD: src/lib/libc/rpc/bindresvport.c,v 1.12 2000/01/26 09:02:42 shin Exp $";
-#endif
 
 /*
  * Copyright (c) 1987 by Sun Microsystems, Inc.

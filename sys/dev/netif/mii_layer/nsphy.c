@@ -35,6 +35,9 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/mii/nsphy.c,v 1.2.2.5 2001/06/08 19:58:33 semenu Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/nsphy.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
  */
 
 /*
@@ -89,11 +92,6 @@
 #include <dev/mii/nsphyreg.h>
 
 #include "miibus_if.h"
-
-#if !defined(lint)
-static const char rcsid[] =
-  "$FreeBSD: src/sys/dev/mii/nsphy.c,v 1.2.2.5 2001/06/08 19:58:33 semenu Exp $";
-#endif
 
 static int nsphy_probe		__P((device_t));
 static int nsphy_attach		__P((device_t));

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha_mca.c,v 1.2 2000/01/24 07:08:40 imp Exp $
+ * $DragonFly: src/sys/dev/disk/aha/Attic/aha_mca.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
  *
  * Based on aha_isa.c
  */

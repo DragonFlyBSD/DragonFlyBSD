@@ -32,6 +32,7 @@
  *
  *	@(#)netstat.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/usr.bin/netstat/netstat.h,v 1.16.2.7 2001/09/17 15:17:46 ru Exp $
+ * $DragonFly: src/usr.bin/netstat/netstat.h,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
 
 #include <sys/cdefs.h>

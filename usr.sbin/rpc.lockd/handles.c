@@ -29,12 +29,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: src/usr.sbin/rpc.lockd/handles.c,v 1.4 1999/08/28 01:19:35 peter Exp $
+ * $DragonFly: src/usr.sbin/rpc.lockd/handles.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/rpc.lockd/handles.c,v 1.4 1999/08/28 01:19:35 peter Exp $";
-#endif /* not lint */
 
 #include "nlm_prot.h"
 

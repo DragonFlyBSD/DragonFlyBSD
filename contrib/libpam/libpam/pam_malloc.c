@@ -1,6 +1,7 @@
 /*
  * $Id: pam_malloc.c,v 1.2 1996/12/01 03:14:13 morgan Exp $
  * $FreeBSD: src/contrib/libpam/libpam/pam_malloc.c,v 1.1.1.1.6.2 2001/06/11 15:28:12 markm Exp $
+ * $DragonFly: src/contrib/libpam/libpam/Attic/pam_malloc.c,v 1.2 2003/06/17 04:24:03 dillon Exp $
  *
  * $Log: pam_malloc.c,v $
  * Revision 1.2  1996/12/01 03:14:13  morgan

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/ispfw/asm_2300.h,v 1.1.2.4 2003/02/24 22:16:59 mjacob Exp $ */
+/* $DragonFly: src/sys/dev/disk/ispfw/asm_2300.h,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
 /*
  * Copyright (C) 2001 Qlogic, Inc.
  * All rights reserved.

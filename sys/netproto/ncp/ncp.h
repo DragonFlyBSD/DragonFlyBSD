@@ -5,6 +5,7 @@
  *  New version derived from original ncp.h, 1998 Boris Popov
  *
  * $FreeBSD: src/sys/netncp/ncp.h,v 1.3 1999/12/12 05:50:03 bp Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 #ifndef _NETNCP_NCP_H_

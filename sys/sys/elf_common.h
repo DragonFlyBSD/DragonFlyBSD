@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_common.h,v 1.5.2.3 2001/02/28 02:30:46 obrien Exp $
+ * $DragonFly: src/sys/sys/elf_common.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_ELF_COMMON_H_

@@ -36,6 +36,7 @@
  *	from: @(#)DEFS.h	5.1 (Berkeley) 4/23/90
  *
  * $FreeBSD: src/lib/libc/i386/DEFS.h,v 1.10 2000/01/20 03:15:00 jasone Exp $
+ * $DragonFly: src/lib/libc/i386/DEFS.h,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
 
 #include <machine/asm.h>

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_mbuf.c,v 1.5 1999/08/28 00:49:05 peter Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_mbuf.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -40,11 +40,6 @@
 #include <netatm/uni/unisig_var.h>
 #include <netatm/uni/unisig_mbuf.h>
 #include <netatm/uni/unisig_msg.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/uni/unisig_mbuf.c,v 1.5 1999/08/28 00:49:05 peter Exp $");
-#endif
-
 
 /*
  * Initialize a unisig formatting structure

@@ -27,6 +27,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/tdfx.h,v 1.1.4.1 2003/04/26 07:05:30 anholt Exp $
+ * $DragonFly: src/sys/dev/drm/tdfx/Attic/tdfx.h,v 1.2 2003/06/17 04:28:24 dillon Exp $
  */
 
 #ifndef __TDFX_H__

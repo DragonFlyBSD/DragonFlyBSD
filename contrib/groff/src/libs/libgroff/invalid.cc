@@ -18,6 +18,7 @@ with groff; see the file COPYING.  If not, write to the Free Software
 Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. */
 
 /* $FreeBSD: src/contrib/groff/src/libs/libgroff/invalid.cc,v 1.2.4.1 2003/02/14 15:22:05 ru Exp $ */
+/* $DragonFly: src/contrib/groff/src/libs/libgroff/Attic/invalid.cc,v 1.2 2003/06/17 04:24:02 dillon Exp $ */
 
 #include "lib.h"
 

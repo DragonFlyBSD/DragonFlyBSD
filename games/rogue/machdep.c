@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)machdep.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/rogue/machdep.c,v 1.6.2.1 2001/12/17 12:43:23 phantom Exp $
+ * $DragonFly: src/games/rogue/machdep.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)machdep.c	8.1 (Berkeley) 5/31/93";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/rogue/machdep.c,v 1.6.2.1 2001/12/17 12:43:23 phantom Exp $";
-#endif /* not lint */
 
 /*
  * machdep.c

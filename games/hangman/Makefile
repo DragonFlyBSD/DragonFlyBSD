@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/hangman/Makefile,v 1.2.14.1 2001/04/25 09:28:57 ru Exp $
+# $DragonFly: src/games/hangman/Makefile,v 1.2 2003/06/17 04:25:24 dillon Exp $
 
 PROG=	hangman
 SRCS=	endgame.c extern.c getguess.c getword.c main.c playgame.c \

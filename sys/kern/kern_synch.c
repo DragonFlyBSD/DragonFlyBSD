@@ -37,6 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include "opt_ktrace.h"

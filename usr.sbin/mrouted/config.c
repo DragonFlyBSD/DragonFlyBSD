@@ -8,12 +8,10 @@
  *
  *
  * config.c,v 3.8.4.10 1998/01/06 01:57:41 fenner Exp
+ *
+ * $FreeBSD: src/usr.sbin/mrouted/config.c,v 1.14 1999/08/28 01:17:03 peter Exp $
+ * $DragonFly: src/usr.sbin/mrouted/config.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/mrouted/config.c,v 1.14 1999/08/28 01:17:03 peter Exp $";
-#endif /* not lint */
 
 #include "defs.h"
 

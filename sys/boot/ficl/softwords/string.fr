@@ -11,6 +11,7 @@
 \   str --> type  cr
 \
 \ $FreeBSD: src/sys/boot/ficl/softwords/string.fr,v 1.1.2.1 2000/07/06 23:51:46 obrien Exp $
+\ $DragonFly: src/sys/boot/ficl/softwords/string.fr,v 1.2 2003/06/17 04:28:18 dillon Exp $
 
 .( loading ficl string class ) cr
 also oop definitions

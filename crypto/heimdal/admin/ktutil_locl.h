@@ -34,6 +34,7 @@
 /* 
  * $Id: ktutil_locl.h,v 1.18 2002/09/10 20:03:45 joda Exp $
  * $FreeBSD: src/crypto/heimdal/admin/ktutil_locl.h,v 1.2.2.3 2002/09/20 10:50:12 nectar Exp $
+ * $DragonFly: src/crypto/heimdal/admin/Attic/ktutil_locl.h,v 1.2 2003/06/17 04:24:35 dillon Exp $
  */
 
 #ifndef __KTUTIL_LOCL_H__

@@ -1,5 +1,6 @@
 /*	$NetBSD: if_bah_zbus.c,v 1.6 2000/01/23 21:06:12 aymeric Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/if_cm_isa.c,v 1.1.2.1 2002/02/13 22:33:41 fjoe Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/if_cm_isa.c,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.

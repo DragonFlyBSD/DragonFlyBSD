@@ -30,14 +30,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/rpcsvc/crypt.x,v 1.3 1999/08/27 23:45:08 peter Exp $
+ * $DragonFly: src/include/rpcsvc/crypt.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
-
-#ifndef RPC_HDR
-%#ifndef lint
-%static const char rcsid[] =
-%  "$FreeBSD: src/include/rpcsvc/crypt.x,v 1.3 1999/08/27 23:45:08 peter Exp $";
-%#endif
-#endif
 
 /*
  * This protocol definition exists because of the U.S. government and

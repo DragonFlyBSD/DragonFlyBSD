@@ -1,5 +1,6 @@
 /*	$NetBSD: krpc_subr.c,v 1.12.4.1 1996/06/07 00:52:26 cgd Exp $	*/
 /* $FreeBSD: src/sys/nfs/krpc_subr.c,v 1.13.2.1 2000/11/20 21:17:14 tegge Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/krpc_subr.c,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
 
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass

@@ -31,6 +31,7 @@
 # Sequence of databases is important.
 #
 # $FreeBSD: src/usr.bin/locate/locate/concatdb.sh,v 1.10 2000/01/12 08:01:00 kris Exp $
+# $DragonFly: src/usr.bin/locate/locate/concatdb.sh,v 1.2 2003/06/17 04:29:28 dillon Exp $
 
 # The directory containing locate subprograms
 : ${LIBEXECDIR:=/usr/libexec}; export LIBEXECDIR

@@ -28,6 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
  *
  */
 

@@ -34,6 +34,7 @@
  *	@(#)ipx_if.h
  *
  * $FreeBSD: src/sys/netipx/ipx_if.h,v 1.11 1999/12/29 04:46:07 peter Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_if.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 #ifndef _NETIPX_IPX_IF_H_

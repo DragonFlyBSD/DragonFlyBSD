@@ -37,6 +37,7 @@
  *
  *	@(#)dir.h	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/ufs/ufs/dir.h,v 1.9 1999/08/28 00:52:27 peter Exp $
+ * $DragonFly: src/sys/vfs/ufs/dir.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _UFS_UFS_DIR_H_

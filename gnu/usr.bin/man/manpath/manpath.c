@@ -14,6 +14,7 @@
  * Austin, Texas  78712
  *
  * $FreeBSD: src/gnu/usr.bin/man/manpath/manpath.c,v 1.11.2.2 2003/02/15 05:33:06 kris Exp $
+ * $DragonFly: src/gnu/usr.bin/man/manpath/manpath.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
  */
 
 #define MANPATH_MAIN

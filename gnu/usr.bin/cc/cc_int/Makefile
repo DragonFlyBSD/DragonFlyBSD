@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc_int/Makefile,v 1.25.2.5 2002/07/19 18:46:23 ru Exp $
+# $DragonFly: src/gnu/usr.bin/cc/cc_int/Attic/Makefile,v 1.2 2003/06/17 04:25:45 dillon Exp $
 
 .include "../Makefile.inc"
 

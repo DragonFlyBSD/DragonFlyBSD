@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/diff/Makefile,v 1.13 1999/11/26 12:29:48 phk Exp $
+# $DragonFly: src/gnu/usr.bin/diff/Makefile,v 1.2 2003/06/17 04:25:45 dillon Exp $
 
 .PATH: ${.CURDIR}/../../../contrib/diff
 

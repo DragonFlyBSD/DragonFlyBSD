@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ipl_funcs.c,v 1.32.2.5 2002/12/17 18:04:02 sam Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl_funcs.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -30,6 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ncplist/ncplist.c,v 1.1 1999/10/20 11:31:02 bp Exp $
+ * $DragonFly: src/usr.bin/ncplist/ncplist.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/time.h>

@@ -23,6 +23,7 @@
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * $FreeBSD: src/gnu/lib/libdialog/dialog.h,v 1.21.6.1 2000/12/15 05:54:36 jkh Exp $
+ * $DragonFly: src/gnu/lib/libdialog/dialog.h,v 1.2 2003/06/17 04:25:43 dillon Exp $
  *
  */
 

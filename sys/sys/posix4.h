@@ -32,6 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/posix4.h,v 1.6 1999/12/27 10:22:09 bde Exp $
+ * $DragonFly: src/sys/sys/posix4.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 #include "opt_posix.h"

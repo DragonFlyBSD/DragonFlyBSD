@@ -1,5 +1,9 @@
-/* @(#)nlm_prot.x	2.1 88/08/01 4.0 RPCSRC */
-/* @(#)nlm_prot.x 1.8 87/09/21 Copyr 1987 Sun Micro */
+%/*
+% * @(#)nlm_prot.x 1.8 87/09/21 Copyr 1987 Sun Micro
+% * @(#)nlm_prot.x	2.1 88/08/01 4.0 RPCSRC
+% * $FreeBSD: src/include/rpcsvc/nlm_prot.x,v 1.8.2.1 2001/08/01 06:39:36 alfred Exp $
+% * $DragonFly: src/include/rpcsvc/nlm_prot.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
+% */
 
 /*
  * Network lock manager protocol definition
@@ -12,11 +16,6 @@
 %#define LM_MAXSTRLEN	1024
 %#define MAXNAMELEN	LM_MAXSTRLEN+1
 %#include <sys/types.h>
-#else
-%#ifndef lint
-%static const char rcsid[] =
-%  "$FreeBSD: src/include/rpcsvc/nlm_prot.x,v 1.8.2.1 2001/08/01 06:39:36 alfred Exp $";
-%#endif /* not lint */
 #endif
 
 /*

@@ -32,6 +32,7 @@
  *
  *	@(#)vm_meter.c	8.4 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/vm/vm_meter.c,v 1.34.2.7 2002/10/10 19:28:22 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_meter.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
  */
 
 #include <sys/param.h>

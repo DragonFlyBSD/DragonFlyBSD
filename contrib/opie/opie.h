@@ -38,6 +38,7 @@ License Agreement applies to this software.
 		(skey.h).
 
 $FreeBSD: src/contrib/opie/opie.h,v 1.4.6.4 2002/07/15 14:48:43 des Exp $
+$DragonFly: src/contrib/opie/opie.h,v 1.2 2003/06/17 04:24:04 dillon Exp $
 */
 #ifndef _OPIE_H
 #define _OPIE_H 1

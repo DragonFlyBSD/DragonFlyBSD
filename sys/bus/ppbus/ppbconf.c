@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppbconf.c,v 1.17.2.1 2000/05/24 00:20:57 n_hibma Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppbconf.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
  *
  */
 #include "opt_ppb_1284.h"

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uni_load.c,v 1.4 2000/01/17 20:49:54 mks Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uni_load.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -40,10 +40,6 @@
 #endif
 
 #include <netatm/kern_include.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/uni/uni_load.c,v 1.4 2000/01/17 20:49:54 mks Exp $");
-#endif
 
 /*
  * External functions

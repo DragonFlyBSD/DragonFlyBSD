@@ -32,6 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.c,v 1.3.2.22 2003/05/12 04:16:30 simokawa Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
  *
  */
 

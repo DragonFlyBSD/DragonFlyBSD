@@ -1,5 +1,6 @@
 #	from @(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libc/regex/Makefile.inc,v 1.5.2.1 2001/04/25 10:04:08 ru Exp $
+# $DragonFly: src/lib/libcr/regex/Attic/Makefile.inc,v 1.2 2003/06/17 04:26:44 dillon Exp $
 
 # regex sources
 .PATH: ${.CURDIR}/../libc/regex

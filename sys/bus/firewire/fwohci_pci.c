@@ -32,6 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.3.2.11 2003/04/28 03:29:18 simokawa Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
  */
 
 #define BOUNCE_BUFFER_TEST	0

@@ -1,4 +1,5 @@
 $FreeBSD: src/crypto/openssh/FREEBSD-Xlist,v 1.1.2.2 2003/02/03 17:31:06 des Exp $
+$DragonFly: src/crypto/openssh/Attic/FREEBSD-Xlist,v 1.2 2003/06/17 04:24:36 dillon Exp $
 *.0
 */.cvsignore
 .cvsignore

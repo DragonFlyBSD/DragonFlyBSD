@@ -34,6 +34,7 @@
  *	@(#)spx_debug.c
  *
  * $FreeBSD: src/sys/netipx/spx_debug.c,v 1.14 1999/08/28 00:49:43 peter Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_debug.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 #include "opt_inet.h"

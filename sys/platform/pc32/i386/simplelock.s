@@ -23,6 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/simplelock.s,v 1.11.2.2 2003/02/04 20:55:28 jhb Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/Attic/simplelock.s,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 /*

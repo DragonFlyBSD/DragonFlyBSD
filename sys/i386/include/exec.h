@@ -32,6 +32,7 @@
  *
  *	@(#)exec.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/exec.h,v 1.8 1999/08/28 00:44:11 peter Exp $
+ * $DragonFly: src/sys/i386/include/Attic/exec.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef	_EXEC_H_

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/modules/sound/driver/als4000/Makefile,v 1.1.2.2 2001/08/01 03:41:06 cg Exp $
+# $DragonFly: src/sys/dev/sound/driver/als4000/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
 
 .PATH: ${.CURDIR}/../../../../dev/sound/pci
 

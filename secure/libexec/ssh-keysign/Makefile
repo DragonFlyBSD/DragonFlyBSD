@@ -1,4 +1,5 @@
 # $FreeBSD: src/secure/libexec/ssh-keysign/Makefile,v 1.1.2.2 2003/02/03 17:31:12 des Exp $
+# $DragonFly: src/secure/libexec/ssh-keysign/Makefile,v 1.2 2003/06/17 04:27:48 dillon Exp $
 
 PROG=	ssh-keysign
 SRCS=	ssh-keysign.c msg.c readconf.c

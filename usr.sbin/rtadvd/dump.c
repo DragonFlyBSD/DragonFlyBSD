@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/dump.c,v 1.1.2.3 2002/06/29 18:59:53 ume Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/dump.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
 #include <sys/types.h>
 #include <sys/socket.h>

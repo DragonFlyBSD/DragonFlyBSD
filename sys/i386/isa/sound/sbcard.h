@@ -2,6 +2,7 @@
  * file: sbcard.h
  *
  * $FreeBSD: src/sys/i386/isa/sound/sbcard.h,v 1.4 1999/12/27 04:37:19 tanimura Exp $
+ * $DragonFly: src/sys/i386/isa/sound/Attic/sbcard.h,v 1.2 2003/06/17 04:28:38 dillon Exp $
  *
  */
 

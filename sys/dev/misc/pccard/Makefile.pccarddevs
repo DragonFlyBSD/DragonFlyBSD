@@ -1,5 +1,6 @@
 #	$NetBSD: Makefile.pcmciadevs,v 1.1 1998/07/19 17:28:15 christos Exp $
 # $FreeBSD: src/sys/dev/pccard/Makefile.pccarddevs,v 1.1 1999/10/26 06:52:28 imp Exp $
+# $DragonFly: src/sys/dev/misc/pccard/Attic/Makefile.pccarddevs,v 1.2 2003/06/17 04:28:28 dillon Exp $
 
 AWK=	awk
 

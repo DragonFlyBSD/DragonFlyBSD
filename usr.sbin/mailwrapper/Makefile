@@ -1,4 +1,5 @@
 # $FreeBSD: src/usr.sbin/mailwrapper/Makefile,v 1.4.2.5 2003/04/16 11:01:51 ru Exp $
+# $DragonFly: src/usr.sbin/mailwrapper/Makefile,v 1.2 2003/06/17 04:29:57 dillon Exp $
 
 .if !defined(NO_MAILWRAPPER)
 PROG=	mailwrapper

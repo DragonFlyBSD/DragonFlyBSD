@@ -35,16 +35,11 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)bdes.c	5.5 (Berkeley) 6/27/91
+ *
+ * @(#)cbc.c,v 1.2 1994/02/01 00:34:36 alm Exp
+ * $FreeBSD: src/bin/ed/cbc.c,v 1.12.2.1 2001/07/04 22:32:18 kris Exp $
+ * $DragonFly: src/bin/ed/cbc.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char * const rcsid = "@(#)cbc.c,v 1.2 1994/02/01 00:34:36 alm Exp";
-#else
-static char * const rcsid =
-  "$FreeBSD: src/bin/ed/cbc.c,v 1.12.2.1 2001/07/04 22:32:18 kris Exp $";
-#endif
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <errno.h>

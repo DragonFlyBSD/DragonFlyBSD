@@ -32,6 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_

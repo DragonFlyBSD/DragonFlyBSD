@@ -41,6 +41,7 @@
 #include "includes.h"
 RCSID("$OpenBSD: channels.c,v 1.183 2002/09/17 07:47:02 itojun Exp $");
 RCSID("$FreeBSD: src/crypto/openssh/channels.c,v 1.1.1.1.2.8 2003/02/03 17:31:06 des Exp $");
+RCSID("$DragonFly: src/crypto/openssh/Attic/channels.c,v 1.2 2003/06/17 04:24:36 dillon Exp $");
 
 #include "ssh.h"
 #include "ssh1.h"

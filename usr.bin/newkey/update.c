@@ -26,14 +26,11 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)update.c 1.2 91/03/11 Copyr 1986 Sun Micro
+ * $FreeBSD: src/usr.bin/newkey/update.c,v 1.5 1999/08/28 01:04:35 peter Exp $
+ * $DragonFly: src/usr.bin/newkey/update.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
  */
-#ifndef lint
-#if 0
-static	char sccsid[] = "@(#)update.c 1.2 91/03/11 Copyr 1986 Sun Micro";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/newkey/update.c,v 1.5 1999/08/28 01:04:35 peter Exp $";
-#endif
 
 /*
  * Copyright (C) 1986, 1989, Sun Microsystems, Inc.

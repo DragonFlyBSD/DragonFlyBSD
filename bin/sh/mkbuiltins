@@ -36,6 +36,7 @@
 #
 #	@(#)mkbuiltins	8.2 (Berkeley) 5/4/95
 # $FreeBSD: src/bin/sh/mkbuiltins,v 1.8.2.3 2002/11/30 07:54:49 tjr Exp $
+# $DragonFly: src/bin/sh/mkbuiltins,v 1.2 2003/06/17 04:22:50 dillon Exp $
 
 temp=`/usr/bin/mktemp -t ka`
 havejobs=0

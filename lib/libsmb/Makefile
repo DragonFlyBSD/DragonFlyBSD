@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/libsmb/Makefile,v 1.1.2.2 2001/12/20 09:21:31 sheldonh Exp $
+# $DragonFly: src/lib/libsmb/Makefile,v 1.2 2003/06/17 04:26:51 dillon Exp $
 
 LIB=		smb
 

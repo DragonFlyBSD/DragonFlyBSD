@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.103.2.4 2000/11/01 09:36:14 roger Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)

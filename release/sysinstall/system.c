@@ -5,6 +5,7 @@
  * generation being essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/system.c,v 1.103.2.9 2002/07/02 22:31:20 jhb Exp $
+ * $DragonFly: src/release/sysinstall/Attic/system.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Jordan Hubbard
  *

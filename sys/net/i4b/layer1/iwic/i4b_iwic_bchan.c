@@ -30,6 +30,7 @@
  *      ----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/iwic/i4b_iwic_bchan.c,v 1.7.2.1 2001/08/10 14:08:40 obrien Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_bchan.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
  *
  *      last edit-date: [Tue Jan 16 13:21:24 2001]
  *

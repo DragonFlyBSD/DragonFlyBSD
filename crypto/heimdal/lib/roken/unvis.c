@@ -31,6 +31,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)unvis.c	8.1 (Berkeley) 6/4/93
+ * $NetBSD: unvis.c,v 1.19 2000/01/22 22:19:13 mycroft Exp $
  */
 
 #if 1
@@ -44,13 +47,6 @@ RCSID("$Id: unvis.c,v 1.2 2000/12/06 21:41:46 joda Exp $");
 #endif
 #else
 #include <sys/cdefs.h>
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)unvis.c	8.1 (Berkeley) 6/4/93";
-#else
-__RCSID("$NetBSD: unvis.c,v 1.19 2000/01/22 22:19:13 mycroft Exp $");
-#endif
-#endif /* LIBC_SCCS and not lint */
 
 #define __LIBC12_SOURCE__
 

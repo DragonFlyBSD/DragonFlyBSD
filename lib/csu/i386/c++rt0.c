@@ -28,6 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/csu/i386/c++rt0.c,v 1.9 1999/08/27 23:57:55 peter Exp $
+ * $DragonFly: src/lib/csu/i386/Attic/c++rt0.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
 
 /*

@@ -39,6 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #include "npx.h"

@@ -30,6 +30,7 @@
  *
  * ------+---------+---------+---------+---------+---------+---------+---------*
  * $FreeBSD: src/usr.sbin/lpr/chkprintcap/skimprintcap.h,v 1.1.2.1 2002/04/18 20:45:23 gad Exp $
+ * $DragonFly: src/usr.sbin/lpr/chkprintcap/skimprintcap.h,v 1.2 2003/06/17 04:29:55 dillon Exp $
  * ------+---------+---------+---------+---------+---------+---------+---------*
  */
 

@@ -1,5 +1,6 @@
 /*	main.c		*/
 /* $FreeBSD: src/games/larn/main.c,v 1.9 1999/11/30 03:48:59 billf Exp $ */
+/* $DragonFly: src/games/larn/main.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "header.h"

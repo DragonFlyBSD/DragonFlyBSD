@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/pppoed/pppoed.c,v 1.2.6.8 2002/06/17 02:21:25 brian Exp $
+ * $DragonFly: src/libexec/pppoed/pppoed.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 #include <sys/param.h>

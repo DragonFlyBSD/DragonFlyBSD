@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/semaphore.h,v 1.6 2000/01/20 07:55:42 jasone Exp $
+ * $DragonFly: src/sys/sys/semaphore.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
  */
 
 #include <sys/_posix.h>

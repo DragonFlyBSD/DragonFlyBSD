@@ -1,4 +1,5 @@
 $FreeBSD: src/bin/ed/POSIX,v 1.7.2.1 2000/07/17 10:42:48 sheldonh Exp $
+$DragonFly: src/bin/ed/POSIX,v 1.2 2003/06/17 04:22:49 dillon Exp $
 
 This version of ed(1) is not strictly POSIX compliant, as described in
 the POSIX 1003.2 document.  The following is a summary of the omissions,

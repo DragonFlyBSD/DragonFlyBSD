@@ -25,6 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/periodic/security/650.ip6fwlimit,v 1.2.2.3 2002/08/28 05:13:53 cjc Exp $
+# $DragonFly: src/etc/periodic/security/650.ip6fwlimit,v 1.2 2003/06/17 04:24:48 dillon Exp $
 #
 
 # Show ip6fw rules which have reached the log limit

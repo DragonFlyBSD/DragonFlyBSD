@@ -43,6 +43,7 @@
  *
  * $Id: vinumioctl.c,v 1.14 2000/10/27 03:07:53 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumioctl.c,v 1.25.2.4 2002/02/03 00:44:19 grog Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumioctl.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 #include <dev/vinum/vinumhdr.h>

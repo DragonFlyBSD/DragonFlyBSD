@@ -8,12 +8,10 @@
  *
  *
  * callout.c,v 3.8.4.8 1998/01/06 01:58:45 fenner Exp
+ *
+ * $FreeBSD: src/usr.sbin/mrouted/callout.c,v 1.12 1999/08/28 01:17:03 peter Exp $
+ * $DragonFly: src/usr.sbin/mrouted/callout.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/mrouted/callout.c,v 1.12 1999/08/28 01:17:03 peter Exp $";
-#endif /* not lint */
 
 #include "defs.h"
 

@@ -37,6 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.12.2.2 2001/02/13 03:13:58 will Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.2 2003/06/17 04:29:29 dillon Exp $
  */
 
 /*-

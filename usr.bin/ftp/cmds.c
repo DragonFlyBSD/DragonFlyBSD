@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/cmds.c,v 1.16.2.3 2002/08/27 09:55:08 yar Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/cmds.c,v 1.2 2003/06/17 04:29:26 dillon Exp $	*/
 /*	$NetBSD: cmds.c,v 1.30.2.1 1997/11/18 00:58:26 mellon Exp $	*/
 
 /*
@@ -32,17 +33,13 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)cmds.c	8.6 (Berkeley) 10/9/94
+ * $NetBSD: cmds.c,v 1.30.2.1 1997/11/18 00:58:26 mellon Exp $
+ * $FreeBSD: src/usr.bin/ftp/cmds.c,v 1.16.2.3 2002/08/27 09:55:08 yar Exp $
  */
 
 #include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)cmds.c	8.6 (Berkeley) 10/9/94";
-#else
-__RCSID("$FreeBSD: src/usr.bin/ftp/cmds.c,v 1.16.2.3 2002/08/27 09:55:08 yar Exp $");
-__RCSID_SOURCE("$NetBSD: cmds.c,v 1.30.2.1 1997/11/18 00:58:26 mellon Exp $");
-#endif
-#endif /* not lint */
 
 /*
  * FTP User Program -- Command Routines.

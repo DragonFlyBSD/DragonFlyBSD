@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.h,v 1.22.2.10 2002/10/31 23:10:33 thomas Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 /* ATAPI misc defines */

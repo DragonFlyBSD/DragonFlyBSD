@@ -35,6 +35,7 @@
  *
  *	@(#)hash.h	8.3 (Berkeley) 5/31/94
  * $FreeBSD: src/lib/libc/db/hash/hash.h,v 1.4.8.1 2001/03/05 03:50:02 kris Exp $
+ * $DragonFly: src/lib/libc/db/hash/hash.h,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
 
 /* Operations */

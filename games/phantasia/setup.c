@@ -2,6 +2,7 @@
  * setup.c - set up all files for Phantasia
  *
  * $FreeBSD: src/games/phantasia/setup.c,v 1.11 1999/11/16 02:57:34 billf Exp $
+ * $DragonFly: src/games/phantasia/setup.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
 #include "include.h"
 #include <sys/types.h>

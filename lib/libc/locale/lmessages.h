@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/lmessages.h,v 1.3.2.1 2002/03/12 17:17:48 phantom Exp $
+ * $DragonFly: src/lib/libc/locale/Attic/lmessages.h,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 
 #ifndef _LMESSAGES_H_

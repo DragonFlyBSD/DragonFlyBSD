@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1983, 1988, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)diskpart.c	8.3 (Berkeley) 11/30/94
+ * $FreeBSD: src/usr.sbin/diskpart/diskpart.c,v 1.11.2.2 2002/12/04 16:24:08 roam Exp $
+ * $DragonFly: src/usr.sbin/diskpart/Attic/diskpart.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1983, 1988, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)diskpart.c	8.3 (Berkeley) 11/30/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/diskpart/diskpart.c,v 1.11.2.2 2002/12/04 16:24:08 roam Exp $";
-#endif /* not lint */
 
 /*
  * Program to calculate standard disk partition sizes.

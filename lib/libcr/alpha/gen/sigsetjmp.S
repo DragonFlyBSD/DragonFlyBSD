@@ -27,6 +27,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/lib/libc/alpha/gen/sigsetjmp.S,v 1.4 2000/01/20 21:58:23 jasone Exp $
+ * $DragonFly: src/lib/libcr/alpha/gen/Attic/sigsetjmp.S,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
 
 #include <machine/asm.h>

@@ -32,6 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/usr.sbin/fwcontrol/fwcontrol.c,v 1.1.2.8 2003/05/01 06:26:35 simokawa Exp $
+ * $DragonFly: src/usr.sbin/fwcontrol/fwcontrol.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 
 #include <sys/param.h>

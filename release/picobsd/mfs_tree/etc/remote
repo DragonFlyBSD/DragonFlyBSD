@@ -1,5 +1,6 @@
 #	@(#)remote	5.2 (Berkeley) 6/30/90
 # $FreeBSD: src/release/picobsd/mfs_tree/etc/remote,v 1.1.2.1 2001/02/14 23:47:02 luigi Exp $
+# $DragonFly: src/release/picobsd/mfs_tree/etc/Attic/remote,v 1.2 2003/06/17 04:27:20 dillon Exp $
 # remote -- remote host description file
 # see tip(1), remote(5)
 #

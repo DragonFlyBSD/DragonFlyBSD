@@ -1,5 +1,6 @@
 #	from: @(#)Makefile	5.6 (Berkeley) 5/22/91
 # $FreeBSD: src/lib/csu/i386/Makefile,v 1.40.2.1 2002/08/07 16:31:47 ru Exp $
+# $DragonFly: src/lib/csu/i386/Attic/Makefile,v 1.2 2003/06/17 04:26:41 dillon Exp $
 
 CFLAGS+=        -DLIBC_SCCS -fno-omit-frame-pointer
 OBJS=		crt0.o c++rt0.o gcrt0.o scrt0.o sgcrt0.o

@@ -26,6 +26,7 @@ changecom(,)dnl
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/ppp/ppp.8.m4,v 1.301.2.1 2002/09/01 02:12:31 brian Exp $
+.\" $DragonFly: src/usr.sbin/ppp/ppp.8.m4,v 1.2 2003/06/17 04:30:00 dillon Exp $
 .\"
 .Dd September 20, 1995
 .Dt PPP 8

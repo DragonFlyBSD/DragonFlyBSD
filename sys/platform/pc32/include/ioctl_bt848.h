@@ -2,6 +2,7 @@
  * extensions to ioctl_meteor.h for the bt848 cards
  *
  * $FreeBSD: src/sys/i386/include/ioctl_bt848.h,v 1.25.2.3 2000/10/31 14:31:27 roger Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/ioctl_bt848.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
  */
 
 #ifndef  _MACHINE_IOCTL_BT848_H_

@@ -6,6 +6,7 @@
  * Based off of:
  * $Id: pam_motd.c,v 1.1.1.1 2000/06/20 22:11:46 agmorgan Exp $
  * $FreeBSD: src/contrib/libpam/modules/pam_motd/pam_motd.c,v 1.1.1.1.2.2 2001/06/11 15:28:20 markm Exp $
+ * $DragonFly: src/contrib/libpam/modules/pam_motd/Attic/pam_motd.c,v 1.2 2003/06/17 04:24:03 dillon Exp $
  * 
  * Written by Michael K. Johnson <johnsonm@redhat.com> 1996/10/24
  *

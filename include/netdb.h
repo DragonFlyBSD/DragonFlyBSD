@@ -56,6 +56,7 @@
  *      @(#)netdb.h	8.1 (Berkeley) 6/2/93
  *      From: Id: netdb.h,v 8.9 1996/11/19 08:39:29 vixie Exp $
  * $FreeBSD: src/include/netdb.h,v 1.14.2.5 2001/08/29 08:46:51 alfred Exp $
+ * $DragonFly: src/include/netdb.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef _NETDB_H_

@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.c,v 1.336.2.15 2002/10/24 00:35:31 kbyanc Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
  */
 
 #include "splash.h"

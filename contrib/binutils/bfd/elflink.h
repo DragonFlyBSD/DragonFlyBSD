@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/binutils/bfd/elflink.h,v 1.2.6.5 2002/09/01 23:43:38 obrien Exp $ */
+/* $DragonFly: src/contrib/binutils/bfd/Attic/elflink.h,v 1.2 2003/06/17 04:23:58 dillon Exp $ */
 
 /* ELF linker code.  */
 

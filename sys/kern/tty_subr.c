@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/tty_subr.c,v 1.32 1999/08/28 00:46:21 peter Exp $
+ * $DragonFly: src/sys/kern/tty_subr.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 /*

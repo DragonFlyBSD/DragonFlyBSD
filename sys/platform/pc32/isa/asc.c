@@ -35,6 +35,7 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 #include "asc.h"

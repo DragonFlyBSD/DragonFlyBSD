@@ -30,6 +30,7 @@
  * directions.  If we only cared about monosity two reads would be enough.
  *
  * $FreeBSD: src/sys/i386/i386/mp_clock.c,v 1.4.2.2 2000/09/30 02:49:32 ps Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mp_clock.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
  *
  */
 

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_command.c,v 1.6 1999/08/28 00:41:49 peter Exp $
- *
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_command.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
  */
 
 /*
@@ -36,10 +36,6 @@
  */
 
 #include <dev/hfa/fore_include.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/dev/hfa/fore_command.c,v 1.6 1999/08/28 00:41:49 peter Exp $");
-#endif
 
 /*
  * Local variables

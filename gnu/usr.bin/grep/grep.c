@@ -20,6 +20,7 @@
 /* Builtin decompression 1997 by Wolfram Schneider <wosch@FreeBSD.org>.  */
 
 /* $FreeBSD: src/gnu/usr.bin/grep/grep.c,v 1.20.2.1 2000/06/13 07:17:27 ru Exp $ */
+/* $DragonFly: src/gnu/usr.bin/grep/grep.c,v 1.2 2003/06/17 04:25:45 dillon Exp $ */
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>

@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/crypto/kerberosIV/lib/krb/getaddrs.c,v 1.2.2.1 2001/03/04 12:52:49 markm Exp $
+ * $DragonFly: src/crypto/kerberosIV/lib/krb/Attic/getaddrs.c,v 1.2 2003/06/17 04:24:36 dillon Exp $
  */
 
 #include "krb_locl.h"

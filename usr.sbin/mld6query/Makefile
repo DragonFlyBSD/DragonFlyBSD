@@ -13,6 +13,7 @@
 # A PARTICULAR PURPOSE.
 #
 # $FreeBSD: src/usr.sbin/mld6query/Makefile,v 1.1.1.1.2.2 2001/04/25 12:10:07 ru Exp $
+# $DragonFly: src/usr.sbin/mld6query/Makefile,v 1.2 2003/06/17 04:29:57 dillon Exp $
 
 PROG=	mld6query
 SRCS=	mld6.c

@@ -32,12 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)crypt.c	5.11 (Berkeley) 6/25/91
+ * $FreeBSD: src/lib/libc/gen/crypt.c,v 1.5 1999/08/28 05:03:17 peter Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/crypt.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/* from static char sccsid[] = "@(#)crypt.c	5.11 (Berkeley) 6/25/91"; */
-static char rcsid[] = "$FreeBSD: src/lib/libc/gen/crypt.c,v 1.5 1999/08/28 05:03:17 peter Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <unistd.h>
 #include <stdio.h>

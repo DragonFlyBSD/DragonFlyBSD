@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberos5/lib/libtelnet/Makefile,v 1.14.2.4 2003/04/24 19:13:59 nectar Exp $
+# $DragonFly: src/kerberos5/lib/libtelnet/Attic/Makefile,v 1.2 2003/06/17 04:26:17 dillon Exp $
 
 LIB=		telnet
 

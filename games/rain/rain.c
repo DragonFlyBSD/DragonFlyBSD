@@ -29,21 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)rain.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/rain/rain.c,v 1.8.2.1 2001/03/05 11:54:10 kris Exp $
+ * $DragonFly: src/games/rain/rain.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1980, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)rain.c	8.1 (Berkeley) 5/31/93";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/rain/rain.c,v 1.8.2.1 2001/03/05 11:54:10 kris Exp $";
-#endif /* not lint */
 
 /*
  * rain 11/3/1980 EPS/CITHEP

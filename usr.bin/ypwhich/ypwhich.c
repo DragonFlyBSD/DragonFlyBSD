@@ -25,12 +25,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.bin/ypwhich/ypwhich.c,v 1.11.2.1 2002/02/15 00:46:56 des Exp $
+ * $DragonFly: src/usr.bin/ypwhich/ypwhich.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
-
-#ifndef lint
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/ypwhich/ypwhich.c,v 1.11.2.1 2002/02/15 00:46:56 des Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/types.h>

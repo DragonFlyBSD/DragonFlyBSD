@@ -1,4 +1,5 @@
 # $FreeBSD: src/lib/libc_r/man/Makefile.inc,v 1.11.2.5 2003/05/27 18:18:01 jdp Exp $
+# $DragonFly: src/lib/libc_r/man/Makefile.inc,v 1.2 2003/06/17 04:26:47 dillon Exp $
 
 # POSIX thread man files
 

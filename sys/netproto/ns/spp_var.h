@@ -32,6 +32,7 @@
  *
  *	@(#)spp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_var.h,v 1.11 1999/12/29 04:46:21 peter Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_var.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
 
 #ifndef _NETNS_SPP_VAR_H_

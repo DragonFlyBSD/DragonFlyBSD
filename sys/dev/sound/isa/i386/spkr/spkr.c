@@ -5,6 +5,7 @@
  * modified for FreeBSD by Andrew A. Chernov <ache@astral.msk.su>
  *
  * $FreeBSD: src/sys/i386/isa/spkr.c,v 1.45 2000/01/29 16:00:32 peter Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 #include <sys/param.h>

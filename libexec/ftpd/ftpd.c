@@ -29,22 +29,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1985, 1988, 1990, 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)ftpd.c	8.4 (Berkeley) 4/16/94
  */
 
 #if 0
-#ifndef lint
-static char copyright[] =
-"@(#) Copyright (c) 1985, 1988, 1990, 1992, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-#endif
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)ftpd.c	8.4 (Berkeley) 4/16/94";
-#endif
 static const char rcsid[] =
   "$FreeBSD: src/libexec/ftpd/ftpd.c,v 1.62.2.48 2003/02/14 12:42:42 yar Exp $";
+  "$DragonFly: src/libexec/ftpd/ftpd.c,v 1.2 2003/06/17 04:27:07 dillon Exp $";
 #endif /* not lint */
 
 /*

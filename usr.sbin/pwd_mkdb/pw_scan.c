@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)pw_scan.c	8.3 (Berkeley) 4/2/94
+ * $FreeBSD: src/usr.sbin/pwd_mkdb/pw_scan.c,v 1.14.2.1 2002/11/11 08:52:04 maxim Exp $
+ * $DragonFly: src/usr.sbin/pwd_mkdb/pw_scan.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)pw_scan.c	8.3 (Berkeley) 4/2/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/pwd_mkdb/pw_scan.c,v 1.14.2.1 2002/11/11 08:52:04 maxim Exp $";
-#endif /* not lint */
 
 /*
  * This module is used to "verify" password entries by chpass(1) and

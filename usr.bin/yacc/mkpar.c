@@ -32,15 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)mkpar.c	5.3 (Berkeley) 1/20/91
+ * $FreeBSD: src/usr.bin/yacc/mkpar.c,v 1.10 1999/08/28 01:08:01 peter Exp $
+ * $DragonFly: src/usr.bin/yacc/mkpar.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char const sccsid[] = "@(#)mkpar.c	5.3 (Berkeley) 1/20/91";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/yacc/mkpar.c,v 1.10 1999/08/28 01:08:01 peter Exp $";
-#endif /* not lint */
 
 #include <stdlib.h>
 #include "defs.h"

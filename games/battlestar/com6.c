@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)com6.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/battlestar/com6.c,v 1.9.2.1 2001/03/05 11:45:35 kris Exp $
+ * $DragonFly: src/games/battlestar/com6.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)com6.c	8.1 (Berkeley) 5/31/93";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/battlestar/com6.c,v 1.9.2.1 2001/03/05 11:45:35 kris Exp $";
-#endif /* not lint */
 
 #include <signal.h>
 #include "externs.h"

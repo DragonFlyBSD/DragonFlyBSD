@@ -34,11 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/tmpnam.c,v 1.3 1999/10/24 11:57:24 ache Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/tmpnam.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ *
+ * @(#)tmpnam.c	8.3 (Berkeley) 3/28/94
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)tmpnam.c	8.3 (Berkeley) 3/28/94";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 

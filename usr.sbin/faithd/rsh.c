@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/faithd/rsh.c,v 1.2.2.4 2002/04/28 05:40:29 suz Exp $
+ * $DragonFly: src/usr.sbin/faithd/rsh.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 
 #include <sys/param.h>

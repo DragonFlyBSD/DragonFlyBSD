@@ -4,6 +4,7 @@
 /* Scanner skeleton version:
  * $Header: /home/daffy/u0/vern/flex/RCS/flex.skl,v 2.91 96/09/10 16:58:48 vern Exp $
  * $FreeBSD: src/usr.bin/lex/initscan.c,v 1.6 1999/10/27 07:56:45 obrien Exp $
+ * $DragonFly: src/usr.bin/lex/initscan.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
 
 #define FLEX_SCANNER

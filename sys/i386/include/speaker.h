@@ -5,6 +5,7 @@
  *      modified for FreeBSD by Andrew A. Chernov <ache@astral.msk.su>
  *
  * $FreeBSD: src/sys/i386/include/speaker.h,v 1.6 1999/08/28 00:44:26 peter Exp $
+ * $DragonFly: src/sys/i386/include/Attic/speaker.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 #ifndef	_MACHINE_SPEAKER_H_

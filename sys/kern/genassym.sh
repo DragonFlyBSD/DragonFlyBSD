@@ -1,5 +1,6 @@
 #!/bin/sh
 # $FreeBSD: src/sys/kern/genassym.sh,v 1.1.2.1 2000/07/07 01:36:35 obrien Exp $
+# $DragonFly: src/sys/kern/genassym.sh,v 1.2 2003/06/17 04:28:41 dillon Exp $
 
 # Grrr, this should use stdin and stdout, but is encrufted for compatibility.
 

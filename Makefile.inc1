@@ -1,5 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
+# $DragonFly: src/Makefile.inc1,v 1.2 2003/06/17 04:21:10 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS4 to build KerberosIV

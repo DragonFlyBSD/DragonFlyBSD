@@ -12,6 +12,7 @@
  * Maybe you should write some free software too.
  *
  * $FreeBSD: src/usr.sbin/ctm/ctm_smail/ctm_smail.c,v 1.12 1999/08/28 01:16:02 peter Exp $
+ * $DragonFly: src/usr.sbin/ctm/ctm_smail/Attic/ctm_smail.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 
 #include <stdio.h>

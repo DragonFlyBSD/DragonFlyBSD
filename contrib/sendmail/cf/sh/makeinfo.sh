@@ -14,6 +14,7 @@
 #	$Id: makeinfo.sh,v 8.14 1999/02/07 07:26:25 gshapiro Exp $
 #
 # $FreeBSD: src/contrib/sendmail/cf/sh/makeinfo.sh,v 1.3.6.2 2001/03/05 13:08:37 ru Exp $
+# $DragonFly: src/contrib/sendmail/cf/sh/Attic/makeinfo.sh,v 1.2 2003/06/17 04:24:06 dillon Exp $
 #
 
 usewhoami=0

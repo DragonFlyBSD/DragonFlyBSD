@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/chat.h,v 1.15.2.1 2000/03/21 10:23:03 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/chat.h,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #define CHAT_EXPECT 0

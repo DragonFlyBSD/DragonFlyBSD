@@ -1,5 +1,6 @@
 #  @(#)Makefile 5.1beta 93/09/24
 # $FreeBSD: src/lib/msun/Makefile,v 1.23.2.3 2002/07/22 14:21:50 ru Exp $
+# $DragonFly: src/lib/msun/Attic/Makefile,v 1.2 2003/06/17 04:26:52 dillon Exp $
 #
 #  ====================================================
 #  Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.

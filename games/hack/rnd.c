@@ -1,5 +1,6 @@
 /* rnd.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/rnd.c,v 1.5 1999/11/16 10:26:38 marcel Exp $ */
+/* $DragonFly: src/games/hack/rnd.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
 
 #include <stdlib.h>
 

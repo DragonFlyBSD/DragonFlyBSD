@@ -25,6 +25,7 @@
  * capi/capi_msgs.h	The CAPI i4b message and handler declarations.
  *
  * $FreeBSD: src/sys/i4b/capi/capi_msgs.h,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
+ * $DragonFly: src/sys/net/i4b/capi/capi_msgs.h,v 1.2 2003/06/17 04:28:39 dillon Exp $
  */
 
 #ifndef _I4B_CAPI_MSGS_H_

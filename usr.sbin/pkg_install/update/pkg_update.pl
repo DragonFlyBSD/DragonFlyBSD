@@ -27,6 +27,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/usr.sbin/pkg_install/update/pkg_update.pl,v 1.4.2.1 2001/03/16 04:36:01 paul Exp $
+# $DragonFly: src/usr.sbin/pkg_install/update/Attic/pkg_update.pl,v 1.2 2003/06/17 04:29:59 dillon Exp $
 #/
 
 use strict;

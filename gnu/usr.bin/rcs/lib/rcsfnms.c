@@ -38,6 +38,9 @@ Report problems and direct all questions to:
 
 
 /*
+ * $FreeBSD: src/gnu/usr.bin/rcs/lib/rcsfnms.c,v 1.10.2.1 2001/05/12 10:29:43 kris Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/lib/rcsfnms.c,v 1.2 2003/06/17 04:25:47 dillon Exp $
+ *
  * Revision 5.16  1995/06/16 06:19:24  eggert
  * Update FSF address.
  *
@@ -177,7 +180,7 @@ Report problems and direct all questions to:
 
 #include "rcsbase.h"
 
-libId(fnmsId, "$FreeBSD: src/gnu/usr.bin/rcs/lib/rcsfnms.c,v 1.10.2.1 2001/05/12 10:29:43 kris Exp $")
+libId(fnmsId, "$DragonFly: src/gnu/usr.bin/rcs/lib/rcsfnms.c,v 1.2 2003/06/17 04:25:47 dillon Exp $")
 
 static char const *bindex P((char const*,int));
 static int fin2open P((char const*, size_t, char const*, size_t, char const*, size_t, RILE*(*)P((struct buf*,struct stat*,int)), int));

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_sem.c,v 1.24.2.8 2002/10/22 20:45:03 fjoe Exp $ */
+/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.2 2003/06/17 04:28:41 dillon Exp $ */
 
 /*
  * Implementation of SVID semaphores

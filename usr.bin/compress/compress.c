@@ -29,22 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)compress.c	8.2 (Berkeley) 1/7/94
+ * $FreeBSD: src/usr.bin/compress/compress.c,v 1.7.6.5 2002/07/16 00:56:04 tjr Exp $
+ * $DragonFly: src/usr.bin/compress/compress.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1992, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif
-
-#if 0
-#ifndef lint
-static char sccsid[] = "@(#)compress.c	8.2 (Berkeley) 1/7/94";
-#endif
-#endif
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/compress/compress.c,v 1.7.6.5 2002/07/16 00:56:04 tjr Exp $");
 
 #include <sys/param.h>
 #include <sys/stat.h>

@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_isa.c,v 1.5.2.2 2002/07/29 07:52:57 takawata Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.2 2003/06/17 04:28:24 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -8,6 +8,7 @@
  * unfortunately, they have a different set of numeric values for
  * certain constants.  This file is included for compatibility's sake.
  * $FreeBSD: src/contrib/libpam/libpam/include/security/_pam_compat.h,v 1.1.1.1.6.2 2001/06/11 15:28:14 markm Exp $
+ * $DragonFly: src/contrib/libpam/libpam/include/security/Attic/_pam_compat.h,v 1.2 2003/06/17 04:24:03 dillon Exp $
  */
 
 /* Solaris uses different constants. We redefine to those here */

@@ -25,6 +25,7 @@
  *
  *	from: Mach, Revision 2.7  92/02/29  15:33:41  rpd
  * $FreeBSD: src/sys/boot/pc98/boot2/asm.h,v 1.2.2.1 2001/10/07 13:22:38 nyan Exp $
+ * $DragonFly: src/sys/boot/pc98/boot2/Attic/asm.h,v 1.2 2003/06/17 04:28:18 dillon Exp $
  */
 
 #define S_ARG0	 4(%esp)

@@ -1,6 +1,7 @@
 /*
  * $Id: support.h,v 1.3 2000/12/20 05:15:05 vorlon Exp $
  * $FreeBSD: src/contrib/libpam/modules/pam_unix/support.h,v 1.1.1.1.2.2 2001/06/11 15:28:30 markm Exp $
+ * $DragonFly: src/contrib/libpam/modules/pam_unix/Attic/support.h,v 1.2 2003/06/17 04:24:03 dillon Exp $
  */
 
 #ifndef _PAM_UNIX_SUPPORT_H

@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_ptrace.c,v 1.7.4.3 2003/01/03 17:13:23 kan Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
  */
 
 #include "opt_cpu.h"

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/alpha/gen/rfork_thread.S,v 1.1.2.1 2001/02/07 00:12:41 peter Exp $
+ * $DragonFly: src/lib/libcr/alpha/gen/Attic/rfork_thread.S,v 1.2 2003/06/17 04:26:41 dillon Exp $
  */
 
 #include "SYS.h"

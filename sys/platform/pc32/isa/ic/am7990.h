@@ -2,6 +2,7 @@
  *	AMD 7990 (LANCE) definitions
  *
  * $FreeBSD: src/sys/i386/isa/ic/am7990.h,v 1.3.6.1 2000/08/03 01:01:25 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ic/am7990.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 #if defined(BYTE_ORDER) && BYTE_ORDER == BIG_ENDIAN

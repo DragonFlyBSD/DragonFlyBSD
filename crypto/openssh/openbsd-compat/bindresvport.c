@@ -27,15 +27,13 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * $OpenBSD: bindresvport.c,v 1.13 2000/01/26 03:43:21 deraadt Exp $
  */
 
 #include "includes.h"
 
 #ifndef HAVE_BINDRESVPORT_SA
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char *rcsid = "$OpenBSD: bindresvport.c,v 1.13 2000/01/26 03:43:21 deraadt Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * Copyright (c) 1987 by Sun Microsystems, Inc.

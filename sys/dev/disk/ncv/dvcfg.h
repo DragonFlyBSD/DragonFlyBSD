@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/i386/include/dvcfg.h,v 1.2.6.1 2000/08/03 01:01:19 peter Exp $ */
+/* $DragonFly: src/sys/dev/disk/ncv/dvcfg.h,v 1.2 2003/06/17 04:28:35 dillon Exp $ */
 /*	$NetBSD$	*/
 /*
  * [NetBSD for NEC PC98 series]

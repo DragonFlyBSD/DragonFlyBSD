@@ -32,6 +32,7 @@
  *
  *	@(#)hangman.h	8.1 (Berkeley) 5/31/93
  *	$FreeBSD: src/games/hangman/hangman.h,v 1.3 1999/12/10 03:22:59 billf Exp $
+ *	$DragonFly: src/games/hangman/hangman.h,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
 
 # include	<stdlib.h>

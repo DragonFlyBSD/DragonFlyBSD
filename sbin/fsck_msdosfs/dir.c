@@ -30,15 +30,14 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $NetBSD: dir.c,v 1.14 1998/08/25 19:18:15 ross Exp $
+ * $FreeBSD: src/sbin/fsck_msdosfs/dir.c,v 1.1.2.1 2001/08/01 05:47:55 obrien Exp $
+ * $DragonFly: src/sbin/fsck_msdosfs/dir.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
 
 
 #include <sys/cdefs.h>
-#ifndef lint
-__RCSID("$NetBSD: dir.c,v 1.14 1998/08/25 19:18:15 ross Exp $");
-static const char rcsid[] =
-  "$FreeBSD: src/sbin/fsck_msdosfs/dir.c,v 1.1.2.1 2001/08/01 05:47:55 obrien Exp $";
-#endif /* not lint */
 
 #include <stdio.h>
 #include <stdlib.h>

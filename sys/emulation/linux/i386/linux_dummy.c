@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_dummy.c,v 1.21.2.7 2003/01/02 20:41:33 kan Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_dummy.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
 
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass

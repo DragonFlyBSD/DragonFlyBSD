@@ -28,6 +28,7 @@
  *	-------------
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/fsm.c,v 1.6.2.2 2001/08/10 23:11:14 obrien Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/fsm.c,v 1.2 2003/06/17 04:29:54 dillon Exp $
  *
  *      last edit-date: [Sat Jul 21 18:25:48 2001]
  *

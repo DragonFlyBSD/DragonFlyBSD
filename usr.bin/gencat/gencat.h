@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.bin/gencat/gencat.h,v 1.2.12.1 2001/12/17 12:09:35 phantom Exp $ */
+/* $DragonFly: src/usr.bin/gencat/Attic/gencat.h,v 1.2 2003/06/17 04:29:27 dillon Exp $ */
 
 #ifndef GENCAT_H
 #define GENCAT_H

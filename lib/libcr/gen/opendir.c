@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/opendir.c,v 1.10.2.1 2001/06/04 20:59:48 joerg Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/opendir.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)opendir.c	8.8 (Berkeley) 5/1/95
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)opendir.c	8.8 (Berkeley) 5/1/95";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/mount.h>

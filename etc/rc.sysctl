@@ -25,6 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.sysctl,v 1.4.4.6 2002/04/15 00:44:13 dougb Exp $
+# $DragonFly: src/etc/Attic/rc.sysctl,v 1.2 2003/06/17 04:24:45 dillon Exp $
 #
 
 #

@@ -23,6 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/awi/if_awi_pccard.c,v 1.5.2.1 2000/12/07 04:09:39 imp Exp $
+ * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
  */
 
 #include <sys/param.h>

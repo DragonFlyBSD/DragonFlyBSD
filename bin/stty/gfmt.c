@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)gfmt.c	8.6 (Berkeley) 4/2/94
+ * $FreeBSD: src/bin/stty/gfmt.c,v 1.10.2.2 2001/08/01 05:26:12 obrien Exp $
+ * $DragonFly: src/bin/stty/gfmt.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)gfmt.c	8.6 (Berkeley) 4/2/94";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/bin/stty/gfmt.c,v 1.10.2.2 2001/08/01 05:26:12 obrien Exp $";
-#endif /* not lint */
 
 #include <sys/types.h>
 

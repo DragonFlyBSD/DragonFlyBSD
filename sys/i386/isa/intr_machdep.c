@@ -35,6 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:

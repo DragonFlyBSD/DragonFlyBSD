@@ -1,4 +1,5 @@
 /* $FreeBSD: src/sys/boot/arc/include/libarc.h,v 1.2 1999/08/28 00:39:34 peter Exp $ */
+/* $DragonFly: src/sys/boot/arc/include/Attic/libarc.h,v 1.2 2003/06/17 04:28:16 dillon Exp $ */
 
 /*
  * Copyright (c) 1996

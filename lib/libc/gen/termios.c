@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/termios.c,v 1.9.2.1 2000/03/18 23:13:25 jasone Exp $
+ * $DragonFly: src/lib/libc/gen/termios.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)termios.c	8.2 (Berkeley) 2/21/94
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)termios.c	8.2 (Berkeley) 2/21/94";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <sys/fcntl.h>

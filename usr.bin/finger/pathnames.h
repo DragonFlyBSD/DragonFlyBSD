@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/finger/pathnames.h,v 1.1.2.3 2002/07/03 01:14:24 des Exp $
+ * $DragonFly: src/usr.bin/finger/pathnames.h,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
 
 #ifndef PATHNAMES_H

@@ -8,6 +8,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/inflate.c,v 1.14 1999/12/29 04:54:39 peter Exp $
+ * $DragonFly: src/sys/kern/inflate.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  *
  *
  */

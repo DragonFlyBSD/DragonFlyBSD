@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/periodic/daily/420.status-network,v 1.3.2.2 2000/09/20 02:46:15 jkh Exp $
+# $DragonFly: src/etc/periodic/daily/420.status-network,v 1.2 2003/06/17 04:24:48 dillon Exp $
 #
 
 # If there is a global system configuration file, suck it in.

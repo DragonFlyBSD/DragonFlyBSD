@@ -1,6 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.objnam.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.objnam.c,v 1.3 1999/11/16 02:57:08 billf Exp $ */
+/* $DragonFly: src/games/hack/hack.objnam.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
 
 #include	"hack.h"
 #define Sprintf (void) sprintf

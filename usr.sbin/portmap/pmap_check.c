@@ -31,14 +31,11 @@
   * Computing Science, Eindhoven University of Technology, The Netherlands.
   */
 
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#) pmap_check.c 1.6 93/11/21 20:58:59";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/usr.sbin/portmap/pmap_check.c,v 1.6 2000/01/15 23:08:28 brian Exp $";
-#endif
-
+/*
+ * @(#) pmap_check.c 1.6 93/11/21 20:58:59
+ * $FreeBSD: src/usr.sbin/portmap/pmap_check.c,v 1.6 2000/01/15 23:08:28 brian Exp $
+ * $DragonFly: src/usr.sbin/portmap/pmap_check.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ */
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>

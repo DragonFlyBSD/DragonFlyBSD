@@ -32,6 +32,7 @@
  *
  *	from: @(#)endian.h	7.8 (Berkeley) 4/3/91
  * $FreeBSD: src/sys/i386/boot/dosboot/endian.h,v 1.5 1999/08/28 00:43:22 peter Exp $
+ * $DragonFly: src/sys/i386/boot/dosboot/Attic/endian.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #ifndef _MACHINE_ENDIAN_H_

@@ -2,6 +2,7 @@
  * Judaic Calendar. Maintained by Josef Grosch <jgrosch@mooseriver.com>.
  *
  * $FreeBSD: src/usr.bin/calendar/calendars/calendar.judaic,v 1.8.2.4 2003/03/12 11:55:46 dwmalone Exp $
+ * $DragonFly: src/usr.bin/calendar/calendars/calendar.judaic,v 1.2 2003/06/17 04:29:25 dillon Exp $
  *
  */
 

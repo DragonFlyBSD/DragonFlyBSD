@@ -31,6 +31,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.22 2003/05/11 18:00:55 ps Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ *
+ * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.22 2003/05/11 18:00:55 ps Exp $
  */
 
 /*
@@ -117,11 +120,6 @@
 
 /* "controller miibus0" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
-
-#if !defined(lint)
-static const char rcsid[] =
-  "$FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.22 2003/05/11 18:00:55 ps Exp $";
-#endif
 
 /*
  * Various supported device vendors/types and their names. Note: the

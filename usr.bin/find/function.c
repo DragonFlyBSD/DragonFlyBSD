@@ -32,16 +32,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)function.c  8.10 (Berkeley) 5/4/95
+ * $FreeBSD: src/usr.bin/find/function.c,v 1.22.2.11 2002/11/15 11:38:15 sheldonh Exp $
+ * $DragonFly: src/usr.bin/find/function.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)function.c  8.10 (Berkeley) 5/4/95";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/find/function.c,v 1.22.2.11 2002/11/15 11:38:15 sheldonh Exp $";
-#endif
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/ucred.h>

@@ -35,6 +35,7 @@
  *
  *	from: @(#)quota.h	7.9 (Berkeley) 2/22/91
  * $FreeBSD: src/sys/i386/boot/dosboot/quota.h,v 1.6 1999/12/29 04:32:51 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/quota.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
  */
 
 #ifndef _QUOTA_

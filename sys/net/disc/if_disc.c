@@ -32,6 +32,7 @@
  *
  *	From: @(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_disc.c,v 1.26.2.2 2001/12/20 10:30:16 ru Exp $
+ * $DragonFly: src/sys/net/disc/if_disc.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
  */
 
 /*

@@ -25,20 +25,16 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)rex.x 1.3 87/09/18 Copyr 1987 Sun Micro
+ * @(#)rex.x	2.1 88/08/01 4.0 RPCSRC
+ * $FreeBSD: src/include/rpcsvc/rex.x,v 1.6 1999/08/27 23:45:10 peter Exp $
+ * $DragonFly: src/include/rpcsvc/rex.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
 /*
  * Remote execution (rex) protocol specification
  */
-
-#ifndef RPC_HDR
-%#ifndef lint
-%/*static char sccsid[] = "from: @(#)rex.x 1.3 87/09/18 Copyr 1987 Sun Micro";*/
-%/*static char sccsid[] = "from: @(#)rex.x	2.1 88/08/01 4.0 RPCSRC";*/
-%static const char rcsid[] =
-%  "$FreeBSD: src/include/rpcsvc/rex.x,v 1.6 1999/08/27 23:45:10 peter Exp $";
-%#endif /* not lint */
-#endif
 
 const STRINGSIZE = 1024;
 typedef string rexstring<1024>;

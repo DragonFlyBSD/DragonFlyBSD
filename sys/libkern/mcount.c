@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/mcount.c,v 1.16 1999/12/29 04:54:41 peter Exp $
+ * $DragonFly: src/sys/libkern/mcount.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
  */
 
 #include <sys/param.h>

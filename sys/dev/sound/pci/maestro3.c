@@ -23,6 +23,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/pci/maestro3.c,v 1.2.2.11 2002/09/16 19:52:33 scottl Exp $
+ * $DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 /*
@@ -61,7 +64,7 @@
 #include <gnu/dev/sound/pci/maestro3_reg.h>
 #include <gnu/dev/sound/pci/maestro3_dsp.h>
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/pci/maestro3.c,v 1.2.2.11 2002/09/16 19:52:33 scottl Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 

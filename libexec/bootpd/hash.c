@@ -20,6 +20,7 @@ ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 
  $FreeBSD: src/libexec/bootpd/hash.c,v 1.5 1999/08/28 00:09:18 peter Exp $
+ $DragonFly: src/libexec/bootpd/hash.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
 
 ************************************************************************/
 

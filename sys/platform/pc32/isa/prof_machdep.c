@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/prof_machdep.c,v 1.14.2.1 2000/08/03 00:09:30 ps Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/prof_machdep.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 #ifdef GUPROF

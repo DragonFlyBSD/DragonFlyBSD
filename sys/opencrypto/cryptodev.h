@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptodev.h,v 1.2.2.5 2003/06/03 00:09:02 sam Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptodev.h,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
 /*	$OpenBSD: cryptodev.h,v 1.31 2002/06/11 11:14:29 beck Exp $	*/
 
 /*

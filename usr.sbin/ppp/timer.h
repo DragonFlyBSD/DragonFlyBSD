@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/timer.h,v 1.9.2.1 2001/06/13 21:56:36 brian Exp $
+ * $DragonFly: src/usr.sbin/ppp/timer.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 #define	TICKUNIT	100000			/* usec's per Unit */

@@ -34,22 +34,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1980, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
+ * @(#)df.c	8.9 (Berkeley) 5/8/95
+ * $FreeBSD: src/bin/df/df.c,v 1.23.2.9 2002/07/01 00:14:24 iedowse Exp $
+ * $DragonFly: src/bin/df/df.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1980, 1990, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)df.c	8.9 (Berkeley) 5/8/95";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/bin/df/df.c,v 1.23.2.9 2002/07/01 00:14:24 iedowse Exp $";
-#endif
-#endif /* not lint */
 
 #include <sys/cdefs.h>
 #include <sys/param.h>

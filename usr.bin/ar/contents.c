@@ -34,13 +34,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ar/contents.c,v 1.5.6.2 2002/03/12 19:33:00 phantom Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/contents.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ *
+ * @(#)contents.c	8.3 (Berkeley) 4/2/94
+ * $FreeBSD: src/usr.bin/ar/contents.c,v 1.5.6.2 2002/03/12 19:33:00 phantom Exp $
  */
-
-#ifndef lint
-static const char sccsid[] = "@(#)contents.c	8.3 (Berkeley) 4/2/94";
-static const char rcsid[] =
-  "$FreeBSD: src/usr.bin/ar/contents.c,v 1.5.6.2 2002/03/12 19:33:00 phantom Exp $";
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

@@ -1,5 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 4/17/94
 # $FreeBSD: src/lib/libc/stdio/Makefile.inc,v 1.19.2.1 2001/04/25 10:04:11 ru Exp $
+# $DragonFly: src/lib/libcr/stdio/Attic/Makefile.inc,v 1.2 2003/06/17 04:26:45 dillon Exp $
 
 # stdio sources
 .PATH: ${.CURDIR}/../libc/stdio

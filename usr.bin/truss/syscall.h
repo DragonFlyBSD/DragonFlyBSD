@@ -19,6 +19,7 @@
  */
 /*
  * $FreeBSD: src/usr.bin/truss/syscall.h,v 1.5.2.3 2002/02/15 11:43:51 des Exp $
+ * $DragonFly: src/usr.bin/truss/syscall.h,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
 
 enum Argtype { None = 1, Hex, Octal, Int, String, Ptr, Stat, Ioctl, Quad,

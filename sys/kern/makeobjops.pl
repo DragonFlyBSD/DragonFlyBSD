@@ -37,6 +37,7 @@
 # From src/sys/kern/makedevops.pl,v 1.12 1999/11/22 14:40:04 n_hibma Exp
 #
 # $FreeBSD: src/sys/kern/makeobjops.pl,v 1.2.2.1 2001/02/02 19:49:13 cg Exp $
+# $DragonFly: src/sys/kern/Attic/makeobjops.pl,v 1.2 2003/06/17 04:28:41 dillon Exp $
 
 #
 # Script to produce kobj front-end sugar.

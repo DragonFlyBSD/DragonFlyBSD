@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agpreg.h,v 1.3.2.5 2003/06/02 17:38:19 jhb Exp $
+ *	$DragonFly: src/sys/dev/agp/agpreg.h,v 1.2 2003/06/17 04:28:56 dillon Exp $
  */
 
 #ifndef _PCI_AGPREG_H_

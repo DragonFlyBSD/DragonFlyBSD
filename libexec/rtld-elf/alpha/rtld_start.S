@@ -1,4 +1,5 @@
 /* $FreeBSD: src/libexec/rtld-elf/alpha/rtld_start.S,v 1.3.2.2 2002/09/02 02:10:20 obrien Exp $	*/
+/* $DragonFly: src/libexec/rtld-elf/alpha/Attic/rtld_start.S,v 1.2 2003/06/17 04:27:08 dillon Exp $	*/
 /*	From: NetBSD: rtld_start.S,v 1.1 1996/12/16 20:38:09 cgd Exp 	*/
 
 /*

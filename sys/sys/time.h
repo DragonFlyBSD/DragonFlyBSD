@@ -32,6 +32,7 @@
  *
  *	@(#)time.h	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/time.h,v 1.42 1999/12/29 04:24:48 peter Exp $
+ * $DragonFly: src/sys/sys/time.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
  */
 
 #ifndef _SYS_TIME_H_

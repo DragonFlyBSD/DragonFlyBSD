@@ -34,22 +34,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/games/fortune/unstr/unstr.c,v 1.5 1999/11/16 02:57:01 billf Exp $
+ * $DragonFly: src/games/fortune/unstr/unstr.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ *
+ * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)unstr.c     8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/fortune/unstr/unstr.c,v 1.5 1999/11/16 02:57:01 billf Exp $
  */
-
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1991, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static const char sccsid[] = "@(#)unstr.c     8.1 (Berkeley) 5/31/93";
-#else
-static const char rcsid[] =
-  "$FreeBSD: src/games/fortune/unstr/unstr.c,v 1.5 1999/11/16 02:57:01 billf Exp $";
-#endif
-#endif /* not lint */
 
 /*
  *	This program un-does what "strfile" makes, thereby obtaining the

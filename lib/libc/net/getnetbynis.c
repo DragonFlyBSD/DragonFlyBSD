@@ -21,12 +21,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libc/net/getnetbynis.c,v 1.11 1999/08/28 00:00:07 peter Exp $
+ * $DragonFly: src/lib/libc/net/getnetbynis.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)$FreeBSD: src/lib/libc/net/getnetbynis.c,v 1.11 1999/08/28 00:00:07 peter Exp $";
-static char rcsid[] = "$FreeBSD: src/lib/libc/net/getnetbynis.c,v 1.11 1999/08/28 00:00:07 peter Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
 #include <sys/socket.h>

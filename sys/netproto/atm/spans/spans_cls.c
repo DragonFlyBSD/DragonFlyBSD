@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_cls.c,v 1.6 1999/08/28 00:48:49 peter Exp $
- *
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_cls.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
  */
 
 /*
@@ -42,11 +42,6 @@
 #include "spans_xdr.h"
 #include <netatm/spans/spans_var.h>
 #include <netatm/spans/spans_cls.h>
-
-#ifndef lint
-__RCSID("@(#) $FreeBSD: src/sys/netatm/spans/spans_cls.c,v 1.6 1999/08/28 00:48:49 peter Exp $");
-#endif
-
 
 /*
  * Global variables

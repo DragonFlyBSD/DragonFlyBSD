@@ -5,6 +5,7 @@
  * generation being essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/index.c,v 1.80.2.20 2003/03/03 09:17:43 sobomax Exp $
+ * $DragonFly: src/release/sysinstall/Attic/index.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.

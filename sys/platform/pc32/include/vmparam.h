@@ -37,6 +37,7 @@
  *
  *	from: @(#)vmparam.h	5.9 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/vmparam.h,v 1.32.2.1 2000/04/02 08:47:01 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/include/vmparam.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
  */
 
 

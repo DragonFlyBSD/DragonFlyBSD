@@ -1,5 +1,6 @@
 /*	$NetBSD: ohcivar.h,v 1.18 2000/01/18 20:11:00 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ohcivar.h,v 1.15.2.4 2000/10/31 23:23:29 n_hibma Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ohcivar.h,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.

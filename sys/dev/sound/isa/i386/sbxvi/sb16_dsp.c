@@ -28,6 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/sound/sb16_dsp.c,v 1.33 1999/12/27 04:37:18 tanimura Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/sbxvi/Attic/sb16_dsp.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
  * 
  */
 

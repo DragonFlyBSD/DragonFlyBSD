@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libedit/Makefile,v 1.18.2.2 2002/07/23 10:20:19 ru Exp $
+# $DragonFly: src/lib/libedit/Makefile,v 1.2 2003/06/17 04:26:49 dillon Exp $
 
 LIB=	edit
 SHLIB_MAJOR=	3

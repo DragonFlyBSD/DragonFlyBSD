@@ -1,4 +1,5 @@
 /* $FreeBSD: src/usr.bin/units/pathnames.h,v 1.4 1999/08/28 01:07:09 peter Exp $	*/
+/* $DragonFly: src/usr.bin/units/pathnames.h,v 1.2 2003/06/17 04:29:33 dillon Exp $	*/
 
 /*
  * Copyright (c) 1993 Christopher G. Demetriou

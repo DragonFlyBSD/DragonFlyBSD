@@ -7,6 +7,7 @@
  * August 5, 1996.
  * This code shamelessly ripped from the pam_securetty module.
  * $FreeBSD: src/contrib/libpam/modules/pam_shells/pam_shells.c,v 1.3.2.2 2001/06/11 15:28:28 markm Exp $
+ * $DragonFly: src/contrib/libpam/modules/pam_shells/Attic/pam_shells.c,v 1.2 2003/06/17 04:24:03 dillon Exp $
  */
 
 #define _BSD_SOURCE

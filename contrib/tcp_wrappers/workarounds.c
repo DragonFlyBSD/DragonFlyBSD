@@ -7,6 +7,7 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   *
   * $FreeBSD: src/contrib/tcp_wrappers/workarounds.c,v 1.2 2000/02/03 10:27:01 shin Exp $
+  * $DragonFly: src/contrib/tcp_wrappers/workarounds.c,v 1.2 2003/06/17 04:24:06 dillon Exp $
   */
 
 #ifndef lint

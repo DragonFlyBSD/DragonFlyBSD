@@ -3,10 +3,10 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  *
  * Compile this file with -DNO_DEFLATE to avoid the compression code.
+ *
+ * $FreeBSD: src/lib/libz/gzio.c,v 1.5.2.3 2003/04/12 20:23:25 jmz Exp $
+ * $DragonFly: src/lib/libz/Attic/gzio.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libz/gzio.c,v 1.5.2.3 2003/04/12 20:23:25 jmz Exp $");
 
 #include <stdio.h>
 

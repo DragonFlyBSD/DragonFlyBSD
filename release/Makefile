@@ -1,4 +1,5 @@
 # $FreeBSD: src/release/Makefile,v 1.536.2.110 2003/05/10 23:01:29 murray Exp $
+# $DragonFly: src/release/Attic/Makefile,v 1.2 2003/06/17 04:27:17 dillon Exp $
 #
 # make release CHROOTDIR=/some/dir BUILDNAME=somename CVSROOT=/cvs/dir \
 #	[ RELEASETAG=tag ]

@@ -31,6 +31,7 @@
 .\"
 .\"     @(#)doc-syms	8.1 (Berkeley) 06/08/93
 .\" $FreeBSD: src/contrib/groff/tmac/doc-syms,v 1.24.2.11 2001/12/24 09:12:59 ru Exp $
+.\" $DragonFly: src/contrib/groff/tmac/Attic/doc-syms,v 1.2 2003/06/17 04:24:02 dillon Exp $
 .\"
 .\"     %beginstrip%
 .

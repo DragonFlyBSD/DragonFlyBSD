@@ -24,6 +24,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/sound/isa/ad1816.c,v 1.7.2.9 2002/12/24 21:17:41 semenu Exp $
+ * $DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -31,7 +34,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$FreeBSD: src/sys/dev/sound/isa/ad1816.c,v 1.7.2.9 2002/12/24 21:17:41 semenu Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
 
 struct ad1816_info;
 

@@ -1,4 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/libi386/Makefile,v 1.15.2.5 2002/07/19 18:46:28 ru Exp $
+# $DragonFly: src/sys/boot/pc32/libi386/Makefile,v 1.2 2003/06/17 04:28:18 dillon Exp $
 #
 LIB=			i386
 INTERNALLIB=		true

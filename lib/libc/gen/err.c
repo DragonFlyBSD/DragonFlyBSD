@@ -30,12 +30,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *	From: @(#)err.c	8.1 (Berkeley) 6/4/93
+ *
+ * $FreeBSD: src/lib/libc/gen/err.c,v 1.6 1999/08/27 23:58:33 peter Exp $
+ * $DragonFly: src/lib/libc/gen/err.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
  */
-
-#if defined(LIBC_RCS) && !defined(lint)
-static const char rcsid[] =
-  "$FreeBSD: src/lib/libc/gen/err.c,v 1.6 1999/08/27 23:58:33 peter Exp $";
-#endif /* LIBC_RCS and not lint */
 
 #include <err.h>
 #include <errno.h>

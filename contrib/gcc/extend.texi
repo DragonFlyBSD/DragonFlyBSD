@@ -3,6 +3,7 @@
 @c For copying conditions, see the file gcc.texi.
 
 @c $FreeBSD: src/contrib/gcc/extend.texi,v 1.4 1999/10/27 09:41:10 obrien Exp $
+@c $DragonFly: src/contrib/gcc/Attic/extend.texi,v 1.2 2003/06/17 04:23:59 dillon Exp $
 
 @node C Extensions
 @chapter Extensions to the C Language Family

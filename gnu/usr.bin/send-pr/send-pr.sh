@@ -21,6 +21,7 @@
 # the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # $FreeBSD: src/gnu/usr.bin/send-pr/send-pr.sh,v 1.13.2.11 2002/03/19 00:33:35 des Exp $
+# $DragonFly: src/gnu/usr.bin/send-pr/Attic/send-pr.sh,v 1.2 2003/06/17 04:25:48 dillon Exp $
 
 # The version of this send-pr.
 VERSION=3.113

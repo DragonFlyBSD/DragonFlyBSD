@@ -21,6 +21,7 @@
  * Login period parsing and comparison functions.
  *
  * $FreeBSD: src/lib/libutil/login_times.c,v 1.7 1999/08/28 00:05:48 peter Exp $
+ * $DragonFly: src/lib/libutil/login_times.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
 
 #include <stdlib.h>

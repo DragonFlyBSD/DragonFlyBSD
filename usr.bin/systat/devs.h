@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/devs.h,v 1.3 1999/08/28 01:06:00 peter Exp $
+ * $DragonFly: src/usr.bin/systat/devs.h,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
 
 int dsinit(int, struct statinfo *, struct statinfo *, struct statinfo *);

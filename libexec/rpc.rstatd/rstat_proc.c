@@ -25,16 +25,12 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)rpc.rstatd.c 1.1 86/09/25 Copyr 1984 Sun Micro
+ * @(#)rstat_proc.c	2.2 88/08/01 4.0 RPCSRC
+ * $FreeBSD: src/libexec/rpc.rstatd/rstat_proc.c,v 1.14.2.1 2002/07/11 17:17:56 alfred Exp $
+ * $DragonFly: src/libexec/rpc.rstatd/rstat_proc.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "from: @(#)rpc.rstatd.c 1.1 86/09/25 Copyr 1984 Sun Micro";
-static char sccsid[] = "from: @(#)rstat_proc.c	2.2 88/08/01 4.0 RPCSRC";
-#endif
-static const char rcsid[] =
-  "$FreeBSD: src/libexec/rpc.rstatd/rstat_proc.c,v 1.14.2.1 2002/07/11 17:17:56 alfred Exp $";
-#endif
 
 /*
  * rstat service:  built with rstat.x and derived from rpc.rstatd.c

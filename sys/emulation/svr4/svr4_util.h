@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_util.h,v 1.4 1999/08/28 00:51:28 peter Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_util.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef	_SVR4_UTIL_H_

@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/tools/tools/ifinfo/ifinfo.h,v 1.4 1999/08/28 00:54:29 peter Exp $
+ * $DragonFly: src/tools/tools/ifinfo/ifinfo.h,v 1.2 2003/06/17 04:29:11 dillon Exp $
  */
 #ifndef	ifinfo_h
 #define	ifinfo_h	1

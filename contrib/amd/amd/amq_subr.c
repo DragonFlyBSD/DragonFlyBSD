@@ -40,6 +40,7 @@
  *
  * $Id: amq_subr.c,v 1.5 1999/08/24 21:31:06 ezk Exp $
  * $FreeBSD: src/contrib/amd/amd/amq_subr.c,v 1.5 1999/09/15 05:45:13 obrien Exp $
+ * $DragonFly: src/contrib/amd/amd/amq_subr.c,v 1.2 2003/06/17 04:23:56 dillon Exp $
  *
  */
 /*

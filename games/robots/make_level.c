@@ -29,15 +29,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)make_level.c	8.1 (Berkeley) 5/31/93
+ * $FreeBSD: src/games/robots/make_level.c,v 1.4 1999/11/30 03:49:18 billf Exp $
+ * $DragonFly: src/games/robots/make_level.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)make_level.c	8.1 (Berkeley) 5/31/93";
-#endif
-static const char rcsid[] =
- "$FreeBSD: src/games/robots/make_level.c,v 1.4 1999/11/30 03:49:18 billf Exp $";
-#endif /* not lint */
 
 # include	"robots.h"
 

@@ -34,10 +34,10 @@
  * Written by Bill Paul <wpaul@ctr.columbia.edu>
  * Center for Telecommunications Research
  * Columbia University, New York City
+ *
+ * $FreeBSD: src/lib/libc/net/ether_addr.c,v 1.10.2.5 2002/04/08 08:01:50 ru Exp $
+ * $DragonFly: src/lib/libc/net/ether_addr.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/net/ether_addr.c,v 1.10.2.5 2002/04/08 08:01:50 ru Exp $");
 
 #include <stdio.h>
 #include <paths.h>

@@ -26,11 +26,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
+ *
+ * $FreeBSD: src/crypto/telnet/libtelnet/pk.c,v 1.2.2.4 2002/08/24 07:28:35 nsayer Exp $
+ * $DragonFly: src/crypto/telnet/libtelnet/pk.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-
-__FBSDID("$FreeBSD: src/crypto/telnet/libtelnet/pk.c,v 1.2.2.4 2002/08/24 07:28:35 nsayer Exp $");
 
 /* public key routines */
 /* functions:

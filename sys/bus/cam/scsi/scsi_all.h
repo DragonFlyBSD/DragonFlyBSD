@@ -15,6 +15,7 @@
  * Ported to run under 386BSD by Julian Elischer (julian@tfs.com) Sept 1992
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.h,v 1.14.2.4 2002/10/11 20:38:28 ken Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.h,v 1.2 2003/06/17 04:28:19 dillon Exp $
  */
 
 /*

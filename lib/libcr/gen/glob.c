@@ -34,13 +34,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/glob.c,v 1.11.6.6 2002/09/18 14:13:31 mikeh Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/glob.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)glob.c	8.3 (Berkeley) 10/13/93
+ * $FreeBSD: src/lib/libc/gen/glob.c,v 1.11.6.6 2002/09/18 14:13:31 mikeh Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)glob.c	8.3 (Berkeley) 10/13/93";
-#endif /* LIBC_SCCS and not lint */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/gen/glob.c,v 1.11.6.6 2002/09/18 14:13:31 mikeh Exp $");
 
 /*
  * glob(3) -- a superset of the one defined in POSIX 1003.2.

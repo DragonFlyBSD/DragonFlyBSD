@@ -1,4 +1,5 @@
 /*	$FreeBSD: src/sys/net/net_osdep.h,v 1.1.2.3 2002/04/28 05:40:25 suz Exp $	*/
+/*	$DragonFly: src/sys/net/net_osdep.h,v 1.2 2003/06/17 04:28:48 dillon Exp $	*/
 /*	$KAME: net_osdep.h,v 1.68 2001/12/21 08:14:58 itojun Exp $	*/
 
 /*

@@ -26,6 +26,9 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/iostat.c,v 1.9.2.1 2000/07/02 10:03:17 ps Exp $
+ * $DragonFly: src/usr.bin/systat/iostat.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ *
+ * @(#)iostat.c	8.1 (Berkeley) 6/6/93
  */
 /*
  * Copyright (c) 1980, 1992, 1993
@@ -59,10 +62,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-static char sccsid[] = "@(#)iostat.c	8.1 (Berkeley) 6/6/93";
-#endif not lint
 
 #include <sys/param.h>
 #include <sys/dkstat.h>

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/devopen.c,v 1.3 1999/08/28 00:39:47 peter Exp $
+ * $DragonFly: src/sys/boot/common/devopen.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  */
 
 

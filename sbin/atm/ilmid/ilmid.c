@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *      @(#) $FreeBSD: src/sbin/atm/ilmid/ilmid.c,v 1.6.2.2 2001/03/04 07:15:30 kris Exp $
- *
+ *      @(#) $DragonFly: src/sbin/atm/ilmid/ilmid.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
  */
 
 /*
@@ -71,11 +71,6 @@
 #include <syslog.h>
 #include <time.h>
 #include <unistd.h>
-
-#ifndef	lint
-__RCSID("@(#) $FreeBSD: src/sbin/atm/ilmid/ilmid.c,v 1.6.2.2 2001/03/04 07:15:30 kris Exp $");
-#endif
-
 
 #define	MAX_LEN		9180
 

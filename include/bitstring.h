@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/bitstring.h,v 1.1.1.1.14.1 2000/10/30 11:21:04 dwmalone Exp $
+ * $DragonFly: src/include/bitstring.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef _BITSTRING_H_

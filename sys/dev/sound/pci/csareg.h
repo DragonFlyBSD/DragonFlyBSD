@@ -28,6 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/csareg.h,v 1.2.2.2 2002/04/22 15:49:32 cg Exp $
+ * $DragonFly: src/sys/dev/sound/pci/csareg.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
  */
 
 #ifndef _CSA_REG_H

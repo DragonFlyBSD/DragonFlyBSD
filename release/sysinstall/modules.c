@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/release/sysinstall/modules.c,v 1.2.2.4 2002/06/05 20:13:50 jhb Exp $
+ * $DragonFly: src/release/sysinstall/Attic/modules.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
  */
 
 #include "sysinstall.h"

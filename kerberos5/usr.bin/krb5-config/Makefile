@@ -1,4 +1,5 @@
 # $FreeBSD: src/kerberos5/usr.bin/krb5-config/Makefile,v 1.1.2.8 2002/12/01 17:45:32 nectar Exp $
+# $DragonFly: src/kerberos5/usr.bin/krb5-config/Makefile,v 1.2 2003/06/17 04:26:18 dillon Exp $
 
 SCRIPTS=	krb5-config
 MAN=		krb5-config.1

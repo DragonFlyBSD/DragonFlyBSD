@@ -29,6 +29,7 @@
 
 /*
  * $FreeBSD: src/lib/libc/i386/sys/i386_clr_watch.c,v 1.1.2.1 2000/10/21 01:33:34 bsd Exp $
+ * $DragonFly: src/lib/libcr/i386/sys/Attic/i386_clr_watch.c,v 1.2 2003/06/17 04:26:43 dillon Exp $
  */
 
 

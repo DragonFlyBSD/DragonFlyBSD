@@ -3,6 +3,7 @@
 #	@(#)termcap.src	5.88 (Berkeley) 4/30/91
 #
 # $FreeBSD: src/release/picobsd/mfs_tree/etc/termcap,v 1.1.2.4 2002/03/08 12:10:46 luigi Exp $
+# $DragonFly: src/release/picobsd/mfs_tree/etc/Attic/termcap,v 1.2 2003/06/17 04:27:20 dillon Exp $
 #
 # for syscons
 # common entry without semigraphics

@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacreg.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacreg.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
 /*

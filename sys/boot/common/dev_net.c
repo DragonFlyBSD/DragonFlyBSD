@@ -1,5 +1,6 @@
 /*	
  * $FreeBSD: src/sys/boot/common/dev_net.c,v 1.6.2.5 2001/03/04 04:44:42 obrien Exp $
+ * $DragonFly: src/sys/boot/common/dev_net.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
  * From: $NetBSD: dev_net.c,v 1.12 1997/12/10 20:38:37 gwr Exp $
  */
 

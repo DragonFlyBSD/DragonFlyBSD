@@ -36,6 +36,7 @@
 # From @(#)makedevops.sh ?.? 1998/10/05
 #
 # $FreeBSD: src/sys/kern/makedevops.pl,v 1.12.2.3 2001/01/18 00:23:57 n_hibma Exp $
+# $DragonFly: src/sys/kern/Attic/makedevops.pl,v 1.2 2003/06/17 04:28:41 dillon Exp $
 
 #
 # Script to produce device front-end sugar.

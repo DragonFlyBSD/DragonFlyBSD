@@ -37,6 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
  */
 
 #include "opt_ktrace.h"

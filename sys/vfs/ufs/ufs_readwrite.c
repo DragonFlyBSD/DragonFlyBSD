@@ -32,6 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)

@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/closedir.c,v 1.6.2.1 2001/03/05 08:29:56 obrien Exp $
+ * $DragonFly: src/lib/libc/gen/closedir.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *
+ * @(#)closedir.c	8.1 (Berkeley) 6/10/93
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)closedir.c	8.1 (Berkeley) 6/10/93";
-#endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
 #include <dirent.h>

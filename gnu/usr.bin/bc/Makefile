@@ -1,4 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/bc/Makefile,v 1.17.2.1 2002/02/18 16:26:51 ru Exp $
+# $DragonFly: src/gnu/usr.bin/bc/Attic/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
 
 .PATH:	${.CURDIR}/../../../contrib/bc/bc \
 	${.CURDIR}/../../../contrib/bc/lib \

@@ -31,6 +31,7 @@
  *	$Ust: src/i4b/layer1-nb/ifpnp/i4b_ifpnp_l1.c,v 1.4 2000/04/18 08:03:05 ust Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpnp/i4b_ifpnp_l1.c,v 1.4.2.1 2001/08/10 14:08:37 obrien Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_l1.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
  *
  *      last edit-date: [Fri Jun  2 14:55:49 2000]
  *

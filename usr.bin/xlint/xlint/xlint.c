@@ -29,11 +29,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.bin/xlint/xlint/xlint.c,v 1.8 2000/01/14 09:25:31 sheldonh Exp $
+ * $DragonFly: src/usr.bin/xlint/xlint/xlint.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
-
-#ifndef lint
-static char rcsid[] = "$FreeBSD: src/usr.bin/xlint/xlint/xlint.c,v 1.8 2000/01/14 09:25:31 sheldonh Exp $";
-#endif
 
 #include <sys/param.h>
 #include <sys/wait.h>

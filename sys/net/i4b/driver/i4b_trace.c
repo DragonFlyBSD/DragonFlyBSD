@@ -30,6 +30,7 @@
  *	last edit-date: [Sat Aug 11 18:07:15 2001]
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_trace.c,v 1.9.2.3 2001/08/12 16:22:48 hm Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
  *
  *	NOTE: the code assumes that SPLI4B >= splimp !
  *

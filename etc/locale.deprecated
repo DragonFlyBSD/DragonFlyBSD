@@ -1,4 +1,5 @@
 # $FreeBSD: src/etc/locale.deprecated,v 1.2.2.6 2002/04/15 07:54:19 phantom Exp $
+# $DragonFly: src/etc/locale.deprecated,v 1.2 2003/06/17 04:24:45 dillon Exp $
 #
 # List of deprecated locales
 #

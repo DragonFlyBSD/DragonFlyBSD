@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/chpass/pw_copy.c,v 1.9.2.2 2002/03/24 09:00:03 cjc Exp $
+ * $DragonFly: src/usr.bin/chpass/pw_copy.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ *
+ * @(#)pw_copy.c	8.4 (Berkeley) 4/2/94
  */
-
-#ifndef lint
-static const char sccsid[] = "@(#)pw_copy.c	8.4 (Berkeley) 4/2/94";
-#endif /* not lint */
 
 /*
  * This module is used to copy the master password file, replacing a single
