@@ -68,7 +68,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /* $FreeBSD: src/sys/i386/include/bus_at386.h,v 1.8.2.3 2002/03/03 05:42:50 nyan Exp $ */
-/* $DragonFly: src/sys/cpu/i386/include/bus_at386.h,v 1.3 2003/07/23 07:14:15 dillon Exp $ */
+/* $DragonFly: src/sys/cpu/i386/include/bus_at386.h,v 1.4 2003/07/26 01:04:08 dillon Exp $ */
 
 #ifndef _I386_BUS_AT386_H_
 #define _I386_BUS_AT386_H_
@@ -1168,7 +1168,7 @@ bus_space_barrier(bus_space_tag_t tag, bus_space_handle_t bsh,
 		bus_size_t offset, bus_size_t len, int flags)
 {
 	if (flags & BUS_SPACE_BARRIER_READ)
-		__asm __volatile("lock; addl $0,0(%esp)" : : : "memory");
+		__asm __volatile("lock; addl $0,0(%%esp)" : : : "memory");
 	else
 		__asm __volatile("" : : : "memory");
 }
