@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.20 2004/05/27 18:15:37 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.21 2004/06/14 20:08:02 joerg Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -103,6 +103,14 @@ upgrade_etc:
 	rm -f ${DESTDIR}/usr/bin/dnskeygen
 	rm -f ${DESTDIR}/usr/sbin/ndc
 .endif
+.if exists(${DESTDIR}/usr/libexec/gcc2)
+	csh -c "rm -f ${DESTDIR}/usr/libexec/gcc2/{crtbegin.o,crtbeginS.o}"
+	csh -c "rm -f ${DESTDIR}/usr/libexec/gcc2/{crtend.o,crtendS.o}"
+.endif
+.if exists(${DESTDIR}/usr/libexec/gcc3)
+	csh -c "rm -f ${DESTDIR}/usr/libexec/gcc3/{crtbegin.o,crtbeginS.o}"
+	csh -c "rm -f ${DESTDIR}/usr/libexec/gcc3/{crtend.o,crtendS.o}"
+.endif
 .if exists(${DESTDIR}/usr/libexec/binutils212/elf/as)
 	ldconfig -m ${DESTDIR}/usr/lib/gcc2
 	rm -rf ${DESTDIR}/usr/libdata/ldscripts
@@ -122,8 +130,7 @@ upgrade_etc:
 	csh -c "rm -f ${DESTDIR}/usr/libexec/binutils212/{cpp,cpp0,f771,objformat}"
 	csh -c "rm -f ${DESTDIR}/usr/libexec/binutils214/{cc1,cc1obj,cc1plus}"
 	csh -c "rm -f ${DESTDIR}/usr/libexec/binutils214/{cpp,cpp0,f771,objformat}"
-	csh -c "rm -f ${DESTDIR}/usr/lib/{crtbegin.o,crtbeginS.o,crtend.o}"
-	csh -c "rm -f ${DESTDIR}/usr/lib/{crtendS.o,libgcc.a,libgcc_p.a}"
+	csh -c "rm -f ${DESTDIR}/usr/lib/{libgcc.a,libgcc_p.a}"
 	csh -c "rm -f ${DESTDIR}/usr/lib/{libobjc.a,libobjc_p.a,libstdc++.a}"
 	csh -c "rm -f ${DESTDIR}/usr/lib/{libstdc++.so,libstdc++.so.3}"
 	csh -c "rm -f ${DESTDIR}/usr/lib/{libstdc++_p.a}"
