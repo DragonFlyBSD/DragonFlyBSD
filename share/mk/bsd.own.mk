@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.own.mk,v 1.27.2.4 2002/07/22 14:21:51 ru Exp $
-# $DragonFly: src/share/mk/bsd.own.mk,v 1.12 2005/03/02 13:45:25 joerg Exp $
+# $DragonFly: src/share/mk/bsd.own.mk,v 1.13 2005/03/10 14:27:39 joerg Exp $
 #
 # The include file <bsd.own.mk> set common variables for owner,
 # group, mode, and directories. Defaults are in brackets.
@@ -200,7 +200,7 @@ NLSMODE?=	${NOBINMODE}
 LOCALEDIR?=	${SHAREDIR}/locale
 LOCALEGRP?=	${SHAREGRP}
 LOCALEOWN?=	${SHAREOWN}
-LOCALEMODE?=	${NONBINMODE}
+LOCALEMODE?=	${NOBINMODE}
 
 # Common variables
 .if !defined(DEBUG_FLAGS)
