@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/battd/battd.c,v 1.6 2005/02/11 16:22:33 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/battd/battd.c,v 1.7 2005/02/11 17:28:10 liamfoy Exp $
  */
 
 #include <sys/file.h>
@@ -394,11 +394,11 @@ main(int argc, char **argv)
 				if (check_percent(ai.ai_batt_life)) {
 #ifdef DEBUG
 					if (f_debug) {
-						printf("Invaild percentage (%d) recieved from %s.\n",
+						printf("Invalid percentage (%d) recieved from %s.\n",
 							ai.ai_batt_life, opts->apm_dev);
 					} else {
 #endif
-						syslog(LOG_ERR, "Invaild percentage recieved from %s.",
+						syslog(LOG_ERR, "Invalid percentage recieved from %s.",
 							opts->apm_dev);
 #ifdef DEBUG
 					}
@@ -421,11 +421,11 @@ main(int argc, char **argv)
 				if (check_time(ai.ai_batt_time)) {
 #ifdef DEBUG
 					if (f_debug) {
-						printf("Invaild time value (%d) recieved from %s.\n",
+						printf("Invalid time value (%d) recieved from %s.\n",
 							ai.ai_batt_time, opts->apm_dev);
 					} else {
 #endif
-						syslog(LOG_ERR, "Invaild time value recieved from %s.",
+						syslog(LOG_ERR, "Invalid time value recieved from %s.",
 							opts->apm_dev);
 #ifdef DEBUG
 					}
@@ -456,11 +456,11 @@ main(int argc, char **argv)
 				if (check_stat(ai.ai_batt_stat)) {
 #ifdef DEBUG
 					if (f_debug) {
-						printf("Invaild status value (%d) recieved from %s.\n",
+						printf("Invalid status value (%d) recieved from %s.\n",
 							ai.ai_batt_life, opts->apm_dev);
 					} else {
 #endif
-						syslog(LOG_ERR, "Invaild status value recieved from %s.",
+						syslog(LOG_ERR, "Invalid status value recieved from %s.",
 							opts->apm_dev);
 #ifdef DEBUG
 					}
