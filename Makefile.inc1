@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.50 2004/12/18 22:50:34 asmodai Exp $
+# $DragonFly: src/Makefile.inc1,v 1.51 2005/01/04 19:14:18 joerg Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -817,9 +817,9 @@ _gcc34_tools= gnu/usr.bin/cc34/cc_prep gnu/usr.bin/cc34/cc_tools
 .if ${MACHINE_ARCH} == "i386" && ${TARGET_ARCH} == "i386"
 _gcc2_cross= gnu/usr.bin/cc
 _gcc2_tools= gnu/usr.bin/cc/cc_tools
-_binutils= gnu/usr.bin/binutils gnu/usr.bin/binutils214
+_binutils= gnu/usr.bin/binutils gnu/usr.bin/binutils215
 .else
-_binutils= gnu/usr.bin/binutils214
+_binutils= gnu/usr.bin/binutils215
 .endif
 
 .if !defined(NO_FORTRAN)

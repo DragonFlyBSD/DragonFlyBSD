@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.15 2004/10/26 19:06:02 joerg Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.16 2005/01/04 19:14:18 joerg Exp $
  */
 
 #include <err.h>
@@ -49,10 +49,10 @@
 #endif
 
 #ifndef BINUTILSVER_DEFAULT
-#define	BINUTILSVER_DEFAULT "binutils214"
+#define	BINUTILSVER_DEFAULT "binutils215"
 #endif
 #define	BINUTILSVER_GCC2 "binutils212"
-#define	BINUTILSVER_GCC34 "binutils214"
+#define	BINUTILSVER_GCC34 "binutils215"
 
 #define OBJFORMAT	0
 #define COMPILER	1
