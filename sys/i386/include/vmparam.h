@@ -37,7 +37,7 @@
  *
  *	from: @(#)vmparam.h	5.9 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/vmparam.h,v 1.32.2.1 2000/04/02 08:47:01 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/vmparam.h,v 1.3 2003/08/25 19:50:29 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/vmparam.h,v 1.4 2003/09/26 19:23:35 dillon Exp $
  */
 
 
@@ -109,7 +109,7 @@
 #define VM_MAX_ADDRESS		VADDR(PTDPTDI, PTDPTDI)
 #define VM_MIN_ADDRESS		((vm_offset_t)0)
 
-#if !defined(NO_KMEM_MAP)
+#if defined(USE_KMEM_MAP)
 /* virtual sizes (bytes) for various kernel submaps */
 #ifndef VM_KMEM_SIZE
 #define VM_KMEM_SIZE		(12 * 1024 * 1024)

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.35 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.36 2003/09/26 19:23:35 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -413,11 +413,11 @@ again:
 		mb_map_size = roundup2(mb_map_size, max(MCLBYTES, PAGE_SIZE));
 		mclrefcnt = malloc(mb_map_size / MCLBYTES, M_MBUF, M_NOWAIT);
 		bzero(mclrefcnt, mb_map_size / MCLBYTES);
-#if defined(NO_KMEM_MAP)
-		mb_map = kmem_suballoc(kernel_map, (vm_offset_t *)&mbutl,
+#if defined(USE_KMEM_MAP)
+		mb_map = kmem_suballoc(kmem_map, (vm_offset_t *)&mbutl,
 			    &maxaddr, mb_map_size);
 #else
-		mb_map = kmem_suballoc(kmem_map, (vm_offset_t *)&mbutl,
+		mb_map = kmem_suballoc(kernel_map, (vm_offset_t *)&mbutl,
 			    &maxaddr, mb_map_size);
 #endif
 		mb_map->system_map = 1;
