@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.73 2005/02/09 20:40:38 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.74 2005/02/09 20:55:15 okumoto Exp $
  */
 
 /*-
@@ -137,8 +137,8 @@ GNode          *VAR_CMD;      /* variables defined on the command-line */
 
 #define	OPEN_PAREN		'('
 #define	CLOSE_PAREN		')'
-#define	OPEN_BRACKET		'{'
-#define	CLOSE_BRACKET		'}'
+#define	OPEN_BRACE		'{'
+#define	CLOSE_BRACE		'}'
 
 static char *VarGetPattern(GNode *, int, char **, int, int *, size_t *,
 			   VarPattern *);
@@ -755,14 +755,14 @@ VarGetPattern(GNode *ctxt, int err, char **tstr, int delim, int *flags,
 		} else {
 		    char *cp2 = &cp[1];
 
-		    if (*cp2 == OPEN_PAREN || *cp2 == OPEN_BRACKET) {
+		    if (*cp2 == OPEN_PAREN || *cp2 == OPEN_BRACE) {
 			/*
 			 * Find the end of this variable reference
 			 * and suck it in without further ado.
 			 * It will be interperated later.
 			 */
 			int have = *cp2;
-			int want = (*cp2 == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACKET;
+			int want = (*cp2 == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACE;
 			int depth = 1;
 
 			for (++cp2; *cp2 != '\0' && depth > 0; ++cp2) {
@@ -918,7 +918,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	*lengthPtr = 1;
 	return (err ? var_Error : varNoError);
 
-    } else if (str[1] == OPEN_PAREN || str[1] == OPEN_BRACKET) {
+    } else if (str[1] == OPEN_PAREN || str[1] == OPEN_BRACE) {
 	/*
 	 * Check if brackets contain a variable name.
 	 */
@@ -931,7 +931,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	 * replacing embedded variables as we go.
 	 */
 	startc = str[1];
-	endc = (startc == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACKET;
+	endc = (startc == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACE;
 	tstr = str + 2;
 
 	while (*tstr != '\0' && *tstr != endc && *tstr != ':') {
@@ -1804,7 +1804,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 	    if (var != NULL) {
 		int expand;
 		for (;;) {
-		    if (str[1] == OPEN_PAREN || str[1] == OPEN_BRACKET) {
+		    if (str[1] == OPEN_PAREN || str[1] == OPEN_BRACE) {
 			size_t		l;
 			const char	*p = str + 2;
 
@@ -1814,7 +1814,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 			while (*p != '\0' &&
 			       *p != ':' &&
 			       *p != CLOSE_PAREN &&
-			       *p != CLOSE_BRACKET &&
+			       *p != CLOSE_BRACE &&
 			       *p != '$') {
 			    ++p;
 			}
