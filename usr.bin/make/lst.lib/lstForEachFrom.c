@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstForEachFrom.c,v 1.7 1999/08/28 01:03:52 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstForEachFrom.c,v 1.7 2004/12/09 19:08:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstForEachFrom.c,v 1.8 2004/12/10 19:22:25 okumoto Exp $
  *
  * @(#)lstForEachFrom.c	8.1 (Berkeley) 6/6/93
  */
@@ -70,7 +70,7 @@ Lst_ForEachFrom(Lst list, LstNode ln, DoProc *proc, void *d)
     Boolean 	done;
     int     	result;
 
-    if (!Lst_Valid (list) || Lst_IsEmpty (list)) {
+    if (!Lst_Valid(list) || Lst_IsEmpty(list)) {
 	return;
     }
 
@@ -82,9 +82,9 @@ Lst_ForEachFrom(Lst list, LstNode ln, DoProc *proc, void *d)
 
 	next = ln->nextPtr;
 
-	(void) ln->useCount++;
-	result = (*proc) (ln->datum, d);
-	(void) ln->useCount--;
+	ln->useCount++;
+	result = (*proc)(ln->datum, d);
+	ln->useCount--;
 
 	/*
 	 * We're done with the traversal if

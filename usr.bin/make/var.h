@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/var.h,v 1.1 2002/10/28 23:33:57 jmallett Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.1 2004/11/13 00:10:09 dillon Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.2 2004/12/10 19:22:24 okumoto Exp $
  */
 
 typedef struct Var {
@@ -70,8 +70,8 @@ typedef struct {
     int	    	  flags;
 } VarPattern;
 
-typedef struct { 
-    regex_t	   re; 
+typedef struct {
+    regex_t	   re;
     int		   nsub;
     regmatch_t	  *matches;
     char	  *replace;

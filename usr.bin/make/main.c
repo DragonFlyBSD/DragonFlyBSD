@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.30 2004/12/10 01:16:25 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.31 2004/12/10 19:22:24 okumoto Exp $
  */
 
 /*-
@@ -127,6 +127,7 @@ static char *objdir;			/* where we chdir'ed to */
 static void
 MFLAGS_append(char *flag, char *arg)
 {
+
 	Var_Append(MAKEFLAGS, flag, VAR_GLOBAL);
 	if (arg != NULL)
 		Var_Append(MAKEFLAGS, arg, VAR_GLOBAL);
@@ -249,8 +250,8 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 		}
 		case 'E':
 			p = emalloc(strlen(optarg) + 1);
-			(void)strcpy(p, optarg);
-			(void)Lst_AtEnd(envFirstVars, (void *)p);
+			strcpy(p, optarg);
+			Lst_AtEnd(envFirstVars, (void *)p);
 			MFLAGS_append("-E", optarg);
 			break;
 		case 'e':
@@ -258,7 +259,7 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 			MFLAGS_append("-e", NULL);
 			break;
 		case 'f':
-			(void)Lst_AtEnd(makefiles, (void *)optarg);
+			Lst_AtEnd(makefiles, (void *)optarg);
 			break;
 		case 'i':
 			ignoreErrors = TRUE;
@@ -341,7 +342,7 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 					optind = 1;     /* - */
 				goto rearg;
 			}
-			(void)Lst_AtEnd(create, (void *)estrdup(*argv));
+			Lst_AtEnd(create, (void *)estrdup(*argv));
 		}
 }
 
@@ -385,12 +386,12 @@ chdir_verify_path(char *path, char *obpath)
 	if (stat(path, &sb) == 0 && S_ISDIR(sb.st_mode)) {
 		if (chdir(path) == -1 || getcwd(obpath, MAXPATHLEN) == NULL) {
 			warn("warning: %s", path);
-			return 0;
+			return (0);
 		}
-		return obpath;
+		return (obpath);
 	}
 
-	return 0;
+	return (0);
 }
 
 static void
@@ -492,7 +493,7 @@ main(int argc, char **argv)
 		if (getrlimit(RLIMIT_NOFILE, &rl) != -1 &&
 		    rl.rlim_cur != rl.rlim_max) {
 			rl.rlim_cur = rl.rlim_max;
-			(void) setrlimit(RLIMIT_NOFILE, &rl);
+			setrlimit(RLIMIT_NOFILE, &rl);
 		}
 	}
 #endif
@@ -652,11 +653,11 @@ main(int argc, char **argv)
 		if (!(path = getenv("MAKEOBJDIR"))) {
 			path = _PATH_OBJDIR;
 			pathp = _PATH_OBJDIRPREFIX;
-			(void) snprintf(mdpath, MAXPATHLEN, "%s.%s",
+			snprintf(mdpath, MAXPATHLEN, "%s.%s",
 					path, machine);
 			if (!(objdir = chdir_verify_path(mdpath, obpath)))
 				if (!(objdir=chdir_verify_path(path, obpath))) {
-					(void) snprintf(mdpath, MAXPATHLEN,
+					snprintf(mdpath, MAXPATHLEN,
 							"%s%s", pathp, curdir);
 					if (!(objdir=chdir_verify_path(mdpath,
 								       obpath)))
@@ -667,7 +668,7 @@ main(int argc, char **argv)
 			objdir = curdir;
 	}
 	else {
-		(void) snprintf(mdpath, MAXPATHLEN, "%s%s", pathp, curdir);
+		snprintf(mdpath, MAXPATHLEN, "%s%s", pathp, curdir);
 		if (!(objdir = chdir_verify_path(mdpath, obpath)))
 			objdir = curdir;
 	}
@@ -696,7 +697,7 @@ main(int argc, char **argv)
 	Suff_Init();
 
 	DEFAULT = NULL;
-	(void)time(&now);
+	time(&now);
 
 	/*
 	 * Set up the .TARGETS variable to contain the list of targets to be
@@ -742,8 +743,8 @@ main(int argc, char **argv)
 	if (!noBuiltins) {
 		LstNode ln;
 
-		sysMkPath = Lst_Init (FALSE);
-		Dir_Expand (_PATH_DEFSYSMK, sysIncPath, sysMkPath);
+		sysMkPath = Lst_Init(FALSE);
+		Dir_Expand(_PATH_DEFSYSMK, sysIncPath, sysMkPath);
 		if (Lst_IsEmpty(sysMkPath))
 			Fatal("make: no system rules (%s).", _PATH_DEFSYSMK);
 		ln = Lst_Find(sysMkPath, (void *)NULL, ReadMakefile);
@@ -759,9 +760,9 @@ main(int argc, char **argv)
 			Fatal("make: cannot open %s.", (char *)Lst_Datum(ln));
 	} else if (!ReadMakefile("BSDmakefile", NULL))
 	    if (!ReadMakefile("makefile", NULL))
-		(void)ReadMakefile("Makefile", NULL);
+		ReadMakefile("Makefile", NULL);
 
-	(void)ReadMakefile(".depend", NULL);
+	ReadMakefile(".depend", NULL);
 
 	/* Install all the flags into the MAKE envariable. */
 	if (((p = Var_Value(MAKEFLAGS, VAR_GLOBAL, &p1)) != NULL) && *p)
@@ -797,7 +798,7 @@ main(int argc, char **argv)
 			*cp = savec;
 			path = cp + 1;
 		} while (savec == ':');
-		(void)free(vpath);
+		free(vpath);
 	}
 
 	/*
@@ -820,7 +821,7 @@ main(int argc, char **argv)
 			if (expandVars) {
 				p1 = emalloc(strlen((char *)Lst_Datum(ln)) + 1 + 3);
 				/* This sprintf is safe, because of the malloc above */
-				(void)sprintf(p1, "${%s}", (char *)Lst_Datum(ln));
+				sprintf(p1, "${%s}", (char *)Lst_Datum(ln));
 				value = Var_Subst(NULL, p1, VAR_GLOBAL, FALSE);
 			} else {
 				value = Var_Value((char *)Lst_Datum(ln),
@@ -884,9 +885,9 @@ main(int argc, char **argv)
 	Dir_End();
 
 	if (queryFlag && outOfDate)
-		return(1);
+		return (1);
 	else
-		return(0);
+		return (0);
 }
 
 /*-
@@ -918,7 +919,7 @@ ReadMakefile(void *p, void *q __unused)
 
 		/* if we've chdir'd, rebuild the path name */
 		if (curdir != objdir && *fname != '/') {
-			(void)snprintf(path, MAXPATHLEN, "%s/%s", curdir, fname);
+			snprintf(path, MAXPATHLEN, "%s/%s", curdir, fname);
 			/*
 			 * XXX The realpath stuff breaks relative includes
 			 * XXX in some cases.   The problem likely is in
@@ -964,7 +965,7 @@ ReadMakefile(void *p, void *q __unused)
 		if (!name)
 			name = Dir_FindFile(fname, sysIncPath);
 		if (!name || !(stream = fopen(name, "r")))
-			return(FALSE);
+			return (FALSE);
 		MAKEFILE = fname = name;
 		/*
 		 * set the MAKEFILE variable desired by System V fans -- the
@@ -975,9 +976,9 @@ found:
 		if (setMAKEFILE)
 			Var_Set("MAKEFILE", MAKEFILE, VAR_GLOBAL);
 		Parse_File(fname, stream);
-		(void)fclose(stream);
+		fclose(stream);
 	}
-	return(TRUE);
+	return (TRUE);
 }
 
 /*-
@@ -1033,17 +1034,17 @@ Cmd_Exec(char *cmd, char **error)
 	/*
 	 * Close input side of pipe
 	 */
-	(void) close(fds[0]);
+	close(fds[0]);
 
 	/*
 	 * Duplicate the output stream to the shell's output, then
 	 * shut the extra thing down. Note we don't fetch the error
 	 * stream...why not? Why?
 	 */
-	(void) dup2(fds[1], 1);
-	(void) close(fds[1]);
+	dup2(fds[1], 1);
+	close(fds[1]);
 
-	(void) execv(shellPath, args);
+	execv(shellPath, args);
 	_exit(1);
 	/*NOTREACHED*/
 
@@ -1055,34 +1056,34 @@ Cmd_Exec(char *cmd, char **error)
 	/*
 	 * No need for the writing half
 	 */
-	(void) close(fds[1]);
+	close(fds[1]);
 
-	buf = Buf_Init (MAKE_BSIZE);
+	buf = Buf_Init(MAKE_BSIZE);
 
 	do {
 	    char   result[BUFSIZ];
 	    cc = read(fds[0], result, sizeof(result));
 	    if (cc > 0)
-		Buf_AddBytes(buf, cc, (Byte *) result);
+		Buf_AddBytes(buf, cc, (Byte *)result);
 	}
 	while (cc > 0 || (cc == -1 && errno == EINTR));
 
 	/*
 	 * Close the input side of the pipe.
 	 */
-	(void) close(fds[0]);
+	close(fds[0]);
 
 	/*
 	 * Wait for the process to exit.
 	 */
-	while(((pid = wait(&status)) != cpid) && (pid >= 0))
+	while (((pid = wait(&status)) != cpid) && (pid >= 0))
 	    continue;
 
 	if (cc == -1)
 	    *error = "Error reading shell's output for \"%s\"";
 
-	res = (char *)Buf_GetAll (buf, &cc);
-	Buf_Destroy (buf, FALSE);
+	res = (char *)Buf_GetAll(buf, &cc);
+	Buf_Destroy(buf, FALSE);
 
 	if (status)
 	    *error = "\"%s\" returned non-zero status";
@@ -1108,11 +1109,11 @@ Cmd_Exec(char *cmd, char **error)
 	}
 	break;
     }
-    return res;
+    return (res);
 bad:
     res = emalloc(1);
     *res = '\0';
-    return res;
+    return (res);
 }
  
 /*
@@ -1122,7 +1123,7 @@ bad:
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "%s\n%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n%s\n",
 "usage: make [-BPSXeiknqrstv] [-C directory] [-D variable] [-d flags]",
 "            [-E variable] [-f makefile] [-I directory] [-j max_jobs]",
 "            [-m directory] [-V variable] [variable=value] [target ...]");

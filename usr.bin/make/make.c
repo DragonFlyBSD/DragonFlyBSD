@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.11 2004/12/10 01:16:25 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.12 2004/12/10 19:22:24 okumoto Exp $
  */
 
 /*-
@@ -92,6 +92,7 @@ static int MakeTimeStamp(void *, void *);
 static int MakeHandleUse(void *, void *);
 static Boolean MakeStartJobs(void);
 static int MakePrintStatus(void *, void *);
+
 /*-
  *-----------------------------------------------------------------------
  * Make_TimeStamp --
@@ -107,8 +108,9 @@ static int MakePrintStatus(void *, void *);
  *-----------------------------------------------------------------------
  */
 int
-Make_TimeStamp (GNode *pgn, GNode *cgn)
+Make_TimeStamp(GNode *pgn, GNode *cgn)
 {
+
     if (cgn->mtime > pgn->cmtime) {
 	pgn->cmtime = cgn->mtime;
     }
@@ -116,11 +118,12 @@ Make_TimeStamp (GNode *pgn, GNode *cgn)
 }
 
 static int
-MakeTimeStamp (void *pgn, void *cgn)
+MakeTimeStamp(void *pgn, void *cgn)
 {
-    return Make_TimeStamp((GNode *) pgn, (GNode *) cgn);
+
+    return (Make_TimeStamp((GNode *)pgn, (GNode *)cgn));
 }
-
+
 /*-
  *-----------------------------------------------------------------------
  * Make_OODate --
@@ -140,7 +143,7 @@ MakeTimeStamp (void *pgn, void *cgn)
  *-----------------------------------------------------------------------
  */
 Boolean
-Make_OODate (GNode *gn)
+Make_OODate(GNode *gn)
 {
     Boolean         oodate;
 
@@ -148,8 +151,8 @@ Make_OODate (GNode *gn)
      * Certain types of targets needn't even be sought as their datedness
      * doesn't depend on their modification time...
      */
-    if ((gn->type & (OP_JOIN|OP_USE|OP_EXEC)) == 0) {
-	(void) Dir_MTime (gn);
+    if ((gn->type & (OP_JOIN | OP_USE | OP_EXEC)) == 0) {
+	 Dir_MTime(gn);
 	if (gn->mtime != 0) {
 	    DEBUGF(MAKE, ("modified %s...", Targ_FmtTime(gn->mtime)));
 	} else {
@@ -185,7 +188,7 @@ Make_OODate (GNode *gn)
 	 * always out of date if no children and :: target
 	 */
 
-	oodate = Arch_LibOODate (gn) ||
+	oodate = Arch_LibOODate(gn) ||
 	    ((gn->cmtime == 0) && (gn->type & OP_DOUBLEDEP));
     } else if (gn->type & OP_JOIN) {
 	/*
@@ -237,12 +240,12 @@ Make_OODate (GNode *gn)
      * thinking they're out-of-date.
      */
     if (!oodate) {
-	Lst_ForEach (gn->parents, MakeTimeStamp, (void *)gn);
+	Lst_ForEach(gn->parents, MakeTimeStamp, (void *)gn);
     }
 
     return (oodate);
 }
-
+
 /*-
  *-----------------------------------------------------------------------
  * MakeAddChild  --
@@ -257,17 +260,17 @@ Make_OODate (GNode *gn)
  *-----------------------------------------------------------------------
  */
 static int
-MakeAddChild (void *gnp, void *lp)
+MakeAddChild(void *gnp, void *lp)
 {
-    GNode          *gn = (GNode *) gnp;
-    Lst            l = (Lst) lp;
+    GNode          *gn = (GNode *)gnp;
+    Lst            l = (Lst)lp;
 
     if (!gn->make && !(gn->type & OP_USE)) {
-	(void)Lst_EnQueue (l, (void *)gn);
+	Lst_EnQueue(l, (void *)gn);
     }
     return (0);
 }
-
+
 /*-
  *-----------------------------------------------------------------------
  * Make_HandleUse --
@@ -292,7 +295,7 @@ MakeAddChild (void *gnp, void *lp)
  *-----------------------------------------------------------------------
  */
 int
-Make_HandleUse (GNode *cgn, GNode *pgn)
+Make_HandleUse(GNode *cgn, GNode *pgn)
 {
     GNode	*gn;	 	/* A child of the .USE node */
     LstNode	ln;	 	/* An element in the children list */
@@ -303,23 +306,23 @@ Make_HandleUse (GNode *cgn, GNode *pgn)
 	     * .USE or transformation and target has no commands -- append
 	     * the child's commands to the parent.
 	     */
-	    (void) Lst_Concat (pgn->commands, cgn->commands, LST_CONCNEW);
+	     Lst_Concat(pgn->commands, cgn->commands, LST_CONCNEW);
 	}
 
-	if (Lst_Open (cgn->children) == SUCCESS) {
-	    while ((ln = Lst_Next (cgn->children)) != NULL) {
-		gn = (GNode *)Lst_Datum (ln);
+	if (Lst_Open(cgn->children) == SUCCESS) {
+	    while ((ln = Lst_Next(cgn->children)) != NULL) {
+		gn = (GNode *)Lst_Datum(ln);
 
-		if (Lst_Member (pgn->children, gn) == NULL) {
-		    (void) Lst_AtEnd (pgn->children, gn);
-		    (void) Lst_AtEnd (gn->parents, pgn);
+		if (Lst_Member(pgn->children, gn) == NULL) {
+		    Lst_AtEnd(pgn->children, gn);
+		    Lst_AtEnd(gn->parents, pgn);
 		    pgn->unmade += 1;
 		}
 	    }
-	    Lst_Close (cgn->children);
+	    Lst_Close(cgn->children);
 	}
 
-	pgn->type |= cgn->type & ~(OP_OPMASK|OP_USE|OP_TRANSFORM);
+	pgn->type |= cgn->type & ~(OP_OPMASK | OP_USE | OP_TRANSFORM);
 
 	/*
 	 * This child node is now "made", so we decrement the count of
@@ -334,12 +337,14 @@ Make_HandleUse (GNode *cgn, GNode *pgn)
     }
     return (0);
 }
+
 static int
-MakeHandleUse (void *pgn, void *cgn)
+MakeHandleUse(void *pgn, void *cgn)
 {
-    return Make_HandleUse((GNode *) pgn, (GNode *) cgn);
+
+    return (Make_HandleUse((GNode *)pgn, (GNode *)cgn));
 }
-
+
 /*-
  *-----------------------------------------------------------------------
  * Make_Update  --
@@ -366,14 +371,14 @@ MakeHandleUse (void *pgn, void *cgn)
  *-----------------------------------------------------------------------
  */
 void
-Make_Update (GNode *cgn)
+Make_Update(GNode *cgn)
 {
     GNode 	*pgn;		/* the parent node */
     char  	*cname;		/* the child's name */
     LstNode	ln;	 	/* Element in parents and iParents lists */
     char	*p1;
 
-    cname = Var_Value (TARGET, cgn, &p1);
+    cname = Var_Value(TARGET, cgn, &p1);
     free(p1);
 
     /*
@@ -441,20 +446,20 @@ Make_Update (GNode *cgn)
 #endif
     }
 
-    if (Lst_Open (cgn->parents) == SUCCESS) {
-	while ((ln = Lst_Next (cgn->parents)) != NULL) {
-	    pgn = (GNode *)Lst_Datum (ln);
+    if (Lst_Open(cgn->parents) == SUCCESS) {
+	while ((ln = Lst_Next(cgn->parents)) != NULL) {
+	    pgn = (GNode *)Lst_Datum(ln);
 	    if (pgn->make) {
 		pgn->unmade -= 1;
 
-		if ( ! (cgn->type & (OP_EXEC|OP_USE))) {
+		if (!(cgn->type & (OP_EXEC | OP_USE))) {
 		    if (cgn->made == MADE) {
 			pgn->childMade = TRUE;
 			if (pgn->cmtime < cgn->mtime) {
 			    pgn->cmtime = cgn->mtime;
 			}
 		    } else {
-			(void)Make_TimeStamp (pgn, cgn);
+			Make_TimeStamp(pgn, cgn);
 		    }
 		}
 		if (pgn->unmade == 0) {
@@ -462,13 +467,13 @@ Make_Update (GNode *cgn)
 		     * Queue the node up -- any unmade predecessors will
 		     * be dealt with in MakeStartJobs.
 		     */
-		    (void)Lst_EnQueue (toBeMade, (void *)pgn);
+		    Lst_EnQueue(toBeMade, (void *)pgn);
 		} else if (pgn->unmade < 0) {
-		    Error ("Graph cycles through %s", pgn->name);
+		    Error("Graph cycles through %s", pgn->name);
 		}
 	    }
 	}
-	Lst_Close (cgn->parents);
+	Lst_Close(cgn->parents);
     }
     /*
      * Deal with successor nodes. If any is marked for making and has an unmade
@@ -482,7 +487,7 @@ Make_Update (GNode *cgn)
 	if (succ->make && succ->unmade == 0 && succ->made == UNMADE &&
 	    Lst_Member(toBeMade, (void *)succ) == NULL)
 	{
-	    (void)Lst_EnQueue(toBeMade, (void *)succ);
+	    Lst_EnQueue(toBeMade, (void *)succ);
 	}
     }
 
@@ -490,22 +495,22 @@ Make_Update (GNode *cgn)
      * Set the .PREFIX and .IMPSRC variables for all the implied parents
      * of this node.
      */
-    if (Lst_Open (cgn->iParents) == SUCCESS) {
+    if (Lst_Open(cgn->iParents) == SUCCESS) {
 	char    *ptr;
 	char	*cpref = Var_Value(PREFIX, cgn, &ptr);
 
-	while ((ln = Lst_Next (cgn->iParents)) != NULL) {
+	while ((ln = Lst_Next(cgn->iParents)) != NULL) {
 	    pgn = (GNode *)Lst_Datum (ln);
 	    if (pgn->make) {
-		Var_Set (IMPSRC, cname, pgn);
-		Var_Set (PREFIX, cpref, pgn);
+		Var_Set(IMPSRC, cname, pgn);
+		Var_Set(PREFIX, cpref, pgn);
 	    }
 	}
 	free(ptr);
-	Lst_Close (cgn->iParents);
+	Lst_Close(cgn->iParents);
     }
 }
-
+
 /*-
  *-----------------------------------------------------------------------
  * MakeAddAllSrc --
@@ -527,11 +532,12 @@ Make_Update (GNode *cgn)
  *-----------------------------------------------------------------------
  */
 static int
-MakeAddAllSrc (void *cgnp, void *pgnp)
+MakeAddAllSrc(void *cgnp, void *pgnp)
 {
     GNode	*cgn = (GNode *) cgnp;
     GNode	*pgn = (GNode *) pgnp;
-    if ((cgn->type & (OP_EXEC|OP_USE|OP_INVISIBLE)) == 0) {
+
+    if ((cgn->type & (OP_EXEC | OP_USE | OP_INVISIBLE)) == 0) {
 	char *child;
 	char *p1 = NULL;
 
@@ -543,7 +549,7 @@ MakeAddAllSrc (void *cgnp, void *pgnp)
 	}
 	else
 	    child = Var_Value(TARGET, cgn, &p1);
-	Var_Append (ALLSRC, child, pgn);
+	Var_Append(ALLSRC, child, pgn);
 	if (pgn->type & OP_JOIN) {
 	    if (cgn->made == MADE) {
 		Var_Append(OODATE, child, pgn);
@@ -573,7 +579,7 @@ MakeAddAllSrc (void *cgnp, void *pgnp)
     }
     return (0);
 }
-
+
 /*-
  *-----------------------------------------------------------------------
  * Make_DoAllVar --
@@ -597,24 +603,26 @@ MakeAddAllSrc (void *cgnp, void *pgnp)
  *-----------------------------------------------------------------------
  */
 void
-Make_DoAllVar (GNode *gn)
+Make_DoAllVar(GNode *gn)
 {
-    Lst_ForEach (gn->children, MakeAddAllSrc, (void *) gn);
+
+    Lst_ForEach(gn->children, MakeAddAllSrc, (void *)gn);
 
     if (!Var_Exists (OODATE, gn)) {
-	Var_Set (OODATE, "", gn);
+	Var_Set(OODATE, "", gn);
     }
     if (!Var_Exists (ALLSRC, gn)) {
-	Var_Set (ALLSRC, "", gn);
+	Var_Set(ALLSRC, "", gn);
     }
 
     if (gn->type & OP_JOIN) {
 	char *p1;
-	Var_Set (TARGET, Var_Value (ALLSRC, gn, &p1), gn);
+
+	Var_Set(TARGET, Var_Value(ALLSRC, gn, &p1), gn);
 	free(p1);
     }
 }
-
+
 /*-
  *-----------------------------------------------------------------------
  * MakeStartJobs --
@@ -632,12 +640,12 @@ Make_DoAllVar (GNode *gn)
  *-----------------------------------------------------------------------
  */
 static Boolean
-MakeStartJobs (void)
+MakeStartJobs(void)
 {
     GNode	*gn;
 
     while (!Lst_IsEmpty (toBeMade) && !Job_Full()) {
-	gn = (GNode *) Lst_DeQueue (toBeMade);
+	gn = (GNode *)Lst_DeQueue(toBeMade);
 	DEBUGF(MAKE, ("Examining %s...", gn->name));
 	/*
 	 * Make sure any and all predecessors that are going to be made,
@@ -666,13 +674,13 @@ MakeStartJobs (void)
 	}
 
 	numNodes--;
-	if (Make_OODate (gn)) {
+	if (Make_OODate(gn)) {
 	    DEBUGF(MAKE, ("out-of-date\n"));
 	    if (queryFlag) {
 		return (TRUE);
 	    }
-	    Make_DoAllVar (gn);
-	    Job_Make (gn);
+	    Make_DoAllVar(gn);
+	    Job_Make(gn);
 	} else {
 	    DEBUGF(MAKE, ("up-to-date\n"));
 	    gn->made = UPTODATE;
@@ -683,15 +691,15 @@ MakeStartJobs (void)
 		 * value for .TARGET when building up the context variables
 		 * of its parent(s)...
 		 */
-		Make_DoAllVar (gn);
+		Make_DoAllVar(gn);
 	    }
 
-	    Make_Update (gn);
+	    Make_Update(gn);
 	}
     }
     return (FALSE);
 }
-
+
 /*-
  *-----------------------------------------------------------------------
  * MakePrintStatus --
@@ -712,10 +720,11 @@ MakeStartJobs (void)
 static int
 MakePrintStatus(void *gnp, void *cyclep)
 {
-    GNode   	*gn = (GNode *) gnp;
-    Boolean 	cycle = *(Boolean *) cyclep;
+    GNode   	*gn = (GNode *)gnp;
+    Boolean 	cycle = *(Boolean *)cyclep;
+
     if (gn->made == UPTODATE) {
-	printf ("`%s' is up to date.\n", gn->name);
+	printf("`%s' is up to date.\n", gn->name);
     } else if (gn->unmade != 0) {
 	if (cycle) {
 	    Boolean t = TRUE;
@@ -732,19 +741,19 @@ MakePrintStatus(void *gnp, void *cyclep)
 	    if (gn->made == CYCLE) {
 		Error("Graph cycles through `%s'", gn->name);
 		gn->made = ENDCYCLE;
-		Lst_ForEach(gn->children, MakePrintStatus, (void *) &t);
+		Lst_ForEach(gn->children, MakePrintStatus, (void *)&t);
 		gn->made = UNMADE;
 	    } else if (gn->made != ENDCYCLE) {
 		gn->made = CYCLE;
-		Lst_ForEach(gn->children, MakePrintStatus, (void *) &t);
+		Lst_ForEach(gn->children, MakePrintStatus, (void *)&t);
 	    }
 	} else {
-	    printf ("`%s' not remade because of errors.\n", gn->name);
+	    printf("`%s' not remade because of errors.\n", gn->name);
 	}
     }
     return (0);
 }
-
+
 /*-
  *-----------------------------------------------------------------------
  * Make_Run --
@@ -767,13 +776,13 @@ MakePrintStatus(void *gnp, void *cyclep)
  *-----------------------------------------------------------------------
  */
 Boolean
-Make_Run (Lst targs)
+Make_Run(Lst targs)
 {
     GNode	    *gn;	/* a temporary pointer */
     Lst		    examine; 	/* List of targets to examine */
     int	    	    errors; 	/* Number of errors the Job module reports */
 
-    toBeMade = Lst_Init (FALSE);
+    toBeMade = Lst_Init(FALSE);
 
     examine = Lst_Duplicate(targs, NOCOPY);
     numNodes = 0;
@@ -786,8 +795,8 @@ Make_Run (Lst targs)
      * be looked at in a minute, otherwise we add its children to our queue
      * and go on about our business.
      */
-    while (!Lst_IsEmpty (examine)) {
-	gn = (GNode *) Lst_DeQueue (examine);
+    while (!Lst_IsEmpty(examine)) {
+	gn = (GNode *)Lst_DeQueue(examine);
 
 	if (!gn->make) {
 	    gn->make = TRUE;
@@ -797,18 +806,18 @@ Make_Run (Lst targs)
 	     * Apply any .USE rules before looking for implicit dependencies
 	     * to make sure everything has commands that should...
 	     */
-	    Lst_ForEach (gn->children, MakeHandleUse, (void *)gn);
-	    Suff_FindDeps (gn);
+	    Lst_ForEach(gn->children, MakeHandleUse, (void *)gn);
+	    Suff_FindDeps(gn);
 
 	    if (gn->unmade != 0) {
-		Lst_ForEach (gn->children, MakeAddChild, (void *)examine);
+		Lst_ForEach(gn->children, MakeAddChild, (void *)examine);
 	    } else {
-		(void)Lst_EnQueue (toBeMade, (void *)gn);
+		Lst_EnQueue(toBeMade, (void *)gn);
 	    }
 	}
     }
 
-    Lst_Destroy (examine, NOFREE);
+    Lst_Destroy(examine, NOFREE);
 
     if (queryFlag) {
 	/*
@@ -825,7 +834,7 @@ Make_Run (Lst targs)
 	 * the finishing of a job. So we fill the Job table as much as we can
 	 * before going into our loop.
 	 */
-	(void) MakeStartJobs();
+	 MakeStartJobs();
     }
 
     /*
@@ -839,9 +848,9 @@ Make_Run (Lst targs)
      * keepgoing flag was given.
      */
     while (!Job_Empty ()) {
-	Job_CatchOutput (!Lst_IsEmpty (toBeMade));
-	Job_CatchChildren (!usePipes);
-	(void)MakeStartJobs();
+	Job_CatchOutput(!Lst_IsEmpty (toBeMade));
+	Job_CatchChildren(!usePipes);
+	MakeStartJobs();
     }
 
     errors = Job_Finish();
@@ -851,7 +860,7 @@ Make_Run (Lst targs)
      * because some inferior reported an error.
      */
     errors = ((errors == 0) && (numNodes != 0));
-    Lst_ForEach(targs, MakePrintStatus, (void *) &errors);
+    Lst_ForEach(targs, MakePrintStatus, (void *)&errors);
 
     return (TRUE);
 }

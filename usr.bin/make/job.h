@@ -38,7 +38,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.11 2000/01/17 06:43:41 kris Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.14 2004/12/10 01:16:25 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.15 2004/12/10 19:22:24 okumoto Exp $
  */
 
 /*-
@@ -61,7 +61,6 @@
 #define	SEL_USEC	0
 #endif /* !USE_KQUEUE */
 
-
 /*-
  * Job Table definitions.
  *
@@ -149,7 +148,6 @@ typedef struct Job {
 #define	outFile		output.o_file.of_outFile
 #define	outFd	  	output.o_file.of_outFd
 
-
 /*-
  * Shell Specifications:
  * Each shell type has associated with it the following information:

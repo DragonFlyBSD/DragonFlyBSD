@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstInsert.c,v 1.6 1999/08/28 01:03:52 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInsert.c,v 1.5 2004/12/08 11:26:39 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInsert.c,v 1.6 2004/12/10 19:22:25 okumoto Exp $
  *
  * @(#)lstInsert.c	8.1 (Berkeley) 6/6/93
  */
@@ -74,10 +74,10 @@ Lst_Insert(Lst list, LstNode ln, void *d)
     /*
      * check validity of arguments
      */
-    if (Lst_Valid (list) && (Lst_IsEmpty (list) && ln == NULL))
+    if (Lst_Valid(list) && (Lst_IsEmpty(list) && ln == NULL))
 	goto ok;
 
-    if (!Lst_Valid (list) || Lst_IsEmpty (list) || !Lst_NodeValid (ln, list)) {
+    if (!Lst_Valid(list) || Lst_IsEmpty(list) || !Lst_NodeValid(ln, list)) {
 	return (FAILURE);
     }
 

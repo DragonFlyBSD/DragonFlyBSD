@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstDestroy.c,v 1.7 1999/08/28 01:03:49 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDestroy.c,v 1.7 2004/12/09 19:08:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDestroy.c,v 1.8 2004/12/10 19:22:25 okumoto Exp $
  *
  * @(#)lstDestroy.c	8.1 (Berkeley) 6/6/93
  */
@@ -80,22 +80,22 @@ Lst_Destroy(Lst list, FreeProc *freeProc)
     if (list->lastPtr != NULL)
 	list->lastPtr->nextPtr = NULL;
     else {
-	free (list);
+	free(list);
 	return;
     }
 
     if (freeProc) {
 	for (ln = list->firstPtr; ln != NULL; ln = tln) {
 	     tln = ln->nextPtr;
-	     (*freeProc) (ln->datum);
-	     free (ln);
+	     (*freeProc)(ln->datum);
+	     free(ln);
 	}
     } else {
 	for (ln = list->firstPtr; ln != NULL; ln = tln) {
 	     tln = ln->nextPtr;
-	     free (ln);
+	     free(ln);
 	}
     }
 
-    free (list);
+    free(list);
 }

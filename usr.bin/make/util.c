@@ -25,7 +25,7 @@
  *    without specific prior written permission.
  *
  * $FreeBSD: src/usr.bin/make/util.c,v 1.5.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/util.c,v 1.8 2004/12/09 21:31:10 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.c,v 1.9 2004/12/10 19:22:24 okumoto Exp $
  */
 
 #include <sys/types.h>
@@ -62,9 +62,9 @@ Debug(const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	(void)vfprintf(stderr, fmt, ap);
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
-	(void)fflush(stderr);
+	fflush(stderr);
 }
 
 /*-
@@ -83,10 +83,10 @@ Error(const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	(void)vfprintf(stderr, fmt, ap);
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
-	(void)fprintf(stderr, "\n");
-	(void)fflush(stderr);
+	fprintf(stderr, "\n");
+	fflush(stderr);
 }
 
 /*-
@@ -109,10 +109,10 @@ Fatal(const char *fmt, ...)
 	if (jobsRunning)
 		Job_Wait();
 
-	(void)vfprintf(stderr, fmt, ap);
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
-	(void)fprintf(stderr, "\n");
-	(void)fflush(stderr);
+	fprintf(stderr, "\n");
+	fflush(stderr);
 
 	if (DEBUG(GRAPH2))
 		Targ_PrintGraph(2);
@@ -137,11 +137,11 @@ Punt(const char *fmt, ...)
 	va_list ap;
 	va_start(ap, fmt);
 
-	(void)fprintf(stderr, "make: ");
-	(void)vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "make: ");
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
-	(void)fprintf(stderr, "\n");
-	(void)fflush(stderr);
+	fprintf(stderr, "\n");
+	fflush(stderr);
 
 	DieHorribly();
 }
@@ -180,6 +180,7 @@ DieHorribly(void)
 void
 Finish(int errors)
 {
+
 	Fatal("%d error%s", errors, errors == 1 ? "" : "s");
 }
 
@@ -194,7 +195,7 @@ emalloc(size_t len)
 
 	if ((p = malloc(len)) == NULL)
 		enomem();
-	return(p);
+	return (p);
 }
 
 /*
@@ -208,7 +209,7 @@ estrdup(const char *str)
 
 	if ((p = strdup(str)) == NULL)
 		enomem();
-	return(p);
+	return (p);
 }
 
 /*
@@ -218,9 +219,10 @@ estrdup(const char *str)
 void *
 erealloc(void *ptr, size_t size)
 {
+
 	if ((ptr = realloc(ptr, size)) == NULL)
 		enomem();
-	return(ptr);
+	return (ptr);
 }
 
 /*
@@ -243,13 +245,13 @@ eunlink(const char *file)
 	struct stat st;
 
 	if (lstat(file, &st) == -1)
-		return -1;
+		return (-1);
 
 	if (S_ISDIR(st.st_mode)) {
 		errno = EISDIR;
-		return -1;
+		return (-1);
 	}
-	return unlink(file);
+	return (unlink(file));
 }
 
 /*
@@ -259,6 +261,7 @@ eunlink(const char *file)
 int
 PrintAddr(void *a, void *b __unused)
 {
+
     printf("%p ", a);
-    return 0;
+    return (0);
 }

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstNext.c,v 1.6 1999/08/28 01:03:55 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstNext.c,v 1.5 2004/12/08 11:26:39 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstNext.c,v 1.6 2004/12/10 19:22:25 okumoto Exp $
  *
  * @(#)lstNext.c	8.1 (Berkeley) 6/6/93
  */
@@ -72,7 +72,7 @@ Lst_Next(Lst list)
 {
     LstNode	tln;
 
-    if ((Lst_Valid (list) == FALSE) || (list->isOpen == FALSE)) {
+    if ((Lst_Valid(list) == FALSE) || (list->isOpen == FALSE)) {
 	    return (NULL);
     }
 

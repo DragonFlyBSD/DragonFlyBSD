@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstAppend.c,v 1.6 1999/08/28 01:03:45 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstAppend.c,v 1.5 2004/12/08 11:26:39 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstAppend.c,v 1.6 2004/12/10 19:22:25 okumoto Exp $
  *
  * @(#)lstAppend.c	8.1 (Berkeley) 6/6/93
  */
@@ -73,11 +73,11 @@ Lst_Append(Lst list, LstNode ln, void *d)
 {
     LstNode	nLNode;
 
-    if (Lst_Valid (list) && (ln == NULL && Lst_IsEmpty (list))) {
+    if (Lst_Valid(list) && (ln == NULL && Lst_IsEmpty(list))) {
 	goto ok;
     }
 
-    if (!Lst_Valid (list) || Lst_IsEmpty (list)  || ! Lst_NodeValid(ln, list)) {
+    if (!Lst_Valid(list) || Lst_IsEmpty(list)  || ! Lst_NodeValid(ln, list)) {
 	return (FAILURE);
     }
     ok:

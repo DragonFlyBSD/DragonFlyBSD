@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.25 2004/12/10 01:16:25 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.26 2004/12/10 19:22:24 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -138,7 +138,7 @@ static int    	aborting = 0;	    /* why is the make aborting? */
  * XXX: Avoid SunOS bug... FILENO() is fp->_file, and file
  * is a char! So when we go above 127 we turn negative!
  */
-#define	FILENO(a) ((unsigned) fileno(a))
+#define	FILENO(a) ((unsigned)fileno(a))
 
 /*
  * post-make command processing. The node postCommands is really just the
@@ -161,7 +161,7 @@ static int     	  numCommands; 	    /* The number of commands actually printed
 
 /*
  * tfile is used to build temp file names to store shell commands to
- * execute. 
+ * execute.
  */
 static char     tfile[sizeof(TMPPAT)];
 
@@ -232,7 +232,7 @@ STATIC char    	*targFmt;   	/* Format string to use to head output from a
 
 #define	TARG_FMT  "--- %s ---\n" /* Default format */
 #define	MESSAGE(fp, gn) \
-	(void) fprintf(fp, targFmt, gn->name);
+	 fprintf(fp, targFmt, gn->name);
 
 /*
  * When JobStart attempts to run a job but isn't allowed to
@@ -269,7 +269,7 @@ static sig_atomic_t interrupted;
  */
 #define	W_SETMASKED(st, val, fun)				\
 	{							\
-		int sh = (int) ~0;				\
+		int sh = (int)~0;				\
 		int mask = fun(sh);				\
 								\
 		for (sh = 0; ((mask >> sh) & 1) == 0; sh++)	\
@@ -327,13 +327,13 @@ JobCatchSig(int signo)
 static int
 JobCondPassSig(void *jobp, void *signop)
 {
-    Job	*job = (Job *) jobp;
-    int	signo = *(int *) signop;
+    Job	*job = (Job *)jobp;
+    int	signo = *(int *)signop;
 
     DEBUGF(JOB, ("JobCondPassSig passing signal %d to child %d.\n",
 	signo, job->pid));
     KILL(job->pid, signo);
-    return 0;
+    return (0);
 }
 
 /*-
@@ -361,7 +361,7 @@ JobPassSig(int signo)
     sigprocmask(SIG_SETMASK, &nmask, &omask);
 
     DEBUGF(JOB, ("JobPassSig(%d) called.\n", signo));
-    Lst_ForEach(jobs, JobCondPassSig, (void *) &signo);
+    Lst_ForEach(jobs, JobCondPassSig, (void *)&signo);
 
     /*
      * Deal with proper cleanup based on the signal received. We only run
@@ -393,15 +393,16 @@ JobPassSig(int signo)
     act.sa_flags = 0;
     sigaction(signo, &act, NULL);
 
-    DEBUGF(JOB, ("JobPassSig passing signal to self, mask = %x.\n", ~0 & ~(1 << (signo-1))));
-    (void) signal(signo, SIG_DFL);
+    DEBUGF(JOB, ("JobPassSig passing signal to self, mask = %x.\n",
+	~0 & ~(1 << (signo - 1))));
+    signal(signo, SIG_DFL);
 
-    (void) KILL(getpid(), signo);
+    KILL(getpid(), signo);
 
     signo = SIGCONT;
-    Lst_ForEach(jobs, JobCondPassSig, (void *) &signo);
+    Lst_ForEach(jobs, JobCondPassSig, (void *)&signo);
 
-    (void) sigprocmask(SIG_SETMASK, &omask, NULL);
+    sigprocmask(SIG_SETMASK, &omask, NULL);
     sigprocmask(SIG_SETMASK, &omask, NULL);
     act.sa_handler = JobPassSig;
     sigaction(signo, &act, NULL);
@@ -424,7 +425,7 @@ JobPassSig(int signo)
 static int
 JobCmpPid(void *job, void *pid)
 {
-    return *(int *) pid - ((Job *) job)->pid;
+    return (*(int *)pid - ((Job *)job)->pid);
 }
 
 /*-
@@ -469,8 +470,8 @@ JobPrintCommand(void *cmdp, void *jobp)
 				     * command */
     char    	  *cmdStart;	    /* Start of expanded command */
     LstNode 	  cmdNode;  	    /* Node for replacing the command */
-    char     	  *cmd = (char *) cmdp;
-    Job           *job = (Job *) jobp;
+    char     	  *cmd = (char *)cmdp;
+    Job           *job = (Job *)jobp;
 
     noSpecials = (noExecute && !(job->node->type & OP_MAKE));
 
@@ -479,15 +480,15 @@ JobPrintCommand(void *cmdp, void *jobp)
 	if ((job->flags & JOB_IGNDOTS) == 0) {
 	    job->tailCmds = Lst_Succ(Lst_Member(job->node->commands,
 						(void *)cmd));
-	    return 1;
+	    return (1);
 	}
-	return 0;
+	return (0);
     }
 
 #define	DBPRINTF(fmt, arg)  			\
    DEBUGF(JOB, (fmt, arg));			\
-   (void) fprintf(job->cmdFILE, fmt, arg);	\
-   (void) fflush(job->cmdFILE);
+    fprintf(job->cmdFILE, fmt, arg);	\
+    fflush(job->cmdFILE);
 
     numCommands += 1;
 
@@ -530,7 +531,7 @@ JobPrintCommand(void *cmdp, void *jobp)
 	cmd++;
     }
 
-    while (isspace((unsigned char) *cmd))
+    while (isspace((unsigned char)*cmd))
 	cmd++;
 
     if (shutUp) {
@@ -611,7 +612,7 @@ JobPrintCommand(void *cmdp, void *jobp)
     if (shutUp) {
 	DBPRINTF("%s\n", commandShell->echoOn);
     }
-    return 0;
+    return (0);
 }
 
 /*-
@@ -631,9 +632,10 @@ JobPrintCommand(void *cmdp, void *jobp)
 static int
 JobSaveCommand(void *cmd, void *gn)
 {
-    cmd = (void *) Var_Subst(NULL, (char *) cmd, (GNode *) gn, FALSE);
-    (void) Lst_AtEnd(postCommands->commands, cmd);
-    return(0);
+
+    cmd = (void *)Var_Subst(NULL, (char *)cmd, (GNode *)gn, FALSE);
+    Lst_AtEnd(postCommands->commands, cmd);
+    return (0);
 }
 
 
@@ -653,17 +655,18 @@ JobSaveCommand(void *cmd, void *gn)
 static void
 JobClose(Job *job)
 {
+
     if (usePipes) {
 #if !defined(USE_KQUEUE)
 	FD_CLR(job->inPipe, &outputs);
 #endif
 	if (job->outPipe != job->inPipe) {
-	   (void) close(job->outPipe);
+	   close(job->outPipe);
 	}
 	JobDoOutput(job, TRUE);
-	(void) close(job->inPipe);
+	close(job->inPipe);
     } else {
-	(void) close(job->outFd);
+	close(job->outFd);
 	JobDoOutput(job, TRUE);
     }
 }
@@ -711,7 +714,7 @@ JobFinish(Job *job, int *status)
 	 */
 	JobClose(job);
 	if (job->cmdFILE != NULL && job->cmdFILE != stdout) {
-	   (void) fclose(job->cmdFILE);
+	    fclose(job->cmdFILE);
 	}
 	done = TRUE;
     } else if (WIFEXITED(*status)) {
@@ -764,7 +767,7 @@ JobFinish(Job *job, int *status)
 		    MESSAGE(out, job->node);
 		    lastNode = job->node;
 		}
-		(void) fprintf(out, "*** Error code %d%s\n",
+		 fprintf(out, "*** Error code %d%s\n",
 			       WEXITSTATUS(*status),
 			       (job->flags & JOB_IGNERR) ? "(ignored)" : "");
 
@@ -776,7 +779,7 @@ JobFinish(Job *job, int *status)
 		    MESSAGE(out, job->node);
 		    lastNode = job->node;
 		}
-		(void) fprintf(out, "*** Completed successfully\n");
+		fprintf(out, "*** Completed successfully\n");
 	    }
 	} else if (WIFSTOPPED(*status)) {
 	    DEBUGF(JOB, ("Process %d stopped.\n", job->pid));
@@ -784,11 +787,11 @@ JobFinish(Job *job, int *status)
 		MESSAGE(out, job->node);
 		lastNode = job->node;
 	    }
-	    (void) fprintf(out, "*** Stopped -- signal %d\n",
+	    fprintf(out, "*** Stopped -- signal %d\n",
 		WSTOPSIG(*status));
 	    job->flags |= JOB_RESUME;
-	    (void)Lst_AtEnd(stoppedJobs, (void *)job);
-	    (void) fflush(out);
+	    Lst_AtEnd(stoppedJobs, (void *)job);
+	    fflush(out);
 	    return;
 	} else if (WTERMSIG(*status) == SIGCONT) {
 	    /*
@@ -801,7 +804,7 @@ JobFinish(Job *job, int *status)
 		    MESSAGE(out, job->node);
 		    lastNode = job->node;
 		}
-		(void) fprintf(out, "*** Continued\n");
+		 fprintf(out, "*** Continued\n");
 	    }
 	    if (!(job->flags & JOB_CONTINUING)) {
 		DEBUGF(JOB, ("Warning: process %d was not continuing.\n", job->pid));
@@ -823,17 +826,17 @@ JobFinish(Job *job, int *status)
 		jobFull = TRUE;
 		DEBUGF(JOB, ("Job queue is full.\n"));
   	    }
-	    (void) fflush(out);
+	    fflush(out);
   	    return;
 	} else {
 	    if (usePipes && job->node != lastNode) {
 		MESSAGE(out, job->node);
 		lastNode = job->node;
 	    }
-	    (void) fprintf(out, "*** Signal %d\n", WTERMSIG(*status));
+	    fprintf(out, "*** Signal %d\n", WTERMSIG(*status));
 	}
 
-	(void) fflush(out);
+	fflush(out);
     }
 
     /*
@@ -943,8 +946,8 @@ Job_Touch(GNode *gn, Boolean silent)
     }
 
     if (!silent) {
-	(void) fprintf(stdout, "touch %s\n", gn->name);
-	(void) fflush(stdout);
+	 fprintf(stdout, "touch %s\n", gn->name);
+	 fflush(stdout);
     }
 
     if (noExecute) {
@@ -970,15 +973,15 @@ Job_Touch(GNode *gn, Boolean silent)
 		 * modification time, then close the file.
 		 */
 		if (read(streamID, &c, 1) == 1) {
-		    (void) lseek(streamID, (off_t)0, SEEK_SET);
-		    (void) write(streamID, &c, 1);
+		     lseek(streamID, (off_t)0, SEEK_SET);
+		    write(streamID, &c, 1);
 		}
 
-		(void) close(streamID);
+		close(streamID);
 	    } else {
-		(void) fprintf(stdout, "*** couldn't touch %s: %s",
+		 fprintf(stdout, "*** couldn't touch %s: %s",
 			       file, strerror(errno));
-		(void) fflush(stdout);
+		 fflush(stdout);
 	    }
 	}
     }
@@ -1000,6 +1003,7 @@ Job_Touch(GNode *gn, Boolean silent)
 Boolean
 Job_CheckCommands(GNode *gn, void (*abortProc)(const char *, ...))
 {
+
     if (OP_NOP(gn->type) && Lst_IsEmpty(gn->commands) &&
 	(gn->type & OP_LIB) == 0) {
 	/*
@@ -1031,12 +1035,12 @@ Job_CheckCommands(GNode *gn, void (*abortProc)(const char *, ...))
 	    static const char msg[] = "make: don't know how to make";
 
 	    if (gn->type & OP_OPTIONAL) {
-		(void) fprintf(stdout, "%s %s(ignored)\n", msg, gn->name);
-		(void) fflush(stdout);
+		 fprintf(stdout, "%s %s(ignored)\n", msg, gn->name);
+		 fflush(stdout);
 	    } else if (keepgoing) {
-		(void) fprintf(stdout, "%s %s(continuing)\n", msg, gn->name);
-		(void) fflush(stdout);
-  		return FALSE;
+		 fprintf(stdout, "%s %s(continuing)\n", msg, gn->name);
+		 fflush(stdout);
+  		 return (FALSE);
 	    } else {
 #if OLD_JOKE
 		if (strcmp(gn->name,"love") == 0)
@@ -1044,11 +1048,11 @@ Job_CheckCommands(GNode *gn, void (*abortProc)(const char *, ...))
 		else
 #endif
 		    (*abortProc)("%s %s. Stop", msg, gn->name);
-		return FALSE;
+		return (FALSE);
 	    }
 	}
     }
-    return TRUE;
+    return (TRUE);
 }
 
 /*-
@@ -1107,8 +1111,8 @@ JobExec(Job *job, char **argv)
 	 */
 	if (dup2(FILENO(job->cmdFILE), 0) == -1)
 	    Punt("Cannot dup2: %s", strerror(errno));
-	(void) fcntl(0, F_SETFD, 0);
-	(void) lseek(0, (off_t)0, SEEK_SET);
+	fcntl(0, F_SETFD, 0);
+	lseek(0, (off_t)0, SEEK_SET);
 
 	if (usePipes) {
 	    /*
@@ -1132,7 +1136,7 @@ JobExec(Job *job, char **argv)
 	 * it before routing the shell's error output to the same place as
 	 * its standard output.
 	 */
-	(void) fcntl(1, F_SETFD, 0);
+	fcntl(1, F_SETFD, 0);
 	if (dup2(1, 2) == -1)
 	    Punt("Cannot dup2: %s", strerror(errno));
 
@@ -1143,15 +1147,15 @@ JobExec(Job *job, char **argv)
 	 * by killing its process family, but not commit suicide.
 	 */
 # if defined(SYSV)
-	(void) setsid();
+	setsid();
 # else
-	(void) setpgid(0, getpid());
+	setpgid(0, getpid());
 # endif
 #endif /* USE_PGRP */
 
-	(void) execv(shellPath, argv);
+	execv(shellPath, argv);
 
-	(void) write(STDERR_FILENO, "Could not execute shell\n",
+	write(STDERR_FILENO, "Could not execute shell\n",
 		     sizeof("Could not execute shell"));
 	_exit(1);
     } else {
@@ -1183,7 +1187,7 @@ JobExec(Job *job, char **argv)
 	}
 
 	if (job->cmdFILE != NULL && job->cmdFILE != stdout) {
-	    (void) fclose(job->cmdFILE);
+	    fclose(job->cmdFILE);
 	    job->cmdFILE = NULL;
 	}
     }
@@ -1192,7 +1196,7 @@ JobExec(Job *job, char **argv)
      * Now the job is actually running, add it to the table.
      */
     nJobs += 1;
-    (void) Lst_AtEnd(jobs, (void *)job);
+    Lst_AtEnd(jobs, (void *)job);
     if (nJobs == maxJobs) {
 	jobFull = TRUE;
     }
@@ -1228,7 +1232,7 @@ JobMakeArgv(Job *job, char **argv)
 	 * Bourne shell thinks its second argument is a file to source.
 	 * Grrrr. Note the ten-character limitation on the combined arguments.
 	 */
-	(void)sprintf(args, "-%s%s",
+	sprintf(args, "-%s%s",
 		      ((job->flags & JOB_IGNERR) ? "" :
 		       (commandShell->exit ? commandShell->exit : "")),
 		      ((job->flags & JOB_SILENT) ? "" :
@@ -1288,7 +1292,7 @@ JobRestart(Job *job)
 	     * back on the hold queue and mark the table full
 	     */
 	    DEBUGF(JOB, ("holding\n"));
-	    (void)Lst_AtFront(stoppedJobs, (void *)job);
+	    Lst_AtFront(stoppedJobs, (void *)job);
 	    jobFull = TRUE;
 	    DEBUGF(JOB, ("Job queue is full.\n"));
 	    return;
@@ -1343,7 +1347,7 @@ JobRestart(Job *job)
 	     * place the job back on the list of stopped jobs.
 	     */
 	    DEBUGF(JOB, ("table full\n"));
-	    (void) Lst_AtFront(stoppedJobs, (void *)job);
+	    Lst_AtFront(stoppedJobs, (void *)job);
 	    jobFull = TRUE;
 	    DEBUGF(JOB, ("Job queue is full.\n"));
 	}
@@ -1383,7 +1387,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 	previous->flags &= ~(JOB_FIRST|JOB_IGNERR|JOB_SILENT);
 	job = previous;
     } else {
-	job = (Job *) emalloc(sizeof(Job));
+	job = (Job *)emalloc(sizeof(Job));
 	flags |= JOB_FIRST;
     }
 
@@ -1429,7 +1433,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 	    DieHorribly();
 	}
 
-	(void) strcpy(tfile, TMPPAT);
+	strcpy(tfile, TMPPAT);
 	if ((tfd = mkstemp(tfile)) == -1)
 	    Punt("Cannot create temp file: %s", strerror(errno));
 	job->cmdFILE = fdopen(tfd, "w+");
@@ -1438,7 +1442,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 	    close(tfd);
 	    Punt("Could not open %s", tfile);
 	}
-	(void) fcntl(FILENO(job->cmdFILE), F_SETFD, 1);
+	fcntl(FILENO(job->cmdFILE), F_SETFD, 1);
 	/*
 	 * Send the commands to the command file, flush all its buffers then
 	 * rewind and remove the thing.
@@ -1464,8 +1468,8 @@ JobStart(GNode *gn, int flags, Job *previous)
 		LstNode	ln = Lst_Next(gn->commands);
 
 		if ((ln == NULL) ||
-		    JobPrintCommand((void *) Lst_Datum(ln),
-				    (void *) job))
+		    JobPrintCommand((void *)Lst_Datum(ln),
+				    (void *)job))
 		{
 		    noExec = TRUE;
 		    Lst_Close(gn->commands);
@@ -1543,9 +1547,9 @@ JobStart(GNode *gn, int flags, Job *previous)
 	 */
 	if (job->cmdFILE != stdout) {
 	    if (job->cmdFILE != NULL)
-		(void) fclose(job->cmdFILE);
+		 fclose(job->cmdFILE);
 	} else {
-	     (void) fflush(stdout);
+	      fflush(stdout);
 	}
 
 	/*
@@ -1569,7 +1573,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 	    return(JOB_ERROR);
 	}
     } else {
-	(void) fflush(job->cmdFILE);
+	 fflush(job->cmdFILE);
     }
 
     /*
@@ -1586,19 +1590,20 @@ JobStart(GNode *gn, int flags, Job *previous)
     if (!compatMake || (job->flags & JOB_FIRST)) {
 	if (usePipes) {
 	    int fd[2];
+
 	    if (pipe(fd) == -1)
 		Punt("Cannot create pipe: %s", strerror(errno));
 	    job->inPipe = fd[0];
 	    job->outPipe = fd[1];
-	    (void) fcntl(job->inPipe, F_SETFD, 1);
-	    (void) fcntl(job->outPipe, F_SETFD, 1);
+	    fcntl(job->inPipe, F_SETFD, 1);
+	    fcntl(job->outPipe, F_SETFD, 1);
 	} else {
-	    (void) fprintf(stdout, "Remaking `%s'\n", gn->name);
-  	    (void) fflush(stdout);
-	    (void) strcpy(job->outFile, TMPPAT);
+	    fprintf(stdout, "Remaking `%s'\n", gn->name);
+  	    fflush(stdout);
+	    strcpy(job->outFile, TMPPAT);
 	    if ((job->outFd = mkstemp(job->outFile)) == -1)
 		Punt("cannot create temp file: %s", strerror(errno));
-	    (void) fcntl(job->outFd, F_SETFD, 1);
+	    fcntl(job->outFd, F_SETFD, 1);
 	}
     }
 
@@ -1613,7 +1618,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 
 	DEBUGF(JOB, ("Can only run job locally.\n"));
 	job->flags |= JOB_RESTART;
-	(void) Lst_AtEnd(stoppedJobs, (void *)job);
+	Lst_AtEnd(stoppedJobs, (void *)job);
     } else {
 	if (nJobs >= maxJobs) {
 	    /*
@@ -1625,7 +1630,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 	}
 	JobExec(job, argv);
     }
-    return(JOB_RUNNING);
+    return (JOB_RUNNING);
 }
 
 static char *
@@ -1648,8 +1653,8 @@ JobOutput(Job *job, char *cp, char *endp, int msg)
 		 * however, since the non-printable comes after it,
 		 * there must be a newline, so we don't print one.
 		 */
-		(void) fprintf(stdout, "%s", cp);
-		(void) fflush(stdout);
+		 fprintf(stdout, "%s", cp);
+		 fflush(stdout);
 	    }
 	    cp = ecp + commandShell->noPLen;
 	    if (cp != endp) {
@@ -1664,11 +1669,11 @@ JobOutput(Job *job, char *cp, char *endp, int msg)
 		}
 		ecp = strstr(cp, commandShell->noPrint);
 	    } else {
-		return cp;
+		return (cp);
 	    }
 	}
     }
-    return cp;
+    return (cp);
 }
 
 /*-
@@ -1807,13 +1812,13 @@ end_loop:
 			MESSAGE(stdout, job->node);
 			lastNode = job->node;
 		    }
-		    (void) fprintf(stdout, "%s%s", cp, gotNL ? "\n" : "");
-		    (void) fflush(stdout);
+		     fprintf(stdout, "%s%s", cp, gotNL ? "\n" : "");
+		     fflush(stdout);
 		}
 	    }
 	    if (i < max - 1) {
 		/* shift the remaining characters down */
-		(void) memcpy(job->outBuf, &job->outBuf[i + 1], max - (i + 1));
+		 memcpy(job->outBuf, &job->outBuf[i + 1], max - (i + 1));
 		job->curPos = max - (i + 1);
 
 	    } else {
@@ -1848,8 +1853,8 @@ end_loop:
 	 */
 	oFILE = fopen(job->outFile, "r");
 	if (oFILE != NULL) {
-	    (void) fprintf(stdout, "Results of making %s:\n", job->node->name);
-	    (void) fflush(stdout);
+	     fprintf(stdout, "Results of making %s:\n", job->node->name);
+	     fflush(stdout);
 	    while (fgets(inLine, sizeof(inLine), oFILE) != NULL) {
 		char	*cp, *endp, *oendp;
 
@@ -1865,15 +1870,15 @@ end_loop:
 		 * we know there's no newline at the end, so we add one of
 		 * our own free will.
 		 */
-		(void) fprintf(stdout, "%s", cp);
-		(void) fflush(stdout);
+		fprintf(stdout, "%s", cp);
+		fflush(stdout);
 		if (endp != oendp) {
-		    (void) fprintf(stdout, "\n");
-		    (void) fflush(stdout);
+		     fprintf(stdout, "\n");
+		     fflush(stdout);
 		}
 	    }
-	    (void) fclose(oFILE);
-	    (void) eunlink(job->outFile);
+	     fclose(oFILE);
+	     eunlink(job->outFile);
 	}
     }
 }
@@ -1913,7 +1918,7 @@ Job_CatchChildren(Boolean block)
     }
 
     for (;;) {
-	pid = waitpid((pid_t) -1, &status, (block?0:WNOHANG)|WUNTRACED);
+	pid = waitpid((pid_t)-1, &status, (block ? 0 : WNOHANG) | WUNTRACED);
 	if (pid <= 0)
 	    break;
 	DEBUGF(JOB, ("Process %d exited or stopped.\n", pid));
@@ -1922,20 +1927,20 @@ Job_CatchChildren(Boolean block)
 
 	if (jnode == NULL) {
 	    if (WIFSIGNALED(status) && (WTERMSIG(status) == SIGCONT)) {
-		jnode = Lst_Find(stoppedJobs, (void *) &pid, JobCmpPid);
+		jnode = Lst_Find(stoppedJobs, (void *)&pid, JobCmpPid);
 		if (jnode == NULL) {
 		    Error("Resumed child (%d) not in table", pid);
 		    continue;
 		}
 		job = (Job *)Lst_Datum(jnode);
-		(void) Lst_Remove(stoppedJobs, jnode);
+		Lst_Remove(stoppedJobs, jnode);
 	    } else {
 		Error("Child (%d) not in table?", pid);
 		continue;
 	    }
 	} else {
-	    job = (Job *) Lst_Datum(jnode);
-	    (void) Lst_Remove(jobs, jnode);
+	    job = (Job *)Lst_Datum(jnode);
+	    Lst_Remove(jobs, jnode);
 	    nJobs -= 1;
 	    if (fifoFd >= 0 && maxJobs > 1) {
 		write(fifoFd, "+", 1);
@@ -1961,7 +1966,7 @@ Job_CatchChildren(Boolean block)
  * Job_CatchOutput --
  *	Catch the output from our children, if we're using
  *	pipes do so. Otherwise just block time until we get a
- *	signal (most likely a SIGCHLD) since there's no point in
+ *	signal(most likely a SIGCHLD) since there's no point in
  *	just spinning when there's nothing to do and the reaping
  *	of a child can wait for a while.
  *
@@ -1987,7 +1992,7 @@ Job_CatchOutput(int flag)
     Job		   	  *job;
 #endif
 
-    (void) fflush(stdout);
+     fflush(stdout);
 
     if (usePipes) {
 #ifdef USE_KQUEUE
@@ -2023,7 +2028,7 @@ Job_CatchOutput(int flag)
 	nfds = select(FD_SETSIZE, &readfds, (fd_set *) 0,
 			   (fd_set *) 0, &timeout);
 	if (nfds <= 0) {
-	    if (interrupted) 
+	    if (interrupted)
 		JobPassSig(interrupted);
 	    return;
 	}
@@ -2035,7 +2040,7 @@ Job_CatchOutput(int flag)
 	    Punt("Cannot open job table");
 	}
 	while (nfds && (ln = Lst_Next(jobs)) != NULL) {
-	    job = (Job *) Lst_Datum(ln);
+	    job = (Job *)Lst_Datum(ln);
 	    if (FD_ISSET(job->inPipe, &readfds)) {
 		JobDoOutput(job, FALSE);
 		nfds -= 1;
@@ -2063,7 +2068,8 @@ Job_CatchOutput(int flag)
 void
 Job_Make(GNode *gn)
 {
-    (void) JobStart(gn, 0, NULL);
+
+     JobStart(gn, 0, NULL);
 }
 
 /*
@@ -2182,8 +2188,8 @@ Job_Init(int maxproc)
     const char	  *env;
     struct sigaction sa;
 
-    fifoFd =	  -1;
-    jobs =  	  Lst_Init(FALSE);
+    fifoFd = -1;
+    jobs = Lst_Init(FALSE);
     stoppedJobs = Lst_Init(FALSE);
     env = getenv("MAKE_JOBS_FIFO");
 
@@ -2233,12 +2239,12 @@ Job_Init(int maxproc)
         jobFull = FALSE;
     } else {
     }
-    nJobs = 	  0;
+    nJobs = 0;
 
-    aborting = 	  0;
-    errors = 	  0;
+    aborting = 0;
+    errors = 0;
 
-    lastNode =	  NULL;
+    lastNode = NULL;
 
     if ((maxJobs == 1 && fifoFd < 0) || beVerbose == 0) {
 	/*
@@ -2262,16 +2268,16 @@ Job_Init(int maxproc)
     sa.sa_flags = 0;
 
     if (signal(SIGINT, SIG_IGN) != SIG_IGN) {
-	(void) sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGINT, &sa, NULL);
     }
     if (signal(SIGHUP, SIG_IGN) != SIG_IGN) {
-	(void) sigaction(SIGHUP, &sa, NULL);
+	sigaction(SIGHUP, &sa, NULL);
     }
     if (signal(SIGQUIT, SIG_IGN) != SIG_IGN) {
-	(void) sigaction(SIGQUIT, &sa, NULL);
+	sigaction(SIGQUIT, &sa, NULL);
     }
     if (signal(SIGTERM, SIG_IGN) != SIG_IGN) {
-	(void) sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGTERM, &sa, NULL);
     }
     /*
      * There are additional signals that need to be caught and passed if
@@ -2281,16 +2287,16 @@ Job_Init(int maxproc)
      */
 #if defined(USE_PGRP)
     if (signal(SIGTSTP, SIG_IGN) != SIG_IGN) {
-	(void) sigaction(SIGTSTP, &sa, NULL);
+	sigaction(SIGTSTP, &sa, NULL);
     }
     if (signal(SIGTTOU, SIG_IGN) != SIG_IGN) {
-	(void) sigaction(SIGTTOU, &sa, NULL);
+	sigaction(SIGTTOU, &sa, NULL);
     }
     if (signal(SIGTTIN, SIG_IGN) != SIG_IGN) {
-	(void) sigaction(SIGTTIN, &sa, NULL);
+	sigaction(SIGTTIN, &sa, NULL);
     }
     if (signal(SIGWINCH, SIG_IGN) != SIG_IGN) {
-	(void) sigaction(SIGWINCH, &sa, NULL);
+	sigaction(SIGWINCH, &sa, NULL);
     }
 #endif
 
@@ -2333,7 +2339,7 @@ Job_Full(void)
     int i;
 
     if (aborting)
-	return(aborting);
+	return (aborting);
     if (fifoFd >= 0 && jobFull) {
 	i = read(fifoFd, &c, 1);
 	if (i > 0) {
@@ -2341,7 +2347,7 @@ Job_Full(void)
 	    jobFull = FALSE;
 	}
     }
-    return(jobFull);
+    return (jobFull);
 }
 
 /*-
@@ -2371,12 +2377,12 @@ Job_Empty(void)
 	     */
 	    jobFull = FALSE;
 	    JobRestartJobs();
-	    return(FALSE);
+	    return (FALSE);
 	} else {
-	    return(TRUE);
+	    return (TRUE);
 	}
     } else {
-	return(FALSE);
+	return (FALSE);
     }
 }
 
@@ -2497,7 +2503,7 @@ Job_ParseShell(char *line)
     Shell	  *sh;
     Boolean 	  fullSpec = FALSE;
 
-    while (isspace((unsigned char) *line)) {
+    while (isspace((unsigned char)*line)) {
 	line++;
     }
     words = brk_string(line, &wordCount, TRUE);
@@ -2537,7 +2543,7 @@ Job_ParseShell(char *line)
 		 } else {
 		     Parse_Error(PARSE_FATAL, "Unknown keyword \"%s\"",
 				  *argv);
-		     return(FAILURE);
+		     return (FAILURE);
 		 }
 		 fullSpec = TRUE;
 	     }
@@ -2634,14 +2640,14 @@ JobInterrupt(int runINTERRUPT, int signo)
 
     aborting = ABORT_INTERRUPT;
 
-    (void) Lst_Open(jobs);
+    Lst_Open(jobs);
     while ((ln = Lst_Next(jobs)) != NULL) {
-	job = (Job *) Lst_Datum(ln);
+	job = (Job *)Lst_Datum(ln);
 
 	if (!Targ_Precious(job->node)) {
-	    char  	*file = (job->node->path == NULL ?
-				 job->node->name :
-				 job->node->path);
+	    char *file = (job->node->path == NULL ?
+				job->node->name :
+				job->node->path);
 	    if (!noExecute && eunlink(file) != -1) {
 		Error("*** %s removed", file);
 	    }
@@ -2684,6 +2690,7 @@ JobInterrupt(int runINTERRUPT, int signo)
 int
 Job_Finish(void)
 {
+
     if (postCommands != NULL && !Lst_IsEmpty(postCommands->commands)) {
 	if (errors) {
 	    Error("Errors reported so .END ignored");
@@ -2702,7 +2709,7 @@ Job_Finish(void)
 	if (fifoMaster)
 	    unlink(fifoName);
     }
-    return(errors);
+    return (errors);
 }
 
 /*-
@@ -2722,6 +2729,7 @@ Job_Finish(void)
 void
 Job_Wait(void)
 {
+
     aborting = ABORT_WAIT;
     while (nJobs != 0) {
 	Job_CatchOutput(0);
@@ -2755,9 +2763,9 @@ Job_AbortAll(void)
 
     if (nJobs) {
 
-	(void) Lst_Open(jobs);
+	Lst_Open(jobs);
 	while ((ln = Lst_Next(jobs)) != NULL) {
-	    job = (Job *) Lst_Datum(ln);
+	    job = (Job *)Lst_Datum(ln);
 
 	    /*
 	     * kill the child process with increasingly drastic signals to make
@@ -2771,7 +2779,7 @@ Job_AbortAll(void)
     /*
      * Catch as many children as want to report in at first, then give up
      */
-    while (waitpid((pid_t) -1, &foo, WNOHANG) > 0)
+    while (waitpid((pid_t)-1, &foo, WNOHANG) > 0)
 	continue;
 }
 

@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.2 2004/12/10 01:13:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.3 2004/12/10 19:22:24 okumoto Exp $
  */
 
 #include    <ctype.h>
@@ -106,7 +106,7 @@ VarHead (const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
  *-----------------------------------------------------------------------
  */
 Boolean
-VarTail (const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
+VarTail(const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
 {
     char *slash;
 
@@ -210,8 +210,9 @@ VarRoot (const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
  *-----------------------------------------------------------------------
  */
 Boolean
-VarMatch (const char *word, Boolean addSpace, Buffer buf, void *pattern)
+VarMatch(const char *word, Boolean addSpace, Buffer buf, void *pattern)
 {
+
     if (Str_Match(word, pattern)) {
 	if (addSpace) {
 	    Buf_AddByte(buf, (Byte)' ');
@@ -219,7 +220,7 @@ VarMatch (const char *word, Boolean addSpace, Buffer buf, void *pattern)
 	addSpace = TRUE;
 	Buf_AddBytes(buf, strlen(word), (Byte *)word);
     }
-    return(addSpace);
+    return (addSpace);
 }
 
 #ifdef SYSVVARSUB
@@ -240,11 +241,11 @@ VarMatch (const char *word, Boolean addSpace, Buffer buf, void *pattern)
  *-----------------------------------------------------------------------
  */
 Boolean
-VarSYSVMatch (const char *word, Boolean addSpace, Buffer buf, void *patp)
+VarSYSVMatch(const char *word, Boolean addSpace, Buffer buf, void *patp)
 {
     int len;
     const char *ptr;
-    VarPattern 	  *pat = (VarPattern *) patp;
+    VarPattern 	  *pat = (VarPattern *)patp;
 
     if (addSpace)
 	Buf_AddByte(buf, (Byte)' ');
@@ -256,7 +257,7 @@ VarSYSVMatch (const char *word, Boolean addSpace, Buffer buf, void *patp)
     else
 	Buf_AddBytes(buf, strlen(word), (Byte *) word);
 
-    return(addSpace);
+    return (addSpace);
 }
 #endif
 
@@ -278,8 +279,9 @@ VarSYSVMatch (const char *word, Boolean addSpace, Buffer buf, void *patp)
  *-----------------------------------------------------------------------
  */
 Boolean
-VarNoMatch (const char *word, Boolean addSpace, Buffer buf, void *pattern)
+VarNoMatch(const char *word, Boolean addSpace, Buffer buf, void *pattern)
 {
+
     if (!Str_Match(word, pattern)) {
 	if (addSpace) {
 	    Buf_AddByte(buf, (Byte)' ');
@@ -287,7 +289,7 @@ VarNoMatch (const char *word, Boolean addSpace, Buffer buf, void *pattern)
 	addSpace = TRUE;
 	Buf_AddBytes(buf, strlen(word), (Byte *)word);
     }
-    return(addSpace);
+    return (addSpace);
 }
 
 
@@ -306,11 +308,11 @@ VarNoMatch (const char *word, Boolean addSpace, Buffer buf, void *pattern)
  *-----------------------------------------------------------------------
  */
 Boolean
-VarSubstitute (const char *word, Boolean addSpace, Buffer buf, void *patternp)
+VarSubstitute(const char *word, Boolean addSpace, Buffer buf, void *patternp)
 {
     int		  	wordLen;    /* Length of word */
     const char	 	*cp;	    /* General pointer */
-    VarPattern	*pattern = (VarPattern *) patternp;
+    VarPattern	*pattern = (VarPattern *)patternp;
 
     wordLen = strlen(word);
     if (1) { /* substitute in each word of the variable */
@@ -451,7 +453,7 @@ VarSubstitute (const char *word, Boolean addSpace, Buffer buf, void *patternp)
 	Buf_AddByte(buf, (Byte)' ');
     }
     Buf_AddBytes(buf, wordLen, (Byte *)word);
-    return(TRUE);
+    return (TRUE);
 }
 
 /*-
@@ -578,6 +580,6 @@ VarRESubstitute(const char *word, Boolean addSpace, Buffer buf, void *patternp)
 	}
 	break;
     }
-    return(addSpace||added);
+    return (addSpace||added);
 }
 

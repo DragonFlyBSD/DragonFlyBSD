@@ -38,7 +38,7 @@
  *
  *	from: @(#)dir.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/dir.h,v 1.7 1999/08/28 01:03:29 peter Exp $
- * $DragonFly: src/usr.bin/make/dir.h,v 1.6 2004/11/30 15:22:46 joerg Exp $
+ * $DragonFly: src/usr.bin/make/dir.h,v 1.7 2004/12/10 19:22:24 okumoto Exp $
  */
 
 /* dir.h --
@@ -69,6 +69,6 @@ void Dir_Concat(Lst, Lst);
 void Dir_PrintDirectories(void);
 void Dir_PrintPath(Lst);
 void Dir_Destroy(void *);
-void * Dir_CopyDir(void *);
+void *Dir_CopyDir(void *);
 
 #endif /* _DIR */

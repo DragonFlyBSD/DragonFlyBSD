@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstRemove.c,v 1.6 1999/08/28 01:03:56 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstRemove.c,v 1.5 2004/12/08 11:26:39 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstRemove.c,v 1.6 2004/12/10 19:22:25 okumoto Exp $
  *
  * @(#)lstRemove.c	8.1 (Berkeley) 6/6/93
  */
@@ -66,7 +66,7 @@ ReturnStatus
 Lst_Remove(Lst list, LstNode ln)
 {
 
-    if (!Lst_Valid (list) || !Lst_NodeValid (ln, list)) {
+    if (!Lst_Valid(list) || !Lst_NodeValid(ln, list)) {
 	    return (FAILURE);
     }
 

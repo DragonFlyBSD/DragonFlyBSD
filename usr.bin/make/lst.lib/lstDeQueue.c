@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstDeQueue.c,v 1.6 1999/08/28 01:03:48 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDeQueue.c,v 1.5 2004/12/08 11:26:39 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDeQueue.c,v 1.6 2004/12/10 19:22:25 okumoto Exp $
  *
  * @(#)lstDeQueue.c	8.1 (Berkeley) 6/6/93
  */
@@ -67,13 +67,13 @@ Lst_DeQueue(Lst l)
     void *	rd;
     LstNode	tln;
 
-    tln = Lst_First (l);
+    tln = Lst_First(l);
     if (tln == NULL) {
 	return (NULL);
     }
 
     rd = tln->datum;
-    if (Lst_Remove (l, tln) == FAILURE) {
+    if (Lst_Remove(l, tln) == FAILURE) {
 	return (NULL);
     } else {
 	return (rd);

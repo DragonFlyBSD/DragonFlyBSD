@@ -38,7 +38,7 @@
  *
  *	from: @(#)buf.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.h,v 1.9 1999/08/28 01:03:26 peter Exp $
- * $DragonFly: src/usr.bin/make/buf.h,v 1.5 2004/11/12 22:42:36 dillon Exp $
+ * $DragonFly: src/usr.bin/make/buf.h,v 1.6 2004/12/10 19:22:24 okumoto Exp $
  */
 
 /*-
@@ -63,7 +63,7 @@ typedef struct Buffer {
 
 /* Buf_AddByte adds a single byte to a buffer. */
 #define	Buf_AddByte(bp, byte) \
-	(void) (--(bp)->left <= 0 ? Buf_OvAddByte(bp, byte), 1 : \
+	(void)(--(bp)->left <= 0 ? Buf_OvAddByte(bp, byte), 1 : \
 		(*(bp)->inPtr++ = (byte), *(bp)->inPtr = 0), 1)
 
 #define	BUF_ERROR 256
