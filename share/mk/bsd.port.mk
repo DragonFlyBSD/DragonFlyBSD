@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.27 2005/01/27 02:38:31 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.28 2005/02/02 12:57:27 joerg Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -17,8 +17,8 @@ UNAME_v?=FreeBSD 4.8-CURRENT
 UNAME_r?=4.8-CURRENT
 
 # override for bsd.port.mk
-PERL_VERSION?=	5.8.5
-PERL_VER?=	5.8.5
+PERL_VERSION?=	5.8.6
+PERL_VER?=	5.8.6
 
 .makeenv UNAME_s
 .makeenv UNAME_v
