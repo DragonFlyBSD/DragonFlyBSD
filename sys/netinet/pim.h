@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/pim.h,v 1.1.2.1 2003/08/24 17:04:44 hsu Exp $
- * $DragonFly: src/sys/netinet/pim.h,v 1.1 2003/08/24 23:07:08 hsu Exp $
+ * $DragonFly: src/sys/netinet/pim.h,v 1.2 2004/03/08 07:38:20 hsu Exp $
  */
 
 #ifndef _NETINET_PIM_H_
@@ -42,6 +42,8 @@
  * Modified by George Edmond Eddy (Rusty), ISI, February 1998.
  * Modified by Pavlin Radoslavov, USC/ISI, May 1998, October 2000.
  */
+
+#include <sys/types.h>
 
 #ifndef _PIM_VT
 #ifndef BYTE_ORDER
