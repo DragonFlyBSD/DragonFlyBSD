@@ -24,7 +24,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/boot0cfg/boot0cfg.c,v 1.7.2.4 2002/03/16 01:06:51 mikeh Exp $
- * $DragonFly: src/usr.sbin/boot0cfg/boot0cfg.c,v 1.3 2003/11/10 06:14:44 dillon Exp $
+ * $DragonFly: src/usr.sbin/boot0cfg/boot0cfg.c,v 1.4 2004/06/26 02:04:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -329,21 +329,28 @@ boot0bs(const u_int8_t *bs)
 {
     static u_int8_t id0[] = {0xfc, 0x31, 0xc0, 0x8e, 0xc0, 0x8e, 0xd8,
 			     0x8e, 0xd0, 0xbc, 0x00, 0x7c };
-    static u_int8_t id1[] = {'D', 'r', 'i', 'v', 'e', ' '};
+    static u_int8_t id1[] = {0xfc, 0xb8, 0x00, 0x09, 0x8e, 0xc0, 0x8e,
+			     0xd0, 0xbc, 0x00, 0x10 ,0x31 };
+    static u_int8_t id2[] = {'D', 'r', 'i', 'v', 'e', ' '};
     static struct {
 	unsigned off;
 	unsigned len;
 	u_int8_t *key;
-    } ident[2] = {
+    } ident[] = {
         {0x0,   sizeof(id0), id0},
-        {0x1b2, sizeof(id1), id1}
+        {0x0,	sizeof(id1), id1},
+        {0x1b2, sizeof(id2), id2}
     };
     unsigned int i;
+    int count = 0;
 
-    for (i = 0; i < sizeof(ident) / sizeof(ident[0]); i++)
-        if (memcmp(bs + ident[i].off, ident[i].key, ident[i].len))
-	    return 0;
-    return 1;
+    for (i = 0; i < sizeof(ident) / sizeof(ident[0]); i++) {
+        if (memcmp(bs + ident[i].off, ident[i].key, ident[i].len) == 0)
+	    ++count;
+    }
+    if (count >= 2)
+	return 1;
+    return 0;
 };
 
 /*
