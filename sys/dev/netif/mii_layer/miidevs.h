@@ -1,12 +1,12 @@
-/*	$FreeBSD: src/sys/dev/mii/miidevs.h,v 1.4.2.12 2003/05/13 21:21:33 ps Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.3 2003/11/07 05:57:21 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.4 2004/02/09 16:41:33 hmp Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	FreeBSD
+ *	DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.3 2003/11/07 05:57:21 dillon Exp 
  */
+/* $FreeBSD: src/sys/dev/mii/miidevs,v 1.4.2.13 2003/07/22 02:12:55 ps Exp $ */
 /*$NetBSD: miidevs,v 1.6 1999/05/14 11:37:30 drochner Exp $*/
 
 /*-
