@@ -1,5 +1,5 @@
-/* $FreeBSD: src/sys/dev/isp/isp_ioctl.h,v 1.1.2.4 2002/07/29 04:21:23 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_ioctl.h,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
+/* $FreeBSD: src/sys/dev/isp/isp_ioctl.h,v 1.1.2.5 2003/11/14 05:13:43 mjacob Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_ioctl.h,v 1.3 2004/02/10 15:51:56 hmp Exp $ */
 /*
  * Copyright (c) 2001 by Matthew Jacob
  *
@@ -74,7 +74,7 @@
 /*
  * Get the current adapter role
  */
-#define ISP_GETROLE     _IOR(ISP_IOC, 5), int
+#define ISP_GETROLE     _IOR(ISP_IOC, 5, int)
 
 /*
  * Get/Clear Stats
