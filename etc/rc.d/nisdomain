@@ -24,7 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/nisdomain,v 1.1 2003/04/18 17:51:54 mtm Exp $
-# $DragonFly: src/etc/rc.d/nisdomain,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/nisdomain,v 1.2 2003/11/19 10:32:45 eirikn Exp $
 #
 
 # PROVIDE: nisdomain
@@ -40,48 +40,48 @@ stop_cmd=":"
 
 convert_host_conf()
 {
-    host_conf=$1; shift;
-    nsswitch_conf=$1; shift;
-    awk '                                                                   \
-        /^[:blank:]*#/       { next }                                       \
-        /(hosts|local|file)/ { nsswitch[c] = "files"; c++; next }           \
-        /(dns|bind)/         { nsswitch[c] = "dns";   c++; next }           \
-        /nis/                { nsswitch[c] = "nis";   c++; next }           \
-        { printf "Warning: unrecognized line [%s]", $0 > "/dev/stderr" }    \
-        END {                                                               \
-                printf "hosts: ";                                           \
-                for (i in nsswitch) printf "%s ", nsswitch[i];              \
-                printf "\n";                                                \
-        }' < $host_conf > $nsswitch_conf
+	host_conf=$1; shift;
+	nsswitch_conf=$1; shift;
+	awk '                                                                   \
+		/^[:blank:]*#/       { next }                                       \
+		/(hosts|local|file)/ { nsswitch[c] = "files"; c++; next }           \
+		/(dns|bind)/         { nsswitch[c] = "dns";   c++; next }           \
+		/nis/                { nsswitch[c] = "nis";   c++; next }           \
+		{ printf "Warning: unrecognized line [%s]", $0 > "/dev/stderr" }    \
+		END {                                                               \
+		printf "hosts: ";                                           \
+		for (i in nsswitch) printf "%s ", nsswitch[i];              \
+			printf "\n";                                                \
+		}' < $host_conf > $nsswitch_conf
 }
 
 generate_host_conf()
 {
-    nsswitch_conf=$1; shift;
-    host_conf=$1; shift;
+	nsswitch_conf=$1; shift;
+	host_conf=$1; shift;
 
-    awk '
-BEGIN {
-    xlat["files"] = "hosts";
-    xlat["dns"] = "bind";
-    xlat["nis"] = "nis";
-    cont = 0;
-}
-sub(/^[\t ]*hosts:/, "") || cont {
-    if (!cont)
-        srcs = ""
-    sub(/#.*/, "")
-    gsub(/[][]/, " & ")
-    cont = sub(/\\$/, "")
-    srcs = srcs " " $0
-}
-END {
-    print "# Auto-generated from nsswitch.conf, do not edit"
-    ns = split(srcs, s)
-    for (n = 1; n <= ns; ++n) {
-        if (s[n] in xlat)
-            print xlat[s[n]]
-    }
+	awk '
+	BEGIN {
+		xlat["files"] = "hosts";
+		xlat["dns"] = "bind";
+		xlat["nis"] = "nis";
+	cont = 0;
+	}
+	sub(/^[\t ]*hosts:/, "") || cont {
+		if (!cont)
+		srcs = ""
+		sub(/#.*/, "")
+		gsub(/[][]/, " & ")
+		cont = sub(/\\$/, "")
+		srcs = srcs " " $0
+	}
+	END {
+		print "# Auto-generated from nsswitch.conf, do not edit"
+		ns = split(srcs, s)
+		for (n = 1; n <= ns; ++n) {
+		if (s[n] in xlat)
+		print xlat[s[n]]
+	}
 }
 ' <$nsswitch_conf >$host_conf
 }

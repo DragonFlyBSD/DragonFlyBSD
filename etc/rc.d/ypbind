@@ -2,7 +2,7 @@
 #
 # $NetBSD: ypbind,v 1.5 2002/03/22 04:34:01 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/ypbind,v 1.6 2003/07/09 03:21:03 mtm Exp $
-# $DragonFly: src/etc/rc.d/ypbind,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/ypbind,v 1.2 2003/11/19 10:32:45 eirikn Exp $
 #
 
 # PROVIDE: ypbind
@@ -20,8 +20,8 @@ load_rc_config $name
 case ${OSTYPE} in
 DragonFly)
 	rcvar="nis_client_enable"
-        command_args="${nis_client_flags}"
-        ;;
+	command_args="${nis_client_flags}"
+	;;
 FreeBSD)
 	rcvar="nis_client_enable"
 	command_args="${nis_client_flags}"
@@ -36,12 +36,11 @@ ypbind_precmd()
 	case ${OSTYPE} in
 	DragonFly)
 		if ! checkyesno rpcbind_enable  && \
-                    ! /etc/rc.d/rpcbind forcestatus 1>/dev/null 2>&1
-                then
-                        force_depend rpcbind || return 1
-                fi
-                ;;
-
+		! /etc/rc.d/rpcbind forcestatus 1>/dev/null 2>&1
+		then
+			force_depend rpcbind || return 1
+		fi
+		;;
 	FreeBSD)
 		if ! checkyesno rpcbind_enable  && \
 		    ! /etc/rc.d/rpcbind forcestatus 1>/dev/null 2>&1

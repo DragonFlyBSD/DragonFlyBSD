@@ -2,7 +2,7 @@
 #
 # $NetBSD: ldconfig,v 1.5 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/ldconfig,v 1.7 2003/06/30 15:02:05 trhodes Exp $
-# $DragonFly: src/etc/rc.d/ldconfig,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/ldconfig,v 1.2 2003/11/19 10:32:45 eirikn Exp $
 #
 
 # PROVIDE: ldconfig
@@ -22,34 +22,34 @@ ldconfig_start()
 	case ${OSTYPE} in
 	DragonFly)
 		_ins=
-                ldconfig=${ldconfig_command}
-                checkyesno ldconfig_insecure && _ins="-i"
-                if [ -x "${ldconfig_command}" ]; then
-                        _LDC=/usr/lib
-                        for i in ${ldconfig_paths} /etc/ld-elf.so.conf; do
-                                if [ -r "${i}" ]; then
-                                        _LDC="${_LDC} ${i}"
-                                fi
-                        done
-                        echo 'ELF ldconfig path:' ${_LDC}
-                        ${ldconfig} -elf ${_ins} ${_LDC}
-                        # Legacy aout support for i386 only
-                        case `sysctl -n hw.machine_arch` in
-                        i386)
-                                # Default the a.out ldconfig path.
-                                : ${ldconfig_paths_aout=${ldconfig_paths}}
-                                _LDC=/usr/lib/aout
-                                for i in ${ldconfig_paths_aout} /etc/ld.so.conf; do
+		ldconfig=${ldconfig_command}
+		checkyesno ldconfig_insecure && _ins="-i"
+		if [ -x "${ldconfig_command}" ]; then
+			_LDC=/usr/lib
+			for i in ${ldconfig_paths} /etc/ld-elf.so.conf; do
+				if [ -r "${i}" ]; then
+					_LDC="${_LDC} ${i}"
+				fi
+			done
+			echo 'ELF ldconfig path:' ${_LDC}
+			${ldconfig} -elf ${_ins} ${_LDC}
+			# Legacy aout support for i386 only
+			case `sysctl -n hw.machine_arch` in
+			i386)
+				# Default the a.out ldconfig path.
+				: ${ldconfig_paths_aout=${ldconfig_paths}}
+				_LDC=/usr/lib/aout
+				for i in ${ldconfig_paths_aout} /etc/ld.so.conf; do
 					if [ -r "${i}" ]; then
-                                                _LDC="${_LDC} ${i}"
-                                        fi
-                                done
-                                echo 'a.out ldconfig path:' ${_LDC}
-                                ${ldconfig} -aout ${_ins} ${_LDC}
-                                ;;
-                        esac
-                fi
-                ;;
+						_LDC="${_LDC} ${i}"
+					fi
+				done
+				echo 'a.out ldconfig path:' ${_LDC}
+				${ldconfig} -aout ${_ins} ${_LDC}
+				;;
+			esac
+		fi
+		;;
 
 	FreeBSD)
 		_ins=

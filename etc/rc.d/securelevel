@@ -2,7 +2,7 @@
 #
 # $NetBSD: securelevel,v 1.4 2002/03/22 04:34:00 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/securelevel,v 1.6 2003/05/05 15:38:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/securelevel,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/securelevel,v 1.2 2003/11/19 10:32:45 eirikn Exp $
 #
 
 # PROVIDE: securelevel
@@ -22,16 +22,15 @@ securelevel_start()
 
 	case ${OSTYPE} in
 	DragonFly)
-		 case ${kern_securelevel_enable} in
-                [Yy][Ee][Ss])
-                        if [ ${kern_securelevel} -ge 0 ]; then
-                                echo 'Raising kernel security level: '
-                                ${SYSCTL_W} kern.securelevel=${kern_securelevel}
-                        fi
-                        ;;
-                esac
-                ;;
-
+		case ${kern_securelevel_enable} in
+		[Yy][Ee][Ss])
+			if [ ${kern_securelevel} -ge 0 ]; then
+				echo 'Raising kernel security level: '
+				${SYSCTL_W} kern.securelevel=${kern_securelevel}
+			fi
+			;;
+		esac
+		;;
 	FreeBSD)
 		case ${kern_securelevel_enable} in
 		[Yy][Ee][Ss])

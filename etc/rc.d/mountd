@@ -2,7 +2,7 @@
 #
 # $NetBSD: mountd,v 1.11 2002/01/31 01:26:06 lukem Exp $
 # $FreeBSD: src/etc/rc.d/mountd,v 1.9 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/mountd,v 1.2 2003/08/10 10:11:13 rob Exp $
+# $DragonFly: src/etc/rc.d/mountd,v 1.3 2003/11/19 10:32:45 eirikn Exp $
 #
 
 # PROVIDE: mountd
@@ -23,25 +23,24 @@ mountd_precmd()
 	case ${OSTYPE} in
 	DragonFly)
 		if ! checkyesno rpcbind_enable  && \
-                    ! /etc/rc.d/rpcbind forcestatus 1>/dev/null 2>&1
-                then
-                        force_depend rpcbind || return 1
-                fi
-                # mountd flags will differ depending on rc.conf settings
-                #
-                case ${nfs_server_enable} in
-                [Yy][Ee][Ss])
-                        if checkyesno weak_mountd_authentication; then
-                                mountd_flags="${mountd_flags} -n"
-                        fi
-                        ;;
-		 *)
-                        if checkyesno mountd_enable; then
-                                checkyesno weak_mountd_authentication && mountd_flags="-n"
-                        fi
-                esac
-                ;;
-
+		! /etc/rc.d/rpcbind forcestatus 1>/dev/null 2>&1
+		then
+			force_depend rpcbind || return 1
+		fi
+		# mountd flags will differ depending on rc.conf settings
+		#
+		case ${nfs_server_enable} in
+		[Yy][Ee][Ss])
+			if checkyesno weak_mountd_authentication; then
+				mountd_flags="${mountd_flags} -n"
+			fi
+			;;
+		*)
+			if checkyesno mountd_enable; then
+				checkyesno weak_mountd_authentication && mountd_flags="-n"
+			fi
+		esac
+		;;
 	FreeBSD)
 		if ! checkyesno rpcbind_enable  && \
 		    ! /etc/rc.d/rpcbind forcestatus 1>/dev/null 2>&1

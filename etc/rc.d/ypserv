@@ -2,7 +2,7 @@
 #
 # $NetBSD: ypserv,v 1.5 2000/09/19 13:04:39 lukem Exp $
 # $FreeBSD: src/etc/rc.d/ypserv,v 1.7 2003/07/09 03:21:03 mtm Exp $
-# $DragonFly: src/etc/rc.d/ypserv,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/ypserv,v 1.2 2003/11/19 10:32:45 eirikn Exp $
 #
 
 # PROVIDE: ypserv
@@ -32,12 +32,11 @@ ypserv_precmd()
 	case ${OSTYPE} in
 	DragonFly)
 		if ! checkyesno rpcbind_enable  && \
-                    ! /etc/rc.d/rpcbind forcestatus 1>/dev/null 2>&1
-                then
-                        force_depend rpcbind || return 1
-                fi
-                ;;
-
+		! /etc/rc.d/rpcbind forcestatus 1>/dev/null 2>&1
+		then
+			force_depend rpcbind || return 1
+		fi
+		;;
 	FreeBSD)
 		if ! checkyesno rpcbind_enable  && \
 		    ! /etc/rc.d/rpcbind forcestatus 1>/dev/null 2>&1

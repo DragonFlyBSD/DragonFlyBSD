@@ -2,7 +2,7 @@
 #
 # $NetBSD: ipfilter,v 1.10 2001/02/28 17:03:50 lukem Exp $
 # $FreeBSD: src/etc/rc.d/ipfilter,v 1.10 2003/04/30 02:54:17 mtm Exp $
-# $DragonFly: src/etc/rc.d/ipfilter,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/ipfilter,v 1.2 2003/11/19 10:32:45 eirikn Exp $
 #
 
 # PROVIDE: ipfilter
@@ -19,7 +19,7 @@ load_rc_config $name
 case ${OSTYPE} in
 DragonFly)
 	stop_precmd="test -f ${ipfilter_rules} -o -f ${ipv6_ipfilter_rules}"
-        ;;
+	;;
 
 FreeBSD)
 	stop_precmd="test -f ${ipfilter_rules} -o -f ${ipv6_ipfilter_rules}"
@@ -45,20 +45,20 @@ ipfilter_prestart()
 case ${OSTYPE} in
 DragonFly)
 	 # load ipfilter kernel module if needed
-        if ! sysctl net.inet.ipf.fr_pass > /dev/null 2>&1; then
-                if kldload ipl; then
-                        info 'IP-filter module loaded.'
-                else
-                        err 1 'IP-filter module failed to load.'
-                fi
-        fi
-        # check for ipfilter rules
-        if [ ! -r "${ipfilter_rules}" ] && [ ! -r "${ipv6_ipfilter_rules}" ]
-        then
-                warn 'IP-filter: NO IPF RULES'
-                return 1
-        fi
-        ;;
+	if ! sysctl net.inet.ipf.fr_pass > /dev/null 2>&1; then
+		if kldload ipl; then
+			info 'IP-filter module loaded.'
+		else
+			err 1 'IP-filter module failed to load.'
+		fi
+	fi
+	# check for ipfilter rules
+	if [ ! -r "${ipfilter_rules}" ] && [ ! -r "${ipv6_ipfilter_rules}" ]
+	then
+		warn 'IP-filter: NO IPF RULES'
+		return 1
+	fi
+	;;
 
 FreeBSD)
 	# load ipfilter kernel module if needed
@@ -101,17 +101,17 @@ ipfilter_start()
 	echo "Enabling ipfilter."
 	case ${OSTYPE} in
 	DragonFly)
-		 ${ipfilter_program:-/sbin/ipf} -EFa
-                if [ -r "${ipfilter_rules}" ]; then
-                        ${ipfilter_program:-/sbin/ipf} \
-                            -f "${ipfilter_rules}" ${ipfilter_flags}
-                fi
-                ${ipfilter_program:-/sbin/ipf} -6 -EFa
-                if [ -r "${ipv6_ipfilter_rules}" ]; then
-                        ${ipfilter_program:-/sbin/ipf} -6 \
-                            -f "${ipv6_ipfilter_rules}" ${ipfilter_flags}
-                fi
-                ;;
+		${ipfilter_program:-/sbin/ipf} -EFa
+		if [ -r "${ipfilter_rules}" ]; then
+			${ipfilter_program:-/sbin/ipf} \
+			-f "${ipfilter_rules}" ${ipfilter_flags}
+		fi
+		${ipfilter_program:-/sbin/ipf} -6 -EFa
+		if [ -r "${ipv6_ipfilter_rules}" ]; then
+			${ipfilter_program:-/sbin/ipf} -6 \
+			-f "${ipv6_ipfilter_rules}" ${ipfilter_flags}
+		fi
+;;
 
 	FreeBSD)
 		${ipfilter_program:-/sbin/ipf} -EFa
@@ -142,8 +142,8 @@ ipfilter_stop()
 	case ${OSTYPE} in
 	DragonFly)
 		echo "Saving firewall state tables"
-                ${ipfs_program:-/sbin/ipfs} -W ${ipfs_flags}
-                ;;
+		${ipfs_program:-/sbin/ipfs} -W ${ipfs_flags}
+		;;
 	FreeBSD)
 		echo "Saving firewall state tables"
 		${ipfs_program:-/sbin/ipfs} -W ${ipfs_flags}
@@ -163,17 +163,17 @@ ipfilter_reload()
 	case ${OSTYPE} in
 	DragonFly)
 		 ${ipfilter_program:-/sbin/ipf} -I -Fa
-                if [ -r "${ipfilter_rules}" ]; then
-                        ${ipfilter_program:-/sbin/ipf} -I \
-                            -f "${ipfilter_rules}" ${ipfilter_flags}
-                fi
-                ${ipfilter_program:-/sbin/ipf} -I -6 -Fa
-                if [ -r "${ipv6_ipfilter_rules}" ]; then
-                        ${ipfilter_program:-/sbin/ipf} -I -6 \
-                            -f "${ipv6_ipfilter_rules}" ${ipfilter_flags}
-                fi
-                ${ipfilter_program:-/sbin/ipf} -s
-                ;;
+		if [ -r "${ipfilter_rules}" ]; then
+			${ipfilter_program:-/sbin/ipf} -I \
+			-f "${ipfilter_rules}" ${ipfilter_flags}
+		fi
+			${ipfilter_program:-/sbin/ipf} -I -6 -Fa
+			if [ -r "${ipv6_ipfilter_rules}" ]; then
+			${ipfilter_program:-/sbin/ipf} -I -6 \
+			-f "${ipv6_ipfilter_rules}" ${ipfilter_flags}
+		fi
+		${ipfilter_program:-/sbin/ipf} -s
+		;;
 	FreeBSD)
 		${ipfilter_program:-/sbin/ipf} -I -Fa
 		if [ -r "${ipfilter_rules}" ]; then
@@ -209,8 +209,8 @@ ipfilter_resync()
 	case ${OSTYPE} in
 	DragonFly)
 		# Don't resync if ipfilter is not loaded
-                [ sysctl net.inet.ipf.fr_pass > /dev/null 2>&1 ] && return
-                ;;
+		[ sysctl net.inet.ipf.fr_pass > /dev/null 2>&1 ] && return
+		;;
 	FreeBSD)
 		# Don't resync if ipfilter is not loaded
 		[ sysctl net.inet.ipf.fr_pass > /dev/null 2>&1 ] && return

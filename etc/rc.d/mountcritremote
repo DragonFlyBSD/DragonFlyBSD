@@ -2,7 +2,7 @@
 #
 # $NetBSD: mountcritremote,v 1.7 2002/04/29 12:29:53 lukem Exp $
 # $FreeBSD: src/etc/rc.d/mountcritremote,v 1.6 2003/06/01 01:43:37 gordon Exp $
-# $DragonFly: src/etc/rc.d/mountcritremote,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/mountcritremote,v 1.2 2003/11/19 10:32:45 eirikn Exp $
 #
 
 # PROVIDE: mountcritremote
@@ -17,8 +17,8 @@ stop_cmd=":"
 case ${OSTYPE} in
 	DragonFly)
 	start_cmd="mountcritremote_start"
-        start_precmd="mountcritremote_precmd"
-        ;;
+	start_precmd="mountcritremote_precmd"
+	;;
 	FreeBSD)
 	start_cmd="mountcritremote_start"
 	start_precmd="mountcritremote_precmd"
@@ -55,37 +55,35 @@ mountcritremote_start()
 	case ${OSTYPE} in
 	DragonFly)
 		# Mount nfs filesystems.
-                #
-                echo -n 'Mounting NFS file systems:'
-                mount -a -t nfs
-                echo '.'
-                # Mount other network filesystems if present in /etc/fstab.
-                case ${extra_netfs_types} in
-                [Nn][Oo])
-                        ;;
-                *)
-                        netfs_types="${netfs_types} ${extra_netfs_types}"
-                        ;;
-                esac
-                for i in ${netfs_types}; do
-                        fstype=${i%:*}
-                        fsdecr=${i#*:}
-                        [ "${fstype}" = "nfs" ] && continue
-                        case "`mount -d -a -t ${fstype}`" in
-                        *mount_${fstype}*)
-                                echo -n "Mounting ${fsdecr} file systems:"
-                                mount -a -t ${fstype}
-                                echo '.'
-                                ;;
-                        esac
-                done
+		#
+		echo -n 'Mounting NFS file systems:'
+		mount -a -t nfs
+		echo '.'
+		# Mount other network filesystems if present in /etc/fstab.
+		case ${extra_netfs_types} in
+		[Nn][Oo])
+			;;
+		*)
+			netfs_types="${netfs_types} ${extra_netfs_types}"
+			;;
+		esac
+		for i in ${netfs_types}; do
+			fstype=${i%:*}
+			fsdecr=${i#*:}
+			[ "${fstype}" = "nfs" ] && continue
+			case "`mount -d -a -t ${fstype}`" in
+			*mount_${fstype}*)
+				echo -n "Mounting ${fsdecr} file systems:"
+				mount -a -t ${fstype}
+				echo '.'
+				;;
+			esac
+		done
 
 		# Cleanup /var again just in case it's a network mount.
-                /etc/rc.d/cleanvar reload
-                rm -f /var/run/clean_var /var/spool/lock/clean_var
-                ;;
-
-               
+		/etc/rc.d/cleanvar reload
+		rm -f /var/run/clean_var /var/spool/lock/clean_var
+		;;
 	FreeBSD)
 		# Mount nfs filesystems.
 		#

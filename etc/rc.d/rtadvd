@@ -2,7 +2,7 @@
 #
 # $NetBSD: rtadvd,v 1.5 2002/03/22 04:34:00 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/rtadvd,v 1.5 2003/01/24 00:37:52 mtm Exp $
-# $DragonFly: src/etc/rc.d/rtadvd,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/rtadvd,v 1.2 2003/11/19 10:32:45 eirikn Exp $
 #
 
 # PROVIDE: rtadvd
@@ -52,26 +52,26 @@ rtadvd_precmd()
 	case ${OSTYPE} in
 	DragonFly)
 		# If specific interfaces haven't been specified,
-                # get a list of interfaces and enable it on them
-                #
-                case ${rtadvd_interfaces} in
-                '')
-                        for i in `ifconfig -l` ; do
-                                case $i in
-                                lo0|gif[0-9]*|stf[0-9]*|faith[0-9]*|lp[0-9]*|sl[0-9]*|tun[0-9]*)
-                                        continue
-                                        ;;
-                                *)
-                                        rtadvd_interfaces="${rtadvd_interfaces} ${i}"
-                                        ;;
-                                esac
-                        done
-                        ;;
-                esac
-                command_args="${rtadvd_interfaces}"
-                # Enable Router Renumbering, unicast case
-                # (use correct src/dst addr)
-                # rtadvd -R "in ipsec ah/transport/fec0:0:0:1::1-fec0:0:0:10::1/require" ${ipv6_network_interf
+		# get a list of interfaces and enable it on them
+		#
+		case ${rtadvd_interfaces} in
+		'')
+			for i in `ifconfig -l` ; do
+				case $i in
+				lo0|gif[0-9]*|stf[0-9]*|faith[0-9]*|lp[0-9]*|sl[0-9]*|tun[0-9]*)
+					continue
+					;;
+				*)
+					rtadvd_interfaces="${rtadvd_interfaces} ${i}"
+					;;
+				esac
+			done
+			;;
+		esac
+		command_args="${rtadvd_interfaces}"
+		# Enable Router Renumbering, unicast case
+		# (use correct src/dst addr)
+		# rtadvd -R "in ipsec ah/transport/fec0:0:0:1::1-fec0:0:0:10::1/require" ${ipv6_network_interf
 		;;
 	FreeBSD)
 		# If specific interfaces haven't been specified,

@@ -2,7 +2,7 @@
 #
 # $NetBSD: fsck,v 1.2 2001/06/18 06:42:35 lukem Exp $
 # $FreeBSD: src/etc/rc.d/fsck,v 1.4 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/fsck,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/fsck,v 1.2 2003/11/19 10:32:45 eirikn Exp $
 #
 
 # PROVIDE: fsck
@@ -62,22 +62,22 @@ fsck_start()
 		8)
 		case ${OSTYPE} in
 		DragonFly)
-				 if checkyesno fsck_y_enable; then
-                                echo "File system preen failed, trying fsck -y."
-                                fsck -y
-                                case $? in
-                                0)
-                                        ;;
-                                *)
-                                echo "Automatic file system check failed; help!"
-                                        stop_boot
-                                        ;;
-                                esac
-                        else
-                                echo "Automatic file system check failed; help!"
-                                stop_boot
-                        fi
-                        ;;
+			if checkyesno fsck_y_enable; then
+				echo "File system preen failed, trying fsck -y."
+				fsck -y
+				case $? in
+				0)
+					;;
+				*)
+					echo "Automatic file system check failed; help!"
+					stop_boot
+					;;
+				esac
+			else
+				echo "Automatic file system check failed; help!"
+				stop_boot
+			fi
+		;;
 
 		FreeBSD)
 			if checkyesno fsck_y_enable; then

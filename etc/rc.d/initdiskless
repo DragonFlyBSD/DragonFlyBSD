@@ -25,7 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/initdiskless,v 1.24 2003/06/30 21:47:06 brooks Exp $
-# $DragonFly: src/etc/rc.d/initdiskless,v 1.2 2003/08/09 14:16:51 asmodai Exp $
+# $DragonFly: src/etc/rc.d/initdiskless,v 1.3 2003/11/19 10:32:45 eirikn Exp $
 #
 # PROVIDE: initdiskless
 # KEYWORD: DragonFly FreeBSD
@@ -91,27 +91,27 @@ dlv=`/sbin/sysctl -n vfs.nfs.diskless_valid 2> /dev/null`
 #	if shell exits, terminates script as well as /etc/rc.
 #
 chkerr() {
-    case $1 in
-    0)
+	case $1 in
+	0)
 	;;
-    *)
+	*)
 	echo "$2 failed: dropping into /bin/sh"
 	/bin/sh
 	# RESUME
 	;;
-    esac
+	esac
 }
 
 # Create a generic memory disk
 #
 mount_md() {
-    /sbin/mdmfs -i 4096 -s $1 -M md $2
+	/sbin/mdmfs -i 4096 -s $1 -M md $2
 }
 
 # Create the memory filesystem if it has not already been created
 #
 create_md() {
-    if [ "x`eval echo \\$md_created_$1`" = "x" ]; then
+	if [ "x`eval echo \\$md_created_$1`" = "x" ]; then
 	if [ "x`eval echo \\$md_size_$1`" = "x" ]; then
 	    md_size=4096
 	else
@@ -134,19 +134,19 @@ bootp_ipa=""
 bootp_ipbca=""
 iflist=`ifconfig -l`
 for i in ${iflist} ; do
-    set `ifconfig ${i}`
-    while [ $# -ge 1 ] ; do
-        if [ "${bootp_ifc}" = "" -a "$1" = "inet" ] ; then
-            bootp_ifc=${i} ; bootp_ipa=${2} ; shift
-        fi
-        if [ "${bootp_ipbca}" = "" -a "$1" = "broadcast" ] ; then
-            bootp_ipbca=$2; shift
-        fi
-        shift
-    done
-    if [ "${bootp_ifc}" != "" ] ; then
-        break
-    fi
+	set `ifconfig ${i}`
+	while [ $# -ge 1 ] ; do
+		if [ "${bootp_ifc}" = "" -a "$1" = "inet" ] ; then
+			bootp_ifc=${i} ; bootp_ipa=${2} ; shift
+		fi
+		if [ "${bootp_ipbca}" = "" -a "$1" = "broadcast" ] ; then
+			bootp_ipbca=$2; shift
+		fi
+		shift
+	done
+	if [ "${bootp_ifc}" != "" ] ; then
+		break
+	fi
 done
 echo "Interface ${bootp_ifc} IP-Address ${bootp_ipa} Broadcast ${bootp_ipbca}"
 
@@ -154,11 +154,11 @@ echo "Interface ${bootp_ifc} IP-Address ${bootp_ipa} Broadcast ${bootp_ipbca}"
 # 
 set `mount -t nfs`
 while [ $# -ge 1 ] ; do
-    if [ "$2" = "on" -a "$3" = "/" ]; then
-	nfsroot="$1"
-	break
-    fi
-    shift
+	if [ "$2" = "on" -a "$3" = "/" ]; then
+		nfsroot="$1"
+		break
+	fi
+	shift
 done
 
 # Resolve templates in /conf/base, /conf/default, /conf/${bootp_ipbca},
@@ -182,7 +182,7 @@ done
 #   relocated without needing to change the remount files.
 #
 for i in base default ${bootp_ipbca} ${bootp_ipa} ; do
-    for j in /conf/$i/* ; do
+	for j in /conf/$i/* ; do
 	# memory filesystem size specification
 	#
 	subdir=${j##*/}
@@ -193,12 +193,12 @@ for i in base default ${bootp_ipbca} ${bootp_ipa} ; do
 	# NFS remount
 	#
 	if [ -d $j -a -f $j/diskless_remount ]; then
-	    nfspt=`/bin/cat $j/diskless_remount`
-	    if [ `expr "$nfspt" : '\(.\)'` = "/" ]; then
+		nfspt=`/bin/cat $j/diskless_remount`
+		if [ `expr "$nfspt" : '\(.\)'` = "/" ]; then
 		nfspt="${nfsroot}${nfspt}"
-	    fi
-	    mount_nfs $nfspt $j
-	    chkerr $? "mount_nfs $nfspt $j"
+		fi
+		mount_nfs $nfspt $j
+		chkerr $? "mount_nfs $nfspt $j"
 	fi
     done
 done
@@ -213,30 +213,30 @@ done
 #	so we can use group-specific configurations;
 
 for i in base default ${bootp_ipbca} ${bootp_ipa} ; do
-    for j in /conf/$i/* ; do
+	for j in /conf/$i/* ; do
 	subdir=${j##*/}
 	if [ -d $j ]; then
-	    create_md $subdir
-	    cp -Rp $j/* /$subdir
+		create_md $subdir
+		cp -Rp $j/* /$subdir
 	fi
-    done
-    for j in /conf/$i/*.cpio.gz ; do
-	subdir=${j%*.cpio.gz}
-	subdir=${subdir##*/}
-	if [ -f $j ]; then
-	    create_md $subdir
-	    echo "Loading /$subdir from cpio archive $j"
-	    (cd / ; /stand/gzip -d < $j | /stand/cpio --extract -d )
-	fi
-    done
-    for j in /conf/$i/*.remove ; do
-	subdir=${j%*.remove}
-	subdir=${subdir##*/}
-	if [ -f $j ]; then
-	    # doubly sure it is a memory disk before rm -rf'ing
-	    create_md $subdir
-	    (cd /$subdir; rm -rf `/bin/cat $j`)
-	fi
-    done
+	done
+	for j in /conf/$i/*.cpio.gz ; do
+		subdir=${j%*.cpio.gz}
+		subdir=${subdir##*/}
+		if [ -f $j ]; then
+			create_md $subdir
+			echo "Loading /$subdir from cpio archive $j"
+			(cd / ; /stand/gzip -d < $j | /stand/cpio --extract -d )
+		fi
+	done
+	for j in /conf/$i/*.remove ; do
+		subdir=${j%*.remove}
+		subdir=${subdir##*/}
+		if [ -f $j ]; then
+			# doubly sure it is a memory disk before rm -rf'ing
+			create_md $subdir
+			(cd /$subdir; rm -rf `/bin/cat $j`)
+		fi
+	done
 done
 

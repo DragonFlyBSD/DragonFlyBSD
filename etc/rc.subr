@@ -1,6 +1,6 @@
 # $NetBSD: rc.subr,v 1.49 2002/05/21 12:31:01 lukem Exp $
 # $FreeBSD: src/etc/rc.subr,v 1.13 2003/06/09 17:31:06 mtm Exp $
-# $DragonFly: src/etc/rc.subr,v 1.4 2003/11/18 23:45:59 dillon Exp $
+# $DragonFly: src/etc/rc.subr,v 1.5 2003/11/19 10:32:44 eirikn Exp $
 #
 # Copyright (c) 1997-2002 The NetBSD Foundation, Inc.
 # All rights reserved.
@@ -52,7 +52,7 @@ OSTYPE=`${CMD_OSTYPE}`
 case ${OSTYPE} in
 DragonFly)
 	SYSCTL_W="${SYSCTL}"
-        ;;
+	;;
 FreeBSD)
 	SYSCTL_W="${SYSCTL}"
 	;;

@@ -2,7 +2,7 @@
 #
 # $NetBSD: routed,v 1.7 2002/03/22 04:34:00 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/routed,v 1.6 2003/06/29 05:15:57 mtm Exp $
-# $DragonFly: src/etc/rc.d/routed,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/routed,v 1.2 2003/11/19 10:32:45 eirikn Exp $
 #
 
 # PROVIDE: routed
@@ -22,12 +22,10 @@ load_rc_config $name
 case ${OSTYPE} in
 DragonFly)
 	rcvar="router_enable"
-        command="${router:-/sbin/${name}}"
-        eval ${name}_flags=${router_flags}
-        start_precmd=
-        ;;
- 
-
+	command="${router:-/sbin/${name}}"
+	eval ${name}_flags=${router_flags}
+	start_precmd=
+	;;
 FreeBSD)
 	rcvar="router_enable"
 	command="${router:-/sbin/${name}}"

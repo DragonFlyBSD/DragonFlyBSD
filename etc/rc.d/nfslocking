@@ -2,7 +2,7 @@
 #
 # $NetBSD: nfslocking,v 1.6 2002/03/24 15:52:41 lukem Exp $
 # $FreeBSD: src/etc/rc.d/nfslocking,v 1.4 2003/01/20 18:57:16 mtm Exp $
-# $DragonFly: src/etc/rc.d/nfslocking,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/nfslocking,v 1.2 2003/11/19 10:32:45 eirikn Exp $
 #
 
 # PROVIDE: nfslocking
@@ -16,11 +16,11 @@ arg=$1
 
 case ${OSTYPE} in
 DragonFly)
- 	RCVAR_SERVER="nfs_server_enable"
-        RCVAR_CLIENT="nfs_client_enable"
-        RCVAR_STATD="rpc_statd_enable"
-        RCVAR_LOCKD="rpc_lockd_enable"
-        ;;
+	RCVAR_SERVER="nfs_server_enable"
+	RCVAR_CLIENT="nfs_client_enable"
+	RCVAR_STATD="rpc_statd_enable"
+	RCVAR_LOCKD="rpc_lockd_enable"
+	;;
 FreeBSD)
 	RCVAR_SERVER="nfs_server_enable"
 	RCVAR_CLIENT="nfs_client_enable"
@@ -36,7 +36,7 @@ NetBSD)
 esac
 
 start_precmd='checkyesno ${RCVAR_SERVER} || checkyesno ${RCVAR_CLIENT} ||
-		[ -n "$rc_force" ]'
+             [ -n "$rc_force" ]'
 stop_precmd=$start_precmd
 status_precmd=$start_precmd
 

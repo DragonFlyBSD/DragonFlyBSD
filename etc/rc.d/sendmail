@@ -2,7 +2,7 @@
 #
 # $NetBSD: sendmail,v 1.14 2002/02/12 01:26:36 lukem Exp $
 # $FreeBSD: src/etc/rc.d/sendmail,v 1.7 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/sendmail,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/sendmail,v 1.2 2003/11/19 10:32:45 eirikn Exp $
 #
 
 # PROVIDE: mail
@@ -23,18 +23,17 @@ required_files="/etc/mail/${name}.cf"
 case ${OSTYPE} in
 DragonFly)
 	command=${sendmail_program:-/usr/sbin/sendmail}
-        pidfile=${sendmail_pidfile:-/var/run/sendmail.pid}
-        load_rc_config $name
-        case ${sendmail_enable} in
-        [Nn][Oo][Nn][Ee])
-                sendmail_enable="NO"
-                sendmail_submit_enable="NO"
-                sendmail_outbound_enable="NO"
-                sendmail_msp_queue_enable="NO"
-                ;;
-        esac
-        ;;
-
+	pidfile=${sendmail_pidfile:-/var/run/sendmail.pid}
+	load_rc_config $name
+	case ${sendmail_enable} in
+	[Nn][Oo][Nn][Ee])
+		sendmail_enable="NO"
+		sendmail_submit_enable="NO"
+		sendmail_outbound_enable="NO"
+		sendmail_msp_queue_enable="NO"
+		;;
+	esac
+	;;
 FreeBSD)
 	command=${sendmail_program:-/usr/sbin/sendmail}
 	pidfile=${sendmail_pidfile:-/var/run/sendmail.pid}
@@ -101,24 +100,24 @@ run_rc_command "$1"
 case ${OSTYPE} in
 DragonFly)
 	required_files=
-        if ! checkyesno sendmail_enable; then
-                name="sendmail_submit"
-                rcvar=`set_rcvar`
-                start_cmd="${command} ${sendmail_submit_flags}"
-                run_rc_command "$1"
-        fi
-        if ! checkyesno sendmail_outbound_enable; then
-                name="sendmail_outbound"
-                rcvar=`set_rcvar`
-                start_cmd="${command} ${sendmail_outbound_flags}"
-                run_rc_command "$1"
-        fi
-        name="sendmail_clientmqueue"
-        rcvar="sendmail_msp_queue_enable"
-        start_cmd="${command} ${sendmail_msp_queue_flags}"
-        pidfile="${sendmail_mspq_pidfile:-/var/spool/clientmqueue/sm-client.pid}"
-        required_files="/etc/mail/submit.cf"
-        run_rc_command "$1"
+	if ! checkyesno sendmail_enable; then
+		name="sendmail_submit"
+		rcvar=`set_rcvar`
+		start_cmd="${command} ${sendmail_submit_flags}"
+		run_rc_command "$1"
+	fi
+	if ! checkyesno sendmail_outbound_enable; then
+		name="sendmail_outbound"
+		rcvar=`set_rcvar`
+		start_cmd="${command} ${sendmail_outbound_flags}"
+		run_rc_command "$1"
+	fi
+	name="sendmail_clientmqueue"
+	rcvar="sendmail_msp_queue_enable"
+	start_cmd="${command} ${sendmail_msp_queue_flags}"
+	pidfile="${sendmail_mspq_pidfile:-/var/spool/clientmqueue/sm-client.pid}"
+	required_files="/etc/mail/submit.cf"
+	run_rc_command "$1"
 	;;
 FreeBSD)
 	required_files=

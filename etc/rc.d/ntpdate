@@ -2,7 +2,7 @@
 #
 # $NetBSD: ntpdate,v 1.8 2002/03/22 04:16:39 lukem Exp $
 # $FreeBSD: src/etc/rc.d/ntpdate,v 1.4 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/Attic/ntpdate,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/Attic/ntpdate,v 1.2 2003/11/19 10:32:45 eirikn Exp $
 #
 
 # PROVIDE: ntpdate
@@ -17,9 +17,9 @@ rcvar=`set_rcvar`
 case ${OSTYPE} in
 DragonFly)
 	command="/usr/sbin/${name}"
-        command_args=">/dev/null 2>&1"
-        pidfile="/var/run/${name}.pid"
-        ;;
+	command_args=">/dev/null 2>&1"
+	pidfile="/var/run/${name}.pid"
+	;;
 FreeBSD)
 	command="/usr/sbin/${name}"
 	command_args=">/dev/null 2>&1"

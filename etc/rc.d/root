@@ -2,7 +2,7 @@
 #
 # $NetBSD: root,v 1.2 2000/05/13 08:45:09 lukem Exp $
 # $FreeBSD: src/etc/rc.d/root,v 1.5 2002/10/31 02:06:05 gordon Exp $
-# $DragonFly: src/etc/rc.d/root,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/root,v 1.2 2003/11/19 10:32:45 eirikn Exp $
 #
 
 # PROVIDE: root
@@ -20,27 +20,26 @@ root_start()
 	case ${OSTYPE} in
 	DragonFly)
 		# root normally must be read/write, but if this is a BOOTP NFS
-                # diskless boot it does not have to be.
-                #
-                case ${root_rw_mount} in
-                [Nn][Oo] | '')
-                        ;;
-                *)
-                        if ! mount -u -o rw /; then
-                                echo 'Mounting root filesystem rw failed, startup aborted'
-                                exit 1
-                        fi
-                        ;;
-                esac
-                umount -a >/dev/null 2>&1
-                mount /
-                # If we booted a special kernel remove the record
-                # so we will boot the default kernel next time.
-                if [ -e /boot/nextkernel ]; then
-                        rm -f /boot/nextkernel
-                fi
-                ;;
-
+		# diskless boot it does not have to be.
+		#
+		case ${root_rw_mount} in
+		[Nn][Oo] | '')
+			;;
+		*)
+			if ! mount -u -o rw /; then
+				echo 'Mounting root filesystem rw failed, startup aborted'
+				exit 1
+			fi
+			;;
+		esac
+		umount -a >/dev/null 2>&1
+		mount /
+		# If we booted a special kernel remove the record
+		# so we will boot the default kernel next time.
+		if [ -e /boot/nextkernel ]; then
+			rm -f /boot/nextkernel
+		fi
+		;;
 	FreeBSD)
 		# root normally must be read/write, but if this is a BOOTP NFS
 		# diskless boot it does not have to be.
