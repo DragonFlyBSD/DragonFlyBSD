@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.27 2004/05/27 19:21:49 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.28 2004/06/02 13:56:34 joerg Exp $
  */
 
 #include "opt_cpu.h"
@@ -48,6 +48,7 @@
 #include <sys/gmon.h>
 #endif
 
+#include <machine/smptests.h>
 #include <machine/smp.h>
 #include <machine/apicreg.h>
 #include <machine/atomic.h>
@@ -2433,7 +2434,7 @@ ap_finish(void)
 
 SYSINIT(finishsmp, SI_SUB_FINISH_SMP, SI_ORDER_FIRST, ap_finish, NULL)
 
-#ifdef APIC_INTR_REORDER
+#if defined(APIC_IO) && defined(APIC_INTR_REORDER)
 /*
  *     Maintain mapping from softintr vector to isr bit in local apic.
  */
