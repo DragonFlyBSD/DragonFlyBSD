@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cardbus/cardbus.c,v 1.28 2002/11/27 17:30:41 imp Exp $
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.3 2005/02/04 02:52:18 dillon Exp $
+ * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.4 2005/02/08 15:51:24 joerg Exp $
  */
 
 /*
@@ -52,6 +52,7 @@
 #include <sys/pciio.h>
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
+#include <bus/pci/pci_private.h>
 
 #include <dev/pccard/cardbus/cardbusreg.h>
 #include <dev/pccard/cardbus/cardbusvar.h>
