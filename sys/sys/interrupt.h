@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/interrupt.h,v 1.9.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/sys/interrupt.h,v 1.7 2003/07/13 05:45:12 dillon Exp $
+ * $DragonFly: src/sys/sys/interrupt.h,v 1.8 2004/02/25 17:38:51 joerg Exp $
  */
 
 #ifndef _SYS_INTERRUPT_H_
@@ -32,8 +32,8 @@
 
 #define MAX_INTS	32
 
-typedef void inthand2_t (void *_cookie);
-typedef void ointhand2_t (int _device_id);
+typedef void inthand2_t (void *);
+typedef void ointhand2_t (int);
 
 #ifdef _KERNEL
 

@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.8 2004/01/30 05:42:17 dillon Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.9 2004/02/25 17:38:51 joerg Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -245,7 +245,7 @@ struct sysinit {
 	C_SYSUNINIT(uniquifier, subsystem, order,		\
 	(sysinit_cfunc_t)(sysinit_nfunc_t)func, (void *)ident)
 
-void	sysinit_add (struct sysinit **set, struct sysinit **set_end);
+void	sysinit_add (struct sysinit **, struct sysinit **);
 
 /*
  * Infrastructure for tunable 'constants'.  Value may be specified at compile
@@ -358,11 +358,11 @@ extern struct linker_set execsw_set;
 
 struct intr_config_hook {
 	TAILQ_ENTRY(intr_config_hook) ich_links;
-	void	(*ich_func) (void *arg);
+	void	(*ich_func) (void *);
 	void	*ich_arg;
 };
 
-int	config_intrhook_establish (struct intr_config_hook *hook);
-void	config_intrhook_disestablish (struct intr_config_hook *hook);
+int	config_intrhook_establish (struct intr_config_hook *);
+void	config_intrhook_disestablish (struct intr_config_hook *);
 
 #endif /* !_SYS_KERNEL_H_*/

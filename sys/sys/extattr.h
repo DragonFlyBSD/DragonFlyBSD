@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/extattr.h,v 1.3 2000/01/19 06:07:34 rwatson Exp $
- * $DragonFly: src/sys/sys/extattr.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/extattr.h,v 1.3 2004/02/25 17:38:51 joerg Exp $
  */
 /*
  * Userland/kernel interface for Extended File System Attributes
@@ -52,12 +52,12 @@
 struct iovec;
 
 __BEGIN_DECLS
-int	extattrctl(const char *path, int cmd, const char *attrname, char *arg);
-int	extattr_delete_file(const char *path, const char *attrname);
-int	extattr_get_file(const char *path, const char *attrname,
-	    struct iovec *iovp, unsigned iovcnt);
-int	extattr_set_file(const char *path, const char *attrname,
-	    struct iovec *iovp, unsigned iovcnt);
+int	extattrctl(const char *, int, const char *, char *);
+int	extattr_delete_file(const char *, const char *);
+int	extattr_get_file(const char *, const char *,
+	    struct iovec *, unsigned);
+int	extattr_set_file(const char *, const char *,
+	    struct iovec *, unsigned);
 __END_DECLS
 
 #endif /* !_KERNEL */

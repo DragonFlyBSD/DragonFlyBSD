@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/acl.h,v 1.8 2000/01/28 15:22:51 rwatson Exp $
- * $DragonFly: src/sys/sys/acl.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/acl.h,v 1.3 2004/02/25 17:38:51 joerg Exp $
  */
 
 /* 
@@ -108,15 +108,14 @@ MALLOC_DECLARE(M_ACL);
  * have strict acl entry ordering requirements
  */
 __BEGIN_DECLS
-int	__acl_aclcheck_fd(int _filedes, acl_type_t _type, struct acl *_aclp);
-int	__acl_aclcheck_file(const char *_path, acl_type_t _type,
-	    struct acl *_aclp);
-int	__acl_delete_fd(int _filedes, acl_type_t _type);
-int	__acl_delete_file(const char *_path_p, acl_type_t _type);
-int	__acl_get_fd(int _filedes, acl_type_t _type, struct acl *_aclp);
-int	__acl_get_file(const char *_path, acl_type_t _type, struct acl *_aclp);
-int	__acl_set_fd(int _filedes, acl_type_t _type, struct acl *_aclp);
-int	__acl_set_file(const char *_path, acl_type_t _type, struct acl *_aclp);
+int	__acl_aclcheck_fd(int, acl_type_t, struct acl *);
+int	__acl_aclcheck_file(const char *, acl_type_t, struct acl *);
+int	__acl_delete_fd(int, acl_type_t);
+int	__acl_delete_file(const char *, acl_type_t);
+int	__acl_get_fd(int, acl_type_t, struct acl *);
+int	__acl_get_file(const char *, acl_type_t, struct acl *);
+int	__acl_set_fd(int, acl_type_t, struct acl *);
+int	__acl_set_file(const char *, acl_type_t, struct acl *);
 __END_DECLS
 
 /*
@@ -126,23 +125,23 @@ __END_DECLS
  * ACL type for different file systems (i.e., AFS)
  */
 __BEGIN_DECLS
-int	acl_delete_fd_np(int _filedes, acl_type_t _type);
-int	acl_delete_file_np(const char *_path_p, acl_type_t _type);
-int	acl_delete_def_file(const char *_path_p);
-acl_t	acl_dup(acl_t _acl);
-int	acl_free(void *_obj_p);
-acl_t	acl_from_text(const char *_buf_p);
-acl_t	acl_get_fd(int _fd);
-acl_t	acl_get_fd_np(int fd, acl_type_t _type);
-acl_t	acl_get_file(const char *_path_p, acl_type_t _type);
-acl_t	acl_init(int _count);
-int	acl_set_fd(int _fd, acl_t _acl);
-int	acl_set_fd_np(int _fd, acl_t _acl, acl_type_t _type);
-int	acl_set_file(const char *_path_p, acl_type_t _type, acl_t _acl);
-char	*acl_to_text(acl_t _acl, ssize_t *_len_p);
-int	acl_valid(acl_t _acl);
-int	acl_valid_fd_np(int _fd, acl_type_t _type, acl_t _acl);
-int	acl_valid_file_np(const char *_path_p, acl_type_t _type, acl_t _acl);
+int	acl_delete_fd_np(int, acl_type_t);
+int	acl_delete_file_np(const char *, acl_type_t);
+int	acl_delete_def_file(const char *);
+acl_t	acl_dup(acl_t);
+int	acl_free(void *);
+acl_t	acl_from_text(const char *);
+acl_t	acl_get_fd(int);
+acl_t	acl_get_fd_np(int, acl_type_t);
+acl_t	acl_get_file(const char *, acl_type_t);
+acl_t	acl_init(int);
+int	acl_set_fd(int, acl_t);
+int	acl_set_fd_np(int, acl_t, acl_type_t);
+int	acl_set_file(const char *, acl_type_t, acl_t);
+char	*acl_to_text(acl_t, ssize_t *);
+int	acl_valid(acl_t);
+int	acl_valid_fd_np(int, acl_type_t, acl_t);
+int	acl_valid_file_np(const char *, acl_type_t, acl_t);
 __END_DECLS
 
 #endif /* !_KERNEL */

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/module.h,v 1.14.2.3 2002/03/17 11:07:45 alfred Exp $
- * $DragonFly: src/sys/sys/module.h,v 1.6 2004/01/17 03:24:48 dillon Exp $
+ * $DragonFly: src/sys/sys/module.h,v 1.7 2004/02/25 17:38:51 joerg Exp $
  */
 
 #ifndef _SYS_MODULE_H_
@@ -174,10 +174,10 @@ struct module_stat {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	modnext(int _modid);
-int	modfnext(int _modid);
-int	modstat(int _modid, struct module_stat* _stat);
-int	modfind(const char *_name);
+int	modnext(int);
+int	modfnext(int);
+int	modstat(int, struct module_stat *);
+int	modfind(const char *);
 __END_DECLS
 
 #endif

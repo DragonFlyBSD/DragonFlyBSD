@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/linker.h,v 1.17.2.1 2002/03/11 01:13:53 dd Exp $
- * $DragonFly: src/sys/sys/linker.h,v 1.5 2003/11/20 22:07:34 dillon Exp $
+ * $DragonFly: src/sys/sys/linker.h,v 1.6 2004/02/25 17:38:51 joerg Exp $
  */
 
 #ifndef _SYS_LINKER_H_
@@ -255,13 +255,13 @@ int linker_ddb_symbol_values(c_linker_sym_t _sym, linker_symval_t *_symval);
  * Module lookup
  */
 extern caddr_t		preload_metadata;
-extern caddr_t		preload_search_by_name(const char *_name);
-extern caddr_t		preload_search_by_type(const char *_type);
-extern caddr_t		preload_search_next_name(caddr_t _base);
-extern caddr_t		preload_search_info(caddr_t _mod, int _inf);
-extern void		preload_delete_name(const char *_name);
-extern void		preload_bootstrap_relocate(vm_offset_t _offset);
-extern struct mod_metadata *find_mod_metadata(const char *modname);
+extern caddr_t		preload_search_by_name(const char *);
+extern caddr_t		preload_search_by_type(const char *);
+extern caddr_t		preload_search_next_name(caddr_t);
+extern caddr_t		preload_search_info(caddr_t, int);
+extern void		preload_delete_name(const char *);
+extern void		preload_bootstrap_relocate(vm_offset_t);
+extern struct mod_metadata *find_mod_metadata(const char *);
 
 
 #ifdef KLD_DEBUG
@@ -282,8 +282,8 @@ extern int kld_debug;
 #endif
 
 /* Support functions */
-int	elf_reloc(linker_file_t _lf, const void *_rel, int _type,
-		  const char *_sym);
+int	elf_reloc(linker_file_t, const void *, int, const char *);
+
 /* values for type */
 #define ELF_RELOC_REL	1
 #define ELF_RELOC_RELA	2
@@ -312,13 +312,13 @@ struct kld_sym_lookup {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	kldload(const char* _file);
-int	kldunload(int _fileid);
-int	kldfind(const char* _file);
-int	kldnext(int _fileid);
-int	kldstat(int _fileid, struct kld_file_stat* _stat);
-int	kldfirstmod(int _fileid);
-int	kldsym(int _fileid, int _cmd, void *_data);
+int	kldload(const char *);
+int	kldunload(int);
+int	kldfind(const char *);
+int	kldnext(int);
+int	kldstat(int, struct kld_file_stat *);
+int	kldfirstmod(int);
+int	kldsym(int, int, void *);
 __END_DECLS
 
 #endif

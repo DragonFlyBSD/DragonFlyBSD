@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/sys/event.h,v 1.5.2.6 2003/02/09 15:28:13 nectar Exp $
- *	$DragonFly: src/sys/sys/event.h,v 1.4 2003/08/20 07:31:21 rob Exp $
+ *	$DragonFly: src/sys/sys/event.h,v 1.5 2004/02/25 17:38:51 joerg Exp $
  */
 
 #ifndef _SYS_EVENT_H_
@@ -179,9 +179,8 @@ struct timespec;
 
 __BEGIN_DECLS
 int     kqueue (void);
-int     kevent (int kq, const struct kevent *changelist, int nchanges,
-		    struct kevent *eventlist, int nevents,
-		    const struct timespec *timeout);
+int     kevent (int, const struct kevent *, int, struct kevent *,
+		int, const struct timespec *);
 __END_DECLS
 
 #endif /* !_KERNEL */

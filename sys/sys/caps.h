@@ -3,7 +3,7 @@
  *
  *	Implements an architecture independant Capability Service API
  * 
- * $DragonFly: src/sys/sys/caps.h,v 1.3 2004/01/18 12:50:15 dillon Exp $
+ * $DragonFly: src/sys/sys/caps.h,v 1.4 2004/02/25 17:38:51 joerg Exp $
  */
 
 #ifndef _SYS_CAPS_H_
@@ -164,20 +164,19 @@ void caps_fork(struct proc *p1, struct proc *p2);
 /*
  * Userland API (libcaps)
  */
-caps_port_t caps_service(const char *name, uid_t uid, gid_t gid, 
-			    mode_t modes, int flags);
-caps_port_t caps_client(const char *name, uid_t uid, gid_t gid, int flags);
+caps_port_t caps_service(const char *, uid_t, gid_t, mode_t, int);
+caps_port_t caps_client(const char *, uid_t, gid_t, int);
 
 /*
  * Syscall API
  */
-int caps_sys_service(const char *name, uid_t uid, gid_t gid, int upcid, int flags);
-int caps_sys_client(const char *name, uid_t uid, gid_t gid, int upcid, int flags);
-off_t caps_sys_put(int portid, void *msg, int msgsize);
-int caps_sys_reply(int portid, void *msg, int msgsize, off_t msgcid);
-int caps_sys_get(int portid, void *msg, int maxsize, caps_msgid_t msgid, caps_cred_t ccr);
-int caps_sys_wait(int portid, void *msg, int maxsize, caps_msgid_t msgid, caps_cred_t ccr);
-int caps_sys_abort(int portid, off_t msgcid, int flags);
+int caps_sys_service(const char *, uid_t, gid_t, int, int);
+int caps_sys_client(const char *, uid_t, gid_t, int, int);
+off_t caps_sys_put(int, void *, int);
+int caps_sys_reply(int, void *, int, off_t);
+int caps_sys_get(int, void *, int, caps_msgid_t, caps_cred_t);
+int caps_sys_wait(int, void *, int, caps_msgid_t, caps_cred_t);
+int caps_sys_abort(int, off_t, int);
 
 #endif
 

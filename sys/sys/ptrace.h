@@ -32,7 +32,7 @@
  *
  *	@(#)ptrace.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/ptrace.h,v 1.10.2.2 2003/01/02 20:39:13 kan Exp $
- * $DragonFly: src/sys/sys/ptrace.h,v 1.4 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/ptrace.h,v 1.5 2004/02/25 17:38:51 joerg Exp $
  */
 
 #ifndef	_SYS_PTRACE_H_
@@ -83,7 +83,7 @@ int	kern_ptrace (struct proc *p, int req, pid_t pid, void *addr,
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	ptrace (int _request, pid_t _pid, caddr_t _addr, int _data);
+int	ptrace (int, pid_t, caddr_t, int);
 __END_DECLS
 
 #endif /* !_KERNEL */
