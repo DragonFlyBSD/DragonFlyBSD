@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.15 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.16 2003/08/18 16:45:30 dillon Exp $
  */
 
 /*
@@ -1495,7 +1495,7 @@ bdevvp(dev, vpp)
 }
 
 /*
- * Add vnode to the alias list hung off the dev_t.
+ * Add a vnode to the alias list hung off the dev_t.
  *
  * The reason for this gunk is that multiple vnodes can reference
  * the same physical device, so checking vp->v_usecount to see
@@ -1503,20 +1503,20 @@ bdevvp(dev, vpp)
  * the vnodes need to be accumulated.  vcount() does that.
  */
 void
-addaliasu(nvp, nvp_rdev)
-	struct vnode *nvp;
-	udev_t nvp_rdev;
+addaliasu(struct vnode *nvp, udev_t nvp_rdev)
 {
+	dev_t dev;
 
 	if (nvp->v_type != VBLK && nvp->v_type != VCHR)
 		panic("addaliasu on non-special vnode");
-	addalias(nvp, udev2dev(nvp_rdev, nvp->v_type == VBLK ? 1 : 0));
+	dev = udev2dev(nvp_rdev, nvp->v_type == VBLK ? 1 : 0);
+	nvp->v_rdev = dev;
+	if (dev != NULL)
+		addalias(nvp, dev);
 }
 
 void
-addalias(nvp, dev)
-	struct vnode *nvp;
-	dev_t dev;
+addalias(struct vnode *nvp, dev_t dev)
 {
 
 	if (nvp->v_type != VBLK && nvp->v_type != VCHR)
