@@ -36,7 +36,7 @@
  *	$Id$
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.6.2.2 2002/05/15 08:12:42 gj Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.5 2004/02/13 17:45:50 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.6 2004/05/04 12:03:49 hmp Exp $
  *
  *      last edit-date: [Fri Jan 12 17:01:26 2001]
  *
@@ -452,7 +452,9 @@ avma1pp2_attach_avma1pp(device_t dev)
 	void *ih = 0;
 	bus_space_handle_t bhandle;
 	bus_space_tag_t btag; 
+#if defined (__FreeBSD__) && __FreeBSD__ > 4
 	l1_bchan_state_t *chan;
+#endif
 
 	s = splimp();
 

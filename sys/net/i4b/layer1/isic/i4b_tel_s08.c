@@ -38,7 +38,7 @@
  *	================================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_tel_s08.c,v 1.5.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_tel_s08.c,v 1.3 2003/08/07 21:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_tel_s08.c,v 1.4 2004/05/04 12:03:49 hmp Exp $
  *
  *      last edit-date: [Wed Jan 24 09:27:58 2001]
  *
@@ -183,7 +183,7 @@ isic_probe_s08(device_t dev)
 	if((kvtop(sc->sc_vmem_addr) < 0xa0000) ||
 	   (kvtop(sc->sc_vmem_addr) > 0xdf000))
 	{
-		printf("isic%d: Error, mem addr 0x%lx outside 0xA0000-0xDF000 for Teles S0/8!\n",
+		printf("isic%d: Error, mem addr 0x%llx outside 0xA0000-0xDF000 for Teles S0/8!\n",
 				unit, kvtop(sc->sc_vmem_addr));
 		bus_release_resource(dev,SYS_RES_MEMORY,
 				     sc->sc_resources.mem_rid,

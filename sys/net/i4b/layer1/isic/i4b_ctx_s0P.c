@@ -28,7 +28,7 @@
  *	============================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_ctx_s0P.c,v 1.5.2.2 2001/12/10 12:18:11 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_ctx_s0P.c,v 1.3 2003/08/07 21:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_ctx_s0P.c,v 1.4 2004/05/04 12:03:49 hmp Exp $
  *
  *	last edit-date: [Wed Jan 24 09:07:22 2001]
  *
@@ -110,7 +110,7 @@ isic_attach_Cs0P(device_t dev)
 {
 	u_int32_t iobase1;
 	u_int32_t iobase2;
-	u_int32_t iocfg;
+	u_int32_t iocfg = 0;
 	int unit = device_get_unit(dev);
 	struct l1_softc *sc = &l1_sc[unit];	
 	bus_space_tag_t t;

@@ -38,7 +38,7 @@
  *	=================================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_tel_s016.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_tel_s016.c,v 1.3 2003/08/07 21:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_tel_s016.c,v 1.4 2004/05/04 12:03:49 hmp Exp $
  *
  *      last edit-date: [Wed Jan 24 09:27:24 2001]
  *
@@ -222,7 +222,7 @@ isic_probe_s016(device_t dev)
 			break;
 
 		default:
-			printf("isic%d: Error, invalid memory address 0x%lx for Teles S0/16!\n",
+			printf("isic%d: Error, invalid memory address 0x%llx for Teles S0/16!\n",
 				unit, kvtop(sc->sc_vmem_addr));
 			isic_detach_common(dev);
 			return(ENXIO);
