@@ -48,7 +48,7 @@
  * also provided sample code upon which this driver was based.
  *
  * $FreeBSD: src/sys/i386/isa/spic.c,v 1.4.2.1 2002/04/15 00:52:12 will Exp $
- * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.8 2004/05/19 22:52:44 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.9 2004/05/20 21:47:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -356,7 +356,7 @@ spic_attach(device_t dev)
 
 	/* There can be only one */
 	cdevsw_add(&spic_cdevsw, -1, device_get_unit(dev));
-	make_dev(&spic_cdevsw, device_get_unit(deV), 0, 0, 0600, "jogdial");
+	make_dev(&spic_cdevsw, device_get_unit(dev), 0, 0, 0600, "jogdial");
 
 	return 0;
 }
