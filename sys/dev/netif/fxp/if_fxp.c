@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.13 2004/07/02 17:42:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.14 2004/07/23 07:16:26 joerg Exp $
  */
 
 /*
@@ -650,7 +650,6 @@ fxp_attach(device_t dev)
 
 	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, "fxp", device_get_unit(dev));
-	ifp->if_output = ether_output;
 	ifp->if_baudrate = 100000000;
 	ifp->if_init = fxp_init;
 	ifp->if_softc = sc;
@@ -1365,7 +1364,7 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 				continue;
 			}
 			m->m_pkthdr.len = m->m_len = total_len;
-			ether_input(ifp, NULL, m);
+			(*ifp->if_input)(ifp, m);
 		}
 	}
 	if (rnr) {

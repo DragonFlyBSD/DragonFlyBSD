@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arcsubr.c,v 1.36 2001/06/14 05:44:23 itojun Exp $	*/
 /*	$FreeBSD: src/sys/net/if_arcsubr.c,v 1.1.2.5 2003/02/05 18:42:15 fjoe Exp $ */
-/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.9 2004/07/17 09:43:05 joerg Exp $ */
+/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.10 2004/07/23 07:16:30 joerg Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Ignatios Souvatzis
@@ -87,6 +87,9 @@ MODULE_VERSION(arcnet, 1);
 static struct mbuf *arc_defrag (struct ifnet *, struct mbuf *);
 static int arc_resolvemulti (struct ifnet *, struct sockaddr **,
 				 struct sockaddr *);
+static void	arc_input(struct ifnet *, struct mbuf *);
+static int	arc_output(struct ifnet *, struct mbuf *, struct sockaddr *,
+			   struct rtentry *);
 
 #define ARC_LLADDR(ifp)	(*(u_int8_t *)IF_LLADDR(ifp))
 
@@ -101,12 +104,9 @@ const uint8_t	arcbroadcastaddr[1] = {0};
  * Encapsulate a packet of type family for the local net.
  * Assumes that ifp is actually pointer to arccom structure.
  */
-int
-arc_output(ifp, m, dst, rt0)
-	struct ifnet *ifp;
-	struct mbuf *m;
-	struct sockaddr *dst;
-	struct rtentry *rt0;
+static int
+arc_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+	   struct rtentry *rt0)
 {
 	struct rtentry		*rt;
 	struct arccom		*ac;
@@ -524,10 +524,8 @@ arc_isphds(type)
  * the packet is in the mbuf chain m with
  * the ARCnet header.
  */
-void
-arc_input(ifp, m)
-	struct ifnet *ifp;
-	struct mbuf *m;
+static void
+arc_input(struct ifnet *ifp, struct mbuf *m)
 {
 	struct arc_header *ah;
 	int isr;
@@ -648,6 +646,8 @@ arc_ifattach(ifp, lla)
 	struct sockaddr_dl *sdl;
 	struct arccom *ac;
 
+	ifp->if_input = arc_input;
+	ifp->if_output = arc_output;
 	if_attach(ifp);
 	ifp->if_type = IFT_ARCNET;
 	ifp->if_addrlen = 1;

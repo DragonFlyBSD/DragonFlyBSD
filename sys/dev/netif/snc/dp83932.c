@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932.c,v 1.1.2.2 2003/02/11 08:52:00 nyan Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.10 2004/07/02 17:42:19 joerg Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.11 2004/07/23 07:16:28 joerg Exp $	*/
 /*	$NecBSD: dp83932.c,v 1.5 1999/07/29 05:08:44 kmatsuda Exp $	*/
 /*	$NetBSD: if_snc.c,v 1.18 1998/04/25 21:27:40 scottr Exp $	*/
 
@@ -186,7 +186,6 @@ sncconfig(sc, media, nmedia, defmedia, eaddr)
 	ifp->if_softc = sc;
 	if_initname(ifp, "snc", device_get_unit(sc->sc_dev));
 	ifp->if_ioctl = sncioctl;
-        ifp->if_output = ether_output;
 	ifp->if_start = sncstart;
 	ifp->if_flags =
 	    IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
@@ -1088,7 +1087,6 @@ sonic_read(sc, pkt, len)
 	int len;
 {
 	struct ifnet *ifp = &sc->sc_if;
-	struct ether_header *et;
 	struct mbuf *m;
 
 	if (len <= sizeof(struct ether_header) ||
@@ -1104,22 +1102,7 @@ sonic_read(sc, pkt, len)
 		return (0);
 	}
 
-	/* We assume that the header fit entirely in one mbuf. */
-	et = mtod(m, struct ether_header *);
-
-#ifdef SNCDEBUG
-	if ((sncdebug & SNC_SHOWRXHDR) != 0)
-	{
-		device_printf(sc->sc_dev, "rcvd 0x%x len=%d type=0x%x from %6D",
-		    pkt, len, htons(et->ether_type),
-		    et->ether_shost, ":");
-		printf(" (to %6D)\n", et->ether_dhost, ":");
-	}
-#endif /* SNCDEBUG */
-
-	/* Pass the packet up, with the ether header sort-of removed. */
-	m_adj(m, sizeof(struct ether_header));
-	ether_input(ifp, et, m);
+	(*ifp->if_input)(ifp, m);
 	return (1);
 }
 

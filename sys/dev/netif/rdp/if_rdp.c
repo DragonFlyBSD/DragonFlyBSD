@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.11 2004/07/02 17:42:18 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.12 2004/07/23 07:16:27 joerg Exp $
  */
 
 /*
@@ -602,7 +602,6 @@ rdp_attach(struct isa_device *isa_dev)
 	 */
 	ifp->if_softc = sc;
 	if_initname(ifp, "rdp", unit);
-	ifp->if_output = ether_output;
 	ifp->if_start = rdp_start;
 	ifp->if_ioctl = rdp_ioctl;
 	ifp->if_watchdog = rdp_watchdog;
@@ -1098,7 +1097,7 @@ rdp_rint(struct rdp_softc *sc)
 static void
 rdp_get_packet(struct rdp_softc *sc, unsigned len)
 {
-	struct ether_header *eh;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mbuf *m;
 	u_char *packet_ptr;
 	size_t s;
@@ -1107,7 +1106,7 @@ rdp_get_packet(struct rdp_softc *sc, unsigned len)
 	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL)
 		return;
-	m->m_pkthdr.rcvif = &sc->arpcom.ac_if;
+	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len = m->m_len = len;
 
 	/*
@@ -1132,7 +1131,6 @@ rdp_get_packet(struct rdp_softc *sc, unsigned len)
 	 * This is important for NFS.
 	 */
 	m->m_data += 2;
-	eh = mtod(m, struct ether_header *);
 
 	/*
 	 * Get packet, including link layer address, from interface.
@@ -1140,7 +1138,7 @@ rdp_get_packet(struct rdp_softc *sc, unsigned len)
 	outb(sc->baseaddr + lpt_control, Ctrl_LNibRead);
 	outb(sc->baseaddr + lpt_data, RdAddr + MAR);
 
-	packet_ptr = (u_char *)eh;
+	packet_ptr = mtod(m, u_char *);
 	if (sc->slow)
 		for (s = 0; s < len; s++, packet_ptr++)
 			*packet_ptr = RdByteA2(sc);
@@ -1152,13 +1150,7 @@ rdp_get_packet(struct rdp_softc *sc, unsigned len)
 	outb(sc->baseaddr + lpt_control, Ctrl_SelData);
 	WrNib(sc, CMR1, CMR1_RDPAC);
 
-	/*
-	 * Remove link layer address.
-	 */
-	m->m_pkthdr.len = m->m_len = len - sizeof(struct ether_header);
-	m->m_data += sizeof(struct ether_header);
-
-	ether_input(&sc->arpcom.ac_if, eh, m);
+	(*ifp->if_input)(ifp, m);
 }
 
 /*

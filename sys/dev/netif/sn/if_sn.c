@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.10 2004/07/02 17:42:19 joerg Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.11 2004/07/23 07:16:28 joerg Exp $
  */
 
 /*
@@ -218,7 +218,6 @@ sn_attach(device_t dev)
 	if_initname(ifp, "sn", device_get_unit(dev));
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
-	ifp->if_output = ether_output;
 	ifp->if_start = snstart;
 	ifp->if_ioctl = snioctl;
 	ifp->if_watchdog = snwatchdog;
@@ -1002,7 +1001,6 @@ void
 snread(struct ifnet *ifp)
 {
         struct sn_softc *sc = ifp->if_softc;
-	struct ether_header *eh;
 	struct mbuf    *m;
 	short           status;
 	int             packet_number;
@@ -1046,7 +1044,7 @@ read_another:
 	 * Account for receive errors and discard.
 	 */
 	if (status & RS_ERRORS) {
-		++sc->arpcom.ac_if.if_ierrors;
+		++ifp->if_ierrors;
 		goto out;
 	}
 	/*
@@ -1066,7 +1064,7 @@ read_another:
 	if (m == NULL)
 		goto out;
 
-	m->m_pkthdr.rcvif = &sc->arpcom.ac_if;
+	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len = m->m_len = packet_length;
 
 	/*
@@ -1079,31 +1077,26 @@ read_another:
 	 */
 	if ((m->m_flags & M_EXT) == 0) {
 		m_freem(m);
-		++sc->arpcom.ac_if.if_ierrors;
+		++ifp->if_ierrors;
 		printf("sn: snread() kernel memory allocation problem\n");
 		goto out;
 	}
-	eh = mtod(m, struct ether_header *);
 
 	/*
 	 * Get packet, including link layer address, from interface.
 	 */
 
-	data = (u_char *) eh;
+	data = mtod(m, u_char *);
 	insw(BASE + DATA_REG_W, data, packet_length >> 1);
 	if (packet_length & 1) {
 		data += packet_length & ~1;
 		*data = inb(BASE + DATA_REG_B);
 	}
-	++sc->arpcom.ac_if.if_ipackets;
+	++ifp->if_ipackets;
 
-	/*
-	 * Remove link layer addresses and whatnot.
-	 */
-	m->m_pkthdr.len = m->m_len = packet_length - sizeof(struct ether_header);
-	m->m_data += sizeof(struct ether_header);
+	m->m_pkthdr.len = m->m_len = packet_length;
 
-	ether_input(&sc->arpcom.ac_if, eh, m);
+	(*ifp->if_input)(ifp, m);
 
 out:
 

@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.12 2004/07/02 17:42:20 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.13 2004/07/23 07:16:29 joerg Exp $
  *
  */
 
@@ -157,7 +157,6 @@ vxattach(sc)
     ifp->if_mtu = ETHERMTU;
     ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
     ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
-    ifp->if_output = ether_output;
     ifp->if_start = vxstart;
     ifp->if_ioctl = vxioctl;
     ifp->if_init = vxinit;
@@ -703,8 +702,7 @@ again:
 	return;
     }
 
-    m_adj(m, sizeof(struct ether_header));
-    ether_input(ifp, eh, m);
+    (*ifp->if_input)(ifp, m);
 
     /*
     * In periods of high traffic we can actually receive enough

@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.16 2004/07/02 17:42:19 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.17 2004/07/23 07:16:28 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -1487,7 +1487,6 @@ static int sk_attach(dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = sk_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = sk_start;
 	ifp->if_watchdog = sk_watchdog;
 	ifp->if_init = sk_init;
@@ -1907,7 +1906,6 @@ static void skc_shutdown(dev)
 static void sk_rxeof(sc_if)
 	struct sk_if_softc	*sc_if;
 {
-	struct ether_header	*eh;
 	struct mbuf		*m;
 	struct ifnet		*ifp;
 	struct sk_chain		*cur_rx;
@@ -1961,11 +1959,7 @@ static void sk_rxeof(sc_if)
 		}
 
 		ifp->if_ipackets++;
-		eh = mtod(m, struct ether_header *);
-
-		/* Remove header from mbuf and pass it on. */
-		m_adj(m, sizeof(struct ether_header));
-		ether_input(ifp, eh, m);
+		(*ifp->if_input)(ifp, m);
 	}
 
 	sc_if->sk_cdata.sk_rx_prod = i;

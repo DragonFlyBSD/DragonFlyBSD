@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.13 2004/07/17 09:43:05 joerg Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.14 2004/07/23 07:16:24 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -380,7 +380,6 @@ oltr_pci_attach(device_t dev)
 	 */
 	ifp->if_softc	= sc;
 	if_initname(ifp, "oltr", device_get_unit(dev));
-	ifp->if_output	= iso88025_output;
 	ifp->if_init	= oltr_init;
 	ifp->if_start	= oltr_start;
 	ifp->if_ioctl	= oltr_ioctl;
@@ -414,13 +413,8 @@ oltr_pci_attach(device_t dev)
 	/*
 	 * Attach the interface
 	 */
-	if_attach(ifp);
 	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
 	iso88025_ifattach(ifp);
-
-#if (NBPFILTER > 0) || defined(__DragonFly__) || (__FreeBSD_version > 400000)
-	bpfattach(ifp, DLT_IEEE802, sizeof(struct iso88025_header));
-#endif
 
 	splx(s);
 	return(0);
@@ -656,13 +650,8 @@ oltr_pci_attach(pcici_t config_id, int unit)
 	/*
 	 * Attach the interface
 	 */
-	if_attach(ifp);
 	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
 	iso88025_ifattach(ifp);
-
-#if (NBPFILTER > 0) || defined(__DragonFly__) || (__FreeBSD_version > 400000)
-	bpfattach(ifp, DLT_IEEE802, sizeof(struct iso88025_header));
-#endif
 
 	splx(s);
 	return;
@@ -1389,7 +1378,7 @@ DriverReceiveFrameCompleted(void *DriverHandle, int ByteCount, int FragmentCount
 	struct ifnet		*ifp = (struct ifnet *)&sc->arpcom.ac_if;
 	struct mbuf		*m0, *m1, *m;
 	struct iso88025_header	*th;
-	int			frame_len = ByteCount, hdr_len, i = (int)FragmentHandle, rc, s;
+	int			frame_len = ByteCount, i = (int)FragmentHandle, rc, s;
 	int			mbuf_offset, mbuf_size, frag_offset, copy_length;
 	char			*fragment = sc->rx_ring[RING_BUFFER(i)].data;
 	
@@ -1477,15 +1466,7 @@ DriverReceiveFrameCompleted(void *DriverHandle, int ByteCount, int FragmentCount
 			/*}*/
 			ifp->if_ipackets++;
 
-			hdr_len = ISO88025_HDR_LEN;
-			if (th->iso88025_shost[0] & 0x80)
-				hdr_len += (ntohs(th->rcf) & 0x1f00) >> 8;
-
-			m0->m_pkthdr.len -= hdr_len;
-			m0->m_len -= hdr_len;
-			m0->m_data += hdr_len;
-
-			iso88025_input(ifp, th, m0);
+			(*ifp->if_input)(ifp, m0);
 
 		} else {	/* Receiver error */
 			if (ReceiveStatus != TRLLD_RCV_NO_DATA) {

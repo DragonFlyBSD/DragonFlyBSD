@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.10 2004/07/02 17:42:19 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.11 2004/07/23 07:16:28 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
  */
@@ -814,7 +814,6 @@ static int sf_attach(dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = sf_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = sf_start;
 	ifp->if_watchdog = sf_watchdog;
 	ifp->if_init = sf_init;
@@ -960,7 +959,6 @@ static int sf_newbuf(sc, c, m)
 static void sf_rxeof(sc)
 	struct sf_softc		*sc;
 {
-	struct ether_header	*eh;
 	struct mbuf		*m;
 	struct ifnet		*ifp;
 	struct sf_rx_bufdesc_type0	*desc;
@@ -1001,12 +999,9 @@ static void sf_rxeof(sc)
 		m_adj(m0, ETHER_ALIGN);
 		m = m0;
 
-		eh = mtod(m, struct ether_header *);
 		ifp->if_ipackets++;
 
-		/* Remove header from mbuf and pass it on. */
-		m_adj(m, sizeof(struct ether_header));
-		ether_input(ifp, eh, m);
+		(*ifp->if_input)(ifp, m);
 	}
 
 	csr_write_4(sc, SF_CQ_CONSIDX,

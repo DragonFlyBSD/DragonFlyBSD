@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.10 2004/06/02 14:42:48 eirikn Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.11 2004/07/23 07:16:24 joerg Exp $
  */
 
 /*
@@ -813,13 +813,7 @@ done_probe:
   /*
    * final commit
    */
-
-  if_attach(ifp);
   atm_ifattach(ifp); 
-
-#if NBPF > 0 
-  BPFATTACH(ifp, DLT_ATM_RFC1483, sizeof(struct atmllc));
-#endif
 }
 
 

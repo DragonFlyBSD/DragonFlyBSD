@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.14 2004/06/02 14:42:59 eirikn Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.15 2004/07/23 07:16:31 joerg Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -244,7 +244,6 @@ tapcreate(dev)
 		taplastunit = unit;
 
 	ifp->if_init = tapifinit;
-	ifp->if_output = ether_output;
 	ifp->if_start = tapifstart;
 	ifp->if_ioctl = tapifioctl;
 	ifp->if_mtu = ETHERMTU;
@@ -716,7 +715,6 @@ tapwrite(dev, uio, flag)
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
 	struct mbuf		*top = NULL, **mp = NULL, *m = NULL;
-	struct ether_header	*eh = NULL;
 	int		 	 error = 0, tlen, mlen;
 
 	TAPDEBUG("%s writting, minor = %#x\n",
@@ -772,9 +770,7 @@ tapwrite(dev, uio, flag)
 	 * adjust mbuf and give packet to the ether_input
 	 */
 
-	eh = mtod(top, struct ether_header *);
-	m_adj(top, sizeof(struct ether_header));
-	ether_input(ifp, eh, top);
+	(*ifp->if_input)(ifp, top);
 	ifp->if_ipackets ++; /* ibytes are counted in ether_input */
 
 	return (0);

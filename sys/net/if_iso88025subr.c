@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_iso88025subr.c,v 1.7.2.7 2002/06/18 00:15:31 kbyanc Exp $
- * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.8 2004/07/17 09:43:05 joerg Exp $
+ * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.9 2004/07/23 07:16:30 joerg Exp $
  *
  */
 
@@ -83,19 +83,26 @@
 #include <sys/kernel.h>
 #include <net/iso88025.h>
 
+static int	iso88025_output(struct ifnet *, struct mbuf *,
+				struct sockaddr *, struct rtentry *);
+static void	iso88025_input(struct ifnet *, struct mbuf *);
+
 void
 iso88025_ifattach(struct ifnet *ifp)
 {
-    struct ifaddr *ifa = NULL;
-    struct sockaddr_dl *sdl;
+	struct ifaddr *ifa = NULL;
+	struct sockaddr_dl *sdl;
 
-    ifp->if_type = IFT_ISO88025;
-    ifp->if_addrlen = ISO88025_ADDR_LEN;
-    ifp->if_hdrlen = ISO88025_HDR_LEN;
-    if (ifp->if_baudrate == 0)
-        ifp->if_baudrate = TR_16MBPS; /* 16Mbit should be a safe default */
-    if (ifp->if_mtu == 0)
-        ifp->if_mtu = ISO88025_DEFAULT_MTU;
+	ifp->if_input = iso88025_input;
+	ifp->if_output = iso88025_output;
+	if_attach(ifp);
+	ifp->if_type = IFT_ISO88025;
+	ifp->if_addrlen = ISO88025_ADDR_LEN;
+	ifp->if_hdrlen = ISO88025_HDR_LEN;
+	if (ifp->if_baudrate == 0)
+		ifp->if_baudrate = TR_16MBPS; /* 16Mbit should be a safe default */
+	if (ifp->if_mtu == 0)
+		ifp->if_mtu = ISO88025_DEFAULT_MTU;
 
         ifa = ifnet_addrs[ifp->if_index - 1];
         if (ifa == 0) {
@@ -106,6 +113,7 @@ iso88025_ifattach(struct ifnet *ifp)
         sdl->sdl_type = IFT_ISO88025;
         sdl->sdl_alen = ifp->if_addrlen;
         bcopy(((struct arpcom *)ifp)->ac_enaddr, LLADDR(sdl), ifp->if_addrlen);
+	bpfattach(ifp, DLT_IEEE802, sizeof(struct iso88025_header));
 }
 
 int
@@ -159,7 +167,7 @@ iso88025_ioctl(struct ifnet *ifp, int command, caddr_t data)
 /*
  * ISO88025 encapsulation
  */
-int
+static int
 iso88025_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst, struct rtentry *rt0)
 {
 	struct iso88025_header *th;
@@ -328,17 +336,32 @@ bad:
 /*
  * ISO 88025 de-encapsulation
  */
-void
-iso88025_input(struct ifnet *ifp, struct iso88025_header *th, struct mbuf *m)
+static void
+iso88025_input(struct ifnet *ifp, struct mbuf *m)
 {
+	struct llc *l;
+	struct iso88025_header *th = mtod(m, struct iso88025_header *);
+	int isr, hdr_len;
 	u_short ether_type;
-	int isr;
-	struct llc *l = mtod(m, struct llc *);
 
 	if ((ifp->if_flags & IFF_UP) == 0) {
 		m_freem(m);
 		return;
 	}
+
+	hdr_len = ISO88025_HDR_LEN;
+	if (th->iso88025_shost[0] & 0x80)
+		hdr_len += (ntohs(th->rcf) & 0x1f00) >> 8;
+
+	if (m->m_len < hdr_len) {
+		m_freem(m);
+		return;
+	}
+	m->m_pkthdr.len -= hdr_len;
+	m->m_len -= hdr_len;
+	m->m_data += hdr_len;
+
+	l = mtod(m, struct llc *);
 
 	switch (l->llc_control) {
 	case LLC_UI:

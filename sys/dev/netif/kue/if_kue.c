@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  *  $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.11 2004/07/02 17:42:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.12 2004/07/23 07:16:26 joerg Exp $
  */
 
 /*
@@ -482,7 +482,6 @@ USB_ATTACH(kue)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = kue_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = kue_start;
 	ifp->if_watchdog = kue_watchdog;
 	ifp->if_init = kue_init;

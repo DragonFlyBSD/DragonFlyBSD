@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.14 2004/07/17 09:43:05 joerg Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.15 2004/07/23 07:16:30 joerg Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -54,8 +54,10 @@
  *
  * On input, each interface unwraps the data received by it, and either
  * places it on the input queue of a internetwork datagram routine
- * and posts the associated software interrupt, or passes the datagram to a raw
- * packet input routine.
+ * and posts the associated software interrupt, or passes the datagram to
+ * the routine if_input. It is called with the mbuf chain as parameter:
+ *	(*ifp->if_input)(ifp, m)
+ * The input routine removes the protocol dependent header if necessary.
  *
  * Routines exist for locating interfaces by their addresses
  * or for locating a interface on a certain network, as well as more general
@@ -156,6 +158,8 @@ struct ifnet {
 	int	(*if_output)		/* output routine (enqueue) */
 		(struct ifnet *, struct mbuf *, struct sockaddr *,
 		     struct rtentry *);
+	void	(*if_input)		/* input routine from hardware driver */
+		(struct ifnet *, struct mbuf *);
 	void	(*if_start)		/* initiate output routine */
 		(struct ifnet *);
 	int	(*if_ioctl)		/* ioctl routine */
@@ -368,8 +372,6 @@ void	ether_ifattach_bpf(struct ifnet *, uint8_t *, u_int, u_int);
 void	ether_ifdetach(struct ifnet *);
 void	ether_input(struct ifnet *, struct ether_header *, struct mbuf *);
 void	ether_demux(struct ifnet *, struct ether_header *, struct mbuf *);
-int	ether_output(struct ifnet *,
-	   struct mbuf *, struct sockaddr *, struct rtentry *);
 int	ether_output_frame(struct ifnet *, struct mbuf *);
 int	ether_ioctl(struct ifnet *, int, caddr_t);
 uint32_t	ether_crc32_le(const uint8_t *, size_t);

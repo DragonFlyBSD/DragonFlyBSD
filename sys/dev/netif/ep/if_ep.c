@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.11 2004/07/02 17:42:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.12 2004/07/23 07:16:26 joerg Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -292,7 +292,6 @@ ep_attach(sc)
 	if_initname(ifp, "ep", sc->unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
-	ifp->if_output = ether_output;
 	ifp->if_start = ep_if_start;
 	ifp->if_ioctl = ep_if_ioctl;
 	ifp->if_watchdog = ep_if_watchdog;
@@ -663,7 +662,6 @@ static void
 epread(sc)
     struct ep_softc *sc;
 {
-    struct ether_header *eh;
     struct mbuf *top, *mcur, *m;
     struct ifnet *ifp;
     int lenthisone;
@@ -771,9 +769,7 @@ read_again:
     top->m_pkthdr.rcvif = &sc->arpcom.ac_if;
     top->m_pkthdr.len = sc->cur_len;
 
-    eh = mtod(top, struct ether_header *);
-    m_adj(top, sizeof(struct ether_header));
-    ether_input(ifp, eh, top);
+    (*ifp->if_input)(ifp, top);
     sc->top = 0;
     while (inw(BASE + EP_STATUS) & S_COMMAND_IN_PROGRESS);
     outw(BASE + EP_COMMAND, SET_RX_EARLY_THRESH | RX_INIT_EARLY_THRESH);

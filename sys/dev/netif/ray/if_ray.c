@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.13 2004/07/02 17:42:18 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.14 2004/07/23 07:16:27 joerg Exp $
  *
  */
 
@@ -510,7 +510,6 @@ ray_attach(device_t dev)
 	ifp->if_hdrlen = sizeof(struct ieee80211_frame) + 
 	    sizeof(struct ether_header);
 	ifp->if_baudrate = 1000000; /* Is this baud or bps ;-) */
-	ifp->if_output = ether_output;
 	ifp->if_start = ray_tx;
 	ifp->if_ioctl = ray_ioctl;
 	ifp->if_watchdog = ray_watchdog;
@@ -2080,9 +2079,7 @@ ray_rx_data(struct ray_softc *sc, struct mbuf *m0, u_int8_t siglev, u_int8_t ant
 	RAY_MBUF_DUMP(sc, RAY_DBG_RX, m0, "(3) packet after trimming");
 	ifp->if_ipackets++;
 	ray_rx_update_cache(sc, header->i_addr2, siglev, antenna);
-	eh = mtod(m0, struct ether_header *);
-	m_adj(m0, sizeof(struct ether_header));
-	ether_input(ifp, eh, m0);
+	(*ifp->if_input)(ifp, m0);
 }
 
 /*

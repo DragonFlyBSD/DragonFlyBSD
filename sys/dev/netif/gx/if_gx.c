@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.9 2004/07/02 17:42:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.10 2004/07/23 07:16:26 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -341,7 +341,6 @@ gx_attach(device_t dev)
 	if_initname(ifp, "gx", device_get_unit(dev));
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = gx_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = gx_start;
 	ifp->if_watchdog = gx_watchdog;
 	ifp->if_init = gx_init;
@@ -1219,7 +1218,6 @@ gx_setmulti(struct gx_softc *gx)
 static void
 gx_rxeof(struct gx_softc *gx)
 {
-	struct ether_header *eh;
 	struct gx_rx_desc *rx;
 	struct ifnet *ifp;
 	int idx, staterr, len;
@@ -1285,11 +1283,7 @@ gx_rxeof(struct gx_softc *gx)
 		}
 
 		ifp->if_ipackets++;
-		eh = mtod(m, struct ether_header *);
 		m->m_pkthdr.rcvif = ifp;
-
-		/* Remove header from mbuf and pass it on. */
-		m_adj(m, sizeof(struct ether_header));
 
 #define IP_CSMASK 	(GX_RXSTAT_IGNORE_CSUM | GX_RXSTAT_HAS_IP_CSUM)
 #define TCP_CSMASK \
@@ -1317,11 +1311,10 @@ gx_rxeof(struct gx_softc *gx)
 		 * If we received a packet with a vlan tag, pass it
 		 * to vlan_input() instead of ether_input().
 		 */
-		if (staterr & GX_RXSTAT_VLAN_PKT) {
-			VLAN_INPUT_TAG(eh, m, rx->rx_special);
-			continue;
-		}
-		ether_input(ifp, eh, m);
+		if (staterr & GX_RXSTAT_VLAN_PKT)
+			VLAN_INPUT_TAG(m, rx->rx_special);
+		else
+			(*ifp->if_input)(ifp, m);
 		continue;
 
   ierror:

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.11 2004/07/02 17:42:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.12 2004/07/23 07:16:26 joerg Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -239,7 +239,6 @@ ex_attach(device_t dev)
 	if_initname(ifp, "ex", unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_SIMPLEX | IFF_BROADCAST /* XXX not done yet. | IFF_MULTICAST */;
-	ifp->if_output = ether_output;
 	ifp->if_start = ex_start;
 	ifp->if_ioctl = ex_ioctl;
 	ifp->if_watchdog = ex_watchdog;
@@ -676,7 +675,6 @@ ex_rx_intr(struct ex_softc *sc)
 	int			QQQ;
 	struct mbuf *		m;
 	struct mbuf *		ipkt;
-	struct ether_header *	eh;
 
 	DODEBUG(Start_End, printf("ex_rx_intr%d: start\n", unit););
 
@@ -743,17 +741,7 @@ ex_rx_intr(struct ex_softc *sc)
 						m->m_len = MLEN;
 					}
 				}
-				eh = mtod(ipkt, struct ether_header *);
-#ifdef EXDEBUG
-	if (debug_mask & Rcvd_Pkts) {
-		if ((eh->ether_dhost[5] != 0xff) || (eh->ether_dhost[0] != 0xff)) {
-			printf("Receive packet with %d data bytes: %6D -> ", QQQ, eh->ether_shost, ":");
-			printf("%6D\n", eh->ether_dhost, ":");
-		} /* QQQ */
-	}
-#endif
-				m_adj(ipkt, sizeof(struct ether_header));
-				ether_input(ifp, eh, ipkt);
+				(*ifp->if_input)(ifp, ipkt);
 				ifp->if_ipackets++;
 			}
 		} else {

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.11 2004/07/02 17:42:19 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.12 2004/07/23 07:16:29 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
  */
@@ -1290,7 +1290,6 @@ static int tl_attach(dev)
 	if_initname(ifp, "tl", sc->tl_unit);
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = tl_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = tl_start;
 	ifp->if_watchdog = tl_watchdog;
 	ifp->if_init = tl_init;
@@ -1532,11 +1531,7 @@ static int tl_intvec_rxeof(xsc, type)
 				continue;
 		}
 
-		/* Remove header from mbuf and pass it on. */
-		m->m_pkthdr.len = m->m_len =
-				total_len - sizeof(struct ether_header);
-		m->m_data += sizeof(struct ether_header);
-		ether_input(ifp, eh, m);
+		(*ifp->if_input)(ifp, m);
 	}
 
 	return(r);

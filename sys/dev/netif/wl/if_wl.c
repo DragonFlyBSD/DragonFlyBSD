@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.12 2004/07/02 17:42:20 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.13 2004/07/23 07:16:30 joerg Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -496,7 +496,6 @@ wlattach(struct isa_device *id)
     ifp->if_flags |= IFF_MULTICAST;
 #endif	/* MULTICAST */
     ifp->if_init = wlinit;
-    ifp->if_output = ether_output;
     ifp->if_start = wlstart;
     ifp->if_ioctl = wlioctl;
     ifp->if_timer = 0;   /* paranoia */

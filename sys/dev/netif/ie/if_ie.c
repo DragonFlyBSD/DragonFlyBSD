@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.13 2004/07/02 17:42:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.14 2004/07/23 07:16:26 joerg Exp $
  */
 
 /*
@@ -815,7 +815,6 @@ ieattach(struct isa_device *dvp)
 		  ie->hard_vers + 1);
 
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
-	ifp->if_output = ether_output;
 	ifp->if_start = iestart;
 	ifp->if_ioctl = ieioctl;
 	ifp->if_init = ieinit;

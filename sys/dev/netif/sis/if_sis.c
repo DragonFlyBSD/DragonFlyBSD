@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.17 2004/07/07 15:46:00 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.18 2004/07/23 07:16:28 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
  */
@@ -1276,7 +1276,6 @@ sis_attach(device_t dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = sis_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = sis_start;
 	ifp->if_watchdog = sis_watchdog;
 	ifp->if_init = sis_init;
@@ -1558,7 +1557,7 @@ sis_rxeof(struct sis_softc *sc)
 		}
 
 		ifp->if_ipackets++;
-		ether_input(ifp, NULL, m);
+		(*ifp->if_input)(ifp, m);
 	}
 
 	sc->sis_cdata.sis_rx_prod = i;

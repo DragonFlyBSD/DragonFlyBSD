@@ -1,6 +1,6 @@
 /*	$NetBSD: smc90cx6.c,v 1.38 2001/07/07 15:57:53 thorpej Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6.c,v 1.1.2.3 2003/02/05 18:42:14 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.9 2004/06/02 14:42:49 eirikn Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.10 2004/07/23 07:16:25 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -314,7 +314,6 @@ cm_attach(dev)
 
 	ifp->if_softc = sc;
 	if_initname(ifp, "cm", device_get_unit(dev));
-	ifp->if_output = arc_output;
 	ifp->if_start = cm_start;
 	ifp->if_ioctl = cm_ioctl;
 	ifp->if_watchdog  = cm_watchdog;
@@ -692,7 +691,7 @@ cm_srint(vsc)
 	    rman_get_bustag(sc->mem_res), rman_get_bushandle(sc->mem_res),
 	    cm_ram_ptr + offset, mtod(m, u_char *) + 2, len);
 
-	arc_input(ifp, m);
+	(*ifp->if_input)(ifp, m);
 
 	m = NULL;
 	ifp->if_ipackets++;

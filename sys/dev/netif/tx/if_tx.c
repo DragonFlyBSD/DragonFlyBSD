@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.12 2004/07/02 17:42:20 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.13 2004/07/23 07:16:29 joerg Exp $
  */
 
 /*
@@ -232,7 +232,6 @@ epic_attach(dev)
 	ifp->if_softc = sc;
 	ifp->if_flags = IFF_BROADCAST|IFF_SIMPLEX|IFF_MULTICAST;
 	ifp->if_ioctl = epic_ifioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = epic_ifstart;
 	ifp->if_watchdog = epic_ifwatchdog;
 	ifp->if_init = (if_init_f_t*)epic_init;
@@ -616,10 +615,10 @@ epic_rx_done(sc)
 	epic_softc_t *sc;
 {
 	u_int16_t len;
+	struct ifnet *ifp = &sc->sc_if;
 	struct epic_rx_buffer *buf;
 	struct epic_rx_desc *desc;
 	struct mbuf *m;
-	struct ether_header *eh;
 
 	while ((sc->rx_desc[sc->cur_rx].status & 0x8000) == 0) {
 		buf = sc->rx_buffer + sc->cur_rx;
@@ -648,7 +647,7 @@ epic_rx_done(sc)
 		if (NULL == buf->mbuf) {
 			buf->mbuf = m;
 			desc->status = 0x8000;
-			sc->sc_if.if_ierrors++;
+			ifp->if_ierrors++;
 			continue;
 		}
 
@@ -657,19 +656,14 @@ epic_rx_done(sc)
 		desc->status = 0x8000;
 		
 		/* First mbuf in packet holds the ethernet and packet headers */
-		eh = mtod(m, struct ether_header *);
-		m->m_pkthdr.rcvif = &(sc->sc_if);
+		m->m_pkthdr.rcvif = ifp;
 		m->m_pkthdr.len = m->m_len = len;
 
-		/* Second mbuf holds packet ifself */
-		m->m_pkthdr.len = m->m_len = len - sizeof(struct ether_header);
-		m->m_data += sizeof(struct ether_header);
-
 		/* Give mbuf to OS */
-		ether_input(&sc->sc_if, eh, m);
+		(*ifp->if_input)(ifp, m);
 
 		/* Successfuly received frame */
-		sc->sc_if.if_ipackets++;
+		ifp->if_ipackets++;
 	}
 
 	return;

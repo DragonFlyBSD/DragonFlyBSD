@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.12 2004/07/02 17:42:18 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.13 2004/07/23 07:16:27 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
  */
@@ -635,7 +635,6 @@ static int lge_attach(dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = lge_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = lge_start;
 	ifp->if_watchdog = lge_watchdog;
 	ifp->if_init = lge_init;
@@ -1011,7 +1010,6 @@ static void lge_rxeof(sc, cnt)
 	struct lge_softc	*sc;
 	int			cnt;
 {
-        struct ether_header	*eh;
         struct mbuf		*m;
         struct ifnet		*ifp;
 	struct lge_rx_desc	*cur_rx;
@@ -1068,10 +1066,6 @@ static void lge_rxeof(sc, cnt)
 		}
 
 		ifp->if_ipackets++;
-		eh = mtod(m, struct ether_header *);
-
-		/* Remove header from mbuf and pass it on. */
-		m_adj(m, sizeof(struct ether_header));
 
 		/* Do IP checksum checking. */
 		if (rxsts & LGE_RXSTS_ISIP)
@@ -1087,7 +1081,7 @@ static void lge_rxeof(sc, cnt)
 			m->m_pkthdr.csum_data = 0xffff;
 		}
 
-		ether_input(ifp, eh, m);
+		(*ifp->if_input)(ifp, m);
 	}
 
 	sc->lge_cdata.lge_rx_cons = i;

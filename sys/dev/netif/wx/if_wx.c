@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/pci/if_wx.c,v 1.5.2.12 2003/03/05 18:42:34 njl Exp $ */
-/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.10 2004/07/02 17:42:20 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.11 2004/07/23 07:16:30 joerg Exp $ */
 /*
  * Principal Author: Matthew Jacob <mjacob@feral.com>
  * Copyright (c) 1999, 2001 by Traakan Software
@@ -332,7 +332,6 @@ wx_attach(device_t dev)
 	ifp = &sc->w.arpcom.ac_if;
 	if_initname(ifp, "wx", device_get_unit(dev));
 	ifp->if_mtu = ETHERMTU; /* we always start at ETHERMTU size */
-	ifp->if_output = ether_output;
 	ifp->if_baudrate = 1000000000;
 	ifp->if_init = (void (*)(void *))wx_init;
 	ifp->if_softc = sc;
@@ -1123,7 +1122,6 @@ wx_check_link(wx_softc_t *sc)
 static void
 wx_handle_rxint(wx_softc_t *sc)
 {
-	struct ether_header *eh;
 	struct mbuf *m0, *mb, *pending[WX_MAX_RDESC];
 	struct ifnet *ifp = &sc->wx_if;
 	int npkts, ndesc, lidx, idx, tlen;
@@ -1259,7 +1257,6 @@ wx_handle_rxint(wx_softc_t *sc)
 		m0->m_pkthdr.len = tlen - WX_CRC_LENGTH;
 		mb->m_len -= WX_CRC_LENGTH;
 
-		eh = mtod(m0, struct ether_header *);
 		/*
 		 * No need to check for promiscous mode since 
 		 * the decision to keep or drop the packet is
@@ -1291,9 +1288,7 @@ wx_handle_rxint(wx_softc_t *sc)
 		ifp->if_ipackets++;
 		DPRINTF(sc, ("%s: RECV packet length %d\n",
 		    sc->wx_name, mb->m_pkthdr.len));
-		eh = mtod(mb, struct ether_header *);
-		m_adj(mb, sizeof (struct ether_header));
-		ether_input(ifp, eh, mb);
+		(*ifp->if_input)(ifp,  mb);
 	}
 }
 

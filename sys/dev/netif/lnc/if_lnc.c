@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc.c,v 1.89 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.11 2004/07/02 17:42:18 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.12 2004/07/23 07:16:27 joerg Exp $
  */
 
 /*
@@ -450,6 +450,7 @@ mbuf_packet(struct lnc_softc *sc, int start_of_packet, int pkt_len)
 static __inline void
 lnc_rint(struct lnc_softc *sc)
 {
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct host_ring_entry *next, *start;
 	int start_of_packet;
 	struct mbuf *head;
@@ -469,13 +470,13 @@ lnc_rint(struct lnc_softc *sc)
 
 #ifdef DIAGNOSTIC
 	if ((sc->recv_ring + sc->recv_next)->md->md1 & OWN) {
-		int unit = sc->arpcom.ac_if.if_dunit;
+		int unit = ifp->if_dunit;
 		log(LOG_ERR, "lnc%d: Receive interrupt with buffer still owned by controller -- Resetting\n", unit);
 		lnc_reset(sc);
 		return;
 	}
 	if (!((sc->recv_ring + sc->recv_next)->md->md1 & STP)) {
-		int unit = sc->arpcom.ac_if.if_dunit;
+		int unit = ifp->if_dunit;
 		log(LOG_ERR, "lnc%d: Receive interrupt but not start of packet -- Resetting\n", unit);
 		lnc_reset(sc);
 		return;
@@ -507,7 +508,7 @@ lnc_rint(struct lnc_softc *sc)
 			} while (!(flags & (STP | OWN | ENP | MDERR)));
 
 			if (flags & STP) {
-				int unit = sc->arpcom.ac_if.if_dunit;
+				int unit = ifp->if_dunit;
 				log(LOG_ERR, "lnc%d: Start of packet found before end of previous in receive ring -- Resetting\n", unit);
 				lnc_reset(sc);
 				return;
@@ -521,7 +522,7 @@ lnc_rint(struct lnc_softc *sc)
 					sc->recv_next = start_of_packet;
 					break;
 				} else {
-					int unit = sc->arpcom.ac_if.if_dunit;
+					int unit = ifp->if_dunit;
 					log(LOG_ERR, "lnc%d: End of received packet not found-- Resetting\n", unit);
 					lnc_reset(sc);
 					return;
@@ -536,7 +537,7 @@ lnc_rint(struct lnc_softc *sc)
 		next = sc->recv_ring + sc->recv_next;
 
 		if (flags & MDERR) {
-			int unit = sc->arpcom.ac_if.if_dunit;
+			int unit = ifp->if_dunit;
 			if (flags & RBUFF) {
 				LNCSTATS(rbuff)
 				log(LOG_ERR, "lnc%d: Receive buffer error\n", unit);
@@ -548,7 +549,7 @@ lnc_rint(struct lnc_softc *sc)
 					log(LOG_ERR, "lnc%d: Receive overflow error \n", unit);
 				}
 			} else if (flags & ENP) {
-			    if ((sc->arpcom.ac_if.if_flags & IFF_PROMISC)==0) {
+			    if ((ifp->if_flags & IFF_PROMISC)==0) {
 				/*
 				 * FRAM and CRC are valid only if ENP
 				 * is set and OFLO is not.
@@ -569,7 +570,7 @@ lnc_rint(struct lnc_softc *sc)
 
 			/* Drop packet */
 			LNCSTATS(rerr)
-			sc->arpcom.ac_if.if_ierrors++;
+			ifp->if_ierrors++;
 			while (start_of_packet != sc->recv_next) {
 				start = sc->recv_ring + start_of_packet;
 				start->md->md2 = -RECVBUFSIZE; /* XXX - shouldn't be necessary */
@@ -579,7 +580,7 @@ lnc_rint(struct lnc_softc *sc)
 			}
 		} else { /* Valid packet */
 
-			sc->arpcom.ac_if.if_ipackets++;
+			ifp->if_ipackets++;
 
 
 			if (sc->nic.mem_mode == DMA_MBUF)
@@ -592,9 +593,9 @@ lnc_rint(struct lnc_softc *sc)
 				 * First mbuf in packet holds the
 				 * ethernet and packet headers
 				 */
-				head->m_pkthdr.rcvif = &sc->arpcom.ac_if;
+				head->m_pkthdr.rcvif = ifp;
 				head->m_pkthdr.len = pkt_len ;
-				eh = (struct ether_header *) head->m_data;
+				eh = mtod(head, struct ether_header *);
 
 				/*
 				 * vmware ethernet hardware emulation loops
@@ -605,15 +606,10 @@ lnc_rint(struct lnc_softc *sc)
 				      sc->arpcom.ac_enaddr, ETHER_ADDR_LEN) == 0) {
 				    m_freem(head);
 				} else {
-				    /* Skip over the ether header */
-				    head->m_data += sizeof *eh;
-				    head->m_len -= sizeof *eh;
-				    head->m_pkthdr.len -= sizeof *eh;
-
-				    ether_input(&sc->arpcom.ac_if, eh, head);
+					(ifp->if_input)(ifp, head);
 				}
 			} else {
-				int unit = sc->arpcom.ac_if.if_dunit;
+				int unit = ifp->if_dunit;
 				log(LOG_ERR,"lnc%d: Packet dropped, no mbufs\n",unit);
 				LNCSTATS(drop_packet)
 			}
@@ -892,7 +888,6 @@ lnc_attach_common(device_t dev)
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_timer = 0;
-	ifp->if_output = ether_output;
 	ifp->if_start = lnc_start;
 	ifp->if_ioctl = lnc_ioctl;
 	ifp->if_watchdog = lnc_watchdog;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.15 2004/07/17 09:43:05 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.16 2004/07/23 07:16:25 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
  */
@@ -2058,7 +2058,6 @@ static int dc_attach(dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = dc_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = dc_start;
 	ifp->if_watchdog = dc_watchdog;
 	ifp->if_init = dc_init;
@@ -2468,7 +2467,6 @@ static int dc_rx_resync(sc)
 static void dc_rxeof(sc)
 	struct dc_softc		*sc;
 {
-        struct ether_header	*eh;
         struct mbuf		*m;
         struct ifnet		*ifp;
 	struct dc_desc		*cur_rx;
@@ -2569,11 +2567,7 @@ static void dc_rxeof(sc)
 		}
 
 		ifp->if_ipackets++;
-		eh = mtod(m, struct ether_header *);
-
-		/* Remove header from mbuf and pass it on. */
-		m_adj(m, sizeof(struct ether_header));
-		ether_input(ifp, eh, m);
+		(*ifp->if_input)(ifp, m);
 	}
 
 	sc->dc_cdata.dc_rx_prod = i;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.12 2004/07/02 17:42:15 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.13 2004/07/23 07:16:24 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
  */
@@ -167,8 +167,8 @@ static void an_dma_malloc_cb	(void *, bus_dma_segment_t *, int, int);
 static void an_stats_update	(void *);
 static void an_setdef		(struct an_softc *, struct an_req *);
 #ifdef ANCACHE
-static void an_cache_store	(struct an_softc *, struct ether_header *,
-					struct mbuf *, u_int8_t, u_int8_t);
+static void an_cache_store	(struct an_softc *, struct mbuf *,
+				 uint8_t, uint8_t);
 #endif
 
 /* function definitions for use with the Cisco's Linux configuration
@@ -748,7 +748,6 @@ an_attach(sc, unit, flags)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = an_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = an_start;
 	ifp->if_watchdog = an_watchdog;
 	ifp->if_init = an_init;
@@ -965,14 +964,12 @@ an_rxeof(sc)
 			}
 			ifp->if_ipackets++;
 
-			/* Receive packet. */
-			m_adj(m, sizeof(struct ether_header));
 #ifdef ANCACHE
-			an_cache_store(sc, eh, m,
+			an_cache_store(sc, m,
 				rx_frame.an_rx_signal_strength,
 				rx_frame.an_rsvd0);
 #endif
-			ether_input(ifp, eh, m);
+			(*ifp->if_input)(ifp, m);
 		}
 
 	} else { /* MPI-350 */
@@ -1032,16 +1029,14 @@ an_rxeof(sc)
 				
 				ifp->if_ipackets++;
 				
-				/* Receive packet. */
-				m_adj(m, sizeof(struct ether_header));
 #if 0
 #ifdef ANCACHE
-				an_cache_store(sc, eh, m, 
+				an_cache_store(sc, m, 
 					rx_frame.an_rx_signal_strength,
 					rx_frame.an_rsvd0);
 #endif
 #endif
-				ether_input(ifp, eh, m);
+				(*ifp->if_input)(ifp, m);
 			
 				an_rx_desc.an_valid = 1;
 				an_rx_desc.an_len = AN_RX_BUFFER_SIZE;
@@ -2897,18 +2892,17 @@ SYSCTL_INT(_hw_an, OID_AUTO, an_cache_iponly, CTLFLAG_RW,
  * strength in MAC (src) indexed cache.
  */
 static void
-an_cache_store (sc, eh, m, rx_rssi, rx_quality)
+an_cache_store (sc, m, rx_rssi, rx_quality)
 	struct an_softc *sc;
-	struct ether_header *eh;
 	struct mbuf *m;
 	u_int8_t rx_rssi;
 	u_int8_t rx_quality;
 {
-	struct ip *ip = 0;
+	struct ether_header *eh = mtod(m, struct ether_header *);
+	struct ip *ip = NULL;
 	int i;
 	static int cache_slot = 0; 	/* use this cache entry */
 	static int wrapindex = 0;       /* next "free" cache entry */
-	int type_ipv4 = 0;
 
 	/* filters:
 	 * 1. ip only
@@ -2916,15 +2910,10 @@ an_cache_store (sc, eh, m, rx_rssi, rx_quality)
 	 * keep multicast only.
 	 */
 
-	if ((ntohs(eh->ether_type) == ETHERTYPE_IP)) {
-		type_ipv4 = 1;
-	}
-
-	/* filter for ip packets only
-	*/
-	if ( an_cache_iponly && !type_ipv4) {
+	if ((ntohs(eh->ether_type) == ETHERTYPE_IP))
+		ip = (struct ip *)(mtod(m, uint8_t *) + ETHER_HDR_LEN);
+	else if (an_cache_iponly)
 		return;
-	}
 
 	/* filter for broadcast/multicast only
 	 */
@@ -2936,13 +2925,6 @@ an_cache_store (sc, eh, m, rx_rssi, rx_quality)
 	printf("an: q value %x (MSB=0x%x, LSB=0x%x) \n",
 		rx_rssi & 0xffff, rx_rssi >> 8, rx_rssi & 0xff);
 #endif
-
-	/* find the ip header.  we want to store the ip_src
-	 * address.
-	 */
-	if (type_ipv4) {
-		ip = mtod(m, struct ip *);
-	}
 
 	/* do a linear search for a matching MAC address
 	 * in the cache table
@@ -3006,7 +2988,7 @@ an_cache_store (sc, eh, m, rx_rssi, rx_quality)
 	 *  .mac src
 	 *  .signal, etc.
 	 */
-	if (type_ipv4) {
+	if (ip != NULL) {
 		sc->an_sigcache[cache_slot].ipsrc = ip->ip_src.s_addr;
 	}
 	bcopy( eh->ether_shost, sc->an_sigcache[cache_slot].macsrc,  6);

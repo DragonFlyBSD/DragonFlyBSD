@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.17 2004/07/17 09:43:05 joerg Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.18 2004/07/23 07:16:30 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -110,8 +110,10 @@ void	(*ng_ether_attach_p)(struct ifnet *ifp);
 void	(*ng_ether_detach_p)(struct ifnet *ifp);
 
 int	(*vlan_input_p)(struct ether_header *eh, struct mbuf *m);
-int	(*vlan_input_tag_p)(struct ether_header *eh, struct mbuf *m,
-		u_int16_t t);
+int	(*vlan_input_tag_p)(struct mbuf *m, uint16_t t);
+
+static int	ether_output(struct ifnet *, struct mbuf *, struct sockaddr *,
+			     struct rtentry *);
 
 /* bridge support */
 int do_bridge;
@@ -141,12 +143,9 @@ static int ether_ipfw;
  * packet leaves a multiple of 512 bytes of data in remainder.
  * Assumes that ifp is actually pointer to arpcom structure.
  */
-int
-ether_output(ifp, m, dst, rt0)
-	struct ifnet *ifp;
-	struct mbuf *m;
-	struct sockaddr *dst;
-	struct rtentry *rt0;
+static int
+ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+	     struct rtentry *rt0)
 {
 	short type;
 	int error = 0, hdrcmplt = 0;
@@ -533,6 +532,15 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst,
 }
 
 /*
+ * XXX merge this function with ether_input.
+ */
+static void
+ether_input_internal(struct ifnet *ifp, struct mbuf *m)
+{
+	ether_input(ifp, NULL, m);
+}
+
+/*
  * Process a received Ethernet packet. We have two different interfaces:
  * one (conventional) assumes the packet in the mbuf, with the ethernet
  * header provided separately in *eh. The second one (new) has everything
@@ -566,9 +574,9 @@ ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 		}
 		m->m_pkthdr.rcvif = ifp;
 		eh = mtod(m, struct ether_header *);
-		m->m_data += sizeof(struct ether_header);
-		m->m_len -= sizeof(struct ether_header);
-		m->m_pkthdr.len = m->m_len;
+		m_adj(m, sizeof(struct ether_header));
+		/* XXX */
+		/* m->m_pkthdr.len = m->m_len; */
 	}
 
 	/* Check for a BPF tap */
@@ -818,6 +826,8 @@ ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen)
 	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
 
+	ifp->if_output = ether_output;
+	ifp->if_input = ether_input_internal;
 	ifp->if_type = IFT_ETHER;
 	ifp->if_addrlen = ETHER_ADDR_LEN;
 	ifp->if_broadcastaddr = etherbroadcastaddr;

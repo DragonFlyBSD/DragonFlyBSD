@@ -31,7 +31,7 @@
  *
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.17 2003/11/14 11:09:45 johan Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.9 2004/04/21 18:13:49 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.10 2004/07/23 07:16:24 joerg Exp $
  */
 
 /*
@@ -79,7 +79,6 @@ Static int mtx_inited = 0;
 Static int usbintr(struct netmsg *msg)
 {
 	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
-	struct ether_header	*eh;
 	struct usb_qdat		*q;
 	struct ifnet		*ifp;
 	int			s;
@@ -91,12 +90,9 @@ Static int usbintr(struct netmsg *msg)
 		IF_DEQUEUE(&usbq_rx, m);
 		if (m == NULL)
 			break;
-		eh = mtod(m, struct ether_header *);
 		q = (struct usb_qdat *)m->m_pkthdr.rcvif;
 		ifp = q->ifp;
-		m->m_pkthdr.rcvif = ifp;
-		m_adj(m, sizeof(struct ether_header));
-		ether_input(ifp, eh, m);
+		(*ifp->if_input)(ifp, m);
 
 		/* Re-arm the receiver */
 		(*q->if_rxstart)(ifp);

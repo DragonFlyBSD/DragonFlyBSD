@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.10 2004/07/17 09:43:05 joerg Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.11 2004/07/23 07:16:30 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -49,6 +49,7 @@
 #include <sys/malloc.h>
 
 #include <net/if.h>
+#include <net/bpf.h>
 #include <net/netisr.h>
 #include <net/route.h>
 #include <net/if_llc.h>
@@ -98,6 +99,9 @@ extern u_char	aarp_org_code[ 3 ];
 
 static	int fddi_resolvemulti (struct ifnet *, struct sockaddr **,
 				   struct sockaddr *);
+static void	fddi_input(struct ifnet *, struct mbuf *);
+static int	fddi_output(struct ifnet *, struct mbuf *, struct sockaddr *,
+			    struct rtentry *);
 
 #define senderr(e) { error = (e); goto bad;}
 
@@ -122,12 +126,9 @@ static	int fddi_resolvemulti (struct ifnet *, struct sockaddr **,
  * packet leaves a multiple of 512 bytes of data in remainder.
  * Assumes that ifp is actually pointer to arpcom structure.
  */
-int
-fddi_output(ifp, m, dst, rt0)
-	struct ifnet *ifp;
-	struct mbuf *m;
-	struct sockaddr *dst;
-	struct rtentry *rt0;
+static int
+fddi_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+	    struct rtentry *rt0)
 {
 	u_int16_t type;
 	int s, loop_copy = 0, error = 0, hdrcmplt = 0;
@@ -382,14 +383,20 @@ bad:
  * the packet is in the mbuf chain m without
  * the fddi header, which is provided separately.
  */
-void
-fddi_input(ifp, fh, m)
-	struct ifnet *ifp;
-	struct fddi_header *fh;
-	struct mbuf *m;
+static void
+fddi_input(struct ifnet *ifp, struct mbuf *m)
 {
 	int isr;
 	struct llc *l;
+	struct fddi_header *fh = mtod(m, struct fddi_header *);
+
+	if (m->m_len < sizeof(struct fddi_header)) {
+		/* XXX error in the caller. */
+		m_freem(m);
+		return;
+	}
+	m_adj(m, sizeof(struct fddi_header));
+	m->m_pkthdr.rcvif = ifp;
 
 	if ((ifp->if_flags & IFF_UP) == 0) {
 		m_freem(m);
@@ -527,6 +534,8 @@ fddi_ifattach(ifp)
 	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
 
+	ifp->if_input = fddi_input;
+	ifp->if_output = fddi_output;
 	ifp->if_type = IFT_FDDI;
 	ifp->if_addrlen = 6;
 	ifp->if_broadcastaddr = fddibroadcastaddr;
@@ -537,6 +546,7 @@ fddi_ifattach(ifp)
 #ifdef IFF_NOTRAILERS
 	ifp->if_flags |= IFF_NOTRAILERS;
 #endif
+	if_attach(ifp);
 #if defined(__DragonFly__) || defined(__FreeBSD__)
 	ifa = ifnet_addrs[ifp->if_index - 1];
 	sdl = (struct sockaddr_dl *)ifa->ifa_addr;
@@ -559,6 +569,7 @@ fddi_ifattach(ifp)
 			break;
 		}
 #endif
+	bpfattach(ifp, DLT_FDDI, sizeof(struct fddi_header));
 }
 
 static int

@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.18 2004/06/05 13:52:29 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.19 2004/07/23 07:16:25 joerg Exp $*/
 
 #include <dev/netif/em/if_em.h>
 
@@ -1642,7 +1642,6 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 	ifp = &adapter->interface_data.ac_if;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_mtu = ETHERMTU;
-	ifp->if_output = ether_output;
 	ifp->if_baudrate = 1000000000;
 	ifp->if_init =  em_init;
 	ifp->if_softc = adapter;
@@ -2429,9 +2428,6 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 {
 	struct ifnet *ifp;
 	struct mbuf *mp;
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-	struct ether_header *eh;
-#endif
 	uint8_t accept_frame = 0;
 	uint8_t eop = 0;
 	uint16_t len, desc_len, prev_len_adj;
@@ -2536,17 +2532,14 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 				ifp->if_ipackets++;
 
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
-				eh = mtod(adapter->fmp, struct ether_header *);
-				/* Remove ethernet header from mbuf */
-				m_adj(adapter->fmp, sizeof(struct ether_header));
 				em_receive_checksum(adapter, current_desc,
 						    adapter->fmp);
 				if (current_desc->status & E1000_RXD_STAT_VP)
-					VLAN_INPUT_TAG(eh, adapter->fmp,
+					VLAN_INPUT_TAG(adapter->fmp,
 						       (current_desc->special & 
 							E1000_RXD_SPC_VLAN_MASK));
 				else
-					ether_input(ifp, eh, adapter->fmp);
+					(*ifp->if_input)(ifp, adapter->fmp);
 #else
 				em_receive_checksum(adapter, current_desc,
 						    adapter->fmp);

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.6 2004/07/02 17:42:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.7 2004/07/23 07:16:24 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -374,7 +374,6 @@ bfe_attach(device_t dev)
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = bfe_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = bfe_start;
 	ifp->if_watchdog = bfe_watchdog;
 	ifp->if_init = bfe_init;
@@ -1131,20 +1130,20 @@ bfe_rxeof(struct bfe_softc *sc)
 		}
 
 		/* Go past the rx header */
-		if (bfe_list_newbuf(sc, cons, NULL) == 0) {
-			m_adj(m, BFE_RX_OFFSET);
-			m->m_len = m->m_pkthdr.len = len;
-		} else {
+		if (bfe_list_newbuf(sc, cons, NULL) != 0) {
 			bfe_list_newbuf(sc, cons, m);
 			BFE_INC(cons, BFE_RX_LIST_CNT);
 			ifp->if_ierrors++;
 			continue;
 		}
 
+		m_adj(m, BFE_RX_OFFSET);
+		m->m_len = m->m_pkthdr.len = len;
+
 		ifp->if_ipackets++;
 		m->m_pkthdr.rcvif = ifp;
 
-		ether_input(ifp, NULL, m);
+		(*ifp->if_input)(ifp, m);
 		BFE_INC(cons, BFE_RX_LIST_CNT);
 	}
 	sc->bfe_rx_cons = cons;

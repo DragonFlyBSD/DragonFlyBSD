@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.11 2004/06/02 14:42:54 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.12 2004/07/23 07:16:28 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -272,7 +272,6 @@ sbsh_attach(device_t dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = sbsh_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = sbsh_start;
 	ifp->if_watchdog = sbsh_watchdog;
 	ifp->if_init = sbsh_init;
@@ -800,7 +799,7 @@ alloc_rx_buffers(struct sbsh_softc *sc)
 static void
 indicate_frames(struct sbsh_softc *sc)
 {
-	struct ether_header *eh;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	unsigned  cur_rbd = sc->regs->CRDR & 0x7f;
 
 	while (sc->head_rdesc != cur_rbd) {
@@ -809,13 +808,11 @@ indicate_frames(struct sbsh_softc *sc)
 
 		m->m_pkthdr.len = m->m_len =
 				sc->rbd[sc->head_rdesc].length & 0x7ff;
-		m->m_pkthdr.rcvif = &sc->arpcom.ac_if;
+		m->m_pkthdr.rcvif = ifp;
 
-		eh = mtod(m, struct ether_header *);
-		m_adj(m, sizeof(struct ether_header));
-		ether_input(&sc->arpcom.ac_if, eh, m);
+		(*ifp->if_input)(ifp, m);
 		++sc->in_stats.rcvd_pkts;
-		++sc->arpcom.ac_if.if_ipackets;
+		++ifp->if_ipackets;
 
 		sc->head_rdesc = (sc->head_rdesc + 1) & 0x7f;
 	}

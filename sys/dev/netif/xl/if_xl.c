@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.13 2004/07/02 17:42:21 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.14 2004/07/23 07:16:30 joerg Exp $
  */
 
 /*
@@ -1593,7 +1593,6 @@ xl_attach(dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = xl_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_capabilities = 0;
 	if (sc->xl_type == XL_TYPE_905B) {
 		ifp->if_start = xl_start_90xB;
@@ -2054,7 +2053,6 @@ static void
 xl_rxeof(sc)
 	struct xl_softc		*sc;
 {
-	struct ether_header	*eh;
         struct mbuf		*m;
         struct ifnet		*ifp;
 	struct xl_chain_onefrag	*cur_rx;
@@ -2133,12 +2131,8 @@ again:
 		    sc->xl_ldata.xl_rx_dmamap, BUS_DMASYNC_PREWRITE);
 
 		ifp->if_ipackets++;
-		eh = mtod(m, struct ether_header *);
 		m->m_pkthdr.rcvif = ifp;
 		m->m_pkthdr.len = m->m_len = total_len;
-
-		/* Remove header from mbuf and pass it on. */
-		m_adj(m, sizeof(struct ether_header));
 
 		if (ifp->if_capenable & IFCAP_RXCSUM) {
 			/* Do IP checksum checking. */
@@ -2156,7 +2150,7 @@ again:
 			}
 		}
 
-		ether_input(ifp, eh, m);
+		(*ifp->if_input)(ifp, m);
 	}
 
 	/*

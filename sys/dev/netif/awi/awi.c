@@ -1,6 +1,6 @@
 /*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.15 2004/07/10 12:48:55 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.16 2004/07/23 07:16:24 joerg Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -292,7 +292,6 @@ awi_attach(sc)
 	memcpy(ifp->if_xname, sc->sc_dev.dv_xname, IFNAMSIZ);
 #endif
 #if defined(__DragonFly__) || defined(__FreeBSD__)
-	ifp->if_output = ether_output;
 	ifp->if_snd.ifq_maxlen = ifqmaxlen;
 	memcpy(sc->sc_ec.ac_enaddr, sc->sc_mib_addr.aMAC_Address,
 	    ETHER_ADDR_LEN);
@@ -1181,9 +1180,6 @@ awi_input(sc, m, rxts, rssi)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211_frame *wh;
-#ifndef __NetBSD__
-	struct ether_header *eh;
-#endif
 
 	/* trim CRC here for WEP can find its own CRC at the end of packet. */
 	m_adj(m, -ETHER_CRC_LEN);
@@ -1241,13 +1237,7 @@ awi_input(sc, m, rxts, rssi)
 #if !(defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 4))
 		AWI_BPF_MTAP(sc, m, AWI_BPF_NORM);
 #endif
-#ifdef __NetBSD__
 		(*ifp->if_input)(ifp, m);
-#else
-		eh = mtod(m, struct ether_header *);
-		m_adj(m, sizeof(*eh));
-		ether_input(ifp, eh, m);
-#endif
 		break;
 	case IEEE80211_FC0_TYPE_MGT:
 		if ((wh->i_fc[1] & IEEE80211_FC1_DIR_MASK) !=

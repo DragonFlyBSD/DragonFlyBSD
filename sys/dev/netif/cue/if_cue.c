@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.12 2004/07/17 09:43:05 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.13 2004/07/23 07:16:25 joerg Exp $
  *
  */
 
@@ -514,7 +514,6 @@ USB_ATTACH(cue)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = cue_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = cue_start;
 	ifp->if_watchdog = cue_watchdog;
 	ifp->if_init = cue_init;

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.21 2004/07/02 17:42:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.22 2004/07/23 07:16:24 joerg Exp $
  *
  */
 
@@ -1810,7 +1810,6 @@ bge_attach(dev)
 	if_initname(ifp, "bge", sc->bge_unit);
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = bge_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = bge_start;
 	ifp->if_watchdog = bge_watchdog;
 	ifp->if_init = bge_init;
@@ -2071,7 +2070,6 @@ bge_rxeof(sc)
 	    sc->bge_rdata->bge_status_block.bge_idx[0].bge_rx_prod_idx) {
 		struct bge_rx_bd	*cur_rx;
 		u_int32_t		rxidx;
-		struct ether_header	*eh;
 		struct mbuf		*m = NULL;
 		u_int16_t		vlan_tag = 0;
 		int			have_tag = 0;
@@ -2133,12 +2131,8 @@ bge_rxeof(sc)
 			m->m_data += ETHER_ALIGN;
 		}
 #endif
-		eh = mtod(m, struct ether_header *);
 		m->m_pkthdr.len = m->m_len = cur_rx->bge_len - ETHER_CRC_LEN;
 		m->m_pkthdr.rcvif = ifp;
-
-		/* Remove header from mbuf and pass it on. */
-		m_adj(m, sizeof(struct ether_header));
 
 #if 0 /* currently broken for some packets, possibly related to TCP options */
 		if (ifp->if_hwassist) {
@@ -2158,12 +2152,12 @@ bge_rxeof(sc)
 		 * to vlan_input() instead of ether_input().
 		 */
 		if (have_tag) {
-			VLAN_INPUT_TAG(eh, m, vlan_tag);
+			VLAN_INPUT_TAG(m, vlan_tag);
 			have_tag = vlan_tag = 0;
 			continue;
 		}
 
-		ether_input(ifp, eh, m);
+		(*ifp->if_input)(ifp, m);
 	}
 
 	CSR_WRITE_4(sc, BGE_MBX_RX_CONS0_LO, sc->bge_rx_saved_considx);

@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.10 2004/07/02 17:42:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.11 2004/07/23 07:16:26 joerg Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -755,7 +755,6 @@ fe_attach (device_t dev)
 	 */
  	sc->sc_if.if_softc    = sc;
  	if_initname(&(sc->sc_if), "fe", sc->sc_unit);
-	sc->sc_if.if_output   = ether_output;
 	sc->sc_if.if_start    = fe_start;
 	sc->sc_if.if_ioctl    = fe_ioctl;
 	sc->sc_if.if_watchdog = fe_watchdog;
@@ -1917,13 +1916,8 @@ fe_get_packet (struct fe_softc * sc, u_short len)
 		fe_insw(sc, FE_BMPR8, (u_int16_t *)eh, (len + 1) >> 1);
 	}
 
-	/* Strip off the Ethernet header.  */
-	m->m_pkthdr.len -= sizeof (struct ether_header);
-	m->m_len -= sizeof (struct ether_header);
-	m->m_data += sizeof (struct ether_header);
-
 	/* Feed the packet to upper layer.  */
-	ether_input(&sc->sc_if, eh, m);
+	(*sc->sc_if.if_input)(&sc->sc_if, m);
 	return 0;
 }
 

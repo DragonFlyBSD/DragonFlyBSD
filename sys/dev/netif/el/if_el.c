@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.10 2004/07/02 17:42:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.11 2004/07/23 07:16:25 joerg Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -187,7 +187,6 @@ el_attach(struct isa_device *idev)
 	ifp->if_softc = sc;
 	if_initname(ifp, "el", idev->id_unit);
 	ifp->if_mtu = ETHERMTU;
-	ifp->if_output = ether_output;
 	ifp->if_start = el_start;
 	ifp->if_ioctl = el_ioctl;
 	ifp->if_watchdog = el_watchdog;

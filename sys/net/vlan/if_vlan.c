@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.9 2004/06/02 14:42:59 eirikn Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.10 2004/07/23 07:16:31 joerg Exp $
  */
 
 /*
@@ -99,8 +99,7 @@ static	void vlan_clone_destroy(struct ifnet *);
 static	void vlan_start(struct ifnet *ifp);
 static	void vlan_ifinit(void *foo);
 static	int vlan_input(struct ether_header *eh, struct mbuf *m);
-static	int vlan_input_tag(struct ether_header *eh, struct mbuf *m,
-		u_int16_t t);
+static	int vlan_input_tag(struct mbuf *m, uint16_t t);
 static	int vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr,
 		struct ucred *cr);
 static	int vlan_setmulti(struct ifnet *ifp);
@@ -230,7 +229,6 @@ vlan_clone_create(struct if_clone *ifc, int unit)
 	ifp->if_init = vlan_ifinit;
 	ifp->if_start = vlan_start;
 	ifp->if_ioctl = vlan_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_snd.ifq_maxlen = ifqmaxlen;
 	ether_ifattach(ifp, ifv->ifv_ac.ac_enaddr);
 	/* Now undo some of the damage... */
@@ -370,9 +368,12 @@ vlan_start(struct ifnet *ifp)
 }
 
 static int
-vlan_input_tag(struct ether_header *eh, struct mbuf *m, u_int16_t t)
+vlan_input_tag( struct mbuf *m, uint16_t t)
 {
 	struct ifvlan *ifv;
+	struct ether_header *eh = mtod(m, struct ether_header *);
+
+	m_adj(m, ETHER_HDR_LEN);
 
 	/*
 	 * Fake up a header and send the packet to the physical interface's

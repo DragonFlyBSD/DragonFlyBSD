@@ -28,7 +28,7 @@
  *
  * 	$Id: ng_eiface.c,v 1.14 2000/03/15 12:28:44 vitaly Exp $
  * $FreeBSD: src/sys/netgraph/ng_eiface.c,v 1.4.2.5 2002/12/17 21:47:48 julian Exp $
- * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.5 2004/03/14 15:36:54 joerg Exp $
+ * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.6 2004/07/23 07:16:31 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -344,7 +344,6 @@ ng_eiface_constructor(node_p *nodep)
 	/* Initialize interface structure */
 	if_initname(ifp, ng_eiface_ifname, ng_eiface_next_unit++);
 	ifp->if_init = ng_eiface_init;
-	ifp->if_output = ether_output;
 	ifp->if_start = ng_eiface_start;
 	ifp->if_ioctl = ng_eiface_ioctl;
 	ifp->if_watchdog = NULL;
@@ -524,27 +523,7 @@ ng_eiface_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	if (ifp->if_bpf)
 	  bpf_mtap(ifp, m);
 
-	eh = mtod( m, struct ether_header * );
-	ether_type = ntohs(eh->ether_type);
-
-	s = splimp();
-	    m->m_pkthdr.len -= sizeof(*eh);
-	    m->m_len -= sizeof(*eh);
-	    if ( m->m_len )
-	      {
-		m->m_data += sizeof(*eh);
-	      }
-	    else
-	      {
-		if ( ether_type == ETHERTYPE_ARP )
-		{
-		m->m_len = m->m_next->m_len;
-		m->m_data = m->m_next->m_data;
-		}
-	      }
-	splx(s);
-
-	ether_input(ifp, eh, m);
+	(*ifp->if_input)(ifp, m);
 
 	/* Done */
 	return (error);

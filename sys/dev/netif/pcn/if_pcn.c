@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.11 2004/07/02 17:42:18 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.12 2004/07/23 07:16:27 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
  */
@@ -618,7 +618,6 @@ static int pcn_attach(dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = pcn_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = pcn_start;
 	ifp->if_watchdog = pcn_watchdog;
 	ifp->if_init = pcn_init;
@@ -780,7 +779,6 @@ static int pcn_newbuf(sc, idx, m)
 static void pcn_rxeof(sc)
 	struct pcn_softc	*sc;
 {
-        struct ether_header	*eh;
         struct mbuf		*m;
         struct ifnet		*ifp;
 	struct pcn_rx_desc	*cur_rx;
@@ -819,14 +817,11 @@ static void pcn_rxeof(sc)
 
 		/* No errors; receive the packet. */
 		ifp->if_ipackets++;
-		eh = mtod(m, struct ether_header *);
 		m->m_len = m->m_pkthdr.len =
 		    cur_rx->pcn_rxlen - ETHER_CRC_LEN;
 		m->m_pkthdr.rcvif = ifp;
 
-		/* Remove header from mbuf and pass it on. */
-		m_adj(m, sizeof(struct ether_header));
-		ether_input(ifp, eh, m);
+		(*ifp->if_input)(ifp, m);
 	}
 
 	sc->pcn_cdata.pcn_rx_prod = i;

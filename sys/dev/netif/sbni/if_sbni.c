@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.14 2004/07/02 17:42:18 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.15 2004/07/23 07:16:28 joerg Exp $
  */
 
 /*
@@ -232,7 +232,6 @@ sbni_attach(struct sbni_softc *sc, int unit, struct sbni_flags flags)
 	if_initname(ifp, "sbni", unit);
 	ifp->if_init	= sbni_init;
 	ifp->if_start	= sbni_start;
-	ifp->if_output	= ether_output;
 	ifp->if_ioctl	= sbni_ioctl;
 	ifp->if_watchdog	= sbni_watchdog;
 	ifp->if_snd.ifq_maxlen	= IFQ_MAXLEN;
@@ -852,17 +851,14 @@ get_rx_buf(struct sbni_softc *sc)
 static void
 indicate_pkt(struct sbni_softc *sc)
 {
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mbuf *m;
-	struct ether_header *eh;
 
 	m = sc->rx_buf_p;
-	m->m_pkthdr.rcvif = &sc->arpcom.ac_if;
+	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len   = m->m_len = sc->inppos;
-	eh = mtod(m, struct ether_header *);
 
-	/* Remove link layer address and indicate packet */
-	m_adj(m, sizeof(struct ether_header));
-	ether_input(&sc->arpcom.ac_if, eh, m);
+	(*ifp->if_input)(ifp, m);
 	sc->rx_buf_p = NULL;
 }
 

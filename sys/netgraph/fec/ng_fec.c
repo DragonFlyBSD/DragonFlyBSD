@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.7 2004/07/19 09:23:23 joerg Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.8 2004/07/23 07:16:31 joerg Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -164,6 +164,8 @@ struct ng_fec_private {
 	node_p	node;			/* Our netgraph node */
 	struct ng_fec_bundle fec_bundle;/* Aggregate bundle */
 	struct callout_handle fec_ch;	/* callout handle for ticker */
+	int	(*real_if_output)(struct ifnet *, struct mbuf *,
+				  struct sockaddr *, struct rtentry *);
 };
 typedef struct ng_fec_private *priv_p;
 
@@ -832,7 +834,7 @@ ng_fec_output(struct ifnet *ifp, struct mbuf *m,
 	 * for us.
 	 */
 	priv->if_error = 0;
-	error = ether_output(ifp, m, dst, rt0);
+	error = priv->real_if_output(ifp, m, dst, rt0);
 	if (priv->if_error && !error)
 		error = priv->if_error;
 
@@ -1084,7 +1086,6 @@ ng_fec_constructor(node_p *nodep)
 
 	/* Initialize interface structure */
 	if_initname(ifp, NG_FEC_FEC_NAME, priv->unit);
-	ifp->if_output = ng_fec_output;
 	ifp->if_start = ng_fec_start;
 	ifp->if_ioctl = ng_fec_ioctl;
 	ifp->if_init = ng_fec_init;
@@ -1110,6 +1111,8 @@ ng_fec_constructor(node_p *nodep)
 
 	/* Attach the interface */
 	ether_ifattach(ifp, priv->arpcom.ac_enaddr);
+	priv->real_if_output = ifp->if_output;
+	ifp->if_output = ng_fec_output;
 	callout_handle_init(&priv->fec_ch);
 
 	TAILQ_INIT(&b->ng_fec_ports);

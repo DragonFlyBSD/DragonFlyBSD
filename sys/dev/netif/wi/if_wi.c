@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.13 2004/07/02 17:42:20 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.14 2004/07/23 07:16:29 joerg Exp $
  */
 
 /*
@@ -128,8 +128,7 @@ static void wi_setdef(struct wi_softc *, struct wi_req *);
 
 #ifdef WICACHE
 static
-void wi_cache_store(struct wi_softc *, struct ether_header *,
-	struct mbuf *, unsigned short);
+void wi_cache_store(struct wi_softc *, struct mbuf *, unsigned short);
 #endif
 
 static int wi_get_cur_ssid(struct wi_softc *, char *, int *);
@@ -267,7 +266,6 @@ wi_generic_attach(device_t dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = wi_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = wi_start;
 	ifp->if_watchdog = wi_watchdog;
 	ifp->if_init = wi_init;
@@ -800,11 +798,10 @@ wi_rxeof(sc)
 				return;
 		}
 		/* Receive packet. */
-		m_adj(m, sizeof(struct ether_header));
 #ifdef WICACHE
-		wi_cache_store(sc, eh, m, rx_frame.wi_q_info);
+		wi_cache_store(sc, m, rx_frame.wi_q_info);
 #endif  
-		ether_input(ifp, eh, m);
+		(*ifp->if_input)(ifp,  m);
 	}
 }
 
@@ -2642,15 +2639,14 @@ SYSCTL_INT(_machdep, OID_AUTO, wi_cache_iponly, CTLFLAG_RW,
  * to do that instead of the scaling it did originally.
  */
 static void
-wi_cache_store(struct wi_softc *sc, struct ether_header *eh,
-                     struct mbuf *m, unsigned short rx_quality)
+wi_cache_store(struct wi_softc *sc, struct mbuf *m, unsigned short rx_quality)
 {
-	struct ip *ip = 0; 
+	struct ether_header *eh = mtod(m, struct ether_header *);
+	struct ip *ip = NULL; 
 	int i;
 	static int cache_slot = 0; 	/* use this cache entry */
 	static int wrapindex = 0;       /* next "free" cache entry */
 	int sig, noise;
-	int sawip=0;
 
 	/* 
 	 * filters:
@@ -2659,16 +2655,10 @@ wi_cache_store(struct wi_softc *sc, struct ether_header *eh,
 	 * keep multicast only.
 	 */
  
-	if ((ntohs(eh->ether_type) == ETHERTYPE_IP)) {
-		sawip = 1;
-	}
-
-	/* 
-	 * filter for ip packets only 
-	*/
-	if (wi_cache_iponly && !sawip) {
+	if ((ntohs(eh->ether_type) == ETHERTYPE_IP))
+		ip = (struct ip *)(mtod(m, uint8_t *) + ETHER_HDR_LEN);
+	else if (wi_cache_iponly)
 		return;
-	}
 
 	/*
 	 *  filter for broadcast/multicast only
@@ -2682,12 +2672,6 @@ wi_cache_store(struct wi_softc *sc, struct ether_header *eh,
 	    rx_quality & 0xffff, rx_quality >> 8, rx_quality & 0xff);
 #endif
 
-	/*
-	 *  find the ip header.  we want to store the ip_src
-	 * address.  
-	 */
-	if (sawip)
-		ip = mtod(m, struct ip *);
         
 	/*
 	 * do a linear search for a matching MAC address 
@@ -2758,7 +2742,7 @@ wi_cache_store(struct wi_softc *sc, struct ether_header *eh,
 	 *  .mac src
 	 *  .signal, etc.
 	 */
-	if (sawip)
+	if (ip != NULL)
 		sc->wi_sigcache[cache_slot].ipsrc = ip->ip_src.s_addr;
 	bcopy( eh->ether_shost, sc->wi_sigcache[cache_slot].macsrc,  6);
 

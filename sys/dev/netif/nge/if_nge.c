@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.12 2004/07/02 17:42:18 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.13 2004/07/23 07:16:27 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
  */
@@ -953,7 +953,6 @@ static int nge_attach(dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = nge_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = nge_start;
 	ifp->if_watchdog = nge_watchdog;
 	ifp->if_init = nge_init;
@@ -1359,7 +1358,6 @@ static void nge_jfree(buf, size)
 static void nge_rxeof(sc)
 	struct nge_softc	*sc;
 {
-        struct ether_header	*eh;
         struct mbuf		*m;
         struct ifnet		*ifp;
 	struct nge_desc		*cur_rx;
@@ -1436,10 +1434,6 @@ static void nge_rxeof(sc)
 #endif
 
 		ifp->if_ipackets++;
-		eh = mtod(m, struct ether_header *);
-
-		/* Remove header from mbuf and pass it on. */
-		m_adj(m, sizeof(struct ether_header));
 
 		/* Do IP checksum checking. */
 		if (extsts & NGE_RXEXTSTS_IPPKT)
@@ -1459,12 +1453,10 @@ static void nge_rxeof(sc)
 		 * If we received a packet with a vlan tag, pass it
 		 * to vlan_input() instead of ether_input().
 		 */
-		if (extsts & NGE_RXEXTSTS_VLANPKT) {
-			VLAN_INPUT_TAG(eh, m, extsts & NGE_RXEXTSTS_VTCI);
-                        continue;
-                }
-
-		ether_input(ifp, eh, m);
+		if (extsts & NGE_RXEXTSTS_VLANPKT)
+			VLAN_INPUT_TAG(m, extsts & NGE_RXEXTSTS_VTCI);
+		else
+			(*ifp->if_input)(ifp, m);
 	}
 
 	sc->nge_cdata.nge_rx_prod = i;

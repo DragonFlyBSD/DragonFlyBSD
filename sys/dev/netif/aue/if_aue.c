@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.12 2004/07/02 17:42:15 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.13 2004/07/23 07:16:24 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
  */
@@ -736,7 +736,6 @@ USB_ATTACH(aue)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = aue_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = aue_start;
 	ifp->if_watchdog = aue_watchdog;
 	ifp->if_init = aue_init;

@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.11 2004/07/02 17:42:18 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.12 2004/07/23 07:16:27 joerg Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -985,7 +985,6 @@ my_attach(device_t dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = my_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = my_start;
 	ifp->if_watchdog = my_watchdog;
 	ifp->if_init = my_init;
@@ -1262,9 +1261,7 @@ my_rxeof(struct my_softc * sc)
 			}
 		}
 #endif
-		/* Remove header from mbuf and pass it on. */
-		m_adj(m, sizeof(struct ether_header));
-		ether_input(ifp, eh, m);
+		(*ifp->if_input)(ifp, m);
 	}
 	MY_UNLOCK(sc);
 	return;

@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
- * $DragonFly: src/sys/net/if_atmsubr.c,v 1.9 2004/06/02 14:42:57 eirikn Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.10 2004/07/23 07:16:30 joerg Exp $
  */
 
 /*
@@ -51,6 +51,7 @@
 #include <sys/errno.h>
 
 #include <net/if.h>
+#include <net/bpf.h>
 #include <net/netisr.h>
 #include <net/route.h>
 #include <net/if_dl.h>
@@ -89,11 +90,8 @@
  */
 
 int
-atm_output(ifp, m0, dst, rt0)
-	struct ifnet *ifp;
-	struct mbuf *m0;
-	struct sockaddr *dst;
-	struct rtentry *rt0;
+atm_output(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
+	   struct rtentry *rt0)
 {
 	u_int16_t etype = 0;			/* if using LLC/SNAP */
 	int s, error = 0, sz;
@@ -316,8 +314,12 @@ atm_ifattach(ifp)
 	ifp->if_addrlen = 0;
 	ifp->if_hdrlen = 0;
 	ifp->if_mtu = ATMMTU;
+#if 0 /* XXX */
+	ifp->if_input = atm_input;
+#endif
 	ifp->if_output = atm_output;
 	ifp->if_snd.ifq_maxlen = 50;	/* dummy */
+	if_attach(ifp);
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	for (ifa = TAILQ_FIRST(&ifp->if_addrlist); ifa != 0;
@@ -337,5 +339,5 @@ atm_ifattach(ifp)
 #endif
 			break;
 		}
-
+	bpfattach(ifp, DLT_ATM_RFC1483, sizeof(struct atmllc));
 }

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.12 2004/07/02 17:42:19 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.13 2004/07/23 07:16:29 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
  */
@@ -1710,7 +1710,6 @@ static int ti_attach(dev)
 	if_initname(ifp, "ti", sc->ti_unit);
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = ti_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = ti_start;
 	ifp->if_watchdog = ti_watchdog;
 	ifp->if_init = ti_init;
@@ -1807,7 +1806,6 @@ static void ti_rxeof(sc)
 	while(sc->ti_rx_saved_considx != sc->ti_return_prodidx.ti_idx) {
 		struct ti_rx_desc	*cur_rx;
 		u_int32_t		rxidx;
-		struct ether_header	*eh;
 		struct mbuf		*m = NULL;
 		u_int16_t		vlan_tag = 0;
 		int			have_tag = 0;
@@ -1868,11 +1866,7 @@ static void ti_rxeof(sc)
 
 		m->m_pkthdr.len = m->m_len = cur_rx->ti_len;
 		ifp->if_ipackets++;
-		eh = mtod(m, struct ether_header *);
 		m->m_pkthdr.rcvif = ifp;
-
-		/* Remove header from mbuf and pass it on. */
-		m_adj(m, sizeof(struct ether_header));
 
 		if (ifp->if_hwassist) {
 			m->m_pkthdr.csum_flags |= CSUM_IP_CHECKED |
@@ -1887,11 +1881,11 @@ static void ti_rxeof(sc)
 		 * to vlan_input() instead of ether_input().
 		 */
 		if (have_tag) {
-			VLAN_INPUT_TAG(eh, m, vlan_tag);
+			VLAN_INPUT_TAG(m, vlan_tag);
 			have_tag = vlan_tag = 0;
-			continue;
+		} else {
+			(*ifp->if_input)(ifp, m);
 		}
-		ether_input(ifp, eh, m);
 	}
 
 	/* Only necessary on the Tigon 1. */

@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.12 2004/07/02 17:42:20 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.13 2004/07/23 07:16:30 joerg Exp $
  */
 
 /*
@@ -530,7 +530,6 @@ xe_attach (device_t dev) {
   scp->ifp->if_flags = (IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST);
   scp->ifp->if_linkmib = &scp->mibdata;
   scp->ifp->if_linkmiblen = sizeof scp->mibdata;
-  scp->ifp->if_output = ether_output;
   scp->ifp->if_start = xe_start;
   scp->ifp->if_ioctl = xe_ioctl;
   scp->ifp->if_watchdog = xe_watchdog;
@@ -1019,9 +1018,8 @@ xe_intr(void *xscp)
 
 	  /* Deliver packet to upper layers */
 	  if (mbp != NULL) {
-	    mbp->m_pkthdr.len = mbp->m_len = len - ETHER_HDR_LEN;
-	    mbp->m_data += ETHER_HDR_LEN;	/* Strip off Ethernet header */
-	    ether_input(ifp, ehp, mbp);		/* Send the packet on its way */
+	    mbp->m_pkthdr.len = mbp->m_len = len;
+	    (*ifp->if_input)(ifp, mbp);		/* Send the packet on its way */
 	    ifp->if_ipackets++;			/* Success! */
 	  }
 	  XE_OUTW(XE_DO, 0x8000);		/* skip_rx_packet command */

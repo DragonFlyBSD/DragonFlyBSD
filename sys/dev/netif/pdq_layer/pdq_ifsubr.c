@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq_ifsubr.c,v 1.11.2.1 2000/08/02 22:39:30 peter Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.6 2004/04/01 07:27:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.7 2004/07/23 07:16:27 joerg Exp $
  *
  */
 
@@ -192,11 +192,8 @@ pdq_os_receive_pdu(
 	return;
     }
 
-    m->m_data += sizeof(struct fddi_header);
-    m->m_len  -= sizeof(struct fddi_header);
-    m->m_pkthdr.len = pktlen - sizeof(struct fddi_header);
-    m->m_pkthdr.rcvif = &sc->sc_if;
-    fddi_input(&sc->sc_if, fh, m);
+    m->m_pkthdr.len = pktlen;
+    (*sc->sc_if.if_input)(&sc->sc_if, m);
 }
 
 void
@@ -369,13 +366,8 @@ pdq_ifattach(
 #endif
 
     ifp->if_ioctl = pdq_ifioctl;
-    ifp->if_output = fddi_output;
     ifp->if_start = pdq_ifstart;
     ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
-#warning "Implement fddi_resolvemulti!"
-/*    ifp->if_resolvemulti = ether_resolvemulti; XXX */
   
-    if_attach(ifp);
     fddi_ifattach(ifp);
-    PDQ_BPFATTACH(sc, DLT_FDDI, sizeof(struct fddi_header));
 }

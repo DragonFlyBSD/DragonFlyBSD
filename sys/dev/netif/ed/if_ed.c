@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.14 2004/07/02 17:42:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.15 2004/07/23 07:16:25 joerg Exp $
  */
 
 /*
@@ -1723,7 +1723,6 @@ ed_attach(device_t dev)
 	 */
 	ifp->if_softc = sc;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
-	ifp->if_output = ether_output;
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_start = ed_start;
 	ifp->if_ioctl = ed_ioctl;
@@ -2851,13 +2850,9 @@ ed_get_packet(sc, buf, len)
 		 */
 		ed_ring_copy(sc, buf, (char *)eh, len);
 
-	/*
-	 * Remove link layer address.
-	 */
-	m->m_pkthdr.len = m->m_len = len - sizeof(struct ether_header);
-	m->m_data += sizeof(struct ether_header);
+	m->m_pkthdr.len = m->m_len = len;
 
-	ether_input(ifp, eh, m);
+	(*ifp->if_input)(ifp, m);
 }
 
 /*

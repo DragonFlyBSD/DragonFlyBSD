@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.2 2004/07/14 07:40:26 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.3 2004/07/23 07:16:28 joerg Exp $
  */
 
 /*
@@ -1118,7 +1118,6 @@ re_attach(device_t dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = re_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_capabilities = IFCAP_VLAN_MTU;
 	ifp->if_start = re_start;
 	ifp->if_hwassist = RE_CSUM_FEATURES;
@@ -1351,7 +1350,6 @@ re_rxeof(struct re_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mbuf *m;
 	struct re_desc 	*cur_rx;
-	struct ether_header *eh;
 	uint32_t rxstat, rxvlan;
 	int i, total_len;
 
@@ -1464,9 +1462,7 @@ re_rxeof(struct re_softc *sc)
 			    (total_len - ETHER_CRC_LEN);
 
 		ifp->if_ipackets++;
-		eh = mtod(m, struct ether_header *);
 		m->m_pkthdr.rcvif = ifp;
-		m_adj(m, sizeof(struct ether_header));
 
 		/* Do RX checksumming if enabled */
 
@@ -1490,10 +1486,10 @@ re_rxeof(struct re_softc *sc)
 		}
 
 		if (rxvlan & RE_RDESC_VLANCTL_TAG)
-			VLAN_INPUT_TAG(eh, m,
-			  be16toh((rxvlan & RE_RDESC_VLANCTL_DATA)));
+			VLAN_INPUT_TAG(m,
+			   be16toh((rxvlan & RE_RDESC_VLANCTL_DATA)));
 		else
-			ether_input(ifp, eh, m);
+			(*ifp->if_input)(ifp, m);
 	}
 
 	/* Flush the RX DMA ring */

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.10 2004/06/02 14:42:58 eirikn Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.11 2004/07/23 07:16:30 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -121,7 +121,6 @@ ef_attach(struct efnet *sc)
 	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
 
-	ifp->if_output = ether_output;
 	ifp->if_start = ef_start;
 	ifp->if_watchdog = NULL;
 	ifp->if_init = ef_init;

@@ -28,7 +28,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.10 2004/07/02 17:42:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.11 2004/07/23 07:16:25 joerg Exp $
  *
  * Device driver for Crystal Semiconductor CS8920 based ethernet
  *   adapters. By Maxim Bolotin and Oleg Sharoiko, 27-April-1997
@@ -590,7 +590,6 @@ cs_attach(device_t dev)
 
 	ifp->if_softc=sc;
 	if_initname(ifp, "cs", device_get_unit(dev));
-	ifp->if_output=ether_output;
 	ifp->if_start=cs_start;
 	ifp->if_ioctl=cs_ioctl;
 	ifp->if_watchdog=cs_watchdog;
@@ -766,7 +765,6 @@ cs_get_packet(struct cs_softc *sc)
 {
 	struct ifnet *ifp = &(sc->arpcom.ac_if);
 	int iobase = sc->nic_addr, status, length;
-	struct ether_header *eh;
 	struct mbuf *m;
 
 #ifdef CS_DEBUG
@@ -809,8 +807,6 @@ cs_get_packet(struct cs_softc *sc)
 	/* Get the data */
 	insw(iobase + RX_FRAME_PORT, m->m_data, (length+1)>>1);
 
-	eh = mtod(m, struct ether_header *);
-
 #ifdef CS_DEBUG
 	for (i=0;i<length;i++)
 	     printf(" %02x",(unsigned char)*((char *)(m->m_data+i)));
@@ -819,12 +815,7 @@ cs_get_packet(struct cs_softc *sc)
 
 	if (status & (RX_IA | RX_BROADCAST) || 
 	    (ifp->if_flags & IFF_MULTICAST && status & RX_HASHED)) {
-		m->m_pkthdr.len -= sizeof(struct ether_header);
-		m->m_len -= sizeof(struct ether_header);
-		m->m_data += sizeof(struct ether_header);
-
-		/* Feed the packet to the upper layer */
-		ether_input(ifp, eh, m);
+		(*ifp->if_input)(ifp, m);
 
 		ifp->if_ipackets++;
 

@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.11 2004/06/02 14:42:51 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.12 2004/07/23 07:16:26 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -211,7 +211,6 @@ fwe_attach(device_t dev)
 	ifp->if_name = "fwe";
 #endif
 	ifp->if_init = fwe_init;
-	ifp->if_output = ether_output;
 	ifp->if_start = fwe_start;
 	ifp->if_ioctl = fwe_ioctl;
 	ifp->if_mtu = ETHERMTU;
@@ -578,9 +577,6 @@ fwe_as_input(struct fw_xferq *xferq)
 	struct fw_bulkxfer *sxfer;
 	struct fw_pkt *fp;
 	u_char *c;
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-	struct ether_header *eh;
-#endif
 
 	fwe = (struct fwe_softc *)xferq->sc;
 	ifp = &fwe->fwe_if;
@@ -611,10 +607,6 @@ fwe_as_input(struct fw_xferq *xferq)
 
 		m->m_data += HDR_LEN + ETHER_ALIGN;
 		c = mtod(m, char *);
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-		eh = (struct ether_header *)c;
-		m->m_data += sizeof(struct ether_header);
-#endif
 		m->m_len = m->m_pkthdr.len =
 				fp->mode.stream.len - ETHER_ALIGN;
 		m->m_pkthdr.rcvif = ifp;
@@ -633,11 +625,7 @@ fwe_as_input(struct fw_xferq *xferq)
 			 c[20], c[21], c[22], c[23]
 		 );
 #endif
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-		ether_input(ifp, eh, m);
-#else
 		(*ifp->if_input)(ifp, m);
-#endif
 		ifp->if_ipackets ++;
 	}
 	if (STAILQ_FIRST(&xferq->stfree) != NULL)

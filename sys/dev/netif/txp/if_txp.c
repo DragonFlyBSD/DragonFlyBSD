@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.12 2004/07/02 17:42:20 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.13 2004/07/23 07:16:29 joerg Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -341,7 +341,6 @@ txp_attach(dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = txp_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = txp_start;
 	ifp->if_watchdog = txp_watchdog;
 	ifp->if_init = txp_init;
@@ -701,7 +700,6 @@ txp_rx_reclaim(sc, r)
 	struct mbuf *m;
 	struct txp_swdesc *sd = NULL;
 	u_int32_t roff, woff;
-	struct ether_header *eh = NULL;
 
 	roff = *r->r_roff;
 	woff = *r->r_woff;
@@ -769,16 +767,10 @@ txp_rx_reclaim(sc, r)
 			m->m_pkthdr.csum_data = 0xffff;
 		}
 
-		eh = mtod(m, struct ether_header *);
-		/* Remove header from mbuf and pass it on. */
-		m_adj(m, sizeof(struct ether_header));
-
-		if (rxd->rx_stat & RX_STAT_VLAN) {
-			VLAN_INPUT_TAG(eh, m, htons(rxd->rx_vlan >> 16));
-			goto next;
-		}
-
-		ether_input(ifp, eh, m);
+		if (rxd->rx_stat & RX_STAT_VLAN)
+			VLAN_INPUT_TAG(m, htons(rxd->rx_vlan >> 16));
+		else
+			(*ifp->if_input)(ifp, m);
 
 next:
 

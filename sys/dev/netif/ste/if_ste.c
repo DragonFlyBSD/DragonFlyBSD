@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.11 2004/07/02 17:42:19 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.12 2004/07/23 07:16:29 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
  */
@@ -682,7 +682,6 @@ static void ste_intr(xsc)
 static void ste_rxeof(sc)
 	struct ste_softc		*sc;
 {
-        struct ether_header	*eh;
         struct mbuf		*m;
         struct ifnet		*ifp;
 	struct ste_chain_onefrag	*cur_rx;
@@ -743,13 +742,10 @@ static void ste_rxeof(sc)
 		}
 
 		ifp->if_ipackets++;
-		eh = mtod(m, struct ether_header *);
 		m->m_pkthdr.rcvif = ifp;
 		m->m_pkthdr.len = m->m_len = total_len;
 
-		/* Remove header from mbuf and pass it on. */
-		m_adj(m, sizeof(struct ether_header));
-		ether_input(ifp, eh, m);
+		(*ifp->if_input)(ifp, m);
 		
 		cur_rx->ste_ptr->ste_status = 0;
 		count++;
@@ -1063,7 +1059,6 @@ static int ste_attach(dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = ste_ioctl;
-	ifp->if_output = ether_output;
 	ifp->if_start = ste_start;
 	ifp->if_watchdog = ste_watchdog;
 	ifp->if_init = ste_init;
