@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.5 2003/09/15 23:38:13 hsu Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.6 2003/09/16 09:14:40 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -330,7 +330,7 @@ static int
 ef_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 {
 	u_short ether_type;
-	int s, ft = -1;
+	int ft = -1;
 	struct efnet *efp;
 	struct ifnet *eifp;
 	struct llc *l;

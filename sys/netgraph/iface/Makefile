@@ -1,9 +1,21 @@
 # $FreeBSD: src/sys/modules/netgraph/iface/Makefile,v 1.5.2.4 2001/12/21 09:00:48 ru Exp $
-# $DragonFly: src/sys/netgraph/iface/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
+# $DragonFly: src/sys/netgraph/iface/Makefile,v 1.3 2003/09/16 09:14:40 hsu Exp $
 # $Whistle: Makefile,v 1.2 1999/01/19 19:39:21 archie Exp $
 
 KMOD=		ng_iface
-SRCS= 		ng_iface.c
+SRCS= 		ng_iface.c opt_atalk.h opt_inet.h opt_inet6.h opt_ipx.h
 KMODDEPS=	netgraph
+
+opt_inet.h:
+	echo "#define INET 1" > opt_inet.h
+
+opt_inet6.h:
+	echo "#define INET6 1" > opt_inet6.h
+
+opt_atalk.h:
+	echo "#define NETATALK 1" > opt_atalk.h
+
+opt_ipx.h:
+	echo "#define IPX 1" > opt_ipx.h
 
 .include <bsd.kmod.mk>
