@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.4 2003/07/19 21:14:45 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.5 2003/07/26 21:09:10 rob Exp $
  *
  * Low level socket routines
  */
@@ -370,7 +370,7 @@ bad:
  */
 int
 ncp_sock_disconnect(struct ncp_conn *conn) {
-	register struct socket *so;
+	struct socket *so;
 	conn->flags &= ~(NCPFL_SOCONN | NCPFL_ATTACHED | NCPFL_LOGGED);
 	if (conn->ncp_so) {
 		so = conn->ncp_so;

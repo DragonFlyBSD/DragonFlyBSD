@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netipsec/ipsec_mbuf.c,v 1.5.2.2 2003/03/28 20:32:53 sam Exp $
- * $DragonFly: src/sys/netproto/ipsec/ipsec_mbuf.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipsec/ipsec_mbuf.c,v 1.3 2003/07/26 21:06:09 rob Exp $
  */
 
 /*
@@ -313,8 +313,8 @@ m_makespace(struct mbuf *m0, int skip, int hlen, int *off)
 caddr_t
 m_pad(struct mbuf *m, int n)
 {
-	register struct mbuf *m0, *m1;
-	register int len, pad;
+	struct mbuf *m0, *m1;
+	int len, pad;
 	caddr_t retval;
 
 	if (n <= 0) {  /* No stupid arguments. */

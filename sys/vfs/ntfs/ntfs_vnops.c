@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.4 2003/06/26 05:55:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.5 2003/07/26 21:13:15 rob Exp $
  *
  */
 
@@ -159,9 +159,9 @@ ntfs_read(ap)
 		struct ucred *a_cred;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
-	register struct fnode *fp = VTOF(vp);
-	register struct ntnode *ip = FTONT(fp);
+	struct vnode *vp = ap->a_vp;
+	struct fnode *fp = VTOF(vp);
+	struct ntnode *ip = FTONT(fp);
 	struct uio *uio = ap->a_uio;
 	struct ntfsmount *ntmp = ip->i_mp;
 	struct buf *bp;
@@ -232,10 +232,10 @@ ntfs_getattr(ap)
 		struct thread *a_td;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
-	register struct fnode *fp = VTOF(vp);
-	register struct ntnode *ip = FTONT(fp);
-	register struct vattr *vap = ap->a_vap;
+	struct vnode *vp = ap->a_vp;
+	struct fnode *fp = VTOF(vp);
+	struct ntnode *ip = FTONT(fp);
+	struct vattr *vap = ap->a_vap;
 
 	dprintf(("ntfs_getattr: %d, flags: %d\n",ip->i_number,ip->i_flag));
 
@@ -273,9 +273,9 @@ ntfs_inactive(ap)
 		struct vnode *a_vp;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
+	struct vnode *vp = ap->a_vp;
 #ifdef NTFS_DEBUG
-	register struct ntnode *ip = VTONT(vp);
+	struct ntnode *ip = VTONT(vp);
 #endif
 
 	dprintf(("ntfs_inactive: vnode: %p, ntnode: %d\n", vp, ip->i_number));
@@ -300,9 +300,9 @@ ntfs_reclaim(ap)
 		struct vnode *a_vp;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
-	register struct fnode *fp = VTOF(vp);
-	register struct ntnode *ip = FTONT(fp);
+	struct vnode *vp = ap->a_vp;
+	struct fnode *fp = VTOF(vp);
+	struct ntnode *ip = FTONT(fp);
 	int error;
 
 	dprintf(("ntfs_reclaim: vnode: %p, ntnode: %d\n", vp, ip->i_number));
@@ -342,10 +342,10 @@ ntfs_strategy(ap)
 		struct buf *a_bp;
 	} */ *ap;
 {
-	register struct buf *bp = ap->a_bp;
-	register struct vnode *vp = bp->b_vp;
-	register struct fnode *fp = VTOF(vp);
-	register struct ntnode *ip = FTONT(fp);
+	struct buf *bp = ap->a_bp;
+	struct vnode *vp = bp->b_vp;
+	struct fnode *fp = VTOF(vp);
+	struct ntnode *ip = FTONT(fp);
 	struct ntfsmount *ntmp = ip->i_mp;
 	int error;
 
@@ -424,9 +424,9 @@ ntfs_write(ap)
 		struct ucred *a_cred;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
-	register struct fnode *fp = VTOF(vp);
-	register struct ntnode *ip = FTONT(fp);
+	struct vnode *vp = ap->a_vp;
+	struct fnode *fp = VTOF(vp);
+	struct ntnode *ip = FTONT(fp);
 	struct uio *uio = ap->a_uio;
 	struct ntfsmount *ntmp = ip->i_mp;
 	u_int64_t towrite;
@@ -468,7 +468,7 @@ ntfs_access(ap)
 	struct ntnode *ip = VTONT(vp);
 	struct ucred *cred = ap->a_cred;
 	mode_t mask, mode = ap->a_mode;
-	register gid_t *gp;
+	gid_t *gp;
 	int i;
 #ifdef QUOTA
 	int error;
@@ -551,8 +551,8 @@ ntfs_open(ap)
 	} */ *ap;
 {
 #if NTFS_DEBUG
-	register struct vnode *vp = ap->a_vp;
-	register struct ntnode *ip = VTONT(vp);
+	struct vnode *vp = ap->a_vp;
+	struct ntnode *ip = VTONT(vp);
 
 	printf("ntfs_open: %d\n",ip->i_number);
 #endif
@@ -580,8 +580,8 @@ ntfs_close(ap)
 	} */ *ap;
 {
 #if NTFS_DEBUG
-	register struct vnode *vp = ap->a_vp;
-	register struct ntnode *ip = VTONT(vp);
+	struct vnode *vp = ap->a_vp;
+	struct ntnode *ip = VTONT(vp);
 
 	printf("ntfs_close: %d\n",ip->i_number);
 #endif
@@ -599,9 +599,9 @@ ntfs_readdir(ap)
 		u_int **cookies;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
-	register struct fnode *fp = VTOF(vp);
-	register struct ntnode *ip = FTONT(fp);
+	struct vnode *vp = ap->a_vp;
+	struct fnode *fp = VTOF(vp);
+	struct ntnode *ip = FTONT(fp);
 	struct uio *uio = ap->a_uio;
 	struct ntfsmount *ntmp = ip->i_mp;
 	int i, error = 0;
@@ -736,8 +736,8 @@ ntfs_lookup(ap)
 		struct componentname *a_cnp;
 	} */ *ap;
 {
-	register struct vnode *dvp = ap->a_dvp;
-	register struct ntnode *dip = VTONT(dvp);
+	struct vnode *dvp = ap->a_dvp;
+	struct ntnode *dip = VTONT(dvp);
 	struct ntfsmount *ntmp = dip->i_mp;
 	struct componentname *cnp = ap->a_cnp;
 	struct ucred *cred = cnp->cn_cred;

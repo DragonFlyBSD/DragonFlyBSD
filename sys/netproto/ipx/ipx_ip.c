@@ -34,7 +34,7 @@
  *	@(#)ipx_ip.c
  *
  * $FreeBSD: src/sys/netipx/ipx_ip.c,v 1.24.2.2 2003/01/23 21:06:48 sam Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.4 2003/07/23 02:30:22 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.5 2003/07/26 21:07:36 rob Exp $
  */
 
 /*
@@ -89,8 +89,8 @@ static	void ipxipstart(struct ifnet *ifp);
 static struct ifnet_en *
 ipxipattach()
 {
-	register struct ifnet_en *m;
-	register struct ifnet *ifp;
+	struct ifnet_en *m;
+	struct ifnet *ifp;
 
 	if (ipxipif.if_mtu == 0) {
 		ifp = &ipxipif;
@@ -127,7 +127,7 @@ ipxipattach()
  */
 static int
 ipxipioctl(ifp, cmd, data)
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 	u_long cmd;
 	caddr_t data;
 {
@@ -168,9 +168,9 @@ ipxip_input(m, hlen, dummy)
 	int hlen;
 	int dummy;
 {
-	register struct ip *ip;
-	register struct ipx *ipx;
-	register struct ifqueue *ifq = &ipxintrq;
+	struct ip *ip;
+	struct ipx *ipx;
+	struct ifqueue *ifq = &ipxintrq;
 	int len, s;
 
 	if (ipxip_hold_input) {
@@ -246,11 +246,11 @@ ipxipoutput(ifp, m, dst, rt)
 	struct sockaddr *dst;
 	struct rtentry *rt;
 {
-	register struct ifnet_en *ifn = (struct ifnet_en *)ifp;
-	register struct ip *ip;
-	register struct route *ro = &(ifn->ifen_route);
-	register int len = 0;
-	register struct ipx *ipx = mtod(m, struct ipx *);
+	struct ifnet_en *ifn = (struct ifnet_en *)ifp;
+	struct ip *ip;
+	struct route *ro = &(ifn->ifen_route);
+	int len = 0;
+	struct ipx *ipx = mtod(m, struct ipx *);
 	int error;
 
 	ifn->ifen_ifnet.if_opackets++;
@@ -355,7 +355,7 @@ ipxip_route(so, sopt)
 	 * i.e., what return ip address do we use?
 	 */
 	{
-		register struct in_ifaddr *ia;
+		struct in_ifaddr *ia;
 		struct ifnet *ifp = ro.ro_rt->rt_ifp;
 
 		for (ia = TAILQ_FIRST(&in_ifaddrhead); ia != NULL; 
@@ -408,7 +408,7 @@ static int
 ipxip_free(ifp)
 struct ifnet *ifp;
 {
-	register struct ifnet_en *ifn = (struct ifnet_en *)ifp;
+	struct ifnet_en *ifn = (struct ifnet_en *)ifp;
 	struct route *ro = & ifn->ifen_route;
 
 	if (ro->ro_rt != NULL) {
@@ -449,9 +449,9 @@ ipxip_ctlinput(cmd, sa, dummy)
 
 static void
 ipxip_rtchange(dst)
-	register struct in_addr *dst;
+	struct in_addr *dst;
 {
-	register struct ifnet_en *ifn;
+	struct ifnet_en *ifn;
 
 	for (ifn = ipxip_list; ifn != NULL; ifn = ifn->ifen_next) {
 		if (ifn->ifen_dst.s_addr == dst->s_addr &&

@@ -34,7 +34,7 @@
  *	@(#)ipx_input.c
  *
  * $FreeBSD: src/sys/netipx/ipx_input.c,v 1.22.2.2 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.3 2003/07/26 21:07:36 rob Exp $
  */
 
 #include <sys/param.h>
@@ -127,9 +127,9 @@ ipx_init()
 void
 ipxintr()
 {
-	register struct ipx *ipx;
-	register struct mbuf *m;
-	register struct ipxpcb *ipxp;
+	struct ipx *ipx;
+	struct mbuf *m;
+	struct ipxpcb *ipxp;
 	struct ipx_ifaddr *ia;
 	int len, s;
 
@@ -324,8 +324,8 @@ static void
 ipx_forward(m)
 struct mbuf *m;
 {
-	register struct ipx *ipx = mtod(m, struct ipx *);
-	register int error;
+	struct ipx *ipx = mtod(m, struct ipx *);
+	int error;
 	struct mbuf *mcopy = NULL;
 	int agedelta = 1;
 	int flags = IPX_FORWARDING;
@@ -459,7 +459,7 @@ struct route *ro;
 
 static void
 ipx_undo_route(ro)
-register struct route *ro;
+struct route *ro;
 {
 	if (ro->ro_rt != NULL) {
 		RTFREE(ro->ro_rt);
@@ -471,9 +471,9 @@ ipx_watch_output(m, ifp)
 struct mbuf *m;
 struct ifnet *ifp;
 {
-	register struct ipxpcb *ipxp;
-	register struct ifaddr *ifa;
-	register struct ipx_ifaddr *ia;
+	struct ipxpcb *ipxp;
+	struct ifaddr *ifa;
+	struct ipx_ifaddr *ia;
 	/*
 	 * Give any raw listeners a crack at the packet
 	 */
@@ -481,7 +481,7 @@ struct ifnet *ifp;
 	     ipxp = ipxp->ipxp_next) {
 		struct mbuf *m0 = m_copy(m, 0, (int)M_COPYALL);
 		if (m0 != NULL) {
-			register struct ipx *ipx;
+			struct ipx *ipx;
 
 			M_PREPEND(m0, sizeof(*ipx), M_DONTWAIT);
 			if (m0 == NULL)

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipip.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.3 2003/07/26 21:06:09 rob Exp $	*/
 /*	$OpenBSD: ip_ipip.c,v 1.25 2002/06/10 18:04:55 itojun Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -165,13 +165,13 @@ ip4_input(struct mbuf *m, ...)
 static void
 _ipip_input(struct mbuf *m, int iphlen, struct ifnet *gifp)
 {
-	register struct sockaddr_in *sin;
-	register struct ifnet *ifp;
-	register struct ifaddr *ifa;
+	struct sockaddr_in *sin;
+	struct ifnet *ifp;
+	struct ifaddr *ifa;
 	struct ifqueue *ifq = NULL;
 	struct ip *ipo;
 #ifdef INET6
-	register struct sockaddr_in6 *sin6;
+	struct sockaddr_in6 *sin6;
 	struct ip6_hdr *ip6 = NULL;
 	u_int8_t itos;
 #endif

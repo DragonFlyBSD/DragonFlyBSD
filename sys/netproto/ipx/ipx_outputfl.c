@@ -34,7 +34,7 @@
  *	@(#)ipx_outputfl.c
  *
  * $FreeBSD: src/sys/netipx/ipx_outputfl.c,v 1.14.2.1 2000/05/01 01:10:24 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_outputfl.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_outputfl.c,v 1.3 2003/07/26 21:07:36 rob Exp $
  */
 
 #include <sys/param.h>
@@ -61,8 +61,8 @@ ipx_outputfl(m0, ro, flags)
 	struct route *ro;
 	int flags;
 {
-	register struct ipx *ipx = mtod(m0, struct ipx *);
-	register struct ifnet *ifp = NULL;
+	struct ipx *ipx = mtod(m0, struct ipx *);
+	struct ifnet *ifp = NULL;
 	int error = 0;
 	struct sockaddr_ipx *dst;
 	struct route ipxroute;
@@ -164,7 +164,7 @@ int
 ipx_output_type20(m)
 	struct mbuf *m;
 {
-	register struct ipx *ipx;
+	struct ipx *ipx;
 	union ipx_net *nbnet;
 	struct ipx_ifaddr *ia, *tia = NULL;
 	int error = 0;

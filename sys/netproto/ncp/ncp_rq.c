@@ -32,7 +32,7 @@
  * Routines to prepare request and fetch reply
  *
  * $FreeBSD: src/sys/netncp/ncp_rq.c,v 1.1.2.1 2001/05/21 16:27:20 ru Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_rq.c,v 1.3 2003/06/25 03:56:05 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_rq.c,v 1.4 2003/07/26 21:09:10 rob Exp $
  */ 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -354,8 +354,8 @@ ncp_rp_dword_lh(struct ncp_rq *rqp) {
 }
 void
 ncp_rp_mem(struct ncp_rq *rqp,caddr_t target, int size) {
-	register struct mbuf *m=rqp->mrp;
-	register unsigned count;
+	struct mbuf *m=rqp->mrp;
+	unsigned count;
 	
 	while (size > 0) {
 		if (m==0) {	/* should be panic */
@@ -380,8 +380,8 @@ ncp_rp_mem(struct ncp_rq *rqp,caddr_t target, int size) {
 
 int
 ncp_rp_usermem(struct ncp_rq *rqp,caddr_t target, int size) {
-	register struct mbuf *m=rqp->mrp;
-	register unsigned count;
+	struct mbuf *m=rqp->mrp;
+	unsigned count;
 	int error;
 	
 	while (size>0) {
@@ -408,8 +408,8 @@ ncp_rp_usermem(struct ncp_rq *rqp,caddr_t target, int size) {
 
 struct mbuf*
 ncp_rp_mbuf(struct ncp_rq *rqp, int size) {
-	register struct mbuf *m=rqp->mrp, *rm;
-	register unsigned count;
+	struct mbuf *m=rqp->mrp, *rm;
+	unsigned count;
 	
 	rm = m_copym(m, rqp->bpos - mtod(m,caddr_t), size, M_WAIT);
 	while (size > 0) {
@@ -434,13 +434,13 @@ ncp_rp_mbuf(struct ncp_rq *rqp, int size) {
 int
 nwfs_mbuftouio(mrep, uiop, siz, dpos)
 	struct mbuf **mrep;
-	register struct uio *uiop;
+	struct uio *uiop;
 	int siz;
 	caddr_t *dpos;
 {
-	register char *mbufcp, *uiocp;
-	register int xfer, left, len;
-	register struct mbuf *mp;
+	char *mbufcp, *uiocp;
+	int xfer, left, len;
+	struct mbuf *mp;
 	long uiosiz;
 	int error = 0;
 
@@ -502,14 +502,14 @@ nwfs_mbuftouio(mrep, uiop, siz, dpos)
  */
 int
 nwfs_uiotombuf(uiop, mq, siz, bpos)
-	register struct uio *uiop;
+	struct uio *uiop;
 	struct mbuf **mq;
 	int siz;
 	caddr_t *bpos;
 {
-	register char *uiocp;
-	register struct mbuf *mp, *mp2;
-	register int xfer, left, mlen;
+	char *uiocp;
+	struct mbuf *mp, *mp2;
+	int xfer, left, mlen;
 	int uiosiz, clflg;
 
 #ifdef DIAGNOSTIC

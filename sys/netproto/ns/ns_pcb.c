@@ -32,7 +32,7 @@
  *
  *	@(#)ns_pcb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_pcb.c,v 1.9 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.3 2003/07/26 21:10:52 rob Exp $
  */
 
 #include <sys/param.h>
@@ -57,7 +57,7 @@ ns_pcballoc(so, head)
 	struct nspcb *head;
 {
 	struct mbuf *m;
-	register struct nspcb *nsp;
+	struct nspcb *nsp;
 
 	m = m_getclr(M_DONTWAIT, MT_PCB);
 	if (m == NULL)
@@ -70,10 +70,10 @@ ns_pcballoc(so, head)
 }
 
 ns_pcbbind(nsp, nam)
-	register struct nspcb *nsp;
+	struct nspcb *nsp;
 	struct mbuf *nam;
 {
-	register struct sockaddr_ns *sns;
+	struct sockaddr_ns *sns;
 	u_short lport = 0;
 
 	if (nsp->nsp_lport || !ns_nullhost(nsp->nsp_laddr))
@@ -124,9 +124,9 @@ ns_pcbconnect(nsp, nam)
 	struct mbuf *nam;
 {
 	struct ns_ifaddr *ia;
-	register struct sockaddr_ns *sns = mtod(nam, struct sockaddr_ns *);
-	register struct ns_addr *dst;
-	register struct route *ro;
+	struct sockaddr_ns *sns = mtod(nam, struct sockaddr_ns *);
+	struct ns_addr *dst;
+	struct route *ro;
 	struct ifnet *ifp;
 
 	if (nam->m_len != sizeof (*sns))
@@ -241,10 +241,10 @@ ns_pcbdetach(nsp)
 }
 
 ns_setsockaddr(nsp, nam)
-	register struct nspcb *nsp;
+	struct nspcb *nsp;
 	struct mbuf *nam;
 {
-	register struct sockaddr_ns *sns = mtod(nam, struct sockaddr_ns *);
+	struct sockaddr_ns *sns = mtod(nam, struct sockaddr_ns *);
 
 	nam->m_len = sizeof (*sns);
 	sns = mtod(nam, struct sockaddr_ns *);
@@ -255,10 +255,10 @@ ns_setsockaddr(nsp, nam)
 }
 
 ns_setpeeraddr(nsp, nam)
-	register struct nspcb *nsp;
+	struct nspcb *nsp;
 	struct mbuf *nam;
 {
-	register struct sockaddr_ns *sns = mtod(nam, struct sockaddr_ns *);
+	struct sockaddr_ns *sns = mtod(nam, struct sockaddr_ns *);
 
 	nam->m_len = sizeof (*sns);
 	sns = mtod(nam, struct sockaddr_ns *);
@@ -276,11 +276,11 @@ ns_setpeeraddr(nsp, nam)
  * be a parameter list!)
  */
 ns_pcbnotify(dst, errno, notify, param)
-	register struct ns_addr *dst;
+	struct ns_addr *dst;
 	long param;
 	int errno, (*notify)();
 {
-	register struct nspcb *nsp, *oinp;
+	struct nspcb *nsp, *oinp;
 	int s = splimp();
 
 	for (nsp = (&nspcb)->nsp_next; nsp != (&nspcb);) {
@@ -326,7 +326,7 @@ ns_pcblookup(faddr, lport, wildp)
 	struct ns_addr *faddr;
 	u_short lport;
 {
-	register struct nspcb *nsp, *match = 0;
+	struct nspcb *nsp, *match = 0;
 	int matchwild = 3, wildcard;
 	u_short fport;
 

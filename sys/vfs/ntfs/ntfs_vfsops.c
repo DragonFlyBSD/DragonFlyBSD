@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.6 2003/07/19 21:14:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.7 2003/07/26 21:13:15 rob Exp $
  */
 
 
@@ -81,7 +81,7 @@ static int	ntfs_statfs __P((struct mount *, struct statfs *,
 static int	ntfs_unmount __P((struct mount *, int, struct thread *));
 static int	ntfs_vget __P((struct mount *mp, ino_t ino,
 			       struct vnode **vpp));
-static int	ntfs_mountfs __P((register struct vnode *, struct mount *, 
+static int	ntfs_mountfs __P((struct vnode *, struct mount *, 
 				  struct ntfs_args *, struct thread *));
 static int	ntfs_vptofh __P((struct vnode *, struct fid *));
 static int	ntfs_fhtovp __P((struct mount *, struct fid *,
@@ -120,19 +120,19 @@ static int	ntfs_checkexp __P((struct mount *, struct mbuf *,
 static int
 ntfs_checkexp(mp, nam, exflagsp, credanonp)
 #if defined(__FreeBSD__)
-	register struct mount *mp;
+	struct mount *mp;
 	struct sockaddr *nam;
 	int *exflagsp;
 	struct ucred **credanonp;
 #else /* defined(__NetBSD__) */
-	register struct mount *mp;
+	struct mount *mp;
 	struct mbuf *nam;
 	int *exflagsp;
 	struct ucred **credanonp;
 #endif
 {
-	register struct netcred *np;
-	register struct ntfsmount *ntm = VFSTONTFS(mp);
+	struct netcred *np;
+	struct ntfsmount *ntm = VFSTONTFS(mp);
 
 	/*
 	 * Get the export permission structure for this <mp, client> tuple.
@@ -421,7 +421,7 @@ success:
  */
 int
 ntfs_mountfs(devvp, mp, argsp, td)
-	register struct vnode *devvp;
+	struct vnode *devvp;
 	struct mount *mp;
 	struct ntfs_args *argsp;
 	struct thread *td;
@@ -656,7 +656,7 @@ ntfs_unmount(
 	int mntflags,
 	struct thread *td)
 {
-	register struct ntfsmount *ntmp;
+	struct ntfsmount *ntmp;
 	int error, ronly = 0, flags, i;
 
 	dprintf(("ntfs_unmount: unmounting...\n"));
@@ -870,8 +870,8 @@ ntfs_vptofh(
 	struct vnode *vp,
 	struct fid *fhp)
 {
-	register struct ntnode *ntp;
-	register struct ntfid *ntfhp;
+	struct ntnode *ntp;
+	struct ntfid *ntfhp;
 
 	ddprintf(("ntfs_fhtovp(): %p\n", vp));
 
@@ -895,7 +895,7 @@ ntfs_vgetex(
 	struct vnode **vpp) 
 {
 	int error;
-	register struct ntfsmount *ntmp;
+	struct ntfsmount *ntmp;
 	struct ntnode *ip;
 	struct fnode *fp;
 	struct vnode *vp;

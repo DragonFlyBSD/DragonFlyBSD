@@ -34,7 +34,7 @@
  *	@(#)ipx_usrreq.c
  *
  * $FreeBSD: src/sys/netipx/ipx_usrreq.c,v 1.26.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.3 2003/06/25 03:56:05 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.4 2003/07/26 21:07:36 rob Exp $
  */
 
 #include "opt_ipx.h"
@@ -107,9 +107,9 @@ struct	pr_usrreqs ripx_usrreqs = {
 void
 ipx_input(m, ipxp)
 	struct mbuf *m;
-	register struct ipxpcb *ipxp;
+	struct ipxpcb *ipxp;
 {
-	register struct ipx *ipx = mtod(m, struct ipx *);
+	struct ipx *ipx = mtod(m, struct ipx *);
 	struct ifnet *ifp = m->m_pkthdr.rcvif;
 	struct sockaddr_ipx ipx_ipx;
 
@@ -125,7 +125,7 @@ ipx_input(m, ipxp)
 	ipx_ipx.sipx_zero[0] = '\0';
 	ipx_ipx.sipx_zero[1] = '\0';
 	if (ipx_neteqnn(ipx->ipx_sna.x_net, ipx_zeronet) && ifp != NULL) {
-		register struct ifaddr *ifa;
+		struct ifaddr *ifa;
 
 		for (ifa = TAILQ_FIRST(&ifp->if_addrhead); ifa != NULL; 
 		     ifa = TAILQ_NEXT(ifa, ifa_link)) {
@@ -167,7 +167,7 @@ ipx_abort(ipxp)
  */
 void
 ipx_drop(ipxp, errno)
-	register struct ipxpcb *ipxp;
+	struct ipxpcb *ipxp;
 	int errno;
 {
 	struct socket *so = ipxp->ipxp_socket;
@@ -193,10 +193,10 @@ ipx_output(ipxp, m0)
 	struct ipxpcb *ipxp;
 	struct mbuf *m0;
 {
-	register struct ipx *ipx;
-	register struct socket *so;
-	register int len = 0;
-	register struct route *ro;
+	struct ipx *ipx;
+	struct socket *so;
+	int len = 0;
+	struct route *ro;
 	struct mbuf *m;
 	struct mbuf *mprev = NULL;
 
@@ -289,7 +289,7 @@ ipx_output(ipxp, m0)
 
 			}
 			if ((ro->ro_rt->rt_flags & RTF_GATEWAY) == 0) {
-				register struct ipx_addr *dst =
+				struct ipx_addr *dst =
 						&satoipx_addr(ro->ro_dst);
 				dst->x_host = ipx->ipx_dna.x_host;
 			}

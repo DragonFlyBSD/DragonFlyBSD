@@ -34,7 +34,7 @@
  *	@(#)ipx_pcb.c
  *
  * $FreeBSD: src/sys/netipx/ipx_pcb.c,v 1.18.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.4 2003/07/21 07:57:50 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.5 2003/07/26 21:07:36 rob Exp $
  */
 
 #include <sys/param.h>
@@ -57,7 +57,7 @@ static struct	ipx_addr zeroipx_addr;
 int
 ipx_pcballoc(struct socket *so, struct ipxpcb *head, struct thread *td)
 {
-	register struct ipxpcb *ipxp;
+	struct ipxpcb *ipxp;
 
 	MALLOC(ipxp, struct ipxpcb *, sizeof *ipxp, M_PCB, M_NOWAIT | M_ZERO);
 	if (ipxp == NULL)
@@ -283,7 +283,7 @@ ipx_setsockaddr(struct ipxpcb *ipxp, struct sockaddr **nam)
 
 void
 ipx_setpeeraddr(ipxp, nam)
-	register struct ipxpcb *ipxp;
+	struct ipxpcb *ipxp;
 	struct sockaddr **nam;
 {
 	struct sockaddr_ipx *sipx, ssipx;
@@ -305,12 +305,12 @@ ipx_setpeeraddr(ipxp, nam)
  */
 void
 ipx_pcbnotify(dst, errno, notify, param)
-	register struct ipx_addr *dst;
+	struct ipx_addr *dst;
 	int errno;
 	void (*notify)(struct ipxpcb *);
 	long param;
 {
-	register struct ipxpcb *ipxp, *oinp;
+	struct ipxpcb *ipxp, *oinp;
 	int s = splimp();
 
 	for (ipxp = (&ipxpcb)->ipxp_next; ipxp != (&ipxpcb);) {
@@ -357,7 +357,7 @@ ipx_pcblookup(faddr, lport, wildp)
 	u_short lport;
 	int wildp;
 {
-	register struct ipxpcb *ipxp, *match = 0;
+	struct ipxpcb *ipxp, *match = 0;
 	int matchwild = 3, wildcard;
 	u_short fport;
 

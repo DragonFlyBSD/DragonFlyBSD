@@ -32,7 +32,7 @@
  *
  *	@(#)ns_output.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_output.c,v 1.7 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_output.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_output.c,v 1.3 2003/07/26 21:10:52 rob Exp $
  */
 
 #include <sys/param.h>
@@ -63,8 +63,8 @@ ns_output(m0, ro, flags)
 	struct route *ro;
 	int flags;
 {
-	register struct idp *idp = mtod(m0, struct idp *);
-	register struct ifnet *ifp = 0;
+	struct idp *idp = mtod(m0, struct idp *);
+	struct ifnet *ifp = 0;
 	int error = 0;
 	struct route idproute;
 	struct sockaddr_ns *dst;

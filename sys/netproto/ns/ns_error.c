@@ -32,7 +32,7 @@
  *
  *	@(#)ns_error.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_error.c,v 1.9 1999/08/28 00:49:49 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_error.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_error.c,v 1.3 2003/07/26 21:10:52 rob Exp $
  */
 
 #include <sys/param.h>
@@ -65,7 +65,7 @@ int	ns_errprintfs = 0;
 
 ns_err_x(c)
 {
-	register u_short *w, *lim, *base = ns_errstat.ns_es_codes;
+	u_short *w, *lim, *base = ns_errstat.ns_es_codes;
 	u_short x = c;
 
 	/*
@@ -92,10 +92,10 @@ ns_error(om, type, param)
 	struct mbuf *om;
 	int type;
 {
-	register struct ns_epidp *ep;
+	struct ns_epidp *ep;
 	struct mbuf *m;
 	struct idp *nip;
-	register struct idp *oip = mtod(om, struct idp *);
+	struct idp *oip = mtod(om, struct idp *);
 	extern int idpcksum;
 
 	/*
@@ -167,7 +167,7 @@ freeit:
 }
 
 ns_printhost(p)
-register struct ns_addr *p;
+struct ns_addr *p;
 {
 
 	printf("<net:%x%x,host:%x%x%x,port:%x>",
@@ -186,9 +186,9 @@ register struct ns_addr *p;
 ns_err_input(m)
 	struct mbuf *m;
 {
-	register struct ns_errp *ep;
-	register struct ns_epidp *epidp = mtod(m, struct ns_epidp *);
-	register int i;
+	struct ns_errp *ep;
+	struct ns_epidp *epidp = mtod(m, struct ns_epidp *);
+	int i;
 	int type, code, param;
 
 	/*
@@ -299,8 +299,8 @@ nstime()
 ns_echo(m)
 struct mbuf *m;
 {
-	register struct idp *idp = mtod(m, struct idp *);
-	register struct echo {
+	struct idp *idp = mtod(m, struct idp *);
+	struct echo {
 	    struct idp	ec_idp;
 	    u_short		ec_op; /* Operation, 1 = request, 2 = reply */
 	} *ec = (struct echo *)idp;

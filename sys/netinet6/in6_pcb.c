@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.6 2003/07/23 02:30:22 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.7 2003/07/26 21:04:50 rob Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -339,7 +339,7 @@ int
 in6_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 {
 	struct in6_addr *addr6;
-	register struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)nam;
+	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)nam;
 	int error;
 
 	/*
@@ -642,8 +642,8 @@ in6_setsockaddr(so, nam)
 	struct sockaddr **nam;
 {
 	int s;
-	register struct inpcb *inp;
-	register struct sockaddr_in6 *sin6;
+	struct inpcb *inp;
+	struct sockaddr_in6 *sin6;
 
 	/*
 	 * Do the malloc first in case it blocks.
@@ -681,7 +681,7 @@ in6_setpeeraddr(so, nam)
 {
 	int s;
 	struct inpcb *inp;
-	register struct sockaddr_in6 *sin6;
+	struct sockaddr_in6 *sin6;
 
 	/*
 	 * Do the malloc first in case it blocks.
@@ -854,7 +854,7 @@ in6_pcblookup_local(pcbinfo, laddr, lport_arg, wild_okay)
 	u_int lport_arg;
 	int wild_okay;
 {
-	register struct inpcb *inp;
+	struct inpcb *inp;
 	int matchwild = 3, wildcard;
 	u_short lport = lport_arg;
 
@@ -1034,7 +1034,7 @@ in6_pcblookup_hash(pcbinfo, faddr, fport_arg, laddr, lport_arg, wildcard, ifp)
 	struct ifnet *ifp;
 {
 	struct inpcbhead *head;
-	register struct inpcb *inp;
+	struct inpcb *inp;
 	u_short fport = fport_arg, lport = lport_arg;
 	int faith;
 

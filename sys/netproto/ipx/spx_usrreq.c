@@ -34,7 +34,7 @@
  *	@(#)spx_usrreq.h
  *
  * $FreeBSD: src/sys/netipx/spx_usrreq.c,v 1.27.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.3 2003/07/21 07:57:50 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.4 2003/07/26 21:07:36 rob Exp $
  */
 
 #include <sys/param.h>
@@ -128,12 +128,12 @@ spx_init()
 
 void
 spx_input(m, ipxp)
-	register struct mbuf *m;
-	register struct ipxpcb *ipxp;
+	struct mbuf *m;
+	struct ipxpcb *ipxp;
 {
-	register struct spxpcb *cb;
-	register struct spx *si = mtod(m, struct spx *);
-	register struct socket *so;
+	struct spxpcb *cb;
+	struct spx *si = mtod(m, struct spx *);
+	struct socket *so;
 	int dropsocket = 0;
 	short ostate = 0;
 
@@ -337,12 +337,12 @@ static int spxrexmtthresh = 3;
  */
 static int
 spx_reass(cb, si)
-register struct spxpcb *cb;
-register struct spx *si;
+struct spxpcb *cb;
+struct spx *si;
 {
-	register struct spx_q *q;
-	register struct mbuf *m;
-	register struct socket *so = cb->s_ipxpcb->ipxp_socket;
+	struct spx_q *q;
+	struct mbuf *m;
+	struct socket *so = cb->s_ipxpcb->ipxp_socket;
 	char packetp = cb->s_flags & SF_HI;
 	int incr;
 	char wakeup = 0;
@@ -407,7 +407,7 @@ register struct spx *si;
 	if (cb->s_rtt && SSEQ_GT(si->si_ack, cb->s_rtseq)) {
 		spxstat.spxs_rttupdated++;
 		if (cb->s_srtt != 0) {
-			register short delta;
+			short delta;
 			delta = cb->s_rtt - (cb->s_srtt >> 3);
 			if ((cb->s_srtt += delta) <= 0)
 				cb->s_srtt = 1;
@@ -659,11 +659,11 @@ spx_ctlinput(cmd, arg_as_sa, dummy)
 #ifdef notdef
 int
 spx_fixmtu(ipxp)
-register struct ipxpcb *ipxp;
+struct ipxpcb *ipxp;
 {
-	register struct spxpcb *cb = (struct spxpcb *)(ipxp->ipxp_pcb);
-	register struct mbuf *m;
-	register struct spx *si;
+	struct spxpcb *cb = (struct spxpcb *)(ipxp->ipxp_pcb);
+	struct mbuf *m;
+	struct spx *si;
 	struct ipx_errp *ep;
 	struct sockbuf *sb;
 	int badseq, len;
@@ -708,13 +708,13 @@ register struct ipxpcb *ipxp;
 
 static int
 spx_output(cb, m0)
-	register struct spxpcb *cb;
+	struct spxpcb *cb;
 	struct mbuf *m0;
 {
 	struct socket *so = cb->s_ipxpcb->ipxp_socket;
-	register struct mbuf *m;
-	register struct spx *si = (struct spx *)NULL;
-	register struct sockbuf *sb = &so->so_snd;
+	struct mbuf *m;
+	struct spx *si = (struct spx *)NULL;
+	struct sockbuf *sb = &so->so_snd;
 	int len = 0, win, rcv_win;
 	short span, off, recordp = 0;
 	u_short alo;
@@ -809,7 +809,7 @@ spx_output(cb, m0)
 		si->si_i = *cb->s_ipx;
 		si->si_s = cb->s_shdr;
 		if ((cb->s_flags & SF_PI) && (cb->s_flags & SF_HO)) {
-			register struct spxhdr *sh;
+			struct spxhdr *sh;
 			if (m0->m_len < sizeof(*sh)) {
 				if((m0 = m_pullup(m0, sizeof(*sh))) == NULL) {
 					m_free(m);
@@ -1119,9 +1119,9 @@ static int spx_do_persist_panics = 0;
 
 static void
 spx_setpersist(cb)
-	register struct spxpcb *cb;
+	struct spxpcb *cb;
 {
-	register int t = ((cb->s_srtt >> 2) + cb->s_rttvar) >> 1;
+	int t = ((cb->s_srtt >> 2) + cb->s_rttvar) >> 1;
 
 	if (cb->s_timer[SPXT_REXMT] && spx_do_persist_panics)
 		panic("spx_output REXMT");
@@ -1141,7 +1141,7 @@ spx_ctloutput(so, sopt)
 	struct sockopt *sopt;
 {
 	struct ipxpcb *ipxp = sotoipxpcb(so);
-	register struct spxpcb *cb;
+	struct spxpcb *cb;
 	int mask, error;
 	short soptval;
 	u_short usoptval;
@@ -1636,11 +1636,11 @@ spx_sp_attach(so, proto, td)
  */
 static void
 spx_template(cb)
-	register struct spxpcb *cb;
+	struct spxpcb *cb;
 {
-	register struct ipxpcb *ipxp = cb->s_ipxpcb;
-	register struct ipx *ipx = cb->s_ipx;
-	register struct sockbuf *sb = &(ipxp->ipxp_socket->so_snd);
+	struct ipxpcb *ipxp = cb->s_ipxpcb;
+	struct ipx *ipx = cb->s_ipx;
+	struct sockbuf *sb = &(ipxp->ipxp_socket->so_snd);
 
 	ipx->ipx_pt = IPXPROTO_SPX;
 	ipx->ipx_sna = ipxp->ipxp_laddr;
@@ -1664,12 +1664,12 @@ spx_template(cb)
  */
 static struct spxpcb *
 spx_close(cb)
-	register struct spxpcb *cb;
+	struct spxpcb *cb;
 {
-	register struct spx_q *s;
+	struct spx_q *s;
 	struct ipxpcb *ipxp = cb->s_ipxpcb;
 	struct socket *so = ipxp->ipxp_socket;
-	register struct mbuf *m;
+	struct mbuf *m;
 
 	s = cb->s_q.si_next;
 	while (s != &(cb->s_q)) {
@@ -1694,14 +1694,14 @@ spx_close(cb)
  */
 static struct spxpcb *
 spx_usrclosed(cb)
-	register struct spxpcb *cb;
+	struct spxpcb *cb;
 {
 	return (spx_close(cb));
 }
 
 static struct spxpcb *
 spx_disconnect(cb)
-	register struct spxpcb *cb;
+	struct spxpcb *cb;
 {
 	return (spx_close(cb));
 }
@@ -1712,7 +1712,7 @@ spx_disconnect(cb)
  */
 static struct spxpcb *
 spx_drop(cb, errno)
-	register struct spxpcb *cb;
+	struct spxpcb *cb;
 	int errno;
 {
 	struct socket *so = cb->s_ipxpcb->ipxp_socket;
@@ -1738,8 +1738,8 @@ spx_drop(cb, errno)
 void
 spx_fasttimo()
 {
-	register struct ipxpcb *ipxp;
-	register struct spxpcb *cb;
+	struct ipxpcb *ipxp;
+	struct spxpcb *cb;
 	int s = splnet();
 
 	ipxp = ipxpcb.ipxp_next;
@@ -1763,10 +1763,10 @@ spx_fasttimo()
 void
 spx_slowtimo()
 {
-	register struct ipxpcb *ip, *ipnxt;
-	register struct spxpcb *cb;
+	struct ipxpcb *ip, *ipnxt;
+	struct spxpcb *cb;
 	int s = splnet();
-	register int i;
+	int i;
 
 	/*
 	 * Search through tcb's and update active timers.
@@ -1803,7 +1803,7 @@ tpgone:
  */
 static struct spxpcb *
 spx_timers(cb, timer)
-	register struct spxpcb *cb;
+	struct spxpcb *cb;
 	int timer;
 {
 	long rexmt;

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.5 2003/07/23 02:30:22 dillon Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.6 2003/07/26 21:04:50 rob Exp $
  */
 
 /*
@@ -135,8 +135,8 @@ rip6_input(mp, offp, proto)
 	int	*offp, proto;
 {
 	struct mbuf *m = *mp;
-	register struct ip6_hdr *ip6 = mtod(m, struct ip6_hdr *);
-	register struct inpcb *in6p;
+	struct ip6_hdr *ip6 = mtod(m, struct ip6_hdr *);
+	struct inpcb *in6p;
 	struct inpcb *last = 0;
 	struct mbuf *opts = NULL;
 	struct sockaddr_in6 rip6src;
