@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.4 2004/12/16 14:04:10 asmodai Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.5 2004/12/17 16:08:48 asmodai Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.4 2004/12/16 14:03:18 asmodai Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.5 2004/12/17 16:08:21 asmodai Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -6725,22 +6725,52 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "Imagine-128 II",
 	},
 	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_EDGE3D,
+	    0,
+	    "Nvidia Corporation",
+	    "Edge 3D",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_EDGE3D2,
+	    0,
+	    "Nvidia Corporation",
+	    "Edge 3D",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_RIVA128,
+	    0,
+	    "Nvidia Corporation",
+	    "Riva 128",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_RIVA128ZX,
+	    0,
+	    "Nvidia Corporation",
+	    "Riva 128ZX",
+	},
+	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_RIVATNT,
 	    0,
 	    "Nvidia Corporation",
-	    "RIVA TNT",
+	    "Riva TNT",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_RIVATNT2,
 	    0,
 	    "Nvidia Corporation",
-	    "RIVA TNT2",
+	    "Riva TNT2",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_RIVATNT2U,
 	    0,
 	    "Nvidia Corporation",
-	    "RIVA TNT2 Ultra",
+	    "Riva TNT2 Ultra",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_RIVATNT2_2,
+	    0,
+	    "Nvidia Corporation",
+	    "Riva TNT2",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_VANTA,
@@ -6755,6 +6785,48 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "RIVA TNT2 Model 64",
 	},
 	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GEFORCE6800U,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce 6800 Ultra",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GEFORCE6800,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce 6800",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GEFORCE6800LE,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce 6800 LE",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GEFORCE6800GT,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce 6800 GT",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_QUADROFX4000,
+	    0,
+	    "Nvidia Corporation",
+	    "Quadro FX 4000",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE2_MCP2ISA,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce2 MCP2 ISA Bridge",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE2_MCPTSMB,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce2 MCP-T SMBus Controller",
+	},
+	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE2_ATA133,
 	    0,
 	    "Nvidia Corporation",
@@ -6765,6 +6837,18 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Nvidia Corporation",
 	    "nForce2 MCP-T AC-97",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE_MCPT_AC,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce MCP-T AC-97",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE_PCIB,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce PCI-to-PCI Bridge",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE3_PCHB,
@@ -6819,6 +6903,54 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Nvidia Corporation",
 	    "Aladdin TNT2",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_QUADROFX3400,
+	    0,
+	    "Nvidia Corporation",
+	    "Quadro FX 3400",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GEFORCE6800U2,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce 6800 Ultra",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GEFORCEPCX5750,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce PCX 5750",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GEFORCEPCX5900,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce PCX 5900",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GEFORCEPCX5300,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce PCX 5300",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_QUADROPCIE,
+	    0,
+	    "Nvidia Corporation",
+	    "Quadro PCI-E Series",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_QUADROFX13000,
+	    0,
+	    "Nvidia Corporation",
+	    "Quadro FX 13000",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GEFORCEPCX4300,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce PCX 4300",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GEFORCE256,
@@ -6914,7 +7046,7 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_QUADRO4_500XGL,
 	    0,
 	    "Nvidia Corporation",
-	    "Quadro4 500XGL",
+	    "Quadro4 500 XGL",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_QUADRO4_200NVS,
@@ -6941,6 +7073,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "GeForce4 MX 420 (AGP8X)",
 	},
 	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GEFORCE4_448GO,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce4 448 Go",
+	},
+	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_QUADRO4_580XGL,
 	    0,
 	    "Nvidia Corporation",
@@ -6957,6 +7095,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Nvidia Corporation",
 	    "Quadro4 380 XGL",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GEFORCE4_448GO2,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce4 448 Go",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GEFORCE2_IGP,
@@ -7028,19 +7172,19 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_QUADRO4_900XGL,
 	    0,
 	    "Nvidia Corporation",
-	    "Quadro4 900XGL",
+	    "Quadro4 900 XGL",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_QUADRO4_750XGL,
 	    0,
 	    "Nvidia Corporation",
-	    "Quadro4 750XGL",
+	    "Quadro4 750 XGL",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_QUADRO4_700XGL,
 	    0,
 	    "Nvidia Corporation",
-	    "Quadro4 700XGL",
+	    "Quadro4 700 XGL",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF4_TI_4800,
@@ -7061,6 +7205,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "GeForce4 Ti 4800 SE",
 	},
 	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF4_4200GO,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce4 4200 Go",
+	},
+	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_QUADRO4_980_XGL,
 	    0,
 	    "Nvidia Corporation",
@@ -7071,6 +7221,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Nvidia Corporation",
 	    "Quadro4 780 XGL",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_QUADRO4_700_GGL,
+	    0,
+	    "Nvidia Corporation",
+	    "Quadro4 700 GoGL",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GEFORCE_FX5800U,
@@ -7095,6 +7251,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Nvidia Corporation",
 	    "Quadro FX 1000",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_ICEFX2000,
+	    0,
+	    "Nvidia Corporation",
+	    "ICE FX 2000",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF_FX5600U,
@@ -7130,13 +7292,37 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF_FX5200SE,
 	    0,
 	    "Nvidia Corporation",
-	    "GeForce FX 5200SE",
+	    "GeForce FX 5200 SE",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF_FXGO5250,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce FX Go 5250",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF_FX5500,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce FX 5500",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF_FX5100,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce FX 5100",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_QUADRO_FX_500,
 	    0,
 	    "Nvidia Corporation",
 	    "Quadro FX 500",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF_FXGO5100,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce FX Go5100",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF_FX5900U,
@@ -7151,16 +7337,70 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "GeForce FX 5900",
 	},
 	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF_FX5900XT,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce FX 5900 XT",
+	},
+	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF_FX5950U,
 	    0,
 	    "Nvidia Corporation",
 	    "GeForce FX 5950 Ultra",
 	},
 	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF_FX5900ZT,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce FX 5900 ZT",
+	},
+	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_QUADRO_FX_3000,
 	    0,
 	    "Nvidia Corporation",
 	    "Quadro FX 3000",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF_FX5700U,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce FX 5700 Ultra",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF_FX5700,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce FX 5700",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF_FX5700LE,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce FX 5700 LE",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF_FX5700VE,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce FX 5700 VE",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NV365,
+	    0,
+	    "Nvidia Corporation",
+	    "NV36.5",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF_FXGO5600,
+	    0,
+	    "Nvidia Corporation",
+	    "GeForce FX Go5600",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_QUADRO_FX_1100,
+	    0,
+	    "Nvidia Corporation",
+	    "Quadro FX 1100",
 	},
 	{
 	    PCI_VENDOR_NVIDIA_SGS, PCI_PRODUCT_NVIDIA_SGS_RIVA128,
