@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.35 2003/10/02 22:29:15 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.36 2003/10/15 23:27:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1075,36 +1075,40 @@ lwkt_trytoken(lwkt_token_t tok)
  * the other cpu hands it back to us before we check).
  *
  * We might have lost the token, so check that.
+ *
+ * Return the token's generation number.  The number is useful to callers
+ * who may want to know if the token was stolen during potential blockages.
  */
-void
+int
 lwkt_reltoken(lwkt_token_t tok)
 {
+    int gen;
+
     if (tok->t_cpu == mycpu->gd_cpuid) {
 	tok->t_cpu = tok->t_reqcpu;
     }
+    gen = tok->t_gen;
     crit_exit();
+    return(gen);
 }
 
 /*
- * Reacquire a token that might have been lost and compare and update the
- * generation number.  0 is returned if the generation has not changed
- * (nobody else obtained the token while we were blocked, on this cpu or
- * any other cpu).
+ * Reacquire a token that might have been lost.  0 is returned if the 
+ * generation has not changed (nobody stole the token from us), -1 is 
+ * returned otherwise.  The token is reacquired regardless but the
+ * generation number is not bumped further if we already own the token.
  *
- * This function returns with the token re-held whether the generation
- * number changed or not.
+ * For efficiency we inline the best-case situation for lwkt_regettoken()
+ * (i.e .we still own the token).
  */
 int
 lwkt_gentoken(lwkt_token_t tok, int *gen)
 {
-    if (lwkt_regettoken(tok) == *gen) {
+    if (tok->t_cpu == mycpu->gd_cpuid && tok->t_gen == *gen)
 	return(0);
-    } else {
-	*gen = tok->t_gen;
-	return(-1);
-    }
+    *gen = lwkt_regettoken(tok);
+    return(-1);
 }
-
 
 /*
  * Re-acquire a token that might have been lost.  Returns the generation 

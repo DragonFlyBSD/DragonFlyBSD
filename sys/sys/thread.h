@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.33 2003/10/02 22:27:00 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.34 2003/10/15 23:27:05 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -247,7 +247,7 @@ extern void lwkt_signal(lwkt_wait_t w, int count);
 extern int lwkt_trytoken(lwkt_token_t tok);
 extern int lwkt_gettoken(lwkt_token_t tok);
 extern int lwkt_gentoken(lwkt_token_t tok, int *gen);
-extern void lwkt_reltoken(lwkt_token_t tok);
+extern int lwkt_reltoken(lwkt_token_t tok);
 extern void lwkt_inittoken(lwkt_token_t tok);
 extern int  lwkt_regettoken(lwkt_token_t tok);
 extern void lwkt_rwlock_init(lwkt_rwlock_t lock);
