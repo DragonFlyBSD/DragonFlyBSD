@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.15 2005/01/23 20:23:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.16 2005/02/20 03:55:14 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
  */
@@ -98,6 +98,7 @@
 #include <sys/queue.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -942,7 +943,8 @@ static int wb_attach(dev)
 	ifp->if_watchdog = wb_watchdog;
 	ifp->if_init = wb_init;
 	ifp->if_baudrate = 10000000;
-	ifp->if_snd.ifq_maxlen = WB_TX_LIST_CNT - 1;
+	ifq_set_maxlen(&ifp->if_snd, WB_TX_LIST_CNT - 1);
+	ifq_set_ready(&ifp->if_snd);
 
 	/*
 	 * Do MII setup.
@@ -1359,7 +1361,7 @@ static void wb_intr(arg)
 	/* Re-enable interrupts. */
 	CSR_WRITE_4(sc, WB_IMR, WB_INTRS);
 
-	if (ifp->if_snd.ifq_head != NULL) {
+	if (!ifq_is_empty(&ifp->if_snd)) {
 		wb_start(ifp);
 	}
 
@@ -1506,7 +1508,7 @@ static void wb_start(ifp)
 	start_tx = sc->wb_cdata.wb_tx_free;
 
 	while(sc->wb_cdata.wb_tx_free->wb_mbuf == NULL) {
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
@@ -1789,7 +1791,7 @@ static void wb_watchdog(ifp)
 	wb_reset(sc);
 	wb_init(sc);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		wb_start(ifp);
 
 	return;

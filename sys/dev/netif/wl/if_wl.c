@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.16 2005/01/23 20:23:22 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.17 2005/02/20 03:58:04 joerg Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -206,6 +206,7 @@ WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_dl.h>
 
 #ifdef INET
@@ -504,6 +505,8 @@ wlattach(struct isa_device *id)
        ifp->if_done
        ifp->if_reset
        */
+    ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+    ifq_set_ready(&ifp->if_snd);
     ether_ifattach(ifp, sc->wl_ac.ac_enaddr);
 
     bcopy(&sc->wl_addr[0], sc->wl_ac.ac_enaddr, WAVELAN_ADDR_SIZE);
@@ -884,8 +887,8 @@ wlstart(struct ifnet *ifp)
 
     /* get ourselves some data */
     ifp = &(sc->wl_if);
-    IF_DEQUEUE(&ifp->if_snd, m);
-    if (m != (struct mbuf *)0) {
+    m = ifq_dequeue(&ifp->if_snd);
+    if (m != NULL) {
 	BPF_MTAP(ifp, m);
 	sc->tbusy++;
 	/* set the watchdog timer so that if the board

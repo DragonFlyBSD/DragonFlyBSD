@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.15 2005/01/23 20:23:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.16 2005/02/20 03:53:42 joerg Exp $
  *
  */
 
@@ -65,6 +65,7 @@
 #include <sys/module.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 
 #include <net/ethernet.h>
 #include <net/if_arp.h>
@@ -155,7 +156,8 @@ vxattach(sc)
 
     if_initname(ifp, "vx", sc->unit);
     ifp->if_mtu = ETHERMTU;
-    ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+    ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+    ifq_set_ready(&ifp->if_snd);
     ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
     ifp->if_start = vxstart;
     ifp->if_ioctl = vxioctl;
@@ -398,10 +400,9 @@ vxstart(ifp)
 
 startagain:
     /* Sneak a peek at the next packet */
-    m0 = ifp->if_snd.ifq_head;
-    if (m0 == 0) {
+    m0 = ifq_poll(&ifp->if_snd);
+    if (m0 == NULL)
 	return;
-    }
     /* We need to use m->m_pkthdr.len, so require the header */
      if ((m0->m_flags & M_PKTHDR) == 0)
 	panic("vxstart: no header mbuf");
@@ -417,7 +418,7 @@ startagain:
     if (len + pad > ETHER_MAX_LEN) {
 	/* packet is obviously too large: toss it */
 	++ifp->if_oerrors;
-	IF_DEQUEUE(&ifp->if_snd, m0);
+	m0 = ifq_dequeue(&ifp->if_snd);
 	m_freem(m0);
 	goto readcheck;
     }
@@ -432,10 +433,7 @@ startagain:
 	}
     }
     CSR_WRITE_2(sc, VX_COMMAND, SET_TX_AVAIL_THRESH | (8188 >> 2));
-    IF_DEQUEUE(&ifp->if_snd, m0);
-    if (m0 == NULL) {		/* not really needed */
-	return;
-    }
+    m0 = ifq_dequeue(&ifp->if_snd);
 
     VX_BUSY_WAIT;
     CSR_WRITE_2(sc, VX_COMMAND, SET_TX_START_THRESH |
