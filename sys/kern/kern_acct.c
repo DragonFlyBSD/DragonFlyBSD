@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.9 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.10 2004/04/21 15:39:02 justin Exp $
  */
 
 #include <sys/param.h>
@@ -96,15 +96,15 @@ static struct	vnode *savacctp;
  */
 static int acctsuspend = 2;	/* stop accounting when < 2% free space left */
 SYSCTL_INT(_kern, OID_AUTO, acct_suspend, CTLFLAG_RW,
-	&acctsuspend, 0, "");
+	&acctsuspend, 0, "Percentage of free disk space below which accounting will be suspended");
 
 static int acctresume = 4;	/* resume when free space risen to > 4% */
 SYSCTL_INT(_kern, OID_AUTO, acct_resume, CTLFLAG_RW,
-	&acctresume, 0, "");
+	&acctresume, 0, "Minimum percentage of free disk space needed to resume accounting");
 
 static int acctchkfreq = 15;	/* frequency (in seconds) to check space */
 SYSCTL_INT(_kern, OID_AUTO, acct_chkfreq, CTLFLAG_RW,
-	&acctchkfreq, 0, "");
+	&acctchkfreq, 0, "Frequency (in seconds) of free disk space checking");
 
 /*
  * Accounting system call.  Written based on the specification and
