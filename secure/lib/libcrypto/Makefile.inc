@@ -1,7 +1,7 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile.inc,v 1.7.2.11 2003/02/20 15:07:32 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.6 2004/09/02 08:57:05 asmodai Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.7 2004/12/18 20:53:19 asmodai Exp $
 
-OSSLVERSION=	0.9.7d
+OSSLVERSION=	0.9.7e
 LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl-${OSSLVERSION}
 LCRYPTO_DOC=	${.CURDIR}/../../../crypto/openssl-${OSSLVERSION}/doc
 
@@ -48,6 +48,7 @@ HDRS+=	\
 	engine/hw_ncipher_err.h engine/hw_nuron_err.h engine/hw_sureware_err.h \
 	engine/hw_ubsec_err.h \
 	err/err.h \
+	../fips/fips.h ../fips/rand/fips_rand.h \
 	hmac/hmac.h \
 	${_idea_h} \
 	krb5/krb5_asn.h \
@@ -130,7 +131,7 @@ man-update:
 
 man-makefile-update:
 	rm -f ${.CURDIR}/Makefile.man
-	echo '# $$DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.6 2004/09/02 08:57:05 asmodai Exp $$' >> ${.CURDIR}/Makefile.man
+	echo '# $$DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.7 2004/12/18 20:53:19 asmodai Exp $$' >> ${.CURDIR}/Makefile.man
 	echo '# DO NOT EDIT: generated from man-makefile-update target' >> \
 	    ${.CURDIR}/Makefile.man
 	for i in ${LCRYPTO_DOC}/${_docs}/*.pod; do \

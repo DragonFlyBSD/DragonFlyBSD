@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.33 2004/11/23 06:32:36 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.34 2004/12/18 20:53:19 asmodai Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -38,7 +38,7 @@ SSH=	lib/libssh \
 	usr.bin/ssh \
 	usr.sbin/sshd
 .endif
-SSL=	${.CURDIR}/../crypto/openssl-0.9.7d/apps/openssl.cnf
+SSL=	${.CURDIR}/../crypto/openssl-0.9.7e/apps/openssl.cnf
 .endif
 
 # Files that should be installed read-only-executable (555) root:wheel
