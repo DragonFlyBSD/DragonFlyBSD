@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.11 2003/10/09 22:27:19 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.12 2003/10/18 05:53:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,6 +71,7 @@
  * Structures associated with name cacheing.
  */
 #define NCHHASH(hash)	(&nchashtbl[(hash) & nchash])
+#define MINNEG		1024
 
 static LIST_HEAD(nchashhead, namecache) *nchashtbl;	/* Hash Table */
 static struct namecache_list	ncneglist;		/* instead of vnode */
@@ -90,6 +91,9 @@ SYSCTL_ULONG(_debug, OID_AUTO, numneg, CTLFLAG_RD, &numneg, 0, "");
 
 static u_long	numcache;		/* number of cache entries allocated */
 SYSCTL_ULONG(_debug, OID_AUTO, numcache, CTLFLAG_RD, &numcache, 0, "");
+
+static u_long	numunres;		/* number of unresolved entries */
+SYSCTL_ULONG(_debug, OID_AUTO, numunres, CTLFLAG_RD, &numunres, 0, "");
 
 struct	nchstats nchstats;		/* cache effectiveness statistics */
 
@@ -138,10 +142,14 @@ void
 _cache_drop(struct namecache *ncp)
 {
 	KKASSERT(ncp->nc_refs > 0);
-	if (ncp->nc_refs == 1 && (ncp->nc_flag & NCF_HASHED) == 0)
+	if (ncp->nc_refs == 1 && 
+	    (ncp->nc_flag & NCF_UNRESOLVED) && 
+	    TAILQ_EMPTY(&ncp->nc_list)
+	) {
 		cache_zap(ncp);
-	else
+	} else {
 		--ncp->nc_refs;
+	}
 }
 
 struct namecache *
@@ -186,11 +194,12 @@ cache_zap(struct namecache *ncp)
 	 */
 	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
 		ncp->nc_flag |= NCF_UNRESOLVED;
-		--numcache;
+		++numunres;
 		if ((vp = ncp->nc_vp) != NULL) {
+			--numcache;
 			ncp->nc_vp = NULL;	/* safety */
 			TAILQ_REMOVE(&vp->v_namecache, ncp, nc_vnode);
-			if (vp && !TAILQ_EMPTY(&ncp->nc_list))
+			if (!TAILQ_EMPTY(&ncp->nc_list))
 				vdrop(vp);
 		} else {
 			TAILQ_REMOVE(&ncneglist, ncp, nc_vnode);
@@ -238,6 +247,7 @@ cache_zap(struct namecache *ncp)
 			if (par->nc_vp && TAILQ_EMPTY(&par->nc_list))
 				vdrop(par->nc_vp);
 		}
+		--numunres;
 		ncp->nc_refs = -1;	/* safety */
 		ncp->nc_parent = NULL;	/* safety */
 		if (ncp->nc_name)
@@ -405,8 +415,7 @@ cache_mount(struct vnode *dvp, struct vnode *tvp)
 	/*
 	 * Otherwise create a new linkage.
 	 */
-	ncp = malloc(sizeof(*ncp), M_VFSCACHE, M_WAITOK|M_ZERO);
-	numcache++;
+	ncp = malloc(sizeof(*ncp), M_VFSCACHE, M_WAITOK | M_ZERO);
 
 	TAILQ_INIT(&ncp->nc_list);
 	ncp->nc_flag = NCF_MOUNTPT;
@@ -426,6 +435,7 @@ cache_mount(struct vnode *dvp, struct vnode *tvp)
 	 * Linkup the target vnode.  The target vnode is NULL if this is
 	 * to be a negative cache entry.
 	 */
+	++numcache;
 	ncp->nc_vp = tvp;
 	TAILQ_INSERT_HEAD(&tvp->v_namecache, ncp, nc_vnode);
 #if 0
@@ -482,115 +492,64 @@ cache_enter(struct vnode *dvp, struct namecache *par, struct vnode *vp, struct c
 	    printf("ENTER '%*.*s' %p ", (int)cnp->cn_namelen, (int)cnp->cn_namelen, cnp->cn_nameptr, vp);
 
 	/*
-	 * Attempt to locate an unresolved entry in the cache and 
-	 * reassociate it, otherwise allocate a new entry.  Unresolved
-	 * entries can exist due to normal vnode reuse and/or cache
-	 * purges issued by filesystems for various reasons.
+	 * Locate other entries associated with this vnode and zap them,
+	 * because the purge code may not be able to find them due to
+	 * the topology not yet being consistent.  This is a temporary
+	 * hack.
 	 */
+	if (vp) {
+again:
+		TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
+			if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
+				cache_zap(cache_hold(ncp));
+				goto again;
+			}
+		}
+	}
 
 	hash = fnv_32_buf(cnp->cn_nameptr, cnp->cn_namelen, FNV1_32_INIT);
 	hash = fnv_32_buf(&dvp->v_id, sizeof(dvp->v_id), hash);
-	LIST_FOREACH(ncp, (NCHHASH(hash)), nc_hash) {
-		numchecks++;
-		if ((ncp->nc_flag & NCF_UNRESOLVED) &&
-		    /* ncp->nc_parent == par  STAGE-3 */
-		    ncp->nc_dvp_data == (uintptr_t)dvp && /* STAGE-2 ONLY */
-		    ncp->nc_dvp_id == dvp->v_id && /* STAGE-2 ONLY */
-		    ncp->nc_nlen == cnp->cn_namelen &&
-		    bcmp(ncp->nc_name, cnp->cn_nameptr, ncp->nc_nlen) == 0
-		) {
-#if 1
-			if (nczapcheck)
-			    printf("Reresolve %*.*s\n", (int)cnp->cn_namelen, (int)cnp->cn_namelen, cnp->cn_nameptr);
-#endif
-			break;
+
+	ncp = malloc(sizeof(*ncp), M_VFSCACHE, M_WAITOK | M_ZERO);
+	ncp->nc_name = malloc(cnp->cn_namelen, M_VFSCACHE, M_WAITOK);
+	TAILQ_INIT(&ncp->nc_list);
+	if (nczapcheck)
+	    printf("alloc\n");
+
+	/*
+	 * Linkup the parent pointer, bump the parent vnode's hold
+	 * count when we go from 0->1 children.  
+	 *
+	 * STAGE-2 par may be NULL
+	 * STAGE-3 par may not be NULL, nc_dvp_* removed
+	 */
+	par = TAILQ_FIRST(&dvp->v_namecache);
+	if (par != NULL) {
+		ncp->nc_parent = par;
+		if (TAILQ_EMPTY(&par->nc_list)) {
+			if (par->nc_vp)
+				vhold(par->nc_vp);
 		}
+		TAILQ_INSERT_HEAD(&par->nc_list, ncp, nc_entry);
 	}
+	ncp->nc_dvp_data = (uintptr_t)dvp;
+	ncp->nc_dvp_id = dvp->v_id;
 
-	if (ncp == NULL) {
-		ncp = malloc(sizeof(*ncp), M_VFSCACHE, M_WAITOK | M_ZERO);
-		ncp->nc_name = malloc(cnp->cn_namelen, M_VFSCACHE, M_WAITOK);
-		TAILQ_INIT(&ncp->nc_list);
-		if (nczapcheck)
-		    printf("alloc\n");
+	/*
+	 * Add to the hash table
+	 */
+	ncp->nc_nlen = cnp->cn_namelen;
+	bcopy(cnp->cn_nameptr, ncp->nc_name, cnp->cn_namelen);
+	nchpp = NCHHASH(hash);
+	LIST_INSERT_HEAD(nchpp, ncp, nc_hash);
 
-		/*
-		 * Linkup the parent pointer, bump the parent vnode's hold
-		 * count when we go from 0->1 children.  
-		 *
-		 * STAGE-2 par may be NULL
-		 * STAGE-3 par may not be NULL, nc_dvp_* removed
-		 */
-		par = TAILQ_FIRST(&dvp->v_namecache);
-		if (par != NULL) {
-			ncp->nc_parent = par;
-			if (TAILQ_EMPTY(&par->nc_list)) {
-				if (par->nc_vp)
-					vhold(par->nc_vp);
-			}
-			TAILQ_INSERT_HEAD(&par->nc_list, ncp, nc_entry);
-		}
-		ncp->nc_dvp_data = (uintptr_t)dvp;
-		ncp->nc_dvp_id = dvp->v_id;
-
-		/*
-		 * Add to the hash table
-		 */
-		ncp->nc_nlen = cnp->cn_namelen;
-		bcopy(cnp->cn_nameptr, ncp->nc_name, cnp->cn_namelen);
-		nchpp = NCHHASH(hash);
-		LIST_INSERT_HEAD(nchpp, ncp, nc_hash);
-
-		ncp->nc_flag |= NCF_HASHED;
-	} else if (vp && !TAILQ_EMPTY(&vp->v_namecache)) {
-		/* 
-		 * STAGE-2 ONLY, will be gone in stage-3.  Since we cannot
-		 * directly invalidate unattached children in a directory
-		 * when the directory is purged.  we have to * clean them up
-		 * as we go along.  This is a big but temporary hack.  In
-		 * STAGE-3 there will be no unattached children.
-		 */
-		struct namecache *scan;
-		struct namecache *next = NULL;
-
-		scan = TAILQ_FIRST(&vp->v_namecache);
-		cache_hold(scan);
-		for (; scan; scan = next) {
-			next = TAILQ_NEXT(scan, nc_vnode);
-			if (next)
-				cache_hold(next);
-			if (scan->nc_refs || !TAILQ_EMPTY(&scan->nc_list)) {
-				cache_drop(scan);
-				continue;
-			}
-			if ((scan->nc_flag & NCF_UNRESOLVED) || scan == ncp) {
-				cache_drop(scan);
-				continue;
-			}
-			if (scan->nc_parent == NULL) {
-				cache_zap(scan);
-				continue;
-			}
-			if (scan->nc_parent->nc_vp == NULL) {
-				cache_zap(scan);
-				continue;
-			}
-			if ((uintptr_t)scan->nc_parent->nc_vp != scan->nc_dvp_data ||
-			    scan->nc_parent->nc_vp->v_id != scan->nc_dvp_id) {
-				cache_zap(scan);
-				continue;
-			}
-			cache_drop(scan);
-		}
-	}
+	ncp->nc_flag |= NCF_HASHED;
 
 	/*
 	 * Linkup the target vnode.  The target vnode is NULL if this is
 	 * to be a negative cache entry.
 	 */
-	numcache++;
 	ncp->nc_vp = vp;
-	ncp->nc_flag &= ~NCF_UNRESOLVED;
 	if (vp == NULL) {
 		++numneg;
 		TAILQ_INSERT_HEAD(&ncneglist, ncp, nc_vnode);
@@ -598,6 +557,7 @@ cache_enter(struct vnode *dvp, struct namecache *par, struct vnode *vp, struct c
 		if (cnp->cn_flags & CNP_ISWHITEOUT)
 			ncp->nc_flag |= NCF_WHITEOUT;
 	} else {
+		++numcache;
 		if (!TAILQ_EMPTY(&ncp->nc_list))
 			vhold(vp);
 		TAILQ_INSERT_HEAD(&vp->v_namecache, ncp, nc_vnode);
@@ -610,7 +570,7 @@ cache_enter(struct vnode *dvp, struct namecache *par, struct vnode *vp, struct c
 	/*
 	 * Don't cache too many negative hits
 	 */
-	if (numneg * ncnegfactor > numcache) {
+	if (numneg > MINNEG && numneg * ncnegfactor > numcache) {
 		ncp = TAILQ_FIRST(&ncneglist);
 		KKASSERT(ncp != NULL);
 		cache_zap(cache_hold(ncp));
@@ -647,8 +607,8 @@ vfs_cache_setroot(struct vnode *nvp)
 
 	rootnamecache.nc_vp = nvp;
 	rootnamecache.nc_flag &= ~NCF_UNRESOLVED;
-	++numcache;
 	if (nvp) {
+		++numcache;
 		if (!TAILQ_EMPTY(&rootnamecache.nc_list))
 			vhold(nvp);
 		TAILQ_INSERT_HEAD(&nvp->v_namecache, &rootnamecache, nc_vnode);
