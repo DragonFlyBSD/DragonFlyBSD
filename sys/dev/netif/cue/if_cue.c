@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.16 2005/02/15 20:23:10 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.17 2005/02/16 22:50:28 joerg Exp $
  *
  */
 
@@ -92,8 +92,6 @@ Static struct cue_type cue_devs[] = {
 	{ USB_VENDOR_SMARTBRIDGES, USB_PRODUCT_SMARTBRIDGES_SMARTLINK },
 	{ 0, 0 }
 };
-
-Static struct usb_qdat cue_qdat;
 
 Static int cue_match(device_ptr_t);
 Static int cue_attach(device_ptr_t);
@@ -522,9 +520,6 @@ USB_ATTACH(cue)
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	ifq_set_ready(&ifp->if_snd);
 
-	cue_qdat.ifp = ifp;
-	cue_qdat.if_rxstart = cue_rxstart;
-
 	/*
 	 * Call MI attach routine.
 	 */
@@ -727,11 +722,13 @@ cue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 
 	ifp->if_ipackets++;
 	m_adj(m, sizeof(u_int16_t));
-	m->m_pkthdr.rcvif = (struct ifnet *)&cue_qdat;
+	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len = m->m_len = total_len;
 
 	/* Put the packet on the special USB input queue. */
 	usb_ether_input(m);
+	cue_rxstart(ifp);
+
 	CUE_UNLOCK(sc);
 
 	return;
@@ -782,8 +779,7 @@ cue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	usbd_get_xfer_status(c->cue_xfer, NULL, NULL, NULL, &err);
 
 	if (c->cue_mbuf != NULL) {
-		c->cue_mbuf->m_pkthdr.rcvif = ifp;
-		usb_tx_done(c->cue_mbuf);
+		m_freem(c->cue_mbuf);
 		c->cue_mbuf = NULL;
 	}
 
@@ -791,6 +787,9 @@ cue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		ifp->if_oerrors++;
 	else
 		ifp->if_opackets++;
+
+	if (!ifq_is_empty(&ifp->if_snd))
+		(*ifp->if_start)(ifp);
 
 	CUE_UNLOCK(sc);
 

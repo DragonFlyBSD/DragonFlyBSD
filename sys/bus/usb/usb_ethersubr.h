@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.h,v 1.6 2003/03/04 23:19:55 jlemon Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.h,v 1.4 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.h,v 1.5 2005/02/16 22:50:28 joerg Exp $
  */
 
 #ifndef _USB_ETHERSUBR_H_
@@ -43,6 +43,5 @@ struct usb_qdat {
 
 void usb_register_netisr	(void);
 void usb_ether_input		(struct mbuf *);
-void usb_tx_done		(struct mbuf *);
 
 #endif

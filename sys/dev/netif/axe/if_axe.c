@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.8 2005/02/15 19:19:11 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.9 2005/02/16 22:50:28 joerg Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -111,8 +111,6 @@ Static struct axe_type axe_devs[] = {
 	{ USB_VENDOR_NETGEAR, USB_PRODUCT_NETGEAR_FA120 },
 	{ 0, 0 }
 };
-
-Static struct usb_qdat axe_qdat;
 
 Static int axe_match(device_ptr_t);
 Static int axe_attach(device_ptr_t);
@@ -504,9 +502,6 @@ USB_ATTACH(axe)
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	ifq_set_ready(&ifp->if_snd);
 
-	axe_qdat.ifp = ifp;
-	axe_qdat.if_rxstart = axe_rxstart;
-
 	if (mii_phy_probe(self, &sc->axe_miibus,
 	    axe_ifmedia_upd, axe_ifmedia_sts)) {
 		printf("axe%d: MII without any PHY!\n", sc->axe_unit);
@@ -704,11 +699,12 @@ axe_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	}
 
 	ifp->if_ipackets++;
-	m->m_pkthdr.rcvif = (struct ifnet *)&axe_qdat;
+	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len = m->m_len = total_len;
 
 	/* Put the packet on the special USB input queue. */
 	usb_ether_input(m);
+	axe_rxstart(ifp);
 	splx(s);
 
 	return;
@@ -761,8 +757,7 @@ axe_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	usbd_get_xfer_status(c->axe_xfer, NULL, NULL, NULL, &err);
 
 	if (c->axe_mbuf != NULL) {
-		c->axe_mbuf->m_pkthdr.rcvif = ifp;
-		usb_tx_done(c->axe_mbuf);
+		m_freem(c->axe_mbuf);
 		c->axe_mbuf = NULL;
 	}
 
@@ -770,6 +765,9 @@ axe_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		ifp->if_oerrors++;
 	else
 		ifp->if_opackets++;
+
+	if (!ifq_is_empty(&ifp->if_snd))
+		(*ifp->if_start)(ifp);
 
 	splx(s);
 }

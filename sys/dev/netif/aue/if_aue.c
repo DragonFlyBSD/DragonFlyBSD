@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.16 2005/02/15 16:44:23 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.17 2005/02/16 22:50:28 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
  */
@@ -172,8 +172,6 @@ Static const struct aue_type aue_devs[] = {
  {{ USB_VENDOR_SOHOWARE,	USB_PRODUCT_SOHOWARE_NUB100},	  0 },
 };
 #define aue_lookup(v, p) ((const struct aue_type *)usb_lookup(aue_devs, v, p))
-
-Static struct usb_qdat aue_qdat;
 
 Static int aue_match(device_ptr_t);
 Static int aue_attach(device_ptr_t);
@@ -767,9 +765,6 @@ USB_ATTACH(aue)
 		USB_ATTACH_ERROR_RETURN;
 	}
 
-	aue_qdat.ifp = ifp;
-	aue_qdat.if_rxstart = aue_rxstart;
-
 	/*
 	 * Call MI attach routine.
 	 */
@@ -1025,11 +1020,12 @@ aue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	total_len -= (4 + ETHER_CRC_LEN);
 
 	ifp->if_ipackets++;
-	m->m_pkthdr.rcvif = (struct ifnet *)&aue_qdat;
+	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len = m->m_len = total_len;
 
 	/* Put the packet on the special USB input queue. */
 	usb_ether_input(m);
+	aue_start(ifp);
 	AUE_UNLOCK(sc);
 	return;
 done:
@@ -1078,8 +1074,7 @@ aue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	usbd_get_xfer_status(c->aue_xfer, NULL, NULL, NULL, &err);
 
 	if (c->aue_mbuf != NULL) {
-		c->aue_mbuf->m_pkthdr.rcvif = ifp;
-		usb_tx_done(c->aue_mbuf);
+		m_free(c->aue_mbuf);
 		c->aue_mbuf = NULL;
 	}
 
@@ -1087,6 +1082,9 @@ aue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		ifp->if_oerrors++;
 	else
 		ifp->if_opackets++;
+
+	if (!ifq_is_empty(&ifp->if_snd))
+		(*ifp->if_start)(ifp);
 
 	AUE_UNLOCK(sc);
 

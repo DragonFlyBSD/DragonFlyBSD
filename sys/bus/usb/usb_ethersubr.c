@@ -31,7 +31,7 @@
  *
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.17 2003/11/14 11:09:45 johan Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.11 2005/02/15 10:30:11 joerg Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.12 2005/02/16 22:50:28 joerg Exp $
  */
 
 /*
@@ -73,44 +73,18 @@
 #include "usb.h"
 #include "usb_ethersubr.h"
 
-Static struct ifqueue usbq_rx;
-Static struct ifqueue usbq_tx;
-Static int mtx_inited = 0;
+Static int netisr_inited = 0;
 
 Static int usbintr(struct netmsg *msg)
 {
 	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
-	struct usb_qdat		*q;
-	struct ifnet		*ifp;
-	int			s;
+	struct ifnet *ifp;
+	int s;
 
 	s = splimp();
 
-	/* Check the RX queue */
-	while(1) {
-		IF_DEQUEUE(&usbq_rx, m);
-		if (m == NULL)
-			break;
-		q = (struct usb_qdat *)m->m_pkthdr.rcvif;
-		ifp = q->ifp;
-		(*ifp->if_input)(ifp, m);
-
-		/* Re-arm the receiver */
-		(*q->if_rxstart)(ifp);
-		if (!ifq_is_empty(&ifp->if_snd))
-			(*ifp->if_start)(ifp);
-	}
-
-	/* Check the TX queue */
-	while(1) {
-		IF_DEQUEUE(&usbq_tx, m);
-		if (m == NULL)
-			break;
-		ifp = m->m_pkthdr.rcvif;
-		m_freem(m);
-		if (!ifq_is_empty(&ifp->if_snd))
-			(*ifp->if_start)(ifp);
-	}
+	ifp = m->m_pkthdr.rcvif;
+	(*ifp->if_input)(ifp, m);
 
 	splx(s);
 
@@ -121,11 +95,10 @@ Static int usbintr(struct netmsg *msg)
 void
 usb_register_netisr(void)
 {
-	if (mtx_inited)
-		return;
-	mtx_inited = 1;
-	netisr_register(NETISR_USB, cpu0_portfn, usbintr);
-	return;
+	if (netisr_inited == 0) {
+		netisr_inited = 1;
+		netisr_register(NETISR_USB, cpu0_portfn, usbintr);
+	}
 }
 
 /*
@@ -134,12 +107,6 @@ usb_register_netisr(void)
  */
 void
 usb_ether_input(struct mbuf *m)
-{
-	netisr_queue(NETISR_USB, m);
-}
-
-void
-usb_tx_done(struct mbuf *m)
 {
 	netisr_queue(NETISR_USB, m);
 }

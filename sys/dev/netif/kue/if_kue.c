@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  *  $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.13 2004/10/14 18:31:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.14 2005/02/16 22:50:28 joerg Exp $
  */
 
 /*
@@ -74,6 +74,7 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -123,8 +124,6 @@ Static struct kue_type kue_devs[] = {
 	{ USB_VENDOR_ABOCOM, USB_PRODUCT_ABOCOM_URE450 },
 	{ 0, 0 }
 };
-
-Static struct usb_qdat kue_qdat;
 
 Static int kue_match(device_ptr_t);
 Static int kue_attach(device_ptr_t);
@@ -485,10 +484,8 @@ USB_ATTACH(kue)
 	ifp->if_watchdog = kue_watchdog;
 	ifp->if_init = kue_init;
 	ifp->if_baudrate = 10000000;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
-
-	kue_qdat.ifp = ifp;
-	kue_qdat.if_rxstart = kue_rxstart;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	/*
 	 * Call MI attach routine.
@@ -700,11 +697,13 @@ Static void kue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv,
 	}
 
 	ifp->if_ipackets++;
-	m->m_pkthdr.rcvif = (struct ifnet *)&kue_qdat;
+	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len = m->m_len = total_len;
 
 	/* Put the packet on the special USB input queue. */
 	usb_ether_input(m);
+	kue_rxstart(ifp);
+
 	KUE_UNLOCK(sc);
 
 	return;
@@ -757,8 +756,7 @@ kue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	usbd_get_xfer_status(c->kue_xfer, NULL, NULL, NULL, &err);
 
 	if (c->kue_mbuf != NULL) {
-		c->kue_mbuf->m_pkthdr.rcvif = ifp;
-		usb_tx_done(c->kue_mbuf);
+		m_freem(c->kue_mbuf);
 		c->kue_mbuf = NULL;
 	}
 
@@ -766,6 +764,9 @@ kue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		ifp->if_oerrors++;
 	else
 		ifp->if_opackets++;
+
+	if (!ifq_is_empty(&ifp->if_snd))
+		(*ifp->if_start)(ifp);
 
 	KUE_UNLOCK(sc);
 
@@ -824,18 +825,18 @@ kue_start(struct ifnet *ifp)
 		return;
 	}
 
-	IF_DEQUEUE(&ifp->if_snd, m_head);
+	m_head = ifq_poll(&ifp->if_snd);
 	if (m_head == NULL) {
 		KUE_UNLOCK(sc);
 		return;
 	}
 
 	if (kue_encap(sc, m_head, 0)) {
-		IF_PREPEND(&ifp->if_snd, m_head);
 		ifp->if_flags |= IFF_OACTIVE;
 		KUE_UNLOCK(sc);
 		return;
 	}
+	m_head = ifq_dequeue(&ifp->if_snd);
 
 	/*
 	 * If there's a BPF listener, bounce a copy of this frame
@@ -1008,7 +1009,7 @@ kue_watchdog(struct ifnet *ifp)
 	usbd_get_xfer_status(c->kue_xfer, NULL, NULL, NULL, &stat);
 	kue_txeof(c->kue_xfer, c, stat);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (ifq_is_empty(&ifp->if_snd))
 		kue_start(ifp);
 	KUE_UNLOCK(sc);
 
