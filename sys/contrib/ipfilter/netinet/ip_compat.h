@@ -6,19 +6,12 @@
  * @(#)ip_compat.h	1.8 1/14/96
  * $Id: ip_compat.h,v 2.26.2.46 2002/06/27 14:39:40 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.13.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.5 2003/08/25 19:50:25 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.6 2003/08/27 11:02:14 rob Exp $
  */
 
 #ifndef	__IP_COMPAT_H__
 #define	__IP_COMPAT_H__
 
-#ifndef	__P
-# ifdef	__STDC__
-#  define	__P(x)  x
-# else
-#  define	__P(x)  ()
-# endif
-#endif
 #ifndef	__STDC__
 # undef		const
 # define	const
@@ -490,7 +483,7 @@ typedef struct {
 #  define	KMALLOC(a,b)	(a) = (b)kmem_alloc(sizeof(*(a)), KM_NOSLEEP)
 #  define	KMALLOCS(a,b,c)	(a) = (b)kmem_alloc((c), KM_NOSLEEP)
 #  define	GET_MINOR(x)	getminor(x)
-extern	ill_t	*get_unit __P((char *, int));
+extern	ill_t	*get_unit (char *, int);
 #  define	GETUNIT(n, v)	get_unit(n, v)
 #  define	IFNAME(x)	((ill_t *)x)->ill_name
 # else /* SOLARIS */
@@ -548,7 +541,7 @@ extern	ill_t	*get_unit __P((char *, int));
 #   else
 #    define	USE_GETIFNAME	1
 #    define	IFNAME(x)	get_ifname((struct ifnet *)x)
-extern	char	*get_ifname __P((struct ifnet *));
+extern	char	*get_ifname (struct ifnet *);
 #   endif
 #  endif
 # endif /* sun */
@@ -560,8 +553,8 @@ extern	char	*get_ifname __P((struct ifnet *));
 #  define	KFREE(x)	kmem_free((char *)(x), sizeof(*(x)))
 #  define	KFREES(x,s)	kmem_free((char *)(x), (s))
 #  if !SOLARIS
-extern	void	m_copydata __P((struct mbuf *, int, int, caddr_t));
-extern	void	m_copyback __P((struct mbuf *, int, int, caddr_t));
+extern	void	m_copydata (struct mbuf *, int, int, caddr_t);
+extern	void	m_copyback (struct mbuf *, int, int, caddr_t);
 #  endif
 #  ifdef __sgi
 #   include <sys/kmem.h>
@@ -657,8 +650,8 @@ extern	void	m_copyback __P((struct mbuf *, int, int, caddr_t));
 # define	IFNAME(x)	get_ifname((struct ifnet *)x)
 # define	UIOMOVE(a,b,c,d)	ipfuiomove(a,b,c,d)
 # include	<sys/time.h>
-extern	void	m_copydata __P((mb_t *, int, int, caddr_t));
-extern	int	ipfuiomove __P((caddr_t, int, int, struct uio *));
+extern	void	m_copydata (mb_t *, int, int, caddr_t);
+extern	int	ipfuiomove (caddr_t, int, int, struct uio *);
 #endif /* KERNEL */
 
 /*

@@ -6,7 +6,7 @@
  * @(#)ip_state.h	1.3 1/12/96 (C) 1995 Darren Reed
  * $Id: ip_state.h,v 2.13.2.13 2002/06/27 14:40:29 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_state.h,v 1.10.2.4 2002/08/31 16:24:52 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_state.h,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_state.h,v 1.3 2003/08/27 11:02:14 rob Exp $
  */
 #ifndef	__IP_STATE_H__
 #define	__IP_STATE_H__
@@ -195,19 +195,19 @@ extern	u_long	fr_icmptimeout;
 extern	u_long	fr_icmpacktimeout;
 extern	ipstate_t	*ips_list;
 extern	int	fr_state_lock;
-extern	int	fr_stateinit __P((void));
-extern	int	fr_tcpstate __P((ipstate_t *, fr_info_t *, ip_t *, tcphdr_t *));
-extern	ipstate_t *fr_addstate __P((ip_t *, fr_info_t *, ipstate_t **, u_int));
-extern	frentry_t *fr_checkstate __P((ip_t *, fr_info_t *));
-extern	void	ip_statesync __P((void *));
-extern	void	fr_timeoutstate __P((void));
-extern	int	fr_tcp_age __P((u_long *, u_char *, fr_info_t *, int, int));
-extern	void	fr_stateunload __P((void));
-extern	void	ipstate_log __P((struct ipstate *, u_int));
+extern	int	fr_stateinit (void);
+extern	int	fr_tcpstate (ipstate_t *, fr_info_t *, ip_t *, tcphdr_t *);
+extern	ipstate_t *fr_addstate (ip_t *, fr_info_t *, ipstate_t **, u_int);
+extern	frentry_t *fr_checkstate (ip_t *, fr_info_t *);
+extern	void	ip_statesync (void *);
+extern	void	fr_timeoutstate (void);
+extern	int	fr_tcp_age (u_long *, u_char *, fr_info_t *, int, int);
+extern	void	fr_stateunload (void);
+extern	void	ipstate_log (struct ipstate *, u_int);
 #if defined(__NetBSD__) || defined(__OpenBSD__)
-extern	int	fr_state_ioctl __P((caddr_t, u_long, int));
+extern	int	fr_state_ioctl (caddr_t, u_long, int);
 #else
-extern	int	fr_state_ioctl __P((caddr_t, int, int));
+extern	int	fr_state_ioctl (caddr_t, int, int);
 #endif
 
 #endif /* __IP_STATE_H__ */

@@ -6,7 +6,7 @@
  * @(#)ip_state.c   1.8 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_state.c,v 2.30.2.74 2002/07/27 15:58:10 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.21.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.4 2003/08/07 21:16:48 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.5 2003/08/27 11:02:14 rob Exp $
  */
 
 #if defined(__sgi) && (IRIX > 602)
@@ -115,21 +115,21 @@ extern	kmutex_t	ipf_rw;
 #endif
 
 #ifdef	USE_INET6
-static frentry_t *fr_checkicmp6matchingstate __P((ip6_t *, fr_info_t *));
+static frentry_t *fr_checkicmp6matchingstate (ip6_t *, fr_info_t *);
 #endif
-static int fr_matchsrcdst __P((ipstate_t *, union i6addr, union i6addr,
-			       fr_info_t *, tcphdr_t *));
-static frentry_t *fr_checkicmpmatchingstate __P((ip_t *, fr_info_t *));
-static int fr_matchicmpqueryreply __P((int, ipstate_t *, icmphdr_t *, int));
-static int fr_state_flush __P((int, int));
-static ips_stat_t *fr_statetstats __P((void));
-static void fr_delstate __P((ipstate_t *));
-static int fr_state_remove __P((caddr_t));
-static void fr_ipsmove __P((ipstate_t **, ipstate_t *, u_int));
-static int fr_tcpoptions __P((tcphdr_t *));
-int fr_stputent __P((caddr_t));
-int fr_stgetent __P((caddr_t));
-void fr_stinsert __P((ipstate_t *));
+static int fr_matchsrcdst (ipstate_t *, union i6addr, union i6addr,
+			       fr_info_t *, tcphdr_t *);
+static frentry_t *fr_checkicmpmatchingstate (ip_t *, fr_info_t *);
+static int fr_matchicmpqueryreply (int, ipstate_t *, icmphdr_t *, int);
+static int fr_state_flush (int, int);
+static ips_stat_t *fr_statetstats (void);
+static void fr_delstate (ipstate_t *);
+static int fr_state_remove (caddr_t);
+static void fr_ipsmove (ipstate_t **, ipstate_t *, u_int);
+static int fr_tcpoptions (tcphdr_t *);
+int fr_stputent (caddr_t);
+int fr_stgetent (caddr_t);
+void fr_stinsert (ipstate_t *);
 
 
 #define	FIVE_DAYS	(2 * 5 * 86400)	/* 5 days: half closed session */

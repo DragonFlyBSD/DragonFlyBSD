@@ -8,7 +8,7 @@
  * @(#)ip_nat.c     1.11 6/5/96 (C) 1995 Darren Reed
  * @(#)$Id: ip_nat.c,v 2.37.2.70 2002/08/28 12:45:48 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.22.2.7 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.4 2003/08/07 21:16:48 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.5 2003/08/27 11:02:14 rob Exp $
  */
 #if defined(__FreeBSD__) && defined(KERNEL) && !defined(_KERNEL)
 #define _KERNEL
@@ -136,21 +136,21 @@ extern	kmutex_t	ipf_rw;
 extern	KRWLOCK_T	ipf_nat;
 #endif
 
-static	int	nat_flushtable __P((void));
-static	void	nat_addnat __P((struct ipnat *));
-static	void	nat_addrdr __P((struct ipnat *));
-static	void	nat_delete __P((struct nat *));
-static	void	nat_delrdr __P((struct ipnat *));
-static	void	nat_delnat __P((struct ipnat *));
-static	int	fr_natgetent __P((caddr_t));
-static	int	fr_natgetsz __P((caddr_t));
-static	int	fr_natputent __P((caddr_t));
-static	void	nat_tabmove __P((fr_info_t *, nat_t *));
-static	int	nat_match __P((fr_info_t *, ipnat_t *, ip_t *));
-static	hostmap_t *nat_hostmap __P((ipnat_t *, struct in_addr,
-				    struct in_addr));
-static	void	nat_hostmapdel __P((struct hostmap *));
-static	void	nat_mssclamp __P((tcphdr_t *, u_32_t, fr_info_t *, u_short *));
+static	int	nat_flushtable (void);
+static	void	nat_addnat (struct ipnat *);
+static	void	nat_addrdr (struct ipnat *);
+static	void	nat_delete (struct nat *);
+static	void	nat_delrdr (struct ipnat *);
+static	void	nat_delnat (struct ipnat *);
+static	int	fr_natgetent (caddr_t);
+static	int	fr_natgetsz (caddr_t);
+static	int	fr_natputent (caddr_t);
+static	void	nat_tabmove (fr_info_t *, nat_t *);
+static	int	nat_match (fr_info_t *, ipnat_t *, ip_t *);
+static	hostmap_t *nat_hostmap (ipnat_t *, struct in_addr,
+				    struct in_addr);
+static	void	nat_hostmapdel (struct hostmap *);
+static	void	nat_mssclamp (tcphdr_t *, u_32_t, fr_info_t *, u_short *);
 
 
 int nat_init()

@@ -6,7 +6,7 @@
  * @(#)ip_frag.c    1.11 3/24/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_frag.c,v 2.10.2.24 2002/08/28 12:41:04 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.15.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.3 2003/08/07 21:16:48 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.4 2003/08/27 11:02:14 rob Exp $
  */
 #if defined(KERNEL) && !defined(_KERNEL)
 # define      _KERNEL
@@ -121,9 +121,9 @@ extern	kmutex_t	ipf_rw;
 #endif
 
 
-static ipfr_t *ipfr_new __P((ip_t *, fr_info_t *, ipfr_t **));
-static ipfr_t *ipfr_lookup __P((ip_t *, fr_info_t *, ipfr_t **));
-static void ipfr_delete __P((ipfr_t *));
+static ipfr_t *ipfr_new (ip_t *, fr_info_t *, ipfr_t **);
+static ipfr_t *ipfr_lookup (ip_t *, fr_info_t *, ipfr_t **);
+static void ipfr_delete (ipfr_t *);
 
 
 ipfrstat_t *ipfr_fragstats()
@@ -568,7 +568,7 @@ void ipfr_fragexpire()
 #  if defined(SOLARIS2) && (SOLARIS2 < 7)
 void ipfr_slowtimer()
 #  else
-void ipfr_slowtimer __P((void *ptr))
+void ipfr_slowtimer (void *ptr)
 #  endif
 # else
 int ipfr_slowtimer()

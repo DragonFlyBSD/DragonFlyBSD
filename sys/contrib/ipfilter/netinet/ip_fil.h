@@ -6,7 +6,7 @@
  * @(#)ip_fil.h	1.35 6/5/96
  * $Id: ip_fil.h,v 2.29.2.33 2002/06/04 14:46:28 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.18.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.3 2003/06/23 17:55:27 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.4 2003/08/27 11:02:14 rob Exp $
  */
 
 #ifndef	__IP_FIL_H__
@@ -26,14 +26,6 @@
 
 #if defined(KERNEL) && !defined(_KERNEL)
 # define	_KERNEL
-#endif
-
-#ifndef	__P
-# ifdef	__STDC__
-#  define	__P(x)	x
-# else
-#  define	__P(x)	()
-# endif
 #endif
 
 #ifndef	offsetof
@@ -244,7 +236,7 @@ typedef	struct	frentry {
 	u_32_t	fr_flags;	/* per-rule flags && options (see below) */
 	u_int	fr_skip;	/* # of rules to skip */
 	u_int	fr_loglevel;	/* syslog log facility + priority */
-	int	(*fr_func) __P((int, ip_t *, fr_info_t *));	/* call this function */
+	int	(*fr_func) (int, ip_t *, fr_info_t *);	/* call this function */
 	int	fr_sap;		/* For solaris only */
 	u_char	fr_icode;	/* return ICMP code */
 	char	fr_ifnames[4][LIFNAMSIZ];
@@ -508,101 +500,101 @@ typedef	struct	ipflog	{
 
 #ifndef	_KERNEL
 struct ifnet;
-extern	char	*get_ifname __P((struct ifnet *));
-extern	int	fr_check __P((ip_t *, int, void *, int, mb_t **));
-extern	int	(*fr_checkp) __P((ip_t *, int, void *, int, mb_t **));
-extern	int	send_reset __P((ip_t *, fr_info_t *));
-extern	int	send_icmp_err __P((ip_t *, int, fr_info_t *, int));
-extern	int	ipf_log __P((void));
-extern	struct	ifnet *get_unit __P((char *, int));
-extern	int	mbuflen __P((mb_t *));
+extern	char	*get_ifname (struct ifnet *);
+extern	int	fr_check (ip_t *, int, void *, int, mb_t **);
+extern	int	(*fr_checkp) (ip_t *, int, void *, int, mb_t **);
+extern	int	send_reset (ip_t *, fr_info_t *);
+extern	int	send_icmp_err (ip_t *, int, fr_info_t *, int);
+extern	int	ipf_log (void);
+extern	struct	ifnet *get_unit (char *, int);
+extern	int	mbuflen (mb_t *);
 # if defined(__NetBSD__) || defined(__OpenBSD__) || \
 	  (_BSDI_VERSION >= 199701) || (__FreeBSD_version >= 300000)
-extern	int	iplioctl __P((dev_t, u_long, caddr_t, int));
+extern	int	iplioctl (dev_t, u_long, caddr_t, int);
 # else
-extern	int	iplioctl __P((dev_t, int, caddr_t, int));
+extern	int	iplioctl (dev_t, int, caddr_t, int);
 # endif
-extern	int	iplopen __P((dev_t, int));
-extern	int	iplclose __P((dev_t, int));
+extern	int	iplopen (dev_t, int);
+extern	int	iplclose (dev_t, int);
 #else /* #ifndef _KERNEL */
 # if defined(__NetBSD__) && defined(PFIL_HOOKS)
-extern	void	ipfilterattach __P((int));
+extern	void	ipfilterattach (int);
 # endif
-extern	int	iplattach __P((void));
-extern	int	ipl_enable __P((void));
-extern	int	ipl_disable __P((void));
-extern	int	send_icmp_err __P((ip_t *, int, fr_info_t *, int));
-extern	int	send_reset __P((ip_t *, fr_info_t *));
+extern	int	iplattach (void);
+extern	int	ipl_enable (void);
+extern	int	ipl_disable (void);
+extern	int	send_icmp_err (ip_t *, int, fr_info_t *, int);
+extern	int	send_reset (ip_t *, fr_info_t *);
 # if	SOLARIS
-extern	int	fr_check __P((ip_t *, int, void *, int, qif_t *, mb_t **));
-extern	int	(*fr_checkp) __P((ip_t *, int, void *,
-				  int, qif_t *, mb_t **));
+extern	int	fr_check (ip_t *, int, void *, int, qif_t *, mb_t **);
+extern	int	(*fr_checkp) (ip_t *, int, void *,
+				  int, qif_t *, mb_t **);
 #  if SOLARIS2 >= 7
-extern	int	iplioctl __P((dev_t, int, intptr_t, int, cred_t *, int *));
+extern	int	iplioctl (dev_t, int, intptr_t, int, cred_t *, int *);
 #  else
-extern	int	iplioctl __P((dev_t, int, int *, int, cred_t *, int *));
+extern	int	iplioctl (dev_t, int, int *, int, cred_t *, int *);
 #  endif
-extern	int	iplopen __P((dev_t *, int, int, cred_t *));
-extern	int	iplclose __P((dev_t, int, int, cred_t *));
-extern	int	ipfsync __P((void));
-extern	int	ipfr_fastroute __P((ip_t *, mblk_t *, mblk_t **,
-				    fr_info_t *, frdest_t *));
-extern	void	copyin_mblk __P((mblk_t *, size_t, size_t, char *));
-extern	void	copyout_mblk __P((mblk_t *, size_t, size_t, char *));
-extern	int	fr_qin __P((queue_t *, mblk_t *));
-extern	int	fr_qout __P((queue_t *, mblk_t *));
-extern	int	iplread __P((dev_t, struct uio *, cred_t *));
+extern	int	iplopen (dev_t *, int, int, cred_t *);
+extern	int	iplclose (dev_t, int, int, cred_t *);
+extern	int	ipfsync (void);
+extern	int	ipfr_fastroute (ip_t *, mblk_t *, mblk_t **,
+				    fr_info_t *, frdest_t *);
+extern	void	copyin_mblk (mblk_t *, size_t, size_t, char *);
+extern	void	copyout_mblk (mblk_t *, size_t, size_t, char *);
+extern	int	fr_qin (queue_t *, mblk_t *);
+extern	int	fr_qout (queue_t *, mblk_t *);
+extern	int	iplread (dev_t, struct uio *, cred_t *);
 # else /* SOLARIS */
-extern	int	fr_check __P((ip_t *, int, void *, int, mb_t **));
-extern	int	(*fr_checkp) __P((ip_t *, int, void *, int, mb_t **));
-extern	int	ipfr_fastroute __P((mb_t *, mb_t **, fr_info_t *, frdest_t *));
-extern	size_t	mbufchainlen __P((mb_t *));
+extern	int	fr_check (ip_t *, int, void *, int, mb_t **);
+extern	int	(*fr_checkp) (ip_t *, int, void *, int, mb_t **);
+extern	int	ipfr_fastroute (mb_t *, mb_t **, fr_info_t *, frdest_t *);
+extern	size_t	mbufchainlen (mb_t *);
 #  ifdef	__sgi
 #   include <sys/cred.h>
-extern	int	iplioctl __P((dev_t, int, caddr_t, int, cred_t *, int *));
-extern	int	iplopen __P((dev_t *, int, int, cred_t *));
-extern	int	iplclose __P((dev_t, int, int, cred_t *));
-extern	int	iplread __P((dev_t, struct uio *, cred_t *));
-extern	int	ipfsync __P((void));
-extern	int	ipfilter_sgi_attach __P((void));
-extern	void	ipfilter_sgi_detach __P((void));
-extern	void	ipfilter_sgi_intfsync __P((void));
+extern	int	iplioctl (dev_t, int, caddr_t, int, cred_t *, int *);
+extern	int	iplopen (dev_t *, int, int, cred_t *);
+extern	int	iplclose (dev_t, int, int, cred_t *);
+extern	int	iplread (dev_t, struct uio *, cred_t *);
+extern	int	ipfsync (void);
+extern	int	ipfilter_sgi_attach (void);
+extern	void	ipfilter_sgi_detach (void);
+extern	void	ipfilter_sgi_intfsync (void);
 #  else
 #   ifdef	IPFILTER_LKM
-extern	int	iplidentify __P((char *));
+extern	int	iplidentify (char *);
 #   endif
 #ifdef	__FreeBSD__
-extern	int	iplioctl __P((dev_t, u_long, caddr_t, int, struct thread *));
-extern	int	iplopen __P((dev_t, int, int, struct thread *));
-extern	int	iplclose __P((dev_t, int, int, struct thread *));
+extern	int	iplioctl (dev_t, u_long, caddr_t, int, struct thread *);
+extern	int	iplopen (dev_t, int, int, struct thread *);
+extern	int	iplclose (dev_t, int, int, struct thread *);
 #else
 #   if (_BSDI_VERSION >= 199510) || (__FreeBSD_version >= 220000) || \
       (NetBSD >= 199511) || defined(__OpenBSD__)
 #    if defined(__NetBSD__) || (_BSDI_VERSION >= 199701) || \
        defined(__OpenBSD__) || (__FreeBSD_version >= 300000)
-extern	int	iplioctl __P((dev_t, u_long, caddr_t, int, struct proc *));
+extern	int	iplioctl (dev_t, u_long, caddr_t, int, struct proc *);
 #    else
-extern	int	iplioctl __P((dev_t, int, caddr_t, int, struct proc *));
+extern	int	iplioctl (dev_t, int, caddr_t, int, struct proc *);
 #    endif
-extern	int	iplopen __P((dev_t, int, int, struct proc *));
-extern	int	iplclose __P((dev_t, int, int, struct proc *));
+extern	int	iplopen (dev_t, int, int, struct proc *);
+extern	int	iplclose (dev_t, int, int, struct proc *);
 #   else
 #    ifndef	linux
-extern	int	iplopen __P((dev_t, int));
-extern	int	iplclose __P((dev_t, int));
-extern	int	iplioctl __P((dev_t, int, caddr_t, int));
+extern	int	iplopen (dev_t, int);
+extern	int	iplclose (dev_t, int);
+extern	int	iplioctl (dev_t, int, caddr_t, int);
 #    else
 extern	int	iplioctl(struct inode *, struct file *, u_int, u_long);
-extern	int	iplopen __P((struct inode *, struct file *));
-extern	void	iplclose __P((struct inode *, struct file *));
+extern	int	iplopen (struct inode *, struct file *);
+extern	void	iplclose (struct inode *, struct file *);
 #    endif /* !linux */
 #   endif /* (_BSDI_VERSION >= 199510) */
 #endif
 #   if	BSD >= 199306
-extern	int	iplread __P((dev_t, struct uio *, int));
+extern	int	iplread (dev_t, struct uio *, int);
 #   else
 #    ifndef linux
-extern	int	iplread __P((dev_t, struct uio *));
+extern	int	iplread (dev_t, struct uio *);
 #    else
 extern	int	iplread(struct inode *, struct file *, char *, int);
 #    endif /* !linux */
@@ -611,37 +603,37 @@ extern	int	iplread(struct inode *, struct file *, char *, int);
 # endif /* SOLARIS */
 #endif /* #ifndef _KERNEL */
 
-extern	char	*memstr __P((char *, char *, int, int));
-extern	void	fixskip __P((frentry_t **, frentry_t *, int));
-extern	int	countbits __P((u_32_t));
-extern	int	ipldetach __P((void));
-extern	u_short	ipf_cksum __P((u_short *, int));
-extern	int	ircopyptr __P((void *, void *, size_t));
-extern	int	iwcopyptr __P((void *, void *, size_t));
+extern	char	*memstr (char *, char *, int, int);
+extern	void	fixskip (frentry_t **, frentry_t *, int);
+extern	int	countbits (u_32_t);
+extern	int	ipldetach (void);
+extern	u_short	ipf_cksum (u_short *, int);
+extern	int	ircopyptr (void *, void *, size_t);
+extern	int	iwcopyptr (void *, void *, size_t);
 
-extern	void	ipflog_init __P((void));
-extern	int	ipflog_clear __P((minor_t));
-extern	int	ipflog __P((u_int, ip_t *, fr_info_t *, mb_t *));
-extern	int	ipllog __P((int, fr_info_t *, void **, size_t *, int *, int));
-extern	int	ipflog_read __P((minor_t, struct uio *));
+extern	void	ipflog_init (void);
+extern	int	ipflog_clear (minor_t);
+extern	int	ipflog (u_int, ip_t *, fr_info_t *, mb_t *);
+extern	int	ipllog (int, fr_info_t *, void **, size_t *, int *, int);
+extern	int	ipflog_read (minor_t, struct uio *);
 
-extern	int	frflush __P((minor_t, int, int));
-extern	void	frsync __P((void));
-extern	frgroup_t *fr_addgroup __P((u_32_t, frentry_t *, minor_t, int));
-extern	void	fr_delgroup __P((u_32_t, u_32_t, minor_t, int));
-extern	frgroup_t *fr_findgroup __P((u_32_t, u_32_t, minor_t, int,
-				    frgroup_t ***));
+extern	int	frflush (minor_t, int, int);
+extern	void	frsync (void);
+extern	frgroup_t *fr_addgroup (u_32_t, frentry_t *, minor_t, int);
+extern	void	fr_delgroup (u_32_t, u_32_t, minor_t, int);
+extern	frgroup_t *fr_findgroup (u_32_t, u_32_t, minor_t, int,
+				    frgroup_t ***);
 
-extern	int	fr_copytolog __P((int, char *, int));
-extern	void	fr_forgetifp __P((void *));
-extern	void	fr_getstat __P((struct friostat *));
-extern	int	fr_ifpaddr __P((int, void *, struct in_addr *));
-extern	int	fr_lock __P((caddr_t, int *));
-extern  void	fr_makefrip __P((int, ip_t *, fr_info_t *));
-extern	u_short	fr_tcpsum __P((mb_t *, ip_t *, tcphdr_t *));
-extern	int	fr_scanlist __P((u_32_t, ip_t *, fr_info_t *, void *));
-extern	int	fr_tcpudpchk __P((frtuc_t *, fr_info_t *));
-extern	int	fr_verifysrc __P((struct in_addr, void *));
+extern	int	fr_copytolog (int, char *, int);
+extern	void	fr_forgetifp (void *);
+extern	void	fr_getstat (struct friostat *);
+extern	int	fr_ifpaddr (int, void *, struct in_addr *);
+extern	int	fr_lock (caddr_t, int *);
+extern  void	fr_makefrip (int, ip_t *, fr_info_t *);
+extern	u_short	fr_tcpsum (mb_t *, ip_t *, tcphdr_t *);
+extern	int	fr_scanlist (u_32_t, ip_t *, fr_info_t *, void *);
+extern	int	fr_tcpudpchk (frtuc_t *, fr_info_t *);
+extern	int	fr_verifysrc (struct in_addr, void *);
 
 extern	int	ipl_unreach;
 extern	int	fr_running;

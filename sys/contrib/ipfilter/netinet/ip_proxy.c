@@ -5,7 +5,7 @@
  *
  * @(#)$Id: ip_proxy.c,v 2.9.2.24 2002/08/28 12:45:51 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.11.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.5 2003/08/07 21:16:48 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.6 2003/08/27 11:02:14 rob Exp $
  */
 #if defined(__FreeBSD__) && defined(KERNEL) && !defined(_KERNEL)
 # define	_KERNEL
@@ -82,7 +82,7 @@
 extern  KRWLOCK_T       ipf_nat, ipf_state;
 #endif
 
-static int appr_fixseqack __P((fr_info_t *, ip_t *, ap_session_t *, int ));
+static int appr_fixseqack (fr_info_t *, ip_t *, ap_session_t *, int );
 
 
 #define	PROXY_DEBUG 0

@@ -12,7 +12,7 @@
  * For more details, see QNX_OCL.txt provided with this distribution.
  *
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_h323_pxy.c,v 1.2.2.2 2002/08/31 16:24:52 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_h323_pxy.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_h323_pxy.c,v 1.3 2003/08/27 11:02:14 rob Exp $
  */
 
 /*
@@ -31,23 +31,23 @@
 
 #define IPF_H323_PROXY
 
-int  ippr_h323_init __P((void));
-int  ippr_h323_new __P((fr_info_t *, ip_t *, ap_session_t *, nat_t *));
-void ippr_h323_del __P((ap_session_t *));
-int  ippr_h323_out __P((fr_info_t *, ip_t *, ap_session_t *, nat_t *));
-int  ippr_h323_in __P((fr_info_t *, ip_t *, ap_session_t *, nat_t *));
+int  ippr_h323_init (void);
+int  ippr_h323_new (fr_info_t *, ip_t *, ap_session_t *, nat_t *);
+void ippr_h323_del (ap_session_t *);
+int  ippr_h323_out (fr_info_t *, ip_t *, ap_session_t *, nat_t *);
+int  ippr_h323_in (fr_info_t *, ip_t *, ap_session_t *, nat_t *);
 
-int  ippr_h245_init __P((void));
-int  ippr_h245_new __P((fr_info_t *, ip_t *, ap_session_t *, nat_t *));
-int  ippr_h245_out __P((fr_info_t *, ip_t *, ap_session_t *, nat_t *));
-int  ippr_h245_in __P((fr_info_t *, ip_t *, ap_session_t *, nat_t *));
+int  ippr_h245_init (void);
+int  ippr_h245_new (fr_info_t *, ip_t *, ap_session_t *, nat_t *);
+int  ippr_h245_out (fr_info_t *, ip_t *, ap_session_t *, nat_t *);
+int  ippr_h245_in (fr_info_t *, ip_t *, ap_session_t *, nat_t *);
 
 static	frentry_t	h323_fr;
 #if	(SOLARIS || defined(__sgi)) && defined(_KERNEL)
 extern  KRWLOCK_T   ipf_nat;
 #endif
 
-static int find_port __P((int, u_char *, int datlen, int *, u_short *));
+static int find_port (int, u_char *, int datlen, int *, u_short *);
 
 
 static int find_port(ipaddr, data, datlen, off, port)

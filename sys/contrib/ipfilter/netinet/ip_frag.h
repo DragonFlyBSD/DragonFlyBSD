@@ -6,7 +6,7 @@
  * @(#)ip_frag.h	1.5 3/24/96
  * $Id: ip_frag.h,v 2.4.2.7 2002/07/06 14:17:51 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_frag.h,v 1.12.2.4 2002/08/31 16:24:52 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_frag.h,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_frag.h,v 1.3 2003/08/27 11:02:14 rob Exp $
  */
 
 #ifndef	__IP_FRAG_H__
@@ -49,27 +49,27 @@ typedef	struct	ipfrstat {
 
 extern	int	fr_ipfrttl;
 extern	int	fr_frag_lock;
-extern	ipfrstat_t	*ipfr_fragstats __P((void));
-extern	int	ipfr_newfrag __P((ip_t *, fr_info_t *));
-extern	int	ipfr_nat_newfrag __P((ip_t *, fr_info_t *, struct nat *));
-extern	nat_t	*ipfr_nat_knownfrag __P((ip_t *, fr_info_t *));
-extern	frentry_t *ipfr_knownfrag __P((ip_t *, fr_info_t *));
-extern	void	ipfr_forget __P((void *));
-extern	void	ipfr_unload __P((void));
-extern	void	ipfr_fragexpire __P((void));
+extern	ipfrstat_t	*ipfr_fragstats (void);
+extern	int	ipfr_newfrag (ip_t *, fr_info_t *);
+extern	int	ipfr_nat_newfrag (ip_t *, fr_info_t *, struct nat *);
+extern	nat_t	*ipfr_nat_knownfrag (ip_t *, fr_info_t *);
+extern	frentry_t *ipfr_knownfrag (ip_t *, fr_info_t *);
+extern	void	ipfr_forget (void *);
+extern	void	ipfr_unload (void);
+extern	void	ipfr_fragexpire (void);
 
 #ifdef _KERNEL
 # if     (BSD >= 199306) || SOLARIS || defined(__sgi)
 #  if defined(SOLARIS2) && (SOLARIS2 < 7)
-extern	void	ipfr_slowtimer __P((void));
+extern	void	ipfr_slowtimer (void);
 #  else
-extern	void	ipfr_slowtimer __P((void *));
+extern	void	ipfr_slowtimer (void *);
 #  endif
 # else
-extern	int	ipfr_slowtimer __P((void));
+extern	int	ipfr_slowtimer (void);
 # endif /* (BSD >= 199306) || SOLARIS */
 #else
-extern	void	ipfr_slowtimer __P((void));
+extern	void	ipfr_slowtimer (void);
 #endif /* _KERNEL */
 
 #endif	/* __IP_FIL_H__ */

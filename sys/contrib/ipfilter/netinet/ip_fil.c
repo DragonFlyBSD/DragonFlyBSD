@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.5 2003/08/07 21:16:48 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.6 2003/08/27 11:02:14 rob Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -120,7 +120,7 @@
 #endif
 #if !SOLARIS && defined(_KERNEL) && !defined(__sgi)
 # include <sys/kernel.h>
-extern	int	ip_optcopy __P((struct ip *, struct ip *));
+extern	int	ip_optcopy (struct ip *, struct ip *);
 #endif
 #if defined(OpenBSD) && (OpenBSD >= 200211) && defined(_KERNEL)
 extern	int	ip6_getpmtu(struct route_in6 *, struct route_in6 *,
@@ -150,18 +150,18 @@ int	ipl_unreach = ICMP_UNREACH_FILTER;
 #endif
 u_long	ipl_frouteok[2] = {0, 0};
 
-static	int	frzerostats __P((caddr_t));
+static	int	frzerostats (caddr_t);
 #if defined(__NetBSD__) || defined(__OpenBSD__) || (__FreeBSD_version >= 300003)
-static	int	frrequest __P((int, u_long, caddr_t, int));
+static	int	frrequest (int, u_long, caddr_t, int);
 #else
-static	int	frrequest __P((int, int, caddr_t, int));
+static	int	frrequest (int, int, caddr_t, int);
 #endif
 #ifdef	_KERNEL
-static	int	(*fr_savep) __P((ip_t *, int, void *, int, struct mbuf **));
-static	int	send_ip __P((ip_t *, fr_info_t *, struct mbuf **));
+static	int	(*fr_savep) (ip_t *, int, void *, int, struct mbuf **);
+static	int	send_ip (ip_t *, fr_info_t *, struct mbuf **);
 # ifdef	USE_INET6
-static	int	ipfr_fastroute6 __P((struct mbuf *, struct mbuf **,
-				     fr_info_t *, frdest_t *));
+static	int	ipfr_fastroute6 (struct mbuf *, struct mbuf **,
+				     fr_info_t *, frdest_t *);
 # endif
 # ifdef	__sgi
 extern	int		tcp_mtudisc;
@@ -169,17 +169,17 @@ extern  kmutex_t        ipf_rw;
 extern	KRWLOCK_T	ipf_mutex;
 # endif
 #else
-void	init_ifp __P((void));
+void	init_ifp (void);
 # if defined(__sgi) && (IRIX < 605)
-static int 	no_output __P((struct ifnet *, struct mbuf *,
-			       struct sockaddr *));
-static int	write_output __P((struct ifnet *, struct mbuf *,
-				  struct sockaddr *));
+static int 	no_output (struct ifnet *, struct mbuf *,
+			       struct sockaddr *);
+static int	write_output (struct ifnet *, struct mbuf *,
+				  struct sockaddr *);
 # else
-static int 	no_output __P((struct ifnet *, struct mbuf *,
-			       struct sockaddr *, struct rtentry *));
-static int	write_output __P((struct ifnet *, struct mbuf *,
-				  struct sockaddr *, struct rtentry *));
+static int 	no_output (struct ifnet *, struct mbuf *,
+			       struct sockaddr *, struct rtentry *);
+static int	write_output (struct ifnet *, struct mbuf *,
+				  struct sockaddr *, struct rtentry *);
 # endif
 #endif
 int	fr_running = 0;
@@ -231,7 +231,7 @@ struct devsw iplsw = {
 /*
  * We provide the fr_checkp name just to minimize changes later.
  */
-int (*fr_checkp) __P((ip_t *ip, int hlen, void *ifp, int out, mb_t **mp));
+int (*fr_checkp) (ip_t *ip, int hlen, void *ifp, int out, mb_t **mp);
 # endif /* NETBSD_PF */
 #endif /* __NetBSD__ */
 
@@ -1526,11 +1526,11 @@ int dst;
 # if !defined(IPFILTER_LKM) && !defined(__sgi) && \
      (!defined(__FreeBSD_version) || (__FreeBSD_version < 300000))
 #  if	(BSD < 199306)
-int iplinit __P((void));
+int iplinit (void);
 
 int
 #  else
-void iplinit __P((void));
+void iplinit (void);
 
 void
 #  endif
@@ -2025,11 +2025,11 @@ frdest_t *fdp;
 
 
 # if defined(__sgi) && (IRIX < 605)
-static int no_output __P((struct ifnet *ifp, struct mbuf *m,
-			   struct sockaddr *s))
+static int no_output (struct ifnet *ifp, struct mbuf *m,
+			   struct sockaddr *s)
 # else
-static int no_output __P((struct ifnet *ifp, struct mbuf *m,
-			   struct sockaddr *s, struct rtentry *rt))
+static int no_output (struct ifnet *ifp, struct mbuf *m,
+			   struct sockaddr *s, struct rtentry *rt)
 # endif
 {
 	return 0;
@@ -2038,11 +2038,11 @@ static int no_output __P((struct ifnet *ifp, struct mbuf *m,
 
 # ifdef __STDC__
 #  if defined(__sgi) && (IRIX < 605)
-static int write_output __P((struct ifnet *ifp, struct mbuf *m,
-			     struct sockaddr *s))
+static int write_output (struct ifnet *ifp, struct mbuf *m,
+			     struct sockaddr *s)
 #  else
-static int write_output __P((struct ifnet *ifp, struct mbuf *m,
-			     struct sockaddr *s, struct rtentry *rt))
+static int write_output (struct ifnet *ifp, struct mbuf *m,
+			     struct sockaddr *s, struct rtentry *rt)
 #  endif
 {
 	ip_t *ip = (ip_t *)m;

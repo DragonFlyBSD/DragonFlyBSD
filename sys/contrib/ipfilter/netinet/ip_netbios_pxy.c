@@ -3,7 +3,7 @@
  * For use with the NAT code.
  * $Id: ip_netbios_pxy.c,v 1.1.2.3 2002/01/09 09:28:37 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_netbios_pxy.c,v 1.1.1.1.2.1 2002/04/27 17:37:12 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_netbios_pxy.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_netbios_pxy.c,v 1.3 2003/08/27 11:02:14 rob Exp $
  */
 
 /*-
@@ -36,8 +36,8 @@
 
 #define	IPF_NETBIOS_PROXY
 
-int ippr_netbios_init __P((void));
-int ippr_netbios_out __P((fr_info_t *, ip_t *, ap_session_t *, nat_t *));
+int ippr_netbios_init (void);
+int ippr_netbios_out (fr_info_t *, ip_t *, ap_session_t *, nat_t *);
 
 static	frentry_t	netbiosfr;
 

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_raudio_pxy.c,v 1.7.2.3 2002/04/27 17:37:12 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_raudio_pxy.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_raudio_pxy.c,v 1.3 2003/08/27 11:02:14 rob Exp $
  */
 #if SOLARIS && defined(_KERNEL)
 extern	kmutex_t	ipf_rw;
@@ -9,10 +9,10 @@ extern	kmutex_t	ipf_rw;
 #define	IPF_RAUDIO_PROXY
 
 
-int ippr_raudio_init __P((void));
-int ippr_raudio_new __P((fr_info_t *, ip_t *, ap_session_t *, nat_t *));
-int ippr_raudio_in __P((fr_info_t *, ip_t *, ap_session_t *, nat_t *));
-int ippr_raudio_out __P((fr_info_t *, ip_t *, ap_session_t *, nat_t *));
+int ippr_raudio_init (void);
+int ippr_raudio_new (fr_info_t *, ip_t *, ap_session_t *, nat_t *);
+int ippr_raudio_in (fr_info_t *, ip_t *, ap_session_t *, nat_t *);
+int ippr_raudio_out (fr_info_t *, ip_t *, ap_session_t *, nat_t *);
 
 static	frentry_t	raudiofr;
 

@@ -5,7 +5,7 @@
  * Simple RCMD transparent proxy for in-kernel use.  For use with the NAT
  * code.
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_rcmd_pxy.c,v 1.8.2.3 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_rcmd_pxy.c,v 1.3 2003/07/26 14:07:18 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_rcmd_pxy.c,v 1.4 2003/08/27 11:02:14 rob Exp $
  */
 #if SOLARIS && defined(_KERNEL)
 extern	kmutex_t	ipf_rw;
@@ -16,11 +16,11 @@ extern	kmutex_t	ipf_rw;
 #define	IPF_RCMD_PROXY
 
 
-int ippr_rcmd_init __P((void));
-int ippr_rcmd_new __P((fr_info_t *, ip_t *, ap_session_t *, nat_t *));
-int ippr_rcmd_out __P((fr_info_t *, ip_t *, ap_session_t *, nat_t *));
-u_short ipf_rcmd_atoi __P((char *));
-int ippr_rcmd_portmsg __P((fr_info_t *, ip_t *, ap_session_t *, nat_t *));
+int ippr_rcmd_init (void);
+int ippr_rcmd_new (fr_info_t *, ip_t *, ap_session_t *, nat_t *);
+int ippr_rcmd_out (fr_info_t *, ip_t *, ap_session_t *, nat_t *);
+u_short ipf_rcmd_atoi (char *);
+int ippr_rcmd_portmsg (fr_info_t *, ip_t *, ap_session_t *, nat_t *);
 
 static	frentry_t	rcmdfr;
 

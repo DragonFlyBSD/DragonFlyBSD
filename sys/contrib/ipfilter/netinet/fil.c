@@ -5,7 +5,7 @@
  *
  * @(#)fil.c        1.36 6/5/96 (C) 1993-2000 Darren Reed
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/fil.c,v 1.23.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/fil.c,v 1.4 2003/08/07 21:16:48 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/fil.c,v 1.5 2003/08/27 11:02:14 rob Exp $
  */
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
@@ -144,9 +144,9 @@ char	ipfilter_version[] = IPL_VERSION;
 
 fr_info_t	frcache[2];
 
-static	int	frflushlist __P((int, minor_t, int *, frentry_t **));
+static	int	frflushlist (int, minor_t, int *, frentry_t **);
 #ifdef	_KERNEL
-static	void	frsynclist __P((frentry_t *));
+static	void	frsynclist (frentry_t *);
 #endif
 
 

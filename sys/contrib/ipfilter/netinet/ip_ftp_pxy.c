@@ -2,7 +2,7 @@
  * Simple FTP transparent proxy for in-kernel use.  For use with the NAT
  * code.
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_ftp_pxy.c,v 1.17.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_ftp_pxy.c,v 1.3 2003/07/26 14:07:18 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_ftp_pxy.c,v 1.4 2003/08/27 11:02:14 rob Exp $
  */
 #if SOLARIS && defined(_KERNEL)
 extern	kmutex_t	ipf_rw;
@@ -44,20 +44,20 @@ extern	kmutex_t	ipf_rw;
  */
 #define	FTPXY_C_PASV	1000
 
-int ippr_ftp_client __P((fr_info_t *, ip_t *, nat_t *, ftpinfo_t *, int));
-int ippr_ftp_complete __P((char *, size_t));
-int ippr_ftp_in __P((fr_info_t *, ip_t *, ap_session_t *, nat_t *));
-int ippr_ftp_init __P((void));
-int ippr_ftp_new __P((fr_info_t *, ip_t *, ap_session_t *, nat_t *));
-int ippr_ftp_out __P((fr_info_t *, ip_t *, ap_session_t *, nat_t *));
-int ippr_ftp_pasv __P((fr_info_t *, ip_t *, nat_t *, ftpinfo_t *, int));
-int ippr_ftp_port __P((fr_info_t *, ip_t *, nat_t *, ftpside_t *, int));
-int ippr_ftp_process __P((fr_info_t *, ip_t *, nat_t *, ftpinfo_t *, int));
-int ippr_ftp_server __P((fr_info_t *, ip_t *, nat_t *, ftpinfo_t *, int));
-int ippr_ftp_valid __P((ftpinfo_t *, int, char *, size_t));
-int ippr_ftp_server_valid __P((ftpside_t *, char *, size_t));
-int ippr_ftp_client_valid __P((ftpside_t *, char *, size_t));
-u_short ippr_ftp_atoi __P((char **));
+int ippr_ftp_client (fr_info_t *, ip_t *, nat_t *, ftpinfo_t *, int);
+int ippr_ftp_complete (char *, size_t);
+int ippr_ftp_in (fr_info_t *, ip_t *, ap_session_t *, nat_t *);
+int ippr_ftp_init (void);
+int ippr_ftp_new (fr_info_t *, ip_t *, ap_session_t *, nat_t *);
+int ippr_ftp_out (fr_info_t *, ip_t *, ap_session_t *, nat_t *);
+int ippr_ftp_pasv (fr_info_t *, ip_t *, nat_t *, ftpinfo_t *, int);
+int ippr_ftp_port (fr_info_t *, ip_t *, nat_t *, ftpside_t *, int);
+int ippr_ftp_process (fr_info_t *, ip_t *, nat_t *, ftpinfo_t *, int);
+int ippr_ftp_server (fr_info_t *, ip_t *, nat_t *, ftpinfo_t *, int);
+int ippr_ftp_valid (ftpinfo_t *, int, char *, size_t);
+int ippr_ftp_server_valid (ftpside_t *, char *, size_t);
+int ippr_ftp_client_valid (ftpside_t *, char *, size_t);
+u_short ippr_ftp_atoi (char **);
 
 static	frentry_t	ftppxyfr;
 int	ippr_ftp_pasvonly = 0;

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.6 2003/08/07 21:16:48 dillon Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.7 2003/08/27 11:02:14 rob Exp $
  */
 
 #include <sys/param.h>
@@ -117,25 +117,25 @@ char *AdapterName[] = {
  */
 
 #ifndef TRlldInlineIO
-static void DriverOutByte	__P((unsigned short, unsigned char));
-static void DriverOutWord	__P((unsigned short, unsigned short));
-static void DriverOutDword	__P((unsigned short, unsigned long));
-static void DriverRepOutByte	__P((unsigned short, unsigned char  *, int));
-static void DriverRepOutWord	__P((unsigned short, unsigned short *, int));
-static void DriverRepOutDword	__P((unsigned short, unsigned long  *, int));
-static unsigned char  DriverInByte __P((unsigned short));
-static unsigned short DriverInWord __P((unsigned short));
-static unsigned long  DriverInDword __P((unsigned short));
-static void DriverRepInByte	__P((unsigned short, unsigned char  *, int));
-static void DriverRepInWord	__P((unsigned short, unsigned short *, int));
-static void DriverRepInDword	__P((unsigned short, unsigned long  *, int));
+static void DriverOutByte	(unsigned short, unsigned char);
+static void DriverOutWord	(unsigned short, unsigned short);
+static void DriverOutDword	(unsigned short, unsigned long);
+static void DriverRepOutByte	(unsigned short, unsigned char  *, int);
+static void DriverRepOutWord	(unsigned short, unsigned short *, int);
+static void DriverRepOutDword	(unsigned short, unsigned long  *, int);
+static unsigned char  DriverInByte (unsigned short);
+static unsigned short DriverInWord (unsigned short);
+static unsigned long  DriverInDword (unsigned short);
+static void DriverRepInByte	(unsigned short, unsigned char  *, int);
+static void DriverRepInWord	(unsigned short, unsigned short *, int);
+static void DriverRepInDword	(unsigned short, unsigned long  *, int);
 #endif /*TRlldInlineIO*/
-static void DriverSuspend	__P((unsigned short));
-static void DriverStatus	__P((void *, TRlldStatus_t *));
-static void DriverCloseCompleted __P((void *));
-static void DriverStatistics	__P((void *, TRlldStatistics_t *));
-static void DriverTransmitFrameCompleted __P((void *, void *, int));
-static void DriverReceiveFrameCompleted	__P((void *, int, int, void *, int));
+static void DriverSuspend	(unsigned short);
+static void DriverStatus	(void *, TRlldStatus_t *);
+static void DriverCloseCompleted (void *);
+static void DriverStatistics	(void *, TRlldStatistics_t *);
+static void DriverTransmitFrameCompleted (void *, void *, int);
+static void DriverReceiveFrameCompleted	(void *, int, int, void *, int);
 
 static TRlldDriver_t LldDriver = {
 	TRLLD_VERSION,
@@ -216,24 +216,24 @@ struct oltr_softc {
 
 #define SELF_TEST_POLLS	32
 
-void oltr_poll 			__P((void *));
-/*void oltr_stat 			__P((void *));*/
+void oltr_poll 			(void *);
+/*void oltr_stat 			(void *);*/
 
-static void oltr_start		__P((struct ifnet *));
-static void oltr_stop		__P((struct oltr_softc *));
-static void oltr_close		__P((struct oltr_softc *));
-static void oltr_init		__P((void *));
-static int oltr_ioctl		__P((struct ifnet *, u_long, caddr_t));
-static void oltr_intr		__P((void *));
-static int oltr_ifmedia_upd	__P((struct ifnet *));
-static void oltr_ifmedia_sts	__P((struct ifnet *, struct ifmediareq *));
+static void oltr_start		(struct ifnet *);
+static void oltr_stop		(struct oltr_softc *);
+static void oltr_close		(struct oltr_softc *);
+static void oltr_init		(void *);
+static int oltr_ioctl		(struct ifnet *, u_long, caddr_t);
+static void oltr_intr		(void *);
+static int oltr_ifmedia_upd	(struct ifnet *);
+static void oltr_ifmedia_sts	(struct ifnet *, struct ifmediareq *);
 
 #if __FreeBSD_version > 400000
 
-static int oltr_pci_probe		__P((device_t));
-static int oltr_pci_attach	__P((device_t));
-static int oltr_pci_detach	__P((device_t));
-static void oltr_pci_shutdown	__P((device_t));
+static int oltr_pci_probe		(device_t);
+static int oltr_pci_attach	(device_t);
+static int oltr_pci_detach	(device_t);
+static void oltr_pci_shutdown	(device_t);
 
 static device_method_t oltr_methods[] = {
 	DEVMETHOD(device_probe,		oltr_pci_probe),
@@ -485,8 +485,8 @@ oltr_pci_shutdown(device_t dev)
 
 #else
 
-static const char *oltr_pci_probe	__P((pcici_t, pcidi_t));
-static void oltr_pci_attach		__P((pcici_t, int));
+static const char *oltr_pci_probe	(pcici_t, pcidi_t);
+static void oltr_pci_attach		(pcici_t, int);
 
 static unsigned long oltr_count = 0;
 
