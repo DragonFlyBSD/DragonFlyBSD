@@ -31,9 +31,9 @@
 .\"
 .\"     @(#)chown.8	8.3 (Berkeley) 3/31/94
 .\" $FreeBSD: src/usr.sbin/chown/chown.8,v 1.10.2.7 2003/03/12 22:08:13 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/chown/chown.8,v 1.2 2003/06/17 04:29:52 dillon Exp $
+.\" $DragonFly: src/usr.sbin/chown/chown.8,v 1.3 2004/11/25 19:45:30 liamfoy Exp $
 .\"
-.Dd March 31, 1994
+.Dd November 24, 2004 
 .Dt CHOWN 8
 .Os
 .Sh NAME
@@ -97,6 +97,11 @@ group ID of the link itself.
 Cause
 .Nm
 to be verbose, showing files as the owner is modified.
+If the
+.Fl v
+flag is specified more than once,
+.Nm
+will print the filename, followed by the old and new numeric user/group ID.
 .El
 .Pp
 The

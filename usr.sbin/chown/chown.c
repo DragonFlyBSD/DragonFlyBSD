@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chown.c	8.8 (Berkeley) 4/4/94
  * $FreeBSD: src/usr.sbin/chown/chown.c,v 1.15.2.3 2002/08/07 21:24:33 schweikh Exp $
- * $DragonFly: src/usr.sbin/chown/chown.c,v 1.5 2004/08/30 19:27:21 eirikn Exp $
+ * $DragonFly: src/usr.sbin/chown/chown.c,v 1.6 2004/11/25 19:45:30 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -51,16 +51,16 @@
 #include <string.h>
 #include <unistd.h>
 
-void	a_gid(char *);
-void	a_uid(char *);
-void	chownerr(char *);
-u_long	id(char *, char *);
-void	usage(void);
+static void	a_gid(char *);
+static void	a_uid(char *);
+static void	chownerr(const char *);
+static uid_t	id(const char *, const char *);
+static void	usage(void);
 
-uid_t uid;
-gid_t gid;
-int Rflag, ischown, fflag, hflag, vflag;
-char *gname, *myname;
+static uid_t	 uid;
+static gid_t	 gid;
+static int	 Rflag, ischown, fflag, vflag;
+static char	 *gname, *myname;
 
 int
 main(int argc, char **argv)
@@ -98,9 +98,8 @@ main(int argc, char **argv)
 			hflag = 1;
 			break;
 		case 'v':
-			vflag = 1;
+			vflag++;
 			break;
-		case '?':
 		default:
 			usage();
 		}
@@ -171,8 +170,8 @@ main(int argc, char **argv)
 		default:
 			break;
 		}
-		if ((uid == -1 || uid == p->fts_statp->st_uid) &&
-		    (gid == -1 || gid == p->fts_statp->st_gid))
+		if ((uid == (uid_t)(-1) || uid == p->fts_statp->st_uid) &&
+		    (gid == (gid_t)(-1) || gid == p->fts_statp->st_gid))
 			continue;
 		if (hflag) {
 			if (lchown(p->fts_accpath, uid, gid) && !fflag) {
@@ -188,7 +187,27 @@ main(int argc, char **argv)
 				rval = 1;
 			} else {
 			    	if (vflag)
-					(void)printf("%s\n", p->fts_accpath);
+					(void)printf("%s", p->fts_accpath);
+					 if (vflag > 1) {
+						if (ischown) {
+							printf(": %d:%d -> %d:%d",
+								(int)p->fts_statp->st_uid,
+								(int)p->fts_statp->st_gid,
+								(uid == (uid_t)-1) ?
+								(int)p->fts_statp->st_uid :
+								(int)uid,
+								(gid == (gid_t)-1) ?
+								(int) p->fts_statp->st_gid :
+								(int)gid);
+						} else {
+							printf(": %d -> %d",
+								(int)p->fts_statp->st_gid,
+								(gid == (gid_t)-1) ?
+								(int)p->fts_statp->st_gid :
+								(int)gid);
+  	                                         }
+  	                                 }
+  	                                 printf("\n");
 			}
 		}
 	}
@@ -197,7 +216,7 @@ main(int argc, char **argv)
 	exit(rval);
 }
 
-void
+static void
 a_gid(char *s)
 {
 	struct group *gr;
@@ -208,7 +227,7 @@ a_gid(char *s)
 	gid = ((gr = getgrnam(s)) == NULL) ? id(s, "group") : gr->gr_gid;
 }
 
-void
+static void
 a_uid(char *s)
 {
 	struct passwd *pw;
@@ -218,8 +237,8 @@ a_uid(char *s)
 	uid = ((pw = getpwnam(s)) == NULL) ? id(s, "user") : pw->pw_uid;
 }
 
-u_long
-id(char *name, char *type)
+static uid_t
+id(const char *name, const char *type)
 {
 	u_long val;
 	char *ep;
@@ -237,20 +256,21 @@ id(char *name, char *type)
 	return (val);
 }
 
-void
-chownerr(char *file)
+static void
+chownerr(const char *file)
 {
-	static int euid = -1, ngroups = -1;
+	static uid_t euid = -1;
+	static int ngroups = -1;
 	gid_t groups[NGROUPS];
 
 	/* Check for chown without being root. */
 	if (errno != EPERM ||
-	    (uid != -1 && euid == -1 && (euid = geteuid()) != 0))
+	    (uid != (uid_t)(-1) && euid == (uid_t)(-1) && (euid = geteuid()) != 0))
 		err(1, "%s", file);
 
 	/* Check group membership; kernel just returns EPERM. */
-	if (gid != -1 && ngroups == -1 &&
-	    euid == -1 && (euid = geteuid()) != 0) {
+	if (gid != (gid_t)(-1) && ngroups == -1 &&
+	    euid == (uid_t)(-1) && (euid = geteuid()) != 0) {
 		ngroups = getgroups(NGROUPS, groups);
 		while (--ngroups >= 0 && gid != groups[ngroups]);
 		if (ngroups < 0)
@@ -259,7 +279,7 @@ chownerr(char *file)
 	warn("%s", file);
 }
 
-void
+static void
 usage(void)
 {
 	(void)fprintf(stderr, "%s\n%s\n%s\n",
