@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.52 2005/02/08 22:56:19 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.53 2005/03/04 03:48:25 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -1142,7 +1142,7 @@ after_listen:
 			    tp->snd_cwnd >= tp->snd_wnd &&
 			    !IN_FASTRECOVERY(tp)) {
 				/*
-				 * this is a pure ack for outstanding data.
+				 * This is a pure ack for outstanding data.
 				 */
 				++tcpstat.tcps_predack;
 				/*
@@ -1223,9 +1223,8 @@ after_listen:
 					callout_reset(tp->tt_rexmt,
 						      tp->t_rxtcur,
 						      tcp_timer_rexmt, tp);
-
 				sowwakeup(so);
-				if (so->so_snd.sb_cc)
+				if (so->so_snd.sb_cc > 0)
 					tcp_output(tp);
 				return;
 			}
@@ -1234,7 +1233,7 @@ after_listen:
 		    LIST_EMPTY(&tp->t_segq) &&
 		    tlen <= sbspace(&so->so_rcv)) {
 			/*
-			 * this is a pure, in-sequence data packet
+			 * This is a pure, in-sequence data packet
 			 * with nothing on the reassembly queue and
 			 * we have enough buffer space to take it.
 			 */
@@ -1253,7 +1252,6 @@ after_listen:
 				sbappendstream(&so->so_rcv, m);
 			}
 			sorwakeup(so);
-
 			/*
 			 * This code is responsible for most of the ACKs
 			 * the TCP stack sends back after receiving a data

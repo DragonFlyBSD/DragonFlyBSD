@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.19 2005/03/04 02:54:31 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.20 2005/03/04 03:48:25 hsu Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -1135,7 +1135,6 @@ icmp6_mtudisc_update(struct ip6ctlparam *ip6cp, int validated)
 	}
 	/* sin6.sin6_scope_id = XXX: should be set if DST is a scoped addr */
 	rt = rtpurelookup((struct sockaddr *)&sin6);
-
 	if (rt != NULL && (rt->rt_flags & RTF_HOST) &&
 	    !(rt->rt_rmx.rmx_locks & RTV_MTU)) {
 		if (mtu < IPV6_MMTU) {				/* XXX */

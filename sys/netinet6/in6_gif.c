@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_gif.c,v 1.2.2.7 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.13 2005/02/22 02:52:48 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.14 2005/03/04 03:48:25 hsu Exp $	*/
 /*	$KAME: in6_gif.c,v 1.49 2001/05/14 14:02:17 itojun Exp $	*/
 
 /*
@@ -183,7 +183,7 @@ in6_gif_output(struct ifnet *ifp,
 		dst->sin6_family = sin6_dst->sin6_family;
 		dst->sin6_len = sizeof(struct sockaddr_in6);
 		dst->sin6_addr = sin6_dst->sin6_addr;
-		if (sc->gif_ro6.ro_rt) {
+		if (sc->gif_ro6.ro_rt != NULL) {
 			RTFREE(sc->gif_ro6.ro_rt);
 			sc->gif_ro6.ro_rt = NULL;
 		}
@@ -327,17 +327,16 @@ gif_validate6(const struct ip6_hdr *ip6, struct gif_softc *sc,
 		sin6.sin6_scope_id = 0; /* XXX */
 
 		rt = rtpurelookup((struct sockaddr *)&sin6);
+		if (rt != NULL)
+			--rt->rt_refcnt;
 		if (rt == NULL || rt->rt_ifp != ifp) {
 #if 0
 			log(LOG_WARNING, "%s: packet from %s dropped "
 			    "due to ingress filter\n", if_name(&sc->gif_if),
 			    ip6_sprintf(&sin6.sin6_addr));
 #endif
-			if (rt != NULL)
-				--rt->rt_refcnt;
 			return 0;
 		}
-		--rt->rt_refcnt;
 	}
 
 	return 128 * 2;

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/in_rmx.c,v 1.37.2.3 2002/08/09 14:49:23 ru Exp $
- * $DragonFly: src/sys/netinet/in_rmx.c,v 1.9 2005/01/06 17:59:32 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_rmx.c,v 1.10 2005/03/04 03:48:25 hsu Exp $
  */
 
 /*
@@ -121,7 +121,7 @@ in_addroute(char *key, char *mask, struct radix_node_head *head,
 		 * ARP entry and delete it if so.
 		 */
 		rt2 = rtpurelookup((struct sockaddr *)sin);
-		if (rt2) {
+		if (rt2 != NULL) {
 			--rt->rt_refcnt;
 			if (rt2->rt_flags & RTF_LLINFO &&
 			    rt2->rt_flags & RTF_HOST &&
@@ -247,11 +247,10 @@ in_rtqkill(struct radix_node *rn, void *rock)
 
 			err = rtrequest(RTM_DELETE, rt_key(rt), rt->rt_gateway,
 					rt_mask(rt), rt->rt_flags, NULL);
-			if (err) {
+			if (err)
 				log(LOG_WARNING, "in_rtqkill: error %d\n", err);
-			} else {
+			else
 				ap->killed++;
-			}
 		} else {
 			if (ap->updating &&
 			    (rt->rt_rmx.rmx_expire - time_second >
@@ -360,7 +359,6 @@ in_inithead(void **head, int off)
 	return 1;
 }
 
-
 /*
  * This zaps old routes when the interface goes down or interface
  * address is deleted.  In the latter case, it deletes static routes
@@ -396,9 +394,8 @@ in_ifadownkill(struct radix_node *rn, void *xap)
 		rt->rt_flags &= ~(RTF_CLONING | RTF_PRCLONING);
 		err = rtrequest(RTM_DELETE, rt_key(rt), rt->rt_gateway,
 				rt_mask(rt), rt->rt_flags, NULL);
-		if (err) {
+		if (err)
 			log(LOG_WARNING, "in_ifadownkill: error %d\n", err);
-		}
 	}
 	return 0;
 }

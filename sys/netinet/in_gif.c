@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/netinet/in_gif.c,v 1.5.2.11 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/in_gif.c,v 1.14 2005/02/22 02:52:48 joerg Exp $
+ * $DragonFly: src/sys/netinet/in_gif.c,v 1.15 2005/03/04 03:48:25 hsu Exp $
  * $KAME: in_gif.c,v 1.54 2001/05/14 14:02:16 itojun Exp $
  */
 /*
@@ -121,7 +121,7 @@ in_gif_output(struct ifnet *ifp, int family, struct mbuf *m)
 		tos = ip->ip_tos;
 		break;
 	    }
-#endif /* INET */
+#endif
 #ifdef INET6
 	case AF_INET6:
 	    {
@@ -136,7 +136,7 @@ in_gif_output(struct ifnet *ifp, int family, struct mbuf *m)
 		tos = (ntohl(ip6->ip6_flow) >> 20) & 0xff;
 		break;
 	    }
-#endif /* INET6 */
+#endif
 	default:
 #ifdef DEBUG
 		printf("in_gif_output: warning: unknown family %d passed\n",
@@ -180,7 +180,7 @@ in_gif_output(struct ifnet *ifp, int family, struct mbuf *m)
 		dst->sin_family = sin_dst->sin_family;
 		dst->sin_len = sizeof(struct sockaddr_in);
 		dst->sin_addr = sin_dst->sin_addr;
-		if (sc->gif_ro.ro_rt) {
+		if (sc->gif_ro.ro_rt != NULL) {
 			RTFREE(sc->gif_ro.ro_rt);
 			sc->gif_ro.ro_rt = NULL;
 		}
@@ -314,17 +314,15 @@ gif_validate4(const struct ip *ip, struct gif_softc *sc, struct ifnet *ifp)
 		return 0;
 	}
 	/* reject packets with broadcast on source */
-	for (ia4 = TAILQ_FIRST(&in_ifaddrhead); ia4;
-	     ia4 = TAILQ_NEXT(ia4, ia_link))
-	{
-		if ((ia4->ia_ifa.ifa_ifp->if_flags & IFF_BROADCAST) == 0)
+	TAILQ_FOREACH(ia4, &in_ifaddrhead, ia_link) {
+		if (!(ia4->ia_ifa.ifa_ifp->if_flags & IFF_BROADCAST))
 			continue;
 		if (ip->ip_src.s_addr == ia4->ia_broadaddr.sin_addr.s_addr)
 			return 0;
 	}
 
 	/* ingress filters on outer source */
-	if ((sc->gif_if.if_flags & IFF_LINK2) == 0 && ifp) {
+	if (!(sc->gif_if.if_flags & IFF_LINK2) && ifp != NULL) {
 		struct sockaddr_in sin;
 		struct rtentry *rt;
 
@@ -333,17 +331,16 @@ gif_validate4(const struct ip *ip, struct gif_softc *sc, struct ifnet *ifp)
 		sin.sin_len = sizeof(struct sockaddr_in);
 		sin.sin_addr = ip->ip_src;
 		rt = rtpurelookup((struct sockaddr *)&sin);
-		if (!rt || rt->rt_ifp != ifp) {
+		if (rt != NULL)
+			--rt->rt_refcnt;
+		if (rt == NULL || rt->rt_ifp != ifp) {
 #if 0
 			log(LOG_WARNING, "%s: packet from 0x%x dropped "
 			    "due to ingress filter\n", if_name(&sc->gif_if),
 			    (u_int32_t)ntohl(sin.sin_addr.s_addr));
 #endif
-			if (rt)
-				--rt->rt_refcnt;
 			return 0;
 		}
-		--rt->rt_refcnt;
 	}
 
 	return 32 * 2;

@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.6 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.7 2005/03/04 03:48:25 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -73,21 +73,18 @@ SYSCTL_INT(_net_inet_ip, IPCTL_FASTFORWARDING, fastforwarding, CTLFLAG_RW,
 static MALLOC_DEFINE(M_IPFLOW, "ip_flow", "IP flow");
 
 static unsigned
-ipflow_hash(
-	struct in_addr dst,
-	struct in_addr src,
-	unsigned tos)
+ipflow_hash(struct in_addr dst, struct in_addr src, unsigned tos)
 {
 	unsigned hash = tos;
 	int idx;
+
 	for (idx = 0; idx < 32; idx += IPFLOW_HASHBITS)
 		hash += (dst.s_addr >> (32 - idx)) + (src.s_addr >> idx);
 	return hash & (IPFLOW_HASHSIZE-1);
 }
 
 static struct ipflow *
-ipflow_lookup(
-	const struct ip *ip)
+ipflow_lookup(const struct ip *ip)
 {
 	unsigned hash;
 	struct ipflow *ipf;
@@ -96,9 +93,9 @@ ipflow_lookup(
 
 	ipf = LIST_FIRST(&ipflows[hash]);
 	while (ipf != NULL) {
-		if (ip->ip_dst.s_addr == ipf->ipf_dst.s_addr
-		    && ip->ip_src.s_addr == ipf->ipf_src.s_addr
-		    && ip->ip_tos == ipf->ipf_tos)
+		if (ip->ip_dst.s_addr == ipf->ipf_dst.s_addr &&
+		    ip->ip_src.s_addr == ipf->ipf_src.s_addr &&
+		    ip->ip_tos == ipf->ipf_tos)
 			break;
 		ipf = LIST_NEXT(ipf, ipf_next);
 	}
@@ -106,8 +103,7 @@ ipflow_lookup(
 }
 
 int
-ipflow_fastforward(
-	struct mbuf *m)
+ipflow_fastforward(struct mbuf *m)
 {
 	struct ip *ip;
 	struct ipflow *ipf;
@@ -124,8 +120,8 @@ ipflow_fastforward(
 	 * IP header with no option and valid version and length
 	 */
 	ip = mtod(m, struct ip *);
-	if (ip->ip_v != IPVERSION || ip->ip_hl != (sizeof(struct ip) >> 2)
-	    || ntohs(ip->ip_len) > m->m_pkthdr.len)
+	if (ip->ip_v != IPVERSION || ip->ip_hl != (sizeof(struct ip) >> 2) ||
+	    ntohs(ip->ip_len) > m->m_pkthdr.len)
 		return 0;
 	/*
 	 * Find a flow.
@@ -151,11 +147,10 @@ ipflow_fastforward(
 	 * Modify the TTL and incrementally change the checksum.
 	 */
 	ip->ip_ttl -= IPTTLDEC;
-	if (ip->ip_sum >= htons(0xffff - (IPTTLDEC << 8))) {
+	if (ip->ip_sum >= htons(0xffff - (IPTTLDEC << 8)))
 		ip->ip_sum += htons(IPTTLDEC << 8) + 1;
-	} else {
+	else
 		ip->ip_sum += htons(IPTTLDEC << 8);
-	}
 
 	/*
 	 * Send the packet on its way.  All we can get back is ENOBUFS
@@ -175,10 +170,9 @@ ipflow_fastforward(
 	}
 	return 1;
 }
-
+
 static void
-ipflow_addstats(
-	struct ipflow *ipf)
+ipflow_addstats(struct ipflow *ipf)
 {
 	ipf->ipf_ro.ro_rt->rt_use += ipf->ipf_uses;
 	ipstat.ips_cantforward += ipf->ipf_errors + ipf->ipf_dropped;
@@ -187,8 +181,7 @@ ipflow_addstats(
 }
 
 static void
-ipflow_free(
-	struct ipflow *ipf)
+ipflow_free(struct ipflow *ipf)
 {
 	int s;
 
@@ -207,8 +200,7 @@ ipflow_free(
 }
 
 static struct ipflow *
-ipflow_reap(
-	void)
+ipflow_reap(void)
 {
 	struct ipflow *ipf, *maybe_ipf = NULL;
 	int idx;
@@ -228,18 +220,17 @@ ipflow_reap(
 			 * or has had the least uses in the last 1.5
 			 * intervals.
 			 */
-			if (maybe_ipf == NULL
-			    || ipf->ipf_timer < maybe_ipf->ipf_timer
-			    || (ipf->ipf_timer == maybe_ipf->ipf_timer
-				&& ipf->ipf_last_uses + ipf->ipf_uses <
-				      maybe_ipf->ipf_last_uses +
-					maybe_ipf->ipf_uses))
+			if (maybe_ipf == NULL ||
+			    ipf->ipf_timer < maybe_ipf->ipf_timer ||
+			    (ipf->ipf_timer == maybe_ipf->ipf_timer &&
+			     ipf->ipf_last_uses + ipf->ipf_uses <
+			     maybe_ipf->ipf_last_uses + maybe_ipf->ipf_uses))
 				maybe_ipf = ipf;
 			ipf = LIST_NEXT(ipf, ipf_next);
 		}
 	}
 	ipf = maybe_ipf;
-    done:
+done:
 	/*
 	 * Remove the entry from the flow table.
 	 */
@@ -252,8 +243,7 @@ ipflow_reap(
 }
 
 void
-ipflow_slowtimo(
-	void)
+ipflow_slowtimo(void)
 {
 	struct ipflow *ipf;
 	int idx;

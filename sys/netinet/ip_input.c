@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.46 2005/02/11 22:25:57 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.47 2005/03/04 03:48:25 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -1878,7 +1878,7 @@ ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
 	struct ifnet dummyifp;
 #endif
 
-	dest = 0;
+	dest = INADDR_ANY;
 	/*
 	 * Cache the destination address of the packet; this may be
 	 * changed by use of 'ipfw fwd'.

@@ -82,7 +82,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.25 2005/01/23 06:41:55 hsu Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.26 2005/03/04 03:48:25 hsu Exp $
  */
 
 /*
@@ -209,7 +209,6 @@ arp_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 
 	struct sockaddr_dl null_sdl = { sizeof null_sdl, AF_LINK };
 	static boolean_t arpinit_done;
-	static int arp_inuse, arp_allocated;	/* for debugging only */
 
 	if (!arpinit_done) {
 		arpinit_done = TRUE;
@@ -268,7 +267,6 @@ arp_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 			log(LOG_DEBUG, "arp_rtrequest: malloc failed\n");
 			break;
 		}
-		arp_inuse++, arp_allocated++;
 		bzero(la, sizeof *la);
 		la->la_rt = rt;
 		rt->rt_flags |= RTF_LLINFO;
@@ -320,7 +318,6 @@ arp_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 	case RTM_DELETE:
 		if (la == NULL)
 			break;
-		arp_inuse--;
 		LIST_REMOVE(la, la_le);
 		rt->rt_llinfo = NULL;
 		rt->rt_flags &= ~RTF_LLINFO;
@@ -811,19 +808,18 @@ reply:
 				m_freem(m);
 				return;
 			}
+			--rt->rt_refcnt;
 			/*
 			 * Don't send proxies for nodes on the same interface
 			 * as this one came out of, or we'll get into a fight
 			 * over who claims what Ether address.
 			 */
 			if (rt->rt_ifp == ifp) {
-				--rt->rt_refcnt;
 				m_freem(m);
 				return;
 			}
 			memcpy(ar_tha(ah), ar_sha(ah), ah->ar_hln);
 			memcpy(ar_sha(ah), IF_LLADDR(ifp), ah->ar_hln);
-			--rt->rt_refcnt;
 #ifdef DEBUG_PROXY
 			printf("arp: proxying for %s\n", inet_ntoa(itaddr));
 #endif
@@ -845,7 +841,6 @@ reply:
 		arh->arc_dhost = *ar_tha(ah);
 		arh->arc_type = ARCTYPE_ARP;
 		break;
-
 	case IFT_ISO88025:
 		/* Re-arrange the source/dest address */
 		memcpy(th->iso88025_dhost, th->iso88025_shost,
@@ -946,7 +941,7 @@ arplookup(in_addr_t addr, boolean_t create, boolean_t proxy)
 		if (rt->rt_refcnt <= 0 && (rt->rt_flags & RTF_WASCLONED)) {
 			/* No references to this route.  Purge it. */
 			rtrequest(RTM_DELETE, rt_key(rt), rt->rt_gateway,
-			    rt_mask(rt), rt->rt_flags, NULL);
+				  rt_mask(rt), rt->rt_flags, NULL);
 		}
 		return (NULL);
 	}

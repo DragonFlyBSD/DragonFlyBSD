@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004 Jeffrey M. Hsu.  All rights reserved.
+ * cOPyright (c) 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.33 2005/02/08 22:56:19 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.34 2005/03/04 03:48:25 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -785,21 +785,20 @@ in_pcbpurgeif0(head, ifp)
  * (by a redirect), time to try a default gateway again.
  */
 void
-in_losing(inp)
-	struct inpcb *inp;
+in_losing(struct inpcb *inp)
 {
 	struct rtentry *rt;
-	struct rt_addrinfo info;
+	struct rt_addrinfo rtinfo;
 
 	if ((rt = inp->inp_route.ro_rt)) {
-		bzero(&info, sizeof info);
-		info.rti_flags = rt->rt_flags;
-		info.rti_info[RTAX_DST] = rt_key(rt);
-		info.rti_info[RTAX_GATEWAY] = rt->rt_gateway;
-		info.rti_info[RTAX_NETMASK] = rt_mask(rt);
-		rt_missmsg(RTM_LOSING, &info, rt->rt_flags, 0);
+		bzero(&rtinfo, sizeof(struct rt_addrinfo));
+		rtinfo.rti_info[RTAX_DST] = rt_key(rt);
+		rtinfo.rti_info[RTAX_GATEWAY] = rt->rt_gateway;
+		rtinfo.rti_info[RTAX_NETMASK] = rt_mask(rt);
+		rtinfo.rti_flags = rt->rt_flags;
+		rt_missmsg(RTM_LOSING, &rtinfo, rt->rt_flags, 0);
 		if (rt->rt_flags & RTF_DYNAMIC)
-			rtrequest1(RTM_DELETE, &info, NULL);
+			rtrequest1(RTM_DELETE, &rtinfo, NULL);
 		inp->inp_route.ro_rt = NULL;
 		rtfree(rt);
 		/*
@@ -820,7 +819,7 @@ in_rtchange(inp, errno)
 {
 	if (inp->inp_route.ro_rt) {
 		rtfree(inp->inp_route.ro_rt);
-		inp->inp_route.ro_rt = 0;
+		inp->inp_route.ro_rt = NULL;
 		/*
 		 * A new route can be allocated the next time
 		 * output is attempted.

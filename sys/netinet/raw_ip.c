@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.20 2005/02/08 22:56:19 hsu Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.21 2005/03/04 03:48:25 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -288,10 +288,10 @@ rip_output(struct mbuf *m, struct socket *so, ...)
 		ip = mtod(m, struct ip *);
 		/* don't allow both user specified and setsockopt options,
 		   and don't allow packet length sizes that will crash */
-		if (((IP_VHL_HL(ip->ip_vhl) != (sizeof (*ip) >> 2))
-		     && inp->inp_options)
-		    || (ip->ip_len > m->m_pkthdr.len)
-		    || (ip->ip_len < (IP_VHL_HL(ip->ip_vhl) << 2))) {
+		if (((IP_VHL_HL(ip->ip_vhl) != (sizeof (*ip) >> 2)) &&
+		     inp->inp_options) ||
+		    (ip->ip_len > m->m_pkthdr.len) ||
+		    (ip->ip_len < (IP_VHL_HL(ip->ip_vhl) << 2))) {
 			m_freem(m);
 			return EINVAL;
 		}
@@ -460,8 +460,8 @@ rip_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 	switch (cmd) {
 	case PRC_IFDOWN:
 		TAILQ_FOREACH(ia, &in_ifaddrhead, ia_link) {
-			if (ia->ia_ifa.ifa_addr == sa
-			    && (ia->ia_flags & IFA_ROUTE)) {
+			if (ia->ia_ifa.ifa_addr == sa &&
+			    (ia->ia_flags & IFA_ROUTE)) {
 				/*
 				 * in_ifscrub kills the interface route.
 				 */
@@ -488,8 +488,8 @@ rip_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 		flags = RTF_UP;
 		ifp = ia->ia_ifa.ifa_ifp;
 
-		if ((ifp->if_flags & IFF_LOOPBACK)
-		    || (ifp->if_flags & IFF_POINTOPOINT))
+		if ((ifp->if_flags & IFF_LOOPBACK) ||
+		    (ifp->if_flags & IFF_POINTOPOINT))
 			flags |= RTF_HOST;
 
 		err = rtinit(&ia->ia_ifa, RTM_ADD, flags);

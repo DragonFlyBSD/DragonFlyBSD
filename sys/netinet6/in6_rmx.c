@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_rmx.c,v 1.1.2.4 2004/10/06 02:35:17 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.11 2005/01/06 17:59:32 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.12 2005/03/04 03:48:25 hsu Exp $	*/
 /*	$KAME: in6_rmx.c,v 1.11 2001/07/26 06:53:16 jinmei Exp $	*/
 
 /*
@@ -311,17 +311,16 @@ in6_rtqkill(struct radix_node *rn, void *rock)
 
 			err = rtrequest(RTM_DELETE, rt_key(rt), rt->rt_gateway,
 					rt_mask(rt), rt->rt_flags, NULL);
-			if (err) {
+			if (err)
 				log(LOG_WARNING, "in6_rtqkill: error %d", err);
-			} else {
+			else
 				ap->killed++;
-			}
 		} else {
-			if (ap->updating
-			   && (rt->rt_rmx.rmx_expire - time_second
-			       > rtq_reallyold)) {
-				rt->rt_rmx.rmx_expire = time_second
-					+ rtq_reallyold;
+			if (ap->updating &&
+			    (rt->rt_rmx.rmx_expire - time_second >
+			     rtq_reallyold)) {
+				rt->rt_rmx.rmx_expire =
+				    time_second + rtq_reallyold;
 			}
 			ap->nextstop = lmin(ap->nextstop,
 					    rt->rt_rmx.rmx_expire);
@@ -446,6 +445,7 @@ in6_rtqdrain(void)
 	struct radix_node_head *rnh = rt_tables[AF_INET6];
 	struct rtqk_arg arg;
 	int s;
+
 	arg.found = arg.killed = 0;
 	arg.rnh = rnh;
 	arg.nextstop = 0;
