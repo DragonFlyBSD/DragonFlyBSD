@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.1 2004/11/13 00:06:16 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.2 2004/12/10 01:13:24 okumoto Exp $
  */
 
 #include    <ctype.h>
@@ -69,7 +69,7 @@ VarHead (const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
     char *slash;
 
     slash = strrchr (word, '/');
-    if (slash != (char *)NULL) {
+    if (slash != NULL) {
 	if (addSpace) {
 	    Buf_AddByte (buf, (Byte)' ');
 	}
@@ -115,7 +115,7 @@ VarTail (const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
     }
 
     slash = strrchr (word, '/');
-    if (slash != (char *)NULL) {
+    if (slash != NULL) {
 	*slash++ = '\0';
 	Buf_AddBytes (buf, strlen(slash), (Byte *)slash);
 	slash[-1] = '/';
@@ -145,7 +145,7 @@ VarSuffix (const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
     char *dot;
 
     dot = strrchr (word, '.');
-    if (dot != (char *)NULL) {
+    if (dot != NULL) {
 	if (addSpace) {
 	    Buf_AddByte (buf, (Byte)' ');
 	}
@@ -182,7 +182,7 @@ VarRoot (const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
     }
 
     dot = strrchr (word, '.');
-    if (dot != (char *)NULL) {
+    if (dot != NULL) {
 	*dot = '\0';
 	Buf_AddBytes (buf, strlen (word), (Byte *)word);
 	*dot = '.';
@@ -212,7 +212,7 @@ VarRoot (const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
 Boolean
 VarMatch (const char *word, Boolean addSpace, Buffer buf, void *pattern)
 {
-    if (Str_Match(word, (char *) pattern)) {
+    if (Str_Match(word, pattern)) {
 	if (addSpace) {
 	    Buf_AddByte(buf, (Byte)' ');
 	}
@@ -280,7 +280,7 @@ VarSYSVMatch (const char *word, Boolean addSpace, Buffer buf, void *patp)
 Boolean
 VarNoMatch (const char *word, Boolean addSpace, Buffer buf, void *pattern)
 {
-    if (!Str_Match(word, (char *) pattern)) {
+    if (!Str_Match(word, pattern)) {
 	if (addSpace) {
 	    Buf_AddByte(buf, (Byte)' ');
 	}
@@ -411,7 +411,7 @@ VarSubstitute (const char *word, Boolean addSpace, Buffer buf, void *patternp)
 	    origSize = Buf_Size(buf);
 	    while (!done) {
 		cp = strstr(word, pattern->lhs);
-		if (cp != (char *)NULL) {
+		if (cp != NULL) {
 		    if (addSpace && (((cp - word) + pattern->rightLen) != 0)){
 			Buf_AddByte(buf, (Byte)' ');
 			addSpace = FALSE;
