@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/lib/gcc34/libgcc/Makefile,v 1.3 2004/06/21 00:03:41 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc34/libgcc/Makefile,v 1.4 2004/06/21 21:49:11 dillon Exp $
 
 .include "../Makefile.inc"
 .include "${STOPDIR}/cc_tools/Makefile.tools"
@@ -43,10 +43,21 @@ ${F:R:S/$/.o/}: ${F}
 	${CC} ${CFLAGS} -fnon-call-exceptions -c ${.IMPSRC}
 .endfor
 
-depend: cc_prep
-.ORDER: cc_prep ${SRCS}
+depend: cc_prep cc_tools
+.ORDER: cc_prep cc_tools ${SRCS}
 
+# This is kinda messy, but it's easier then rearranging the top level
+# build.  gcc-3.4's libgcc generates source files which depend on generated
+# header files, which means we have to generate our tools set before
+# we can build libgcc.  The toolset is normally built afterwords.
+#
+# XXX for the world stage we could theoretically use the cc_tools generated
+# in the btools stage, but it's easier to regenerate them.
+#
 cc_prep: .PHONY
 	cd ${STOPDIR}/cc_prep; ${MAKE} depend
+
+cc_tools: .PHONY
+	cd ${STOPDIR}/cc_tools; ${MAKE} depend
 
 .include <bsd.lib.mk>
