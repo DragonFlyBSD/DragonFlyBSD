@@ -35,7 +35,7 @@
  *
  * @(#)function.c  8.10 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/find/function.c,v 1.52 2004/07/29 03:33:55 tjr Exp $
- * $DragonFly: src/usr.bin/find/function.c,v 1.6 2005/02/14 00:39:04 cpressey Exp $
+ * $DragonFly: src/usr.bin/find/function.c,v 1.7 2005/03/13 22:22:42 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -789,9 +789,10 @@ f_fstype(PLAN *plan, FTSENT *entry)
 		} else
 			p = NULL;
 
-		if (statfs(entry->fts_accpath, &sb))
-			err(1, "%s", entry->fts_accpath);
-
+		if (statfs(entry->fts_accpath, &sb)) {
+			warn("%s", entry->fts_accpath);
+			return 0;
+		}
 		if (p) {
 			p[0] = save[0];
 			p[1] = save[1];
