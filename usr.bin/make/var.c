@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.131 2005/03/04 23:50:10 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.132 2005/03/04 23:50:28 okumoto Exp $
  */
 
 /*-
@@ -609,32 +609,34 @@ Var_Value(const char *name, GNode *ctxt, char **frp)
  *	A string of all the words modified appropriately.
  *
  * Side Effects:
- *	None.
+ *      Uses brk_string() so it invalidates any previous call to
+ *	brk_string().
  *
  *-----------------------------------------------------------------------
  */
 static char *
-VarModify(char *str, VarModifyProc *modProc, void *datum)
+VarModify(const char *str, VarModifyProc *modProc, void *datum)
 {
+	char	**av;		/* word list [first word does not count] */
+	int	ac;
 	Buffer	*buf;		/* Buffer for the new string */
 	Boolean	addSpace;	/* TRUE if need to add a space to the buffer
 				 * before adding the trimmed word */
-	char	**av;		/* word list [first word does not count] */
-	int	ac;
 	int	i;
-
-	buf = Buf_Init(0);
-	addSpace = FALSE;
+	char	*result;
 
 	av = brk_string(str, &ac, FALSE);
 
+	buf = Buf_Init(0);
+
+	addSpace = FALSE;
 	for (i = 1; i < ac; i++)
 		addSpace = (*modProc) (av[i], addSpace, buf, datum);
 
-	Buf_AddByte(buf, '\0');
-	str = (char *)Buf_GetAll(buf, (size_t *) NULL);
+	result = (char *)Buf_GetAll(buf, (size_t *) NULL);
 	Buf_Destroy(buf, FALSE);
-	return (str);
+
+	return (result);
 }
 
 /*-
@@ -650,27 +652,32 @@ VarModify(char *str, VarModifyProc *modProc, void *datum)
  *	A string containing the words sorted
  *
  * Side Effects:
- *	None.
+ *      Uses brk_string() so it invalidates any previous call to
+ *	brk_string().
  *
  *-----------------------------------------------------------------------
  */
 static char *
-VarSortWords(char *str, int (*cmp)(const void *, const void *))
+VarSortWords(const char *str, int (*cmp)(const void *, const void *))
 {
-	Buffer *buf;
-	char **av;
-	int ac, i;
+	char	**av;
+	int	ac;
+	Buffer	*buf;
+	int	i;
+	char	*result;
 
-	buf = Buf_Init(0);
 	av = brk_string(str, &ac, FALSE);
 	qsort(av + 1, ac - 1, sizeof(char *), cmp);
+
+	buf = Buf_Init(0);
 	for (i = 1; i < ac; i++) {
 		Buf_Append(buf, av[i]);
 		Buf_AddByte(buf, (Byte)((i < ac - 1) ? ' ' : '\0'));
 	}
-	str = (char *)Buf_GetAll(buf, (size_t *)NULL);
+
+	result = (char *)Buf_GetAll(buf, (size_t *)NULL);
 	Buf_Destroy(buf, FALSE);
-	return (str);
+	return (result);
 }
 
 static int
