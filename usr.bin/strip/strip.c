@@ -33,12 +33,15 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)strip.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/strip/strip.c,v 1.12 1999/08/28 01:05:53 peter Exp $
- * $DragonFly: src/usr.bin/strip/Attic/strip.c,v 1.4 2003/11/03 19:31:33 eirikn Exp $
+ * $DragonFly: src/usr.bin/strip/Attic/strip.c,v 1.5 2005/01/01 00:22:33 cpressey Exp $
  */
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <a.out.h>
 #include <err.h>
