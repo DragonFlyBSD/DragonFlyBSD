@@ -1,40 +1,31 @@
-# $DragonFly: src/gnu/usr.bin/binutils215/doc/Attic/Makefile,v 1.1 2004/12/20 13:14:44 asmodai Exp $
+# $DragonFly: src/gnu/usr.bin/binutils215/doc/Attic/Makefile,v 1.2 2005/01/04 14:28:06 joerg Exp $
 
 .include "../Makefile.inc0"
 
-GDBDIR=	${.CURDIR}/../../../../contrib/gdb
 CONTRIBDIR= ${.CURDIR}/../../../../contrib
 
-.PATH: ${SRCDIR}/gas/doc ${SRCDIR}/ld ${SRCDIR}/bfd/doc ${GDBDIR}/gdb/doc
+.PATH: ${SRCDIR}/gas/doc ${SRCDIR}/ld ${SRCDIR}/bfd/doc
 
 # GASP removed
-INFO = as ld annotate gdb gdbint stabs binutils
+INFO = as ld binutils
 INFOSECTION=	"Programming & development tools."
 INFOENTRY_as=	"* As: (as).            The GNU assembler."
 INFOENTRY_gasp=	"* Gasp: (gasp).        The GNU Assembler Macro Preprocessor."
 INFOENTRY_ld=	"* Ld: (ld).		The GNU linker."
-INFOENTRY_annotate= "* GDB annotation: (annotate).	Annotations for the GNU Debugger (GDB)."
 INFOENTRY_binutils= "* Binutils: (binutils).		The GNU Binary Utilities."
 
 MAKEINFOFLAGS+= --no-validate
 MAKEINFOFLAGS+= -I ${SRCDIR}/gas/doc -I ${SRCDIR}/ld -I ${SRCDIR}/bfd/doc
 MAKEINFOFLAGS+= -I ${SRCDIR}/binutils
-MAKEINFOFLAGS+= -I ${GDBDIR}/gdb/doc
 MAKEINFOFLAGS+= -I ${CONTRIBDIR}/libreadline/doc
 
-CLEANFILES=	config.texi configdoc.texi gdb-cfg.texi inc-hist.texi \
+CLEANFILES=	config.texi configdoc.texi inc-hist.texi \
 		inc-hist.texi.orig gasver.texi ldver.texi
 
 as.info:	as.texinfo asconfig.texi c-i386.texi gasver.texi
 ld.info:	ld.texinfo bfdsumm.texi ldver.texi configdoc.texi
 
 configdoc.texi: gen-doc.texi
-	ln -sf ${.ALLSRC} ${.TARGET}
-
-gdb.info: gdb.texinfo gdb-cfg.texi GDBvn.texi remote.texi \
-	rluser.texinfo inc-hist.texi
-
-gdb-cfg.texi: all-cfg.texi
 	ln -sf ${.ALLSRC} ${.TARGET}
 
 .PATH: ${SRCDIR}/binutils/doc
