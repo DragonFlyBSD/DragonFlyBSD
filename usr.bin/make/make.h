@@ -39,7 +39,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.12.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.18 2005/01/06 10:53:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.19 2005/01/11 21:27:13 okumoto Exp $
  */
 
 /*-
@@ -49,6 +49,11 @@
 
 
 #include "sprite.h"
+
+/* buildworld needs this on FreeBSD */
+#ifndef __arysize
+#define __arysize(ary)		(sizeof(ary)/sizeof((ary)[0]))
+#endif
 
 struct GNode;
 struct Lst;
