@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * $FreeBSD: src/sys/netncp/ncp_conn.c,v 1.3.2.5 2001/02/22 08:54:11 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.7 2004/03/01 06:33:18 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.8 2005/02/15 18:20:50 joerg Exp $
  *
  * Connection tables
  */
@@ -174,7 +174,8 @@ ncp_conn_unlock(struct ncp_conn *conn, struct thread *td) {
 }
 
 int 
-ncp_conn_assert_locked(struct ncp_conn *conn,char *checker, struct thread *td)
+ncp_conn_assert_locked(struct ncp_conn *conn, const char *checker,
+		       struct thread *td)
 {
 	if (conn->nc_lock.lk_flags & LK_HAVE_EXCL)
 		return 0;
@@ -225,7 +226,7 @@ ncp_conn_free(struct ncp_conn *ncp)
 		NCPFATAL("conn==NULL !\n");
 		return(EIO);
 	}
-	error = ncp_conn_assert_locked(ncp, __FUNCTION__, ncp->td);
+	error = ncp_conn_assert_locked(ncp, __func__, ncp->td);
 	if (error) return error;
 	if (ncp->ref_cnt) {
 		NCPFATAL("there are %d referenses left\n",ncp->ref_cnt);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_conn.h,v 1.3 1999/12/29 04:46:15 peter Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_conn.h,v 1.4 2003/08/07 21:54:35 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_conn.h,v 1.5 2005/02/15 18:20:50 joerg Exp $
  */
 #ifndef _NETNCP_NCP_CONN_H_
 #define _NETNCP_NCP_CONN_H_
@@ -210,7 +210,7 @@ int  ncp_conn_free(struct ncp_conn *conn);
 int  ncp_conn_access(struct ncp_conn *conn,struct ucred *cred,mode_t mode);
 int  ncp_conn_lock(struct ncp_conn *conn,struct thread *td,struct ucred *cred,int mode);
 void ncp_conn_unlock(struct ncp_conn *conn,struct thread *td);
-int  ncp_conn_assert_locked(struct ncp_conn *conn,char *checker,struct thread *td);
+int  ncp_conn_assert_locked(struct ncp_conn *, const char *, struct thread *);
 /*int  ncp_conn_ref(struct ncp_conn *conn, pid_t pid);
 int  ncp_conn_rm_ref(struct ncp_conn *conn, pid_t pid, int force);
 void ncp_conn_list_rm_ref(pid_t pid);*/
