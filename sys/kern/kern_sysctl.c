@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.13 2003/11/14 02:54:52 daver Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.14 2003/11/23 22:15:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -110,13 +110,19 @@ void sysctl_register_oid(struct sysctl_oid *oidp)
 	/*
 	 * If this oid has a number OID_AUTO, give it a number which
 	 * is greater than any current oid.  Make sure it is at least
-	 * 100 to leave space for pre-assigned oid numbers.
+	 * 256 to leave space for pre-assigned oid numbers.
 	 */
 	if (oidp->oid_number == OID_AUTO) {
-		static int newoid = 100;
-		oidp->oid_number = newoid++;
-		if (newoid == 0x7fffffff)
-			panic("out of oids");
+		int newoid = 0x100;	/* minimum AUTO oid */
+
+		/*
+		 * Adjust based on highest oid in parent list
+		 */
+		SLIST_FOREACH(p, parent, oid_link) {
+			if (newoid <= p->oid_number)
+				newoid = p->oid_number + 1;
+		}
+		oidp->oid_number = newoid;
 	}
 
 	/*
