@@ -1,9 +1,22 @@
-$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.c.patch,v 1.4 2004/12/01 04:14:08 joerg Exp $
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.c.patch,v 1.5 2005/02/25 16:43:20 joerg Exp $
 
 --- ntpd.c.orig	2004-11-09 20:39:54.000000000 +0100
 +++ ntpd.c	2004-11-09 20:40:48.000000000 +0100
-@@ -66,9 +66,7 @@
- void
+@@ -34,7 +34,7 @@
+ #include "ntpd.h"
+ 
+ void		sighdlr(int);
+-__dead void	usage(void);
++void		usage(void) __dead2;
+ int		main(int, char *[]);
+ int		check_child(pid_t, const char *);
+ int		dispatch_imsg(struct ntpd_conf *);
+@@ -63,12 +63,10 @@
+ 	}
+ }
+ 
+-__dead void
++void
  usage(void)
  {
 -	extern char *__progname;
