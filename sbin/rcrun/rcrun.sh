@@ -2,7 +2,7 @@
 #
 # rcng command
 #
-# $DragonFly: src/sbin/rcrun/rcrun.sh,v 1.3 2003/12/12 00:14:28 dillon Exp $
+# $DragonFly: src/sbin/rcrun/rcrun.sh,v 1.4 2003/12/13 02:49:09 dillon Exp $
 
 OS=`sysctl -n kern.ostype`
 
@@ -16,6 +16,9 @@ dostart()
 	Xrunning*)
 	    echo "$i has already been started"
 	    ;;
+	Xconfigured*)
+	    echo "$i has already been configured"
+	    ;;
 	*)
 	    _return=0
 	    for j in `rcorder -k $OS -o $i /etc/rc.d/*`; do
@@ -26,9 +29,7 @@ dostart()
 		    else
 			state=`varsym -s -q rcng_$k`
 			case X$state in
-			Xrunning*)
-			    ;;
-			Xdisabled*)
+			Xrunning*|Xconfigured*|Xirrelevant*|Xdisabled*)
 			    ;;
 			*)
 			    echo "$i depends on $k, current state: $state"
@@ -49,6 +50,10 @@ dostart()
 		Xdisabled*)
 		    echo "$i is disabled, enable in rc.conf first or use rcforce"
 		    ;;
+		Xfailed*)
+		    echo "$i has failed to start"
+		    ;;
+			
 		esac
 	    fi
 	    ;;
@@ -81,6 +86,12 @@ rcforce)
     ;;
 rcfast)
     arg=faststart
+    ;;
+rcenable)
+    arg=enable
+    ;;
+rcdisable)
+    arg=disable
     ;;
 *)
     arg=$1
@@ -118,10 +129,40 @@ restart)
 	    fi
 	done
 	;;
+disable|enable)
+	if [ "$arg" = "enable" ]; then
+	    mode=YES
+	else
+	    mode=NO
+	fi
+	for i in $@; do
+	    j=`rcorder -k $OS -o $i /etc/rc.d/* | tail -1`
+	    if [ X$j = X ]; then
+		echo "Unable to find provider id $i"
+	    elif [ `varsym -s -q rcng_$i` = "$mode" ]; then
+		echo "$i is already $mode"
+	    else
+		vars=`(cd /etc/rc.d; sh $j rcvar) 2>/dev/null | egrep '_enable' | sed -e 's/\\$//g' | sed -e 's/=.*//g'`
+		cp /etc/rc.conf /etc/rc.conf.bak
+		for k in $vars; do
+		    rm -f /etc/rc.conf.$$
+		    ( egrep -v "#rcrun ${k}" /etc/rc.conf; printf "${k}=${mode}\t#rcrun ${k}_enable\n" ) > /etc/rc.conf.$$
+		    mv -f /etc/rc.conf.$$ /etc/rc.conf
+		    echo "added/modified: ${k}=${mode}"
+		done
+		if [ $arg = enable ]; then
+		    rcstart $i
+		else
+		    rcstop $i
+		fi
+	    fi
+	done
+	;;
 rcvar)
 	for i in $@; do
+	    j=`rcorder -k $OS -o $i /etc/rc.d/* | tail -1`
 	    if [ X$j = X ]; then
-		echo "Unable to find keyword $i"
+		echo "Unable to find provider id $i"
 	    else
 		(cd /etc/rc.d; sh $j rcvar)
 	    fi

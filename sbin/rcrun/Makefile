@@ -1,13 +1,16 @@
-# $DragonFly: src/sbin/rcrun/Makefile,v 1.1 2003/12/11 23:56:05 dillon Exp $
+# $DragonFly: src/sbin/rcrun/Makefile,v 1.2 2003/12/13 02:49:09 dillon Exp $
 
 SCRIPTS=rcrun.sh
-LINKS=	${BINDIR}/rcrun ${BINDIR}/rcstart \
-	${BINDIR}/rcrun ${BINDIR}/rcstop \
-	${BINDIR}/rcrun ${BINDIR}/rcrestart \
-	${BINDIR}/rcrun ${BINDIR}/rcvar \
-	${BINDIR}/rcrun ${BINDIR}/rclist \
-	${BINDIR}/rcrun ${BINDIR}/rcforce \
-	${BINDIR}/rcrun ${BINDIR}/rcfast
+SYMLINKS= \
+	rcrun ${BINDIR}/rcstart \
+	rcrun ${BINDIR}/rcstop \
+	rcrun ${BINDIR}/rcrestart \
+	rcrun ${BINDIR}/rcvar \
+	rcrun ${BINDIR}/rclist \
+	rcrun ${BINDIR}/rcforce \
+	rcrun ${BINDIR}/rcfast \
+	rcrun ${BINDIR}/rcenable \
+	rcrun ${BINDIR}/rcdisable
 
 #MAN=	rcrun.8
 

@@ -1,6 +1,6 @@
 # $NetBSD: rc.subr,v 1.49 2002/05/21 12:31:01 lukem Exp $
 # $FreeBSD: src/etc/rc.subr,v 1.13 2003/06/09 17:31:06 mtm Exp $
-# $DragonFly: src/etc/rc.subr,v 1.8 2003/12/12 19:49:03 dillon Exp $
+# $DragonFly: src/etc/rc.subr,v 1.9 2003/12/13 02:49:07 dillon Exp $
 #
 # Copyright (c) 1997-2002 The NetBSD Foundation, Inc.
 # All rights reserved.
@@ -55,6 +55,13 @@ SYSCTL_N="${SYSCTL} -n"
 CMD_OSTYPE="${SYSCTL_N} kern.ostype"
 OSTYPE=`${CMD_OSTYPE}`
 
+RC_RUNNING=0
+RC_FAILED=1
+RC_DISABLED=2
+RC_IRRELEVANT=3
+RC_CONFIGURED=4
+RC_STOPPED=5
+
 case ${OSTYPE} in
 DragonFly)
 	SYSCTL_W="${SYSCTL}"
@@ -108,72 +115,106 @@ set_rcvar()
 # set_provide_list
 #
 #	$1	should be $rc_arg (start, stop, restart, reload, etc)
-#	$2	return value 0 success, 1 failed, 2 disabled, 
-#			     3 subsystem is not relevant to system
+#	$2	return value $RC_* 
 #
-#	Set the rcng_* variables associated with elements in
-#	provide_list to $1.
+#	Set the rcng_* variables associated with elements in provide_list
+#	based on $1 and $2.
+#
+#	Returns non-zero when early termination should occur, in which
+#	case the caller should return with a value of $? - 1
 #
 set_provide_list()
 {
-    if [ ! -x /bin/varsym ]; then
-	return 0
-    fi
+    # Remember, plret is set to the early termination return code + 1,
+    # or 0 if we want to continue the operation.
+    #
     for i in $provide_list; do
 	case $1$2 in
-	start0)
+	start$RC_RUNNING|restart$RC_RUNNING)
 	    varsym -s rcng_$i=running
 	    ;;
-	start1)
+	start$RC_FAILED|restart$RC_FAILED)
 	    varsym -s rcng_$i=failed
 	    ;;
-	start2)
+	start$RC_DISABLED|restart$RC_DISABLED|reload$RC_DISABLED)
 	    varsym -s rcng_$i=disabled
 	    ;;
-	start3)
-	    # XXX fixme
-	    varsym -s rcng_$i=running
+	start$RC_IRRELEVANT|restart$RC_IRRELEVANT|reload$RC_IRRELEVANT)
+	    varsym -s rcng_$i=irrelevant
 	    ;;
-	stop0)
+	start$RC_CONFIGURED|restart$RC_CONFIGURED)
+	    varsym -s rcng_$i=configured
+	    ;;
+	stop$RC_DISABLED)
+	    varsym -s rcng_$i=disabled
+	    ;;
+	stop$RC_IRRELEVANT)
+	    varsym -s rcng_$i=irrelevant
+	    ;;
+	stop*)
 	    varsym -s rcng_$i=stopped
-	    ;;
-	stop1)
-	    varsym -s rcng_$i=stopped.failed
-	    ;;
-	stop2)
-	    varsym -s rcng_$i=disabled
-	    ;;
-	stop3)
-	    # XXX fixme
-	    varsym -s rcng_$i=stopped
-	    ;;
-	restart0)
-	    varsym -s rcng_$i=running
-	    ;;
-	restart1)
-	    varsym -s rcng_$i=failed
-	    ;;
-	restart2)
-	    varsym -s rcng_$i=disabled
-	    ;;
-	restart3)
-	    # XXX fixme
-	    varsym -s rcng_$i=running
-	    ;;
-	reload0)
-	    varsym -s rcng_$i=running.reloaded
-	    ;;
-	reload1)
-	    varsym -s rcng_$i=running.reloadfailed
-	    ;;
-	reload2)
-	    ;;
-	reload3)
 	    ;;
 	*)
 	    ;;
 	esac
     done
+}
+
+# check_early_term
+#	$1	should be $rc_arg (start, stop, restart, reload, etc)
+#	$2	return value $RC_* 
+#	$3	$rc_force	"" not to force, "anything" to force.
+#
+# The return code is 0 if early termination is not to occur, non-zero if
+# it is to occur.  When early termination is to occur the caller should
+# return check_early_term()'s return code - 1.    That is, early termination
+# can occur with or without an error.
+#
+# The provide list will be adjusted when early termination occurs.
+#
+check_early_term()
+{
+    case $2 in
+    $RC_RUNNING)
+	return 0
+	;;
+    $RC_FAILED)
+	set_provide_list $1 $2
+	[ -z "$3" ] || return 0
+	return 2
+	;;
+    $RC_DISABLED)
+	set_provide_list $1 $2
+	[ -z "$3" ] || return 0
+	return 1
+	;;
+    $RC_IRRELEVANT)
+	set_provide_list $1 $2
+	[ -z "$3" ] || return 0
+	return 1
+	;;
+    $RC_CONFIGURED)
+	return 0
+	;;
+    $RC_STOPPED)
+	return 0
+	;;
+    esac
+    set_provide_list $1 $2
+    [ -z "$3" ] || return 0
+    return 2
+}
+
+# adjust_return_code $1
+#
+#	Convert the return code to an exit code of 0 (success) or 1 (failure)
+#
+adjust_return_code()
+{
+    if [ $1 = $RC_FAILED ]; then
+	return 1
+    fi
+    return 0
 }
 
 #
@@ -544,7 +585,8 @@ dummy_rc_command()
 		rc_arg=${rc_arg#force}
 		;;
 	esac
-	set_provide_list $rc_arg 0
+	set_provide_list $rc_arg $RC_CONFIGURED
+	return 0
 }
 
 run_rc_command()
@@ -617,7 +659,7 @@ run_rc_command()
 					#
 	if [ -n "${rcvar}" -a "$rc_arg" != "rcvar" ]; then
 		if ! checkyesno ${rcvar}; then
-			set_provide_list $rc_arg 2
+			set_provide_list $rc_arg $RC_DISABLED
 			return 0
 		fi
 	fi
@@ -641,54 +683,27 @@ run_rc_command()
 			if [ -n "$_precmd" ]; then
 				debug "run_rc_command: evaluating ${_precmd}()."
 				eval $_precmd
+
 				_return=$?
-				# A return code of 3 indicates that the
-				# subsystem is not relevant, return success
-				# at the moment and do not continue.
-				#
-				if [ $_return = 3 ]; then
-				    set_provide_list $rc_arg 3
-				    return 0
-				fi
-				if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
-				    set_provide_list $rc_arg 1
-				    return 1
-				fi
+				check_early_term $rc_arg $_return "$rc_force" || return $(($?-1))
 			fi
 
 			if [ -n "$_cmd" ]; then
 				debug "run_rc_command: evaluating ${_cmd}()."
 				eval $_cmd
 				_return=$?
-				# A return code of 3 indicates that the
-				# subsystem is not relevant, return success
-				# at the moment and do not continue.
-				#
-				if [ $_return = 3 ]; then
-				    set_provide_list $rc_arg 3
-				    return 0
-				fi
-				if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
-				    set_provide_list $rc_arg 1
-				    return 1
-				fi
+				check_early_term $rc_arg $_return "$rc_force" || return $(($?-1))
 			fi
 
 			if [ -n "$_postcmd" ]; then
 				debug "run_rc_command: evaluating ${_postcmd}()."
-				 eval $_postcmd
+				eval $_postcmd
 				_return=$?
-				# A return code of 3 indicates that the
-				# subsystem is not relevant, return success
-				# at the moment and do not continue.
-				#
-				if [ $_return = 3 ]; then
-				    set_provide_list $rc_arg 3
-				    return 0
-				fi
+				check_early_term $rc_arg $_return "" || return $(($?-1))
 			fi
 			set_provide_list $rc_arg $_return
-			return $_return
+			adjust_return_code $_return
+			return $?
 		fi
 
 		case "$rc_arg" in	# default operations...
@@ -710,8 +725,9 @@ run_rc_command()
 
 			if [ ! -x $command ]; then
 				info "run_rc_command: cannot run ($command)."
-				set_provide_list $rc_arg 2
-				return 0
+				set_provide_list $rc_arg $RC_FAILED
+				adjust_return_code $RC_FAILED
+				return $?
 			fi
 
 					# check for required variables,
@@ -721,8 +737,9 @@ run_rc_command()
 				if ! checkyesno $_f; then
 					warn "\$${_f} is not set."
 					if [ -z "$rc_force" ]; then
-						set_provide_list $rc_arg 1
-						return 1
+						set_provide_list $rc_arg $RC_FAILED
+						adjust_return_code $RC_FAILED
+						return $?
 					fi
 				fi
 			done
@@ -730,8 +747,9 @@ run_rc_command()
 				if [ ! -d "${_f}/." ]; then
 					warn "${_f} is not a directory."
 					if [ -z "$rc_force" ]; then
-						set_provide_list $rc_arg 1
-						return 1
+						set_provide_list $rc_arg $RC_FAILED
+						adjust_return_code $RC_FAILED
+						return $?
 					fi
 				fi
 			done
@@ -739,8 +757,9 @@ run_rc_command()
 				if [ ! -r "${_f}" ]; then
 					warn "${_f} is not readable."
 					if [ -z "$rc_force" ]; then
-						set_provide_list $rc_arg 1
-						return 1
+						set_provide_list $rc_arg $RC_FAILED
+						adjust_return_code $RC_FAILED
+						return $?
 					fi
 				fi
 			done
@@ -752,18 +771,7 @@ run_rc_command()
 				debug "run_rc_command: evaluating ${_precmd}()."
 				eval $_precmd
 				_return=$?
-				# A return code of 3 indicates that the
-				# subsystem is not relevant, return success
-				# at the moment and do not continue.
-				#
-				if [ $_return = 3 ]; then
-				    set_provide_list $rc_arg 3
-				    return 0
-				fi
-				if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
-				    set_provide_list $rc_arg 1
-				    return 1
-				fi
+				check_early_term $rc_arg $_return "$rc_force" || return $(($?-1))
 			fi
 
 					# setup the command to run, and run it
@@ -790,18 +798,13 @@ $command $rc_flags $command_args"
 			debug "run_rc_command: _doit: $_doit"
 			eval $_doit
 			_return=$?
-			if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
-				set_provide_list $rc_arg 1
-				return 1
-			fi
-
+			check_early_term $rc_arg $_return "$rc_force" || return $(($?-1))
 					# finally, run postcmd
 					#
 			if [ -n "${_postcmd}" ]; then
 				debug "run_rc_command: evaluating ${_postcmd}()."
 				eval $_postcmd
 			fi
-			set_provide_list $rc_arg $_return
 			;;
 
 		stop)
@@ -812,7 +815,7 @@ $command $rc_flags $command_args"
 				else
 					echo "${name} not running?"
 				fi
-				set_provide_list $rc_arg 0
+				set_provide_list $rc_arg $RC_STOPPED
 				exit 1
 			fi
 
@@ -822,10 +825,7 @@ $command $rc_flags $command_args"
 			if [ -n $_precmd ]; then
 				eval $_precmd
 				_return=$?
-				if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
-				    set_provide_list $rc_arg 1
-				    return 1
-				fi
+				check_early_term $rc_arg $_return "$rc_force" || return $(($?-1))
 			fi
 
 					# send the signal to stop
@@ -841,11 +841,7 @@ $command $rc_flags $command_args"
 					#
 			eval $_doit
 			_return=$?
-			if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
-				set_provide_list $rc_arg 1
-				return 1
-			fi
-
+			check_early_term $rc_arg $_return "$rc_force" || return $(($?-1))
 					# wait for the command to exit,
 					# and run postcmd.
 			wait_for_pids $rc_pid
@@ -853,7 +849,6 @@ $command $rc_flags $command_args"
 				eval $_postcmd
 				_return=$?
 			fi
-			set_provide_list $rc_arg $_return
 			;;
 
 		reload)
@@ -864,17 +859,14 @@ $command $rc_flags $command_args"
 				else
 					echo "${name} not running?"
 				fi
-				set_provide_list $rc_arg 1
+				set_provide_list $rc_arg $RC_FAILED
 				exit 1
 			fi
 			echo "Reloading ${name} config files."
 			if [ -n "$_precmd" ]; then
 				eval $_precmd
 				_return=$?
-				if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
-				    set_provide_list $rc_arg 1
-				    return 1
-				fi
+				check_early_term $rc_arg $_return "$rc_force" || return $(($?-1))
 			fi
 			_doit="kill -${sig_reload:-HUP} $rc_pid"
 			if [ -n "$_user" ]; then
@@ -882,25 +874,18 @@ $command $rc_flags $command_args"
 			fi
 			eval $_doit
 			_return=$?
-			if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
-				set_provide_list $rc_arg 1
-				return 1
-			fi
+			check_early_term $rc_arg $_return "$rc_force" || return $(($?-1))
 			if [ -n "$_postcmd" ]; then
 				eval $_postcmd
 				_return=$?
 			fi
-			set_provide_list $rc_arg $_return
 			;;
 
 		restart)
 			if [ -n "$_precmd" ]; then
 				eval $_precmd
 				_return=$?
-				if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
-				    set_provide_list $rc_arg 1
-				    return 1
-				fi
+				check_early_term $rc_arg $_return "$rc_force" || return $(($?-1))
 			fi
 					# prevent restart being called more
 					# than once by any given script
@@ -912,21 +897,24 @@ $command $rc_flags $command_args"
 
 			( $0 ${rc_force:+force}stop )
 			$0 ${rc_force:+force}start
+			_return=$?
 
 			if [ -n "$_postcmd" ]; then
 				eval $_postcmd
+				adjust_return_code $?
 				_return=$?
 			fi
-			# let the restart's start command deal with the
-			# provide list.
-			# set_provide_list $rc_arg $_return
+			# Do not set_provide_list(), the start command above
+			# will have done it for us and we do not know the
+			# actual RC code to base a setting on here.
+			#
+			return $_return
 			;;
 
 		poll)
 			if [ -n "$rc_pid" ]; then
 				wait_for_pids $rc_pid
 			fi
-			set_provide_list $rc_arg $_return
 			;;
 
 		rcvar)
@@ -938,7 +926,6 @@ $command $rc_flags $command_args"
 					echo "\$${rcvar}=NO"
 				fi
 			fi
-			set_provide_list $rc_arg $_return
 			;;
 
 		*)
@@ -946,7 +933,9 @@ $command $rc_flags $command_args"
 			;;
 
 		esac
-		return $_return
+		set_provide_list $rc_arg $_return
+		adjust_return_code $_return
+		return $?
 	done
 
 	echo 1>&2 "$0: unknown directive '$rc_arg'."
