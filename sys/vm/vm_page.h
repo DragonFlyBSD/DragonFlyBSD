@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.15 2004/06/03 15:29:43 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.16 2004/10/04 09:05:26 dillon Exp $
  */
 
 /*
@@ -72,7 +72,7 @@
 #ifndef	_VM_PAGE_H_
 #define	_VM_PAGE_H_
 
-#if !defined(KLD_MODULE)
+#if !defined(KLD_MODULE) && defined(_KERNEL)
 #include "opt_vmpage.h"
 #endif
 
