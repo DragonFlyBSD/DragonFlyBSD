@@ -15,7 +15,7 @@
  * `state' of FTP_t
  *
  * $FreeBSD: src/lib/libftpio/ftpio.c,v 1.33.2.4 2002/07/25 15:25:32 ume Exp $
- * $DragonFly: src/lib/libftpio/ftpio.c,v 1.4 2004/08/16 13:51:20 joerg Exp $
+ * $DragonFly: src/lib/libftpio/ftpio.c,v 1.5 2004/08/16 14:07:34 joerg Exp $
  *
  */
 
@@ -65,8 +65,9 @@ static int	ftp_login_session(FTP_t ftp, const char *host, int af,
 static int	ftp_file_op(FTP_t ftp, const char *operation, const char *file,
 			    FILE **fp, const char *mode, off_t *seekto);
 static int	ftp_close(FTP_t ftp);
-static int	get_url_info(const char *url_in, char *host_ret, int *port_ret,
-			     char *name_ret);
+static int	get_url_info(const char *url_in, char *host_ret,
+			     size_t host_len, int *port_ret,
+			     char *name_ret, size_t name_len);
 static void	ftp_timeout(int sig);
 static void	ftp_set_timeout(void);
 static void	ftp_clear_timeout(void);
@@ -212,19 +213,20 @@ ftpGetSize(FILE *fp, const char *name)
     off_t size;
 
     check_passive(fp);
-    sprintf(p, "SIZE %s\r\n", name);
+    if ((size_t)snprintf(p, sizeof(p), "SIZE %s\r\n", name) >= sizeof(p))
+	return (off_t)(-1);
     if (ftp->is_verbose)
 	fprintf(stderr, "Sending %s", p);
     if (writes(ftp->fd_ctrl, p))
-	return (off_t)-1;
+	return (off_t)(-1);
     i = get_a_number(ftp, &cp);
     if (check_code(ftp, i, 213))
-	return (off_t)-1;
+	return (off_t)(-1);
 
     errno = 0;				/* to check for ERANGE */
     size = (off_t)strtoq(cp, &ep, 10);
     if (*ep != '\0' || errno == ERANGE)
-	return (off_t)-1;
+	return (off_t)(-1);
     return size;
 }
 
@@ -238,7 +240,8 @@ ftpGetModtime(FILE *fp, const char *name)
     int i;
 
     check_passive(fp);
-    sprintf(p, "MDTM %s\r\n", name);
+    if ((size_t)snprintf(p, sizeof(p), "MDTM %s\r\n", name) >= sizeof(p))
+	return (time_t)0;
     if (ftp->is_verbose)
 	fprintf(stderr, "Sending %s", p);
     if (writes(ftp->fd_ctrl, p))
@@ -369,7 +372,8 @@ ftpGetURLAf(const char *url, int af, const char *user, const char *passwd,
 
     if (retcode)
 	*retcode = 0;
-    if (get_url_info(url, host, &port, name) == SUCCESS) {
+    if (get_url_info(url, host, sizeof(host), &port, name,
+		     sizeof(name)) == SUCCESS) {
 	if (fp && prev_host) {
 	    if (!strcmp(prev_host, host)) {
 		/* Try to use cached connection */
@@ -434,7 +438,8 @@ ftpPutURLAf(const char *url, int af, const char *user, const char *passwd,
 	fclose(fp);
 	fp = NULL;
     }
-    if (get_url_info(url, host, &port, name) == SUCCESS) {
+    if (get_url_info(url, host, sizeof(host), &port,
+		     name, sizeof(name)) == SUCCESS) {
 	fp = ftpLoginAf(host, af, user, passwd, port, 0, retcode);
 	if (fp) {
 	    fp2 = ftpPut(fp, name);
@@ -453,7 +458,8 @@ ftpPutURLAf(const char *url, int af, const char *user, const char *passwd,
 /* Internal workhorse function for dissecting URLs.  Takes a URL as the first argument and returns the
    result of such disection in the host, user, passwd, port and name variables. */
 static int
-get_url_info(const char *url_in, char *host_ret, int *port_ret, char *name_ret)
+get_url_info(const char *url_in, char *host_ret, size_t host_len,
+	     int *port_ret, char *name_ret, size_t name_len)
 {
     char *name, *host, *cp, url[BUFSIZ];
     int port;
@@ -476,10 +482,16 @@ get_url_info(const char *url_in, char *host_ret, int *port_ret, char *name_ret)
     
     if ((name = index(cp ? cp : host, '/')) != NULL)
 	*(name++) = '\0';
-    if (host_ret)
+    if (host_ret) {
+	if (strlen(host) >= host_len)
+	    return FAILURE;
 	strcpy(host_ret, host);
-    if (name && name_ret)
+    }
+    if (name && name_ret) {
+	if (strlen(name) >= name_len)
+	    return FAILURE;
 	strcpy(name_ret, name);
+    }
     return SUCCESS;
 }
 
@@ -696,7 +708,8 @@ cmd(FTP_t ftp, const char *fmt, ...)
 
     va_list ap;
     va_start(ap, fmt);
-    (void)vsnprintf(p, sizeof p, fmt, ap);
+    if ((size_t)vsnprintf(p, sizeof p, fmt, ap) >= sizeof(p))
+	return FAILURE;
     va_end(ap);
 
     if (ftp->con_state == init)
@@ -742,7 +755,8 @@ ftp_login_session(FTP_t ftp, const char *host, int af,
     if (!port)
 	port = 21;
 
-    snprintf(pbuf, sizeof(pbuf), "%d", port);
+    if ((size_t)snprintf(pbuf, sizeof(pbuf), "%d", port) >= sizeof(pbuf))
+	return FAILURE;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = af;
     hints.ai_socktype = SOCK_STREAM;
@@ -763,7 +777,7 @@ ftp_login_session(FTP_t ftp, const char *host, int af,
 	    continue;
 
 	if (connect(s, res->ai_addr, res->ai_addrlen) < 0) {
-	    (void)close(s);
+	    close(s);
 	    s = -1;
 	    continue;
 	}
