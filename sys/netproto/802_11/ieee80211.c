@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.c,v 1.13 2004/05/30 17:57:45 phk Exp $
- * $DragonFly: src/sys/netproto/802_11/Attic/ieee80211.c,v 1.1 2004/07/26 16:30:17 joerg Exp $
+ * $DragonFly: src/sys/netproto/802_11/Attic/ieee80211.c,v 1.2 2004/07/27 12:21:54 hmp Exp $
  */
 
 /*
@@ -888,6 +888,7 @@ ieee80211_modevent(module_t mod, int type, void *unused)
 			printf("wlan: <802.11 Link Layer>\n");
 		return 0;
 	case MOD_UNLOAD:
+	case MOD_SHUTDOWN:
 		return 0;
 	}
 	return EINVAL;
