@@ -35,7 +35,7 @@
 .\"
 .\"     @(#)malloc.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdlib/malloc.3,v 1.25.2.16 2003/01/06 17:10:45 trhodes Exp $
-.\" $DragonFly: src/lib/libcr/stdlib/Attic/malloc.3,v 1.4 2004/03/13 19:46:56 eirikn Exp $
+.\" $DragonFly: src/lib/libcr/stdlib/Attic/malloc.3,v 1.5 2004/07/08 00:27:11 hmp Exp $
 .\"
 .Dd August 27, 1996
 .Dt MALLOC 3
@@ -131,7 +131,8 @@ The
 function call is identical to the realloc function call, except that it
 will free the passed pointer when the requested memory cannot be allocated.
 This is a
-.Fx /
+.Fx
+/
 .Dx
 specific API designed to ease the problems with traditional coding styles
 for realloc causing memory leaks in libraries.
