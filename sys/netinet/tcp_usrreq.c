@@ -32,7 +32,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.18 2004/04/22 04:31:27 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.19 2004/04/24 00:33:15 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -698,13 +698,6 @@ struct pr_usrreqs tcp6_usrreqs = {
 };
 #endif /* INET6 */
 
-struct netmsg_tcp_connect {
-	struct lwkt_msg		nm_lmsg;
-	struct tcpcb		*nm_tp;
-	struct sockaddr_in	*nm_sin;
-	struct sockaddr_in	*nm_ifsin;
-};
-
 static int
 tcp_connect_oncpu(struct tcpcb *tp, struct sockaddr_in *sin,
 		  struct sockaddr_in *if_sin)
@@ -770,7 +763,14 @@ tcp_connect_oncpu(struct tcpcb *tp, struct sockaddr_in *sin,
 	return (0);
 }
 
-#if defined(SMP)
+#ifdef SMP
+
+struct netmsg_tcp_connect {
+	struct lwkt_msg		nm_lmsg;
+	struct tcpcb		*nm_tp;
+	struct sockaddr_in	*nm_sin;
+	struct sockaddr_in	*nm_ifsin;
+};
 
 static int
 tcp_connect_handler(lwkt_msg_t lmsg)
@@ -802,8 +802,7 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
 	struct sockaddr_in *if_sin;
 	int error;
-	boolean_t didbind = FALSE;
-#if defined(SMP)
+#ifdef SMP
 	lwkt_port_t port;
 #endif
 
@@ -811,7 +810,6 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 		error = in_pcbbind(inp, (struct sockaddr *)NULL, td);
 		if (error)
 			return (error);
-		didbind = TRUE;
 	}
 
 	/*
@@ -823,25 +821,21 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	if (error)
 		return (error);
 
-#if defined(SMP)
+#ifdef SMP
 	port = tcp_addrport(sin->sin_addr.s_addr, sin->sin_port,
 	    inp->inp_laddr.s_addr ?
 		inp->inp_laddr.s_addr : if_sin->sin_addr.s_addr,
 	    inp->inp_lport);
 
 	if (port->mp_td != curthread) {
-		struct netmsg_tcp_connect *msg;
+		struct netmsg_tcp_connect msg;
 
-		msg = malloc(sizeof(struct netmsg_tcp_connect), M_LWKTMSG,
-				M_INTWAIT);
-		lwkt_initmsg(&msg->nm_lmsg, &curthread->td_msgport, 0,
-			lwkt_cmd_func(tcp_connect_handler),
-			lwkt_cmd_op_none);
-		msg->nm_tp = tp;
-		msg->nm_sin = sin;
-		msg->nm_ifsin = if_sin;
-		error = lwkt_domsg(port, &msg->nm_lmsg);
-		free(msg, M_LWKTMSG);
+		lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
+		    lwkt_cmd_func(tcp_connect_handler), lwkt_cmd_op_none);
+		msg.nm_tp = tp;
+		msg.nm_sin = sin;
+		msg.nm_ifsin = if_sin;
+		error = lwkt_domsg(port, &msg.nm_lmsg);
 	} else
 #endif
 		error = tcp_connect_oncpu(tp, sin, if_sin);
