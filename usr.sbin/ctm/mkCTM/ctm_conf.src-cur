@@ -1,8 +1,9 @@
 #!/usr/local/bin/tclsh
+# $DragonFly: src/usr.sbin/ctm/mkCTM/Attic/ctm_conf.src-cur,v 1.2 2003/08/05 07:45:44 asmodai Exp $
 
 set CTMname	src-cur
 set CTMref	/c/src
-set CTMignore	{/CVS$|/CVS/|^/secure|^/eBones}
+set CTMignore	{/CVS$|/CVS/|^/secure}
 set CTMbogus	{\\.core$|/#cvs|/\\.#}
 set CTMmail	ctm-src-cur-fast@freebsd.org
 set CTMqueue	/home/ctm/queue/ctm-src-cur

@@ -1,8 +1,9 @@
 #!/usr/local/bin/tclsh
+# $DragonFly: src/usr.sbin/ctm/mkCTM/Attic/ctm_conf.cvs-cur,v 1.2 2003/08/05 07:45:44 asmodai Exp $
 
 set CTMname	cvs-cur
 set CTMref	/home/ncvs
-set CTMignore	{^src/secure|^src/eBones|^src/kerberosIV|^CVSROOT/val-tags$|CVSROOT/\\.#}
+set CTMignore	{^src/secure|^CVSROOT/val-tags$|CVSROOT/\\.#}
 set CTMbogus	{\\.core$|/#cvs|/\\.#}
 set CTMmail	ctm-cvs-cur-fast@freebsd.org
 set CTMqueuemail	ctm-cvs-cur@freebsd.org

@@ -1,5 +1,5 @@
 # $FreeBSD: src/release/Makefile,v 1.536.2.110 2003/05/10 23:01:29 murray Exp $
-# $DragonFly: src/release/Attic/Makefile,v 1.2 2003/06/17 04:27:17 dillon Exp $
+# $DragonFly: src/release/Attic/Makefile,v 1.3 2003/08/05 07:45:41 asmodai Exp $
 #
 # make release CHROOTDIR=/some/dir BUILDNAME=somename CVSROOT=/cvs/dir \
 #	[ RELEASETAG=tag ]
@@ -200,9 +200,6 @@ BIGBOOTLABEL=		minimum2
 ZIPNSPLIT=		gzip --no-name -9 -c | split -b 240640 -
 
 # Things that need to be recompiled with Kerberos support.
-.if exists(${.CURDIR}/../kerberosIV) && exists(${.CURDIR}/../crypto) && !defined(NOKERBEROS)
-K4PROGS!=	cd ${.CURDIR}/../kerberosIV; ${MAKE} -V KPROGS
-.endif
 .if exists(${.CURDIR}/../kerberos5) && exists(${.CURDIR}/../crypto) && !defined(NOKERBEROS)
 K5PROGS!=	cd ${.CURDIR}/../kerberos5; ${MAKE} -V KPROGS
 .endif
@@ -458,12 +455,6 @@ release.3:
 	${CROSSMAKE} ${WORLD_FLAGS} -DNO_MAKEDB_RUN -DNOCRYPT \
 	    SUBDIR_OVERRIDE="${FIXCRYPTO}" \
 	    buildworld distributeworld DISTDIR=${RD}/trees
-.if exists(${.CURDIR}/../kerberosIV) && exists(${.CURDIR}/../crypto) && !defined(NOKERBEROS)
-	cd ${.CURDIR}/..; \
-	${CROSSMAKE} ${WORLD_FLAGS} -DNO_MAKEDB_RUN -DMAKE_KERBEROS4 \
-	    SUBDIR_OVERRIDE="kerberosIV ${K4PROGS}" \
-	    buildworld distributeworld DISTDIR=${RD}/trees
-.endif
 .if exists(${.CURDIR}/../kerberos5) && exists(${.CURDIR}/../crypto) && !defined(NOKERBEROS)
 	cd ${.CURDIR}/..; \
 	${CROSSMAKE} ${WORLD_FLAGS} -DNO_MAKEDB_RUN -DMAKE_KERBEROS5 \
@@ -570,7 +561,6 @@ release.8:
 			cd ${.CURDIR} && $(MAKE) doTARBALL \
 				TN=`echo s$$i | tr -d '.' | \
 				    sed -e 's/usr/u/' \
-					-e 's/kerberosIV/krb4/' \
 					-e 's/kerberos5/krb5/'` \
 				SD=/usr/src TD=src ARG="$$i" ; \
 		fi ; \

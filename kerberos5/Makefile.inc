@@ -1,20 +1,15 @@
 # $FreeBSD: src/kerberos5/Makefile.inc,v 1.5.2.5 2002/07/25 09:33:14 ru Exp $
-# $DragonFly: src/kerberos5/Makefile.inc,v 1.2 2003/06/17 04:26:16 dillon Exp $
+# $DragonFly: src/kerberos5/Makefile.inc,v 1.3 2003/08/05 07:45:39 asmodai Exp $
 
 DISTRIBUTION?=	krb5
 
 .if !defined(INCLUDEOBJDIR)
 
-KRB4DIR=	${.CURDIR}/../../../crypto/kerberosIV
 KRB5DIR=	${.CURDIR}/../../../crypto/heimdal
 ROKENDIR=	${.CURDIR}/../../lib/libroken
 TELNETDIR=	${.CURDIR}/../../../crypto/telnet
 
 CFLAGS+=-Wall -I${INCLUDEOBJDIR} -DHAVE_CONFIG_H
-
-.if defined(MAKE_KERBEROS4)
-CFLAGS+=-DKRB5_KRB4_COMPAT -DKRB4
-.endif
 
 CFLAGS+=-DINET6
 
@@ -46,12 +41,6 @@ ROKENOBJDIR=	${.CURDIR}/../../lib/libroken
 VERSOBJDIR=	${.OBJDIR}/../../lib/libvers
 .else
 VERSOBJDIR=	${.CURDIR}/../../lib/libvers
-.endif
-
-.if exists(${.OBJDIR}/../../lib/libkrb4)
-KRB4OBJDIR=	${.OBJDIR}/../../lib/libkrb4
-.else
-KRB4OBJDIR=	${.CURDIR}/../../lib/libkrb4
 .endif
 
 .if exists(${.OBJDIR}/../../lib/libkrb5)
@@ -160,7 +149,6 @@ CLEANFILES+=	make-roken.c make-roken roken.h
 
 .else
 
-KRB4DIR=	${.CURDIR}/../../crypto/kerberosIV
 KRB5DIR=	${.CURDIR}/../../crypto/heimdal
 ROKENDIR=	${.CURDIR}/../../lib/libroken
 

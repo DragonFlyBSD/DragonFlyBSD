@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/release/sysinstall/menus.c,v 1.252.2.67 2003/05/15 02:05:31 murray Exp $
- * $DragonFly: src/release/sysinstall/Attic/menus.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
+ * $DragonFly: src/release/sysinstall/Attic/menus.c,v 1.3 2003/08/05 07:45:42 asmodai Exp $
  */
 
 #include "sysinstall.h"
@@ -43,7 +43,7 @@ setSrc(dialogMenuItem *self)
     Dists |= DIST_SRC;
     SrcDists = DIST_SRC_ALL;
     CRYPTODists |= (DIST_CRYPTO_SCRYPTO | DIST_CRYPTO_SSECURE |
-	DIST_CRYPTO_SKERBEROS4 | DIST_CRYPTO_SKERBEROS5);
+	DIST_CRYPTO_SKERBEROS5);
     return DITEM_SUCCESS | DITEM_REDRAW;
 }
 
@@ -53,7 +53,7 @@ clearSrc(dialogMenuItem *self)
     Dists &= ~DIST_SRC;
     SrcDists = 0;
     CRYPTODists &= ~(DIST_CRYPTO_SCRYPTO | DIST_CRYPTO_SSECURE |
-	DIST_CRYPTO_SKERBEROS4 | DIST_CRYPTO_SKERBEROS5);
+	DIST_CRYPTO_SKERBEROS5);
     return DITEM_SUCCESS | DITEM_REDRAW;
 }
 
@@ -815,15 +815,8 @@ DMenu MenuSubDistributions = {
 #endif
       { " crypto",	"Basic encryption services",
 	dmenuFlagCheck,	dmenuSetFlag, NULL, &CRYPTODists, '[', 'X', ']', DIST_CRYPTO_CRYPTO, },
-#if __FreeBSD__ <= 3
-      { " krb",		"KerberosIV authentication services",
-	dmenuFlagCheck,	dmenuSetFlag, NULL, &CRYPTODists, '[', 'X', ']', DIST_CRYPTO_KERBEROS },
-#else
-      { " krb4",	"KerberosIV authentication services",
-	dmenuFlagCheck,	dmenuSetFlag, NULL, &CRYPTODists, '[', 'X', ']', DIST_CRYPTO_KERBEROS4 },
       { " krb5",	"Kerberos5 authentication services",
 	dmenuFlagCheck,	dmenuSetFlag, NULL, &CRYPTODists, '[', 'X', ']', DIST_CRYPTO_KERBEROS5 },
-#endif
       { " dict",	"Spelling checker dictionary files",
 	dmenuFlagCheck,	dmenuSetFlag, NULL, &Dists, '[', 'X', ']', DIST_DICT },
       { " doc",		"Miscellaneous FreeBSD online docs",
@@ -892,8 +885,6 @@ DMenu MenuSrcDistributions = {
 	dmenuFlagCheck,	dmenuSetFlag, NULL, &CRYPTODists, '[', 'X', ']', DIST_CRYPTO_SCRYPTO },
       { " share",	"/usr/src/share (documents and shared files)",
 	dmenuFlagCheck,	dmenuSetFlag, NULL, &SrcDists, '[', 'X', ']', DIST_SRC_SHARE },
-      { " skrb4",	"/usr/src/kerberosIV (sources for KerberosIV)",
-	dmenuFlagCheck,	dmenuSetFlag, NULL, &CRYPTODists, '[', 'X', ']', DIST_CRYPTO_SKERBEROS4 },
       { " skrb5",	"/usr/src/kerberos5 (sources for Kerberos5)",
 	dmenuFlagCheck,	dmenuSetFlag, NULL, &CRYPTODists, '[', 'X', ']', DIST_CRYPTO_SKERBEROS5 },
       { " ssecure",	"/usr/src/secure (BSD encryption sources)",

@@ -1,9 +1,8 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.3 2003/08/03 16:45:13 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.4 2003/08/05 07:45:39 asmodai Exp $
 #
 # Make command line options:
-#	-DMAKE_KERBEROS4 to build KerberosIV
 #	-DMAKE_KERBEROS5 to build Kerberos5
 #	-DNOCLEANDIR run ${MAKE} clean, instead of ${MAKE} cleandir
 #	-DNOCLEAN do not clean at all
@@ -62,10 +61,6 @@ SUBDIR+= games
 .endif
 .if exists(${.CURDIR}/gnu)
 SUBDIR+= gnu
-.endif
-.if exists(${.CURDIR}/kerberosIV) && exists(${.CURDIR}/crypto) && \
-    !defined(NOCRYPT) && !defined(NO_OPENSSL) && defined(MAKE_KERBEROS4)
-SUBDIR+= kerberosIV
 .endif
 .if exists(${.CURDIR}/kerberos5) && exists(${.CURDIR}/crypto) && \
     !defined(NOCRYPT) && !defined(NO_OPENSSL) && defined(MAKE_KERBEROS5)
@@ -611,11 +606,6 @@ _fortran= gnu/usr.bin/cc/f771
 _perl=	gnu/usr.bin/perl/miniperl
 .endif
 
-.if exists(${.CURDIR}/kerberosIV) && exists(${.CURDIR}/crypto) && \
-    !defined(NOCRYPT) && defined(MAKE_KERBEROS4)
-_libroken4= kerberosIV/lib/libroken
-.endif
-
 .if exists(${.CURDIR}/kerberos5) && exists(${.CURDIR}/crypto) && \
     !defined(NOCRYPT) && defined(MAKE_KERBEROS5)
 _libkrb5= kerberos5/lib/libroken kerberos5/lib/libvers \
@@ -704,12 +694,6 @@ _prebuild_libs+=	kerberos5/lib/libgssapi
 _prebuild_libs+=	kerberos5/lib/libkrb5
 _prebuild_libs+=	kerberos5/lib/libroken
 _generic_libs+=	kerberos5/lib
-.endif
-
-.if !defined(NOCRYPT) && defined(MAKE_KERBEROS4)
-_prebuild_libs+=	kerberosIV/lib/libkrb
-kerberosIV/lib/libkrb__L: lib/libcrypt__L
-_generic_libs+=	kerberosIV/lib
 .endif
 
 _prebuild_libs+= lib/libcom_err lib/libcrypt lib/libmd \

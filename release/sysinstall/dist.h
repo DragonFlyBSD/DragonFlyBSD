@@ -1,5 +1,5 @@
 /* $FreeBSD: src/release/sysinstall/dist.h,v 1.48.2.3 2001/03/22 01:43:46 ps Exp $  */
-/* $DragonFly: src/release/sysinstall/Attic/dist.h,v 1.2 2003/06/17 04:27:21 dillon Exp $  */
+/* $DragonFly: src/release/sysinstall/Attic/dist.h,v 1.3 2003/08/05 07:45:42 asmodai Exp $  */
 
 #ifndef _DIST_H_INCLUDE
 #define _DIST_H_INCLUDE
@@ -32,12 +32,7 @@
 #define DIST_CRYPTO_CRYPTO	0x0001
 #define DIST_CRYPTO_SCRYPTO	0x0002
 #define DIST_CRYPTO_SSECURE	0x0004
-#if __FreeBSD__ <= 3
-#define DIST_CRYPTO_KERBEROS	0x0008
-#else
-#define DIST_CRYPTO_KERBEROS4	0x0008
 #define DIST_CRYPTO_KERBEROS5	0x0010
-#define DIST_CRYPTO_SKERBEROS4	0x0020
 #define DIST_CRYPTO_SKERBEROS5	0x0040
 #endif
 #define DIST_CRYPTO_ALL		0x007F
@@ -127,7 +122,7 @@
 	( _DIST_USER | DIST_PROFLIBS | DIST_INFO | DIST_SRC )
 
 #define DIST_CRYPTO_BIN \
-	( DIST_CRYPTO_CRYPTO | DIST_CRYPTO_KERBEROS4 | DIST_CRYPTO_KERBEROS5 )
+	( DIST_CRYPTO_CRYPTO | DIST_CRYPTO_KERBEROS5 )
 
 #endif	/* _DIST_H_INCLUDE */
 

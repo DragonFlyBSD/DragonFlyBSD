@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libssh/Makefile,v 1.2.2.7 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/lib/libssh/Makefile,v 1.2 2003/06/17 04:27:48 dillon Exp $
+# $DragonFly: src/secure/lib/libssh/Makefile,v 1.3 2003/08/05 07:45:42 asmodai Exp $
 
 LIB=	ssh
 SRCS=	authfd.c authfile.c bufaux.c buffer.c canohost.c channels.c \
@@ -19,9 +19,6 @@ SRCS+=	getaddrinfo.c getnameinfo.c name6.c rcmd.c bindresvport.c
 .endif
 
 CFLAGS+= -I${SSHDIR}
-.if defined(MAKE_KERBEROS4)
-CFLAGS+= -DKRB4
-.endif
 .if defined(MAKE_KERBEROS5)
 CFLAGS+= -DKRB5 -DHEIMDAL
 .endif

@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/usr.sbin/sshd/Makefile,v 1.5.2.9 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.2 2003/06/17 04:27:48 dillon Exp $
+# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.3 2003/08/05 07:45:43 asmodai Exp $
 #
 
 PROG=	sshd
@@ -15,14 +15,6 @@ SRCS=	sshd.c auth-rhosts.c auth-passwd.c auth-rsa.c auth-rh-rsa.c \
 SRCS+=	loginrec.c
 MAN=	sshd.8 sshd_config.5
 CFLAGS+=-I${SSHDIR}
-
-.if defined(MAKE_KERBEROS4)
-DISTRIBUTION=krb4
-CFLAGS+= -DKRB4
-SRCS+=	auth-krb4.c
-LDADD+=	 -lkrb -lcom_err
-DPADD+=	 ${LIBKRB} ${LIBCOM_ERR}
-.endif
 
 .if defined(MAKE_KERBEROS5)
 DISTRIBUTION=krb5

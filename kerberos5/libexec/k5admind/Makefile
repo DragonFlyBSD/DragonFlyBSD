@@ -1,5 +1,5 @@
 # $FreeBSD: src/kerberos5/libexec/k5admind/Makefile,v 1.4.2.3 2002/09/23 14:00:48 nectar Exp $
-# $DragonFly: src/kerberos5/libexec/k5admind/Attic/Makefile,v 1.2 2003/06/17 04:26:18 dillon Exp $
+# $DragonFly: src/kerberos5/libexec/k5admind/Attic/Makefile,v 1.3 2003/08/05 07:45:40 asmodai Exp $
 
 PROG=		k5admind
 SRCS=		kadmind.c server.c kadm_conn.c \
@@ -15,11 +15,6 @@ CFLAGS+=	-I${KRB5DIR}/include \
 		-I${ASN1OBJDIR} \
 		-I${HDBOBJDIR} \
 		-I${.OBJDIR}
-.if defined(MAKE_KERBEROS4)
-SRCS+=		version4.c
-_krb4libs=	-lkrb -lkafs
-_krb4deps=	${LIBKRB} ${LIBKAFS}
-.endif
 LDADD=		\
 		-L${KADM5SOBJDIR} -lkadm5srv \
 		-L${KRB5OBJDIR} -lkrb5 \

@@ -23,13 +23,10 @@
 # SUCH DAMAGE.
 #
 #	$FreeBSD: src/lib/libpam/modules/Makefile,v 1.8.2.8 2002/07/03 21:35:18 des Exp $
-#	$DragonFly: src/lib/libpam/modules/Attic/Makefile,v 1.2 2003/06/17 04:26:50 dillon Exp $
+#	$DragonFly: src/lib/libpam/modules/Attic/Makefile,v 1.3 2003/08/05 07:45:41 asmodai Exp $
 
 SUBDIR+=	pam_cleartext_pass_ok
 SUBDIR+=	pam_deny
-.if defined(MAKE_KERBEROS4) && !defined(NOCRYPT) && !defined(NO_OPENSSL)
-SUBDIR+=	pam_kerberosIV
-.endif
 .if defined(MAKE_KERBEROS5) && !defined(NOCRYPT) && !defined(NO_OPENSSL)
 SUBDIR+=	pam_krb5
 .endif

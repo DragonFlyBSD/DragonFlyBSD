@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.32.2.6 2003/01/21 23:06:51 peter Exp $
-# $DragonFly: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.2 2003/06/17 04:25:45 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.3 2003/08/05 07:45:39 asmodai Exp $
 
 MAINTAINER=	peter@FreeBSD.org
 
@@ -30,17 +30,6 @@ CFLAGS+= -I${.CURDIR} -I../lib -DHAVE_CONFIG_H \
 
 DPADD+=	${LIBCVS} ${LIBDIFF} ${LIBGNUREGEX} ${LIBMD} ${LIBCRYPT} ${LIBZ}
 LDADD+=	${LIBCVS} ${LIBDIFF} -lgnuregex -lmd -lcrypt -lz
-
-.if defined(MAKE_KERBEROS4) && !defined(NO_OPENSSL) && !defined(NOCRYPT)
-CFLAGS+=-DHAVE_KERBEROS -DHAVE_KRB_GET_ERR_TEXT
-LDADD+=	-lkrb -lcrypto -lcom_err
-DPADD+=	${LIBKRB} ${LIBCRYPTO} ${LIBCOM_ERR}
-DISTRIBUTION=	krb4
-# XXX do we want to mess with this?  It's probably not really worth it for
-# the public freebsd stuff, but others might want it.  It's an optional
-# feature anyway, the -x switch is needed to activate it.
-CFLAGS+= -DENCRYPTION
-.endif
 
 #
 # Regression test support

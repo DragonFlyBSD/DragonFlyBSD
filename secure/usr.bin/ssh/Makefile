@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/usr.bin/ssh/Makefile,v 1.4.2.8 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.bin/ssh/Makefile,v 1.2 2003/06/17 04:27:48 dillon Exp $
+# $DragonFly: src/secure/usr.bin/ssh/Makefile,v 1.3 2003/08/05 07:45:43 asmodai Exp $
 #
 
 PROG=	ssh
@@ -10,13 +10,6 @@ MLINKS=	ssh.1 slogin.1
 
 SRCS=	ssh.c authfd.c hostfile.c msg.c readconf.c clientloop.c sshtty.c \
 	sshconnect.c sshconnect1.c sshconnect2.c
-
-.if defined(MAKE_KERBEROS4)
-DISTRIBUTION=krb4
-CFLAGS+= -DKRB4
-LDADD+=	 -lkrb -lcom_err
-DPADD+=	 ${LIBKRB} ${LIBCOM_ERR}
-.endif
 
 .if defined(MAKE_KERBEROS5)
 DISTRIBUTION=krb5

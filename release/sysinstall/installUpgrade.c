@@ -5,7 +5,7 @@
  * generation being essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/installUpgrade.c,v 1.71.2.12 2002/06/10 04:28:53 obrien Exp $
- * $DragonFly: src/release/sysinstall/Attic/installUpgrade.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
+ * $DragonFly: src/release/sysinstall/Attic/installUpgrade.c,v 1.3 2003/08/05 07:45:42 asmodai Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.
@@ -86,7 +86,6 @@ static HitList etc_files [] = {
    { JUST_COPY,		"hosts.equiv",		TRUE, NULL },
    { JUST_COPY,		"hosts.lpd",		TRUE, NULL },
    { JUST_COPY,		"inetd.conf",		TRUE, NULL },
-   { JUST_COPY,		"kerberosIV",		TRUE, NULL },
    { JUST_COPY,		"localtime",		TRUE, NULL },
    { JUST_COPY,		"login.access",		TRUE, NULL },
    { JUST_COPY,		"login.conf",		TRUE, NULL },

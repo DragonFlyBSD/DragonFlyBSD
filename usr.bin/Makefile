@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	8.3 (Berkeley) 1/7/94
 # $FreeBSD: src/usr.bin/Makefile,v 1.144.2.17 2003/01/04 17:17:07 obrien Exp $
-# $DragonFly: src/usr.bin/Makefile,v 1.4 2003/08/03 16:45:16 dillon Exp $
+# $DragonFly: src/usr.bin/Makefile,v 1.5 2003/08/05 07:45:43 asmodai Exp $
 
 # XXX MISSING:		deroff diction graph learn plot
 #			spell spline struct xsend
@@ -207,8 +207,7 @@ SUBDIR=	alias \
 	ypwhich
 
 .if defined(RELEASEDIR) || \
-    (!exists(${.CURDIR}/../kerberosIV) && !exists(${.CURDIR}/../secure)) || \
-    defined(NOCRYPT) || !defined(MAKE_KERBEROS4)
+    !exists(${.CURDIR}/../secure) || defined(NOCRYPT)
 # Releases need both this non-crypt telnet and the crypt telnet.
 SUBDIR+=telnet
 .endif

@@ -5,7 +5,7 @@
  * generation being essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/dist.c,v 1.175.2.31 2003/03/03 09:31:42 murray Exp $
- * $DragonFly: src/release/sysinstall/Attic/dist.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
+ * $DragonFly: src/release/sysinstall/Attic/dist.c,v 1.3 2003/08/05 07:45:42 asmodai Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.
@@ -91,11 +91,9 @@ static Distribution DistTable[] = {
 /* The CRYPTO distribution */
 static Distribution CRYPTODistTable[] = {
 { "crypto",     "/",                    &CRYPTODists,	DIST_CRYPTO_CRYPTO,		NULL		},
-{ "krb4",	"/",			&CRYPTODists,	DIST_CRYPTO_KERBEROS4,	NULL		},
 { "krb5",	"/",			&CRYPTODists,	DIST_CRYPTO_KERBEROS5,	NULL		},
 { "ssecure",	"/usr/src",		&CRYPTODists,	DIST_CRYPTO_SSECURE,	NULL		},
 { "scrypto",	"/usr/src",		&CRYPTODists,	DIST_CRYPTO_SCRYPTO,	NULL		},
-{ "skrb4",	"/usr/src",		&CRYPTODists,	DIST_CRYPTO_SKERBEROS4,	NULL		},
 { "skrb5",	"/usr/src",		&CRYPTODists,	DIST_CRYPTO_SKERBEROS5,	NULL		},
 { NULL },
 };
@@ -207,7 +205,7 @@ distVerifyFlags(void)
     if (SrcDists)
 	Dists |= DIST_SRC;
     if (CRYPTODists) {
-	if (CRYPTODists & (DIST_CRYPTO_KERBEROS4 | DIST_CRYPTO_KERBEROS5))
+	if (CRYPTODists & DIST_CRYPTO_KERBEROS5)
 	    CRYPTODists |= DIST_CRYPTO_CRYPTO;
 	Dists |= DIST_CRYPTO;
     }

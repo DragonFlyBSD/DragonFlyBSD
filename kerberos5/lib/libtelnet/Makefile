@@ -1,17 +1,12 @@
 # $FreeBSD: src/kerberos5/lib/libtelnet/Makefile,v 1.14.2.4 2003/04/24 19:13:59 nectar Exp $
-# $DragonFly: src/kerberos5/lib/libtelnet/Attic/Makefile,v 1.2 2003/06/17 04:26:17 dillon Exp $
+# $DragonFly: src/kerberos5/lib/libtelnet/Attic/Makefile,v 1.3 2003/08/05 07:45:40 asmodai Exp $
 
 LIB=		telnet
 
 INTERNALLIB=	yes
 
 SRCS=		genget.c getent.c misc.c encrypt.c auth.c \
-		enc_des.c sra.c pk.c
-.if defined(MAKE_KERBEROS4)
-SRCS+=		kerberos.c
-CFLAGS+=	-DKRB4 -I${KRB4DIR}/lib/krb
-.endif
-SRCS+=		kerberos5.c
+		enc_des.c sra.c pk.c kerberos5.c
 
 #WARNS?=		2
 

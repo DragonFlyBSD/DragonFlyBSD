@@ -25,7 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/tools/make_libdeps.sh,v 1.2.2.1 2002/07/23 12:12:30 ru Exp $
-# $DragonFly: src/tools/make_libdeps.sh,v 1.2 2003/06/17 04:29:08 dillon Exp $
+# $DragonFly: src/tools/make_libdeps.sh,v 1.3 2003/08/05 07:45:43 asmodai Exp $
 
 export PATH=/usr/bin
 
@@ -36,7 +36,6 @@ LIBS="
 	lib
 	gnu/lib
 	gnu/usr.bin/perl/libperl
-	kerberosIV/lib
 	kerberos5/lib
 	secure/lib
 	usr.bin/lex/lib
@@ -50,7 +49,6 @@ sed -E
     -e's; ;! ;g'
     -e's;$;!;'
     -e's;-lm!;lib/msun;g'
-    -e's;-l(krb)!;kerberosIV/lib/lib\1;g'
     -e's;-l(asn1|gssapi|krb5|roken)!;kerberos5/lib/lib\1;g'
     -e's;-l(crypto|ssh)!;secure/lib/lib\1;g'
     -e's;-l([^!]+)!;lib/lib\1;g'

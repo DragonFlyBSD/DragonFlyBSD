@@ -6,7 +6,7 @@
  * Copyright (c) 1998, Anatoly A. Orehovsky
  *
  * $FreeBSD: src/gnu/lib/libdialog/TESTS/tree.c,v 1.2 2000/01/10 11:52:10 phantom Exp $
- * $DragonFly: src/gnu/lib/libdialog/TESTS/tree.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
+ * $DragonFly: src/gnu/lib/libdialog/TESTS/tree.c,v 1.3 2003/08/05 07:45:39 asmodai Exp $
  */
 
 #include <stdio.h>
@@ -35,7 +35,6 @@ unsigned char *names[] = {
 	"/stand/info/src",
 	"/etc",
 	"/etc/gnats",
-	"/etc/kerberosIV",
 	"/etc/mtree",
 	"/etc/namedb",
 	"/etc/ppp",

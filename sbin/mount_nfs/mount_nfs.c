@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_nfs.c	8.11 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/mount_nfs/mount_nfs.c,v 1.36.2.6 2003/05/13 14:45:40 trhodes Exp $
- * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.3 2003/08/05 07:45:42 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -47,11 +47,6 @@
 #include <rpc/rpc.h>
 #include <rpc/pmap_clnt.h>
 #include <rpc/pmap_prot.h>
-
-#ifdef NFSKERB
-#include <kerberosIV/des.h>
-#include <kerberosIV/krb.h>
-#endif
 
 #include <nfs/rpcv2.h>
 #include <nfs/nfsproto.h>

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)nfsd.c	8.9 (Berkeley) 3/29/95
  * $FreeBSD: src/sbin/nfsd/nfsd.c,v 1.15.2.1 2000/09/16 22:52:23 brian Exp $
- * $DragonFly: src/sbin/nfsd/nfsd.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/nfsd/nfsd.c,v 1.3 2003/08/05 07:45:42 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -55,11 +55,6 @@
 #include <nfs/rpcv2.h>
 #include <nfs/nfsproto.h>
 #include <nfs/nfs.h>
-
-#ifdef NFSKERB
-#include <kerberosIV/des.h>
-#include <kerberosIV/krb.h>
-#endif
 
 #include <err.h>
 #include <errno.h>

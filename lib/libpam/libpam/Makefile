@@ -23,7 +23,7 @@
 # SUCH DAMAGE.
 #
 #	$FreeBSD: src/lib/libpam/libpam/Makefile,v 1.12.2.12 2002/07/22 14:21:49 ru Exp $
-#	$DragonFly: src/lib/libpam/libpam/Attic/Makefile,v 1.2 2003/06/17 04:26:50 dillon Exp $
+#	$DragonFly: src/lib/libpam/libpam/Attic/Makefile,v 1.3 2003/08/05 07:45:41 asmodai Exp $
 
 PAMDIR=		${.CURDIR}/../../../contrib/libpam
 MODOBJDIR=	../modules
@@ -65,9 +65,6 @@ MLINKS+=	pam_set_item.3 pam_get_item.3
 # Static PAM modules:
 STATIC_MODULES+= ${MODOBJDIR}/pam_cleartext_pass_ok/libpam_cleartext_pass_ok.a
 STATIC_MODULES+= ${MODOBJDIR}/pam_deny/libpam_deny.a
-.if defined(MAKE_KERBEROS4) && !defined(NOCRYPT) && !defined(NO_OPENSSL)
-STATIC_MODULES+= ${MODOBJDIR}/pam_kerberosIV/libpam_kerberosIV.a
-.endif
 .if defined(MAKE_KERBEROS5__) && !defined(NOCRYPT) && !defined(NO_OPENSSL)
 STATIC_MODULES+= ${MODOBJDIR}/pam_kerberos5/libpam_kerberos5.a
 .endif

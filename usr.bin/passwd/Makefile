@@ -1,6 +1,6 @@
 # From:	@(#)Makefile	8.3 (Berkeley) 4/2/94
 # $FreeBSD: src/usr.bin/passwd/Makefile,v 1.40.2.3 2002/07/17 19:08:22 ru Exp $
-# $DragonFly: src/usr.bin/passwd/Makefile,v 1.2 2003/06/17 04:29:30 dillon Exp $
+# $DragonFly: src/usr.bin/passwd/Makefile,v 1.3 2003/08/05 07:45:43 asmodai Exp $
 
 # NOPAM is used by PicoBSD
 
@@ -82,19 +82,6 @@ yppasswd_private_clnt.c: ${RPCSRC_PRIV}
 BINMODE=4555
 LINKS=${BINDIR}/passwd ${BINDIR}/yppasswd
 MLINKS=passwd.1 yppasswd.1
-
-.if defined(MAKE_KERBEROS4) && !defined(NO_OPENSSL) && !defined(NOCRYPT)
-SRCS+=	kpasswd_standalone.c
-.PATH:	${.CURDIR}/../../usr.bin/chpass ${.CURDIR}/../../usr.sbin/vipw \
-	${.CURDIR}/../../usr.bin/rlogin ${.CURDIR}/../../usr.bin/passwd \
-	${.CURDIR}/../../crypto/kerberosIV/kadmin
-
-CFLAGS+=	-DKERBEROS
-# XXX not defined: ${LIBKADM}, ${LIBCOM_ERR}
-DPADD=	${LIBKADM} ${LIBKRB} ${LIBCRYPTO} ${LIBCRYPT} ${LIBRPCSVC} ${LIBCOM_ERR} ${LIBUTIL}
-LDADD=	-lkadm -lkrb -lcrypto -lcrypt -lrpcsvc -lcom_err -lutil
-DISTRIBUTION=	krb4
-.endif
 
 beforeinstall:
 .for i in passwd yppasswd

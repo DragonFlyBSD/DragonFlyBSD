@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)su.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/su/su.c,v 1.34.2.4 2002/06/16 21:04:15 nectar Exp $
- * $DragonFly: src/usr.bin/su/su.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/su/su.c,v 1.3 2003/08/05 07:45:44 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -73,24 +73,12 @@ static long kerberos5(krb5_context context, const char *current_user,
 int use_kerberos5 = 1;
 #endif
 
-#ifdef KERBEROS4
-#include <openssl/des.h>
-#include <krb.h>
-#include <netdb.h>
-
-
-static int kerberos4(char *username, char *user, int uid, char *pword);
-static int koktologin(char *name, char *toname);
-
-int use_kerberos4 = 1;
-#endif /* KERBEROS4 */
-
 #ifdef LOGIN_CAP
 #define LOGIN_CAP_ARG(x) x
 #else
 #define LOGIN_CAP_ARG(x)
 #endif
-#if defined(KERBEROS4) || defined(KERBEROS5)
+#if defined(KERBEROS5)
 #define KERBEROS_ARG(x) x
 #else
 #define KERBEROS_ARG(x)
@@ -124,7 +112,7 @@ main(argc, argv)
 	char *class=NULL;
 	int setwhat;
 #endif
-#if defined(KERBEROS4) || defined(KERBEROS5)
+#if defined(KERBEROS5)
 	char *k;
 #endif
 #ifdef KERBEROS5
@@ -141,14 +129,9 @@ main(argc, argv)
 	user = "root";
 	while((ch = getopt(argc, argv, ARGSTR)) != -1) 
 		switch((char)ch) {
-#if defined(KERBEROS4) || defined(KERBEROS5)
+#if defined(KERBEROS5)
 		case 'K':
-#ifdef KERBEROS4
-			use_kerberos4 = 0;
-#endif
-#ifdef KERBEROS5
 			use_kerberos5 = 0;
-#endif
 			break;
 #endif
 		case 'f':
@@ -195,18 +178,11 @@ main(argc, argv)
 
 	argv += optind;
 
-#if defined(KERBEROS4) || defined(KERBEROS5)
+#if defined(KERBEROS5)
 	k = auth_getval("auth_list");
 	if (k && !strstr(k, "kerberos")) {
-#ifdef KERBEROS4
-	    use_kerberos4 = 0;
-#endif
-#ifdef KERBEROS5
 	    use_kerberos5 = 0;
-#endif
 	}
-#endif
-#ifdef KERBEROS5
 	su_principal_name = NULL;
 	su_principal = NULL;
 	if (krb5_init_context(&context) != 0)
@@ -263,13 +239,6 @@ main(argc, argv)
 #endif /* WHEELSU */
 
 	if (ruid) {
-#ifdef KERBEROS4
-		if (use_kerberos4 && koktologin(username, user)
-		    && !pwd->pw_uid) {
-			warnx("kerberos4: not in %s's ACL.", user);
-			use_kerberos4 = 0;
-		}
-#endif
 #ifdef KERBEROS5
 		if (use_kerberos5) {
 			if (get_su_principal(context, user, username,
@@ -326,11 +295,6 @@ main(argc, argv)
 			p = getpass("Password:");
 			if (strcmp(pwd->pw_passwd, crypt(p, pwd->pw_passwd))) {
 #endif
-#ifdef KERBEROS4
-				if (use_kerberos4 && kerberos4(username, user,
-				    pwd->pw_uid, p) == 0)
-					goto authok;
-#endif
 #ifdef KERBEROS5
 				if (use_kerberos5 && kerberos5(context,
 				    username, user, su_principal, p) == 0)
@@ -342,7 +306,7 @@ main(argc, argv)
 				    ontty());
 				exit(1);
 			}
-#if defined(KERBEROS4) || defined(KERBEROS5)
+#if defined(KERBEROS5)
 		authok:
 #endif
 #ifdef WHEELSU
@@ -409,9 +373,6 @@ main(argc, argv)
 	if (!asme) {
 		if (asthem) {
 			p = getenv("TERM");
-#ifdef KERBEROS4
-			k = getenv("KRBTKFILE");
-#endif
 #ifdef KERBEROS5
 			ccname = getenv("KRB5CCNAME");
 #endif
@@ -427,10 +388,6 @@ main(argc, argv)
 #endif
 			if (p)
 				(void)setenv("TERM", p, 1);
-#ifdef KERBEROS4
-			if (k)
-				(void)setenv("KRBTKFILE", k, 1);
-#endif
 #ifdef KERBEROS5
 			if (ccname)
 				(void)setenv("KRB5CCNAME", ccname, 1);
@@ -654,137 +611,4 @@ get_su_principal(krb5_context context, const char *target_user,
 	return 0;
 }
 
-#endif
-
-#ifdef KERBEROS4
-int
-kerberos4(username, user, uid, pword)
-	char *username, *user;
-	int uid;
-	char *pword;
-{
-	KTEXT_ST ticket;
-	AUTH_DAT authdata;
-	int kerno;
-	u_long faddr;
-	char lrealm[REALM_SZ], krbtkfile[MAXPATHLEN];
-	char hostname[MAXHOSTNAMELEN], savehost[MAXHOSTNAMELEN];
-	char *krb_get_phost();
-	struct hostent *hp;
-
-	if (krb_get_lrealm(lrealm, 1) != KSUCCESS)
-		return (1);
-	(void)sprintf(krbtkfile, "%s_%s_%lu", TKT_ROOT, user,
-	    (unsigned long)getuid());
-
-	(void)setenv("KRBTKFILE", krbtkfile, 1);
-	(void)krb_set_tkt_string(krbtkfile);
-	/*
-	 * Set real as well as effective ID to 0 for the moment,
-	 * to make the kerberos library do the right thing.
-	 */
-	if (setuid(0) < 0) {
-		warn("setuid");
-		return (1);
-	}
-
-	/*
-	 * Little trick here -- if we are su'ing to root,
-	 * we need to get a ticket for "xxx.root", where xxx represents
-	 * the name of the person su'ing.  Otherwise (non-root case),
-	 * we need to get a ticket for "yyy.", where yyy represents
-	 * the name of the person being su'd to, and the instance is null
-	 *
-	 * We should have a way to set the ticket lifetime,
-	 * with a system default for root.
-	 */
-	kerno = krb_get_pw_in_tkt((uid == 0 ? username : user),
-		(uid == 0 ? "root" : ""), lrealm,
-	    	"krbtgt", lrealm, DEFAULT_TKT_LIFE, pword);
-
-	if (kerno != KSUCCESS) {
-		if (kerno == KDC_PR_UNKNOWN) {
-			warnx("kerberos4: principal unknown: %s.%s@%s",
-				(uid == 0 ? username : user),
-				(uid == 0 ? "root" : ""), lrealm);
-			return (1);
-		}
-		warnx("kerberos4: unable to su: %s", krb_err_txt[kerno]);
-		syslog(LOG_NOTICE|LOG_AUTH,
-		    "BAD Kerberos4 SU: %s to %s%s: %s",
-		    username, user, ontty(), krb_err_txt[kerno]);
-		return (1);
-	}
-
-	if (chown(krbtkfile, uid, -1) < 0) {
-		warn("chown");
-		(void)unlink(krbtkfile);
-		return (1);
-	}
-
-	(void)setpriority(PRIO_PROCESS, 0, -2);
-
-	if (gethostname(hostname, sizeof(hostname)) == -1) {
-		warn("gethostname");
-		dest_tkt();
-		return (1);
-	}
-
-	(void)strncpy(savehost, krb_get_phost(hostname), sizeof(savehost));
-	savehost[sizeof(savehost) - 1] = '\0';
-
-	kerno = krb_mk_req(&ticket, "rcmd", savehost, lrealm, 33);
-
-	if (kerno == KDC_PR_UNKNOWN) {
-		warnx("Warning: TGT not verified.");
-		syslog(LOG_NOTICE|LOG_AUTH,
-		    "%s to %s%s, TGT not verified (%s); %s.%s not registered?",
-		    username, user, ontty(), krb_err_txt[kerno],
-		    "rcmd", savehost);
-	} else if (kerno != KSUCCESS) {
-		warnx("Unable to use TGT: %s", krb_err_txt[kerno]);
-		syslog(LOG_NOTICE|LOG_AUTH, "failed su: %s to %s%s: %s",
-		    username, user, ontty(), krb_err_txt[kerno]);
-		dest_tkt();
-		return (1);
-	} else {
-		if (!(hp = gethostbyname(hostname))) {
-			warnx("can't get addr of %s", hostname);
-			dest_tkt();
-			return (1);
-		}
-		memmove((char *)&faddr, (char *)hp->h_addr, sizeof(faddr));
-
-		if ((kerno = krb_rd_req(&ticket, "rcmd", savehost, faddr,
-		    &authdata, "")) != KSUCCESS) {
-			warnx("kerberos4: unable to verify rcmd ticket: %s\n",
-			    krb_err_txt[kerno]);
-			syslog(LOG_NOTICE|LOG_AUTH,
-			    "failed su: %s to %s%s: %s", username,
-			     user, ontty(), krb_err_txt[kerno]);
-			dest_tkt();
-			return (1);
-		}
-	}
-	return (0);
-}
-
-int
-koktologin(name, toname)
-	char *name, *toname;
-{
-	AUTH_DAT *kdata;
-	AUTH_DAT kdata_st;
-	char realm[REALM_SZ];
-
-	if (krb_get_lrealm(realm, 1) != KSUCCESS)
-		return (1);
-	kdata = &kdata_st;
-	memset((char *)kdata, 0, sizeof(*kdata));
-	(void)strncpy(kdata->pname, name, sizeof kdata->pname - 1);
-	(void)strncpy(kdata->pinst,
-	    ((strcmp(toname, "root") == 0) ? "root" : ""), sizeof kdata->pinst - 1);
-	(void)strncpy(kdata->prealm, realm, sizeof kdata->prealm - 1);
-	return (kuserok(kdata, toname));
-}
 #endif
