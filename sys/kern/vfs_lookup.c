@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_lookup.c	8.4 (Berkeley) 2/16/94
  * $FreeBSD: src/sys/kern/vfs_lookup.c,v 1.38.2.3 2001/08/31 19:36:49 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.12 2004/05/21 15:41:23 drhodus Exp $
+ * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.13 2004/07/29 20:34:09 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -81,6 +81,9 @@ SYSCTL_INT(_vfs, OID_AUTO, varsym_enable, CTLFLAG_RW, &varsym_enable, 0,
  *		call lookup to search path.
  *		if symbolic link, massage name in buffer and continue
  *	}
+ *
+ * NOTE: when namei() is called from a pure thread the system rootvnode
+ * will be used as a basis for the search.
  */
 int
 namei(struct nameidata *ndp)
@@ -96,14 +99,19 @@ namei(struct nameidata *ndp)
 
 	KKASSERT(ndp->ni_cnd.cn_td != NULL);
 	p = cnp->cn_td->td_proc;
-	KKASSERT(p != NULL);
+	if (p == NULL) {
+		KKASSERT(ndp->ni_segflg == UIO_SYSSPACE);
+		printf("namei() from non-process\n");
+		fdp = NULL;
+	} else {
+		KKASSERT(cnp->cn_cred == p->p_ucred); /* YYY */
+		fdp = p->p_fd;
+	}
 	KASSERT(cnp->cn_cred, ("namei: bad cred/proc"));
-	KKASSERT(cnp->cn_cred == p->p_ucred); /* YYY */
 	KASSERT((cnp->cn_nameiop & (~NAMEI_OPMASK)) == 0,
 	    ("namei: nameiop contaminated with flags"));
 	KASSERT((cnp->cn_flags & NAMEI_OPMASK) == 0,
 	    ("namei: flags contaminated with nameiops"));
-	fdp = p->p_fd;
 
 	/*
 	 * Get a buffer for the name to be translated, and copy the
@@ -139,10 +147,15 @@ namei(struct nameidata *ndp)
 	/*
 	 * Get starting point for the translation.
 	 */
-	ndp->ni_rootdir = fdp->fd_rdir;
-	ndp->ni_topdir = fdp->fd_jdir;
-
-	dp = fdp->fd_cdir;
+	if (fdp) {
+		ndp->ni_rootdir = fdp->fd_rdir;
+		ndp->ni_topdir = fdp->fd_jdir;
+		dp = fdp->fd_cdir;
+	} else {
+		ndp->ni_rootdir = rootvnode;
+		ndp->ni_topdir = rootvnode;
+		dp = rootvnode;
+	}
 	vref(dp);
 	for (;;) {
 		/*
