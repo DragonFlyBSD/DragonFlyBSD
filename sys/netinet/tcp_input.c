@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.10 2003/09/02 10:04:47 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.11 2003/09/13 18:35:20 dillon Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -363,7 +363,6 @@ tcp_input(m, off0, proto)
 	struct rmxp_tao	tao_noncached;	/* in case there's no cached entry */
 	struct sockaddr_in *next_hop = NULL;
 	int rstreason; /* For badport_bandlim accounting purposes */
-	int useTS;			/* use timestamps in Eifel detection */
 	struct ip6_hdr *ip6 = NULL;
 #ifdef INET6
 	int isipv6;
