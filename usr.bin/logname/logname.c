@@ -33,23 +33,26 @@
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)logname.c	8.2 (Berkeley) 4/3/94
  *
- * $DragonFly: src/usr.bin/logname/logname.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
+ * $DragonFly: src/usr.bin/logname/logname.c,v 1.4 2004/10/29 13:52:53 liamfoy Exp $
  */
 
 #include <err.h>
 #include <errno.h>
+#include <locale.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-void usage(void);
+static void usage(void);
 
 int
 main(int argc, char **argv)
 {
 	int ch;
 	char *p;
+
+	setlocale(LC_ALL, "");
 
 	while ((ch = getopt(argc, argv, "")) != -1)
 		switch (ch) {
@@ -66,7 +69,7 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-void
+static void
 usage(void)
 {
 	(void)fprintf(stderr, "usage: logname\n");
