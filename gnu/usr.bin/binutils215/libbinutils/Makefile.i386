@@ -1,0 +1,4 @@
+# $DragonFly: src/gnu/usr.bin/binutils215/libbinutils/Attic/Makefile.i386,v 1.1 2004/12/20 13:14:45 asmodai Exp $
+#
+
+TARGET=		i386-unknown-dragonfly

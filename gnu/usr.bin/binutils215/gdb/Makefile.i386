@@ -1,0 +1,6 @@
+# $DragonFly: src/gnu/usr.bin/binutils215/gdb/Attic/Makefile.i386,v 1.1 2004/12/20 13:14:44 asmodai Exp $
+#
+
+XSRCS+= freebsd-nat.c i386-tdep.c i387-tdep.c kvm-fbsd.c
+
+.PATH: ${.CURDIR}/i386

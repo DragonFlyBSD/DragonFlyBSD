@@ -1,0 +1,6 @@
+# $DragonFly: src/gnu/usr.bin/binutils215/libbfd/Attic/Makefile.amd64,v 1.1 2004/12/20 13:14:45 asmodai Exp $
+
+.include "${.CURDIR}/Makefile.i386"
+
+DEFAULT_VECTOR=	bfd_elf64_x86_64_vec
+
