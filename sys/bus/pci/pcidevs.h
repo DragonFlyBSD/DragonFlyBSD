@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.6 2004/12/18 16:00:07 asmodai Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.7 2005/02/19 19:39:28 dillon Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.6 2004/12/18 15:59:36 asmodai Exp 
+ *	DragonFly
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -1554,6 +1554,7 @@
 #define	PCI_PRODUCT_INTEL_82597EX	0x1048		/* PRO/10GbE LR Server Adapter */
 #define	PCI_PRODUCT_INTEL_PRO_100_VM_6	0x1050		/* PRO/100 VM Network Controller with 82562ET/EZ PHY */
 #define	PCI_PRODUCT_INTEL_PRO_100_M	0x1059		/* PRO/100 M Network Controller */
+#define	PCI_PRODUCT_INTEL_PRO_100_VE_5	0x1064		/* PRO/100 VE (LOM) Ethernet Controller with 82562ET/EZ/GT/GZ */
 #define	PCI_PRODUCT_INTEL_82547GI	0x1075		/* i82547GI Gigabit Ethernet */
 #define	PCI_PRODUCT_INTEL_82541GI	0x1076		/* i82541GI Gigabit Ethernet */
 #define	PCI_PRODUCT_INTEL_82541GI_MOBILE	0x1077		/* i82541GI Mobile Gigabit Ethernet */

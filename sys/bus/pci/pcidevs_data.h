@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.6 2004/12/18 16:00:07 asmodai Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.7 2005/02/19 19:39:28 dillon Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.6 2004/12/18 15:59:36 asmodai Exp 
+ *	DragonFly
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -4407,6 +4407,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Intel",
 	    "PRO/100 M Network Controller",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_PRO_100_VE_5,
+	    0,
+	    "Intel",
+	    "PRO/100 VE (LOM) Ethernet Controller with 82562ET/EZ/GT/GZ",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82547GI,
