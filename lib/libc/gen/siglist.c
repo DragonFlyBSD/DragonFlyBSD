@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)siglist.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/gen/siglist.c,v 1.3 2003/10/14 23:04:10 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -69,6 +70,41 @@ const char *const sys_signame[NSIG] = {
 	"info",				/* SIGINFO */
 	"usr1",				/* SIGUSR1 */
 	"usr2",				/* SIGUSR2 */
+
+	/* 32-63 */
+
+	"thrd",				/* 32 */
+	"ckpt",				/* 33 */
+	"ckptx",			/* 34 */
+	"Signal35",			/* 35 */
+	"Signal36",			/* 36 */
+	"Signal37",			/* 37 */
+	"Signal38",			/* 38 */
+	"Signal39",			/* 39 */
+	"Signal40",			/* 40 */
+	"Signal41",			/* 41 */
+	"Signal42",			/* 42 */
+	"Signal43",			/* 43 */
+	"Signal44",			/* 44 */
+	"Signal45",			/* 45 */
+	"Signal46",			/* 46 */
+	"Signal47",			/* 47 */
+	"Signal48",			/* 48 */
+	"Signal49",			/* 49 */
+	"Signal50",			/* 50 */
+	"Signal51",			/* 51 */
+	"Signal52",			/* 52 */
+	"Signal53",			/* 53 */
+	"Signal54",			/* 54 */
+	"Signal55",			/* 55 */
+	"Signal56",			/* 56 */
+	"Signal57",			/* 57 */
+	"Signal58",			/* 58 */
+	"Signal59",			/* 59 */
+	"Signal60",			/* 60 */
+	"Signal61",			/* 61 */
+	"Signal62",			/* 62 */
+	"Signal63"			/* 63 */
 };
 
 const char *const sys_siglist[NSIG] = {
@@ -103,6 +139,41 @@ const char *const sys_siglist[NSIG] = {
 	"Window size changes",		/* SIGWINCH */
 	"Information request",		/* SIGINFO */
 	"User defined signal 1",	/* SIGUSR1 */
-	"User defined signal 2"		/* SIGUSR2 */
+	"User defined signal 2",	/* SIGUSR2 */
+
+	/* 32-63 */
+
+	"Thread Scheduler",		/* SIGTHR */
+	"CheckPoint",			/* SIGCKPT */
+	"CheckPointExit",		/* SIGCKPTEXIT */
+	"Signal35",			/* 35 */
+	"Signal36",			/* 36 */
+	"Signal37",			/* 37 */
+	"Signal38",			/* 38 */
+	"Signal39",			/* 39 */
+	"Signal40",			/* 40 */
+	"Signal41",			/* 41 */
+	"Signal42",			/* 42 */
+	"Signal43",			/* 43 */
+	"Signal44",			/* 44 */
+	"Signal45",			/* 45 */
+	"Signal46",			/* 46 */
+	"Signal47",			/* 47 */
+	"Signal48",			/* 48 */
+	"Signal49",			/* 49 */
+	"Signal50",			/* 50 */
+	"Signal51",			/* 51 */
+	"Signal52",			/* 52 */
+	"Signal53",			/* 53 */
+	"Signal54",			/* 54 */
+	"Signal55",			/* 55 */
+	"Signal56",			/* 56 */
+	"Signal57",			/* 57 */
+	"Signal58",			/* 58 */
+	"Signal59",			/* 59 */
+	"Signal60",			/* 60 */
+	"Signal61",			/* 61 */
+	"Signal62",			/* 62 */
+	"Signal63"			/* 63 */
 };
 const int sys_nsig = sizeof(sys_siglist) / sizeof(sys_siglist[0]);
