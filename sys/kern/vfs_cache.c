@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.21 2004/06/05 09:58:15 eirikn Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.22 2004/06/05 10:27:58 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -1029,7 +1029,7 @@ kern_getcwd(char *buf, size_t buflen)
 		*--bp = '/';
 	}
 	numcwdfound++;
-	bcopy(buf, bp, buflen);
+	bcopy(bp, buf, buflen);
 	return (error);
 }
 
