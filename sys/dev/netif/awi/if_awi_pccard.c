@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/awi/if_awi_pccard.c,v 1.5.2.1 2000/12/07 04:09:39 imp Exp $
- * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.9 2004/07/10 12:48:55 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.10 2004/07/27 14:25:56 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -42,7 +42,8 @@
 #include <net/if_arp.h>
 #include <net/if_media.h>
 #include <net/ethernet.h>
-#include <net/if_ieee80211.h>
+#include <netproto/802_11/ieee80211.h>
+#include <netproto/802_11/ieee80211_ioctl.h>
 
 #include <machine/clock.h>
 

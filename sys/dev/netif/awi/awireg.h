@@ -1,6 +1,6 @@
 /* $NetBSD: awireg.h,v 1.3 2000/03/22 11:22:22 onoe Exp $ */
 /* $FreeBSD: src/sys/dev/awi/awireg.h,v 1.1.2.1 2000/12/07 04:09:39 imp Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awireg.h,v 1.2 2003/06/17 04:28:22 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awireg.h,v 1.3 2004/07/27 14:25:56 joerg Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -458,4 +458,26 @@ struct awi_mib_phy {
 #define	AWI_PHY_TYPE_DS		2
 #define	AWI_PHY_TYPE_IR		3
 	u_int8_t	RCR_33A_Bits[8];
+};
+
+/* the first member must be matched with struct ifreq */
+struct ieee80211_nwkey {
+	char		i_name[IFNAMSIZ];	/* if_xname, e.g. "wi0" */
+	int		i_wepon;		/* wep enabled flag */
+	int		i_defkid;		/* default encrypt key id */
+	struct {
+		int		i_keylen;
+		u_int8_t	*i_keydat;
+	}		i_key[IEEE80211_WEP_NKID];
+};
+
+#define	SIOCS80211NWKEY		 _IOW('i', 232, struct ieee80211_nwkey)
+#define	SIOCG80211NWKEY		_IOWR('i', 233, struct ieee80211_nwkey)
+
+#define	SIOCS80211NWID		_IOWR('i', 230, struct ifreq)
+#define	SIOCG80211NWID		_IOWR('i', 231, struct ifreq)
+
+struct ieee80211_nwid {
+	u_int8_t	i_len;
+	u_int8_t	i_nwid[IEEE80211_NWID_LEN];
 };

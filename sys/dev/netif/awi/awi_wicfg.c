@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wicfg.c,v 1.3 2000/07/06 17:22:25 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wicfg.c,v 1.3.2.2 2002/06/18 08:06:15 jhay Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wicfg.c,v 1.7 2004/02/13 02:44:47 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wicfg.c,v 1.8 2004/07/27 14:25:56 joerg Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -66,7 +66,8 @@
 #include <net/if_ether.h>
 #endif
 #include <net/if_media.h>
-#include <net/if_ieee80211.h>
+#include <netproto/802_11/ieee80211.h>
+#include <netproto/802_11/ieee80211_ioctl.h>
 
 #include <machine/cpu.h>
 #include <machine/bus.h>
@@ -86,9 +87,7 @@
 #include "am79c930reg.h"
 #include "am79c930var.h"
 
-#undef	_KERNEL		/* XXX */
-#include <dev/netif/wi/if_wavelan_ieee.h>	/* XXX */
-#define	_KERNEL		/* XXX */
+#include <netproto/802_11/if_wavelan_ieee.h>
 #include "awireg.h"
 #include "awivar.h"
 #endif

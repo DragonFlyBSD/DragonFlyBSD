@@ -1,6 +1,6 @@
 /*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.16 2004/07/23 07:16:24 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.17 2004/07/27 14:25:56 joerg Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -121,7 +121,8 @@
 #endif
 #include <net/if_media.h>
 #include <net/if_llc.h>
-#include <net/if_ieee80211.h>
+#include <netproto/802_11/ieee80211.h>
+#include <netproto/802_11/ieee80211_ioctl.h>
 
 #ifdef INET
 #include <netinet/in.h>

@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wep.c,v 1.4 2000/08/14 11:28:03 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wep.c,v 1.3.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.9 2004/06/02 14:42:49 eirikn Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.10 2004/07/27 14:25:56 joerg Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -75,7 +75,8 @@
 #include <net/if_ether.h>
 #endif
 #include <net/if_media.h>
-#include <net/if_ieee80211.h>
+#include <netproto/802_11/ieee80211.h>
+#include <netproto/802_11/ieee80211_ioctl.h>
 
 #include <machine/cpu.h>
 #include <machine/bus.h>
