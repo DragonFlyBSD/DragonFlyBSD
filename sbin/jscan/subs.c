@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/subs.c,v 1.1 2005/03/07 02:38:28 dillon Exp $
+ * $DragonFly: src/sbin/jscan/subs.c,v 1.2 2005/03/07 05:05:04 dillon Exp $
  */
 
 #include "jscan.h"
@@ -209,6 +209,22 @@ type_to_name(int16_t rectype)
 	break;
     }
     return (str);
+}
+
+void
+stringout(FILE *fp, char c, int exact)
+{
+    if (c != '\\' && c != '\"' && isprint(c)) {
+	putc(c, fp);
+    } else if (exact == 0) {
+	putc('.', fp);
+    } else if (c == 0) {
+	fprintf(fp, "\\0");
+    } else if (c == '\n') {
+	fprintf(fp, "\\n");
+    } else {
+	fprintf(fp, "\\x%02x", (int)(unsigned char)c);
+    }
 }
 
 

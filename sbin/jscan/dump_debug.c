@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/dump_debug.c,v 1.1 2005/03/07 02:38:28 dillon Exp $
+ * $DragonFly: src/sbin/jscan/dump_debug.c,v 1.2 2005/03/07 05:05:04 dillon Exp $
  */
 
 #include "jscan.h"
@@ -226,23 +226,8 @@ dump_payload(int16_t rectype, struct jstream *js, off_t off,
 	break;
     case DT_STRING:
 	printf(" \"");
-	for (i = 0; i < recsize; ++i) {
-	    char c = buf[i];
-	    if ((c >= '0' && c <= '9') ||
-		(c >= 'a' && c <= 'z') ||
-		(c >= 'A' && c <= 'Z') ||
-		c == '_' || c == '@' || c == ',' || c == '-' ||
-		c == '/' || c == '+'
-	    ) {
-		putc(c, stdout);
-	    } else if (c == 0) {
-		printf("\\0");
-	    } else if (c == '\n') {
-		printf("\\n");
-	    } else {
-		printf("\\x%02x", (int)(unsigned char)c);
-	    }
-	}
+	for (i = 0; i < recsize; ++i)
+	    stringout(stdout, buf[i], 1);
 	printf("\"");
 	break;
     case DT_DEC:
@@ -316,19 +301,26 @@ dump_payload(int16_t rectype, struct jstream *js, off_t off,
     case DT_DATA:
     default:
 	if (recsize < 16) {
-	    for (i = 0; i < recsize; ++i) {
+	    for (i = 0; i < recsize; ++i)
 		printf(" %02x", (int)(unsigned char)buf[i]);
-	    }
+	    printf(" \"");
+	    for (i = 0; i < recsize; ++i)
+		stringout(stdout, buf[i], 0);
+	    printf("\"");
 	} else {
 	    printf(" {\n");
 	    for (i = 0; i < recsize; i += 16) {
 		printf("%*.*s", level * 4 + 4, level * 4 + 4, "");
-		for (j = i; j < i + 16 && j < recsize; ++j) {
-		    printf(" %02x", (int)(unsigned char)buf[i]);
-		}
-		printf("\n");
+		for (j = i; j < i + 16 && j < recsize; ++j)
+		    printf(" %02x", (int)(unsigned char)buf[j]);
+		for (; j < i + 16; ++j)
+		    printf("   ");
+		printf(" \"");
+		for (j = i; j < i + 16 && j < recsize; ++j)
+		    stringout(stdout, buf[j], 0);
+		printf("\"\n");
 	    }
-	    printf(" }");
+	    printf("%*.*s}", level * 4, level * 4, "");
 	}
 	break;
     }

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.h,v 1.1 2005/03/07 02:38:28 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jscan.h,v 1.2 2005/03/07 05:05:04 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -87,10 +87,12 @@ struct jhash {
 #define JHASH_MASK	(JHASH_SIZE - 1)
 
 const char *type_to_name(int16_t rectype);
+void stringout(FILE *fp, char c, int exact);
 
 struct jstream *jscan_stream(struct jfile *jf);
 void jscan_dispose(struct jstream *js);
 struct jfile *jopen_stream(const char *path, enum jdirection jdir);
+struct jfile *jopen_fp(FILE *fp, enum jdirection jdir);
 void jclose_stream(struct jfile *jf);
 void jalign(struct jfile *jf);
 int jread(struct jfile *jf, void *buf, int bytes);

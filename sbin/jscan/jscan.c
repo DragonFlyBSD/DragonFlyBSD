@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.c,v 1.1 2005/03/07 02:38:28 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jscan.c,v 1.2 2005/03/07 05:05:04 dillon Exp $
  */
 
 #include "jscan.h"
@@ -75,13 +75,20 @@ main(int ac, char **av)
 	usage(av[0]);
     } else {
 	for (i = optind; i < ac; ++i) {
-	    if ((jf = jopen_stream(av[i], direction)) != NULL) {
+	    if (strcmp(av[i], "stdin") == 0)
+		jf = jopen_fp(stdin, direction);
+	    else
+		jf = jopen_stream(av[i], direction);
+	    if (jf != NULL) {
 		switch(jmode) {
 		case JS_DEBUG:
 			dump_debug(jf);
 			break;
 		}
 		jclose_stream(jf);
+	    } else {
+		fprintf(stderr, "Unable to open %s: %s\n", 
+				av[i], strerror(errno));
 	    }
 	}
     }

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jfile.c,v 1.1 2005/03/07 02:38:28 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jfile.c,v 1.2 2005/03/07 05:05:04 dillon Exp $
  */
 
 #include "jscan.h"
@@ -42,14 +42,24 @@
 struct jfile *
 jopen_stream(const char *path, enum jdirection jdir)
 {
+    FILE *fp;
+    struct jfile *jf;
+
+    if ((fp = fopen(path, "r")) == NULL)
+	return (NULL);
+    if ((jf = jopen_fp(fp, jdir)) == NULL)
+	fclose (fp);
+    return(jf);
+}
+
+struct jfile *
+jopen_fp(FILE *fp, enum jdirection jdir)
+{
     struct jfile *jf;
 
     jf = malloc(sizeof(struct jfile));
     bzero(jf, sizeof(struct jfile));
-    if ((jf->jf_fp = fopen(path, "r")) == NULL) {
-	free(jf);
-	return (NULL);
-    }
+    jf->jf_fp = fp;
     jf->jf_direction = jdir;
     jf->jf_setpt = -1;
     if (jdir == JF_BACKWARDS) {
