@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options.i386,v 1.132.2.18 2003/03/14 21:22:35 jhb Exp $
-# $DragonFly: src/sys/conf/Attic/options.i386,v 1.10 2005/03/28 14:42:44 joerg Exp $
+# $DragonFly: src/sys/conf/Attic/options.i386,v 1.11 2005/04/04 17:49:09 joerg Exp $
 
 DISABLE_PSE
 IDE_DELAY
@@ -39,7 +39,6 @@ CLK_CALIBRATION_LOOP		opt_clock.h
 CLK_USE_I8254_CALIBRATION	opt_clock.h
 CLK_USE_TSC_CALIBRATION		opt_clock.h
 TIMER_FREQ			opt_clock.h
-TIMER_USE_1			opt_clock.h
 KERN_TIMESTAMP			opt_global.h
 
 NO_F00F_HACK			opt_cpu.h

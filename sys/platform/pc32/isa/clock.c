@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.21 2005/03/27 19:25:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.22 2005/04/04 17:49:09 joerg Exp $
  */
 
 /*
@@ -116,13 +116,10 @@ static void i8254_restore(void);
 #define TIMER_FREQ   1193182
 #endif
 
-#ifdef TIMER_USE_1
-#define TIMER_SELX	TIMER_SEL1
-#define TIMER_CNTRX	TIMER_CNTR1
-#else
-#define TIMER_SELX	TIMER_SEL2
-#define TIMER_CNTRX	TIMER_CNTR2
-#endif
+int i8254_walltimer;
+TUNABLE_INT("hw.i8254.walltimer", &i8254_walltimer);
+static uint8_t i8254_walltimer_sel;
+static uint16_t i8254_walltimer_cntr;
 
 int	adjkerntz;		/* local offset from GMT in seconds */
 int	disable_rtc_set;	/* disable resettodr() if != 0 */
@@ -203,7 +200,6 @@ clkintr(struct intrframe frame)
 int
 acquire_timer2(int mode)
 {
-#ifdef TIMER_USE_1
 	if (timer2_state != RELEASED)
 		return (-1);
 	timer2_state = ACQUIRED;
@@ -215,10 +211,6 @@ acquire_timer2(int mode)
 	 */
 	outb(TIMER_MODE, TIMER_SEL2 | (mode & 0x3f));
 	return (0);
-#else
-	/* Timer2 is being used for time count operation */
-	return(-1);
-#endif
 }
 
 int
@@ -300,9 +292,9 @@ cputimer_count(void)
 	sysclock_t ret;
 
 	clock_lock();
-	outb(TIMER_MODE, TIMER_SELX | TIMER_LATCH);
-	count = (__uint8_t)inb(TIMER_CNTRX);		/* get countdown */
-	count |= ((__uint8_t)inb(TIMER_CNTRX) << 8);
+	outb(TIMER_MODE, i8254_walltimer_sel | TIMER_LATCH);
+	count = (__uint8_t)inb(i8254_walltimer_cntr);		/* get countdown */
+	count |= ((__uint8_t)inb(i8254_walltimer_cntr) << 8);
 	count = -count;					/* -> countup */
 	if (count < cputimer_last)			/* rollover */
 		cputimer_base += 0x00010000;
@@ -584,18 +576,25 @@ static void
 i8254_restore(void)
 {
 	timer0_state = ACQUIRED;
-#ifdef TIMER_USE_1
-	timer1_state = ACQUIRED;
-#else
-	timer2_state = ACQUIRED;
-#endif
+	if (i8254_walltimer != 1 && i8254_walltimer != 2)
+		i8254_walltimer = 2;
+
+	if (i8254_walltimer == 1) {
+		i8254_walltimer_sel = TIMER_SEL1;
+		i8254_walltimer_cntr = TIMER_CNTR1;
+		timer1_state = ACQUIRED;
+	} else {
+		i8254_walltimer_sel = TIMER_SEL2;
+		i8254_walltimer_cntr = TIMER_CNTR2;
+		timer2_state = ACQUIRED;
+	}
 	clock_lock();
 	outb(TIMER_MODE, TIMER_SEL0 | TIMER_SWSTROBE | TIMER_16BIT);
 	outb(TIMER_CNTR0, 2);	/* lsb */
 	outb(TIMER_CNTR0, 0);	/* msb */
-	outb(TIMER_MODE, TIMER_SELX | TIMER_RATEGEN | TIMER_16BIT);
-	outb(TIMER_CNTRX, 0);	/* lsb */
-	outb(TIMER_CNTRX, 0);	/* msb */
+	outb(TIMER_MODE, i8254_walltimer_sel | TIMER_RATEGEN | TIMER_16BIT);
+	outb(i8254_walltimer_cntr, 0);	/* lsb */
+	outb(i8254_walltimer_cntr, 0);	/* msb */
 	outb(IO_PPI, inb(IO_PPI) | 1);	/* bit 0: enable gate, bit 1: spkr */
 	clock_unlock();
 }
@@ -1118,7 +1117,10 @@ hw_i8254_timestamp(SYSCTL_HANDLER_ARGS)
 }
 
 SYSCTL_NODE(_hw, OID_AUTO, i8254, CTLFLAG_RW, 0, "I8254");
-SYSCTL_UINT(_hw_i8254, OID_AUTO, freq, CTLFLAG_RD, &cputimer_freq, 0, "");
+SYSCTL_UINT(_hw_i8254, OID_AUTO, freq, CTLFLAG_RD, &cputimer_freq, 0,
+    "frequency");
 SYSCTL_PROC(_hw_i8254, OID_AUTO, timestamp, CTLTYPE_STRING|CTLFLAG_RD,
 		0, 0, hw_i8254_timestamp, "A", "");
+SYSCTL_INT(_hw_i8254, OID_AUTO, walltimer, CTLFLAG_RD, &i8254_walltimer, 0,
+    "timer used for the wall time; either 1 or 2");
 
