@@ -33,7 +33,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.20 2004/03/31 07:21:38 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.21 2004/04/04 22:13:38 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -730,6 +730,7 @@ udp_output(inp, m, dstaddr, control, td)
 		error = in_pcbbind(inp, (struct sockaddr *)NULL, td);
 		if (error)
 			goto release;
+		in_pcbinswildcardhash(inp);
 	}
 
 	if (dstaddr != NULL) {		/* destination address specified */
