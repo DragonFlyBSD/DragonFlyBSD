@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)assert.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/assert.c,v 1.3 2005/01/06 17:32:44 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/assert.c,v 1.4 2005/01/06 17:34:25 joerg Exp $
  */
 
 #include <sys/syslog.h>
@@ -40,13 +40,10 @@
 #include <stdlib.h>
 
 void
-__assert(file, line, failedexpr)
-	const char *file, *failedexpr;
-	int line;
+__assert(const char *file, int line, const char *failedexpr)
 {
-	(void)fprintf(stderr,
-	    "assertion \"%s\" failed: file \"%s\", line %d\n",
-	    failedexpr, file, line);
+	fprintf(stderr, "assertion \"%s\" failed: file \"%s\", line %d\n",
+		failedexpr, file, line);
 	abort();
 	/* NOTREACHED */
 }
