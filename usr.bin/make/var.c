@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.99 2005/02/15 11:12:44 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.100 2005/02/15 11:15:11 okumoto Exp $
  */
 
 /*-
@@ -902,49 +902,16 @@ VarExpand(Var *v, GNode *ctxt, Boolean err)
 	return (result);
 }
 
-/*-
- *-----------------------------------------------------------------------
- * Var_Parse --
- *	Given the start of a variable invocation, extract the variable
- *	name and find its value, then modify it according to the
- *	specification.
- *
- * Results:
- *	The (possibly-modified) value of the variable or var_Error if the
- *	specification is invalid. The length of the specification is
- *	placed in *lengthPtr (for invalid specifications, this is just
- *	2 to skip the '$' and the following letter, or 1 if '$' was the
- *	last character in the string).
- *	A Boolean in *freePtr telling whether the returned string should
- *	be freed by the caller.
- *
- * Side Effects:
- *	None.
- *
- * Assumption:
- *	It is assumed that Var_Parse() is called with str[0] == '$'.
- *
- *-----------------------------------------------------------------------
+/*
+ * Check if brackets contain a variable name.
  */
-char *
-Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
-    Boolean *freePtr)
+static char *
+VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
+	Boolean *freePtr)
 {
-    const char	*input = foo;
+	const char	*input = foo;
+	char		*rw_str = foo;
 
-    if (input[1] == '\0') {
-	/*
-	 * Error, there is only a dollar sign in the input string.
-	 */
-	*freePtr = FALSE;
-	*lengthPtr = 1;
-	return (err ? var_Error : varNoError);
-
-    } else if (input[1] == OPEN_PAREN || input[1] == OPEN_BRACE) {
-	/*
-	 * Check if brackets contain a variable name.
-	 */
-	char	*rw_str = foo;
 	Var	*v;		/* Variable in invocation */
 	const char	*vname;
 	size_t	vlen;	/* length of variable name, after embedded variable
@@ -1556,7 +1523,7 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 			    break;
 			}
 			/*FALLTHRU*/
-#ifdef SUNSHCMD
+    #ifdef SUNSHCMD
 		    case 's':
 			if (tstr[1] == 'h' && (tstr[2] == endc || tstr[2] == ':')) {
 			    const char *error;
@@ -1573,10 +1540,10 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 			    break;
 			}
 			/*FALLTHRU*/
-#endif
+    #endif
 		    default:
 		    {
-#ifdef SYSVVARSUB
+    #ifdef SYSVVARSUB
 			/*
 			 * This can either be a bogus modifier or a System-V
 			 * substitution command.
@@ -1656,7 +1623,7 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 
 			    termc = endc;
 			} else
-#endif
+    #endif
 			{
 			    Error("Unknown modifier '%c'\n", *tstr);
 			    for (cp = tstr+1;
@@ -1731,11 +1698,16 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	} else {
 	    return (rw_str);
 	}
-    } else {
+}
+
+static char *
+VarParseShort(const char input[], GNode *ctxt, Boolean err, size_t *lengthPtr,
+	Boolean *freePtr)
+{
 	/*
 	 * If it's not bounded by braces of some sort, life is much simpler.
-	 * We just need to check for the first character and return the
-	 * value if it exists.
+	 * We just need to check for the first character and return the value
+	 * if it exists.
 	 */
 	Var	*v;		/* Variable in invocation */
 	char	name[2];
@@ -1745,50 +1717,96 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 
 	v = VarFind(name, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
 	if (v == NULL) {
-	    if ((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) {
-		/*
-		 * If substituting a local variable in a non-local context,
-		 * assume it's for dynamic source stuff. We have to handle
-		 * this specially and return the longhand for the variable
-		 * with the dollar sign escaped so it makes it back to the
-		 * caller. Only four of the local variables are treated
-		 * specially as they are the only four that will be set
-		 * when dynamic sources are expanded.
-		 */
-		/* XXX: It looks like $% and $! are reversed here */
-		*freePtr = FALSE;
-		*lengthPtr = 2;
-		switch (input[1]) {
-		    case '@':
-			return ("$(.TARGET)");
-		    case '%':
-			return ("$(.ARCHIVE)");
-		    case '*':
-			return ("$(.PREFIX)");
-		    case '!':
-			return ("$(.MEMBER)");
-		    default:
+		if ((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) {
+			/*
+			 * If substituting a local variable in a non-local
+			 * context, assume it's for dynamic source stuff. We
+			 * have to handle this specially and return the
+			 * longhand for the variable with the dollar sign
+			 * escaped so it makes it back to the caller. Only
+			 * four of the local variables are treated specially
+			 * as they are the only four that will be set when
+			 * dynamic sources are expanded.
+			 */
+			/* XXX: It looks like $% and $! are reversed here */
+			*freePtr = FALSE;
+			*lengthPtr = 2;
+			switch (input[1]) {
+			case '@':
+				return ("$(.TARGET)");
+			case '%':
+				return ("$(.ARCHIVE)");
+			case '*':
+				return ("$(.PREFIX)");
+			case '!':
+				return ("$(.MEMBER)");
+			default:
+				return (err ? var_Error : varNoError);
+			}
+		} else {
+			*freePtr = FALSE;
+			*lengthPtr = 2;
 			return (err ? var_Error : varNoError);
 		}
-	    } else {
-		*freePtr = FALSE;
-		*lengthPtr = 2;
-		return (err ? var_Error : varNoError);
-	    }
 	} else {
-	    char	*result;
+		char   *result;
 
-	    result = VarExpand(v, ctxt, err);
+		result = VarExpand(v, ctxt, err);
 
-	    if (v->flags & VAR_FROM_ENV) {
-		VarDestroy(v, TRUE);
-	    }
+		if (v->flags & VAR_FROM_ENV) {
+			VarDestroy(v, TRUE);
+		}
 
-	    *freePtr = TRUE;
-	    *lengthPtr = 2;
-	    return (result);
+		*freePtr = TRUE;
+		*lengthPtr = 2;
+		return (result);
 	}
-    }
+}
+
+/*-
+ *-----------------------------------------------------------------------
+ * Var_Parse --
+ *	Given the start of a variable invocation, extract the variable
+ *	name and find its value, then modify it according to the
+ *	specification.
+ *
+ * Results:
+ *	The (possibly-modified) value of the variable or var_Error if the
+ *	specification is invalid. The length of the specification is
+ *	placed in *lengthPtr (for invalid specifications, this is just
+ *	2 to skip the '$' and the following letter, or 1 if '$' was the
+ *	last character in the string).
+ *	A Boolean in *freePtr telling whether the returned string should
+ *	be freed by the caller.
+ *
+ * Side Effects:
+ *	None.
+ *
+ * Assumption:
+ *	It is assumed that Var_Parse() is called with str[0] == '$'.
+ *
+ *-----------------------------------------------------------------------
+ */
+char *
+Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
+    Boolean *freePtr)
+{
+	const char *input = foo;
+
+	if (input[1] == '\0') {
+		/* Error, there is only a dollar sign in the input string. */
+		*freePtr = FALSE;
+		*lengthPtr = 1;
+		return (err ? var_Error : varNoError);
+
+	} else if (input[1] == OPEN_PAREN || input[1] == OPEN_BRACE) {
+		/* multi letter variable name */
+		return (VarParseLong(foo, ctxt, err, lengthPtr, freePtr));
+
+	} else {
+		/* single letter variable name */
+		return (VarParseShort(input, ctxt, err, lengthPtr, freePtr));
+	}
 }
 
 /*-
