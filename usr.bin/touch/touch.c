@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)touch.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/touch/touch.c,v 1.11.2.2 2002/07/28 06:52:15 eric Exp $
- * $DragonFly: src/usr.bin/touch/touch.c,v 1.4 2004/08/15 15:06:58 joerg Exp $
+ * $DragonFly: src/usr.bin/touch/touch.c,v 1.5 2004/09/03 14:30:41 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -282,8 +282,8 @@ static int
 rw(const char *fname, const struct stat *sbp, int force)
 {
 	int fd, needed_chmod;
+	const char *warn_msg = NULL;
 	u_char byte;
-	const char *warn_msg = "%s";
 
 	/* Try regular files. */
 	if (!S_ISREG(sbp->st_mode)) {
@@ -325,7 +325,10 @@ rw(const char *fname, const struct stat *sbp, int force)
 	return(0);
 
 failed:
-	warn("%s", warn_msg);
+	if (warn_msg != NULL)
+		warnx(warn_msg, fname);
+	else
+		warn("%s", fname);
 	return(1);
 }
 
