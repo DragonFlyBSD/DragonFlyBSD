@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.14 2003/09/24 03:32:17 drhodus Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.15 2003/10/27 16:42:17 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -113,6 +113,9 @@
 #define	NR_INTRNAMES	(1 + ICU_LEN + 2 * ICU_LEN)
 
 static inthand2_t isa_strayintr;
+#if defined(FAST_HI) && defined(APIC_IO)
+static inthand2_t isa_wrongintr;
+#endif
 static void	init_i8259(void);
 
 void	*intr_unit[ICU_LEN*2];
@@ -277,7 +280,7 @@ icu_reinit()
 
 
 /*
- * Fill in default interrupt table (in case of spuruious interrupt
+ * Fill in default interrupt table (in case of spurious interrupt
  * during configuration of kernel, setup interrupt control unit
  */
 void
@@ -287,7 +290,7 @@ isa_defaultirq()
 
 	/* icu vectors */
 	for (i = 0; i < ICU_LEN; i++)
-		icu_unset(i, (inthand2_t *)NULL);
+		icu_unset(i, isa_strayintr);
 	init_i8259();
 }
 
@@ -371,13 +374,28 @@ isa_strayintr(void *vcookiep)
 	 * must be done before sending an EOI so it can't be done if
 	 * we are using AUTO_EOI_1.
 	 */
-	printf("STRAY %d\n", intr);
 	if (intrcnt[1 + intr] <= 5)
 		log(LOG_ERR, "stray irq %d\n", intr);
 	if (intrcnt[1 + intr] == 5)
 		log(LOG_CRIT,
 		    "too many stray irq %d's; not logging any more\n", intr);
 }
+
+#if defined(FAST_HI) && defined(APIC_IO)
+
+static void
+isa_wrongintr(void *vcookiep)
+{
+	int intr = (void **)vcookiep - &intr_unit[0];
+
+	if (intrcnt[1 + intr] <= 5)
+		log(LOG_ERR, "stray irq %d (APIC misprogrammed)\n", intr);
+	if (intrcnt[1 + intr] == 5)
+		log(LOG_CRIT,
+		    "too many stray irq %d's; not logging any more\n", intr);
+}
+
+#endif
 
 #if NISA > 0
 /*
@@ -482,7 +500,7 @@ found:
 int
 icu_setup(int intr, inthand2_t *handler, void *arg, u_int *maskptr, int flags)
 {
-#ifdef FAST_HI
+#if defined(FAST_HI) && defined(APIC_IO)
 	int		select;		/* the select register is 8 bits */
 	int		vector;
 	u_int32_t	value;		/* the window register is 32 bits */
@@ -508,8 +526,15 @@ icu_setup(int intr, inthand2_t *handler, void *arg, u_int *maskptr, int flags)
 	/* YYY  fast ints supported and mp protected but ... */
 	flags &= ~INTR_FAST;
 #endif
-#ifdef FAST_HI
+#if defined(FAST_HI) && defined(APIC_IO)
 	if (flags & INTR_FAST) {
+		/*
+		 * Install a spurious interrupt in the low space in case
+		 * the IO apic is not properly reprogrammed.
+		 */
+		vector = TPR_SLOW_INTS + intr;
+		setidt(vector, isa_wrongintr,
+		       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 		vector = TPR_FAST_INTS + intr;
 		setidt(vector, fastintr[intr],
 		       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
@@ -531,6 +556,8 @@ icu_setup(int intr, inthand2_t *handler, void *arg, u_int *maskptr, int flags)
 #endif
 	/*
 	 * Reprogram the vector in the IO APIC.
+	 *
+	 * XXX EOI/mask a pending (stray) interrupt on the old vector?
 	 */
 	if (int_to_apicintpin[intr].ioapic >= 0) {
 		select = int_to_apicintpin[intr].redirindex;
@@ -543,7 +570,7 @@ icu_setup(int intr, inthand2_t *handler, void *arg, u_int *maskptr, int flags)
 	setidt(ICU_OFFSET + intr,
 	       flags & INTR_FAST ? fastintr[intr] : slowintr[intr],
 	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-#endif /* FAST_HI */
+#endif /* FAST_HI && APIC_IO */
 	INTREN(1 << intr);
 	write_eflags(ef);
 	return (0);
@@ -556,8 +583,11 @@ icu_unset(intr, handler)
 {
 	u_long	ef;
 
-	if ((u_int)intr >= ICU_LEN || handler != intr_handler[intr])
+	if ((u_int)intr >= ICU_LEN || handler != intr_handler[intr]) {
+		printf("icu_unset: invalid handler %d %p/%p\n", intr, handler, 
+		    (((u_int)intr >= ICU_LEN) ? (void *)-1 : intr_handler[intr]));
 		return (EINVAL);
+	}
 
 	INTRDIS(1 << intr);
 	ef = read_eflags();
