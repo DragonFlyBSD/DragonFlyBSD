@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.14 2004/07/23 07:16:26 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.15 2004/09/14 23:04:38 joerg Exp $
  */
 
 /*
@@ -392,7 +392,7 @@ fxp_attach(device_t dev)
 
 	bzero(sc, sizeof(*sc));
 	sc->dev = dev;
-	callout_handle_init(&sc->stat_ch);
+	callout_init(&sc->fxp_stat_timer);
 	sysctl_ctx_init(&sc->sysctl_ctx);
 	mtx_init(&sc->sc_mtx, device_get_nameunit(dev), MTX_DEF | MTX_RECURSE);
 
@@ -1484,7 +1484,7 @@ fxp_tick(void *xsc)
 	/*
 	 * Schedule another timeout one second from now.
 	 */
-	sc->stat_ch = timeout(fxp_tick, sc, hz);
+	callout_reset(&sc->fxp_stat_timer, hz, fxp_tick, sc);
 }
 
 /*
@@ -1507,7 +1507,7 @@ fxp_stop(struct fxp_softc *sc)
 	/*
 	 * Cancel stats updater.
 	 */
-	untimeout(fxp_tick, sc, sc->stat_ch);
+	callout_stop(&sc->fxp_stat_timer);
 
 	/*
 	 * Issue software reset, which also unloads the microcode.
@@ -1816,7 +1816,7 @@ fxp_init(void *xsc)
 	/*
 	 * Start stats updater.
 	 */
-	sc->stat_ch = timeout(fxp_tick, sc, hz);
+	callout_reset(&sc->fxp_stat_timer, hz, fxp_tick, sc);
 }
 
 static int

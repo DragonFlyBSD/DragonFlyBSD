@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxpvar.h,v 1.17.2.6 2002/11/13 20:58:31 iedowse Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxpvar.h,v 1.4 2004/02/13 02:44:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxpvar.h,v 1.5 2004/09/14 23:04:38 joerg Exp $
  */
 
 /*
@@ -127,7 +127,7 @@ struct fxp_softc {
 	struct fxp_cb_tx *cbl_last;	/* last active TxCB in list */
 	struct fxp_stats *fxp_stats;	/* Pointer to interface stats */
 	int rx_idle_secs;		/* # of seconds RX has been idle */
-	struct callout_handle stat_ch;	/* Handle for canceling our stat timeout */
+	struct callout fxp_stat_timer;	/* Handle for stat timeouts */
 	struct fxp_cb_tx *cbl_base;	/* base of TxCB list */
 	struct fxp_cb_mcs *mcsp;	/* Pointer to mcast setup descriptor */
 	struct ifmedia sc_media;	/* media information */
