@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.h,v 1.3 1997/03/26 01:19:27 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.h,v 1.9.2.4 2002/07/30 06:22:40 imp Exp $ */
-/* $DragonFly: src/sys/net/if_media.h,v 1.2 2003/06/17 04:28:48 dillon Exp $ */
+/* $DragonFly: src/sys/net/if_media.h,v 1.3 2004/05/06 16:33:24 joerg Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -171,6 +171,7 @@ int	ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
  * IEEE 802.11 Wireless
  */
 #define	IFM_IEEE80211	0x00000080
+/* NB: 0,1,2 are auto, manual, none defined below */
 #define	IFM_IEEE80211_FH1	3	/* Frequency Hopping 1Mbps */
 #define	IFM_IEEE80211_FH2	4	/* Frequency Hopping 2Mbps */
 #define	IFM_IEEE80211_DS1	5	/* Direct Sequence 1Mbps */
@@ -178,19 +179,28 @@ int	ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 #define	IFM_IEEE80211_DS5	7	/* Direct Sequence 5.5Mbps */
 #define	IFM_IEEE80211_DS11	8	/* Direct Sequence 11Mbps */
 #define	IFM_IEEE80211_DS22	9	/* Direct Sequence 22Mbps */
-#define IFM_IEEE80211_ODFM6	10	/* ODFM 6Mbps */
-#define IFM_IEEE80211_ODFM9	11	/* ODFM 9Mbps */
-#define IFM_IEEE80211_ODFM12	12	/* ODFM 12Mbps */
-#define IFM_IEEE80211_ODFM18	13	/* ODFM 18Mbps */
-#define IFM_IEEE80211_ODFM24	14	/* ODFM 24Mbps */
-#define IFM_IEEE80211_ODFM36	15	/* ODFM 36Mbps */
-#define IFM_IEEE80211_ODFM48	16	/* ODFM 48Mbps */
-#define IFM_IEEE80211_ODFM54	17	/* ODFM 54Mbps */
-#define IFM_IEEE80211_ODFM72	18	/* ODFM 72Mbps */
+#define	IFM_IEEE80211_OFDM6	10	/* OFDM 6Mbps */
+#define	IFM_IEEE80211_OFDM9	11	/* OFDM 9Mbps */
+#define	IFM_IEEE80211_OFDM12	12	/* OFDM 12Mbps */
+#define	IFM_IEEE80211_OFDM18	13	/* OFDM 18Mbps */
+#define	IFM_IEEE80211_OFDM24	14	/* OFDM 24Mbps */
+#define	IFM_IEEE80211_OFDM36	15	/* OFDM 36Mbps */
+#define	IFM_IEEE80211_OFDM48	16	/* OFDM 48Mbps */
+#define	IFM_IEEE80211_OFDM54	17	/* OFDM 54Mbps */
+#define	IFM_IEEE80211_OFDM72	18	/* OFDM 72Mbps */
+
 #define	IFM_IEEE80211_ADHOC	0x00000100	/* Operate in Adhoc mode */
 #define	IFM_IEEE80211_HOSTAP	0x00000200	/* Operate in Host AP mode */
 #define	IFM_IEEE80211_IBSS	0x00000400	/* Operate in IBSS mode */
 #define	IFM_IEEE80211_IBSSMASTER 0x00000800	/* Operate as an IBSS master */
+#define	IFM_IEEE80211_TURBO	0x00001000	/* Operate in turbo mode */
+#define	IFM_IEEE80211_MONITOR	0x00002000	/* Operate in monitor mode */
+
+/* operating mode for multi-mode devices */
+#define	IFM_IEEE80211_11A	0x00010000	/* 5Ghz, OFDM mode */
+#define	IFM_IEEE80211_11B	0x00020000	/* Direct Sequence mode */
+#define	IFM_IEEE80211_11G	0x00030000	/* 2Ghz, CCK mode */
+#define	IFM_IEEE80211_FH	0x00040000	/* 2Ghz, GFSK mode */
 
 /*
  * Shared media sub-types
@@ -232,7 +242,8 @@ int	ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 #define	IFM_SUBTYPE(x)      ((x) & IFM_TMASK)
 #define	IFM_TYPE_OPTIONS(x) ((x) & IFM_OMASK)
 #define	IFM_INST(x)         (((x) & IFM_IMASK) >> IFM_ISHIFT)
-#define	IFM_OPTIONS(x)	((x) & (IFM_OMASK|IFM_GMASK))
+#define	IFM_OPTIONS(x)	    ((x) & (IFM_OMASK|IFM_GMASK))
+#define	IFM_MODE(x)	    ((x) & IFM_MMASK)
 
 #define	IFM_INST_MAX	IFM_INST(IFM_IMASK)
 
