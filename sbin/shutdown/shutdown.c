@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)shutdown.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/shutdown/shutdown.c,v 1.21.2.1 2001/07/30 10:38:08 dd Exp $
- * $DragonFly: src/sbin/shutdown/shutdown.c,v 1.3 2003/09/28 14:39:22 hmp Exp $
+ * $DragonFly: src/sbin/shutdown/shutdown.c,v 1.4 2003/11/01 17:16:02 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -88,15 +88,15 @@ static int dohalt, dopower, doreboot, killflg, mbuflen, oflag;
 static char mbuf[BUFSIZ];
 static const char *nosync, *whom;
 
-void badtime __P((void));
-void die_you_gravy_sucking_pig_dog __P((void));
-void finish __P((int));
-void getoffset __P((char *));
-void loop __P((void));
-void nolog __P((void));
-void timeout __P((int));
-void timewarn __P((int));
-void usage __P((const char *));
+void badtime(void);
+void die_you_gravy_sucking_pig_dog(void);
+void finish(int);
+void getoffset(char *);
+void loop(void);
+void nolog(void);
+void timeout(int);
+void timewarn(int);
+void usage(const char *);
 
 int
 main(int argc, char **argv)

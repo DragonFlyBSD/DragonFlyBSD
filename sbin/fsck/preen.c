@@ -32,7 +32,7 @@
  *
  * @(#)preen.c	8.5 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/preen.c,v 1.16 1999/12/30 16:32:40 peter Exp $
- * $DragonFly: src/sbin/fsck/preen.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/fsck/preen.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -64,8 +64,8 @@ struct disk {
 
 int	nrun, ndisks;
 
-static void addpart __P((char *name, char *fsname, long auxdata));
-static struct disk *finddisk __P((char *name));
+static void addpart(char *name, char *fsname, long auxdata);
+static struct disk *finddisk(char *name);
 static int startdisk __P((struct disk *dk,
 		int (*checkit)(char *, char *, long, int)));
 

@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsdb/fsdbutil.c,v 1.9.2.2 2002/03/20 13:39:02 joerg Exp $
- * $DragonFly: src/sbin/fsdb/fsdbutil.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/fsdb/fsdbutil.c,v 1.5 2003/11/01 17:15:59 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -47,9 +47,9 @@
 #include "fsdb.h"
 #include "fsck.h"
 
-static int charsperline __P((void));
-static int printindir __P((ufs_daddr_t blk, int level, char *bufp));
-static void printblocks __P((ino_t inum, struct dinode *dp));
+static int charsperline(void);
+static int printindir(ufs_daddr_t blk, int level, char *bufp);
+static void printblocks(ino_t inum, struct dinode *dp);
 
 char **
 crack(char *line, int *argc)

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1988 Regents of the University of California. All rights reserved.
  * @(#)slattach.c	4.6 (Berkeley) 6/1/90
  * $FreeBSD: src/sbin/slattach/slattach.c,v 1.36 1999/08/28 00:14:25 peter Exp $
- * $DragonFly: src/sbin/slattach/slattach.c,v 1.3 2003/09/28 14:39:22 hmp Exp $
+ * $DragonFly: src/sbin/slattach/slattach.c,v 1.4 2003/11/01 17:16:02 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -69,7 +69,7 @@ void	setup_line(int cflag);	/* configure terminal settings */
 void	slip_discipline();	/* switch to slip line discipline */
 void	configure_network();	/* configure slip interface */
 void	acquire_line();		/* get tty device as controlling terminal */
-static void usage __P((void));
+static void usage(void);
 
 int	fd = -1;
 char	*dev = (char *)0;	/* path name of the tty (e.g. /dev/tty01) */

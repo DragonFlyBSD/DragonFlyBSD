@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)init.c	8.1 (Berkeley) 7/15/93
  * $FreeBSD: src/sbin/init/init.c,v 1.38.2.8 2001/10/22 11:27:32 des Exp $
- * $DragonFly: src/sbin/init/init.c,v 1.3 2003/09/28 14:39:18 hmp Exp $
+ * $DragonFly: src/sbin/init/init.c,v 1.4 2003/11/01 17:15:59 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -92,31 +92,31 @@
 #define RESOURCE_WINDOW 	"default"
 #define RESOURCE_GETTY		"default"
 
-void handle __P((sig_t, ...));
-void delset __P((sigset_t *, ...));
+void handle(sig_t, ...);
+void delset(sigset_t *, ...);
 
-void stall __P((char *, ...));
-void warning __P((char *, ...));
-void emergency __P((char *, ...));
-void disaster __P((int));
-void badsys __P((int));
-int  runshutdown __P((void));
+void stall(char *, ...);
+void warning(char *, ...);
+void emergency(char *, ...);
+void disaster(int);
+void badsys(int);
+int  runshutdown(void);
 
 /*
  * We really need a recursive typedef...
  * The following at least guarantees that the return type of (*state_t)()
  * is sufficiently wide to hold a function pointer.
  */
-typedef long (*state_func_t) __P((void));
-typedef state_func_t (*state_t) __P((void));
+typedef long (*state_func_t)(void);
+typedef state_func_t (*state_t)(void);
 
-state_func_t single_user __P((void));
-state_func_t runcom __P((void));
-state_func_t read_ttys __P((void));
-state_func_t multi_user __P((void));
-state_func_t clean_ttys __P((void));
-state_func_t catatonia __P((void));
-state_func_t death __P((void));
+state_func_t single_user(void);
+state_func_t runcom(void);
+state_func_t read_ttys(void);
+state_func_t multi_user(void);
+state_func_t clean_ttys(void);
+state_func_t catatonia(void);
+state_func_t death(void);
 
 enum { AUTOBOOT, FASTBOOT } runcom_mode = AUTOBOOT;
 #define FALSE	0
@@ -125,10 +125,10 @@ enum { AUTOBOOT, FASTBOOT } runcom_mode = AUTOBOOT;
 int Reboot = FALSE;
 int howto = RB_AUTOBOOT;
 
-void transition __P((state_t));
+void transition(state_t);
 state_t requested_transition = runcom;
 
-void setctty __P((char *));
+void setctty(char *);
 
 typedef struct init_session {
 	int	se_index;		/* index of entry in ttys file */
@@ -150,30 +150,30 @@ typedef struct init_session {
 	struct	init_session *se_next;
 } session_t;
 
-void free_session __P((session_t *));
-session_t *new_session __P((session_t *, int, struct ttyent *));
+void free_session(session_t *);
+session_t *new_session(session_t *, int, struct ttyent *);
 session_t *sessions;
 
-char **construct_argv __P((char *));
-void start_window_system __P((session_t *));
-void collect_child __P((pid_t));
-pid_t start_getty __P((session_t *));
-void transition_handler __P((int));
-void alrm_handler __P((int));
-void setsecuritylevel __P((int));
-int getsecuritylevel __P((void));
-int setupargv __P((session_t *, struct ttyent *));
+char **construct_argv(char *);
+void start_window_system(session_t *);
+void collect_child(pid_t);
+pid_t start_getty(session_t *);
+void transition_handler(int);
+void alrm_handler(int);
+void setsecuritylevel(int);
+int getsecuritylevel(void);
+int setupargv(session_t *, struct ttyent *);
 #ifdef LOGIN_CAP
-void setprocresources __P((const char *));
+void setprocresources(const char *);
 #endif
 int clang;
 
-void clear_session_logs __P((session_t *));
+void clear_session_logs(session_t *);
 
-int start_session_db __P((void));
-void add_session __P((session_t *));
-void del_session __P((session_t *));
-session_t *find_session __P((pid_t));
+int start_session_db(void);
+void add_session(session_t *);
+void del_session(session_t *);
+session_t *find_session(pid_t);
 DB *session_db;
 
 /*

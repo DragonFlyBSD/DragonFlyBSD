@@ -32,7 +32,7 @@
  *
  * @(#)setup.c	8.10 (Berkeley) 5/9/95
  * $FreeBSD: src/sbin/fsck/setup.c,v 1.17.2.4 2002/06/24 05:10:41 dillon Exp $
- * $DragonFly: src/sbin/fsck/setup.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/fsck/setup.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
  */
 
 #define DKTYPENAMES
@@ -55,10 +55,10 @@ struct bufarea asblk;
 #define altsblock (*asblk.b_un.b_fs)
 #define POWEROF2(num)	(((num) & ((num) - 1)) == 0)
 
-static void badsb __P((int listerr, char *s));
-static int calcsb __P((char *dev, int devfd, struct fs *fs));
-static struct disklabel *getdisklabel __P((char *s, int fd));
-static int readsb __P((int listerr));
+static void badsb(int listerr, char *s);
+static int calcsb(char *dev, int devfd, struct fs *fs);
+static struct disklabel *getdisklabel(char *s, int fd);
+static int readsb(int listerr);
 
 /*
  * Read in a superblock finding an alternate if necessary.

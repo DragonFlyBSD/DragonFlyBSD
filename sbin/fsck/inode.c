@@ -32,7 +32,7 @@
  *
  * @(#)inode.c	8.8 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/inode.c,v 1.20 2000/02/28 20:02:41 mckusick Exp $
- * $DragonFly: src/sbin/fsck/inode.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/fsck/inode.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -50,7 +50,7 @@
 
 static ino_t startinum;
 
-static int iblock __P((struct inodesc *, long ilevel, quad_t isize));
+static int iblock(struct inodesc *, long ilevel, quad_t isize);
 
 int
 ckinode(struct dinode *dp, register struct inodesc *idesc)

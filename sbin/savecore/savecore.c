@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1986, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)savecore.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/sbin/savecore/savecore.c,v 1.28.2.13 2002/04/07 21:17:50 asmodai Exp $
- * $DragonFly: src/sbin/savecore/savecore.c,v 1.3 2003/09/28 14:39:22 hmp Exp $
+ * $DragonFly: src/sbin/savecore/savecore.c,v 1.4 2003/11/01 17:16:02 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -120,23 +120,23 @@ u_long	kernbase;			/* offset of kvm to core file */
 int	clear, compress, force, verbose;	/* flags */
 int	keep;			/* keep dump on device */
 
-void	 check_kmem __P((void));
-int	 check_space __P((void));
-void	 clear_dump __P((void));
-void	 DumpRead __P((int fd, void *bp, int size, off_t off, int flag));
-void	 DumpWrite __P((int fd, void *bp, int size, off_t off, int flag));
-int	 dump_exists __P((void));
-void     find_dev __P((dev_t));
-int	 get_crashtime __P((void));
-void	 get_dumpsize __P((void));
-void	 kmem_setup __P((void));
-void	 log __P((int, char *, ...)) __printf0like(2, 3);
-void	 Lseek __P((int, off_t, int));
-int	 Open __P((const char *, int rw));
-int	 Read __P((int, void *, int));
-void	 save_core __P((void));
-void	 usage __P((void));
-void	 Write __P((int, void *, int));
+void	 check_kmem(void);
+int	 check_space(void);
+void	 clear_dump(void);
+void	 DumpRead(int fd, void *bp, int size, off_t off, int flag);
+void	 DumpWrite(int fd, void *bp, int size, off_t off, int flag);
+int	 dump_exists(void);
+void     find_dev(dev_t);
+int	 get_crashtime(void);
+void	 get_dumpsize(void);
+void	 kmem_setup(void);
+void	 log(int, char *, ...) __printf0like(2, 3);
+void	 Lseek(int, off_t, int);
+int	 Open(const char *, int rw);
+int	 Read(int, void *, int);
+void	 save_core(void);
+void	 usage(void);
+void	 Write(int, void *, int);
 
 int
 main(int argc, char **argv)

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dumpfs.c	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/sbin/dumpfs/dumpfs.c,v 1.13.2.1 2001/01/22 18:10:11 iedowse Exp $
- * $DragonFly: src/sbin/dumpfs/dumpfs.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/dumpfs/dumpfs.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -62,10 +62,10 @@ union {
 
 long	dev_bsize = 1;
 
-int	dumpfs __P((char *));
-int	dumpcg __P((char *, int, int));
-void	pbits __P((void *, int));
-void	usage __P((void));
+int	dumpfs(char *);
+int	dumpcg(char *, int, int);
+void	pbits(void *, int);
+void	usage(void);
 
 int
 main(int argc, char **argv)

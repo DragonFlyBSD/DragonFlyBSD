@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.51.2.19 2003/01/28 11:02:56 fjoe Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.3 2003/09/28 14:39:18 hmp Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.4 2003/11/01 17:15:59 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -134,29 +134,29 @@ int listcloners = 0;
 char	addr_buf[MAXHOSTNAMELEN *2 + 1];	/*for getnameinfo()*/
 #endif
 
-void	Perror __P((const char *cmd));
-void	checkatrange __P((struct sockaddr_at *));
-int	ifconfig __P((int argc, char *const *argv, const struct afswtch *afp));
-void	notealias __P((const char *, int, int, const struct afswtch *afp));
-void	list_cloners __P((void));
-void	printb __P((const char *s, unsigned value, const char *bits));
-void	rt_xaddrs __P((caddr_t, caddr_t, struct rt_addrinfo *));
+void	Perror(const char *cmd);
+void	checkatrange(struct sockaddr_at *);
+int	ifconfig(int argc, char *const *argv, const struct afswtch *afp);
+void	notealias(const char *, int, int, const struct afswtch *afp);
+void	list_cloners(void);
+void	printb(const char *s, unsigned value, const char *bits);
+void	rt_xaddrs(caddr_t, caddr_t, struct rt_addrinfo *);
 void	status __P((const struct afswtch *afp, int addrcount,
 		    struct sockaddr_dl *sdl, struct if_msghdr *ifm,
 		    struct ifa_msghdr *ifam));
-void	tunnel_status __P((int s));
-void	usage __P((void));
-void	ifmaybeload __P((char *name));
+void	tunnel_status(int s);
+void	usage(void);
+void	ifmaybeload(char *name);
 
 #ifdef INET6
-void	in6_fillscopeid __P((struct sockaddr_in6 *sin6));
-int	prefix __P((void *, int));
-static	char *sec2str __P((time_t));
+void	in6_fillscopeid(struct sockaddr_in6 *sin6);
+int	prefix(void *, int);
+static	char *sec2str(time_t);
 int	explicit_prefix = 0;
 #endif
 
-typedef	void c_func __P((const char *cmd, int arg, int s, const struct afswtch *afp));
-typedef	void c_func2 __P((const char *arg, const char *arg2, int s, const struct afswtch *afp));
+typedef	void c_func(const char *cmd, int arg, int s, const struct afswtch *afp);
+typedef	void c_func2(const char *arg, const char *arg2, int s, const struct afswtch *afp);
 c_func	setatphase, setatrange;
 c_func	setifaddr, setifbroadaddr, setifdstaddr, setifnetmask;
 c_func2	settunnel;
@@ -174,7 +174,7 @@ c_func	setifflags, setifmetric, setifmtu, setifcap;
 c_func	clone_destroy;
 
 
-void clone_create __P((void));
+void clone_create(void);
 
 
 #define	NEXTARG		0xffffff
@@ -184,8 +184,8 @@ const
 struct	cmd {
 	const	char *c_name;
 	int	c_parameter;		/* NEXTARG means next argv */
-	void	(*c_func) __P((const char *, int, int, const struct afswtch *afp));
-	void	(*c_func2) __P((const char *, const char *, int, const struct afswtch *afp));
+	void	(*c_func)(const char *, int, int, const struct afswtch *afp);
+	void	(*c_func2)(const char *, const char *, int, const struct afswtch *afp);
 } cmds[] = {
 	{ "up",		IFF_UP,		setifflags } ,
 	{ "down",	-IFF_UP,	setifflags },
@@ -286,9 +286,9 @@ struct	cmd {
  * XNS support liberally adapted from code written at the University of
  * Maryland principally by James O'Toole and Chris Torek.
  */
-typedef	void af_status __P((int, struct rt_addrinfo *));
-typedef	void af_getaddr __P((const char *, int));
-typedef void af_getprefix __P((const char *, int));
+typedef	void af_status(int, struct rt_addrinfo *);
+typedef	void af_getaddr(const char *, int);
+typedef void af_getprefix(const char *, int);
 
 af_status	in_status, at_status, link_status;
 af_getaddr	in_getaddr, at_getaddr, link_getaddr;

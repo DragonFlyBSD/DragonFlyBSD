@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tunefs.c	8.2 (Berkeley) 4/19/94
  * $FreeBSD: src/sbin/tunefs/tunefs.c,v 1.11.2.5 2001/10/14 21:50:39 iedowse Exp $
- * $DragonFly: src/sbin/tunefs/tunefs.c,v 1.4 2003/09/28 14:39:22 hmp Exp $
+ * $DragonFly: src/sbin/tunefs/tunefs.c,v 1.5 2003/11/01 17:16:02 drhodus Exp $
  */
 
 /*
@@ -67,12 +67,12 @@ union {
 int fi;
 long dev_bsize = 1;
 
-void bwrite __P((daddr_t, const char *, int));
-int bread __P((daddr_t, char *, int));
-void getsb __P((struct fs *, const char *));
-void putsb __P((struct fs *, const char *, int));
-void usage __P((void));
-void printfs __P((void));
+void bwrite(daddr_t, const char *, int);
+int bread(daddr_t, char *, int);
+void getsb(struct fs *, const char *);
+void putsb(struct fs *, const char *, int);
+void usage(void);
+void printfs(void);
 
 int
 main(int argc, char **argv)

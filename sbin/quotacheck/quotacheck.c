@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quotacheck.c	8.3 (Berkeley) 1/29/94
  * $FreeBSD: src/sbin/quotacheck/quotacheck.c,v 1.11 1999/08/28 00:14:01 peter Exp $
- * $DragonFly: src/sbin/quotacheck/quotacheck.c,v 1.4 2003/09/28 14:39:21 hmp Exp $
+ * $DragonFly: src/sbin/quotacheck/quotacheck.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
  */
 
 /*
@@ -99,24 +99,24 @@ int	fi;			/* open disk file descriptor */
 u_long	highid[MAXQUOTAS];	/* highest addid()'ed identifier per type */
 
 struct fileusage *
-	 addid __P((u_long, int, char *));
-char	*blockcheck __P((char *));
-void	 bread __P((daddr_t, char *, long));
-extern int checkfstab __P((int, int, int (*)(struct fstab *),
-				int (*)(char *, char *, long, int)));
-int	 chkquota __P((char *, char *, struct quotaname *));
-void	 freeinodebuf __P((void));
+	 addid(u_long, int, char *);
+char	*blockcheck(char *);
+void	 bread(daddr_t, char *, long);
+extern int checkfstab(int, int, int (*)(struct fstab *),
+				int (*)(char *, char *, long, int));
+int	 chkquota(char *, char *, struct quotaname *);
+void	 freeinodebuf(void);
 struct dinode *
-	 getnextinode __P((ino_t));
-int	 getquotagid __P((void));
-int	 hasquota __P((struct fstab *, int, char **));
+	 getnextinode(ino_t);
+int	 getquotagid(void);
+int	 hasquota(struct fstab *, int, char **);
 struct fileusage *
-	 lookup __P((u_long, int));
-void	*needchk __P((struct fstab *));
-int	 oneof __P((char *, char*[], int));
-void	 resetinodebuf __P((void));
-int	 update __P((char *, char *, int));
-void	 usage __P((void));
+	 lookup(u_long, int);
+void	*needchk(struct fstab *);
+int	 oneof(char *, char*[], int);
+void	 resetinodebuf(void);
+int	 update(char *, char *, int);
+void	 usage(void);
 
 int
 main(int argc, char **argv)

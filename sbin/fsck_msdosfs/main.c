@@ -31,7 +31,7 @@
  *
  * $NetBSD: main.c,v 1.10 1997/10/01 02:18:14 enami Exp $
  * $FreeBSD: src/sbin/fsck_msdosfs/main.c,v 1.4.2.1 2001/08/01 05:47:56 obrien Exp $
- * $DragonFly: src/sbin/fsck_msdosfs/main.c,v 1.3 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/fsck_msdosfs/main.c,v 1.4 2003/11/01 17:15:58 drhodus Exp $
  */
 
 
@@ -57,8 +57,8 @@ int alwaysyes;		/* assume "yes" for all questions */
 int preen;		/* set when preening */
 int rdonly;		/* device is opened read only (supersedes above) */
 
-static void usage __P((void));
-int main __P((int, char **));
+static void usage(void);
+int main(int, char **);
 
 static void
 usage(void)

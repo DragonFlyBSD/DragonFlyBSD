@@ -32,7 +32,7 @@
  *
  * @(#)symtab.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/restore/symtab.c,v 1.7.2.1 2001/12/19 14:54:14 tobez Exp $
- * $DragonFly: src/sbin/restore/symtab.c,v 1.4 2003/09/28 14:39:21 hmp Exp $
+ * $DragonFly: src/sbin/restore/symtab.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
  */
 
 /*
@@ -70,9 +70,9 @@
 static struct entry **entry;
 static long entrytblsize;
 
-static void		 addino __P((ino_t, struct entry *));
-static struct entry	*lookupparent __P((char *));
-static void		 removeentry __P((struct entry *));
+static void		 addino(ino_t, struct entry *);
+static struct entry	*lookupparent(char *);
+static void		 removeentry(struct entry *);
 
 /*
  * Look up an entry by inode number

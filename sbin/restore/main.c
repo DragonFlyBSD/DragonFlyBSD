@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/restore/main.c,v 1.10.2.3 2001/10/02 08:30:17 cjc Exp $
- * $DragonFly: src/sbin/restore/main.c,v 1.4 2003/09/28 14:39:21 hmp Exp $
+ * $DragonFly: src/sbin/restore/main.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -67,8 +67,8 @@ time_t	dumptime;
 time_t	dumpdate;
 FILE 	*terminal;
 
-static void obsolete __P((int *, char **[]));
-static void usage __P((void));
+static void obsolete(int *, char **[]);
+static void usage(void);
 
 int
 main(int argc, char **argv)

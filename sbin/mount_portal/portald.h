@@ -37,7 +37,7 @@
  *	@(#)portald.h	8.1 (Berkeley) 6/5/93
  *
  * $FreeBSD: src/sbin/mount_portal/portald.h,v 1.5 1999/08/28 00:13:37 peter Exp $
- * $DragonFly: src/sbin/mount_portal/portald.h,v 1.3 2003/08/08 04:18:40 dillon Exp $
+ * $DragonFly: src/sbin/mount_portal/portald.h,v 1.4 2003/11/01 17:16:00 drhodus Exp $
  */
 
 #include <sys/cdefs.h>
@@ -80,6 +80,6 @@ extern int portal_tcplisten __P((struct portal_cred *,
 /*
  * Global functions
  */
-extern void activate __P((qelem *q, int so));
-extern char **conf_match __P((qelem *q, char *key));
-extern void conf_read __P((qelem *q, char *conf));
+extern void activate(qelem *q, int so);
+extern char **conf_match(qelem *q, char *key);
+extern void conf_read(qelem *q, char *conf);

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount.c	8.25 (Berkeley) 5/8/95
  * $FreeBSD: src/sbin/mount/mount.c,v 1.39.2.3 2001/08/01 08:26:23 obrien Exp $
- * $DragonFly: src/sbin/mount/mount.c,v 1.3 2003/09/28 14:39:18 hmp Exp $
+ * $DragonFly: src/sbin/mount/mount.c,v 1.4 2003/11/01 17:16:00 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -61,21 +61,21 @@
 
 int debug, fstab_style, verbose;
 
-char   *catopt __P((char *, const char *));
+char   *catopt(char *, const char *);
 struct statfs
-       *getmntpt __P((const char *));
-int	hasopt __P((const char *, const char *));
-int	ismounted __P((struct fstab *, struct statfs *, int));
-int	isremountable __P((const char *));
-void	mangle __P((char *, int *, const char **));
-char   *update_options __P((char *, char *, int));
+       *getmntpt(const char *);
+int	hasopt(const char *, const char *);
+int	ismounted(struct fstab *, struct statfs *, int);
+int	isremountable(const char *);
+void	mangle(char *, int *, const char **);
+char   *update_options(char *, char *, int);
 int	mountfs __P((const char *, const char *, const char *,
 			int, const char *, const char *));
-void	remopt __P((char *, const char *));
-void	prmount __P((struct statfs *));
-void	putfsent __P((const struct statfs *));
-void	usage __P((void));
-char   *flags2opts __P((int));
+void	remopt(char *, const char *);
+void	prmount(struct statfs *);
+void	putfsent(const struct statfs *);
+void	usage(void);
+char   *flags2opts(int);
 
 /* Map from mount options to printable formats. */
 static struct opt {

@@ -32,7 +32,7 @@
  *
  * @(#)itime.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/dump/itime.c,v 1.3.2.1 2001/08/01 06:29:35 obrien Exp $
- * $DragonFly: src/sbin/dump/itime.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/dump/itime.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -69,10 +69,10 @@ struct	dumpdates **ddatev = 0;
 int	nddates = 0;
 int	ddates_in = 0;
 
-static	void dumprecout __P((FILE *, struct dumpdates *));
-static	int getrecord __P((FILE *, struct dumpdates *));
-static	int makedumpdate __P((struct dumpdates *, char *));
-static	void readdumptimes __P((FILE *));
+static	void dumprecout(FILE *, struct dumpdates *);
+static	int getrecord(FILE *, struct dumpdates *);
+static	int makedumpdate(struct dumpdates *, char *);
+static	void readdumptimes(FILE *);
 
 void
 initdumptimes(void)

@@ -32,7 +32,7 @@
  *
  * @(#)utilities.c	8.6 (Berkeley) 5/19/95
  * $FreeBSD: src/sbin/fsck/utilities.c,v 1.11.2.3 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/utilities.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/fsck/utilities.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -48,7 +48,7 @@
 
 long	diskreads, totalreads;	/* Disk cache statistics */
 
-static void rwerror __P((char *mesg, ufs_daddr_t blk));
+static void rwerror(char *mesg, ufs_daddr_t blk);
 
 int
 ftypeok(struct dinode *dp)

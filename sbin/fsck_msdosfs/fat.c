@@ -31,7 +31,7 @@
  *
  * $NetBSD: fat.c,v 1.12 2000/10/10 20:24:52 is Exp $
  * $FreeBSD: src/sbin/fsck_msdosfs/fat.c,v 1.1.2.1 2001/08/01 05:47:56 obrien Exp $
- * $DragonFly: src/sbin/fsck_msdosfs/fat.c,v 1.3 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/fsck_msdosfs/fat.c,v 1.4 2003/11/01 17:15:58 drhodus Exp $
  */
 
 
@@ -46,10 +46,10 @@
 #include "ext.h"
 #include "fsutil.h"
 
-static int checkclnum __P((struct bootblock *, int, cl_t, cl_t *));
-static int clustdiffer __P((cl_t, cl_t *, cl_t *, int));
-static int tryclear __P((struct bootblock *, struct fatEntry *, cl_t, cl_t *));
-static int _readfat __P((int, struct bootblock *, int, u_char **));
+static int checkclnum(struct bootblock *, int, cl_t, cl_t *);
+static int clustdiffer(cl_t, cl_t *, cl_t *, int);
+static int tryclear(struct bootblock *, struct fatEntry *, cl_t, cl_t *);
+static int _readfat(int, struct bootblock *, int, u_char **);
 
 /*
  * Check a cluster number for valid value

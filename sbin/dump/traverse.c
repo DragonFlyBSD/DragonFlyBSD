@@ -32,7 +32,7 @@
  *
  * @(#)traverse.c	8.7 (Berkeley) 6/15/95
  * $FreeBSD: src/sbin/dump/traverse.c,v 1.10.2.6 2003/04/14 20:10:35 johan Exp $
- * $DragonFly: src/sbin/dump/traverse.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/dump/traverse.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -72,7 +72,7 @@ typedef	long fsizeT;
 
 static	int dirindir __P((ino_t ino, daddr_t blkno, int level, long *size,
     long *tapesize, int nodump));
-static	void dmpindir __P((ino_t ino, daddr_t blk, int level, fsizeT *size));
+static	void dmpindir(ino_t ino, daddr_t blk, int level, fsizeT *size);
 static	int searchdir __P((ino_t ino, daddr_t blkno, long size, long filesize,
     long *tapesize, int nodump));
 

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)startslip.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/startslip/startslip.c,v 1.31.2.1 2000/05/07 18:26:51 joe Exp $
- * $DragonFly: src/sbin/startslip/startslip.c,v 1.3 2003/09/28 14:39:22 hmp Exp $
+ * $DragonFly: src/sbin/startslip/startslip.c,v 1.4 2003/11/01 17:16:02 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -95,10 +95,10 @@ int	debug = 0;
 #endif
 #define	printd	if (debug) printf
 
-int carrier __P((void));
-void down __P((int));
-int getline __P((char *, int, int, time_t));
-static void usage __P((void));
+int carrier(void);
+void down(int);
+int getline(char *, int, int, time_t);
+static void usage(void);
 
 int
 main(int argc, char **argv)

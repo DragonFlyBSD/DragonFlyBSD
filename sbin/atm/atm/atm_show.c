@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm_show.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm_show.c,v 1.3 2003/09/28 14:39:16 hmp Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm_show.c,v 1.4 2003/11/01 17:15:57 drhodus Exp $
  */
 
 /*
@@ -58,9 +58,9 @@
 /*
  * Local functions
  */
-static int	vcc_compare __P((const void *, const void *));
-static int	ip_vcc_compare __P((const void *, const void *));
-static int	arp_compare __P((const void *, const void *));
+static int	vcc_compare(const void *, const void *);
+static int	ip_vcc_compare(const void *, const void *);
+static int	arp_compare(const void *, const void *);
 
 
 /*

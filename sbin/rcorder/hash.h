@@ -37,7 +37,7 @@
  *
  *	from: @(#)hash.h	8.1 (Berkeley) 6/6/93
  *	$NetBSD: hash.h,v 1.1.1.1 1999/11/19 04:30:56 mrg Exp $
- *	$DragonFly: src/sbin/rcorder/hash.h,v 1.1 2003/07/24 06:35:38 dillon Exp $
+ *	$DragonFly: src/sbin/rcorder/hash.h,v 1.2 2003/11/01 17:16:01 drhodus Exp $
  */
 
 /* hash.h --
@@ -119,12 +119,12 @@ typedef struct Hash_Search {
 
 #define	Hash_Size(n)	(((n) + sizeof (int) - 1) / sizeof (int))
 
-void Hash_InitTable __P((Hash_Table *, int));
-void Hash_DeleteTable __P((Hash_Table *));
-Hash_Entry *Hash_FindEntry __P((Hash_Table *, char *));
-Hash_Entry *Hash_CreateEntry __P((Hash_Table *, char *, Boolean *));
-void Hash_DeleteEntry __P((Hash_Table *, Hash_Entry *));
-Hash_Entry *Hash_EnumFirst __P((Hash_Table *, Hash_Search *));
-Hash_Entry *Hash_EnumNext __P((Hash_Search *));
+void Hash_InitTable(Hash_Table *, int);
+void Hash_DeleteTable(Hash_Table *);
+Hash_Entry *Hash_FindEntry(Hash_Table *, char *);
+Hash_Entry *Hash_CreateEntry(Hash_Table *, char *, Boolean *);
+void Hash_DeleteEntry(Hash_Table *, Hash_Entry *);
+Hash_Entry *Hash_EnumFirst(Hash_Table *, Hash_Search *);
+Hash_Entry *Hash_EnumNext(Hash_Search *);
 
 #endif /* _HASH */

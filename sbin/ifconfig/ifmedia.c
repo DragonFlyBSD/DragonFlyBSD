@@ -1,6 +1,6 @@
 /*	$NetBSD: ifconfig.c,v 1.34 1997/04/21 01:17:58 lukem Exp $	*/
 /* $FreeBSD: src/sbin/ifconfig/ifmedia.c,v 1.6.2.3 2001/11/14 04:35:07 yar Exp $ */
-/* $DragonFly: src/sbin/ifconfig/ifmedia.c,v 1.3 2003/09/28 14:39:18 hmp Exp $ */
+/* $DragonFly: src/sbin/ifconfig/ifmedia.c,v 1.4 2003/11/01 17:15:59 drhodus Exp $ */
 
 /*
  * Copyright (c) 1997 Jason R. Thorpe.
@@ -90,15 +90,15 @@
 
 #include "ifconfig.h"
 
-static void	domediaopt __P((const char *, int, int));
-static int	get_media_subtype __P((int, const char *));
-static int	get_media_options __P((int, const char *));
-static int	lookup_media_word __P((struct ifmedia_description *, const char *));
-static void	print_media_word __P((int, int));
-static void	print_media_word_ifconfig __P((int));
+static void	domediaopt(const char *, int, int);
+static int	get_media_subtype(int, const char *);
+static int	get_media_options(int, const char *);
+static int	lookup_media_word(struct ifmedia_description *, const char *);
+static void	print_media_word(int, int);
+static void	print_media_word_ifconfig(int);
 
-static struct ifmedia_description *get_toptype_desc __P((int));
-static struct ifmedia_type_to_subtype *get_toptype_ttos __P((int));
+static struct ifmedia_description *get_toptype_desc(int);
+static struct ifmedia_type_to_subtype *get_toptype_ttos(int);
 static struct ifmedia_description *get_subtype_desc __P((int,
     struct ifmedia_type_to_subtype *ttos));
 

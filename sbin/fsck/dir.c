@@ -32,7 +32,7 @@
  *
  * @(#)dir.c	8.8 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/dir.c,v 1.15 1999/08/28 00:12:45 peter Exp $
- * $DragonFly: src/sbin/fsck/dir.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/fsck/dir.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -59,14 +59,14 @@ struct	odirtemplate odirhead = {
 	0, DIRBLKSIZ - 12, 2, ".."
 };
 
-static int chgino __P((struct inodesc *));
-static int dircheck __P((struct inodesc *, struct direct *));
-static int expanddir __P((struct dinode *dp, char *name));
-static void freedir __P((ino_t ino, ino_t parent));
-static struct direct *fsck_readdir __P((struct inodesc *));
-static struct bufarea *getdirblk __P((ufs_daddr_t blkno, long size));
-static int lftempname __P((char *bufp, ino_t ino));
-static int mkentry __P((struct inodesc *));
+static int chgino(struct inodesc *);
+static int dircheck(struct inodesc *, struct direct *);
+static int expanddir(struct dinode *dp, char *name);
+static void freedir(ino_t ino, ino_t parent);
+static struct direct *fsck_readdir(struct inodesc *);
+static struct bufarea *getdirblk(ufs_daddr_t blkno, long size);
+static int lftempname(char *bufp, ino_t ino);
+static int mkentry(struct inodesc *);
 
 /*
  * Propagate connected state through the tree.

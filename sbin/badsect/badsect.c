@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1981, 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)badsect.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/badsect/badsect.c,v 1.7.2.2 2001/07/30 10:30:04 dd Exp $
- * $DragonFly: src/sbin/badsect/badsect.c,v 1.4 2003/09/28 14:39:16 hmp Exp $
+ * $DragonFly: src/sbin/badsect/badsect.c,v 1.5 2003/11/01 17:15:57 drhodus Exp $
  */
 
 /*
@@ -78,8 +78,8 @@ long	dev_bsize = 1;
 
 char buf[MAXBSIZE];
 
-void	rdfs __P((daddr_t, int, char *));
-int	chkuse __P((daddr_t, int));
+void	rdfs(daddr_t, int, char *);
+int	chkuse(daddr_t, int);
 
 static void
 usage(void)

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dmesg.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/dmesg/dmesg.c,v 1.11.2.3 2001/08/08 22:32:15 obrien Exp $
- * $DragonFly: src/sbin/dmesg/dmesg.c,v 1.3 2003/09/28 14:39:16 hmp Exp $
+ * $DragonFly: src/sbin/dmesg/dmesg.c,v 1.4 2003/11/01 17:15:58 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -56,7 +56,7 @@ struct nlist nl[] = {
 	{ NULL },
 };
 
-void usage __P((void));
+void usage(void);
 
 #define	KREAD(addr, var) \
 	kvm_read(kd, addr, &var, sizeof(var)) != sizeof(var)

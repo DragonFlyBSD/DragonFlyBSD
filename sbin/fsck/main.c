@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/14/95
  * $FreeBSD: src/sbin/fsck/main.c,v 1.21.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/main.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/fsck/main.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -53,12 +53,12 @@
 
 #include "fsck.h"
 
-static int argtoi __P((int flag, char *req, char *str, int base));
-static int docheck __P((struct fstab *fsp));
+static int argtoi(int flag, char *req, char *str, int base);
+static int docheck(struct fstab *fsp);
 static int checkfilesys __P((char *filesys, char *mntpt, long auxdata,
 		int child));
-static struct statfs *getmntpt __P((const char *));
-int main __P((int argc, char *argv[]));
+static struct statfs *getmntpt(const char *);
+int main(int argc, char *argv[]);
 
 int
 main(int argc, char **argv)

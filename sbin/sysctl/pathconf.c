@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pathconf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/sbin/sysctl/pathconf.c,v 1.4 1999/08/28 00:14:30 peter Exp $
- * $DragonFly: src/sbin/sysctl/Attic/pathconf.c,v 1.3 2003/09/28 14:39:22 hmp Exp $
+ * $DragonFly: src/sbin/sysctl/Attic/pathconf.c,v 1.4 2003/11/01 17:16:02 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -72,10 +72,10 @@ struct list pclist = { pcnames, PC_MAXID };
 
 int	Aflag, aflag, nflag, wflag, stdinflag;
 
-int findname __P((char *, char *, char**, struct list *));
-void listall __P((char *, struct list *));
-void parse __P((char *, char *, int));
-static void usage __P((void));
+int findname(char *, char *, char**, struct list *);
+void listall(char *, struct list *);
+void parse(char *, char *, int);
+static void usage(void);
 
 int
 main(int argc, char **argv)

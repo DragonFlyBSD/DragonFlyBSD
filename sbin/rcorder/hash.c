@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: hash.c,v 1.1.1.1 1999/11/19 04:30:56 mrg Exp $
- * $DragonFly: src/sbin/rcorder/hash.c,v 1.2 2003/09/28 14:39:21 hmp Exp $
+ * $DragonFly: src/sbin/rcorder/hash.c,v 1.3 2003/11/01 17:16:01 drhodus Exp $
  */
 
 #ifdef MAKE_BOOTSTRAP
@@ -77,7 +77,7 @@ __RCSID("$NetBSD: hash.c,v 1.1.1.1 1999/11/19 04:30:56 mrg Exp $");
  * defined:
  */
 
-static void RebuildTable __P((Hash_Table *));
+static void RebuildTable(Hash_Table *);
 
 /*
  * The following defines the ratio of # entries to # buckets

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/route/route.c,v 1.40.2.11 2003/02/27 23:10:10 ru Exp $
- * $DragonFly: src/sbin/route/route.c,v 1.3 2003/09/28 14:39:22 hmp Exp $
+ * $DragonFly: src/sbin/route/route.c,v 1.4 2003/11/01 17:16:02 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -99,19 +99,19 @@ int	locking, lockrest, debugonly;
 struct	rt_metrics rt_metrics;
 u_long  rtm_inits;
 uid_t	uid;
-int	atalk_aton __P((const char *, struct at_addr *));
-char	*atalk_ntoa __P((struct at_addr));
+int	atalk_aton(const char *, struct at_addr *);
+char	*atalk_ntoa(struct at_addr);
 const char	*routename(), *netname();
 void	flushroutes(), newroute(), monitor(), sockaddr(), sodump(), bprintf();
 void	print_getmsg(), print_rtmsg(), pmsg_common(), pmsg_addrs(), mask_addr();
 #ifdef INET6
-static int inet6_makenetandmask __P((struct sockaddr_in6 *, char *));
+static int inet6_makenetandmask(struct sockaddr_in6 *, char *);
 #endif
 int	getaddr(), rtmsg(), x25_makemask();
 int	prefixlen();
 extern	char *iso_ntoa();
 
-void usage __P((const char *)) __dead2;
+void usage(const char *) __dead2;
 
 void
 usage(const char *cp)

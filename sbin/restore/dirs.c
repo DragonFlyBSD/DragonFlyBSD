@@ -37,7 +37,7 @@
  *
  * @(#)dirs.c	8.7 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/dirs.c,v 1.14.2.5 2001/10/15 13:44:45 dd Exp $
- * $DragonFly: src/sbin/restore/dirs.c,v 1.4 2003/09/28 14:39:21 hmp Exp $
+ * $DragonFly: src/sbin/restore/dirs.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -116,16 +116,16 @@ struct odirect {
 	char	d_name[ODIRSIZ];
 };
 
-static struct inotab	*allocinotab __P((ino_t, struct dinode *, long));
-static void		 dcvt __P((struct odirect *, struct direct *));
-static void		 flushent __P((void));
-static struct inotab	*inotablookup __P((ino_t));
-static RST_DIR		*opendirfile __P((const char *));
-static void		 putdir __P((char *, long));
-static void		 putent __P((struct direct *));
-static void		 rst_seekdir __P((RST_DIR *, long, long));
-static long		 rst_telldir __P((RST_DIR *));
-static struct direct	*searchdir __P((ino_t, char *));
+static struct inotab	*allocinotab(ino_t, struct dinode *, long);
+static void		 dcvt(struct odirect *, struct direct *);
+static void		 flushent(void);
+static struct inotab	*inotablookup(ino_t);
+static RST_DIR		*opendirfile(const char *);
+static void		 putdir(char *, long);
+static void		 putent(struct direct *);
+static void		 rst_seekdir(RST_DIR *, long, long);
+static long		 rst_telldir(RST_DIR *);
+static struct direct	*searchdir(ino_t, char *);
 
 /*
  *	Extract directory contents, building up a directory structure

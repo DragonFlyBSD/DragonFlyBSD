@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/kget/kget.c,v 1.4.2.2 2001/08/01 08:19:51 obrien Exp $
- * $DragonFly: src/sbin/kget/kget.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/kget/kget.c,v 1.3 2003/11/01 17:15:59 drhodus Exp $
  */
 
 #include <stdio.h>
@@ -69,7 +69,7 @@ main(int argc, char *argv[])
 		perror("buffer sizing");
 		exit(-1);
 	}
-	buf=(char *)malloc(len*sizeof(char));
+	buf=malloc(len*sizeof(char));
 	if (buf==NULL) {
 		perror("malloc");
 		exit(-1);

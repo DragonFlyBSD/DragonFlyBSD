@@ -37,7 +37,7 @@
  *
  * @(#)tape.c	8.9 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/tape.c,v 1.16.2.8 2002/06/30 22:57:52 iedowse Exp $
- * $DragonFly: src/sbin/restore/tape.c,v 1.4 2003/09/28 14:39:22 hmp Exp $
+ * $DragonFly: src/sbin/restore/tape.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -87,23 +87,23 @@ static int	Qcvt;		/* Swap quads (for sun) */
 
 #define	FLUSHTAPEBUF()	blkcnt = ntrec + 1
 
-static void	 accthdr __P((struct s_spcl *));
-static int	 checksum __P((int *));
-static void	 findinode __P((struct s_spcl *));
-static void	 findtapeblksize __P((void));
-static int	 gethead __P((struct s_spcl *));
-static void	 readtape __P((char *));
-static void	 setdumpnum __P((void));
-static u_long	 swabl __P((u_long));
-static u_char	*swablong __P((u_char *, int));
-static u_char	*swabshort __P((u_char *, int));
-static void	 terminateinput __P((void));
-static void	 xtrfile __P((char *, long));
-static void	 xtrlnkfile __P((char *, long));
-static void	 xtrlnkskip __P((char *, long));
-static void	 xtrmap __P((char *, long));
-static void	 xtrmapskip __P((char *, long));
-static void	 xtrskip __P((char *, long));
+static void	 accthdr(struct s_spcl *);
+static int	 checksum(int *);
+static void	 findinode(struct s_spcl *);
+static void	 findtapeblksize(void);
+static int	 gethead(struct s_spcl *);
+static void	 readtape(char *);
+static void	 setdumpnum(void);
+static u_long	 swabl(u_long);
+static u_char	*swablong(u_char *, int);
+static u_char	*swabshort(u_char *, int);
+static void	 terminateinput(void);
+static void	 xtrfile(char *, long);
+static void	 xtrlnkfile(char *, long);
+static void	 xtrlnkskip(char *, long);
+static void	 xtrmap(char *, long);
+static void	 xtrmapskip(char *, long);
+static void	 xtrskip(char *, long);
 
 static int readmapflag;
 

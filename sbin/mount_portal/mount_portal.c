@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_portal.c	8.6 (Berkeley) 4/26/95
  * $FreeBSD: src/sbin/mount_portal/mount_portal.c,v 1.16 1999/10/09 11:54:11 phk Exp $
- * $DragonFly: src/sbin/mount_portal/mount_portal.c,v 1.3 2003/09/28 14:39:19 hmp Exp $
+ * $DragonFly: src/sbin/mount_portal/mount_portal.c,v 1.4 2003/11/01 17:16:00 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -64,7 +64,7 @@ struct mntopt mopts[] = {
 	{ NULL }
 };
 
-static void usage __P((void)) __dead2;
+static void usage(void) __dead2;
 
 static sig_atomic_t readcf;	/* Set when SIGHUP received */
 

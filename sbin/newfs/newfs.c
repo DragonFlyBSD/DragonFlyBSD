@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)newfs.c	8.13 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/newfs/newfs.c,v 1.30.2.9 2003/05/13 12:03:55 joerg Exp $
- * $DragonFly: src/sbin/newfs/newfs.c,v 1.4 2003/09/28 14:39:20 hmp Exp $
+ * $DragonFly: src/sbin/newfs/newfs.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
  */
 
 /*
@@ -200,8 +200,8 @@ int	unlabeled;
 char	device[MAXPATHLEN];
 char	*progname;
 
-extern void mkfs __P((struct partition *, char *, int, int));
-static void usage __P((void));
+extern void mkfs(struct partition *, char *, int, int);
+static void usage(void);
 
 int
 main(int argc, char **argv)

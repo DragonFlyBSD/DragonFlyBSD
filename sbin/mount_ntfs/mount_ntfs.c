@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_ntfs/mount_ntfs.c,v 1.3.2.2 2001/10/12 22:08:43 semenu Exp $
- * $DragonFly: src/sbin/mount_ntfs/mount_ntfs.c,v 1.4 2003/09/28 14:39:19 hmp Exp $
+ * $DragonFly: src/sbin/mount_ntfs/mount_ntfs.c,v 1.5 2003/11/01 17:16:00 drhodus Exp $
  *
  */
 
@@ -57,12 +57,12 @@ static struct mntopt mopts[] = {
 	{ NULL }
 };
 
-static gid_t	a_gid __P((char *));
-static uid_t	a_uid __P((char *));
-static mode_t	a_mask __P((char *));
-static void	usage __P((void)) __dead2;
+static gid_t	a_gid(char *);
+static uid_t	a_uid(char *);
+static mode_t	a_mask(char *);
+static void	usage(void) __dead2;
 
-static void     load_u2wtable __P((struct ntfs_args *, char *));
+static void     load_u2wtable(struct ntfs_args *, char *);
 
 int
 main(int argc, char **argv)

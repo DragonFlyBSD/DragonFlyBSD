@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_msdos/mount_msdos.c,v 1.19.2.1 2000/07/20 10:35:13 kris Exp $
- * $DragonFly: src/sbin/mount_msdos/mount_msdos.c,v 1.4 2003/09/28 14:39:19 hmp Exp $
+ * $DragonFly: src/sbin/mount_msdos/mount_msdos.c,v 1.5 2003/11/01 17:16:00 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -72,12 +72,12 @@ static struct mntopt mopts[] = {
 	{ NULL }
 };
 
-static gid_t	a_gid __P((char *));
-static uid_t	a_uid __P((char *));
-static mode_t	a_mask __P((char *));
-static void	usage __P((void)) __dead2;
-static void     load_u2wtable __P((struct msdosfs_args *, char *));
-static void     load_ultable __P((struct msdosfs_args *, char *));
+static gid_t	a_gid(char *);
+static uid_t	a_uid(char *);
+static mode_t	a_mask(char *);
+static void	usage(void) __dead2;
+static void     load_u2wtable(struct msdosfs_args *, char *);
+static void     load_ultable(struct msdosfs_args *, char *);
 
 int
 main(int argc, char **argv)

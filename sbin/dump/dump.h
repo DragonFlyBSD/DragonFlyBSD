@@ -33,7 +33,7 @@
  *	@(#)dump.h	8.2 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/dump/dump.h,v 1.7.6.4 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/dump.h,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/dump/dump.h,v 1.3 2003/11/01 17:15:58 drhodus Exp $
  */
 
 #define MAXINOPB	(MAXBSIZE / sizeof(struct dinode))
@@ -97,53 +97,53 @@ int	tp_bshift;	/* log2(TP_BSIZE) */
 #endif
 
 /* operator interface functions */
-void	broadcast __P((char *message));
-void	infosch __P((int));
-void	lastdump __P((int arg));	/* int should be char */
-void	msg __P((const char *fmt, ...)) __printflike(1, 2);
-void	msgtail __P((const char *fmt, ...)) __printflike(1, 2);
-int	query __P((char *question));
-void	quit __P((const char *fmt, ...)) __printflike(1, 2);
-void	timeest __P((void));
-time_t	unctime __P((char *str));
+void	broadcast(char *message);
+void	infosch(int);
+void	lastdump(int arg);	/* int should be char */
+void	msg(const char *fmt, ...) __printflike(1, 2);
+void	msgtail(const char *fmt, ...) __printflike(1, 2);
+int	query(char *question);
+void	quit(const char *fmt, ...) __printflike(1, 2);
+void	timeest(void);
+time_t	unctime(char *str);
 
 /* mapping rouintes */
 struct	dinode;
-long	blockest __P((struct dinode *dp));
-int	mapfiles __P((ino_t maxino, long *tapesize));
-int	mapdirs __P((ino_t maxino, long *tapesize));
+long	blockest(struct dinode *dp);
+int	mapfiles(ino_t maxino, long *tapesize);
+int	mapdirs(ino_t maxino, long *tapesize);
 
 /* file dumping routines */
-void	blksout __P((daddr_t *blkp, int frags, ino_t ino));
-void	bread __P((daddr_t blkno, char *buf, int size));
-void	dumpino __P((struct dinode *dp, ino_t ino));
-void	dumpmap __P((char *map, int type, ino_t ino));
-void	writeheader __P((ino_t ino));
+void	blksout(daddr_t *blkp, int frags, ino_t ino);
+void	bread(daddr_t blkno, char *buf, int size);
+void	dumpino(struct dinode *dp, ino_t ino);
+void	dumpmap(char *map, int type, ino_t ino);
+void	writeheader(ino_t ino);
 
 /* tape writing routines */
-int	alloctape __P((void));
-void	close_rewind __P((void));
-void	dumpblock __P((daddr_t blkno, int size));
-void	startnewtape __P((int top));
-void	trewind __P((void));
-void	writerec __P((char *dp, int isspcl));
+int	alloctape(void);
+void	close_rewind(void);
+void	dumpblock(daddr_t blkno, int size);
+void	startnewtape(int top);
+void	trewind(void);
+void	writerec(char *dp, int isspcl);
 
-void	Exit __P((int status)) __dead2;
-void	dumpabort __P((int signo));
-void	getfstab __P((void));
+void	Exit(int status) __dead2;
+void	dumpabort(int signo);
+void	getfstab(void);
 
-char	*rawname __P((char *cp));
-struct	dinode *getino __P((ino_t inum));
+char	*rawname(char *cp);
+struct	dinode *getino(ino_t inum);
 
 /* rdump routines */
 #ifdef RDUMP
-void	rmtclose __P((void));
-int	rmthost __P((char *host));
-int	rmtopen __P((char *tape, int mode));
-int	rmtwrite __P((char *buf, int count));
+void	rmtclose(void);
+int	rmthost(char *host);
+int	rmtopen(char *tape, int mode);
+int	rmtwrite(char *buf, int count);
 #endif /* RDUMP */
 
-void	interrupt __P((int signo));	/* in case operator bangs on console */
+void	interrupt(int signo);	/* in case operator bangs on console */
 
 /*
  *	Exit status codes
@@ -155,7 +155,7 @@ void	interrupt __P((int signo));	/* in case operator bangs on console */
 
 #define	OPGRENT	"operator"		/* group entry to notify */
 
-struct	fstab *fstabsearch __P((char *key));	/* search fs_file and fs_spec */
+struct	fstab *fstabsearch(char *key);	/* search fs_file and fs_spec */
 
 #ifndef NAME_MAX
 #define NAME_MAX 255
@@ -173,13 +173,13 @@ struct dumpdates {
 int	nddates;		/* number of records (might be zero) */
 int	ddates_in;		/* we have read the increment file */
 struct	dumpdates **ddatev;	/* the arrayfied version */
-void	initdumptimes __P((void));
-void	getdumptime __P((void));
-void	putdumptime __P((void));
+void	initdumptimes(void);
+void	getdumptime(void);
+void	putdumptime(void);
 #define	ITITERATE(i, ddp) \
 	for (ddp = ddatev[i = 0]; i < nddates; ddp = ddatev[++i])
 
-void	sig __P((int signo));
+void	sig(int signo);
 
 /*
  * Compatibility with old systems.

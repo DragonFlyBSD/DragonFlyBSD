@@ -32,7 +32,7 @@
  *
  * @(#)dumprmt.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/dump/dumprmt.c,v 1.14.2.1 2000/07/01 06:31:52 ps Exp $
- * $DragonFly: src/sbin/dump/dumprmt.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/dump/dumprmt.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -75,15 +75,15 @@ static	int rmtstate = TS_CLOSED;
 static	int rmtape;
 static	char *rmtpeer;
 
-static	int okname __P((char *));
-static	int rmtcall __P((char *, char *));
-static	void rmtconnaborted __P((/* int, int */));
-static	int rmtgetb __P((void));
-static	void rmtgetconn __P((void));
-static	void rmtgets __P((char *, int));
-static	int rmtreply __P((char *));
+static	int okname(char *);
+static	int rmtcall(char *, char *);
+static	void rmtconnaborted(/* int, int */);
+static	int rmtgetb(void);
+static	void rmtgetconn(void);
+static	void rmtgets(char *, int);
+static	int rmtreply(char *);
 #ifdef KERBEROS
-int	krcmd __P((char **, int /*u_short*/, char *, char *, int *, char *));
+int	krcmd(char **, int /*u_short*/, char *, char *, int *, char *);
 #endif
 
 static	int errfd = -1;

@@ -32,7 +32,7 @@
  *
  * @(#)pass2.c	8.9 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass2.c,v 1.10.2.2 2001/11/24 15:14:59 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass2.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/fsck/pass2.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -47,8 +47,8 @@
 
 #define MINDIRSIZE	(sizeof (struct dirtemplate))
 
-static int blksort __P((const void *, const void *));
-static int pass2check __P((struct inodesc *));
+static int blksort(const void *, const void *);
+static int pass2check(struct inodesc *);
 
 void
 pass2(void)

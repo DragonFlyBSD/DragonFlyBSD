@@ -32,7 +32,7 @@
  *
  *	@(#)mntopts.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sbin/mount/mntopts.h,v 1.16 1999/10/09 11:54:07 phk Exp $
- * $DragonFly: src/sbin/mount/mntopts.h,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount/mntopts.h,v 1.3 2003/11/01 17:16:00 drhodus Exp $
  */
 
 struct mntopt {
@@ -88,7 +88,7 @@ struct mntopt {
 	MOPT_NOCLUSTERR,						\
 	MOPT_NOCLUSTERW
 
-void getmntopts __P((const char *, const struct mntopt *, int *, int *));
-void rmslashes __P((char *, char *));
-void checkpath __P((const char *, char resolved_path[]));
+void getmntopts(const char *, const struct mntopt *, int *, int *);
+void rmslashes(char *, char *);
+void checkpath(const char *, char resolved_path[]);
 extern int getmnt_silent;

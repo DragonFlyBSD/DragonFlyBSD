@@ -32,7 +32,7 @@
  *
  * @(#)restore.c	8.3 (Berkeley) 9/13/94
  * $FreeBSD: src/sbin/restore/restore.c,v 1.7.2.1 2002/03/01 21:32:28 iedowse Exp $
- * $DragonFly: src/sbin/restore/restore.c,v 1.4 2003/09/28 14:39:21 hmp Exp $
+ * $DragonFly: src/sbin/restore/restore.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -45,7 +45,7 @@
 #include "restore.h"
 #include "extern.h"
 
-static char *keyval __P((int));
+static char *keyval(int);
 
 /*
  * This implements the 't' option.

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_hpfs/mount_hpfs.c,v 1.1 1999/12/09 19:09:15 semenu Exp $
- * $DragonFly: src/sbin/mount_hpfs/mount_hpfs.c,v 1.4 2003/09/28 14:39:19 hmp Exp $
+ * $DragonFly: src/sbin/mount_hpfs/mount_hpfs.c,v 1.5 2003/11/01 17:16:00 drhodus Exp $
  */
 
 #include <sys/cdefs.h>
@@ -54,11 +54,11 @@ static struct mntopt mopts[] = {
 	{ NULL }
 };
 
-static gid_t	a_gid __P((char *));
-static uid_t	a_uid __P((char *));
-static mode_t	a_mask __P((char *));
-static void	usage __P((void)) __dead2;
-static void	load_u2wtable __P((struct hpfs_args *, char *));
+static gid_t	a_gid(char *);
+static uid_t	a_uid(char *);
+static mode_t	a_mask(char *);
+static void	usage(void) __dead2;
+static void	load_u2wtable(struct hpfs_args *, char *);
 
 int
 main(int argc, char **argv)

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)nfsd.c	8.9 (Berkeley) 3/29/95
  * $FreeBSD: src/sbin/nfsd/nfsd.c,v 1.15.2.1 2000/09/16 22:52:23 brian Exp $
- * $DragonFly: src/sbin/nfsd/nfsd.c,v 1.4 2003/09/28 14:39:20 hmp Exp $
+ * $DragonFly: src/sbin/nfsd/nfsd.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -89,15 +89,15 @@ struct timeval	ktv;
 NFSKERBKEYSCHED_T kerb_keysched;
 #endif
 
-void	nonfs __P((int));
-void	reapchild __P((int));
-void	setbindhost __P((struct sockaddr_in *ia, const char *bindhost));
+void	nonfs(int);
+void	reapchild(int);
+void	setbindhost(struct sockaddr_in *ia, const char *bindhost);
 #ifdef OLD_SETPROCTITLE
 #ifdef __FreeBSD__
-void	setproctitle __P((char *));
+void	setproctitle(char *);
 #endif
 #endif
-void	usage __P((void));
+void	usage(void);
 
 /*
  * Nfs server daemon mostly just a user context for nfssvc()

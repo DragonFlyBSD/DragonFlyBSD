@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ldconfig/ldconfig.c,v 1.31.2.3 2001/07/11 23:59:10 obrien Exp $
- * $DragonFly: src/sbin/ldconfig/ldconfig.c,v 1.3 2003/09/28 14:39:18 hmp Exp $
+ * $DragonFly: src/sbin/ldconfig/ldconfig.c,v 1.4 2003/11/01 17:16:00 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -85,13 +85,13 @@ struct shlib_list {
 static struct shlib_list	*shlib_head = NULL, **shlib_tail = &shlib_head;
 static char			*dir_list;
 
-static int		buildhints __P((void));
-static int		dodir __P((char *, int));
-int			dofile __P((char *, int));
-static void		enter __P((char *, char *, char *, int *, int));
-static void		listhints __P((void));
-static int		readhints __P((void));
-static void		usage __P((void));
+static int		buildhints(void);
+static int		dodir(char *, int);
+int			dofile(char *, int);
+static void		enter(char *, char *, char *, int *, int);
+static void		listhints(void);
+static int		readhints(void);
+static void		usage(void);
 
 int
 main(int argc, char **argv)

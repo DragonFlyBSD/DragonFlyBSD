@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ccdconfig/ccdconfig.c,v 1.16.2.2 2000/12/11 01:03:25 obrien Exp $
- * $DragonFly: src/sbin/ccdconfig/ccdconfig.c,v 1.3 2003/09/28 14:39:16 hmp Exp $
+ * $DragonFly: src/sbin/ccdconfig/ccdconfig.c,v 1.4 2003/11/01 17:15:57 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -89,17 +89,17 @@ static	struct nlist nl[] = {
 #define CCD_UNCONFIGALL		3	/* unconfigure all devices */
 #define CCD_DUMP		4	/* dump a ccd's configuration */
 
-static	int checkdev __P((char *));
-static	int do_io __P((char *, u_long, struct ccd_ioctl *));
-static	int do_single __P((int, char **, int));
-static	int do_all __P((int));
-static	int dump_ccd __P((int, char **));
-static	int getmaxpartitions __P((void));
-static	int getrawpartition __P((void));
-static	int flags_to_val __P((char *));
-static	void print_ccd_info __P((struct ccd_softc *, kvm_t *));
-static	char *resolve_ccdname __P((char *));
-static	void usage __P((void));
+static	int checkdev(char *);
+static	int do_io(char *, u_long, struct ccd_ioctl *);
+static	int do_single(int, char **, int);
+static	int do_all(int);
+static	int dump_ccd(int, char **);
+static	int getmaxpartitions(void);
+static	int getrawpartition(void);
+static	int flags_to_val(char *);
+static	void print_ccd_info(struct ccd_softc *, kvm_t *);
+static	char *resolve_ccdname(char *);
+static	void usage(void);
 
 int
 main(int argc, char **argv)

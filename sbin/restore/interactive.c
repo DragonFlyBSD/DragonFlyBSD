@@ -32,7 +32,7 @@
  *
  * @(#)interactive.c	8.5 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/interactive.c,v 1.8.2.1 2001/01/03 14:36:08 iedowse Exp $
- * $DragonFly: src/sbin/restore/interactive.c,v 1.4 2003/09/28 14:39:21 hmp Exp $
+ * $DragonFly: src/sbin/restore/interactive.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -77,14 +77,14 @@ struct arglist {
 	char	*cmd;		/* the current command */
 };
 
-static char	*copynext __P((char *, char *));
-static int	 fcmp __P((const void *, const void *));
-static void	 formatf __P((struct afile *, int));
-static void	 getcmd __P((char *, char *, char *, int, struct arglist *));
-struct dirent	*glob_readdir __P((RST_DIR *dirp));
-static int	 glob_stat __P((const char *, struct stat *));
-static void	 mkentry __P((char *, struct direct *, struct afile *));
-static void	 printlist __P((char *, char *));
+static char	*copynext(char *, char *);
+static int	 fcmp(const void *, const void *);
+static void	 formatf(struct afile *, int);
+static void	 getcmd(char *, char *, char *, int, struct arglist *);
+struct dirent	*glob_readdir(RST_DIR *dirp);
+static int	 glob_stat(const char *, struct stat *);
+static void	 mkentry(char *, struct direct *, struct afile *);
+static void	 printlist(char *, char *);
 
 /*
  * Read and execute commands from the terminal.

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/nos-tun/nos-tun.c,v 1.6.2.2 2001/08/01 23:14:00 obrien Exp $
- * $DragonFly: src/sbin/nos-tun/nos-tun.c,v 1.3 2003/09/28 14:39:20 hmp Exp $
+ * $DragonFly: src/sbin/nos-tun/nos-tun.c,v 1.4 2003/11/01 17:16:01 drhodus Exp $
  */
 
 /*
@@ -81,7 +81,7 @@ static struct ifreq ifrq;
 int net;                          /* socket descriptor */
 int tun;                          /* tunnel descriptor */
 
-static void usage __P((void));
+static void usage(void);
 
 int Set_address(char *addr, struct sockaddr_in *sin)
 {

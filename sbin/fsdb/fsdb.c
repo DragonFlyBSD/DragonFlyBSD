@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsdb/fsdb.c,v 1.13.2.3 2002/03/20 13:39:02 joerg Exp $
- * $DragonFly: src/sbin/fsdb/fsdb.c,v 1.5 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/fsdb/fsdb.c,v 1.6 2003/11/01 17:15:59 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -47,8 +47,8 @@
 #include "fsdb.h"
 #include "fsck.h"
 
-static void usage __P((void));
-int cmdloop __P((void));
+static void usage(void);
+int cmdloop(void);
 
 static void 
 usage(void)
@@ -402,8 +402,8 @@ CMDFUNCSTART(ls)
     return 0;
 }
 
-int findino __P((struct inodesc *idesc)); /* from fsck */
-static int dolookup __P((char *name));
+int findino(struct inodesc *idesc); /* from fsck */
+static int dolookup(char *name);
 
 static int
 dolookup(char *name)

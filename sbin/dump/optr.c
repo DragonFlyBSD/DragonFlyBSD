@@ -32,7 +32,7 @@
  *
  * @(#)optr.c	8.2 (Berkeley) 1/6/94
  * $FreeBSD: src/sbin/dump/optr.c,v 1.9.2.5 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/optr.c,v 1.3 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/dump/optr.c,v 1.4 2003/11/01 17:15:58 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -54,8 +54,8 @@
 #include "dump.h"
 #include "pathnames.h"
 
-void	alarmcatch __P((/* int, int */));
-int	datesort __P((const void *, const void *));
+void	alarmcatch(/* int, int */);
+int	datesort(const void *, const void *);
 
 /*
  *	Query the operator; This previously-fascist piece of code

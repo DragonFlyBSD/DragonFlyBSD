@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)nfsiod.c	8.4 (Berkeley) 5/3/95
  * $FreeBSD: src/sbin/nfsiod/nfsiod.c,v 1.9 1999/08/28 00:13:55 peter Exp $
- * $DragonFly: src/sbin/nfsiod/nfsiod.c,v 1.3 2003/09/28 14:39:20 hmp Exp $
+ * $DragonFly: src/sbin/nfsiod/nfsiod.c,v 1.4 2003/11/01 17:16:01 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -60,9 +60,9 @@ int debug = 1;
 int debug = 0;
 #endif
 
-void nonfs __P((int));
-void reapchild __P((int));
-void usage __P((void));
+void nonfs(int);
+void reapchild(int);
+void usage(void);
 
 /*
  * Nfsiod does asynchronous buffered I/O on behalf of the NFS client.

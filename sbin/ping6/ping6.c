@@ -31,7 +31,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ping.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/ping6/ping6.c,v 1.4.2.10 2002/12/09 03:04:44 suz Exp $
- * $DragonFly: src/sbin/ping6/ping6.c,v 1.3 2003/09/28 14:39:20 hmp Exp $
+ * $DragonFly: src/sbin/ping6/ping6.c,v 1.4 2003/11/01 17:16:01 drhodus Exp $
  */
 
 /*	BSDI	ping.c,v 2.3 1996/01/21 17:56:50 jch Exp	*/
@@ -243,37 +243,37 @@ volatile sig_atomic_t seenint;
 volatile sig_atomic_t seeninfo;
 #endif
 
-int	 main __P((int, char *[]));
-void	 fill __P((char *, char *));
-int	 get_hoplim __P((struct msghdr *));
-int	 get_pathmtu __P((struct msghdr *));
-void	 set_pathmtu __P((int));
-struct in6_pktinfo *get_rcvpktinfo __P((struct msghdr *));
-void	 onsignal __P((int));
-void	 retransmit __P((void));
-void	 onint __P((int));
-size_t	 pingerlen __P((void));
-int	 pinger __P((void));
-const char *pr_addr __P((struct sockaddr *, int));
-void	 pr_icmph __P((struct icmp6_hdr *, u_char *));
-void	 pr_iph __P((struct ip6_hdr *));
-void	 pr_suptypes __P((struct icmp6_nodeinfo *, size_t));
-void	 pr_nodeaddr __P((struct icmp6_nodeinfo *, int));
-int	 myechoreply __P((const struct icmp6_hdr *));
-int	 mynireply __P((const struct icmp6_nodeinfo *));
+int	 main(int, char *[]);
+void	 fill(char *, char *);
+int	 get_hoplim(struct msghdr *);
+int	 get_pathmtu(struct msghdr *);
+void	 set_pathmtu(int);
+struct in6_pktinfo *get_rcvpktinfo(struct msghdr *);
+void	 onsignal(int);
+void	 retransmit(void);
+void	 onint(int);
+size_t	 pingerlen(void);
+int	 pinger(void);
+const char *pr_addr(struct sockaddr *, int);
+void	 pr_icmph(struct icmp6_hdr *, u_char *);
+void	 pr_iph(struct ip6_hdr *);
+void	 pr_suptypes(struct icmp6_nodeinfo *, size_t);
+void	 pr_nodeaddr(struct icmp6_nodeinfo *, int);
+int	 myechoreply(const struct icmp6_hdr *);
+int	 mynireply(const struct icmp6_nodeinfo *);
 char *dnsdecode __P((const u_char **, const u_char *, const u_char *,
 	u_char *, size_t));
-void	 pr_pack __P((u_char *, int, struct msghdr *));
-void	 pr_exthdrs __P((struct msghdr *));
-void	 pr_ip6opt __P((void *));
-void	 pr_rthdr __P((void *));
-int	 pr_bitrange __P((u_int32_t, int, int));
-void	 pr_retip __P((struct ip6_hdr *, u_char *));
-void	 summary __P((void));
-void	 tvsub __P((struct timeval *, struct timeval *));
-int	 setpolicy __P((int, char *));
-char	*nigroup __P((char *));
-void	 usage __P((void));
+void	 pr_pack(u_char *, int, struct msghdr *);
+void	 pr_exthdrs(struct msghdr *);
+void	 pr_ip6opt(void *);
+void	 pr_rthdr(void *);
+int	 pr_bitrange(u_int32_t, int, int);
+void	 pr_retip(struct ip6_hdr *, u_char *);
+void	 summary(void);
+void	 tvsub(struct timeval *, struct timeval *);
+int	 setpolicy(int, char *);
+char	*nigroup(char *);
+void	 usage(void);
 
 int
 main(int argc, char **argv)

@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsck/fsutil.c,v 1.2.2.1 2001/08/01 05:47:55 obrien Exp $
- * $DragonFly: src/sbin/fsck/fsutil.c,v 1.3 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/fsck/fsutil.c,v 1.4 2003/11/01 17:15:58 drhodus Exp $
  *
  * $NetBSD: fsutil.c,v 1.7 1998/07/30 17:41:03 thorpej Exp $
  */
@@ -65,7 +65,7 @@ static int preen = 0;
 
 extern char *__progname;
 
-static void vmsg __P((int, const char *, va_list));
+static void vmsg(int, const char *, va_list);
 
 void
 setcdevname(const char *cd, int pr)

@@ -30,7 +30,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsirand/fsirand.c,v 1.7.2.1 2000/07/01 06:23:36 ps Exp $
- * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.4 2003/09/28 14:39:18 hmp Exp $
+ * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.5 2003/11/01 17:15:59 drhodus Exp $
  */
 
 #include <sys/disklabel.h>
@@ -49,8 +49,8 @@
 #include <string.h>
 #include <unistd.h>
 
-static void usage __P((void));
-int fsirand __P((char *));
+static void usage(void);
+int fsirand(char *);
 
 int printonly = 0, force = 0, ignorelabel = 0;
 

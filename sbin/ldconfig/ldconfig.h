@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ldconfig/ldconfig.h,v 1.2.2.2 2001/03/04 07:28:48 kris Exp $
- * $DragonFly: src/sbin/ldconfig/ldconfig.h,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/ldconfig/ldconfig.h,v 1.3 2003/11/01 17:16:00 drhodus Exp $
  */
 
 #ifndef LDCONFIG_H
@@ -35,8 +35,8 @@
 extern int	insecure;	/* -i flag, needed here for elfhints.c */
 
 __BEGIN_DECLS
-void	list_elf_hints __P((const char *));
-void	update_elf_hints __P((const char *, int, char **, int));
+void	list_elf_hints(const char *);
+void	update_elf_hints(const char *, int, char **, int);
 __END_DECLS
 
 #endif

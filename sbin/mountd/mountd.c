@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mountd.c	8.15 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/mountd/mountd.c,v 1.39.2.5 2002/09/13 15:57:43 joerg Exp $
- * $DragonFly: src/sbin/mountd/mountd.c,v 1.4 2003/09/28 14:39:20 hmp Exp $
+ * $DragonFly: src/sbin/mountd/mountd.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -142,47 +142,47 @@ struct fhreturn {
 };
 
 /* Global defs */
-char	*add_expdir __P((struct dirlist **, char *, int));
+char	*add_expdir(struct dirlist **, char *, int);
 void	add_dlist __P((struct dirlist **, struct dirlist *,
 				struct grouplist *, int));
-void	add_mlist __P((char *, char *));
-int	check_dirpath __P((char *));
-int	check_options __P((struct dirlist *));
-int	chk_host __P((struct dirlist *, u_int32_t, int *, int *));
-void	del_mlist __P((char *, char *));
-struct dirlist *dirp_search __P((struct dirlist *, char *));
+void	add_mlist(char *, char *);
+int	check_dirpath(char *);
+int	check_options(struct dirlist *);
+int	chk_host(struct dirlist *, u_int32_t, int *, int *);
+void	del_mlist(char *, char *);
+struct dirlist *dirp_search(struct dirlist *, char *);
 int	do_mount __P((struct exportlist *, struct grouplist *, int,
 		struct ucred *, char *, int, struct statfs *));
 int	do_opt __P((char **, char **, struct exportlist *, struct grouplist *,
 				int *, int *, struct ucred *));
-struct	exportlist *ex_search __P((fsid_t *));
-struct	exportlist *get_exp __P((void));
-void	free_dir __P((struct dirlist *));
-void	free_exp __P((struct exportlist *));
-void	free_grp __P((struct grouplist *));
-void	free_host __P((struct hostlist *));
-void	get_exportlist __P((void));
-int	get_host __P((char *, struct grouplist *, struct grouplist *));
-int	get_num __P((char *));
-struct hostlist *get_ht __P((void));
-int	get_line __P((void));
-void	get_mountlist __P((void));
-int	get_net __P((char *, struct netmsk *, int));
-void	getexp_err __P((struct exportlist *, struct grouplist *));
-struct grouplist *get_grp __P((void));
+struct	exportlist *ex_search(fsid_t *);
+struct	exportlist *get_exp(void);
+void	free_dir(struct dirlist *);
+void	free_exp(struct exportlist *);
+void	free_grp(struct grouplist *);
+void	free_host(struct hostlist *);
+void	get_exportlist(void);
+int	get_host(char *, struct grouplist *, struct grouplist *);
+int	get_num(char *);
+struct hostlist *get_ht(void);
+int	get_line(void);
+void	get_mountlist(void);
+int	get_net(char *, struct netmsk *, int);
+void	getexp_err(struct exportlist *, struct grouplist *);
+struct grouplist *get_grp(void);
 void	hang_dirp __P((struct dirlist *, struct grouplist *,
 				struct exportlist *, int));
-void	mntsrv __P((struct svc_req *, SVCXPRT *));
-void	nextfield __P((char **, char **));
-void	out_of_mem __P((void));
-void	parsecred __P((char *, struct ucred *));
-int	put_exlist __P((struct dirlist *, XDR *, struct dirlist *, int *));
-int	scan_tree __P((struct dirlist *, u_int32_t));
-static void usage __P((void));
-int	xdr_dir __P((XDR *, char *));
-int	xdr_explist __P((XDR *, caddr_t));
-int	xdr_fhs __P((XDR *, caddr_t));
-int	xdr_mlist __P((XDR *, caddr_t));
+void	mntsrv(struct svc_req *, SVCXPRT *);
+void	nextfield(char **, char **);
+void	out_of_mem(void);
+void	parsecred(char *, struct ucred *);
+int	put_exlist(struct dirlist *, XDR *, struct dirlist *, int *);
+int	scan_tree(struct dirlist *, u_int32_t);
+static void usage(void);
+int	xdr_dir(XDR *, char *);
+int	xdr_explist(XDR *, caddr_t);
+int	xdr_fhs(XDR *, caddr_t);
+int	xdr_mlist(XDR *, caddr_t);
 
 struct exportlist *exphead;
 struct mountlist *mlhead;
@@ -211,7 +211,7 @@ int opt_flags;
 
 #ifdef DEBUG
 int debug = 1;
-void	SYSLOG __P((int, const char *, ...));
+void	SYSLOG(int, const char *, ...);
 #define syslog SYSLOG
 #else
 int debug = 0;
@@ -285,7 +285,7 @@ main(int argc, char **argv)
 		signal(SIGINT, SIG_IGN);
 		signal(SIGQUIT, SIG_IGN);
 	}
-	signal(SIGHUP, (void (*) __P((int))) get_exportlist);
+	signal(SIGHUP, (void (*)(int)) get_exportlist);
 	{ FILE *pidfile = fopen(_PATH_MOUNTDPID, "w");
 	  if (pidfile != NULL) {
 		fprintf(pidfile, "%d\n", getpid());
