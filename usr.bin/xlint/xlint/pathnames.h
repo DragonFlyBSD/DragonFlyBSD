@@ -1,4 +1,5 @@
 /*	$NetBSD: pathnames.h,v 1.2 1995/07/03 21:25:20 cgd Exp $	*/
+/*  $DragonFly: src/usr.bin/xlint/xlint/pathnames.h,v 1.2 2004/07/01 01:31:45 hmp Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Jochen Pohl
@@ -33,6 +34,9 @@
 
 /* directory where lint1 and lint2 reside */
 #define	PATH_LIBEXEC		"/usr/libexec"
+
+/* directory where cpp reside */
+#define	PATH_USRBIN 		"/usr/bin"
 
 /* default library search path */
 #define PATH_LINTLIB		"/usr/libdata/lint"

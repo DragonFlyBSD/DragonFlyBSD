@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/xlint/xlint/xlint.c,v 1.8 2000/01/14 09:25:31 sheldonh Exp $
- * $DragonFly: src/usr.bin/xlint/xlint/xlint.c,v 1.5 2004/01/22 03:22:53 rob Exp $
+ * $DragonFly: src/usr.bin/xlint/xlint/xlint.c,v 1.6 2004/07/01 01:31:45 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -575,8 +575,8 @@ fname(name, last)
 
 	/* run cpp */
 
-	path = xmalloc(strlen(PATH_LIBEXEC) + sizeof ("/cpp"));
-	(void)sprintf(path, "%s/cpp", PATH_LIBEXEC);
+	path = xmalloc(strlen(PATH_USRBIN) + sizeof ("/cpp"));
+	(void)sprintf(path, "%s/cpp", PATH_USRBIN);
 
 	appcstrg(&args, path);
 	applst(&args, cppflags);
