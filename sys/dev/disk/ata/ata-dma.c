@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.35.2.31 2003/05/07 16:46:11 jhb Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.22 2004/06/23 06:53:13 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.23 2004/06/23 16:15:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -467,12 +467,12 @@ ata_dmainit(struct ata_device *atadev, int apiomode, int wdmamode, int udmamode)
     case 0x74091022:	/* AMD 756 */
     case 0x05711106:	/* VIA 82C571, 82C586, 82C596, 82C686, 8231,8233,8235 */
 	{
-	    int via_modes[5][7] = {
-		{ 0x00, 0x00, 0xc0, 0x00, 0x00, 0x00, 0x00 },   /* VIA ATA33 */
-		{ 0x00, 0x00, 0xea, 0x00, 0xe8, 0x00, 0x00 },   /* VIA ATA66 */
-		{ 0x00, 0x00, 0xf4, 0x00, 0xf1, 0xf0, 0x00 },   /* VIA ATA100 */
-		{ 0x00, 0x00, 0xf6, 0x00, 0xf2, 0xf1, 0xf0 },   /* VIA ATA133 */
-		{ 0x00, 0x00, 0xc0, 0x00, 0xc5, 0xc6, 0xc7 }};  /* AMD/NVIDIA */
+	    int via_modes[][7] = {
+		{ 0xc2, 0xc1, 0xc0, 0x00, 0x00, 0x00, 0x00 },   /* VIA ATA33 */
+		{ 0xee, 0xec, 0xea, 0xe9, 0xe8, 0x00, 0x00 },   /* VIA ATA66 */
+		{ 0xf7, 0xf6, 0xf4, 0xf2, 0xf1, 0xf0, 0x00 },   /* VIA ATA100 */
+		{ 0xf7, 0xf7, 0xf6, 0xf4, 0xf2, 0xf1, 0xf0 },   /* VIA ATA133 */
+		{ 0xc2, 0xc1, 0xc0, 0xc4, 0xc5, 0xc6, 0xc7 }};  /* AMD/NVIDIA */
 	    int *reg_val = NULL;
 	    int reg_off = 0x53;
 	    char *chip = "VIA";
@@ -536,6 +536,8 @@ ata_dmainit(struct ata_device *atadev, int apiomode, int wdmamode, int udmamode)
 	    else 
 		udmamode = 0;
 
+	    reg_off -= devno;
+
 	    if (udmamode >= 6) {
 		error = ata_command(atadev, ATA_C_SETFEATURES, 0,
 				    ATA_UDMA6, ATA_C_F_SETXFER, ATA_WAIT_READY);
@@ -543,7 +545,8 @@ ata_dmainit(struct ata_device *atadev, int apiomode, int wdmamode, int udmamode)
 		    ata_prtdev(atadev, "%s setting UDMA6 on %s chip\n",
 			       (error) ? "failed" : "success", chip);
 		if (!error) {
-		    pci_write_config(parent, reg_off - devno, reg_val[6], 1);
+		    pci_write_config(parent, reg_off, reg_val[6], 1);
+		    pci_write_config(parent, reg_off - 8, 0x20, 1);
 		    ata_dmacreate(atadev, apiomode, ATA_UDMA6);
 		    return;
 		}
@@ -555,7 +558,8 @@ ata_dmainit(struct ata_device *atadev, int apiomode, int wdmamode, int udmamode)
 		    ata_prtdev(atadev, "%s setting UDMA5 on %s chip\n",
 			       (error) ? "failed" : "success", chip);
 		if (!error) {
-		    pci_write_config(parent, reg_off - devno, reg_val[5], 1);
+		    pci_write_config(parent, reg_off, reg_val[5], 1);
+		    pci_write_config(parent, reg_off - 8, 0x20, 1);
 		    ata_dmacreate(atadev, apiomode, ATA_UDMA5);
 		    return;
 		}
@@ -567,7 +571,8 @@ ata_dmainit(struct ata_device *atadev, int apiomode, int wdmamode, int udmamode)
 		    ata_prtdev(atadev, "%s setting UDMA4 on %s chip\n",
 			       (error) ? "failed" : "success", chip);
 		if (!error) {
-		    pci_write_config(parent, reg_off - devno, reg_val[4], 1);
+		    pci_write_config(parent, reg_off, reg_val[4], 1);
+		    pci_write_config(parent, reg_off - 8, 0x20, 1);
 		    ata_dmacreate(atadev, apiomode, ATA_UDMA4);
 		    return;
 		}
@@ -579,7 +584,8 @@ ata_dmainit(struct ata_device *atadev, int apiomode, int wdmamode, int udmamode)
 		    ata_prtdev(atadev, "%s setting UDMA2 on %s chip\n",
 			       (error) ? "failed" : "success", chip);
 		if (!error) {
-		    pci_write_config(parent, reg_off - devno, reg_val[2], 1);
+		    pci_write_config(parent, reg_off, reg_val[2], 1);
+		    pci_write_config(parent, reg_off - 8, 0x20, 1);
 		    ata_dmacreate(atadev, apiomode, ATA_UDMA2);
 		    return;
 		}
@@ -591,14 +597,31 @@ ata_dmainit(struct ata_device *atadev, int apiomode, int wdmamode, int udmamode)
 		    ata_prtdev(atadev, "%s setting WDMA2 on %s chip\n",
 			       (error) ? "failed" : "success", chip);
 		if (!error) {
-		    pci_write_config(parent, reg_off - devno, 0x0b, 1);
-		    pci_write_config(parent, (reg_off - 8) - devno, 0x31, 1);
+		    pci_write_config(parent, reg_off, 0x0b, 1);
+		    pci_write_config(parent, reg_off - 8, 0x20, 1);
 		    ata_dmacreate(atadev, apiomode, ATA_WDMA2);
 		    return;
 		}
 	    }
+	    pci_write_config(parent, reg_off, 0x8b, 1);
+	    switch(apiomode) {
+	    case 0:
+		pci_write_config(parent, reg_off - 8, 0xa8, 1);
+		break;
+	    case 1:
+		pci_write_config(parent, reg_off - 8, 0x65, 1);
+		break;
+	    case 2:
+		pci_write_config(parent, reg_off - 8, 0x42, 1);
+		break;
+	    case 3:
+		pci_write_config(parent, reg_off - 8, 0x22, 1);
+		break;
+	    case 4:
+		pci_write_config(parent, reg_off - 8, 0x20, 1);
+		break;
+	    }
 	}
-	/* we could set PIO mode timings, but we assume the BIOS did that */
 	break;
 
     case 0x55131039:	/* SiS 5591 */
