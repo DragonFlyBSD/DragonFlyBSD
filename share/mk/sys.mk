@@ -1,6 +1,6 @@
 #	from: @(#)sys.mk	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/share/mk/sys.mk,v 1.45.2.6 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/sys.mk,v 1.10 2004/06/20 20:41:07 joerg Exp $
+# $DragonFly: src/share/mk/sys.mk,v 1.11 2004/06/21 03:48:07 dillon Exp $
 
 unix		?=	We run FreeBSD, not UNIX.
 
@@ -80,8 +80,8 @@ LFLAGS		?=
 
 LD		?=	ld
 LDFLAGS		?=
-NXCFLAGS	?=	${CFLAGS}
-NXCXXFLAGS	?=	${CFLAGS}
+NXCFLAGS	?=	${CFLAGS:N-mtune*:N-mcpu*:N-march*}
+NXCXXFLAGS	?=	${CFLAGS:N-mtune*:N-mcpu*:N-macrh*}
 NXLDLIBS	?=	${LDLIBS}
 NXLDFLAGS	?=	-static ${LDFLAGS}
 
@@ -228,12 +228,12 @@ MACHINE_ARCH	?=	i386
 
 .y.no:
 	${YACC} ${YFLAGS} ${.IMPSRC}
-	${NXCC} ${CFLAGS} -c y.tab.c -o ${.TARGET}
+	${NXCC} ${NXCFLAGS} -c y.tab.c -o ${.TARGET}
 	rm -f y.tab.c
 
 .l.no:
 	${LEX} ${LFLAGS} -o${.TARGET}.c ${.IMPSRC}
-	${NXCC} ${CFLAGS} -c ${.TARGET}.c -o ${.TARGET}
+	${NXCC} ${NXCFLAGS} -c ${.TARGET}.c -o ${.TARGET}
 	rm -f ${.TARGET}.c
 
 .no.nx .c.nx:

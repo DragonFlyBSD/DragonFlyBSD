@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.32 2004/06/20 20:49:45 joerg Exp $
+# $DragonFly: src/Makefile.inc1,v 1.33 2004/06/21 03:48:01 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -205,7 +205,6 @@ TMPPID!=	echo $$$$
 #
 BMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		OBJTREE=${OBJTREE} \
-		HOST_CCVER=${HOST_CCVER} \
 		DESTDIR=${BTOOLSDEST} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
@@ -217,7 +216,6 @@ BMAKE=		${BMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
 #
 TMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		OBJTREE=${OBJTREE} \
-		HOST_CCVER=${HOST_CCVER} \
 		DESTDIR= \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
@@ -233,7 +231,6 @@ TMAKE=		${TMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
 #
 XMAKEENV=	MAKEOBJDIRPREFIX=${CTOOLSDEST} \
 		OBJTREE=${OBJTREE} \
-		HOST_CCVER=${HOST_CCVER} \
 		DESTDIR=${CTOOLSDEST} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh" \
 		TOOLS_PREFIX=${CTOOLSDEST} \
@@ -251,7 +248,6 @@ XMAKE=		${XMAKEENV} ${MAKE} -f Makefile.inc1 -DNO_FORTRAN -DNO_GDB \
 #
 CROSSENV=	MAKEOBJDIRPREFIX=${WORLDDEST} \
 		OBJTREE=${OBJTREE} \
-		HOST_CCVER=${HOST_CCVER} \
 		MACHINE_ARCH=${TARGET_ARCH} \
 		MACHINE=${TARGET} \
 		OBJFORMAT_PATH=${CTOOLSDEST} \
@@ -740,6 +736,8 @@ _share=	share/syscons/scrnmaps
 
 _gcc3_cross= gnu/usr.bin/cc3
 _gcc3_tools= gnu/usr.bin/cc3/cc_tools
+_gcc34_cross= gnu/usr.bin/cc34
+_gcc34_tools= gnu/usr.bin/cc34/cc_tools
 .if ${MACHINE_ARCH} == "i386" && ${TARGET_ARCH} == "i386"
 _gcc2_cross= gnu/usr.bin/cc
 _gcc2_tools= gnu/usr.bin/cc/cc_tools
@@ -752,7 +750,7 @@ _binutils= gnu/usr.bin/binutils214
 .if ${TARGET_ARCH} == "i386"
 _fortran= gnu/usr.bin/cc/f771
 .else
-_fortran= gnu/usr.bin/cc3/f771
+_fortran= gnu/usr.bin/cc34/f771
 .endif
 .endif
 
@@ -771,7 +769,7 @@ _sysinstall= release/sysinstall
 .endif
 
 build-tools:
-.for _tool in ${_gcc2_tools} ${_gcc3_tools} \
+.for _tool in ${_gcc2_tools} ${_gcc3_tools} ${_gcc34_tools} \
 	      ${_fortran} ${_perl} ${_libroken4} ${_libkrb5} \
 	      ${_share} ${_sysinstall}
 	${ECHODIR} "===> ${_tool} (build-tools)"; \
@@ -797,7 +795,7 @@ _btxld=	usr.sbin/btxld
 cross-tools:
 .for _tool in ${_btxld} ${_elf2exe} ${_binutils} \
 	      usr.bin/objformat usr.sbin/crunch/crunchide \
-	      ${_gcc2_cross} ${_gcc3_cross}
+	      ${_gcc2_cross} ${_gcc3_cross} ${_gcc34_cross}
 	${ECHODIR} "===> ${_tool} (cross-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
@@ -825,8 +823,12 @@ hierarchy:
 #
 libraries:
 	cd ${.CURDIR}; \
-	    CCVER=gcc2 ${MAKE} -f Makefile.inc1 _startup_libs2; \
-	    CCVER=gcc3 ${MAKE} -f Makefile.inc1 _startup_libs3; \
+	    HOST_CCVER=${HOST_CCVER} CCVER=gcc2 \
+		${MAKE} -f Makefile.inc1 _startup_libs2; \
+	    HOST_CCVER=${HOST_CCVER} CCVER=gcc3 \
+		${MAKE} -f Makefile.inc1 _startup_libs3; \
+	    HOST_CCVER=${HOST_CCVER} CCVER=gcc34 \
+		${MAKE} -f Makefile.inc1 _startup_libs34; \
 	    ${MAKE} -f Makefile.inc1 _startup_libs; \
 	    ${MAKE} -f Makefile.inc1 _prebuild_libs; \
 	    ${MAKE} -f Makefile.inc1 _generic_libs;
@@ -840,6 +842,7 @@ libraries:
 #
 _startup_libs2=	gnu/lib/gcc2/libgcc
 _startup_libs3=	gnu/lib/gcc3/libgcc
+_startup_libs34=	gnu/lib/gcc34/libgcc
 .if exists(${.CURDIR}/lib/csu/${MACHINE_ARCH}-elf)
 _startup_libs=	lib/csu/${MACHINE_ARCH}-elf
 .else
@@ -890,8 +893,8 @@ _generic_libs+=	usr.bin/lex/lib
 _generic_libs+=	usr.sbin/pcvt/keycap
 .endif
 
-.for _lib in ${_startup_libs2} ${_startup_libs3} ${_startup_libs} \
-		${_prebuild_libs} ${_generic_libs}
+.for _lib in ${_startup_libs2} ${_startup_libs3} ${_startup_libs34} \
+		${_startup_libs} ${_prebuild_libs} ${_generic_libs}
 ${_lib}__L: .PHONY
 .if exists(${.CURDIR}/${_lib})
 	${ECHODIR} "===> ${_lib}"; \
@@ -911,6 +914,7 @@ _startup_libs2: ${_startup_libs2:S/$/__L/}
 _startup_libs2:
 .endif
 _startup_libs3: ${_startup_libs3:S/$/__L/}
+_startup_libs34: ${_startup_libs34:S/$/__L/}
 _prebuild_libs: ${_prebuild_libs:S/$/__L/}
 _generic_libs: ${_generic_libs:S/$/__L/}
 
@@ -919,6 +923,7 @@ _generic_libs: ${_generic_libs:S/$/__L/}
 #
 .ORDER: ${_startup_libs2:S/$/__L/}
 .ORDER: ${_startup_libs3:S/$/__L/}
+.ORDER: ${_startup_libs34:S/$/__L/}
 .ORDER: ${_startup_libs:S/$/__L/}
 .ORDER: ${_prebuild_libs:S/$/__L/}
 .ORDER: ${_generic_libs:S/$/__L/}

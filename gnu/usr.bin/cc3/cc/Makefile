@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc/Makefile,v 1.28 2002/06/05 21:30:43 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/cc/Attic/Makefile,v 1.6 2004/02/03 03:47:11 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/cc/Attic/Makefile,v 1.7 2004/06/21 03:48:05 dillon Exp $
 
 .include "../Makefile.inc"
 .include "../Makefile.fe"
@@ -19,7 +19,6 @@ LINKS=	${BINDIR}/cc ${BINDIR}/gcc
 
 CFLAGS+= -DDEFAULT_TARGET_VERSION=\"$(version)\"
 CFLAGS+= -DDEFAULT_TARGET_MACHINE=\"$(target)\"
-CFLAGS+= -DCCVER=\"$(MY_CCVER)\"
 
 DPADD+=	${LIBCC_INT}
 LDADD+=	${LIBCC_INT}

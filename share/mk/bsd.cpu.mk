@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.cpu.mk,v 1.2.2.5 2002/07/19 08:09:32 ru Exp $
-# $DragonFly: src/share/mk/bsd.cpu.mk,v 1.8 2004/06/20 20:41:07 joerg Exp $
+# $DragonFly: src/share/mk/bsd.cpu.mk,v 1.9 2004/06/21 03:48:07 dillon Exp $
 
 # include compiler-specific bsd.cpu.mk.  Note that CCVER may or may not
 # be passed as an environment variable.  If not set we make it consistent
@@ -7,9 +7,14 @@
 #
 # _CCVER is used to detect changes to CCVER made in Makefile's after the
 # fact.
+#
+# HOST_CCVER is used by the native system compiler and defaults to CCVER.
+# It is not subject to local CCVER overrides in Makefiles and it is inherited
+# by all sub-makes.
+
 CCVER ?= gcc2
-HOST_CCVER?= ${CCVER}
 _CCVER := ${CCVER}
+HOST_CCVER?= ${_CCVER}
 
 .if ${CCVER} == "gcc2"
 .  include <bsd.cpu.gcc2.mk>
@@ -32,6 +37,7 @@ _CCVER := ${CCVER}
 #
 .if defined(.DIRECTIVE_MAKEENV)
 .makeenv CCVER
+.makeenv HOST_CCVER
 .endif
 
 # We can reassign _CPUCFLAGS and CFLAGS will evaluate properly to the

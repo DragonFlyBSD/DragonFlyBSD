@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/f77/Makefile,v 1.21 2004/01/05 20:23:16 kan Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/f77/Attic/Makefile,v 1.7 2004/06/16 01:14:10 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/f77/Attic/Makefile,v 1.8 2004/06/21 03:48:06 dillon Exp $
 
 .include "../Makefile.inc"
 .include "../Makefile.fe"
@@ -14,7 +14,6 @@ SRCS+=  make-relative-prefix.c lrealpath.c xmalloc.c xexit.c
 
 CFLAGS+= -DDEFAULT_TARGET_VERSION=\"$(version)\"
 CFLAGS+= -DDEFAULT_TARGET_MACHINE=\"$(target)\"
-CFLAGS+= -DCCVER=\"$(MY_CCVER)\"
 CFLAGS+= -DFORTRAN_INIT=\"-lg2c\" -DFORTRAN_INIT_PROFILE=\"-lg2c_p\"
 
 DPADD=	${LIBCC_INT}

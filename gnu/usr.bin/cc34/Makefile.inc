@@ -1,7 +1,6 @@
-# $DragonFly: src/gnu/usr.bin/cc34/Makefile.inc,v 1.1 2004/06/14 22:27:52 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/Makefile.inc,v 1.2 2004/06/21 03:48:06 dillon Exp $
 
 BINDIR?=	/usr/libexec/gcc34
-MY_CCVER=	gcc34
 .include "../Makefile.inc"
 
 GCCDIR=		${.CURDIR}/${TOP_PREFIX}/../../../../contrib/gcc-3.4

@@ -1,8 +1,7 @@
 # $FreeBSD: src/gnu/usr.bin/cc/Makefile.inc,v 1.63 2002/06/04 19:45:08 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile.inc,v 1.12 2004/06/16 01:14:07 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile.inc,v 1.13 2004/06/21 03:48:05 dillon Exp $
 
 BINDIR?=/usr/libexec/gcc3
-MY_CCVER=gcc3
 .include "../Makefile.inc"
 
 # Sometimes this is .include'd several times...

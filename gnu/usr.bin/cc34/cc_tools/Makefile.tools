@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/cc_tools/Makefile.tools,v 1.2 2004/06/21 00:20:33 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/cc_tools/Makefile.tools,v 1.3 2004/06/21 03:48:06 dillon Exp $
 
 .ORDER: options.c options.h
 
@@ -93,64 +93,64 @@ CLEANFILES+=	gtype-desc.h gt-f-com.h gt-f-lex.h gt-f-ste.h gt-f-where.h
 CLEANFILES+=	gt-objc-objc-act.h gtype-f.h gtype-objc.h
 
 ${TOOLDIR}/genconditions/genconditions.nx:
-	cd ${SRC_TOOLDIR}/genconditions && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/genconditions && ${MAKE}
 
 ${TOOLDIR}/genmodes/genmodes.nx:
-	cd ${SRC_TOOLDIR}/genmodes && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/genmodes && ${MAKE}
 
 ${TOOLDIR}/genoutput/genoutput.nx:
-	cd ${SRC_TOOLDIR}/genoutput && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/genoutput && ${MAKE}
 
 ${TOOLDIR}/genopinit/genopinit.nx:
-	cd ${SRC_TOOLDIR}/genopinit && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/genopinit && ${MAKE}
 
 ${TOOLDIR}/genextract/genextract.nx:
-	cd ${SRC_TOOLDIR}/genextract && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/genextract && ${MAKE}
 
 ${TOOLDIR}/genattrtab/genattrtab.nx:
-	cd ${SRC_TOOLDIR}/genattrtab && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/genattrtab && ${MAKE}
 
 ${TOOLDIR}/genemit/genemit.nx:
-	cd ${SRC_TOOLDIR}/genemit && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/genemit && ${MAKE}
 
 ${TOOLDIR}/genattr/genattr.nx:
-	cd ${SRC_TOOLDIR}/genattr && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/genattr && ${MAKE}
 
 ${TOOLDIR}/gencodes/gencodes.nx:
-	cd ${SRC_TOOLDIR}/gencodes && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/gencodes && ${MAKE}
 
 ${TOOLDIR}/genrecog/genrecog.nx:
-	cd ${SRC_TOOLDIR}/genrecog && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/genrecog && ${MAKE}
 
 ${TOOLDIR}/genpeep/genpeep.nx:
-	cd ${SRC_TOOLDIR}/genpeep && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/genpeep && ${MAKE}
 
 ${TOOLDIR}/genconfig/genconfig.nx:
-	cd ${SRC_TOOLDIR}/genconfig && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/genconfig && ${MAKE}
 
 ${TOOLDIR}/genconstants/genconstants.nx:
-	cd ${SRC_TOOLDIR}/genconstants && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/genconstants && ${MAKE}
 
 ${TOOLDIR}/gencheck/gencheck.nx:
-	cd ${SRC_TOOLDIR}/gencheck && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/gencheck && ${MAKE}
 
 ${TOOLDIR}/gencheck/gencheck.nx:
-	cd ${SRC_TOOLDIR}/gencheck && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/gencheck && ${MAKE}
 
 ${TOOLDIR}/genpreds/genpreds.nx:
-	cd ${SRC_TOOLDIR}/genpreds && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/genpreds && ${MAKE}
 
 ${TOOLDIR}/gengenrtl/gengenrtl.nx:
-	cd ${SRC_TOOLDIR}/gengenrtl && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/gengenrtl && ${MAKE}
 
 ${TOOLDIR}/gengtype/gengtype.nx:
-	cd ${SRC_TOOLDIR}/gengtype && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/gengtype && ${MAKE}
 
 ${TOOLDIR}/genflags/genflags.nx:
-	cd ${SRC_TOOLDIR}/genflags && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/genflags && ${MAKE}
 
 ${TOOLDIR}/gcov-iov/gcov-iov.nx:
-	cd ${SRC_TOOLDIR}/gcov-iov && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/gcov-iov && ${MAKE}
 
 ${TOOLDIR}/fini/fini.nx:
-	cd ${SRC_TOOLDIR}/fini && ${MAKE} ${.TARGET}
+	cd ${SRC_TOOLDIR}/fini && ${MAKE}
