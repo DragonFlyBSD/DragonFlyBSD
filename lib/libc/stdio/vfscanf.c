@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)vfscanf.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/vfscanf.c,v 1.14.2.2 2002/04/17 14:58:23 ache Exp $
- * $DragonFly: src/lib/libc/stdio/vfscanf.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
+ * $FreeBSD: /repoman/r/ncvs/src/lib/libc/stdio/vfscanf.c,v 1.35 2004/01/31 23:16:09 das Exp $
+ * $DragonFly: src/lib/libc/stdio/vfscanf.c,v 1.5 2004/07/08 17:56:46 cpressey Exp $
  */
 
 #include <stdio.h>
