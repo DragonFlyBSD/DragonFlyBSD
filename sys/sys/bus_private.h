@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus_private.h,v 1.11.2.2 2000/08/03 00:25:22 peter Exp $
- * $DragonFly: src/sys/sys/bus_private.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/bus_private.h,v 1.3 2003/11/17 00:54:40 asmodai Exp $
  */
 
 #ifndef _SYS_BUS_PRIVATE_H_
@@ -81,34 +81,15 @@ struct config_device {
 };
 
 /*
- * Compiled device methods.
- */
-struct device_ops {
-    int maxoffset;
-    devop_t methods[1];
-};
-
-/*
- * Helpers for device method wrappers.
- */
-#define DEVOPDESC(OP)	(&OP##_##desc)
-
-#define DEVOPS(DEV)	   (DEV->ops)
-#define DEVOPMETH(DEV, OP)					\
-	((DEVOPDESC(OP)->offset >= DEVOPS(DEV)->maxoffset)	\
-	 ? DEVOPDESC(OP)->deflt					\
-	 : DEVOPS(DEV)->methods[DEVOPDESC(OP)->offset])
-
-#define DRVOPS(DRV)	   ((struct device_ops *)DRV->ops)
-#define DRVOPMETH(DRV, OP)					\
-	((DEVOPDESC(OP)->offset >= DRVOPS(DRV)->maxoffset)	\
-	 ? DEVOPDESC(OP)->deflt					\
-	 : DRVOPS(DRV)->methods[DEVOPDESC(OP)->offset])
-
-/*
  * Implementation of device.
  */
 struct device {
+    /*
+     * A device is a kernel object. The first field must be the
+     * current ops table for the object.
+     */
+    KOBJ_FIELDS;
+
     /*
      * Device hierarchy.
      */
@@ -119,7 +100,6 @@ struct device {
     /*
      * Details of this device.
      */
-    device_ops_t	ops;
     driver_t		*driver;
     devclass_t		devclass; /* device class which we are in */
     int			unit;

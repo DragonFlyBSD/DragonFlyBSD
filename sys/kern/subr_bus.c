@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.4 2003/11/09 02:22:36 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.5 2003/11/17 00:54:40 asmodai Exp $
  */
 
 #include "opt_bus.h"
@@ -37,6 +37,7 @@
 #ifdef DEVICE_SYSCTLS
 #include <sys/sysctl.h>
 #endif
+#include <sys/kobj.h>
 #include <sys/bus_private.h>
 #include <sys/systm.h>
 #include <machine/bus.h>
@@ -56,8 +57,6 @@ MALLOC_DEFINE(M_BUS, "bus", "Bus data structures");
  */
 #define indentprintf(p)	do { int iJ; printf("."); for (iJ=0; iJ<indent; iJ++) printf("  "); printf p ; } while(0)
 
-static void print_method_list(device_method_t *m, int indent);
-static void print_device_ops(device_ops_t ops, int indent);
 static void print_device_short(device_t dev, int indent);
 static void print_device(device_t dev, int indent);
 void print_device_tree_short(device_t dev, int indent);
@@ -77,8 +76,6 @@ void print_devclass_list(void);
 #define DRIVERNAME(d)			/* nop */
 #define DEVCLANAME(d)			/* nop */
 
-#define print_method_list(m,i)		/* nop */
-#define print_device_ops(o,i)		/* nop */
 #define print_device_short(d,i)		/* nop */
 #define print_device(d,i)		/* nop */
 #define print_device_tree_short(d,i)	/* nop */
@@ -97,146 +94,11 @@ static void device_register_oids(device_t dev);
 static void device_unregister_oids(device_t dev);
 #endif
 
-/*
- * Method table handling
- */
-static int error_method(void);
-static int next_method_offset = 1;
-
-LIST_HEAD(methodlist, method) methods;
-struct method {
-    LIST_ENTRY(method) link;	/* linked list of methods */
-    int offset;			/* offset in method table */
-    int refs;			/* count of device_op_desc users */
-    devop_t deflt;		/* default implementation */
-    char* name;			/* unique name of method */
+kobj_method_t null_methods[] = {
+    { 0, 0 }
 };
 
-static void
-register_method(struct device_op_desc *desc)
-{
-    struct method* m;
-
-    if (desc->method) {
-	desc->method->refs++;
-	return;
-    }
-
-    /*
-     * Make sure that desc->deflt is always valid to simplify dispatch.
-     */
-    if (!desc->deflt)
-	desc->deflt = error_method;
-
-    for (m = LIST_FIRST(&methods); m; m = LIST_NEXT(m, link)) {
-	if (!strcmp(m->name, desc->name)) {
-	    desc->offset = m->offset;
-	    desc->method = m;
-	    m->refs++;
-	    PDEBUG(("method %p has the same name, %s, with offset %d",
-		    (void *)m, desc->name, desc->offset));
-	    return;
-	}
-    }
-
-    m = (struct method *) malloc(sizeof(struct method)
-				 + strlen(desc->name) + 1,
-				 M_BUS, M_NOWAIT);
-    if (!m)
-	    panic("register_method: out of memory");
-    bzero(m, sizeof(struct method) + strlen(desc->name) + 1);
-    m->offset = next_method_offset++;
-    m->refs = 1;
-    m->deflt = desc->deflt;
-    m->name = (char*) (m + 1);
-    strcpy(m->name, desc->name);
-    LIST_INSERT_HEAD(&methods, m, link);
-
-    desc->offset = m->offset;
-    desc->method = m;
-}
-
-static void
-unregister_method(struct device_op_desc *desc)
-{
-    struct method *m = desc->method;
-    m->refs--;
-    if (m->refs == 0) {
-	PDEBUG(("method %s, reached refcount 0", desc->name));
-	LIST_REMOVE(m, link);
-	free(m, M_BUS);
-    	desc->method = 0;
-    }
-}
-
-static int error_method(void)
-{
-    return ENXIO;
-}
-
-static struct device_ops null_ops = {
-    1, 
-    { error_method }
-};
-
-static void
-compile_methods(driver_t *driver)
-{
-    device_ops_t ops;
-    struct device_method *m;
-    struct method *cm;
-    int i;
-
-    /*
-     * First register any methods which need it.
-     */
-    for (i = 0, m = driver->methods; m->desc; i++, m++)
-	register_method(m->desc);
-
-    /*
-     * Then allocate the compiled op table.
-     */
-    ops = malloc(sizeof(struct device_ops) + (next_method_offset-1) * sizeof(devop_t),
-		 M_BUS, M_NOWAIT);
-    if (!ops)
-	panic("compile_methods: out of memory");
-    bzero(ops, sizeof(struct device_ops) + (next_method_offset-1) * sizeof(devop_t));
-
-    ops->maxoffset = next_method_offset;
-    /* Fill in default methods and then overwrite with driver methods */
-    for (i = 0; i < next_method_offset; i++)
-	ops->methods[i] = error_method;
-    for (cm = LIST_FIRST(&methods); cm; cm = LIST_NEXT(cm, link)) {
-	if (cm->deflt)
-	    ops->methods[cm->offset] = cm->deflt;
-    }
-    for (i = 0, m = driver->methods; m->desc; i++, m++)
-	ops->methods[m->desc->offset] = m->func;
-    PDEBUG(("%s has %d method%s, wasting %d bytes",
-    		DRIVERNAME(driver), i, (i==1?"":"s"),
-		(next_method_offset-i)*sizeof(devop_t)));
-
-    driver->ops = ops;
-}
-
-static void
-free_methods(driver_t *driver)
-{
-    int i;
-    struct device_method *m;
-
-    /*
-     * Unregister any methods which are no longer used.
-     */
-    for (i = 0, m = driver->methods; m->desc; i++, m++)
-	unregister_method(m->desc);
-
-    /*
-     * Free memory and clean up.
-     */
-    free(driver->ops, M_BUS);
-    driver->ops = 0;
-}
+DEFINE_CLASS(null, null_methods, 0);
 
 /*
  * Devclass implementation
@@ -301,10 +163,12 @@ devclass_add_driver(devclass_t dc, driver_t *driver)
     bzero(dl, sizeof *dl);
 
     /*
-     * Compile the driver's methods.
+     * Compile the driver's methods. Also increase the reference count
+     * so that the class doesn't get freed when the last instance
+     * goes. This means we can safely use static methods and avoids a
+     * double-free in devclass_delete_driver.
      */
-    if (!driver->ops)
-	compile_methods(driver);
+    kobj_class_compile((kobj_class_t) driver);
 
     /*
      * Make sure the devclass which the driver is implementing exists.
@@ -380,7 +244,7 @@ devclass_delete_driver(devclass_t busclass, driver_t *driver)
 
     driver->refs--;
     if (driver->refs == 0)
-	free_methods(driver);
+	kobj_class_free((kobj_class_t) driver);
 
     return 0;
 }
@@ -604,7 +468,7 @@ make_device(device_t parent, const char *name, int unit)
 
     dev->parent = parent;
     TAILQ_INIT(&dev->children);
-    dev->ops = &null_ops;
+    kobj_init((kobj_t) dev, &null_class);
     dev->driver = NULL;
     dev->devclass = NULL;
     dev->unit = unit;
@@ -624,6 +488,8 @@ make_device(device_t parent, const char *name, int unit)
     dev->softc = NULL;
 
     dev->state = DS_NOTPRESENT;
+
+    kobj_init((kobj_t) dev, &null_class);
 
     return dev;
 }
@@ -1125,19 +991,20 @@ device_set_driver(device_t dev, driver_t *driver)
 	free(dev->softc, M_BUS);
 	dev->softc = NULL;
     }
-    dev->ops = &null_ops;
+    kobj_delete((kobj_t) dev, 0);
     dev->driver = driver;
     if (driver) {
-	dev->ops = driver->ops;
+	kobj_init((kobj_t) dev, (kobj_class_t) driver);
 	if (!(dev->flags & DF_EXTERNALSOFTC)) {
-	    dev->softc = malloc(driver->softc, M_BUS, M_NOWAIT);
+	    dev->softc = malloc(driver->size, M_BUS, M_NOWAIT);
 	    if (!dev->softc) {
-		dev->ops = &null_ops;
+		kobj_init((kobj_t) dev, &null_class);
 		dev->driver = NULL;
 		return ENOMEM;
 	    }
-	    bzero(dev->softc, driver->softc);
-	}
+	    bzero(dev->softc, driver->size);
+	} else
+	    kobj_init((kobj_t) dev, &null_class);
     }
     return 0;
 }
@@ -2228,17 +2095,17 @@ root_setup_intr(device_t dev, device_t child, driver_intr_t *intr, void *arg,
 	panic("root_setup_intr");
 }
 
-static device_method_t root_methods[] = {
+static kobj_method_t root_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
-	DEVMETHOD(device_suspend,	bus_generic_suspend),
-	DEVMETHOD(device_resume,	bus_generic_resume),
+	KOBJMETHOD(device_shutdown,	bus_generic_shutdown),
+	KOBJMETHOD(device_suspend,	bus_generic_suspend),
+	KOBJMETHOD(device_resume,	bus_generic_resume),
 
 	/* Bus interface */
-	DEVMETHOD(bus_print_child,	root_print_child),
-	DEVMETHOD(bus_read_ivar,	bus_generic_read_ivar),
-	DEVMETHOD(bus_write_ivar,	bus_generic_write_ivar),
-	DEVMETHOD(bus_setup_intr,	root_setup_intr),
+	KOBJMETHOD(bus_print_child,	root_print_child),
+	KOBJMETHOD(bus_read_ivar,	bus_generic_read_ivar),
+	KOBJMETHOD(bus_write_ivar,	bus_generic_write_ivar),
+	KOBJMETHOD(bus_setup_intr,	root_setup_intr),
 
 	{ 0, 0 }
 };
@@ -2257,10 +2124,10 @@ root_bus_module_handler(module_t mod, int what, void* arg)
 {
     switch (what) {
     case MOD_LOAD:
-	compile_methods(&root_driver);
+	kobj_class_compile((kobj_class_t) &root_driver);
 	root_bus = make_device(NULL, "root", 0);
 	root_bus->desc = "System root bus";
-	root_bus->ops = root_driver.ops;
+	kobj_init((kobj_t) root_bus, (kobj_class_t) &root_driver);
 	root_bus->driver = &root_driver;
 	root_bus->state = DS_ATTACHED;
 	root_devclass = devclass_find_internal("root", FALSE);
@@ -2353,49 +2220,6 @@ driver_module_handler(module_t mod, int what, void *arg)
  */
 
 static void
-print_method_list(device_method_t *m, int indent)
-{
-	int i;
-
-	if (!m)
-		return;
-
-	for (i = 0; m->desc; i++, m++)
-		indentprintf(("method %d: %s, offset=%d\n",
-			i, m->desc->name, m->desc->offset));
-}
-
-static void
-print_device_ops(device_ops_t ops, int indent)
-{
-	int i;
-	int count = 0;
-
-	if (!ops)
-		return;
-
-	/* we present a list of the methods that are pointing to the
-	 * error_method, but ignore the 0'th elements; it is always
-	 * error_method.
-	 */
-	for (i = 1; i < ops->maxoffset; i++) {
-		if (ops->methods[i] == error_method) {
-			if (count == 0)
-				indentprintf(("error_method:"));
-			printf(" %d", i);
-			count++;
-		}
-	}
-	if (count)
-		printf("\n");
-
-	indentprintf(("(%d method%s, %d valid, %d error_method%s)\n",
-		ops->maxoffset-1, (ops->maxoffset-1 == 1? "":"s"),
-		ops->maxoffset-1-count,
-		count, (count == 1? "":"'s")));
-}
-
-static void
 print_device_short(device_t dev, int indent)
 {
 	if (!dev)
@@ -2424,8 +2248,6 @@ print_device(device_t dev, int indent)
 
 	indentprintf(("Parent:\n"));
 	print_device_short(dev->parent, indent+1);
-	indentprintf(("Methods:\n"));
-	print_device_ops(dev->ops, indent+1);
 	indentprintf(("Driver:\n"));
 	print_driver_short(dev->driver, indent+1);
 	indentprintf(("Devclass:\n"));
@@ -2471,7 +2293,7 @@ print_driver_short(driver_t *driver, int indent)
 		return;
 
 	indentprintf(("driver %s: softc size = %d\n",
-		driver->name, driver->softc));
+		driver->name, driver->size));
 }
 
 static void
@@ -2481,10 +2303,6 @@ print_driver(driver_t *driver, int indent)
 		return;
 
 	print_driver_short(driver, indent);
-	indentprintf(("Methods:\n"));
-	print_method_list(driver->methods, indent+1);
-	indentprintf(("Operations:\n"));
-	print_device_ops(driver->ops, indent+1);
 }
 
 

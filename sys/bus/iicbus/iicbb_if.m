@@ -24,8 +24,10 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/dev/iicbus/iicbb_if.m,v 1.3 1999/08/28 00:41:58 peter Exp $
-# $DragonFly: src/sys/bus/iicbus/iicbb_if.m,v 1.2 2003/06/17 04:28:27 dillon Exp $
+# $DragonFly: src/sys/bus/iicbus/iicbb_if.m,v 1.3 2003/11/17 00:54:39 asmodai Exp $
 #
+
+#include <sys/bus.h>
 
 INTERFACE iicbb;
 

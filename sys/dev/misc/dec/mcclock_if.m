@@ -24,8 +24,10 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/dev/dec/mcclock_if.m,v 1.3 1999/08/28 00:41:37 peter Exp $
-# $DragonFly: src/sys/dev/misc/dec/Attic/mcclock_if.m,v 1.2 2003/06/17 04:28:23 dillon Exp $
+# $DragonFly: src/sys/dev/misc/dec/Attic/mcclock_if.m,v 1.3 2003/11/17 00:54:39 asmodai Exp $
 #
+
+#include <sys/bus.h>
 
 INTERFACE mcclock;
 

@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.7 2003/11/15 19:01:27 dillon Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.8 2003/11/17 00:54:39 asmodai Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -232,9 +232,9 @@ CLEANFILES+=	${_src}
 .if !target(${_src})
 ${_src}: @
 .if exists(@)
-${_src}: @/kern/makeops.pl @/${_srcsrc}
+${_src}: @/kern/makeobjops.pl @/${_srcsrc}
 .endif
-	perl @/kern/makeops.pl -${_ext} @/${_srcsrc}
+	perl @/kern/makeobjops.pl -${_ext} @/${_srcsrc}
 .endif
 .endfor # _src
 .endfor # _ext

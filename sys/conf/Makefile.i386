@@ -2,7 +2,7 @@
 # Copyright 1990 W. Jolitz
 #	from: @(#)Makefile.i386	7.1 5/10/91
 # $FreeBSD: src/sys/conf/Makefile.i386,v 1.179.2.16 2002/11/18 11:26:49 ru Exp $
-# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.10 2003/11/16 22:27:49 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.11 2003/11/17 00:54:39 asmodai Exp $
 #
 # Makefile for FreeBSD
 #
@@ -84,7 +84,7 @@ NORMAL_C_C= ${CC} -c ${CFLAGS} ${PROF} ${.IMPSRC}
 NORMAL_S= ${CC} -c ${ASM_CFLAGS} ${.IMPSRC}
 PROFILE_C= ${CC} -c ${CFLAGS} ${.IMPSRC}
 
-NORMAL_M= perl5 $S/kern/makedevops.pl -c $<; \
+NORMAL_M= perl5 $S/kern/makeobjops.pl -c $<; \
 	${CC} -c ${CFLAGS} ${PROF} ${.PREFIX}.c
 
 GEN_CFILES= $S/$M/$M/genassym.c
@@ -142,7 +142,7 @@ ${SYSTEM_OBJS}: vnode_if.h ${BEFORE_DEPEND:M*.h} ${MFILES:T:S/.m$/.h/}
 
 .for mfile in ${MFILES}
 ${mfile:T:S/.m$/.h/}: ${mfile}
-	perl5 $S/kern/makedevops.pl -h ${mfile}
+	perl5 $S/kern/makeobjops.pl -h ${mfile}
 .endfor
 
 kernel-clean:

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.c,v 1.18.2.1 2001/05/17 23:05:06 imp Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.3 2003/08/07 21:16:46 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.4 2003/11/17 00:54:39 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -290,7 +290,7 @@ isa_wrap_old_drivers(void)
 		bzero(driver, sizeof(driver_t));
 		driver->name = op->driver->name;
 		driver->methods = isa_compat_methods;
-		driver->softc = sizeof(struct isa_device);
+		driver->size = sizeof(struct isa_device);
 		driver->priv = op;
 		if (op->driver->sensitive_hw)
 			resource_set_int(op->driver->name, -1, "sensitive", 1);

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.5 2003/08/07 21:16:47 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.6 2003/11/17 00:54:39 asmodai Exp $
  *
  */
 
@@ -1177,7 +1177,7 @@ compat_pci_handler(module_t mod, int type, void *data)
 		bzero(driver, sizeof(driver_t));
 		driver->name = dvp->pd_name;
 		driver->methods = pci_compat_methods;
-		driver->softc = sizeof(struct pci_devinfo *);
+		driver->size = sizeof(struct pci_devinfo *);
 		driver->priv = dvp;
 		devclass_add_driver(pci_devclass, driver);
 		break;

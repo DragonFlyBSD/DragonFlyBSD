@@ -24,8 +24,10 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/pci/pci_if.m,v 1.2.2.1 2001/07/21 22:40:26 imp Exp $
-# $DragonFly: src/sys/bus/pci/pci_if.m,v 1.2 2003/06/17 04:28:57 dillon Exp $
+# $DragonFly: src/sys/bus/pci/pci_if.m,v 1.3 2003/11/17 00:54:39 asmodai Exp $
 #
+
+#include <sys/bus.h>
 
 INTERFACE pci;
 

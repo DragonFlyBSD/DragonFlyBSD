@@ -24,12 +24,11 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/isa/isa_if.m,v 1.5 1999/10/12 21:35:48 dfr Exp $
-# $DragonFly: src/sys/bus/isa/isa_if.m,v 1.3 2003/08/07 21:16:46 dillon Exp $
+# $DragonFly: src/sys/bus/isa/isa_if.m,v 1.4 2003/11/17 00:54:39 asmodai Exp $
 #
 
-CODE {
+#include <sys/bus.h>
 #include <bus/isa/isavar.h>
-};
 
 INTERFACE isa;
 

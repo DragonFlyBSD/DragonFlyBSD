@@ -24,8 +24,10 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/kern/bus_if.m,v 1.16 1999/10/12 21:35:50 dfr Exp $
-# $DragonFly: src/sys/kern/bus_if.m,v 1.2 2003/06/17 04:28:41 dillon Exp $
+# $DragonFly: src/sys/kern/bus_if.m,v 1.3 2003/11/17 00:54:40 asmodai Exp $
 #
+
+#include <sys/bus.h>
 
 INTERFACE bus;
 
