@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libc/gen/tls.c,v 1.7 2005/03/01 23:42:00 davidxu Exp $
- *	$DragonFly: src/lib/libc/gen/tls.c,v 1.2 2005/03/09 12:06:31 davidxu Exp $
+ *	$DragonFly: src/lib/libc/gen/tls.c,v 1.3 2005/03/20 14:57:28 joerg Exp $
  */
 
 /*
@@ -108,7 +108,7 @@ __libc_free_tls(void *tls, size_t tcbsize __unused, size_t tcbalign __unused)
 {
 	Elf_Addr* dtv;
 
-	dtv = ((Elf_Addr**)tls)[0];
+	dtv = *(Elf_Addr **)tls;
 	free(tls);
 	free(dtv);
 }
@@ -130,7 +130,7 @@ __libc_allocate_tls(void *oldtls, size_t tcbsize, size_t tcbalign __unused)
 	tls = malloc(size);
 	dtv = malloc(3 * sizeof(Elf_Addr));
 
-	*(Elf_Addr**) tls = dtv;
+	*(Elf_Addr **) tls = dtv;
 
 	dtv[0] = 1;
 	dtv[1] = 1;
@@ -140,14 +140,14 @@ __libc_allocate_tls(void *oldtls, size_t tcbsize, size_t tcbalign __unused)
 		 * Copy the static TLS block over whole.
 		 */
 		memcpy(tls + tls_init_offset,
-		    (char*) oldtls + tls_init_offset,
+		    (const uint8_t *) oldtls + tls_init_offset,
 		    tls_static_space - tls_init_offset);
 
 		/*
 		 * We assume that this block was the one we created with
 		 * allocate_initial_tls().
 		 */
-		_rtld_free_tls(oldtls, 2*sizeof(Elf_Addr), sizeof(Elf_Addr));
+		_rtld_free_tls(oldtls, 2 * sizeof(Elf_Addr), sizeof(Elf_Addr));
 	} else {
 		memcpy(tls + tls_init_offset, tls_init, tls_init_size);
 		memset(tls + tls_init_offset + tls_init_size,
