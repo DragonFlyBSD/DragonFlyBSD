@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.4 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/find/main.c,v 1.15 2003/06/14 13:00:21 markm Exp $
- * $DragonFly: src/usr.bin/find/main.c,v 1.5 2005/02/14 00:39:04 cpressey Exp $
+ * $DragonFly: src/usr.bin/find/main.c,v 1.6 2005/03/14 12:48:57 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -81,7 +81,7 @@ main(int argc, char *argv[])
 	p = start = argv;
 	Hflag = Lflag = 0;
 	ftsoptions = FTS_NOSTAT | FTS_PHYSICAL;
-	while ((ch = getopt(argc, argv, "EHLPXdf:sx")) != -1)
+	while ((ch = getopt(argc, argv, "+EHLPXdf:sx")) != -1)
 		switch (ch) {
 		case 'E':
 			regexp_flags |= REG_EXTENDED;
