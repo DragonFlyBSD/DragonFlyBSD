@@ -32,8 +32,8 @@
  * SUCH DAMAGE.
  * 
  * $Id: dcons_crom.c,v 1.8 2003/10/23 15:47:21 simokawa Exp $
- * $FreeBSD: src/sys/dev/dcons/dcons_crom.c,v 1.4 2004/05/30 20:08:30 phk Exp $
- * $DragonFly: src/sys/dev/misc/dcons/dcons_crom.c,v 1.1 2004/09/23 05:09:49 simokawa Exp $
+ * $FreeBSD: src/sys/dev/dcons/dcons_crom.c,v 1.5 2004/10/13 05:38:42 simokawa Exp $
+ * $DragonFly: src/sys/dev/misc/dcons/dcons_crom.c,v 1.2 2004/10/25 13:53:26 simokawa Exp $
  */
 
 #include <sys/param.h>
@@ -52,11 +52,13 @@
 #include <bus/firewire/firewirereg.h>
 #include <bus/firewire/iec13213.h>
 #include "dcons.h"
+#include "dcons_os.h"
 #else
 #include <dev/firewire/firewire.h>
 #include <dev/firewire/firewirereg.h>
 #include <dev/firewire/iec13213.h>
 #include <dev/dcons/dcons.h>
+#include <dev/dcons/dcons_os.h>
 #endif
 
 #include <sys/cons.h>
