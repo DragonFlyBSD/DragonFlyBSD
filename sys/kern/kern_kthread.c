@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_kthread.c,v 1.5.2.3 2001/12/25 01:51:14 dillon Exp $
- * $DragonFly: src/sys/kern/kern_kthread.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_kthread.c,v 1.3 2003/06/22 04:30:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -95,6 +95,7 @@ kthread_create(void (*func)(void *), void *arg,
 
 	/* call the processes' main()... */
 	cpu_set_fork_handler(p2, func, arg);
+	start_forked_proc(&proc0, p2);
 
 	return 0;
 }

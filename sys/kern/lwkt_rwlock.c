@@ -25,7 +25,7 @@
  *
  * Implements simple shared/exclusive locks using LWKT. 
  *
- * $DragonFly: src/sys/kern/Attic/lwkt_rwlock.c,v 1.1 2003/06/21 17:31:19 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/lwkt_rwlock.c,v 1.2 2003/06/22 04:30:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -35,10 +35,13 @@
 #include <sys/rtprio.h>
 #include <sys/queue.h>
 
+/*
+ * NOTE! called from low level boot, we cannot do anything fancy.
+ */
 void
 lwkt_rwlock_init(lwkt_rwlock_t lock)
 {
-    lwkt_wait_init(&lock->rw_wait);
+    lwkt_init_wait(&lock->rw_wait);
 }
 
 void

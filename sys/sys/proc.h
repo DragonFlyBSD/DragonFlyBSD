@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.10 2003/06/21 17:31:22 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.11 2003/06/22 04:30:43 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -445,6 +445,7 @@ void	exit1 __P((struct proc *, int)) __dead2;
 void	cpu_fork __P((struct proc *, struct proc *, int));
 void	cpu_set_fork_handler __P((struct proc *, void (*)(void *), void *));
 int	fork1 __P((struct proc *, int, struct proc **));
+void	start_forked_proc __P((struct proc *, struct proc *));
 int	trace_req __P((struct proc *));
 void	cpu_wait __P((struct proc *));
 int	cpu_coredump __P((struct proc *, struct vnode *, struct ucred *));

@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.9 2003/06/21 17:31:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.10 2003/06/22 04:30:39 dillon Exp $
  */
 
 /*
@@ -843,30 +843,11 @@ retry:
 /*
  * Create a new thread and optionally associate it with a (new) process.
  */
-struct thread *
-pmap_new_thread()
+void
+pmap_init_thread(thread_t td)
 {
-	struct thread *td;
-
-	/* HIPRI YYY */
-	if (mycpu->gd_tdfreecount > 0) {
-		--mycpu->gd_tdfreecount;
-		td = TAILQ_FIRST(&mycpu->gd_tdfreeq);
-		KASSERT(td != NULL, ("unexpected null cache td"));
-		TAILQ_REMOVE(&mycpu->gd_tdfreeq, td, td_threadq);
-	} else {
-		td = zalloc(thread_zone);
-		td->td_kstack = 
-		    (void *)kmem_alloc(kernel_map, UPAGES * PAGE_SIZE);
-		lwkt_rwlock_init(&td->td_rwlock);
-	}
-
-	/*
-	 * Sometimes td_pcb is moved around YYY.  Make sure that it is
-	 * properly initialized.
-	 */
 	td->td_pcb = (struct pcb *)(td->td_kstack + UPAGES * PAGE_SIZE) - 1;
-	return(td);
+	td->td_sp = (char *)td->td_pcb - 16;
 }
 
 /*
@@ -897,74 +878,13 @@ pmap_dispose_thread(struct thread *td)
  * This routine directly affects the fork perf for a process.
  */
 void
-pmap_new_proc(struct proc *p, struct thread *td)
+pmap_init_proc(struct proc *p, struct thread *td)
 {
 	p->p_addr = (void *)td->td_kstack;
 	p->p_thread = td;
 	td->td_proc = p;
 	td->td_switch = cpu_heavy_switch;
 	bzero(p->p_addr, sizeof(*p->p_addr));
-#if 0
-
-	int i, updateneeded;
-	vm_object_t upobj;
-	vm_page_t m;
-	struct user *up;
-	unsigned *ptek, oldpte;
-
-	/*
-	 * allocate object for the upages
-	 */
-	if ((upobj = p->p_upages_obj) == NULL) {
-		upobj = vm_object_allocate( OBJT_DEFAULT, UPAGES);
-		p->p_upages_obj = upobj;
-	}
-
-	/* get a kernel virtual address for the UPAGES for this proc */
-	if ((up = p->p_addr) == NULL) {
-		up = (struct user *) kmem_alloc_nofault(kernel_map,
-				UPAGES * PAGE_SIZE);
-		if (up == NULL)
-			panic("pmap_new_proc: u_map allocation failed");
-		p->p_addr = up;
-	}
-
-	ptek = (unsigned *) vtopte((vm_offset_t) up);
-
-	updateneeded = 0;
-	for(i=0;i<UPAGES;i++) {
-		/*
-		 * Get a kernel stack page
-		 */
-		m = vm_page_grab(upobj, i, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
-
-		/*
-		 * Wire the page
-		 */
-		m->wire_count++;
-		cnt.v_wire_count++;
-
-		oldpte = *(ptek + i);
-		/*
-		 * Enter the page into the kernel address space.
-		 */
-		*(ptek + i) = VM_PAGE_TO_PHYS(m) | PG_RW | PG_V | pgeflag;
-		if (oldpte) {
-			if ((oldpte & PG_G) || (cpu_class > CPUCLASS_386)) {
-				invlpg((vm_offset_t) up + i * PAGE_SIZE);
-			} else {
-				updateneeded = 1;
-			}
-		}
-
-		vm_page_wakeup(m);
-		vm_page_flag_clear(m, PG_ZERO);
-		vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE);
-		m->valid = VM_PAGE_BITS_ALL;
-	}
-	if (updateneeded)
-		invltlb();
-#endif
 }
 
 /*
@@ -984,44 +904,6 @@ pmap_dispose_proc(struct proc *p)
 	}
 	p->p_addr = NULL;
 	return(td);
-#if 0
-	int i;
-	vm_object_t upobj;
-	vm_page_t m;
-	unsigned *ptek, oldpte;
-
-	upobj = p->p_upages_obj;
-
-	ptek = (unsigned *) vtopte((vm_offset_t) p->p_addr);
-	for(i=0;i<UPAGES;i++) {
-
-		if ((m = vm_page_lookup(upobj, i)) == NULL)
-			panic("pmap_dispose_proc: upage already missing???");
-
-		vm_page_busy(m);
-
-		oldpte = *(ptek + i);
-		*(ptek + i) = 0;
-		if ((oldpte & PG_G) || (cpu_class > CPUCLASS_386))
-			invlpg((vm_offset_t) p->p_addr + i * PAGE_SIZE);
-		vm_page_unwire(m, 0);
-		vm_page_free(m);
-	}
-#if defined(I386_CPU)
-	if (cpu_class <= CPUCLASS_386)
-		invltlb();
-#endif
-
-	/*
-	 * If the process got swapped out some of its UPAGES might have gotten
-	 * swapped.  Just get rid of the object to clean up the swap use
-	 * proactively.  NOTE! might block waiting for paging I/O to complete.
-	 */
-	if (upobj->type == OBJT_SWAP) {
-		p->p_upages_obj = NULL;
-		vm_object_deallocate(upobj);
-	}
-#endif
 }
 
 /*

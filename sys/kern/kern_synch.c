@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.5 2003/06/21 07:54:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.6 2003/06/22 04:30:42 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -448,7 +448,7 @@ tsleep(ident, priority, wmesg, timo)
 		return (0);
 	}
 	KASSERT(p != NULL, ("tsleep1"));
-	KASSERT(ident != NULL && p->p_stat == SRUN, ("tsleep"));
+	KASSERT(ident != NULL && p->p_stat == SRUN, ("tsleep %p %s %d", ident, wmesg, p->p_stat));
 
 	p->p_wchan = ident;
 	p->p_wmesg = wmesg;
@@ -552,8 +552,8 @@ xsleep(struct xwait *w, int priority, const char *wmesg, int timo, int *gen)
 		splx(s);
 		return (0);
 	}
-	KASSERT(p != NULL, ("tsleep1"));
-	KASSERT(w != NULL && p->p_stat == SRUN, ("tsleep"));
+	KASSERT(p != NULL, ("xsleep1"));
+	KASSERT(w != NULL && p->p_stat == SRUN, ("xsleep"));
 
 	/*
 	 * If the generation number does not match we return immediately.

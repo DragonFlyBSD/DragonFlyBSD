@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.9 2003/06/21 17:31:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.10 2003/06/22 04:30:39 dillon Exp $
  */
 
 #include "npx.h"
@@ -250,6 +250,8 @@ ENTRY(cpu_exit_switch)
  *	we restore everything.
  *
  *	YYY STI/CLI sequencing.
+ *
+ *	YYY note: spl check is done in mi_switch when it splx()'s.
  */
 ENTRY(cpu_heavy_restore)
 	/* interrupts are disabled */
@@ -581,5 +583,11 @@ ENTRY(cpu_lwkt_restore)
 	popl	%ebp
 	movl	TD_MACH+MTD_CPL(%eax),%ecx	/* YYY temporary */
 	movl	%ecx,_cpl			/* YYY temporary */
+	andl	_ipending,%ecx			/* YYY temporary */
+	je	1f
+	pushl	%ecx
+	call	splx				/* YYY set gd_reqpri instead? */
+	addl	$4,%esp
+1:
 	ret
 

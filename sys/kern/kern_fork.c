@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.13 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.5 2003/06/18 18:30:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.6 2003/06/22 04:30:42 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -100,6 +100,7 @@ fork(p, uap)
 
 	error = fork1(p, RFFDG | RFPROC, &p2);
 	if (error == 0) {
+		start_forked_proc(p, p2);
 		p->p_retval[0] = p2->p_pid;
 		p->p_retval[1] = 0;
 	}
@@ -117,6 +118,7 @@ vfork(p, uap)
 
 	error = fork1(p, RFFDG | RFPROC | RFPPWAIT | RFMEM, &p2);
 	if (error == 0) {
+		start_forked_proc(p, p2);
 		p->p_retval[0] = p2->p_pid;
 		p->p_retval[1] = 0;
 	}
@@ -133,6 +135,7 @@ rfork(p, uap)
 
 	error = fork1(p, uap->flags, &p2);
 	if (error == 0) {
+		start_forked_proc(p, p2);
 		p->p_retval[0] = p2 ? p2->p_pid : 0;
 		p->p_retval[1] = 0;
 	}
@@ -539,28 +542,11 @@ again:
 	 */
 	microtime(&(p2->p_stats->p_start));
 	p2->p_acflag = AFORK;
-	(void) splhigh();
-	p2->p_stat = SRUN;
-	setrunqueue(p2);
-	(void) spl0();
-
-	/*
-	 * Now can be swapped.
-	 */
-	PRELE(p1);
 
 	/*
 	 * tell any interested parties about the new process
 	 */
 	KNOTE(&p1->p_klist, NOTE_FORK | p2->p_pid);
-
-	/*
-	 * Preserve synchronization semantics of vfork.  If waiting for
-	 * child to exec or exit, set P_PPWAIT on child, and sleep on our
-	 * proc (in case of exit).
-	 */
-	while (p2->p_flag & P_PPWAIT)
-		tsleep(p1, PWAIT, "ppwait", 0);
 
 	/*
 	 * Return child proc pointer to parent.
@@ -619,3 +605,36 @@ rm_at_fork(function)
 	}	
 	return (0);
 }
+
+/*
+ * Add a forked process to the run queue after any remaining setup, such
+ * as setting the fork handler, has been completed.
+ */
+
+void
+start_forked_proc(struct proc *p1, struct proc *p2)
+{
+	/*
+	 * Move from SIDL to RUN queue
+	 */
+	KASSERT(p2->p_stat == SIDL,
+	    ("cannot start forked process, bad status: %p", p2));
+	(void) splhigh();
+	p2->p_stat = SRUN;
+	setrunqueue(p2);
+	(void) spl0();
+
+	/*
+	 * Now can be swapped.
+	 */
+	PRELE(p1);
+
+	/*
+	 * Preserve synchronization semantics of vfork.  If waiting for
+	 * child to exec or exit, set P_PPWAIT on child, and sleep on our
+	 * proc (in case of exit).
+	 */
+	while (p2->p_flag & P_PPWAIT)
+		tsleep(p1, PWAIT, "ppwait", 0);
+}
+

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.8 2003/06/21 07:54:55 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.9 2003/06/22 04:30:39 dillon Exp $
  */
 
 #include "apm.h"
@@ -1866,14 +1866,14 @@ init386(first)
 	 * Prevent lowering of the ipl if we call tsleep() early.
 	 */
 	safepri = cpl;
+	gd = &CPU_prvspace[0].globaldata;
 
-	thread0.td_kstack = (void *)proc0paddr;
+	lwkt_init_thread(&thread0, proc0paddr);
+	gd->gd_curthread = &thread0;
+	thread0.td_switch = cpu_heavy_switch;	/* YYY eventually LWKT */
 	proc0.p_addr = (void *)thread0.td_kstack;
 	proc0.p_thread = &thread0;
 	thread0.td_proc = &proc0;
-	thread0.td_pcb = (struct pcb *)
-	    ((char *)proc0paddr + UPAGES*PAGE_SIZE - sizeof(struct pcb));
-	thread0.td_kstack = (char *)proc0paddr;
 	thread0.td_flags = TDF_RUNNING;
 
 	atdevbase = ISA_HOLE_START + KERNBASE;
@@ -1912,7 +1912,6 @@ init386(first)
 	gdt_segs[GPRIV_SEL].ssd_limit = atop(0 - 1);
 	gdt_segs[GPROC0_SEL].ssd_base = (int) &common_tss;
 #endif
-	gd = &CPU_prvspace[0].globaldata;
 	gd->gd_prvspace = &CPU_prvspace[0];
 	/*
 	 * Note: on both UP and SMP curthread must be set non-NULL
@@ -2073,7 +2072,6 @@ init386(first)
 	thread0.td_pcb->pcb_mpnest = 1;
 #endif
 	thread0.td_pcb->pcb_ext = 0;
-	thread0.td_switch = cpu_heavy_switch;	/* YYY eventually LWKT */
 	proc0.p_md.md_regs = &proc0_tf;
 }
 
@@ -2086,20 +2084,15 @@ void
 cpu_gdinit(struct globaldata *gd, int cpu)
 {
 	char *sp;
-	struct pcb *pcb;
 
-	if (cpu == 0)
-	    gd->gd_curthread = &thread0;
-	else
+	TAILQ_INIT(&gd->gd_tdfreeq);	/* for pmap_{new,dispose}_thread() */
+	if (cpu)
 	    gd->gd_curthread = &gd->gd_idlethread;
 	sp = gd->gd_prvspace->idlestack;
-	gd->gd_idlethread.td_kstack = sp;
-	pcb = (struct pcb *)(sp + sizeof(gd->gd_prvspace->idlestack)) - 1;
-	gd->gd_idlethread.td_pcb = pcb;
-	gd->gd_idlethread.td_sp = (char *)pcb - 16 - sizeof(void *);
+	lwkt_init_thread(&gd->gd_idlethread, sp);
 	gd->gd_idlethread.td_switch = cpu_lwkt_switch;
+	gd->gd_idlethread.td_sp -= sizeof(void *);
 	*(void **)gd->gd_idlethread.td_sp = cpu_idle_restore;
-	TAILQ_INIT(&gd->gd_tdfreeq);	/* for pmap_{new,dispose}_thread() */
 }
 
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)

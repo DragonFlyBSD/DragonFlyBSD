@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.8 2003/06/21 07:54:57 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.9 2003/06/22 04:30:42 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -564,7 +564,6 @@ create_init(const void *udata __unused)
 		panic("cannot fork init: %d\n", error);
 	initproc->p_flag |= P_INMEM | P_SYSTEM;
 	cpu_set_fork_handler(initproc, start_init, NULL);
-	remrunqueue(initproc);
 	splx(s);
 }
 SYSINIT(init,SI_SUB_CREATE_INIT, SI_ORDER_FIRST, create_init, NULL)
@@ -575,7 +574,7 @@ SYSINIT(init,SI_SUB_CREATE_INIT, SI_ORDER_FIRST, create_init, NULL)
 static void
 kick_init(const void *udata __unused)
 {
-	setrunqueue(initproc);
+	start_forked_proc(&proc0, initproc);
 }
 SYSINIT(kickinit,SI_SUB_KTHREAD_INIT, SI_ORDER_FIRST, kick_init, NULL)
 

@@ -27,7 +27,7 @@
  *	thread scheduler, which means that generally speaking we only need
  *	to use a critical section to prevent hicups.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.3 2003/06/21 17:31:19 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.4 2003/06/22 04:30:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,7 +37,23 @@
 #include <sys/rtprio.h>
 #include <sys/queue.h>
 #include <sys/thread2.h>
+#include <sys/lock.h>
+#include <sys/sysctl.h>
 #include <machine/cpu.h>
+
+#include <vm/vm.h>
+#include <vm/vm_param.h>
+#include <vm/vm_kern.h>
+#include <vm/vm_object.h>
+#include <vm/vm_page.h>
+#include <vm/vm_map.h>
+#include <vm/vm_pager.h>
+#include <vm/vm_extern.h>
+#include <vm/vm_zone.h>
+
+static int untimely_switch = 0;
+SYSCTL_INT(_debug, OID_AUTO, untimely_switch, CTLFLAG_RW, &untimely_switch, 0, "");
+
 
 static __inline
 void
@@ -68,6 +84,59 @@ void
 lwkt_gdinit(struct globaldata *gd)
 {
     TAILQ_INIT(&gd->gd_tdrunq);
+}
+
+/*
+ * Initialize a thread wait structure prior to first use.
+ *
+ * NOTE!  called from low level boot code, we cannot do anything fancy!
+ */
+void
+lwkt_init_wait(lwkt_wait_t w)
+{
+    TAILQ_INIT(&w->wa_waitq);
+}
+
+/*
+ * Create a new thread.  The thread must be associated with a process context
+ * or LWKT start address before it can be scheduled.
+ */
+thread_t
+lwkt_alloc_thread(void)
+{
+	struct thread *td;
+	void *stack;
+
+	crit_enter();
+	if (mycpu->gd_tdfreecount > 0) {
+		--mycpu->gd_tdfreecount;
+		td = TAILQ_FIRST(&mycpu->gd_tdfreeq);
+		KASSERT(td != NULL, ("unexpected null cache td"));
+		TAILQ_REMOVE(&mycpu->gd_tdfreeq, td, td_threadq);
+		crit_exit();
+		stack = td->td_kstack;
+	} else {
+		crit_exit();
+		td = zalloc(thread_zone);
+		stack = (void *)kmem_alloc(kernel_map, UPAGES * PAGE_SIZE);
+	}
+	lwkt_init_thread(td, stack);
+	return(td);
+}
+
+/*
+ * Initialize a preexisting thread structure.  This function is used by
+ * lwkt_alloc_thread() and also used to initialize the per-cpu idlethread.
+ *
+ * NOTE!  called from low level boot code, we cannot do anything fancy!
+ */
+void
+lwkt_init_thread(thread_t td, void *stack)
+{
+	bzero(td, sizeof(struct thread));
+	lwkt_rwlock_init(&td->td_rwlock);
+	td->td_kstack = stack;
+	pmap_init_thread(td);
 }
 
 /*
@@ -137,12 +206,10 @@ lwkt_yield_quick(void)
     /*
      * YYY enabling will cause wakeup() to task-switch, which really
      * confused the old 4.x code.  This is a good way to simulate
-     * preemption without actually doing preemption, because a lot
-     * of code (including schedule, deschedule) uses critical sections
-     * which devolve to here if an interrupt occured.
+     * preemption and MP without actually doing preemption or MP, because a
+     * lot of code assumes that wakeup() does not block.
      */
-#if 0
-    if (intr_nesting_level == 0) {
+    if (untimely_switch && intr_nesting_level == 0) {
 	crit_enter();
 	/*
 	 * YYY temporary hacks until we disassociate the userland scheduler
@@ -157,7 +224,6 @@ lwkt_yield_quick(void)
 	}
 	crit_exit_noyield();
     }
-#endif
 }
 
 /*
@@ -313,15 +379,6 @@ lwkt_deschedule(thread_t td)
 	}
     }
     crit_exit();
-}
-
-/*
- * Initialize a thread wait queue
- */
-void
-lwkt_wait_init(lwkt_wait_t w)
-{
-    TAILQ_INIT(&w->wa_waitq);
 }
 
 /*

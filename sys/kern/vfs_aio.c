@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.3 2003/06/22 04:30:42 dillon Exp $
  */
 
 /*
@@ -881,6 +881,7 @@ aio_newproc()
 	if (error)
 		return error;
 	cpu_set_fork_handler(np, aio_daemon, curproc);
+	start_forked_proc(p, np);
 
 	/*
 	 * Wait until daemon is started, but continue on just in case to

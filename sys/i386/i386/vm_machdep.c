@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.8 2003/06/21 17:31:08 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.9 2003/06/22 04:30:39 dillon Exp $
  */
 
 #include "npx.h"
@@ -148,8 +148,8 @@ cpu_fork(p1, p2, flags)
 #endif
 
 	/* Copy p1's pcb. */
-	*p2->p_thread->td_pcb = *p1->p_thread->td_pcb;
 	pcb2 = p2->p_thread->td_pcb;
+	*pcb2 = *p1->p_thread->td_pcb;
 
 	/*
 	 * Create a new fresh stack for the new process.
@@ -170,8 +170,7 @@ cpu_fork(p1, p2, flags)
 	 * to use the LWKT restore function directly so we can get rid of
 	 * all the extra crap we are setting up.
 	 */
-	p2->p_md.md_regs = (struct trapframe *)
-			    ((char *)p2->p_thread->td_pcb - 16) - 1;
+	p2->p_md.md_regs = (struct trapframe *)((char *)pcb2 - 16) - 1;
 	bcopy(p1->p_md.md_regs, p2->p_md.md_regs, sizeof(*p2->p_md.md_regs));
 
 	/*
