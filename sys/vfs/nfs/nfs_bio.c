@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_bio.c,v 1.83.2.4 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.4 2003/06/25 03:56:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.5 2003/06/26 02:17:46 dillon Exp $
  */
 
 
@@ -954,10 +954,8 @@ again:
 			error = EINTR;
 			break;
 		}
-		if (bp->b_wcred == NOCRED) {
-			crhold(cred);
-			bp->b_wcred = cred;
-		}
+		if (bp->b_wcred == NOCRED)
+			bp->b_wcred = crhold(cred);
 		np->n_flag |= NMODIFIED;
 
 		/*
@@ -1313,16 +1311,12 @@ again:
 		}
 
 		if (bp->b_flags & B_READ) {
-			if (bp->b_rcred == NOCRED && cred != NOCRED) {
-				crhold(cred);
-				bp->b_rcred = cred;
-			}
+			if (bp->b_rcred == NOCRED && cred != NOCRED)
+				bp->b_rcred = crhold(cred);
 		} else {
 			bp->b_flags |= B_WRITEINPROG;
-			if (bp->b_wcred == NOCRED && cred != NOCRED) {
-				crhold(cred);
-				bp->b_wcred = cred;
-			}
+			if (bp->b_wcred == NOCRED && cred != NOCRED)
+				bp->b_wcred = crhold(cred);
 		}
 
 		BUF_KERNPROC(bp);

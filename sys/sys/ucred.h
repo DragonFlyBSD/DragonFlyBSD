@@ -32,7 +32,7 @@
  *
  *	@(#)ucred.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/ucred.h,v 1.14.2.5 2002/03/09 05:20:25 dd Exp $
- * $DragonFly: src/sys/sys/ucred.h,v 1.4 2003/06/25 03:56:10 dillon Exp $
+ * $DragonFly: src/sys/sys/ucred.h,v 1.5 2003/06/26 02:17:47 dillon Exp $
  */
 
 #ifndef _SYS_UCRED_H_
@@ -84,11 +84,12 @@ struct proc;
 
 void		change_euid __P((uid_t euid));
 void		change_ruid __P((uid_t ruid));
+struct ucred	*cratom __P((struct ucred **pcr));
 struct ucred	*crcopy __P((struct ucred *cr));
 struct ucred	*crdup __P((struct ucred *cr));
 void		crfree __P((struct ucred *cr));
 struct ucred	*crget __P((void));
-struct ucred	*crhold __P((struct ucred *cr));
+struct ucred    *crhold __P((struct ucred *cr));
 void		cru2x __P((struct ucred *cr, struct xucred *xcr));
 int		groupmember __P((gid_t gid, struct ucred *cred));
 #endif /* _KERNEL */

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.5 2003/06/26 02:17:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -339,7 +339,7 @@ interpret:
 		/*
 		 * Set the new credentials.
 		 */
-		p->p_ucred = crcopy(p->p_ucred);
+		cratom(&p->p_ucred);
 		if (attr.va_mode & VSUID)
 			change_euid(attr.va_uid);
 		if (attr.va_mode & VSGID)

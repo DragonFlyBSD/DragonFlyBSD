@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_ncp.c,v 1.3 1999/10/29 10:21:07 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.3 2003/06/25 03:56:05 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.4 2003/06/26 02:17:46 dillon Exp $
  *
  * Core of NCP protocol
  */
@@ -557,8 +557,7 @@ ncp_connect(struct ncp_conn_args *li, struct thread *td, struct ucred *cred,
 		owner = crget();
 		owner->cr_uid = li->owner;
 	} else {
-		owner = cred;
-		crhold(owner);
+		owner = crhold(cred);
 	}
 	error = ncp_conn_alloc(td, owner, &conn);
 	if (error)

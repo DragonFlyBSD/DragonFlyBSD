@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_jail.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_jail.c,v 1.5 2003/06/26 02:17:45 dillon Exp $
  *
  */
 
@@ -81,7 +81,7 @@ jail(struct jail_args *uap)
 		goto bail;
 
 	pr->pr_ref++;
-	p->p_ucred = crcopy(p->p_ucred);
+	cratom(&p->p_ucred);
 	p->p_ucred->cr_prison = pr;
 	p->p_flag |= P_JAILED;
 	return (0);

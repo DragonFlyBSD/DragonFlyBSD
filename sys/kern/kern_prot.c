@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.5 2003/06/26 02:17:45 dillon Exp $
  */
 
 /*
@@ -564,7 +564,7 @@ setgid(struct setgid_args *uap)
 	 * Copy credentials so other references do not see our changes.
 	 */
 	if (cr->cr_groups[0] != gid) {
-		cr = p->p_ucred = crcopy(cr);
+		cr = cratom(&p->p_ucred);
 		cr->cr_groups[0] = gid;
 		setsugid();
 	}
@@ -595,7 +595,7 @@ setegid(struct setegid_args *uap)
 	    (error = suser_cred(cr, PRISON_ROOT)))
 		return (error);
 	if (cr->cr_groups[0] != egid) {
-		cr = p->p_ucred = crcopy(cr);
+		cr = cratom(&p->p_ucred);
 		cr->cr_groups[0] = egid;
 		setsugid();
 	}
@@ -628,9 +628,9 @@ setgroups(struct setgroups_args *uap)
 		return (EINVAL);
 	/*
 	 * XXX A little bit lazy here.  We could test if anything has
-	 * changed before crcopy() and setting P_SUGID.
+	 * changed before cratom() and setting P_SUGID.
 	 */
-	cr = p->p_ucred = crcopy(cr);
+	cr = cratom(&p->p_ucred);
 	if (ngrp < 1) {
 		/*
 		 * setgroups(0, NULL) is a legitimate way of clearing the
@@ -686,7 +686,7 @@ setreuid(struct setreuid_args *uap)
 	}
 	if ((ruid != (uid_t)-1 || cr->cr_uid != cr->cr_ruid) &&
 	    cr->cr_svuid != cr->cr_uid) {
-		cr = p->p_ucred = crcopy(cr);
+		cr = cratom(&p->p_ucred);
 		cr->cr_svuid = cr->cr_uid;
 		setsugid();
 	}
@@ -721,18 +721,18 @@ setregid(struct setregid_args *uap)
 		return (error);
 
 	if (egid != (gid_t)-1 && cr->cr_groups[0] != egid) {
-		cr = p->p_ucred = crcopy(cr);
+		cr = cratom(&p->p_ucred);
 		cr->cr_groups[0] = egid;
 		setsugid();
 	}
 	if (rgid != (gid_t)-1 && cr->cr_rgid != rgid) {
-		cr = p->p_ucred = crcopy(cr);
+		cr = cratom(&p->p_ucred);
 		cr->cr_rgid = rgid;
 		setsugid();
 	}
 	if ((rgid != (gid_t)-1 || cr->cr_groups[0] != cr->cr_rgid) &&
 	    cr->cr_svgid != cr->cr_groups[0]) {
-		cr = p->p_ucred = crcopy(cr);
+		cr = cratom(&p->p_ucred);
 		cr->cr_svgid = cr->cr_groups[0];
 		setsugid();
 	}
@@ -781,7 +781,7 @@ setresuid(struct setresuid_args *uap)
 		setsugid();
 	}
 	if (suid != (uid_t)-1 && cr->cr_svuid != suid) {
-		cr = p->p_ucred = crcopy(cr);
+		cr = cratom(&p->p_ucred);
 		cr->cr_svuid = suid;
 		setsugid();
 	}
@@ -823,17 +823,17 @@ setresgid(struct setresgid_args *uap)
 		return (error);
 
 	if (egid != (gid_t)-1 && cr->cr_groups[0] != egid) {
-		cr = p->p_ucred = crcopy(cr);
+		cr = cratom(&p->p_ucred);
 		cr->cr_groups[0] = egid;
 		setsugid();
 	}
 	if (rgid != (gid_t)-1 && cr->cr_rgid != rgid) {
-		cr = p->p_ucred = crcopy(cr);
+		cr = cratom(&p->p_ucred);
 		cr->cr_rgid = rgid;
 		setsugid();
 	}
 	if (sgid != (gid_t)-1 && cr->cr_svgid != sgid) {
-		cr = p->p_ucred = crcopy(cr);
+		cr = cratom(&p->p_ucred);
 		cr->cr_svgid = sgid;
 		setsugid();
 	}
@@ -1006,12 +1006,14 @@ crget()
 }
 
 /*
- * Claim another reference to a ucred structure
+ * Claim another reference to a ucred structure.  Can be used with special
+ * creds.
  */
 struct ucred *
 crhold(struct ucred *cr)
 {
-	cr->cr_ref++;
+	if (cr != NOCRED && cr != FSCRED)
+		cr->cr_ref++;
 	return(cr);
 }
 
@@ -1051,6 +1053,34 @@ crfree(struct ucred *cr)
 }
 
 /*
+ * Atomize a cred structure so it can be modified without polluting
+ * other references to it.
+ */
+struct ucred *
+cratom(struct ucred **pcr)
+{
+	struct ucred *oldcr;
+	struct ucred *newcr;
+
+	oldcr = *pcr;
+	if (oldcr->cr_ref == 1)
+		return (oldcr);
+	newcr = crget();
+	*newcr = *oldcr;
+	if (newcr->cr_uidinfo)
+		uihold(newcr->cr_uidinfo);
+	if (newcr->cr_ruidinfo)
+		uihold(newcr->cr_ruidinfo);
+	if (newcr->cr_prison)
+		++newcr->cr_prison->pr_ref;
+	newcr->cr_ref = 1;
+	crfree(oldcr);
+	*pcr = newcr;
+	return (newcr);
+}
+
+#if 0	/* no longer used but keep around for a little while */
+/*
  * Copy cred structure to a new one and free the old one.
  */
 struct ucred *
@@ -1072,6 +1102,7 @@ crcopy(struct ucred *cr)
 	crfree(cr);
 	return (newcr);
 }
+#endif
 
 /*
  * Dup cred struct to a new held one.
@@ -1183,12 +1214,7 @@ change_euid(uid_t euid)
 
 	KKASSERT(p != NULL);
 
-	cr = p->p_ucred;
-	/*
-	 * crcopy is essentially a NOP if ucred has a reference count
-	 * of 1, which is true if it has already been copied.
-	 */
-	cr = p->p_ucred = crcopy(cr);
+	cr = cratom(&p->p_ucred);
 	uip = cr->cr_uidinfo;
 	cr->cr_uid = euid;
 	cr->cr_uidinfo = uifind(euid);
@@ -1210,7 +1236,7 @@ change_ruid(uid_t ruid)
 
 	KKASSERT(p != NULL);
 
-	cr = p->p_ucred = crcopy(p->p_ucred);
+	cr = cratom(&p->p_ucred);
 	(void)chgproccnt(cr->cr_ruidinfo, -1, 0);
 	uip = cr->cr_ruidinfo;
 	/* It is assumed that pcred is not shared between processes */

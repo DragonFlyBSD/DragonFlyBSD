@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.22 2002/12/15 09:24:23 maxim Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.5 2003/06/26 02:17:45 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -154,8 +154,7 @@ socreate(int dom, struct socket **aso, int type,
 	TAILQ_INIT(&so->so_incomp);
 	TAILQ_INIT(&so->so_comp);
 	so->so_type = type;
-	so->so_cred = p->p_ucred;
-	crhold(so->so_cred);
+	so->so_cred = crhold(p->p_ucred);
 	so->so_proto = prp;
 	error = (*prp->pr_usrreqs->pru_attach)(so, proto, td);
 	if (error) {

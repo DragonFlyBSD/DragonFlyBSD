@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.3 2003/06/19 01:55:06 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.4 2003/06/26 02:17:45 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -804,10 +804,8 @@ cluster_wbuild(vp, size, start_lbn, len)
 		bp->b_bcount = 0;
 		bp->b_bufsize = 0;
 		bp->b_npages = 0;
-		if (tbp->b_wcred != NOCRED) {
-		    bp->b_wcred = tbp->b_wcred;
-		    crhold(bp->b_wcred);
-		}
+		if (tbp->b_wcred != NOCRED)
+		    bp->b_wcred = crhold(tbp->b_wcred);
 
 		bp->b_blkno = tbp->b_blkno;
 		bp->b_lblkno = tbp->b_lblkno;

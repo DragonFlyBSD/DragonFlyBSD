@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.17 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.5 2003/06/26 02:17:45 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -553,8 +553,7 @@ fsetown(pgid, sigiop)
 		sigio->sio_pgrp = pgrp;
 	}
 	sigio->sio_pgid = pgid;
-	curproc->p_ucred = crhold(curproc->p_ucred);
-	sigio->sio_ucred = curproc->p_ucred;
+	sigio->sio_ucred = crhold(curproc->p_ucred);
 	/* It would be convenient if p_ruid was in ucred. */
 	sigio->sio_ruid = curproc->p_ucred->cr_ruid;
 	sigio->sio_myref = sigiop;
@@ -941,10 +940,9 @@ falloc(p, resultfp, resultfd)
 		return (error);
 	}
 	fp->f_count = 1;
-	fp->f_cred = p->p_ucred;
+	fp->f_cred = crhold(p->p_ucred);
 	fp->f_ops = &badfileops;
 	fp->f_seqcount = 1;
-	crhold(fp->f_cred);
 	if ((fq = p->p_fd->fd_ofiles[0])) {
 		LIST_INSERT_AFTER(fq, fp, f_list);
 	} else {

@@ -65,7 +65,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.4 2003/06/22 17:39:48 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.5 2003/06/26 02:17:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1110,10 +1110,9 @@ swap_pager_getpages(object, m, count, reqpage)
 
 	bp->b_flags = B_READ | B_CALL;
 	bp->b_iodone = swp_pager_async_iodone;
-	bp->b_rcred = bp->b_wcred = proc0.p_ucred;
 	bp->b_data = (caddr_t) kva;
-	crhold(bp->b_rcred);
-	crhold(bp->b_wcred);
+	bp->b_rcred = crhold(proc0.p_ucred);
+	bp->b_wcred = crhold(proc0.p_ucred);
 	bp->b_blkno = blk - (reqpage - i);
 	bp->b_bcount = PAGE_SIZE * (j - i);
 	bp->b_bufsize = PAGE_SIZE * (j - i);
@@ -1360,13 +1359,12 @@ swap_pager_putpages(object, m, count, sync, rtvals)
 
 		pmap_qenter((vm_offset_t)bp->b_data, &m[i], n);
 
-		bp->b_rcred = bp->b_wcred = proc0.p_ucred;
 		bp->b_bcount = PAGE_SIZE * n;
 		bp->b_bufsize = PAGE_SIZE * n;
 		bp->b_blkno = blk;
 
-		crhold(bp->b_rcred);
-		crhold(bp->b_wcred);
+		bp->b_rcred = crhold(proc0.p_ucred);
+		bp->b_wcred = crhold(proc0.p_ucred);
 
 		pbgetvp(swapdev_vp, bp);
 

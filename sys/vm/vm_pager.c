@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.3 2003/06/19 01:55:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.4 2003/06/26 02:17:47 dillon Exp $
  */
 
 /*
@@ -552,11 +552,10 @@ getchainbuf(struct buf *bp, struct vnode *vp, int flags)
 		waitchainbuf(bp, 4, 0);
 
 	nbp->b_flags = B_CALL | (bp->b_flags & B_ORDERED) | flags;
-	nbp->b_rcred = nbp->b_wcred = proc0.p_ucred;
 	nbp->b_iodone = vm_pager_chain_iodone;
 
-	crhold(nbp->b_rcred);
-	crhold(nbp->b_wcred);
+	nbp->b_rcred = crhold(proc0.p_ucred);
+	nbp->b_wcred = crhold(proc0.p_ucred);
 
 	if (vp)
 		pbgetvp(vp, nbp);

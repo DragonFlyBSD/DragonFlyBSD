@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.4 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.5 2003/06/26 02:17:45 dillon Exp $
  */
 
 /*
@@ -622,6 +622,7 @@ aio_daemon(void *uproc)
 	struct kaioinfo *ki;
 	struct proc *curcp, *mycp, *userp;
 	struct vmspace *myvm, *tmpvm;
+	struct ucred *cr;
 
 	/*
 	 * Local copies of curproc (cp) and vmspace (myvm)
@@ -663,12 +664,12 @@ aio_daemon(void *uproc)
 	 */
 	fdfree(mycp);
 	mycp->p_fd = NULL;
-	mycp->p_ucred = crcopy(mycp->p_ucred);
-	mycp->p_ucred->cr_uid = 0;
-	uifree(mycp->p_ucred->cr_uidinfo);
-	mycp->p_ucred->cr_uidinfo = uifind(0);
-	mycp->p_ucred->cr_ngroups = 1;
-	mycp->p_ucred->cr_groups[0] = 1;
+	cr = cratom(&mycp->p_ucred);
+	cr->cr_uid = 0;
+	uifree(cr->cr_uidinfo);
+	cr->cr_uidinfo = uifind(0);
+	cr->cr_ngroups = 1;
+	cr->cr_groups[0] = 1;
 
 	/* The daemon resides in its own pgrp. */
 	enterpgrp(mycp, mycp->p_pid, 1);
