@@ -14,7 +14,7 @@
 #
 #
 # $FreeBSD: src/sys/boot/i386/boot0/boot0.s,v 1.26 2003/06/01 20:41:04 obrien Exp $
-# $DragonFly: src/sys/boot/i386/boot0/Attic/boot0.s,v 1.3 2003/11/10 06:08:34 dillon Exp $
+# $DragonFly: src/sys/boot/i386/boot0/Attic/boot0.s,v 1.4 2004/07/18 18:26:33 dillon Exp $
 
 # A 512-byte boot manager.
 
@@ -177,7 +177,7 @@ main.6: 	addb $'0'|0x80,%al		# Save next
 		callw putx			#  item
 #
 # Now that we've printed the drive (if we needed to), display a prompt.
-# Get ready for the input byt noting the time.
+# Get ready for the input by noting the time.
 #
 main.7: 	movw $prompt,%si		# Display
 		callw putstr			#  prompt
@@ -323,35 +323,42 @@ putstr.1:	callw putchr			# Display char
 		jmp putstr			# Continue
 putstr.2:	andb $~0x80,%al 		# Clear MSB
 
-putchr: 	pushw %bx			# Save
+putchr: 	pusha				# Save
 		movw $0x7,%bx	 		# Page:attribute
 		movb $0xe,%ah			# BIOS: Display
 		int $0x10			#  character
-		popw %bx			# Restore
+		popa 				# Restore
 		retw				# To caller
 
 # One-sector disk I/O routine
+#
+# Setup for both the packet and non-packet interfaces then select one or
+# the other.
+#
+# Don't trust the BIOS to keep registers intact across the call, use
+# pusha/popa.
 
-intx13: 	movb 0x1(%si),%dh		# Load head
-		movw 0x2(%si),%cx		# Load cylinder:sector
-		movb $0x1,%al			# Sector count
-		pushw %si			# Save
-		movw %sp,%di			# Save
+intx13: 	movb 0x1(%si),%dh		# (nonpkt) head
+		movw 0x2(%si),%cx		# (nonpkt) cylinder:sector
+		movb $0x1,%al			# (nonpkt) Sector count
+		pusha 				# save: do not trust the bios
+		pushl $0x0			# (pkt) LBA address
+		pushl 0x8(%si)			# (pkt)
+		pushw %es			# (pkt) xfer buffer address
+		pushw %bx			# (pkt)
+		pushw $1			# (pkt) Block count
+		pushw $16			# (pkt) Packet size
 		testb $0x80,_FLAGS(%bp)		# Use packet interface?
-		jz intx13.1			# No
-		pushl $0x0			# Set the
-		pushl 0x8(%si)			# LBA address
-		pushw %es			# Set the transfer
-		pushw %bx			#  buffer address
-		push  $0x1			# Block count
-		push  $0x10			# Packet size
-		movw %sp,%si			# Packet pointer
+		jz intx13.1
+		movw %sp,%si			# Yes, set packet pointer
 		decw %ax			# Verify off
-		orb $0x40,%ah			# Use disk packet
+		orb $0x40,%ah			# Set pkt mode in command
 intx13.1:	int $0x13			# BIOS: Disk I/O
-		movw %di,%sp			# Restore
-		popw %si			# Restore
-		retw				# To caller
+		# WARNING: RETAIN CARRY AFTER BIOS CALL
+		movw %sp,%si
+		lea 16(%si),%sp			# cleanup the stack
+		popa 				# Restore registers
+		retw
 
 # Menu strings
 
