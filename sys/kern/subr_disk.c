@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.13 2004/07/16 05:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.14 2004/09/15 02:56:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -176,11 +176,14 @@ void
 disk_destroy(struct disk *disk)
 {
 	if (disk->d_devsw) {
-	    cdevsw_remove(disk->d_devsw, dkunitmask(), dkunit(disk->d_cdev));
+	    cdevsw_remove(disk->d_devsw, dkunitmask(), 
+			    dkmakeunit(dkunit(disk->d_cdev)));
 	    LIST_REMOVE(disk, d_list);
 	}
-	if (disk->d_rawsw)
-	    destroy_all_dev(disk->d_rawsw, dkunitmask(), dkunit(disk->d_rawdev));
+	if (disk->d_rawsw) {
+	    destroy_all_dev(disk->d_rawsw, dkunitmask(), 
+			    dkmakeunit(dkunit(disk->d_rawdev)));
+	}
 	bzero(disk, sizeof(*disk));
 }
 
