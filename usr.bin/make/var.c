@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.94 2005/02/15 10:59:46 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.95 2005/02/15 11:00:39 okumoto Exp $
  */
 
 /*-
@@ -1747,19 +1747,18 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
     }
 
     if (v->flags & VAR_FROM_ENV) {
-	Boolean	  destroy = FALSE;
-
-	if (rw_str != (char *)Buf_GetAll(v->val, (size_t *)NULL)) {
-	    destroy = TRUE;
-	} else {
+	if (rw_str == (char *)Buf_GetAll(v->val, (size_t *)NULL)) {
 	    /*
 	     * Returning the value unmodified, so tell the caller to free
 	     * the thing.
 	     */
 	    *freePtr = TRUE;
+	    VarDestroy(v, FALSE);
+	    return (rw_str);
+	} else {
+	    VarDestroy(v, TRUE);
+	    return (rw_str);
 	}
-	VarDestroy(v, destroy);
-	return (rw_str);
     } else if (v->flags & VAR_JUNK) {
 	/*
 	 * Perform any free'ing needed and set *freePtr to FALSE so the caller
@@ -1768,17 +1767,18 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	if (*freePtr) {
 	    free(rw_str);
 	}
-	*freePtr = FALSE;
-	VarDestroy(v, TRUE);
 	if (dynamic) {
+	    *freePtr = FALSE;
+	    VarDestroy(v, TRUE);
 	    rw_str = emalloc(*lengthPtr + 1);
 	    strncpy(rw_str, input, *lengthPtr);
 	    rw_str[*lengthPtr] = '\0';
 	    *freePtr = TRUE;
 	    return (rw_str);
 	} else {
-	    rw_str = err ? var_Error : varNoError;
-	    return (rw_str);
+	    *freePtr = FALSE;
+	    VarDestroy(v, TRUE);
+	    return (err ? var_Error : varNoError);
 	}
     } else {
 	return (rw_str);
