@@ -38,7 +38,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.15 2005/01/09 23:03:28 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.16 2005/01/10 12:36:06 okumoto Exp $
  */
 
 /*-
@@ -161,30 +161,6 @@ Buf_GetAll(Buffer *bp, size_t *numBytesPtr)
 
 /*-
  *-----------------------------------------------------------------------
- * Buf_Discard --
- *	Throw away bytes in a buffer.
- *
- * Results:
- *	None.
- *
- * Side Effects:
- *	The bytes are discarded.
- *
- *-----------------------------------------------------------------------
- */
-void
-Buf_Discard(Buffer *bp, size_t numBytes)
-{
-	if ((size_t)(bp->inPtr - bp->outPtr) <= numBytes) {
-		bp->inPtr = bp->outPtr = bp->buffer;
-		bp->left = bp->size;
-		*bp->inPtr = 0;
-	} else
-		bp->outPtr += numBytes;
-}
-
-/*-
- *-----------------------------------------------------------------------
  * Buf_Size --
  *	Returns the number of bytes in the given buffer. Doesn't include
  *	the null-terminating byte.
@@ -279,3 +255,13 @@ Buf_ReplaceLastByte(Buffer *buf, Byte byte)
 	else
 		*(buf->inPtr - 1) = byte;
 }
+
+void
+Buf_Clear(Buffer *bp)
+{
+	bp->inPtr	= bp->buffer;
+	bp->outPtr	= bp->buffer;
+	bp->left	= bp->size;
+	bp->inPtr[0]	= '\0';
+}
+

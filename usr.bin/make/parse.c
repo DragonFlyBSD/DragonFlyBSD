@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.35 2005/01/09 23:14:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.36 2005/01/10 12:36:06 okumoto Exp $
  */
 
 /*-
@@ -2017,7 +2017,7 @@ ParseSkipLine(int skip, int keep_newline)
     buf = Buf_Init(MAKE_BSIZE);
 
     do {
-        Buf_Discard(buf, lineLength);
+        Buf_Clear(buf);
         lastc = '\0';
 
         while (((c = ParseReadc()) != '\n' || lastc == '\\')

@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.39 2005/01/09 23:03:28 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.40 2005/01/10 12:36:06 okumoto Exp $
  */
 
 /*-
@@ -427,7 +427,7 @@ Var_Set(const char *name, const char *val, GNode *ctxt)
     if (v == NULL) {
 	VarAdd(n, val, ctxt);
     } else {
-	Buf_Discard(v->val, Buf_Size(v->val));
+	Buf_Clear(v->val);
 	Buf_AddBytes(v->val, strlen(val), (const Byte *)val);
 
 	DEBUGF(VAR, ("%s:%s = %s\n", ctxt->name, n, val));
