@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvgarndr.c,v 1.5.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.10 2005/02/13 03:29:17 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.11 2005/02/18 16:38:23 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -162,54 +162,6 @@ static u_short mouse_or_mask[16] = {
 	0x0000, 0x4000, 0x6000, 0x7000, 0x7800, 0x7c00, 0x7e00, 0x6800,
 	0x0c00, 0x0c00, 0x0600, 0x0600, 0x0000, 0x0000, 0x0000, 0x0000
 };
-#endif
-
-#ifdef SC_PIXEL_MODE
-#define	VIDEO_MEMORY_POS(scp, pos, x) 					\
-	scp->sc->adp->va_window +					\
-	x * scp->xoff +							\
-	scp->yoff * scp->font_size * scp->sc->adp->va_line_width +	\
-	x * (pos % scp->xsize) +					\
-	scp->font_size * scp->sc->adp->va_line_width * (pos / scp->xsize)
-
-#define	vga_drawpxl(pos, color)						\
-	switch (scp->sc->adp->va_info.vi_depth) {			\
-		case 32:						\
-		case 24:						\
-			writel(pos, vga_palette32[color]);		\
-			break;						\
-		case 16:						\
-			if (scp->sc->adp->va_info.vi_pixel_fsizes[1] == 5)\
-				writew(pos, vga_palette15[color]);	\
-			else						\
-				writew(pos, vga_palette16[color]);	\
-			break;						\
-		case 15:						\
-			writew(pos, vga_palette15[color]);		\
-			break;						\
-		}
-	
-static uint32_t vga_palette32[16] = {
-	0x000000, 0x0000ad, 0x00ad00, 0x00adad,
-	0xad0000, 0xad00ad, 0xad5200, 0xadadad,
-	0x525252, 0x5252ff, 0x52ff52, 0x52ffff,
-	0xff5252, 0xff52ff, 0xffff52, 0xffffff
-};
-
-static uint16_t vga_palette16[16] = {
-	0x0000, 0x0016, 0x0560, 0x0576, 0xb000, 0xb016, 0xb2a0, 0xb576,
-	0x52aa, 0x52bf, 0x57ea, 0x57ff, 0xfaaa, 0xfabf, 0xffea, 0xffff
-};
-
-static uint16_t vga_palette15[16] = {
-	0x0000, 0x0016, 0x02c0, 0x02d6, 0x5800, 0x5816, 0x5940, 0x5ad6,
-	0x294a, 0x295f, 0x2bea, 0x2bff, 0x7d4a, 0x7d5f, 0x7fea, 0x7fff
-};
-
-#ifndef SC_NO_CUTPASTE
-static uint32_t mouse_buf32[256];
-static uint16_t mouse_buf16[256];
-#endif
 #endif
 
 static void
@@ -560,34 +512,34 @@ vga_pxlclear_planar(scr_stat *scp, int c, int attr)
 static void
 vga_pxlborder_direct(scr_stat *scp, int color)
 {
-	vm_offset_t s;
-	vm_offset_t e;
-	vm_offset_t f;
-	int line_width;
-	int pixel_size;
-	int x;
-	int y;
-	int i;
+	int i, x, y;
+	int line_width, pixel_size;
+	uint32_t u32 = 0;
+	vm_offset_t draw_pos, draw_end, p;
 
 	line_width = scp->sc->adp->va_line_width;
 	pixel_size = scp->sc->adp->va_info.vi_pixel_size;
 
-	if (scp->yoff > 0) {
-		s = scp->sc->adp->va_window;
-		e = s + line_width * scp->yoff * scp->font_size;
+	for (i = 0; i < 4 / pixel_size; ++i)
+		u32 += scp->ega_palette[color] << (i * 8 * pixel_size);
 
-		for (f = s; f < e; f += pixel_size)
-			vga_drawpxl(f, color);
+	if (scp->yoff > 0) {
+		draw_pos = scp->sc->adp->va_window;
+		draw_end = draw_pos +
+		    line_width * scp->yoff * scp->font_size;
+
+		for (p = draw_pos; p < draw_end; p += 4)
+			writel(p, u32);
 	}
 
 	y = (scp->yoff + scp->ysize) * scp->font_size;
 
 	if (scp->ypixel > y) {
-		s = scp->sc->adp->va_window + line_width * y;
-		e = s + line_width * (scp->ypixel - y);
+		draw_pos = scp->sc->adp->va_window + line_width * y;
+		draw_end = draw_pos + line_width * (scp->ypixel - y);
 
-		for (f = s; f < e; f += pixel_size)
-			vga_drawpxl(f, color);
+		for (p = draw_pos; p < draw_end; p += 4)
+			writel(p, u32); 
 	}
 
 	y = scp->yoff * scp->font_size;
@@ -595,21 +547,23 @@ vga_pxlborder_direct(scr_stat *scp, int color)
 
 	for (i = 0; i < scp->ysize * scp->font_size; ++i) {
 		if (scp->xoff > 0) {
-			s = scp->sc->adp->va_window + line_width * (y + i);
-			e = s + scp->xoff * 8 * pixel_size;
+			draw_pos = scp->sc->adp->va_window +
+			    line_width * (y + i);
+			draw_end = draw_pos + scp->xoff * 8 * pixel_size;
 
-			for (f = s; f < e; f += pixel_size)
-				vga_drawpxl(f, color);
+			for (p = draw_pos; p < draw_end; p += 4)
+				writel(p, u32);
 		}
 
 		if (x > 0) {
-			s = scp->sc->adp->va_window + line_width * (y + i) +
+			draw_pos = scp->sc->adp->va_window +
+			    line_width * (y + i) +
 			    scp->xoff * 8 * pixel_size +
 			    scp->xsize * 8 * pixel_size;
-			e = s + x * 8 * pixel_size;
+			draw_end = draw_pos + x * 8 * pixel_size;
 
-			for (f = s; f < e; f += pixel_size)
-				vga_drawpxl(f, color);
+			for (p = draw_pos; p < draw_end; p += 4)
+				writel(p, u32);
 		}
 	}
 }
@@ -712,18 +666,16 @@ vga_egadraw(scr_stat *scp, int from, int count, int flip)
 static void
 vga_vgadraw_direct(scr_stat *scp, int from, int count, int flip)
 {
-	vm_offset_t d = 0;
-	vm_offset_t e;
-	u_char *f;
-	u_short col1, col2, color;
 	int line_width, pixel_size;
-	int i, j, k;
-	int a;
+	int a, i, j, k, l, pos;
+	uint32_t fg, bg, u32;
+	unsigned char *char_data;
+	vm_offset_t draw_pos, p;
 
 	line_width = scp->sc->adp->va_line_width;
 	pixel_size = scp->sc->adp->va_info.vi_pixel_size;
 
-	d = VIDEO_MEMORY_POS(scp, from, 8 * pixel_size);
+	draw_pos = VIDEO_MEMORY_POS(scp, from, 8 * pixel_size);
 
 	if (from + count > scp->xsize * scp->ysize)
 		count = scp->xsize * scp->ysize - from;
@@ -732,29 +684,41 @@ vga_vgadraw_direct(scr_stat *scp, int from, int count, int flip)
 		a = sc_vtb_geta(&scp->vtb, i);
 
 		if (flip) {
-			col1 = (((a & 0x7000) >> 4) | (a & 0x0800)) >> 8;
-			col2 = (((a & 0x8000) >> 4) | (a & 0x0700)) >> 8;
+			fg = scp->ega_palette[(((a & 0x7000) >> 4) |
+			    (a & 0x0800)) >> 8];
+			bg = scp->ega_palette[(((a & 0x8000) >> 4) |
+			    (a & 0x0700)) >> 8];
 		} else {
-			col1 = (a & 0x0f00) >> 8;
-			col2 = (a & 0xf000) >> 12;
+			fg = scp->ega_palette[(a & 0x0f00) >> 8];
+			bg = scp->ega_palette[(a & 0xf000) >> 12];
 		}
 
-		e = d;
-		f = &(scp->font[sc_vtb_getc(&scp->vtb, i) * scp->font_size]);
+		p = draw_pos;
+		char_data = &(scp->font[sc_vtb_getc(&scp->vtb, i) *
+		    scp->font_size]);
 
-		for (j = 0; j < scp->font_size; ++j, ++f) {
-			for (k = 0; k < 8; ++k) {
-				color = *f & (1 << (7 - k)) ? col1 : col2;
-				vga_drawpxl(e + pixel_size * k, color);
+		for (j = 0; j < scp->font_size; ++j, ++char_data) {
+			pos = 7;
+
+			for (k = 0; k < 2 * pixel_size; ++k) {
+				u32 = 0;
+
+				for (l = 0; l < 4 / pixel_size; ++l) {
+					u32 += (*char_data & (1 << pos--) ?
+					    fg : bg) << (l * 8 * pixel_size);
+				}
+
+				writel(p, u32);
+				p += 4;
 			}
 
-			e += line_width;
+			p += line_width - 8 * pixel_size;
 		}
 
-		d += 8 * pixel_size;
+		draw_pos += 8 * pixel_size;
 
 		if ((i % scp->xsize) == scp->xsize - 1)
-			d += scp->xoff * 16 * pixel_size +
+			draw_pos += scp->xoff * 16 * pixel_size +
 			     (scp->font_size - 1) * line_width;
 	}
 }
@@ -834,42 +798,53 @@ vga_pxlcursor_shape(scr_stat *scp, int base, int height, int blink)
 static void 
 draw_pxlcursor_direct(scr_stat *scp, int at, int on, int flip)
 {
-	vm_offset_t d = 0;
-	u_char *f;
-	int line_width, pixel_size;
-	int height;
-	int col1, col2, color;
-	int a;
-	int i, j;
+	int line_width, pixel_size, height;
+	int a, i, j, k, pos;
+	uint32_t fg, bg, u32;
+	unsigned char *char_data;
+	vm_offset_t draw_pos;
 
 	line_width = scp->sc->adp->va_line_width;
 	pixel_size = scp->sc->adp->va_info.vi_pixel_size;
 
-	d = VIDEO_MEMORY_POS(scp, at, 8 * pixel_size) +
+	draw_pos = VIDEO_MEMORY_POS(scp, at, 8 * pixel_size) +
 	    (scp->font_size - scp->cursor_base - 1) * line_width;
 
 	a = sc_vtb_geta(&scp->vtb, at);
 
 	if (flip) {
-		col1 = ((on) ? (a & 0x0f00) : ((a & 0xf000) >> 4)) >> 8;
-		col2 = ((on) ? ((a & 0xf000) >> 4) : (a & 0x0f00)) >> 8;
+		fg = scp->ega_palette[((on) ? (a & 0x0f00) :
+		    ((a & 0xf000) >> 4)) >> 8];
+		bg = scp->ega_palette[((on) ? ((a & 0xf000) >> 4) :
+		    (a & 0x0f00)) >> 8];
 	} else {
-		col1 = ((on) ? ((a & 0xf000) >> 4) : (a & 0x0f00)) >> 8;
-		col2 = ((on) ? (a & 0x0f00) : ((a & 0xf000) >> 4)) >> 8;
+		fg = scp->ega_palette[((on) ? ((a & 0xf000) >> 4) :
+		    (a & 0x0f00)) >> 8];
+		bg = scp->ega_palette[((on) ? (a & 0x0f00) :
+		    ((a & 0xf000) >> 4)) >> 8];
 	}
 
-	f = &(scp->font[sc_vtb_getc(&scp->vtb, at) * scp->font_size +
-	      scp->font_size - scp->cursor_base - 1]);
+	char_data = &(scp->font[sc_vtb_getc(&scp->vtb, at) * scp->font_size +
+	    scp->font_size - scp->cursor_base - 1]);
 
 	height = imin(scp->cursor_height, scp->font_size);
 
-	for (i = 0; i < height; ++i, --f) {
-		for (j = 0; j < 8; ++j) {
-			color = *f & (1 << (7 - j)) ? col1 : col2;
-			vga_drawpxl(d + pixel_size * j, color);
+	for (i = 0; i < height; ++i, --char_data) {
+		pos = 7;
+
+		for (j = 0; j < 2 * pixel_size; ++j) {
+			u32 = 0;
+
+			for (k = 0; k < 4 / pixel_size; ++k) {
+				u32 += (*char_data & (1 << pos--) ?
+				    fg : bg) << (k * 8 * pixel_size);
+			}
+
+			writel(draw_pos, u32);
+			draw_pos += 4;
 		}
 
-		d -= line_width;
+		draw_pos -= line_width + 8 * pixel_size;
 	}
 }
 
@@ -1006,6 +981,50 @@ vga_pxlblink_planar(scr_stat *scp, int at, int flip)
 
 #ifndef SC_NO_CUTPASTE
 
+static void 
+draw_pxlmouse_direct(scr_stat *scp, int x, int y)
+{
+	int line_width, pixel_size;
+	int xend, yend;
+	int i, j;
+	vm_offset_t draw_pos;
+
+	line_width = scp->sc->adp->va_line_width;
+	pixel_size = scp->sc->adp->va_info.vi_pixel_size;
+
+	xend = imin(x + 8, 8 * (scp->xoff + scp->xsize));
+	yend = imin(y + 16, scp->font_size * (scp->yoff + scp->ysize));
+
+	draw_pos = scp->sc->adp->va_window + y * line_width + x * pixel_size;
+
+	for (i = 0; i < (yend - y); i++) {
+		for (j = (xend - x - 1); j >= 0; j--) {
+			switch (scp->sc->adp->va_info.vi_depth) {
+			case 32:
+				if (mouse_or_mask[i] & 1 << (15 - j))
+					writel(draw_pos + 4 * j,
+					    scp->ega_palette[15]);
+				else if (mouse_and_mask[i] & 1 << (15 - j))
+					writel(draw_pos + 4 * j,
+					    scp->ega_palette[0]);
+				break;
+			case 16:
+				/* FALLTHROUGH */
+			case 15:
+				if (mouse_or_mask[i] & 1 << (15 - j))
+					writew(draw_pos + 2 * j,
+					    scp->ega_palette[15]);
+				else if (mouse_and_mask[i] & 1 << (15 - j))
+					writew(draw_pos + 2 * j,
+					    scp->ega_palette[0]);
+				break;
+			}
+		}
+
+		draw_pos += line_width;
+	}
+}
+
 static void
 draw_pxlmouse_planar(scr_stat *scp, int x, int y)
 {
@@ -1064,7 +1083,7 @@ draw_pxlmouse_planar(scr_stat *scp, int x, int y)
 }
 
 static void
-remove_pxlmouse_planar(scr_stat *scp, int x, int y)
+remove_pxlmouse(scr_stat *scp, int x, int y)
 {
 	int col, row;
 	int pos;
@@ -1083,90 +1102,10 @@ remove_pxlmouse_planar(scr_stat *scp, int x, int y)
 static void 
 vga_pxlmouse_direct(scr_stat *scp, int x, int y, int on)
 {
-	vm_offset_t p;
-	int line_width, pixel_size;
-	int xend, yend;
-	static int x_old = 0, xend_old = 0;
-	static int y_old = 0, yend_old = 0;
-	int i, j;
-	uint32_t *u32;
-	uint16_t *u16;
-	int bpp;
-
-	if (!on)
-		return;
-
-	bpp = scp->sc->adp->va_info.vi_depth;
-
-	if ((bpp == 16) && (scp->sc->adp->va_info.vi_pixel_fsizes[1] == 5))
-		bpp = 15;
-
-	line_width = scp->sc->adp->va_line_width;
-	pixel_size = scp->sc->adp->va_info.vi_pixel_size;
-
-	xend = imin(x + 16, scp->xpixel);
-	yend = imin(y + 16, scp->ypixel);
-
-	p = scp->sc->adp->va_window + y_old * line_width + x_old * pixel_size;
-
-	for (i = 0; i < (yend_old - y_old); i++) {
-		for (j = (xend_old - x_old - 1); j >= 0; j--) {
-			switch (bpp) {
-			case 32:
-				u32 = (uint32_t*)(p + j * pixel_size);
-				writel(u32, mouse_buf32[i * 16 + j]);
-				break;
-			case 16:
-				/* FALLTHROUGH */
-			case 15:
-				u16 = (uint16_t*)(p + j * pixel_size);
-				writew(u16, mouse_buf16[i * 16 + j]);
-				break;
-			}
-		}
-
-		p += line_width;
-	}
-
-	p = scp->sc->adp->va_window + y * line_width + x * pixel_size;
-
-	for (i = 0; i < (yend - y); i++) {
-		for (j = (xend - x - 1); j >= 0; j--) {
-			switch (bpp) {
-			case 32:
-				u32 = (uint32_t*)(p + j * pixel_size);
-				mouse_buf32[i * 16 + j] = *u32;
-				if (mouse_or_mask[i] & (1 << (15 - j)))
-					writel(u32, vga_palette32[15]);
-				else if (mouse_and_mask[i] & (1 << (15 - j)))
-					writel(u32, 0);
-				break;
-			case 16:
-				u16 = (uint16_t*)(p + j * pixel_size);
-				mouse_buf16[i * 16 + j] = *u16;
-				if (mouse_or_mask[i] & (1 << (15 - j)))
-					writew(u16, vga_palette16[15]);
-				else if (mouse_and_mask[i] & (1 << (15 - j)))
-					writew(u16, 0);
-				break;
-			case 15:
-				u16 = (uint16_t*)(p  + j * pixel_size);
-				mouse_buf16[i * 16 + j] = *u16;
-				if (mouse_or_mask[i] & (1 << (15 - j)))
-					writew(u16, vga_palette15[15]);
-				else if (mouse_and_mask[i] & (1 << (15 - j)))
-					writew(u16, 0);
-				break;
-			}
-		}
-
-		p += line_width;
-	}
-
-	x_old = x;
-	y_old = y;
-	xend_old = xend;
-	yend_old = yend;
+	if (on)
+		draw_pxlmouse_direct(scp, x, y);
+	else
+		remove_pxlmouse(scp, x, y);
 }
 
 static void 
@@ -1175,7 +1114,7 @@ vga_pxlmouse_planar(scr_stat *scp, int x, int y, int on)
 	if (on)
 		draw_pxlmouse_planar(scp, x, y);
 	else
-		remove_pxlmouse_planar(scp, x, y);
+		remove_pxlmouse(scp, x, y);
 }
 
 #endif /* SC_NO_CUTPASTE */

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.17 2005/02/13 03:29:17 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.18 2005/02/18 16:38:23 swildner Exp $
  */
 
 #include "use_splash.h"
@@ -3284,6 +3284,33 @@ set_mode(scr_stat *scp)
     sc_set_cursor_image(scp);
 
     return 0;
+}
+
+void
+refresh_ega_palette(scr_stat *scp)
+{
+    uint32_t r, g, b;
+    int reg;
+    int rsize, gsize, bsize;
+    int rfld, gfld, bfld;
+    int i;
+
+    rsize = scp->sc->adp->va_info.vi_pixel_fsizes[0];
+    gsize = scp->sc->adp->va_info.vi_pixel_fsizes[1];
+    bsize = scp->sc->adp->va_info.vi_pixel_fsizes[2];
+    rfld = scp->sc->adp->va_info.vi_pixel_fields[0];
+    gfld = scp->sc->adp->va_info.vi_pixel_fields[1];
+    bfld = scp->sc->adp->va_info.vi_pixel_fields[2];
+
+    for (i = 0; i < 16; i++) {
+	reg = scp->sc->adp->va_palette_regs[i];
+
+	r = scp->sc->palette[reg * 3] >> (8 - rsize);
+	g = scp->sc->palette[reg * 3 + 1] >> (8 - gsize);
+	b = scp->sc->palette[reg * 3 + 2] >> (8 - bsize);
+
+	scp->ega_palette[i] = (r << rfld) + (g << gfld) + (b << bfld);
+    }
 }
 
 void

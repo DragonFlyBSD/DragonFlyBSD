@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvidctl.c,v 1.19.2.2 2000/05/05 09:16:08 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.8 2005/02/13 03:02:25 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.9 2005/02/18 16:38:23 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -207,6 +207,7 @@ sc_set_graphics_mode(scr_stat *scp, struct tty *tp, int mode)
     if (scp == scp->sc->cur_scp)
 	set_mode(scp);
     /* clear_graphics();*/
+    refresh_ega_palette(scp);
     scp->status &= ~UNKNOWN_MODE;
 
     if (tp == NULL)

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.h,v 1.60.2.6 2002/09/15 22:30:45 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.10 2005/02/13 03:02:25 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.11 2005/02/18 16:38:23 swildner Exp $
  */
 
 #ifndef _DEV_SYSCONS_SYSCONS_H_
@@ -103,6 +103,16 @@
 				    scp->start = 0;\
 				    scp->end = scp->xsize * scp->ysize - 1;\
 				}
+
+/* macro for calculating the drawing position in video memory */
+#ifdef SC_PIXEL_MODE
+#define	VIDEO_MEMORY_POS(scp, pos, x) 					\
+	((scp)->sc->adp->va_window +					\
+	 (x) * (scp)->xoff +						\
+	 (scp)->yoff * (scp)->font_size * (scp)->sc->adp->va_line_width +\
+	 (x) * ((pos) % (scp)->xsize) +					\
+	 (scp)->font_size * (scp)->sc->adp->va_line_width * (pos / (scp)->xsize))
+#endif
 
 /* vty status flags (scp->status) */
 #define UNKNOWN_MODE	0x00010		/* unknown video mode */
@@ -284,6 +294,7 @@ typedef struct scr_stat {
 
 	struct callout	blink_screen_ch;
 
+	uint32_t	ega_palette[16];	/* ega palette */
 	u_char		border;			/* border color */
 	int	 	mode;			/* mode */
 	pid_t 		pid;			/* pid of controlling proc */
@@ -508,6 +519,7 @@ int		sc_probe_unit(int unit, int flags);
 int		sc_attach_unit(int unit, int flags);
 
 int		set_mode(scr_stat *scp);
+void		refresh_ega_palette(scr_stat *scp);
 
 void		sc_set_border(scr_stat *scp, int color);
 void		sc_load_font(scr_stat *scp, int page, int size, u_char *font,
