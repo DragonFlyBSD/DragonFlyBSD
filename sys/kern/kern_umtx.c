@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_umtx.c,v 1.1 2005/01/14 02:20:21 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_umtx.c,v 1.2 2005/01/23 13:26:37 joerg Exp $
  */
 
 /*
@@ -97,10 +97,10 @@ umtx_sleep(struct umtx_sleep_args *uap)
 
     if ((unsigned int)uap->timeout > 1000000)
 	return (EINVAL);
-    if (vm_fault_quick((caddr_t)__DECONST(char *, uap->ptr), VM_PROT_READ) < 0)
+    if (vm_fault_quick((caddr_t)__DEQUALIFY(int *, uap->ptr), VM_PROT_READ) < 0)
 	return (EFAULT);
 
-    if (fuword(uap->ptr) == uap->value) {
+    if (fuword(__DEQUALIFY(const int *, uap->ptr)) == uap->value) {
 	if ((pa = pmap_kextract((vm_offset_t)uap->ptr)) == 0)
 	    return (EFAULT);
 	m = PHYS_TO_VM_PAGE(pa);
@@ -133,7 +133,7 @@ umtx_wakeup(struct umtx_wakeup_args *uap)
     void *waddr;
 
     cpu_mb2();
-    if (vm_fault_quick((caddr_t)__DECONST(char *, uap->ptr), VM_PROT_READ) < 0)
+    if (vm_fault_quick((caddr_t)__DEQUALIFY(int *, uap->ptr), VM_PROT_READ) < 0)
 	return (EFAULT);
     if ((pa = pmap_kextract((vm_offset_t)uap->ptr)) == 0)
 	return (EFAULT);
