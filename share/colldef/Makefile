@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/colldef/Makefile,v 1.32.2.11 2002/08/17 19:14:44 ache Exp $
-# $DragonFly: src/share/colldef/Makefile,v 1.3 2004/08/28 15:17:37 asmodai Exp $
+# $DragonFly: src/share/colldef/Makefile,v 1.4 2004/09/27 19:30:50 asmodai Exp $
 #
 
 NOMAN=YES
@@ -21,6 +21,7 @@ LOCALES=	bg_BG.CP1251 \
 		la_LN.ISO8859-2 \
 		la_LN.ISO8859-4 \
 		la_LN.US-ASCII \
+		la_LN.UTF-8 \
 		lt_LT.ISO8859-4 \
 		lt_LT.ISO8859-13 \
 		pl_PL.ISO8859-2 \
@@ -45,6 +46,15 @@ LATIN1LINKS=	af_ZA da_DK en_AU en_CA en_GB en_NZ en_US fi_FI \
 		pt_PT
 
 LATIN2LINKS=	hr_HR hu_HU ro_RO sl_SI
+
+UTF8LINKS=      af_ZA be_BY bg_BG ca_ES cs_CZ da_DK de_AT de_CH de_DE el_GR \
+                en_AU en_CA en_GB en_IE en_NZ en_US es_ES et_EE eu_ES fi_FI \
+		fr_BE \
+		fr_CA fr_CH fr_FR he_IL hr_HR hu_HU hy_AM is_IS it_CH it_IT \
+		ja_JP kk_KZ ko_KR lt_LT nl_BE nl_NL no_NO pl_PL pt_BR pt_PT \
+		ro_RO ru_RU sk_SK sl_SI sr_YU sv_SE tr_TR uk_UA zh_CN zh_HK \
+		zh_TW
+
 
 .SUFFIXES: .src .out
 
@@ -112,5 +122,10 @@ afterinstall:
 	       ${LOCALEDIR}/sk_SK.ISO8859-2/LC_COLLATE
 	ln -fs ../pt_PT.ISO8859-1/LC_COLLATE \
 		${LOCALEDIR}/pt_BR.ISO8859-1/LC_COLLATE
+.for link in ${UTF8LINKS}
+	ln -fs ../la_LN.UTF-8/LC_COLLATE \
+		${LOCALEDIR}/${link}.UTF-8/LC_COLLATE
+.endfor
+
 
 .include <bsd.prog.mk>
