@@ -24,7 +24,7 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: src/sbin/i386/fdisk/fdisk.c,v 1.36.2.11 2002/04/25 21:02:21 trhodes Exp $
- * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.3 2003/09/28 14:39:18 hmp Exp $
+ * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.4 2003/10/12 00:43:17 dillon Exp $
  */
 
 #include <sys/disklabel.h>
@@ -121,6 +121,7 @@ static int a_flag  = 0;		/* set active partition */
 static char *b_flag = NULL;	/* path to boot code */
 static int i_flag  = 0;		/* replace partition data */
 static int u_flag  = 0;		/* update partition data */
+static int p_flag  = 0;		/* operate on a disk image file */
 static int s_flag  = 0;		/* Print a summary and exit */
 static int t_flag  = 0;		/* test only */
 static char *f_flag = NULL;	/* Read config info from file */
@@ -220,7 +221,7 @@ main(int argc, char *argv[])
 {
 	int	c, i;
 
-	while ((c = getopt(argc, argv, "BIab:f:istuv1234")) != -1)
+	while ((c = getopt(argc, argv, "BIab:f:p:istuv1234")) != -1)
 		switch (c) {
 		case 'B':
 			B_flag = 1;
@@ -236,6 +237,10 @@ main(int argc, char *argv[])
 			break;
 		case 'f':
 			f_flag = optarg;
+			break;
+		case 'p':
+			disk = optarg;
+			p_flag = 1;
 			break;
 		case 'i':
 			i_flag = 1;
@@ -268,23 +273,19 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	if (argc > 0)
-	{
+	if (argc > 0) {
 		static char realname[12];
 
-		if(strncmp(argv[0], "/dev", 4) == 0)
+		if(strncmp(argv[0], "/dev", 4) == 0) {
 			disk = argv[0];
-		else
-		{
+		} else {
 			snprintf(realname, 12, "/dev/%s", argv[0]);
 			disk = realname;
 		}
 		
 		if (open_disk(u_flag) < 0)
 			err(1, "cannot open disk %s", disk);
-	}
-	else
-	{
+	} else if (disk == NULL) {
 		int rv = 0;
 
 		for(i = 0; disks[i]; i++)
@@ -295,6 +296,9 @@ main(int argc, char *argv[])
 		}
 		if(rv < 0)
 			err(1, "cannot open any disk");
+	} else {
+		if (open_disk(u_flag) < 0)
+			err(1, "cannot open disk %s", disk);
 	}
 
 	/* (abu)use mboot.bootinst to probe for the sector size */
@@ -702,7 +706,7 @@ open_disk(int u_flag)
 		warnx("can't get file status of %s", disk);
 		return -1;
 	}
-	if ( !(st.st_mode & S_IFCHR) )
+	if ( !(st.st_mode & S_IFCHR) && p_flag == 0 )
 		warnx("device %s is not character special", disk);
 	if ((fd = open(disk,
 	    a_flag || I_flag || B_flag || u_flag ? O_RDWR : O_RDONLY)) == -1) {
@@ -711,7 +715,7 @@ open_disk(int u_flag)
 		warnx("can't open device %s", disk);
 		return -1;
 	}
-	if (get_params(0) == -1) {
+	if (get_params() == -1) {
 		warnx("can't get disk parameters on %s", disk);
 		return -1;
 	}
@@ -749,23 +753,32 @@ write_disk(off_t sector, void *buf)
 static int
 get_params(void)
 {
+    struct stat st;
 
     if (ioctl(fd, DIOCGDINFO, &disklabel) == -1) {
-	warnx("can't get disk parameters on %s; supplying dummy ones", disk);
-	dos_cyls = cyls = 1;
-	dos_heads = heads = 1;
-	dos_sectors = sectors = 1;
-	dos_cylsecs = cylsecs = heads * sectors;
-	disksecs = cyls * heads * sectors;
-	return disksecs;
+	if (p_flag && fstat(fd, &st) == 0 && st.st_size) {
+	    sectors = 63;
+	    heads = 16;
+	    cylsecs = heads * sectors;
+	    cyls = st.st_size / 512 / cylsecs;
+	} else {
+	    warnx("can't get disk parameters on %s; supplying dummy ones", disk);
+	    cyls = 1;
+	    heads = 1;
+	    sectors = 1;
+	    cylsecs = heads * sectors;
+	}
+    } else {
+	cyls = disklabel.d_ncylinders;
+	heads = disklabel.d_ntracks;
+	sectors = disklabel.d_nsectors;
+	cylsecs = heads * sectors;
     }
-
-    dos_cyls = cyls = disklabel.d_ncylinders;
-    dos_heads = heads = disklabel.d_ntracks;
-    dos_sectors = sectors = disklabel.d_nsectors;
-    dos_cylsecs = cylsecs = heads * sectors;
+    dos_cyls = cyls;
+    dos_heads = heads;
+    dos_sectors = sectors;
+    dos_cylsecs = cylsecs;
     disksecs = cyls * heads * sectors;
-
     return (disksecs);
 }
 
