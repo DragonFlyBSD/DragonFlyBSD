@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_mib.c,v 1.8.2.1 2000/08/03 00:09:34 ps Exp $
- * $DragonFly: src/sys/net/if_mib.c,v 1.3 2004/01/06 03:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/if_mib.c,v 1.4 2005/01/03 23:25:25 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -72,7 +72,7 @@ static int
 sysctl_ifdata(SYSCTL_HANDLER_ARGS) /* XXX bad syntax! */
 {
 	int *name = (int *)arg1;
-	int error;
+	int error, s;
 	u_int namelen = arg2;
 	struct ifnet *ifp;
 	struct ifmibdata ifmd;
@@ -80,10 +80,15 @@ sysctl_ifdata(SYSCTL_HANDLER_ARGS) /* XXX bad syntax! */
 	if (namelen != 2)
 		return EINVAL;
 
-	if (name[0] <= 0 || name[0] > if_index)
+	s = splnet();
+	if (name[0] <= 0 || name[0] > if_index ||
+	    ifnet_addrs[name[0] - 1] == NULL) {
+		splx(s);
 		return ENOENT;
-
+	}
+	
 	ifp = ifnet_addrs[name[0] - 1]->ifa_ifp;
+	splx(s);
 
 	switch(name[1]) {
 	default:
