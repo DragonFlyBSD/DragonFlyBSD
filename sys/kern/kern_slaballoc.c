@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.27 2005/03/28 18:49:25 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.28 2005/04/02 15:53:56 joerg Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -874,7 +874,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     vm_size_t i;
     vm_offset_t addr;
     vm_offset_t offset;
-    int count;
+    int count, vmflags, base_vmflags;
     thread_t td;
     vm_map_t map = kernel_map;
 
@@ -903,22 +903,23 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 
     td = curthread;
 
+    base_vmflags = 0;
+    if (flags & M_ZERO)
+        base_vmflags |= VM_ALLOC_ZERO;
+    if (flags & M_USE_RESERVE)
+	base_vmflags |= VM_ALLOC_SYSTEM;
+    if (flags & M_USE_INTERRUPT_RESERVE)
+        base_vmflags |= VM_ALLOC_INTERRUPT;
+    if ((flags & (M_RNOWAIT|M_WAITOK)) == 0)
+    	panic("kmem_slab_alloc: bad flags %08x (%p)", flags, ((int **)&size)[-1]);
+
+
     /*
      * Allocate the pages.  Do not mess with the PG_ZERO flag yet.
      */
     for (i = 0; i < size; i += PAGE_SIZE) {
 	vm_page_t m;
 	vm_pindex_t idx = OFF_TO_IDX(offset + i);
-	int vmflags = 0;
-
-	if (flags & M_ZERO)
-	    vmflags |= VM_ALLOC_ZERO;
-	if (flags & M_USE_RESERVE)
-	    vmflags |= VM_ALLOC_SYSTEM;
-	if (flags & M_USE_INTERRUPT_RESERVE)
-	    vmflags |= VM_ALLOC_INTERRUPT;
-	if ((flags & (M_RNOWAIT|M_WAITOK)) == 0)
-		panic("kmem_slab_alloc: bad flags %08x (%p)", flags, ((int **)&size)[-1]);
 
 	/*
 	 * VM_ALLOC_NORMAL can only be set if we are not preempting.
@@ -928,12 +929,12 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	 * implied in this case), though I'm sure if we really need to do
 	 * that.
 	 */
+	vmflags = base_vmflags;
 	if (flags & M_WAITOK) {
-	    if (td->td_preempted) {
+	    if (td->td_preempted)
 		vmflags |= VM_ALLOC_SYSTEM;
-	    } else {
+	    else
 		vmflags |= VM_ALLOC_NORMAL;
-	    }
 	}
 
 	m = vm_page_alloc(kernel_object, idx, vmflags);
