@@ -1,9 +1,13 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.16 2004/08/10 10:58:37 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.17 2004/08/14 13:49:41 joerg Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
 PORTPATH!=	/usr/bin/relpath ${PORTSDIR} ${.CURDIR}
+
+.if !defined(DFOSVERSION)
+DFOSVERSION!=	/sbin/sysctl -n kern.osreldate
+.endif
 
 # Temporary Hack
 #
