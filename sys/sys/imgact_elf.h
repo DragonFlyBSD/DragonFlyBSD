@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/imgact_elf.h,v 1.17.2.1 2000/07/06 22:26:40 obrien Exp $
- * $DragonFly: src/sys/sys/imgact_elf.h,v 1.4 2003/10/19 19:24:20 dillon Exp $
+ * $DragonFly: src/sys/sys/imgact_elf.h,v 1.5 2004/10/25 08:57:50 dillon Exp $
  */
 
 #ifndef _SYS_IMGACT_ELF_H_
@@ -106,6 +106,8 @@ int	elf_remove_brand_entry (Elf64_Brandinfo *entry);
 
 struct proc;
 struct file;
+struct vnode;
+
 int	elf_coredump (struct proc *, struct vnode *, off_t);
 int     generic_elf_coredump(struct proc *p, struct file *fp, off_t limit);
 #endif /* _KERNEL */
