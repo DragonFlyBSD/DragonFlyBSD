@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.126 2005/03/04 23:44:37 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.127 2005/03/04 23:48:12 okumoto Exp $
  */
 
 /*-
@@ -1021,18 +1021,18 @@ ParseModifier(const char input[], char tstr[],
 		case 'S':
 {
 	VarPattern pattern;
-	char    del;
+	char    delim;
 	Buffer *buf;		/* Buffer for patterns */
 
 	pattern.flags = 0;
-	del = tstr[1];
+	delim = tstr[1];
 	tstr += 2;
 
 	/*
 	 * If pattern begins with '^', it is anchored to the start of the
 	 * word -- skip over it and flag pattern.
 	 */
-	if (*tstr == '^') {
+	if (tstr[0] == '^') {
 		pattern.flags |= VAR_MATCH_START;
 		tstr += 1;
 	}
@@ -1044,15 +1044,15 @@ ParseModifier(const char input[], char tstr[],
 	 * unescaped $'s that aren't before the delimiter (expand the
 	 * variable substitution). The result is left in the Buffer buf.
 	 */
-	for (cp = tstr; *cp != '\0' && *cp != del; cp++) {
-		if ((*cp == '\\') &&
-		    ((cp[1] == del) ||
+	for (cp = tstr; cp[0] != '\0' && cp[0] != delim; cp++) {
+		if ((cp[0] == '\\') &&
+		    ((cp[1] == delim) ||
 		     (cp[1] == '$') ||
 		     (cp[1] == '\\'))) {
 			Buf_AddByte(buf, (Byte) cp[1]);
 			cp++;
-		} else if (*cp == '$') {
-			if (cp[1] != del) {
+		} else if (cp[0] == '$') {
+			if (cp[1] != delim) {
 				/*
 				 * If unescaped dollar sign not before the
 				 * delimiter, assume it's a variable
@@ -1086,9 +1086,9 @@ ParseModifier(const char input[], char tstr[],
 	/*
 	 * If lhs didn't end with the delimiter, complain and exit.
 	 */
-	if (*cp != del) {
+	if (cp[0] != delim) {
 		Fatal("Unclosed substitution for %s (%c missing)",
-		      v->name, del);
+		      v->name, delim);
 	}
 	/*
 	 * Fetch pattern and destroy buffer, but preserve the data in it,
@@ -1110,15 +1110,15 @@ ParseModifier(const char input[], char tstr[],
 	buf = Buf_Init(0);
 
 	tstr = cp + 1;
-	for (cp = tstr; *cp != '\0' && *cp != del; cp++) {
-		if ((*cp == '\\') &&
-		    ((cp[1] == del) ||
+	for (cp = tstr; cp[0] != '\0' && cp[0] != delim; cp++) {
+		if ((cp[0] == '\\') &&
+		    ((cp[1] == delim) ||
 		     (cp[1] == '&') ||
 		     (cp[1] == '\\') ||
 		     (cp[1] == '$'))) {
 			Buf_AddByte(buf, (Byte) cp[1]);
 			cp++;
-		} else if ((*cp == '$') && (cp[1] != del)) {
+		} else if ((cp[0] == '$') && (cp[1] != delim)) {
 			char   *cp2;
 			size_t  len;
 			Boolean freeIt;
@@ -1130,7 +1130,7 @@ ParseModifier(const char input[], char tstr[],
 			if (freeIt) {
 				free(cp2);
 			}
-		} else if (*cp == '&') {
+		} else if (cp[0] == '&') {
 			Buf_AddBytes(buf, pattern.leftLen,
 				     (Byte *) pattern.lhs);
 		} else {
@@ -1143,9 +1143,9 @@ ParseModifier(const char input[], char tstr[],
 	/*
 	 * If didn't end in delimiter character, complain
 	 */
-	if (*cp != del) {
+	if (cp[0] != delim) {
 		Fatal("Unclosed substitution for %s (%c missing)",
-		      v->name, del);
+		      v->name, delim);
 	}
 	pattern.rhs = (char *)Buf_GetAll(buf, &pattern.rightLen);
 	pattern.rightLen--;
@@ -1156,7 +1156,7 @@ ParseModifier(const char input[], char tstr[],
 	 * substitution is global and is marked that way.
 	 */
 	cp++;
-	if (*cp == 'g') {
+	if (cp[0] == 'g') {
 		pattern.flags |= VAR_SUB_GLOBAL;
 		cp++;
 	}
@@ -1170,7 +1170,7 @@ ParseModifier(const char input[], char tstr[],
 	if (!pattern.leftLen && pattern.flags == VAR_SUB_GLOBAL)
 		Fatal("Global substitution of the empty string");
 
-	termc = *cp;
+	termc = cp[0];
 	newStr = VarModify(rw_str, VarSubstitute, &pattern);
 	/*
 	 * Free the two strings.
