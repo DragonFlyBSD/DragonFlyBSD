@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.15 2004/07/24 06:40:37 hmp Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.16 2004/07/24 06:44:28 hmp Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -47,6 +47,10 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 
 <tr><td valign="top"><a href="mailto:craig 'at' xlnx-x 'dot' net">Craig Dooley</a></td>
 <td valign="top">K&amp;R to ANSI function cleanup, __P() removal, gcc3 building</td>
+</tr>
+
+<tr><td valign="top"><a href="mailto:liamfoy 'at' kerneled 'dot' org">Liam Foy</a></td>
+<td valign="top">POSIX and SUSv3 updates, general standardization.</td>
 </tr>
 
 <tr><td valign="top"><a href="mailto:rgarrett24 'at' cox  'dot' net">Robert Garrett</a> </td>
