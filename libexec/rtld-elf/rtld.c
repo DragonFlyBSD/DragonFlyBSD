@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.13 2005/02/05 22:54:49 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.14 2005/02/24 03:23:01 joerg Exp $
  */
 
 /*
@@ -86,6 +86,7 @@ static void errmsg_restore(char *);
 static char *errmsg_save(void);
 static void *fill_search_info(const char *, size_t, void *);
 static char *find_library(const char *, const Obj_Entry *);
+static Obj_Entry *find_object(const char *);
 static const char *gethints(void);
 static void init_dag(Obj_Entry *);
 static void init_dag1(Obj_Entry *root, Obj_Entry *obj, DoneList *);
@@ -1194,6 +1195,22 @@ load_preload_objects(void)
 }
 
 /*
+ * Returns a point to the Obj_Entry for the object with the given path.
+ * Returns NULL if no matching object was found.
+ */
+static Obj_Entry *
+find_object(const char *path)
+{
+    Obj_Entry *obj;
+
+    for (obj = obj_list->next;  obj != NULL;  obj = obj->next) {
+	if (strcmp(obj->path, path) == 0)
+	    return(obj);
+    }
+    return(NULL);
+}
+
+/*
  * Load a shared object into memory, if it is not already loaded.  The
  * argument must be a string allocated on the heap.  This function assumes
  * responsibility for freeing it when necessary.
@@ -1208,9 +1225,7 @@ load_object(char *path)
     int fd = -1;
     struct stat sb;
 
-    for (obj = obj_list->next;  obj != NULL;  obj = obj->next)
-	if (strcmp(obj->path, path) == 0)
-	    break;
+    obj = find_object(path);
 
     /*
      * If we didn't find a match by pathname, open the file and check
