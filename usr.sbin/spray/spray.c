@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/spray/spray.c,v 1.5.2.2 2001/07/30 10:23:00 dd Exp $
- * $DragonFly: src/usr.sbin/spray/spray.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/spray/spray.c,v 1.3 2004/11/16 19:06:29 liamfoy Exp $
  */
 
 #include <err.h>
@@ -119,9 +119,8 @@ main(int argc, char *argv[])
 	
 
 	/* create connection with server */
-	cl = clnt_create(*argv, SPRAYPROG, SPRAYVERS, "udp");
-	if (cl == NULL)
-		errx(1, "%s", clnt_spcreateerror(NULL));
+	if ((cl = clnt_create(*argv, SPRAYPROG, SPRAYVERS, "udp")) == NULL)
+		clnt_pcreateerror(getprogname());
 
 
 	/*
@@ -135,9 +134,10 @@ main(int argc, char *argv[])
 
 
 	/* Clear server statistics */
-	if (clnt_call(cl, SPRAYPROC_CLEAR, xdr_void, NULL, xdr_void, NULL, TIMEOUT) != RPC_SUCCESS)
-		errx(1, "%s", clnt_sperror(cl, NULL));
-
+	if (clnt_call(cl, SPRAYPROC_CLEAR, xdr_void, NULL, xdr_void, NULL, TIMEOUT) != RPC_SUCCESS) {
+		clnt_perror(cl, getprogname());
+		exit(1);
+	}
 
 	/* Spray server with packets */
 	printf ("sending %u packets of lnth %d to %s ...", count, length,
@@ -154,8 +154,10 @@ main(int argc, char *argv[])
 
 
 	/* Collect statistics from server */
-	if (clnt_call(cl, SPRAYPROC_GET, xdr_void, NULL, xdr_spraycumul, &host_stats, TIMEOUT) != RPC_SUCCESS)
-		errx(1, "%s", clnt_sperror(cl, NULL));
+	if (clnt_call(cl, SPRAYPROC_GET, xdr_void, NULL, xdr_spraycumul, &host_stats, TIMEOUT) != RPC_SUCCESS) {
+		clnt_perror(cl, getprogname());
+		exit(1);
+	}
 
 	xmit_time = host_stats.clock.sec +
 			(host_stats.clock.usec / 1000000.0);
@@ -180,6 +182,7 @@ main(int argc, char *argv[])
 	printf("Rcvd:");
 	print_xferstats(host_stats.counter, length, xmit_time);
 	
+	clnt_destroy(cl);
 	exit (0);
 }
 
