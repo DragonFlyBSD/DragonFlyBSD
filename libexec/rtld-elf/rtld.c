@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.4 2003/12/01 23:50:20 drhodus Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.5 2004/01/20 18:46:20 dillon Exp $
  */
 
 /*
@@ -145,6 +145,7 @@ static Obj_Entry **obj_tail;	/* Link field of last object in list */
 static Obj_Entry *obj_main;	/* The main program shared object */
 static Obj_Entry obj_rtld;	/* The dynamic linker shared object */
 static unsigned int obj_count;	/* Number of objects in obj_list */
+static int	ld_resident;	/* Non-zero if resident */
 
 static Objlist list_global =	/* Objects dlopened with RTLD_GLOBAL */
   STAILQ_HEAD_INITIALIZER(list_global);
@@ -271,21 +272,28 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
     argv = (char **) sp;
     sp += argc + 1;	/* Skip over arguments and NULL terminator */
     env = (char **) sp;
-    while (*sp++ != 0)	/* Skip over environment, and NULL terminator */
-	;
-    aux = (Elf_Auxinfo *) sp;
 
-    /* Digest the auxiliary vector. */
-    for (i = 0;  i < AT_COUNT;  i++)
-	aux_info[i] = NULL;
-    for (auxp = aux;  auxp->a_type != AT_NULL;  auxp++) {
-	if (auxp->a_type < AT_COUNT)
-	    aux_info[auxp->a_type] = auxp;
+    /*
+     * If we aren't already resident we have to dig out some more info.
+     * Note that auxinfo does not exist when we are resident.
+     */
+    if (ld_resident == 0) {
+	while (*sp++ != 0)	/* Skip over environment, and NULL terminator */
+	    ;
+	aux = (Elf_Auxinfo *) sp;
+
+	/* Digest the auxiliary vector. */
+	for (i = 0;  i < AT_COUNT;  i++)
+	    aux_info[i] = NULL;
+	for (auxp = aux;  auxp->a_type != AT_NULL;  auxp++) {
+	    if (auxp->a_type < AT_COUNT)
+		aux_info[auxp->a_type] = auxp;
+	}
+
+	/* Initialize and relocate ourselves. */
+	assert(aux_info[AT_BASE] != NULL);
+	init_rtld((caddr_t) aux_info[AT_BASE]->a_un.a_ptr);
     }
-
-    /* Initialize and relocate ourselves. */
-    assert(aux_info[AT_BASE] != NULL);
-    init_rtld((caddr_t) aux_info[AT_BASE]->a_un.a_ptr);
 
     __progname = obj_rtld.path;
     argv0 = argv[0] != NULL ? argv[0] : "(null)";
@@ -317,6 +325,17 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 	(caddr_t) aux_info[AT_BASE]->a_un.a_ptr);
     dbg("RTLD dynamic = %p", obj_rtld.dynamic);
     dbg("RTLD pltgot  = %p", obj_rtld.pltgot);
+
+    /*
+     * If we are resident we can skip work that we have already done.
+     * Note that the stack is reset and there is no Elf_Auxinfo
+     * when running from a resident image, and the static globals setup
+     * between here and resident_skip will have already been setup.
+     */
+    if (ld_resident) {	/* XXX clean this up! */
+	preload_tail = obj_tail;
+	goto resident_skip1;
+    }
 
     /*
      * Load the main program, or process its program header if it is
@@ -392,10 +411,15 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
     for (obj = obj_list;  obj != NULL;  obj = obj->next)
 	objlist_push_tail(&list_main, obj);
 
+resident_skip1:
+
     if (ld_tracing) {		/* We're done */
 	trace_loaded_objects(obj_main);
 	exit(0);
     }
+
+    if (ld_resident)		/* XXX clean this up! */
+	goto resident_skip2;
 
     if (prebind_disable || prebind_load(&obj_rtld, obj_main)) {
 	if (relocate_objects(obj_main,
@@ -407,8 +431,29 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 	    die();
     }
 
+resident_skip2:
+
     if (ld_prebind != NULL && *ld_prebind != '\0')
 	exit (prebind_save(&obj_rtld, obj_main));
+
+    if (getenv("LD_RESIDENT_REGISTER_NOW")) {
+	extern void resident_start(void);
+	ld_resident = 1;
+	if (exec_sys_register(resident_start) < 0) {
+	    dbg("exec_sys_register failed %d\n", errno);
+	    exit(errno);
+	}
+	dbg("exec_sys_register success\n");
+	exit(0);
+    }
+    if (getenv("LD_RESIDENT_UNREGISTER_NOW")) {
+	if (exec_sys_unregister(-1) < 0) {
+	    dbg("exec_sys_unregister failed %d\n", errno);
+	    exit(errno);
+	}
+	dbg("exec_sys_unregister success\n");
+	exit(0);
+    }
 
     dbg("initializing key program variables");
     set_program_var("__progname", argv[0] != NULL ? basename(argv[0]) : "");
