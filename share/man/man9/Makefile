@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.12 2004/06/03 19:26:36 hmp Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.13 2004/07/27 14:50:56 hmp Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SPLASSERT.9 SYSCALL_MODULE.9 \
@@ -19,6 +19,9 @@ MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	crypto.9 devstat.9 \
 	devtoname.9 fetch.9 \
 	hash.9 \
+	ieee80211.9 ieee80211_crypto.9 ieee80211_input.9 ieee80211_ioctl.9 \
+	ieee80211_node.9 ieee80211_output.9 ieee80211_proto.9 \
+	ieee80211_radiotap.9 \
 	ifnet.9 inittodr.9 intro.9 kernacc.9 lock.9 \
 	malloc.9 make_dev.9 mbuf.9 microseq.9 mi_switch.9 module.9 namei.9 \
 	pci.9 panic.9 physio.9 posix4.9 psignal.9 \
@@ -91,6 +94,52 @@ MLINKS+=devstat.9 devstat_remove_entry.9 devstat.9 devstat_start_transaction.9
 MLINKS+=devstat.9 devstat_end_transaction.9
 MLINKS+=fetch.9 fubyte.9 fetch.9 fuswintr.9 fetch.9 fusword.9 fetch.9 fuword.9
 MLINKS+=hash.9 hashinit.9 hash.9 phashinit.9
+MLINKS+=ieee80211.9 ieee80211_attach.9 \
+    ieee80211.9 ieee80211_chan2ieee.9 \
+	ieee80211.9 ieee80211_chan2mode.9 \
+	ieee80211.9 ieee80211_ieee2mhz.9 \
+	ieee80211.9 ieee80211_ifattach.9 \
+	ieee80211.9 ieee80211_ifdetach.9 \
+	ieee80211.9 ieee80211_media2rate.9 \
+	ieee80211.9 ieee80211_media_change.9 \
+	ieee80211.9 ieee80211_media_init.9 \
+	ieee80211.9 ieee80211_media_status.9 \
+	ieee80211.9 ieee80211_mhz2ieee.9 \
+	ieee80211.9 ieee80211_rate2media.9 \
+	ieee80211.9 ieee80211_setmode.9 \
+	ieee80211.9 ieee80211_watchdog.9
+MLINKS+=ieee80211_crypto.9 ieee80211_crypto_attach.9 \
+    ieee80211_crypto.9 ieee80211_crypto_detach.9 \
+	ieee80211_crypto.9 ieee80211_wep_crypt.9
+MLINKS+=ieee80211_input.9 ieee80211_decap.9 \
+	ieee80211_input.9 ieee80211_recv_mgmt.9
+MLINKS+=ieee80211_ioctl.9 ieee80211_cfgget.9 \
+	ieee80211_ioctl.9 ieee80211_cfgset.9
+MLINKS+=ieee80211_node.9 ieee80211_alloc_node.9 \
+    ieee80211_node.9 ieee80211_begin_scan.9 \
+	ieee80211_node.9 ieee80211_create_ibss.9 \
+	ieee80211_node.9 ieee80211_dup_bss.9 \
+	ieee80211_node.9 ieee80211_end_scan.9 \
+	ieee80211_node.9 ieee80211_find_node.9 \
+	ieee80211_node.9 ieee80211_free_allnodes.9 \
+	ieee80211_node.9 ieee80211_free_node.9 \
+	ieee80211_node.9 ieee80211_iterate_nodes.9 \
+	ieee80211_node.9 ieee80211_lookup_node.9 \
+	ieee80211_node.9 ieee80211_next_scan.9 \
+	ieee80211_node.9 ieee80211_node_attach.9 \
+	ieee80211_node.9 ieee80211_node_detach.9 \
+	ieee80211_node.9 ieee80211_node_lateattach.9 \
+	ieee80211_node.9 ieee80211_timeout_nodes.9
+MLINKS+=ieee80211_output.9 ieee80211_add_rates.9 \
+	ieee80211_output.9 ieee80211_add_xrates.9 \
+	ieee80211_output.9 ieee80211_encap.9 \
+	ieee80211_output.9 ieee80211_send_mgmt.9
+MLINKS+=ieee80211_proto.9 ieee80211_dump_pkt.9 \
+	ieee80211_proto.9 ieee80211_fix_rate.9 \
+	ieee80211_proto.9 ieee80211_print_essid.9 \
+	ieee80211_proto.9 ieee80211_proto_attach.9 \
+	ieee80211_proto.9 ieee80211_proto_detach.9
+MLINKS+=ieee80211_radiotap.9 radiotap.9
 MLINKS+=ifnet.9 if_data.9 ifnet.9 ifaddr.9 ifnet.9 ifqueue.9
 MLINKS+=kernacc.9 useracc.9
 MLINKS+=make_dev.9 destroy_dev.9
