@@ -1,18 +1,18 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/forums.cgi,v 1.8 2004/03/06 14:39:08 hmp Exp $
+# $DragonFly: site/data/main/Attic/forums.cgi,v 1.9 2004/04/13 02:22:16 justin Exp $
 
 $TITLE(DragonFly - Forums)
 <p>
 The DragonFly project has several forums for discussions.  These forums
 may be accessed through newsgroups or mailing lists.  Posts to newsgroups
-will be forwarded to the appropriate mailing list and vise versa.
+will be forwarded to the appropriate mailing list and vice versa.
 When testing newsgroup access, be aware that posts may be delayed up to
 5 minutes.  Please use the 'test' newsgroup for any test postings / 
 experimentation.</p>
 <p>
 General postings should currently be made on the 'kernel' list.  When
-traffic increases beyond a certain point I will split off other lists
+traffic increases beyond a certain point we will split off other lists
 for general discussion.</p>
 <ul>
     <li>Bug Reporting -
