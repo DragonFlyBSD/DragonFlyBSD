@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/usr.bin/checkpt/checkpt.1,v 1.1 2003/10/20 04:46:14 dillon Exp $
+.\" $DragonFly: src/usr.bin/checkpt/checkpt.1,v 1.2 2004/11/23 07:36:33 dillon Exp $
 .\"
 .Dd October 19, 2003
 .Dt CHECKPT 1
@@ -32,27 +32,38 @@
 .Nd resume checkpointed program
 .Sh SYNOPSIS
 .Nm
-.Op Fl r Ar file.ckpt
-.Ar
+.Fl r Ar file.ckpt
 .Sh DESCRIPTION
 The
 .Nm
 utility will resume the checkpointed program from the specified checkpoint
 file.  Programs can be checkpointed using ^E.
 .Pp
-The checkpt.ko module must be loaded for checkpointing to work.  By default,
-only members of the wheel group can checkpoint a program.  The group can be
-changed with the sysctl kern.ckptgroup.  The checkpoint file template can be
-changed with the sysctl kern.ckptfile. 
+By default, only members of the wheel group can checkpoint a program. 
+The group can be changed with the sysctl kern.ckptgroup.  
+The checkpoint file template can be changed with the sysctl kern.ckptfile. 
 .Pp
-The checkpointing utility is currently very primitive.  Only programs 
+The checkpointing utility is fairly primitive.  Only programs 
 operating on normal files can be properly restored.  Programs which operate
-on devices, sockets, or pipes (including piped commands) cannot be restored.
+on devices, sockets, or pipes (including piped commands) cannot be completely.
 File descriptors 0, 1, and 2, are not saved and the restored program will
 inherit the descriptors from
 .Nm
+.Pp
+Programs can actively support checkpointing by catching the
+.Dv SIGCKPT
+signal, cleaning up, and manually calling the
+.Fn sys_checkpoint
+system call.  The program can then choose whether to continue running or
+exit.  The resumed program will get a (typically) positive return value
+from
+.Fn sys_checkpoint
+which it can use to determine whether it just made the system call or whether
+it is being resumed from the system call.  The program can then reconstruct
+non-checkpointed elements and resume.
 .Sh SEE ALSO
-.Xr stty 1
+.Xr stty 1 ,
+.Xr sys_checkpoint 2
 .Sh HISTORY
 The
 .Nm
