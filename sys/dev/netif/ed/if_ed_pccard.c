@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.55 2003/12/31 04:25:00 kato Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.9 2004/03/14 15:36:49 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.10 2004/10/14 18:31:02 dillon Exp $
  */
 
 #include "opt_ed.h"
@@ -65,7 +65,6 @@
 
 MODULE_DEPEND(ed, miibus, 1, 1, 1);
 #endif
-MODULE_DEPEND(ed, ether, 1, 1, 1);
 MODULE_DEPEND(ed, pccard, 1, 1, 1);
 
 /*

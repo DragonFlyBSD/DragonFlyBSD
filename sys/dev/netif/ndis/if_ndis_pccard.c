@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis_pccard.c,v 1.6 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis_pccard.c,v 1.2 2004/09/19 17:42:57 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis_pccard.c,v 1.3 2004/10/14 18:31:02 dillon Exp $
  */
 
 #include <sys/ctype.h>
@@ -70,7 +70,6 @@
 #ifdef NDIS_PCMCIA_DEV_TABLE 
 
 MODULE_DEPEND(ndis, pccard, 1, 1, 1);
-MODULE_DEPEND(ndis, ether, 1, 1, 1);
 MODULE_DEPEND(ndis, wlan, 1, 1, 1);
 MODULE_DEPEND(ndis, ndisapi, 1, 1, 1);
 

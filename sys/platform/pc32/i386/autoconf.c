@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.14 2004/10/14 03:05:52 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.15 2004/10/14 18:31:02 dillon Exp $
  */
 
 /*
@@ -378,6 +378,11 @@ setroot()
 
 extern struct nfs_diskless	nfs_diskless;
 
+/*
+ * Convert a kenv variable to a sockaddr.  If the kenv variable does not
+ * exist the sockaddr will remain zerod out (callers typically just check
+ * sin_len).  A network address of 0.0.0.0 is equivalent to failure.
+ */
 static int
 inaddr_to_sockaddr(char *ev, struct sockaddr_in *sa)
 {
@@ -385,15 +390,17 @@ inaddr_to_sockaddr(char *ev, struct sockaddr_in *sa)
 	char		*cp;
 
 	bzero(sa, sizeof(*sa));
-	sa->sin_len = sizeof(*sa);
-	sa->sin_family = AF_INET;
 
 	if ((cp = getenv(ev)) == NULL)
 		return(1);
 	if (sscanf(cp, "%d.%d.%d.%d", &a[0], &a[1], &a[2], &a[3]) != 4)
 		return(1);
+	if (a[0] == 0 && a[1] == 0 && a[2] == 0 && a[3] == 0)
+		return(1);
 	/* XXX is this ordering correct? */
 	sa->sin_addr.s_addr = (a[3] << 24) + (a[2] << 16) + (a[1] << 8) + a[0];
+	sa->sin_len = sizeof(*sa);
+	sa->sin_family = AF_INET;
 	return(0);
 }
 

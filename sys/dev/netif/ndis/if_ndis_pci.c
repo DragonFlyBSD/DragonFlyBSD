@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis_pci.c,v 1.7 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis_pci.c,v 1.1 2004/07/29 20:51:36 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis_pci.c,v 1.2 2004/10/14 18:31:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,7 +69,6 @@
 #ifdef NDIS_PCI_DEV_TABLE 
 
 MODULE_DEPEND(ndis, pci, 1, 1, 1);
-MODULE_DEPEND(ndis, ether, 1, 1, 1);
 MODULE_DEPEND(ndis, wlan, 1, 1, 1);
 MODULE_DEPEND(ndis, ndisapi, 1, 1, 1);
 

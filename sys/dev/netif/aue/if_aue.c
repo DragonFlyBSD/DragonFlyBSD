@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.14 2004/09/14 21:48:53 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.15 2004/10/14 18:31:00 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
  */
@@ -99,7 +99,6 @@
 #include "if_auereg.h"
 
 MODULE_DEPEND(aue, usb, 1, 1, 1);
-MODULE_DEPEND(aue, ether, 1, 1, 1);
 MODULE_DEPEND(aue, miibus, 1, 1, 1);
 
 /* "controller miibus0" required.  See GENERIC if you get errors here. */

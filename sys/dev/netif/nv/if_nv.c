@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.9 2003/12/13 15:27:40 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.5 2004/09/15 01:32:07 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.6 2004/10/14 18:31:02 dillon Exp $
  */
 
 /*
@@ -100,7 +100,6 @@
 #include <dev/netif/mii_layer/miivar.h>
 
 MODULE_DEPEND(nv, pci, 1, 1, 1);
-MODULE_DEPEND(nv, ether, 1, 1, 1);
 MODULE_DEPEND(nv, miibus, 1, 1, 1);
 
 #include "if_nvreg.h"

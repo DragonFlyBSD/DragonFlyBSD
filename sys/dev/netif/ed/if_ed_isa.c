@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_isa.c,v 1.15 2003/10/31 18:31:58 brooks Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.7 2004/02/13 21:15:12 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.8 2004/10/14 18:31:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -160,4 +160,3 @@ static driver_t ed_isa_driver = {
 
 DRIVER_MODULE(if_ed, isa, ed_isa_driver, ed_devclass, 0, 0);
 MODULE_DEPEND(if_ed, isa, 1, 1, 1);
-MODULE_DEPEND(if_ed, ether, 1, 1, 1);

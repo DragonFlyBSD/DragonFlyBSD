@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  *  $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.12 2004/07/23 07:16:26 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.13 2004/10/14 18:31:02 dillon Exp $
  */
 
 /*
@@ -98,7 +98,6 @@
 #include <bus/usb/kue_fw.h>
 
 MODULE_DEPEND(kue, usb, 1, 1, 1);
-MODULE_DEPEND(kue, ether, 1, 1, 1);
 
 /*
  * Various supported device vendors/products.

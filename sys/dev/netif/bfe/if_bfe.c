@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.8 2004/09/14 22:21:43 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.9 2004/10/14 18:31:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -72,7 +72,6 @@
 #include "if_bfereg.h"
 
 MODULE_DEPEND(bfe, pci, 1, 1, 1);
-MODULE_DEPEND(bfe, ether, 1, 1, 1);
 MODULE_DEPEND(bfe, miibus, 1, 1, 1);
 
 /* "controller miibus0" required.  See GENERIC if you get errors here. */

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.14 2004/09/14 22:35:28 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.15 2004/10/14 18:31:02 dillon Exp $
  *
  */
 
@@ -147,7 +147,6 @@ Static devclass_t cue_devclass;
 DECLARE_DUMMY_MODULE(if_cue);
 DRIVER_MODULE(cue, uhub, cue_driver, cue_devclass, usbd_driver_load, 0);
 MODULE_DEPEND(cue, usb, 1, 1, 1);
-MODULE_DEPEND(cue, ether, 1, 1, 1);
 
 #define CUE_SETBIT(sc, reg, x)				\
 	cue_csr_write_1(sc, reg, cue_csr_read_1(sc, reg) | (x))
