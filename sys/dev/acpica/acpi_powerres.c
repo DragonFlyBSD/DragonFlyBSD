@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi_powerres.c,v 1.14.6.1 2003/08/22 20:49:20 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Attic/acpi_powerres.c,v 1.2 2004/05/05 22:19:23 dillon Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Attic/acpi_powerres.c,v 1.3 2004/06/03 13:12:24 joerg Exp $ 
  */
 
 #include "opt_acpi.h"		/* XXX trim includes */
@@ -115,9 +115,13 @@ static TAILQ_HEAD(acpi_powerresource_list, acpi_powerresource)	acpi_powerresourc
 static TAILQ_HEAD(acpi_powerconsumer_list, acpi_powerconsumer)	acpi_powerconsumers;
 
 static ACPI_STATUS		acpi_pwr_register_consumer(ACPI_HANDLE consumer);
+#ifdef unused
 static ACPI_STATUS		acpi_pwr_deregister_consumer(ACPI_HANDLE consumer);
+#endif
 static ACPI_STATUS		acpi_pwr_register_resource(ACPI_HANDLE res);
+#if unused
 static ACPI_STATUS		acpi_pwr_deregister_resource(ACPI_HANDLE res);
+#endif
 static void			acpi_pwr_reference_resource(ACPI_OBJECT *obj, void *arg);
 static ACPI_STATUS		acpi_pwr_switch_power(void);
 static struct acpi_powerresource *acpi_pwr_find_resource(ACPI_HANDLE res);
@@ -200,6 +204,7 @@ acpi_pwr_register_resource(ACPI_HANDLE res)
     return_ACPI_STATUS(status);
 }
 
+#ifdef unused
 /*
  * Deregister a power resource.
  */
@@ -228,6 +233,7 @@ acpi_pwr_deregister_resource(ACPI_HANDLE res)
 
     return_ACPI_STATUS(AE_OK);
 }
+#endif /* unused */
 
 /*
  * Register a power consumer.  
@@ -258,6 +264,7 @@ acpi_pwr_register_consumer(ACPI_HANDLE consumer)
     return_ACPI_STATUS(AE_OK);
 }
 
+#ifdef unused
 /*
  * Deregister a power consumer.
  *
@@ -286,6 +293,7 @@ acpi_pwr_deregister_consumer(ACPI_HANDLE consumer)
 
     return_ACPI_STATUS(AE_OK);
 }
+#endif /* unused */
 
 /*
  * Set a power consumer to a particular power state.
