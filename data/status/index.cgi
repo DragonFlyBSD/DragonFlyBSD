@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/index.cgi,v 1.3 2003/08/11 02:24:52 dillon Exp $
+# $DragonFly: site/data/status/Attic/index.cgi,v 1.4 2003/09/05 02:35:20 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 <P><B>Caching</B> - not started
@@ -78,6 +78,15 @@ the submit list.
 	    <TD>NOSECURE</TD>
 	    <TD>5-Aug-2003</TD>
 	    <TD>10-Aug-2003</TD>
+	    <TD>Completed</TD>
+	</TR>
+	<TR>
+	    <TD>SLAB</TD>
+	    <TD>Slab Allocator for Kernel</TD>
+	    <TD>Matt Dillon</TD>
+	    <TD></TD>
+	    <TD>25-Aug-2003</TD>
+	    <TD>31-Aug-2003</TD>
 	    <TD>Completed</TD>
 	</TR>
     </TABLE>
