@@ -37,7 +37,7 @@
 #if 0
 static const char rcsid[] =
   "$FreeBSD: src/libexec/ftpd/ftpd.c,v 1.62.2.48 2003/02/14 12:42:42 yar Exp $";
-  "$DragonFly: src/libexec/ftpd/ftpd.c,v 1.3 2003/11/14 03:54:30 dillon Exp $";
+  "$DragonFly: src/libexec/ftpd/ftpd.c,v 1.4 2004/09/13 23:52:57 drhodus Exp $";
 #endif /* not lint */
 
 /*
@@ -1783,7 +1783,6 @@ getdatasock(mode)
 
 	if (data >= 0)
 		return (fdopen(data, mode));
-	(void) seteuid((uid_t)0);
 
 	s = socket(data_dest.su_family, SOCK_STREAM, 0);
 	if (s < 0)
@@ -1793,6 +1792,7 @@ getdatasock(mode)
 	/* anchor socket to avoid multi-homing problems */
 	data_source = ctrl_addr;
 	data_source.su_port = htons(dataport);
+	(void) seteuid((uid_t)0);
 	for (tries = 1; ; tries++) {
 		if (bind(s, (struct sockaddr *)&data_source,
 		    data_source.su_len) >= 0)
