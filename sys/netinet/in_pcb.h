@@ -33,7 +33,7 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.10 2004/04/10 00:10:42 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.11 2004/04/18 20:05:09 hsu Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -57,6 +57,12 @@ struct inpcbpolicy;
 LIST_HEAD(inpcbhead, inpcb);
 LIST_HEAD(inpcbporthead, inpcbport);
 typedef	u_quad_t	inp_gen_t;
+
+struct inpcontainer {
+	struct inpcb			*ic_inp;
+	LIST_ENTRY(inpcontainer)	ic_list;
+};
+LIST_HEAD(inpcontainerhead, inpcontainer);
 
 /*
  * PCB with AF_INET6 null bind'ed laddr can receive AF_INET input packet.
@@ -240,7 +246,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 	u_long	hashmask;
 	struct	inpcbporthead *porthashbase;
 	u_long	porthashmask;
-	struct	inpcbhead *wildcardhashbase;
+	struct	inpcontainerhead *wildcardhashbase;
 	u_long	wildcardhashmask;
 	struct	inpcbhead listhead;	/* head of queue of active pcb's */
 	u_short	lastport;

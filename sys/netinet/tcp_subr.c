@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.25 2004/04/18 06:41:35 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.26 2004/04/18 20:05:09 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -241,7 +241,7 @@ tcp_init()
 {
 	struct inpcbporthead *porthashbase;
 	u_long porthashmask;
-	struct inpcbhead *wildcardhashbase;
+	struct inpcontainerhead *wildcardhashbase;
 	u_long wildcardhashmask;
 	struct vm_zone *ipi_zone;
 	int hashsize = TCBHASHSIZE;

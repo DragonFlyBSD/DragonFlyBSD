@@ -33,7 +33,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.17 2004/04/10 00:10:42 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.18 2004/04/18 20:05:09 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -866,10 +866,13 @@ in_pcblookup_hash(pcbinfo, faddr, fport_arg, laddr, lport_arg, wildcard, ifp)
 #ifdef INET6
 		struct inpcb *local_wild_mapped = NULL;
 #endif
+		struct inpcontainer *ic;
+		struct inpcontainerhead *chead;
 
-		head = &pcbinfo->wildcardhashbase[INP_PCBWILDCARDHASH(lport,
-		    pcbinfo->wildcardhashmask)];
-		LIST_FOREACH(inp, head, inp_hash) {
+		chead = &pcbinfo->wildcardhashbase[
+		    INP_PCBWILDCARDHASH(lport, pcbinfo->wildcardhashmask)];
+		LIST_FOREACH(ic, chead, ic_list) {
+			inp = ic->ic_inp;
 #ifdef INET6
 			if (!(inp->inp_vflag & INP_IPV4))
 				continue;
@@ -993,14 +996,18 @@ in_pcbinsporthash(struct inpcb *inp)
 void
 in_pcbinswildcardhash(struct inpcb *inp)
 {
-	struct inpcbhead *bucket;
+	struct inpcontainer *ic;
+	struct inpcontainerhead *bucket;
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 
 	bucket = &pcbinfo->wildcardhashbase[
 	    INP_PCBWILDCARDHASH(inp->inp_lport, pcbinfo->wildcardhashmask)];
 
+	ic = malloc(sizeof(struct inpcontainer), M_TEMP, M_WAITOK);
+	ic->ic_inp = inp;
+	LIST_INSERT_HEAD(bucket, ic, ic_list);
+
 	inp->inp_flags |= INP_WILDCARD;
-	LIST_INSERT_HEAD(bucket, inp, inp_hash);
 }
 
 /*
@@ -1009,18 +1016,29 @@ in_pcbinswildcardhash(struct inpcb *inp)
 void
 in_pcbremwildcardhash(struct inpcb *inp)
 {
-	KASSERT(inp->inp_flags & INP_WILDCARD, ("inp not wildcard"));
-	LIST_REMOVE(inp, inp_hash);
-	inp->inp_flags &= ~INP_WILDCARD;
-}
+	struct inpcontainer *ic;
+	struct inpcontainerhead *head;
+	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 
-static void
-in_pcbremhash(struct inpcb *inp)
-{
-	if (inp->inp_flags & (INP_WILDCARD | INP_CONNECTED)) {
-		LIST_REMOVE(inp, inp_hash);
-		inp->inp_flags &= ~(INP_WILDCARD | INP_CONNECTED);
+	KASSERT(inp->inp_flags & INP_WILDCARD, ("inp not wildcard"));
+
+	/* find bucket */
+	head = &pcbinfo->wildcardhashbase[
+	    INP_PCBWILDCARDHASH(inp->inp_lport, pcbinfo->wildcardhashmask)];
+	LIST_FOREACH(ic, head, ic_list) {
+		if (ic->ic_inp == inp)
+			goto found;
 	}
+	return;			/* not found! */
+
+found:
+	/* remove container from bucket chain */
+	LIST_REMOVE(ic, ic_list);
+
+	/* deallocate container */
+	free(ic, M_TEMP);
+
+	inp->inp_flags &= ~INP_WILDCARD;
 }
 
 /*
@@ -1039,7 +1057,11 @@ in_pcbremlists(inp)
 			free(phd, M_PCB);
 		}
 	}
-	in_pcbremhash(inp);
+	if (inp->inp_flags & INP_WILDCARD) {
+		in_pcbremwildcardhash(inp);
+	} else if (inp->inp_flags & INP_CONNECTED) {
+		in_pcbremconnhash(inp);
+	}
 	LIST_REMOVE(inp, inp_list);
 	inp->inp_pcbinfo->ipi_count--;
 }
