@@ -38,7 +38,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.8 2004/12/16 00:17:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.9 2004/12/16 21:58:14 okumoto Exp $
  */
 
 /*-
@@ -46,9 +46,9 @@
  *	Functions for automatically-expanded buffers.
  */
 
-#include    "sprite.h"
-#include    "make.h"
-#include    "buf.h"
+#include "sprite.h"
+#include "make.h"
+#include "buf.h"
 
 #ifndef max
 #define	max(a,b)  ((a) > (b) ? (a) : (b))
@@ -61,17 +61,18 @@
  *	Makes sure there's room for an extra NULL byte at the end of the
  *	buffer in case it holds a string.
  */
-#define	BufExpand(bp,nb) \
- 	if (bp->left < (nb)+1) {\
-	    int newSize = (bp)->size + max((nb) + 1, BUF_ADD_INC); \
-	    Byte  *newBuf = erealloc((bp)->buffer, newSize); \
-	    \
-	    (bp)->inPtr = newBuf + ((bp)->inPtr - (bp)->buffer); \
-	    (bp)->outPtr = newBuf + ((bp)->outPtr - (bp)->buffer);\
-	    (bp)->buffer = newBuf;\
-	    (bp)->size = newSize;\
-	    (bp)->left = newSize - ((bp)->inPtr - (bp)->buffer);\
-	}
+#define	BufExpand(bp, nb) do {						\
+ 	if (bp->left < (nb) + 1) {					\
+		int newSize = (bp)->size + max((nb) + 1, BUF_ADD_INC);	\
+		Byte  *newBuf = erealloc((bp)->buffer, newSize);	\
+									\
+		(bp)->inPtr = newBuf + ((bp)->inPtr - (bp)->buffer);	\
+		(bp)->outPtr = newBuf + ((bp)->outPtr - (bp)->buffer);	\
+		(bp)->buffer = newBuf;					\
+		(bp)->size = newSize;					\
+		(bp)->left = newSize - ((bp)->inPtr - (bp)->buffer);	\
+	}								\
+    } while (0)
 
 #define	BUF_DEF_SIZE	256 	/* Default buffer size */
 #define	BUF_ADD_INC	256 	/* Expansion increment when Adding */
@@ -94,16 +95,16 @@ void
 Buf_OvAddByte(Buffer bp, int byte)
 {
 
-    bp->left = 0;
-    BufExpand(bp, 1);
+	bp->left = 0;
+	BufExpand(bp, 1);
 
-    *bp->inPtr++ = byte;
-    bp->left--;
+	*bp->inPtr++ = byte;
+	bp->left--;
 
-    /*
-     * Null-terminate
-     */
-    *bp->inPtr = 0;
+	/*
+	 * Null-terminate
+	 */
+	*bp->inPtr = 0;
 }
 
 /*-
@@ -123,16 +124,16 @@ void
 Buf_AddBytes(Buffer bp, int numBytes, const Byte *bytesPtr)
 {
 
-    BufExpand(bp, numBytes);
+	BufExpand(bp, numBytes);
 
-    memcpy(bp->inPtr, bytesPtr, numBytes);
-    bp->inPtr += numBytes;
-    bp->left -= numBytes;
+	memcpy(bp->inPtr, bytesPtr, numBytes);
+	bp->inPtr += numBytes;
+	bp->left -= numBytes;
 
-    /*
-     * Null-terminate
-     */
-    *bp->inPtr = 0;
+	/*
+	 * Null-terminate
+	 */
+	*bp->inPtr = 0;
 }
 
 /*-
@@ -152,35 +153,37 @@ void
 Buf_UngetByte(Buffer bp, int byte)
 {
 
-    if (bp->outPtr != bp->buffer) {
-	bp->outPtr--;
-	*bp->outPtr = byte;
-    } else if (bp->outPtr == bp->inPtr) {
-	*bp->inPtr = byte;
-	bp->inPtr++;
-	bp->left--;
-	*bp->inPtr = 0;
-    } else {
-	/*
-	 * Yech. have to expand the buffer to stuff this thing in.
-	 * We use a different expansion constant because people don't
-	 * usually push back many bytes when they're doing it a byte at
-	 * a time...
-	 */
-	int 	  numBytes = bp->inPtr - bp->outPtr;
-	Byte	  *newBuf;
+	if (bp->outPtr != bp->buffer) {
+		bp->outPtr--;
+		*bp->outPtr = byte;
 
-	newBuf = emalloc(bp->size + BUF_UNGET_INC);
-	memcpy(newBuf + BUF_UNGET_INC, bp->outPtr, numBytes + 1);
-	bp->outPtr = newBuf + BUF_UNGET_INC;
-	bp->inPtr = bp->outPtr + numBytes;
-	free(bp->buffer);
-	bp->buffer = newBuf;
-	bp->size += BUF_UNGET_INC;
-	bp->left = bp->size - (bp->inPtr - bp->buffer);
-	bp->outPtr -= 1;
-	*bp->outPtr = byte;
-    }
+	} else if (bp->outPtr == bp->inPtr) {
+		*bp->inPtr = byte;
+		bp->inPtr++;
+		bp->left--;
+		*bp->inPtr = 0;
+
+	} else {
+		/*
+		 * Yech. have to expand the buffer to stuff this thing in.
+		 * We use a different expansion constant because people don't
+		 * usually push back many bytes when they're doing it a byte at
+		 * a time...
+		 */
+		int numBytes = bp->inPtr - bp->outPtr;
+		Byte *newBuf;
+
+		newBuf = emalloc(bp->size + BUF_UNGET_INC);
+		memcpy(newBuf + BUF_UNGET_INC, bp->outPtr, numBytes + 1);
+		bp->outPtr = newBuf + BUF_UNGET_INC;
+		bp->inPtr = bp->outPtr + numBytes;
+		free(bp->buffer);
+		bp->buffer = newBuf;
+		bp->size += BUF_UNGET_INC;
+		bp->left = bp->size - (bp->inPtr - bp->buffer);
+		bp->outPtr -= 1;
+		*bp->outPtr = byte;
+	}
 }
 
 /*-
@@ -200,27 +203,27 @@ void
 Buf_UngetBytes(Buffer bp, int numBytes, Byte *bytesPtr)
 {
 
-    if (bp->outPtr - bp->buffer >= numBytes) {
-	bp->outPtr -= numBytes;
-	memcpy(bp->outPtr, bytesPtr, numBytes);
-    } else if (bp->outPtr == bp->inPtr) {
-	Buf_AddBytes(bp, numBytes, bytesPtr);
-    } else {
-	int 	  curNumBytes = bp->inPtr - bp->outPtr;
-	Byte	  *newBuf;
-	int 	  newBytes = max(numBytes,BUF_UNGET_INC);
+	if (bp->outPtr - bp->buffer >= numBytes) {
+		bp->outPtr -= numBytes;
+		memcpy(bp->outPtr, bytesPtr, numBytes);
+	} else if (bp->outPtr == bp->inPtr) {
+		Buf_AddBytes(bp, numBytes, bytesPtr);
+	} else {
+		int curNumBytes = bp->inPtr - bp->outPtr;
+		Byte *newBuf;
+		int newBytes = max(numBytes, BUF_UNGET_INC);
 
-	newBuf = emalloc(bp->size + newBytes);
-	memcpy(newBuf + newBytes, bp->outPtr, curNumBytes + 1);
-	bp->outPtr = newBuf + newBytes;
-	bp->inPtr = bp->outPtr + curNumBytes;
-	free(bp->buffer);
-	bp->buffer = newBuf;
-	bp->size += newBytes;
-	bp->left = bp->size - (bp->inPtr - bp->buffer);
-	bp->outPtr -= numBytes;
-	memcpy(bp->outPtr, bytesPtr, numBytes);
-    }
+		newBuf = emalloc(bp->size + newBytes);
+		memcpy(newBuf + newBytes, bp->outPtr, curNumBytes + 1);
+		bp->outPtr = newBuf + newBytes;
+		bp->inPtr = bp->outPtr + curNumBytes;
+		free(bp->buffer);
+		bp->buffer = newBuf;
+		bp->size += newBytes;
+		bp->left = bp->size - (bp->inPtr - bp->buffer);
+		bp->outPtr -= numBytes;
+		memcpy(bp->outPtr, bytesPtr, numBytes);
+	}
 }
 
 /*-
@@ -241,20 +244,19 @@ Buf_UngetBytes(Buffer bp, int numBytes, Byte *bytesPtr)
 int
 Buf_GetByte(Buffer bp)
 {
-    int	    res;
+	int res;
 
-    if (bp->inPtr == bp->outPtr) {
-	return (BUF_ERROR);
-    } else {
+	if (bp->inPtr == bp->outPtr)
+		return (BUF_ERROR);
+
 	res = (int)*bp->outPtr;
 	bp->outPtr += 1;
 	if (bp->outPtr == bp->inPtr) {
-	    bp->outPtr = bp->inPtr = bp->buffer;
-	    bp->left = bp->size;
-	    *bp->inPtr = 0;
+		bp->outPtr = bp->inPtr = bp->buffer;
+		bp->left = bp->size;
+		*bp->inPtr = 0;
 	}
 	return (res);
-    }
 }
 
 /*-
@@ -274,18 +276,18 @@ int
 Buf_GetBytes(Buffer bp, int numBytes, Byte *bytesPtr)
 {
 
-    if (bp->inPtr - bp->outPtr < numBytes) {
-	numBytes = bp->inPtr - bp->outPtr;
-    }
-    memcpy(bytesPtr, bp->outPtr, numBytes);
-    bp->outPtr += numBytes;
+	if (bp->inPtr - bp->outPtr < numBytes)
+		numBytes = bp->inPtr - bp->outPtr;
 
-    if (bp->outPtr == bp->inPtr) {
-	bp->outPtr = bp->inPtr = bp->buffer;
-	bp->left = bp->size;
-	*bp->inPtr = 0;
-    }
-    return (numBytes);
+	memcpy(bytesPtr, bp->outPtr, numBytes);
+	bp->outPtr += numBytes;
+
+	if (bp->outPtr == bp->inPtr) {
+		bp->outPtr = bp->inPtr = bp->buffer;
+		bp->left = bp->size;
+		*bp->inPtr = 0;
+	}
+	return (numBytes);
 }
 
 /*-
@@ -305,11 +307,10 @@ Byte *
 Buf_GetAll(Buffer bp, int *numBytesPtr)
 {
 
-    if (numBytesPtr != NULL) {
-	*numBytesPtr = bp->inPtr - bp->outPtr;
-    }
+	if (numBytesPtr != NULL)
+		*numBytesPtr = bp->inPtr - bp->outPtr;
 
-    return (bp->outPtr);
+	return (bp->outPtr);
 }
 
 /*-
@@ -329,13 +330,12 @@ void
 Buf_Discard(Buffer bp, int numBytes)
 {
 
-    if (bp->inPtr - bp->outPtr <= numBytes) {
-	bp->inPtr = bp->outPtr = bp->buffer;
-	bp->left = bp->size;
-	*bp->inPtr = 0;
-    } else {
-	bp->outPtr += numBytes;
-    }
+	if (bp->inPtr - bp->outPtr <= numBytes) {
+		bp->inPtr = bp->outPtr = bp->buffer;
+		bp->left = bp->size;
+		*bp->inPtr = 0;
+	} else
+		bp->outPtr += numBytes;
 }
 
 /*-
@@ -356,7 +356,7 @@ int
 Buf_Size(Buffer buf)
 {
 
-    return (buf->inPtr - buf->outPtr);
+	return (buf->inPtr - buf->outPtr);
 }
 
 /*-
@@ -377,19 +377,19 @@ Buf_Size(Buffer buf)
 Buffer
 Buf_Init(int size)
 {
-    Buffer bp;	  	/* New Buffer */
+	Buffer bp;	  	/* New Buffer */
 
-    bp = emalloc(sizeof(*bp));
+	bp = emalloc(sizeof(*bp));
 
-    if (size <= 0) {
-	size = BUF_DEF_SIZE;
-    }
-    bp->left = bp->size = size;
-    bp->buffer = emalloc(size);
-    bp->inPtr = bp->outPtr = bp->buffer;
-    *bp->inPtr = 0;
+	if (size <= 0)
+		size = BUF_DEF_SIZE;
 
-    return (bp);
+	bp->left = bp->size = size;
+	bp->buffer = emalloc(size);
+	bp->inPtr = bp->outPtr = bp->buffer;
+	*bp->inPtr = 0;
+
+	return (bp);
 }
 
 /*-
@@ -409,10 +409,9 @@ void
 Buf_Destroy(Buffer buf, Boolean freeData)
 {
 
-    if (freeData) {
-	free(buf->buffer);
-    }
-    free(buf);
+	if (freeData)
+		free(buf->buffer);
+	free(buf);
 }
 
 /*-
@@ -432,8 +431,8 @@ Buf_Destroy(Buffer buf, Boolean freeData)
 void
 Buf_ReplaceLastByte(Buffer buf, int byte)
 {
-    if (buf->inPtr == buf->outPtr)
-        Buf_AddByte(buf, byte);
-    else
-        *(buf->inPtr - 1) = byte;
+	if (buf->inPtr == buf->outPtr)
+		Buf_AddByte(buf, byte);
+	else
+		*(buf->inPtr - 1) = byte;
 }

@@ -38,7 +38,7 @@
  *
  *	from: @(#)buf.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.h,v 1.9 1999/08/28 01:03:26 peter Exp $
- * $DragonFly: src/usr.bin/make/buf.h,v 1.6 2004/12/10 19:22:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.h,v 1.7 2004/12/16 21:58:14 okumoto Exp $
  */
 
 /*-
@@ -49,16 +49,16 @@
 #ifndef _BUF_H
 #define	_BUF_H
 
-#include    "sprite.h"
+#include "sprite.h"
 
 typedef char Byte;
 
 typedef struct Buffer {
-    int	    size; 	/* Current size of the buffer */
-    int     left;	/* Space left (== size - (inPtr - buffer)) */
-    Byte    *buffer;	/* The buffer itself */
-    Byte    *inPtr;	/* Place to write to */
-    Byte    *outPtr;	/* Place to read from */
+	int	size; 		/* Current size of the buffer */
+	int     left;		/* Space left (== size - (inPtr - buffer)) */
+	Byte    *buffer;	/* The buffer itself */
+	Byte    *inPtr;		/* Place to write to */
+	Byte    *outPtr;	/* Place to read from */
 } *Buffer;
 
 /* Buf_AddByte adds a single byte to a buffer. */
