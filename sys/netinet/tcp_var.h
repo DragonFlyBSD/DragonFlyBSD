@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.3 2003/07/23 06:21:01 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.4 2003/07/24 01:31:07 dillon Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -178,6 +178,7 @@ struct tcpcb {
 	u_long	snd_ssthresh_prev;	/* ssthresh prior to retransmit */
 	tcp_seq snd_recover_prev;	/* snd_recover prior to retransmit */
 	u_long	t_badrxtwin;		/* window for retransmit recovery */
+	u_char	snd_limited;		/* segments limited transmitted */
 };
 
 #define	IN_FASTRECOVERY(tp)	(tp->t_flags & TF_FASTRECOVERY)

@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.3 2003/07/23 06:21:01 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.4 2003/07/24 01:31:07 dillon Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -125,6 +125,10 @@ static int drop_synfin = 0;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, drop_synfin, CTLFLAG_RW,
     &drop_synfin, 0, "Drop TCP packets with SYN+FIN set");
 #endif
+
+static int tcp_do_limitedtransmit = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, limitedtransmit, CTLFLAG_RW,
+    &tcp_do_limitedtransmit, 0, "Enable RFC 3042 (Limited Transmit)");
 
 struct inpcbhead tcb;
 #define	tcb6	tcb  /* for KAME src sync over BSD*'s */
@@ -1692,10 +1696,38 @@ trimthenstep6:
 					tp->snd_nxt = th->th_ack;
 					tp->snd_cwnd = tp->t_maxseg;
 					(void) tcp_output(tp);
+					KASSERT(tp->snd_limited <= 2,
+					    ("tp->snd_limited too big"));
 					tp->snd_cwnd = tp->snd_ssthresh +
-						tp->t_maxseg * tp->t_dupacks;
+					    (tp->t_maxseg *
+					     (tp->t_dupacks - tp->snd_limited));
 					if (SEQ_GT(onxt, tp->snd_nxt))
 						tp->snd_nxt = onxt;
+					goto drop;
+				} else if (tcp_do_limitedtransmit) {
+					u_long oldcwnd = tp->snd_cwnd;
+					tcp_seq oldsndmax = tp->snd_max;
+					u_int sent;
+					KASSERT(tp->t_dupacks == 1 ||
+					    tp->t_dupacks == 2,
+					    ("dupacks not 1 or 2"));
+					if (tp->t_dupacks == 1) {
+						tp->snd_limited = 0;
+						tp->snd_cwnd += tp->t_maxseg;
+					} else {
+						tp->snd_cwnd +=
+						    tp->t_maxseg * 2;
+					}
+					(void) tcp_output(tp);
+					sent = tp->snd_max - oldsndmax;
+					if (sent > tp->t_maxseg) {
+						KASSERT(tp->snd_limited == 0 &&
+						    tp->t_dupacks == 2,
+						    ("sent too much"));
+						tp->snd_limited = 2;
+					} else if (sent > 0)
+						++tp->snd_limited;
+					tp->snd_cwnd = oldcwnd;
 					goto drop;
 				}
 			} else
