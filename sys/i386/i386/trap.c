@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.31 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.32 2003/08/12 02:36:15 dillon Exp $
  */
 
 /*
@@ -100,6 +100,7 @@
 #include <machine/vm86.h>
 
 #include <ddb/ddb.h>
+#include <sys/msgport2.h>
 #include <sys/thread2.h>
 
 int (*pmath_emulate) __P((struct trapframe *));
@@ -1219,7 +1220,7 @@ syscall2(struct trapframe frame)
 		/*
 		 * The prep code is not MP aware.
 		 */
-		(*p->p_sysent->sv_prepsyscall)(&frame, (int *)(&args.sysmsg + 1), &code, &params);
+		(*p->p_sysent->sv_prepsyscall)(&frame, (int *)(&args.nosys.usrmsg + 1), &code, &params);
 	} else {
 		/*
 		 * Need to check if this is a 32 bit or 64 bit syscall.
@@ -1254,11 +1255,11 @@ syscall2(struct trapframe frame)
 	/*
 	 * copyin is MP aware, but the tracing code is not
 	 */
-	if (params && (i = narg * sizeof(int)) &&
-	    (error = copyin(params, (caddr_t)(&args.sysmsg + 1), (u_int)i))) {
+	if (params && (i = narg * sizeof(register_t)) &&
+	    (error = copyin(params, (caddr_t)(&args.nosys.usrmsg + 1), (u_int)i))) {
 #ifdef KTRACE
 		if (KTRPOINT(td, KTR_SYSCALL))
-			ktrsyscall(p->p_tracep, code, narg, (void *)(&args.sysmsg + 1));
+			ktrsyscall(p->p_tracep, code, narg, (void *)(&args.nosys.usrmsg + 1));
 #endif
 		goto bad;
 	}
@@ -1277,9 +1278,10 @@ syscall2(struct trapframe frame)
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSCALL)) {
-		ktrsyscall(p->p_tracep, code, narg, (void *)(&args.sysmsg + 1));
+		ktrsyscall(p->p_tracep, code, narg, (void *)(&args.nosys.usrmsg + 1));
 	}
 #endif
+	lwkt_initmsg(&args.lmsg, &td->td_msgport, code);
 	args.sysmsg_fds[0] = 0;
 	args.sysmsg_fds[1] = frame.tf_edx;
 
@@ -1301,7 +1303,6 @@ syscall2(struct trapframe frame)
 		frame.tf_edx = args.sysmsg_fds[1];
 		frame.tf_eflags &= ~PSL_C;
 		break;
-
 	case ERESTART:
 		/*
 		 * Reconstruct pc, assuming lcall $X,y is 7 bytes,
@@ -1309,10 +1310,10 @@ syscall2(struct trapframe frame)
 		 */
 		frame.tf_eip -= frame.tf_err;
 		break;
-
 	case EJUSTRETURN:
 		break;
-
+	case EASYNC:
+		panic("Unexpected EASYNC return value (for now)");
 	default:
 bad:
  		if (p->p_sysent->sv_errsize) {
@@ -1373,7 +1374,7 @@ sendsys2(struct trapframe frame)
 	struct proc *p = td->td_proc;
 	register_t orig_tf_eflags;
 	struct sysent *callp;
-	sysmsg_t sysmsg;
+	union sysunion *sysun;
 	lwkt_msg_t umsg;
 	u_quad_t sticks;
 	int error;
@@ -1409,74 +1410,138 @@ sendsys2(struct trapframe frame)
 	result = 0;
 
 	/*
+	 * Handle the waitport/waitmsg/checkport/checkmsg case
+	 *
+	 * YYY MOVE THIS TO INT 0x82!  We don't really need to combine it
+	 * with sendsys().
+	 */
+	if ((msgsize = frame.tf_edx) <= 0) {
+		if (frame.tf_ecx) {
+			printf("waitmsg/checkmsg not yet supported: %08x\n",
+				frame.tf_ecx);
+			error = ENOTSUP;
+			goto bad2;
+		}
+		if (frame.tf_eax) {
+			printf("waitport/checkport only the default port is supported at the moment\n");
+			error = ENOTSUP;
+			goto bad2;
+		}
+		switch(msgsize) {
+		case 0:
+			/*
+			 * Wait on port for message
+			 */
+			sysun = lwkt_getport(&td->td_msgport);
+			/* XXX block */
+			break;
+		case -1:
+			/*
+			 * Test port for message
+			 */
+			sysun = lwkt_getport(&td->td_msgport);
+			break;
+		default:
+			error = ENOSYS;
+			goto bad2;
+		}
+		if (sysun) {
+			gd = td->td_gd;
+			umsg = sysun->lmsg.opaque.ms_umsg;
+			frame.tf_eax = (register_t)umsg;
+			if (sysun->lmsg.ms_cleanupmsg)
+				sysun->lmsg.ms_cleanupmsg(&td->td_msgport, &sysun->lmsg);
+			atomic_add_int_nonlocked(&td->td_msgport.mp_refs, -1);
+			sysun->nosys.usrmsg.umsg.u.ms_fds[0] = sysun->lmsg.u.ms_fds[0];
+			sysun->nosys.usrmsg.umsg.u.ms_fds[1] = sysun->lmsg.u.ms_fds[1];
+			sysun->nosys.usrmsg.umsg.ms_error = sysun->lmsg.ms_error;
+			error = sysun->lmsg.ms_error;
+			result = sysun->lmsg.u.ms_fds[0]; /* for ktrace */
+			if (error != 0 || code != SYS_execve) {
+				error = copyout(
+					    &sysun->nosys.usrmsg.umsg.ms_copyout_start,
+					    &umsg->ms_copyout_start,
+					    ms_copyout_size);
+			}
+			crit_enter_quick(td);
+			sysun->lmsg.opaque.ms_sysunnext = gd->gd_freesysun;
+			gd->gd_freesysun = sysun;
+			crit_exit_quick(td);
+		} else {
+			frame.tf_eax = 0;
+		}
+		frame.tf_edx = 0;
+		code = 0;
+		error = 0;
+		goto good;
+	}
+
+	/*
 	 * Extract the system call message.  If msgsize is zero we are 
-	 * blocking on a message and/or message port. YYY
+	 * blocking on a message and/or message port.  If msgsize is -1 
+	 * we are testing a message for completion or a message port for
+	 * activity.
 	 *
 	 * The userland system call message size includes the size of the
-	 * userland lwkt_msg plus arguments.
+	 * userland lwkt_msg plus arguments.  We load it into the userland
+	 * portion of our sysunion structure then we initialize the kerneland
+	 * portion and go.
 	 */
-	if ((msgsize = frame.tf_edx) == 0) {
-		printf("waitport %08x msg %08x\n", frame.tf_eax, frame.tf_ecx);
-		error = ENOSYS;
-		goto bad2;
-	}
 
 	/*
 	 * Bad message size
 	 */
-	if (msgsize < sizeof(struct lwkt_msg) || 
-	    msgsize > sizeof(struct lwkt_msg) + sizeof(union sysunion) - sizeof(union sysmsg)) {
+	if (msgsize < sizeof(struct lwkt_msg) ||
+	    msgsize > sizeof(union sysunion) - sizeof(union sysmsg)
+	) {
 		error = ENOSYS;
 		goto bad2;
 	}
 
 	/*
-	 * Obtain a sysmsg from our per-cpu cache or allocate a new one.  Use
+	 * Obtain a sysun from our per-cpu cache or allocate a new one.  Use
 	 * the opaque field to store the original (user) message pointer.
 	 * A critical section is necessary to interlock against interrupts
 	 * returning system messages to the thread cache.
-	 *
-	 * The sysmsg is actually larger (i.e. sizeof(union sysunion)), in
-	 * order to hold the syscall arguments.
 	 */
 	gd = td->td_gd;
 	crit_enter_quick(td);
-	if ((sysmsg = gd->gd_freesysmsg) != NULL) {
-		gd->gd_freesysmsg = sysmsg->sm_msg.opaque.ms_sysnext;
+	if ((sysun = gd->gd_freesysun) != NULL) {
+		gd->gd_freesysun = sysun->lmsg.opaque.ms_sysunnext;
 		crit_exit_quick(td);
 	} else {
 		crit_exit_quick(td);
-		sysmsg = malloc(sizeof(union sysunion), M_SYSMSG, M_WAITOK);
+		sysun = malloc(sizeof(union sysunion), M_SYSMSG, M_WAITOK);
 	}
+	atomic_add_int_nonlocked(&td->td_msgport.mp_refs, 1);
 
 	/*
-	 * Copy the user request in.  YYY if the userland lwkt_msg is
-	 * different from the kernel lwkt_msg, this is where we deal with
-	 * it.
+	 * Copy the user request into the kernel copy of the user request.
 	 */
 	umsg = (void *)frame.tf_ecx;
-	error = copyin(umsg, &sysmsg->sm_msg, sizeof(struct lwkt_msg));
+	error = copyin(umsg, &sysun->nosys.usrmsg, msgsize);
 	if (error)
 		goto bad1;
-	if (msgsize > sizeof(struct lwkt_msg)) {
-		int rsize = msgsize - sizeof(struct lwkt_msg);
-		error = copyin(umsg + 1, sysmsg + 1, rsize);
-		if (error)
-			goto bad1;
+	if ((sysun->nosys.usrmsg.umsg.ms_flags & MSGF_ASYNC) &&
+	    (error = suser(td)) != 0
+	) {
+		goto bad1;
 	}
 
 	/*
-	 * Initialize the parts of the message required for kernel sanity.
+	 * Initialize the kernel message from the copied-in data and
+	 * pull in appropriate flags from the userland message.
 	 */
-	sysmsg->sm_msg.opaque.ms_umsg = umsg;
-	sysmsg->sm_msg.ms_reply_port = &td->td_msgport;
-	sysmsg->sm_msg.ms_flags &= MSGF_ASYNC;
+	lwkt_initmsg(&sysun->lmsg, &td->td_msgport, 
+	    sysun->nosys.usrmsg.umsg.ms_cmd);
+	sysun->lmsg.opaque.ms_umsg = umsg;
+	sysun->lmsg.ms_flags |= sysun->nosys.usrmsg.umsg.ms_flags & MSGF_ASYNC;
 
 	/*
 	 * Extract the system call number, lookup the system call, and
 	 * set the default return value.
 	 */
-	code = (u_int)sysmsg->sm_msg.ms_cmd;
+	code = (u_int)sysun->lmsg.ms_cmd;
 	if (code >= p->p_sysent->sv_size) {
 		error = ENOSYS;
 		goto bad1;
@@ -1488,11 +1553,11 @@ sendsys2(struct trapframe frame)
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSCALL)) {
-		ktrsyscall(p->p_tracep, code, narg, (void *)(&sysmsg + 1));
+		ktrsyscall(p->p_tracep, code, narg, (void *)(&sysun->nosys.usrmsg + 1));
 	}
 #endif
-	sysmsg->sm_msg.u.ms_fds[0] = 0;
-	sysmsg->sm_msg.u.ms_fds[1] = 0;
+	sysun->lmsg.u.ms_fds[0] = 0;
+	sysun->lmsg.u.ms_fds[1] = 0;
 
 	STOPEVENT(p, S_SCE, narg);	/* MP aware */
 
@@ -1506,7 +1571,7 @@ sendsys2(struct trapframe frame)
 	 * should never 'return' from this call, it should go right to the
 	 * fork_trampoline function.
 	 */
-	error = (*callp->sy_call)(sysmsg);
+	error = (*callp->sy_call)(sysun);
 	gd = td->td_gd;	/* RELOAD, might have switched cpus */
 
 bad1:
@@ -1517,18 +1582,26 @@ bad1:
 	 * YYY Don't writeback message if execve() YYY
 	 */
 	if (error != EASYNC) {
-		result = sysmsg->sm_msg.u.ms_fds[0];
-		if (error == 0 && code != SYS_execve) {
-			error = suword(&umsg->u.ms_result32 + 0, sysmsg->sm_msg.u.ms_fds[0]);
-			error = suword(&umsg->u.ms_result32 + 1, sysmsg->sm_msg.u.ms_fds[1]);
+		atomic_add_int_nonlocked(&td->td_msgport.mp_refs, -1);
+		sysun->nosys.usrmsg.umsg.u.ms_fds[0] = sysun->lmsg.u.ms_fds[0];
+		sysun->nosys.usrmsg.umsg.u.ms_fds[1] = sysun->lmsg.u.ms_fds[1];
+		result = sysun->nosys.usrmsg.umsg.u.ms_fds[0]; /* for ktrace */
+		if (error != 0 || code != SYS_execve) {
+			int error2;
+			error2 = copyout(&sysun->nosys.usrmsg.umsg.ms_copyout_start,
+					&umsg->ms_copyout_start,
+					ms_copyout_size);
+			if (error == 0)
+				error2 = error;
 		}
 		crit_enter_quick(td);
-		sysmsg->sm_msg.opaque.ms_sysnext = gd->gd_freesysmsg;
-		gd->gd_freesysmsg = sysmsg;
+		sysun->lmsg.opaque.ms_sysunnext = gd->gd_freesysun;
+		gd->gd_freesysun = sysun;
 		crit_exit_quick(td);
 	}
 bad2:
 	frame.tf_eax = error;
+good:
 
 	/*
 	 * Traced syscall.  trapsignal() is not MP aware.

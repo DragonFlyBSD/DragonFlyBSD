@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.8 2003/07/28 04:29:12 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.9 2003/08/12 02:36:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,6 +49,7 @@
 #include <sys/vnode.h>
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
+#include <sys/msgport2.h>
 
 struct timezone tz;
 
@@ -234,27 +235,85 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 	}
 }
 
+static void nanosleep_done(void *arg);
+static void nanosleep_return(lwkt_port_t port, lwkt_msg_t msg);
+
 /* ARGSUSED */
 int
 nanosleep(struct nanosleep_args *uap)
 {
-	struct timespec rmt, rqt;
-	int error, error2;
+	int error;
+	struct sysmsg_sleep *sysmsg = &uap->sysmsg.sm_sleep;
 
-	error = copyin(SCARG(uap, rqtp), &rqt, sizeof(rqt));
+	error = copyin(uap->rqtp, &sysmsg->rqt, sizeof(sysmsg->rqt));
 	if (error)
 		return (error);
-	if (SCARG(uap, rmtp))
-		if (!useracc((caddr_t)SCARG(uap, rmtp), sizeof(rmt), 
-		    VM_PROT_WRITE))
-			return (EFAULT);
-	error = nanosleep1(&rqt, &rmt);
-	if (error && SCARG(uap, rmtp)) {
-		error2 = copyout(&rmt, SCARG(uap, rmtp), sizeof(rmt));
-		if (error2)	/* XXX shouldn't happen, did useracc() above */
-			return (error2);
+	/*
+	 * YYY clean this up to always use the callout, note that an abort
+	 * implementation should record the residual in the async case.
+	 */
+	if (sysmsg->lmsg.ms_flags & MSGF_ASYNC) {
+		quad_t ticks;
+
+		ticks = (quad_t)sysmsg->rqt.tv_nsec * hz / 1000000000LL;
+		if (sysmsg->rqt.tv_sec)
+			ticks += (quad_t)sysmsg->rqt.tv_sec * hz;
+		if (ticks <= 0) {
+			if (ticks == 0)
+				error = 0;
+			else
+				error = EINVAL;
+		} else {
+			sysmsg->lmsg.ms_cleanupmsg = nanosleep_return;
+			callout_init(&sysmsg->timer);
+			callout_reset(&sysmsg->timer, ticks, nanosleep_done, uap);
+			error = EASYNC;
+		}
+	} else {
+		/*
+		 * Old synchronous sleep code, copyout the residual if
+		 * nanosleep was interrupted.
+		 */
+		error = nanosleep1(&sysmsg->rqt, &sysmsg->rmt);
+		if (error && SCARG(uap, rmtp))
+			error = copyout(&sysmsg->rmt, SCARG(uap, rmtp), sizeof(sysmsg->rmt));
 	}
 	return (error);
+}
+
+/*
+ * Asynch completion for the nanosleep() syscall.  This function may be
+ * called from any context and cannot legally access the originating 
+ * thread, proc, or its user space.
+ *
+ * YYY change the callout interface API so we can simply assign the replymsg
+ * function to it directly.
+ */
+static void
+nanosleep_done(void *arg)
+{
+	struct nanosleep_args *uap = arg;
+
+	lwkt_replymsg(&uap->sysmsg.lmsg, 0);
+}
+
+/*
+ * Asynch return for the nanosleep() syscall, called in the context of the 
+ * originating thread when it pulls the message off the reply port.  This
+ * function is responsible for any copyouts to userland.  Kernel threads
+ * which do their own internal system calls will not usually call the return
+ * function.
+ */
+static void
+nanosleep_return(lwkt_port_t port, lwkt_msg_t msg)
+{
+	struct nanosleep_args *uap = (void *)msg;
+	struct sysmsg_sleep *sysmsg = &uap->sysmsg.sm_sleep;
+
+	if (sysmsg->lmsg.ms_error && uap->rmtp) {
+		sysmsg->lmsg.ms_error = 
+		    copyout(&sysmsg->rmt, uap->rmtp, sizeof(sysmsg->rmt));
+	}
 }
 
 /* ARGSUSED */

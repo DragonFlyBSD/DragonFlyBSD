@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.6 2003/07/30 00:19:16 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.7 2003/08/12 02:36:15 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -27,20 +27,27 @@ typedef TAILQ_HEAD(lwkt_msg_queue, lwkt_msg) lwkt_msg_queue;
  * threads.  See kern/lwkt_msgport.c for documentation on how messages and
  * ports work.
  *
+ * NOTE: ms_cleanupmsg() is typically used to finish up the handling of a
+ * message in the context of the caller.  For example, so a sycall can 
+ * copyout() information to userland.
+ *
  * NOTE! 64-bit-align this structure.
  */
 typedef struct lwkt_msg {
     TAILQ_ENTRY(lwkt_msg) ms_node;	/* link node (not always used) */
     union {
 	struct lwkt_msg *ms_next;	/* chaining / cache */
-	union sysmsg	*ms_sysnext;	/* chaining / cache */
+	union sysunion	*ms_sysunnext;	/* chaining / cache */
 	struct lwkt_msg	*ms_umsg;	/* user message (UVA address) */
     } opaque;
     lwkt_port_t ms_target_port;		/* only used in certain situations */
     lwkt_port_t	ms_reply_port;		/* asynch replies returned here */
+    void	(*ms_cleanupmsg)(lwkt_port_t port, lwkt_msg_t msg);
+    void	*ms_unused;		/* (alignment) */
     int		ms_abortreq;		/* set asynchronously */
     int		ms_cmd;
     int		ms_flags;
+#define ms_copyout_start	ms_error
     int		ms_error;
     union {
 	void	*ms_resultp;		/* misc pointer result */
@@ -51,8 +58,11 @@ typedef struct lwkt_msg {
 	int64_t	ms_result64;		/* 64 bit result */
 	off_t	ms_offset;		/* off_t result */
     } u;
+#define ms_copyout_end	ms_pad[0]
     int		ms_pad[2];		/* future use */
 } lwkt_msg;
+
+#define ms_copyout_size	(offsetof(struct lwkt_msg, ms_copyout_end) - offsetof(struct lwkt_msg, ms_copyout_start))
 
 #define MSGF_DONE	0x0001		/* asynch message is complete */
 #define MSGF_REPLY	0x0002		/* asynch message has been returned */
@@ -67,6 +77,7 @@ typedef struct lwkt_msg {
 typedef struct lwkt_port {
     lwkt_msg_queue	mp_msgq;
     int			mp_flags;
+    int			mp_refs;	/* references to port structure */
     struct thread	*mp_td;
     int			(*mp_beginmsg)(lwkt_port_t port, lwkt_msg_t msg);
     void		(*mp_abortmsg)(lwkt_port_t port, lwkt_msg_t msg);

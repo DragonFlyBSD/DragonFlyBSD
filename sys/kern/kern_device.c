@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.3 2003/07/24 23:52:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.4 2003/08/12 02:36:15 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -186,7 +186,7 @@ _init_cdevmsg(dev_t dev, cdevmsg_t msg, int cmd)
 {
     struct cdevsw *csw;
 
-    lwkt_initmsg(&msg->msg, cmd);
+    lwkt_initmsg(&msg->msg, &curthread->td_msgport, cmd);
     msg->dev = dev;
     msg->csw = csw = _devsw(dev);
     if (csw != NULL) {			/* YYY too hackish */

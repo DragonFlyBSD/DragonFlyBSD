@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.4 2003/07/25 05:26:50 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.5 2003/08/12 02:36:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -68,8 +68,7 @@ static void lwkt_abortport_remote(lwkt_port_t port);
 void
 lwkt_initmsg_td(lwkt_msg_t msg, thread_t td)
 {
-    lwkt_initmsg(msg, 0);
-    msg->ms_reply_port = &td->td_msgport;
+    lwkt_initmsg(msg, &td->td_msgport, 0);
 }
 
 /*
