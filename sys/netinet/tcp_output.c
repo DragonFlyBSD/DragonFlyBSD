@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.16 2004/07/17 20:31:31 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.17 2004/08/03 00:25:54 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -147,6 +147,10 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, slowstart_flightsize, CTLFLAG_RW,
 int ss_fltsz_local = 4;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, local_slowstart_flightsize, CTLFLAG_RW,
 	&ss_fltsz_local, 1, "Slow start flight size for local networks");
+
+static int avoid_pure_win_update = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, avoid_pure_win_update, CTLFLAG_RW,
+	&avoid_pure_win_update, 1, "Avoid pure window updates when possible");
 
 /*
  * Tcp output routine: figure out what should be sent and send it.
@@ -379,8 +383,25 @@ again:
 		long adv = min(recvwin, (long)TCP_MAXWIN << tp->rcv_scale) -
 			(tp->rcv_adv - tp->rcv_nxt);
 
-		if (adv >= (long) (2 * tp->t_maxseg))
-			goto send;
+		/*
+		 * This ack case typically occurs when the user has drained
+		 * the TCP socket buffer sufficiently to warrent an ack
+		 * containing a 'pure window update'... that is, an ack that
+		 * ONLY updates the tcp window.
+		 *
+		 * It is unclear why we would need to do a pure window update
+		 * past 2 segments if we are going to do one at 1/2 the high
+		 * water mark anyway, especially since under normal conditions
+		 * the user program will drain the socket buffer quickly. 
+		 * The 2-segment pure window update will often add a large
+		 * number of extra, unnecessary acks to the stream.
+		 *
+		 * avoid_pure_win_update now defaults to 1.
+		 */
+		if (avoid_pure_win_update == 0) {
+			if (adv >= (long) (2 * tp->t_maxseg))
+				goto send;
+		}
 		if (2 * adv >= (long) so->so_rcv.sb_hiwat)
 			goto send;
 	}
