@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libncurses/include/MKterm.h.awk,v 1.1 2005/03/12 19:13:54 eirikn Exp $
+# $DragonFly: src/lib/libncurses/include/MKterm.h.awk,v 1.2 2005/03/14 09:14:57 eirikn Exp $
 BEGIN		{
 		    print  "/****************************************************************************"
 		    print  " * Copyright (c) 1998-2001,2003 Free Software Foundation, Inc.              *"
@@ -50,8 +50,8 @@ BEGIN		{
 		    print  "#include <ncurses_dll.h>"
 		    print  "#else"
 		    print  "/* From ncurses_dll.h */"
-		    print  "/* This is copied so we don't need to install"
-		    print  "/* ncurses_dll.h as well */"
+		    print  "/* This is copied so we don't need to install "
+		    print  "   ncurses_dll.h as well */"
 		    print  "/* Take care of non-cygwin platforms */"
 		    print  "#if !defined(NCURSES_IMPEXP)"
 		    print  "#  define NCURSES_IMPEXP /* nothing */"
