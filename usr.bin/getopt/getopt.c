@@ -1,10 +1,11 @@
 /* $FreeBSD: src/usr.bin/getopt/getopt.c,v 1.4.2.2 2001/07/30 10:16:38 dd Exp $ */
-/* $DragonFly: src/usr.bin/getopt/getopt.c,v 1.3 2003/10/04 20:36:45 hmp Exp $ */
+/* $DragonFly: src/usr.bin/getopt/getopt.c,v 1.4 2004/10/23 13:33:36 eirikn Exp $ */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
+int
 main(int argc, char **argv)
 {
 	int c;
@@ -27,5 +28,5 @@ main(int argc, char **argv)
 	for (; optind < argc; optind++)
 		printf(" %s", argv[optind]);
 	printf("\n");
-	exit(status);
+	return(status);
 }
