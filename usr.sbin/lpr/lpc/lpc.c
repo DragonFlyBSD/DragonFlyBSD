@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)lpc.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/lpc/lpc.c,v 1.13.2.11 2002/07/26 03:12:07 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpc/lpc.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpc/lpc.c,v 1.3 2003/11/04 17:03:11 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -175,7 +175,7 @@ cmdscanner(void)
 			if ((bp = el_gets(el, &num)) == NULL || num == 0)
 				quit(0, NULL);
 
-			len = (num > MAX_CMDLINE) ? MAX_CMDLINE : num;
+			len = (num > MAX_CMDLINE -1) ? MAX_CMDLINE -1 : num;
 			memcpy(cmdline, bp, len);
 			cmdline[len] = 0; 
 			history(hist, H_ENTER, bp);
@@ -263,7 +263,7 @@ makeargv(void)
 
 	margc = 0;
 	for (cp = cmdline; *cp && (size_t)(cp - cmdline) < sizeof(cmdline) &&
-	    n < MAX_MARGV; n++) {
+	    n < MAX_MARGV -1; n++) {
 		while (isspace(*cp))
 			cp++;
 		if (*cp == '\0')
