@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/util.h,v 1.5 2005/03/12 09:50:44 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.h,v 1.6 2005/03/12 09:52:54 okumoto Exp $
  */
 
 #ifndef util_h_b7020fdb
@@ -70,11 +70,17 @@ do {						\
 		Debug args ;			\
 	}					\
 } while (0)
+#define	DEBUGM(module, args) do {		\
+	if (DEBUG(module)) {			\
+		DebugM args;			\
+	}					\
+    } while (0)
 
 #define	ISDOT(c) ((c)[0] == '.' && (((c)[1] == '\0') || ((c)[1] == '/')))
 #define	ISDOTDOT(c) ((c)[0] == '.' && ISDOT(&((c)[1])))
 
 void Debug(const char *, ...);
+void DebugM(const char *, ...);
 void Error(const char *, ...);
 void Fatal(const char *, ...) __dead2;
 void Punt(const char *, ...) __dead2;

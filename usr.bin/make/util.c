@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/util.c,v 1.16 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/util.c,v 1.17 2005/02/15 01:01:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.c,v 1.18 2005/03/12 09:52:54 okumoto Exp $
  */
 
 /*-
@@ -79,6 +79,24 @@ Debug(const char *fmt, ...)
 
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	fflush(stderr);
+}
+
+/*-
+ * Print a debugging message given its format and append the current
+ * errno description. Terminate with a newline.
+ */
+/* VARARGS */
+void
+DebugM(const char *fmt, ...)
+{
+	va_list	ap;
+	int e = errno;
+
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	fprintf(stderr, ": %s\n", strerror(e));
 	va_end(ap);
 	fflush(stderr);
 }
