@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.32.2.7 2002/09/15 22:31:50 dd Exp $
- * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.4 2004/04/25 06:35:32 dillon Exp $
+ * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.5 2004/04/25 18:18:43 drhodus Exp $
  */
 
 #include <machine/console.h>
@@ -99,7 +99,8 @@ struct video_info new_mode_info;
  *   font maps
  */
 
-void init()
+void
+init()
 {
     if (ioctl(0, VT_GETACTIVE, &cur_info.active_vty) == -1)
         errc(1, errno, "getting active vty");
@@ -134,7 +135,8 @@ void init()
  * NOTE: please also read the comments of init().
  */
 
-void revert()
+void
+revert()
 {
     int size[3];
 
@@ -172,9 +174,12 @@ static void
 usage(void)
 {
     fprintf(stderr,
-            "usage: vidcontrol [-CdLPpx] [-b color] [-c appearance] [-f [size] file]\n"
-            "                  [-g geometry] [-h size] [-i adapter | mode] [-l screen_map]\n"
-            "                  [-M char] [-m on | off] [-r foreground background]\n"
+            "usage: vidcontrol [-CdLPpx] [-b color] [-c appearance] [-f [size]"
+	    " file]\n"
+            "                  [-g geometry] [-h size] [-i adapter | mode] [-l"
+	    " screen_map]\n"
+            "                  [-M char] [-m on | off] [-r foreground"
+	    " background]\n"
             "                  [-S on | off] [-s number] [-t N | off] [mode]\n"
             "                  [foreground [background]] [show]\n");
 
@@ -317,7 +322,7 @@ print_scrnmap(void)
         if (i > 0 && i % 16 == 0)
             fprintf(stdout, "\n");
 
-        if (hex)
+        if (hex != NULL)
             fprintf(stdout, " %02x", map[i]);
         else
             fprintf(stdout, " %03d", map[i]);
@@ -726,7 +731,8 @@ get_reverse_colors(int argc, char **argv, int *index)
  * Set normal and reverse foreground and background colors.
  */
 
-void set_colors()
+void
+set_colors()
 {
     fprintf(stderr, "[=%dF", normal_fore_color);
     fprintf(stderr, "[=%dG", normal_back_color);
