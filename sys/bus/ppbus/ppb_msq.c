@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppb_msq.c,v 1.9.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/bus/ppbus/ppb_msq.c,v 1.6 2005/02/17 13:59:35 joerg Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppb_msq.c,v 1.7 2005/03/23 17:22:21 joerg Exp $
  *
  */
 #include <machine/stdarg.h>
@@ -219,7 +219,7 @@ ppb_MS_init_msq(struct ppb_microseq *msq, int nbparam, ...)
 			break;
 
 		case MS_TYP_CHA:
-			msq[ins].arg[arg].i = (int)__va_arg(p_list, char);
+			msq[ins].arg[arg].i = (int)__va_arg(p_list, int);
 			break;
 
 		case MS_TYP_PTR:
