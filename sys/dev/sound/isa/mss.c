@@ -27,12 +27,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/mss.c,v 1.48.2.11 2002/12/24 21:17:41 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.3 2003/11/10 19:29:42 asmodai Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.3 2003/11/10 19:29:42 asmodai Exp $");
 
 /* board-specific include files */
 #include <dev/sound/isa/mss.h>
@@ -1352,6 +1352,7 @@ mss_detect(device_t dev, struct mss_info *mss)
     	name = "AD1848";
     	mss->bd_id = MD_AD1848; /* AD1848 or CS4248 */
 
+#ifndef PC98
 	if (opti_detect(dev, mss)) {
 		switch (mss->bd_id) {
 			case MD_OPTI924:
@@ -1364,6 +1365,7 @@ mss_detect(device_t dev, struct mss_info *mss)
 		printf("Found OPTi device %s\n", name);
 		if (opti_init(dev, mss) == 0) goto gotit;
 	}
+#endif
 
    	/*
      	* Check that the I/O address is in use.
