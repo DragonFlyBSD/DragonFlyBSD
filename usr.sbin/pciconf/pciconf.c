@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pciconf/pciconf.c,v 1.11.2.3 2002/09/17 22:09:15 jdp Exp $
- * $DragonFly: src/usr.sbin/pciconf/pciconf.c,v 1.4 2004/07/19 09:28:17 asmodai Exp $
+ * $DragonFly: src/usr.sbin/pciconf/pciconf.c,v 1.5 2004/07/19 13:56:34 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -263,17 +263,22 @@ static struct
 	{PCIC_STORAGE,		PCIS_STORAGE_FLOPPY,	"floppy disk"},
 	{PCIC_STORAGE,		PCIS_STORAGE_IPI,	"IPI"},
 	{PCIC_STORAGE,		PCIS_STORAGE_RAID,	"RAID"},
+	{PCIC_STORAGE,		PCIS_STORAGE_ATA,	"ATA"},
+	{PCIC_STORAGE,		PCIS_STORAGE_SATA,	"SATA"},
 	{PCIC_NETWORK,		-1,			"network"},
 	{PCIC_NETWORK,		PCIS_NETWORK_ETHERNET,	"ethernet"},
 	{PCIC_NETWORK,		PCIS_NETWORK_TOKENRING,	"token ring"},
 	{PCIC_NETWORK,		PCIS_NETWORK_FDDI,	"fddi"},
 	{PCIC_NETWORK,		PCIS_NETWORK_ATM,	"ATM"},
+	{PCIC_NETWORK,		PCIS_NETWORK_ISDN,	"ISDN"},
 	{PCIC_DISPLAY,		-1,			"display"},
 	{PCIC_DISPLAY,		PCIS_DISPLAY_VGA,	"VGA"},
 	{PCIC_DISPLAY,		PCIS_DISPLAY_XGA,	"XGA"},
+	{PCIC_DISPLAY,		PCIS_DISPLAY_3D,	"3D"},
 	{PCIC_MULTIMEDIA,	-1,			"multimedia"},
 	{PCIC_MULTIMEDIA,	PCIS_MULTIMEDIA_VIDEO,	"video"},
 	{PCIC_MULTIMEDIA,	PCIS_MULTIMEDIA_AUDIO,	"audio"},
+	{PCIC_MULTIMEDIA,	PCIS_MULTIMEDIA_TEL,	"telephony"},
 	{PCIC_MEMORY,		-1,			"memory"},
 	{PCIC_MEMORY,		PCIS_MEMORY_RAM,	"RAM"},
 	{PCIC_MEMORY,		PCIS_MEMORY_FLASH,	"flash"},
@@ -286,19 +291,26 @@ static struct
 	{PCIC_BRIDGE,		PCIS_BRIDGE_PCMCIA,	"PCI-PCMCIA"},
 	{PCIC_BRIDGE,		PCIS_BRIDGE_NUBUS,	"PCI-NuBus"},
 	{PCIC_BRIDGE,		PCIS_BRIDGE_CARDBUS,	"PCI-CardBus"},
+	{PCIC_BRIDGE,		PCIS_BRIDGE_INFINI,	"PCI-InfiniBand"},
 	{PCIC_BRIDGE,		PCIS_BRIDGE_OTHER,	"PCI-unknown"},
 	{PCIC_SIMPLECOMM,	-1,			"simple comms"},
 	{PCIC_SIMPLECOMM,	PCIS_SIMPLECOMM_UART,	"UART"},	/* could detect 16550 */
 	{PCIC_SIMPLECOMM,	PCIS_SIMPLECOMM_PAR,	"parallel port"},
+	{PCIC_SIMPLECOMM,	PCIS_SIMPLECOMM_MULTSER,"multiport serial"},
+	{PCIC_SIMPLECOMM,	PCIS_SIMPLECOMM_MODEM,	"generic modem"},
+	{PCIC_SIMPLECOMM,	PCIS_SIMPLECOMM_SMART,	"smartcard"},
 	{PCIC_BASEPERIPH,	-1,			"base peripheral"},
 	{PCIC_BASEPERIPH,	PCIS_BASEPERIPH_PIC,	"interrupt controller"},
 	{PCIC_BASEPERIPH,	PCIS_BASEPERIPH_DMA,	"DMA controller"},
 	{PCIC_BASEPERIPH,	PCIS_BASEPERIPH_TIMER,	"timer"},
 	{PCIC_BASEPERIPH,	PCIS_BASEPERIPH_RTC,	"realtime clock"},
+	{PCIC_BASEPERIPH,	PCIS_BASEPERIPH_HOTPLUG,"PCI Hotplug"},
 	{PCIC_INPUTDEV,		-1,			"input device"},
 	{PCIC_INPUTDEV,		PCIS_INPUTDEV_KEYBOARD,	"keyboard"},
 	{PCIC_INPUTDEV,		PCIS_INPUTDEV_DIGITIZER,"digitizer"},
 	{PCIC_INPUTDEV,		PCIS_INPUTDEV_MOUSE,	"mouse"},
+	{PCIC_INPUTDEV,		PCIS_INPUTDEV_SCANNER,	"scanner"},
+	{PCIC_INPUTDEV,		PCIS_INPUTDEV_GAMEPORT,	"gameport"},
 	{PCIC_DOCKING,		-1,			"docking station"},
 	{PCIC_PROCESSOR,	-1,			"processor"},
 	{PCIC_SERIALBUS,	-1,			"serial bus"},
@@ -308,6 +320,20 @@ static struct
 	{PCIC_SERIALBUS,	PCIS_SERIALBUS_USB,	"USB"},
 	{PCIC_SERIALBUS,	PCIS_SERIALBUS_FC,	"Fibre Channel"},
 	{PCIC_SERIALBUS,	PCIS_SERIALBUS_SMBUS,	"SMBus"},
+	{PCIC_SERIALBUS,	PCIS_SERIALBUS_INFINI,	"InfiniBand"},
+	{PCIC_WIRELESS,		-1,			"wireless"},
+	{PCIC_WIRELESS,		PCIS_WIRELESS_IRDA,	"iRDA"},
+	{PCIC_WIRELESS,		PCIS_WIRELESS_IR,	"consumer IR"},
+	{PCIC_WIRELESS,		PCIS_WIRELESS_RF,	"RF controller"},
+	{PCIC_WIRELESS,		PCIS_WIRELESS_BLUETOOTH,"Bluetooth"},
+	{PCIC_WIRELESS,		PCIS_WIRELESS_BROADBAND,"broadband"},
+	{PCIC_WIRELESS,		PCIS_WIRELESS_80211A,	"Ethernet (802.11a)"},
+	{PCIC_WIRELESS,		PCIS_WIRELESS_80211B,	"Ethernet (802.11b)"},
+	{PCIC_I2O,		-1,			"I2O"},
+	{PCIC_I2O,		PCIS_I2O_10,		"I2O 1.0"},
+	{PCIC_SATELLITE,	-1,			"satellite"},
+	{PCIC_CRYPTO,		-1,			"crypto controller"},
+	{PCIC_SIGPROC,		-1,			"signal processing"},
 	{0, 0,		NULL}
 };
 
