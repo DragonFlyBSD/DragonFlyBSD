@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/route/route.c,v 1.40.2.11 2003/02/27 23:10:10 ru Exp $
- * $DragonFly: src/sbin/route/route.c,v 1.6 2004/03/23 17:56:29 dillon Exp $
+ * $DragonFly: src/sbin/route/route.c,v 1.7 2004/03/23 18:25:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -91,6 +91,7 @@ int	pid, rtm_addrs;
 int	s;
 int	forcehost, forcenet, doflush, nflag, af, qflag, tflag, keyword();
 int	iflag, verbose, aflen = sizeof(struct sockaddr_in);
+int	wflag;
 int	locking, lockrest, debugonly;
 struct	rt_metrics rt_metrics;
 u_long  rtm_inits;
@@ -143,8 +144,11 @@ main(int argc, char **argv)
 	if (argc < 2)
 		usage((char *)NULL);
 
-	while ((ch = getopt(argc, argv, "nqdtv")) != -1)
+	while ((ch = getopt(argc, argv, "wnqdtv")) != -1)
 		switch(ch) {
+		case 'w':
+			wflag = 1;
+			break;
 		case 'n':
 			nflag = 1;
 			break;
@@ -289,15 +293,24 @@ bad:			usage(*argv);
 		seqno++;
 		if (qflag)
 			continue;
-		if (verbose)
+		if (verbose) {
 			print_rtmsg(rtm, rlen);
-		else {
+		} else {
 			struct sockaddr *sa = (struct sockaddr *)(rtm + 1);
-			printf("%-20.20s ", rtm->rtm_flags & RTF_HOST ?
-			    routename(sa) : netname(sa));
+			if (wflag) {
+			    printf("%-20s ", rtm->rtm_flags & RTF_HOST ?
+				routename(sa) : netname(sa));
+			} else {
+			    printf("%-20.20s ", rtm->rtm_flags & RTF_HOST ?
+				routename(sa) : netname(sa));
+			}
 			sa = (struct sockaddr *)(ROUNDUP(sa->sa_len) +
 			    (char *)sa);
-			printf("%-20.20s ", routename(sa));
+			if (wflag) {
+			    printf("%-20s ", routename(sa));
+			} else {
+			    printf("%-20.20s ", routename(sa));
+			}
 			printf("done\n");
 		}
 	}
@@ -340,7 +353,7 @@ routename(struct sockaddr *sa)
 			hp = gethostbyaddr((char *)&in, sizeof(struct in_addr),
 				AF_INET);
 			if (hp) {
-				if ((cp = strchr(hp->h_name, '.')) &&
+				if ((cp = strchr(hp->h_name, '.')) && !wflag &&
 				    !strcmp(cp + 1, domain))
 					*cp = 0;
 				cp = hp->h_name;

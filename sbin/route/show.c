@@ -1,7 +1,7 @@
 /*
  * $OpenBSD: show.c,v 1.26 2003/08/26 08:33:12 itojun Exp $
  * $NetBSD: show.c,v 1.1 1996/11/15 18:01:41 gwr Exp $
- * $DragonFly: src/sbin/route/show.c,v 1.2 2004/03/23 18:00:48 dillon Exp $
+ * $DragonFly: src/sbin/route/show.c,v 1.3 2004/03/23 18:25:51 dillon Exp $
  */
 /*
  * Copyright (c) 1983, 1988, 1993
@@ -88,7 +88,7 @@ static const struct bits bits[] = {
 };
 
 static void p_rtentry(struct rt_msghdr *);
-static void p_sockaddr(struct sockaddr *, int, int);
+static int p_sockaddr(struct sockaddr *, int, int);
 static void p_flags(int, char *);
 static void pr_rthdr(void);
 static void pr_family(int);
@@ -203,6 +203,7 @@ p_rtentry(struct rt_msghdr *rtm)
 #endif
 	static int old_af;
 	int af = 0, interesting = RTF_UP | RTF_GATEWAY | RTF_HOST;
+	int width;
 
 #ifdef notdef
 	/* for the moment, netmasks are skipped over */
@@ -223,12 +224,18 @@ p_rtentry(struct rt_msghdr *rtm)
 		pr_family(af);
 		pr_rthdr();
 	}
-	if (rtm->rtm_addrs == RTA_DST)
+
+	/*
+	 * Print the information.  If wflag is set p_sockaddr() can return
+	 * a wider width then specified and we try to fit the second
+	 * address in any remaining space so the flags still lines up.
+	 */
+	if (rtm->rtm_addrs == RTA_DST) {
 		p_sockaddr(sa, 0, WID_DST + WID_GW + 2);
-	else {
-		p_sockaddr(sa, rtm->rtm_flags, WID_DST);
+	} else {
+		width = p_sockaddr(sa, rtm->rtm_flags, WID_DST);
 		sa = (struct sockaddr *)(ROUNDUP(sa->sa_len) + (char *)sa);
-		p_sockaddr(sa, 0, WID_GW);
+		p_sockaddr(sa, 0, WID_GW + WID_DST - width);
 	}
 	p_flags(rtm->rtm_flags & interesting, "%-6.6s ");
 	putchar('\n');
@@ -276,12 +283,13 @@ pr_family(int af)
 		printf("\nProtocol Family %d:\n", af);
 }
 
-static void
+static int
 p_sockaddr(struct sockaddr *sa, int flags, int width)
 {
 	char workbuf[128], *cplim;
 	char *cp = workbuf;
 	int len = sizeof(workbuf);
+	int count;
 
 	switch(sa->sa_family) {
 
@@ -381,13 +389,14 @@ p_sockaddr(struct sockaddr *sa, int flags, int width)
 	    }
 	}
 	if (width < 0 ) {
-		printf("%s ", cp);
+		count = printf("%s ", cp);
 	} else {
-		if (nflag)
-			printf("%-*s ", width, cp);
+		if (nflag || wflag)
+			count = printf("%-*s ", width, cp);
 		else
-			printf("%-*.*s ", width, width, cp);
+			count = printf("%-*.*s ", width, width, cp);
 	}
+	return(count);
 }
 
 static void

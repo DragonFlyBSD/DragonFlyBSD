@@ -1,6 +1,6 @@
 /*
  * $NetBSD: extern.h,v 1.2 2001/10/24 16:05:06 atatat Exp $
- * $DragonFly: src/sbin/route/extern.h,v 1.1 2004/03/23 17:56:29 dillon Exp $
+ * $DragonFly: src/sbin/route/extern.h,v 1.2 2004/03/23 18:25:51 dillon Exp $
  */
 
 /*
@@ -40,7 +40,7 @@ struct sockaddr_ns;
 void show(int, char **);
 
 /* route.c */
-extern int nflag;
+extern int nflag, wflag;
 char *routename(struct sockaddr *);
 char *netname(struct sockaddr *);
 char *ns_print(struct sockaddr_ns *);
