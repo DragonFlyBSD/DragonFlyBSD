@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.28 2004/06/03 18:30:03 joerg Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.29 2004/06/06 05:38:58 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -1863,6 +1863,12 @@ fastretransmit:
                 }
 		tp->t_dupacks = 0;
 		if (SEQ_GT(th->th_ack, tp->snd_max)) {
+			/*
+			 * Detected optimistic ACK attack.
+			 * Force slow-start to de-synchronize attack.
+			 */
+			tp->snd_cwnd = tp->t_maxseg;
+
 			tcpstat.tcps_rcvacktoomuch++;
 			goto dropafterack;
 		}
