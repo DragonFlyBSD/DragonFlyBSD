@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/28/95
  * $FreeBSD: src/bin/sh/main.c,v 1.18.2.3 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/main.c,v 1.3 2004/03/19 18:39:41 cpressey Exp $
+ * $DragonFly: src/bin/sh/main.c,v 1.4 2004/10/01 20:30:25 dillon Exp $
  */
 
 #include <stdio.h>
@@ -132,11 +132,7 @@ main(int argc, char *argv[])
 			    exitshell(exitstatus);
 		}
 		reset();
-		if (exception == EXINT
-#if ATTY
-		 && (! attyset() || equal(termval(), "emacs"))
-#endif
-		 ) {
+		if (exception == EXINT) {
 			out2c('\n');
 			flushout(&errout);
 		}

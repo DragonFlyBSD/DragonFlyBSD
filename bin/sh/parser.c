@@ -35,7 +35,7 @@
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
  * $FreeBSD: src/bin/sh/parser.c,v 1.29.2.9 2002/10/18 11:24:04 tjr Exp $
- * $DragonFly: src/bin/sh/parser.c,v 1.4 2004/03/19 18:39:41 cpressey Exp $
+ * $DragonFly: src/bin/sh/parser.c,v 1.5 2004/10/01 20:30:25 dillon Exp $
  */
 
 #include <stdlib.h>
@@ -923,16 +923,6 @@ readtoken1(int firstc, char const *syntax, char *eofmark, int striptabs)
 
 	STARTSTACKSTR(out);
 	loop: {	/* for each line, until end of word */
-#if ATTY
-		if (c == '\034' && doprompt
-		 && attyset() && ! equal(termval(), "emacs")) {
-			attyline();
-			if (syntax == BASESYNTAX)
-				return readtoken();
-			c = pgetc();
-			goto loop;
-		}
-#endif
 		CHECKEND();	/* set c to PEOF if at end of here document */
 		for (;;) {	/* until end of line or end of word */
 			CHECKSTRSPACE(3, out);	/* permit 3 calls to USTPUTC */

@@ -35,7 +35,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/var.c,v 1.15.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/var.c,v 1.4 2004/03/19 18:39:41 cpressey Exp $
+ * $DragonFly: src/bin/sh/var.c,v 1.5 2004/10/01 20:30:25 dillon Exp $
  */
 
 #include <unistd.h>
@@ -77,9 +77,6 @@ struct varinit {
 };
 
 
-#if ATTY
-struct var vatty;
-#endif
 #ifndef NO_HISTORY
 struct var vhistsize;
 #endif
@@ -91,16 +88,9 @@ struct var vppid;
 struct var vps1;
 struct var vps2;
 struct var vvers;
-#if ATTY
-STATIC struct var vterm;
-#endif
 STATIC struct var voptind;
 
 STATIC const struct varinit varinit[] = {
-#if ATTY
-	{ &vatty,	VSTRFIXED|VTEXTFIXED|VUNSET,	"ATTY=",
-	  NULL },
-#endif
 #ifndef NO_HISTORY
 	{ &vhistsize,	VSTRFIXED|VTEXTFIXED|VUNSET,	"HISTSIZE=",
 	  sethistsize },
@@ -120,10 +110,6 @@ STATIC const struct varinit varinit[] = {
 	 */
 	{ &vps2,	VSTRFIXED|VTEXTFIXED,		"PS2=> ",
 	  NULL },
-#if ATTY
-	{ &vterm,	VSTRFIXED|VTEXTFIXED|VUNSET,	"TERM=",
-	  NULL },
-#endif
 	{ &voptind,	VSTRFIXED|VTEXTFIXED,		"OPTIND=1",
 	  getoptsreset },
 	{ NULL,	0,				NULL,
