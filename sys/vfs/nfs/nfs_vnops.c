@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.9 2003/08/07 21:17:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.10 2003/08/08 21:42:06 drhodus Exp $
  */
 
 
@@ -735,8 +735,13 @@ nfs_setattr(ap)
  				return (error);
 			    }
  			}
-			np->n_vattr.va_size = vap->va_size;
-  		};
+			/* np->n_size has already been set to vap->va_size
+			 * in nfs_meta_setsize(). We must set it again since
+			 * nfs_loadattrcache() could be called through
+			 * nfs_meta_setsize() and could modify np->n_size.
+			 */
+			np->n_vattr.va_size = np->n_size = vap->va_size;
+		};
   	} else if ((vap->va_mtime.tv_sec != VNOVAL ||
 		vap->va_atime.tv_sec != VNOVAL) && (np->n_flag & NMODIFIED) &&
 		vp->v_type == VREG &&
