@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.5 2003/08/26 20:49:49 rob Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.6 2003/09/16 18:05:17 hsu Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -530,8 +530,6 @@ in_stf_input(struct mbuf *m, int off, int proto)
 	struct ip *ip;
 	struct ip6_hdr *ip6;
 	u_int8_t otos, itos;
-	int s, isr;
-	struct ifqueue *ifq = NULL;
 	struct ifnet *ifp;
 
 	if (proto != IPPROTO_IPV6) {
@@ -618,21 +616,9 @@ in_stf_input(struct mbuf *m, int off, int proto)
 	 * See net/if_gif.c for possible issues with packet processing
 	 * reorder due to extra queueing.
 	 */
-	ifq = &ip6intrq;
-	isr = NETISR_IPV6;
-
-	s = splimp();
-	if (IF_QFULL(ifq)) {
-		IF_DROP(ifq);	/* update statistics */
-		m_freem(m);
-		splx(s);
-		return;
-	}
-	IF_ENQUEUE(ifq, m);
-	schednetisr(isr);
 	ifp->if_ipackets++;
 	ifp->if_ibytes += m->m_pkthdr.len;
-	splx(s);
+	netisr_dispatch(NETISR_IPV6, m);
 }
 
 /* ARGSUSED */
