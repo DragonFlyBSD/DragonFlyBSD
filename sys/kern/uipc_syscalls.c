@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.48 2005/02/05 22:20:20 joerg Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.49 2005/02/08 23:00:33 hsu Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1432,7 +1432,7 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	struct proc *p = td->td_proc;
 	struct vm_object *obj;
 	struct socket *so;
-	struct file *fp = NULL;
+	struct file *fp;
 	struct mbuf *m;
 	struct sf_buf *sf;
 	struct sfbuf_mref *sfm;
@@ -1443,11 +1443,11 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 
 	if (vp->v_type != VREG || VOP_GETVOBJECT(vp, &obj) != 0) {
 		error = EINVAL;
-		goto done;
+		goto done0;
 	}
 	error = holdsock(p->p_fd, sfd, &fp);
 	if (error)
-		goto done;
+		goto done0;
 	so = (struct socket *)fp->f_data;
 	if (so->so_type != SOCK_STREAM) {
 		error = EINVAL;
@@ -1699,8 +1699,8 @@ retry_space:
 	sbunlock(&so->so_snd);
 
 done:
-	if (fp)
-		fdrop(fp, td);
+	fdrop(fp, td);
+done0:
 	if (mheader != NULL)
 		m_freem(mheader);
 	return (error);
