@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.9 2004/07/14 03:10:17 hmp Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.10 2004/07/16 02:01:17 hmp Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -150,7 +150,7 @@ struct buf {
 		TAILQ_HEAD(cluster_list_head, buf) cluster_head;
 		TAILQ_ENTRY(buf) cluster_entry;
 	} b_cluster;
-	struct	xio b_xio;
+	struct	xio b_xio;  	/* page list management for buffer head. */
 	struct	workhead b_dep;		/* List of filesystem dependencies. */
 	struct chain_info {		/* buffer chaining */
 		struct buf *parent;
