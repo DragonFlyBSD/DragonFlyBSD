@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.2 2004/10/22 18:00:26 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.3 2004/11/23 04:05:36 dillon Exp $
  */
 
 /*
@@ -293,6 +293,11 @@ vx_put(struct vnode *vp)
  * operation other then a reclamation or deactivation.  vget() will ref
  * and lock the vnode, vput() will unlock and deref the vnode.  
  * The VOP_*() locking functions are used.
+ *
+ * CALLING VGET IS MANDATORY PRIOR TO ANY MODIFYING OPERATION ON A VNODE.
+ * This is because vget handles the VINACTIVE interlock and is responsible
+ * for clearing the bit.  If the bit is not cleared inode updates may not
+ * make it to disk.
  *
  * Special cases: If vget()'s locking operation fails the vrele() call may
  * cause the vnode to be deactivated (VOP_INACTIVE called).  However, this
