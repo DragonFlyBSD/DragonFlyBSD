@@ -1,0 +1,60 @@
+#
+# $FreeBSD: src/release/picobsd/isp/mfs.mtree,v 1.2.2.2 2001/02/20 00:45:51 luigi Exp $
+#
+/set type=dir uname=root gname=wheel mode=0755
+.              
+    dev            
+    ..
+    dos            
+    ..
+    etc            
+    ..
+    fd
+    ..
+    home           
+        user           
+        ..
+    ..
+    mnt            
+    ..
+    mnt1           
+    ..
+    mnt2           
+    ..
+    proc           
+    ..
+    root           
+    ..
+    stand          
+    ..
+    start_floppy   
+    ..
+    tftpboot       
+    ..
+    tmp            mode=01777
+    ..
+    usr            
+        local          
+            lib            
+                snmp           
+                ..
+            ..
+        ..
+        share          
+            misc           
+            ..
+        ..
+    ..
+    var            
+        db             
+        ..
+        run            
+        ..
+        spool          
+            lock           
+            ..
+        ..
+    ..
+    wd
+    ..
+..

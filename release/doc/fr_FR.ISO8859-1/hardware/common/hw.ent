@@ -1,0 +1,20 @@
+<!--
+     The FreeBSD Documentation Project
+     The FreeBSD French Documentation Project
+
+     $Id$
+     $FreeBSD: src/release/doc/fr_FR.ISO8859-1/hardware/common/hw.ent,v 1.2.2.1 2002/10/19 14:56:44 gioria Exp $
+     Original revision: 1.1.2.2
+-->
+<!-- -*- sgml -*- -->
+
+<!-- Text constants which probably don't need to be changed.-->
+
+<!-- Files to be included -->
+
+<!ENTITY artheader SYSTEM "../common/artheader.sgml">
+<!ENTITY sect.intro SYSTEM "../common/intro.sgml">
+<!ENTITY sect.proc.alpha SYSTEM "../alpha/proc-alpha.sgml">
+<!ENTITY sect.proc.i386 SYSTEM "../i386/proc-i386.sgml">
+<!ENTITY sect.dev SYSTEM "../common/dev.sgml">
+<!ENTITY sect.config SYSTEM "../common/config.sgml">

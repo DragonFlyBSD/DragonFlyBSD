@@ -1,0 +1,6 @@
+.\" $FreeBSD: src/share/doc/smm/01.setup/stubs,v 1.1.2.1 2000/11/27 18:02:02 ru Exp $
+.\"
+.if n \{\
+.	ftr CW R
+.	ftr C R
+.\}

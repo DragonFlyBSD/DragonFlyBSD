@@ -1,0 +1,9 @@
+.\" $FreeBSD: src/usr.bin/make/PSD.doc/stubs,v 1.1.2.1 2000/11/24 10:08:45 ru Exp $
+.\"
+.de Ix
+..
+.de Rd
+..
+.de Rm
+..
+.if n .ftr CR R

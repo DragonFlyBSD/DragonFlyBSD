@@ -1,0 +1,8 @@
+<!-- $FreeBSD: src/release/doc/en_US.ISO8859-1/installation/common/abstract.sgml,v 1.1.2.2 2001/10/25 16:49:35 bmah Exp $ -->
+
+<abstract>
+  <para>This article gives some brief instructions on installing
+  &os;/&arch; &release.current;, with particular
+  emphasis given to obtaining a &os; distribution.  Some notes on
+  troubleshooting and frequently-asked questions are also given.</para>
+</abstract>

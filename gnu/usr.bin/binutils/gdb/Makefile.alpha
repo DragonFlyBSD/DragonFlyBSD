@@ -1,0 +1,8 @@
+#
+# $FreeBSD: src/gnu/usr.bin/binutils/gdb/Makefile.alpha,v 1.3 1999/08/27 23:34:49 peter Exp $
+#
+
+XSRCS+= freebsd-nat.c alpha-tdep.c kvm-fbsd.c
+LDADD+= -lkvm
+
+.PATH: ${.CURDIR}/alpha

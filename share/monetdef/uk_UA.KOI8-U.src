@@ -1,0 +1,36 @@
+# $FreeBSD: src/share/monetdef/uk_UA.KOI8-U.src,v 1.2.2.1 2002/03/01 16:08:06 phantom Exp $
+#
+# WARNING: spaces may be essential at the end of lines
+# WARNING: empty lines are essential too
+#
+# int_curr_symbol (last character always SPACE)
+UAH 
+# currency_symbol
+грн.
+# mon_decimal_point
+,
+# mon_thousands_sep
+ 
+# mon_grouping, separated by ;
+3;3
+# positive_sign
+
+# negative_sign
+-
+# int_frac_digits
+2
+# frac_digits
+2
+# p_cs_precedes
+0
+# p_sep_by_space
+1
+# n_cs_precedes
+0
+# n_sep_by_space
+1
+# p_sign_posn
+1
+# n_sign_posn
+1
+# EOF

@@ -1,0 +1,13 @@
+# $FreeBSD: src/share/msgdef/ja_JP.SJIS.src,v 1.1.2.1 2002/08/17 19:30:37 ache Exp $
+#
+# XXX: ja_JP.SJIS contains english messages only. Someone familiar with
+# this locale is wanted to complete it!
+#
+# WARNING: spaces may be essential at the end of lines
+# WARNING: empty lines are essential too
+#
+# yesexpr
+^[yY].*
+# noexpr
+^[nN].*
+# EOF

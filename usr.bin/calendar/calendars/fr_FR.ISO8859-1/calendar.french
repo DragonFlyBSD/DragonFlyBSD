@@ -1,0 +1,12 @@
+/*
+ * French calendar file(s)
+ *
+ * $FreeBSD: src/usr.bin/calendar/calendars/fr_FR.ISO8859-1/calendar.french,v 1.1.2.1 2002/05/27 12:15:06 dwmalone Exp $
+ */
+
+#ifndef _calendar_french_
+#define _calendar_french_
+
+#include <fr_FR.ISO8859-1/calendar.all>
+
+#endif /* !_calendar_french_ */

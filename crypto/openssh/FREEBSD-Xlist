@@ -1,0 +1,10 @@
+$FreeBSD: src/crypto/openssh/FREEBSD-Xlist,v 1.1.2.2 2003/02/03 17:31:06 des Exp $
+*.0
+*/.cvsignore
+.cvsignore
+autom4te*
+config.h.in
+configure
+contrib
+regress/*.[0-9]
+scard

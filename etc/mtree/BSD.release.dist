@@ -1,0 +1,22 @@
+# $FreeBSD: src/etc/mtree/BSD.release.dist,v 1.6.2.2 2001/08/01 20:37:03 obrien Exp $
+#
+# Please see the file src/etc/mtree/README before making changes to this file.
+#
+
+/set type=dir uname=root gname=wheel mode=0755
+.
+    filesys
+    ..
+    floppies
+    ..
+    tarballs
+        bindist
+        ..
+        objdist
+        ..
+        secrdist
+        ..
+        srcdist
+        ..
+    ..
+..

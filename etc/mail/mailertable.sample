@@ -1,0 +1,7 @@
+# $FreeBSD: src/etc/mail/mailertable.sample,v 1.1.2.1 2000/03/20 12:21:05 peter Exp $
+#
+# List of domains (possibly wildcarded) and destination mailers
+#
+.my.domain		xnet:%1.my.domain
+uuhost1.my.domain	suucp:uuhost1
+.bitnet			smtp:relay.bit.net

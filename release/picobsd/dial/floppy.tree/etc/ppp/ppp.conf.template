@@ -1,0 +1,10 @@
+#
+# $FreeBSD: src/release/picobsd/dial/floppy.tree/etc/ppp/ppp.conf.template,v 1.2 1999/08/28 01:33:19 peter Exp $
+#  	PPP  Sample Configuration File
+#
+default:
+ set speed 38400
+ disable lqr
+ deny lqr
+ set dial "ABORT BUSY ABORT NO\\sCARRIER TIMEOUT 5 \"\" AT OK-AT-OK ATE1Q0 OK \\dATDT\\T TIMEOUT 40 CONNECT"
+

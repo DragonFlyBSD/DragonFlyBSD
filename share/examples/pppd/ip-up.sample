@@ -1,0 +1,8 @@
+#!/bin/sh
+#
+# $FreeBSD: src/share/examples/pppd/ip-up.sample,v 1.1.2.1 2002/02/12 00:49:12 cjc Exp $
+#
+# Example for /etc/ppp/ip-up file.
+
+/usr/bin/logger -p daemon.notice -t pppd "$1 is up"
+/usr/sbin/ntpdate ntpserver

@@ -1,0 +1,15 @@
+#!/bin/sh
+# $FreeBSD: src/gnu/usr.bin/as/testscripts/dostriptest,v 1.4 1999/08/27 23:34:35 peter Exp $
+
+x=striptest.xx.$$
+y=striptest.yy.$$
+
+cp $1 $x
+strip $x
+cp $2 $y
+strip $y
+
+doobjcmp $x $y
+exit
+
+#eof

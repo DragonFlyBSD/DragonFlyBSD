@@ -1,0 +1,9 @@
+$FreeBSD: src/share/mklocale/README.locale_name,v 1.1.12.1 2002/03/12 17:41:05 phantom Exp $
+
+Locale name string format must be compliant with XPG3 and
+using following format.
+	<locale name>   ::= <language>_<territory>.<encoding>
+	<language>      ::= based on ISO 639
+	<territory>     ::= based on ISO 3166 (country code)
+	<encoding>      ::= X11 codeset preferred
+
