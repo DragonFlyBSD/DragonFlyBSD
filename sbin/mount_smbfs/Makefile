@@ -1,10 +1,9 @@
 # $FreeBSD: src/sbin/mount_smbfs/Makefile,v 1.1.2.3 2001/12/20 16:28:30 sheldonh Exp $
-# $DragonFly: src/sbin/mount_smbfs/Makefile,v 1.3 2005/01/17 07:27:45 cpressey Exp $
+# $DragonFly: src/sbin/mount_smbfs/Makefile,v 1.4 2005/02/28 13:57:40 joerg Exp $
 
 PROG=	mount_smbfs
 SRCS=	mount_smbfs.c getmntopts.c
 WARNS?=	6
-NO_WERROR=	yes
 MAN=	mount_smbfs.8
 
 MOUNTDIR=	${.CURDIR}/../mount
