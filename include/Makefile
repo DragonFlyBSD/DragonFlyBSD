@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.11 2003/12/10 22:41:20 dillon Exp $
+# $DragonFly: src/include/Makefile,v 1.12 2003/12/27 02:17:01 drhodus Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -9,7 +9,7 @@
 
 CLEANFILES= osreldate.h version vers.c
 SUBDIR= arpa protocols rpc rpcsvc
-INCS=	a.out.h ar.h assert.h bitstring.h complex.h ctype.h db.h \
+INCS=	a.out.h ar.h assert.h bitstring.h complex.h cpio.h ctype.h db.h \
 	dirent.h disktab.h \
 	dlfcn.h elf.h elf-hints.h err.h fnmatch.h fstab.h \
 	fts.h glob.h grp.h strhash.h histedit.h ieeefp.h ifaddrs.h iso646.h \
