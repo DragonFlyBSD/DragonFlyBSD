@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)dbtest.c	8.17 (Berkeley) 9/1/94
  * $FreeBSD: src/lib/libc/db/test/dbtest.c,v 1.3.8.1 2000/08/21 22:44:47 jhb Exp $
- * $DragonFly: src/lib/libc/db/test/dbtest.c,v 1.3 2003/11/12 20:21:23 eirikn Exp $
+ * $DragonFly: src/lib/libc/db/test/dbtest.c,v 1.4 2004/07/27 07:59:09 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -718,27 +718,13 @@ usage()
 	exit(1);
 }
 
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 void
-#if __STDC__
 err(const char *fmt, ...)
-#else
-err(fmt, va_alist)
-	char *fmt;
-        va_dcl
-#endif
 {
 	va_list ap;
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	(void)fprintf(stderr, "dbtest: ");
 	(void)vfprintf(stderr, fmt, ap);
 	va_end(ap);

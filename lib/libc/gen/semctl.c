@@ -1,30 +1,17 @@
+/* $DragonFly: src/lib/libc/gen/semctl.c,v 1.2 2004/07/27 07:59:10 asmodai Exp $ */
+
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 #include <stdlib.h>
 
-#if __STDC__
 int semctl(int semid, int semnum, int cmd, ...)
-#else
-int semctl(semid, semnum, cmd, va_alist)
-	int semid, semnum;
-	int cmd;
-	va_dcl
-#endif
 {
 	va_list ap;
 	union semun semun;
 	union semun *semun_ptr;
-#if __STDC__
 	va_start(ap, cmd);
-#else
-	va_start(ap);
-#endif
 	if (cmd == IPC_SET || cmd == IPC_STAT || cmd == GETALL
 	    || cmd == SETVAL || cmd == SETALL) {
 		semun = va_arg(ap, union semun);

@@ -32,7 +32,7 @@
  *
  * @(#)syslog.c	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/lib/libc/gen/syslog.c,v 1.21.2.3 2002/11/18 11:49:55 ru Exp $
- * $DragonFly: src/lib/libc/gen/syslog.c,v 1.4 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/syslog.c,v 1.5 2004/07/27 07:59:10 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -50,11 +50,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 static int	LogFile = -1;		/* fd for log */
 static int	connected;		/* have done connect */
@@ -107,22 +103,11 @@ int writehook(cookie, buf, len)
  *	print message on log file; output is intended for syslogd(8).
  */
 void
-#if __STDC__
 syslog(int pri, const char *fmt, ...)
-#else
-syslog(pri, fmt, va_alist)
-	int pri;
-	char *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
 
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	vsyslog(pri, fmt, ap);
 	va_end(ap);
 }
