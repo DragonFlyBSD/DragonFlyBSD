@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.11 2004/06/02 14:42:56 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.12 2004/06/25 09:13:30 joerg Exp $
  */
 
 /*
@@ -254,6 +254,7 @@ wi_generic_attach(device_t dev)
 	if ((error = wi_read_record(sc, (struct wi_ltv_gen *)&mac)) != 0) {
 		device_printf(dev, "mac read failed %d\n", error);
 		wi_free(dev);
+		WI_UNLOCK(sc, s);
 		return (error);
 	}
 	bcopy((char *)&mac.wi_mac_addr,
