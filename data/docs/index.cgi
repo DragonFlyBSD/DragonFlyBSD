@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/index.cgi,v 1.12 2004/09/16 16:15:41 justin Exp $
+# $DragonFly: site/data/docs/Attic/index.cgi,v 1.13 2004/11/02 18:08:42 dillon Exp $
 
 $TITLE(DragonFly - Documentation)
 
@@ -15,7 +15,7 @@ $TITLE(DragonFly - Documentation)
 
 <tr>
     <td>DragonFly Handbook</td>
-    <td><a href="http://www.forknibbler.com/handbook/">HTML</a> (external site)</td>
+    <td><a href="http://leaf.dragonflybsd.org/~justin/handbook/">HTML</a> (external site)</td>
     <td align="right">24 August 2004</td>
 </tr>
 
