@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.21 2003/07/11 01:23:21 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.22 2003/07/11 17:42:08 dillon Exp $
  */
 
 /*
@@ -156,6 +156,12 @@ SYSCTL_INT(_machdep, OID_AUTO, ddb_on_nmi, CTLFLAG_RW,
 static int panic_on_nmi = 1;
 SYSCTL_INT(_machdep, OID_AUTO, panic_on_nmi, CTLFLAG_RW,
 	&panic_on_nmi, 0, "Panic on NMI");
+static int fast_release;
+SYSCTL_INT(_machdep, OID_AUTO, fast_release, CTLFLAG_RW,
+	&fast_release, 0, "Passive Release was optimal");
+static int slow_release;
+SYSCTL_INT(_machdep, OID_AUTO, slow_release, CTLFLAG_RW,
+	&slow_release, 0, "Passive Release was nonoptimal");
 
 /*
  * USER->KERNEL transition.  Do not transition us out of userland from the
@@ -206,9 +212,11 @@ userexit(struct proc *p)
 	 * lwkt_maybe_switch() to deal with it.
 	 */
 	if (td->td_release) {
+		++fast_release;
 		td->td_release = NULL;
 		KKASSERT(p->p_flag & P_CURPROC);
 	} else {
+		++slow_release;
 		acquire_curproc(p);
 		switch(p->p_rtprio.type) {
 		case RTP_PRIO_IDLE:
@@ -1368,7 +1376,9 @@ fork_return(p, frame)
 	if (KTRPOINT(p->p_thread, KTR_SYSRET))
 		ktrsysret(p->p_tracep, SYS_fork, 0, 0);
 #endif
+	p->p_flag |= P_PASSIVE_ACQ;
 	userexit(p);
+	p->p_flag &= ~P_PASSIVE_ACQ;
 #ifdef SMP
 	KKASSERT(curthread->td_mpcount == 1);
 	rel_mplock();

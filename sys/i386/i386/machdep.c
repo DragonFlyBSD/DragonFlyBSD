@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.25 2003/07/10 04:47:53 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.26 2003/07/11 17:42:08 dillon Exp $
  */
 
 #include "apm.h"
@@ -1914,6 +1914,7 @@ init386(int first)
 	proc0.p_addr = (void *)thread0.td_kstack;
 	proc0.p_thread = &thread0;
 	proc0.p_flag |= P_CP_RELEASED;	/* early set.  See also init_main.c */
+	thread0.td_flags |= TDF_RUNNING;
 	thread0.td_proc = &proc0;
 	thread0.td_switch = cpu_heavy_switch;	/* YYY eventually LWKT */
 	safepri = thread0.td_cpl = SWI_MASK | HWI_MASK;
@@ -2052,11 +2053,6 @@ init386(int first)
 	/* setup proc 0's pcb */
 	thread0.td_pcb->pcb_flags = 0;
 	thread0.td_pcb->pcb_cr3 = (int)IdlePTD;	/* should already be setup */
-#ifdef SMP
-#if 0
-	thread0.td_pcb->pcb_mpnest = 1;
-#endif
-#endif
 	thread0.td_pcb->pcb_ext = 0;
 	proc0.p_md.md_regs = &proc0_tf;
 }

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.12 2003/07/08 06:27:26 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.13 2003/07/11 17:42:08 dillon Exp $
  */
 
 #include "npx.h"
@@ -306,16 +306,17 @@ IDTVEC(int0x80_syscall)
 
 /*
  * This function is what cpu_heavy_restore jumps to after a new process
- * is created.  We are in a critical section in order to prevent
- * cpu_heavy_restore from being interrupted (especially since it stores
- * its context in a static place!).
+ * is created.  The LWKT subsystem switches while holding a critical
+ * section and we maintain that abstraction here (e.g. because 
+ * cpu_heavy_restore needs it due to PCB_*() manipulation), then get out of
+ * it before calling the initial function (typically fork_return()) and/or
+ * returning to user mode.
  *
- * The MP lock is held on entry, but for processes fork_return (esi)
+ * The MP lock is held on entry, but for processes fork_return(esi)
  * releases it.  'doreti' always runs without the MP lock.
  *
- * We need to be careful to hold interrupts disabled through until
- * doreti iret's YYY this is due to the PCB_ storage in the heavy switcher,
- * fixme!
+ * I'm not sure the cli is necessary but I am not taking any chances in
+ * regards to the init code.
  */
 ENTRY(fork_trampoline)
 	cli
@@ -334,6 +335,7 @@ ENTRY(fork_trampoline)
 	addl	$4,%esp
 	/* cut from syscall */
 
+	sti
 	call	spl0
 	call	splz
 
@@ -346,6 +348,7 @@ ENTRY(fork_trampoline)
 	pushl	$pmsg4
 	call	panic
 pmsg4:  .asciz	"fork_trampoline mpcount %d after calling %p"
+	.p2align 2
 1:
 #endif
 	/*

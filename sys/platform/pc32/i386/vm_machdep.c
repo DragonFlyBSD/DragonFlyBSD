@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.19 2003/07/10 04:47:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.20 2003/07/11 17:42:08 dillon Exp $
  */
 
 #include "npx.h"
@@ -162,10 +162,10 @@ cpu_fork(p1, p2, flags)
 	 * common_tss.esp0 (kernel stack pointer on entry from user mode)
 	 *
 	 * pcb_esp must allocate an additional call-return pointer below
-	 * the trap frame which will be restored by cpu_restore, and the
-	 * thread's td_sp pointer must allocate an additonal call-return
-	 * pointer below the pcb_esp call-return pointer to hold the LWKT
-	 * restore function pointer.
+	 * the trap frame which will be restored by cpu_restore from
+	 * PCB_EIP, and the thread's td_sp pointer must allocate an
+	 * additonal two worsd below the pcb_esp call-return pointer to
+	 * hold the LWKT restore function pointer and eflags.
 	 *
 	 * The LWKT restore function pointer must be set to cpu_restore,
 	 * which is our standard heavy weight process switch-in function.
@@ -188,6 +188,8 @@ cpu_fork(p1, p2, flags)
 	pcb2->pcb_ebx = (int)p2;		/* fork_trampoline argument */
 	pcb2->pcb_eip = (int)fork_trampoline;
 	p2->p_thread->td_sp = (char *)(pcb2->pcb_esp - sizeof(void *));
+	*(u_int32_t *)p2->p_thread->td_sp = PSL_USER;
+	p2->p_thread->td_sp -= sizeof(void *);
 	*(void **)p2->p_thread->td_sp = (void *)cpu_heavy_restore;
 	/*
 	 * pcb2->pcb_ldt:	duplicated below, if necessary.

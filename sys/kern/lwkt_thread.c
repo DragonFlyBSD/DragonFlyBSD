@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.20 2003/07/11 01:23:24 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.21 2003/07/11 17:42:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -170,7 +170,7 @@ lwkt_alloc_thread(struct thread *td)
 	if (mycpu->gd_tdfreecount > 0) {
 	    --mycpu->gd_tdfreecount;
 	    td = TAILQ_FIRST(&mycpu->gd_tdfreeq);
-	    KASSERT(td != NULL && (td->td_flags & TDF_EXITED),
+	    KASSERT(td != NULL && (td->td_flags & TDF_RUNNING) == 0,
 		("lwkt_alloc_thread: unexpected NULL or corrupted td"));
 	    TAILQ_REMOVE(&mycpu->gd_tdfreeq, td, td_threadq);
 	    crit_exit();
@@ -205,7 +205,7 @@ lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
     td->td_flags |= flags;
     td->td_gd = gd;
     td->td_pri = TDPRI_CRIT;
-    td->td_cpu = gd->gd_cpuid;	/* YYY don't need this if have td_gd */
+    td->td_cpu = gd->gd_cpuid;	/* YYY don't really need this if have td_gd */
     pmap_init_thread(td);
     crit_enter();
     TAILQ_INSERT_TAIL(&mycpu->gd_tdallq, td, td_allq);
@@ -247,7 +247,7 @@ lwkt_free_thread(thread_t td)
 {
     struct globaldata *gd = mycpu;
 
-    KASSERT(td->td_flags & TDF_EXITED,
+    KASSERT((td->td_flags & TDF_RUNNING) == 0,
 	("lwkt_free_thread: did not exit! %p", td));
 
     crit_enter();
@@ -735,6 +735,14 @@ lwkt_schedule(thread_t td)
     crit_exit();
 }
 
+/*
+ * Managed acquisition.  This code assumes that the MP lock is held for
+ * the tdallq operation and that the thread has been descheduled from its
+ * original cpu.  We also have to wait for the thread to be entirely switched
+ * out on its original cpu (this is usually fast enough that we never loop)
+ * since the LWKT system does not have to hold the MP lock while switching
+ * and the target may have released it before switching.
+ */
 void
 lwkt_acquire(thread_t td)
 {
@@ -743,6 +751,8 @@ lwkt_acquire(thread_t td)
 
     gd = td->td_gd;
     KKASSERT((td->td_flags & TDF_RUNQ) == 0);
+    while (td->td_flags & TDF_RUNNING)	/* XXX spin */
+	;
     if (gd != mycpu) {
 	ocpu = td->td_cpu;
 	crit_enter();

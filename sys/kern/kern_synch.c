@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.17 2003/07/11 01:23:24 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.18 2003/07/11 17:42:10 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -175,11 +175,15 @@ roundrobin(void *arg)
  	timeout(roundrobin, NULL, sched_quantum);
 }
 
+#ifdef SMP
+
 void
 resched_cpus(u_int32_t mask)
 {
 	lwkt_send_ipiq_mask(mask, roundrobin_remote, NULL);
 }
+
+#endif
 
 /*
  * Constants for digital decay and forget:

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.7 2003/07/11 01:23:24 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.8 2003/07/11 17:42:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,6 +69,14 @@ static u_int32_t rdyprocmask;		/* ready to accept a user process */
 static int	 runqcount;
 
 SYSCTL_INT(_debug, OID_AUTO, runqcount, CTLFLAG_RD, &runqcount, 0, "");
+static int usched_steal;
+SYSCTL_INT(_debug, OID_AUTO, usched_steal, CTLFLAG_RW,
+        &usched_steal, 0, "Passive Release was nonoptimal");
+static int usched_optimal;
+SYSCTL_INT(_debug, OID_AUTO, usched_optimal, CTLFLAG_RW,
+        &usched_optimal, 0, "Passive Release was nonoptimal");
+
+#define USCHED_COUNTER(td)	((td->td_cpu == mycpu->gd_cpuid) ? ++usched_optimal : ++usched_steal)
 
 /*
  * Initialize the run queues at boot time.
@@ -162,6 +170,18 @@ chooseproc(void)
  * signal other cpus in the system that may need to be woken up to service
  * the new 'user' process.
  *
+ * If P_PASSIVE_ACQ is set setrunqueue() will not wakeup potential target
+ * cpus in an attempt to keep the process on the current cpu at least for
+ * a little while to take advantage of locality of reference (e.g. fork/exec
+ * or short fork/exit).
+ *
+ * WARNING! a thread can be acquired by another cpu the moment it is put
+ * on the user scheduler's run queue AND we release the MP lock.  Since we
+ * release the MP lock before switching out another cpu may begin stealing
+ * our current thread before we are completely switched out!  The 
+ * lwkt_acquire() function will stall until TDF_RUNNING is cleared on the
+ * thread before stealing it.
+ *
  * The associated thread must NOT be scheduled.  
  * The process must be runnable.
  * This must be called at splhigh().
@@ -198,6 +218,7 @@ setrunqueue(struct proc *p)
 	if ((curprocmask & (1 << cpuid)) == 0) {
 		curprocmask |= 1 << cpuid;
 		p->p_flag |= P_CURPROC;
+		USCHED_COUNTER(p->p_thread);
 		lwkt_acquire(p->p_thread);
 		lwkt_schedule(p->p_thread);
 		crit_exit();
@@ -238,7 +259,8 @@ setrunqueue(struct proc *p)
 	 * We use rdyprocmask to avoid unnecessarily waking up the scheduler
 	 * thread when it is already running.
 	 */
-	if ((mask = ~curprocmask & rdyprocmask & mycpu->gd_other_cpus) != 0) {
+	if ((mask = ~curprocmask & rdyprocmask & mycpu->gd_other_cpus) != 0 &&
+	    (p->p_flag & P_PASSIVE_ACQ) == 0) {
 		int count = runqcount;
 		if (!mask)
 			printf("PROC %d nocpu to schedule it on\n", p->p_pid);
@@ -331,6 +353,7 @@ release_curproc(struct proc *p)
 			KKASSERT(curprocmask & (1 << cpuid));
 			if ((np = chooseproc()) != NULL) {
 				np->p_flag |= P_CURPROC;
+				USCHED_COUNTER(np->p_thread);
 				lwkt_acquire(np->p_thread);
 				lwkt_schedule(np->p_thread);
 			} else {
@@ -394,6 +417,7 @@ acquire_curproc(struct proc *p)
 				KKASSERT((np->p_flag & P_CP_RELEASED) == 0);
 				if (test_resched(p, np)) {
 					np->p_flag |= P_CURPROC;
+					USCHED_COUNTER(np->p_thread);
 					lwkt_acquire(np->p_thread);
 					lwkt_schedule(np->p_thread);
 				} else {
@@ -435,8 +459,10 @@ uio_yield(void)
 
 	lwkt_switch();
 	if (p) {
+		p->p_flag |= P_PASSIVE_ACQ;
 		acquire_curproc(p);
 		release_curproc(p);
+		p->p_flag &= ~P_PASSIVE_ACQ;
 	}
 }
 
@@ -472,6 +498,7 @@ sched_thread(void *dummy)
 	if ((curprocmask & cpumask) == 0 && (np = chooseproc()) != NULL) {
 	    curprocmask |= cpumask;
 	    np->p_flag |= P_CURPROC;
+	    USCHED_COUNTER(np->p_thread);
 	    lwkt_acquire(np->p_thread);
 	    lwkt_schedule(np->p_thread);
 	}

@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.24 2003/07/11 01:23:24 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.25 2003/07/11 17:42:11 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -282,6 +282,7 @@ struct	proc {
 #define	P_OLDMASK	0x2000000 /* need to restore mask before pause */
 #define	P_ALTSTACK	0x4000000 /* have alternate signal stack */
 #define	P_INEXEC	0x8000000 /* Process is in execve(). */
+#define P_PASSIVE_ACQ	0x10000000 /* Passive acquire cpu (see kern_switch) */
 
 #ifdef _KERNEL
 
@@ -412,8 +413,8 @@ int	suser __P((struct thread *td));
 int	suser_proc __P((struct proc *p));
 int	suser_cred __P((struct ucred *cred, int flag));
 void	remrunqueue __P((struct proc *));
-void	release_curproc __P((struct proc *));
-void	acquire_curproc __P((struct proc *));
+void	release_curproc __P((struct proc *curp));
+void	acquire_curproc __P((struct proc *curp));
 void	cpu_heavy_switch __P((struct thread *));
 void	cpu_lwkt_switch __P((struct thread *));
 void	unsleep __P((struct thread *));

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.5 2003/07/08 06:27:26 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.6 2003/07/11 17:42:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -72,18 +72,15 @@ apic_initialize(void)
 	temp |= 0x00010400;		/* masked, edge trigger, active hi */
 	lapic.lvt_lint1 = temp;
 
-	/* set the Task Priority Register as needed */
+	/*
+	 * Set the Task Priority Register as needed.   At the moment allow
+	 * interrupts on all cpus (the APs will remain CLId until they are
+	 * ready to deal).  We could disable all but IPIs by setting
+	 * temp |= TPR_IPI_ONLY for cpu != 0.
+	 */
 	temp = lapic.tpr;
 	temp &= ~APIC_TPR_PRIO;		/* clear priority field */
 
-	/*
-	 * Leave the BSP and TPR 0 during boot so it gets all the interrupts,
-	 * set APs at TPR 0xF0 at boot so they get no ints.
-	 */
-#if 0
-	if (mycpu->gd_cpuid != 0)
-		temp |= TPR_IPI_ONLY;	/* disable INTs on this cpu */
-#endif
 	lapic.tpr = temp;
 
 	/* enable the local APIC */

@@ -32,7 +32,7 @@
  *		multiprocessor systems.
  *
  * $FreeBSD: src/sys/i386/i386/mpboot.s,v 1.13.2.3 2000/09/07 01:18:26 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mpboot.s,v 1.4 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mpboot.s,v 1.5 2003/07/11 17:42:08 dillon Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
@@ -118,12 +118,14 @@ mp_begin:	/* now running relocated at KERNBASE */
 	/*
 	 * Execute the context restore function for the idlethread which
 	 * has conveniently been set as curthread.  Remember, %eax must
-	 * contain the target thread.  Or BSP/AP synchronization occurs
-	 * in ap_init().  We do not need to mess with the BGL for this
-	 * because LWKT threads are self-contained on each cpu (or, at least,
-	 * the idlethread is!).
+	 * contain the target thread and %ebx must contain the originating
+	 * thread (which we just set the same since we have no originating
+	 * thread).  BSP/AP synchronization occurs in ap_init().  We do 
+	 * not need to mess with the BGL for this because LWKT threads are
+	 * self-contained on each cpu (or, at least, the idlethread is!).
 	 */
 	movl	PCPU(curthread),%eax
+	movl	%eax,%ebx
 	movl	TD_SP(%eax),%esp
 	ret
 

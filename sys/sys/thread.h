@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.22 2003/07/11 01:23:24 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.23 2003/07/11 17:42:11 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -183,15 +183,16 @@ struct thread {
 };
 
 /*
- * Thread flags.  Note that TDF_EXITED is set by the appropriate switchout
- * code when a thread exits, after it has switched to another stack and
- * cleaned up the MMU state.
+ * Thread flags.  Note that TDF_RUNNING is cleared on the old thread after
+ * we switch to the new one, which is necessary because LWKTs don't need
+ * to hold the BGL.  This flag is used by the exit code and the managed
+ * thread migration code.
  *
  * LWKT threads stay on their (per-cpu) run queue while running, not to
  * be confused with user processes which are removed from the user scheduling
  * run queue while actually running.
  */
-#define TDF_EXITED		0x0001	/* thread finished exiting */
+#define TDF_RUNNING		0x0001	/* thread still active */
 #define TDF_RUNQ		0x0002	/* on an LWKT run queue */
 #define TDF_PREEMPT_LOCK	0x0004	/* I have been preempted */
 #define TDF_PREEMPT_DONE	0x0008	/* acknowledge preemption complete */

@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.23 2003/07/10 04:47:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.24 2003/07/11 17:42:08 dillon Exp $
  */
 
 #include "npx.h"
@@ -81,24 +81,18 @@ tlb_flush_count:	.long	0
  *	is normally called via the thread->td_switch function, and will
  *	only be called when the current thread is a heavy weight process.
  *
+ *	Some instructions have been reordered to reduce pipeline stalls.
+ *
  *	YYY disable interrupts once giant is removed.
  */
 ENTRY(cpu_heavy_switch)
-	movl	PCPU(curthread),%ecx
-	movl	TD_PROC(%ecx),%ecx
-
-	cli
-	movl	P_VMSPACE(%ecx), %edx
-	movl	PCPU(cpuid), %eax
-	MPLOCKED btrl	%eax, VM_PMAP+PM_ACTIVE(%edx)
-
 	/*
 	 * Save general regs
 	 */
-	movl	P_THREAD(%ecx),%edx
-	movl	TD_PCB(%edx),%edx
-	movl	(%esp),%eax			/* Hardware registers */
-	movl	%eax,PCB_EIP(%edx)
+	movl	PCPU(curthread),%ecx
+	movl	(%esp),%eax			/* (reorder optimization) */
+	movl	TD_PCB(%ecx),%edx		/* EDX = PCB */
+	movl	%eax,PCB_EIP(%edx)		/* return PC may be modified */
 	movl	%ebx,PCB_EBX(%edx)
 	movl	%esp,PCB_ESP(%edx)
 	movl	%ebp,PCB_EBP(%edx)
@@ -106,16 +100,22 @@ ENTRY(cpu_heavy_switch)
 	movl	%edi,PCB_EDI(%edx)
 	movl	%gs,PCB_GS(%edx)
 
+	movl	%ecx,%ebx			/* EBX = curthread */
+	movl	TD_PROC(%ecx),%ecx
+	movl	PCPU(cpuid), %eax
+	movl	P_VMSPACE(%ecx), %ecx		/* ECX = vmspace */
+	MPLOCKED btrl	%eax, VM_PMAP+PM_ACTIVE(%ecx)
+
 	/*
 	 * Push the LWKT switch restore function, which resumes a heavy
 	 * weight process.  Note that the LWKT switcher is based on
 	 * TD_SP, while the heavy weight process switcher is based on
-	 * PCB_ESP.  TD_SP is usually one pointer pushed relative to
-	 * PCB_ESP.
+	 * PCB_ESP.  TD_SP is usually two ints pushed relative to
+	 * PCB_ESP.  We push the flags for later restore by cpu_heavy_restore.
 	 */
-	movl	P_THREAD(%ecx),%eax
+	pushfl
 	pushl	$cpu_heavy_restore
-	movl	%esp,TD_SP(%eax)
+	movl	%esp,TD_SP(%ebx)
 
 	/*
 	 * Save debug regs if necessary
@@ -144,24 +144,26 @@ ENTRY(cpu_heavy_switch)
 	 * npxsave will NULL out PCPU(npxthread).
 	 */
 #if NNPX > 0
-	movl	P_THREAD(%ecx),%ecx
-	cmpl	%ecx,PCPU(npxthread)
+	cmpl	%ebx,PCPU(npxthread)
 	jne	1f
-	addl	$PCB_SAVEFPU,%edx		/* h/w bugs make saving complicated */
+	addl	$PCB_SAVEFPU,%edx
 	pushl	%edx
 	call	npxsave			/* do it in a big C function */
-	addl	$4,%esp
+	addl	$4,%esp			/* EAX, ECX, EDX trashed */
 1:
-	/* %ecx,%edx trashed */
 #endif	/* NNPX > 0 */
 
 	/*
 	 * Switch to the next thread, which was passed as an argument
-	 * to cpu_heavy_switch().  Due to the switch-restore function we pushed,
-	 * the argument is at 8(%esp).  Set the current thread, load the
-	 * stack pointer, and 'ret' into the switch-restore function.
+	 * to cpu_heavy_switch().  Due to the eflags and switch-restore
+	 * function we pushed, the argument is at 12(%esp).  Set the current
+	 * thread, load the stack pointer, and 'ret' into the switch-restore
+	 * function.
+	 *
+	 * The switch restore function expects the new thread to be in %eax
+	 * and the old one to be in %ebx.
 	 */
-	movl	8(%esp),%eax
+	movl	12(%esp),%eax		/* EAX = newtd, EBX = oldtd */
 	movl	%eax,PCPU(curthread)
 	movl	TD_SP(%eax),%esp
 	ret
@@ -187,33 +189,14 @@ ENTRY(cpu_exit_switch)
 	je	1f
 	movl	%ecx,%cr3
 1:
-	movl	PCPU(curthread),%ecx
+	movl	PCPU(curthread),%ebx
 	/*
-	 * Switch to the next thread.
+	 * Switch to the next thread.  RET into the restore function, which
+	 * expects the new thread in EAX and the old in EBX.
 	 */
-	cli
 	movl	4(%esp),%eax
 	movl	%eax,PCPU(curthread)
 	movl	TD_SP(%eax),%esp
-
-	/*
-	 * We are now the next thread, set the exited flag and wakeup
-	 * any waiters.
-	 */
-	orl	$TDF_EXITED,TD_FLAGS(%ecx)
-#if 0			/* YYY MP lock may not be held by new target */
-	pushl	%eax
-	pushl	%ecx	/* wakeup(oldthread) */
-	call	wakeup
-	addl	$4,%esp
-	popl	%eax	/* note: next thread expects curthread in %eax */
-#endif
-
-	/*
-	 * Restore the next thread's state and resume it.  Note: the
-	 * restore function assumes that the next thread's address is
-	 * in %eax.
-	 */
 	ret
 
 /*
@@ -224,13 +207,15 @@ ENTRY(cpu_exit_switch)
  *	off the thread stack and jumped to.
  *
  *	This entry is only called if the thread was previously saved
- *	using cpu_heavy_switch() (the heavy weight process thread switcher).
+ *	using cpu_heavy_switch() (the heavy weight process thread switcher),
+ *	or when a new process is initially scheduled.  The first thing we
+ *	do is clear the TDF_RUNNING bit in the old thread and set it in the
+ *	new thread.
  *
  *	YYY theoretically we do not have to restore everything here, a lot
  *	of this junk can wait until we return to usermode.  But for now
  *	we restore everything.
  *
- *	YYY STI/CLI sequencing.
  *	YYY the PCB crap is really crap, it makes startup a bitch because
  *	we can't switch away.
  *
@@ -238,8 +223,8 @@ ENTRY(cpu_exit_switch)
  */
 
 ENTRY(cpu_heavy_restore)
-	/* interrupts are disabled */
-	movl	TD_PCB(%eax),%edx
+	popfl
+	movl	TD_PCB(%eax),%edx		/* EDX = PCB */
 	movl	TD_PROC(%eax),%ecx
 #ifdef	DIAGNOSTIC
 	cmpb	$SRUN,P_STAT(%ecx)
@@ -254,9 +239,9 @@ ENTRY(cpu_heavy_restore)
 	 * safely test/reload %cr3 until after we have set the bit in the
 	 * pmap (remember, we do not hold the MP lock in the switch code).
 	 */
-	movl	P_VMSPACE(%ecx), %ebx
-	movl	PCPU(cpuid), %eax
-	MPLOCKED btsl	%eax, VM_PMAP+PM_ACTIVE(%ebx)
+	movl	P_VMSPACE(%ecx), %ecx		/* ECX = vmspace */
+	movl	PCPU(cpuid), %esi
+	MPLOCKED btsl	%esi, VM_PMAP+PM_ACTIVE(%ecx)
 
 	/*
 	 * Restore the MMU address space.  If it is the same as the last
@@ -264,16 +249,24 @@ ENTRY(cpu_heavy_restore)
 	 * YYY which naturally also means that the PM_ACTIVE bit had better
 	 * already have been set before we set it above, check? YYY
 	 */
-	movl	%cr3,%eax
-	movl	PCB_CR3(%edx),%ebx
-	cmpl	%eax,%ebx
+	movl	%cr3,%esi
+	movl	PCB_CR3(%edx),%ecx
+	cmpl	%esi,%ecx
 	je	4f
 #if defined(SWTCH_OPTIM_STATS)
 	decl	_swtch_optim_stats
 	incl	_tlb_flush_count
 #endif
-	movl	%ebx,%cr3
+	movl	%ecx,%cr3
 4:
+	/*
+	 * Clear TDF_RUNNING flag in old thread only after cleaning up
+	 * %cr3.  The target thread is already protected by being TDF_RUNQ
+	 * so setting TDF_RUNNING isn't as big a deal.
+	 */
+	andl	$~TDF_RUNNING,TD_FLAGS(%ebx)
+	orl	$TDF_RUNNING,TD_FLAGS(%eax)
+
 	/*
 	 * Deal with the PCB extension, restore the private tss
 	 */
@@ -385,7 +378,6 @@ cpu_switch_load_gs:
 	movl    %eax,%dr7
 1:
 
-	sti			/* XXX */
 	ret
 
 CROSSJUMPTARGET(sw1a)
@@ -464,6 +456,8 @@ ENTRY(savectx)
  *	cpu_idle() LWKT only, after that cpu_lwkt_*() will be used for
  *	switching.
  *
+ *	Clear TDF_RUNNING in old thread only after we've cleaned up %cr3.
+ *
  *	If we are an AP we have to call ap_init() before jumping to
  *	cpu_idle().  ap_init() will synchronize with the BP and finish
  *	setting up various ncpu-dependant globaldata fields.  This may
@@ -471,10 +465,13 @@ ENTRY(savectx)
  *	cpus.
  */
 ENTRY(cpu_idle_restore)
+	/* cli */
 	movl	IdlePTD,%ecx
 	movl	$0,%ebp
 	pushl	$0
 	movl	%ecx,%cr3
+	andl	$~TDF_RUNNING,TD_FLAGS(%ebx)
+	orl	$TDF_RUNNING,TD_FLAGS(%eax)
 #ifdef SMP
 	cmpl	$0,PCPU(cpuid)
 	je	1f
@@ -496,16 +493,18 @@ ENTRY(cpu_idle_restore)
  *	we can release our critical section and enable interrupts early.
  */
 ENTRY(cpu_kthread_restore)
+	sti
 	movl	IdlePTD,%ecx
-	movl	TD_PCB(%eax),%ebx
+	movl	TD_PCB(%eax),%edx
 	movl	$0,%ebp
 	movl	%ecx,%cr3
+	andl	$~TDF_RUNNING,TD_FLAGS(%ebx)
+	orl	$TDF_RUNNING,TD_FLAGS(%eax)
 	subl	$TDPRI_CRIT,TD_PRI(%eax)
-	sti
-	popl	%edx		/* kthread exit function */
-	pushl	PCB_EBX(%ebx)	/* argument to ESI function */
-	pushl	%edx		/* set exit func as return address */
-	movl	PCB_ESI(%ebx),%eax
+	popl	%eax		/* kthread exit function */
+	pushl	PCB_EBX(%edx)	/* argument to ESI function */
+	pushl	%eax		/* set exit func as return address */
+	movl	PCB_ESI(%edx),%eax
 	jmp	*%eax
 
 /*
@@ -525,12 +524,15 @@ ENTRY(cpu_lwkt_switch)
 	pushl	%esi
 	pushl	%edi
 	pushfl
-	movl	PCPU(curthread),%ecx
+	movl	PCPU(curthread),%ebx
 	pushl	$cpu_lwkt_restore
-	cli
-	movl	%esp,TD_SP(%ecx)
+	movl	%esp,TD_SP(%ebx)
 	movl	%eax,PCPU(curthread)
 	movl	TD_SP(%eax),%esp
+
+	/*
+	 * eax contains new thread, ebx contains old thread.
+	 */
 	ret
 
 /*
@@ -549,11 +551,13 @@ ENTRY(cpu_lwkt_switch)
  */
 ENTRY(cpu_lwkt_restore)
 	movl	IdlePTD,%ecx	/* YYY borrow but beware desched/cpuchg/exit */
-	movl	%cr3,%eax
-	cmpl	%ecx,%eax
+	movl	%cr3,%edx
+	cmpl	%ecx,%edx
 	je	1f
 	movl	%ecx,%cr3
 1:
+	andl	$~TDF_RUNNING,TD_FLAGS(%ebx)
+	orl	$TDF_RUNNING,TD_FLAGS(%eax)
 	popfl
 	popl	%edi
 	popl	%esi

@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.23 2003/07/10 04:47:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.24 2003/07/11 17:42:08 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -92,7 +92,7 @@ ASSYM(TD_WCHAN, offsetof(struct thread, td_wchan));
 ASSYM(TD_MPCOUNT, offsetof(struct thread, td_mpcount));
 #endif
 ASSYM(TD_FLAGS, offsetof(struct thread, td_flags));
-ASSYM(TDF_EXITED, TDF_EXITED);
+ASSYM(TDF_RUNNING, TDF_RUNNING);
 #ifdef SMP
 ASSYM(MP_FREE_LOCK, MP_FREE_LOCK);
 #endif
