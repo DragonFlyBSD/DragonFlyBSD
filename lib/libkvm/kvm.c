@@ -36,7 +36,7 @@
  *
  * @(#)kvm.c	8.2 (Berkeley) 2/13/94
  * $FreeBSD: src/lib/libkvm/kvm.c,v 1.12.2.3 2002/09/13 14:53:43 nectar Exp $
- * $DragonFly: src/lib/libkvm/kvm.c,v 1.5 2004/10/25 19:38:45 drhodus Exp $
+ * $DragonFly: src/lib/libkvm/kvm.c,v 1.6 2005/02/28 12:57:43 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -369,7 +369,7 @@ kvm_read(kvm_t *kd, u_long kva, void *buf, size_t len)
 			 */
 			if (cc == 0)
 				break;
-			(char *)cp += cc;
+			cp = (char *)cp + cc;
 			kva += cc;
 			len -= cc;
 		}
