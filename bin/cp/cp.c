@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)cp.c	8.2 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/cp.c,v 1.24.2.7 2002/09/24 12:41:04 mckay Exp $
- * $DragonFly: src/bin/cp/cp.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/cp/cp.c,v 1.3 2003/09/21 04:18:34 drhodus Exp $
  */
 
 /*
@@ -79,8 +79,8 @@ int Rflag, fflag, iflag, nflag, pflag, rflag, vflag;
 
 enum op { FILE_TO_FILE, FILE_TO_DIR, DIR_TO_DNE };
 
-int copy __P((char *[], enum op, int));
-int mastercmp __P((const FTSENT **, const FTSENT **));
+int copy (char *[], enum op, int);
+int mastercmp (const FTSENT **, const FTSENT **);
 
 int
 main(argc, argv)

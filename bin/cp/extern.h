@@ -32,7 +32,7 @@
  *
  *	@(#)extern.h	8.2 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/extern.h,v 1.9.2.3 2002/08/10 13:20:19 johan Exp $
- * $DragonFly: src/bin/cp/extern.h,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/cp/extern.h,v 1.3 2003/09/21 04:18:34 drhodus Exp $
  */
 
 typedef struct {
@@ -47,10 +47,10 @@ extern int fflag, iflag, nflag, pflag, vflag;
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	copy_fifo __P((struct stat *, int));
-int	copy_file __P((FTSENT *, int));
-int	copy_link __P((FTSENT *, int));
-int	copy_special __P((struct stat *, int));
-int	setfile __P((struct stat *, int));
-void	usage __P((void));
+int	copy_fifo (struct stat *, int);
+int	copy_file (FTSENT *, int);
+int	copy_link (FTSENT *, int);
+int	copy_special (struct stat *, int);
+int	setfile (struct stat *, int);
+void	usage (void);
 __END_DECLS

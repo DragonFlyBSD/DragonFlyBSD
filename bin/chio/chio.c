@@ -32,7 +32,7 @@
  *
  * @(#) Copyright (c) 1996 Jason R. Thorpe.  All rights reserved.
  * $FreeBSD: src/bin/chio/chio.c,v 1.15.2.3 2001/07/28 19:22:01 mikeh Exp $
- * $DragonFly: src/bin/chio/chio.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/chio/chio.c,v 1.3 2003/09/21 04:17:25 drhodus Exp $
  */
 /*
  * Additional Copyright (c) 1997, by Matthew Jacob, for NASA/Ames Research Ctr.
@@ -53,29 +53,29 @@
 
 extern	char *__progname;	/* from crt0.o */
 
-static	void usage __P((void));
-static	void cleanup __P((void));
-static	int parse_element_type __P((char *));
-static	int parse_element_unit __P((char *));
-static	const char * element_type_name __P((int et));
-static	int parse_special __P((char *));
-static	int is_special __P((char *));
-static	const char *bits_to_string __P((ces_status_flags, const char *));
+static	void usage (void);
+static	void cleanup (void);
+static	int parse_element_type (char *);
+static	int parse_element_unit (char *);
+static	const char * element_type_name (int et);
+static	int parse_special (char *);
+static	int is_special (char *);
+static	const char *bits_to_string (ces_status_flags, const char *);
 
-static	void find_element __P((char *, u_int16_t *, u_int16_t *));
+static	void find_element (char *, u_int16_t *, u_int16_t *);
 static	struct changer_element_status *get_element_status
-	    __P((unsigned int, unsigned int));
+	    (unsigned int, unsigned int);
 
-static	int do_move __P((const char *, int, char **));
-static	int do_exchange __P((const char *, int, char **));
-static	int do_position __P((const char *, int, char **));
-static	int do_params __P((const char *, int, char **));
-static	int do_getpicker __P((const char *, int, char **));
-static	int do_setpicker __P((const char *, int, char **));
-static	int do_status __P((const char *, int, char **));
-static	int do_ielem __P((const char *, int, char **));
-static	int do_return __P((const char *, int, char **));
-static	int do_voltag __P((const char *, int, char **));
+static	int do_move (const char *, int, char **);
+static	int do_exchange (const char *, int, char **);
+static	int do_position (const char *, int, char **);
+static	int do_params (const char *, int, char **);
+static	int do_getpicker (const char *, int, char **);
+static	int do_setpicker (const char *, int, char **);
+static	int do_status (const char *, int, char **);
+static	int do_ielem (const char *, int, char **);
+static	int do_return (const char *, int, char **);
+static	int do_voltag (const char *, int, char **);
 
 #ifndef CHET_VT
 #define	CHET_VT		10			/* Completely Arbitrary */

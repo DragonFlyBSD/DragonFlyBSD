@@ -1,5 +1,5 @@
 /* $FreeBSD: src/bin/chio/defs.h,v 1.2.2.1 2001/07/28 19:22:01 mikeh Exp $	*/
-/* $DragonFly: src/bin/chio/defs.h,v 1.2 2003/06/17 04:22:49 dillon Exp $	*/
+/* $DragonFly: src/bin/chio/defs.h,v 1.3 2003/09/21 04:17:25 drhodus Exp $	*/
 
 /*
  * Copyright (c) 1996 Jason R. Thorpe <thorpej@and.com>
@@ -41,7 +41,7 @@ struct element_type {
 struct changer_command {
 	const	char *cc_name;	/* command name */
 				/* command handler */
-	int	(*cc_handler) __P((const char *, int, char **));
+	int	(*cc_handler) (const char *, int, char **);
 };
 
 struct special_word {

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chmod.c	8.8 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/chmod/chmod.c,v 1.16.2.6 2002/10/18 01:36:38 trhodes Exp $
- * $DragonFly: src/bin/chmod/chmod.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/chmod/chmod.c,v 1.3 2003/09/21 04:18:00 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -48,8 +48,8 @@
 #include <string.h>
 #include <unistd.h>
 
-int main __P((int, char *[]));
-void usage __P((void));
+int main (int, char *[]);
+void usage (void);
 
 int
 main(argc, argv)
@@ -65,7 +65,7 @@ main(argc, argv)
 	int vflag;
 	char *ep, *mode;
 	int newmode;
-	int (*change_mode) __P((const char *, mode_t));
+	int (*change_mode) (const char *, mode_t);
 
 	set = NULL;
 	omode = 0;
