@@ -34,9 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/sys/Ovfork.S,v 1.11.2.1 2002/10/15 19:46:46 fjoe Exp $
- * $DragonFly: src/lib/libc/i386/sys/Ovfork.S,v 1.3 2003/07/13 05:43:31 dillon Exp $
- *
- * $FreeBSD: src/lib/libc/i386/sys/Ovfork.S,v 1.11.2.1 2002/10/15 19:46:46 fjoe Exp $
+ * $DragonFly: src/lib/libc/i386/sys/Ovfork.S,v 1.4 2003/12/06 03:11:36 drhodus Exp $
  */
 
 #include "DEFS.h"

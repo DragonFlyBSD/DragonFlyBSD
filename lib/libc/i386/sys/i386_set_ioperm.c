@@ -24,9 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/sys/i386_set_ioperm.c,v 1.4 1999/09/02 21:03:32 luoqi Exp $
- * $DragonFly: src/lib/libc/i386/sys/i386_set_ioperm.c,v 1.2 2003/06/17 04:26:43 dillon Exp $
- *
- * $FreeBSD: src/lib/libc/i386/sys/i386_set_ioperm.c,v 1.4 1999/09/02 21:03:32 luoqi Exp $
+ * $DragonFly: src/lib/libc/i386/sys/i386_set_ioperm.c,v 1.3 2003/12/06 03:11:36 drhodus Exp $
  */
 
 #include <machine/sysarch.h>

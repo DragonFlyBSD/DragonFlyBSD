@@ -34,9 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/gen/alloca.S,v 1.5.2.1 2001/03/05 09:58:04 obrien Exp $
- * $DragonFly: src/lib/libc/i386/gen/alloca.S,v 1.2 2003/06/17 04:26:43 dillon Exp $
- *
- * $FreeBSD: src/lib/libc/i386/gen/alloca.S,v 1.5.2.1 2001/03/05 09:58:04 obrien Exp $
+ * $DragonFly: src/lib/libc/i386/gen/alloca.S,v 1.3 2003/12/06 03:11:35 drhodus Exp $
  */
 
 /* like alloc, but automatic automatic free in return */

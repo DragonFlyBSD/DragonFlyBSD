@@ -34,9 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/gen/setjmp.S,v 1.17.2.2 2001/07/06 12:41:44 deischen Exp $
- * $DragonFly: src/lib/libc/i386/gen/setjmp.S,v 1.2 2003/06/17 04:26:43 dillon Exp $
- *
- * $FreeBSD: src/lib/libc/i386/gen/setjmp.S,v 1.17.2.2 2001/07/06 12:41:44 deischen Exp $
+ * $DragonFly: src/lib/libc/i386/gen/setjmp.S,v 1.3 2003/12/06 03:11:35 drhodus Exp $
  */
 
 /*
