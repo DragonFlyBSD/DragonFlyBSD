@@ -1,0 +1,19 @@
+# $DragonFly: src/secure/Makefile.ssh.common,v 1.1 2004/07/31 19:21:59 geekgod Exp $
+
+SSHDIR=		${.CURDIR}/../../../crypto/openssh-3.8.1p1
+
+CONTRIBDIR=	${SSHDIR}
+
+CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${SSHDIR}
+
+NOLINT=	true
+
+.if ${.CURDIR:T} != "libssh"
+DPADD+=	${LIBSSH}
+LDADD+=	-lssh
+.endif
+
+DPADD+=	${LIBCRYPTO}
+LDADD+=	-lcrypto
+
+.PATH:	${SSHDIR}
