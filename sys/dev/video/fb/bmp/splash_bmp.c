@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/splash/bmp/splash_bmp.c,v 1.10.2.3 2000/10/31 08:00:06 nyan Exp $
- * $DragonFly: src/sys/dev/video/fb/bmp/splash_bmp.c,v 1.5 2003/11/15 21:05:42 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/bmp/splash_bmp.c,v 1.6 2005/02/01 02:19:43 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -234,8 +234,8 @@ typedef struct
     int		ncols;			/* number of colours */
     u_char	palette[256][3];	/* raw palette data */
     u_char	format;			/* one of the BI_* constants above */
-    u_char	*data;			/* pointer to the raw data */
-    u_char	*index;			/* running pointer to the data while drawing */
+    const u_char *data;			/* pointer to the raw data */
+    const u_char *index;			/* running pointer to the data while drawing */
     u_char	*vidmem;		/* video memory allocated for drawing */
     video_adapter_t *adp;
     int		bank;
@@ -450,7 +450,8 @@ static void
 bmp_DecodeLine(BMP_INFO *info, int line)
 {
     int		x;
-    u_char	val, mask, *p;
+    u_char	val, mask;
+    const u_char *p;
 
     switch(info->format) {
     case BI_RGB:
@@ -512,7 +513,7 @@ bmp_DecodeLine(BMP_INFO *info, int line)
 static int
 bmp_Init(const char *data, int swidth, int sheight, int sdepth)
 {
-    BITMAPF	*bmf = (BITMAPF *)data;
+    const BITMAPF *bmf = (const BITMAPF *)data;
     int		pind;
 
     bmp_info.data = NULL;	/* assume setup failed */
@@ -536,7 +537,7 @@ bmp_Init(const char *data, int swidth, int sheight, int sdepth)
     bmp_info.sdepth = sdepth;
 
     /* where's the data? */
-    bmp_info.data = (u_char *)data + bmf->bmfh.bfOffBits;
+    bmp_info.data = (const u_char *)data + bmf->bmfh.bfOffBits;
 
     /* image parameters */
     bmp_info.width = bmf->bmfi.bmiHeader.biWidth;
