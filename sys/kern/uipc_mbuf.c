@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.23 2004/07/31 07:52:48 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.24 2004/07/31 07:58:23 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -157,9 +157,9 @@ SYSCTL_INT(_kern_ipc, OID_AUTO, mbuf_wait, CTLFLAG_RW,
 SYSCTL_STRUCT(_kern_ipc, KIPC_MBSTAT, mbstat, CTLFLAG_RW, &mbstat, mbstat, "");
 SYSCTL_OPAQUE(_kern_ipc, OID_AUTO, mbtypes, CTLFLAG_RD, mbtypes,
 	   sizeof(mbtypes), "LU", "");
-SYSCTL_INT(_kern_ipc, KIPC_NMBCLUSTERS, nmbclusters, CTLFLAG_RD, 
+SYSCTL_INT(_kern_ipc, KIPC_NMBCLUSTERS, nmbclusters, CTLFLAG_RW, 
 	   &nmbclusters, 0, "Maximum number of mbuf clusters available");
-SYSCTL_INT(_kern_ipc, OID_AUTO, nmbufs, CTLFLAG_RD, &nmbufs, 0,
+SYSCTL_INT(_kern_ipc, OID_AUTO, nmbufs, CTLFLAG_RW, &nmbufs, 0,
 	   "Maximum number of mbufs available"); 
 SYSCTL_INT(_kern_ipc, OID_AUTO, m_defragpackets, CTLFLAG_RD,
 	   &m_defragpackets, 0, "");
