@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.42 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.43 2004/10/22 13:42:14 hsu Exp $
  */
 
 #include "opt_ktrace.h"
@@ -890,7 +890,7 @@ recvmsg(struct recvmsg_args *uap)
 	auio.uio_rw = UIO_READ;
 	auio.uio_td = td;
 
-	flags = msg.msg_flags;
+	flags = uap->flags;
 
 	error = kern_recvmsg(uap->s, msg.msg_name ? &sa : NULL, &auio,
 	    msg.msg_control ? &control : NULL, &flags, &uap->sysmsg_result);
