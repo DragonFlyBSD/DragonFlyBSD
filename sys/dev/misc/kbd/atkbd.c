@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbd.c,v 1.25.2.4 2002/04/08 19:21:38 asmodai Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.4 2004/05/13 19:44:32 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.5 2004/09/05 21:19:41 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -317,7 +317,6 @@ atkbd_probe(int unit, void *arg, int flags)
 	KBDC kbdc;
 	int *data = (int *)arg;	/* data[0]: controller, data[1]: irq */
 
-	/* XXX */
 	if (unit == ATKBD_DEFAULT) {
 		if (KBD_IS_PROBED(&default_kbd))
 			return 0;
@@ -381,7 +380,7 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		if (state->kbdc == NULL)
 			return ENXIO;
 		kbd_init_struct(kbd, ATKBD_DRIVER_NAME, KB_OTHER, unit, flags,
-				0, 0);
+				KB_PRI_ATKBD, 0, 0);
 		bcopy(&key_map, keymap, sizeof(key_map));
 		bcopy(&accent_map, accmap, sizeof(accent_map));
 		bcopy(fkey_tab, fkeymap,
