@@ -27,7 +27,7 @@
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  *
- * $DragonFly: src/usr.bin/chkey/chkey.c,v 1.4 2004/08/30 18:06:49 eirikn Exp $
+ * $DragonFly: src/usr.bin/chkey/chkey.c,v 1.5 2005/01/11 00:51:11 joerg Exp $
  * @(#)chkey.c 1.7 91/03/11 Copyr 1986 Sun Micro
  */
 /*
@@ -37,24 +37,27 @@
 /*
  * Command to change one's public key in the public key database
  */
+#include <sys/fcntl.h>
+#include <pwd.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
 #include <rpc/rpc.h>
 #include <rpc/key_prot.h>
 #ifdef YP
 #include <rpcsvc/yp_prot.h>
 #include <rpcsvc/ypclnt.h>
+#include <rpcsvc/yppasswd.h>
 #else
 #define	YPOP_STORE	4
 #endif
-#include <pwd.h>
-#include <string.h>
-#include <sys/fcntl.h>
 
-extern char *getpass();
-#define index strchr
-extern char *crypt();
+#include "externs.h"
+
 #ifdef YPPASSWD
-struct passwd *ypgetpwuid();
+static struct passwd	*ypgetpwuid(uid_t);
 #endif
 
 #ifdef YP
@@ -65,6 +68,10 @@ static char PKFILE[] = "/etc/publickey";
 #endif	/* YP */
 static char ROOTKEY[] = "/etc/.rootkey";
 
+static void	usage(char *);
+static int	setpublicmap(char *, char *, char *);
+
+int
 main(int argc, char **argv)
 {
 	char name[MAXNETNAMELEN+1];
@@ -226,6 +233,7 @@ main(int argc, char **argv)
 	/* NOTREACHED */
 }
 
+static void
 usage(char *name)
 {
 	(void)fprintf(stderr, "usage: %s [-f]\n", name);
@@ -237,6 +245,7 @@ usage(char *name)
 /*
  * Set the entry in the public key file
  */
+static int
 setpublicmap(char *name, char *public, char *secret)
 {
 	char pkent[1024];
@@ -252,7 +261,7 @@ setpublicmap(char *name, char *public, char *secret)
 }
 
 #ifdef YPPASSWD
-struct passwd *
+static struct passwd *
 ypgetpwuid(uid_t uid)
 {
 	char uidstr[10];
