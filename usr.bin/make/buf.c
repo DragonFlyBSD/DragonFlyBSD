@@ -38,7 +38,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.16 2005/01/10 12:36:06 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.17 2005/01/10 16:21:14 okumoto Exp $
  */
 
 /*-
@@ -57,29 +57,42 @@
 #define	max(a,b)  ((a) > (b) ? (a) : (b))
 #endif
 
+/* Buf_AddByte adds a single byte to a buffer. */
+void
+Buf_AddByte(Buffer *bp, Byte byte)
+{
+        --bp->left;
+        if (bp->left <= 0) {
+		Buf_OvAddByte(bp, byte);
+	} else {
+		*bp->inPtr = byte;
+		bp->inPtr++;
+		*bp->inPtr = 0;
+	}
+}
+
 /*
  * BufExpand --
  *	Expand the given buffer to hold the given number of additional
  *	bytes.
- *	Makes sure there's room for an extra NULL byte at the end of the
- *	buffer in case it holds a string.
+ *      This function is also used to make sure there's room for
+ *      an extra NULL byte at the end of the buffer in case it holds
+ *	a string.
  */
-#define	BufExpand(bp, nb) do {						\
-	if ((bp)->left < (nb) + 1) {					\
-		int newSize = (bp)->size + max((nb) + 1, BUF_ADD_INC);	\
-		Byte *newBuf = erealloc((bp)->buffer, newSize);		\
-									\
-		(bp)->inPtr = newBuf + ((bp)->inPtr - (bp)->buffer);	\
-		(bp)->outPtr = newBuf + ((bp)->outPtr - (bp)->buffer);	\
-		(bp)->buffer = newBuf;					\
-		(bp)->size = newSize;					\
-		(bp)->left = newSize - ((bp)->inPtr - (bp)->buffer);	\
-	}								\
-    } while (0)
+static inline void
+BufExpand(Buffer *bp, size_t nb)
+{
+	if (bp->left < nb + 1) {
+		int newSize = bp->size + max(nb + 1, BUF_ADD_INC);
+		Byte *newBuf = erealloc(bp->buffer, newSize);
 
-#define	BUF_DEF_SIZE	256	/* Default buffer size */
-#define	BUF_ADD_INC	256	/* Expansion increment when Adding */
-#define	BUF_UNGET_INC	16	/* Expansion increment when Ungetting */
+		bp->inPtr = newBuf + (bp->inPtr - bp->buffer);
+		bp->outPtr = newBuf + (bp->outPtr - bp->buffer);
+		bp->buffer = newBuf;
+		bp->size = newSize;
+		bp->left = newSize - (bp->inPtr - bp->buffer);
+	}
+}
 
 /*-
  *-----------------------------------------------------------------------

@@ -40,7 +40,7 @@
  *
  *	from: @(#)buf.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.h,v 1.9 1999/08/28 01:03:26 peter Exp $
- * $DragonFly: src/usr.bin/make/buf.h,v 1.13 2005/01/10 12:36:06 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.h,v 1.14 2005/01/10 16:21:14 okumoto Exp $
  */
 
 /*-
@@ -63,7 +63,8 @@
  */
 #define	MAKE_BSIZE	256	/* starting size for expandable buffers */
 
-#define	BUF_ERROR 256
+#define	BUF_DEF_SIZE	256	/* Default buffer size */
+#define	BUF_ADD_INC	256	/* Expansion increment when Adding */
 
 typedef char Byte;
 
@@ -75,11 +76,7 @@ typedef struct Buffer {
 	Byte	*outPtr;	/* Place to read from */
 } Buffer;
 
-/* Buf_AddByte adds a single byte to a buffer. */
-#define	Buf_AddByte(bp, byte) \
-	(void)(--(bp)->left <= 0 ? Buf_OvAddByte((bp), (byte)), 1 : \
-		(*(bp)->inPtr++ = (byte), *(bp)->inPtr = 0), 1)
-
+void Buf_AddByte(Buffer *, Byte);
 void Buf_OvAddByte(Buffer *, Byte);
 void Buf_AddBytes(Buffer *, size_t, const Byte *);
 Byte *Buf_GetAll(Buffer *, size_t *);
