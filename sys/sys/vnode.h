@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.10 2004/03/01 06:33:19 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.11 2004/03/03 05:16:21 hmp Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -44,6 +44,10 @@
 #include <sys/uio.h>
 #include <sys/acl.h>
 #include <sys/namecache.h>
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#include <sys/thread.h>
+#endif
 
 #include <machine/lock.h>
 
