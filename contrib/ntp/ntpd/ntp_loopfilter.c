@@ -74,9 +74,10 @@
 #define S_NSET	0		/* clock never set */
 #define S_FSET	1		/* frequency set from the drift file */
 #define S_TSET	2		/* time set */
-#define S_FREQ	3		/* frequency mode */
-#define S_SYNC	4		/* clock synchronized */
-#define S_SPIK	5		/* spike detected */
+#define S_PFREQ	3		/* frequency setup mode */
+#define S_FREQ	4		/* frequency mode */
+#define S_SYNC	5		/* clock synchronized */
+#define S_SPIK	6		/* spike detected */
 
 /*
  * Kernel PLL/PPS state machine. This is used with the kernel PLL
@@ -283,7 +284,7 @@ local_clock(
 		step_systime(fp_offset);
 		NLOG(NLOG_SYNCEVENT|NLOG_SYSEVENT)
 		    msyslog(LOG_NOTICE, "time set %.6f s", fp_offset);
-		rstclock(S_FREQ, peer->epoch, fp_offset);
+		rstclock(S_PFREQ, peer->epoch, fp_offset);
 		return (1);
 	}
 
@@ -336,6 +337,10 @@ local_clock(
 		sys_poll = peer->minpoll;
 	clock_frequency = flladj = plladj = 0;
 	mu = peer->epoch - last_time;
+#if 0
+	msyslog(LOG_ERR, "loopfilterX fp_offset %lg clock_offset %lg mu %lg clock_max %lg state %d",
+		fp_offset, clock_offset, mu, clock_max, state);
+#endif
 	if (fabs(fp_offset) > clock_max && clock_max > 0) {
 		switch (state) {
 
@@ -347,7 +352,7 @@ local_clock(
 		 * to S_FREQ state.
 		 */
 		case S_TSET:
-			state = S_FREQ;
+			state = S_PFREQ;
 			break;
 
 		/*
@@ -359,6 +364,15 @@ local_clock(
 			if (mu < clock_minstep)
 				return (0);
 			state = S_SPIK;
+			return (0);
+		/*
+		 * We do not want to include the offset from a prior 
+		 * offset adjustment in our frequency calculation,
+		 * so supply some settling time.
+		 */
+		case S_PFREQ:
+			if (mu >= CLOCK_MINSEC)
+				rstclock(S_FREQ, peer->epoch, fp_offset);
 			return (0);
 
 		/*
@@ -414,6 +428,15 @@ local_clock(
 		case S_FSET:
 			rstclock(S_TSET, peer->epoch, fp_offset);
 			break;
+		/*
+		 * We do not want to include the offset from a prior 
+		 * offset adjustment in our frequency calculation,
+		 * so supply some settling time.
+		 */
+		case S_PFREQ:
+			if (mu >= CLOCK_MINSEC)
+				rstclock(S_FREQ, peer->epoch, fp_offset);
+			return (0);
 
 		/*
 		 * In S_FREQ state ignore updates until the stepout
@@ -534,10 +557,18 @@ local_clock(
 				    1e6 + dtemp);
 				ntv.constant = sys_poll - 4;
 			}
+#if 0
+			msyslog(LOG_ERR, "loopfilter2 offset %d components: %lg %lg",
+				ntv.offset, clock_offset * 1e9, dtemp);
+#endif
 			if (clock_frequency != 0) {
 				ntv.modes |= MOD_FREQUENCY;
 				ntv.freq = (int32)((clock_frequency +
 				    drift_comp) * 65536e6);
+#if 0
+				msyslog(LOG_ERR, "loopfilter2 freq %d components: %lg %lg",
+					ntv.freq, clock_frequency, drift_comp);
+#endif
 			}
 			ntv.esterror = (u_int32)(sys_jitter * 1e6);
 			ntv.maxerror = (u_int32)((sys_rootdelay / 2 +
@@ -889,6 +920,9 @@ loop_config(
 				ntv.freq = (int32)(drift_comp *
 				    65536e6);
 			}
+			msyslog(LOG_ERR, "loopfilter1 offset %d freq %d (%lg)",
+				ntv.offset, ntv.freq, drift_comp
+			);
 			(void)ntp_adjtime(&ntv);
 		}
 #endif /* KERNEL_PLL */
