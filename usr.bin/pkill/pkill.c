@@ -1,5 +1,5 @@
 /*	$NetBSD: pkill.c,v 1.7 2004/02/15 17:03:30 soren Exp $	*/
-/*	$DragonFly: src/usr.bin/pkill/pkill.c,v 1.4 2004/12/20 20:09:23 cpressey Exp $ */
+/*	$DragonFly: src/usr.bin/pkill/pkill.c,v 1.5 2005/01/06 21:00:33 cpressey Exp $ */
 
 /*-
  * Copyright (c) 2002 The NetBSD Foundation, Inc.
@@ -139,9 +139,10 @@ main(int argc, char **argv)
 			} else {
 				if (strncasecmp(p, "sig", 3) == 0)
 					p += 3;
-				for (i = 1; i < NSIG; i++)
+				for (i = 1; i < NSIG; i++) {
 					if (strcasecmp(sys_signame[i], p) == 0)
 						break;
+				}
 				if (i != NSIG) {
 					signum = i;
 					argv++;
@@ -153,7 +154,7 @@ main(int argc, char **argv)
 
 	criteria = 0;
 
-	while ((ch = getopt(argc, argv, "G:P:U:d:fg:lns:t:u:vx")) != -1)
+	while ((ch = getopt(argc, argv, "G:P:U:d:fg:lns:t:u:vx")) != -1) {
 		switch (ch) {
 		case 'G':
 			makelist(&rgidlist, LT_GROUP, optarg);
@@ -210,6 +211,7 @@ main(int argc, char **argv)
 			usage();
 			/* NOTREACHED */
 		}
+	}
 
 	argc -= optind;
 	argv += optind;
@@ -289,41 +291,46 @@ main(int argc, char **argv)
 		if ((kp->kp_proc.p_flag & P_SYSTEM) != 0)
 			continue;
 
-		SLIST_FOREACH(li, &ruidlist, li_chain)
+		SLIST_FOREACH(li, &ruidlist, li_chain) {
 			if (kp->kp_eproc.e_ucred.cr_ruid == (uid_t)li->li_number)
 				break;
+		}
 		if (SLIST_FIRST(&ruidlist) != NULL && li == NULL) {
 			selected[i] = 0;
 			continue;
 		}
 	
-		SLIST_FOREACH(li, &rgidlist, li_chain)
+		SLIST_FOREACH(li, &rgidlist, li_chain) {
 			if (kp->kp_eproc.e_ucred.cr_rgid == (gid_t)li->li_number)
 				break;
+		}
 		if (SLIST_FIRST(&rgidlist) != NULL && li == NULL) {
 			selected[i] = 0;
 			continue;
 		}
 
-		SLIST_FOREACH(li, &euidlist, li_chain)
+		SLIST_FOREACH(li, &euidlist, li_chain) {
 			if (kp->kp_eproc.e_ucred.cr_uid == (uid_t)li->li_number)
 				break;
+		}
 		if (SLIST_FIRST(&euidlist) != NULL && li == NULL) {
 			selected[i] = 0;
 			continue;
 		}
 
-		SLIST_FOREACH(li, &ppidlist, li_chain)
+		SLIST_FOREACH(li, &ppidlist, li_chain) {
 			if (kp->kp_eproc.e_ppid == (pid_t)li->li_number)
 				break;
+		}
 		if (SLIST_FIRST(&ppidlist) != NULL && li == NULL) {
 			selected[i] = 0;
 			continue;
 		}
 
-		SLIST_FOREACH(li, &pgrplist, li_chain)
+		SLIST_FOREACH(li, &pgrplist, li_chain) {
 			if (kp->kp_eproc.e_pgid == (pid_t)li->li_number)
 				break;
+		}
 		if (SLIST_FIRST(&pgrplist) != NULL && li == NULL) {
 			selected[i] = 0;
 			continue;
@@ -341,9 +348,10 @@ main(int argc, char **argv)
 			continue;
 		}
 
-		SLIST_FOREACH(li, &sidlist, li_chain)
+		SLIST_FOREACH(li, &sidlist, li_chain) {
 			if (kp->kp_eproc.e_sess->s_sid == (pid_t)li->li_number)
 				break;
+		}
 		if (SLIST_FIRST(&sidlist) != NULL && li == NULL) {
 			selected[i] = 0;
 			continue;
@@ -419,7 +427,6 @@ usage(void)
 void
 killact(struct kinfo_proc *kp)
 {
-
 	if (kill(kp->kp_proc.p_pid, signum) == -1)
 		err(STATUS_ERROR, "signalling pid %d", (int)kp->kp_proc.p_pid);
 }
@@ -531,7 +538,7 @@ makelist(struct listhead *head, enum listtype type, char *src)
 			break;
 		default:
 			usage();
-		};
+		}
 	}
 
 	if (empty)
