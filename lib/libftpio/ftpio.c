@@ -15,7 +15,7 @@
  * `state' of FTP_t
  *
  * $FreeBSD: src/lib/libftpio/ftpio.c,v 1.33.2.4 2002/07/25 15:25:32 ume Exp $
- * $DragonFly: src/lib/libftpio/ftpio.c,v 1.3 2004/08/16 12:59:21 joerg Exp $
+ * $DragonFly: src/lib/libftpio/ftpio.c,v 1.4 2004/08/16 13:51:20 joerg Exp $
  *
  */
 
@@ -65,7 +65,8 @@ static int	ftp_login_session(FTP_t ftp, const char *host, int af,
 static int	ftp_file_op(FTP_t ftp, const char *operation, const char *file,
 			    FILE **fp, const char *mode, off_t *seekto);
 static int	ftp_close(FTP_t ftp);
-static int	get_url_info(char *url_in, char *host_ret, int *port_ret, char *name_ret);
+static int	get_url_info(const char *url_in, char *host_ret, int *port_ret,
+			     char *name_ret);
 static void	ftp_timeout(int sig);
 static void	ftp_set_timeout(void);
 static void	ftp_clear_timeout(void);
@@ -203,7 +204,7 @@ ftpErrString(int error)
 }
 
 off_t
-ftpGetSize(FILE *fp, char *name)
+ftpGetSize(FILE *fp, const char *name)
 {
     int i;
     char p[BUFSIZ], *cp, *ep;
@@ -228,7 +229,7 @@ ftpGetSize(FILE *fp, char *name)
 }
 
 time_t
-ftpGetModtime(FILE *fp, char *name)
+ftpGetModtime(FILE *fp, const char *name)
 {
     char p[BUFSIZ], *cp;
     struct tm t;
@@ -260,7 +261,7 @@ ftpGetModtime(FILE *fp, char *name)
 }
 
 FILE *
-ftpGet(FILE *fp, char *file, off_t *seekto)
+ftpGet(FILE *fp, const char *file, off_t *seekto)
 {
     FILE *fp2;
     FTP_t ftp = fcookie(fp);
@@ -276,7 +277,8 @@ ftpGet(FILE *fp, char *file, off_t *seekto)
 
 /* Returns a standard FILE pointer type representing an open control connection */
 FILE *
-ftpLogin(char *host, char *user, char *passwd, int port, int verbose, int *retcode)
+ftpLogin(const char *host, const char *user, const char *passwd, int port,
+	 int verbose, int *retcode)
 {
 #ifdef INET6
     return ftpLoginAf(host, AF_UNSPEC, user, passwd, port, verbose, retcode);
@@ -286,7 +288,8 @@ ftpLogin(char *host, char *user, char *passwd, int port, int verbose, int *retco
 }
 
 FILE *
-ftpLoginAf(char *host, int af, char *user, char *passwd, int port, int verbose, int *retcode)
+ftpLoginAf(const char *host, int af, const char *user, const char *passwd,
+	   int port, int verbose, int *retcode)
 {
     FTP_t n;
     FILE *fp;
@@ -324,7 +327,7 @@ ftpLoginAf(char *host, int af, char *user, char *passwd, int port, int verbose, 
 }
 
 FILE *
-ftpPut(FILE *fp, char *file)
+ftpPut(FILE *fp, const char *file)
 {
     FILE *fp2;
     FTP_t ftp = fcookie(fp);
@@ -345,7 +348,7 @@ ftpPassive(FILE *fp, int st)
 }
 
 FILE *
-ftpGetURL(char *url, char *user, char *passwd, int *retcode)
+ftpGetURL(const char *url, const char *user, const char *passwd, int *retcode)
 {
 #ifdef INET6
     return ftpGetURLAf(url, AF_UNSPEC, user, passwd, retcode);
@@ -355,7 +358,8 @@ ftpGetURL(char *url, char *user, char *passwd, int *retcode)
 }
 
 FILE *
-ftpGetURLAf(char *url, int af, char *user, char *passwd, int *retcode)
+ftpGetURLAf(const char *url, int af, const char *user, const char *passwd,
+	    int *retcode)
 {
     char host[255], name[255];
     int port;
@@ -405,7 +409,7 @@ ftpGetURLAf(char *url, int af, char *user, char *passwd, int *retcode)
 }
 
 FILE *
-ftpPutURL(char *url, char *user, char *passwd, int *retcode)
+ftpPutURL(const char *url, const char *user, const char *passwd, int *retcode)
 {
 #ifdef INET6
     return ftpPutURLAf(url, AF_UNSPEC, user, passwd, retcode);
@@ -416,7 +420,8 @@ ftpPutURL(char *url, char *user, char *passwd, int *retcode)
 }
 
 FILE *
-ftpPutURLAf(char *url, int af, char *user, char *passwd, int *retcode)
+ftpPutURLAf(const char *url, int af, const char *user, const char *passwd,
+	    int *retcode)
 {
     char host[255], name[255];
     int port;
@@ -448,7 +453,7 @@ ftpPutURLAf(char *url, int af, char *user, char *passwd, int *retcode)
 /* Internal workhorse function for dissecting URLs.  Takes a URL as the first argument and returns the
    result of such disection in the host, user, passwd, port and name variables. */
 static int
-get_url_info(char *url_in, char *host_ret, int *port_ret, char *name_ret)
+get_url_info(const char *url_in, char *host_ret, int *port_ret, char *name_ret)
 {
     char *name, *host, *cp, url[BUFSIZ];
     int port;
