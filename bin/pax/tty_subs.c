@@ -36,7 +36,7 @@
  *
  * @(#)tty_subs.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/tty_subs.c,v 1.11.2.1 2001/08/01 05:03:12 obrien Exp $
- * $DragonFly: src/bin/pax/tty_subs.c,v 1.3 2003/09/28 14:39:14 hmp Exp $
+ * $DragonFly: src/bin/pax/tty_subs.c,v 1.4 2004/07/27 07:22:14 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -48,11 +48,7 @@
 #include <string.h>
 #include "pax.h"
 #include "extern.h"
-#ifdef __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 /*
  * routines that deal with I/O to and from the user
@@ -99,11 +95,7 @@ void
 tty_prnt(const char *fmt, ...)
 {
 	va_list ap;
-#	ifdef __STDC__
 	va_start(ap, fmt);
-#	else
-	va_start(ap);
-#	endif
 	if (ttyoutf == NULL)
 		return;
 	(void)vfprintf(ttyoutf, fmt, ap);
@@ -146,11 +138,7 @@ void
 paxwarn(int set, const char *fmt, ...)
 {
 	va_list ap;
-#	ifdef __STDC__
 	va_start(ap, fmt);
-#	else
-	va_start(ap);
-#	endif
 	if (set)
 		exit_val = 1;
 	/*
@@ -178,11 +166,7 @@ void
 syswarn(int set, int errnum, const char *fmt, ...)
 {
 	va_list ap;
-#	ifdef __STDC__
 	va_start(ap, fmt);
-#	else
-	va_start(ap);
-#	endif
 	if (set)
 		exit_val = 1;
 	/*
