@@ -17,7 +17,7 @@
    02111-1307, USA.  */
 
 /* $FreeBSD: src/gnu/usr.bin/cvs/cvs/prepend_args.c,v 1.3.2.2 2002/12/19 21:18:01 peter Exp $ */
-/* $DragonFly: src/gnu/usr.bin/cvs/cvs/prepend_args.c,v 1.2 2003/06/17 04:25:45 dillon Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cvs/cvs/prepend_args.c,v 1.3 2004/01/20 05:42:03 asmodai Exp $ */
 
 
 #ifdef HAVE_CONFIG_H
@@ -33,10 +33,7 @@
    Do not set ARGV[N] to NULL.  If ARGV is NULL, do not store ARGV[0]
    etc.  Backslash can be used to escape whitespace (and backslashes).  */
 static int
-prepend_args (options, buf, argv)
-     char const *options;
-     char *buf;
-     char **argv;
+prepend_args (char const *options, char *buf, char **argv)
 {
   char const *o = options;
   char *b = buf;
@@ -65,10 +62,7 @@ prepend_args (options, buf, argv)
    vector of a main program with argument count *PARGC and argument
    vector *PARGV.  */
 void
-prepend_default_options (options, pargc, pargv)
-     char const *options;
-     int *pargc;
-     char ***pargv;
+prepend_default_options (char const *options, int *pargc, char ***pargv)
 {
   if (options)
     {
