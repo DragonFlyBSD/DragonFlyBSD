@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ndis.c,v 1.62 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.6 2004/11/12 00:09:20 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.7 2004/11/17 18:27:17 dillon Exp $
  */
 
 /*
@@ -1561,7 +1561,7 @@ ndis_alloc_packetpool(status, pool, descnum, protrsvdlen)
 	    ((descnum + NDIS_POOL_EXTRA) + 1),
 	    M_DEVBUF, M_WAITOK|M_ZERO);
 
-	if (pool == NULL) {
+	if (*pool == NULL) {
 		*status = NDIS_STATUS_RESOURCES;
 		return;
 	}
@@ -1784,7 +1784,7 @@ ndis_alloc_bufpool(status, pool, descnum)
 	    ((descnum + NDIS_POOL_EXTRA) + 1),
 	    M_DEVBUF, M_WAITOK|M_ZERO);
 
-	if (pool == NULL) {
+	if (*pool == NULL) {
 		*status = NDIS_STATUS_RESOURCES;
 		return;
 	}
