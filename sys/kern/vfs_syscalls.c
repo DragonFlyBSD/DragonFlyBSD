@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.24 2003/11/10 20:57:18 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.25 2003/11/11 14:33:23 daver Exp $
  */
 
 #include <sys/param.h>
@@ -2107,7 +2107,7 @@ utimes(struct utimes_args *uap)
 	}
 	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, uap->path, td);
 
-	error = kern_utimes(&nd, tv);
+	error = kern_utimes(&nd, uap->tptr ? tv : NULL);
 
 	return (error);
 }
@@ -2132,7 +2132,7 @@ lutimes(struct lutimes_args *uap)
 	}
 	NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_USERSPACE, uap->path, td);
 
-	error = kern_utimes(&nd, tv);
+	error = kern_utimes(&nd, uap->tptr ? tv : NULL);
 
 	return (error);
 }
@@ -2173,7 +2173,7 @@ futimes(struct futimes_args *uap)
 			return (error);
 	}
 
-	error = kern_futimes(uap->fd, tv);
+	error = kern_futimes(uap->fd, uap->tptr ? tv : NULL);
 
 	return (error);
 }
