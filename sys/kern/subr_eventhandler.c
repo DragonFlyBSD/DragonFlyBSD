@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_eventhandler.c,v 1.3 1999/11/16 16:28:57 phk Exp $
- * $DragonFly: src/sys/kern/subr_eventhandler.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_eventhandler.c,v 1.3 2004/08/06 22:32:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,9 +69,8 @@ eventhandler_register(struct eventhandler_list *list, char *name,
 
 	/* Do we need to create the list? */
 	if (list == NULL) {
-	    if ((list = malloc(sizeof(struct eventhandler_list) + strlen(name) + 1, 
-			       M_EVENTHANDLER, M_NOWAIT)) == NULL)
-		return(NULL);
+	    list = malloc(sizeof(struct eventhandler_list) + strlen(name) + 1, 
+			   M_EVENTHANDLER, M_INTWAIT);
 	    list->el_flags = 0;
 	    list->el_name = (char *)list + sizeof(struct eventhandler_list);
 	    strcpy(list->el_name, name);
@@ -84,9 +83,8 @@ eventhandler_register(struct eventhandler_list *list, char *name,
     }
     
     /* allocate an entry for this handler, populate it */
-    if ((eg = malloc(sizeof(struct eventhandler_entry_generic), 
-		     M_EVENTHANDLER, M_NOWAIT)) == NULL)
-	return(NULL);
+    eg = malloc(sizeof(struct eventhandler_entry_generic),
+		M_EVENTHANDLER, M_INTWAIT);
     eg->func = func;
     eg->ee.ee_arg = arg;
     eg->ee.ee_priority = priority;
