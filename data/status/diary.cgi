@@ -1,8 +1,91 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.14 2004/05/02 19:41:30 dillon Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.15 2004/06/24 16:30:14 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
+
+<h2>Mon 21 June 2004</h2>
+<ul>
+	<li>Joerg has brought GCC-3.4-20040618 in and it is now hooked up
+	    to the build.  GCC-3.3 will soon be removed.  To use GCC-3.4
+	    'setenv CCVER gcc34'.
+	<li>The world and kernel now builds with gcc-3.4.  The kernel builds
+	    and runs with gcc-3.4 -O3, but this is not an officially supported
+	    configuration.
+	<li>More M_NOWAIT -> M_INTWAIT work.  Most of the drivers inherited
+	    from FreeBSD make aweful assumptions about M_NOWAIT mallocs
+	    which cause them to break under DragonFly.
+	<li>/usr/bin/ps now reports system thread startup times as the boot
+	    time instead of as Jan-1-1970.  The p_start field in pstats has
+	    been moved to the thread structure so threads can have a start
+	    time in the future - Hiten.
+	<li>Zero the itimers on fork() - Hiten / SUSv3 compliance.
+	<li>MMX/XMM kernel optimizations are now on by default, greatly
+	    improving bcopy/bzero/copyin/copyout performance for large (>4K)
+	    buffers.
+	<li>A number of revoke() related panics have been fixed, in particular
+	    related to 'script' and other pty-using programs.
+	<li>The initial MSFBUF scheme (multi-page cached linear buffers)
+	    has been committed and is now used for NFS requests.  This is
+	    part of the continuing work to eventually make I/O devices
+	    responsible for any KVM mappings (because most just setup DMA
+	    and don't actually have to make any) - Hiten.
+	<li>Continuing ANSIfication work by several people - Chris Pressey.
+	<li>Continuing work on the LWKT messaging system.  A number of bugs
+	    in the lwkt_abortmsg() path have been fixed.
+	<li>The load average is now calculated properly.  Thread sleeps were
+	    not being accounted for properly.
+	<li>Bring in a number of changes from FreeBSD-5: try the elf image
+	    activator first.
+	<li>Fix a number of serious ref-counting and ref holding bugs in
+	    procfs as part of our use of XIO in procfs - GeekGod and Matt
+	<li>Use network predicates for accept() and connect() (using the
+	    new message abort functionality to handle PCATCH) - Jeff.
+	<li>Convert netproto/ns to use the pr_usrreqs structure.
+	<li>Implement markers for traversing PCB lists to fix concurrency
+	    problems with sysctl.
+	<li>Implement a lwkt_setcpu() API function which moves a thread
+	    to a particular cpu.  This will be used by sysctl to iterate
+	    across cpus when collecting per-cpu structural information.
+	<li>Redo netstat to properly iterate the pcb's across all cpus.
+	<li>Significant mbuf cleanup - dtom() has now been removed, and
+	    a normal malloc() is used for PCB allocations and in other places
+	    where mbufs were being abused for structural allocations.
+	<li>dup_sockaddr() now unconditionally uses M_INTWAIT instead of
+	    conditionally using M_NOWAIT, making it more reliable.
+	<li>Fix a number of USB device ref counting issues and fix issues
+	    related to UMASS detaching from CAM while CAM is still active,
+	    and vise-versa.
+	<li>Optimize kern_getcwd() some to avoid a string shifting bcopy().
+	<li>Continued work on asynch syscalls - track pending system calls
+	    and make exit1() wait for them (abort support will be forthcoming).
+	<li><B>Add a negative lookup cache for NFS.</B>  This makes a huge
+	    difference for things like buildworlds where /usr/src is NFS
+	    mounted, reducing (post cached) network bandwidth to 1/10 what
+	    it was before.
+	<li>Add the '-l' option to the 'resident' command, listing all
+	    residented programs and their full paths (if available).  -Hiten.
+	<li><B>Implement the 'rconfig' utility (see the manual page)</B> - for
+	    automatic search/config-script downloading and execution, which
+	    makes installing a new DFly box from CDBoot a whole lot easier
+	    when you are in a multi-machine environment.
+	<li>Revamp the BIO b_dev assignment and revamp the 'disk' layer.
+	    Instead of overloading the raw disk device the disk layer now
+	    creates a new device on top of the raw disk device and takes over
+	    the (user accessible) CDEV (major,minor).  The disk layer does
+	    its work and reassigned b_dev to the raw device.  biodone() now
+	    unconditionally setes b_dev to NODEV and all I/O ops are required
+	    to initialize b_dev prior to initiating the op.  This is
+	    precursor work to our DEV layering and messaging goal.
+	<li>Fix the rootfs search to specify the correct unit number rather
+	    then using unit 0, because CDEVSW lookups now require a valid
+	    minor number (CDEVSW's are now registered with a minor number
+	    range and the same major number can be overloaded as long as the
+	    minor ranges do not conflict).  Fix by Hiroki Sato.
+	<li>Fix a wiring related page table memory leak in the VM system.
+	<li>Fix a number of ^T related panics.
+	<li>properly ref-count all devices.
+</ul>
 
 <h2>Sun 2 May 2004</h2>
 <ul>
