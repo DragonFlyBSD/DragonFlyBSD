@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.67 2004/10/25 13:48:42 simokawa Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.68 2004/11/20 20:50:33 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -862,12 +862,21 @@ cpu_idle(void)
 		    (td->td_flags & TDF_IDLE_NOHLT) == 0) {
 			__asm __volatile("cli");
 			splz();
-			cpu_idle_hook();
+			if (!lwkt_runnable())
+			    cpu_idle_hook();
+#ifdef SMP
+			else
+			    __asm __volatile("pause");
+#endif
 			++cpu_idle_hltcnt;
 		} else {
 			td->td_flags &= ~TDF_IDLE_NOHLT;
 			splz();
+#ifdef SMP
+			__asm __volatile("sti; pause");
+#else
 			__asm __volatile("sti");
+#endif
 			++cpu_idle_spincnt;
 		}
 	}

@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/i386/include/lock.h,v 1.11.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/i386/include/Attic/lock.h,v 1.9 2004/07/16 05:48:46 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/lock.h,v 1.10 2004/11/20 20:50:36 dillon Exp $
  */
 
 #ifndef _MACHINE_LOCK_H_
@@ -77,6 +77,7 @@
 7: ;								\
 	movl	$0,%eax ;	/* expected contents of lock */	\
 	lock cmpxchgl %ecx,mem ; /* Z=1 (jz) on success */	\
+	pause ;							\
 	jnz	7b ; 						\
 
 #define SPIN_LOCK_PUSH_REGS					\

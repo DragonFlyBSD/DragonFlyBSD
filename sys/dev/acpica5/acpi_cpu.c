@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.41 2004/06/24 00:38:51 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.6 2004/08/07 00:59:53 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.7 2004/11/20 20:50:30 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -989,8 +989,19 @@ acpi_cpu_c1()
 #ifdef __ia64__
     ia64_call_pal_static(PAL_HALT_LIGHT, 0, 0, 0);
 #else
-    __asm __volatile("sti; hlt");
+    splz();
+#ifdef SMP
+    if (!lwkt_runnable())
+	__asm __volatile("sti; hlt");
+    else
+	__asm __volatile("sti; pause");
+#else
+    if (!lwkt_runnable())
+	__asm __volatile("sti; hlt");
+    else
+	__asm __volatile("sti");
 #endif
+#endif /* !__ia64__ */
 }
 
 /*

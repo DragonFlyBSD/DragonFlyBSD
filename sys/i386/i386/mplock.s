@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.14 2004/07/16 05:48:29 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.15 2004/11/20 20:50:33 dillon Exp $
  *
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
  * 
@@ -161,6 +161,7 @@ NON_GPROF_ENTRY(get_mplock)
 	 * and 'block' until the mp_lock is obtained.
 	 */
 2:
+	pause
 	call	lwkt_switch
 #ifdef INVARIANTS
 	movl	PCPU(cpuid),%eax	/* failure */
