@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.19 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.20 2005/01/31 15:39:12 joerg Exp $
  */
 
 /*
@@ -357,7 +357,6 @@ fxp_probe(device_t dev)
 static void
 fxp_powerstate_d0(device_t dev)
 {
-#if defined(__DragonFly__) || __FreeBSD_version >= 430002
 	u_int32_t iobase, membase, irq;
 
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
@@ -377,7 +376,6 @@ fxp_powerstate_d0(device_t dev)
 		pci_write_config(dev, FXP_PCI_MMBA, membase, 4);
 		pci_write_config(dev, PCIR_INTLINE, irq, 4);
 	}
-#endif
 }
 
 static int
@@ -395,7 +393,6 @@ fxp_attach(device_t dev)
 	sc->dev = dev;
 	callout_init(&sc->fxp_stat_timer);
 	sysctl_ctx_init(&sc->sysctl_ctx);
-	mtx_init(&sc->sc_mtx, device_get_nameunit(dev), MTX_DEF | MTX_RECURSE);
 
 	s = splimp(); 
 
@@ -715,8 +712,6 @@ fxp_release(struct fxp_softc *sc)
 		bus_release_resource(sc->dev, sc->rtp, sc->rgd, sc->mem);
 
         sysctl_ctx_free(&sc->sysctl_ctx);
-
-	mtx_destroy(&sc->sc_mtx);
 }
 
 /*
@@ -789,7 +784,7 @@ fxp_suspend(device_t dev)
 	fxp_stop(sc);
 	
 	for (i = 0; i < 5; i++)
-		sc->saved_maps[i] = pci_read_config(dev, PCIR_MAPS + i * 4, 4);
+		sc->saved_maps[i] = pci_read_config(dev, PCIR_BAR(i), 4);
 	sc->saved_biosaddr = pci_read_config(dev, PCIR_BIOS, 4);
 	sc->saved_intline = pci_read_config(dev, PCIR_INTLINE, 1);
 	sc->saved_cachelnsz = pci_read_config(dev, PCIR_CACHELNSZ, 1);
@@ -810,7 +805,7 @@ static int
 fxp_resume(device_t dev)
 {
 	struct fxp_softc *sc = device_get_softc(dev);
-	struct ifnet *ifp = &sc->sc_if;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	u_int16_t pci_command;
 	int i, s;
 
@@ -820,7 +815,7 @@ fxp_resume(device_t dev)
 
 	/* better way to do this? */
 	for (i = 0; i < 5; i++)
-		pci_write_config(dev, PCIR_MAPS + i * 4, sc->saved_maps[i], 4);
+		pci_write_config(dev, PCIR_BAR(i), sc->saved_maps[i], 4);
 	pci_write_config(dev, PCIR_BIOS, sc->saved_biosaddr, 4);
 	pci_write_config(dev, PCIR_INTLINE, sc->saved_intline, 1);
 	pci_write_config(dev, PCIR_CACHELNSZ, sc->saved_cachelnsz, 1);
@@ -1205,7 +1200,7 @@ fxp_intr(void *xsc)
 	u_int8_t statack;
 
 #ifdef DEVICE_POLLING
-	struct ifnet *ifp = &sc->sc_if;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	if (ifp->if_flags & IFF_POLLING)
 		return;
@@ -1242,7 +1237,7 @@ fxp_intr(void *xsc)
 static void
 fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 {
-	struct ifnet *ifp = &sc->sc_if;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mbuf *m;
 	struct fxp_rfa *rfa;
 	int rnr = (statack & FXP_SCB_STATACK_RNR) ? 1 : 0;
@@ -1390,7 +1385,7 @@ static void
 fxp_tick(void *xsc)
 {
 	struct fxp_softc *sc = xsc;
-	struct ifnet *ifp = &sc->sc_if;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct fxp_stats *sp = sc->fxp_stats;
 	struct fxp_cb_tx *txp;
 	struct mbuf *m;
@@ -1496,7 +1491,7 @@ fxp_tick(void *xsc)
 static void
 fxp_stop(struct fxp_softc *sc)
 {
-	struct ifnet *ifp = &sc->sc_if;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct fxp_cb_tx *txp;
 	int i;
 
@@ -1572,7 +1567,7 @@ static void
 fxp_init(void *xsc)
 {
 	struct fxp_softc *sc = xsc;
-	struct ifnet *ifp = &sc->sc_if;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct fxp_cb_config *cbp;
 	struct fxp_cb_ias *cb_ias;
 	struct fxp_cb_tx *txp;
@@ -2060,17 +2055,13 @@ static int
 fxp_mc_addrs(struct fxp_softc *sc)
 {
 	struct fxp_cb_mcs *mcsp = sc->mcsp;
-	struct ifnet *ifp = &sc->sc_if;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct ifmultiaddr *ifma;
 	int nmcasts;
 
 	nmcasts = 0;
 	if ((sc->flags & FXP_FLAG_ALL_MCAST) == 0) {
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
 		LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
-#else
-		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
-#endif
 			if (ifma->ifma_addr->sa_family != AF_LINK)
 				continue;
 			if (nmcasts >= MAXMCADDR) {
@@ -2106,7 +2097,7 @@ static void
 fxp_mc_setup(struct fxp_softc *sc)
 {
 	struct fxp_cb_mcs *mcsp = sc->mcsp;
-	struct ifnet *ifp = &sc->sc_if;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int count;
 
 	/*

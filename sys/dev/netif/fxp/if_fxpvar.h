@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxpvar.h,v 1.17.2.6 2002/11/13 20:58:31 iedowse Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxpvar.h,v 1.5 2004/09/14 23:04:38 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxpvar.h,v 1.6 2005/01/31 15:39:12 joerg Exp $
  */
 
 /*
@@ -89,17 +89,6 @@
  */
 #define TUNABLE_BUNDLE_MAX 6
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-#define	FXP_LOCK(_sc)
-#define	FXP_UNLOCK(_sc)
-#define mtx_init(a, b, c)
-#define mtx_destroy(a)
-struct mtx { int dummy; };
-#else
-#define	FXP_LOCK(_sc)		mtx_lock(&(_sc)->sc_mtx)
-#define	FXP_UNLOCK(_sc)		mtx_unlock(&(_sc)->sc_mtx)
-#endif
-
 #ifdef __alpha__
 #undef vtophys
 #define vtophys(va)	alpha_XXX_dmamap((vm_offset_t)(va))
@@ -116,7 +105,6 @@ struct fxp_softc {
 	int rgd;			/* register descriptor in use */
 	struct resource *irq;		/* resource descriptor for interrupt */
 	void *ih;			/* interrupt handler cookie */
-	struct mtx sc_mtx;
 	bus_space_tag_t sc_st;		/* bus space tag */
 	bus_space_handle_t sc_sh;	/* bus space handle */
 	struct mbuf *rfa_headm;		/* first mbuf in receive frame area */
@@ -173,7 +161,3 @@ struct fxp_softc {
 	bus_space_write_2((sc)->sc_st, (sc)->sc_sh, (reg), (val))
 #define	CSR_WRITE_4(sc, reg, val)					\
 	bus_space_write_4((sc)->sc_st, (sc)->sc_sh, (reg), (val))
-
-#define	sc_if			arpcom.ac_if
-
-#define	FXP_UNIT(_sc)		(_sc)->arpcom.ac_if.if_dunit
