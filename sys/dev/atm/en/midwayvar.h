@@ -1,5 +1,5 @@
 /*	$NetBSD: midwayvar.h,v 1.10 1997/03/20 21:34:46 chuck Exp $	*/
-/*	$DragonFly: src/sys/dev/atm/en/midwayvar.h,v 1.2 2003/08/27 10:35:15 rob Exp $	/*
+/*$DragonFly: src/sys/dev/atm/en/midwayvar.h,v 1.3 2003/08/27 11:09:52 rob Exp $*/	
 
 /*
  *
