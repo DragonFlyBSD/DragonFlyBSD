@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $ 
- * $DragonFly: src/sys/net/if.c,v 1.15 2004/03/23 22:19:05 hsu Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.16 2004/03/24 02:08:33 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -83,7 +83,7 @@
  * System initialization
  */
 
-static int ifconf (u_long, caddr_t);
+static int ifconf (u_long, caddr_t, struct thread *);
 static void ifinit (void *);
 static void if_qflush (struct ifqueue *);
 static void if_slowtimo (void *);
@@ -1008,7 +1008,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 
 	case SIOCGIFCONF:
 	case OSIOCGIFCONF:
-		return (ifconf(cmd, data));
+		return (ifconf(cmd, data, td));
 	}
 	ifr = (struct ifreq *)data;
 
@@ -1377,7 +1377,7 @@ ifpromisc(ifp, pswitch)
  */
 /*ARGSUSED*/
 static int
-ifconf(u_long cmd, caddr_t data)
+ifconf(u_long cmd, caddr_t data, struct thread *td)
 {
 	struct ifconf *ifc = (struct ifconf *)data;
 	struct ifnet *ifp;
@@ -1404,7 +1404,8 @@ ifconf(u_long cmd, caddr_t data)
 			if (space <= sizeof(ifr))
 				break;
 			sa = ifa->ifa_addr;
-			if (curproc->p_ucred->cr_prison && prison_if(curthread, sa))
+			if (td->td_proc->p_ucred->cr_prison &&
+			    prison_if(td, sa))
 				continue;
 			addrs++;
 #ifdef COMPAT_43
