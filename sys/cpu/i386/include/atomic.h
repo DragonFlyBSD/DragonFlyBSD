@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.6 2004/02/13 19:37:16 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.7 2004/02/14 22:26:43 dillon Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -99,7 +99,7 @@ atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v)\
 static __inline void					\
 atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v)\
 {							\
-	__asm __volatile(MPLOCKED OP			\
+	__asm __volatile(OP				\
 			 : "+m" (*p)			\
 			 : "iq" (V)); 			\
 }
