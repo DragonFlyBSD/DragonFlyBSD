@@ -1,0 +1,52 @@
+
+			GCC-3.3-20040126 AS USED BY DRAGONFLY
+
+    This directory contains a selected set of files from the gnu 
+    gcc-3.4-20040618 distribution.  The entire distribution is 188MB but
+    we really only need around 31MB of it.  No files have been moved
+    or modified from their extracted position.
+
+    DO NOT CREATE OR EDIT ANY FILES IN THIS DIRECTORY HIERARCHY!  THIS
+    HIERARCHY REPRESENTS AN EXACT COPY, MINUS UNNEEDED FILES, OF THE GNU
+    GCC DISTRIBUTION.  All modifications are made in the 
+    DragonFly build wrapper, in /usr/src/gnu/usr.bin/cc34 and
+    /usr/src/gnu/lib/gcc34, by creating overrides or performing surgery
+    on the distribution.  The only additional files added to this directory
+    are README.DRAGONFLY and README.DELETED. 
+
+	MD5 (gcc-3.4-20040618.tar.bz2) = 6eb0e85c225250cc40b75496419d4250
+
+    UPGRADE PROCDURE:
+
+	* download a new gcc-3.4.X dist greater then 3.4-20040618
+	  (the release after this snapshot would be gcc-3.4.1).
+
+	* extract the archive into this directory, overlaying the
+	  existing files.
+
+	* A 'cvs update' will show you what has changed ('M') relative 
+	  to what we had before.  There will be hundreds of files marked
+	  '?' which, if not needed, should be deleted and NOT COMMITTED.
+	  If any new files are needed you can cvs add and commit them.
+
+	* Make sure that both buildworld and a crossbuilt buildworld
+	  for supported architectures works before committing the upgrade,
+	  making adjustments within /usr/src/gnu/usr.bin/cc34.
+
+	  DO NOT MAKE ANY EDITS TO THE GCC DISTRIBUTION IN THIS CONTRIB
+	  DIRECTORY, OTHER THEN TO ADD OR DELETE FILES ASSOCIATED WITH THE
+	  GNU DISTRIBUTION.
+
+    Do not overlay major rev changes in the contrib directory or
+    build infrastructure directory for older major revs!  Create a new
+    major rev directory as contrib/gcc-x.x.  The older major revs in
+    contrib/gcc-x.x can be physically removed from the CVS repository,
+    leaving only this file (README.DRAGONFLY) and README.DELETED in place.
+    Older gcc dists can be recovered by manually unpacking older gnu dists
+    in /usr/src/contrib, without CVS support.  Do not physically remove
+    the DFly build infrastructure for older GCCs from
+    /usr/src/gnu/usr.bin/.  cvs delete, sure, but no physical removal,
+    because then you won't be able to revert your cvs tree past a major
+    rev change.
+
+    The file README.DELETED contains a list of deleted files.
