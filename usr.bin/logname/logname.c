@@ -33,18 +33,16 @@
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)logname.c	8.2 (Berkeley) 4/3/94
  *
- * $DragonFly: src/usr.bin/logname/logname.c,v 1.4 2004/10/29 13:52:53 liamfoy Exp $
+ * $DragonFly: src/usr.bin/logname/logname.c,v 1.5 2004/12/13 14:08:44 liamfoy Exp $
  */
 
 #include <err.h>
-#include <errno.h>
 #include <locale.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-static void usage(void);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
@@ -64,14 +62,14 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if ((p = getlogin()) == NULL)
-		err(1, NULL);
-	(void)printf("%s\n", p);
+		err(1, "getlogin failed");
+	printf("%s\n", p);
 	exit(0);
 }
 
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: logname\n");
+	fprintf(stderr, "usage: logname\n");
 	exit(1);
 }
