@@ -1,7 +1,7 @@
   -- ...................................................................... --
   -- FreeBSD SGML Public Identifiers ...................................... --
   
-  -- $DragonFly: doc/share/sgml/catalog,v 1.1.1.1 2004/04/02 09:36:39 hmp Exp $
+  -- $DragonFly: doc/share/sgml/catalog,v 1.2 2004/06/25 15:54:58 justin Exp $
   --
 
   -- ...................................................................... --
@@ -37,6 +37,9 @@ PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Language Neutral Entities//EN"
 
 PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Trademark Entities//EN"
 	"trademarks.ent"
+
+PUBLIC "-//DragonFlyBSD//ENTITIES DocBook URL Entities//EN"
+	"urls.ent"
 
   -- ...................................................................... --
   -- English specific ..................................................... --

@@ -8,11 +8,8 @@
 
      Please keep this file sorted.
 
-     $DragonFly: doc/share/sgml/trademarks.ent,v 1.1.1.1 2004/04/02 09:37:15 hmp Exp $
+     $DragonFly: doc/share/sgml/trademarks.ent,v 1.2 2004/06/25 15:54:59 justin Exp $
 -->
-
-<!ENTITY tm-attrib.dragonflybsd "<para>DragonFlyBSD is a registered
-  trademark of the DragonFlyBSD Project.</para>">
 
 <!ENTITY tm-attrib.3com "<para>3Com and HomeConnect are registered
   trademarks of 3Com Corporation.</para>">
@@ -105,6 +102,9 @@
   Computer Corporation</para>">
 <!ENTITY dell "<trademark>Dell</trademark>">
 <!ENTITY poweredge "<trademark>PowerEdge</trademark>">
+
+<!ENTITY tm-attrib.dragonflybsd "<para>DragonFlyBSD is a registered
+  trademark of the DragonFlyBSD Project.</para>">
 
 <!ENTITY tm-attrib.freebsd "<para>FreeBSD is a registered trademark of
   Wind River Systems, Inc.  This is expected to change soon.</para>">

@@ -1,0 +1,14 @@
+<!-- $FreeBSD: doc/share/sgml/urls.ent,v 1.1 2004/05/11 10:59:48 hrs Exp $ -->
+<!-- $DragonFly: doc/share/sgml/urls.ent,v 1.1 2004/06/25 15:54:58 justin Exp $ -->
+
+<!ENTITY % freebsd.urls.absolute "IGNORE">
+
+<![%freebsd.urls.absolute;[
+<!-- put absolute urls here -->
+
+<!ENTITY url.main "http://www.dragonflybsd.org">
+]]>
+
+<!-- put relative urls here -->
+
+<!ENTITY url.main "../../../..">

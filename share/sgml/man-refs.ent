@@ -20,8 +20,8 @@
      lexicographical order by the entity (i.e., the dots used in place of
      special characters should not be expanded when comparing).
 
-     $DragonFly: doc/share/sgml/man-refs.ent,v 1.1.1.1 2004/04/02 09:37:08 hmp Exp $
-     $DragonFly: doc/share/sgml/man-refs.ent,v 1.1.1.1 2004/04/02 09:37:08 hmp Exp $
+     $DragonFly: doc/share/sgml/man-refs.ent,v 1.2 2004/06/25 15:54:58 justin Exp $
+     $DragonFly: doc/share/sgml/man-refs.ent,v 1.2 2004/06/25 15:54:58 justin Exp $
 -->
 
 <!ENTITY man...1 "<citerefentry/<refentrytitle/[/<manvolnum/1//">
@@ -230,6 +230,7 @@
 <!ENTITY man.grops.1 "<citerefentry/<refentrytitle/grops/<manvolnum/1//">
 <!ENTITY man.grotty.1 "<citerefentry/<refentrytitle/grotty/<manvolnum/1//">
 <!ENTITY man.groups.1 "<citerefentry/<refentrytitle/groups/<manvolnum/1//">
+<!ENTITY man.growisofs.1 "<citerefentry vendor='ports'/<refentrytitle/growisofs/<manvolnum/1//">
 <!ENTITY man.gs.1 "<citerefentry vendor='ports'/<refentrytitle/gs/<manvolnum/1//">
 <!ENTITY man.gunzip.1 "<citerefentry/<refentrytitle/gunzip/<manvolnum/1//">
 <!ENTITY man.gzcat.1 "<citerefentry/<refentrytitle/gzcat/<manvolnum/1//">
@@ -477,6 +478,7 @@
 <!ENTITY man.pod2html.1 "<citerefentry/<refentrytitle/pod2html/<manvolnum/1//">
 <!ENTITY man.pod2man.1 "<citerefentry/<refentrytitle/pod2man/<manvolnum/1//">
 <!ENTITY man.popd.1 "<citerefentry/<refentrytitle/popd/<manvolnum/1//">
+<!ENTITY man.portaudit.1 "<citerefentry vendor='ports'/<refentrytitle/portaudit/<manvolnum/1//">
 <!ENTITY man.portlint.1 "<citerefentry vendor='ports'/<refentrytitle/portlint/<manvolnum/1//">
 <!ENTITY man.portupgrade.1 "<citerefentry vendor='ports'/<refentrytitle/portupgrade/<manvolnum/1//">
 <!ENTITY man.pr.1 "<citerefentry/<refentrytitle/pr/<manvolnum/1//">
@@ -3639,6 +3641,7 @@
 <!ENTITY man.pim6sd.conf.5 "<citerefentry/<refentrytitle/pim6sd.conf/<manvolnum/5//">
 <!ENTITY man.printcap.5 "<citerefentry/<refentrytitle/printcap/<manvolnum/5//">
 <!ENTITY man.procfs.5 "<citerefentry/<refentrytitle/procfs/<manvolnum/5//">
+<!ENTITY man.procmailex.5 "<citerefentry vendor='ports'/<refentrytitle/procmailex/<manvolnum/5//">
 <!ENTITY man.protocols.5 "<citerefentry/<refentrytitle/protocols/<manvolnum/5//">
 <!ENTITY man.publickey.5 "<citerefentry/<refentrytitle/publickey/<manvolnum/5//">
 <!ENTITY man.pw.conf.5 "<citerefentry/<refentrytitle/pw.conf/<manvolnum/5//">
@@ -4156,6 +4159,7 @@
 <!ENTITY man.scsi.8 "<citerefentry/<refentrytitle/scsi/<manvolnum/8//">
 <!ENTITY man.scspd.8 "<citerefentry/<refentrytitle/scspd/<manvolnum/8//">
 <!ENTITY man.sdpcontrol.8 "<citerefentry/<refentrytitle/sdpcontrol/<manvolnum/8//">
+<!ENTITY man.sdpd.8 "<citerefentry/<refentrytitle/sdpd/<manvolnum/8//">
 <!ENTITY man.securelevel.8 "<citerefentry/<refentrytitle/securelevel/<manvolnum/8//">
 <!ENTITY man.sendmail.8 "<citerefentry/<refentrytitle/sendmail/<manvolnum/8//">
 <!ENTITY man.setextattr.8 "<citerefentry/<refentrytitle/setextattr/<manvolnum/8//">
