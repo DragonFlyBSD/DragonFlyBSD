@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.21 2005/03/12 01:58:26 joerg Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.22 2005/03/12 03:24:19 joerg Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -534,13 +534,13 @@ void		m_chtype(struct mbuf *m, int type);
 /* struct tdb_indent, never added */
 #define	PACKET_TAG_IPSEC_OUT_CRYPTO_NEEDED	4  /* NIC IPsec crypto req'ed */
 /* struct tdb_indent, never added */
-#define	PACKET_TAG_IPSEC_PENDING_TDB		6  /* Reminder to do IPsec */
+#define	PACKET_TAG_IPSEC_PENDING_TDB		5  /* Reminder to do IPsec */
 /* struct tdb_indent, never added */
-#define	PACKET_TAG_ENCAP			11 /* Encap.  processing */
+#define	PACKET_TAG_ENCAP			6 /* Encap.  processing */
 /* struct ifnet *, the GIF interface */
-#define	PACKET_TAG_IPSEC_HISTORY		13 /* IPSEC history */
+#define	PACKET_TAG_IPSEC_HISTORY		7 /* IPSEC history */
 /* struct ipsec_history */
-#define	PACKET_TAG_IPV6_INPUT			14 /* IPV6 input processing */
+#define	PACKET_TAG_IPV6_INPUT			8 /* IPV6 input processing */
 /* struct ip6aux */
 
 /*
