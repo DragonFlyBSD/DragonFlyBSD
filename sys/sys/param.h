@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.15 2004/07/24 20:21:35 dillon Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.16 2004/08/07 21:22:25 dillon Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -57,12 +57,15 @@
 #undef __DragonFly_version
 #define __DragonFly_version 110000	/* Master, propagated to newvers */
 
+#ifdef __FreeBSD__
 /* 
  * __FreeBSD_version numbers for source compatibility.  This is temporary
- * along with the __FreeBSD__ define in gcc.
+ * along with the __FreeBSD__ define in gcc2.  Note that gcc3 does not 
+ * define __FreeBSD__ by default, only __DragonFly__.
  */
 #undef __FreeBSD_version
 #define __FreeBSD_version 480101
+#endif
 
 #ifndef NULL
 #define NULL	0
