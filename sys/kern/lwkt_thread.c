@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.49 2004/01/30 05:42:17 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.50 2004/01/31 17:14:40 joerg Exp $
  */
 
 /*
@@ -1539,6 +1539,7 @@ lwkt_process_ipiq(void)
     }
 }
 
+#ifdef _KERNEL
 void
 lwkt_process_ipiq_frame(struct intrframe frame)
 {
@@ -1570,6 +1571,7 @@ lwkt_process_ipiq_frame(struct intrframe frame)
 	}
     }
 }
+#endif
 
 #else
 
