@@ -34,7 +34,7 @@
 .\"
 .\"     @(#)rc.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/share/man/man8/rc.8,v 1.22 2002/12/12 17:25:58 ru Exp $
-.\" $DragonFly: src/share/man/man8/rc.8,v 1.3 2003/08/01 04:31:03 rob Exp $
+.\" $DragonFly: src/share/man/man8/rc.8,v 1.4 2004/03/11 12:28:57 hmp Exp $
 .Dd November 4, 2002
 .Dt RC 8
 .Os
@@ -246,7 +246,7 @@ and
 .Dq Li BEFORE
 keywords.
 In addition, all scripts must have a
-.Dq Li "# KEYWORD: FreeBSD"
+.Dq Li "# KEYWORD: DragonFly"
 line.
 .Pp
 Each script is expected to support at least the following arguments, which
@@ -261,7 +261,7 @@ This should check that the service is to be started as specified by
 Also checks if the service is already running and refuses to start if
 it is.
 This latter check is not performed by standard
-.Fx
+.Dx
 scripts if the system is starting directly to multi-user mode, to
 speed up the boot process.
 If
@@ -485,7 +485,7 @@ Most scripts require little more than the following.
 # PROVIDE: foo
 # REQUIRE: bar_service_required_to_precede_foo
 # BEFORE:  baz_service_requiring_foo_to_precede_it
-# KEYWORD: FreeBSD
+# KEYWORD: DragonFly
 
 \&. /etc/rc.subr
 
@@ -507,7 +507,7 @@ The script may list and define as many commands at it needs.
 # PROVIDE: foo
 # REQUIRE: bar_service_required_to_precede_foo
 # BEFORE:  baz_service_requiring_foo_to_precede_it
-# KEYWORD: FreeBSD
+# KEYWORD: DragonFly
 
 \&. /etc/rc.subr
 

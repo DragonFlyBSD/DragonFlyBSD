@@ -32,7 +32,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/rpc.lockd/rpc.lockd.8,v 1.8.2.1 2000/12/08 15:28:49 ru Exp $
-.\" $DragonFly: src/usr.sbin/rpc.lockd/rpc.lockd.8,v 1.2 2003/06/17 04:30:02 dillon Exp $
+.\" $DragonFly: src/usr.sbin/rpc.lockd/rpc.lockd.8,v 1.3 2004/03/11 12:28:59 hmp Exp $
 .\"
 .Dd September 24, 1995
 .Dt RPC.LOCKD 8
@@ -82,10 +82,10 @@ RPC protocol specification for the network lock manager protocol.
 .Sh BUGS
 The current implementation provides only the server side of the protocol
 (ie. clients running other OS types can establish locks on a
-.Fx
+.Dx
 fileserver,
 but there is currently no means for a
-.Fx
+.Dx
 client to establish locks).
 .Pp
 Versions 1, 2 and 3 of the protocol are supported.  However, only versions

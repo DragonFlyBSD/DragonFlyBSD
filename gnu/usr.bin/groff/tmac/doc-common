@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)doc-common	8.1 (Berkeley) 06/08/93
-.\"	$DragonFly: src/gnu/usr.bin/groff/tmac/Attic/doc-common,v 1.1 2004/02/03 08:37:33 rob Exp $ 
+.\"	$DragonFly: src/gnu/usr.bin/groff/tmac/Attic/doc-common,v 1.2 2004/03/11 12:28:50 hmp Exp $ 
 .\"
 .\"     %beginstrip%
 .
@@ -80,6 +80,7 @@
 .nr Dq 12n
 .nr Ds 6n\" many manpages still use this as a -width value
 .nr Dv 12n
+.nr Dx 1
 .nr Ec 3
 .nr Ef 8n\" ?
 .nr Ek 8n\" ?
@@ -452,6 +453,14 @@
 .        ds doc-operating-system "\*[doc-operating-system-BSD-\$2]
 .      el \
 .        tm mdoc warning: .Os: Unknown BSD version `\$2' (#\n[.c])
+.  \}\}
+.  el \{ .ie "\$1"FreeBSD" \{\
+.    ds doc-operating-system FreeBSD
+.    if \A\$2 \{\
+.      ie d doc-operating-system-FreeBSD-\$2 \
+.        as doc-operating-system \~\*[doc-operating-system-FreeBSD-\$2]
+.      el \
+.        tm mdoc warning: .Os: Unknown FreeBSD version `\$2' (#\n[.c])
 .  \}\}
 .  el \{ .ie "\$1"DragonFly" \{\
 .    ds doc-operating-system DragonFly

@@ -27,7 +27,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/gen/shm_open.3,v 1.3.2.5 2001/12/14 18:33:51 ru Exp $
-.\" $DragonFly: src/lib/libcr/gen/Attic/shm_open.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libcr/gen/Attic/shm_open.3,v 1.3 2004/03/11 12:28:51 hmp Exp $
 .\"
 .Dd March 24, 2000
 .Dt SHM_OPEN 3
@@ -59,7 +59,7 @@ function removes a shared memory object named
 .Fa path .
 .Pp
 In the
-.Fx
+.Dx
 implementation,
 .Tn POSIX
 shared memory objects are implemented as ordinary files.
@@ -84,7 +84,7 @@ argument is checked to ensure that the access mode specified is not
 (which is not defined for shared memory objects).
 .Pp
 In addition, the
-.Fx
+.Dx
 implementation causes
 .Fn mmap
 of a descriptor returned by

@@ -26,7 +26,7 @@ changecom(,)dnl
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/ppp/ppp.8.m4,v 1.301.2.1 2002/09/01 02:12:31 brian Exp $
-.\" $DragonFly: src/usr.sbin/ppp/ppp.8.m4,v 1.2 2003/06/17 04:30:00 dillon Exp $
+.\" $DragonFly: src/usr.sbin/ppp/ppp.8.m4,v 1.3 2004/03/11 12:28:59 hmp Exp $
 .\"
 .Dd September 20, 1995
 .Dt PPP 8
@@ -2168,7 +2168,7 @@ set speed 115200
 .Ed
 .Pp
 Cuaa0 is the first serial port on
-.Fx .
+.Dx .
 If you're running
 .Nm
 on

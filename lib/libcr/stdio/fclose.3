@@ -35,7 +35,7 @@
 .\"
 .\"     @(#)fclose.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdio/fclose.3,v 1.7.2.4 2001/12/14 18:33:57 ru Exp $
-.\" $DragonFly: src/lib/libcr/stdio/Attic/fclose.3,v 1.2 2003/06/17 04:26:45 dillon Exp $
+.\" $DragonFly: src/lib/libcr/stdio/Attic/fclose.3,v 1.3 2004/03/11 12:28:51 hmp Exp $
 .\"
 .Dd June 4, 1993
 .Dt FCLOSE 3
@@ -83,7 +83,7 @@ does not handle NULL arguments; they will result in a segmentation
 violation.
 This is intentional - it makes it easier to make sure programs written
 under
-.Fx
+.Dx
 are bug free.
 This behaviour is an implementation detail, and programs should not
 rely upon it.

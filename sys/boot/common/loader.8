@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
-.\" $DragonFly: src/sys/boot/common/loader.8,v 1.4 2003/11/10 06:08:31 dillon Exp $
+.\" $DragonFly: src/sys/boot/common/loader.8,v 1.5 2004/03/11 12:28:57 hmp Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
@@ -37,7 +37,7 @@
 The program called
 .Nm
 is the final stage of
-.Fx Ns 's
+.Dx Ns 's
 kernel bootstrapping process.
 On IA32 (i386) architectures, it is a
 .Pa BTX
@@ -623,7 +623,7 @@ The
 Forth standard words, extra
 .Tn FICL
 words, extra
-.Fx
+.Dx
 words, and the builtin commands;
 the latter were already described.
 The
@@ -738,8 +738,8 @@ if the architecture is IA32.
 .It arch-alpha
 .Ic TRUE
 if the architecture is AXP.
-.It FreeBSD_version
-.Fx
+.It DragonFly_version
+.Dx
 version at compile time.
 .It loader_version
 .Nm

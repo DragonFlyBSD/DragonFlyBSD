@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)doc-syms	8.1 (Berkeley) 06/08/93
-.\" $DragonFly: src/gnu/usr.bin/groff/tmac/Attic/doc-syms,v 1.1 2004/02/03 08:37:33 rob Exp $ 
+.\" $DragonFly: src/gnu/usr.bin/groff/tmac/Attic/doc-syms,v 1.2 2004/03/11 12:28:50 hmp Exp $ 
 .\"
 .\"     %beginstrip%
 .
@@ -262,7 +262,7 @@
 .
 .
 .\" NS Fx user macro
-.\" NS   print DragonFly
+.\" NS   print FreeBSD
 .\" NS
 .\" NS modifies:
 .\" NS   doc-arg-ptr
@@ -284,7 +284,7 @@
 .  ds doc-str-Fx \f[\n[doc-curr-font]]\s[\n[doc-curr-size]u]
 .
 .  \" default value if no argument
-.  ds doc-str-Fx1 \*[doc-Tn-font-size]\%DragonFly\*[doc-str-Fx]
+.  ds doc-str-Fx1 \*[doc-Tn-font-size]\%FreeBSD\*[doc-str-Fx]
 .
 .  if !\n[doc-arg-limit] \
 .    if \n[.$] \{\
@@ -296,10 +296,10 @@
 .    nr doc-arg-ptr +1
 .    ie (\n[doc-type\n[doc-arg-ptr]] == 2) \{\
 .      ie \A\*[doc-arg\n[doc-arg-ptr]] \{\
-.        ie d doc-operating-system-DragonFly-\*[doc-arg\n[doc-arg-ptr]] \
-.          as doc-str-Fx1 \~\*[doc-operating-system-DragonFly-\*[doc-arg\n[doc-arg-ptr]]]
+.        ie d doc-operating-system-FreeBSD-\*[doc-arg\n[doc-arg-ptr]] \
+.          as doc-str-Fx1 \~\*[doc-operating-system-FreeBSD-\*[doc-arg\n[doc-arg-ptr]]]
 .        el \{\
-.          tmc mdoc warning: .Fx: Unknown DragonFly version
+.          tmc mdoc warning: .Fx: Unknown FreeBSD version
 .          tm1 " `\*[doc-arg\n[doc-arg-ptr]]' (#\n[.c])
 .          as doc-str-Fx1 \~\*[doc-arg\n[doc-arg-ptr]]
 .      \}\}
@@ -312,6 +312,70 @@
 .
 .  \" replace current argument with result
 .  ds doc-arg\n[doc-arg-ptr] "\*[doc-str-Fx1]
+.  nr doc-type\n[doc-arg-ptr] 2
+.  ds doc-space\n[doc-arg-ptr] "\*[doc-space]
+.
+.  \" recompute space vector for remaining arguments
+.  nr doc-num-args (\n[doc-arg-limit] - \n[doc-arg-ptr])
+.  nr doc-arg-limit \n[doc-arg-ptr]
+.  if \n[doc-num-args] \
+.    doc-parse-space-vector
+.
+.  doc-print-recursive
+..
+.
+.
+.\" NS Dx user macro
+.\" NS   print DragonFly
+.\" NS
+.\" NS modifies:
+.\" NS   doc-arg-ptr
+.\" NS   doc-curr-font
+.\" NS   doc-curr-size
+.\" NS   doc-macro-name
+.\" NS
+.\" NS local variable:
+.\" NS   doc-str-Dx
+.\" NS   doc-str-Dx1
+.\" NS
+.\" NS width register `Dx' defined in doc-common
+.
+.\" we use the doc-operating-system-DragonFly-* strings defined in doc-common
+.
+.de Dx
+.  nr doc-curr-font \n[.f]
+.  nr doc-curr-size \n[.ps]
+.  ds doc-str-Dx \f[\n[doc-curr-font]]\s[\n[doc-curr-size]u]
+.
+.  \" default value if no argument
+.  ds doc-str-Dx1 \*[doc-Tn-font-size]\%DragonFly\*[doc-str-Dx]
+.
+.  if !\n[doc-arg-limit] \
+.    if \n[.$] \{\
+.      ds doc-macro-name Dx
+.      doc-parse-args \$@
+.    \}
+.
+.  if (\n[doc-arg-limit] > \n[doc-arg-ptr]) \{\
+.    nr doc-arg-ptr +1
+.    ie (\n[doc-type\n[doc-arg-ptr]] == 2) \{\
+.      ie \A\*[doc-arg\n[doc-arg-ptr]] \{\
+.        ie d doc-operating-system-DragonFly-\*[doc-arg\n[doc-arg-ptr]] \
+.          as doc-str-Dx1 \~\*[doc-operating-system-DragonFly-\*[doc-arg\n[doc-arg-ptr]]]
+.        el \{\
+.          tmc mdoc warning: .Dx: Unknown DragonFly version
+.          tm1 " `\*[doc-arg\n[doc-arg-ptr]]' (#\n[.c])
+.          as doc-str-Dx1 \~\*[doc-arg\n[doc-arg-ptr]]
+.      \}\}
+.      el \
+.        as doc-str-Dx1 \~\*[doc-arg\n[doc-arg-ptr]]
+.    \}
+.    el \
+.      nr doc-arg-ptr -1
+.  \}
+.
+.  \" replace current argument with result
+.  ds doc-arg\n[doc-arg-ptr] "\*[doc-str-Dx1]
 .  nr doc-type\n[doc-arg-ptr] 2
 .  ds doc-space\n[doc-arg-ptr] "\*[doc-space]
 .

@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/bridge.4,v 1.6.2.11 2002/02/18 02:00:21 luigi Exp $
-.\" $DragonFly: src/share/man/man4/bridge.4,v 1.2 2003/06/17 04:36:58 dillon Exp $
+.\" $DragonFly: src/share/man/man4/bridge.4,v 1.3 2004/03/11 12:28:55 hmp Exp $
 .\"
 .Dd February 15, 2002
 .Dt BRIDGE 4
@@ -12,13 +12,13 @@
 .Cd "options BRIDGE"
 .Cd kldload /modules/bridge.ko
 .Sh DESCRIPTION
-.Fx
+.Dx
 supports bridging on Ethernet-type interfaces, including VLANs.
 Bridging support can be either compiled into the kernel, or loaded
 at runtime as a kernel module.
 .Pp
 A single
-.Fx
+.Dx
 host can do bridging on independent sets of interfaces,
 which are called
 .Ar clusters .
@@ -33,7 +33,9 @@ so-called "VLAN identifier" used in most commercial switches, and
 the IEEE 802.1q VLAN-id.
 .Pp
 By putting both physical and logical (vlanX) interfaces
-in the same cluster, a FreeBSD box can also implement what in
+in the same cluster, a
+.Dx
+box can also implement what in
 commercial terms is called a "trunk" interface. This means packets
 coming from one of the interfaces in the cluster,
 will appear

@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)passwd.5	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man5/passwd.5,v 1.26.2.5 2002/02/01 15:51:18 ru Exp $
-.\" $DragonFly: src/share/man/man5/passwd.5,v 1.2 2003/06/17 04:37:00 dillon Exp $
+.\" $DragonFly: src/share/man/man5/passwd.5,v 1.3 2004/03/11 12:28:56 hmp Exp $
 .\"
 .Dd September 29, 1994
 .Dt PASSWD 5
@@ -665,9 +665,10 @@ netgroup doesn't exist, the system
 will try to match users against the normal
 .Ql operator
 group instead.
-.Ss Changes in behavior from older versions of FreeBSD
+.Ss Changes in behavior from older versions of
+.Dx
 There have been several bug fixes and improvements in
-.Tn FreeBSD Ns 's
+.Dx Ns 's
 NIS/YP handling, some of which have caused changes in behavior.
 While the behavior changes are generally positive, it is important
 that users and system administrators be aware of them:
@@ -701,7 +702,7 @@ netgroups can be specified just as in
 and similar NIS-capable
 systems.
 .It
-.Tn FreeBSD
+.Dx
 now has NIS server capabilities and supports the use
 of
 .Pa master.passwd
@@ -710,7 +711,9 @@ NIS maps in addition to the standard Sixth Edition format
 maps.
 This means that you can specify change, expiration and class
 information through NIS, provided you use a
-.Tn FreeBSD
+.Dx
+or
+.Fx
 system as
 the NIS server.
 .El
@@ -749,12 +752,12 @@ ordinary users, thus making password cracking easier unless you use
 shadow passwords with the
 .Pa master.passwd
 maps and
-.Tn FreeBSD Ns 's
+.Dx Ns 's
 .Xr ypserv 8
 server.
 .Pp
 Unless you're using
-.Tn FreeBSD Ns 's
+.Dx Ns 's
 .Xr ypserv 8 ,
 which supports the use of
 .Pa master.passwd
@@ -763,7 +766,7 @@ the YP/NIS password database will be in old-style (Sixth Edition) format,
 which means that site-wide values for user login class, password
 expiration date, and other fields present in the current format
 will not be available when a
-.Tn FreeBSD
+.Dx
 system is used as a client with
 a standard NIS server.
 .Sh COMPATIBILITY

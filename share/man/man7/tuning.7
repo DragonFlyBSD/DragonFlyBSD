@@ -3,14 +3,14 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/tuning.7,v 1.1.2.30 2002/12/17 19:32:08 dillon Exp $
-.\" $DragonFly: src/share/man/man7/tuning.7,v 1.2 2003/06/17 04:37:00 dillon Exp $
+.\" $DragonFly: src/share/man/man7/tuning.7,v 1.3 2004/03/11 12:28:56 hmp Exp $
 .\"
 .Dd May 25, 2001
 .Dt TUNING 7
 .Os
 .Sh NAME
 .Nm tuning
-.Nd performance tuning under FreeBSD
+.Nd performance tuning under DragonFly
 .Sh SYSTEM SETUP - DISKLABEL, NEWFS, TUNEFS, SWAP
 When using
 .Xr disklabel 8
@@ -196,7 +196,7 @@ There are three parameters that are relatively safe to tune:
 and
 .Em cylinders/group .
 .Pp
-.Fx
+.Dx
 performs best when using 8K or 16K filesystem block sizes.
 The default filesystem block size is 16K,
 which provides best performance for most applications,
@@ -302,7 +302,7 @@ option is called
 filesystems normally update the last-accessed time of a file or
 directory whenever it is accessed.
 This operation is handled in
-.Fx
+.Dx
 with a delayed write and normally does not create a burden on the system.
 However, if your system is accessing a huge number of files on a continuing
 basis the buffer cache can wind up getting polluted with atime updates,
@@ -361,7 +361,7 @@ across both disks rather than concentrated on a single disk.
 If
 you really need to get sophisticated, we recommend using a real hardware
 RAID controller from the list of
-.Fx
+.Dx
 supported controllers.
 .Sh SYSCTL TUNING
 .Xr sysctl 8
@@ -527,14 +527,14 @@ data representing the echo of the character.   With delayed acks turned off
 the acknowledgement may be sent in its own packet before the remote service
 has a chance to echo the data it just received.  This same concept also
 applies to any interactive protocol (e.g. SMTP, WWW, POP3) and can cut the
-number of tiny packets flowing across the network in half.   The FreeBSD
+number of tiny packets flowing across the network in half.   The DragonFly
 delayed-ack implementation also follows the TCP protocol rule that
 at least every other packet be acknowledged even if the standard 100ms
 timeout has not yet passed.  Normally the worst a delayed ack can do is
 slightly delay the teardown of a connection, or slightly delay the ramp-up
 of a slow-start TCP connection.  While we aren't sure we believe that
 the several FAQs related to packages such as SAMBA and SQUID which advise
-turning off delayed acks may be refering to the slow-start issue.  In FreeBSD
+turning off delayed acks may be refering to the slow-start issue.  In DragonFly
 it would be more beneficial to increase the slow-start flightsize via
 the
 .Va net.inet.tcp.slowstart_flightsize

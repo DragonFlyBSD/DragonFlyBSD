@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)config.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/usr.sbin/config/config.8,v 1.21.2.7 2003/04/23 07:32:39 brueffer Exp $
-.\" $DragonFly: src/usr.sbin/config/config.8,v 1.2 2003/06/17 04:29:53 dillon Exp $
+.\" $DragonFly: src/usr.sbin/config/config.8,v 1.3 2004/03/11 12:28:58 hmp Exp $
 .\"
 .Dd July 4, 2001
 .Dt CONFIG 8
@@ -114,7 +114,7 @@ subdirectory of the system source (usually
 where
 .Va ARCH
 represents one of the architectures supported by
-.Fx .
+.Dx .
 .Nm
 creates the directory
 .Pa ../../compile/ Ns Ar SYSTEM_NAME
@@ -189,7 +189,7 @@ for any meaningful analysis.
 .Pp
 For reasons of history, time and space, building a debug kernel is not the
 default with
-.Fx :
+.Dx :
 a debug kernel takes up to 30% longer to build and
 requires about 30 MB of disk storage in the build directory, compared to about 6
 MB for a non-debug kernel.

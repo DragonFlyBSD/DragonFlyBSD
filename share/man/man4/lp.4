@@ -33,7 +33,7 @@
 .\"
 .\"	Id: man4.i386/lp.4,v 1.9 1999/02/14 12:06:16 nsouch Exp
 .\" $FreeBSD: src/share/man/man4/lp.4,v 1.5.2.3 2000/12/29 10:18:00 ru Exp $
-.\" $DragonFly: src/share/man/man4/lp.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/lp.4,v 1.3 2004/03/11 12:28:55 hmp Exp $
 .\"
 .Dd March 4, 1996
 .Os
@@ -79,7 +79,7 @@ flag:
 .Bl -tag -width Fl
 .It Fl link0
 (default) Use
-.Fx
+.Dx
 mode (LPIP).  This is the simpler of the two modes
 and therefore slightly more efficient.
 .It Cm link0
@@ -112,7 +112,7 @@ are often coloured yellow.
 The connections are symmetric, and provide 5 lines in each direction (four
 data plus one handshake).  The two modes use the same wiring, but make a
 different choice of which line to use as handshake.
-.Ss FreeBSD LPIP mode
+.Ss Dx LPIP mode
 The signal lines are used as follows:
 .Bl -tag -width dataxxxx(Pinxx)
 .It Em Data0 (Pin 2)
@@ -192,7 +192,8 @@ Packet format is:
 .Bd -literal
 Length (least significant byte)
 Length (most significant byte)
-12 bytes of supposed MAC addresses (ignored by FreeBSD).
+12 bytes of supposed MAC addresses (ignored by 
+.Dx Ns ).
 Fixed byte 0x08
 Fixed byte 0x00
 <IP datagram>
@@ -204,7 +205,7 @@ nor the checksum byte.
 .Pp
 The checksum is a simple arithmetic sum of all the bytes (again, including
 the header but not checksum or length bytes).
-.Fx
+.Dx
 calculates
 outgoing checksums, but does not validate incoming ones.
 .Pp

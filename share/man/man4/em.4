@@ -30,14 +30,14 @@
 .\" * Other names and brands may be claimed as the property of others.
 .\"
 .\" $FreeBSD: src/share/man/man4/em.4,v 1.2.2.6 2003/02/01 01:21:31 pdeuskar Exp $
-.\" $DragonFly: src/share/man/man4/em.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/em.4,v 1.3 2004/03/11 12:28:55 hmp Exp $
 .\"
 .Dd July 26, 2002
 .Dt EM 4
 .Os
 .Sh NAME
 .Nm em
-.Nd "Intel(R) PRO/1000 gigabit Ethernet driver for the FreeBSD operating system"
+.Nd "Intel(R) PRO/1000 gigabit Ethernet driver"
 .Sh SYNOPSIS
 .Cd "device em"
 .Sh DESCRIPTION
@@ -54,7 +54,7 @@ included with the driver.
 For questions related to hardware requirements,
 refer to the documentation supplied with your Intel PRO/1000 adapter.
 All hardware requirements listed apply to use with
-.Fx .
+.Dx .
 .Pp
 Support for Jumbo Frames is provided via the interface MTU setting.
 Selecting an MTU larger than 1500 bytes with the

@@ -32,7 +32,7 @@
 .\" ----------------------------------------------------------------------------
 .\"
 .\" $FreeBSD: src/usr.sbin/jail/jail.8,v 1.13.2.15 2003/05/08 13:04:24 maxim Exp $
-.\" $DragonFly: src/usr.sbin/jail/jail.8,v 1.2 2003/06/17 04:29:55 dillon Exp $
+.\" $DragonFly: src/usr.sbin/jail/jail.8,v 1.3 2004/03/11 12:28:59 hmp Exp $
 .\"
 .Dd December 12, 2001
 .Dt JAIL 8
@@ -72,7 +72,7 @@ man page for further details.
 .Ss "Setting up a Jail Directory Tree"
 This example shows how to setup a jail directory tree
 containing an entire
-.Fx
+.Dx
 distribution:
 .Bd -literal
 D=/here/is/the/jail
@@ -339,8 +339,8 @@ Just add the following line to
 .Dl jail.set_hostname_allowed=0
 .Pp
 In a future version of
-.Fx ,
-the mechanisms for managing jails will be
+.Dx ,
+the mechanisms for managing jails may be
 more refined.
 .Ss "Sysctl MIB Entries"
 Certain aspects of the jail containments environment may be modified from

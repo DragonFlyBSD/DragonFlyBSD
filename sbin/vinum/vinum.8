@@ -36,7 +36,7 @@
 .\"
 .\" $Id: vinum.8,v 1.48 2001/01/15 22:15:05 grog Exp $
 .\" $FreeBSD: src/sbin/vinum/vinum.8,v 1.33.2.10 2002/12/29 16:35:38 schweikh Exp $
-.\" $DragonFly: src/sbin/vinum/vinum.8,v 1.2 2003/06/17 04:27:35 dillon Exp $
+.\" $DragonFly: src/sbin/vinum/vinum.8,v 1.3 2004/03/11 12:28:55 hmp Exp $
 .\"
 .Dd December 20, 2000
 .Dt VINUM 8
@@ -2261,7 +2261,7 @@ following discussion applies to all RAID systems, not just to
 .Nm .
 .Pp
 The
-.Fx
+.Dx
 block I/O system issues requests of between .5kB and 128 kB; a
 typical mix is somewhere round 8 kB.  You can't stop any striping system from
 breaking a request into two physical requests, and if you make the stripe small
@@ -2270,7 +2270,7 @@ in performance: the decrease in transfer time per disk is offset by the order of
 magnitude greater increase in latency.
 .Pp
 With modern disk sizes and the
-.Fx
+.Dx
 I/O system, you can expect to have a
 reasonably small number of fragmented requests with a stripe size between 256 kB
 and 512 kB; with correct RAID implementations there is no obvious reason not to

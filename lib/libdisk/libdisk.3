@@ -26,7 +26,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libdisk/libdisk.3,v 1.11.2.10 2001/12/17 10:08:29 ru Exp $
-.\" $DragonFly: src/lib/libdisk/Attic/libdisk.3,v 1.2 2003/06/17 04:26:49 dillon Exp $
+.\" $DragonFly: src/lib/libdisk/Attic/libdisk.3,v 1.3 2004/03/11 12:28:52 hmp Exp $
 .\" "
 .Dd March 15, 1996
 .Dt LIBDISK 3
@@ -196,7 +196,7 @@ is a rootfs, allocate partition
 This is the active slice in the MBR.
 .It CHUNK_FORCE_ALL
 Force a dedicated disk for
-.Fx ,
+.Dx / Fx ,
 bypassing all BIOS geometry considerations.
 .El
 .Pp
@@ -243,7 +243,7 @@ creates a chunk with the specified parameters.
 .Pp
 .Fn All_FreeBSD
 makes one
-.Fx
+.Fx / Dx
 chunk covering the entire disk; if
 .Ql force_all
 is set, bypass all BIOS geometry considerations.

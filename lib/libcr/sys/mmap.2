@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)mmap.2	8.4 (Berkeley) 5/11/95
 .\" $FreeBSD: src/lib/libc/sys/mmap.2,v 1.22.2.12 2002/02/27 03:40:13 dd Exp $
-.\" $DragonFly: src/lib/libcr/sys/Attic/mmap.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libcr/sys/Attic/mmap.2,v 1.3 2004/03/11 12:28:52 hmp Exp $
 .\"
 .Dd November 17, 2001
 .Dt MMAP 2
@@ -335,14 +335,14 @@ of slightly less than 2G, 4GB, 6GB and 8GB.
 The limit is imposed for a variety of reasons.
 Most of them have to do
 with
-.Fx
+.Dx
 not wanting to use 64 bit offsets in the VM system due to
 the extreme performance penalty.
 So
-.Fx
+.Dx
 uses 32bit page indexes and
 this gives
-.Fx
+.Dx
 a maximum of 8TB filesizes.
 It's actually bugs in
 the filesystem code that causes the limit to be further restricted to

@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/libexec/ypxfr/ypxfr.8,v 1.10.2.4 2002/12/29 16:35:37 schweikh Exp $
-.\" $DragonFly: src/libexec/ypxfr/ypxfr.8,v 1.2 2003/06/17 04:27:08 dillon Exp $
+.\" $DragonFly: src/libexec/ypxfr/ypxfr.8,v 1.3 2004/03/11 12:28:53 hmp Exp $
 .\"
 .Dd February 5, 1995
 .Dt YPXFR 8
@@ -58,7 +58,7 @@ from one
 server to another using
 .Tn NIS
 services. In
-.Fx ,
+.Dx ,
 .Nm
 is generally invoked by
 .Xr ypserv 8
@@ -146,12 +146,12 @@ it logs all its output using the
 facility.
 .Sh NOTES
 The
-.Fx
+.Dx
 version of
 .Nm
 has support for a special map transfer protocol which works in
 conjunction with the
-.Fx
+.Dx
 .Xr rpc.ypxfrd 8
 server. This protocol allows it to transfer raw map database files from
 the
@@ -172,21 +172,21 @@ transfer method, copying the map contents from
 and creating new maps instead.
 .Pp
 Note that while the
-.Fx
+.Dx
 ypxfrd protocol is conceptually similar
 to the SunOS ypxfrd protocol,
 the
-.Fx
+.Dx
 protocol is not compatible with
 Sun's, therefore it will not work with Sun's ypxfrd server.
-.Fx
+.Dx
 slave systems can still transfer maps from any
-.No non- Ns Fx
+.No non- Ns Dx Ns / Ns Fx
 .Tn NIS
 server,
 however they will only be able to take advantage of the faster protocol
 if the master server is also running
-.Fx .
+.Dx .
 .Sh OPTIONS
 The following options and flags are supported by
 .Nm :

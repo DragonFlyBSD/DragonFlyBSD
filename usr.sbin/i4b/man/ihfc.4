@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/i4b/man/ihfc.4,v 1.7.2.1 2001/08/10 23:28:43 obrien Exp $
-.\" $DragonFly: src/usr.sbin/i4b/man/ihfc.4,v 1.2 2003/06/17 04:29:55 dillon Exp $
+.\" $DragonFly: src/usr.sbin/i4b/man/ihfc.4,v 1.3 2004/03/11 12:28:58 hmp Exp $
 .\"
 .\"	last edit-date: [Fri Jan 12 09:54:31 2001]
 .\"
@@ -35,6 +35,7 @@
 .Nd isdn4bsd Cologne Chip Designs HFC[-S][-SP] 2B[DS0] driver
 .Sh SYNOPSIS
 All PnP cards (AcerISDN P10, Teles 16.3c PnP),
+.Dx Ns ,
 .Fx
 4.x/5.x:
 .Cd "device ihfc"
@@ -45,7 +46,7 @@ Non-PnP cards (TELEINT ISDN SPEED No.1):
 4.x:
 .Cd "device ihfc0 at isa?"
 .Pp
-.Fx
+.Dx Ns , Fx
 5.x:
 .Cd "device ihfc"
 NOTE:

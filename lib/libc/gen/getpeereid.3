@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/gen/getpeereid.3,v 1.5.2.2 2003/03/13 18:05:37 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/getpeereid.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/getpeereid.3,v 1.3 2004/03/11 12:28:50 hmp Exp $
 .\"
 .Dd July 15, 2001
 .Dt GETPEEREID 3
@@ -87,7 +87,7 @@ to verify the credentials of its client.
 Likewise, the client can verify the credentials of the server.
 .Sh IMPLEMENTATION NOTES
 On
-.Fx ,
+.Dx ,
 .Fn getpeereid
 is implemented in terms of the
 .Dv LOCAL_PEERCRED

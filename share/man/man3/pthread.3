@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man3/pthread.3,v 1.12.2.6 2002/03/25 08:28:18 maxim Exp $
-.\" $DragonFly: src/share/man/man3/pthread.3,v 1.2 2003/06/17 04:36:58 dillon Exp $
+.\" $DragonFly: src/share/man/man3/pthread.3,v 1.3 2004/03/11 12:28:55 hmp Exp $
 .\"
 .Dd September 10, 1998
 .Dt PTHREAD 3
@@ -431,7 +431,7 @@ cancellation stack.
 .El
 .Sh INSTALLATION
 The current
-.Fx
+.Dx
 POSIX thread implementation is built in the library
 .Fa libc_r
 which contains both thread-safe libc functions and the thread functions.
@@ -447,7 +447,7 @@ you must supply the '-DNOLIBC_R' option to
 .Xr make 1 .
 .Pp
 A
-.Fx
+.Fx / Dx
 specific option has been added to gcc to make linking
 threaded processes simple.
 .Fa gcc -pthread

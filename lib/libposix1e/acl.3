@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libposix1e/acl.3,v 1.2.2.5 2001/12/20 16:27:06 ru Exp $
-.\" $DragonFly: src/lib/libposix1e/acl.3,v 1.2 2003/06/17 04:26:51 dillon Exp $
+.\" $DragonFly: src/lib/libposix1e/acl.3,v 1.3 2004/03/11 12:28:52 hmp Exp $
 .\"
 .Dd January 28, 2000
 .Dt ACL 3
@@ -39,7 +39,7 @@
 .In sys/acl.h
 .Sh DESCRIPTION
 As shipped, 
-.Fx 4.0
+.Dx
 permits file systems to export
 Access Control Lists via the VFS, and provides a library for userland
 access to and manipulation of these ACLs, but support for ACLs is not
@@ -55,7 +55,7 @@ they are not portable.
 POSIX.1e describes a set of ACL manipulation routines to manage the
 contents of ACLs, as well as their relationships with files.  This
 manipulation library is not currently implemented in
-.Fx ,
+.Dx ,
 although
 a third party library was under development at the time this document
 was written.  There is a general consensus that the POSIX.1e manipulation
@@ -143,7 +143,7 @@ The syscalls between the internal interfaces and the public library
 routines may change over time, and as such are not documented.  They are
 not intended to be called directly without going through the library.
 .Sh IMPLEMENTATION NOTES
-.Fx Ns 's
+.Dx Ns 's
 support for POSIX.1e interfaces and features is still under
 development at this time.
 .Sh ENVIRONMENT
@@ -153,7 +153,7 @@ fine-grained discretionary access control, fine-grained capabilities,
 and labels necessary for mandatory access control.  POSIX.2c describes
 a set of userland utilities for manipulating these labels.  These userland
 utilities are not bundled with
-.Fx 4.0
+.Dx 
 so as to discourage their
 use in the short term.
 .\" .Sh FILES

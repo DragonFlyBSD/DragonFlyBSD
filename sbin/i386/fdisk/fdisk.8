@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/sbin/i386/fdisk/fdisk.8,v 1.17.2.11 2002/04/25 16:25:12 trhodes Exp $
-.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.4 2004/02/03 08:43:41 rob Exp $
+.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.5 2004/03/11 12:28:54 hmp Exp $
 .\"
 .Dd October 4, 1996
 .Dt FDISK 8
@@ -42,7 +42,7 @@ program can be used to divide space on the disk into slices and set one
 .Em active .
 .Sh DESCRIPTION
 The
-.Fx
+.Dx
 program,
 .Nm ,
 serves a similar purpose to the DOS program.  The first form is used to
@@ -101,7 +101,7 @@ is given.
 .It Fl I
 Initialize the contents of sector 0
 for one
-.Fx
+.Dx
 slice covering the entire disk.
 .It Fl s
 Print summary information and exit.
@@ -177,7 +177,7 @@ The second slice overlaps the end of the first.
 .Bl -tag -width "cyl, sector and head"
 .It Em "sysid"
 is used to label the slice.
-.Fx
+.Dx
 reserves the
 magic number 165 decimal (A5 in hex).
 .It Em start No and Em size
@@ -245,7 +245,7 @@ while the
 .Fl i
 flag is used to "initialize" sector 0;
 it will set up the last BIOS slice to use the whole disk for
-.Fx
+.Dx
 and make it active.
 .Sh NOTES
 The automatic calculation of starting cylinder etc. uses
@@ -260,7 +260,7 @@ that use geometry translation under the BIOS.
 .Pp
 If you hand craft your disk layout,
 please make sure that the
-.Fx
+.Dx
 slice starts on a cylinder boundary.
 A number of decisions made later may assume this.
 (This might not be necessary later.)
@@ -330,7 +330,7 @@ It is an error if the following is not true:
 .Pp
 The number of cylinders should be less than or equal to 1024, but this
 is not enforced, although a warning will be printed.  Note that bootable
-.Fx
+.Dx
 slices (the "/" filesystem) must lie completely within the
 first 1024 cylinders; if this is not true, booting may fail.
 Non-bootable slices do not have this restriction.
@@ -374,7 +374,7 @@ if one is present.
 The
 .Ar type
 is 165 for
-.Fx
+.Dx
 slices.  Specifying a slice type of zero is
 the same as clearing the slice and marking it as unused; however,
 dummy values (such as "0") must still be specified for
@@ -392,7 +392,7 @@ p       4       0       0       0
 .Ed
 .Pp
 Example: to set slice 1 to a
-.Fx
+.Dx
 slice, starting at sector 1
 for 2503871 sectors (note: these numbers will be rounded upwards and
 downwards to correspond to head and cylinder boundaries):
@@ -431,7 +431,7 @@ correctly, in particular those introduced since MS-DOS 6.x.
 The entire program should be made more user-friendly.
 .Pp
 Most users new to
-.Fx
+.Dx
 do not understand the difference between
 .Ar slice
 and
@@ -439,7 +439,7 @@ and
 causing difficulty to adjust.
 .Pp
 You cannot use this command to completely dedicate a disk to
-.Fx .
+.Dx .
 The
 .Xr disklabel 8
 command must be used for this.

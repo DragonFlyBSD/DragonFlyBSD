@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/share/man/man4/ch.4,v 1.18.2.7 2001/08/17 13:08:37 ru Exp $
-.\" $DragonFly: src/share/man/man4/ch.4,v 1.3 2003/09/07 17:04:00 hmp Exp $
+.\" $DragonFly: src/share/man/man4/ch.4,v 1.4 2004/03/11 12:28:55 hmp Exp $
 .\" Copyright (c) 1996
 .\"	Julian Elischer <julian@FreeBSD.org>.  All rights reserved.
 .\"
@@ -55,14 +55,9 @@ Any devices found which answer as 'Changer'
 type devices will be 'attached' to the
 .Nm
 driver.
-In
-.Fx
-releases prior to 2.1, the first found will be attached as
-.Em ch0
-and the next,
-.Em ch1
-etc.
-Beginning in 2.1 it is possible to specify what ch unit a device should
+It is possible to specify what
+.Nm
+unit a device should
 come on line as; refer to
 .Xr scsi 4
 for details on kernel configuration.

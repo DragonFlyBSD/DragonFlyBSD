@@ -3,14 +3,14 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/security.7,v 1.13.2.11 2002/04/13 02:04:44 keramida Exp $
-.\" $DragonFly: src/share/man/man7/security.7,v 1.2 2003/06/17 04:37:00 dillon Exp $
+.\" $DragonFly: src/share/man/man7/security.7,v 1.3 2004/03/11 12:28:56 hmp Exp $
 .\"
 .Dd September 18, 1999
 .Dt SECURITY 7
 .Os
 .Sh NAME
 .Nm security
-.Nd introduction to security under FreeBSD
+.Nd introduction to security under DragonFly
 .Sh DESCRIPTION
 Security is a function that begins and ends with the system administrator.
 While all
@@ -244,7 +244,7 @@ virtually every server ever run as root, including basic system servers.
 If you are running a machine through which people only login via sshd and
 never login via telnetd or rshd or rlogind, then turn off those services!
 .Pp
-.Fx
+.Dx
 now defaults to running ntalkd, comsat, and finger in a sandbox.
 Another program which may be a candidate for running in a sandbox is
 .Xr named 8 .
@@ -324,7 +324,7 @@ below).
 If an attacker breaks root he can do just about anything, but there
 are certain conveniences.  For example, most modern kernels have a
 packet sniffing device driver built in.  Under
-.Fx
+.Dx
 it is called
 the
 .Sq bpf
@@ -558,7 +558,7 @@ a couple of services or that you will add a new internal
 service and forget to update the firewall.  You can still open up the
 high-numbered port range on the firewall to allow permissive-like operation
 without compromising your low ports.  Also take note that
-.Fx
+.Dx
 allows you to
 control the range of port numbers used for dynamic binding via the various
 net.inet.ip.portrange sysctl's
@@ -587,7 +587,7 @@ saturate a server's incoming network and cause the server to saturate its
 outgoing network with ICMP responses.  This type of attack can also crash the
 server by running it out of mbuf's, especially if the server cannot drain the
 ICMP responses it generates fast enough.  The
-.Fx
+.Dx
 kernel has a new kernel
 compile option called ICMP_BANDLIM which limits the effectiveness of these
 sorts of attacks.  The last major class of springboard attacks is related to

@@ -33,14 +33,14 @@
 .\" Last Edit-Date: [Sun Jan  9 09:43:04 2000]
 .\"
 .\" $FreeBSD: src/share/man/man4/pcvt.4,v 1.22.2.5 2002/03/19 18:24:07 schweikh Exp $
-.\" $DragonFly: src/share/man/man4/Attic/pcvt.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/Attic/pcvt.4,v 1.3 2004/03/11 12:28:55 hmp Exp $
 .\"
 .\" Man page pcvt(4) created after pcvt_ioctl.h on 13-Jan-93
 .\" by Joerg Wunsch
 .\"
 .Dd January 9, 2000
 .Dt PCVT 4
-.Os FreeBSD
+.Os
 .Sh NAME
 .Nm pcvt ,
 .Nm vt
@@ -148,6 +148,12 @@ and
 .Em SHIFT-PageDown
 it is possible to scroll the screen back and forward.
 .Ss Configuration
+.Em Note
+to
+.Dx
+users: for the purposes of the following documentation, pretend you're
+using a FreeBSD system, pending possible implemention changes.
+.Pp
 The
 .Nm
 console driver is currently available for the Intel-based BSD operating
