@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.8 2004/04/02 18:16:45 joerg Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.9 2004/04/19 13:37:43 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -349,6 +349,19 @@ bus_dmamem_alloc(bus_dma_tag_t dmat, void** vaddr, int flags,
 	if ((dmat->maxsize <= PAGE_SIZE) &&
 	    dmat->lowaddr >= ptoa(Maxmem)) {
 		*vaddr = malloc(dmat->maxsize, M_DEVBUF, mflags);
+		/*
+		 * XXX Check wether the allocation crossed a page boundary
+		 * and retry with power-of-2 alignment in that case.
+		 */
+		if ((((intptr_t)*vaddr) & PAGE_MASK) !=
+		    (((intptr_t)*vaddr + dmat->maxsize) & PAGE_MASK)) {
+			size_t size;
+			free(*vaddr, M_DEVBUF);
+			/* XXX check for overflow? */
+			for (size = 1; size <= dmat->maxsize; size <<= 1)
+				;
+			*vaddr = malloc(size, M_DEVBUF, mflags);
+		}
 	} else {
 		/*
 		 * XXX Use Contigmalloc until it is merged into this facility
