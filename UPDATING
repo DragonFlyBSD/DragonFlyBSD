@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.7 2004/04/22 23:24:19 dillon Exp $
+$DragonFly: src/UPDATING,v 1.8 2004/10/27 02:51:41 dillon Exp $
 
 Updating Information for DragonFly users.
 
@@ -9,6 +9,21 @@ If you discover any problem, please contact the bugs@lists.dragonflybsd.org
 mailing list with the details.
 
 ------------------------------------------------------------------------------
+
+> Required user and group IDs when upgrading from either FreeBSD or DragonFly
+---------------------
+
+The following users may be missing from your password file.  Use vipw and
+add any that are missing:
+
+smmsp:*:25:25::0:0:Sendmail Submission User:/var/spool/clientmqueue:/sbin/nologin
+
+The following groups may be missing from your group file.  Use vi /etc/group
+and add any that are missing:
+
+smmsp:*:25:
+authpf:*:63:
+
 
 > Upgrading to DragonFly from FreeBSD
 ---------------------
