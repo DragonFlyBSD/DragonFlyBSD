@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.73 2005/01/30 21:39:16 liamfoy Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.74 2005/01/30 23:21:11 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -110,6 +110,7 @@ rsync
 </TD>
 </TR>
 
+<!--  Erik Skaalerus is changing jobs
 <TR>
 <TD>dragon.BSDTech.com (Norway)</TD>
 <TD>Daily snapshots, official ISOs</TD>
@@ -118,6 +119,7 @@ rsync
 <a href="ftp://dragon.bsdtech.com/DragonFly/">FTP</a>
 </TD>
 </TR>
+-->
 
 <TR>
 <TD>Esat.net (UK)</TD>
@@ -261,12 +263,14 @@ rsync, cvsup, cvsync, cvsweb
 </TD>
 </TR>
 
+<!--  Erik Skaalerus is changing jobs
 <TR>
 <TD>dragon.BSDTech.com (Norway)</TD>
 <TD>Code</TD>
 <TD>
 cvsup, <a href="http://dragon.BSDTech.com/DragonFly/">source/dfports snapshots</a></TD>
 </TR>
+-->
 
 <TR>
 <TD>grappa.unix-ag.uni-kl.de (Germany)</TD>

@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/release1_0.cgi,v 1.4 2004/11/26 17:39:34 liamfoy Exp $
+# $DragonFly: site/data/main/Attic/release1_0.cgi,v 1.5 2005/01/30 23:21:11 dillon Exp $
 
 $TITLE(DragonFly - July 2004 Release 1.0A Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -106,11 +106,13 @@ gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A>,
 <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A></TD></TR>
 
+<!-- Erik Skaalerus is changing jobs 
 <TR><TD>BSDTech.com (Norway)</TD>
 <TD>1.0A_REL image</TD>
 <TD>
 <A HREF="http://dragon.bsdtech.com/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A>, 
 <A HREF="ftp://dragon.bsdtech.com/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A></TD></TR>
+-->
 
 <TR><TD>AllBSD.org (Japan)</TD>
 <TD>1.0A_REL image</TD>
