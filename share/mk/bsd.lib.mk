@@ -1,6 +1,6 @@
 #	from: @(#)bsd.lib.mk	5.26 (Berkeley) 5/2/91
 # $FreeBSD: src/share/mk/bsd.lib.mk,v 1.91.2.15 2002/08/07 16:31:50 ru Exp $
-# $DragonFly: src/share/mk/bsd.lib.mk,v 1.8 2005/03/10 14:30:31 joerg Exp $
+# $DragonFly: src/share/mk/bsd.lib.mk,v 1.9 2005/03/28 03:25:36 dillon Exp $
 #
 
 .include <bsd.init.mk>
@@ -160,8 +160,8 @@ _LIBS=		lib${LIB}.a
 
 lib${LIB}.a: ${OBJS} ${STATICOBJS}
 	@${ECHO} building static ${LIB} library
-	@rm -f ${.TARGET}
-	@${AR} cq ${.TARGET} `lorder ${OBJS} ${STATICOBJS} | tsort -q` ${ARADD}
+	rm -f ${.TARGET}
+	${AR} cq ${.TARGET} `lorder ${OBJS} ${STATICOBJS} | tsort -q` ${ARADD}
 	${RANLIB} ${.TARGET}
 .endif
 
@@ -173,8 +173,8 @@ POBJS+=		${OBJS:.o=.po} ${STATICOBJS:.o=.po}
 
 lib${LIB}_p.a: ${POBJS}
 	@${ECHO} building profiled ${LIB} library
-	@rm -f ${.TARGET}
-	@${AR} cq ${.TARGET} `lorder ${POBJS} | tsort -q` ${ARADD}
+	rm -f ${.TARGET}
+	${AR} cq ${.TARGET} `lorder ${POBJS} | tsort -q` ${ARADD}
 	${RANLIB} ${.TARGET}
 .endif
 
@@ -188,11 +188,11 @@ _LIBS+=		${SHLIB_NAME}
 
 ${SHLIB_NAME}: ${SOBJS}
 	@${ECHO} building shared library ${SHLIB_NAME}
-	@rm -f ${.TARGET} ${SHLIB_LINK}
+	rm -f ${.TARGET} ${SHLIB_LINK}
 .if defined(SHLIB_LINK)
-	@ln -fs ${.TARGET} ${SHLIB_LINK}
+	ln -fs ${.TARGET} ${SHLIB_LINK}
 .endif
-	@${CC} ${LDFLAGS} -shared -Wl,-x \
+	${CC} ${LDFLAGS} -shared -Wl,-x \
 	    -o ${.TARGET} -Wl,-soname,${SONAME} \
 	    `lorder ${SOBJS} | tsort -q` ${LDADD}
 .endif
@@ -202,8 +202,8 @@ _LIBS+=		lib${LIB}_pic.a
 
 lib${LIB}_pic.a: ${SOBJS}
 	@${ECHO} building special pic ${LIB} library
-	@rm -f ${.TARGET}
-	@${AR} cq ${.TARGET} ${SOBJS} ${ARADD}
+	rm -f ${.TARGET}
+	${AR} cq ${.TARGET} ${SOBJS} ${ARADD}
 	${RANLIB} ${.TARGET}
 .endif
 
