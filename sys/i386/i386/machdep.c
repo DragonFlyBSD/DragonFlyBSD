@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.51 2003/12/30 03:19:00 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.52 2004/01/09 20:49:39 drhodus Exp $
  */
 
 #include "use_apm.h"
@@ -2602,7 +2602,6 @@ outb(u_int port, u_char data)
 
 
 #include "opt_cpu.h"
-#include "opt_htt.h"
 
 
 /*
