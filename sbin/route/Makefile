@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/sbin/route/Makefile,v 1.11.2.3 2002/12/04 14:05:42 ru Exp $
-# $DragonFly: src/sbin/route/Makefile,v 1.3 2004/03/23 17:56:29 dillon Exp $
+# $DragonFly: src/sbin/route/Makefile,v 1.4 2004/03/24 07:04:28 dillon Exp $
 
 PROG=	route
 MAN=	route.8
@@ -19,7 +19,7 @@ keywords.h:
 	    >> ${.TARGET}
 	rm -f _keywords.tmp
 
-keywords.c:
+keywords.c:	keywords.h
 	echo -e "#include \"keywords.h\"\n\nstruct keytab keywords[] = {\n\n" \
 	    > ${.TARGET}
 	sed -e '/^#/d' -e '/^$$/d' ${.CURDIR}/keywords > _keywords.tmp
