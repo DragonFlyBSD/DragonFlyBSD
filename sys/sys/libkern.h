@@ -32,7 +32,7 @@
  *
  *	@(#)libkern.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/sys/libkern.h,v 1.20.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/libkern.h,v 1.5 2004/01/06 00:56:42 dillon Exp $
+ * $DragonFly: src/sys/sys/libkern.h,v 1.6 2004/01/06 01:05:51 dillon Exp $
  */
 
 #ifndef _SYS_LIBKERN_H_
@@ -73,7 +73,6 @@ int	 ffs (int);
 #ifndef	HAVE_INLINE_FLS
 int	 fls (int);
 #endif
-int	fnmatch(const char *, const char *, int);
 int	 locc (int, char *, u_int);
 void	 qsort (void *base, size_t nmemb, size_t size,
 		    int (*compar)(const void *, const void *));
@@ -91,7 +90,13 @@ size_t   strlcpy (char *, const char *, size_t);
 size_t	 strlen (const char *);
 int	 strncmp (const char *, const char *, size_t);
 char	*strncpy (char *, const char *, size_t);
+int	_fnmatch(const char *, const char *, int, int);
 
+static __inline int
+fnmatch(const char *pattern, const char *string, int flags)
+{
+	return(_fnmatch(pattern, string, flags, 0));
+}
 
 static __inline int
 memcmp(const void *b1, const void *b2, size_t len)
