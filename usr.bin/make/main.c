@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.27 2004/12/09 19:08:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.28 2004/12/09 23:33:36 okumoto Exp $
  */
 
 /*-
@@ -116,7 +116,6 @@ static void		MainParseArgs(int, char **);
 char *			chdir_verify_path(char *, char *);
 static int		ReadMakefile(void *, void *);
 static void		usage(void);
-static void		catch_child(int sig __unused);
 
 static char *curdir;			/* startup directory */
 static char *objdir;			/* where we chdir'ed to */
@@ -391,6 +390,11 @@ chdir_verify_path(char *path, char *obpath)
 	}
 
 	return 0;
+}
+
+static void
+catch_child(int sig __unused)
+{
 }
 
 /*
@@ -1113,10 +1117,3 @@ usage(void)
 "            [-m directory] [-V variable] [variable=value] [target ...]");
 	exit(2);
 }
-
-static
-void
-catch_child(int sig __unused)
-{
-}
-
