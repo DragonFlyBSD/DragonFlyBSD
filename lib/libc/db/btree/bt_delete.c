@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_delete.c	8.13 (Berkeley) 7/28/94
- * $DragonFly: src/lib/libc/db/btree/bt_delete.c,v 1.4 2003/11/12 20:21:22 eirikn Exp $
+ * $DragonFly: src/lib/libc/db/btree/bt_delete.c,v 1.5 2005/02/21 01:27:08 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -149,7 +149,7 @@ __bt_stkacq(t, hp, c)
 	EPG *e;
 	EPGNO *parent;
 	PAGE *h;
-	indx_t index;
+	indx_t idx;
 	pgno_t pgno;
 	recno_t nextpg, prevpg;
 	int exact, level;
@@ -187,8 +187,8 @@ __bt_stkacq(t, hp, c)
 
 			/* Move to the next index. */
 			if (parent->index != NEXTINDEX(h) - 1) {
-				index = parent->index + 1;
-				BT_PUSH(t, h->pgno, index);
+				idx = parent->index + 1;
+				BT_PUSH(t, h->pgno, idx);
 				break;
 			}
 			mpool_put(t->bt_mp, h, 0);
@@ -197,7 +197,7 @@ __bt_stkacq(t, hp, c)
 		/* Restore the stack. */
 		while (level--) {
 			/* Push the next level down onto the stack. */
-			bi = GETBINTERNAL(h, index);
+			bi = GETBINTERNAL(h, idx);
 			pgno = bi->pgno;
 			BT_PUSH(t, pgno, 0);
 
@@ -207,7 +207,7 @@ __bt_stkacq(t, hp, c)
 			/* Get the next level down. */
 			if ((h = mpool_get(t->bt_mp, pgno, 0)) == NULL)
 				return (1);
-			index = 0;
+			idx = 0;
 		}
 		mpool_put(t->bt_mp, h, 0);
 		if ((h = mpool_get(t->bt_mp, nextpg, 0)) == NULL)
@@ -242,8 +242,8 @@ __bt_stkacq(t, hp, c)
 
 			/* Move to the next index. */
 			if (parent->index != 0) {
-				index = parent->index - 1;
-				BT_PUSH(t, h->pgno, index);
+				idx = parent->index - 1;
+				BT_PUSH(t, h->pgno, idx);
 				break;
 			}
 			mpool_put(t->bt_mp, h, 0);
@@ -252,7 +252,7 @@ __bt_stkacq(t, hp, c)
 		/* Restore the stack. */
 		while (level--) {
 			/* Push the next level down onto the stack. */
-			bi = GETBINTERNAL(h, index);
+			bi = GETBINTERNAL(h, idx);
 			pgno = bi->pgno;
 
 			/* Lose the currently pinned page. */
@@ -262,8 +262,8 @@ __bt_stkacq(t, hp, c)
 			if ((h = mpool_get(t->bt_mp, pgno, 0)) == NULL)
 				return (1);
 
-			index = NEXTINDEX(h) - 1;
-			BT_PUSH(t, pgno, index);
+			idx = NEXTINDEX(h) - 1;
+			BT_PUSH(t, pgno, idx);
 		}
 		mpool_put(t->bt_mp, h, 0);
 		if ((h = mpool_get(t->bt_mp, prevpg, 0)) == NULL)
@@ -381,7 +381,7 @@ __bt_pdelete(t, h)
 	BINTERNAL *bi;
 	PAGE *pg;
 	EPGNO *parent;
-	indx_t cnt, index, *ip, offset;
+	indx_t cnt, idx, *ip, offset;
 	u_int32_t nksize;
 	char *from;
 
@@ -402,8 +402,8 @@ __bt_pdelete(t, h)
 		if ((pg = mpool_get(t->bt_mp, parent->pgno, 0)) == NULL)
 			return (RET_ERROR);
 		
-		index = parent->index;
-		bi = GETBINTERNAL(pg, index);
+		idx = parent->index;
+		bi = GETBINTERNAL(pg, idx);
 
 		/* Free any overflow pages. */
 		if (bi->flags & P_BIGKEY &&
@@ -435,11 +435,11 @@ __bt_pdelete(t, h)
 			pg->upper += nksize;
 
 			/* Adjust indices' offsets, shift the indices down. */
-			offset = pg->linp[index];
-			for (cnt = index, ip = &pg->linp[0]; cnt--; ++ip)
+			offset = pg->linp[idx];
+			for (cnt = idx, ip = &pg->linp[0]; cnt--; ++ip)
 				if (ip[0] < offset)
 					ip[0] += nksize;
-			for (cnt = NEXTINDEX(pg) - index; --cnt; ++ip)
+			for (cnt = NEXTINDEX(pg) - idx; --cnt; ++ip)
 				ip[0] = ip[1] < offset ? ip[1] + nksize : ip[1];
 			pg->lower -= sizeof(indx_t);
 		}
@@ -464,17 +464,13 @@ __bt_pdelete(t, h)
  *	t:	tree
  *    key:	referenced key
  *	h:	page
- *	index:	index on page to delete
+ *	idx:	index on page to delete
  *
  * Returns:
  *	RET_SUCCESS, RET_ERROR.
  */
 int
-__bt_dleaf(t, key, h, index)
-	BTREE *t;
-	const DBT *key;
-	PAGE *h;
-	u_int index;
+__bt_dleaf(BTREE *t, const DBT *key, PAGE *h, u_int idx)
 {
 	BLEAF *bl;
 	indx_t cnt, *ip, offset;
@@ -485,12 +481,12 @@ __bt_dleaf(t, key, h, index)
 	/* If this record is referenced by the cursor, delete the cursor. */
 	if (F_ISSET(&t->bt_cursor, CURS_INIT) &&
 	    !F_ISSET(&t->bt_cursor, CURS_ACQUIRE) &&
-	    t->bt_cursor.pg.pgno == h->pgno && t->bt_cursor.pg.index == index &&
-	    __bt_curdel(t, key, h, index))
+	    t->bt_cursor.pg.pgno == h->pgno && t->bt_cursor.pg.index == idx &&
+	    __bt_curdel(t, key, h, idx))
 		return (RET_ERROR);
 
 	/* If the entry uses overflow pages, make them available for reuse. */
-	to = bl = GETBLEAF(h, index);
+	to = bl = GETBLEAF(h, idx);
 	if (bl->flags & P_BIGKEY && __ovfl_delete(t, bl->bytes) == RET_ERROR)
 		return (RET_ERROR);
 	if (bl->flags & P_BIGDATA &&
@@ -504,18 +500,18 @@ __bt_dleaf(t, key, h, index)
 	h->upper += nbytes;
 
 	/* Adjust the indices' offsets, shift the indices down. */
-	offset = h->linp[index];
-	for (cnt = index, ip = &h->linp[0]; cnt--; ++ip)
+	offset = h->linp[idx];
+	for (cnt = idx, ip = &h->linp[0]; cnt--; ++ip)
 		if (ip[0] < offset)
 			ip[0] += nbytes;
-	for (cnt = NEXTINDEX(h) - index; --cnt; ++ip)
+	for (cnt = NEXTINDEX(h) - idx; --cnt; ++ip)
 		ip[0] = ip[1] < offset ? ip[1] + nbytes : ip[1];
 	h->lower -= sizeof(indx_t);
 
 	/* If the cursor is on this page, adjust it as necessary. */
 	if (F_ISSET(&t->bt_cursor, CURS_INIT) &&
 	    !F_ISSET(&t->bt_cursor, CURS_ACQUIRE) &&
-	    t->bt_cursor.pg.pgno == h->pgno && t->bt_cursor.pg.index > index)
+	    t->bt_cursor.pg.pgno == h->pgno && t->bt_cursor.pg.index > idx)
 		--t->bt_cursor.pg.index;
 
 	return (RET_SUCCESS);
@@ -529,17 +525,13 @@ __bt_dleaf(t, key, h, index)
  *	t:	tree
  *    key:	referenced key (or NULL)
  *	h:	page
- *  index:	index on page to delete
+ *    idx:	index on page to delete
  *
  * Returns:
  *	RET_SUCCESS, RET_ERROR.
  */
 static int
-__bt_curdel(t, key, h, index)
-	BTREE *t;
-	const DBT *key;
-	PAGE *h;
-	u_int index;
+__bt_curdel(BTREE *t, const DBT *key, PAGE *h, u_int idx)
 {
 	CURSOR *c;
 	EPG e;
@@ -562,7 +554,7 @@ __bt_curdel(t, key, h, index)
 		 */
 		if (key == NULL) {
 			e.page = h;
-			e.index = index;
+			e.index = idx;
 			if ((status = __bt_ret(t, &e,
 			    &c->key, &c->key, NULL, NULL, 1)) != RET_SUCCESS)
 				return (status);
@@ -570,25 +562,25 @@ __bt_curdel(t, key, h, index)
 			key = &c->key;
 		}
 		/* Check previous key, if not at the beginning of the page. */
-		if (index > 0) { 
+		if (idx > 0) { 
 			e.page = h;
-			e.index = index - 1;
+			e.index = idx - 1;
 			if (__bt_cmp(t, key, &e) == 0) {
 				F_SET(c, CURS_BEFORE);
 				goto dup2;
 			}
 		}
 		/* Check next key, if not at the end of the page. */
-		if (index < NEXTINDEX(h) - 1) {
+		if (idx < NEXTINDEX(h) - 1) {
 			e.page = h;
-			e.index = index + 1;
+			e.index = idx + 1;
 			if (__bt_cmp(t, key, &e) == 0) {
 				F_SET(c, CURS_AFTER);
 				goto dup2;
 			}
 		}
 		/* Check previous key if at the beginning of the page. */
-		if (index == 0 && h->prevpg != P_INVALID) {
+		if (idx == 0 && h->prevpg != P_INVALID) {
 			if ((pg = mpool_get(t->bt_mp, h->prevpg, 0)) == NULL)
 				return (RET_ERROR);
 			e.page = pg;
@@ -600,7 +592,7 @@ __bt_curdel(t, key, h, index)
 			mpool_put(t->bt_mp, pg, 0);
 		}
 		/* Check next key if at the end of the page. */
-		if (index == NEXTINDEX(h) - 1 && h->nextpg != P_INVALID) {
+		if (idx == NEXTINDEX(h) - 1 && h->nextpg != P_INVALID) {
 			if ((pg = mpool_get(t->bt_mp, h->nextpg, 0)) == NULL)
 				return (RET_ERROR);
 			e.page = pg;
@@ -616,7 +608,7 @@ dup2:				c->pg.pgno = e.page->pgno;
 		}
 	}
 	e.page = h;
-	e.index = index;
+	e.index = idx;
 	if (curcopy || (status =
 	    __bt_ret(t, &e, &c->key, &c->key, NULL, NULL, 1)) == RET_SUCCESS) {
 		F_SET(c, CURS_ACQUIRE);
