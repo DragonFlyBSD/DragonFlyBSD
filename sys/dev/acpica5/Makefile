@@ -1,38 +1,19 @@
 # $FreeBSD: src/sys/modules/acpi/acpi/Makefile,v 1.3 2004/01/08 16:38:32 njl Exp $
-# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.7 2004/12/20 17:21:38 dillon Exp $
-
-.include "Makefile.inc"
+# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.8 2005/03/11 18:27:49 y0netan1 Exp $
 
 .PATH:	${.CURDIR}/../../${MACHINE_ARCH}/acpica5	\
 	${.CURDIR}/../../${MACHINE_ARCH}/isa		\
 	${.CURDIR}/../../bus/pci 			\
 	${.CURDIR}/Osd					\
-	${.CURDIR}					\
-	${.CURDIR}/../../${SYSACPICA}/interpreter/dispatcher	\
-	${.CURDIR}/../../${SYSACPICA}/interpreter/executer	\
-	${.CURDIR}/../../${SYSACPICA}/interpreter/parser	\
-	${.CURDIR}/../../${SYSACPICA}/events			\
-	${.CURDIR}/../../${SYSACPICA}/hardware			\
-	${.CURDIR}/../../${SYSACPICA}/namespace			\
-	${.CURDIR}/../../${SYSACPICA}/resources			\
-	${.CURDIR}/../../${SYSACPICA}/tables			\
-	${.CURDIR}/../../${SYSACPICA}/utilities			\
-	${.CURDIR}/../../${SYSACPICA}/debugger			\
-	${.CURDIR}/../../${SYSACPICA}/disassembler		\
-	${.CURDIR}/../../${SYSACPICA}/INTERPRETER/DISPATCHER	\
-	${.CURDIR}/../../${SYSACPICA}/INTERPRETER/EXECUTER	\
-	${.CURDIR}/../../${SYSACPICA}/INTERPRETER/PARSER	\
-	${.CURDIR}/../../${SYSACPICA}/EVENTS			\
-	${.CURDIR}/../../${SYSACPICA}/HARDWARE			\
-	${.CURDIR}/../../${SYSACPICA}/NAMESPACE			\
-	${.CURDIR}/../../${SYSACPICA}/RESOURCES			\
-	${.CURDIR}/../../${SYSACPICA}/TABLES			\
-	${.CURDIR}/../../${SYSACPICA}/UTILITIES			\
+	${.CURDIR}
+
+SYSDIR?= ${.CURDIR}/../..
+.include "Makefile.inc"
+
 
 KMOD	= acpi
 
 # ACPI CA sources
-CFLAGS+=   -I${.OBJDIR} -I${.CURDIR} -I${.CURDIR}/../../${SYSACPICA}/include
 SRCS+=	dsfield.c dsinit.c dsmethod.c dsmthdat.c
 SRCS+=	dsobject.c dsopcode.c dsutils.c dswexec.c dswload.c
 SRCS+=	dswscope.c dswstate.c evevent.c evgpe.c evgpeblk.c
@@ -105,21 +86,6 @@ CLEANFILES+=	platform/acenv.h
 acpi_wakecode.h: acpi_wakecode.S
 	${MAKE} -f ${.CURDIR}/../../${MACHINE_ARCH}/acpica5/Makefile \
 		MAKESRCPATH=${.CURDIR}/../../${MACHINE_ARCH}/acpica5
-
-# acpi.h includes "platform/acenv.h".  This is the easiest way to create
-# a modified acenv.h
-#
-${.OBJDIR}/acpi.h: ${.CURDIR}/../../${SYSACPICA}/include/acpi.h
-	cp ${.ALLSRC} ${.TARGET}
-
-${.OBJDIR}/platform/acenv.h: ${.CURDIR}/../../${SYSACPICA}/include/platform/acenv.h
-	if [ ! -d ${.OBJDIR}/platform ]; then mkdir ${.OBJDIR}/platform; fi
-	cat ${.ALLSRC} | \
-	sed -e 's/__FreeBSD__/__DragonFly__/' | \
-	sed -e 's/acfreebsd.h/acdragonfly.h/' > ${.TARGET}.new
-	mv -f ${.TARGET}.new ${.TARGET}
-
-SRCS+= ${.OBJDIR}/acpi.h ${.OBJDIR}/platform/acenv.h
 
 SUBDIR=	acpi_toshiba
 all: ${PROG} ${SUBDIR}
