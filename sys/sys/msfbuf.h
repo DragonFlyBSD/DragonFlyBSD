@@ -36,7 +36,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  *	src/sys/sys/sfbuf.h,v 1.4 2004/04/01 17:58:06 dillon
  *
- * $DragonFly: src/sys/sys/msfbuf.h,v 1.2 2004/06/08 02:27:49 hmp Exp $
+ * $DragonFly: src/sys/sys/msfbuf.h,v 1.3 2004/06/08 02:41:41 hmp Exp $
  */
 #ifndef _SYS_MSFBUF_H_
 #define _SYS_MSFBUF_H_
@@ -94,21 +94,6 @@ vm_page_t *
 msf_buf_pages(struct msf_buf *msf)
 {
 	return (msf->m_xio.xio_pages);
-}
-
-/*
- * Return an XIO reference and bump reference count.
- */
-static __inline
-struct xio *
-msf_buf_xio(struct msf_buf *msf)
-{
-	/* bump ref. count and return XIO reference */
-	crit_enter();
-	++msf->m_refcnt;
-	crit_exit();
-
-	return (&msf->m_xio);
 }
 
 /* API function prototypes */
