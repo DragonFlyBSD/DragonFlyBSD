@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.40 2004/07/12 18:34:29 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.41 2004/07/12 18:37:55 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -40,6 +40,11 @@ file is available.  See below for suitable cvsup locations.</p>
 <p>
 Daily DragonFly events and news are reported at the 
 <a href="http://www.shiningsilence.com/dbsdlog/">DragonFly BSD Log</a>.</p>
+
+<h2>1.0 Release Errata</h2>
+<p>
+<A HREF="http://www.bsdinstaller.org/errata.html">Installer Errata</A>
+</p>
 
 <h2>Download Sites</h2>
 
