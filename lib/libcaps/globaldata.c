@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/globaldata.c,v 1.4 2004/03/07 23:36:44 dillon Exp $
+ * $DragonFly: src/lib/libcaps/globaldata.c,v 1.5 2004/03/31 20:23:42 dillon Exp $
  */
 
 #include "defs.h"
@@ -121,7 +121,7 @@ splz(void)
 }
 
 int
-need_resched(void)
+need_lwkt_resched(void)
 {
     return(0);
 }

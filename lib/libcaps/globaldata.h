@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/globaldata.h,v 1.6 2004/03/07 23:36:44 dillon Exp $
+ * $DragonFly: src/lib/libcaps/globaldata.h,v 1.7 2004/03/31 20:23:42 dillon Exp $
  */
 
 #ifndef _LIBCAPS_GLOBALDATA_H_
@@ -123,7 +123,7 @@ extern struct globaldata *globaldata_find(int cpu);
 
 void globaldata_init(struct thread *td);
 void splz(void);
-int need_resched(void);
+int need_lwkt_resched(void);
 void cpu_halt(void);
 void cpu_send_ipiq(int dcpu);
 void mi_gdinit1(globaldata_t gd, int cpuid);
