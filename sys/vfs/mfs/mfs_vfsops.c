@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.11 2003/08/20 09:56:32 rob Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.12 2003/12/01 04:38:26 dillon Exp $
  */
 
 
@@ -372,6 +372,7 @@ mfs_start(struct mount *mp, int flags, struct thread *td)
 		else if (tsleep((caddr_t)vp, PCATCH, "mfsidl", 0))
 			gotsig++;	/* try to unmount in next pass */
 	}
+	PRELE(curproc);
 	return (0);
 }
 
