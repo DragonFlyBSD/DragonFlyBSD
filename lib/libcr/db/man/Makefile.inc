@@ -1,8 +1,8 @@
 #       from @(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libc/db/man/Makefile.inc,v 1.8.2.2 2001/04/25 10:04:04 ru Exp $
-# $DragonFly: src/lib/libcr/db/man/Attic/Makefile.inc,v 1.2 2003/06/17 04:26:41 dillon Exp $
+# $DragonFly: src/lib/libcr/db/man/Attic/Makefile.inc,v 1.3 2003/07/24 21:41:47 dillon Exp $
 
-.PATH: ${.CURDIR}/../libc/db/man
+.PATH: ${.CURDIR}/../libcr/db/man
 
 .if ${LIB} == "c"
 MAN+=	btree.3 dbm.3 dbopen.3 hash.3 mpool.3 recno.3

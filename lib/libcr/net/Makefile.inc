@@ -1,9 +1,9 @@
 #	from @(#)Makefile.inc	8.2 (Berkeley) 9/5/93
 # $FreeBSD: src/lib/libc/net/Makefile.inc,v 1.36.2.5 2002/07/29 18:33:18 ume Exp $
-# $DragonFly: src/lib/libcr/net/Attic/Makefile.inc,v 1.2 2003/06/17 04:26:44 dillon Exp $
+# $DragonFly: src/lib/libcr/net/Attic/Makefile.inc,v 1.3 2003/07/24 21:41:53 dillon Exp $
 
 # machine-independent net sources
-.PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/net ${.CURDIR}/../libc/net
+.PATH: ${.CURDIR}/../libcr/${MACHINE_ARCH}/net ${.CURDIR}/../libcr/net
 
 SRCS+=	addr2ascii.c ascii2addr.c base64.c ether_addr.c getaddrinfo.c \
 	gethostbydns.c gethostbyht.c gethostbynis.c gethostnamadr.c \
@@ -25,7 +25,7 @@ SRCS+=	addr2ascii.c ascii2addr.c base64.c ether_addr.c getaddrinfo.c \
 CFLAGS+=-DINET6
 
 # machine-dependent net sources
-.include "${.CURDIR}/../libc/${MACHINE_ARCH}/net/Makefile.inc"
+.include "${.CURDIR}/../libcr/${MACHINE_ARCH}/net/Makefile.inc"
 
 .if ${LIB} == "c"
 MAN+=	addr2ascii.3 byteorder.3 ethers.3 getaddrinfo.3 gethostbyname.3 \

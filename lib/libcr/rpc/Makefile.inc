@@ -1,8 +1,8 @@
 #	@(#)Makefile	5.11 (Berkeley) 9/6/90
 # $FreeBSD: src/lib/libc/rpc/Makefile.inc,v 1.17.2.2 2001/04/25 10:04:08 ru Exp $
-# $DragonFly: src/lib/libcr/rpc/Attic/Makefile.inc,v 1.2 2003/06/17 04:26:44 dillon Exp $
+# $DragonFly: src/lib/libcr/rpc/Attic/Makefile.inc,v 1.3 2003/07/24 21:41:54 dillon Exp $
 
-.PATH: ${.CURDIR}/../libc/rpc ${.CURDIR}/.
+.PATH: ${.CURDIR}/../libcr/rpc ${.CURDIR}/.
 
 SRCS+=	auth_des.c auth_none.c auth_time.c auth_unix.c \
 	authdes_prot.c authunix_prot.c bindresvport.c \

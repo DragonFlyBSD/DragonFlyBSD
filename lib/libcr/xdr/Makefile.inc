@@ -1,8 +1,8 @@
 #	@(#)Makefile	5.11 (Berkeley) 9/6/90
 # $FreeBSD: src/lib/libc/xdr/Makefile.inc,v 1.10.2.1 2001/04/25 10:04:19 ru Exp $
-# $DragonFly: src/lib/libcr/xdr/Attic/Makefile.inc,v 1.2 2003/06/17 04:26:47 dillon Exp $
+# $DragonFly: src/lib/libcr/xdr/Attic/Makefile.inc,v 1.3 2003/07/24 21:41:56 dillon Exp $
 
-.PATH: ${.CURDIR}/../libc/xdr ${.CURDIR}/.
+.PATH: ${.CURDIR}/../libcr/xdr ${.CURDIR}/.
 SRCS+=	xdr.c xdr_array.c xdr_float.c xdr_mem.c \
 	xdr_rec.c xdr_reference.c xdr_stdio.c xdr_sizeof.c
 

@@ -1,9 +1,9 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libcr/sys/Attic/Makefile.inc,v 1.2 2003/06/17 04:26:47 dillon Exp $
+# $DragonFly: src/lib/libcr/sys/Attic/Makefile.inc,v 1.3 2003/07/24 21:41:56 dillon Exp $
 
 # sys sources
-.PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
+.PATH: ${.CURDIR}/../libcr/${MACHINE_ARCH}/sys ${.CURDIR}/../libcr/sys
 
 # Include the generated makefile containing the *complete* list
 # of syscall names in MIASM.
@@ -14,7 +14,7 @@
 # MDASM names override the default syscall names in MIASM.
 # NOASM will prevent the default syscall code from being generated.
 #
-.include "${.CURDIR}/../libc/${MACHINE_ARCH}/sys/Makefile.inc"
+.include "${.CURDIR}/../libcr/${MACHINE_ARCH}/sys/Makefile.inc"
 
 # Sources common to both syscall interfaces:
 SRCS+=	ftruncate.c lseek.c mmap.c pread.c pwrite.c truncate.c

@@ -1,10 +1,10 @@
 #	@(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libc/string/Makefile.inc,v 1.19.2.5 2001/12/25 00:36:53 ache Exp $
-# $DragonFly: src/lib/libcr/string/Attic/Makefile.inc,v 1.2 2003/06/17 04:26:46 dillon Exp $
+# $DragonFly: src/lib/libcr/string/Attic/Makefile.inc,v 1.3 2003/07/24 21:41:56 dillon Exp $
 
-.PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/string ${.CURDIR}/../libc/string
+.PATH: ${.CURDIR}/../libcr/${MACHINE_ARCH}/string ${.CURDIR}/../libcr/string
 
-CFLAGS+= -I${.CURDIR}/../libc/locale
+CFLAGS+= -I${.CURDIR}/../libcr/locale
 
 # machine-independent string sources
 MISRCS+=bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
@@ -19,7 +19,7 @@ MISRCS+=bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
 	wmemmove.c wmemset.c
 
 # machine-dependent string sources
-.include "${.CURDIR}/../libc/${MACHINE_ARCH}/string/Makefile.inc"
+.include "${.CURDIR}/../libcr/${MACHINE_ARCH}/string/Makefile.inc"
 
 .if ${LIB} == "c"
 MAN+=	bcmp.3 bcopy.3 bstring.3 bzero.3 ffs.3 index.3 memccpy.3 memchr.3 \

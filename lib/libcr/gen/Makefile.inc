@@ -1,9 +1,9 @@
 #	@(#)Makefile.inc	8.6 (Berkeley) 5/4/95
 # $FreeBSD: src/lib/libc/gen/Makefile.inc,v 1.62.2.19 2003/02/21 13:46:16 phantom Exp $
-# $DragonFly: src/lib/libcr/gen/Attic/Makefile.inc,v 1.2 2003/06/17 04:26:42 dillon Exp $
+# $DragonFly: src/lib/libcr/gen/Attic/Makefile.inc,v 1.3 2003/07/24 21:41:48 dillon Exp $
 
 # machine-independent gen sources
-.PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
+.PATH: ${.CURDIR}/../libcr/${MACHINE_ARCH}/gen ${.CURDIR}/../libcr/gen
 
 SRCS+=  _rand48.c _spinlock_stub.c alarm.c arc4random.c assert.c \
 	basename.c \
@@ -33,7 +33,7 @@ SRCS+=  _rand48.c _spinlock_stub.c alarm.c arc4random.c assert.c \
 	wait.c wait3.c waitpid.c
 
 # machine-dependent gen sources
-.include "${.CURDIR}/../libc/${MACHINE_ARCH}/gen/Makefile.inc"
+.include "${.CURDIR}/../libcr/${MACHINE_ARCH}/gen/Makefile.inc"
 
 .if ${LIB} == "c"
 MAN+=	alarm.3 arc4random.3 clock.3 \

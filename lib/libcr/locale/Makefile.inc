@@ -1,9 +1,9 @@
 #	from @(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libc/locale/Makefile.inc,v 1.16.2.5 2002/10/24 11:00:52 tjr Exp $
-# $DragonFly: src/lib/libcr/locale/Attic/Makefile.inc,v 1.2 2003/06/17 04:26:43 dillon Exp $
+# $DragonFly: src/lib/libcr/locale/Attic/Makefile.inc,v 1.3 2003/07/24 21:41:49 dillon Exp $
 
 # locale sources
-.PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/locale ${.CURDIR}/../libc/locale
+.PATH: ${.CURDIR}/../libcr/${MACHINE_ARCH}/locale ${.CURDIR}/../libcr/locale
 
 SRCS+=	ansi.c big5.c collate.c collcmp.c euc.c fix_grouping.c frune.c \
 	isctype.c \
