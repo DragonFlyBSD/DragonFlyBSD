@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.4 2003/08/07 21:54:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.5 2003/08/09 20:54:39 drhodus Exp $
  *
  */
 #undef DEBUG
@@ -48,6 +48,7 @@
 #include <net/sppp/if_sppp.h>
 #include <machine/cronyx.h>
 #include "cxreg.h"
+#include "cx.c"
 
 /* XXX exported. */
 void cxswitch (cx_chan_t *c, cx_soft_opt_t new);
