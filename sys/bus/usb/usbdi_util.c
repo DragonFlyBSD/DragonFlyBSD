@@ -2,7 +2,7 @@
  * $NetBSD: usbdi_util.c,v 1.24 1999/11/17 23:00:50 augustss Exp $
  * $NetBSD: usbdi_util.c,v 1.36 2001/11/13 06:24:57 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/usbdi_util.c,v 1.31 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.5 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.6 2004/02/11 15:17:26 joerg Exp $
  */
 
 /*
@@ -49,7 +49,7 @@
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/proc.h>
 #include <sys/device.h>
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/bus.h>
 #endif
 

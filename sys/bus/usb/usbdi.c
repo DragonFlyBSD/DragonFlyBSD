@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usbdi.c,v 1.103 2002/09/27 15:37:38 provos Exp $
  * $FreeBSD: src/sys/dev/usb/usbdi.c,v 1.84 2003/11/09 23:56:19 joe Exp $
- * $DragonFly: src/sys/bus/usb/usbdi.c,v 1.7 2003/12/30 03:33:28 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usbdi.c,v 1.8 2004/02/11 15:17:26 joerg Exp $
  */
 
 /*
@@ -45,7 +45,7 @@
 #include <sys/systm.h>
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/device.h>
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/module.h>
 #include <sys/bus.h>
 #include "usb_if.h"
@@ -64,7 +64,7 @@
 #include "usbdivar.h"
 #include "usb_mem.h"
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include "usb_if.h"
 #include <machine/clock.h>
 #define delay(d)	DELAY(d)
@@ -946,7 +946,7 @@ usbd_do_request_flags_pipe(usbd_device_handle dev, usbd_pipe_handle pipe,
 	usbd_status err;
 
 #ifdef DIAGNOSTIC
-#if defined(__i386__) && defined(__FreeBSD__)
+#if defined(__i386__) && (defined(__FreeBSD__) || defined(__DragonFly__))
 	KASSERT(mycpu->gd_intr_nesting_level == 0,
 	       	("usbd_do_request: in interrupt context"));
 #endif
@@ -1145,7 +1145,7 @@ usb_match_device(const struct usb_devno *tbl, u_int nentries, u_int sz,
 	return (NULL);
 }
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 int
 usbd_driver_load(module_t mod, int what, void *arg)
 {

@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ohcivar.h,v 1.30 2001/12/31 12:20:35 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ohcivar.h,v 1.36 2003/12/22 15:18:46 shiba Exp $
- * $DragonFly: src/sys/bus/usb/ohcivar.h,v 1.3 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ohcivar.h,v 1.4 2004/02/11 15:17:26 joerg Exp $
  */
 
 /*
@@ -92,7 +92,7 @@ typedef struct ohci_softc {
 	bus_space_handle_t ioh;
 	bus_size_t sc_size;
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	void *ih;
 
 	struct resource *io_res;

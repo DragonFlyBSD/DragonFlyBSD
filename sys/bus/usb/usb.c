@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.95 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.10 2004/01/08 18:12:59 asmodai Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.11 2004/02/11 15:17:26 joerg Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -58,12 +58,12 @@
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #include <sys/mutex.h>
 #endif
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/device.h>
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/unistd.h>
 #include <sys/module.h>
 #include <sys/bus.h>
@@ -74,7 +74,7 @@
 #include <sys/proc.h>
 #include <sys/conf.h>
 #include <sys/poll.h>
-#if __FreeBSD_version >= 500014
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
 #include <sys/selinfo.h>
 #else
 #include <sys/select.h>
@@ -90,7 +90,7 @@
 #define USBUNIT(d)	(minor(d))	/* usb_discover device nodes, kthread */
 #define USB_DEV_MINOR	255		/* event queue device */
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 MALLOC_DEFINE(M_USB, "USB", "USB");
 MALLOC_DEFINE(M_USBDEV, "USBdev", "USB device");
 MALLOC_DEFINE(M_USBHC, "USBHC", "USB host controller");
@@ -139,7 +139,7 @@ TAILQ_HEAD(, usb_task) usb_all_tasks;
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 cdev_decl(usb);
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 d_open_t  usbopen;
 d_close_t usbclose;
 d_read_t usbread;
@@ -200,7 +200,7 @@ USB_DECLARE_DRIVER_INIT(usb,
 			DEVMETHOD(device_shutdown, bus_generic_shutdown)
 			);
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 MODULE_VERSION(usb, 1);
 #endif
 
@@ -214,7 +214,7 @@ USB_ATTACH(usb)
 {
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	struct usb_softc *sc = (struct usb_softc *)self;
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 	struct usb_softc *sc = device_get_softc(self);
 	void *aux = device_get_ivars(self);
 	static int global_init_done = 0;
@@ -234,7 +234,7 @@ USB_ATTACH(usb)
 	sc->sc_bus->usbctl = sc;
 	sc->sc_port.power = USB_MAX_POWER;
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	printf("%s", USBDEVNAME(sc->sc_dev));
 #endif
 	usbrev = sc->sc_bus->usbrev;
@@ -293,7 +293,7 @@ USB_ATTACH(usb)
 		 * until the USB event thread is running, which means that
 		 * the keyboard will not work until after cold boot.
 		 */
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 		if (cold)
 #else
 		if (cold && (sc->sc_dev.dv_cfdata->cf_flags & 1))
@@ -313,7 +313,7 @@ USB_ATTACH(usb)
 	usb_kthread_create(usb_create_event_thread, sc);
 #endif
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	usb_create_event_thread(sc);
 	/* The per controller devices (used for usb_discover) */
 	/* XXX This is redundant now, but old usbd's will want it */
@@ -580,7 +580,7 @@ usbioctl(dev_t devt, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
 		return (EIO);
 
 	switch (cmd) {
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	/* This part should be deleted */
   	case USB_DISCOVER:
   		break;
@@ -685,7 +685,7 @@ usbpoll(dev_t dev, int events, usb_proc_ptr p)
 
 		return (revents);
 	} else {
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 		return (0);	/* select/poll never wakes up - back compat */
 #else
 		return (ENXIO);
@@ -699,7 +699,7 @@ usb_discover(void *v)
 {
 	struct usb_softc *sc = v;
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	/* splxxx should be changed to mutexes for preemption safety some day */
 	int s;
 #endif
@@ -715,20 +715,20 @@ usb_discover(void *v)
 	 * but this is guaranteed since this function is only called
 	 * from the event thread for the controller.
 	 */
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	s = splusb();
 #endif
 	while (sc->sc_bus->needs_explore && !sc->sc_dying) {
 		sc->sc_bus->needs_explore = 0;
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 		splx(s);
 #endif
 		sc->sc_bus->root_hub->hub->explore(sc->sc_bus->root_hub);
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 		s = splusb();
 #endif
 	}
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	splx(s);
 #endif
 }
@@ -916,7 +916,7 @@ usb_detach(device_ptr_t self, int flags)
 
 	return (0);
 }
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 int
 usb_detach(device_t self)
 {
@@ -927,7 +927,7 @@ usb_detach(device_t self)
 #endif
 
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 DRIVER_MODULE(usb, ohci, usb_driver, usb_devclass, 0, 0);
 DRIVER_MODULE(usb, uhci, usb_driver, usb_devclass, 0, 0);
 DRIVER_MODULE(usb, ehci, usb_driver, usb_devclass, 0, 0);

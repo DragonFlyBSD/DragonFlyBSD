@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ohci.c,v 1.138 2003/02/08 03:32:50 ichiro Exp $
  * $FreeBSD: src/sys/dev/usb/ohci.c,v 1.141 2003/12/22 15:40:10 shiba Exp $
- * $DragonFly: src/sys/bus/usb/ohci.c,v 1.6 2004/01/08 18:12:59 asmodai Exp $
+ * $DragonFly: src/sys/bus/usb/ohci.c,v 1.7 2004/02/11 15:17:26 joerg Exp $
  */
 /* Also, already ported:
  *	$NetBSD: ohci.c,v 1.140 2003/05/13 04:42:00 gson Exp $
@@ -61,13 +61,13 @@
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/device.h>
 #include <sys/select.h>
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/endian.h>
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <machine/bus_pio.h>
 #include <machine/bus_memio.h>
-#if defined(DIAGNOSTIC) && defined(__i386__) && defined(__FreeBSD__)
+#if defined(DIAGNOSTIC) && defined(__i386__)
 #include <machine/cpu.h>
 #endif
 #endif
@@ -87,7 +87,7 @@
 #include "ohcireg.h"
 #include "ohcivar.h"
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include <machine/clock.h>
 
 #define delay(d)                DELAY(d)

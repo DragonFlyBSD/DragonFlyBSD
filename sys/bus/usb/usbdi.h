@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usbdi.h,v 1.62 2002/07/11 21:14:35 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/usbdi.h,v 1.48 2003/07/14 20:31:03 joe Exp $
- * $DragonFly: src/sys/bus/usb/usbdi.h,v 1.3 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usbdi.h,v 1.4 2004/02/11 15:17:26 joerg Exp $
  */
 
 /*
@@ -91,7 +91,7 @@ typedef void (*usbd_callback)(usbd_xfer_handle, usbd_private_handle,
 #define USBD_NO_TIMEOUT 0
 #define USBD_DEFAULT_TIMEOUT 5000 /* ms = 5 s */
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #define USB_CDEV_MAJOR 108
 #endif
 
@@ -247,7 +247,7 @@ struct usb_attach_arg {
 /* No match */
 #define UMATCH_NONE					 0
 
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 /* FreeBSD needs values less than zero */
 #define UMATCH_VENDOR_PRODUCT_REV			(-10)
 #define UMATCH_VENDOR_PRODUCT				(-20)
@@ -267,7 +267,7 @@ struct usb_attach_arg {
 
 #endif
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 int usbd_driver_load(module_t mod, int what, void *arg);
 #endif
 

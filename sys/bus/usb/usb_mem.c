@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb_mem.c,v 1.26 2003/02/01 06:23:40 thorpej Exp $
  * $FreeBSD: src/sys/dev/usb/usb_mem.c,v 1.5 2003/10/04 22:13:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_mem.c,v 1.1 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_mem.c,v 1.2 2004/02/11 15:17:26 joerg Exp $
  */
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -53,7 +53,7 @@
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/device.h>		/* for usbdivar.h */
 #include <machine/bus.h>
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/endian.h>
 #include <sys/module.h>
 #include <sys/bus.h>
@@ -164,7 +164,7 @@ usb_block_allocmem(bus_dma_tag_t tag, size_t size, size_t align,
 	if (p == NULL)
 		return (USBD_NOMEM);
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	if (bus_dma_tag_create(tag, align, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
 	    size, sizeof(p->segs) / sizeof(p->segs[0]), size,

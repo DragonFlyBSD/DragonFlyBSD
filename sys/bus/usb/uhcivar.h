@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhcivar.h,v 1.33 2002/02/11 11:41:30 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uhcivar.h,v 1.36 2003/07/15 23:19:49 jmg Exp $
- * $DragonFly: src/sys/bus/usb/uhcivar.h,v 1.3 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/uhcivar.h,v 1.4 2004/02/11 15:17:26 joerg Exp $
  */
 
 /*
@@ -139,7 +139,7 @@ typedef struct uhci_softc {
 	bus_space_tag_t iot;
 	bus_space_handle_t ioh;
 	bus_size_t sc_size;
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	void *ih;
 
 	struct resource *io_res;

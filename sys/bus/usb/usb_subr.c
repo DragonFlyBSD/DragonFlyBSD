@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb_subr.c,v 1.99 2002/07/11 21:14:34 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.58 2003/09/01 07:47:42 ticso Exp $
- * $DragonFly: src/sys/bus/usb/usb_subr.c,v 1.6 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_subr.c,v 1.7 2004/02/11 15:17:26 joerg Exp $
  */
 
 /* Also already have from NetBSD:
@@ -53,7 +53,7 @@
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/device.h>
 #include <sys/select.h>
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/module.h>
 #include <sys/bus.h>
 #endif
@@ -69,7 +69,7 @@
 #include "usbdevs.h"
 #include "usb_quirks.h"
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include <machine/clock.h>
 #define delay(d)         DELAY(d)
 #endif
@@ -811,7 +811,7 @@ usbd_probe_and_attach(device_ptr_t parent, usbd_device_handle dev,
 	device_ptr_t dv;
 	usbd_interface_handle ifaces[256]; /* 256 is the absolute max */
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	/*
 	 * XXX uaa is a static var. Not a problem as it _should_ be used only
 	 * during probe and attach. Should be changed however.
@@ -868,7 +868,7 @@ usbd_probe_and_attach(device_ptr_t parent, usbd_device_handle dev,
 			printf("%s: port %d, set config at addr %d failed\n",
 			       USBDEVPTRNAME(parent), port, addr);
 #endif
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 			device_delete_child(parent, bdev);
 #endif
 
@@ -882,7 +882,7 @@ usbd_probe_and_attach(device_ptr_t parent, usbd_device_handle dev,
 		uaa.nifaces = nifaces;
 		dev->subdevs = malloc((nifaces+1) * sizeof dv, M_USB,M_NOWAIT);
 		if (dev->subdevs == NULL) {
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 			device_delete_child(parent, bdev);
 #endif
 			return (USBD_NOMEM);
@@ -901,7 +901,7 @@ usbd_probe_and_attach(device_ptr_t parent, usbd_device_handle dev,
 				dev->subdevs[found] = 0;
 				ifaces[i] = 0; /* consumed */
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 				/* create another child for the next iface */
 				bdev = device_add_child(parent, NULL, -1);
 				if (!bdev) {
@@ -915,7 +915,7 @@ usbd_probe_and_attach(device_ptr_t parent, usbd_device_handle dev,
 			}
 		}
 		if (found != 0) {
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 			/* remove the last created child again; it is unused */
 			device_delete_child(parent, bdev);
 #endif
@@ -952,7 +952,7 @@ usbd_probe_and_attach(device_ptr_t parent, usbd_device_handle dev,
 	 * fully operational and not harming anyone.
 	 */
 	DPRINTF(("usbd_probe_and_attach: generic attach failed\n"));
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	device_delete_child(parent, bdev);
 #endif
  	return (USBD_NORMAL_COMPLETION);

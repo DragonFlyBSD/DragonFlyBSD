@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehci.c,v 1.46 2003/03/09 19:51:13 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ehci.c,v 1.5 2003/11/10 00:20:52 joe Exp $
- * $DragonFly: src/sys/bus/usb/ehci.c,v 1.3 2004/01/08 18:12:59 asmodai Exp $
+ * $DragonFly: src/sys/bus/usb/ehci.c,v 1.4 2004/02/11 15:17:26 joerg Exp $
  */
 
 /* Also ported from NetBSD:
@@ -66,14 +66,14 @@
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/device.h>
 #include <sys/select.h>
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/endian.h>
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <machine/bus_pio.h>
 #include <machine/bus_memio.h>
 #include <sys/lock.h>
-#if defined(DIAGNOSTIC) && defined(__i386__) && defined(__FreeBSD__)
+#if defined(DIAGNOSTIC) && defined(__i386__)
 #include <machine/cpu.h>
 #endif
 #endif
@@ -93,7 +93,7 @@
 #include <bus/usb/ehcireg.h>
 #include <bus/usb/ehcivar.h>
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include <machine/clock.h>
 
 #define delay(d)                DELAY(d)
@@ -2140,7 +2140,7 @@ ehci_alloc_sqtd_chain(struct ehci_pipe *epipe, ehci_softc_t *sc,
 		    EHCI_QTD_NBUFFERS * EHCI_PAGE_SIZE) {
 			/* we can handle it in this QTD */
 			curlen = len;
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 		/* XXX This is pretty broken: Because we do not allocate
 		 * a contiguous buffer (contiguous in physical pages) we
 		 * can only transfer one page in one go.
@@ -2166,7 +2166,7 @@ ehci_alloc_sqtd_chain(struct ehci_pipe *epipe, ehci_softc_t *sc,
 				curlen = len;
 			}
 #endif
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 			/* See comment above (XXX) */
 			curlen = EHCI_PAGE_SIZE -
 				 EHCI_PAGE_MASK(dataphys);

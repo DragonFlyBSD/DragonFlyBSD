@@ -21,10 +21,10 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/rio500_usb.h,v 1.1 2000/04/08 17:02:13 n_hibma Exp $
- * $DragonFly: src/sys/bus/usb/rio500_usb.h,v 1.3 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/rio500_usb.h,v 1.4 2004/02/11 15:17:26 joerg Exp $
  */
 
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
 #include <sys/ioccom.h>
 #ifndef USB_VENDOR_DIAMOND
 #define USB_VENDOR_DIAMOND 0x841
@@ -36,7 +36,7 @@
 
 struct RioCommand
 {
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
   u_int16_t  length;
 #else
   short length;
@@ -49,7 +49,7 @@ struct RioCommand
   int  timeout;
 };
 
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
 #define RIO_SEND_COMMAND	_IOWR('U', 200, struct RioCommand)
 #define RIO_RECV_COMMAND	_IOWR('U', 201, struct RioCommand)
 #else

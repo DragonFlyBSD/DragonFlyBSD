@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usbdivar.h,v 1.70 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/usbdivar.h,v 1.40 2003/07/15 22:42:37 jmg Exp $
- * $DragonFly: src/sys/bus/usb/usbdivar.h,v 1.3 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usbdivar.h,v 1.4 2004/02/11 15:17:26 joerg Exp $
  */
 
 /*
@@ -279,7 +279,7 @@ void		usb_schedsoftintr(struct usbd_bus *);
 
 #if defined(__NetBSD__)
 #include "locators.h"
-#elif defined(__FreeBSD__) || defined(__OpenBSD__)
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
 /* XXX these values are used to statically bind some elements in the USB tree
  * to specific driver instances. This should be somehow emulated in FreeBSD
  * but can be done later on.

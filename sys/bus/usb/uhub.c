@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhub.c,v 1.64 2003/02/08 03:32:51 ichiro Exp $
  * $FreeBSD: src/sys/dev/usb/uhub.c,v 1.54 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/bus/usb/uhub.c,v 1.4 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/uhub.c,v 1.5 2004/02/11 15:17:26 joerg Exp $
  */
 
 /*
@@ -52,7 +52,7 @@
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/device.h>
 #include <sys/proc.h>
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/module.h>
 #include <sys/bus.h>
 #include "bus_if.h"
@@ -91,7 +91,7 @@ struct uhub_softc {
 Static usbd_status uhub_explore(usbd_device_handle hub);
 Static void uhub_intr(usbd_xfer_handle, usbd_private_handle,usbd_status);
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 Static bus_driver_added_t uhub_driver_added;
 Static bus_child_detached_t uhub_child_detached;
 #endif
@@ -109,7 +109,7 @@ USB_DECLARE_DRIVER(uhub);
 /* Create the driver instance for the hub connected to hub case */
 CFATTACH_DECL(uhub_uhub, sizeof(struct uhub_softc),
     uhub_match, uhub_attach, uhub_detach, uhub_activate);
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 USB_DECLARE_DRIVER_INIT(uhub,
 			DEVMETHOD(bus_driver_added, uhub_driver_added),
 			DEVMETHOD(bus_child_detached, uhub_child_detached),
@@ -549,7 +549,7 @@ USB_DETACH(uhub)
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	DPRINTF(("uhub_detach: sc=%p flags=%d\n", sc, flags));
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 	DPRINTF(("uhub_detach: sc=%port\n", sc));
 #endif
 
@@ -575,7 +575,7 @@ USB_DETACH(uhub)
 	return (0);
 }
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 /* Called when a device has been detached from it */
 Static void
 uhub_child_detached(device_t self, device_t child)
@@ -638,7 +638,7 @@ uhub_intr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 		usb_needs_explore(sc->sc_hub);
 }
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 DRIVER_MODULE(uhub, usb, uhubroot_driver, uhubroot_devclass, 0, 0);
 DRIVER_MODULE(uhub, uhub, uhub_driver, uhub_devclass, usbd_driver_load, 0);
 #endif

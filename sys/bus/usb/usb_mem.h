@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb_mem.h,v 1.18 2002/05/28 17:45:17 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/usb_mem.h,v 1.20 2003/09/01 01:07:24 jmg Exp $
- * $DragonFly: src/sys/bus/usb/usb_mem.h,v 1.3 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_mem.h,v 1.4 2004/02/11 15:17:26 joerg Exp $
  */
 
 /*
@@ -44,7 +44,7 @@
 typedef struct usb_dma_block {
 	bus_dma_tag_t tag;
 	bus_dmamap_t map;
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	void *kaddr;
 #else
         caddr_t kaddr;
@@ -57,7 +57,7 @@ typedef struct usb_dma_block {
 	LIST_ENTRY(usb_dma_block) next;
 } usb_dma_block_t;
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__)  || defined(__DragonFly__)
 #define DMAADDR(dma, o) ((dma)->block->segs[0].ds_addr + (dma)->offs + (o))
 #else
 #define DMAADDR(dma, o) (((char *)(dma)->block->map->dm_segs[0].ds_addr) + (dma)->offs + (o))

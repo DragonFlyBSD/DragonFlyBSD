@@ -2,7 +2,7 @@
  * $NetBSD: uhci.c,v 1.80 2000/01/19 01:16:38 augustss Exp $
  * $NetBSD: uhci.c,v 1.170 2003/02/19 01:35:04 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uhci.c,v 1.149 2003/11/10 00:08:41 joe Exp $
- * $DragonFly: src/sys/bus/usb/uhci.c,v 1.8 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/uhci.c,v 1.9 2004/02/11 15:17:26 joerg Exp $
  */
 
 /*	Also already incorporated from NetBSD:
@@ -67,7 +67,7 @@
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/device.h>
 #include <sys/select.h>
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/endian.h>
 #include <sys/module.h>
 #include <sys/bus.h>
@@ -95,7 +95,7 @@
 /* Use bandwidth reclamation for control transfers. Some devices choke on it. */
 /*#define UHCI_CTL_LOOP */
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include <machine/clock.h>
 
 #define delay(d)		DELAY(d)

@@ -2,7 +2,7 @@
  * $OpenBSD: usb_port.h,v 1.18 2000/09/06 22:42:10 rahnds Exp $
  * $NetBSD: usb_port.h,v 1.54 2002/03/28 21:49:19 ichiro Exp $
  * $FreeBSD: src/sys/dev/usb/usb_port.h,v 1.65 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.5 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.6 2004/02/11 15:17:26 joerg Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -502,7 +502,7 @@ __CONCAT(dname,_detach)(device_t self)
 SYSCTL_DECL(_hw_usb);
 #endif
 
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 /***************************************************************************
  *					FREEBSD
  */
@@ -544,7 +544,7 @@ MALLOC_DECLARE(M_USBHC);
 		u_int len; \
 	} usb_dma_t
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 typedef struct thread *usb_proc_ptr;
 
 #define uio_procp uio_td

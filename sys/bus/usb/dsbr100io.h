@@ -30,14 +30,14 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/dsbr100io.h,v 1.1 2002/03/04 03:51:19 alfred Exp $
- * $DragonFly: src/sys/bus/usb/dsbr100io.h,v 1.3 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/dsbr100io.h,v 1.4 2004/02/11 15:17:26 joerg Exp $
  */
 
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
 #include <sys/ioccom.h>
 #endif
 
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
 #define FM_SET_FREQ	_IOWR('U', 200, int)
 #define FM_GET_FREQ	_IOWR('U', 201, int)
 #define FM_START	_IOWR('U', 202, int)
