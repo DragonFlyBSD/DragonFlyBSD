@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.13 2003/08/25 18:48:14 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.14 2003/08/26 08:28:25 dillon Exp $
  */
 
 /*
@@ -662,7 +662,6 @@ svr4_sys_mknod(struct svr4_sys_mknod_args *uap)
 	struct thread *td = curthread;	/* XXX */
         int *retval;
 
-	KKASSERT(p);
 	retval = &uap->sysmsg_result;
 
 	return svr4_mknod(retval, SCARG(uap, path), SCARG(uap, mode),
@@ -676,7 +675,6 @@ svr4_sys_xmknod(struct svr4_sys_xmknod_args *uap)
 	struct thread *td = curthread;	/* XXX */
         int *retval;
 
-	KKASSERT(p);
 	retval = &uap->sysmsg_result;
 
 	return svr4_mknod(retval, SCARG(uap, path), SCARG(uap, mode),
@@ -697,7 +695,6 @@ svr4_sys_sysconfig(struct svr4_sys_sysconfig_args *uap)
 	struct thread *td = curthread;	/* XXX */
 	int *retval;
 
-	KKASSERT(p);
 	retval = &uap->sysmsg_result;
 
 	switch (SCARG(uap, name)) {
@@ -1660,7 +1657,6 @@ svr4_sys_resolvepath(struct svr4_sys_resolvepath_args *uap)
 	int error;
 	int *retval;
 
-	KKASSERT(p);
 	retval = &uap->sysmsg_result;
 
 	NDINIT(&nd, LOOKUP, NOFOLLOW | SAVENAME, UIO_USERSPACE,
