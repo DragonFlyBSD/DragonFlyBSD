@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.1 2004/03/12 22:38:15 joerg Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.2 2004/03/24 17:39:51 drhodus Exp $
  */
 
 /* udf_vfsops.c */
@@ -197,7 +197,7 @@ udf_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 	udf_statfs(mp, &mp->mnt_stat, td);
 	return(0);
-};
+}
 
 /*
  * Check the descriptor tag for both the correct id and correct checksum.
@@ -394,7 +394,7 @@ bail:
 	if (needclose)
 		VOP_CLOSE(devvp, FREAD, td);
 	return(error);
-};
+}
 
 static int
 udf_unmount(struct mount *mp, int mntflags, struct thread *td)

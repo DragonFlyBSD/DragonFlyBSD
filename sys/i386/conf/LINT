@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.24 2004/03/01 06:33:16 dillon Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.25 2004/03/24 17:39:51 drhodus Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -733,6 +733,7 @@ options 	NWFS			#NetWare filesystem
 options 	PORTAL			#Portal filesystem
 options 	PROCFS			#Process filesystem
 options 	SMBFS			#SMB/CIFS filesystem
+options		UDF			#UDF filesystem
 options 	UMAPFS			#UID map filesystem
 options 	UNION			#Union filesystem
 # The xFS_ROOT options REQUIRE the associated ``options xFS''

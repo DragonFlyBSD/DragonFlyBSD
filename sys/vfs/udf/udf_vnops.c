@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.1 2004/03/12 22:38:15 joerg Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.2 2004/03/24 17:39:51 drhodus Exp $
  */
 
 /* udf_vnops.c */
@@ -470,7 +470,7 @@ udf_read(struct vop_read_args *a)
 			brelse(bp);
 		if (error)
 			break;
-	};
+	}
 
 	return(error);
 }
