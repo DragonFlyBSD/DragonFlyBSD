@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.15 2004/07/23 07:16:30 joerg Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.16 2004/07/28 08:53:43 joerg Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -212,6 +212,7 @@ typedef void if_init_f_t (void *);
  */
 #define	IF_QFULL(ifq)		((ifq)->ifq_len >= (ifq)->ifq_maxlen)
 #define	IF_DROP(ifq)		((ifq)->ifq_drops++)
+#define	IF_QLEN(ifq)		((ifq)->ifq_len)
 #define	IF_ENQUEUE(ifq, m) { \
 	(m)->m_nextpkt = 0; \
 	if ((ifq)->ifq_tail == 0) \
@@ -237,6 +238,9 @@ typedef void if_init_f_t (void *);
 		(ifq)->ifq_len--; \
 	} \
 }
+
+#define	IF_POLL(ifq, m)		((m) = (ifq)->ifq_head)
+
 #define IF_DRAIN(ifq) do {						\
 	struct mbuf *m;							\
 	while (1) {							\
@@ -281,6 +285,101 @@ if_handoff(struct ifqueue *ifq, struct mbuf *m, struct ifnet *ifp, int adjust)
 	splx(s);
 	return (1);
 }
+
+#define	IFQ_ENQUEUE(ifq, m, err)					\
+do {									\
+	if (_IF_QFULL(ifq)) {						\
+		m_freem(m);						\
+		(err) = ENOBUFS;					\
+	} else {							\
+		_IF_ENQUEUE(ifq, m);					\
+		(err) = 0;						\
+	}								\
+	if (err)							\
+		(ifq)->ifq_drops++;					\
+} while (0)
+
+#define	IFQ_DEQUEUE(ifq, m)		IF_DEQUEUE(ifq, m)
+#define	IFQ_POLL(ifq, m)		IF_POLL(ifq, m)
+#define	IFQ_PURGE(ifq)			IF_DRAIN(ifq)
+
+#define	IFQ_SET_READY(ifq)		/* nothing */
+
+#define	IFQ_IS_EMPTY(ifq)		((ifq)->ifq_len == 0)
+#define	IFQ_INC_LEN(ifq)		((ifq)->ifq_len++)
+#define	IFQ_DEC_LEN(ifq)		(--(ifq)->ifq_len)
+#define	IFQ_INC_DROPS(ifq)		((ifq)->ifq_drops++)
+#define	IFQ_SET_MAXLEN(ifq, len)	((ifq)->ifq_maxlen = (len))
+
+#define	IFQ_HANDOFF_ADJ(ifp, m, adj, err)				\
+do {									\
+	int len;							\
+	short mflags;							\
+									\
+	len = (m)->m_pkthdr.len;					\
+	mflags = (m)->m_flags;						\
+	IFQ_ENQUEUE(&(ifp)->if_snd, m, err);				\
+	if ((err) == 0) {						\
+		(ifp)->if_obytes += len + (adj);			\
+		if (mflags & M_MCAST)					\
+			(ifp)->if_omcasts++;				\
+		if (((ifp)->if_flags & IFF_OACTIVE) == 0)		\
+			(*(ifp)->if_start)(ifp);			\
+	}								\
+} while (0)
+
+#define	IFQ_HANDOFF(ifp, m, err)					\
+	IFQ_HANDOFF_ADJ(ifp, m, 0, err)
+
+#define	IFQ_DRV_DEQUEUE(ifq, m)						\
+do {									\
+	(m) = (ifq)->ifq_drv_head;					\
+	if (m) {							\
+		if (((ifq)->ifq_drv_head = (m)->m_nextpkt) == NULL)	\
+			(ifq)->ifq_drv_tail = NULL;			\
+		(m)->m_nextpkt = NULL;					\
+		(ifq)->ifq_drv_len--;					\
+	} else {							\
+		IFQ_DEQUEUE(ifq, m);				\
+		while ((ifq)->ifq_drv_len < (ifq)->ifq_drv_maxlen) {	\
+			struct mbuf *m0;				\
+			IFQ_DEQUEUE(ifq, m0);			\
+			if (m0 == NULL)					\
+				break;					\
+			m0->m_nextpkt = NULL;				\
+			if ((ifq)->ifq_drv_tail == NULL)		\
+				(ifq)->ifq_drv_head = m0;		\
+			else						\
+				(ifq)->ifq_drv_tail->m_nextpkt = m0;	\
+			(ifq)->ifq_drv_tail = m0;			\
+			(ifq)->ifq_drv_len++;				\
+		}							\
+	}								\
+} while (0)
+
+#define	IFQ_DRV_PREPEND(ifq, m)						\
+do {									\
+	(m)->m_nextpkt = (ifq)->ifq_drv_head;				\
+	if ((ifq)->ifq_tail == NULL)					\
+		(ifq)->ifq_tail = (m);					\
+	(ifq)->ifq_drv_head = (m);					\
+	(ifq)->ifq_drv_len++;						\
+} while (0)
+
+#define	IFQ_DRV_IS_EMPTY(ifq)						\
+	(((ifq)->ifq_drv_len == 0) && ((ifq)->ifq_len == 0))
+
+#define	IFQ_DRV_PURGE(ifq)						\
+do {									\
+	struct mbuf *m = (ifq)->ifq_drv_head;				\
+	while(m != NULL) {						\
+		m = m->m_nextpkt;					\
+		m_freem(m);						\
+	}								\
+	(ifq)->ifq_drv_head = (ifq)->ifq_drv_tail = NULL;		\
+	(ifq)->ifq_drv_len = 0;						\
+	IFQ_PURGE(ifq);							\
+} while (0)
 
 /*
  * 72 was chosen below because it is the size of a TCP/IP
