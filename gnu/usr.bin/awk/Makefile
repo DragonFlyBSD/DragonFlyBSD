@@ -1,7 +1,7 @@
 # Makefile copyright James Raynard (jraynard@freebsd.org) 1997
 #
 # $FreeBSD: src/gnu/usr.bin/awk/Makefile,v 1.13.2.2 2001/04/25 12:03:27 ru Exp $
-# $DragonFly: src/gnu/usr.bin/awk/Attic/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/awk/Attic/Makefile,v 1.3 2004/02/03 06:26:32 dillon Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 
@@ -19,6 +19,9 @@ CFLAGS+=        -funsigned-char
 
 CFLAGS+=	-I${.CURDIR} -I${.CURDIR}/../../../contrib/awk
 CFLAGS+=	-DHAVE_CONFIG_H -DGAWK -DDEFPATH=\".\"
+# current contrib/awk needs __FreeBSD__ to be set
+CFLAGS+=	-D__FreeBSD__
+
 CLEANFILES=	awktab.y
 
 SUBDIR+= doc

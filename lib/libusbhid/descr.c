@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libusbhid/descr.c,v 1.7.2.1 2002/04/03 15:54:00 joe Exp $
- * $DragonFly: src/lib/libusbhid/descr.c,v 1.3 2003/08/08 04:18:35 dillon Exp $
+ * $DragonFly: src/lib/libusbhid/descr.c,v 1.4 2004/02/03 06:26:31 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -37,9 +37,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
-#if defined(__FreeBSD__)
 #include <sys/ioctl.h>
-#endif
 
 #include <bus/usb/usb.h>
 
