@@ -1,5 +1,5 @@
-/* $FreeBSD: src/sys/dev/bktr/bktr_os.h,v 1.1.4.2 2000/09/11 07:59:57 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_os.h,v 1.3 2004/02/13 01:45:15 joerg Exp $ */
+/* $FreeBSD: src/sys/dev/bktr/bktr_os.h,v 1.7 2003/12/01 19:03:50 truckman Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_os.h,v 1.4 2004/05/15 17:54:13 joerg Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -48,26 +48,19 @@
 /******************************/
 /* *** Memory Allocation  *** */
 /******************************/
-#if defined(__DragonFly__) || (defined(__FreeBSD__) || defined(__bsdi__))
 vm_offset_t     get_bktr_mem( int unit, unsigned size );
-#endif
-
-#if (defined(__NetBSD__) || defined(__OpenBSD__))
-vm_offset_t     get_bktr_mem(bktr_ptr_t, bus_dmamap_t *, unsigned size);
-void            free_bktr_mem(bktr_ptr_t, bus_dmamap_t, vm_offset_t);
-#endif 
 
 /************************************/
 /* *** Interrupt Enable/Disable *** */
 /************************************/
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define DECLARE_INTR_MASK(s)	intrmask_t s
 #define DISABLE_INTR(s)		s=spltty()
 #define ENABLE_INTR(s)		splx(s)
+
+#ifdef USE_VBIMUTEX
+#define LOCK_VBI(bktr)		mtx_lock(&bktr->vbimutex)
+#define UNLOCK_VBI(bktr)	mtx_unlock(&bktr->vbimutex)
 #else
-#define DECLARE_INTR_MASK(s)	/* no need to declare 's' */
-#define DISABLE_INTR(s)		disable_intr()
-#define ENABLE_INTR(s)		enable_intr()
+#define LOCK_VBI(bktr)
+#define UNLOCK_VBI(bktr)
 #endif
-
-

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_tuner.h,v 1.1 1999/09/26 22:06:20 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_tuner.h,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_tuner.h,v 1.3 2004/05/15 17:54:13 joerg Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -100,5 +100,3 @@ int	do_afc( bktr_ptr_t bktr, int addr, int frequency );
 #if !defined( DEFAULT_CHNLSET )
 #define DEFAULT_CHNLSET CHNLSET_WEUROPE
 #endif
-
-

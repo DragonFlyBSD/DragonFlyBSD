@@ -1,16 +1,3 @@
-/* $FreeBSD: src/sys/dev/bktr/bktr_tuner.c,v 1.5.2.3 2000/10/26 16:38:46 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_tuner.c,v 1.5 2004/02/13 01:45:15 joerg Exp $ */
-
-/*
- * This is part of the Driver for Video Capture Cards (Frame grabbers)
- * and TV Tuner cards using the Brooktree Bt848, Bt848A, Bt849A, Bt878, Bt879
- * chipset.
- * Copyright Roger Hardiman and Amancio Hasty.
- *
- * bktr_tuner : This deals with controlling the tuner fitted to TV cards.
- *
- */
-
 /*
  * 1. Redistributions of source code must retain the
  * Copyright (c) 1997 Amancio Hasty, 1999 Roger Hardiman
@@ -42,46 +29,38 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/bktr/bktr_tuner.c,v 1.12 2003/12/08 07:59:18 obrien Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_tuner.c,v 1.6 2004/05/15 17:54:13 joerg Exp $
  */
 
 
+/*
+ * This is part of the Driver for Video Capture Cards (Frame grabbers)
+ * and TV Tuner cards using the Brooktree Bt848, Bt848A, Bt849A, Bt878, Bt879
+ * chipset.
+ * Copyright Roger Hardiman and Amancio Hasty.
+ *
+ * bktr_tuner : This deals with controlling the tuner fitted to TV cards.
+ */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
-#ifdef __NetBSD__
-#include <sys/proc.h>
-#endif
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <bus/pci/pcivar.h>
 
-#if defined(__DragonFly__) || (__FreeBSD_version < 500000)
-#include <machine/clock.h>              /* for DELAY */
-#endif
-
-#if defined(__DragonFly__) || (__FreeBSD_version >=300000)
 #include <machine/bus_memio.h>          /* for bus space */
 #include <machine/bus.h>
 #include <sys/bus.h>
-#endif
-#endif
 
-#ifdef __NetBSD__
-#include <dev/ic/bt8xx.h>	/* NetBSD .h file location */
-#include <dev/pci/bktr/bktr_reg.h>
-#include <dev/pci/bktr/bktr_tuner.h>
-#include <dev/pci/bktr/bktr_card.h>
-#include <dev/pci/bktr/bktr_core.h>
-#else
-#include <machine/ioctl_meteor.h>	/* Traditional .h file location */
-#include <machine/ioctl_bt848.h>        /* extensions to ioctl_meteor.h */
-#include "bktr_reg.h"
-#include "bktr_tuner.h"
-#include "bktr_card.h"
-#include "bktr_core.h"
-#endif
+#include <dev/video/meteor/ioctl_meteor.h>
+#include <dev/video/bktr/ioctl_bt848.h>	/* extensions to ioctl_meteor.h */
+#include <dev/video/bktr/bktr_reg.h>
+#include <dev/video/bktr/bktr_tuner.h>
+#include <dev/video/bktr/bktr_card.h>
+#include <dev/video/bktr/bktr_core.h>
 
 
 

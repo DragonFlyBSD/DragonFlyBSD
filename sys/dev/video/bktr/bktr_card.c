@@ -1,20 +1,3 @@
-/* $FreeBSD: src/sys/dev/bktr/bktr_card.c,v 1.9.2.5 2003/02/08 02:04:57 orion Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_card.c,v 1.5 2004/04/05 05:34:36 dillon Exp $ */
-
-/*
- * This is part of the Driver for Video Capture Cards (Frame grabbers)
- * and TV Tuner cards using the Brooktree Bt848, Bt848A, Bt849A, Bt878, Bt879
- * chipset.
- * Copyright Roger Hardiman and Amancio Hasty.
- *
- * bktr_card : This deals with identifying TV cards.
- *               trying to find the card make and model of card.
- *               trying to find the type of tuner fitted.
- *               reading the configuration EEPROM.
- *               locating i2c devices.
- *
- */
-
 /*
  * 1. Redistributions of source code must retain the
  * Copyright (c) 1997 Amancio Hasty, 1999 Roger Hardiman
@@ -46,6 +29,22 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/bktr/bktr_card.c,v 1.23 2003/12/08 07:59:18 obrien Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_card.c,v 1.6 2004/05/15 17:54:12 joerg Exp $
+ */
+
+/*
+ * This is part of the Driver for Video Capture Cards (Frame grabbers)
+ * and TV Tuner cards using the Brooktree Bt848, Bt848A, Bt849A, Bt878, Bt879
+ * chipset.
+ * Copyright Roger Hardiman and Amancio Hasty.
+ *
+ * bktr_card : This deals with identifying TV cards.
+ *               trying to find the card make and model of card.
+ *               trying to find the type of tuner fitted.
+ *               reading the configuration EEPROM.
+ *               locating i2c devices.
  */
 
 #include "opt_bktr.h"		/* Include any kernel config options */
@@ -54,43 +53,21 @@
 #include <sys/systm.h>
 #include <sys/vnode.h>
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-
-#if defined(__DragonFly__) || (__FreeBSD_version < 500000)
-#include <machine/clock.h>              /* for DELAY */
-#endif
-
 #include <bus/pci/pcivar.h>
-
-#if defined(__DragonFly__) || (__FreeBSD_version >=300000)
 #include <machine/bus_memio.h>	/* for bus space */
 #include <machine/bus.h>
 #include <sys/bus.h>
-#endif
-#endif
 
-#ifdef __NetBSD__
-#include <dev/ic/bt8xx.h>	/* NetBSD location for .h files */
-#include <dev/pci/bktr/bktr_reg.h>
-#include <dev/pci/bktr/bktr_core.h>
-#include <dev/pci/bktr/bktr_tuner.h>
-#include <dev/pci/bktr/bktr_card.h>
-#include <dev/pci/bktr/bktr_audio.h>
-#else
-#include <machine/ioctl_meteor.h>	/* Traditional location for .h files */
-#include <machine/ioctl_bt848.h>        /* extensions to ioctl_meteor.h */
-#include "bktr_reg.h"
-#include "bktr_core.h"
-#include "bktr_tuner.h"
-#include "bktr_card.h"
-#include "bktr_audio.h"
-#endif
+#include <dev/video/meteor/ioctl_meteor.h>
+#include <dev/video/bktr/ioctl_bt848.h>	/* extensions to ioctl_meteor.h */
+#include <dev/video/bktr/bktr_reg.h>
+#include <dev/video/bktr/bktr_core.h>
+#include <dev/video/bktr/bktr_tuner.h>
+#include <dev/video/bktr/bktr_card.h>
+#include <dev/video/bktr/bktr_audio.h>
 
-/* Include the PCI Vendor definitions */
-#ifdef __NetBSD__
-#include <dev/pci/pcidevs.h>
-#include <dev/pci/pcireg.h>
-#endif
+#include <bus/pci/pcidevs.h>
+#include <bus/pci/pcireg.h>
 
 /* Various defines */
 #define HAUP_REMOTE_INT_WADDR   0x30
@@ -356,6 +333,19 @@ static const struct CARDTYPE cards[] = {
 	   { 0x10000, 0, 0x10000, 0, 1 },	/* audio MUX values */
 	   0x10f00 },				/* GPIO mask */
 
+        {  CARD_TERRATEC_TVALUE,                /* the card id */
+          "Terratec TerraTValue Bt878",         /* the 'name' */
+           NULL,                                /* the tuner */
+           0,                                   /* the tuner i2c address */
+           0,                                   /* dbx is optional */
+           0,
+	   0,
+           0,                                   /* EEProm type */
+           0,                                   /* EEProm size */
+	   /* Tuner, Extern, Intern, Mute, Enabled */
+	   { 0x500, 0, 0x300, 0x900, 0x900 },	/* audio MUX values */
+	   0x10f00 },				/* GPIO mask */
+
 };
 
 struct bt848_card_sig bt848_card_signature[1]= {
@@ -542,12 +532,7 @@ static int locate_eeprom_address( bktr_ptr_t bktr) {
  * configuration EEPROM used on Bt878/879 cards. They should match the
  * number assigned to the company by the PCI Special Interest Group
  */
-#ifndef __NetBSD__
-#define PCI_VENDOR_HAUPPAUGE	0x0070
-#define PCI_VENDOR_AVERMEDIA	0x1461
-#define PCI_VENDOR_STB		0x10B4
-#define PCI_VENDOR_ASKEY	0x144F
-#endif
+
 /* Following not confirmed with http://members.hyperlink.net.au/~chart,
    so not added to NetBSD's pcidevs */
 #define PCI_VENDOR_LEADTEK_ALT	0x6606
@@ -678,10 +663,9 @@ probeCard( bktr_ptr_t bktr, int verbose, int unit )
                     goto checkTuner;
                 }
 
-                if (subsystem_vendor_id == PCI_VENDOR_LEADTEK_ALT ||
-		    subsystem_vendor_id == PCI_VENDOR_LEADTEK_ALT_2 ||
-		    subsystem_vendor_id == PCI_VENDOR_LEADTEK_ALT_3
-		) {
+                if ((subsystem_vendor_id == PCI_VENDOR_LEADTEK_ALT)
+		 || (subsystem_vendor_id == PCI_VENDOR_LEADTEK_ALT_2)
+		 || (subsystem_vendor_id == PCI_VENDOR_LEADTEK_ALT_3)) {
                     bktr->card = cards[ (card = CARD_LEADTEK) ];
 		    bktr->card.eepromAddr = eeprom_i2c_address;
 		    bktr->card.eepromSize = (u_char)(256 / EEPROMBLOCKSIZE);
@@ -698,6 +682,14 @@ probeCard( bktr_ptr_t bktr, int verbose, int unit )
 		if (subsystem_vendor_id == 0x10fc &&
 		    subsystem_id == 0x4020) {
 		    bktr->card = cards[ (card = CARD_IO_BCTV3) ];
+		    bktr->card.eepromAddr = eeprom_i2c_address;
+		    bktr->card.eepromSize = (u_char)(256 / EEPROMBLOCKSIZE);
+		    goto checkTuner;
+		}
+
+		if (subsystem_vendor_id == PCI_VENDOR_TERRATEC &&
+		    subsystem_id == 0x1118) {
+		    bktr->card = cards[ (card = CARD_TERRATEC_TVALUE) ];
 		    bktr->card.eepromAddr = eeprom_i2c_address;
 		    bktr->card.eepromSize = (u_char)(256 / EEPROMBLOCKSIZE);
 		    goto checkTuner;
@@ -1117,6 +1109,11 @@ checkTuner:
 
 	case CARD_IO_BCTV3:
 	    select_tuner( bktr, ALPS_TSCH5 ); /* ALPS_TSCH6, in fact. */
+	    goto checkDBX;
+	    break;
+
+	case CARD_TERRATEC_TVALUE:
+	    select_tuner( bktr, PHILIPS_PAL );
 	    goto checkDBX;
 	    break;
 

@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.28 2004/04/29 12:11:16 joerg Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.29 2004/05/15 17:54:13 joerg Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1962,6 +1962,11 @@ options 	AHD_REG_PRETTY_PRINT
 # motherboards and motherboards with bad or incomplete PCI 2.1 support.
 # As a rough guess, old = before 1998
 #
+# options 	BKTR_NEW_MSP34XX_DRIVER
+# Use new, more complete initialization scheme for the msp34* soundchip.
+# Should fix stereo autodetection if the old driver does only output
+# mono sound.
+#
 #
 # The oltr driver supports the following Olicom PCI token-ring adapters
 # OC-3136, OC-3137, OC-3139, OC-3140, OC-3141, OC-3540, OC-3250
@@ -2051,6 +2056,7 @@ device		meteor
 # I2C slaves connected to the external connector of some cards.
 #
 device		bktr
+options 	BKTR_NEW_MSP34XX_DRIVER
 
 #
 # PCCARD/PCMCIA

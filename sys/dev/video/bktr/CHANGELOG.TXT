@@ -1,5 +1,5 @@
-/* $FreeBSD: src/sys/dev/bktr/CHANGELOG.TXT,v 1.8.2.4 2000/11/01 09:36:14 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/CHANGELOG.TXT,v 1.3 2004/01/08 18:39:17 asmodai Exp $ */
+/* $FreeBSD: src/sys/dev/bktr/CHANGELOG.TXT,v 1.19 2002/05/16 22:43:18 eric Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/CHANGELOG.TXT,v 1.4 2004/05/15 17:54:12 joerg Exp $ */
 /*
  * MAINTAINER = Roger Hardiman <roger@freebsd.org>
  */

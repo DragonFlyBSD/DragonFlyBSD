@@ -28,15 +28,16 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/i386/include/ioctl_meteor.h,v 1.11 1999/12/29 04:33:02 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/ioctl_meteor.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $FreeBSD: src/sys/dev/bktr/ioctl_meteor.h,v 1.15 2003/12/20 17:12:25 obrien Exp $
+ * $DragonFly: src/sys/dev/video/meteor/ioctl_meteor.h,v 1.1 2004/05/15 17:54:13 joerg Exp $
  */
+
 /*
  *	ioctl constants for Matrox Meteor Capture card.
  */
 
-#ifndef	_MACHINE_IOCTL_METEOR_H_
-#define	_MACHINE_IOCTL_METEOR_H_
+#ifndef	_DEV_BKTR_IOCTL_METEOR_H_
+#define	_DEV_BKTR_IOCTL_METEOR_H_
 
 #ifndef _KERNEL
 #include <sys/types.h>
@@ -185,4 +186,4 @@ struct meteor_mem {
 	caddr_t	buf;		 /* The real space (virtual addr) */
 } ;
 
-#endif /* !_MACHINE_IOCTL_METEOR_H_ */
+#endif /* !_DEV_BKTR_IOCTL_METEOR_H_ */

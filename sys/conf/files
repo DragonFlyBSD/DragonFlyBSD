@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.60 2004/04/17 03:57:22 drhodus Exp $
+# $DragonFly: src/sys/conf/files,v 1.61 2004/05/15 17:54:12 joerg Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1088,12 +1088,13 @@ dev/netif/awi/awi.c		optional awi
 dev/netif/awi/awi_wep.c		optional awi
 dev/netif/awi/awi_wicfg.c	optional awi
 dev/netif/awi/if_awi_pccard.c	optional awi pccard
+dev/video/bktr/bktr_audio.c	optional bktr pci
+dev/video/bktr/bktr_card.c	optional bktr pci
 dev/video/bktr/bktr_core.c	optional bktr pci
 dev/video/bktr/bktr_i2c.c	optional bktr pci smbus
-dev/video/bktr/bktr_card.c	optional bktr pci
-dev/video/bktr/bktr_tuner.c	optional bktr pci
-dev/video/bktr/bktr_audio.c	optional bktr pci
 dev/video/bktr/bktr_os.c	optional bktr pci
+dev/video/bktr/bktr_tuner.c	optional bktr pci
+dev/video/bktr/msp34xx.c	optional bktr pci
 dev/serial/cy/cy_pci.c		optional cy pci
 dev/netif/dc/if_dc.c		optional dc
 dev/netif/de/if_de.c		optional de

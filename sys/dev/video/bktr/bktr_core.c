@@ -1,32 +1,3 @@
-/* $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.103.2.4 2000/11/01 09:36:14 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.12 2004/04/12 00:50:40 dillon Exp $ */
-
-/*
- * This is part of the Driver for Video Capture Cards (Frame grabbers)
- * and TV Tuner cards using the Brooktree Bt848, Bt848A, Bt849A, Bt878, Bt879
- * chipset.
- * Copyright Roger Hardiman and Amancio Hasty.
- *
- * bktr_core : This deals with the Bt848/849/878/879 PCI Frame Grabber,
- *               Handles all the open, close, ioctl and read userland calls.
- *               Sets the Bt848 registers and generates RISC pograms.
- *               Controls the i2c bus and GPIO interface.
- *               Contains the interface to the kernel.
- *               (eg probe/attach and open/close/ioctl)
- *
- */
-
- /*
-   The Brooktree BT848 Driver driver is based upon Mark Tinguely and
-   Jim Lowe's driver for the Matrox Meteor PCI card . The 
-   Philips SAA 7116 and SAA 7196 are very different chipsets than
-   the BT848.
-
-   The original copyright notice by Mark and Jim is included mostly
-   to honor their fantastic work in the Matrox Meteor driver!
-
- */
-
 /*
  * 1. Redistributions of source code must retain the 
  * Copyright (c) 1997 Amancio Hasty, 1999 Roger Hardiman
@@ -59,11 +30,7 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-
-
-
-/*
+/*-
  * 1. Redistributions of source code must retain the 
  * Copyright (c) 1995 Mark Tinguely and Jim Lowe
  * All rights reserved.
@@ -93,30 +60,42 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.133 2003/12/08 07:59:18 obrien Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.13 2004/05/15 17:54:12 joerg Exp $
+ */
+
+/*
+ * This is part of the Driver for Video Capture Cards (Frame grabbers)
+ * and TV Tuner cards using the Brooktree Bt848, Bt848A, Bt849A, Bt878, Bt879
+ * chipset.
+ * Copyright Roger Hardiman and Amancio Hasty.
+ *
+ * bktr_core : This deals with the Bt848/849/878/879 PCI Frame Grabber,
+ *               Handles all the open, close, ioctl and read userland calls.
+ *               Sets the Bt848 registers and generates RISC pograms.
+ *               Controls the i2c bus and GPIO interface.
+ *               Contains the interface to the kernel.
+ *               (eg probe/attach and open/close/ioctl)
+ */
+
+ /*
+   The Brooktree BT848 Driver driver is based upon Mark Tinguely and
+   Jim Lowe's driver for the Matrox Meteor PCI card . The 
+   Philips SAA 7116 and SAA 7196 are very different chipsets than
+   the BT848.
+
+   The original copyright notice by Mark and Jim is included mostly
+   to honor their fantastic work in the Matrox Meteor driver!
  */
 
 #include "opt_bktr.h"		/* Include any kernel config options */
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-#include "use_bktr.h"
-#endif /* __FreeBSD__ */
-
-#if (                                                            \
-       (defined(__DragonFly__) || (defined(__FreeBSD__)) && (NBKTR > 0))                     \
-    || (defined(__bsdi__))                                       \
-    || (defined(__OpenBSD__))                                    \
-    || (defined(__NetBSD__))                                     \
-    )
-
-
-/*******************/
-/* *** FreeBSD *** */
-/*******************/
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/lock.h>
+#include <sys/proc.h>
 #include <sys/signalvar.h>
 #include <sys/vnode.h>
 
@@ -125,36 +104,31 @@
 #include <vm/pmap.h>
 #include <vm/vm_extern.h>
 
-#if defined(__DragonFly__) || (__FreeBSD_version >=400000) || (NSMBUS > 0)
 #include <sys/bus.h>		/* used by smbus and newbus */
-#endif
 
-#if defined(__DragonFly__) || (__FreeBSD_version < 500000)
-#include <machine/clock.h>              /* for DELAY */
-#endif
-
+#define	PROC_LOCK(p)
+#define	PROC_UNLOCK(p)
 #include <bus/pci/pcivar.h>
+#include <bus/pci/pcidevs.h>
 
-#if defined(__DragonFly__) || (__FreeBSD_version >=300000)
 #include <machine/bus_memio.h>	/* for bus space */
 #include <machine/bus.h>
 #include <sys/bus.h>
-#endif
 
-#include <machine/ioctl_meteor.h>
-#include <machine/ioctl_bt848.h>	/* extensions to ioctl_meteor.h */
-#include "bktr_reg.h"
-#include "bktr_tuner.h"
-#include "bktr_card.h"
-#include "bktr_audio.h"
-#include "bktr_os.h"
-#include "bktr_core.h"
+#include <dev/video/meteor/ioctl_meteor.h>
+#include <dev/video/bktr/ioctl_bt848.h>	/* extensions to ioctl_meteor.h */
+#include <dev/video/bktr/bktr_reg.h>
+#include <dev/video/bktr/bktr_tuner.h>
+#include <dev/video/bktr/bktr_card.h>
+#include <dev/video/bktr/bktr_audio.h>
+#include <dev/video/bktr/bktr_os.h>
+#include <dev/video/bktr/bktr_core.h>
 #if defined(BKTR_FREEBSD_MODULE)
-#include "bktr_mem.h"
+#include <dev/video/bktr/bktr_mem.h>
 #endif
 
 #if defined(BKTR_USE_FREEBSD_SMBUS)
-#include "bktr_i2c.h"
+#include <dev/video/bktr/bktr_i2c.h>
 #include <bus/smbus/smbconf.h>
 #include <bus/iicbus/iiconf.h>
 #include "smbus_if.h"
@@ -167,62 +141,11 @@ bktr_name(bktr_ptr_t bktr)
   return bktr->bktr_xname;
 }
 
-
-#if defined(__FreeBSD__) && (__FreeBSD__ == 2)
-typedef unsigned int uintptr_t;
-#endif
-#endif  /* __FreeBSD__ */
-
-
-/****************/
-/* *** BSDI *** */
-/****************/
-#ifdef __bsdi__
-#endif /* __bsdi__ */
-
-
-/**************************/
-/* *** OpenBSD/NetBSD *** */
-/**************************/
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/kernel.h>
-#include <sys/signalvar.h>
-#include <sys/vnode.h>
-
-#ifdef __NetBSD__
-#include <uvm/uvm_extern.h>
-#else
-#include <vm/vm.h>
-#include <vm/vm_kern.h>
-#include <vm/pmap.h>
-#include <vm/vm_extern.h>
-#endif
-
-#include <sys/stdint.h>		/* uintptr_t */
-#include <dev/ic/bt8xx.h>
-#include <dev/pci/bktr/bktr_reg.h>
-#include <dev/pci/bktr/bktr_tuner.h>
-#include <dev/pci/bktr/bktr_card.h>
-#include <dev/pci/bktr/bktr_audio.h>
-#include <dev/pci/bktr/bktr_core.h>
-#include <dev/pci/bktr/bktr_os.h>
-
-static int bt848_format = -1;
-
-const char *
-bktr_name(bktr_ptr_t bktr)
-{
-        return (bktr->bktr_dev.dv_xname);
-}
-
-#endif /* __NetBSD__ || __OpenBSD__ */
-
-
-
 typedef u_char bool_t;
+
+#define BKTRPRI PCATCH
+#define VBIPRI  PCATCH
+
 
 /*
  * memory allocated for DMA programs
@@ -465,31 +388,9 @@ common_bktr_attach( bktr_ptr_t bktr, int unit, u_long pci_id, u_int rev )
 {
 	vm_offset_t	buf = 0;
 	int		need_to_allocate_memory = 1;
-
-/***************************************/
-/* *** OS Specific memory routines *** */
-/***************************************/
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-        /* allocate space for dma program */
-        bktr->dma_prog = get_bktr_mem(bktr, &bktr->dm_prog,
-				      DMA_PROG_ALLOC);
-        bktr->odd_dma_prog = get_bktr_mem(bktr, &bktr->dm_oprog,
-					  DMA_PROG_ALLOC);
-
-	/* allocate space for the VBI buffer */
-	bktr->vbidata  = get_bktr_mem(bktr, &bktr->dm_vbidata,
-				      VBI_DATA_SIZE);
-	bktr->vbibuffer = get_bktr_mem(bktr, &bktr->dm_vbibuffer,
-				       VBI_BUFFER_SIZE);
-
-        /* allocate space for pixel buffer */
-        if ( BROOKTREE_ALLOC )
-                buf = get_bktr_mem(bktr, &bktr->dm_mem, BROOKTREE_ALLOC);
-        else
-                buf = 0;
+#ifdef BKTR_NEW_MSP34XX_DRIVER
+	int 		err;
 #endif
-
-#if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__bsdi__)
 
 /* If this is a module, check if there is any currently saved contiguous memory */
 #if defined(BKTR_FREEBSD_MODULE)
@@ -519,8 +420,10 @@ common_bktr_attach( bktr_ptr_t bktr, int unit, u_long pci_id, u_int rev )
 		else
 			buf = 0;
 	}
-#endif	/* FreeBSD or BSDi */
 
+#ifdef USE_VBIMUTEX
+	mtx_init(&bktr->vbimutex, "bktr vbi lock", NULL, MTX_DEF);
+#endif
 
 /* If this is a module, save the current contiguous memory */
 #if defined(BKTR_FREEBSD_MODULE)
@@ -534,7 +437,7 @@ bktr_store_address(unit, BKTR_MEM_BUF,          buf);
 
 	if ( bootverbose ) {
 		printf("%s: buffer size %d, addr %p\n",
-			bktr_name(bktr), BROOKTREE_ALLOC, 
+			bktr_name(bktr), BROOKTREE_ALLOC,
 			(void *)(uintptr_t)vtophys(buf));
 	}
 
@@ -606,10 +509,26 @@ bktr_store_address(unit, BKTR_MEM_BUF,          buf);
         bktr->msp_source_selected = -1;
 	bktr->audio_mux_present = 1;
 
+#ifdef BKTR_NEW_MSP34XX_DRIVER
+	/* get hint on short programming of the msp34xx, so we know */
+	/* if the decision what thread to start should be overwritten */
+	if ( (err = resource_int_value("bktr", unit, "mspsimple",
+			&(bktr->mspsimple)) ) != 0 )
+		bktr->mspsimple = -1;	/* fall back to default */
+#endif
+
 	probeCard( bktr, TRUE, unit );
 
 	/* Initialise any MSP34xx or TDA98xx audio chips */
 	init_audio_devices( bktr );
+
+#ifdef BKTR_NEW_MSP34XX_DRIVER
+	/* setup the kenrel thread */
+	err = msp_attach( bktr );
+	if ( err != 0 ) /* error doing kernel thread stuff, disable msp3400c */
+		bktr->card.msp3400c = 0;
+#endif
+
 
 }
 
@@ -784,6 +703,7 @@ common_bktr_intr( void *arg )
 	 * both Odd and Even VBI data is captured. Therefore we do this
 	 * in the Even field interrupt handler.
 	 */
+	LOCK_VBI(bktr);
 	if (  (bktr->vbiflags & VBI_CAPTURE)
 	    &&(bktr->vbiflags & VBI_OPEN)
             &&(field==EVEN_F)) {
@@ -803,7 +723,7 @@ common_bktr_intr( void *arg )
 
 
 	}
-
+	UNLOCK_VBI(bktr);
 
 	/*
 	 *  Register the completed field
@@ -893,9 +813,10 @@ common_bktr_intr( void *arg )
 		 * let them know the frame is complete.
 		 */
 
-		if (bktr->proc && (bktr->signal & ~METEOR_SIG_MODE_MASK)) {
-			psignal(bktr->proc,
-				 bktr->signal & ~METEOR_SIG_MODE_MASK );
+		if (bktr->proc != NULL) {
+			PROC_LOCK(bktr->proc);
+			psignal( bktr->proc, bktr->signal);
+			PROC_UNLOCK(bktr->proc);
 		}
 
 		/*
@@ -1022,7 +943,7 @@ video_open( bktr_ptr_t bktr )
 	bktr->frames_captured = 0;
 	bktr->even_fields_captured = 0;
 	bktr->odd_fields_captured = 0;
-	bktr->proc = (struct proc *)0;
+	bktr->proc = NULL;
 	set_fps(bktr, frame_rate);
 	bktr->video.addr = 0;
 	bktr->video.width = 0;
@@ -1043,8 +964,13 @@ video_open( bktr_ptr_t bktr )
 int
 vbi_open( bktr_ptr_t bktr )
 {
-	if (bktr->vbiflags & VBI_OPEN)		/* device is busy */
+
+	LOCK_VBI(bktr);
+
+	if (bktr->vbiflags & VBI_OPEN) {	/* device is busy */
+		UNLOCK_VBI(bktr);
 		return( EBUSY );
+	}
 
 	bktr->vbiflags |= VBI_OPEN;
 
@@ -1057,6 +983,8 @@ vbi_open( bktr_ptr_t bktr )
 
 	bzero((caddr_t) bktr->vbibuffer, VBI_BUFFER_SIZE);
 	bzero((caddr_t) bktr->vbidata,  VBI_DATA_SIZE);
+
+	UNLOCK_VBI(bktr);
 
 	return( 0 );
 }
@@ -1143,7 +1071,11 @@ int
 vbi_close( bktr_ptr_t bktr )
 {
 
+	LOCK_VBI(bktr);
+
 	bktr->vbiflags &= ~VBI_OPEN;
+
+	UNLOCK_VBI(bktr);
 
 	return( 0 );
 }
@@ -1187,7 +1119,7 @@ video_read(bktr_ptr_t bktr, int unit, dev_t dev, struct uio *uio)
                             BT848_INT_FMTCHG);
 
 
-	status = tsleep(BKTR_SLEEP, PCATCH, "captur", 0);
+	status = tsleep(BKTR_SLEEP, BKTRPRI, "captur", 0);
 	if (!status)		/* successful capture */
 		status = uiomove((caddr_t)bktr->bigbuf, count, uio);
 	else
@@ -1212,16 +1144,29 @@ vbi_read(bktr_ptr_t bktr, struct uio *uio, int ioflag)
 	int             readsize, readsize2, start;
 	int             status;
 
+	/*
+	 * XXX - vbi_read() should be protected against being re-entered
+	 * while it is unlocked for the uiomove.
+	 */
+	LOCK_VBI(bktr);
 
 	while(bktr->vbisize == 0) {
 		if (ioflag & IO_NDELAY) {
-			return EWOULDBLOCK;
+			status = EWOULDBLOCK;
+			goto out;
 		}
 
 		bktr->vbi_read_blocked = TRUE;
-		if ((status = tsleep(VBI_SLEEP, PCATCH, "vbi", 0))) {
-			return status;
+#ifdef USE_VBIMUTEX
+		if ((status = msleep(VBI_SLEEP, &bktr->vbimutex, VBIPRI, "vbi",
+		    0))) {
+			goto out;
 		}
+#else
+		if ((status = tsleep(VBI_SLEEP, VBIPRI, "vbi", 0))) {
+			goto out;
+		}
+#endif
 	}
 
 	/* Now we have some data to give to the user */
@@ -1239,14 +1184,18 @@ vbi_read(bktr_ptr_t bktr, struct uio *uio, int ioflag)
 		/* We need to wrap around */
 
 		readsize2 = VBI_BUFFER_SIZE - bktr->vbistart;
-		start = bktr->vbistart;
+		start =  bktr->vbistart;
+		UNLOCK_VBI(bktr);
                	status = uiomove((caddr_t)bktr->vbibuffer + start, readsize2, uio);
 		if (status == 0)
 			status = uiomove((caddr_t)bktr->vbibuffer, (readsize - readsize2), uio);
 	} else {
+		UNLOCK_VBI(bktr);
 		/* We do not need to wrap around */
 		status = uiomove((caddr_t)bktr->vbibuffer + bktr->vbistart, readsize, uio);
 	}
+
+	LOCK_VBI(bktr);
 
 	/* Update the number of bytes left to read */
 	bktr->vbisize -= readsize;
@@ -1254,6 +1203,9 @@ vbi_read(bktr_ptr_t bktr, struct uio *uio, int ioflag)
 	/* Update vbistart */
 	bktr->vbistart += readsize;
 	bktr->vbistart = bktr->vbistart % VBI_BUFFER_SIZE; /* wrap around if needed */
+
+out:
+	UNLOCK_VBI(bktr);
 
 	return( status );
 
@@ -1265,7 +1217,7 @@ vbi_read(bktr_ptr_t bktr, struct uio *uio, int ioflag)
  * video ioctls
  */
 int
-video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thread *td)
+video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thread* td )
 {
 	volatile u_char		c_temp;
 	unsigned int		temp;
@@ -1550,17 +1502,15 @@ video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thr
 
 	case METEORSSIGNAL:
 		sig = *(int *)arg;
-		/*
-		 * Historically, applications used  METEOR_SIG_MODE_MASK
+		/* Historically, applications used METEOR_SIG_MODE_MASK
 		 * to reset signal delivery.
 		 */
 		if (sig == METEOR_SIG_MODE_MASK)
 			sig = 0;
 		if (sig < 0 || sig > _SIG_MAXSIG)
-			return( EINVAL );
-		KKASSERT(td->td_proc != NULL);
+			return (EINVAL);
 		bktr->signal = sig;
-		bktr->proc = td->td_proc;
+		bktr->proc = sig ? td->td_proc : NULL;
 		break;
 
 	case METEORGSIGNAL:
@@ -1593,7 +1543,7 @@ video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thr
 					    BT848_INT_FMTCHG);
 
 			OUTB(bktr, BKTR_CAP_CTL, bktr->bktr_cap_ctl);
-			error = tsleep(BKTR_SLEEP, PCATCH, "captur", hz);
+			error = tsleep(BKTR_SLEEP, BKTRPRI, "captur", hz);
 			if (error && (error != ERESTART)) {
 				/*  Here if we didn't get complete frame  */
 #ifdef DIAGNOSTIC
@@ -1732,25 +1682,10 @@ video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thr
 			if ((int) temp > bktr->alloc_pages
 			    && bktr->video.addr == 0) {
 
-/*****************************/
-/* *** OS Dependant code *** */
-/*****************************/
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-                                bus_dmamap_t dmamap;
-
-                                buf = get_bktr_mem(bktr, &dmamap,
-                                                   temp * PAGE_SIZE);
-                                if (buf != 0) {
-                                        free_bktr_mem(bktr, bktr->dm_mem,
-                                                      bktr->bigbuf);
-                                        bktr->dm_mem = dmamap;
-
-#else
                                 buf = get_bktr_mem(unit, temp*PAGE_SIZE);
                                 if (buf != 0) {
                                         kmem_free(kernel_map, bktr->bigbuf,
                                           (bktr->alloc_pages * PAGE_SIZE));
-#endif                                          
 
 					bktr->bigbuf = buf;
 					bktr->alloc_pages = temp;
@@ -1881,7 +1816,7 @@ video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thr
  * tuner ioctls
  */
 int
-tuner_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thread *td)
+tuner_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thread* td )
 {
 	int		tmp_int;
 	unsigned int	temp, temp1;
@@ -2765,7 +2700,7 @@ rgb_vbi_prog( bktr_ptr_t bktr, char i_flag, int cols, int rows, int interlace )
 	/* Wait for the VRE sync marking the end of the Even and
 	 * the start of the Odd field. Resync here.
 	 */
-	*dma_prog++ = OP_SYNC | BKTR_RESYNC | BKTR_VRE;
+	*dma_prog++ = OP_SYNC | BKTR_RESYNC |BKTR_VRE;
 	*dma_prog++ = 0;
 
 	loop_point = dma_prog;
@@ -2791,20 +2726,20 @@ rgb_vbi_prog( bktr_ptr_t bktr, char i_flag, int cols, int rows, int interlace )
 		    if ( notclipped(bktr, i, width)) {
 			split(bktr, (volatile u_long **) &dma_prog,
 			      bktr->y2 - bktr->y, OP_WRITE,
-			      Bpp, (volatile u_char **) &target,  cols);
+			      Bpp, (volatile u_char **)(uintptr_t)&target,  cols);
 	
 		    } else {
 			while(getline(bktr, i)) {
 			    if (bktr->y != bktr->y2 ) {
 				split(bktr, (volatile u_long **) &dma_prog,
 				      bktr->y2 - bktr->y, OP_WRITE,
-				      Bpp, (volatile u_char **) &target, cols);
+				      Bpp, (volatile u_char **)(uintptr_t)&target, cols);
 			    }
 			    if (bktr->yclip != bktr->yclip2 ) {
 				split(bktr,(volatile u_long **) &dma_prog,
 				      bktr->yclip2 - bktr->yclip,
 				      OP_SKIP,
-				      Bpp, (volatile u_char **) &target,  cols);
+				      Bpp, (volatile u_char **)(uintptr_t)&target,  cols);
 			    }
 			}
 			
@@ -2848,19 +2783,19 @@ rgb_vbi_prog( bktr_ptr_t bktr, char i_flag, int cols, int rows, int interlace )
 		    if ( notclipped(bktr, i, width)) {
 			split(bktr, (volatile u_long **) &dma_prog,
 			      bktr->y2 - bktr->y, OP_WRITE,
-			      Bpp, (volatile u_char **) &target,  cols);
+			      Bpp, (volatile u_char **)(uintptr_t)&target,  cols);
 		    } else {
 			while(getline(bktr, i)) {
 			    if (bktr->y != bktr->y2 ) {
 				split(bktr, (volatile u_long **) &dma_prog,
 				      bktr->y2 - bktr->y, OP_WRITE,
-				      Bpp, (volatile u_char **) &target,
+				      Bpp, (volatile u_char **)(uintptr_t)&target,
 				      cols);
 			    }	
 			    if (bktr->yclip != bktr->yclip2 ) {
 				split(bktr, (volatile u_long **) &dma_prog,
 				      bktr->yclip2 - bktr->yclip, OP_SKIP,
-				      Bpp, (volatile u_char **)  &target,  cols);
+				      Bpp, (volatile u_char **)(uintptr_t) &target,  cols);
 			    }	
 
 			}	
@@ -2945,20 +2880,20 @@ rgb_prog( bktr_ptr_t bktr, char i_flag, int cols, int rows, int interlace )
 	    if ( notclipped(bktr, i, width)) {
 		split(bktr, (volatile u_long **) &dma_prog,
 		      bktr->y2 - bktr->y, OP_WRITE,
-		      Bpp, (volatile u_char **) &target,  cols);
+		      Bpp, (volatile u_char **)(uintptr_t)&target,  cols);
 
 	    } else {
 		while(getline(bktr, i)) {
 		    if (bktr->y != bktr->y2 ) {
 			split(bktr, (volatile u_long **) &dma_prog,
 			      bktr->y2 - bktr->y, OP_WRITE,
-			      Bpp, (volatile u_char **) &target, cols);
+			      Bpp, (volatile u_char **)(uintptr_t)&target, cols);
 		    }
 		    if (bktr->yclip != bktr->yclip2 ) {
 			split(bktr,(volatile u_long **) &dma_prog,
 			      bktr->yclip2 - bktr->yclip,
 			      OP_SKIP,
-			      Bpp, (volatile u_char **) &target,  cols);
+			      Bpp, (volatile u_char **)(uintptr_t)&target,  cols);
 		    }
 		}
 
@@ -3011,19 +2946,19 @@ rgb_prog( bktr_ptr_t bktr, char i_flag, int cols, int rows, int interlace )
 		    if ( notclipped(bktr, i, width)) {
 			split(bktr, (volatile u_long **) &dma_prog,
 			      bktr->y2 - bktr->y, OP_WRITE,
-			      Bpp, (volatile u_char **) &target,  cols);
+			      Bpp, (volatile u_char **)(uintptr_t)&target,  cols);
 		    } else {
 			while(getline(bktr, i)) {
 			    if (bktr->y != bktr->y2 ) {
 				split(bktr, (volatile u_long **) &dma_prog,
 				      bktr->y2 - bktr->y, OP_WRITE,
-				      Bpp, (volatile u_char **) &target,
+				      Bpp, (volatile u_char **)(uintptr_t)&target,
 				      cols);
 			    }	
 			    if (bktr->yclip != bktr->yclip2 ) {
 				split(bktr, (volatile u_long **) &dma_prog,
 				      bktr->yclip2 - bktr->yclip, OP_SKIP,
-				      Bpp, (volatile u_char **)  &target,  cols);
+				      Bpp, (volatile u_char **)(uintptr_t)&target,  cols);
 			    }	
 
 			}	
@@ -3121,7 +3056,7 @@ yuvpack_prog( bktr_ptr_t bktr, char i_flag,
 
 	case 3:
 		/* sync vro */
-		*dma_prog++ = OP_SYNC	 | BKTR_GEN_IRQ | 1 << 15 | BKTR_VRO;
+		*dma_prog++ = OP_SYNC | BKTR_GEN_IRQ | BKTR_RESYNC | BKTR_VRO;
 		*dma_prog++ = 0;  /* NULL WORD */
 		*dma_prog++ = OP_JUMP  ;
 		*dma_prog = (u_long ) vtophys(bktr->odd_dma_prog);
@@ -3148,7 +3083,7 @@ yuvpack_prog( bktr_ptr_t bktr, char i_flag,
 	}
 
 	/* sync vro IRQ bit */
-	*dma_prog++ = OP_SYNC |  BKTR_GEN_IRQ | BKTR_RESYNC |  BKTR_VRE;
+	*dma_prog++ = OP_SYNC   |  BKTR_GEN_IRQ  | BKTR_RESYNC |  BKTR_VRE;
 	*dma_prog++ = 0;  /* NULL WORD */
 	*dma_prog++ = OP_JUMP ;
 	*dma_prog++ = (u_long ) vtophys(bktr->dma_prog);
@@ -3207,7 +3142,7 @@ yuv422_prog( bktr_ptr_t bktr, char i_flag,
 	t1 = buffer;
 
 	/* contruct sync : for video packet format */
-	*dma_prog++ = OP_SYNC | BKTR_RESYNC | BKTR_FM3; /*sync, mode indicator packed data*/
+	*dma_prog++ = OP_SYNC  | 1 << 15 |	BKTR_FM3; /*sync, mode indicator packed data*/
 	*dma_prog++ = 0;  /* NULL WORD */
 
 	for (i = 0; i < (rows/interlace ) ; i++) {
@@ -3221,7 +3156,7 @@ yuv422_prog( bktr_ptr_t bktr, char i_flag,
 
 	switch (i_flag) {
 	case 1:
-		*dma_prog++ = OP_SYNC  | BKTR_GEN_IRQ | BKTR_VRE;  /*sync vre*/
+		*dma_prog++ = OP_SYNC  | 1 << 24 | BKTR_VRE;  /*sync vre*/
 		*dma_prog++ = 0;  /* NULL WORD */
 
 		*dma_prog++ = OP_JUMP ;
@@ -3229,7 +3164,7 @@ yuv422_prog( bktr_ptr_t bktr, char i_flag,
 		return;
 
 	case 2:
-		*dma_prog++ = OP_SYNC  | BKTR_GEN_IRQ | BKTR_VRO;  /*sync vre*/
+		*dma_prog++ = OP_SYNC  | 1 << 24 | BKTR_VRO;  /*sync vre*/
 		*dma_prog++ = 0;  /* NULL WORD */
 
 		*dma_prog++ = OP_JUMP;
@@ -3237,7 +3172,7 @@ yuv422_prog( bktr_ptr_t bktr, char i_flag,
 		return;
 
 	case 3:
-		*dma_prog++ = OP_SYNC | BKTR_GEN_IRQ | BKTR_RESYNC | BKTR_VRO; 
+		*dma_prog++ = OP_SYNC	| 1 << 24 |  1 << 15 |   BKTR_VRO; 
 		*dma_prog++ = 0;  /* NULL WORD */
 
 		*dma_prog++ = OP_JUMP  ;
@@ -3251,7 +3186,7 @@ yuv422_prog( bktr_ptr_t bktr, char i_flag,
 
 		target_buffer  = (u_long) buffer + cols;
 		t1 = buffer + cols/2;
-		*dma_prog++ = OP_SYNC | BKTR_RESYNC | BKTR_FM3; 
+		*dma_prog++ = OP_SYNC	|   1 << 15 | BKTR_FM3; 
 		*dma_prog++ = 0;  /* NULL WORD */
 
 		for (i = 0; i < (rows/interlace )  ; i++) {
@@ -3264,7 +3199,7 @@ yuv422_prog( bktr_ptr_t bktr, char i_flag,
 		}
 	}
     
-	*dma_prog++ = OP_SYNC | BKTR_GEN_IRQ | BKTR_RESYNC | BKTR_VRE; 
+	*dma_prog++ = OP_SYNC  | 1 << 24 | 1 << 15 |   BKTR_VRE; 
 	*dma_prog++ = 0;  /* NULL WORD */
 	*dma_prog++ = OP_JUMP ;
 	*dma_prog++ = (u_long ) vtophys(bktr->dma_prog) ;
@@ -3290,7 +3225,7 @@ yuv12_prog( bktr_ptr_t bktr, char i_flag,
 
 	dma_prog = (u_long *) bktr->dma_prog;
 
-	bktr->capcontrol = 1 << 6 | 1 << 4 |	3;
+	bktr->capcontrol =   1 << 6 | 1 << 4 |	3;
 
 	OUTB(bktr, BKTR_ADC, SYNC_LEVEL);
 	OUTB(bktr, BKTR_OFORM, 0x0);
@@ -3306,7 +3241,7 @@ yuv12_prog( bktr_ptr_t bktr, char i_flag,
 	buffer = target_buffer;
  	t1 = buffer;
  
- 	*dma_prog++ = OP_SYNC | BKTR_RESYNC | BKTR_FM3; /*sync, mode indicator packed data*/
+ 	*dma_prog++ = OP_SYNC  | 1 << 15 |	BKTR_FM3; /*sync, mode indicator packed data*/
  	*dma_prog++ = 0;  /* NULL WORD */
  	       
  	for (i = 0; i < (rows/interlace )/2 ; i++) {
@@ -3325,7 +3260,7 @@ yuv12_prog( bktr_ptr_t bktr, char i_flag,
  
  	switch (i_flag) {
  	case 1:
- 		*dma_prog++ = OP_SYNC | BKTR_GEN_IRQ | BKTR_VRE;  /*sync vre*/
+ 		*dma_prog++ = OP_SYNC  | 1 << 24 | BKTR_VRE;  /*sync vre*/
  		*dma_prog++ = 0;  /* NULL WORD */
 
 		*dma_prog++ = OP_JUMP;
@@ -3333,7 +3268,7 @@ yuv12_prog( bktr_ptr_t bktr, char i_flag,
  		return;
 
  	case 2:
- 		*dma_prog++ = OP_SYNC | BKTR_GEN_IRQ | BKTR_VRO;  /*sync vro*/
+ 		*dma_prog++ = OP_SYNC  | 1 << 24 | BKTR_VRO;  /*sync vro*/
  		*dma_prog++ = 0;  /* NULL WORD */
 
 		*dma_prog++ = OP_JUMP;
@@ -3341,7 +3276,7 @@ yuv12_prog( bktr_ptr_t bktr, char i_flag,
  		return;
  
  	case 3:
- 		*dma_prog++ = OP_SYNC | BKTR_GEN_IRQ | BKTR_RESYNC | BKTR_VRO;
+ 		*dma_prog++ = OP_SYNC |  1 << 24 | 1 << 15 | BKTR_VRO;
 		*dma_prog++ = 0;  /* NULL WORD */
 		*dma_prog++ = OP_JUMP ;
 		*dma_prog = (u_long ) vtophys(bktr->odd_dma_prog);
@@ -3354,7 +3289,7 @@ yuv12_prog( bktr_ptr_t bktr, char i_flag,
 
 		target_buffer  = (u_long) buffer + cols;
 		t1 = buffer + cols/2;
-		*dma_prog++ = OP_SYNC | BKTR_RESYNC | BKTR_FM3; 
+		*dma_prog++ = OP_SYNC   | 1 << 15 | BKTR_FM3; 
 		*dma_prog++ = 0;  /* NULL WORD */
 
 		for (i = 0; i < ((rows/interlace )/2 ) ; i++) {
@@ -3374,7 +3309,7 @@ yuv12_prog( bktr_ptr_t bktr, char i_flag,
 	
 	}
     
-	*dma_prog++ = OP_SYNC | BKTR_GEN_IRQ | BKTR_RESYNC | BKTR_VRE;
+	*dma_prog++ = OP_SYNC |  1 << 24 | 1 << 15 | BKTR_VRE;
 	*dma_prog++ = 0;  /* NULL WORD */
 	*dma_prog++ = OP_JUMP;
 	*dma_prog++ = (u_long ) vtophys(bktr->dma_prog);
@@ -4258,6 +4193,3 @@ i2cProbe( bktr_ptr_t bktr, int addr )
 
 
 #define ABSENT		(-1)
-
-#endif /* FreeBSD, BSDI, NetBSD, OpenBSD */
-

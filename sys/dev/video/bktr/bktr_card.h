@@ -1,5 +1,5 @@
-/* $FreeBSD: src/sys/dev/bktr/bktr_card.h,v 1.2.4.3 2003/02/08 02:04:57 orion Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_card.h,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
+/* $FreeBSD: src/sys/dev/bktr/bktr_card.h,v 1.6 2003/02/02 17:46:00 orion Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_card.h,v 1.3 2004/05/15 17:54:12 joerg Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -55,7 +55,7 @@
  *  eg options BKTR_OVERRIDE CARD=1
  *
  * or using the sysclt  hw.bt848.card
- *  eg sysctl -w hw.bt848.card=1
+ *  eg sysctl hw.bt848.card=1
  *
  * where <card type> is one of the following card defines.
  */
@@ -78,7 +78,8 @@
 #define CARD_LEADTEK		15
 #define CARD_TERRATVPLUS	16
 #define CARD_IO_BCTV3		17
-#define Bt848_MAX_CARD		18
+#define CARD_TERRATEC_TVALUE	18
+#define Bt848_MAX_CARD		19
 
 #define CARD_IO_GV		CARD_IO_BCTV2
 
@@ -87,4 +88,3 @@ void	probeCard( bktr_ptr_t bktr, int verbose, int unit);
 
 int	writeEEProm( bktr_ptr_t bktr, int offset, int count, u_char *data );
 int	readEEProm( bktr_ptr_t bktr, int offset, int count, u_char *data );
-

@@ -1,5 +1,5 @@
-/* $FreeBSD: src/sys/dev/bktr/bktr_mem.c,v 1.2.2.4 2001/10/09 04:08:41 jlemon Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_mem.c,v 1.4 2003/08/07 21:17:15 dillon Exp $ */
+/* $FreeBSD: src/sys/dev/bktr/bktr_mem.c,v 1.7 2003/08/24 17:46:02 obrien Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_mem.c,v 1.5 2004/05/15 17:54:12 joerg Exp $ */
 
 /*
  * This is prt of the Driver for Video Capture Cards (Frame grabbers)
@@ -48,9 +48,9 @@
 
 
 #include <sys/param.h>
-#include <sys/systm.h>
 #include <sys/kernel.h>
-#include "bktr_mem.h"
+#include <sys/systm.h>
+#include <dev/video/bktr/bktr_mem.h>
 
 struct memory_pointers {
 	int         addresses_stored;
@@ -72,17 +72,7 @@ bktr_mem_modevent(module_t mod, int type, void *unused){
 	case MOD_LOAD:
 		{
 		printf("bktr_mem: memory holder loaded\n");
-/*
- * bzero causes a panic.
-		bzero((caddr_t)memory_list, sizeof(memory_list));
- * So use a simple for loop for now.
-*/
-		{int x;
-		 unsigned char *d = (unsigned char *)memory_list;
-		 for (x=0; x< sizeof(memory_list); x++) {
-		  d[x]=0;
-		 }
-		}
+		bzero(memory_list, sizeof(memory_list));
 		return 0;
 		}
 	case MOD_UNLOAD:

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.19 2004/04/17 03:57:22 drhodus Exp $
+# $DragonFly: src/sys/conf/options,v 1.20 2004/05/15 17:54:12 joerg Exp $
 #
 #        On the handling of kernel options
 #
@@ -446,10 +446,6 @@ NFS_NOSERVER		opt_nfs.h
 NFS_DEBUG		opt_nfs.h
 
 # For the Bt848/Bt848A/Bt849/Bt878/Bt879 driver
-OVERRIDE_CARD			opt_bktr.h
-OVERRIDE_TUNER			opt_bktr.h
-OVERRIDE_DBX			opt_bktr.h
-OVERRIDE_MSP			opt_bktr.h
 BROOKTREE_SYSTEM_DEFAULT	opt_bktr.h
 BROOKTREE_ALLOC_PAGES		opt_bktr.h
 BKTR_OVERRIDE_CARD		opt_bktr.h
@@ -463,6 +459,7 @@ BKTR_GPIO_ACCESS		opt_bktr.h
 BKTR_NO_MSP_RESET		opt_bktr.h
 BKTR_430_FX_MODE		opt_bktr.h
 BKTR_SIS_VIA_MODE		opt_bktr.h
+BKTR_NEW_MSP34XX_DRIVER		opt_bktr.h
 
 # meteor opt_meteor.h
 METEOR_ALLOC_PAGES	opt_meteor.h

@@ -1,6 +1,6 @@
 /*
- * $FreeBSD: src/sys/dev/bktr/bktr_reg.h,v 1.36.2.4 2000/11/01 09:36:14 roger Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_reg.h,v 1.4 2004/02/13 01:45:15 joerg Exp $
+ * $FreeBSD: src/sys/dev/bktr/bktr_reg.h,v 1.46 2003/12/01 19:03:50 truckman Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_reg.h,v 1.5 2004/05/15 17:54:13 joerg Exp $
  *
  * Copyright (c) 1999 Roger Hardiman
  * Copyright (c) 1998 Amancio Hasty
@@ -35,34 +35,11 @@
  *
  */
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-#  if defined(__DragonFly__) || (__FreeBSD_version >= 310000)
-#    include "use_smbus.h"
-#  else
-#    define NSMBUS 0		/* FreeBSD before 3.1 does not have SMBUS */
-#  endif
-#  if (NSMBUS > 0)
-#    define BKTR_USE_FREEBSD_SMBUS
-#  endif
-#endif
-
-#ifdef __NetBSD__
-#include <machine/bus.h>		/* struct device */
-#include <sys/device.h>
-#include <sys/select.h>			/* struct selinfo */
-# ifdef DEBUG
-#  define	bootverbose 1
-# else
-#  define	bootverbose 0
-# endif
-#endif
-
 /*
  * The kernel options for the driver now all begin with BKTR.
  * Support the older kernel options on FreeBSD and OpenBSD.
  *
  */
-#if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 #if defined(BROOKTREE_ALLOC_PAGES)
 #define BKTR_ALLOC_PAGES BROOKTREE_ALLOC_PAGES
 #endif
@@ -87,9 +64,6 @@
 #define BKTR_OVERRIDE_MSP OVERRIDE_MSP
 #endif
 
-#endif
-
-
 #ifndef PCI_LATENCY_TIMER
 #define	PCI_LATENCY_TIMER		0x0c	/* pci timer register */
 #endif
@@ -97,7 +71,6 @@
 /*
  * Definitions for the Brooktree 848/878 video capture to pci interface.
  */
-#ifndef __NetBSD__
 #define PCI_VENDOR_SHIFT                        0
 #define PCI_VENDOR_MASK                         0xffff
 #define PCI_VENDOR(id) \
@@ -107,15 +80,6 @@
 #define PCI_PRODUCT_MASK                        0xffff
 #define PCI_PRODUCT(id) \
             (((id) >> PCI_PRODUCT_SHIFT) & PCI_PRODUCT_MASK)
-
-/* PCI vendor ID */
-#define PCI_VENDOR_BROOKTREE    0x109e                /* Brooktree */
-/* Brooktree products */
-#define PCI_PRODUCT_BROOKTREE_BT848     0x0350        /* Bt848 Video Capture */
-#define PCI_PRODUCT_BROOKTREE_BT849     0x0351        /* Bt849 Video Capture */
-#define PCI_PRODUCT_BROOKTREE_BT878     0x036e        /* Bt878 Video Capture */
-#define PCI_PRODUCT_BROOKTREE_BT879     0x036f        /* Bt879 Video Capture */
-#endif
 
 #define BROOKTREE_848                   1
 #define BROOKTREE_848A                  2
@@ -458,7 +422,9 @@ struct format_params {
 
 #if defined(BKTR_USE_FREEBSD_SMBUS)
 struct bktr_i2c_softc {
-	device_t iicbus;
+	int bus_owned;
+
+	device_t iicbb;
 	device_t smbus;
 };
 #endif
@@ -471,22 +437,12 @@ struct bktr_i2c_softc {
  * memory mapped structure method only works on 32 bit processors
  * with the right type of endianness.
  */
-#if defined(__DragonFly__) || defined(__NetBSD__) || ( defined(__FreeBSD__) && (__FreeBSD_version >=300000) )
 #define INB(bktr,offset)	bus_space_read_1((bktr)->memt,(bktr)->memh,(offset))
 #define INW(bktr,offset)	bus_space_read_2((bktr)->memt,(bktr)->memh,(offset))
 #define INL(bktr,offset)	bus_space_read_4((bktr)->memt,(bktr)->memh,(offset))
 #define OUTB(bktr,offset,value) bus_space_write_1((bktr)->memt,(bktr)->memh,(offset),(value))
 #define OUTW(bktr,offset,value) bus_space_write_2((bktr)->memt,(bktr)->memh,(offset),(value))
 #define OUTL(bktr,offset,value) bus_space_write_4((bktr)->memt,(bktr)->memh,(offset),(value))
-#else
-#define INB(bktr,offset)	*(volatile unsigned char*) ((int)((bktr)->memh)+(offset))
-#define INW(bktr,offset)	*(volatile unsigned short*)((int)((bktr)->memh)+(offset))
-#define INL(bktr,offset)	*(volatile unsigned int*)  ((int)((bktr)->memh)+(offset))
-#define OUTB(bktr,offset,value)	*(volatile unsigned char*) ((int)((bktr)->memh)+(offset)) = (value)
-#define OUTW(bktr,offset,value)	*(volatile unsigned short*)((int)((bktr)->memh)+(offset)) = (value)
-#define OUTL(bktr,offset,value)	*(volatile unsigned int*)  ((int)((bktr)->memh)+(offset)) = (value)
-#endif
-
 
 typedef struct bktr_clip bktr_clip_t;
 
@@ -494,52 +450,6 @@ typedef struct bktr_clip bktr_clip_t;
  * BrookTree 848  info structure, one per bt848 card installed.
  */
 struct bktr_softc {
-
-#if defined (__bsdi__)
-    struct device bktr_dev;	/* base device */
-    struct isadev bktr_id;	/* ISA device */
-    struct intrhand bktr_ih;	/* interrupt vectoring */
-    #define pcici_t pci_devaddr_t
-#endif
-
-#if defined(__NetBSD__)
-    struct device bktr_dev;     /* base device */
-    bus_dma_tag_t	dmat;   /* DMA tag */
-    bus_space_tag_t	memt;
-    bus_space_handle_t	memh;
-    bus_size_t		obmemsz;        /* size of en card (bytes) */
-    void		*ih;
-    bus_dmamap_t	dm_prog;
-    bus_dmamap_t	dm_oprog;
-    bus_dmamap_t	dm_mem;
-    bus_dmamap_t	dm_vbidata;
-    bus_dmamap_t	dm_vbibuffer;
-#endif
-
-#if defined(__OpenBSD__)
-    struct device bktr_dev;     /* base device */
-    bus_dma_tag_t	dmat;   /* DMA tag */
-    bus_space_tag_t	memt;
-    bus_space_handle_t	memh;
-    bus_size_t		obmemsz;        /* size of en card (bytes) */
-    void		*ih;
-    bus_dmamap_t	dm_prog;
-    bus_dmamap_t	dm_oprog;
-    bus_dmamap_t	dm_mem;
-    bus_dmamap_t	dm_vbidata;
-    bus_dmamap_t	dm_vbibuffer;
-    size_t		dm_mapsize;
-    pci_chipset_tag_t	pc;	/* Opaque PCI chipset tag */
-    pcitag_t		tag;	/* PCI tag, for doing PCI commands */
-    vm_offset_t		phys_base;	/* Bt848 register physical address */
-#endif
-
-#if defined(__DragonFly__) || defined (__FreeBSD__)
-#   if defined(__FreeBSD__) && (__FreeBSD_version < 400000)
-    vm_offset_t     phys_base;	/* 2.x Bt848 register physical address */
-    pcici_t         tag;	/* 2.x PCI tag, for doing PCI commands */
-#   endif
-#   if defined(__DragonFly__) || (__FreeBSD_version >= 400000)
     int             mem_rid;	/* 4.x resource id */
     struct resource *res_mem;	/* 4.x resource descriptor for registers */
     int             irq_rid;	/* 4.x resource id */
@@ -551,34 +461,19 @@ struct bktr_softc {
     dev_t           bktrdev_alias;	/* alias /dev/bktr to /dev/bktr0 */
     dev_t           tunerdev_alias;	/* alias /dev/tuner to /dev/tuner0 */
     dev_t           vbidev_alias;	/* alias /dev/vbi to /dev/vbi0 */
-    #endif
-#   if defined(__DragonFly__) || (__FreeBSD_version >= 310000)
     bus_space_tag_t	memt;	/* Bus space register access functions */
     bus_space_handle_t	memh;	/* Bus space register access functions */
     bus_size_t		obmemsz;/* Size of card (bytes) */
-#   endif
-#   if (NSMBUS > 0)
+#if defined(BKTR_USE_FREEBSD_SMBUS)
       struct bktr_i2c_softc i2c_sc;	/* bt848_i2c device */
-#   endif
-    char	bktr_xname[7];	/* device name and unit number */
 #endif
+    char	bktr_xname[7];	/* device name and unit number */
 
-
-    /* The following definitions are for the contiguous memory */
-#ifdef __NetBSD__
-    vaddr_t bigbuf;          /* buffer that holds the captured image */
-    vaddr_t vbidata;         /* RISC program puts VBI data from the current frame here */
-    vaddr_t vbibuffer;       /* Circular buffer holding VBI data for the user */
-    vaddr_t dma_prog;        /* RISC prog for single and/or even field capture*/
-    vaddr_t odd_dma_prog;    /* RISC program for Odd field capture */
-#else
     vm_offset_t bigbuf;	     /* buffer that holds the captured image */
     vm_offset_t vbidata;     /* RISC program puts VBI data from the current frame here */
     vm_offset_t vbibuffer;   /* Circular buffer holding VBI data for the user */
     vm_offset_t dma_prog;    /* RISC prog for single and/or even field capture*/
     vm_offset_t odd_dma_prog;/* RISC program for Odd field capture */
-#endif
-
 
     /* the following definitions are common over all platforms */
     int		alloc_pages;	/* number of pages in bigbuf */
@@ -705,6 +600,15 @@ struct bktr_softc {
     int                 audio_mux_present;     /* 1 = has audio mux on GPIO lines, 0 = no audio mux */
     int                 msp_source_selected;   /* 0 = TV source, 1 = Line In source, 2 = FM Radio Source */
 
+#ifdef BKTR_NEW_MSP34XX_DRIVER
+    /* msp3400c related data */
+    void *		msp3400c_info;
+    int			stereo_once;
+    int			amsound;
+    int			mspsimple;
+    int			dolby;
+#endif
+
 };
 
 typedef struct bktr_softc bktr_reg_t;
@@ -723,18 +627,4 @@ struct bt848_card_sig {
 /* ioctl_cmd_t int on old versions, u_long on new versions */
 /***********************************************************/
 
-#if defined(__FreeBSD__) && (__FreeBSD__ == 2)
-typedef int ioctl_cmd_t;
-#endif
-
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-#if defined(__DragonFly__) || (__FreeBSD_version >= 300000)
 typedef u_long ioctl_cmd_t;
-#endif
-#endif
-
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-typedef u_long ioctl_cmd_t;
-#endif
-
-

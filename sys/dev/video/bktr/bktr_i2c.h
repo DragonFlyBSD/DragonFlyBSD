@@ -1,5 +1,5 @@
-/*-
- * Copyright (c) 1998 Nicolas Souchu
+/*
+ * Copyright (c) 1998, 2001 Nicolas Souchu
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,13 +23,25 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/bktr/bktr_i2c.h,v 1.2.4.2 2000/09/11 07:59:57 roger Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_i2c.h,v 1.2 2003/06/17 04:28:23 dillon Exp $
- *
+ * $FreeBSD: src/sys/dev/bktr/bktr_i2c.h,v 1.4 2002/03/23 15:47:08 nsouch Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_i2c.h,v 1.3 2004/05/15 17:54:12 joerg Exp $
  */
 #ifndef _BT848_I2C_H
 #define _BT848_I2C_H
 
-extern int bt848_i2c_attach(int, struct bktr_softc *bktr, struct bktr_i2c_softc *);
+extern int bt848_i2c_attach(device_t);
+extern int bt848_i2c_detach(device_t);
+
+extern int bti2c_iic_callback(device_t, int, caddr_t *);
+extern void bti2c_iic_setsda(device_t, int);
+extern void bti2c_iic_setscl(device_t, int);
+extern int bti2c_iic_getsda(device_t);
+extern int bti2c_iic_getscl(device_t);
+extern int bti2c_iic_reset(device_t, u_char, u_char, u_char *);
+
+extern int bti2c_smb_callback(device_t, int, caddr_t *);
+extern int bti2c_smb_writeb(device_t dev, u_char slave, char cmd, char byte);
+extern int bti2c_smb_writew(device_t dev, u_char slave, char cmd, short word);
+extern int bti2c_smb_readb(device_t dev, u_char slave, char cmd, char *byte);
 
 #endif

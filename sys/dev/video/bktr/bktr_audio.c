@@ -1,19 +1,3 @@
-/* $FreeBSD: src/sys/dev/bktr/bktr_audio.c,v 1.2.2.5 2003/02/08 02:04:57 orion Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_audio.c,v 1.5 2004/02/13 01:45:15 joerg Exp $ */
-/*
- * This is part of the Driver for Video Capture Cards (Frame grabbers)
- * and TV Tuner cards using the Brooktree Bt848, Bt848A, Bt849A, Bt878, Bt879
- * chipset.
- * Copyright Roger Hardiman and Amancio Hasty.
- *
- * bktr_audio : This deals with controlling the audio on TV cards,
- *                controlling the Audio Multiplexer (audio source selector).
- *                controlling any MSP34xx stereo audio decoders.
- *                controlling any DPL35xx dolby surroud sound audio decoders.    
- *                initialising TDA98xx audio devices.
- *
- */
-
 /*
  * 1. Redistributions of source code must retain the
  * Copyright (c) 1997 Amancio Hasty, 1999 Roger Hardiman
@@ -45,45 +29,43 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/bktr/bktr_audio.c,v 1.13 2003/12/08 07:59:18 obrien Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_audio.c,v 1.6 2004/05/15 17:54:12 joerg Exp $
  */
+
+/*
+ * This is part of the Driver for Video Capture Cards (Frame grabbers)
+ * and TV Tuner cards using the Brooktree Bt848, Bt848A, Bt849A, Bt878, Bt879
+ * chipset.
+ * Copyright Roger Hardiman and Amancio Hasty.
+ *
+ * bktr_audio : This deals with controlling the audio on TV cards,
+ *                controlling the Audio Multiplexer (audio source selector).
+ *                controlling any MSP34xx stereo audio decoders.
+ *                controlling any DPL35xx dolby surroud sound audio decoders.
+ *                initialising TDA98xx audio devices.
+ *
+ */
+
+#include "opt_bktr.h"               /* Include any kernel config options */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-
-#if defined(__DragonFly__) || (__FreeBSD_version < 500000)
-#include <machine/clock.h>              /* for DELAY */
-#endif
-
 #include <bus/pci/pcivar.h>
-
-#if defined(__DragonFly__) || (__FreeBSD_version >=300000)
 #include <machine/bus_memio.h>		/* for bus space */
 #include <machine/bus.h>
 #include <sys/bus.h>
-#endif
-#endif
-
-#ifdef __NetBSD__
-#include <sys/proc.h>
-#include <dev/ic/bt8xx.h>	/* NetBSD location of .h files */
-#include <dev/pci/bktr/bktr_reg.h>
-#include <dev/pci/bktr/bktr_core.h>
-#include <dev/pci/bktr/bktr_tuner.h>
-#include <dev/pci/bktr/bktr_card.h>
-#include <dev/pci/bktr/bktr_audio.h>
-#else
-#include <machine/ioctl_meteor.h>	/* Traditional location of .h files */
-#include <machine/ioctl_bt848.h>        /* extensions to ioctl_meteor.h */
-#include "bktr_reg.h"
-#include "bktr_core.h"
-#include "bktr_tuner.h"
-#include "bktr_card.h"
-#include "bktr_audio.h"
-#endif
+#include <dev/video/meteor/ioctl_meteor.h>
+#include <dev/video/bktr/ioctl_bt848.h>	/* extensions to ioctl_meteor.h */
+#include <dev/video/bktr/bktr_reg.h>
+#include <dev/video/bktr/bktr_core.h>
+#include <dev/video/bktr/bktr_tuner.h>
+#include <dev/video/bktr/bktr_card.h>
+#include <dev/video/bktr/bktr_audio.h>
 
 /*
  * Prototypes for the GV_BCTV2 specific functions.
@@ -473,6 +455,13 @@ void msp_read_id( bktr_ptr_t bktr ){
  *     the chip and re-programs it if needed.
  */
 void msp_autodetect( bktr_ptr_t bktr ) {
+
+#ifdef BKTR_NEW_MSP34XX_DRIVER
+
+  /* Just wake up the (maybe) sleeping thread, it'll do everything for us */
+  msp_wake_thread(bktr);
+
+#else
   int auto_detect, loops;
   int stereo;
 
@@ -597,6 +586,8 @@ void msp_autodetect( bktr_ptr_t bktr ) {
   /* uncomment the following line to enable the MSP34xx 1Khz Tone Generator */
   /* turn your speaker volume down low before trying this */
   /* msp_dpl_write(bktr, bktr->msp_addr, 0x12, 0x0014, 0x7f40); */
+
+#endif /* BKTR_NEW_MSP34XX_DRIVER */
 }
 
 /* Read the DPL version string */
@@ -629,4 +620,3 @@ void dpl_autodetect( bktr_ptr_t bktr ) {
 								recommended with PANORAMA mode
 								in 0x0040 set to panorama */
 }
-
