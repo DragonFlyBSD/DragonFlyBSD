@@ -1,0 +1,15 @@
+$DragonFly: src/tools/regression/sysvshm/README,v 1.1 2003/10/18 12:13:01 hmp Exp $
+
+SysV IPC Shared Memory Regression Utility.
+
+This regression utility will test the SysV Shared Memory facility
+in DragonFly.
+
+The test can be initiated by running ``make regress'', after
+running ``make''.
+
+Obtained from: The NetBSD Foundation.
+Date of port: 18 October 2003
+
+  -- Hiten Pandya
+  -- hmp@backplane.com
