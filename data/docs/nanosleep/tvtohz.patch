@@ -1,0 +1,73 @@
+$DragonFly: site/data/docs/nanosleep/tvtohz.patch,v 1.1 2004/01/22 21:55:58 justin Exp $
+
+Index: kern_clock.c
+===================================================================
+RCS file: /mnt/cvs-repositories/dcvs/src/sys/kern/kern_clock.c,v
+retrieving revision 1.12
+diff -u -r1.12 kern_clock.c
+--- kern_clock.c	17 Oct 2003 07:30:42 -0000	1.12
++++ kern_clock.c	13 Dec 2003 00:45:39 -0000
+@@ -314,11 +314,11 @@
+ #endif
+ 		ticks = 1;
+ 	} else if (sec <= LONG_MAX / 1000000)
+-		ticks = (sec * 1000000 + (unsigned long)usec + (tick - 1))
+-			/ tick + 1;
++		ticks = (sec * 1000000 + (unsigned long)usec + (tick-1))
++			/ tick;
+ 	else if (sec <= LONG_MAX / hz)
+ 		ticks = sec * hz
+-			+ ((unsigned long)usec + (tick - 1)) / tick + 1;
++			+ ((unsigned long)usec + (tick-1)) / tick;
+ 	else
+ 		ticks = LONG_MAX;
+ 	if (ticks > INT_MAX)
+Index: kern_time.c
+===================================================================
+RCS file: /mnt/cvs-repositories/dcvs/src/sys/kern/kern_time.c,v
+retrieving revision 1.11
+diff -u -r1.11 kern_time.c
+--- kern_time.c	20 Nov 2003 06:05:30 -0000	1.11
++++ kern_time.c	13 Dec 2003 00:43:24 -0000
+@@ -204,7 +204,7 @@
+ {
+ 	struct timespec ts, ts2, ts3;
+ 	struct timeval tv;
+-	int error;
++	int error, sleepticks;
+ 
+ 	if (rqt->tv_nsec < 0 || rqt->tv_nsec >= 1000000000)
+ 		return (EINVAL);
+@@ -214,8 +214,9 @@
+ 	timespecadd(&ts, rqt);
+ 	TIMESPEC_TO_TIMEVAL(&tv, rqt);
+ 	for (;;) {
++		sleepticks = tvtohz(&tv);
+ 		error = tsleep(&nanowait, PCATCH, "nanslp",
+-		    tvtohz(&tv));
++		    (sleepticks < 1)? 1 : sleepticks);
+ 		getnanouptime(&ts2);
+ 		if (error != EWOULDBLOCK) {
+ 			if (error == ERESTART)
+@@ -224,15 +225,19 @@
+ 				timespecsub(&ts, &ts2);
+ 				if (ts.tv_sec < 0)
+ 					timespecclear(&ts);
+-				*rmt = ts;
++				rmt->tv_sec = ts.tv_sec;
++				rmt->tv_nsec = ts.tv_nsec;
+ 			}
+ 			return (error);
+ 		}
+ 		if (timespeccmp(&ts2, &ts, >=))
+ 			return (0);
+-		ts3 = ts;
++		ts3.tv_sec = ts.tv_sec;
++		ts3.tv_nsec = ts.tv_nsec;
+ 		timespecsub(&ts3, &ts2);
+ 		TIMESPEC_TO_TIMEVAL(&tv, &ts3);
++		if (tv.tv_sec == 0 && tv.tv_usec < tick)
++			return (0);
+ 	}
+ }
+ 
