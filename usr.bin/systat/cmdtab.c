@@ -32,7 +32,7 @@
  *
  * @(#)cmdtab.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/cmdtab.c,v 1.5 1999/08/28 01:05:59 peter Exp $
- * $DragonFly: src/usr.bin/systat/cmdtab.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/cmdtab.c,v 1.3 2003/11/08 09:30:32 asmodai Exp $
  */
 
 #include "systat.h"
@@ -67,6 +67,9 @@ struct	cmdtab cmdtab[] = {
 	{ "tcp",	showtcp,	fetchtcp,	labeltcp,
 	  inittcp,	opentcp,	closetcp,	cmdmode,
 	  resettcp,	CF_LOADAV },
+	{ "ifstat",     showifstat,     fetchifstat,    labelifstat,
+          initifstat,   openifstat,     closeifstat,    cmdifstat,
+          0,            CF_LOADAV },
         { 0 }
 };
 struct  cmdtab *curcmd = &cmdtab[0];

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/main.c,v 1.11.2.1 2001/06/06 20:26:01 tmm Exp $
- * $DragonFly: src/usr.bin/systat/main.c,v 1.4 2003/10/04 20:36:51 hmp Exp $
+ * $DragonFly: src/usr.bin/systat/main.c,v 1.5 2003/11/08 09:30:32 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -180,16 +180,8 @@ display(int signo)
 	(*curcmd->c_fetch)();
 	if (curcmd->c_flags & CF_LOADAV) {
 		j = 5.0*avenrun[0] + 0.5;
-		dellave -= avenrun[0];
-		if (dellave >= 0.0)
-			c = '<';
-		else {
-			c = '>';
-			dellave = -dellave;
-		}
-		if (dellave < 0.1)
-			c = '|';
 		dellave = avenrun[0];
+		c = '|';
 		wmove(wload, 0, 0); wclrtoeol(wload);
 		for (i = (j > 50) ? 50 : j; i > 0; i--)
 			waddch(wload, c);

@@ -31,8 +31,7 @@
  * SUCH DAMAGE.
  *
  *      @(#)extern.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/systat/extern.h,v 1.7.6.1 2001/07/04 22:54:14 kris Exp $
- * $DragonFly: src/usr.bin/systat/extern.h,v 1.4 2003/11/03 19:31:33 eirikn Exp $
+ * $DragonFly: src/usr.bin/systat/extern.h,v 1.5 2003/11/08 09:30:32 asmodai Exp $
  */
 
 #include <sys/cdefs.h>
@@ -73,6 +72,7 @@ extern long			select_generation;
 int	 checkhost(struct inpcb *);
 int	 checkport(struct inpcb *);
 void	 closeiostat(WINDOW *);
+void     closeifstat(WINDOW *);
 void	 closeicmp(WINDOW *);
 void	 closeip(WINDOW *);
 void	 closekre(WINDOW *);
@@ -82,6 +82,7 @@ void	 closepigs(WINDOW *);
 void	 closeswap(WINDOW *);
 void	 closetcp(WINDOW *);
 int	 cmdiostat(char *, char *);
+int	 cmdifstat(char *, char *);
 int	 cmdkre(char *, char *);
 int	 cmdnetstat(char *, char *);
 struct	 cmdtab *lookup(char *);
@@ -92,6 +93,7 @@ int	 dkinit(void);
 int	 dkcmd(char *, char *);
 void	 error(const char *fmt, ...) __printflike(1, 2);
 void	 fetchicmp(void);
+void     fetchifstat(void);
 void	 fetchip(void);
 void	 fetchiostat(void);
 void	 fetchkre(void);
@@ -101,6 +103,7 @@ void	 fetchpigs(void);
 void	 fetchswap(void);
 void	 fetchtcp(void);
 int	 initicmp(void);
+int      initifstat(void);
 int	 initip(void);
 int	 initiostat(void);
 int	 initkre(void);
@@ -112,6 +115,7 @@ int	 inittcp(void);
 int	 keyboard(void);
 int	 kvm_ckread(void *, void *, int);
 void	 labelicmp(void);
+void     labelifstat(void);
 void	 labelip(void);
 void	 labeliostat(void);
 void	 labelkre(void);
@@ -125,6 +129,7 @@ void	 load(void);
 int	 netcmd(char *, char *);
 void	 nlisterr(struct nlist []);
 WINDOW	*openicmp(void);
+WINDOW  *openifstat(void);
 WINDOW	*openip(void);
 WINDOW	*openiostat(void);
 WINDOW	*openkre(void);
@@ -138,6 +143,7 @@ void	 reseticmp(void);
 void	 resetip(void);
 void	 resettcp(void);
 void	 showicmp(void);
+void     showifstat(void);
 void	 showip(void);
 void	 showiostat(void);
 void	 showkre(void);
