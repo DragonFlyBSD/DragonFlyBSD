@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/vpoio.c,v 1.10.2.3 2001/10/02 05:27:20 nsouch Exp $
- * $DragonFly: src/sys/dev/disk/vpo/vpoio.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vpo/vpoio.c,v 1.3 2003/07/26 14:25:24 rob Exp $
  *
  */
 
@@ -681,10 +681,10 @@ vpoio_do_scsi(struct vpoio_data *vpo, int host, int target, char *command,
 		int *ret)
 {
 	device_t ppbus = device_get_parent(vpo->vpo_dev);
-	register char r;
+	char r;
 	char l, h = 0;
 	int len, error = 0;
-	register int k;
+	int k;
 
 	/*
 	 * enter disk state, allocate the ppbus

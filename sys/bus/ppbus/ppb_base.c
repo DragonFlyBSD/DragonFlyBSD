@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppb_base.c,v 1.10.2.1 2000/08/01 23:26:26 n_hibma Exp $
- * $DragonFly: src/sys/bus/ppbus/ppb_base.c,v 1.3 2003/07/19 21:14:25 dillon Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppb_base.c,v 1.4 2003/07/26 14:25:24 rob Exp $
  *
  */
 #include <sys/param.h>
@@ -182,7 +182,7 @@ ppb_ecp_sync(device_t bus)
 int
 ppb_get_status(device_t bus, struct ppb_status *status)
 {
-	register char r;
+	char r;
 
 	r = status->status = ppb_rstr(bus);
 

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30.c,v 1.1.2.5 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30.c,v 1.2 2003/06/17 04:28:31 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30.c,v 1.3 2003/07/26 14:25:26 rob Exp $	*/
 /*	$NecBSD: tmc18c30.c,v 1.28.12.3 2001/06/19 04:35:48 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -330,7 +330,7 @@ stghw_start_selection(sc, cb)
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
 	struct targ_info *ti = cb->ti;
-	register u_int8_t stat;
+	u_int8_t stat;
 	int s;
 
 	sc->sc_tmaxcnt = cb->ccb_tcmax * 1000 * 1000;
@@ -653,7 +653,7 @@ stg_pio_write(sc, ti, thold)
 	struct sc_p *sp = &slp->sl_scp;
 	u_int res;
 	int s, tout;
-	register u_int8_t stat;
+	u_int8_t stat;
 
 	if ((slp->sl_flags & HW_PDMASTART) == 0)
 	{

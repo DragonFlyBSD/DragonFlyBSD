@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.3 2003/07/26 14:25:27 rob Exp $
  *
  */
 
@@ -283,7 +283,7 @@ static void
 vxsetfilter(sc)
     struct vx_softc *sc;
 {
-    register struct ifnet *ifp = &sc->arpcom.ac_if;  
+    struct ifnet *ifp = &sc->arpcom.ac_if;  
     
     GO_WINDOW(1);           /* Window 1 is operating window */
     outw(BASE + VX_COMMAND, SET_RX_FILTER | FIL_INDIVIDUAL | FIL_BRDCST |
@@ -329,7 +329,7 @@ static void
 vxsetlink(sc)
     struct vx_softc *sc;
 {       
-    register struct ifnet *ifp = &sc->arpcom.ac_if;  
+    struct ifnet *ifp = &sc->arpcom.ac_if;  
     int i, j, k;
     char *reason, *warning;
     static short prev_flags;
@@ -436,8 +436,8 @@ static void
 vxstart(ifp)
     struct ifnet *ifp;
 {
-    register struct vx_softc *sc = vx_softc[ifp->if_unit];
-    register struct mbuf *m0;
+    struct vx_softc *sc = vx_softc[ifp->if_unit];
+    struct mbuf *m0;
     int sh, len, pad;
 
     /* Don't transmit if interface is busy or not running */
@@ -632,7 +632,7 @@ void
 vxintr(voidsc)
     void *voidsc;
 {
-    register short status;
+    short status;
     struct vx_softc *sc = voidsc;
     struct ifnet *ifp = &sc->arpcom.ac_if;
 
@@ -875,7 +875,7 @@ vxget(sc, totlen)
 
 static int
 vxioctl(ifp, cmd, data)
-    register struct ifnet *ifp;
+    struct ifnet *ifp;
     u_long cmd;
     caddr_t data;
 {

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nsp.c,v 1.1.2.6 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.2 2003/06/17 04:28:28 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.3 2003/07/26 14:25:23 rob Exp $	*/
 /*	$NecBSD: nsp.c,v 1.21.12.6 2001/06/29 06:27:52 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -373,7 +373,7 @@ nsphw_start_selection(sc, cb)
 	bus_space_tag_t bst = sc->sc_iot;
 	bus_space_handle_t bsh = sc->sc_ioh;
 	struct targ_info *ti = cb->ti;
-	register u_int8_t arbs, ph;
+	u_int8_t arbs, ph;
 	int s, wc;
 
 	wc = sc->sc_tmaxcnt = cb->ccb_tcmax * 1000 * 1000;
@@ -947,7 +947,7 @@ nsp_write_fifo(sc, suspendio)
 	bus_space_tag_t bst = sc->sc_iot;
 	bus_space_handle_t bsh = sc->sc_ioh;
 	u_int res;
-	register u_int8_t stat;
+	u_int8_t stat;
 
 	if (suspendio > 0)
 	{
@@ -1017,7 +1017,7 @@ nsp_wait_interrupt(sc)
 	bus_space_tag_t bst = sc->sc_iot;
 	bus_space_handle_t bsh = sc->sc_ioh;
 	int tout;
-	register u_int8_t isrc;
+	u_int8_t isrc;
 
 	for (tout = 0; tout < DEV_BSIZE / 10; tout ++)
 	{
@@ -1045,7 +1045,7 @@ nsp_pio_read(sc, suspendio)
 	bus_space_tag_t bst = sc->sc_iot;
 	bus_space_handle_t bsh = sc->sc_ioh;
 	int tout, padding, datalen;
-	register u_int8_t stat, fstat;
+	u_int8_t stat, fstat;
 
 	padding = 0;
 	tout = sc->sc_tmaxcnt;
@@ -1125,7 +1125,7 @@ nsp_pio_write(sc, suspendio)
 	bus_space_handle_t bsh = sc->sc_ioh;
 	u_int rcount, acount;
 	int tout, datalen;
-	register u_int8_t stat, fstat;
+	u_int8_t stat, fstat;
 
 	tout = sc->sc_tmaxcnt;
 	slp->sl_flags |= HW_PDMASTART;

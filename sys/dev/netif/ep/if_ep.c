@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.3 2003/07/26 14:25:20 rob Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -341,7 +341,7 @@ ep_if_init(xsc)
     void *xsc;
 {
     struct ep_softc *sc = xsc;
-    register struct ifnet *ifp = &sc->arpcom.ac_if;
+    struct ifnet *ifp = &sc->arpcom.ac_if;
     int s, i;
 
     if (sc->gone)
@@ -547,7 +547,7 @@ ep_intr(arg)
     void *arg;
 {
     struct ep_softc *sc;
-    register int status;
+    int status;
     struct ifnet *ifp;
     int x;
 
@@ -662,7 +662,7 @@ rescan:
 
 static void
 epread(sc)
-    register struct ep_softc *sc;
+    struct ep_softc *sc;
 {
     struct ether_header *eh;
     struct mbuf *top, *mcur, *m;
@@ -670,7 +670,7 @@ epread(sc)
     int lenthisone;
 
     short rx_fifo2, status;
-    register short rx_fifo;
+    short rx_fifo;
 
     ifp = &sc->arpcom.ac_if;
     status = inw(BASE + EP_W1_RX_STATUS);

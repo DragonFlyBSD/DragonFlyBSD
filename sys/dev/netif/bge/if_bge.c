@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.22 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.3 2003/07/26 14:25:20 rob Exp $
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.22 2003/05/11 18:00:55 ps Exp $
  */
@@ -617,7 +617,7 @@ bge_alloc_jumbo_mem(sc)
 	struct bge_softc		*sc;
 {
 	caddr_t			ptr;
-	register int		i;
+	int		i;
 	struct bge_jpool_entry   *entry;
 
 	/* Grab a big chunk o' storage. */
@@ -717,7 +717,7 @@ bge_jref(buf, size)
 {
 	struct bge_softc		*sc;
 	u_int64_t		**aptr;
-	register int		i;
+	int		i;
 
 	/* Extract the softc struct pointer. */
 	aptr = (u_int64_t **)(buf - sizeof(u_int64_t));

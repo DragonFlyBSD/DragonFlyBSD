@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.3 2003/07/26 14:25:26 rob Exp $
  */
 
 /*
@@ -84,7 +84,7 @@
 
 MODULE_DEPEND(tx, miibus, 1, 1, 1);
 
-static int epic_ifioctl(register struct ifnet *, u_long, caddr_t);
+static int epic_ifioctl(struct ifnet *, u_long, caddr_t);
 static void epic_intr(void *);
 static void epic_tx_underrun(epic_softc_t *);
 static int epic_common_attach(epic_softc_t *);
@@ -554,8 +554,8 @@ epic_ifstart(ifp)
 	struct epic_tx_desc *desc;
 	struct epic_frag_list *flist;
 	struct mbuf *m0;
-	register struct mbuf *m;
-	register int i;
+	struct mbuf *m;
+	int i;
 
 	while (sc->pending_txs < TX_RING_SIZE) {
 		buf = sc->tx_buffer + sc->cur_tx;

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.173.2.13 2001/11/03 00:36:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.3 2003/07/26 14:25:20 rob Exp $
  */
 
 /*
@@ -2517,7 +2517,7 @@ edintr(arg)
  */
 static int
 ed_ioctl(ifp, command, data)
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 	u_long     command;
 	caddr_t data;
 {
@@ -3401,9 +3401,9 @@ ds_crc(ep)
 	u_char *ep;
 {
 #define POLYNOMIAL 0x04c11db6
-	register u_int32_t crc = 0xffffffff;
-	register int carry, i, j;
-	register u_char b;
+	u_int32_t crc = 0xffffffff;
+	int carry, i, j;
+	u_char b;
 
 	for (i = 6; --i >= 0;) {
 		b = *ep++;
@@ -3428,8 +3428,8 @@ ds_getmcaf(sc, mcaf)
 	struct ed_softc *sc;
 	u_int32_t *mcaf;
 {
-	register u_int32_t index;
-	register u_char *af = (u_char *) mcaf;
+	u_int32_t index;
+	u_char *af = (u_char *) mcaf;
 	struct ifmultiaddr *ifma;
 
 	mcaf[0] = 0;

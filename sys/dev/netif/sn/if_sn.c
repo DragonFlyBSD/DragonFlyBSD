@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.3 2003/07/26 14:25:25 rob Exp $
  */
 
 /*
@@ -256,8 +256,8 @@ sn_attach(device_t dev)
 void
 sninit(void *xsc)
 {
-	register struct sn_softc *sc = xsc;
-	register struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct sn_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int             s;
 	int             flags;
 	int             mask;
@@ -355,9 +355,9 @@ sninit(void *xsc)
 void
 snstart(struct ifnet *ifp)
 {
-	register struct sn_softc *sc = ifp->if_softc;
-	register u_int  len;
-	register struct mbuf *m;
+	struct sn_softc *sc = ifp->if_softc;
+	u_int  len;
+	struct mbuf *m;
 	struct mbuf    *top;
 	int             s, pad;
 	int             mask;
@@ -582,9 +582,9 @@ readcheck:
 static void
 snresume(struct ifnet *ifp)
 {
-	register struct sn_softc *sc = ifp->if_softc;
-	register u_int  len;
-	register struct mbuf *m;
+	struct sn_softc *sc = ifp->if_softc;
+	u_int  len;
+	struct mbuf *m;
 	struct mbuf    *top;
 	int             pad;
 	int             mask;
@@ -774,7 +774,7 @@ void
 sn_intr(void *arg)
 {
 	int             status, interrupts;
-	register struct sn_softc *sc = (struct sn_softc *) arg;
+	struct sn_softc *sc = (struct sn_softc *) arg;
 	struct ifnet   *ifp = &sc->arpcom.ac_if;
 	int             x;
 
@@ -999,7 +999,7 @@ out:
 }
 
 void
-snread(register struct ifnet *ifp)
+snread(struct ifnet *ifp)
 {
         struct sn_softc *sc = ifp->if_softc;
 	struct ether_header *eh;
@@ -1133,7 +1133,7 @@ out:
  * changes.
  */
 static int
-snioctl(register struct ifnet *ifp, u_long cmd, caddr_t data)
+snioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 {
 	struct sn_softc *sc = ifp->if_softc;
 	int             s, error = 0;
@@ -1450,8 +1450,8 @@ static int
 sn_getmcf(struct arpcom *ac, u_char *mcf)
 {
 	int i;
-	register u_int index, index2;
-	register u_char *af = (u_char *) mcf;
+	u_int index, index2;
+	u_char *af = (u_char *) mcf;
 	struct ifmultiaddr *ifma;
 
 	bzero(mcf, MCFSZ);

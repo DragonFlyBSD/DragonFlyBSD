@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nmdm/nmdm.c,v 1.5.2.1 2001/08/11 00:54:14 mp Exp $
- * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.6 2003/07/21 05:50:33 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.7 2003/07/26 14:25:23 rob Exp $
  */
 
 /*
@@ -260,7 +260,7 @@ nmdmopen(dev_t dev, int flag, int devtype, struct thread *td)
 static	int
 nmdmclose(dev_t dev, int flag, int mode, struct thread *td)
 {
-	register struct tty *tp, *tp2;
+	struct tty *tp, *tp2;
 	int err;
 	struct softpart *ourpart, *otherpart;
 
@@ -337,8 +337,8 @@ nmdmwrite(dev, uio, flag)
 	struct uio *uio;
 	int flag;
 {
-	register u_char *cp = 0;
-	register int cc = 0;
+	u_char *cp = 0;
+	int cc = 0;
 	u_char locbuf[BUFSIZ];
 	int cnt = 0;
 	int error = 0;
@@ -432,7 +432,7 @@ static void
 nmdmstart(tp)
 	struct tty *tp;
 {
-	register struct nm_softc *pti = tp->t_dev->si_drv1;
+	struct nm_softc *pti = tp->t_dev->si_drv1;
 
 	if (tp->t_state & TS_TTSTOP)
 		return;
@@ -461,7 +461,7 @@ wakeup_other(tp, flag)
 
 static	void
 nmdmstop(tp, flush)
-	register struct tty *tp;
+	struct tty *tp;
 	int flush;
 {
 	struct nm_softc *pti = tp->t_dev->si_drv1;
@@ -486,10 +486,10 @@ nmdmstop(tp, flush)
 static	int
 nmdmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
-	register struct tty *tp = dev->si_tty;
+	struct tty *tp = dev->si_tty;
 	struct nm_softc *pti = dev->si_drv1;
 	int error, s;
-	register struct tty *tp2;
+	struct tty *tp2;
 	struct softpart *ourpart, *otherpart;
 
 	s = spltty();

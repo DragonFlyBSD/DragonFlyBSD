@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fpa.c,v 1.13 1999/08/28 00:50:50 peter Exp $
- * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.3 2003/07/26 14:25:23 rob Exp $
  *
  */
 
@@ -299,8 +299,8 @@ pdq_pci_attach(
     void *aux)
 {
     pdq_softc_t *sc = (pdq_softc_t *) self;
-    register struct isa_attach_args *ia = (struct isa_attach_args *) aux;
-    register struct ifnet *ifp = &sc->sc_if;
+    struct isa_attach_args *ia = (struct isa_attach_args *) aux;
+    struct ifnet *ifp = &sc->sc_if;
     int i;
 
     sc->sc_if.if_unit = sc->sc_dev.dv_unit;

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932.c,v 1.1.2.2 2003/02/11 08:52:00 nyan Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.2 2003/06/17 04:28:29 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.3 2003/07/26 14:25:25 rob Exp $	*/
 /*	$NecBSD: dp83932.c,v 1.5 1999/07/29 05:08:44 kmatsuda Exp $	*/
 /*	$NetBSD: if_snc.c,v 1.18 1998/04/25 21:27:40 scottr Exp $	*/
 
@@ -1170,7 +1170,7 @@ sonic_get(sc, pkt, datalen)
 #if 0
 		/* XXX: Require? */
 		if (!top) {
-			register int pad =
+			int pad =
 			    ALIGN(sizeof(struct ether_header)) -
 			        sizeof(struct ether_header);
 			m->m_data += pad;

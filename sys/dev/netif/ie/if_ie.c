@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.3 2003/07/26 14:25:21 rob Exp $
  */
 
 /*
@@ -842,8 +842,8 @@ ieattach(struct isa_device *dvp)
 static void
 ieintr(int unit)
 {
-	register struct ie_softc *ie = &ie_softc[unit];
-	register u_short status;
+	struct ie_softc *ie = &ie_softc[unit];
+	u_short status;
 
 	/* Clear the interrupt latch on the 3C507. */
 	if (ie->hard_type == IE_3C507

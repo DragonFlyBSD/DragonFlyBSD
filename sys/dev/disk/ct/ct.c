@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ct/ct.c,v 1.4.2.1 2001/07/26 02:32:18 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/ct/Attic/ct.c,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ct/Attic/ct.c,v 1.3 2003/07/26 14:25:20 rob Exp $ */
 /*	$NecBSD: ct.c,v 1.13.12.5 2001/06/26 07:31:53 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -648,7 +648,7 @@ ct_xfer(ct, data, len, direction, statp)
 {
 	struct ct_bus_access_handle *chp = &ct->sc_ch;
 	int wc;
-	register u_int8_t aux;
+	u_int8_t aux;
 
 	*statp = 0;
 	if (len == 1)
@@ -917,7 +917,7 @@ ct_unbusy(ct)
 	struct scsi_low_softc *slp = &ct->sc_sclow;
 	struct ct_bus_access_handle *chp = &ct->sc_ch;
 	int wc;
-	register u_int8_t regv;
+	u_int8_t regv;
 
 	for (wc = 0; wc < CT_DELAY_MAX / CT_DELAY_INTERVAL; wc ++)
 	{
@@ -940,7 +940,7 @@ ct_catch_intr(ct)
 {
 	struct ct_bus_access_handle *chp = &ct->sc_ch;
 	int wc;
-	register u_int8_t regv;
+	u_int8_t regv;
 
 	for (wc = 0; wc < CT_DELAY_MAX / CT_DELAY_INTERVAL; wc ++)
 	{

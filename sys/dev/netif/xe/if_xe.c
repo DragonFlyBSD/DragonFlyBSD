@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.3 2003/07/23 02:30:17 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.4 2003/07/26 14:25:27 rob Exp $
  */
 
 /*
@@ -727,7 +727,7 @@ xe_start(struct ifnet *ifp) {
  * Process an ioctl request.  Adapted from the ed driver.
  */
 static int
-xe_ioctl (register struct ifnet *ifp, u_long command, caddr_t data) {
+xe_ioctl (struct ifnet *ifp, u_long command, caddr_t data) {
   struct xe_softc *scp;
   int s, error;
 
@@ -1852,7 +1852,7 @@ xe_compute_hashbit(u_int32_t crc) {
  */
 static void
 xe_mii_sync(struct xe_softc *scp) {
-  register int i;
+  int i;
 
   XE_SELECT_PAGE(2);
   XE_MII_SET(XE_MII_DIR|XE_MII_WRD);

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500.c,v 1.1.2.4 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.2 2003/06/17 04:28:28 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.3 2003/07/26 14:25:22 rob Exp $	*/
 /*	$NecBSD: ncr53c500.c,v 1.30.12.3 2001/06/26 07:31:41 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -754,7 +754,7 @@ ncv_pio_read(sc, buf, reqlen)
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
 	int tout;
-	register u_int8_t fstat;
+	u_int8_t fstat;
 
 	ncv_setup_and_start_pio(sc, reqlen);
 	slp->sl_flags |= HW_PDMASTART;
@@ -820,7 +820,7 @@ ncv_pio_write(sc, buf, reqlen)
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
 	int tout;
-	register u_int8_t fstat;
+	u_int8_t fstat;
 
 	ncv_setup_and_start_pio(sc, reqlen);
 	sc->sc_sdatalen = reqlen;
@@ -971,7 +971,7 @@ ncv_catch_intr(sc)
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
 	int wc;
-	register u_int8_t status;
+	u_int8_t status;
 
 	for (wc = 0; wc < NCV_DELAY_MAX / NCV_DELAY_INTERVAL; wc ++)
 	{

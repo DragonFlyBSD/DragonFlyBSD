@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.3 2003/07/26 14:25:26 rob Exp $
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
  */
@@ -359,7 +359,7 @@ csr_write_2(struct aue_softc *sc, int reg, int val)
 Static void
 aue_eeprom_getword(struct aue_softc *sc, int addr, u_int16_t *dest)
 {
-	register int		i;
+	int		i;
 	u_int16_t		word = 0;
 
 	csr_write_1(sc, AUE_EE_REG, addr);
@@ -585,7 +585,7 @@ aue_reset_pegasus_II(struct aue_softc *sc)
 Static void
 aue_reset(struct aue_softc *sc)
 {
-	register int		i;
+	int		i;
 
 	AUE_SETBIT(sc, AUE_CTL1, AUE_CTL1_RESETMAC);
 

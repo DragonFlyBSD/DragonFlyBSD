@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.6 2003/07/21 05:50:34 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.7 2003/07/26 14:25:24 rob Exp $
  */
 
 /* 
@@ -1643,7 +1643,7 @@ rpstart(tp)
 static
 void
 rpstop(tp, flag)
-	register struct tty *tp;
+	struct tty *tp;
 	int	flag;
 {
 	struct rp_port	*rp;

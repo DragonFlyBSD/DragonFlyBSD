@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.4 2003/06/25 03:55:48 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.5 2003/07/26 14:25:24 rob Exp $
  */
 
 /*
@@ -1164,7 +1164,7 @@ sbni_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 static u_int32_t
 calc_crc32(u_int32_t crc, caddr_t p, u_int len)
 {
-	register u_int32_t  _crc __asm ("ax");
+	u_int32_t  _crc __asm ("ax");
 	_crc = crc;
 	
 	__asm __volatile (

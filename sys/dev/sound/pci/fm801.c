@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/fm801.c,v 1.3.2.8 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.3 2003/07/26 14:25:25 rob Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -32,7 +32,7 @@
 #include <pci/pcireg.h>
 #include <pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.3 2003/07/26 14:25:25 rob Exp $");
 
 #define PCI_VENDOR_FORTEMEDIA	0x1319
 #define PCI_DEVICE_FORTEMEDIA1	0x08011319
@@ -391,7 +391,7 @@ fm801ch_setspeed(kobj_t obj, void *data, u_int32_t speed)
 {
 	struct fm801_chinfo *ch = data;
 	struct fm801_info *fm801 = ch->parent;
-	register int i;
+	int i;
 
 
 	for (i = 0; i < 10 && fm801_rates[i].limit <= speed; i++) ;

@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.3 2003/07/26 14:25:22 rob Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -786,7 +786,7 @@ my_setcfg(struct my_softc * sc, int bmcr)
 static void
 my_reset(struct my_softc * sc)
 {
-	register int    i;
+	int    i;
 
 	MY_LOCK(sc);
 	MY_SETBIT(sc, MY_BCR, MY_SWR);
@@ -1814,7 +1814,7 @@ my_watchdog(struct ifnet * ifp)
 static void
 my_stop(struct my_softc * sc)
 {
-	register int    i;
+	int    i;
 	struct ifnet   *ifp;
 
 	MY_LOCK(sc);

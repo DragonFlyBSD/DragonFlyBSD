@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.3 2003/07/26 14:25:21 rob Exp $
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
  */
@@ -226,7 +226,7 @@ static void lge_eeprom_getword(sc, addr, dest)
 	int			addr;
 	u_int16_t		*dest;
 {
-	register int		i;
+	int		i;
 	u_int32_t		val;
 
 	CSR_WRITE_4(sc, LGE_EECTL, LGE_EECTL_CMD_READ|
@@ -442,7 +442,7 @@ static void lge_setmulti(sc)
 static void lge_reset(sc)
 	struct lge_softc	*sc;
 {
-	register int		i;
+	int		i;
 
 	LGE_SETBIT(sc, LGE_MODE1, LGE_MODE1_SETRST_CTL0|LGE_MODE1_SOFTRST);
 
@@ -844,7 +844,7 @@ static int lge_alloc_jumbo_mem(sc)
 	struct lge_softc	*sc;
 {
 	caddr_t			ptr;
-	register int		i;
+	int		i;
 	struct lge_jpool_entry   *entry;
 
 	/* Grab a big chunk o' storage. */
@@ -938,7 +938,7 @@ static void lge_jref(buf, size)
 {
 	struct lge_softc	*sc;
 	u_int64_t		**aptr;
-	register int		i;
+	int		i;
 
 	/* Extract the softc struct pointer. */
 	aptr = (u_int64_t **)(buf - sizeof(u_int64_t));
@@ -1632,7 +1632,7 @@ static void lge_watchdog(ifp)
 static void lge_stop(sc)
 	struct lge_softc	*sc;
 {
-	register int		i;
+	int		i;
 	struct ifnet		*ifp;
 
 	ifp = &sc->arpcom.ac_if;

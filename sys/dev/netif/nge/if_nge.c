@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.3 2003/07/26 14:25:22 rob Exp $
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
  */
@@ -258,7 +258,7 @@ static void nge_delay(sc)
 static void nge_eeprom_idle(sc)
 	struct nge_softc	*sc;
 {
-	register int		i;
+	int		i;
 
 	SIO_SET(NGE_MEAR_EE_CSEL);
 	nge_delay(sc);
@@ -288,7 +288,7 @@ static void nge_eeprom_putbyte(sc, addr)
 	struct nge_softc	*sc;
 	int			addr;
 {
-	register int		d, i;
+	int		d, i;
 
 	d = addr | NGE_EECMD_READ;
 
@@ -319,7 +319,7 @@ static void nge_eeprom_getword(sc, addr, dest)
 	int			addr;
 	u_int16_t		*dest;
 {
-	register int		i;
+	int		i;
 	u_int16_t		word = 0;
 
 	/* Force EEPROM to idle state. */
@@ -389,7 +389,7 @@ static void nge_read_eeprom(sc, dest, off, cnt, swap)
 static void nge_mii_sync(sc)
 	struct nge_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	SIO_SET(NGE_MEAR_MII_DIR|NGE_MEAR_MII_DATA);
 
@@ -751,7 +751,7 @@ static void nge_setmulti(sc)
 static void nge_reset(sc)
 	struct nge_softc	*sc;
 {
-	register int		i;
+	int		i;
 
 	NGE_SETBIT(sc, NGE_CSR, NGE_CSR_RESET);
 
@@ -1188,7 +1188,7 @@ static int nge_alloc_jumbo_mem(sc)
 	struct nge_softc	*sc;
 {
 	caddr_t			ptr;
-	register int		i;
+	int		i;
 	struct nge_jpool_entry   *entry;
 
 	/* Grab a big chunk o' storage. */
@@ -1234,7 +1234,7 @@ static int nge_alloc_jumbo_mem(sc)
 static void nge_free_jumbo_mem(sc)
 	struct nge_softc	*sc;
 {
-	register int		i;
+	int		i;
 	struct nge_jpool_entry   *entry;
 
 	for (i = 0; i < NGE_JSLOTS; i++) {
@@ -1282,7 +1282,7 @@ static void nge_jref(buf, size)
 {
 	struct nge_softc	*sc;
 	u_int64_t		**aptr;
-	register int		i;
+	int		i;
 
 	/* Extract the softc struct pointer. */
 	aptr = (u_int64_t **)(buf - sizeof(u_int64_t));
@@ -2266,7 +2266,7 @@ static void nge_watchdog(ifp)
 static void nge_stop(sc)
 	struct nge_softc	*sc;
 {
-	register int		i;
+	int		i;
 	struct ifnet		*ifp;
 	struct ifmedia_entry	*ifm;
 	struct mii_data		*mii;
