@@ -3,7 +3,7 @@
  * Copyright (c) 2003 Jonathan Lemon
  * Copyright (c) 2003 Matthew Dillon
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.13 2004/04/20 01:52:26 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.14 2004/04/21 18:13:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -160,10 +160,10 @@ schednetisr(int num)
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
 	("schednetisr: bad isr %d", num));
 
-    if (!(pmsg = malloc(sizeof(struct netmsg), M_LWKTMSG, M_NOWAIT)))
-	return;
-
-    lwkt_initmsg(&pmsg->nm_lmsg, &netisr_afree_rport, 0,
-		lwkt_cmd_func((void *)ni->ni_handler), lwkt_cmd_op_none);
-    lwkt_sendmsg(port, &pmsg->nm_lmsg);
+    pmsg = malloc(sizeof(struct netmsg), M_LWKTMSG, M_NOWAIT);
+    if (pmsg) {
+	lwkt_initmsg(&pmsg->nm_lmsg, &netisr_afree_rport, 0,
+		    lwkt_cmd_func((void *)ni->ni_handler), lwkt_cmd_op_none);
+	lwkt_sendmsg(port, &pmsg->nm_lmsg);
+    }
 }

@@ -34,7 +34,7 @@
  *	@(#)ipx_input.c
  *
  * $FreeBSD: src/sys/netipx/ipx_input.c,v 1.22.2.2 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.10 2004/04/11 07:41:52 hsu Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.11 2004/04/21 18:14:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -92,7 +92,7 @@ struct	ipxpcb ipxrawpcb;
 
 long	ipx_pexseq;
 
-static	void ipxintr(struct netmsg *);
+static	int ipxintr(struct netmsg *);
 static	int ipx_do_route(struct ipx_addr *src, struct route *ro);
 static	void ipx_undo_route(struct route *ro);
 static	void ipx_forward(struct mbuf *m);
@@ -124,7 +124,7 @@ ipx_init()
 /*
  * IPX input routine.  Pass to next level.
  */
-static void
+static int
 ipxintr(struct netmsg *msg)
 {
 	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
@@ -270,6 +270,7 @@ bad:
 	m_freem(m);
 out:
 	lwkt_replymsg(&msg->nm_lmsg, 0);
+	return(EASYNC);
 }
 
 void

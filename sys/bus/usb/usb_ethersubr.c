@@ -31,7 +31,7 @@
  *
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.17 2003/11/14 11:09:45 johan Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.8 2004/04/09 22:34:09 hsu Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.9 2004/04/21 18:13:49 dillon Exp $
  */
 
 /*
@@ -76,7 +76,7 @@ Static struct ifqueue usbq_rx;
 Static struct ifqueue usbq_tx;
 Static int mtx_inited = 0;
 
-Static void usbintr(struct netmsg *msg)
+Static int usbintr(struct netmsg *msg)
 {
 	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
 	struct ether_header	*eh;
@@ -118,7 +118,7 @@ Static void usbintr(struct netmsg *msg)
 	splx(s);
 
 	lwkt_replymsg(&msg->nm_lmsg, 0);
-	return;
+	return EASYNC;
 }
 
 void

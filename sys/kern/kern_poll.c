@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.11 2004/04/16 14:21:58 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.12 2004/04/21 18:13:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,8 +49,8 @@
 #endif
 
 /* the two netisr handlers */
-static void netisr_poll(struct netmsg *);
-static void netisr_pollmore(struct netmsg *);
+static int netisr_poll(struct netmsg *);
+static int netisr_pollmore(struct netmsg *);
 
 void init_device_poll(void);		/* init routine			*/
 void hardclock_device_poll(void);	/* hook from hardclock		*/
@@ -302,7 +302,7 @@ idle_poll(void)
 static struct timeval poll_start_t;
 
 /* ARGSUSED */
-static void
+static int
 netisr_pollmore(struct netmsg *msg)
 {
 	struct timeval t;
@@ -346,6 +346,7 @@ netisr_pollmore(struct netmsg *msg)
 out:
 	splx(s);
 	lwkt_replymsg(&msg->nm_lmsg, 0);
+	return(EASYNC);
 }
 
 /*
@@ -354,7 +355,7 @@ out:
  * splimp(), and call all registered handlers.
  */
 /* ARGSUSED */
-static void
+static int
 netisr_poll(struct netmsg *msg)
 {
 	static int reg_frac_count;
@@ -421,6 +422,7 @@ netisr_poll(struct netmsg *msg)
 	phase = 4;
 	splx(s);
 	lwkt_replymsg(&msg->nm_lmsg, 0);
+	return(EASYNC);
 }
 
 /*

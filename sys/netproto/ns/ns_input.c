@@ -32,7 +32,7 @@
  *
  *	@(#)ns_input.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_input.c,v 1.13 2000/02/13 03:32:04 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.11 2004/04/11 07:41:52 hsu Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.12 2004/04/21 18:14:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -81,7 +81,7 @@ struct nspcb nsrawpcb;
 int	idpcksum = 1;
 long	ns_pexseq;
 
-static void nsintr(struct netmsg *msg);
+static int nsintr(struct netmsg *msg);
 
 void
 ns_init()
@@ -105,7 +105,7 @@ ns_init()
 int nsintr_getpck = 0;
 int nsintr_swtch = 0;
 
-static void
+static int
 nsintr(struct netmsg *msg)
 {
 	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
@@ -233,6 +233,7 @@ bad:
 	m_freem(m);
 out:
 	lwkt_replymsg(&msg->nm_lmsg, 0);
+	return(EASYNC);
 }
 
 u_char nsctlerrmap[PRC_NCMDS] = {

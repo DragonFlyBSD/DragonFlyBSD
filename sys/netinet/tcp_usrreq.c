@@ -32,7 +32,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.16 2004/04/20 01:52:28 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.17 2004/04/21 18:13:56 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -833,7 +833,7 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 		struct netmsg_tcp_connect *msg;
 
 		msg = malloc(sizeof(struct netmsg_tcp_connect), M_LWKTMSG,
-		    M_NOWAIT);
+				M_NOWAIT);
 		if (msg == NULL) {
 			if (didbind) {	/* need to unwind bind */
 				inp->inp_lport = 0;
@@ -849,6 +849,7 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 		msg->nm_sin = sin;
 		msg->nm_ifsin = if_sin;
 		error = lwkt_domsg(port, &msg->nm_lmsg);
+		free(msg, M_LWKTMSG);
 	} else
 #endif
 		error = tcp_connect_oncpu(tp, sin, if_sin);

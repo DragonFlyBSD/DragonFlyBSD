@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.11 2004/04/09 22:34:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.12 2004/04/21 18:13:56 dillon Exp $
  */
 
 /*
@@ -122,7 +122,7 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
 static void	arp_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
 static void	arprequest (struct ifnet *,
 			struct in_addr *, struct in_addr *, u_char *);
-static void	arpintr(struct netmsg *);
+static int	arpintr(struct netmsg *);
 static void	arptfree (struct llinfo_arp *);
 static void	arptimer (void *);
 static struct llinfo_arp
@@ -494,7 +494,7 @@ arpresolve(ifp, rt, m, dst, desten, rt0)
  * Common length and type checks are done here,
  * then the protocol-specific routine is called.
  */
-static void
+static int
 arpintr(struct netmsg *msg)
 {
 	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
@@ -504,7 +504,7 @@ arpintr(struct netmsg *msg)
 	if (m->m_len < sizeof(struct arphdr) &&
 	    ((m = m_pullup(m, sizeof(struct arphdr))) == NULL)) {
 		log(LOG_ERR, "arp: runt packet -- m_pullup failed\n");
-		return;
+		goto out2;
 	}
 	ar = mtod(m, struct arphdr *);
 
@@ -515,26 +515,27 @@ arpintr(struct netmsg *msg)
 		log(LOG_ERR,
 		    "arp: unknown hardware address format (0x%2D)\n",
 		    (unsigned char *)&ar->ar_hrd, "");
-		m_freem(m);
-		return;
+		goto out1;
 	}
 
 	if (m->m_pkthdr.len < arphdr_len(ar) &&
 	    (m = m_pullup(m, arphdr_len(ar))) == NULL) {
 		log(LOG_ERR, "arp: runt packet\n");
-		m_freem(m);
-		return;
+		goto out1;
 	}
 
 	switch (ntohs(ar->ar_pro)) {
 #ifdef INET
 		case ETHERTYPE_IP:
 			in_arpinput(m);
-			return;
+			goto out2;
 #endif
 	}
+out1:
 	m_freem(m);
+out2:
 	lwkt_replymsg(&msg->nm_lmsg, 0);
+	return(EASYNC);
 }
 
 #ifdef INET

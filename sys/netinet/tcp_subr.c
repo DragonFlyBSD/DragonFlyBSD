@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.27 2004/04/20 01:52:28 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.28 2004/04/21 18:13:56 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -834,8 +834,8 @@ tcp_drain()
 			tcp_drain_oncpu(&tcbinfo[cpu].listhead);
 		} else {
 			msg = malloc(sizeof(struct netmsg_tcp_drain),
-			    M_LWKTMSG, M_NOWAIT);
-			if (!msg)
+				    M_LWKTMSG, M_NOWAIT);
+			if (msg == NULL)
 				continue;
 			lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
 				lwkt_cmd_func(tcp_drain_handler),

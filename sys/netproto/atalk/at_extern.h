@@ -1,5 +1,5 @@
 /*
- * $DragonFly: src/sys/netproto/atalk/at_extern.h,v 1.5 2004/03/06 01:58:56 hsu Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_extern.h,v 1.6 2004/04/21 18:13:59 dillon Exp $
  */
 struct mbuf;
 struct sockaddr_at;
@@ -22,9 +22,9 @@ struct netmsg;
 struct proc;
 struct socket;
 
-extern void	aarpintr	(struct netmsg *);
-extern void	at1intr		(struct netmsg *);
-extern void	at2intr		(struct netmsg *);
+extern int	aarpintr	(struct netmsg *);
+extern int	at1intr		(struct netmsg *);
+extern int	at2intr		(struct netmsg *);
 extern void	aarp_clean	(void);
 extern int	at_control	( struct socket *so,
 					u_long cmd,

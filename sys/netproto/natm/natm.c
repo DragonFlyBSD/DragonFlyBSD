@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.15 2004/04/09 22:34:10 hsu Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.16 2004/04/21 18:14:03 dillon Exp $ */
 
 /*
  *
@@ -726,7 +726,7 @@ int natm5_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
   return (ENOPROTOOPT);
 }
 
-static void natmintr(struct netmsg *);
+static int natmintr(struct netmsg *);
 
 #if defined(__DragonFly__)
 static void
@@ -753,7 +753,7 @@ natm_init()
  * pointer.    we can get the interface pointer from the so's PCB if
  * we really need it.
  */
-static void
+static int
 natmintr(struct netmsg *msg)
 {
   struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
@@ -810,5 +810,6 @@ m->m_pkthdr.rcvif = NULL;	/* null it out to be safe */
   }
 out:
   lwkt_replymsg(&msg->nm_lmsg, 0);
+  return(EASYNC);
 }
 

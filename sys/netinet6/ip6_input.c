@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.13 2004/04/09 22:34:10 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.14 2004/04/21 18:13:57 dillon Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -163,6 +163,7 @@ struct ip6stat ip6stat;
 static void ip6_init2 (void *);
 static struct ip6aux *ip6_setdstifaddr (struct mbuf *, struct in6_ifaddr *);
 static int ip6_hopopts_input (u_int32_t *, u_int32_t *, struct mbuf **, int *);
+static int ip6_input(struct netmsg *msg);
 #ifdef PULLDOWN_TEST
 static struct mbuf *ip6_pullexthdr (struct mbuf *, size_t, int);
 #endif
@@ -246,7 +247,8 @@ SYSINIT(netinet6init2, SI_SUB_PROTO_DOMAIN, SI_ORDER_MIDDLE, ip6_init2, NULL);
 
 extern struct	route_in6 ip6_forward_rt;
 
-void
+static
+int
 ip6_input(struct netmsg *msg)
 {
 	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
@@ -843,6 +845,7 @@ bad:
 	m_freem(m);
 bad2:
 	lwkt_replymsg(&msg->nm_lmsg, 0);
+	return(EASYNC);
 }
 
 /*

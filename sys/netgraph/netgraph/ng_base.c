@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.12 2004/04/11 07:22:31 hsu Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.13 2004/04/21 18:13:54 dillon Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -87,7 +87,7 @@ static int	ng_generic_msg(node_p here, struct ng_mesg *msg,
 			const char *retaddr, struct ng_mesg ** resp);
 static ng_ID_t	ng_decodeidname(const char *name);
 static int	ngb_mod_event(module_t mod, int event, void *data);
-static void	ngintr(struct netmsg *);
+static int	ngintr(struct netmsg *);
 
 /* Our own netgraph malloc type */
 MALLOC_DEFINE(M_NETGRAPH, "netgraph", "netgraph structures and ctrl messages");
@@ -1985,7 +1985,7 @@ ng_queue_msg(node_p here, struct ng_mesg *msg, const char *address)
  * Pick an item off the queue, process it, and dispose of the queue entry.
  * Should be running at splnet.
  */
-static void
+static int
 ngintr(struct netmsg *pmsg)
 {
 	struct mbuf *m = ((struct netmsg_packet *)pmsg)->nm_packet;
@@ -2037,6 +2037,7 @@ ngintr(struct netmsg *pmsg)
 	}
 out:
 	lwkt_replymsg(&pmsg->nm_lmsg, 0);
+	return(EASYNC);
 }
 
 

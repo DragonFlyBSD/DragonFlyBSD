@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.15 2004/04/09 22:34:09 hsu Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.16 2004/04/21 18:13:52 dillon Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -194,7 +194,7 @@ static struct compressor *ppp_compressors[8] = {
 /*
  * Software interrupt routine, called at spl[soft]net.
  */
-static void
+static int
 pppintr(struct netmsg *msg)
 {
     struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
@@ -221,6 +221,7 @@ pppintr(struct netmsg *msg)
 	}
     }
     lwkt_replymsg(&msg->nm_lmsg, 0);
+    return(EASYNC);
 }
 
 /*

@@ -32,7 +32,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.15 2004/04/20 01:52:26 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.16 2004/04/21 18:13:51 dillon Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -81,7 +81,7 @@ TAILQ_HEAD(notifymsglist, netmsg_so_notify);
 
 struct netmsg;
 
-typedef void (*netisr_fn_t)(struct netmsg *);
+typedef int (*netisr_fn_t)(struct netmsg *);
 typedef boolean_t (*msg_predicate_fn_t)(struct netmsg *);
 
 /*
