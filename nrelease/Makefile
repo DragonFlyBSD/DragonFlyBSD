@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.26 2005/03/02 23:09:00 cpressey Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.27 2005/03/03 22:57:39 cpressey Exp $
 #
 
 ISODIR ?= /usr/release
@@ -11,7 +11,7 @@ KERNCONF ?= GENERIC
 # specify additional packages to include.  During the `pkgaddiso'
 # target, the packages are obtained from PACKAGES_LOC.
 #
-REQ_PACKAGES= cdrtools-2.0.3_3 cvsup-without-gui-16.1h
+REQ_PACKAGES= cdrtools-2.01 cvsup-without-gui-16.1h
 REL_PACKAGES?= ${REQ_PACKAGES} ${EXTRA_PACKAGES}
 .if defined(PACKAGES)
 PACKAGES_LOC?= ${PACKAGES}/All
