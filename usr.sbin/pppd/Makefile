@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/pppd/Makefile,v 1.19.2.2 2001/08/19 03:32:43 kris Exp $
-# $DragonFly: src/usr.sbin/pppd/Makefile,v 1.3 2003/08/03 16:45:16 dillon Exp $
+# $DragonFly: src/usr.sbin/pppd/Makefile,v 1.4 2003/08/05 17:11:04 rob Exp $
 
 CFLAGS+= -DHAVE_PATHS_H
 
@@ -31,7 +31,7 @@ LDADD+=	-lpcap
 DPADD+=	${LIBPCAP}
 
 # MS-CHAP support.  Requires the DES library.
-.if exists(${.CURDIR}/../../secure) && !defined(NOCRYPT) && && !defined(NO_OPENSSL) && !defined(RELEASE_CRUNCH)
+.if exists(${.CURDIR}/../../secure) && !defined(NOCRYPT)  && !defined(NO_OPENSSL) && !defined(RELEASE_CRUNCH)
 DISTRIBUTION=crypto
 CFLAGS+=-DCHAPMS
 SRCS+=	chap_ms.c
