@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.11 2004/03/01 06:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.12 2004/04/15 00:59:41 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -99,18 +99,14 @@ VNODEOP_SET(mfs_vnodeop_opv_desc);
  * Open called to allow memory filesystem to initialize and
  * validate before actual IO. Record our process identifier
  * so we can tell when we are doing I/O to ourself.
+ *
+ * mfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *	    struct thread *a_td)
  */
 /* ARGSUSED */
 static int
-mfs_open(ap)
-	struct vop_open_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+mfs_open(struct vop_open_args *ap)
 {
-
 	if (ap->a_vp->v_type != VCHR) {
 		panic("mfs_open not VCHR");
 		/* NOTREACHED */
@@ -119,10 +115,8 @@ mfs_open(ap)
 }
 
 static int
-mfs_fsync(ap)
-	struct vop_fsync_args *ap;
+mfs_fsync(struct vop_fsync_args *ap)
 {
-
 	return (VOCALL(spec_vnodeop_p, VOFFSET(vop_fsync), ap));
 }
 
@@ -135,15 +129,11 @@ mfs_fsync(ap)
  *
  *	Note: geteblk() sets B_INVAL.  We leave it set to guarentee buffer
  *	throw-away on brelse()? XXX
+ *
+ * mfs_freeblks(struct vnode *a_vp, daddr_t a_addr, daddr_t a_length)
  */
-
 static int
-mfs_freeblks(ap)
-        struct vop_freeblks_args /* {   
-                struct vnode *a_vp;     
-                daddr_t a_addr;         
-                daddr_t a_length;       
-        } */ *ap;
+mfs_freeblks(struct vop_freeblks_args *ap)
 {       
 	struct buf *bp;
 	struct vnode *vp;
@@ -164,13 +154,11 @@ mfs_freeblks(ap)
 
 /*
  * Pass I/O requests to the memory filesystem process.
+ *
+ * mfs_strategy(struct vnode *a_vp, struct buf *a_bp)
  */
 static int
-mfs_strategy(ap)
-	struct vop_strategy_args /* {
-		struct vnode *a_vp;
-		struct buf *a_bp;
-	} */ *ap;
+mfs_strategy(struct vop_strategy_args *ap)
 {
 	struct buf *bp = ap->a_bp;
 	struct mfsnode *mfsp;
@@ -235,9 +223,7 @@ mfs_strategy(ap)
  * implement it for page-aligned requests.
  */
 void
-mfs_doio(bp, mfsp)
-	struct buf *bp;
-	struct mfsnode *mfsp;
+mfs_doio(struct buf *bp, struct mfsnode *mfsp)
 {
 	caddr_t base = mfsp->mfs_baseoff + (bp->b_blkno << DEV_BSHIFT);
 
@@ -287,18 +273,13 @@ mfs_doio(bp, mfsp)
 
 /*
  * This is a noop, simply returning what one has been given.
+ *
+ * mfs_bmap(struct vnode *a_vp, ufs_daddr_t a_bn, struct vnode **a_vpp,
+ *	    ufs_daddr_t *a_bnp, int *a_runp)
  */
 static int
-mfs_bmap(ap)
-	struct vop_bmap_args /* {
-		struct vnode *a_vp;
-		ufs_daddr_t  a_bn;
-		struct vnode **a_vpp;
-		ufs_daddr_t *a_bnp;
-		int *a_runp;
-	} */ *ap;
+mfs_bmap(struct vop_bmap_args *ap)
 {
-
 	if (ap->a_vpp != NULL)
 		*ap->a_vpp = ap->a_vp;
 	if (ap->a_bnp != NULL)
@@ -310,16 +291,13 @@ mfs_bmap(ap)
 
 /*
  * Memory filesystem close routine
+ *
+ * mfs_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
+ *	     struct thread *a_td)
  */
 /* ARGSUSED */
 static int
-mfs_close(ap)
-	struct vop_close_args /* {
-		struct vnode *a_vp;
-		int  a_fflag;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+mfs_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct mfsnode *mfsp = VTOMFS(vp);
@@ -359,14 +337,12 @@ mfs_close(ap)
 
 /*
  * Memory filesystem inactive routine
+ *
+ * mfs_inactive(struct vnode *a_vp, struct thread *a_td)
  */
 /* ARGSUSED */
 static int
-mfs_inactive(ap)
-	struct vop_inactive_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-	} */ *ap;
+mfs_inactive(struct vop_inactive_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct mfsnode *mfsp = VTOMFS(vp);
@@ -380,12 +356,11 @@ mfs_inactive(ap)
 
 /*
  * Reclaim a memory filesystem devvp so that it can be reused.
+ *
+ * mfs_reclaim(struct vnode *a_vp)
  */
 static int
-mfs_reclaim(ap)
-	struct vop_reclaim_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+mfs_reclaim(struct vop_reclaim_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
@@ -396,12 +371,11 @@ mfs_reclaim(ap)
 
 /*
  * Print out the contents of an mfsnode.
+ *
+ * mfs_print(struct vnode *a_vp)
  */
 static int
-mfs_print(ap)
-	struct vop_print_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+mfs_print(struct vop_print_args *ap)
 {
 	struct mfsnode *mfsp = VTOMFS(ap->a_vp);
 
@@ -424,11 +398,8 @@ mfs_badop(struct vop_generic_args *ap)
 	return (i);
 }
 
-
 static int
-mfs_getpages(ap)
-	struct vop_getpages_args *ap;
+mfs_getpages(struct vop_getpages_args *ap)
 {
-
 	return (VOCALL(spec_vnodeop_p, VOFFSET(vop_getpages), ap));
 }

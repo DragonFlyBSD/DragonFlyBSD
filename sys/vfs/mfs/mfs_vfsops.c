@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.12 2003/12/01 04:38:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.13 2004/04/15 00:59:41 cpressey Exp $
  */
 
 
@@ -160,12 +160,8 @@ VFS_SET(mfs_vfsops, mfs, 0);
  */
 /* ARGSUSED */
 static int
-mfs_mount(mp, path, data, ndp, td)
-	struct mount *mp;
-	char *path;
-	caddr_t data;
-	struct nameidata *ndp;
-	struct thread *td;
+mfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
+	  struct thread *td)
 {
 	struct vnode *devvp;
 	struct mfs_args args;
@@ -393,11 +389,8 @@ mfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
  * Memory based filesystem initialization.
  */
 static int
-mfs_init(vfsp)
-	struct vfsconf *vfsp;
+mfs_init(struct vfsconf *vfsp)
 {
-
 	cdevsw_add(&mfs_cdevsw);
 	return (0);
 }
-
