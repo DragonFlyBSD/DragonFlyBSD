@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkinfo/kinfo_file.c,v 1.3 2004/12/04 00:34:36 joerg Exp $
+ * $DragonFly: src/lib/libkinfo/kinfo_file.c,v 1.4 2004/12/21 15:07:42 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -82,7 +82,7 @@ kinfo_get_files(struct kinfo_file **file_buf, size_t *len)
 int
 kinfo_get_maxfiles(int *maxfiles)
 {
-	int len = sizeof(*maxfiles);
+	size_t len = sizeof(*maxfiles);
 
 	return(sysctlbyname("kern.maxfiles", maxfiles, &len, NULL, 0));
 }
@@ -91,7 +91,7 @@ kinfo_get_maxfiles(int *maxfiles)
 int
 kinfo_get_openfiles(int *openfiles)
 {
-	int len = sizeof(*openfiles);
+	size_t len = sizeof(*openfiles);
 
 	return(sysctlbyname("kern.openfiles", openfiles, &len, NULL, 0));
 }
