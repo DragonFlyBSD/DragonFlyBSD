@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.22 2004/05/13 23:49:23 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.23 2004/05/21 14:26:28 hmp Exp $
  */
 
 /*
@@ -166,7 +166,8 @@ SYSCTL_INT(_kern_pipe, OID_AUTO, maxbig,
 SYSCTL_INT(_kern_pipe, OID_AUTO, dwrite_enable,
         CTLFLAG_RW, &pipe_dwrite_enable, 0, "1:enable/2:force direct writes");
 SYSCTL_INT(_kern_pipe, OID_AUTO, dwrite_sfbuf,
-        CTLFLAG_RW, &pipe_dwrite_sfbuf, 0, "(if dwrite_enable) 0:kmem 1:sfbuf 2:sfbuf_dmap 3:sfbuf_dmap_forceinvlpg");
+        CTLFLAG_RW, &pipe_dwrite_sfbuf, 0,
+	"(if dwrite_enable) 0:kmem 1:sfbuf 2:sfbuf_dmap 3:sfbuf_dmap_forceinvlpg");
 #if !defined(NO_PIPE_SYSCTL_STATS)
 SYSCTL_INT(_kern_pipe, OID_AUTO, bcache_alloc,
         CTLFLAG_RW, &pipe_bcache_alloc, 0, "pipe buffer from pcpu cache");
