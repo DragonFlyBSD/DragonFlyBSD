@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.52.2.1 2002/06/17 15:10:57 jhay Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.9 2004/06/02 14:42:49 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.10 2004/09/14 21:34:30 joerg Exp $
  */
 
 /*
@@ -136,7 +136,7 @@ struct ar_softc {
 #define	SCF_RUNNING	0x01		/* board is active */
 #define	SCF_OACTIVE	0x02		/* output is active */
 	int		out_dog;	/* watchdog cycles output count-down */
-	struct callout_handle handle;	/* timeout(9) handle */
+	struct callout	timer;		/* watchdog timer */
 	u_long		inbytes, outbytes;	/* stats */
 	u_long		lastinbytes, lastoutbytes; /* a second ago */
 	u_long		inrate, outrate;	/* highest rate seen */
@@ -331,7 +331,7 @@ ar_attach(device_t device)
 		if (ng_make_node_common(&typestruct, &sc->node) != 0)
 			return (1);
 		sc->node->private = sc;
-		callout_handle_init(&sc->handle);
+		callout_init(&sc->timer);
 		sc->xmitq.ifq_maxlen = IFQ_MAXLEN;
 		sc->xmitq_hipri.ifq_maxlen = IFQ_MAXLEN;
 		sprintf(sc->nodename, "%s%d", NG_AR_NODE_TYPE, sc->unit);
@@ -916,8 +916,7 @@ ar_up(struct ar_softc *sc)
 	if(sc->hc->bustype == AR_BUS_ISA)
 		ARC_SET_OFF(sc->hc->iobase);
 #ifdef	NETGRAPH
-	untimeout(ngar_watchdog_frame, sc, sc->handle);
-	sc->handle = timeout(ngar_watchdog_frame, sc, hz);
+	callout_reset(&sc->timer, hz, ngar_watchdog_frame, sc);
 	sc->running = 1;
 #endif	/* NETGRAPH */
 }
@@ -932,7 +931,7 @@ ar_down(struct ar_softc *sc)
 	msci = &sca->msci[sc->scachan];
 
 #ifdef	NETGRAPH
-	untimeout(ngar_watchdog_frame, sc, sc->handle);
+	callout_stop(&sc->timer);
 	sc->running = 0;
 #endif	/* NETGRAPH */
 	/*
@@ -2101,7 +2100,7 @@ ngar_watchdog_frame(void * arg)
 			sc->out_dog--;
 		}
 	}
-	sc->handle = timeout(ngar_watchdog_frame, sc, hz);
+	callout_reset(&sc->timer, hz, ngar_watchdog_frame, sc);
 }
 
 /***********************************************************************
