@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/imgact_resident.c,v 1.3 2004/06/03 16:28:15 hmp Exp $
+ * $DragonFly: src/sys/kern/imgact_resident.c,v 1.4 2004/06/03 18:17:43 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -53,9 +53,21 @@
 #include <vm/vm_extern.h>
 
 static int exec_res_id = 0;
-static TAILQ_HEAD(,vmresident) exec_res_list = TAILQ_HEAD_INITIALIZER(exec_res_list);
+
+static TAILQ_HEAD(,vmresident) exec_res_list;
 
 static MALLOC_DEFINE(M_EXEC_RES, "vmresident", "resident execs");
+
+/* lockmgr lock for protecting the exec_res_list */
+static struct lock exec_list_lock;
+
+static void
+vm_resident_init(void *__dummy)
+{
+	lockinit(&exec_list_lock, 0, "vmres", 0, 0);
+	TAILQ_INIT(&exec_res_list);
+}
+SYSINIT(vmres, SI_SUB_VM, SI_ORDER_ANY, vm_resident_init, 0);
 
 static int
 fill_xresident(struct vmresident *vr, struct xresident *in, struct thread *td)
@@ -122,6 +134,7 @@ sysctl_vm_resident(SYSCTL_HANDLER_ARGS)
 	if (!req->oldptr)
 	    return SYSCTL_OUT(req, 0, exec_res_id);
 
+	lockmgr(&exec_list_lock, LK_SHARED, NULL, td);
 	TAILQ_FOREACH(vmres, &exec_res_list, vr_link) {
 		struct xresident xres;
 		error = fill_xresident(vmres, &xres, td);
@@ -133,6 +146,7 @@ sysctl_vm_resident(SYSCTL_HANDLER_ARGS)
 		if (error != 0)
 			break;
 	}
+	lockmgr(&exec_list_lock, LK_RELEASE, NULL, td);
 
 	return (error);
 }
@@ -187,7 +201,11 @@ exec_sys_register(struct exec_sys_register_args *uap)
     vmres->vr_id = ++exec_res_id;
     vmres->vr_entry_addr = (intptr_t)uap->entry;
     vmres->vr_vmspace = vmspace_fork(p->p_vmspace); /* XXX order */
+
+    lockmgr(&exec_list_lock, LK_EXCLUSIVE, NULL, curthread);
     TAILQ_INSERT_TAIL(&exec_res_list, vmres, vr_link);
+    lockmgr(&exec_list_lock, LK_RELEASE, NULL, curthread);
+
     return(0);
 }
 
@@ -222,6 +240,8 @@ exec_sys_unregister(struct exec_sys_unregister_args *uap)
      */
     error = ENOENT;
     count = 0;
+
+    lockmgr(&exec_list_lock, LK_EXCLUSIVE, NULL, curthread);
 restart:
     TAILQ_FOREACH(vmres, &exec_res_list, vr_link) {
 	if (id == -2 || vmres->vr_id == id) {
@@ -242,6 +262,7 @@ restart:
 	    goto restart;
 	}
     }
+    lockmgr(&exec_list_lock, LK_RELEASE, NULL, curthread);
     if (error == 0)
 	uap->sysmsg_result = count;
     return(error);
