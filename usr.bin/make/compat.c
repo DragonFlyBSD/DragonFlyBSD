@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.50 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.32 2005/03/12 10:10:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.33 2005/03/12 10:11:57 okumoto Exp $
  */
 
 /*-
@@ -88,10 +88,6 @@ static char 	    meta[256];
 static GNode	    *curTarg = NULL;
 static GNode	    *ENDNode;
 static sig_atomic_t interrupted;
-
-static void CompatInterrupt(int);
-static int CompatMake(void *, void *);
-static int shellneed(char *);
 
 static void
 CompatInit(void)
