@@ -35,7 +35,7 @@
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
  * $FreeBSD: src/bin/ls/print.c,v 1.19.2.7 2002/11/17 10:27:34 tjr Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.3 2003/11/04 15:55:22 drhodus Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.4 2003/11/09 02:37:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -304,8 +304,9 @@ printcol(DISPLAY *dp)
 	if (dp->list->fts_level != FTS_ROOTLEVEL && (f_longform || f_size))
 		(void)printf("total %lu\n", howmany(dp->btotal, blocksize));
 
-	if (f_sortacross)
-		base = 0;
+	/* counter if f_sortacross, else case-by-case */
+	base = 0;
+
 	for (row = 0; row < numrows; ++row) {
 		endcol = colwidth;
 		if (!f_sortacross)
