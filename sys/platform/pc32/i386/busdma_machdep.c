@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.9 2004/04/19 13:37:43 joerg Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.10 2004/10/14 03:05:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -138,9 +138,7 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 	/* Return a NULL tag on failure */
 	*dmat = NULL;
 
-	newtag = (bus_dma_tag_t)malloc(sizeof(*newtag), M_DEVBUF, M_NOWAIT);
-	if (newtag == NULL)
-		return (ENOMEM);
+	newtag = malloc(sizeof(*newtag), M_DEVBUF, M_INTWAIT);
 
 	newtag->parent = parent;
 	newtag->alignment = alignment;
@@ -155,12 +153,7 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 	newtag->flags = flags;
 	newtag->ref_count = 1; /* Count ourself */
 	newtag->map_count = 0;
-	newtag->segments = malloc(sizeof(bus_dma_segment_t) * newtag->nsegments,
-				  M_DEVBUF, M_INTWAIT);
-	if (newtag->segments == NULL) {
-		free(newtag, M_DEVBUF);
-		return(ENOMEM);
-	}
+	newtag->segments = NULL;
 	
 	/* Take into account any restrictions imposed by our parent tag */
 	if (parent != NULL) {
@@ -259,12 +252,17 @@ bus_dmamap_create(bus_dma_tag_t dmat, int flags, bus_dmamap_t *mapp)
 
 	error = 0;
 
+	if (dmat->segments == NULL) {
+		KKASSERT(dmat->nsegments && dmat->nsegments < 16384);
+		dmat->segments = malloc(sizeof(bus_dma_segment_t) * 
+					dmat->nsegments, M_DEVBUF, M_INTWAIT);
+	}
+
 	if (dmat->lowaddr < ptoa(Maxmem)) {
 		/* Must bounce */
 		int maxpages;
 
-		*mapp = (bus_dmamap_t)malloc(sizeof(**mapp), M_DEVBUF,
-					     M_NOWAIT);
+		*mapp = malloc(sizeof(**mapp), M_DEVBUF, M_INTWAIT);
 		if (*mapp == NULL) {
 			return (ENOMEM);
 		} else {
@@ -338,6 +336,12 @@ bus_dmamem_alloc(bus_dma_tag_t dmat, void** vaddr, int flags,
 	int mflags;
 	/* If we succeed, no mapping/bouncing will be required */
 	*mapp = NULL;
+
+	if (dmat->segments == NULL) {
+		KKASSERT(dmat->nsegments < 16384);
+		dmat->segments = malloc(sizeof(bus_dma_segment_t) * 
+					dmat->nsegments, M_DEVBUF, M_INTWAIT);
+	}
 
 	if (flags & BUS_DMA_NOWAIT)
 		mflags = M_NOWAIT;
@@ -775,7 +779,7 @@ alloc_bounce_pages(bus_dma_tag_t dmat, u_int numpages)
 		int s;
 
 		bpage = (struct bounce_page *)malloc(sizeof(*bpage), M_DEVBUF,
-						     M_NOWAIT);
+						     M_INTWAIT);
 
 		if (bpage == NULL)
 			break;

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.10 2004/03/01 06:33:16 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.11 2004/10/14 03:05:52 dillon Exp $
  */
 
 /*
@@ -329,7 +329,7 @@ nexus_add_child(device_t bus, int order, const char *name, int unit)
 	device_t		child;
 	struct nexus_device	*ndev;
 
-	ndev = malloc(sizeof(struct nexus_device), M_NEXUSDEV, M_NOWAIT|M_ZERO);
+	ndev = malloc(sizeof(struct nexus_device), M_NEXUSDEV, M_INTWAIT|M_ZERO);
 	if (!ndev)
 		return(0);
 	resource_list_init(&ndev->nx_resources);

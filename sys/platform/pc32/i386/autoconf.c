@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.13 2004/07/28 06:04:41 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.14 2004/10/14 03:05:52 dillon Exp $
  */
 
 /*
@@ -340,7 +340,7 @@ setroot()
 	if (!dev_is_good(newrootdev))
 		return;
 	sname = dsname(newrootdev, unit, slice, part, partname);
-	rootdevnames[0] = malloc(strlen(sname) + 6, M_DEVBUF, M_NOWAIT);
+	rootdevnames[0] = malloc(strlen(sname) + 6, M_DEVBUF, M_WAITOK);
 	sprintf(rootdevnames[0], "ufs:%s%s", sname, partname);
 
 	/*
@@ -356,7 +356,7 @@ setroot()
 		return;
 	slice = COMPATIBILITY_SLICE;
 	sname = dsname(newrootdev, unit, slice, part, partname);
-	rootdevnames[1] = malloc(strlen(sname) + 6, M_DEVBUF, M_NOWAIT);
+	rootdevnames[1] = malloc(strlen(sname) + 6, M_DEVBUF, M_WAITOK);
 	sprintf(rootdevnames[1], "ufs:%s%s", sname, partname);
 }
 #endif

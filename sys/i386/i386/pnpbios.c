@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/i386/i386/Attic/pnpbios.c,v 1.1 2004/04/29 12:11:16 joerg Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pnpbios.c,v 1.2 2004/10/14 03:05:52 dillon Exp $
  */
 
 /*
@@ -132,7 +132,7 @@ pnpbios_identify(driver_t *driver, device_t parent)
     if (bootverbose)
 	printf("pnpbios: %d devices, largest %d bytes\n", ndevs, bigdev);
 
-    devnodebuf = malloc(bigdev + (sizeof(struct pnp_sysdevargs) - sizeof(struct pnp_sysdev)), M_DEVBUF, M_NOWAIT);
+    devnodebuf = malloc(bigdev + (sizeof(struct pnp_sysdevargs) - sizeof(struct pnp_sysdev)), M_DEVBUF, M_INTWAIT);
     pda = (struct pnp_sysdevargs *)devnodebuf;
     pd = &pda->node;
 

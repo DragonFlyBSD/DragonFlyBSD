@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/k6_mem.c,v 1.4.2.2 2002/09/16 21:58:41 dwmalone Exp $
- * $DragonFly: src/sys/i386/i386/Attic/k6_mem.c,v 1.3 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/k6_mem.c,v 1.4 2004/10/14 03:05:52 dillon Exp $
  *
  */
 
@@ -109,7 +109,7 @@ k6_mrinit(struct mem_range_softc *sc) {
 	sc->mr_cap = 0;
 	sc->mr_ndesc = 2; /* XXX (BFF) For now, we only have one msr for this */
 	sc->mr_desc = malloc(sc->mr_ndesc * sizeof(struct mem_range_desc),
-			     M_MEMDESC, M_NOWAIT);
+			     M_MEMDESC, M_WAITOK);
 	if (sc->mr_desc == NULL)
 		panic("k6_mrinit: malloc returns NULL");
 	bzero(sc->mr_desc, sc->mr_ndesc * sizeof(struct mem_range_desc));

@@ -14,7 +14,7 @@
  * Version 1.9, Mon Oct  9 22:34:47 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/atapi.c,v 1.36.2.1 2000/04/03 20:13:06 n_hibma Exp $
- * $DragonFly: src/sys/platform/pc32/isa/Attic/atapi.c,v 1.4 2003/08/07 21:17:23 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/atapi.c,v 1.5 2004/10/14 03:05:54 dillon Exp $
  */
 
 /*
@@ -412,7 +412,7 @@ static struct atapi_params *atapi_probe (int port, int unit)
 	/* Obtain parameters. */
 	insw (port + AR_DATA, tb, sizeof(tb) / sizeof(short));
 
-	ap = malloc (sizeof *ap, M_TEMP, M_NOWAIT);
+	ap = malloc (sizeof *ap, M_TEMP, M_INTWAIT);
 	if (! ap)
 		return (0);
 	bcopy (tb, ap, sizeof *ap);
