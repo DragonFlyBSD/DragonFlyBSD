@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.10 2003/07/23 02:30:24 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.11 2003/08/03 11:47:58 hmp Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -109,6 +109,7 @@ struct globaldata;
 struct thread;
 
 void	Debugger __P((const char *msg));
+void	backtrace(void);
 void	mi_gdinit __P((struct globaldata *gd, int cpu));
 int	dumpstatus __P((vm_offset_t addr, off_t count));
 int	nullop __P((void));
