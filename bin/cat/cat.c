@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cat.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/bin/cat/cat.c,v 1.14.2.8 2002/06/29 05:09:26 tjr Exp $
- * $DragonFly: src/bin/cat/cat.c,v 1.10 2004/07/27 16:21:52 hmp Exp $
+ * $DragonFly: src/bin/cat/cat.c,v 1.11 2004/08/25 01:05:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,14 +51,13 @@
 #include <err.h>
 #include <fcntl.h>
 #include <locale.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <stddef.h>
 
-static int bflag, eflag, nflag, sflag, tflag, vflag;
-static int rval;
+static int bflag, eflag, nflag, sflag, tflag, vflag, rval;
 static const char *filename;
 
 static void scanfiles (char **, int);
@@ -126,13 +125,14 @@ main(int argc, char **argv)
 static void
 scanfiles(char **argv, int cooked)
 {
-	int i = 0;
 	char *path;
 	FILE *fp;
+	int fd;
+	int i;
+
+	i = 0;
 
 	while ((path = argv[i]) != NULL || i == 0) {
-		int fd;
-
 		if (path == NULL || strcmp(path, "-") == 0) {
 			filename = "stdin";
 			fd = STDIN_FILENO;
@@ -148,10 +148,12 @@ scanfiles(char **argv, int cooked)
 			warn("%s", path);
 			rval = 1;
 		} else if (cooked) {
-			if (fd == STDIN_FILENO)
+			if (fd == STDIN_FILENO) {
 				cook_cat(stdin);
-			else {
+			} else {
 				fp = fdopen(fd, "r");
+				if (fp == NULL)
+					err(1, "%s", path);
 				cook_cat(fp);
 				fclose(fp);
 			}
