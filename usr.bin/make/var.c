@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.162 2005/03/16 22:48:15 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.163 2005/03/16 22:48:31 okumoto Exp $
  */
 
 /*-
@@ -1254,13 +1254,13 @@ modifier_C(VarParser *vp, char value[], Var *v)
  * XXXHB update this comment or remove it and point to the man page.
  */
 static char *
-ParseModifier(VarParser *vp, char startc, Var *v, Boolean *freePtr)
+ParseModifier(VarParser *vp, char startc, Var *v, Boolean *freeResult)
 {
 	char	*value;
 	char	endc;
 
 	value = VarExpand(v, vp);
-	*freePtr = TRUE;
+	*freeResult = TRUE;
 
 	endc = (startc == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACE;
 
@@ -1515,14 +1515,14 @@ ParseModifier(VarParser *vp, char startc, Var *v, Boolean *freePtr)
 		}
 
 		DEBUGF(VAR, ("Result is \"%s\"\n", newStr));
-		if (*freePtr) {
+		if (*freeResult) {
 			free(value);
 		}
 		value = newStr;
 		if (value != var_Error) {
-			*freePtr = TRUE;
+			*freeResult = TRUE;
 		} else {
-			*freePtr = FALSE;
+			*freeResult = FALSE;
 		}
 	}
 
@@ -1530,7 +1530,7 @@ ParseModifier(VarParser *vp, char startc, Var *v, Boolean *freePtr)
 }
 
 static char *
-ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freePtr)
+ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freeResult)
 {
 	const char	*vname;
 	size_t		vlen;
@@ -1541,7 +1541,7 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freePtr)
 
 	v = VarFind(vname, vp->ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
 	if (v != NULL) {
-		value = ParseModifier(vp, startc, v, freePtr);
+		value = ParseModifier(vp, startc, v, freeResult);
 
 		if (v->flags & VAR_FROM_ENV) {
 			VarDestroy(v, TRUE);
@@ -1568,7 +1568,7 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freePtr)
 				strncpy(value, vp->input, consumed);
 				value[consumed] = '\0';
 
-				*freePtr = TRUE;
+				*freeResult = TRUE;
 				return (value);
 			}
 		}
@@ -1583,7 +1583,7 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freePtr)
 				strncpy(value, vp->input, consumed);
 				value[consumed] = '\0';
 
-				*freePtr = TRUE;
+				*freeResult = TRUE;
 				return (value);
 			}
 		}
@@ -1594,13 +1594,13 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freePtr)
 		 * modifications
 		 */
 		v = VarCreate(vname, NULL, VAR_JUNK);
-		value = ParseModifier(vp, startc, v, freePtr);
-		if (*freePtr) {
+		value = ParseModifier(vp, startc, v, freeResult);
+		if (*freeResult) {
 			free(value);
 		}
 		VarDestroy(v, TRUE);
 
-		*freePtr = FALSE;
+		*freeResult = FALSE;
 		return (vp->err ? var_Error : varNoError);
 	} else {
 		/*
@@ -1617,7 +1617,7 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freePtr)
 
 			v = VarFind(name, vp->ctxt, 0);
 			if (v != NULL) {
-				value = ParseModifier(vp, startc, v, freePtr);
+				value = ParseModifier(vp, startc, v, freeResult);
 				return (value);
 			}
 		}
@@ -1628,19 +1628,19 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freePtr)
 		 * modifications
 		 */
 		v = VarCreate(vname, NULL, VAR_JUNK);
-		value = ParseModifier(vp, startc, v, freePtr);
-		if (*freePtr) {
+		value = ParseModifier(vp, startc, v, freeResult);
+		if (*freeResult) {
 			free(value);
 		}
 		VarDestroy(v, TRUE);
 
-		*freePtr = FALSE;
+		*freeResult = FALSE;
 		return (vp->err ? var_Error : varNoError);
 	}
 }
 
 static char *
-ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freePtr)
+ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freeResult)
 {
 	const char	*vname;
 	size_t		vlen;
@@ -1657,7 +1657,7 @@ ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freePtr)
 			VarDestroy(v, TRUE);
 		}
 
-		*freePtr = TRUE;
+		*freeResult = TRUE;
 		return (value);
 	}
 
@@ -1680,7 +1680,7 @@ ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freePtr)
 				strncpy(value, vp->input, consumed);
 				value[consumed] = '\0';
 
-				*freePtr = TRUE;
+				*freeResult = TRUE;
 				return (value);
 			}
 		}
@@ -1695,12 +1695,12 @@ ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freePtr)
 				strncpy(value, vp->input, consumed);
 				value[consumed] = '\0';
 
-				*freePtr = TRUE;
+				*freeResult = TRUE;
 				return (value);
 			}
 		}
 
-		*freePtr = FALSE;
+		*freeResult = FALSE;
 		return (vp->err ? var_Error : varNoError);
 	} else {
 		/*
@@ -1732,12 +1732,12 @@ ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freePtr)
 					val = VarModify(val, VarTail, NULL);
 				}
 
-				*freePtr = TRUE;
+				*freeResult = TRUE;
 				return (val);
 			}
 		}
 
-		*freePtr = FALSE;
+		*freeResult = FALSE;
 		return (vp->err ? var_Error : varNoError);
 	}
 }
@@ -1746,12 +1746,12 @@ ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freePtr)
  * Parse a multi letter variable name, and return it's value.
  */
 static char *
-VarParseLong(VarParser *vp, Boolean *freePtr)
+VarParseLong(VarParser *vp, Boolean *freeResult)
 {
 	Buffer		*buf;
 	char		startc;
 	char		endc;
-	char		*result;
+	char		*value;
 
 	buf = Buf_Init(MAKE_BSIZE);
 
@@ -1766,16 +1766,16 @@ VarParseLong(VarParser *vp, Boolean *freePtr)
 
 	while (*vp->ptr != '\0') {
 		if (*vp->ptr == endc) {
-			result = ParseRestEnd(vp, buf, freePtr);
+			value = ParseRestEnd(vp, buf, freeResult);
 			vp->ptr++;	/* consume closing paren or brace */
 			Buf_Destroy(buf, TRUE);
-			return (result);
+			return (value);
 
 		} else if (*vp->ptr == ':') {
-			result = ParseRestModifier(vp, startc, buf, freePtr);
+			value = ParseRestModifier(vp, startc, buf, freeResult);
 			vp->ptr++;	/* consume closing paren or brace */
 			Buf_Destroy(buf, TRUE);
-			return (result);
+			return (value);
 
 		} else if (*vp->ptr == '$') {
 			size_t	rlen;
@@ -1800,7 +1800,7 @@ VarParseLong(VarParser *vp, Boolean *freePtr)
 
 	/* If we did not find the end character, return var_Error */
 	Buf_Destroy(buf, TRUE);
-	*freePtr = FALSE;
+	*freeResult = FALSE;
 	return (var_Error);
 }
 
