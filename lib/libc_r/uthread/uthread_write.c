@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_write.c,v 1.16.2.6 2002/11/12 20:46:53 archie Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_write.c,v 1.3 2003/12/01 23:17:08 drhodus Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_write.c,v 1.4 2003/12/29 16:00:01 drhodus Exp $
  *
  */
 #include <sys/types.h>
@@ -137,6 +137,8 @@ _write(int fd, const void *buf, size_t nbytes)
 					ret = num;
 				else
 					ret = n;
+				if(n == 0)
+					break;
 
 			/* Check if the write has completed: */
 			} else if (num >= nbytes)
