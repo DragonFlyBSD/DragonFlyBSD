@@ -33,7 +33,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.22 2004/06/07 02:36:22 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.23 2004/07/02 16:45:22 hmp Exp $
  */
 
 #include "opt_ipsec.h"
@@ -99,6 +99,9 @@ int ipport_lastauto = IPPORT_USERRESERVED;	/* 5000 */
 int ipport_hifirstauto = IPPORT_HIFIRSTAUTO;	/* 49152 */
 int ipport_hilastauto = IPPORT_HILASTAUTO;	/* 65535 */
 
+/* Allocate ephermal source ports in random order. */
+int ipport_randomized = 1;
+
 static __inline void
 RANGECHK(int var, int min, int max)
 {
@@ -141,6 +144,8 @@ SYSCTL_PROC(_net_inet_ip_portrange, OID_AUTO, hifirst, CTLTYPE_INT|CTLFLAG_RW,
 	   &ipport_hifirstauto, 0, &sysctl_net_ipport_check, "I", "");
 SYSCTL_PROC(_net_inet_ip_portrange, OID_AUTO, hilast, CTLTYPE_INT|CTLFLAG_RW,
 	   &ipport_hilastauto, 0, &sysctl_net_ipport_check, "I", "");
+SYSCTL_INT(_net_inet_ip_portrange, OID_AUTO, randomized, CTLFLAG_RW,
+	   &ipport_randomized, 0, "");
 
 /*
  * in_pcb.c: manage the Protocol Control Blocks.
@@ -330,6 +335,9 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			/*
 			 * counting down
 			 */
+			if (ipport_randomized)
+				*lastport = first -
+				    (arc4random() % (first - last));
 			count = first - last;
 
 			do {
@@ -347,6 +355,9 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			/*
 			 * counting up
 			 */
+			if (ipport_randomized)
+				*lastport = first +
+				    (arc4random() % (last - first));
 			count = last - first;
 
 			do {
