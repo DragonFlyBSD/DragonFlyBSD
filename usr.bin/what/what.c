@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)what.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/what/what.c,v 1.5.2.1 2000/07/01 12:32:35 ps Exp $
- * $DragonFly: src/usr.bin/what/what.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
+ * $DragonFly: src/usr.bin/what/what.c,v 1.4 2004/11/19 17:46:40 liamfoy Exp $
  */
 
 #include <err.h>
@@ -44,8 +44,8 @@
 static int sflag;
 static int found;
 
-void search(void);
-static void usage(void);
+static void	search(void);
+static void	usage(void);
 
 /*
  * what
@@ -85,10 +85,10 @@ usage(void)
 	exit(1);
 }
 
-void
+static void
 search(void)
 {
-	register int c;
+	int c;
 
 	while ((c = getchar()) != EOF) {
 loop:		if (c != '@')
