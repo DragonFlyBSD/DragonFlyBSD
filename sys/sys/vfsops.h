@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.5 2004/09/26 06:00:06 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.6 2004/09/28 00:25:31 dillon Exp $
  */
 
 /*
@@ -91,6 +91,12 @@ struct vop_islocked_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
 	struct thread *a_td;
+};
+
+struct vop_resolve_args {
+	struct vop_generic_args a_head;
+	struct namecache *a_ncp;
+	struct componentname *a_cnp;
 };
 
 struct vop_lookup_args {
@@ -520,6 +526,7 @@ struct vop_ops {
 #define vop_ops_first_field	vop_default
 	int	(*vop_default)(struct vop_generic_args *);
 	int	(*vop_islocked)(struct vop_islocked_args *);
+	int	(*vop_resolve)(struct vop_resolve_args *);
 	int	(*vop_lookup)(struct vop_lookup_args *);
 	int	(*vop_cachedlookup)(struct vop_cachedlookup_args *);
 	int	(*vop_create)(struct vop_create_args *);
@@ -600,6 +607,7 @@ union vop_args_union {
 	struct vop_generic_args vu_head;
 	struct vop_generic_args vu_default;
 	struct vop_islocked_args vu_islocked;
+	struct vop_resolve_args vu_resolve;
 	struct vop_lookup_args vu_lookup;
 	struct vop_cachedlookup_args vu_cachedlookup;
 	struct vop_create_args vu_create;
@@ -664,6 +672,7 @@ union vop_args_union {
  * in a message and dispatch it to the correct thread.
  */
 int vop_islocked(struct vop_ops *ops, struct vnode *vp, struct thread *td);
+int vop_resolve(struct vop_ops *ops, struct namecache *ncp);
 int vop_lookup(struct vop_ops *ops, struct vnode *dvp, 
 		struct vnode **vpp, struct componentname *cnp);
 int vop_cachedlookup(struct vop_ops *ops, struct vnode *dvp, 
@@ -778,6 +787,7 @@ int vop_vfsset(struct vop_ops *ops, int op, const char *opstr);
  */
 int vop_vnoperate_ap(struct vop_generic_args *ap);
 int vop_islocked_ap(struct vop_islocked_args *ap);
+int vop_resolve_ap(struct vop_resolve_args *ap);
 int vop_lookup_ap(struct vop_lookup_args *ap);
 int vop_cachedlookup_ap(struct vop_cachedlookup_args *ap);
 int vop_create_ap(struct vop_create_args *ap);
@@ -837,6 +847,7 @@ int vop_vfsset_ap(struct vop_vfsset_args *ap);
  */
 extern struct vnodeop_desc vop_default_desc;
 extern struct vnodeop_desc vop_islocked_desc;
+extern struct vnodeop_desc vop_resolve_desc;
 extern struct vnodeop_desc vop_lookup_desc;
 extern struct vnodeop_desc vop_cachedlookup_desc;
 extern struct vnodeop_desc vop_create_desc;

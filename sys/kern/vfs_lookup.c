@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_lookup.c	8.4 (Berkeley) 2/16/94
  * $FreeBSD: src/sys/kern/vfs_lookup.c,v 1.38.2.3 2001/08/31 19:36:49 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.15 2004/09/26 06:00:05 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.16 2004/09/28 00:25:29 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -58,7 +58,7 @@
 
 #include <vm/vm_zone.h>
 
-static int varsym_enable = 0;
+int varsym_enable = 0;
 SYSCTL_INT(_vfs, OID_AUTO, varsym_enable, CTLFLAG_RW, &varsym_enable, 0,
 	    "Enable Variant Symlinks");
 

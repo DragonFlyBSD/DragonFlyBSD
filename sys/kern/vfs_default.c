@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.13 2004/08/28 19:02:05 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.14 2004/09/28 00:25:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,6 +50,7 @@
 #include <sys/mount.h>
 #include <sys/unistd.h>
 #include <sys/vnode.h>
+#include <sys/namei.h>
 #include <sys/poll.h>
 
 #include <machine/limits.h>
@@ -61,6 +62,7 @@
 #include <vm/vnode_pager.h>
 
 static int	vop_nolookup (struct vop_lookup_args *);
+static int	vop_noresolve (struct vop_resolve_args *);
 static int	vop_nostrategy (struct vop_strategy_args *);
 
 /*
@@ -84,6 +86,7 @@ static struct vnodeopv_entry_desc default_vnodeop_entries[] = {
 	{ &vop_lease_desc,		vop_null },
 	{ &vop_lock_desc,		(void *) vop_stdlock },
 	{ &vop_mmap_desc,		vop_einval },
+	{ &vop_resolve_desc,		(void *) vop_noresolve },
 	{ &vop_lookup_desc,		(void *) vop_nolookup },
 	{ &vop_open_desc,		vop_null },
 	{ &vop_pathconf_desc,		vop_einval },
@@ -150,6 +153,59 @@ vop_panic(struct vop_generic_args *ap)
 {
 
 	panic("filesystem goof: vop_panic[%s]", ap->a_desc->vdesc_name);
+}
+
+/*
+ * vop_noresolve { struct namecache *a_ncp }	XXX STOPGAP FUNCTION
+ *
+ * Resolve a ncp for VFSs which do not support the VOP.  Eventually all
+ * VFSs will support this VOP and this routine can be removed, since
+ * vop_resolve() is far less complex then the older LOOKUP/CACHEDLOOKUP
+ * API.
+ *
+ * A locked ncp is passed in to be resolved.  An NCP is resolved by
+ * calling cache_setvp() on it.  No vnode locks are retained and the
+ * ncp is left locked on return.
+ */
+static int
+vop_noresolve(struct vop_resolve_args *ap)
+{
+	int error;
+	struct vnode *dvp;
+	struct vnode *vp;
+	struct namecache *ncp;
+	struct componentname cnp;
+
+	ncp = ap->a_ncp;	/* locked namecache node */
+	if (ncp->nc_parent == NULL)
+		return(EPERM);
+	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
+		return(EPERM);
+	vget(dvp, NULL, LK_EXCLUSIVE, curthread);
+
+	bzero(&cnp, sizeof(cnp));
+	cnp.cn_nameiop = NAMEI_LOOKUP;
+	cnp.cn_flags = CNP_ISLASTCN;
+	cnp.cn_nameptr = ncp->nc_name;
+	cnp.cn_namelen = ncp->nc_nlen;
+	/* creds */
+	/* td */
+	error = vop_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
+	if (error == 0) {
+		KKASSERT(vp != NULL);
+		cache_setvp(ncp, vp);
+		vrele(vp);
+	} else if (error == ENOENT) {
+		KKASSERT(vp == NULL);
+		if (cnp.cn_flags & CNP_ISWHITEOUT)
+			ncp->nc_flag |= NCF_WHITEOUT;
+		cache_setvp(ncp, NULL);
+	}
+	if (cnp.cn_flags & CNP_PDIRUNLOCK)
+		vrele(dvp);
+	else
+		vput(dvp);
+	return(error);
 }
 
 static int

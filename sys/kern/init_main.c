@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.36 2004/09/20 06:32:58 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.37 2004/09/28 00:25:29 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -455,6 +455,7 @@ start_init(void *dummy)
 	char *var, *path, *next, *s;
 	char *ucp, **uap, *arg0, *arg1;
 	struct proc *p;
+	struct namecache *rootncp;
 
 	p = curproc;
 
@@ -465,8 +466,10 @@ start_init(void *dummy)
 	vref(p->p_fd->fd_cdir);
 	p->p_fd->fd_rdir = rootvnode;
 	vref(p->p_fd->fd_rdir);
-	vfs_cache_setroot(rootvnode);
+	rootncp = vfs_cache_setroot(rootvnode);
 	VOP_UNLOCK(rootvnode, NULL, 0, curthread);
+	p->p_fd->fd_ncdir = cache_hold(rootncp);
+	p->p_fd->fd_nrdir = cache_hold(rootncp);
 
 	/*
 	 * Need just enough stack to hold the faked-up "execve()" arguments.

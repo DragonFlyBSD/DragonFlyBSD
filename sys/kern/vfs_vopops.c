@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.6 2004/09/26 06:00:05 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.7 2004/09/28 00:25:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -121,6 +121,13 @@
 		VDESC_NO_OFFSET,					\
 		VDESC_NO_OFFSET)
 
+#define VNODEOP_DESC_INIT_NCP(name)					\
+	VNODEOP_DESC_INIT(name, 0, NULL, 				\
+		VDESC_NO_OFFSET,					\
+		VDESC_NO_OFFSET,					\
+		VDESC_NO_OFFSET,					\
+		VDESC_NO_OFFSET)
+
 #define VNODEOP_DESC_INIT_DVP_VPP_CNP(name)				\
 	static int VOFFNAME(name)[] = { 				\
 		__offsetof(VARGSSTRUCT(name), a_dvp),			\
@@ -165,6 +172,7 @@
 
 VNODEOP_DESC_INIT_SIMPLE(default);
 VNODEOP_DESC_INIT_VP(islocked);
+VNODEOP_DESC_INIT_NCP(resolve);
 VNODEOP_DESC_INIT_DVP_VPP_CNP(lookup);
 VNODEOP_DESC_INIT_DVP_VPP_CNP(cachedlookup);
 VNODEOP_DESC_INIT_DVP_VPP_CNP(create);
@@ -272,6 +280,20 @@ vop_islocked(struct vop_ops *ops, struct vnode *vp, struct thread *td)
 	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_islocked);
+	return(error);
+}
+
+int
+vop_resolve(struct vop_ops *ops, struct namecache *ncp)
+{
+	struct vop_resolve_args ap;
+	int error;
+
+	ap.a_head.a_desc = &vop_resolve_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_ncp = ncp;
+
+	DO_OPS(ops, error, &ap, vop_resolve);
 	return(error);
 }
 
@@ -1215,6 +1237,16 @@ vop_islocked_ap(struct vop_islocked_args *ap)
 	DO_OPS(ap->a_head.a_ops, error, ap, vop_islocked);
 	return(error);
 }
+
+int
+vop_resolve_ap(struct vop_resolve_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_resolve);
+	return(error);
+}
+
 
 int
 vop_lookup_ap(struct vop_lookup_args *ap)

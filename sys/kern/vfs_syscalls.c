@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.38 2004/08/17 18:57:32 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.39 2004/09/28 00:25:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -347,11 +347,13 @@ checkdirs(struct vnode *olddp)
 {
 	struct filedesc *fdp;
 	struct vnode *newdp;
+	struct mount *mp;
 	struct proc *p;
 
 	if (olddp->v_usecount == 1)
 		return;
-	if (VFS_ROOT(olddp->v_mountedhere, &newdp))
+	mp = olddp->v_mountedhere;
+	if (VFS_ROOT(mp, &newdp))
 		panic("mount: lost mount");
 	FOREACH_PROC_IN_SYSTEM(p) {
 		fdp = p->p_fd;
@@ -359,11 +361,15 @@ checkdirs(struct vnode *olddp)
 			vrele(fdp->fd_cdir);
 			vref(newdp);
 			fdp->fd_cdir = newdp;
+			cache_drop(fdp->fd_ncdir);
+			fdp->fd_ncdir = cache_vptoncp(newdp);
 		}
 		if (fdp->fd_rdir == olddp) {
 			vrele(fdp->fd_rdir);
 			vref(newdp);
 			fdp->fd_rdir = newdp;
+			cache_drop(fdp->fd_nrdir);
+			fdp->fd_nrdir = cache_vptoncp(newdp);
 		}
 	}
 	if (rootvnode == olddp) {
@@ -796,6 +802,7 @@ fchdir(struct fchdir_args *uap)
 	VOP_UNLOCK(vp, NULL, 0, td);
 	vrele(fdp->fd_cdir);
 	fdp->fd_cdir = vp;
+	fdp->fd_ncdir = cache_vptoncp(vp);
 	return (0);
 }
 
@@ -811,7 +818,9 @@ kern_chdir(struct nameidata *nd)
 		return (error);
 	if ((error = checkvp_chdir(nd->ni_vp, td)) == 0) {
 		vrele(fdp->fd_cdir);
+		cache_drop(fdp->fd_ncdir);
 		fdp->fd_cdir = nd->ni_vp;
+		fdp->fd_ncdir = cache_vptoncp(nd->ni_vp);	/* stopgap */
 		vref(fdp->fd_cdir);
 	}
 	NDFREE(nd, ~(NDF_NO_FREE_PNBUF | NDF_NO_VP_PUT));
@@ -911,11 +920,14 @@ kern_chroot(struct vnode *vp)
 	 */
 	if ((error = checkvp_chdir(vp, td)) == 0) {
 		vrele(fdp->fd_rdir);
+		cache_drop(fdp->fd_nrdir);
 		fdp->fd_rdir = vp;
 		vref(fdp->fd_rdir);
+		fdp->fd_nrdir = cache_vptoncp(vp);
 		if (fdp->fd_jdir == NULL) {
 			fdp->fd_jdir = vp;
 			vref(fdp->fd_jdir);
+			fdp->fd_njdir = cache_vptoncp(vp);
 		}
 	}
 	return (error);

@@ -62,7 +62,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.8 2004/09/26 01:24:54 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.9 2004/09/28 00:25:31 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -105,6 +105,7 @@ struct namecache {
     u_char	nc_nlen;		/* The length of the name, 255 max */
     u_char	nc_unused;
     char	*nc_name;		/* Separately allocated seg name */
+    int		nc_error;
     int		nc_timeout;		/* compared against ticks, or 0 */
     int		nc_exlocks;		/* namespace locking */
     struct thread *nc_locktd;		/* namespace locking */
@@ -122,6 +123,9 @@ typedef struct namecache *namecache_t;
 #define NCF_ROOT	0x0010	/* namecache root (static) */
 #define NCF_HASHED	0x0020	/* namecache entry in hash table */
 #define NCF_LOCKREQ	0x0040
+#define NCF_UNUSED080	0x0080
+#define NCF_ISSYMLINK	0x0100	/* represents a symlink */
+#define NCF_ISDIR	0x0200	/* represents a directory */
 
 #define CINV_SELF	0x0001	/* invalidate a specific (dvp,vp) entry */
 #define CINV_CHILDREN	0x0002	/* invalidate all children of vp */
@@ -133,20 +137,24 @@ typedef struct namecache *namecache_t;
 
 struct vop_lookup_args;
 struct componentname;
+struct nlcomponent;
 struct mount;
 
 void	cache_lock(struct namecache *ncp);
 void	cache_unlock(struct namecache *ncp);
+void	cache_setvp(struct namecache *ncp, struct vnode *vp);
+void	cache_setunresolved(struct namecache *ncp);
+void	cache_get(struct namecache *ncp);
 void	cache_put(struct namecache *ncp);
-struct namecache *cache_nclookup(struct namecache *par,
-			struct componentname *cnp);
-
 int	cache_lookup(struct vnode *dvp, struct vnode **vpp,
 			struct componentname *cnp);
 void	cache_mount(struct vnode *dvp, struct vnode *tvp);
 void	cache_enter(struct vnode *dvp, struct namecache *par,
 			struct vnode *vp, struct componentname *cnp);
-void	vfs_cache_setroot(struct vnode *vp);
+struct namecache *cache_nlookup(struct namecache *par, struct nlcomponent *nlc);
+struct namecache *vfs_cache_setroot(struct vnode *vp);
+struct namecache *cache_vptoncp(struct vnode *vp);
+int	cache_resolve(struct namecache *ncp);
 void	cache_purge(struct vnode *vp);
 void	cache_purgevfs (struct mount *mp);
 void	cache_drop(struct namecache *ncp);

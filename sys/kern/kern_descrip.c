@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.27 2004/07/29 20:32:24 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.28 2004/09/28 00:25:29 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -967,13 +967,19 @@ fdinit(struct proc *p)
 
 	newfdp = malloc(sizeof(struct filedesc0), M_FILEDESC, M_WAITOK|M_ZERO);
 	newfdp->fd_fd.fd_cdir = fdp->fd_cdir;
-	if (newfdp->fd_fd.fd_cdir)
+	if (newfdp->fd_fd.fd_cdir) {
 		vref(newfdp->fd_fd.fd_cdir);
+		newfdp->fd_fd.fd_ncdir = cache_hold(fdp->fd_ncdir);
+	}
 	newfdp->fd_fd.fd_rdir = fdp->fd_rdir;
+	newfdp->fd_fd.fd_nrdir = cache_hold(fdp->fd_nrdir);
 	vref(newfdp->fd_fd.fd_rdir);
 	newfdp->fd_fd.fd_jdir = fdp->fd_jdir;
-	if (newfdp->fd_fd.fd_jdir)
+	if (newfdp->fd_fd.fd_jdir) {
 		vref(newfdp->fd_fd.fd_jdir);
+		newfdp->fd_fd.fd_njdir = cache_hold(fdp->fd_njdir);
+	}
+
 
 	/* Create the file descriptor table. */
 	newfdp->fd_fd.fd_refcnt = 1;
@@ -1012,17 +1018,23 @@ fdcopy(struct proc *p)
 
 	newfdp = malloc(sizeof(struct filedesc0), M_FILEDESC, M_WAITOK);
 	bcopy(fdp, newfdp, sizeof(struct filedesc));
-	if (newfdp->fd_cdir)
+	if (newfdp->fd_cdir) {
 		vref(newfdp->fd_cdir);
+		newfdp->fd_ncdir = cache_hold(newfdp->fd_ncdir);
+	}
 	/*
 	 * We must check for fd_rdir here, at least for now because
 	 * the init process is created before we have access to the
 	 * rootvode to take a reference to it.
 	 */
-	if (newfdp->fd_rdir)
+	if (newfdp->fd_rdir) {
 		vref(newfdp->fd_rdir);
-	if (newfdp->fd_jdir)
+		newfdp->fd_nrdir = cache_hold(newfdp->fd_nrdir);
+	}
+	if (newfdp->fd_jdir) {
 		vref(newfdp->fd_jdir);
+		newfdp->fd_njdir = cache_hold(newfdp->fd_njdir);
+	}
 	newfdp->fd_refcnt = 1;
 
 	/*
@@ -1178,11 +1190,16 @@ fdfree(struct proc *p)
 	}
 	if (fdp->fd_nfiles > NDFILE)
 		free(fdp->fd_ofiles, M_FILEDESC);
-	if (fdp->fd_cdir)
+	if (fdp->fd_cdir) {
+		cache_drop(fdp->fd_ncdir);
 		vrele(fdp->fd_cdir);
+	}
+	cache_drop(fdp->fd_nrdir);
 	vrele(fdp->fd_rdir);
-	if (fdp->fd_jdir)
+	if (fdp->fd_jdir) {
+		cache_drop(fdp->fd_njdir);
 		vrele(fdp->fd_jdir);
+	}
 	if (fdp->fd_knlist)
 		free(fdp->fd_knlist, M_KQUEUE);
 	if (fdp->fd_knhash)

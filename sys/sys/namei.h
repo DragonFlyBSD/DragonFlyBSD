@@ -32,7 +32,7 @@
  *
  *	@(#)namei.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/namei.h,v 1.29.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/namei.h,v 1.13 2004/09/26 20:14:21 dillon Exp $
+ * $DragonFly: src/sys/sys/namei.h,v 1.14 2004/09/28 00:25:31 dillon Exp $
  */
 
 #ifndef _SYS_NAMEI_H_
@@ -208,6 +208,8 @@ NDINIT2(struct nameidata *ndp, u_long op, u_long flags, enum uio_seg segflg,
 #define NDF_ONLY_PNBUF_AND_NCPS	(~(NDF_NO_FREE_PNBUF|NDF_NO_DNCP_RELE|NDF_NO_NCP_RELE))
 
 void NDFREE (struct nameidata *, const uint);
+
+extern int varsym_enable;
 
 int	namei (struct nameidata *ndp);
 int	lookup (struct nameidata *ndp);
