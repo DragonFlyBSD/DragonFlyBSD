@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/vpo.4,v 1.9.2.3 2001/08/17 13:08:40 ru Exp $
-.\" $DragonFly: src/share/man/man4/vpo.4,v 1.4 2004/03/11 12:28:55 hmp Exp $
+.\" $DragonFly: src/share/man/man4/vpo.4,v 1.5 2004/05/10 13:22:50 hmp Exp $
 .\"
 .Dd March 5, 1998
 .Dt VPO 4
@@ -50,12 +50,16 @@ Iomega Matchmaker Parallel to SCSI interface.
 The driver should let you use a printer connected to the drive while
 transfering data.
 .Pp
-DOS and
-.Dx / Fx
+DOS,
+.Dx
+or
+.Fx
 filesystems are supported.
 When mounting a DOS filesystem or
 formating a
-.Dx / Fx
+.Dx
+or
+.Fx
 filesystem, check the slice of the disk with the
 .Xr fdisk 8
 utility.
