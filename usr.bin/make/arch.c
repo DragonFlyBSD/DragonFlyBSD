@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.30 2005/02/04 21:24:06 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.31 2005/02/04 21:45:36 okumoto Exp $
  */
 
 /*-
@@ -120,7 +120,8 @@ typedef struct Arch {
 } Arch;
 
 static struct ar_hdr *ArchStatMember(const char *, const char *, Boolean);
-static FILE *ArchFindMember(const char *, const char *, struct ar_hdr *, const char *);
+static FILE *ArchFindMember(const char *, const char *, struct ar_hdr *,
+	const char *);
 #if defined(__svr4__) || defined(__SVR4) || defined(__ELF__)
 #define	SVR4ARCHIVES
 static int ArchSVR4Entry(Arch *, char *, size_t, FILE *);
@@ -743,7 +744,8 @@ ArchSVR4Entry(Arch *ar, char *name, size_t size, FILE *arch)
  *-----------------------------------------------------------------------
  */
 static FILE *
-ArchFindMember(const char *archive, const char *member, struct ar_hdr *arhPtr, const char *mode)
+ArchFindMember(const char *archive, const char *member, struct ar_hdr *arhPtr,
+    const char *mode)
 {
     FILE	*arch;	/* Stream to archive */
     int		size;	/* Size of archive member */

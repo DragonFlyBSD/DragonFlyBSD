@@ -39,7 +39,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.30 2005/02/04 21:24:06 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.31 2005/02/04 21:45:36 okumoto Exp $
  */
 
 /*
@@ -82,8 +82,8 @@ BufExpand(Buffer *bp, size_t nb)
 	if (bp->size < len + nb + 1) {
 		int size = bp->size + MAX(nb + 1, BUF_ADD_INC);
 
-		bp->size	= size;
 		bp->buf		= erealloc(bp->buf, size);
+		bp->size	= size;
 		bp->end		= bp->buf + len;
 	}
 }
@@ -191,16 +191,6 @@ Buf_ReplaceLastByte(Buffer *bp, Byte byte)
 }
 
 /**
- * Clear the contents of the buffer.
- */
-void
-Buf_Clear(Buffer *bp)
-{
-	bp->end = bp->buf;
-	*bp->end = '\0';
-}
-
-/**
  * Append characters in str to Buffer object
  */
 void
@@ -248,3 +238,15 @@ Buf_StripNewlines(Buffer *bp)
 		--ptr;
 	}
 }
+
+/**
+ * Clear the contents of the buffer.
+ */
+void
+Buf_Clear(Buffer *bp)
+{
+
+	bp->end = bp->buf;
+	*bp->end = '\0';
+}
+

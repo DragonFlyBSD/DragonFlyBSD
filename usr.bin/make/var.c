@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.56 2005/02/04 21:16:44 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.57 2005/02/04 21:45:36 okumoto Exp $
  */
 
 /*-
@@ -1993,5 +1993,6 @@ VarPrintVar(void *vp, void *dummy __unused)
 void
 Var_Dump(GNode *ctxt)
 {
+
     Lst_ForEach(&ctxt->context, VarPrintVar, (void *)NULL);
 }
