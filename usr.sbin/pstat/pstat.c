@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.11 2004/11/24 22:51:01 joerg Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.12 2004/11/27 17:54:10 joerg Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -84,44 +84,28 @@ struct kcore_data *KCORE_KVM_GLOBAL;
 #  include <kinfo.h>
 #endif
 
+enum {
+	NL_MOUNTLIST,
+	NL_NUMVNODES,
+	NL_RC_TTY,
+	NL_NRC_TTY,
+	NL_CY_TTY,
+	NL_NCY_TTY,
+	NL_SI_TTY,
+	NL_SI_NPORTS,
+};
+
+const size_t NL_LAST_MANDATORY = NL_NUMVNODES;
+
 struct nlist nl[] = {
-#define NLMANDATORYBEG	0
-#define	V_MOUNTLIST	0
 	{ "_mountlist", 0, 0, 0, 0 },	/* address of head of mount list. */
-#define V_NUMV		1
 	{ "_numvnodes", 0, 0, 0, 0 },
-#define NLMANDATORYEND V_NUMV		/* names up to here are mandatory */
-#define	SCONS		NLMANDATORYEND + 1
-	{ "_cons", 0, 0, 0, 0 },
-#define	SPTY		NLMANDATORYEND + 2
-	{ "_pt_tty", 0, 0, 0, 0 },
-#define	SNPTY		NLMANDATORYEND + 3
-	{ "_npty", 0, 0, 0, 0 },
-
-
-
-#ifdef __DragonFly__
-#define SCCONS	(SNPTY+1)
-	{ "_sccons", 0, 0, 0, 0 },
-#define NSCCONS	(SNPTY+2)
-	{ "_nsccons", 0, 0, 0, 0 },
-#define SIO  (SNPTY+3)
-	{ "_sio_tty", 0, 0, 0, 0 },
-#define NSIO (SNPTY+4)
-	{ "_nsio_tty", 0, 0, 0, 0 },
-#define RC  (SNPTY+5)
 	{ "_rc_tty", 0, 0, 0, 0 },
-#define NRC (SNPTY+6)
 	{ "_nrc_tty", 0, 0, 0, 0 },
-#define CY  (SNPTY+7)
 	{ "_cy_tty", 0, 0, 0, 0 },
-#define NCY (SNPTY+8)
 	{ "_ncy_tty", 0, 0, 0, 0 },
-#define SI  (SNPTY+9)
-	{ "_si_tty", 0, 0, 0, 0 },
-#define NSI (SNPTY+10)
+	{ "_si__tty", 0, 0, 0, 0 },
 	{ "_si_Nports", 0, 0, 0, 0 },
-#endif
 	{ "", 0, 0, 0, 0 }
 };
 
@@ -217,7 +201,7 @@ void	vnodemode(void);
 int
 main(int argc, char **argv)
 {
-	int ch, i, quit, ret;
+	int ch, ret;
 	int fileflag, ttyflag, vnodeflag;
 	char buf[_POSIX2_LINE_MAX];
 	const char *opts;
@@ -292,13 +276,17 @@ main(int argc, char **argv)
 		errx(1, "kcore_open: %s", buf);
 #endif
 	if ((ret = kvm_nlist(kd, nl)) != 0) {
+		size_t i;
+		int quit = 0;
+
 		if (ret == -1)
 			errx(1, "kvm_nlist: %s", kvm_geterr(kd));
-		for (i = NLMANDATORYBEG, quit = 0; i <= NLMANDATORYEND; i++)
+		for (i = 0; i < NL_LAST_MANDATORY; i++) {
 			if (!nl[i].n_value) {
 				quit = 1;
 				warnx("undefined symbol: %s", nl[i].n_name);
 			}
+		}
 		if (quit)
 			exit(1);
 	}
@@ -695,12 +683,12 @@ kinfo_vnodes(int *avnodes)
 #define VPTRSZ  sizeof(struct vnode *)
 #define VNODESZ sizeof(struct vnode)
 
-	KGET(V_NUMV, numvnodes);
+	KGET(NL_NUMVNODES, numvnodes);
 	if ((vbuf = malloc((numvnodes + 20) * (VPTRSZ + VNODESZ))) == NULL)
 		errx(1, "malloc");
 	bp = vbuf;
 	evbuf = vbuf + (numvnodes + 20) * (VPTRSZ + VNODESZ);
-	KGET(V_MOUNTLIST, mountlist);
+	KGET(NL_MOUNTLIST, mountlist);
 	for (num = 0, mp = TAILQ_FIRST(&mountlist); ; mp = mp_next) {
 		KGET2(mp, &mounth, sizeof(mounth), "mount entry");
 		mp_next = TAILQ_NEXT(&mounth, mnt_list);
@@ -747,25 +735,13 @@ ttymode(void)
 	}
 	if ((tty = malloc(ttyspace * sizeof(*tty))) == NULL)
 		errx(1, "malloc");
-	if (nl[SCONS].n_type != 0) {
-		(void)printf("1 console\n");
-		KGET(SCONS, *tty);
-		ttyprt(&tty[0], 0);
-	}
-#ifdef __DragonFly__
-	if (nl[NSCCONS].n_type != 0)
-		ttytype(tty, "vty", SCCONS, NSCCONS, 0);
-	if (nl[NSIO].n_type != 0)
-		ttytype(tty, "sio", SIO, NSIO, 0);
-	if (nl[NRC].n_type != 0)
-		ttytype(tty, "rc", RC, NRC, 0);
-	if (nl[NCY].n_type != 0)
-		ttytype(tty, "cy", CY, NCY, 0);
-	if (nl[NSI].n_type != 0)
-		ttytype(tty, "si", SI, NSI, 1);
-#endif
-	if (nl[SNPTY].n_type != 0)
-		ttytype(tty, "pty", SPTY, SNPTY, 0);
+	if (nl[NL_NRC_TTY].n_type != 0)
+		ttytype(tty, "rc", NL_RC_TTY, NL_NRC_TTY, 0);
+	if (nl[NL_NCY_TTY].n_type != 0)
+		ttytype(tty, "cy", NL_CY_TTY, NL_NCY_TTY, 0);
+	if (nl[NL_SI_NPORTS].n_type != 0)
+		ttytype(tty, "si", NL_SI_TTY, NL_SI_NPORTS, 1);
+	free(tty);
 }
 
 void
