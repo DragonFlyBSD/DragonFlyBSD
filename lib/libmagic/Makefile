@@ -1,8 +1,8 @@
-# $DragonFly: src/lib/libmagic/Makefile,v 1.1 2004/12/18 17:18:43 asmodai Exp $
+# $DragonFly: src/lib/libmagic/Makefile,v 1.2 2004/12/18 17:22:54 asmodai Exp $
 
 FILEVER=	4.12
-SOURCEDIR=	${.CURDIR}/../../contrib/file-${FILEVER}/src
-.PATH: ${SOURCEDIR}
+SRCDIR=	${.CURDIR}/../../contrib/file-${FILEVER}/src
+.PATH: ${SRCDIR}
 
 MAGIC=	/usr/share/misc/magic
 
@@ -14,6 +14,6 @@ SRCS=	apprentice.c apptype.c ascmagic.c compress.c fsmagic.c funcs.c\
 INCS=	magic.h
 
 CFLAGS+=	-DHAVE_CONFIG_H -DMAGIC=\"${MAGIC}\"
-CFLAGS+=	-I${.CURDIR} -I${SOURCEDIR}
+CFLAGS+=	-I${.CURDIR} -I${SRCDIR}
 
 .include <bsd.lib.mk>
