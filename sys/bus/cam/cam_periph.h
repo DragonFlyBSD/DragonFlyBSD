@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.h,v 1.6.2.1 2000/05/07 18:16:49 n_hibma Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.h,v 1.4 2003/11/10 06:12:00 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.h,v 1.5 2003/12/29 23:09:30 dillon Exp $
  */
 
 #ifndef _CAM_CAM_PERIPH_H
@@ -101,6 +101,8 @@ struct cam_periph {
 };
 
 #define CAM_PERIPH_MAXMAPS	2
+
+struct devstat;
 
 struct cam_periph_map_info {
 	int		num_bufs_used;

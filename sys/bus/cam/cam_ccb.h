@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_ccb.h,v 1.15.2.3 2003/07/29 04:00:34 njl Exp $
- * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.4 2003/12/29 06:42:09 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.5 2003/12/29 23:09:30 dillon Exp $
  */
 
 #ifndef _CAM_CAM_CCB_H
@@ -861,6 +861,8 @@ cam_fill_ctio(struct ccb_scsiio *csio, u_int32_t retries,
 	csio->tag_id = tag_id;
 	csio->init_id = init_id;
 }
+
+void cam_calc_geometry(struct ccb_calc_geometry *ccg, int extended);
 
 __END_DECLS
 
