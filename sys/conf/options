@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.22 2004/06/24 08:15:11 dillon Exp $
+# $DragonFly: src/sys/conf/options,v 1.23 2004/08/23 15:11:44 joerg Exp $
 #
 #        On the handling of kernel options
 #
@@ -364,9 +364,6 @@ DPT_HANDLE_TIMEOUTS	opt_dpt.h
 DPT_TIMEOUT_FACTOR	opt_dpt.h
 DPT_LOST_IRQ		opt_dpt.h
 DPT_RESET_HBA		opt_dpt.h
-
-# Adaptec ASR and DPT V/VI controller options
-ASR_MEASURE_PERFORMANCE	opt_asr.h
 
 # Misc debug flags.  Most of these should probably be replaced with
 # 'DEBUG', and then let people recompile just the interesting modules
