@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_nbr.c,v 1.4.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.10 2005/02/01 16:09:37 hrs Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.11 2005/02/12 02:56:05 joerg Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.86 2002/01/21 02:33:04 jinmei Exp $	*/
 
 /*
@@ -904,8 +904,8 @@ nd6_na_output(struct ifnet *ifp, const struct in6_addr *daddr6,
 	 * Basically, if NS packet is sent to unicast/anycast addr,
 	 * target lladdr option SHOULD NOT be included.
 	 */
+	mac = NULL;
 	if (tlladdr) {
-		mac = NULL;
 		/*
 		 * sdl0 != NULL indicates proxy NA.  If we do proxy, use
 		 * lladdr in sdl0.  If we are not proxying (sending NA for
@@ -920,7 +920,7 @@ nd6_na_output(struct ifnet *ifp, const struct in6_addr *daddr6,
 				mac = LLADDR(sdl);
 		}
 	}
-	if (tlladdr && mac) {
+	if (mac != NULL) {
 		int optlen = sizeof(struct nd_opt_hdr) + ifp->if_addrlen;
 		struct nd_opt_hdr *nd_opt = (struct nd_opt_hdr *)(nd_na + 1);
 		
