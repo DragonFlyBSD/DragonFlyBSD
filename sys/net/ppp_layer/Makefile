@@ -1,7 +1,7 @@
 # $FreeBSD: src/sys/modules/if_ppp/Makefile,v 1.21 1999/11/28 18:52:51 bde Exp $
-# $DragonFly: src/sys/net/ppp_layer/Makefile,v 1.3 2003/08/15 07:03:11 dillon Exp $
+# $DragonFly: src/sys/net/ppp_layer/Makefile,v 1.4 2003/09/10 21:35:42 rob Exp $
 
-.PATH:  ${.CURDIR}/.. ${.CURDIR}/../ppp
+.PATH:  ${.CURDIR}/../ppp ${.CURDIR}/..
 KMOD=   if_ppp
 SRCS=	if_ppp.c ppp_tty.c slcompress.c \
 	use_ppp.h opt_inet.h opt_ipx.h opt_ppp.h vnode_if.h
