@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.21 2004/05/21 15:41:23 drhodus Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.22 2004/06/15 00:30:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -581,6 +581,7 @@ static int
 vn_ioctl(struct file *fp, u_long com, caddr_t data, struct thread *td)
 {
 	struct vnode *vp = ((struct vnode *)fp->f_data);
+	struct vnode *ovp;
 	struct ucred *ucred;
 	struct vattr vattr;
 	int error;
@@ -623,11 +624,11 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct thread *td)
 				return (0);
 
 			/* Get rid of reference to old control tty */
-			if (sess->s_ttyvp)
-				vrele(sess->s_ttyvp);
-
-			sess->s_ttyvp = vp;
+			ovp = sess->s_ttyvp;
 			vref(vp);
+			sess->s_ttyvp = vp;
+			if (ovp)
+				vrele(ovp);
 		}
 		return (error);
 	}

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.35 2004/06/04 20:35:36 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.36 2004/06/15 00:30:53 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -186,6 +186,7 @@ exit1(int rv)
 	 * This may block!
 	 */
 	fdfree(p);
+	p->p_fd = NULL;
 
 	if(p->p_leader->p_peers) {
 		q = p->p_leader;
@@ -237,13 +238,18 @@ exit1(int rv)
 
 	if (SESS_LEADER(p)) {
 		struct session *sp = p->p_session;
+		struct vnode *vp;
 
 		if (sp->s_ttyvp) {
 			/*
-			 * Controlling process.
-			 * Signal foreground pgrp,
-			 * drain controlling terminal
-			 * and revoke access to controlling terminal.
+			 * We are the controlling process.  Signal the 
+			 * foreground process group, drain the controlling
+			 * terminal, and revoke access to the controlling
+			 * terminal.
+			 *
+			 * NOTE: while waiting for the process group to exit
+			 * it is possible that one of the processes in the
+			 * group will revoke the tty, so we have to recheck.
 			 */
 			if (sp->s_ttyp && (sp->s_ttyp->t_session == sp)) {
 				if (sp->s_ttyp->t_pgrp)
@@ -253,12 +259,16 @@ exit1(int rv)
 				 * The tty could have been revoked
 				 * if we blocked.
 				 */
-				if (sp->s_ttyvp)
-					VOP_REVOKE(sp->s_ttyvp, REVOKEALL);
+				if ((vp = sp->s_ttyvp) != NULL) {
+					sp->s_ttyvp = NULL;
+					VOP_REVOKE(vp, REVOKEALL);
+					vrele(vp);
+				}
 			}
-			if (sp->s_ttyvp)
+			if ((vp = sp->s_ttyvp) != NULL) {
+				sp->s_ttyvp = NULL;
 				vrele(sp->s_ttyvp);
-			sp->s_ttyvp = NULL;
+			}
 			/*
 			 * s_ttyp is not zero'd; we use this to indicate
 			 * that the session once had a controlling terminal.

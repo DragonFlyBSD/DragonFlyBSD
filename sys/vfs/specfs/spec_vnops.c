@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.17 2004/06/06 18:47:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.18 2004/06/15 00:30:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -151,21 +151,26 @@ spec_open(struct vop_open_args *ap)
 	/*
 	 * Resolve the device.  If the vnode is already open v_rdev may
 	 * already be resolved.  However, if the device changes out from
-	 * under us we report it (and, for now, we allow it).
+	 * under us we report it (and, for now, we allow it).  Since
+	 * v_release_rdev() zero's v_opencount, we have to save and restore
+	 * it when replacing the rdev reference.
 	 */
 	if (vp->v_rdev != NULL) {
 		dev = udev2dev(vp->v_udev, isblk);
 		if (dev != vp->v_rdev) {
+			int oc = vp->v_opencount;
 			printf(
 			    "Warning: spec_open: dev %s was lost",
 			    vp->v_rdev->si_name);
 			v_release_rdev(vp);
 			error = v_associate_rdev(vp, 
 					udev2dev(vp->v_udev, isblk));
-			if (error)
+			if (error) {
 				printf(", reacquisition failed\n");
-			else
+			} else {
+				vp->v_opencount = oc;
 				printf(", reacquisition successful\n");
+			}
 		} else {
 			error = 0;
 		}
@@ -590,13 +595,16 @@ spec_close(struct vop_close_args *ap)
 	 * process' controlling terminal.  In that case,
 	 * if the reference count is 2 (this last descriptor
 	 * plus the session), release the reference from the session.
+	 *
+	 * It is possible for v_opencount to be 0 or 1 in this case, 0
+	 * because the tty might have been revoked.
 	 */
 	if (dev)
 		reference_dev(dev);
-	if (vcount(vp) == 2 && vp->v_opencount == 1 && 
+	if (vcount(vp) == 2 && vp->v_opencount <= 1 && 
 	    p && (vp->v_flag & VXLOCK) == 0 && vp == p->p_session->s_ttyvp) {
-		vrele(vp);
 		p->p_session->s_ttyvp = NULL;
+		vrele(vp);
 	}
 
 	/*
@@ -618,22 +626,20 @@ spec_close(struct vop_close_args *ap)
 
 	/*
 	 * Track the actual opens and closes on the vnode.  The last close
-	 * disassociates the rdev.
+	 * disassociates the rdev.  If the rdev is already disassociated 
+	 * the vnode might have been revoked and no further opencount
+	 * tracking occurs.
 	 */
-	KKASSERT(vp->v_opencount > 0);
-	if (dev_ref_debug) {
-		if (dev) {
+	if (dev) {
+		KKASSERT(vp->v_opencount > 0);
+		if (dev_ref_debug) {
 			printf("spec_close: %s %d\n",
 				dev->si_name, vp->v_opencount - 1);
-		} else {
-			printf("spec_close: closed revoked device %08x\n",
-				vp->v_udev);
 		}
-	}
-	if (--vp->v_opencount == 0)
-		v_release_rdev(vp);
-	if (dev)
+		if (--vp->v_opencount == 0)
+			v_release_rdev(vp);
 		release_dev(dev);
+	}
 	return(error);
 }
 

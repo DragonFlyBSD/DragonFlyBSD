@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.32 2004/05/26 01:29:58 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.33 2004/06/15 00:30:53 dillon Exp $
  */
 
 /*
@@ -1556,9 +1556,13 @@ v_release_rdev(struct vnode *vp)
 	if ((dev = vp->v_rdev) != NULL) {
 		lwkt_gettoken(&ilock, &spechash_token);
 		SLIST_REMOVE(&dev->si_hlist, vp, vnode, v_specnext);
-		if (dev_ref_debug)
-			printf("Y2");
+		if (dev_ref_debug && vp->v_opencount != 0) {
+			printf("releasing rdev with non-0 "
+				"v_opencount(%d) (revoked?)\n",
+				vp->v_opencount);
+		}
 		vp->v_rdev = NULL;
+		vp->v_opencount = 0;
 		release_dev(dev);
 		lwkt_reltoken(&ilock);
 	}
@@ -2215,7 +2219,9 @@ vgonel(struct vnode *vp, lwkt_tokref_t vlock, struct thread *td)
 
 	/*
 	 * If special device, remove it from special device alias list
-	 * if it is on one.
+	 * if it is on one.  This should normally only occur if a vnode is
+	 * being revoked as the device should otherwise have been released
+	 * naturally.
 	 */
 	if ((vp->v_type == VBLK || vp->v_type == VCHR) && vp->v_rdev != NULL) {
 		v_release_rdev(vp);
