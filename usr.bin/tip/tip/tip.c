@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tip.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/tip.c,v 1.12.2.2 2001/06/02 08:08:24 phk Exp $
- * $DragonFly: src/usr.bin/tip/tip/tip.c,v 1.4 2004/08/19 23:26:12 joerg Exp $
+ * $DragonFly: src/usr.bin/tip/tip/tip.c,v 1.5 2004/09/03 20:48:16 dillon Exp $
  */
 
 /*
@@ -212,7 +212,7 @@ notnumber:
 	}
 	if (!HW)
 		ttysetup(i);
-/* cucommon:*/
+cucommon:
 	/*
 	 * From here down the code is shared with
 	 * the "cu" version of tip.

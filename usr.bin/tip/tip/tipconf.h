@@ -30,7 +30,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)tipconf.h	8.1 (Berkeley) 3/25/95
+ * @(#)tipconf.h 8.1 (Berkeley) 3/25/95
+ * $DragonFly: src/usr.bin/tip/tip/tipconf.h,v 1.2 2004/09/03 20:48:16 dillon Exp $
  */
 
 #ifndef tipconf_h_included
@@ -117,7 +118,7 @@
 	Include cu interface so that, when tip is linked to cu and then
 	invoked as cu, it behaves like cu.
 */
-#define INCLUDE_CU_INTERFACE 0
+#define INCLUDE_CU_INTERFACE 1
 
 #endif
 

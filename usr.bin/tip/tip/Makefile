@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
 # $FreeBSD: src/usr.bin/tip/tip/Makefile,v 1.10.6.3 2002/07/17 13:25:19 ru Exp $
-# $DragonFly: src/usr.bin/tip/tip/Makefile,v 1.2 2003/06/17 04:29:32 dillon Exp $
+# $DragonFly: src/usr.bin/tip/tip/Makefile,v 1.3 2004/09/03 20:48:16 dillon Exp $
 #
 # Files are:
 #	/etc/remote		remote host description file
@@ -18,7 +18,8 @@ LIBACU=${.CURDIR}/../libacu/libacu.a
 PROG=	tip
 DPADD=	${LIBACU} ${LIBUTIL}
 LDADD=	${LIBACU} -lutil
-LINKS=	${BINDIR}/tip
+LINKS=  ${BINDIR}/tip ${BINDIR}/cu
+MLINKS= tip.1 cu.1
 MAN=	tip.1 modems.5
 SRCS=	acu.c acutab.c cmds.c cmdtab.c cu.c hunt.c log.c partab.c \
 	remote.c tip.c tipout.c value.c vars.c
@@ -27,7 +28,7 @@ BINDIR?=	/usr/bin
 BINOWN=		uucp
 BINGRP=		dialer
 #BINMODE?=	4510
-INSTALLFLAGS=	-fschg
+#INSTALLFLAGS=	-fschg
 
 # XXX: there is some concern that `tip' in its current state shouldn't run
 #      SUID.  If it believed it should, the mode above may still no be proper.
