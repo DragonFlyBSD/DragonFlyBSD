@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.26 2004/03/17 17:35:09 dillon Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.27 2004/04/12 20:12:31 justin Exp $
  */
 
 #include <sys/types.h>
@@ -237,13 +237,13 @@ main(int ac, char **av)
 	printf("<title>DragonFly</title>\n");
 
     printf("<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"/>\n");
-    printf("<link href=\"../favicon.ico\" rel=\"shortcut icon\"/>\n");
-    printf("<link rel=\"stylesheet\" href=\"../stylesheet.css\" type=\"text/css\"/>");
+    printf("<link href=\"/favicon.ico\" rel=\"shortcut icon\"/>\n");
+    printf("<link rel=\"stylesheet\" href=\"/stylesheet.css\" type=\"text/css\"/>");
     printf("</head>\n");
     printf("<body>\n");
 
     printf("<table border=\"0\" width=\"760\" bgcolor=\"#FFFFFF\">\n");
-    printf("<tr><td width=\"134\"><img src=\"../smalldf.jpg\" alt=\"\"/></td>\n");
+    printf("<tr><td width=\"134\"><img src=\"/smalldf.jpg\" alt=\"\"/></td>\n");
     printf("<td valign=\"bottom\">");
 
     if (Title)
@@ -315,13 +315,12 @@ generate_side_headers(char *section1, char *section2, char *files[])
 	fileclass = " class=\"unselected\"";
     }
 
-    printf("<td%s><a href=\"../%s\">%s</a></td></tr>\n",
+    printf("<td%s><a href=\"/%s\">%s</a></td></tr>\n",
 	fileclass, section1, section2);
 
 	if (files[0] != NULL) {
         printf("\t<tr><td>\n");
-		printf("<!-- I am here (1) -->\n");
-		printf("<table border=\"0\" width=\"100%%\">\n");
+	printf("<table border=\"0\" width=\"100%%\">\n");
 
     	for (i = 0; files[i] != NULL; i++) {
         	if ((strcmp(files[i], FileName) == 0) &&
@@ -340,7 +339,7 @@ generate_side_headers(char *section1, char *section2, char *files[])
             	printf("\t<tr><td%s>", fileclass);
             	printf("&nbsp;&nbsp;&nbsp;&nbsp;");
             	printf("<a class=\"nounderline\" ");
-            	printf("href=\"../%s/%s\">%*.*s</a></td></tr>\n",
+            	printf("href=\"/%s/%s\">%*.*s</a></td></tr>\n",
 			section1, 
 			files[i], len, len, files[i]);
         	}
