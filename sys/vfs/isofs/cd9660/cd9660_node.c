@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.c,v 1.29.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.11 2004/08/28 19:02:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.12 2004/10/05 03:24:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -226,7 +226,7 @@ cd9660_reclaim(struct vop_reclaim_args *ap)
 	 * Remove the inode from its hash chain and purge namecache
 	 * data associated with the vnode.
 	 */
-	cache_purge(vp);
+	cache_inval_vp(vp, CINV_SELF);
 	vp->v_data = NULL;
 	if (ip) {
 		cd9660_ihashrem(ip);

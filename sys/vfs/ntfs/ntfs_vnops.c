@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.16 2004/09/30 19:00:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.17 2004/10/05 03:24:32 dillon Exp $
  *
  */
 
@@ -300,7 +300,7 @@ ntfs_reclaim(struct vop_reclaim_args *ap)
 		return (error);
 	
 	/* Purge old data structures associated with the inode. */
-	cache_purge(vp);
+	cache_inval_vp(vp, CINV_SELF);
 
 	ntfs_frele(fp);
 	ntfs_ntput(ip);

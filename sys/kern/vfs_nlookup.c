@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.2 2004/09/30 18:59:48 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.3 2004/10/05 03:24:09 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -287,8 +287,14 @@ nlookup(struct nlookupdata *nd)
 		ncp = cache_get(ncp);
 	    } else {
 		if (ncp->nc_flag & NCF_MOUNTPT) {
+		    /* ignore NCF_REVALPARENT on a mount point */
 		    ncp = ncp->nc_parent;
 		    KKASSERT(ncp != NULL && 1);
+		}
+		if (ncp->nc_flag & NCF_REVALPARENT) {
+		    printf("[diagnostic] nlookup can't .. past a renamed directory: %*.*s\n", ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
+		    error = EINVAL;
+		    break;
 		}
 		ncp = ncp->nc_parent;
 		KKASSERT(ncp != NULL && 2);
@@ -296,14 +302,25 @@ nlookup(struct nlookupdata *nd)
 	    }
 	} else {
 	    ncp = cache_nlookup(nd->nl_ncp, &nlc);
+	    while ((error = cache_resolve(ncp, nd->nl_cred)) == EAGAIN) {
+		printf("[diagnostic] nlookup: relookup %*.*s\n", 
+			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
+		cache_put(ncp);
+		ncp = cache_nlookup(nd->nl_ncp, &nlc);
+		error = cache_resolve(ncp, nd->nl_cred);
+	    }
 	}
 
 	/*
 	 * Resolve the namespace if necessary.  The ncp returned by
 	 * cache_nlookup() is referenced and locked.
+	 *
+	 * XXX neither '.' nor '..' should return EAGAIN since they were
+	 * previously resolved and thus cannot be newly created ncp's.
 	 */
 	if (ncp->nc_flag & NCF_UNRESOLVED) {
 	    error = cache_resolve(ncp, nd->nl_cred);
+	    KKASSERT(error != EAGAIN);
 	} else {
 	    error = ncp->nc_error;
 	}
@@ -574,10 +591,12 @@ naccess(struct namecache *ncp, int vmode, struct ucred *cred)
 	if (((vmode & VCREATE) && ncp->nc_vp == NULL) ||
 	    ((vmode & VDELETE) && ncp->nc_vp != NULL)
 	) {
-	    if (ncp->nc_parent == NULL)
-		error = EROFS;
-	    else
+	    if (ncp->nc_parent == NULL) {
+		if (error != EAGAIN)
+			error = EROFS;
+	    } else {
 		error = naccess(ncp->nc_parent, VWRITE, cred);
+	    }
 	}
 	if ((vmode & VEXCL) && ncp->nc_vp != NULL)
 	    error = EEXIST;

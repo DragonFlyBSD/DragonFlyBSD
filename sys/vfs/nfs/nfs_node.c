@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.15 2004/09/05 00:06:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.16 2004/10/05 03:24:31 dillon Exp $
  */
 
 
@@ -285,7 +285,7 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 		np->n_wucred = NULL;
 	}
 
-	cache_purge(vp);
+	cache_inval_vp(vp, CINV_SELF);
 	vp->v_data = NULL;
 	zfree(nfsnode_zone, np);
 	return (0);

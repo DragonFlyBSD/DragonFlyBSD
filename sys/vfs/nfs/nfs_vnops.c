@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.32 2004/10/04 09:20:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.33 2004/10/05 03:24:31 dillon Exp $
  */
 
 
@@ -1705,6 +1705,7 @@ nfs_rename(struct vop_rename_args *ap)
 	 */
 	if (tvp && tvp->v_usecount > 1 && !VTONFS(tvp)->n_sillyrename &&
 		tvp->v_type != VDIR && !nfs_sillyrename(tdvp, tvp, tcnp)) {
+		cache_purge(tvp);
 		vput(tvp);
 		tvp = NULL;
 	}
@@ -1713,11 +1714,14 @@ nfs_rename(struct vop_rename_args *ap)
 		tdvp, tcnp->cn_nameptr, tcnp->cn_namelen, tcnp->cn_cred,
 		tcnp->cn_td);
 
+	cache_purge(fvp);
+#if 0
 	if (fvp->v_type == VDIR) {
 		if (tvp != NULL && tvp->v_type == VDIR)
 			cache_purge(tdvp);
 		cache_purge(fdvp);
 	}
+#endif
 
 out:
 	if (tdvp == tvp)
@@ -2058,7 +2062,9 @@ nfsmout:
 	VTONFS(dvp)->n_flag |= NMODIFIED;
 	if (!wccflag)
 		VTONFS(dvp)->n_attrstamp = 0;
+#if 0
 	cache_purge(dvp);
+#endif
 	cache_purge(vp);
 	/*
 	 * Kludge: Map ENOENT => 0 assuming that you have a reply to a retry.

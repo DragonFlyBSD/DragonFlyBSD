@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.41 2004/10/02 03:18:26 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.42 2004/10/05 03:24:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -356,8 +356,11 @@ update:
 	 * vnode-under to the root of the new mount.  The lookup code
 	 * detects the mount point going forward and detects the special
 	 * mnt_ncp via NCP_MOUNTPT going backwards.
+	 *
+	 * It is not necessary to invalidate or purge the vnode underneath
+	 * because elements under the mount will be given their own glue
+	 * namecache record.
 	 */
-	cache_purge(vp);
 	if (!error) {
 		nlc.nlc_nameptr = "";
 		nlc.nlc_namelen = 0;

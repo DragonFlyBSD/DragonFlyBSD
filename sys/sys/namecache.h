@@ -62,7 +62,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.11 2004/10/02 03:18:28 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.12 2004/10/05 03:24:21 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -127,9 +127,14 @@ typedef struct namecache *namecache_t;
 #define NCF_UNUSED080	0x0080
 #define NCF_ISSYMLINK	0x0100	/* represents a symlink */
 #define NCF_ISDIR	0x0200	/* represents a directory */
+#define NCF_REVALPARENT	0x0400	/* reevaluate the parent link */
 
-#define CINV_SELF	0x0001	/* invalidate a specific (dvp,vp) entry */
-#define CINV_CHILDREN	0x0002	/* invalidate all children of vp */
+/*
+ * cache_inval[_vp]() flags
+ */
+#define CINV_PARENT	0x0001	/* disconnect from parent in namecache */
+#define CINV_SELF	0x0002	/* disconnect vp from namecache */
+#define CINV_CHILDREN	0x0004	/* disconnect children in namecache */
 
 #define NCPNULL		((struct namecache *)NULL)	/* placemarker */
 #define NCPPNULL	((struct namecache **)NULL)	/* placemarker */
@@ -151,6 +156,8 @@ void	cache_enter(struct vnode *dvp, struct vnode *vp,
 			struct componentname *cnp);
 struct namecache *cache_nlookup(struct namecache *par, struct nlcomponent *nlc);
 struct namecache *cache_allocroot(struct vnode *vp);
+void	cache_inval(struct namecache *ncp, int flags);
+void	cache_inval_vp(struct vnode *vp, int flags);
 void	vfs_cache_setroot(struct vnode *vp, struct namecache *ncp);
 
 int	cache_resolve(struct namecache *ncp, struct ucred *cred);

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.20 2004/08/28 19:02:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.21 2004/10/05 03:24:35 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1066,6 +1066,9 @@ abortit:
 		 * Target must be empty if a directory and have no links
 		 * to it. Also, ensure source and target are compatible
 		 * (both directories, or both not directories).
+		 *
+		 * Purge the file or directory being replaced from the
+		 * nameccache.
 		 */
 		if ((xp->i_mode&IFMT) == IFDIR) {
 			if ((xp->i_effnlink > 2) ||
@@ -1077,8 +1080,10 @@ abortit:
 				error = ENOTDIR;
 				goto bad;
 			}
-			cache_purge(tdvp);
-		} else if (doingdirectory) {
+			cache_purge(tvp);
+		} else if (doingdirectory == 0) {
+			cache_purge(tvp);
+		} else {
 			error = EISDIR;
 			goto bad;
 		}
@@ -1179,11 +1184,18 @@ abortit:
 		if (doingdirectory && newparent) {
 			xp->i_offset = mastertemplate.dot_reclen;
 			ufs_dirrewrite(xp, dp, newparent, DT_DIR, 0);
-			cache_purge(fdvp);
+			/*cache_purge(fdvp);*/
 		}
 		error = ufs_dirremove(fdvp, xp, fcnp->cn_flags, 0);
 		xp->i_flag &= ~IN_RENAME;
 	}
+
+	/*
+	 * The old API can only do a kitchen sink invalidation.  It will
+	 * not be possible to '..' through the disconnected fvp (if a
+	 * directory) until it is reconnected by a forward lookup.
+	 */
+	cache_purge(fvp);
 	VN_KNOTE(fvp, NOTE_RENAME);
 	if (dp)
 		vput(fdvp);
@@ -1482,7 +1494,7 @@ ufs_rmdir(struct vop_rmdir_args *ap)
 		goto out;
 	}
 	VN_KNOTE(dvp, NOTE_WRITE | NOTE_LINK);
-	cache_purge(dvp);
+	cache_purge(vp);
 	/*
 	 * Truncate inode. The only stuff left in the directory is "." and
 	 * "..". The "." reference is inconsequential since we are quashing

@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.32 2004/10/04 09:20:40 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.33 2004/10/05 03:24:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -131,6 +131,7 @@ SYSCTL_INT(_debug, OID_AUTO, vnsize, CTLFLAG_RD, 0, sizeof(struct vnode), "");
 SYSCTL_INT(_debug, OID_AUTO, ncsize, CTLFLAG_RD, 0, sizeof(struct namecache), "");
 
 static int cache_resolve_mp(struct namecache *ncp);
+static void cache_rehash(struct namecache *ncp);
 
 /*
  * The new name cache statistics
@@ -391,6 +392,18 @@ cache_get(struct namecache *ncp)
 	return(ncp);
 }
 
+int
+cache_get_nonblock(struct namecache *ncp)
+{
+	/* XXX MP */
+	if (ncp->nc_exlocks == 0 || ncp->nc_locktd == curthread) {
+		_cache_hold(ncp);
+		cache_lock(ncp);
+		return(0);
+	}
+	return(EWOULDBLOCK);
+}
+
 void
 cache_put(struct namecache *ncp)
 {
@@ -462,10 +475,6 @@ void
 cache_setunresolved(struct namecache *ncp)
 {
 	struct vnode *vp;
-#if 0
-	struct namecache *kid;
-	struct namecache *nextkid;
-#endif
 
 	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
 		ncp->nc_flag |= NCF_UNRESOLVED;
@@ -498,35 +507,55 @@ cache_setunresolved(struct namecache *ncp)
 			printf("[diagnostic] cache_setunresolved() called on directory with children: %p %*.*s\n", ncp, ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
 		}
 #endif
+	}
+}
 
-#if 0
-		/*
-		 * OLDAPI COMPAT CODE, XXX can be removed when the old api is
-		 * gone.
-		 *
-		 * Remove any negative hits from the list of children.  With
-		 * the parent gone there is no namecache<->vnode linkage for
-		 * the OLDAPI code to traverse, so the OLDAPI code would not
-		 * be able to find the negative cache entry to invalidate it
-		 * in cache_enter() if a new file is created.  This case
-		 * only occurs because NFS calls cache_purge() on the
-		 * target directory in nfs_rename().
-		 *
-		 * This is different from what cache_purge() does.
-		 */
-		if ((nextkid = TAILQ_FIRST(&ncp->nc_list)) != NULL)
-			cache_hold(nextkid);
-		while ((kid = nextkid) != NULL) {
-			if ((nextkid = TAILQ_NEXT(kid, nc_entry)) != NULL)
-				cache_hold(nextkid);
-			if ((kid->nc_flag & NCF_UNRESOLVED) == 0 &&
-			    kid->nc_vp == NULL
-			) {
-				cache_setunresolved(kid);
-			}
-			cache_drop(kid);
+/*
+ * Invalidate portions of a namecache entry.  The passed ncp should be
+ * referenced and locked but we might not adhere to that rule during the
+ * old api -> new api transition period.
+ *
+ * CINV_PARENT		- disconnect the ncp from its parent
+ * CINV_SELF		- same as cache_setunresolved(ncp)
+ * CINV_CHILDREN	- disconnect children of the ncp from the ncp
+ */
+void
+cache_inval(struct namecache *ncp, int flags)
+{
+	struct namecache *kid;
+
+	if (flags & CINV_SELF)
+		cache_setunresolved(ncp);
+	if (flags & CINV_PARENT) {
+		ncp->nc_flag |= NCF_REVALPARENT;
+		cache_unlink_parent(ncp);
+	}
+	if (flags & CINV_CHILDREN) {
+		while ((kid = TAILQ_FIRST(&ncp->nc_list)) != NULL) {
+			kid->nc_flag |= NCF_REVALPARENT;
+			cache_unlink_parent(kid);
 		}
-#endif
+	}
+}
+
+void
+cache_inval_vp(struct vnode *vp, int flags)
+{
+	struct namecache *ncp;
+
+	if (flags & CINV_SELF) {
+		while ((ncp = TAILQ_FIRST(&vp->v_namecache)) != NULL) {
+			cache_hold(ncp);
+			KKASSERT((ncp->nc_flag & NCF_UNRESOLVED) == 0);
+			cache_inval(ncp, flags);
+			cache_drop(ncp);
+		}
+	} else {
+		TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
+			cache_hold(ncp);
+			cache_inval(ncp, flags);
+			cache_drop(ncp);
+		}
 	}
 }
 
@@ -805,14 +834,20 @@ int
 cache_resolve(struct namecache *ncp, struct ucred *cred)
 {
 	struct namecache *par;
+	struct namecache *scan;
+
+	/*
+	 * If the ncp is already resolved we have nothing to do.
+	 */
+	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0)
+		return (ncp->nc_error);
 
 	/*
 	 * Mount points need special handling because the parent does not
 	 * belong to the same filesystem as the ncp.
 	 */
-	if (ncp->nc_flag & NCF_MOUNTPT) {
+	if (ncp->nc_flag & NCF_MOUNTPT)
 		return (cache_resolve_mp(ncp));
-	}
 
 	/*
 	 * We expect an unbroken chain of ncps to at least the mount point,
@@ -820,7 +855,7 @@ cache_resolve(struct namecache *ncp, struct ucred *cred)
 	 * past the mount point).
 	 */
 	if (ncp->nc_parent == NULL) {
-		printf("EXDEV case 1 %*.*s\n",
+		printf("EXDEV case 1 %p %*.*s\n", ncp,
 			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
 		ncp->nc_error = EXDEV;
 		return(ncp->nc_error);
@@ -862,6 +897,10 @@ cache_resolve(struct namecache *ncp, struct ucred *cred)
 		cache_get(par);
 		if (par->nc_flag & NCF_MOUNTPT) {
 			cache_resolve_mp(par);
+		} else if (par->nc_parent->nc_vp == NULL) {
+			printf("[diagnostic] cache_resolve: raced on %*.*s\n", par->nc_nlen, par->nc_nlen, par->nc_name);
+			cache_put(par);
+			continue;
 		} else {
 			par->nc_error = 
 			    vop_resolve(par->nc_parent->nc_vp->v_ops, par, cred);
@@ -874,11 +913,27 @@ cache_resolve(struct namecache *ncp, struct ucred *cred)
 			return(par->nc_error);
 		}
 	}
-	if (ncp->nc_flag & NCF_MOUNTPT) {
-		cache_resolve_mp(ncp);
-	} else {
-		ncp->nc_error = 
-			vop_resolve(ncp->nc_parent->nc_vp->v_ops, ncp, cred);
+
+	/*
+	 * Call vop_resolve() to get the vp, then scan for any disconnected
+	 * ncp's and reattach them.  If this occurs the original ncp is marked
+	 * EAGAIN to force a relookup.
+	 */
+	KKASSERT((ncp->nc_flag & NCF_MOUNTPT) == 0);
+	ncp->nc_error = vop_resolve(ncp->nc_parent->nc_vp->v_ops, ncp, cred);
+	if (ncp->nc_error == 0) {
+		TAILQ_FOREACH(scan, &ncp->nc_vp->v_namecache, nc_vnode) {
+			if (scan != ncp && (scan->nc_flag & NCF_REVALPARENT)) {
+				cache_link_parent(scan, ncp->nc_parent);
+				cache_unlink_parent(ncp);
+				scan->nc_flag &= ~NCF_REVALPARENT;
+				ncp->nc_error = EAGAIN;
+				if (scan->nc_flag & NCF_HASHED)
+					cache_rehash(scan);
+				printf("[diagnostic] cache_resolve: relinked %*.*s\n", scan->nc_nlen, scan->nc_nlen, scan->nc_name);
+				break;
+			}
+		}
 	}
 	return(ncp->nc_error);
 }
@@ -1002,10 +1057,13 @@ restart:
 		numchecks++;
 
 		/*
-		 * Zap entries that have timed out.
+		 * Zap entries that have timed out.  Don't do anything if
+		 * the entry is in an unresolved state or is held locked.
 		 */
 		if (ncp->nc_timeout && 
-		    (int)(ncp->nc_timeout - ticks) < 0
+		    (int)(ncp->nc_timeout - ticks) < 0 &&
+		    !(ncp->nc_flag & NCF_UNRESOLVED) &&
+		    ncp->nc_exlocks == 0
 		) {
 			cache_zap(cache_hold(ncp));
 			goto restart;
@@ -1049,8 +1107,11 @@ restart:
 
 	/*
 	 * If we found an entry, but we don't want to have one, we zap it.
+	 * If we are deleting, we disconnect it as well.
 	 */
 	if ((cnp->cn_flags & CNP_MAKEENTRY) == 0) {
+		if (cnp->cn_nameiop == NAMEI_DELETE)
+			cache_inval(ncp, CINV_PARENT|CINV_SELF|CINV_CHILDREN);
 		numposzaps++;
 		gd->gd_nchstats->ncs_badhits++;
 		cache_zap(ncp);
@@ -1101,9 +1162,11 @@ restart:
  *
  * XXX OLD API ROUTINE!  WHEN ALL VFSs HAVE BEEN CLEANED UP THIS PROCEDURE
  * WILL BE REMOVED.
+ *
+ * Generally speaking this is 'optional'.  It's ok to do nothing at all.
+ * The only reason I don't just return is to try to set nc_timeout if
+ * requested.
  */
-static void cache_rehash(struct namecache *ncp);
-
 void
 cache_enter(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 {
@@ -1139,33 +1202,6 @@ cache_enter(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 	if (cnp->cn_namelen == 2 && cnp->cn_nameptr[0] == '.' &&
 	    cnp->cn_nameptr[1] == '.'
 	) {
-		/*
-		 * ncp is associated with dvp
-		 * par is not necessarily associated with any vp
-		 * vp represents the new parent directory of dvp (..)
-		 */
-		par = ncp->nc_parent;	/* old parent of ncp/dvp */
-		if (vp == NULL) {
-			if (par) {
-				cache_unlink_parent(ncp);
-				printf("[diagnostic] cache_enter: disconnecting1 %*.*s\n", ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
-			}
-		} else if (par == NULL || par->nc_vp != vp) {
-			cache_unlink_parent(ncp);
-			if ((par = TAILQ_FIRST(&vp->v_namecache)) == NULL) {
-				printf("[diagnostic] cache_enter: disconnecting2 %*.*s\n", ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
-			} else {
-				/* 
-				 * par/vp is the new parent of ncp.
-				 */
-				cache_hold(par);
-				cache_link_parent(ncp, par);
-				printf("[diagnostic] cache_enter: moving %*.*s\n", ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
-				if (ncp->nc_flag & NCF_HASHED)
-					cache_rehash(ncp);
-				cache_drop(par);
-			}
-		}
 		cache_drop(ncp);
 		return;
 	}
@@ -1211,13 +1247,20 @@ againagain:
 		numchecks++;
 
 		/*
-		 * Break out if we find a matching entry.
+		 * Break out if we find a matching entry.  Because cache_enter
+		 * is called with one or more vnodes potentially locked, we
+		 * cannot block trying to get the ncp lock (or we might 
+		 * deadlock).
 		 */
 		if (ncp->nc_parent == par &&
 		    ncp->nc_nlen == cnp->cn_namelen &&
 		    bcmp(ncp->nc_name, cnp->cn_nameptr, ncp->nc_nlen) == 0
 		) {
-			cache_get(ncp);
+			if (cache_get_nonblock(ncp) != 0) {
+				printf("[diagnostic] cache_enter: avoided race on %p %*.*s\n", ncp, ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
+				cache_drop(par);
+				return;
+			}
 			break;
 		}
 	}
@@ -1384,28 +1427,8 @@ void
 cache_purge(struct vnode *vp)
 {
 	static u_long nextid;
-	struct namecache *ncp;
-	struct namecache *kid;
-	struct namecache *nextkid;
 
-	/*
-	 * Disassociate the vnode from its namecache entries along with
-	 * (to support NFS) any resolved direct children.
-	 */
-	while ((ncp = TAILQ_FIRST(&vp->v_namecache)) != NULL) {
-		cache_hold(ncp);
-
-		if ((nextkid = TAILQ_FIRST(&ncp->nc_list)) != NULL)
-			cache_hold(nextkid);
-		while ((kid = nextkid) != NULL) {
-			if ((nextkid = TAILQ_NEXT(kid, nc_entry)) != NULL)
-				cache_hold(nextkid);
-			if ((kid->nc_flag & NCF_UNRESOLVED) == 0)
-				cache_setunresolved(kid);
-			cache_drop(kid);
-		}
-		cache_zap(ncp);
-	}
+	cache_inval_vp(vp, CINV_PARENT | CINV_SELF | CINV_CHILDREN);
 
 	/*
 	 * Calculate a new unique id for ".." handling

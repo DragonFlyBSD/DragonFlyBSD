@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.9 2004/08/28 19:02:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.10 2004/10/05 03:24:35 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -130,7 +130,7 @@ ufs_reclaim(struct vop_reclaim_args *ap)
 	 * Remove the inode from its hash chain and purge namecache
 	 * data associated with the vnode.
 	 */
-	cache_purge(vp);
+	cache_inval_vp(vp, CINV_SELF);
 	vp->v_data = NULL;
 	if (ip) {
 		ufs_ihashrem(ip);

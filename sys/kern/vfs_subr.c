@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.41 2004/09/26 20:14:20 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.42 2004/10/05 03:24:09 dillon Exp $
  */
 
 /*
@@ -759,7 +759,7 @@ getnewvnode(enum vtagtype tag, struct mount *mp, struct vop_ops *ops,
 		vp->v_flag &= ~VFREE;
 		freevnodes--;
 		lwkt_reltoken(&ilock);
-		cache_purge(vp);	/* YYY may block */
+		cache_inval_vp(vp, CINV_SELF);	/* YYY may block */
 		vp->v_lease = NULL;
 		if (vp->v_type != VBAD) {
 			vgonel(vp, &vlock, td);
@@ -797,7 +797,7 @@ getnewvnode(enum vtagtype tag, struct mount *mp, struct vop_ops *ops,
 		vp->v_interlock = lwkt_token_pool_get(vp);
 		lwkt_token_init(&vp->v_pollinfo.vpi_token);
 		lockinit(&vp->v_lock, 0, "vnode", lktimeout, lkflags);
-		cache_purge(vp);
+		cache_inval_vp(vp, CINV_SELF);
 		TAILQ_INIT(&vp->v_namecache);
 		numvnodes++;
 	}
@@ -2117,7 +2117,7 @@ vclean(struct vnode *vp, lwkt_tokref_t vlock, int flags, struct thread *td)
 		}
 	}
 
-	cache_purge(vp);
+	cache_inval_vp(vp, CINV_SELF);
 	vmaybefree(vp);
 	
 	/*

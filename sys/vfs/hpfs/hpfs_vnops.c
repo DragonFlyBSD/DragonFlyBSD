@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.18 2004/09/30 18:59:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.19 2004/10/05 03:24:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -655,7 +655,7 @@ hpfs_reclaim(struct vop_reclaim_args *ap)
 	hpfs_hphashrem(hp);
 
 	/* Purge old data structures associated with the inode. */
-	cache_purge(vp);
+	cache_inval_vp(vp, CINV_SELF);
 	if (hp->h_devvp) {
 		vrele(hp->h_devvp);
 		hp->h_devvp = NULL;

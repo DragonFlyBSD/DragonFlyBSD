@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.15 2004/08/28 19:02:18 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.16 2004/10/05 03:24:30 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -671,7 +671,7 @@ msdosfs_reclaim(struct vop_reclaim_args *ap)
 	 * Remove the denode from its hash chain and purge namecache
 	 * data associated with the vnode.
 	 */
-	cache_purge(vp);
+	cache_inval_vp(vp, CINV_SELF);
 	vp->v_data = NULL;
 	if (dep) {
 		msdosfs_hashrem(dep);

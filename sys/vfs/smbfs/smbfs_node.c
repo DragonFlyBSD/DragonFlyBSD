@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_node.c,v 1.2.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.13 2004/08/28 19:02:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.14 2004/10/05 03:24:34 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -304,7 +304,7 @@ smbfs_reclaim(struct vop_reclaim_args *ap)
 
 	if (np->n_hash.le_prev)
 		LIST_REMOVE(np, n_hash);
-	cache_purge(vp);
+	cache_inval_vp(vp, CINV_SELF);
 	if (smp->sm_root == np) {
 		SMBVDEBUG("root vnode\n");
 		smp->sm_root = NULL;
