@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/getifaddrs.c,v 1.1.2.4 2002/08/01 19:31:06 ume Exp $	*/
-/*	$DragonFly: src/lib/libcr/net/Attic/getifaddrs.c,v 1.3 2003/07/13 05:45:05 dillon Exp $	*/
+/*	$DragonFly: src/lib/libcr/net/Attic/getifaddrs.c,v 1.4 2004/02/03 07:34:10 dillon Exp $	*/
 /*	$KAME: getifaddrs.c,v 1.9 2001/08/20 02:31:20 itojun Exp $	*/
 
 /*
@@ -77,7 +77,8 @@
 #define	HAVE_IFAM_DATA
 #endif
 
-#if defined(__NetBSD__) || defined(__OpenBSD__) || defined(__FreeBSD__)
+#if defined(__NetBSD__) || defined(__OpenBSD__) || \
+    defined(__FreeBSD__) || defined(__DragonFly__)
 #define	HAVE_IFM_DATA
 #endif
 

@@ -4,7 +4,7 @@
  *
  * @(#)svcauth_des.c	2.3 89/07/11 4.0 RPCSRC; from 1.15 88/02/08 SMI
  * $FreeBSD: src/lib/libc/rpc/svc_auth_des.c,v 1.3 1999/08/28 00:00:48 peter Exp $
- * $DragonFly: src/lib/libcr/rpc/Attic/svc_auth_des.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/svc_auth_des.c,v 1.3 2004/02/03 07:34:10 dillon Exp $
  */
 
 /*
@@ -431,7 +431,8 @@ cache_spot(key, name, timestamp)
 }
 
 
-#if (defined(sun) || defined(vax) || defined(__FreeBSD__))
+#if defined(sun) || defined(vax) || \
+    defined(__FreeBSD__) || defined(__DragonFly__)
 /*
  * Local credential handling stuff.
  * NOTE: bsd unix dependent.

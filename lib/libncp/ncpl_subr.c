@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libncp/ncpl_subr.c,v 1.3 2000/01/01 14:21:31 bp Exp $
- * $DragonFly: src/lib/libncp/ncpl_subr.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ * $DragonFly: src/lib/libncp/ncpl_subr.c,v 1.3 2004/02/03 07:34:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -219,20 +219,12 @@ ncp_initlib(void){
 
 	if (ncp_initialized)
 		return 0;
-#if __FreeBSD_version < 400001
-	error = sysctlbyname("net.ipx.ncp.sysent", &sysentoffset, &len, NULL, 0);
-#else
 	error = sysctlbyname("net.ncp.sysent", &sysentoffset, &len, NULL, 0);
-#endif
 	if (error) {
 		fprintf(stderr, "%s: can't find kernel module\n", __FUNCTION__);
 		return error;
 	}
-#if __FreeBSD_version < 400001
-	error = sysctlbyname("net.ipx.ncp.version", &kv, &kvlen, NULL, 0);
-#else
 	error = sysctlbyname("net.ncp.version", &kv, &kvlen, NULL, 0);
-#endif
 	if (error) {
 		fprintf(stderr, "%s: kernel module is old, please recompile it.\n", __FUNCTION__);
 		return error;

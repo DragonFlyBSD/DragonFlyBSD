@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/csu/common/crtbrand.c,v 1.1.2.1 2000/10/30 20:32:24 obrien Exp $
- * $DragonFly: src/lib/csu/common/crtbrand.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/csu/common/crtbrand.c,v 1.3 2004/02/03 07:34:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,5 +48,5 @@ static const struct {
     sizeof(int32_t),
     ABI_NOTETYPE,
     ABI_VENDOR,
-    __FreeBSD_version
+    __DragonFly_version
 };

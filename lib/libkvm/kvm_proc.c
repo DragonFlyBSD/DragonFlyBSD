@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libkvm/kvm_proc.c,v 1.25.2.3 2002/08/24 07:27:46 kris Exp $
- * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.4 2003/07/01 00:19:31 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.5 2004/02/03 07:34:10 dillon Exp $
  *
  * @(#)kvm_proc.c	8.3 (Berkeley) 9/23/93
  */
@@ -81,11 +81,11 @@ kvm_readswap(kd, p, va, cnt)
 	u_long va;
 	u_long *cnt;
 {
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	/* XXX Stubbed out, our vm system is differnet */
 	_kvm_err(kd, kd->program, "kvm_readswap not implemented");
 	return(0);
-#endif	/* __FreeBSD__ */
+#endif
 }
 #endif
 

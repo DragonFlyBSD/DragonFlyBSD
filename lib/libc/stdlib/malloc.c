@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libc/stdlib/malloc.c,v 1.49.2.4 2001/12/29 08:10:14 knu Exp $
- * $DragonFly: src/lib/libc/stdlib/malloc.c,v 1.4 2003/09/06 08:19:16 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/malloc.c,v 1.5 2004/02/03 07:34:10 dillon Exp $
  *
  */
 
@@ -43,7 +43,7 @@
  *
  */
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #   if defined(__i386__)
 #       define malloc_pageshift		12U
 #       define malloc_minsize		16U
@@ -64,7 +64,7 @@
     static spinlock_t thread_lock	= _SPINLOCK_INITIALIZER;
 #   define THREAD_LOCK()		if (__isthreaded) _SPINLOCK(&thread_lock);
 #   define THREAD_UNLOCK()		if (__isthreaded) _SPINUNLOCK(&thread_lock);
-#endif /* __FreeBSD__ */
+#endif /* __FreeBSD__ || __DragonFly__ */
 
 #if defined(__sparc__) && defined(sun)
 #   define malloc_pageshift		12U
