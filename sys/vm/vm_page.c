@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.19 2004/04/01 17:41:19 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.20 2004/05/10 11:05:13 hmp Exp $
  */
 
 /*
@@ -1055,7 +1055,7 @@ vm_page_free_toq(vm_page_t m)
 			panic("vm_page_free: invalid wire count (%d), pindex: 0x%lx",
 				m->wire_count, (long)m->pindex);
 		}
-		panic("vm_page_free: freeing wired page\n");
+		panic("vm_page_free: freeing wired page");
 	}
 
 	/*
@@ -1236,7 +1236,7 @@ vm_page_unwire(vm_page_t m, int activate)
 			}
 		}
 	} else {
-		panic("vm_page_unwire: invalid wire count: %d\n", m->wire_count);
+		panic("vm_page_unwire: invalid wire count: %d", m->wire_count);
 	}
 	splx(s);
 }

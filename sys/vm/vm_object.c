@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.14 2004/03/23 22:54:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.15 2004/05/10 11:05:13 hmp Exp $
  */
 
 /*
@@ -459,7 +459,7 @@ vm_object_terminate(vm_object_t object)
 	s = splvm();
 	while ((p = TAILQ_FIRST(&object->memq)) != NULL) {
 		if (p->busy || (p->flags & PG_BUSY))
-			panic("vm_object_terminate: freeing busy page %p\n", p);
+			panic("vm_object_terminate: freeing busy page %p", p);
 		if (p->wire_count == 0) {
 			vm_page_busy(p);
 			vm_page_free(p);
