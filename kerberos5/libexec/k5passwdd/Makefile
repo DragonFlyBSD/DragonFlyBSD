@@ -1,5 +1,5 @@
 # $FreeBSD: src/kerberos5/libexec/k5passwdd/Makefile,v 1.4.2.4 2002/09/01 04:22:02 nectar Exp $
-# $DragonFly: src/kerberos5/libexec/k5passwdd/Attic/Makefile,v 1.3 2003/08/05 07:45:40 asmodai Exp $
+# $DragonFly: src/kerberos5/libexec/k5passwdd/Attic/Makefile,v 1.4 2004/09/28 18:17:37 joerg Exp $
 
 PROG=		k5passwdd
 SRCS=		kpasswdd.c krb5_err.h heim_err.h hdb_err.h \
@@ -18,9 +18,11 @@ LDADD=		-L${KRB5OBJDIR} -lkrb5 -L${ROKENOBJDIR} -lroken \
 		-L${VERSOBJDIR} -lvers \
 		${_krb4libs} \
 		-L${KADM5SOBJDIR} -lkadm5srv -L${HDBOBJDIR} -lhdb \
-		-L${ASN1OBJDIR} -lasn1 -lcrypto -lcrypt -lcom_err
+		-L${ASN1OBJDIR} -lasn1 -lcrypto -lcrypt -lcom_err \
+		-lutil
 DPADD=		${LIBKRB5} ${LIBROKEN} ${_krb4deps} \
-		${LIBASN1} ${LIBCRYPTO} ${LIBCRYPT} ${LIBCOM_ERR}
+		${LIBASN1} ${LIBCRYPTO} ${LIBCRYPT} ${LIBCOM_ERR} \
+		${LIBUTIL}
 MAN=		kpasswdd.8
 
 .include <bsd.prog.mk>

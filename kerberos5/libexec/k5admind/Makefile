@@ -1,5 +1,5 @@
 # $FreeBSD: src/kerberos5/libexec/k5admind/Makefile,v 1.4.2.3 2002/09/23 14:00:48 nectar Exp $
-# $DragonFly: src/kerberos5/libexec/k5admind/Attic/Makefile,v 1.3 2003/08/05 07:45:40 asmodai Exp $
+# $DragonFly: src/kerberos5/libexec/k5admind/Attic/Makefile,v 1.4 2004/09/28 18:17:37 joerg Exp $
 
 PROG=		k5admind
 SRCS=		kadmind.c server.c kadm_conn.c \
@@ -22,10 +22,12 @@ LDADD=		\
 		-L${ROKENOBJDIR} -lroken \
 		-L${VERSOBJDIR} -lvers \
 		${_krb4libs} \
-		-L${ASN1OBJDIR} -lasn1 -lcrypto -lmd -lcrypt -lcom_err
+		-L${ASN1OBJDIR} -lasn1 -lcrypto -lmd -lcrypt -lcom_err \
+		-lutil
 DPADD=		${LIBKRB5} ${LIBKAFS5} ${LIBROKEN} ${_krb4deps} \
 		${LIBKADM5CLNT} ${LIBKADM5SRV} ${LIBHDB} \
-		${LIBASN1} ${LIBCRYPTO} ${LIBMD} ${LIBCRYPT} ${LIBCOM_ERR}
+		${LIBASN1} ${LIBCRYPTO} ${LIBMD} ${LIBCRYPT} ${LIBCOM_ERR} \
+		${LIBUTIL}
 NOMAN=		yes
 
 .include <bsd.prog.mk>

@@ -2,7 +2,7 @@
 /* include/config.h.in.  Generated automatically from configure.in by autoheader.  */
 
 /* $FreeBSD: src/kerberos5/include/config.h,v 1.2.2.7 2002/12/01 17:45:32 nectar Exp $ */
-/* $DragonFly: src/kerberos5/include/config.h,v 1.2 2003/06/17 04:26:17 dillon Exp $ */
+/* $DragonFly: src/kerberos5/include/config.h,v 1.3 2004/09/28 18:17:37 joerg Exp $ */
 
 #include <osreldate.h>
 
@@ -548,7 +548,7 @@ static /**/const char *const rcsid[] = { (const char *)rcsid, "@(#)" msg }
 #define HAVE_PATHS_H 1
 
 /* Define to 1 if you have the `pidfile' function. */
-/* #undef HAVE_PIDFILE */
+#define HAVE_PIDFILE 1
 
 /* Define to 1 if you have the <pthread.h> header file. */
 #define HAVE_PTHREAD_H 1
