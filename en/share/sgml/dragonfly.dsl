@@ -1,4 +1,4 @@
-<!-- $DragonFly: doc/en/share/sgml/dragonfly.dsl,v 1.1.1.1 2004/04/02 09:36:23 hmp Exp $
+<!-- $DragonFly: doc/en/share/sgml/dragonfly.dsl,v 1.2 2004/04/08 20:25:57 justin Exp $ -->
 
 <!DOCTYPE style-sheet PUBLIC "-//James Clark//DTD DSSSL Style Sheet//EN" [
 <!ENTITY dragonfly.dsl PUBLIC "-//DragonFlyBSD//DOCUMENT DocBook Language Neutral Stylesheet//EN" CDATA DSSSL>
