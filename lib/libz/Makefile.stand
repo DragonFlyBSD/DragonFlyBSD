@@ -1,0 +1,9 @@
+# $DragonFly: src/lib/libz/Makefile.stand,v 1.1 2004/10/23 15:58:18 joerg Exp $
+
+# decompression functionality from libz for libstand
+
+# relative to lib/libstand
+.PATH:	${.CURDIR}/../../contrib/zlib-1.2.2
+CFLAGS+=-DHAVE_MEMCPY
+SRCS+=	adler32.c crc32.c deflate.c infback.c inffast.c inflate.c \
+	inftrees.c zutil.c

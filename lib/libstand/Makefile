@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libstand/Makefile,v 1.14.2.10 2002/07/22 14:21:50 ru Exp $
-# $DragonFly: src/lib/libstand/Makefile,v 1.6 2004/09/28 19:34:18 joerg Exp $
+# $DragonFly: src/lib/libstand/Makefile,v 1.7 2004/10/23 15:58:18 joerg Exp $
 #
 # Originally from	$NetBSD: Makefile,v 1.21 1997/10/26 22:08:38 lukem Exp $
 #
@@ -75,11 +75,7 @@ _${file}: ${file}
 	sed "s|bzlib_private\.h|_bzlib_private.h|" ${.ALLSRC} > ${.TARGET}
 .endfor
 
-# decompression functionality from libz
-.PATH:	${.CURDIR}/../libz
-CFLAGS+=-DHAVE_MEMCPY
-SRCS+=	adler32.c crc32.c infblock.c infcodes.c inffast.c inflate.c \
-	inftrees.c infutil.c zutil.c 
+.include "../libz/Makefile.stand"
 
 # io routines
 SRCS+=	closeall.c dev.c ioctl.c nullfs.c stat.c \

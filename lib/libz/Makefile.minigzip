@@ -1,0 +1,4 @@
+# $DragonFly: src/lib/libz/Attic/Makefile.minigzip,v 1.1 2004/10/23 15:58:18 joerg Exp $
+
+# relative to usr.bin/minigzip
+.PATH:	${.CURDIR}/../../contrib/zlib-1.2.2
