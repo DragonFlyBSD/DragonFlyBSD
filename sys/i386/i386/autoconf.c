@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/i386/i386/Attic/autoconf.c,v 1.12 2004/05/19 22:52:57 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/autoconf.c,v 1.13 2004/07/28 06:04:41 dillon Exp $
  */
 
 /*
@@ -306,6 +306,12 @@ setroot()
 		return;
 	}
 	majdev = boot_translate_majdev(B_TYPE(bootdev));
+	if (bootverbose) {
+		printf("bootdev: %08lx type=%ld unit=%ld "
+			"slice=%ld part=%ld major=%d\n",
+			bootdev, B_TYPE(bootdev), B_UNIT(bootdev),
+			B_SLICE(bootdev), B_PARTITION(bootdev), majdev);
+	}
 	dev = udev2dev(makeudev(majdev, 0), 0);
 	if (!dev_is_good(dev))
 		return;
@@ -331,6 +337,8 @@ setroot()
 		mindev = dkmakeminor(unit, slice, part);
 	}
 	newrootdev = udev2dev(makeudev(majdev, mindev), 0);
+	if (!dev_is_good(newrootdev))
+		return;
 	sname = dsname(newrootdev, unit, slice, part, partname);
 	rootdevnames[0] = malloc(strlen(sname) + 6, M_DEVBUF, M_NOWAIT);
 	sprintf(rootdevnames[0], "ufs:%s%s", sname, partname);
