@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci_compat.c,v 1.35.2.1 2001/10/14 21:14:14 luigi Exp $
- * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.5 2004/02/21 06:37:05 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.6 2004/03/24 20:34:08 dillon Exp $
  *
  */
 
@@ -304,10 +304,7 @@ compat_pci_handler(module_t mod, int type, void *data)
 
 	switch (type) {
 	case MOD_LOAD:
-		driver = malloc(sizeof(driver_t), M_DEVBUF, M_NOWAIT);
-		if (!driver)
-			return ENOMEM;
-		bzero(driver, sizeof(driver_t));
+		driver = malloc(sizeof(driver_t), M_DEVBUF, M_WAITOK | M_ZERO);
 		driver->name = dvp->pd_name;
 		driver->methods = pci_compat_methods;
 		driver->size = sizeof(struct pci_devinfo *);

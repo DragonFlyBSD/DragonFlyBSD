@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/pcisupport.c,v 1.154.2.15 2003/04/29 15:55:06 simokawa Exp $
-** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.13 2004/02/24 15:21:25 joerg Exp $
+** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.14 2004/03/24 20:34:08 dillon Exp $
 **
 **  Device driver for DEC/INTEL PCI chipsets.
 **
@@ -917,9 +917,8 @@ const char* pci_vga_match(device_t dev)
 			type = "SVGA controller";
 
 		len = strlen(vendor) + strlen(chip) + strlen(type) + 4;
-		MALLOC(buf, char *, len, M_TEMP, M_NOWAIT);
-		if (buf)
-			sprintf(buf, "%s %s %s", vendor, chip, type);
+		MALLOC(buf, char *, len, M_TEMP, M_WAITOK);
+		sprintf(buf, "%s %s %s", vendor, chip, type);
 		return buf;
 	}
 
@@ -962,10 +961,9 @@ const char* pci_vga_match(device_t dev)
 		char *buf;
 		int len;
 
-		len = strlen(vendor) + strlen(type) + 2 + 6 + 4 + 1;
-		MALLOC(buf, char *, len, M_TEMP, M_NOWAIT);
-		if (buf)
-			sprintf(buf, "%s model %04x %s", vendor, id >> 16, type);
+		len = strlen(vendor) + 7 + 4 + 1 + strlen(type) + 1;
+		MALLOC(buf, char *, len, M_TEMP, M_WAITOK);
+		sprintf(buf, "%s model %04x %s", vendor, id >> 16, type);
 		return buf;
 	}
 	return type;
