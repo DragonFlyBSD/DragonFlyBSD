@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.9 2004/11/12 22:57:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.10 2004/11/12 23:26:52 dillon Exp $
  */
 
 /*-
@@ -167,6 +167,7 @@ typedef struct {
 } VarREPattern;
 
 static int VarCmp(void *, void *);
+static void VarPossiblyExpand(char **, GNode *);
 static Var *VarFind(char *, GNode *, int);
 static void VarAdd(char *, char *, GNode *);
 static void VarDelete(void *);
@@ -206,6 +207,29 @@ static int
 VarCmp (void *v, void *name)
 {
     return (strcmp ((char *) name, ((Var *) v)->name));
+}
+
+/*-
+ *-----------------------------------------------------------------------
+ * VarPossiblyExpand --
+ *     Expand a variable name's embedded variables in the given context.
+ *
+ * Results:
+ *     The contents of name, possibly expanded.
+ *
+ * Side Effects:
+ *     The caller must free the new contents or old contents of name.
+ *-----------------------------------------------------------------------
+ */
+static void
+VarPossiblyExpand(name, ctxt)
+	char	**name;
+	GNode	*ctxt;
+{
+	if (strchr(*name, '$') != NULL)
+		*name = Var_Subst(NULL, *name, ctxt, 0);
+	else
+		*name = estrdup(*name);
 }
 
 /*-
@@ -453,6 +477,7 @@ Var_Set (char *name, char *val, GNode *ctxt)
      * here will override anything in a lower context, so there's not much
      * point in searching them all just to save a bit of memory...
      */
+    VarPossiblyExpand(&name, ctxt);
     v = VarFind (name, ctxt, 0);
     if (v == (Var *) NULL) {
 	VarAdd (name, val, ctxt);
@@ -469,6 +494,7 @@ Var_Set (char *name, char *val, GNode *ctxt)
     if (ctxt == VAR_CMD || (v != (Var *)NULL && (v->flags & VAR_TO_ENV))) {
 	setenv(name, val, 1);
     }
+    free(name);
 }
 
 /*
@@ -518,6 +544,7 @@ Var_Append (char *name, char *val, GNode *ctxt)
 {
     Var		   *v;
 
+    VarPossiblyExpand(&name, ctxt);
     v = VarFind (name, ctxt, (ctxt == VAR_GLOBAL) ? FIND_ENV : 0);
 
     if (v == (Var *) NULL) {
@@ -540,6 +567,7 @@ Var_Append (char *name, char *val, GNode *ctxt)
 	    Lst_AtFront(ctxt->context, (void *)v);
 	}
     }
+    free(name);
 }
 
 /*-
@@ -560,7 +588,9 @@ Var_Exists(char *name, GNode *ctxt)
 {
     Var	    	  *v;
 
+    VarPossiblyExpand(&name, ctxt);
     v = VarFind(name, ctxt, FIND_CMD|FIND_GLOBAL|FIND_ENV);
+    free(name);
 
     if (v == (Var *)NULL) {
 	return(FALSE);
@@ -589,7 +619,9 @@ Var_Value (char *name, GNode *ctxt, char **frp)
 {
     Var            *v;
 
+    VarPossiblyExpand(&name, ctxt);
     v = VarFind (name, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
+    free(name);
     *frp = NULL;
     if (v != (Var *) NULL) {
 	char *p = ((char *)Buf_GetAll(v->val, (int *)NULL));
