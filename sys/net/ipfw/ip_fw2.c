@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.12 2004/06/02 14:42:58 eirikn Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.13 2004/09/16 23:19:34 joerg Exp $
  */
 
 #define        DEB(x)
@@ -95,7 +95,7 @@ static u_int32_t set_disable;
 static int fw_verbose;
 static int verbose_limit;
 
-static struct callout_handle ipfw_timeout_h;
+static struct callout ipfw_timeout_h;
 #define	IPFW_DEFAULT_RULE	65535
 
 /*
@@ -2664,7 +2664,8 @@ ipfw_tick(void * __unused unused)
 	}
 	splx(s);
 done:
-	ipfw_timeout_h = timeout(ipfw_tick, NULL, dyn_keepalive_period*hz);
+	callout_reset(&ipfw_timeout_h, dyn_keepalive_period * hz,
+		      ipfw_tick, NULL);
 }
 
 static void
@@ -2716,7 +2717,8 @@ ipfw_init(void)
 		printf("limited to %d packets/entry by default\n",
 		    verbose_limit);
 	bzero(&ipfw_timeout_h, sizeof(struct callout_handle));
-	ipfw_timeout_h = timeout(ipfw_tick, NULL, hz);
+	callout_init(&ipfw_timeout_h);
+	callout_reset(&ipfw_timeout_h, hz, ipfw_tick, NULL);
 }
 
 static int
@@ -2744,7 +2746,7 @@ ipfw_modevent(module_t mod, int type, void *unused)
 		err = EBUSY;
 #else
                 s = splimp();
-		untimeout(ipfw_tick, NULL, ipfw_timeout_h);
+		callout_stop(&ipfw_timeout_h);
 		ip_fw_chk_ptr = NULL;
 		ip_fw_ctl_ptr = NULL;
 		free_chain(&layer3_chain, 1 /* kill default rule */);
