@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)su.1	8.2 (Berkeley) 4/18/94
 .\" $FreeBSD: src/usr.bin/su/su.1,v 1.17.2.6 2002/06/21 15:29:18 charnier Exp $
-.\" $DragonFly: src/usr.bin/su/su.1,v 1.2 2003/06/17 04:29:32 dillon Exp $
+.\" $DragonFly: src/usr.bin/su/su.1,v 1.3 2004/05/21 05:27:12 cpressey Exp $
 .\"
 .Dd April 18, 1994
 .Dt SU 1
@@ -184,7 +184,8 @@ configure authentication services
 .Xr group 5 ,
 .Xr login.conf 5 ,
 .Xr passwd 5 ,
-.Xr environ 7
+.Xr environ 7 ,
+.Xr nologin 8
 .Sh ENVIRONMENT
 Environment variables used by
 .Nm :
@@ -208,16 +209,28 @@ unless the user ID is 0 (root).
 Runs the command
 .Li catman
 as user
-.Li man .
+.Li man ,
+assuming man's shell supports the
+.Fl c
+option.
 You will be asked for man's password unless your real UID is 0.
-.It Li "su man -c 'catman /usr/share/man /usr/local/man /usr/X11R6/man'"
+.It Li "su -m man -c catman"
+Same as above, but use the shell and environment of the current
+user instead of those of man.
+This allows commands to be executed as user man even when man's shell is
+.Xr nologin 8 .
+.It Li "su -mf man -c catman"
+Same as above, but do not re-evaluate the current user's
+.Pa .cshrc
+either.
+.It Li "su -mf man -c 'catman /usr/share/man /usr/local/man /usr/X11R6/man'"
 Same as above, but the target command consists of more than a
 single word and hence is quoted for use with the
 .Fl c
 option being passed to the shell.  (Most shells expect the argument to
 .Fl c
 to be a single word).
-.It Li "su -c staff man -c 'catman /usr/share/man /usr/local/man /usr/X11R6/man'"
+.It Li "su -mf -c staff man -c 'catman /usr/share/man /usr/local/man /usr/X11R6/man'"
 Same as above, but the target command is run with the resource limits of
 the login class
 .Dq staff .
