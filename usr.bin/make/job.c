@@ -37,7 +37,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.4 2004/07/23 07:12:28 asmodai Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2047,7 +2047,7 @@ end_loop:
 			 JOB_BUFSIZE - job->curPos);
 	if (nRead < 0) {
 	    if (DEBUG(JOB)) {
-		perror("JobDoOutput(piperead)");
+		warn("JobDoOutput(piperead)");
 	    }
 	    nr = 0;
 	} else {
