@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.22 2003/10/31 21:49:23 asmodai Exp $
+# $DragonFly: src/sys/conf/files,v 1.23 2003/11/03 15:57:33 daver Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1585,3 +1585,5 @@ emulation/43bsd/43bsd_socket.c		optional compat_43
 emulation/43bsd/43bsd_stats.c		optional compat_43
 emulation/43bsd/43bsd_file.c		optional compat_43
 emulation/43bsd/43bsd_signal.c		optional compat_43
+emulation/43bsd/43bsd_exit.c		optional compat_43
+emulation/43bsd/43bsd_resource.c	optional compat_43

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.26 2003/10/18 20:41:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.27 2003/11/03 15:57:33 daver Exp $
  */
 
 #include "opt_compat.h"
@@ -62,6 +62,7 @@
 #include <sys/sem.h>
 #include <sys/aio.h>
 #include <sys/jail.h>
+#include <sys/kern_syscall.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -76,8 +77,6 @@
 MALLOC_DEFINE(M_ZOMBIE, "zombie", "zombie proc status");
 
 static MALLOC_DEFINE(M_ATEXIT, "atexit", "atexit callback");
-
-static int wait1 (struct wait_args *, int);
 
 /*
  * callout list for things to do at exit time
@@ -381,29 +380,20 @@ exit1(int rv)
 	cpu_proc_exit();
 }
 
-#ifdef COMPAT_43
-/*
- * owait()
- *
- * owait_args(int dummy)
- */
-int
-owait(struct owait_args *uap)
-{
-	struct wait_args w;
-
-	w.options = 0;
-	w.rusage = NULL;
-	w.pid = WAIT_ANY;
-	w.status = NULL;
-	return (wait1(&w, 1));
-}
-#endif /* COMPAT_43 */
-
 int
 wait4(struct wait_args *uap)
 {
-	return (wait1(uap, 0));
+	struct rusage rusage;
+	int error, status;
+
+	error = kern_wait(uap->pid, uap->status ? &status : NULL,
+	    uap->options, uap->rusage ? &rusage : NULL, &uap->sysmsg_fds[0]);
+
+	if (error == 0 && uap->status)
+		error = copyout(&status, uap->status, sizeof(*uap->status));
+	if (error == 0 && uap->rusage)
+		error = copyout(&rusage, uap->rusage, sizeof(*uap->rusage));
+	return (error);
 }
 
 /*
@@ -411,22 +401,23 @@ wait4(struct wait_args *uap)
  *
  * wait_args(int pid, int *status, int options, struct rusage *rusage)
  */
-static int
-wait1(struct wait_args *uap, int compat)
+int
+kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
 {
-	struct proc *q = curproc;
+	struct thread *td = curthread;
+	struct proc *q = td->td_proc;
 	struct proc *p, *t;
-	int status, nfound, error;
+	int nfound, error;
 
-	if (uap->pid == 0)
-		uap->pid = -q->p_pgid;
-	if (uap->options &~ (WUNTRACED|WNOHANG|WLINUXCLONE))
+	if (pid == 0)
+		pid = -q->p_pgid;
+	if (options &~ (WUNTRACED|WNOHANG|WLINUXCLONE))
 		return (EINVAL);
 loop:
 	nfound = 0;
 	LIST_FOREACH(p, &q->p_children, p_sibling) {
-		if (uap->pid != WAIT_ANY &&
-		    p->p_pid != uap->pid && p->p_pgid != -uap->pid)
+		if (pid != WAIT_ANY &&
+		    p->p_pid != pid && p->p_pgid != -pid)
 			continue;
 
 		/* This special case handles a kthread spawned by linux_clone 
@@ -436,7 +427,7 @@ loop:
 		 * and the WLINUXCLONE option signifies we want to wait for threads
 		 * and not processes.
 		 */
-		if ((p->p_sigparent != SIGCHLD) ^ ((uap->options & WLINUXCLONE) != 0))
+		if ((p->p_sigparent != SIGCHLD) ^ ((options & WLINUXCLONE) != 0))
 			continue;
 
 		nfound++;
@@ -472,21 +463,12 @@ loop:
 				    ESTCPULIM(curproc->p_estcpu + p->p_estcpu);
 			}
 
-			uap->sysmsg_fds[0] = p->p_pid;
-#ifdef COMPAT_43
-			if (compat)
-				uap->sysmsg_fds[1] = p->p_xstat;
-			else
-#endif
-			if (uap->status) {
-				status = p->p_xstat;	/* convert to int */
-				if ((error = copyout((caddr_t)&status,
-				    (caddr_t)uap->status, sizeof(status))))
-					return (error);
-			}
-			if (uap->rusage && (error = copyout((caddr_t)p->p_ru,
-			    (caddr_t)uap->rusage, sizeof (struct rusage))))
-				return (error);
+			/* Take care of our return values. */
+			*res = p->p_pid;
+			if (status)
+				*status = p->p_xstat;
+			if (rusage)
+				*rusage = *p->p_ru;
 			/*
 			 * If we got the child via a ptrace 'attach',
 			 * we need to give it back to the old parent.
@@ -506,7 +488,7 @@ loop:
 			/*
 			 * Decrement the count of procs running with this uid.
 			 */
-			(void)chgproccnt(p->p_ucred->cr_ruidinfo, -1, 0);
+			chgproccnt(p->p_ucred->cr_ruidinfo, -1, 0);
 
 			/*
 			 * Free up credentials.
@@ -541,31 +523,26 @@ loop:
 			return (0);
 		}
 		if (p->p_stat == SSTOP && (p->p_flag & P_WAITED) == 0 &&
-		    (p->p_flag & P_TRACED || uap->options & WUNTRACED)) {
+		    (p->p_flag & P_TRACED || options & WUNTRACED)) {
 			p->p_flag |= P_WAITED;
-			uap->sysmsg_fds[0] = p->p_pid;
-#ifdef COMPAT_43
-			if (compat) {
-				uap->sysmsg_fds[1] = W_STOPCODE(p->p_xstat);
-				error = 0;
-			} else
-#endif
-			if (uap->status) {
-				status = W_STOPCODE(p->p_xstat);
-				error = copyout((caddr_t)&status,
-					(caddr_t)uap->status, sizeof(status));
-			} else
-				error = 0;
-			return (error);
+
+			*res = p->p_pid;
+			if (status)
+				*status = p->p_xstat;
+			/* Zero rusage so we get something consistent. */
+			if (rusage)
+				bzero(rusage, sizeof(rusage));
+			return (0);
 		}
 	}
 	if (nfound == 0)
 		return (ECHILD);
-	if (uap->options & WNOHANG) {
-		uap->sysmsg_fds[0] = 0;
+	if (options & WNOHANG) {
+		*res = 0;
 		return (0);
 	}
-	if ((error = tsleep((caddr_t)q, PCATCH, "wait", 0)))
+	error = tsleep((caddr_t)q, PCATCH, "wait", 0);
+	if (error)
 		return (error);
 	goto loop;
 }

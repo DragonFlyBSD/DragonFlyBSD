@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.9 2003/10/24 14:10:46 daver Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.10 2003/11/03 15:57:34 daver Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -35,6 +35,9 @@ enum dup_type {DUP_FIXED, DUP_VARIABLE};
 union fcntl_dat;
 struct mbuf;
 struct msghdr;
+struct nameidata;
+struct rlimit;
+struct rusage;
 struct sigaction;
 struct sigaltstack;
 struct __sigset;
@@ -43,6 +46,8 @@ struct sockaddr;
 struct socket;
 struct sockopt;
 struct stat;
+struct statfs;
+struct timeval;
 struct uio;
 struct vnode;
 
@@ -52,6 +57,12 @@ struct vnode;
 int kern_dup(enum dup_type type, int old, int new, int *res);
 int kern_fcntl(int fd, int cmd, union fcntl_dat *dat);
 int kern_fstat(int fd, struct stat *st);
+
+/*
+ * Prototypes for syscalls in kern/kern_exit.c
+ */
+int kern_wait(pid_t pid, int *status, int options, struct rusage *rusage,
+	int *res);
 
 /*
  * Prototypes for syscalls in kern/kern_sig.c
@@ -68,6 +79,12 @@ int kern_kill(int sig, int id);
  */
 int kern_readv(int fd, struct uio *auio, int flags, int *res);
 int kern_writev(int fd, struct uio *auio, int flags, int *res);
+
+/*
+ * Prototypes for syscalls in kern/kern_resource.c
+ */
+int kern_setrlimit(u_int which, struct rlimit *limp);
+int kern_getrlimit(u_int which, struct rlimit *limp);
 
 /*
  * Prototypes for syscalls in kern/uipc_syscalls.c
@@ -93,6 +110,27 @@ int kern_socketpair(int domain, int type, int protocol, int *sockv);
 /*
  * Prototypes for syscalls in kern/vfs_syscalls.c
  */
+int kern_access(struct nameidata *nd, int aflags);
+int kern_chdir(struct nameidata *nd);
+int kern_chmod(struct nameidata *nd, int mode);
+int kern_chown(struct nameidata *nd, int uid, int gid);
+int kern_fstatfs(int fd, struct statfs *buf);
 int kern_ftruncate(int fd, off_t length);
+int kern_futimes(int fd, struct timeval *tptr);
+int kern_getdirentries(int fd, char *buf, u_int count, long *basep, int *res);
+int kern_link(struct nameidata *nd, struct nameidata *linknd);
+int kern_lseek(int fd, off_t offset, int whence, int *res);
+int kern_mkdir(struct nameidata *nd, int mode);
+int kern_mknod(struct nameidata *nd, int mode, int dev);
+int kern_open(struct nameidata *nd, int flags, int mode, int *res);
+int kern_readlink(struct nameidata *nd, char *buf, int count, int *res);
+int kern_rename(struct nameidata *fromnd, struct nameidata *tond);
+int kern_rmdir(struct nameidata *nd);
+int kern_stat(struct nameidata *nd, struct stat *st);
+int kern_statfs(struct nameidata *nd, struct statfs *buf);
+int kern_symlink(char *path, struct nameidata *nd);
+int kern_truncate(struct nameidata *nd, off_t length);
+int kern_unlink(struct nameidata *nd);
+int kern_utimes(struct nameidata *nd, struct timeval *tptr);
 
 #endif /* !_SYS_KERN_SYSCALL_H_ */

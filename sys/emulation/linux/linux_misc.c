@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.14 2003/09/23 05:03:51 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.15 2003/11/03 15:57:33 daver Exp $
  */
 
 #include "opt_compat.h"
@@ -36,6 +36,7 @@
 #include <sys/fcntl.h>
 #include <sys/imgact_aout.h>
 #include <sys/kernel.h>
+#include <sys/kern_syscall.h>
 #include <sys/lock.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
@@ -786,43 +787,33 @@ linux_utime(struct linux_utime_args *args)
 int
 linux_waitpid(struct linux_waitpid_args *args)
 {
-	struct wait_args bsd_args;
-	int error, tmpstat;
+	int error, options, status;
 
 #ifdef DEBUG
 	if (ldebug(waitpid))
 		printf(ARGS(waitpid, "%d, %p, %d"),
 		    args->pid, (void *)args->status, args->options);
 #endif
-
-	bsd_args.sysmsg_result = 0;
-	bsd_args.pid = args->pid;
-	bsd_args.status = args->status;
-	bsd_args.options = (args->options & (WNOHANG | WUNTRACED));
+	options = args->options & (WNOHANG | WUNTRACED);
 	/* WLINUXCLONE should be equal to __WCLONE, but we make sure */
 	if (args->options & __WCLONE)
-		bsd_args.options |= WLINUXCLONE;
-	bsd_args.rusage = NULL;
+		options |= WLINUXCLONE;
 
-	if ((error = wait4(&bsd_args)) != 0)
-		return error;
-	args->sysmsg_result = bsd_args.sysmsg_result;
+	error = kern_wait(args->pid, args->status ? &status : NULL, options,
+	    NULL, &args->sysmsg_result);
 
-	if (args->status) {
-		if ((error = copyin((caddr_t)args->status, &tmpstat,
-		    sizeof(int))) != 0)
-			return error;
-		tmpstat &= 0xffff;
-		if (WIFSIGNALED(tmpstat))
-			tmpstat = (tmpstat & 0xffffff80) |
-			    BSD_TO_LINUX_SIGNAL(WTERMSIG(tmpstat));
-		else if (WIFSTOPPED(tmpstat))
-			tmpstat = (tmpstat & 0xffff00ff) |
-			    (BSD_TO_LINUX_SIGNAL(WSTOPSIG(tmpstat)) << 8);
-		return copyout(&tmpstat, (caddr_t)args->status, sizeof(int));
+	if (error == 0 && args->status) {
+		status &= 0xffff;
+		if (WIFSIGNALED(status))
+			status = (status & 0xffffff80) |
+			    BSD_TO_LINUX_SIGNAL(WTERMSIG(status));
+		else if (WIFSTOPPED(status))
+			status = (status & 0xffff00ff) |
+			    (BSD_TO_LINUX_SIGNAL(WSTOPSIG(status)) << 8);
+		error = copyout(&status, args->status, sizeof(status));
 	}
 
-	return 0;
+	return (error);
 }
 #endif	/*!__alpha__*/
 
@@ -831,8 +822,8 @@ linux_wait4(struct linux_wait4_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	struct wait_args bsd_args;
-	int error, tmpstat;
+	struct rusage rusage;
+	int error, options, status;
 
 	KKASSERT(p);
 
@@ -842,37 +833,31 @@ linux_wait4(struct linux_wait4_args *args)
 		    args->pid, (void *)args->status, args->options,
 		    (void *)args->rusage);
 #endif
-
-	bsd_args.sysmsg_result = 0;
-	bsd_args.pid = args->pid;
-	bsd_args.status = args->status;
-	bsd_args.options = (args->options & (WNOHANG | WUNTRACED));
+	options = args->options & (WNOHANG | WUNTRACED);
 	/* WLINUXCLONE should be equal to __WCLONE, but we make sure */
 	if (args->options & __WCLONE)
-		bsd_args.options |= WLINUXCLONE;
-	bsd_args.rusage = (struct rusage *)args->rusage;
+		options |= WLINUXCLONE;
 
-	if ((error = wait4(&bsd_args)) != 0)
-		return error;
-	args->sysmsg_result = bsd_args.sysmsg_result;
+	error = kern_wait(args->pid, args->status ? &status : NULL, options,
+	    args->rusage ? &rusage : NULL, &args->sysmsg_result);
 
-	SIGDELSET(p->p_siglist, SIGCHLD);
+	if (error == 0)
+		SIGDELSET(p->p_siglist, SIGCHLD);
 
-	if (args->status) {
-		if ((error = copyin((caddr_t)args->status, &tmpstat,
-		    sizeof(int))) != 0)
-			return error;
-		tmpstat &= 0xffff;
-		if (WIFSIGNALED(tmpstat))
-			tmpstat = (tmpstat & 0xffffff80) |
-			    BSD_TO_LINUX_SIGNAL(WTERMSIG(tmpstat));
-		else if (WIFSTOPPED(tmpstat))
-			tmpstat = (tmpstat & 0xffff00ff) |
-			    (BSD_TO_LINUX_SIGNAL(WSTOPSIG(tmpstat)) << 8);
-		return copyout(&tmpstat, (caddr_t)args->status, sizeof(int));
+	if (error == 0 && args->status) {
+		status &= 0xffff;
+		if (WIFSIGNALED(status))
+			status = (status & 0xffffff80) |
+			    BSD_TO_LINUX_SIGNAL(WTERMSIG(status));
+		else if (WIFSTOPPED(status))
+			status = (status & 0xffff00ff) |
+			    (BSD_TO_LINUX_SIGNAL(WSTOPSIG(status)) << 8);
+		error = copyout(&status, args->status, sizeof(status));
 	}
+	if (error == 0 && args->rusage)
+		error = copyout(&rusage, args->rusage, sizeof(rusage));
 
-	return 0;
+	return (error);
 }
 
 int
@@ -1100,104 +1085,93 @@ linux_getgroups(struct linux_getgroups_args *args)
 int
 linux_setrlimit(struct linux_setrlimit_args *args)
 {
-	struct __setrlimit_args bsd;
-	struct l_rlimit rlim;
+	struct l_rlimit linux_rlim;
+	struct rlimit rlim;
+	u_int which;
 	int error;
-	caddr_t sg = stackgap_init();
 
 #ifdef DEBUG
 	if (ldebug(setrlimit))
 		printf(ARGS(setrlimit, "%d, %p"),
 		    args->resource, (void *)args->rlim);
 #endif
-
 	if (args->resource >= LINUX_RLIM_NLIMITS)
 		return (EINVAL);
-
-	bsd.which = linux_to_bsd_resource[args->resource];
-	if (bsd.which == -1)
+	which = linux_to_bsd_resource[args->resource];
+	if (which == -1)
 		return (EINVAL);
 
-	error = copyin((caddr_t)args->rlim, &rlim, sizeof(rlim));
+	error = copyin(args->rlim, &linux_rlim, sizeof(linux_rlim));
 	if (error)
 		return (error);
+	rlim.rlim_cur = (rlim_t)linux_rlim.rlim_cur;
+	rlim.rlim_max = (rlim_t)linux_rlim.rlim_max;
 
-	bsd.rlp = stackgap_alloc(&sg, sizeof(struct rlimit));
-	bsd.rlp->rlim_cur = (rlim_t)rlim.rlim_cur;
-	bsd.rlp->rlim_max = (rlim_t)rlim.rlim_max;
-	bsd.sysmsg_result = 0;
-	error = setrlimit(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
+	error = kern_setrlimit(which, &rlim);
+
 	return(error);
 }
 
 int
 linux_old_getrlimit(struct linux_old_getrlimit_args *args)
 {
-	struct __getrlimit_args bsd;
-	struct l_rlimit rlim;
+	struct l_rlimit linux_rlim;
+	struct rlimit rlim;
+	u_int which;
 	int error;
-	caddr_t sg = stackgap_init();
 
 #ifdef DEBUG
 	if (ldebug(old_getrlimit))
 		printf(ARGS(old_getrlimit, "%d, %p"),
 		    args->resource, (void *)args->rlim);
 #endif
-
 	if (args->resource >= LINUX_RLIM_NLIMITS)
 		return (EINVAL);
-
-	bsd.which = linux_to_bsd_resource[args->resource];
-	if (bsd.which == -1)
+	which = linux_to_bsd_resource[args->resource];
+	if (which == -1)
 		return (EINVAL);
 
-	bsd.rlp = stackgap_alloc(&sg, sizeof(struct rlimit));
-	bsd.sysmsg_result = 0;
-	error = getrlimit(&bsd);
-	if (error)
-		return (error);
-	args->sysmsg_result = bsd.sysmsg_result;
-	rlim.rlim_cur = (unsigned long)bsd.rlp->rlim_cur;
-	if (rlim.rlim_cur == ULONG_MAX)
-		rlim.rlim_cur = LONG_MAX;
-	rlim.rlim_max = (unsigned long)bsd.rlp->rlim_max;
-	if (rlim.rlim_max == ULONG_MAX)
-		rlim.rlim_max = LONG_MAX;
-	return (copyout(&rlim, (caddr_t)args->rlim, sizeof(rlim)));
+	error = kern_getrlimit(which, &rlim);
+
+	if (error == 0) {
+		linux_rlim.rlim_cur = (l_ulong)rlim.rlim_cur;
+		if (linux_rlim.rlim_cur == ULONG_MAX)
+			linux_rlim.rlim_cur = LONG_MAX;
+		linux_rlim.rlim_max = (l_ulong)rlim.rlim_max;
+		if (linux_rlim.rlim_max == ULONG_MAX)
+			linux_rlim.rlim_max = LONG_MAX;
+		error = copyout(&linux_rlim, args->rlim, sizeof(rlim));
+	}
+	return (error);
 }
 
 int
 linux_getrlimit(struct linux_getrlimit_args *args)
 {
-	struct __getrlimit_args bsd;
-	struct l_rlimit rlim;
+	struct l_rlimit linux_rlim;
+	struct rlimit rlim;
+	u_int which;
 	int error;
-	caddr_t sg = stackgap_init();
 
 #ifdef DEBUG
 	if (ldebug(getrlimit))
 		printf(ARGS(getrlimit, "%d, %p"),
 		    args->resource, (void *)args->rlim);
 #endif
-
 	if (args->resource >= LINUX_RLIM_NLIMITS)
 		return (EINVAL);
-
-	bsd.which = linux_to_bsd_resource[args->resource];
-	if (bsd.which == -1)
+	which = linux_to_bsd_resource[args->resource];
+	if (which == -1)
 		return (EINVAL);
 
-	bsd.rlp = stackgap_alloc(&sg, sizeof(struct rlimit));
-	bsd.sysmsg_result = 0;
-	error = getrlimit(&bsd);
-	if (error)
-		return (error);
-	args->sysmsg_result = bsd.sysmsg_result;
+	error = kern_getrlimit(which, &rlim);
 
-	rlim.rlim_cur = (l_ulong)bsd.rlp->rlim_cur;
-	rlim.rlim_max = (l_ulong)bsd.rlp->rlim_max;
-	return (copyout(&rlim, (caddr_t)args->rlim, sizeof(rlim)));
+	if (error == 0) {
+		linux_rlim.rlim_cur = (l_ulong)rlim.rlim_cur;
+		linux_rlim.rlim_max = (l_ulong)rlim.rlim_max;
+		error = copyout(&linux_rlim, args->rlim, sizeof(rlim));
+	}
+	return (error);
 }
 #endif /*!__alpha__*/
 

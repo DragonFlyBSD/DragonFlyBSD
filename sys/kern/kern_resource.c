@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.14 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.15 2003/11/03 15:57:33 daver Exp $
  */
 
 #include "opt_compat.h"
@@ -46,6 +46,7 @@
 #include <sys/systm.h>
 #include <sys/sysproto.h>
 #include <sys/file.h>
+#include <sys/kern_syscall.h>
 #include <sys/kernel.h>
 #include <sys/resourcevar.h>
 #include <sys/malloc.h>
@@ -273,57 +274,23 @@ rtprio(struct rtprio_args *uap)
 	}
 }
 
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-/* ARGSUSED */
-int
-osetrlimit(struct osetrlimit_args *uap)
-{
-	struct orlimit olim;
-	struct rlimit lim;
-	int error;
-
-	if ((error =
-	    copyin((caddr_t)uap->rlp, (caddr_t)&olim, sizeof(struct orlimit))))
-		return (error);
-	lim.rlim_cur = olim.rlim_cur;
-	lim.rlim_max = olim.rlim_max;
-	return (dosetrlimit(uap->which, &lim));
-}
-
-/* ARGSUSED */
-int
-ogetrlimit(struct ogetrlimit_args *uap)
-{
-	struct proc *p = curproc;
-	struct orlimit olim;
-
-	if (uap->which >= RLIM_NLIMITS)
-		return (EINVAL);
-	olim.rlim_cur = p->p_rlimit[uap->which].rlim_cur;
-	if (olim.rlim_cur == -1)
-		olim.rlim_cur = 0x7fffffff;
-	olim.rlim_max = p->p_rlimit[uap->which].rlim_max;
-	if (olim.rlim_max == -1)
-		olim.rlim_max = 0x7fffffff;
-	return (copyout((caddr_t)&olim, (caddr_t)uap->rlp, sizeof(olim)));
-}
-#endif /* COMPAT_43 || COMPAT_SUNOS */
-
-/* ARGSUSED */
 int
 setrlimit(struct __setrlimit_args *uap)
 {
 	struct rlimit alim;
 	int error;
 
-	if ((error =
-	    copyin((caddr_t)uap->rlp, (caddr_t)&alim, sizeof (struct rlimit))))
+	error = copyin(uap->rlp, &alim, sizeof(alim));
+	if (error)
 		return (error);
-	return (dosetrlimit(uap->which, &alim));
+
+	error = kern_setrlimit(uap->which, &alim);
+
+	return (error);
 }
 
 int
-dosetrlimit(u_int which, struct rlimit *limp)
+kern_setrlimit(u_int which, struct rlimit *limp)
 {
 	struct proc *p = curproc;
 	struct rlimit *alimp;
@@ -423,16 +390,34 @@ dosetrlimit(u_int which, struct rlimit *limp)
 	return (0);
 }
 
-/* ARGSUSED */
+/*
+ * The rlimit indexed by which is returned in the second argument.
+ */
+int
+kern_getrlimit(u_int which, struct rlimit *limp)
+{
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+
+	if (which >= RLIM_NLIMITS)
+		return (EINVAL);
+
+	*limp = p->p_rlimit[which];
+
+	return (0);
+}
+
 int
 getrlimit(struct __getrlimit_args *uap)
 {
-	struct proc *p = curproc;
+	struct rlimit lim;
+	int error;
 
-	if (uap->which >= RLIM_NLIMITS)
-		return (EINVAL);
-	return (copyout((caddr_t)&p->p_rlimit[uap->which], (caddr_t)uap->rlp,
-	    sizeof (struct rlimit)));
+	error = kern_getrlimit(uap->which, &lim);
+
+	if (error == 0)
+		error = copyout(&lim, uap->rlp, sizeof(*uap->rlp));
+	return error;
 }
 
 /*

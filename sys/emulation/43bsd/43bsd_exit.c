@@ -1,5 +1,5 @@
 /*
- * 43BSD_STATS.C	- 4.3BSD compatibility stats syscalls
+ * 43BSD_EXIT.C		- 4.3BSD compatibility exit syscalls
  *
  * Copyright (c) 1982, 1986, 1989, 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -37,12 +37,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_stats.c,v 1.2 2003/11/03 15:57:33 daver Exp $
- * 	from: DragonFly kern/kern_descrip.c,v 1.16
- *	from: DragonFly kern/vfs_syscalls.c,v 1.21
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_exit.c,v 1.1 2003/11/03 15:57:33 daver Exp $
+ *	from: DragonFly kern/kern_exit.c,v 1.26
  *
- * These syscalls used to live in kern/kern_descrip.c and
- * kern/vfs_syscalls.c.  They are modified * to use the new split syscalls.
+ * These syscalls used to live in kern/kern_exit.c.  They are modified
+ * to use the new split syscalls.
  */
 
 #include "opt_compat.h"
@@ -52,84 +51,23 @@
 #include <sys/sysproto.h>
 #include <sys/conf.h>
 #include <sys/kernel.h>
-#include <sys/stat.h>
 #include <sys/kern_syscall.h>
-#include <sys/namei.h>
+#include <sys/proc.h>
+#include <sys/wait.h>
 
-static int
-compat_43_copyout_stat(struct stat *st, struct ostat *uaddr)
-{
-	struct ostat ost;
-	int error;
-
-	ost.st_dev = st->st_dev;
-	ost.st_ino = st->st_ino;
-	ost.st_mode = st->st_mode;
-	ost.st_nlink = st->st_nlink;
-	ost.st_uid = st->st_uid;
-	ost.st_gid = st->st_gid;
-	ost.st_rdev = st->st_rdev;
-	if (st->st_size < (quad_t)1 << 32)
-		ost.st_size = st->st_size;
-	else
-		ost.st_size = -2;
-	ost.st_atime = st->st_atime;
-	ost.st_mtime = st->st_mtime;
-	ost.st_ctime = st->st_ctime;
-	ost.st_blksize = st->st_blksize;
-	ost.st_blocks = st->st_blocks;
-	ost.st_flags = st->st_flags;
-	ost.st_gen = st->st_gen;
-
-	error = copyout(&ost, uaddr, sizeof(ost));
-	return (error);
-}
-
+/*
+ * owait()
+ *
+ * owait_args(int dummy)
+ */
 int
-ofstat(struct ofstat_args *uap)
+owait(struct owait_args *uap)
 {
-	struct stat st;
-	int error;
+	int error, status;
 
-	error = kern_fstat(uap->fd, &st);
+	error = kern_wait(WAIT_ANY, &status, 0, NULL, &uap->sysmsg_fds[0]);
 
 	if (error == 0)
-		error = compat_43_copyout_stat(&st, uap->sb);
-	return (error);
-}
-
-int
-ostat(struct ostat_args *uap)
-{
-	struct thread *td = curthread;
-	struct nameidata nd;
-	struct stat st;
-	int error;
-
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
-	    UIO_USERSPACE, uap->path, td);
-
-	error = kern_stat(&nd, &st);
-
-	if (error == 0)
-		error = compat_43_copyout_stat(&st, uap->ub);
-	return (error);
-}
-
-int
-olstat(struct olstat_args *uap)
-{
-	struct thread *td = curthread;
-	struct nameidata nd;
-	struct stat st;
-	int error;
-
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_NOOBJ,
-	    UIO_USERSPACE, uap->path, td);
-
-	error = kern_stat(&nd, &st);
-
-	if (error == 0)
-		error = compat_43_copyout_stat(&st, uap->ub);
+		uap->sysmsg_fds[1] = status;
 	return (error);
 }
