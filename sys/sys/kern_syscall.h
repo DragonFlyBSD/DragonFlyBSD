@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.20 2004/11/12 00:09:27 dillon Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.21 2004/11/18 13:09:53 dillon Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -132,6 +132,7 @@ int kern_mkdir(struct nlookupdata *nd, int mode);
 int kern_mkfifo(struct nlookupdata *nd, int mode);
 int kern_mknod(struct nlookupdata *nd, int mode, int dev);
 int kern_open(struct nlookupdata *nd, int flags, int mode, int *res);
+int kern_close(int fd);
 int kern_readlink(struct nlookupdata *nd, char *buf, int count, int *res);
 int kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond);
 int kern_rmdir(struct nlookupdata *nd);

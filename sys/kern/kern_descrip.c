@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.31 2004/11/12 00:09:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.32 2004/11/18 13:09:30 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -613,11 +613,16 @@ fgetown(struct sigio *sigio)
 int
 close(struct close_args *uap)
 {
+	return(kern_close(uap->fd));
+}
+
+int
+kern_close(int fd)
+{
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct filedesc *fdp;
 	struct file *fp;
-	int fd = uap->fd;
 	int error;
 	int holdleaders;
 

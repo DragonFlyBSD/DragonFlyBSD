@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.23 2004/11/12 00:09:23 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.24 2004/11/18 13:09:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -938,8 +938,14 @@ static int
 cb_fpcount_segment(vm_map_entry_t entry, void *closure)
 {
 	int *count = closure;
-	if (entry->object.vm_object->type == OBJT_VNODE)
+	struct vnode *vp;
+
+	if (entry->object.vm_object->type == OBJT_VNODE) {
+		vp = (struct vnode *)entry->object.vm_object->handle;
+		if ((vp->v_flag & VCKPT) && curproc->p_textvp == vp)
+			return 0;
 		++*count;
+	}
 	return 0;
 }
 
@@ -952,10 +958,23 @@ cb_put_fp(vm_map_entry_t entry, void *closure)
 	struct vnode *vp;
 	int error;
 
+	/*
+	 * If an entry represents a vnode then write out a file handle.
+	 *
+	 * If we are checkpointing a checkpoint-restored program we do
+	 * NOT record the filehandle for the old checkpoint vnode (which
+	 * is mapped all over the place).  Instead we rely on the fact
+	 * that a checkpoint-restored program does not mmap() the checkpt
+	 * vnode NOCORE, so its contents will be written out to the
+	 * checkpoint file itself.  This is necessary because the 'old'
+	 * checkpoint file is typically destroyed when a new one is created.
+	 */
 	if (entry->object.vm_object->type == OBJT_VNODE) {
+		vp = (struct vnode *)entry->object.vm_object->handle;
+		if ((vp->v_flag & VCKPT) && curproc->p_textvp == vp)
+			return 0;
 		if (vnh == fpc->vnh_max)
 			return EINVAL;
-		vp = (struct vnode *)entry->object.vm_object->handle;
 
 		if (vp->v_mount)
 			vnh->vnh_fh.fh_fsid = vp->v_mount->mnt_stat.f_fsid;

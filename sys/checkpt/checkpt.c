@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/checkpt/Attic/checkpt.c,v 1.6 2004/11/12 00:09:00 dillon Exp $
+ * $DragonFly: src/sys/checkpt/Attic/checkpt.c,v 1.7 2004/11/18 13:09:55 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -33,6 +33,7 @@
 #include <sys/sysent.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
+#include <sys/nlookup.h>
 
 #include <sys/file.h>
 /* only on dragonfly */
@@ -47,7 +48,7 @@
 #include <sys/lock.h>
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
-
+#include <vm/vm_extern.h>
 #include <sys/mman.h>
 #include <sys/sysproto.h>
 #include <sys/resource.h>
@@ -66,6 +67,7 @@
 #include <sys/exec.h>
 #include <sys/unistd.h>
 #include <sys/time.h>
+#include <sys/kern_syscall.h>
 #include "checkpt.h"
 #include <sys/mount.h>
 #include <sys/ckpt.h>
@@ -253,6 +255,21 @@ ckpt_thaw_proc(struct proc *p, struct file *fp)
 
 	/* handle mappings last in case we are reading from a socket */
 	error = elf_loadphdrs(fp, phdr, ehdr->e_phnum);
+
+	/*
+	 * Set the textvp to the checkpoint file and mark the vnode so
+	 * a future checkpointing of this checkpoint-restored program
+	 * will copy out the contents of the mappings rather then trying
+	 * to record the vnode info related to the checkpoint file, which
+	 * is likely going to be destroyed when the program is re-checkpointed.
+	 */
+	if (error == 0 && fp->f_data && fp->f_type == DTYPE_VNODE) {
+		if (p->p_textvp)
+			vrele(p->p_textvp);
+		p->p_textvp = (struct vnode *)fp->f_data;
+		p->p_textvp->v_flag |= VCKPT;
+		vref(p->p_textvp);
+	}
 done:
 	if (ehdr)
 		free(ehdr, M_TEMP);
@@ -283,7 +300,8 @@ elf_loadnotes(struct proc *p, prpsinfo_t *psinfo, prstatus_t *status,
 	if ((error = set_regs(p, &status->pr_reg)) != 0)
 		goto done;
 	error = set_fpregs(p, fpregset);
-	/* strncpy(psinfo->pr_psargs, p->p_comm, PRARGSZ); */
+	strlcpy(p->p_comm, psinfo->pr_fname, sizeof(p->p_comm));
+	/* XXX psinfo->pr_psargs not yet implemented */
  done:	
 	TRACE_EXIT;
 	return error;
@@ -528,6 +546,8 @@ elf_gettextvp(struct proc *p, struct file *fp)
 	    error = ERANGE;
 	    goto done;
 	}
+
+	vmspace_exec(p, NULL);
 	p->p_vmspace->vm_daddr = vminfo.cvm_daddr;
 	p->p_vmspace->vm_dsize = vminfo.cvm_dsize;
 	p->p_vmspace->vm_taddr = vminfo.cvm_taddr;
@@ -558,10 +578,12 @@ elf_getfiles(struct proc *p, struct file *fp)
 	int error;
 	int i;
 	int filecount;
+	int fd;
 	struct ckpt_filehdr filehdr;
 	struct ckpt_fileinfo *cfi_base = NULL;
 	struct vnode *vp;
 	struct file *tempfp;
+	struct file *ofp;
 
 	TRACE_ENTER;
 	if ((error = read_check(fp, &filehdr, sizeof(filehdr))) != 0)
@@ -572,6 +594,16 @@ elf_getfiles(struct proc *p, struct file *fp)
 	if (error)
 		goto done;
 
+	/*
+	 * Close all descriptors >= 3.  These descriptors are from the
+	 * checkpt(1) program itself and should not be retained.
+	 */
+	for (i = 3; i < p->p_fd->fd_nfiles; ++i)
+		kern_close(i);
+
+	/*
+	 * Scan files to load
+	 */
 	for (i = 0; i < filecount; i++) {
 		struct ckpt_fileinfo *cfi= &cfi_base[i];
 		/*
@@ -581,11 +613,7 @@ elf_getfiles(struct proc *p, struct file *fp)
 		 */
 		if (cfi->cfi_index < 0)
 			continue;
-		if (cfi->cfi_index >=  p->p_fd->fd_nfiles) {
-			PRINTF(("can't currently restore fd: %d\n",
-			       cfi->cfi_index));
-			goto done;
-		}
+
 		if ((error = ckpt_fhtovp(&cfi->cfi_fh, &vp)) != 0)
 			break;
 		if ((error = fp_vpopen(vp, OFLAGS(cfi->cfi_flags), &tempfp)) != 0) {
@@ -593,13 +621,30 @@ elf_getfiles(struct proc *p, struct file *fp)
 			break;
 		}
 		tempfp->f_offset = cfi->cfi_offset;
-		/*  XXX bail for now if we the index is 
-		 *  larger than the current file table 
-		 */
 
-		PRINTF(("restoring %d\n", cfi->cfi_index));
+		/*
+		 * If overwriting a descriptor close the old descriptor.  This
+		 * only occurs if the saved core saved descriptors that we 
+		 * have not already closed.
+		 */
+		if (cfi->cfi_index < p->p_fd->fd_nfiles &&
+		    (ofp = p->p_fd->fd_ofiles[cfi->cfi_index]) != NULL) {
+			kern_close(cfi->cfi_index);
+		}
+
+		/*
+		 * Allocate the descriptor we want.
+		 */
+		if (fdalloc(p, cfi->cfi_index, &fd) != 0) {
+			PRINTF(("can't currently restore fd: %d\n",
+			       cfi->cfi_index));
+			fp_close(fp);
+			goto done;
+		}
+		KKASSERT(fd == cfi->cfi_index);
 		p->p_fd->fd_ofiles[cfi->cfi_index] = tempfp;		
 		cfi++;
+		PRINTF(("restoring %d\n", cfi->cfi_index));
 	}
 
  done:
@@ -708,6 +753,7 @@ ckpt_handler(struct proc *p)
 {
 	char *buf;
 	struct file *fp;
+	struct nlookupdata nd;
 	int error;
 
 	chptinuse++;
@@ -735,9 +781,18 @@ ckpt_handler(struct proc *p)
 	PRINTF(("ckpt handler called, using '%s'\n", buf));
 
 	/*
-	 * Use the same safety flags that the coredump code uses.
+	 * Use the same safety flags that the coredump code uses.  Remove
+	 * any previous checkpoint file before writing out the new one in
+	 * case we are re-checkpointing a program that had been checkpt
+	 * restored.  Otherwise we will corrupt the program space (which is
+	 * made up of mmap()ings of the previous checkpoint file) while we
+	 * write out the new one.
 	 */
-	error = fp_open(buf, O_WRONLY|O_CREAT|O_NOFOLLOW, 0600, &fp);
+	error = nlookup_init(&nd, buf, UIO_SYSSPACE, 0);
+	if (error == 0)
+		error = kern_unlink(&nd);
+	nlookup_done(&nd);
+	error = fp_open(buf, O_WRONLY|O_CREAT|O_TRUNC|O_NOFOLLOW, 0600, &fp);
 	if (error == 0) {
 		(void)ckpt_freeze_proc(p, fp);
 		fp_close(fp);

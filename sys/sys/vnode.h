@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.26 2004/11/12 00:09:27 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.27 2004/11/18 13:09:53 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -154,7 +154,7 @@ struct vnode {
 #define	VSYSTEM		0x00004	/* vnode being used by kernel */
 #define	VISTTY		0x00008	/* vnode represents a tty */
 #define VCTTYISOPEN	0x00010	/* controlling terminal tty is open */
-/* open for business    0x00020 */
+#define VCKPT		0x00020	/* checkpoint-restored vnode */
 /* open for business    0x00040 */
 /* open for business    0x00080 */
 /* open for business    0x00100 */
