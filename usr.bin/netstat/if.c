@@ -32,7 +32,7 @@
  *
  * @(#)if.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/if.c,v 1.32.2.9 2001/09/17 14:35:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/if.c,v 1.3 2003/08/08 04:18:43 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/if.c,v 1.4 2003/11/14 09:56:03 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -199,7 +199,7 @@ intpr(int interval, u_long ifnetaddr, void (*pfunc)(char *))
 		return;
 
 	if (!pfunc) {
-		printf("%-5.5s %-5.5s %-13.13s %-15.15s %8.8s %5.5s",
+		printf("%-7.7s %-5.5s %-13.13s %-15.15s %8.8s %5.5s",
 		       "Name", "Mtu", "Network", "Address", "Ipkts", "Ierrs");
 		if (bflag)
 			printf(" %10.10s","Ibytes");
@@ -264,7 +264,7 @@ intpr(int interval, u_long ifnetaddr, void (*pfunc)(char *))
 		drops = ifnet.if_snd.ifq_drops;
 
 		if (ifaddraddr == 0) {
-			printf("%-5.5s %-5lu ", name, ifnet.if_mtu);
+			printf("%-7.7s %-5lu ", name, ifnet.if_mtu);
 			printf("%-13.13s ", "none");
 			printf("%-15.15s ", "none");
 		} else {
@@ -281,7 +281,7 @@ intpr(int interval, u_long ifnetaddr, void (*pfunc)(char *))
 				    (u_long)TAILQ_NEXT(&ifaddr.ifa, ifa_link);
 				continue;
 			}
-			printf("%-5.5s %-5lu ", name, ifnet.if_mtu);
+			printf("%-7.7s %-5lu ", name, ifnet.if_mtu);
 			switch (sa->sa_family) {
 			case AF_UNSPEC:
 				printf("%-13.13s ", "none");

@@ -32,7 +32,7 @@
  *
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/route.c,v 1.41.2.14 2002/07/17 02:22:22 kbyanc Exp $
- * $DragonFly: src/usr.bin/netstat/route.c,v 1.3 2003/08/08 04:18:43 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/route.c,v 1.4 2003/11/14 09:56:03 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -229,13 +229,13 @@ pr_family(int af)
 #ifndef INET6
 #define	WID_DST_DEFAULT(af) 	18	/* width of destination column */
 #define	WID_GW_DEFAULT(af)	18	/* width of gateway column */
-#define	WID_IF_DEFAULT(af)	6	/* width of netif column */
+#define	WID_IF_DEFAULT(af)	(Wflag ? 8 : 6)	/* width of netif column */
 #else
 #define	WID_DST_DEFAULT(af) \
 	((af) == AF_INET6 ? (numeric_addr ? 33: 18) : 18)
 #define	WID_GW_DEFAULT(af) \
 	((af) == AF_INET6 ? (numeric_addr ? 29 : 18) : 18)
-#define	WID_IF_DEFAULT(af)	((af) == AF_INET6 ? 8 : 6)
+#define	WID_IF_DEFAULT(af)	((af) == AF_INET6 ? 8 : (Wflag ? 8 :6))
 #endif /*INET6*/
 
 static int wid_dst;
