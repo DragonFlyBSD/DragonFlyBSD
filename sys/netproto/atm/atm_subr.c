@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_subr.c,v 1.7 2000/02/13 03:31:59 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.14 2004/04/22 05:09:43 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.15 2004/09/16 22:59:06 joerg Exp $
  */
 
 /*
@@ -67,6 +67,7 @@ struct sp_info	atm_attributes_pool = {
 	100				/* si_maxallow */
 };
 
+static struct callout atm_timexp_ch;
 
 /*
  * Local functions
@@ -136,7 +137,8 @@ atm_initialize()
 	/*
 	 * Prime the timer
 	 */
-	(void) timeout(atm_timexp, (void *)0, hz/ATM_HZ);
+	callout_init(&atm_timexp_ch);
+	callout_reset(&atm_timexp_ch, hz / ATM_HZ, atm_timexp, NULL);
 
 	/*
 	 * Start the compaction timer
@@ -556,9 +558,7 @@ restart:
 	 * Restart the timer
 	 */
 	(void) splx(s);
-	(void) timeout(atm_timexp, (void *)0, hz/ATM_HZ);
-
-	return;
+	callout_reset(&atm_timexp_ch, hz / ATM_HZ, atm_timexp, NULL);
 }
 
 

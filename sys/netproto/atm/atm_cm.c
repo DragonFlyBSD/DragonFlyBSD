@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_cm.c,v 1.6 1999/08/28 00:48:34 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_cm.c,v 1.4 2003/08/23 10:06:21 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_cm.c,v 1.5 2004/09/16 22:59:06 joerg Exp $
  */
 
 /*
@@ -36,11 +36,15 @@
  */
 
 #include "kern_include.h"
+#include <sys/kernel.h>
 
 /*
  * Global variables
  */
 struct atm_cm_stat	atm_cm_stat = {0};
+struct callout		atm_cm_procinq_ch;
+
+SYSINIT(atm_cm, SI_SUB_DRIVERS, SI_ORDER_ANY, callout_init, &atm_cm_procinq_ch);
 
 /*
  * Local functions
@@ -1271,7 +1275,7 @@ atm_cm_incoming(vcp, ap)
 	cvp->cvc_flags |= CVCF_INCOMQ;
 	ENQUEUE(cvp, Atm_connvc, cvc_q, atm_incoming_queue);
 	if (atm_incoming_qlen++ == 0) {
-		timeout(atm_cm_procinq, (void *)0, 0);
+		atm_cm_procinq(NULL);
 	}
 
 	/*
@@ -1516,8 +1520,9 @@ atm_cm_procinq(arg)
 	/*
 	 * If we've expended our quota, reschedule ourselves
 	 */
-	if (cnt >= ATM_CALLQ_MAX)
-		timeout(atm_cm_procinq, (void *)0, 0);
+	if (cnt >= ATM_CALLQ_MAX) {
+		callout_reset(&atm_cm_procinq_ch, 1, atm_cm_procinq, NULL);
+	}
 }
 
 
