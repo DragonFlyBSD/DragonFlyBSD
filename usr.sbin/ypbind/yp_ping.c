@@ -32,7 +32,7 @@
  * @(#)from: clnt_udp.c 1.39 87/08/11 Copyr 1984 Sun Micro
  * @(#)from: clnt_udp.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/usr.sbin/ypbind/yp_ping.c,v 1.6.2.1 2002/02/15 00:46:59 des Exp $
- * $DragonFly: src/usr.sbin/ypbind/yp_ping.c,v 1.4 2004/03/30 01:14:22 cpressey Exp $
+ * $DragonFly: src/usr.sbin/ypbind/yp_ping.c,v 1.5 2004/03/31 21:03:38 cpressey Exp $
  */
 
 /*
@@ -338,7 +338,7 @@ static struct timeval tottimeout = { 1, 0 };
  */
 static u_short
 __pmap_getport(struct sockaddr_in *address,
-	       u_long program, u_long version, u_long protocol)
+	       u_long program, u_long version, u_int protocol)
 {
 	u_short port = 0;
 	int sock = -1;
