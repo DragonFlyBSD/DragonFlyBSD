@@ -34,7 +34,7 @@
  *
  * @(#)ftpcmd.y	8.3 (Berkeley) 4/6/94
  * $FreeBSD: src/libexec/ftpd/ftpcmd.y,v 1.16.2.19 2003/02/11 14:28:28 yar Exp $
- * $DragonFly: src/libexec/ftpd/ftpcmd.y,v 1.3 2003/11/14 03:54:30 dillon Exp $
+ * $DragonFly: src/libexec/ftpd/ftpcmd.y,v 1.4 2004/06/19 20:36:04 joerg Exp $
  */
 
 /*
@@ -198,6 +198,7 @@ cmd
 			port_check_v6("pcmd");
 #endif
 		port_done:
+			;
 		}
 	| LPRT check_login SP host_long_port CRLF
 		{
@@ -219,6 +220,7 @@ cmd
 				goto lprt_done;
 #endif
 		lprt_done:
+			;
 		}
 	| EPRT check_login SP STRING CRLF
 		{
