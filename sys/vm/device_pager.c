@@ -37,7 +37,7 @@
  *
  *	@(#)device_pager.c	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/vm/device_pager.c,v 1.46.2.1 2000/08/02 21:54:37 peter Exp $
- * $DragonFly: src/sys/vm/device_pager.c,v 1.7 2004/03/23 22:54:32 dillon Exp $
+ * $DragonFly: src/sys/vm/device_pager.c,v 1.8 2004/07/21 01:25:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,6 +45,7 @@
 #include <sys/conf.h>
 #include <sys/mman.h>
 #include <sys/device.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -185,8 +186,8 @@ dev_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 	vm_paddr_t paddr;
 	vm_page_t page;
 	dev_t dev;
-	int i, s;
 	int prot;
+	int i;
 
 	dev = object->handle;
 	offset = m[reqpage]->pindex;
@@ -194,19 +195,29 @@ dev_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 
 	paddr = pmap_phys_address(dev_dmmap(dev, (vm_offset_t) offset << PAGE_SHIFT, prot));
 	KASSERT(paddr != -1,("dev_pager_getpage: map function returns error"));
-	/*
-	 * Replace the passed in reqpage page with our own fake page and free up the
-	 * all of the original pages.
-	 */
-	page = dev_pager_getfake(paddr);
-	TAILQ_INSERT_TAIL(&object->un_pager.devp.devp_pglist, page, pageq);
-	for (i = 0; i < count; i++) {
-		vm_page_free(m[i]);
-	}
-	s = splhigh();
-	vm_page_insert(page, object, offset);
-	splx(s);
 
+	if (m[reqpage]->flags & PG_FICTITIOUS) {
+		/*
+		 * If the passed in reqpage page is a fake page, update it
+		 * with the new physical address.
+		 */
+		m[reqpage]->phys_addr = paddr;
+	} else {
+		/*
+		 * Replace the passed in reqpage page with our own fake page
+		 * and free up all the original pages.
+		 */
+		page = dev_pager_getfake(paddr);
+		TAILQ_INSERT_TAIL(&object->un_pager.devp.devp_pglist, page, pageq);
+		crit_enter();
+		vm_page_free(m[reqpage]);
+		vm_page_insert(page, object, offset);
+		crit_exit();
+	}
+	for (i = 0; i < count; i++) {
+		if (i != reqpage)
+			vm_page_free(m[i]);
+	}
 	return (VM_PAGER_OK);
 }
 
