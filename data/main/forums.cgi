@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/forums.cgi,v 1.4 2003/08/27 17:34:43 dillon Exp $
+# $DragonFly: site/data/main/Attic/forums.cgi,v 1.5 2003/09/05 02:35:51 dillon Exp $
 
 $TITLE(DragonFly - Forums)
 <P>
@@ -42,12 +42,12 @@ to the appropriate list email address as shown below.  Please use the test
 list for experimentation and remember to unsubscribe from it when you are done
 (unless you want to see other people's test messages!).
 <UL>
-    <P>Bug Reporting - <A HREF="mailto:bugs-request@lists.dragonflybsd.org">bugs-request@lists.dragonflybsd.org</A>
-    <BR>Kernel Related - <A HREF="mailto:kernel-request@lists.dragonflybsd.org">kernel-request@lists.dragonflybsd.org</A>
-    <BR>Patch Submissions - <A HREF="mailto:submit-request@lists.dragonflybsd.org">submit-request@lists.dragonflybsd.org</A>
-    <BR>Commit Messages - <A HREF="mailto:commits-request@lists.dragonflybsd.org">commits-request@lists.dragonflybsd.org</A>
-    <BR>Documentation Related - <A HREF="mailto:docs-request@lists.dragonflybsd.org">docs-request@lists.dragonflybsd.org</A>
-    <BR>Test Postings - <A HREF="mailto:test-request@lists.dragonflybsd.org">test-request@lists.dragonflybsd.org</A>
+    <P>Bug Reporting - bugs-request at lists.dragonflybsd.org
+    <BR>Kernel Related - kernel-request at lists.dragonflybsd.org
+    <BR>Patch Submissions - submit-request at lists.dragonflybsd.org
+    <BR>Commit Messages - commits-request at lists.dragonflybsd.org
+    <BR>Documentation Related - docs-request at lists.dragonflybsd.org
+    <BR>Test Postings - test-request at lists.dragonflybsd.org
 </UL>
 <P>
 We will be providing a web-based archival access feature soon for those people

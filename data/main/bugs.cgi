@@ -1,14 +1,13 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/bugs.cgi,v 1.2 2003/08/11 02:24:49 dillon Exp $
+# $DragonFly: site/data/main/Attic/bugs.cgi,v 1.3 2003/09/05 02:35:51 dillon Exp $
 
 $TITLE(DragonFly - Reporting Bugs)
 <P>
 The project welcomes all bugs reports and tries to make bug reporting as
 painless an affair as possible by providing several ways to report them.
 <UL>
-    <P>You can email your bug report to: 
-	<A HREF="mailto:bugs@dragonflybsd.org">bugs@dragonflybsd.org</A>
+    <P>You can email your bug report to:  bugs at dragonflybsd.org
     <P>You can post to our private newsgroup: 
 	<A HREF="nntp://news.dragonflybsd.org/dragonfly.bugs">
 		nntp://nntp.dragonflybsd.org/dragonfly.bugs</A>
