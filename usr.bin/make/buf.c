@@ -38,7 +38,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.14 2005/01/06 21:04:20 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.15 2005/01/09 23:03:28 okumoto Exp $
  */
 
 /*-
@@ -59,13 +59,13 @@
 
 /*
  * BufExpand --
- * 	Expand the given buffer to hold the given number of additional
+ *	Expand the given buffer to hold the given number of additional
  *	bytes.
  *	Makes sure there's room for an extra NULL byte at the end of the
  *	buffer in case it holds a string.
  */
 #define	BufExpand(bp, nb) do {						\
- 	if ((bp)->left < (nb) + 1) {					\
+	if ((bp)->left < (nb) + 1) {					\
 		int newSize = (bp)->size + max((nb) + 1, BUF_ADD_INC);	\
 		Byte *newBuf = erealloc((bp)->buffer, newSize);		\
 									\
@@ -77,9 +77,9 @@
 	}								\
     } while (0)
 
-#define	BUF_DEF_SIZE	256 	/* Default buffer size */
-#define	BUF_ADD_INC	256 	/* Expansion increment when Adding */
-#define	BUF_UNGET_INC	16  	/* Expansion increment when Ungetting */
+#define	BUF_DEF_SIZE	256	/* Default buffer size */
+#define	BUF_ADD_INC	256	/* Expansion increment when Adding */
+#define	BUF_UNGET_INC	16	/* Expansion increment when Ungetting */
 
 /*-
  *-----------------------------------------------------------------------
@@ -97,7 +97,6 @@
 void
 Buf_OvAddByte(Buffer *bp, Byte byte)
 {
-
 	bp->left = 0;
 	BufExpand(bp, 1);
 
@@ -126,7 +125,6 @@ Buf_OvAddByte(Buffer *bp, Byte byte)
 void
 Buf_AddBytes(Buffer *bp, size_t numBytes, const Byte *bytesPtr)
 {
-
 	BufExpand(bp, numBytes);
 
 	memcpy(bp->inPtr, bytesPtr, numBytes);
@@ -155,7 +153,6 @@ Buf_AddBytes(Buffer *bp, size_t numBytes, const Byte *bytesPtr)
 Byte *
 Buf_GetAll(Buffer *bp, size_t *numBytesPtr)
 {
-
 	if (numBytesPtr != NULL)
 		*numBytesPtr = bp->inPtr - bp->outPtr;
 
@@ -178,7 +175,6 @@ Buf_GetAll(Buffer *bp, size_t *numBytesPtr)
 void
 Buf_Discard(Buffer *bp, size_t numBytes)
 {
-
 	if ((size_t)(bp->inPtr - bp->outPtr) <= numBytes) {
 		bp->inPtr = bp->outPtr = bp->buffer;
 		bp->left = bp->size;
@@ -204,7 +200,6 @@ Buf_Discard(Buffer *bp, size_t numBytes)
 size_t
 Buf_Size(Buffer *buf)
 {
-
 	return (buf->inPtr - buf->outPtr);
 }
 
@@ -226,7 +221,7 @@ Buf_Size(Buffer *buf)
 Buffer *
 Buf_Init(size_t size)
 {
-	Buffer *bp;	  	/* New Buffer */
+	Buffer *bp;	/* New Buffer */
 
 	bp = emalloc(sizeof(*bp));
 
@@ -257,7 +252,6 @@ Buf_Init(size_t size)
 void
 Buf_Destroy(Buffer *buf, Boolean freeData)
 {
-
 	if (freeData)
 		free(buf->buffer);
 	free(buf);
@@ -266,14 +260,14 @@ Buf_Destroy(Buffer *buf, Boolean freeData)
 /*-
  *-----------------------------------------------------------------------
  * Buf_ReplaceLastByte --
- *     Replace the last byte in a buffer.
+ *	Replace the last byte in a buffer.
  *
  * Results:
- *     None.
+ *	None.
  *
  * Side Effects:
- *     If the buffer was empty intially, then a new byte will be added.
- *     Otherwise, the last byte is overwritten.
+ *	If the buffer was empty intially, then a new byte will be added.
+ *	Otherwise, the last byte is overwritten.
  *
  *-----------------------------------------------------------------------
  */

@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.23 2005/01/09 22:23:25 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.24 2005/01/09 23:03:28 okumoto Exp $
  */
 
 /*-
@@ -133,7 +133,7 @@ CompatCatchSig(int signo)
  *-----------------------------------------------------------------------
  */
 static void
-CompatInterrupt (int signo)
+CompatInterrupt(int signo)
 {
     GNode   *gn;
     sigset_t nmask, omask;
@@ -271,7 +271,7 @@ Compat_RunCommand(void *cmdp, void *gnp)
     } else {
 	cmd = cmdStart;
     }
-    Lst_Replace (cmdNode, cmdStart);
+    Lst_Replace(cmdNode, cmdStart);
 
     if ((gn->type & OP_SAVE_CMDS) && (gn != ENDNode)) {
 	Lst_AtEnd(&ENDNode->commands, cmdStart);
@@ -377,7 +377,7 @@ Compat_RunCommand(void *cmdp, void *gnp)
     }
     if (cpid == 0) {
 	execvp(av[0], av);
-	write(STDERR_FILENO, av[0], strlen (av[0]));
+	write(STDERR_FILENO, av[0], strlen(av[0]));
 	write(STDERR_FILENO, ":", 1);
 	write(STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
 	write(STDERR_FILENO, "\n", 1);

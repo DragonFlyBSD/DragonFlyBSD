@@ -40,7 +40,7 @@
  *
  *	from: @(#)buf.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.h,v 1.9 1999/08/28 01:03:26 peter Exp $
- * $DragonFly: src/usr.bin/make/buf.h,v 1.11 2005/01/06 21:04:20 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.h,v 1.12 2005/01/09 23:03:28 okumoto Exp $
  */
 
 /*-
@@ -68,7 +68,7 @@
 typedef char Byte;
 
 typedef struct Buffer {
-	size_t	size; 		/* Current size of the buffer */
+	size_t	size;		/* Current size of the buffer */
 	size_t	left;		/* Space left (== size - (inPtr - buffer)) */
 	Byte	*buffer;	/* The buffer itself */
 	Byte	*inPtr;		/* Place to write to */

@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.22 2005/01/08 12:38:32 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.23 2005/01/09 23:03:28 okumoto Exp $
  */
 
 /*-
@@ -192,7 +192,7 @@ Targ_FindNode(const char *name, int flags)
 	he = Hash_CreateEntry(&targets, name, &isNew);
 	if (isNew) {
 	    gn = Targ_NewGN(name);
-	    Hash_SetValue (he, gn);
+	    Hash_SetValue(he, gn);
 	    Lst_AtEnd(&allTargets, gn);
 	}
     } else {
@@ -390,7 +390,7 @@ Targ_FmtTime(time_t modtime)
 
     parts = localtime(&modtime);
 
-    strftime(buf, sizeof buf, "%H:%M:%S %b %d, %Y", parts);
+    strftime(buf, sizeof(buf), "%H:%M:%S %b %d, %Y", parts);
     buf[sizeof(buf) - 1] = '\0';
     return (buf);
 }

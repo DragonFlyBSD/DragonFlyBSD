@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.2 2004/06/10 13:07:53 ru Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.26 2005/01/08 21:58:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.27 2005/01/09 23:03:28 okumoto Exp $
  */
 
 /*-
@@ -440,7 +440,7 @@ SuffInsert(Lst *l, Suff *s)
     DEBUGF(SUFF, ("inserting %s(%d)...", s->name, s->sNum));
     if (ln == NULL) {
 	DEBUGF(SUFF, ("at end of list\n"));
-	Lst_AtEnd (l, s);
+	Lst_AtEnd(l, s);
 	s->refCount++;
 	Lst_AtEnd(&s->ref, l);
     } else if (s2->sNum != s->sNum) {
@@ -548,7 +548,7 @@ SuffParseTransform(char *str, Suff **srcPtr, Suff **targPtr)
 	    }
 	    return (FALSE);
 	}
-	src = Lst_Datum (srcLn);
+	src = Lst_Datum(srcLn);
 	str2 = str + src->nameLen;
 	if (*str2 == '\0') {
 	    single = src;
@@ -803,7 +803,7 @@ Suff_AddSuffix(char *str)
 	s = emalloc(sizeof(Suff));
 
 	s->name = estrdup(str);
-	s->nameLen = strlen (s->name);
+	s->nameLen = strlen(s->name);
 	Lst_Init(&s->searchPath);
 	Lst_Init(&s->children);
 	Lst_Init(&s->parents);
@@ -1198,7 +1198,7 @@ SuffFindThem(Lst *srcs, Lst *slst)
  *-----------------------------------------------------------------------
  */
 static Src *
-SuffFindCmds (Src *targ, Lst *slst)
+SuffFindCmds(Src *targ, Lst *slst)
 {
     LstNode 	  	*ln; 	/* General-purpose list node */
     GNode		*t, 	/* Target GNode */
@@ -2164,7 +2164,7 @@ SuffFindDeps(GNode *gn, Lst *slst)
 	if (gn->suffix)
 	    gn->suffix->refCount--;
 	if (ln != NULL) {
-	    gn->suffix = s = Lst_Datum (ln);
+	    gn->suffix = s = Lst_Datum(ln);
 	    gn->suffix->refCount++;
 	    Arch_FindLib(gn, &s->searchPath);
 	} else {

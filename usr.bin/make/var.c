@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.38 2005/01/08 22:27:02 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.39 2005/01/09 23:03:28 okumoto Exp $
  */
 
 /*-
@@ -617,7 +617,7 @@ VarModify(char *str, Boolean (*modProc)(const char *, Boolean, Buffer *, void *)
     for (i = 1; i < ac; i++)
 	addSpace = (*modProc)(av[i], addSpace, buf, datum);
 
-    Buf_AddByte (buf, '\0');
+    Buf_AddByte(buf, '\0');
     str = (char *)Buf_GetAll(buf, (size_t *)NULL);
     Buf_Destroy(buf, FALSE);
     return (str);
@@ -1856,7 +1856,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 		    str += length;
 		    errorReported = TRUE;
 		} else {
-		    Buf_AddByte (buf, (Byte)*str);
+		    Buf_AddByte(buf, (Byte)*str);
 		    str += 1;
 		}
 	    } else {

@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.18 2005/01/06 10:53:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.19 2005/01/09 23:03:28 okumoto Exp $
  */
 
 /*-
@@ -503,7 +503,7 @@ Make_Update(GNode *cgn)
      */
     cpref = Var_Value(PREFIX, cgn, &ptr);
     for (ln = Lst_First(&cgn->iParents); ln != NULL; ln = Lst_Succ(ln)) {
-	pgn = Lst_Datum (ln);
+	pgn = Lst_Datum(ln);
 	if (pgn->make) {
 	    Var_Set(IMPSRC, cname, pgn);
 	    Var_Set(PREFIX, cpref, pgn);
