@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)time.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/time/time.c,v 1.14.2.5 2002/06/28 08:35:15 tjr Exp $
- * $DragonFly: src/usr.bin/time/time.c,v 1.4 2004/03/26 00:30:12 cpressey Exp $
+ * $DragonFly: src/usr.bin/time/time.c,v 1.5 2004/07/16 18:53:56 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -61,13 +61,13 @@ static char decimal_point;
 int
 main(int argc, char **argv)
 {
-	int pid;
+	pid_t pid;
 	int aflag, ch, hflag, lflag, status, pflag;
+	int exit_on_sig;
 	struct timeval before, after;
 	struct rusage ru;
 	FILE *out = stderr;
 	char *ofn = NULL;
-	int exitonsig = 0; /* Die with same signal as child */
 
 	setlocale(LC_NUMERIC, "");
 	decimal_point = localeconv()->decimal_point[0];
@@ -124,7 +124,7 @@ main(int argc, char **argv)
 	if (!WIFEXITED(status))
 		warnx("command terminated abnormally");
 	if (WIFSIGNALED(status))
-		exitonsig = WTERMSIG(status);
+		exit_on_sig = WTERMSIG(status);
 	after.tv_sec -= before.tv_sec;
 	after.tv_usec -= before.tv_usec;
 	if (after.tv_usec < 0)
@@ -204,11 +204,17 @@ main(int argc, char **argv)
 		fprintf(out, "%10ld  %s\n",
 			ru.ru_nivcsw, "involuntary context switches");
 	}
-	if (exitonsig) {
-		if (signal(exitonsig, SIG_DFL) == SIG_ERR)
+	/*
+	 * If the child has exited on a signal, exit on the same
+	 * signal, too, in order to reproduce the child's exit
+	 * status.  However, avoid actually dumping core from
+	 * current process.
+	 */
+	if (exit_on_sig) {
+		if (signal(exit_on_sig, SIG_DFL) == SIG_ERR)
 			perror("signal");
 		else
-			kill(getpid(), exitonsig);
+			kill(getpid(), exit_on_sig);
 	}
 	exit(WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE);
 }
