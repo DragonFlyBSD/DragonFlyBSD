@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.21 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.22 2003/07/08 06:27:26 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -102,6 +102,7 @@ ASSYM(RW_OWNER, offsetof(struct lwkt_rwlock, rw_owner));
 ASSYM(TD_CPL, offsetof(struct thread, td_mach) + offsetof(struct md_thread, mtd_cpl));
 
 ASSYM(TDPRI_CRIT, TDPRI_CRIT);
+ASSYM(TDPRI_INT_SUPPORT, TDPRI_INT_SUPPORT);
 
 ASSYM(SSLEEP, SSLEEP);
 ASSYM(SRUN, SRUN);
@@ -197,7 +198,6 @@ ASSYM(GD_CURRENTLDT, offsetof(struct mdglobaldata, gd_currentldt));
 
 ASSYM(GD_FPENDING, offsetof(struct mdglobaldata, gd_fpending));
 ASSYM(GD_IPENDING, offsetof(struct mdglobaldata, gd_ipending));
-ASSYM(GD_IRUNNING, offsetof(struct mdglobaldata, gd_irunning));
 ASSYM(GD_COMMON_TSS, offsetof(struct mdglobaldata, gd_common_tss));
 ASSYM(GD_COMMON_TSSD, offsetof(struct mdglobaldata, gd_common_tssd));
 ASSYM(GD_TSS_GDT, offsetof(struct mdglobaldata, gd_tss_gdt));

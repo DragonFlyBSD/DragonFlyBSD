@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.6 2003/07/01 20:31:38 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.7 2003/07/08 06:27:27 dillon Exp $
  */
 
 
@@ -68,10 +68,6 @@ soft_imask:	.long	SWI_MASK
 softnet_imask:	.long	SWI_NET_MASK
 	.globl	softtty_imask
 softtty_imask:	.long	SWI_TTY_MASK
-	.globl	last_splz
-last_splz:	.long	0
-	.globl	last_splz2
-last_splz2:	.long	0
 
 	.text
 
@@ -101,11 +97,12 @@ doreti_next:
 	testl	PCPU(fpending),%ecx	/* check for an unmasked fast int */
 	jne	doreti_fast
 
-	movl	PCPU(irunning),%edx	/* check for an unmasked normal int */
-	notl	%edx			/* that isn't already running */
-	andl	%edx, %ecx
 	testl	PCPU(ipending),%ecx
 	jne	doreti_intr
+#ifdef SMP
+	testl	$AST_IPIQ,PCPU(astpending)
+	jnz	doreti_ipiq
+#endif
 	testl	$AST_PENDING,PCPU(astpending) /* any pending ASTs? */
 	jz	2f
 	testl	$PSL_VM,TF_EFLAGS(%esp)
@@ -115,11 +112,11 @@ doreti_next:
 1:
 	testb	$SEL_RPL_MASK,TF_CS(%esp)
 	jnz	doreti_ast
-
+2:
 	/*
 	 * Nothing left to do, finish up.  Interrupts are still disabled.
 	 */
-2:
+4:
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)	/* interlocked with cli */
 5:
 	decl	PCPU(intr_nesting_level)
@@ -168,13 +165,31 @@ doreti_fast:
 	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
 	btrl	%ecx, PCPU(fpending)	/* is it really still pending? */
 	jnc	doreti_next
-	pushl	%eax			/* YYY cpl */
-	call    *fastunpend(,%ecx,4)
+	pushl	%eax			/* YYY cpl (expected by frame) */
+#ifdef SMP
+	pushl	%ecx			/* save ecx */
+	call	try_mplock
+	popl	%ecx
+	testl	%eax,%eax
+	jz	1f
+#endif
+	call    *fastunpend(,%ecx,4)	/* MP lock successful */
+#ifdef SMP
+	call	rel_mplock
+#endif
 	popl	%eax
+	jmp	doreti_next
+1:
+	btsl	%ecx, PCPU(fpending)	/* oops, couldn't get the MP lock */
+	popl	%eax
+	orl	PCPU(fpending),%eax
 	jmp	doreti_next
 
 	/*
 	 *  INTR interrupt pending
+	 *
+	 *  Temporarily back-out our critical section to allow the interrupt
+	 *  preempt us.
 	 */
 	ALIGN_TEXT
 doreti_intr:
@@ -184,7 +199,9 @@ doreti_intr:
 	jnc	doreti_next
 	pushl	%eax
 	pushl	%ecx
+	subl	$TDPRI_CRIT,TD_PRI(%ebx)
 	call	sched_ithd		/* YYY must pull in imasks */
+	addl	$TDPRI_CRIT,TD_PRI(%ebx)
 	addl	$4,%esp
 	popl	%eax
 	jmp	doreti_next
@@ -195,13 +212,25 @@ doreti_intr:
 doreti_ast:
 	andl	$~AST_PENDING,PCPU(astpending)
 	sti
+	movl	%eax,%esi		/* save cpl (can't use stack) */
 	movl	$T_ASTFLT,TF_TRAPNO(%esp)
 	decl	PCPU(intr_nesting_level)
 	call	trap
 	incl	PCPU(intr_nesting_level)
+	movl	%esi,%eax		/* restore cpl for loop */
+	jmp	doreti_next
+
+#ifdef SMP
+	/*
+	 * IPIQ message pending
+	 */
+doreti_ipiq:
+	andl	$~AST_IPIQ,PCPU(astpending)
+	call	lwkt_process_ipiq
 	movl	TD_CPL(%ebx),%eax	/* retrieve cpl again for loop */
 	jmp	doreti_next
 
+#endif
 
 	/*
 	 * SPLZ() a C callable procedure to dispatch any unmasked pending
@@ -227,11 +256,13 @@ splz_next:
 	testl	PCPU(fpending),%ecx	/* check for an unmasked fast int */
 	jne	splz_fast
 
-	movl	PCPU(irunning),%edx	/* check for an unmasked normal int */
-	notl	%edx			/* that isn't already running */
-	andl	%edx, %ecx
 	testl	PCPU(ipending),%ecx
 	jne	splz_intr
+
+#ifdef SMP
+	testl	$AST_IPIQ,PCPU(astpending)
+	jnz	splz_ipiq
+#endif
 
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)
 	popl	%ebx
@@ -247,16 +278,31 @@ splz_fast:
 	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
 	btrl	%ecx, PCPU(fpending)	/* is it really still pending? */
 	jnc	splz_next
-	movl	$1,last_splz
-	movl	%ecx,last_splz2
 	pushl	%eax
+#ifdef SMP
+	pushl	%ecx
+	call	try_mplock
+	popl	%ecx
+	testl	%eax,%eax
+	jz	1f
+#endif
 	call    *fastunpend(,%ecx,4)
+#ifdef SMP
+	call	rel_mplock
+#endif
 	popl	%eax
-	movl	$-1,last_splz
+	jmp	splz_next
+1:
+	btsl	%ecx, PCPU(fpending)	/* oops, couldn't get the MP lock */
+	popl	%eax
+	orl	PCPU(fpending),%eax
 	jmp	splz_next
 
 	/*
 	 *  INTR interrupt pending
+	 *
+	 *  Temporarily back-out our critical section to allow the interrupt
+	 *  preempt us.
 	 */
 	ALIGN_TEXT
 splz_intr:
@@ -265,15 +311,23 @@ splz_intr:
 	btrl	%ecx, PCPU(ipending)	/* is it really still pending? */
 	jnc	splz_next
 	sti
-	movl	$2,last_splz
 	pushl	%eax
 	pushl	%ecx
-	movl	%ecx,last_splz2
+	subl	$TDPRI_CRIT,TD_PRI(%ebx)
 	call	sched_ithd		/* YYY must pull in imasks */
+	addl	$TDPRI_CRIT,TD_PRI(%ebx)
 	addl	$4,%esp
 	popl	%eax
-	movl	$-2,last_splz
 	jmp	splz_next
+
+#ifdef SMP
+splz_ipiq:
+	andl	$~AST_IPIQ,PCPU(astpending)
+	pushl	%eax
+	call	lwkt_process_ipiq
+	popl	%eax
+	jmp	splz_next
+#endif
 
 	/*
 	 * APIC/ICU specific ipl functions provide masking and unmasking

@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/smp.h,v 1.50.2.5 2001/02/13 22:32:45 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/include/smp.h,v 1.3 2003/07/06 21:23:49 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/smp.h,v 1.4 2003/07/08 06:27:27 dillon Exp $
  *
  */
 
@@ -150,6 +150,7 @@ void	set_io_apic_mask24	__P((int, u_int32_t));
 void	set_apic_timer		__P((int));
 int	read_apic_timer		__P((void));
 void	u_sleep			__P((int));
+void	cpu_send_ipiq		__P((int));
 
 /* global data in init_smp.c */
 extern int			invltlb_ok;

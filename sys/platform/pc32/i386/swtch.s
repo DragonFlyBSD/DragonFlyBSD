@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.21 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.22 2003/07/08 06:27:26 dillon Exp $
  */
 
 #include "npx.h"
@@ -143,7 +143,7 @@ ENTRY(cpu_heavy_switch)
 	addl	$PCB_SAVEFPU,%edx		/* h/w bugs make saving complicated */
 	pushl	%edx
 	call	npxsave			/* do it in a big C function */
-	popl	%eax
+	addl	$4,%esp
 1:
 	/* %ecx,%edx trashed */
 #endif	/* NNPX > 0 */
@@ -224,6 +224,8 @@ ENTRY(cpu_exit_switch)
  *	we restore everything.
  *
  *	YYY STI/CLI sequencing.
+ *	YYY the PCB crap is really crap, it makes startup a bitch because
+ *	we can't switch away.
  *
  *	YYY note: spl check is done in mi_switch when it splx()'s.
  */

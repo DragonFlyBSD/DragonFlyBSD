@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.19 2003/07/06 21:23:54 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.20 2003/07/08 06:27:28 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -21,6 +21,7 @@ struct lwkt_queue;
 struct lwkt_token;
 struct lwkt_wait;
 struct lwkt_msg;
+struct lwkt_ipiq;
 struct lwkt_port;
 struct lwkt_cpu_msg;
 struct lwkt_cpu_port;
@@ -34,6 +35,7 @@ typedef struct lwkt_port	*lwkt_port_t;
 typedef struct lwkt_cpu_msg	*lwkt_cpu_msg_t;
 typedef struct lwkt_cpu_port	*lwkt_cpu_port_t;
 typedef struct lwkt_rwlock	*lwkt_rwlock_t;
+typedef struct lwkt_ipiq	*lwkt_ipiq_t;
 typedef struct thread 		*thread_t;
 
 typedef TAILQ_HEAD(lwkt_queue, thread) lwkt_queue;
@@ -70,7 +72,7 @@ typedef struct lwkt_wait {
 } lwkt_wait;
 
 /*
- * The standarding message and port structure for communications between
+ * The standard message and port structure for communications between
  * threads.
  */
 typedef struct lwkt_msg {
@@ -91,6 +93,18 @@ typedef struct lwkt_port {
 } lwkt_port;
 
 #define mp_token	mp_wait.wa_token
+
+#define MAXCPUFIFO      16	/* power of 2 */
+#define MAXCPUFIFO_MASK	(MAXCPUFIFO - 1)
+
+typedef void (*ipifunc_t)(void *arg);
+
+typedef struct lwkt_ipiq {
+    int		ip_rindex;      /* only written by target cpu */
+    int		ip_windex;      /* only written by source cpu */
+    ipifunc_t	ip_func[MAXCPUFIFO];
+    void	*ip_arg[MAXCPUFIFO];
+} lwkt_ipiq;
 
 /*
  * The standard message and queue structure used for communications between
@@ -128,6 +142,8 @@ typedef struct lwkt_rwlock {
  * NOTE: td_pri is bumped by TDPRI_CRIT when entering a critical section,
  * but this does not effect how the thread is scheduled by LWKT.
  */
+struct md_intr_info;
+
 struct thread {
     TAILQ_ENTRY(thread) td_threadq;
     TAILQ_ENTRY(thread) td_allq;
@@ -140,6 +156,11 @@ struct thread {
     int		td_pri;		/* 0-31, 31=highest priority (note 1) */
     int		td_flags;	/* THF flags */
     int		td_gen;		/* wait queue chasing generation number */
+				/* maybe preempt */
+    void	(*td_preemptable)(struct thread *td, int critpri);
+    union {
+	struct md_intr_info *intdata;
+    } td_info;
     char	*td_kstack;	/* kernel stack */
     char	*td_sp;		/* kernel stack pointer for LWKT restore */
     void	(*td_switch)(struct thread *ntd);
@@ -222,7 +243,7 @@ extern void lwkt_free_thread(struct thread *td);
 extern void lwkt_init_wait(struct lwkt_wait *w);
 extern void lwkt_gdinit(struct globaldata *gd);
 extern void lwkt_switch(void);
-extern void lwkt_preempt(thread_t ntd, int id);
+extern void lwkt_preempt(thread_t ntd, int critpri);
 extern void lwkt_schedule(thread_t td);
 extern void lwkt_schedule_self(void);
 extern void lwkt_deschedule(thread_t td);
@@ -234,6 +255,7 @@ extern void lwkt_rele(thread_t td);
 
 extern void lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen);
 extern void lwkt_signal(lwkt_wait_t w);
+extern int lwkt_trytoken(lwkt_token_t tok);
 extern int lwkt_gettoken(lwkt_token_t tok);
 extern int lwkt_gentoken(lwkt_token_t tok, int *gen);
 extern void lwkt_reltoken(lwkt_token_t tok);
@@ -246,6 +268,9 @@ extern void lwkt_exunlock(lwkt_rwlock_t lock);
 extern void lwkt_shunlock(lwkt_rwlock_t lock);
 extern void lwkt_setpri(thread_t td, int pri);
 extern void lwkt_setpri_self(int pri);
+extern int  lwkt_send_ipiq(int dcpu, ipifunc_t func, void *arg);
+extern void lwkt_wait_ipiq(int dcpu, int seq);
+extern void lwkt_process_ipiq(void);
 extern void crit_panic(void);
 extern struct proc *lwkt_preempted_proc(void);
 

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.22 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.23 2003/07/08 06:27:26 dillon Exp $
  */
 
 #include "apm.h"
@@ -951,7 +951,7 @@ cpu_halt(void)
  * Note on cpu_idle_hlt:  On an SMP system this may cause the system to 
  * halt until the next clock tick, even if a thread is ready YYY
  */
-static int	cpu_idle_hlt = 0;
+static int	cpu_idle_hlt = 1;
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
     &cpu_idle_hlt, 0, "Idle loop HLT enable");
 

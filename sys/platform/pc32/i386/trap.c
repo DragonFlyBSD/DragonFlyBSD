@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.18 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.19 2003/07/08 06:27:26 dillon Exp $
  */
 
 /*
@@ -164,7 +164,7 @@ SYSCTL_INT(_machdep, OID_AUTO, panic_on_nmi, CTLFLAG_RW,
  *
  * usertdsw is called from within a critical section, but the BGL will
  * have already been released by lwkt_switch() so only call MP safe functions
- * that don't block!
+ * that don't block and don't require the BGL!
  */
 static void
 usertdsw(struct thread *ntd)
@@ -302,7 +302,15 @@ trap(frame)
 	int i = 0, ucode = 0, type, code;
 	vm_offset_t eva;
 
+#ifdef SMP
+	if (panicstr == NULL)
+	    KASSERT(curthread->td_mpcount >= 0, ("BADX1 AT %08x %08x", frame.tf_eip, frame.tf_esp));
+#endif
 	get_mplock();
+#ifdef SMP
+	if (panicstr == NULL)
+	    KKASSERT(curthread->td_mpcount > 0);
+#endif
 
 #ifdef DDB
 	if (db_active) {
@@ -365,12 +373,19 @@ restart:
 	if (in_vm86call) {
 		if (frame.tf_eflags & PSL_VM &&
 		    (type == T_PROTFLT || type == T_STKFLT)) {
+#ifdef SMP
+			KKASSERT(curthread->td_mpcount > 0);
+#endif
 			i = vm86_emulate((struct vm86frame *)&frame);
+#ifdef SMP
+			KKASSERT(curthread->td_mpcount > 0);
+#endif
 			if (i != 0) {
 				/*
 				 * returns to original process
 				 */
 				vm86_trap((struct vm86frame *)&frame);
+				KKASSERT(0);
 			}
 			goto out2;
 		}
@@ -736,6 +751,9 @@ out:
 #endif
 	userret(p, &frame, sticks);
 out2:
+#ifdef SMP
+	KKASSERT(curthread->td_mpcount > 0);
+#endif
 	rel_mplock();
 }
 

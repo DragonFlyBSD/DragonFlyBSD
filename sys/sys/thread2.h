@@ -8,7 +8,7 @@
  *	on a different cpu will not be immediately scheduled by a yield() on
  *	this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.5 2003/07/06 21:23:54 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.6 2003/07/08 06:27:28 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -77,6 +77,10 @@ lwkt_havetoken(lwkt_token_t tok)
     return (tok->t_cpu == mycpu->gd_cpuid);
 }
 
+/*
+ * Return whether any threads are runnable, whether they meet mp_lock
+ * requirements or not.
+ */
 static __inline int
 lwkt_runnable(void)
 {

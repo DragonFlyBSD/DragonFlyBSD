@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.6 2003/07/06 21:23:49 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.7 2003/07/08 06:27:27 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -66,8 +66,8 @@
 #include <sys/thread2.h>
 
 #if defined(APIC_IO)
-#include <machine/smp.h>
 #include <machine/smptests.h>			/** FAST_HI */
+#include <machine/smp.h>
 #endif /* APIC_IO */
 #ifdef PC98
 #include <pc98/pc98/pc98.h>
@@ -113,6 +113,7 @@
 
 static inthand2_t isa_strayintr;
 
+void	*intr_unit[ICU_LEN*2];
 u_long	*intr_countp[ICU_LEN*2];
 inthand2_t *intr_handler[ICU_LEN*2] = {
 	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
@@ -124,10 +125,13 @@ inthand2_t *intr_handler[ICU_LEN*2] = {
 	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
 	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
 };
-u_int	intr_mask[ICU_LEN*2];
-int	intr_mihandler_installed[ICU_LEN*2];
-static u_int*	intr_mptr[ICU_LEN*2];
-void	*intr_unit[ICU_LEN*2];
+
+static struct md_intr_info {
+    int		irq;
+    u_int	mask;
+    int		mihandler_installed;
+    u_int	*maskp;
+} intr_info[ICU_LEN*2];
 
 static inthand_t *fastintr[ICU_LEN] = {
 	&IDTVEC(fastintr0), &IDTVEC(fastintr1),
@@ -381,17 +385,17 @@ update_intr_masks(void)
 #else
 		if (intr==ICU_SLAVEID) continue;	/* ignore 8259 SLAVE output */
 #endif /* APIC_IO */
-		maskptr = intr_mptr[intr];
+		maskptr = intr_info[intr].maskp;
 		if (!maskptr)
 			continue;
 		*maskptr |= SWI_CLOCK_MASK | (1 << intr);
 		mask = *maskptr;
-		if (mask != intr_mask[intr]) {
+		if (mask != intr_info[intr].mask) {
 #if 0
 			printf ("intr_mask[%2d] old=%08x new=%08x ptr=%p.\n",
-				intr, intr_mask[intr], mask, maskptr);
+				intr, intr_info[intr].mask, mask, maskptr);
 #endif
-			intr_mask[intr]=mask;
+			intr_info[intr].mask = mask;
 			n++;
 		}
 
@@ -474,9 +478,13 @@ icu_setup(int intr, inthand2_t *handler, void *arg, u_int *maskptr, int flags)
 	ef = read_eflags();
 	cpu_disable_intr();	/* YYY */
 	intr_handler[intr] = handler;
-	intr_mptr[intr] = maskptr;
-	intr_mask[intr] = mask | SWI_CLOCK_MASK | (1 << intr);
 	intr_unit[intr] = arg;
+	intr_info[intr].maskp = maskptr;
+	intr_info[intr].mask = mask | SWI_CLOCK_MASK | (1 << intr);
+#if 0
+	/* YYY  fast ints supported and mp protected but ... */
+	flags &= ~INTR_FAST;
+#endif
 #ifdef FAST_HI
 	if (flags & INTR_FAST) {
 		vector = TPR_FAST_INTS + intr;
@@ -533,8 +541,8 @@ icu_unset(intr, handler)
 	cpu_disable_intr();	/* YYY */
 	intr_countp[intr] = &intrcnt[1 + intr];
 	intr_handler[intr] = isa_strayintr;
-	intr_mptr[intr] = NULL;
-	intr_mask[intr] = HWI_MASK | SWI_MASK;
+	intr_info[intr].maskp = NULL;
+	intr_info[intr].mask = HWI_MASK | SWI_MASK;
 	intr_unit[intr] = &intr_unit[intr];
 #ifdef FAST_HI_XXX
 	/* XXX how do I re-create dvp here? */
@@ -697,9 +705,24 @@ update_masks(intrmask_t *maskptr, int irq)
 }
 
 /*
- * Add interrupt handler to linked list hung off of intreclist_head[irq]
- * and install shared interrupt multiplex handler, if necessary
+ * Add an interrupt handler to the linked list hung off of intreclist_head[irq]
+ * and install a shared interrupt multiplex handler, if necessary.  Install
+ * an interrupt thread for each interrupt (though FAST interrupts will not
+ * use it).  The preemption procedure checks the CPL.  lwkt_preempt() will
+ * check relative thread priorities for us as long as we properly pass through
+ * critpri.
+ *
+ * YYY needs work.  At the moment the handler is run inside a critical
+ * section so only the preemption cpl check is used.
  */
+static void
+cpu_intr_preempt(struct thread *td, int critpri)
+{
+	struct md_intr_info *info = td->td_info.intdata;
+
+	if ((curthread->td_cpl & (1 << info->irq)) == 0)
+		lwkt_preempt(td, critpri);
+}
 
 static int
 add_intrdesc(intrec *idesc)
@@ -716,10 +739,15 @@ add_intrdesc(intrec *idesc)
 	 * temporary hack to run normal interrupts as interrupt threads.
 	 * YYY FIXME!
 	 */
-	if (intr_mihandler_installed[irq] == 0) {
-		intr_mihandler_installed[irq] = 1;
-		register_int(irq, intr_mux, &intreclist_head[irq], idesc->name);
-		printf("installing MI handler for int %d\n", irq);
+	if (intr_info[irq].mihandler_installed == 0) {
+		struct thread *td;
+
+		intr_info[irq].mihandler_installed = 1;
+		intr_info[irq].irq = irq;
+		td = register_int(irq, intr_mux, &intreclist_head[irq], idesc->name);
+		td->td_info.intdata = &intr_info[irq];
+		td->td_preemptable = cpu_intr_preempt;
+		printf("installed MI handler for int %d\n", irq);
 	}
 
 	head = intreclist_head[irq];
@@ -913,11 +941,8 @@ inthand_remove(intrec *idesc)
  * ithread_done()
  *
  *	This function is called by an interrupt thread when it has completed
- *	processing a loop.  We interlock with ipending and irunning.  If
- *	a new interrupt is pending for the thread the function clears the
- *	pending bit and returns.  If no new interrupt is pending we 
- *	deschedule and sleep.  If we reschedule and return we have to 
- *	disable the interrupt again or it will keep interrupting us.
+ *	processing a loop.  We re-enable itnerrupts and interlock with
+ *	ipending.
  *
  *	See kern/kern_intr.c for more information.
  */
@@ -928,21 +953,14 @@ ithread_done(int irq)
     int mask = 1 << irq;
 
     KKASSERT(curthread->td_pri >= TDPRI_CRIT);
+    lwkt_deschedule_self();
     INTREN(mask);
     if (gd->gd_ipending & mask) {
 	atomic_clear_int(&gd->gd_ipending, mask);
 	INTRDIS(mask);
 	lwkt_schedule_self();
     } else {
-	lwkt_deschedule_self();
-	if (gd->gd_ipending & mask) {	/* race */
-	    atomic_clear_int(&gd->gd_ipending, mask);
-	    INTRDIS(mask);
-	    lwkt_schedule_self();
-	} else {
-	    atomic_clear_int(&gd->gd_irunning, mask);
-	    lwkt_switch();
-	}
+	lwkt_switch();
     }
 }
 

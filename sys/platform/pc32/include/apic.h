@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/apic.h,v 1.14.2.2 2003/03/21 21:46:15 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/apic.h,v 1.3 2003/07/06 21:23:49 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/apic.h,v 1.4 2003/07/08 06:27:26 dillon Exp $
  */
 
 #ifndef _MACHINE_APIC_H_
@@ -151,7 +151,11 @@
  * 0310	ICR_HI	| DEST FIELD|           |           |           |
  *		+-----------+-----------+-----------+-----------+
  *
- *		    The interrupt command register 
+ *		    The interrupt command register.  Generally speaking
+ *		    writing to ICR_LO initiates a command.  All fields
+ *		    are R/W except the 'S' (delivery status) field, which
+ *		    is read-only.  When
+ *	
  *
  *			XX:	Destination Shorthand field:
  *
@@ -163,12 +167,13 @@
  *					destination field of 0x0F)
  *
  *			T:	1 = Level 0 = Edge Trigger modde, used for
- *				the INIT level de-assert delivery mode only.
- *				Not sure.
+ *				the INIT level de-assert delivery mode only
+ *				to de-assert a request.
  *
- *			L:	0 = De-Assert, 1 = Assert.  Not sure what this
- *				is.  For INIT mode use 0, for all other modes
- *				use 1.
+ *			L:	0 = De-Assert, 1 = Assert.  Always write as
+ *				1 when initiating a new command.  Can only
+ *				write as 0 for INIT mode de-assertion of
+ *				command.
  *
  *			S:	1 = Send Pending.  Interrupt has been injected
  *				but APIC has not yet accepted it.
@@ -241,14 +246,16 @@
  *						Always level.
  *
  *		+-----------+-----------+-----------+-----------+
- * 0380	ICR	|           |           |           |           |
- * 0390	CCR	|           |           |           |           |
+ * 0380	TMR_ICR	|           |           |           |           |
+ * 0390	TMR_CCR	|           |           |           |           |
  * 03A0		|           |           |           |           |
  * 03B0		|           |           |           |           |
  * 03C0		|           |           |           |           |
  * 03D0		|           |           |           |           |
- * 03E0 DCR	|           |           |           |           |
+ * 03E0 TMR_DCR	|           |           |           |           |
  *		+-----------+-----------+-----------+-----------+
+ *
+ *		    Timer control and access registers.
  *
  *
  *	NOTE ON EOI: Upon receiving an EOI the APIC clears the highest priority
@@ -257,7 +264,6 @@
  *	triggered the APIC will send an EOI to all I/O APICs.  For the moment
  *	you can write garbage to the EOI register but for future compatibility
  *	0 should be written.
- *
  */
 
 #ifndef LOCORE

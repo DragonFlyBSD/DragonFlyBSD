@@ -24,7 +24,7 @@
  *
  *	Machine independant code should not directly include this file.
  *
- * $DragonFly: src/sys/platform/pc32/include/thread.h,v 1.3 2003/06/28 04:16:03 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/thread.h,v 1.4 2003/07/08 06:27:27 dillon Exp $
  */
 
 #ifndef	_MACHINE_THREAD_H_
@@ -42,8 +42,6 @@ struct md_thread {
 
 #define td_cpl	td_mach.mtd_cpl
 
-struct globaldata;
-
 /*
  * mycpu() retrieves the base of the current cpu's globaldata structure.
  * Note that it is *NOT* volatile, meaning that the value may be cached by
@@ -55,6 +53,8 @@ struct globaldata;
  * move to another cpu preemptively so the 'gd' pointer is good until you
  * block.
  */
+
+struct globaldata;
 
 extern int __mycpu__dummy;
 

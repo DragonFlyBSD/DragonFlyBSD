@@ -24,7 +24,7 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/include/db_machdep.h,v 1.16 1999/10/04 13:55:35 marcel Exp $
- * $DragonFly: src/sys/cpu/i386/include/db_machdep.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/db_machdep.h,v 1.3 2003/07/08 06:27:26 dillon Exp $
  */
 
 #ifndef _MACHINE_DB_MACHDEP_H_
@@ -33,6 +33,7 @@
 #include <machine/frame.h>
 #include <machine/psl.h>
 #include <machine/trap.h>
+#include <machine/globaldata.h>
 
 #define i386_saved_state trapframe
 

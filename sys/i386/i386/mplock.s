@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.4 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.5 2003/07/08 06:27:26 dillon Exp $
  *
  * Functions for locking between CPUs in a SMP system.
  *
@@ -40,7 +40,7 @@ mp_lock:
 
 	/*
 	 * Note on cmpxchgl... exchanges ecx with mem if mem matches eax.
-	 * Z=1 (jz) on success. 
+	 * Z=1 (jz) on success.   A lock prefix is required for MP.
 	 */
 NON_GPROF_ENTRY(cpu_get_initial_mplock)
 	movl	PCPU(curthread),%ecx
@@ -56,7 +56,7 @@ NON_GPROF_ENTRY(cpu_get_initial_mplock)
 NON_GPROF_ENTRY(cpu_try_mplock)
 	movl	PCPU(cpuid),%ecx
 	movl	$-1,%eax
-	cmpxchgl %ecx,mp_lock		/* ecx<->mem if eax matches */
+	lock cmpxchgl %ecx,mp_lock	/* ecx<->mem if eax matches */
 	jnz	1f
 	movl	$1,%eax
 	NON_GPROF_RET
@@ -76,16 +76,27 @@ NON_GPROF_ENTRY(get_mplock)
 	movl	$1,TD_MPCOUNT(%edx)
 	movl	PCPU(cpuid),%ecx
 	movl	$-1,%eax
-	cmpxchgl %ecx,mp_lock		/* ecx<->mem & JZ if eax matches */
+	lock cmpxchgl %ecx,mp_lock	/* ecx<->mem & JZ if eax matches */
 	jnz	2f
 	popfl				/* success */
 	NON_GPROF_RET
 2:
+#ifdef INVARIANTS
 	movl	PCPU(cpuid),%eax	/* failure */
 	cmpl	%eax,mp_lock
+	je	3f
+#endif
+	addl	$TDPRI_CRIT,TD_PRI(%edx)
+	popfl
+	call	lwkt_switch		/* will be correct on return */
+	movl	PCPU(curthread),%edx
+	subl	$TDPRI_CRIT,TD_PRI(%edx)
+	NON_GPROF_RET
+3:
+	cmpl	$0,panicstr		/* don't double panic */
 	je	badmp_get
 	popfl
-	jmp	lwkt_switch		/* will be correct on return */
+	NON_GPROF_RET
 
 NON_GPROF_ENTRY(try_mplock)
 	movl	PCPU(curthread),%edx
@@ -99,33 +110,51 @@ NON_GPROF_ENTRY(try_mplock)
 	cli
 	movl	PCPU(cpuid),%ecx
 	movl	$-1,%eax
-	cmpxchgl %ecx,mp_lock		/* ecx<->mem & JZ if eax matches */
+	lock cmpxchgl %ecx,mp_lock	/* ecx<->mem & JZ if eax matches */
 	jnz	2f
 	movl	$1,TD_MPCOUNT(%edx)
 	popfl				/* success */
 	movl	$1,%eax
 	NON_GPROF_RET
 2:
+#ifdef INVARIANTS
+	cmpl	$0,panicstr
+	jnz	3f
 	movl	PCPU(cpuid),%eax	/* failure */
 	cmpl	%eax,mp_lock
 	je	badmp_get
+3:
+#endif
 	popfl
 	movl	$0,%eax
 	NON_GPROF_RET
 
 NON_GPROF_ENTRY(rel_mplock)
 	movl	PCPU(curthread),%edx
-	cmpl	$1,TD_MPCOUNT(%edx)
+	movl	TD_MPCOUNT(%edx),%eax
+	cmpl	$1,%eax
 	je	1f
-	subl	$1,TD_MPCOUNT(%edx)
+#ifdef INVARIANTS
+	testl	%eax,%eax
+	jz	badmp_rel
+#endif
+	subl	$1,%eax
+	movl	%eax,TD_MPCOUNT(%edx)
 	NON_GPROF_RET
 1:
 	pushfl
 	cli
+#ifdef INVARIANTS
+	movl	PCPU(cpuid),%ecx
+	cmpl	%ecx,mp_lock
+	jne	badmp_rel2
+#endif
 	movl	$0,TD_MPCOUNT(%edx)
 	movl	$MP_FREE_LOCK,mp_lock
 	popfl
 	NON_GPROF_RET
+
+#ifdef INVARIANTS
 
 badmp_get:
 	pushl	$bmpsw1
@@ -133,14 +162,22 @@ badmp_get:
 badmp_rel:
 	pushl	$bmpsw2
 	call	panic
+badmp_rel2:
+	pushl	$bmpsw2a
+	call	panic
 
 	.data
 
 bmpsw1:
-	.asciz	"try/get_mplock(): already have lock!"
+	.asciz	"try/get_mplock(): already have lock! %d %p"
 
 bmpsw2:
-	.asciz	"rel_mplock(): not holding lock!"
+	.asciz	"rel_mplock(): mpcount already 0 @ %p %p %p %p %p %p %p %p!"
+
+bmpsw2a:
+	.asciz	"rel_mplock(): Releasing another cpu's MP lock! %p %p"
+
+#endif
 
 #if 0
 /* after 1st acquire of lock we grab all hardware INTs */

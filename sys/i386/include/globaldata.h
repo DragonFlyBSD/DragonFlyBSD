@@ -28,7 +28,7 @@
  *	should not include this file.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.15 2003/07/04 00:25:48 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.16 2003/07/08 06:27:26 dillon Exp $
  */
 
 #ifndef _MACHINE_GLOBALDATA_H_
@@ -49,12 +49,15 @@
 
 /*
  * Note on interrupt control.  Pending interrupts not yet dispatched are
- * marked in gd_fpending or gd_ipending.  Once dispatched an interrupt
- * is marked in irunning and the fpending bit is cleared.  For edge triggered
- * interrupts interrupts may be enabled again at this point and if they
- * occur before the interrupt service routine is complete the ipending bit
- * will be set again and cause the interrupt service to loop.  The current
- * thread's cpl is stored in the thread structure.
+ * marked in gd_fpending or gd_ipending.  Once dispatched the interrupt's
+ * pending bit is cleared and the interrupt is masked.  Upon completion
+ * the interrupt is unmasked.
+ *
+ * For edge triggered interrupts interrupts may be enabled again at this
+ * point and if they occur before the interrupt service routine is complete
+ * the service routine will loop.
+ *
+ * The current thread's cpl is stored in the thread structure.
  */
 struct mdglobaldata {
 	struct globaldata mi;
@@ -65,7 +68,6 @@ struct mdglobaldata {
 	struct i386tss  gd_common_tss;
 	int		gd_fpending;	/* fast interrupt pending */
 	int		gd_ipending;	/* normal interrupt pending */
-	int		gd_irunning;	/* normal interrupt in progress */
 	int		gd_currentldt;	/* USER_LDT */
 	u_int		gd_cpu_lockid;
 	u_int		gd_other_cpus;

@@ -24,11 +24,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.7 2003/07/04 00:26:00 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.8 2003/07/08 06:27:28 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
 #define _SYS_GLOBALDATA_H_
+
+#ifndef _SYS_TIME_H_
+#include <sys/time.h>	/* struct timeval */
+#endif
+#ifndef _SYS_VMMETER_H_
+#include <sys/vmmeter.h>
+#endif _SYS_VMMETER_H_
 
 /*
  * This structure maps out the global data that needs to be kept on a
@@ -56,14 +63,9 @@
  * the LWKT subsystem.
  */
 
-#ifndef _SYS_TIME_H_
-#include <sys/time.h>	/* struct timeval */
-#endif
-#ifndef _SYS_VMMETER_H_
-#include <sys/vmmeter.h>
-#endif _SYS_VMMETER_H_
-
 struct privatespace;
+struct thread;
+struct lwkt_ipiq;
 
 struct globaldata {
 	struct privatespace *gd_prvspace;	/* self-reference */
@@ -82,6 +84,7 @@ struct globaldata {
 	int		gd_astpending;		/* sorta MD but easier here */
 	int		gd_uprocscheduled;
 	struct vmmeter	gd_cnt;
+	struct lwkt_ipiq *gd_ipiq;
 	/* extended by <machine/pcpu.h> */
 };
 

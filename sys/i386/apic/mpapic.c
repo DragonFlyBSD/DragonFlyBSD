@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/i386/apic/Attic/mpapic.c,v 1.4 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/mpapic.c,v 1.5 2003/07/08 06:27:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -33,6 +33,7 @@
 #include <machine/smp.h>
 #include <machine/mpapic.h>
 #include <machine/segments.h>
+#include <sys/thread2.h>
 
 #include <i386/isa/intr_machdep.h>	/* Xspuriousint() */
 
@@ -79,8 +80,10 @@ apic_initialize(void)
 	 * Leave the BSP and TPR 0 during boot so it gets all the interrupts,
 	 * set APs at TPR 0xF0 at boot so they get no ints.
 	 */
+#if 0
 	if (mycpu->gd_cpuid != 0)
 		temp |= TPR_IPI_ONLY;	/* disable INTs on this cpu */
+#endif
 	lapic.tpr = temp;
 
 	/* enable the local APIC */
@@ -484,63 +487,33 @@ imen_dump(void)
  *  destType is 1 of: APIC_DEST_SELF, APIC_DEST_ALLISELF, APIC_DEST_ALLESELF
  *  vector is any valid SYSTEM INT vector
  *  delivery_mode is 1 of: APIC_DELMODE_FIXED, APIC_DELMODE_LOWPRIO
+ *
+ * A backlog of requests can create a deadlock between cpus.  To avoid this
+ * we have to be able to accept IPIs at the same time we are trying to send
+ * them.  The critical section prevents us from attempting to send additional
+ * IPIs reentrantly, but also prevents IPIQ processing so we have to call
+ * lwkt_process_ipiq() manually.  It's rather messy and expensive for this
+ * to occur but fortunately it does not happen too often.
  */
-#define DETECT_DEADLOCK
 int
 apic_ipi(int dest_type, int vector, int delivery_mode)
 {
 	u_long  icr_lo;
 
-#if defined(DETECT_DEADLOCK)
-#define MAX_SPIN1	10000000
-#define MAX_SPIN2	1000
-	int     x;
-
-	/* "lazy delivery", ie we only barf if they stack up on us... */
-	for (x = MAX_SPIN1; x; --x) {
-		if ((lapic.icr_lo & APIC_DELSTAT_MASK) == 0)
-			break;
+	crit_enter();
+	if ((lapic.icr_lo & APIC_DELSTAT_MASK) != 0) {
+	    unsigned int eflags = read_eflags();
+	    cpu_enable_intr();
+	    while ((lapic.icr_lo & APIC_DELSTAT_MASK) != 0) {
+		lwkt_process_ipiq();
+	    }
+	    write_eflags(eflags);
 	}
-	if (x == 0)
-		panic("apic_ipi was stuck");
-#endif  /* DETECT_DEADLOCK */
 
-	/* build IRC_LOW */
-	icr_lo = (lapic.icr_lo & APIC_RESV2_MASK)
-	    | dest_type | delivery_mode | vector;
-
-	/* write APIC ICR */
+	icr_lo = (lapic.icr_lo & APIC_RESV2_MASK) | dest_type | 
+		delivery_mode | vector;
 	lapic.icr_lo = icr_lo;
-
-	/* wait for pending status end */
-#if defined(DETECT_DEADLOCK)
-	for (x = MAX_SPIN2; x; --x) {
-		if ((lapic.icr_lo & APIC_DELSTAT_MASK) == 0)
-			break;
-	}
-#ifdef needsattention
-/*
- * XXX FIXME:
- *      The above loop waits for the message to actually be delivered.
- *      It breaks out after an arbitrary timout on the theory that it eventually
- *      will be delivered and we will catch a real failure on the next entry to
- *      this function, which would panic().
- *      We could skip this wait entirely, EXCEPT it probably protects us from
- *      other "less robust" routines that assume the message was delivered and
- *      acted upon when this function returns.  TLB shootdowns are one such
- *      "less robust" function.
- */
-	if (x == 0)
-		printf("apic_ipi might be stuck\n");
-#endif
-#undef MAX_SPIN2
-#undef MAX_SPIN1
-#else
-	while (lapic.icr_lo & APIC_DELSTAT_MASK)
-		 /* spin */ ;
-#endif  /* DETECT_DEADLOCK */
-
-	/** XXX FIXME: return result */
+	crit_exit();
 	return 0;
 }
 
@@ -549,24 +522,15 @@ apic_ipi_singledest(int cpu, int vector, int delivery_mode)
 {
 	u_long  icr_lo;
 	u_long  icr_hi;
-	u_long  eflags;
 
-#if defined(DETECT_DEADLOCK)
-#define MAX_SPIN1	10000000
-#define MAX_SPIN2	1000
-	int     x;
-
-	/* "lazy delivery", ie we only barf if they stack up on us... */
-	for (x = MAX_SPIN1; x; --x) {
-		if ((lapic.icr_lo & APIC_DELSTAT_MASK) == 0)
-			break;
+	if ((lapic.icr_lo & APIC_DELSTAT_MASK) != 0) {
+	    unsigned int eflags = read_eflags();
+	    cpu_enable_intr();
+	    while ((lapic.icr_lo & APIC_DELSTAT_MASK) != 0) {
+		lwkt_process_ipiq();
+	    }
+	    write_eflags(eflags);
 	}
-	if (x == 0)
-		panic("apic_ipi was stuck");
-#endif  /* DETECT_DEADLOCK */
-
-	eflags = read_eflags();
-	__asm __volatile("cli" : : : "memory");
 	icr_hi = lapic.icr_hi & ~APIC_ID_MASK;
 	icr_hi |= (CPU_TO_ID(cpu) << 24);
 	lapic.icr_hi = icr_hi;
@@ -577,100 +541,33 @@ apic_ipi_singledest(int cpu, int vector, int delivery_mode)
 
 	/* write APIC ICR */
 	lapic.icr_lo = icr_lo;
-	write_eflags(eflags);
-
-	/* wait for pending status end */
-#if defined(DETECT_DEADLOCK)
-	for (x = MAX_SPIN2; x; --x) {
-		if ((lapic.icr_lo & APIC_DELSTAT_MASK) == 0)
-			break;
-	}
-#ifdef needsattention
-/*
- * XXX FIXME:
- *      The above loop waits for the message to actually be delivered.
- *      It breaks out after an arbitrary timout on the theory that it eventually
- *      will be delivered and we will catch a real failure on the next entry to
- *      this function, which would panic().
- *      We could skip this wait entirely, EXCEPT it probably protects us from
- *      other "less robust" routines that assume the message was delivered and
- *      acted upon when this function returns.  TLB shootdowns are one such
- *      "less robust" function.
- */
-	if (x == 0)
-		printf("apic_ipi might be stuck\n");
-#endif
-#undef MAX_SPIN2
-#undef MAX_SPIN1
-#else
-	while (lapic.icr_lo & APIC_DELSTAT_MASK)
-		 /* spin */ ;
-#endif  /* DETECT_DEADLOCK */
-
-	/** XXX FIXME: return result */
 	return 0;
 }
-
 
 /*
  * Send APIC IPI 'vector' to 'target's via 'delivery_mode'.
  *
- *  target contains a bitfield with a bit set for selected APICs.
- *  vector is any valid SYSTEM INT vector
- *  delivery_mode is 1 of: APIC_DELMODE_FIXED, APIC_DELMODE_LOWPRIO
+ * target is a bitmask of destination cpus.  Vector is any
+ * valid system INT vector.  Delivery mode may be either
+ * APIC_DELMODE_FIXED or APIC_DELMODE_LOWPRIO.
  */
 int
 selected_apic_ipi(u_int target, int vector, int delivery_mode)
 {
-	int     x;
-	int     status;
+	int status = 0;
 
-	if (target & ~0x7fff)
-		return -1;	/* only 15 targets allowed */
-
-	for (status = 0, x = 0; x <= 14; ++x)
-		if (target & (1 << x)) {
-
-			/* send the IPI */
-			if (apic_ipi_singledest(x, vector, 
-						delivery_mode) == -1)
-				status |= (1 << x);
-		}
-	return status;
+	crit_enter();
+	while (target) {
+		int n = bsfl(target);
+		target &= ~(1 << n);
+		if (apic_ipi_singledest(n, vector, delivery_mode) < 0)
+			status |= 1 << n;
+	}
+	crit_exit();
+	return(status);
 }
-
-
-#if defined(READY)
-/*
- * Send an IPI INTerrupt containing 'vector' to CPU 'target'
- *   NOTE: target is a LOGICAL APIC ID
- */
-int
-selected_proc_ipi(int target, int vector)
-{
-	u_long	icr_lo;
-	u_long	icr_hi;
-
-	/* write the destination field for the target AP */
-	icr_hi = (lapic.icr_hi & ~APIC_ID_MASK) |
-	    (cpu_num_to_apic_id[target] << 24);
-	lapic.icr_hi = icr_hi;
-
-	/* write command */
-	icr_lo = (lapic.icr_lo & APIC_RESV2_MASK) |
-	    APIC_DEST_DESTFLD | APIC_DELMODE_FIXED | vector;
-	lapic.icr_lo = icr_lo;
-
-	/* wait for pending status end */
-	while (lapic.icr_lo & APIC_DELSTAT_MASK)
-		/* spin */ ;
-
-	return 0;	/** XXX FIXME: return result */
-}
-#endif /* READY */
 
 #endif	/* APIC_IO */
-
 
 /*
  * Timer code, in development...

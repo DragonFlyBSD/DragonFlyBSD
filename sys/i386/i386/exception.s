@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.11 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.12 2003/07/08 06:27:26 dillon Exp $
  */
 
 #include "npx.h"
@@ -175,7 +175,7 @@ IDTVEC(fpu)
 	call	npx_intr		/* note: call might mess w/ argument */
 
 	movl	%ebx, (%esp)		/* save cpl for doreti */
-	incb	PCPU(intr_nesting_level)
+	incl	PCPU(intr_nesting_level)
 	MEXITCOUNT
 	jmp	doreti
 #else	/* NNPX > 0 */
@@ -214,7 +214,7 @@ alltraps_with_regs_pushed:
 	FAKE_MCOUNT(13*4(%esp))
 calltrap:
 	FAKE_MCOUNT(btrap)		/* init "from" _btrap -> calltrap */
-	incl PCPU(cnt)+V_TRAP		/* YYY per-cpu */
+	incl	PCPU(cnt)+V_TRAP
 	movl	PCPU(curthread),%eax	/* keep orig cpl here during call */
 	movl	TD_CPL(%eax),%ebx
 	call	trap
@@ -224,7 +224,7 @@ calltrap:
 	 * to interrupt frame.
 	 */
 	pushl	%ebx			/* cpl to restore */
-	incb	PCPU(intr_nesting_level)
+	incl	PCPU(intr_nesting_level)
 	MEXITCOUNT
 	jmp	doreti
 
@@ -308,33 +308,51 @@ IDTVEC(int0x80_syscall)
  * This function is what cpu_heavy_restore jumps to after a new process
  * is created.  We are in a critical section in order to prevent
  * cpu_heavy_restore from being interrupted (especially since it stores
- * its context in a static place!), so the first thing we do is release
- * the critical section.
+ * its context in a static place!).
  *
  * The MP lock is held on entry, but for processes fork_return (esi)
  * releases it.  'doreti' always runs without the MP lock.
+ *
+ * We need to be careful to hold interrupts disabled through until
+ * doreti iret's YYY this is due to the PCB_ storage in the heavy switcher,
+ * fixme!
  */
 ENTRY(fork_trampoline)
+	cli
 	movl	PCPU(curthread),%eax
 	subl	$TDPRI_CRIT,TD_PRI(%eax)
-	call	spl0
-	call	splz
 
 	/*
 	 * cpu_set_fork_handler intercepts this function call to
 	 * have this call a non-return function to stay in kernel mode.
-	 * initproc has its own fork handler, but it does return.
+	 *
+	 * initproc has its own fork handler, start_init(), which DOES
+	 * return.
 	 */
 	pushl	%ebx			/* arg1 */
 	call	*%esi			/* function */
 	addl	$4,%esp
 	/* cut from syscall */
 
+	call	spl0
+	call	splz
+
+#if defined(INVARIANTS) && defined(SMP)
+	movl	PCPU(curthread),%eax
+	cmpl	$0,TD_MPCOUNT(%eax)
+	je	1f
+	pushl	%esi
+	pushl	TD_MPCOUNT(%eax)
+	pushl	$pmsg4
+	call	panic
+pmsg4:  .asciz	"fork_trampoline mpcount %d after calling %p"
+1:
+#endif
 	/*
 	 * Return via doreti to handle ASTs.
 	 */
 	pushl	$0			/* cpl to restore */
-	movb	$1,PCPU(intr_nesting_level)
+	movl	$1,PCPU(intr_nesting_level)
 	MEXITCOUNT
 	jmp	doreti
 

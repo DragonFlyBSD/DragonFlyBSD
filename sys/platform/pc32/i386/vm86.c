@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.6 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.7 2003/07/08 06:27:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -39,6 +39,7 @@
 #include <vm/vm_page.h>
 
 #include <sys/user.h>
+#include <sys/thread2.h>
 
 #include <machine/md_var.h>
 #include <machine/pcb_ext.h>	/* pcb.h included via sys/user.h */
@@ -570,13 +571,18 @@ vm86_trap(struct vm86frame *vmf)
 int
 vm86_intcall(int intnum, struct vm86frame *vmf)
 {
+	int error;
+
 	if (intnum < 0 || intnum > 0xff)
 		return (EINVAL);
 
+	crit_enter();
 	ASSERT_MP_LOCK_HELD();
 
 	vmf->vmf_trapno = intnum;
-	return (vm86_bioscall(vmf));
+	error = vm86_bioscall(vmf);
+	crit_exit();
+	return(error);
 }
 
 /*
@@ -595,6 +601,7 @@ vm86_datacall(intnum, vmf, vmc)
 	u_int page;
 	int i, entry, retval;
 
+	crit_enter();
 	ASSERT_MP_LOCK_HELD();
 
 	for (i = 0; i < vmc->npages; i++) {
@@ -611,7 +618,7 @@ vm86_datacall(intnum, vmf, vmc)
 		entry = vmc->pmap[i].pte_num;
 		pte[entry] = vmc->pmap[i].old_pte;
 	}
-
+	crit_exit();
 	return (retval);
 }
 

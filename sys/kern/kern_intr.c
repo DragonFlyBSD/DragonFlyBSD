@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.7 2003/07/04 05:57:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.8 2003/07/08 06:27:27 dillon Exp $
  *
  */
 
@@ -54,18 +54,19 @@ static intrec_t	*intlists[NHWI+NSWI];
 static thread_t ithreads[NHWI+NSWI];
 static struct thread ithread_ary[NHWI+NSWI];
 static struct random_softc irandom_ary[NHWI+NSWI];
+static int irunning[NHWI+NSWI];
 
 static void ithread_handler(void *arg);
 
-void
+thread_t
 register_swi(int intr, inthand2_t *handler, void *arg, const char *name)
 {
     if (intr < NHWI || intr >= NHWI + NSWI)
 	panic("register_swi: bad intr %d", intr);
-    register_int(intr, handler, arg, name);
+    return(register_int(intr, handler, arg, name));
 }
 
-void
+thread_t
 register_int(int intr, inthand2_t *handler, void *arg, const char *name)
 {
     intrec_t **list;
@@ -110,6 +111,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name)
 	list = &(*list)->next;
     *list = rec;
     crit_exit();
+    return(td);
 }
 
 void
@@ -175,7 +177,21 @@ unregister_randintr(int intr)
 /*
  * Dispatch an interrupt.  If there's nothing to do we have a stray
  * interrupt and can just return, leaving the interrupt masked.
+ *
+ * We need to schedule the interrupt and set its irunning[] bit.  If
+ * we are not on the interrupt thread's cpu we have to send a message
+ * to the correct cpu that will issue the desired action (interlocking
+ * with the interrupt thread's critical section).
+ *
+ * We are NOT in a critical section, which will allow the scheduled
+ * interrupt to preempt us.
  */
+static void
+sched_ithd_remote(void *arg)
+{
+    sched_ithd((int)arg);
+}
+
 void
 sched_ithd(int intr)
 {
@@ -185,8 +201,14 @@ sched_ithd(int intr)
 	if (intlists[intr] == NULL) {
 	    printf("sched_ithd: stray interrupt %d\n", intr);
 	} else {
-	    lwkt_schedule(td);
-	    lwkt_preempt(td, intr);
+	    if (td->td_cpu == mycpu->gd_cpuid) {
+		irunning[intr] = 1;
+		lwkt_schedule(td);	/* preemption handled internally */
+	    } else {
+		crit_enter();
+		lwkt_send_ipiq(td->td_cpu, sched_ithd_remote, (void *)intr);
+		crit_exit();
+	    }
 	}
     } else {
 	printf("sched_ithd: stray interrupt %d\n", intr);
@@ -208,16 +230,17 @@ ithread_handler(void *arg)
 
     KKASSERT(curthread->td_pri >= TDPRI_CRIT);
     for (;;) {
+	irunning[intr] = 0;
 	for (rec = *list; rec; rec = nrec) {
 	    nrec = rec->next;
 	    rec->handler(rec->argument);
 	}
 	if (sc->sc_enabled)
-		add_interrupt_randomness(intr);
-	ithread_done(intr);
+	    add_interrupt_randomness(intr);
+	if (irunning[intr] == 0)
+	    ithread_done(intr);
     }
 }
-
 
 /* 
  * Sysctls used by systat and others: hw.intrnames and hw.intrcnt.

@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.7 2003/07/06 21:23:49 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.8 2003/07/08 06:27:27 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -861,6 +861,11 @@ npxdna()
  * often called at splhigh so it must not use many system services.  In
  * particular, it's much easier to install a special handler than to
  * guarantee that it's safe to use npxintr() and its supporting code.
+ *
+ * WARNING!  This call is made during a switch and the MP lock will be
+ * setup for the new target thread rather then the current thread, so we
+ * cannot do anything here that depends on the *_mplock() functions as
+ * we may trip over their assertions.
  */
 void
 npxsave(addr)

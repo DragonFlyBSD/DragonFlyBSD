@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.8 2003/07/06 21:23:49 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.9 2003/07/08 06:27:27 dillon Exp $
  */
 
 
@@ -38,7 +38,7 @@
 	pushl	12(%esp) ;	/* original caller eip */		\
 	pushl	$0 ;		/* dummy error code */			\
 	pushl	$0 ;		/* dummy trap type */			\
-	subl	$11*4,%esp ;	/* pushal + 3 seg regs (dummy) */	\
+	subl	$12*4,%esp ;	/* pushal + 3 seg regs (dummy) + CPL */	\
 
 /*
  * Warning: POP_FRAME can only be used if there is no chance of a
@@ -53,7 +53,7 @@
 	addl	$2*4,%esp ;	/* dummy trap & error codes */		\
 
 #define POP_DUMMY							\
-	addl	$16*4,%esp ;						\
+	addl	$17*4,%esp ;						\
 
 #define IOAPICADDR(irq_num) CNAME(int_to_apicintpin) + 16 * (irq_num) + 8
 #define REDIRIDX(irq_num) CNAME(int_to_apicintpin) + 16 * (irq_num) + 12
@@ -165,6 +165,10 @@ IDTVEC(vec_name) ;							\
 	movl	$TDPRI_CRIT, PCPU(reqpri) ;				\
 	jmp	5f ;							\
 2: ;									\
+	/* try to get giant */						\
+	call	try_mplock ;						\
+	testl	%eax,%eax ;						\
+	jz	1b ;							\
 	/* clear pending bit, run handler */				\
 	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
@@ -175,6 +179,7 @@ IDTVEC(vec_name) ;							\
 	incl	PCPU(cnt)+V_INTR ;	/* book-keeping make per cpu YYY */ \
 	movl	intr_countp + (irq_num) * 4, %eax ;			\
 	incl	(%eax) ;						\
+	call	rel_mplock ;						\
 	UNMASK_IRQ(irq_num) ;						\
 5: ;									\
 	MEXITCOUNT ;							\
@@ -189,6 +194,8 @@ IDTVEC(vec_name) ;							\
  *	- Run the handler
  *	- Unmask the interrupt
  *	- Pop the dummy frame and do a normal return
+ *
+ *	The BGL is held on call and left held on return.
  *
  *	YYY can cache gd base pointer instead of using hidden %fs
  *	prefixes.
@@ -221,17 +228,12 @@ IDTVEC(vec_name) ;							\
  *	  doreti.  In addition to checking for a critical section
  *	  and cpl mask we also check to see if the thread is still
  *	  running.
- *	- If we can take the interrupt clear its ipending bit,
- *	  set its irunning bit, and schedule the thread.  Leave
- *	  interrupts masked and doreti.
+ *	- If we can take the interrupt clear its ipending bit
+ *	  and schedule the thread.  Leave interrupts masked and doreti.
  *
- *	the interrupt thread will run its handlers and loop if
- *	ipending is found to be set.  ipending/irunning interlock
- *	the interrupt thread with the interrupt.  The handler calls
- *	UNPEND when it is through.
- *
- *	Note that we do not enable interrupts when calling sched_ithd.
- *	YYY sched_ithd may preempt us synchronously (fix interrupt stacking)
+ *	Note that calls to sched_ithd() are made with interrupts enabled
+ *	and outside a critical section.  YYY sched_ithd may preempt us
+ *	synchronously (fix interrupt stacking)
  *
  *	YYY can cache gd base pointer instead of using hidden %fs
  *	prefixes.
@@ -252,25 +254,20 @@ IDTVEC(vec_name) ;							\
 	pushl	%eax ;		/* cpl do restore */			\
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	jge	1f ;							\
-	testl	$IRQ_LBIT(irq_num),PCPU(irunning) ;			\
-	jnz	1f ;							\
 	testl	$IRQ_LBIT(irq_num),%eax ;				\
-	jz	1f ;							\
+	jz	2f ;							\
 1: ;									\
 	/* set the pending bit and return, leave the interrupt masked */ \
 	orl	$IRQ_LBIT(irq_num), PCPU(ipending) ;			\
 	movl	$TDPRI_CRIT, PCPU(reqpri) ;				\
 	jmp	5f ;							\
 2: ;									\
-	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	/* set running bit, clear pending bit, run handler */		\
-	orl	$IRQ_LBIT(irq_num), PCPU(irunning) ;			\
 	andl	$~IRQ_LBIT(irq_num), PCPU(ipending) ;			\
 	sti ;								\
 	pushl	$irq_num ;						\
 	call	sched_ithd ;						\
 	addl	$4,%esp ;						\
-	subl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	incl	PCPU(cnt)+V_INTR ; /* book-keeping YYY make per-cpu */	\
 	movl	intr_countp + (irq_num) * 4,%eax ;			\
 	incl	(%eax) ;						\
@@ -281,8 +278,7 @@ IDTVEC(vec_name) ;							\
 /*
  * Unmask a slow interrupt.  This function is used by interrupt threads
  * after they have descheduled themselves to reenable interrupts and
- * possibly cause a reschedule to occur.  The interrupt's irunning bit
- * is cleared prior to unmasking.
+ * possibly cause a reschedule to occur.
  */
 
 #define INTR_UNMASK(irq_num, vec_name, icu)				\
@@ -291,7 +287,6 @@ IDTVEC(vec_name) ;							\
 IDTVEC(vec_name) ;							\
 	pushl %ebp ;	 /* frame for ddb backtrace */			\
 	movl	%esp, %ebp ;						\
-	andl	$~IRQ_LBIT(irq_num), PCPU(irunning) ;			\
 	UNMASK_IRQ(irq_num) ;						\
 	popl %ebp ;							\
 	ret ;								\
@@ -455,7 +450,7 @@ Xcpuast:
 	pushl	TD_CPL(%eax)		/* cpl restored by doreti */
 
 	orl	$AST_PENDING, PCPU(astpending)	/* XXX */
-	incb	PCPU(intr_nesting_level)
+	incl	PCPU(intr_nesting_level)
 	sti
 	
 	movl	PCPU(cpuid), %eax
@@ -497,7 +492,7 @@ Xforward_irq:
 	movl	PCPU(curthread), %eax
 	pushl	TD_CPL(%eax)		/* cpl restored by doreti */
 
-	incb	PCPU(intr_nesting_level)
+	incl	PCPU(intr_nesting_level)
 	sti
 	
 	MEXITCOUNT
@@ -552,7 +547,7 @@ forward_irq:
 	jnz	3b
 4:		
 	ret
-	
+
 /*
  * Executed by a CPU when it receives an Xcpustop IPI from another CPU,
  *
@@ -620,6 +615,35 @@ Xcpustop:
 	popl	%ebp
 	iret
 
+	/*
+	 * For now just have one ipiq IPI, but what we really want is
+	 * to have one for each source cpu to the APICs don't get stalled
+	 * backlogging the requests.
+	 */
+	.text
+	SUPERALIGN_TEXT
+	.globl Xipiq
+Xipiq:
+	PUSH_FRAME
+	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
+	FAKE_MCOUNT(13*4(%esp))
+
+	movl	PCPU(curthread),%ebx
+	cmpl	$TDPRI_CRIT,TD_PRI(%ebx)
+	jge	1f
+	addl	$TDPRI_CRIT,TD_PRI(%ebx)
+	call	lwkt_process_ipiq
+	subl	$TDPRI_CRIT,TD_PRI(%ebx)
+	pushl	TD_CPL(%ebx)
+	incl	PCPU(intr_nesting_level)
+	MEXITCOUNT
+	jmp	doreti
+1:
+	movl	$TDPRI_CRIT,PCPU(reqpri)
+	orl	$AST_IPIQ,PCPU(astpending)
+	MEXITCOUNT
+	POP_FRAME
+	iret
 
 MCOUNT_LABEL(bintr)
 	FAST_INTR(0,fastintr0)
@@ -792,8 +816,6 @@ CNAME(resched_cpus):
 CNAME(cpustop_restartfunc):
 	.long 0
 		
-
-
 	.globl	apic_pin_trigger
 apic_pin_trigger:
 	.long	0

@@ -35,7 +35,7 @@
  *
  *	from: @(#)locore.s	7.3 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/locore.s,v 1.132.2.10 2003/02/03 20:54:49 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/locore.s,v 1.5 2003/07/01 20:30:40 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/locore.s,v 1.6 2003/07/08 06:27:26 dillon Exp $
  *
  *		originally from: locore.s, by William F. Jolitz
  *
@@ -886,7 +886,7 @@ map_read_write:
 
 #ifdef SMP
 /* Initialize mp lock to allow early traps */
-	movl	$1, R(mp_lock)
+	movl	$0, R(mp_lock)
 #endif	/* SMP */
 
 /* install a pde for temporary double map of bottom of VA */

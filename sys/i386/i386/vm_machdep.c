@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.17 2003/07/04 00:32:24 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.18 2003/07/08 06:27:26 dillon Exp $
  */
 
 #include "npx.h"
@@ -405,7 +405,7 @@ cpu_reset_proxy()
 	while (cpu_reset_proxy_active == 1)
 		;	 /* Wait for other cpu to disable interupts */
 	saved_mp_lock = mp_lock;
-	mp_lock = 1;
+	mp_lock = 0;	/* BSP */
 	printf("cpu_reset_proxy: Grabbed mp lock for BSP\n");
 	cpu_reset_proxy_active = 3;
 	while (cpu_reset_proxy_active == 3)

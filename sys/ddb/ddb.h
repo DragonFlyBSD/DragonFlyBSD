@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/ddb.h,v 1.24.2.2 2002/08/30 22:27:49 gibbs Exp $
- * $DragonFly: src/sys/ddb/ddb.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/ddb/ddb.h,v 1.3 2003/07/08 06:27:23 dillon Exp $
  */
 
 /*
@@ -38,6 +38,7 @@
 #ifndef _DDB_DDB_H_
 #define	_DDB_DDB_H_
 
+#include <sys/queue.h>
 #include <machine/db_machdep.h>		/* type definitions */
 
 typedef void db_cmdfcn_t __P((db_expr_t addr, boolean_t have_addr,

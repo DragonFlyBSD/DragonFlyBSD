@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.9 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.10 2003/07/08 06:27:26 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -588,6 +588,10 @@ mp_enable(u_int boot_addr)
 	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 #endif
 #endif
+
+	/* install an inter-CPU IPI for IPIQ messaging */
+	setidt(XIPIQ_OFFSET, Xipiq,
+	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	
 	/* install an inter-CPU IPI for all-CPU rendezvous */
 	setidt(XRENDEZVOUS_OFFSET, Xrendezvous,
@@ -2060,6 +2064,8 @@ start_all_aps(u_int boot_addr)
 		gd->gd_CADDR2 = CPU_prvspace[x].CPAGE2;
 		gd->gd_CADDR3 = CPU_prvspace[x].CPAGE3;
 		gd->gd_PADDR1 = (unsigned *)CPU_prvspace[x].PPAGE1;
+		gd->mi.gd_ipiq = (void *)kmem_alloc(kernel_map, sizeof(lwkt_ipiq) * (mp_naps + 1));
+		bzero(gd->mi.gd_ipiq, sizeof(lwkt_ipiq) * (mp_naps + 1));
 
 		/* setup a vector to our boot code */
 		*((volatile u_short *) WARMBOOT_OFF) = WARMBOOT_TARGET;
@@ -2095,6 +2101,8 @@ start_all_aps(u_int boot_addr)
 
 	/* build our map of 'other' CPUs */
 	mycpu->gd_other_cpus = all_cpus & ~(1 << mycpu->gd_cpuid);
+	mycpu->gd_ipiq = (void *)kmem_alloc(kernel_map, sizeof(lwkt_ipiq) * ncpus);
+	bzero(mycpu->gd_ipiq, sizeof(lwkt_ipiq) * ncpus);
 
 	/* fill in our (BSP) APIC version */
 	cpu_apic_versions[0] = lapic.version;
@@ -2398,10 +2406,12 @@ ap_init(void)
 	++ncpus;
 
 	/*
-	 * Get the MP lock so we can finish initializing.
+	 * Get the MP lock so we can finish initializing.  Note: we are
+	 * in a critical section.
 	 */
 	while (cpu_try_mplock() == 0)
 	    ;
+	++curthread->td_mpcount;
 
 	/* BSP may have changed PTD while we're waiting for the lock */
 	cpu_invltlb();
@@ -2456,7 +2466,8 @@ ap_init(void)
 	 * lwkt_switch() normally cleans things up this is a special case
 	 * because we returning almost directly into the idle loop.
 	 */
-	cpu_rel_mplock();
+	KKASSERT(curthread->td_mpcount == 1);
+	rel_mplock();
 }
 
 #ifdef BETTER_CLOCK
@@ -2926,4 +2937,10 @@ smp_rendezvous(void (* setup_func)(void *),
 
 	/* release lock */
 	spin_unlock(&smp_rv_spinlock);
+}
+
+void
+cpu_send_ipiq(int dcpu)
+{
+	selected_apic_ipi(1 << dcpu, XIPIQ_OFFSET, APIC_DELMODE_FIXED);
 }

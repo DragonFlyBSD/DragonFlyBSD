@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/ipl.h,v 1.17.2.3 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/platform/pc32/include/ipl.h,v 1.3 2003/06/22 08:54:20 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/ipl.h,v 1.4 2003/07/08 06:27:26 dillon Exp $
  */
 
 #ifndef _MACHINE_IPL_H_
@@ -97,6 +97,7 @@
  */
 #define	AST_PENDING	0x00000001
 #define	AST_RESCHED	0x00000002
+#define	AST_IPIQ	0x00000004
 
 #ifndef	LOCORE
 

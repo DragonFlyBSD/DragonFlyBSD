@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/isa/Attic/icu_vector.s,v 1.11 2003/07/03 17:24:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/icu_vector.s,v 1.12 2003/07/08 06:27:27 dillon Exp $
  */
 
 /*
@@ -68,7 +68,7 @@
 	pushl	12(%esp) ;	/* original caller eip */		\
 	pushl	$0 ;		/* dummy error code */			\
 	pushl	$0 ;		/* dummy trap type */			\
-	subl	$11*4,%esp ;	/* pushal + 3 seg regs (dummy) */	\
+	subl	$12*4,%esp ;	/* pushal + 3 seg regs (dummy) + CPL */	\
 
 /*
  * Warning: POP_FRAME can only be used if there is no chance of a
@@ -83,7 +83,7 @@
 	addl	$2*4,%esp ;	/* dummy trap & error codes */		\
 
 #define POP_DUMMY							\
-	addl	$16*4,%esp ;						\
+	addl	$17*4,%esp ;						\
 
 #define MASK_IRQ(icu, irq_num)						\
 	movb	imen + IRQ_BYTE(irq_num),%al ;				\
@@ -188,16 +188,12 @@ IDTVEC(vec_name) ;							\
  *	  doreti.  In addition to checking for a critical section
  *	  and cpl mask we also check to see if the thread is still
  *	  running.
- *	- If we can take the interrupt clear its ipending bit,
- *	  set its irunning bit, and schedule its thread.  Leave
- *	  interrupts masked and doreti.
+ *	- If we can take the interrupt clear its ipending bit
+ *	  and schedule its thread.  Leave interrupts masked and doreti.
  *
- *	The interrupt thread will run its handlers and loop if 
- *	ipending is found to be set.  ipending/irunning interlock
- *	the interrupt thread with the interrupt.  The handler calls
- *	UNPEND when it is through.
+ *	sched_ithd() is called with interrupts enabled and outside of a
+ *	critical section (so it can preempt us).
  *
- *	Note that we do not enable interrupts when calling sched_ithd.
  *	YYY sched_ithd may preempt us synchronously (fix interrupt stacking)
  *
  *	YYY can cache gd base pointer instead of using hidden %fs
@@ -219,8 +215,6 @@ IDTVEC(vec_name) ; 							\
 	pushl	%eax ;		/* push CPL for doreti */		\
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	jge	1f ;							\
-	testl	$IRQ_LBIT(irq_num),PCPU(irunning) ;			\
-	jnz	1f ;							\
 	testl	$IRQ_LBIT(irq_num), %eax ;				\
 	jz	2f ;							\
 1: ;									\
@@ -229,15 +223,12 @@ IDTVEC(vec_name) ; 							\
 	movl	$TDPRI_CRIT, PCPU(reqpri) ;				\
 	jmp	5f ;							\
 2: ;									\
-	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	/* set running bit, clear pending bit, run handler */		\
-	orl	$IRQ_LBIT(irq_num), PCPU(irunning) ;			\
 	andl	$~IRQ_LBIT(irq_num), PCPU(ipending) ;			\
 	sti ;								\
 	pushl	$irq_num ;						\
 	call	sched_ithd ;						\
 	addl	$4,%esp ;						\
-	subl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	incl	PCPU(cnt)+V_INTR ; /* book-keeping YYY make per-cpu */	\
 	movl	intr_countp + (irq_num) * 4,%eax ;			\
 	incl	(%eax) ;						\
@@ -248,8 +239,7 @@ IDTVEC(vec_name) ; 							\
 /*
  * Unmask a slow interrupt.  This function is used by interrupt threads
  * after they have descheduled themselves to reenable interrupts and
- * possibly cause a reschedule to occur.  The interrupt's irunning bit
- * is cleared prior to unmasking.
+ * possibly cause a reschedule to occur.
  */
 
 #define INTR_UNMASK(irq_num, vec_name, icu)				\
@@ -258,7 +248,6 @@ IDTVEC(vec_name) ; 							\
 IDTVEC(vec_name) ;							\
 	pushl %ebp ;	 /* frame for ddb backtrace */			\
 	movl	%esp, %ebp ;						\
-	andl	$~IRQ_LBIT(irq_num), PCPU(irunning) ;			\
 	UNMASK_IRQ(icu, irq_num) ;					\
 	popl %ebp ;							\
 	ret ;								\

@@ -25,9 +25,10 @@
  *
  *	Each cpu in a system has its own self-contained light weight kernel
  *	thread scheduler, which means that generally speaking we only need
- *	to use a critical section to prevent hicups.
+ *	to use a critical section to avoid problems.  Foreign thread 
+ *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.15 2003/07/06 21:23:51 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.16 2003/07/08 06:27:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,6 +54,9 @@
 #include <vm/vm_zone.h>
 
 #include <machine/stdarg.h>
+#ifdef SMP
+#include <machine/smp.h>
+#endif
 
 static int untimely_switch = 0;
 SYSCTL_INT(_lwkt, OID_AUTO, untimely_switch, CTLFLAG_RW, &untimely_switch, 0, "");
@@ -64,6 +68,10 @@ static quad_t preempt_miss = 0;
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_miss, CTLFLAG_RW, &preempt_miss, 0, "");
 static quad_t preempt_weird = 0;
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_weird, CTLFLAG_RW, &preempt_weird, 0, "");
+static quad_t ipiq_count = 0;
+SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_count, CTLFLAG_RW, &ipiq_count, 0, "");
+static quad_t ipiq_fifofull = 0;
+SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_fifofull, CTLFLAG_RW, &ipiq_fifofull, 0, "");
 
 /*
  * These helper procedures handle the runq, they can only be called from
@@ -262,16 +270,20 @@ lwkt_free_thread(thread_t td)
  * talk to our cpu, so a critical section is all that is needed and
  * the result is very, very fast thread switching.
  *
- * We always 'own' our own thread and the threads on our run queue,l
- * due to TDF_RUNNING or TDF_RUNQ being set.  We can safely clear
- * TDF_RUNNING while in a critical section.
+ * The LWKT scheduler uses a fixed priority model and round-robins at
+ * each priority level.  User process scheduling is a totally
+ * different beast and LWKT priorities should not be confused with
+ * user process priorities.
  *
- * The td_switch() function must be called while in the critical section.
- * This function saves as much state as is appropriate for the type of
- * thread.
- *
- * (self contained on a per cpu basis)
+ * The MP lock may be out of sync with the thread's td_mpcount.  lwkt_switch()
+ * cleans it up.  Note that the td_switch() function cannot do anything that
+ * requires the MP lock since the MP lock will have already been setup for
+ * the target thread (not the current thread).
  */
+
+int swtarg[32][2];
+int swtarg2;
+
 void
 lwkt_switch(void)
 {
@@ -282,8 +294,11 @@ lwkt_switch(void)
     int mpheld;
 #endif
 
-    if (mycpu->gd_intr_nesting_level && td->td_preempted == NULL)
+    if (mycpu->gd_intr_nesting_level && 
+	td->td_preempted == NULL && panicstr == NULL
+    ) {
 	panic("lwkt_switch: cannot switch from within an interrupt, yet\n");
+    }
 
     crit_enter();
     ++switch_count;
@@ -309,6 +324,10 @@ lwkt_switch(void)
 	 */
 	KKASSERT(ntd->td_flags & TDF_PREEMPT_LOCK);
 #ifdef SMP
+	if (ntd->td_mpcount && mpheld == 0) {
+	    panic("MPLOCK NOT HELD ON RETURN: %p %p %d %d\n",
+	       td, ntd, td->td_mpcount, ntd->td_mpcount);
+	}
 	if (ntd->td_mpcount) {
 	    td->td_mpcount -= ntd->td_mpcount;
 	    KKASSERT(td->td_mpcount >= 0);
@@ -339,7 +358,9 @@ again:
 #ifdef SMP
 	    if (ntd->td_mpcount && mpheld == 0 && !cpu_try_mplock()) {
 		/*
-		 * Target needs MP lock and we couldn't get it.
+		 * Target needs MP lock and we couldn't get it, try
+		 * to locate a thread which does not need the MP lock
+		 * to run.
 		 */
 		u_int32_t rqmask = gd->gd_runqmask;
 		while (rqmask) {
@@ -387,21 +408,34 @@ again:
     }
 #endif
 
+	if (mycpu->gd_cpuid == 1) {
+	bcopy(swtarg[0], swtarg[1], sizeof(int)*31*2);
+	swtarg[0][0] = (int)ntd->td_sp;
+	swtarg[0][1] = *(int *)ntd->td_sp;
+	}
+	KKASSERT(td->td_cpu == ntd->td_cpu);
     if (td != ntd) {
 	td->td_switch(ntd);
     }
+
     crit_exit();
 }
 
 /*
- * Request that the target thread preempt the current thread.  This only
- * works if:
+ * Request that the target thread preempt the current thread.  Preemption
+ * only works under a specific set of conditions:
  *
- *	+ We aren't trying to preempt ourselves (it can happen!)
- *	+ We are not currently being preempted
- *	+ The target is not currently being preempted
- *	+ The target either does not need the MP lock or we can get it
- *	  for the target immediately.
+ *	- We are not preempting ourselves
+ *	- The target thread is owned by the current cpu
+ *	- We are not currently being preempted
+ *	- The target is not currently being preempted
+ *	- We are able to satisfy the target's MP lock requirements (if any).
+ *
+ * THE CALLER OF LWKT_PREEMPT() MUST BE IN A CRITICAL SECTION.  Typically
+ * this is called via lwkt_schedule() through the td_preemptable callback.
+ * critpri is the managed critical priority that we should ignore in order
+ * to determine whether preemption is possible (aka usually just the crit
+ * priority of lwkt_schedule() itself).
  *
  * XXX at the moment we run the target thread in a critical section during
  * the preemption in order to prevent the target from taking interrupts
@@ -411,33 +445,42 @@ again:
  * whether or not the source is scheduled (i.e. preemption is supposed to
  * be as transparent as possible).
  *
- * This call is typically made from an interrupt handler like sched_ithd()
- * which will only run if the current thread is not in a critical section,
- * so we optimize the priority check a bit.
- *
- * CAREFUL! either we or the target thread may get interrupted during the
- * switch.
- *
  * The target thread inherits our MP count (added to its own) for the
  * duration of the preemption in order to preserve the atomicy of the
- * preemption.
+ * MP lock during the preemption.  Therefore, any preempting targets must be
+ * careful in regards to MP assertions.  Note that the MP count may be
+ * out of sync with the physical mp_lock.  If we preempt we have to preserve
+ * the expected situation.
  */
 void
-lwkt_preempt(thread_t ntd, int id)
+lwkt_preempt(thread_t ntd, int critpri)
 {
     thread_t td = curthread;
 #ifdef SMP
     int mpheld;
 #endif
+int savecnt;
 
     /*
-     * The caller has put us in a critical section, and in order to have
-     * gotten here in the first place the thread the caller interrupted
-     * cannot have been in a critical section before.
+     * The caller has put us in a critical section.  We can only preempt
+     * if the caller of the caller was not in a critical section (basically
+     * a local interrupt). 
+     *
+     * YYY The target thread must be in a critical section (else it must
+     * inherit our critical section?  I dunno yet).
      */
     KASSERT(ntd->td_pri >= TDPRI_CRIT, ("BADCRIT0 %d", ntd->td_pri));
-    KASSERT((td->td_pri & ~TDPRI_MASK) == TDPRI_CRIT, ("BADPRI %d", td->td_pri));
 
+    if ((td->td_pri & ~TDPRI_MASK) > critpri) {
+	++preempt_miss;
+	return;
+    }
+#ifdef SMP
+    if (ntd->td_cpu != mycpu->gd_cpuid) {
+	++preempt_miss;
+	return;
+    }
+#endif
     if (td == ntd || ((td->td_flags | ntd->td_flags) & TDF_PREEMPT_LOCK)) {
 	++preempt_weird;
 	return;
@@ -452,6 +495,9 @@ lwkt_preempt(thread_t ntd, int id)
     }
 #ifdef SMP
     mpheld = MP_LOCK_HELD();
+    if (mpheld && td->td_mpcount == 0)
+	panic("lwkt_preempt(): held and no count");
+    savecnt = td->td_mpcount;
     ntd->td_mpcount += td->td_mpcount;
     if (mpheld == 0 && ntd->td_mpcount && !cpu_try_mplock()) {
 	ntd->td_mpcount -= td->td_mpcount;
@@ -465,6 +511,13 @@ lwkt_preempt(thread_t ntd, int id)
     td->td_flags |= TDF_PREEMPT_LOCK;
     td->td_switch(ntd);
     KKASSERT(ntd->td_preempted && (td->td_flags & TDF_PREEMPT_DONE));
+#ifdef SMP
+    KKASSERT(savecnt == td->td_mpcount);
+    if (mpheld == 0 && MP_LOCK_HELD())
+	cpu_rel_mplock();
+    else if (mpheld && !MP_LOCK_HELD())
+	panic("lwkt_preempt(): MP lock was not held through");
+#endif
     ntd->td_preempted = NULL;
     td->td_flags &= ~(TDF_PREEMPT_LOCK|TDF_PREEMPT_DONE);
 }
@@ -555,18 +608,14 @@ lwkt_schedule_self(void)
  * Generic schedule.  Possibly schedule threads belonging to other cpus and
  * deal with threads that might be blocked on a wait queue.
  *
- * This function will queue requests asynchronously when possible, but may
- * block if no request structures are available.  Upon return the caller
- * should note that the scheduling request may not yet have been processed
- * by the target cpu.
- *
- * YYY this is one of the best places to implement any load balancing code.
+ * YYY this is one of the best places to implement load balancing code.
  * Load balancing can be accomplished by requesting other sorts of actions
  * for the thread in question.
  */
 void
 lwkt_schedule(thread_t td)
 {
+#ifdef	INVARIANTS
     if ((td->td_flags & TDF_PREEMPT_LOCK) == 0 && td->td_proc 
 	&& td->td_proc->p_stat == SSLEEP
     ) {
@@ -580,6 +629,7 @@ lwkt_schedule(thread_t td)
 	);
 	panic("SCHED PANIC");
     }
+#endif
     crit_enter();
     if (td == curthread) {
 	_lwkt_enqueue(td);
@@ -597,27 +647,20 @@ lwkt_schedule(thread_t td)
 	 * (remember, wait structures use stable storage)
 	 */
 	if ((w = td->td_wait) != NULL) {
-	    if (lwkt_havetoken(&w->wa_token)) {
+	    if (lwkt_trytoken(&w->wa_token)) {
 		TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
 		--w->wa_count;
 		td->td_wait = NULL;
 		if (td->td_cpu == mycpu->gd_cpuid) {
 		    _lwkt_enqueue(td);
+		    if (td->td_preemptable)
+			td->td_preemptable(td, TDPRI_CRIT*2); /* YYY +token */
 		} else {
-		    panic("lwkt_schedule: cpu mismatch1");
-#if 0
-		    lwkt_cpu_msg_union_t msg = lwkt_getcpumsg();
-		    initScheduleReqMsg_Wait(&msg.mu_SchedReq, td, w);
-		    cpu_sendnormsg(&msg.mu_Msg);
-#endif
+		    lwkt_send_ipiq(td->td_cpu, (ipifunc_t)lwkt_schedule, td);
 		}
+		lwkt_reltoken(&w->wa_token);
 	    } else {
-		panic("lwkt_schedule: cpu mismatch2");
-#if 0
-		lwkt_cpu_msg_union_t msg = lwkt_getcpumsg();
-		initScheduleReqMsg_Wait(&msg.mu_SchedReq, td, w);
-		cpu_sendnormsg(&msg.mu_Msg);
-#endif
+		lwkt_send_ipiq(w->wa_token.t_cpu, (ipifunc_t)lwkt_schedule, td);
 	    }
 	} else {
 	    /*
@@ -628,13 +671,10 @@ lwkt_schedule(thread_t td)
 	     */
 	    if (td->td_cpu == mycpu->gd_cpuid) {
 		_lwkt_enqueue(td);
+		if (td->td_preemptable)
+		    td->td_preemptable(td, TDPRI_CRIT);
 	    } else {
-		panic("lwkt_schedule: cpu mismatch3");
-#if 0
-		lwkt_cpu_msg_union_t msg = lwkt_getcpumsg();
-		initScheduleReqMsg_Thread(&msg.mu_SchedReq, td);
-		cpu_sendnormsg(&msg.mu_Msg);
-#endif
+		lwkt_send_ipiq(td->td_cpu, (ipifunc_t)lwkt_schedule, td);
 	    }
 	}
     }
@@ -674,12 +714,7 @@ lwkt_deschedule(thread_t td)
 	if (td->td_cpu == mycpu->gd_cpuid) {
 	    _lwkt_dequeue(td);
 	} else {
-	    panic("lwkt_deschedule: cpu mismatch");
-#if 0
-	    lwkt_cpu_msg_union_t msg = lwkt_getcpumsg();
-	    initDescheduleReqMsg_Thread(&msg.mu_DeschedReq, td);
-	    cpu_sendnormsg(&msg.mu_Msg);
-#endif
+	    lwkt_send_ipiq(td->td_cpu, (ipifunc_t)lwkt_deschedule, td);
 	}
     }
     crit_exit();
@@ -747,6 +782,11 @@ lwkt_preempted_proc(void)
  *
  * Note: wait queue signals normally ping-pong the cpu as an optimization.
  */
+typedef struct lwkt_gettoken_req {
+    lwkt_token_t tok;
+    int	cpu;
+} lwkt_gettoken_req;
+
 void
 lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen)
 {
@@ -792,12 +832,7 @@ lwkt_signal(lwkt_wait_t w)
 	if (td->td_cpu == mycpu->gd_cpuid) {
 	    _lwkt_enqueue(td);
 	} else {
-#if 0
-	    lwkt_cpu_msg_union_t msg = lwkt_getcpumsg();
-	    initScheduleReqMsg_Thread(&msg.mu_SchedReq, td);
-	    cpu_sendnormsg(&msg.mu_Msg);
-#endif
-	    panic("lwkt_signal: cpu mismatch");
+	    lwkt_send_ipiq(td->td_cpu, (ipifunc_t)lwkt_schedule, td);
 	}
 	lwkt_regettoken(&w->wa_token);
     }
@@ -805,17 +840,35 @@ lwkt_signal(lwkt_wait_t w)
 }
 
 /*
- * Aquire ownership of a token
+ * Acquire ownership of a token
  *
- * Aquire ownership of a token.  The token may have spl and/or critical
+ * Acquire ownership of a token.  The token may have spl and/or critical
  * section side effects, depending on its purpose.  These side effects
  * guarentee that you will maintain ownership of the token as long as you
  * do not block.  If you block you may lose access to the token (but you
  * must still release it even if you lose your access to it).
  *
- * Note that the spl and critical section characteristics of a token
- * may not be changed once the token has been initialized.
+ * YYY for now we use a critical section to prevent IPIs from taking away
+ * a token, but we really only need to disable IPIs ?
+ *
+ * YYY certain tokens could be made to act like mutexes when performance
+ * would be better (e.g. t_cpu == -1).  This is not yet implemented.
+ *
+ * If the token is owned by another cpu we may have to send an IPI to
+ * it and then block.   The IPI causes the token to be given away to the
+ * requesting cpu, unless it has already changed hands.  Since only the
+ * current cpu can give away a token it owns we do not need a memory barrier.
  */
+static
+void
+lwkt_gettoken_remote(void *arg)
+{
+    lwkt_gettoken_req *req = arg;
+    if (req->tok->t_cpu == mycpu->gd_cpuid) {
+	req->tok->t_cpu = req->cpu;
+    }
+}
+
 int
 lwkt_gettoken(lwkt_token_t tok)
 {
@@ -825,12 +878,19 @@ lwkt_gettoken(lwkt_token_t tok)
      * block.  The request will be forwarded as necessary playing catchup
      * to the token.
      */
+    struct lwkt_gettoken_req req;
+    int seq;
+
     crit_enter();
-#if 0
+#ifdef SMP
     while (tok->t_cpu != mycpu->gd_cpuid) {
-	lwkt_cpu_msg_union msg;
-	initTokenReqMsg(&msg.mu_TokenReq);
-	cpu_domsg(&msg);
+	int dcpu;
+
+	req.cpu = mycpu->gd_cpuid;
+	req.tok = tok;
+	dcpu = (volatile int)tok->t_cpu;
+	seq = lwkt_send_ipiq(dcpu, lwkt_gettoken_remote, &req);
+	lwkt_wait_ipiq(dcpu, seq);
     }
 #endif
     /*
@@ -838,6 +898,24 @@ lwkt_gettoken(lwkt_token_t tok)
      * by lwkt_reltoken().  Bump the generation number.
      */
     return(++tok->t_gen);
+}
+
+/*
+ * Attempt to acquire ownership of a token.  Returns 1 on success, 0 on
+ * failure.
+ */
+int
+lwkt_trytoken(lwkt_token_t tok)
+{
+    crit_enter();
+#ifdef SMP
+    if (tok->t_cpu != mycpu->gd_cpuid) {
+	return(0);
+    } 
+#endif
+    /* leave us in the critical section */
+    ++tok->t_gen;
+    return(1);
 }
 
 /*
@@ -882,21 +960,29 @@ lwkt_gentoken(lwkt_token_t tok, int *gen)
 
 
 /*
- * Reacquire a token that might have been lost.  Returns the generation 
+ * Re-acquire a token that might have been lost.  Returns the generation 
  * number of the token.
  */
 int
 lwkt_regettoken(lwkt_token_t tok)
 {
-#if 0
+    struct lwkt_gettoken_req req;
+    int seq;
+
+    /* assert we are in a critical section */
     if (tok->t_cpu != mycpu->gd_cpuid) {
+#ifdef SMP
 	while (tok->t_cpu != mycpu->gd_cpuid) {
-	    lwkt_cpu_msg_union msg;
-	    initTokenReqMsg(&msg.mu_TokenReq);
-	    cpu_domsg(&msg);
+	    int dcpu;
+	    req.cpu = mycpu->gd_cpuid;
+	    req.tok = tok;
+	    dcpu = (volatile int)tok->t_cpu;
+	    seq = lwkt_send_ipiq(dcpu, lwkt_gettoken_remote, &req);
+	    lwkt_wait_ipiq(dcpu, seq);
 	}
-    }
 #endif
+	++tok->t_gen;
+    }
     return(tok->t_gen);
 }
 
@@ -1023,3 +1109,128 @@ kthread_exit(void)
     lwkt_exit();
 }
 
+#ifdef SMP
+
+/*
+ * Send a function execution request to another cpu.  The request is queued
+ * on the cpu<->cpu ipiq matrix.  Each cpu owns a unique ipiq FIFO for every
+ * possible target cpu.  The FIFO can be written.
+ *
+ * YYY If the FIFO fills up we have to enable interrupts and process the
+ * IPIQ while waiting for it to empty or we may deadlock with another cpu.
+ * Create a CPU_*() function to do this!
+ *
+ * Must be called from a critical section.
+ */
+int
+lwkt_send_ipiq(int dcpu, ipifunc_t func, void *arg)
+{
+    lwkt_ipiq_t ip;
+    int windex;
+
+    if (dcpu == mycpu->gd_cpuid) {
+	func(arg);
+	return(0);
+    } 
+    KKASSERT(curthread->td_pri >= TDPRI_CRIT);
+    KKASSERT(dcpu >= 0 && dcpu < ncpus);
+    ++ipiq_count;
+    ip = &mycpu->gd_ipiq[dcpu];
+    if (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
+	unsigned int eflags = read_eflags();
+	cpu_enable_intr();
+	++ipiq_fifofull;
+	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
+	    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
+	    lwkt_process_ipiq();
+	}
+	write_eflags(eflags);
+    }
+    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
+    windex = ip->ip_windex & MAXCPUFIFO_MASK;
+    ip->ip_func[windex] = func;
+    ip->ip_arg[windex] = arg;
+    /* YYY memory barrier */
+    ++ip->ip_windex;
+    cpu_send_ipiq(dcpu);	/* issues memory barrier if appropriate */
+    return(ip->ip_windex);
+}
+
+/*
+ * Wait for the remote cpu to finish processing a function.
+ *
+ * YYY we have to enable interrupts and process the IPIQ while waiting
+ * for it to empty or we may deadlock with another cpu.  Create a CPU_*()
+ * function to do this!  YYY we really should 'block' here.
+ *
+ * Must be called from a critical section.  Thsi routine may be called
+ * from an interrupt (for example, if an interrupt wakes a foreign thread
+ * up).
+ */
+void
+lwkt_wait_ipiq(int dcpu, int seq)
+{
+    lwkt_ipiq_t ip;
+
+    if (dcpu != mycpu->gd_cpuid) {
+	KKASSERT(dcpu >= 0 && dcpu < ncpus);
+	ip = &mycpu->gd_ipiq[dcpu];
+	if ((int)(ip->ip_rindex - seq) < 0) {
+	    unsigned int eflags = read_eflags();
+	    cpu_enable_intr();
+	    while ((int)(ip->ip_rindex - seq) < 0) {
+		lwkt_process_ipiq();
+#if 0
+		lwkt_switch();	/* YYY fixme */
+#endif
+	    }
+	    write_eflags(eflags);
+	}
+    }
+}
+
+/*
+ * Called from IPI interrupt (like a fast interrupt), which has placed
+ * us in a critical section.  The MP lock may or may not be held.
+ * May also be called from doreti or splz.
+ */
+void
+lwkt_process_ipiq(void)
+{
+    int n;
+    int cpuid = mycpu->gd_cpuid;
+
+    for (n = 0; n < ncpus; ++n) {
+	lwkt_ipiq_t ip;
+	int ri;
+
+	if (n == cpuid)
+	    continue;
+	ip = globaldata_find(n)->gd_ipiq;
+	if (ip == NULL)
+	    continue;
+	ip = &ip[cpuid];
+	while (ip->ip_rindex != ip->ip_windex) {
+	    ri = ip->ip_rindex & MAXCPUFIFO_MASK;
+	    ip->ip_func[ri](ip->ip_arg[ri]);
+	    ++ip->ip_rindex;
+	}
+    }
+}
+
+#else
+
+int
+lwkt_send_ipiq(int dcpu, ipifunc_t func, void *arg)
+{
+    panic("lwkt_send_ipiq: UP box! (%d,%p,%p)", dcpu, func, arg);
+    return(0); /* NOT REACHED */
+}
+
+void
+lwkt_wait_ipiq(int dcpu, int seq)
+{
+    panic("lwkt_wait_ipiq: UP box! (%d,%d)", dcpu, seq);
+}
+
+#endif

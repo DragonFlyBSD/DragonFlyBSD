@@ -22,7 +22,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/lock.h,v 1.11.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/platform/pc32/include/lock.h,v 1.3 2003/07/06 21:23:49 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/lock.h,v 1.4 2003/07/08 06:27:27 dillon Exp $
  */
 
 #ifndef _MACHINE_LOCK_H_
@@ -66,10 +66,8 @@
 	orl	$PSL_C,%ecx ;	/* make sure non-zero */	\
 7: ;								\
 	movl	$0,%eax ;	/* expected contents of lock */	\
-	cmpxchgl %ecx,mem ;	/* Z=1 (jz) on success */	\
-	jz	8f ; 						\
-	jmp	7b ;						\
-8: ;								\
+	lock cmpxchgl %ecx,mem ; /* Z=1 (jz) on success */	\
+	jnz	7b ; 						\
 
 #define SPIN_LOCK_PUSH_REGS					\
 	subl	$8,%esp ;					\
