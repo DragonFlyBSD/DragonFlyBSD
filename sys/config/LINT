@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.29 2004/05/15 17:54:13 joerg Exp $
+# $DragonFly: src/sys/config/LINT,v 1.30 2004/05/20 22:38:32 dillon Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -82,12 +82,6 @@ options 	BLKDEV_IOSIZE=8192
 
 # Options for the VM subsystem.
 options 	PQ_CACHESIZE=512	# color for 512k/16k cache
-# Deprecated options supported for backwards compatibility.
-#options 	PQ_NOOPT		# No coloring
-#options 	PQ_LARGECACHE		# color for 512k/16k cache
-#options 	PQ_HUGECACHE		# color for 1024k/16k cache
-#options 	PQ_MEDIUMCACHE		# color for 256k/16k cache
-#options 	PQ_NORMALCACHE		# color for 64k/16k cache
 
 # This allows you to actually store this configuration file into
 # the kernel binary itself, where it may be later read by saying:
