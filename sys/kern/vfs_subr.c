@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.40 2004/09/23 01:55:15 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.41 2004/09/26 20:14:20 dillon Exp $
  */
 
 /*
@@ -3328,18 +3328,6 @@ NDFREE(struct nameidata *ndp, const uint flags)
 	    (ndp->ni_cnd.cn_flags & CNP_HASBUF)) {
 		zfree(namei_zone, ndp->ni_cnd.cn_pnbuf);
 		ndp->ni_cnd.cn_flags &= ~CNP_HASBUF;
-	}
-	if (!(flags & NDF_NO_DNCP_RELE) &&
-	    (ndp->ni_cnd.cn_flags & CNP_WANTDNCP) &&
-	    ndp->ni_dncp) {
-		cache_drop(ndp->ni_dncp);
-		ndp->ni_dncp = NULL;
-	}
-	if (!(flags & NDF_NO_NCP_RELE) &&
-	    (ndp->ni_cnd.cn_flags & CNP_WANTNCP) &&
-	    ndp->ni_ncp) {
-		cache_drop(ndp->ni_ncp);
-		ndp->ni_ncp = NULL;
 	}
 	if (!(flags & NDF_NO_DVP_UNLOCK) &&
 	    (ndp->ni_cnd.cn_flags & CNP_LOCKPARENT) &&
