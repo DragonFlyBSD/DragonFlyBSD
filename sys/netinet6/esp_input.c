@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_input.c,v 1.1.2.8 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.7 2004/06/03 18:30:04 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.8 2004/10/20 05:00:36 hsu Exp $	*/
 /*	$KAME: esp_input.c,v 1.62 2002/01/07 11:39:57 kjc Exp $	*/
 
 /*
@@ -430,9 +430,13 @@ noreplaycheck:
 		}
 
 		if (nxt != IPPROTO_DONE) {
-			if ((inetsw[ip_protox[nxt]].pr_flags & PR_LASTHDR) != 0 &&
+			if ((inetsw[ip_protox[nxt]].pr_flags & PR_LASTHDR) &&
 			    ipsec4_in_reject(m, NULL)) {
 				ipsecstat.in_polvio++;
+				goto bad;
+			}
+			if (!ip_lengthcheck(&m)) {
+				m = NULL;	/* freed in ip_lengthcheck() */
 				goto bad;
 			}
 			(*inetsw[ip_protox[nxt]].pr_input)(m, off, nxt);

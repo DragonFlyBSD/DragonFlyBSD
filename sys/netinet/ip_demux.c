@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.27 2004/08/28 18:33:03 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.28 2004/10/20 05:00:36 hsu Exp $
  */
 
 /*
@@ -98,33 +98,22 @@ INP_MPORT_HASH(in_addr_t faddr, in_addr_t laddr,
 #endif
 }
 
-/*
- * Map a packet to a protocol processing thread and return the thread's port.
- * If an error occurs, the passed mbuf will be freed, *mptr will be set
- * to NULL, and NULL will be returned.  If no error occurs, the passed mbuf
- * may be modified and a port pointer will be returned.
- */
-lwkt_port_t
-ip_mport(struct mbuf **mptr)
+boolean_t
+ip_lengthcheck(struct mbuf **mp)
 {
+	struct mbuf *m = *mp;
 	struct ip *ip;
-	int iphlen;
-	int iplen;
+	int iphlen, iplen;
 	struct tcphdr *th;
-	struct udphdr *uh;
-	struct mbuf *m = *mptr;
 	int thoff;				/* TCP data offset */
-	lwkt_port_t port;
-	int cpu;
 
 	/*
 	 * The packet must be at least the size of an IP header
 	 */
 	if (m->m_pkthdr.len < sizeof(struct ip)) {
 		ipstat.ips_tooshort++;
-		m_freem(m);
-		*mptr = NULL;
-		return (NULL);
+		m_free(m);
+		return FALSE;
 	}
 
 	/*
@@ -133,8 +122,7 @@ ip_mport(struct mbuf **mptr)
 	if (m->m_len < sizeof(struct ip) &&
 	    (m = m_pullup(m, sizeof(struct ip))) == NULL) {
 		ipstat.ips_toosmall++;
-		*mptr = NULL;
-		return (NULL);
+		return FALSE;
 	}
 	ip = mtod(m, struct ip *);
 
@@ -146,15 +134,14 @@ ip_mport(struct mbuf **mptr)
 	iplen = ntohs(ip->ip_len);
 	if (iphlen < sizeof(struct ip)) {	/* minimum header length */
 		ipstat.ips_badhlen++;
-		m_freem(m);
-		return (NULL);
+		m_free(m);
+		return FALSE;
 	}
 	if (m->m_len < iphlen) {
 		m = m_pullup(m, iphlen);
 		if (m == NULL) {
 			ipstat.ips_badhlen++;
-			*mptr = NULL;
-			return (NULL);
+			return FALSE;
 		}
 		ip = mtod(m, struct ip *);
 	}
@@ -173,16 +160,14 @@ ip_mport(struct mbuf **mptr)
 		case IPPROTO_TCP:
 			if (iplen < iphlen + sizeof(struct tcphdr)) {
 				++tcpstat.tcps_rcvshort;
-				m_freem(m);
-				*mptr = NULL;
-				return (NULL);
+				m_free(m);
+				return FALSE;
 			}
 			if (m->m_len < iphlen + sizeof(struct tcphdr)) {
 				m = m_pullup(m, iphlen + sizeof(struct tcphdr));
 				if (m == NULL) {
 					tcpstat.tcps_rcvshort++;
-					*mptr = NULL;
-					return (NULL);
+					return FALSE;
 				}
 				ip = mtod(m, struct ip *);
 			}
@@ -190,16 +175,14 @@ ip_mport(struct mbuf **mptr)
 		case IPPROTO_UDP:
 			if (iplen < iphlen + sizeof(struct udphdr)) {
 				++udpstat.udps_hdrops;
-				m_freem(m);
-				*mptr = NULL;
-				return (NULL);
+				m_free(m);
+				return FALSE;
 			}
 			if (m->m_len < iphlen + sizeof(struct udphdr)) {
 				m = m_pullup(m, iphlen + sizeof(struct udphdr));
 				if (m == NULL) {
 					udpstat.udps_hdrops++;
-					*mptr = NULL;
-					return (NULL);
+					return FALSE;
 				}
 				ip = mtod(m, struct ip *);
 			}
@@ -207,20 +190,11 @@ ip_mport(struct mbuf **mptr)
 		default:
 			if (iplen < iphlen) {
 				++ipstat.ips_badlen;
-				m_freem(m);
-				*mptr = NULL;
-				return (NULL);
+				m_free(m);
+				return FALSE;
 			}
 			break;
 		}
-	}
-
-	/*
-	 * XXX generic packet handling defrag on CPU 0 for now.
-	 */
-	if (ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK)) {
-		*mptr = m;
-		return (&netisr_cpu[0].td_msgport);
 	}
 
 	switch (ip->ip_p) {
@@ -230,21 +204,60 @@ ip_mport(struct mbuf **mptr)
 		if (thoff < sizeof(struct tcphdr) ||
 		    thoff > ntohs(ip->ip_len)) {
 			tcpstat.tcps_rcvbadoff++;
-			m_freem(m);
-			*mptr = NULL;
-			return (NULL);
+			m_free(m);
+			return FALSE;
 		}
 		if (m->m_len < iphlen + thoff) {
 			m = m_pullup(m, iphlen + thoff);
 			if (m == NULL) {
 				tcpstat.tcps_rcvshort++;
-				*mptr = NULL;
-				return (NULL);
+				return FALSE;
 			}
-			ip = mtod(m, struct ip *);
-			th = (struct tcphdr *)((caddr_t)ip + iphlen);
 		}
+		break;
+	}
 
+	*mp = m;
+	return TRUE;
+}
+
+/*
+ * Map a packet to a protocol processing thread and return the thread's port.
+ * If an error occurs, the passed mbuf will be freed, *mptr will be set
+ * to NULL, and NULL will be returned.  If no error occurs, the passed mbuf
+ * may be modified and a port pointer will be returned.
+ */
+lwkt_port_t
+ip_mport(struct mbuf **mptr)
+{
+	struct ip *ip;
+	int iphlen;
+	struct tcphdr *th;
+	struct udphdr *uh;
+	struct mbuf *m;
+	int thoff;				/* TCP data offset */
+	lwkt_port_t port;
+	int cpu;
+
+	if (!ip_lengthcheck(mptr)) {
+		*mptr = NULL;
+		return (NULL);
+	}
+
+	m = *mptr;
+	ip = mtod(m, struct ip *);
+	iphlen = ip->ip_hl << 2;
+
+	/*
+	 * XXX generic packet handling defrag on CPU 0 for now.
+	 */
+	if (ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK))
+		return (&netisr_cpu[0].td_msgport);
+
+	switch (ip->ip_p) {
+	case IPPROTO_TCP:
+		th = (struct tcphdr *)((caddr_t)ip + iphlen);
+		thoff = th->th_off << 2;
 		cpu = INP_MPORT_HASH(ip->ip_src.s_addr, ip->ip_dst.s_addr,
 		    th->th_sport, th->th_dport);
 		port = &tcp_thread[cpu].td_msgport;
@@ -265,8 +278,7 @@ ip_mport(struct mbuf **mptr)
 		port = &netisr_cpu[0].td_msgport;
 		break;
 	}
-	KKASSERT(port->mp_putport != NULL);
-	*mptr = m;
+
 	return (port);
 }
 

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_input.c,v 1.1.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.8 2004/06/03 18:30:04 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.9 2004/10/20 05:00:36 hsu Exp $	*/
 /*	$KAME: ah_input.c,v 1.67 2002/01/07 11:39:56 kjc Exp $	*/
 
 /*
@@ -532,9 +532,13 @@ ah4_input(struct mbuf *m, ...)
 		}
 
 		if (nxt != IPPROTO_DONE) {
-			if ((inetsw[ip_protox[nxt]].pr_flags & PR_LASTHDR) != 0 &&
+			if ((inetsw[ip_protox[nxt]].pr_flags & PR_LASTHDR) &&
 			    ipsec4_in_reject(m, NULL)) {
 				ipsecstat.in_polvio++;
+				goto fail;
+			}
+			if (!ip_lengthcheck(&m)) {
+				m = NULL;	/* freed in ip_lengthcheck() */
 				goto fail;
 			}
 			(*inetsw[ip_protox[nxt]].pr_input)(m, off, nxt);
