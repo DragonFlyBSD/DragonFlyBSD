@@ -23,7 +23,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * $DragonFly: src/sys/i386/acpica/Attic/acpi_wakeup.c,v 1.2 2004/02/12 23:33:26 joerg Exp $
+ * $DragonFly: src/sys/i386/acpica/Attic/acpi_wakeup.c,v 1.3 2005/02/15 17:00:19 joerg Exp $
  */
 
 #include <sys/cdefs.h>
@@ -172,14 +172,14 @@ acpi_printcpu(void)
 }
 
 #define WAKECODE_FIXUP(offset, type, val) do	{		\
-	void	**addr;						\
-	addr = (void **)(sc->acpi_wakeaddr + offset);		\
-	(type *)*addr = val;					\
+	type	*addr;						\
+	addr = (type *)(sc->acpi_wakeaddr + offset);		\
+	*addr = val;						\
 } while (0)
 
 #define WAKECODE_BCOPY(offset, type, val) do	{		\
-	void	**addr;						\
-	addr = (void **)(sc->acpi_wakeaddr + offset);		\
+	void	*addr;						\
+	addr = (void *)(sc->acpi_wakeaddr + offset);		\
 	bcopy(&(val), addr, sizeof(type));			\
 } while (0)
 
@@ -240,7 +240,7 @@ acpi_sleep_machdep(struct acpi_softc *sc, int state)
 		WAKECODE_FIXUP(previous_ldt, u_int16_t, r_ldt);
 		WAKECODE_BCOPY(previous_idt, struct region_descriptor, r_idt);
 
-		WAKECODE_FIXUP(where_to_recover, void, acpi_restorecpu);
+		WAKECODE_FIXUP(where_to_recover, void *, acpi_restorecpu);
 
 		WAKECODE_FIXUP(previous_ds,  u_int16_t, r_ds);
 		WAKECODE_FIXUP(previous_es,  u_int16_t, r_es);
