@@ -32,7 +32,7 @@
  *
  *	from: @(#)comreg.h	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/isa/sioreg.h,v 1.15.2.3 2003/04/04 08:42:17 sobomax Exp $
- * $DragonFly: src/sys/dev/serial/sio/sioreg.h,v 1.4 2004/01/21 21:33:19 rob Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sioreg.h,v 1.5 2004/01/22 04:19:29 rob Exp $
  */
 
 /* Receiver clock frequency for "standard" pc serial ports. */
@@ -65,7 +65,6 @@
 #define	FIFO_RX_HIGH	0xc0
 
 /* character format control register (aka line control register) */
-#define CFCR_DLAB	0x80
 #define	CFCR_SBREAK	0x40
 #define	CFCR_PZERO	0x30
 #define	CFCR_PONE	0x20
