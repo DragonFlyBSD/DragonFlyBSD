@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/sys_info.h,v 1.1.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/sys_info.h,v 1.3 2003/08/07 21:17:08 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/sys_info.h,v 1.4 2003/11/15 21:05:41 dillon Exp $ */
 /*
  * Copyright (c) 1996-1999 Distributed Processing Technology Corporation
  * All rights reserved.
@@ -70,7 +70,7 @@
 #else
 #pragma pack(1)
 #endif  /* aix */
-#endif  // no unpack
+#endif  /* no unpack */
 
 
 /*struct - driveParam_S - start
@@ -99,7 +99,7 @@
 #ifdef DPT_PORTABLE
 	uSHORT		netInsert(dptBuffer_S *buffer);
 	uSHORT		netExtract(dptBuffer_S *buffer);
-#endif // DPT PORTABLE
+#endif
 //--------------------------------------------
 
    };
@@ -177,7 +177,7 @@
 #ifdef DPT_PORTABLE
 	uSHORT		netInsert(dptBuffer_S *buffer);
 	uSHORT		netExtract(dptBuffer_S *buffer);
-#endif // DPT PORTABLE
+#endif
 //--------------------------------------------
 
    };

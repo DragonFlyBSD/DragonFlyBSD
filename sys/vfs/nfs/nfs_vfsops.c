@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.9 2003/10/10 22:01:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.10 2003/11/15 21:05:44 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -309,7 +309,8 @@ nfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 		bcopy(mp->mnt_stat.f_mntonname, sbp->f_mntonname, MNAMELEN);
 		bcopy(mp->mnt_stat.f_mntfromname, sbp->f_mntfromname, MNAMELEN);
 	}
-	nfsm_reqdone;
+	m_freem(mrep);
+nfsmout:
 	vput(vp);
 	crfree(cred);
 	return (error);
@@ -371,7 +372,8 @@ nfs_fsinfo(struct nfsmount *nmp, struct vnode *vp, struct thread *td)
 			nmp->nm_maxfilesize = maxfsize;
 		nmp->nm_state |= NFSSTA_GOTFSINFO;
 	}
-	nfsm_reqdone;
+	m_freem(mrep);
+nfsmout:
 	return (error);
 }
 

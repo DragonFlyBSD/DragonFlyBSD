@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.c,v 1.55.2.11 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.10 2003/11/10 06:12:10 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.11 2003/11/15 21:05:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1581,7 +1581,7 @@ linux_ioctl_socket(struct thread *td, struct linux_ioctl_args *args)
 
 	KKASSERT(p);
 	KASSERT(LINUX_IFNAMSIZ == IFNAMSIZ,
-	    (__FUNCTION__ "(): LINUX_IFNAMSIZ != IFNAMSIZ"));
+	    ("%s(): LINUX_IFNAMSIZ != IFNAMSIZ", __FUNCTION__));
 	
 	ifp = NULL;
 	error = 0;

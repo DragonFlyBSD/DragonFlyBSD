@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/osd_util.h,v 1.1.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/osd_util.h,v 1.3 2003/08/07 21:17:08 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/osd_util.h,v 1.4 2003/11/15 21:05:41 dillon Exp $ */
 /*
  * Copyright (c) 1996-1999 Distributed Processing Technology Corporation
  * All rights reserved.
@@ -220,12 +220,12 @@
   /* Reverses the byte ordering of a 2 byte variable */
 #if (!defined(osdSwap2))
  uSHORT       osdSwap2(DPT_UNALIGNED uSHORT *);
-#endif  // !osdSwap2
+#endif  /* !osdSwap2 */
 
   /* Reverses the byte ordering of a 4 byte variable and shifts left 8 bits */
 #if (!defined(osdSwap3))
  uLONG        osdSwap3(DPT_UNALIGNED uLONG *);
-#endif  // !osdSwap3
+#endif  /* !osdSwap3 */
 
 
 #ifdef  _DPT_NETWARE
@@ -237,12 +237,12 @@
 	 }
    #else
 	 #define osdSwap4(inLong)       DPT_Bswapl(inLong)
-   #endif  // cplusplus
+   #endif  /* cplusplus */
 #else
 	/* Reverses the byte ordering of a 4 byte variable */
 # if (!defined(osdSwap4))
    uLONG        osdSwap4(DPT_UNALIGNED uLONG *);
-# endif  // !osdSwap4
+# endif  /* !osdSwap4 */
 
   /* The following functions ALWAYS swap regardless of the *
    * presence of DPT_BIG_ENDIAN                            */
@@ -250,7 +250,7 @@
    uSHORT       trueSwap2(DPT_UNALIGNED uSHORT *);
    uLONG        trueSwap4(DPT_UNALIGNED uLONG *);
 
-#endif  // netware
+#endif  /* netware */
 
 
 /*-------------------------------------*
@@ -274,11 +274,11 @@ uLONG	netSwap4(uLONG val);
 
 #ifndef NET_SWAP_2
 #define NET_SWAP_2(x) (((x) >> 8) | ((x) << 8))
-#endif  // NET_SWAP_2
+#endif
 
 #ifndef NET_SWAP_4
 #define NET_SWAP_4(x) netSwap4((x))
-#endif  // NET_SWAP_4
+#endif
 
 #else
 
@@ -286,13 +286,13 @@ uLONG	netSwap4(uLONG val);
 
 #ifndef NET_SWAP_2
 #define NET_SWAP_2(x) (x)
-#endif  // NET_SWAP_2
+#endif
 
 #ifndef NET_SWAP_4
 #define NET_SWAP_4(x) (x)
-#endif  // NET_SWAP_4
+#endif
 
-#endif  // big endian
+#endif  /* big endian */
 
 
 

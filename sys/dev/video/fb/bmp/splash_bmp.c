@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/splash/bmp/splash_bmp.c,v 1.10.2.3 2000/10/31 08:00:06 nyan Exp $
- * $DragonFly: src/sys/dev/video/fb/bmp/splash_bmp.c,v 1.4 2003/08/15 08:32:32 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/bmp/splash_bmp.c,v 1.5 2003/11/15 21:05:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -588,7 +588,9 @@ static int
 bmp_Draw(video_adapter_t *adp)
 {
     int		line;
+#if 0
     int		i;
+#endif
 
     if (bmp_info.data == NULL) {	/* init failed, do nothing */
 	return(1);

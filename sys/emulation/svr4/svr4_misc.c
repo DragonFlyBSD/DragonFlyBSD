@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.18 2003/09/29 18:52:11 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.19 2003/11/15 21:05:43 dillon Exp $
  */
 
 /*
@@ -256,8 +256,7 @@ svr4_sys_getdents64(struct svr4_sys_getdents64_args *uap)
 
 	KKASSERT(p);
 
-	DPRINTF(("svr4_sys_getdents64(%d, *, %d)\n",
-		p->p_pid, SCARG(uap, fd), SCARG(uap, nbytes)));
+	DPRINTF(("svr4_sys_getdents64(%d, *, %d)\n", uap->fd, uap->nbytes));
 	if ((error = getvnode(p->p_fd, SCARG(uap, fd), &fp)) != 0) {
 		return (error);
 	}

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppb_msq.c,v 1.9.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/bus/ppbus/ppb_msq.c,v 1.4 2003/11/09 02:22:33 dillon Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppb_msq.c,v 1.5 2003/11/15 21:05:38 dillon Exp $
  *
  */
 #include <machine/stdarg.h>
@@ -287,9 +287,10 @@ ppb_MS_microseq(device_t bus, device_t dev, struct ppb_microseq *msq, int *ret)
 							goto error;
 
 					INCR_PC;
-					goto next;
-				} else
+					continue;
+				} else {
 					panic("%s: IEEE1284 read not supported", __FUNCTION__);
+				}
 			}
 
 			/* XXX should use ppb_MS_init_msq() */
@@ -329,7 +330,6 @@ ppb_MS_microseq(device_t bus, device_t dev, struct ppb_microseq *msq, int *ret)
 				goto error;
 			break;
 		}
-	next:
 	}
 error:
 	return (error);

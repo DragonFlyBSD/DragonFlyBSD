@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi_thermal.c,v 1.29.6.1 2003/08/22 20:49:20 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Attic/acpi_thermal.c,v 1.1 2003/09/24 03:32:16 drhodus Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Attic/acpi_thermal.c,v 1.2 2003/11/15 21:05:40 dillon Exp $ 
  */
 
 #include "opt_acpi.h"
@@ -112,7 +112,7 @@ static void	acpi_tz_timeout(struct acpi_tz_softc *sc);
 static void	acpi_tz_power_profile(void *arg);
 
 static void	acpi_tz_thread(void *arg);
-static struct proc *acpi_tz_proc;
+static struct thread *acpi_tz_proc;
 
 static device_method_t acpi_tz_methods[] = {
     /* Device interface */

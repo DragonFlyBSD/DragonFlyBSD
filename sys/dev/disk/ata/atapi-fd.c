@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.44.2.9 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.7 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.8 2003/11/15 21:05:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -196,7 +196,7 @@ afd_describe(struct afd_softc *fdp)
 		   fdp->cap.cylinders * fdp->cap.heads * fdp->cap.sectors,
 		   fdp->cap.cylinders, fdp->cap.heads, fdp->cap.sectors,
 		   fdp->cap.sector_size);
-	ata_prtdev(fdp->device, "%dKB/s,", fdp->lun, fdp->cap.transfer_rate/8);
+	ata_prtdev(fdp->device, "%dKB/s,", fdp->cap.transfer_rate / 8);
 	printf(" %s\n", ata_mode2str(fdp->device->mode));
 	if (fdp->cap.medium_type) {
 	    ata_prtdev(fdp->device, "Medium: ");

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.h,v 1.1.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.6 2003/07/19 21:14:45 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.7 2003/11/15 21:05:43 dillon Exp $
  */
 #ifndef _NETSMB_SMB_SUBR_H_
 #define _NETSMB_SMB_SUBR_H_
@@ -46,7 +46,6 @@ MALLOC_DECLARE(M_SMBTEMP);
 /*
  * For compatibility with 5.x
  */
-#define	MODULE_VERSION(name, ver)
 #define	PDROP	PUSRFLAG1	/* OR'd with pri to stop re-entry of interlock mutex */
 
 #define SMBERROR(format, args...) printf("%s: "format, __FUNCTION__ ,## args)

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs.h,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.7 2003/10/19 21:24:55 hmp Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.8 2003/11/15 21:05:44 dillon Exp $
  */
 
 /*#define HPFS_DEBUG 10*/
@@ -45,7 +45,7 @@ typedef	struct {
 #define	BMSIZE	(4 * DEV_BSIZE)
 #define	HPFS_MAXFILENAME	255
 
-#define	SU_MAGIC	((u_int64_t)0xFA53E9C5F995E849)
+#define	SU_MAGIC	((u_int64_t)0xFA53E9C5F995E849ULL)
 struct sublock {
 	u_int64_t	su_magic;	
 	u_int8_t	su_hpfsver;
@@ -66,7 +66,7 @@ struct sublock {
 	lsn_t		su_uidt;	/* Ptr to User ID Table (8 sect) */
 };
 
-#define	SP_MAGIC	((u_int64_t)0xFA5229C5F9911849)
+#define	SP_MAGIC	((u_int64_t)0xFA5229C5F9911849ULL)
 #define	SP_DIRTY	0x0001
 #define	SP_SPDBINUSE	0x0002
 #define	SP_HFINUSE	0x0004

@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.4 2003/08/07 21:16:53 dillon Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.5 2003/11/15 21:05:41 dillon Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -3884,7 +3884,7 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 		int segments;
 		u_int8_t nego;
 		u_int8_t idmsg;
-		u_int8_t qidx;
+		int qidx;
 		
 		tp = &np->target[ccb->ccb_h.target_id];
 		csio = &ccb->csio;
@@ -4158,7 +4158,8 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 		*/
 
 		qidx = np->squeueput + 1;
-		if (qidx >= MAX_START) qidx=0;
+		if (qidx >= MAX_START)
+			qidx = 0;
 		np->squeue [qidx	 ] = NCB_SCRIPT_PHYS (np, idle);
 		np->squeue [np->squeueput] = CCB_PHYS (cp, phys);
 		np->squeueput = qidx;

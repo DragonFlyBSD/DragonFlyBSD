@@ -35,7 +35,7 @@
  *
  *	@(#)nfsm_subs.h	8.2 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfsm_subs.h,v 1.27.2.1 2000/10/28 16:27:27 dwmalone Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsm_subs.h,v 1.4 2003/08/20 09:56:33 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsm_subs.h,v 1.5 2003/11/15 21:05:44 dillon Exp $
  */
 
 
@@ -375,12 +375,6 @@ struct mbuf *nfsm_rpchead (struct ucred *cr, int nmflag, int procid,
 #define	nfsm_reqhead(v,a,s) \
 	do { \
 		mb = mreq = nfsm_reqh((v),(a),(s),&bpos); \
-	} while (0)
-
-#define nfsm_reqdone \
-	do { \
-		m_freem(mrep); \
-		nfsmout: \
 	} while (0)
 
 #define nfsm_rndup(a)	(((a)+3)&(~0x3))

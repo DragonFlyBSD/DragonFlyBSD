@@ -1,6 +1,6 @@
 /*	$NetBSD: i82365var.h,v 1.8 1999/10/15 06:07:27 haya Exp $	*/
 /* $FreeBSD: src/sys/dev/pcic/i82365var.h,v 1.15.2.1 2000/05/23 03:57:02 imp Exp $ */
-/* $DragonFly: src/sys/dev/misc/pcic/Attic/i82365var.h,v 1.4 2003/08/15 08:32:29 dillon Exp $ */
+/* $DragonFly: src/sys/dev/misc/pcic/Attic/i82365var.h,v 1.5 2003/11/15 21:05:41 dillon Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -65,7 +65,7 @@ struct pcic_handle {
 	int	ih_irq;
 
 	int shutdown;
-	struct proc *event_thread;
+	struct thread *event_thread;
 	STAILQ_HEAD(, pcic_event) events;
 };
 

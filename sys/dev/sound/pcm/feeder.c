@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/feeder.c,v 1.8.2.9 2003/02/08 01:43:07 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.3 2003/11/15 21:05:42 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.3 2003/11/15 21:05:42 dillon Exp $");
 
 MALLOC_DEFINE(M_FEEDER, "feeder", "pcm feeder");
 
@@ -64,8 +64,7 @@ feeder_register(void *p)
 		SLIST_INIT(&feedertab);
 		fte = malloc(sizeof(*fte), M_FEEDER, M_WAITOK | M_ZERO);
 		if (fte == NULL) {
-			printf("can't allocate memory for root feeder\n", fc->name);
-
+			printf("can't allocate memory for root feeder\n");
 			return;
 		}
 		fte->feederclass = fc;
@@ -276,9 +275,9 @@ feeder_fmtchain(u_int32_t *to, struct pcm_feeder *source, struct pcm_feeder *sto
 
 	SLIST_FOREACH(fte, &feedertab, link) {
 		if (fte->desc == NULL)
-			goto no;
+			continue;
 		if (fte->desc->type != FEEDER_FMT)
-			goto no;
+			continue;
 		if (fte->desc->in == source->desc->out) {
 			try = feeder_create(fte->feederclass, fte->desc);
 			if (try) {
@@ -289,7 +288,6 @@ feeder_fmtchain(u_int32_t *to, struct pcm_feeder *source, struct pcm_feeder *sto
 				feeder_destroy(try);
 			}
 		}
-no:
 	}
 	/* printf("giving up %s...\n", source->class->name); */
 

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.43 2003/11/05 23:26:18 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.44 2003/11/15 21:05:43 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1326,6 +1326,7 @@ int15e820:
 		physmap[physmap_idx] = smap->base;
 		physmap[physmap_idx + 1] = smap->base + smap->length;
 next_run:
+		; /* fix GCC3.x warning */
 	} while (vmf.vmf_ebx != 0);
 
 	/*

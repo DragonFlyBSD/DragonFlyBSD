@@ -56,7 +56,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha.c,v 1.34.2.1 2000/08/02 22:24:39 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.4 2003/08/07 21:16:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.5 2003/11/15 21:05:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -262,25 +262,34 @@ aha_free(struct aha_softc *aha)
 		}
 		bus_dma_tag_destroy(aha->sg_dmat);
 	}
+		/* fall through */
 	case 7:
 		bus_dmamap_unload(aha->ccb_dmat, aha->ccb_dmamap);
+		/* fall through */
 	case 6:
 		bus_dmamap_destroy(aha->ccb_dmat, aha->ccb_dmamap);
 		bus_dmamem_free(aha->ccb_dmat, aha->aha_ccb_array,
 				aha->ccb_dmamap);
+		/* fall through */
 	case 5:
 		bus_dma_tag_destroy(aha->ccb_dmat);
+		/* fall through */
 	case 4:
 		bus_dmamap_unload(aha->mailbox_dmat, aha->mailbox_dmamap);
+		/* fall through */
 	case 3:
 		bus_dmamem_free(aha->mailbox_dmat, aha->in_boxes,
 				aha->mailbox_dmamap);
 		bus_dmamap_destroy(aha->mailbox_dmat, aha->mailbox_dmamap);
+		/* fall through */
 	case 2:
 		bus_dma_tag_destroy(aha->buffer_dmat);
+		/* fall through */
 	case 1:
 		bus_dma_tag_destroy(aha->mailbox_dmat);
+		/* fall through */
 	case 0:
+		break;
 	}
 	if (aha->unit != AHA_TEMP_UNIT) {
 		aha_softcs[aha->unit] = NULL;

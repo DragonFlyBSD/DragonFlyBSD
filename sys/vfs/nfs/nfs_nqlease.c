@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.12 2003/10/10 22:01:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.13 2003/11/15 21:05:44 dillon Exp $
  */
 
 
@@ -881,9 +881,11 @@ nqnfs_getlease(struct vnode *vp, int rwflag, struct thread *td)
 		frev = fxdr_hyper(tl);
 		nqnfs_clientlease(nmp, np, rwflag, cachable, reqtime, frev);
 		nfsm_loadattr(vp, (struct vattr *)0);
-	} else
+	} else {
 		error = NQNFS_EXPIRED;
-	nfsm_reqdone;
+	}
+	m_freem(mrep);
+nfsmout:
 	return (error);
 }
 

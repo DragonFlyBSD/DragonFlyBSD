@@ -24,7 +24,7 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/include/db_machdep.h,v 1.16 1999/10/04 13:55:35 marcel Exp $
- * $DragonFly: src/sys/i386/include/Attic/db_machdep.h,v 1.6 2003/11/09 02:22:35 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/db_machdep.h,v 1.7 2003/11/15 21:05:43 dillon Exp $
  */
 
 #ifndef _MACHINE_DB_MACHDEP_H_
@@ -48,6 +48,7 @@ extern db_regs_t	ddb_regs;	/* register state */
 
 extern	db_addr_t	PC_REGS(db_regs_t *regs);
 extern	db_addr_t	SP_REGS(db_regs_t *regs);
+extern	db_addr_t	BP_REGS(db_regs_t *regs);
 #endif
 
 #define	BKPT_INST	0xcc		/* breakpoint instruction */

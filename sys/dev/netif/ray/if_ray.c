@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.5 2003/11/12 22:08:06 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.6 2003/11/15 21:05:41 dillon Exp $
  *
  */
 
@@ -2290,7 +2290,7 @@ ray_rx_mgt_info(struct ray_softc *sc, struct mbuf *m0, struct ieee80211_informat
 					RAY_DPRINTF(sc, RAY_DBG_MGT,
 					    "tim pvt[%03d]\t0x%02x", i-5, bp[i]);
 			}
-#endif (RAY_DEBUG & RAY_DBG_MGT)
+#endif
 			break;
 		    	
 		case IEEE80211_ELEMID_IBSSPARMS:

@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.6 2003/08/26 21:42:19 rob Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.7 2003/11/15 21:05:43 dillon Exp $
  */
 
 /*
@@ -1248,5 +1248,5 @@ _TSTMP(u_int32_t x)
 		i = 0;
 	tsc[i] = 0; /* mark last entry */
 }
-#endif KERN_TIMESTAMP
+#endif /* KERN_TIMESTAMP */
 

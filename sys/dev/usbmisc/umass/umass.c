@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/usb/umass.c,v 1.11.2.19 2003/05/17 21:45:27 njl Exp $
- *	$DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.3 2003/08/07 21:17:14 dillon Exp $
+ *	$DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.4 2003/11/15 21:05:42 dillon Exp $
  *	$NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  */
 
@@ -2256,6 +2256,7 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 		break;
 	default:
 		/* XXX Hm, we should check the input parameters */
+		break;
 	}
 
 	/* Perform the requested action */

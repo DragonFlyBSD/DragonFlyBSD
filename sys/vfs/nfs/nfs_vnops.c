@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.14 2003/10/10 22:01:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.15 2003/11/15 21:05:44 dillon Exp $
  */
 
 
@@ -303,7 +303,8 @@ nfs3_access_otw(struct vnode *vp, int wmode,
 		np->n_modeuid = cred->cr_uid;
 		np->n_modestamp = time_second;
 	}
-	nfsm_reqdone;
+	m_freem(mrep);
+nfsmout:
 	return error;
 }
 
@@ -667,7 +668,8 @@ nfs_getattr(ap)
 	if (!error) {
 		nfsm_loadattr(vp, ap->a_vap);
 	}
-	nfsm_reqdone;
+	m_freem(mrep);
+nfsmout:
 	return (error);
 }
 
@@ -819,7 +821,8 @@ nfs_setattrrpc(struct vnode *vp, struct vattr *vap,
 		nfsm_wcc_data(vp, wccflag);
 	} else
 		nfsm_loadattr(vp, (struct vattr *)0);
-	nfsm_reqdone;
+	m_freem(mrep);
+nfsmout:
 	return (error);
 }
 
@@ -997,7 +1000,8 @@ nfs_lookup(ap)
 		cache_enter(dvp, NCPNULL, newvp, cnp);
 	}
 	*vpp = newvp;
-	nfsm_reqdone;
+	m_freem(mrep);
+nfsmout:
 	if (error) {
 		if (newvp != NULLVP) {
 			vrele(newvp);
@@ -1086,7 +1090,8 @@ nfs_readlinkrpc(struct vnode *vp, struct uio *uiop)
 		}
 		nfsm_mtouio(uiop, len);
 	}
-	nfsm_reqdone;
+	m_freem(mrep);
+nfsmout:
 	return (error);
 }
 
@@ -1341,7 +1346,8 @@ nfs_mknodrpc(dvp, vpp, cnp, vap)
 	}
 	if (v3)
 		nfsm_wcc_data(dvp, wccflag);
-	nfsm_reqdone;
+	m_freem(mrep);
+nfsmout:
 	if (error) {
 		if (newvp)
 			vput(newvp);
@@ -1459,7 +1465,8 @@ again:
 	}
 	if (v3)
 		nfsm_wcc_data(dvp, wccflag);
-	nfsm_reqdone;
+	m_freem(mrep);
+nfsmout:
 	if (error) {
 		if (v3 && (fmode & O_EXCL) && error == NFSERR_NOTSUPP) {
 			fmode &= ~O_EXCL;
@@ -1610,7 +1617,8 @@ nfs_removerpc(dvp, name, namelen, cred, td)
 	nfsm_request(dvp, NFSPROC_REMOVE, td, cred);
 	if (v3)
 		nfsm_wcc_data(dvp, wccflag);
-	nfsm_reqdone;
+	m_freem(mrep);
+nfsmout:
 	VTONFS(dvp)->n_flag |= NMODIFIED;
 	if (!wccflag)
 		VTONFS(dvp)->n_attrstamp = 0;
@@ -1750,7 +1758,8 @@ nfs_renamerpc(fdvp, fnameptr, fnamelen, tdvp, tnameptr, tnamelen, cred, td)
 		nfsm_wcc_data(fdvp, fwccflag);
 		nfsm_wcc_data(tdvp, twccflag);
 	}
-	nfsm_reqdone;
+	m_freem(mrep);
+nfsmout:
 	VTONFS(fdvp)->n_flag |= NMODIFIED;
 	VTONFS(tdvp)->n_flag |= NMODIFIED;
 	if (!fwccflag)
@@ -1805,7 +1814,8 @@ nfs_link(ap)
 		nfsm_postop_attr(vp, attrflag);
 		nfsm_wcc_data(tdvp, wccflag);
 	}
-	nfsm_reqdone;
+	m_freem(mrep);
+nfsmout:
 	VTONFS(tdvp)->n_flag |= NMODIFIED;
 	if (!attrflag)
 		VTONFS(vp)->n_attrstamp = 0;
@@ -1883,7 +1893,8 @@ nfs_symlink(ap)
 	 * out code jumps -> here, mrep is also freed.
 	 */
 
-	nfsm_reqdone;
+	m_freem(mrep);
+nfsmout:
 
 	/*
 	 * If we get an EEXIST error, silently convert it to no-error
@@ -1972,7 +1983,8 @@ nfs_mkdir(ap)
 		nfsm_mtofh(dvp, newvp, v3, gotvp);
 	if (v3)
 		nfsm_wcc_data(dvp, wccflag);
-	nfsm_reqdone;
+	m_freem(mrep);
+nfsmout:
 	VTONFS(dvp)->n_flag |= NMODIFIED;
 	if (!wccflag)
 		VTONFS(dvp)->n_attrstamp = 0;
@@ -2033,7 +2045,8 @@ nfs_rmdir(ap)
 	nfsm_request(dvp, NFSPROC_RMDIR, cnp->cn_td, cnp->cn_cred);
 	if (v3)
 		nfsm_wcc_data(dvp, wccflag);
-	nfsm_reqdone;
+	m_freem(mrep);
+nfsmout:
 	VTONFS(dvp)->n_flag |= NMODIFIED;
 	if (!wccflag)
 		VTONFS(dvp)->n_attrstamp = 0;
@@ -2632,7 +2645,8 @@ nfs_lookitup(dvp, name, len, cred, td, npp)
 		} else
 			nfsm_loadattr(newvp, (struct vattr *)0);
 	}
-	nfsm_reqdone;
+	m_freem(mrep);
+nfsmout:
 	if (npp && *npp == NULL) {
 		if (error) {
 			if (newvp) {
@@ -2681,7 +2695,8 @@ nfs_commit(struct vnode *vp, u_quad_t offset, int cnt, struct thread *td)
 			error = NFSERR_STALEWRITEVERF;
 		}
 	}
-	nfsm_reqdone;
+	m_freem(mrep);
+nfsmout:
 	return (error);
 }
 

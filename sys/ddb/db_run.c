@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_run.c,v 1.18 1999/08/28 00:41:10 peter Exp $
- * $DragonFly: src/sys/ddb/db_run.c,v 1.5 2003/11/08 03:06:53 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_run.c,v 1.6 2003/11/15 21:05:40 dillon Exp $
  */
 
 /*
@@ -196,7 +196,7 @@ db_restart_at_pc(watchpt)
 		db_load_count += inst_load(ins);
 		db_store_count += inst_store(ins);
 	    }
-#endif	SOFTWARE_SSTEP
+#endif	/* SOFTWARE_SSTEP */
 	}
 
 	if (db_run_mode == STEP_CONTINUE) {
@@ -298,7 +298,7 @@ db_clear_single_step(regs)
 	}
 }
 
-#endif	SOFTWARE_SSTEP
+#endif /* SOFTWARE_SSTEP */
 
 extern int	db_cmd_loop_done;
 

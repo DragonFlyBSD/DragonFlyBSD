@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_rman.c,v 1.10.2.1 2001/06/05 08:06:08 imp Exp $
- * $DragonFly: src/sys/kern/subr_rman.c,v 1.4 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_rman.c,v 1.5 2003/11/15 21:05:43 dillon Exp $
  */
 
 /*
@@ -201,7 +201,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 	if (CIRCLEQ_TERMCOND(r, rm->rm_list)) {
 #ifdef RMAN_DEBUG
 		printf("could not find a region\n");
-#endif RMAN_DEBUG
+#endif
 		goto out;
 	}
 

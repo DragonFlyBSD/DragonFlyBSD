@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/dvdio.h,v 1.2.2.2 2002/03/18 08:34:53 sos Exp $
- * $DragonFly: src/sys/sys/dvdio.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/dvdio.h,v 1.3 2003/11/15 21:05:43 dillon Exp $
  */
 
 #ifndef _SYS_DVDIO_H_
@@ -108,4 +108,4 @@ struct dvd_authinfo {
 #define DVDIOCSENDKEY		_IOWR('c', 201, struct dvd_authinfo)
 #define DVDIOCREADSTRUCTURE	_IOWR('c', 202, struct dvd_struct)
 
-#endif _SYS_DVDIO_H_
+#endif /* _SYS_DVDIO_H_ */

@@ -1,5 +1,8 @@
-/*	$FreeBSD: src/sys/dev/pccard/pccarddevs.h,v 1.3.2.1 2000/05/23 03:57:00 imp Exp $	*/
-/*	$DragonFly: src/sys/dev/misc/pccard/Attic/pccarddevs.h,v 1.2 2003/06/17 04:28:29 dillon Exp $	*/
+/*
+ * $NetBSD: pcmciadevs,v 1.85 2000/03/22 21:39:57 mycroft Exp $ 
+ * $FreeBSD: src/sys/dev/pccard/pccarddevs.h,v 1.3.2.1 2000/05/23 03:57:00 imp Exp $
+ * $DragonFly: src/sys/dev/misc/pccard/Attic/pccarddevs.h,v 1.3 2003/11/15 21:05:41 dillon Exp $
+ */
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
@@ -7,7 +10,6 @@
  * generated from:
  *	FreeBSD: src/sys/dev/pccard/pccarddevs,v 1.3 1999/11/29 20:53:36 imp Exp 
  */
-/* $NetBSD: pcmciadevs,v 1.85 2000/03/22 21:39:57 mycroft Exp $
 
 /*-
  * Copyright (c) 1998 The NetBSD Foundation, Inc.

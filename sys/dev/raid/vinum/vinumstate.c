@@ -39,7 +39,7 @@
  *
  * $Id: vinumstate.c,v 2.18 2000/05/10 07:30:50 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumstate.c,v 1.28.2.2 2000/06/08 02:00:23 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumstate.c,v 1.3 2003/08/07 21:17:10 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumstate.c,v 1.4 2003/11/15 21:05:42 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -1086,6 +1086,7 @@ setstate_by_force(struct vinum_ioctl_msg *msg)
 	break;
 
     default:
+	break;
     }
     ioctl_reply->error = 0;
 }

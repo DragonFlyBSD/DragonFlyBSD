@@ -38,7 +38,7 @@
  *
  * $Whistle: ng_parse.c,v 1.3 1999/11/29 01:43:48 archie Exp $
  * $FreeBSD: src/sys/netgraph/ng_parse.c,v 1.3.2.8 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_parse.c,v 1.4 2003/08/07 21:54:32 dillon Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_parse.c,v 1.5 2003/11/15 21:05:43 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -1122,6 +1122,7 @@ ng_parse_composite(const struct ng_parse_type *type, const char *s,
 			nextIndex = index + 1;
 			*off += len + len2;
 gotIndex:
+			; /* avoid gcc3.x warning */
 		} else {			/* a structure field */
 			const struct ng_parse_struct_field *const
 			    fields = type->info;

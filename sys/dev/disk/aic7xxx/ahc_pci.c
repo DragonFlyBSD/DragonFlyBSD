@@ -31,7 +31,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahc_pci.c#13 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/ahc_pci.c,v 1.29.2.14 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_pci.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_pci.c,v 1.4 2003/11/15 21:05:41 dillon Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -113,7 +113,7 @@ ahc_pci_attach(device_t dev)
 	error = bus_dma_tag_create(/*parent*/NULL, /*alignment*/1,
 				   /*boundary*/0,
 				   (ahc->flags & AHC_39BIT_ADDRESSING)
-				   ? 0x7FFFFFFFFF
+				   ? 0x7FFFFFFFFFULL
 				   : BUS_SPACE_MAXADDR_32BIT,
 				   /*highaddr*/BUS_SPACE_MAXADDR,
 				   /*filter*/NULL, /*filterarg*/NULL,

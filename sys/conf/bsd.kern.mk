@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.kern.mk,v 1.17.2.1 2001/08/01 16:56:56 obrien Exp $
-# $DragonFly: src/sys/conf/bsd.kern.mk,v 1.1 2003/11/15 19:01:27 dillon Exp $
+# $DragonFly: src/sys/conf/bsd.kern.mk,v 1.2 2003/11/15 21:05:40 dillon Exp $
 
 #
 # Warning flags for compiling the kernel and components of the kernel.
@@ -10,7 +10,7 @@
 #
 CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 		-Wmissing-prototypes -Wpointer-arith -Winline -Wcast-qual \
-		-fformat-extensions -ffreestanding -ansi
+		-fformat-extensions -ansi
 #
 # The following flags are next up for working on:
 #	-W
@@ -39,3 +39,7 @@ CFLAGS+=	-mpreferred-stack-boundary=2
 .if ${MACHINE_ARCH} == "alpha"
 CFLAGS+=	-mno-fp-regs -Wa,-mev56
 .endif
+
+# Prevent GCC 3.x from making certain libc based inline optimizations
+#
+CFLAGS+=	-ffreestanding

@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_sysvec.c,v 1.17.2.1 2001/02/22 05:15:01 marcel Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_sysvec.c,v 1.3 2003/08/07 21:17:17 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_sysvec.c,v 1.4 2003/11/15 21:05:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -82,8 +82,10 @@ ibcs2_modevent(module_t mod, int type, void *unused)
 			if (p->p_sysent == &ibcs2_svr3_sysvec)
 				return EBUSY;
 		}
+		/* fall through */
 	default:
 	        /* do not care */
+		break;
 	}
 	return 0;
 }
