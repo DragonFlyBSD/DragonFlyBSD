@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.103.2.4 2000/11/01 09:36:14 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.11 2004/04/05 05:34:36 dillon Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.12 2004/04/12 00:50:40 dillon Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -893,9 +893,10 @@ common_bktr_intr( void *arg )
 		 * let them know the frame is complete.
 		 */
 
-		if (bktr->proc && !(bktr->signal & METEOR_SIG_MODE_MASK))
-			psignal( bktr->proc,
-				 bktr->signal&(~METEOR_SIG_MODE_MASK) );
+		if (bktr->proc && (bktr->signal & ~METEOR_SIG_MODE_MASK)) {
+			psignal(bktr->proc,
+				 bktr->signal & ~METEOR_SIG_MODE_MASK );
+		}
 
 		/*
 		 * Reset the want flags if in continuous or
