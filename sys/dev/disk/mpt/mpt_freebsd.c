@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_freebsd.c,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.c,v 1.5 2004/09/17 03:39:39 joerg Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.c,v 1.6 2004/09/19 00:25:57 joerg Exp $ */
 /*
  * FreeBSD/CAM specific routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -142,7 +142,7 @@ mpttimeout(void *arg)
 	req->debug = REQ_TIMEOUT;
 	req->ccb = NULL;
 	req->link.sle_next = (void *) mpt;
-	(void) timeout(mpttimeout2, (caddr_t)req, hz / 10);
+	callout_reset(&req->timeout, hz / 10, mpttimeout2, req);
 	ccb->ccb_h.status = CAM_CMD_TIMEOUT;
 	ccb->ccb_h.status |= CAM_RELEASE_SIMQ;
 	mpt->outofbeer = 0;

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt.c,v 1.3.2.3 2002/09/24 21:37:24 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt.c,v 1.3 2003/08/07 21:16:53 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt.c,v 1.4 2004/09/19 00:25:57 joerg Exp $ */
 /*
  * Generic routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -232,6 +232,7 @@ mpt_free_request(mpt_softc_t *mpt, request_t *req)
 		panic("mpt_free_request bad req ptr\n");
 		return;
 	}
+	callout_stop(&req->timeout);
 	req->sequence = 0;
 	req->ccb = NULL;
 	req->debug = REQ_FREE;
@@ -1038,6 +1039,7 @@ mpt_init(mpt_softc_t *mpt, u_int32_t who)
 	/* Put all request buffers (back) on the free list */
         SLIST_INIT(&mpt->request_free_list);
 	for (val = 0; val < MPT_MAX_REQUESTS(mpt); val++) {
+		callout_init(&mpt->request_pool[val].timeout);
 		mpt_free_request(mpt, &mpt->request_pool[val]);
 	}
 

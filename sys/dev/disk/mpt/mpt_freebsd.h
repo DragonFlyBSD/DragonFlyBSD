@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_freebsd.h,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.h,v 1.4 2004/01/08 18:39:17 asmodai Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.h,v 1.5 2004/09/19 00:25:57 joerg Exp $ */
 /*
  * LSI MPT Host Adapter FreeBSD Wrapper Definitions (CAM version)
  *
@@ -181,6 +181,7 @@ typedef struct req_entry {
 	SLIST_ENTRY(req_entry) link;	/* Pointer to next in list */
 	enum mpt_req_state debug;	/* Debugging */
 	u_int32_t	sequence;	/* Sequence Number */
+	struct callout	timeout;
 } request_t;
 
 
