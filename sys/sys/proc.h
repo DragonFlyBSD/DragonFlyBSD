@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.16 2003/06/27 01:53:26 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.17 2003/06/27 03:30:43 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -281,7 +281,6 @@ struct	proc {
 #define	P_OLDMASK	0x2000000 /* need to restore mask before pause */
 #define	P_ALTSTACK	0x4000000 /* have alternate signal stack */
 #define	P_INEXEC	0x8000000 /* Process is in execve(). */
-#define P_EXITINTERLOCK	0x10000000 /* Reaping process exit interlock */
 
 #ifdef _KERNEL
 
@@ -414,7 +413,8 @@ void	cpu_heavy_switch __P((struct thread *));
 void	cpu_lwkt_switch __P((struct thread *));
 void	unsleep __P((struct thread *));
 
-void	cpu_exit __P((struct proc *)) __dead2;
+void	cpu_proc_exit __P((void)) __dead2;
+void	cpu_thread_exit __P((void)) __dead2;
 void	exit1 __P((int)) __dead2;
 void	cpu_fork __P((struct proc *, struct proc *, int));
 void	cpu_set_fork_handler __P((struct proc *, void (*)(void *), void *));
@@ -422,7 +422,8 @@ void	cpu_set_thread_handler(struct thread *td, void (*retfunc)(void), void *func
 int	fork1 __P((struct proc *, int, struct proc **));
 void	start_forked_proc __P((struct proc *, struct proc *));
 int	trace_req __P((struct proc *));
-void	cpu_wait __P((struct proc *));
+void	cpu_proc_wait __P((struct proc *));
+void	cpu_thread_wait __P((struct thread *));
 int	cpu_coredump __P((struct thread *, struct vnode *, struct ucred *));
 void	setsugid __P((void));
 void	faultin __P((struct proc *p));

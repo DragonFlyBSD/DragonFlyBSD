@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.11 2003/06/27 01:53:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.12 2003/06/27 03:30:37 dillon Exp $
  */
 
 #include "npx.h"
@@ -257,19 +257,21 @@ cpu_set_thread_handler(thread_t td, void (*rfunc)(void), void *func, void *arg)
 }
 
 void
-cpu_exit(p)
-	register struct proc *p;
+cpu_proc_exit(void)
 {
+	struct thread *td = curthread;
 	struct pcb *pcb;
 
+
 #if NNPX > 0
-	npxexit(p);
+	KKASSERT(td->td_proc);
+	npxexit(td->td_proc);
 #endif	/* NNPX */
 
 	/*
 	 * Cleanup the PCB
 	 */
-	pcb = curthread->td_pcb;
+	pcb = td->td_pcb;
 	if (pcb->pcb_ext != 0) {
 	        /* 
 		 * XXX do we need to move the TSS off the allocated pages 
@@ -291,29 +293,41 @@ cpu_exit(p)
         }
 	cnt.v_swtch++;
 
-	/*
-	 * Set a special switch function which will release td_rwlock after
-	 * the thread has been derferenced.
-	 */
 	crit_enter();
-	KASSERT(curthread->td_switch == cpu_heavy_switch,
-	    ("cpu_exit: unexpected switchout"));
-	curthread->td_switch = cpu_exit_switch;
 	lwkt_deschedule_self();
+	cpu_thread_exit();
+}
+
+/*
+ * Terminate the current thread.  The caller must have already acquired
+ * the thread's rwlock and placed it on a reap list or otherwise notified
+ * a reaper of its existance.  We set a special assembly switch function which
+ * releases td_rwlock after it has cleaned up the MMU state and switched
+ * out the stack.
+ *
+ * Must be caller from a critical section and with the thread descheduled.
+ */
+void
+cpu_thread_exit(void)
+{
+	curthread->td_switch = cpu_exit_switch;
 	lwkt_switch();
 	panic("cpu_exit");
 }
 
+/*
+ * Process Reaper.  Called after the caller has acquired the thread's
+ * rwlock and removed it from the reap list.
+ */
 void
-cpu_wait(p)
-	struct proc *p;
+cpu_proc_wait(struct proc *p)
 {
 	struct thread *td;
 
 	/* drop per-process resources */
 	td = pmap_dispose_proc(p);
 	if (td)
-	    pmap_dispose_thread(td);
+		lwkt_free_thread(td);
 }
 
 /*

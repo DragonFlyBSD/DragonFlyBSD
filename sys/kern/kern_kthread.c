@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_kthread.c,v 1.5.2.3 2001/12/25 01:51:14 dillon Exp $
- * $DragonFly: src/sys/kern/kern_kthread.c,v 1.6 2003/06/27 01:53:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_kthread.c,v 1.7 2003/06/27 03:30:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -60,51 +60,6 @@ kproc_start(udata)
 }
 
 /*
- * Create a kernel process/thread/whatever.  It shares it's address space
- * with proc0 - ie: kernel only.
- */
-int
-kthread_create(void (*func)(void *), void *arg,
-    struct thread **tdp, const char *fmt, ...)
-{
-	struct thread *td;
-	va_list ap;
-
-	td = *tdp = lwkt_alloc_thread();
-	cpu_set_thread_handler(td, kthread_exit, func, arg);
-
-	/*
-	 * Set up arg0 for 'ps' etc
-	 */
-	va_start(ap, fmt);
-	vsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
-	va_end(ap);
-
-	/*
-	 * Schedule the thread to run
-	 */
-	lwkt_schedule(td);
-	return 0;
-}
-
-/*
- * YYY kthread_exit() should get rid of the kthread.  We have to put it on
- * some sort of wait list and set our switcher to interlock against
- * the reaper.
- */
-void
-kthread_exit(void)
-{
-	thread_t td = curthread;
-
-	printf("kthread %p %s has exited\n", td, td->td_comm); /* YYY */
-	for (;;) {
-		td->td_flags |= TDF_STOPREQ;
-		kproc_suspend_loop();
-	}
-}
-
-/*
  * Advise a kernel process to suspend (or resume) in its main loop.
  * Participation is voluntary.
  */
@@ -112,7 +67,7 @@ int
 suspend_kproc(struct thread *td, int timo)
 {
 	if (td->td_proc == NULL) {
-		td->td_flags |= TDF_STOPREQ;	/* request thread exit */
+		td->td_flags |= TDF_STOPREQ;	/* request thread pause */
 		wakeup(td);
 		while (td->td_flags & TDF_STOPREQ) {
 			int error = tsleep(td, PPAUSE, "suspkp", timo);

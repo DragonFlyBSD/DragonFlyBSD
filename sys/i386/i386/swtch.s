@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.13 2003/06/27 01:53:24 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.14 2003/06/27 03:30:37 dillon Exp $
  */
 
 #include "npx.h"
@@ -214,17 +214,15 @@ ENTRY(cpu_exit_switch)
 	movl	TD_SP(%eax),%esp
 
 	/*
-	 * We are now effectively the next thread, transfer ownership to
-	 * this thread and release the original thread's RW lock, which
-	 * will allow it to be reaped.   Messy but rock solid.
+	 * We are now the next thread, set the exited flag and wakeup
+	 * any waiters.
 	 */
-	addl	$TD_RWLOCK,%ecx
-	movl	%eax,RW_OWNER(%ecx)
+	orl	$TDF_EXITED,TD_FLAGS(%ecx)
 	pushl	%eax
-	pushl	%ecx
-	call	lwkt_exunlock
+	pushl	%ecx	/* wakeup(oldthread) */
+	call	wakeup
 	addl	$4,%esp
-	popl	%eax
+	popl	%eax	/* note: next thread expects curthread in %eax */
 
 	/*
 	 * Restore the next thread's state and resume it.  Note: the

@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.10 2003/06/27 01:53:26 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.11 2003/06/27 03:30:43 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -132,25 +132,26 @@ struct thread {
     char	*td_sp;		/* kernel stack pointer for LWKT restore */
     void	(*td_switch)(struct thread *ntd);
     lwkt_wait_t td_wait;	/* thread sitting on wait structure */
-    lwkt_rwlock	td_rwlock;	/* thread arbitration */
     u_int64_t	td_uticks;	/* Statclock hits in user mode (uS) */
     u_int64_t	td_sticks;      /* Statclock hits in system mode (uS) */
     u_int64_t	td_iticks;	/* Statclock hits processing intr (uS) */
     int		td_locks;	/* lockmgr lock debugging YYY */
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
+    struct thread *td_preempted; /* we preempted this thread */
     struct mi_thread td_mach;
 };
 
-#define td_token	td_rwlock.rw_token
-
 /*
- * Thread flags.  Note that the RUNNING state is independant from the
- * RUNQ/WAITQ state.  That is, a thread's queueing state can be manipulated
- * while it is running.  If a thread is preempted it will always be moved
- * back to the RUNQ if it isn't on it.
+ * Thread flags.  Note that TDF_EXITED is set by the appropriate switchout
+ * code when a thread exits, after it has switched to another stack and
+ * cleaned up the MMU state.
  */
-#define TDF_RUNNING		0x0001	/* currently running */
+#define TDF_EXITED		0x0001	/* thread finished exiting */
 #define TDF_RUNQ		0x0002	/* on run queue */
+#define TDF_PREEMPTED		0x0004	/* thread is currently preempted */
+#define TDF_ALLOCATED_THREAD	0x0200	/* zalloc allocated thread */
+#define TDF_ALLOCATED_STACK	0x0400	/* zalloc allocated stack */
+#define TDF_VERBOSE		0x0800	/* verbose on exit */
 #define TDF_DEADLKTREAT		0x1000	/* special lockmgr deadlock treatment */
 #define TDF_STOPREQ		0x2000	/* suspend_kproc */
 #define TDF_WAKEREQ		0x4000	/* resume_kproc */
@@ -190,7 +191,8 @@ struct thread {
 extern struct vm_zone	*thread_zone;
 
 extern struct thread *lwkt_alloc_thread(void);
-extern void lwkt_init_thread(struct thread *td, void *stack);
+extern void lwkt_init_thread(struct thread *td, void *stack, int flags);
+extern void lwkt_free_thread(struct thread *td);
 extern void lwkt_init_wait(struct lwkt_wait *w);
 extern void lwkt_gdinit(struct globaldata *gd);
 extern void lwkt_switch(void);
@@ -212,6 +214,10 @@ extern void lwkt_exlock(lwkt_rwlock_t lock, const char *wmesg);
 extern void lwkt_shlock(lwkt_rwlock_t lock, const char *wmesg);
 extern void lwkt_exunlock(lwkt_rwlock_t lock);
 extern void lwkt_shunlock(lwkt_rwlock_t lock);
+
+extern int  lwkt_create (void (*func)(void *), void *arg, struct thread **ptd,
+			    const char *ctl, ...);
+extern void lwkt_exit __P((void)) __dead2;
 
 #endif
 

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.10 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.11 2003/06/27 03:30:42 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -277,12 +277,10 @@ exit1(int rv)
 	}
 
 	/*
-	 * Once we set SZOMB the process can get reaped.  To prevent this
-	 * from occuring we obtain an exclusive access lock on the underlying
-	 * thread which will not be released until the thread has been
-	 * completed switched out.
+	 * Once we set SZOMB the process can get reaped.  The wait1 code
+	 * will also wait for TDF_EXITED to be set in the thread's flags,
+	 * indicating that it has been completely switched out.
 	 */
-	lwkt_exlock(&curthread->td_rwlock, "exit");
 
 	/*
 	 * Remove proc from allproc queue and pidhash chain.
@@ -375,7 +373,7 @@ exit1(int rv)
 	 * finish.  cpu_exit will end with a call to cpu_switch(), finishing
 	 * our execution (pun intended).
 	 */
-	cpu_exit(p);
+	cpu_proc_exit();
 }
 
 #ifdef COMPAT_43
@@ -439,17 +437,13 @@ loop:
 		nfound++;
 		if (p->p_stat == SZOMB) {
 			/*
-			 * This is a tad nasty because lwkt_*() functions can
-			 * block, causing our information to become out of
-			 * date.
-			 *
-			 * YYY there may be some inefficiency here.
+			 * The process's thread may still be in the middle
+			 * of switching away, we can't rip its stack out from
+			 * under it until TDF_EXITED is set.
 			 */
-			if ((p->p_flag & P_EXITINTERLOCK) == 0) {
-			    lwkt_exlock(&p->p_thread->td_rwlock, "reap");
-			    p->p_flag |= P_EXITINTERLOCK;
-			    lwkt_exunlock(&p->p_thread->td_rwlock);
-			    goto loop;
+			if ((p->p_thread->td_flags & TDF_EXITED) == 0) {
+				tsleep(p->p_thread, PWAIT, "reap", 0);
+				goto loop;
 			}
 			KASSERT(p->p_lock == 0, ("p_lock not 0! %p", p));
 

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.12 2003/06/25 03:55:53 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.13 2003/06/27 03:30:37 dillon Exp $
  */
 
 #include "apm.h"
@@ -1866,14 +1866,13 @@ init386(first)
 	 */
 	gd = &CPU_prvspace[0].globaldata;
 
-	lwkt_init_thread(&thread0, proc0paddr);
+	lwkt_init_thread(&thread0, proc0paddr, 0);
 	gd->gd_curthread = &thread0;
 	safepri = thread0.td_cpl = SWI_MASK | HWI_MASK;
 	thread0.td_switch = cpu_heavy_switch;	/* YYY eventually LWKT */
 	proc0.p_addr = (void *)thread0.td_kstack;
 	proc0.p_thread = &thread0;
 	thread0.td_proc = &proc0;
-	thread0.td_flags = TDF_RUNNING;
 
 	atdevbase = ISA_HOLE_START + KERNBASE;
 
@@ -2088,7 +2087,7 @@ cpu_gdinit(struct globaldata *gd, int cpu)
 	if (cpu)
 	    gd->gd_curthread = &gd->gd_idlethread;
 	sp = gd->gd_prvspace->idlestack;
-	lwkt_init_thread(&gd->gd_idlethread, sp);
+	lwkt_init_thread(&gd->gd_idlethread, sp, 0);
 	gd->gd_idlethread.td_switch = cpu_lwkt_switch;
 	gd->gd_idlethread.td_sp -= sizeof(void *);
 	*(void **)gd->gd_idlethread.td_sp = cpu_idle_restore;

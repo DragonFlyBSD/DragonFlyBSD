@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.10 2003/06/22 04:30:39 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.11 2003/06/27 03:30:37 dillon Exp $
  */
 
 /*
@@ -848,29 +848,6 @@ pmap_init_thread(thread_t td)
 {
 	td->td_pcb = (struct pcb *)(td->td_kstack + UPAGES * PAGE_SIZE) - 1;
 	td->td_sp = (char *)td->td_pcb - 16;
-}
-
-/*
- * Dispose of a thread, unlink it from its related proc (if any).  Keep
- * CACHE_NTHREAD threads around for fast-startup.
- */
-void
-pmap_dispose_thread(struct thread *td)
-{
-	/* HIPRI YYY */
-	KASSERT((td->td_flags & (TDF_RUNQ|TDF_RUNNING)) == 0,
-		("pmap_dispose_thread: still on queue: %08x", td->td_flags));
-	if (mycpu->gd_tdfreecount < CACHE_NTHREADS) {
-		++mycpu->gd_tdfreecount;
-		TAILQ_INSERT_HEAD(&mycpu->gd_tdfreeq, td, td_threadq);
-	} else {
-		if (td->td_kstack) {
-			kmem_free(kernel_map,
-			    (vm_offset_t)td->td_kstack, UPAGES * PAGE_SIZE);
-			td->td_kstack = NULL;
-		}
-		zfree(thread_zone, td);
-	}
 }
 
 /*

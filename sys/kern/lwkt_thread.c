@@ -27,7 +27,7 @@
  *	thread scheduler, which means that generally speaking we only need
  *	to use a critical section to prevent hicups.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.5 2003/06/27 01:53:25 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.6 2003/06/27 03:30:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,9 +37,10 @@
 #include <sys/rtprio.h>
 #include <sys/queue.h>
 #include <sys/thread2.h>
-#include <sys/lock.h>
 #include <sys/sysctl.h>
+#include <sys/kthread.h>
 #include <machine/cpu.h>
+#include <sys/lock.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -50,6 +51,8 @@
 #include <vm/vm_pager.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
+
+#include <machine/stdarg.h>
 
 static int untimely_switch = 0;
 SYSCTL_INT(_debug, OID_AUTO, untimely_switch, CTLFLAG_RW, &untimely_switch, 0, "");
@@ -107,24 +110,25 @@ lwkt_init_wait(lwkt_wait_t w)
 thread_t
 lwkt_alloc_thread(void)
 {
-	struct thread *td;
-	void *stack;
+    struct thread *td;
+    void *stack;
 
-	crit_enter();
-	if (mycpu->gd_tdfreecount > 0) {
-		--mycpu->gd_tdfreecount;
-		td = TAILQ_FIRST(&mycpu->gd_tdfreeq);
-		KASSERT(td != NULL, ("unexpected null cache td"));
-		TAILQ_REMOVE(&mycpu->gd_tdfreeq, td, td_threadq);
-		crit_exit();
-		stack = td->td_kstack;
-	} else {
-		crit_exit();
-		td = zalloc(thread_zone);
-		stack = (void *)kmem_alloc(kernel_map, UPAGES * PAGE_SIZE);
-	}
-	lwkt_init_thread(td, stack);
-	return(td);
+    crit_enter();
+    if (mycpu->gd_tdfreecount > 0) {
+	--mycpu->gd_tdfreecount;
+	td = TAILQ_FIRST(&mycpu->gd_tdfreeq);
+	KASSERT(td != NULL && (td->td_flags & TDF_EXITED),
+	    ("lwkt_alloc_thread: unexpected NULL or corrupted td"));
+	TAILQ_REMOVE(&mycpu->gd_tdfreeq, td, td_threadq);
+	crit_exit();
+	stack = td->td_kstack;
+    } else {
+	crit_exit();
+	td = zalloc(thread_zone);
+	stack = (void *)kmem_alloc(kernel_map, UPAGES * PAGE_SIZE);
+    }
+    lwkt_init_thread(td, stack, TDF_ALLOCATED_STACK|TDF_ALLOCATED_THREAD);
+    return(td);
 }
 
 /*
@@ -134,13 +138,39 @@ lwkt_alloc_thread(void)
  * NOTE!  called from low level boot code, we cannot do anything fancy!
  */
 void
-lwkt_init_thread(thread_t td, void *stack)
+lwkt_init_thread(thread_t td, void *stack, int flags)
 {
-	bzero(td, sizeof(struct thread));
-	lwkt_rwlock_init(&td->td_rwlock);
-	td->td_kstack = stack;
-	pmap_init_thread(td);
+    bzero(td, sizeof(struct thread));
+    td->td_kstack = stack;
+    td->td_flags |= flags;
+    pmap_init_thread(td);
 }
+
+void
+lwkt_free_thread(struct thread *td)
+{
+    KASSERT(td->td_flags & TDF_EXITED,
+	("lwkt_free_thread: did not exit! %p", td));
+
+    crit_enter();
+    if (mycpu->gd_tdfreecount < CACHE_NTHREADS &&
+	(td->td_flags & TDF_ALLOCATED_THREAD)
+    ) {
+	++mycpu->gd_tdfreecount;
+	TAILQ_INSERT_HEAD(&mycpu->gd_tdfreeq, td, td_threadq);
+	crit_exit();
+    } else {
+	crit_exit();
+	if (td->td_kstack && (td->td_flags & TDF_ALLOCATED_STACK)) {
+	    kmem_free(kernel_map,
+		    (vm_offset_t)td->td_kstack, UPAGES * PAGE_SIZE);
+	    td->td_kstack = NULL;
+	}
+	if (td->td_flags & TDF_ALLOCATED_THREAD)
+	    zfree(thread_zone, td);
+    }
+}
+
 
 /*
  * Switch to the next runnable lwkt.  If no LWKTs are runnable then 
@@ -169,17 +199,21 @@ lwkt_switch(void)
     thread_t ntd;
 
     crit_enter();
-    if ((ntd = TAILQ_FIRST(&mycpu->gd_tdrunq)) != NULL) {
+    if ((ntd = td->td_preempted) != NULL) {
+	/*
+	 * We had preempted another thread on this cpu, resume the preempted
+	 * thread.
+	 */
+	td->td_preempted = NULL;
+	ntd->td_flags &= ~TDF_PREEMPTED;
+    } else if ((ntd = TAILQ_FIRST(&mycpu->gd_tdrunq)) != NULL) {
 	TAILQ_REMOVE(&mycpu->gd_tdrunq, ntd, td_threadq);
 	TAILQ_INSERT_TAIL(&mycpu->gd_tdrunq, ntd, td_threadq);
     } else {
 	ntd = &mycpu->gd_idlethread;
     }
-    if (td != ntd) {
-	td->td_flags &= ~TDF_RUNNING;
-	ntd->td_flags |= TDF_RUNNING;
+    if (td != ntd)
 	td->td_switch(ntd);
-    }
     crit_exit();
 }
 
@@ -257,7 +291,6 @@ lwkt_schedule_self(void)
 
     crit_enter();
     KASSERT(td->td_wait == NULL, ("lwkt_schedule_self(): td_wait not NULL!"));
-    KASSERT(td->td_flags & TDF_RUNNING, ("lwkt_schedule_self(): TDF_RUNNING not set!"));
     _lwkt_enqueue(td);
     crit_exit();
 }
@@ -351,7 +384,6 @@ lwkt_deschedule_self(void)
 
     crit_enter();
     KASSERT(td->td_wait == NULL, ("lwkt_schedule_self(): td_wait not NULL!"));
-    KASSERT(td->td_flags & TDF_RUNNING, ("lwkt_schedule_self(): TDF_RUNNING not set!"));
     _lwkt_dequeue(td);
     crit_exit();
 }
@@ -526,5 +558,99 @@ lwkt_regettoken(lwkt_token_t tok)
     }
 #endif
     return(0);
+}
+
+/*
+ * Create a kernel process/thread/whatever.  It shares it's address space
+ * with proc0 - ie: kernel only.
+ *
+ * XXX should be renamed to lwkt_create()
+ */
+int
+lwkt_create(void (*func)(void *), void *arg,
+    struct thread **tdp, const char *fmt, ...)
+{
+    struct thread *td;
+    va_list ap;
+
+    td = *tdp = lwkt_alloc_thread();
+    cpu_set_thread_handler(td, kthread_exit, func, arg);
+    td->td_flags |= TDF_VERBOSE;
+
+    /*
+     * Set up arg0 for 'ps' etc
+     */
+    va_start(ap, fmt);
+    vsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
+    va_end(ap);
+
+    /*
+     * Schedule the thread to run
+     */
+    lwkt_schedule(td);
+    return 0;
+}
+
+/*
+ * Destroy an LWKT thread.   Warning!  This function is not called when
+ * a process exits, cpu_proc_exit() directly calls cpu_thread_exit() and
+ * uses a different reaping mechanism.
+ */
+void
+lwkt_exit(void)
+{
+    thread_t td = curthread;
+
+    if (td->td_flags & TDF_VERBOSE)
+	printf("kthread %p %s has exited\n", td, td->td_comm);
+    crit_enter();
+    lwkt_deschedule_self();
+    ++mycpu->gd_tdfreecount;
+    TAILQ_INSERT_TAIL(&mycpu->gd_tdfreeq, td, td_threadq);
+    cpu_thread_exit();
+}
+
+/*
+ * Create a kernel process/thread/whatever.  It shares it's address space
+ * with proc0 - ie: kernel only.
+ *
+ * XXX exact duplicate of lwkt_create().
+ */
+int
+kthread_create(void (*func)(void *), void *arg,
+    struct thread **tdp, const char *fmt, ...)
+{
+    struct thread *td;
+    va_list ap;
+
+    td = *tdp = lwkt_alloc_thread();
+    cpu_set_thread_handler(td, kthread_exit, func, arg);
+    td->td_flags |= TDF_VERBOSE;
+
+    /*
+     * Set up arg0 for 'ps' etc
+     */
+    va_start(ap, fmt);
+    vsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
+    va_end(ap);
+
+    /*
+     * Schedule the thread to run
+     */
+    lwkt_schedule(td);
+    return 0;
+}
+
+/*
+ * Destroy an LWKT thread.   Warning!  This function is not called when
+ * a process exits, cpu_proc_exit() directly calls cpu_thread_exit() and
+ * uses a different reaping mechanism.
+ *
+ * XXX duplicates lwkt_exit()
+ */
+void
+kthread_exit(void)
+{
+    lwkt_exit();
 }
 
