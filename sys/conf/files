@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.68 2004/07/26 16:30:16 joerg Exp $
+# $DragonFly: src/sys/conf/files,v 1.69 2004/08/03 07:16:14 joerg Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1113,6 +1113,7 @@ dev/netif/lnc/if_lnc_isa.c	optional lnc isa
 dev/netif/lnc/if_lnc_pci.c	optional lnc pci
 dev/netif/pcn/if_pcn.c		optional pcn
 dev/netif/mn/if_mn.c		optional mn
+dev/netif/re/if_re.c		optional re
 dev/netif/rl/if_rl.c		optional rl
 dev/netif/sf/if_sf.c		optional sf
 dev/netif/sis/if_sis.c		optional sis
