@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.26 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.27 2004/03/07 12:09:04 eirikn Exp $
  */
 
 /*
@@ -3356,3 +3356,26 @@ NDFREE(ndp, flags)
 	}
 }
 
+#ifdef DEBUG_VFS_LOCKS
+
+void
+assert_vop_locked(struct vnode *vp, const char *str)
+{
+
+	if (vp && IS_LOCKING_VFS(vp) && !VOP_ISLOCKED(vp, NULL)) {
+		panic("%s: %p is not locked shared but should be", str, vp);
+	}
+}
+
+void
+assert_vop_unlocked(struct vnode *vp, const char *str)
+{
+
+	if (vp && IS_LOCKING_VFS(vp)) {
+		if (VOP_ISLOCKED(vp, curthread) == LK_EXCLUSIVE) {
+			panic("%s: %p is locked but should not be", str, vp);
+		}
+	}
+}
+
+#endif

@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.11 2004/03/03 05:16:21 hmp Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.12 2004/03/07 12:09:04 eirikn Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -441,26 +441,8 @@ struct vop_generic_args {
 				 || (vp)->v_tag == VT_ISOFS	\
 				 || (vp)->v_tag == VT_MSDOSFS)
 
-#define ASSERT_VOP_LOCKED(vp, str)					\
-do {									\
-	struct vnode *_vp = (vp);					\
-									\
-	if (_vp && IS_LOCKING_VFS(_vp) && !VOP_ISLOCKED(_vp, NULL))	\
-		panic("%s: %p is not locked but should be", str, _vp);	\
-} while (0)
-
-#define ASSERT_VOP_UNLOCKED(vp, str)					\
-do {									\
-	struct vnode *_vp = (vp);					\
-	int lockstate;							\
-									\
-	if (_vp && IS_LOCKING_VFS(_vp)) {				\
-		lockstate = VOP_ISLOCKED(_vp, curthread);		\
-		if (lockstate == LK_EXCLUSIVE)				\
-			panic("%s: %p is locked but should not be",	\
-			    str, _vp);					\
-	}								\
-} while (0)
+#define ASSERT_VOP_LOCKED(vp, str) assert_vop_locked(vp, str)
+#define ASSERT_VOP_UNLOCKED(vp, str) assert_vop_unlocked(vp, str);
 
 #define ASSERT_VOP_ELOCKED(vp, str)					\
 do {									\
@@ -492,12 +474,15 @@ do {									\
 		    str, _vp);						\
 } while (0)
 
+void	assert_vop_locked(struct vnode *vp, const char *str);
+void	assert_vop_unlocked(struct vnode *vp, const char *str);
+
 #else
 
 #define ASSERT_VOP_LOCKED(vp, str)
 #define ASSERT_VOP_UNLOCKED(vp, str)
 
-#endif
+#endif /* DEBUG_VFS_LOCKS */
 
 /*
  * VOCALL calls an op given an ops vector.  We break it out because BSD's
