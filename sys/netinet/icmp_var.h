@@ -32,7 +32,7 @@
  *
  *	@(#)icmp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/icmp_var.h,v 1.15.2.2 2001/12/07 09:23:11 ru Exp $
- * $DragonFly: src/sys/netinet/icmp_var.h,v 1.3 2003/08/23 11:18:00 rob Exp $
+ * $DragonFly: src/sys/netinet/icmp_var.h,v 1.4 2004/09/19 22:32:48 joerg Exp $
  */
 
 #ifndef _NETINET_ICMP_VAR_H_
@@ -82,6 +82,7 @@ struct	icmpstat {
 
 #ifdef _KERNEL
 SYSCTL_DECL(_net_inet_icmp);
+extern struct icmpstat icmpstat;	/* icmp statistics */
 #ifdef ICMP_BANDLIM
 extern int badport_bandlim (int);
 #endif

@@ -32,7 +32,7 @@
  *
  *	@(#)in_proto.c	8.2 (Berkeley) 2/9/95
  * $FreeBSD: src/sys/netinet/in_proto.c,v 1.53.2.7 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in_proto.c,v 1.6 2004/03/06 01:58:55 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_proto.c,v 1.7 2004/09/19 22:32:48 joerg Exp $
  */
 
 #include "opt_ipdivert.h"
@@ -245,6 +245,14 @@ struct ipprotosw inetsw[] = {
   &rip_usrreqs
 },
 #endif
+#ifdef NPFSYNC
+{ SOCK_RAW,	&inetdomain,	IPPROTO_PFSYNC,	PR_ATOMIC|PR_ADDR,
+  pfsync_input,	0,		0,		rip_ctloutput,
+  0,
+  0,		0,		0,		0,
+  &rip_usrreqs
+},
+#endif	/* NPFSYNC */
 	/* raw wildcard */
 { SOCK_RAW,	&inetdomain,	0,		PR_ATOMIC|PR_ADDR,
   rip_input,	0,		0,		rip_ctloutput,

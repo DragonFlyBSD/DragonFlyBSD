@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/netinet/in_cksum.c,v 1.5 2004/07/16 05:51:19 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_cksum.c,v 1.6 2004/09/19 22:32:48 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -42,6 +42,7 @@
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
+#include <netinet/ip_var.h>
 
 #include <machine/endian.h>
 
@@ -66,13 +67,35 @@
  * carry when collapsing it back down to 16 bits.
  */
 __uint32_t
-in_cksum_range(struct mbuf *m, int offset, int bytes)
+in_cksum_range(struct mbuf *m, int nxt, int offset, int bytes)
 {
+    union {
+    	struct ipovly ipov;
+	uint16_t w[10];
+    } u;
     __uint8_t *ptr;
     __uint32_t sum0;
     __uint32_t sum1;
     int n;
     int flip;
+
+    sum0 = 0;
+
+    if (nxt != 0) {
+    	/* pseudo header */
+	if (offset < sizeof(struct ipovly))
+		panic("in_cksum_range: offset too short");
+	if (m->m_len < sizeof(struct ip))
+		panic("in_cksum_range: bad mbuf chain");
+	bzero(&u.ipov, sizeof(u.ipov));
+	u.ipov.ih_len = htons(bytes);
+	u.ipov.ih_pr = nxt;
+	u.ipov.ih_src = mtod(m, struct ip *)->ip_src;
+	u.ipov.ih_dst = mtod(m, struct ip *)->ip_dst;
+	ptr = u.w;
+	sum0 += ptr[0]; sum0 += ptr[1]; sum0 += ptr[2]; sum0 += ptr[3]; sum0 += ptr[4];
+	sum0 += ptr[5]; sum0 += ptr[6]; sum0 += ptr[7]; sum0 += ptr[8]; sum0 += ptr[9];
+    }
 
     /*
      * Skip fully engulfed mbufs.  Branch predict optimal.
@@ -91,7 +114,6 @@ in_cksum_range(struct mbuf *m, int offset, int bytes)
      *
      * Initial offsets do not pre-set flip (assert that offset is even?)
      */
-    sum0 = 0;
     sum1 = 0;
     flip = 0;
     while (bytes > 0 && m) {

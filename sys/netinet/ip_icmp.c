@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.11 2004/09/14 00:11:07 drhodus Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.12 2004/09/19 22:32:48 joerg Exp $
  */
 
 #include "opt_ipsec.h"
@@ -79,7 +79,7 @@
  * host table maintenance routines.
  */
 
-static struct	icmpstat icmpstat;
+struct icmpstat icmpstat;
 SYSCTL_STRUCT(_net_inet_icmp, ICMPCTL_STATS, stats, CTLFLAG_RW,
 	&icmpstat, icmpstat, "");
 
@@ -237,6 +237,7 @@ icmp_error(n, type, code, dest, destifp)
 	nip->ip_vhl = IP_VHL_BORING;
 	nip->ip_p = IPPROTO_ICMP;
 	nip->ip_tos = 0;
+	m->m_pkthdr.pf_flags |= n->m_pkthdr.pf_flags & PF_MBUF_GENERATED;
 	icmp_reflect(m);
 
 freeit:
@@ -741,6 +742,7 @@ match:
 		bcopy((caddr_t)ip + optlen, (caddr_t)(ip + 1),
 			 (unsigned)(m->m_len - sizeof(struct ip)));
 	}
+	m->m_pkthdr.pf_flags &= PF_MBUF_GENERATED;
 	m->m_flags &= ~(M_BCAST|M_MCAST);
 	icmp_send(m, opts, ro);
 done:

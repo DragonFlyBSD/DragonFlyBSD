@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
+ *
  * Copyright (c) 1982, 1986, 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.15 2004/09/14 15:49:54 joerg Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.16 2004/09/19 22:32:48 joerg Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -88,12 +90,16 @@ struct m_tag {
 struct pkthdr {
 	struct	ifnet *rcvif;		/* rcv interface */
 	int	len;			/* total packet length */
+	SLIST_HEAD(packet_tags, m_tag) tags; /* list of packet tags */
 	/* variables for ip and tcp reassembly */
 	void	*header;		/* pointer to packet header */
 	/* variables for hardware checksum */
 	int	csum_flags;		/* flags regarding checksum */
 	int	csum_data;		/* data field used by csum routines */
-	SLIST_HEAD(packet_tags, m_tag) tags; /* list of packet tags */
+	/* variables for PF processing */
+	int	pf_flags;		/* flags for PF */
+	uint16_t	pf_tag;		/* PF tag id */
+	uint8_t	pf_routed;	/* PF routing counter */
 };
 
 /*
@@ -195,6 +201,16 @@ struct mbuf {
 
 #define	CSUM_DELAY_DATA		(CSUM_TCP | CSUM_UDP)
 #define	CSUM_DELAY_IP		(CSUM_IP)	/* XXX add ipv6 here too? */
+
+/*
+ * Flags indicating PF processing status
+ */
+#define	PF_MBUF_GENERATED	0x00000001
+#define	PF_MBUF_TAGGED		0x00000002	/* pf_tag field is valid */
+#define	PF_MBUF_ROUTED		0x00000004	/* pf_routed field is valid */
+#define	PF_MBUF_TRANSLATE_LOCALHOST					\
+				0x00000008
+#define	PF_MBUF_FRAGCACHE	0x00000010
 
 /*
  * mbuf types.

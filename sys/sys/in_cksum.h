@@ -37,7 +37,7 @@
  *	from:		@(#)in_cksum.c	1.3 (Berkeley) 1/19/91
  *	from: Id: in_cksum.c,v 1.8 1995/12/03 18:35:19 bde Exp
  * $FreeBSD: src/sys/i386/include/in_cksum.h,v 1.7.2.2 2002/07/02 04:03:04 jdp Exp $
- * $DragonFly: src/sys/sys/in_cksum.h,v 1.2 2004/07/16 05:51:57 dillon Exp $
+ * $DragonFly: src/sys/sys/in_cksum.h,v 1.3 2004/09/19 22:32:48 joerg Exp $
  */
 
 #ifndef _SYS_IN_CKSUM_H_
@@ -48,21 +48,21 @@
 struct ip;
 struct mbuf;
 
-__uint32_t in_cksum_range(struct mbuf *m, int offset, int bytes);
+__uint32_t in_cksum_range(struct mbuf *m, int nxt, int offset, int bytes);
 __uint32_t asm_ones32(const void *buf, int count);	/* in 32 bit words */
 
 static __inline u_int
 in_cksum(struct mbuf *m, int len)
 {
-    return(in_cksum_range(m, 0, len));
+    return(in_cksum_range(m, 0, 0, len));
 }
 
 static __inline u_int
 in_cksum_skip(struct mbuf *m, int len, int skip)
 {
-    return(in_cksum_range(m, skip, len - skip));
+    return(in_cksum_range(m, 0, skip, len - skip));
 }
-	
+
 static __inline u_int
 in_cksum_hdr(const struct ip *ip)
 {

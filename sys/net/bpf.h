@@ -39,7 +39,7 @@
  *	@(#)bpf.h	1.34 (LBL)     6/16/96
  *
  * $FreeBSD: src/sys/net/bpf.h,v 1.21.2.4 2002/07/05 14:40:00 fenner Exp $
- * $DragonFly: src/sys/net/bpf.h,v 1.5 2004/07/07 15:16:04 joerg Exp $
+ * $DragonFly: src/sys/net/bpf.h,v 1.6 2004/09/19 22:32:47 joerg Exp $
  */
 
 #ifndef _NET_BPF_H_
@@ -268,6 +268,11 @@ struct bpf_hdr {
  * (see Doug Ambrisko's FreeBSD patches).
  */
 #define DLT_AIRONET_HEADER	120
+
+/*
+ * Reserved for use by OpenBSD's pfsync device.
+ */
+#define	DLT_PFSYNC	121
 
 /*
  * The instruction encodings.

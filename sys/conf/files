@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.72 2004/09/06 13:52:24 joerg Exp $
+# $DragonFly: src/sys/conf/files,v 1.73 2004/09/19 22:32:47 joerg Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -783,6 +783,15 @@ net/if_fddisubr.c		optional fddi
 net/gif/if_gif.c		optional gif
 net/gre/if_gre.c		optional gre
 net/pfil.c			standard
+net/pf/if_pflog.c		optional pflog
+net/pf/if_pfsync.c		optional pfsync
+net/pf/pf.c			optional pf
+net/pf/pf_if.c			optional pf
+net/pf/pf_subr.c		optional pf
+net/pf/pf_ioctl.c		optional pf
+net/pf/pf_norm.c		optional pf
+net/pf/pf_table.c		optional pf
+net/pf/pf_osfp.c		optional pf
 net/ppp_layer/slcompress.c	optional netgraph_vjc
 net/ppp_layer/slcompress.c	optional ppp
 net/ppp_layer/slcompress.c	optional sl

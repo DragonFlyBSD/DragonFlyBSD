@@ -32,7 +32,7 @@
  *
  *	@(#)in.h	8.3 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/in.h,v 1.48.2.10 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in.h,v 1.8 2004/09/16 13:40:23 joerg Exp $
+ * $DragonFly: src/sys/netinet/in.h,v 1.9 2004/09/19 22:32:48 joerg Exp $
  */
 
 #ifndef _NETINET_IN_H_
@@ -168,6 +168,7 @@
 /* 101-254: Partly Unassigned */
 #define	IPPROTO_PIM		103		/* Protocol Independent Mcast */
 #define	IPPROTO_PGM		113		/* PGM */
+#define	IPPROTO_PFSYNC          240             /* PFSYNC */
 /* 255: Reserved */
 /* BSD Private, local use, namespace incursion */
 #define	IPPROTO_DIVERT		254		/* divert pseudo-protocol */
@@ -293,6 +294,7 @@ struct in_addr {
 #define	INADDR_UNSPEC_GROUP	(u_int32_t)0xe0000000	/* 224.0.0.0 */
 #define	INADDR_ALLHOSTS_GROUP	(u_int32_t)0xe0000001	/* 224.0.0.1 */
 #define	INADDR_ALLRTRS_GROUP	(u_int32_t)0xe0000002	/* 224.0.0.2 */
+#define	INADDR_PFSYNC_GROUP	(u_int32_t)0xe00000f0	/* 224.0.0.240 */
 #define	INADDR_MAX_LOCAL_GROUP	(u_int32_t)0xe00000ff	/* 224.0.0.255 */
 
 #define	IN_LOOPBACKNET		127			/* official! */
