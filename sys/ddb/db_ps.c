@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.9 2004/03/01 06:32:49 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.10 2004/07/24 20:27:19 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -136,6 +136,11 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 	    db_printf("cpu %d tdrunqmask %08x curthread %p reqflags %04x\n",
 		    gd->gd_cpuid, gd->gd_runqmask,
 		    gd->gd_curthread, gd->gd_reqflags);
+	    db_printf("       uschedcp %p (%d) upri %d\n",
+		    gd->gd_uschedcp,
+		    (gd->gd_uschedcp ? gd->gd_uschedcp->p_pid : -1),
+		    gd->gd_upri);
+
 	    if (gd->gd_tokreqbase) {
 		lwkt_tokref_t ref;
 
@@ -200,11 +205,13 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 	}
 	if (db_more(&nl) < 0)
 	    return;
-	db_printf("CURCPU %d CURTHREAD %p (%d)\n",
+	db_printf("CURCPU %d CURTHREAD %p (%d) USCHEDCP %p (%d) UPRI %d\n",
 	    mycpu->gd_cpuid,
 	    curthread,
-	    (curthread->td_proc ? curthread->td_proc->p_pid : -1)
-	);
+	    (curthread->td_proc ? curthread->td_proc->p_pid : -1),
+	    mycpu->gd_uschedcp,
+	    (mycpu->gd_uschedcp ? mycpu->gd_uschedcp->p_pid : -1),
+	    mycpu->gd_upri);
 	db_dump_td_tokens(curthread);
 }
 
