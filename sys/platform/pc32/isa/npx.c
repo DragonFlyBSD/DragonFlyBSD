@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.21 2004/06/17 19:37:29 drhodus Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.22 2005/01/31 23:44:35 joerg Exp $
  */
 
 #include "opt_cpu.h"
@@ -440,7 +440,7 @@ npx_attach(device_t dev)
 	if (npx_irq13) {
 		device_printf(dev, "using IRQ 13 interface\n");
 	} else {
-#if defined(MATH_EMULATE) || defined(GPL_MATH_EMULATE)
+#if defined(MATH_EMULATE)
 		if (npx_ex16) {
 			if (!(flags & NPX_PREFER_EMULATOR))
 				device_printf(dev, "INT 16 interface\n");

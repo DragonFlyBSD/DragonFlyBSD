@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.84 2005/01/14 03:25:31 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.85 2005/01/31 23:44:34 joerg Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -253,8 +253,6 @@ dev/pccard/pccbb/pccbb.c		optional cbb
 dev/pccard/cardbus/cardbus.c		optional cardbus
 dev/pccard/cardbus/cardbus_cis.c	optional cardbus
 dev/pccard/exca/exca.c			optional cbb
-dev/pccard/pcic/i82365.c		optional pcic pccard
-dev/pccard/pcic/i82365_isa.c		optional pcic pccard isa
 
 dev/disk/advansys/adv_eisa.c		optional adv eisa
 dev/disk/advansys/adv_pci.c		optional adv pci

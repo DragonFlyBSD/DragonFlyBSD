@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.amd64,v 1.3 2004/04/29 12:11:15 joerg Exp $
+# $DragonFly: src/sys/conf/Attic/files.amd64,v 1.4 2005/01/31 23:44:34 joerg Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -125,7 +125,6 @@ vfs/smbfs/smbfs_subr.c		optional	smbfs
 vfs/smbfs/smbfs_vfsops.c		optional	smbfs
 vfs/smbfs/smbfs_vnops.c		optional	smbfs
 i386/gnu/isa/dgb.c		optional	dgb
-i386/gnu/isa/sound/awe_wave.c	optional	awe
 i386/apm/apm.c			optional	apm
 i386/i386/atomic.c		standard				\
 	compile-with	"${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
@@ -212,7 +211,6 @@ i386/isa/pmtimer.c			optional	acpica
 # XXX drhodus
 i386/isa/prof_machdep.c			optional	profiling-routine
 dev/serial/rc/rc.c			optional	rc
-dev/serial/rp2/rp.c			optional	rp
 dev/disk/scd/scd.c			optional	scd
 dev/sound/isa/i386/ad1848.c		optional	css
 dev/sound/isa/i386/ad1848.c		optional	gus

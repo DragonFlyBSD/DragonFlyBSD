@@ -47,7 +47,7 @@
  ** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **
  ** $FreeBSD: src/sys/i386/i386/userconfig.c,v 1.175.2.10 2002/10/05 18:31:48 scottl Exp $
- ** $DragonFly: src/sys/i386/i386/Attic/userconfig.c,v 1.3 2003/08/07 21:17:22 dillon Exp $
+ ** $DragonFly: src/sys/i386/i386/Attic/userconfig.c,v 1.4 2005/01/31 23:44:35 joerg Exp $
  **/
 
 /**
@@ -390,7 +390,6 @@ static DEV_INFO device_info[] = {
 {"sb",          "VOXWARE Soundblaster PCM (SB/Pro/16, ProAudio Spectrum)",0,CLS_MMEDIA},
 {"sbxvi",       "VOXWARE Soundblaster 16",		0,		CLS_MMEDIA},
 {"sbmidi",      "VOXWARE Soundblaster MIDI interface",	0,		CLS_MMEDIA},
-{"awe",         "VOXWARE AWE32 MIDI",			0,		CLS_MMEDIA},
 {"pas",         "VOXWARE ProAudio Spectrum PCM and MIDI",	0,	CLS_MMEDIA},
 {"gus",         "VOXWARE Gravis Ultrasound, Ultrasound 16 and Ultrasound MAX",0,CLS_MMEDIA},
 {"gusxvi",      "VOXWARE Gravis Ultrasound 16-bit PCM",	0,		CLS_MMEDIA},

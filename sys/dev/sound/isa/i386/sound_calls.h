@@ -1,3 +1,5 @@
+/* $DragonFly: src/sys/dev/sound/isa/i386/Attic/sound_calls.h,v 1.2 2005/01/31 23:44:35 joerg Exp $ */
+
 /*
  *	DMA buffer calls
  */
@@ -129,10 +131,6 @@ void opl3_init(int ioaddr, sound_os_info *osp);
 /*	From sb_card.c	*/
 void attach_sb_card(struct address_info *hw_config);
 int probe_sb(struct address_info *hw_config);
-
-/*  From awe_wave.c  */
-void  attach_awe(struct address_info *hw_config);
-int probe_awe(struct address_info *hw_config);
 
 /*	From adlib_card.c	*/
 void attach_adlib_card(struct address_info *hw_config);

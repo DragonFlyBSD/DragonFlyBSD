@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.i386,v 1.26 2004/07/27 08:09:55 asmodai Exp $
+# $DragonFly: src/sys/conf/Attic/files.i386,v 1.27 2005/01/31 23:44:34 joerg Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -145,39 +145,7 @@ vfs/smbfs/smbfs_smb.c		optional	smbfs
 vfs/smbfs/smbfs_subr.c		optional	smbfs
 vfs/smbfs/smbfs_vfsops.c		optional	smbfs
 vfs/smbfs/smbfs_vnops.c		optional	smbfs
-i386/gnu/fpemul/div_small.s	optional	gpl_math_emulate
-i386/gnu/fpemul/errors.c	optional	gpl_math_emulate
-i386/gnu/fpemul/fpu_arith.c	optional	gpl_math_emulate
-i386/gnu/fpemul/fpu_aux.c	optional	gpl_math_emulate
-i386/gnu/fpemul/fpu_entry.c	optional	gpl_math_emulate
-i386/gnu/fpemul/fpu_etc.c	optional	gpl_math_emulate
-i386/gnu/fpemul/fpu_trig.c	optional	gpl_math_emulate
-i386/gnu/fpemul/get_address.c	optional	gpl_math_emulate
-i386/gnu/fpemul/load_store.c	optional	gpl_math_emulate
-i386/gnu/fpemul/poly_2xm1.c	optional	gpl_math_emulate
-i386/gnu/fpemul/poly_atan.c	optional	gpl_math_emulate
-i386/gnu/fpemul/poly_div.s	optional	gpl_math_emulate
-i386/gnu/fpemul/poly_l2.c	optional	gpl_math_emulate
-i386/gnu/fpemul/poly_mul64.s	optional	gpl_math_emulate
-i386/gnu/fpemul/poly_sin.c	optional	gpl_math_emulate
-i386/gnu/fpemul/poly_tan.c	optional	gpl_math_emulate
-i386/gnu/fpemul/polynomial.s	optional	gpl_math_emulate
-i386/gnu/fpemul/reg_add_sub.c	optional	gpl_math_emulate
-i386/gnu/fpemul/reg_compare.c	optional	gpl_math_emulate
-i386/gnu/fpemul/reg_constant.c	optional	gpl_math_emulate
-i386/gnu/fpemul/reg_div.s	optional	gpl_math_emulate
-i386/gnu/fpemul/reg_ld_str.c	optional	gpl_math_emulate
-i386/gnu/fpemul/reg_mul.c	optional	gpl_math_emulate
-i386/gnu/fpemul/reg_norm.s	optional	gpl_math_emulate
-i386/gnu/fpemul/reg_round.s	optional	gpl_math_emulate
-i386/gnu/fpemul/reg_u_add.s	optional	gpl_math_emulate
-i386/gnu/fpemul/reg_u_div.s	optional	gpl_math_emulate
-i386/gnu/fpemul/reg_u_mul.s	optional	gpl_math_emulate
-i386/gnu/fpemul/reg_u_sub.s	optional	gpl_math_emulate
-i386/gnu/fpemul/wm_shrx.s	optional	gpl_math_emulate
-i386/gnu/fpemul/wm_sqrt.s	optional	gpl_math_emulate
 i386/gnu/isa/dgb.c		optional	dgb
-i386/gnu/isa/sound/awe_wave.c	optional	awe
 i386/apm/apm.c			optional	apm
 i386/i386/atomic.c		standard				\
 	compile-with	"${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
@@ -292,7 +260,6 @@ i386/isa/pmtimer.c			optional	acpica pmtimer
 # XXX drhodus
 i386/isa/prof_machdep.c			optional	profiling-routine
 dev/serial/rc/rc.c			optional	rc
-dev/serial/rp2/rp.c			optional	rp
 dev/disk/scd/scd.c			optional	scd
 dev/sound/isa/i386/ad1848.c		optional	css
 dev/sound/isa/i386/ad1848.c		optional	gus

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/sound/soundcard.c,v 1.87 1999/12/20 18:05:01 eivind Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/Attic/soundcard.c,v 1.7 2004/05/19 22:52:50 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/Attic/soundcard.c,v 1.8 2005/01/31 23:44:35 joerg Exp $
  *
  */
 #include "use_snd.h"
@@ -129,7 +129,6 @@ struct isa_driver trixsbdriver = {sndprobe, sndattach, "trixsb"};
 struct isa_driver sbdriver = {sndprobe, sndattach, "sb"};
 struct isa_driver sbxvidriver = {sndprobe, sndattach, "sbxvi"};
 struct isa_driver sbmididriver = {sndprobe, sndattach, "sbmidi"};
-struct isa_driver awedriver    = {sndprobe, sndattach, "awe"};
 struct isa_driver pasdriver = {sndprobe, sndattach, "pas"};
 struct isa_driver mpudriver = {sndprobe, sndattach, "mpu"};
 struct isa_driver gusdriver = {sndprobe, sndattach, "gus"};
@@ -316,8 +315,6 @@ driver_to_voxunit(struct isa_driver * driver)
 	return (SNDCARD_SB16);
     else if (driver == &sbmididriver)
 	return (SNDCARD_SB16MIDI);
-    else if(driver == &awedriver)
-	return(SNDCARD_AWE32);
     else if (driver == &uartdriver)
 	return (SNDCARD_UART6850);
     else if (driver == &gusdriver)

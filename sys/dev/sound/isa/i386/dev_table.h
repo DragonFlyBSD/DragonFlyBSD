@@ -25,6 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
+ * $DragonFly: src/sys/dev/sound/isa/i386/Attic/dev_table.h,v 1.2 2005/01/31 23:44:35 joerg Exp $
  */
 
 #ifndef _DEV_TABLE_H_
@@ -355,10 +356,6 @@ struct driver_info sound_drivers[] = {
 #ifdef CONFIG_AUDIO
     {"SB16", 0, SNDCARD_SB16, "SoundBlaster16",
 		sb16_dsp_init, sb16_dsp_detect},
-#endif
-#ifdef CONFIG_AWE32
-    {"AWE32", 0, SNDCARD_AWE32,     "AWE32 Synth",
-		 attach_awe, probe_awe},
 #endif
 #ifdef CONFIG_MIDI
     {"SB16MIDI", 0, SNDCARD_SB16MIDI, "SB16 MIDI",

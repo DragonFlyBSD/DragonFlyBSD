@@ -6,7 +6,7 @@
  * will become more like that of standard bsd code.
  * lr 970714
  *
- * $DragonFly: src/sys/platform/pc32/isa/sound/Attic/local.h,v 1.2 2003/08/07 21:17:23 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/sound/Attic/local.h,v 1.3 2005/01/31 23:44:35 joerg Exp $
  */
 
 /* build hex2hex /tmp/foo.x trix_boot.h trix_boot */
@@ -80,11 +80,6 @@
 #include "use_sbmidi.h"
 #if NSBMIDI != 0 && !defined(CONFIG_SB16MIDI)
 #define CONFIG_SB16MIDI
-#endif
-
-#include "use_awe.h"
-#if NAWE != 0 && !defined(CONFIG_AWE32)
-#define CONFIG_AWE32
 #endif
 
 #include "use_pas.h"

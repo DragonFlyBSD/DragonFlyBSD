@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.h,v 1.27.2.11 2002/10/05 18:31:48 scottl Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.6 2004/02/21 06:37:05 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.7 2005/01/31 23:44:34 joerg Exp $
  */
 
 #include "use_vt.h"
@@ -38,7 +38,6 @@
 #include "use_sb.h"
 #include "use_sbxvi.h"
 #include "use_sbmidi.h"
-#include "use_awe.h"
 #include "use_gus.h"
 #include "use_mss.h"
 #include "use_css.h"
@@ -58,7 +57,6 @@
 #include "use_dgb.h"
 #include "use_labpc.h"
 #include "use_rc.h"
-#include "use_rp.h"
 #include "use_tw.h"
 #include "use_asc.h"
 #include "use_stl.h"
@@ -80,7 +78,6 @@ extern struct isa_driver pasdriver;
 extern struct isa_driver  sbdriver;
 extern struct isa_driver sbxvidriver;
 extern struct isa_driver sbmididriver;
-extern struct isa_driver awedriver;
 extern struct isa_driver gusdriver;
 extern struct isa_driver mssdriver;
 extern struct isa_driver cssdriver;
@@ -204,9 +201,6 @@ static struct old_isa_driver old_drivers[] = {
 #endif
 #if NSBMIDI > 0
 	{ INTR_TYPE_MISC, &sbmididriver },
-#endif
-#if NAWE > 0
-	{ INTR_TYPE_MISC, &awedriver },
 #endif
 #if NGUS > 0
 	{ INTR_TYPE_MISC, &gusdriver },
