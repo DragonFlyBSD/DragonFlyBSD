@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.13 2004/06/06 19:16:06 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.14 2004/12/08 23:59:01 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -496,6 +496,18 @@ sbappend(sb, m)
 	sbcompress(sb, m, n);
 }
 
+/*
+ * sbappendstream() is an optimized form of sbappend() for protocols
+ * such as TCP that only have one record in the socket buffer, are
+ * not PR_ATOMIC, nor allow MT_CONTROL data.
+ */
+void
+sbappendstream(struct sockbuf *sb, struct mbuf *m)
+{
+	KKASSERT(m->m_nextpkt == NULL);
+	sbcompress(sb, m, sb->sb_lastmbuf);
+}
+
 #ifdef SOCKBUF_DEBUG
 void
 sbcheck(sb)
@@ -725,6 +737,7 @@ sbcompress(sb, m, n)
 			n->m_next = m;
 		else
 			sb->sb_mb = m;
+		sb->sb_lastmbuf = m;
 		sballoc(sb, m);
 		n = m;
 		m->m_flags &= ~M_EOR;
@@ -759,8 +772,9 @@ sbflush(sb)
 			break;
 		sbdrop(sb, (int)sb->sb_cc);
 	}
-	if (sb->sb_cc || sb->sb_mb || sb->sb_mbcnt)
-		panic("sbflush: cc %ld || mb %p || mbcnt %ld", sb->sb_cc, (void *)sb->sb_mb, sb->sb_mbcnt);
+	KASSERT(!(sb->sb_cc || sb->sb_mb || sb->sb_mbcnt || sb->sb_lastmbuf),
+	    ("sbflush: cc %ld || mb %p || mbcnt %ld || mbtail %p",
+	    sb->sb_cc, sb->sb_mb, sb->sb_mbcnt, sb->sb_lastmbuf));
 }
 
 /*
@@ -800,8 +814,10 @@ sbdrop(sb, len)
 	if (m) {
 		sb->sb_mb = m;
 		m->m_nextpkt = next;
-	} else
+	} else {
 		sb->sb_mb = next;
+		sb->sb_lastmbuf = NULL;
+	}
 }
 
 /*

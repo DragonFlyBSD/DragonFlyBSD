@@ -82,7 +82,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.25 2004/08/11 02:24:16 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.26 2004/12/08 23:59:01 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -986,6 +986,8 @@ dontblock:
 				}
 				if (m)
 					m->m_nextpkt = nextrecord;
+				else
+					so->so_rcv.sb_lastmbuf = NULL;
 			}
 		} else {
 			if (flags & MSG_PEEK)
@@ -1050,8 +1052,10 @@ dontblock:
 			(void) sbdroprecord(&so->so_rcv);
 	}
 	if ((flags & MSG_PEEK) == 0) {
-		if (m == 0)
+		if (m == 0) {
 			so->so_rcv.sb_mb = nextrecord;
+			so->so_rcv.sb_lastmbuf = NULL;
+		}
 		if (pr->pr_flags & PR_WANTRCVD && so->so_pcb)
 			so_pru_rcvd(so, flags);
 	}
