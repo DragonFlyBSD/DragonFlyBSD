@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.17 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.14 2003/10/13 18:01:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.15 2003/10/13 21:15:43 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -892,22 +892,33 @@ falloc(struct proc *p, struct file **resultfp, int *resultfd)
 		return (error);
 	}
 	fp->f_count = 1;
-	fp->f_cred = crhold(p->p_ucred);
 	fp->f_ops = &badfileops;
 	fp->f_seqcount = 1;
 	if (p) {
+		fp->f_cred = crhold(p->p_ucred);
 		if ((fq = p->p_fd->fd_ofiles[0]) != NULL) {
 			LIST_INSERT_AFTER(fq, fp, f_list);
 		} else {
 			LIST_INSERT_HEAD(&filehead, fp, f_list);
 		}
 		p->p_fd->fd_ofiles[i] = fp;
+	} else {
+		fp->f_cred = crhold(proc0.p_ucred);
+		LIST_INSERT_HEAD(&filehead, fp, f_list);
 	}
 	if (resultfp)
 		*resultfp = fp;
 	if (resultfd)
 		*resultfd = i;
 	return (0);
+}
+
+void
+fsetcred(struct file *fp, struct ucred *cr)
+{
+	crhold(cr);
+	crfree(fp->f_cred);
+	fp->f_cred = cr;
 }
 
 /*

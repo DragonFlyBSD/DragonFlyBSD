@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.1 2003/10/13 18:01:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fp.c,v 1.2 2003/10/13 21:15:43 dillon Exp $
  */
 
 /*
@@ -79,6 +79,8 @@ typedef struct file *file_t;
  *
  *	Open a file as specified.  Use O_* flags for flags.
  *
+ *	NOTE! O_ROOTCRED not quite working yet, vn_open() asserts that the
+ *	cred must match the process's cred.
  */
 int
 fp_open(const char *path, int flags, int mode, file_t *fpp)
@@ -92,9 +94,13 @@ fp_open(const char *path, int flags, int mode, file_t *fpp)
 	return (error);
     fp = *fpp;
     td = curthread;
-    NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
+    if ((flags & O_ROOTCRED) == 0 && td->td_proc)
+	fsetcred(fp, td->td_proc->p_ucred);
+
+    NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_SYSSPACE, path, td);
     flags = FFLAGS(flags);
-    if ((error = vn_open(&nd, flags, 0)) == 0) {
+    printf("%08x\n", flags);
+    if ((error = vn_open(&nd, flags, mode)) == 0) {
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	fp->f_data = (caddr_t)nd.ni_vp;
 	fp->f_flag = flags;
@@ -103,6 +109,7 @@ fp_open(const char *path, int flags, int mode, file_t *fpp)
 	VOP_UNLOCK(nd.ni_vp, 0, td);
     } else {
 	fdrop(fp, td);
+	*fpp = NULL;
     }
     return(error);
 }
