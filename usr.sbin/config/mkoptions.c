@@ -33,7 +33,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkoptions.c,v 1.17.2.3 2001/12/13 19:18:01 dillon Exp $
- * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.12 2004/03/08 03:28:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.13 2005/01/01 01:36:02 cpressey Exp $
  */
 
 /*
@@ -124,12 +124,12 @@ do_option(char *name)
 	 */
 	value = NULL;
 	for (op = opt; op != NULL; op = op->op_next) {
-		if (!strcmp(name, op->op_name)) {
+		if (strcmp(name, op->op_name) == 0) {
 			oldvalue = value;
 			value = op->op_value;
 			if (value == NULL)
 				value = strdup("1");
-			if (oldvalue != NULL && strcmp(value, oldvalue))
+			if (oldvalue != NULL && strcmp(value, oldvalue) != 0)
 				printf(
 			    "%s:%d: option \"%s\" redefined from %s to %s\n",
 				   PREFIX, op->op_line, op->op_name, oldvalue,
@@ -154,7 +154,7 @@ do_option(char *name)
 	}
 	basefile = "";
 	for (ol = otab; ol != NULL; ol = ol->o_next)
-		if (!strcmp(name, ol->o_name)) {
+		if (strcmp(name, ol->o_name) == 0) {
 			basefile = ol->o_file;
 			break;
 		}
@@ -178,19 +178,19 @@ do_option(char *name)
 			break;
 		/* option value */
 		invalue = strdup(cp); /* malloced */
-		if (!strcmp(inw, name)) {
+		if (strcmp(inw, name) == 0) {
 			oldvalue = invalue;
 			invalue = value;
 			seen++;
 		}
 		for (ol = otab; ol != NULL; ol = ol->o_next)
-			if (!strcmp(inw, ol->o_name))
+			if (strcmp(inw, ol->o_name) == 0)
 				break;
-		if (strcmp(inw, name) && ol == NULL) {
+		if (strcmp(inw, name) != 0 && ol == NULL) {
 			printf("WARNING: unknown option `%s' removed from %s\n",
 				inw, file);
 			tidy++;
-		} else if (ol != NULL && strcmp(basefile, ol->o_file)) {
+		} else if (ol != NULL && strcmp(basefile, ol->o_file) != 0) {
 			printf("WARNING: option `%s' moved from %s to %s\n",
 				inw, basefile, ol->o_file);
 			tidy++;
@@ -210,7 +210,7 @@ do_option(char *name)
 	}
 	fclose(inf);
 	if (!tidy && ((value == NULL && oldvalue == NULL) ||
-	    (value && oldvalue && !strcmp(value, oldvalue)))) {	
+	    (value && oldvalue && strcmp(value, oldvalue) == 0))) {	
 		for (op = op_head; op != NULL; op = topp) {
 			topp = op->op_next;
 			free(op->op_name);
@@ -261,7 +261,7 @@ tooption(char *name)
 	strlcpy(nbuf, "options.h", sizeof(nbuf));
 
 	for (po = otab ; po != NULL; po = po->o_next) {
-		if (!strcmp(po->o_name, name)) {
+		if (strcmp(po->o_name, name) == 0) {
 			strlcpy(nbuf, po->o_file, sizeof(nbuf));
 			break;
 		}
@@ -340,7 +340,7 @@ next:
 	val = strdup(val);
 
 	for (po = otab; po != NULL; po = po->o_next) {
-		if (!strcmp(po->o_name, this)) {
+		if (strcmp(po->o_name, this) == 0) {
 			printf("%s: Duplicate option %s.\n",
 			       fname, this);
 			exit(1);

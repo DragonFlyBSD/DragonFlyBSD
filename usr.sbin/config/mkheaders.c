@@ -32,7 +32,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkheaders.c,v 1.14.2.2 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.11 2004/03/08 03:28:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.12 2005/01/01 01:36:02 cpressey Exp $
  */
 
 /*
@@ -96,7 +96,7 @@ do_count(char *dev, char *hname, int search)
 	 * must use the higher of these values.
 	 */
 	for (dp = dtab; dp != NULL; dp = dp->d_next) {
-		if (!strcmp(dp->d_name, dev)) {
+		if (strcmp(dp->d_name, dev) == 0) {
 			if ((dp->d_type & TYPEMASK) == PSEUDO_DEVICE)
 				dp->d_type |= DEVDONE;
 			else if ((dp->d_type & TYPEMASK) == DEVICE)
@@ -104,7 +104,7 @@ do_count(char *dev, char *hname, int search)
 		}
 	}
 	for (hicount = count = 0, dp = dtab; dp != NULL; dp = dp->d_next) {
-		if (dp->d_unit != -1 && !strcmp(dp->d_name, dev)) {
+		if (dp->d_unit != -1 && strcmp(dp->d_name, dev) == 0) {
 			if ((dp->d_type & TYPEMASK) == PSEUDO_DEVICE) {
 				count =
 				    dp->d_count != UNKNOWN ? dp->d_count : 1;
@@ -122,7 +122,7 @@ do_count(char *dev, char *hname, int search)
 				mp = dp->d_conn;
 				if (mp != NULL && dp->d_connunit < 0)
 					mp = NULL;
-				if (mp != NULL && !strcmp(mp, "nexus"))
+				if (mp != NULL && strcmp(mp, "nexus") == 0)
 					mp = NULL;
 				if (mp != NULL) {
 					do_count(mp, hname, 0);
@@ -166,7 +166,7 @@ do_header(char *dev, char *hname, int count)
 		if (cp == NULL || cp == (char *)EOF)
 			break;
 		inc = atoi(cp);
-		if (!strcmp(inw, name)) {
+		if (strcmp(inw, name) == 0) {
 			oldcount = inc;
 			inc = count;
 		}
