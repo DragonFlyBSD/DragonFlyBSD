@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/checkpt/Attic/support.c,v 1.2 2004/06/05 10:02:07 eirikn Exp $
+ * $DragonFly: src/sys/checkpt/Attic/support.c,v 1.3 2004/06/05 10:04:38 eirikn Exp $
  */
 
 /* prune the includes XXX */
@@ -67,7 +67,7 @@
 #include "checkpt.h"
 
 
-static char ckptfilename[64] = {"%N.ckpt"};
+static char ckptfilename[MAXPATHLEN] = {"%N.ckpt"};
 SYSCTL_STRING(_kern, OID_AUTO, ckptfile, CTLFLAG_RW, ckptfilename,
 	      sizeof(ckptfilename), "process checkpoint name format string");
 
