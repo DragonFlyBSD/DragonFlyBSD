@@ -24,17 +24,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/kldstat/kldstat.c,v 1.7.2.2 2000/07/01 07:56:00 ps Exp $
- * $DragonFly: src/sbin/kldstat/kldstat.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/kldstat/kldstat.c,v 1.3 2005/03/07 18:30:39 liamfoy Exp $
  */
+
+#include <sys/types.h>
+#include <sys/param.h>
+#include <sys/module.h>
+#include <sys/linker.h>
 
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/param.h>
-#include <sys/module.h>
-#include <sys/linker.h>
 
 #if defined(__alpha__)
 #define	POINTER_WIDTH	18
@@ -54,7 +55,8 @@ printmod(int modid)
 	printf("\t\t%2d %s\n", stat.id, stat.name);
 }
 
-static void printfile(int fileid, int verbose)
+static void
+printfile(int fileid, int verbose)
 {
     struct kld_file_stat stat;
     int modid;
@@ -88,12 +90,17 @@ main(int argc, char** argv)
     int c;
     int verbose = 0;
     int fileid = 0;
-    char* filename = 0;
+    long tmp;
+    char* filename = NULL;
+    char *ep;
 
     while ((c = getopt(argc, argv, "i:n:v")) != -1)
 	switch (c) {
 	case 'i':
-	    fileid = atoi(optarg);
+	    tmp = strtol(optarg, &ep, 10);
+	    if (*ep != NULL || tmp < INT_MIN || tmp > INT_MAX)
+		errx(1, "invalid id value: %s", optarg);
+	    fileid = (int)tmp;
 	    break;
 	case 'n':
 	    filename = optarg;
@@ -110,7 +117,7 @@ main(int argc, char** argv)
     if (argc != 0)
 	usage();
 
-    if (filename) {
+    if (filename != NULL) {
 	if ((fileid = kldfind(filename)) < 0)
 	    err(1, "can't find file %s", filename);
     }
