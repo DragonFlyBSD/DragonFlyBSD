@@ -1,0 +1,36 @@
+.\" $FreeBSD: doc/share/images/books/handbook/security/ipsec-network.pic,v 1.1 2003/08/14 16:24:20 blackend Exp $
+.\" $DragonFly: doc/share/images/books/handbook/security/ipsec-network.pic,v 1.1 2004/07/09 01:37:07 justin Exp $
+.PS
+
+N1:	"Network #1";
+	move;
+
+A:	box wid 1 ht 0.55 "Internal Hosts" "Win9x/NT/2K" "Unix" dashed;
+	" Private Net, 192.168.1.2-254" at A.e+(0.15,0) ljust;
+	line down at A.s;
+
+B:	box "FreeBSD";
+	" fxp1	Private IP, 192.168.1.1" at B.n above ljust;
+	" fxp0	Public IP, A.B.C.D" at B.s below ljust;
+	circle rad 0.02 fill 1 at B.n;
+	circle rad 0.02 fill 1 at B.s;
+	line;
+
+C:	box rad 0.10 wid 1 ht 0.55 "Internet" dashed;
+	line;
+
+D:	box "FreeBSD";
+	" fxp0	Public IP, W.X.Y.Z" at D.n above ljust;
+	" fxp1	Private IP, 192.168.2.1" at D.s below ljust;
+	circle rad 0.02 fill 1 at D.n;
+	circle rad 0.02 fill 1 at D.s;
+	line;
+
+E:	box wid 1 ht 0.55 "Internal Hosts" "Win9x/NT/2K" "Unix" dashed;
+	" Private Net, 192.168.2.2-254" at E.e+(0.15,0) ljust;
+
+N2:	left;
+	move at E.w;
+	"Network #2";
+
+.PE

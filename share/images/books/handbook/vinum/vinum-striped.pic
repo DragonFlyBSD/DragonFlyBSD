@@ -1,0 +1,85 @@
+.\" $FreeBSD: doc/share/images/books/handbook/vinum/vinum-striped.pic,v 1.1 2003/04/11 09:10:23 blackend Exp $
+.\" $DragonFly: doc/share/images/books/handbook/vinum/vinum-striped.pic,v 1.1 2004/07/09 01:37:08 justin Exp $
+.PS
+h = .3i
+dh = .02i
+dw = .8i
+down
+[
+        [
+                boxht = h; boxwid = dw
+
+.\"     ORIG:   box invis "\f(CW0\fP"
+.\"             box invis "\f(CW1\fP"
+.\"             box invis "\f(CW2\fP"
+.\"             box invis "\f(CW3\fP"
+.\"             box invis "\f(CW4\fP"
+.\"             box invis "\f(CW5\fP"
+.\" 
+.\"           A:    box at ORIG.e+(.4,0) ht h "\f(CW0\fP"
+move right 1i; down
+          A:    box ht h "\f(CW0\fP"
+          B:    box ht h "\f(CW4\fP"
+          C:    box ht h "\f(CW8\fP"
+          D:    box ht h "\f(CW12\fP"
+          E:    box ht h "\f(CW16\fP"
+          F:    box ht h "\f(CW20\fP"
+
+          A1:   box at A+(dw*1.6,0) ht h "\f(CW1\fP"
+          B1:    box ht h "\f(CW5\fP"
+          C1:    box ht h "\f(CW9\fP"
+          D1:    box ht h "\f(CW13\fP"
+          E1:    box ht h "\f(CW17\fP"
+          F1:    box ht h "\f(CW21\fP"
+
+          A2:   box at A1+(dw*1.6,0) ht h "\f(CW2\fP"
+          B2:    box ht h "\f(CW6\fP"
+          C2:    box ht h "\f(CW10\fP"
+          D2:    box ht h "\f(CW14\fP"
+          E2:    box ht h "\f(CW18\fP"
+          F2:    box ht h "\f(CW22\fP"
+
+          A3:   box at A2+(dw*1.6,0) ht h "\f(CW3\fP"
+          B3:    box ht h "\f(CW7\fP"
+          C3:    box ht h "\f(CW11\fP"
+          D3:    box ht h "\f(CW15\fP"
+          E3:    box ht h "\f(CW19\fP"
+          F3:    box ht h "\f(CW23\fP"
+
+.\" "Offset" at ORIG.n+(0,.2i)
+"Disk 1" at A.n+(0,.2i)
+"Disk 2" at A1.n+(0,.2i)
+"Disk 3" at A2.n+(0,.2i)
+"Disk 4" at A3.n+(0,.2i)
+
+.\" 
+.\"   arrow from A.e to A1.w
+.\"   arrow from B.e to B1.w
+.\"   arrow from C.e to C1.w
+.\"   arrow from D.e to D1.w
+.\"   arrow from E.e to E1.w
+.\"   arrow from F.e to F1.w
+.\" 
+.\"   arrow from A1.e to A2.w
+.\"   arrow from B1.e to B2.w
+.\"   arrow from C1.e to C2.w
+.\"   arrow from D1.e to D2.w
+.\"   arrow from E1.e to E2.w
+.\"   arrow from F1.e to F2.w
+.\" 
+.\"   arrow from A2.e to A3.w
+.\"   arrow from B2.e to B3.w
+.\"   arrow from C2.e to C3.w
+.\"   arrow from D2.e to D3.w
+.\"   arrow from E2.e to E3.w
+.\"   arrow from F2.e to F3.w
+.\" 
+.\"   arrow right .2i from A3.e
+.\"   arrow right .2i from B3.e
+.\"   arrow right .2i from C3.e
+.\"   arrow right .2i from D3.e
+.\"   arrow right .2i from E3.e
+.\"   arrow right .2i from F3.e
+               ]
+]
+.PE

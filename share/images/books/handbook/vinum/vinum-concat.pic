@@ -1,0 +1,79 @@
+.\" $FreeBSD: doc/share/images/books/handbook/vinum/vinum-concat.pic,v 1.1 2003/04/11 09:10:23 blackend Exp $
+.\" $DragonFly: doc/share/images/books/handbook/vinum/vinum-concat.pic,v 1.1 2004/07/09 01:37:08 justin Exp $
+.PS
+h = .3i
+dh = .02i
+dw = .8i
+down
+[
+        [
+                boxht = h; boxwid = dw
+.\" 
+.\"     ORIG:   box invis "\f(CW0\fP"
+.\"             box invis "\f(CW1\fP"
+.\"             box invis "\f(CW2\fP"
+.\"             box invis "\f(CW3\fP"
+.\"             box invis "\f(CW4\fP"
+.\"             box invis "\f(CW5\fP"
+
+.\"       A:    box dotted at ORIG.e+(.4,0) ht h "\f(CW0\fP"
+move right 1i; down
+          A:    box dotted ht h "\f(CW0\fP"
+          B:    box dotted ht h "\f(CW1\fP"
+          C:    box dotted ht h "\f(CW2\fP"
+          D:    box dotted ht h "\f(CW3\fP"
+          E:    box dotted ht h "\f(CW4\fP"
+          F:    box dotted ht h "\f(CW5\fP"
+                box ht h * 6 at C.s
+
+          A1:   box dotted at A+(dw*1.6,0) ht h "\f(CW6\fP"
+          B1:    box dotted ht h "\f(CW7\fP"
+          C1:    box dotted ht h "\f(CW8\fP"
+          D1:    box dotted ht h "\f(CW9\fP"
+                box ht h * 4 at C1.n
+
+          A2:   box dotted at A1+(dw*1.6,0) "\f(CW10\fP"
+          F2:    box dotted ht h "\f(CW11\fP"
+                box ht h * 2 at A2.s
+
+          A3:   box dotted at A2+(dw*1.6,0) ht h "\f(CW12\fP"
+          B3:    box dotted ht h "\f(CW13\fP"
+          C3:    box dotted ht h "\f(CW14\fP"
+          D3:    box dotted ht h "\f(CW15\fP"
+          E3:    box dotted ht h "\f(CW16\fP"
+          F3:    box dotted ht h "\f(CW17\fP"
+                box ht h * 6 at C3.s
+
+.\" "Offset" at ORIG.n+(0,.2i)
+"Disk 1" at A.n+(0,.2i)
+"Disk 2" at A1.n+(0,.2i)
+"Disk 3" at A2.n+(0,.2i)
+"Disk 4" at A3.n+(0,.2i)
+
+
+.\" arrow from A.e+(-.07,-.04) to B.e+(-.07,.02)
+.\" arrow from B.e+(-.07,-.04) to C.e+(-.07,.02)
+.\" arrow from C.e+(-.07,-.04) to D.e+(-.07,.02)
+.\" arrow from D.e+(-.07,-.04) to E.e+(-.07,.02)
+.\" arrow from E.e+(-.07,-.04) to F.e+(-.07,.02)
+
+.\" line from F.e right .1i; arc radius .1i; line  to A1.w-(.3i,.1i); arc cw radius .1i; arrow to A1.w
+
+.\" arrow from A1.e+(-.07,-.04) to B1.e+(-.07,.02)
+.\" arrow from B1.e+(-.07,-.04) to C1.e+(-.07,.02)
+.\" arrow from C1.e+(-.07,-.04) to D1.e+(-.07,.02)
+
+.\" line from D1.e right .1i; arc radius .1i; line  to A2.w-(.3i,.1i); arc cw radius .1i; arrow to A2.w
+
+.\" arrow from A2.e+(-.07,-.04) to F2.e+(-.07,.02)
+
+.\" line from F2.e right .1i; arc radius .1i; line  to A3.w-(.3i,.1i); arc cw radius .1i; arrow to A3.w
+
+.\" arrow from A3.e+(-.07,-.04) to B3.e+(-.07,.02)
+.\" arrow from B3.e+(-.07,-.04) to C3.e+(-.07,.02)
+.\" arrow from C3.e+(-.07,-.04) to D3.e+(-.07,.02)
+.\" arrow from D3.e+(-.07,-.04) to E3.e+(-.07,.02)
+.\" arrow from E3.e+(-.07,-.04) to F3.e+(-.07,.02)
+               ]
+]
+.PE

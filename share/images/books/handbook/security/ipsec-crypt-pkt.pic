@@ -1,0 +1,49 @@
+.\" $FreeBSD: doc/share/images/books/handbook/security/ipsec-crypt-pkt.pic,v 1.1 2003/08/15 12:25:44 blackend Exp $
+.\" $DragonFly: doc/share/images/books/handbook/security/ipsec-crypt-pkt.pic,v 1.1 2004/07/09 01:37:07 justin Exp $
+.PS
+
+A:	box wid 2.7 ht 0.55 "Src: A.B.C.D" "Dst: W.X.Y.Z" \
+	  "<other header info>";
+	down;
+
+B:	box wid 2.7 ht 2.15 with .n at A.s;
+
+C:	box wid 2.1 ht 0.55 "Src: A.B.C.D" "Dst: W.X.Y.Z" \
+	  "<other header info>" with .n at A.s - (0,0.2);
+	down;
+
+D:	box wid 2.1 ht 1.25 with .n at C.s;
+
+E:	box wid 1.5 ht 0.55 "Src: 192.168.1.1" "Dst: 192.168.2.1" \
+	  "<other header info>" with .n at C.s - (0,0.2);
+
+F:	box wid 1.5 ht 0.3 "<packet data>" with .n at E.s;
+
+G:	line from E.ne + (1,0) to E.ne + (1.1,-0.0625);
+	line down (((E.ne.y - F.se.y) - 0.125) / 2) - 0.03125;
+	line down 0.03125 right 0.03125;
+	box "Original packet," "private IP addr" with .w at \
+	  last line.end+(0.15,0) invis;
+	line from last line.end left 0.03125 down 0.03125;
+	line to F.se + (1.1,0.0625);
+	line from last line.end to F.se + (1,0);
+
+H:	line from C.ne + (1.8,0) to C.ne + (1.9,-0.0625);
+	line down (((C.ne.y - D.se.y) - 0.125) / 2) - 0.03125;
+	line down 0.03125 right 0.03125;
+	box "Encapsuled" "packet," "with real IP addr" with .w at \
+	  last line.end+(0.15,0) invis;
+	line from last line.end left 0.03125 down 0.03125;
+	line to D.se + (1.9,0.0625);
+	line from last line.end to D.se + (1.8,0);
+	
+I:	line from A.ne + (2.6,0) to A.ne + (2.7,-0.0625);
+	line down (((A.ne.y - B.se.y) - 0.125) / 2) - 0.03125;
+	line down 0.03125 right 0.03125;
+	box "Encrypted packet." "Contents are" "completely" \
+	  "secure from third" "party snooping" with .w at \
+	  last line.end+(0.15,0) invis;
+	line from last line.end left 0.03125 down 0.03125;
+	line to B.se + (2.7,0.0625);
+	line from last line.end to B.se + (2.6,0);
+.PE

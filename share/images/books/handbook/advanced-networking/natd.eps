@@ -1,0 +1,228 @@
+%!PS-Adobe-3.0 EPSF-3.0
+%%BoundingBox: -10 -10 355 100
+%%Creator: G. Adam Stanislav
+%%EndComments
+%%BeginProlog
+%%EndProlog
+
+%%BeginSetup
+/ldent {
+	0 5 rlineto
+	-7 0 rlineto
+	0 -5 rlineto
+} bind def
+
+/uldent {
+	0 -5 rlineto
+	7 0 rlineto
+	0 5 rlineto
+} bind def
+
+/rdent {
+	0 5 rlineto
+	11 0 rlineto
+	0 -5 rlineto
+} bind def
+
+/urdent {
+	0 -5 rlineto
+	-11 0 rlineto
+	0 5 rlineto
+} bind def
+
+/hub {
+	moveto
+	0 30 rlineto
+	70 0 rlineto
+	0 -30 rlineto
+	-10.5 0 rlineto
+	ldent
+	-7 0 rlineto
+	ldent
+	-7 0 rlineto
+	ldent
+	-7 0 rlineto
+	ldent
+	closepath
+	2 28 rmoveto
+	0 -26 rlineto
+	6.5 0 rlineto
+	rdent
+	3 0 rlineto
+	rdent
+	3 0 rlineto
+	rdent
+	3 0 rlineto
+	rdent
+	6.5 0 rlineto
+	0 26 rlineto
+	closepath
+	fill
+} bind def
+
+/router {
+	moveto
+	0 30 rlineto
+	70 0 rlineto
+	0 -30 rlineto
+	-10.5 0 rlineto
+	ldent
+	-35 0 rlineto
+	ldent
+	closepath
+	2 28 rmoveto
+	0 -26 rlineto
+	6.5 0 rlineto
+	rdent
+	31 0 rlineto
+	rdent
+	6.5 0 rlineto
+	0 26 rlineto
+	closepath
+	fill
+} bind def
+
+/box1 {
+	moveto
+	0 40 rlineto
+	10.5 0 rlineto
+	uldent
+	82.5 0 rlineto
+	0 -40 rlineto
+	closepath
+	2 38 rmoveto
+	0 -36 rlineto
+	96 0 rlineto
+	0 36 rlineto
+	-78.5 0 rlineto
+	urdent
+	closepath
+	fill
+} bind def
+
+/box2 {
+	moveto
+	0 40 rlineto
+	10.5 0 rlineto
+	uldent
+	65 0 rlineto
+	uldent
+	10.5 0 rlineto
+	0 -40 rlineto
+	closepath
+	2 38 rmoveto
+	0 -36 rlineto
+	96 0 rlineto
+	0 36 rlineto
+	-6.5 0 rlineto
+	urdent
+	-61 0 rlineto
+	urdent
+	closepath
+	fill
+} bind def
+
+/plug {
+	moveto
+	0 7 rlineto
+	6 0 rlineto
+	0 -7 rlineto
+	closepath
+	fill
+} bind def
+
+/internet {
+	moveto
+	0 90 rlineto
+	110 0 rlineto
+	0 -90 rlineto
+	closepath
+	gsave
+	5 7 div setcolor
+	fill
+	grestore
+	stroke
+} bind def
+%%EndSetup
+
+0 60 hub
+11 57.5 plug
+25 57.5 plug
+
+135 60 router
+146 57.5 plug
+188 57.5 plug
+
+0 0 box1
+11 35.5 plug
+
+13 40 moveto
+0 18 rlineto
+2 0 rlineto
+0 -18 rlineto
+closepath
+fill
+
+120 0 box2
+% Connect box2 with hub
+131 35.5 plug
+133 40 moveto
+0 8 rlineto
+-106 0 rlineto
+0 10 rlineto
+2 0 rlineto
+0 -8 rlineto
+106 0 rlineto
+0 -10 rlineto
+closepath
+fill
+
+% Connect box2 with router
+203 35.5 plug
+205 40 moveto
+0 8 rlineto
+-57 0 rlineto
+0 10 rlineto
+2 0 rlineto
+0 -8 rlineto
+57 0 rlineto
+0 -10 rlineto
+closepath
+fill
+
+gsave
+[5 3] 0 setdash
+235 0 internet
+grestore
+
+% Connect router to the Internet
+232 49.5 plug
+190 58 moveto
+0 -6 rlineto
+45 0 rlineto
+0 2 rlineto
+-43 0 rlineto
+0 4 rlineto
+closepath
+fill
+
+/Helvetica-bold findfont dup 10 scalefont setfont
+
+25 74 moveto (Hub) show
+155 74 moveto (Router) show
+28 18 moveto (Client A) show
+149 23 moveto (Client B) show
+123.5 10 moveto ((FreeBSD Gateway)) show
+
+25 scalefont setfont
+
+265 51 moveto (The) show
+245 27 moveto (Internet) show
+1 setcolor
+264 53 moveto (The) show
+244 29 moveto (Internet) show
+
+%%Trailer
+showpage
+%%EOF
+

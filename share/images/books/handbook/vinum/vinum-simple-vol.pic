@@ -1,0 +1,22 @@
+.\" $FreeBSD: doc/share/images/books/handbook/vinum/vinum-simple-vol.pic,v 1.1 2003/04/11 09:10:23 blackend Exp $
+.\" $DragonFly: doc/share/images/books/handbook/vinum/vinum-simple-vol.pic,v 1.1 2004/07/09 01:37:08 justin Exp $
+.PS
+move right 1i
+T: ellipse ht .3i wid 4i
+   line from T.e down 4i
+   line from T.w down 4i
+B: arc rad 10i to T.e+(0,-4)
+
+P1: S1: box ht 3i wid 1i "Subdisk" above "\s-2\f(CWmyvol.p0.s0\fP\s0" below with .c at T.w+(2,-1.95)
+        "Plex 1" at S1.s+(0,-.3)
+        move down .17i; "\s-2\f(CWmyvol.p0\fP\s0"
+
+"\s-2\&0 MB\s0" at S1.ne+(.5,0)
+"\s-2\&512 MB\s0" at S1.se+(.5,0)
+
+A: arrow from S1.ne+(.1,0) to S1.se+(.1,0)
+
+ "\s-2volume" ljust at A.n+(.1,-.63)
+ "address" ljust at A.n+(.1,-.8)
+ "space\s0" ljust at A.n+(.1,-.97)
+.PE

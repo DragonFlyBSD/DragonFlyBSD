@@ -1,0 +1,147 @@
+%!PS-Adobe-3.0 EPSF-3.0
+%%BoundingBox: 99 -130 355 100
+%%Creator: G. Adam Stanislav
+%%EndComments
+%%BeginProlog
+%%EndProlog
+
+%%BeginSetup
+/t {
+	rlineto
+	-5 0 rlineto
+	0 -7 rlineto
+	-6 0 rlineto
+	0 20 rlineto
+	6 0 rlineto
+	0 -7 rlineto
+	5 0 rlineto
+} bind def
+
+/ldent {
+	0 5 rlineto
+	-7 0 rlineto
+	0 -5 rlineto
+} bind def
+
+/rdent {
+	0 5 rlineto
+	11 0 rlineto
+	0 -5 rlineto
+} bind def
+
+/router {
+	moveto
+	0 12 t
+	0 12 rlineto
+	70 0 rlineto
+	0 -30 rlineto
+	-52.5 0 rlineto
+	ldent
+	closepath
+	2 28 rmoveto
+	0 -26 rlineto
+	6.5 0 rlineto
+	rdent
+	48.5 0 rlineto
+	0 26 rlineto
+	closepath
+	fill
+} bind def
+
+/box {
+	moveto
+	0 17 t
+	0 17 rlineto
+	100 0 rlineto
+	0 -40 rlineto
+	closepath
+	2 38 rmoveto
+	0 -36 rlineto
+	96 0 rlineto
+	0 36 rlineto
+	closepath
+	fill
+} bind def
+
+/plug {
+	moveto
+	0 7 rlineto
+	6 0 rlineto
+	0 -7 rlineto
+	closepath
+	fill
+} bind def
+
+/internet {
+	moveto
+	0 210 rlineto
+	110 0 rlineto
+	0 -210 rlineto
+	closepath
+	gsave
+	5 7 div setcolor
+	fill
+	grestore
+	stroke
+} bind def
+%%EndSetup
+
+% draw the coax cable
+3 7 div setcolor
+114 -94 moveto
+-4 0 rlineto
+0 164 rlineto
+4 0 rlineto
+closepath
+fill
+
+% draw some terminating resistors
+newpath
+112 -110 2 0 360 arc fill
+newpath
+112 85 2 0 360 arc fill
+0 setcolor
+
+120 60 router
+131 57.5 plug
+
+120 0 box
+120 -60 box
+120 -120 box
+
+gsave
+[5 3] 0 setdash
+235 -120 internet
+grestore
+
+% Connect router to the Internet
+232 40.5 plug
+133 58 moveto
+0 -15 rlineto
+102 0 rlineto
+0 2 rlineto
+-100 0 rlineto
+0 13 rlineto
+closepath
+fill
+
+/Helvetica-bold findfont dup 10 scalefont setfont
+
+140 74 moveto (Router) show
+140 -42 moveto (Windows 95) show
+130.5 -102 moveto (Sun Workstation) show
+138 18 moveto (FreeBSD Box) show
+161 47.5 moveto (ISDN BRI Line) show
+
+25 scalefont setfont
+
+265 51 moveto (The) show
+245 27 moveto (Internet) show
+1 setcolor
+264 53 moveto (The) show
+244 29 moveto (Internet) show
+
+%%Trailer
+showpage
+%%EOF
+
