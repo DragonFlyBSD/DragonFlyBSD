@@ -1,7 +1,7 @@
 # $FreeBSD: src/share/misc/iso3166,v 1.6.2.2 2002/08/18 09:06:33 blackend Exp $
-# $DragonFly: src/share/misc/Attic/iso3166,v 1.2 2003/06/17 04:37:01 dillon Exp $
+# $DragonFly: src/share/misc/Attic/iso3166,v 1.3 2004/09/19 12:07:30 asmodai Exp $
 #
-# ISO 3166 country codes
+# ISO 3166-1:1997 country codes + accepted revisions
 # This includes many places that are not legally independent countries,
 # but which is it convenient to refer to separately from their
 # parent lands.
@@ -17,7 +17,8 @@
 #	http://www.iso.ch/iso/en/prods-services/iso3166ma/index.html
 #
 # two	three	number	name
-AF	AFG	004	Afghanistan
+AX	ALA	248	AAland Islands
+AF	AFG	004	Afghanistan (The Transitional Islamic State of)
 AL	ALB	008	Albania
 DZ	DZA	012	Algeria
 AS	ASM	016	American Samoa
@@ -64,7 +65,7 @@ CN	CHN	156	China
 CX	CXR	162	Christmas Island
 CC	CCK	166	Cocos (Keeling) Islands
 CO	COL	170	Colombia
-KM	COM	174	Comoros
+KM	COM	174	Comoros (Union of the)
 CG	COG	178	Congo (Rep.)
 CD	COD	180	Congo (Dem. Rep.)
 CK	COK	184	Cook Islands
@@ -78,7 +79,7 @@ DK	DNK	208	Denmark
 DJ	DJI	262	Djibouti
 DM	DMA	212	Dominica
 DO	DOM	214	Dominican Republic
-TL	TLS	626	East Timor
+TL	TLS	626	Timor-Leste
 EC	ECU	218	Ecuador
 EG	EGY	818	Egypt
 SV	SLV	222	El Salvador
@@ -203,6 +204,7 @@ SM	SMR	674	San Marino
 ST	STP	678	Sao Tome and Principe
 SA	SAU	682	Saudi Arabia
 SN	SEN	686	Senegal
+CS	SCG	891	Serbia and Montenegro
 SC	SYC	690	Seychelles
 SL	SLE	694	Sierra Leone
 SG	SGP	702	Singapore
@@ -253,7 +255,6 @@ VI	VIR	850	Virgin Islands (U.S.)
 WF	WLF	876	Wallis and Futuna Islands
 EH	ESH	732	Western Sahara
 YE	YEM	887	Yemen
-YU	YUG	891	Yugoslavia
 ZM	ZMB	894	Zambia
 ZW	ZWE	716	Zimbabwe
 #
@@ -480,3 +481,24 @@ ZW	ZWE	716	Zimbabwe
 # Newsletter V-5 2002-05-20
 #  EAST TIMOR changed alpha-2 code from TP to TL and alpha-3 from TMP to TLS.
 #  Numeric remains 626.
+#
+# Newsletter V-6 2002-11-15
+#  EAST TIMOR changed name from EAST TIMOR to TIMOR-LESTE.  No changes aside
+#  from the name.
+#
+# Newsletter V-7 2003-01-14
+#  COMOROS changed name from COMOROS, ISLAMIC FEDERAL REPUBLIC OF THE to
+#  COMOROS, UNION OF THE.  No changes aside from the name.
+#
+# Newsletter V-8 2003-07-23
+#  YUGOSLAVIA changed name from YUGOSLAVIA to SERBIA AND MONTENEGRO.  Also
+#  changed alpha-2 from YU to CS and alpha-3 from YUG to SCG.  Numeric remains
+#  891.
+#
+# Newsletter V-9 2004-02-13
+#  A new entry for the AALAND ISLANDS.  Alpha-2 is AX, alpha-3 is ALA, numeric
+#  is 248.  
+#
+# Newsletter V-10 2004-04-26
+#  Changes in names, AFGHANISATION is now AFGHANISTAN, THE TRANSITIONAL
+#  ISLAMIC STATE OF.  No other changes.
