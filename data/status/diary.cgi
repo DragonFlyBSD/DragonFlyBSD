@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.20 2004/09/20 21:58:46 dillon Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.21 2004/09/21 18:59:54 justin Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
@@ -145,15 +145,15 @@ $TITLE(DragonFly - Big-Picture Status)
 	<li>Add support for randomized ephermal source ports.
 	<li>Do some network driver cleanups.. basically move some common code
 	    out of the driver and into ether_ifattach() (work by Joerg).
-	<li>Try to be more compatible with laptop touchpads whos aux ports
+	<li>Try to be more compatible with laptop touchpads whose aux ports
 	    return normally illegal values (Eirik Nygaard).
 	<li>Add common functions for computing the ethernet CRC, work 
 	    by Joerg, taken from NetBSD.
 	<li>Add support for additional AGP bridges - taken from FreeBSD-5.
 	<li>Add support for the 're' network device.
 	<li>Bring OHCI and EHCI up-to-date with NetBSD.
-	<li>Miscellanious driver fixes to ips, usb (ugen), sound support.
-	<li>Miscellanious linux emulation work, by David Rhodus, taken
+	<li>Miscellaneous driver fixes to ips, usb (ugen), sound support.
+	<li>Miscellaneous Linux emulation work, by David Rhodus, taken
 	    from FreeBSD-SA-04:13.linux.
 </ul>
 
@@ -195,7 +195,7 @@ $TITLE(DragonFly - Big-Picture Status)
 	<li>The initial MSFBUF scheme (multi-page cached linear buffers)
 	    has been committed and is now used for NFS requests.  This is
 	    part of the continuing work to eventually make I/O devices
-	    responsible for any KVM mappings (because most just setup DMA
+	    responsible for any KVM mappings (because most just set up DMA
 	    and don't actually have to make any) - Hiten.
 	<li>Continuing ANSIfication work by several people - Chris Pressey.
 	<li>Continuing work on the LWKT messaging system.  A number of bugs
@@ -222,7 +222,7 @@ $TITLE(DragonFly - Big-Picture Status)
 	    conditionally using M_NOWAIT, making it more reliable.
 	<li>Fix a number of USB device ref counting issues and fix issues
 	    related to UMASS detaching from CAM while CAM is still active,
-	    and vise-versa.
+	    and vice-versa.
 	<li>Optimize kern_getcwd() some to avoid a string shifting bcopy().
 	<li>Continued work on asynch syscalls - track pending system calls
 	    and make exit1() wait for them (abort support will be forthcoming).
@@ -251,7 +251,7 @@ $TITLE(DragonFly - Big-Picture Status)
 	    minor ranges do not conflict).  Fix by Hiroki Sato.
 	<li>Fix a wiring related page table memory leak in the VM system.
 	<li>Fix a number of ^T related panics.
-	<li>properly ref-count all devices.
+	<li>Properly ref-count all devices.
 </ul>
 
 <h2>Sun 2 May 2004</h2>
@@ -302,7 +302,7 @@ $TITLE(DragonFly - Big-Picture Status)
 	    on target-side linear maps.  It is currently used by the PIPE
 	    code and the CAPS code.
 	<li>Joerg has brought in most of the KOBJ extensions from FreeBSD-5.
-	<li>Major continuing work by Jeff on the threading and partitioningl
+	<li>Major continuing work by Jeff on the threading and partitioning
 	    of the network stack.  Nearly the whole stack is now
 	    theoretically MP safe, with only a few niggling issues before we
 	    can actually start turning off the MP lock.
@@ -337,11 +337,11 @@ $TITLE(DragonFly - Big-Picture Status)
 <h2>Sun 15 February 2004</h2>
 <ul>
 	<li>Newcard is being integrated.</li>
-	<li>A longstanding bug in PCI bus assignments which effects larger
+	<li>A longstanding bug in PCI bus assignments which affects larger
 	    servers has been fixed.</li>
-	<li>The IP checksum code has been rewriten and most of it has been
-	    moved to machine-independant sections.</li>
-	<li>A general machine-independant CPU synchronization and rendezvous
+	<li>The IP checksum code has been rewritten and most of it has been
+	    moved to machine-independent sections.</li>
+	<li>A general machine-independent CPU synchronization and rendezvous
 	    API has been implemented.  Older hardwired IPIs are slowly being
 	    moved to the new API.</li>
 	<li>A new 'SysTimer' API has been built which is both MP capable
