@@ -9,7 +9,7 @@ use and modify. Please send modifications and/or suggestions + bug fixes to
 
 /*
  * $FreeBSD: src/usr.sbin/bootparamd/bootparamd/main.c,v 1.9 1999/08/28 01:15:39 peter Exp $
- * $DragonFly: src/usr.sbin/bootparamd/bootparamd/main.c,v 1.3 2003/11/03 19:31:35 eirikn Exp $
+ * $DragonFly: src/usr.sbin/bootparamd/bootparamd/main.c,v 1.4 2003/11/15 23:33:35 eirikn Exp $
  */
 #include <ctype.h>
 #include <err.h>
@@ -39,9 +39,7 @@ extern  void bootparamprog_1();
 static void usage(void);
 
 int
-main(argc, argv)
-int argc;
-char **argv;
+main(int argc, char **argv)
 {
 	SVCXPRT *transp;
 	int i;
@@ -110,7 +108,7 @@ char **argv;
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr,
 		"usage: bootparamd [-d] [-s] [-r router] [-f bootparmsfile]\n");

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)chroot.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.sbin/chroot/chroot.c,v 1.4.2.1 2002/03/15 22:54:59 mikeh Exp $
- * $DragonFly: src/usr.sbin/chroot/chroot.c,v 1.4 2003/08/24 15:58:55 drhodus Exp $
+ * $DragonFly: src/usr.sbin/chroot/chroot.c,v 1.5 2003/11/15 23:33:35 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -56,9 +56,7 @@ char	*group;		/* group to switch to ... */
 char	*grouplist;	/* group list to switch to ... */
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	struct group	*gp;
 	struct passwd	*pw;
@@ -170,7 +168,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: chroot [-g group] [-G group,group,...] "
 	    "[-u user] newroot [command]\n");

@@ -9,7 +9,7 @@ use and modify. Please send modifications and/or suggestions + bug fixes to
 
 /*
  * $FreeBSD: src/usr.sbin/bootparamd/bootparamd/bootparamd.c,v 1.10 1999/08/28 01:15:39 peter Exp $
- * $DragonFly: src/usr.sbin/bootparamd/bootparamd/bootparamd.c,v 1.3 2003/11/03 19:31:35 eirikn Exp $
+ * $DragonFly: src/usr.sbin/bootparamd/bootparamd/bootparamd.c,v 1.4 2003/11/15 23:33:35 eirikn Exp $
  */
 #include <rpc/rpc.h>
 #include <rpcsvc/yp_prot.h>
@@ -41,8 +41,7 @@ int getthefile(char *, char *, char *, int);
 int checkhost(char *, char *, int);
 
 bp_whoami_res *
-bootparamproc_whoami_1(whoami)
-bp_whoami_arg *whoami;
+bootparamproc_whoami_1(bp_whoami_arg *whoami)
 {
   long haddr;
   static bp_whoami_res res;
@@ -106,8 +105,7 @@ bp_whoami_arg *whoami;
 
 
 bp_getfile_res *
-  bootparamproc_getfile_1(getfile)
-bp_getfile_arg *getfile;
+bootparamproc_getfile_1(bp_getfile_arg *getfile)
 {
   char *where, *index();
   static bp_getfile_res res;
@@ -179,10 +177,7 @@ bp_getfile_arg *getfile;
       empty answer for the file "dump")   */
 
 int
-getthefile(askname,fileid,buffer,blen)
-char *askname;
-char *fileid, *buffer;
-int blen;
+getthefile(char *askname, char *fileid, char *buffer, int blen)
 {
   FILE *bpf;
   char  *where;
@@ -275,10 +270,7 @@ int blen;
    name for a host in the database */
 
 int
-checkhost(askname, hostname, len)
-char *askname;
-char *hostname;
-int len;
+checkhost(char *askname, char *hostname, int len)
 {
   int ch, pch;
   FILE *bpf;

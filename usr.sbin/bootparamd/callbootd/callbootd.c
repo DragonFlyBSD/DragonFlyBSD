@@ -9,7 +9,7 @@ use and modify. Please send modifications and/or suggestions + bug fixes to
 
 /*
  * $FreeBSD: src/usr.sbin/bootparamd/callbootd/callbootd.c,v 1.8 1999/08/28 01:15:40 peter Exp $
- * $DragonFly: src/usr.sbin/bootparamd/callbootd/callbootd.c,v 1.3 2003/11/03 19:31:35 eirikn Exp $
+ * $DragonFly: src/usr.sbin/bootparamd/callbootd/callbootd.c,v 1.4 2003/11/15 23:33:35 eirikn Exp $
  */
 #include "bootparam_prot.h"
 #include <rpc/rpc.h>
@@ -36,9 +36,7 @@ int printgetfile(bp_getfile_res *);
 int printwhoami(bp_whoami_res *);
 
 int
-eachres_whoami(resultp, raddr)
-bp_whoami_res *resultp;
-struct sockaddr_in *raddr;
+eachres_whoami(bp_whoami_res *resultp, struct sockaddr_in *raddr)
 {
   struct hostent *he;
 
@@ -49,9 +47,7 @@ struct sockaddr_in *raddr;
   return(0);
 }
 
-eachres_getfile(resultp, raddr)
-bp_getfile_res *resultp;
-struct sockaddr_in *raddr;
+eachres_getfile(bp_getfile_res *resultp, struct sockaddr_in *raddr)
 {
   struct hostent *he;
 
@@ -64,9 +60,7 @@ struct sockaddr_in *raddr;
 
 
 int
-main(argc, argv)
-int argc;
-char **argv;
+main(int argc, char **argv)
 {
   char *server;
 
@@ -151,7 +145,7 @@ char **argv;
 
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr,
 		"usage: callbootd server procnum (IP-addr | host fileid)\n");
@@ -159,8 +153,7 @@ usage()
 }
 
 int
-printwhoami(res)
-bp_whoami_res *res;
+printwhoami(bp_whoami_res *res)
 {
       if ( res) {
 	printf("client_name:\t%s\ndomain_name:\t%s\n",
@@ -181,8 +174,7 @@ bp_whoami_res *res;
 
 
 int
-printgetfile(res)
-bp_getfile_res *res;
+printgetfile(bp_getfile_res *res)
 {
       if (res) {
 	printf("server_name:\t%s\nserver_address:\t%s\npath:\t%s\n",

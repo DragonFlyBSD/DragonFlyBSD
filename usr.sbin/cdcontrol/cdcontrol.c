@@ -18,7 +18,7 @@
  *              Some code style reformatting.
  *
  * $FreeBSD: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.24.2.11 2002/11/20 00:26:19 njl Exp $
- * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.4 2003/11/03 19:31:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.5 2003/11/15 23:33:35 eirikn Exp $
  */
 
 #include <sys/cdio.h>
@@ -143,7 +143,8 @@ const char	*strstatus(int);
 static u_int	 dbprog_discid(void);
 const char	*cdcontrol_prompt(void);
 
-void help ()
+void
+help(void)
 {
 	struct cmdtab *c;
 	const char *s;
@@ -169,13 +170,15 @@ void help ()
 	printf ("\tThe plain target address is taken as a synonym for play.\n");
 }
 
-void usage ()
+void
+usage(void)
 {
 	fprintf (stderr, "usage: cdcontrol [-sv] [-f device] [command ...]\n");
 	exit (1);
 }
 
-char *use_cdrom_instead(const char *old_envvar)
+char
+*use_cdrom_instead(const char *old_envvar)
 {
 	char *device;
 
@@ -187,7 +190,8 @@ char *use_cdrom_instead(const char *old_envvar)
 }
 
 
-int main (int argc, char **argv)
+int
+main(int argc, char **argv)
 {
 	int cmd;
 	char *arg;
@@ -276,7 +280,8 @@ int main (int argc, char **argv)
 	}
 }
 
-int run (int cmd, char *arg)
+int
+run(int cmd, char *arg)
 {
 	long speed;
 	int l, r, rc;
@@ -450,7 +455,8 @@ int run (int cmd, char *arg)
 	}
 }
 
-int play (char *arg)
+int
+play(char *arg)
 {
 	struct ioc_toc_header h;
 	unsigned int n;
@@ -733,7 +739,8 @@ Clean_up:
 	return (0);
 }
 
-int next_prev (char *arg, int cmd)
+int
+next_prev(char *arg, int cmd)
 {
 	struct ioc_toc_header h;
 	int dir, junk, n, off, rc, trk;
@@ -763,7 +770,8 @@ int next_prev (char *arg, int cmd)
 	return (play_track (trk, 1, n, 1));
 }
 
-const char *strstatus (int sts)
+const char
+*strstatus(int sts)
 {
 	switch (sts) {
 	case ASTS_INVALID:	return ("invalid");
@@ -776,7 +784,8 @@ const char *strstatus (int sts)
 	}
 }
 
-int pstatus (char *arg)
+int
+pstatus(char *arg)
 {
 	struct ioc_vol v;
 	struct ioc_read_subchannel ss;
@@ -887,7 +896,7 @@ dbprog_sum(int n)
  *	The integer disc ID.
  */
 static u_int
-dbprog_discid()
+dbprog_discid(void)
 {
 	struct	ioc_toc_header h;
 	int	rc;
@@ -918,7 +927,8 @@ dbprog_discid()
 	return((n % 0xff) << 24 | t << 8 | ntr);
 }
 
-int cdid ()
+int
+cdid(void)
 {
 	u_int	id;
 
@@ -932,7 +942,8 @@ int cdid ()
 	return id ? 0 : 1;
 }
 
-int info (char *arg __unused)
+int
+info(char *arg __unused)
 {
 	struct ioc_toc_header h;
 	int rc, i, n;
@@ -969,7 +980,8 @@ int info (char *arg __unused)
 	return (0);
 }
 
-void lba2msf (unsigned long lba, u_char *m, u_char *s, u_char *f)
+void
+lba2msf(unsigned long lba, u_char *m, u_char *s, u_char *f)
 {
 	lba += 150;			/* block start offset */
 	lba &= 0xffffff;		/* negative lbas use only 24 bits */
@@ -979,12 +991,14 @@ void lba2msf (unsigned long lba, u_char *m, u_char *s, u_char *f)
 	*f = lba % 75;
 }
 
-unsigned int msf2lba (u_char m, u_char s, u_char f)
+unsigned int
+msf2lba(u_char m, u_char s, u_char f)
 {
 	return (((m * 60) + s) * 75 + f) - 150;
 }
 
-void prtrack (struct cd_toc_entry *e, int lastflag)
+void
+prtrack(struct cd_toc_entry *e, int lastflag)
 {
 	int block, next, len;
 	u_char m, s, f;
@@ -1022,7 +1036,8 @@ void prtrack (struct cd_toc_entry *e, int lastflag)
 		(e->control & 4) ? "data" : "audio");
 }
 
-int play_track (int tstart, int istart, int tend, int iend)
+int
+play_track(int tstart, int istart, int tend, int iend)
 {
 	struct ioc_play_track t;
 
@@ -1034,7 +1049,8 @@ int play_track (int tstart, int istart, int tend, int iend)
 	return ioctl (fd, CDIOCPLAYTRACKS, &t);
 }
 
-int play_blocks (int blk, int len)
+int
+play_blocks(int blk, int len)
 {
 	struct ioc_play_blocks  t;
 
@@ -1044,7 +1060,8 @@ int play_blocks (int blk, int len)
 	return ioctl (fd, CDIOCPLAYBLOCKS, &t);
 }
 
-int setvol (int left, int right)
+int
+setvol(int left, int right)
 {
 	struct ioc_vol  v;
 
@@ -1056,7 +1073,8 @@ int setvol (int left, int right)
 	return ioctl (fd, CDIOCSETVOL, &v);
 }
 
-int read_toc_entrys (int len)
+int
+read_toc_entrys(int len)
 {
 	struct ioc_read_toc_entry t;
 
@@ -1068,7 +1086,8 @@ int read_toc_entrys (int len)
 	return (ioctl (fd, CDIOREADTOCENTRYS, (char *) &t));
 }
 
-int play_msf (int start_m, int start_s, int start_f,
+int
+play_msf(int start_m, int start_s, int start_f,
 	int end_m, int end_s, int end_f)
 {
 	struct ioc_play_msf a;
@@ -1083,7 +1102,8 @@ int play_msf (int start_m, int start_s, int start_f,
 	return ioctl (fd, CDIOCPLAYMSF, (char *) &a);
 }
 
-int status (int *trk, int *min, int *sec, int *frame)
+int
+status(int *trk, int *min, int *sec, int *frame)
 {
 	struct ioc_read_subchannel s;
 	struct cd_sub_channel_info data;
@@ -1115,13 +1135,13 @@ int status (int *trk, int *min, int *sec, int *frame)
 }
 
 const char *
-cdcontrol_prompt()
+cdcontrol_prompt(void)
 {
 	return ("cdcontrol> ");
 }
 
 char *
-input (int *cmd)
+input(int *cmd)
 {
 #define MAXLINE 80
 	static EditLine *el = NULL;
@@ -1168,7 +1188,8 @@ input (int *cmd)
 	return (p);
 }
 
-char *parse (char *buf, int *cmd)
+char
+*parse(char *buf, int *cmd)
 {
 	struct cmdtab *c;
 	char *p;
@@ -1232,7 +1253,8 @@ char *parse (char *buf, int *cmd)
 	return p;
 }
 
-int open_cd ()
+int
+open_cd(void)
 {
 	char devbuf[MAXPATHLEN];
 
