@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_status.c,v 1.20.2.4 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.8 2004/12/01 21:38:50 joerg Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.9 2005/01/29 08:34:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -171,7 +171,7 @@ procfs_dostatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	if (xlen <= 0)
 		error = 0;
 	else
-		error = uiomove_frombuf(psbuf, ps - psbuf, uio);
+		error = uiomove_frombuf(ps, xlen, uio);
 
 	return (error);
 
