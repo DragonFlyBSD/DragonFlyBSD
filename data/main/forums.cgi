@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/forums.cgi,v 1.9 2004/04/13 02:22:16 justin Exp $
+# $DragonFly: site/data/main/Attic/forums.cgi,v 1.10 2004/06/17 16:45:29 justin Exp $
 
 $TITLE(DragonFly - Forums)
 <p>
@@ -49,12 +49,11 @@ include HTML sent to any of the lists will be blocked as spam.</p>
     <li>Documentation Related - docs-request at lists.dragonflybsd.org</li>
     <li>Test Postings - test-request at lists.dragonflybsd.org</li>
 </ul>
+
 <p>
-We will be providing a web-based archival access feature soon for those people
-who just want to browse the lists and do not have a USENET newsreader handy.</p>
-<p>
-There are two third-party mailing list archives available now:</p>
+There are several different mailing list archives available:</p>
 <ul>
-	<li><a href="http://www.shiningsilence.com/mailarchive/">shiningsilence.com</a> (experimental, all groups)</li>
-	<li><a href="http://news.gmane.org/gmane.os.dragonfly-bsd.kernel/">Gmane.org</a> (stable, kernel list only)</li>
+	<li><a href="http://leaf.dragonflybsd.org/mailarchive/">leaf.dragonflybsd.org/mailarchive/</a> (official, all groups)</li>
+	<li><a href="http://marc.theaimsgroup.com/">marc.theaimsgroup.com</a> (all groups except docs and test, in BSD section)</li>
+	<li><a href="http://news.gmane.org/gmane.os.dragonfly-bsd.kernel/">Gmane.org</a> (kernel only)</li>
 </ul>
