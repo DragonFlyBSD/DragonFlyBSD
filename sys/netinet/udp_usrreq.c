@@ -82,7 +82,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.31 2004/12/29 03:26:42 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.32 2005/01/06 09:14:13 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -215,8 +215,7 @@ udp_init()
  *
  * Returns 0 if the packet is acceptable, -1 if it is not.
  */
-static __inline
-int
+static __inline int
 check_multicast_membership(struct ip *ip, struct inpcb *inp, struct mbuf *m)
 {
 	int mshipno;
@@ -224,18 +223,20 @@ check_multicast_membership(struct ip *ip, struct inpcb *inp, struct mbuf *m)
 
 	if (strict_mcast_mship == 0 ||
 	    !IN_MULTICAST(ntohl(ip->ip_dst.s_addr))) {
-		return(0);
+		return (0);
 	}
 	mopt = inp->inp_moptions;
 	if (mopt == NULL)
-		return(-1);
+		return (-1);
 	for (mshipno = 0; mshipno <= mopt->imo_num_memberships; ++mshipno) {
-		if (ip->ip_dst.s_addr == mopt->imo_membership[mshipno]->inm_addr.s_addr &&
-		    m->m_pkthdr.rcvif == mopt->imo_membership[mshipno]->inm_ifp) {
-			return(0);
+		struct in_multi *maddr = mopt->imo_membership[mshipno];
+
+		if (ip->ip_dst.s_addr == maddr->inm_addr.s_addr &&
+		    m->m_pkthdr.rcvif == maddr->inm_ifp) {
+			return (0);
 		}
 	}
-	return(-1);
+	return (-1);
 }
 
 void

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.17 2004/12/28 08:09:59 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.18 2005/01/06 09:14:13 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -211,7 +211,7 @@ divert_packet(struct mbuf *m, int incoming, int port, int rule)
 		 * (see div_output for the other half of this.)
 		 */
 		snprintf(divsrc.sin_zero, sizeof divsrc.sin_zero,
-			    m->m_pkthdr.rcvif->if_xname);
+			 m->m_pkthdr.rcvif->if_xname);
 	}
 
 	/* Put packet on socket queue, if any */
@@ -224,8 +224,8 @@ divert_packet(struct mbuf *m, int incoming, int port, int rule)
 			sa = inp->inp_socket;
 	}
 	if (sa) {
-		if (sbappendaddr(&sa->so_rcv, (struct sockaddr *)&divsrc,
-				m, (struct mbuf *)NULL) == 0)
+		if (sbappendaddr(&sa->so_rcv, (struct sockaddr *)&divsrc, m,
+				 (struct mbuf *)NULL) == 0)
 			m_freem(m);
 		else
 			sorwakeup(sa);

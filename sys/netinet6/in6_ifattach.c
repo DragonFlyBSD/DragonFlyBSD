@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.9 2004/12/21 02:54:47 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.10 2005/01/06 09:14:13 hsu Exp $	*/
 /*	$KAME: in6_ifattach.c,v 1.118 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -955,7 +955,7 @@ in6_ifdetach(struct ifnet *ifp)
 	sin6.sin6_addr = in6addr_linklocal_allnodes;
 	sin6.sin6_addr.s6_addr16[1] = htons(ifp->if_index);
 	rt = rtlookup((struct sockaddr *)&sin6, 0, 0UL);
-	if (rt && rt->rt_ifp == ifp) {
+	if (rt != NULL && rt->rt_ifp == ifp) {
 		--rt->rt_refcnt;
 		rtrequest(RTM_DELETE, (struct sockaddr *)rt_key(rt),
 			rt->rt_gateway, rt_mask(rt), rt->rt_flags, 0);

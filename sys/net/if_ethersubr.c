@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.24 2004/12/28 08:09:59 hsu Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.25 2005/01/06 09:14:13 hsu Exp $
  */
 
 #include "opt_atalk.h"
@@ -338,17 +338,18 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	/* Handle ng_ether(4) processing, if any */
 	if (ng_ether_output_p != NULL) {
-		if ((error = (*ng_ether_output_p)(ifp, &m)) != 0) {
-bad:			if (m != NULL)
-				m_freem(m);
-			return (error);
-		}
+		if ((error = (*ng_ether_output_p)(ifp, &m)) != 0)
+			goto bad;
 		if (m == NULL)
 			return (0);
 	}
 
 	/* Continue with link-layer output */
 	return ether_output_frame(ifp, m);
+
+bad:
+	m_freem(m);
+	return (error);
 }
 
 /*
@@ -382,8 +383,7 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 		eh = mtod(m, struct ether_header *);
 		m_adj(m, ETHER_HDR_LEN);
 		m = bdg_forward_ptr(m, eh, ifp);
-		if (m != NULL)
-			m_freem(m);
+		m_freem(m);
 		return (0);
 	}
 
@@ -576,7 +576,7 @@ ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 		bpf_mtap(ifp, (struct mbuf *)&mh);
 	}
 
-	ifp->if_ibytes += m->m_pkthdr.len + sizeof (*eh);
+	ifp->if_ibytes += m->m_pkthdr.len + (sizeof *eh);
 
 	/* Handle ng_ether(4) processing, if any */
 	if (ng_ether_input_p != NULL) {
@@ -613,8 +613,7 @@ ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 			goto recvLocal;		/* receive locally */
 
 		/* If not local and not multicast, just drop it */
-		if (m != NULL)
-			m_freem(m);
+		m_freem(m);
 		return;
 	}
 
@@ -678,8 +677,7 @@ ether_demux(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 post_stats:
 	if (IPFW_LOADED && ether_ipfw != 0) {
 		if (!ether_ipfw_chk(&m, NULL, &rule, eh, FALSE)) {
-			if (m != NULL)
-				m_freem(m);
+			m_freem(m);
 			return;
 		}
 		eh = mtod(m, struct ether_header *);
@@ -771,14 +769,14 @@ post_stats:
 		    l->llc_ssap == LLC_SNAP_LSAP &&
 		    l->llc_control == LLC_UI) {
 			if (bcmp(&(l->llc_snap_org_code)[0], at_org_code,
-			    sizeof(at_org_code)) == 0 &&
+				 sizeof at_org_code) == 0 &&
 			    ntohs(l->llc_snap_ether_type) == ETHERTYPE_AT) {
 				m_adj(m, sizeof(struct llc));
 				isr = NETISR_ATALK2;
 				break;
 			}
 			if (bcmp(&(l->llc_snap_org_code)[0], aarp_org_code,
-			    sizeof(aarp_org_code)) == 0 &&
+				 sizeof aarp_org_code) == 0 &&
 			    ntohs(l->llc_snap_ether_type) == ETHERTYPE_AARP) {
 				m_adj(m, sizeof(struct llc));
 				isr = NETISR_AARP;

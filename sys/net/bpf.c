@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.20 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.21 2005/01/06 09:14:13 hsu Exp $
  */
 
 #include "use_bpf.h"
@@ -308,7 +308,7 @@ bpfopen(dev_t dev, int flags, int fmt, struct thread *td)
 	if (d != NULL)
 		return(EBUSY);
 	make_dev(&bpf_cdevsw, minor(dev), 0, 0, 0600, "bpf%d", lminor(dev));
-	MALLOC(d, struct bpf_d *, sizeof(*d), M_BPF, M_WAITOK | M_ZERO);
+	MALLOC(d, struct bpf_d *, sizeof *d, M_BPF, M_WAITOK | M_ZERO);
 	dev->si_drv1 = d;
 	d->bd_bufsize = bpf_bufsize;
 	d->bd_sig = SIGIO;
@@ -690,14 +690,14 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	 * Get interface name.
 	 */
 	case BIOCGETIF:
-		if (d->bd_bif == NULL)
+		if (d->bd_bif == NULL) {
 			error = EINVAL;
-		else {
+		} else {
 			struct ifnet *const ifp = d->bd_bif->bif_ifp;
 			struct ifreq *const ifr = (struct ifreq *)addr;
 
 			strlcpy(ifr->ifr_name, ifp->if_xname,
-			    sizeof(ifr->ifr_name));
+				sizeof ifr->ifr_name);
 		}
 		break;
 
@@ -863,7 +863,7 @@ bpf_setf(struct bpf_d *d, struct bpf_program *fp)
 	if (flen > BPF_MAXINSNS)
 		return(EINVAL);
 
-	size = flen * sizeof(*fp->bf_insns);
+	size = flen * sizeof *fp->bf_insns;
 	fcode = (struct bpf_insn *)malloc(size, M_BPF, M_WAITOK);
 	if (copyin(fp->bf_insns, fcode, size) == 0 &&
 	    bpf_validate(fcode, (int)flen)) {
@@ -1181,7 +1181,7 @@ bpfattach(struct ifnet *ifp, u_int dlt, u_int hdrlen)
 {
 	struct bpf_if *bp;
 
-	bp = malloc(sizeof(*bp), M_BPF, M_WAITOK | M_ZERO);
+	bp = malloc(sizeof *bp, M_BPF, M_WAITOK | M_ZERO);
 
 	bp->bif_ifp = ifp;
 	bp->bif_dlt = dlt;

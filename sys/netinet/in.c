@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.13 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.14 2005/01/06 09:14:13 hsu Exp $
  */
 
 #include "opt_bootp.h"
@@ -148,12 +148,12 @@ in_mask2len(mask)
 	u_char *p;
 
 	p = (u_char *)mask;
-	for (x = 0; x < sizeof(*mask); x++) {
+	for (x = 0; x < sizeof *mask; x++) {
 		if (p[x] != 0xff)
 			break;
 	}
 	y = 0;
-	if (x < sizeof(*mask)) {
+	if (x < sizeof *mask) {
 		for (y = 0; y < 8; y++) {
 			if ((p[x] & (0x80 >> y)) == 0)
 				break;
@@ -171,7 +171,7 @@ in_len2mask(mask, len)
 	u_char *p;
 
 	p = (u_char *)mask;
-	bzero(mask, sizeof(*mask));
+	bzero(mask, sizeof *mask);
 	for (i = 0; i < len / 8; i++)
 		p[i] = 0xff;
 	if (len % 8)
@@ -279,7 +279,7 @@ in_control(so, cmd, data, ifp, td)
 				malloc(sizeof *ia, M_IFADDR, M_WAITOK);
 			if (ia == (struct in_ifaddr *)NULL)
 				return (ENOBUFS);
-			bzero((caddr_t)ia, sizeof *ia);
+			bzero(ia, sizeof *ia);
 			/*
 			 * Protect from ipintr() traversing address list
 			 * while we're modifying it.
@@ -296,7 +296,7 @@ in_control(so, cmd, data, ifp, td)
 			ia->ia_sockmask.sin_len = 8;
 			ia->ia_sockmask.sin_family = AF_INET;
 			if (ifp->if_flags & IFF_BROADCAST) {
-				ia->ia_broadaddr.sin_len = sizeof(ia->ia_addr);
+				ia->ia_broadaddr.sin_len = sizeof ia->ia_addr;
 				ia->ia_broadaddr.sin_family = AF_INET;
 			}
 			ia->ia_ifp = ifp;
@@ -537,9 +537,8 @@ in_lifaddr_ioctl(so, cmd, data, ifp, td)
 			return EINVAL;
 
 		/* copy args to in_aliasreq, perform ioctl(SIOCAIFADDR_IN6). */
-		bzero(&ifra, sizeof(ifra));
-		bcopy(iflr->iflr_name, ifra.ifra_name,
-			sizeof(ifra.ifra_name));
+		bzero(&ifra, sizeof ifra);
+		bcopy(iflr->iflr_name, ifra.ifra_name, sizeof ifra.ifra_name);
 
 		bcopy(&iflr->addr, &ifra.ifra_addr, iflr->addr.ss_len);
 
@@ -562,7 +561,7 @@ in_lifaddr_ioctl(so, cmd, data, ifp, td)
 		struct sockaddr_in *sin;
 		int cmp;
 
-		bzero(&mask, sizeof(mask));
+		bzero(&mask, sizeof mask);
 		if (iflr->flags & IFLR_PREFIX) {
 			/* lookup a prefix rather than address. */
 			in_len2mask(&mask, iflr->prefixlen);
@@ -612,7 +611,7 @@ in_lifaddr_ioctl(so, cmd, data, ifp, td)
 				bcopy(&ia->ia_dstaddr, &iflr->dstaddr,
 					ia->ia_dstaddr.sin_len);
 			} else
-				bzero(&iflr->dstaddr, sizeof(iflr->dstaddr));
+				bzero(&iflr->dstaddr, sizeof iflr->dstaddr);
 
 			iflr->prefixlen =
 				in_mask2len(&ia->ia_sockmask.sin_addr);
@@ -624,9 +623,9 @@ in_lifaddr_ioctl(so, cmd, data, ifp, td)
 			struct in_aliasreq ifra;
 
 			/* fill in_aliasreq and do ioctl(SIOCDIFADDR_IN6) */
-			bzero(&ifra, sizeof(ifra));
+			bzero(&ifra, sizeof ifra);
 			bcopy(iflr->iflr_name, ifra.ifra_name,
-				sizeof(ifra.ifra_name));
+				sizeof ifra.ifra_name);
 
 			bcopy(&ia->ia_addr, &ifra.ifra_addr,
 				ia->ia_addr.sin_len);
@@ -856,7 +855,7 @@ in_addmulti(ap, ifp)
 
 	/* XXX - if_addmulti uses M_WAITOK.  Can this really be called
 	   at interrupt time?  If so, need to fix if_addmulti. XXX */
-	inm = malloc(sizeof(*inm), M_IPMADDR, M_WAITOK | M_ZERO);
+	inm = malloc(sizeof *inm, M_IPMADDR, M_WAITOK | M_ZERO);
 	inm->inm_addr = *ap;
 	inm->inm_ifp = ifp;
 	inm->inm_ifma = ifma;

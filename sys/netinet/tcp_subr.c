@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.43 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.44 2005/01/06 09:14:13 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -1178,8 +1178,8 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 		}
 		LIST_REMOVE(marker, inp_list);
 		if (error == 0 && i < n) {
-			bzero(&xt, sizeof(xt));
-			xt.xt_len = sizeof(xt);
+			bzero(&xt, sizeof xt);
+			xt.xt_len = sizeof xt;
 			while (i < n) {
 				error = SYSCTL_OUT(req, &xt, sizeof xt);
 				if (error)
@@ -1317,7 +1317,7 @@ tcp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 		notify = in_rtchange;
 	} else if (cmd == PRC_HOSTDEAD)
 		ip = NULL;
-	else if ((unsigned)cmd > PRC_NCMDS || inetctlerrmap[cmd] == 0)
+	else if ((unsigned)cmd >= PRC_NCMDS || inetctlerrmap[cmd] == 0)
 		return;
 	if (ip != NULL) {
 		s = splnet();

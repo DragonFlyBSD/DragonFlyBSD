@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.22 2004/12/28 08:09:59 hsu Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.23 2005/01/06 09:14:13 hsu Exp $
  */
 
 /*
@@ -184,7 +184,7 @@ arp_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 			 * Case 1: This route should come from a route to iface.
 			 */
 			rt_setgate(rt, rt_key(rt),
-			    (struct sockaddr *)&null_sdl);
+				   (struct sockaddr *)&null_sdl);
 			gate = rt->rt_gateway;
 			SDL(gate)->sdl_type = rt->rt_ifp->if_type;
 			SDL(gate)->sdl_index = rt->rt_ifp->if_index;
@@ -212,7 +212,7 @@ arp_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 		 * Case 2:  This route may come from cloning, or a manual route
 		 * add with a LL address.
 		 */
-		R_Malloc(la, struct llinfo_arp *, sizeof(*la));
+		R_Malloc(la, struct llinfo_arp *, sizeof *la);
 		rt->rt_llinfo = la;
 		if (la == NULL) {
 			log(LOG_DEBUG, "arp_rtrequest: malloc failed\n");
@@ -321,19 +321,19 @@ arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
 	case IFT_ISO88025:
 		ar_hrd = htons(ARPHRD_IEEE802);
 
-		m->m_len = sizeof(llcx) +
+		m->m_len = (sizeof llcx) +
 		    arphdr_len2(ifp->if_addrlen, sizeof(struct in_addr));
 		m->m_pkthdr.len = m->m_len;
 		MH_ALIGN(m, m->m_len);
 
-		memcpy(mtod(m, caddr_t), llcx, sizeof(llcx));
+		memcpy(mtod(m, caddr_t), llcx, sizeof llcx);
 		memcpy(sa.sa_data, ifp->if_broadcastaddr, ifp->if_addrlen);
 		memcpy(sa.sa_data + 6, enaddr, 6);
 		sa.sa_data[6] |= TR_RII;
 		sa.sa_data[12] = TR_AC;
 		sa.sa_data[13] = TR_LLC_FRAME;
 
-		ah = (struct arphdr *)(mtod(m, char *) + sizeof(llcx));
+		ah = (struct arphdr *)(mtod(m, char *) + sizeof llcx);
 		break;
 	case IFT_FDDI:
 	case IFT_ETHER:
@@ -368,7 +368,7 @@ arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
 	memcpy(ar_tpa(ah), tip, ah->ar_pln);
 
 	sa.sa_family = AF_UNSPEC;
-	sa.sa_len = sizeof(sa);
+	sa.sa_len = sizeof sa;
 	(*ifp->if_output)(ifp, m, &sa, (struct rtentry *)NULL);
 }
 
@@ -548,7 +548,6 @@ out2:
  * but formerly didn't normally send requests.
  */
 static int log_arp_wrong_iface = 1;
-
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, log_arp_wrong_iface, CTLFLAG_RW,
 	&log_arp_wrong_iface, 0,
 	"log arp packets arriving on the wrong interface");
@@ -757,7 +756,7 @@ reply:
 			sin.sin_addr = itaddr;
 
 			rt = rtlookup((struct sockaddr *)&sin, 0, 0UL);
-			if (!rt) {
+			if (rt == NULL) {
 				m_freem(m);
 				return;
 			}
@@ -775,8 +774,7 @@ reply:
 			memcpy(ar_sha(ah), IF_LLADDR(ifp), ah->ar_hln);
 			--rt->rt_refcnt;
 #ifdef DEBUG_PROXY
-			printf("arp: proxying for %s\n",
-			       inet_ntoa(itaddr));
+			printf("arp: proxying for %s\n", inet_ntoa(itaddr));
 #endif
 		} else {
 			rt = la->la_rt;
@@ -800,9 +798,9 @@ reply:
 	case IFT_ISO88025:
 		/* Re-arrange the source/dest address */
 		memcpy(th->iso88025_dhost, th->iso88025_shost,
-		    sizeof(th->iso88025_dhost));
+		    sizeof th->iso88025_dhost);
 		memcpy(th->iso88025_shost, IF_LLADDR(ifp),
-		    sizeof(th->iso88025_shost));
+		    sizeof th->iso88025_shost);
 		/* Set the source routing bit if neccesary */
 		if (th->iso88025_dhost[0] & TR_RII) {
 			th->iso88025_dhost[0] &= ~TR_RII;
@@ -811,9 +809,9 @@ reply:
 		}
 		/* Copy the addresses, ac and fc into sa_data */
 		memcpy(sa.sa_data, th->iso88025_dhost,
-		    sizeof(th->iso88025_dhost) * 2);
-		sa.sa_data[(sizeof(th->iso88025_dhost) * 2)] = TR_AC;
-		sa.sa_data[(sizeof(th->iso88025_dhost) * 2) + 1] = TR_LLC_FRAME;
+		    (sizeof th->iso88025_dhost) * 2);
+		sa.sa_data[(sizeof th->iso88025_dhost) * 2] = TR_AC;
+		sa.sa_data[(sizeof th->iso88025_dhost) * 2 + 1] = TR_LLC_FRAME;
 		break;
 	case IFT_ETHER:
 	case IFT_FDDI:
@@ -823,12 +821,12 @@ reply:
 	 */
 	default:
 		eh = (struct ether_header *)sa.sa_data;
-		memcpy(eh->ether_dhost, ar_tha(ah), sizeof(eh->ether_dhost));
+		memcpy(eh->ether_dhost, ar_tha(ah), sizeof eh->ether_dhost);
 		eh->ether_type = htons(ETHERTYPE_ARP);
 		break;
 	}
 	sa.sa_family = AF_UNSPEC;
-	sa.sa_len = sizeof(sa);
+	sa.sa_len = sizeof sa;
 	(*ifp->if_output)(ifp, m, &sa, (struct rtentry *)0);
 	return;
 }
@@ -861,6 +859,7 @@ arptfree(struct llinfo_arp *la)
 	}
 	rtrequest(RTM_DELETE, rt_key(rt), NULL, rt_mask(rt), 0, NULL);
 }
+
 /*
  * Lookup or enter a new address in arptab.
  */

@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_debug.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp_debug.c,v 1.16.2.1 2000/07/15 07:14:31 kris Exp $
- * $DragonFly: src/sys/netinet/tcp_debug.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_debug.c,v 1.3 2005/01/06 09:14:13 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -112,54 +112,48 @@ tcp_trace(act, ostate, tp, ipgen, th, req)
 	if (tp)
 		td->td_cb = *tp;
 	else
-		bzero((caddr_t)&td->td_cb, sizeof (*tp));
+		bzero(&td->td_cb, sizeof *tp);
 	if (ipgen) {
 		switch (td->td_family) {
 		case AF_INET:
-			bcopy((caddr_t)ipgen, (caddr_t)&td->td_ti.ti_i,
-			      sizeof(td->td_ti.ti_i));
-			bzero((caddr_t)td->td_ip6buf, sizeof(td->td_ip6buf));
+			bcopy(ipgen, &td->td_ti.ti_i, sizeof(td->td_ti.ti_i));
+			bzero(td->td_ip6buf, sizeof td->td_ip6buf);
 			break;
 #ifdef INET6
 		case AF_INET6:
-			bcopy((caddr_t)ipgen, (caddr_t)td->td_ip6buf,
-			      sizeof(td->td_ip6buf));
-			bzero((caddr_t)&td->td_ti.ti_i,
-			      sizeof(td->td_ti.ti_i));
+			bcopy(ipgen, td->td_ip6buf, sizeof td->td_ip6buf);
+			bzero(&td->td_ti.ti_i, sizeof td->td_ti.ti_i);
 			break;
 #endif
 		default:
-			bzero((caddr_t)td->td_ip6buf, sizeof(td->td_ip6buf));
-			bzero((caddr_t)&td->td_ti.ti_i,
-			      sizeof(td->td_ti.ti_i));
+			bzero(td->td_ip6buf, sizeof td->td_ip6buf);
+			bzero(&td->td_ti.ti_i, sizeof td->td_ti.ti_i);
 			break;
 		}
 	} else {
-		bzero((caddr_t)&td->td_ti.ti_i, sizeof(td->td_ti.ti_i));
-		bzero((caddr_t)td->td_ip6buf, sizeof(td->td_ip6buf));
+		bzero(&td->td_ti.ti_i, sizeof td->td_ti.ti_i);
+		bzero(td->td_ip6buf, sizeof td->td_ip6buf);
 	}
 	if (th) {
 		switch (td->td_family) {
 		case AF_INET:
 			td->td_ti.ti_t = *th;
-			bzero((caddr_t)&td->td_ti6.th, sizeof(td->td_ti6.th));
+			bzero(&td->td_ti6.th, sizeof td->td_ti6.th);
 			break;
 #ifdef INET6
 		case AF_INET6:
 			td->td_ti6.th = *th;
-			bzero((caddr_t)&td->td_ti.ti_t,
-			      sizeof(td->td_ti.ti_t));
+			bzero(&td->td_ti.ti_t, sizeoftd->td_ti.ti_t);
 			break;
 #endif
 		default:
-			bzero((caddr_t)&td->td_ti.ti_t,
-			      sizeof(td->td_ti.ti_t));
-			bzero((caddr_t)&td->td_ti6.th, sizeof(td->td_ti6.th));
+			bzero(&td->td_ti.ti_t, sizeof td->td_ti.ti_t);
+			bzero(&td->td_ti6.th, sizeof td->td_ti6.th);
 			break;
 		}
 	} else {
-		bzero((caddr_t)&td->td_ti.ti_t, sizeof(td->td_ti.ti_t));
-		bzero((caddr_t)&td->td_ti6.th, sizeof(td->td_ti6.th));
+		bzero(&td->td_ti.ti_t, sizeof td->td_ti.ti_t);
+		bzero(&td->td_ti6.th, sizeof td->td_ti6.th);
 	}
 	td->td_req = req;
 #ifdef TCPDEBUG
@@ -190,7 +184,7 @@ tcp_trace(act, ostate, tp, ipgen, th, req)
 			len = ntohs((u_short)len);
 		}
 		if (act == TA_OUTPUT)
-			len -= sizeof (struct tcphdr);
+			len -= sizeof(struct tcphdr);
 		if (len)
 			printf("[%x..%x)", seq, seq+len);
 		else

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip_encap.c,v 1.1.2.5 2003/01/23 21:06:45 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.9 2004/11/30 19:21:26 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.10 2005/01/06 09:14:13 hsu Exp $	*/
 /*	$KAME: ip_encap.c,v 1.41 2001/03/15 08:35:08 itojun Exp $	*/
 
 /*
@@ -146,11 +146,11 @@ encap4_input(struct mbuf *m, ...)
 
 	ip = mtod(m, struct ip *);
 
-	bzero(&s, sizeof(s));
+	bzero(&s, sizeof s);
 	s.sin_family = AF_INET;
 	s.sin_len = sizeof(struct sockaddr_in);
 	s.sin_addr = ip->ip_src;
-	bzero(&d, sizeof(d));
+	bzero(&d, sizeof d);
 	d.sin_family = AF_INET;
 	d.sin_len = sizeof(struct sockaddr_in);
 	d.sin_addr = ip->ip_dst;
@@ -237,11 +237,11 @@ encap6_input(mp, offp, proto)
 
 	ip6 = mtod(m, struct ip6_hdr *);
 
-	bzero(&s, sizeof(s));
+	bzero(&s, sizeof s);
 	s.sin6_family = AF_INET6;
 	s.sin6_len = sizeof(struct sockaddr_in6);
 	s.sin6_addr = ip6->ip6_src;
-	bzero(&d, sizeof(d));
+	bzero(&d, sizeof d);
 	d.sin6_family = AF_INET6;
 	d.sin6_len = sizeof(struct sockaddr_in6);
 	d.sin6_addr = ip6->ip6_dst;
@@ -318,7 +318,7 @@ encap_attach(af, proto, sp, sm, dp, dm, psw, arg)
 
 	s = splnet();
 	/* sanity check on args */
-	if (sp->sa_len > sizeof(ep->src) || dp->sa_len > sizeof(ep->dst)) {
+	if (sp->sa_len > sizeof ep->src || dp->sa_len > sizeof ep->dst) {
 		error = EINVAL;
 		goto fail;
 	}
@@ -350,7 +350,7 @@ encap_attach(af, proto, sp, sm, dp, dm, psw, arg)
 		goto fail;
 	}
 
-	ep = malloc(sizeof(*ep), M_NETADDR, M_INTWAIT | M_ZERO | M_NULLOK);
+	ep = malloc(sizeof *ep, M_NETADDR, M_INTWAIT | M_ZERO | M_NULLOK);
 	if (ep == NULL) {
 		error = ENOBUFS;
 		goto fail;
@@ -395,7 +395,7 @@ encap_attach_func(af, proto, func, psw, arg)
 		goto fail;
 	}
 
-	ep = malloc(sizeof(*ep), M_NETADDR, M_INTWAIT | M_ZERO | M_NULLOK);
+	ep = malloc(sizeof *ep, M_NETADDR, M_INTWAIT | M_ZERO | M_NULLOK);
 	if (ep == NULL) {
 		error = ENOBUFS;
 		goto fail;
@@ -449,7 +449,7 @@ mask_match(ep, sp, dp)
 	u_int8_t *r;
 	int matchlen;
 
-	if (sp->sa_len > sizeof(s) || dp->sa_len > sizeof(d))
+	if (sp->sa_len > sizeof s || dp->sa_len > sizeof d)
 		return 0;
 	if (sp->sa_family != ep->af || dp->sa_family != ep->af)
 		return 0;
@@ -496,9 +496,9 @@ encap_fillarg(m, ep)
 {
 	struct m_tag *tag;
 
-	tag = m_tag_get(PACKET_TAG_ENCAP, sizeof (void*), MB_DONTWAIT);
-	if (tag) {
-		*(void**)(tag+1) = ep->arg;
+	tag = m_tag_get(PACKET_TAG_ENCAP, sizeof(void *), MB_DONTWAIT);
+	if (tag != NULL) {
+		*(void **)(tag + 1) = ep->arg;
 		m_tag_prepend(m, tag);
 	}
 }
@@ -511,8 +511,8 @@ encap_getarg(m)
 	struct m_tag *tag;
 
 	tag = m_tag_find(m, PACKET_TAG_ENCAP, NULL);
-	if (tag) {
-		p = *(void**)(tag+1);
+	if (tag != NULL) {
+		p = (void *)(tag + 1);
 		m_tag_delete(m, tag);
 	}
 	return p;

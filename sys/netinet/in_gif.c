@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/netinet/in_gif.c,v 1.5.2.11 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/in_gif.c,v 1.11 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_gif.c,v 1.12 2005/01/06 09:14:13 hsu Exp $
  * $KAME: in_gif.c,v 1.54 2001/05/14 14:02:16 itojun Exp $
  */
 /*
@@ -87,10 +87,7 @@ SYSCTL_INT(_net_inet_ip, IPCTL_GIF_TTL, gifttl, CTLFLAG_RW,
 	&ip_gif_ttl,	0, "");
 
 int
-in_gif_output(ifp, family, m)
-	struct ifnet	*ifp;
-	int		family;
-	struct mbuf	*m;
+in_gif_output(struct ifnet *ifp, int family, struct mbuf *m)
 {
 	struct gif_softc *sc = (struct gif_softc*)ifp;
 	struct sockaddr_in *dst = (struct sockaddr_in *)&sc->gif_ro.ro_dst;
@@ -114,8 +111,8 @@ in_gif_output(ifp, family, m)
 		struct ip *ip;
 
 		proto = IPPROTO_IPV4;
-		if (m->m_len < sizeof(*ip)) {
-			m = m_pullup(m, sizeof(*ip));
+		if (m->m_len < sizeof *ip) {
+			m = m_pullup(m, sizeof *ip);
 			if (!m)
 				return ENOBUFS;
 		}
@@ -129,8 +126,8 @@ in_gif_output(ifp, family, m)
 	    {
 		struct ip6_hdr *ip6;
 		proto = IPPROTO_IPV6;
-		if (m->m_len < sizeof(*ip6)) {
-			m = m_pullup(m, sizeof(*ip6));
+		if (m->m_len < sizeof *ip6) {
+			m = m_pullup(m, sizeof *ip6);
 			if (!m)
 				return ENOBUFS;
 		}
@@ -148,7 +145,7 @@ in_gif_output(ifp, family, m)
 		return EAFNOSUPPORT;
 	}
 
-	bzero(&iphdr, sizeof(iphdr));
+	bzero(&iphdr, sizeof iphdr);
 	iphdr.ip_src = sin_src->sin_addr;
 	/* bidirectional configured tunnel mode */
 	if (sin_dst->sin_addr.s_addr != INADDR_ANY)
@@ -204,8 +201,8 @@ in_gif_output(ifp, family, m)
 			return ENETUNREACH;	/* XXX */
 		}
 #if 0
-		ifp->if_mtu = sc->gif_ro.ro_rt->rt_ifp->if_mtu
-			- sizeof(struct ip);
+		ifp->if_mtu = sc->gif_ro.ro_rt->rt_ifp->if_mtu -
+		    sizeof(struct ip);
 #endif
 	}
 
@@ -247,8 +244,8 @@ in_gif_input(struct mbuf *m, ...)
 	    {
 		struct ip *ip;
 		af = AF_INET;
-		if (m->m_len < sizeof(*ip)) {
-			m = m_pullup(m, sizeof(*ip));
+		if (m->m_len < sizeof *ip) {
+			m = m_pullup(m, sizeof *ip);
 			if (!m)
 				return;
 		}
@@ -266,8 +263,8 @@ in_gif_input(struct mbuf *m, ...)
 		struct ip6_hdr *ip6;
 		u_int8_t itos;
 		af = AF_INET6;
-		if (m->m_len < sizeof(*ip6)) {
-			m = m_pullup(m, sizeof(*ip6));
+		if (m->m_len < sizeof *ip6) {
+			m = m_pullup(m, sizeof *ip6);
 			if (!m)
 				return;
 		}
@@ -295,10 +292,7 @@ in_gif_input(struct mbuf *m, ...)
  * validate outer address.
  */
 static int
-gif_validate4(ip, sc, ifp)
-	const struct ip *ip;
-	struct gif_softc *sc;
-	struct ifnet *ifp;
+gif_validate4(const struct ip *ip, struct gif_softc *sc, struct ifnet *ifp)
 {
 	struct sockaddr_in *src, *dst;
 	struct in_ifaddr *ia4;
@@ -333,7 +327,7 @@ gif_validate4(ip, sc, ifp)
 		struct sockaddr_in sin;
 		struct rtentry *rt;
 
-		bzero(&sin, sizeof(sin));
+		bzero(&sin, sizeof sin);
 		sin.sin_family = AF_INET;
 		sin.sin_len = sizeof(struct sockaddr_in);
 		sin.sin_addr = ip->ip_src;
@@ -359,11 +353,7 @@ gif_validate4(ip, sc, ifp)
  * matched the physical addr family.  see gif_encapcheck().
  */
 int
-gif_encapcheck4(m, off, proto, arg)
-	const struct mbuf *m;
-	int off;
-	int proto;
-	void *arg;
+gif_encapcheck4(const struct mbuf *m, int off, int proto, void *arg)
 {
 	struct ip ip;
 	struct gif_softc *sc;
@@ -373,15 +363,14 @@ gif_encapcheck4(m, off, proto, arg)
 	sc = (struct gif_softc *)arg;
 
 	/* LINTED const cast */
-	m_copydata(__DECONST(struct mbuf *, m), 0, sizeof(ip), (caddr_t)&ip);
+	m_copydata(__DECONST(struct mbuf *, m), 0, sizeof ip, (caddr_t)&ip);
 	ifp = ((m->m_flags & M_PKTHDR) != 0) ? m->m_pkthdr.rcvif : NULL;
 
 	return gif_validate4(&ip, sc, ifp);
 }
 
 int
-in_gif_attach(sc)
-	struct gif_softc *sc;
+in_gif_attach(struct gif_softc *sc)
 {
 	sc->encap_cookie4 = encap_attach_func(AF_INET, -1, gif_encapcheck,
 	    &in_gif_protosw, sc);
@@ -391,8 +380,7 @@ in_gif_attach(sc)
 }
 
 int
-in_gif_detach(sc)
-	struct gif_softc *sc;
+in_gif_detach(struct gif_softc *sc)
 {
 	int error;
 

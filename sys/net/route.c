@@ -32,7 +32,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.11 2004/12/28 08:09:59 hsu Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.12 2005/01/06 09:14:13 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -201,8 +201,6 @@ rtfree(struct rtentry *rt)
 	}
 }
 
-#define	sa_equal(a1, a2) (bcmp((a1), (a2), (a1)->sa_len) == 0)
-
 /*
  * Force a routing table entry to the specified
  * destination to go through the given gateway.
@@ -210,7 +208,6 @@ rtfree(struct rtentry *rt)
  * message from the network layer.
  *
  * N.B.: must be called at splnet
- *
  */
 void
 rtredirect(
@@ -271,7 +268,7 @@ create:
 			if (rt != NULL)
 				rtfree(rt);
 			flags |=  RTF_GATEWAY | RTF_DYNAMIC;
-			bzero(&info, sizeof(info));
+			bzero(&info, sizeof info);
 			info.rti_info[RTAX_DST] = dst;
 			info.rti_info[RTAX_GATEWAY] = gateway;
 			info.rti_info[RTAX_NETMASK] = netmask;
@@ -312,7 +309,7 @@ out:
 	else if (stat != NULL)
 		(*stat)++;
 
-	bzero(&info, sizeof(info));
+	bzero(&info, sizeof info);
 	info.rti_info[RTAX_DST] = dst;
 	info.rti_info[RTAX_GATEWAY] = gateway;
 	info.rti_info[RTAX_NETMASK] = netmask;
@@ -877,7 +874,7 @@ rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate)
 		 * a gateway.  This is obviously mandatory when we
 		 * get rt->rt_output().
 		 *
-		 * This breaks TTCP!  XXX JH
+		 * This breaks TTCP for hosts outside the gateway!  XXX JH
 		 */
 		rt->rt_gwroute = rtlookup(gate, 1, RTF_PRCLONING);
 		if (rt->rt_gwroute == rt) {
@@ -1029,7 +1026,7 @@ rtinit(struct ifaddr *ifa, int cmd, int flags)
 	/*
 	 * Do the actual request
 	 */
-	bzero(&info, sizeof(info));
+	bzero(&info, sizeof info);
 	info.rti_ifa = ifa;
 	info.rti_flags = flags | ifa->ifa_flags;
 	info.rti_info[RTAX_DST] = dst;

@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.13 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.14 2005/01/06 09:14:13 hsu Exp $
  */
 
 #include "opt_atalk.h"
@@ -352,8 +352,7 @@ queue_it:
 	return (0);
 
 bad:
-	if (m)
-		m_freem(m);
+	m_freem(m);
 	return (error);
 }
 
@@ -377,7 +376,7 @@ fddi_input(struct ifnet *ifp, struct mbuf *m)
 	m_adj(m, sizeof(struct fddi_header));
 	m->m_pkthdr.rcvif = ifp;
 
-	if ((ifp->if_flags & IFF_UP) == 0) {
+	if (!(ifp->if_flags & IFF_UP)) {
 		m_freem(m);
 		return;
 	}

@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.31 2004/12/30 05:14:30 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.32 2005/01/06 09:14:13 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -724,8 +724,7 @@ in_pcbnotifyall(head, faddr, errno, notify)
 	 * the structure and skip it.
 	 */
 	s = splnet();
-	for (inp = LIST_FIRST(head); inp != NULL; inp = ninp) {
-		ninp = LIST_NEXT(inp, inp_list);
+	LIST_FOREACH_MUTABLE(inp, head, inp_list, ninp) {
 		if (inp->inp_flags & INP_PLACEMARKER)
 			continue;
 #ifdef INET6
@@ -735,7 +734,7 @@ in_pcbnotifyall(head, faddr, errno, notify)
 		if (inp->inp_faddr.s_addr != faddr.s_addr ||
 		    inp->inp_socket == NULL)
 			continue;
-		(*notify)(inp, errno);
+		(*notify)(inp, errno);		/* can remove inp from list! */
 	}
 	splx(s);
 }
@@ -1214,8 +1213,8 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 	}
 	LIST_REMOVE(marker, inp_list);
 	if (error == 0 && i < n) {
-		bzero(&xi, sizeof(xi));
-		xi.xi_len = sizeof(xi);
+		bzero(&xi, sizeof xi);
+		xi.xi_len = sizeof xi;
 		while (i < n) {
 			error = SYSCTL_OUT(req, &xi, sizeof xi);
 			++i;

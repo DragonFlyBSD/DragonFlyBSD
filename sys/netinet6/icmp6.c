@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.14 2004/12/21 02:54:47 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.15 2005/01/06 09:14:13 hsu Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -1142,7 +1142,7 @@ icmp6_mtudisc_update(struct ip6ctlparam *ip6cp, int validated)
 	/* sin6.sin6_scope_id = XXX: should be set if DST is a scoped addr */
 	rt = rtlookup((struct sockaddr *)&sin6, 0, RTF_CLONING | RTF_PRCLONING);
 
-	if (rt && (rt->rt_flags & RTF_HOST) &&
+	if (rt != NULL && (rt->rt_flags & RTF_HOST) &&
 	    !(rt->rt_rmx.rmx_locks & RTV_MTU)) {
 		if (mtu < IPV6_MMTU) {				/* XXX */
 			rt->rt_rmx.rmx_locks |= RTV_MTU;
@@ -2255,7 +2255,7 @@ icmp6_redirect_input(struct mbuf *m, int off)
 	sin6.sin6_len = sizeof(struct sockaddr_in6);
 	bcopy(&reddst6, &sin6.sin6_addr, sizeof reddst6);
 	rt = rtlookup((struct sockaddr *)&sin6, 0, 0UL);
-	if (rt) {
+	if (rt != NULL) {
 		if (rt->rt_gateway == NULL ||
 		    rt->rt_gateway->sa_family != AF_INET6) {
 			nd6log((LOG_ERR,

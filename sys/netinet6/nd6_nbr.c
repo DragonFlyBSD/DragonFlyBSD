@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_nbr.c,v 1.4.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.7 2004/12/21 02:54:47 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.8 2005/01/06 09:14:13 hsu Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.86 2002/01/21 02:33:04 jinmei Exp $	*/
 
 /*
@@ -213,7 +213,7 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 		tsin6.sin6_addr = taddr6;
 
 		rt = rtlookup((struct sockaddr *)&tsin6, 0, 0);
-		if (rt && (rt->rt_flags & RTF_ANNOUNCE) &&
+		if (rt != NULL && (rt->rt_flags & RTF_ANNOUNCE) &&
 		    rt->rt_gateway->sa_family == AF_LINK) {
 			/*
 			 * proxy NDP for single entry
@@ -225,10 +225,10 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 				proxydl = SDL(rt->rt_gateway);
 			}
 		}
-		if (rt)
+		if (rt != NULL)
 			--rt->rt_refcnt;
 	}
-	if (!ifa) {
+	if (ifa == NULL) {
 		/*
 		 * We've got an NS packet, and we don't have that adddress
 		 * assigned for us.  We MUST silently ignore it.

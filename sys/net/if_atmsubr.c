@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
- * $DragonFly: src/sys/net/if_atmsubr.c,v 1.10 2004/07/23 07:16:30 joerg Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.11 2005/01/06 09:14:13 hsu Exp $
  */
 
 /*
@@ -72,7 +72,7 @@
 #define ETHERTYPE_IPV6	0x86dd
 #endif
 
-#define senderr(e) { error = (e); goto bad;}
+#define gotoerr(e) { error = (e); goto bad;}
 
 /*
  * atm_output: ATM output routine
@@ -103,28 +103,28 @@ atm_output(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	u_int32_t atm_flags;
 
 	if ((ifp->if_flags & (IFF_UP|IFF_RUNNING)) != (IFF_UP|IFF_RUNNING))
-		senderr(ENETDOWN);
+		gotoerr(ENETDOWN);
 
 	/*
 	 * check route
 	 */
 	if ((rt = rt0) != NULL) {
 
-		if ((rt->rt_flags & RTF_UP) == 0) { /* route went down! */
+		if (!(rt->rt_flags & RTF_UP)) { /* route went down! */
 			if ((rt0 = rt = RTALLOC1(dst, 0)) != NULL)
 				rt->rt_refcnt--;
 			else 
-				senderr(EHOSTUNREACH);
+				gotoerr(EHOSTUNREACH);
 		}
 
 		if (rt->rt_flags & RTF_GATEWAY) {
-			if (rt->rt_gwroute == 0)
+			if (rt->rt_gwroute == NULL)
 				goto lookup;
-			if (((rt = rt->rt_gwroute)->rt_flags & RTF_UP) == 0) {
+			if (((rt = rt->rt_gwroute)->rt_flags & RTF_UP) == NULL) {
 				rtfree(rt); rt = rt0;
 			lookup: rt->rt_gwroute = RTALLOC1(rt->rt_gateway, 0);
-				if ((rt = rt->rt_gwroute) == 0)
-					senderr(EHOSTUNREACH);
+				if ((rt = rt->rt_gwroute) == NULL)
+					gotoerr(EHOSTUNREACH);
 			}
 		}
 
@@ -147,7 +147,7 @@ atm_output(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 			if (!atmresolve(rt, m, dst, &atmdst)) {
 				m = NULL; 
 				/* XXX: atmresolve already free'd it */
-				senderr(EHOSTUNREACH);
+				gotoerr(EHOSTUNREACH);
 				/* XXX: put ATMARP stuff here */
 				/* XXX: watch who frees m on failure */
 			}
@@ -171,7 +171,7 @@ atm_output(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 			printf("%s: can't handle af%d\n", ifp->if_xname, 
 			    dst->sa_family);
 #endif
-			senderr(EAFNOSUPPORT);
+			gotoerr(EAFNOSUPPORT);
 		}
 
 		/*
@@ -181,8 +181,8 @@ atm_output(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 		atm_flags = ATM_PH_FLAGS(&atmdst);
 		if (atm_flags & ATM_PH_LLCSNAP) sz += 8; /* sizeof snap == 8 */
 		M_PREPEND(m, sz, MB_DONTWAIT);
-		if (m == 0)
-			senderr(ENOBUFS);
+		if (m == NULL)
+			gotoerr(ENOBUFS);
 		ad = mtod(m, struct atm_pseudohdr *);
 		*ad = atmdst;
 		if (atm_flags & ATM_PH_LLCSNAP) {
@@ -206,17 +206,17 @@ atm_output(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	if (IF_QFULL(&ifp->if_snd)) {
 		IF_DROP(&ifp->if_snd);
 		splx(s);
-		senderr(ENOBUFS);
+		gotoerr(ENOBUFS);
 	}
 	ifp->if_obytes += m->m_pkthdr.len;
 	IF_ENQUEUE(&ifp->if_snd, m);
-	if ((ifp->if_flags & IFF_OACTIVE) == 0)
+	if (!(ifp->if_flags & IFF_OACTIVE))
 		(*ifp->if_start)(ifp);
 	splx(s);
 	return (error);
 
 bad:
-	if (m)
+	if (m != NULL)
 		m_freem(m);
 	return (error);
 }
@@ -236,7 +236,7 @@ atm_input(ifp, ah, m, rxhand)
 	int isr;
 	int s;
 
-	if ((ifp->if_flags & IFF_UP) == 0) {
+	if (!(ifp->if_flags & IFF_UP)) {
 		m_freem(m);
 		return;
 	}
@@ -262,7 +262,7 @@ atm_input(ifp, ah, m, rxhand)
 		if (ATM_PH_FLAGS(ah) & ATM_PH_LLCSNAP) {
 			struct atmllc *alc;
 			if (m->m_len < sizeof(*alc) &&
-			    (m = m_pullup(m, sizeof(*alc))) == 0)
+			    (m = m_pullup(m, sizeof(*alc))) == NULL)
 				return; /* failed */
 			alc = mtod(m, struct atmllc *);
 			if (bcmp(alc, ATMLLC_HDR, 6)) {

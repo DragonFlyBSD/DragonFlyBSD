@@ -32,7 +32,7 @@
  *
  *	@(#)raw_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_usrreq.c,v 1.18 1999/08/28 00:48:28 peter Exp $
- * $DragonFly: src/sys/net/raw_usrreq.c,v 1.8 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/raw_usrreq.c,v 1.9 2005/01/06 09:14:13 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -89,11 +89,9 @@ raw_input(m0, proto, src, dst)
 		 * Note that if the lengths are not the same
 		 * the comparison will fail at the first byte.
 		 */
-#define	equal(a1, a2) \
-  (bcmp((caddr_t)(a1), (caddr_t)(a2), a1->sa_len) == 0)
-		if (rp->rcb_laddr && !equal(rp->rcb_laddr, dst))
+		if (rp->rcb_laddr && !sa_equal(rp->rcb_laddr, dst))
 			continue;
-		if (rp->rcb_faddr && !equal(rp->rcb_faddr, src))
+		if (rp->rcb_faddr && !sa_equal(rp->rcb_faddr, src))
 			continue;
 		if (last) {
 			struct mbuf *n;

@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arcsubr.c,v 1.36 2001/06/14 05:44:23 itojun Exp $	*/
 /*	$FreeBSD: src/sys/net/if_arcsubr.c,v 1.1.2.5 2003/02/05 18:42:15 fjoe Exp $ */
-/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.11 2004/12/21 02:54:14 hsu Exp $ */
+/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.12 2005/01/06 09:14:13 hsu Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Ignatios Souvatzis
@@ -93,7 +93,7 @@ static int	arc_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 
 #define ARC_LLADDR(ifp)	(*(u_int8_t *)IF_LLADDR(ifp))
 
-#define senderr(e) { error = (e); goto bad;}
+#define gotoerr(e) { error = (e); goto bad;}
 #define SIN(s)	((struct sockaddr_in *)s)
 #define SIPX(s)	((struct sockaddr_ipx *)s)
 
@@ -177,13 +177,13 @@ arc_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	default:
 		printf("%s: can't handle af%d\n", ifp->if_xname,
 		    dst->sa_family);
-		senderr(EAFNOSUPPORT);
+		gotoerr(EAFNOSUPPORT);
 	}
 
 	isphds = arc_isphds(atype);
 	M_PREPEND(m, isphds ? ARC_HDRNEWLEN : ARC_HDRLEN, MB_DONTWAIT);
 	if (m == NULL)
-		senderr(ENOBUFS);
+		gotoerr(ENOBUFS);
 	ah = mtod(m, struct arc_header *);
 	ah->arc_type = atype;
 	ah->arc_dhost = adst;
@@ -209,14 +209,14 @@ arc_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		bpf_mtap(ifp, m);
 
 	if (!IF_HANDOFF(&ifp->if_snd, m, ifp)) {
-		m = 0;
-		senderr(ENOBUFS);
+		m = NULL;
+		gotoerr(ENOBUFS);
 	}
 
 	return (0);
 
 bad:
-	if (m)
+	if (m != NULL)
 		m_freem(m);
 	return (error);
 }
@@ -456,12 +456,12 @@ arc_defrag(ifp, m)
 		/* if all else fails, it is out of sequence, too */
 	}
 outofseq:
-	if (m1) {
+	if (m1 != NULL) {
 		m_freem(m1);
 		af->af_packet = NULL;
 	}
 
-	if (m)
+	if (m != NULL)
 		m_freem(m);
 
 	log(LOG_INFO,"%s: got out of seq. packet: %s\n",
@@ -498,7 +498,7 @@ arc_input(struct ifnet *ifp, struct mbuf *m)
 	int isr;
 	u_int8_t atype;
 
-	if ((ifp->if_flags & IFF_UP) == 0) {
+	if (!(ifp->if_flags & IFF_UP)) {
 		m_freem(m);
 		return;
 	}
@@ -513,9 +513,9 @@ arc_input(struct ifnet *ifp, struct mbuf *m)
 
 	ah = mtod(m, struct arc_header *);
 	/* does this belong to us? */
-	if ((ifp->if_flags & IFF_PROMISC) == 0
-	    && ah->arc_dhost != ifp->if_broadcastaddr[0]
-	    && ah->arc_dhost != ARC_LLADDR(ifp)) {
+	if (!(ifp->if_flags & IFF_PROMISC) &&
+	    ah->arc_dhost != ifp->if_broadcastaddr[0] &&
+	    ah->arc_dhost != ARC_LLADDR(ifp)) {
 		m_freem(m);
 		return;
 	}

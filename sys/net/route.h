@@ -32,7 +32,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.8 2005/01/05 18:21:20 joerg Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.9 2005/01/06 09:14:13 hsu Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -259,6 +259,7 @@ struct rt_addrinfo {
 };
 
 #ifdef _KERNEL
+
 #define	sa_dst		rti_info[RTAX_DST]
 #define	sa_gateway	rti_info[RTAX_GATEWAY]
 #define	sa_netmask	rti_info[RTAX_NETMASK]

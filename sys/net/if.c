@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.23 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.24 2005/01/06 09:14:13 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -617,22 +617,19 @@ ifa_ifwithaddr(struct sockaddr *addr)
 	struct ifnet *ifp;
 	struct ifaddr *ifa;
 
-#define	equal(a1, a2) \
-  (bcmp((a1), (a2), ((struct sockaddr *)(a1))->sa_len) == 0)
-
 	TAILQ_FOREACH(ifp, &ifnet, if_link)
 	    TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
 		if (ifa->ifa_addr->sa_family != addr->sa_family)
 			continue;
-		if (equal(addr, ifa->ifa_addr))
+		if (sa_equal(addr, ifa->ifa_addr))
 			return (ifa);
 		if ((ifp->if_flags & IFF_BROADCAST) && ifa->ifa_broadaddr &&
-		    /* IP6 doesn't have broadcast */
+		    /* IPv6 doesn't have broadcast */
 		    ifa->ifa_broadaddr->sa_len != 0 &&
-		    equal(ifa->ifa_broadaddr, addr))
+		    sa_equal(ifa->ifa_broadaddr, addr))
 			return (ifa);
 	}
-	return ((struct ifaddr *)0);
+	return ((struct ifaddr *)NULL);
 }
 /*
  * Locate the point to point interface with a given destination address.
@@ -648,10 +645,11 @@ ifa_ifwithdstaddr(struct sockaddr *addr)
 		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
 			if (ifa->ifa_addr->sa_family != addr->sa_family)
 				continue;
-			if (ifa->ifa_dstaddr && equal(addr, ifa->ifa_dstaddr))
+			if (ifa->ifa_dstaddr &&
+			    sa_equal(addr, ifa->ifa_dstaddr))
 				return (ifa);
 	}
-	return ((struct ifaddr *)0);
+	return ((struct ifaddr *)NULL);
 }
 
 /*
@@ -696,8 +694,8 @@ next:				continue;
 				 * The trouble is that we don't know the
 				 * netmask for the remote end.
 				 */
-				if (ifa->ifa_dstaddr != 0 &&
-				    equal(addr, ifa->ifa_dstaddr))
+				if (ifa->ifa_dstaddr != NULL &&
+				    sa_equal(addr, ifa->ifa_dstaddr))
 					return (ifa);
 			} else {
 				/*
@@ -766,14 +764,15 @@ ifaof_ifpforaddr(struct sockaddr *addr, struct ifnet *ifp)
 			continue;
 		if (ifa_maybe == 0)
 			ifa_maybe = ifa;
-		if (ifa->ifa_netmask == 0) {
-			if (equal(addr, ifa->ifa_addr) ||
-			    (ifa->ifa_dstaddr && equal(addr, ifa->ifa_dstaddr)))
+		if (ifa->ifa_netmask == NULL) {
+			if (sa_equal(addr, ifa->ifa_addr) ||
+			    (ifa->ifa_dstaddr != NULL &&
+			     sa_equal(addr, ifa->ifa_dstaddr)))
 				return (ifa);
 			continue;
 		}
 		if (ifp->if_flags & IFF_POINTOPOINT) {
-			if (equal(addr, ifa->ifa_dstaddr))
+			if (sa_equal(addr, ifa->ifa_dstaddr))
 				return (ifa);
 		} else {
 			cp = addr->sa_data;
@@ -1488,7 +1487,7 @@ if_addmulti(
 	 * then don't add a new one, just add a reference
 	 */
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
-		if (equal(sa, ifma->ifma_addr)) {
+		if (sa_equal(sa, ifma->ifma_addr)) {
 			ifma->ifma_refcount++;
 			if (retifma)
 				*retifma = ifma;
@@ -1530,7 +1529,7 @@ if_addmulti(
 
 	if (llsa != 0) {
 		LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
-			if (equal(ifma->ifma_addr, llsa))
+			if (sa_equal(ifma->ifma_addr, llsa))
 				break;
 		}
 		if (ifma) {
@@ -1571,7 +1570,7 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 	int s;
 
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
-		if (equal(sa, ifma->ifma_addr))
+		if (sa_equal(sa, ifma->ifma_addr))
 			break;
 	if (ifma == 0)
 		return ENOENT;
@@ -1609,7 +1608,7 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 	 * in that case.)
 	 */
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
-		if (equal(sa, ifma->ifma_addr))
+		if (sa_equal(sa, ifma->ifma_addr))
 			break;
 	if (ifma == 0)
 		return 0;
@@ -1702,7 +1701,7 @@ ifmaof_ifpforaddr(struct sockaddr *sa, struct ifnet *ifp)
 	struct ifmultiaddr *ifma;
 
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
-		if (equal(ifma->ifma_addr, sa))
+		if (sa_equal(ifma->ifma_addr, sa))
 			break;
 
 	return ifma;

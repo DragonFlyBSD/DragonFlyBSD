@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_faith.c,v 1.3.2.6 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/faith/if_faith.c,v 1.9 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/net/faith/if_faith.c,v 1.10 2005/01/06 09:14:13 hsu Exp $
  */
 /*
  * derived from
@@ -187,7 +187,7 @@ void
 faith_clone_destroy(ifp)
 	struct ifnet *ifp;
 {
-	struct faith_softc *sc = (void *) ifp;
+	struct faith_softc *sc = (struct faith_softc *) ifp;
 
 	LIST_REMOVE(sc, sc_list);
 	bpfdetach(ifp);
@@ -364,17 +364,17 @@ faithprefix(in6)
 	if (ip6_keepfaith == 0)
 		return 0;
 
-	bzero(&sin6, sizeof(sin6));
+	bzero(&sin6, sizeof sin6);
 	sin6.sin6_family = AF_INET6;
 	sin6.sin6_len = sizeof(struct sockaddr_in6);
 	sin6.sin6_addr = *in6;
 	rt = rtlookup((struct sockaddr *)&sin6, 0, 0UL);
-	if (rt && rt->rt_ifp && rt->rt_ifp->if_type == IFT_FAITH &&
+	if (rt != NULL && rt->rt_ifp && rt->rt_ifp->if_type == IFT_FAITH &&
 	    (rt->rt_ifp->if_flags & IFF_UP))
 		ret = 1;
 	else
 		ret = 0;
-	if (rt)
+	if (rt != NULL)
 		RTFREE(rt);
 	return ret;
 }

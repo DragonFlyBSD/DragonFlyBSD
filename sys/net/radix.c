@@ -32,7 +32,7 @@
  *
  *	@(#)radix.c	8.4 (Berkeley) 11/2/94
  * $FreeBSD: src/sys/net/radix.c,v 1.20.2.3 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/radix.c,v 1.9 2004/12/28 08:09:59 hsu Exp $
+ * $DragonFly: src/sys/net/radix.c,v 1.10 2005/01/06 09:14:13 hsu Exp $
  */
 
 /*
@@ -1032,6 +1032,7 @@ rn_inithead(void **head, int off)
 	right->rn_key = rn_ones;
 
 	rnh->rnh_treetop = root;
+
 	rnh->rnh_addaddr = rn_addroute;
 	rnh->rnh_deladdr = rn_delete;
 	rnh->rnh_matchaddr = rn_match;

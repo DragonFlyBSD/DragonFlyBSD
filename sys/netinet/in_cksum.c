@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/in_cksum.c,v 1.8 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_cksum.c,v 1.9 2005/01/06 09:14:13 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -89,7 +89,7 @@ in_cksum_range(struct mbuf *m, int nxt, int offset, int bytes)
 		panic("in_cksum_range: offset too short");
 	if (m->m_len < sizeof(struct ip))
 		panic("in_cksum_range: bad mbuf chain");
-	bzero(&ipov, sizeof(ipov));
+	bzero(&ipov, sizeof ipov);
 	ipov.ih_len = htons(bytes);
 	ipov.ih_pr = nxt;
 	ipov.ih_src = mtod(m, struct ip *)->ip_src;

@@ -32,9 +32,8 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.18 2004/12/28 08:09:59 hsu Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.19 2005/01/06 09:14:13 hsu Exp $
  */
-
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -439,8 +438,7 @@ route_output(struct mbuf *m, struct socket *so, ...)
 			     info.sa_gateway != NULL) ||
 			    info.sa_ifpaddr != NULL ||
 			    (info.sa_ifaaddr != NULL &&
-			     bcmp(info.sa_ifaaddr, rt->rt_ifa->ifa_addr,
-				  info.sa_ifaaddr->sa_len) == 0)) {
+			     sa_equal(info.sa_ifaaddr, rt->rt_ifa->ifa_addr))) {
 				if ((error = rt_getifa(&info)) != 0)
 					gotoerr(error);
 			}
@@ -561,7 +559,7 @@ rt_xaddrs(char *cp, char *cplim, struct rt_addrinfo *rtinfo)
 		/*
 		 * It won't fit.
 		 */
-		if ( (cp + sa->sa_len) > cplim ) {
+		if ((cp + sa->sa_len) > cplim) {
 			return (EINVAL);
 		}
 
@@ -585,9 +583,7 @@ rt_xaddrs(char *cp, char *cplim, struct rt_addrinfo *rtinfo)
 }
 
 static struct mbuf *
-rt_msg1(type, rtinfo)
-	int type;
-	struct rt_addrinfo *rtinfo;
+rt_msg1(int type, struct rt_addrinfo *rtinfo)
 {
 	struct rt_msghdr *rtm;
 	struct mbuf *m;
@@ -732,7 +728,7 @@ again:
 void
 rt_missmsg(int type, struct rt_addrinfo *rtinfo, int flags, int error)
 {
-	struct sockaddr *sa = rtinfo->rti_info[RTAX_DST];
+	struct sockaddr *dst = rtinfo->rti_info[RTAX_DST];
 	struct rt_msghdr *rtm;
 	struct mbuf *m;
 
@@ -745,7 +741,7 @@ rt_missmsg(int type, struct rt_addrinfo *rtinfo, int flags, int error)
 	rtm->rtm_flags = RTF_DONE | flags;
 	rtm->rtm_errno = error;
 	rtm->rtm_addrs = rtinfo->rti_addrs;
-	route_proto.sp_protocol = sa ? sa->sa_family : 0;
+	route_proto.sp_protocol = (dst != NULL) ? dst->sa_family : 0;
 	raw_input(m, &route_proto, &route_src, &route_dst);
 }
 
@@ -754,8 +750,7 @@ rt_missmsg(int type, struct rt_addrinfo *rtinfo, int flags, int error)
  * socket indicating that the status of a network interface has changed.
  */
 void
-rt_ifmsg(ifp)
-	struct ifnet *ifp;
+rt_ifmsg(struct ifnet *ifp)
 {
 	struct if_msghdr *ifm;
 	struct mbuf *m;
@@ -847,10 +842,7 @@ rt_rtmsg(int cmd, struct ifaddr *ifa, int error, struct rtentry *rt)
  * copies of it.
  */
 void
-rt_newaddrmsg(cmd, ifa, error, rt)
-	int cmd, error;
-	struct ifaddr *ifa;
-	struct rtentry *rt;
+rt_newaddrmsg(int cmd, struct ifaddr *ifa, int error, struct rtentry *rt)
 {
 	if (route_cb.any_count == 0)
 		return;
@@ -871,9 +863,7 @@ rt_newaddrmsg(cmd, ifa, error, rt)
  * there is no route state to worry about.
  */
 void
-rt_newmaddrmsg(cmd, ifma)
-	int cmd;
-	struct ifmultiaddr *ifma;
+rt_newmaddrmsg(int cmd, struct ifmultiaddr *ifma)
 {
 	struct rt_addrinfo info;
 	struct mbuf *m = NULL;

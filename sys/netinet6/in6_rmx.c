@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_rmx.c,v 1.1.2.4 2004/10/06 02:35:17 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.9 2005/01/01 09:19:40 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.10 2005/01/06 09:14:13 hsu Exp $	*/
 /*	$KAME: in6_rmx.c,v 1.11 2001/07/26 06:53:16 jinmei Exp $	*/
 
 /*
@@ -168,15 +168,13 @@ in6_addroute(char *key, char *mask, struct radix_node_head *head,
 		if (rt2 != NULL) {
 			--rt2->rt_refcnt;
 			if (rt2->rt_flags & RTF_LLINFO &&
-				rt2->rt_flags & RTF_HOST &&
-				rt2->rt_gateway &&
-				rt2->rt_gateway->sa_family == AF_LINK) {
-				rtrequest(RTM_DELETE,
-					  (struct sockaddr *)rt_key(rt2),
-					  rt2->rt_gateway,
-					  rt_mask(rt2), rt2->rt_flags, 0);
-				ret = rn_addroute(key, mask, head,
-					treenodes);
+			    rt2->rt_flags & RTF_HOST &&
+			    rt2->rt_gateway &&
+			    rt2->rt_gateway->sa_family == AF_LINK) {
+				rtrequest(RTM_DELETE, rt_key(rt2),
+					  rt2->rt_gateway, rt_mask(rt2),
+					  rt2->rt_flags, NULL);
+				ret = rn_addroute(key, mask, head, treenodes);
 			}
 		}
 	} else if (ret == NULL && rt->rt_flags & RTF_CLONING) {
@@ -263,8 +261,7 @@ in6_clsroute(struct radix_node *rn, struct radix_node_head *head)
 	if ((rt->rt_flags & (RTF_LLINFO | RTF_HOST)) != RTF_HOST)
 		return;
 
-	if ((rt->rt_flags & (RTF_WASCLONED | RTPRF_OURS))
-	   != RTF_WASCLONED)
+	if ((rt->rt_flags & (RTF_WASCLONED | RTPRF_OURS)) != RTF_WASCLONED)
 		return;
 
 	/*
@@ -314,10 +311,8 @@ in6_rtqkill(struct radix_node *rn, void *rock)
 			if (rt->rt_refcnt > 0)
 				panic("rtqkill route really not free");
 
-			err = rtrequest(RTM_DELETE,
-					(struct sockaddr *)rt_key(rt),
-					rt->rt_gateway, rt_mask(rt),
-					rt->rt_flags, 0);
+			err = rtrequest(RTM_DELETE, rt_key(rt), rt->rt_gateway,
+					rt_mask(rt), rt->rt_flags, NULL);
 			if (err) {
 				log(LOG_WARNING, "in6_rtqkill: error %d", err);
 			} else {

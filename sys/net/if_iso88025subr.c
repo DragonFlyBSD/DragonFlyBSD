@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_iso88025subr.c,v 1.7.2.7 2002/06/18 00:15:31 kbyanc Exp $
- * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.10 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.11 2005/01/06 09:14:13 hsu Exp $
  *
  */
 
@@ -305,8 +305,7 @@ iso88025_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	return (error);
 
 bad:
-	if (m)
-		m_freem(m);
+	m_freem(m);
 	return (error);
 }
 
