@@ -1,0 +1,13 @@
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/client.c.patch,v 1.1 2004/11/09 22:06:54 joerg Exp $
+
+--- client.c.orig	2004-11-09 22:24:28.000000000 +0100
++++ client.c	2004-11-09 22:24:33.000000000 +0100
+@@ -125,7 +125,7 @@
+ 		if ((p->query->fd = socket(p->addr->ss.ss_family, SOCK_DGRAM,
+ 		    0)) == -1)
+ 			fatal("client_query socket");
+-		if (connect(p->query->fd, sa, SA_LEN(sa)) == -1) {
++		if (connect(p->query->fd, sa, sa->sa_len) == -1) {
+ 			if (errno == ECONNREFUSED || errno == ENETUNREACH ||
+ 			    errno == EHOSTUNREACH) {
+ 				client_nextaddr(p);
