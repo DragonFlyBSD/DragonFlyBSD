@@ -3,7 +3,7 @@
  *
  *	Implements an architecture independant Capability Service API
  * 
- * $DragonFly: src/sys/sys/caps.h,v 1.2 2004/01/18 12:29:50 dillon Exp $
+ * $DragonFly: src/sys/sys/caps.h,v 1.3 2004/01/18 12:50:15 dillon Exp $
  */
 
 #ifndef _SYS_CAPS_H_
@@ -29,6 +29,10 @@ typedef struct caps_msgid {
 	caps_msg_state_t	c_state;
 	int			c_reserved01;
 } *caps_msgid_t;
+
+typedef enum caps_type { 
+	CAPT_UNKNOWN, CAPT_CLIENT, CAPT_SERVICE, CAPT_REMOTE 
+} caps_type_t;
 
 /*
  * Note: upper 16 bits reserved for kernel use
@@ -79,10 +83,6 @@ typedef struct caps_cred {
 } *caps_cred_t;
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-
-typedef enum caps_type { 
-	CAPT_UNKNOWN, CAPT_CLIENT, CAPT_SERVICE, CAPT_REMOTE 
-} caps_type_t;
 
 struct caps_kmsg;
 
