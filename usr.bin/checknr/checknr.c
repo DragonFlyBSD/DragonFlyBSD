@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)checknr.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.9 2005/03/02 04:33:12 cpressey Exp $
+ * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.10 2005/03/02 07:20:44 cpressey Exp $
  */
 
 /*
@@ -43,6 +43,7 @@
  * later but for now think of these restrictions as contributions to
  * structured typesetting.
  */
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -188,19 +189,24 @@ main(int argc, char **argv)
 	char b1[4];
 
 	/* Figure out how many known commands there are */
-	while (knowncmds[ncmds][0] != '\0')
+	ncmds = 0;
+	while (ncmds < MAXCMDS && knowncmds[ncmds][0] != '\0')
 		ncmds++;
 	while (argc > 1 && argv[1][0] == '-') {
 		switch(argv[1][1]) {
 
 		/* -a: add pairs of macros */
 		case 'a':
-			i = strlen(argv[1]) - 2;
-			if (i % 6 != 0)
+			if ((strlen(argv[1]) - 2) % 6 != 0)
 				usage();
 			/* look for empty macro slots */
-			for (i = 0; br[i].opbr[0] != '\0'; i++)
-				;
+			i = 0;
+			while (i < MAXBR && br[i].opbr[0] != '\0')
+				i++;
+			if (i >= MAXBR) {
+				errx(1, "Only %d known macro-pairs allowed",
+				    MAXBR);
+			}
 			for (cp = argv[1] + 3; cp[-1]; cp += 6) {
 				strncpy(br[i].opbr, cp, 2);
 				strncpy(br[i].clbr, cp + 3, 2);
@@ -529,10 +535,6 @@ addcmd(char *myline)
 	mac[2] = 0;
 	if (isspace(mac[1]) || mac[1] == '\\')
 		mac[1] = 0;
-	if (ncmds >= MAXCMDS) {
-		printf("Only %d known commands allowed\n", MAXCMDS);
-		exit(1);
-	}
 	addmac(mac);
 }
 
@@ -547,6 +549,10 @@ static void
 addmac(const char *mac)
 {
 	int i, slot;
+
+	if (ncmds >= MAXCMDS) {
+		errx(1, "Only %d known commands allowed", MAXCMDS);
+	}
 
 	if (binsrch(mac, &slot) >= 0) {	/* it's OK to redefine something */
 #ifdef DEBUG
