@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.48 2004/12/29 03:26:42 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.49 2004/12/29 05:44:43 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -2650,7 +2650,7 @@ tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn)
 			if (!is_syn)
 				continue;
 			to->to_flags |= TOF_CCNEW;
-			bcopy(cp + 2, &to->to_cc, sizeof to->to_cc));
+			bcopy(cp + 2, &to->to_cc, sizeof to->to_cc);
 			to->to_cc = ntohl(to->to_cc);
 			break;
 		case TCPOPT_CCECHO:
