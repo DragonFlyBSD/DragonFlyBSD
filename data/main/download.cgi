@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.78 2005/02/16 11:18:31 liamfoy Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.79 2005/02/27 12:51:01 asmodai Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -122,7 +122,7 @@ rsync
 -->
 
 <TR>
-<TD>Esat.net (UK)</TD>
+<TD>Esat.net (IE)</TD>
 <TD>Daily snapshots, official ISOs</TD>
 <TD>
 <a href="http://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/">HTTP</a>, 
