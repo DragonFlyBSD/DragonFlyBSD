@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_mpipe.c,v 1.5 2004/03/29 16:22:21 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_mpipe.c,v 1.6 2004/04/20 16:58:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -81,6 +81,11 @@ mpipe_init(malloc_pipe_t mpipe, malloc_type_t type, int bytes,
     }
 }
 
+/*
+ * Destroy a previously initialized mpipe.  This routine can also safely be
+ * called on an uninitialized mpipe structure if it was zero'd or mpipe_done()
+ * was previously called on it.
+ */
 void
 mpipe_done(malloc_pipe_t mpipe)
 {
@@ -88,15 +93,19 @@ mpipe_done(malloc_pipe_t mpipe)
     int n;
 
     KKASSERT(mpipe->free_count == mpipe->total_count);	/* no outstanding mem */
-    while (--mpipe->free_count >= 0) {
-	n = mpipe->free_count;
+    for (n = mpipe->free_count - 1; n >= 0; --n) {
 	buf = mpipe->array[n];
 	mpipe->array[n] = NULL;
 	KKASSERT(buf != NULL);
-	--mpipe->total_count;
 	if (mpipe->deconstruct)
 	    mpipe->deconstruct(mpipe, buf);
 	free(buf, mpipe->type);
+    }
+    mpipe->free_count = 0;
+    mpipe->total_count = 0;
+    if (mpipe->array) {
+	free(mpipe->array, M_MPIPEARY);
+	mpipe->array = NULL;
     }
 }
 
