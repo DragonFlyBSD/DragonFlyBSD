@@ -39,7 +39,7 @@
  *
  *	@(#)vm_unix.c	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/vm/vm_unix.c,v 1.24.2.2 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_unix.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_unix.c,v 1.3 2003/06/23 17:55:51 dillon Exp $
  */
 
 /*
@@ -56,19 +56,15 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 
-#ifndef _SYS_SYSPROTO_H_
-struct obreak_args {
-	char *nsize;
-};
-#endif
-
+/*
+ * obreak_args(char *nsize)
+ */
 /* ARGSUSED */
 int
-obreak(p, uap)
-	struct proc *p;
-	struct obreak_args *uap;
+obreak(struct obreak_args *uap)
 {
-	register struct vmspace *vm = p->p_vmspace;
+	struct proc *p = curproc;
+	struct vmspace *vm = p->p_vmspace;
 	vm_offset_t new, old, base;
 	int rv;
 
@@ -116,18 +112,12 @@ obreak(p, uap)
 	return (0);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct ovadvise_args {
-	int anom;
-};
-#endif
-
+/*
+ * ovadvise_args(int anom)
+ */
 /* ARGSUSED */
 int
-ovadvise(p, uap)
-	struct proc *p;
-	struct ovadvise_args *uap;
+ovadvise(struct ovadvise_args *uap)
 {
-
 	return (EINVAL);
 }

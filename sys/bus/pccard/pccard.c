@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/pccard.c,v 1.106.2.15 2003/02/26 18:42:00 imp Exp $
- * $DragonFly: src/sys/bus/pccard/pccard.c,v 1.2 2003/06/17 04:28:55 dillon Exp $
+ * $DragonFly: src/sys/bus/pccard/pccard.c,v 1.3 2003/06/23 17:55:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -483,6 +483,9 @@ crdioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, d_thread_t *td)
 
 	if (slt == 0 && cmd != PIOCRWMEM)
 		return (ENXIO);
+
+	KKASSERT(td->td_proc != NULL);
+
 	switch(cmd) {
 	default:
 		if (slt->ctrl->ioctl)
@@ -520,7 +523,7 @@ crdioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, d_thread_t *td)
 	 * At the very least, we only allow root to set the context.
 	 */
 	case PIOCSMEM:
-		if (suser(td))
+		if (suser_xxx(td->td_proc->p_ucred, 0))
 			return (EPERM);
 		if (slt->state != filled)
 			return (ENXIO);
@@ -545,7 +548,7 @@ crdioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, d_thread_t *td)
 	 * Set I/O port context.
 	 */
 	case PIOCSIO:
-		if (suser(td))
+		if (suser_xxx(td->td_proc->p_ucred, 0))
 			return (EPERM);
 		if (slt->state != filled)
 			return (ENXIO);
@@ -570,7 +573,7 @@ crdioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, d_thread_t *td)
 			*(unsigned long *)data = pccard_mem;
 			break;
 		}
-		if (suser(td))
+		if (suser_xxx(td->td_proc->p_ucred, 0))
 			return (EPERM);
 		/*
 		 * Validate the memory by checking it against the I/O
@@ -602,7 +605,7 @@ crdioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, d_thread_t *td)
 	 * Allocate a driver to this slot.
 	 */
 	case PIOCSDRV:
-		if (suser(td))
+		if (suser_xxx(td->td_proc->p_ucred, 0))
 			return (EPERM);
 		err = allocate_driver(slt, (struct dev_desc *)data);
 		if (!err)

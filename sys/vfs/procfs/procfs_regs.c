@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_regs.c,v 1.10.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_regs.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_regs.c,v 1.3 2003/06/23 17:55:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -64,7 +64,7 @@ procfs_doregs(curp, p, pfs, uio)
 	/* Can't trace a process that's currently exec'ing. */ 
 	if ((p->p_flag & P_INEXEC) != 0)
 		return EAGAIN;
-	if (!CHECKIO(curp, p) || p_trespass(curp, p))
+	if (!CHECKIO(curp, p) || p_trespass(curp->p_ucred, p->p_ucred))
 		return EPERM;
 	kl = sizeof(r);
 	kv = (char *) &r;

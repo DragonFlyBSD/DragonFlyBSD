@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.3 2003/06/19 01:54:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.4 2003/06/23 17:55:29 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -46,7 +46,6 @@
 #include <sys/fcntl.h>
 #include <sys/conf.h>
 #include <sys/ctype.h>
-#include <sys/proc.h>
 #include <sys/buf2.h>
 #include <dev/ata/ata-all.h>
 #include <dev/ata/atapi-all.h>
@@ -490,7 +489,7 @@ msf2lba(u_int8_t m, u_int8_t s, u_int8_t f)
 }
 
 static int
-acdopen(dev_t dev, int flags, int fmt, struct proc *p)
+acdopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
     struct acd_softc *cdp = dev->si_drv1;
     int timeout = 60;
@@ -528,7 +527,7 @@ acdopen(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int 
-acdclose(dev_t dev, int flags, int fmt, struct proc *p)
+acdclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
     struct acd_softc *cdp = dev->si_drv1;
     
@@ -547,7 +546,7 @@ acdclose(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int 
-acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct proc *p)
+acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 {
     struct acd_softc *cdp = dev->si_drv1;
     int error = 0;
@@ -600,7 +599,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct proc *p)
 	break;
 
     case CDIOCRESET:
-	error = suser(p);
+	error = suser();
 	if (error)
 	    break;
 	error = atapi_test_ready(cdp->device);

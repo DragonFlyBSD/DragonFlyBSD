@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_signal.h,v 1.2.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_signal.h,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_signal.h,v 1.3 2003/06/23 17:55:26 dillon Exp $
  */
 
 #ifndef _LINUX_SIGNAL_H_
@@ -34,7 +34,6 @@
 
 void linux_to_bsd_sigset __P((l_sigset_t *, sigset_t *));
 void bsd_to_linux_sigset __P((sigset_t *, l_sigset_t *));
-int linux_do_sigaction __P((struct proc *, int, l_sigaction_t *,
-    l_sigaction_t *));
+int linux_do_sigaction __P((int, l_sigaction_t *, l_sigaction_t *));
 
 #endif /* _LINUX_SIGNAL_H_ */

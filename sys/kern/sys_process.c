@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -200,8 +200,10 @@ struct ptrace_args {
 #endif
 
 int
-ptrace(struct proc *p, struct ptrace_args *uap)
+ptrace(struct ptrace_args *uap)
 {
+	struct proc *p = curproc;
+
 	/*
 	 * XXX this obfuscation is to reduce stack usage, but the register
 	 * structs may be too large to put on the stack anyway.
@@ -284,7 +286,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data)
 		if ((p = pfind(pid)) == NULL)
 			return ESRCH;
 	}
-	if (!PRISON_CHECK(curp, p))
+	if (!PRISON_CHECK(curp->p_ucred, p->p_ucred))
 		return (ESRCH);
 
 	/* Can't trace a process that's currently exec'ing. */
@@ -314,9 +316,9 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data)
 					return (EINVAL);
 
 		/* not owned by you, has done setuid (unless you're root) */
-		if ((p->p_cred->p_ruid != curp->p_cred->p_ruid) ||
+		if ((p->p_ucred->cr_ruid != curp->p_ucred->cr_ruid) ||
 		     (p->p_flag & P_SUGID)) {
-			if ((error = suser(curp)) != 0)
+			if ((error = suser()) != 0)
 				return error;
 		}
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.3 2003/06/23 17:55:26 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -108,7 +108,7 @@ struct l_sysinfo {
 };
 #ifndef __alpha__
 int
-linux_sysinfo(struct proc *p, struct linux_sysinfo_args *args)
+linux_sysinfo(struct linux_sysinfo_args *args)
 {
 	struct l_sysinfo sysinfo;
 	vm_object_t object;
@@ -164,8 +164,9 @@ linux_sysinfo(struct proc *p, struct linux_sysinfo_args *args)
 
 #ifndef __alpha__
 int
-linux_alarm(struct proc *p, struct linux_alarm_args *args)
+linux_alarm(struct linux_alarm_args *args)
 {
+	struct proc *p = curproc;
 	struct itimerval it, old_it;
 	struct timeval tv;
 	int s;
@@ -205,8 +206,9 @@ linux_alarm(struct proc *p, struct linux_alarm_args *args)
 #endif /*!__alpha__*/
 
 int
-linux_brk(struct proc *p, struct linux_brk_args *args)
+linux_brk(struct linux_brk_args *args)
 {
+	struct proc *p = curproc;
 	struct vmspace *vm = p->p_vmspace;
 	vm_offset_t new, old;
 	struct obreak_args /* {
@@ -220,7 +222,7 @@ linux_brk(struct proc *p, struct linux_brk_args *args)
 	old = (vm_offset_t)vm->vm_daddr + ctob(vm->vm_dsize);
 	new = (vm_offset_t)args->dsend;
 	tmp.nsize = (char *) new;
-	if (((caddr_t)new > vm->vm_daddr) && !obreak(p, &tmp))
+	if (((caddr_t)new > vm->vm_daddr) && !obreak(&tmp))
 		p->p_retval[0] = (long)new;
 	else
 		p->p_retval[0] = (long)old;
@@ -229,8 +231,9 @@ linux_brk(struct proc *p, struct linux_brk_args *args)
 }
 
 int
-linux_uselib(struct proc *p, struct linux_uselib_args *args)
+linux_uselib(struct linux_uselib_args *args)
 {
+	struct proc *p = curproc;
 	struct nameidata ni;
 	struct vnode *vp;
 	struct exec *a_out;
@@ -244,7 +247,7 @@ linux_uselib(struct proc *p, struct linux_uselib_args *args)
 	int locked;
 
 	sg = stackgap_init();
-	CHECKALTEXIST(p, &sg, args->library);
+	CHECKALTEXIST(&sg, args->library);
 
 #ifdef DEBUG
 	if (ldebug(uselib))
@@ -460,8 +463,9 @@ cleanup:
 }
 
 int
-linux_select(struct proc *p, struct linux_select_args *args)
+linux_select(struct linux_select_args *args)
 {
+	struct proc *p = curproc;
 	struct select_args bsa;
 	struct timeval tv0, tv1, utv, *tvp;
 	caddr_t sg;
@@ -517,7 +521,7 @@ linux_select(struct proc *p, struct linux_select_args *args)
 		microtime(&tv0);
 	}
 
-	error = select(p, &bsa);
+	error = select(&bsa);
 #ifdef DEBUG
 	if (ldebug(select))
 		printf(LMSG("real select returns %d"), error);
@@ -566,8 +570,9 @@ select_out:
 }
 
 int     
-linux_mremap(struct proc *p, struct linux_mremap_args *args)
+linux_mremap(struct linux_mremap_args *args)
 {
+	struct proc *p = curproc;
 	struct munmap_args /* {
 		void *addr;
 		size_t len;
@@ -593,7 +598,7 @@ linux_mremap(struct proc *p, struct linux_mremap_args *args)
 	if (args->new_len < args->old_len) {
 		bsd_args.addr = (caddr_t)(args->addr + args->new_len);
 		bsd_args.len = args->old_len - args->new_len;
-		error = munmap(p, &bsd_args);
+		error = munmap(&bsd_args);
 	}
 
 	p->p_retval[0] = error ? 0 : (u_long)args->addr;
@@ -605,7 +610,7 @@ linux_mremap(struct proc *p, struct linux_mremap_args *args)
 #define	LINUX_MS_SYNC		0x0004
 
 int
-linux_msync(struct proc *p, struct linux_msync_args *args)
+linux_msync(struct linux_msync_args *args)
 {
 	struct msync_args bsd_args;
 
@@ -613,13 +618,14 @@ linux_msync(struct proc *p, struct linux_msync_args *args)
 	bsd_args.len = args->len;
 	bsd_args.flags = args->fl & ~LINUX_MS_SYNC;
 
-	return msync(p, &bsd_args);
+	return msync(&bsd_args);
 }
 
 #ifndef __alpha__
 int
-linux_time(struct proc *p, struct linux_time_args *args)
+linux_time(struct linux_time_args *args)
 {
+	struct proc *p = curproc;
 	struct timeval tv;
 	l_time_t tm;
 	int error;
@@ -654,8 +660,9 @@ struct l_times_argv {
 #define CONVTCK(r)	(r.tv_sec * CLK_TCK + r.tv_usec / (1000000 / CLK_TCK))
 
 int
-linux_times(struct proc *p, struct linux_times_args *args)
+linux_times(struct linux_times_args *args)
 {
+	struct proc *p = curproc;
 	struct timeval tv;
 	struct l_times_argv tms;
 	struct rusage ru;
@@ -683,8 +690,9 @@ linux_times(struct proc *p, struct linux_times_args *args)
 }
 
 int
-linux_newuname(struct proc *p, struct linux_newuname_args *args)
+linux_newuname(struct linux_newuname_args *args)
 {
+	struct proc *p = curproc;
 	struct l_new_utsname utsname;
 	char *osrelease, *osname;
 
@@ -714,7 +722,7 @@ struct l_utimbuf {
 };
 
 int
-linux_utime(struct proc *p, struct linux_utime_args *args)
+linux_utime(struct linux_utime_args *args)
 {
 	struct utimes_args /* {
 		char	*path;
@@ -726,7 +734,7 @@ linux_utime(struct proc *p, struct linux_utime_args *args)
 	caddr_t sg;
 
 	sg = stackgap_init();
-	CHECKALTEXIST(p, &sg, args->fname);
+	CHECKALTEXIST(&sg, args->fname);
 
 #ifdef DEBUG
 	if (ldebug(utime))
@@ -751,7 +759,7 @@ linux_utime(struct proc *p, struct linux_utime_args *args)
 		bsdutimes.tptr = NULL;
 
 	bsdutimes.path = args->fname;
-	return utimes(p, &bsdutimes);
+	return utimes(&bsdutimes);
 }
 #endif /* __i386__ */
 
@@ -759,7 +767,7 @@ linux_utime(struct proc *p, struct linux_utime_args *args)
 
 #ifndef __alpha__
 int
-linux_waitpid(struct proc *p, struct linux_waitpid_args *args)
+linux_waitpid(struct linux_waitpid_args *args)
 {
 	struct wait_args /* {
 		int pid;
@@ -783,7 +791,7 @@ linux_waitpid(struct proc *p, struct linux_waitpid_args *args)
 		tmp.options |= WLINUXCLONE;
 	tmp.rusage = NULL;
 
-	if ((error = wait4(p, &tmp)) != 0)
+	if ((error = wait4(&tmp)) != 0)
 		return error;
 
 	if (args->status) {
@@ -805,8 +813,9 @@ linux_waitpid(struct proc *p, struct linux_waitpid_args *args)
 #endif	/*!__alpha__*/
 
 int
-linux_wait4(struct proc *p, struct linux_wait4_args *args)
+linux_wait4(struct linux_wait4_args *args)
 {
+	struct proc *p = curproc;
 	struct wait_args /* {
 		int pid;
 		int *status;
@@ -830,7 +839,7 @@ linux_wait4(struct proc *p, struct linux_wait4_args *args)
 		tmp.options |= WLINUXCLONE;
 	tmp.rusage = (struct rusage *)args->rusage;
 
-	if ((error = wait4(p, &tmp)) != 0)
+	if ((error = wait4(&tmp)) != 0)
 		return error;
 
 	SIGDELSET(p->p_siglist, SIGCHLD);
@@ -853,7 +862,7 @@ linux_wait4(struct proc *p, struct linux_wait4_args *args)
 }
 
 int
-linux_mknod(struct proc *p, struct linux_mknod_args *args)
+linux_mknod(struct linux_mknod_args *args)
 {
 	caddr_t sg;
 	struct mknod_args bsd_mknod;
@@ -861,7 +870,7 @@ linux_mknod(struct proc *p, struct linux_mknod_args *args)
 
 	sg = stackgap_init();
 
-	CHECKALTCREAT(p, &sg, args->path);
+	CHECKALTCREAT(&sg, args->path);
 
 #ifdef DEBUG
 	if (ldebug(mknod))
@@ -872,12 +881,12 @@ linux_mknod(struct proc *p, struct linux_mknod_args *args)
 	if (args->mode & S_IFIFO) {
 		bsd_mkfifo.path = args->path;
 		bsd_mkfifo.mode = args->mode;
-		return mkfifo(p, &bsd_mkfifo);
+		return mkfifo(&bsd_mkfifo);
 	} else {
 		bsd_mknod.path = args->path;
 		bsd_mknod.mode = args->mode;
 		bsd_mknod.dev = args->dev;
-		return mknod(p, &bsd_mknod);
+		return mknod(&bsd_mknod);
 	}
 }
 
@@ -885,8 +894,9 @@ linux_mknod(struct proc *p, struct linux_mknod_args *args)
  * UGH! This is just about the dumbest idea I've ever heard!!
  */
 int
-linux_personality(struct proc *p, struct linux_personality_args *args)
+linux_personality(struct linux_personality_args *args)
 {
+	struct proc *p = curproc;
 #ifdef DEBUG
 	if (ldebug(personality))
 		printf(ARGS(personality, "%d"), args->per);
@@ -905,7 +915,7 @@ linux_personality(struct proc *p, struct linux_personality_args *args)
  * Wrappers for get/setitimer for debugging..
  */
 int
-linux_setitimer(struct proc *p, struct linux_setitimer_args *args)
+linux_setitimer(struct linux_setitimer_args *args)
 {
 	struct setitimer_args bsa;
 	struct itimerval foo;
@@ -931,11 +941,11 @@ linux_setitimer(struct proc *p, struct linux_setitimer_args *args)
 	    }
 #endif
 	}
-	return setitimer(p, &bsa);
+	return setitimer(&bsa);
 }
 
 int
-linux_getitimer(struct proc *p, struct linux_getitimer_args *args)
+linux_getitimer(struct linux_getitimer_args *args)
 {
 	struct getitimer_args bsa;
 #ifdef DEBUG
@@ -944,25 +954,26 @@ linux_getitimer(struct proc *p, struct linux_getitimer_args *args)
 #endif
 	bsa.which = args->which;
 	bsa.itv = (struct itimerval *)args->itv;
-	return getitimer(p, &bsa);
+	return getitimer(&bsa);
 }
 
 #ifndef __alpha__
 int
-linux_nice(struct proc *p, struct linux_nice_args *args)
+linux_nice(struct linux_nice_args *args)
 {
 	struct setpriority_args	bsd_args;
 
 	bsd_args.which = PRIO_PROCESS;
 	bsd_args.who = 0;	/* current process */
 	bsd_args.prio = args->inc;
-	return setpriority(p, &bsd_args);
+	return setpriority(&bsd_args);
 }
 #endif	/*!__alpha__*/
 
 int
-linux_setgroups(struct proc *p, struct linux_setgroups_args *args)
+linux_setgroups(struct linux_setgroups_args *args)
 {
+	struct proc *p = curproc;
 	struct ucred *newcred, *oldcred;
 	l_gid_t linux_gidset[NGROUPS];
 	gid_t *bsd_gidset;
@@ -977,7 +988,7 @@ linux_setgroups(struct proc *p, struct linux_setgroups_args *args)
 	 * Keep cr_groups[0] unchanged to prevent that.
 	 */
 
-	if ((error = suser_xxx(oldcred, NULL, PRISON_ROOT)) != 0)
+	if ((error = suser_xxx(oldcred, PRISON_ROOT)) != 0)
 		return (error);
 
 	if (ngrp >= NGROUPS)
@@ -998,19 +1009,20 @@ linux_setgroups(struct proc *p, struct linux_setgroups_args *args)
 			bsd_gidset[ngrp + 1] = linux_gidset[ngrp];
 			ngrp--;
 		}
-	}
-	else
+	} else {
 		newcred->cr_ngroups = 1;
+	}
 
-	setsugid(p);
+	setsugid();
 	p->p_ucred = newcred;
 	crfree(oldcred);
 	return (0);
 }
 
 int
-linux_getgroups(struct proc *p, struct linux_getgroups_args *args)
+linux_getgroups(struct linux_getgroups_args *args)
 {
+	struct proc *p = curproc;
 	struct ucred *cred;
 	l_gid_t linux_gidset[NGROUPS];
 	gid_t *bsd_gidset;
@@ -1050,7 +1062,7 @@ linux_getgroups(struct proc *p, struct linux_getgroups_args *args)
 
 #ifndef __alpha__
 int
-linux_setrlimit(struct proc *p, struct linux_setrlimit_args *args)
+linux_setrlimit(struct linux_setrlimit_args *args)
 {
 	struct __setrlimit_args bsd;
 	struct l_rlimit rlim;
@@ -1077,11 +1089,11 @@ linux_setrlimit(struct proc *p, struct linux_setrlimit_args *args)
 	bsd.rlp = stackgap_alloc(&sg, sizeof(struct rlimit));
 	bsd.rlp->rlim_cur = (rlim_t)rlim.rlim_cur;
 	bsd.rlp->rlim_max = (rlim_t)rlim.rlim_max;
-	return (setrlimit(p, &bsd));
+	return (setrlimit(&bsd));
 }
 
 int
-linux_old_getrlimit(struct proc *p, struct linux_old_getrlimit_args *args)
+linux_old_getrlimit(struct linux_old_getrlimit_args *args)
 {
 	struct __getrlimit_args bsd;
 	struct l_rlimit rlim;
@@ -1102,7 +1114,7 @@ linux_old_getrlimit(struct proc *p, struct linux_old_getrlimit_args *args)
 		return (EINVAL);
 
 	bsd.rlp = stackgap_alloc(&sg, sizeof(struct rlimit));
-	error = getrlimit(p, &bsd);
+	error = getrlimit(&bsd);
 	if (error)
 		return (error);
 
@@ -1116,7 +1128,7 @@ linux_old_getrlimit(struct proc *p, struct linux_old_getrlimit_args *args)
 }
 
 int
-linux_getrlimit(struct proc *p, struct linux_getrlimit_args *args)
+linux_getrlimit(struct linux_getrlimit_args *args)
 {
 	struct __getrlimit_args bsd;
 	struct l_rlimit rlim;
@@ -1137,7 +1149,7 @@ linux_getrlimit(struct proc *p, struct linux_getrlimit_args *args)
 		return (EINVAL);
 
 	bsd.rlp = stackgap_alloc(&sg, sizeof(struct rlimit));
-	error = getrlimit(p, &bsd);
+	error = getrlimit(&bsd);
 	if (error)
 		return (error);
 
@@ -1148,8 +1160,7 @@ linux_getrlimit(struct proc *p, struct linux_getrlimit_args *args)
 #endif /*!__alpha__*/
 
 int
-linux_sched_setscheduler(struct proc *p,
-    struct linux_sched_setscheduler_args *args)
+linux_sched_setscheduler(struct linux_sched_setscheduler_args *args)
 {
 	struct sched_setscheduler_args bsd;
 
@@ -1175,13 +1186,13 @@ linux_sched_setscheduler(struct proc *p,
 
 	bsd.pid = args->pid;
 	bsd.param = (struct sched_param *)args->param;
-	return sched_setscheduler(p, &bsd);
+	return sched_setscheduler(&bsd);
 }
 
 int
-linux_sched_getscheduler(struct proc *p,
-    struct linux_sched_getscheduler_args *args)
+linux_sched_getscheduler(struct linux_sched_getscheduler_args *args)
 {
+	struct proc *p = curproc;
 	struct sched_getscheduler_args bsd;
 	int error;
 
@@ -1191,7 +1202,7 @@ linux_sched_getscheduler(struct proc *p,
 #endif
 
 	bsd.pid = args->pid;
-	error = sched_getscheduler(p, &bsd);
+	error = sched_getscheduler(&bsd);
 
 	switch (p->p_retval[0]) {
 	case SCHED_OTHER:
@@ -1209,8 +1220,7 @@ linux_sched_getscheduler(struct proc *p,
 }
 
 int
-linux_sched_get_priority_max(struct proc *p,
-    struct linux_sched_get_priority_max_args *args)
+linux_sched_get_priority_max(struct linux_sched_get_priority_max_args *args)
 {
 	struct sched_get_priority_max_args bsd;
 
@@ -1232,12 +1242,11 @@ linux_sched_get_priority_max(struct proc *p,
 	default:
 		return EINVAL;
 	}
-	return sched_get_priority_max(p, &bsd);
+	return sched_get_priority_max(&bsd);
 }
 
 int
-linux_sched_get_priority_min(struct proc *p,
-    struct linux_sched_get_priority_min_args *args)
+linux_sched_get_priority_min(struct linux_sched_get_priority_min_args *args)
 {
 	struct sched_get_priority_min_args bsd;
 
@@ -1259,7 +1268,7 @@ linux_sched_get_priority_min(struct proc *p,
 	default:
 		return EINVAL;
 	}
-	return sched_get_priority_min(p, &bsd);
+	return sched_get_priority_min(&bsd);
 }
 
 #define REBOOT_CAD_ON	0x89abcdef
@@ -1267,7 +1276,7 @@ linux_sched_get_priority_min(struct proc *p,
 #define REBOOT_HALT	0xcdef0123
 
 int
-linux_reboot(struct proc *p, struct linux_reboot_args *args)
+linux_reboot(struct linux_reboot_args *args)
 {
 	struct reboot_args bsd_args;
 
@@ -1278,7 +1287,7 @@ linux_reboot(struct proc *p, struct linux_reboot_args *args)
 	if (args->cmd == REBOOT_CAD_ON || args->cmd == REBOOT_CAD_OFF)
 		return (0);
 	bsd_args.opt = (args->cmd == REBOOT_HALT) ? RB_HALT : 0;
-	return (reboot(p, &bsd_args));
+	return (reboot(&bsd_args));
 }
 
 #ifndef __alpha__
@@ -1296,35 +1305,38 @@ linux_reboot(struct proc *p, struct linux_reboot_args *args)
  */
 
 int
-linux_getpid(struct proc *p, struct linux_getpid_args *args)
+linux_getpid(struct linux_getpid_args *args)
 {
+	struct proc *p = curproc;
 
 	p->p_retval[0] = p->p_pid;
 	return (0);
 }
 
 int
-linux_getgid(struct proc *p, struct linux_getgid_args *args)
+linux_getgid(struct linux_getgid_args *args)
 {
+	struct proc *p = curproc;
 
-	p->p_retval[0] = p->p_cred->p_rgid;
+	p->p_retval[0] = p->p_ucred->cr_rgid;
 	return (0);
 }
 
 int
-linux_getuid(struct proc *p, struct linux_getuid_args *args)
+linux_getuid(struct linux_getuid_args *args)
 {
+	struct proc *p = curproc;
 
-	p->p_retval[0] = p->p_cred->p_ruid;
+	p->p_retval[0] = p->p_ucred->cr_ruid;
 	return (0);
 }
 
 #endif /*!__alpha__*/
 
 int
-linux_getsid(struct proc *p, struct linux_getsid_args *args)
+linux_getsid(struct linux_getsid_args *args)
 {
 	struct getsid_args bsd;
 	bsd.pid = args->pid;
-	return getsid(p, &bsd);
+	return getsid(&bsd);
 }

@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -269,13 +269,12 @@ struct ktrace_args {
 #endif
 /* ARGSUSED */
 int
-ktrace(curp, uap)
-	struct proc *curp;
-	register struct ktrace_args *uap;
+ktrace(struct ktrace_args *uap)
 {
 #ifdef KTRACE
-	register struct vnode *vp = NULL;
-	register struct proc *p;
+	struct proc *curp = curproc;
+	struct vnode *vp = NULL;
+	struct proc *p;
 	struct pgrp *pg;
 	int facs = uap->facs & ~KTRFAC_ROOT;
 	int ops = KTROP(uap->ops);
@@ -379,9 +378,7 @@ done:
  */
 /* ARGSUSED */
 int
-utrace(curp, uap)
-	struct proc *curp;
-	register struct utrace_args *uap;
+utrace(struct utrace_args *uap)
 {
 #ifdef KTRACE
 	struct ktr_header *kth;
@@ -560,21 +557,20 @@ ktrwrite(vp, kth, uio)
  * TODO: check groups.  use caller effective gid.
  */
 static int
-ktrcanset(callp, targetp)
-	struct proc *callp, *targetp;
+ktrcanset(struct proc *callp, struct proc *targetp)
 {
-	register struct pcred *caller = callp->p_cred;
-	register struct pcred *target = targetp->p_cred;
+	struct ucred *caller = callp->p_ucred;
+	struct ucred *target = targetp->p_ucred;
 
-	if (!PRISON_CHECK(callp, targetp))
+	if (!PRISON_CHECK(caller, target))
 		return (0);
-	if ((caller->pc_ucred->cr_uid == target->p_ruid &&
-	     target->p_ruid == target->p_svuid &&
-	     caller->p_rgid == target->p_rgid &&	/* XXX */
-	     target->p_rgid == target->p_svgid &&
+	if ((caller->cr_uid == target->cr_ruid &&
+	     target->cr_ruid == target->cr_svuid &&
+	     caller->cr_rgid == target->cr_rgid &&	/* XXX */
+	     target->cr_rgid == target->cr_svgid &&
 	     (targetp->p_traceflag & KTRFAC_ROOT) == 0 &&
 	     (targetp->p_flag & P_SUGID) == 0) ||
-	     caller->pc_ucred->cr_uid == 0)
+	     caller->cr_uid == 0)
 		return (1);
 
 	return (0);

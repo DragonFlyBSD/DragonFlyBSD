@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -74,17 +74,14 @@
 static void sf_buf_init(void *arg);
 SYSINIT(sock_sf, SI_SUB_MBUF, SI_ORDER_ANY, sf_buf_init, NULL)
 
-static int sendit __P((struct proc *p, int s, struct msghdr *mp, int flags));
-static int recvit __P((struct proc *p, int s, struct msghdr *mp,
+static int sendit __P((int s, struct msghdr *mp, int flags));
+static int recvit __P((int s, struct msghdr *mp,
 		       caddr_t namelenp));
   
-static int accept1 __P((struct proc *p, struct accept_args *uap, int compat));
-static int do_sendfile __P((struct proc *p, struct sendfile_args *uap,
-			    int compat));
-static int getsockname1 __P((struct proc *p, struct getsockname_args *uap,
-			     int compat));
-static int getpeername1 __P((struct proc *p, struct getpeername_args *uap,
-			     int compat));
+static int accept1 __P((struct accept_args *uap, int compat));
+static int do_sendfile __P((struct sendfile_args *uap, int compat));
+static int getsockname1 __P((struct getsockname_args *uap, int compat));
+static int getpeername1 __P((struct getpeername_args *uap, int compat));
 
 static SLIST_HEAD(, sf_buf) sf_freelist;
 static vm_offset_t sf_base;
@@ -100,15 +97,13 @@ static int sf_buf_alloc_want;
 
 extern	struct fileops socketops;
 
+/*
+ * socket_args(int domain, int type, int protocol)
+ */
 int
-socket(p, uap)
-	struct proc *p;
-	register struct socket_args /* {
-		int	domain;
-		int	type;
-		int	protocol;
-	} */ *uap;
+socket(struct socket_args *uap)
 {
+	struct proc *p = curproc;
 	struct filedesc *fdp = p->p_fd;
 	struct socket *so;
 	struct file *fp;
@@ -135,16 +130,15 @@ socket(p, uap)
 	return (error);
 }
 
+/*
+ * bind_args(int s, caddr_t name, int namelen)
+ *
+ */
 /* ARGSUSED */
 int
-bind(p, uap)
-	struct proc *p;
-	register struct bind_args /* {
-		int	s;
-		caddr_t	name;
-		int	namelen;
-	} */ *uap;
+bind(struct bind_args *uap)
 {
+	struct proc *p = curproc;
 	struct file *fp;
 	struct sockaddr *sa;
 	int error;
@@ -163,15 +157,14 @@ bind(p, uap)
 	return (error);
 }
 
+/*
+ * listen_args(int s, int backlog)
+ */
 /* ARGSUSED */
 int
-listen(p, uap)
-	struct proc *p;
-	register struct listen_args /* {
-		int	s;
-		int	backlog;
-	} */ *uap;
+listen(struct listen_args *uap)
 {
+	struct proc *p = curproc;
 	struct file *fp;
 	int error;
 
@@ -183,16 +176,13 @@ listen(p, uap)
 	return(error);
 }
 
+/*
+ * accept_args(int s, caddr_t name, int *anamelen)
+ */
 static int
-accept1(p, uap, compat)
-	struct proc *p;
-	register struct accept_args /* {
-		int	s;
-		caddr_t	name;
-		int	*anamelen;
-	} */ *uap;
-	int compat;
+accept1(struct accept_args *uap, int compat)
 {
+	struct proc *p = curproc;
 	struct filedesc *fdp = p->p_fd;
 	struct file *lfp = NULL;
 	struct file *nfp = NULL;
@@ -354,35 +344,28 @@ done:
 }
 
 int
-accept(p, uap)
-	struct proc *p;
-	struct accept_args *uap;
+accept(struct accept_args *uap)
 {
-
-	return (accept1(p, uap, 0));
+	return (accept1(uap, 0));
 }
 
 #ifdef COMPAT_OLDSOCK
 int
-oaccept(p, uap)
-	struct proc *p;
-	struct accept_args *uap;
+oaccept(struct accept_args *uap)
 {
 
-	return (accept1(p, uap, 1));
+	return (accept1(uap, 1));
 }
 #endif /* COMPAT_OLDSOCK */
 
+/*
+ * connect_args(int s, caddr_t name, int namelen)
+ */
 /* ARGSUSED */
 int
-connect(p, uap)
-	struct proc *p;
-	register struct connect_args /* {
-		int	s;
-		caddr_t	name;
-		int	namelen;
-	} */ *uap;
+connect(struct connect_args *uap)
 {
+	struct proc *p = curproc;
 	struct file *fp;
 	register struct socket *so;
 	struct sockaddr *sa;
@@ -429,17 +412,14 @@ done:
 	return (error);
 }
 
+/*
+ * socketpair(int domain, int type, int protocol, int *rsv)
+ */
 int
-socketpair(p, uap)
-	struct proc *p;
-	register struct socketpair_args /* {
-		int	domain;
-		int	type;
-		int	protocol;
-		int	*rsv;
-	} */ *uap;
+socketpair(struct socketpair_args *uap)
 {
-	register struct filedesc *fdp = p->p_fd;
+	struct proc *p = curproc;
+	struct filedesc *fdp = p->p_fd;
 	struct file *fp1, *fp2;
 	struct socket *so1, *so2;
 	int fd, error, sv[2];
@@ -500,12 +480,12 @@ free1:
 }
 
 static int
-sendit(p, s, mp, flags)
-	register struct proc *p;
+sendit(s, mp, flags)
 	int s;
-	register struct msghdr *mp;
+	struct msghdr *mp;
 	int flags;
 {
+	struct proc *p = curproc;
 	struct file *fp;
 	struct uio auio;
 	register struct iovec *iov;
@@ -616,17 +596,11 @@ bad:
 	return (error);
 }
 
+/*
+ * sendto_args(int s, caddr_t buf, size_t len, int flags, caddr_t to, int tolen)
+ */
 int
-sendto(p, uap)
-	struct proc *p;
-	register struct sendto_args /* {
-		int	s;
-		caddr_t	buf;
-		size_t	len;
-		int	flags;
-		caddr_t	to;
-		int	tolen;
-	} */ *uap;
+sendto(struct sendto_args *uap)
 {
 	struct msghdr msg;
 	struct iovec aiov;
@@ -641,19 +615,15 @@ sendto(p, uap)
 #endif
 	aiov.iov_base = uap->buf;
 	aiov.iov_len = uap->len;
-	return (sendit(p, uap->s, &msg, uap->flags));
+	return (sendit(uap->s, &msg, uap->flags));
 }
 
 #ifdef COMPAT_OLDSOCK
+/*
+ * osend_args(int s, caddr_t buf, int len, int flags)
+ */
 int
-osend(p, uap)
-	struct proc *p;
-	register struct osend_args /* {
-		int	s;
-		caddr_t	buf;
-		int	len;
-		int	flags;
-	} */ *uap;
+osend(struct osend_args *uap)
 {
 	struct msghdr msg;
 	struct iovec aiov;
@@ -666,17 +636,14 @@ osend(p, uap)
 	aiov.iov_len = uap->len;
 	msg.msg_control = 0;
 	msg.msg_flags = 0;
-	return (sendit(p, uap->s, &msg, uap->flags));
+	return (sendit(uap->s, &msg, uap->flags));
 }
 
+/*
+ * osendmsg_args(int s, caddr_t msg, int flags)
+ */
 int
-osendmsg(p, uap)
-	struct proc *p;
-	register struct osendmsg_args /* {
-		int	s;
-		caddr_t	msg;
-		int	flags;
-	} */ *uap;
+osendmsg(struct osendmsg_args *uap)
 {
 	struct msghdr msg;
 	struct iovec aiov[UIO_SMALLIOV], *iov;
@@ -699,7 +666,7 @@ osendmsg(p, uap)
 		goto done;
 	msg.msg_flags = MSG_COMPAT;
 	msg.msg_iov = iov;
-	error = sendit(p, uap->s, &msg, uap->flags);
+	error = sendit(uap->s, &msg, uap->flags);
 done:
 	if (iov != aiov)
 		FREE(iov, M_IOV);
@@ -707,14 +674,11 @@ done:
 }
 #endif
 
+/*
+ * sendmsg_args(int s, caddr_t msg, int flags)
+ */
 int
-sendmsg(p, uap)
-	struct proc *p;
-	register struct sendmsg_args /* {
-		int	s;
-		caddr_t	msg;
-		int	flags;
-	} */ *uap;
+sendmsg(struct sendmsg_args *uap)
 {
 	struct msghdr msg;
 	struct iovec aiov[UIO_SMALLIOV], *iov;
@@ -739,7 +703,7 @@ sendmsg(p, uap)
 #ifdef COMPAT_OLDSOCK
 	msg.msg_flags = 0;
 #endif
-	error = sendit(p, uap->s, &msg, uap->flags);
+	error = sendit(uap->s, &msg, uap->flags);
 done:
 	if (iov != aiov)
 		FREE(iov, M_IOV);
@@ -747,12 +711,12 @@ done:
 }
 
 static int
-recvit(p, s, mp, namelenp)
-	register struct proc *p;
+recvit(s, mp, namelenp)
 	int s;
-	register struct msghdr *mp;
+	struct msghdr *mp;
 	caddr_t namelenp;
 {
+	struct proc *p = curproc;
 	struct file *fp;
 	struct uio auio;
 	register struct iovec *iov;
@@ -902,17 +866,12 @@ out:
 	return (error);
 }
 
+/*
+ * recvfrom_args(int s, caddr_t buf, size_t len, int flags, 
+ *			caddr_t from, int *fromlenaddr)
+ */
 int
-recvfrom(p, uap)
-	struct proc *p;
-	register struct recvfrom_args /* {
-		int	s;
-		caddr_t	buf;
-		size_t	len;
-		int	flags;
-		caddr_t	from;
-		int	*fromlenaddr;
-	} */ *uap;
+recvfrom(struct recvfrom_args *uap)
 {
 	struct msghdr msg;
 	struct iovec aiov;
@@ -932,32 +891,24 @@ recvfrom(p, uap)
 	aiov.iov_len = uap->len;
 	msg.msg_control = 0;
 	msg.msg_flags = uap->flags;
-	return (recvit(p, uap->s, &msg, (caddr_t)uap->fromlenaddr));
+	return (recvit(uap->s, &msg, (caddr_t)uap->fromlenaddr));
 }
 
 #ifdef COMPAT_OLDSOCK
 int
-orecvfrom(p, uap)
-	struct proc *p;
-	struct recvfrom_args *uap;
+orecvfrom(struct recvfrom_args *uap)
 {
-
 	uap->flags |= MSG_COMPAT;
-	return (recvfrom(p, uap));
+	return (recvfrom(uap));
 }
 #endif
 
-
 #ifdef COMPAT_OLDSOCK
+/*
+ * struct orecv_args(int s, caddr_t buf, int len, int flags)
+ */
 int
-orecv(p, uap)
-	struct proc *p;
-	register struct orecv_args /* {
-		int	s;
-		caddr_t	buf;
-		int	len;
-		int	flags;
-	} */ *uap;
+orecv(struct orecv_args *uap)
 {
 	struct msghdr msg;
 	struct iovec aiov;
@@ -970,22 +921,18 @@ orecv(p, uap)
 	aiov.iov_len = uap->len;
 	msg.msg_control = 0;
 	msg.msg_flags = uap->flags;
-	return (recvit(p, uap->s, &msg, (caddr_t)0));
+	return (recvit(uap->s, &msg, (caddr_t)0));
 }
 
 /*
  * Old recvmsg.  This code takes advantage of the fact that the old msghdr
  * overlays the new one, missing only the flags, and with the (old) access
  * rights where the control fields are now.
+ *
+ * orecvmsg_args(int s, struct omsghdr *msg, int flags)
  */
 int
-orecvmsg(p, uap)
-	struct proc *p;
-	register struct orecvmsg_args /* {
-		int	s;
-		struct	omsghdr *msg;
-		int	flags;
-	} */ *uap;
+orecvmsg(struct orecvmsg_args *uap)
 {
 	struct msghdr msg;
 	struct iovec aiov[UIO_SMALLIOV], *iov;
@@ -1009,7 +956,7 @@ orecvmsg(p, uap)
 	if (error)
 		goto done;
 	msg.msg_iov = iov;
-	error = recvit(p, uap->s, &msg, (caddr_t)&uap->msg->msg_namelen);
+	error = recvit(uap->s, &msg, (caddr_t)&uap->msg->msg_namelen);
 
 	if (msg.msg_controllen && error == 0)
 		error = copyout((caddr_t)&msg.msg_controllen,
@@ -1021,18 +968,15 @@ done:
 }
 #endif
 
+/*
+ * recvmsg_args(int s, struct msghdr *msg, int flags)
+ */
 int
-recvmsg(p, uap)
-	struct proc *p;
-	register struct recvmsg_args /* {
-		int	s;
-		struct	msghdr *msg;
-		int	flags;
-	} */ *uap;
+recvmsg(struct recvmsg_args *uap)
 {
 	struct msghdr msg;
 	struct iovec aiov[UIO_SMALLIOV], *uiov, *iov;
-	register int error;
+	int error;
 
 	error = copyin((caddr_t)uap->msg, (caddr_t)&msg, sizeof (msg));
 	if (error)
@@ -1056,7 +1000,7 @@ recvmsg(p, uap)
 	    (unsigned)(msg.msg_iovlen * sizeof (struct iovec)));
 	if (error)
 		goto done;
-	error = recvit(p, uap->s, &msg, (caddr_t)0);
+	error = recvit(uap->s, &msg, (caddr_t)0);
 	if (!error) {
 		msg.msg_iov = uiov;
 		error = copyout((caddr_t)&msg, (caddr_t)uap->msg, sizeof(msg));
@@ -1067,15 +1011,14 @@ done:
 	return (error);
 }
 
+/*
+ * shutdown_args(int s, int how)
+ */
 /* ARGSUSED */
 int
-shutdown(p, uap)
-	struct proc *p;
-	register struct shutdown_args /* {
-		int	s;
-		int	how;
-	} */ *uap;
+shutdown(struct shutdown_args *uap)
 {
+	struct proc *p = curproc;
 	struct file *fp;
 	int error;
 
@@ -1087,18 +1030,14 @@ shutdown(p, uap)
 	return(error);
 }
 
+/*
+ * setsockopt_args(int s, int level, int name, caddr_t val, int valsize)
+ */
 /* ARGSUSED */
 int
-setsockopt(p, uap)
-	struct proc *p;
-	register struct setsockopt_args /* {
-		int	s;
-		int	level;
-		int	name;
-		caddr_t	val;
-		int	valsize;
-	} */ *uap;
+setsockopt(struct setsockopt_args *uap)
 {
+	struct proc *p = curproc;
 	struct file *fp;
 	struct sockopt sopt;
 	int error;
@@ -1123,18 +1062,14 @@ setsockopt(p, uap)
 	return(error);
 }
 
+/*
+ * getsockopt_Args(int s, int level, int name, caddr_t val, int *avalsize)
+ */
 /* ARGSUSED */
 int
-getsockopt(p, uap)
-	struct proc *p;
-	register struct getsockopt_args /* {
-		int	s;
-		int	level;
-		int	name;
-		caddr_t	val;
-		int	*avalsize;
-	} */ *uap;
+getsockopt(struct getsockopt_args *uap)
 {
+	struct proc *p = curproc;
 	int	valsize, error;
 	struct	file *fp;
 	struct	sockopt sopt;
@@ -1175,19 +1110,15 @@ getsockopt(p, uap)
 }
 
 /*
+ * getsockname_args(int fdes, caddr_t asa, int *alen)
+ *
  * Get socket name.
  */
 /* ARGSUSED */
 static int
-getsockname1(p, uap, compat)
-	struct proc *p;
-	register struct getsockname_args /* {
-		int	fdes;
-		caddr_t	asa;
-		int	*alen;
-	} */ *uap;
-	int compat;
+getsockname1(struct getsockname_args *uap, int compat)
 {
+	struct proc *p = curproc;
 	struct file *fp;
 	register struct socket *so;
 	struct sockaddr *sa;
@@ -1233,39 +1164,31 @@ bad:
 }
 
 int
-getsockname(p, uap)
-	struct proc *p;
-	struct getsockname_args *uap;
+getsockname(struct getsockname_args *uap)
 {
 
-	return (getsockname1(p, uap, 0));
+	return (getsockname1(uap, 0));
 }
 
 #ifdef COMPAT_OLDSOCK
 int
-ogetsockname(p, uap)
-	struct proc *p;
-	struct getsockname_args *uap;
+ogetsockname(struct getsockname_args *uap)
 {
 
-	return (getsockname1(p, uap, 1));
+	return (getsockname1(uap, 1));
 }
 #endif /* COMPAT_OLDSOCK */
 
 /*
+ * getpeername_args(int fdes, caddr_t asa, int *alen)
+ *
  * Get name of peer for connected socket.
  */
 /* ARGSUSED */
 static int
-getpeername1(p, uap, compat)
-	struct proc *p;
-	register struct getpeername_args /* {
-		int	fdes;
-		caddr_t	asa;
-		int	*alen;
-	} */ *uap;
-	int compat;
+getpeername1(struct getpeername_args *uap, int compat)
 {
+	struct proc *p = curproc;
 	struct file *fp;
 	register struct socket *so;
 	struct sockaddr *sa;
@@ -1315,23 +1238,17 @@ bad:
 }
 
 int
-getpeername(p, uap)
-	struct proc *p;
-	struct getpeername_args *uap;
+getpeername(struct getpeername_args *uap)
 {
-
-	return (getpeername1(p, uap, 0));
+	return (getpeername1(uap, 0));
 }
 
 #ifdef COMPAT_OLDSOCK
 int
-ogetpeername(p, uap)
-	struct proc *p;
-	struct ogetpeername_args *uap;
+ogetpeername(struct ogetpeername_args *uap)
 {
-
 	/* XXX uap should have type `getpeername_args *' to begin with. */
-	return (getpeername1(p, (struct getpeername_args *)uap, 1));
+	return (getpeername1((struct getpeername_args *)uap, 1));
 }
 #endif /* COMPAT_OLDSOCK */
 
@@ -1533,15 +1450,14 @@ sf_buf_free(caddr_t addr, u_int size)
  * output. If specified, write the total number of bytes sent into *sbytes.
  */
 int
-sendfile(struct proc *p, struct sendfile_args *uap)
+sendfile(struct sendfile_args *uap)
 {
-
-	return (do_sendfile(p, uap, 0));
+	return (do_sendfile(uap, 0));
 }
 
 #ifdef COMPAT_43
 int
-osendfile(struct proc *p, struct osendfile_args *uap)
+osendfile(struct osendfile_args *uap)
 {
 	struct sendfile_args args;
 
@@ -1553,13 +1469,14 @@ osendfile(struct proc *p, struct osendfile_args *uap)
 	args.sbytes = uap->sbytes;
 	args.flags = uap->flags;
 
-	return (do_sendfile(p, &args, 1));
+	return (do_sendfile(&args, 1));
 }
 #endif
 
 int
-do_sendfile(struct proc *p, struct sendfile_args *uap, int compat)
+do_sendfile(struct sendfile_args *uap, int compat)
 {
+	struct proc *p = curproc;
 	struct file *fp;
 	struct filedesc *fdp = p->p_fd;
 	struct vnode *vp;
@@ -1627,7 +1544,7 @@ do_sendfile(struct proc *p, struct sendfile_args *uap, int compat)
 			nuap.fd = uap->s;
 			nuap.iovp = hdtr.headers;
 			nuap.iovcnt = hdtr.hdr_cnt;
-			error = writev(p, &nuap);
+			error = writev(&nuap);
 			if (error)
 				goto done;
 			if (compat)
@@ -1870,7 +1787,7 @@ retry_space:
 			nuap.fd = uap->s;
 			nuap.iovp = hdtr.trailers;
 			nuap.iovcnt = hdtr.trl_cnt;
-			error = writev(p, &nuap);
+			error = writev(&nuap);
 			if (error)
 				goto done;
 			if (compat)

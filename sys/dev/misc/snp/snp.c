@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
- * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.3 2003/06/23 17:55:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -378,10 +378,7 @@ snp_in(snp, buf, n)
 }
 
 static int
-snpopen(dev, flag, mode, p)
-	dev_t dev;
-	int flag, mode;
-	struct proc *p;
+snpopen(dev_t dev, int flag, int mode, d_thread_t *td)
 {
 	struct snoop *snp;
 
@@ -453,11 +450,7 @@ detach_notty:
 }
 
 static int
-snpclose(dev, flags, fmt, p)
-	dev_t dev;
-	int flags;
-	int fmt;
-	struct proc *p;
+snpclose(dev_t dev, int flags, int fmt, d_thread_t *td)
 {
 	struct snoop *snp;
 
@@ -487,12 +480,7 @@ snp_down(snp)
 }
 
 static int
-snpioctl(dev, cmd, data, flags, p)
-	dev_t dev;
-	u_long cmd;
-	caddr_t data;
-	int flags;
-	struct proc *p;
+snpioctl(dev_t dev, u_long cmd, caddr_t data, int flags, d_thread_t *td)
 {
 	struct snoop *snp;
 	struct tty *tp, *tpo;
@@ -578,10 +566,7 @@ snpioctl(dev, cmd, data, flags, p)
 }
 
 static int
-snppoll(dev, events, p)
-	dev_t dev;
-	int events;
-	struct proc *p;
+snppoll(dev_t dev, int events, d_thread_t *td)
 {
 	struct snoop *snp;
 	int revents;
@@ -597,7 +582,7 @@ snppoll(dev, events, p)
 		if (snp->snp_flags & SNOOP_DOWN || snp->snp_len > 0)
 			revents |= events & (POLLIN | POLLRDNORM);
 		else
-			selrecord(p, &snp->snp_sel);
+			selrecord(td, &snp->snp_sel);
 	}
 	return (revents);
 }

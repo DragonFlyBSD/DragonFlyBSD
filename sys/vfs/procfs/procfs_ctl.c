@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_ctl.c,v 1.20.2.2 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.3 2003/06/23 17:55:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -124,7 +124,7 @@ procfs_control(curp, p, op)
 		if (securelevel > 0 && p->p_pid == 1)
 			return (EPERM);
 
-		if (!CHECKIO(curp, p) || p_trespass(curp, p))
+		if (!CHECKIO(curp, p) || p_trespass(curp->p_ucred, p->p_ucred))
 			return (EPERM);
 	}
 

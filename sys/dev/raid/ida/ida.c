@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida.c,v 1.7.2.3 2001/03/01 01:57:32 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.3 2003/06/23 17:55:31 dillon Exp $
  */
 
 /*
@@ -46,7 +46,7 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
-
+#include <sys/proc.h>
 #include <sys/buf.h>
 #include <sys/bus.h>
 #include <sys/devicestat.h>
@@ -59,6 +59,7 @@
 #include <machine/bus.h>
 #include <machine/clock.h>
 #include <sys/rman.h>
+#include <sys/buf2.h>
 
 #include <dev/ida/idareg.h>
 #include <dev/ida/idavar.h>

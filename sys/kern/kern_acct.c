@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -111,8 +111,7 @@ SYSCTL_INT(_kern, OID_AUTO, acct_chkfreq, CTLFLAG_RW,
  * previous implementation done by Mark Tinguely.
  */
 int
-acct(a1, uap)
-	struct proc *a1;
+acct(uap)
 	struct acct_args /* {
 		syscallarg(char *) path;
 	} */ *uap;
@@ -122,7 +121,7 @@ acct(a1, uap)
 	int error;
 
 	/* Make sure that the caller is root. */
-	error = suser(p);
+	error = suser();
 	if (error)
 		return (error);
 
@@ -220,8 +219,8 @@ acct_process(p)
 	acct.ac_io = encode_comp_t(r->ru_inblock + r->ru_oublock, 0);
 
 	/* (6) The UID and GID of the process */
-	acct.ac_uid = p->p_cred->p_ruid;
-	acct.ac_gid = p->p_cred->p_rgid;
+	acct.ac_uid = p->p_ucred->cr_ruid;
+	acct.ac_gid = p->p_ucred->cr_rgid;
 
 	/* (7) The terminal from which the process was started */
 	if ((p->p_flag & P_CONTROLT) && p->p_pgrp->pg_session->s_ttyp)

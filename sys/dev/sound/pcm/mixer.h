@@ -24,13 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/mixer.h,v 1.2.2.6 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/mixer.h,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/mixer.h,v 1.3 2003/06/23 17:55:34 dillon Exp $
  */
 
 int mixer_init(device_t dev, kobj_class_t cls, void *devinfo);
 int mixer_uninit(device_t dev);
 int mixer_reinit(device_t dev);
-int mixer_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct proc *p);
+int mixer_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td);
 
 int mixer_hwvol_init(device_t dev);
 void mixer_hwvol_mute(device_t dev);

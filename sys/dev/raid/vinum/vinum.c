@@ -37,7 +37,7 @@
  *
  * $Id: vinum.c,v 1.33 2001/01/09 06:19:15 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinum.c,v 1.38.2.3 2003/01/07 12:14:16 joerg Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.3 2003/06/23 17:55:36 dillon Exp $
  */
 
 #define STATIC static					    /* nothing while we're testing XXX */
@@ -233,8 +233,7 @@ free_vinum(int cleardrive)
 STATIC int
 vinum_modevent(module_t mod, modeventtype_t type, void *unused)
 {
-    struct sync_args dummyarg =
-    {0};
+    struct sync_args dummyarg = {0};
 
     switch (type) {
     case MOD_LOAD:
@@ -244,7 +243,7 @@ vinum_modevent(module_t mod, modeventtype_t type, void *unused)
 	if (!vinum_inactive(1))				    /* is anything open? */
 	    return EBUSY;				    /* yes, we can't do it */
 	vinum_conf.flags |= VF_STOPPING;		    /* note that we want to stop */
-	sync(curproc, &dummyarg);			    /* write out buffers */
+	sync(&dummyarg);			    /* write out buffers */
 	free_vinum(0);					    /* clean up */
 #ifdef VINUMDEBUG
 	if (total_malloced) {
@@ -294,10 +293,7 @@ DECLARE_MODULE(vinum, vinum_mod, SI_SUB_VINUM, SI_ORDER_MIDDLE);
 /* ARGSUSED */
 /* Open a vinum object */
 int
-vinumopen(dev_t dev,
-    int flags,
-    int fmt,
-    struct proc *p)
+vinumopen(dev_t dev, int flags, int fmt, d_thread_t *td)
 {
     int error;
     unsigned int index;
@@ -305,6 +301,9 @@ vinumopen(dev_t dev,
     struct plex *plex;
     struct sd *sd;
     int devminor;					    /* minor number */
+    struct proc *p = td->td_proc;
+
+    KKASSERT(p != NULL);
 
     devminor = minor(dev);
     error = 0;
@@ -382,7 +381,7 @@ vinumopen(dev_t dev,
 	}
 
     case VINUM_SUPERDEV_TYPE:
-	error = suser(p);				    /* are we root? */
+	error = suser_xxx(p->p_ucred, 0);		    /* are we root? */
 	if (error == 0) {				    /* yes, can do */
 	    if (devminor == VINUM_DAEMON_DEV)		    /* daemon device */
 		vinum_conf.flags |= VF_DAEMONOPEN;	    /* we're open */
@@ -403,10 +402,7 @@ vinumopen(dev_t dev,
 
 /* ARGSUSED */
 int
-vinumclose(dev_t dev,
-    int flags,
-    int fmt,
-    struct proc *p)
+vinumclose(dev_t dev, int flags, int fmt, d_thread_t *td)
 {
     unsigned int index;
     struct volume *vol;

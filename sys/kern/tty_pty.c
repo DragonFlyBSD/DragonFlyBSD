@@ -32,7 +32,7 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 /*
@@ -166,16 +166,17 @@ ptyinit(n)
 
 /*ARGSUSED*/
 static	int
-ptsopen(dev, flag, devtype, p)
-	dev_t dev;
-	int flag, devtype;
-	struct proc *p;
+ptsopen(dev_t dev, int flag, int devtype, struct thread *td)
 {
 	register struct tty *tp;
 	int error;
 	int minr;
 	dev_t nextdev;
 	struct pt_ioctl *pti;
+	struct proc *p;
+
+	p = td->td_proc;
+	KKASSERT(p != NULL);
 
 	/*
 	 * XXX: Gross hack for DEVFS:
@@ -203,9 +204,9 @@ ptsopen(dev, flag, devtype, p)
 		tp->t_lflag = TTYDEF_LFLAG;
 		tp->t_cflag = TTYDEF_CFLAG;
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
-	} else if (tp->t_state & TS_XCLUDE && suser(p)) {
+	} else if (tp->t_state & TS_XCLUDE && suser()) {
 		return (EBUSY);
-	} else if (pti->pt_prison != p->p_prison) {
+	} else if (pti->pt_prison != p->p_ucred->cr_prison) {
 		return (EBUSY);
 	}
 	if (tp->t_oproc)			/* Ctrlr still around. */
@@ -225,10 +226,10 @@ ptsopen(dev, flag, devtype, p)
 }
 
 static	int
-ptsclose(dev, flag, mode, p)
+ptsclose(dev, flag, mode, td)
 	dev_t dev;
 	int flag, mode;
-	struct proc *p;
+	struct thread *td;
 {
 	register struct tty *tp;
 	int err;
@@ -345,10 +346,10 @@ ptcwakeup(tp, flag)
 }
 
 static	int
-ptcopen(dev, flag, devtype, p)
+ptcopen(dev, flag, devtype, td)
 	dev_t dev;
 	int flag, devtype;
-	struct proc *p;
+	struct thread *td;
 {
 	register struct tty *tp;
 	struct pt_ioctl *pti;
@@ -360,12 +361,13 @@ ptcopen(dev, flag, devtype, p)
 	tp = dev->si_tty;
 	if (tp->t_oproc)
 		return (EIO);
+	KKASSERT(td->td_proc != NULL);
 	tp->t_oproc = ptsstart;
 	tp->t_stop = ptsstop;
 	(void)(*linesw[tp->t_line].l_modem)(tp, 1);
 	tp->t_lflag &= ~EXTPROC;
 	pti = dev->si_drv1;
-	pti->pt_prison = p->p_prison;
+	pti->pt_prison = td->td_proc->p_ucred->cr_prison;
 	pti->pt_flags = 0;
 	pti->pt_send = 0;
 	pti->pt_ucntl = 0;
@@ -373,11 +375,11 @@ ptcopen(dev, flag, devtype, p)
 }
 
 static	int
-ptcclose(dev, flags, fmt, p)
+ptcclose(dev, flags, fmt, td)
 	dev_t dev;
 	int flags;
 	int fmt;
-	struct proc *p;
+	struct thread *td;
 {
 	register struct tty *tp;
 
@@ -489,10 +491,10 @@ ptsstop(tp, flush)
 }
 
 static	int
-ptcpoll(dev, events, p)
+ptcpoll(dev, events, td)
 	dev_t dev;
 	int events;
-	struct proc *p;
+	struct thread *td;
 {
 	register struct tty *tp = dev->si_tty;
 	struct pt_ioctl *pti = dev->si_drv1;
@@ -500,7 +502,7 @@ ptcpoll(dev, events, p)
 	int s;
 
 	if ((tp->t_state & TS_CONNECTED) == 0)
-		return (seltrue(dev, events, p) | POLLHUP);
+		return (seltrue(dev, events, td) | POLLHUP);
 
 	/*
 	 * Need to block timeouts (ttrstart).
@@ -528,10 +530,10 @@ ptcpoll(dev, events, p)
 
 	if (revents == 0) {
 		if (events & (POLLIN | POLLRDNORM))
-			selrecord(p, &pti->pt_selr);
+			selrecord(td, &pti->pt_selr);
 
 		if (events & (POLLOUT | POLLWRNORM)) 
-			selrecord(p, &pti->pt_selw);
+			selrecord(td, &pti->pt_selw);
 	}
 	splx(s);
 
@@ -650,12 +652,12 @@ block:
 
 /*ARGSUSED*/
 static	int
-ptyioctl(dev, cmd, data, flag, p)
+ptyioctl(dev, cmd, data, flag, td)
 	dev_t dev;
 	u_long cmd;
 	caddr_t data;
 	int flag;
-	struct proc *p;
+	struct thread *td;
 {
 	register struct tty *tp = dev->si_tty;
 	register struct pt_ioctl *pti = dev->si_drv1;
@@ -759,7 +761,7 @@ ptyioctl(dev, cmd, data, flag, p)
 		}
 		return(0);
 	}
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, p);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
 	if (error == ENOIOCTL)
 		 error = ttioctl(tp, cmd, data, flag);
 	if (error == ENOIOCTL) {

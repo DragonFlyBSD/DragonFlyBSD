@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_xenix.c,v 1.20 1999/12/15 23:01:46 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_xenix.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_xenix.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -55,8 +55,9 @@
 extern struct sysent xenix_sysent[];
 
 int
-ibcs2_xenix(struct proc *p, struct ibcs2_xenix_args *uap)
+ibcs2_xenix(struct ibcs2_xenix_args *uap)
 {
+	struct proc *p = curproc;
 	struct trapframe *tf = p->p_md.md_regs;
         struct sysent *callp;
         u_int code;             
@@ -64,17 +65,16 @@ ibcs2_xenix(struct proc *p, struct ibcs2_xenix_args *uap)
 	code = (tf->tf_eax & 0xff00) >> 8;
 	callp = &xenix_sysent[code];
 
-	if(code < IBCS2_XENIX_MAXSYSCALL)
-	  return((*callp->sy_call)(p, (void *)uap));
+	if (code < IBCS2_XENIX_MAXSYSCALL)
+		return((*callp->sy_call)((void *)uap));
 	else
-	  return ENOSYS;
+		return ENOSYS;
 }
 
 int
-xenix_rdchk(p, uap)
-	struct proc *p;
-	struct xenix_rdchk_args *uap;
+xenix_rdchk(struct xenix_rdchk_args *uap)
 {
+	struct proc *p = curproc;
 	int error;
 	struct ioctl_args sa;
 	caddr_t sg = stackgap_init();
@@ -83,16 +83,14 @@ xenix_rdchk(p, uap)
 	SCARG(&sa, fd) = SCARG(uap, fd);
 	SCARG(&sa, com) = FIONREAD;
 	SCARG(&sa, data) = stackgap_alloc(&sg, sizeof(int));
-	if ((error = ioctl(p, &sa)) != 0)
+	if ((error = ioctl(&sa)) != 0)
 		return error;
 	p->p_retval[0] = (*((int*)SCARG(&sa, data))) ? 1 : 0;
 	return 0;
 }
 
 int
-xenix_chsize(p, uap)
-	struct proc *p;
-	struct xenix_chsize_args *uap;
+xenix_chsize(struct xenix_chsize_args *uap)
 {
 	struct ftruncate_args sa;
 
@@ -100,14 +98,12 @@ xenix_chsize(p, uap)
 	SCARG(&sa, fd) = SCARG(uap, fd);
 	SCARG(&sa, pad) = 0;
 	SCARG(&sa, length) = SCARG(uap, size);
-	return ftruncate(p, &sa);
+	return ftruncate(&sa);
 }
 
 
 int
-xenix_ftime(p, uap)
-	struct proc *p;
-	struct xenix_ftime_args *uap;
+xenix_ftime(struct xenix_ftime_args *uap)
 {
 	struct timeval tv;
 	struct ibcs2_timeb {
@@ -129,7 +125,7 @@ xenix_ftime(p, uap)
 }
 
 int
-xenix_nap(struct proc *p, struct xenix_nap_args *uap)
+xenix_nap(struct xenix_nap_args *uap)
 {
 	long period;
 
@@ -142,7 +138,7 @@ xenix_nap(struct proc *p, struct xenix_nap_args *uap)
 }
 
 int
-xenix_utsname(struct proc *p, struct xenix_utsname_args *uap)
+xenix_utsname(struct xenix_utsname_args *uap)
 {
 	struct ibcs2_sco_utsname {
 		char sysname[9];
@@ -185,23 +181,26 @@ xenix_utsname(struct proc *p, struct xenix_utsname_args *uap)
 }
 
 int
-xenix_scoinfo(struct proc *p, struct xenix_scoinfo_args *uap)
+xenix_scoinfo(struct xenix_scoinfo_args *uap)
 {
-  /* scoinfo (not documented) */
-  p->p_retval[0] = 0;
-  return 0;
+	struct proc *p = curproc;
+
+	/* scoinfo (not documented) */
+	p->p_retval[0] = 0;
+	return 0;
 }
 
 int     
-xenix_eaccess(struct proc *p, struct xenix_eaccess_args *uap)
+xenix_eaccess(struct xenix_eaccess_args *uap)
 {
+	struct proc *p = curproc;
 	struct ucred *cred = p->p_ucred;
 	struct vnode *vp;
         struct nameidata nd;
         int error, flags;
 	caddr_t sg = stackgap_init();
 
-	CHECKALTEXIST(p, &sg, SCARG(uap, path));
+	CHECKALTEXIST(&sg, SCARG(uap, path));
 
         NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF, UIO_USERSPACE,
             SCARG(uap, path), p);

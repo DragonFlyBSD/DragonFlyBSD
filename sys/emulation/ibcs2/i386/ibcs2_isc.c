@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_isc.c,v 1.12 1999/08/28 00:43:58 peter Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_isc.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_isc.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,8 +45,9 @@
 extern struct sysent isc_sysent[];
 
 int
-ibcs2_isc(struct proc *p, struct ibcs2_isc_args *uap)
+ibcs2_isc(struct ibcs2_isc_args *uap)
 {
+	struct proc *p = curproc;
 	struct trapframe *tf = p->p_md.md_regs;
         struct sysent *callp;
         u_int code;             
@@ -55,7 +56,7 @@ ibcs2_isc(struct proc *p, struct ibcs2_isc_args *uap)
 	callp = &isc_sysent[code];
 
 	if(code < IBCS2_ISC_MAXSYSCALL)
-	  return((*callp->sy_call)(p, (void *)uap));
+	  return((*callp->sy_call)((void *)uap));
 	else
 	  return ENOSYS;
 }

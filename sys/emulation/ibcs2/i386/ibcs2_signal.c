@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_signal.c,v 1.16 1999/10/10 09:14:31 marcel Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_signal.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_signal.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -187,9 +187,7 @@ bsd_to_ibcs2_sigaction(bsa, isa)
 }
 
 int
-ibcs2_sigaction(p, uap)
-	register struct proc *p;
-	struct ibcs2_sigaction_args *uap;
+ibcs2_sigaction(struct ibcs2_sigaction_args *uap)
 {
 	struct ibcs2_sigaction *nisa, *oisa, tmpisa;
 	struct sigaction *nbsa, *obsa, tmpbsa;
@@ -220,7 +218,7 @@ ibcs2_sigaction(p, uap)
 	SCARG(&sa, act) = nbsa;
 	SCARG(&sa, oact) = obsa;
 
-	if ((error = sigaction(p, &sa)) != 0)
+	if ((error = sigaction(&sa)) != 0)
 		return error;
 
 	if (oisa != NULL) {
@@ -235,10 +233,9 @@ ibcs2_sigaction(p, uap)
 }
 
 int
-ibcs2_sigsys(p, uap)
-	register struct proc *p;
-	struct ibcs2_sigsys_args *uap;
+ibcs2_sigsys(struct ibcs2_sigsys_args *uap)
 {
+	struct proc *p = curproc;
 	struct sigaction sa;
 	int signum = ibcs2_to_bsd_sig[_SIG_IDX(IBCS2_SIGNO(SCARG(uap, sig)))];
 	int error;
@@ -274,7 +271,7 @@ ibcs2_sigsys(p, uap)
 			SCARG(&sa, how) = SIG_BLOCK;
 			SCARG(&sa, set) = &mask;
 			SCARG(&sa, oset) = NULL;
-			return sigprocmask(p, &sa);
+			return sigprocmask(&sa);
 		}
 		
 	case IBCS2_SIGNAL_MASK:
@@ -309,7 +306,7 @@ ibcs2_sigsys(p, uap)
 			/* perform native sigaction() */
 			if ((error = copyout(&sa, nbsa, sizeof(sa))) != 0)
 				return error;
-			if ((error = sigaction(p, &sa_args)) != 0) {
+			if ((error = sigaction(&sa_args)) != 0) {
 				DPRINTF(("signal: sigaction failed: %d\n",
 					 error));
 				return error;
@@ -340,7 +337,7 @@ ibcs2_sigsys(p, uap)
 			SCARG(&sa, how) = SIG_UNBLOCK;
 			SCARG(&sa, set) = &mask;
 			SCARG(&sa, oset) = NULL;
-			return sigprocmask(p, &sa);
+			return sigprocmask(&sa);
 		}
 		
 	case IBCS2_SIGIGNORE_MASK:
@@ -358,7 +355,7 @@ ibcs2_sigsys(p, uap)
 			sa.sa_flags = 0;
 			if ((error = copyout(&sa, bsa, sizeof(sa))) != 0)
 				return error;
-			if ((error = sigaction(p, &sa_args)) != 0) {
+			if ((error = sigaction(&sa_args)) != 0) {
 				DPRINTF(("sigignore: sigaction failed\n"));
 				return error;
 			}
@@ -373,7 +370,7 @@ ibcs2_sigsys(p, uap)
 			mask = p->p_sigmask;
 			SIGDELSET(mask, signum);
 			SCARG(&sa, sigmask) = &mask;
-			return sigsuspend(p, &sa);
+			return sigsuspend(&sa);
 		}
 		
 	default:
@@ -382,10 +379,9 @@ ibcs2_sigsys(p, uap)
 }
 
 int
-ibcs2_sigprocmask(p, uap)
-	register struct proc *p;
-	struct ibcs2_sigprocmask_args *uap;
+ibcs2_sigprocmask(struct ibcs2_sigprocmask_args *uap)
 {
+	struct proc *p = curproc;
 	ibcs2_sigset_t iss;
 	sigset_t bss;
 	int error = 0;
@@ -434,10 +430,9 @@ ibcs2_sigprocmask(p, uap)
 }
 
 int
-ibcs2_sigpending(p, uap)
-	register struct proc *p;
-	struct ibcs2_sigpending_args *uap;
+ibcs2_sigpending(struct ibcs2_sigpending_args *uap)
 {
+	struct proc *p = curproc;
 	sigset_t bss;
 	ibcs2_sigset_t iss;
 
@@ -449,9 +444,7 @@ ibcs2_sigpending(p, uap)
 }
 
 int
-ibcs2_sigsuspend(p, uap)
-	register struct proc *p;
-	struct ibcs2_sigsuspend_args *uap;
+ibcs2_sigsuspend(struct ibcs2_sigsuspend_args *uap)
 {
 	ibcs2_sigset_t sss;
 	sigset_t bss;
@@ -463,30 +456,27 @@ ibcs2_sigsuspend(p, uap)
 
 	ibcs2_to_bsd_sigset(&sss, &bss);
 	SCARG(&sa, sigmask) = &bss;
-	return sigsuspend(p, &sa);
+	return sigsuspend(&sa);
 }
 
 int
-ibcs2_pause(p, uap)
-	register struct proc *p;
-	struct ibcs2_pause_args *uap;
+ibcs2_pause(struct ibcs2_pause_args *uap)
 {
+	struct proc *p = curproc;
 	sigset_t mask;
 	struct sigsuspend_args sa;
 
 	mask = p->p_sigmask;
 	SCARG(&sa, sigmask) = &mask;
-	return sigsuspend(p, &sa);
+	return sigsuspend(&sa);
 }
 
 int
-ibcs2_kill(p, uap)
-	register struct proc *p;
-	struct ibcs2_kill_args *uap;
+ibcs2_kill(struct ibcs2_kill_args *uap)
 {
 	struct kill_args ka;
 
 	SCARG(&ka, pid) = SCARG(uap, pid);
 	SCARG(&ka, signum) = ibcs2_to_bsd_sig[_SIG_IDX(SCARG(uap, signo))];
-	return kill(p, &ka);
+	return kill(&ka);
 }

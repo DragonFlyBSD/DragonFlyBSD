@@ -39,7 +39,7 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_misc.c,v 1.3.2.8 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.3 2003/06/23 17:55:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -438,14 +438,14 @@ linprocfs_doprocstatus(curp, p, pfs, uio)
 	 */
 	PS_ADD(ps, "Pid:\t%d\n",	  p->p_pid);
 	PS_ADD(ps, "PPid:\t%d\n",	  p->p_pptr ? p->p_pptr->p_pid : 0);
-	PS_ADD(ps, "Uid:\t%d %d %d %d\n", p->p_cred->p_ruid,
+	PS_ADD(ps, "Uid:\t%d %d %d %d\n", p->p_ucred->cr_ruid,
 		                          p->p_ucred->cr_uid,
-		                          p->p_cred->p_svuid,
+		                          p->p_ucred->cr_svuid,
 		                          /* FreeBSD doesn't have fsuid */
 		                          p->p_ucred->cr_uid);
-	PS_ADD(ps, "Gid:\t%d %d %d %d\n", p->p_cred->p_rgid,
+	PS_ADD(ps, "Gid:\t%d %d %d %d\n", p->p_ucred->cr_rgid,
 		                          p->p_ucred->cr_gid,
-		                          p->p_cred->p_svgid,
+		                          p->p_ucred->cr_svgid,
 		                          /* FreeBSD doesn't have fsgid */
 		                          p->p_ucred->cr_gid);
 	PS_ADD(ps, "Groups:\t");
@@ -498,6 +498,8 @@ linprocfs_doprocstatus(curp, p, pfs, uio)
 	return (xlen <= 0 ? 0 : uiomove(ps, xlen, uio));
 }
 
+extern int nextpid;
+
 int
 linprocfs_doloadavg(curp, p, pfs, uio)
 	struct proc *curp;
@@ -505,9 +507,8 @@ linprocfs_doloadavg(curp, p, pfs, uio)
 	struct pfsnode *pfs;
 	struct uio *uio;
 {
-     char *ps, psbuf[512];
-     int xlen;
-	extern int nextpid;
+	char *ps, psbuf[512];
+	int xlen;
 
 	ps=psbuf;
 
@@ -528,5 +529,5 @@ linprocfs_doloadavg(curp, p, pfs, uio)
 	xlen -= uio->uio_offset;
 	ps = psbuf + uio->uio_offset;
 	xlen = imin(xlen, uio->uio_resid);
-     return (xlen <= 0 ? 0 : uiomove(ps, xlen, uio));
+	return (xlen <= 0 ? 0 : uiomove(ps, xlen, uio));
 }

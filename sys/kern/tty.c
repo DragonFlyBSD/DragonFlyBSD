@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 /*-
@@ -701,15 +701,13 @@ ttyoutput(c, tp)
 /* ARGSUSED */
 int
 ttioctl(tp, cmd, data, flag)
-	register struct tty *tp;
+	struct tty *tp;
 	u_long cmd;
 	int flag;
 	void *data;
 {
-	register struct proc *p;
+	struct proc *p = curproc;
 	int s, error;
-
-	p = curproc;			/* XXX */
 
 	/* If the ioctl involves modification, hang if in the background. */
 	switch (cmd) {
@@ -815,7 +813,7 @@ ttioctl(tp, cmd, data, flag)
 			    ISSET(constty->t_state, TS_CONNECTED))
 				return (EBUSY);
 #ifndef	UCONSOLE
-			if ((error = suser(p)) != 0)
+			if ((error = suser()) != 0)
 				return (error);
 #endif
 			constty = tp;
@@ -987,9 +985,9 @@ ttioctl(tp, cmd, data, flag)
 		splx(s);
 		break;
 	case TIOCSTI:			/* simulate terminal input */
-		if ((flag & FREAD) == 0 && suser(p))
+		if ((flag & FREAD) == 0 && suser())
 			return (EPERM);
-		if (!isctty(p, tp) && suser(p))
+		if (!isctty(p, tp) && suser())
 			return (EACCES);
 		s = spltty();
 		(*linesw[tp->t_line].l_rint)(*(u_char *)data, tp);
@@ -1037,7 +1035,7 @@ ttioctl(tp, cmd, data, flag)
 		}
 		break;
 	case TIOCSDRAINWAIT:
-		error = suser(p);
+		error = suser();
 		if (error)
 			return (error);
 		tp->t_timeout = *(int *)data * hz;
@@ -1058,10 +1056,10 @@ ttioctl(tp, cmd, data, flag)
 }
 
 int
-ttypoll(dev, events, p)
+ttypoll(dev, events, td)
 	dev_t dev;
 	int events;
-	struct proc *p;
+	struct thread *td;
 {
 	int s;
 	int revents = 0;
@@ -1077,7 +1075,7 @@ ttypoll(dev, events, p)
 		if (ttnread(tp) > 0 || ISSET(tp->t_state, TS_ZOMBIE))
 			revents |= events & (POLLIN | POLLRDNORM);
 		else
-			selrecord(p, &tp->t_rsel);
+			selrecord(td, &tp->t_rsel);
 	}
 	if (events & (POLLOUT | POLLWRNORM)) {
 		if ((tp->t_outq.c_cc <= tp->t_olowat &&
@@ -1085,7 +1083,7 @@ ttypoll(dev, events, p)
 		    || ISSET(tp->t_state, TS_ZOMBIE))
 			revents |= events & (POLLOUT | POLLWRNORM);
 		else
-			selrecord(p, &tp->t_wsel);
+			selrecord(td, &tp->t_wsel);
 	}
 	splx(s);
 	return (revents);

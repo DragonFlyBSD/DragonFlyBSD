@@ -71,7 +71,7 @@
  */
 
 /* $FreeBSD: src/sys/net/ppp_tty.c,v 1.43.2.1 2002/02/13 00:43:11 dillon Exp $ */
-/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.2 2003/06/17 04:28:48 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.3 2003/06/23 17:55:45 dillon Exp $ */
 
 #include "opt_ppp.h"		/* XXX for ppp_defs.h */
 
@@ -103,8 +103,8 @@ static int	pppopen __P((dev_t dev, struct tty *tp));
 static int	pppclose __P((struct tty *tp, int flag));
 static int	pppread __P((struct tty *tp, struct uio *uio, int flag));
 static int	pppwrite __P((struct tty *tp, struct uio *uio, int flag));
-static int	ppptioctl __P((struct tty *tp, u_long cmd, caddr_t data, int flag,
-		       struct proc *));
+static int	ppptioctl __P((struct tty *tp, u_long cmd, caddr_t data,
+			int flag, struct thread *));
 static int	pppinput __P((int c, struct tty *tp));
 static int	pppstart __P((struct tty *tp));
 
@@ -193,15 +193,13 @@ pppasyncattach(dummy)
  */
 /* ARGSUSED */
 static int
-pppopen(dev, tp)
-    dev_t dev;
-    register struct tty *tp;
+pppopen(dev_t dev, struct tty *tp)
 {
     struct proc *p = curproc;		/* XXX */
-    register struct ppp_softc *sc;
+    struct ppp_softc *sc;
     int error, s;
 
-    if ((error = suser(p)) != 0)
+    if ((error = suser_xxx(p->p_ucred, 0)) != 0)
 	return (error);
 
     s = spltty();
@@ -454,15 +452,13 @@ pppwrite(tp, uio, flag)
  */
 /* ARGSUSED */
 static int
-ppptioctl(tp, cmd, data, flag, p)
-    struct tty *tp;
-    u_long cmd;
-    caddr_t data;
-    int flag;
-    struct proc *p;
+ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
     struct ppp_softc *sc = (struct ppp_softc *) tp->t_sc;
+    struct proc *p = td->td_proc;
     int error, s;
+
+    KKASSERT(p != NULL);
 
     if (sc == NULL || tp != (struct tty *) sc->sc_devp)
 	return (ENOIOCTL);
@@ -470,7 +466,7 @@ ppptioctl(tp, cmd, data, flag, p)
     error = 0;
     switch (cmd) {
     case PPPIOCSASYNCMAP:
-	if ((error = suser(p)) != 0)
+	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
 	    break;
 	sc->sc_asyncmap[0] = *(u_int *)data;
 	break;
@@ -480,7 +476,7 @@ ppptioctl(tp, cmd, data, flag, p)
 	break;
 
     case PPPIOCSRASYNCMAP:
-	if ((error = suser(p)) != 0)
+	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
 	    break;
 	sc->sc_rasyncmap = *(u_int *)data;
 	break;
@@ -490,7 +486,7 @@ ppptioctl(tp, cmd, data, flag, p)
 	break;
 
     case PPPIOCSXASYNCMAP:
-	if ((error = suser(p)) != 0)
+	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
 	    break;
 	s = spltty();
 	bcopy(data, sc->sc_asyncmap, sizeof(sc->sc_asyncmap));

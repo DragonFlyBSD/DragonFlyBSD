@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.3 2003/06/23 17:55:29 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -294,7 +294,7 @@ ata_resume(device_t dev)
 }
 
 static int
-ataioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, struct proc *p)
+ataioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, struct thread *td)
 {
     struct ata_cmd *iocmd = (struct ata_cmd *)addr;
     struct ata_channel *ch;

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.3 2003/06/23 17:55:47 dillon Exp $
  */
 
 /*
@@ -562,7 +562,7 @@ rip6_attach(struct socket *so, int proto, struct proc *p)
 	inp = sotoinpcb(so);
 	if (inp)
 		panic("rip6_attach");
-	if (p && (error = suser(p)) != 0)
+	if (p && (error = suser_xxx(p->p_ucred, 0)) != 0)
 		return error;
 
 	error = soreserve(so, rip_sendspace, rip_recvspace);

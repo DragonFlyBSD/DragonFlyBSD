@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.12 2003/06/22 17:39:46 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.13 2003/06/23 17:55:50 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -120,7 +120,7 @@ struct	proc {
 	LIST_ENTRY(proc) p_list;	/* List of all processes. */
 
 	/* substructures: */
-	struct	pcred *p_cred;		/* Process owner's identity. */
+	struct	ucred *p_ucred;		/* Process owner's identity. */
 	struct	filedesc *p_fd;		/* Ptr to open files structure. */
 	struct filedesc_to_leader *p_fdtol; /* Ptr to tracking node */
 	struct	pstats *p_stats;	/* Accounting/statistics (PROC ONLY). */
@@ -134,8 +134,6 @@ struct	proc {
 #define p_sigacts	p_procsig->ps_sigacts
 #define p_sigignore	p_procsig->ps_sigignore
 #define p_sigcatch	p_procsig->ps_sigcatch
-
-#define	p_ucred		p_cred->pc_ucred
 #define	p_rlimit	p_limit->pl_rlimit
 
 	int	p_flag;			/* P_* flags. */
@@ -224,7 +222,6 @@ struct	proc {
 	struct 	sysentvec *p_sysent; /* System call dispatch information. */
 
 	struct	rtprio p_rtprio;	/* Realtime priority. */
-	struct	prison *p_prison;
 	struct	pargs *p_args;
 /* End area that is copied on creation. */
 #define	p_endcopy	p_addr
@@ -293,24 +290,6 @@ struct	proc {
 #define	P_INEXEC	0x8000000 /* Process is in execve(). */
 #define P_EXITINTERLOCK	0x10000000 /* Reaping process exit interlock */
 
-/*
- * MOVE TO ucred.h?
- *
- * Shareable process credentials (always resident).  This includes a reference
- * to the current user credentials as well as real and saved ids that may be
- * used to change ids.
- */
-struct	pcred {
-	struct	ucred *pc_ucred;	/* Current credentials. */
-	uid_t	p_ruid;			/* Real user id. */
-	uid_t	p_svuid;		/* Saved effective user id. */
-	gid_t	p_rgid;			/* Real group id. */
-	gid_t	p_svgid;		/* Saved effective group id. */
-	int	p_refcnt;		/* Number of references. */
-	struct	uidinfo *p_uidinfo;	/* Per uid resource consumption */
-};
-
-
 #ifdef _KERNEL
 
 #ifdef MALLOC_DECLARE
@@ -325,8 +304,8 @@ MALLOC_DECLARE(M_PARGS);
 
 /* Handy macro to determine of p1 can mangle p2 */
 
-#define PRISON_CHECK(p1, p2) \
-	((!(p1)->p_prison) || (p1)->p_prison == (p2)->p_prison)
+#define PRISON_CHECK(cr1, cr2) \
+	((!(cr1)->cr_prison) || (cr1)->cr_prison == (cr2)->cr_prison)
 
 /*
  * We use process IDs <= PID_MAX; PID_MAX + 1 must also fit in a pid_t,
@@ -427,22 +406,23 @@ int	inferior __P((struct proc *p));
 int	leavepgrp __P((struct proc *p));
 void	mi_switch __P((void));
 void	procinit __P((void));
-int	p_trespass __P((struct proc *p1, struct proc *p2));
+int	p_trespass __P((struct ucred *cr1, struct ucred *cr2));
 void	resetpriority __P((struct proc *));
 int	roundrobin_interval __P((void));
 void	schedclock __P((struct proc *));
 void	setrunnable __P((struct proc *));
 void	setrunqueue __P((struct proc *));
 void	sleepinit __P((void));
-int	suser __P((struct proc *));
-int	suser_xxx __P((struct ucred *cred, struct proc *proc, int flag));
+int	suser __P((void));
+int	suser_proc __P((struct proc *p));
+int	suser_xxx __P((struct ucred *cred, int flag));
 void	remrunqueue __P((struct proc *));
 void	cpu_heavy_switch __P((struct thread *));
 void	cpu_lwkt_switch __P((struct thread *));
 void	unsleep __P((struct proc *));
 
 void	cpu_exit __P((struct proc *)) __dead2;
-void	exit1 __P((struct proc *, int)) __dead2;
+void	exit1 __P((int)) __dead2;
 void	cpu_fork __P((struct proc *, struct proc *, int));
 void	cpu_set_fork_handler __P((struct proc *, void (*)(void *), void *));
 int	fork1 __P((struct proc *, int, struct proc **));
@@ -450,7 +430,7 @@ void	start_forked_proc __P((struct proc *, struct proc *));
 int	trace_req __P((struct proc *));
 void	cpu_wait __P((struct proc *));
 int	cpu_coredump __P((struct proc *, struct vnode *, struct ucred *));
-void	setsugid __P((struct proc *p));
+void	setsugid __P((void));
 void	faultin __P((struct proc *p));
 
 struct proc *	chooseproc __P((void));

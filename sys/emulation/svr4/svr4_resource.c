@@ -40,7 +40,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_resource.c,v 1.4.2.1 2002/09/02 21:22:54 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_resource.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_resource.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
  */
 
 /*
@@ -128,10 +128,9 @@ svr4_to_native_rl(rl)
 	((svr4_rlim64_t)(l)) != SVR4_RLIM64_SAVED_MAX)
 
 int
-svr4_sys_getrlimit(p, uap)
-	register struct proc *p;
-	struct svr4_sys_getrlimit_args *uap;
+svr4_sys_getrlimit(struct svr4_sys_getrlimit_args *uap)
 {
+	struct proc *p = curproc;
 	int rl = svr4_to_native_rl(SCARG(uap, which));
 	struct rlimit blim;
 	struct svr4_rlimit slim;
@@ -173,10 +172,9 @@ svr4_sys_getrlimit(p, uap)
 
 
 int
-svr4_sys_setrlimit(p, uap)
-	register struct proc *p;
-	struct svr4_sys_setrlimit_args *uap;
+svr4_sys_setrlimit(struct svr4_sys_setrlimit_args *uap)
 {
+	struct proc *p = curproc;
 	int rl = svr4_to_native_rl(SCARG(uap, which));
 	struct rlimit blim, *limp;
 	struct svr4_rlimit slim;
@@ -217,15 +215,14 @@ svr4_sys_setrlimit(p, uap)
 	else if (slim.rlim_cur == SVR4_RLIM_SAVED_CUR)
 		blim.rlim_cur = limp->rlim_cur;
 
-	return dosetrlimit(p, rl, &blim);
+	return dosetrlimit(rl, &blim);
 }
 
 
 int
-svr4_sys_getrlimit64(p, uap)
-	register struct proc *p;
-	struct svr4_sys_getrlimit64_args *uap;
+svr4_sys_getrlimit64(struct svr4_sys_getrlimit64_args *uap)
 {
+	struct proc *p = curproc;
 	int rl = svr4_to_native_rl(SCARG(uap, which));
 	struct rlimit blim;
 	struct svr4_rlimit64 slim;
@@ -267,10 +264,9 @@ svr4_sys_getrlimit64(p, uap)
 
 
 int
-svr4_sys_setrlimit64(p, uap)
-	register struct proc *p;
-	struct svr4_sys_setrlimit64_args *uap;
+svr4_sys_setrlimit64(struct svr4_sys_setrlimit64_args *uap)
 {
+	struct proc *p = curproc;
 	int rl = svr4_to_native_rl(SCARG(uap, which));
 	struct rlimit blim, *limp;
 	struct svr4_rlimit64 slim;
@@ -311,5 +307,5 @@ svr4_sys_setrlimit64(p, uap)
 	else if (slim.rlim_cur == SVR4_RLIM64_SAVED_CUR)
 		blim.rlim_cur = limp->rlim_cur;
 
-	return dosetrlimit(p, rl, &blim);
+	return dosetrlimit(rl, &blim);
 }

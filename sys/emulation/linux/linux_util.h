@@ -29,7 +29,7 @@
  * from: svr4_util.h,v 1.5 1994/11/18 02:54:31 christos Exp
  * from: linux_util.h,v 1.2 1995/03/05 23:23:50 fvdl Exp
  * $FreeBSD: src/sys/compat/linux/linux_util.h,v 1.12.2.2 2000/11/02 23:31:28 obrien Exp $
- * $DragonFly: src/sys/emulation/linux/linux_util.h,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_util.h,v 1.3 2003/06/23 17:55:27 dillon Exp $
  */
 
 /*
@@ -77,34 +77,33 @@ stackgap_alloc(sgp, sz)
 
 extern const char linux_emul_path[];
 
-int linux_emul_find __P((struct proc *, caddr_t *, const char *, char *,
-			char **, int));
+int linux_emul_find __P((struct proc *, caddr_t *, const char *, char *, char **, int));
 
-#define CHECKALT(p, sgp, path, i) 					\
+#define CHECKALT(sgp, path, i) 						\
 	do {								\
 		int _error;						\
 									\
-		_error = linux_emul_find(p, sgp, linux_emul_path, path,	\
+		_error = linux_emul_find(curproc, sgp, linux_emul_path, path,	\
 		    &path, i);						\
 		if (_error == EFAULT)					\
 			return (_error);				\
 	} while (0)
 
-#define CHECKALTEXIST(p, sgp, path) CHECKALT(p, sgp, path, 0)
-#define CHECKALTCREAT(p, sgp, path) CHECKALT(p, sgp, path, 1)
+#define CHECKALTEXIST(sgp, path) CHECKALT(sgp, path, 0)
+#define CHECKALTCREAT(sgp, path) CHECKALT(sgp, path, 1)
 
 #define DUMMY(s)							\
 int									\
-linux_ ## s(struct proc *p, struct linux_ ## s ## _args *args)		\
+linux_ ## s(struct linux_ ## s ## _args *args)				\
 {									\
-	return (unsupported_msg(p, #s));				\
+	return (unsupported_msg(#s));					\
 }									\
 struct __hack
 
 static __inline int
-unsupported_msg(struct proc *p, const char *fname)
+unsupported_msg(const char *fname)
 {
-
+	struct proc *p = curproc;
 	printf("linux: syscall %s is obsoleted or not implemented (pid=%ld)\n",
 	    fname, (long)p->p_pid);
 	return (ENOSYS);

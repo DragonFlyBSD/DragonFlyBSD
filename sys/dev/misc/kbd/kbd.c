@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.3 2003/06/23 17:55:31 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -493,7 +493,7 @@ kbd_detach(keyboard_t *kbd)
 static kbd_callback_func_t genkbd_event;
 
 static int
-genkbdopen(dev_t dev, int mode, int flag, struct proc *p)
+genkbdopen(dev_t dev, int mode, int flag, d_thread_t *td)
 {
 	keyboard_t *kbd;
 	genkbd_softc_t *sc;
@@ -533,7 +533,7 @@ genkbdopen(dev_t dev, int mode, int flag, struct proc *p)
 }
 
 static int
-genkbdclose(dev_t dev, int mode, int flag, struct proc *p)
+genkbdclose(dev_t dev, int mode, int flag, d_thread_t *td)
 {
 	keyboard_t *kbd;
 	genkbd_softc_t *sc;
@@ -623,7 +623,7 @@ genkbdwrite(dev_t dev, struct uio *uio, int flag)
 }
 
 static int
-genkbdioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct proc *p)
+genkbdioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, d_thread_t *td)
 {
 	keyboard_t *kbd;
 	int error;
@@ -638,7 +638,7 @@ genkbdioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct proc *p)
 }
 
 static int
-genkbdpoll(dev_t dev, int events, struct proc *p)
+genkbdpoll(dev_t dev, int events, d_thread_t *td)
 {
 	keyboard_t *kbd;
 	genkbd_softc_t *sc;
@@ -655,7 +655,7 @@ genkbdpoll(dev_t dev, int events, struct proc *p)
 		if (sc->gkb_q.c_cc > 0)
 			revents = events & (POLLIN | POLLRDNORM);
 		else
-			selrecord(p, &sc->gkb_rsel);
+			selrecord(td, &sc->gkb_rsel);
 	}
 	splx(s);
 	return revents;

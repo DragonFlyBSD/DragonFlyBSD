@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_socket.c,v 1.7 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_socket.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_socket.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
  */
 
 /*
@@ -153,9 +153,7 @@ svr4_add_socket(p, path, st)
 
 
 int
-svr4_sys_socket(p, uap)
-	struct proc *p;
-	struct svr4_sys_socket_args *uap;
+svr4_sys_socket(struct svr4_sys_socket_args *uap)
 {
 	switch (SCARG(uap, type)) {
 	case SVR4_SOCK_DGRAM:
@@ -180,5 +178,5 @@ svr4_sys_socket(p, uap)
 	default:
 		return EINVAL;
 	}
-	return socket(p, (struct socket_args *)uap);
+	return socket((struct socket_args *)uap);
 }

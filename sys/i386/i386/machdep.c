@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.10 2003/06/22 08:54:18 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.11 2003/06/23 17:55:38 dillon Exp $
  */
 
 #include "apm.h"
@@ -720,6 +720,8 @@ sendsig(catcher, sig, mask, code)
 }
 
 /*
+ * osigreturn_args(struct osigcontext *sigcntxp)
+ *
  * System call to cleanup state after a signal
  * has been taken.  Reset signal mask and
  * stack state from context left by sendsig (above).
@@ -732,14 +734,11 @@ sendsig(catcher, sig, mask, code)
 #define	CS_SECURE(cs)		(ISPL(cs) == SEL_UPL)
 
 int
-osigreturn(p, uap)
-	struct proc *p;
-	struct osigreturn_args /* {
-		struct osigcontext *sigcntxp;
-	} */ *uap;
+osigreturn(struct osigreturn_args *uap)
 {
-	register struct osigcontext *scp;
-	register struct trapframe *regs = p->p_md.md_regs;
+	struct proc *p = curproc;
+	struct osigcontext *scp;
+	struct trapframe *regs = p->p_md.md_regs;
 	int eflags;
 
 	scp = uap->sigcntxp;
@@ -837,13 +836,13 @@ osigreturn(p, uap)
 	return(EJUSTRETURN);
 }
 
+/*
+ * sigreturn(ucontext_t *sigcntxp)
+ */
 int
-sigreturn(p, uap)
-	struct proc *p;
-	struct sigreturn_args /* {
-		ucontext_t *sigcntxp;
-	} */ *uap;
+sigreturn(struct sigreturn_args *uap)
 {
+	struct proc *p = curproc;
 	struct trapframe *regs;
 	ucontext_t *ucp;
 	int cs, eflags;
@@ -853,7 +852,7 @@ sigreturn(p, uap)
 	if (!useracc((caddr_t)ucp, sizeof(struct osigcontext), VM_PROT_READ))
 		return (EFAULT);
 	if (((struct osigcontext *)ucp)->sc_trapno == 0x01d516)
-		return (osigreturn(p, (struct osigreturn_args *)uap));
+		return (osigreturn((struct osigreturn_args *)uap));
 
 	/*
 	 * Since ucp is not an osigcontext but a ucontext_t, we have to
@@ -2434,7 +2433,7 @@ set_dbregs(p, dbregs)
 		 * from within kernel mode?
 		 */
 		
-		if (suser(p) != 0) {
+		if (suser_xxx(p->p_ucred, 0) != 0) {
 			if (dbregs->dr7 & 0x3) {
 				/* dr0 is enabled */
 				if (dbregs->dr0 >= VM_MAXUSER_ADDRESS)

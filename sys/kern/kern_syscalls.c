@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_syscalls.c,v 1.6 1999/10/11 15:19:10 peter Exp $
- * $DragonFly: src/sys/kern/kern_syscalls.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_syscalls.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,9 +40,9 @@
  * Place holder for system call slots reserved for loadable modules.
  */     
 int
-lkmnosys(struct proc *p, struct nosys_args *args)
+lkmnosys(struct nosys_args *args)
 {
-	return(nosys(p, args));
+	return(nosys(args));
 }
 
 int

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.3 2003/06/23 17:55:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -88,15 +88,16 @@ newstat_copyout(struct stat *buf, void *ubuf)
 }
 
 int
-linux_newstat(struct proc *p, struct linux_newstat_args *args)
+linux_newstat(struct linux_newstat_args *args)
 {
+	struct proc *p = curproc;
 	struct stat buf;
 	struct nameidata nd;
 	int error;
 	caddr_t sg;
 
 	sg = stackgap_init();
-	CHECKALTEXIST(p, &sg, args->path);
+	CHECKALTEXIST(&sg, args->path);
 
 #ifdef DEBUG
 	if (ldebug(newstat))
@@ -119,15 +120,16 @@ linux_newstat(struct proc *p, struct linux_newstat_args *args)
 }
 
 int
-linux_newlstat(struct proc *p, struct linux_newlstat_args *args)
+linux_newlstat(struct linux_newlstat_args *args)
 {
+	struct proc *p = curproc;
 	int error;
 	struct stat sb;
 	struct nameidata nd;
 	caddr_t sg;
 
 	sg = stackgap_init();
-	CHECKALTEXIST(p, &sg, args->path);
+	CHECKALTEXIST(&sg, args->path);
 
 #ifdef DEBUG
 	if (ldebug(newlstat))
@@ -150,8 +152,9 @@ linux_newlstat(struct proc *p, struct linux_newlstat_args *args)
 }
 
 int
-linux_newfstat(struct proc *p, struct linux_newfstat_args *args)
+linux_newfstat(struct linux_newfstat_args *args)
 {
+	struct proc *p = curproc;
 	struct filedesc *fdp;
 	struct file *fp;
 	struct stat buf;
@@ -224,8 +227,9 @@ bsd_to_linux_ftype(const char *fstypename)
 }
 
 int
-linux_statfs(struct proc *p, struct linux_statfs_args *args)
+linux_statfs(struct linux_statfs_args *args)
 {
+	struct proc *p = curproc;
 	struct mount *mp;
 	struct nameidata *ndp;
 	struct statfs *bsd_statfs;
@@ -235,7 +239,7 @@ linux_statfs(struct proc *p, struct linux_statfs_args *args)
 	caddr_t sg;
 
 	sg = stackgap_init();
-	CHECKALTEXIST(p, &sg, args->path);
+	CHECKALTEXIST(&sg, args->path);
 
 #ifdef DEBUG
 	if (ldebug(statfs))
@@ -269,8 +273,9 @@ linux_statfs(struct proc *p, struct linux_statfs_args *args)
 }
 
 int
-linux_fstatfs(struct proc *p, struct linux_fstatfs_args *args)
+linux_fstatfs(struct linux_fstatfs_args *args)
 {
+	struct proc *p = curproc;
 	struct file *fp;
 	struct mount *mp;
 	struct statfs *bsd_statfs;
@@ -313,8 +318,9 @@ struct l_ustat
 };
 
 int
-linux_ustat(struct proc *p, struct linux_ustat_args *args)
+linux_ustat(struct linux_ustat_args *args)
 {
+	struct proc *p = curproc;
 	struct l_ustat lu;
 	dev_t dev;
 	struct vnode *vp;
@@ -389,15 +395,16 @@ stat64_copyout(struct stat *buf, void *ubuf)
 }
 
 int
-linux_stat64(struct proc *p, struct linux_stat64_args *args)
+linux_stat64(struct linux_stat64_args *args)
 {
+	struct proc *p = curproc;
 	struct stat buf;
 	struct nameidata nd;
 	int error;
 	caddr_t sg;
 
 	sg = stackgap_init();
-	CHECKALTEXIST(p, &sg, args->filename);
+	CHECKALTEXIST(&sg, args->filename);
 
 #ifdef DEBUG
 	if (ldebug(stat64))
@@ -420,15 +427,16 @@ linux_stat64(struct proc *p, struct linux_stat64_args *args)
 }
 
 int
-linux_lstat64(struct proc *p, struct linux_lstat64_args *args)
+linux_lstat64(struct linux_lstat64_args *args)
 {
+	struct proc *p = curproc;
 	int error;
 	struct stat sb;
 	struct nameidata nd;
 	caddr_t sg;
 
 	sg = stackgap_init();
-	CHECKALTEXIST(p, &sg, args->filename);
+	CHECKALTEXIST(&sg, args->filename);
 
 #ifdef DEBUG
 	if (ldebug(lstat64))
@@ -451,8 +459,9 @@ linux_lstat64(struct proc *p, struct linux_lstat64_args *args)
 }
 
 int
-linux_fstat64(struct proc *p, struct linux_fstat64_args *args)
+linux_fstat64(struct linux_fstat64_args *args)
 {
+	struct proc *p = curproc;
 	struct filedesc *fdp;
 	struct file *fp;
 	struct stat buf;

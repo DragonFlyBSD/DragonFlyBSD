@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlxvar.h,v 1.5.2.3 2001/06/25 04:37:51 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlxvar.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlxvar.h,v 1.3 2003/06/23 17:55:32 dillon Exp $
  */
 
 /*
@@ -242,7 +242,7 @@ struct mlxd_softc
  */
 extern int	mlx_submit_buf(struct mlx_softc *sc, mlx_bio *bp);
 extern int	mlx_submit_ioctl(struct mlx_softc *sc, struct mlx_sysdrive *drive, u_long cmd, 
-				 caddr_t addr, int32_t flag, struct proc *p);
+				 caddr_t addr, int32_t flag, d_thread_t *td);
 extern void	mlxd_intr(void *data);
 
 

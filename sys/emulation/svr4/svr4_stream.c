@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stream.c,v 1.12.2.2 2000/11/26 04:42:27 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
  */
 
 /*
@@ -76,7 +76,7 @@
 #include <svr4/svr4_socket.h>
 
 /* Utils */
-static int clean_pipe __P((struct proc *, const char *));
+static int clean_pipe __P((const char *));
 static void getparm __P((struct file *, struct svr4_si_sockparms *));
 
 /* Address Conversions */
@@ -146,15 +146,15 @@ static int svr4_recvit __P((struct proc *p, int s, struct msghdr *mp,
  */
 static int
 svr4_sendit(p, s, mp, flags)
-	register struct proc *p;
+	struct proc *p;
 	int s;
-	register struct msghdr *mp;
+	struct msghdr *mp;
 	int flags;
 {
 	struct file *fp;
 	struct uio auio;
-	register struct iovec *iov;
-	register int i;
+	struct iovec *iov;
+	int i;
 	struct mbuf *control;
 	struct sockaddr *to;
 	int len, error;
@@ -243,15 +243,15 @@ bad:
 
 static int
 svr4_recvit(p, s, mp, namelenp)
-	register struct proc *p;
+	struct proc *p;
 	int s;
-	register struct msghdr *mp;
+	struct msghdr *mp;
 	caddr_t namelenp;
 {
 	struct file *fp;
 	struct uio auio;
-	register struct iovec *iov;
-	register int i;
+	struct iovec *iov;
+	int i;
 	int len, error;
 	struct mbuf *m, *control = 0;
 	caddr_t ctlbuf;
@@ -497,9 +497,7 @@ show_msg(str, fd, ctl, dat, flags)
  * to avoid code duplication.
  */
 static int
-clean_pipe(p, path)
-	struct proc *p;
-	const char *path;
+clean_pipe(const char *path)
 {
 	struct lstat_args la;
 	struct unlink_args ua;
@@ -517,7 +515,7 @@ clean_pipe(p, path)
 
 	SCARG(&la, path) = tpath;
 
-	if ((error = lstat(p, &la)) != 0)
+	if ((error = lstat(&la)) != 0)
 		return 0;
 
 	if ((error = copyin(SCARG(&la, ub), &st, sizeof(st))) != 0)
@@ -534,7 +532,7 @@ clean_pipe(p, path)
 
 	SCARG(&ua, path) = SCARG(&la, path);
 
-	if ((error = unlink(p, &ua)) != 0) {
+	if ((error = unlink(&ua)) != 0) {
 		DPRINTF(("clean_pipe: unlink failed %d\n", error));
 		return error;
 	}
@@ -760,7 +758,7 @@ si_listen(fp, fd, ioc, p)
 	DPRINTF(("SI_LISTEN: fileno %d backlog = %d\n", fd, 5));
 	SCARG(&la, backlog) = 5;
 
-	if ((error = listen(p, &la)) != 0) {
+	if ((error = listen(&la)) != 0) {
 		DPRINTF(("SI_LISTEN: listen failed %d\n", error));
 		return error;
 	}
@@ -874,7 +872,7 @@ si_shutdown(fp, fd, ioc, p)
 
 	SCARG(&ap, s) = fd;
 
-	return shutdown(p, &ap);
+	return shutdown(&ap);
 }
 
 
@@ -1031,7 +1029,7 @@ ti_bind(fp, fd, ioc, p)
 		DPRINTF(("TI_BIND: fam %d, path %s\n",
 			 saun.sun_family, saun.sun_path));
 
-		if ((error = clean_pipe(p, saun.sun_path)) != 0)
+		if ((error = clean_pipe(saun.sun_path)) != 0)
 			return error;
 
 		bnd.pad[28] = 0x00001000;	/* magic again */
@@ -1054,7 +1052,7 @@ ti_bind(fp, fd, ioc, p)
 	SCARG(&ba, name) = (void *) sup;
 	SCARG(&ba, namelen) = sasize;
 
-	if ((error = bind(p, &ba)) != 0) {
+	if ((error = bind(&ba)) != 0) {
 		DPRINTF(("TI_BIND: bind failed %d\n", error));
 		return error;
 	}
@@ -1172,7 +1170,7 @@ svr4_stream_ti_ioctl(fp, p, retval, fd, cmd, dat)
 			SCARG(&ap, fdes) = fd;
 			SCARG(&ap, asa) = sup;
 			SCARG(&ap, alen) = lenp;
-			if ((error = getsockname(p, &ap)) != 0) {
+			if ((error = getsockname(&ap)) != 0) {
 				DPRINTF(("ti_ioctl: getsockname error\n"));
 				return error;
 			}
@@ -1186,7 +1184,7 @@ svr4_stream_ti_ioctl(fp, p, retval, fd, cmd, dat)
 			SCARG(&ap, fdes) = fd;
 			SCARG(&ap, asa) = sup;
 			SCARG(&ap, alen) = lenp;
-			if ((error = getpeername(p, &ap)) != 0) {
+			if ((error = getpeername(&ap)) != 0) {
 				DPRINTF(("ti_ioctl: getpeername error\n"));
 				return error;
 			}
@@ -1319,7 +1317,7 @@ i_fdinsert(fp, p, retval, fd, cmd, dat)
 	SCARG(&d2p, from) = st->s_afd;
 	SCARG(&d2p, to) = fdi.fd;
 
-	if ((error = dup2(p, &d2p)) != 0) {
+	if ((error = dup2(&d2p)) != 0) {
 		DPRINTF(("fdinsert: dup2(%d, %d) failed %d\n", 
 		    st->s_afd, fdi.fd, error));
 		return error;
@@ -1327,7 +1325,7 @@ i_fdinsert(fp, p, retval, fd, cmd, dat)
 
 	SCARG(&clp, fd) = st->s_afd;
 
-	if ((error = close(p, &clp)) != 0) {
+	if ((error = close(&clp)) != 0) {
 		DPRINTF(("fdinsert: close(%d) failed %d\n", 
 		    st->s_afd, error));
 		return error;
@@ -1361,7 +1359,7 @@ _i_bind_rsvd(fp, p, retval, fd, cmd, dat)
 	SCARG(&ap, path) = dat;
 	SCARG(&ap, mode) = S_IFIFO;
 
-	return mkfifo(p, &ap);
+	return mkfifo(&ap);
 }
 
 static int
@@ -1381,7 +1379,7 @@ _i_rele_rsvd(fp, p, retval, fd, cmd, dat)
 	 */
 	SCARG(&ap, path) = dat;
 
-	return unlink(p, &ap);
+	return unlink(&ap);
 }
 
 static int
@@ -1457,7 +1455,7 @@ i_setsig(fp, p, retval, fd, cmd, dat)
 	/* get old status flags */
 	SCARG(&fa, fd) = fd;
 	SCARG(&fa, cmd) = F_GETFL;
-	if ((error = fcntl(p, &fa)) != 0)
+	if ((error = fcntl(&fa)) != 0)
 		return error;
 
 	oflags = p->p_retval[0];
@@ -1486,7 +1484,7 @@ i_setsig(fp, p, retval, fd, cmd, dat)
 	if (flags != oflags) {
 		SCARG(&fa, cmd) = F_SETFL;
 		SCARG(&fa, arg) = (long) flags;
-		if ((error = fcntl(p, &fa)) != 0)
+		if ((error = fcntl(&fa)) != 0)
 			  return error;
 		flags = p->p_retval[0];
 	}
@@ -1495,7 +1493,7 @@ i_setsig(fp, p, retval, fd, cmd, dat)
 	if (dat != NULL) {
 		SCARG(&fa, cmd) = F_SETOWN;
 		SCARG(&fa, arg) = (long) p->p_pid;
-		return fcntl(p, &fa);
+		return fcntl(&fa);
 	}
 	return 0;
 }
@@ -1705,10 +1703,9 @@ svr4_stream_ioctl(fp, p, retval, fd, cmd, dat)
 
 
 int
-svr4_sys_putmsg(p, uap)
-	register struct proc *p;
-	struct svr4_sys_putmsg_args *uap;
+svr4_sys_putmsg(struct svr4_sys_putmsg_args *uap)
 {
+	struct proc *p = curproc;
 	struct filedesc	*fdp = p->p_fd;
 	struct file	*fp;
 	struct svr4_strbuf dat, ctl;
@@ -1800,7 +1797,7 @@ svr4_sys_putmsg(p, uap)
 				SCARG(&wa, fd) = SCARG(uap, fd);
 				SCARG(&wa, buf) = dat.buf;
 				SCARG(&wa, nbyte) = dat.len;
-				return write(p, &wa);
+				return write(&wa);
 			}
 	                DPRINTF(("putmsg: Invalid inet length %ld\n", sc.len));
 	                return EINVAL;
@@ -1853,7 +1850,7 @@ svr4_sys_putmsg(p, uap)
 			SCARG(&co, name) = (void *) sup;
 			SCARG(&co, namelen) = (int) sasize;
 			
-			return connect(p, &co);
+			return connect(&co);
 		}
 
 	case SVR4_TI_SENDTO_REQUEST:	/* sendto 	*/
@@ -1887,10 +1884,9 @@ svr4_sys_putmsg(p, uap)
 }
 
 int
-svr4_sys_getmsg(p, uap)
-	register struct proc *p;
-	struct svr4_sys_getmsg_args *uap;
+svr4_sys_getmsg(struct svr4_sys_getmsg_args *uap)
 {
+	struct proc *p = curproc;
 	struct filedesc	*fdp = p->p_fd;
 	struct file	*fp;
 	struct getpeername_args ga;
@@ -2008,7 +2004,7 @@ svr4_sys_getmsg(p, uap)
 		SCARG(&ga, asa) = (void *) sup;
 		SCARG(&ga, alen) = flen;
 		
-		if ((error = getpeername(p, &ga)) != 0) {
+		if ((error = getpeername(&ga)) != 0) {
 			DPRINTF(("getmsg: getpeername failed %d\n", error));
 			return error;
 		}
@@ -2067,7 +2063,7 @@ svr4_sys_getmsg(p, uap)
 		SCARG(&aa, name) = (void *) sup;
 		SCARG(&aa, anamelen) = flen;
 		
-		if ((error = accept(p, &aa)) != 0) {
+		if ((error = accept(&aa)) != 0) {
 			DPRINTF(("getmsg: accept failed %d\n", error));
 			return error;
 		}
@@ -2189,7 +2185,7 @@ svr4_sys_getmsg(p, uap)
 			SCARG(&ra, fd) = SCARG(uap, fd);
 			SCARG(&ra, buf) = dat.buf;
 			SCARG(&ra, nbyte) = dat.maxlen;
-			if ((error = read(p, &ra)) != 0) {
+			if ((error = read(&ra)) != 0) {
 			        return error;
 			}
 			dat.len = *retval;
@@ -2229,28 +2225,24 @@ svr4_sys_getmsg(p, uap)
 	return error;
 }
 
-int svr4_sys_send(p, uap)
-	struct proc *p;
-	struct svr4_sys_send_args *uap;
+int svr4_sys_send(struct svr4_sys_send_args *uap)
 {
 	struct osend_args osa;
 	SCARG(&osa, s) = SCARG(uap, s);
 	SCARG(&osa, buf) = SCARG(uap, buf);
 	SCARG(&osa, len) = SCARG(uap, len);
 	SCARG(&osa, flags) = SCARG(uap, flags);
-	return osend(p, &osa);
+	return osend(&osa);
 }
 
-int svr4_sys_recv(p, uap)
-	struct proc *p;
-	struct svr4_sys_recv_args *uap;
+int svr4_sys_recv(struct svr4_sys_recv_args *uap)
 {
 	struct orecv_args ora;
 	SCARG(&ora, s) = SCARG(uap, s);
 	SCARG(&ora, buf) = SCARG(uap, buf);
 	SCARG(&ora, len) = SCARG(uap, len);
 	SCARG(&ora, flags) = SCARG(uap, flags);
-	return orecv(p, &ora);
+	return orecv(&ora);
 }
 
 /* 
@@ -2258,9 +2250,7 @@ int svr4_sys_recv(p, uap)
  * sendto().  Let's leave it here for now...
  */	
 int
-svr4_sys_sendto(p, uap)
-        struct proc *p;
-        struct svr4_sys_sendto_args *uap;
+svr4_sys_sendto(struct svr4_sys_sendto_args *uap)
 {
         struct sendto_args sa;
 
@@ -2272,6 +2262,6 @@ svr4_sys_sendto(p, uap)
 	SCARG(&sa, tolen) = SCARG(uap, tolen);
 
 	DPRINTF(("calling sendto()\n"));
-	return sendto(p, &sa);
+	return sendto(&sa);
 }
 

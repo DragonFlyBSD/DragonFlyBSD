@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_util.h,v 1.4 1999/08/28 00:51:28 peter Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_util.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_util.h,v 1.3 2003/06/23 17:55:49 dillon Exp $
  */
 
 #ifndef	_SVR4_UTIL_H_
@@ -69,20 +69,19 @@ stackgap_alloc(sgp, sz)
 }
 
 extern const char svr4_emul_path[];
-int svr4_emul_find __P((struct proc *, caddr_t *, const char *, char *,
-			char **, int));
+int svr4_emul_find __P((caddr_t *, const char *, char *, char **, int));
 
-#define CHECKALT(p, sgp, path, i)					\
+#define CHECKALT(sgp, path, i)						\
 	do {								\
 		int _error;						\
 									\
-		_error = svr4_emul_find(p, sgp, svr4_emul_path, path,	\
+		_error = svr4_emul_find(sgp, svr4_emul_path, path,	\
                     &path, i);						\
 		if (_error == EFAULT)					\
 			return (_error);				\
 	} while (0)
 
-#define CHECKALTEXIST(p, sgp, path) CHECKALT(p, sgp, path, 0)
-#define CHECKALTCREAT(p, sgp, path) CHECKALT(p, sgp, path, 1)
+#define CHECKALTEXIST(sgp, path) CHECKALT(sgp, path, 0)
+#define CHECKALTCREAT(sgp, path) CHECKALT(sgp, path, 1)
 
 #endif /* !_SVR4_UTIL_H_ */

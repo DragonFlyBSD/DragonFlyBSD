@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.3 2003/06/19 01:54:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.4 2003/06/23 17:55:29 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -270,7 +270,7 @@ ad_detach(struct ata_device *atadev, int flush) /* get rid of flush XXX SOS */
 }
 
 static int
-adopen(dev_t dev, int flags, int fmt, struct proc *p)
+adopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
     struct ad_softc *adp = dev->si_drv1;
 
@@ -280,7 +280,7 @@ adopen(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int
-adclose(dev_t dev, int flags, int fmt, struct proc *p)
+adclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
     struct ad_softc *adp = dev->si_drv1;
 

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.5 2003/06/22 08:54:18 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.6 2003/06/23 17:55:38 dillon Exp $
  */
 
 /*
@@ -93,6 +93,7 @@
 #include <machine/vm86.h>
 
 #include <ddb/ddb.h>
+#include <sys/thread2.h>
 
 #include "isa.h"
 #include "npx.h"
@@ -1089,12 +1090,12 @@ syscall2(frame)
 #endif
 
 	/*
-	 * handle atomicy by looping since interrupts are enabled and the 
-	 * MP lock is not held.
+	 * access non-atomic field from critical section.  p_sticks is
+	 * updated by the clock interrupt.
 	 */
+	crit_enter();
 	sticks = ((volatile struct proc *)p)->p_sticks;	
-	while (sticks != ((volatile struct proc *)p)->p_sticks)
-		sticks = ((volatile struct proc *)p)->p_sticks;
+	crit_exit();
 
 	p->p_md.md_regs = &frame;
 	params = (caddr_t)frame.tf_esp + sizeof(int);
@@ -1177,7 +1178,7 @@ syscall2(frame)
 
 	STOPEVENT(p, S_SCE, narg);	/* MP aware */
 
-	error = (*callp->sy_call)(p, args);
+	error = (*callp->sy_call)(args);
 
 	/*
 	 * MP SAFE (we may or may not have the MP lock at this point)

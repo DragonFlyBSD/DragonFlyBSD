@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.4 2003/06/22 17:39:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.5 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -139,13 +139,11 @@ SYSINIT(shutdown_conf, SI_SUB_INTRINSIC, SI_ORDER_ANY, shutdown_conf, NULL)
  * The system call that results in a reboot
  */
 int
-reboot(p, uap)
-	struct proc *p;
-	struct reboot_args *uap;
+reboot(struct reboot_args *uap)
 {
 	int error;
 
-	if ((error = suser(p)))
+	if ((error = suser()))
 		return (error);
 
 	boot(uap->opt);
@@ -207,8 +205,7 @@ print_uptime()
  * anything machine dependant in it.
  */
 static void
-boot(howto)
-	int howto;
+boot(int howto)
 {
 
 	/* collect extra flags that shutdown_nice might have set */
@@ -234,7 +231,7 @@ boot(howto)
 		waittime = 0;
 		printf("\nsyncing disks... ");
 
-		sync(&proc0, NULL);
+		sync(NULL);	/* YYY was sync(&proc0, NULL). why proc0 ? */
 
 		/*
 		 * With soft updates, some buffers that are
@@ -261,7 +258,7 @@ boot(howto)
 			pbusy = nbusy;
 			if (iter > 5 && bioops.io_sync)
 				(*bioops.io_sync)(NULL);
-			sync(&proc0, NULL);
+			sync(NULL); /* YYY was sync(&proc0, NULL). why proc0 ? */
 			DELAY(50000 * iter);
 		}
 		printf("\n");

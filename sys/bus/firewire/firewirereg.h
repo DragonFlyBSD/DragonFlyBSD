@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewirereg.h,v 1.1.2.14 2003/05/01 06:24:37 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewirereg.h,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/firewirereg.h,v 1.3 2003/06/23 17:55:30 dillon Exp $
  *
  */
 
@@ -40,7 +40,7 @@
 typedef	struct thread fw_proc;
 #include <sys/selinfo.h>
 #else
-typedef	struct proc fw_proc;
+typedef	struct thread fw_proc;
 #include <sys/select.h>
 #endif
 

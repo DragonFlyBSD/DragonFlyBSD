@@ -1,6 +1,6 @@
 /*	$NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ucom.c,v 1.24.2.2 2003/01/17 17:32:10 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.3 2003/06/23 17:55:36 dillon Exp $	*/
 
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -259,7 +259,7 @@ ucom_shutdown(struct ucom_softc *sc)
 }
 
 Static int
-ucomopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
+ucomopen(dev_t dev, int flag, int mode, usb_proc_ptr td)
 {
 	int unit = UCOMUNIT(dev);
 	struct ucom_softc *sc;
@@ -267,6 +267,9 @@ ucomopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
 	struct tty *tp;
 	int s;
 	int error;
+	struct proc *p = td->td_proc;
+
+	KKASSERT(p != NULL);
 
 	USB_GET_SC_OPEN(ucom, unit, sc);
 
@@ -279,7 +282,7 @@ ucomopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
 
 	if (ISSET(tp->t_state, TS_ISOPEN) &&
 	    ISSET(tp->t_state, TS_XCLUDE) &&
-	    suser(p))
+	    suser_xxx(p->p_ucred, 0))
 		return (EBUSY);
 
 	/*

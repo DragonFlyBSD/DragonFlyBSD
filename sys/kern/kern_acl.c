@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_acl.c,v 1.2.2.1 2000/07/28 18:48:16 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_acl.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acl.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 /*
@@ -49,12 +49,9 @@
 
 static MALLOC_DEFINE(M_ACL, "acl", "access control list");
 
-static int	vacl_set_acl(struct proc *p, struct vnode *vp, acl_type_t type,
-	    struct acl *aclp);
-static int	vacl_get_acl(struct proc *p, struct vnode *vp, acl_type_t type,
-	    struct acl *aclp);
-static int	vacl_aclcheck(struct proc *p, struct vnode *vp, acl_type_t type,
-	    struct acl *aclp);
+static int vacl_set_acl(struct vnode *vp, acl_type_t type, struct acl *aclp);
+static int vacl_get_acl(struct vnode *vp, acl_type_t type, struct acl *aclp);
+static int vacl_aclcheck(struct vnode *vp, acl_type_t type, struct acl *aclp);
 
 /*
  * These calls wrap the real vnode operations, and are called by the 
@@ -69,9 +66,9 @@ static int	vacl_aclcheck(struct proc *p, struct vnode *vp, acl_type_t type,
  * Given a vnode, set its ACL.
  */
 static int
-vacl_set_acl(struct proc *p, struct vnode *vp, acl_type_t type,
-    struct acl *aclp)
+vacl_set_acl(struct vnode *vp, acl_type_t type, struct acl *aclp)
 {
+	struct proc *p = curproc;
 	struct acl inkernacl;
 	int error;
 
@@ -89,9 +86,9 @@ vacl_set_acl(struct proc *p, struct vnode *vp, acl_type_t type,
  * Given a vnode, get its ACL.
  */
 static int
-vacl_get_acl(struct proc *p, struct vnode *vp, acl_type_t type,
-    struct acl *aclp)
+vacl_get_acl(struct vnode *vp, acl_type_t type, struct acl *aclp)
 {
+	struct proc *p = curproc;
 	struct acl inkernelacl;
 	int error;
 
@@ -105,8 +102,9 @@ vacl_get_acl(struct proc *p, struct vnode *vp, acl_type_t type,
  * Given a vnode, delete its ACL.
  */
 static int
-vacl_delete(struct proc *p, struct vnode *vp, acl_type_t type)
+vacl_delete(struct vnode *vp, acl_type_t type)
 {
+	struct proc *p = curproc;
 	int error;
 
 	VOP_LEASE(vp, p, p->p_ucred, LEASE_WRITE);
@@ -120,9 +118,9 @@ vacl_delete(struct proc *p, struct vnode *vp, acl_type_t type)
  * Given a vnode, check whether an ACL is appropriate for it
  */
 static int
-vacl_aclcheck(struct proc *p, struct vnode *vp, acl_type_t type,
-    struct acl *aclp)
+vacl_aclcheck(struct vnode *vp, acl_type_t type, struct acl *aclp)
 {
+	struct proc *p = curproc;
 	struct acl inkernelacl;
 	int error;
 
@@ -143,8 +141,9 @@ vacl_aclcheck(struct proc *p, struct vnode *vp, acl_type_t type,
  * Given a file path, get an ACL for it
  */
 int
-__acl_get_file(struct proc *p, struct __acl_get_file_args *uap)
+__acl_get_file(struct __acl_get_file_args *uap)
 {
+	struct proc *p = curproc;
 	struct nameidata nd;
 	int error;
 
@@ -153,7 +152,7 @@ __acl_get_file(struct proc *p, struct __acl_get_file_args *uap)
 	error = namei(&nd);
 	if (error)
 		return(error);
-	error = vacl_get_acl(p, nd.ni_vp, SCARG(uap, type), SCARG(uap, aclp));
+	error = vacl_get_acl(nd.ni_vp, SCARG(uap, type), SCARG(uap, aclp));
 	NDFREE(&nd, 0);
 	return (error);
 }
@@ -162,8 +161,9 @@ __acl_get_file(struct proc *p, struct __acl_get_file_args *uap)
  * Given a file path, set an ACL for it
  */
 int
-__acl_set_file(struct proc *p, struct __acl_set_file_args *uap)
+__acl_set_file(struct __acl_set_file_args *uap)
 {
+	struct proc *p = curproc;
 	struct nameidata nd;
 	int error;
 
@@ -171,7 +171,7 @@ __acl_set_file(struct proc *p, struct __acl_set_file_args *uap)
 	error = namei(&nd);
 	if (error)
 		return(error);
-	error = vacl_set_acl(p, nd.ni_vp, SCARG(uap, type), SCARG(uap, aclp));
+	error = vacl_set_acl(nd.ni_vp, SCARG(uap, type), SCARG(uap, aclp));
 	NDFREE(&nd, 0);
 	return (error);
 }
@@ -180,15 +180,16 @@ __acl_set_file(struct proc *p, struct __acl_set_file_args *uap)
  * Given a file descriptor, get an ACL for it
  */
 int
-__acl_get_fd(struct proc *p, struct __acl_get_fd_args *uap)
+__acl_get_fd(struct __acl_get_fd_args *uap)
 {
+	struct proc *p = curproc;
 	struct file *fp;
 	int error;
 
 	error = getvnode(p->p_fd, SCARG(uap, filedes), &fp);
 	if (error)
 		return(error);
-	return vacl_get_acl(p, (struct vnode *)fp->f_data, SCARG(uap, type),
+	return vacl_get_acl((struct vnode *)fp->f_data, SCARG(uap, type),
 	    SCARG(uap, aclp));
 }
 
@@ -196,15 +197,16 @@ __acl_get_fd(struct proc *p, struct __acl_get_fd_args *uap)
  * Given a file descriptor, set an ACL for it
  */
 int
-__acl_set_fd(struct proc *p, struct __acl_set_fd_args *uap)
+__acl_set_fd(struct __acl_set_fd_args *uap)
 {
+	struct proc *p = curproc;
 	struct file *fp;
 	int error;
 
 	error = getvnode(p->p_fd, SCARG(uap, filedes), &fp);
 	if (error)
 		return(error);
-	return vacl_set_acl(p, (struct vnode *)fp->f_data, SCARG(uap, type),
+	return vacl_set_acl((struct vnode *)fp->f_data, SCARG(uap, type),
 	    SCARG(uap, aclp));
 }
 
@@ -212,8 +214,9 @@ __acl_set_fd(struct proc *p, struct __acl_set_fd_args *uap)
  * Given a file path, delete an ACL from it.
  */
 int
-__acl_delete_file(struct proc *p, struct __acl_delete_file_args *uap)
+__acl_delete_file(struct __acl_delete_file_args *uap)
 {
+	struct proc *p = curproc;
 	struct nameidata nd;
 	int error;
 
@@ -221,7 +224,7 @@ __acl_delete_file(struct proc *p, struct __acl_delete_file_args *uap)
 	error = namei(&nd);
 	if (error)
 		return(error);
-	error = vacl_delete(p, nd.ni_vp, SCARG(uap, type));
+	error = vacl_delete(nd.ni_vp, SCARG(uap, type));
 	NDFREE(&nd, 0);
 	return (error);
 }
@@ -230,15 +233,16 @@ __acl_delete_file(struct proc *p, struct __acl_delete_file_args *uap)
  * Given a file path, delete an ACL from it.
  */
 int
-__acl_delete_fd(struct proc *p, struct __acl_delete_fd_args *uap)
+__acl_delete_fd(struct __acl_delete_fd_args *uap)
 {
+	struct proc *p = curproc;
 	struct file *fp;
 	int error;
 
 	error = getvnode(p->p_fd, SCARG(uap, filedes), &fp);
 	if (error)
 		return(error);
-	error = vacl_delete(p, (struct vnode *)fp->f_data, SCARG(uap, type));
+	error = vacl_delete((struct vnode *)fp->f_data, SCARG(uap, type));
 	return (error);
 }
 
@@ -246,8 +250,9 @@ __acl_delete_fd(struct proc *p, struct __acl_delete_fd_args *uap)
  * Given a file path, check an ACL for it
  */
 int
-__acl_aclcheck_file(struct proc *p, struct __acl_aclcheck_file_args *uap)
+__acl_aclcheck_file(struct __acl_aclcheck_file_args *uap)
 {
+	struct proc *p = curproc;
 	struct nameidata	nd;
 	int	error;
 
@@ -255,7 +260,7 @@ __acl_aclcheck_file(struct proc *p, struct __acl_aclcheck_file_args *uap)
 	error = namei(&nd);
 	if (error)
 		return(error);
-	error = vacl_aclcheck(p, nd.ni_vp, SCARG(uap, type), SCARG(uap, aclp));
+	error = vacl_aclcheck(nd.ni_vp, SCARG(uap, type), SCARG(uap, aclp));
 	NDFREE(&nd, 0);
 	return (error);
 }
@@ -264,14 +269,15 @@ __acl_aclcheck_file(struct proc *p, struct __acl_aclcheck_file_args *uap)
  * Given a file descriptor, check an ACL for it
  */
 int
-__acl_aclcheck_fd(struct proc *p, struct __acl_aclcheck_fd_args *uap)
+__acl_aclcheck_fd(struct __acl_aclcheck_fd_args *uap)
 {
+	struct proc *p = curproc;
 	struct file *fp;
 	int error;
 
 	error = getvnode(p->p_fd, SCARG(uap, filedes), &fp);
 	if (error)
 		return(error);
-	return vacl_aclcheck(p, (struct vnode *)fp->f_data, SCARG(uap, type),
+	return vacl_aclcheck((struct vnode *)fp->f_data, SCARG(uap, type),
 	    SCARG(uap, aclp));
 }

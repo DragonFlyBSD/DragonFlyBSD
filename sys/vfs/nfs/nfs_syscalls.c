@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.3 2003/06/23 17:55:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -122,22 +122,16 @@ SYSCTL_INT(_vfs_nfs, OID_AUTO, gatherdelay_v3, CTLFLAG_RW, &nfsrvw_procrastinate
 
 #endif /* NFS_NOSERVER */
 /*
+ * nfssvc_args(int flag, caddr_t argp)
+ *
  * Nfs server psuedo system call for the nfsd's
  * Based on the flag value it either:
  * - adds a socket to the selection list
  * - remains in the kernel as an nfsd
  * - remains in the kernel as an nfsiod
  */
-#ifndef _SYS_SYSPROTO_H_
-struct nfssvc_args {
-	int flag;
-	caddr_t argp;
-};
-#endif
 int
-nfssvc(p, uap)
-	struct proc *p;
-	register struct nfssvc_args *uap;
+nfssvc(struct nfssvc_args *uap)
 {
 #ifndef NFS_NOSERVER
 	struct nameidata nd;
@@ -152,11 +146,12 @@ nfssvc(p, uap)
 	struct nfsmount *nmp;
 #endif /* NFS_NOSERVER */
 	int error;
+	struct proc *p = curproc;
 
 	/*
 	 * Must be super user
 	 */
-	error = suser(p);
+	error = suser();
 	if(error)
 		return (error);
 	while (nfssvc_sockhead_flag & SLP_INIT) {

@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.3 2003/06/23 17:55:45 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -134,16 +134,14 @@ tuncreate(dev)
  * configured in
  */
 static	int
-tunopen(dev, flag, mode, p)
-	dev_t	dev;
-	int	flag, mode;
-	struct proc *p;
+tunopen(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct ifnet	*ifp;
 	struct tun_softc *tp;
 	register int	error;
 
-	error = suser(p);
+	KKASSERT(td->td_proc);
+	error = suser_xxx(td->td_proc->p_ucred, 0);
 	if (error)
 		return (error);
 
@@ -154,7 +152,7 @@ tunopen(dev, flag, mode, p)
 	}
 	if (tp->tun_flags & TUN_OPEN)
 		return EBUSY;
-	tp->tun_pid = p->p_pid;
+	tp->tun_pid = td->td_proc->p_pid;
 	ifp = &tp->tun_if;
 	tp->tun_flags |= TUN_OPEN;
 	TUNDEBUG("%s%d: open\n", ifp->if_name, ifp->if_unit);
@@ -166,11 +164,7 @@ tunopen(dev, flag, mode, p)
  * routing info
  */
 static	int
-tunclose(dev, foo, bar, p)
-	dev_t dev;
-	int foo;
-	int bar;
-	struct proc *p;
+tunclose(dev_t dev, int foo, int bar, struct thread *td)
 {
 	register int	s;
 	struct tun_softc *tp;
@@ -420,12 +414,7 @@ tunoutput(ifp, m0, dst, rt)
  * the cdevsw interface is now pretty minimal.
  */
 static	int
-tunioctl(dev, cmd, data, flag, p)
-	dev_t		dev;
-	u_long		cmd;
-	caddr_t		data;
-	int		flag;
-	struct proc	*p;
+tunioctl(dev_t	dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
 	int		s;
 	struct tun_softc *tp = dev->si_drv1;
@@ -696,10 +685,7 @@ tunwrite(dev, uio, flag)
  * anyway, it either accepts the packet or drops it.
  */
 static	int
-tunpoll(dev, events, p)
-	dev_t dev;
-	int events;
-	struct proc *p;
+tunpoll(dev_t dev, int events, struct thread *td)
 {
 	int		s;
 	struct tun_softc *tp = dev->si_drv1;
@@ -717,7 +703,7 @@ tunpoll(dev, events, p)
 		} else {
 			TUNDEBUG("%s%d: tunpoll waiting\n", ifp->if_name,
 			    ifp->if_unit);
-			selrecord(p, &tp->tun_rsel);
+			selrecord(td, &tp->tun_rsel);
 		}
 	}
 	if (events & (POLLOUT | POLLWRNORM))

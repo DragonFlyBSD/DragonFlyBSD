@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/dsp.c,v 1.15.2.13 2002/08/30 13:53:03 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.3 2003/06/23 17:55:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,7 +32,7 @@
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.3 2003/06/23 17:55:34 dillon Exp $");
 
 #define OLDPCM_IOCTL
 
@@ -172,13 +172,16 @@ relchns(dev_t dev, struct pcm_channel *rdch, struct pcm_channel *wrch, u_int32_t
 }
 
 static int
-dsp_open(dev_t i_dev, int flags, int mode, struct proc *p)
+dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 {
 	struct pcm_channel *rdch, *wrch;
 	struct snddev_info *d;
 	intrmask_t s;
 	u_int32_t fmt;
 	int devtype;
+	struct proc *p = td->td_proc;
+
+	KKASSERT(p != NULL);
 
 	s = spltty();
 	d = dsp_get_info(i_dev);
@@ -312,7 +315,7 @@ dsp_open(dev_t i_dev, int flags, int mode, struct proc *p)
 }
 
 static int
-dsp_close(dev_t i_dev, int flags, int mode, struct proc *p)
+dsp_close(dev_t i_dev, int flags, int mode, struct thread *td)
 {
 	struct pcm_channel *rdch, *wrch;
 	struct snddev_info *d;
@@ -431,7 +434,7 @@ dsp_write(dev_t i_dev, struct uio *buf, int flag)
 }
 
 static int
-dsp_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct proc *p)
+dsp_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 {
     	struct pcm_channel *wrch, *rdch;
 	struct snddev_info *d;
@@ -448,7 +451,7 @@ dsp_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct proc *p)
 		dev_t pdev;
 
 		pdev = makedev(SND_CDEV_MAJOR, PCMMKMINOR(PCMUNIT(i_dev), SND_DEV_CTL, 0));
-		return mixer_ioctl(pdev, cmd, arg, mode, p);
+		return mixer_ioctl(pdev, cmd, arg, mode, td);
 	}
 
     	s = spltty();
@@ -962,7 +965,7 @@ dsp_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct proc *p)
 }
 
 static int
-dsp_poll(dev_t i_dev, int events, struct proc *p)
+dsp_poll(dev_t i_dev, int events, struct thread *td)
 {
 	struct pcm_channel *wrch = NULL, *rdch = NULL;
 	intrmask_t s;
@@ -975,12 +978,12 @@ dsp_poll(dev_t i_dev, int events, struct proc *p)
 	if (wrch) {
 		e = (events & (POLLOUT | POLLWRNORM));
 		if (e)
-			ret |= chn_poll(wrch, e, p);
+			ret |= chn_poll(wrch, e, td->td_proc);
 	}
 	if (rdch) {
 		e = (events & (POLLIN | POLLRDNORM));
 		if (e)
-			ret |= chn_poll(rdch, e, p);
+			ret |= chn_poll(rdch, e, td->td_proc);
 	}
 	relchns(i_dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
 

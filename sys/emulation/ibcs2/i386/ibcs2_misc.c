@@ -46,7 +46,7 @@
  *	@(#)sun_misc.c	8.1 (Berkeley) 6/18/93
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_misc.c,v 1.34 1999/09/29 15:12:09 marcel Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_misc.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_misc.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
  */
 
 /*
@@ -85,9 +85,7 @@
 #include <i386/ibcs2/ibcs2_xenix.h>
 
 int
-ibcs2_ulimit(p, uap)
-	struct proc *p;
-	struct ibcs2_ulimit_args *uap;
+ibcs2_ulimit(struct ibcs2_ulimit_args *uap)
 {
 #ifdef notyet
 	int error;
@@ -97,6 +95,8 @@ ibcs2_ulimit(p, uap)
 		struct rlimit *rlp;
 	} sra;
 #endif
+	struct proc *p = curproc;
+
 #define IBCS2_GETFSIZE		1
 #define IBCS2_SETFSIZE		2
 #define IBCS2_GETPSIZE		3
@@ -112,7 +112,7 @@ ibcs2_ulimit(p, uap)
 		rl.rlim_cur = SCARG(uap, newlimit);
 		sra.resource = RLIMIT_FSIZE;
 		sra.rlp = &rl;
-		error = setrlimit(p, &sra);
+		error = setrlimit(&sra);
 		if (!error)
 			p->p_retval[0] = p->p_rlimit[RLIMIT_FSIZE].rlim_cur;
 		else
@@ -127,7 +127,7 @@ ibcs2_ulimit(p, uap)
 		return 0;
 	case IBCS2_GETDTABLESIZE:
 		uap->cmd = IBCS2_SC_OPEN_MAX;
-		return ibcs2_sysconf(p, (struct ibcs2_sysconf_args *)uap);
+		return ibcs2_sysconf((struct ibcs2_sysconf_args *)uap);
 	default:
 		return ENOSYS;
 	}
@@ -136,10 +136,9 @@ ibcs2_ulimit(p, uap)
 #define IBCS2_WSTOPPED       0177
 #define IBCS2_STOPCODE(sig)  ((sig) << 8 | IBCS2_WSTOPPED)
 int
-ibcs2_wait(p, uap)
-	struct proc *p;
-	struct ibcs2_wait_args *uap;
+ibcs2_wait(struct ibcs2_wait_args *uap)
 {
+	struct proc *p = curproc;
 	int error, status;
 	struct wait_args w4;
         struct trapframe *tf = p->p_md.md_regs;
@@ -157,7 +156,7 @@ ibcs2_wait(p, uap)
 		SCARG(&w4, status) = (int *)SCARG(uap, a1);
 		SCARG(&w4, options) = 0;
 	}
-	if ((error = wait4(p, &w4)) != 0)
+	if ((error = wait4(&w4)) != 0)
 		return error;
 	if (SCARG(&w4, status))	{	/* this is real iBCS brain-damage */
 		error = copyin((caddr_t)SCARG(&w4, status), (caddr_t)&status,
@@ -183,46 +182,38 @@ ibcs2_wait(p, uap)
 }
 
 int
-ibcs2_execv(p, uap)
-	struct proc *p;
-	struct ibcs2_execv_args *uap;
+ibcs2_execv(struct ibcs2_execv_args *uap)
 {
 	struct execve_args ea;
 	caddr_t sg = stackgap_init();
 
-        CHECKALTEXIST(p, &sg, SCARG(uap, path));
+        CHECKALTEXIST(&sg, SCARG(uap, path));
 	SCARG(&ea, fname) = SCARG(uap, path);
 	SCARG(&ea, argv) = SCARG(uap, argp);
 	SCARG(&ea, envv) = NULL;
-	return execve(p, &ea);
+	return execve(&ea);
 }
 
 int
-ibcs2_execve(p, uap) 
-        struct proc *p;
-        struct ibcs2_execve_args *uap;
+ibcs2_execve(struct ibcs2_execve_args *uap)
 {
         caddr_t sg = stackgap_init();
-        CHECKALTEXIST(p, &sg, SCARG(uap, path));
-        return execve(p, (struct execve_args *)uap);
+        CHECKALTEXIST(&sg, SCARG(uap, path));
+        return execve((struct execve_args *)uap);
 }
 
 int
-ibcs2_umount(p, uap)
-	struct proc *p;
-	struct ibcs2_umount_args *uap;
+ibcs2_umount(struct ibcs2_umount_args *uap)
 {
 	struct unmount_args um;
 
 	SCARG(&um, path) = SCARG(uap, name);
 	SCARG(&um, flags) = 0;
-	return unmount(p, &um);
+	return unmount(&um);
 }
 
 int
-ibcs2_mount(p, uap)
-	struct proc *p;
-	struct ibcs2_mount_args *uap;
+ibcs2_mount(struct ibcs2_mount_args *uap)
 {
 #ifdef notyet
 	int oflags = SCARG(uap, flags), nflags, error;
@@ -278,7 +269,7 @@ ibcs2_mount(p, uap)
 		if (error = copyout(&na, SCARG(uap, data), sizeof na))
 			return (error);
 	}
-	return (mount(p, uap));
+	return (mount(uap));
 #else
 	return EINVAL;
 #endif
@@ -293,15 +284,14 @@ ibcs2_mount(p, uap)
  */
 
 int
-ibcs2_getdents(p, uap)
-	struct proc *p;
-	register struct ibcs2_getdents_args *uap;
+ibcs2_getdents(struct ibcs2_getdents_args *uap)
 {
-	register struct vnode *vp;
-	register caddr_t inp, buf;	/* BSD-format */
-	register int len, reclen;	/* BSD-format */
-	register caddr_t outp;		/* iBCS2-format */
-	register int resid;		/* iBCS2-format */
+	struct proc *p = curproc;
+	struct vnode *vp;
+	caddr_t inp, buf;	/* BSD-format */
+	int len, reclen;	/* BSD-format */
+	caddr_t outp;		/* iBCS2-format */
+	int resid;		/* iBCS2-format */
 	struct file *fp;
 	struct uio auio;
 	struct iovec aiov;
@@ -434,15 +424,14 @@ out:
 }
 
 int
-ibcs2_read(p, uap)
-	struct proc *p;
-	struct ibcs2_read_args *uap;
+ibcs2_read(struct ibcs2_read_args *uap)
 {
-	register struct vnode *vp;
-	register caddr_t inp, buf;	/* BSD-format */
-	register int len, reclen;	/* BSD-format */
-	register caddr_t outp;		/* iBCS2-format */
-	register int resid;		/* iBCS2-format */
+	struct proc *p = curproc;
+	struct vnode *vp;
+	caddr_t inp, buf;	/* BSD-format */
+	int len, reclen;	/* BSD-format */
+	caddr_t outp;		/* iBCS2-format */
+	int resid;		/* iBCS2-format */
 	struct file *fp;
 	struct uio auio;
 	struct iovec aiov;
@@ -457,7 +446,7 @@ ibcs2_read(p, uap)
 
 	if ((error = getvnode(p->p_fd, SCARG(uap, fd), &fp)) != 0) {
 		if (error == EINVAL)
-			return read(p, (struct read_args *)uap);
+			return read((struct read_args *)uap);
 		else
 			return error;
 	}
@@ -465,7 +454,7 @@ ibcs2_read(p, uap)
 		return (EBADF);
 	vp = (struct vnode *)fp->f_data;
 	if (vp->v_type != VDIR)
-		return read(p, (struct read_args *)uap);
+		return read((struct read_args *)uap);
 
 	DPRINTF(("ibcs2_read: read directory\n"));
 
@@ -585,32 +574,29 @@ out:
 }
 
 int
-ibcs2_mknod(p, uap)
-	struct proc *p;
-	struct ibcs2_mknod_args *uap;
+ibcs2_mknod(struct ibcs2_mknod_args *uap)
 {
         caddr_t sg = stackgap_init();
 
-        CHECKALTCREAT(p, &sg, SCARG(uap, path));
+        CHECKALTCREAT(&sg, SCARG(uap, path));
 	if (S_ISFIFO(SCARG(uap, mode))) {
                 struct mkfifo_args ap;
                 SCARG(&ap, path) = SCARG(uap, path);
                 SCARG(&ap, mode) = SCARG(uap, mode);
-		return mkfifo(p, &ap);
+		return mkfifo(&ap);
 	} else {
                 struct mknod_args ap;
                 SCARG(&ap, path) = SCARG(uap, path);
                 SCARG(&ap, mode) = SCARG(uap, mode);
                 SCARG(&ap, dev) = SCARG(uap, dev);
-                return mknod(p, &ap);
+                return mknod(&ap);
 	}
 }
 
 int
-ibcs2_getgroups(p, uap)
-	struct proc *p;
-	struct ibcs2_getgroups_args *uap;
+ibcs2_getgroups(struct ibcs2_getgroups_args *uap)
 {
+	struct proc *p = curproc;
 	int error, i;
 	ibcs2_gid_t *iset = NULL;
 	struct getgroups_args sa;
@@ -624,7 +610,7 @@ ibcs2_getgroups(p, uap)
 		iset = stackgap_alloc(&sg, SCARG(uap, gidsetsize) *
 				      sizeof(ibcs2_gid_t));
 	}
-	if ((error = getgroups(p, &sa)) != 0)
+	if ((error = getgroups(&sa)) != 0)
 		return error;
 	if (SCARG(uap, gidsetsize) == 0)
 		return 0;
@@ -639,9 +625,7 @@ ibcs2_getgroups(p, uap)
 }
 
 int
-ibcs2_setgroups(p, uap)
-	struct proc *p;
-	struct ibcs2_setgroups_args *uap;
+ibcs2_setgroups(struct ibcs2_setgroups_args *uap)
 {
 	int error, i;
 	ibcs2_gid_t *iset;
@@ -662,36 +646,31 @@ ibcs2_setgroups(p, uap)
 	}
 	for (i = 0, gp = SCARG(&sa, gidset); i < SCARG(&sa, gidsetsize); i++)
 		*gp++ = (gid_t)iset[i];
-	return setgroups(p, &sa);
+	return setgroups(&sa);
 }
 
 int
-ibcs2_setuid(p, uap)
-	struct proc *p;
-	struct ibcs2_setuid_args *uap;
+ibcs2_setuid(struct ibcs2_setuid_args *uap)
 {
 	struct setuid_args sa;
 
 	SCARG(&sa, uid) = (uid_t)SCARG(uap, uid);
-	return setuid(p, &sa);
+	return setuid(&sa);
 }
 
 int
-ibcs2_setgid(p, uap)
-	struct proc *p;
-	struct ibcs2_setgid_args *uap;
+ibcs2_setgid(struct ibcs2_setgid_args *uap)
 {
 	struct setgid_args sa;
 
 	SCARG(&sa, gid) = (gid_t)SCARG(uap, gid);
-	return setgid(p, &sa);
+	return setgid(&sa);
 }
 
 int
-ibcs2_time(p, uap)
-	struct proc *p;
-	struct ibcs2_time_args *uap;
+ibcs2_time(struct ibcs2_time_args *uap)
 {
+	struct proc *p = curproc;
 	struct timeval tv;
 
 	microtime(&tv);
@@ -704,28 +683,23 @@ ibcs2_time(p, uap)
 }
 
 int
-ibcs2_pathconf(p, uap)
-	struct proc *p;
-	struct ibcs2_pathconf_args *uap;
+ibcs2_pathconf(struct ibcs2_pathconf_args *uap)
 {
 	SCARG(uap, name)++;	/* iBCS2 _PC_* defines are offset by one */
-        return pathconf(p, (struct pathconf_args *)uap);
+        return pathconf((struct pathconf_args *)uap);
 }
 
 int
-ibcs2_fpathconf(p, uap)
-	struct proc *p;
-	struct ibcs2_fpathconf_args *uap;
+ibcs2_fpathconf(struct ibcs2_fpathconf_args *uap)
 {
 	SCARG(uap, name)++;	/* iBCS2 _PC_* defines are offset by one */
-        return fpathconf(p, (struct fpathconf_args *)uap);
+        return fpathconf((struct fpathconf_args *)uap);
 }
 
 int
-ibcs2_sysconf(p, uap)
-	struct proc *p;
-	struct ibcs2_sysconf_args *uap;
+ibcs2_sysconf(struct ibcs2_sysconf_args *uap)
 {
+	struct proc *p = curproc;
 	int mib[2], value, len, error;
 	struct sysctl_args sa;
 	struct __getrlimit_args ga;
@@ -741,7 +715,7 @@ ibcs2_sysconf(p, uap)
 
 		SCARG(&ga, which) = RLIMIT_NPROC;
 		SCARG(&ga, rlp) = stackgap_alloc(&sg, sizeof(struct rlimit *));
-		if ((error = getrlimit(p, &ga)) != 0)
+		if ((error = getrlimit(&ga)) != 0)
 			return error;
 		p->p_retval[0] = SCARG(&ga, rlp)->rlim_cur;
 		return 0;
@@ -761,7 +735,7 @@ ibcs2_sysconf(p, uap)
 
 		SCARG(&ga, which) = RLIMIT_NOFILE;
 		SCARG(&ga, rlp) = stackgap_alloc(&sg, sizeof(struct rlimit *));
-		if ((error = getrlimit(p, &ga)) != 0)
+		if ((error = getrlimit(&ga)) != 0)
 			return error;
 		p->p_retval[0] = SCARG(&ga, rlp)->rlim_cur;
 		return 0;
@@ -799,17 +773,16 @@ ibcs2_sysconf(p, uap)
 	SCARG(&sa, oldlenp) = &len;
 	SCARG(&sa, new) = NULL;
 	SCARG(&sa, newlen) = 0;
-	if ((error = __sysctl(p, &sa)) != 0)
+	if ((error = __sysctl(&sa)) != 0)
 		return error;
 	p->p_retval[0] = value;
 	return 0;
 }
 
 int
-ibcs2_alarm(p, uap)
-	struct proc *p;
-	struct ibcs2_alarm_args *uap;
+ibcs2_alarm(struct ibcs2_alarm_args *uap)
 {
+	struct proc *p = curproc;
 	int error;
         struct itimerval *itp, *oitp;
 	struct setitimer_args sa;
@@ -824,7 +797,7 @@ ibcs2_alarm(p, uap)
 	SCARG(&sa, which) = ITIMER_REAL;
 	SCARG(&sa, itv) = itp;
 	SCARG(&sa, oitv) = oitp;
-        error = setitimer(p, &sa);
+        error = setitimer(&sa);
 	if (error)
 		return error;
         if (oitp->it_value.tv_usec)
@@ -834,10 +807,9 @@ ibcs2_alarm(p, uap)
 }
 
 int
-ibcs2_times(p, uap)
-	struct proc *p;
-	struct ibcs2_times_args *uap;
+ibcs2_times(struct ibcs2_times_args *uap)
 {
+	struct proc *p = curproc;
 	int error;
 	struct getrusage_args ga;
 	struct tms tms;
@@ -848,14 +820,14 @@ ibcs2_times(p, uap)
 
 	SCARG(&ga, who) = RUSAGE_SELF;
 	SCARG(&ga, rusage) = ru;
-	error = getrusage(p, &ga);
+	error = getrusage(&ga);
 	if (error)
                 return error;
         tms.tms_utime = CONVTCK(ru->ru_utime);
         tms.tms_stime = CONVTCK(ru->ru_stime);
 
 	SCARG(&ga, who) = RUSAGE_CHILDREN;
-        error = getrusage(p, &ga);
+        error = getrusage(&ga);
 	if (error)
 		return error;
         tms.tms_cutime = CONVTCK(ru->ru_utime);
@@ -869,9 +841,7 @@ ibcs2_times(p, uap)
 }
 
 int
-ibcs2_stime(p, uap)
-	struct proc *p;
-	struct ibcs2_stime_args *uap;
+ibcs2_stime(struct ibcs2_stime_args *uap)
 {
 	int error;
 	struct settimeofday_args sa;
@@ -883,22 +853,20 @@ ibcs2_stime(p, uap)
 			   &(SCARG(&sa, tv)->tv_sec), sizeof(long))) != 0)
 		return error;
 	SCARG(&sa, tv)->tv_usec = 0;
-	if ((error = settimeofday(p, &sa)) != 0)
+	if ((error = settimeofday(&sa)) != 0)
 		return EPERM;
 	return 0;
 }
 
 int
-ibcs2_utime(p, uap)
-	struct proc *p;
-	struct ibcs2_utime_args *uap;
+ibcs2_utime(struct ibcs2_utime_args *uap)
 {
 	int error;
 	struct utimes_args sa;
 	struct timeval *tp;
 	caddr_t sg = stackgap_init();
 
-        CHECKALTEXIST(p, &sg, SCARG(uap, path));
+        CHECKALTEXIST(&sg, SCARG(uap, path));
 	SCARG(&sa, path) = SCARG(uap, path);
 	if (SCARG(uap, buf)) {
 		struct ibcs2_utimbuf ubuf;
@@ -916,21 +884,20 @@ ibcs2_utime(p, uap)
 		tp->tv_usec = 0;
 	} else
 		SCARG(&sa, tptr) = NULL;
-	return utimes(p, &sa);
+	return utimes(&sa);
 }
 
 int
-ibcs2_nice(p, uap)
-	struct proc *p;
-	struct ibcs2_nice_args *uap;
+ibcs2_nice(struct ibcs2_nice_args *uap)
 {
+	struct proc *p = curproc;
 	int error;
 	struct setpriority_args sa;
 
 	SCARG(&sa, which) = PRIO_PROCESS;
 	SCARG(&sa, who) = 0;
 	SCARG(&sa, prio) = p->p_nice + SCARG(uap, incr);
-	if ((error = setpriority(p, &sa)) != 0)
+	if ((error = setpriority(&sa)) != 0)
 		return EPERM;
 	p->p_retval[0] = p->p_nice;
 	return 0;
@@ -941,10 +908,10 @@ ibcs2_nice(p, uap)
  */
 
 int
-ibcs2_pgrpsys(p, uap)
-	struct proc *p;
-	struct ibcs2_pgrpsys_args *uap;
+ibcs2_pgrpsys(struct ibcs2_pgrpsys_args *uap)
 {
+	struct proc *p = curproc;
+
 	switch (SCARG(uap, type)) {
 	case 0:			/* getpgrp */
 		p->p_retval[0] = p->p_pgrp->pg_id;
@@ -956,7 +923,7 @@ ibcs2_pgrpsys(p, uap)
 
 		SCARG(&sa, pid) = 0;
 		SCARG(&sa, pgid) = 0;
-		setpgid(p, &sa);
+		setpgid(&sa);
 		p->p_retval[0] = p->p_pgrp->pg_id;
 		return 0;
 	    }
@@ -967,11 +934,11 @@ ibcs2_pgrpsys(p, uap)
 
 		SCARG(&sa, pid) = SCARG(uap, pid);
 		SCARG(&sa, pgid) = SCARG(uap, pgid);
-		return setpgid(p, &sa);
+		return setpgid(&sa);
 	    }
 
 	case 3:			/* setsid */
-		return setsid(p, NULL);
+		return setsid(NULL);
 
 	default:
 		return EINVAL;
@@ -983,9 +950,7 @@ ibcs2_pgrpsys(p, uap)
  */
 
 int
-ibcs2_plock(p, uap)
-	struct proc *p;
-	struct ibcs2_plock_args *uap;
+ibcs2_plock(struct ibcs2_plock_args *uap)
 {
 	int error;
 #define IBCS2_UNLOCK	0
@@ -994,7 +959,7 @@ ibcs2_plock(p, uap)
 #define IBCS2_DATALOCK	4
 
 	
-        if ((error = suser(p)) != 0)
+        if ((error = suser()) != 0)
                 return EPERM;
 	switch(SCARG(uap, cmd)) {
 	case IBCS2_UNLOCK:
@@ -1007,9 +972,7 @@ ibcs2_plock(p, uap)
 }
 
 int
-ibcs2_uadmin(p, uap)
-	struct proc *p;
-	struct ibcs2_uadmin_args *uap;
+ibcs2_uadmin(struct ibcs2_uadmin_args *uap)
 {
 #define SCO_A_REBOOT        1
 #define SCO_A_SHUTDOWN      2
@@ -1029,7 +992,7 @@ ibcs2_uadmin(p, uap)
 #define SCO_AD_GETBMAJ      0
 #define SCO_AD_GETCMAJ      1
 
-        if (suser(p))
+        if (suser())
                 return EPERM;
 
 	switch(SCARG(uap, cmd)) {
@@ -1041,11 +1004,11 @@ ibcs2_uadmin(p, uap)
 		case SCO_AD_PWRDOWN:
 		case SCO_AD_PWRNAP:
 			r.opt = RB_HALT;
-			reboot(p, &r);
+			reboot(&r);
 		case SCO_AD_BOOT:
 		case SCO_AD_IBOOT:
 			r.opt = RB_AUTOBOOT;
-			reboot(p, &r);
+			reboot(&r);
 		}
 		return EINVAL;
 	case SCO_A_REMOUNT:
@@ -1059,9 +1022,7 @@ ibcs2_uadmin(p, uap)
 }
 
 int
-ibcs2_sysfs(p, uap)
-	struct proc *p;
-	struct ibcs2_sysfs_args *uap;
+ibcs2_sysfs(struct ibcs2_sysfs_args *uap)
 {
 #define IBCS2_GETFSIND        1
 #define IBCS2_GETFSTYP        2
@@ -1077,102 +1038,84 @@ ibcs2_sysfs(p, uap)
 }
 
 int
-ibcs2_unlink(p, uap)
-	struct proc *p;
-	struct ibcs2_unlink_args *uap;
+ibcs2_unlink(struct ibcs2_unlink_args *uap)
 {
         caddr_t sg = stackgap_init();
 
-	CHECKALTEXIST(p, &sg, SCARG(uap, path));
-	return unlink(p, (struct unlink_args *)uap);
+	CHECKALTEXIST(&sg, SCARG(uap, path));
+	return unlink((struct unlink_args *)uap);
 }
 
 int
-ibcs2_chdir(p, uap)
-	struct proc *p;
-	struct ibcs2_chdir_args *uap;
+ibcs2_chdir(struct ibcs2_chdir_args *uap)
 {
         caddr_t sg = stackgap_init();
 
-	CHECKALTEXIST(p, &sg, SCARG(uap, path));
-	return chdir(p, (struct chdir_args *)uap);
+	CHECKALTEXIST(&sg, SCARG(uap, path));
+	return chdir((struct chdir_args *)uap);
 }
 
 int
-ibcs2_chmod(p, uap)
-	struct proc *p;
-	struct ibcs2_chmod_args *uap;
+ibcs2_chmod(struct ibcs2_chmod_args *uap)
 {
         caddr_t sg = stackgap_init();
 
-	CHECKALTEXIST(p, &sg, SCARG(uap, path));
-	return chmod(p, (struct chmod_args *)uap);
+	CHECKALTEXIST(&sg, SCARG(uap, path));
+	return chmod((struct chmod_args *)uap);
 }
 
 int
-ibcs2_chown(p, uap)
-	struct proc *p;
-	struct ibcs2_chown_args *uap;
+ibcs2_chown(struct ibcs2_chown_args *uap)
 {
         caddr_t sg = stackgap_init();
 
-	CHECKALTEXIST(p, &sg, SCARG(uap, path));
-	return chown(p, (struct chown_args *)uap);
+	CHECKALTEXIST(&sg, SCARG(uap, path));
+	return chown((struct chown_args *)uap);
 }
 
 int
-ibcs2_rmdir(p, uap)
-	struct proc *p;
-	struct ibcs2_rmdir_args *uap;
+ibcs2_rmdir(struct ibcs2_rmdir_args *uap)
 {
         caddr_t sg = stackgap_init();
 
-	CHECKALTEXIST(p, &sg, SCARG(uap, path));
-	return rmdir(p, (struct rmdir_args *)uap);
+	CHECKALTEXIST(&sg, SCARG(uap, path));
+	return rmdir((struct rmdir_args *)uap);
 }
 
 int
-ibcs2_mkdir(p, uap)
-	struct proc *p;
-	struct ibcs2_mkdir_args *uap;
+ibcs2_mkdir(struct ibcs2_mkdir_args *uap)
 {
         caddr_t sg = stackgap_init();
 
-	CHECKALTCREAT(p, &sg, SCARG(uap, path));
-	return mkdir(p, (struct mkdir_args *)uap);
+	CHECKALTCREAT(&sg, SCARG(uap, path));
+	return mkdir((struct mkdir_args *)uap);
 }
 
 int
-ibcs2_symlink(p, uap)
-	struct proc *p;
-	struct ibcs2_symlink_args *uap;
+ibcs2_symlink(struct ibcs2_symlink_args *uap)
 {
         caddr_t sg = stackgap_init();
 
-	CHECKALTEXIST(p, &sg, SCARG(uap, path));
-	CHECKALTCREAT(p, &sg, SCARG(uap, link));
-	return symlink(p, (struct symlink_args *)uap);
+	CHECKALTEXIST(&sg, SCARG(uap, path));
+	CHECKALTCREAT(&sg, SCARG(uap, link));
+	return symlink((struct symlink_args *)uap);
 }
 
 int
-ibcs2_rename(p, uap)
-	struct proc *p;
-	struct ibcs2_rename_args *uap;
+ibcs2_rename(struct ibcs2_rename_args *uap)
 {
         caddr_t sg = stackgap_init();
 
-	CHECKALTEXIST(p, &sg, SCARG(uap, from));
-	CHECKALTCREAT(p, &sg, SCARG(uap, to));
-	return rename(p, (struct rename_args *)uap);
+	CHECKALTEXIST(&sg, SCARG(uap, from));
+	CHECKALTCREAT(&sg, SCARG(uap, to));
+	return rename((struct rename_args *)uap);
 }
 
 int
-ibcs2_readlink(p, uap)
-	struct proc *p;
-	struct ibcs2_readlink_args *uap;
+ibcs2_readlink(struct ibcs2_readlink_args *uap)
 {
         caddr_t sg = stackgap_init();
 
-	CHECKALTEXIST(p, &sg, SCARG(uap, path));
-	return readlink(p, (struct readlink_args *) uap);
+	CHECKALTEXIST(&sg, SCARG(uap, path));
+	return readlink((struct readlink_args *) uap);
 }

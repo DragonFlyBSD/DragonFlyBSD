@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.3 2003/06/23 17:55:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -545,7 +545,7 @@ vn_stat(vp, sb, p)
 	}
 	
 	sb->st_flags = vap->va_flags;
-	if (suser_xxx(p->p_ucred, 0, 0))
+	if (suser_xxx(p->p_ucred, 0))
 		sb->st_gen = 0;
 	else
 		sb->st_gen = vap->va_gen;

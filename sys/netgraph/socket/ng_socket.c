@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_socket.c,v 1.11.2.6 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.3 2003/06/23 17:55:46 dillon Exp $
  * $Whistle: ng_socket.c,v 1.28 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -161,7 +161,7 @@ ngc_attach(struct socket *so, int proto, struct proc *p)
 {
 	struct ngpcb *const pcbp = sotongpcb(so);
 
-	if (suser(p))
+	if (suser_xxx(p->p_ucred, 0))
 		return (EPERM);
 	if (pcbp != NULL)
 		return (EISCONN);

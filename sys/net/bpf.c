@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.3 2003/06/23 17:55:45 dillon Exp $
  */
 
 #include "bpf.h"
@@ -341,15 +341,14 @@ bpf_detachd(d)
  */
 /* ARGSUSED */
 static	int
-bpfopen(dev, flags, fmt, p)
-	dev_t dev;
-	int flags;
-	int fmt;
-	struct proc *p;
+bpfopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
-	register struct bpf_d *d;
+	struct bpf_d *d;
+	struct proc *p = td->td_proc;
 
-	if (p->p_prison)
+	KKASSERT(p != NULL);
+
+	if (p->p_ucred->cr_prison)
 		return (EPERM);
 
 	d = dev->si_drv1;
@@ -375,14 +374,14 @@ bpfopen(dev, flags, fmt, p)
  */
 /* ARGSUSED */
 static	int
-bpfclose(dev, flags, fmt, p)
+bpfclose(dev, flags, fmt, td)
 	dev_t dev;
 	int flags;
 	int fmt;
-	struct proc *p;
+	struct thread *td;
 {
-	register struct bpf_d *d = dev->si_drv1;
-	register int s;
+	struct bpf_d *d = dev->si_drv1;
+	int s;
 
 	funsetown(d->bd_sigio);
 	s = splimp();
@@ -685,14 +684,9 @@ reset_d(d)
  */
 /* ARGSUSED */
 static	int
-bpfioctl(dev, cmd, addr, flags, p)
-	dev_t dev;
-	u_long cmd;
-	caddr_t addr;
-	int flags;
-	struct proc *p;
+bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 {
-	register struct bpf_d *d = dev->si_drv1;
+	struct bpf_d *d = dev->si_drv1;
 	int s, error = 0;
 
 	s = splimp();
@@ -1073,10 +1067,7 @@ bpf_setif(d, ifr)
  * Otherwise, return false but make a note that a selwakeup() must be done.
  */
 int
-bpfpoll(dev, events, p)
-	register dev_t dev;
-	int events;
-	struct proc *p;
+bpfpoll(dev_t dev, int events, struct thread *td)
 {
 	register struct bpf_d *d;
 	register int s;
@@ -1100,7 +1091,7 @@ bpfpoll(dev, events, p)
 		    d->bd_slen != 0))
 			revents |= events & (POLLIN | POLLRDNORM);
 		else {
-			selrecord(p, &d->bd_sel);
+			selrecord(td, &d->bd_sel);
 			/* Start the read timeout if necessary. */
 			if (d->bd_rtout > 0 && d->bd_state == BPF_IDLE) {
 				callout_reset(&d->bd_callout, d->bd_rtout,

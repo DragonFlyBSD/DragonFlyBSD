@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_dev.c,v 1.2.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.3 2003/06/23 17:55:47 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -105,12 +105,15 @@ static struct cdevsw nsmb_cdevsw = {
 
 
 static int
-nsmb_dev_open(dev_t dev, int oflags, int devtype, struct proc *p)
+nsmb_dev_open(dev_t dev, int oflags, int devtype, d_thread_t *td)
 {
+	struct proc *p = td->td_proc;
 	struct smb_dev *sdp;
-	struct ucred *cred = p->p_ucred;
+	struct ucred *cred;
 	int s;
 
+	KKASSERT(p != NULL);
+	cred = p->p_ucred;
 	sdp = SMB_GETDEV(dev);
 	if (sdp && (sdp->sd_flags & NSMBFL_OPEN))
 		return EBUSY;
@@ -139,8 +142,9 @@ nsmb_dev_open(dev_t dev, int oflags, int devtype, struct proc *p)
 }
 
 static int
-nsmb_dev_close(dev_t dev, int flag, int fmt, struct proc *p)
+nsmb_dev_close(dev_t dev, int flag, int fmt, d_thread_t *td)
 {
+	struct proc *p = td->td_proc;
 	struct smb_dev *sdp;
 	struct smb_vc *vcp;
 	struct smb_share *ssp;
@@ -173,8 +177,9 @@ nsmb_dev_close(dev_t dev, int flag, int fmt, struct proc *p)
 
 
 static int
-nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
+nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 {
+	struct proc *p = td->td_proc;
 	struct smb_dev *sdp;
 	struct smb_vc *vcp;
 	struct smb_share *ssp;
@@ -329,7 +334,7 @@ nsmb_dev_write(dev_t dev, struct uio *uio, int flag)
 }
 
 static int
-nsmb_dev_poll(dev_t dev, int events, struct proc *p)
+nsmb_dev_poll(dev_t dev, int events, d_thread_t *td)
 {
 	return ENODEV;
 }

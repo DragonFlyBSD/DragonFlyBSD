@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/p1003_1b.c,v 1.5.2.2 2003/03/25 06:13:35 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_p1003_1b.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_p1003_1b.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
  */
 
 /* p1003_1b: Real Time common code.
@@ -69,14 +69,14 @@ MALLOC_DEFINE(M_P31B, "p1003.1b", "Posix 1003.1B");
  *
  * Can process p, with pcred pc, do "write flavor" operations to process q?
  */
-#define CAN_AFFECT(p, pc, q) \
-	((pc)->pc_ucred->cr_uid == 0 || \
-	    (pc)->p_ruid == (q)->p_cred->p_ruid || \
-	    (pc)->pc_ucred->cr_uid == (q)->p_cred->p_ruid || \
-	    (pc)->p_ruid == (q)->p_ucred->cr_uid || \
-	    (pc)->pc_ucred->cr_uid == (q)->p_ucred->cr_uid)
+#define CAN_AFFECT(p, cr, q) \
+	((cr)->cr_uid == 0 || \
+	    (cr)->cr_ruid == (q)->p_ucred->cr_ruid || \
+	    (cr)->cr_uid == (q)->p_ucred->cr_ruid || \
+	    (cr)->cr_ruid == (q)->p_ucred->cr_uid || \
+	    (cr)->cr_uid == (q)->p_ucred->cr_uid)
 #else
-#define CAN_AFFECT(p, pc, q) ((pc)->pc_ucred->cr_uid == 0)
+#define CAN_AFFECT(p, cr, q) ((cr)->cr_uid == 0)
 #endif
 
 /*
@@ -97,7 +97,7 @@ int p31b_proc(struct proc *p, pid_t pid, struct proc **pp)
 	{
 		/* Enforce permission policy.
 		 */
-		if (CAN_AFFECT(p, p->p_cred, other_proc))
+		if (CAN_AFFECT(p, p->p_ucred, other_proc))
 			*pp = other_proc;
 		else
 			ret = EPERM;
@@ -159,26 +159,26 @@ static int sched_attach(void)
 	return ret;
 }
 
-int sched_setparam(struct proc *p,
-	struct sched_setparam_args *uap)
+int
+sched_setparam(struct sched_setparam_args *uap)
 {
+	struct proc *p = curproc;
 	int e;
 
 	struct sched_param sched_param;
 	copyin(uap->param, &sched_param, sizeof(sched_param));
 
-	(void) (0
-	|| (e = p31b_proc(p, uap->pid, &p))
-	|| (e = ksched_setparam(&p->p_retval[0], ksched, p,
-		(const struct sched_param *)&sched_param))
-	);
-
+	if ((e = p31b_proc(p, uap->pid, &p)) == 0) {
+		e = ksched_setparam(&p->p_retval[0], ksched, p,
+		    (const struct sched_param *)&sched_param);
+	}
 	return e;
 }
 
-int sched_getparam(struct proc *p,
-	struct sched_getparam_args *uap)
+int
+sched_getparam(struct sched_getparam_args *uap)
 {
+	struct proc *p = curproc;
 	struct proc *targetp;
 	struct sched_param sched_param;
 	int e;
@@ -187,8 +187,9 @@ int sched_getparam(struct proc *p,
 		e = p31b_proc(p, uap->pid, &targetp);
 		if (e)
 			return e;
-	} else
+	} else {
 		targetp = p;
+	}
  
 	e = ksched_getparam(&p->p_retval[0], ksched, targetp, &sched_param);
 
@@ -197,26 +198,27 @@ int sched_getparam(struct proc *p,
 
 	return e;
 }
-int sched_setscheduler(struct proc *p,
-	struct sched_setscheduler_args *uap)
+
+int
+sched_setscheduler(struct sched_setscheduler_args *uap)
 {
+	struct proc *p = curproc;
 	int e;
 
 	struct sched_param sched_param;
 	copyin(uap->param, &sched_param, sizeof(sched_param));
 
-	(void) (0
-	|| (e = p31b_proc(p, uap->pid, &p))
-	|| (e = ksched_setscheduler(&p->p_retval[0],
-	ksched, p, uap->policy,
-		(const struct sched_param *)&sched_param))
-	);
-
+	if ((e = p31b_proc(p, uap->pid, &p)) == 0) {
+		e = ksched_setscheduler(&p->p_retval[0], ksched, p,
+		    uap->policy, (const struct sched_param *)&sched_param);
+	}
 	return e;
 }
-int sched_getscheduler(struct proc *p,
-	struct sched_getscheduler_args *uap)
+
+int
+sched_getscheduler(struct sched_getscheduler_args *uap)
 {
+	struct proc *p = curproc;
 	struct proc *targetp;
 	int e;
  
@@ -224,41 +226,46 @@ int sched_getscheduler(struct proc *p,
 		e = p31b_proc(p, uap->pid, &targetp);
 		if (e)
 			return e;
-	} else
+	} else {
 		targetp = p;
+	}
  
 	e = ksched_getscheduler(&p->p_retval[0], ksched, targetp);
 
 	return e;
 }
-int sched_yield(struct proc *p,
-	struct sched_yield_args *uap)
+
+int
+sched_yield(struct sched_yield_args *uap)
 {
+	struct proc *p = curproc;
 	return ksched_yield(&p->p_retval[0], ksched);
 }
-int sched_get_priority_max(struct proc *p,
-	struct sched_get_priority_max_args *uap)
+
+int
+sched_get_priority_max(struct sched_get_priority_max_args *uap)
 {
-	return ksched_get_priority_max(&p->p_retval[0],
-	ksched, uap->policy);
+	struct proc *p = curproc;
+	return ksched_get_priority_max(&p->p_retval[0], ksched, uap->policy);
 }
-int sched_get_priority_min(struct proc *p,
-	struct sched_get_priority_min_args *uap)
+
+int
+sched_get_priority_min(struct sched_get_priority_min_args *uap)
 {
-	return ksched_get_priority_min(&p->p_retval[0],
-	ksched, uap->policy);
+	struct proc *p = curproc;
+	return ksched_get_priority_min(&p->p_retval[0], ksched, uap->policy);
 }
-int sched_rr_get_interval(struct proc *p,
-	struct sched_rr_get_interval_args *uap)
+
+int
+sched_rr_get_interval(struct sched_rr_get_interval_args *uap)
 {
 	int e;
+	struct proc *p = curproc;
 
-	(void) (0
-	|| (e = p31b_proc(p, uap->pid, &p))
-	|| (e = ksched_rr_get_interval(&p->p_retval[0], ksched,
-	p, uap->interval))
-	);
-
+	if ((e = p31b_proc(p, uap->pid, &p)) == 0) {
+	    e = ksched_rr_get_interval(&p->p_retval[0], ksched,
+		    p, uap->interval);
+	}
 	return e;
 }
 

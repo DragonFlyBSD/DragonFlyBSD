@@ -6,7 +6,7 @@
  * @(#)ip_fil.h	1.35 6/5/96
  * $Id: ip_fil.h,v 2.29.2.33 2002/06/04 14:46:28 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.18.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.3 2003/06/23 17:55:27 dillon Exp $
  */
 
 #ifndef	__IP_FIL_H__
@@ -571,6 +571,11 @@ extern	void	ipfilter_sgi_intfsync __P((void));
 #   ifdef	IPFILTER_LKM
 extern	int	iplidentify __P((char *));
 #   endif
+#ifdef	__FreeBSD__
+extern	int	iplioctl __P((dev_t, u_long, caddr_t, int, struct thread *));
+extern	int	iplopen __P((dev_t, int, int, struct thread *));
+extern	int	iplclose __P((dev_t, int, int, struct thread *));
+#else
 #   if (_BSDI_VERSION >= 199510) || (__FreeBSD_version >= 220000) || \
       (NetBSD >= 199511) || defined(__OpenBSD__)
 #    if defined(__NetBSD__) || (_BSDI_VERSION >= 199701) || \
@@ -592,6 +597,7 @@ extern	int	iplopen __P((struct inode *, struct file *));
 extern	void	iplclose __P((struct inode *, struct file *));
 #    endif /* !linux */
 #   endif /* (_BSDI_VERSION >= 199510) */
+#endif
 #   if	BSD >= 199306
 extern	int	iplread __P((dev_t, struct uio *, int));
 #   else

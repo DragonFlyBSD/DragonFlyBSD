@@ -32,7 +32,7 @@
  *
  *	@(#)raw_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_usrreq.c,v 1.18 1999/08/28 00:48:28 peter Exp $
- * $DragonFly: src/sys/net/raw_usrreq.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/raw_usrreq.c,v 1.3 2003/06/23 17:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -159,7 +159,7 @@ raw_uattach(struct socket *so, int proto, struct proc *p)
 
 	if (rp == 0)
 		return EINVAL;
-	if (p && (error = suser(p)) != 0)
+	if (p && (error = suser_xxx(p->p_ucred, 0)) != 0)
 		return error;
 	return raw_attach(so, proto);
 }

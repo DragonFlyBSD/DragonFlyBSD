@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 /*
@@ -55,6 +55,7 @@
 #include <sys/malloc.h>
 #include <sys/pioctl.h>
 #include <sys/resourcevar.h>
+#include <sys/jail.h>
 
 static MALLOC_DEFINE(M_CRED, "cred", "credentials");
 
@@ -69,10 +70,9 @@ struct getpid_args {
  */
 /* ARGSUSED */
 int
-getpid(p, uap)
-	struct proc *p;
-	struct getpid_args *uap;
+getpid(struct getpid_args *uap)
 {
+	struct proc *p = curproc;
 
 	p->p_retval[0] = p->p_pid;
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
@@ -88,10 +88,9 @@ struct getppid_args {
 #endif
 /* ARGSUSED */
 int
-getppid(p, uap)
-	struct proc *p;
-	struct getppid_args *uap;
+getppid(struct getppid_args *uap)
 {
+	struct proc *p = curproc;
 
 	p->p_retval[0] = p->p_pptr->p_pid;
 	return (0);
@@ -109,10 +108,9 @@ struct getpgrp_args {
 #endif
 
 int
-getpgrp(p, uap)
-	struct proc *p;
-	struct getpgrp_args *uap;
+getpgrp(struct getpgrp_args *uap)
 {
+	struct proc *p = curproc;
 
 	p->p_retval[0] = p->p_pgrp->pg_id;
 	return (0);
@@ -126,10 +124,9 @@ struct getpgid_args {
 #endif
 
 int
-getpgid(p, uap)
-	struct proc *p;
-	struct getpgid_args *uap;
+getpgid(struct getpgid_args *uap)
 {
+	struct proc *p = curproc;
 	struct proc *pt;
 
 	pt = p;
@@ -153,10 +150,9 @@ struct getsid_args {
 #endif
 
 int
-getsid(p, uap)
-	struct proc *p;
-	struct getsid_args *uap;
+getsid(struct getsid_args *uap)
 {
+	struct proc *p = curproc;
 	struct proc *pt;
 
 	pt = p;
@@ -182,12 +178,11 @@ struct getuid_args {
 
 /* ARGSUSED */
 int
-getuid(p, uap)
-	struct proc *p;
-	struct getuid_args *uap;
+getuid(struct getuid_args *uap)
 {
+	struct proc *p = curproc;
 
-	p->p_retval[0] = p->p_cred->p_ruid;
+	p->p_retval[0] = p->p_ucred->cr_ruid;
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
 	p->p_retval[1] = p->p_ucred->cr_uid;
 #endif
@@ -205,10 +200,9 @@ struct geteuid_args {
 
 /* ARGSUSED */
 int
-geteuid(p, uap)
-	struct proc *p;
-	struct geteuid_args *uap;
+geteuid(struct geteuid_args *uap)
 {
+	struct proc *p = curproc;
 
 	p->p_retval[0] = p->p_ucred->cr_uid;
 	return (0);
@@ -225,12 +219,11 @@ struct getgid_args {
 
 /* ARGSUSED */
 int
-getgid(p, uap)
-	struct proc *p;
-	struct getgid_args *uap;
+getgid(struct getgid_args *uap)
 {
+	struct proc *p = curproc;
 
-	p->p_retval[0] = p->p_cred->p_rgid;
+	p->p_retval[0] = p->p_ucred->cr_rgid;
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
 	p->p_retval[1] = p->p_ucred->cr_groups[0];
 #endif
@@ -250,10 +243,9 @@ struct getegid_args {
 
 /* ARGSUSED */
 int
-getegid(p, uap)
-	struct proc *p;
-	struct getegid_args *uap;
+getegid(struct getegid_args *uap)
 {
+	struct proc *p = curproc;
 
 	p->p_retval[0] = p->p_ucred->cr_groups[0];
 	return (0);
@@ -266,22 +258,25 @@ struct getgroups_args {
 };
 #endif
 int
-getgroups(p, uap)
-	struct proc *p;
-	register struct	getgroups_args *uap;
+getgroups(struct getgroups_args *uap)
 {
-	register struct pcred *pc = p->p_cred;
-	register u_int ngrp;
+	struct proc *p = curproc;
+	struct ucred *cr;
+	u_int ngrp;
 	int error;
 
+	if (p == NULL)				/* API enforcement */
+		return(EPERM);
+	cr = p->p_ucred;
+
 	if ((ngrp = uap->gidsetsize) == 0) {
-		p->p_retval[0] = pc->pc_ucred->cr_ngroups;
+		p->p_retval[0] = cr->cr_ngroups;
 		return (0);
 	}
-	if (ngrp < pc->pc_ucred->cr_ngroups)
+	if (ngrp < cr->cr_ngroups)
 		return (EINVAL);
-	ngrp = pc->pc_ucred->cr_ngroups;
-	if ((error = copyout((caddr_t)pc->pc_ucred->cr_groups,
+	ngrp = cr->cr_ngroups;
+	if ((error = copyout((caddr_t)cr->cr_groups,
 	    (caddr_t)uap->gidset, ngrp * sizeof(gid_t))))
 		return (error);
 	p->p_retval[0] = ngrp;
@@ -296,10 +291,9 @@ struct setsid_args {
 
 /* ARGSUSED */
 int
-setsid(p, uap)
-	register struct proc *p;
-	struct setsid_args *uap;
+setsid(struct setsid_args *uap)
 {
+	struct proc *p = curproc;
 
 	if (p->p_pgid == p->p_pid || pgfind(p->p_pid)) {
 		return (EPERM);
@@ -331,12 +325,11 @@ struct setpgid_args {
 #endif
 /* ARGSUSED */
 int
-setpgid(curp, uap)
-	struct proc *curp;
-	register struct setpgid_args *uap;
+setpgid(struct setpgid_args *uap)
 {
-	register struct proc *targp;		/* target process */
-	register struct pgrp *pgrp;		/* target pgrp */
+	struct proc *curp = curproc;
+	struct proc *targp;		/* target process */
+	struct pgrp *pgrp;		/* target pgrp */
 
 	if (uap->pgid < 0)
 		return (EINVAL);
@@ -379,13 +372,16 @@ struct setuid_args {
 #endif
 /* ARGSUSED */
 int
-setuid(p, uap)
-	struct proc *p;
-	struct setuid_args *uap;
+setuid(struct setuid_args *uap)
 {
-	register struct pcred *pc = p->p_cred;
-	register uid_t uid;
+	struct proc *p = curproc;
+	struct ucred *cr;
+	uid_t uid;
 	int error;
+
+	if (p == NULL)				/* API enforcement */
+		return(EPERM);
+	cr = p->p_ucred;
 
 	/*
 	 * See if we have "permission" by POSIX 1003.1 rules.
@@ -405,14 +401,14 @@ setuid(p, uap)
 	 * 3: Change euid last. (after tests in #2 for "appropriate privs")
 	 */
 	uid = uap->uid;
-	if (uid != pc->p_ruid &&		/* allow setuid(getuid()) */
+	if (uid != cr->cr_ruid &&		/* allow setuid(getuid()) */
 #ifdef _POSIX_SAVED_IDS
-	    uid != pc->p_svuid &&		/* allow setuid(saved gid) */
+	    uid != crc->cr_svuid &&		/* allow setuid(saved gid) */
 #endif
 #ifdef POSIX_APPENDIX_B_4_2_2	/* Use BSD-compat clause from B.4.2.2 */
-	    uid != pc->pc_ucred->cr_uid &&	/* allow setuid(geteuid()) */
+	    uid != cr->cr_uid &&	/* allow setuid(geteuid()) */
 #endif
-	    (error = suser_xxx(0, p, PRISON_ROOT)))
+	    (error = suser_xxx(0, PRISON_ROOT)))
 		return (error);
 
 #ifdef _POSIX_SAVED_IDS
@@ -422,17 +418,17 @@ setuid(p, uap)
 	 */
 	if (
 #ifdef POSIX_APPENDIX_B_4_2_2	/* Use the clause from B.4.2.2 */
-	    uid == pc->pc_ucred->cr_uid ||
+	    uid == cr->cr_uid ||
 #endif
-	    suser_xxx(0, p, PRISON_ROOT) == 0) /* we are using privs */
+	    suser_xxx(0, PRISON_ROOT) == 0) /* we are using privs */
 #endif
 	{
 		/*
 		 * Set the real uid and transfer proc count to new user.
 		 */
-		if (uid != pc->p_ruid) {
-			change_ruid(p, uid);
-			setsugid(p);
+		if (uid != cr->cr_ruid) {
+			change_ruid(uid);
+			setsugid();
 		}
 		/*
 		 * Set saved uid
@@ -441,9 +437,9 @@ setuid(p, uap)
 		 * the security of seteuid() depends on it.  B.4.2.2 says it
 		 * is important that we should do this.
 		 */
-		if (pc->p_svuid != uid) {
-			pc->p_svuid = uid;
-			setsugid(p);
+		if (cr->cr_svuid != uid) {
+			cr->cr_svuid = uid;
+			setsugid();
 		}
 	}
 
@@ -451,9 +447,9 @@ setuid(p, uap)
 	 * In all permitted cases, we are changing the euid.
 	 * Copy credentials so other references do not see our changes.
 	 */
-	if (pc->pc_ucred->cr_uid != uid) {
-		change_euid(p, uid);
-		setsugid(p);
+	if (cr->cr_uid != uid) {
+		change_euid(uid);
+		setsugid();
 	}
 	return (0);
 }
@@ -465,26 +461,29 @@ struct seteuid_args {
 #endif
 /* ARGSUSED */
 int
-seteuid(p, uap)
-	struct proc *p;
-	struct seteuid_args *uap;
+seteuid(struct seteuid_args *uap)
 {
-	register struct pcred *pc = p->p_cred;
-	register uid_t euid;
+	struct proc *p = curproc;
+	struct ucred *cr;
+	uid_t euid;
 	int error;
 
+	if (p == NULL)				/* API enforcement */
+		return(EPERM);
+
+	cr = p->p_ucred;
 	euid = uap->euid;
-	if (euid != pc->p_ruid &&		/* allow seteuid(getuid()) */
-	    euid != pc->p_svuid &&		/* allow seteuid(saved uid) */
-	    (error = suser_xxx(0, p, PRISON_ROOT)))
+	if (euid != cr->cr_ruid &&		/* allow seteuid(getuid()) */
+	    euid != cr->cr_svuid &&		/* allow seteuid(saved uid) */
+	    (error = suser_xxx(0, PRISON_ROOT)))
 		return (error);
 	/*
 	 * Everything's okay, do it.  Copy credentials so other references do
 	 * not see our changes.
 	 */
-	if (pc->pc_ucred->cr_uid != euid) {
-		change_euid(p, euid);
-		setsugid(p);
+	if (cr->cr_uid != euid) {
+		change_euid(euid);
+		setsugid();
 	}
 	return (0);
 }
@@ -496,13 +495,16 @@ struct setgid_args {
 #endif
 /* ARGSUSED */
 int
-setgid(p, uap)
-	struct proc *p;
-	struct setgid_args *uap;
+setgid(struct setgid_args *uap)
 {
-	register struct pcred *pc = p->p_cred;
-	register gid_t gid;
+	struct proc *p = curproc;
+	struct ucred *cr;
+	gid_t gid;
 	int error;
+
+	if (p == NULL)				/* API enforcement */
+		return(EPERM);
+	cr = p->p_ucred;
 
 	/*
 	 * See if we have "permission" by POSIX 1003.1 rules.
@@ -516,14 +518,14 @@ setgid(p, uap)
 	 * For notes on the logic here, see setuid() above.
 	 */
 	gid = uap->gid;
-	if (gid != pc->p_rgid &&		/* allow setgid(getgid()) */
+	if (gid != cr->cr_rgid &&		/* allow setgid(getgid()) */
 #ifdef _POSIX_SAVED_IDS
-	    gid != pc->p_svgid &&		/* allow setgid(saved gid) */
+	    gid != cr->cr_svgid &&		/* allow setgid(saved gid) */
 #endif
 #ifdef POSIX_APPENDIX_B_4_2_2	/* Use BSD-compat clause from B.4.2.2 */
-	    gid != pc->pc_ucred->cr_groups[0] && /* allow setgid(getegid()) */
+	    gid != cr->cr_groups[0] && /* allow setgid(getegid()) */
 #endif
-	    (error = suser_xxx(0, p, PRISON_ROOT)))
+	    (error = suser_xxx(0, PRISON_ROOT)))
 		return (error);
 
 #ifdef _POSIX_SAVED_IDS
@@ -533,17 +535,17 @@ setgid(p, uap)
 	 */
 	if (
 #ifdef POSIX_APPENDIX_B_4_2_2	/* use the clause from B.4.2.2 */
-	    gid == pc->pc_ucred->cr_groups[0] ||
+	    gid == cr->cr_groups[0] ||
 #endif
-	    suser_xxx(0, p, PRISON_ROOT) == 0) /* we are using privs */
+	    suser_xxx(0, PRISON_ROOT) == 0) /* we are using privs */
 #endif
 	{
 		/*
 		 * Set real gid
 		 */
-		if (pc->p_rgid != gid) {
-			pc->p_rgid = gid;
-			setsugid(p);
+		if (cr->cr_rgid != gid) {
+			cr->cr_rgid = gid;
+			setsugid();
 		}
 		/*
 		 * Set saved gid
@@ -552,19 +554,19 @@ setgid(p, uap)
 		 * the security of setegid() depends on it.  B.4.2.2 says it
 		 * is important that we should do this.
 		 */
-		if (pc->p_svgid != gid) {
-			pc->p_svgid = gid;
-			setsugid(p);
+		if (cr->cr_svgid != gid) {
+			cr->cr_svgid = gid;
+			setsugid();
 		}
 	}
 	/*
 	 * In all cases permitted cases, we are changing the egid.
 	 * Copy credentials so other references do not see our changes.
 	 */
-	if (pc->pc_ucred->cr_groups[0] != gid) {
-		pc->pc_ucred = crcopy(pc->pc_ucred);
-		pc->pc_ucred->cr_groups[0] = gid;
-		setsugid(p);
+	if (cr->cr_groups[0] != gid) {
+		cr = p->p_ucred = crcopy(cr);
+		cr->cr_groups[0] = gid;
+		setsugid();
 	}
 	return (0);
 }
@@ -576,23 +578,26 @@ struct setegid_args {
 #endif
 /* ARGSUSED */
 int
-setegid(p, uap)
-	struct proc *p;
-	struct setegid_args *uap;
+setegid(struct setegid_args *uap)
 {
-	register struct pcred *pc = p->p_cred;
-	register gid_t egid;
+	struct proc *p = curproc;
+	struct ucred *cr;
+	gid_t egid;
 	int error;
 
+	if (p == NULL)				/* API enforcement */
+		return(EPERM);
+	cr = p->p_ucred;
+
 	egid = uap->egid;
-	if (egid != pc->p_rgid &&		/* allow setegid(getgid()) */
-	    egid != pc->p_svgid &&		/* allow setegid(saved gid) */
-	    (error = suser_xxx(0, p, PRISON_ROOT)))
+	if (egid != cr->cr_rgid &&		/* allow setegid(getgid()) */
+	    egid != cr->cr_svgid &&		/* allow setegid(saved gid) */
+	    (error = suser_xxx(0, PRISON_ROOT)))
 		return (error);
-	if (pc->pc_ucred->cr_groups[0] != egid) {
-		pc->pc_ucred = crcopy(pc->pc_ucred);
-		pc->pc_ucred->cr_groups[0] = egid;
-		setsugid(p);
+	if (cr->cr_groups[0] != egid) {
+		cr = p->p_ucred = crcopy(cr);
+		cr->cr_groups[0] = egid;
+		setsugid();
 	}
 	return (0);
 }
@@ -605,15 +610,18 @@ struct setgroups_args {
 #endif
 /* ARGSUSED */
 int
-setgroups(p, uap)
-	struct proc *p;
-	struct setgroups_args *uap;
+setgroups(struct setgroups_args *uap)
 {
-	register struct pcred *pc = p->p_cred;
-	register u_int ngrp;
+	struct proc *p = curproc;
+	struct ucred *cr;
+	u_int ngrp;
 	int error;
 
-	if ((error = suser_xxx(0, p, PRISON_ROOT)))
+	if (p == NULL)				/* API enforcement */
+		return(EPERM);
+	cr = p->p_ucred;
+
+	if ((error = suser_xxx(0, PRISON_ROOT)))
 		return (error);
 	ngrp = uap->gidsetsize;
 	if (ngrp > NGROUPS)
@@ -622,7 +630,7 @@ setgroups(p, uap)
 	 * XXX A little bit lazy here.  We could test if anything has
 	 * changed before crcopy() and setting P_SUGID.
 	 */
-	pc->pc_ucred = crcopy(pc->pc_ucred);
+	cr = p->p_ucred = crcopy(cr);
 	if (ngrp < 1) {
 		/*
 		 * setgroups(0, NULL) is a legitimate way of clearing the
@@ -630,14 +638,14 @@ setgroups(p, uap)
 		 * have the egid in the groups[0]).  We risk security holes
 		 * when running non-BSD software if we do not do the same.
 		 */
-		pc->pc_ucred->cr_ngroups = 1;
+		cr->cr_ngroups = 1;
 	} else {
 		if ((error = copyin((caddr_t)uap->gidset,
-		    (caddr_t)pc->pc_ucred->cr_groups, ngrp * sizeof(gid_t))))
+		    (caddr_t)cr->cr_groups, ngrp * sizeof(gid_t))))
 			return (error);
-		pc->pc_ucred->cr_ngroups = ngrp;
+		cr->cr_ngroups = ngrp;
 	}
-	setsugid(p);
+	setsugid();
 	return (0);
 }
 
@@ -649,34 +657,38 @@ struct setreuid_args {
 #endif
 /* ARGSUSED */
 int
-setreuid(p, uap)
-	register struct proc *p;
-	struct setreuid_args *uap;
+setreuid(struct setreuid_args *uap)
 {
-	register struct pcred *pc = p->p_cred;
-	register uid_t ruid, euid;
+	struct proc *p = curproc;
+	struct ucred *cr;
+	uid_t ruid, euid;
 	int error;
+
+	if (p == NULL)				/* API enforcement */
+		return(EPERM);
+	cr = p->p_ucred;
 
 	ruid = uap->ruid;
 	euid = uap->euid;
-	if (((ruid != (uid_t)-1 && ruid != pc->p_ruid && ruid != pc->p_svuid) ||
-	     (euid != (uid_t)-1 && euid != pc->pc_ucred->cr_uid &&
-	     euid != pc->p_ruid && euid != pc->p_svuid)) &&
-	    (error = suser_xxx(0, p, PRISON_ROOT)) != 0)
+	if (((ruid != (uid_t)-1 && ruid != cr->cr_ruid && ruid != cr->cr_svuid) ||
+	     (euid != (uid_t)-1 && euid != cr->cr_uid &&
+	     euid != cr->cr_ruid && euid != cr->cr_svuid)) &&
+	    (error = suser_xxx(0, PRISON_ROOT)) != 0)
 		return (error);
 
-	if (euid != (uid_t)-1 && pc->pc_ucred->cr_uid != euid) {
-		change_euid(p, euid);
-		setsugid(p);
+	if (euid != (uid_t)-1 && cr->cr_uid != euid) {
+		change_euid(euid);
+		setsugid();
 	}
-	if (ruid != (uid_t)-1 && pc->p_ruid != ruid) {
-		change_ruid(p, ruid);
-		setsugid(p);
+	if (ruid != (uid_t)-1 && cr->cr_ruid != ruid) {
+		change_ruid(ruid);
+		setsugid();
 	}
-	if ((ruid != (uid_t)-1 || pc->pc_ucred->cr_uid != pc->p_ruid) &&
-	    pc->p_svuid != pc->pc_ucred->cr_uid) {
-		pc->p_svuid = pc->pc_ucred->cr_uid;
-		setsugid(p);
+	if ((ruid != (uid_t)-1 || cr->cr_uid != cr->cr_ruid) &&
+	    cr->cr_svuid != cr->cr_uid) {
+		cr = p->p_ucred = crcopy(cr);
+		cr->cr_svuid = cr->cr_uid;
+		setsugid();
 	}
 	return (0);
 }
@@ -689,35 +701,40 @@ struct setregid_args {
 #endif
 /* ARGSUSED */
 int
-setregid(p, uap)
-	register struct proc *p;
-	struct setregid_args *uap;
+setregid(struct setregid_args *uap)
 {
-	register struct pcred *pc = p->p_cred;
-	register gid_t rgid, egid;
+	struct proc *p = curproc;
+	struct ucred *cr;
+	gid_t rgid, egid;
 	int error;
+
+	if (p == NULL)				/* API enforcement */
+		return(EPERM);
+	cr = p->p_ucred;
 
 	rgid = uap->rgid;
 	egid = uap->egid;
-	if (((rgid != (gid_t)-1 && rgid != pc->p_rgid && rgid != pc->p_svgid) ||
-	     (egid != (gid_t)-1 && egid != pc->pc_ucred->cr_groups[0] &&
-	     egid != pc->p_rgid && egid != pc->p_svgid)) &&
-	    (error = suser_xxx(0, p, PRISON_ROOT)) != 0)
+	if (((rgid != (gid_t)-1 && rgid != cr->cr_rgid && rgid != cr->cr_svgid) ||
+	     (egid != (gid_t)-1 && egid != cr->cr_groups[0] &&
+	     egid != cr->cr_rgid && egid != cr->cr_svgid)) &&
+	    (error = suser_xxx(0, PRISON_ROOT)) != 0)
 		return (error);
 
-	if (egid != (gid_t)-1 && pc->pc_ucred->cr_groups[0] != egid) {
-		pc->pc_ucred = crcopy(pc->pc_ucred);
-		pc->pc_ucred->cr_groups[0] = egid;
-		setsugid(p);
+	if (egid != (gid_t)-1 && cr->cr_groups[0] != egid) {
+		cr = p->p_ucred = crcopy(cr);
+		cr->cr_groups[0] = egid;
+		setsugid();
 	}
-	if (rgid != (gid_t)-1 && pc->p_rgid != rgid) {
-		pc->p_rgid = rgid;
-		setsugid(p);
+	if (rgid != (gid_t)-1 && cr->cr_rgid != rgid) {
+		cr = p->p_ucred = crcopy(cr);
+		cr->cr_rgid = rgid;
+		setsugid();
 	}
-	if ((rgid != (gid_t)-1 || pc->pc_ucred->cr_groups[0] != pc->p_rgid) &&
-	    pc->p_svgid != pc->pc_ucred->cr_groups[0]) {
-		pc->p_svgid = pc->pc_ucred->cr_groups[0];
-		setsugid(p);
+	if ((rgid != (gid_t)-1 || cr->cr_groups[0] != cr->cr_rgid) &&
+	    cr->cr_svgid != cr->cr_groups[0]) {
+		cr = p->p_ucred = crcopy(cr);
+		cr->cr_svgid = cr->cr_groups[0];
+		setsugid();
 	}
 	return (0);
 }
@@ -736,36 +753,37 @@ struct setresuid_args {
 #endif
 /* ARGSUSED */
 int
-setresuid(p, uap)
-	register struct proc *p;
-	struct setresuid_args *uap;
+setresuid(struct setresuid_args *uap)
 {
-	register struct pcred *pc = p->p_cred;
-	register uid_t ruid, euid, suid;
+	struct proc *p = curproc;
+	struct ucred *cr;
+	uid_t ruid, euid, suid;
 	int error;
 
+	cr = p->p_ucred;
 	ruid = uap->ruid;
 	euid = uap->euid;
 	suid = uap->suid;
-	if (((ruid != (uid_t)-1 && ruid != pc->p_ruid && ruid != pc->p_svuid &&
-	      ruid != pc->pc_ucred->cr_uid) ||
-	     (euid != (uid_t)-1 && euid != pc->p_ruid && euid != pc->p_svuid &&
-	      euid != pc->pc_ucred->cr_uid) ||
-	     (suid != (uid_t)-1 && suid != pc->p_ruid && suid != pc->p_svuid &&
-	      suid != pc->pc_ucred->cr_uid)) &&
-	    (error = suser_xxx(0, p, PRISON_ROOT)) != 0)
+	if (((ruid != (uid_t)-1 && ruid != cr->cr_ruid && ruid != cr->cr_svuid &&
+	      ruid != cr->cr_uid) ||
+	     (euid != (uid_t)-1 && euid != cr->cr_ruid && euid != cr->cr_svuid &&
+	      euid != cr->cr_uid) ||
+	     (suid != (uid_t)-1 && suid != cr->cr_ruid && suid != cr->cr_svuid &&
+	      suid != cr->cr_uid)) &&
+	    (error = suser_xxx(0, PRISON_ROOT)) != 0)
 		return (error);
-	if (euid != (uid_t)-1 && pc->pc_ucred->cr_uid != euid) {
-		change_euid(p, euid);
-		setsugid(p);
+	if (euid != (uid_t)-1 && cr->cr_uid != euid) {
+		change_euid(euid);
+		setsugid();
 	}
-	if (ruid != (uid_t)-1 && pc->p_ruid != ruid) {
-		change_ruid(p, ruid);
-		setsugid(p);
+	if (ruid != (uid_t)-1 && cr->cr_ruid != ruid) {
+		change_ruid(ruid);
+		setsugid();
 	}
-	if (suid != (uid_t)-1 && pc->p_svuid != suid) {
-		pc->p_svuid = suid;
-		setsugid(p);
+	if (suid != (uid_t)-1 && cr->cr_svuid != suid) {
+		cr = p->p_ucred = crcopy(cr);
+		cr->cr_svuid = suid;
+		setsugid();
 	}
 	return (0);
 }
@@ -784,38 +802,40 @@ struct setresgid_args {
 #endif
 /* ARGSUSED */
 int
-setresgid(p, uap)
-	register struct proc *p;
-	struct setresgid_args *uap;
+setresgid(struct setresgid_args *uap)
 {
-	register struct pcred *pc = p->p_cred;
-	register gid_t rgid, egid, sgid;
+	struct proc *p = curproc;
+	struct ucred *cr;
+	gid_t rgid, egid, sgid;
 	int error;
 
+	cr = p->p_ucred;
 	rgid = uap->rgid;
 	egid = uap->egid;
 	sgid = uap->sgid;
-	if (((rgid != (gid_t)-1 && rgid != pc->p_rgid && rgid != pc->p_svgid &&
-	      rgid != pc->pc_ucred->cr_groups[0]) ||
-	     (egid != (gid_t)-1 && egid != pc->p_rgid && egid != pc->p_svgid &&
-	      egid != pc->pc_ucred->cr_groups[0]) ||
-	     (sgid != (gid_t)-1 && sgid != pc->p_rgid && sgid != pc->p_svgid &&
-	      sgid != pc->pc_ucred->cr_groups[0])) &&
-	    (error = suser_xxx(0, p, PRISON_ROOT)) != 0)
+	if (((rgid != (gid_t)-1 && rgid != cr->cr_rgid && rgid != cr->cr_svgid &&
+	      rgid != cr->cr_groups[0]) ||
+	     (egid != (gid_t)-1 && egid != cr->cr_rgid && egid != cr->cr_svgid &&
+	      egid != cr->cr_groups[0]) ||
+	     (sgid != (gid_t)-1 && sgid != cr->cr_rgid && sgid != cr->cr_svgid &&
+	      sgid != cr->cr_groups[0])) &&
+	    (error = suser_xxx(0, PRISON_ROOT)) != 0)
 		return (error);
 
-	if (egid != (gid_t)-1 && pc->pc_ucred->cr_groups[0] != egid) {
-		pc->pc_ucred = crcopy(pc->pc_ucred);
-		pc->pc_ucred->cr_groups[0] = egid;
-		setsugid(p);
+	if (egid != (gid_t)-1 && cr->cr_groups[0] != egid) {
+		cr = p->p_ucred = crcopy(cr);
+		cr->cr_groups[0] = egid;
+		setsugid();
 	}
-	if (rgid != (gid_t)-1 && pc->p_rgid != rgid) {
-		pc->p_rgid = rgid;
-		setsugid(p);
+	if (rgid != (gid_t)-1 && cr->cr_rgid != rgid) {
+		cr = p->p_ucred = crcopy(cr);
+		cr->cr_rgid = rgid;
+		setsugid();
 	}
-	if (sgid != (gid_t)-1 && pc->p_svgid != sgid) {
-		pc->p_svgid = sgid;
-		setsugid(p);
+	if (sgid != (gid_t)-1 && cr->cr_svgid != sgid) {
+		cr = p->p_ucred = crcopy(cr);
+		cr->cr_svgid = sgid;
+		setsugid();
 	}
 	return (0);
 }
@@ -829,22 +849,21 @@ struct getresuid_args {
 #endif
 /* ARGSUSED */
 int
-getresuid(p, uap)
-	register struct proc *p;
-	struct getresuid_args *uap;
+getresuid(struct getresuid_args *uap)
 {
-	struct pcred *pc = p->p_cred;
+	struct proc *p = curproc;
+	struct ucred *cr = p->p_ucred;
 	int error1 = 0, error2 = 0, error3 = 0;
 
 	if (uap->ruid)
-		error1 = copyout((caddr_t)&pc->p_ruid,
-		    (caddr_t)uap->ruid, sizeof(pc->p_ruid));
+		error1 = copyout((caddr_t)&cr->cr_ruid,
+		    (caddr_t)uap->ruid, sizeof(cr->cr_ruid));
 	if (uap->euid)
-		error2 = copyout((caddr_t)&pc->pc_ucred->cr_uid,
-		    (caddr_t)uap->euid, sizeof(pc->pc_ucred->cr_uid));
+		error2 = copyout((caddr_t)&cr->cr_uid,
+		    (caddr_t)uap->euid, sizeof(cr->cr_uid));
 	if (uap->suid)
-		error3 = copyout((caddr_t)&pc->p_svuid,
-		    (caddr_t)uap->suid, sizeof(pc->p_svuid));
+		error3 = copyout((caddr_t)&cr->cr_svuid,
+		    (caddr_t)uap->suid, sizeof(cr->cr_svuid));
 	return error1 ? error1 : (error2 ? error2 : error3);
 }
 
@@ -857,22 +876,21 @@ struct getresgid_args {
 #endif
 /* ARGSUSED */
 int
-getresgid(p, uap)
-	register struct proc *p;
-	struct getresgid_args *uap;
+getresgid(struct getresgid_args *uap)
 {
-	struct pcred *pc = p->p_cred;
+	struct proc *p = curproc;
+	struct ucred *cr = p->p_ucred;
 	int error1 = 0, error2 = 0, error3 = 0;
 
 	if (uap->rgid)
-		error1 = copyout((caddr_t)&pc->p_rgid,
-		    (caddr_t)uap->rgid, sizeof(pc->p_rgid));
+		error1 = copyout((caddr_t)&cr->cr_rgid,
+		    (caddr_t)uap->rgid, sizeof(cr->cr_rgid));
 	if (uap->egid)
-		error2 = copyout((caddr_t)&pc->pc_ucred->cr_groups[0],
-		    (caddr_t)uap->egid, sizeof(pc->pc_ucred->cr_groups[0]));
+		error2 = copyout((caddr_t)&cr->cr_groups[0],
+		    (caddr_t)uap->egid, sizeof(cr->cr_groups[0]));
 	if (uap->sgid)
-		error3 = copyout((caddr_t)&pc->p_svgid,
-		    (caddr_t)uap->sgid, sizeof(pc->p_svgid));
+		error3 = copyout((caddr_t)&cr->cr_svgid,
+		    (caddr_t)uap->sgid, sizeof(cr->cr_svgid));
 	return error1 ? error1 : (error2 ? error2 : error3);
 }
 
@@ -884,10 +902,9 @@ struct issetugid_args {
 #endif
 /* ARGSUSED */
 int
-issetugid(p, uap)
-	register struct proc *p;
-	struct issetugid_args *uap;
+issetugid(struct issetugid_args *uap)
 {
+	struct proc *p = curproc;
 	/*
 	 * Note: OpenBSD sets a P_SUGIDEXEC flag set at execve() time,
 	 * we use P_SUGID because we consider changing the owners as
@@ -904,11 +921,9 @@ issetugid(p, uap)
  * Check if gid is a member of the group set.
  */
 int
-groupmember(gid, cred)
-	gid_t gid;
-	register struct ucred *cred;
+groupmember(gid_t gid, struct ucred *cred)
 {
-	register gid_t *gp;
+	gid_t *gp;
 	gid_t *egp;
 
 	egp = &(cred->cr_groups[cred->cr_ngroups]);
@@ -925,54 +940,67 @@ groupmember(gid, cred)
  * Returns 0 or error.
  */
 int
-suser(p)
-	struct proc *p;
+suser(void)
 {
-	return suser_xxx(0, p, 0);
+	struct proc *p = curthread->td_proc;
+
+	if (p != NULL) {
+	    return suser_xxx(p->p_ucred, 0);
+	} else {
+	    printf("suser(): wasn't run from a thread with a process context: %p\n", curthread);
+	    return (EPERM);
+	}
 }
 
 int
-suser_xxx(cred, proc, flag)
-	struct ucred *cred;
-	struct proc *proc;
-	int flag;
+suser_xxx(struct ucred *cred, int flag)
 {
-	if (!cred && !proc) {
-		printf("suser_xxx(): THINK!\n");
-		return (EPERM);
+	struct proc *p = curthread->td_proc;
+
+	/*
+	 * Either a cred or a process is required to check for
+	 * superuser permissions (API enforcement).
+	 */
+	if (cred == NULL) {
+		if (p == NULL) {
+			printf("suser_xxx(): THINK!\n");
+			return (EPERM);
+		}
+		cred = p->p_ucred;
 	}
-	if (!cred) 
-		cred = proc->p_ucred;
 	if (cred->cr_uid != 0) 
 		return (EPERM);
-	if (proc && proc->p_prison && !(flag & PRISON_ROOT))
+	if (cred->cr_prison && !(flag & PRISON_ROOT))
 		return (EPERM);
-	if (proc)
-		proc->p_acflag |= ASU;
+	/* 
+	 * YYY for accounting only, but suser_xxx can be called from a
+	 * different process with the cred for the original process and
+	 * this will not work as expected YYY
+	 */
+	if (p)		
+		p->p_acflag |= ASU;
 	return (0);
 }
 
 /*
  * Return zero if p1 can fondle p2, return errno (EPERM/ESRCH) otherwise.
  */
-
 int
-p_trespass(struct proc *p1, struct proc *p2)
+p_trespass(struct ucred *cr1, struct ucred *cr2)
 {
-
-	if (p1 == p2)
+	if (cr1 == cr2)
 		return (0);
-	if (!PRISON_CHECK(p1, p2))
+	if (!PRISON_CHECK(cr1, cr2))
 		return (ESRCH);
-	if (p1->p_cred->p_ruid == p2->p_cred->p_ruid)
+	if (cr1->cr_ruid == cr2->cr_ruid)
 		return (0);
-	if (p1->p_ucred->cr_uid == p2->p_cred->p_ruid)
+	if (cr1->cr_uid == cr2->cr_ruid)
 		return (0);
-	if (p1->p_cred->p_ruid == p2->p_ucred->cr_uid)
+	if (cr1->cr_ruid == cr2->cr_uid)
 		return (0);
-	if (p1->p_ucred->cr_uid == p2->p_ucred->cr_uid)
+	if (cr1->cr_uid == cr2->cr_uid)
 		return (0);
-	if (!suser_xxx(0, p1, PRISON_ROOT))
+	if (!suser_xxx(cr1, PRISON_ROOT))
 		return (0);
 	return (EPERM);
 }
@@ -995,8 +1023,7 @@ crget()
  * Claim another reference to a ucred structure
  */
 void
-crhold(cr) 
-        struct ucred *cr;
+crhold(struct ucred *cr)
 {
 	cr->cr_ref++;
 }
@@ -1006,8 +1033,7 @@ crhold(cr)
  * Throws away space when ref count gets to 0.
  */
 void
-crfree(cr)
-	struct ucred *cr;
+crfree(struct ucred *cr)
 {
 	if (cr->cr_ref == 0)
 		panic("Freeing already free credential! %p", cr);
@@ -1020,6 +1046,19 @@ crfree(cr)
 		 */
 		if (cr->cr_uidinfo != NULL)
 			uifree(cr->cr_uidinfo);
+		if (cr->cr_ruidinfo != NULL)
+			uifree(cr->cr_ruidinfo);
+
+		/*
+		 * Destroy empty prisons
+		 */
+		if (cr->cr_prison && !--cr->cr_prison->pr_ref) {
+			if (cr->cr_prison->pr_linux != NULL)
+				FREE(cr->cr_prison->pr_linux, M_PRISON);
+			FREE(cr->cr_prison, M_PRISON);
+		}
+		cr->cr_prison = NULL;	/* safety */
+
 		FREE((caddr_t)cr, M_CRED);
 	}
 }
@@ -1028,8 +1067,7 @@ crfree(cr)
  * Copy cred structure to a new one and free the old one.
  */
 struct ucred *
-crcopy(cr)
-	struct ucred *cr;
+crcopy(struct ucred *cr)
 {
 	struct ucred *newcr;
 
@@ -1037,9 +1075,14 @@ crcopy(cr)
 		return (cr);
 	newcr = crget();
 	*newcr = *cr;
-	uihold(newcr->cr_uidinfo);
-	crfree(cr);
+	if (newcr->cr_uidinfo)
+		uihold(newcr->cr_uidinfo);
+	if (newcr->cr_ruidinfo)
+		uihold(newcr->cr_ruidinfo);
+	if (newcr->cr_prison)
+		++newcr->cr_prison->pr_ref;
 	newcr->cr_ref = 1;
+	crfree(cr);
 	return (newcr);
 }
 
@@ -1054,7 +1097,12 @@ crdup(cr)
 
 	newcr = crget();
 	*newcr = *cr;
-	uihold(newcr->cr_uidinfo);
+	if (newcr->cr_uidinfo)
+		uihold(newcr->cr_uidinfo);
+	if (newcr->cr_ruidinfo)
+		uihold(newcr->cr_ruidinfo);
+	if (newcr->cr_prison)
+		++newcr->cr_prison->pr_ref;
 	newcr->cr_ref = 1;
 	return (newcr);
 }
@@ -1086,10 +1134,9 @@ struct getlogin_args {
 #endif
 /* ARGSUSED */
 int
-getlogin(p, uap)
-	struct proc *p;
-	struct getlogin_args *uap;
+getlogin(struct getlogin_args *uap)
 {
+	struct proc *p = curproc;
 
 	if (uap->namelen > MAXLOGNAME)
 		uap->namelen = MAXLOGNAME;
@@ -1107,14 +1154,14 @@ struct setlogin_args {
 #endif
 /* ARGSUSED */
 int
-setlogin(p, uap)
-	struct proc *p;
-	struct setlogin_args *uap;
+setlogin(struct setlogin_args *uap)
 {
+	struct proc *p = curproc;
 	int error;
 	char logintmp[MAXLOGNAME];
 
-	if ((error = suser_xxx(0, p, PRISON_ROOT)))
+	KKASSERT(p != NULL);
+	if ((error = suser_xxx(0, PRISON_ROOT)))
 		return (error);
 	error = copyinstr((caddr_t) uap->namebuf, (caddr_t) logintmp,
 	    sizeof(logintmp), (size_t *)0);
@@ -1127,9 +1174,11 @@ setlogin(p, uap)
 }
 
 void
-setsugid(p)
-	struct proc *p;
+setsugid()
 {
+	struct proc *p = curproc;
+
+	KKASSERT(p != NULL);
 	p->p_flag |= P_SUGID;
 	if (!(p->p_pfsflags & PF_ISUGID))
 		p->p_stops = 0;
@@ -1139,22 +1188,23 @@ setsugid(p)
  * Helper function to change the effective uid of a process
  */
 void
-change_euid(p, euid)
-	struct	proc *p;
-	uid_t	euid;
+change_euid(uid_t euid)
 {
-	struct	pcred *pc;
+	struct	proc *p = curproc;
+	struct	ucred *cr;
 	struct	uidinfo *uip;
 
-	pc = p->p_cred;
+	KKASSERT(p != NULL);
+
+	cr = p->p_ucred;
 	/*
 	 * crcopy is essentially a NOP if ucred has a reference count
 	 * of 1, which is true if it has already been copied.
 	 */
-	pc->pc_ucred = crcopy(pc->pc_ucred);
-	uip = pc->pc_ucred->cr_uidinfo;
-	pc->pc_ucred->cr_uid = euid;
-	pc->pc_ucred->cr_uidinfo = uifind(euid);
+	cr = p->p_ucred = crcopy(cr);
+	uip = cr->cr_uidinfo;
+	cr->cr_uid = euid;
+	cr->cr_uidinfo = uifind(euid);
 	uifree(uip);
 }
 
@@ -1165,19 +1215,20 @@ change_euid(p, euid)
  * the old uid to the new uid.
  */
 void
-change_ruid(p, ruid)
-	struct	proc *p;
-	uid_t	ruid;
+change_ruid(uid_t ruid)
 {
-	struct	pcred *pc;
+	struct	proc *p = curproc;
+	struct	ucred *cr;
 	struct	uidinfo *uip;
 
-	pc = p->p_cred;
-	(void)chgproccnt(pc->p_uidinfo, -1, 0);
-	uip = pc->p_uidinfo;
+	KKASSERT(p != NULL);
+
+	cr = p->p_ucred = crcopy(p->p_ucred);
+	(void)chgproccnt(cr->cr_ruidinfo, -1, 0);
+	uip = cr->cr_ruidinfo;
 	/* It is assumed that pcred is not shared between processes */
-	pc->p_ruid = ruid;
-	pc->p_uidinfo = uifind(ruid);
-	(void)chgproccnt(pc->p_uidinfo, 1, 0);
+	cr->cr_ruid = ruid;
+	cr->cr_ruidinfo = uifind(ruid);
+	(void)chgproccnt(cr->cr_ruidinfo, 1, 0);
 	uifree(uip);
 }

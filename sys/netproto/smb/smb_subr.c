@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.3 2003/06/22 04:30:43 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.4 2003/06/23 17:55:47 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -366,7 +366,7 @@ smb_checksmp(void)
 
 	name[0] = CTL_HW;
 	name[1] = HW_NCPU;
-	error = kernel_sysctl(curproc, name, 2, &ncpu, &olen, NULL, 0, &plen);
+	error = kernel_sysctl(name, 2, &ncpu, &olen, NULL, 0, &plen);
 	if (error)
 		return error;
 #ifndef	SMP

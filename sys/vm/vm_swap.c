@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.3 2003/06/23 17:55:51 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -171,28 +171,23 @@ static struct vnodeopv_desc swapdev_vnodeop_opv_desc =
 VNODEOP_SET(swapdev_vnodeop_opv_desc);
 
 /*
+ * swapon_args(char *name)
+ *
  * System call swapon(name) enables swapping on device name,
  * which must be in the swdevsw.  Return EBUSY
  * if already swapping on this device.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct swapon_args {
-	char *name;
-};
-#endif
-
 /* ARGSUSED */
 int
-swapon(p, uap)
-	struct proc *p;
-	struct swapon_args *uap;
+swapon(struct swapon_args *uap)
 {
+	struct proc *p = curproc;
 	struct vattr attr;
 	register struct vnode *vp;
 	struct nameidata nd;
 	int error;
 
-	error = suser(p);
+	error = suser_xxx(p->p_ucred, 0);
 	if (error)
 		return (error);
 

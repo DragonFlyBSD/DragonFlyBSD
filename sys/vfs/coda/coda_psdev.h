@@ -28,13 +28,13 @@
  * 
  * 	@(#) src/sys/coda/coda_psdev.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_psdev.h,v 1.2 1999/08/28 00:40:55 peter Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.h,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.h,v 1.3 2003/06/23 17:55:26 dillon Exp $
  * 
  */
 
-int vc_nb_open(dev_t dev, int flag, int mode, struct proc *p);
-int vc_nb_close (dev_t dev, int flag, int mode, struct proc *p);
+int vc_nb_open(dev_t dev, int flag, int mode, d_thread_t *td);
+int vc_nb_close (dev_t dev, int flag, int mode, d_thread_t *td);
 int vc_nb_read(dev_t dev, struct uio *uiop, int flag);
 int vc_nb_write(dev_t dev, struct uio *uiop, int flag);
-int vc_nb_ioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p);
-int vc_nb_poll(dev_t dev, int events, struct proc *p);
+int vc_nb_ioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td);
+int vc_nb_poll(dev_t dev, int events, d_thread_t *td);

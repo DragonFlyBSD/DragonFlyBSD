@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.3 2003/06/23 17:55:46 dillon Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -377,7 +377,7 @@ in6_control(so, cmd, data, ifp, p)
 	int privileged;
 
 	privileged = 0;
-	if (p == NULL || !suser(p))
+	if (p == NULL || !suser_xxx(p->p_ucred, 0))
 		privileged++;
 
 	switch (cmd) {

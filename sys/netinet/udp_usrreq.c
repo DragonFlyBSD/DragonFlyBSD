@@ -32,7 +32,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.3 2003/06/23 17:55:46 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -650,7 +650,7 @@ udp_getcred(SYSCTL_HANDLER_ARGS)
 	struct inpcb *inp;
 	int error, s;
 
-	error = suser(req->p);
+	error = suser_xxx(req->p->p_ucred, 0);
 	if (error)
 		return (error);
 	error = SYSCTL_IN(req, addrs, sizeof(addrs));
@@ -859,7 +859,7 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct proc *p)
 		return EISCONN;
 	error = 0;
 	s = splnet();
-	if (inp->inp_laddr.s_addr == INADDR_ANY && p->p_prison != NULL)
+	if (inp->inp_laddr.s_addr == INADDR_ANY && p->p_ucred->cr_prison != NULL)
 		error = in_pcbbind(inp, NULL, p);
 	if (error == 0) {
 		sin = (struct sockaddr_in *)nam;

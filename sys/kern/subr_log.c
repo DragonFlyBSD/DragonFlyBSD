@@ -32,7 +32,7 @@
  *
  *	@(#)subr_log.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/subr_log.c,v 1.39.2.2 2001/06/02 08:11:25 phk Exp $
- * $DragonFly: src/sys/kern/subr_log.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_log.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 /*
@@ -100,8 +100,11 @@ SYSCTL_INT(_kern, OID_AUTO, log_wakeups_per_second, CTLFLAG_RW,
 
 /*ARGSUSED*/
 static	int
-logopen(dev_t dev, int flags, int mode, struct proc *p)
+logopen(dev_t dev, int flags, int mode, struct thread *td)
 {
+	struct proc *p = td->td_proc;
+
+	KKASSERT(p != NULL);
 	if (log_open)
 		return (EBUSY);
 	log_open = 1;
@@ -114,7 +117,7 @@ logopen(dev_t dev, int flags, int mode, struct proc *p)
 
 /*ARGSUSED*/
 static	int
-logclose(dev_t dev, int flag, int mode, struct proc *p)
+logclose(dev_t dev, int flag, int mode, struct thread *td)
 {
 
 	log_open = 0;
@@ -169,7 +172,7 @@ logread(dev_t dev, struct uio *uio, int flag)
 
 /*ARGSUSED*/
 static	int
-logpoll(dev_t dev, int events, struct proc *p)
+logpoll(dev_t dev, int events, struct thread *td)
 {
 	int s;
 	int revents = 0;
@@ -180,7 +183,7 @@ logpoll(dev_t dev, int events, struct proc *p)
 		if (msgbufp->msg_bufr != msgbufp->msg_bufx)
 			revents |= events & (POLLIN | POLLRDNORM);
 		else
-			selrecord(p, &logsoftc.sc_selp);
+			selrecord(td, &logsoftc.sc_selp);
 	}
 	splx(s);
 	return (revents);
@@ -211,7 +214,7 @@ logtimeout(void *arg)
 
 /*ARGSUSED*/
 static	int
-logioctl(dev_t dev, u_long com, caddr_t data, int flag, struct proc *p)
+logioctl(dev_t dev, u_long com, caddr_t data, int flag, struct thread *td)
 {
 	long l;
 	int s;

@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.3 2003/06/19 01:55:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.4 2003/06/23 17:55:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -265,7 +265,7 @@ mfs_doio(bp, mfsp)
 				uap.addr  = base;
 				uap.len   = bytes;
 				uap.behav = MADV_FREE;
-				madvise(curproc, &uap);
+				madvise(&uap);
 			}
                 }
 		bp->b_error = 0;

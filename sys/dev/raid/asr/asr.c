@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.2 2003/06/17 04:28:22 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.3 2003/06/23 17:55:28 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -460,12 +460,12 @@ STATIC int            asr_open __P((
                         IN dev_t         dev,
                         int32_t          flags,
                         int32_t          ifmt,
-                        IN struct proc * proc));
+                        IN d_thread_t * proc));
 STATIC int            asr_close __P((
                         dev_t         dev,
                         int           flags,
                         int           ifmt,
-                        struct proc * proc));
+                        d_thread_t * proc));
 STATIC int            asr_intr __P((
                         IN Asr_softc_t * sc));
 STATIC void           asr_timeout __P((
@@ -3872,7 +3872,7 @@ asr_open(
         IN dev_t         dev,
         int32_t          flags,
         int32_t          ifmt,
-        IN struct proc * proc)
+        IN d_thread_t *td)
 {
         int              s;
         OUT int          error;
@@ -3885,7 +3885,7 @@ asr_open(
         s = splcam ();
         if (ASR_ctlr_held) {
                 error = EBUSY;
-        } else if ((error = suser(proc)) == 0) {
+        } else if ((error = suser_xxx(td->td_proc->p_ucred, 0)) == 0) {
                 ++ASR_ctlr_held;
         }
         splx(s);
@@ -3897,12 +3897,12 @@ asr_close(
         dev_t         dev,
         int           flags,
         int           ifmt,
-        struct proc * proc)
+	d_thread_t *td)
 {
         UNREFERENCED_PARAMETER(dev);
         UNREFERENCED_PARAMETER(flags);
         UNREFERENCED_PARAMETER(ifmt);
-        UNREFERENCED_PARAMETER(proc);
+        UNREFERENCED_PARAMETER(td);
 
         ASR_ctlr_held = 0;
         return (0);

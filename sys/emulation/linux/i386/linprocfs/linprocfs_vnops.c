@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.3 2003/06/23 17:55:40 dillon Exp $
  */
 
 /*
@@ -128,12 +128,12 @@ linprocfs_open(ap)
 	} */ *ap;
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
-	struct proc *p1, *p2;
+	struct proc *p2;
 
 	p2 = PFIND(pfs->pfs_pid);
 	if (p2 == NULL)
 		return (ENOENT);
-	if (pfs->pfs_pid && !PRISON_CHECK(ap->a_p, p2))
+	if (pfs->pfs_pid && !PRISON_CHECK(ap->a_cred, p2->p_ucred))
 		return (ENOENT);
 
 	switch (pfs->pfs_type) {
@@ -142,8 +142,7 @@ linprocfs_open(ap)
 		    ((pfs->pfs_flags & O_EXCL) && (ap->a_mode & FWRITE)))
 			return (EBUSY);
 
-		p1 = ap->a_p;
-		if (p_trespass(p1, p2))
+		if (p_trespass(ap->a_cred, p2->p_ucred))
 			return (EPERM);
 
 		if (ap->a_mode & FWRITE)
@@ -226,7 +225,7 @@ linprocfs_ioctl(ap)
 		return ENOTTY;
 	}
 
-	if (p_trespass(p, procp))
+	if (p_trespass(ap->a_cred, procp->p_ucred))
 		return EPERM;
 
 	switch (ap->a_command) {
@@ -243,7 +242,7 @@ linprocfs_ioctl(ap)
 	   */
 #define NFLAGS	(PF_ISUGID)
 	  flags = (unsigned char)*(unsigned int*)ap->a_data;
-	  if (flags & NFLAGS && (error = suser(p)))
+	  if (flags & NFLAGS && (error = suser_xxx(ap->a_cred, 0)))
 	    return error;
 	  procp->p_pfsflags = flags;
 	  break;
@@ -423,8 +422,7 @@ linprocfs_getattr(ap)
 
 	default:
 		procp = PFIND(pfs->pfs_pid);
-		if (procp == 0 || procp->p_cred == NULL ||
-		    procp->p_ucred == NULL)
+		if (procp == 0 || procp->p_ucred == NULL)
 			return (ENOENT);
 	}
 
@@ -795,7 +793,7 @@ linprocfs_readdir(ap)
 		p = PFIND(pfs->pfs_pid);
 		if (p == NULL)
 			break;
-		if (!PRISON_CHECK(curproc, p))
+		if (!PRISON_CHECK(ap->a_cred, p->p_ucred))
 			break;
 
 		for (pt = &proc_targets[i];
@@ -901,11 +899,11 @@ linprocfs_readdir(ap)
 					p = p->p_list.le_next;
 					if (!p)
 						goto done;
-					if (!PRISON_CHECK(curproc, p))
+					if (!PRISON_CHECK(ap->a_cred, p->p_ucred))
 						continue;
 					pcnt++;
 				}
-				while (!PRISON_CHECK(curproc, p)) {
+				while (!PRISON_CHECK(ap->a_cred, p->p_ucred)) {
 					p = p->p_list.le_next;
 					if (!p)
 						goto done;
@@ -973,8 +971,7 @@ linprocfs_readlink(ap)
 	 */
 	case Pexe:
 		procp = PFIND(pfs->pfs_pid);
-		if (procp == NULL || procp->p_cred == NULL ||
-		    procp->p_ucred == NULL) {
+		if (procp == NULL || procp->p_ucred == NULL) {
 			printf("linprocfs_readlink: pid %d disappeared\n",
 			    pfs->pfs_pid);
 			return (uiomove("unknown", sizeof("unknown") - 1,

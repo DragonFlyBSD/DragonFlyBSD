@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.3 2003/06/23 17:55:39 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -228,10 +228,10 @@ elf_linux_fixup(register_t **stack_base, struct image_params *imgp)
 	AUXARGS_ENTRY(pos, AT_FLAGS, args->flags);
 	AUXARGS_ENTRY(pos, AT_ENTRY, args->entry);
 	AUXARGS_ENTRY(pos, AT_BASE, args->base);
-	AUXARGS_ENTRY(pos, AT_UID, imgp->proc->p_cred->p_ruid);
-	AUXARGS_ENTRY(pos, AT_EUID, imgp->proc->p_cred->p_svuid);
-	AUXARGS_ENTRY(pos, AT_GID, imgp->proc->p_cred->p_rgid);
-	AUXARGS_ENTRY(pos, AT_EGID, imgp->proc->p_cred->p_svgid);
+	AUXARGS_ENTRY(pos, AT_UID, imgp->proc->p_ucred->cr_ruid);
+	AUXARGS_ENTRY(pos, AT_EUID, imgp->proc->p_ucred->cr_svuid);
+	AUXARGS_ENTRY(pos, AT_GID, imgp->proc->p_ucred->cr_rgid);
+	AUXARGS_ENTRY(pos, AT_EGID, imgp->proc->p_ucred->cr_svgid);
 	AUXARGS_ENTRY(pos, AT_NULL, 0);
 	
 	free(imgp->auxargs, M_TEMP);      
@@ -248,8 +248,8 @@ extern unsigned long linux_sznonrtsigcode;
 static void
 linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 {
-	register struct proc *p = curproc;
-	register struct trapframe *regs;
+	struct proc *p = curproc;
+	struct trapframe *regs;
 	struct l_rt_sigframe *fp, frame;
 	int oonstack;
 
@@ -392,8 +392,8 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 static void
 linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 {
-	register struct proc *p = curproc;
-	register struct trapframe *regs;
+	struct proc *p = curproc;
+	struct trapframe *regs;
 	struct l_sigframe *fp, frame;
 	l_sigset_t lmask;
 	int oonstack, i;
@@ -517,10 +517,9 @@ linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
  * a machine fault.
  */
 int
-linux_sigreturn(p, args)
-	struct proc *p;
-	struct linux_sigreturn_args *args;
+linux_sigreturn(struct linux_sigreturn_args *args)
 {
+	struct proc *p = curproc;
 	struct l_sigframe frame;
 	register struct trapframe *regs;
 	l_sigset_t lmask;
@@ -611,10 +610,9 @@ linux_sigreturn(p, args)
  * a machine fault.
  */
 int
-linux_rt_sigreturn(p, args)
-	struct proc *p;
-	struct linux_rt_sigreturn_args *args;
+linux_rt_sigreturn(struct linux_rt_sigreturn_args *args)
 {
+	struct proc *p = curproc;
 	struct sigaltstack_args sasargs;
 	struct l_ucontext uc;
 	struct l_sigcontext *context;
@@ -710,7 +708,7 @@ linux_rt_sigreturn(p, args)
 #endif
 	sasargs.ss = ss;
 	sasargs.oss = NULL;
-	(void) sigaltstack(p, &sasargs);
+	(void) sigaltstack(&sasargs);
 
 	return (EJUSTRETURN);
 }

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.3 2003/06/19 01:54:55 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.4 2003/06/23 17:55:26 dillon Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -449,7 +449,7 @@ static struct cdevsw sa_cdevsw = {
 static struct extend_array *saperiphs;
 
 static int
-saopen(dev_t dev, int flags, int fmt, struct proc *p)
+saopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	struct cam_periph *periph;
 	struct sa_softc *softc;
@@ -513,7 +513,7 @@ saopen(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int
-saclose(dev_t dev, int flag, int fmt, struct proc *p)
+saclose(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	struct	cam_periph *periph;
 	struct	sa_softc *softc;
@@ -776,7 +776,7 @@ done:
 }
 
 static int
-saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct proc *p)
+saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 {
 	struct cam_periph *periph;
 	struct sa_softc *softc;

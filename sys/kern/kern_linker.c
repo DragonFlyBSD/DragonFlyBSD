@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -649,8 +649,9 @@ linker_ddb_symbol_values(c_linker_sym_t sym, linker_symval_t *symval)
  */
 
 int
-kldload(struct proc* p, struct kldload_args* uap)
+kldload(struct kldload_args *uap)
 {
+    struct proc *p = curproc;
     char* filename = NULL, *modulename;
     linker_file_t lf;
     int error = 0;
@@ -660,7 +661,7 @@ kldload(struct proc* p, struct kldload_args* uap)
     if (securelevel > 0)	/* redundant, but that's OK */
 	return EPERM;
 
-    if ((error = suser(p)) != 0)
+    if ((error = suser()) != 0)
 	return error;
 
     filename = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
@@ -691,7 +692,7 @@ out:
 }
 
 int
-kldunload(struct proc* p, struct kldunload_args* uap)
+kldunload(struct kldunload_args *uap)
 {
     linker_file_t lf;
     int error = 0;
@@ -699,7 +700,7 @@ kldunload(struct proc* p, struct kldunload_args* uap)
     if (securelevel > 0)	/* redundant, but that's OK */
 	return EPERM;
 
-    if ((error = suser(p)) != 0)
+    if ((error = suser()) != 0)
 	return error;
 
     lf = linker_find_file_by_id(SCARG(uap, fileid));
@@ -722,9 +723,10 @@ out:
 }
 
 int
-kldfind(struct proc* p, struct kldfind_args* uap)
+kldfind(struct kldfind_args *uap)
 {
-    char* filename = NULL, *modulename;
+    struct proc *p = curproc;
+    char *filename = NULL, *modulename;
     linker_file_t lf;
     int error = 0;
 
@@ -751,8 +753,9 @@ out:
 }
 
 int
-kldnext(struct proc* p, struct kldnext_args* uap)
+kldnext(struct kldnext_args *uap)
 {
+    struct proc *p = curproc;
     linker_file_t lf;
     int error = 0;
 
@@ -777,8 +780,9 @@ kldnext(struct proc* p, struct kldnext_args* uap)
 }
 
 int
-kldstat(struct proc* p, struct kldstat_args* uap)
+kldstat(struct kldstat_args *uap)
 {
+    struct proc *p = curproc;
     linker_file_t lf;
     int error = 0;
     int version;
@@ -824,8 +828,9 @@ out:
 }
 
 int
-kldfirstmod(struct proc* p, struct kldfirstmod_args* uap)
+kldfirstmod(struct kldfirstmod_args *uap)
 {
+    struct proc *p = curproc;
     linker_file_t lf;
     int error = 0;
 
@@ -842,7 +847,7 @@ kldfirstmod(struct proc* p, struct kldfirstmod_args* uap)
 }
 
 int
-kldsym(struct proc *p, struct kldsym_args *uap)
+kldsym(struct kldsym_args *uap)
 {
     char *symstr = NULL;
     c_linker_sym_t sym;

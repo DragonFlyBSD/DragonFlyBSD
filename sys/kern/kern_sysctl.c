@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -474,7 +474,7 @@ sysctl_sysctl_debug(SYSCTL_HANDLER_ARGS)
 {
 	int error;
 
-	error = suser(req->p);
+	error = suser_xxx(req->p->p_ucred, 0);
 	if (error)
 		return error;
 	sysctl_sysctl_debug_dump_node(&sysctl__children, 0);
@@ -881,21 +881,21 @@ sysctl_new_kernel(struct sysctl_req *req, void *p, size_t l)
 }
 
 int
-kernel_sysctl(struct proc *p, int *name, u_int namelen, void *old, size_t *oldlenp, void *new, size_t newlen, size_t *retval)
+kernel_sysctl(int *name, u_int namelen, void *old, size_t *oldlenp, void *new, size_t newlen, size_t *retval)
 {
 	int error = 0;
 	struct sysctl_req req;
 
 	bzero(&req, sizeof req);
 
-	req.p = p;
+	req.p = curproc;
 
 	if (oldlenp) {
 		req.oldlen = *oldlenp;
 	}
 
 	if (old) {
-		req.oldptr= old;
+		req.oldptr = old;
 	}
 
 	if (new != NULL) {
@@ -940,7 +940,7 @@ kernel_sysctl(struct proc *p, int *name, u_int namelen, void *old, size_t *oldle
 }
 
 int
-kernel_sysctlbyname(struct proc *p, char *name, void *old, size_t *oldlenp,
+kernel_sysctlbyname(char *name, void *old, size_t *oldlenp,
     void *new, size_t newlen, size_t *retval)
 {
         int oid[CTL_MAXNAME];
@@ -951,12 +951,12 @@ kernel_sysctlbyname(struct proc *p, char *name, void *old, size_t *oldlenp,
 	oid[1] = 3;		/* name2oid */
 	oidlen = sizeof(oid);
 
-	error = kernel_sysctl(p, oid, 2, oid, &oidlen,
-	    (void *)name, strlen(name), &plen);
+	error = kernel_sysctl(oid, 2, oid, &oidlen, (void *)name,
+		    strlen(name), &plen);
 	if (error)
 		return (error);
 
-	error = kernel_sysctl(p, oid, plen / sizeof(int), old, oldlenp,
+	error = kernel_sysctl(oid, plen / sizeof(int), old, oldlenp,
 	    new, newlen, retval);
 	return (error);
 }
@@ -1051,6 +1051,7 @@ sysctl_find_oid(int *name, u_int namelen, struct sysctl_oid **noid,
 int
 sysctl_root(SYSCTL_HANDLER_ARGS)
 {
+	struct proc *p = req->p;
 	struct sysctl_oid *oid;
 	int error, indx;
 
@@ -1074,10 +1075,9 @@ sysctl_root(SYSCTL_HANDLER_ARGS)
 		return (EPERM);
 
 	/* Most likely only root can write */
-	if (!(oid->oid_kind & CTLFLAG_ANYBODY) &&
-	    req->newptr && req->p &&
-	    (error = suser_xxx(0, req->p, 
-	    (oid->oid_kind & CTLFLAG_PRISON) ? PRISON_ROOT : 0)))
+	if (!(oid->oid_kind & CTLFLAG_ANYBODY) && p &&
+	    (error = suser_xxx(p->p_ucred, 
+	     (oid->oid_kind & CTLFLAG_PRISON) ? PRISON_ROOT : 0)))
 		return (error);
 
 	if (!oid->oid_handler)
@@ -1104,7 +1104,7 @@ struct sysctl_args {
 #endif
 
 int
-__sysctl(struct proc *p, struct sysctl_args *uap)
+__sysctl(struct sysctl_args *uap)
 {
 	int error, i, name[CTL_MAXNAME];
 	size_t j;
@@ -1116,7 +1116,7 @@ __sysctl(struct proc *p, struct sysctl_args *uap)
  	if (error)
 		return (error);
 
-	error = userland_sysctl(p, name, uap->namelen,
+	error = userland_sysctl(name, uap->namelen,
 		uap->old, uap->oldlenp, 0,
 		uap->new, uap->newlen, &j);
 	if (error && error != ENOMEM)
@@ -1134,14 +1134,12 @@ __sysctl(struct proc *p, struct sysctl_args *uap)
  * must be in kernel space.
  */
 int
-userland_sysctl(struct proc *p, int *name, u_int namelen, void *old, size_t *oldlenp, int inkernel, void *new, size_t newlen, size_t *retval)
+userland_sysctl(int *name, u_int namelen, void *old, size_t *oldlenp, int inkernel, void *new, size_t newlen, size_t *retval)
 {
 	int error = 0;
 	struct sysctl_req req, req2;
 
 	bzero(&req, sizeof req);
-
-	req.p = p;
 
 	if (oldlenp) {
 		if (inkernel) {
@@ -1275,7 +1273,7 @@ struct getkerninfo_args {
 #endif
 
 int
-ogetkerninfo(struct proc *p, struct getkerninfo_args *uap)
+ogetkerninfo(struct getkerninfo_args *uap)
 {
 	int error, name[6];
 	size_t size;
@@ -1289,14 +1287,14 @@ ogetkerninfo(struct proc *p, struct getkerninfo_args *uap)
 		name[3] = (uap->op & 0xff0000) >> 16;
 		name[4] = uap->op & 0xff;
 		name[5] = uap->arg;
-		error = userland_sysctl(p, name, 6, uap->where, uap->size,
+		error = userland_sysctl(name, 6, uap->where, uap->size,
 			0, 0, 0, &size);
 		break;
 
 	case KINFO_VNODE:
 		name[0] = CTL_KERN;
 		name[1] = KERN_VNODE;
-		error = userland_sysctl(p, name, 2, uap->where, uap->size,
+		error = userland_sysctl(name, 2, uap->where, uap->size,
 			0, 0, 0, &size);
 		break;
 
@@ -1305,35 +1303,35 @@ ogetkerninfo(struct proc *p, struct getkerninfo_args *uap)
 		name[1] = KERN_PROC;
 		name[2] = uap->op & 0xff;
 		name[3] = uap->arg;
-		error = userland_sysctl(p, name, 4, uap->where, uap->size,
+		error = userland_sysctl(name, 4, uap->where, uap->size,
 			0, 0, 0, &size);
 		break;
 
 	case KINFO_FILE:
 		name[0] = CTL_KERN;
 		name[1] = KERN_FILE;
-		error = userland_sysctl(p, name, 2, uap->where, uap->size,
+		error = userland_sysctl(name, 2, uap->where, uap->size,
 			0, 0, 0, &size);
 		break;
 
 	case KINFO_METER:
 		name[0] = CTL_VM;
 		name[1] = VM_METER;
-		error = userland_sysctl(p, name, 2, uap->where, uap->size,
+		error = userland_sysctl(name, 2, uap->where, uap->size,
 			0, 0, 0, &size);
 		break;
 
 	case KINFO_LOADAVG:
 		name[0] = CTL_VM;
 		name[1] = VM_LOADAVG;
-		error = userland_sysctl(p, name, 2, uap->where, uap->size,
+		error = userland_sysctl(name, 2, uap->where, uap->size,
 			0, 0, 0, &size);
 		break;
 
 	case KINFO_CLOCKRATE:
 		name[0] = CTL_KERN;
 		name[1] = KERN_CLOCKRATE;
-		error = userland_sysctl(p, name, 2, uap->where, uap->size,
+		error = userland_sysctl(name, 2, uap->where, uap->size,
 			0, 0, 0, &size);
 		break;
 
@@ -1406,7 +1404,7 @@ ogetkerninfo(struct proc *p, struct getkerninfo_args *uap)
 	}
 	if (error)
 		return (error);
-	p->p_retval[0] = size;
+	curproc->p_retval[0] = size;
 	if (uap->size)
 		error = copyout((caddr_t)&size, (caddr_t)uap->size,
 		    sizeof(size));

@@ -1,6 +1,6 @@
 /*	$NetBSD: usb_port.h,v 1.15 1999/11/16 12:04:28 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb_port.h,v 1.25.2.7 2002/08/12 14:19:49 joe Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_port.h,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb_port.h,v 1.3 2003/06/23 17:55:36 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -272,7 +272,7 @@ __CONCAT(dname,_detach)(self, flags) \
 
 #define DECLARE_USB_DMA_T typedef char * usb_dma_t
 
-typedef struct proc *usb_proc_ptr;
+typedef struct thread *usb_proc_ptr;
 
 /* XXX Change this when FreeBSD has memset */
 #define	memcpy(d, s, l)		bcopy((s),(d),(l))

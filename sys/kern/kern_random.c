@@ -2,7 +2,7 @@
  * kern_random.c -- A strong random number generator
  *
  * $FreeBSD: src/sys/kern/kern_random.c,v 1.36.2.4 2002/09/17 17:11:57 sam Exp $
- * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  *
  * Version 0.95, last modified 18-Oct-95
  * 
@@ -384,7 +384,7 @@ add_true_randomness(int val)
 }
 
 int
-random_poll(dev_t dev, int events, struct proc *p)
+random_poll(dev_t dev, int events, struct thread *td)
 {
 	int s;
 	int revents = 0;
@@ -394,7 +394,7 @@ random_poll(dev_t dev, int events, struct proc *p)
 		if (random_state.entropy_count >= 8)
 			revents |= events & (POLLIN | POLLRDNORM);
 		else
-			selrecord(p, &random_state.rsel);
+			selrecord(td, &random_state.rsel);
 	}
 	splx(s);
 	if (events & (POLLOUT | POLLWRNORM))

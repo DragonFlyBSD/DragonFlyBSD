@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/perfmon.c,v 1.21 1999/09/25 18:24:04 phk Exp $
- * $DragonFly: src/sys/i386/i386/Attic/perfmon.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/perfmon.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -284,7 +284,7 @@ static int writer;
 static int writerpmc;
 
 static int
-perfmon_open(dev_t dev, int flags, int fmt, struct proc *p)
+perfmon_open(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	if (!perfmon_cpuok)
 		return ENXIO;
@@ -301,7 +301,7 @@ perfmon_open(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int
-perfmon_close(dev_t dev, int flags, int fmt, struct proc *p)
+perfmon_close(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	if (flags & FWRITE) {
 		int i;
@@ -316,7 +316,7 @@ perfmon_close(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int
-perfmon_ioctl(dev_t dev, u_long cmd, caddr_t param, int flags, struct proc *p)
+perfmon_ioctl(dev_t dev, u_long cmd, caddr_t param, int flags, struct thread *td)
 {
 	struct pmc *pmc;
 	struct pmc_data *pmcd;

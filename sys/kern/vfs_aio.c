@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.3 2003/06/22 04:30:42 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.4 2003/06/23 17:55:41 dillon Exp $
  */
 
 /*
@@ -218,7 +218,7 @@ static void	aio_onceonly(void *);
 static int	aio_free_entry(struct aiocblist *aiocbe);
 static void	aio_process(struct aiocblist *aiocbe);
 static int	aio_newproc(void);
-static int	aio_aqueue(struct proc *p, struct aiocb *job, int type);
+static int	aio_aqueue(struct aiocb *job, int type);
 static void	aio_physwakeup(struct buf *bp);
 static int	aio_fphysio(struct aiocblist *aiocbe);
 static int	aio_qphysio(struct proc *p, struct aiocblist *iocb);
@@ -1130,8 +1130,9 @@ aio_swake(struct socket *so, struct sockbuf *sb)
  * technique is done in this code.
  */
 static int
-_aio_aqueue(struct proc *p, struct aiocb *job, struct aio_liojob *lj, int type)
+_aio_aqueue(struct aiocb *job, struct aio_liojob *lj, int type)
 {
+	struct proc *p = curprpoc;
 	struct filedesc *fdp;
 	struct file *fp;
 	unsigned int fd;
@@ -1374,8 +1375,9 @@ done:
  * This routine queues an AIO request, checking for quotas.
  */
 static int
-aio_aqueue(struct proc *p, struct aiocb *job, int type)
+aio_aqueue(struct aiocb *job, int type)
 {
+	struct proc *p = curprpoc;
 	struct kaioinfo *ki;
 
 	if (p->p_aioinfo == NULL)
@@ -1388,7 +1390,7 @@ aio_aqueue(struct proc *p, struct aiocb *job, int type)
 	if (ki->kaio_queue_count >= ki->kaio_qallowed_count)
 		return EAGAIN;
 
-	return _aio_aqueue(p, job, NULL, type);
+	return _aio_aqueue(job, NULL, type);
 }
 #endif /* VFS_AIO */
 
@@ -1397,11 +1399,12 @@ aio_aqueue(struct proc *p, struct aiocb *job, int type)
  * released.
  */
 int
-aio_return(struct proc *p, struct aio_return_args *uap)
+aio_return(struct aio_return_args *uap)
 {
 #ifndef VFS_AIO
 	return ENOSYS;
 #else
+	struct proc *p = curproc;
 	int s;
 	long jobref;
 	struct aiocblist *cb, *ncb;
@@ -1463,11 +1466,12 @@ aio_return(struct proc *p, struct aio_return_args *uap)
  * Allow a process to wakeup when any of the I/O requests are completed.
  */
 int
-aio_suspend(struct proc *p, struct aio_suspend_args *uap)
+aio_suspend(struct aio_suspend_args *uap)
 {
 #ifndef VFS_AIO
 	return ENOSYS;
 #else
+	struct proc *p = curproc;
 	struct timeval atv;
 	struct timespec ts;
 	struct aiocb *const *cbptr, *cbp;
@@ -1579,11 +1583,12 @@ aio_suspend(struct proc *p, struct aio_suspend_args *uap)
  * progress.
  */
 int
-aio_cancel(struct proc *p, struct aio_cancel_args *uap)
+aio_cancel(struct aio_cancel_args *uap)
 {
 #ifndef VFS_AIO
 	return ENOSYS;
 #else
+	struct proc *p = curproc;
 	struct kaioinfo *ki;
 	struct aiocblist *cbe, *cbn;
 	struct file *fp;
@@ -1696,11 +1701,12 @@ done:
  * subroutine.
  */
 int
-aio_error(struct proc *p, struct aio_error_args *uap)
+aio_error(struct aio_error_args *uap)
 {
 #ifndef VFS_AIO
 	return ENOSYS;
 #else
+	struct proc *p = curproc;
 	int s;
 	struct aiocblist *cb;
 	struct kaioinfo *ki;
@@ -1781,33 +1787,34 @@ aio_error(struct proc *p, struct aio_error_args *uap)
 
 /* syscall - asynchronous read from a file (REALTIME) */
 int
-aio_read(struct proc *p, struct aio_read_args *uap)
+aio_read(struct aio_read_args *uap)
 {
 #ifndef VFS_AIO
 	return ENOSYS;
 #else
-	return aio_aqueue(p, uap->aiocbp, LIO_READ);
+	return aio_aqueue(uap->aiocbp, LIO_READ);
 #endif /* VFS_AIO */
 }
 
 /* syscall - asynchronous write to a file (REALTIME) */
 int
-aio_write(struct proc *p, struct aio_write_args *uap)
+aio_write(struct aio_write_args *uap)
 {
 #ifndef VFS_AIO
 	return ENOSYS;
 #else
-	return aio_aqueue(p, uap->aiocbp, LIO_WRITE);
+	return aio_aqueue(uap->aiocbp, LIO_WRITE);
 #endif /* VFS_AIO */
 }
 
 /* syscall - XXX undocumented */
 int
-lio_listio(struct proc *p, struct lio_listio_args *uap)
+lio_listio(struct lio_listio_args *uap)
 {
 #ifndef VFS_AIO
 	return ENOSYS;
 #else
+	struct proc *p = curproc;
 	int nent, nentqueued;
 	struct aiocb *iocb, * const *cbptr;
 	struct aiocblist *cb;
@@ -1875,7 +1882,7 @@ lio_listio(struct proc *p, struct lio_listio_args *uap)
 	for (i = 0; i < uap->nent; i++) {
 		iocb = (struct aiocb *)(intptr_t)fuword(&cbptr[i]);
 		if (((intptr_t)iocb != -1) && ((intptr_t)iocb != 0)) {
-			error = _aio_aqueue(p, iocb, lj, 0);
+			error = _aio_aqueue(iocb, lj, 0);
 			if (error == 0)
 				nentqueued++;
 			else
@@ -2070,11 +2077,12 @@ aio_physwakeup(struct buf *bp)
 
 /* syscall - wait for the next completion of an aio request */
 int
-aio_waitcomplete(struct proc *p, struct aio_waitcomplete_args *uap)
+aio_waitcomplete(struct aio_waitcomplete_args *uap)
 {
 #ifndef VFS_AIO
 	return ENOSYS;
 #else
+	struct proc *p = curproc;
 	struct timeval atv;
 	struct timespec ts;
 	struct kaioinfo *ki;

@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,7 +62,7 @@ struct timezone tz;
  * timers when they expire.
  */
 
-static int	nanosleep1 __P((struct proc *p, struct timespec *rqt,
+static int	nanosleep1 __P((struct timespec *rqt,
 		    struct timespec *rmt));
 static int	settime __P((struct timeval *));
 static void	timevalfix __P((struct timeval *));
@@ -146,9 +146,7 @@ struct clock_gettime_args {
 
 /* ARGSUSED */
 int
-clock_gettime(p, uap)
-	struct proc *p;
-	struct clock_gettime_args *uap;
+clock_gettime(struct clock_gettime_args *uap)
 {
 	struct timespec ats;
 
@@ -167,15 +165,13 @@ struct clock_settime_args {
 
 /* ARGSUSED */
 int
-clock_settime(p, uap)
-	struct proc *p;
-	struct clock_settime_args *uap;
+clock_settime(struct clock_settime_args *uap)
 {
 	struct timeval atv;
 	struct timespec ats;
 	int error;
 
-	if ((error = suser(p)) != 0)
+	if ((error = suser()) != 0)
 		return (error);
 	if (SCARG(uap, clock_id) != CLOCK_REALTIME)
 		return (EINVAL);
@@ -198,9 +194,7 @@ struct clock_getres_args {
 #endif
 
 int
-clock_getres(p, uap)
-	struct proc *p;
-	struct clock_getres_args *uap;
+clock_getres(struct clock_getres_args *uap)
 {
 	struct timespec ts;
 	int error;
@@ -224,9 +218,7 @@ clock_getres(p, uap)
 static int nanowait;
 
 static int
-nanosleep1(p, rqt, rmt)
-	struct proc *p;
-	struct timespec *rqt, *rmt;
+nanosleep1(struct timespec *rqt, struct timespec *rmt)
 {
 	struct timespec ts, ts2, ts3;
 	struct timeval tv;
@@ -271,9 +263,7 @@ struct nanosleep_args {
 
 /* ARGSUSED */
 int
-nanosleep(p, uap)
-	struct proc *p;
-	struct nanosleep_args *uap;
+nanosleep(struct nanosleep_args *uap)
 {
 	struct timespec rmt, rqt;
 	int error, error2;
@@ -285,7 +275,7 @@ nanosleep(p, uap)
 		if (!useracc((caddr_t)SCARG(uap, rmtp), sizeof(rmt), 
 		    VM_PROT_WRITE))
 			return (EFAULT);
-	error = nanosleep1(p, &rqt, &rmt);
+	error = nanosleep1(&rqt, &rmt);
 	if (error && SCARG(uap, rmtp)) {
 		error2 = copyout(&rmt, SCARG(uap, rmtp), sizeof(rmt));
 		if (error2)	/* XXX shouldn't happen, did useracc() above */
@@ -302,9 +292,7 @@ struct gettimeofday_args {
 #endif
 /* ARGSUSED */
 int
-gettimeofday(p, uap)
-	struct proc *p;
-	register struct gettimeofday_args *uap;
+gettimeofday(struct gettimeofday_args *uap)
 {
 	struct timeval atv;
 	int error = 0;
@@ -329,15 +317,13 @@ struct settimeofday_args {
 #endif
 /* ARGSUSED */
 int
-settimeofday(p, uap)
-	struct proc *p;
-	struct settimeofday_args *uap;
+settimeofday(struct settimeofday_args *uap)
 {
 	struct timeval atv;
 	struct timezone atz;
 	int error;
 
-	if ((error = suser(p)))
+	if ((error = suser()))
 		return (error);
 	/* Verify all parameters before changing time. */
 	if (uap->tv) {
@@ -369,15 +355,13 @@ struct adjtime_args {
 #endif
 /* ARGSUSED */
 int
-adjtime(p, uap)
-	struct proc *p;
-	register struct adjtime_args *uap;
+adjtime(struct adjtime_args *uap)
 {
 	struct timeval atv;
 	register long ndelta, ntickdelta, odelta;
 	int s, error;
 
-	if ((error = suser(p)))
+	if ((error = suser()))
 		return (error);
 	if ((error =
 	    copyin((caddr_t)uap->delta, (caddr_t)&atv, sizeof(struct timeval))))
@@ -449,10 +433,9 @@ struct getitimer_args {
 #endif
 /* ARGSUSED */
 int
-getitimer(p, uap)
-	struct proc *p;
-	register struct getitimer_args *uap;
+getitimer(struct getitimer_args *uap)
 {
+	struct proc *p = curproc;
 	struct timeval ctv;
 	struct itimerval aitv;
 	int s;
@@ -490,13 +473,12 @@ struct setitimer_args {
 #endif
 /* ARGSUSED */
 int
-setitimer(p, uap)
-	struct proc *p;
-	register struct setitimer_args *uap;
+setitimer(struct setitimer_args *uap)
 {
 	struct itimerval aitv;
 	struct timeval ctv;
-	register struct itimerval *itvp;
+	struct itimerval *itvp;
+	struct proc *p = curproc;
 	int s, error;
 
 	if (uap->which > ITIMER_PROF)
@@ -506,7 +488,7 @@ setitimer(p, uap)
 	    sizeof(struct itimerval))))
 		return (error);
 	if ((uap->itv = uap->oitv) &&
-	    (error = getitimer(p, (struct getitimer_args *)uap)))
+	    (error = getitimer((struct getitimer_args *)uap)))
 		return (error);
 	if (itvp == 0)
 		return (0);

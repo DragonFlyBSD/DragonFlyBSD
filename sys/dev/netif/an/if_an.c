@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.3 2003/06/23 17:55:28 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
  */
@@ -1917,7 +1917,7 @@ an_ioctl(ifp, command, data)
 			break;
 #ifdef ANCACHE
 		if (sc->areq.an_type == AN_RID_ZERO_CACHE) {
-			error = suser(p);
+			error = suser_xxx(p->p_ucred, 0);
 			if (error)
 				break;
 			sc->an_sigitems = sc->an_nextitem = 0;
@@ -1941,7 +1941,7 @@ an_ioctl(ifp, command, data)
 		error = copyout(&sc->areq, ifr->ifr_data, sizeof(sc->areq));
 		break;
 	case SIOCSAIRONET:
-		if ((error = suser(p)))
+		if ((error = suser_xxx(p->p_ucred, 0)))
 			goto out;
 		error = copyin(ifr->ifr_data, &sc->areq, sizeof(sc->areq));
 		if (error != 0)
@@ -1949,7 +1949,7 @@ an_ioctl(ifp, command, data)
 		an_setdef(sc, &sc->areq);
 		break;
 	case SIOCGPRIVATE_0:              /* used by Cisco client utility */
-		if ((error = suser(p)))
+		if ((error = suser_xxx(p->p_ucred, 0)))
 			goto out;
 		copyin(ifr->ifr_data, &l_ioctl, sizeof(l_ioctl));
 		mode = l_ioctl.command;
@@ -1969,7 +1969,7 @@ an_ioctl(ifp, command, data)
 
 		break;
 	case SIOCGPRIVATE_1:              /* used by Cisco client utility */
-		if ((error = suser(p)))
+		if ((error = suser_xxx(p->p_ucred, 0)))
 			goto out;
 		copyin(ifr->ifr_data, &l_ioctl, sizeof(l_ioctl));
 		l_ioctl.command = 0;
@@ -2202,7 +2202,7 @@ an_ioctl(ifp, command, data)
 		}
 		break;
 	case SIOCS80211:
-		if ((error = suser(p)))
+		if ((error = suser_xxx(p->p_ucred, 0)))
 			goto out;
 		sc->areq.an_len = sizeof(sc->areq);
 		/*

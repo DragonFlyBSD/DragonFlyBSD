@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.3 2003/06/23 17:55:40 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -1462,11 +1462,7 @@ determined_type: ;
 }
 
 static int
-sioopen(dev, flag, mode, p)
-	dev_t		dev;
-	int		flag;
-	int		mode;
-	struct proc	*p;
+sioopen(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct com_s	*com;
 	int		error;
@@ -1524,7 +1520,7 @@ open_top:
 			}
 		}
 		if (tp->t_state & TS_XCLUDE &&
-		    suser(p)) {
+		    suser_xxx(td->td_proc->p_ucred, 0)) {
 			error = EBUSY;
 			goto out;
 		}
@@ -1644,11 +1640,7 @@ out:
 }
 
 static int
-sioclose(dev, flag, mode, p)
-	dev_t		dev;
-	int		flag;
-	int		mode;
-	struct proc	*p;
+sioclose(dev_t dev, int	flag, int mode, struct thread *td)
 {
 	struct com_s	*com;
 	int		mynor;
@@ -2202,12 +2194,7 @@ cont:
 }
 
 static int
-sioioctl(dev, cmd, data, flag, p)
-	dev_t		dev;
-	u_long		cmd;
-	caddr_t		data;
-	int		flag;
-	struct proc	*p;
+sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 {
 	struct com_s	*com;
 	int		error;
@@ -2238,7 +2225,7 @@ sioioctl(dev, cmd, data, flag, p)
 		}
 		switch (cmd) {
 		case TIOCSETA:
-			error = suser(p);
+			error = suser_xxx(td->td_proc->p_ucred, 0);
 			if (error != 0)
 				return (error);
 			*ct = *(struct termios *)data;
@@ -2288,7 +2275,7 @@ sioioctl(dev, cmd, data, flag, p)
 		if (lt->c_ospeed != 0)
 			dt->c_ospeed = tp->t_ospeed;
 	}
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, p);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
 	if (error != ENOIOCTL)
 		return (error);
 	s = spltty();
@@ -2329,7 +2316,7 @@ sioioctl(dev, cmd, data, flag, p)
 		break;
 	case TIOCMSDTRWAIT:
 		/* must be root since the wait applies to following logins */
-		error = suser(p);
+		error = suser_xxx(td->td_proc->p_ucred, 0);
 		if (error != 0) {
 			splx(s);
 			return (error);

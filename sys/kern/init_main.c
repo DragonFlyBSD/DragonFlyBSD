@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.9 2003/06/22 04:30:42 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.10 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -80,7 +80,6 @@ void mi_startup(void);				/* Should be elsewhere */
 /* Components of the first process -- never freed. */
 static struct session session0;
 static struct pgrp pgrp0;
-static struct pcred cred0;
 static struct procsig procsig0;
 static struct filedesc0 filedesc0;
 static struct plimit limit0;
@@ -303,15 +302,13 @@ proc0_init(void *dummy __unused)
 	bcopy("swapper", p->p_comm, sizeof ("swapper"));
 
 	/* Create credentials. */
-	cred0.p_refcnt = 1;
-	cred0.p_uidinfo = uifind(0);
-	p->p_cred = &cred0;
 	p->p_ucred = crget();
+	p->p_ucred->cr_ruidinfo = uifind(0);
 	p->p_ucred->cr_ngroups = 1;	/* group 0 */
 	p->p_ucred->cr_uidinfo = uifind(0);
 
 	/* Don't jail it */
-	p->p_prison = 0;
+	p->p_ucred->cr_prison = NULL;
 
 	/* Create procsig. */
 	p->p_procsig = &procsig0;
@@ -364,7 +361,7 @@ proc0_init(void *dummy __unused)
 	/*
 	 * Charge root for one process.
 	 */
-	(void)chgproccnt(cred0.p_uidinfo, 1, 0);
+	(void)chgproccnt(p->p_ucred->cr_uidinfo, 1, 0);
 
 }
 SYSINIT(p0init, SI_SUB_INTRINSIC, SI_ORDER_FIRST, proc0_init, NULL)
@@ -535,7 +532,7 @@ start_init(void *dummy)
 		 * Otherwise, return via fork_trampoline() all the way
 		 * to user mode as init!
 		 */
-		if ((error = execve(p, &args)) == 0)
+		if ((error = execve(&args)) == 0)
 			return;
 		if (error != ENOENT)
 			printf("exec %.*s: error %d\n", (int)(next - path), 

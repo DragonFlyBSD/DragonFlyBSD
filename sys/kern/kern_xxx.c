@@ -32,7 +32,7 @@
  *
  *	@(#)kern_xxx.c	8.2 (Berkeley) 11/14/93
  * $FreeBSD: src/sys/kern/kern_xxx.c,v 1.31 1999/08/28 00:46:15 peter Exp $
- * $DragonFly: src/sys/kern/kern_xxx.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_xxx.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -56,16 +56,14 @@ struct gethostname_args {
 #endif
 /* ARGSUSED */
 int
-ogethostname(p, uap)
-	struct proc *p;
-	struct gethostname_args *uap;
+ogethostname(struct gethostname_args *uap)
 {
 	int name[2];
 	size_t len = uap->len;
 
 	name[0] = CTL_KERN;
 	name[1] = KERN_HOSTNAME;
-	return (userland_sysctl(p, name, 2, uap->hostname, &len, 
+	return (userland_sysctl(name, 2, uap->hostname, &len, 
 		1, 0, 0, 0));
 }
 
@@ -77,18 +75,16 @@ struct sethostname_args {
 #endif
 /* ARGSUSED */
 int
-osethostname(p, uap)
-	struct proc *p;
-	register struct sethostname_args *uap;
+osethostname(struct sethostname_args *uap)
 {
 	int name[2];
 	int error;
 
 	name[0] = CTL_KERN;
 	name[1] = KERN_HOSTNAME;
-	if ((error = suser_xxx(0, p, PRISON_ROOT)))
+	if ((error = suser_xxx(0, PRISON_ROOT)))
 		return (error);
-	return (userland_sysctl(p, name, 2, 0, 0, 0,
+	return (userland_sysctl(name, 2, 0, 0, 0,
 		uap->hostname, uap->len, 0));
 }
 
@@ -99,10 +95,9 @@ struct ogethostid_args {
 #endif
 /* ARGSUSED */
 int
-ogethostid(p, uap)
-	struct proc *p;
-	struct ogethostid_args *uap;
+ogethostid(struct ogethostid_args *uap)
 {
+	struct proc *p = curproc;
 
 	*(long *)(p->p_retval) = hostid;
 	return (0);
@@ -117,24 +112,19 @@ struct osethostid_args {
 #endif
 /* ARGSUSED */
 int
-osethostid(p, uap)
-	struct proc *p;
-	struct osethostid_args *uap;
+osethostid(struct osethostid_args *uap)
 {
 	int error;
 
-	if ((error = suser(p)))
+	if ((error = suser()))
 		return (error);
 	hostid = uap->hostid;
 	return (0);
 }
 
 int
-oquota(p, uap)
-	struct proc *p;
-	struct oquota_args *uap;
+oquota(struct oquota_args *uap)
 {
-
 	return (ENOSYS);
 }
 #endif /* COMPAT_43 */
@@ -147,9 +137,7 @@ struct uname_args {
 
 /* ARGSUSED */
 int
-uname(p, uap)
-	struct proc *p;
-	struct uname_args *uap;
+uname(struct uname_args *uap)
 {
 	int name[2], rtval;
 	size_t len;
@@ -158,21 +146,21 @@ uname(p, uap)
 	name[0] = CTL_KERN;
 	name[1] = KERN_OSTYPE;
 	len = sizeof uap->name->sysname;
-	rtval = userland_sysctl(p, name, 2, uap->name->sysname, &len, 
+	rtval = userland_sysctl(name, 2, uap->name->sysname, &len, 
 		1, 0, 0, 0);
 	if( rtval) return rtval;
 	subyte( uap->name->sysname + sizeof(uap->name->sysname) - 1, 0);
 
 	name[1] = KERN_HOSTNAME;
 	len = sizeof uap->name->nodename;
-	rtval = userland_sysctl(p, name, 2, uap->name->nodename, &len, 
+	rtval = userland_sysctl(name, 2, uap->name->nodename, &len, 
 		1, 0, 0, 0);
 	if( rtval) return rtval;
 	subyte( uap->name->nodename + sizeof(uap->name->nodename) - 1, 0);
 
 	name[1] = KERN_OSRELEASE;
 	len = sizeof uap->name->release;
-	rtval = userland_sysctl(p, name, 2, uap->name->release, &len, 
+	rtval = userland_sysctl(name, 2, uap->name->release, &len, 
 		1, 0, 0, 0);
 	if( rtval) return rtval;
 	subyte( uap->name->release + sizeof(uap->name->release) - 1, 0);
@@ -180,7 +168,7 @@ uname(p, uap)
 /*
 	name = KERN_VERSION;
 	len = sizeof uap->name->version;
-	rtval = userland_sysctl(p, name, 2, uap->name->version, &len, 
+	rtval = userland_sysctl(name, 2, uap->name->version, &len, 
 		1, 0, 0, 0);
 	if( rtval) return rtval;
 	subyte( uap->name->version + sizeof(uap->name->version) - 1, 0);
@@ -203,7 +191,7 @@ uname(p, uap)
 	name[0] = CTL_HW;
 	name[1] = HW_MACHINE;
 	len = sizeof uap->name->machine;
-	rtval = userland_sysctl(p, name, 2, uap->name->machine, &len, 
+	rtval = userland_sysctl(name, 2, uap->name->machine, &len, 
 		1, 0, 0, 0);
 	if( rtval) return rtval;
 	subyte( uap->name->machine + sizeof(uap->name->machine) - 1, 0);
@@ -220,9 +208,7 @@ struct getdomainname_args {
 
 /* ARGSUSED */
 int
-getdomainname(p, uap)
-        struct proc *p;
-        struct getdomainname_args *uap;
+getdomainname(struct getdomainname_args *uap)
 {
 	int domainnamelen = strlen(domainname) + 1;
 	if ((u_int)uap->len > domainnamelen + 1)
@@ -239,13 +225,11 @@ struct setdomainname_args {
 
 /* ARGSUSED */
 int
-setdomainname(p, uap)
-        struct proc *p;
-        struct setdomainname_args *uap;
+setdomainname(struct setdomainname_args *uap)
 {
         int error, domainnamelen;
 
-        if ((error = suser(p)))
+        if ((error = suser()))
                 return (error);
         if ((u_int)uap->len > sizeof (domainname) - 1)
                 return EINVAL;

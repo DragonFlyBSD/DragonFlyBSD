@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.4.2.3 2000/10/27 00:46:09 jhb Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.3 2003/06/23 17:55:30 dillon Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -557,7 +557,7 @@ get_bktr_mem( int unit, unsigned size )
  * 
  */
 int
-bktr_open( dev_t dev, int flags, int fmt, struct proc *p )
+bktr_open( dev_t dev, int flags, int fmt, d_thread_t *td)
 {
 	bktr_ptr_t	bktr;
 	int		unit;
@@ -637,7 +637,7 @@ bktr_open( dev_t dev, int flags, int fmt, struct proc *p )
  * 
  */
 int
-bktr_close( dev_t dev, int flags, int fmt, struct proc *p )
+bktr_close( dev_t dev, int flags, int fmt, d_thread_t *td)
 {
 	bktr_ptr_t	bktr;
 	int		unit;
@@ -714,7 +714,7 @@ bktr_write( dev_t dev, struct uio *uio, int ioflag )
  * 
  */
 int
-bktr_ioctl( dev_t dev, ioctl_cmd_t cmd, caddr_t arg, int flag, struct proc* pr )
+bktr_ioctl( dev_t dev, ioctl_cmd_t cmd, caddr_t arg, int flag, d_thread_t *td)
 {
 	bktr_ptr_t	bktr;
 	int		unit;
@@ -733,9 +733,9 @@ bktr_ioctl( dev_t dev, ioctl_cmd_t cmd, caddr_t arg, int flag, struct proc* pr )
 
 	switch ( FUNCTION( minor(dev) ) ) {
 	case VIDEO_DEV:
-		return( video_ioctl( bktr, unit, cmd, arg, pr ) );
+		return( video_ioctl( bktr, unit, cmd, arg, td ) );
 	case TUNER_DEV:
-		return( tuner_ioctl( bktr, unit, cmd, arg, pr ) );
+		return( tuner_ioctl( bktr, unit, cmd, arg, td ) );
 	}
 
 	return( ENXIO );
@@ -775,7 +775,7 @@ bktr_mmap( dev_t dev, vm_offset_t offset, int nprot )
 	return( atop(vtophys(bktr->bigbuf) + offset) );
 }
 
-int bktr_poll( dev_t dev, int events, struct proc *p)
+int bktr_poll( dev_t dev, int events, d_thread_t *td)
 {
 	int		unit;
 	bktr_ptr_t	bktr;
@@ -798,7 +798,7 @@ int bktr_poll( dev_t dev, int events, struct proc *p)
 		switch ( FUNCTION( minor(dev) ) ) {
 		case VBI_DEV:
 			if(bktr->vbisize == 0)
-				selrecord(p, &bktr->vbi_select);
+				selrecord(td, &bktr->vbi_select);
 			else
 				revents |= events & (POLLIN | POLLRDNORM);
 			break;
@@ -1062,7 +1062,7 @@ get_bktr_mem( int unit, unsigned size )
  * 
  */
 int
-bktr_open( dev_t dev, int flags, int fmt, struct proc *p )
+bktr_open( dev_t dev, int flags, int fmt, d_thread_t *td)
 {
 	bktr_ptr_t	bktr;
 	int		unit;
@@ -1125,7 +1125,7 @@ bktr_open( dev_t dev, int flags, int fmt, struct proc *p )
  * 
  */
 int
-bktr_close( dev_t dev, int flags, int fmt, struct proc *p )
+bktr_close( dev_t dev, int flags, int fmt, d_thread_t *td)
 {
 	bktr_ptr_t	bktr;
 	int		unit;
@@ -1186,7 +1186,7 @@ bktr_write( dev_t dev, struct uio *uio, int ioflag )
  * 
  */
 int
-bktr_ioctl( dev_t dev, ioctl_cmd_t cmd, caddr_t arg, int flag, struct proc* pr )
+bktr_ioctl( dev_t dev, ioctl_cmd_t cmd, caddr_t arg, int flag, d_thread_t *td)
 {
 	bktr_ptr_t	bktr;
 	int		unit;
@@ -1202,9 +1202,9 @@ bktr_ioctl( dev_t dev, ioctl_cmd_t cmd, caddr_t arg, int flag, struct proc* pr )
 
 	switch ( FUNCTION( minor(dev) ) ) {
 	case VIDEO_DEV:
-		return( video_ioctl( bktr, unit, cmd, arg, pr ) );
+		return( video_ioctl( bktr, unit, cmd, arg, td ) );
 	case TUNER_DEV:
-		return( tuner_ioctl( bktr, unit, cmd, arg, pr ) );
+		return( tuner_ioctl( bktr, unit, cmd, arg, td ) );
 	}
 
 	return( ENXIO );
@@ -1240,7 +1240,7 @@ int bktr_mmap( dev_t dev, vm_offset_t offset, int nprot )
 	return( i386_btop(vtophys(bktr->bigbuf) + offset) );
 }
 
-int bktr_poll( dev_t dev, int events, struct proc *p)
+int bktr_poll( dev_t dev, int events, d_thread_t *td)
 {
 	int		unit;
 	bktr_ptr_t	bktr;
@@ -1603,7 +1603,7 @@ free_bktr_mem(bktr, dmap, kva)
  * 
  */
 int
-bktr_open(dev_t dev, int flags, int fmt, struct proc *p)
+bktr_open(dev_t dev, int flags, int fmt, d_thread_t *td)
 {
 	bktr_ptr_t	bktr;
 	int		unit;
@@ -1636,7 +1636,7 @@ bktr_open(dev_t dev, int flags, int fmt, struct proc *p)
  * 
  */
 int
-bktr_close(dev_t dev, int flags, int fmt, struct proc *p)
+bktr_close(dev_t dev, int flags, int fmt, d_thread_t *td)
 {
 	bktr_ptr_t	bktr;
 	int		unit;
@@ -1695,7 +1695,7 @@ bktr_write(dev_t dev, struct uio *uio, int ioflag)
  * 
  */
 int
-bktr_ioctl(dev_t dev, ioctl_cmd_t cmd, caddr_t arg, int flag, struct proc* pr)
+bktr_ioctl(dev_t dev, ioctl_cmd_t cmd, caddr_t arg, int flag, d_thread_t *td)
 {
 	bktr_ptr_t	bktr;
 	int		unit;
@@ -1709,9 +1709,9 @@ bktr_ioctl(dev_t dev, ioctl_cmd_t cmd, caddr_t arg, int flag, struct proc* pr)
 
 	switch (FUNCTION(dev)) {
 	case VIDEO_DEV:
-		return(video_ioctl(bktr, unit, cmd, arg, pr));
+		return(video_ioctl(bktr, unit, cmd, arg, td));
 	case TUNER_DEV:
-		return(tuner_ioctl(bktr, unit, cmd, arg, pr));
+		return(tuner_ioctl(bktr, unit, cmd, arg, td));
 	}
 
 	return(ENXIO);

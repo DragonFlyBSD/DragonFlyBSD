@@ -16,7 +16,7 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.3 2003/06/23 17:55:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1123,7 +1123,7 @@ apm_attach(device_t dev)
 }
 
 static int
-apmopen(dev_t dev, int flag, int fmt, struct proc *p)
+apmopen(dev_t dev, int flag, int fmt, d_thread_t *td)
 {
 	struct apm_softc *sc = &apm_softc;
 	int ctl = APMDEV(dev);
@@ -1151,7 +1151,7 @@ apmopen(dev_t dev, int flag, int fmt, struct proc *p)
 }
 
 static int
-apmclose(dev_t dev, int flag, int fmt, struct proc *p)
+apmclose(dev_t dev, int flag, int fmt, d_thread_t *td)
 {
 	struct apm_softc *sc = &apm_softc;
 	int ctl = APMDEV(dev);
@@ -1174,7 +1174,7 @@ apmclose(dev_t dev, int flag, int fmt, struct proc *p)
 }
 
 static int
-apmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
+apmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 {
 	struct apm_softc *sc = &apm_softc;
 	struct apm_bios_arg *args;
@@ -1358,7 +1358,7 @@ apmwrite(dev_t dev, struct uio *uio, int ioflag)
 }
 
 static int
-apmpoll(dev_t dev, int events, struct proc *p)
+apmpoll(dev_t dev, int events, d_thread_t *td)
 {
 	struct apm_softc *sc = &apm_softc;
 	int revents = 0;
@@ -1367,7 +1367,7 @@ apmpoll(dev_t dev, int events, struct proc *p)
 		if (sc->event_count) {
 			revents |= events & (POLLIN | POLLRDNORM);
 		} else {
-			selrecord(p, &sc->sc_rsel);
+			selrecord(td, &sc->sc_rsel);
 		}
 	}
 

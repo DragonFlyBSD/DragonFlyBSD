@@ -32,7 +32,7 @@
  *
  *	@(#)subr_prof.c	8.3 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/subr_prof.c,v 1.32.2.2 2000/08/03 00:09:32 ps Exp $
- * $DragonFly: src/sys/kern/subr_prof.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prof.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -353,11 +353,10 @@ struct profil_args {
 #endif
 /* ARGSUSED */
 int
-profil(p, uap)
-	struct proc *p;
-	register struct profil_args *uap;
+profil(struct profil_args *uap)
 {
-	register struct uprof *upp;
+	struct proc *p = curproc;
+	struct uprof *upp;
 	int s;
 
 	if (uap->scale > (1 << 16))

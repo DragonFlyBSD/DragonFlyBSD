@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_mib.c,v 1.29.2.4 2001/07/30 23:28:00 peter Exp $
- * $DragonFly: src/sys/kern/kern_mib.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_mib.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -148,17 +148,19 @@ char hostname[MAXHOSTNAMELEN];
 static int
 sysctl_hostname(SYSCTL_HANDLER_ARGS)
 {
+	struct proc *p = req->p;
 	int error;
 
-	if (req->p->p_prison) {
+	if (p && p->p_ucred->cr_prison) {
 		if (!jail_set_hostname_allowed && req->newptr)
 			return(EPERM);
 		error = sysctl_handle_string(oidp, 
-		    req->p->p_prison->pr_host,
-		    sizeof req->p->p_prison->pr_host, req);
-	} else
+		    p->p_ucred->cr_prison->pr_host,
+		    sizeof p->p_ucred->cr_prison->pr_host, req);
+	} else {
 		error = sysctl_handle_string(oidp, 
 		    hostname, sizeof hostname, req);
+	}
 	return (error);
 }
 

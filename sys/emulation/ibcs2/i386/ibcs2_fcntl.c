@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_fcntl.c,v 1.14 1999/09/19 17:00:14 green Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
  */
 
 #include "opt_spx_hack.h"
@@ -168,25 +168,24 @@ oflags2ioflags(flags)
 }
 
 int
-ibcs2_open(p, uap)
-	struct proc *p;
-	struct ibcs2_open_args *uap;
+ibcs2_open(struct ibcs2_open_args *uap)
 {
+	struct proc *p = curproc;
 	int noctty = SCARG(uap, flags) & IBCS2_O_NOCTTY;
 	int ret;
 	caddr_t sg = stackgap_init();
 
 	SCARG(uap, flags) = cvt_o_flags(SCARG(uap, flags));
 	if (SCARG(uap, flags) & O_CREAT)
-		CHECKALTCREAT(p, &sg, SCARG(uap, path));
+		CHECKALTCREAT(&sg, SCARG(uap, path));
 	else
-		CHECKALTEXIST(p, &sg, SCARG(uap, path));
-	ret = open(p, (struct open_args *)uap);
+		CHECKALTEXIST(&sg, SCARG(uap, path));
+	ret = open((struct open_args *)uap);
 
 #ifdef SPX_HACK
 	if (ret == ENXIO) {
 		if (!strcmp(SCARG(uap, path), "/compat/ibcs2/dev/spx"))
-			ret = spx_open(p, uap);
+			ret = spx_open(uap);
 	} else
 #endif /* SPX_HACK */
 	if (!ret && !noctty && SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
@@ -201,39 +200,34 @@ ibcs2_open(p, uap)
 }
 
 int
-ibcs2_creat(p, uap)
-        struct proc *p;  
-	struct ibcs2_creat_args *uap;
+ibcs2_creat(struct ibcs2_creat_args *uap)
 {       
 	struct open_args cup;   
 	caddr_t sg = stackgap_init();
 
-	CHECKALTCREAT(p, &sg, SCARG(uap, path));
+	CHECKALTCREAT(&sg, SCARG(uap, path));
 	SCARG(&cup, path) = SCARG(uap, path);
 	SCARG(&cup, mode) = SCARG(uap, mode);
 	SCARG(&cup, flags) = O_WRONLY | O_CREAT | O_TRUNC;
-	return open(p, &cup);
+	return open(&cup);
 }       
 
 int
-ibcs2_access(p, uap)
-        struct proc *p;
-        struct ibcs2_access_args *uap;
+ibcs2_access(struct ibcs2_access_args *uap)
 {
         struct access_args cup;
         caddr_t sg = stackgap_init();
 
-        CHECKALTEXIST(p, &sg, SCARG(uap, path));
+        CHECKALTEXIST(&sg, SCARG(uap, path));
         SCARG(&cup, path) = SCARG(uap, path);
         SCARG(&cup, flags) = SCARG(uap, flags);
-        return access(p, &cup);
+        return access(&cup);
 }
 
 int
-ibcs2_fcntl(p, uap)
-	struct proc *p;
-	struct ibcs2_fcntl_args *uap;
+ibcs2_fcntl(struct ibcs2_fcntl_args *uap)
 {
+	struct proc *p = curproc;
 	int error;
 	struct fcntl_args fa;
 	struct flock *flp;
@@ -244,22 +238,22 @@ ibcs2_fcntl(p, uap)
 		SCARG(&fa, fd) = SCARG(uap, fd);
 		SCARG(&fa, cmd) = F_DUPFD;
 		SCARG(&fa, arg) = (/* XXX */ int)SCARG(uap, arg);
-		return fcntl(p, &fa);
+		return fcntl(&fa);
 	case IBCS2_F_GETFD:
 		SCARG(&fa, fd) = SCARG(uap, fd);
 		SCARG(&fa, cmd) = F_GETFD;
 		SCARG(&fa, arg) = (/* XXX */ int)SCARG(uap, arg);
-		return fcntl(p, &fa);
+		return fcntl(&fa);
 	case IBCS2_F_SETFD:
 		SCARG(&fa, fd) = SCARG(uap, fd);
 		SCARG(&fa, cmd) = F_SETFD;
 		SCARG(&fa, arg) = (/* XXX */ int)SCARG(uap, arg);
-		return fcntl(p, &fa);
+		return fcntl(&fa);
 	case IBCS2_F_GETFL:
 		SCARG(&fa, fd) = SCARG(uap, fd);
 		SCARG(&fa, cmd) = F_GETFL;
 		SCARG(&fa, arg) = (/* XXX */ int)SCARG(uap, arg);
-		error = fcntl(p, &fa);
+		error = fcntl(&fa);
 		if (error)
 			return error;
 		p->p_retval[0] = oflags2ioflags(p->p_retval[0]);
@@ -269,7 +263,7 @@ ibcs2_fcntl(p, uap)
 		SCARG(&fa, cmd) = F_SETFL;
 		SCARG(&fa, arg) = (/* XXX */ int)
 				  ioflags2oflags((int)SCARG(uap, arg));
-		return fcntl(p, &fa);
+		return fcntl(&fa);
 
 	case IBCS2_F_GETLK:
 	    {
@@ -283,7 +277,7 @@ ibcs2_fcntl(p, uap)
 		SCARG(&fa, fd) = SCARG(uap, fd);
 		SCARG(&fa, cmd) = F_GETLK;
 		SCARG(&fa, arg) = (/* XXX */ int)flp;
-		error = fcntl(p, &fa);
+		error = fcntl(&fa);
 		if (error)
 			return error;
 		cvt_flock2iflock(flp, &ifl);
@@ -304,7 +298,7 @@ ibcs2_fcntl(p, uap)
 		SCARG(&fa, cmd) = F_SETLK;
 		SCARG(&fa, arg) = (/* XXX */ int)flp;
 
-		return fcntl(p, &fa);
+		return fcntl(&fa);
 	    }
 
 	case IBCS2_F_SETLKW:
@@ -319,7 +313,7 @@ ibcs2_fcntl(p, uap)
 		SCARG(&fa, fd) = SCARG(uap, fd);
 		SCARG(&fa, cmd) = F_SETLKW;
 		SCARG(&fa, arg) = (/* XXX */ int)flp;
-		return fcntl(p, &fa);
+		return fcntl(&fa);
 	    }
 	}
 	return ENOSYS;

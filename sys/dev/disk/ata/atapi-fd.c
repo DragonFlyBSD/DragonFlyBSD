@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.44.2.9 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.3 2003/06/19 01:54:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.4 2003/06/23 17:55:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -230,7 +230,7 @@ afd_describe(struct afd_softc *fdp)
 }
 
 static int
-afdopen(dev_t dev, int flags, int fmt, struct proc *p)
+afdopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
     struct afd_softc *fdp = dev->si_drv1;
     struct disklabel *label = &fdp->disk.d_label;
@@ -256,7 +256,7 @@ afdopen(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int 
-afdclose(dev_t dev, int flags, int fmt, struct proc *p)
+afdclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
     struct afd_softc *fdp = dev->si_drv1;
 
@@ -266,7 +266,7 @@ afdclose(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int 
-afdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
+afdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 {
     struct afd_softc *fdp = dev->si_drv1;
 

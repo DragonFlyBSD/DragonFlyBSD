@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.h,v 1.26.2.17 2002/10/11 17:35:11 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.h,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.h,v 1.3 2003/06/23 17:55:31 dillon Exp $ */
 /*
  * Qlogic ISP SCSI Host Adapter FreeBSD Wrapper Definitions
  * Copyright (c) 1997, 1998, 1999, 2000, 2001, 2002 by Matthew Jacob
@@ -131,7 +131,7 @@ struct isposinfo {
 		simqfrozen	: 3;
 	int			islocked;
 	int			splsaved;
-	struct proc		*kproc;
+	struct thread		*kthread;
 	bus_dma_tag_t		cdmat;
 	bus_dmamap_t		cdmap;
 #define	isp_cdmat		isp_osinfo.cdmat

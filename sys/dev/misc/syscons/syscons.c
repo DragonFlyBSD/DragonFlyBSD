@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.c,v 1.336.2.15 2002/10/24 00:35:31 kbyanc Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.3 2003/06/23 17:55:35 dillon Exp $
  */
 
 #include "splash.h"
@@ -440,7 +440,7 @@ scdevtounit(dev_t dev)
 }
 
 int
-scopen(dev_t dev, int flag, int mode, struct proc *p)
+scopen(dev_t dev, int flag, int mode, struct thread *td)
 {
     int unit = scdevtounit(dev);
     sc_softc_t *sc;
@@ -479,7 +479,7 @@ scopen(dev_t dev, int flag, int mode, struct proc *p)
 	(*linesw[tp->t_line].l_modem)(tp, 1);
     }
     else
-	if (tp->t_state & TS_XCLUDE && suser(p))
+	if (tp->t_state & TS_XCLUDE && suser_xxx(td->td_proc->p_ucred, 0))
 	    return(EBUSY);
 
     error = (*linesw[tp->t_line].l_open)(dev, tp);
@@ -499,7 +499,7 @@ scopen(dev_t dev, int flag, int mode, struct proc *p)
 }
 
 int
-scclose(dev_t dev, int flag, int mode, struct proc *p)
+scclose(dev_t dev, int flag, int mode, struct thread *td)
 {
     struct tty *tp = dev->si_tty;
     scr_stat *scp;
@@ -632,7 +632,7 @@ scparam(struct tty *tp, struct termios *t)
 }
 
 int
-scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
+scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
     int error;
     int i;
@@ -640,28 +640,29 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
     sc_softc_t *sc;
     scr_stat *scp;
     int s;
+    struct proc *p = td->td_proc;
 
     tp = dev->si_tty;
 
     /* If there is a user_ioctl function call that first */
     if (sc_user_ioctl) {
-	error = (*sc_user_ioctl)(dev, cmd, data, flag, p);
+	error = (*sc_user_ioctl)(dev, cmd, data, flag, td);
 	if (error != ENOIOCTL)
 	    return error;
     }
 
-    error = sc_vid_ioctl(tp, cmd, data, flag, p);
+    error = sc_vid_ioctl(tp, cmd, data, flag, td);
     if (error != ENOIOCTL)
 	return error;
 
 #ifndef SC_NO_HISTORY
-    error = sc_hist_ioctl(tp, cmd, data, flag, p);
+    error = sc_hist_ioctl(tp, cmd, data, flag, td);
     if (error != ENOIOCTL)
 	return error;
 #endif
 
 #ifndef SC_NO_SYSMOUSE
-    error = sc_mouse_ioctl(tp, cmd, data, flag, p);
+    error = sc_mouse_ioctl(tp, cmd, data, flag, td);
     if (error != ENOIOCTL)
 	return error;
 #endif
@@ -672,7 +673,7 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
     sc = scp->sc;
 
     if (scp->tsw) {
-	error = (*scp->tsw->te_ioctl)(scp, tp, cmd, data, flag, p);
+	error = (*scp->tsw->te_ioctl)(scp, tp, cmd, data, flag, td);
 	if (error != ENOIOCTL)
 	    return error;
     }
@@ -974,7 +975,7 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
 	return 0;
 
     case KDENABIO:      	/* allow io operations */
-	error = suser(p);
+	error = suser_xxx(td->td_proc->p_ucred, 0);
 	if (error != 0)
 	    return error;
 	if (securelevel > 0)
@@ -1267,7 +1268,7 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
 	break;
     }
 
-    error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, p);
+    error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
     if (error != ENOIOCTL)
 	return(error);
     error = ttioctl(tp, cmd, data, flag);

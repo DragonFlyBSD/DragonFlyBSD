@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvesactl.c,v 1.15 2000/01/29 15:08:47 peter Exp $
- * $DragonFly: src/sys/dev/misc/syscons/Attic/scvesactl.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/Attic/scvesactl.c,v 1.3 2003/06/23 17:55:35 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -46,7 +46,7 @@
 static d_ioctl_t *prev_user_ioctl;
 
 static int
-vesa_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
+vesa_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
 	scr_stat *scp;
 	struct tty *tp;
@@ -106,7 +106,7 @@ vesa_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
 	}
 
 	if (prev_user_ioctl)
-		return (*prev_user_ioctl)(dev, cmd, data, flag, p);
+		return (*prev_user_ioctl)(dev, cmd, data, flag, td);
 	else
 		return ENOIOCTL;
 }

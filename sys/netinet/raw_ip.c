@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.15 2003/01/24 10:52:50 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.3 2003/06/23 17:55:46 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -494,7 +494,7 @@ rip_attach(struct socket *so, int proto, struct proc *p)
 	inp = sotoinpcb(so);
 	if (inp)
 		panic("rip_attach");
-	if (p && (error = suser(p)) != 0)
+	if (p && (error = suser_xxx(p->p_ucred, 0)) != 0)
 		return error;
 
 	error = soreserve(so, rip_sendspace, rip_recvspace);

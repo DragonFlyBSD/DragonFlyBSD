@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.3 2003/06/19 01:55:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.4 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -58,9 +58,9 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 
-static int donice __P((struct proc *curp, struct proc *chgp, int n));
+static int donice __P((struct proc *chgp, int n));
 /* dosetrlimit non-static:  Needed by SysVR4 emulator */
-int dosetrlimit __P((struct proc *p, u_int which, struct rlimit *limp));
+int dosetrlimit __P((u_int which, struct rlimit *limp));
 
 static MALLOC_DEFINE(M_UIDINFO, "uidinfo", "uidinfo structures");
 #define	UIHASH(uid)	(&uihashtbl[(uid) & uihash])
@@ -81,15 +81,13 @@ struct getpriority_args {
 };
 #endif
 int
-getpriority(curp, uap)
-	struct proc *curp;
-	register struct getpriority_args *uap;
+getpriority(struct getpriority_args *uap)
 {
-	register struct proc *p;
-	register int low = PRIO_MAX + 1;
+	struct proc *curp = curproc;
+	struct proc *p;
+	int low = PRIO_MAX + 1;
 
 	switch (uap->which) {
-
 	case PRIO_PROCESS:
 		if (uap->who == 0)
 			p = curp;
@@ -97,12 +95,13 @@ getpriority(curp, uap)
 			p = pfind(uap->who);
 		if (p == 0)
 			break;
-		if (!PRISON_CHECK(curp, p))
+		if (!PRISON_CHECK(curp->p_ucred, p->p_ucred))
 			break;
 		low = p->p_nice;
 		break;
 
-	case PRIO_PGRP: {
+	case PRIO_PGRP: 
+	{
 		register struct pgrp *pg;
 
 		if (uap->who == 0)
@@ -110,17 +109,16 @@ getpriority(curp, uap)
 		else if ((pg = pgfind(uap->who)) == NULL)
 			break;
 		LIST_FOREACH(p, &pg->pg_members, p_pglist) {
-			if ((PRISON_CHECK(curp, p) && p->p_nice < low))
+			if ((PRISON_CHECK(curp->p_ucred, p->p_ucred) && p->p_nice < low))
 				low = p->p_nice;
 		}
 		break;
 	}
-
 	case PRIO_USER:
 		if (uap->who == 0)
 			uap->who = curp->p_ucred->cr_uid;
 		LIST_FOREACH(p, &allproc, p_list)
-			if (PRISON_CHECK(curp, p) &&
+			if (PRISON_CHECK(curp->p_ucred, p->p_ucred) &&
 			    p->p_ucred->cr_uid == uap->who &&
 			    p->p_nice < low)
 				low = p->p_nice;
@@ -144,11 +142,10 @@ struct setpriority_args {
 #endif
 /* ARGSUSED */
 int
-setpriority(curp, uap)
-	struct proc *curp;
-	register struct setpriority_args *uap;
+setpriority(struct setpriority_args *uap)
 {
-	register struct proc *p;
+	struct proc *curp = curproc;
+	struct proc *p;
 	int found = 0, error = 0;
 
 	switch (uap->which) {
@@ -160,13 +157,14 @@ setpriority(curp, uap)
 			p = pfind(uap->who);
 		if (p == 0)
 			break;
-		if (!PRISON_CHECK(curp, p))
+		if (!PRISON_CHECK(curp->p_ucred, p->p_ucred))
 			break;
-		error = donice(curp, p, uap->prio);
+		error = donice(p, uap->prio);
 		found++;
 		break;
 
-	case PRIO_PGRP: {
+	case PRIO_PGRP: 
+	{
 		register struct pgrp *pg;
 
 		if (uap->who == 0)
@@ -174,21 +172,20 @@ setpriority(curp, uap)
 		else if ((pg = pgfind(uap->who)) == NULL)
 			break;
 		LIST_FOREACH(p, &pg->pg_members, p_pglist) {
-			if (PRISON_CHECK(curp, p)) {
-				error = donice(curp, p, uap->prio);
+			if (PRISON_CHECK(curp->p_ucred, p->p_ucred)) {
+				error = donice(p, uap->prio);
 				found++;
 			}
 		}
 		break;
 	}
-
 	case PRIO_USER:
 		if (uap->who == 0)
 			uap->who = curp->p_ucred->cr_uid;
 		LIST_FOREACH(p, &allproc, p_list)
 			if (p->p_ucred->cr_uid == uap->who &&
-			    PRISON_CHECK(curp, p)) {
-				error = donice(curp, p, uap->prio);
+			    PRISON_CHECK(curp->p_ucred, p->p_ucred)) {
+				error = donice(p, uap->prio);
 				found++;
 			}
 		break;
@@ -202,21 +199,20 @@ setpriority(curp, uap)
 }
 
 static int
-donice(curp, chgp, n)
-	register struct proc *curp, *chgp;
-	register int n;
+donice(struct proc *chgp, int n)
 {
-	register struct pcred *pcred = curp->p_cred;
+	struct proc *curp = curproc;
+	struct ucred *cr = curp->p_ucred;
 
-	if (pcred->pc_ucred->cr_uid && pcred->p_ruid &&
-	    pcred->pc_ucred->cr_uid != chgp->p_ucred->cr_uid &&
-	    pcred->p_ruid != chgp->p_ucred->cr_uid)
+	if (cr->cr_uid && cr->cr_ruid &&
+	    cr->cr_uid != chgp->p_ucred->cr_uid &&
+	    cr->cr_ruid != chgp->p_ucred->cr_uid)
 		return (EPERM);
 	if (n > PRIO_MAX)
 		n = PRIO_MAX;
 	if (n < PRIO_MIN)
 		n = PRIO_MIN;
-	if (n < chgp->p_nice && suser(curp))
+	if (n < chgp->p_nice && suser())
 		return (EACCES);
 	chgp->p_nice = n;
 	(void)resetpriority(chgp);
@@ -238,12 +234,11 @@ struct rtprio_args {
 
 /* ARGSUSED */
 int
-rtprio(curp, uap)
-	struct proc *curp;
-	register struct rtprio_args *uap;
+rtprio(register struct rtprio_args *uap)
 {
-	register struct proc *p;
-	register struct pcred *pcred = curp->p_cred;
+	struct proc *curp = curproc;
+	struct proc *p;
+	struct ucred *cr = curp->p_ucred;
 	struct rtprio rtp;
 	int error;
 
@@ -263,12 +258,12 @@ rtprio(curp, uap)
 	case RTP_LOOKUP:
 		return (copyout(&p->p_rtprio, uap->rtp, sizeof(struct rtprio)));
 	case RTP_SET:
-		if (pcred->pc_ucred->cr_uid && pcred->p_ruid &&
-		    pcred->pc_ucred->cr_uid != p->p_ucred->cr_uid &&
-		    pcred->p_ruid != p->p_ucred->cr_uid)
+		if (cr->cr_uid && cr->cr_ruid &&
+		    cr->cr_uid != p->p_ucred->cr_uid &&
+		    cr->cr_ruid != p->p_ucred->cr_uid)
 		        return (EPERM);
 		/* disallow setting rtprio in most cases if not superuser */
-		if (suser(curp)) {
+		if (suser()) {
 			/* can't set someone else's */
 			if (uap->pid)
 				return (EPERM);
@@ -315,9 +310,7 @@ struct osetrlimit_args {
 #endif
 /* ARGSUSED */
 int
-osetrlimit(p, uap)
-	struct proc *p;
-	register struct osetrlimit_args *uap;
+osetrlimit(struct osetrlimit_args *uap)
 {
 	struct orlimit olim;
 	struct rlimit lim;
@@ -328,7 +321,7 @@ osetrlimit(p, uap)
 		return (error);
 	lim.rlim_cur = olim.rlim_cur;
 	lim.rlim_max = olim.rlim_max;
-	return (dosetrlimit(p, uap->which, &lim));
+	return (dosetrlimit(uap->which, &lim));
 }
 
 #ifndef _SYS_SYSPROTO_H_
@@ -339,10 +332,9 @@ struct ogetrlimit_args {
 #endif
 /* ARGSUSED */
 int
-ogetrlimit(p, uap)
-	struct proc *p;
-	register struct ogetrlimit_args *uap;
+ogetrlimit(struct ogetrlimit_args *uap)
 {
+	struct proc *p = curproc;
 	struct orlimit olim;
 
 	if (uap->which >= RLIM_NLIMITS)
@@ -365,9 +357,7 @@ struct __setrlimit_args {
 #endif
 /* ARGSUSED */
 int
-setrlimit(p, uap)
-	struct proc *p;
-	register struct __setrlimit_args *uap;
+setrlimit(struct __setrlimit_args *uap)
 {
 	struct rlimit alim;
 	int error;
@@ -375,16 +365,14 @@ setrlimit(p, uap)
 	if ((error =
 	    copyin((caddr_t)uap->rlp, (caddr_t)&alim, sizeof (struct rlimit))))
 		return (error);
-	return (dosetrlimit(p, uap->which, &alim));
+	return (dosetrlimit(uap->which, &alim));
 }
 
 int
-dosetrlimit(p, which, limp)
-	struct proc *p;
-	u_int which;
-	struct rlimit *limp;
+dosetrlimit(u_int which, struct rlimit *limp)
 {
-	register struct rlimit *alimp;
+	struct proc *p = curproc;
+	struct rlimit *alimp;
 	int error;
 
 	if (which >= RLIM_NLIMITS)
@@ -401,7 +389,7 @@ dosetrlimit(p, which, limp)
 
 	if (limp->rlim_cur > alimp->rlim_max ||
 	    limp->rlim_max > alimp->rlim_max)
-		if ((error = suser_xxx(0, p, PRISON_ROOT)))
+		if ((error = suser_xxx(0, PRISON_ROOT)))
 			return (error);
 	if (limp->rlim_cur > limp->rlim_max)
 		limp->rlim_cur = limp->rlim_max;
@@ -489,10 +477,9 @@ struct __getrlimit_args {
 #endif
 /* ARGSUSED */
 int
-getrlimit(p, uap)
-	struct proc *p;
-	register struct __getrlimit_args *uap;
+getrlimit(struct __getrlimit_args *uap)
 {
+	struct proc *p = curproc;
 
 	if (uap->which >= RLIM_NLIMITS)
 		return (EINVAL);
@@ -605,11 +592,10 @@ struct getrusage_args {
 #endif
 /* ARGSUSED */
 int
-getrusage(p, uap)
-	register struct proc *p;
-	register struct getrusage_args *uap;
+getrusage(struct getrusage_args *uap)
 {
-	register struct rusage *rup;
+	struct proc *p = curproc;
+	struct rusage *rup;
 
 	switch (uap->who) {
 

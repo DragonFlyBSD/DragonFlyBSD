@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.36 2003/05/17 21:48:30 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.3 2003/06/19 01:54:55 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.4 2003/06/23 17:55:26 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -595,7 +595,7 @@ static SLIST_HEAD(,da_softc) softc_list;
 static struct extend_array *daperiphs;
 
 static int
-daopen(dev_t dev, int flags, int fmt, struct proc *p)
+daopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	struct cam_periph *periph;
 	struct da_softc *softc;
@@ -722,7 +722,7 @@ daopen(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int
-daclose(dev_t dev, int flag, int fmt, struct proc *p)
+daclose(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	struct	cam_periph *periph;
 	struct	da_softc *softc;
@@ -881,7 +881,7 @@ bad:
 #endif
 
 static int
-daioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
+daioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 {
 	struct cam_periph *periph;
 	struct da_softc *softc;

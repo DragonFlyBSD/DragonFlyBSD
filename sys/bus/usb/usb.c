@@ -1,6 +1,6 @@
 /*	$NetBSD: usb.c,v 1.33 1999/11/22 21:57:09 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb.c,v 1.26.2.9 2002/11/13 15:15:22 joe Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.3 2003/06/23 17:55:36 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -171,7 +171,7 @@ Static SIMPLEQ_HEAD(, usb_event_q) usb_events =
 	SIMPLEQ_HEAD_INITIALIZER(usb_events);
 Static int usb_nevents = 0;
 Static struct selinfo usb_selevent;
-Static struct proc *usb_async_proc;  /* process who wants USB SIGIO */
+Static struct thread *usb_async_proc;  /* process who wants USB SIGIO */
 Static int usb_dev_open = 0;
 
 Static int usb_get_next_event(struct usb_event *);
@@ -338,7 +338,7 @@ usbopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
 		if (usb_dev_open)
 			return (EBUSY);
 		usb_dev_open = 1;
-		usb_async_proc = 0;
+		usb_async_proc = NULL;
 		return (0);
 	} else {
 		USB_GET_SC_OPEN(usb, unit, sc);
@@ -390,7 +390,7 @@ usbclose(dev_t dev, int flag, int mode, usb_proc_ptr p)
 	int unit = USBUNIT(dev);
 
 	if (unit == USB_DEV_MINOR) {
-		usb_async_proc = 0;
+		usb_async_proc = NULL;
 		usb_dev_open = 0;
 	}
 
@@ -413,7 +413,7 @@ usbioctl(dev_t devt, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
 			if (*(int *)data)
 				usb_async_proc = p;
 			else
-				usb_async_proc = 0;
+				usb_async_proc = NULL;
 			return (0);
 
 		default:
@@ -468,7 +468,7 @@ usbioctl(dev_t devt, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
 			uio.uio_rw =
 				ur->ucr_request.bmRequestType & UT_READ ? 
 				UIO_READ : UIO_WRITE;
-			uio.uio_procp = p;
+			uio.uio_procp = p->td_proc;
 			ptr = malloc(len, M_TEMP, M_WAITOK);
 			if (uio.uio_rw == UIO_WRITE) {
 				error = uiomove(ptr, len, &uio);
@@ -654,8 +654,8 @@ usbd_add_event(int type, usbd_device_handle dev)
 	SIMPLEQ_INSERT_TAIL(&usb_events, ueq, next);
 	wakeup(&usb_events);
 	selwakeup(&usb_selevent);
-	if (usb_async_proc != NULL)
-		psignal(usb_async_proc, SIGIO);
+	if (usb_async_proc != NULL && usb_async_proc->td_proc)
+		psignal(usb_async_proc->td_proc, SIGIO);
 	splx(s);
 }
 

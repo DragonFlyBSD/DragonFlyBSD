@@ -24,13 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sndstat.c,v 1.4.2.2 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.3 2003/06/23 17:55:34 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/vchan.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.3 2003/06/23 17:55:34 dillon Exp $");
 
 #define	SS_TYPE_MODULE		0
 #define	SS_TYPE_FIRST		1
@@ -107,7 +107,7 @@ SYSCTL_PROC(_hw_snd, OID_AUTO, verbose, CTLTYPE_INT | CTLFLAG_RW,
             0, sizeof(int), sysctl_hw_sndverbose, "I", "");
 
 static int
-sndstat_open(dev_t i_dev, int flags, int mode, struct proc *p)
+sndstat_open(dev_t i_dev, int flags, int mode, struct thread *td)
 {
 	intrmask_t s;
 	int err;
@@ -131,7 +131,7 @@ sndstat_open(dev_t i_dev, int flags, int mode, struct proc *p)
 }
 
 static int
-sndstat_close(dev_t i_dev, int flags, int mode, struct proc *p)
+sndstat_close(dev_t i_dev, int flags, int mode, struct thread *td)
 {
 	intrmask_t s;
 

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
  *
  */
 
@@ -655,7 +655,7 @@ pci_disable_io_method(device_t dev, device_t child, int space)
  */
   
 static int
-pci_open(dev_t dev, int oflags, int devtype, struct proc *p)
+pci_open(dev_t dev, int oflags, int devtype, struct thread *td)
 {
 	if ((oflags & FWRITE) && securelevel > 0) {
 		return EPERM;
@@ -664,7 +664,7 @@ pci_open(dev_t dev, int oflags, int devtype, struct proc *p)
 }
 
 static int
-pci_close(dev_t dev, int flag, int devtype, struct proc *p)
+pci_close(dev_t dev, int flag, int devtype, struct thread *td)
 {
 	return 0;
 }
@@ -783,7 +783,7 @@ pci_devlist_get_parent(pcicfgregs *cfg)
 }
 
 static int
-pci_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
+pci_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
 	struct pci_io *io;
 	const char *name;

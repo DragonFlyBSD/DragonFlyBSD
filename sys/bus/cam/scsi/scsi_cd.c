@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.13 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.3 2003/06/19 01:54:55 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.4 2003/06/23 17:55:26 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -882,7 +882,7 @@ cdregisterexit:
 }
 
 static int
-cdopen(dev_t dev, int flags, int fmt, struct proc *p)
+cdopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	struct disklabel *label;
 	struct cam_periph *periph;
@@ -994,7 +994,7 @@ cdopen(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int
-cdclose(dev_t dev, int flag, int fmt, struct proc *p)
+cdclose(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	struct 	cam_periph *periph;
 	struct	cd_softc *softc;
@@ -1821,7 +1821,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 }
 
 static int
-cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
+cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 {
 
 	struct 	cam_periph *periph;

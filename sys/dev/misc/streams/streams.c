@@ -31,7 +31,7 @@
  * in 3.0-980524-SNAP then hacked a bit (but probably not enough :-).
  *
  * $FreeBSD: src/sys/dev/streams/streams.c,v 1.16.2.1 2001/02/26 04:23:07 jlemon Exp $
- * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.3 2003/06/23 17:55:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -199,14 +199,17 @@ DECLARE_MODULE(streams, streams_mod, SI_SUB_DRIVERS, SI_ORDER_ANY);
  * routine.
  */
 static  int
-streamsopen(dev_t dev, int oflags, int devtype, struct proc *p)
+streamsopen(dev_t dev, int oflags, int devtype, d_thread_t *td)
 {
+	struct proc *p = td->td_proc;
 	int type, protocol;
 	int fd;
 	struct file *fp;
 	struct socket *so;
 	int error;
 	int family;
+
+	KKASSERT(p != NULL);
 	
 	if (p->p_dupfd >= 0)
 	  return ENODEV;
@@ -314,7 +317,7 @@ svr4_ptm_alloc(p)
 		if ((error = copyout(ptyname, path, sizeof(ptyname))) != 0)
 			return error;
 
-		switch (error = open(p, &oa)) {
+		switch (error = open(&oa)) {
 		case ENOENT:
 		case ENXIO:
 			return error;

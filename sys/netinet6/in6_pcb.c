@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.3 2003/06/23 17:55:46 dillon Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -191,7 +191,7 @@ in6_pcbbind(inp, nam, p)
 
 			/* GROSS */
 			if (ntohs(lport) < IPV6PORT_RESERVED && p &&
-			    suser_xxx(0, p, PRISON_ROOT))
+			    suser_xxx(p->p_ucred, PRISON_ROOT))
 				return(EACCES);
 			if (so->so_cred->cr_uid != 0 &&
 			    !IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr)) {

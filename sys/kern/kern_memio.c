@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/kern/kern_memio.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_memio.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
  */
 
 /*
@@ -101,19 +101,17 @@ static struct random_softc random_softc[16];
 static caddr_t	zbuf;
 
 MALLOC_DEFINE(M_MEMDESC, "memdesc", "memory range descriptors");
-static int mem_ioctl __P((dev_t, u_long, caddr_t, int, struct proc *));
-static int random_ioctl __P((dev_t, u_long, caddr_t, int, struct proc *));
+static int mem_ioctl __P((dev_t, u_long, caddr_t, int, struct thread *));
+static int random_ioctl __P((dev_t, u_long, caddr_t, int, struct thread *));
 
 struct mem_range_softc mem_range_softc;
 
 
 static int
-mmclose(dev, flags, fmt, p)
-	dev_t dev;
-	int flags;
-	int fmt;
-	struct proc *p;
+mmclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
+	struct proc *p = td->td_proc;
+
 	switch (minor(dev)) {
 	case 14:
 		p->p_md.md_regs->tf_eflags &= ~PSL_IOPL;
@@ -125,13 +123,10 @@ mmclose(dev, flags, fmt, p)
 }
 
 static int
-mmopen(dev, flags, fmt, p)
-	dev_t dev;
-	int flags;
-	int fmt;
-	struct proc *p;
+mmopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	int error;
+	struct proc *p = td->td_proc;
 
 	switch (minor(dev)) {
 	case 0:
@@ -140,7 +135,7 @@ mmopen(dev, flags, fmt, p)
 			return (EPERM);
 		break;
 	case 14:
-		error = suser(p);
+		error = suser_xxx(p->p_ucred, 0);
 		if (error != 0)
 			return (error);
 		if (securelevel > 0)
@@ -329,20 +324,15 @@ memmmap(dev_t dev, vm_offset_t offset, int nprot)
 }
 
 static int
-mmioctl(dev, cmd, data, flags, p)
-	dev_t dev;
-	u_long cmd;
-	caddr_t data;
-	int flags;
-	struct proc *p;
+mmioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 {
 
 	switch (minor(dev)) {
 	case 0:
-		return mem_ioctl(dev, cmd, data, flags, p);
+		return mem_ioctl(dev, cmd, data, flags, td);
 	case 3:
 	case 4:
-		return random_ioctl(dev, cmd, data, flags, p);
+		return random_ioctl(dev, cmd, data, flags, td);
 	}
 	return (ENODEV);
 }
@@ -354,12 +344,7 @@ mmioctl(dev, cmd, data, flags, p)
  * and mem_range_attr_set.
  */
 static int 
-mem_ioctl(dev, cmd, data, flags, p)
-	dev_t dev;
-	u_long cmd;
-	caddr_t data;
-	int flags;
-	struct proc *p;
+mem_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 {
 	int nd, error = 0;
 	struct mem_range_op *mo = (struct mem_range_op *)data;
@@ -453,13 +438,9 @@ mem_range_AP_init(void)
 #endif
 
 static int 
-random_ioctl(dev, cmd, data, flags, p)
-	dev_t dev;
-	u_long cmd;
-	caddr_t data;
-	int flags;
-	struct proc *p;
+random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 {
+	struct proc *p = td->td_proc;
 	static intrmask_t interrupt_allowed;
 	intrmask_t interrupt_mask;
 	int error, intr;
@@ -490,7 +471,7 @@ random_ioctl(dev, cmd, data, flags, p)
 	case FIONBIO:
 		break;
 	case MEM_SETIRQ:
-		error = suser(p);
+		error = suser_xxx(p->p_ucred, 0);
 		if (error != 0)
 			return (error);
 		if (intr < 0 || intr >= 16)
@@ -507,7 +488,7 @@ random_ioctl(dev, cmd, data, flags, p)
 		enable_intr();
 		break;
 	case MEM_CLEARIRQ:
-		error = suser(p);
+		error = suser_xxx(p->p_ucred, 0);
 		if (error != 0)
 			return (error);
 		if (intr < 0 || intr >= 16)
@@ -521,7 +502,7 @@ random_ioctl(dev, cmd, data, flags, p)
 		enable_intr();
 		break;
 	case MEM_RETURNIRQ:
-		error = suser(p);
+		error = suser_xxx(p->p_ucred, 0);
 		if (error != 0)
 			return (error);
 		*(u_int16_t *)data = interrupt_allowed;
@@ -531,17 +512,14 @@ random_ioctl(dev, cmd, data, flags, p)
 }
 
 int
-mmpoll(dev, events, p)
-	dev_t dev;
-	int events;
-	struct proc *p;
+mmpoll(dev_t dev, int events, struct thread *td)
 {
 	switch (minor(dev)) {
 	case 3:		/* /dev/random */
-		return random_poll(dev, events, p);
+		return random_poll(dev, events, td);
 	case 4:		/* /dev/urandom */
 	default:
-		return seltrue(dev, events, p);
+		return seltrue(dev, events, td);
 	}
 }
 

@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 /*
@@ -162,16 +162,15 @@ static vm_zone_t pipe_zone;
 
 /*
  * The pipe system call for the DTYPE_PIPE type of pipes
+ *
+ * pipe_ARgs(int dummy)
  */
 
 /* ARGSUSED */
 int
-pipe(p, uap)
-	struct proc *p;
-	struct pipe_args /* {
-		int	dummy;
-	} */ *uap;
+pipe(struct pipe_args *uap)
 {
+	struct proc *p = curproc;
 	struct filedesc *fdp = p->p_fd;
 	struct file *rf, *wf;
 	struct pipe *rpipe, *wpipe;
@@ -1103,12 +1102,12 @@ pipe_poll(fp, events, cred, p)
 
 	if (revents == 0) {
 		if (events & (POLLIN | POLLRDNORM)) {
-			selrecord(p, &rpipe->pipe_sel);
+			selrecord(p->p_thread, &rpipe->pipe_sel);
 			rpipe->pipe_state |= PIPE_SEL;
 		}
 
 		if (events & (POLLOUT | POLLWRNORM)) {
-			selrecord(p, &wpipe->pipe_sel);
+			selrecord(p->p_thread, &wpipe->pipe_sel);
 			wpipe->pipe_state |= PIPE_SEL;
 		}
 	}

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_output.c,v 1.1.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_output.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_output.c,v 1.3 2003/06/23 17:55:47 dillon Exp $	*/
 /*	$KAME: udp6_output.c,v 1.31 2001/05/21 16:39:15 jinmei Exp $	*/
 
 /*
@@ -142,7 +142,7 @@ udp6_output(in6p, m, addr6, control, p)
 	struct sockaddr_in6 tmp;
 
 	priv = 0;
-	if (p && !suser(p))
+	if (p && !suser_xxx(p->p_ucred, 0))
 		priv = 1;
 	if (control) {
 		if ((error = ip6_setpktoptions(control, &opt, priv, 0)) != 0)

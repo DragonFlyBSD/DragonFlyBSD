@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.4 2003/06/22 17:39:42 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.5 2003/06/23 17:55:41 dillon Exp $
  */
 
 /*
@@ -2823,7 +2823,7 @@ vn_pollrecord(vp, p, events)
 		return events;
 	}
 	vp->v_pollinfo.vpi_events |= events;
-	selrecord(p, &vp->v_pollinfo.vpi_selinfo);
+	selrecord(p->p_thread, &vp->v_pollinfo.vpi_selinfo);
 	simple_unlock(&vp->v_pollinfo.vpi_lock);
 	return 0;
 }

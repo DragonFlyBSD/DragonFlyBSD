@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwdev.c,v 1.2.4.11 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.3 2003/06/23 17:55:30 dillon Exp $
  *
  */
 
@@ -44,6 +44,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/conf.h>
+#include <sys/proc.h>
 #include <sys/poll.h>
 
 #include <sys/bus.h>
@@ -670,7 +671,7 @@ fw_poll(dev_t dev, int events, fw_proc *td)
 		if (STAILQ_FIRST(&sc->fc->ir[sub]->q) != NULL)
 			revents |= tmp;
 		else
-			selrecord(td, &sc->fc->ir[sub]->rsel);
+			selrecord(td, &sc->fc->ir[sub]->rsel); /* YYY */
 	}
 	tmp = POLLOUT | POLLWRNORM;
 	if (events & tmp) {

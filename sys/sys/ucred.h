@@ -32,11 +32,13 @@
  *
  *	@(#)ucred.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/ucred.h,v 1.14.2.5 2002/03/09 05:20:25 dd Exp $
- * $DragonFly: src/sys/sys/ucred.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/ucred.h,v 1.3 2003/06/23 17:55:50 dillon Exp $
  */
 
 #ifndef _SYS_UCRED_H_
 #define	_SYS_UCRED_H_
+
+struct prison;
 
 /*
  * Credentials.
@@ -50,6 +52,13 @@ struct ucred {
 	short	cr_ngroups;		/* number of groups */
 	gid_t	cr_groups[NGROUPS];	/* groups */
 	struct	uidinfo *cr_uidinfo;	/* per uid resource consumption */
+	struct	uidinfo *cr_ruidinfo;	/* per ruid resource consumption */
+	struct	prison *cr_prison;	/* prison info */
+	uid_t   cr_ruid;		/* Real user id. */
+	uid_t   cr_svuid;		/* Saved effective user id. */
+	gid_t   cr_rgid;		/* Real group id. */
+	gid_t   cr_svgid;		/* Saved effective group id. */
+	int     cr_refcnt;		/* Number of references. */
 };
 #define cr_gid cr_groups[0]
 #define NOCRED ((struct ucred *)0)	/* no credential available */
@@ -73,8 +82,8 @@ struct xucred {
 
 struct proc;
 
-void		change_euid __P((struct proc *p, uid_t euid));
-void		change_ruid __P((struct proc *p, uid_t ruid));
+void		change_euid __P((uid_t euid));
+void		change_ruid __P((uid_t ruid));
 struct ucred	*crcopy __P((struct ucred *cr));
 struct ucred	*crdup __P((struct ucred *cr));
 void		crfree __P((struct ucred *cr));

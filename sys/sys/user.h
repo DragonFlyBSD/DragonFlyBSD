@@ -32,7 +32,7 @@
  *
  *	@(#)user.h	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/sys/user.h,v 1.24.2.1 2001/10/11 08:20:18 peter Exp $
- * $DragonFly: src/sys/sys/user.h,v 1.3 2003/06/18 18:30:11 dillon Exp $
+ * $DragonFly: src/sys/sys/user.h,v 1.4 2003/06/23 17:55:50 dillon Exp $
  */
 
 #ifndef _SYS_USER_H_
@@ -68,7 +68,6 @@ struct kinfo_proc {
 	struct	eproc {
 		struct	proc *e_paddr;		/* address of proc */
 		struct	session *e_sess;	/* session pointer */
-		struct	pcred e_pcred;		/* process credentials */
 		struct	ucred e_ucred;		/* current credentials */
 		struct  procsig e_procsig;	/* shared signal structure */
 		struct	vmspace e_vm;		/* address space */

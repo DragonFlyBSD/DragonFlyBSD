@@ -28,7 +28,7 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/compat/linux/linux_util.c,v 1.12.2.2 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.3 2003/06/23 17:55:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,7 +52,7 @@ const char      linux_emul_path[] = "/compat/linux";
  */
 int
 linux_emul_find(p, sgp, prefix, path, pbuf, cflag)
-	struct proc	 *p;
+	struct proc	*p;
 	caddr_t		 *sgp;		/* Pointer to stackgap memory */
 	const char	 *prefix;
 	char		 *path;

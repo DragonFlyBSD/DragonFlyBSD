@@ -37,7 +37,7 @@
  *
  *	@(#)tty.h	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/tty.h,v 1.53.2.1 2001/02/26 04:23:21 jlemon Exp $
- * $DragonFly: src/sys/sys/tty.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/tty.h,v 1.3 2003/06/23 17:55:50 dillon Exp $
  */
 
 #ifndef _SYS_TTY_H_
@@ -263,7 +263,7 @@ int	 ttylclose __P((struct tty *tp, int flag));
 struct tty *ttymalloc __P((struct tty *tp));
 int	 ttymodem __P((struct tty *tp, int flag));
 int	 ttyopen __P((dev_t device, struct tty *tp));
-int	 ttypoll __P((dev_t dev, int events, struct proc *p));
+int	 ttypoll __P((dev_t dev, int events, struct thread *td));
 int	 ttykqfilter __P((dev_t dev, struct knote *kn));
 int	 ttyread __P((dev_t dev, struct uio *uio, int flag));
 void	 ttyregister __P((struct tty *tp));

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.3 2003/06/23 17:55:33 dillon Exp $
  */
 
 /* 
@@ -956,17 +956,16 @@ rp_releaseresource(CONTROLLER_t *ctlp)
 }
 
 int
-rpopen(dev, flag, mode, p)
-	dev_t	dev;
-	int	flag, mode;
-	struct	proc	*p;
+rpopen(dev_t dev, int flag, int mode, d_thread_t *td)
 {
 	struct	rp_port *rp;
 	int	unit, port, mynor, umynor, flags;  /* SG */
 	struct	tty	*tp;
 	int	oldspl, error;
 	unsigned int	IntMask, ChanStatus;
+	struct proc *p = td->td_proc;
 
+	KKASSERT(p != NULL);
 
    umynor = (((minor(dev) >> 16) -1) * 32);    /* SG */
 	port  = (minor(dev) & 0x1f);                /* SG */
@@ -1010,7 +1009,7 @@ open_top:
 				goto open_top;
 			}
 		}
-		if(tp->t_state & TS_XCLUDE && suser(p) != 0) {
+		if(tp->t_state & TS_XCLUDE && suser_xxx(p->p_ucred, 0) != 0) {
 			splx(oldspl);
 			error = EBUSY;
 			goto out2;
@@ -1115,10 +1114,7 @@ out2:
 }
 
 int
-rpclose(dev, flag, mode, p)
-	dev_t	dev;
-	int	flag, mode;
-	struct	proc	*p;
+rpclose(dev_t dev, int flag, int mode, d_thread_t *td)
 {
 	int	oldspl, unit, mynor, umynor, port; /* SG */
 	struct	rp_port *rp;
@@ -1230,12 +1226,7 @@ rpdtrwakeup(void *chan)
 }
 
 int
-rpioctl(dev, cmd, data, flag, p)
-	dev_t	dev;
-	u_long	cmd;
-	caddr_t data;
-	int	flag;
-	struct	proc	*p;
+rpioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 {
 	struct rp_port	*rp;
 	CHANNEL_t	*cp;
@@ -1245,6 +1236,9 @@ rpioctl(dev, cmd, data, flag, p)
 	int	error = 0;
 	int	arg, flags, result, ChanStatus;
 	struct	termios *t;
+	struct proc *p = td->td_proc;
+
+	KKASSERT(p != NULL);
 
    umynor = (((minor(dev) >> 16) -1) * 32);    /* SG */
 	port  = (minor(dev) & 0x1f);                /* SG */
@@ -1267,7 +1261,7 @@ rpioctl(dev, cmd, data, flag, p)
 		}
 		switch (cmd) {
 		case TIOCSETA:
-			error = suser(p);
+			error = suser_xxx(p->p_ucred, 0);
 			if(error != 0)
 				return(error);
 			*ct = *(struct termios *)data;
@@ -1324,7 +1318,7 @@ rpioctl(dev, cmd, data, flag, p)
 
 	t = &tp->t_termios;
 
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, p);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
 	if(error != ENOIOCTL) {
 		return(error);
 	}
@@ -1412,7 +1406,7 @@ rpioctl(dev, cmd, data, flag, p)
 		*(int *)data = result;
 		break;
 	case TIOCMSDTRWAIT:
-		error = suser(p);
+		error = suser_xxx(p->p_ucred, 0);
 		if(error != 0) {
 			splx(oldspl);
 			return(error);

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.13 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.6 2003/06/22 04:30:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.7 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -91,12 +91,11 @@ int forksleep; /* Place for fork1() to sleep on. */
 
 /* ARGSUSED */
 int
-fork(p, uap)
-	struct proc *p;
-	struct fork_args *uap;
+fork(struct fork_args *uap)
 {
-	int error;
+	struct proc *p = curproc;
 	struct proc *p2;
+	int error;
 
 	error = fork1(p, RFFDG | RFPROC, &p2);
 	if (error == 0) {
@@ -109,12 +108,11 @@ fork(p, uap)
 
 /* ARGSUSED */
 int
-vfork(p, uap)
-	struct proc *p;
-	struct vfork_args *uap;
+vfork(struct vfork_args *uap)
 {
-	int error;
+	struct proc *p = curproc;
 	struct proc *p2;
+	int error;
 
 	error = fork1(p, RFFDG | RFPROC | RFPPWAIT | RFMEM, &p2);
 	if (error == 0) {
@@ -126,12 +124,11 @@ vfork(p, uap)
 }
 
 int
-rfork(p, uap)
-	struct proc *p;
-	struct rfork_args *uap;
+rfork(struct rfork_args *uap)
 {
-	int error;
+	struct proc *p = curproc;
 	struct proc *p2;
+	int error;
 
 	error = fork1(p, uap->flags, &p2);
 	if (error == 0) {
@@ -235,7 +232,7 @@ fork1(p1, flags, procp)
 	 * exceed the limit. The variable nprocs is the current number of
 	 * processes, maxproc is the limit.
 	 */
-	uid = p1->p_cred->p_ruid;
+	uid = p1->p_ucred->cr_ruid;
 	if ((nprocs >= maxproc - 10 && uid != 0) || nprocs >= maxproc) {
 		tsleep(&forksleep, PUSER, "fork", hz / 2);
 		return (EAGAIN);
@@ -250,7 +247,7 @@ fork1(p1, flags, procp)
 	 * Increment the count of procs running with this uid. Don't allow
 	 * a nonprivileged user to exceed their current limit.
 	 */
-	ok = chgproccnt(p1->p_cred->p_uidinfo, 1,
+	ok = chgproccnt(p1->p_ucred->cr_ruidinfo, 1,
 		(uid != 0) ? p1->p_rlimit[RLIMIT_NPROC].rlim_cur : 0);
 	if (!ok) {
 		/*
@@ -359,15 +356,11 @@ again:
 	p2->p_flag = P_INMEM;
 	if (p1->p_flag & P_PROFIL)
 		startprofclock(p2);
-	MALLOC(p2->p_cred, struct pcred *, sizeof(struct pcred),
-	    M_SUBPROC, M_WAITOK);
-	bcopy(p1->p_cred, p2->p_cred, sizeof(*p2->p_cred));
-	p2->p_cred->p_refcnt = 1;
 	crhold(p1->p_ucred);
-	uihold(p1->p_cred->p_uidinfo);
+	p2->p_ucred = p1->p_ucred;
 
-	if (p2->p_prison) {
-		p2->p_prison->pr_ref++;
+	if (p2->p_ucred->cr_prison) {
+		p2->p_ucred->cr_prison->pr_ref++;
 		p2->p_flag |= P_JAILED;
 	}
 

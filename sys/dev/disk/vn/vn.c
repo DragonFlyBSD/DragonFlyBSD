@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.3 2003/06/23 17:55:36 dillon Exp $
  */
 
 /*
@@ -158,11 +158,11 @@ static u_long	vn_options;
 static int	vnsetcred (struct vn_softc *vn, struct ucred *cred);
 static void	vnclear (struct vn_softc *vn);
 static int	vn_modevent (module_t, int, void *);
-static int 	vniocattach_file (struct vn_softc *, struct vn_ioctl *, dev_t dev, int flag, struct proc *p);
-static int 	vniocattach_swap (struct vn_softc *, struct vn_ioctl *, dev_t dev, int flag, struct proc *p);
+static int 	vniocattach_file (struct vn_softc *, struct vn_ioctl *, dev_t dev, int flag, struct thread *p);
+static int 	vniocattach_swap (struct vn_softc *, struct vn_ioctl *, dev_t dev, int flag, struct thread *p);
 
 static	int
-vnclose(dev_t dev, int flags, int mode, struct proc *p)
+vnclose(dev_t dev, int flags, int mode, struct thread *td)
 {
 	struct vn_softc *vn = dev->si_drv1;
 
@@ -211,7 +211,7 @@ vnfindvn(dev_t dev)
 }
 
 static	int
-vnopen(dev_t dev, int flags, int mode, struct proc *p)
+vnopen(dev_t dev, int flags, int mode, struct thread *td)
 {
 	struct vn_softc *vn;
 
@@ -240,7 +240,7 @@ vnopen(dev_t dev, int flags, int mode, struct proc *p)
 
 	IFOPT(vn, VN_FOLLOW)
 		printf("vnopen(%s, 0x%x, 0x%x, %p)\n",
-		    devtoname(dev), flags, mode, (void *)p);
+		    devtoname(dev), flags, mode, (void *)td);
 
 	/*
 	 * Initialize label
@@ -424,7 +424,7 @@ vnstrategy(struct buf *bp)
 
 /* ARGSUSED */
 static	int
-vnioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
+vnioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
 	struct vn_softc *vn;
 	struct vn_ioctl *vio;
@@ -434,7 +434,7 @@ vnioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
 	vn = dev->si_drv1;
 	IFOPT(vn,VN_FOLLOW)
 		printf("vnioctl(%s, 0x%lx, %p, 0x%x, %p): unit %d\n",
-		    devtoname(dev), cmd, (void *)data, flag, (void *)p,
+		    devtoname(dev), cmd, (void *)data, flag, (void *)td,
 		    dkunit(dev));
 
 	switch (cmd) {
@@ -460,7 +460,7 @@ vnioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
 
     vn_specific:
 
-	error = suser(p);
+	error = suser();
 	if (error)
 		return (error);
 
@@ -473,9 +473,9 @@ vnioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
 			return(EBUSY);
 
 		if (vio->vn_file == NULL)
-			error = vniocattach_swap(vn, vio, dev, flag, p);
+			error = vniocattach_swap(vn, vio, dev, flag, td);
 		else
-			error = vniocattach_file(vn, vio, dev, flag, p);
+			error = vniocattach_file(vn, vio, dev, flag, td);
 		break;
 
 	case VNIOCDETACH:
@@ -529,16 +529,19 @@ vnioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
  */
 
 static int
-vniocattach_file(vn, vio, dev, flag, p)
+vniocattach_file(vn, vio, dev, flag, td)
 	struct vn_softc *vn;
 	struct vn_ioctl *vio;
 	dev_t dev;
 	int flag;
-	struct proc *p;
+	struct thread *td;
 {
 	struct vattr vattr;
 	struct nameidata nd;
 	int error, flags;
+	struct proc *p = td->td_proc;
+
+	KKASSERT(p != NULL);
 
 	flags = FREAD|FWRITE;
 	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, vio->vn_file, p);
@@ -587,7 +590,7 @@ vniocattach_file(vn, vio, dev, flag, p)
 		 * no other slices or labels are open.  Otherwise,
 		 * we rely on VNIOCCLR not being abused.
 		 */
-		error = vnopen(dev, flag, S_IFCHR, p);
+		error = vnopen(dev, flag, S_IFCHR, td);
 		if (error)
 			vnclear(vn);
 	}
@@ -605,15 +608,17 @@ vniocattach_file(vn, vio, dev, flag, p)
  */
 
 static int
-vniocattach_swap(vn, vio, dev, flag, p)
+vniocattach_swap(vn, vio, dev, flag, td)
 	struct vn_softc *vn;
 	struct vn_ioctl *vio;
 	dev_t dev;
 	int flag;
-	struct proc *p;
+	struct thread *td;
 {
 	int error;
+	struct proc *p = td->td_proc;
 
+	KKASSERT(p != NULL);
 	/*
 	 * Range check.  Disallow negative sizes or any size less then the
 	 * size of a page.  Then round to a page.
@@ -655,7 +660,7 @@ vniocattach_swap(vn, vio, dev, flag, p)
 			 * no other slices or labels are open.  Otherwise,
 			 * we rely on VNIOCCLR not being abused.
 			 */
-			error = vnopen(dev, flag, S_IFCHR, p);
+			error = vnopen(dev, flag, S_IFCHR, td);
 		}
 	}
 	if (error == 0) {

@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.7.2.3 2002/02/13 00:43:12 dillon Exp $
- * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.3 2003/06/23 17:55:46 dillon Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -127,7 +127,7 @@ static int	ngt_close(struct tty *tp, int flag);
 static int	ngt_read(struct tty *tp, struct uio *uio, int flag);
 static int	ngt_write(struct tty *tp, struct uio *uio, int flag);
 static int	ngt_tioctl(struct tty *tp,
-		    u_long cmd, caddr_t data, int flag, struct proc *);
+		    u_long cmd, caddr_t data, int flag, d_thread_t *td);
 static int	ngt_input(int c, struct tty *tp);
 static int	ngt_start(struct tty *tp);
 
@@ -197,7 +197,7 @@ ngt_open(dev_t dev, struct tty *tp)
 	int s, error;
 
 	/* Super-user only */
-	if ((error = suser(p)))
+	if ((error = suser_xxx(p->p_ucred, 0)))
 		return (error);
 	s = splnet();
 	(void) spltty();	/* XXX is this necessary? */
@@ -312,7 +312,7 @@ ngt_write(struct tty *tp, struct uio *uio, int flag)
  * We implement the NGIOCGINFO ioctl() defined in ng_message.h.
  */
 static int
-ngt_tioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct proc *p)
+ngt_tioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 {
 	const sc_p sc = (sc_p) tp->t_sc;
 	int s, error = 0;

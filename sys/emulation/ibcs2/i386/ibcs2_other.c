@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_other.c,v 1.10 1999/08/28 00:43:59 peter Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_other.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_other.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
  */
 
 /*
@@ -44,17 +44,16 @@
 #define IBCS2_SECURE_SETLUID 2
 
 int
-ibcs2_secure(struct proc *p, struct ibcs2_secure_args *uap)
+ibcs2_secure(struct ibcs2_secure_args *uap)
 {
-	switch (uap->cmd) {
+	struct proc *p = curproc;
 
+	switch (uap->cmd) {
 	case IBCS2_SECURE_GETLUID:		/* get login uid */
 		p->p_retval[0] = p->p_ucred->cr_uid;
 		return 0;
-
 	case IBCS2_SECURE_SETLUID:		/* set login uid */
 		return EPERM;
-
 	default:
 		printf("IBCS2: 'secure' cmd=%d not implemented\n", uap->cmd);
 	}
@@ -63,7 +62,7 @@ ibcs2_secure(struct proc *p, struct ibcs2_secure_args *uap)
 }
 
 int
-ibcs2_lseek(struct proc *p, register struct ibcs2_lseek_args *uap)
+ibcs2_lseek(register struct ibcs2_lseek_args *uap)
 {
 	struct lseek_args largs;
 	int error;
@@ -71,7 +70,7 @@ ibcs2_lseek(struct proc *p, register struct ibcs2_lseek_args *uap)
 	largs.fd = uap->fd;
 	largs.offset = uap->offset;
 	largs.whence = uap->whence;
-	error = lseek(p, &largs);
+	error = lseek(&largs);
 	return (error);
 }
 
@@ -80,7 +79,7 @@ ibcs2_lseek(struct proc *p, register struct ibcs2_lseek_args *uap)
 #include <sys/un.h>     
 
 int
-spx_open(struct proc *p, void *uap)
+spx_open(void *uap)
 {
 	struct socket_args sock;
 	struct connect_args conn;
@@ -93,7 +92,7 @@ spx_open(struct proc *p, void *uap)
 	sock.domain = AF_UNIX;
 	sock.type = SOCK_STREAM;
 	sock.protocol = 0;
-	error = socket(p, &sock);
+	error = socket(&sock);
 	if (error)
 		return error;
 
@@ -108,11 +107,11 @@ spx_open(struct proc *p, void *uap)
 	conn.s = fd = p->p_retval[0];
 	conn.name = (caddr_t)Xaddr;
 	conn.namelen = sizeof(struct sockaddr_un);
-	error = connect(p, &conn);
+	error = connect(&conn);
 	if (error) {
 		struct close_args cl;
 		cl.fd = fd;
-		close(p, &cl);
+		close(&cl);
 		return error;
 	}
 	p->p_retval[0] = fd;

@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/mixer.c,v 1.4.2.8 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.3 2003/06/23 17:55:34 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.3 2003/06/23 17:55:34 dillon Exp $");
 
 MALLOC_DEFINE(M_MIXER, "mixer", "mixer");
 
@@ -395,7 +395,7 @@ mixer_hwvol_step(device_t dev, int left_step, int right_step)
 /* ----------------------------------------------------------------------- */
 
 static int
-mixer_open(dev_t i_dev, int flags, int mode, struct proc *p)
+mixer_open(dev_t i_dev, int flags, int mode, struct thread *td)
 {
 	struct snd_mixer *m;
 	intrmask_t s;
@@ -412,7 +412,7 @@ mixer_open(dev_t i_dev, int flags, int mode, struct proc *p)
 }
 
 static int
-mixer_close(dev_t i_dev, int flags, int mode, struct proc *p)
+mixer_close(dev_t i_dev, int flags, int mode, struct thread *td)
 {
 	struct snd_mixer *m;
 	intrmask_t s;
@@ -434,7 +434,7 @@ mixer_close(dev_t i_dev, int flags, int mode, struct proc *p)
 }
 
 int
-mixer_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct proc *p)
+mixer_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 {
 	struct snd_mixer *m;
 	intrmask_t s;

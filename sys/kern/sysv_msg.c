@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_msg.c,v 1.23.2.5 2002/12/31 08:54:53 maxim Exp $ */
-/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.2 2003/06/17 04:28:41 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.3 2003/06/23 17:55:41 dillon Exp $ */
 
 /*
  * Implementation of SVID messages
@@ -198,32 +198,24 @@ SYSINIT(sysv_msg, SI_SUB_SYSV_MSG, SI_ORDER_FIRST, msginit, NULL)
 
 /*
  * Entry point for all MSG calls
+ *
+ * msgsys_args(u_int which, int a2, ...) (VARARGS)
  */
 int
-msgsys(p, uap)
-	struct proc *p;
-	/* XXX actually varargs. */
-	struct msgsys_args /* {
-		u_int	which;
-		int	a2;
-		int	a3;
-		int	a4;
-		int	a5;
-		int	a6;
-	} */ *uap;
+msgsys(struct msgsys_args *uap)
 {
+	struct proc *p = curproc;
 
-	if (!jail_sysvipc_allowed && p->p_prison != NULL)
+	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	if (uap->which >= sizeof(msgcalls)/sizeof(msgcalls[0]))
 		return (EINVAL);
-	return ((*msgcalls[uap->which])(p, &uap->a2));
+	return ((*msgcalls[uap->which])(&uap->a2));
 }
 
 static void
-msg_freehdr(msghdr)
-	struct msg *msghdr;
+msg_freehdr(struct msg *msghdr)
 {
 	while (msghdr->msg_ts > 0) {
 		short next;
@@ -254,10 +246,9 @@ struct msgctl_args {
 #endif
 
 int
-msgctl(p, uap)
-	struct proc *p;
-	register struct msgctl_args *uap;
+msgctl(struct msgctl_args *uap)
 {
+	struct proc *p = curproc;
 	int msqid = uap->msqid;
 	int cmd = uap->cmd;
 	struct msqid_ds *user_msqptr = uap->buf;
@@ -269,7 +260,7 @@ msgctl(p, uap)
 	printf("call to msgctl(%d, %d, 0x%x)\n", msqid, cmd, user_msqptr);
 #endif
 
-	if (!jail_sysvipc_allowed && p->p_prison != NULL)
+	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	msqid = IPCID_TO_IX(msqid);
@@ -338,7 +329,7 @@ msgctl(p, uap)
 		if ((eval = copyin(user_msqptr, &msqbuf, sizeof(msqbuf))) != 0)
 			return(eval);
 		if (msqbuf.msg_qbytes > msqptr->msg_qbytes) {
-			eval = suser(p);
+			eval = suser();
 			if (eval)
 				return(eval);
 		}
@@ -394,10 +385,9 @@ struct msgget_args {
 #endif
 
 int
-msgget(p, uap)
-	struct proc *p;
-	register struct msgget_args *uap;
+msgget(struct msgget_args *uap)
 {
+	struct proc *p = curproc;
 	int msqid, eval;
 	int key = uap->key;
 	int msgflg = uap->msgflg;
@@ -408,7 +398,7 @@ msgget(p, uap)
 	printf("msgget(0x%x, 0%o)\n", key, msgflg);
 #endif
 
-	if (!jail_sysvipc_allowed && p->p_prison != NULL)
+	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	if (key != IPC_PRIVATE) {
@@ -505,10 +495,9 @@ struct msgsnd_args {
 #endif
 
 int
-msgsnd(p, uap)
-	struct proc *p;
-	register struct msgsnd_args *uap;
+msgsnd(struct msgsnd_args *uap)
 {
+	struct proc *p = curproc;
 	int msqid = uap->msqid;
 	void *user_msgp = uap->msgp;
 	size_t msgsz = uap->msgsz;
@@ -523,7 +512,7 @@ msgsnd(p, uap)
 	    msgflg);
 #endif
 
-	if (!jail_sysvipc_allowed && p->p_prison != NULL)
+	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	msqid = IPCID_TO_IX(msqid);
@@ -830,10 +819,9 @@ struct msgrcv_args {
 #endif
 
 int
-msgrcv(p, uap)
-	struct proc *p;
-	register struct msgrcv_args *uap;
+msgrcv(struct msgrcv_args *uap)
 {
+	struct proc *p = curproc;
 	int msqid = uap->msqid;
 	void *user_msgp = uap->msgp;
 	size_t msgsz = uap->msgsz;
@@ -850,7 +838,7 @@ msgrcv(p, uap)
 	    msgsz, msgtyp, msgflg);
 #endif
 
-	if (!jail_sysvipc_allowed && p->p_prison != NULL)
+	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	msqid = IPCID_TO_IX(msqid);

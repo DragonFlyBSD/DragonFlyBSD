@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/wi_hostap.c,v 1.7.2.4 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/Attic/wi_hostap.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/Attic/wi_hostap.c,v 1.3 2003/06/23 17:55:37 dillon Exp $
  */
 
 /* This is experimental Host AP software for Prism 2 802.11b interfaces.
@@ -1138,7 +1138,7 @@ wihap_ioctl(struct wi_softc *sc, u_long command, caddr_t data)
 #if __FreeBSD_version >= 500000
 	struct thread		*td = curthread;
 #else
-	struct proc		*td = curproc;		/* Little white lie */
+	struct proc		*proc = curproc;	/* Little white lie */
 #endif
 
 	if (!(sc->arpcom.ac_if.if_flags & IFF_RUNNING))
@@ -1146,7 +1146,7 @@ wihap_ioctl(struct wi_softc *sc, u_long command, caddr_t data)
 
 	switch (command) {
 	case SIOCHOSTAP_DEL:
-		if ((error = suser(td)))
+		if ((error = suser_xxx(proc->p_ucred, 0)))
 			break;
 		if ((error = copyin(ifr->ifr_data, &reqsta, sizeof(reqsta))))
 			break;
@@ -1190,7 +1190,7 @@ wihap_ioctl(struct wi_softc *sc, u_long command, caddr_t data)
 		break;
 
 	case SIOCHOSTAP_ADD:
-		if ((error = suser(td)))
+		if ((error = suser_xxx(proc->p_ucred, 0)))
 			break;
 		if ((error = copyin(ifr->ifr_data, &reqsta, sizeof(reqsta))))
 			break;
@@ -1214,7 +1214,7 @@ wihap_ioctl(struct wi_softc *sc, u_long command, caddr_t data)
 		break;
 
 	case SIOCHOSTAP_SFLAGS:
-		if ((error = suser(td)))
+		if ((error = suser_xxx(proc->p_ucred, 0)))
 			break;
 		if ((error = copyin(ifr->ifr_data, &flag, sizeof(int))))
 			break;

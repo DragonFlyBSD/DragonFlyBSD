@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/sysent.h,v 1.27.2.5 2002/03/17 11:08:38 alfred Exp $
- * $DragonFly: src/sys/sys/sysent.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/sysent.h,v 1.3 2003/06/23 17:55:50 dillon Exp $
  */
 
 #ifndef _SYS_SYSENT_H_
@@ -39,7 +39,7 @@
 
 struct proc;
 
-typedef	int	sy_call_t __P((struct proc *, void *));
+typedef	int	sy_call_t __P((void *));
 
 struct sysent {		/* system call table */
 	int	sy_narg;	/* number of arguments */

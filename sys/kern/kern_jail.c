@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_jail.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_jail.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  *
  */
 
@@ -45,19 +45,21 @@ SYSCTL_INT(_jail, OID_AUTO, sysvipc_allowed, CTLFLAG_RW,
     &jail_sysvipc_allowed, 0,
     "Processes in jail can use System V IPC primitives");
 
+/*
+ * jail()
+ *
+ * jail_args(syscallarg(struct jail *) jail)
+ */
 int
-jail(p, uap)
-        struct proc *p;
-        struct jail_args /* {
-                syscallarg(struct jail *) jail;
-        } */ *uap;
+jail(struct jail_args *uap) 
 {
 	int error;
 	struct prison *pr;
 	struct jail j;
 	struct chroot_args ca;
+	struct proc *p = curproc;
 
-	error = suser(p);
+	error = suser();
 	if (error)
 		return (error);
 	error = copyin(uap->jail, &j, sizeof j);
@@ -73,12 +75,13 @@ jail(p, uap)
 	pr->pr_ip = j.ip_number;
 
 	ca.path = j.path;
-	error = chroot(p, &ca);
+	error = chroot(&ca);
 	if (error)
 		goto bail;
 
 	pr->pr_ref++;
-	p->p_prison = pr;
+	p->p_ucred = crcopy(p->p_ucred);
+	p->p_ucred->cr_prison = pr;
 	p->p_flag |= P_JAILED;
 	return (0);
 
@@ -91,8 +94,9 @@ int
 prison_ip(struct proc *p, int flag, u_int32_t *ip)
 {
 	u_int32_t tmp;
+	struct prison *pr;
 
-	if (!p->p_prison)
+	if ((pr = p->p_ucred->cr_prison) == NULL)
 		return (0);
 	if (flag) 
 		tmp = *ip;
@@ -100,19 +104,19 @@ prison_ip(struct proc *p, int flag, u_int32_t *ip)
 		tmp = ntohl(*ip);
 	if (tmp == INADDR_ANY) {
 		if (flag) 
-			*ip = p->p_prison->pr_ip;
+			*ip = pr->pr_ip;
 		else
-			*ip = htonl(p->p_prison->pr_ip);
+			*ip = htonl(pr->pr_ip);
 		return (0);
 	}
 	if (tmp == INADDR_LOOPBACK) {
 		if (flag)
-			*ip = p->p_prison->pr_ip;
+			*ip = pr->pr_ip;
 		else
-			*ip = htonl(p->p_prison->pr_ip);
+			*ip = htonl(pr->pr_ip);
 		return (0);
 	}
-	if (p->p_prison->pr_ip != tmp)
+	if (pr->pr_ip != tmp)
 		return (1);
 	return (0);
 }
@@ -121,8 +125,11 @@ void
 prison_remote_ip(struct proc *p, int flag, u_int32_t *ip)
 {
 	u_int32_t tmp;
+	struct prison *pr;
 
-	if (!p || !p->p_prison)
+	if (p == NULL)
+		return;
+	if ((pr = p->p_ucred->cr_prison) == NULL)
 		return;
 	if (flag)
 		tmp = *ip;
@@ -130,9 +137,9 @@ prison_remote_ip(struct proc *p, int flag, u_int32_t *ip)
 		tmp = ntohl(*ip);
 	if (tmp == INADDR_LOOPBACK) {
 		if (flag)
-			*ip = p->p_prison->pr_ip;
+			*ip = pr->pr_ip;
 		else
-			*ip = htonl(p->p_prison->pr_ip);
+			*ip = htonl(pr->pr_ip);
 		return;
 	}
 	return;
@@ -141,14 +148,17 @@ prison_remote_ip(struct proc *p, int flag, u_int32_t *ip)
 int
 prison_if(struct proc *p, struct sockaddr *sa)
 {
+	struct prison *pr;
 	struct sockaddr_in *sai = (struct sockaddr_in*) sa;
 	int ok;
+
+	pr = p->p_ucred->cr_prison;
 
 	if ((sai->sin_family != AF_INET) && jail_socket_unixiproute_only)
 		ok = 1;
 	else if (sai->sin_family != AF_INET)
 		ok = 0;
-	else if (p->p_prison->pr_ip != ntohl(sai->sin_addr.s_addr))
+	else if (pr->pr_ip != ntohl(sai->sin_addr.s_addr))
 		ok = 1;
 	else
 		ok = 0;

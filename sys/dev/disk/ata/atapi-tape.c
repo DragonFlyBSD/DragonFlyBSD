@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.c,v 1.36.2.12 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.3 2003/06/19 01:54:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.4 2003/06/23 17:55:29 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -248,7 +248,7 @@ ast_describe(struct ast_softc *stp)
 }
 
 static int
-astopen(dev_t dev, int flags, int fmt, struct proc *p)
+astopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
     struct ast_softc *stp = dev->si_drv1;
 
@@ -273,7 +273,7 @@ astopen(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int 
-astclose(dev_t dev, int flags, int fmt, struct proc *p)
+astclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
     struct ast_softc *stp = dev->si_drv1;
 
@@ -301,7 +301,7 @@ astclose(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int 
-astioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
+astioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 {
     struct ast_softc *stp = dev->si_drv1;
     int error = 0;

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.3 2003/06/19 01:54:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.4 2003/06/23 17:55:29 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -470,7 +470,7 @@ ata_raid_rebuild(int array)
 }
 
 static int
-aropen(dev_t dev, int flags, int fmt, struct proc *p)
+aropen(dev_t dev, int flags, int fmt, struct thread *td)
 {
     struct ar_softc *rdp = dev->si_drv1;
     struct disklabel *dl;

@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_ipc.c,v 1.15 1999/08/28 00:43:57 peter Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ipc.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ipc.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -103,14 +103,12 @@ struct msqid_ds *bp;
 }
 
 int
-ibcs2_msgsys(p, uap)
-	struct proc *p;
-	struct ibcs2_msgsys_args *uap;
+ibcs2_msgsys(struct ibcs2_msgsys_args *uap)
 {
 	switch (SCARG(uap, which)) {
 	case 0:				/* msgget */
 		SCARG(uap, which) = 1;
-		return msgsys(p, (struct msgsys_args *)uap);
+		return msgsys((struct msgsys_args *)uap);
 	case 1: {			/* msgctl */
 		int error;
 		struct msgsys_args margs;
@@ -123,7 +121,7 @@ ibcs2_msgsys(p, uap)
 		SCARG(&margs, a3) = SCARG(uap, a3);
 		switch (SCARG(&margs, a3)) {
 		case IBCS2_IPC_STAT:
-			error = msgsys(p, &margs);
+			error = msgsys(&margs);
 			if (!error)
 				cvt_msqid2imsqid(
 				    (struct msqid_ds *)SCARG(&margs, a4),
@@ -133,18 +131,18 @@ ibcs2_msgsys(p, uap)
 			cvt_imsqid2msqid((struct ibcs2_msqid_ds *)SCARG(uap,
 									a4),
 					 (struct msqid_ds *)SCARG(&margs, a4));
-			return msgsys(p, &margs);
+			return msgsys(&margs);
 		case IBCS2_IPC_RMID:
-			return msgsys(p, &margs);
+			return msgsys(&margs);
 		}
 		return EINVAL;
 	}
 	case 2:				/* msgrcv */
 		SCARG(uap, which) = 3;
-		return msgsys(p, (struct msgsys_args *)uap);
+		return msgsys((struct msgsys_args *)uap);
 	case 3:				/* msgsnd */
 		SCARG(uap, which) = 2;
-		return msgsys(p, (struct msgsys_args *)uap);
+		return msgsys((struct msgsys_args *)uap);
 	default:
 		return EINVAL;
 	}
@@ -234,9 +232,7 @@ struct semid_ds *bp;
 }
 
 int
-ibcs2_semsys(p, uap)
-	struct proc *p;
-	struct ibcs2_semsys_args *uap;
+ibcs2_semsys(struct ibcs2_semsys_args *uap)
 {
 	int error;
 
@@ -256,7 +252,7 @@ ibcs2_semsys(p, uap)
 			sup = stackgap_alloc(&sg, sizeof(union semun));
 			sup->buf = sp;
 			SCARG(uap, a5) = (int)sup;
-			error = semsys(p, (struct semsys_args *)uap);
+			error = semsys((struct semsys_args *)uap);
 			if (!error) {
 				SCARG(uap, a5) = (int)ssu.buf;
 				isp = stackgap_alloc(&sg, sizeof(*isp));
@@ -281,7 +277,7 @@ ibcs2_semsys(p, uap)
 				return error;
 			cvt_isemid2semid(isp, sp);
 			SCARG(uap, a5) = (int)sp;
-			return semsys(p, (struct semsys_args *)uap);
+			return semsys((struct semsys_args *)uap);
 		    }
 		case IBCS2_SETVAL:
 		    {
@@ -291,17 +287,17 @@ ibcs2_semsys(p, uap)
 			sp = stackgap_alloc(&sg, sizeof(*sp));
 			sp->val = (int) SCARG(uap, a5);
 			SCARG(uap, a5) = (int)sp;
-			return semsys(p, (struct semsys_args *)uap);
+			return semsys((struct semsys_args *)uap);
 		    }
 		}
 
-		return semsys(p, (struct semsys_args *)uap);
+		return semsys((struct semsys_args *)uap);
 
 	case 1:				/* semget */
-		return semsys(p, (struct semsys_args *)uap);
+		return semsys((struct semsys_args *)uap);
 
 	case 2:				/* semop */
-		return semsys(p, (struct semsys_args *)uap);
+		return semsys((struct semsys_args *)uap);
 	}
 	return EINVAL;
 }
@@ -346,15 +342,13 @@ struct shmid_ds *bp;
 }
 
 int
-ibcs2_shmsys(p, uap)
-	struct proc *p;
-	struct ibcs2_shmsys_args *uap;
+ibcs2_shmsys(struct ibcs2_shmsys_args *uap)
 {
 	int error;
 
 	switch (SCARG(uap, which)) {
 	case 0:						/* shmat */
-		return shmsys(p, (struct shmsys_args *)uap);
+		return shmsys((struct shmsys_args *)uap);
 
 	case 1:						/* shmctl */
 		switch(SCARG(uap, a3)) {
@@ -367,7 +361,7 @@ ibcs2_shmsys(p, uap)
 			isp = (struct ibcs2_shmid_ds *)SCARG(uap, a4);
 			sp = stackgap_alloc(&sg, sizeof(*sp));
 			SCARG(uap, a4) = (int)sp;
-			error = shmsys(p, (struct shmsys_args *)uap);
+			error = shmsys((struct shmsys_args *)uap);
 			if (!error) {
 				SCARG(uap, a4) = (int)isp;
 				isp = stackgap_alloc(&sg, sizeof(*isp));
@@ -392,17 +386,17 @@ ibcs2_shmsys(p, uap)
 				return error;
 			cvt_ishmid2shmid(isp, sp);
 			SCARG(uap, a4) = (int)sp;
-			return shmsys(p, (struct shmsys_args *)uap);
+			return shmsys((struct shmsys_args *)uap);
 		    }
 		}
 
-		return shmsys(p, (struct shmsys_args *)uap);
+		return shmsys((struct shmsys_args *)uap);
 
 	case 2:						/* shmdt */
-		return shmsys(p, (struct shmsys_args *)uap);
+		return shmsys((struct shmsys_args *)uap);
 
 	case 3:						/* shmget */
-		return shmsys(p, (struct shmsys_args *)uap);
+		return shmsys((struct shmsys_args *)uap);
 	}
 	return EINVAL;
 }

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.3 2003/06/23 17:55:51 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -459,9 +459,9 @@ ufs_setattr(ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != ip->i_uid &&
-		    (error = suser_xxx(cred, p, PRISON_ROOT)))
+		    (error = suser_xxx(cred, PRISON_ROOT)))
 			return (error);
-		if ((cred->cr_uid == 0) && (p->p_prison == NULL)) {
+		if ((cred->cr_uid == 0) && (cred->cr_prison == NULL)) {
 			if ((ip->i_flags
 			    & (SF_NOUNLINK | SF_IMMUTABLE | SF_APPEND)) &&
 			    securelevel > 0)
@@ -515,7 +515,7 @@ ufs_setattr(ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != ip->i_uid &&
-		    (error = suser_xxx(cred, p, PRISON_ROOT)) &&
+		    (error = suser_xxx(cred, PRISON_ROOT)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
 		    (error = VOP_ACCESS(vp, VWRITE, cred, p))))
 			return (error);
@@ -561,7 +561,7 @@ ufs_chmod(vp, mode, cred, p)
 	int error;
 
 	if (cred->cr_uid != ip->i_uid) {
-	    error = suser_xxx(cred, p, PRISON_ROOT);
+	    error = suser_xxx(cred, PRISON_ROOT);
 	    if (error)
 		return (error);
 	}
@@ -609,7 +609,7 @@ ufs_chown(vp, uid, gid, cred, p)
 	 */
 	if ((cred->cr_uid != ip->i_uid || uid != ip->i_uid ||
 	    (gid != ip->i_gid && !groupmember((gid_t)gid, cred))) &&
-	    (error = suser_xxx(cred, p, PRISON_ROOT)))
+	    (error = suser_xxx(cred, PRISON_ROOT)))
 		return (error);
 	ogid = ip->i_gid;
 	ouid = ip->i_uid;
@@ -2135,8 +2135,9 @@ ufs_makeinode(mode, dvp, vpp, cnp)
 	if (DOINGSOFTDEP(tvp))
 		softdep_change_linkcnt(ip);
 	if ((ip->i_mode & ISGID) && !groupmember(ip->i_gid, cnp->cn_cred) &&
-	    suser_xxx(cnp->cn_cred, 0, 0))
+	    suser_xxx(cnp->cn_cred, 0)) {
 		ip->i_mode &= ~ISGID;
+	}
 
 	if (cnp->cn_flags & ISWHITEOUT)
 		ip->i_flags |= UF_OPAQUE;

@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.3 2003/06/19 01:55:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.4 2003/06/23 17:55:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -193,7 +193,7 @@ spec_open(ap)
 		vp->v_flag |= VISTTY;
 
 	VOP_UNLOCK(vp, 0, p);
-	error = (*dsw->d_open)(dev, ap->a_mode, S_IFCHR, p);
+	error = (*dsw->d_open)(dev, ap->a_mode, S_IFCHR, p->p_thread);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
 
 	if (error)
@@ -307,7 +307,7 @@ spec_ioctl(ap)
 
 	dev = ap->a_vp->v_rdev;
 	return ((*devsw(dev)->d_ioctl)(dev, ap->a_command, 
-	    ap->a_data, ap->a_fflag, ap->a_p));
+	    ap->a_data, ap->a_fflag, ap->a_p->p_thread));
 }
 
 /* ARGSUSED */
@@ -323,7 +323,7 @@ spec_poll(ap)
 	dev_t dev;
 
 	dev = ap->a_vp->v_rdev;
-	return (*devsw(dev)->d_poll)(dev, ap->a_events, ap->a_p);
+	return (*devsw(dev)->d_poll)(dev, ap->a_events, ap->a_p->p_thread);
 }
 
 /* ARGSUSED */
@@ -591,7 +591,7 @@ spec_close(ap)
 	} else if (vcount(vp) > 1) {
 		return (0);
 	}
-	return (devsw(dev)->d_close(dev, ap->a_fflag, S_IFCHR, p));
+	return (devsw(dev)->d_close(dev, ap->a_fflag, S_IFCHR, p->p_thread));
 }
 
 /*

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_signal.c,v 1.23.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.3 2003/06/23 17:55:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -131,7 +131,7 @@ bsd_to_linux_sigaction(struct sigaction *bsa, l_sigaction_t *lsa)
 }
 
 int
-linux_do_sigaction(struct proc *p, int linux_sig, l_sigaction_t *linux_nsa,
+linux_do_sigaction(int linux_sig, l_sigaction_t *linux_nsa,
 		   l_sigaction_t *linux_osa)
 {
 	struct sigaction *nsa, *osa;
@@ -163,7 +163,7 @@ linux_do_sigaction(struct proc *p, int linux_sig, l_sigaction_t *linux_nsa,
 
 	sa_args.act = nsa;
 	sa_args.oact = osa;
-	error = sigaction(p, &sa_args);
+	error = sigaction(&sa_args);
 	if (error)
 		return (error);
 
@@ -176,8 +176,9 @@ linux_do_sigaction(struct proc *p, int linux_sig, l_sigaction_t *linux_nsa,
 
 #ifndef __alpha__
 int
-linux_signal(struct proc *p, struct linux_signal_args *args)
+linux_signal(struct linux_signal_args *args)
 {
+	struct proc *p = curproc;
 	l_sigaction_t nsa, osa;
 	int error;
 
@@ -191,7 +192,7 @@ linux_signal(struct proc *p, struct linux_signal_args *args)
 	nsa.lsa_flags = LINUX_SA_ONESHOT | LINUX_SA_NOMASK;
 	LINUX_SIGEMPTYSET(nsa.lsa_mask);
 
-	error = linux_do_sigaction(p, args->sig, &nsa, &osa);
+	error = linux_do_sigaction(args->sig, &nsa, &osa);
 	p->p_retval[0] = (int)osa.lsa_handler;
 
 	return (error);
@@ -199,7 +200,7 @@ linux_signal(struct proc *p, struct linux_signal_args *args)
 #endif	/*!__alpha__*/
 
 int
-linux_rt_sigaction(struct proc *p, struct linux_rt_sigaction_args *args)
+linux_rt_sigaction(struct linux_rt_sigaction_args *args)
 {
 	l_sigaction_t nsa, osa;
 	int error;
@@ -220,7 +221,7 @@ linux_rt_sigaction(struct proc *p, struct linux_rt_sigaction_args *args)
 			return (error);
 	}
 
-	error = linux_do_sigaction(p, args->sig,
+	error = linux_do_sigaction(args->sig,
 				   args->act ? &nsa : NULL,
 				   args->oact ? &osa : NULL);
 
@@ -232,9 +233,9 @@ linux_rt_sigaction(struct proc *p, struct linux_rt_sigaction_args *args)
 }
 
 static int
-linux_do_sigprocmask(struct proc *p, int how, l_sigset_t *new,
-		     l_sigset_t *old)
+linux_do_sigprocmask(int how, l_sigset_t *new, l_sigset_t *old)
 {
+	struct proc *p = curproc;
 	int error;
 	sigset_t mask;
 
@@ -270,7 +271,7 @@ linux_do_sigprocmask(struct proc *p, int how, l_sigset_t *new,
 
 #ifndef __alpha__
 int
-linux_sigprocmask(struct proc *p, struct linux_sigprocmask_args *args)
+linux_sigprocmask(struct linux_sigprocmask_args *args)
 {
 	l_osigset_t mask;
 	l_sigset_t set, oset;
@@ -289,7 +290,7 @@ linux_sigprocmask(struct proc *p, struct linux_sigprocmask_args *args)
 		set.__bits[0] = mask;
 	}
 
-	error = linux_do_sigprocmask(p, args->how,
+	error = linux_do_sigprocmask(args->how,
 				     args->mask ? &set : NULL,
 				     args->omask ? &oset : NULL);
 
@@ -303,7 +304,7 @@ linux_sigprocmask(struct proc *p, struct linux_sigprocmask_args *args)
 #endif	/*!__alpha__*/
 
 int
-linux_rt_sigprocmask(struct proc *p, struct linux_rt_sigprocmask_args *args)
+linux_rt_sigprocmask(struct linux_rt_sigprocmask_args *args)
 {
 	l_sigset_t set, oset;
 	int error;
@@ -324,7 +325,7 @@ linux_rt_sigprocmask(struct proc *p, struct linux_rt_sigprocmask_args *args)
 			return (error);
 	}
 
-	error = linux_do_sigprocmask(p, args->how,
+	error = linux_do_sigprocmask(args->how,
 				     args->mask ? &set : NULL,
 				     args->omask ? &oset : NULL);
 
@@ -337,8 +338,9 @@ linux_rt_sigprocmask(struct proc *p, struct linux_rt_sigprocmask_args *args)
 
 #ifndef __alpha__
 int
-linux_sgetmask(struct proc *p, struct linux_sgetmask_args *args)
+linux_sgetmask(struct linux_sgetmask_args *args)
 {
+	struct proc *p = curproc;
 	l_sigset_t mask;
 
 #ifdef DEBUG
@@ -352,8 +354,9 @@ linux_sgetmask(struct proc *p, struct linux_sgetmask_args *args)
 }
 
 int
-linux_ssetmask(struct proc *p, struct linux_ssetmask_args *args)
+linux_ssetmask(struct linux_ssetmask_args *args)
 {
+	struct proc *p = curproc;
 	l_sigset_t lset;
 	sigset_t bset;
 
@@ -373,8 +376,9 @@ linux_ssetmask(struct proc *p, struct linux_ssetmask_args *args)
 }
 
 int
-linux_sigpending(struct proc *p, struct linux_sigpending_args *args)
+linux_sigpending(struct linux_sigpending_args *args)
 {
+	struct proc *p = curproc;
 	sigset_t bset;
 	l_sigset_t lset;
 	l_osigset_t mask;
@@ -393,7 +397,7 @@ linux_sigpending(struct proc *p, struct linux_sigpending_args *args)
 #endif	/*!__alpha__*/
 
 int
-linux_kill(struct proc *p, struct linux_kill_args *args)
+linux_kill(struct linux_kill_args *args)
 {
 	struct kill_args /* {
 	    int pid;
@@ -419,5 +423,5 @@ linux_kill(struct proc *p, struct linux_kill_args *args)
 		tmp.signum = args->signum;
 
 	tmp.pid = args->pid;
-	return (kill(p, &tmp));
+	return (kill(&tmp));
 }

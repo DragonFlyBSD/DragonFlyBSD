@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.3.2.4 2002/08/11 19:58:12 alc Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.2 2003/06/17 04:28:56 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -637,7 +637,7 @@ agp_unbind_user(device_t dev, agp_unbind *unbind)
 }
 
 static int
-agp_open(dev_t kdev, int oflags, int devtype, struct proc *p)
+agp_open(dev_t kdev, int oflags, int devtype, struct thread *td)
 {
 	device_t dev = KDEV2DEV(kdev);
 	struct agp_softc *sc = device_get_softc(dev);
@@ -651,7 +651,7 @@ agp_open(dev_t kdev, int oflags, int devtype, struct proc *p)
 }
 
 static int
-agp_close(dev_t kdev, int fflag, int devtype, struct proc *p)
+agp_close(dev_t kdev, int fflag, int devtype, struct thread *td)
 {
 	device_t dev = KDEV2DEV(kdev);
 	struct agp_softc *sc = device_get_softc(dev);
@@ -674,7 +674,7 @@ agp_close(dev_t kdev, int fflag, int devtype, struct proc *p)
 }
 
 static int
-agp_ioctl(dev_t kdev, u_long cmd, caddr_t data, int fflag, struct proc *p)
+agp_ioctl(dev_t kdev, u_long cmd, caddr_t data, int fflag, struct thread *td)
 {
 	device_t dev = KDEV2DEV(kdev);
 

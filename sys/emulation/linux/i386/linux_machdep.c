@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.3 2003/06/23 17:55:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -99,13 +99,13 @@ bsd_to_linux_sigaltstack(int bsa)
 }
 
 int
-linux_execve(struct proc *p, struct linux_execve_args *args)
+linux_execve(struct linux_execve_args *args)
 {
 	struct execve_args bsd;
 	caddr_t sg;
 
 	sg = stackgap_init();
-	CHECKALTEXIST(p, &sg, args->path);
+	CHECKALTEXIST(&sg, args->path);
 
 #ifdef DEBUG
 	if (ldebug(execve))
@@ -115,7 +115,7 @@ linux_execve(struct proc *p, struct linux_execve_args *args)
 	bsd.fname = args->path;
 	bsd.argv = args->argp;
 	bsd.envv = args->envp;
-	return (execve(p, &bsd));
+	return (execve(&bsd));
 }
 
 struct l_ipc_kludge {
@@ -124,7 +124,7 @@ struct l_ipc_kludge {
 };
 
 int
-linux_ipc(struct proc *p, struct linux_ipc_args *args)
+linux_ipc(struct linux_ipc_args *args)
 {
 
 	switch (args->what & 0xFFFF) {
@@ -134,7 +134,7 @@ linux_ipc(struct proc *p, struct linux_ipc_args *args)
 		a.semid = args->arg1;
 		a.tsops = args->ptr;
 		a.nsops = args->arg2;
-		return (linux_semop(p, &a));
+		return (linux_semop(&a));
 	}
 	case LINUX_SEMGET: {
 		struct linux_semget_args a;
@@ -142,7 +142,7 @@ linux_ipc(struct proc *p, struct linux_ipc_args *args)
 		a.key = args->arg1;
 		a.nsems = args->arg2;
 		a.semflg = args->arg3;
-		return (linux_semget(p, &a));
+		return (linux_semget(&a));
 	}
 	case LINUX_SEMCTL: {
 		struct linux_semctl_args a;
@@ -154,7 +154,7 @@ linux_ipc(struct proc *p, struct linux_ipc_args *args)
 		error = copyin((caddr_t)args->ptr, &a.arg, sizeof(a.arg));
 		if (error)
 			return (error);
-		return (linux_semctl(p, &a));
+		return (linux_semctl(&a));
 	}
 	case LINUX_MSGSND: {
 		struct linux_msgsnd_args a;
@@ -163,7 +163,7 @@ linux_ipc(struct proc *p, struct linux_ipc_args *args)
 		a.msgp = args->ptr;
 		a.msgsz = args->arg2;
 		a.msgflg = args->arg3;
-		return (linux_msgsnd(p, &a));
+		return (linux_msgsnd(&a));
 	}
 	case LINUX_MSGRCV: {
 		struct linux_msgrcv_args a;
@@ -186,14 +186,14 @@ linux_ipc(struct proc *p, struct linux_ipc_args *args)
 			a.msgp = args->ptr;
 			a.msgtyp = args->arg5;
 		}
-		return (linux_msgrcv(p, &a));
+		return (linux_msgrcv(&a));
 	}
 	case LINUX_MSGGET: {
 		struct linux_msgget_args a;
 
 		a.key = args->arg1;
 		a.msgflg = args->arg2;
-		return (linux_msgget(p, &a));
+		return (linux_msgget(&a));
 	}
 	case LINUX_MSGCTL: {
 		struct linux_msgctl_args a;
@@ -201,7 +201,7 @@ linux_ipc(struct proc *p, struct linux_ipc_args *args)
 		a.msqid = args->arg1;
 		a.cmd = args->arg2;
 		a.buf = args->ptr;
-		return (linux_msgctl(p, &a));
+		return (linux_msgctl(&a));
 	}
 	case LINUX_SHMAT: {
 		struct linux_shmat_args a;
@@ -210,13 +210,13 @@ linux_ipc(struct proc *p, struct linux_ipc_args *args)
 		a.shmaddr = args->ptr;
 		a.shmflg = args->arg2;
 		a.raddr = (l_ulong *)args->arg3;
-		return (linux_shmat(p, &a));
+		return (linux_shmat(&a));
 	}
 	case LINUX_SHMDT: {
 		struct linux_shmdt_args a;
 
 		a.shmaddr = args->ptr;
-		return (linux_shmdt(p, &a));
+		return (linux_shmdt(&a));
 	}
 	case LINUX_SHMGET: {
 		struct linux_shmget_args a;
@@ -224,7 +224,7 @@ linux_ipc(struct proc *p, struct linux_ipc_args *args)
 		a.key = args->arg1;
 		a.size = args->arg2;
 		a.shmflg = args->arg3;
-		return (linux_shmget(p, &a));
+		return (linux_shmget(&a));
 	}
 	case LINUX_SHMCTL: {
 		struct linux_shmctl_args a;
@@ -232,7 +232,7 @@ linux_ipc(struct proc *p, struct linux_ipc_args *args)
 		a.shmid = args->arg1;
 		a.cmd = args->arg2;
 		a.buf = args->ptr;
-		return (linux_shmctl(p, &a));
+		return (linux_shmctl(&a));
 	}
 	default:
 		break;
@@ -242,7 +242,7 @@ linux_ipc(struct proc *p, struct linux_ipc_args *args)
 }
 
 int
-linux_old_select(struct proc *p, struct linux_old_select_args *args)
+linux_old_select(struct linux_old_select_args *args)
 {
 	struct l_old_select_argv linux_args;
 	struct linux_select_args newsel;
@@ -262,12 +262,13 @@ linux_old_select(struct proc *p, struct linux_old_select_args *args)
 	newsel.writefds = linux_args.writefds;
 	newsel.exceptfds = linux_args.exceptfds;
 	newsel.timeout = linux_args.timeout;
-	return (linux_select(p, &newsel));
+	return (linux_select(&newsel));
 }
 
 int
-linux_fork(struct proc *p, struct linux_fork_args *args)
+linux_fork(struct linux_fork_args *args)
 {
+	struct proc *p = curproc;
 	int error;
 
 #ifdef DEBUG
@@ -275,7 +276,7 @@ linux_fork(struct proc *p, struct linux_fork_args *args)
 		printf(ARGS(fork, ""));
 #endif
 
-	if ((error = fork(p, (struct fork_args *)args)) != 0)
+	if ((error = fork((struct fork_args *)args)) != 0)
 		return (error);
 
 	if (p->p_retval[1] == 1)
@@ -284,8 +285,9 @@ linux_fork(struct proc *p, struct linux_fork_args *args)
 }
 
 int
-linux_vfork(struct proc *p, struct linux_vfork_args *args)
+linux_vfork(struct linux_vfork_args *args)
 {
+	struct proc *p = curproc;
 	int error;
 
 #ifdef DEBUG
@@ -293,7 +295,7 @@ linux_vfork(struct proc *p, struct linux_vfork_args *args)
 		printf(ARGS(vfork, ""));
 #endif
 
-	if ((error = vfork(p, (struct vfork_args *)args)) != 0)
+	if ((error = vfork((struct vfork_args *)args)) != 0)
 		return (error);
 	/* Are we the child? */
 	if (p->p_retval[1] == 1)
@@ -308,8 +310,9 @@ linux_vfork(struct proc *p, struct linux_vfork_args *args)
 #define CLONE_PID	0x1000
 
 int
-linux_clone(struct proc *p, struct linux_clone_args *args)
+linux_clone(struct linux_clone_args *args)
 {
+	struct proc *p = curproc;
 	int error, ff = RFPROC;
 	struct proc *p2;
 	int exit_signal;
@@ -349,7 +352,7 @@ linux_clone(struct proc *p, struct linux_clone_args *args)
 	start = 0;
 
 	rf_args.flags = ff;
-	if ((error = rfork(p, &rf_args)) != 0)
+	if ((error = rfork(&rf_args)) != 0)
 		return (error);
 
 	p2 = pfind(p->p_retval[0]);
@@ -382,8 +385,9 @@ struct l_mmap_argv {
 #define GUARD_SIZE  (4 * PAGE_SIZE)
 
 int
-linux_mmap(struct proc *p, struct linux_mmap_args *args)
+linux_mmap(struct linux_mmap_args *args)
 {
+	struct proc *p = curproc;
 	struct mmap_args /* {
 		caddr_t addr;
 		size_t len;
@@ -498,12 +502,13 @@ linux_mmap(struct proc *p, struct linux_mmap_args *args)
 		    bsd_args.flags, bsd_args.fd, (int)bsd_args.pos);
 #endif
 
-	return (mmap(p, &bsd_args));
+	return (mmap(&bsd_args));
 }
 
 int
-linux_pipe(struct proc *p, struct linux_pipe_args *args)
+linux_pipe(struct linux_pipe_args *args)
 {
+	struct proc *p = curproc;
 	int error;
 	int reg_edx;
 
@@ -513,7 +518,7 @@ linux_pipe(struct proc *p, struct linux_pipe_args *args)
 #endif
 
 	reg_edx = p->p_retval[1];
-	error = pipe(p, 0);
+	error = pipe(NULL);
 	if (error) {
 		p->p_retval[1] = reg_edx;
 		return (error);
@@ -531,7 +536,7 @@ linux_pipe(struct proc *p, struct linux_pipe_args *args)
 }
 
 int
-linux_ioperm(struct proc *p, struct linux_ioperm_args *args)
+linux_ioperm(struct linux_ioperm_args *args)
 {
 	struct sysarch_args sa;
 	struct i386_ioperm_args *iia;
@@ -544,17 +549,18 @@ linux_ioperm(struct proc *p, struct linux_ioperm_args *args)
 	iia->enable = args->enable;
 	sa.op = I386_SET_IOPERM;
 	sa.parms = (char *)iia;
-	return (sysarch(p, &sa));
+	return (sysarch(&sa));
 }
 
 int
-linux_iopl(struct proc *p, struct linux_iopl_args *args)
+linux_iopl(struct linux_iopl_args *args)
 {
+	struct proc *p = curproc;
 	int error;
 
 	if (args->level < 0 || args->level > 3)
 		return (EINVAL);
-	if ((error = suser(p)) != 0)
+	if ((error = suser()) != 0)
 		return (error);
 	if (securelevel > 0)
 		return (EPERM);
@@ -564,10 +570,9 @@ linux_iopl(struct proc *p, struct linux_iopl_args *args)
 }
 
 int
-linux_modify_ldt(p, uap)
-	struct proc *p;
-	struct linux_modify_ldt_args *uap;
+linux_modify_ldt(struct linux_modify_ldt_args *uap)
 {
+	struct proc *p = curproc;
 	int error;
 	caddr_t sg;
 	struct sysarch_args args;
@@ -588,7 +593,7 @@ linux_modify_ldt(p, uap)
 		ldt->num = uap->bytecount / sizeof(union descriptor);
 		args.op = I386_GET_LDT;
 		args.parms = (char*)ldt;
-		error = sysarch(p, &args);
+		error = sysarch(&args);
 		p->p_retval[0] *= sizeof(union descriptor);
 		break;
 	case 0x01: /* write_ldt */
@@ -618,7 +623,7 @@ linux_modify_ldt(p, uap)
 		desc->sd.sd_gran = ld.limit_in_pages;
 		args.op = I386_SET_LDT;
 		args.parms = (char*)ldt;
-		error = sysarch(p, &args);
+		error = sysarch(&args);
 		break;
 	default:
 		error = EINVAL;
@@ -634,7 +639,7 @@ linux_modify_ldt(p, uap)
 }
 
 int
-linux_sigaction(struct proc *p, struct linux_sigaction_args *args)
+linux_sigaction(struct linux_sigaction_args *args)
 {
 	l_osigaction_t osa;
 	l_sigaction_t act, oact;
@@ -658,7 +663,7 @@ linux_sigaction(struct proc *p, struct linux_sigaction_args *args)
 		act.lsa_mask.__bits[0] = osa.lsa_mask;
 	}
 
-	error = linux_do_sigaction(p, args->sig, args->nsa ? &act : NULL,
+	error = linux_do_sigaction(args->sig, args->nsa ? &act : NULL,
 	    args->osa ? &oact : NULL);
 
 	if (args->osa != NULL && !error) {
@@ -679,7 +684,7 @@ linux_sigaction(struct proc *p, struct linux_sigaction_args *args)
  * enables the signal to happen with a different register set.
  */
 int
-linux_sigsuspend(struct proc *p, struct linux_sigsuspend_args *args)
+linux_sigsuspend(struct linux_sigsuspend_args *args)
 {
 	struct sigsuspend_args bsd;
 	sigset_t *sigmask;
@@ -696,13 +701,11 @@ linux_sigsuspend(struct proc *p, struct linux_sigsuspend_args *args)
 	mask.__bits[0] = args->mask;
 	linux_to_bsd_sigset(&mask, sigmask);
 	bsd.sigmask = sigmask;
-	return (sigsuspend(p, &bsd));
+	return (sigsuspend(&bsd));
 }
 
 int
-linux_rt_sigsuspend(p, uap)
-	struct proc *p;
-	struct linux_rt_sigsuspend_args *uap;
+linux_rt_sigsuspend(struct linux_rt_sigsuspend_args *uap)
 {
 	l_sigset_t lmask;
 	sigset_t *bmask;
@@ -726,12 +729,13 @@ linux_rt_sigsuspend(p, uap)
 	bmask = stackgap_alloc(&sg, sizeof(sigset_t));
 	linux_to_bsd_sigset(&lmask, bmask);
 	bsd.sigmask = bmask;
-	return (sigsuspend(p, &bsd));
+	return (sigsuspend(&bsd));
 }
 
 int
-linux_pause(struct proc *p, struct linux_pause_args *args)
+linux_pause(struct linux_pause_args *args)
 {
+	struct proc *p = curproc;
 	struct sigsuspend_args bsd;
 	sigset_t *sigmask;
 	caddr_t sg = stackgap_init();
@@ -744,11 +748,11 @@ linux_pause(struct proc *p, struct linux_pause_args *args)
 	sigmask = stackgap_alloc(&sg, sizeof(sigset_t));
 	*sigmask = p->p_sigmask;
 	bsd.sigmask = sigmask;
-	return (sigsuspend(p, &bsd));
+	return (sigsuspend(&bsd));
 }
 
 int
-linux_sigaltstack(struct proc *p, struct linux_sigaltstack_args *uap)
+linux_sigaltstack(struct linux_sigaltstack_args *uap)
 {
 	struct sigaltstack_args bsd;
 	stack_t *ss, *oss;
@@ -779,7 +783,7 @@ linux_sigaltstack(struct proc *p, struct linux_sigaltstack_args *uap)
 
 	bsd.ss = ss;
 	bsd.oss = oss;
-	error = sigaltstack(p, &bsd);
+	error = sigaltstack(&bsd);
 
 	if (!error && oss != NULL) {
 		lss.ss_sp = oss->ss_sp;

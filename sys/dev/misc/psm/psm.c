@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.6 2002/03/27 16:53:35 pb Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.3 2003/06/23 17:55:40 dillon Exp $
  */
 
 /*
@@ -1284,7 +1284,7 @@ psmdetach(device_t dev)
 }
 
 static int
-psmopen(dev_t dev, int flag, int fmt, struct proc *p)
+psmopen(dev_t dev, int flag, int fmt, struct thread *td)
 {
     int unit = PSM_UNIT(dev);
     struct psm_softc *sc;
@@ -1369,7 +1369,7 @@ psmopen(dev_t dev, int flag, int fmt, struct proc *p)
 }
 
 static int
-psmclose(dev_t dev, int flag, int fmt, struct proc *p)
+psmclose(dev_t dev, int flag, int fmt, struct thread *td)
 {
     int unit = PSM_UNIT(dev);
     struct psm_softc *sc = PSM_SOFTC(unit);
@@ -1637,7 +1637,7 @@ unblock_mouse_data(struct psm_softc *sc, int c)
 }
 
 static int
-psmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
+psmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 {
     struct psm_softc *sc = PSM_SOFTC(PSM_UNIT(dev));
     mousemode_t mode;
@@ -2375,7 +2375,7 @@ psmintr(void *arg)
 }
 
 static int
-psmpoll(dev_t dev, int events, struct proc *p)
+psmpoll(dev_t dev, int events, struct thread *td)
 {
     struct psm_softc *sc = PSM_SOFTC(PSM_UNIT(dev));
     int s;
@@ -2387,7 +2387,7 @@ psmpoll(dev_t dev, int events, struct proc *p)
 	if (sc->queue.count > 0)
 	    revents |= events & (POLLIN | POLLRDNORM);
 	else
-	    selrecord(p, &sc->rsel);
+	    selrecord(td, &sc->rsel);
     }
     splx(s);
 

@@ -37,7 +37,7 @@
  *
  *	@(#)tty_conf.c	8.4 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty_conf.c,v 1.16.2.1 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/kern/tty_conf.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_conf.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -199,12 +199,12 @@ l_nostart(tp)
  * discipline specific ioctl command.
  */
 int
-l_nullioctl(tp, cmd, data, flags, p)
+l_nullioctl(tp, cmd, data, flags, td)
 	struct tty *tp;
 	u_long cmd;
 	char *data;
 	int flags;
-	struct proc *p;
+	struct thread *td;
 {
 
 	return (ENOIOCTL);

@@ -1,7 +1,7 @@
 #! /bin/sh -
 #	@(#)makesyscalls.sh	8.1 (Berkeley) 6/10/93
 # $FreeBSD: src/sys/kern/makesyscalls.sh,v 1.39.2.4 2001/10/20 09:01:24 marcel Exp $
-# $DragonFly: src/sys/kern/makesyscalls.sh,v 1.3 2003/06/17 05:21:46 dillon Exp $
+# $DragonFly: src/sys/kern/makesyscalls.sh,v 1.4 2003/06/23 17:55:41 dillon Exp $
 
 set -e
 
@@ -114,7 +114,6 @@ s/\$//g
 		printf "#define\t%s\n\n", sysproto_h > sysarg
 		printf "#include <sys/signal.h>\n\n" > sysarg
 		printf "#include <sys/acl.h>\n\n" > sysarg
-		printf "struct proc;\n\n" > sysarg
 		printf "#define\tPAD_(t)\t(sizeof(register_t) <= sizeof(t) ? \\\n" > sysarg
 		printf "\t\t0 : sizeof(register_t) - sizeof(t))\n\n" > sysarg
 
@@ -293,7 +292,7 @@ s/\$//g
 		    (funcname != "nosys" || !nosys)) || \
 		    (funcname == "lkmnosys" && !lkmnosys) || \
 		    funcname == "lkmressys") {
-			printf("%s\t%s __P((struct proc *, struct %s *))",
+			printf("%s\t%s __P((struct %s *))",
 			    rettype, funcname, argalias) > sysdcl
 			printf(";\n") > sysdcl
 		}
@@ -338,7 +337,7 @@ s/\$//g
 		else if($2 != "CPT_NOA")
 			printf("struct\t%s {\n\tregister_t dummy;\n};\n",
 			    argalias) > sysarg
-		printf("%s\to%s __P((struct proc *, struct %s *));\n",
+		printf("%s\to%s __P((struct %s *));\n",
 		    rettype, funcname, argalias) > syscompatdcl
 		printf("\t{ compat(%s%s,%s) },",
 		    mpsafe, argssize, funcname) > sysent

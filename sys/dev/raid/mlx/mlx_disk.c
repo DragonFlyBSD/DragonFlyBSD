@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mlx/mlx_disk.c,v 1.8.2.4 2001/06/25 04:37:51 msmith Exp $
- * $DragonFly: src/sys/dev/raid/mlx/mlx_disk.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/mlx/mlx_disk.c,v 1.3 2003/06/23 17:55:32 dillon Exp $
  */
 
 /*
@@ -96,7 +96,7 @@ static driver_t mlxd_driver = {
 DRIVER_MODULE(mlxd, mlx, mlxd_driver, mlxd_devclass, 0, 0);
 
 static int
-mlxd_open(dev_t dev, int flags, int fmt, struct proc *p)
+mlxd_open(dev_t dev, int flags, int fmt, d_thread_t *td)
 {
     struct mlxd_softc	*sc = (struct mlxd_softc *)dev->si_drv1;
     struct disklabel	*label;
@@ -125,7 +125,7 @@ mlxd_open(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int
-mlxd_close(dev_t dev, int flags, int fmt, struct proc *p)
+mlxd_close(dev_t dev, int flags, int fmt, d_thread_t *td)
 {
     struct mlxd_softc	*sc = (struct mlxd_softc *)dev->si_drv1;
 
@@ -138,7 +138,7 @@ mlxd_close(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int
-mlxd_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, struct proc *p)
+mlxd_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
 {
     struct mlxd_softc	*sc = (struct mlxd_softc *)dev->si_drv1;
     int error;
@@ -148,7 +148,7 @@ mlxd_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, struct proc *p)
     if (sc == NULL)
 	return (ENXIO);
 
-    if ((error = mlx_submit_ioctl(sc->mlxd_controller, sc->mlxd_drive, cmd, addr, flag, p)) != ENOIOCTL) {
+    if ((error = mlx_submit_ioctl(sc->mlxd_controller, sc->mlxd_drive, cmd, addr, flag, td)) != ENOIOCTL) {
 	debug(0, "mlx_submit_ioctl returned %d\n", error);
 	return(error);
     }

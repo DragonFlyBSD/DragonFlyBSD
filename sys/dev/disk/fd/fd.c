@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.3 2003/06/19 01:55:05 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.4 2003/06/23 17:55:40 dillon Exp $
  *
  */
 
@@ -233,7 +233,7 @@ static timeout_t fd_iotimeout;
 static timeout_t fd_pseudointr;
 static int fdstate(struct fdc_data *);
 static int retrier(struct fdc_data *);
-static int fdformat(dev_t, struct fd_formb *, struct proc *);
+static int fdformat(dev_t, struct fd_formb *, struct thread *);
 
 static int enable_fifo(fdc_p fdc);
 
@@ -1374,7 +1374,7 @@ out_fdc(struct fdc_data *fdc, int x)
 /*                           fdopen/fdclose                                 */
 /****************************************************************************/
 int
-Fdopen(dev_t dev, int flags, int mode, struct proc *p)
+Fdopen(dev_t dev, int flags, int mode, struct thread *td)
 {
  	fdu_t fdu = FDUNIT(minor(dev));
 	int type = FDTYPE(minor(dev));
@@ -1469,7 +1469,7 @@ Fdopen(dev_t dev, int flags, int mode, struct proc *p)
 }
 
 int
-fdclose(dev_t dev, int flags, int mode, struct proc *p)
+fdclose(dev_t dev, int flags, int mode, struct thread *td)
 {
  	fdu_t fdu = FDUNIT(minor(dev));
 	struct fd_data *fd;
@@ -2250,11 +2250,9 @@ retrier(struct fdc_data *fdc)
 }
 
 static int
-fdformat(dev, finfo, p)
-	dev_t dev;
-	struct fd_formb *finfo;
-	struct proc *p;
+fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 {
+	struct proc *p = td->td_proc;
  	fdu_t	fdu;
  	fd_p	fd;
 
@@ -2325,13 +2323,9 @@ fdformat(dev, finfo, p)
  */
 
 static int
-fdioctl(dev, cmd, addr, flag, p)
-	dev_t dev;
-	u_long cmd;
-	caddr_t addr;
-	int flag;
-	struct proc *p;
+fdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 {
+	struct proc *p = td->td_proc;
  	fdu_t	fdu = FDUNIT(minor(dev));
  	fd_p	fd = devclass_get_softc(fd_devclass, fdu);
 	size_t fdblk;
@@ -2393,7 +2387,7 @@ fdioctl(dev, cmd, addr, flag, p)
 			FD_FORMAT_VERSION)
 			error = EINVAL;	/* wrong version of formatting prog */
 		else
-			error = fdformat(dev, (struct fd_formb *)addr, p);
+			error = fdformat(dev, (struct fd_formb *)addr, td);
 		break;
 
 	case FD_GTYPE:                  /* get drive type */
@@ -2402,7 +2396,7 @@ fdioctl(dev, cmd, addr, flag, p)
 
 	case FD_STYPE:                  /* set drive type */
 		/* this is considered harmful; only allow for superuser */
-		if (suser(p) != 0)
+		if (suser_xxx(p->p_ucred, 0) != 0)
 			return EPERM;
 		*fd->ft = *(struct fd_type *)addr;
 		break;

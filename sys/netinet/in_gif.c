@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/in_gif.c,v 1.5.2.11 2003/01/23 21:06:45 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet/in_gif.c,v 1.2 2003/06/17 04:28:51 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/in_gif.c,v 1.3 2003/06/23 17:55:46 dillon Exp $	*/
 /*	$KAME: in_gif.c,v 1.54 2001/05/14 14:02:16 itojun Exp $	*/
 
 /*
@@ -72,7 +72,7 @@ static int gif_validate4 __P((const struct ip *, struct gif_softc *,
 extern  struct domain inetdomain;
 struct protosw in_gif_protosw =
 { SOCK_RAW,	&inetdomain,	0/*IPPROTO_IPV[46]*/,	PR_ATOMIC|PR_ADDR,
-  in_gif_input,	rip_output,	0,		rip_ctloutput,
+  in_gif_input, rip_output,	0,	rip_ctloutput,
   0,
   0,		0,		0,		0,
   &rip_usrreqs

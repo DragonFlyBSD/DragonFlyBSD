@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.3 2003/06/23 17:55:45 dillon Exp $
  */
 
 /*
@@ -187,7 +187,7 @@ static timeout_t sl_outfill;
 static int	slclose __P((struct tty *,int));
 static int	slinput __P((int, struct tty *));
 static int	slioctl __P((struct ifnet *, u_long, caddr_t));
-static int	sltioctl __P((struct tty *, u_long, caddr_t, int, struct proc *));
+static int	sltioctl __P((struct tty *, u_long, caddr_t, int, struct thread *));
 static int	slopen __P((dev_t, struct tty *));
 static int	sloutput __P((struct ifnet *,
 	    struct mbuf *, struct sockaddr *, struct rtentry *));
@@ -273,16 +273,13 @@ slinit(sc)
  */
 /* ARGSUSED */
 static int
-slopen(dev, tp)
-	dev_t dev;
-	register struct tty *tp;
+slopen(dev_t dev, struct tty *tp)
 {
-	struct proc *p = curproc;		/* XXX */
-	register struct sl_softc *sc;
-	register int nsl;
+	struct sl_softc *sc;
+	int nsl;
 	int s, error;
 
-	error = suser(p);
+	error = suser();	/* YYY uses curproc */
 	if (error)
 		return (error);
 
@@ -373,12 +370,7 @@ slclose(tp,flag)
  */
 /* ARGSUSED */
 static int
-sltioctl(tp, cmd, data, flag, p)
-	struct tty *tp;
-	u_long cmd;
-	caddr_t data;
-	int flag;
-	struct proc *p;
+sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *p)
 {
 	struct sl_softc *sc = (struct sl_softc *)tp->t_sc, *nc, *tmpnc;
 	int s, nsl;

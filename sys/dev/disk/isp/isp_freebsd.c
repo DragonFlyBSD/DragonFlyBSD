@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.c,v 1.32.2.20 2002/10/11 18:49:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.3 2003/06/23 17:55:31 dillon Exp $ */
 /*
  * Platform (FreeBSD) dependent common attachment code for Qlogic adapters.
  *
@@ -141,7 +141,7 @@ isp_attach(struct ispsoftc *isp)
 	 */
 	if (IS_FC(isp)) {
 		ISPLOCK_2_CAMLOCK(isp);
-		if (kthread_create(isp_kthread, isp, &isp->isp_osinfo.kproc,
+		if (kthread_create(isp_kthread, isp, &isp->isp_osinfo.kthread,
 		    "%s: fc_thrd", device_get_nameunit(isp->isp_dev))) {
 			xpt_bus_deregister(cam_sim_path(sim));
 			cam_sim_free(sim, TRUE);
@@ -235,7 +235,7 @@ isp_freeze_loopdown(struct ispsoftc *isp, char *msg)
 }
 
 static int
-ispioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct proc *p)
+ispioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, d_thread_t *td)
 {
 	struct ispsoftc *isp;
 	int retval = ENOTTY;
@@ -1968,7 +1968,7 @@ isp_kthread(void *arg)
 			xpt_release_simq(isp->isp_sim, 1);
 			CAMLOCK_2_ISPLOCK(isp);
 		}
-		tsleep(&isp->isp_osinfo.kproc, PRIBIO, "isp_fc_worker", 0);
+		tsleep(&isp->isp_osinfo.kthread, PRIBIO, "isp_fc_worker", 0);
 		isp_prt(isp, ISP_LOGDEBUG0, "kthread: waiting until called");
 	}
 }
@@ -2068,7 +2068,7 @@ isp_action(struct cam_sim *sim, union ccb *ccb)
 				xpt_done(ccb);
 				break;
 			}
-			wakeup(&isp->isp_osinfo.kproc);
+			wakeup(&isp->isp_osinfo.kthread);
 			isp_freeze_loopdown(isp, "isp_action(RQLATER)");
 			isp->isp_osinfo.simqfrozen |= SIMQFRZ_LOOPDOWN;
 			XS_SETERR(ccb, CAM_REQUEUE_REQ);
@@ -2653,7 +2653,7 @@ isp_async(struct ispsoftc *isp, ispasync_t cmd, void *arg)
 			isp_prt(isp, ISP_LOGINFO,
 			    "Name Server Database Changed");
 		}
-		wakeup(&isp->isp_osinfo.kproc);
+		wakeup(&isp->isp_osinfo.kthread);
 		break;
 	case ISPASYNC_FABRIC_DEV:
 	{

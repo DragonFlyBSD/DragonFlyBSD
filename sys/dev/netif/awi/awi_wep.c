@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wep.c,v 1.4 2000/08/14 11:28:03 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wep.c,v 1.3.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.2 2003/06/17 04:28:22 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.3 2003/06/23 17:55:29 dillon Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -184,6 +184,7 @@ awi_wep_getnwkey(sc, nwkey)
 	struct awi_softc *sc;
 	struct ieee80211_nwkey *nwkey;
 {
+	struct proc *cur = curproc;
 	int i, len, error, suerr;
 	u_int8_t keybuf[AWI_MAX_KEYLEN];
 
@@ -191,7 +192,7 @@ awi_wep_getnwkey(sc, nwkey)
 	nwkey->i_defkid = sc->sc_wep_defkid + 1;
 	/* do not show any keys to non-root user */
 #ifdef __FreeBSD__
-	suerr = suser(curproc);
+	suerr = suser_xxx(cur->p_ucred, 0);
 #else
 	suerr = suser(curproc->p_ucred, &curproc->p_acflag);
 #endif

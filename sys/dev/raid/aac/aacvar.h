@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.3 2003/06/23 17:55:28 dillon Exp $
  */
 
 /*
@@ -355,7 +355,7 @@ struct aac_softc
 	int			aac_aifq_head;
 	int			aac_aifq_tail;
 	struct selinfo		rcv_select;
-	struct proc		*aifthread;
+	struct thread		*aifthread;
 	int			aifflags;
 #define AAC_AIFFLAGS_RUNNING	(1 << 0)
 #define AAC_AIFFLAGS_PENDING	(1 << 1)

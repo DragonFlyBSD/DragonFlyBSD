@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.3 2003/06/23 17:55:51 dillon Exp $
  */
 
 /*
@@ -109,46 +109,33 @@ vmmapentry_rsrc_init(dummy)
 
 /* ARGSUSED */
 int
-sbrk(p, uap)
-	struct proc *p;
-	struct sbrk_args *uap;
+sbrk(struct sbrk_args *uap)
 {
-
 	/* Not yet implemented */
 	return (EOPNOTSUPP);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct sstk_args {
-	int incr;
-};
-#endif
-
+/*
+ * sstk_args(int incr)
+ */
 /* ARGSUSED */
 int
-sstk(p, uap)
-	struct proc *p;
-	struct sstk_args *uap;
+sstk(struct sstk_args *uap)
 {
-
 	/* Not yet implemented */
 	return (EOPNOTSUPP);
 }
 
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-#ifndef _SYS_SYSPROTO_H_
-struct getpagesize_args {
-	int dummy;
-};
-#endif
 
+/*
+ * getpagesize_args(int dummy)
+ */
 /* ARGSUSED */
 int
-ogetpagesize(p, uap)
-	struct proc *p;
-	struct getpagesize_args *uap;
+ogetpagesize(struct getpagesize_args *uap)
 {
-
+ 	struct proc *p = curproc;
 	p->p_retval[0] = PAGE_SIZE;
 	return (0);
 }
@@ -156,6 +143,9 @@ ogetpagesize(p, uap)
 
 
 /* 
+ * mmap_args(void *addr, size_t len, int prot, int flags, int fd,
+ *		long pad, off_t pos)
+ *
  * Memory Map (mmap) system call.  Note that the file offset
  * and address are allowed to be NOT page aligned, though if
  * the MAP_FIXED flag it set, both must have the same remainder
@@ -172,25 +162,13 @@ ogetpagesize(p, uap)
  * is maintained as long as you do not write directly to the underlying
  * character device.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct mmap_args {
-	void *addr;
-	size_t len;
-	int prot;
-	int flags;
-	int fd;
-	long pad;
-	off_t pos;
-};
-#endif
 
 int
-mmap(p, uap)
-	struct proc *p;
-	register struct mmap_args *uap;
+mmap(struct mmap_args *uap)
 {
-	register struct filedesc *fdp = p->p_fd;
-	register struct file *fp = NULL;
+ 	struct proc *p = curproc;
+	struct filedesc *fdp = p->p_fd;
+	struct file *fp = NULL;
 	struct vnode *vp;
 	vm_offset_t addr;
 	vm_size_t size, pageoff;
@@ -337,7 +315,7 @@ mmap(p, uap)
 			if (securelevel >= 1)
 				disablexworkaround = 1;
 			else
-				disablexworkaround = suser(p);
+				disablexworkaround = suser_xxx(p->p_ucred, 0);
 			if (vp->v_type == VCHR && disablexworkaround &&
 			    (flags & (MAP_PRIVATE|MAP_COPY))) {
 				error = EINVAL;
@@ -418,20 +396,11 @@ done:
 }
 
 #ifdef COMPAT_43
-#ifndef _SYS_SYSPROTO_H_
-struct ommap_args {
-	caddr_t addr;
-	int len;
-	int prot;
-	int flags;
-	int fd;
-	long pos;
-};
-#endif
+/*
+ * ommap_args(caddr_t addr, int len, int prot, int flags, int fd, long pos)
+ */
 int
-ommap(p, uap)
-	struct proc *p;
-	register struct ommap_args *uap;
+ommap(struct ommap_args *uap)
 {
 	struct mmap_args nargs;
 	static const char cvtbsdprot[8] = {
@@ -469,23 +438,18 @@ ommap(p, uap)
 		nargs.flags |= MAP_INHERIT;
 	nargs.fd = uap->fd;
 	nargs.pos = uap->pos;
-	return (mmap(p, &nargs));
+	return (mmap(&nargs));
 }
 #endif				/* COMPAT_43 */
 
 
-#ifndef _SYS_SYSPROTO_H_
-struct msync_args {
-	void *addr;
-	int len;
-	int flags;
-};
-#endif
+/*
+ * msync_args(void *addr, int len, int flags)
+ */
 int
-msync(p, uap)
-	struct proc *p;
-	struct msync_args *uap;
+msync(struct msync_args *uap)
 {
+	struct proc *p = curproc;
 	vm_offset_t addr;
 	vm_size_t size, pageoff;
 	int flags;
@@ -547,17 +511,13 @@ msync(p, uap)
 	return (0);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct munmap_args {
-	void *addr;
-	size_t len;
-};
-#endif
+/*
+ * munmap_args(void *addr, size_t len)
+ */
 int
-munmap(p, uap)
-	register struct proc *p;
-	register struct munmap_args *uap;
+munmap(struct munmap_args *uap)
 {
+	struct proc *p = curproc;
 	vm_offset_t addr;
 	vm_size_t size, pageoff;
 	vm_map_t map;
@@ -609,18 +569,13 @@ munmapfd(p, fd)
 }
 #endif
 
-#ifndef _SYS_SYSPROTO_H_
-struct mprotect_args {
-	const void *addr;
-	size_t len;
-	int prot;
-};
-#endif
+/*
+ * mprotect_args(const void *addr, size_t len, int prot)
+ */
 int
-mprotect(p, uap)
-	struct proc *p;
-	struct mprotect_args *uap;
+mprotect(struct mprotect_args *uap)
 {
+	struct proc *p = curproc;
 	vm_offset_t addr;
 	vm_size_t size, pageoff;
 	register vm_prot_t prot;
@@ -650,18 +605,13 @@ mprotect(p, uap)
 	return (EINVAL);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct minherit_args {
-	void *addr;
-	size_t len;
-	int inherit;
-};
-#endif
+/*
+ * minherit_args(void *addr, size_t len, int inherit)
+ */
 int
-minherit(p, uap)
-	struct proc *p;
-	struct minherit_args *uap;
+minherit(struct minherit_args *uap)
 {
+	struct proc *p = curproc;
 	vm_offset_t addr;
 	vm_size_t size, pageoff;
 	register vm_inherit_t inherit;
@@ -687,20 +637,14 @@ minherit(p, uap)
 	return (EINVAL);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct madvise_args {
-	void *addr;
-	size_t len;
-	int behav;
-};
-#endif
-
+/*
+ * madvise_args(void *addr, size_t len, int behav)
+ */
 /* ARGSUSED */
 int
-madvise(p, uap)
-	struct proc *p;
-	struct madvise_args *uap;
+madvise(struct madvise_args *uap)
 {
+	struct proc *p = curproc;
 	vm_offset_t start, end;
 
 	/*
@@ -734,20 +678,14 @@ madvise(p, uap)
 	return (0);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct mincore_args {
-	const void *addr;
-	size_t len;
-	char *vec;
-};
-#endif
-
+/*
+ * mincore_args(const void *addr, size_t len, char *vec)
+ */
 /* ARGSUSED */
 int
-mincore(p, uap)
-	struct proc *p;
-	struct mincore_args *uap;
+mincore(struct mincore_args *uap)
 {
+	struct proc *p = curproc;
 	vm_offset_t addr, first_addr;
 	vm_offset_t end, cend;
 	pmap_t pmap;
@@ -925,20 +863,16 @@ RestartScan:
 	return (0);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct mlock_args {
-	const void *addr;
-	size_t len;
-};
-#endif
+/*
+ * mlock_args(const void *addr, size_t len)
+ */
 int
-mlock(p, uap)
-	struct proc *p;
-	struct mlock_args *uap;
+mlock(struct mlock_args *uap)
 {
 	vm_offset_t addr;
 	vm_size_t size, pageoff;
 	int error;
+	struct proc *p = curproc;
 
 	addr = (vm_offset_t) uap->addr;
 	size = uap->len;
@@ -960,7 +894,7 @@ mlock(p, uap)
 	    p->p_rlimit[RLIMIT_MEMLOCK].rlim_cur)
 		return (ENOMEM);
 #else
-	error = suser(p);
+	error = suser_xxx(p->p_ucred, 0);
 	if (error)
 		return (error);
 #endif
@@ -969,48 +903,34 @@ mlock(p, uap)
 	return (error == KERN_SUCCESS ? 0 : ENOMEM);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct mlockall_args {
-	int	how;
-};
-#endif
-
+/*
+ * mlockall_args(int how)
+ */
 int
-mlockall(p, uap)
-	struct proc *p;
-	struct mlockall_args *uap;
+mlockall(struct mlockall_args *uap)
 {
 	return 0;
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct mlockall_args {
-	int	how;
-};
-#endif
-
+/*
+ * mlockall_args(int how)
+ */
 int
-munlockall(p, uap)
-	struct proc *p;
-	struct munlockall_args *uap;
+munlockall(struct munlockall_args *uap)
 {
 	return 0;
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct munlock_args {
-	const void *addr;
-	size_t len;
-};
-#endif
+/*
+ * munlock_args(const void *addr, size_t len)
+ */
 int
-munlock(p, uap)
-	struct proc *p;
-	struct munlock_args *uap;
+munlock(struct munlock_args *uap)
 {
 	vm_offset_t addr;
 	vm_size_t size, pageoff;
 	int error;
+	struct proc *p = curproc;
 
 	addr = (vm_offset_t) uap->addr;
 	size = uap->len;
@@ -1025,7 +945,7 @@ munlock(p, uap)
 		return (EINVAL);
 
 #ifndef pmap_wired_count
-	error = suser(p);
+	error = suser();
 	if (error)
 		return (error);
 #endif

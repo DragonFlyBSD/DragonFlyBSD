@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppi.c,v 1.21.2.3 2000/08/07 18:24:43 peter Exp $
- * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.3 2003/06/23 17:55:33 dillon Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -258,7 +258,7 @@ ppiintr(void *arg)
 #endif /* PERIPH_1284 */
 
 static int
-ppiopen(dev_t dev, int flags, int fmt, struct proc *p)
+ppiopen(dev_t dev, int flags, int fmt, d_thread_t *td)
 {
 	u_int unit = minor(dev);
 	struct ppi_data *ppi = UNITOSOFTC(unit);
@@ -291,7 +291,7 @@ ppiopen(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int
-ppiclose(dev_t dev, int flags, int fmt, struct proc *p)
+ppiclose(dev_t dev, int flags, int fmt, d_thread_t *td)
 {
 	u_int unit = minor(dev);
 	struct ppi_data *ppi = UNITOSOFTC(unit);
@@ -504,7 +504,7 @@ error:
 }
 
 static int
-ppiioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct proc *p)
+ppiioctl(dev_t dev, u_long cmd, caddr_t data, int flags, d_thread_t *td)
 {
 	u_int unit = minor(dev);
 	device_t ppidev = UNITODEVICE(unit);

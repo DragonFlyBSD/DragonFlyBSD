@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.103.2.4 2000/11/01 09:36:14 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.3 2003/06/23 17:55:30 dillon Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -1265,7 +1265,7 @@ vbi_read(bktr_ptr_t bktr, struct uio *uio, int ioflag)
  * video ioctls
  */
 int
-video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct proc* pr )
+video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thread *td)
 {
 	volatile u_char		c_temp;
 	unsigned int		temp;
@@ -1552,8 +1552,9 @@ video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct pro
 			return( EINVAL );
 			break;
 		}
+		KKASSERT(td->td_proc != NULL);
 		bktr->signal = *(int *) arg;
-		bktr->proc = pr;
+		bktr->proc = td->td_proc;
 		break;
 
 	case METEORGSIGNAL:
@@ -1874,7 +1875,7 @@ video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct pro
  * tuner ioctls
  */
 int
-tuner_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct proc* pr )
+tuner_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thread *td)
 {
 	int		tmp_int;
 	unsigned int	temp, temp1;

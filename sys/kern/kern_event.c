@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -190,7 +190,7 @@ filt_procattach(struct knote *kn)
 	}
 	if (p == NULL)
 		return (ESRCH);
-	if (! PRISON_CHECK(curproc, p))
+	if (! PRISON_CHECK(curproc->p_ucred, p->p_ucred))
 		return (EACCES);
 
 	kn->kn_ptr.p_proc = p;
@@ -357,8 +357,9 @@ filt_timer(struct knote *kn, long hint)
 }
 
 int
-kqueue(struct proc *p, struct kqueue_args *uap)
+kqueue(struct kqueue_args *uap)
 {
+	struct proc *p = curproc;
 	struct filedesc *fdp = p->p_fd;
 	struct kqueue *kq;
 	struct file *fp;
@@ -391,8 +392,9 @@ struct kevent_args {
 };
 #endif
 int
-kevent(struct proc *p, struct kevent_args *uap)
+kevent(struct kevent_args *uap)
 {
+	struct proc *p = curproc;
 	struct filedesc* fdp = p->p_fd;
 	struct kevent *kevp;
 	struct kqueue *kq;
@@ -756,7 +758,7 @@ kqueue_poll(struct file *fp, int events, struct ucred *cred, struct proc *p)
                 if (kq->kq_count) {
                         revents |= events & (POLLIN | POLLRDNORM);
 		} else {
-                        selrecord(p, &kq->kq_sel);
+                        selrecord(p->p_thread, &kq->kq_sel);
 			kq->kq_state |= KQ_SEL;
 		}
 	}

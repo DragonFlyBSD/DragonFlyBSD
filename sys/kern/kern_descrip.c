@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.17 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -118,10 +118,9 @@ struct getdtablesize_args {
 #endif
 /* ARGSUSED */
 int
-getdtablesize(p, uap)
-	struct proc *p;
-	struct getdtablesize_args *uap;
+getdtablesize(struct getdtablesize_args *uap) 
 {
+	struct proc *p = curproc;
 
 	p->p_retval[0] = 
 	    min((int)p->p_rlimit[RLIMIT_NOFILE].rlim_cur, maxfilesperproc);
@@ -142,12 +141,11 @@ struct dup2_args {
 #endif
 /* ARGSUSED */
 int
-dup2(p, uap)
-	struct proc *p;
-	struct dup2_args *uap;
+dup2(struct dup2_args *uap)
 {
-	register struct filedesc *fdp = p->p_fd;
-	register u_int old = uap->from, new = uap->to;
+	struct proc *p = curproc;
+	struct filedesc *fdp = p->p_fd;
+	u_int old = uap->from, new = uap->to;
 	int i, error;
 
 retry:
@@ -182,11 +180,10 @@ struct dup_args {
 #endif
 /* ARGSUSED */
 int
-dup(p, uap)
-	struct proc *p;
-	struct dup_args *uap;
+dup(struct dup_args *uap)
 {
-	register struct filedesc *fdp;
+	struct proc *p = curproc;
+	struct filedesc *fdp;
 	u_int old;
 	int new, error;
 
@@ -211,13 +208,12 @@ struct fcntl_args {
 #endif
 /* ARGSUSED */
 int
-fcntl(p, uap)
-	struct proc *p;
-	register struct fcntl_args *uap;
+fcntl(struct fcntl_args *uap)
 {
-	register struct filedesc *fdp = p->p_fd;
-	register struct file *fp;
-	register char *pop;
+	struct proc *p = curproc;
+	struct filedesc *fdp = p->p_fd;
+	struct file *fp;
+	char *pop;
 	struct vnode *vp;
 	int i, tmp, error, flg = F_POSIX;
 	struct flock fl;
@@ -389,8 +385,8 @@ fcntl(p, uap)
  */
 static int
 do_dup(fdp, old, new, retval, p)
-	register struct filedesc *fdp;
-	register int old, new;
+	struct filedesc *fdp;
+	int old, new;
 	register_t *retval;
 	struct proc *p;
 {
@@ -554,7 +550,7 @@ fsetown(pgid, sigiop)
 	crhold(curproc->p_ucred);
 	sigio->sio_ucred = curproc->p_ucred;
 	/* It would be convenient if p_ruid was in ucred. */
-	sigio->sio_ruid = curproc->p_cred->p_ruid;
+	sigio->sio_ruid = curproc->p_ucred->cr_ruid;
 	sigio->sio_myref = sigiop;
 	s = splhigh();
 	*sigiop = sigio;
@@ -582,13 +578,12 @@ struct close_args {
 #endif
 /* ARGSUSED */
 int
-close(p, uap)
-	struct proc *p;
-	struct close_args *uap;
+close(struct close_args *uap)
 {
-	register struct filedesc *fdp = p->p_fd;
-	register struct file *fp;
-	register int fd = uap->fd;
+	struct proc *p = curproc;
+	struct filedesc *fdp = p->p_fd;
+	struct file *fp;
+	int fd = uap->fd;
 	int error;
 	int holdleaders;
 
@@ -645,12 +640,11 @@ struct ofstat_args {
 #endif
 /* ARGSUSED */
 int
-ofstat(p, uap)
-	struct proc *p;
-	register struct ofstat_args *uap;
+ofstat(struct ofstat_args *uap)
 {
-	register struct filedesc *fdp = p->p_fd;
-	register struct file *fp;
+	struct proc *p = curproc;
+	struct filedesc *fdp = p->p_fd;
+	struct file *fp;
 	struct stat ub;
 	struct ostat oub;
 	int error;
@@ -680,12 +674,11 @@ struct fstat_args {
 #endif
 /* ARGSUSED */
 int
-fstat(p, uap)
-	struct proc *p;
-	register struct fstat_args *uap;
+fstat(struct fstat_args *uap)
 {
-	register struct filedesc *fdp = p->p_fd;
-	register struct file *fp;
+	struct proc *p = curproc;
+	struct filedesc *fdp = p->p_fd;
+	struct file *fp;
 	struct stat ub;
 	int error;
 
@@ -711,12 +704,11 @@ struct nfstat_args {
 #endif
 /* ARGSUSED */
 int
-nfstat(p, uap)
-	struct proc *p;
-	register struct nfstat_args *uap;
+nfstat(struct nfstat_args *uap)
 {
-	register struct filedesc *fdp = p->p_fd;
-	register struct file *fp;
+	struct proc *p = curproc;
+	struct filedesc *fdp = p->p_fd;
+	struct file *fp;
 	struct stat ub;
 	struct nstat nub;
 	int error;
@@ -745,10 +737,9 @@ struct fpathconf_args {
 #endif
 /* ARGSUSED */
 int
-fpathconf(p, uap)
-	struct proc *p;
-	register struct fpathconf_args *uap;
+fpathconf(struct fpathconf_args *uap)
 {
+	struct proc *p = curproc;
 	struct filedesc *fdp = p->p_fd;
 	struct file *fp;
 	struct vnode *vp;
@@ -795,8 +786,8 @@ fdalloc(p, want, result)
 	int want;
 	int *result;
 {
-	register struct filedesc *fdp = p->p_fd;
-	register int i;
+	struct filedesc *fdp = p->p_fd;
+	int i;
 	int lim, last, nfiles;
 	struct file **newofile;
 	char *newofileflags;
@@ -871,11 +862,11 @@ fdalloc(p, want, result)
 int
 fdavail(p, n)
 	struct proc *p;
-	register int n;
+	int n;
 {
-	register struct filedesc *fdp = p->p_fd;
-	register struct file **fpp;
-	register int i, lim, last;
+	struct filedesc *fdp = p->p_fd;
+	struct file **fpp;
+	int i, lim, last;
 
 	lim = min((int)p->p_rlimit[RLIMIT_NOFILE].rlim_cur, maxfilesperproc);
 	if ((i = lim - fdp->fd_nfiles) > 0 && (n -= i) <= 0)
@@ -896,11 +887,11 @@ fdavail(p, n)
  */
 int
 falloc(p, resultfp, resultfd)
-	register struct proc *p;
+	struct proc *p;
 	struct file **resultfp;
 	int *resultfd;
 {
-	register struct file *fp, *fq;
+	struct file *fp, *fq;
 	int error, i;
 
 	if (nfiles >= maxfiles) {
@@ -950,7 +941,7 @@ falloc(p, resultfp, resultfd)
  */
 void
 ffree(fp)
-	register struct file *fp;
+	struct file *fp;
 {
 	KASSERT((fp->f_count == 0), ("ffree: fp_fcount not 0!"));
 	LIST_REMOVE(fp, f_list);
@@ -966,8 +957,8 @@ struct filedesc *
 fdinit(p)
 	struct proc *p;
 {
-	register struct filedesc0 *newfdp;
-	register struct filedesc *fdp = p->p_fd;
+	struct filedesc0 *newfdp;
+	struct filedesc *fdp = p->p_fd;
 
 	MALLOC(newfdp, struct filedesc0 *, sizeof(struct filedesc0),
 	    M_FILEDESC, M_WAITOK);
@@ -1011,9 +1002,9 @@ struct filedesc *
 fdcopy(p)
 	struct proc *p;
 {
-	register struct filedesc *newfdp, *fdp = p->p_fd;
-	register struct file **fpp;
-	register int i;
+	struct filedesc *newfdp, *fdp = p->p_fd;
+	struct file **fpp;
+	int i;
 
 	/* Certain daemons might not have file descriptors. */
 	if (fdp == NULL)
@@ -1090,12 +1081,11 @@ fdcopy(p)
  * Release a filedesc structure.
  */
 void
-fdfree(p)
-	struct proc *p;
+fdfree(struct proc *p)
 {
-	register struct filedesc *fdp = p->p_fd;
+	struct filedesc *fdp = p->p_fd;
 	struct file **fpp;
-	register int i;
+	int i;
 	struct filedesc_to_leader *fdtol;
 	struct file *fp;
 	struct vnode *vp;
@@ -1226,7 +1216,7 @@ setugidsafety(p)
 	struct proc *p;
 {
 	struct filedesc *fdp = p->p_fd;
-	register int i;
+	int i;
 
 	/* Certain daemons might not have file descriptors. */
 	if (fdp == NULL)
@@ -1272,7 +1262,7 @@ fdcloseexec(p)
 	struct proc *p;
 {
 	struct filedesc *fdp = p->p_fd;
-	register int i;
+	int i;
 
 	/* Certain daemons might not have file descriptors. */
 	if (fdp == NULL)
@@ -1374,8 +1364,8 @@ fdcheckstd(p)
  */
 int
 closef(fp, p)
-	register struct file *fp;
-	register struct proc *p;
+	struct file *fp;
+	struct proc *p;
 {
 	struct vnode *vp;
 	struct flock lf;
@@ -1478,12 +1468,11 @@ struct flock_args {
 #endif
 /* ARGSUSED */
 int
-flock(p, uap)
-	struct proc *p;
-	register struct flock_args *uap;
+flock(struct flock_args *uap)
 {
-	register struct filedesc *fdp = p->p_fd;
-	register struct file *fp;
+	struct proc *p = curproc;
+	struct filedesc *fdp = p->p_fd;
+	struct file *fp;
 	struct vnode *vp;
 	struct flock lf;
 
@@ -1523,11 +1512,9 @@ flock(p, uap)
  */
 /* ARGSUSED */
 static int
-fdopen(dev, mode, type, p)
-	dev_t dev;
-	int mode, type;
-	struct proc *p;
+fdopen(dev_t dev, int mode, int type, struct thread *td)
 {
+	KKASSERT(td->td_proc != NULL);
 
 	/*
 	 * XXX Kludge: set curproc->p_dupfd to contain the value of the
@@ -1537,7 +1524,7 @@ fdopen(dev, mode, type, p)
 	 * actions in dupfdopen below. Other callers of vn_open or VOP_OPEN
 	 * will simply report the error.
 	 */
-	p->p_dupfd = minor(dev);
+	td->td_proc->p_dupfd = minor(dev);
 	return (ENODEV);
 }
 
@@ -1545,14 +1532,9 @@ fdopen(dev, mode, type, p)
  * Duplicate the specified descriptor to a free descriptor.
  */
 int
-dupfdopen(p, fdp, indx, dfd, mode, error)
-	struct proc *p;
-	struct filedesc *fdp;
-	int indx, dfd;
-	int mode;
-	int error;
+dupfdopen(struct filedesc *fdp, int indx, int dfd, int mode, int error)
 {
-	register struct file *wfp;
+	struct file *wfp;
 	struct file *fp;
 
 	/*
@@ -1600,7 +1582,7 @@ dupfdopen(p, fdp, indx, dfd, mode, error)
 		 * used to own.  Release it.
 		 */
 		if (fp)
-			fdrop(fp, p);
+			fdrop(fp, curproc);
 		return (0);
 
 	case ENXIO:
@@ -1622,7 +1604,7 @@ dupfdopen(p, fdp, indx, dfd, mode, error)
 		 * used to own.  Release it.
 		 */
 		if (fp)
-			fdrop(fp, p);
+			fdrop(fp, curproc);
 		/*
 		 * Complete the clean up of the filedesc structure by
 		 * recomputing the various hints.

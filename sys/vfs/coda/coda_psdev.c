@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_psdev.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_psdev.c,v 1.13 1999/09/29 15:03:46 marcel Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.3 2003/06/23 17:55:26 dillon Exp $
  * 
  */
 
@@ -116,11 +116,7 @@ vcodaattach(n)
 }
 
 int 
-vc_nb_open(dev, flag, mode, p)    
-    dev_t        dev;      
-    int          flag;     
-    int          mode;     
-    struct proc *p;             /* NetBSD only */
+vc_nb_open(dev_t dev, int flag, int mode, d_thread_t *td)
 {
     register struct vcomm *vcp;
     
@@ -148,18 +144,18 @@ vc_nb_open(dev, flag, mode, p)
 }
 
 int 
-vc_nb_close (dev, flag, mode, p)    
-    dev_t        dev;      
-    int          flag;     
-    int          mode;     
-    struct proc *p;
+vc_nb_close (dev_t dev, int flag, int mode, d_thread_t *td)
 {
-    register struct vcomm *vcp;
-    register struct vmsg *vmp, *nvmp = NULL;
+    struct vcomm *vcp;
+    struct vmsg *vmp, *nvmp = NULL;
     struct coda_mntinfo *mi;
+    struct proc *p;
     int                 err;
 	
     ENTRY;
+
+    p = td->td_proc;
+    KKASSERT(p != NULL);
 
     if (minor(dev) >= NVCODA || minor(dev) < 0)
 	return(ENXIO);
@@ -386,12 +382,7 @@ vc_nb_write(dev, uiop, flag)
 }
 
 int
-vc_nb_ioctl(dev, cmd, addr, flag, p) 
-    dev_t         dev;       
-    u_long        cmd;       
-    caddr_t       addr;      
-    int           flag;      
-    struct proc  *p;
+vc_nb_ioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 {
     ENTRY;
 
@@ -440,10 +431,7 @@ vc_nb_ioctl(dev, cmd, addr, flag, p)
 }
 
 int
-vc_nb_poll(dev, events, p)         
-    dev_t         dev;    
-    int           events;   
-    struct proc  *p;
+vc_nb_poll(dev_t dev, int events, d_thread_t *td)
 {
     register struct vcomm *vcp;
     int event_msk = 0;
@@ -462,7 +450,7 @@ vc_nb_poll(dev, events, p)
     if (!EMPTY(vcp->vc_requests))
 	return(events & (POLLIN|POLLRDNORM));
 
-    selrecord(p, &(vcp->vc_selproc));
+    selrecord(td, &(vcp->vc_selproc));
     
     return(0);
 }

@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.3 2003/06/23 17:55:43 dillon Exp $
  */
 
 /*
@@ -485,7 +485,7 @@ fdesc_poll(ap)
 		struct proc *a_p;
 	} */ *ap;
 {
-	return seltrue(0, ap->a_events, ap->a_p);
+	return seltrue(0, ap->a_events, ap->a_p->p_thread);
 }
 
 static int

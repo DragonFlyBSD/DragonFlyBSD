@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/joy.c,v 1.38.2.1 2001/09/01 05:55:31 murray Exp $
- * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.3 2003/06/23 17:55:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -160,7 +160,7 @@ static driver_t joy_isa_driver = {
 DRIVER_MODULE(joy, isa, joy_isa_driver, joy_devclass, 0, 0);
 
 static int
-joyopen(dev_t dev, int flags, int fmt, struct proc *p)
+joyopen(dev_t dev, int flags, int fmt, d_thread_t *td)
 {
     int i = joypart (dev);
     struct joy_softc *joy = JOY_SOFTC(UNIT(dev));
@@ -173,7 +173,7 @@ joyopen(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int
-joyclose(dev_t dev, int flags, int fmt, struct proc *p)
+joyclose(dev_t dev, int flags, int fmt, d_thread_t *td)
 {
     int i = joypart (dev);
     struct joy_softc *joy = JOY_SOFTC(UNIT(dev));
@@ -241,7 +241,7 @@ joyread(dev_t dev, struct uio *uio, int flag)
 }
 
 static int
-joyioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
+joyioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 {
     struct joy_softc *joy = JOY_SOFTC(UNIT(dev));
     int i = joypart (dev);

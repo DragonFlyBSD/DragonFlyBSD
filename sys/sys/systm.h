@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.4 2003/06/21 07:54:57 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.5 2003/06/23 17:55:50 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -79,6 +79,7 @@ extern int maxusers;		/* system tune hint */
 
 #ifdef	INVARIANTS		/* The option is always available */
 #define	KASSERT(exp,msg)	do { if (!(exp)) panic msg; } while (0)
+#define KKASSERT(exp)		if (!(exp)) panic("assertion: " #exp " in " __FUNCTION__)
 #define	SPLASSERT(level, msg)	__CONCAT(__CONCAT(spl,level),assert)(msg)
 #define	CONDSPLASSERT(cond, level, msg) do {				\
 	if (cond)							\
@@ -86,6 +87,7 @@ extern int maxusers;		/* system tune hint */
 } while (0)
 #else
 #define	KASSERT(exp,msg)
+#define	KKASSERT(exp)
 #define	SPLASSERT(level, msg)
 #define	CONDSPLASSERT(cond, level, msg)
 #endif
@@ -102,6 +104,7 @@ struct timeval;
 struct tty;
 struct uio;
 struct globaldata;
+struct thread;
 
 void	Debugger __P((const char *msg));
 void	mi_gdinit __P((struct globaldata *gd, int cpu));
@@ -109,7 +112,7 @@ int	dumpstatus __P((vm_offset_t addr, off_t count));
 int	nullop __P((void));
 int	eopnotsupp __P((void));
 int	einval __P((void));
-int	seltrue __P((dev_t dev, int which, struct proc *p));
+int	seltrue __P((dev_t dev, int which, struct thread *td));
 int	ureadc __P((int, struct uio *));
 void	*hashinit __P((int count, struct malloc_type *type, u_long *hashmask));
 void	*phashinit __P((int count, struct malloc_type *type, u_long *nentries));

@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -74,9 +74,9 @@ MALLOC_DEFINE(M_IOV, "iov", "large iov's");
 
 static int	pollscan __P((struct proc *, struct pollfd *, u_int));
 static int	selscan __P((struct proc *, fd_mask **, fd_mask **, int));
-static int	dofileread __P((struct proc *, struct file *, int, void *,
+static int	dofileread __P((struct file *, int, void *,
 		    size_t, off_t, int));
-static int	dofilewrite __P((struct proc *, struct file *, int,
+static int	dofilewrite __P((struct file *, int,
 		    const void *, size_t, off_t, int));
 
 struct file*
@@ -106,16 +106,15 @@ struct read_args {
 };
 #endif
 int
-read(p, uap)
-	struct proc *p;
-	register struct read_args *uap;
+read(struct read_args *uap)
 {
-	register struct file *fp;
+	struct proc *p = curproc;
+	struct file *fp;
 	int error;
 
 	if ((fp = holdfp(p->p_fd, uap->fd, FREAD)) == NULL)
 		return (EBADF);
-	error = dofileread(p, fp, uap->fd, uap->buf, uap->nbyte, (off_t)-1, 0);
+	error = dofileread(fp, uap->fd, uap->buf, uap->nbyte, (off_t)-1, 0);
 	fdrop(fp, p);
 	return(error);
 }
@@ -133,11 +132,10 @@ struct pread_args {
 };
 #endif
 int
-pread(p, uap)
-	struct proc *p;
-	register struct pread_args *uap;
+pread(struct pread_args *uap)
 {
-	register struct file *fp;
+	struct proc *p = curproc;
+	struct file *fp;
 	int error;
 
 	if ((fp = holdfp(p->p_fd, uap->fd, FREAD)) == NULL)
@@ -145,7 +143,7 @@ pread(p, uap)
 	if (fp->f_type != DTYPE_VNODE) {
 		error = ESPIPE;
 	} else {
-	    error = dofileread(p, fp, uap->fd, uap->buf, uap->nbyte, 
+	    error = dofileread(fp, uap->fd, uap->buf, uap->nbyte, 
 		uap->offset, FOF_OFFSET);
 	}
 	fdrop(fp, p);
@@ -156,14 +154,14 @@ pread(p, uap)
  * Code common for read and pread
  */
 int
-dofileread(p, fp, fd, buf, nbyte, offset, flags)
-	struct proc *p;
+dofileread(fp, fd, buf, nbyte, offset, flags)
 	struct file *fp;
 	int fd, flags;
 	void *buf;
 	size_t nbyte;
 	off_t offset;
 {
+	struct proc *p = curproc;
 	struct uio auio;
 	struct iovec aiov;
 	long cnt, error = 0;
@@ -224,14 +222,13 @@ struct readv_args {
 };
 #endif
 int
-readv(p, uap)
-	struct proc *p;
-	register struct readv_args *uap;
+readv(struct readv_args *uap)
 {
-	register struct file *fp;
-	register struct filedesc *fdp = p->p_fd;
+	struct proc *p = curproc;
+	struct file *fp;
+	struct filedesc *fdp = p->p_fd;
 	struct uio auio;
-	register struct iovec *iov;
+	struct iovec *iov;
 	struct iovec *needfree;
 	struct iovec aiov[UIO_SMALLIOV];
 	long i, cnt, error = 0;
@@ -318,16 +315,15 @@ struct write_args {
 };
 #endif
 int
-write(p, uap)
-	struct proc *p;
-	register struct write_args *uap;
+write(struct write_args *uap)
 {
-	register struct file *fp;
+	struct proc *p = curproc;
+	struct file *fp;
 	int error;
 
 	if ((fp = holdfp(p->p_fd, uap->fd, FWRITE)) == NULL)
 		return (EBADF);
-	error = dofilewrite(p, fp, uap->fd, uap->buf, uap->nbyte, (off_t)-1, 0);
+	error = dofilewrite(fp, uap->fd, uap->buf, uap->nbyte, (off_t)-1, 0);
 	fdrop(fp, p);
 	return(error);
 }
@@ -345,11 +341,10 @@ struct pwrite_args {
 };
 #endif
 int
-pwrite(p, uap)
-	struct proc *p;
-	register struct pwrite_args *uap;
+pwrite(struct pwrite_args *uap)
 {
-	register struct file *fp;
+	struct proc *p = curproc;
+	struct file *fp;
 	int error;
 
 	if ((fp = holdfp(p->p_fd, uap->fd, FWRITE)) == NULL)
@@ -357,7 +352,7 @@ pwrite(p, uap)
 	if (fp->f_type != DTYPE_VNODE) {
 		error = ESPIPE;
 	} else {
-	    error = dofilewrite(p, fp, uap->fd, uap->buf, uap->nbyte,
+	    error = dofilewrite(fp, uap->fd, uap->buf, uap->nbyte,
 		uap->offset, FOF_OFFSET);
 	}
 	fdrop(fp, p);
@@ -365,14 +360,15 @@ pwrite(p, uap)
 }
 
 static int
-dofilewrite(p, fp, fd, buf, nbyte, offset, flags)
-	struct proc *p;
-	struct file *fp;
-	int fd, flags;
-	const void *buf;
-	size_t nbyte;
-	off_t offset;
-{
+dofilewrite(
+	struct file *fp,
+	int fd,
+	const void *buf,
+	size_t nbyte,
+	off_t offset,
+	int flags
+) {
+	struct proc *p = curproc;
 	struct uio auio;
 	struct iovec aiov;
 	long cnt, error = 0;
@@ -436,14 +432,13 @@ struct writev_args {
 };
 #endif
 int
-writev(p, uap)
-	struct proc *p;
-	register struct writev_args *uap;
+writev(struct writev_args *uap)
 {
-	register struct file *fp;
-	register struct filedesc *fdp = p->p_fd;
+	struct proc *p = curproc;
+	struct file *fp;
+	struct filedesc *fdp = p->p_fd;
 	struct uio auio;
-	register struct iovec *iov;
+	struct iovec *iov;
 	struct iovec *needfree;
 	struct iovec aiov[UIO_SMALLIOV];
 	long i, cnt, error = 0;
@@ -538,13 +533,12 @@ struct ioctl_args {
 #endif
 /* ARGSUSED */
 int
-ioctl(p, uap)
-	struct proc *p;
-	register struct ioctl_args *uap;
+ioctl(struct ioctl_args *uap)
 {
-	register struct file *fp;
-	register struct filedesc *fdp;
-	register u_long com;
+	struct proc *p = curproc;
+	struct file *fp;
+	struct filedesc *fdp;
+	u_long com;
 	int error;
 	register u_int size;
 	caddr_t data, memp;
@@ -660,10 +654,10 @@ struct select_args {
 };
 #endif
 int
-select(p, uap)
-	register struct proc *p;
-	register struct select_args *uap;
+select(struct select_args *uap)
 {
+	struct proc *p = curproc;
+
 	/*
 	 * The magic 2048 here is chosen to be just enough for FD_SETSIZE
 	 * infds with the new FD_SETSIZE of 1024, and more than enough for
@@ -840,9 +834,7 @@ struct poll_args {
 };
 #endif
 int
-poll(p, uap)
-	struct proc *p;
-	struct poll_args *uap;
+poll(struct poll_args *uap)
 {
 	caddr_t bits;
 	char smallbits[32 * sizeof(struct pollfd)];
@@ -850,6 +842,7 @@ poll(p, uap)
 	int s, ncoll, error = 0, timo;
 	u_int nfds;
 	size_t ni;
+	struct proc *p = curproc;
 
 	nfds = SCARG(uap, nfds);
 	/*
@@ -976,53 +969,49 @@ struct openbsd_poll_args {
 };
 #endif
 int
-openbsd_poll(p, uap)
-	register struct proc *p;
-	register struct openbsd_poll_args *uap;
+openbsd_poll(struct openbsd_poll_args *uap)
 {
-	return (poll(p, (struct poll_args *)uap));
+	return (poll((struct poll_args *)uap));
 }
 
 /*ARGSUSED*/
 int
-seltrue(dev, events, p)
-	dev_t dev;
-	int events;
-	struct proc *p;
+seltrue(dev_t dev, int events, struct thread *td)
 {
-
 	return (events & (POLLIN | POLLOUT | POLLRDNORM | POLLWRNORM));
 }
 
 /*
- * Record a select request.
+ * Record a select request.  A global wait must be used since a process/thread
+ * might go away after recording its request.
  */
 void
-selrecord(selector, sip)
-	struct proc *selector;
-	struct selinfo *sip;
+selrecord(struct thread *selector, struct selinfo *sip)
 {
 	struct proc *p;
 	pid_t mypid;
 
-	mypid = selector->p_pid;
+	if ((p = selector->td_proc) == NULL)
+		panic("selrecord: thread needs a process");
+
+	mypid = p->p_pid;
 	if (sip->si_pid == mypid)
 		return;
 	if (sip->si_pid && (p = pfind(sip->si_pid)) &&
-	    p->p_wchan == (caddr_t)&selwait)
+	    p->p_wchan == (caddr_t)&selwait) {
 		sip->si_flags |= SI_COLL;
-	else
+	} else {
 		sip->si_pid = mypid;
+	}
 }
 
 /*
  * Do a wakeup when a selectable event occurs.
  */
 void
-selwakeup(sip)
-	register struct selinfo *sip;
+selwakeup(struct selinfo *sip)
 {
-	register struct proc *p;
+	struct proc *p;
 	int s;
 
 	if (sip->si_pid == 0)
@@ -1030,7 +1019,7 @@ selwakeup(sip)
 	if (sip->si_flags & SI_COLL) {
 		nselcoll++;
 		sip->si_flags &= ~SI_COLL;
-		wakeup((caddr_t)&selwait);
+		wakeup((caddr_t)&selwait);	/* YYY fixable */
 	}
 	p = pfind(sip->si_pid);
 	sip->si_pid = 0;
@@ -1046,3 +1035,4 @@ selwakeup(sip)
 		splx(s);
 	}
 }
+

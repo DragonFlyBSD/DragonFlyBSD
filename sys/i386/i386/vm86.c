@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm86.c,v 1.3 2003/06/18 18:29:55 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm86.c,v 1.4 2003/06/23 17:55:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -705,7 +705,7 @@ vm86_sysarch(p, args)
 	case VM86_INTCALL: {
 		struct vm86_intcall_args sa;
 
-		if ((error = suser(p)))
+		if ((error = suser_xxx(p->p_ucred, 0)))
 			return (error);
 		if ((error = copyin(ua.sub_args, &sa, sizeof(sa))))
 			return (error);

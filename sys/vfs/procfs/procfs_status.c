@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_status.c,v 1.20.2.4 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.3 2003/06/23 17:55:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -145,11 +145,11 @@ procfs_dostatus(curp, p, pfs, uio)
 
 	ps += snprintf(ps, psbuf + sizeof(psbuf) - ps, " %lu %lu %lu", 
 		(u_long)cr->cr_uid,
-		(u_long)p->p_cred->p_ruid,
-		(u_long)p->p_cred->p_rgid);
+		(u_long)p->p_ucred->cr_ruid,
+		(u_long)p->p_ucred->cr_rgid);
 	DOCHECK();
 
-	/* egid (p->p_cred->p_svgid) is equal to cr_ngroups[0] 
+	/* egid (p->p_ucred->cr_svgid) is equal to cr_ngroups[0] 
 	   see also getegid(2) in /sys/kern/kern_prot.c */
 
 	for (i = 0; i < cr->cr_ngroups; i++) {
@@ -158,9 +158,9 @@ procfs_dostatus(curp, p, pfs, uio)
 		DOCHECK();
 	}
 
-	if (p->p_prison)
+	if (p->p_ucred->cr_prison)
 		ps += snprintf(ps, psbuf + sizeof(psbuf) - ps,
-		    " %s", p->p_prison->pr_host);
+		    " %s", p->p_ucred->cr_prison->pr_host);
 	else
 		ps += snprintf(ps, psbuf + sizeof(psbuf) - ps, " -");
 	DOCHECK();
@@ -213,8 +213,8 @@ procfs_docmdline(curp, p, pfs, uio)
 
 	if (p->p_args &&
 	    (ps_argsopen || (CHECKIO(curp, p) &&
-			     (p->p_flag & P_INEXEC) == 0 &&
-			     !p_trespass(curp, p)))) {
+	     (p->p_flag & P_INEXEC) == 0 && !p_trespass(curp->p_ucred, p->p_ucred)))
+	 ) {
 		bp = p->p_args->ar_args;
 		buflen = p->p_args->ar_length;
 		buf = 0;

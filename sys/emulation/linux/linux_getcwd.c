@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/compat/linux/linux_getcwd.c,v 1.2.2.3 2001/11/05 19:08:22 marcel Exp $ */
-/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.2 2003/06/17 04:28:19 dillon Exp $ */
+/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.3 2003/06/23 17:55:26 dillon Exp $ */
 /* $OpenBSD: linux_getcwd.c,v 1.2 2001/05/16 12:50:21 ho Exp $ */
 /* $NetBSD: vfs_getcwd.c,v 1.3.2.3 1999/07/11 10:24:09 sommerfeld Exp $ */
 
@@ -406,8 +406,9 @@ out:
  */
 
 int
-linux_getcwd(struct proc *p, struct linux_getcwd_args *args)
+linux_getcwd(struct linux_getcwd_args *args)
 {
+	struct proc *p = curproc;
 	struct __getcwd_args bsd;
 	caddr_t sg, bp, bend, path;
 	int error, len, lenused;
@@ -420,7 +421,7 @@ linux_getcwd(struct proc *p, struct linux_getcwd_args *args)
 	sg = stackgap_init();
 	bsd.buf = stackgap_alloc(&sg, SPARE_USRSPACE);
 	bsd.buflen = SPARE_USRSPACE;
-	error = __getcwd(p, &bsd);
+	error = __getcwd(&bsd);
 	if (!error) {
 		lenused = strlen(bsd.buf) + 1;
 		if (lenused <= args->bufsize) {

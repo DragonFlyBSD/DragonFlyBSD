@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.3 2003/06/23 17:55:47 dillon Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -112,6 +112,7 @@
 
 #include <net/net_osdep.h>
 
+struct ip;
 extern int (*fr_checkp) __P((struct ip *, int, struct ifnet *, int, struct mbuf **));
 
 static MALLOC_DEFINE(M_IPMOPTS, "ip6_moptions", "internet multicast options");
@@ -1329,7 +1330,7 @@ ip6_ctloutput(so, sopt)
 	}
 	error = optval = 0;
 
-	privileged = (p == 0 || suser(p)) ? 0 : 1;
+	privileged = (p == 0 || suser_xxx(p->p_ucred, 0)) ? 0 : 1;
 
 	if (level == IPPROTO_IPV6) {
 		switch (op) {
@@ -1777,7 +1778,7 @@ ip6_pcbopts(pktopt, m, so, sopt)
 	}
 
 	/*  set options specified by user. */
-	if (p && !suser(p))
+	if (p && !suser_xxx(p->p_ucred, 0))
 		priv = 1;
 	if ((error = ip6_setpktoptions(m, opt, priv, 1)) != 0) {
 		ip6_clearpktopts(opt, 1, -1); /* XXX: discard all options */
@@ -2034,7 +2035,7 @@ ip6_setmoptions(optname, im6op, m)
 			 * all multicast addresses. Only super user is allowed
 			 * to do this.
 			 */
-			if (suser(p))
+			if (suser_xxx(p->p_ucred, 0))
 			{
 				error = EACCES;
 				break;
@@ -2141,7 +2142,7 @@ ip6_setmoptions(optname, im6op, m)
 		}
 		mreq = mtod(m, struct ipv6_mreq *);
 		if (IN6_IS_ADDR_UNSPECIFIED(&mreq->ipv6mr_multiaddr)) {
-			if (suser(p)) {
+			if (suser_xxx(p->p_ucred, 0)) {
 				error = EACCES;
 				break;
 			}

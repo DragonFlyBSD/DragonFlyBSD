@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_kthread.c,v 1.5.2.3 2001/12/25 01:51:14 dillon Exp $
- * $DragonFly: src/sys/kern/kern_kthread.c,v 1.4 2003/06/22 17:39:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_kthread.c,v 1.5 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -104,7 +104,7 @@ void
 kthread_exit(int ecode)
 {
 	proc_reparent(curproc, initproc);
-	exit1(curproc, W_EXITCODE(ecode, 0));
+	exit1(W_EXITCODE(ecode, 0));
 }
 
 /*

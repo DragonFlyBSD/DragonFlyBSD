@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
- * $DragonFly: src/sys/dev/disk/md/md.c,v 1.3 2003/06/19 01:55:03 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/md/md.c,v 1.4 2003/06/23 17:55:32 dillon Exp $
  *
  */
 
@@ -107,14 +107,14 @@ struct md_s {
 static int mdunits;
 
 static int
-mdopen(dev_t dev, int flag, int fmt, struct proc *p)
+mdopen(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	struct md_s *sc;
 	struct disklabel *dl;
 
 	if (md_debug)
 		printf("mdopen(%s %x %x %p)\n",
-			devtoname(dev), flag, fmt, p);
+			devtoname(dev), flag, fmt, td);
 
 	sc = dev->si_drv1;
 	if (sc->unit + 1 == mdunits)
@@ -132,12 +132,12 @@ mdopen(dev_t dev, int flag, int fmt, struct proc *p)
 }
 
 static int
-mdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct proc *p)
+mdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 {
 
 	if (md_debug)
 		printf("mdioctl(%s %lx %p %x %p)\n",
-			devtoname(dev), cmd, addr, flags, p);
+			devtoname(dev), cmd, addr, flags, td);
 
 	return (ENOIOCTL);
 }

@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.3 2003/06/18 16:30:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.4 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -362,10 +362,8 @@ fill_eproc(p, ep)
 	bzero(ep, sizeof(*ep));
 
 	ep->e_paddr = p;
-	if (p->p_cred) {
-		ep->e_pcred = *p->p_cred;
-		if (p->p_ucred)
-			ep->e_ucred = *p->p_ucred;
+	if (p->p_ucred) {
+		ep->e_ucred = *p->p_ucred;
 	}
 	if (p->p_procsig) {
 		ep->e_procsig = *p->p_procsig;
@@ -447,6 +445,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 	struct proc *p;
 	int doingzomb;
 	int error = 0;
+	struct ucred *cr1 = curproc->p_ucred;
 
 	if (oidp->oid_number == KERN_PROC_PID) {
 		if (namelen != 1) 
@@ -454,7 +453,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 		p = pfind((pid_t)name[0]);
 		if (!p)
 			return (0);
-		if (!PRISON_CHECK(curproc, p))
+		if (!PRISON_CHECK(cr1, p->p_ucred))
 			return (0);
 		error = sysctl_out_proc(p, req, 0);
 		return (error);
@@ -481,7 +480,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 			/*
 			 * Show a user only their processes.
 			 */
-			if ((!ps_showallprocs) && p_trespass(curproc, p))
+			if ((!ps_showallprocs) && p_trespass(cr1, p->p_ucred))
 				continue;
 			/*
 			 * Skip embryonic processes.
@@ -518,12 +517,12 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 
 			case KERN_PROC_RUID:
 				if (p->p_ucred == NULL || 
-				    p->p_cred->p_ruid != (uid_t)name[0])
+				    p->p_ucred->cr_ruid != (uid_t)name[0])
 					continue;
 				break;
 			}
 
-			if (!PRISON_CHECK(curproc, p))
+			if (!PRISON_CHECK(cr1, p->p_ucred))
 				continue;
 
 			error = sysctl_out_proc(p, req, doingzomb);
@@ -548,6 +547,7 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 	struct proc *p;
 	struct pargs *pa;
 	int error = 0;
+	struct ucred *cr1 = curproc->p_ucred;
 
 	if (namelen != 1) 
 		return (EINVAL);
@@ -556,7 +556,7 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 	if (!p)
 		return (0);
 
-	if ((!ps_argsopen) && p_trespass(curproc, p))
+	if ((!ps_argsopen) && p_trespass(cr1, p->p_ucred))
 		return (0);
 
 	if (req->newptr && curproc != p)

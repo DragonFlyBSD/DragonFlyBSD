@@ -49,7 +49,7 @@
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  *	From Id: nlpt.c,v 1.14 1999/02/08 13:55:43 des Exp
  * $FreeBSD: src/sys/dev/ppbus/lpt.c,v 1.15.2.3 2000/07/07 00:30:40 obrien Exp $
- * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.3 2003/06/23 17:55:33 dillon Exp $
  */
 
 /*
@@ -460,7 +460,7 @@ lptout(void *arg)
  */
 
 static	int
-lptopen(dev_t dev, int flags, int fmt, struct proc *p)
+lptopen(dev_t dev, int flags, int fmt, struct thread *p)
 {
 	int s;
 	int trys, err;
@@ -580,7 +580,7 @@ lptopen(dev_t dev, int flags, int fmt, struct proc *p)
  */
 
 static	int
-lptclose(dev_t dev, int flags, int fmt, struct proc *p)
+lptclose(dev_t dev, int flags, int fmt, struct thread *p)
 {
 	u_int unit = LPTUNIT(minor(dev));
 	struct lpt_data *sc = UNITOSOFTC(unit);
@@ -902,7 +902,7 @@ lptintr(device_t dev)
 }
 
 static	int
-lptioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct proc *p)
+lptioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *p)
 {
 	int	error = 0;
         u_int	unit = LPTUNIT(minor(dev));

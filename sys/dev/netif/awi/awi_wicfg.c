@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wicfg.c,v 1.3 2000/07/06 17:22:25 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wicfg.c,v 1.3.2.2 2002/06/18 08:06:15 jhay Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wicfg.c,v 1.2 2003/06/17 04:28:22 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wicfg.c,v 1.3 2003/06/23 17:55:29 dillon Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -103,6 +103,7 @@ awi_wicfg(ifp, cmd, data)
 	caddr_t data;
 {
 	int error;
+	struct proc *cur = curproc;
 
 	switch (cmd) {
 	case SIOCGWAVELAN:
@@ -110,7 +111,7 @@ awi_wicfg(ifp, cmd, data)
 		break;
 	case SIOCSWAVELAN:
 #ifdef __FreeBSD__
-		error = suser(curproc);
+		error = suser_xxx(cur->p_ucred, 0);
 #else
 		error = suser(curproc->p_ucred, &curproc->p_acflag);
 #endif
@@ -142,6 +143,7 @@ awi_cfgget(ifp, cmd, data)
 	struct wi_sigcache wsc;
 	struct awi_bss *bp;
 #endif /* WICACHE */
+	struct proc *cur = curproc;
 
 	error = copyin(ifr->ifr_data, &wreq, sizeof(wreq));
 	if (error)
@@ -274,7 +276,7 @@ awi_cfgget(ifp, cmd, data)
 		keys = (struct wi_ltv_keys *)&wreq;
 		/* do not show keys to non-root user */
 #ifdef __FreeBSD__
-		error = suser(curproc);
+		error = suser_xxx(cur->p_ucred, 0);
 #else
 		error = suser(curproc->p_ucred, &curproc->p_acflag);
 #endif

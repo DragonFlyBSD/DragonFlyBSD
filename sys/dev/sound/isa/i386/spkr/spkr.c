@@ -5,7 +5,7 @@
  * modified for FreeBSD by Andrew A. Chernov <ache@astral.msk.su>
  *
  * $FreeBSD: src/sys/i386/isa/spkr.c,v 1.45 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.3 2003/06/23 17:55:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -457,11 +457,7 @@ static int spkr_active = FALSE; /* exclusion flag */
 static struct buf *spkr_inbuf;  /* incoming buf */
 
 int
-spkropen(dev, flags, fmt, p)
-	dev_t		dev;
-	int		flags;
-	int		fmt;
-	struct proc	*p;
+spkropen(dev_t dev, int	flags, int fmt, struct thread *td)
 {
 #ifdef DEBUG
     (void) printf("spkropen: entering with dev = %s\n", devtoname(dev));
@@ -516,11 +512,7 @@ spkrwrite(dev, uio, ioflag)
 }
 
 int
-spkrclose(dev, flags, fmt, p)
-	dev_t		dev;
-	int		flags;
-	int		fmt;
-	struct proc	*p;
+spkrclose(dev_t	dev, int flags, int fmt, struct thread *td)
 {
 #ifdef DEBUG
     (void) printf("spkrclose: entering with dev = %s\n", devtoname(dev));
@@ -539,12 +531,7 @@ spkrclose(dev, flags, fmt, p)
 }
 
 int
-spkrioctl(dev, cmd, cmdarg, flags, p)
-	dev_t		dev;
-	unsigned long	cmd;
-	caddr_t		cmdarg;
-	int		flags;
-	struct proc	*p;
+spkrioctl(dev_t	dev, unsigned long cmd, caddr_t	cmdarg, int flags, struct thread*td)
 {
 #ifdef DEBUG
     (void) printf("spkrioctl: entering with dev = %s, cmd = %lx\n",

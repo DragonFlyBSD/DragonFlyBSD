@@ -32,7 +32,7 @@
  *
  *	@(#)tty_tty.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/tty_tty.c,v 1.30 1999/09/25 18:24:24 phk Exp $
- * $DragonFly: src/sys/kern/tty_tty.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_tty.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 /*
@@ -77,17 +77,20 @@ struct cdevsw ctty_cdevsw = {
 
 /*ARGSUSED*/
 static	int
-cttyopen(dev, flag, mode, p)
+cttyopen(dev, flag, mode, td)
 	dev_t dev;
 	int flag, mode;
-	struct proc *p;
+	struct thread *td;
 {
-	struct vnode *ttyvp = cttyvp(p);
+	struct vnode *ttyvp;
 	int error;
+
+	KKASSERT(td->td_proc != NULL);
+	ttyvp = cttyvp(td->td_proc);
 
 	if (ttyvp == NULL)
 		return (ENXIO);
-	vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY, td->td_proc);
 #ifdef PARANOID
 	/*
 	 * Since group is tty and mode is 620 on most terminal lines
@@ -101,8 +104,8 @@ cttyopen(dev, flag, mode, p)
 	  (flag&FREAD ? VREAD : 0) | (flag&FWRITE ? VWRITE : 0), p->p_ucred, p);
 	if (!error)
 #endif /* PARANOID */
-		error = VOP_OPEN(ttyvp, flag, NOCRED, p);
-	VOP_UNLOCK(ttyvp, 0, p);
+		error = VOP_OPEN(ttyvp, flag, NOCRED, td->td_proc);
+	VOP_UNLOCK(ttyvp, 0, td->td_proc);
 	return (error);
 }
 
@@ -146,42 +149,46 @@ cttywrite(dev, uio, flag)
 
 /*ARGSUSED*/
 static	int
-cttyioctl(dev, cmd, addr, flag, p)
+cttyioctl(dev, cmd, addr, flag, td)
 	dev_t dev;
 	u_long cmd;
 	caddr_t addr;
 	int flag;
-	struct proc *p;
+	struct thread *td;
 {
-	struct vnode *ttyvp = cttyvp(p);
+	struct vnode *ttyvp;
 
+	KKASSERT(td->td_proc != NULL);
+	ttyvp = cttyvp(td->td_proc);
 	if (ttyvp == NULL)
 		return (EIO);
 	if (cmd == TIOCSCTTY)  /* don't allow controlling tty to be set    */
 		return EINVAL; /* to controlling tty -- infinite recursion */
 	if (cmd == TIOCNOTTY) {
-		if (!SESS_LEADER(p)) {
-			p->p_flag &= ~P_CONTROLT;
+		if (!SESS_LEADER(td->td_proc)) {
+			td->td_proc->p_flag &= ~P_CONTROLT;
 			return (0);
 		} else
 			return (EINVAL);
 	}
-	return (VOP_IOCTL(ttyvp, cmd, addr, flag, NOCRED, p));
+	return (VOP_IOCTL(ttyvp, cmd, addr, flag, NOCRED, td->td_proc));
 }
 
 /*ARGSUSED*/
 static	int
-cttypoll(dev, events, p)
+cttypoll(dev, events, td)
 	dev_t dev;
 	int events;
-	struct proc *p;
+	struct thread *td;
 {
-	struct vnode *ttyvp = cttyvp(p);
+	struct vnode *ttyvp;
 
+	KKASSERT(td->td_proc != NULL);
+	ttyvp = cttyvp(td->td_proc);
 	if (ttyvp == NULL)
 		/* try operation to get EOF/failure */
-		return (seltrue(dev, events, p));
-	return (VOP_POLL(ttyvp, events, p->p_ucred, p));
+		return (seltrue(dev, events, td));
+	return (VOP_POLL(ttyvp, events, td->td_proc->p_ucred, td->td_proc));
 }
 
 static void ctty_drvinit __P((void *unused));

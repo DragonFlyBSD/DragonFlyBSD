@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_mib.c,v 1.7.2.2 2001/11/05 19:08:22 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_mib.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_mib.c,v 1.3 2003/06/23 17:55:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -115,10 +115,10 @@ SYSCTL_PROC(_compat_linux, OID_AUTO, oss_version,
 static struct linux_prison *
 get_prison(struct proc *p)
 {
-	register struct prison *pr;
-	register struct linux_prison *lpr;
+	struct prison *pr;
+	struct linux_prison *lpr;
 
-	pr = p->p_prison;
+	pr = p->p_ucred->cr_prison;
 	if (pr == NULL)
 		return (NULL);
 
@@ -138,7 +138,7 @@ linux_get_osname(p)
 	register struct prison *pr;
 	register struct linux_prison *lpr;
 
-	pr = p->p_prison;
+	pr = p->p_ucred->cr_prison;
 	if (pr != NULL && pr->pr_linux != NULL) {
 		lpr = pr->pr_linux;
 		if (lpr->pr_osname[0])
@@ -171,7 +171,7 @@ linux_get_osrelease(p)
 	register struct prison *pr;
 	register struct linux_prison *lpr;
 
-	pr = p->p_prison;
+	pr = p->p_ucred->cr_prison;
 	if (pr != NULL && pr->pr_linux != NULL) {
 		lpr = pr->pr_linux;
 		if (lpr->pr_osrelease[0])
@@ -204,7 +204,7 @@ linux_get_oss_version(p)
 	register struct prison *pr;
 	register struct linux_prison *lpr;
 
-	pr = p->p_prison;
+	pr = p->p_ucred->cr_prison;
 	if (pr != NULL && pr->pr_linux != NULL) {
 		lpr = pr->pr_linux;
 		if (lpr->pr_oss_version)

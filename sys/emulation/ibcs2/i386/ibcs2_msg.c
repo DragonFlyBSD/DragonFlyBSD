@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_msg.c,v 1.7 1999/08/28 00:43:59 peter Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_msg.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_msg.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
  */
 
 /*
@@ -42,27 +42,22 @@
 
 
 int
-ibcs2_getmsg(p, uap)
-	struct proc *p;
-	struct ibcs2_getmsg_args *uap;
+ibcs2_getmsg(struct ibcs2_getmsg_args *uap)
 {
 	return 0; /* fake */
 }
 
 int
-ibcs2_putmsg(p, uap)
-	struct proc *p;
-	struct ibcs2_putmsg_args *uap;
+ibcs2_putmsg(struct ibcs2_putmsg_args *uap)
 {
 	return 0; /* fake */
 }
 
 
 int
-ibcs2_poll(p, uap)
-	struct proc *p;
-	struct ibcs2_poll_args *uap;
+ibcs2_poll(struct ibcs2_poll_args *uap)
 {
+	struct proc *p = curproc;
 	int error, i;
 	fd_set *readfds, *writefds, *exceptfds;
 	struct timeval *timeout;
@@ -108,7 +103,7 @@ ibcs2_poll(p, uap)
 			FD_SET(conv.fd, writefds);
 		FD_SET(conv.fd, exceptfds);
 	}
-	if ((error = select(p, &tmp_select)) != 0)
+	if ((error = select(&tmp_select)) != 0)
 		return error;
 	if (p->p_retval[0] == 0)
 		return 0;

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_sem.c,v 1.24.2.8 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.2 2003/06/17 04:28:41 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.3 2003/06/23 17:55:41 dillon Exp $ */
 
 /*
  * Implementation of SVID semaphores
@@ -200,26 +200,20 @@ SYSINIT(sysv_sem, SI_SUB_SYSV_SEM, SI_ORDER_FIRST, seminit, NULL)
 
 /*
  * Entry point for all SEM calls
+ *
+ * semsys_args(u_int which, a2, a3, ...) (VARARGS)
  */
 int
-semsys(p, uap)
-	struct proc *p;
-	/* XXX actually varargs. */
-	struct semsys_args /* {
-		u_int	which;
-		int	a2;
-		int	a3;
-		int	a4;
-		int	a5;
-	} */ *uap;
+semsys(struct semsys_args *uap)
 {
+	struct proc *p = curproc;
 
-	if (!jail_sysvipc_allowed && p->p_prison != NULL)
+	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	if (uap->which >= sizeof(semcalls)/sizeof(semcalls[0]))
 		return (EINVAL);
-	return ((*semcalls[uap->which])(p, &uap->a2));
+	return ((*semcalls[uap->which])(&uap->a2));
 }
 
 /*
@@ -405,10 +399,9 @@ struct __semctl_args {
 #endif
 
 int
-__semctl(p, uap)
-	struct proc *p;
-	register struct __semctl_args *uap;
+__semctl(struct __semctl_args *uap)
 {
+	struct proc *p = curproc;
 	int semid = uap->semid;
 	int semnum = uap->semnum;
 	int cmd = uap->cmd;
@@ -423,7 +416,7 @@ __semctl(p, uap)
 	printf("call to semctl(%d, %d, %d, 0x%x)\n", semid, semnum, cmd, arg);
 #endif
 
-	if (!jail_sysvipc_allowed && p->p_prison != NULL)
+	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	semid = IPCID_TO_IX(semid);
@@ -572,10 +565,9 @@ struct semget_args {
 #endif
 
 int
-semget(p, uap)
-	struct proc *p;
-	register struct semget_args *uap;
+semget(struct semget_args *uap)
 {
+	struct proc *p = curproc;
 	int semid, eval;
 	int key = uap->key;
 	int nsems = uap->nsems;
@@ -586,7 +578,7 @@ semget(p, uap)
 	printf("semget(0x%x, %d, 0%o)\n", key, nsems, semflg);
 #endif
 
-	if (!jail_sysvipc_allowed && p->p_prison != NULL)
+	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	if (key != IPC_PRIVATE) {
@@ -689,10 +681,9 @@ struct semop_args {
 #endif
 
 int
-semop(p, uap)
-	struct proc *p;
-	register struct semop_args *uap;
+semop(struct semop_args *uap)
 {
+	struct proc *p = curproc;
 	int semid = uap->semid;
 	u_int nsops = uap->nsops;
 	struct sembuf sops[MAX_SOPS];
@@ -707,7 +698,7 @@ semop(p, uap)
 	printf("call to semop(%d, 0x%x, %u)\n", semid, sops, nsops);
 #endif
 
-	if (!jail_sysvipc_allowed && p->p_prison != NULL)
+	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	semid = IPCID_TO_IX(semid);	/* Convert back to zero origin */

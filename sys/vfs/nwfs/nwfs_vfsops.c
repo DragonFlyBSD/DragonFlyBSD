@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.3 2003/06/23 17:55:48 dillon Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -395,7 +395,7 @@ nwfs_init(struct vfsconf *vfsp)
 
 	name[0] = CTL_HW;
 	name[1] = HW_NCPU;
-	error = kernel_sysctl(curproc, name, 2, &ncpu, &olen, NULL, 0, &plen);
+	error = kernel_sysctl(name, 2, &ncpu, &olen, NULL, 0, &plen);
 	if (error == 0 && ncpu > 1)
 		printf("warning: nwfs module compiled without SMP support.");
 #endif

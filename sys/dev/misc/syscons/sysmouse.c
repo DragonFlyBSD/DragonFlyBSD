@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/sysmouse.c,v 1.2.2.2 2001/07/16 05:21:24 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.3 2003/06/23 17:55:35 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -76,7 +76,7 @@ static void		smstart(struct tty *tp);
 static int		smparam(struct tty *tp, struct termios *t);
 
 static int
-smopen(dev_t dev, int flag, int mode, struct proc *p)
+smopen(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct tty *tp;
 
@@ -103,7 +103,7 @@ smopen(dev_t dev, int flag, int mode, struct proc *p)
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
 		smparam(tp, &tp->t_termios);
 		(*linesw[tp->t_line].l_modem)(tp, 1);
-	} else if (tp->t_state & TS_XCLUDE && suser(p)) {
+	} else if (tp->t_state & TS_XCLUDE && suser_xxx(td->td_proc->p_ucred, 0)) {
 		return EBUSY;
 	}
 
@@ -111,7 +111,7 @@ smopen(dev_t dev, int flag, int mode, struct proc *p)
 }
 
 static int
-smclose(dev_t dev, int flag, int mode, struct proc *p)
+smclose(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct tty *tp;
 	int s;
@@ -155,7 +155,7 @@ smparam(struct tty *tp, struct termios *t)
 }
 
 static int
-smioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
+smioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
 	struct tty *tp;
 	mousehw_t *hw;
@@ -243,7 +243,7 @@ smioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
 		return ENODEV;
 	}
 
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, p);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
 	if (error != ENOIOCTL)
 		return error;
 	error = ttioctl(tp, cmd, data, flag);

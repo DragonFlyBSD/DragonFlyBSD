@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.3 2003/06/19 01:55:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.4 2003/06/23 17:55:48 dillon Exp $
  */
 
 /*
@@ -1760,7 +1760,7 @@ nfsrv_create(nfsd, slp, procp, mrq)
 			if (vap->va_type == VCHR && rdev == 0xffffffff)
 				vap->va_type = VFIFO;
                         if (vap->va_type != VFIFO &&
-                            (error = suser_xxx(cred, 0, 0))) {
+                            (error = suser_xxx(cred, 0))) {
 				goto nfsmreply0;
                         }
 			vap->va_rdev = rdev;
@@ -1965,7 +1965,7 @@ nfsrv_mknod(nfsd, slp, procp, mrq)
 		if (error)
 			NDFREE(&nd, NDF_ONLY_PNBUF);
 	} else {
-		if (vtyp != VFIFO && (error = suser_xxx(cred, 0, 0)))
+		if (vtyp != VFIFO && (error = suser_xxx(cred, 0)))
 			goto out;
 		nqsrv_getl(nd.ni_dvp, ND_WRITE);
 

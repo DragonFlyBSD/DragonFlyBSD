@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.3 2003/06/23 17:55:45 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -264,16 +264,15 @@ tapcreate(dev)
  * to open tunnel. must be superuser
  */
 static int
-tapopen(dev, flag, mode, p)
-	dev_t		 dev;
-	int		 flag;
-	int		 mode;
-	struct proc	*p;
+tapopen(dev_t dev, int flag, int mode, d_thread_t *td)
 {
 	struct tap_softc	*tp = NULL;
 	int			 error;
+	struct proc *p = td->td_proc;
 
-	if ((error = suser(p)) != 0)
+	KKASSERT(p != NULL);
+
+	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
 		return (error);
 
 	tp = dev->si_drv1;
@@ -305,11 +304,7 @@ tapopen(dev, flag, mode, p)
  * close the device - mark i/f down & delete routing info
  */
 static int
-tapclose(dev, foo, bar, p)
-	dev_t		 dev;
-	int		 foo;
-	int		 bar;
-	struct proc	*p;
+tapclose(dev_t dev, int foo, int bar, d_thread_t *td)
 {
 	int			 s;
 	struct tap_softc	*tp = dev->si_drv1;
@@ -517,12 +512,7 @@ tapifstart(ifp)
  * the cdevsw interface is now pretty minimal
  */
 static int
-tapioctl(dev, cmd, data, flag, p)
-	dev_t		 dev;
-	u_long		 cmd;
-	caddr_t		 data;
-	int		 flag;
-	struct proc	*p;
+tapioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 {
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
@@ -787,10 +777,7 @@ tapwrite(dev, uio, flag)
  * anyway, it either accepts the packet or drops it
  */
 static int
-tappoll(dev, events, p)
-	dev_t		 dev;
-	int		 events;
-	struct proc	*p;
+tappoll(dev_t dev, int events, d_thread_t *td)
 {
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
@@ -812,7 +799,7 @@ tappoll(dev, events, p)
 			TAPDEBUG("%s%d waiting for data, minor = %#x\n",
 				ifp->if_name, ifp->if_unit, minor(tp->tap_dev));
 
-			selrecord(p, &tp->tap_rsel);
+			selrecord(td, &tp->tap_rsel);
 		}
 	}
 

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nmdm/nmdm.c,v 1.5.2.1 2001/08/11 00:54:14 mp Exp $
- * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.3 2003/06/23 17:55:33 dillon Exp $
  */
 
 /*
@@ -154,12 +154,10 @@ nmdminit(n)
 
 /*ARGSUSED*/
 static	int
-nmdmopen(dev, flag, devtype, p)
-	dev_t dev;
-	int flag, devtype;
-	struct proc *p;
+nmdmopen(dev_t dev, int flag, int devtype, struct thread *td)
 {
-	register struct tty *tp, *tp2;
+	struct proc *p = td->td_proc;
+	struct tty *tp, *tp2;
 	int error;
 	int minr;
 	dev_t nextdev;
@@ -167,6 +165,8 @@ nmdmopen(dev, flag, devtype, p)
 	int is_b;
 	int	pair;
 	struct	softpart *ourpart, *otherpart;
+
+	KKASSERT(p != NULL);
 
 	/*
 	 * XXX: Gross hack for DEVFS:
@@ -205,9 +205,9 @@ nmdmopen(dev, flag, devtype, p)
 		tp->t_lflag = TTYDEF_LFLAG;
 		tp->t_cflag = TTYDEF_CFLAG;
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
-	} else if (tp->t_state & TS_XCLUDE && suser(p)) {
+	} else if (tp->t_state & TS_XCLUDE && suser_xxx(p->p_ucred, 0)) {
 		return (EBUSY);
-	} else if (pti->pt_prison != p->p_prison) {
+	} else if (pti->pt_prison != p->p_ucred->cr_prison) {
 		return (EBUSY);
 	}
 
@@ -257,10 +257,7 @@ nmdmopen(dev, flag, devtype, p)
 }
 
 static	int
-nmdmclose(dev, flag, mode, p)
-	dev_t dev;
-	int flag, mode;
-	struct proc *p;
+nmdmclose(dev_t dev, int flag, int mode, struct thread *td)
 {
 	register struct tty *tp, *tp2;
 	int err;
@@ -487,12 +484,7 @@ nmdmstop(tp, flush)
 
 /*ARGSUSED*/
 static	int
-nmdmioctl(dev, cmd, data, flag, p)
-	dev_t dev;
-	u_long cmd;
-	caddr_t data;
-	int flag;
-	struct proc *p;
+nmdmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
 	register struct tty *tp = dev->si_tty;
 	struct nm_softc *pti = dev->si_drv1;
@@ -504,7 +496,7 @@ nmdmioctl(dev, cmd, data, flag, p)
 	GETPARTS(tp, ourpart, otherpart);
 	tp2 = &otherpart->nm_tty;
 
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, p);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
 	if (error == ENOIOCTL)
 		 error = ttioctl(tp, cmd, data, flag);
 	if (error == ENOIOCTL) {

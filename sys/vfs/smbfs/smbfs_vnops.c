@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.3 2003/06/23 17:55:37 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -409,7 +409,7 @@ smbfs_setattr(ap)
 		atime = &vap->va_atime;
 	if (mtime != atime) {
 		if (ap->a_cred->cr_uid != VTOSMBFS(vp)->sm_args.uid &&
-		    (error = suser_xxx(ap->a_cred, ap->a_p, PRISON_ROOT)) &&
+		    (error = suser_xxx(ap->a_cred, PRISON_ROOT)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
 		    (error = VOP_ACCESS(vp, VWRITE, ap->a_cred, ap->a_p))))
 			return (error);

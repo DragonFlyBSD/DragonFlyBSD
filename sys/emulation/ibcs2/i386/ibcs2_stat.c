@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_stat.c,v 1.10 1999/12/15 23:01:45 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -97,17 +97,16 @@ cvt_statfs(sp, buf, len)
 }	
 
 int
-ibcs2_statfs(p, uap)
-	struct proc *p;
-	struct ibcs2_statfs_args *uap;
+ibcs2_statfs(struct ibcs2_statfs_args *uap)
 {
-	register struct mount *mp;
-	register struct statfs *sp;
+	struct proc *p = curproc;
+	struct mount *mp;
+	struct statfs *sp;
 	int error;
 	struct nameidata nd;
 	caddr_t sg = stackgap_init();
 
-	CHECKALTEXIST(p, &sg, SCARG(uap, path));
+	CHECKALTEXIST(&sg, SCARG(uap, path));
 	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), p);
 	if ((error = namei(&nd)) != 0)
 		return (error);
@@ -122,10 +121,9 @@ ibcs2_statfs(p, uap)
 }
 
 int
-ibcs2_fstatfs(p, uap)
-	struct proc *p;
-	struct ibcs2_fstatfs_args *uap;
+ibcs2_fstatfs(struct ibcs2_fstatfs_args *uap)
 {
+	struct proc *p = curproc;
 	struct file *fp;
 	struct mount *mp;
 	register struct statfs *sp;
@@ -142,9 +140,7 @@ ibcs2_fstatfs(p, uap)
 }
 
 int
-ibcs2_stat(p, uap)
-	struct proc *p;
-	struct ibcs2_stat_args *uap;
+ibcs2_stat(struct ibcs2_stat_args *uap)
 {
 	struct stat st;
 	struct ibcs2_stat ibcs2_st;
@@ -152,11 +148,11 @@ ibcs2_stat(p, uap)
 	int error;
 	caddr_t sg = stackgap_init();
 
-	CHECKALTEXIST(p, &sg, SCARG(uap, path));
+	CHECKALTEXIST(&sg, SCARG(uap, path));
 	SCARG(&cup, path) = SCARG(uap, path);
 	SCARG(&cup, ub) = stackgap_alloc(&sg, sizeof(st));
 
-	if ((error = stat(p, &cup)) != 0)
+	if ((error = stat(&cup)) != 0)
 		return error;
 
 	if ((error = copyin(SCARG(&cup, ub), &st, sizeof(st))) != 0)
@@ -167,9 +163,7 @@ ibcs2_stat(p, uap)
 }
 
 int
-ibcs2_lstat(p, uap)
-	struct proc *p;
-	struct ibcs2_lstat_args *uap;
+ibcs2_lstat(struct ibcs2_lstat_args *uap)
 {
 	struct stat st;
 	struct ibcs2_stat ibcs2_st;
@@ -177,11 +171,11 @@ ibcs2_lstat(p, uap)
 	int error;
 	caddr_t sg = stackgap_init();
 
-	CHECKALTEXIST(p, &sg, SCARG(uap, path));
+	CHECKALTEXIST(&sg, SCARG(uap, path));
 	SCARG(&cup, path) = SCARG(uap, path);
 	SCARG(&cup, ub) = stackgap_alloc(&sg, sizeof(st));
 
-	if ((error = lstat(p, &cup)) != 0)
+	if ((error = lstat(&cup)) != 0)
 		return error;
 
 	if ((error = copyin(SCARG(&cup, ub), &st, sizeof(st))) != 0)
@@ -192,9 +186,7 @@ ibcs2_lstat(p, uap)
 }
 
 int
-ibcs2_fstat(p, uap)
-	struct proc *p;
-	struct ibcs2_fstat_args *uap;
+ibcs2_fstat(struct ibcs2_fstat_args *uap)
 {
 	struct stat st;
 	struct ibcs2_stat ibcs2_st;
@@ -205,7 +197,7 @@ ibcs2_fstat(p, uap)
 	SCARG(&cup, fd) = SCARG(uap, fd);
 	SCARG(&cup, sb) = stackgap_alloc(&sg, sizeof(st));
 
-	if ((error = fstat(p, &cup)) != 0)
+	if ((error = fstat(&cup)) != 0)
 		return error;
 
 	if ((error = copyin(SCARG(&cup, sb), &st, sizeof(st))) != 0)
@@ -216,9 +208,7 @@ ibcs2_fstat(p, uap)
 }
 
 int
-ibcs2_utssys(p, uap)
-	struct proc *p;
-	struct ibcs2_utssys_args *uap;
+ibcs2_utssys(struct ibcs2_utssys_args *uap)
 {
 	switch (SCARG(uap, flag)) {
 	case 0:			/* uname(2) */

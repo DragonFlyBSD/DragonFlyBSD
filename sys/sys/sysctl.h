@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.3 2003/06/23 17:55:50 dillon Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -584,13 +584,13 @@ int	sysctl_ctx_entry_del(struct sysctl_ctx_list *clist,
 void	sysctl_register_set(struct linker_set *lsp);
 void	sysctl_unregister_set(struct linker_set *lsp);
 
-int	kernel_sysctl(struct proc *p, int *name, u_int namelen, void *old,
+int	kernel_sysctl(int *name, u_int namelen, void *old,
 		      size_t *oldlenp, void *new, size_t newlen,
 		      size_t *retval);
-int	kernel_sysctlbyname(struct proc *p, char *name,
+int	kernel_sysctlbyname(char *name,
 		void *old, size_t *oldlenp, void *new, size_t newlen,
 		size_t *retval);
-int	userland_sysctl(struct proc *p, int *name, u_int namelen, void *old,
+int	userland_sysctl(int *name, u_int namelen, void *old,
 			size_t *oldlenp, int inkernel, void *new, size_t newlen,
 			size_t *retval);
 int	sysctl_find_oid(int *name, u_int namelen, struct sysctl_oid **noid,

@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.3 2003/06/23 17:55:27 dillon Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -629,7 +629,10 @@ int IPL_EXTERN(ioctl)(dev_t dev, int cmd, caddr_t data, int mode
 )
 #else
 int IPL_EXTERN(ioctl)(dev, cmd, data, mode
-# if (defined(_KERNEL) && ((_BSDI_VERSION >= 199510) || (BSD >= 199506) || \
+#ifdef __FreeBSD__
+, td)
+struct thread *td;
+# elif (defined(_KERNEL) && ((_BSDI_VERSION >= 199510) || (BSD >= 199506) || \
        (NetBSD >= 199511) || (__FreeBSD_version >= 220000) || \
        defined(__OpenBSD__)))
 , p)
@@ -1099,7 +1102,11 @@ int IPL_EXTERN(open)(dev_t dev, int flags)
 #  endif
 # else
 int IPL_EXTERN(open)(dev, flags
-#  if ((_BSDI_VERSION >= 199510) || (BSD >= 199506) || (NetBSD >= 199511) || \
+#ifdef __FreeBSD__
+, devtype, td)
+int devtype;
+struct thread *td;
+#elif ((_BSDI_VERSION >= 199510) || (BSD >= 199506) || (NetBSD >= 199511) || \
      (__FreeBSD_version >= 220000) || defined(__OpenBSD__)) && defined(_KERNEL)
 , devtype, p)
 int devtype;
@@ -1129,7 +1136,11 @@ int flags;
 int IPL_EXTERN(close)(dev_t dev, int flags, int devtype, cred_t *cp)
 #else
 int IPL_EXTERN(close)(dev, flags
-#  if ((_BSDI_VERSION >= 199510) || (BSD >= 199506) || (NetBSD >= 199511) || \
+#ifdef __FreeBSD__
+, devtype, td)
+int devtype;
+struct thread *td;
+#elif ((_BSDI_VERSION >= 199510) || (BSD >= 199506) || (NetBSD >= 199511) || \
      (__FreeBSD_version >= 220000) || defined(__OpenBSD__)) && defined(_KERNEL)
 , devtype, p)
 int devtype;

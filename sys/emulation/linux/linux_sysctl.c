@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_sysctl.c,v 1.2.2.1 2001/10/21 03:57:35 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_sysctl.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_sysctl.c,v 1.3 2003/06/23 17:55:26 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -76,7 +76,7 @@ handle_string(struct l___sysctl_args *la, char *value)
 }
 
 int
-linux_sysctl(struct proc *p, struct linux_sysctl_args *args)
+linux_sysctl(struct linux_sysctl_args *args)
 {
 	struct l___sysctl_args la;
 	l_int *mib;

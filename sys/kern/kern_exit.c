@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.7 2003/06/21 17:31:19 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.8 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -77,7 +77,7 @@ MALLOC_DEFINE(M_ZOMBIE, "zombie", "zombie proc status");
 
 static MALLOC_DEFINE(M_ATEXIT, "atexit", "atexit callback");
 
-static int wait1 __P((struct proc *, struct wait_args *, int));
+static int wait1 __P((struct wait_args *, int));
 
 /*
  * callout list for things to do at exit time
@@ -93,16 +93,13 @@ static struct exit_list_head exit_list = TAILQ_HEAD_INITIALIZER(exit_list);
 /*
  * exit --
  *	Death of process.
+ *
+ * SYS_EXIT_ARGS(int rval)
  */
 void
-sys_exit(p, uap)
-	struct proc *p;
-	struct sys_exit_args /* {
-		int	rval;
-	} */ *uap;
+sys_exit(struct sys_exit_args *uap)
 {
-
-	exit1(p, W_EXITCODE(uap->rval, 0));
+	exit1(W_EXITCODE(uap->rval, 0));
 	/* NOTREACHED */
 }
 
@@ -112,12 +109,11 @@ sys_exit(p, uap)
  * status and rusage for wait().  Check for child processes and orphan them.
  */
 void
-exit1(p, rv)
-	register struct proc *p;
-	int rv;
+exit1(int rv)
 {
-	register struct proc *q, *nq;
-	register struct vmspace *vm;
+	struct proc *p = curproc;
+	struct proc *q, *nq;
+	struct vmspace *vm;
 	struct vnode *vtmp;
 	struct exitlist *ep;
 
@@ -140,7 +136,7 @@ exit1(p, rv)
 		         * The interface for kill is better
 			 * than the internal signal
 			 */
-			kill(p, &killArgs);
+			kill(&killArgs);
 			nq = q;
 			q = q->p_peers;
 		}
@@ -392,12 +388,13 @@ exit1(p, rv)
 }
 
 #ifdef COMPAT_43
+/*
+ * owait()
+ *
+ * owait_args(int dummy)
+ */
 int
-owait(p, uap)
-	struct proc *p;
-	register struct owait_args /* {
-		int     dummy;
-	} */ *uap;
+owait(struct owait_args *uap)
 {
 	struct wait_args w;
 
@@ -405,33 +402,27 @@ owait(p, uap)
 	w.rusage = NULL;
 	w.pid = WAIT_ANY;
 	w.status = NULL;
-	return (wait1(p, &w, 1));
+	return (wait1(&w, 1));
 }
 #endif /* COMPAT_43 */
 
 int
-wait4(p, uap)
-	struct proc *p;
-	struct wait_args *uap;
+wait4(struct wait_args *uap)
 {
-
-	return (wait1(p, uap, 0));
+	return (wait1(uap, 0));
 }
 
+/*
+ * wait1()
+ *
+ * wait_args(int pid, int *status, int options, struct rusage *rusage)
+ */
 static int
-wait1(q, uap, compat)
-	register struct proc *q;
-	register struct wait_args /* {
-		int pid;
-		int *status;
-		int options;
-		struct rusage *rusage;
-	} */ *uap;
-	int compat;
+wait1(struct wait_args *uap, int compat)
 {
-	register int nfound;
-	register struct proc *p, *t;
-	int status, error;
+	struct proc *q = curproc;
+	struct proc *p, *t;
+	int status, nfound, error;
 
 	if (uap->pid == 0)
 		uap->pid = -q->p_pgid;
@@ -511,26 +502,13 @@ loop:
 			/*
 			 * Decrement the count of procs running with this uid.
 			 */
-			(void)chgproccnt(p->p_cred->p_uidinfo, -1, 0);
+			(void)chgproccnt(p->p_ucred->cr_ruidinfo, -1, 0);
 
 			/*
 			 * Free up credentials.
 			 */
-			if (--p->p_cred->p_refcnt == 0) {
-				crfree(p->p_ucred);
-				uifree(p->p_cred->p_uidinfo);
-				FREE(p->p_cred, M_SUBPROC);
-				p->p_cred = NULL;
-			}
-
-			/*
-			 * Destroy empty prisons
-			 */
-			if (p->p_prison && !--p->p_prison->pr_ref) {
-				if (p->p_prison->pr_linux != NULL)
-					FREE(p->p_prison->pr_linux, M_PRISON);
-				FREE(p->p_prison, M_PRISON);
-			}
+			crfree(p->p_ucred);
+			p->p_ucred = NULL;
 
 			/*
 			 * Remove unused arguments

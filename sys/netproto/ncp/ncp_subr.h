@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_subr.h,v 1.3 2000/01/14 19:54:39 bde Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_subr.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_subr.h,v 1.3 2003/06/23 17:55:47 dillon Exp $
  */
 #ifndef _NETNCP_NCP_SUBR_H_
 #define _NETNCP_NCP_SUBR_H_
@@ -84,7 +84,7 @@
 
 #define checkbad(fn) {error=(fn);if(error) goto bad;}
 
-#define	ncp_suser(cred)	suser_xxx(cred, NULL, 0)
+#define	ncp_suser(cred)	suser_xxx(cred, 0)
 
 #define ncp_isowner(conn,cred) ((cred)->cr_uid == (conn)->nc_owner->cr_uid)
 

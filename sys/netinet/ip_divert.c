@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.3 2003/06/23 17:55:46 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -344,7 +344,7 @@ div_attach(struct socket *so, int proto, struct proc *p)
 	inp  = sotoinpcb(so);
 	if (inp)
 		panic("div_attach");
-	if (p && (error = suser(p)) != 0)
+	if (p && (error = suser_xxx(p->p_ucred, 0)) != 0)
 		return error;
 
 	error = soreserve(so, div_sendspace, div_recvspace);
@@ -486,7 +486,7 @@ div_pcblist(SYSCTL_HANDLER_ARGS)
 	s = splnet();
 	for (inp = LIST_FIRST(divcbinfo.listhead), i = 0; inp && i < n;
 	     inp = LIST_NEXT(inp, inp_list)) {
-		if (inp->inp_gencnt <= gencnt && !prison_xinpcb(req->p, inp))
+		if (inp->inp_gencnt <= gencnt && !prison_xinpcb(req->p, inp))/*YYY*/
 			inp_list[i++] = inp;
 	}
 	splx(s);

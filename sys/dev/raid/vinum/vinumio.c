@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.3 2003/06/23 17:55:36 dillon Exp $
  */
 
 #include <dev/vinum/vinumhdr.h>
@@ -226,7 +226,7 @@ init_drive(struct drive *drive, int verbose)
 	DIOCGPART,
 	(caddr_t) & drive->partinfo,
 	FREAD,
-	curproc);
+	curthread);
     if (drive->lasterror) {
 	if (verbose)
 	    log(LOG_WARNING,
@@ -670,7 +670,7 @@ daemon_save_config(void)
 			DIOCWLABEL,
 			(caddr_t) & wlabel_on,
 			FWRITE,
-			curproc);
+			curthread);
 		    if (error == 0)
 			error = write_drive(drive, (char *) vhdr, VINUMHEADERLEN, VINUM_LABEL_OFFSET);
 		    if (error == 0)
@@ -683,7 +683,7 @@ daemon_save_config(void)
 			    DIOCWLABEL,
 			    (caddr_t) & wlabel_on,
 			    FWRITE,
-			    curproc);
+			    curthread);
 		    unlockdrive(drive);
 		    if (error) {
 			log(LOG_ERR,

@@ -29,7 +29,7 @@
  * confusing and/or plain wrong in that context.
  *
  * $FreeBSD: src/sys/kern/kern_ntptime.c,v 1.32.2.2 2001/04/22 11:19:46 jhay Exp $
- * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -271,7 +271,7 @@ struct ntp_adjtime_args {
 #endif
 
 int
-ntp_adjtime(struct proc *p, struct ntp_adjtime_args *uap)
+ntp_adjtime(struct ntp_adjtime_args *uap)
 {
 	struct timex ntv;	/* temporary structure */
 	long freq;		/* frequency ns/s) */
@@ -294,7 +294,7 @@ ntp_adjtime(struct proc *p, struct ntp_adjtime_args *uap)
 	 */
 	modes = ntv.modes;
 	if (modes)
-		error = suser(p);
+		error = suser();
 	if (error)
 		return (error);
 	s = splclock();
@@ -410,9 +410,9 @@ ntp_adjtime(struct proc *p, struct ntp_adjtime_args *uap)
 	    time_status & STA_PPSJITTER) ||
 	    (time_status & STA_PPSFREQ &&
 	    time_status & (STA_PPSWANDER | STA_PPSERROR)))
-		p->p_retval[0] = TIME_ERROR;
+		curproc->p_retval[0] = TIME_ERROR;
 	else
-		p->p_retval[0] = time_state;
+		curproc->p_retval[0] = time_state;
 	return (error);
 }
 

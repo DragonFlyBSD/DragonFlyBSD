@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -125,13 +125,13 @@ iso_get_ssector(dev, p)
 	if (ioctlp == NULL)
 		return 0;
 
-	if (ioctlp(dev, CDIOREADTOCHEADER, (caddr_t)&h, FREAD, p) != 0)
+	if (ioctlp(dev, CDIOREADTOCHEADER, (caddr_t)&h, FREAD, p->p_thread) != 0)
 		return 0;
 
 	for (i = h.ending_track; i >= 0; i--) {
 		t.address_format = CD_LBA_FORMAT;
 		t.track = i;
-		if (ioctlp(dev, CDIOREADTOCENTRY, (caddr_t)&t, FREAD, p) != 0)
+		if (ioctlp(dev, CDIOREADTOCENTRY, (caddr_t)&t, FREAD, p->p_thread) != 0)
 			return 0;
 		if ((t.entry.control & 4) != 0)
 			/* found a data track */
@@ -241,7 +241,7 @@ cd9660_mount(mp, path, data, ndp, p)
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, p);
 	error = VOP_ACCESS(devvp, accessmode, p->p_ucred, p);
 	if (error) 
-		error = suser(p);
+		error = suser();
 	if (error) {
 		vput(devvp);
 		return (error);

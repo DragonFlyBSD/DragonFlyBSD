@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_disk.c,v 1.12.2.6 2001/11/27 20:21:02 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.3 2003/06/23 17:55:31 dillon Exp $
  */
 
 /*
@@ -115,7 +115,7 @@ idad_getsoftc(dev_t dev)
 }
 
 static int
-idad_open(dev_t dev, int flags, int fmt, struct proc *p)
+idad_open(dev_t dev, int flags, int fmt, d_thread_t *td)
 {
 	struct idad_softc *drv;
 	struct disklabel *label;
@@ -138,7 +138,7 @@ idad_open(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int
-idad_close(dev_t dev, int flags, int fmt, struct proc *p)
+idad_close(dev_t dev, int flags, int fmt, d_thread_t *td)
 {
 	struct idad_softc *drv;
 

@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs.h,v 1.32.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs.h,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs.h,v 1.3 2003/06/23 17:55:44 dillon Exp $
  */
 
 /*
@@ -95,11 +95,11 @@ struct pfsnode {
 			((((pid)+1) << 4) + ((int) (type))))
 
 #define CHECKIO(p1, p2) \
-     ((((p1)->p_cred->pc_ucred->cr_uid == (p2)->p_cred->p_ruid) && \
-       ((p1)->p_cred->p_ruid == (p2)->p_cred->p_ruid) && \
-       ((p1)->p_cred->p_svuid == (p2)->p_cred->p_ruid) && \
+     ((((p1)->p_ucred->cr_uid == (p2)->p_ucred->cr_ruid) && \
+       ((p1)->p_ucred->cr_ruid == (p2)->p_ucred->cr_ruid) && \
+       ((p1)->p_ucred->cr_svuid == (p2)->p_ucred->cr_ruid) && \
        ((p2)->p_flag & (P_SUGID|P_INEXEC)) == 0) || \
-      (suser_xxx((p1)->p_cred->pc_ucred, (p1), PRISON_ROOT) == 0))
+      (suser_xxx((p1)->p_ucred, PRISON_ROOT) == 0))
 
 /*
  * Convert between pfsnode vnode

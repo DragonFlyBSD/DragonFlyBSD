@@ -1,6 +1,6 @@
 /*	$NetBSD: umodem.c,v 1.5 1999/01/08 11:58:25 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/umodem.c,v 1.17.2.9 2002/11/06 20:23:50 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.3 2003/06/23 17:55:36 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -565,7 +565,7 @@ umodemparam(struct tty *tp, struct termios *t)
 }
 
 int
-umodemopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
+umodemopen(dev_t dev, int flag, int mode, usb_proc_ptr td)
 {
 	int unit = UMODEMUNIT(dev);
 	struct umodem_softc *sc;
@@ -573,6 +573,9 @@ umodemopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
 	struct tty *tp;
 	int s;
 	int error;
+	struct proc *p = td->td_proc;
+
+	KKASSERT(p != NULL);
  
 	USB_GET_SC_OPEN(umodem, unit, sc);
 

@@ -32,7 +32,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.26 2003/01/24 05:11:33 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.3 2003/06/23 17:55:46 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -240,9 +240,9 @@ in_pcbbind(inp, nam, p)
 
 			/* GROSS */
 			if (ntohs(lport) < IPPORT_RESERVED && p &&
-			    suser_xxx(0, p, PRISON_ROOT))
+			    suser_xxx(p->p_ucred, PRISON_ROOT))
 				return (EACCES);
-			if (p && p->p_prison)
+			if (p && p->p_ucred->cr_prison)
 				prison = 1;
 			if (so->so_cred->cr_uid != 0 &&
 			    !IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
@@ -303,7 +303,7 @@ in_pcbbind(inp, nam, p)
 			last  = ipport_hilastauto;
 			lastport = &pcbinfo->lasthi;
 		} else if (inp->inp_flags & INP_LOWPORT) {
-			if (p && (error = suser_xxx(0, p, PRISON_ROOT))) {
+			if (p && (error = suser_xxx(p->p_ucred, PRISON_ROOT))) {
 				inp->inp_laddr.s_addr = INADDR_ANY;
 				return error;
 			}
@@ -512,9 +512,9 @@ in_pcbconnect(inp, nam, p)
 	struct sockaddr_in sa;
 	int error;
 
-	if (inp->inp_laddr.s_addr == INADDR_ANY && p->p_prison != NULL) {
+	if (inp->inp_laddr.s_addr == INADDR_ANY && p->p_ucred->cr_prison != NULL) {
 		bzero(&sa, sizeof (sa));
-		sa.sin_addr.s_addr = htonl(p->p_prison->pr_ip);
+		sa.sin_addr.s_addr = htonl(p->p_ucred->cr_prison->pr_ip);
 		sa.sin_len=sizeof (sa);
 		sa.sin_family = AF_INET;
 		error = in_pcbbind(inp, (struct sockaddr *)&sa, p);
@@ -1038,9 +1038,9 @@ in_pcbremlists(inp)
 int
 prison_xinpcb(struct proc *p, struct inpcb *inp)
 {
-	if (!p->p_prison)
+	if (!p->p_ucred->cr_prison)
 		return (0);
-	if (ntohl(inp->inp_laddr.s_addr) == p->p_prison->pr_ip)
+	if (ntohl(inp->inp_laddr.s_addr) == p->p_ucred->cr_prison->pr_ip)
 		return (0);
 	return (1);
 }

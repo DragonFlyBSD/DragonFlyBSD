@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.3 2003/06/18 18:29:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.4 2003/06/23 17:55:38 dillon Exp $
  *
  */
 
@@ -77,18 +77,14 @@ static int i386_get_ioperm	__P((struct proc *, char *));
 static int i386_set_ioperm	__P((struct proc *, char *));
 int i386_extend_pcb	__P((struct proc *));
 
-#ifndef _SYS_SYSPROTO_H_
-struct sysarch_args {
-	int op;
-	char *parms;
-};
-#endif
+/*
+ * sysarch_args(int op, char *params)
+ */
 
 int
-sysarch(p, uap)
-	struct proc *p;
-	register struct sysarch_args *uap;
+sysarch(struct sysarch_args *uap)
 {
+	struct proc *p = curproc;
 	int error = 0;
 
 	switch(uap->op) {
@@ -178,7 +174,7 @@ i386_set_ioperm(p, args)
 	if ((error = copyin(args, &ua, sizeof(struct i386_ioperm_args))) != 0)
 		return (error);
 
-	if ((error = suser(p)) != 0)
+	if ((error = suser_xxx(p->p_ucred, 0)) != 0)
 		return (error);
 	if (securelevel > 0)
 		return (EPERM);

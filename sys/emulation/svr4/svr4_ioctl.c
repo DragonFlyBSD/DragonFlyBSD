@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_ioctl.c,v 1.6 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -79,10 +79,9 @@ svr4_decode_cmd(cmd, dir, c, num, argsiz)
 #endif
 
 int
-svr4_sys_ioctl(p, uap)
-	register struct proc *p;
-	struct svr4_sys_ioctl_args *uap;
+svr4_sys_ioctl(struct svr4_sys_ioctl_args *uap)
 {
+	struct proc 	*p = curproc;
 	int             *retval;
 	struct file	*fp;
 	struct filedesc	*fdp;

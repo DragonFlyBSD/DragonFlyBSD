@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.3 2003/06/19 01:55:03 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.4 2003/06/23 17:55:30 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -687,10 +687,7 @@ ccdinterleave(cs, unit)
 
 /* ARGSUSED */
 static int
-ccdopen(dev, flags, fmt, p)
-	dev_t dev;
-	int flags, fmt;
-	struct proc *p;
+ccdopen(dev_t dev, int flags, int fmt, d_thread_t *td)
 {
 	int unit = ccdunit(dev);
 	struct ccd_softc *cs;
@@ -736,10 +733,7 @@ ccdopen(dev, flags, fmt, p)
 
 /* ARGSUSED */
 static int
-ccdclose(dev, flags, fmt, p)
-	dev_t dev;
-	int flags, fmt;
-	struct proc *p;
+ccdclose(dev_t dev, int flags, int fmt, d_thread_t *td)
 {
 	int unit = ccdunit(dev);
 	struct ccd_softc *cs;
@@ -1249,12 +1243,7 @@ ccdiodone(cbp)
 }
 
 static int
-ccdioctl(dev, cmd, data, flag, p)
-	dev_t dev;
-	u_long cmd;
-	caddr_t data;
-	int flag;
-	struct proc *p;
+ccdioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 {
 	int unit = ccdunit(dev);
 	int i, j, lookedup = 0, error = 0;
@@ -1264,6 +1253,9 @@ ccdioctl(dev, cmd, data, flag, p)
 	struct ccddevice ccd;
 	char **cpp;
 	struct vnode **vpp;
+	struct proc *p = td->td_proc;
+
+	KKASSERT(p != NULL);
 
 	if (unit >= numccd)
 		return (ENXIO);
@@ -1513,13 +1505,12 @@ ccdioctl(dev, cmd, data, flag, p)
 }
 
 static int
-ccdsize(dev)
-	dev_t dev;
+ccdsize(dev_t dev)
 {
 	struct ccd_softc *cs;
 	int part, size;
 
-	if (ccdopen(dev, 0, S_IFCHR, curproc))
+	if (ccdopen(dev, 0, S_IFCHR, curthread))
 		return (-1);
 
 	cs = &ccd_softc[ccdunit(dev)];
@@ -1533,7 +1524,7 @@ ccdsize(dev)
 	else
 		size = cs->sc_label.d_partitions[part].p_size;
 
-	if (ccdclose(dev, 0, S_IFCHR, curproc))
+	if (ccdclose(dev, 0, S_IFCHR, curthread))
 		return (-1);
 
 	return (size);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -101,10 +101,9 @@ struct execve_args {
  * execve() system call.
  */
 int
-execve(p, uap)
-	struct proc *p;
-	register struct execve_args *uap;
+execve(struct execve_args *uap)
 {
+	struct proc *p = curproc;
 	struct nameidata nd, *ndp;
 	register_t *stack_base;
 	int error, len, i;
@@ -319,8 +318,8 @@ interpret:
 		 * root.  Record any set-id flags first to make sure that
 		 * we do not regain any tracing during a possible block.
 		 */
-		setsugid(p);
-		if (p->p_tracep && suser(p)) {
+		setsugid();
+		if (p->p_tracep && suser()) {
 			struct vnode *vtmp;
 
 			if ((vtmp = p->p_tracep) != NULL) {
@@ -340,20 +339,20 @@ interpret:
 		 */
 		p->p_ucred = crcopy(p->p_ucred);
 		if (attr.va_mode & VSUID)
-			change_euid(p, attr.va_uid);
+			change_euid(attr.va_uid);
 		if (attr.va_mode & VSGID)
 			p->p_ucred->cr_gid = attr.va_gid;
 	} else {
-		if (p->p_ucred->cr_uid == p->p_cred->p_ruid &&
-		    p->p_ucred->cr_gid == p->p_cred->p_rgid)
+		if (p->p_ucred->cr_uid == p->p_ucred->cr_ruid &&
+		    p->p_ucred->cr_gid == p->p_ucred->cr_rgid)
 			p->p_flag &= ~P_SUGID;
 	}
 
 	/*
 	 * Implement correct POSIX saved-id behavior.
 	 */
-	p->p_cred->p_svuid = p->p_ucred->cr_uid;
-	p->p_cred->p_svgid = p->p_ucred->cr_gid;
+	p->p_ucred->cr_svuid = p->p_ucred->cr_uid;
+	p->p_ucred->cr_svgid = p->p_ucred->cr_gid;
 
 	/*
 	 * Store the vp for use in procfs
@@ -426,7 +425,7 @@ exec_fail:
 	p->p_flag &= ~P_INEXEC;
 	if (imgp->vmspace_destroyed) {
 		/* sorry, no more process anymore. exit gracefully */
-		exit1(p, W_EXITCODE(0, SIGABRT));
+		exit1(W_EXITCODE(0, SIGABRT));
 		/* NOT REACHED */
 		return(0);
 	} else {
@@ -435,8 +434,7 @@ exec_fail:
 }
 
 int
-exec_map_first_page(imgp)
-	struct image_params *imgp;
+exec_map_first_page(struct image_params *imgp)
 {
 	int s, rv, i;
 	int initial_pagein;

@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.3 2003/06/23 17:55:46 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -207,7 +207,7 @@ in_control(so, cmd, data, ifp, p)
 	switch (cmd) {
 	case SIOCALIFADDR:
 	case SIOCDLIFADDR:
-		if (p && (error = suser(p)) != 0)
+		if (p && (error = suser_xxx(p->p_ucred, 0)) != 0)
 			return error;
 		/*fall through*/
 	case SIOCGLIFADDR:
@@ -266,7 +266,7 @@ in_control(so, cmd, data, ifp, p)
 	case SIOCSIFADDR:
 	case SIOCSIFNETMASK:
 	case SIOCSIFDSTADDR:
-		if (p && (error = suser(p)) != 0)
+		if (p && (error = suser_xxx(p->p_ucred, 0)) != 0)
 			return error;
 
 		if (ifp == 0)
@@ -305,7 +305,7 @@ in_control(so, cmd, data, ifp, p)
 		break;
 
 	case SIOCSIFBRDADDR:
-		if (p && (error = suser(p)) != 0)
+		if (p && (error = suser_xxx(p->p_ucred, 0)) != 0)
 			return error;
 		/* FALLTHROUGH */
 

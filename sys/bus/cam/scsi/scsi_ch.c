@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.3 2003/06/23 17:55:26 dillon Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -427,7 +427,7 @@ chregister(struct cam_periph *periph, void *arg)
 }
 
 static int
-chopen(dev_t dev, int flags, int fmt, struct proc *p)
+chopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	struct cam_periph *periph;
 	struct ch_softc *softc;
@@ -477,7 +477,7 @@ chopen(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int
-chclose(dev_t dev, int flag, int fmt, struct proc *p)
+chclose(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	struct	cam_periph *periph;
 	struct	ch_softc *softc;
@@ -727,7 +727,7 @@ cherror(union ccb *ccb, u_int32_t cam_flags, u_int32_t sense_flags)
 }
 
 static int
-chioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
+chioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 {
 	struct cam_periph *periph;
 	struct ch_softc *softc;

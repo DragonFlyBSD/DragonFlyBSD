@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.10 2003/06/21 17:31:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.11 2003/06/23 17:55:38 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -198,7 +198,7 @@ ASSYM(GD_CURRENTLDT, offsetof(struct globaldata, gd_currentldt));
 #endif
 
 #ifdef SMP
-ASSYM(GD_CPU, offsetof(struct globaldata, gd_cpuid));
+ASSYM(GD_CPU, offsetof(struct globaldata, gd_cpu));
 ASSYM(GD_CPU_LOCKID, offsetof(struct globaldata, gd_cpu_lockid));
 ASSYM(GD_OTHER_CPUS, offsetof(struct globaldata, gd_other_cpus));
 ASSYM(GD_SS_EFLAGS, offsetof(struct globaldata, gd_ss_eflags));
