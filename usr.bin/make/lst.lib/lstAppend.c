@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstAppend.c,v 1.6 1999/08/28 01:03:45 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstAppend.c,v 1.8 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstAppend.c,v 1.9 2004/12/17 08:07:49 okumoto Exp $
  *
  * @(#)lstAppend.c	8.1 (Berkeley) 6/6/93
  */
@@ -52,9 +52,6 @@
  * Lst_Append --
  *	Create a new node and add it to the given list after the given node.
  *
- * Results:
- *	SUCCESS if all went well.
- *
  * Arguments:
  *	l	affected list
  *	ln	node after which to append the datum
@@ -68,19 +65,10 @@
  *
  *-----------------------------------------------------------------------
  */
-ReturnStatus
+void
 Lst_Append(Lst *list, LstNode *ln, void *d)
 {
     LstNode *nLNode;
-
-    if (Lst_Valid(list) && (ln == NULL && Lst_IsEmpty(list))) {
-	goto ok;
-    }
-
-    if (!Lst_Valid(list) || Lst_IsEmpty(list)  || ! Lst_NodeValid(ln, list)) {
-	return (FAILURE);
-    }
-    ok:
 
     nLNode = emalloc(sizeof(*nLNode));
     nLNode->datum = d;
@@ -102,6 +90,4 @@ Lst_Append(Lst *list, LstNode *ln, void *d)
 	    list->lastPtr = nLNode;
 	}
     }
-
-    return (SUCCESS);
 }

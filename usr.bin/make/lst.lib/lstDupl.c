@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstDupl.c,v 1.7 1999/08/28 01:03:49 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDupl.c,v 1.10 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDupl.c,v 1.11 2004/12/17 08:07:49 okumoto Exp $
  *
  * @(#)lstDupl.c	8.1 (Berkeley) 6/6/93
  */
@@ -82,14 +82,10 @@ Lst_Duplicate(Lst *list, DuplicateProc *copyProc)
 
     ln = list->firstPtr;
     while (ln != NULL) {
-	if (copyProc != NOCOPY) {
-	    if (Lst_AtEnd(nl, (*copyProc)(ln->datum)) == FAILURE) {
-		return (NULL);
-	    }
-	} else if (Lst_AtEnd (nl, ln->datum) == FAILURE) {
-	    return (NULL);
-	}
-
+	if (copyProc != NOCOPY)
+	    Lst_AtEnd(nl, (*copyProc)(ln->datum));
+	else
+	    Lst_AtEnd(nl, ln->datum);
 	ln = ln->nextPtr;
     }
 

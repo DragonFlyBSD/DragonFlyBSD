@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstInsert.c,v 1.6 1999/08/28 01:03:52 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInsert.c,v 1.8 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInsert.c,v 1.9 2004/12/17 08:07:49 okumoto Exp $
  *
  * @(#)lstInsert.c	8.1 (Berkeley) 6/6/93
  */
@@ -53,9 +53,7 @@
  *	Insert a new node with the given piece of data before the given
  *	node in the given list.
  *
- * Results:
- *	SUCCESS or FAILURE.
- *
+ * Parameters:
  *	l	list to manipulate
  *	ln	node before which to insert d
  *	d	datum to be inserted
@@ -66,24 +64,12 @@
  *
  *-----------------------------------------------------------------------
  */
-ReturnStatus
+void
 Lst_Insert(Lst *list, LstNode *ln, void *d)
 {
     LstNode *nLNode;	/* new lnode for d */
 
-    /*
-     * check validity of arguments
-     */
-    if (Lst_Valid(list) && (Lst_IsEmpty(list) && ln == NULL))
-	goto ok;
-
-    if (!Lst_Valid(list) || Lst_IsEmpty(list) || !Lst_NodeValid(ln, list)) {
-	return (FAILURE);
-    }
-
-    ok:
     nLNode = emalloc(sizeof(*nLNode));
-
     nLNode->datum = d;
     nLNode->useCount = nLNode->flags = 0;
 
@@ -103,6 +89,4 @@ Lst_Insert(Lst *list, LstNode *ln, void *d)
 	    list->firstPtr = nLNode;
 	}
     }
-
-    return (SUCCESS);
 }

@@ -38,7 +38,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.9 1999/08/28 01:03:32 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.16 2004/12/17 08:01:40 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.17 2004/12/17 08:07:49 okumoto Exp $
  */
 
 /*-
@@ -113,9 +113,9 @@ void		Lst_Destroy(Lst *, FreeProc *);
  * Functions to modify a list
  */
 /* Insert an element before another */
-ReturnStatus	Lst_Insert(Lst *, LstNode *, void *);
+void		Lst_Insert(Lst *, LstNode *, void *);
 /* Insert an element after another */
-ReturnStatus	Lst_Append(Lst *, LstNode *, void *);
+void		Lst_Append(Lst *, LstNode *, void *);
 /* Place an element at the front of a lst. */
 #define	Lst_AtFront(LST, D)	(Lst_Insert((LST), Lst_First(LST), (D)))
 /* Place an element at the end of a lst. */
