@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.22 2004/12/21 00:19:27 dillon Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.23 2004/12/21 13:25:12 joerg Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
@@ -66,7 +66,7 @@ $TITLE(DragonFly - Big-Picture Status)
 	    functions is now official.  Certain VM area issues have been
 	    fixed.  And it is now possible (and easy!) to write 
 	    checkpoint-aware programs.</b>
-	<li>Abstract kernel structure access via libkern (joerg, from FreeBSD).
+	<li>Abstract kernel structure access via libkinfo (joerg).
 	<li>Fix a number of timer issues related to the 8254, sleep/wakeup,
 	    and recovery from clock jumps due to high latencies.
 	<li>Do better ESTALE checking for NFS clients to reduce instances
