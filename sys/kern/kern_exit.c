@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.28 2003/11/04 04:17:37 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.29 2003/11/21 05:29:04 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -63,6 +63,7 @@
 #include <sys/aio.h>
 #include <sys/jail.h>
 #include <sys/kern_syscall.h>
+#include <sys/upcall.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -198,6 +199,13 @@ exit1(int rv)
 
 	/* The next two chunks should probably be moved to vmspace_exit. */
 	vm = p->p_vmspace;
+
+	/*
+	 * Release upcalls associated with this process
+	 */
+	if (vm->vm_upcalls)
+		upc_release(vm, p);
+
 	/*
 	 * Release user portion of address space.
 	 * This releases references to vnodes,

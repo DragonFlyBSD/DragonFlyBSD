@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.14 2003/10/19 00:23:30 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.15 2003/11/21 05:29:08 dillon Exp $
  */
 
 /*
@@ -203,6 +203,8 @@ vmspace_dofree(struct vmspace *vm)
 	 * exit1()
 	 */
 	shmexit(vm);
+
+	KKASSERT(vm->vm_upcalls == NULL);
 
 	/*
 	 * Lock the map, to wait out all other references to it.

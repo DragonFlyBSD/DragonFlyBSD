@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.35 2003/11/05 23:26:21 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.36 2003/11/21 05:29:02 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -55,6 +55,7 @@
 #include <sys/event.h>			/* For struct klist */
 #include <sys/thread.h>
 #include <sys/varsym.h>
+#include <sys/upcall.h>
 #ifdef _KERNEL
 #include <sys/globaldata.h>
 #endif
@@ -226,6 +227,7 @@ struct	proc {
 	struct proc *p_leader;
 	void	*p_emuldata;	/* process-specific emulator state data */
 	struct thread *p_thread; /* temporarily embed thread struct in proc */
+	struct upcall *p_upcall; /* USERLAND POINTER! registered upcall */
 };
 
 #if defined(_KERNEL)
@@ -264,7 +266,7 @@ struct	proc {
 /* was	P_NOSWAP	0x08000	was: Do not swap upages; p->p_hold */
 /* was	P_PHYSIO	0x10000	was: Doing physical I/O; use p->p_hold */
 
-#define	P_UNUSED20000	0x20000
+#define	P_UPCALLPEND	0x20000	/* an upcall is pending */
 
 #define	P_SWAPPING	0x40000	/* Process is being swapped. */
 #define	P_SWAPINREQ	0x80000	/* Swapin request due to wakeup */

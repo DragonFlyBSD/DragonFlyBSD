@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.14 2003/10/02 22:26:59 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.15 2003/11/21 05:29:08 dillon Exp $
  */
 
 
@@ -256,7 +256,7 @@ doreti_intr:
 	 * to do is a reschedule.
 	 */
 doreti_ast:
-	andl	$~RQF_AST_SIGNAL,PCPU(reqflags)
+	andl	$~(RQF_AST_SIGNAL|RQF_AST_UPCALL),PCPU(reqflags)
 	sti
 	movl	%eax,%esi		/* save cpl (can't use stack) */
 	movl	$T_ASTFLT,TF_TRAPNO(%esp)

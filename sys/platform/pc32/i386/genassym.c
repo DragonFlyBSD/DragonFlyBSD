@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.31 2003/10/24 14:10:45 daver Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.32 2003/11/21 05:29:07 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -198,6 +198,7 @@ ASSYM(RQF_INTPEND, RQF_INTPEND);
 ASSYM(RQF_AST_OWEUPC, RQF_AST_OWEUPC);
 ASSYM(RQF_AST_SIGNAL, RQF_AST_SIGNAL);
 ASSYM(RQF_AST_RESCHED, RQF_AST_RESCHED);
+ASSYM(RQF_AST_UPCALL, RQF_AST_UPCALL);
 ASSYM(RQF_AST_MASK, RQF_AST_MASK);
 
 ASSYM(GD_FPENDING, offsetof(struct mdglobaldata, gd_fpending));

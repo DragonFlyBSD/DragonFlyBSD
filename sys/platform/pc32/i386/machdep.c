@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.44 2003/11/15 21:05:43 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.45 2003/11/21 05:29:07 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -74,6 +74,7 @@
 #include <sys/sysctl.h>
 #include <sys/vmmeter.h>
 #include <sys/bus.h>
+#include <sys/upcall.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -683,6 +684,131 @@ sigreturn(struct sigreturn_args *uap)
 	p->p_sigmask = ucp->uc_sigmask;
 	SIG_CANTMASK(p->p_sigmask);
 	return(EJUSTRETURN);
+}
+
+/*
+ * Stack frame on entry to function.  %eax will contain the function vector,
+ * %ecx will contain the function data.  flags, ecx, and eax will have 
+ * already been pushed on the stack.
+ */
+struct upc_frame {
+	register_t	eax;
+	register_t	ecx;
+	register_t	flags;
+	register_t	oldip;
+};
+
+void
+sendupcall(struct vmupcall *vu, int morepending)
+{
+	struct proc *p = curproc;
+	struct trapframe *regs;
+	struct upcall upcall;
+	struct upc_frame upc_frame;
+
+	/*
+	 * Get the upcall data structure
+	 */
+	if (copyin(p->p_upcall, &upcall, sizeof(upcall))) {
+		vu->vu_pending = 0;
+		printf("bad upcall address\n");
+		return;
+	}
+
+	/*
+	 * If the data structure is already marked pending or has a critical
+	 * section count, mark the data structure as pending and return 
+	 * without doing an upcall.  vu_pending is left set.
+	 */
+	if (upcall.pending || upcall.crit_count) {
+		if (upcall.pending == 0) {
+			upcall.pending = 1;
+			copyout(&upcall.pending, &p->p_upcall->pending,
+				sizeof(upcall.pending));
+		}
+		return;
+	}
+
+	/*
+	 * We can run this upcall now, clear vu_pending.
+	 *
+	 * Bump our critical section count and set or clear the
+	 * user pending flag depending on whether more upcalls are
+	 * pending.  The user will be responsible for calling 
+	 * upc_dispatch(-1) to process remaining upcalls.
+	 */
+	vu->vu_pending = 0;
+	upcall.pending = morepending;
+	upcall.crit_count += TDPRI_CRIT;
+	copyout(&upcall, p->p_upcall, sizeof(upcall));
+
+	/*
+	 * Construct a stack frame and issue the upcall
+	 */
+	regs = p->p_md.md_regs;
+	upc_frame.eax = regs->tf_eax;
+	upc_frame.ecx = regs->tf_ecx;
+	upc_frame.flags = regs->tf_eflags;
+	upc_frame.oldip = regs->tf_eip;
+	if (copyout(&upc_frame, (void *)(regs->tf_esp - sizeof(upc_frame)),
+	    sizeof(upc_frame)) != 0) {
+		printf("bad stack on upcall\n");
+	} else {
+		regs->tf_eax = (register_t)vu->vu_func;
+		regs->tf_ecx = (register_t)vu->vu_data;
+		regs->tf_eip = (register_t)vu->vu_ctx;
+		regs->tf_esp -= sizeof(upc_frame);
+	}
+}
+
+/*
+ * fetchupcall occurs in the context of a system call, which means that
+ * regs->tf_eax and regs->tf_edx are overritten by res[0] and res[1].
+ *
+ * if vu is not NULL we return the new context in %edx, the new data in %ecx,
+ * and the function pointer in %eax.  
+ */
+int
+fetchupcall (struct vmupcall *vu, int morepending, int *res, void *rsp)
+{
+	struct upc_frame upc_frame;
+	struct proc *p;
+	struct trapframe *regs;
+	int error;
+
+	p = curproc;
+	regs = p->p_md.md_regs;
+
+	error = copyout(&morepending, &p->p_upcall->pending, sizeof(int));
+	if (error == 0) {
+	    if (vu) {
+		/*
+		 * This jumps us to the next ready context.
+		 */
+		vu->vu_pending = 0;
+		error = copyin(&p->p_upcall->crit_count, &morepending, sizeof(int));
+		morepending += TDPRI_CRIT;
+		if (error == 0)
+			error = copyout(&morepending, &p->p_upcall->crit_count, sizeof(int));
+		regs->tf_eax = (register_t)vu->vu_func;
+		regs->tf_ecx = (register_t)vu->vu_data;
+		regs->tf_eip = (register_t)vu->vu_ctx;
+		regs->tf_esp = (register_t)rsp;
+	    } else {
+		/*
+		 * This returns us to the originally interrupted code.
+		 */
+		error = copyin(rsp, &upc_frame, sizeof(upc_frame));
+		regs->tf_eax = upc_frame.eax;
+		regs->tf_ecx = upc_frame.ecx;
+		regs->tf_eflags = upc_frame.flags;
+		regs->tf_eip = upc_frame.oldip;
+		regs->tf_esp = (register_t)((char *)rsp + sizeof(upc_frame));
+	    }
+	}
+	if (error == 0)
+		error = EJUSTRETURN;
+	return(error);
 }
 
 /*

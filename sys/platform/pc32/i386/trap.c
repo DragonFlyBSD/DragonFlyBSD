@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.42 2003/11/20 06:05:30 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.43 2003/11/21 05:29:07 dillon Exp $
  */
 
 /*
@@ -68,6 +68,7 @@
 #ifdef KTRACE
 #include <sys/ktrace.h>
 #endif
+#include <sys/upcall.h>
 #include <sys/sysproto.h>
 #include <sys/sysunion.h>
 
@@ -270,6 +271,14 @@ static void
 userret(struct proc *p, struct trapframe *frame, u_quad_t oticks)
 {
 	int sig;
+
+	/*
+	 * Post any pending upcalls
+	 */
+	if (p->p_flag & P_UPCALLPEND) {
+		p->p_flag &= ~P_UPCALLPEND;
+		postupcall(p);
+	}
 
 	/*
 	 * Post any pending signals

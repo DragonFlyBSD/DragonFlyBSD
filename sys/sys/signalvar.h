@@ -32,7 +32,7 @@
  *
  *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
- * $DragonFly: src/sys/sys/signalvar.h,v 1.7 2003/10/24 14:10:46 daver Exp $
+ * $DragonFly: src/sys/sys/signalvar.h,v 1.8 2003/11/21 05:29:02 dillon Exp $
  */
 
 #ifndef	_SYS_SIGNALVAR_H_		/* tmp for user.h */
@@ -167,6 +167,7 @@ typedef void (*proc_func_t)(struct proc *);
 struct pgrp;
 struct proc;
 struct sigio;
+struct vmupcall;
 
 extern int sugid_coredump;	/* Sysctl variable kern.sugid_coredump */
 
@@ -192,6 +193,8 @@ proc_func_t register_ckpt_func(proc_func_t func);
  * Machine-dependent functions:
  */
 void	sendsig (sig_t action, int sig, sigset_t *retmask, u_long code);
+void	sendupcall (struct vmupcall *vu, int morepending);
+int	fetchupcall (struct vmupcall *vu, int morepending, int *res, void *rsp);
 void	sigexit (struct proc *p, int sig);
 
 /*

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.8 2003/10/02 21:00:20 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.9 2003/11/21 05:29:08 dillon Exp $
  */
 
 /*
@@ -186,6 +186,21 @@ struct vm_map {
 #define max_offset		header.end
 };
 
+/*
+ * Registered upcall
+ */
+struct upcall;
+
+struct vmupcall {
+	struct vmupcall	*vu_next;
+	void		*vu_func;	/* user upcall function */
+	void		*vu_data;	/* user data */
+	void		*vu_ctx;	/* user context function */
+	struct proc	*vu_proc;	/* process that registered upcall */
+	int		vu_id;		/* upcall identifier */
+	int		vu_pending;	/* upcall request pending */
+};
+
 /* 
  * Shareable process virtual address space.
  * May eventually be merged with vm_map.
@@ -208,6 +223,8 @@ struct vmspace {
 	caddr_t vm_maxsaddr;	/* user VA at max stack growth */
 	caddr_t vm_minsaddr;	/* user VA at max stack growth */
 	int	vm_exitingcnt;	/* several procsses zombied in exit1 */
+	int	vm_upccount;	/* number of registered upcalls */
+	struct vmupcall *vm_upcalls; /* registered upcalls */
 };
 
 /*

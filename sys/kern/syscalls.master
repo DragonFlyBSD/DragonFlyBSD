@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.8 2003/11/10 23:58:57 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.9 2003/11/21 05:29:04 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -615,3 +615,7 @@
 450	STD	BSD	{ int varsym_set(int level, const char *name, const char *data); }
 451	STD	BSD	{ int varsym_get(int mask, const char *wild, char *buf, int bufsize); }
 452	STD	BSD	{ int varsym_list(int level, char *buf, int maxsize, int *marker); }
+453	STD	BSD	{ int upc_register(struct upcall *upc, void *ctxfunc, void *func, void *data); }
+454	STD	BSD	{ int upc_control(int cmd, int upcid, void *data); }
+
+

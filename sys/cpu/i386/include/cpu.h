@@ -35,7 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.11 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.12 2003/11/21 05:29:08 dillon Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -78,6 +78,8 @@
     atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_OWEUPC)
 #define	signotify()		\
     atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_SIGNAL)
+#define	sigupcall()		\
+    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_UPCALL)
 #define	clear_resched()		\
     atomic_clear_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_RESCHED)
 #define	resched_wanted()	\
