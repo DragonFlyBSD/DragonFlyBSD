@@ -1,12 +1,13 @@
 #
-# $DragonFly: src/test/sysperf/Makefile,v 1.1 2003/08/12 02:29:44 dillon Exp $
+# $DragonFly: src/test/sysperf/Makefile,v 1.2 2003/11/13 07:10:36 dillon Exp $
 #
 
 TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 \
 	/tmp/loop1 /tmp/loop2 /tmp/loop3 \
 	/tmp/mt2 \
 	/tmp/fork1 /tmp/pipe1 \
-	/tmp/sw1 /tmp/sw2 /tmp/sw3
+	/tmp/sw1 /tmp/sw2 /tmp/sw3 \
+	/tmp/mbw1
 
 CFLAGS= -O2 -g -I/usr/src/sys
 
@@ -35,6 +36,9 @@ all:	$(TARGETS)
 
 /tmp/loop3: loop3.c blib.c
 	$(CC) $(CFLAGS) loop3.c blib.c -o /tmp/loop3
+
+/tmp/mbw1: mbwtest.c
+	$(CC) -O mbwtest.c -o /tmp/mbw1
 
 /tmp/mt2: mutex2.c blib.c mtx.s
 	$(CC) $(CFLAGS) mutex2.c blib.c mtx.s -o /tmp/mt2

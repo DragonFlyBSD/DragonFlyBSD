@@ -1,0 +1,45 @@
+
+$DragonFly: src/test/sysperf/mbwtest.data,v 1.1 2003/11/13 07:10:36 dillon Exp $
+
+Athlon64 ASUS K8V MB FSB/220Mhz DDR3100 memory / DragonFly	12Nov2003
+	L1 cache size: 65536
+	L2 cache size: 1048576
+	L1 cache bandwidth: 14829.80 Mbytes/sec
+	L2 cache bandwidth: 7632.12 Mbytes/sec
+	non-cache bandwidth: 2522.32 Mbytes/sec
+
+Celeron 1.7GHz / DragonFly					12Nov2003
+	L1 cache size: 8192
+	L2 cache size: 131072
+	L1 cache bandwidth: 6419.16 Mbytes/sec
+	L2 cache bandwidth: 4464.86 Mbytes/sec
+	non-cache bandwidth: 1520.00 Mbytes/sec
+
+P4 1.2GHz / DragonFly						12Nov2003
+	L1 cache size: 8192
+	L2 cache size: 262144
+	L1 cache bandwidth: 4899.21 Mbytes/sec
+	L2 cache bandwidth: 3385.41 Mbytes/sec
+	non-cache bandwidth: 1312.03 Mbytes/sec
+
+2xP3/1.3GHz DELL2550 / DragonFly				12Nov2003
+	L1 cache size: 16384
+	L2 cache size: 524288
+	L1 cache bandwidth: 4243.63 Mbytes/sec
+	L2 cache bandwidth: 2325.46 Mbytes/sec
+	non-cache bandwidth: 625.86 Mbytes/sec
+
+2xP3/750Mhz VALinux / DragonFly					12Nov2003
+	L1 cache size: 16384
+	L2 cache size: 262144
+	L1 cache bandwidth: 2782.76 Mbytes/sec
+	L2 cache bandwidth: 1638.79 Mbytes/sec
+	non-cache bandwidth: 426.48 Mbytes/sec
+
+EPIA EM6000 / DragonFly						12Nov2003
+	L1 cache size: 65536
+	L2 cache size: 131072
+	L1 cache bandwidth: 1172.51 Mbytes/sec
+	L2 cache bandwidth: 288.08 Mbytes/sec
+	non-cache bandwidth: 183.30 Mbytes/sec
+
