@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.55 2005/03/19 00:18:28 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.56 2005/03/19 00:19:13 okumoto Exp $
  */
 
 /*-
@@ -1373,14 +1373,12 @@ Parse_DoVar(char *line, GNode *ctxt)
 	     * expansion on the whole thing. The resulting string will need
 	     * freeing when we're done, so set freeCmd to TRUE.
 	     */
-	    buf = Var_Subst(NULL, cp, VAR_CMD, TRUE);
-	    cp = Buf_GetAll(buf, NULL);
-	    Buf_Destroy(buf, FALSE);
+	    cp = Buf_Peel(Var_Subst(NULL, cp, VAR_CMD, TRUE));
 	    freeCmd = TRUE;
 	}
 
 	buf = Cmd_Exec(cp, &error);
-	Var_Set(line, Buf_GetAll(buf, NULL), ctxt);
+	Var_Set(line, Buf_Data(buf), ctxt);
 	Buf_Destroy(buf, TRUE);
 
 	if (error)
@@ -1501,7 +1499,7 @@ ParseDoWarning(char *warnmsg)
 		warnmsg++;
 
 	buf = Var_Subst(NULL, warnmsg, VAR_GLOBAL, FALSE);
-	warnmsg = Buf_GetAll(buf, NULL);
+	warnmsg = Buf_Data(buf);
 
 	Parse_Error(PARSE_WARNING, "%s", warnmsg);
 	Buf_Destroy(buf, TRUE);
@@ -1581,8 +1579,7 @@ ParseDoInclude(char *file)
      * find the thing.
      */
     buf = Var_Subst(NULL, file, VAR_CMD, FALSE);
-    file = Buf_GetAll(buf, NULL);
-    Buf_Destroy(buf, FALSE);
+    file = Buf_Peel(buf);
 
     /*
      * Now we know the file's name and its search path, we attempt to
@@ -1773,8 +1770,7 @@ ParseTraditionalInclude(char *file)
      * find the thing.
      */
     buf = Var_Subst(NULL, file, VAR_CMD, FALSE);
-    file = Buf_GetAll(buf, NULL);
-    Buf_Destroy(buf, FALSE);
+    file = Buf_Peel(buf);
 
     /*
      * Now we know the file's name, we attempt to find the durn thing.
@@ -1980,7 +1976,7 @@ ParseSkipLine(int skip, int keep_newline)
 
         curFile.lineno++;
         Buf_AddByte(buf, (Byte)'\0');
-        line = (char *)Buf_GetAll(buf, NULL);
+        line = Buf_Data(buf);
     } while (skip == 1 && line[0] != '.');
 
     Buf_Destroy(buf, FALSE);
@@ -2176,8 +2172,7 @@ test_char:
 	    Buf_AddByte(buf, (Byte)lastc);
 	}
 	Buf_AddByte(buf, (Byte)'\0');
-	line = (char *)Buf_GetAll(buf, NULL);
-	Buf_Destroy(buf, FALSE);
+	line = Buf_Peel(buf);
 
 	/*
 	 * Strip trailing blanks and tabs from the line.
@@ -2334,8 +2329,7 @@ Parse_File(char *name, FILE *stream)
 		} else if (strncmp(cp, "undef", 5) == 0) {
 		    cp = stripvarname(cp + 5);
 		    buf = Var_Subst(NULL, cp, VAR_CMD, FALSE);
-		    cp = Buf_GetAll(buf, NULL);
-		    Buf_Destroy(buf, FALSE);
+		    cp = Buf_Peel(buf);
 
 		    Var_Delete(cp, VAR_GLOBAL);
 		    goto nextLine;
@@ -2422,8 +2416,7 @@ Parse_File(char *name, FILE *stream)
 		ParseFinishLine();
 
 		buf = Var_Subst(NULL, line, VAR_CMD, TRUE);
-		cp = Buf_GetAll(buf, NULL);
-		Buf_Destroy(buf, FALSE);
+		cp = Buf_Peel(buf);
 
 		free(line);
 		line = cp;
