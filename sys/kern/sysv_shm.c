@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.14 2004/05/26 14:12:34 hmp Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.15 2004/07/23 14:07:46 joerg Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -370,7 +370,7 @@ oshmctl(p, uap)
 		break;
 	default:
 		/* XXX casting to (sy_call_t *) is bogus, as usual. */
-		return ((sy_call_t *)shmctl)(uap);
+		return (shmctl((struct shmctl_args *)uap));
 	}
 	return 0;
 #else
