@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.80 2005/04/06 21:29:10 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.81 2005/04/06 22:32:03 swildner Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -60,7 +60,7 @@ the following tags:
     <tr>
 	<td>DragonFly_RELEASE_X_Y_Slip</td>
 	<td>Represents code tracking a particular DragonFly release.  The
-	    actual brancah tag is the same tag without the '_Slip' suffix,
+	    actual branch tag is the same tag without the '_Slip' suffix,
 	    but since the subversion is only bumped once a day you should
 	    use the full tag to extract sources so the subversion reported
 	    by the kernel matches the actual subversion of the code and so
