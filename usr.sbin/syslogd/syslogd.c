@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)syslogd.c	8.3 (Berkeley) 4/4/94
  * $FreeBSD: src/usr.sbin/syslogd/syslogd.c,v 1.130 2004/07/04 19:52:48 cperciva Exp $
- * $DragonFly: src/usr.sbin/syslogd/syslogd.c,v 1.3 2004/08/09 20:11:19 dillon Exp $
+ * $DragonFly: src/usr.sbin/syslogd/syslogd.c,v 1.4 2004/10/30 20:26:48 dillon Exp $
  */
 
 /*
@@ -60,6 +60,7 @@
  *   by Peter da Silva.
  * -u and -v by Harlan Stenn.
  * Priority comparison code by Harlan Stenn.
+ * Ring buffer code by Jeff Wheelhouse.
  */
 
 #define	MAXLINE		1024		/* maximum line length */
@@ -80,6 +81,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/syslimits.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 
 #include <netinet/in.h>
@@ -103,6 +105,7 @@
 
 #include "pathnames.h"
 #include "ttymsg.h"
+#include "../clog/clog.h"
 
 #define SYSLOG_NAMES
 #include <sys/syslog.h>
@@ -116,6 +119,7 @@ static const int withscopeid;
 const char	*ConfFile = _PATH_LOGCONF;
 const char	*PidFile = _PATH_LOGPID;
 const char	ctty[] = _PATH_CONSOLE;
+const char	ring_magic[] = "CLOG";
 
 #define	dprintf		if (Debug) printf
 
@@ -168,6 +172,11 @@ struct filed {
 			char	f_pname[MAXPATHLEN];
 			pid_t	f_pid;
 		} f_pipe;
+		struct {
+			char	f_rname[MAXPATHLEN];
+			struct clog_footer *f_footer;
+			size_t	f_size;
+		} f_ring;
 	} f_un;
 	char	f_prevline[MAXSVLINE];		/* last message logged */
 	char	f_lasttime[16];			/* time of last occurrence */
@@ -246,10 +255,12 @@ int	repeatinterval[] = { 30, 120, 600 };	/* # of secs before flush */
 #define F_USERS		5		/* list of users */
 #define F_WALL		6		/* everyone logged on */
 #define F_PIPE		7		/* pipe to program */
+#define F_RING		8		/* ring buffer (circular log) */
 
-const char *TypeNames[8] = {
+const char *TypeNames[] = {
 	"UNUSED",	"FILE",		"TTY",		"CONSOLE",
-	"FORW",		"USERS",	"WALL",		"PIPE"
+	"FORW",		"USERS",	"WALL",		"PIPE",
+	"RING"
 };
 
 static struct filed *Files;	/* Log files that we write to */
@@ -309,6 +320,8 @@ static int	skip_message(const char *, const char *, int);
 static void	printline(const char *, char *);
 static void	printsys(char *);
 static int	p_open(const char *, pid_t *);
+ssize_t		rbwrite(struct filed *, char *, size_t);
+ssize_t		rbwritev(struct filed *, struct iovec *, int);
 static void	readklog(void);
 static void	reapchild(int);
 static void	usage(void);
@@ -1169,6 +1182,21 @@ fprintlog(struct filed *f, int flags, const char *msg)
 		}
 		break;
 
+	case F_RING:
+		dprintf(" %s\n", f->f_un.f_ring.f_rname);
+		v->iov_base = "\n";
+		v->iov_len = 1;
+		if (rbwritev(f, iov, 7) == -1) {
+			int e = errno;
+			munmap(f->f_un.f_ring.f_footer,
+				sizeof(struct clog_footer));
+			close(f->f_file);
+			f->f_type = F_UNUSED;
+			errno = e;
+			logerror(f->f_un.f_fname);
+		}
+		break;
+
 	case F_PIPE:
 		dprintf(" %s\n", f->f_un.f_pipe.f_pname);
 		v->iov_base = lf;
@@ -1482,6 +1510,11 @@ init(int signo)
 			}
 			f->f_un.f_pipe.f_pid = 0;
 			break;
+		case F_RING:
+			munmap(f->f_un.f_ring.f_footer,
+				sizeof(struct clog_footer));
+			close(f->f_file);
+			break;
 		}
 		next = f->f_next;
 		if (f->f_program) free(f->f_program);
@@ -1604,6 +1637,10 @@ init(int signo)
 				printf("%s", f->f_un.f_forw.f_hname);
 				break;
 
+			case F_RING:
+				printf("%s", f->f_un.f_ring.f_rname);
+				break;
+
 			case F_PIPE:
 				printf("%s", f->f_un.f_pipe.f_pname);
 				break;
@@ -1654,6 +1691,7 @@ cfline(const char *line, struct filed *f, const char *prog, const char *host)
 	const char *p, *q;
 	char *bp;
 	char buf[MAXLINE], ebuf[100];
+	struct stat sb;
 
 	dprintf("cfline(\"%s\", f, \"%s\", \"%s\")\n", line, prog, host);
 
@@ -1840,6 +1878,42 @@ cfline(const char *line, struct filed *f, const char *prog, const char *host)
 			(void)strlcpy(f->f_un.f_fname, p, sizeof(f->f_un.f_fname));
 			f->f_type = F_FILE;
 		}
+		break;
+
+	case '%':
+		if ((f->f_file = open(p + 1, O_RDWR, 0 )) < 0) {
+			f->f_type = F_UNUSED;
+			logerror(p + 1);
+			break;
+		}
+		if (fstat(f->f_file,&sb) < 0) {
+			close(f->f_file);
+			f->f_type = F_UNUSED;
+			logerror(p+1);
+			break;
+		}
+		f->f_un.f_ring.f_footer = 
+			mmap(NULL, sizeof(struct clog_footer), 
+			     PROT_READ|PROT_WRITE, MAP_SHARED, 
+			     f->f_file, sb.st_size-sizeof(struct clog_footer));
+		if (f->f_un.f_ring.f_footer == NULL) {
+			close(f->f_file);
+			f->f_type = F_UNUSED;
+			logerror(p + 1);
+			break;
+		}
+		if (memcmp(&(f->f_un.f_ring.f_footer->cf_magic), MAGIC_CONST, 4) != 0) {
+			munmap(f->f_un.f_ring.f_footer,
+				sizeof(struct clog_footer));
+			close(f->f_file);
+			f->f_type = F_UNUSED;
+			errno = ENODEV;
+			logerror(p + 1);
+			break;
+		}
+		f->f_un.f_ring.f_size = sb.st_size;
+		strcpy(f->f_un.f_ring.f_rname, p + 1);
+		f->f_type = F_RING;
 		break;
 
 	case '|':
@@ -2529,4 +2603,60 @@ socksetup(int af, const char *bindhostname)
 		freeaddrinfo(res);
 
 	return (socks);
+}
+
+ssize_t
+rbwritev(struct filed *f, struct iovec *iov, int iovcnt) 
+{
+	int i;
+	ssize_t out = 0;
+	ssize_t error;
+
+	for (i = 0; i < iovcnt; i++) {
+		error = rbwrite(f, iov[i].iov_base, iov[i].iov_len);
+		if (error == -1)
+			return (-1);
+		out += error;
+	}
+	return (out);
+}
+
+
+ssize_t
+rbwrite(struct filed *f, char *buf, size_t nbytes) 
+{
+	size_t maxwrite;
+	ssize_t error;
+	ssize_t out;
+
+	maxwrite = f->f_un.f_ring.f_footer->cf_max - 
+		   f->f_un.f_ring.f_footer->cf_next;
+	out = 0;
+
+	f->f_un.f_ring.f_footer->cf_lock = 1;
+	while (nbytes > 0) {
+		maxwrite = f->f_un.f_ring.f_footer->cf_max - 
+			   f->f_un.f_ring.f_footer->cf_next;
+		if (maxwrite > nbytes)
+			maxwrite = nbytes;
+		error = pwrite(f->f_file, buf, maxwrite,
+			       f->f_un.f_ring.f_footer->cf_next);
+		if (error == -1) {
+			f->f_un.f_ring.f_footer->cf_lock = 0;
+			return (-1);
+		}
+		nbytes -= error;
+		out += error;
+		buf += error;
+		f->f_un.f_ring.f_footer->cf_next += error;
+		if (f->f_un.f_ring.f_footer->cf_next == 
+		    f->f_un.f_ring.f_footer->cf_max) {
+			f->f_un.f_ring.f_footer->cf_next = 0;
+			f->f_un.f_ring.f_footer->cf_wrap = 1;
+		}
+		
+	}
+			
+	f->f_un.f_ring.f_footer->cf_lock = 0;
+	return (out);
 }
