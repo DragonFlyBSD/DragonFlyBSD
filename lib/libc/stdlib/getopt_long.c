@@ -1,5 +1,5 @@
 /*	$NetBSD: getopt_long.c,v 1.16 2003/10/27 00:12:42 lukem Exp $	*/
-/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.8 2005/02/28 13:14:56 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.9 2005/02/28 20:41:15 joerg Exp $ */
 
 /*-
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -44,6 +44,11 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* XXX BOOTSTRAPPING */
+#ifndef	__DECONST
+#define	__DECONST(type, var)	((type)(uintptr_t)(const void *)(var))
+#endif
 
 #ifdef REPLACE_GETOPT
 int	opterr = 1;		/* if error message should be printed */
