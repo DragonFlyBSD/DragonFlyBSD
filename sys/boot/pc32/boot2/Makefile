@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/boot2/Makefile,v 1.47 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/pc32/boot2/Makefile,v 1.10 2004/07/27 19:37:17 dillon Exp $
+# $DragonFly: src/sys/boot/pc32/boot2/Makefile,v 1.11 2004/08/06 20:50:35 dillon Exp $
 
 PROG=		boot2
 NOMAN=
@@ -51,16 +51,31 @@ BOOT2_UFS?=	UFS1_ONLY
 # gcc3.x
 #	-fno-guess-branch-probability
 #	-mno-align-long-strings
-
 CFLAGS=	-elf -ffreestanding -Os -fno-builtin -fno-stack-protector \
 	-fomit-frame-pointer \
-	-mrtd \
 	-D${BOOT2_UFS} \
 	-I${.CURDIR}/../../common \
 	-I${.CURDIR}/../btx/lib -I. \
 	-Wall -Waggregate-return -Wbad-function-cast -Wcast-align \
 	-Wmissing-declarations -Wmissing-prototypes -Wnested-externs \
 	-Wpointer-arith -Wshadow -Wstrict-prototypes -Wwrite-strings
+
+# -mrtd will produce bad code (missing stack pops) when combined with
+# gcc-3.4's (default on) unit-at-a-time optimization.  See the code
+# generated for 'xputc' as an example.
+#
+.if ${CCVER} == "gcc2"
+CFLAGS+= -mrtd
+.endif
+
+# Unfortunately, unit-at-a-time creates other issues as well, as yet
+# not tracked down, in boot2, so we have to turn it off.  Note that
+# the problem has been narrowed down to the 'boot2' code.  The /boot/loader
+# doesn't seem to have a problem.
+#
+.if ${CCVER} != "gcc2"
+CFLAGS+= -fno-unit-at-a-time
+.endif
 
 LDFLAGS=-nostdlib -static -N --gc-sections
 
