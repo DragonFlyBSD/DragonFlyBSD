@@ -36,10 +36,18 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  *	src/sys/sys/sfbuf.h,v 1.4 2004/04/01 17:58:06 dillon
  *
- * $DragonFly: src/sys/sys/msfbuf.h,v 1.1 2004/06/05 19:57:37 dillon Exp $
+ * $DragonFly: src/sys/sys/msfbuf.h,v 1.2 2004/06/08 02:27:49 hmp Exp $
  */
 #ifndef _SYS_MSFBUF_H_
 #define _SYS_MSFBUF_H_
+
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+
+#ifndef _SYS_XIO_H_
+#include <sys/xio.h>
+#endif
 
 /*
  * MSF_BUFs are used for caching ephermal mappings that span more than
