@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.11 2003/07/10 04:47:53 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.12 2003/07/11 01:23:21 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -597,6 +597,7 @@ mp_enable(u_int boot_addr)
 	setidt(XRENDEZVOUS_OFFSET, Xrendezvous,
 	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 
+#if 0
 	/* install an inter-CPU IPI for forcing an additional software trap */
 	setidt(XCPUAST_OFFSET, Xcpuast,
 	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
@@ -604,6 +605,7 @@ mp_enable(u_int boot_addr)
 	/* install an inter-CPU IPI for interrupt forwarding */
 	setidt(XFORWARD_IRQ_OFFSET, Xforward_irq,
 	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+#endif
 
 	/* install an inter-CPU IPI for CPU stop/restart */
 	setidt(XCPUSTOP_OFFSET, Xcpustop,
@@ -2661,22 +2663,8 @@ forward_statclock(int pscnt)
 			continue;
 		forwarded_statclock(id, pscnt, &map);
 	}
-	if (map != 0) {
-		checkstate_need_ast |= map;
-		selected_apic_ipi(map, XCPUAST_OFFSET, APIC_DELMODE_FIXED);
-		i = 0;
-		while ((checkstate_need_ast & map) != 0) {
-			/* spin */
-			i++;
-			if (i > 100000) { 
-#ifdef BETTER_CLOCK_DIAGNOSTIC
-				printf("forward_statclock: dropped ast 0x%x\n",
-				       checkstate_need_ast & map);
-#endif
-				break;
-			}
-		}
-	}
+	if (map != 0)
+		resched_cpus(map);
 }
 
 void 
@@ -2759,110 +2747,11 @@ forward_hardclock(int pscnt)
 		}
 #endif
 	}
-	if (map != 0) {
-		checkstate_need_ast |= map;
-		selected_apic_ipi(map, XCPUAST_OFFSET, APIC_DELMODE_FIXED);
-		i = 0;
-		while ((checkstate_need_ast & map) != 0) {
-			/* spin */
-			i++;
-			if (i > 100000) { 
-#ifdef BETTER_CLOCK_DIAGNOSTIC
-				printf("forward_hardclock: dropped ast 0x%x\n",
-				       checkstate_need_ast & map);
-#endif
-				break;
-			}
-		}
-	}
+	if (map != 0) 
+		resched_cpus(map);
 }
 
 #endif /* BETTER_CLOCK */
-
-void 
-forward_signal(struct proc *p)
-{
-	/* YYY forward_signal */
-#if 0
-	int map;
-	int id;
-	int i;
-
-	/* Kludge. We don't yet have separate locks for the interrupts
-	 * and the kernel. This means that we cannot let the other processors
-	 * handle complex interrupts while inhibiting them from entering
-	 * the kernel in a non-interrupt context.
-	 *
-	 * What we can do, without changing the locking mechanisms yet,
-	 * is letting the other processors handle a very simple interrupt
-	 * (wich determines the processor states), and do the main
-	 * work ourself.
-	 */
-
-	if (!smp_started || !invltlb_ok || cold || panicstr)
-		return;
-	if (!forward_signal_enabled)
-		return;
-	while (1) {
-		if (p->p_stat != SRUN)
-			return;
-		id = p->p_oncpu;
-		if (id == 0xff)
-			return;
-		map = (1<<id);
-		checkstate_need_ast |= map;
-		selected_apic_ipi(map, XCPUAST_OFFSET, APIC_DELMODE_FIXED);
-		i = 0;
-		while ((checkstate_need_ast & map) != 0) {
-			/* spin */
-			i++;
-			if (i > 100000) { 
-#if 0
-				printf("forward_signal: dropped ast 0x%x\n",
-				       checkstate_need_ast & map);
-#endif
-				break;
-			}
-		}
-		if (id == p->p_oncpu)
-			return;
-	}
-#endif
-}
-
-void
-forward_roundrobin(void)
-{
-	/* YYY forward_roundrobin */
-#if 0
-	u_int map;
-	int i;
-
-	if (!smp_started || !invltlb_ok || cold || panicstr)
-		return;
-	if (!forward_roundrobin_enabled)
-		return;
-	resched_cpus |= mycpu->gd_other_cpus;
-	map = mycpu->gd_other_cpus & ~stopped_cpus ;
-#if 1
-	selected_apic_ipi(map, XCPUAST_OFFSET, APIC_DELMODE_FIXED);
-#else
-	(void) all_but_self_ipi(XCPUAST_OFFSET);
-#endif
-	i = 0;
-	while ((checkstate_need_ast & map) != 0) {
-		/* spin */
-		i++;
-		if (i > 100000) {
-#if 0
-			printf("forward_roundrobin: dropped ast 0x%x\n",
-			       checkstate_need_ast & map);
-#endif
-			break;
-		}
-	}
-#endif
-}
 
 #ifdef APIC_INTR_REORDER
 /*

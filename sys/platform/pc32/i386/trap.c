@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.20 2003/07/10 04:47:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.21 2003/07/11 01:23:21 dillon Exp $
  */
 
 /*
@@ -200,6 +200,10 @@ userexit(struct proc *p)
 	 * If we did not have to release we should already be P_CURPROC.  If
 	 * we did have to release we must acquire P_CURPROC again and then
 	 * restore our priority for user return.
+	 *
+	 * Lowering our priority may make other higher priority threads
+	 * runnable. lwkt_setpri_self() does not switch away, so call
+	 * lwkt_maybe_switch() to deal with it.
 	 */
 	if (td->td_release) {
 		td->td_release = NULL;
@@ -218,6 +222,7 @@ userexit(struct proc *p)
 			lwkt_setpri_self(TDPRI_USER_NORM);
 			break;
 		}
+		lwkt_maybe_switch();
 	}
 }
 
@@ -235,18 +240,17 @@ userret(struct proc *p, struct trapframe *frame, u_quad_t oticks)
 	}
 
 	/*
-	 * If a reschedule has been requested we lwkt_switch().  The
-	 * lwkt_switch() will ensure that our current process is released
-	 * (see the use of td_release) as well as ensure that any pending
-	 * LWKTs get run before we get cpu back.
-	 *
-	 * YYY though of doreti detects that we were in a user context
-	 * it should really just call lwkt_switch()!  and are re-acquisition 
-	 * of the current process below will handle userland scheduling
-	 * priorities.
+	 * If a reschedule has been requested then the easiest solution
+	 * is to run our passive release function which will shift our
+	 * P_CURPROC designation to another user process.  We don't actually
+	 * switch here because that would be a waste of cycles (the newly 
+	 * scheduled user process would just switch back to us since we are
+	 * running at a kernel priority).  Instead we fall through and will
+	 * switch away when we attempt to reacquire our P_CURPROC designation.
 	 */
 	if (resched_wanted()) {
-		lwkt_switch();
+		if (curthread->td_release)
+			passive_release(curthread);
 	}
 
 	/*

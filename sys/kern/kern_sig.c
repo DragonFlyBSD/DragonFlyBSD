@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.8 2003/06/30 19:50:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.9 2003/07/11 01:23:24 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -83,6 +83,9 @@ static int killpg1	__P((int sig, int pgid, int all));
 static int sig_ffs	__P((sigset_t *set));
 static int sigprop	__P((int sig));
 static void stop	__P((struct proc *));
+#ifdef SMP
+static void signotify_remote(void *arg);
+#endif
 
 static int	filt_sigattach(struct knote *kn);
 static void	filt_sigdetach(struct knote *kn);
@@ -969,13 +972,14 @@ trapsignal(p, sig, code)
  *
  * Other ignored signals are discarded immediately.
  */
+
 void
 psignal(p, sig)
 	register struct proc *p;
 	register int sig;
 {
-	register int s, prop;
-	register sig_t action;
+	int s, prop;
+	sig_t action;
 
 	if (sig > _SIG_MAXSIG || sig <= 0) {
 		printf("psignal: signal %d\n", sig);
@@ -1152,12 +1156,22 @@ psignal(p, sig)
 		 * SRUN, SIDL, SZOMB do nothing with the signal,
 		 * other than kicking ourselves if we are running.
 		 * It will either never be noticed, or noticed very soon.
+		 *
+		 * For SMP we may have to forward the request to another cpu.
+		 * YYY the MP lock prevents the target process from moving
+		 * to another cpu, see kern/kern_switch.c
 		 */
-		if (p == curproc)
-			signotify(p);
 #ifdef SMP
-		else if (p->p_stat == SRUN)
-			forward_signal(p);
+		if (p == lwkt_preempted_proc()) {
+			signotify(p);
+		} else {
+			int cpuid = p->p_thread->td_cpu;
+			if (cpuid != mycpu->gd_cpuid)
+				lwkt_send_ipiq(cpuid, signotify_remote, p);
+		}
+#else
+		if (p == lwkt_preempted_proc())
+			signotify(p);
 #endif
 		goto out;
 	}
@@ -1167,6 +1181,23 @@ run:
 out:
 	splx(s);
 }
+
+#ifdef SMP
+
+/*
+ * This function is called via an IPI.  We will be in a critical section but
+ * the MP lock will NOT be held.  Also note that by the time the ipi message
+ * gets to us the process 'p' (arg) may no longer be scheduled or even valid.
+ */
+static void
+signotify_remote(void *arg)
+{
+	struct proc *p = arg;
+	if (p == lwkt_preempted_proc())
+		signotify(p);
+}
+
+#endif
 
 /*
  * If the current process has received a signal (should be caught or cause

@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.21 2003/07/10 04:47:55 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.22 2003/07/11 01:23:24 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -101,6 +101,7 @@ typedef void (*ipifunc_t)(void *arg);
 
 typedef struct lwkt_ipiq {
     int		ip_rindex;      /* only written by target cpu */
+    int		ip_xindex;      /* writte by target, indicates completion */
     int		ip_windex;      /* only written by source cpu */
     ipifunc_t	ip_func[MAXCPUFIFO];
     void	*ip_arg[MAXCPUFIFO];
@@ -248,6 +249,7 @@ extern void lwkt_free_thread(struct thread *td);
 extern void lwkt_init_wait(struct lwkt_wait *w);
 extern void lwkt_gdinit(struct globaldata *gd);
 extern void lwkt_switch(void);
+extern void lwkt_maybe_switch(void);
 extern void lwkt_preempt(thread_t ntd, int critpri);
 extern void lwkt_schedule(thread_t td);
 extern void lwkt_schedule_self(void);
@@ -275,6 +277,7 @@ extern void lwkt_shunlock(lwkt_rwlock_t lock);
 extern void lwkt_setpri(thread_t td, int pri);
 extern void lwkt_setpri_self(int pri);
 extern int  lwkt_send_ipiq(int dcpu, ipifunc_t func, void *arg);
+extern void lwkt_send_ipiq_mask(u_int32_t mask, ipifunc_t func, void *arg);
 extern void lwkt_wait_ipiq(int dcpu, int seq);
 extern void lwkt_process_ipiq(void);
 extern void crit_panic(void);

@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.7 2003/07/08 06:27:27 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.8 2003/07/11 01:23:23 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -86,6 +86,7 @@
 #ifdef APIC_IO
 #include <machine/clock.h>
 #endif
+#include <machine/cpu.h>
 
 #include "mca.h"
 #if NMCA > 0
@@ -712,6 +713,9 @@ update_masks(intrmask_t *maskptr, int irq)
  * check relative thread priorities for us as long as we properly pass through
  * critpri.
  *
+ * The interrupt thread has already been put on the run queue, so if we cannot
+ * preempt we should force a reschedule.
+ *
  * YYY needs work.  At the moment the handler is run inside a critical
  * section so only the preemption cpl check is used.
  */
@@ -722,6 +726,8 @@ cpu_intr_preempt(struct thread *td, int critpri)
 
 	if ((curthread->td_cpl & (1 << info->irq)) == 0)
 		lwkt_preempt(td, critpri);
+	else
+		need_resched();
 }
 
 static int

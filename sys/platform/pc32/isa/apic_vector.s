@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/Attic/apic_vector.s,v 1.9 2003/07/08 06:27:27 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/apic_vector.s,v 1.10 2003/07/11 01:23:23 dillon Exp $
  */
 
 
@@ -422,133 +422,6 @@ Xcpucheckstate:
 #endif
 
 /*
- * Executed by a CPU when it receives an Xcpuast IPI from another CPU,
- *
- *  - Signals its receipt by clearing bit cpuid in checkstate_need_ast.
- *  - MP safe in regards to setting AST_PENDING because doreti is in
- *    a cli mode when it checks.
- */
-
-	.text
-	SUPERALIGN_TEXT
-	.globl Xcpuast
-Xcpuast:
-	PUSH_FRAME
-
-	movl	PCPU(cpuid), %eax
-	lock				/* checkstate_need_ast &= ~(1<<id) */
-	btrl	%eax, checkstate_need_ast
-	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
-
-	lock
-	btsl	%eax, checkstate_pending_ast
-	jc	1f
-
-	FAKE_MCOUNT(13*4(%esp))
-
-	movl	PCPU(curthread), %eax
-	pushl	TD_CPL(%eax)		/* cpl restored by doreti */
-
-	orl	$AST_PENDING, PCPU(astpending)	/* XXX */
-	incl	PCPU(intr_nesting_level)
-	sti
-	
-	movl	PCPU(cpuid), %eax
-	lock	
-	btrl	%eax, checkstate_pending_ast
-	lock	
-	btrl	%eax, CNAME(resched_cpus)
-	jnc	2f
-	orl	$AST_PENDING+AST_RESCHED,PCPU(astpending)
-2:		
-	MEXITCOUNT
-	jmp	doreti
-1:
-	/* We are already in the process of delivering an ast for this CPU */
-	POP_FRAME
-	iret			
-
-
-/*
- *	 Executed by a CPU when it receives an XFORWARD_IRQ IPI.
- */
-
-	.text
-	SUPERALIGN_TEXT
-	.globl Xforward_irq
-Xforward_irq:
-	PUSH_FRAME
-
-	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
-
-	FAKE_MCOUNT(13*4(%esp))
-
-	call	try_mplock
-	testl	%eax,%eax		/* Did we get the lock ? */
-	jz  1f				/* No */
-
-	incl	PCPU(cnt)+V_FORWARDED_HITS
-	
-	movl	PCPU(curthread), %eax
-	pushl	TD_CPL(%eax)		/* cpl restored by doreti */
-
-	incl	PCPU(intr_nesting_level)
-	sti
-	
-	MEXITCOUNT
-	jmp	doreti			/* Handle forwarded interrupt */
-1:
-	incl	PCPU(cnt)+V_FORWARDED_MISSES
-	call	forward_irq	/* Oops, we've lost the isr lock */
-	MEXITCOUNT
-	POP_FRAME
-	iret
-3:	
-	call	rel_mplock
-	MEXITCOUNT
-	POP_FRAME
-	iret
-
-/*
- * 
- */
-forward_irq:
-	MCOUNT
-	cmpl	$0,invltlb_ok
-	jz	4f
-
-	cmpl	$0, CNAME(forward_irq_enabled)
-	jz	4f
-
-	movl	mp_lock,%eax
-	cmpl	$MP_FREE_LOCK,%eax
-	jne	1f
-	movl	$0, %eax		/* Pick CPU #0 if noone has lock */
-1:
-	shrl	$24,%eax
-	movl	cpu_num_to_apic_id(,%eax,4),%ecx
-	shll	$24,%ecx
-	movl	lapic_icr_hi, %eax
-	andl	$~APIC_ID_MASK, %eax
-	orl	%ecx, %eax
-	movl	%eax, lapic_icr_hi
-
-2:
-	movl	lapic_icr_lo, %eax
-	andl	$APIC_DELSTAT_MASK,%eax
-	jnz	2b
-	movl	lapic_icr_lo, %eax
-	andl	$APIC_RESV2_MASK, %eax
-	orl	$(APIC_DEST_DESTFLD|APIC_DELMODE_FIXED|XFORWARD_IRQ_OFFSET), %eax
-	movl	%eax, lapic_icr_lo
-3:
-	movl	lapic_icr_lo, %eax
-	andl	$APIC_DELSTAT_MASK,%eax
-	jnz	3b
-4:		
-	ret
-
-/*
  * Executed by a CPU when it receives an Xcpustop IPI from another CPU,
  *
  *  - Signals its receipt.
@@ -804,15 +677,7 @@ started_cpus:
 checkstate_probed_cpus:
 	.long	0	
 #endif /* BETTER_CLOCK */
-	.globl checkstate_need_ast
-checkstate_need_ast:
-	.long	0
-checkstate_pending_ast:
-	.long	0
-	.globl CNAME(resched_cpus)
 	.globl CNAME(cpustop_restartfunc)
-CNAME(resched_cpus):
-	.long 0
 CNAME(cpustop_restartfunc):
 	.long 0
 		

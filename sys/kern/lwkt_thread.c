@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.19 2003/07/10 18:23:24 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.20 2003/07/11 01:23:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -309,6 +309,18 @@ lwkt_switch(void)
 	panic("lwkt_switch: cannot switch from within an interrupt, yet\n");
     }
 
+    /*
+     * Passive release (used to transition from user to kernel mode
+     * when we block or switch rather then when we enter the kernel).
+     * This function is NOT called if we are switching into a preemption
+     * or returning from a preemption.  Typically this causes us to lose
+     * our P_CURPROC designation (if we have one) and become a true LWKT
+     * thread, and may also hand P_CURPROC to another process and schedule
+     * its thread.
+     */
+    if (td->td_release)
+	    td->td_release(td);
+
     crit_enter();
     ++switch_count;
 
@@ -405,15 +417,6 @@ again:
 	("priority problem in lwkt_switch %d %d", td->td_pri, ntd->td_pri));
 
     /*
-     * Passive release (used to transition from user to kernel mode
-     * when we block or switch rather then when we enter the kernel).
-     * This function is NOT called if we are switching into a preemption
-     * or returning from a preemption.
-     */
-    if (td->td_release)
-	    td->td_release(td);
-
-    /*
      * Do the actual switch.  If the new target does not need the MP lock
      * and we are holding it, release the MP lock.  If the new target requires
      * the MP lock we have already acquired it for the target.
@@ -431,6 +434,21 @@ again:
     }
 
     crit_exit();
+}
+
+/*
+ * Switch if another thread has a higher priority.  Do not switch to other
+ * threads at the same priority.
+ */
+void
+lwkt_maybe_switch()
+{
+    struct globaldata *gd = mycpu;
+    struct thread *td = gd->gd_curthread;
+
+    if ((td->td_pri & TDPRI_MASK) < bsrl(gd->gd_runqmask)) {
+	lwkt_switch();
+    }
 }
 
 /*
@@ -484,13 +502,13 @@ lwkt_preempt(thread_t ntd, int critpri)
      */
     KASSERT(ntd->td_pri >= TDPRI_CRIT, ("BADCRIT0 %d", ntd->td_pri));
 
+    need_resched();
     if (!_lwkt_wantresched(ntd, td)) {
 	++preempt_miss;
 	return;
     }
     if ((td->td_pri & ~TDPRI_MASK) > critpri) {
 	++preempt_miss;
-	need_resched();
 	return;
     }
 #ifdef SMP
@@ -501,12 +519,10 @@ lwkt_preempt(thread_t ntd, int critpri)
 #endif
     if (td == ntd || ((td->td_flags | ntd->td_flags) & TDF_PREEMPT_LOCK)) {
 	++preempt_weird;
-	need_resched();
 	return;
     }
     if (ntd->td_preempted) {
 	++preempt_hit;
-	need_resched();
 	return;
     }
 #ifdef SMP
@@ -525,7 +541,6 @@ lwkt_preempt(thread_t ntd, int critpri)
     if (mpheld == 0 && ntd->td_mpcount && !cpu_try_mplock()) {
 	ntd->td_mpcount -= td->td_mpcount;
 	++preempt_miss;
-	need_resched();
 	return;
     }
 #endif
@@ -724,10 +739,12 @@ void
 lwkt_acquire(thread_t td)
 {
     struct globaldata *gd;
+    int ocpu;
 
     gd = td->td_gd;
     KKASSERT((td->td_flags & TDF_RUNQ) == 0);
     if (gd != mycpu) {
+	ocpu = td->td_cpu;
 	crit_enter();
 	TAILQ_REMOVE(&gd->gd_tdallq, td, td_allq);	/* protected by BGL */
 	gd = mycpu;
@@ -1061,10 +1078,12 @@ lwkt_regettoken(lwkt_token_t tok)
 	    req.tok = tok;
 	    dcpu = (volatile int)tok->t_cpu;
 	    KKASSERT(dcpu >= 0 && dcpu < ncpus);
-	    printf("REQT%d ", dcpu);
+	    if (token_debug)
+		printf("REQT%d ", dcpu);
 	    seq = lwkt_send_ipiq(dcpu, lwkt_gettoken_remote, &req);
 	    lwkt_wait_ipiq(dcpu, seq);
-	    printf("REQR%d ", tok->t_cpu);
+	    if (token_debug)
+		printf("REQR%d ", tok->t_cpu);
 	}
 #endif
 	++tok->t_gen;
@@ -1223,6 +1242,7 @@ lwkt_send_ipiq(int dcpu, ipifunc_t func, void *arg)
 	func(arg);
 	return(0);
     } 
+    crit_enter();
     ++gd->gd_intr_nesting_level;
 #ifdef INVARIANTS
     if (gd->gd_intr_nesting_level > 20)
@@ -1232,27 +1252,47 @@ lwkt_send_ipiq(int dcpu, ipifunc_t func, void *arg)
     KKASSERT(dcpu >= 0 && dcpu < ncpus);
     ++ipiq_count;
     ip = &gd->gd_ipiq[dcpu];
-    if (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
-	unsigned int eflags = read_eflags();
-	printf("SEND_IPIQ FIFO FULL\n");
-	cpu_enable_intr();
-	++ipiq_fifofull;
-	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
-	    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
-	    lwkt_process_ipiq();
-	}
-	printf("SEND_IPIQ FIFO GOOD\n");
-	write_eflags(eflags);
-    }
-    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
+
+    /*
+     * We always drain before the FIFO becomes full so it should never
+     * become full.  We need to leave enough entries to deal with 
+     * reentrancy.
+     */
+    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO);
     windex = ip->ip_windex & MAXCPUFIFO_MASK;
     ip->ip_func[windex] = func;
     ip->ip_arg[windex] = arg;
     /* YYY memory barrier */
     ++ip->ip_windex;
+    if (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
+	unsigned int eflags = read_eflags();
+	cpu_enable_intr();
+	++ipiq_fifofull;
+	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 4) {
+	    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
+	    lwkt_process_ipiq();
+	}
+	write_eflags(eflags);
+    }
     --gd->gd_intr_nesting_level;
     cpu_send_ipiq(dcpu);	/* issues memory barrier if appropriate */
+    crit_exit();
     return(ip->ip_windex);
+}
+
+/*
+ * Send a message to several target cpus.  Typically used for scheduling.
+ */
+void
+lwkt_send_ipiq_mask(u_int32_t mask, ipifunc_t func, void *arg)
+{
+    int cpuid;
+
+    while (mask) {
+	    cpuid = bsfl(mask);
+	    lwkt_send_ipiq(cpuid, func, arg);
+	    mask &= ~(1 << cpuid);
+    }
 }
 
 /*
@@ -1275,16 +1315,13 @@ lwkt_wait_ipiq(int dcpu, int seq)
     if (dcpu != mycpu->gd_cpuid) {
 	KKASSERT(dcpu >= 0 && dcpu < ncpus);
 	ip = &mycpu->gd_ipiq[dcpu];
-	if ((int)(ip->ip_rindex - seq) < 0) {
+	if ((int)(ip->ip_xindex - seq) < 0) {
 	    unsigned int eflags = read_eflags();
 	    cpu_enable_intr();
-	    while ((int)(ip->ip_rindex - seq) < 0) {
+	    while ((int)(ip->ip_xindex - seq) < 0) {
 		lwkt_process_ipiq();
-#if 0
-		lwkt_switch();	/* YYY fixme */
-#endif
 		if (--maxc == 0)
-			printf("LWKT_WAIT_IPIQ WARNING! %d wait %d (%d)\n", mycpu->gd_cpuid, dcpu, ip->ip_rindex - seq);
+			printf("LWKT_WAIT_IPIQ WARNING! %d wait %d (%d)\n", mycpu->gd_cpuid, dcpu, ip->ip_xindex - seq);
 		if (maxc < -1000000)
 			panic("LWKT_WAIT_IPIQ");
 	    }
@@ -1296,7 +1333,8 @@ lwkt_wait_ipiq(int dcpu, int seq)
 /*
  * Called from IPI interrupt (like a fast interrupt), which has placed
  * us in a critical section.  The MP lock may or may not be held.
- * May also be called from doreti or splz.
+ * May also be called from doreti or splz, or be reentrantly called
+ * indirectly through the ip_func[] we run.
  */
 void
 lwkt_process_ipiq(void)
@@ -1314,10 +1352,18 @@ lwkt_process_ipiq(void)
 	if (ip == NULL)
 	    continue;
 	ip = &ip[cpuid];
+
+	/*
+	 * Note: xindex is only updated after we are sure the function has
+	 * finished execution.  Beware lwkt_process_ipiq() reentrancy!  The
+	 * function may send an IPI which may block/drain.
+	 */
 	while (ip->ip_rindex != ip->ip_windex) {
 	    ri = ip->ip_rindex & MAXCPUFIFO_MASK;
-	    ip->ip_func[ri](ip->ip_arg[ri]);
 	    ++ip->ip_rindex;
+	    ip->ip_func[ri](ip->ip_arg[ri]);
+	    /* YYY memory barrier */
+	    ip->ip_xindex = ip->ip_rindex;
 	}
     }
 }

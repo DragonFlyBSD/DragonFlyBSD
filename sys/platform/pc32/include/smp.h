@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/smp.h,v 1.50.2.5 2001/02/13 22:32:45 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/include/smp.h,v 1.4 2003/07/08 06:27:27 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/smp.h,v 1.5 2003/07/11 01:23:23 dillon Exp $
  *
  */
 
@@ -52,8 +52,6 @@ extern volatile u_int		stopped_cpus;
 extern volatile u_int		started_cpus;
 
 extern volatile u_int		checkstate_probed_cpus;
-extern volatile u_int		checkstate_need_ast;
-extern volatile u_int		resched_cpus;
 extern void (*cpustop_restartfunc) __P((void));
 
 /* functions in apic_ipl.s */

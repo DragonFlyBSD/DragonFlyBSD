@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.16 2003/07/10 04:47:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.17 2003/07/11 01:23:24 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -151,21 +151,34 @@ roundrobin_interval(void)
 /*
  * Force switch among equal priority processes every 100ms.
  */
-/* ARGSUSED */
+#ifdef SMP
+
 static void
-roundrobin(arg)
-	void *arg;
+roundrobin_remote(void *arg)
 {
 	struct proc *p = lwkt_preempted_proc();
-#ifdef SMP
  	if (p == NULL || RTP_PRIO_NEED_RR(p->p_rtprio.type))
 		need_resched();
-	forward_roundrobin();
-#else 
+}
+
+#endif
+
+static void
+roundrobin(void *arg)
+{
+	struct proc *p = lwkt_preempted_proc();
  	if (p == NULL || RTP_PRIO_NEED_RR(p->p_rtprio.type))
- 		need_resched();
+		need_resched();
+#ifdef SMP
+	lwkt_send_ipiq_mask(mycpu->gd_other_cpus, roundrobin_remote, NULL);
 #endif
  	timeout(roundrobin, NULL, sched_quantum);
+}
+
+void
+resched_cpus(u_int32_t mask)
+{
+	lwkt_send_ipiq_mask(mask, roundrobin_remote, NULL);
 }
 
 /*

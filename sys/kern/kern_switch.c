@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.6 2003/07/10 18:23:24 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.7 2003/07/11 01:23:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -36,6 +36,7 @@
 #include <sys/rtprio.h>
 #include <sys/thread2.h>
 #include <sys/uio.h>
+#include <sys/sysctl.h>
 #include <machine/ipl.h>
 #include <machine/cpu.h>
 
@@ -63,9 +64,11 @@ static struct rq idqueues[NQS];
 static u_int32_t queuebits;
 static u_int32_t rtqueuebits;
 static u_int32_t idqueuebits;
-static u_int32_t curprocmask = -1;
-static u_int32_t rdyprocmask = 0;
+static u_int32_t curprocmask = -1;	/* currently running a user process */
+static u_int32_t rdyprocmask;		/* ready to accept a user process */
 static int	 runqcount;
+
+SYSCTL_INT(_debug, OID_AUTO, runqcount, CTLFLAG_RD, &runqcount, 0, "");
 
 /*
  * Initialize the run queues at boot time.
@@ -135,6 +138,7 @@ chooseproc(void)
 	p = TAILQ_FIRST(q);
 	KASSERT(p, ("chooseproc: no proc on busy queue"));
 	TAILQ_REMOVE(q, p, p_procq);
+	--runqcount;
 	if (TAILQ_EMPTY(q))
 		*which &= ~(1 << pri);
 	KASSERT((p->p_flag & P_ONRUNQ) != 0, ("not on runq6!"));
@@ -187,6 +191,20 @@ setrunqueue(struct proc *p)
 	}
 
 	/*
+	 * If our cpu is available to run a user process we short cut and
+	 * just do it.
+	 */
+	cpuid = mycpu->gd_cpuid;
+	if ((curprocmask & (1 << cpuid)) == 0) {
+		curprocmask |= 1 << cpuid;
+		p->p_flag |= P_CURPROC;
+		lwkt_acquire(p->p_thread);
+		lwkt_schedule(p->p_thread);
+		crit_exit();
+		return;
+	}
+
+	/*
 	 * Otherwise place this process on the userland scheduler's run
 	 * queue for action.
 	 */
@@ -216,9 +234,14 @@ setrunqueue(struct proc *p)
 	 * Wakeup other cpus to schedule the newly available thread.
 	 * XXX doesn't really have to be in a critical section.
 	 * We own giant after all.
+	 *
+	 * We use rdyprocmask to avoid unnecessarily waking up the scheduler
+	 * thread when it is already running.
 	 */
 	if ((mask = ~curprocmask & rdyprocmask & mycpu->gd_other_cpus) != 0) {
 		int count = runqcount;
+		if (!mask)
+			printf("PROC %d nocpu to schedule it on\n", p->p_pid);
 		while (mask && count) {
 			cpuid = bsfl(mask);
 			KKASSERT((curprocmask & (1 << cpuid)) == 0);
@@ -315,6 +338,7 @@ release_curproc(struct proc *p)
 			}
 			rel_mplock();
 		} else {
+			KKASSERT(0);
 			curprocmask &= ~(1 << cpuid);
 			if (rdyprocmask & (1 << cpuid))
 				lwkt_schedule(&globaldata_find(cpuid)->gd_schedthread);
@@ -442,8 +466,8 @@ sched_thread(void *dummy)
     for (;;) {
 	struct proc *np;
 
-	rdyprocmask |= cpumask;
 	lwkt_deschedule_self();		/* interlock */
+	rdyprocmask |= cpumask;
 	crit_enter();
 	if ((curprocmask & cpumask) == 0 && (np = chooseproc()) != NULL) {
 	    curprocmask |= cpumask;

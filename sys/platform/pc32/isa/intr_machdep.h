@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.5 2003/07/08 06:27:27 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.6 2003/07/11 01:23:23 dillon Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
@@ -125,12 +125,6 @@
 
 /* IPIQ rendezvous */
 #define XIPIQ_OFFSET		(ICU_OFFSET + 115)
-
-/* IPI to generate an additional software trap at the target CPU */
-#define XCPUAST_OFFSET		(ICU_OFFSET +  48)
-
-/* IPI to signal the CPU holding the ISR lock that another IRQ has appeared */
-#define XFORWARD_IRQ_OFFSET	(ICU_OFFSET +  49)
 
 /* IPI to signal CPUs to stop and wait for another CPU to restart them */
 #define XCPUSTOP_OFFSET		(ICU_OFFSET + 128)
