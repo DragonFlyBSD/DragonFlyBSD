@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.8 2003/09/15 23:38:14 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.9 2003/09/16 01:58:00 hsu Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -135,6 +135,7 @@ extern struct domain inet6domain;
 extern struct ip6protosw inet6sw[];
 
 u_char ip6_protox[IPPROTO_MAX];
+static struct ifqueue ip6intrq;
 static int ip6qmaxlen = IFQ_MAXLEN;
 struct in6_ifaddr *in6_ifaddr;
 
@@ -146,7 +147,6 @@ int ip6_sourcecheck_interval;		/* XXX */
 const int int6intrq_present = 1;
 
 int ip6_ours_check_algorithm;
-
 
 /* firewall hooks */
 ip6_fw_chk_t *ip6_fw_chk_ptr;
@@ -161,7 +161,6 @@ static int ip6_hopopts_input (u_int32_t *, u_int32_t *, struct mbuf **, int *);
 #ifdef PULLDOWN_TEST
 static struct mbuf *ip6_pullexthdr (struct mbuf *, size_t, int);
 #endif
-
 
 /*
  * IP6 initialization: fill in IP6 protocol switch table.
