@@ -1,6 +1,6 @@
-# $DragonFly: src/sys/dev/acpica5/Makefile.inc,v 1.4 2005/03/12 16:13:02 y0netan1 Exp $
+# $DragonFly: src/sys/dev/acpica5/Makefile.inc,v 1.5 2005/03/19 19:38:31 y0netan1 Exp $
 
-SYSACPICA_VERSION=	20050211
+SYSACPICA_VERSION=	20050309
 SYSACPICA_DIR?=		${SYSDIR}/contrib/dev/acpica-unix-${SYSACPICA_VERSION}
 OSACPI_DIR?=		${SYSDIR}/dev/acpica5
 
