@@ -27,7 +27,7 @@
  *
  *	from BSDI $Id: ktr.h,v 1.10.2.7 2000/03/16 21:44:42 cp Exp $
  * $FreeBSD: /repoman/r/ncvs/src/sys/sys/ktr.h,v 1.21 2003/03/11 20:07:22 jhb Exp $
- * $DragonFly: src/sys/sys/ktr.h,v 1.3 2005/03/08 01:08:40 hmp Exp $
+ * $DragonFly: src/sys/sys/ktr.h,v 1.4 2005/03/09 23:26:11 hmp Exp $
  */
 
 /*
@@ -62,11 +62,10 @@
 #define	KTR_KGDB	0x00008000		/* Trace kgdb internals */
 #define	KTR_IO		0x00010000		/* Upper I/O  */
 #define	KTR_EVH		0x00020000		/* Eventhandler */
-#define	KTR_NFS		0x00040000		/* The obvious */
-#define	KTR_VOP		0x00080000		/* The obvious */
+#define	KTR_NFS		0x00040000		/* NFS */
+#define	KTR_VOP		0x00080000		/* VFS and VNODE ops */
 #define	KTR_VM		0x00100000		/* The virtual memory system */
-#define	KTR_WITNESS	0x00200000
-#define	KTR_RUNQ	0x00400000		/* Run queue */
+#define	KTR_RUNQ	0x00200000		/* Run queue */
 #define	KTR_CONTENTION	0x00800000		/* Lock contention */
 #define	KTR_ALL		0x00ffffff
 
