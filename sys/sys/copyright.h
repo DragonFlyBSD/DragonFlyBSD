@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/copyright.h,v 1.10.2.5 2003/01/07 04:28:55 imp Exp $
- * $DragonFly: src/sys/sys/copyright.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/copyright.h,v 1.3 2003/11/19 00:51:29 dillon Exp $
  */
 
 
@@ -32,6 +32,10 @@
 /* FreeBSD */
 #define COPYRIGHT_FreeBSD \
 	"Copyright (c) 1992-2003 The FreeBSD Project.\n"
+
+/* DragonFly */
+#define COPYRIGHT_DragonFly \
+	"Copyright (c) 2003 The DragonFly Project.\n"
 
 /* Berkeley */
 #define COPYRIGHT_UCB \
@@ -42,8 +46,8 @@
 	"Copyright (c) 1994-2003 FreeBSD(98) porting team.\nCopyright (c) 1992  A.Kojima F.Ukai M.Ishii (KMC).\n"
 
 #if defined(PC98)
-char copyright[] = COPYRIGHT_FreeBSD/**/COPYRIGHT_PC98/**/COPYRIGHT_UCB;
+char copyright[] = COPYRIGHT_DragonFly/**/COPYRIGHT_FreeBSD/**/COPYRIGHT_PC98/**/COPYRIGHT_UCB;
 
 #else
-char copyright[] = COPYRIGHT_FreeBSD/**/COPYRIGHT_UCB;
+char copyright[] = COPYRIGHT_DragonFly/**/COPYRIGHT_FreeBSD/**/COPYRIGHT_UCB;
 #endif

@@ -37,28 +37,32 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.9 2003/11/15 11:46:26 asmodai Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.10 2003/11/19 00:51:29 dillon Exp $
  */
 
 #ifndef _SYS_PARAM_H_
 #define _SYS_PARAM_H_
 
-#define	BSD	199506		/* System version (year & month). */
-#define BSD4_3	1
-#define BSD4_4	1
+#define	BSD	200307		/* XXX kern.osrevision */
+#define BSD4_3	1		/* XXX obsolete */
+#define BSD4_4	1		/* XXX obsolete */
 
-/* 
- * __FreeBSD_version numbers are documented in the Porter's Handbook.
- * If you bump the version for any reason, you should update the documentation
- * there.
- * Currently this lives here:
+/*
+ * __DragonFly_version number.   Note that the name and comment are pattern
+ * searched from conf/newvers.sh.
+ *
+ * Version changes should be documented in:
  *	doc/en_US.ISO8859-1/books/porters-handbook/book.sgml
  */
-#undef __FreeBSD_version
-#define __FreeBSD_version 480101	/* Master, propagated to newvers */
-
 #undef __DragonFly_version
-#define __DragonFly_version 100000
+#define __DragonFly_version 100000	/* Master, propagated to newvers */
+
+/* 
+ * __FreeBSD_version numbers for source compatibility.  This is temporary
+ * along with the __FreeBSD__ define in gcc.
+ */
+#undef __FreeBSD_version
+#define __FreeBSD_version 480101
 
 #ifndef NULL
 #define	NULL	0

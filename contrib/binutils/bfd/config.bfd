@@ -22,6 +22,8 @@
 # vector, but c++filt does not deal with object files and is not
 # linked against libbfd.a.  It is not terribly important that c++filt
 # get this right; it is just convenient.
+#
+# $DragonFly: src/contrib/binutils/bfd/Attic/config.bfd,v 1.2 2003/11/19 00:51:31 dillon Exp $
 
 targ_defvec=
 targ_selvecs=
@@ -100,11 +102,15 @@ case "${targ}" in
     targ_defvec=bfd_elf64_ia64_little_vec
     targ_selvecs="bfd_elf64_ia64_big_vec bfd_efi_app_ia64_vec"
     ;;
+  ia64*-*-dragonfly*)
+    targ_defvec=bfd_elf64_ia64_little_vec
+    targ_selvecs="bfd_elf64_ia64_big_vec bfd_efi_app_ia64_vec"
+    ;;
   ia64*-*-hpux*)
     targ_defvec=bfd_elf32_ia64_hpux_big_vec
     targ_selvecs="bfd_elf64_ia64_hpux_big_vec"
     ;;
-  sparc64-*-freebsd* | sparc64-*-netbsd*)
+  sparc64-*-freebsd* | sparc64-*-netbsd* | sparc64-*-dragonfly*)
     targ_defvec=bfd_elf64_sparc_vec
     targ_selvecs="bfd_elf32_sparc_vec sunos_big_vec"
     ;;
@@ -171,6 +177,10 @@ case "${targ}" in
     targ_selvecs=bfd_elf32_littlearm_vec
     ;;
   arm-*-elf | arm-*-freebsd* | arm*-*-linux-gnu* | arm*-*-conix* | arm*-*-uclinux*)
+    targ_defvec=bfd_elf32_littlearm_vec
+    targ_selvecs=bfd_elf32_bigarm_vec
+    ;;
+  arm-*-dragonfly*)
     targ_defvec=bfd_elf32_littlearm_vec
     targ_selvecs=bfd_elf32_bigarm_vec
     ;;
@@ -373,6 +383,10 @@ case "${targ}" in
     targ_defvec=bfd_elf32_i386_vec
     targ_selvecs=i386coff_vec
     ;;
+  i[3456]86-*-dragonfly*)
+    targ_defvec=bfd_elf32_i386_vec
+    targ_selvecs=i386coff_vec
+    ;;
   i[3456]86-*-netbsdelf*) 
     targ_defvec=bfd_elf32_i386_vec
     targ_selvecs=i386netbsd_vec
@@ -397,6 +411,10 @@ case "${targ}" in
     ;;
 #ifdef BFD64
   x86_64-*-freebsd*)
+    targ_defvec=bfd_elf64_x86_64_vec
+    targ_selvecs="bfd_elf32_i386_vec i386coff_vec bfd_efi_app_ia32_vec"
+    ;;
+  x86_64-*-dragonfly*)
     targ_defvec=bfd_elf64_x86_64_vec
     targ_selvecs="bfd_elf32_i386_vec i386coff_vec bfd_efi_app_ia32_vec"
     ;;

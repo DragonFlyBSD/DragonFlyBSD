@@ -1,9 +1,21 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.6 2003/10/13 23:57:41 dillon Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.7 2003/11/19 00:51:24 dillon Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
 PORTPATH!=	/usr/bin/relpath ${PORTSDIR} ${.CURDIR}
+
+# Temporary Hack
+#
+OSVERSION ?= 480102
+UNAME_s?= FreeBSD
+UNAME_v?=FreeBSD 4.8-CURRENT
+UNAME_r?=4.8-CURRENT
+
+.makeenv UNAME_s
+.makeenv UNAME_v
+.makeenv UNAME_r
+.makeenv OSVERSION
 
 .if !exists(${DFPORTSDIR}/${PORTPATH}/Makefile) || defined(BEFOREPORTMK)
 # If the port does not exist in /usr/dfports/<portpath> use the original

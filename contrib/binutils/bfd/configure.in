@@ -1,4 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
+dnl $DragonFly: src/contrib/binutils/bfd/Attic/configure.in,v 1.2 2003/11/19 00:51:31 dillon Exp $
+
 dnl
 
 AC_PREREQ(2.13)
@@ -164,6 +166,7 @@ if test "${target}" = "${host}"; then
 	;;
   alpha*-*-netbsd*)	COREFILE=netbsd-core.lo ;;
   alpha*-*-*)		COREFILE=osf-core.lo ;;
+  arm-*-dragonfly*)	COREFILE='' ;;
   arm-*-freebsd*)	COREFILE='' ;;
   arm-*-netbsd*)	COREFILE=netbsd-core.lo ;;
   arm-*-riscix)		COREFILE=trad-core.lo ;;
@@ -203,6 +206,11 @@ changequote([,])dnl
 	;;
 changequote(,)dnl
   i[3456]86-*-freebsd*)
+changequote([,])dnl
+	COREFILE=''
+	TRAD_HEADER='"hosts/i386bsd.h"'
+	;;
+  i[3456]86-*-dragonfly*)
 changequote([,])dnl
 	COREFILE=''
 	TRAD_HEADER='"hosts/i386bsd.h"'
@@ -341,6 +349,7 @@ changequote([,])dnl
   powerpc-*-aix4*)	COREFILE=rs6000-core.lo ;;
   powerpc-*-aix*)	COREFILE=rs6000-core.lo ;;
   powerpc-*-beos*)	;;
+  powerpc-*-dragonfly*)	COREFILE='' ;;
   powerpc-*-freebsd*)	COREFILE='' ;;
   powerpc-*-netbsd*)	COREFILE=netbsd-core.lo ;;
   powerpc-*-*bsd*)	COREFILE=netbsd-core.lo ;;
@@ -653,6 +662,7 @@ do
     i386bsd_vec)		tb="$tb i386bsd.lo aout32.lo" ;;
     i386coff_vec)		tb="$tb coff-i386.lo cofflink.lo" ;;
     i386dynix_vec)		tb="$tb i386dynix.lo aout32.lo" ;;
+    i386dragonfly_vec)		tb="$tb i386dargonfly.lo aout32.lo" ;;
     i386freebsd_vec)		tb="$tb i386freebsd.lo aout32.lo" ;;
     i386linux_vec)		tb="$tb i386linux.lo aout32.lo" ;;
     i386lynx_aout_vec)		tb="$tb i386lynx.lo lynx-core.lo aout32.lo" ;;

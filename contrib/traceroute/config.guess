@@ -2,6 +2,8 @@
 # Attempt to guess a canonical system name.
 #   Copyright (C) 1992, 93, 94, 95, 1996 Free Software Foundation, Inc.
 #
+# $DragonFly: src/contrib/traceroute/Attic/config.guess,v 1.2 2003/11/19 00:51:36 dillon Exp $
+#
 # This file is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -318,6 +320,9 @@ EOF
 	exit 0 ;;
     *:FreeBSD:*:*)
 	echo ${UNAME_MACHINE}-unknown-freebsd`echo ${UNAME_RELEASE}|sed -e 's/[-(].*//'`
+	exit 0 ;;
+    *:DragonFly:*:*)
+	echo ${UNAME_MACHINE}-unknown-dragonfly`echo ${UNAME_RELEASE}|sed -e 's/[-(].*//'`
 	exit 0 ;;
     *:NetBSD:*:*)
 	echo ${UNAME_MACHINE}-unknown-netbsd`echo ${UNAME_RELEASE}|sed -e 's/[-_].*/\./'`

@@ -9,6 +9,7 @@
 # but WITHOUT ANY WARRANTY, to the extent permitted by law; without
 # even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 # PARTICULAR PURPOSE.
+# $DragonFly: src/contrib/binutils/bfd/Attic/Makefile.in,v 1.2 2003/11/19 00:51:30 dillon Exp $
 
 
 SHELL = @SHELL@
@@ -366,6 +367,7 @@ BFD32_BACKENDS = \
 	i386aout.lo \
 	i386bsd.lo \
 	i386dynix.lo \
+	i386dragonfly.lo \
 	i386freebsd.lo \
 	i386linux.lo \
 	i386lynx.lo \
@@ -514,6 +516,7 @@ BFD32_BACKENDS_CFILES = \
 	i386aout.c \
 	i386bsd.c \
 	i386dynix.c \
+	i386dragonfly.c \
 	i386freebsd.c \
 	i386linux.c \
 	i386lynx.c \
@@ -667,7 +670,8 @@ CFILES = $(SOURCE_CFILES) $(BUILD_CFILES)
 SOURCE_HFILES = \
 	aout-target.h aoutf1.h aoutx.h coffcode.h coffswap.h ecoffswap.h \
 	elf-bfd.h elf-hppa.h elf32-arm.h elf32-hppa.h elf64-hppa.h \
-	elfcode.h elfcore.h elflink.h freebsd.h genlink.h go32stub.h \
+	elfcode.h elfcore.h elflink.h dragonfly.h freebsd.h genlink.h \
+	go32stub.h \
 	libaout.h libbfd.h libcoff.h libecoff.h libhppa.h \
 	libieee.h libnlm.h liboasys.h libpei.h netbsd.h nlm-target.h \
 	nlmcode.h nlmswap.h ns32k.h peicode.h som.h vms.h libxcoff.h \
@@ -1758,6 +1762,9 @@ i386dynix.lo: i386dynix.c $(INCDIR)/aout/dynix3.h aoutx.h \
   $(INCDIR)/filenames.h $(INCDIR)/safe-ctype.h $(INCDIR)/bfdlink.h \
   libaout.h $(INCDIR)/aout/aout64.h $(INCDIR)/aout/stab_gnu.h \
   $(INCDIR)/aout/stab.def $(INCDIR)/aout/ar.h aout-target.h
+i386dragonfly.lo: i386dragonfly.c dragonfly.h $(INCDIR)/filenames.h \
+  libaout.h $(INCDIR)/bfdlink.h aout-target.h $(INCDIR)/aout/aout64.h \
+  $(INCDIR)/aout/stab_gnu.h $(INCDIR)/aout/stab.def $(INCDIR)/aout/ar.h
 i386freebsd.lo: i386freebsd.c freebsd.h $(INCDIR)/filenames.h \
   libaout.h $(INCDIR)/bfdlink.h aout-target.h $(INCDIR)/aout/aout64.h \
   $(INCDIR)/aout/stab_gnu.h $(INCDIR)/aout/stab.def $(INCDIR)/aout/ar.h

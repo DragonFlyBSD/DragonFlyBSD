@@ -1,5 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/binutils/libbinutils/config.h,v 1.3.6.4 2002/09/01 23:39:16 obrien Exp $ */
-/* $DragonFly: src/gnu/usr.bin/binutils/libbinutils/Attic/config.h,v 1.2 2003/06/17 04:25:45 dillon Exp $ */
+/* $DragonFly: src/gnu/usr.bin/binutils/libbinutils/Attic/config.h,v 1.3 2003/11/19 00:51:37 dillon Exp $ */
 
 /* config.h.  Generated automatically by configure.  */
 /* config.in.  Generated automatically from configure.in by autoheader.  */
@@ -204,5 +204,5 @@
 /* #undef USE_BINARY_FOPEN */
 
 /* Configured target name. */
-/* #define TARGET "alpha-unknown-freebsd5.0" */
+/* #define TARGET "alpha-unknown-dragonfly5.0" */
 

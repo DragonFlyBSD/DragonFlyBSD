@@ -4,6 +4,8 @@
    Free Software Foundation, Inc.
    Written by Cygnus Support.
 
+$DragonFly: src/contrib/binutils/bfd/Attic/targets.c,v 1.2 2003/11/19 00:51:31 dillon Exp $
+
 This file is part of BFD, the Binary File Descriptor library.
 
 This program is free software; you can redistribute it and/or modify
@@ -586,6 +588,7 @@ extern const bfd_target i386bsd_vec;
 extern const bfd_target i386coff_vec;
 extern const bfd_target i386dynix_vec;
 extern const bfd_target i386freebsd_vec;
+extern const bfd_target i386dragonfly_vec;
 extern const bfd_target i386linux_vec;
 extern const bfd_target i386lynx_aout_vec;
 extern const bfd_target i386lynx_coff_vec;
@@ -852,6 +855,7 @@ static const bfd_target * const _bfd_target_vector[] = {
 	&i386dynix_vec,
 #endif
 	&i386freebsd_vec,
+	&i386dragonfly_vec,
 #if 0
 	/* Since a.out files lack decent magic numbers, no way to recognize
 	   which kind of a.out file it is.  */

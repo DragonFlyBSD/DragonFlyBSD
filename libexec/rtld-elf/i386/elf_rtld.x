@@ -1,8 +1,9 @@
+/* $DragonFly: src/libexec/rtld-elf/i386/elf_rtld.x,v 1.2 2003/11/19 00:51:38 dillon Exp $ */
 OUTPUT_FORMAT("elf32-i386", "elf32-i386",
 	      "elf32-i386")
 OUTPUT_ARCH(i386)
 ENTRY(_start)
-SEARCH_DIR(/usr/lib); SEARCH_DIR(/usr/obj/usr/src/tmp/usr/i386-unknown-freebsdelf/lib);
+SEARCH_DIR(/usr/lib); SEARCH_DIR(/usr/obj/usr/src/tmp/usr/i386-unknown-dragonflyelf/lib);
 /* Do we need any of these for elf?
    __DYNAMIC = 0;    */
 SECTIONS

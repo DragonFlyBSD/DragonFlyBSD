@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/Makefile.inc,v 1.49.2.6 2002/11/15 18:18:38 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cc/Attic/Makefile.inc,v 1.2 2003/06/17 04:25:45 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc/Attic/Makefile.inc,v 1.3 2003/11/19 00:51:37 dillon Exp $
 
 .include "../Makefile.inc"
 
@@ -13,7 +13,7 @@ TARGET_ARCH?=	${MACHINE_ARCH}
 
 # Machine description.
 MD_FILE=	${GCCDIR}/config/${TARGET_ARCH}/${TARGET_ARCH}.md
-target=		${TARGET_ARCH}-unknown-freebsd
+target=		${TARGET_ARCH}-unknown-dragonfly
 
 # These architectures are Cygnus's default for enabling Haifa.
 .if ${TARGET_ARCH} == "alpha"

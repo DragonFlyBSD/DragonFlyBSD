@@ -2,6 +2,8 @@
 # Attempt to guess a canonical system name.
 #   Copyright (C) 1992, 1993, 1994, 1995, 1996 Free Software Foundation, Inc.
 #
+# $DragonFly: src/contrib/libreadline/support/Attic/config.guess,v 1.2 2003/11/19 00:51:33 dillon Exp $
+#
 # This file is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -695,6 +697,9 @@ EOF
 	    fi
 	fi
 	echo ${UNAME_MACHINE}-unknown-freebsd`echo ${UNAME_RELEASE}|sed -e 's/[-=(].*//'`
+	exit 0 ;;
+    *:DragonFly:*:*)
+	echo ${UNAME_MACHINE}-unknown-dragonflyelf`echo ${UNAME_RELEASE}|sed -e 's/[-_].*//'`
 	exit 0 ;;
     *:NetBSD:*:*)
 	echo ${UNAME_MACHINE}-unknown-netbsd`echo ${UNAME_RELEASE}|sed -e 's/[-_].*/\./'`

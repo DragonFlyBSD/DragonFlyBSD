@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/gnu/usr.bin/binutils/libbinutils/Makefile.mips,v 1.2.2.1 2000/07/06 22:16:08 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/binutils/libbinutils/Attic/Makefile.mips,v 1.2 2003/06/17 04:25:45 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/binutils/libbinutils/Attic/Makefile.mips,v 1.3 2003/11/19 00:51:37 dillon Exp $
 #
 
-TARGET=		${MACHINE_ARCH}-unknown-freebsdelf
+TARGET=		${MACHINE_ARCH}-unknown-dragonflyelf

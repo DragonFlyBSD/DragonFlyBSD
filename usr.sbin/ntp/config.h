@@ -1,7 +1,7 @@
 /* config.h.  Generated automatically by configure.  */
 /* config.h.in.  Generated automatically from configure.in by autoheader.  */
 /* $FreeBSD: src/usr.sbin/ntp/config.h,v 1.4.2.1 2001/12/21 17:42:30 roberto Exp $ */
-/* $DragonFly: src/usr.sbin/ntp/Attic/config.h,v 1.3 2003/11/16 19:20:31 dillon Exp $ */
+/* $DragonFly: src/usr.sbin/ntp/Attic/config.h,v 1.4 2003/11/19 00:51:38 dillon Exp $ */
 /* debugging code */
 #define DEBUG 1
 
@@ -199,9 +199,9 @@
 
 /* canonical system (cpu-vendor-os) string */
 #ifdef __alpha__
-#define STR_SYSTEM "alpha-unknown-freebsd"
+#define STR_SYSTEM "alpha-unknown-dragonfly"
 #else
-#define STR_SYSTEM "i386-unknown-freebsd"
+#define STR_SYSTEM "i386-unknown-dragonfly"
 #endif
 
 /* define if NetInfo support is available */

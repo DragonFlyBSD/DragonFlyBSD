@@ -33,19 +33,19 @@
 #
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
-# $DragonFly: src/sys/conf/newvers.sh,v 1.3 2003/10/24 17:19:14 dillon Exp $
+# $DragonFly: src/sys/conf/newvers.sh,v 1.4 2003/11/19 00:51:29 dillon Exp $
 
-TYPE="FreeBSD"
-REVISION="4.8"
-BRANCH="STABLE"
+TYPE="DragonFly"
+REVISION="1.0"
+BRANCH="CURRENT"
 RELEASE="${REVISION}-${BRANCH}"
 VERSION="${TYPE} ${RELEASE}"
 
 if [ "X${PARAMFILE}" != "X" ]; then
-	RELDATE=$(awk '/__FreeBSD_version.*propagated to newvers/ {print $3}' \
+	RELDATE=$(awk '/__DragonFly_version.*propagated to newvers/ {print $3}' \
 		${PARAMFILE})
 else
-	RELDATE=$(awk '/__FreeBSD_version.*propagated to newvers/ {print $3}' \
+	RELDATE=$(awk '/__DragonFly_version.*propagated to newvers/ {print $3}' \
 		$(dirname $0)/../sys/param.h)
 fi
 
@@ -58,8 +58,8 @@ do
 	if [ -r "$bsd_copyright" ]; then
 		COPYRIGHT=`sed \
 		    -e "s/\[year\]/$year/" \
-		    -e 's/\[your name here\]\.* /FreeBSD Inc./' \
-		    -e 's/\[your name\]\.*/FreeBSD Inc./' \
+		    -e 's/\[your name here\]\.* /DragonFly Inc./' \
+		    -e 's/\[your name\]\.*/DragonFly Inc./' \
 		    -e '/\[id for your version control system, if any\]/d' \
 		    $bsd_copyright` 
 		break
@@ -70,7 +70,7 @@ done
 if [ X"$COPYRIGHT" = X ]; then
 	COPYRIGHT="/*
  * Copyright (c) $year
- *	FreeBSD Inc. All rights reserved.
+ *	DragonFly Inc. All rights reserved.
  *
  */"
 fi

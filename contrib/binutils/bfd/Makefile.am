@@ -1,4 +1,5 @@
 ## Process this file with automake to generate Makefile.in
+# $DragonFly: src/contrib/binutils/bfd/Attic/Makefile.am,v 1.2 2003/11/19 00:51:30 dillon Exp $
 
 AUTOMAKE_OPTIONS = cygnus
 
@@ -238,6 +239,7 @@ BFD32_BACKENDS = \
 	i386aout.lo \
 	i386bsd.lo \
 	i386dynix.lo \
+	i386dragonfly.lo \
 	i386freebsd.lo \
 	i386linux.lo \
 	i386lynx.lo \
@@ -1215,6 +1217,9 @@ i386dynix.lo: i386dynix.c $(INCDIR)/aout/dynix3.h aoutx.h \
   libaout.h $(INCDIR)/aout/aout64.h $(INCDIR)/aout/stab_gnu.h \
   $(INCDIR)/aout/stab.def $(INCDIR)/aout/ar.h aout-target.h
 i386freebsd.lo: i386freebsd.c freebsd.h $(INCDIR)/filenames.h \
+  libaout.h $(INCDIR)/bfdlink.h aout-target.h $(INCDIR)/aout/aout64.h \
+  $(INCDIR)/aout/stab_gnu.h $(INCDIR)/aout/stab.def $(INCDIR)/aout/ar.h
+i386dragonfly.lo: i386dragonfly.c dragonfly.h $(INCDIR)/filenames.h \
   libaout.h $(INCDIR)/bfdlink.h aout-target.h $(INCDIR)/aout/aout64.h \
   $(INCDIR)/aout/stab_gnu.h $(INCDIR)/aout/stab.def $(INCDIR)/aout/ar.h
 i386linux.lo: i386linux.c $(INCDIR)/filenames.h $(INCDIR)/aout/aout64.h \
