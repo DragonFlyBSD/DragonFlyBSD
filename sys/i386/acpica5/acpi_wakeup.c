@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_wakeup.c,v 1.33 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/i386/acpica5/Attic/acpi_wakeup.c,v 1.6 2005/02/15 19:08:06 joerg Exp $
+ * $DragonFly: src/sys/i386/acpica5/Attic/acpi_wakeup.c,v 1.7 2005/02/15 20:06:50 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -246,7 +246,7 @@ acpi_sleep_machdep(struct acpi_softc *sc, int state)
 		WAKECODE_FIXUP(previous_ldt, uint16_t, r_ldt);
 		WAKECODE_BCOPY(previous_idt, struct region_descriptor, r_idt);
 
-		WAKECODE_FIXUP(where_to_recover, void, acpi_restorecpu);
+		WAKECODE_FIXUP(where_to_recover, void *, acpi_restorecpu);
 
 		WAKECODE_FIXUP(previous_ds,  uint16_t, r_ds);
 		WAKECODE_FIXUP(previous_es,  uint16_t, r_es);
