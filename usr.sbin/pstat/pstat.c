@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.8 2004/10/08 09:53:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.9 2004/11/18 12:54:13 joerg Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -76,46 +76,46 @@
 struct nlist nl[] = {
 #define NLMANDATORYBEG	0
 #define	V_MOUNTLIST	0
-	{ "_mountlist" },	/* address of head of mount list. */
+	{ "_mountlist", 0, 0, 0, 0 },	/* address of head of mount list. */
 #define V_NUMV		1
-	{ "_numvnodes" },
+	{ "_numvnodes", 0, 0, 0, 0 },
 #define	FNL_NFILE	2
-	{"_nfiles"},
+	{"_nfiles", 0, 0, 0, 0},
 #define FNL_MAXFILE	3
-	{"_maxfiles"},
+	{"_maxfiles", 0, 0, 0, 0},
 #define NLMANDATORYEND FNL_MAXFILE	/* names up to here are mandatory */
 #define	SCONS		NLMANDATORYEND + 1
-	{ "_cons" },
+	{ "_cons", 0, 0, 0, 0 },
 #define	SPTY		NLMANDATORYEND + 2
-	{ "_pt_tty" },
+	{ "_pt_tty", 0, 0, 0, 0 },
 #define	SNPTY		NLMANDATORYEND + 3
-	{ "_npty" },
+	{ "_npty", 0, 0, 0, 0 },
 
 
 
 #ifdef __DragonFly__
 #define SCCONS	(SNPTY+1)
-	{ "_sccons" },
+	{ "_sccons", 0, 0, 0, 0 },
 #define NSCCONS	(SNPTY+2)
-	{ "_nsccons" },
+	{ "_nsccons", 0, 0, 0, 0 },
 #define SIO  (SNPTY+3)
-	{ "_sio_tty" },
+	{ "_sio_tty", 0, 0, 0, 0 },
 #define NSIO (SNPTY+4)
-	{ "_nsio_tty" },
+	{ "_nsio_tty", 0, 0, 0, 0 },
 #define RC  (SNPTY+5)
-	{ "_rc_tty" },
+	{ "_rc_tty", 0, 0, 0, 0 },
 #define NRC (SNPTY+6)
-	{ "_nrc_tty" },
+	{ "_nrc_tty", 0, 0, 0, 0 },
 #define CY  (SNPTY+7)
-	{ "_cy_tty" },
+	{ "_cy_tty", 0, 0, 0, 0 },
 #define NCY (SNPTY+8)
-	{ "_ncy_tty" },
+	{ "_ncy_tty", 0, 0, 0, 0 },
 #define SI  (SNPTY+9)
-	{ "_si_tty" },
+	{ "_si_tty", 0, 0, 0, 0 },
 #define NSI (SNPTY+10)
-	{ "_si_Nports" },
+	{ "_si_Nports", 0, 0, 0, 0 },
 #endif
-	{ "" }
+	{ "", 0, 0, 0, 0 }
 };
 
 int	usenumflag;
@@ -125,7 +125,7 @@ char	*nlistf	= NULL;
 char	*memf	= NULL;
 kvm_t	*kd;
 
-char	*usagestr;
+const char	*usagestr;
 
 struct {
 	int m_flag;
@@ -159,7 +159,7 @@ struct {
 	{ MNT_DELEXPORT, "delexport" },
 	{ MNT_RELOAD, "reload" },
 	{ MNT_FORCE, "force" },
-	{ 0 }
+	{ 0, NULL }
 };
 
 
@@ -197,7 +197,7 @@ int	nfs_print(struct vnode *);
 void	swapmode(void);
 void	ttymode(void);
 void	ttyprt(struct tty *, int);
-void	ttytype(struct tty *, char *, int, int, int);
+void	ttytype(struct tty *, const char *, int, int, int);
 void	ufs_header(void);
 int	ufs_print(struct vnode *);
 void	union_header(void);
@@ -212,7 +212,8 @@ main(int argc, char **argv)
 {
 	int ch, i, quit, ret;
 	int fileflag, ttyflag, vnodeflag;
-	char buf[_POSIX2_LINE_MAX],*opts;
+	char buf[_POSIX2_LINE_MAX];
+	const char *opts;
 
 	fileflag = swapflag = ttyflag = vnodeflag = 0;
 
@@ -320,7 +321,7 @@ vnodemode(void)
 {
 	struct e_vnode *e_vnodebase, *endvnode, *evp;
 	struct vnode *vp;
-	struct mount *maddr, *mp;
+	struct mount *maddr, *mp = NULL;
 	int numvnodes;
 
 	e_vnodebase = loadvnodes(&numvnodes);
@@ -376,7 +377,8 @@ vnode_header(void)
 void
 vnode_print(struct vnode *avnode, struct vnode *vp)
 {
-	char *type, flags[32];
+	const char *type;
+	char flags[32];
 	char *fp = flags;
 	int flag;
 
@@ -616,7 +618,6 @@ void
 mount_print(struct mount *mp)
 {
 	int flags;
-	const char *type;
 
 #define ST	mp->mnt_stat
 	(void)printf("*** MOUNT %s %s on %s", ST.f_fstypename,
@@ -675,7 +676,7 @@ struct e_vnode *
 kinfo_vnodes(int *avnodes)
 {
 	struct mntlist mountlist;
-	struct mount *mp, mount, *mp_next;
+	struct mount *mp, mounth, *mp_next;
 	struct vnode *vp, vnode, *vp_next;
 	char *vbuf, *evbuf, *bp;
 	int num, numvnodes;
@@ -690,9 +691,9 @@ kinfo_vnodes(int *avnodes)
 	evbuf = vbuf + (numvnodes + 20) * (VPTRSZ + VNODESZ);
 	KGET(V_MOUNTLIST, mountlist);
 	for (num = 0, mp = TAILQ_FIRST(&mountlist); ; mp = mp_next) {
-		KGET2(mp, &mount, sizeof(mount), "mount entry");
-		mp_next = TAILQ_NEXT(&mount, mnt_list);
-		for (vp = TAILQ_FIRST(&mount.mnt_nvnodelist);
+		KGET2(mp, &mounth, sizeof(mounth), "mount entry");
+		mp_next = TAILQ_NEXT(&mounth, mnt_list);
+		for (vp = TAILQ_FIRST(&mounth.mnt_nvnodelist);
 		    vp != NULL; vp = vp_next) {
 			KGET2(vp, &vnode, sizeof(vnode), "vnode");
 			vp_next = TAILQ_NEXT(&vnode, v_nmntvnodes);
@@ -757,7 +758,7 @@ ttymode(void)
 }
 
 void
-ttytype(struct tty *tty, char *name, int type, int number, int indir)
+ttytype(struct tty *tty, const char *name, int type, int number, int indir)
 {
 	struct tty *tp;
 	int ntty;
@@ -774,9 +775,11 @@ ttytype(struct tty *tty, char *name, int type, int number, int indir)
 	}
 	if (indir) {
 		KGET(type, ttyaddr);
-		KGET2(ttyaddr, tty, ntty * sizeof(struct tty), "tty structs");
+		KGET2(ttyaddr, tty, (ssize_t)(ntty * sizeof(struct tty)),
+		      "tty structs");
 	} else {
-		KGET1(type, tty, ntty * sizeof(struct tty), "tty structs");
+		KGET1(type, tty, (ssize_t)(ntty * sizeof(struct tty)),
+		      "tty structs");
 	}
 	(void)printf(hdr);
 	for (tp = tty; tp < &tty[ntty]; tp++)
@@ -886,11 +889,10 @@ ttyprt(struct tty *tp, int line)
 void
 filemode(void)
 {
-	struct file *fp;
-	struct file *addr;
+	struct xfile *fp;
 	char *buf, flagbuf[16], *fbp;
 	int len, maxfile, nfile;
-	static char *dtypes[] = { "???", "inode", "socket" };
+	static const char *dtypes[] = { "???", "inode", "socket" };
 
 	KGET(FNL_MAXFILE, maxfile);
 	if (totalflag) {
@@ -905,40 +907,39 @@ filemode(void)
 	 * structure, and then an array of file structs (whose addresses are
 	 * derivable from the previous entry).
 	 */
-	addr = ((struct filelist *)buf)->lh_first;
-	fp = (struct file *)(buf + sizeof(struct filelist));
-	nfile = (len - sizeof(struct filelist)) / sizeof(struct file);
+	fp = (struct xfile *)buf;
+	nfile = len / sizeof(struct xfile);
 
 	(void)printf("%d/%d open files\n", nfile, maxfile);
 	(void)printf("   LOC   TYPE    FLG     CNT  MSG    DATA    OFFSET\n");
-	for (; (char *)fp < buf + len; addr = fp->f_list.le_next, fp++) {
-		if ((unsigned)fp->f_type > DTYPE_SOCKET)
+	for (fp = (struct xfile *)buf;  nfile > 0; nfile--, fp++) {
+		if ((unsigned)fp->xf_type > DTYPE_SOCKET)
 			continue;
-		(void)printf("%8lx ", (u_long)(void *)addr);
-		(void)printf("%-8.8s", dtypes[fp->f_type]);
+		(void)printf("%8lx ", (u_long)(fp->xf_file));
+		(void)printf("%-8.8s", dtypes[fp->xf_type]);
 		fbp = flagbuf;
-		if (fp->f_flag & FREAD)
+		if (fp->xf_flag & FREAD)
 			*fbp++ = 'R';
-		if (fp->f_flag & FWRITE)
+		if (fp->xf_flag & FWRITE)
 			*fbp++ = 'W';
-		if (fp->f_flag & FAPPEND)
+		if (fp->xf_flag & FAPPEND)
 			*fbp++ = 'A';
 #ifdef FSHLOCK	/* currently gone */
-		if (fp->f_flag & FSHLOCK)
+		if (fp->xf_flag & FSHLOCK)
 			*fbp++ = 'S';
-		if (fp->f_flag & FEXLOCK)
+		if (fp->xf_flag & FEXLOCK)
 			*fbp++ = 'X';
 #endif
-		if (fp->f_flag & FASYNC)
+		if (fp->xf_flag & FASYNC)
 			*fbp++ = 'I';
 		*fbp = '\0';
-		(void)printf("%6s  %3d", flagbuf, fp->f_count);
-		(void)printf("  %3d", fp->f_msgcount);
-		(void)printf("  %8lx", (u_long)(void *)fp->f_data);
-		if (fp->f_offset < 0)
-			(void)printf("  %qx\n", fp->f_offset);
+		(void)printf("%6s  %3d", flagbuf, fp->xf_count);
+		(void)printf("  %3d", fp->xf_msgcount);
+		(void)printf("  %8lx", (u_long)(void *)fp->xf_data);
+		if (fp->xf_offset < 0)
+			(void)printf("  %qx\n", fp->xf_offset);
 		else
-			(void)printf("  %qd\n", fp->f_offset);
+			(void)printf("  %qd\n", fp->xf_offset);
 	}
 	free(buf);
 }
