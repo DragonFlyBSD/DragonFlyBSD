@@ -42,7 +42,7 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.10 2004/05/19 22:52:41 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.11 2004/09/18 19:02:35 dillon Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
@@ -132,6 +132,7 @@ static struct scd_data {
 	short	audio_status;
 	struct buf_queue_head head;		/* head of buf queue */
 	struct scd_mbx mbx;
+	struct callout callout;
 } scd_data[NSCD];
 
 /* prototypes */
@@ -173,7 +174,6 @@ static int	scd_attach(struct isa_device *dev);
 struct	isa_driver	scddriver = { scd_probe, scd_attach, "scd" };
 
 /* For canceling our timeout */
-static struct callout_handle tohandle = CALLOUT_HANDLE_INITIALIZER(&tohanle);
 
 static	d_open_t	scdopen;
 static	d_close_t	scdclose;
@@ -813,7 +813,7 @@ loop:
 		goto trystat;
 
 	case SCD_S_WAITSTAT:
-		untimeout(scd_timeout,(caddr_t)SCD_S_WAITSTAT, tohandle);
+		callout_stop(&cd->callout);
 		if (mbx->count-- <= 0) {
 			printf("scd%d: timeout. drive busy.\n",unit);
 			goto harderr;
@@ -821,8 +821,8 @@ loop:
 
 trystat:
 		if (IS_BUSY(port)) {
-			tohandle = timeout(scd_timeout,
-					   (caddr_t)SCD_S_WAITSTAT,hz/100); /* XXX */
+			callout_reset(&cd->callout, hz / 100,
+					scd_timeout, (void *)SCD_S_WAITSTAT);
 			return;
 		}
 
@@ -860,19 +860,19 @@ nextblock:
 			goto writeparam;
 
 		mbx->count = 100;
-		tohandle = timeout(scd_timeout,
-				   (caddr_t)SCD_S_WAITFIFO,hz/100); /* XXX */
+		callout_reset(&cd->callout, hz / 100,
+				scd_timeout, (void *)SCD_S_WAITFIFO);
 		return;
 
 	case SCD_S_WAITSPIN:
-		untimeout(scd_timeout,(caddr_t)SCD_S_WAITSPIN, tohandle);
+		callout_stop(&cd->callout);
 		if (mbx->count-- <= 0) {
 			printf("scd%d: timeout waiting for drive to spin up.\n", unit);
 			goto harderr;
 		}
 		if (!STATUS_BIT(port, SBIT_RESULT_READY)) {
-			tohandle = timeout(scd_timeout,
-					   (caddr_t)SCD_S_WAITSPIN,hz/100); /* XXX */
+			callout_reset(&cd->callout, hz / 100,
+					scd_timeout, (void *)SCD_S_WAITSPIN);
 			return;
 		}
 		write_control(port, CBIT_RESULT_READY_CLEAR);
@@ -892,14 +892,14 @@ nextblock:
 		goto loop;
 
 	case SCD_S_WAITFIFO:
-		untimeout(scd_timeout,(caddr_t)SCD_S_WAITFIFO, tohandle);
+		callout_stop(&cd->callout);
 		if (mbx->count-- <= 0) {
 			printf("scd%d: timeout. write param not ready.\n",unit);
 			goto harderr;
 		}
 		if (!FSTATUS_BIT(port, FBIT_WPARAM_READY)) {
-			tohandle = timeout(scd_timeout,
-					   (caddr_t)SCD_S_WAITFIFO,hz/100); /* XXX */
+			callout_reset(&cd->callout, hz / 100,
+					scd_timeout, (void *)SCD_S_WAITFIFO);
 			return;
 		}
 		XDEBUG(1, ("scd%d: mbx->count (writeparamwait) = %d(%d)\n", unit, mbx->count, 100));
@@ -911,8 +911,8 @@ writeparam:
 			XDEBUG(1, ("scd%d: spinning up drive ...\n", unit));
 			outb(port+OREG_COMMAND, CMD_SPIN_UP);
 			mbx->count = 300;
-			tohandle = timeout(scd_timeout,
-					   (caddr_t)SCD_S_WAITSPIN,hz/100); /* XXX */
+			callout_reset(&cd->callout, hz / 100,
+					scd_timeout, (void *)SCD_S_WAITSPIN);
 			return;
 		}
 
@@ -935,12 +935,12 @@ writeparam:
 			DELAY(100);
 		}
 
-		tohandle = timeout(scd_timeout,
-				   (caddr_t)SCD_S_WAITREAD,hz/100); /* XXX */
+		callout_reset(&cd->callout, hz / 100,
+				scd_timeout, (void *)SCD_S_WAITREAD);
 		return;
 
 	case SCD_S_WAITREAD:
-		untimeout(scd_timeout,(caddr_t)SCD_S_WAITREAD, tohandle);
+		callout_stop(&cd->callout);
 		if (mbx->count-- <= 0) {
 			if (STATUS_BIT(port, SBIT_RESULT_READY))
 				goto got_param;
@@ -951,8 +951,8 @@ writeparam:
 			process_attention(unit);
 			if (!(cd->flags & SCDVALID))
 				goto changed;
-			tohandle = timeout(scd_timeout,
-					   (caddr_t)SCD_S_WAITREAD,hz/100); /* XXX */
+			callout_reset(&cd->callout, hz / 100,
+					scd_timeout, (void *)SCD_S_WAITREAD);
 			return;
 		}
 		XDEBUG(2, ("scd%d: mbx->count (after RDY_BIT) = %d(%d)\n", unit, mbx->count, RDELAY_WAITREAD));
@@ -972,7 +972,7 @@ got_data:
 		goto waitfor_param;
 
 	case SCD_S_WAITPARAM:
-		untimeout(scd_timeout,(caddr_t)SCD_S_WAITPARAM, tohandle);
+		callout_stop(&cd->callout);
 		if (mbx->count-- <= 0) {
 			printf("scd%d: timeout waiting for params\n",unit);
 			goto readerr;
@@ -980,8 +980,8 @@ got_data:
 
 waitfor_param:
 		if (!STATUS_BIT(port, SBIT_RESULT_READY)) {
-			tohandle = timeout(scd_timeout,
-					   (caddr_t)SCD_S_WAITPARAM,hz/100); /* XXX */
+			callout_reset(&cd->callout, hz / 100,
+					scd_timeout, (void *)SCD_S_WAITPARAM);
 			return;
 		}
 #if SCD_DEBUG

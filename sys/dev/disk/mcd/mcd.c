@@ -41,7 +41,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.9 2004/05/19 22:52:41 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.10 2004/09/18 19:02:33 dillon Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
@@ -146,6 +146,7 @@ static struct mcd_data {
 	short	debug;
 	struct buf_queue_head head;		/* head of buf queue */
 	struct mcd_mbx mbx;
+	struct callout callout;
 } mcd_data[NMCD];
 
 /* reader state machine */
@@ -249,6 +250,7 @@ int mcd_attach(struct isa_device *dev)
 	dev->id_ointr = mcdintr;
 	cd->iobase = dev->id_iobase;
 	cd->flags |= MCDINIT;
+	callout_init(&cd->callout);
 	mcd_soft_reset(unit);
 	bufq_init(&cd->head);
 
@@ -974,7 +976,6 @@ mcdintr(unit)
  * MCD_S_WAITREAD: wait for read ready, read data
  */
 static struct mcd_mbx *mbxsave;
-static struct callout_handle tohandle = CALLOUT_HANDLE_INITIALIZER(&tohandle);
 
 static void
 mcd_timeout(void *arg)
@@ -1008,11 +1009,11 @@ retry_status:
 		/* get status */
 		outb(com_port, MCD_CMDGETSTAT);
 		mbx->count = RDELAY_WAITSTAT;
-		tohandle = timeout(mcd_timeout,
-				   (caddr_t)MCD_S_WAITSTAT,hz/100); /* XXX */
+		callout_reset(&cd->callout, hz / 100, 
+				mcd_timeout, (void *)MCD_S_WAITSTAT);
 		return;
 	case MCD_S_WAITSTAT:
-		untimeout(mcd_timeout,(caddr_t)MCD_S_WAITSTAT, tohandle);
+		callout_stop(&cd->callout);
 		if (mbx->count-- >= 0) {
 			if (inb(port+MCD_FLAGS) & MFL_STATUS_NOT_AVAIL) {
 				timeout(mcd_timeout,
@@ -1052,8 +1053,8 @@ retry_mode:
 			mcd_put(com_port, MCD_CMDSETMODE);
 			mcd_put(com_port, rm);
 
-			tohandle = timeout(mcd_timeout,
-					   (caddr_t)MCD_S_WAITMODE,hz/100); /* XXX */
+			callout_reset(&cd->callout, hz / 100,
+					mcd_timeout, (void *)MCD_S_WAITMODE);
 			return;
 		} else {
 			printf("mcd%d: timeout getstatus\n",unit);
@@ -1061,14 +1062,14 @@ retry_mode:
 		}
 
 	case MCD_S_WAITMODE:
-		untimeout(mcd_timeout,(caddr_t)MCD_S_WAITMODE, tohandle);
+		callout_stop(&cd->callout);
 		if (mbx->count-- < 0) {
 			printf("mcd%d: timeout set mode\n",unit);
 			goto readerr;
 		}
 		if (inb(port+MCD_FLAGS) & MFL_STATUS_NOT_AVAIL) {
-			tohandle = timeout(mcd_timeout,
-					   (caddr_t)MCD_S_WAITMODE,hz/100);
+			callout_reset(&cd->callout, hz / 100,
+					mcd_timeout, (void *)MCD_S_WAITMODE);
 			return;
 		}
 		cd->status = inb(port+mcd_status) & 0xFF;
@@ -1116,11 +1117,11 @@ retry_read:
 		}
 
 		mbx->count = RDELAY_WAITREAD;
-		tohandle = timeout(mcd_timeout,
-				   (caddr_t)MCD_S_WAITREAD,hz/100); /* XXX */
+		callout_reset(&cd->callout, hz / 100,
+				mcd_timeout, (void *)MCD_S_WAITREAD);
 		return;
 	case MCD_S_WAITREAD:
-		untimeout(mcd_timeout,(caddr_t)MCD_S_WAITREAD, tohandle);
+		callout_stop(&cd->callout);
 		if (mbx->count-- > 0) {
 			k = inb(port+MCD_FLAGS);
 			if (!(k & MFL_DATA_NOT_AVAIL)) { /* XXX */
@@ -1164,8 +1165,8 @@ retry_read:
 				if (mcd_setflags(unit,cd) < 0)
 					goto changed;
 			}
-			tohandle = timeout(mcd_timeout,
-					   (caddr_t)MCD_S_WAITREAD,hz/100); /* XXX */
+			callout_reset(&cd->callout, hz / 100,
+					mcd_timeout, (void *)MCD_S_WAITREAD);
 			return;
 		} else {
 			printf("mcd%d: timeout read data\n",unit);
