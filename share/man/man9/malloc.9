@@ -35,7 +35,7 @@
 .\"
 .\" $NetBSD: malloc.9,v 1.3 1996/11/11 00:05:11 lukem Exp $
 .\" $FreeBSD: src/share/man/man9/malloc.9,v 1.13.2.6 2002/03/16 02:20:28 archie Exp $
-.\" $DragonFly: src/share/man/man9/Attic/malloc.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/Attic/malloc.9,v 1.3 2004/03/12 22:29:21 joerg Exp $
 .\"
 .Dd June 16, 1996
 .Dt MALLOC 9
@@ -73,13 +73,12 @@ that was previously allocated by
 .Fn malloc
 for re-use.
 The memory is not zeroed.
-If
-.Fa addr
-is
-.Dv NULL ,
-then
+The kernel implementation of
 .Fn free
-does nothing.
+does not allow
+.Fa addr
+to be
+.Dv NULL .
 .Pp
 The
 .Fn realloc

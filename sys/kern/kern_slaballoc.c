@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.18 2004/03/02 16:04:20 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.19 2004/03/12 22:29:21 joerg Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -672,6 +672,9 @@ free(void *ptr, struct malloc_type *type)
 
     gd = mycpu;
     slgd = &gd->gd_slab;
+
+    if (ptr == NULL)
+	panic("trying to free NULL pointer");
 
     /*
      * Handle special 0-byte allocations
