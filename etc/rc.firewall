@@ -32,7 +32,7 @@
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $DragonFly: src/etc/rc.firewall,v 1.3 2004/10/22 20:26:03 dillon Exp $
+# $DragonFly: src/etc/rc.firewall,v 1.4 2005/02/28 01:42:57 dillon Exp $
  
 # A simple packetfilter configurable via /etc/rc.conf
 #
@@ -93,6 +93,15 @@ if [ -n "$1" ]; then
     esac
 fi
 
+divert_nat() {
+    case ${natd_enable} in
+	[Yy][Ee][Ss])
+        if [ -n "${natd_interface}" ]; then
+                ${fwcmd} add divert natd all from any to any via ${natd_interface}
+        fi
+    esac
+}
+
 allow_loopback() {
     ${fwcmd} add pass all from any to any via lo0
     ${fwcmd} add deny ${log} all from any to 127.0.0.0/8
@@ -150,7 +159,7 @@ deny_not_routed_nets()
     nets="10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 0.0.0.0/8 \
         169.254.0.0/16 192.0.2.0/24 224.0.0.0/4 240.0.0.0/4"
     for net in ${nets} ; do
-        ${fwcmd} add deny ${log} all from any to $net
+        ${fwcmd} add deny ${log} all from $net to any
     done
 }
 
@@ -158,32 +167,26 @@ deny_rest() {
     ${fwcmd} add 65000 deny ${log} all from any to any
 }
 
+allow_rest() {
+    ${fwcmd} add 65000 pass all from any to any
+}
 
 
 ${fwcmd} -f flush
 
 case ${firewall_type} in
-    [Oo][Pp][Ee][Nn]|[Cc][Ll][Ii][Ee][Nn][Tt])
-    case ${natd_enable} in
-        [Yy][Ee][Ss])
-        if [ -n "${natd_interface}" ]; then
-            ${fwcmd} add 50 divert natd all from any to any via ${natd_interface}
-        fi
-        ;;
-    esac
-esac
-
-case ${firewall_type} in
     [Oo][Pp][Ee][Nn])
         allow_loopback
         deny_spoof
-        ${fwcmd} add 1 pass all from any to any
+        divert_nat
+        allow_rest
     ;;
 
     # historical names
     [Cc][Ll][Ii][Ee][Nn][Tt]|[Ss][Ii][Mm][Pp][Ll][Ee]|"")
         allow_loopback
         deny_spoof
+        divert_nat
         allow_trusted_nets ${firewall_trusted_nets}
         allow_trusted_interfaces ${firewall_trusted_interfaces}
         allow_connections
