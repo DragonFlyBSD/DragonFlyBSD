@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
-.\" $DragonFly: src/sys/boot/common/loader.8,v 1.6 2004/06/17 19:37:29 drhodus Exp $
+.\" $DragonFly: src/sys/boot/common/loader.8,v 1.7 2004/12/20 13:13:19 joerg Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
@@ -376,7 +376,7 @@ Define the number of lines on the screen, to be used by the pager.
 Sets the list of directories which will be searched for modules
 named in a load command or implicitly required by a dependency.
 The default value for this variable is
-.Dq Li /boot/kernel;/boot/modules .
+.Dq Li /;/boot;/modules .
 .It Va num_ide_disks
 Sets the number of IDE disks as a workaround for some problems in
 finding the root disk at boot.
