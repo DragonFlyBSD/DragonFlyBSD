@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quota.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/quota/quota.c,v 1.11.2.5 2002/11/30 23:54:21 iedowse Exp $
- * $DragonFly: src/usr.bin/quota/quota.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
+ * $DragonFly: src/usr.bin/quota/quota.c,v 1.5 2005/03/18 00:57:10 joerg Exp $
  */
 
 /*
@@ -88,7 +88,6 @@ static void showusrname(char *name);
 static void showgrpname(char *name);
 static void showquotas(int type, u_long id, const char *name);
 static void heading(int type, u_long id, const char *name, const char *tag);
-static struct quotause *getprivs(long id, int quotatype);
 static int ufshasquota(struct fstab *fs, int type, char **qfnamep);
 static int getufsquota(struct fstab *fs, struct quotause *qup, long id,
 	int quotatype);
@@ -96,7 +95,6 @@ static int getnfsquota(struct statfs *fst, struct quotause *qup, long id,
 	int quotatype);
 static int callaurpc(char *host, int prognum, int versnum, int procnum, 
 	xdrproc_t inproc, char *in, xdrproc_t outproc, char *out);
-static int alldigits(char *s);
 
 int	lflag;
 int	qflag;
