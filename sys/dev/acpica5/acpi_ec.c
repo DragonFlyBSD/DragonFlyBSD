@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.51 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.4 2004/07/05 00:07:35 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.5 2005/03/06 05:39:26 y0netan1 Exp $
  */
 /******************************************************************************
  *
@@ -138,17 +138,17 @@
  *****************************************************************************/
  /*
   * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.51 2004/05/30 20:08:23 phk Exp $
-  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.4 2004/07/05 00:07:35 dillon Exp $
+  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.5 2005/03/06 05:39:26 y0netan1 Exp $
   *
   */
 
 #include "opt_acpi.h"
 #include <sys/param.h>
 #include <sys/kernel.h>
-#include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/thread.h>
 #include <sys/malloc.h>
+#include <sys/module.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -274,7 +274,6 @@ struct acpi_ec_softc {
     int			ec_glk;
     int			ec_glkhandle;
     struct lwkt_rwlock	ec_rwlock;
-    int			ec_polldelay;
 };
 
 /*
@@ -284,11 +283,8 @@ struct acpi_ec_softc {
  */
 #define EC_LOCK_TIMEOUT	1000
 
-/*
- * Start with an interval of 1 us for status poll loop.  This delay
- * will be dynamically adjusted based on the actual time waited.
- */
-#define EC_POLL_DELAY	1
+/* Default interval in microseconds for the status polling loop. */
+#define EC_POLL_DELAY	10
 
 /* Total time in ms spent in the poll loop waiting for a response. */
 #define EC_POLL_TIMEOUT	100
@@ -553,7 +549,6 @@ acpi_ec_attach(device_t dev)
     params = acpi_get_private(dev);
     sc->ec_dev = dev;
     sc->ec_handle = acpi_get_handle(dev);
-    sc->ec_polldelay = EC_POLL_DELAY;
     lwkt_rwlock_init(&sc->ec_rwlock);
 
     /* Retrieve previously probed values via device ivars. */
@@ -812,7 +807,7 @@ EcWaitEvent(struct acpi_ec_softc *sc, EC_EVENT Event)
 {
     EC_STATUS	EcStatus;
     ACPI_STATUS	Status;
-    int		i, period, retval;
+    int		count, i, period, retval, slp_ival;
     static int	EcDbgMaxDelay;
 
     /* mtx_assert(&sc->ec_mtx, MA_OWNED); */
@@ -826,37 +821,33 @@ EcWaitEvent(struct acpi_ec_softc *sc, EC_EVENT Event)
     AcpiOsStall(1);
 
     /*
-     * Poll the EC status register to detect completion of the last
-     * command.  First, wait up to 1 ms in chunks of sc->ec_polldelay
-     * microseconds.
+     * Poll the EC status register for up to 1 ms in chunks of 10 us
+     * to detect completion of the last command.
      */
-    for (i = 0; i < 1000 / sc->ec_polldelay; i++) {
+    for (i = 0; i < 1000 / EC_POLL_DELAY; i++) {
 	EcStatus = EC_GET_CSR(sc);
 	if (EVENT_READY(Event, EcStatus)) {
 	    Status = AE_OK;
 	    break;
 	}
-	AcpiOsStall(sc->ec_polldelay);
+	AcpiOsStall(EC_POLL_DELAY);
     }
-
-    /* Scale poll delay by the amount of time actually waited. */
-    period = i * sc->ec_polldelay;
-    if (period <= 5)
-	sc->ec_polldelay = 1;
-    else if (period <= 20)
-	sc->ec_polldelay = 5;
-    else if (period <= 100)
-	sc->ec_polldelay = 10;
-    else
-	sc->ec_polldelay = 100;
+    period = i * EC_POLL_DELAY;
 
     /*
-     * If we still don't have a response, wait up to ec_poll_timeout ms
-     * for completion, sleeping for chunks of 10 ms.
+     * If we still don't have a response and we're up and running, wait up
+     * to ec_poll_timeout ms for completion, sleeping for chunks of 10 ms.
      */
+    slp_ival = 0;
     if (Status != AE_OK) {
-	retval = -1;
-	for (i = 0; i < ec_poll_timeout / 10; i++) {
+	retval = ENXIO;
+	count = ec_poll_timeout / 10;
+	if (count == 0)
+	    count = 1;
+	slp_ival = hz / 100;
+	if (slp_ival == 0)
+	    slp_ival = 1;
+	for (i = 0; i < count; i++) {
 	    if (retval != 0)
 		EcStatus = EC_GET_CSR(sc);
 	    else
@@ -865,12 +856,15 @@ EcWaitEvent(struct acpi_ec_softc *sc, EC_EVENT Event)
 		Status = AE_OK;
 		break;
 	    }
-	    retval = tsleep(&sc->ec_csrvalue, 0, "ecpoll", 1 + hz / 100);
+	    if (!cold)
+		retval = tsleep(&sc->ec_csrvalue, 0, "ecpoll", slp_ival);
+	    else
+		AcpiOsStall(10000);
 	}
     }
 
     /* Calculate new delay and print it if it exceeds the max. */
-    if (period == 1000)
+    if (slp_ival > 0)
 	period += i * 10000;
     if (period > EcDbgMaxDelay) {
 	EcDbgMaxDelay = period;
