@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.10 2004/11/24 07:19:14 dillon Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.11 2004/11/30 15:04:56 joerg Exp $
  */
 
 /*-
@@ -802,7 +802,7 @@ error:
 
 		    if (condExpr[arglen] != '\0') {
 			val = Var_Parse(&condExpr[arglen - 1], VAR_CMD,
-					doEval, &length, &doFree);
+					FALSE, &length, &doFree);
 			if (val == var_Error) {
 			    t = Err;
 			} else {

@@ -35,7 +35,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.10 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.7 2004/11/12 22:57:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.8 2004/11/30 15:04:56 joerg Exp $
  */
 
 /*-
@@ -171,7 +171,7 @@ For_Eval (char *line)
 	 */
 	forLst = Lst_Init(FALSE);
 	buf = Buf_Init(0);
-	sub = Var_Subst(NULL, ptr, VAR_GLOBAL, FALSE);
+	sub = Var_Subst(NULL, ptr, VAR_CMD, FALSE);
 
 #define	ADDWORD() \
 	Buf_AddBytes(buf, ptr - wrd, (Byte *) wrd), \
