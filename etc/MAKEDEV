@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.13 2004/09/23 14:30:16 simokawa Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.14 2004/10/15 02:38:35 dillon Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -311,9 +311,10 @@ case $i in
 all)
 	sh MAKEDEV std					# standard
 	sh MAKEDEV fd0 fd1				# bdev, floppy disk
-	sh MAKEDEV da0 da1 da2 da3 			# bdev, SCSI disk
+	sh MAKEDEV da0 da1 da2 da3 da4 da5 da6 da7	# bdev, SCSI disk
+	sh MAKEDEV da8 da9 da10 da11 da12 da13 da14 da15# bdev, SCSI disk
 	sh MAKEDEV ata					# cdev, ATA control
-	sh MAKEDEV ad0 ad1 ad2 ad3 			# bdev, ATA disk
+	sh MAKEDEV ad0 ad1 ad2 ad3 ad4 ad5 ad6 ad7	# bdev, ATA disk
 	sh MAKEDEV ar0 ar1				# bdev, ATA RAID disk
 	sh MAKEDEV acd0 afd0 ast0			# bdev, ATAPI devices
 	sh MAKEDEV wd0 wd1 wd2 wd3			# bdev, OLD disk
