@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.16 2004/09/15 20:05:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.17 2005/02/18 23:25:38 joerg Exp $
  */
 
 /*
@@ -124,6 +124,7 @@ iomem and and with 0xffff.
 
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_types.h>
 #include <net/if_dl.h>
 
@@ -820,7 +821,8 @@ ieattach(struct isa_device *dvp)
 	ifp->if_type = IFT_ETHER;
 	ifp->if_addrlen = 6;
 	ifp->if_hdrlen = 14;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	if (ie->hard_type == IE_EE16)
 		EVENTHANDLER_REGISTER(shutdown_post_sync, ee16_shutdown,
@@ -1422,8 +1424,8 @@ iestart(struct ifnet *ifp)
 		return;
 
 	do {
-		IF_DEQUEUE(&ie->arpcom.ac_if.if_snd, m);
-		if (!m)
+		m = ifq_dequeue(&ie->arpcom.ac_if.if_snd);
+		if (m == NULL)
 			break;
 
 		buffer = ie->xmit_cbuffs[ie->xmit_count];
