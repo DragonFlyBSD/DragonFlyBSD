@@ -42,7 +42,7 @@
  *	@(#)subr_autoconf.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/kern/subr_autoconf.c,v 1.14 1999/10/05 21:19:41 n_hibma Exp $
- * $DragonFly: src/sys/kern/subr_autoconf.c,v 1.6 2005/02/04 02:55:37 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_autoconf.c,v 1.7 2005/02/07 23:32:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -80,7 +80,7 @@ run_interrupt_driven_config_hooks(void *dummy)
 
 	waiting = 0;
 	while (!TAILQ_EMPTY(&intr_config_hook_list)) {
-		if (waiting) {
+		if (waiting >= 20) {
 			crit_enter();
 			printf("**WARNING** waiting for the following device to finish configuring:\n");
 			TAILQ_FOREACH(hook_entry, &intr_config_hook_list, ich_links) {
