@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.31 2005/03/10 21:10:48 hsu Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.32 2005/03/11 00:28:23 hmp Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -71,11 +71,6 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 (commit access)</td>
 </tr>
 
-<tr><td valign="top">Jeffrey Hsu </td>
-<td valign="top">Multithreading the network stack, RFC compliance
-(commit access)</td>
-</tr>
-
 <tr><td valign="top"><a href="mailto:virtus 'at' wanadoo 'dot' nl">Douwe Kiela</a></td>
 <td valign="top">Code cleanness and standards conformation
 </td>
@@ -141,7 +136,7 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 </td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:qhwt+dfly 'at' les 'dot' ath 'dot' cx">YONETANI Tomokazu></a></td>
+<tr><td valign="top"><a href="mailto:qhwt+dfly 'at' les 'dot' ath 'dot' cx">YONETANI Tomokazu</a></td>
 <td valign="top">multi-talented kernel hacker, ACPI, device drivers, RAID (commit access)
 </td>
 </tr>
