@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.8 2004/10/27 02:51:41 dillon Exp $
+$DragonFly: src/UPDATING,v 1.9 2004/11/12 19:45:36 joerg Exp $
 
 Updating Information for DragonFly users.
 
@@ -17,12 +17,16 @@ The following users may be missing from your password file.  Use vipw and
 add any that are missing:
 
 smmsp:*:25:25::0:0:Sendmail Submission User:/var/spool/clientmqueue:/sbin/nologin
+_pflogd:*:64:64::0:0:pflogd privsep user:/var/empty:/sbin/nologin
+_ntp:*:65:65::0:0:ntpd privsep user:/var/empty:/sbin/nologin
 
 The following groups may be missing from your group file.  Use vi /etc/group
 and add any that are missing:
 
 smmsp:*:25:
 authpf:*:63:
+_pflogd:*:64:
+_ntp:*:65:
 
 
 > Upgrading to DragonFly from FreeBSD
