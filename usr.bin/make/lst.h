@@ -37,7 +37,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.9 1999/08/28 01:03:32 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.4 2003/11/06 19:09:46 eirikn Exp $
  */
 
 /*-
@@ -120,11 +120,11 @@ ClientData	Lst_Datum(LstNode);
  * Functions for entire lists
  */
 /* Find an element in a list */
-LstNode		Lst_Find __P((Lst, ClientData,
-			      int (*)(ClientData, ClientData)));
+LstNode		Lst_Find(Lst, ClientData,
+			      int (*)(ClientData, ClientData));
 /* Find an element starting from somewhere */
-LstNode		Lst_FindFrom __P((Lst, LstNode, ClientData,
-				  int (*cProc)(ClientData, ClientData)));
+LstNode		Lst_FindFrom(Lst, LstNode, ClientData,
+				  int (*cProc)(ClientData, ClientData));
 /*
  * See if the given datum is on the list. Returns the LstNode containing
  * the datum

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/extern.h,v 1.10.2.3 2002/08/27 09:55:08 yar Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/extern.h,v 1.3 2003/11/03 19:31:29 eirikn Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/extern.h,v 1.4 2003/11/06 19:09:46 eirikn Exp $	*/
 /*	$NetBSD: extern.h,v 1.17.2.1 1997/11/18 00:59:50 mellon Exp $	*/
 
 /*-
@@ -111,8 +111,8 @@ void	pwd(int, char **);
 void	quit(int, char **);
 void	quote(int, char **);
 void	quote1(const char *, int, char **);
-void    recvrequest __P((const char *, const char *, const char *,
-	    const char *, int, int));
+void    recvrequest(const char *, const char *, const char *,
+	    const char *, int, int);
 void	reget(int, char **);
 char   *remglob(char **, int, char **);
 off_t	remotesize(const char *, int);

@@ -33,7 +33,7 @@
  *
  * @(#)gram.y	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/gram.y,v 1.6 1999/08/28 01:05:07 peter Exp $
- * $DragonFly: src/usr.bin/rdist/gram.y,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/rdist/gram.y,v 1.3 2003/11/06 19:09:46 eirikn Exp $
  */
 
 #include "defs.h"
@@ -46,7 +46,7 @@ struct	cmd *last_cmd;
 struct	namelist *last_n;
 struct	subcmd *last_sc;
 
-static char  *makestr __P((char *));
+static char  *makestr(char *);
 
 %}
 

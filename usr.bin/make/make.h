@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.12.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.4 2003/11/06 19:09:46 eirikn Exp $
  */
 
 /*-
@@ -57,13 +57,6 @@
 #if !defined(MAKE_BOOTSTRAP) && defined(BSD4_4)
 # include <sys/cdefs.h>
 #else
-# ifndef __P
-#  if defined(__STDC__) || defined(__cplusplus)
-#   define	__P(protos)	protos		/* full-blown ANSI C */
-#  else
-#   define	__P(protos)	()		/* traditional C preprocessor */
-#  endif
-# endif
 # ifndef __STDC__
 #  ifndef const
 #   define const

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)defs.h	8.1 (Berkeley) 6/9/93
- * $DragonFly: src/usr.bin/rdist/defs.h,v 1.3 2003/11/03 19:31:31 eirikn Exp $
+ * $DragonFly: src/usr.bin/rdist/defs.h,v 1.4 2003/11/06 19:09:46 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -174,8 +174,8 @@ struct namelist *
 char	*exptilde(char [], char *, int);
 void	 fatal(const char *, ...);
 int	 inlist(struct namelist *, char *);
-void	 insert __P((char *,
-	    struct namelist *, struct namelist *, struct subcmd *));
+void	 insert(char *,
+	    struct namelist *, struct namelist *, struct subcmd *);
 void	 install(char *, char *, int, int);
 void	 log(FILE *, const char *, ...);
 struct namelist *
