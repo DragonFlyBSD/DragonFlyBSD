@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/setrunelocale.c,v 1.14.6.4 2002/10/24 11:00:52 tjr Exp $
- * $DragonFly: src/lib/libc/locale/setrunelocale.c,v 1.3 2003/12/01 23:29:25 drhodus Exp $
+ * $DragonFly: src/lib/libc/locale/setrunelocale.c,v 1.4 2003/12/01 23:38:23 drhodus Exp $
  */
 
 #include <rune.h>
@@ -51,6 +51,7 @@ extern int		_UTF2_init(_RuneLocale *);
 extern int		_UTF8_init(_RuneLocale *);
 extern int		_EUC_init(_RuneLocale *);
 extern int		_GB18030_init(_RuneLocale *);
+extern int		_GBK_init(_RuneLocale *);
 extern int		_BIG5_init(_RuneLocale *);
 extern int		_MSKanji_init(_RuneLocale *);
 extern _RuneLocale      *_Read_RuneMagi(FILE *);
@@ -138,6 +139,8 @@ setrunelocale(char *encoding)
 		ret = _EUC_init(rl);
 	else if (strcmp(rl->encoding, "GB18030") == 0)
 		ret = _GB18030_init(rl);
+	else if (strcmp(rl->encoding, "GBK") == 0)
+		ret = _GBK_init(rl);
 	else if (strcmp(rl->encoding, "BIG5") == 0)
 		ret = _BIG5_init(rl);
 	else if (strcmp(rl->encoding, "MSKanji") == 0)
