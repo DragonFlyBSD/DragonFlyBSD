@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/imgact_resident.c,v 1.1 2004/01/20 18:41:51 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_resident.c,v 1.2 2004/01/20 21:03:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -108,6 +108,10 @@ exec_sys_register(struct exec_sys_register_args *uap)
 
 /*
  * exec_sys_unregister(id)
+ *
+ *	Unregister the specified id.  If an id of -1 is used unregister
+ *	the registration associated with the current process.  An id of -2
+ *	unregisters everything.
  */
 int
 exec_sys_unregister(struct exec_sys_unregister_args *uap)
@@ -116,6 +120,7 @@ exec_sys_unregister(struct exec_sys_unregister_args *uap)
     struct proc *p;
     int error;
     int id;
+    int count;
 
     p = curproc;
     if ((error = suser(p->p_thread)) != 0)
@@ -131,8 +136,10 @@ exec_sys_unregister(struct exec_sys_unregister_args *uap)
      * Look for the registration
      */
     error = ENOENT;
+    count = 0;
+restart:
     TAILQ_FOREACH(vmres, &exec_res_list, vr_link) {
-	if (vmres->vr_id == id) {
+	if (id == -2 || vmres->vr_id == id) {
 	    TAILQ_REMOVE(&exec_res_list, vmres, vr_link);
 	    if (vmres->vr_vnode) {
 		vmres->vr_vnode->v_resident = NULL;
@@ -145,9 +152,12 @@ exec_sys_unregister(struct exec_sys_unregister_args *uap)
 	    }
 	    free(vmres, M_EXEC_RES);
 	    error = 0;
-	    break;
+	    ++count;
+	    goto restart;
 	}
     }
+    if (error == 0)
+	uap->sysmsg_result = count;
     return(error);
 }
 
