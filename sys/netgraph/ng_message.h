@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_message.h,v 1.4.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/ng_message.h,v 1.2 2003/06/17 04:28:50 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ng_message.h,v 1.3 2005/02/03 20:48:08 joerg Exp $
  * $Whistle: ng_message.h,v 1.12 1999/01/25 01:17:44 archie Exp $
  */
 
@@ -290,10 +290,9 @@ struct typelist {
 #define NG_MKRESPONSE(rsp, msg, len, how)				\
 	do {								\
 	  MALLOC((rsp), struct ng_mesg *, sizeof(struct ng_mesg)	\
-	    + (len), M_NETGRAPH, (how));				\
+	    + (len), M_NETGRAPH, (how) | M_ZERO);			\
 	  if ((rsp) == NULL)						\
 	    break;							\
-	  bzero((rsp), sizeof(struct ng_mesg) + (len));			\
 	  (rsp)->header.version = NG_VERSION;				\
 	  (rsp)->header.arglen = (len);					\
 	  (rsp)->header.token = (msg)->header.token;			\
