@@ -1,5 +1,5 @@
-/* $FreeBSD: src/sys/kern/sysv_sem.c,v 1.24.2.8 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.12 2003/08/26 21:09:02 rob Exp $ */
+/* $FreeBSD: src/sys/kern/sysv_sem.c,v 1.69 2004/03/17 09:37:13 cperciva Exp $ */
+/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.13 2004/03/19 18:00:25 hmp Exp $ */
 
 /*
  * Implementation of SVID semaphores
@@ -810,11 +810,7 @@ semop(struct semop_args *uap)
 
 		suptr = NULL;	/* sem_undo may have been reallocated */
 
-		if (eval != 0)
-			return(EINTR);
-#ifdef SEM_DEBUG
-		printf("semop:  good morning!\n");
-#endif
+		/* return code is checked below, after sem[nz]cnt-- */
 
 		/*
 		 * Make sure that the semaphore still exists
@@ -831,6 +827,17 @@ semop(struct semop_args *uap)
 			semptr->semzcnt--;
 		else
 			semptr->semncnt--;
+
+		/*
+		 * Is it really morning, or was our sleep interrupted?
+		 * (Delayed check of msleep() return code because we
+		 * need to decrement sem[nz]cnt either way.)
+		 */
+		if (eval != 0)
+			return(EINTR);
+#ifdef SEM_DEBUG
+		printf("semop:  good morning!\n");
+#endif
 	}
 
 done:
