@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/stdbool.h,v 1.4.2.2 2002/06/19 06:05:26 obrien Exp $
- * $DragonFly: src/include/stdbool.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/stdbool.h,v 1.3 2005/02/03 17:40:15 joerg Exp $
  */
 
 #ifndef _STDBOOL_H_
@@ -34,11 +34,13 @@
 
 #ifndef __cplusplus
 
+#include <sys/cdefs.h>
+
 #define	false	0
 #define	true	1
 
 #define	bool	_Bool
-#if __STDC_VERSION__ < 199901L
+#if __STDC_VERSION__ < 199901L && !__GNUC_PREREQ__(3, 0)
 typedef	int	_Bool;
 #endif
 
