@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.4 2003/07/06 21:23:56 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.5 2003/07/28 04:41:37 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -453,7 +453,7 @@ sysctl_vm_zone(SYSCTL_HANDLER_ARGS)
 	return (0);
 }
 
-#ifdef INVARIANT_SUPPORT
+#if defined(INVARIANTS) && defined(INVARIANT_SUPPORT)
 void
 zerror(int error)
 {
