@@ -18,12 +18,19 @@
 
 			    AUTOMATIC INSTALLATION
 
-    There are currently two installation tools available.  We haven't quite
-    finished the USB/floppy key'd headless installation but what is available
-    is the installer (login as 'installer') and rconfig. 
+    There are currently two installation tools available - the installer, and
+    rconfig.
 
-    The installer can be run from the serial console or a VTY and provides
-    a straightforward UI to install DragonFly on your HD.
+    The installer can be run with a text-based (curses) user interface
+    from the serial console or a VTY, and provides a straightforward method
+    for installing DragonFly on your HD.  To start it, just login with the
+    username 'installer'.
+
+    The installer can also be run with a web-based (CGI) user interface.
+    To set this up manually is a bit of work, but much of it can be automated
+    by writing a couple of lines into a configuration file on a floppy disk
+    or USB pendrive, and inserting or attaching that to the computer before
+    booting the CDROM.  See the file /etc/defaults/pfi.conf for more info.
 
     rconfig is a client/server protocol which requires a server (typically on
     the same network).  An example server setup can be found in
@@ -319,5 +326,5 @@
     what they are, simply cat /mnt/etc/fstab after mounting the root
     partition.
 
-$DragonFly: src/nrelease/root/README,v 1.17 2004/11/11 19:45:19 cpressey Exp $
+$DragonFly: src/nrelease/root/README,v 1.18 2005/03/21 04:07:13 cpressey Exp $
 
