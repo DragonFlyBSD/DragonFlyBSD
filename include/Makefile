@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.7 2003/08/14 23:05:11 dillon Exp $
+# $DragonFly: src/include/Makefile,v 1.8 2003/08/30 15:21:57 asmodai Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -16,7 +16,8 @@ INCS=	a.out.h ar.h assert.h bitstring.h complex.h ctype.h db.h \
 	langinfo.h libgen.h limits.h link.h locale.h malloc.h memory.h \
 	mpool.h ndbm.h netdb.h nl_types.h nlist.h objformat.h \
 	paths.h pthread.h pthread_np.h pwd.h \
-	ranlib.h readpassphrase.h regex.h regexp.h resolv.h rune.h runetype.h \
+	ranlib.h readpassphrase.h regex.h regexp.h resolv.h rmd160.h rune.h \
+	runetype.h \
 	search.h setjmp.h sgtty.h \
 	signal.h stab.h stdbool.h stddef.h stdio.h stdlib.h \
 	string.h stringlist.h strings.h struct.h sysexits.h tar.h time.h \
