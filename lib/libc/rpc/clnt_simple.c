@@ -29,7 +29,7 @@
  * @(#)clnt_simple.c 1.35 87/08/11 Copyr 1984 Sun Micro
  * @(#)clnt_simple.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/clnt_simple.c,v 1.12 2000/01/27 23:06:35 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/clnt_simple.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/clnt_simple.c,v 1.4 2005/01/31 22:29:38 dillon Exp $
  */
 
 /*
@@ -39,6 +39,7 @@
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,6 +48,7 @@
 #include <rpc/rpc.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include "un-namespace.h"
 
 static struct callrpc_private {
 	CLIENT	*client;

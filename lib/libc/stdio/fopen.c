@@ -34,16 +34,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/fopen.c,v 1.3.2.1 2001/03/05 10:53:51 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/fopen.c,v 1.3 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fopen.c,v 1.4 2005/01/31 22:29:40 dillon Exp $
  *
  * @(#)fopen.c	8.1 (Berkeley) 6/4/93
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <errno.h>
+#include "un-namespace.h"
 
 #include "local.h"
 
@@ -69,6 +71,7 @@ fopen(const char *file, const char *mode)
 	fp->_write = __swrite;
 	fp->_seek = __sseek;
 	fp->_close = __sclose;
+	/* fp->_lock = NULL; */
 	/*
 	 * When opening in append mode, even though we use O_APPEND,
 	 * we need to seek to the end so that ftell() gets the right

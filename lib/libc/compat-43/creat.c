@@ -31,12 +31,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/compat-43/creat.c,v 1.4.2.2 2001/03/05 07:28:35 obrien Exp $
- * $DragonFly: src/lib/libc/compat-43/creat.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/libc/compat-43/creat.c,v 1.3 2005/01/31 22:29:03 dillon Exp $
  *
  * @(#)creat.c	8.1 (Berkeley) 6/2/93
  */
 
+#include "namespace.h"
 #include <fcntl.h>
+#include "un-namespace.h"
 
 int
 __creat(const char *path, mode_t mode)
@@ -44,6 +46,6 @@ __creat(const char *path, mode_t mode)
 	return(_open(path, O_WRONLY|O_CREAT|O_TRUNC, mode));
 }
 
-#ifndef _THREAD_SAFE
 __weak_reference(__creat, creat);
-#endif
+__weak_reference(__creat, _creat);
+

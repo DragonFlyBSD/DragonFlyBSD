@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/gethostnamadr.c,v 1.15.2.2 2001/03/05 10:40:42 obrien Exp $
- * $DragonFly: src/lib/libc/net/gethostnamadr.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/net/gethostnamadr.c,v 1.4 2005/01/31 22:29:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -188,7 +188,6 @@ gethostbyaddr(const char *addr, int len, int type)
 	return hp;
 }
 
-#ifdef _THREAD_SAFE
 struct hostent_data;
 
 /*
@@ -207,7 +206,6 @@ int gethostbyaddr_r(const char *addr, int len, int type,
 	}
 	return(ret);
 }
-#endif
 
 void
 sethostent(stayopen)

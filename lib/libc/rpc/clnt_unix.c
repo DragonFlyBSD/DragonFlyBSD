@@ -29,7 +29,7 @@
  * @(#)clnt_unix.c 1.37 87/10/05 Copyr 1984 Sun Micro
  * @(#)clnt_unix.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/clnt_unix.c,v 1.5 2000/01/27 23:06:37 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/clnt_unix.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/clnt_unix.c,v 1.4 2005/01/31 22:29:38 dillon Exp $
  */
 
 /*
@@ -51,6 +51,7 @@
  * Now go hang yourself.
  */
 
+#include "namespace.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -62,6 +63,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include <rpc/pmap_clnt.h>
+#include "un-namespace.h"
 
 #define MCALL_MSG_SIZE 24
 
@@ -148,12 +150,12 @@ clntunix_create(raddr, prog, vers, sockp, sendsz, recvsz)
 	 * If no socket given, open one
 	 */
 	if (*sockp < 0) {
-		*sockp = socket(AF_UNIX, SOCK_STREAM, 0);
+		*sockp = _socket(AF_UNIX, SOCK_STREAM, 0);
 		len = strlen(raddr->sun_path) + sizeof(raddr->sun_family) +
 			sizeof(raddr->sun_len) + 1;
 		raddr->sun_len = len;
 		if ((*sockp < 0)
-		    || (connect(*sockp, (struct sockaddr *)raddr, len) < 0)) {
+		    || (_connect(*sockp, (struct sockaddr *)raddr, len) < 0)) {
 			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
 			rpc_createerr.cf_error.re_errno = errno;
 			if (*sockp != -1)
@@ -440,7 +442,7 @@ clntunix_control(cl, request, info)
 		break;
 	case CLGET_LOCAL_ADDR:
 		len = sizeof(struct sockaddr);
-		if (getsockname(ct->ct_sock, (struct sockaddr *)info, &len) <0)
+		if (_getsockname(ct->ct_sock, (struct sockaddr *)info, &len) <0)
 			return(FALSE);
 		break;
 	case CLGET_RETRY_TIMEOUT:
@@ -472,7 +474,7 @@ clntunix_destroy(h)
 }
 
 /*
- * read() and write() are replaced with recvmsg()/sendmsg() so that
+ * _read() and _write() are replaced with _recvmsg()/_sendmsg() so that
  * we can pass ancillary control data. In this case, the data constists
  * of credential information which the kernel will fill in for us.
  * XXX: This code is specific to FreeBSD and will not work on other
@@ -504,7 +506,7 @@ static int __msgread(sock, buf, cnt)
 	msg.msg_controllen = sizeof(struct cmessage);
 	msg.msg_flags = 0;
 
-	return(recvmsg(sock, &msg, 0));
+	return(_recvmsg(sock, &msg, 0));
 }
 
 static int __msgwrite(sock, buf, cnt)
@@ -532,7 +534,7 @@ static int __msgwrite(sock, buf, cnt)
 	msg.msg_controllen = sizeof(struct cmessage);
 	msg.msg_flags = 0;
 
-	return(sendmsg(sock, &msg, 0));
+	return(_sendmsg(sock, &msg, 0));
 }
 
 /*
@@ -570,7 +572,7 @@ readunix(ct, buf, len)
 		/* XXX we know the other bits are still clear */
 		FD_SET(ct->ct_sock, fds);
 		tv = delta;	/* in case select writes back */
-		r = select(ct->ct_sock+1, fds, NULL, NULL, &tv);
+		r = _select(ct->ct_sock+1, fds, NULL, NULL, &tv);
 		save_errno = errno;
 
 		gettimeofday(&after, NULL);

@@ -35,16 +35,13 @@
  *
  * @(#)getc.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/getc.c,v 1.7.2.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/getc.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/getc.c,v 1.3 2005/01/31 22:29:40 dillon Exp $
  */
 
+#include "namespace.h"
 #include <stdio.h>
+#include "un-namespace.h"
 #include "libc_private.h"
-
-/*
- * A subroutine version of the macro getc.
- */
-#undef getc
 
 int
 getc(FILE *fp)

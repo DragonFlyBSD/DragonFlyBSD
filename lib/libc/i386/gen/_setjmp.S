@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/gen/_setjmp.S,v 1.12 2000/01/20 21:58:26 jasone Exp $
- * $DragonFly: src/lib/libc/i386/gen/_setjmp.S,v 1.3 2003/12/06 03:11:35 drhodus Exp $
+ * $DragonFly: src/lib/libc/i386/gen/_setjmp.S,v 1.4 2005/01/31 22:29:24 dillon Exp $
  */
 
 /*
@@ -62,12 +62,9 @@ ENTRY(_setjmp)
 	xorl	%eax,%eax
 	ret
 
-#ifdef _THREAD_SAFE
+	.weak	CNAME(_longjmp)
+	.set	CNAME(_longjmp),CNAME(___longjmp)
 ENTRY(___longjmp)
-#else
-ALTENTRY(___longjmp)
-ENTRY(_longjmp)
-#endif
 	movl	4(%esp),%edx
 	movl	8(%esp),%eax
 	movl	0(%edx),%ecx

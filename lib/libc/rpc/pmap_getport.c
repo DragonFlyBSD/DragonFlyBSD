@@ -29,7 +29,7 @@
  * @(#)pmap_getport.c 1.9 87/08/11 Copyr 1984 Sun Micro
  * @(#)pmap_getport.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/pmap_getport.c,v 1.10 2000/01/27 23:06:40 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/pmap_getport.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/pmap_getport.c,v 1.5 2005/01/31 22:29:38 dillon Exp $
  */
 
 /*
@@ -39,12 +39,14 @@
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
+#include "namespace.h"
 #include <rpc/rpc.h>
 #include <rpc/pmap_prot.h>
 #include <rpc/pmap_clnt.h>
 #include <sys/socket.h>
 #include <net/if.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 static struct timeval timeout = { 5, 0 };
 static struct timeval tottimeout = { 60, 0 };

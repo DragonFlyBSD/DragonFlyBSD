@@ -32,9 +32,10 @@
  *
  * @(#)rec_close.c	8.6 (Berkeley) 8/18/94
  * $FreeBSD: src/lib/libc/db/recno/rec_close.c,v 1.4 2000/01/27 23:06:11 jasone Exp $
- * $DragonFly: src/lib/libc/db/recno/rec_close.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/db/recno/rec_close.c,v 1.3 2005/01/31 22:29:13 dillon Exp $
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <sys/mman.h>
@@ -43,6 +44,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 #include <db.h>
 #include "recno.h"
@@ -163,7 +165,7 @@ __rec_sync(dbp, flags)
 		while (status == RET_SUCCESS) {
 			iov[0].iov_base = data.data;
 			iov[0].iov_len = data.size;
-			if (writev(t->bt_rfd, iov, 2) != data.size + 1)
+			if (_writev(t->bt_rfd, iov, 2) != data.size + 1)
 				return (RET_ERROR);
 			status = (dbp->seq)(dbp, &key, &data, R_NEXT);
 		}

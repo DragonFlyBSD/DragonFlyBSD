@@ -31,7 +31,7 @@ up-to-date.  Many thanks.
 ******************************************************************/
 /*
  * $FreeBSD: src/lib/libc/nls/msgcat.c,v 1.21.2.6 2002/08/12 11:23:54 ache Exp $
- * $DragonFly: src/lib/libc/nls/Attic/msgcat.c,v 1.3 2003/08/22 19:31:21 asmodai Exp $
+ * $DragonFly: src/lib/libc/nls/Attic/msgcat.c,v 1.4 2005/01/31 22:29:36 dillon Exp $
  */
 
 /*
@@ -39,6 +39,7 @@ up-to-date.  Many thanks.
  * to add an error handling routine.
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/syslimits.h>
@@ -50,6 +51,7 @@ up-to-date.  Many thanks.
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 #include "msgcat.h"
 #include "../locale/setlocale.h"        /* for ENCODING_LEN */

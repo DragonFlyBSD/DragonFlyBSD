@@ -31,12 +31,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/fstab.c,v 1.8 2000/01/27 23:06:15 jasone Exp $
- * $DragonFly: src/lib/libc/gen/fstab.c,v 1.4 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/fstab.c,v 1.5 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)fstab.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/fstab.c,v 1.8 2000/01/27 23:06:15 jasone Exp $
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -48,6 +49,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 static FILE *_fs_fp;
 static struct fstab _fs_fstab;

@@ -32,13 +32,13 @@
  *
  * @(#)getpwent.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/lib/libc/gen/getpwent.c,v 1.53.2.2 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/getpwent.c,v 1.4 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/getpwent.c,v 1.5 2005/01/31 22:29:15 dillon Exp $
  */
 
+#include "namespace.h"
 #include <stdio.h>
 #include <sys/param.h>
 #include <fcntl.h>
-#include <db.h>
 #include <syslog.h>
 #include <pwd.h>
 #include <utmp.h>
@@ -48,6 +48,9 @@
 #include <string.h>
 #include <limits.h>
 #include <grp.h>
+#include "un-namespace.h"
+
+#include <db.h>
 
 extern void setnetgrent ( char * );
 extern int getnetgrent ( char **, char **, char ** );

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/psignal.c,v 1.5 2000/01/27 23:06:19 jasone Exp $
- * $DragonFly: src/lib/libc/gen/psignal.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/psignal.c,v 1.4 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)psignal.c	8.1 (Berkeley) 6/4/93
  */
@@ -40,9 +40,11 @@
  * Print the name of the signal indicated
  * along with the supplied message.
  */
+#include "namespace.h"
 #include <signal.h>
 #include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 void
 psignal(sig, s)

@@ -34,11 +34,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/btree/bt_close.c,v 1.5 2000/01/27 23:06:05 jasone Exp $
- * $DragonFly: src/lib/libc/db/btree/bt_close.c,v 1.3 2003/11/12 20:21:22 eirikn Exp $
+ * $DragonFly: src/lib/libc/db/btree/bt_close.c,v 1.4 2005/01/31 22:29:07 dillon Exp $
  *
  * @(#)bt_close.c	8.7 (Berkeley) 8/17/94
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 
 #include <errno.h>
@@ -46,6 +47,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 #include <db.h>
 #include "btree.h"
@@ -62,8 +64,7 @@ static int bt_meta (BTREE *);
  *	RET_ERROR, RET_SUCCESS
  */
 int
-__bt_close(dbp)
-	DB *dbp;
+__bt_close(DB *dbp)
 {
 	BTREE *t;
 	int fd;
@@ -117,9 +118,7 @@ __bt_close(dbp)
  *	RET_SUCCESS, RET_ERROR.
  */
 int
-__bt_sync(dbp, flags)
-	const DB *dbp;
-	u_int flags;
+__bt_sync(const DB *dbp, u_int flags)
 {
 	BTREE *t;
 	int status;
@@ -160,8 +159,7 @@ __bt_sync(dbp, flags)
  *	RET_ERROR, RET_SUCCESS
  */
 static int
-bt_meta(t)
-	BTREE *t;
+bt_meta(BTREE *t)
 {
 	BTMETA m;
 	void *p;

@@ -30,22 +30,24 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/_flock_stub.c,v 1.3 1999/08/28 00:00:55 peter Exp $
- * $DragonFly: src/lib/libc/stdio/_flock_stub.c,v 1.3 2004/01/23 11:30:27 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/_flock_stub.c,v 1.4 2005/01/31 22:29:40 dillon Exp $
  *
  */
 
 #include <stdio.h>
 
 /* Don't build this in libc_r, just libc: */
-#ifndef	_THREAD_SAFE
 /*
  * Declare weak references in case the application is not linked
  * with libpthread.
  */
 #pragma weak flockfile=_flockfile_stub
+#pragma weak _flockfile=_flockfile_stub
 #pragma weak _flockfile_debug=_flockfile_debug_stub
 #pragma weak ftrylockfile=_ftrylockfile_stub
+#pragma weak _ftrylockfile=_ftrylockfile_stub
 #pragma weak funlockfile=_funlockfile_stub
+#pragma weak _funlockfile=_funlockfile_stub
 
 void	flockfile(FILE *);
 void	_flockfile_debug(FILE *, char *, int);
@@ -84,4 +86,3 @@ void
 _funlockfile_stub(FILE *fp)
 {
 }
-#endif

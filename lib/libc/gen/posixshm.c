@@ -27,9 +27,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/posixshm.c,v 1.2.2.1 2000/08/22 01:48:12 jhb Exp $
- * $DragonFly: src/lib/libc/gen/posixshm.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/posixshm.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/fcntl.h>
 #include <sys/mman.h>
@@ -37,6 +38,7 @@
 
 #include <errno.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 int
 shm_open(const char *path, int flags, mode_t mode)
@@ -49,7 +51,7 @@ shm_open(const char *path, int flags, mode_t mode)
 
 	fd = _open(path, flags, mode);
 	if (fd != -1) {
-		if (fstat(fd, &stab) != 0 || !S_ISREG(stab.st_mode)) {
+		if (_fstat(fd, &stab) != 0 || !S_ISREG(stab.st_mode)) {
 			_close(fd);
 			errno = EINVAL;
 			return (-1);

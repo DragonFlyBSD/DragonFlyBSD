@@ -31,13 +31,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/exit.c,v 1.3.6.1 2001/03/05 11:33:57 obrien Exp $
- * $DragonFly: src/lib/libc/stdlib/exit.c,v 1.6 2005/01/05 11:51:18 joerg Exp $
+ * $DragonFly: src/lib/libc/stdlib/exit.c,v 1.7 2005/01/31 22:29:42 dillon Exp $
  *
  * @(#)exit.c	8.1 (Berkeley) 6/4/93
  */
 
+#include "namespace.h"
 #include <stdlib.h>
 #include <unistd.h>
+#include "un-namespace.h"
 #include "atexit.h"
 
 void (*__cleanup)();
@@ -58,11 +60,10 @@ void
 exit(status)
 	int status;
 {
-#ifdef	_THREAD_SAFE
-	extern int _thread_autoinit_dummy_decl;
 	/* Ensure that the auto-initialization routine is linked in: */
+	extern int _thread_autoinit_dummy_decl;	
+
 	_thread_autoinit_dummy_decl = 1;
-#endif
 
 	__cxa_finalize(NULL);
 

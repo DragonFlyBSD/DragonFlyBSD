@@ -35,11 +35,13 @@
  *
  * @(#)fread.c	8.2 (Berkeley) 12/11/93
  * $FreeBSD: src/lib/libc/stdio/fread.c,v 1.7 1999/08/28 00:01:04 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fread.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fread.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
  */
 
+#include "namespace.h"
 #include <stdio.h>
 #include <string.h>
+#include "un-namespace.h"
 #include "local.h"
 #include "libc_private.h"
 

@@ -25,10 +25,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdtime/timelocal.c,v 1.8.2.4 2002/08/12 11:20:24 ache Exp $
- * $DragonFly: src/lib/libc/stdtime/timelocal.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdtime/timelocal.c,v 1.3 2005/01/31 22:29:44 dillon Exp $
  */
 
+#include "namespace.h"
 #include <stddef.h>
+#include <unistd.h>
+#include "un-namespace.h"
 
 #include "ldpart.h"
 #include "timelocal.h"

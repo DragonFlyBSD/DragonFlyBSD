@@ -31,23 +31,24 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/wait.c,v 1.3.2.1 2000/03/18 23:13:25 jasone Exp $
- * $DragonFly: src/lib/libc/gen/wait.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/wait.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)wait.c	8.1 (Berkeley) 6/4/93
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <sys/resource.h>
+#include "un-namespace.h"
 
 pid_t
 __wait(istat)
 	int *istat;
 {
-	return (wait4(WAIT_ANY, istat, 0, (struct rusage *)0));
+	return (_wait4(WAIT_ANY, istat, 0, (struct rusage *)0));
 }
 
-#ifndef _THREAD_SAFE
 __weak_reference(__wait, wait);
-#endif
+__weak_reference(__wait, _wait);

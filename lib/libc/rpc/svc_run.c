@@ -29,13 +29,14 @@
  * @(#)svc_run.c 1.1 87/10/13 Copyr 1984 Sun Micro
  * @(#)svc_run.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/svc_run.c,v 1.10 1999/08/28 00:00:49 peter Exp $
- * $DragonFly: src/lib/libc/rpc/svc_run.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/svc_run.c,v 1.3 2005/01/31 22:29:38 dillon Exp $
  */
 
 /*
  * This is the rpc server side idle loop
  * Wait for input, call server program.
  */
+#include "namespace.h"
 #include <rpc/rpc.h>
 #include <stdio.h>
 #include <sys/errno.h>
@@ -44,6 +45,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include "un-namespace.h"
 
 extern int __svc_fdsetsize;
 extern fd_set *__svc_fdset;
@@ -61,7 +63,7 @@ svc_run()
 			memcpy(fds, __svc_fdset, bytes);
 		} else
 			fds = NULL;
-		switch (select(svc_maxfd + 1, fds, NULL, NULL,
+		switch (_select(svc_maxfd + 1, fds, NULL, NULL,
 				(struct timeval *)0)) {
 		case -1:
 			if (errno == EINTR) {
@@ -78,7 +80,7 @@ svc_run()
 				free(fds);
 			continue;
 		default:
-			/* if fds == NULL, select() can't return a result */
+			/* if fds == NULL, _select() can't return a result */
 			svc_getreqset2(fds, svc_maxfd + 1);
 			free(fds);
 		}

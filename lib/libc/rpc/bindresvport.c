@@ -29,7 +29,7 @@
  * @(#)bindresvport.c 1.8 88/02/08 SMI
  * @(#)bindresvport.c	2.2 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/bindresvport.c,v 1.12 2000/01/26 09:02:42 shin Exp $
- * $DragonFly: src/lib/libc/rpc/bindresvport.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/bindresvport.c,v 1.3 2005/01/31 22:29:38 dillon Exp $
  */
 
 /*
@@ -38,12 +38,14 @@
  * Portions Copyright(C) 1996, Jason Downs.  All rights reserved.
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/errno.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <string.h>
+#include "un-namespace.h"
 
 /*
  * Bind a socket to a privileged IP port
@@ -76,7 +78,7 @@ bindresvport_sa(sd, sa)
 		salen = sizeof(myaddr);
 		sa = (struct sockaddr *)&myaddr;
 
-		if (getsockname(sd, sa, &salen) == -1)
+		if (_getsockname(sd, sa, &salen) == -1)
 			return -1;	/* errno is correctly set */
 
 		af = sa->sa_family;
@@ -108,7 +110,7 @@ bindresvport_sa(sd, sa)
 	if (port == 0) {
 		int oldlen = sizeof(old);
 
-		error = getsockopt(sd, proto, portrange, &old, &oldlen);
+		error = _getsockopt(sd, proto, portrange, &old, &oldlen);
 		if (error < 0)
 			return (error);
 
@@ -118,13 +120,13 @@ bindresvport_sa(sd, sa)
 			return (error);
 	}
 
-	error = bind(sd, sa, salen);
+	error = _bind(sd, sa, salen);
 
 	if (port == 0) {
 		int saved_errno = errno;
 
 		if (error) {
-			if (setsockopt(sd, proto, portrange, &old,
+			if (_setsockopt(sd, proto, portrange, &old,
 			    sizeof(old)) < 0)
 				errno = saved_errno;
 			return (error);
@@ -132,7 +134,7 @@ bindresvport_sa(sd, sa)
 
 		if (sa != (struct sockaddr *)&myaddr) {
 			/* Hmm, what did the kernel assign... */
-			if (getsockname(sd, sa, &salen) < 0)
+			if (_getsockname(sd, sa, &salen) < 0)
 				errno = saved_errno;
 			return (error);
 		}

@@ -35,9 +35,10 @@
  *
  * @(#)setmode.c	8.2 (Berkeley) 3/25/94
  * $FreeBSD: src/lib/libc/gen/setmode.c,v 1.5.2.1 2001/03/05 09:34:10 obrien Exp $
- * $DragonFly: src/lib/libc/gen/setmode.c,v 1.4 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/setmode.c,v 1.5 2005/01/31 22:29:15 dillon Exp $
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -49,6 +50,7 @@
 #ifdef SETMODE_DEBUG
 #include <stdio.h>
 #endif
+#include "un-namespace.h"
 
 #define	SET_LEN	6		/* initial # of bitcmd struct to malloc */
 #define	SET_LEN_INCR 4		/* # of bitcmd structs to add as needed */
@@ -183,10 +185,10 @@ setmode(p)
 	 * as best we can.
 	 */
 	sigfillset(&sigset);
-        (void)sigprocmask(SIG_BLOCK, &sigset, &sigoset);
+        (void)_sigprocmask(SIG_BLOCK, &sigset, &sigoset);
 	(void)umask(mask = umask(0));
 	mask = ~mask;
-        (void)sigprocmask(SIG_SETMASK, &sigoset, NULL);
+        (void)_sigprocmask(SIG_SETMASK, &sigoset, NULL);
 
 	setlen = SET_LEN + 2;
 

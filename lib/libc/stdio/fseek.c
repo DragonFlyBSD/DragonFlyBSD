@@ -35,15 +35,17 @@
  *
  * @(#)fseek.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/lib/libc/stdio/fseek.c,v 1.9.2.1 2001/03/05 10:56:58 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/fseek.c,v 1.5 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fseek.c,v 1.6 2005/01/31 22:29:40 dillon Exp $
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include "un-namespace.h"
 #include "local.h"
 #include "libc_private.h"
 
@@ -55,12 +57,30 @@ fseek(FILE *fp, long offset, int whence)
 	return (fseeko(fp, offset, whence));
 }
 
+int
+fseeko(fp, offset, whence)
+	FILE *fp;
+	off_t offset;
+	int whence;
+{
+	int ret;
+
+	/* make sure stdio is set up */
+	if (!__sdidinit)
+		__sinit();
+
+	FLOCKFILE(fp);
+	ret = _fseeko(fp, offset, whence);
+	FUNLOCKFILE(fp);
+	return (ret);
+}
+
 /*
  * Seek the given file to the given offset.
  * `Whence' must be one of the three SEEK_* macros.
  */
 int
-fseeko(FILE *fp, off_t offset, int whence)
+_fseeko(FILE *fp, off_t offset, int whence)
 {
 	fpos_t (*seekfn) (void *, fpos_t, int);
 	fpos_t target, curoff;
@@ -68,17 +88,11 @@ fseeko(FILE *fp, off_t offset, int whence)
 	struct stat st;
 	int havepos;
 
-	/* make sure stdio is set up */
-	if (!__sdidinit)
-		__sinit();
-
-	FLOCKFILE(fp);
 	/*
 	 * Have to be able to seek.
 	 */
 	if ((seekfn = fp->_seek) == NULL) {
 		errno = ESPIPE;		/* historic practice */
-		FUNLOCKFILE(fp);
 		return (EOF);
 	}
 
@@ -99,7 +113,6 @@ fseeko(FILE *fp, off_t offset, int whence)
 		else {
 			curoff = (*seekfn)(fp->_cookie, (fpos_t)0, SEEK_CUR);
 			if (curoff == -1) {
-				FUNLOCKFILE(fp);
 				return (EOF);
 			}
 		}
@@ -123,7 +136,6 @@ fseeko(FILE *fp, off_t offset, int whence)
 
 	default:
 		errno = EINVAL;
-		FUNLOCKFILE(fp);
 		return (EOF);
 	}
 
@@ -141,7 +153,7 @@ fseeko(FILE *fp, off_t offset, int whence)
 		goto dumb;
 	if ((fp->_flags & __SOPT) == 0) {
 		if (seekfn != __sseek ||
-		    fp->_file < 0 || fstat(fp->_file, &st) ||
+		    fp->_file < 0 || _fstat(fp->_file, &st) ||
 		    (st.st_mode & S_IFMT) != S_IFREG) {
 			fp->_flags |= __SNPT;
 			goto dumb;
@@ -157,7 +169,7 @@ fseeko(FILE *fp, off_t offset, int whence)
 	if (whence == SEEK_SET)
 		target = offset;
 	else {
-		if (fstat(fp->_file, &st))
+		if (_fstat(fp->_file, &st))
 			goto dumb;
 		target = st.st_size + offset;
 	}
@@ -207,7 +219,6 @@ fseeko(FILE *fp, off_t offset, int whence)
 		if (HASUB(fp))
 			FREEUB(fp);
 		fp->_flags &= ~__SEOF;
-		FUNLOCKFILE(fp);
 		return (0);
 	}
 
@@ -234,7 +245,6 @@ fseeko(FILE *fp, off_t offset, int whence)
 		fp->_p += n;
 		fp->_r -= n;
 	}
-	FUNLOCKFILE(fp);
 	return (0);
 
 	/*
@@ -244,7 +254,6 @@ fseeko(FILE *fp, off_t offset, int whence)
 dumb:
 	if (__sflush(fp) ||
 	    (*seekfn)(fp->_cookie, (fpos_t)offset, whence) == POS_ERR) {
-		FUNLOCKFILE(fp);
 		return (EOF);
 	}
 	/* success: clear EOF indicator and discard ungetc() data */
@@ -254,6 +263,5 @@ dumb:
 	fp->_r = 0;
 	/* fp->_w = 0; */	/* unnecessary (I think...) */
 	fp->_flags &= ~__SEOF;
-	FUNLOCKFILE(fp);
 	return (0);
 }

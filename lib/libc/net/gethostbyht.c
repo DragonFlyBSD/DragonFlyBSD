@@ -52,7 +52,7 @@
  *
  * @(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/gethostbyht.c,v 1.12 1999/08/28 00:00:05 peter Exp $
- * $DragonFly: src/lib/libc/net/gethostbyht.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/net/gethostbyht.c,v 1.4 2005/01/31 22:29:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,7 +62,6 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <ctype.h>
-#include <errno.h>
 #include <string.h>
 #include <arpa/nameser.h>	/* XXX */
 #include <resolv.h>		/* XXX */

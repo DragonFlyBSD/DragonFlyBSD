@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_spinlock.c,v 1.8.2.2 2002/10/17 19:37:39 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_spinlock.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_spinlock.c,v 1.3 2005/01/31 22:29:48 dillon Exp $
  *
  */
 
@@ -42,6 +42,12 @@
 #include "pthread_private.h"
 
 extern char *__progname;
+
+void
+_spinunlock(spinlock_t *lck)
+{
+	lck->access_lock = 0;
+}
 
 /*
  * Lock a location for the running thread. Yield to allow other

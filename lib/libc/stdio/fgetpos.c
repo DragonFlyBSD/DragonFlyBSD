@@ -35,10 +35,12 @@
  *
  * @(#)fgetpos.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fgetpos.c,v 1.8 1999/08/28 00:00:59 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fgetpos.c,v 1.4 2004/06/07 20:57:15 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fgetpos.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
  */
 
+#include "namespace.h"
 #include <stdio.h>
+#include "un-namespace.h"
 #include "libc_private.h"
 
 int

@@ -27,9 +27,10 @@
  *
  * @(#)realpath.c	8.1 (Berkeley) 2/16/94
  * $FreeBSD: src/lib/libc/stdlib/realpath.c,v 1.9.2.2 2003/06/02 13:31:16 fjoe Exp $
- * $DragonFly: src/lib/libc/stdlib/realpath.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/realpath.c,v 1.3 2005/01/31 22:29:42 dillon Exp $
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <sys/stat.h>
 
@@ -37,6 +38,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 /*
  * char *realpath(const char *path, char resolved[PATH_MAX]);

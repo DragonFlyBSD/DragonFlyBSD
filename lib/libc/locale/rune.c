@@ -35,9 +35,10 @@
  *
  * @(#)rune.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/locale/rune.c,v 1.5.8.2 2002/08/12 11:17:38 ache Exp $
- * $DragonFly: src/lib/libc/locale/rune.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/locale/rune.c,v 1.3 2005/01/31 22:29:31 dillon Exp $
  */
 
+#include "namespace.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <rune.h>
@@ -46,6 +47,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include "un-namespace.h"
 
 _RuneLocale *
 _Read_RuneMagi(fp)

@@ -35,12 +35,13 @@
  *
  * @(#)vsnprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vsnprintf.c,v 1.12.2.1 2002/09/23 06:58:17 maxim Exp $
- * $DragonFly: src/lib/libc/stdio/vsnprintf.c,v 1.3 2003/11/09 02:34:02 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/vsnprintf.c,v 1.4 2005/01/31 22:29:40 dillon Exp $
  */
 
 #include <limits.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include "local.h"
 
 int
 vsnprintf(char *str, size_t n, const char *fmt, va_list ap)
@@ -64,7 +65,7 @@ vsnprintf(char *str, size_t n, const char *fmt, va_list ap)
 	f._flags = __SWR | __SSTR;
 	f._bf._base = f._p = (unsigned char *)str;
 	f._bf._size = f._w = n;
-	ret = vfprintf(&f, fmt, ap);
+	ret = __vfprintf(&f, fmt, ap);
 	if (on > 0)
 		*f._p = '\0';
 	return (ret);

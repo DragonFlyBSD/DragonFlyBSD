@@ -34,24 +34,26 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/makebuf.c,v 1.1.1.1.14.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/makebuf.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/makebuf.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
  *
  * @(#)makebuf.c	8.1 (Berkeley) 6/4/93
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "local.h"
+#include "un-namespace.h"
 
 /*
  * Allocate a file buffer, or switch to unbuffered I/O.
  * Per the ANSI C standard, ALL tty devices default to line buffered.
  *
  * As a side effect, we set __SOPT or __SNPT (en/dis-able fseek
- * optimisation) right after the fstat() that finds the buffer size.
+ * optimisation) right after the _fstat() that finds the buffer size.
  */
 void
 __smakebuf(FILE *fp)
@@ -90,7 +92,7 @@ __swhatbuf(FILE *fp, size_t *bufsize, int *couldbetty)
 {
 	struct stat st;
 
-	if (fp->_file < 0 || fstat(fp->_file, &st) < 0) {
+	if (fp->_file < 0 || _fstat(fp->_file, &st) < 0) {
 		*couldbetty = 0;
 		*bufsize = BUFSIZ;
 		return (__SNPT);

@@ -3,7 +3,7 @@
 ** June 5, 1996 by Arthur David Olson (arthur_david_olson@nih.gov).
 **
 ** $FreeBSD: src/lib/libc/stdtime/difftime.c,v 1.4.8.1 2001/03/05 11:37:21 obrien Exp $
-** $DragonFly: src/lib/libc/stdtime/difftime.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+** $DragonFly: src/lib/libc/stdtime/difftime.c,v 1.3 2005/01/31 22:29:44 dillon Exp $
 */
 
 /*
@@ -11,7 +11,9 @@
  */
 /*LINTLIBRARY*/
 
+#include "namespace.h"
 #include "private.h"
+#include "un-namespace.h"
 
 /*
 ** Algorithm courtesy Paul Eggert (eggert@twinsun.com).

@@ -34,11 +34,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/hash/hash.c,v 1.8 2000/01/27 23:06:08 jasone Exp $
- * $DragonFly: src/lib/libc/db/hash/hash.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/db/hash/hash.c,v 1.5 2005/01/31 22:29:09 dillon Exp $
  *
  * @(#)hash.c	8.9 (Berkeley) 6/16/94
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <sys/stat.h>
 
@@ -51,6 +52,7 @@
 #ifdef DEBUG
 #include <assert.h>
 #endif
+#include "un-namespace.h"
 
 #include <db.h>
 #include "hash.h"
@@ -135,7 +137,7 @@ __hash_open(file, flags, mode, info, dflags)
 		/* if the .db file is empty, and we had permission to create
 		   a new .db file, then reinitialize the database */
 		if ((flags & O_CREAT) &&
-		     fstat(hashp->fp, &statbuf) == 0 && statbuf.st_size == 0)
+		     _fstat(hashp->fp, &statbuf) == 0 && statbuf.st_size == 0)
 			new_table = 1;
 
 		(void)_fcntl(hashp->fp, F_SETFD, 1);
@@ -544,7 +546,8 @@ hash_get(dbp, key, data, flag)
 
 	hashp = (HTAB *)dbp->internal;
 	if (flag) {
-		hashp->error = errno = EINVAL;
+		hashp->error = EINVAL;
+		errno = EINVAL;
 		return (ERROR);
 	}
 	return (hash_access(hashp, HASH_GET, (DBT *)key, data));

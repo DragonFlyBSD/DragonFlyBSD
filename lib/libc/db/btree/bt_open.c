@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/btree/bt_open.c,v 1.7.2.1 2000/11/02 10:30:07 kris Exp $
- * $DragonFly: src/lib/libc/db/btree/bt_open.c,v 1.3 2003/11/12 20:21:22 eirikn Exp $
+ * $DragonFly: src/lib/libc/db/btree/bt_open.c,v 1.4 2005/01/31 22:29:07 dillon Exp $
  *
  * @(#)bt_open.c	8.10 (Berkeley) 8/17/94
  */
@@ -47,6 +47,7 @@
  * is wholly independent of the Postgres code.
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <sys/stat.h>
 
@@ -58,6 +59,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 #include <db.h>
 #include "btree.h"
@@ -216,7 +218,7 @@ __bt_open(fname, flags, mode, openinfo, dflags)
 	if (_fcntl(t->bt_fd, F_SETFD, 1) == -1)
 		goto err;
 
-	if (fstat(t->bt_fd, &sb))
+	if (_fstat(t->bt_fd, &sb))
 		goto err;
 	if (sb.st_size) {
 		if ((nr = _read(t->bt_fd, &m, sizeof(BTMETA))) < 0)
@@ -398,10 +400,10 @@ tmp()
 	    sizeof(path), "%s/bt.XXXXXXXXXX", envtmp ? envtmp : "/tmp");
 
 	(void)sigfillset(&set);
-	(void)sigprocmask(SIG_BLOCK, &set, &oset);
+	(void)_sigprocmask(SIG_BLOCK, &set, &oset);
 	if ((fd = mkstemp(path)) != -1)
 		(void)unlink(path);
-	(void)sigprocmask(SIG_SETMASK, &oset, NULL);
+	(void)_sigprocmask(SIG_SETMASK, &oset, NULL);
 	return(fd);
 }
 

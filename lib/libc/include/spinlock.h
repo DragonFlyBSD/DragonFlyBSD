@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/include/spinlock.h,v 1.4 1999/08/27 23:59:48 peter Exp $
- * $DragonFly: src/lib/libc/include/spinlock.h,v 1.3 2003/11/12 20:21:24 eirikn Exp $
+ * $DragonFly: src/lib/libc/include/spinlock.h,v 1.4 2005/01/31 22:29:29 dillon Exp $
  *
  * Lock definitions used in both libc and libpthread.
  *
@@ -53,7 +53,7 @@ typedef struct {
 
 #define	_SPINLOCK_INITIALIZER	{ 0, 0, 0, 0 }
 
-#define _SPINUNLOCK(_lck)	(_lck)->access_lock = 0
+#define _SPINUNLOCK(_lck)	_spinunlock(_lck)
 #ifdef	_LOCK_DEBUG
 #define	_SPINLOCK(_lck)		_spinlock_debug(_lck, __FILE__, __LINE__)
 #else
@@ -67,6 +67,7 @@ __BEGIN_DECLS
 long	_atomic_lock (volatile long *);
 void	_spinlock (spinlock_t *);
 void	_spinlock_debug (spinlock_t *, char *, int);
+void	_spinunlock (spinlock_t *);
 __END_DECLS
 
 #endif /* _SPINLOCK_H_ */

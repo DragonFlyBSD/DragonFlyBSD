@@ -29,7 +29,7 @@
  * @(#)get_myaddress.c 1.4 87/08/11 Copyr 1984 Sun Micro
  * @(#)get_myaddress.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/get_myaddress.c,v 1.18.2.1 2003/01/01 23:55:34 jdp Exp $
- * $DragonFly: src/lib/libc/rpc/get_myaddress.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/get_myaddress.c,v 1.3 2005/01/31 22:29:38 dillon Exp $
  */
 
 /*
@@ -39,6 +39,7 @@
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
+#include "namespace.h"
 #include <rpc/types.h>
 #include <rpc/xdr.h>
 #include <rpc/pmap_prot.h>
@@ -49,6 +50,7 @@
 #include <sys/ioctl.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include "un-namespace.h"
 
 /*
  * don't use gethostbyname, which would invoke yellow pages
@@ -66,12 +68,12 @@ get_myaddress(addr)
 	struct ifreq ifreq, *ifr, *end;
 	int loopback = 0, gotit = 0;
 
-	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+	if ((s = _socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 		return(-1);
 	}
 	ifc.ifc_len = sizeof (buf);
 	ifc.ifc_buf = buf;
-	if (ioctl(s, SIOCGIFCONF, (char *)&ifc) < 0) {
+	if (_ioctl(s, SIOCGIFCONF, (char *)&ifc) < 0) {
 		_close(s);
 		return(-1);
 	}
@@ -81,7 +83,7 @@ again:
 
 	while (ifr < end) {
 		memcpy(&ifreq, ifr, sizeof(ifreq));
-		if (ioctl(s, SIOCGIFFLAGS, (char *)&ifreq) < 0) {
+		if (_ioctl(s, SIOCGIFFLAGS, (char *)&ifreq) < 0) {
 			_close(s);
 			return(-1);
 		}

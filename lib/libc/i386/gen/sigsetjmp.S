@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/gen/sigsetjmp.S,v 1.19.2.2 2001/07/06 12:41:44 deischen Exp $
- * $DragonFly: src/lib/libc/i386/gen/sigsetjmp.S,v 1.3 2003/12/06 03:11:35 drhodus Exp $
+ * $DragonFly: src/lib/libc/i386/gen/sigsetjmp.S,v 1.4 2005/01/31 22:29:24 dillon Exp $
  */
 
 #include "DEFS.h"
@@ -47,9 +47,6 @@
  *	of the renamed functions.  This requires compiler support for
  *	the renamed functions (introduced in gcc-2.5.3; previous versions
  *	only supported *jmp with 0 or 1 leading underscores).
- *
- *	Use sigprocmask() instead of sigblock() and sigsetmask(), and
- *	check for and handle errors.
  *
  *	Restore _all_ the registers and the signal mask atomically.  Can
  *	use sigreturn() if sigreturn() works.
@@ -66,7 +63,7 @@ ENTRY(sigsetjmp)
 	pushl	%eax			/* (sigset_t*)oset */
 	pushl	$0			/* (sigset_t*)set  */
 	pushl	$1			/* SIG_BLOCK       */
-	call	PIC_PLT(CNAME(sigprocmask))
+	call	PIC_PLT(CNAME(_sigprocmask))
 	addl	$12,%esp
 	PIC_EPILOGUE
 	movl	4(%esp),%ecx
@@ -81,10 +78,8 @@ ENTRY(sigsetjmp)
 	xorl	%eax,%eax
 	ret
 
-#ifndef _THREAD_SAFE
-.weak CNAME(siglongjmp);
-.set CNAME(siglongjmp),CNAME(__siglongjmp);
-#endif
+	.weak CNAME(siglongjmp);
+	.set CNAME(siglongjmp),CNAME(__siglongjmp);
 ENTRY(__siglongjmp);
 	movl	4(%esp),%edx
 	cmpl	$0,44(%edx)
@@ -94,7 +89,7 @@ ENTRY(__siglongjmp);
 	leal	28(%edx), %eax
 	pushl	%eax			/* (sigset_t*)set  */
 	pushl	$3			/* SIG_SETMASK     */
-	call	PIC_PLT(CNAME(sigprocmask))
+	call	PIC_PLT(CNAME(_sigprocmask))
 	addl	$12,%esp
 	PIC_EPILOGUE
 	movl	4(%esp),%edx

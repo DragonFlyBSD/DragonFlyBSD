@@ -31,34 +31,20 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/isatty.c,v 1.3.6.1 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/isatty.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/isatty.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)isatty.c	8.1 (Berkeley) 6/4/93
  */
 
 #include <termios.h>
 #include <unistd.h>
-#ifdef _THREAD_SAFE
-#include <pthread.h>
-#include "pthread_private.h"
-#endif
 
 int
-isatty(fd)
-	int fd;
+isatty(int fd)
 {
 	int retval;
 	struct termios t;
 
-#ifdef _THREAD_SAFE
-	if (_FD_LOCK(fd, FD_READ, NULL) == 0) {
-#endif
-		retval = (tcgetattr(fd, &t) != -1);
-#ifdef _THREAD_SAFE
-        	_FD_UNLOCK(fd, FD_READ);
-	} else {
-		retval = 0;
-	}
-#endif
+	retval = (tcgetattr(fd, &t) != -1);
 	return(retval);
 }

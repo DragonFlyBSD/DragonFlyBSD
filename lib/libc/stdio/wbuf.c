@@ -35,7 +35,7 @@
  *
  * @(#)wbuf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/wbuf.c,v 1.6 1999/08/28 00:01:22 peter Exp $
- * $DragonFly: src/lib/libc/stdio/wbuf.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/wbuf.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
  */
 
 #include <stdio.h>
@@ -45,6 +45,8 @@
  * Write the given character into the (probably full) buffer for
  * the given file.  Flush the buffer out if it is or becomes full,
  * or if c=='\n' and the file is line buffered.
+ *
+ * Non-MT-safe
  */
 int
 __swbuf(int c, FILE *fp)
@@ -74,14 +76,14 @@ __swbuf(int c, FILE *fp)
 	 */
 	n = fp->_p - fp->_bf._base;
 	if (n >= fp->_bf._size) {
-		if (fflush(fp))
+		if (__fflush(fp))
 			return (EOF);
 		n = 0;
 	}
 	fp->_w--;
 	*fp->_p++ = c;
 	if (++n == fp->_bf._size || (fp->_flags & __SLBF && c == '\n'))
-		if (fflush(fp))
+		if (__fflush(fp))
 			return (EOF);
 	return (c);
 }

@@ -32,9 +32,10 @@
  *
  * @(#)syslog.c	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/lib/libc/gen/syslog.c,v 1.21.2.3 2002/11/18 11:49:55 ru Exp $
- * $DragonFly: src/lib/libc/gen/syslog.c,v 1.5 2004/07/27 07:59:10 asmodai Exp $
+ * $DragonFly: src/lib/libc/gen/syslog.c,v 1.6 2005/01/31 22:29:15 dillon Exp $
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
@@ -49,6 +50,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 #include <stdarg.h>
 
@@ -216,7 +218,7 @@ vsyslog(pri, fmt, ap)
 		++v;
 		v->iov_base = "\n";
 		v->iov_len = 1;
-		(void)writev(STDERR_FILENO, iov, 2);
+		(void)_writev(STDERR_FILENO, iov, 2);
 	}
 
 	/* Get connected, output the message to the local logger. */
@@ -251,7 +253,7 @@ vsyslog(pri, fmt, ap)
 		++v;
 		v->iov_base = "\r\n";
 		v->iov_len = 2;
-		(void)writev(fd, iov, 2);
+		(void)_writev(fd, iov, 2);
 		(void)_close(fd);
 	}
 }
@@ -276,7 +278,7 @@ connectlog()
 	struct sockaddr_un SyslogAddr;	/* AF_UNIX address of local logger */
 
 	if (LogFile == -1) {
-		if ((LogFile = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1)
+		if ((LogFile = _socket(AF_UNIX, SOCK_DGRAM, 0)) == -1)
 			return;
 		(void)_fcntl(LogFile, F_SETFD, 1);
 	}
@@ -285,7 +287,7 @@ connectlog()
 		SyslogAddr.sun_family = AF_UNIX;
 		(void)strncpy(SyslogAddr.sun_path, _PATH_LOG,
 		    sizeof SyslogAddr.sun_path);
-		connected = connect(LogFile, (struct sockaddr *)&SyslogAddr,
+		connected = _connect(LogFile, (struct sockaddr *)&SyslogAddr,
 			sizeof(SyslogAddr)) != -1;
 
 		if (!connected) {
@@ -295,7 +297,7 @@ connectlog()
 			 */
 			(void)strncpy(SyslogAddr.sun_path, _PATH_OLDLOG,
 			    sizeof SyslogAddr.sun_path);
-			connected = connect(LogFile,
+			connected = _connect(LogFile,
 				(struct sockaddr *)&SyslogAddr,
 				sizeof(SyslogAddr)) != -1;
 		}

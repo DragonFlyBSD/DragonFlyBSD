@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/include/libc_private.h,v 1.3 1999/08/27 23:59:47 peter Exp $
- * $DragonFly: src/lib/libc/include/libc_private.h,v 1.2 2003/06/17 04:26:43 dillon Exp $
+ * $DragonFly: src/lib/libc/include/libc_private.h,v 1.3 2005/01/31 22:29:29 dillon Exp $
  *
  * Private definitions for libc, libc_r and libpthread.
  *
@@ -54,7 +54,7 @@ extern int	__isthreaded;
 #ifdef	_FLOCK_DEBUG
 #define _FLOCKFILE(x)	_flockfile_debug(x, __FILE__, __LINE__)
 #else
-#define _FLOCKFILE(x)	flockfile(x)
+#define _FLOCKFILE(x)	_flockfile(x)
 #endif
 
 /*
@@ -62,6 +62,14 @@ extern int	__isthreaded;
  * process is threaded to avoid locking when not required.
  */
 #define	FLOCKFILE(fp)		if (__isthreaded) _FLOCKFILE(fp)
-#define	FUNLOCKFILE(fp)		if (__isthreaded) funlockfile(fp)
+#define	FUNLOCKFILE(fp)		if (__isthreaded) _funlockfile(fp)
+
+/*
+ * Internal _*() functions (XXX add all of them)
+ */
+
+#ifdef _STDIO_H_
+int _fseeko(FILE *, __off_t, int);
+#endif
 
 #endif /* _LIBC_PRIVATE_H_ */

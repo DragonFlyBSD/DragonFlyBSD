@@ -31,22 +31,24 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getcwd.c,v 1.18 1999/09/28 13:24:13 marcel Exp $
- * $DragonFly: src/lib/libc/gen/getcwd.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/getcwd.c,v 1.4 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)getcwd.c	8.5 (Berkeley) 2/7/95
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <sys/stat.h>
 
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <signal.h>
+#include "un-namespace.h"
 
 #define	ISDOT(dp) \
 	(dp->d_name[0] == '.' && (dp->d_name[1] == '\0' || \
@@ -194,7 +196,7 @@ getcwd(pt, size)
 		*bup = '\0';
 
 		/* Open and stat parent directory. */
-		if (!(dir = opendir(up)) || fstat(dirfd(dir), &s))
+		if (!(dir = opendir(up)) || _fstat(dirfd(dir), &s))
 			goto err;
 
 		/* Add trailing slash for next directory. */

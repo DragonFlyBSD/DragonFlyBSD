@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/name6.c,v 1.6.2.9 2002/11/02 18:54:57 ume Exp $	*/
-/*	$DragonFly: src/lib/libc/net/name6.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $	*/
+/*	$DragonFly: src/lib/libc/net/name6.c,v 1.5 2005/01/31 22:29:33 dillon Exp $	*/
 /*	$KAME: name6.c,v 1.25 2000/06/26 16:44:40 itojun Exp $	*/
 
 /*
@@ -95,6 +95,7 @@
  *	rewrite resolvers to be thread safe
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -111,6 +112,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 #ifndef _PATH_HOSTS
 #define	_PATH_HOSTS	"/etc/hosts"
@@ -340,11 +342,11 @@ _ghbyname(const char *name, int af, int flags, int *errp)
 		 * because addresses will be dynamically assigned or deleted.
 		 */
 		if (af == AF_UNSPEC) {
-			if ((s = socket(AF_INET6, SOCK_DGRAM, 0)) < 0)
+			if ((s = _socket(AF_INET6, SOCK_DGRAM, 0)) < 0)
 				af = AF_INET;
 			else {
 				_close(s);
-				if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+				if ((s = _socket(AF_INET, SOCK_DGRAM, 0)) < 0)
 					af = AF_INET6;
 				else
 				_close(s);
@@ -352,7 +354,7 @@ _ghbyname(const char *name, int af, int flags, int *errp)
 
 		}
 		if (af != AF_UNSPEC) {
-			if ((s = socket(af, SOCK_DGRAM, 0)) < 0)
+			if ((s = _socket(af, SOCK_DGRAM, 0)) < 0)
 				return NULL;
 			_close(s);
 		}
@@ -1783,11 +1785,11 @@ _icmp_fqdn_query(const struct in6_addr *addr, int ifindex)
 		msg.msg_controllen = (char *)cmsg - cbuf;
 	}
 
-	if ((s = socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6)) < 0)
+	if ((s = _socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6)) < 0)
 		return NULL;
-	(void)setsockopt(s, IPPROTO_ICMPV6, ICMP6_FILTER,
+	(void)_setsockopt(s, IPPROTO_ICMPV6, ICMP6_FILTER,
 			 (char *)&filter, sizeof(filter));
-	cc = sendmsg(s, &msg, 0);
+	cc = _sendmsg(s, &msg, 0);
 	if (cc < 0) {
 		_close(s);
 		return NULL;
@@ -1800,7 +1802,7 @@ _icmp_fqdn_query(const struct in6_addr *addr, int ifindex)
 			return NULL;
 		}
 		len = sizeof(sin6);
-		cc = recvfrom(s, buf, sizeof(buf), 0,
+		cc = _recvfrom(s, buf, sizeof(buf), 0,
 			      (struct sockaddr *)&sin6, &len);
 		if (cc <= 0) {
 			_close(s);

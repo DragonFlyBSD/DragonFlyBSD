@@ -35,15 +35,20 @@
  *
  * @(#)fflush.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fflush.c,v 1.7 1999/08/28 00:00:58 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fflush.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fflush.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
  */
 
+#include "namespace.h"
 #include <errno.h>
 #include <stdio.h>
-#include "local.h"
+#include "un-namespace.h"
 #include "libc_private.h"
+#include "local.h"
 
-/* Flush a single file, or (if fp is NULL) all files.  */
+/*
+ * Flush a single file, or (if fp is NULL) all files.
+ * MT-safe version
+ */
 int
 fflush(FILE *fp)
 {
@@ -55,10 +60,29 @@ fflush(FILE *fp)
 	if ((fp->_flags & (__SWR | __SRW)) == 0) {
 		errno = EBADF;
 		retval = EOF;
-	} else {
+	} else 
 		retval = __sflush(fp);
-	}
+	
 	FUNLOCKFILE(fp);
+	return (retval);
+}
+
+/*
+ * Flush a single file, or (if fp is NULL) all files.
+ * Non-MT-safe version
+ */
+int
+__fflush(FILE *fp)
+{
+	int retval;
+
+	if (fp == NULL)
+		return (_fwalk(__sflush));
+	if ((fp->_flags & (__SWR | __SRW)) == 0) {
+		errno = EBADF;
+		retval = EOF;
+	} else
+		retval = __sflush(fp);
 	return (retval);
 }
 

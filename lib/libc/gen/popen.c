@@ -34,11 +34,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/popen.c,v 1.14 2000/01/27 23:06:19 jasone Exp $
- * $DragonFly: src/lib/libc/gen/popen.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/popen.c,v 1.4 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)popen.c	8.3 (Berkeley) 5/3/95
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <sys/wait.h>
 
@@ -49,6 +50,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <paths.h>
+#include "un-namespace.h"
 
 extern char **environ;
 
@@ -69,7 +71,7 @@ popen(command, type)
 	struct pid *p;
 
 	/*
-	 * Lite2 introduced two-way popen() pipes using socketpair().
+	 * Lite2 introduced two-way popen() pipes using _socketpair().
 	 * FreeBSD's pipe() is bidirectional, so we use that.
 	 */
 	if (strchr(type, '+')) {
@@ -104,7 +106,7 @@ popen(command, type)
 	case 0:				/* Child. */
 		if (*type == 'r') {
 			/*
-			 * The dup2() to STDIN_FILENO is repeated to avoid
+			 * The _dup2() to STDIN_FILENO is repeated to avoid
 			 * writing to pdes[1], which might corrupt the
 			 * parent's copy.  This isn't good enough in
 			 * general, since the _exit() is no return, so
@@ -113,15 +115,15 @@ popen(command, type)
 			 */
 			(void)_close(pdes[0]);
 			if (pdes[1] != STDOUT_FILENO) {
-				(void)dup2(pdes[1], STDOUT_FILENO);
+				(void)_dup2(pdes[1], STDOUT_FILENO);
 				(void)_close(pdes[1]);
 				if (twoway)
-					(void)dup2(STDOUT_FILENO, STDIN_FILENO);
+					(void)_dup2(STDOUT_FILENO, STDIN_FILENO);
 			} else if (twoway && (pdes[1] != STDIN_FILENO))
-				(void)dup2(pdes[1], STDIN_FILENO);
+				(void)_dup2(pdes[1], STDIN_FILENO);
 		} else {
 			if (pdes[0] != STDIN_FILENO) {
-				(void)dup2(pdes[0], STDIN_FILENO);
+				(void)_dup2(pdes[0], STDIN_FILENO);
 				(void)_close(pdes[0]);
 			}
 			(void)_close(pdes[1]);
@@ -129,7 +131,7 @@ popen(command, type)
 		for (p = pidlist; p; p = p->next) {
 			(void)_close(fileno(p->fp));
 		}
-		execve(_PATH_BSHELL, argv, environ);
+		_execve(_PATH_BSHELL, argv, environ);
 		_exit(127);
 		/* NOTREACHED */
 	}

@@ -28,9 +28,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/yp/yplib.c,v 1.34.2.2 2002/02/15 00:46:53 des Exp $
- * $DragonFly: src/lib/libc/yp/yplib.c,v 1.3 2004/06/06 16:41:05 hmp Exp $
+ * $DragonFly: src/lib/libc/yp/yplib.c,v 1.4 2005/01/31 22:29:47 dillon Exp $
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -44,6 +45,7 @@
 #include <rpc/rpc.h>
 #include <rpc/xdr.h>
 #include <rpcsvc/yp.h>
+#include "un-namespace.h"
 
 /*
  * We have to define these here due to clashes between yp_prot.h and
@@ -328,19 +330,19 @@ _yp_dobind(char *dom, struct dom_binding **ypdb)
 		new = 1;
 	} else {
 	/* Check the socket -- may have been hosed by the caller. */
-		if (getsockname(ysd->dom_socket, (struct sockaddr *)&check,
+		if (_getsockname(ysd->dom_socket, (struct sockaddr *)&check,
 		    &checklen) == -1 || check.sin_family != AF_INET ||
 		    check.sin_port != ysd->dom_local_port) {
 		/* Socket became bogus somehow... need to rebind. */
 			int save, sock;
 
 			sock = ysd->dom_socket;
-			save = dup(ysd->dom_socket);
+			save = _dup(ysd->dom_socket);
 			if (ysd->dom_client != NULL)
 				clnt_destroy(ysd->dom_client);
 			ysd->dom_vers = 0;
 			ysd->dom_client = NULL;
-			sock = dup2(save, sock);
+			sock = _dup2(save, sock);
 			_close(save);
 		}
 	}
@@ -370,7 +372,7 @@ again:
 			_close(fd);
 			goto skipit;
 		}
-		if (flock(fd, LOCK_EX|LOCK_NB) == -1 && errno == EWOULDBLOCK) {
+		if (_flock(fd, LOCK_EX|LOCK_NB) == -1 && errno == EWOULDBLOCK) {
 			struct iovec iov[2];
 			struct ypbind_resp ybr;
 			u_short	ypb_port;
@@ -380,7 +382,7 @@ again:
 			iov[1].iov_base = (caddr_t)&ybr;
 			iov[1].iov_len = sizeof ybr;
 
-			r = readv(fd, iov, 2);
+			r = _readv(fd, iov, 2);
 			if (r != iov[0].iov_len + iov[1].iov_len) {
 				_close(fd);
 				ysd->dom_vers = -1;
@@ -523,9 +525,9 @@ gotit:
 		 */
 		checklen = sizeof(struct sockaddr_in);
 		bzero((char *)&check, checklen);
-		bind(ysd->dom_socket, (struct sockaddr *)&check, checklen);
+		_bind(ysd->dom_socket, (struct sockaddr *)&check, checklen);
 		check.sin_family = AF_INET;
-		if (!getsockname(ysd->dom_socket,
+		if (!_getsockname(ysd->dom_socket,
 		    (struct sockaddr *)&check, &checklen)) {
 			ysd->dom_local_port = check.sin_port;
 		} else {
@@ -554,15 +556,15 @@ _yp_unbind(struct dom_binding *ypb)
 
 	if (ypb->dom_client != NULL) {
 		/* Check the socket -- may have been hosed by the caller. */
-		if (getsockname(ypb->dom_socket, (struct sockaddr *)&check,
+		if (_getsockname(ypb->dom_socket, (struct sockaddr *)&check,
 	    	&checklen) == -1 || check.sin_family != AF_INET ||
 	    	check.sin_port != ypb->dom_local_port) {
 			int save, sock;
 
 			sock = ypb->dom_socket;
-			save = dup(ypb->dom_socket);
+			save = _dup(ypb->dom_socket);
 			clnt_destroy(ypb->dom_client);
-			sock = dup2(save, sock);
+			sock = _dup2(save, sock);
 			_close(save);
 		} else
 			clnt_destroy(ypb->dom_client);

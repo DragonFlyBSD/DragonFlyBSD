@@ -29,7 +29,7 @@
  * @(#)pmap_clnt.c 1.37 87/08/11 Copyr 1984 Sun Micro
  * @(#)pmap_clnt.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/pmap_clnt.c,v 1.11 2000/01/27 23:06:39 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/pmap_clnt.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/pmap_clnt.c,v 1.4 2005/01/31 22:29:38 dillon Exp $
  */
 
 /*
@@ -39,6 +39,7 @@
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -46,6 +47,7 @@
 #include <rpc/pmap_prot.h>
 #include <rpc/pmap_clnt.h>
 #include <netinet/in.h>
+#include "un-namespace.h"
 
 static struct timeval timeout = { 5, 0 };
 static struct timeval tottimeout = { 60, 0 };

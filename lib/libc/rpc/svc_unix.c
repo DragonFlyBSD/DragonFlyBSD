@@ -29,7 +29,7 @@
  * @(#)svc_unix.c 1.21 87/08/11 Copyr 1984 Sun Micro
  * @(#)svc_unix.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/svc_unix.c,v 1.7.2.2 2001/09/05 22:29:23 dec Exp $
- * $DragonFly: src/lib/libc/rpc/svc_unix.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/svc_unix.c,v 1.4 2005/01/31 22:29:38 dillon Exp $
  */
 
 /*
@@ -42,6 +42,7 @@
  * and a record/unix stream.
  */
 
+#include "namespace.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -51,6 +52,7 @@
 #include <sys/un.h>
 #include <sys/uio.h>
 #include <errno.h>
+#include "un-namespace.h"
 
 /*
  * Ops vector for AF_UNIX based rpc service handle
@@ -129,7 +131,7 @@ static int __msgread(sock, buf, cnt)
 	msg.msg_controllen = sizeof(struct cmessage);
 	msg.msg_flags = 0;
 
-	return(recvmsg(sock, &msg, 0));
+	return(_recvmsg(sock, &msg, 0));
 }
 
 static int __msgwrite(sock, buf, cnt)
@@ -156,7 +158,7 @@ static int __msgwrite(sock, buf, cnt)
 	msg.msg_controllen = sizeof(struct cmessage);
 	msg.msg_flags = 0;
 
-	return(sendmsg(sock, &msg, 0));
+	return(_sendmsg(sock, &msg, 0));
 }
 
 /*
@@ -193,7 +195,7 @@ svcunix_create(sock, sendsize, recvsize, path)
 	int len = sizeof(struct sockaddr_un);
 
 	if (sock == RPC_ANYSOCK) {
-		if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+		if ((sock = _socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
 			perror("svc_unix.c - AF_UNIX socket creation problem");
 			return ((SVCXPRT *)NULL);
 		}
@@ -206,10 +208,10 @@ svcunix_create(sock, sendsize, recvsize, path)
 		sizeof(addr.sun_len) + 1;
 	addr.sun_len = len;
 
-	bind(sock, (struct sockaddr *)&addr, len);
+	_bind(sock, (struct sockaddr *)&addr, len);
 
-	if ((getsockname(sock, (struct sockaddr *)&addr, &len) != 0)  ||
-	    (listen(sock, 2) != 0)) {
+	if ((_getsockname(sock, (struct sockaddr *)&addr, &len) != 0)  ||
+	    (_listen(sock, 2) != 0)) {
 		perror("svc_unix.c - cannot getsockname or listen");
 		if (madesock)
 		       (void)_close(sock);
@@ -300,7 +302,7 @@ rendezvous_request(xprt)
 	r = (struct unix_rendezvous *)xprt->xp_p1;
     again:
 	len = sizeof(struct sockaddr_in);
-	if ((sock = accept(xprt->xp_sock, (struct sockaddr *)&addr,
+	if ((sock = _accept(xprt->xp_sock, (struct sockaddr *)&addr,
 	    &len)) < 0) {
 		if (errno == EINTR)
 			goto again;
@@ -358,7 +360,7 @@ static struct timeval wait_per_try = { 35, 0 };
  * Note: we have to be careful here not to allow ourselves to become
  * blocked too long in this routine. While we're waiting for data from one
  * client, another client may be trying to connect. To avoid this situation,
- * some code from svc_run() is transplanted here: the select() loop checks
+ * some code from svc_run() is transplanted here: the _select() loop checks
  * all RPC descriptors including the one we want and calls svc_getreqset2()
  * to handle new requests if any are detected.
  */
@@ -390,8 +392,8 @@ readunix(xprt, buf, len)
 
 		/* XXX we know the other bits are still clear */
 		FD_SET(sock, fds);
-		tv = delta;	/* in case select() implements writeback */
-		switch (select(svc_maxfd + 1, fds, NULL, NULL, &tv)) {
+		tv = delta;	/* in case _select() implements writeback */
+		switch (_select(svc_maxfd + 1, fds, NULL, NULL, &tv)) {
 		case -1:
 			memset(fds, 0, bytes);
 			if (errno != EINTR)

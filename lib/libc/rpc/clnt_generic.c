@@ -29,7 +29,7 @@
  * @(#)clnt_generic.c 1.4 87/08/11 (C) 1987 SMI
  * @(#)clnt_generic.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/clnt_generic.c,v 1.9.2.1 2001/03/05 10:48:28 obrien Exp $
- * $DragonFly: src/lib/libc/rpc/clnt_generic.c,v 1.3 2004/09/14 18:23:15 joerg Exp $
+ * $DragonFly: src/lib/libc/rpc/clnt_generic.c,v 1.4 2005/01/31 22:29:38 dillon Exp $
  */
 
 /*
@@ -44,7 +44,7 @@
 /*
  * Generic client creation: takes (hostname, program-number, protocol) and
  * returns client handle. Default options are set, which the user can
- * change using the rpc equivalent of ioctl()'s.
+ * change using the rpc equivalent of _ioctl()'s.
  */
 CLIENT *
 clnt_create(const char *hostname, u_long prog, u_long vers, const char *proto)

@@ -31,15 +31,17 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/recv.c,v 1.1.1.1.14.1 2001/03/05 10:47:11 obrien Exp $
- * $DragonFly: src/lib/libc/net/recv.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/recv.c,v 1.3 2005/01/31 22:29:33 dillon Exp $
  *
  * @(#)recv.c	8.2 (Berkeley) 2/21/94
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 
 #include <stddef.h>
+#include "un-namespace.h"
 
 ssize_t
 recv(s, buf, len, flags)
@@ -47,5 +49,5 @@ recv(s, buf, len, flags)
 	size_t len;
 	void *buf;
 {
-	return (recvfrom(s, buf, len, flags, NULL, 0));
+	return (_recvfrom(s, buf, len, flags, NULL, 0));
 }

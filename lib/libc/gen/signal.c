@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/signal.c,v 1.1.1.1.14.1 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/signal.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/signal.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)signal.c	8.1 (Berkeley) 6/4/93
  */
@@ -39,7 +39,10 @@
 /*
  * Almost backwards compatible signal.
  */
+#include "namespace.h"
 #include <signal.h>
+#include "un-namespace.h"
+#include "libc_private.h"
 
 sigset_t _sigintr;		/* shared with siginterrupt */
 
@@ -55,7 +58,7 @@ signal(s, a)
 	sa.sa_flags = 0;
 	if (!sigismember(&_sigintr, s))
 		sa.sa_flags |= SA_RESTART;
-	if (sigaction(s, &sa, &osa) < 0)
+	if (_sigaction(s, &sa, &osa) < 0)
 		return (SIG_ERR);
 	return (osa.sa_handler);
 }

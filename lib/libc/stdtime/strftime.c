@@ -16,9 +16,10 @@
  *
  * @(#)strftime.c	7.38
  * $FreeBSD: src/lib/libc/stdtime/strftime.c,v 1.25.2.4 2002/03/12 17:24:54 phantom Exp $
- * $DragonFly: src/lib/libc/stdtime/strftime.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdtime/strftime.c,v 1.3 2005/01/31 22:29:44 dillon Exp $
  */
 
+#include "namespace.h"
 #include "private.h"
 
 #ifndef LIBC_SCCS
@@ -30,6 +31,7 @@ static const char	sccsid[] = "@(#)strftime.c	5.4 (Berkeley) 3/14/89";
 #include "tzfile.h"
 #include <fcntl.h>
 #include <sys/stat.h>
+#include "un-namespace.h"
 #include "timelocal.h"
 
 static char *	_add P((const char *, char *, const char *));

@@ -31,11 +31,12 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libc/gen/nlist.c,v 1.12.2.1 2001/07/11 23:59:09 obrien Exp $
- *	$DragonFly: src/lib/libc/gen/nlist.c,v 1.4 2004/06/06 15:05:55 hmp Exp $
+ *	$DragonFly: src/lib/libc/gen/nlist.c,v 1.5 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)nlist.c	8.1 (Berkeley) 6/4/93
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -46,6 +47,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 #define _NLIST_DO_AOUT
 #define _NLIST_DO_ELF
@@ -117,7 +119,7 @@ __aout_fdnlist(fd, list)
 	struct stat st;
 
 	/* check that file is at least as large as struct exec! */
-	if ((fstat(fd, &st) < 0) || (st.st_size < sizeof(struct exec)))
+	if ((_fstat(fd, &st) < 0) || (st.st_size < sizeof(struct exec)))
 		return (-1);
 
 	/* Check for files too large to mmap. */
@@ -257,7 +259,7 @@ __elf_fdnlist(fd, list)
 	if (lseek(fd, (off_t)0, SEEK_SET) == -1 ||
 	    _read(fd, &ehdr, sizeof(Elf_Ehdr)) != sizeof(Elf_Ehdr) ||
 	    !__elf_is_okay__(&ehdr) ||
-	    fstat(fd, &st) < 0)
+	    _fstat(fd, &st) < 0)
 		return (-1);
 
 	/* calculate section header table size */

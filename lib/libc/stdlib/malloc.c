@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libc/stdlib/malloc.c,v 1.49.2.4 2001/12/29 08:10:14 knu Exp $
- * $DragonFly: src/lib/libc/stdlib/malloc.c,v 1.5 2004/02/03 07:34:10 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/malloc.c,v 1.6 2005/01/31 22:29:42 dillon Exp $
  *
  */
 
@@ -43,6 +43,7 @@
  *
  */
 
+#include "namespace.h"
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 #   if defined(__i386__)
 #       define malloc_pageshift		12U
@@ -98,6 +99,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 /*
  * This structure describes a page worth of chunks.

@@ -24,12 +24,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $OpenBSD: stack_protector.c,v 1.3 2002/12/10 08:53:42 etoh Exp $
- * $DragonFly: src/lib/libc/sys/stack_protector.c,v 1.1 2003/12/10 22:15:36 dillon Exp $
+ * $DragonFly: src/lib/libc/sys/stack_protector.c,v 1.2 2005/01/31 22:29:46 dillon Exp $
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <sys/sysctl.h>
 #include <syslog.h>
+#include "un-namespace.h"
 
 void __stack_smash_handler(char func[], int damaged __attribute__((unused)));
 static void __guard_setup(void) __attribute__ ((constructor));
@@ -44,9 +46,9 @@ __guard_setup(void)
 
     if (__guard[0] != 0)
 	return;
-    if ((fd = open ("/dev/urandom", 0)) >= 0) {
-	size = read (fd, (char*)&__guard, sizeof(__guard));
-	close (fd);
+    if ((fd = _open ("/dev/urandom", 0)) >= 0) {
+	size = _read (fd, (char*)&__guard, sizeof(__guard));
+	_close (fd);
 	if (size == sizeof(__guard))
 	    return;
     }
@@ -74,7 +76,7 @@ __stack_smash_handler(char func[], int damaged)
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
     sa.sa_handler = SIG_DFL;
-    sigaction(SIGABRT, &sa, NULL);
+    __sys_sigaction(SIGABRT, &sa, NULL);
 
     kill(getpid(), SIGABRT);
 

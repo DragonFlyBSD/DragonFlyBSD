@@ -31,16 +31,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/random.c,v 1.13 2000/01/27 23:06:49 jasone Exp $
- * $DragonFly: src/lib/libc/stdlib/random.c,v 1.5 2003/09/06 08:19:16 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/random.c,v 1.6 2005/01/31 22:29:42 dillon Exp $
  *
  * @(#)random.c	8.2 (Berkeley) 5/19/95
  */
 
+#include "namespace.h"
 #include <sys/time.h>          /* for srandomdev() */
 #include <fcntl.h>             /* for srandomdev() */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>            /* for srandomdev() */
+#include "un-namespace.h"
 
 /*
  * random.c:

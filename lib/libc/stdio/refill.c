@@ -35,12 +35,13 @@
  *
  * @(#)refill.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/refill.c,v 1.8.2.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/refill.c,v 1.5 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/refill.c,v 1.6 2005/01/31 22:29:40 dillon Exp $
  */
 
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #include "local.h"
 
 static int lflush (FILE *);

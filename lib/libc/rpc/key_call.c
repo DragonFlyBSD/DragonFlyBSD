@@ -30,7 +30,7 @@
  * Copyright (c) 1986-1991 by Sun Microsystems Inc. 
  *
  * $FreeBSD: src/lib/libc/rpc/key_call.c,v 1.3 2000/01/27 23:06:39 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/key_call.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/key_call.c,v 1.5 2005/01/31 22:29:38 dillon Exp $
  */
 
 #ident	"@(#)key_call.c	1.25	94/04/24 SMI"
@@ -44,6 +44,7 @@
  * gendeskey(deskey) - generate a secure des key
  */
 
+#include "namespace.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -58,6 +59,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/fcntl.h>
+#include "un-namespace.h"
 
 
 #define	KEY_TIMEOUT	5	/* per-try timeout in seconds */
@@ -323,7 +325,7 @@ int	vers;
 	if (kcp->client != NULL) {
 		/* if other side closed socket, build handle again */
 		clnt_control(kcp->client, CLGET_FD, (char *)&fd);
-		if (getpeername(fd,(struct sockaddr *)&name,&namelen) == -1) {
+		if (_getpeername(fd,(struct sockaddr *)&name,&namelen) == -1) {
 			auth_destroy(kcp->client->cl_auth);
 			clnt_destroy(kcp->client);
 			kcp->client = NULL;

@@ -29,7 +29,7 @@
  * @(#)rpc_dtablesize.c 1.2 87/08/11 Copyr 1987 Sun Micro
  * @(#)rpc_dtablesize.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/rpc_dtablesize.c,v 1.10 1999/08/28 00:00:45 peter Exp $
- * $DragonFly: src/lib/libc/rpc/rpc_dtablesize.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/rpc_dtablesize.c,v 1.3 2005/01/31 22:29:38 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -44,7 +44,7 @@
  * descriptors be greater than FD_SETSIZE (which us 256 by default).
  *
  * Since old programs tend to use this call to determine the first arg
- * for select(), having this return > FD_SETSIZE is a Bad Idea(TM)!
+ * for _select(), having this return > FD_SETSIZE is a Bad Idea(TM)!
  */
 int
 _rpc_dtablesize(void)

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/getaddrinfo.c,v 1.9.2.14 2002/11/08 17:49:31 ume Exp $	*/
-/*	$DragonFly: src/lib/libc/net/getaddrinfo.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $	*/
+/*	$DragonFly: src/lib/libc/net/getaddrinfo.c,v 1.4 2005/01/31 22:29:33 dillon Exp $	*/
 /*	$KAME: getaddrinfo.c,v 1.15 2000/07/09 04:37:24 itojun Exp $	*/
 
 /*
@@ -64,6 +64,7 @@
  * - FreeBSD allowed classful IPv4 numeric (127.1), the code does not.
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/socket.h>
@@ -80,6 +81,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
+#include "un-namespace.h"
 
 #include "res_config.h"
 
@@ -739,7 +741,7 @@ explore_null(pai, servname, res)
 	 * filter out AFs that are not supported by the kernel
 	 * XXX errno?
 	 */
-	s = socket(pai->ai_family, SOCK_DGRAM, 0);
+	s = _socket(pai->ai_family, SOCK_DGRAM, 0);
 	if (s < 0) {
 		if (errno != EMFILE)
 			return 0;
@@ -1134,11 +1136,11 @@ addrconfig(pai)
 	 */
 	af = pai->ai_family;
 	if (af == AF_UNSPEC) {
-		if ((s = socket(AF_INET6, SOCK_DGRAM, 0)) < 0)
+		if ((s = _socket(AF_INET6, SOCK_DGRAM, 0)) < 0)
 			af = AF_INET;
 		else {
 			_close(s);
-			if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+			if ((s = _socket(AF_INET, SOCK_DGRAM, 0)) < 0)
 				af = AF_INET6;
 			else
 				_close(s);
@@ -1146,7 +1148,7 @@ addrconfig(pai)
 
 	}
 	if (af != AF_UNSPEC) {
-		if ((s = socket(af, SOCK_DGRAM, 0)) < 0)
+		if ((s = _socket(af, SOCK_DGRAM, 0)) < 0)
 			return 0;
 		_close(s);
 	}

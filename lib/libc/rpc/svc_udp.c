@@ -29,7 +29,7 @@
  * @(#)svc_udp.c 1.24 87/08/11 Copyr 1984 Sun Micro
  * @(#)svc_udp.c	2.2 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/svc_udp.c,v 1.13 2000/01/27 23:06:41 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/svc_udp.c,v 1.4 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/svc_udp.c,v 1.5 2005/01/31 22:29:38 dillon Exp $
  */
 
 /*
@@ -40,6 +40,7 @@
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
+#include "namespace.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -47,6 +48,7 @@
 #include <rpc/rpc.h>
 #include <sys/socket.h>
 #include <errno.h>
+#include "un-namespace.h"
 
 #define rpc_buffer(xprt) ((xprt)->xp_p1)
 #define MAX(a, b)     ((a > b) ? a : b)
@@ -106,7 +108,7 @@ svcudp_bufcreate(sock, sendsz, recvsz)
 	int len = sizeof(struct sockaddr_in);
 
 	if (sock == RPC_ANYSOCK) {
-		if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+		if ((sock = _socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
 			perror("svcudp_create: socket creation problem");
 			return ((SVCXPRT *)NULL);
 		}
@@ -117,9 +119,9 @@ svcudp_bufcreate(sock, sendsz, recvsz)
 	addr.sin_family = AF_INET;
 	if (bindresvport(sock, &addr)) {
 		addr.sin_port = 0;
-		(void)bind(sock, (struct sockaddr *)&addr, len);
+		(void)_bind(sock, (struct sockaddr *)&addr, len);
 	}
-	if (getsockname(sock, (struct sockaddr *)&addr, &len) != 0) {
+	if (_getsockname(sock, (struct sockaddr *)&addr, &len) != 0) {
 		perror("svcudp_create - cannot getsockname");
 		if (madesock)
 			(void)_close(sock);
@@ -181,7 +183,7 @@ svcudp_recv(xprt, msg)
 
     again:
 	xprt->xp_addrlen = sizeof(struct sockaddr_in);
-	rlen = recvfrom(xprt->xp_sock, rpc_buffer(xprt), (int) su->su_iosz,
+	rlen = _recvfrom(xprt->xp_sock, rpc_buffer(xprt), (int) su->su_iosz,
 	    0, (struct sockaddr *)&(xprt->xp_raddr), &(xprt->xp_addrlen));
 	if (rlen == -1 && errno == EINTR)
 		goto again;
@@ -194,7 +196,7 @@ svcudp_recv(xprt, msg)
 	su->su_xid = msg->rm_xid;
 	if (su->su_cache != NULL) {
 		if (cache_get(xprt, msg, &reply, &replylen)) {
-			(void) sendto(xprt->xp_sock, reply, (int) replylen, 0,
+			(void) _sendto(xprt->xp_sock, reply, (int) replylen, 0,
 			  (struct sockaddr *) &xprt->xp_raddr, xprt->xp_addrlen);
 			return (TRUE);
 		}
@@ -217,7 +219,7 @@ svcudp_reply(xprt, msg)
 	msg->rm_xid = su->su_xid;
 	if (xdr_replymsg(xdrs, msg)) {
 		slen = (int)XDR_GETPOS(xdrs);
-		if (sendto(xprt->xp_sock, rpc_buffer(xprt), slen, 0,
+		if (_sendto(xprt->xp_sock, rpc_buffer(xprt), slen, 0,
 		    (struct sockaddr *)&(xprt->xp_raddr), xprt->xp_addrlen)
 		    == slen) {
 			stat = TRUE;

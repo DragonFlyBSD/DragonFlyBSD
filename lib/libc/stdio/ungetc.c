@@ -35,12 +35,14 @@
  *
  * @(#)ungetc.c	8.2 (Berkeley) 11/3/93
  * $FreeBSD: src/lib/libc/stdio/ungetc.c,v 1.7.2.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/ungetc.c,v 1.3 2003/11/12 20:21:25 eirikn Exp $
+ * $DragonFly: src/lib/libc/stdio/ungetc.c,v 1.4 2005/01/31 22:29:40 dillon Exp $
  */
 
+#include "namespace.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "un-namespace.h"
 #include "local.h"
 #include "libc_private.h"
 
@@ -84,26 +86,42 @@ __submore(FILE *fp)
 	return (0);
 }
 
+/*
+ * MT-safe version
+ */
 int
 ungetc(int c, FILE *fp)
 {
+	int ret;
+
 	if (c == EOF)
 		return (EOF);
 	if (!__sdidinit)
 		__sinit();
 	FLOCKFILE(fp);
+	ret = __ungetc(c, fp);
+	FUNLOCKFILE(fp);
+	return(ret);
+}
+
+/*
+ * Non-MT-safe version
+ */
+int
+__ungetc(int c, FILE *fp)
+{
+	if (c == EOF)
+		return(EOF);
 	if ((fp->_flags & __SRD) == 0) {
 		/*
 		 * Not already reading: no good unless reading-and-writing.
 		 * Otherwise, flush any current write stuff.
 		 */
 		if ((fp->_flags & __SRW) == 0) {
-			FUNLOCKFILE(fp);
 			return (EOF);
 		}
 		if (fp->_flags & __SWR) {
 			if (__sflush(fp)) {
-				FUNLOCKFILE(fp);
 				return (EOF);
 			}
 			fp->_flags &= ~__SWR;
@@ -120,12 +138,10 @@ ungetc(int c, FILE *fp)
 	 */
 	if (HASUB(fp)) {
 		if (fp->_r >= fp->_ub._size && __submore(fp)) {
-			FUNLOCKFILE(fp);
 			return (EOF);
 		}
 		*--fp->_p = c;
 		fp->_r++;
-		FUNLOCKFILE(fp);
 		return (c);
 	}
 	fp->_flags &= ~__SEOF;
@@ -139,7 +155,6 @@ ungetc(int c, FILE *fp)
 	    fp->_p[-1] == c) {
 		fp->_p--;
 		fp->_r++;
-		FUNLOCKFILE(fp);
 		return (c);
 	}
 
@@ -154,6 +169,5 @@ ungetc(int c, FILE *fp)
 	fp->_ubuf[sizeof(fp->_ubuf) - 1] = c;
 	fp->_p = &fp->_ubuf[sizeof(fp->_ubuf) - 1];
 	fp->_r = 1;
-	FUNLOCKFILE(fp);
 	return (c);
 }

@@ -31,15 +31,12 @@
  * SUCH DAMAGE.
  *
  * @(#)lseek.c	8.1 (Berkeley) 6/17/93
+ * $DragonFly: src/lib/libc/sys/lseek.c,v 1.3 2005/01/31 22:29:46 dillon Exp $
  */
 
 #include <sys/types.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#ifdef _THREAD_SAFE
-#include <pthread.h>
-#include "pthread_private.h"
-#endif
 
 /*
  * This function provides 64-bit offset padding that
@@ -51,17 +48,5 @@ lseek(fd, offset, whence)
 	off_t	offset;
 	int	whence;
 {
-#ifdef _THREAD_SAFE
-	off_t	offs;
-	if (_FD_LOCK(fd, FD_RDWR, NULL) != 0) {
-		offs = -1;
-	} else {
-		offs = __syscall((quad_t) SYS_lseek,fd, 0, offset, whence);
-		_FD_UNLOCK(fd, FD_RDWR);
-	}
-	return(offs);
-
-#else
 	return(__syscall((quad_t)SYS_lseek, fd, 0, offset, whence));
-#endif
 }

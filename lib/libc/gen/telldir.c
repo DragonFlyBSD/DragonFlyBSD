@@ -31,15 +31,20 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/telldir.c,v 1.4.12.1 2001/03/05 09:39:59 obrien Exp $
- * $DragonFly: src/lib/libc/gen/telldir.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/telldir.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)telldir.c	8.1 (Berkeley) 6/4/93
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <dirent.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "un-namespace.h"
+
+#include "libc_private.h"
 
 /*
  * The option SINGLEUSE may be defined to say that a telldir
@@ -80,6 +85,8 @@ telldir(dirp)
 
 	if ((lp = (struct ddloc *)malloc(sizeof(struct ddloc))) == NULL)
 		return (-1);
+	if (__isthreaded)
+		_pthread_mutex_lock((pthread_mutex_t *)&dirp->dd_lock);
 	index = dd_loccnt++;
 	lp->loc_index = index;
 	lp->loc_seek = dirp->dd_seek;
@@ -87,6 +94,8 @@ telldir(dirp)
 	lp->loc_dirp = dirp;
 	lp->loc_next = dd_hash[LOCHASH(index)];
 	dd_hash[LOCHASH(index)] = lp;
+	if (__isthreaded)
+		_pthread_mutex_unlock((pthread_mutex_t *)&dirp->dd_lock);
 	return (index);
 }
 
@@ -119,7 +128,7 @@ _seekdir(dirp, loc)
 	dirp->dd_seek = lp->loc_seek;
 	dirp->dd_loc = 0;
 	while (dirp->dd_loc < lp->loc_loc) {
-		dp = readdir(dirp);
+		dp = _readdir_unlocked(dirp);
 		if (dp == NULL)
 			break;
 	}
@@ -135,7 +144,7 @@ found:
  */
 void
 _reclaim_telldir(dirp)
-	const DIR *dirp;
+	DIR *dirp;
 {
 	struct ddloc *lp;
 	struct ddloc **prevlp;

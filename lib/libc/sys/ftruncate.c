@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/sys/ftruncate.c,v 1.3.6.1 2001/03/05 11:45:51 obrien Exp $
- * $DragonFly: src/lib/libc/sys/ftruncate.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libc/sys/ftruncate.c,v 1.3 2005/01/31 22:29:46 dillon Exp $
  *
  * @(#)ftruncate.c	8.1 (Berkeley) 6/17/93
  */
@@ -39,10 +39,6 @@
 #include <sys/types.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#ifdef _THREAD_SAFE
-#include <pthread.h>
-#include "pthread_private.h"
-#endif
 
 /*
  * This function provides 64-bit offset padding that
@@ -54,16 +50,5 @@ ftruncate(fd, length)
 	off_t	length;
 {
 
-#ifdef _THREAD_SAFE
-	int retval;
-	if (_FD_LOCK(fd, FD_RDWR, NULL) != 0) {
-		retval = -1;
-	} else {
-	    retval = __syscall((quad_t)SYS_ftruncate, fd, 0, length);
-	    _FD_UNLOCK(fd, FD_RDWR);
-	}
-	return(retval);
-#else
 	return(__syscall((quad_t)SYS_ftruncate, fd, 0, length));
-#endif
 }

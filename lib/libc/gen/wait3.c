@@ -31,15 +31,17 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/wait3.c,v 1.1.1.1.14.1 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/wait3.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/wait3.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)wait3.c	8.1 (Berkeley) 6/4/93
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <sys/resource.h>
+#include "un-namespace.h"
 
 pid_t
 wait3(istat, options, rup)
@@ -47,5 +49,5 @@ wait3(istat, options, rup)
 	int options;
 	struct rusage *rup;
 {
-	return (wait4(WAIT_ANY, istat, options, rup));
+	return (_wait4(WAIT_ANY, istat, options, rup));
 }

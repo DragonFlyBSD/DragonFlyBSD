@@ -33,7 +33,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)glue.h	8.1 (Berkeley) 6/4/93
+ * @(#)glue.h	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/stdio/Attic/glue.h,v 1.2 2005/01/31 22:29:40 dillon Exp $
  */
 
 /*
@@ -44,4 +45,6 @@ struct glue {
 	struct	glue *next;
 	int	niobs;
 	FILE	*iobs;
-} __sglue;
+};
+
+extern struct glue __sglue;

@@ -31,11 +31,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/system.c,v 1.5.2.2 2001/10/10 12:50:22 alfred Exp $
- * $DragonFly: src/lib/libc/stdlib/system.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/system.c,v 1.3 2005/01/31 22:29:42 dillon Exp $
  *
  * @(#)system.c	8.1 (Berkeley) 6/4/93
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <signal.h>
@@ -44,6 +45,8 @@
 #include <unistd.h>
 #include <paths.h>
 #include <errno.h>
+#include "un-namespace.h"
+#include "libc_private.h"
 
 int
 __system(command)
@@ -64,11 +67,11 @@ __system(command)
 	ign.sa_handler = SIG_IGN;
 	(void)sigemptyset(&ign.sa_mask);
 	ign.sa_flags = 0;
-	(void)sigaction(SIGINT, &ign, &intact);
-	(void)sigaction(SIGQUIT, &ign, &quitact);
+	(void)_sigaction(SIGINT, &ign, &intact);
+	(void)_sigaction(SIGQUIT, &ign, &quitact);
 	(void)sigemptyset(&newsigblock);
 	(void)sigaddset(&newsigblock, SIGCHLD);
-	(void)sigprocmask(SIG_BLOCK, &newsigblock, &oldsigblock);
+	(void)_sigprocmask(SIG_BLOCK, &newsigblock, &oldsigblock);
 	switch(pid = fork()) {
 	case -1:			/* error */
 		break;
@@ -76,9 +79,9 @@ __system(command)
 		/*
 		 * Restore original signal dispositions and exec the command.
 		 */
-		(void)sigaction(SIGINT, &intact, NULL);
-		(void)sigaction(SIGQUIT,  &quitact, NULL);
-		(void)sigprocmask(SIG_SETMASK, &oldsigblock, NULL);
+		(void)_sigaction(SIGINT, &intact, NULL);
+		(void)_sigaction(SIGQUIT,  &quitact, NULL);
+		(void)_sigprocmask(SIG_SETMASK, &oldsigblock, NULL);
 		execl(_PATH_BSHELL, "sh", "-c", command, (char *)NULL);
 		_exit(127);
 	default:			/* parent */
@@ -88,12 +91,11 @@ __system(command)
 		} while (pid == -1 && errno == EINTR);
 		break;
 	}
-	(void)sigaction(SIGINT, &intact, NULL);
-	(void)sigaction(SIGQUIT,  &quitact, NULL);
-	(void)sigprocmask(SIG_SETMASK, &oldsigblock, NULL);
+	(void)_sigaction(SIGINT, &intact, NULL);
+	(void)_sigaction(SIGQUIT,  &quitact, NULL);
+	(void)_sigprocmask(SIG_SETMASK, &oldsigblock, NULL);
 	return(pid == -1 ? -1 : pstat);
 }
 
-#ifndef _THREAD_SAFE
 __weak_reference(__system, system);
-#endif
+__weak_reference(__system, _system);

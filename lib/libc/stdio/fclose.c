@@ -35,14 +35,16 @@
  *
  * @(#)fclose.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fclose.c,v 1.8 1999/11/21 22:34:57 dt Exp $
- * $DragonFly: src/lib/libc/stdio/fclose.c,v 1.7 2004/06/09 19:40:59 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fclose.c,v 1.8 2005/01/31 22:29:40 dillon Exp $
  */
 
+#include "namespace.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "local.h"
+#include "un-namespace.h"
 #include "libc_private.h"
+#include "local.h"
 
 int
 fclose(FILE *fp)
@@ -74,6 +76,12 @@ fclose(FILE *fp)
 	FUNLOCKFILE(fp);
 	fp->_file = -1;
 	fp->_r = fp->_w = 0;	/* Mess up if reaccessed. */
+#if 0
+	if (fp->_lock != NULL) {
+		_pthread_mutex_destroy((pthread_mutex_t *)&fp->_lock);
+		fp->_lock = NULL;
+	}
+#endif
 	fp->_flags = 0;		/* Release this FILE for reuse. */
 	return (r);
 }

@@ -33,7 +33,7 @@
  * @(#)res_send.c	8.1 (Berkeley) 6/4/93
  * $From: Id: res_send.c,v 8.20 1998/04/06 23:27:51 halley Exp $
  * $FreeBSD: src/lib/libc/net/res_send.c,v 1.31.2.9 2002/04/11 17:30:24 ume Exp $
- * $DragonFly: src/lib/libc/net/res_send.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $
+ * $DragonFly: src/lib/libc/net/res_send.c,v 1.4 2005/01/31 22:29:33 dillon Exp $
  */
 
 /*
@@ -77,6 +77,7 @@
  * Send query to name server and wait for reply.
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/event.h>
 #include <sys/param.h>
@@ -95,6 +96,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 #include "res_config.h"
 
@@ -459,7 +461,7 @@ res_send(buf, buflen, ans, anssiz)
 					res_close();
 
 				af = nsap->sa_family;
-				s = socket(af, SOCK_STREAM, 0);
+				s = _socket(af, SOCK_STREAM, 0);
 				if (s < 0) {
 					terrno = errno;
 					Perror(stderr, "socket(vc)", errno);
@@ -468,7 +470,7 @@ res_send(buf, buflen, ans, anssiz)
 					goto next_ns;
 				}
 				errno = 0;
-				if (connect(s, nsap, salen) < 0) {
+				if (_connect(s, nsap, salen) < 0) {
 					terrno = errno;
 					Aerror(stderr, "connect/vc",
 					       errno, nsap);
@@ -486,7 +488,7 @@ res_send(buf, buflen, ans, anssiz)
 			iov[0].iov_len = INT16SZ;
 			iov[1].iov_base = (caddr_t)buf;
 			iov[1].iov_len = buflen;
-			if (writev(s, iov, 2) != (INT16SZ + buflen)) {
+			if (_writev(s, iov, 2) != (INT16SZ + buflen)) {
 				terrno = errno;
 				Perror(stderr, "write failed", errno);
 				badns |= (1 << ns);
@@ -604,7 +606,7 @@ read_len:
 				if (vc)
 					res_close();
 				af = nsap->sa_family;
-				s = socket(af, SOCK_DGRAM, 0);
+				s = _socket(af, SOCK_DGRAM, 0);
 				if (s < 0) {
 #ifndef CAN_RECONNECT
  bad_dg_sock:
@@ -647,7 +649,7 @@ read_len:
 				 * receive a response from another server.
 				 */
 				if (!connected) {
-					if (connect(s, nsap, salen) < 0) {
+					if (_connect(s, nsap, salen) < 0) {
 						Aerror(stderr,
 						       "connect(dg)",
 						       errno, nsap);
@@ -676,15 +678,15 @@ read_len:
 					no_addr.sin_family = AF_INET;
 					no_addr.sin_addr.s_addr = INADDR_ANY;
 					no_addr.sin_port = 0;
-					(void) connect(s,
+					(void)_connect(s,
 						       (struct sockaddr *)
 						        &no_addr,
 						       sizeof no_addr);
 #else
-					int s1 = socket(af, SOCK_DGRAM,0);
+					int s1 = _socket(af, SOCK_DGRAM,0);
 					if (s1 < 0)
 						goto bad_dg_sock;
-					(void)dup2(s1, s);
+					(void)_dup2(s1, s);
 					(void)_close(s1);
 					Dprint(_res.options & RES_DEBUG,
 						(stdout, ";; new DG socket\n"))
@@ -693,7 +695,7 @@ read_len:
 					errno = 0;
 				}
 #endif /* !CANNOT_CONNECT_DGRAM */
-				if (sendto(s, (char*)buf, buflen, 0,
+				if (_sendto(s, (char*)buf, buflen, 0,
 					   nsap, salen) != buflen) {
 					Aerror(stderr, "sendto", errno, nsap);
 					badns |= (1 << ns);
@@ -726,7 +728,7 @@ read_len:
 
 			EV_SET(&kv, s, EVFILT_READ, EV_ADD | EV_ONESHOT, 0,0,0);
 
-			n = kevent(kq, &kv, 1, &kv, 1, &ts);
+			n = _kevent(kq, &kv, 1, &kv, 1, &ts);
 			if (n < 0) {
 				if (errno == EINTR) {
 					(void) gettimeofday(&ctv, NULL);
@@ -753,7 +755,7 @@ read_len:
 			}
 			errno = 0;
 			fromlen = sizeof(from);
-			resplen = recvfrom(s, (char*)ans, anssiz, 0,
+			resplen = _recvfrom(s, (char*)ans, anssiz, 0,
 					   (struct sockaddr *)&from, &fromlen);
 			if (resplen <= 0) {
 				Perror(stderr, "recvfrom", errno);

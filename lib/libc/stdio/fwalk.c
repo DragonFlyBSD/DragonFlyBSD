@@ -35,10 +35,12 @@
  *
  * @(#)fwalk.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fwalk.c,v 1.6.2.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/fwalk.c,v 1.3 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fwalk.c,v 1.4 2005/01/31 22:29:40 dillon Exp $
  */
 
 #include <stdio.h>
+#include <sys/types.h>
+#include <machine/atomic.h>
 #include "local.h"
 #include "glue.h"
 
@@ -50,6 +52,11 @@ _fwalk(int (*function)(FILE *))
 	struct glue *g;
 
 	ret = 0;
+	/*
+	 * It should be safe to walk  the list without locking it;
+	 * new nodes are only added to the end and none are ever
+	 * removed.
+	 */
 	for (g = &__sglue; g != NULL; g = g->next)
 		for (fp = g->iobs, n = g->niobs; --n >= 0; fp++)
 			if (fp->_flags != 0)

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/setjmperr.c,v 1.3 2000/01/27 23:06:19 jasone Exp $
- * $DragonFly: src/lib/libc/gen/setjmperr.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/setjmperr.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)setjmperr.c	8.1 (Berkeley) 6/4/93
  */
@@ -43,8 +43,10 @@
  * If this routine returns, the program is aborted.
  */
 
+#include "namespace.h"
 #include <setjmp.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 void
 longjmperror()

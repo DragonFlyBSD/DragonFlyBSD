@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/hash/hash_page.c,v 1.5 2000/01/27 23:06:08 jasone Exp $
- * $DragonFly: src/lib/libc/db/hash/hash_page.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/db/hash/hash_page.c,v 1.5 2005/01/31 22:29:09 dillon Exp $
  *
  * @(#)hash_page.c	8.7 (Berkeley) 8/16/94
  */
@@ -55,6 +55,7 @@
  *	open_temp
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 
 #include <errno.h>
@@ -67,6 +68,7 @@
 #ifdef DEBUG
 #include <assert.h>
 #endif
+#include "un-namespace.h"
 
 #include <db.h>
 #include "hash.h"
@@ -865,12 +867,12 @@ open_temp(hashp)
 
 	/* Block signals; make sure file goes away at process exit. */
 	(void)sigfillset(&set);
-	(void)sigprocmask(SIG_BLOCK, &set, &oset);
+	(void)_sigprocmask(SIG_BLOCK, &set, &oset);
 	if ((hashp->fp = mkstemp(namestr)) != -1) {
 		(void)unlink(namestr);
 		(void)_fcntl(hashp->fp, F_SETFD, 1);
 	}
-	(void)sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
+	(void)_sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
 	return (hashp->fp != -1 ? 0 : -1);
 }
 

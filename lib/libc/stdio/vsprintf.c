@@ -35,12 +35,13 @@
  *
  * @(#)vsprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vsprintf.c,v 1.6 1999/08/28 00:01:21 peter Exp $
- * $DragonFly: src/lib/libc/stdio/vsprintf.c,v 1.3 2003/11/09 02:34:02 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/vsprintf.c,v 1.4 2005/01/31 22:29:40 dillon Exp $
  */
 
 #include <stdio.h>
 #include <stdarg.h>
 #include <limits.h>
+#include "local.h"
 
 int
 vsprintf(char *str, const char *fmt, va_list ap)
@@ -52,7 +53,7 @@ vsprintf(char *str, const char *fmt, va_list ap)
 	f._flags = __SWR | __SSTR;
 	f._bf._base = f._p = (unsigned char *)str;
 	f._bf._size = f._w = INT_MAX;
-	ret = vfprintf(&f, fmt, ap);
+	ret = __vfprintf(&f, fmt, ap);
 	*f._p = 0;
 	return (ret);
 }

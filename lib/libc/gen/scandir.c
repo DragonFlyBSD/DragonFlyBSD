@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/scandir.c,v 1.5.6.1 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/scandir.c,v 1.4 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/scandir.c,v 1.5 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)scandir.c	8.3 (Berkeley) 1/2/94
  */
@@ -43,11 +43,13 @@
  * struct dirent (through namelist). Returns -1 if there were any errors.
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <stdlib.h>
 #include <string.h>
+#include "un-namespace.h"
 
 /*
  * The DIRSIZ macro is the minimum record length which will hold the directory
@@ -75,7 +77,7 @@ scandir(dirname, namelist, select, dcomp)
 
 	if ((dirp = opendir(dirname)) == NULL)
 		return(-1);
-	if (fstat(dirp->dd_fd, &stb) < 0)
+	if (_fstat(dirp->dd_fd, &stb) < 0)
 		goto fail;
 
 	/*

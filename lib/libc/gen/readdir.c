@@ -31,25 +31,26 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/readdir.c,v 1.5.2.4 2002/02/26 22:53:57 alfred Exp $
- * $DragonFly: src/lib/libc/gen/readdir.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/readdir.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)readdir.c	8.3 (Berkeley) 9/29/94
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <dirent.h>
 #include <errno.h>
 #include <string.h>
-#ifdef _THREAD_SAFE
 #include <pthread.h>
-#include "pthread_private.h"
-#endif /* _THREAD_SAFE */
+#include "un-namespace.h"
+
+#include "libc_private.h"
 
 /*
  * get next entry in a directory.
  */
 struct dirent *
-readdir(dirp)
+_readdir_unlocked(dirp)
 	DIR *dirp;
 {
 	struct dirent *dp;
@@ -61,7 +62,7 @@ readdir(dirp)
 			dirp->dd_loc = 0;
 		}
 		if (dirp->dd_loc == 0 && !(dirp->dd_flags & __DTF_READALL)) {
-			dirp->dd_size = getdirentries(dirp->dd_fd,
+			dirp->dd_size = _getdirentries(dirp->dd_fd,
 			    dirp->dd_buf, dirp->dd_len, &dirp->dd_seek);
 			if (dirp->dd_size <= 0)
 				return (NULL);
@@ -81,6 +82,22 @@ readdir(dirp)
 	}
 }
 
+struct dirent *
+readdir(dirp)
+	DIR *dirp;
+{
+	struct dirent	*dp;
+
+	if (__isthreaded) {
+		_pthread_mutex_lock((pthread_mutex_t *)&dirp->dd_lock);
+		dp = _readdir_unlocked(dirp);
+		_pthread_mutex_unlock((pthread_mutex_t *)&dirp->dd_lock);
+	}
+	else
+		dp = _readdir_unlocked(dirp);
+	return (dp);
+}
+
 int
 readdir_r(dirp, entry, result)
 	DIR *dirp;
@@ -90,30 +107,24 @@ readdir_r(dirp, entry, result)
 	struct dirent *dp;
 	int ret, saved_errno;
 
-#ifdef _THREAD_SAFE
-	if ((ret = _FD_LOCK(dirp->dd_fd, FD_READ, NULL)) != 0)
-		return (ret);
-#endif
-
 	saved_errno = errno;
 	errno = 0;
 	dp = readdir(dirp);
+	if (__isthreaded) {
+		_pthread_mutex_lock((pthread_mutex_t *)&dirp->dd_lock);
+		if ((dp = _readdir_unlocked(dirp)) != NULL)
+			memcpy(entry, dp, sizeof *entry);
+		_pthread_mutex_unlock((pthread_mutex_t *)&dirp->dd_lock);
+	}
+	else if ((dp = _readdir_unlocked(dirp)) != NULL)
+		memcpy(entry, dp, sizeof *entry);
+
 	if (errno != 0) {
 		if (dp == NULL) {
-#ifdef _THREAD_SAFE
-			_FD_UNLOCK(dirp->dd_fd, FD_READ);
-#endif
 			return (errno);
 		}
 	} else
 		errno = saved_errno;
-
-	if (dp != NULL)
-		memcpy(entry, dp, _GENERIC_DIRSIZ(dp));
-
-#ifdef _THREAD_SAFE
-	_FD_UNLOCK(dirp->dd_fd, FD_READ);
-#endif
 
 	if (dp != NULL)
 		*result = entry;

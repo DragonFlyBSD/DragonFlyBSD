@@ -31,15 +31,20 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/closedir.c,v 1.6.2.1 2001/03/05 08:29:56 obrien Exp $
- * $DragonFly: src/lib/libc/gen/closedir.c,v 1.3 2003/11/12 20:21:23 eirikn Exp $
+ * $DragonFly: src/lib/libc/gen/closedir.c,v 1.4 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)closedir.c	8.1 (Berkeley) 6/10/93
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <dirent.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "un-namespace.h"
+
+#include "libc_private.h"
 
 extern void _reclaim_telldir (DIR *);
 
@@ -47,17 +52,22 @@ extern void _reclaim_telldir (DIR *);
  * close a directory.
  */
 int
-closedir(dirp)
-	DIR *dirp;
+closedir(DIR *dirp)
 {
 	int fd;
 
-	seekdir(dirp, dirp->dd_rewind);	/* free seekdir storage */
+	if (__isthreaded)
+		_pthread_mutex_lock((pthread_mutex_t *)&dirp->dd_lock);
+	_seekdir(dirp, dirp->dd_rewind);	/* free seekdir storage */
 	fd = dirp->dd_fd;
 	dirp->dd_fd = -1;
 	dirp->dd_loc = 0;
 	free((void *)dirp->dd_buf);
 	_reclaim_telldir(dirp);
+	if (__isthreaded) {
+		_pthread_mutex_unlock((pthread_mutex_t *)&dirp->dd_lock);
+		_pthread_mutex_destroy((pthread_mutex_t *)&dirp->dd_lock);
+	}
 	free((void *)dirp);
 	return(_close(fd));
 }

@@ -34,11 +34,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/tmpfile.c,v 1.4.2.2 2003/02/15 05:34:52 kris Exp $
- * $DragonFly: src/lib/libc/stdio/tmpfile.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/tmpfile.c,v 1.3 2005/01/31 22:29:40 dillon Exp $
  *
  * @(#)tmpfile.c	8.1 (Berkeley) 6/4/93
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <signal.h>
 #include <unistd.h>
@@ -47,6 +48,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <paths.h>
+#include "un-namespace.h"
 
 FILE *
 tmpfile()
@@ -70,7 +72,7 @@ tmpfile()
 		return (NULL);
 
 	sigfillset(&set);
-	(void)sigprocmask(SIG_BLOCK, &set, &oset);
+	(void)_sigprocmask(SIG_BLOCK, &set, &oset);
 
 	fd = mkstemp(buf);
 	if (fd != -1)
@@ -78,7 +80,7 @@ tmpfile()
 
 	free(buf);
 
-	(void)sigprocmask(SIG_SETMASK, &oset, NULL);
+	(void)_sigprocmask(SIG_SETMASK, &oset, NULL);
 
 	if (fd == -1)
 		return (NULL);

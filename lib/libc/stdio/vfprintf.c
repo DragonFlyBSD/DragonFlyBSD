@@ -35,7 +35,7 @@
  *
  * @(#)vfprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vfprintf.c,v 1.22.2.5 2002/10/12 10:46:37 schweikh Exp $
- * $DragonFly: src/lib/libc/stdio/vfprintf.c,v 1.5 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/vfprintf.c,v 1.6 2005/01/31 22:29:40 dillon Exp $
  */
 
 /*
@@ -44,6 +44,7 @@
  * This code is large and complicated...
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 
 #include <limits.h>
@@ -52,6 +53,7 @@
 #include <string.h>
 
 #include <stdarg.h>
+#include "un-namespace.h"
 
 #include "libc_private.h"
 #include "local.h"
@@ -110,8 +112,8 @@ __sbprintf(FILE *fp, const char *fmt, va_list ap)
 	fake._lbfsize = 0;	/* not actually used, but Just In Case */
 
 	/* do the work, then copy any error status */
-	ret = vfprintf(&fake, fmt, ap);
-	if (ret >= 0 && fflush(&fake))
+	ret = __vfprintf(&fake, fmt, ap);
+	if (ret >= 0 && __fflush(&fake))
 		ret = EOF;
 	if (fake._flags & __SERR)
 		fp->_flags |= __SERR;
@@ -236,6 +238,20 @@ __uqtoa(u_quad_t val, char *endp, int base, int octzero, char *xdigs)
 	return (cp);
 }
 
+/*
+ * MT-safe version
+ */
+int
+vfprintf(FILE *fp, const char *fmt0, va_list ap)
+{
+	int ret;
+
+	FLOCKFILE(fp);
+	ret = __vfprintf(fp, fmt0, ap);
+	FUNLOCKFILE(fp);
+	return (ret);
+}
+
 #ifdef FLOATING_POINT
 #include <locale.h>
 #include <math.h>
@@ -267,8 +283,11 @@ static int exponent (char *, int, int);
 #define	SHORTINT	0x040		/* short integer */
 #define	ZEROPAD		0x080		/* zero (as opposed to blank) pad */
 #define FPT		0x100		/* Floating point number */
+/*
+ * Non-MT-safe version
+ */
 int
-vfprintf(FILE *fp, const char *fmt0, va_list ap)
+__vfprintf(FILE *fp, const char *fmt0, va_list ap)
 {
 	char *fmt;		/* format string */
 	int ch;			/* character from fmt */
@@ -400,17 +419,14 @@ vfprintf(FILE *fp, const char *fmt0, va_list ap)
 #ifdef FLOATING_POINT
 	dtoaresult = NULL;
 #endif
-	FLOCKFILE(fp);
 	/* sorry, fprintf(read_only_file, "") returns EOF, not 0 */
 	if (cantwrite(fp)) {
-		FUNLOCKFILE(fp);
 		return (EOF);
 	}
 
 	/* optimise fprintf(stderr) (and other unbuffered Unix files) */
 	if ((fp->_flags & (__SNBF|__SWR|__SRW)) == (__SNBF|__SWR) &&
 	    fp->_file >= 0) {
-		FUNLOCKFILE(fp);
 		return (__sbprintf(fp, fmt0, ap));
 	}
 
@@ -856,7 +872,6 @@ error:
 #endif
 	if (__sferror(fp))
 		ret = EOF;
-	FUNLOCKFILE(fp);
         if ((argtable != NULL) && (argtable != statargtable))
                 free (argtable);
 	return (ret);

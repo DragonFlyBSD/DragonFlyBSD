@@ -1,5 +1,5 @@
 /* $FreeBSD: src/lib/libc/gen/arc4random.c,v 1.4 2000/01/27 23:06:13 jasone Exp $ */
-/* $DragonFly: src/lib/libc/gen/arc4random.c,v 1.4 2004/06/19 18:55:47 joerg Exp $ */
+/* $DragonFly: src/lib/libc/gen/arc4random.c,v 1.5 2005/01/31 22:29:15 dillon Exp $ */
 
 /*
  * Arc4 random number generator for OpenBSD.
@@ -26,11 +26,13 @@
  * RC4 is a registered trademark of RSA Laboratories.
  */
 
+#include "namespace.h"
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include "un-namespace.h"
 
 struct arc4_stream {
 	u_int8_t i;

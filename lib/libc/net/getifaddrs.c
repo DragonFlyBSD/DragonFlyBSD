@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/getifaddrs.c,v 1.1.2.4 2002/08/01 19:31:06 ume Exp $	*/
-/*	$DragonFly: src/lib/libc/net/getifaddrs.c,v 1.4 2004/02/03 07:34:09 dillon Exp $	*/
+/*	$DragonFly: src/lib/libc/net/getifaddrs.c,v 1.5 2005/01/31 22:29:33 dillon Exp $	*/
 /*	$KAME: getifaddrs.c,v 1.9 2001/08/20 02:31:20 itojun Exp $	*/
 
 /*
@@ -30,12 +30,13 @@
  * NOTE: SIOCGIFCONF case is not LP64 friendly.  it also does not perform
  * try-and-error for region size.
  */
-#include <sys/param.h>
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <net/if.h>
 #ifdef	NET_RT_IFLIST
+#include <sys/param.h>
 #include <net/route.h>
 #include <sys/sysctl.h>
 #include <net/if_dl.h>
@@ -45,6 +46,7 @@
 #include <ifaddrs.h>
 #include <stdlib.h>
 #include <string.h>
+#include "un-namespace.h"
 
 #if !defined(AF_LINK)
 #define	SA_LEN(sa)	sizeof(struct sockaddr)
@@ -217,10 +219,10 @@ getifaddrs(struct ifaddrs **pif)
 	ifc.ifc_buf = buf;
 	ifc.ifc_len = sizeof(buf);
 
-	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+	if ((sock = _socket(AF_INET, SOCK_STREAM, 0)) < 0)
 		return (-1);
-	i =  ioctl(sock, SIOCGIFCONF, (char *)&ifc);
-	close(sock);
+	i =  _ioctl(sock, SIOCGIFCONF, (char *)&ifc);
+	_close(sock);
 	if (i < 0)
 		return (-1);
 

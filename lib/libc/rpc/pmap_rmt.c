@@ -29,7 +29,7 @@
  * @(#)pmap_rmt.c 1.21 87/08/27 Copyr 1984 Sun Micro
  * @(#)pmap_rmt.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/pmap_rmt.c,v 1.16.2.1 2002/06/30 23:34:58 iedowse Exp $
- * $DragonFly: src/lib/libc/rpc/pmap_rmt.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/pmap_rmt.c,v 1.4 2005/01/31 22:29:38 dillon Exp $
  */
 
 /*
@@ -40,6 +40,7 @@
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
+#include "namespace.h"
 #include <rpc/rpc.h>
 #include <rpc/pmap_prot.h>
 #include <rpc/pmap_clnt.h>
@@ -53,6 +54,8 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
+#include "un-namespace.h"
+
 #define MAX_BROADCAST_SIZE 1400
 
 static struct timeval timeout = { 3, 0 };
@@ -176,7 +179,7 @@ getbroadcastnets(addrs, sock, buf)
 
         ifc.ifc_len = UDPMSGSIZE;
         ifc.ifc_buf = buf;
-        if (ioctl(sock, SIOCGIFCONF, (char *)&ifc) < 0) {
+        if (_ioctl(sock, SIOCGIFCONF, (char *)&ifc) < 0) {
                 perror("broadcast: ioctl (get interface configuration)");
                 return (0);
         }
@@ -189,7 +192,7 @@ getbroadcastnets(addrs, sock, buf)
 		if (ifr->ifr_addr.sa_family != AF_INET)
 			continue;
 		memcpy(&ifreq, ifr, sizeof(ifreq));
-                if (ioctl(sock, SIOCGIFFLAGS, (char *)&ifreq) < 0) {
+                if (_ioctl(sock, SIOCGIFFLAGS, (char *)&ifreq) < 0) {
                         perror("broadcast: ioctl (get interface flags)");
                         continue;
                 }
@@ -197,7 +200,7 @@ getbroadcastnets(addrs, sock, buf)
 		    (ifreq.ifr_flags & IFF_UP)) {
 			sin = (struct sockaddr_in *)&ifr->ifr_addr;
 #ifdef SIOCGIFBRDADDR   /* 4.3BSD */
-			if (ioctl(sock, SIOCGIFBRDADDR, (char *)&ifreq) < 0) {
+			if (_ioctl(sock, SIOCGIFBRDADDR, (char *)&ifreq) < 0) {
 				addr =
 				    inet_makeaddr(inet_netof(sin->sin_addr),
 				    INADDR_ANY);
@@ -262,13 +265,13 @@ clnt_broadcast(prog, vers, proc, xargs, argsp, xresults, resultsp, eachresult)
 	 * initialization: create a socket, a broadcast address, and
 	 * preserialize the arguments into a send buffer.
 	 */
-	if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+	if ((sock = _socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
 		perror("Cannot create socket for broadcast rpc");
 		stat = RPC_CANTSEND;
 		goto done_broad;
 	}
 #ifdef SO_BROADCAST
-	if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &on, sizeof (on)) < 0) {
+	if (_setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &on, sizeof (on)) < 0) {
 		perror("Cannot set socket option SO_BROADCAST");
 		stat = RPC_CANTSEND;
 		goto done_broad;
@@ -332,7 +335,7 @@ clnt_broadcast(prog, vers, proc, xargs, argsp, xresults, resultsp, eachresult)
 		int success = 0;
 		for (i = 0; i < nets; i++) {
 			baddr.sin_addr = addrs[i];
-			if (sendto(sock, outbuf, outlen, 0,
+			if (_sendto(sock, outbuf, outlen, 0,
 				(struct sockaddr *)&baddr,
 				sizeof (struct sockaddr)) == outlen) {
 				success++;
@@ -353,8 +356,8 @@ clnt_broadcast(prog, vers, proc, xargs, argsp, xresults, resultsp, eachresult)
 		msg.acpted_rply.ar_results.proc = xdr_rmtcallres;
 		/* XXX we know the other bits are still clear */
 		FD_SET(sock, fds);
-		tv = t;		/* for select() that copies back */
-		switch (select(sock + 1, fds, NULL, NULL, &tv)) {
+		tv = t;		/* for _select() that copies back */
+		switch (_select(sock + 1, fds, NULL, NULL, &tv)) {
 
 		case 0:  /* timed out */
 			stat = RPC_TIMEDOUT;
@@ -370,7 +373,7 @@ clnt_broadcast(prog, vers, proc, xargs, argsp, xresults, resultsp, eachresult)
 		}  /* end of select results switch */
 	try_again:
 		fromlen = sizeof(struct sockaddr);
-		inlen = recvfrom(sock, inbuf, UDPMSGSIZE, 0,
+		inlen = _recvfrom(sock, inbuf, UDPMSGSIZE, 0,
 			(struct sockaddr *)&raddr, &fromlen);
 		if (inlen < 0) {
 			if (errno == EINTR)

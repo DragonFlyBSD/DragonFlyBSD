@@ -32,11 +32,13 @@
  *
  * @(#)usleep.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/usleep.c,v 1.25 2000/01/27 23:06:22 jasone Exp $
- * $DragonFly: src/lib/libc/gen/usleep.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/usleep.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
  */
 
+#include "namespace.h"
 #include <time.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 int
 usleep(useconds)

@@ -32,7 +32,7 @@
  *
  *	@(#)dirent.h	8.2 (Berkeley) 7/28/94
  * $FreeBSD: src/include/dirent.h,v 1.7 1999/12/29 05:01:20 peter Exp $
- * $DragonFly: src/include/dirent.h,v 1.3 2003/11/14 01:01:43 dillon Exp $
+ * $DragonFly: src/include/dirent.h,v 1.4 2005/01/31 22:28:58 dillon Exp $
  */
 
 #ifndef _DIRENT_H_
@@ -63,6 +63,7 @@ typedef struct _dirdesc {
 	long	dd_seek;	/* magic cookie returned by getdirentries */
 	long	dd_rewind;	/* magic cookie for rewinding */
 	int	dd_flags;	/* flags for readdir */
+	void	*dd_lock;	/* hack to avoid include <pthread.h> */
 } DIR;
 
 #define	dirfd(dirp)	((dirp)->dd_fd)
@@ -91,7 +92,9 @@ int closedir (DIR *);
 #ifndef _POSIX_SOURCE
 DIR *__opendir2 (const char *, int);
 long telldir (const DIR *);
-void seekdir (DIR *, long);
+struct dirent *_readdir_unlocked(DIR *);
+void _reclaim_telldir(DIR *);
+void _seekdir (DIR *, long);
 int scandir (const char *, struct dirent ***,
     int (*)(struct dirent *), int (*)(const void *, const void *));
 int alphasort (const void *, const void *);

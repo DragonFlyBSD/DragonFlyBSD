@@ -31,11 +31,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/mpool/mpool.c,v 1.5.2.1 2001/03/05 23:05:01 obrien Exp $
- * $DragonFly: src/lib/libc/db/mpool/mpool.c,v 1.3 2003/11/12 20:21:23 eirikn Exp $
+ * $DragonFly: src/lib/libc/db/mpool/mpool.c,v 1.4 2005/01/31 22:29:11 dillon Exp $
  *
  * @(#)mpool.c	8.5 (Berkeley) 7/26/94
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
@@ -45,6 +46,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 #include <db.h>
 
@@ -75,7 +77,7 @@ mpool_open(key, fd, pagesize, maxcache)
 	 * XXX
 	 * We don't currently handle pipes, although we should.
 	 */
-	if (fstat(fd, &sb))
+	if (_fstat(fd, &sb))
 		return (NULL);
 	if (!S_ISREG(sb.st_mode)) {
 		errno = ESPIPE;

@@ -34,16 +34,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/fdopen.c,v 1.3 2000/01/27 23:06:44 jasone Exp $
- * $DragonFly: src/lib/libc/stdio/fdopen.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fdopen.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
  *
  * @(#)fdopen.c	8.1 (Berkeley) 6/4/93
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
+#include "un-namespace.h"
 #include "local.h"
 
 FILE *

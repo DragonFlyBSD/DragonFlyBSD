@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/pause.c,v 1.3.2.1 2000/03/18 23:13:23 jasone Exp $
- * $DragonFly: src/lib/libc/gen/pause.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/pause.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)pause.c	8.1 (Berkeley) 6/4/93
  */
@@ -48,6 +48,4 @@ __pause()
 	return sigpause(sigblock(0L));
 }
 
-#ifndef _THREAD_SAFE
 __weak_reference(__pause, pause);
-#endif

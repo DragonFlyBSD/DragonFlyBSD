@@ -32,13 +32,15 @@
  *
  * @(#)sleep.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/sleep.c,v 1.28.2.1 2000/03/18 23:13:24 jasone Exp $
- * $DragonFly: src/lib/libc/gen/sleep.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/sleep.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
  */
 
+#include "namespace.h"
 #include <errno.h>
 #include <limits.h>
 #include <time.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 unsigned int
 __sleep(seconds)
@@ -64,6 +66,6 @@ __sleep(seconds)
 		(time_remaining.tv_nsec != 0)); /* round up */
 }
 
-#ifndef _THREAD_SAFE
 __weak_reference(__sleep, sleep);
-#endif
+__weak_reference(__sleep, _sleep);
+

@@ -25,9 +25,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/collate.c,v 1.21.2.4 2002/10/11 10:36:47 ache Exp $
- * $DragonFly: src/lib/libc/locale/collate.c,v 1.2 2003/06/17 04:26:43 dillon Exp $
+ * $DragonFly: src/lib/libc/locale/collate.c,v 1.3 2005/01/31 22:29:31 dillon Exp $
  */
 
+#include "namespace.h"
 #include <arpa/inet.h>
 #include <rune.h>
 #include <stdio.h>
@@ -36,6 +37,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sysexits.h>
+#include "un-namespace.h"
 
 #include "collate.h"
 #include "setlocale.h"
@@ -145,7 +147,7 @@ __collate_load_tables(const char *encoding)
 
 #define FREAD(a, b, c, d) \
 { \
-	if (fread(a, b, c, d) != c) { \
+	if ( fread(a, b, c, d) != c) { \
 		saverr = errno; \
 		free(TMP_substitute_table); \
 		free(TMP_char_pri_table); \

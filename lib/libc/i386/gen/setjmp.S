@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/gen/setjmp.S,v 1.17.2.2 2001/07/06 12:41:44 deischen Exp $
- * $DragonFly: src/lib/libc/i386/gen/setjmp.S,v 1.3 2003/12/06 03:11:35 drhodus Exp $
+ * $DragonFly: src/lib/libc/i386/gen/setjmp.S,v 1.4 2005/01/31 22:29:24 dillon Exp $
  */
 
 /*
@@ -57,7 +57,7 @@ ENTRY(setjmp)
 	pushl	%eax			/* (sigset_t*)oset */
 	pushl	$0			/* (sigset_t*)set  */
 	pushl	$1			/* SIG_BLOCK       */
-	call	PIC_PLT(CNAME(sigprocmask))
+	call	PIC_PLT(CNAME(_sigprocmask))
 	addl	$12,%esp
 	PIC_EPILOGUE
 	movl	4(%esp),%ecx
@@ -72,10 +72,8 @@ ENTRY(setjmp)
 	xorl	%eax,%eax
 	ret
 
-#ifndef _THREAD_SAFE
-.weak CNAME(longjmp);
-.set CNAME(longjmp),CNAME(__longjmp);
-#endif
+	.weak CNAME(longjmp);
+	.set CNAME(longjmp),CNAME(__longjmp);
 ENTRY(__longjmp)
 	movl	4(%esp),%edx
 	PIC_PROLOGUE
@@ -83,7 +81,7 @@ ENTRY(__longjmp)
 	leal	28(%edx), %eax
 	pushl	%eax			/* (sigset_t*)set  */
 	pushl	$3			/* SIG_SETMASK     */
-	call	PIC_PLT(CNAME(sigprocmask))
+	call	PIC_PLT(CNAME(_sigprocmask))
 	addl	$12,%esp
 	PIC_EPILOGUE
 	movl	4(%esp),%edx

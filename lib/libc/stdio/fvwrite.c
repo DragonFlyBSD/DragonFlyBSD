@@ -35,7 +35,7 @@
  *
  * @(#)fvwrite.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fvwrite.c,v 1.10 1999/08/28 00:01:06 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fvwrite.c,v 1.5 2004/06/08 04:04:11 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fvwrite.c,v 1.6 2005/01/31 22:29:40 dillon Exp $
  */
 
 #include <errno.h>
@@ -140,7 +140,7 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 				COPY(w);
 				/* fp->_w -= w; */ /* unneeded */
 				fp->_p += w;
-				if (fflush(fp))
+				if (__fflush(fp))
 					goto err;
 			} else if (len >= (w = fp->_bf._size)) {
 				/* write directly */
@@ -180,7 +180,7 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 				COPY(w);
 				/* fp->_w -= w; */
 				fp->_p += w;
-				if (fflush(fp))
+				if (__fflush(fp))
 					goto err;
 			} else if (s >= (w = fp->_bf._size)) {
 				w = (*fp->_write)(fp->_cookie, p, w);
@@ -194,7 +194,7 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 			}
 			if ((nldist -= w) == 0) {
 				/* copied the newline: flush and forget */
-				if (fflush(fp))
+				if (__fflush(fp))
 					goto err;
 				nlknown = 0;
 			}

@@ -22,7 +22,7 @@
  * @(#) Copyright (c) 1994 Powerdog Industries.  All rights reserved.
  * @(#)strptime.c	0.1 (Powerdog) 94/03/27
  * $FreeBSD: src/lib/libc/stdtime/strptime.c,v 1.17.2.3 2002/03/12 17:24:54 phantom Exp $
- * $DragonFly: src/lib/libc/stdtime/strptime.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdtime/strptime.c,v 1.3 2005/01/31 22:29:44 dillon Exp $
  */
 /*
  * Copyright (c) 1994 Powerdog Industries.  All rights reserved.
@@ -56,23 +56,20 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "namespace.h"
 #include <time.h>
 #include <ctype.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef	_THREAD_SAFE
 #include <pthread.h>
-#include "pthread_private.h"
-#endif
+#include "un-namespace.h"
+#include "libc_private.h"
 #include "timelocal.h"
 
 static char * _strptime(const char *, const char *, struct tm *);
 
-#ifdef	_THREAD_SAFE
-static struct pthread_mutex	_gotgmt_mutexd = PTHREAD_MUTEX_STATIC_INITIALIZER;
-static pthread_mutex_t		gotgmt_mutex   = &_gotgmt_mutexd;
-#endif
+static pthread_mutex_t	gotgmt_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int got_GMT;
 
 #define asizeof(a)	(sizeof (a) / sizeof ((a)[0]))
@@ -519,21 +516,18 @@ strptime(const char *buf, const char *fmt, struct tm *tm)
 {
 	char *ret;
 
-#ifdef	_THREAD_SAFE
-	pthread_mutex_lock(&gotgmt_mutex);
-#endif
 
+	if (__isthreaded)
+		_pthread_mutex_lock(&gotgmt_mutex);
 	got_GMT = 0;
 	ret = _strptime(buf, fmt, tm);
 	if (ret && got_GMT) {
 		time_t t = timegm(tm);
-	    localtime_r(&t, tm);
+	    	localtime_r(&t, tm);
 		got_GMT = 0;
 	}
 
-#ifdef	_THREAD_SAFE
-	pthread_mutex_unlock(&gotgmt_mutex);
-#endif
-
+	if (__isthreaded)
+		_pthread_mutex_unlock(&gotgmt_mutex);
 	return ret;
 }

@@ -31,13 +31,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/seekdir.c,v 1.2.8.1 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/seekdir.c,v 1.3 2003/11/12 20:21:23 eirikn Exp $
+ * $DragonFly: src/lib/libc/gen/seekdir.c,v 1.4 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)seekdir.c	8.1 (Berkeley) 6/4/93
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <dirent.h>
+#include <pthread.h>
+#include "un-namespace.h"
+
+#include "libc_private.h"
 
 extern void _seekdir ( DIR *, long );
 
@@ -50,6 +55,9 @@ seekdir(dirp, loc)
 	DIR *dirp;
 	long loc;
 {
-
-	_seekdir(dirp, loc);
+	if (__isthreaded)
+		_pthread_mutex_lock((pthread_mutex_t *)&dirp->dd_lock);
+ 	_seekdir(dirp, loc);
+	if (__isthreaded)
+		_pthread_mutex_unlock((pthread_mutex_t *)&dirp->dd_lock);
 }

@@ -35,9 +35,10 @@
  *
  * @(#)freopen.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/freopen.c,v 1.5.2.1 2001/03/05 10:54:53 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/freopen.c,v 1.4 2004/06/08 00:45:00 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/freopen.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -45,6 +46,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "un-namespace.h"
 #include "libc_private.h"
 #include "local.h"
 
@@ -110,7 +112,7 @@ freopen(const char *file, const char *mode, FILE *fp)
 		}
 		if (oflags & O_TRUNC)
 			ftruncate(fp->_file, 0);
-		if (fseeko(fp, 0, oflags & O_APPEND ? SEEK_END : SEEK_SET) < 0 &&
+		if (_fseeko(fp, 0, oflags & O_APPEND ? SEEK_END : SEEK_SET) < 0 &&
 		    errno != ESPIPE) {
 			sverrno = errno;
 			fclose(fp);
@@ -196,7 +198,7 @@ finish:
 	 * assume stderr is always fd STDERR_FILENO, even if being freopen'd.
 	 */
 	if (wantfd >= 0 && f != wantfd) {
-		if (dup2(f, wantfd) >= 0) {
+		if (_dup2(f, wantfd) >= 0) {
 			(void)_close(f);
 			f = wantfd;
 		}

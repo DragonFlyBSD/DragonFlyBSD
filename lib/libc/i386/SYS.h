@@ -36,7 +36,7 @@
  *	from: @(#)SYS.h	5.5 (Berkeley) 5/7/91
  *
  * $FreeBSD: src/lib/libc/i386/SYS.h,v 1.17.2.2 2002/10/15 19:46:46 fjoe Exp $
- * $DragonFly: src/lib/libc/i386/SYS.h,v 1.3 2004/03/20 16:27:40 drhodus Exp $
+ * $DragonFly: src/lib/libc/i386/SYS.h,v 1.4 2005/01/31 22:29:20 dillon Exp $
  */
 
 #include <sys/syscall.h>
@@ -62,30 +62,27 @@
  * Design note:
  *
  * The macros PSYSCALL() and PRSYSCALL() are intended for use where a
- * syscall needs to be renamed in the threaded library. When building
- * a normal library, they default to the traditional SYSCALL() and
- * RSYSCALL(). This avoids the need to #ifdef _THREAD_SAFE everywhere
- * that the renamed function needs to be called.
+ * syscall needs to be renamed in the threaded library.
  */
-#ifdef _THREAD_SAFE
 /*
  * For the thread_safe versions, we prepend __sys_ to the function
  * name so that the 'C' wrapper can go around the real name.
  */
 #define	PSYSCALL(x)	2: PIC_PROLOGUE; jmp PIC_PLT(HIDENAME(cerror));	\
 			ENTRY(__CONCAT(__sys_,x));			\
+			.weak CNAME(x);					\
+			.set CNAME(x),CNAME(__CONCAT(__sys_,x));	\
+			.weak CNAME(__CONCAT(_,x));			\
+			.set CNAME(__CONCAT(_,x)),CNAME(__CONCAT(__sys_,x)); \
 			lea __CONCAT(SYS_,x),%eax; KERNCALL; jb 2b
+
 #define	PRSYSCALL(x)	PSYSCALL(x); ret
+
 #define	PPSEUDO(x,y)	ENTRY(__CONCAT(__sys_,x));			\
+			.weak CNAME(x);					\
+			.set CNAME(x),CNAME(__CONCAT(__sys_,x));	\
+			.weak CNAME(__CONCAT(_,x));			\
+			.set CNAME(__CONCAT(_,x)),CNAME(__CONCAT(__sys_,x)); \
 			lea __CONCAT(SYS_,y), %eax; KERNCALL; ret
-#else
-/*
- * The non-threaded library defaults to traditional syscalls where
- * the function name matches the syscall name.
- */
-#define	PSYSCALL(x)	SYSCALL(x)
-#define	PRSYSCALL(x)	RSYSCALL(x)
-#define	PPSEUDO(x,y)	PSEUDO(x,y)
-#endif
 
 #define KERNCALL int $0x80

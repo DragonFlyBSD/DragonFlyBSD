@@ -27,13 +27,14 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/vasprintf.c,v 1.11 1999/08/28 00:01:19 peter Exp $
- * $DragonFly: src/lib/libc/stdio/vasprintf.c,v 1.3 2003/11/09 02:34:02 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/vasprintf.c,v 1.4 2005/01/31 22:29:40 dillon Exp $
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
+#include "local.h"
 
 int
 vasprintf(char **str, const char *fmt, va_list ap)
@@ -50,7 +51,7 @@ vasprintf(char **str, const char *fmt, va_list ap)
 		return (-1);
 	}
 	f._bf._size = f._w = 127;		/* Leave room for the NULL */
-	ret = vfprintf(&f, fmt, ap);
+	ret = __vfprintf(&f, fmt, ap);
 	*f._p = '\0';
 	f._bf._base = reallocf(f._bf._base, f._bf._size + 1);
 	if (f._bf._base == NULL) {

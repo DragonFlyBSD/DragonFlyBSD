@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/devname.c,v 1.2.2.2 2001/07/31 20:10:19 tmm Exp $
- * $DragonFly: src/lib/libc/gen/devname.c,v 1.4 2004/01/06 15:38:09 eirikn Exp $
+ * $DragonFly: src/lib/libc/gen/devname.c,v 1.5 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)devname.c	8.2 (Berkeley) 4/29/95
  */
@@ -41,7 +41,6 @@
 
 #include <db.h>
 #include <err.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <paths.h>
 #include <stdio.h>

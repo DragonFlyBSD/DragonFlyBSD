@@ -35,16 +35,19 @@
  *
  * @(#)vfscanf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: /repoman/r/ncvs/src/lib/libc/stdio/vfscanf.c,v 1.35 2004/01/31 23:16:09 das Exp $
- * $DragonFly: src/lib/libc/stdio/vfscanf.c,v 1.5 2004/07/08 17:56:46 cpressey Exp $
+ * $DragonFly: src/lib/libc/stdio/vfscanf.c,v 1.6 2005/01/31 22:29:40 dillon Exp $
  */
 
+#include "namespace.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdarg.h>
 #include <string.h>
+#include "un-namespace.h"
 
 #include "collate.h"
+#include "libc_private.h"
 #include "local.h"
 
 #define FLOATING_POINT
@@ -97,7 +100,21 @@
 static u_char *__sccl(char *, u_char *);
 
 /*
- * vfscanf
+ * __vfscanf MT-safe version
+ */
+int
+__vfscanf(FILE *fp, char const *fmt0, va_list ap)
+{
+	int ret;
+
+	FLOCKFILE(fp);
+	ret = __svfscanf(fp, fmt0, ap);
+	FUNLOCKFILE(fp);
+	return (ret);
+}
+
+/*
+ * __svfscanf - non-MT-safe version of __vfscanf
  */
 int
 __svfscanf(FILE *fp, char const *fmt0, va_list ap)
@@ -541,13 +558,13 @@ literal:
 			 */
 			if (flags & NDIGITS) {
 				if (p > buf)
-					(void) ungetc(*(u_char *)--p, fp);
+					(void)__ungetc(*(u_char *)--p, fp);
 				goto match_failure;
 			}
 			c = ((u_char *)p)[-1];
 			if (c == 'x' || c == 'X') {
 				--p;
-				(void) ungetc(c, fp);
+				(void)__ungetc(c, fp);
 			}
 			if ((flags & SUPPRESS) == 0) {
 				u_quad_t res;
@@ -638,16 +655,16 @@ literal:
 				if (flags & EXPOK) {
 					/* no digits at all */
 					while (p > buf)
-						ungetc(*(u_char *)--p, fp);
+						__ungetc(*(u_char *)--p, fp);
 					goto match_failure;
 				}
 				/* just a bad exponent (e and maybe sign) */
 				c = *(u_char *)--p;
 				if (c != 'e' && c != 'E') {
-					(void) ungetc(c, fp);/* sign */
+					(void)__ungetc(c, fp);/* sign */
 					c = *(u_char *)--p;
 				}
-				(void) ungetc(c, fp);
+				(void)__ungetc(c, fp);
 			}
 			if ((flags & SUPPRESS) == 0) {
 				double res;

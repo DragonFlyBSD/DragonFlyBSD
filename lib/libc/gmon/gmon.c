@@ -31,11 +31,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gmon/gmon.c,v 1.8 2000/01/27 23:06:25 jasone Exp $
- * $DragonFly: src/lib/libc/gmon/gmon.c,v 1.5 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/gmon/gmon.c,v 1.6 2005/01/31 22:29:17 dillon Exp $
  *
  * @(#)gmon.c	8.1 (Berkeley) 6/4/93
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/gmon.h>
@@ -45,7 +46,9 @@
 #include <errno.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 #if defined(__i386__) || defined(__amd64__)
 extern char *minbrk asm (".minbrk");

@@ -35,9 +35,10 @@
  *
  * @(#)rec_open.c	8.10 (Berkeley) 9/1/94
  * $FreeBSD: src/lib/libc/db/recno/rec_open.c,v 1.4 2000/01/27 23:06:11 jasone Exp $
- * $DragonFly: src/lib/libc/db/recno/rec_open.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/db/recno/rec_open.c,v 1.3 2005/01/31 22:29:13 dillon Exp $
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -48,6 +49,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 #include <db.h>
 #include "recno.h"
@@ -144,7 +146,7 @@ slow:			if ((t->bt_rfp = fdopen(rfd, "r")) == NULL)
 				goto einval;
 			}
 
-			if (fstat(rfd, &sb))
+			if (_fstat(rfd, &sb))
 				goto err;
 			/*
 			 * Kluge -- we'd like to test to see if the file is too

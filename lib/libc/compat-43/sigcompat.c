@@ -31,19 +31,17 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/compat-43/sigcompat.c,v 1.7 2000/01/27 23:06:04 jasone Exp $
- * $DragonFly: src/lib/libc/compat-43/sigcompat.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
- *
- * @(#)sigcompat.c	8.1 (Berkeley) 6/2/93
- * $FreeBSD: src/lib/libc/compat-43/sigcompat.c,v 1.7 2000/01/27 23:06:04 jasone Exp $
+ * $DragonFly: src/lib/libc/compat-43/sigcompat.c,v 1.3 2005/01/31 22:29:03 dillon Exp $
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <signal.h>
+#include "un-namespace.h"
+#include "libc_private.h"
 
 int
-sigvec(signo, sv, osv)
-	int signo;
-	struct sigvec *sv, *osv;
+sigvec(int signo, struct sigvec *sv, struct sigvec *osv)
 {
 	struct sigaction sa, osa;
 	struct sigaction *sap, *osap;
@@ -58,7 +56,7 @@ sigvec(signo, sv, osv)
 	} else
 		sap = NULL;
 	osap = osv != NULL ? &osa : NULL;
-	ret = sigaction(signo, sap, osap);
+	ret = _sigaction(signo, sap, osap);
 	if (ret == 0 && osv != NULL) {
 		osv->sv_handler = osa.sa_handler;
 		osv->sv_flags = osa.sa_flags ^ SV_INTERRUPT;
@@ -68,38 +66,35 @@ sigvec(signo, sv, osv)
 }
 
 int
-sigsetmask(mask)
-	int mask;
+sigsetmask(int mask)
 {
 	sigset_t set, oset;
 	int n;
 
 	sigemptyset(&set);
 	set.__bits[0] = mask;
-	n = sigprocmask(SIG_SETMASK, &set, &oset);
+	n = _sigprocmask(SIG_SETMASK, &set, &oset);
 	if (n)
 		return (n);
 	return (oset.__bits[0]);
 }
 
 int
-sigblock(mask)
-	int mask;
+sigblock(int mask)
 {
 	sigset_t set, oset;
 	int n;
 
 	sigemptyset(&set);
 	set.__bits[0] = mask;
-	n = sigprocmask(SIG_BLOCK, &set, &oset);
+	n = _sigprocmask(SIG_BLOCK, &set, &oset);
 	if (n)
 		return (n);
 	return (oset.__bits[0]);
 }
 
 int
-sigpause(mask)
-	int mask;
+sigpause(int mask)
 {
 	sigset_t set;
 

@@ -34,15 +34,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getcap.c,v 1.11.2.2 2001/01/15 06:48:09 gad Exp $
- * $DragonFly: src/lib/libc/gen/getcap.c,v 1.4 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/getcap.c,v 1.5 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)getcap.c	8.3 (Berkeley) 3/25/94
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 
 #include <ctype.h>
-#include <db.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -50,6 +50,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
+
+#include <db.h>
 
 #define	BFRAG		1024
 #define	BSIZE		1024

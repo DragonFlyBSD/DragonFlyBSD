@@ -35,11 +35,13 @@
  *
  * @(#)puts.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/puts.c,v 1.7 1999/08/28 00:01:12 peter Exp $
- * $DragonFly: src/lib/libc/stdio/puts.c,v 1.3 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/puts.c,v 1.4 2005/01/31 22:29:40 dillon Exp $
  */
 
+#include "namespace.h"
 #include <stdio.h>
 #include <string.h>
+#include "un-namespace.h"
 #include "fvwrite.h"
 #include "libc_private.h"
 

@@ -4,7 +4,7 @@
  *
  * @(#)svcauth_des.c	2.3 89/07/11 4.0 RPCSRC; from 1.15 88/02/08 SMI
  * $FreeBSD: src/lib/libc/rpc/svc_auth_des.c,v 1.3 1999/08/28 00:00:48 peter Exp $
- * $DragonFly: src/lib/libc/rpc/svc_auth_des.c,v 1.4 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/svc_auth_des.c,v 1.5 2005/01/31 22:29:38 dillon Exp $
  */
 
 /*
@@ -52,6 +52,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <rpc/des_crypt.h>
 #include <sys/param.h>

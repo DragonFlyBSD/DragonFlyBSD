@@ -32,9 +32,10 @@
  *
  * @(#)mktemp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/mktemp.c,v 1.19.2.3 2002/06/18 09:53:07 robert Exp $
- * $DragonFly: src/lib/libc/stdio/mktemp.c,v 1.5 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/mktemp.c,v 1.6 2005/01/31 22:29:40 dillon Exp $
  */
 
+/* #include "namespace.h" */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -44,6 +45,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+/* #include "un-namespace.h" */
 
 char *_mktemp (char *);
 

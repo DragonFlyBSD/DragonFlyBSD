@@ -30,25 +30,35 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/_spinlock_stub.c,v 1.4 1999/08/27 23:58:27 peter Exp $
- * $DragonFly: src/lib/libc/gen/_spinlock_stub.c,v 1.3 2004/01/23 11:30:27 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/_spinlock_stub.c,v 1.4 2005/01/31 22:29:15 dillon Exp $
  *
  */
 
 #include <stdio.h>
 
 /* Don't build these stubs into libc_r: */
-#ifndef	_THREAD_SAFE
 #include "spinlock.h"
 
 /*
- * Declare weak references in case the application is not linked
+ * Declare weak definitions in case the application is not linked
  * with libpthread.
  */
+#pragma weak _atomic_lock=_atomic_lock_stub
 #pragma weak _spinlock=_spinlock_stub
 #pragma weak _spinlock_debug=_spinlock_debug_stub
+#pragma weak _spinunlock=_spinunlock_stub
 
 void	_spinlock(spinlock_t *);
 void	_spinlock_debug(spinlock_t *, char *, int);
+
+/*
+ * This function is a stub for the _atomic_lock function in libpthread.
+ */
+long
+_atomic_lock_stub(volatile long *lck)
+{
+	return (0L);
+}
 
 /*
  * This function is a stub for the spinlock function in libpthread.
@@ -59,10 +69,17 @@ _spinlock_stub(spinlock_t *lck)
 }
 
 /*
+ * This function is a stub for the spinunlock function in libpthread.
+ */
+void
+_spinunlock_stub(spinlock_t *lck)
+{
+}
+
+/*
  * This function is a stub for the debug spinlock function in libpthread.
  */
 void
 _spinlock_debug_stub(spinlock_t *lck, char *fname, int lineno)
 {
 }
-#endif

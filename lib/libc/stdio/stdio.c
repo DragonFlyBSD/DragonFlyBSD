@@ -35,12 +35,14 @@
  *
  * @(#)stdio.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/stdio.c,v 1.9 2000/01/27 23:06:46 jasone Exp $
- * $DragonFly: src/lib/libc/stdio/stdio.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/stdio.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
  */
 
+#include "namespace.h"
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
+#include "un-namespace.h"
 #include "local.h"
 
 /*

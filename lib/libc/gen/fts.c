@@ -33,12 +33,13 @@
  * $OpenBSD: fts.c,v 1.22 1999/10/03 19:22:22 millert Exp $
  *
  * $FreeBSD: src/lib/libc/gen/fts.c,v 1.14.2.4 2001/06/01 22:00:34 kris Exp $
- * $DragonFly: src/lib/libc/gen/fts.c,v 1.4 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/fts.c,v 1.5 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)fts.c	8.6 (Berkeley) 8/14/94
  * $FreeBSD: src/lib/libc/gen/fts.c,v 1.14.2.4 2001/06/01 22:00:34 kris Exp $
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <sys/stat.h>
 
@@ -49,6 +50,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 static FTSENT	*fts_alloc (FTS *, char *, int);
 static FTSENT	*fts_build (FTS *, int);
@@ -1079,7 +1081,7 @@ fts_safe_changedir(sp, p, fd, path)
 		return (0);
 	if (fd < 0 && (newfd = _open(path, O_RDONLY, 0)) < 0)
 		return (-1);
-	if (fstat(newfd, &sb)) {
+	if (_fstat(newfd, &sb)) {
 		ret = -1;
 		goto bail;
 	}
