@@ -75,8 +75,8 @@
  *		(614)451-1883
  *
  *
- * $FreeBSD: src/usr.bin/chat/chat.c,v 1.15 1999/11/25 07:28:54 kris Exp $
- * $DragonFly: src/usr.bin/chat/chat.c,v 1.5 2003/11/06 19:30:04 eirikn Exp $
+ * $FreeBSD: src/usr.bin/chat/chat.c,v 1.16 2001/07/26 11:02:33 sheldonh Exp $
+ * $DragonFly: src/usr.bin/chat/chat.c,v 1.6 2004/12/31 19:32:02 cpressey Exp $
  */
 
 #include <stdio.h>
@@ -935,7 +935,7 @@ void chat_send (register char *s)
     if (say_next) {
 	say_next = 0;
 	s = clean(s,0);
-	write(2, s, strlen(s));
+	write(STDERR_FILENO, s, strlen(s));
         free(s);
 	return;
     }
@@ -1084,7 +1084,7 @@ int get_char(void)
     int status;
     char c;
 
-    status = read(0, &c, 1);
+    status = read(STDIN_FILENO, &c, 1);
 
     switch (status) {
     case 1:
@@ -1111,7 +1111,7 @@ int put_char(int c)
 
     usleep(10000);		/* inter-character typing delay (?) */
 
-    status = write(1, &ch, 1);
+    status = write(STDOUT_FILENO, &ch, 1);
 
     switch (status) {
     case 1:
@@ -1215,12 +1215,12 @@ void echo_stderr(int n)
 	    break;
 	/* fall through */
     case '\n':
-	write(2, "\n", 1);
+	write(STDERR_FILENO, "\n", 1);
 	need_lf = 0;
 	break;
     default:
 	s = character(n);
-	write(2, s, strlen(s));
+	write(STDERR_FILENO, s, strlen(s));
 	need_lf = 1;
 	break;
     }
