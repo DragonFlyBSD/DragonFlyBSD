@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/binutils/ld/Makefile,v 1.8.2.8 2002/09/01 23:39:14 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/binutils214/ld/Attic/Makefile,v 1.1 2004/02/01 08:53:04 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/binutils214/ld/Attic/Makefile,v 1.2 2004/03/28 16:26:33 joerg Exp $
 
 .include "../Makefile.inc0"
 
@@ -10,6 +10,18 @@ SCRIPTDIR= /usr/libexec/binutils214/ldscripts
 SRCS+=	ldcref.c ldctor.c ldemul.c ldemul-list.h ldexp.c ldfile.c \
 	ldgram.y ldlang.c ldlex.l ldmain.c ldmisc.c \
 	ldver.c ldwrite.c lexsup.c mri.c
+
+CONTRIBDIR=	${SRCDIR}/ld
+CLEANFILES+=	emultempl/elf32.em genscripts.sh
+
+emultempl/elf32.em: ${CONTRIBDIR}/emultempl/elf32.em patches/elf32.em.patch
+	mkdir -p emultempl
+	patch -o ${.TARGET} -i ${.ALLSRC:M*.patch} ${CONTRIBDIR}/${.TARGET}
+
+genscripts.sh: ${CONTRIBDIR}/genscripts.sh patches/genscripts.sh.patch
+	patch -o ${.TARGET} -i ${.ALLSRC:M*.patch} ${CONTRIBDIR}/${.TARGET}
+
+depend: emultempl/elf32.em genscripts.sh
 
 .if defined(BOOTSTRAPPING) && !exists(/usr/include/elf-hints.h)
 SRCS+=	elf-hints.h

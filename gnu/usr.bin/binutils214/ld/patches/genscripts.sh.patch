@@ -1,0 +1,9 @@
+$DragonFly: src/gnu/usr.bin/binutils214/ld/patches/Attic/genscripts.sh.patch,v 1.1 2004/03/28 16:26:33 joerg Exp $
+--- genscripts.sh.old	Thu Mar 25 18:19:45 2004
++++ genscripts.sh	Thu Mar 25 18:21:35 2004
+@@ -234,4 +234,4 @@
+ esac
+ 
+ # Generate e${EMULATION_NAME}.c.
+-. ${srcdir}/emultempl/${TEMPLATE_NAME-generic}.em
++. emultempl/${TEMPLATE_NAME-generic}.em

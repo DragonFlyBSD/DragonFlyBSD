@@ -1,0 +1,189 @@
+$DragonFly: src/gnu/usr.bin/binutils214/ld/patches/Attic/elf32.em.patch,v 1.1 2004/03/28 16:26:33 joerg Exp $
+--- emultempl/elf32.em	2 Feb 2004 07:29:28 -0000	1.1
++++ emultempl/elf32.em	25 Mar 2004 23:56:10 -0000
+@@ -440,11 +440,68 @@ gld${EMULATION_NAME}_search_needed (path
+ }
+ 
+ EOF
+-if [ "x${USE_LIBPATH}" = xyes ] ; then
+-  cat >>e${EMULATION_NAME}.c <<EOF
++if [ "x${host}" = "x${target}" ] ; then
++  case " ${EMULATION_LIBPATH} " in
++  *" ${EMULATION_NAME} "*)
++    case ${target} in
++      *-*-freebsd* | *-*-dragonfly*)
++	cat >>e${EMULATION_NAME}.c <<EOF
++/*
++ * Read the system search path the FreeBSD way rather than like Linux.
++ */
++#include <elf-hints.h>
+ 
+-/* Add the sysroot to every entry in a colon-separated path.  */
++static bfd_boolean gld${EMULATION_NAME}_check_ld_elf_hints
++  PARAMS ((const char *, int));
++
++static bfd_boolean
++gld${EMULATION_NAME}_check_ld_elf_hints (name, force)
++     const char *name;
++     int force;
++{
++  static bfd_boolean initialized;
++  static char *ld_elf_hints;
++
++  if (! initialized)
++    {
++      FILE *f;
++
++      f = fopen (_PATH_ELF_HINTS, FOPEN_RB);
++      if (f != NULL)
++	{
++	  struct elfhints_hdr hdr;
++
++	  if (fread(&hdr, 1, sizeof(hdr), f) == sizeof(hdr) &&
++	      hdr.magic == ELFHINTS_MAGIC &&
++	      hdr.version == 1)
++	    {
++	      if (fseek(f, hdr.strtab + hdr.dirlist, SEEK_SET) != -1)
++		{
++		  char *b;
+ 
++		  b = (char *) xmalloc (hdr.dirlistlen + 1);
++		  if (fread(b, 1, hdr.dirlistlen + 1, f) !=
++		      hdr.dirlistlen + 1)
++		    {
++		      free(b);
++		    }
++		  else
++		    {
++		      ld_elf_hints = b;
++		    }
++		}
++	    }
++	  fclose (f);
++	}
++
++      initialized = TRUE;
++    }
++
++  if (ld_elf_hints == NULL)
++    return FALSE;
++
++  return gld${EMULATION_NAME}_search_needed (ld_elf_hints, name, force);
++}
+ static char * gld${EMULATION_NAME}_add_sysroot PARAMS ((const char *));
+ 
+ static char *
+@@ -484,9 +541,12 @@ gld${EMULATION_NAME}_add_sysroot (path)
+ }
+ 
+ EOF
+-  case ${target} in
+-    *-*-linux-gnu*)
+-      cat >>e${EMULATION_NAME}.c <<EOF
++	# DragonFly
++	;;
++
++      *-*-linux-gnu*)
++	cat >>e${EMULATION_NAME}.c <<EOF
++
+ /* For a native linker, check the file /etc/ld.so.conf for directories
+    in which we may find shared libraries.  /etc/ld.so.conf is really
+    only meaningful on Linux.  */
+@@ -581,6 +641,7 @@ gld${EMULATION_NAME}_check_ld_so_conf (n
+ EOF
+     # Linux
+     ;;
++    esac
+   esac
+ fi
+ cat >>e${EMULATION_NAME}.c <<EOF
+@@ -694,12 +755,16 @@ gld${EMULATION_NAME}_after_open ()
+ 	  size_t len;
+ 	  search_dirs_type *search;
+ EOF
+-if [ "x${USE_LIBPATH}" = xyes ] ; then
++if [ "x${host}" = "x${target}" ] ; then
++  case " ${EMULATION_LIBPATH} " in
++  *" ${EMULATION_NAME} "*)
+ cat >>e${EMULATION_NAME}.c <<EOF
+ 	  const char *lib_path;
+ 	  struct bfd_link_needed_list *rp;
+ 	  int found;
+ EOF
++  ;;
++  esac
+ fi
+ cat >>e${EMULATION_NAME}.c <<EOF
+ 
+@@ -707,15 +772,13 @@ cat >>e${EMULATION_NAME}.c <<EOF
+ 						  l->name, force))
+ 	    break;
+ EOF
+-if [ "x${USE_LIBPATH}" = xyes ] ; then
++if [ "x${host}" = "x${target}" ] ; then
++  case " ${EMULATION_LIBPATH} " in
++  *" ${EMULATION_NAME} "*)
+ cat >>e${EMULATION_NAME}.c <<EOF
+ 	  if (gld${EMULATION_NAME}_search_needed (command_line.rpath,
+ 						  l->name, force))
+ 	    break;
+-EOF
+-fi
+-if [ "x${NATIVE}" = xyes ] ; then
+-cat >>e${EMULATION_NAME}.c <<EOF
+ 	  if (command_line.rpath_link == NULL
+ 	      && command_line.rpath == NULL)
+ 	    {
+@@ -727,10 +790,7 @@ cat >>e${EMULATION_NAME}.c <<EOF
+ 	  lib_path = (const char *) getenv ("LD_LIBRARY_PATH");
+ 	  if (gld${EMULATION_NAME}_search_needed (lib_path, l->name, force))
+ 	    break;
+-EOF
+-fi
+-if [ "x${USE_LIBPATH}" = xyes ] ; then
+-cat >>e${EMULATION_NAME}.c <<EOF
++
+ 	  found = 0;
+ 	  rp = bfd_elf_get_runpath_list (output_bfd, &link_info);
+ 	  for (; !found && rp != NULL; rp = rp->next)
+@@ -746,6 +806,8 @@ cat >>e${EMULATION_NAME}.c <<EOF
+ 	    break;
+ 
+ EOF
++  ;;
++  esac
+ fi
+ cat >>e${EMULATION_NAME}.c <<EOF
+ 	  len = strlen (l->name);
+@@ -764,15 +826,25 @@ cat >>e${EMULATION_NAME}.c <<EOF
+ 	  if (search != NULL)
+ 	    break;
+ EOF
+-if [ "x${USE_LIBPATH}" = xyes ] ; then
+-  case ${target} in
+-    *-*-linux-gnu*)
+-      cat >>e${EMULATION_NAME}.c <<EOF
++if [ "x${host}" = "x${target}" ] ; then
++  case " ${EMULATION_LIBPATH} " in
++  *" ${EMULATION_NAME} "*)
++    case ${target} in
++      *-*-freebsd* | *-*-dragonfly*)
++	cat >>e${EMULATION_NAME}.c <<EOF
++	  if (gld${EMULATION_NAME}_check_ld_elf_hints (l->name, force))
++	    break;
++EOF
++        ;;
++      *-*-linux-gnu*)
++	cat >>e${EMULATION_NAME}.c <<EOF
+ 	  if (gld${EMULATION_NAME}_check_ld_so_conf (l->name, force))
+ 	    break;
+ EOF
+-    # Linux
+-    ;;
++	# Linux
++        ;;
++    esac
++  ;;
+   esac
+ fi
+ cat >>e${EMULATION_NAME}.c <<EOF
