@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.22 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.12 2004/02/08 06:51:54 hmp Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.13 2004/02/08 07:03:17 hmp Exp $
  *
  */
 
@@ -1166,8 +1166,7 @@ bge_chipinit(sc)
 	CSR_WRITE_4(sc, BGE_MODE_CTL, BGE_MODECTL_WORDSWAP_NONFRAME|
 	    BGE_MODECTL_BYTESWAP_DATA|BGE_MODECTL_WORDSWAP_DATA|
 	    BGE_MODECTL_MAC_ATTN_INTR|BGE_MODECTL_HOST_SEND_BDS|
-	    BGE_MODECTL_NO_RX_CRC|BGE_MODECTL_TX_NO_PHDR_CSUM|
-	    BGE_MODECTL_RX_NO_PHDR_CSUM);
+	    BGE_MODECTL_TX_NO_PHDR_CSUM|BGE_MODECTL_RX_NO_PHDR_CSUM);
 
 	/*
 	 * Disable memory write invalidate.  Apparently it is not supported
