@@ -24,12 +24,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/cbcp.c,v 1.18.2.3 2002/09/01 02:12:22 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/cbcp.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/cbcp.c,v 1.3 2004/02/03 07:11:47 dillon Exp $
  */
 
 #include <sys/param.h>
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #include <netinet/in.h>
 #endif
 #include <sys/un.h>

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/bundle.c,v 1.84.2.12 2002/09/01 02:12:22 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/bundle.c,v 1.3 2003/08/08 04:18:47 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/bundle.c,v 1.4 2004/02/03 07:11:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -700,7 +700,7 @@ bundle_Create(const char *prefix, int type, int unit)
   static struct bundle bundle;		/* there can be only one */
   int enoentcount, err, minunit, maxunit;
   const char *ifname;
-#if defined(__FreeBSD__) && !defined(NOKLDLOAD)
+#if defined(__DragonFly__) && !defined(NOKLDLOAD)
   int kldtried;
 #endif
 #if defined(TUNSIFMODE) || defined(TUNSLMODE) || defined(TUNSIFHEAD)
@@ -721,7 +721,7 @@ bundle_Create(const char *prefix, int type, int unit)
   }
   err = ENOENT;
   enoentcount = 0;
-#if defined(__FreeBSD__) && !defined(NOKLDLOAD)
+#if defined(__DragonFly__) && !defined(NOKLDLOAD)
   kldtried = 0;
 #endif
   for (bundle.unit = minunit; bundle.unit != maxunit; bundle.unit++) {
@@ -731,7 +731,7 @@ bundle_Create(const char *prefix, int type, int unit)
     if (bundle.dev.fd >= 0)
       break;
     else if (errno == ENXIO || errno == ENOENT) {
-#if defined(__FreeBSD__) && !defined(NOKLDLOAD)
+#if defined(__DragonFly__) && !defined(NOKLDLOAD)
       if (bundle.unit == minunit && !kldtried++) {
         /*
          * Attempt to load the tunnel interface KLD if it isn't loaded

@@ -26,11 +26,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/defs.h,v 1.52.2.11 2002/09/01 02:12:26 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/defs.h,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/defs.h,v 1.3 2004/02/03 07:11:47 dillon Exp $
  */
 
 /* Check the following definitions for your machine environment */
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 # define  MODEM_LIST	"/dev/cuaa1\0/dev/cuaa0"	/* name of tty device */
 #else
 # ifdef __OpenBSD__
@@ -118,7 +118,7 @@
 
 #define ROUNDUP(x) ((x) ? (1 + (((x) - 1) | (sizeof(long) - 1))) : sizeof(long))
 
-#if defined(__NetBSD__) || __FreeBSD__ < 3
+#if defined(__NetBSD__)
 extern void randinit(void);
 #else
 #define random arc4random

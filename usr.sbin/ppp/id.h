@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/id.h,v 1.13.2.1 2000/08/19 09:30:03 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/id.h,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/id.h,v 1.3 2004/02/03 07:11:47 dillon Exp $
  */
 
 #ifndef NOSUID
@@ -47,7 +47,7 @@ extern void ID0logout(const char *, int);
 extern int ID0bind_un(int, const struct sockaddr_un *);
 extern int ID0connect_un(int, const struct sockaddr_un *);
 extern int ID0kill(pid_t, int);
-#if defined(__FreeBSD__) && !defined(NOKLDLOAD)
+#if defined(__DragonFly__) && !defined(NOKLDLOAD)
 extern int ID0kldload(const char *);
 #endif
 #ifndef NONETGRAPH
@@ -83,7 +83,7 @@ extern int ID0NgMkSockNode(const char *, int *, int *);
 #define ID0connect_un(s, n) \
 	connect(s, (const struct sockaddr *)(n), sizeof *(n))
 #define ID0kill kill
-#if defined(__FreeBSD__) && !defined(NOKLDLOAD)
+#if defined(__DragonFly__) && !defined(NOKLDLOAD)
 #define ID0kldload kldload
 #endif
 #ifndef NONETGRAPH

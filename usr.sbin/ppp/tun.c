@@ -24,13 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/tun.c,v 1.20.2.4 2002/09/01 02:12:32 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/tun.c,v 1.3 2003/08/08 04:18:47 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/tun.c,v 1.4 2004/02/03 07:11:47 dillon Exp $
  */
 
 #include <sys/param.h>
 
 #include <sys/socket.h>		/* For IFF_ defines */
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 #include <net/if.h>		/* For IFF_ defines */
 #endif
 #include <net/route.h>

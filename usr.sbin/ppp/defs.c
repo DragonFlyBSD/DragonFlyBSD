@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/defs.c,v 1.31.2.12 2002/09/01 02:12:26 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/defs.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/defs.c,v 1.3 2004/02/03 07:11:47 dillon Exp $
  */
 
 
@@ -40,16 +40,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#if defined(__FreeBSD__) && !defined(NOKLDLOAD)
+#if defined(__DragonFly__) && !defined(NOKLDLOAD)
 #include <sys/module.h>
 #endif
 #include <termios.h>
-#if !defined(__FreeBSD__) || __FreeBSD__ < 3
+#if !defined(__DragonFly__)
 #include <time.h>
 #endif
 #include <unistd.h>
 
-#if defined(__FreeBSD__) && !defined(NOKLDLOAD)
+#if defined(__DragonFly__) && !defined(NOKLDLOAD)
 #include "id.h"
 #include "log.h"
 #endif
@@ -57,11 +57,11 @@
 
 #define	issep(c)	((c) == '\t' || (c) == ' ')
 
-#if defined(__NetBSD__) || __FreeBSD__ < 3
+#if defined(__NetBSD__)
 void
 randinit()
 {
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
   static int initdone;		/* srandomdev() call is only required once */
 
   if (!initdone) {
@@ -424,7 +424,7 @@ int
 loadmodules(int how, const char *module, ...)
 {
   int loaded = 0;
-#if defined(__FreeBSD__) && !defined(NOKLDLOAD)
+#if defined(__DragonFly__) && !defined(NOKLDLOAD)
   va_list ap;
 
   va_start(ap, module);

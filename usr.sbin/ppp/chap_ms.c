@@ -27,11 +27,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/chap_ms.c,v 1.9.2.6 2002/09/01 02:12:23 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/chap_ms.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/chap_ms.c,v 1.3 2004/02/03 07:11:47 dillon Exp $
  */
 
 #include <ctype.h>
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #include <openssl/des.h>
 #include <sha.h>
 #else
@@ -189,7 +189,7 @@ GenerateNTResponse(char *AuthenticatorChallenge, char *PeerChallenge,
   ChallengeResponse(Challenge, PasswordHash, Response);
 }
 
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 #define LENGTH 20
 static char *
 SHA1_End(SHA_CTX *ctx, char *buf)

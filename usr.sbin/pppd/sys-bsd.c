@@ -20,7 +20,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/sys-bsd.c,v 1.17.2.1 2002/09/17 16:53:55 nectar Exp $
- * $DragonFly: src/usr.sbin/pppd/sys-bsd.c,v 1.4 2003/11/03 19:31:40 eirikn Exp $
+ * $DragonFly: src/usr.sbin/pppd/sys-bsd.c,v 1.5 2004/02/03 07:11:53 dillon Exp $
  */
 
 /*	$NetBSD: sys-bsd.c,v 1.1.1.3 1997/09/26 18:53:04 christos Exp $	*/
@@ -67,7 +67,7 @@
 #if defined(NetBSD) && (NetBSD >= 199703)
 #include <netinet/if_inarp.h>
 #else	/* NetBSD 1.2D or later */
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #include <netinet/if_ether.h>
 #else
 #include <net/if_ether.h>

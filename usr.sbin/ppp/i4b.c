@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/i4b.c,v 1.8.2.3 2002/09/01 02:12:27 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/i4b.c,v 1.3 2003/08/08 04:18:47 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/i4b.c,v 1.4 2004/02/03 07:11:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,7 +37,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #include <i4b_machine/i4b_ioctl.h>
 #include <i4b_machine/i4b_rbch_ioctl.h>
 #else

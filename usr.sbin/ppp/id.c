@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/id.c,v 1.18.2.3 2002/09/01 02:12:27 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/id.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/id.c,v 1.3 2004/02/03 07:11:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,7 +41,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sysexits.h>
-#if defined(__FreeBSD__) && !defined(NOKLDLOAD)
+#if defined(__DragonFly__) && !defined(NOKLDLOAD)
 #include <sys/linker.h>
 #endif
 #include <unistd.h>
@@ -274,7 +274,7 @@ ID0kill(pid_t pid, int sig)
   return result;
 }
 
-#if defined(__FreeBSD__) && !defined(NOKLDLOAD)
+#if defined(__DragonFly__) && !defined(NOKLDLOAD)
 int
 ID0kldload(const char *dev)
 {

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/iface.c,v 1.13.2.9 2003/04/29 16:04:41 ume Exp $
- * $DragonFly: src/usr.sbin/ppp/iface.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/iface.c,v 1.3 2004/02/03 07:11:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,7 +32,7 @@
 #include <netinet/in.h>
 #include <net/if.h>
 #include <net/if_dl.h>
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #include <net/if_var.h>
 #endif
 #include <net/route.h>
