@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.51 2004/07/19 19:19:19 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.52 2004/07/20 04:37:49 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -55,6 +55,7 @@ Daily DragonFly events and news are reported at the
 <h2>1.0 Release Errata</h2>
 <p>
 <A HREF="http://www.bsdinstaller.org/errata.html">Installer Errata</A>
+<br /><A HREF="errata.cgi">General Errata</A>
 </p>
 <p>
 <b>IMPORTANT ERRATA ADDENDUM: Using the installer on a multi-slice disk
@@ -140,12 +141,10 @@ gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 <TD>1.0A_REL image</TD>
 <TD><A HREF="http://www.acm.cs.rpi.edu/~tbw/dfly-1.0A_REL.iso.gz">HTTP</A></TD></TR>
 
-<!--
 <TR><TD>Dragonflybsd.org (California, USA)</TD>
 <TD>1.0A_REL image</TD>
 <TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.0A_REL.iso.gz">FTP</A>
 (<I>try to find another site first)</I></TD></TR>
--->
 
 <!--
 <TR><TD>EnergyHQ</TD>
