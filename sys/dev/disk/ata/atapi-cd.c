@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.12 2004/03/08 15:13:56 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.13 2004/03/12 22:19:08 joerg Exp $
  */
 
 #include "opt_ata.h"
@@ -1673,11 +1673,20 @@ acd_send_cue(struct acd_softc *cdp, struct cdr_cuesheet *cuesheet)
 static int
 acd_report_key(struct acd_softc *cdp, struct dvd_authinfo *ai)
 {
-    struct dvd_miscauth *d = NULL;
+    struct dvd_miscauth *d;
     u_int32_t lba = 0;
     int16_t length;
     int8_t ccb[16];
     int error;
+
+    /* this is common even for ai->format == DVD_INVALIDATE_AGID */
+    bzero(ccb, sizeof(ccb));
+    ccb[0] = ATAPI_REPORT_KEY;
+    ccb[2] = (lba >> 24) & 0xff;
+    ccb[3] = (lba >> 16) & 0xff;
+    ccb[4] = (lba >> 8) & 0xff;
+    ccb[5] = lba & 0xff;
+    ccb[10] = (ai->agid << 6) | ai->format;
 
     switch (ai->format) {
     case DVD_REPORT_AGID:
@@ -1696,33 +1705,24 @@ acd_report_key(struct acd_softc *cdp, struct dvd_authinfo *ai)
 	length = 16;
 	break;
     case DVD_INVALIDATE_AGID:
-	length = 0;
-	break;
+	error = atapi_queue_cmd(cdp->device, ccb, (caddr_t)d, length,
+				0, 10, NULL, NULL);
+	return error;
     default:
 	return EINVAL;
     }
 
-    bzero(ccb, sizeof(ccb));
-    ccb[0] = ATAPI_REPORT_KEY;
-    ccb[2] = (lba >> 24) & 0xff;
-    ccb[3] = (lba >> 16) & 0xff;
-    ccb[4] = (lba >> 8) & 0xff;
-    ccb[5] = lba & 0xff;
     ccb[8] = (length >> 8) & 0xff;
     ccb[9] = length & 0xff;
-    ccb[10] = (ai->agid << 6) | ai->format;
 
-    if (length) {
-	d = malloc(length, M_ACD, M_WAITOK | M_ZERO);
-	d->length = htons(length - 2);
-    }
+    d = malloc(length, M_ACD, M_WAITOK | M_ZERO);
+    d->length = htons(length - 2);
 
     error = atapi_queue_cmd(cdp->device, ccb, (caddr_t)d, length,
-			    ai->format == DVD_INVALIDATE_AGID ? 0 : ATPR_F_READ,
-			    10, NULL, NULL);
+			    ATPR_F_READ, 10, NULL, NULL);
     if (error) {
-	free(d, M_ACD);
-	return error;
+        free(d, M_ACD);
+	return(error);
     }
 
     switch (ai->format) {
@@ -1758,6 +1758,7 @@ acd_report_key(struct acd_softc *cdp, struct dvd_authinfo *ai)
 	break;
     
     case DVD_INVALIDATE_AGID:
+	/* not reached */
 	break;
 
     default:
