@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.8 2004/08/02 13:22:33 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.9 2004/08/13 14:27:29 drhodus Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -2026,7 +2026,6 @@ int
 nd6_storelladdr(struct ifnet *ifp, struct rtentry *rt, struct mbuf *m,
 		struct sockaddr *dst, u_char *desten)
 {
-	int i;
 	struct sockaddr_dl *sdl;
 
 	if (m->m_flags & M_MCAST) {
