@@ -1,3 +1,5 @@
+$FreeBSD$
+
 /*
  * Copyright (c) 1998, 1999, 2000 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -35,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/usbdevs,v 1.203 2004/09/20 04:56:13 sanpei Exp $
- * $DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.11 2004/09/27 05:30:16 asmodai Exp $
+ * $DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.12 2004/12/10 20:37:55 dillon Exp $
  */
 
 
@@ -382,6 +384,7 @@ vendor ACCTON		0x083a	Accton Technology
 vendor DIAMOND		0x0841	Diamond
 vendor NETGEAR		0x0846	BayNETGEAR
 vendor ACTIVEWIRE	0x0854	ActiveWire
+vendor BBELECTRONICS	0x0856	B&B Electronics
 vendor PORTGEAR		0x085a	PortGear
 vendor SYSTEMTALKS	0x086e	System TALKS, Inc.
 vendor METRICOM		0x0870	Metricom
@@ -398,6 +401,7 @@ vendor BILLIONTON	0x08dd	Billionton Systems
 vendor EXTENDED		0x08e9	Extended Systems
 vendor MSYSTEMS		0x08ec	M-Systems
 vendor AUTHENTEC	0x08ff	AuthenTec
+vendor TRUMPION		0x090a	Trumpion Microelectronics
 vendor ALATION		0x0910	Alation Systems
 vendor GOHUBS		0x0921	GoHubs
 vendor BIOMETRIC	0x0929	American Biometric Company
@@ -431,6 +435,7 @@ vendor BROADCOM		0x0a5c	Broadcom
 vendor GREENHOUSE	0x0a6b	GREENHOUSE
 vendor GEOCAST		0x0a79	Geocast Network Systems
 vendor NEODIO		0x0aec	Neodio
+vendor VODAFONE		0x0af0	Vodafone
 vendor TODOS		0x0b0c	Todos Data System
 vendor SIIG2		0x0b39	SIIG
 vendor HAL		0x0b41	HAL Corporation
@@ -455,7 +460,9 @@ vendor ASANTE		0x10bd	Asante
 vendor JRC		0x1145	Japan Radio Company
 vendor DELORME		0x1163	DeLorme Publishing
 vendor ACERCM		0x1189	Acer Communications & Multimedia Inc.
+vendor TWINMOS		0x126f	TwinMOS
 vendor BELKIN2		0x1293	Belkin Components
+vendor AINCOMM		0x12fd	Ain Communication Technology
 vendor MOBILITY		0x1342	Mobility
 vendor SHARK		0x13d2	Shark
 vendor SILICONPORTALS	0x1527	Silicon Portals
@@ -481,6 +488,7 @@ vendor HP2		0xf003	Hewlett Packard
 product 3COM HOMECONN		0x009d	HomeConnect USB Camera
 product 3COM 3CREB96		0x00a0	Bluetooth USB dongle
 product 3COM 3C19250		0x03E8	3C19250 Ethernet adapter
+product 3COM 3CRSHEW696		0x0a01	3CRSHEW696 Wireless adapter
 product 3COM USR56K		0x3021	U.S.Robotics 56000 Voice Faxmodem Pro
 product 3COM 3C460		0x11f8	HomeConnect 3C460
 product 3COM 3C460B		0x4601	HomeConnect 3C460B
@@ -546,6 +554,9 @@ product AGFA SNAPSCANE25	0x2095	SnapScan e25
 product AGFA SNAPSCANE26	0x2097	SnapScan e26
 product AGFA SNAPSCANE52	0x20fd	SnapScan e52
 
+/* Ain Communication Technology products */
+product AINCOMM AWU2000B	0x1001	AWU2000B Wireless adapter
+
 /* AKS products */
 product AKS USBHASP		0x0001	USB-HASP 0.06
 
@@ -591,10 +602,14 @@ product ATEN UC232A		0x2008	Serial adapter
 product ATMEL UHB124		0x3301	UHB124 hub
 product ATMEL DWL120		0x7603	DWL-120 Wireless adapter
 product ATMEL BW002		0x7605	BW002 Wireless adapter
+product ATMEL WL1130USB		0x7613	WL-1130 USB
 product ATMEL AT76C505A		0x7614	AT76c505a Wireless adapter
 
 /* Avision products */
 product AVISION 1200U		0x0268	1200U scanner
+
+/* B&B Electronics products */
+product BBELECTRONICS USOTL4	0xAC01	uLinks Isolated RS-422/485 to USB adapter
 
 /* Belkin products */
 /*product BELKIN F5U111		0x????	F5U111 Ethernet adapter*/
@@ -866,11 +881,13 @@ product HP 840C			0x0604	DeskJet 840c
 product HP 2200C		0x0605	ScanJet 2200C
 product HP 5300C		0x0701	Scanjet 5300C
 product HP 4400C		0x0705	Scanjet 4400C
+product HP 2300D 		0x0b17	Laserjet 2300d
 product HP 970CSE		0x1004	Deskjet 970Cse
 product HP 5400C		0x1005	Scanjet 5400C
 product HP 930C			0x1204	DeskJet 930c
 product HP P2000U		0x1801	Inkjet P-2000U
 product HP 640C			0x2004	DeskJet 640c
+product HP 4670V		0x3005	ScanJet 4670v
 product HP P1100		0x3102	Photosmart P1100
 product HP HN210E		0x811c	Ethernet HN210E
 
@@ -894,12 +911,12 @@ product INSYSTEM USBCABLE	0x081a	USB cable
 product INTEL EASYPC_CAMERA	0x0110	Easy PC Camera
 product INTEL TESTBOARD		0x9890	82930 test board
 
+/* Intersil products */
+product INTERSIL PRISM_2X	0x3642	Prism2.x or Atmel WLAN
+
 /* Interpid Control Systems products */
 product INTREPIDCS VALUECAN	0x0601	ValueCAN CAN bus interface
 product INTREPIDCS NEOVI	0x0701	NeoVI Blue vehicle bus interface
-
-/* Intersil products */
-product INTERSIL PRISM_2X	0x3642	Prism2.x or Atmel WLAN
 
 /* I/O DATA products */
 product IODATA IU_CD2		0x0204	DVD Multi-plus unit iU-CD2
@@ -1356,11 +1373,10 @@ product STSN STSN0001		0x0001	Internet Access Device
 
 /* SUN Corporation products */
 product SUNTAC DS96L		0x0003	SUNTAC U-Cable type D2
-product SUNTAC IS96U		0x000a	SUNTAC Ir-Trinity
-product SUNTAC AS64LX		0x000b	SUNTAC U-Cable type A3
-product SUNTAC IS96U		0x000a	SUNTAC Ir-Trinity
 product SUNTAC PS64P1		0x0005	SUNTAC U-Cable type P1
 product SUNTAC VS10U		0x0009	SUNTAC Slipper U
+product SUNTAC IS96U		0x000a	SUNTAC Ir-Trinity
+product SUNTAC AS64LX		0x000b	SUNTAC U-Cable type A3
 product SUNTAC AS144L4		0x0011	SUNTAC U-Cable type A4
 
 /* Sun Microsystems products */
@@ -1407,6 +1423,12 @@ product TOSHIBA POCKETPC_E740	0x0706	PocketPC e740
 product TREK THUMBDRIVE		0x1111	ThumbDrive
 product TREK THUMBDRIVE_8MB	0x9988	ThumbDrive_8MB
 
+/* Trumpion products */
+product TRUMPION C3310		0x1100	Comotron C3310 MP3 player
+
+/* TwinMOS */
+product TWINMOS MDIV		0x1325	Memory Disk IV
+
 /* Ultima products */
 product ULTIMA 1200UBPLUS	0x4002	1200 UB Plus scanner
 
@@ -1435,6 +1457,9 @@ product VISIONEER 6100		0x0231	OneTouch 6100
 product VISIONEER 6200		0x0311	OneTouch 6200
 product VISIONEER 8100		0x0321	OneTouch 8100
 product VISIONEER 8600		0x0331	OneTouch 8600
+
+/* Vodafone products */
+product VODAFONE MC3G		0x5000	Mobile Connect 3G datacard
 
 /* Wacom products */
 product WACOM CT0405U		0x0000	CT-0405-U Tablet
