@@ -32,7 +32,7 @@
  *
  *	@(#)time.h	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/time.h,v 1.42 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/time.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/time.h,v 1.3 2003/07/28 04:29:12 hmp Exp $
  */
 
 #ifndef _SYS_TIME_H_
@@ -277,6 +277,8 @@ void	getnanotime __P((struct timespec *tv));
 void	init_timecounter __P((struct timecounter *tc));
 int	itimerdecr __P((struct itimerval *itp, int usec));
 int	itimerfix __P((struct timeval *tv));
+int 	ppsratecheck __P((struct timeval *, int *, int usec));
+int 	ratecheck __P((struct timeval *, const struct timeval *));
 void	microuptime __P((struct timeval *tv));
 void	microtime __P((struct timeval *tv));
 void	nanouptime __P((struct timespec *ts));

@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.7 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.8 2003/07/28 04:29:12 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -605,3 +605,65 @@ timevalfix(t1)
 		t1->tv_usec -= 1000000;
 	}
 }
+
+/*
+ * ratecheck(): simple time-based rate-limit checking.
+ */
+int
+ratecheck(struct timeval *lasttime, const struct timeval *mininterval)
+{
+	struct timeval tv, delta;
+	int rv = 0;
+
+	getmicrouptime(&tv);		/* NB: 10ms precision */
+	delta = tv;
+	timevalsub(&delta, lasttime);
+
+	/*
+	 * check for 0,0 is so that the message will be seen at least once,
+	 * even if interval is huge.
+	 */
+	if (timevalcmp(&delta, mininterval, >=) ||
+	    (lasttime->tv_sec == 0 && lasttime->tv_usec == 0)) {
+		*lasttime = tv;
+		rv = 1;
+	}
+
+	return (rv);
+}
+
+/*
+ * ppsratecheck(): packets (or events) per second limitation.
+ *
+ * Return 0 if the limit is to be enforced (e.g. the caller
+ * should drop a packet because of the rate limitation).
+ *
+ * maxpps of 0 always causes zero to be returned.  maxpps of -1
+ * always causes 1 to be returned; this effectively defeats rate
+ * limiting.
+ *
+ * Note that we maintain the struct timeval for compatibility
+ * with other bsd systems.  We reuse the storage and just monitor
+ * clock ticks for minimal overhead.  
+ */
+int
+ppsratecheck(struct timeval *lasttime, int *curpps, int maxpps)
+{
+	int now;
+
+	/*
+	 * Reset the last time and counter if this is the first call
+	 * or more than a second has passed since the last update of
+	 * lasttime.
+	 */
+	now = ticks;
+	if (lasttime->tv_sec == 0 || (u_int)(now - lasttime->tv_sec) >= hz) {
+		lasttime->tv_sec = now;
+		*curpps = 1;
+		return (maxpps != 0);
+	} else {
+		(*curpps)++;		/* NB: ignore potential overflow */
+		return (maxpps < 0 || *curpps < maxpps);
+	}
+}
+
