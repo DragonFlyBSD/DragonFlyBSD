@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/iomodel.cgi,v 1.2 2003/08/11 02:24:47 dillon Exp $
+# $DragonFly: site/data/goals/Attic/iomodel.cgi,v 1.3 2003/11/20 20:38:34 hmp Exp $
 
 $TITLE(DragonFly - I/O Device Operations)
 <CENTER>New I/O Device Model</CENTER>
@@ -13,7 +13,7 @@ API.  The I/O model being contemplated consists of three major pieces of work:
 system or user addresses.  This allows I/O devices to operate entirely
 independently of the originating user process.
 <P>
-(2) Device I/O will be handled through a port/messaging system (see 'ports')
+(2) Device I/O will be handled through a port/messaging system (see 'messaging')
 on the left.
 <P>
 (3) Device I/O will typically be serialized through one or more threads.
