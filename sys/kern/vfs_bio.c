@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.14 2003/08/27 01:43:07 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.15 2003/10/08 00:10:56 dillon Exp $
  */
 
 /*
@@ -142,6 +142,16 @@ SYSCTL_INT(_vfs, OID_AUTO, buffreekvacnt, CTLFLAG_RW,
 	&buffreekvacnt, 0, "");
 SYSCTL_INT(_vfs, OID_AUTO, bufreusecnt, CTLFLAG_RW,
 	&bufreusecnt, 0, "");
+
+/*
+ * Disable background writes for now.  There appear to be races in the 
+ * flags tests and locking operations as well as races in the completion
+ * code modifying the original bp (origbp) without holding a lock, assuming
+ * splbio protection when there might not be splbio protection.
+ */
+static int dobkgrdwrite = 0;
+SYSCTL_INT(_debug, OID_AUTO, dobkgrdwrite, CTLFLAG_RW, &dobkgrdwrite, 0,
+	"Do background writes (honoring the BV_BKGRDWRITE flag)?");
 
 static int bufhashmask;
 static LIST_HEAD(bufhashhdr, buf) *bufhashtbl, invalhash;
@@ -630,7 +640,8 @@ bwrite(struct buf * bp)
 	 * This optimization eats a lot of memory.  If we have a page
 	 * or buffer shortfull we can't do it.
 	 */
-	if ((bp->b_xflags & BX_BKGRDWRITE) &&
+	if (dobkgrdwrite &&
+	    (bp->b_xflags & BX_BKGRDWRITE) &&
 	    (bp->b_flags & B_ASYNC) &&
 	    !vm_page_count_severe() &&
 	    !buf_dirty_count_severe()) {
