@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.c,v 1.29.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.7 2003/08/20 09:56:32 rob Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.8 2003/10/18 20:15:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -102,16 +102,27 @@ cd9660_ihashget(dev, inum)
 	struct thread *td = curthread;		/* XXX */
 	struct iso_node *ip;
 	struct vnode *vp;
+	int gen;
 
+	gen = lwkt_gettoken(&cd9660_ihash_token);
 loop:
-	lwkt_gettoken(&cd9660_ihash_token);
 	for (ip = isohashtbl[INOHASH(dev, inum)]; ip; ip = ip->i_next) {
 		if (inum == ip->i_number && dev == ip->i_dev) {
 			vp = ITOV(ip);
 			lwkt_gettoken(&vp->v_interlock); /* YYY */
-			lwkt_reltoken(&cd9660_ihash_token);
-			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td))
+			if (lwkt_gentoken(&cd9660_ihash_token, &gen) != 0) {
+				lwkt_reltoken(&vp->v_interlock);
 				goto loop;
+			}
+			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td)) {
+				lwkt_gentoken(&cd9660_ihash_token, &gen);
+				goto loop;
+			}
+			if (lwkt_reltoken(&cd9660_ihash_token) != gen) {
+				vput(vp);
+				gen = lwkt_gettoken(&cd9660_ihash_token);
+				goto loop;
+			}
 			return (vp);
 		}
 	}

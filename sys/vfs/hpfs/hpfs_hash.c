@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/fs/hpfs/hpfs_hash.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.7 2003/08/15 07:26:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.8 2003/10/18 20:15:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -92,27 +92,6 @@ hpfs_hphashlookup(dev, ino)
 	return (hp);
 }
 
-#if 0
-struct hpfsnode *
-hpfs_hphashget(dev, ino)
-	dev_t dev;
-	lsn_t ino;
-{
-	struct hpfsnode *hp;
-
-loop:
-	lwkt_gettoken(&hpfs_hphash_token);
-	for (hp = HPNOHASH(dev, ino)->lh_first; hp; hp = hp->h_hash.le_next) {
-		if (ino == hp->h_no && dev == hp->h_dev) {
-			LOCKMGR(&hp->h_intlock, LK_EXCLUSIVE | LK_INTERLOCK, &hpfs_hphash_token, NULL);
-			return (hp);
-		}
-	}
-	lwkt_reltoken(&hpfs_hphash_token);
-	return (hp);
-}
-#endif
-
 struct vnode *
 hpfs_hphashvget(dev, ino, td)
 	dev_t dev;
@@ -135,7 +114,11 @@ loop:
 				gen = lwkt_regettoken(&hpfs_hphash_token);
 				goto loop;
 			}
-			lwkt_reltoken(&hpfs_hphash_token);
+			if (lwkt_reltoken(&hpfs_hphash_token) != gen) {
+				vput(vp);
+				gen = lwkt_gettoken(&hpfs_hphash_token);
+				goto loop;
+			}
 			return (vp);
 		}
 	}

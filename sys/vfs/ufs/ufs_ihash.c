@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.6 2003/08/07 21:17:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.7 2003/10/18 20:15:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -91,6 +91,14 @@ ufs_ihashlookup(dev, inum)
 /*
  * Use the device/inum pair to find the incore inode, and return a pointer
  * to it. If it is in core, but locked, wait for it.
+ *
+ * Any time we potentially block we must regenerate the token using 
+ * lwkt_gentoken(), which at the same time checks the generation number
+ * indicating whether another entity stole the token while we were blocked.
+ * In the best case lwkt_gentoken().   The code below is probably overkill,
+ * but it is particularly important to check the generation number after
+ * acquiring the vnode lock to ensure that the inode association is still
+ * valid.
  */
 struct vnode *
 ufs_ihashget(dev_t dev, ino_t inum)
@@ -99,14 +107,13 @@ ufs_ihashget(dev_t dev, ino_t inum)
 	struct inode *ip;
 	struct vnode *vp;
 	int gen;
-	int vgen;
 
 	gen = lwkt_gettoken(&ufs_ihash_token);
 loop:
 	for (ip = INOHASH(dev, inum)->lh_first; ip; ip = ip->i_hash.le_next) {
 		if (inum == ip->i_number && dev == ip->i_dev) {
 			vp = ITOV(ip);
-			vgen = lwkt_gettoken(&vp->v_interlock);
+			lwkt_gettoken(&vp->v_interlock);
 			if (lwkt_gentoken(&ufs_ihash_token, &gen) != 0) {
 				lwkt_reltoken(&vp->v_interlock);
 				goto loop;
@@ -115,7 +122,11 @@ loop:
 				lwkt_gentoken(&ufs_ihash_token, &gen);
 				goto loop;
 			}
-			lwkt_reltoken(&ufs_ihash_token);
+			if (lwkt_reltoken(&ufs_ihash_token) != gen) {
+				vput(vp);
+				gen = lwkt_gettoken(&ufs_ihash_token);
+				goto loop;
+			}
 			return (vp);
 		}
 	}

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.8 2003/08/20 09:56:32 rob Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.9 2003/10/18 20:15:08 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -127,9 +127,10 @@ msdosfs_hashget(dev, dirclust, diroff)
 	struct thread *td = curthread;	/* XXX */
 	struct denode *dep;
 	struct vnode *vp;
+	int gen;
 
+	gen = lwkt_gettoken(&dehash_token);
 loop:
-	lwkt_gettoken(&dehash_token);
 	for (dep = DEHASH(dev, dirclust, diroff); dep; dep = dep->de_next) {
 		if (dirclust == dep->de_dirclust
 		    && diroff == dep->de_diroffset
@@ -137,9 +138,19 @@ loop:
 		    && dep->de_refcnt != 0) {
 			vp = DETOV(dep);
 			lwkt_gettoken(&vp->v_interlock);
-			lwkt_reltoken(&dehash_token);
-			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td))
+			if (lwkt_gentoken(&dehash_token, &gen) != 0) {
+				lwkt_reltoken(&vp->v_interlock);
 				goto loop;
+			}
+			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td)) {
+				lwkt_gentoken(&dehash_token, &gen);
+				goto loop;
+			}
+			if (lwkt_reltoken(&dehash_token) != gen) {
+				vput(vp);
+				gen = lwkt_gettoken(&dehash_token);
+				goto loop;
+			}
 			return (dep);
 		}
 	}
