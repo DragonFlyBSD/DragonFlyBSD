@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/defs.h,v 1.4 2004/03/07 23:36:44 dillon Exp $
+ * $DragonFly: src/lib/libcaps/defs.h,v 1.5 2004/07/04 22:44:26 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -40,6 +40,7 @@
 #include <sys/errno.h>
 #include "globaldata.h"
 #include "sysport.h"
+#include <machine/cpufunc.h>
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 #include <sys/caps.h>

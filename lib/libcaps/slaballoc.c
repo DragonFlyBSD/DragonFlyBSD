@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/slaballoc.c,v 1.3 2004/03/06 19:48:22 dillon Exp $
+ * $DragonFly: src/lib/libcaps/slaballoc.c,v 1.4 2004/07/04 22:44:26 eirikn Exp $
  *
  * This module implements a thread-safe slab allocator for userland.
  *
@@ -91,6 +91,7 @@
 #include <sys/errno.h>
 #include "globaldata.h"
 #include <sys/sysctl.h>
+#include <machine/cpufunc.h>
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 

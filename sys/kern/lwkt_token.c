@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.7 2004/06/21 05:28:53 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.8 2004/07/04 22:44:27 eirikn Exp $
  */
 
 #ifdef _KERNEL
@@ -65,12 +65,12 @@
 #include <sys/msgport.h>
 #include <sys/errno.h>
 #include <libcaps/globaldata.h>
+#include <machine/cpufunc.h>
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <machine/cpufunc.h>
 #include <machine/lock.h>
 
 #endif
