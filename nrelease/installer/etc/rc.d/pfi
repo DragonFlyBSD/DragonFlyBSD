@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # $Id: pfi,v 1.4 2004/08/06 23:26:05 cpressey Exp $
-# $DragonFly: src/nrelease/installer/etc/rc.d/pfi,v 1.3 2004/11/11 20:30:05 cpressey Exp $
+# $DragonFly: src/nrelease/installer/etc/rc.d/pfi,v 1.4 2005/03/07 17:30:09 cpressey Exp $
 #
 
 # PROVIDE: pfi
@@ -163,9 +163,9 @@ pfi_start()
 	# Set up auto-login if requested.
 
 	if [ "X$pfi_autologin" != "XNONE" ]; then
-		echo 'autologin|al.9600:\' >> /etc/gettytab
-		echo "        :al=${pfi_autologin}:tc=std.9600:" >> /etc/gettytab
-		sed -i '' 's/^ttyv0=.*/ttyv0 "/usr/libexec/getty Al" cons25 on secure/' /etc/ttys
+		echo 'AL.pfi:\' >> /etc/gettytab
+		echo "        :al=${pfi_autologin}:tc=Pc:" >> /etc/gettytab
+		sed -i '' 's|^ttyv0.*|ttyv0 "/usr/libexec/getty AL.pfi" cons25 on secure|' /etc/ttys
 	fi
 
 	# Finally, start thttpd if the user wants to use
