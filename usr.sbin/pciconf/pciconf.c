@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pciconf/pciconf.c,v 1.11.2.3 2002/09/17 22:09:15 jdp Exp $
- * $DragonFly: src/usr.sbin/pciconf/pciconf.c,v 1.5 2004/07/19 13:56:34 asmodai Exp $
+ * $DragonFly: src/usr.sbin/pciconf/pciconf.c,v 1.6 2005/01/01 22:06:25 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -64,8 +64,8 @@ TAILQ_HEAD(,pci_vendor_info)	pci_vendors;
 
 static void list_devs(int vendors);
 static void list_verbose(struct pci_conf *p);
-static char *guess_class(struct pci_conf *p);
-static char *guess_subclass(struct pci_conf *p);
+static const char *guess_class(struct pci_conf *p);
+static const char *guess_subclass(struct pci_conf *p);
 static int load_vendors(void);
 static void readit(const char *, const char *, int);
 static void writeit(const char *, const char *, const char *, int);
@@ -74,7 +74,7 @@ static void chkattached(const char *, int);
 static int exitstatus = 0;
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n%s\n",
 		"usage: pciconf -l [-v]",
@@ -221,7 +221,7 @@ list_verbose(struct pci_conf *p)
 {
 	struct pci_vendor_info	*vi;
 	struct pci_device_info	*di;
-	char *dp;
+	const char *dp;
 	
 	TAILQ_FOREACH(vi, &pci_vendors, link) {
 		if (vi->id == p->pc_vendor) {
@@ -252,7 +252,7 @@ static struct
 {
 	int	class;
 	int	subclass;
-	char	*desc;
+	const char *desc;
 } pci_nomatch_tab[] = {
 	{PCIC_OLD,		-1,			"old"},
 	{PCIC_OLD,		PCIS_OLD_NONVGA,	"non-VGA display device"},
@@ -337,7 +337,7 @@ static struct
 	{0, 0,		NULL}
 };
 
-static char *
+static const char *
 guess_class(struct pci_conf *p)
 {
 	int	i;
@@ -349,7 +349,7 @@ guess_class(struct pci_conf *p)
 	return(NULL);
 }
 
-static char *
+static const char *
 guess_subclass(struct pci_conf *p)
 {
 	int	i;
@@ -365,7 +365,7 @@ guess_subclass(struct pci_conf *p)
 static int
 load_vendors(void)
 {
-	char *dbf;
+	const char *dbf;
 	FILE *db;
 	struct pci_vendor_info *cv;
 	struct pci_device_info *cd;
@@ -449,9 +449,12 @@ load_vendors(void)
 static struct pcisel
 getsel(const char *str)
 {
-	char *ep = (char*) str;
+	char *parse_buf, *ep;
 	struct pcisel sel;
-	
+
+	parse_buf = strdup(str);
+	ep = parse_buf;
+
 	if (strncmp(ep, "pci", 3) == 0) {
 		ep += 3;
 		sel.pc_bus = strtoul(ep, &ep, 0);
@@ -467,8 +470,10 @@ getsel(const char *str)
 	}
 	if (*ep == ':')
 		ep++;
-	if (*ep || ep == str)
+	if (*ep || ep == parse_buf)
 		errx(1, "cannot parse selector %s", str);
+	free(parse_buf);
+
 	return sel;
 }
 
