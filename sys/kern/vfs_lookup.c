@@ -37,24 +37,30 @@
  *
  *	@(#)vfs_lookup.c	8.4 (Berkeley) 2/16/94
  * $FreeBSD: src/sys/kern/vfs_lookup.c,v 1.38.2.3 2001/08/31 19:36:49 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.8 2003/10/09 22:27:19 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.9 2003/11/09 20:29:59 dillon Exp $
  */
 
 #include "opt_ktrace.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
 #include <sys/filedesc.h>
 #include <sys/proc.h>
 #include <sys/namei.h>
+#include <sys/sysctl.h>
 
 #ifdef KTRACE
 #include <sys/ktrace.h>
 #endif
 
 #include <vm/vm_zone.h>
+
+static int varsym_enable = 0;
+SYSCTL_INT(_vfs, OID_AUTO, varsym_enable, CTLFLAG_RW, &varsym_enable, 0,
+	    "Enable Variant Symlinks");
 
 /*
  * Convert a pathname into a pointer to a locked inode.
@@ -207,6 +213,15 @@ namei(struct nameidata *ndp)
 			error = ENOENT;
 			break;
 		}
+		if (varsym_enable) {
+			linklen = varsymreplace(cp, linklen, MAXPATHLEN);
+			if (linklen < 0) {
+				if (ndp->ni_pathlen > 1)
+					zfree(namei_zone, cp);
+				error = ENAMETOOLONG;
+				break;
+			}
+		}
 		if (linklen + ndp->ni_pathlen >= MAXPATHLEN) {
 			if (ndp->ni_pathlen > 1)
 				zfree(namei_zone, cp);
@@ -217,8 +232,9 @@ namei(struct nameidata *ndp)
 			bcopy(ndp->ni_next, cp + linklen, ndp->ni_pathlen);
 			zfree(namei_zone, cnp->cn_pnbuf);
 			cnp->cn_pnbuf = cp;
-		} else
+		} else {
 			cnp->cn_pnbuf[linklen] = '\0';
+		}
 		ndp->ni_pathlen += linklen;
 		vput(ndp->ni_vp);
 		dp = ndp->ni_dvp;

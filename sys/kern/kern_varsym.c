@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_varsym.c,v 1.1 2003/11/05 23:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_varsym.c,v 1.2 2003/11/09 20:29:59 dillon Exp $
  */
 
 /*
@@ -56,6 +56,63 @@ varsym_sysinit(void *dummy)
     varsymset_init(&varsymset_sys, NULL);
 }
 SYSINIT(announce, SI_SUB_INTRINSIC, SI_ORDER_FIRST, varsym_sysinit, NULL);
+
+/*
+ * varsymreplace() - called from namei
+ *
+ *	Do variant symlink variable substitution
+ */
+int
+varsymreplace(char *cp, int linklen, int maxlen)
+{
+    int rlen;
+    int xlen;
+    int nlen;
+    int i;
+    varsym_t var;
+
+    rlen = linklen;
+    while (linklen > 1) {
+	if (cp[0] == '$' && cp[1] == '{') {
+	    for (i = 2; i < linklen; ++i) {
+		if (cp[i] == '}')
+		    break;
+	    }
+	    if (i < linklen && 
+		(var = varsymfind(VARSYM_ALL_MASK, cp + 2, i - 2)) != NULL
+	    ) {
+		xlen = i + 1;			/* bytes to strike */
+		nlen = strlen(var->vs_data);	/* bytes to add */
+		if (linklen + nlen - xlen >= maxlen) {
+		    varsymdrop(var);
+		    return(-1);
+		}
+		KKASSERT(linklen >= xlen);
+		if (linklen != xlen)
+		    bcopy(cp + xlen, cp + nlen, linklen - xlen);
+		bcopy(var->vs_data, cp, nlen);
+		linklen += nlen - xlen;	/* new relative length */
+		rlen += nlen - xlen;	/* returned total length */
+		cp += nlen;		/* adjust past replacement */
+		linklen -= nlen;	/* adjust past replacement */
+		maxlen -= nlen;		/* adjust past replacement */
+	    } else {
+		/*
+		 * It's ok if i points to the '}', it will simply be
+		 * skipped.  i could also have hit linklen.
+		 */
+		cp += i;
+		linklen -= i;
+		maxlen -= i;
+	    }
+	} else {
+	    ++cp;
+	    --linklen;
+	    --maxlen;
+	}
+    }
+    return(rlen);
+}
 
 /*
  * varsym_set() system call
