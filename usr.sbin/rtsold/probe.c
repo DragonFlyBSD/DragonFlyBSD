@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/probe.c,v 1.2.2.3 2001/07/03 11:02:16 ume Exp $
- * $DragonFly: src/usr.sbin/rtsold/probe.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
+ * $DragonFly: src/usr.sbin/rtsold/probe.c,v 1.4 2004/02/04 00:52:55 rob Exp $
  */
 
 #include <sys/param.h>
@@ -40,9 +40,9 @@
 #include <sys/queue.h>
 
 #include <net/if.h>
-#if defined(__FreeBSD__) && __FreeBSD__ >= 3
+#if defined(__DragonFly__)
 #include <net/if_var.h>
-#endif /* __FreeBSD__ >= 3 */
+#endif /* __DragonFly__ >= 3 */
 
 #include <netinet/in.h>
 #include <netinet6/in6_var.h>
