@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rm.c	8.5 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/rm/rm.c,v 1.29.2.5 2002/07/12 07:25:48 tjr Exp $
- * $DragonFly: src/bin/rm/rm.c,v 1.3 2004/08/30 19:27:21 eirikn Exp $
+ * $DragonFly: src/bin/rm/rm.c,v 1.4 2004/10/06 06:16:43 dillon Exp $
  */
 
 #include <sys/stat.h>
@@ -51,9 +51,11 @@
 #include <unistd.h>
 
 int dflag, eval, fflag, iflag, Pflag, vflag, Wflag, stdin_ok;
+int rflag, Iflag;
 uid_t uid;
 
 int	check(char *, char *, struct stat *);
+int	check2(char **);
 void	checkdot(char **);
 void	rm_file(char **);
 void	rm_overwrite(char *, struct stat *);
@@ -70,7 +72,7 @@ void	usage(void);
 int
 main(int argc, char *argv[])
 {
-	int ch, rflag;
+	int ch;
 	char *p;
 
 	/*
@@ -94,7 +96,7 @@ main(int argc, char *argv[])
 	}
 
 	Pflag = rflag = 0;
-	while ((ch = getopt(argc, argv, "dfiPRrvW")) != -1)
+	while ((ch = getopt(argc, argv, "dfiIPRrvW")) != -1)
 		switch(ch) {
 		case 'd':
 			dflag = 1;
@@ -106,6 +108,9 @@ main(int argc, char *argv[])
 		case 'i':
 			fflag = 0;
 			iflag = 1;
+			break;
+		case 'I':
+			Iflag = 1;
 			break;
 		case 'P':
 			Pflag = 1;
@@ -138,6 +143,10 @@ main(int argc, char *argv[])
 	if (*argv) {
 		stdin_ok = isatty(STDIN_FILENO);
 
+		if (Iflag) {
+			if (check2(argv) == 0)
+				exit (1);
+		}
 		if (rflag)
 			rm_tree(argv);
 		else
@@ -439,6 +448,54 @@ check(char *path, char *name, struct stat *sp)
 	first = ch = getchar();
 	while (ch != '\n' && ch != EOF)
 		ch = getchar();
+	return (first == 'y' || first == 'Y');
+}
+
+int
+check2(char **argv)
+{
+	struct stat st;
+	int first;
+	int ch;
+	int fcount = 0;
+	int dcount = 0;
+	int i;
+	const char *dname = NULL;
+
+	for (i = 0; argv[i]; ++i) {
+		if (lstat(argv[i], &st) == 0) {
+			if (S_ISDIR(st.st_mode)) {
+				++dcount;
+				dname = argv[i];    /* only used if 1 dir */
+			} else {
+				++fcount;
+			}
+		}
+	}
+	first = 0;
+	while (first != 'n' && first != 'N' && first != 'y' && first != 'Y') {
+		if (dcount && rflag) {
+			fprintf(stderr, "recursively remove");
+			if (dcount == 1)
+				fprintf(stderr, " %s", dname);
+			else
+				fprintf(stderr, " %d dirs", dcount);
+			if (fcount == 1)
+				fprintf(stderr, " and 1 file");
+			else if (fcount > 1)
+				fprintf(stderr, " and %d files", fcount);
+		} else if (dcount + fcount > 3) {
+			fprintf(stderr, "remove %d files", dcount + fcount);
+		} else {
+			return(1);
+		}
+		fprintf(stderr, "? ");
+		fflush(stderr);
+
+		first = ch = getchar();
+		while (ch != '\n' && ch != EOF)
+			ch = getchar();
+	}
 	return (first == 'y' || first == 'Y');
 }
 

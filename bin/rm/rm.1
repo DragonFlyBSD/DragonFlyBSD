@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)rm.1	8.5 (Berkeley) 12/5/94
 .\" $FreeBSD: src/bin/rm/rm.1,v 1.19.2.6 2003/02/04 22:10:42 trhodes Exp $
-.\" $DragonFly: src/bin/rm/rm.1,v 1.2 2003/06/17 04:22:50 dillon Exp $
+.\" $DragonFly: src/bin/rm/rm.1,v 1.3 2004/10/06 06:16:43 dillon Exp $
 .\"
 .Dd January 28, 1999
 .Dt RM 1
@@ -81,6 +81,11 @@ The
 option overrides any previous
 .Fl f
 options.
+.It Fl I
+Request confirmation once if more then three files are being removed or if a
+directory is being recursively removed.  This is a less intrusive dumb-user
+option than
+.Fl i
 .It Fl P
 Overwrite regular files before deleting them.
 Files are overwritten three times, first with the byte pattern 0xff,
