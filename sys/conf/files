@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.58 2004/03/31 19:24:28 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.59 2004/03/31 19:29:26 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1160,7 +1160,6 @@ vm/default_pager.c		standard
 vm/device_pager.c		standard
 vm/phys_pager.c			standard
 vm/swap_pager.c			standard
-vm/vm_copy.c			standard
 vm/vm_contig.c  		standard
 vm/vm_fault.c			standard
 vm/vm_glue.c			standard
