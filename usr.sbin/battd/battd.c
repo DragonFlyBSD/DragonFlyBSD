@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/battd/battd.c,v 1.1 2005/02/01 17:16:36 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/battd/battd.c,v 1.2 2005/02/01 18:32:01 liamfoy Exp $
  */
 
 #include <sys/file.h>
@@ -413,8 +413,7 @@ main(int argc, char **argv)
 					snprintf(msg, sizeof(msg), "battery has %s %d(%s) minutes"
 						"remaining\n", tmp ? "reached" : "fell below",
 						ai.ai_batt_time / SECONDS, tmp_time);
-					if (!stat_warn_cont)
-						execute_cmd(opts->exec_cmd, &exec_cont);
+					execute_cmd(opts->exec_cmd, &exec_cont);
 					write_emerg(msg, &time_warn_cont);
 				}	
 			}
@@ -440,8 +439,7 @@ main(int argc, char **argv)
 					snprintf(msg, sizeof(msg), "battery has %s '%s' status\n",
 						tmp ? "reached" : "fell below",
 						batt_status[ai.ai_batt_stat]);
-					if (!stat_warn_cont)
-						execute_cmd(opts->exec_cmd, &exec_cont);
+					execute_cmd(opts->exec_cmd, &exec_cont);
 					write_emerg(msg, &stat_warn_cont);
 				}
 			}
