@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.12 2004/06/02 14:42:57 eirikn Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.13 2004/06/06 19:16:06 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -920,20 +920,18 @@ pru_sense_null(struct socket *so, struct stat *sb)
 }
 
 /*
- * Make a copy of a sockaddr in a malloced buffer of type M_SONAME.
+ * Make a copy of a sockaddr in a malloced buffer of type M_SONAME.  Callers
+ * of this routine assume that it always succeeds, so we have to use a 
+ * blockable allocation even though we might be called from a critical thread.
  */
 struct sockaddr *
-dup_sockaddr(sa, canwait)
-	struct sockaddr *sa;
-	int canwait;
+dup_sockaddr(struct sockaddr *sa)
 {
 	struct sockaddr *sa2;
 
-	MALLOC(sa2, struct sockaddr *, sa->sa_len, M_SONAME, 
-	       canwait ? M_WAITOK : M_NOWAIT);
-	if (sa2)
-		bcopy(sa, sa2, sa->sa_len);
-	return sa2;
+	sa2 = malloc(sa->sa_len, M_SONAME, M_INTWAIT);
+	bcopy(sa, sa2, sa->sa_len);
+	return (sa2);
 }
 
 /*

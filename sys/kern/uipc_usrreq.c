@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.14 2004/06/04 07:45:45 hmp Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.15 2004/06/06 19:16:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -119,10 +119,9 @@ uipc_accept(struct socket *so, struct sockaddr **nam)
 	 * (our peer may have closed already!).
 	 */
 	if (unp->unp_conn && unp->unp_conn->unp_addr) {
-		*nam = dup_sockaddr((struct sockaddr *)unp->unp_conn->unp_addr,
-				    1);
+		*nam = dup_sockaddr((struct sockaddr *)unp->unp_conn->unp_addr);
 	} else {
-		*nam = dup_sockaddr((struct sockaddr *)&sun_noname, 1);
+		*nam = dup_sockaddr((struct sockaddr *)&sun_noname);
 	}
 	return 0;
 }
@@ -211,15 +210,14 @@ uipc_peeraddr(struct socket *so, struct sockaddr **nam)
 	if (unp == 0)
 		return EINVAL;
 	if (unp->unp_conn && unp->unp_conn->unp_addr)
-		*nam = dup_sockaddr((struct sockaddr *)unp->unp_conn->unp_addr,
-				    1);
+		*nam = dup_sockaddr((struct sockaddr *)unp->unp_conn->unp_addr);
 	else {
 		/*
 		 * XXX: It seems that this test always fails even when
 		 * connection is established.  So, this else clause is
 		 * added as workaround to return PF_LOCAL sockaddr.
 		 */
-		*nam = dup_sockaddr((struct sockaddr *)&sun_noname, 1);
+		*nam = dup_sockaddr((struct sockaddr *)&sun_noname);
 	}
 	return 0;
 }
@@ -430,7 +428,7 @@ uipc_sockaddr(struct socket *so, struct sockaddr **nam)
 	if (unp == 0)
 		return EINVAL;
 	if (unp->unp_addr)
-		*nam = dup_sockaddr((struct sockaddr *)unp->unp_addr, 1);
+		*nam = dup_sockaddr((struct sockaddr *)unp->unp_addr);
 	return 0;
 }
 
@@ -627,7 +625,7 @@ unp_bind(struct unpcb *unp, struct sockaddr *nam, struct thread *td)
 	vp = nd.ni_vp;
 	vp->v_socket = unp->unp_socket;
 	unp->unp_vnode = vp;
-	unp->unp_addr = (struct sockaddr_un *)dup_sockaddr(nam, 1);
+	unp->unp_addr = (struct sockaddr_un *)dup_sockaddr(nam);
 	VOP_UNLOCK(vp, NULL, 0, td);
 	return (0);
 }
@@ -686,8 +684,7 @@ unp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		unp3 = sotounpcb(so3);
 		if (unp2->unp_addr)
 			unp3->unp_addr = (struct sockaddr_un *)
-				dup_sockaddr((struct sockaddr *)
-					     unp2->unp_addr, 1);
+				dup_sockaddr((struct sockaddr *)unp2->unp_addr);
 
 		/*
 		 * unp_peercred management:

@@ -34,7 +34,7 @@
  *	@(#)ipx_pcb.c
  *
  * $FreeBSD: src/sys/netipx/ipx_pcb.c,v 1.18.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.9 2004/06/05 05:34:57 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.10 2004/06/06 19:16:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -279,7 +279,7 @@ ipx_setsockaddr(struct ipxpcb *ipxp, struct sockaddr **nam)
 	sipx->sipx_len = sizeof(*sipx);
 	sipx->sipx_family = AF_IPX;
 	sipx->sipx_addr = ipxp->ipxp_laddr;
-	*nam = dup_sockaddr((struct sockaddr *)sipx, 1);
+	*nam = dup_sockaddr((struct sockaddr *)sipx);
 }
 
 void
@@ -294,7 +294,7 @@ ipx_setpeeraddr(ipxp, nam)
 	sipx->sipx_len = sizeof(*sipx);
 	sipx->sipx_family = AF_IPX;
 	sipx->sipx_addr = ipxp->ipxp_faddr;
-	*nam = dup_sockaddr((struct sockaddr *)sipx, 1);
+	*nam = dup_sockaddr((struct sockaddr *)sipx);
 }
 
 /*

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.18 2004/05/19 22:53:05 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.19 2004/06/06 19:16:11 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -613,7 +613,7 @@ nfs_mountdiskless(char *path, char *which, int mountflag,
 
 	mp->mnt_kern_flag = 0;
 	mp->mnt_flag = mountflag;
-	nam = dup_sockaddr((struct sockaddr *)sin, 1);
+	nam = dup_sockaddr((struct sockaddr *)sin);
 	if ((error = mountnfs(args, mp, nam, which, path, vpp)) != 0) {
 		printf("nfs_mountroot: mount %s on %s: %d", path, which, error);
 		mp->mnt_vfc->vfc_refcount--;

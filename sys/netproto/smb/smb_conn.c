@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_conn.c,v 1.1.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.7 2004/03/01 06:33:18 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.8 2004/06/06 19:16:14 dillon Exp $
  */
 
 /*
@@ -419,10 +419,10 @@ smb_vc_create(struct smb_vcspec *vcspec,
 	smb_sl_init(&vcp->vc_stlock, "vcstlock");
 	error = 0;
 	itry {
-		vcp->vc_paddr = dup_sockaddr(vcspec->sap, 1);
+		vcp->vc_paddr = dup_sockaddr(vcspec->sap);
 		ierror(vcp->vc_paddr == NULL, ENOMEM);
 
-		vcp->vc_laddr = dup_sockaddr(vcspec->lap, 1);
+		vcp->vc_laddr = dup_sockaddr(vcspec->lap);
 		ierror(vcp->vc_laddr == NULL, ENOMEM);
 
 		ierror((vcp->vc_pass = smb_strdup(vcspec->pass)) == NULL, ENOMEM);

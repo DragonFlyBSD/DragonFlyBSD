@@ -2,7 +2,7 @@
  * Copyright (c) 1990,1994 Regents of The University of Michigan.
  * All Rights Reserved.  See COPYRIGHT.
  *
- * $DragonFly: src/sys/netproto/atalk/ddp_usrreq.c,v 1.7 2004/03/05 19:17:25 hsu Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_usrreq.c,v 1.8 2004/06/06 19:16:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -215,7 +215,7 @@ ddp_abort(struct socket *so)
 static void
 at_sockaddr(struct ddpcb *ddp, struct sockaddr **addr)
 {
-    *addr = dup_sockaddr((struct sockaddr *)&ddp->ddp_lsat, 0);
+    *addr = dup_sockaddr((struct sockaddr *)&ddp->ddp_lsat);
 }
 
 static int 

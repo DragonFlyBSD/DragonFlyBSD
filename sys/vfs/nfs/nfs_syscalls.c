@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.16 2004/06/02 14:43:04 eirikn Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.17 2004/06/06 19:16:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -286,8 +286,7 @@ nfssvc(struct nfssvc_args *uap)
 				    default:
 					nuidp->nu_flag |= NU_NAM;
 					nuidp->nu_nam = 
-						dup_sockaddr(nfsd->nfsd_nd->
-							     nd_nam2, 1);
+					  dup_sockaddr(nfsd->nfsd_nd->nd_nam2);
 					break;
 				    };
 				}

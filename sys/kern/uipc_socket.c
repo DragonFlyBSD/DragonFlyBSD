@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.21 2004/06/02 14:42:57 eirikn Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.22 2004/06/06 19:16:06 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -843,8 +843,7 @@ dontblock:
 		KASSERT(m->m_type == MT_SONAME, ("receive 1a"));
 		orig_resid = 0;
 		if (psa)
-			*psa = dup_sockaddr(mtod(m, struct sockaddr *),
-					    mp0 == 0);
+			*psa = dup_sockaddr(mtod(m, struct sockaddr *));
 		if (flags & MSG_PEEK) {
 			m = m->m_next;
 		} else {

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_trantcp.c,v 1.3.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.10 2004/06/02 14:43:03 eirikn Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.11 2004/06/06 19:16:14 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -481,7 +481,7 @@ smb_nbst_bind(struct smb_vc *vcp, struct sockaddr *sap, struct thread *td)
 		slen = sap->sa_len;
 		if (slen < NB_MINSALEN)
 			break;
-		snb = (struct sockaddr_nb*)dup_sockaddr(sap, 1);
+		snb = (struct sockaddr_nb*)dup_sockaddr(sap);
 		if (snb == NULL) {
 			error = ENOMEM;
 			break;
@@ -514,7 +514,7 @@ smb_nbst_connect(struct smb_vc *vcp, struct sockaddr *sap, struct thread *td)
 		free(nbp->nbp_paddr, M_SONAME);
 		nbp->nbp_paddr = NULL;
 	}
-	snb = (struct sockaddr_nb*)dup_sockaddr(sap, 1);
+	snb = (struct sockaddr_nb*)dup_sockaddr(sap);
 	if (snb == NULL)
 		return ENOMEM;
 	nbp->nbp_paddr = snb;

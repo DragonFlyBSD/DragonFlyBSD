@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_srvcache.c	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_srvcache.c,v 1.21 2000/02/13 03:32:06 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_srvcache.c,v 1.7 2004/06/02 14:43:04 eirikn Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_srvcache.c,v 1.8 2004/06/06 19:16:11 dillon Exp $
  */
 
 /*
@@ -251,7 +251,7 @@ loop:
 	case AF_ISO:
 	default:
 		rp->rc_flag |= RC_NAM;
-		rp->rc_nam = dup_sockaddr(nd->nd_nam, 1);
+		rp->rc_nam = dup_sockaddr(nd->nd_nam);
 		break;
 	};
 	rp->rc_proc = nd->nd_procnum;

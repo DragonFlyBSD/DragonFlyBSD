@@ -32,7 +32,7 @@
  *
  *	@(#)raw_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_usrreq.c,v 1.18 1999/08/28 00:48:28 peter Exp $
- * $DragonFly: src/sys/net/raw_usrreq.c,v 1.6 2004/03/06 05:20:31 hsu Exp $
+ * $DragonFly: src/sys/net/raw_usrreq.c,v 1.7 2004/06/06 19:16:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -218,7 +218,7 @@ raw_upeeraddr(struct socket *so, struct sockaddr **nam)
 	if (rp->rcb_faddr == 0) {
 		return ENOTCONN;
 	}
-	*nam = dup_sockaddr(rp->rcb_faddr, 1);
+	*nam = dup_sockaddr(rp->rcb_faddr);
 	return 0;
 }
 
@@ -290,7 +290,7 @@ raw_usockaddr(struct socket *so, struct sockaddr **nam)
 		return EINVAL;
 	if (rp->rcb_laddr == 0)
 		return EINVAL;
-	*nam = dup_sockaddr(rp->rcb_laddr, 1);
+	*nam = dup_sockaddr(rp->rcb_laddr);
 	return 0;
 }
 

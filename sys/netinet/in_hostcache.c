@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/in_hostcache.c,v 1.3 1999/08/28 00:49:16 peter Exp $
- * $DragonFly: src/sys/netinet/Attic/in_hostcache.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/Attic/in_hostcache.c,v 1.3 2004/06/06 19:16:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -81,7 +81,7 @@ inhc_alloc(struct sockaddr_in *sin)
 
 	MALLOC(inhc, struct in_hcentry *, sizeof *inhc, M_HOSTCACHE, M_WAITOK);
 	bzero(inhc, sizeof *inhc);
-	inhc->inhc_hc.hc_host = dup_sockaddr((struct sockaddr *)sin, 1);
+	inhc->inhc_hc.hc_host = dup_sockaddr((struct sockaddr *)sin);
 	if (in_broadcast(sin->sin_addr, rt->rt_ifp))
 		inhc->inhc_flags |= INHC_BROADCAST;
 	else if (((struct sockaddr_in *)rt->rt_ifa->ifa_addr)->sin_addr.s_addr

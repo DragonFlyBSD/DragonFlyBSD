@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.16 2004/04/21 18:14:03 dillon Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.17 2004/06/06 19:16:13 dillon Exp $ */
 
 /*
  *
@@ -346,7 +346,7 @@ natm_usr_peeraddr(struct socket *so, struct sockaddr **nam)
         sizeof(snatm->snatm_if));
     snatm->snatm_vci = npcb->npcb_vci;
     snatm->snatm_vpi = npcb->npcb_vpi;
-    *nam = dup_sockaddr((struct sockaddr *)snatm, 0);
+    *nam = dup_sockaddr((struct sockaddr *)snatm);
 
  out:
     splx(s);
