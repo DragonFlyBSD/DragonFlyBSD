@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/kern_ndis.c,v 1.57 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.4 2004/09/20 06:32:41 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.5 2004/11/17 18:59:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -258,10 +258,6 @@ ndis_create_kthreads()
 
 	for (i = 0; i < ndis_jobs; i++) {
 		r = malloc(sizeof(struct ndis_req), M_DEVBUF, M_WAITOK);
-		if (r == NULL) {
-			error = ENOMEM;
-			break;
-		}
 		STAILQ_INSERT_HEAD(&ndis_free, r, link);
 	}
 
@@ -370,8 +366,6 @@ ndis_enlarge_thrqueue(cnt)
 
 	for (i = 0; i < cnt; i++) {
 		r = malloc(sizeof(struct ndis_req), M_DEVBUF, M_WAITOK);
-		if (r == NULL)
-			return(ENOMEM);
 		lwkt_gettoken(&tokref, &ndis_thr_token);
 		STAILQ_INSERT_HEAD(&ndis_free, r, link);
 		ndis_jobs++;
@@ -1083,8 +1077,6 @@ ndis_get_supported_oids(arg, oids, oidcnt)
 	ndis_get_info(arg, OID_GEN_SUPPORTED_LIST, NULL, &len);
 
 	o = malloc(len, M_DEVBUF, M_WAITOK);
-	if (o == NULL)
-		return(ENOMEM);
 
 	rval = ndis_get_info(arg, OID_GEN_SUPPORTED_LIST, o, &len);
 
@@ -1240,9 +1232,6 @@ ndis_init_dma(arg)
 
 	sc->ndis_tmaps = malloc(sizeof(bus_dmamap_t) * sc->ndis_maxpkts,
 	    M_DEVBUF, M_WAITOK|M_ZERO);
-
-	if (sc->ndis_tmaps == NULL)
-		return(ENOMEM);
 
 	for (i = 0; i < sc->ndis_maxpkts; i++) {
 		error = bus_dmamap_create(sc->ndis_ttag, 0,

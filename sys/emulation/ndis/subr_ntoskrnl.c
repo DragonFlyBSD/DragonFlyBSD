@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ntoskrnl.c,v 1.40 2004/07/20 20:28:57 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.4 2004/09/20 06:32:41 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.5 2004/11/17 18:59:21 dillon Exp $
  */
 
 #include <sys/ctype.h>
@@ -1466,8 +1466,6 @@ ntoskrnl_objref(handle, reqaccess, otype, accessmode, object, handleinfo)
 	nt_objref		*nr;
 
 	nr = malloc(sizeof(nt_objref), M_DEVBUF, M_WAITOK|M_ZERO);
-	if (nr == NULL)
-		return(NDIS_STATUS_FAILURE);
 
 	INIT_LIST_HEAD((&nr->no_dh.dh_waitlisthead));
 	nr->no_obj = handle;
@@ -1538,8 +1536,6 @@ ntoskrnl_create_thread(handle, reqaccess, objattrs, phandle,
 	thread_t		td;
 
 	tc = malloc(sizeof(thread_context), M_TEMP, M_WAITOK);
-	if (tc == NULL)
-		return(NDIS_STATUS_FAILURE);
 
 	tc->tc_thrctx = thrctx;
 	tc->tc_thrfunc = thrfunc;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ndis.c,v 1.62 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.7 2004/11/17 18:27:17 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.8 2004/11/17 18:59:21 dillon Exp $
  */
 
 /*
@@ -322,9 +322,6 @@ ndis_ascii_to_unicode(ascii, unicode)
 
 	if (*unicode == NULL)
 		*unicode = malloc(strlen(ascii) * 2, M_DEVBUF, M_WAITOK);
-
-	if (*unicode == NULL)
-		return(ENOMEM);
 	ustr = *unicode;
 	for (i = 0; i < strlen(ascii); i++) {
 		*ustr = (uint16_t)ascii[i];
@@ -345,8 +342,6 @@ ndis_unicode_to_ascii(unicode, ulen, ascii)
 
 	if (*ascii == NULL)
 		*ascii = malloc((ulen / 2) + 1, M_DEVBUF, M_WAITOK|M_ZERO);
-	if (*ascii == NULL)
-		return(ENOMEM);
 	astr = *ascii;
 	for (i = 0; i < ulen / 2; i++) {
 		*astr = (uint8_t)unicode[i];
@@ -1560,12 +1555,6 @@ ndis_alloc_packetpool(status, pool, descnum, protrsvdlen)
 	*pool = malloc(sizeof(ndis_packet) *
 	    ((descnum + NDIS_POOL_EXTRA) + 1),
 	    M_DEVBUF, M_WAITOK|M_ZERO);
-
-	if (*pool == NULL) {
-		*status = NDIS_STATUS_RESOURCES;
-		return;
-	}
-
 	cur = (ndis_packet *)*pool;
 	cur->np_private.npp_flags = 0x1; /* mark the head of the list */
 	cur->np_private.npp_totlen = 0; /* init deletetion flag */
@@ -1783,12 +1772,6 @@ ndis_alloc_bufpool(status, pool, descnum)
 	*pool = malloc(sizeof(ndis_buffer) *
 	    ((descnum + NDIS_POOL_EXTRA) + 1),
 	    M_DEVBUF, M_WAITOK|M_ZERO);
-
-	if (*pool == NULL) {
-		*status = NDIS_STATUS_RESOURCES;
-		return;
-	}
-
 	cur = (ndis_buffer *)*pool;
 	cur->nb_flags = 0x1; /* mark the head of the list */
 	cur->nb_bytecount = 0; /* init usage count */
@@ -2066,8 +2049,6 @@ ndis_ansi2unicode(dstr, sstr)
 	if (dstr == NULL || sstr == NULL)
 		return(NDIS_STATUS_FAILURE);
 	str = malloc(sstr->nas_len + 1, M_DEVBUF, M_WAITOK);
-	if (str == NULL)
-		return(NDIS_STATUS_FAILURE);
 	strncpy(str, sstr->nas_buf, sstr->nas_len);
 	*(str + sstr->nas_len) = '\0';
 	if (ndis_ascii_to_unicode(str, &dstr->nus_buf)) {
@@ -2558,10 +2539,6 @@ ndis_open_file(status, filehandle, filelength, filename, highestaddr)
 	free(afilename, M_DEVBUF);
 
 	fh = malloc(sizeof(ndis_fh), M_TEMP, M_WAITOK);
-	if (fh == NULL) {
-		*status = NDIS_STATUS_RESOURCES;
-		return;
-	}
 
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW|NLC_LOCKVP);
 	if (error == 0)
@@ -2619,11 +2596,6 @@ ndis_map_file(status, mappedbuffer, filehandle)
 	}
 
 	fh->nf_map = malloc(fh->nf_maplen, M_DEVBUF, M_WAITOK);
-
-	if (fh->nf_map == NULL) {
-		*status = NDIS_STATUS_RESOURCES;
-		return;
-	}
 
 	error = vn_rdwr(UIO_READ, fh->nf_vp, fh->nf_map, fh->nf_maplen, 0,
 	    UIO_SYSSPACE, 0, proc0.p_ucred, &resid, td);
