@@ -1,0 +1,5 @@
+This directory include the NVnet part of Nvidia's nforce driver
+collection for Linux. They are directly copied from the archive at
+http://download.nvidia.com/XFree86/nforce/1.0-20031214/
+
+For copyright and license information, read NVLicense.html.

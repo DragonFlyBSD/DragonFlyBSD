@@ -1,0 +1,42 @@
+$DragonFly: src/sys/dev/netif/nv/Attic/basetype.h.patch,v 1.1 2004/08/28 15:08:02 joerg Exp $
+
+diff -u nvnet/basetype.h nv/basetype.h
+--- nvnet/basetype.h	2003-05-06 21:39:38.000000000 +0200
++++ nv/basetype.h	2004-08-19 18:11:43.000000000 +0200
+@@ -10,11 +10,12 @@
+ 
+ #define HDB_VERSION_STRING "HDR B: $Revision: #4 $"
+ 
+-// Fundamental data types
+-// UCHAR    8 bit unsigned
+-// UINT     either 16bit or 32bit unsigned depending upon compiler
+-// USHORT   16 bit unsigned
+-// ULONG    32 bit unsigned
++/*  Fundamental data types
++ *  UCHAR    8 bit unsigned
++ *  UINT     either 16bit or 32bit unsigned depending upon compiler
++ *  USHORT   16 bit unsigned
++ *  ULONG    32 bit unsigned
++ */
+ 
+ typedef unsigned char   UCHAR;
+ typedef unsigned int    UINT;
+@@ -22,10 +23,10 @@
+ typedef unsigned long   ULONG;
+ #define VOID            void
+ 
+-// Constructed types
++/* Constructed types */
+ typedef VOID            *PVOID;
+ 
+-// These are USEFUL "types"
++/* These are USEFUL "types" */
+ #ifndef NULL
+ #define NULL            0
+ #endif
+@@ -38,4 +39,4 @@
+ #define FALSE           0
+ #endif
+ 
+-#endif // _BASETYPE_H_
++#endif /* _BASETYPE_H_ */

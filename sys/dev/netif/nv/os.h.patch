@@ -1,0 +1,62 @@
+$DragonFly: src/sys/dev/netif/nv/Attic/os.h.patch,v 1.1 2004/08/28 15:08:02 joerg Exp $
+
+diff -u nvnet/os.h nv/os.h
+--- nvnet/os.h	2003-05-06 21:39:38.000000000 +0200
++++ nv/os.h	2004-08-19 18:17:37.000000000 +0200
+@@ -13,9 +13,9 @@
+ 
+ #define HDO_VERSION_STRING "HDR O: $Revision: #21 $";
+ 
+-// This is the maximum packet size that we will be sending
++/* This is the maximum packet size that we will be sending */
+ #define MAX_PACKET_SIZE     2048
+-//#define RX_BUFFER_SIZE      2048
++/* #define RX_BUFFER_SIZE      2048 */
+ 
+ typedef struct  _MEMORY_BLOCK
+ {
+@@ -34,7 +34,7 @@
+     UINT    uiLength;
+ 	/* Parameter to OS layer to indicate what type of memory is needed */
+ 	USHORT	AllocFlags;
+-	USHORT	AlignmentSize; //always power of 2
++	USHORT	AlignmentSize; /* always power of 2 */
+ 	/* Following three fields used for aligned memory allocation */
+     PVOID   pLogicalOrig;
+     ULONG	pPhysicalOrigLow;
+@@ -43,7 +43,7 @@
+ }   MEMORY_BLOCKEX, *PMEMORY_BLOCKEX;
+ 
+ 
+-// The typedefs for the OS functions
++/*  The typedefs for the OS functions */
+ typedef int (* PFN_MEMORY_ALLOC) (PVOID pOSCX, PMEMORY_BLOCK pMem);
+ typedef int (* PFN_MEMORY_FREE)  (PVOID pOSCX, PMEMORY_BLOCK pMem);
+ typedef int (* PFN_MEMORY_ALLOCEX) (PVOID pOSCX, PMEMORY_BLOCKEX pMem);
+@@ -70,14 +70,16 @@
+ typedef int (* PFN_LOCK_RELEASE) (PVOID pOSCX, int iLockType, PVOID pvLock);
+ typedef PVOID (* PFN_RETURN_BUFFER_VIRTUAL) (PVOID pvContext, PVOID pvADReadData);
+ 
+-// Here are the OS functions that those objects below the OS interface
+-// can call up to.
++/*
++ * Here are the OS functions that those objects below the OS interface
++ * can call up to. 
++ */
+ typedef struct  _OS_API
+ {
+-    // OS Context -- this is a parameter to every OS API call
++    /* OS Context -- this is a parameter to every OS API call */
+     PVOID                       pOSCX;
+ 
+-    // Basic OS functions
++    /* Basic OS functions */
+     PFN_MEMORY_ALLOC            pfnAllocMemory;
+     PFN_MEMORY_FREE             pfnFreeMemory;
+     PFN_MEMORY_ALLOCEX          pfnAllocMemoryEx;
+@@ -103,4 +105,4 @@
+ 	PFN_RETURN_BUFFER_VIRTUAL	pfnReturnBufferVirtual;
+ }   OS_API, *POS_API;
+ 
+-#endif // _OS_H_
++#endif /* _OS_H_ */

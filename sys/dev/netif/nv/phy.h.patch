@@ -1,0 +1,130 @@
+$DragonFly: src/sys/dev/netif/nv/Attic/phy.h.patch,v 1.1 2004/08/28 15:08:02 joerg Exp $
+
+diff -u nvnet/phy.h nv/phy.h
+--- nvnet/phy.h	2003-05-06 21:39:38.000000000 +0200
++++ nv/phy.h	2004-08-19 18:16:29.000000000 +0200
+@@ -20,13 +20,14 @@
+ 
+ #define HDP_VERSION_STRING "HDR P: $Revision: #23 $"
+ 
+-/////////////////////////////////////////////////////////////////////////
+-// The phy module knows the values that need to go into the phy registers
+-// but typically the method of writing those registers is controlled by
+-// another module (usually the adapter because it is really the hardware
+-// interface.) Hence, the phy needs routines to call to read and write the
+-// phy registers. This structure with appropriate routines will be provided
+-// in the PHY_Open call.
++/**************************************************************************
++ * The phy module knows the values that need to go into the phy registers
++ * but typically the method of writing those registers is controlled by
++ * another module (usually the adapter because it is really the hardware
++ * interface.) Hence, the phy needs routines to call to read and write the
++ * phy registers. This structure with appropriate routines will be provided
++ * in the PHY_Open call.
++ */
+ 
+ typedef int (* PFN_READ_PHY)  (PVOID pvData, ULONG ulPhyAddr, ULONG ulPhyReg, ULONG *pulValue);
+ typedef int (* PFN_WRITE_PHY) (PVOID pvData, ULONG ulPhyAddr, ULONG ulPhyReg, ULONG ulValue);
+@@ -37,11 +38,11 @@
+     PFN_READ_PHY    pfnRead;
+     PFN_WRITE_PHY   pfnWrite;
+ }   PHY_SUPPORT_API, *PPHY_SUPPORT_API;
+-/////////////////////////////////////////////////////////////////////////
++/***********************************************************************/
+ 
+-
+-/////////////////////////////////////////////////////////////////////////
+-// The functional typedefs for the PHY Api
++/***********************************************************************
++ * The functional typedefs for the PHY Api
++ */
+ typedef int (* PFN_PHY_INIT) (PVOID pvContext, ULONG *pulLinkState);
+ typedef int (* PFN_PHY_DEINIT) (PVOID pvContext);
+ typedef int (* PFN_PHY_CLOSE) (PVOID pvContext);
+@@ -55,8 +56,10 @@
+ 
+ typedef struct  _PHY_API
+ {
+-    // This is the context to pass back in as the first arg on all
+-    // the calls in the API below.
++    /*
++     * This is the context to pass back in as the first arg on all
++     * the calls in the API below.
++     */
+     PVOID               pPHYCX;
+ 
+     PFN_PHY_INIT				pfnInit;
+@@ -71,22 +74,24 @@
+     PFN_FORCE_SPEED_DUPLEX		pfnForceSpeedDuplex;
+     PFN_PHY_POWERDOWN			pfnPowerdown;
+ }   PHY_API, *PPHY_API;
+-/////////////////////////////////////////////////////////////////////////
++/***********************************************************************/
+ 
+ 
+-/////////////////////////////////////////////////////////////////////////
+-// This is the one function in the PHY interface that is publicly
+-// available. The rest of the interface is returned in the pPhyApi;
+-// The first argument needs to be cast to a POS_API structure ptr.
+-// On input the second argument is a ptr to a PPHY_SUPPORT_API.
+-// On output, the second argument should be treated as a ptr to a
+-// PPHY_API and set appropriately.
++/***********************************************************************
++ * This is the one function in the PHY interface that is publicly
++ * available. The rest of the interface is returned in the pPhyApi;
++ * The first argument needs to be cast to a POS_API structure ptr.
++ * On input the second argument is a ptr to a PPHY_SUPPORT_API.
++ * On output, the second argument should be treated as a ptr to a
++ * PPHY_API and set appropriately.
++ */
+ extern int PHY_Open (PVOID pvOSApi, PVOID pPhyApi, ULONG *pulIsHPNAPhy, ULONG *pulPhyAddr, ULONG *pulPhyConnected);
+-/////////////////////////////////////////////////////////////////////////
++/***********************************************************************/
+ 
+ 
+-/////////////////////////////////////////////////////////////////////////
+-// Here are the error codes the phy functions can return.
++/***********************************************************************
++ * Here are the error codes the phy functions can return.
++ */
+ #define PHYERR_NONE                             0x0000
+ #define PHYERR_COULD_NOT_ALLOC_CONTEXT          0x0001
+ #define PHYERR_RESET_NEVER_FINISHED             0x0002
+@@ -99,12 +104,13 @@
+ 
+ #define PHY_INVALID_PHY_ADDR					0xFFFF;
+ 
+-/////////////////////////////////////////////////////////////////////////
++/***********************************************************************/
+ 
+ 
+ #ifdef AMDHPNA10
+-/////////////////////////////////////////////////////////////////////////
+-// Here are the Phy Timer related structure. (For AMD HPNA)
++/***********************************************************************
++ * Here are the Phy Timer related structure. (For AMD HPNA)
++ */
+ typedef void (* PFN_PHY_TIMER) (PVOID pvData, ULONG macActive);
+ 
+ typedef struct  PHY_TIMER_API
+@@ -113,16 +119,16 @@
+     ULONG           ulPeriod;    // unit of MilliSeconds
+     PFN_PHY_TIMER   pfnPhyTimer;
+ }   PHY_TIMER_API, *PPHY_TIMER_API;
+-/////////////////////////////////////////////////////////////////////////
++/***********************************************************************/
+ #endif
+ 
+-// This value can be used in the ulPhyLinkSpeed field.
++/* This value can be used in the ulPhyLinkSpeed field. */
+ #define PHY_LINK_SPEED_UNKNOWN          0x0FFFFFFFF
+ 
+ typedef void (* PTIMER_FUNC) (PVOID pvContext);
+ 
+ #ifdef __cplusplus
+-} // extern "C"
++} /* extern "C" */
+ #endif
+ 
+-#endif //_PHY_H_
++#endif /*_PHY_H_ */
