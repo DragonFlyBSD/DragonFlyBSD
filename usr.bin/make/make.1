@@ -31,9 +31,9 @@
 .\"
 .\"	from: @(#)make.1	8.4 (Berkeley) 3/19/94
 .\" $FreeBSD: src/usr.bin/make/make.1,v 1.29.2.15 2002/12/17 19:01:18 seanc Exp $
-.\" $DragonFly: src/usr.bin/make/make.1,v 1.9 2004/11/30 15:22:46 joerg Exp $
+.\" $DragonFly: src/usr.bin/make/make.1,v 1.10 2004/11/30 17:58:41 joerg Exp $
 .\"
-.Dd July 2, 2004
+.Dd April 12, 2004
 .Dt MAKE 1
 .Os
 .Sh NAME
@@ -774,9 +774,15 @@ and future contents of the variable will be exported to the environment.
 Terminate processing of the makefile immediately.
 The filename of the
 makefile, the line on which the error was encountered and the specified
-message are printed to standard output and
+message are printed to the standard error output and
 .Nm
 terminates with exit code 1.
+Variables in the message are expanded.
+.It Ic \&.warning Ar message
+Emit a warning message.
+The filename of the makefile,
+the line on which the warning was encountered,
+and the specified message are printed to the standard error output.
 Variables in the message are expanded.
 .El
 .Pp
