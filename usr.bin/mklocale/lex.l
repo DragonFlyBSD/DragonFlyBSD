@@ -36,7 +36,7 @@
  *
  * @(#)lex.l	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mklocale/lex.l,v 1.5 2000/02/08 07:43:26 obrien Exp $
- * $DragonFly: src/usr.bin/mklocale/lex.l,v 1.3 2004/10/29 06:03:21 asmodai Exp $
+ * $DragonFly: src/usr.bin/mklocale/lex.l,v 1.4 2004/10/30 18:14:35 dillon Exp $
  */
 
 #include <ctype.h>
@@ -45,6 +45,16 @@
 
 #include "ldef.h"
 #include "y.tab.h"
+
+/*
+ * Bootstrap support
+ */
+#ifndef _CTYPE_SW0
+#define _CTYPE_SW0	0
+#define _CTYPE_SW1	0
+#define _CTYPE_SW2	0
+#define _CTYPE_SW3	0
+#endif
 %}
 
 ODIGIT	[0-7]
