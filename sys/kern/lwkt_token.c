@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.10 2004/09/21 18:46:00 joerg Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.11 2005/02/01 22:36:26 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -391,7 +391,7 @@ lwkt_reltoken(lwkt_tokref *_ref)
      */
     ref = _ref;
 #ifdef INVARIANTS
-    if ((((intptr_t)ref ^ (intptr_t)&_ref) && ~(intptr_t)PAGE_MASK) == 0)
+    if ((((intptr_t)ref ^ (intptr_t)&_ref) & ~(intptr_t)PAGE_MASK) == 0)
 	KKASSERT((char *)ref > (char *)&_ref);
     KKASSERT(ref->tr_magic == LWKT_TOKREF_MAGIC1 || 
 	     ref->tr_magic == LWKT_TOKREF_MAGIC2);
