@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/route/route.c,v 1.40.2.11 2003/02/27 23:10:10 ru Exp $
- * $DragonFly: src/sbin/route/route.c,v 1.12 2005/03/16 06:33:11 cpressey Exp $
+ * $DragonFly: src/sbin/route/route.c,v 1.13 2005/03/16 08:02:05 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -127,7 +127,7 @@ static int	 inet6_makenetandmask(struct sockaddr_in6 *, const char *);
 void
 usage(const char *cp)
 {
-	if (cp)
+	if (cp != NULL)
 		warnx("bad keyword: %s", cp);
 	fprintf(stderr, "usage: route [-dnqtv] command [[modifiers] args]\n");
 	exit(EX_USAGE);
@@ -181,7 +181,7 @@ main(int argc, char **argv)
 		s = socket(PF_ROUTE, SOCK_RAW, 0);
 	if (s < 0)
 		err(EX_OSERR, "socket");
-	if (*argv)
+	if (*argv != NULL)
 		switch (keyword(*argv)) {
 		case K_GET:
 			uid = 0;
@@ -222,7 +222,7 @@ flushroutes(int argc, char **argv)
 	char *buf, *next, *lim;
 	struct rt_msghdr *rtm;
 
-	if (uid) {
+	if (uid != 0) {
 		errx(EX_NOPERM, "must be root to alter routing table");
 	}
 	shutdown(s, 0); /* Don't want to read back our messages */
@@ -276,7 +276,7 @@ bad:			usage(*argv);
 			print_rtmsg(rtm, rtm->rtm_msglen);
 		if ((rtm->rtm_flags & RTF_GATEWAY) == 0)
 			continue;
-		if (af) {
+		if (af != 0) {
 			struct sockaddr *sa = (struct sockaddr *)(rtm + 1);
 
 			if (sa->sa_family != af)
@@ -345,13 +345,13 @@ routename(struct sockaddr *sa)
 	    {	struct in_addr in;
 		in = ((struct sockaddr_in *)sa)->sin_addr;
 
-		cp = 0;
+		cp = NULL;
 		if (in.s_addr == INADDR_ANY || sa->sa_len < 4)
 			cp = "default";
-		if (cp == 0 && !nflag) {
+		if (cp == NULL && !nflag) {
 			hp = gethostbyaddr((char *)&in, sizeof(struct in_addr),
 				AF_INET);
-			if (hp) {
+			if (hp != NULL) {
 				char *cptr;
 				cptr = strchr(hp->h_name, '.');
 				if (cptr != NULL && !wflag &&
@@ -360,7 +360,7 @@ routename(struct sockaddr *sa)
 				cp = hp->h_name;
 			}
 		}
-		if (cp) {
+		if (cp != NULL) {
 			strncpy(line, cp, sizeof(line) - 1);
 			line[sizeof(line) - 1] = '\0';
 		} else
@@ -480,11 +480,11 @@ netname(struct sockaddr *sa)
 			while ((mask & 1) == 0)
 				mask >>= 1, net >>= 1;
 			np = getnetbyaddr(net, AF_INET);
-			if (np)
+			if (np != NULL)
 				cp = np->n_name;
 		}
 #define C(x)	(unsigned)((x) & 0xff)
-		if (cp)
+		if (cp != NULL)
 			strncpy(line, cp, sizeof(line));
 		else if ((in.s_addr & 0xffffff) == 0)
 			sprintf(line, "%u", C(in.s_addr >> 24));
@@ -604,7 +604,7 @@ newroute(int argc, char **argv)
 	int key;
 	struct hostent *hp = 0;
 
-	if (uid) {
+	if (uid != 0) {
 		errx(EX_NOPERM, "must be root to alter routing table");
 	}
 	cmd = argv[0];
@@ -685,33 +685,33 @@ newroute(int argc, char **argv)
 				flags |= RTF_STATIC;
 				break;
 			case K_IFA:
-				if (!--argc)
+				if (--argc == 0)
 					usage((char *)NULL);
 				getaddr(RTA_IFA, *++argv, 0);
 				break;
 			case K_IFP:
-				if (!--argc)
+				if (--argc == 0)
 					usage((char *)NULL);
 				getaddr(RTA_IFP, *++argv, 0);
 				break;
 			case K_GENMASK:
-				if (!--argc)
+				if (--argc == 0)
 					usage((char *)NULL);
 				getaddr(RTA_GENMASK, *++argv, 0);
 				break;
 			case K_GATEWAY:
-				if (!--argc)
+				if (--argc == 0)
 					usage((char *)NULL);
 				getaddr(RTA_GATEWAY, *++argv, 0);
 				break;
 			case K_DST:
-				if (!--argc)
+				if (--argc == 0)
 					usage((char *)NULL);
 				ishost = getaddr(RTA_DST, *++argv, &hp);
 				dest = *argv;
 				break;
 			case K_NETMASK:
-				if (!--argc)
+				if (--argc == 0)
 					usage((char *)NULL);
 				getaddr(RTA_NETMASK, *++argv, 0);
 				/* FALLTHROUGH */
@@ -719,7 +719,7 @@ newroute(int argc, char **argv)
 				forcenet++;
 				break;
 			case K_PREFIXLEN:
-				if (!--argc)
+				if (--argc == 0)
 					usage((char *)NULL);
 				if (prefixlen(*++argv) == -1) {
 					forcenet = 0;
@@ -737,7 +737,7 @@ newroute(int argc, char **argv)
 			case K_SSTHRESH:
 			case K_RTT:
 			case K_RTTVAR:
-				if (!--argc)
+				if (--argc == 0)
 					usage((char *)NULL);
 				set_metric(*++argv, key);
 				break;
@@ -783,7 +783,8 @@ newroute(int argc, char **argv)
 			break;
 		if (errno != ENETUNREACH && errno != ESRCH)
 			break;
-		if (af == AF_INET && *gateway && hp && hp->h_addr_list[1]) {
+		if (af == AF_INET && *gateway != '\0' &&
+		    hp != NULL && hp->h_addr_list[1] != NULL) {
 			hp->h_addr_list++;
 			memmove(&so_gate.sin.sin_addr,
 				hp->h_addr_list[0],
@@ -797,7 +798,7 @@ newroute(int argc, char **argv)
 	if (!qflag) {
 		oerrno = errno;
 		printf("%s %s %s", cmd, ishost? "host" : "net", dest);
-		if (*gateway) {
+		if (*gateway != '\0') {
 			printf(": gateway %s", gateway);
 			if (attempts > 1 && ret == 0 && af == AF_INET)
 			    printf(" (%s)",
@@ -859,7 +860,7 @@ inet_makenetandmask(u_long net, struct sockaddr_in *in, u_long bits)
 		else
 			mask = -1;
 	}
-	if (bits)
+	if (bits != 0)
 		mask = 0xffffffff << (32 - bits);
 	in->sin_addr.s_addr = htonl(addr);
 	in = &so_mask.sin;
@@ -881,20 +882,20 @@ inet6_makenetandmask(struct sockaddr_in6 *sin6, const char *plen)
 {
 	struct in6_addr in6;
 
-	if (!plen) {
+	if (plen == NULL) {
 		if (IN6_IS_ADDR_UNSPECIFIED(&sin6->sin6_addr) &&
 		    sin6->sin6_scope_id == 0) {
 			plen = "0";
 		} else if ((sin6->sin6_addr.s6_addr[0] & 0xe0) == 0x20) {
 			/* aggregatable global unicast - RFC2374 */
 			memset(&in6, 0, sizeof(in6));
-			if (!memcmp(&sin6->sin6_addr.s6_addr[8],
-				    &in6.s6_addr[8], 8))
+			if (memcmp(&sin6->sin6_addr.s6_addr[8],
+				   &in6.s6_addr[8], 8) == 0)
 				plen = "64";
 		}
 	}
 
-	if (!plen || strcmp(plen, "128") == 0)
+	if (plen == NULL || strcmp(plen, "128") == 0)
 		return(1);
 	rtm_addrs |= RTA_NETMASK;
 	prefixlen(plen);
@@ -935,17 +936,17 @@ getaddr(int which, char *str, struct hostent **hpp)
 			if (getifaddrs(&ifap))
 				err(1, "getifaddrs");
 
-			for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
+			for (ifa = ifap; ifa != NULL; ifa = ifa->ifa_next) {
 				if (ifa->ifa_addr->sa_family != AF_LINK)
 					continue;
 
-				if (strcmp(str, ifa->ifa_name))
+				if (strcmp(str, ifa->ifa_name) != 0)
 					continue;
 
 				sdl = (struct sockaddr_dl *)ifa->ifa_addr;
 			}
 			/* If we found it, then use it */
-			if (sdl) {
+			if (sdl != NULL) {
 				/*
 				 * Copy is safe since we have a
 				 * sockaddr_storage member in sockunion{}.
@@ -962,7 +963,7 @@ getaddr(int which, char *str, struct hostent **hpp)
 				su->sdl.sdl_slen = 0;
 			}
 			freeifaddrs(ifap);
-			if (sdl)
+			if (sdl != NULL)
 				return(1);
 		}
 		break;
@@ -1082,7 +1083,7 @@ getaddr(int which, char *str, struct hostent **hpp)
 	*hpp = NULL;
 
 	q = strchr(str,'/');
-	if (q && which == RTA_DST) {
+	if (q != NULL && which == RTA_DST) {
 		*q = '\0';
 		if ((val = inet_network(str)) != INADDR_NONE) {
 			inet_makenetandmask(
@@ -1110,7 +1111,7 @@ netdone:
 		return(0);
 	}
 	hp = gethostbyname(str);
-	if (hp) {
+	if (hp != NULL) {
 		*hpp = hp;
 		su->sin.sin_family = hp->h_addrtype;
 		memmove((char *)&su->sin.sin_addr, hp->h_addr,
@@ -1184,7 +1185,7 @@ ns_print(struct sockaddr_ns *sns)
 	work.x_port = 0;
 	net.net_e  = work.x_net;
 	if (ns_nullhost(work) && net.long_e == 0) {
-		if (!port)
+		if (port == 0)
 			strncpy(mybuf, "*.*", sizeof(mybuf));
 		else
 			sprintf(mybuf, "*.%XH", port);
@@ -1203,7 +1204,7 @@ ns_print(struct sockaddr_ns *sns)
 			/* void */;
 		host = p;
 	}
-	if (port)
+	if (port != 0)
 		sprintf(cport, ".%XH", htons(port));
 	else
 		*cport = 0;
@@ -1493,14 +1494,14 @@ print_getmsg(struct rt_msghdr *rtm, int msglen)
 		warnx("message length mismatch, in packet %d, returned %d",
 		      rtm->rtm_msglen, msglen);
 	}
-	if (rtm->rtm_errno)  {
+	if (rtm->rtm_errno != 0)  {
 		errno = rtm->rtm_errno;
 		warn("message indicates error %d", errno);
 		return;
 	}
 	cp = ((char *)(rtm + 1));
 	if (rtm->rtm_addrs)
-		for (i = 1; i; i <<= 1)
+		for (i = 1; i != 0; i <<= 1)
 			if (i & rtm->rtm_addrs) {
 				sa = (struct sockaddr *)cp;
 				switch (i) {
@@ -1521,20 +1522,20 @@ print_getmsg(struct rt_msghdr *rtm, int msglen)
 				}
 				ADVANCE(cp, sa);
 			}
-	if (dst && mask)
+	if (dst != NULL && mask != NULL)
 		mask->sa_family = dst->sa_family;	/* XXX */
-	if (dst)
+	if (dst != NULL)
 		printf("destination: %s\n", routename(dst));
-	if (mask) {
+	if (mask != NULL) {
 		int savenflag = nflag;
 
 		nflag = 1;
 		printf("       mask: %s\n", routename(mask));
 		nflag = savenflag;
 	}
-	if (gate && rtm->rtm_flags & RTF_GATEWAY)
+	if (gate != NULL && rtm->rtm_flags & RTF_GATEWAY)
 		printf("    gateway: %s\n", routename(gate));
-	if (ifp)
+	if (ifp != NULL)
 		printf("  interface: %.*s\n",
 		    ifp->sdl_nlen, ifp->sdl_data);
 	printf("      flags: ");
@@ -1552,7 +1553,7 @@ print_getmsg(struct rt_msghdr *rtm, int msglen)
 	printf("%8ld%c ", msec(rtm->rtm_rmx.rmx_rttvar), lock(RTTVAR));
 	printf("%8ld%c ", rtm->rtm_rmx.rmx_hopcount, lock(HOPCOUNT));
 	printf("%8ld%c ", rtm->rtm_rmx.rmx_mtu, lock(MTU));
-	if (rtm->rtm_rmx.rmx_expire)
+	if (rtm->rtm_rmx.rmx_expire != 0)
 		rtm->rtm_rmx.rmx_expire -= time(0);
 	printf("%8ld%c\n", rtm->rtm_rmx.rmx_expire, lock(EXPIRE));
 #undef lock
@@ -1591,7 +1592,7 @@ pmsg_addrs(char *cp, int addrs)
 	printf("\nsockaddrs: ");
 	bprintf(stdout, addrs, addrnames);
 	putchar('\n');
-	for (i = 1; i; i <<= 1)
+	for (i = 1; i != 0; i <<= 1)
 		if (i & addrs) {
 			sa = (struct sockaddr *)cp;
 			printf(" %s", routename(sa));
@@ -1611,7 +1612,7 @@ bprintf(FILE *fp, int b, u_char *str)
 		return;
 	while ((i = *str++) != 0) {
 		if (b & (1 << (i-1))) {
-			if (gotsome == 0)
+			if (!gotsome)
 				i = '<';
 			else
 				i = ',';
@@ -1632,7 +1633,7 @@ keyword(const char *cp)
 {
 	struct keytab *kt = keywords;
 
-	while (kt->kt_cp && strcmp(kt->kt_cp, cp))
+	while (kt->kt_cp != NULL && strcmp(kt->kt_cp, cp) != 0)
 		kt++;
 	return(kt->kt_i);
 }
@@ -1689,7 +1690,7 @@ sockaddr(char *addr, struct sockaddr *sa)
 			new = *addr - 'a' + 10;
 		} else if ((*addr >= 'A') && (*addr <= 'F')) {
 			new = *addr - 'A' + 10;
-		} else if (*addr == 0)
+		} else if (*addr == '\0')
 			state |= END;
 		else
 			state |= DELIM;
