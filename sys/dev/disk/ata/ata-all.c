@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.3 2003/06/23 17:55:29 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.4 2003/07/03 01:16:59 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -654,7 +654,7 @@ ata_intr(void *data)
 void
 ata_start(struct ata_channel *ch)
 {
-#ifdef NATADISK
+#if NATADISK > 0
     struct ad_request *ad_request; 
 #endif
 #if DEV_ATAPIALL
