@@ -7,6 +7,9 @@
  * This code is derived from software contributed to The DragonFly Project
  * by Jonathan Lemon, Jeffrey M. Hsu, and Matthew Dillon.
  *
+ * Jonathan Lemon gave Jeffrey Hsu permission to combine his copyright
+ * into this one around July 8 2004.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -32,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.19 2004/07/08 22:07:34 hsu Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.20 2004/07/16 05:48:08 dillon Exp $
  */
 
 /*
