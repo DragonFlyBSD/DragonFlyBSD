@@ -25,12 +25,12 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 # $FreeBSD: src/usr.sbin/setkey/Makefile,v 1.1.2.5 2001/04/25 14:05:11 ru Exp $
-# $DragonFly: src/usr.sbin/setkey/Makefile,v 1.3 2003/08/08 04:18:48 dillon Exp $
+# $DragonFly: src/usr.sbin/setkey/Makefile,v 1.4 2004/01/23 19:13:45 joerg Exp $
 
 PROG=	setkey
 SRCS=	setkey.c parse.y token.l
 CFLAGS+=-g
-CFLAGS+=-I${.CURDIR}/../../lib/libipsec
+CFLAGS+=-I${.CURDIR} -I${.CURDIR}/../../lib/libipsec
 DPADD=	${LIBL} ${LIBY}
 LDADD=	-ll -ly
 CLEANFILES+=	y.tab.c y.tab.h key_test.o keytest
