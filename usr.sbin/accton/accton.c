@@ -33,14 +33,14 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)accton.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/accton/accton.c,v 1.5 1999/08/28 01:15:10 peter Exp $
- * $DragonFly: src/usr.sbin/accton/accton.c,v 1.5 2004/12/18 22:48:02 swildner Exp $
+ * $DragonFly: src/usr.sbin/accton/accton.c,v 1.6 2004/12/25 06:41:47 swildner Exp $
  */
 
 #include <sys/types.h>
+
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 static void usage(void);
@@ -61,11 +61,11 @@ main(int argc, char **argv)
 
 	switch(argc) {
 	case 0:
-		if (acct(NULL))
+		if (acct(NULL) < 0)
 			err(1, NULL);
 		break;
 	case 1:
-		if (acct(*argv))
+		if (acct(*argv) < 0)
 			err(1, "%s", *argv);
 		break;
 	default:
