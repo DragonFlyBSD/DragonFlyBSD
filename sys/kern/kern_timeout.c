@@ -37,7 +37,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.10 2004/04/26 20:06:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.11 2004/09/13 23:18:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -160,10 +160,7 @@ swi_softclock(void *dummy)
  *	identify entries for untimeout.
  */
 struct callout_handle
-timeout(ftn, arg, to_ticks)
-	timeout_t *ftn;
-	void *arg;
-	int to_ticks;
+timeout(timeout_t *ftn, void *arg, int to_ticks)
 {
 	int s;
 	struct callout *new;
@@ -186,10 +183,7 @@ timeout(ftn, arg, to_ticks)
 }
 
 void
-untimeout(ftn, arg, handle)
-	timeout_t *ftn;
-	void *arg;
-	struct callout_handle handle;
+untimeout(timeout_t *ftn, void *arg, struct callout_handle handle)
 {
 	int s;
 
@@ -228,11 +222,8 @@ callout_handle_init(struct callout_handle *handle)
  * callout_deactivate() - marks the callout as having been serviced
  */
 void
-callout_reset(c, to_ticks, ftn, arg)
-	struct	callout *c;
-	int	to_ticks;
-	void	(*ftn) (void *);
-	void	*arg;
+callout_reset(struct callout *c, int to_ticks, 
+		void (*ftn)(void *), void *arg)
 {
 	int	s;
 
@@ -259,8 +250,7 @@ callout_reset(c, to_ticks, ftn, arg)
 }
 
 int
-callout_stop(c)
-	struct	callout *c;
+callout_stop(struct callout *c)
 {
 	int	s;
 
@@ -289,8 +279,7 @@ callout_stop(c)
 }
 
 void
-callout_init(c)
-	struct	callout *c;
+callout_init(struct callout *c)
 {
 	bzero(c, sizeof *c);
 }
@@ -321,8 +310,7 @@ SYSINIT(vm_setup, SI_SUB_CPU, SI_ORDER_ANY, swi_softclock_setup, NULL);
  * 2 days.  Your milage may vary.   - Ken Key <key@cs.utk.edu>
  */
 void
-adjust_timeout_calltodo(time_change)
-    struct timeval *time_change;
+adjust_timeout_calltodo(struct timeval *time_change)
 {
 	struct callout *p;
 	unsigned long delta_ticks;
