@@ -35,7 +35,7 @@
  *
  * @(#)exec.c	8.4 (Berkeley) 6/8/95
  * $FreeBSD: src/bin/sh/exec.c,v 1.14.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/exec.c,v 1.4 2004/03/19 18:39:41 cpressey Exp $
+ * $DragonFly: src/bin/sh/exec.c,v 1.5 2004/10/01 20:38:40 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -694,9 +694,8 @@ unsetfunc(char *name)
 	if ((cmdp = cmdlookup(name, 0)) != NULL && cmdp->cmdtype == CMDFUNCTION) {
 		freefunc(cmdp->param.func);
 		delete_cmd_entry();
-		return (0);
 	}
-	return (1);
+	return (0);
 }
 
 /*

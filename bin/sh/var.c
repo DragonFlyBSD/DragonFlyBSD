@@ -35,7 +35,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/var.c,v 1.15.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/var.c,v 1.5 2004/10/01 20:30:25 dillon Exp $
+ * $DragonFly: src/bin/sh/var.c,v 1.6 2004/10/01 20:38:40 dillon Exp $
  */
 
 #include <unistd.h>
@@ -760,8 +760,7 @@ unsetvar(const char *s)
 			return (0);
 		}
 	}
-
-	return (1);
+	return (0);
 }
 
 
