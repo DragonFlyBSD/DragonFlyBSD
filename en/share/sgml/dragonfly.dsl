@@ -1,4 +1,4 @@
-<!-- $DragonFly: doc/en/share/sgml/dragonfly.dsl,v 1.2 2004/04/08 20:25:57 justin Exp $ -->
+<!-- $DragonFly: doc/en/share/sgml/dragonfly.dsl,v 1.3 2005/02/11 04:48:59 justin Exp $ -->
 
 <!DOCTYPE style-sheet PUBLIC "-//James Clark//DTD DSSSL Style Sheet//EN" [
 <!ENTITY dragonfly.dsl PUBLIC "-//DragonFlyBSD//DOCUMENT DocBook Language Neutral Stylesheet//EN" CDATA DSSSL>
@@ -27,8 +27,8 @@
               (make element gi: "small"
                 (literal "Contact the ")
 		(create-link
-		  (list (list "HREF" "mailto:doc-team@dragonflybsd.org"))
-                  (literal "Documentation Team"))
+		  (list (list "HREF" "mailto:docs@dragonflybsd.org"))
+                  (literal "Documentation mailing list"))
                 (literal " for comments, suggestions and questions about this document.")))))
 
 		(define title-font-family "helvetica, sans-serif, sans")
