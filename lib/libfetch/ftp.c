@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libfetch/ftp.c,v 1.16.2.31 2003/06/06 06:45:25 des Exp $
- * $DragonFly: src/lib/libfetch/ftp.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libfetch/ftp.c,v 1.3 2003/12/01 22:58:44 drhodus Exp $
  */
 
 /*
@@ -1006,7 +1006,6 @@ fetchStatFTP(struct url *url, struct url_stat *us, const char *flags)
 	f = _ftp_request(url, "STAT", us, _ftp_get_proxy(flags), flags);
 	if (f == NULL)
 		return (-1);
-	fclose(f);
 	return (0);
 }
 
