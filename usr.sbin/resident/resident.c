@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/resident/resident.c,v 1.5 2004/06/03 16:28:15 hmp Exp $
+ * $DragonFly: src/usr.sbin/resident/resident.c,v 1.6 2004/06/04 17:30:26 hmp Exp $
  */
 
 #include <sys/cdefs.h>
@@ -87,13 +87,13 @@ list_residents(void)
 	}
 	
 	/* print the list of retrieved resident binary */
-	printf("%-4s\t%-30s\t%-15s\t%-12s\n", "Id", "Executable", "Size", "Address");
+	printf("%-4s\t%-15s\t%-12s\t%-30s\n","Id", "Size", "Address", "Executable");
 	for (i = 0; i < res_count; ++i) {
-		printf("%-4d\t%-30s\t%-15lld\t0x%-12x\n",
+		printf("%-4d\t%-15lld\t0x%-12x\t%-30s\n",
 			buf[i].res_id,
-			buf[i].res_file,
 			buf[i].res_stat.st_size,
-			buf[i].res_entry_addr);
+			buf[i].res_entry_addr,
+			buf[i].res_file);
 	}
 
 	/* free back the memory */
