@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/lib/entry.c,v 1.9.2.5 2001/08/18 04:20:31 mikeh Exp $
- * $DragonFly: src/usr.sbin/cron/lib/entry.c,v 1.5 2004/03/10 18:27:28 dillon Exp $
+ * $DragonFly: src/usr.sbin/cron/lib/entry.c,v 1.6 2004/07/05 15:29:49 dillon Exp $
  */
 
 /* vix 26jan87 [RCS'd; rest of log is in RCS file]
@@ -532,7 +532,7 @@ get_range(bitstr_t *bits, int low, int high, char **names, int ch, FILE *file)
 		 * sent as a 0 since there is no offset either.
 		 */
 		ch = get_number(&num3, 0, PPC_NULL, ch, file);
-		if (ch == EOF)
+		if (ch == EOF || num3 == 0)
 			return EOF;
 	} else {
 		/* no step.  default==1.
@@ -582,6 +582,8 @@ get_number(int *numptr, int low, char **names, int ch, FILE *file)
 		ch = get_char(file);
 	}
 	*pc = '\0';
+	if (len == 0)
+		return EOF;
 
 	/* try to find the name in the name list
 	 */
