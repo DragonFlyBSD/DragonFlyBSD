@@ -33,9 +33,10 @@
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pwd.c	8.3 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/pwd/pwd.c,v 1.9.2.3 2002/06/17 11:04:22 tjr Exp $
- * $DragonFly: src/bin/pwd/pwd.c,v 1.4 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/pwd/pwd.c,v 1.5 2005/03/05 21:58:20 liamfoy Exp $
  */
 
+#include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -46,10 +47,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/param.h>
 
-static char *getcwd_logical(void);
-void usage(void);
+static char	*getcwd_logical(void);
+static void	usage(void);
 
 int
 main(int argc, char *argv[])
@@ -100,10 +100,9 @@ main(int argc, char *argv[])
 	exit(0);
 }
 
-void
+static void
 usage(void)
 {
-
 	if (strcmp(getprogname(), "realpath") == 0)
 		fprintf(stderr, "usage: realpath [path]\n");
 	else
