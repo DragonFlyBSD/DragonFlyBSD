@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.56 2005/01/29 13:51:57 joerg Exp $
+# $DragonFly: src/Makefile.inc1,v 1.57 2005/02/21 18:22:06 swildner Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -854,16 +854,12 @@ build-tools:
 #
 # cross-tools: Build cross-building tools
 #
-.if ${TARGET_ARCH} == "alpha" && ${MACHINE_ARCH} != "alpha"
-_elf2exe=	usr.sbin/elf2exe
-.endif
-
 .if ${TARGET_ARCH} == "i386" && ${MACHINE_ARCH} != "i386"
 _btxld=	usr.sbin/btxld
 .endif
 
 cross-tools:
-.for _tool in ${_btxld} ${_elf2exe} ${_binutils} \
+.for _tool in ${_btxld} ${_binutils} \
 	      usr.bin/objformat usr.sbin/crunch/crunchide \
 	      ${_gcc2_cross} ${_gcc34_cross}
 	${ECHODIR} "===> ${_tool} (cross-tools)"; \
