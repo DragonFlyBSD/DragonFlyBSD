@@ -32,11 +32,15 @@
  *
  *	@(#)in.h	8.3 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/in.h,v 1.48.2.10 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in.h,v 1.6 2004/02/14 02:09:28 dillon Exp $
+ * $DragonFly: src/sys/netinet/in.h,v 1.7 2004/09/15 15:00:50 joerg Exp $
  */
 
 #ifndef _NETINET_IN_H_
 #define _NETINET_IN_H_
+
+#ifndef _KERNEL
+#include <arpa/inet.h>
+#endif
 
 /*
  * Constants and structures defined by the internet system,
