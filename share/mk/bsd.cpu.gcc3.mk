@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.cpu.v, 1.30 2004/01/10 18:01:08 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.cpu.gcc3.mk,v 1.1 2004/01/26 15:22:07 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.cpu.gcc3.mk,v 1.2 2004/01/30 02:35:02 dillon Exp $
 
 # Set default CPU compile flags and baseline CPUTYPE for each arch.  The
 # compile flags must support the minimum CPU type for each architecture but
@@ -142,8 +142,3 @@ MACHINE_CPU = itanium
 _CPUCFLAGS += -mieee
 .endif
 
-# NB: COPTFLAGS is handled in /usr/src/sys/conf/kern.pre.mk
-
-.if !defined(NO_CPU_CFLAGS)
-CFLAGS += ${_CPUCFLAGS}
-.endif

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.8 2004/01/29 02:26:46 dillon Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.9 2004/01/30 02:35:02 dillon Exp $
  */
 
 #include <err.h>
@@ -81,9 +81,8 @@ main(int argc, char **argv)
 	char *cmd, *newcmd = NULL;
 	char *objformat_path;
 	char *ccver;
-	const char *env_name = NULL;
-	const char *env_value;
-	const char *env_default = NULL;
+	char *buver;
+	const char *env_value = NULL;
 	const char *base_path = NULL;
 	int use_objformat = 0;
 
@@ -103,26 +102,27 @@ main(int argc, char **argv)
 		if (strcmp(cmd, cmds->cmd) == 0)
 			break;
 	}
+
+	if ((ccver = getenv("CCVER")) == NULL)
+		ccver = "gcc2";
+	if ((buver = getenv("BINUTILSVER")) == NULL) {
+		buver = "binutils212";
+		/* check ccver against gcc3, change default binutils here XXX */
+	}
+
 	if (cmds) {
 		switch (cmds->type) {
 		case COMPILER:
-			env_name = "CCVER";
-			env_default = "gcc2";
 			base_path = "/usr/bin";
 			use_objformat = 0;
+			env_value = ccver;
 			break;
 		case BINUTILS2:
 			use_objformat = 1;
 			/* fall through */
 		case BINUTILS1:
-			env_default = "binutils212";
-			env_name = "BINUTILSVER";
+			env_value = buver;
 			base_path = "/usr/libexec";
-			if ((ccver = getenv("CCVER")) != NULL) {
-			    if (strcmp(ccver, "gcc3") == 0)
-				;/* change binutils env_default here XXX */
-			    /* etc */
-			}
 			break;
 		case OBJFORMAT:
 			break;
@@ -151,9 +151,6 @@ main(int argc, char **argv)
 	objformat_path = getenv("OBJFORMAT_PATH");
 	if (objformat_path == NULL)
 		objformat_path = "";
-
-	if ((env_value = getenv(env_name)) == NULL)
-		env_value = env_default;
 
 	path = strdup(objformat_path);
 

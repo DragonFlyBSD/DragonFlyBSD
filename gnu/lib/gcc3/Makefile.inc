@@ -1,6 +1,5 @@
-# $DragonFly: src/gnu/lib/gcc3/Attic/Makefile.inc,v 1.3 2004/01/24 19:52:22 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc3/Attic/Makefile.inc,v 1.4 2004/01/30 02:35:01 dillon Exp $
 #
 
 USEGNUDIR=YES
 CCVER=gcc3
-.makeenv CCVER

@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.cpu.mk,v 1.2.2.5 2002/07/19 08:09:32 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.cpu.gcc2.mk,v 1.1 2004/01/26 15:22:07 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.cpu.gcc2.mk,v 1.2 2004/01/30 02:35:02 dillon Exp $
 
 # Set default baseline values of CPUTYPE based on MACHINE_ARCH -- this is
 # the minimum CPU type we support for each architecture
@@ -69,12 +69,6 @@ _CPUCFLAGS = -mcpu=ev4
 . endif
 .endif
 
-# NB: COPTFLAGS is handled in /usr/src/sys/conf/Makefile.<arch>
-
-.if !defined(NO_CPU_CFLAGS)
-CFLAGS += ${_CPUCFLAGS}
-.endif
-
 # Set up the list of CPU features based on the CPU type.  This is an
 # unordered list to make it easy for client makefiles to test for the
 # presence of a CPU feature.
@@ -120,3 +114,4 @@ MACHINE_CPU = ev45 ev4
 MACHINE_CPU = ev4
 . endif
 .endif
+
