@@ -32,7 +32,7 @@
  *
  *	@(#)kern_malloc.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/kern_malloc.c,v 1.64.2.5 2002/03/16 02:19:51 archie Exp $
- * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.8 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.9 2003/07/29 21:51:07 drhodus Exp $
  */
 
 #include "opt_vm.h"
@@ -169,6 +169,7 @@ malloc(size, type, flags)
 	indx = BUCKETINDX(size);
 	kbp = &bucket[indx];
 
+	restart:
 	while (ksp->ks_memuse >= ksp->ks_limit) {
 		if (flags & M_NOWAIT) {
 			splx(s);
@@ -235,6 +236,13 @@ malloc(size, type, flags)
 			kbp->kb_last = (caddr_t)freep;
 	}
 	va = kbp->kb_next;
+	if (va == NULL) {
+		if (flags & M_NOWAIT) {
+			splx(s);
+			return ((void *) NULL);
+		}
+		goto restart;
+	}
 	kbp->kb_next = ((struct freelist *)va)->next;
 #ifdef INVARIANTS
 	freep = (struct freelist *)va;
