@@ -26,8 +26,8 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man5/link.5,v 1.14.2.9 2001/12/17 11:30:15 ru Exp $
-.\" $DragonFly: src/share/man/man5/link.5,v 1.3 2004/03/11 12:28:56 hmp Exp $
+.\" $FreeBSD: src/share/man/man5/link.5,v 1.14.2.10 2004/05/17 11:38:55 brueffer Exp $
+.\" $DragonFly: src/share/man/man5/link.5,v 1.4 2004/07/23 06:43:05 hmp Exp $
 .\"
 .Dd October 23, 1993
 .Dt LINK 5
@@ -296,7 +296,7 @@ The
 .Fa sod
 structure that was responsible for loading this shared object.
 .It Fa som_sodbase
-Tossed in later versions the run-time linker.
+Tossed out in later versions of the run-time linker.
 .It Fa som_write
 Set if (some portion of) this object's text segment is currently writable.
 .It Fa som_dynamic
@@ -394,7 +394,7 @@ The symbol description.
 Virtual address of next rt_symbol.
 .It Fa rt_link
 Next in hash bucket.
-Used by internally by
+Used internally by
 .Nm ld.so .
 .It Fa rt_srcaddr
 Location of the source of initialized data within a shared object.
@@ -437,7 +437,7 @@ run under control of a debugger.
 .It Fa dd_sym_loaded
 Set by the run-time linker whenever it adds symbols by loading shared objects.
 .It Fa dd_bpt_addr
-The address were a breakpoint will be set by the run-time linker to
+The address where a breakpoint will be set by the run-time linker to
 divert control to the debugger.
 This address is determined by the start-up
 module,
