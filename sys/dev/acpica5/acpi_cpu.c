@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.36 2004/05/07 05:22:37 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.3 2004/06/27 08:52:39 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.4 2004/06/27 09:08:44 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -774,6 +774,7 @@ acpi_cpu_startup_cx()
     /* Take over idling from cpu_idle_default_hook(). */
     cpu_cx_next = cpu_cx_lowest;
     KKASSERT(0);
+    /* XXX only set this if ncpus == 1, for now XXX */
     cpu_idle_hook = acpi_cpu_idle;
 }
 
