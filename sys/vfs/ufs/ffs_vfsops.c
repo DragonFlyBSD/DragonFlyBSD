@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.21 2004/08/17 18:57:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.22 2004/08/19 14:42:46 drhodus Exp $
  */
 
 #include "opt_quota.h"
@@ -487,7 +487,10 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 	else
 		size = dpart.disklab->d_secsize;
 	if ((error = bread(devvp, (ufs_daddr_t)(SBOFF/size), SBSIZE, &bp)) != 0)
+	{
+		brelse(bp);
 		return (error);
+	}
 	newfs = (struct fs *)bp->b_data;
 	if (newfs->fs_magic != FS_MAGIC || newfs->fs_bsize > MAXBSIZE ||
 		newfs->fs_bsize < sizeof(struct fs)) {
@@ -526,9 +529,11 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 		size = fs->fs_bsize;
 		if (i + fs->fs_frag > blks)
 			size = (blks - i) * fs->fs_fsize;
-		error = bread(devvp, fsbtodb(fs, fs->fs_csaddr + i), size, &bp);
-		if (error)
+		if (error = bread(devvp, fsbtodb(fs, fs->fs_csaddr + i), size,
+		    &bp)) {
+			brelse(bp);
 			return (error);
+		}
 		bcopy(bp->b_data, space, (uint)size);
 		space = (char *)space + size;
 		brelse(bp);
@@ -594,6 +599,7 @@ ffs_reload_scan2(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *
 			fsbtodb(info->fs, ino_to_fsba(info->fs, ip->i_number)),
 			(int)info->fs->fs_bsize, &bp);
 	if (error) {
+		brelse(bp);
 		vput(vp);
 		return (error);
 	}
