@@ -1,6 +1,16 @@
 # $FreeBSD: src/COPYRIGHT,v 1.4 1999/09/05 21:33:47 obrien Exp $
-# $DragonFly: src/COPYRIGHT,v 1.5 2004/07/12 05:15:05 dillon Exp $
+# $DragonFly: src/COPYRIGHT,v 1.6 2004/08/19 23:53:39 dillon Exp $
 #	@(#)COPYRIGHT	8.2 (Berkeley) 3/21/94
+
+Authors of new code wishing specific recognition are encouraged to use the
+DragonFly copyright with the following paragraph inserting just after the
+Copyright line.  Multiple authors should simply append their names to the
+[pre-existing] paragraph:
+
+ This code is derived from software contributed to The DragonFly Project
+ by Author Name <author@email.address>
+
+--
 
 The software known as "DragonFly" or "DragonFly BSD" is distributed under
 the following terms:
@@ -34,6 +44,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGE.
 
+--
 
 The 4.4BSD and 4.4BSD-Lite software is distributed under the following
 terms:
@@ -72,6 +83,8 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGE.
 
+--
+
 The Institute of Electrical and Electronics Engineers and the American
 National Standards Committee X3, on Information Processing Systems have
 given us permission to reprint portions of their documentation.
@@ -101,6 +114,7 @@ those of the authors and should not be interpreted as representing official
 policies, either expressed or implied, of the Regents of the University
 of California.
 
+--
 
 NOTE: The copyright of UC Berkeley's Berkeley Software Distribution ("BSD")
 source has been updated.  The copyright addendum may be found at
@@ -132,3 +146,6 @@ in its entirety.
 William Hoskins
 Director, Office of Technology Licensing
 University of California, Berkeley
+
+--
+
