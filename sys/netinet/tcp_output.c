@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.22 2004/12/28 08:09:59 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.23 2005/01/08 09:26:32 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -140,14 +140,6 @@ int path_mtu_discovery = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, path_mtu_discovery, CTLFLAG_RW,
 	&path_mtu_discovery, 1, "Enable Path MTU Discovery");
 
-int ss_fltsz = 1;
-SYSCTL_INT(_net_inet_tcp, OID_AUTO, slowstart_flightsize, CTLFLAG_RW,
-	&ss_fltsz, 1, "Slow start flight size");
-
-int ss_fltsz_local = 4;
-SYSCTL_INT(_net_inet_tcp, OID_AUTO, local_slowstart_flightsize, CTLFLAG_RW,
-	&ss_fltsz_local, 1, "Slow start flight size for local networks");
-
 static int avoid_pure_win_update = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, avoid_pure_win_update, CTLFLAG_RW,
 	&avoid_pure_win_update, 1, "Avoid pure window updates when possible");
@@ -191,15 +183,8 @@ tcp_output(tp)
 		 * We have been idle for "a while" and no acks are
 		 * expected to clock out any data we send --
 		 * slow start to get ack "clock" running again.
-		 *
-		 * Set the slow-start flight size depending on whether
-		 * this is a local network or not.
 		 */
-		if ((isipv6 && in6_localaddr(&inp->in6p_faddr)) ||
-		    (!isipv6 && in_localaddr(inp->inp_faddr)))
-			tp->snd_cwnd = tp->t_maxseg * ss_fltsz_local;
-		else
-			tp->snd_cwnd = tp->t_maxseg * ss_fltsz;
+		tp->snd_cwnd = tp->t_maxseg;
 	}
 	idle = (tp->t_flags & TF_LASTIDLE) || (tp->snd_max == tp->snd_una);
 	if (idle && (tp->t_flags & TF_MORETOCOME))

@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.49 2004/12/29 05:44:43 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.50 2005/01/08 09:26:32 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -3000,11 +3000,8 @@ tcp_mss(struct tcpcb *tp, int offer)
 	 */
 	if (tcp_do_rfc3390)
 		tp->snd_cwnd = min(4 * mss, max(2 * mss, 4380));
-	else if ((isipv6 && in6_localaddr(&inp->in6p_faddr)) ||
-		 (!isipv6 && in_localaddr(inp->inp_faddr)))
-		tp->snd_cwnd = mss * ss_fltsz_local;
 	else
-		tp->snd_cwnd = mss * ss_fltsz;
+		tp->snd_cwnd = mss;
 
 	if (rt->rt_rmx.rmx_ssthresh) {
 		/*

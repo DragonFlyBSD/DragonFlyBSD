@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.27 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.28 2005/01/08 09:26:32 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -571,8 +571,6 @@ extern	struct tcpcbackqhead tcpcbackq[];
 extern	int tcp_mssdflt;	/* XXX */
 extern	int tcp_delack_enabled;
 extern	int path_mtu_discovery;
-extern	int ss_fltsz;
-extern	int ss_fltsz_local;
 
 int	 tcp_addrcpu(in_addr_t faddr, in_port_t fport,
 	    in_addr_t laddr, in_port_t lport);
