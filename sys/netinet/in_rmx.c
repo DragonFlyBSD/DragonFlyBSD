@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/in_rmx.c,v 1.37.2.3 2002/08/09 14:49:23 ru Exp $
- * $DragonFly: src/sys/netinet/in_rmx.c,v 1.10 2005/03/04 03:48:25 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_rmx.c,v 1.11 2005/03/09 23:31:44 hsu Exp $
  */
 
 /*
@@ -113,23 +113,23 @@ in_addroute(char *key, char *mask, struct radix_node_head *head,
 
 	ret = rn_addroute(key, mask, head, treenodes);
 	if (ret == NULL && rt->rt_flags & RTF_HOST) {
-		struct rtentry *rt2;
+		struct rtentry *oldrt;
 
 		/*
 		 * We are trying to add a host route, but can't.
-		 * Find out if it is because of an
-		 * ARP entry and delete it if so.
+		 * Find out if it is because of an ARP entry and
+		 * delete it if so.
 		 */
-		rt2 = rtpurelookup((struct sockaddr *)sin);
-		if (rt2 != NULL) {
-			--rt->rt_refcnt;
-			if (rt2->rt_flags & RTF_LLINFO &&
-			    rt2->rt_flags & RTF_HOST &&
-			    rt2->rt_gateway &&
-			    rt2->rt_gateway->sa_family == AF_LINK) {
-				rtrequest(RTM_DELETE, rt_key(rt2),
-					  rt2->rt_gateway, rt_mask(rt2),
-					  rt2->rt_flags, NULL);
+		oldrt = rtpurelookup((struct sockaddr *)sin);
+		if (oldrt != NULL) {
+			--oldrt->rt_refcnt;
+			if (oldrt->rt_flags & RTF_LLINFO &&
+			    oldrt->rt_flags & RTF_HOST &&
+			    oldrt->rt_gateway &&
+			    oldrt->rt_gateway->sa_family == AF_LINK) {
+				rtrequest(RTM_DELETE, rt_key(oldrt),
+					  oldrt->rt_gateway, rt_mask(oldrt),
+					  oldrt->rt_flags, NULL);
 				ret = rn_addroute(key, mask, head, treenodes);
 			}
 		}
