@@ -1,8 +1,6 @@
-# $DragonFly: src/lib/libncurses/libmenu/Makefile,v 1.2 2005/03/12 20:57:07 joerg Exp $
+# $DragonFly: src/lib/libncurses/libmenu/Makefile,v 1.3 2005/03/14 15:15:13 joerg Exp $
 
 LIB=    menu
-SHLIB_MAJOR=5
-SHLIB_MINOR=4
 
 .include "../Makefile.inc"
 
