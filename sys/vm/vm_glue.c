@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.22 2004/05/20 22:42:25 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.23 2004/06/20 17:44:11 hmp Exp $
  */
 
 #include "opt_vm.h"
@@ -253,12 +253,11 @@ vm_fork(struct proc *p1, struct proc *p2, int flags)
 		up->u_sigacts = *p1->p_sigacts;
 	}
 
-	bzero(&up->u_stats.pstat_startzero,
-	    (unsigned) ((caddr_t) &up->u_stats.pstat_endzero -
-		(caddr_t) &up->u_stats.pstat_startzero));
-	bcopy(&p1->p_stats->pstat_startcopy, &up->u_stats.pstat_startcopy,
-	    ((caddr_t) &up->u_stats.pstat_endcopy -
-		(caddr_t) &up->u_stats.pstat_startcopy));
+	bzero(&up->u_stats, sizeof(struct pstats));
+	bcopy(&p1->p_stats->p_prof, &up->u_stats.p_prof,
+		sizeof(struct uprof));
+	bcopy(&p1->p_stats->p_start, &up->u_stats.p_start,
+		sizeof(struct timeval));
 
 
 	/*
