@@ -29,7 +29,7 @@
  *
  * @(#)generic.c 1.2 91/03/11 Copyr 1986 Sun Micro
  * $FreeBSD: src/usr.bin/newkey/generic.c,v 1.3.2.1 2001/07/04 22:32:20 kris Exp $
- * $DragonFly: src/usr.bin/newkey/generic.c,v 1.6 2005/01/11 01:08:06 joerg Exp $
+ * $DragonFly: src/usr.bin/newkey/generic.c,v 1.7 2005/01/11 13:08:35 joerg Exp $
  */
 
 /*
@@ -107,7 +107,7 @@ genkeys(char *public, char *secret, char *pass)
 	root = itobn(PROOT);
 	modulus = NULL;
 	if (BN_hex2bn(&modulus, HEXMODULUS) == NULL)
-		errx(1, "could convert modulus to BIGNUM: %s",
+		errx(1, "could not convert modulus to BIGNUM: %s",
 		     ERR_error_string(ERR_get_error(), 0));
 
 	if ((ctx = BN_CTX_new()) == NULL)
@@ -118,17 +118,9 @@ genkeys(char *public, char *secret, char *pass)
 	for (i = 0; i < KEYSIZE/BASEBITS + 1; i++) {
 		r = seed[i] % BASE;
 		BN_zero(tmp);
-		BN_print_fp(stderr, base);
-		fprintf(stderr,"\n");
 		BN_add_word(tmp, r);
-		BN_print_fp(stderr, sk);
-		fprintf(stderr,"\n");
 		BN_mul(sk, base, sk, ctx);
-		BN_print_fp(stderr, sk);
-		fprintf(stderr,"\n");
 		BN_add(sk, tmp, sk);
-		BN_print_fp(stderr, sk);
-		fprintf(stderr,"\n");
 	}
 	BN_zero(tmp);
 	BN_div(tmp, sk, sk, modulus, ctx);
