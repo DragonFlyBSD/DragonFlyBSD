@@ -33,7 +33,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkoptions.c,v 1.17.2.3 2001/12/13 19:18:01 dillon Exp $
- * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.8 2004/03/04 20:44:49 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.9 2004/03/05 08:03:31 dillon Exp $
  */
 
 /*
@@ -186,7 +186,7 @@ do_option(char *name)
 		for (ol = otab; ol != NULL; ol = ol->o_next)
 			if (eq(inw, ol->o_name))
 				break;
-		if (!eq(inw, name) && ol != NULL) {
+		if (!eq(inw, name) && ol == NULL) {
 			printf("WARNING: unknown option `%s' removed from %s\n",
 				inw, file);
 			tidy++;
