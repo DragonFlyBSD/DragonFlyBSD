@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_socksys.h,v 1.3 2003/08/07 21:17:17 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_socksys.h,v 1.4 2003/08/27 06:30:03 rob Exp $
  */
 
 #ifndef	_I386_IBCS2_IBCS2_SOCKSYS_H_
@@ -123,6 +123,6 @@ struct ibcs2_socksys_args {
 	caddr_t argsp;
 };
 
-int ibcs2_socksys __P((struct ibcs2_socksys_args *));
+int ibcs2_socksys (struct ibcs2_socksys_args *);
 
 #endif /* !_I386_IBCS2_IBCS2_SOCKSYS_H_ */

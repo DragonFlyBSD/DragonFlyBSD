@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_fcntl.c,v 1.14 1999/09/19 17:00:14 green Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.8 2003/08/07 21:17:17 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.9 2003/08/27 06:30:03 rob Exp $
  */
 
 #include "opt_spx_hack.h"
@@ -45,11 +45,11 @@
 #include "ibcs2_proto.h"
 #include "ibcs2_util.h"
 
-static void cvt_iflock2flock __P((struct ibcs2_flock *, struct flock *));
-static void cvt_flock2iflock __P((struct flock *, struct ibcs2_flock *));
-static int  cvt_o_flags      __P((int));
-static int  oflags2ioflags   __P((int));
-static int  ioflags2oflags   __P((int));
+static void cvt_iflock2flock (struct ibcs2_flock *, struct flock *);
+static void cvt_flock2iflock (struct flock *, struct ibcs2_flock *);
+static int  cvt_o_flags      (int);
+static int  oflags2ioflags   (int);
+static int  ioflags2oflags   (int);
 
 static int
 cvt_o_flags(flags)

@@ -29,7 +29,7 @@
  *
  * from: svr4_util.h,v 1.5 1994/11/18 02:54:31 christos Exp
  * from: linux_util.h,v 1.2 1995/03/05 23:23:50 fvdl Exp
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_util.h,v 1.3 2003/07/26 18:12:43 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_util.h,v 1.4 2003/08/27 06:30:03 rob Exp $
  */
 
 /*
@@ -83,8 +83,8 @@ stackgap_alloc(sgp, sz)
 
 extern const char ibcs2_emul_path[];
 
-int ibcs2_emul_find __P((caddr_t *, const char *, char *,
-			char **, int));
+int ibcs2_emul_find (caddr_t *, const char *, char *,
+			char **, int);
 
 #define CHECKALTEXIST(sgp, path) \
     ibcs2_emul_find(sgp, ibcs2_emul_path, path, &(path), 0)
@@ -93,7 +93,7 @@ int ibcs2_emul_find __P((caddr_t *, const char *, char *,
     ibcs2_emul_find(sgp, ibcs2_emul_path, path, &(path), 1)
 
 #ifdef SPX_HACK
-int spx_open __P((struct ibcs2_open_args *uap));
+int spx_open (struct ibcs2_open_args *uap);
 #endif
 
 #endif /* !_IBCS2_UTIL_H_ */

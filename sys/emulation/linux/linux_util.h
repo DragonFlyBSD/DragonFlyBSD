@@ -29,7 +29,7 @@
  * from: svr4_util.h,v 1.5 1994/11/18 02:54:31 christos Exp
  * from: linux_util.h,v 1.2 1995/03/05 23:23:50 fvdl Exp
  * $FreeBSD: src/sys/compat/linux/linux_util.h,v 1.12.2.2 2000/11/02 23:31:28 obrien Exp $
- * $DragonFly: src/sys/emulation/linux/linux_util.h,v 1.4 2003/06/25 03:55:44 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_util.h,v 1.5 2003/08/27 06:30:03 rob Exp $
  */
 
 /*
@@ -77,7 +77,7 @@ stackgap_alloc(sgp, sz)
 
 extern const char linux_emul_path[];
 
-int linux_emul_find __P((struct thread *, caddr_t *, const char *, char *, char **, int));
+int linux_emul_find (struct thread *, caddr_t *, const char *, char *, char **, int);
 
 #define CHECKALT(sgp, path, i) 						\
 	do {								\

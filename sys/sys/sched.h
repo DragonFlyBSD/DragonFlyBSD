@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/sched.h,v 1.4 1999/12/29 04:55:02 peter Exp $
- * $DragonFly: src/sys/sys/sched.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/sys/sched.h,v 1.3 2003/08/27 06:30:04 rob Exp $
  */
 
 #include <sys/types.h>	/* For pid_t */
@@ -60,16 +60,16 @@ struct sched_param
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int sched_setparam __P((pid_t, const struct sched_param *));
-int sched_getparam __P((pid_t, struct sched_param *));
+int sched_setparam (pid_t, const struct sched_param *);
+int sched_getparam (pid_t, struct sched_param *);
 
-int sched_setscheduler __P((pid_t, int, const struct sched_param *));
-int sched_getscheduler __P((pid_t));
+int sched_setscheduler (pid_t, int, const struct sched_param *);
+int sched_getscheduler (pid_t);
 
-int sched_yield __P((void));
-int sched_get_priority_max __P((int));
-int sched_get_priority_min __P((int));
-int sched_rr_get_interval __P((pid_t, struct timespec *));
+int sched_yield (void);
+int sched_get_priority_max (int);
+int sched_get_priority_min (int);
+int sched_rr_get_interval (pid_t, struct timespec *);
 __END_DECLS
 
 #endif

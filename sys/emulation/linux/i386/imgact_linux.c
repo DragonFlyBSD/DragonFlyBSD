@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/imgact_linux.c,v 1.35.2.2 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/emulation/linux/i386/imgact_linux.c,v 1.3 2003/08/07 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/imgact_linux.c,v 1.4 2003/08/27 06:30:03 rob Exp $
  */
 
 #include <sys/param.h>
@@ -53,7 +53,7 @@
 
 #include "linux.h"
 
-static int	exec_linux_imgact __P((struct image_params *iparams));
+static int	exec_linux_imgact (struct image_params *iparams);
 
 static int
 exec_linux_imgact(imgp)

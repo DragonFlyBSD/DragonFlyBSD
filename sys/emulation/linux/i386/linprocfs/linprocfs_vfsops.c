@@ -39,7 +39,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vfsops.c,v 1.2.2.3 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vfsops.c,v 1.4 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vfsops.c,v 1.5 2003/08/27 06:30:04 rob Exp $
  */
 
 /*
@@ -55,12 +55,12 @@
 #include <sys/vnode.h>
 #include "linprocfs.h"
 
-static int	linprocfs_mount __P((struct mount *mp, char *path, caddr_t data,
-				  struct nameidata *ndp, struct thread *td));
-static int	linprocfs_statfs __P((struct mount *mp, struct statfs *sbp,
-				   struct thread *td));
-static int	linprocfs_unmount __P((struct mount *mp, int mntflags,
-				    struct thread *td));
+static int	linprocfs_mount (struct mount *mp, char *path, caddr_t data,
+				  struct nameidata *ndp, struct thread *td);
+static int	linprocfs_statfs (struct mount *mp, struct statfs *sbp,
+				   struct thread *td);
+static int	linprocfs_unmount (struct mount *mp, int mntflags,
+				    struct thread *td);
 
 /*
  * VFS Operations.

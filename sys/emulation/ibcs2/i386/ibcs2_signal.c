@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_signal.c,v 1.16 1999/10/10 09:14:31 marcel Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_signal.c,v 1.6 2003/08/07 21:17:17 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_signal.c,v 1.7 2003/08/27 06:30:03 rob Exp $
  */
 
 #include <sys/param.h>
@@ -49,12 +49,12 @@
 #define ibcs2_sigismember(s, n)	(*(s) & ibcs2_sigmask(n))
 #define ibcs2_sigaddset(s, n)	(*(s) |= ibcs2_sigmask(n))
 
-static void ibcs2_to_bsd_sigset    __P((const ibcs2_sigset_t *, sigset_t *));
-static void bsd_to_ibcs2_sigset    __P((const sigset_t *, ibcs2_sigset_t *));
-static void ibcs2_to_bsd_sigaction __P((struct ibcs2_sigaction *,
-					struct sigaction *));
-static void bsd_to_ibcs2_sigaction __P((struct sigaction *,
-					struct ibcs2_sigaction *));
+static void ibcs2_to_bsd_sigset    (const ibcs2_sigset_t *, sigset_t *);
+static void bsd_to_ibcs2_sigset    (const sigset_t *, ibcs2_sigset_t *);
+static void ibcs2_to_bsd_sigaction (struct ibcs2_sigaction *,
+					struct sigaction *);
+static void bsd_to_ibcs2_sigaction (struct sigaction *,
+					struct ibcs2_sigaction *);
 
 int bsd_to_ibcs2_sig[IBCS2_SIGTBLSZ] = {
 	IBCS2_SIGHUP,		/* 1 */

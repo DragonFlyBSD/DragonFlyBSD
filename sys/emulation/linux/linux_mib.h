@@ -26,19 +26,19 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_mib.h,v 1.3.2.1 2000/10/30 10:51:37 obrien Exp $
- * $DragonFly: src/sys/emulation/linux/linux_mib.h,v 1.3 2003/06/25 03:55:44 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_mib.h,v 1.4 2003/08/27 06:30:03 rob Exp $
  */
 
 #ifndef _LINUX_MIB_H_
 #define _LINUX_MIB_H_
 
-char*	linux_get_osname	__P((struct thread *td));
-int	linux_set_osname	__P((struct thread *td, char *osname));
+char*	linux_get_osname	(struct thread *td);
+int	linux_set_osname	(struct thread *td, char *osname);
 
-char*	linux_get_osrelease	__P((struct thread *td));
-int	linux_set_osrelease	__P((struct thread *td, char *osrelease));
+char*	linux_get_osrelease	(struct thread *td);
+int	linux_set_osrelease	(struct thread *td, char *osrelease);
 
-int	linux_get_oss_version	__P((struct thread *td));
-int	linux_set_oss_version	__P((struct thread *td, int oss_version));
+int	linux_get_oss_version	(struct thread *td);
+int	linux_set_oss_version	(struct thread *td, int oss_version);
 
 #endif /* _LINUX_MIB_H_ */

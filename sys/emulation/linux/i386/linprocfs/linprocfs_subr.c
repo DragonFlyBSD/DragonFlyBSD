@@ -39,7 +39,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_subr.c,v 1.3.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.5 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.6 2003/08/27 06:30:04 rob Exp $
  */
 
 #include <sys/param.h>
@@ -52,7 +52,7 @@
 static struct pfsnode *pfshead;
 static int pfsvplock;
 
-extern int procfs_domem __P((struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio));
+extern int procfs_domem (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
 
 /*
  * allocate a pfsnode/vnode pair.  the vnode is

@@ -39,7 +39,7 @@
  *	@(#)procfs.h	8.9 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs.h,v 1.2.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs.h,v 1.3 2003/06/25 03:55:55 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs.h,v 1.4 2003/08/27 06:30:04 rob Exp $
  */
 
 /*
@@ -104,8 +104,8 @@ struct vfs_namemap {
 	int nm_val;
 };
 
-int vfs_getuserstr __P((struct uio *, char *, int *));
-vfs_namemap_t *vfs_findname __P((vfs_namemap_t *, char *, int));
+int vfs_getuserstr (struct uio *, char *, int *);
+vfs_namemap_t *vfs_findname (vfs_namemap_t *, char *, int);
 
 /* <machine/reg.h> */
 struct reg;
@@ -114,36 +114,36 @@ struct dbreg;
 
 #define PFIND(pid) ((pid) ? pfind(pid) : &proc0)
 
-void linprocfs_exit __P((struct thread *));
-int linprocfs_freevp __P((struct vnode *));
-int linprocfs_allocvp __P((struct mount *, struct vnode **, long, pfstype));
-int linprocfs_sstep __P((struct proc *));
-void linprocfs_fix_sstep __P((struct proc *));
+void linprocfs_exit (struct thread *);
+int linprocfs_freevp (struct vnode *);
+int linprocfs_allocvp (struct mount *, struct vnode **, long, pfstype);
+int linprocfs_sstep (struct proc *);
+void linprocfs_fix_sstep (struct proc *);
 #if 0
-int linprocfs_read_regs __P((struct proc *, struct reg *));
-int linprocfs_write_regs __P((struct proc *, struct reg *));
-int linprocfs_read_fpregs __P((struct proc *, struct fpreg *));
-int linprocfs_write_fpregs __P((struct proc *, struct fpreg *));
-int linprocfs_read_dbregs __P((struct proc *, struct dbreg *));
-int linprocfs_write_dbregs __P((struct proc *, struct dbreg *));
+int linprocfs_read_regs (struct proc *, struct reg *);
+int linprocfs_write_regs (struct proc *, struct reg *);
+int linprocfs_read_fpregs (struct proc *, struct fpreg *);
+int linprocfs_write_fpregs (struct proc *, struct fpreg *);
+int linprocfs_read_dbregs (struct proc *, struct dbreg *);
+int linprocfs_write_dbregs (struct proc *, struct dbreg *);
 #endif
-int linprocfs_domeminfo __P((struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio));
-int linprocfs_docpuinfo __P((struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio));
-int linprocfs_dostat __P((struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio));
-int linprocfs_douptime __P((struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio));
-int linprocfs_doversion __P((struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio));
-int linprocfs_doprocstat __P((struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio));
-int linprocfs_doprocstatus __P((struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio));
-int linprocfs_doloadavg __P((struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio));
+int linprocfs_domeminfo (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
+int linprocfs_docpuinfo (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
+int linprocfs_dostat (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
+int linprocfs_douptime (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
+int linprocfs_doversion (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
+int linprocfs_doprocstat (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
+int linprocfs_doprocstatus (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
+int linprocfs_doloadavg (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
 
 /* functions to check whether or not files should be displayed */
-int linprocfs_validfile __P((struct proc *));
+int linprocfs_validfile (struct proc *);
 
 #define PROCFS_LOCKED	0x01
 #define PROCFS_WANT	0x02
 
 extern vop_t **linprocfs_vnodeop_p;
 
-int	linprocfs_root __P((struct mount *, struct vnode **));
-int	linprocfs_rw __P((struct vop_read_args *));
+int	linprocfs_root (struct mount *, struct vnode **);
+int	linprocfs_rw (struct vop_read_args *);
 #endif /* _KERNEL */

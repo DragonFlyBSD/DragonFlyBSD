@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/mqueue.h,v 1.4 1999/12/29 04:55:02 peter Exp $
- * $DragonFly: src/sys/sys/mqueue.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/sys/mqueue.h,v 1.3 2003/08/27 06:30:04 rob Exp $
  */
 
 #include <sys/_posix.h>
@@ -63,14 +63,14 @@ struct mq_attr {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-mqd_t mq_open __P((const char *, int oflag, ...));
-int mq_close __P((mqd_t));
-int mq_unlink __P((const char *));
-int mq_send __P((mqd_t, const char *, size_t, unsigned int));
-ssize_t mq_receive __P((mqd_t, char *, size_t, unsigned int *));
-int mq_notify __P((mqd_t, const struct sigevent *));
-int mq_setattr __P((mqd_t, const struct mq_attr *, struct mq_attr *));
-int mq_getattr __P((mqd_t, struct mq_attr *));
+mqd_t mq_open (const char *, int oflag, ...);
+int mq_close (mqd_t);
+int mq_unlink (const char *);
+int mq_send (mqd_t, const char *, size_t, unsigned int);
+ssize_t mq_receive (mqd_t, char *, size_t, unsigned int *);
+int mq_notify (mqd_t, const struct sigevent *);
+int mq_setattr (mqd_t, const struct mq_attr *, struct mq_attr *);
+int mq_getattr (mqd_t, struct mq_attr *);
 __END_DECLS
 
 #endif

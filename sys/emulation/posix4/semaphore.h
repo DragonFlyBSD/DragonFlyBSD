@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/semaphore.h,v 1.6 2000/01/20 07:55:42 jasone Exp $
- * $DragonFly: src/sys/emulation/posix4/Attic/semaphore.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/posix4/Attic/semaphore.h,v 1.3 2003/08/27 06:30:04 rob Exp $
  */
 
 #include <sys/_posix.h>
@@ -57,15 +57,15 @@ typedef struct sem *sem_t;
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	 sem_init __P((sem_t *, int, unsigned int));
-int	 sem_destroy __P((sem_t *));
-sem_t	*sem_open __P((const char *, int, ...));
-int	 sem_close __P((sem_t *));
-int	 sem_unlink __P((const char *));
-int	 sem_wait __P((sem_t *));
-int	 sem_trywait __P((sem_t *));
-int	 sem_post __P((sem_t *));
-int	 sem_getvalue __P((sem_t *, int *));
+int	 sem_init (sem_t *, int, unsigned int);
+int	 sem_destroy (sem_t *);
+sem_t	*sem_open (const char *, int, ...);
+int	 sem_close (sem_t *);
+int	 sem_unlink (const char *);
+int	 sem_wait (sem_t *);
+int	 sem_trywait (sem_t *);
+int	 sem_post (sem_t *);
+int	 sem_getvalue (sem_t *, int *);
 __END_DECLS
 
 #endif

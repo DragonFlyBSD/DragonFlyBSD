@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/compat/linux/linux_getcwd.c,v 1.2.2.3 2001/11/05 19:08:22 marcel Exp $ */
-/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.10 2003/08/15 06:32:51 dillon Exp $ */
+/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.11 2003/08/27 06:30:03 rob Exp $ */
 /* $OpenBSD: linux_getcwd.c,v 1.2 2001/05/16 12:50:21 ho Exp $ */
 /* $NetBSD: vfs_getcwd.c,v 1.3.2.3 1999/07/11 10:24:09 sommerfeld Exp $ */
 
@@ -61,11 +61,11 @@
 #include "linux_util.h"
 
 static int
-linux_getcwd_scandir __P((struct vnode **, struct vnode **,
-    char **, char *, struct thread *));
+linux_getcwd_scandir (struct vnode **, struct vnode **,
+    char **, char *, struct thread *);
 static int
-linux_getcwd_common __P((struct vnode *, struct vnode *,
-		   char **, char *, int, int, struct thread *));
+linux_getcwd_common (struct vnode *, struct vnode *,
+		   char **, char *, int, int, struct thread *);
 
 #define DIRENT_MINSIZE (sizeof(struct dirent) - (MAXNAMLEN+1) + 4)
 

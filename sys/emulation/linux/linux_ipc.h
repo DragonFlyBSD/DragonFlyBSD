@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ipc.h,v 1.2.2.4 2001/11/05 19:08:22 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ipc.h,v 1.5 2003/07/30 00:19:13 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ipc.h,v 1.6 2003/08/27 06:30:03 rob Exp $
  */
 
 #ifndef _LINUX_IPC_H_
@@ -124,19 +124,19 @@ struct linux_shmget_args
 	l_int		shmflg;
 };
 
-int linux_msgctl __P((struct linux_msgctl_args *));
-int linux_msgget __P((struct linux_msgget_args *));
-int linux_msgrcv __P((struct linux_msgrcv_args *));
-int linux_msgsnd __P((struct linux_msgsnd_args *));
+int linux_msgctl (struct linux_msgctl_args *);
+int linux_msgget (struct linux_msgget_args *);
+int linux_msgrcv (struct linux_msgrcv_args *);
+int linux_msgsnd (struct linux_msgsnd_args *);
 
-int linux_semctl __P((struct linux_semctl_args *));
-int linux_semget __P((struct linux_semget_args *));
-int linux_semop  __P((struct linux_semop_args *));
+int linux_semctl (struct linux_semctl_args *);
+int linux_semget (struct linux_semget_args *);
+int linux_semop  (struct linux_semop_args *);
 
-int linux_shmat  __P((struct linux_shmat_args *));
-int linux_shmctl __P((struct linux_shmctl_args *));
-int linux_shmdt  __P((struct linux_shmdt_args *));
-int linux_shmget __P((struct linux_shmget_args *));
+int linux_shmat  (struct linux_shmat_args *);
+int linux_shmctl (struct linux_shmctl_args *);
+int linux_shmdt  (struct linux_shmdt_args *);
+int linux_shmget (struct linux_shmget_args *);
 
 #endif	/* __i386__ */
 

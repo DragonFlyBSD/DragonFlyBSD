@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_socksys.c,v 1.4 2003/08/07 21:17:17 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_socksys.c,v 1.5 2003/08/27 06:30:03 rob Exp $
  */
 
 #include <sys/param.h>
@@ -46,8 +46,8 @@ struct setipdomainname_args {
 };
 
 /* Local prototypes */
-static int ibcs2_getipdomainname __P((struct getipdomainname_args *));
-static int ibcs2_setipdomainname __P((struct setipdomainname_args *));
+static int ibcs2_getipdomainname (struct getipdomainname_args *);
+static int ibcs2_setipdomainname (struct setipdomainname_args *);
 
 /*
  * iBCS2 socksys calls.

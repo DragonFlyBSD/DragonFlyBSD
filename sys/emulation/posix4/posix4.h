@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/posix4.h,v 1.6 1999/12/27 10:22:09 bde Exp $
- * $DragonFly: src/sys/emulation/posix4/Attic/posix4.h,v 1.3 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/posix4/Attic/posix4.h,v 1.4 2003/08/27 06:30:04 rob Exp $
  */
 
 #include "opt_posix.h"
@@ -62,9 +62,9 @@ MALLOC_DECLARE(M_P31B);
 #define p31b_malloc(SIZE) malloc((SIZE), M_P31B, M_WAITOK)
 #define p31b_free(P) free((P), M_P31B)
 
-int p31b_proc __P((struct proc *, pid_t, struct proc **));
+int p31b_proc (struct proc *, pid_t, struct proc **);
 
-void p31b_setcfg __P((int, int));
+void p31b_setcfg (int, int);
 
 #ifdef _KPOSIX_PRIORITY_SCHEDULING
 

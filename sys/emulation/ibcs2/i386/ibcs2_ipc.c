@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_ipc.c,v 1.15 1999/08/28 00:43:57 peter Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ipc.c,v 1.4 2003/08/07 21:17:17 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ipc.c,v 1.5 2003/08/27 06:30:03 rob Exp $
  */
 
 #include <sys/param.h>
@@ -46,18 +46,18 @@
 
 
 
-static void cvt_msqid2imsqid __P((struct msqid_ds *, struct ibcs2_msqid_ds *));
-static void cvt_imsqid2msqid __P((struct ibcs2_msqid_ds *, struct msqid_ds *));
+static void cvt_msqid2imsqid (struct msqid_ds *, struct ibcs2_msqid_ds *);
+static void cvt_imsqid2msqid (struct ibcs2_msqid_ds *, struct msqid_ds *);
 #ifdef unused
-static void cvt_sem2isem     __P((struct sem *, struct ibcs2_sem *));
-static void cvt_isem2sem     __P((struct ibcs2_sem *, struct sem *));
+static void cvt_sem2isem     (struct sem *, struct ibcs2_sem *);
+static void cvt_isem2sem     (struct ibcs2_sem *, struct sem *);
 #endif
-static void cvt_semid2isemid __P((struct semid_ds *, struct ibcs2_semid_ds *));
-static void cvt_isemid2semid __P((struct ibcs2_semid_ds *, struct semid_ds *));
-static void cvt_shmid2ishmid __P((struct shmid_ds *, struct ibcs2_shmid_ds *));
-static void cvt_ishmid2shmid __P((struct ibcs2_shmid_ds *, struct shmid_ds *));
-static void cvt_perm2iperm   __P((struct ipc_perm *, struct ibcs2_ipc_perm *));
-static void cvt_iperm2perm   __P((struct ibcs2_ipc_perm *, struct ipc_perm *));
+static void cvt_semid2isemid (struct semid_ds *, struct ibcs2_semid_ds *);
+static void cvt_isemid2semid (struct ibcs2_semid_ds *, struct semid_ds *);
+static void cvt_shmid2ishmid (struct shmid_ds *, struct ibcs2_shmid_ds *);
+static void cvt_ishmid2shmid (struct ibcs2_shmid_ds *, struct shmid_ds *);
+static void cvt_perm2iperm   (struct ipc_perm *, struct ibcs2_ipc_perm *);
+static void cvt_iperm2perm   (struct ibcs2_ipc_perm *, struct ipc_perm *);
 
 
 /*

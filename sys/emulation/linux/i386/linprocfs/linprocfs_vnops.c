@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.7 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.8 2003/08/27 06:30:04 rob Exp $
  */
 
 /*
@@ -64,22 +64,22 @@
 #include "linprocfs.h"
 #include <sys/pioctl.h>
 
-extern struct vnode *procfs_findtextvp __P((struct proc *));
+extern struct vnode *procfs_findtextvp (struct proc *);
 
-static int	linprocfs_access __P((struct vop_access_args *));
-static int	linprocfs_badop __P((void));
-static int	linprocfs_bmap __P((struct vop_bmap_args *));
-static int	linprocfs_close __P((struct vop_close_args *));
-static int	linprocfs_getattr __P((struct vop_getattr_args *));
-static int	linprocfs_inactive __P((struct vop_inactive_args *));
-static int	linprocfs_ioctl __P((struct vop_ioctl_args *));
-static int	linprocfs_lookup __P((struct vop_lookup_args *));
-static int	linprocfs_open __P((struct vop_open_args *));
-static int	linprocfs_print __P((struct vop_print_args *));
-static int	linprocfs_readdir __P((struct vop_readdir_args *));
-static int	linprocfs_readlink __P((struct vop_readlink_args *));
-static int	linprocfs_reclaim __P((struct vop_reclaim_args *));
-static int	linprocfs_setattr __P((struct vop_setattr_args *));
+static int	linprocfs_access (struct vop_access_args *);
+static int	linprocfs_badop (void);
+static int	linprocfs_bmap (struct vop_bmap_args *);
+static int	linprocfs_close (struct vop_close_args *);
+static int	linprocfs_getattr (struct vop_getattr_args *);
+static int	linprocfs_inactive (struct vop_inactive_args *);
+static int	linprocfs_ioctl (struct vop_ioctl_args *);
+static int	linprocfs_lookup (struct vop_lookup_args *);
+static int	linprocfs_open (struct vop_open_args *);
+static int	linprocfs_print (struct vop_print_args *);
+static int	linprocfs_readdir (struct vop_readdir_args *);
+static int	linprocfs_readlink (struct vop_readlink_args *);
+static int	linprocfs_reclaim (struct vop_reclaim_args *);
+static int	linprocfs_setattr (struct vop_setattr_args *);
 
 /*
  * This is a list of the valid names in the
@@ -91,7 +91,7 @@ static struct proc_target {
 	u_char	pt_namlen;
 	char	*pt_name;
 	pfstype	pt_pfstype;
-	int	(*pt_valid) __P((struct proc *p));
+	int	(*pt_valid) (struct proc *p);
 } proc_targets[] = {
 #define N(s) sizeof(s)-1, s
 	/*	  name		type		validp */
@@ -105,7 +105,7 @@ static struct proc_target {
 };
 static const int nproc_targets = sizeof(proc_targets) / sizeof(proc_targets[0]);
 
-static pid_t atopid __P((const char *, u_int));
+static pid_t atopid (const char *, u_int);
 
 /*
  * set things up for doing i/o on

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_signal.h,v 1.5.2.1 2001/02/22 05:15:01 marcel Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_signal.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_signal.h,v 1.3 2003/08/27 06:30:03 rob Exp $
  */
 
 #ifndef	_IBCS2_SIGNAL_H
@@ -84,7 +84,7 @@
 #define IBCS2_SIGCALL(x)	((x) & ~IBCS2_SIGNO_MASK)
 
 typedef long	ibcs2_sigset_t;
-typedef void	(*ibcs2_sig_t) __P((int));
+typedef void	(*ibcs2_sig_t) (int);
 
 struct ibcs2_sigaction {
 	ibcs2_sig_t	isa_handler;
