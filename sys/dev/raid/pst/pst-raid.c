@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.5 2003/08/07 21:16:58 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.6 2003/10/01 14:17:56 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -35,6 +35,7 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/buf.h>
+#include <sys/buf2.h>
 #include <sys/conf.h>
 #include <sys/disk.h>
 #include <sys/devicestat.h>
