@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.9 2003/09/23 05:03:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.10 2003/09/29 18:52:16 dillon Exp $
  */
 
 /*
@@ -2583,7 +2583,7 @@ nfsrv_symlink(nfsd, slp, td, mrq)
 		 */
 		nd.ni_cnd.cn_nameiop = NAMEI_LOOKUP;
 		nd.ni_cnd.cn_flags &= ~(CNP_LOCKPARENT | CNP_FOLLOW);
-		nd.ni_cnd.cn_flags |= (CNP_NOFOLLOW | CNP_LOCKLEAF);
+		nd.ni_cnd.cn_flags |= CNP_LOCKLEAF;
 		nd.ni_cnd.cn_td = td;
 		nd.ni_cnd.cn_cred = cred;
 

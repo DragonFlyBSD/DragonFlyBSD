@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.17 2003/09/23 05:03:51 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.18 2003/09/29 18:52:11 dillon Exp $
  */
 
 /*
@@ -1656,7 +1656,7 @@ svr4_sys_resolvepath(struct svr4_sys_resolvepath_args *uap)
 
 	retval = &uap->sysmsg_result;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_NOFOLLOW | CNP_SAVENAME, UIO_USERSPACE,
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_SAVENAME, UIO_USERSPACE,
 	    SCARG(uap, path), td);
 
 	if ((error = namei(&nd)) != 0)

@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.7 2003/09/23 05:03:51 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.8 2003/09/29 18:52:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -130,7 +130,7 @@ acct(uap)
 	 * appending and make sure it's a 'normal'.
 	 */
 	if (SCARG(uap, path) != NULL) {
-		NDINIT(&nd, NAMEI_LOOKUP, CNP_NOFOLLOW, UIO_USERSPACE,
+		NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_USERSPACE,
 			SCARG(uap, path), td);
 		error = vn_open(&nd, FWRITE | O_APPEND, 0);
 		if (error)

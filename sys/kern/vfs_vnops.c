@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.13 2003/09/23 05:03:51 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.14 2003/09/29 18:52:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -139,7 +139,7 @@ vn_open(ndp, fmode, cmode)
 	} else {
 		ndp->ni_cnd.cn_nameiop = NAMEI_LOOKUP;
 		ndp->ni_cnd.cn_flags = CNP_LOCKLEAF |
-		    ((fmode & O_NOFOLLOW) ? CNP_NOFOLLOW : CNP_FOLLOW);
+		    ((fmode & O_NOFOLLOW) ? 0 : CNP_FOLLOW);
 		error = namei(ndp);
 		if (error)
 			return (error);

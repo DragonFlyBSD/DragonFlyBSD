@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.8 2003/09/23 05:03:51 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.9 2003/09/29 18:52:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -137,7 +137,7 @@ linux_newlstat(struct linux_newlstat_args *args)
 		printf(ARGS(newlstat, "%s, *"), args->path);
 #endif
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_NOFOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_NOOBJ,
 	    UIO_USERSPACE, args->path, td);
 	error = namei(&nd);
 	if (error)
@@ -450,7 +450,7 @@ linux_lstat64(struct linux_lstat64_args *args)
 		printf(ARGS(lstat64, "%s, *"), args->filename);
 #endif
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_NOFOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_NOOBJ,
 		UIO_USERSPACE, args->filename, td);
 	error = namei(&nd);
 	if (error)

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.18 2003/09/28 03:44:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.19 2003/09/29 18:52:06 dillon Exp $
  */
 
 /* For 4.3 integer FS ID compatibility */
@@ -1554,7 +1554,7 @@ olstat(struct olstat_args *uap)
 	int error;
 	struct nameidata nd;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_NOFOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_NOOBJ,
 	    UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
@@ -1640,7 +1640,7 @@ lstat(struct lstat_args *uap)
 	struct stat sb;
 	struct nameidata nd;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_NOFOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_NOOBJ,
 	    UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
@@ -1721,7 +1721,7 @@ nlstat(struct nlstat_args *uap)
 	struct nstat nsb;
 	struct nameidata nd;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_NOFOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_NOOBJ,
 	    UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
@@ -1776,7 +1776,7 @@ readlink(struct readlink_args *uap)
 	int error;
 	struct nameidata nd;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_NOFOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_NOOBJ,
 	    UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
@@ -1923,8 +1923,7 @@ lchmod(struct lchmod_args *uap)
 	int error;
 	struct nameidata nd;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_NOFOLLOW, UIO_USERSPACE,
-	    SCARG(uap, path), td);
+	NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
@@ -2006,8 +2005,7 @@ lchown(struct lchown_args *uap)
 	int error;
 	struct nameidata nd;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_NOFOLLOW, UIO_USERSPACE,
-	    SCARG(uap, path), td);
+	NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
@@ -2120,7 +2118,7 @@ lutimes(struct lutimes_args *uap)
 	usrtvp = SCARG(uap, tptr);
 	if ((error = getutimes(usrtvp, ts)) != 0)
 		return (error);
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_NOFOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
+	NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);

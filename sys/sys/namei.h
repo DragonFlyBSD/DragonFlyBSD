@@ -32,7 +32,7 @@
  *
  *	@(#)namei.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/namei.h,v 1.29.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/namei.h,v 1.6 2003/09/23 05:03:52 dillon Exp $
+ * $DragonFly: src/sys/sys/namei.h,v 1.7 2003/09/29 18:52:08 dillon Exp $
  */
 
 #ifndef _SYS_NAMEI_H_
@@ -119,7 +119,6 @@ struct nameidata {
 #define	CNP_NOCACHE	    0x00000020	/* name must not be left in cache */
 #define	CNP_FOLLOW	    0x00000040	/* follow symbolic links */
 #define	CNP_NOOBJ	    0x00000080	/* don't create object */
-#define	CNP_NOFOLLOW	    0x00000000	/* do not follow symlinks (pseudo) */
 #define	CNP_MODMASK	    0x000000fc	/* mask of operational modifiers */
 /*
  * Namei parameter descriptors.

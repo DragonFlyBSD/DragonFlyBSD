@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.10 2003/09/23 05:03:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.11 2003/09/29 18:52:12 dillon Exp $
  * 
  */
 
@@ -548,7 +548,7 @@ coda_ioctl(v)
     /* Should we use the name cache here? It would get it from
        lookupname sooner or later anyway, right? */
 
-    NDINIT(&ndp, NAMEI_LOOKUP, (iap->follow ? CNP_FOLLOW : CNP_NOFOLLOW), UIO_USERSPACE, iap->path, td);
+    NDINIT(&ndp, NAMEI_LOOKUP, (iap->follow ? CNP_FOLLOW : 0), UIO_USERSPACE, iap->path, td);
     error = namei(&ndp);
     tvp = ndp.ni_vp;
 
