@@ -23,14 +23,19 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/libkern/stack_protector.c,v 1.3 2003/12/28 05:05:59 drhodus Exp $
+ * $DragonFly: src/sys/libkern/stack_protector.c,v 1.4 2004/06/01 17:31:17 joerg Exp $
  */
 
 #include <sys/param.h>
+#include <sys/endian.h>
 
 void __stack_smash_handler(int damaged, char func[]);
 
-int  __guard = '\0\0\n\377';
+#if BYTE_ORDER == LITTLE_ENDIAN
+int __guard = 0x00000aff;
+#else
+int __guard = 0xff0a0000;
+#endif
 
 void 
 __stack_smash_handler(int damaged, char func[])
