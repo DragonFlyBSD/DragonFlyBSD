@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.31 2004/05/21 15:41:23 drhodus Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.32 2004/05/26 01:29:58 dillon Exp $
  */
 
 /*
@@ -87,8 +87,10 @@
 static MALLOC_DEFINE(M_NETADDR, "Export Host", "Export host address structure");
 
 static void	insmntque (struct vnode *vp, struct mount *mp);
-static void	vclean (struct vnode *vp, lwkt_tokref_t vlock, int flags, struct thread *td);
-static unsigned long	numvnodes;
+static void	vclean (struct vnode *vp, lwkt_tokref_t vlock, 
+			int flags, struct thread *td);
+
+static unsigned long numvnodes;
 SYSCTL_INT(_debug, OID_AUTO, numvnodes, CTLFLAG_RD, &numvnodes, 0, "");
 
 enum vtype iftovt_tab[16] = {
@@ -103,20 +105,27 @@ int vttoif_tab[9] = {
 static TAILQ_HEAD(freelst, vnode) vnode_free_list;	/* vnode free list */
 
 static u_long wantfreevnodes = 25;
-SYSCTL_INT(_debug, OID_AUTO, wantfreevnodes, CTLFLAG_RW, &wantfreevnodes, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, wantfreevnodes, CTLFLAG_RW,
+		&wantfreevnodes, 0, "");
 static u_long freevnodes = 0;
-SYSCTL_INT(_debug, OID_AUTO, freevnodes, CTLFLAG_RD, &freevnodes, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, freevnodes, CTLFLAG_RD,
+		&freevnodes, 0, "");
 
 static int reassignbufcalls;
-SYSCTL_INT(_vfs, OID_AUTO, reassignbufcalls, CTLFLAG_RW, &reassignbufcalls, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, reassignbufcalls, CTLFLAG_RW,
+		&reassignbufcalls, 0, "");
 static int reassignbufloops;
-SYSCTL_INT(_vfs, OID_AUTO, reassignbufloops, CTLFLAG_RW, &reassignbufloops, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, reassignbufloops, CTLFLAG_RW,
+		&reassignbufloops, 0, "");
 static int reassignbufsortgood;
-SYSCTL_INT(_vfs, OID_AUTO, reassignbufsortgood, CTLFLAG_RW, &reassignbufsortgood, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, reassignbufsortgood, CTLFLAG_RW,
+		&reassignbufsortgood, 0, "");
 static int reassignbufsortbad;
-SYSCTL_INT(_vfs, OID_AUTO, reassignbufsortbad, CTLFLAG_RW, &reassignbufsortbad, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, reassignbufsortbad, CTLFLAG_RW,
+		&reassignbufsortbad, 0, "");
 static int reassignbufmethod = 1;
-SYSCTL_INT(_vfs, OID_AUTO, reassignbufmethod, CTLFLAG_RW, &reassignbufmethod, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, reassignbufmethod, CTLFLAG_RW,
+		&reassignbufmethod, 0, "");
 
 #ifdef ENABLE_VFS_IOOPT
 int vfs_ioopt = 0;
@@ -139,20 +148,21 @@ static vm_zone_t vnode_zone;
 #define SYNCER_MAXDELAY		32
 static int syncer_maxdelay = SYNCER_MAXDELAY;	/* maximum delay time */
 time_t syncdelay = 30;		/* max time to delay syncing data */
-SYSCTL_INT(_kern, OID_AUTO, syncdelay, CTLFLAG_RW, &syncdelay, 0,
-	"VFS data synchronization delay");
+SYSCTL_INT(_kern, OID_AUTO, syncdelay, CTLFLAG_RW,
+		&syncdelay, 0, "VFS data synchronization delay");
 time_t filedelay = 30;		/* time to delay syncing files */
-SYSCTL_INT(_kern, OID_AUTO, filedelay, CTLFLAG_RW, &filedelay, 0,
-	"File synchronization delay");
+SYSCTL_INT(_kern, OID_AUTO, filedelay, CTLFLAG_RW,
+		&filedelay, 0, "File synchronization delay");
 time_t dirdelay = 29;		/* time to delay syncing directories */
-SYSCTL_INT(_kern, OID_AUTO, dirdelay, CTLFLAG_RW, &dirdelay, 0,
-	"Directory synchronization delay");
+SYSCTL_INT(_kern, OID_AUTO, dirdelay, CTLFLAG_RW,
+		&dirdelay, 0, "Directory synchronization delay");
 time_t metadelay = 28;		/* time to delay syncing metadata */
-SYSCTL_INT(_kern, OID_AUTO, metadelay, CTLFLAG_RW, &metadelay, 0,
-	"VFS metadata synchronization delay");
+SYSCTL_INT(_kern, OID_AUTO, metadelay, CTLFLAG_RW,
+		&metadelay, 0, "VFS metadata synchronization delay");
 static int rushjob;			/* number of slots to run ASAP */
 static int stat_rush_requests;	/* number of times I/O speeded up */
-SYSCTL_INT(_debug, OID_AUTO, rush_requests, CTLFLAG_RW, &stat_rush_requests, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, rush_requests, CTLFLAG_RW,
+		&stat_rush_requests, 0, "");
 
 static int syncer_delayno = 0;
 static long syncer_mask; 
@@ -161,13 +171,14 @@ static struct synclist *syncer_workitem_pending;
 
 int desiredvnodes;
 SYSCTL_INT(_kern, KERN_MAXVNODES, maxvnodes, CTLFLAG_RW, 
-    &desiredvnodes, 0, "Maximum number of vnodes");
+		&desiredvnodes, 0, "Maximum number of vnodes");
 static int minvnodes;
 SYSCTL_INT(_kern, OID_AUTO, minvnodes, CTLFLAG_RW, 
-    &minvnodes, 0, "Minimum number of vnodes");
+		&minvnodes, 0, "Minimum number of vnodes");
 static int vnlru_nowhere = 0;
-SYSCTL_INT(_debug, OID_AUTO, vnlru_nowhere, CTLFLAG_RW, &vnlru_nowhere, 0,
-    "Number of times the vnlru process ran without success");
+SYSCTL_INT(_debug, OID_AUTO, vnlru_nowhere, CTLFLAG_RW,
+		&vnlru_nowhere, 0,
+		"Number of times the vnlru process ran without success");
 
 static void	vfs_free_addrlist (struct netexport *nep);
 static int	vfs_free_netcred (struct radix_node *rn, void *w);
@@ -208,7 +219,7 @@ vmaybefree(struct vnode *vp)
  * Initialize the vnode management data structures.
  */
 void
-vntblinit()
+vntblinit(void)
 {
 
 	/*
@@ -244,7 +255,8 @@ vntblinit()
  * unmounting. Interlock is not released on failure.
  */
 int
-vfs_busy(struct mount *mp, int flags, lwkt_tokref_t interlkp, struct thread *td)
+vfs_busy(struct mount *mp, int flags,
+	lwkt_tokref_t interlkp, struct thread *td)
 {
 	int lkflags;
 
@@ -328,8 +340,7 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
  * Lookup a mount point by filesystem identifier.
  */
 struct mount *
-vfs_getvfs(fsid)
-	fsid_t *fsid;
+vfs_getvfs(fsid_t *fsid)
 {
 	struct mount *mp;
 	lwkt_tokref ilock;
@@ -358,8 +369,7 @@ vfs_getvfs(fsid)
  * different mounts.
  */
 void
-vfs_getnewfsid(mp)
-	struct mount *mp;
+vfs_getnewfsid(struct mount *mp)
 {
 	static u_int16_t mntid_base;
 	lwkt_tokref ilock;
@@ -394,14 +404,13 @@ enum { TSP_SEC, TSP_HZ, TSP_USEC, TSP_NSEC };
 
 static int timestamp_precision = TSP_SEC;
 SYSCTL_INT(_vfs, OID_AUTO, timestamp_precision, CTLFLAG_RW,
-    &timestamp_precision, 0, "");
+		&timestamp_precision, 0, "");
 
 /*
  * Get a current timestamp.
  */
 void
-vfs_timestamp(tsp)
-	struct timespec *tsp;
+vfs_timestamp(struct timespec *tsp)
 {
 	struct timeval tv;
 
@@ -428,10 +437,8 @@ vfs_timestamp(tsp)
  * Set vnode attributes to VNOVAL
  */
 void
-vattr_null(vap)
-	struct vattr *vap;
+vattr_null(struct vattr *vap)
 {
-
 	vap->va_type = VNON;
 	vap->va_size = VNOVAL;
 	vap->va_bytes = VNOVAL;
@@ -617,11 +624,8 @@ extern vop_t **dead_vnodeop_p;
  * Return the next vnode from the free list.
  */
 int
-getnewvnode(tag, mp, vops, vpp)
-	enum vtagtype tag;
-	struct mount *mp;
-	vop_t **vops;
-	struct vnode **vpp;
+getnewvnode(enum vtagtype tag, struct mount *mp, 
+	    vop_t **vops, struct vnode **vpp)
 {
 	int s;
 	struct thread *td = curthread;	/* XXX */
@@ -812,9 +816,7 @@ getnewvnode(tag, mp, vops, vpp)
  * Move a vnode from one mount queue to another.
  */
 static void
-insmntque(vp, mp)
-	struct vnode *vp;
-	struct mount *mp;
+insmntque(struct vnode *vp, struct mount *mp)
 {
 	lwkt_tokref ilock;
 
@@ -844,8 +846,7 @@ insmntque(vp, mp)
  * Update outstanding I/O count and do wakeup if requested.
  */
 void
-vwakeup(bp)
-	struct buf *bp;
+vwakeup(struct buf *bp)
 {
 	struct vnode *vp;
 
@@ -1089,9 +1090,7 @@ restartsync:
  * Associate a buffer with a vnode.
  */
 void
-bgetvp(vp, bp)
-	struct vnode *vp;
-	struct buf *bp;
+bgetvp(struct vnode *vp, struct buf *bp)
 {
 	int s;
 
@@ -1114,8 +1113,7 @@ bgetvp(vp, bp)
  * Disassociate a buffer from a vnode.
  */
 void
-brelvp(bp)
-	struct buf *bp;
+brelvp(struct buf *bp)
 {
 	struct vnode *vp;
 	struct buflists *listheadp;
@@ -1303,7 +1301,7 @@ sched_sync(void)
  * YYY wchan field protected by the BGL.
  */
 int
-speedup_syncer()
+speedup_syncer(void)
 {
 	crit_enter();
 	if (updatethread->td_wchan == &lbolt) { /* YYY */
@@ -1327,11 +1325,8 @@ speedup_syncer()
  * ref-counted.
  */
 void
-pbgetvp(vp, bp)
-	struct vnode *vp;
-	struct buf *bp;
+pbgetvp(struct vnode *vp, struct buf *bp)
 {
-
 	KASSERT(bp->b_vp == NULL, ("pbgetvp: not free"));
 
 	bp->b_vp = vp;
@@ -1343,10 +1338,8 @@ pbgetvp(vp, bp)
  * Disassociate a p-buffer from a vnode.
  */
 void
-pbrelvp(bp)
-	struct buf *bp;
+pbrelvp(struct buf *bp)
 {
-
 	KASSERT(bp->b_vp != NULL, ("pbrelvp: NULL"));
 
 	/* XXX REMOVE ME */
@@ -1362,9 +1355,7 @@ pbrelvp(bp)
 }
 
 void
-pbreassignbuf(bp, newvp)
-	struct buf *bp;
-	struct vnode *newvp;
+pbreassignbuf(struct buf *bp, struct vnode *newvp)
 {
 	if ((bp->b_flags & B_PAGING) == 0) {
 		panic(
@@ -1381,9 +1372,7 @@ pbreassignbuf(bp, newvp)
  * (indirect blocks) to the vnode to which they belong.
  */
 void
-reassignbuf(bp, newvp)
-	struct buf *bp;
-	struct vnode *newvp;
+reassignbuf(struct buf *bp, struct vnode *newvp)
 {
 	struct buflists *listheadp;
 	int delay;
@@ -1760,8 +1749,7 @@ vput(struct vnode *vp)
  * be held but isn't.
  */
 void
-vhold(vp)
-	struct vnode *vp;
+vhold(struct vnode *vp)
 {
 	int s;
 
@@ -1776,8 +1764,7 @@ vhold(vp)
  * One less who cares about this vnode.
  */
 void
-vdrop(vp)
-	struct vnode *vp;
+vdrop(struct vnode *vp)
 {
 	lwkt_tokref vlock;
 
@@ -1793,7 +1780,8 @@ int
 vmntvnodescan(
     struct mount *mp, 
     int (*fastfunc)(struct mount *mp, struct vnode *vp, void *data),
-    int (*slowfunc)(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *data),
+    int (*slowfunc)(struct mount *mp, struct vnode *vp, 
+		    lwkt_tokref_t vlock, void *data),
     void *data
 ) {
 	lwkt_tokref ilock;
@@ -1886,7 +1874,8 @@ static int busyprt = 0;		/* print out busy vnodes */
 SYSCTL_INT(_debug, OID_AUTO, busyprt, CTLFLAG_RW, &busyprt, 0, "");
 #endif
 
-static int vflush_scan(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *data);
+static int vflush_scan(struct mount *mp, struct vnode *vp,
+			lwkt_tokref_t vlock, void *data);
 
 struct vflush_info {
 	int flags;
@@ -1895,10 +1884,7 @@ struct vflush_info {
 };
 
 int
-vflush(mp, rootrefs, flags)
-	struct mount *mp;
-	int rootrefs;
-	int flags;
+vflush(struct mount *mp, int rootrefs, int flags)
 {
 	struct thread *td = curthread;	/* XXX */
 	struct vnode *rootvp = NULL;
@@ -1949,7 +1935,8 @@ vflush(mp, rootrefs, flags)
  * The scan callback is made with an interlocked vnode.
  */
 static int
-vflush_scan(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *data)
+vflush_scan(struct mount *mp, struct vnode *vp,
+	    lwkt_tokref_t vlock, void *data)
 {
 	struct vflush_info *info = data;
 	struct vattr vattr;
@@ -2112,13 +2099,11 @@ vclean(struct vnode *vp, lwkt_tokref_t vlock, int flags, struct thread *td)
 /*
  * Eliminate all activity associated with the requested vnode
  * and with all vnodes aliased to the requested vnode.
+ *
+ * revoke { struct vnode *a_vp, int a_flags }
  */
 int
-vop_revoke(ap)
-	struct vop_revoke_args /* {
-		struct vnode *a_vp;
-		int a_flags;
-	} */ *ap;
+vop_revoke(struct vop_revoke_args *ap)
 {
 	struct vnode *vp, *vq;
 	lwkt_tokref ilock;
@@ -2227,6 +2212,7 @@ vgonel(struct vnode *vp, lwkt_tokref_t vlock, struct thread *td)
 	 */
 	if (vp->v_mount != NULL)
 		insmntque(vp, (struct mount *)0);
+
 	/*
 	 * If special device, remove it from special device alias list
 	 * if it is on one.
@@ -2265,10 +2251,7 @@ vgonel(struct vnode *vp, lwkt_tokref_t vlock, struct thread *td)
  * Lookup a vnode by device number.
  */
 int
-vfinddev(dev, type, vpp)
-	dev_t dev;
-	enum vtype type;
-	struct vnode **vpp;
+vfinddev(dev_t dev, enum vtype type, struct vnode **vpp)
 {
 	lwkt_tokref ilock;
 	struct vnode *vp;
@@ -2333,9 +2316,7 @@ static char *typename[] =
 {"VNON", "VREG", "VDIR", "VBLK", "VCHR", "VLNK", "VSOCK", "VFIFO", "VBAD"};
 
 void
-vprint(label, vp)
-	char *label;
-	struct vnode *vp;
+vprint(char *label, struct vnode *vp)
 {
 	char buf[96];
 
@@ -2575,7 +2556,7 @@ vfs_mountedon(struct vnode *vp)
  * of mounting to avoid dependencies.
  */
 void
-vfs_unmountall()
+vfs_unmountall(void)
 {
 	struct mount *mp;
 	struct thread *td = curthread;
@@ -2609,10 +2590,8 @@ vfs_unmountall()
  * Called by ufs_mount() to set up the lists of export addresses.
  */
 static int
-vfs_hang_addrlist(mp, nep, argp)
-	struct mount *mp;
-	struct netexport *nep;
-	struct export_args *argp;
+vfs_hang_addrlist(struct mount *mp, struct netexport *nep,
+		struct export_args *argp)
 {
 	struct netcred *np;
 	struct radix_node_head *rnh;
@@ -2647,8 +2626,8 @@ vfs_hang_addrlist(mp, nep, argp)
 	if (saddr->sa_len > argp->ex_addrlen)
 		saddr->sa_len = argp->ex_addrlen;
 	if (argp->ex_masklen) {
-		smask = (struct sockaddr *) ((caddr_t) saddr + argp->ex_addrlen);
-		error = copyin(argp->ex_mask, (caddr_t) smask, argp->ex_masklen);
+		smask = (struct sockaddr *)((caddr_t)saddr + argp->ex_addrlen);
+		error = copyin(argp->ex_mask, (caddr_t)smask, argp->ex_masklen);
 		if (error)
 			goto out;
 		if (smask->sa_len > argp->ex_masklen)
@@ -2688,9 +2667,7 @@ out:
 
 /* ARGSUSED */
 static int
-vfs_free_netcred(rn, w)
-	struct radix_node *rn;
-	void *w;
+vfs_free_netcred(struct radix_node *rn, void *w)
 {
 	struct radix_node_head *rnh = (struct radix_node_head *) w;
 
@@ -2703,8 +2680,7 @@ vfs_free_netcred(rn, w)
  * Free the net address hash lists that are hanging off the mount points.
  */
 static void
-vfs_free_addrlist(nep)
-	struct netexport *nep;
+vfs_free_addrlist(struct netexport *nep)
 {
 	int i;
 	struct radix_node_head *rnh;
@@ -2719,10 +2695,7 @@ vfs_free_addrlist(nep)
 }
 
 int
-vfs_export(mp, nep, argp)
-	struct mount *mp;
-	struct netexport *nep;
-	struct export_args *argp;
+vfs_export(struct mount *mp, struct netexport *nep, struct export_args *argp)
 {
 	int error;
 
@@ -2753,10 +2726,8 @@ vfs_export(mp, nep, argp)
  * one public filesystem is possible in the spec (RFC 2054 and 2055)
  */
 int
-vfs_setpublicfs(mp, nep, argp)
-	struct mount *mp;
-	struct netexport *nep;
-	struct export_args *argp;
+vfs_setpublicfs(struct mount *mp, struct netexport *nep,
+		struct export_args *argp)
 {
 	int error;
 	struct vnode *rvp;
@@ -2829,10 +2800,8 @@ vfs_setpublicfs(mp, nep, argp)
 }
 
 struct netcred *
-vfs_export_lookup(mp, nep, nam)
-	struct mount *mp;
-	struct netexport *nep;
-	struct sockaddr *nam;
+vfs_export_lookup(struct mount *mp, struct netexport *nep,
+		struct sockaddr *nam)
 {
 	struct netcred *np;
 	struct radix_node_head *rnh;
@@ -2872,7 +2841,7 @@ vfs_export_lookup(mp, nep, nam)
  */
 static int vfs_msync_scan1(struct mount *mp, struct vnode *vp, void *data);
 static int vfs_msync_scan2(struct mount *mp, struct vnode *vp, 
-				lwkt_tokref_t vlock, void *data);
+			    lwkt_tokref_t vlock, void *data);
 
 void
 vfs_msync(struct mount *mp, int flags) 
@@ -2905,7 +2874,8 @@ vfs_msync_scan1(struct mount *mp, struct vnode *vp, void *data)
 
 static
 int
-vfs_msync_scan2(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *data)
+vfs_msync_scan2(struct mount *mp, struct vnode *vp, 
+		lwkt_tokref_t vlock, void *data)
 {
 	vm_object_t obj;
 	int error;
@@ -3037,9 +3007,7 @@ vn_pollrecord(struct vnode *vp, struct thread *td, int events)
  * preferred interface.
  */
 void
-vn_pollevent(vp, events)
-	struct vnode *vp;
-	short events;
+vn_pollevent(struct vnode *vp, int events)
 {
 	lwkt_tokref ilock;
 
@@ -3069,8 +3037,7 @@ vn_pollevent(vp, events)
  * behavior.
  */
 void
-vn_pollgone(vp)
-	struct vnode *vp;
+vn_pollgone(struct vnode *vp)
 {
 	lwkt_tokref ilock;
 
@@ -3158,15 +3125,12 @@ vfs_allocate_syncvnode(struct mount *mp)
 
 /*
  * Do a lazy sync of the filesystem.
+ *
+ * sync_fsync { struct vnode *a_vp, struct ucred *a_cred, int a_waitfor,
+ *		struct thread *a_td }
  */
 static int
-sync_fsync(ap)
-	struct vop_fsync_args /* {
-		struct vnode *a_vp;
-		struct ucred *a_cred;
-		int a_waitfor;
-		struct thread *a_td;
-	} */ *ap;
+sync_fsync(struct vop_fsync_args *ap)
 {
 	struct vnode *syncvp = ap->a_vp;
 	struct mount *mp = syncvp->v_mount;
@@ -3213,15 +3177,12 @@ sync_fsync(ap)
 
 /*
  * The syncer vnode is no referenced.
+ *
+ * sync_inactive { struct vnode *a_vp, struct proc *a_p }
  */
 static int
-sync_inactive(ap)
-	struct vop_inactive_args /* {
-		struct vnode *a_vp;
-		struct proc *a_p;
-	} */ *ap;
+sync_inactive(struct vop_inactive_args *ap)
 {
-
 	vgone(ap->a_vp);
 	return (0);
 }
@@ -3230,12 +3191,11 @@ sync_inactive(ap)
  * The syncer vnode is no longer needed and is being decommissioned.
  *
  * Modifications to the worklist must be protected at splbio().
+ *
+ *	sync_reclaim { struct vnode *a_vp }
  */
 static int
-sync_reclaim(ap)
-	struct vop_reclaim_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+sync_reclaim(struct vop_reclaim_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	int s;
@@ -3253,12 +3213,11 @@ sync_reclaim(ap)
 
 /*
  * Print out a syncer vnode.
+ *
+ *	sync_print { struct vnode *a_vp }
  */
 static int
-sync_print(ap)
-	struct vop_print_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+sync_print(struct vop_print_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
@@ -3320,9 +3279,7 @@ vn_isdisk(struct vnode *vp, int *errp)
 }
 
 void
-NDFREE(ndp, flags)
-     struct nameidata *ndp;
-     const uint flags;
+NDFREE(struct nameidata *ndp, const uint flags)
 {
 	if (!(flags & NDF_NO_FREE_PNBUF) &&
 	    (ndp->ni_cnd.cn_flags & CNP_HASBUF)) {
@@ -3372,7 +3329,6 @@ NDFREE(ndp, flags)
 void
 assert_vop_locked(struct vnode *vp, const char *str)
 {
-
 	if (vp && IS_LOCKING_VFS(vp) && !VOP_ISLOCKED(vp, NULL)) {
 		panic("%s: %p is not locked shared but should be", str, vp);
 	}
@@ -3381,7 +3337,6 @@ assert_vop_locked(struct vnode *vp, const char *str)
 void
 assert_vop_unlocked(struct vnode *vp, const char *str)
 {
-
 	if (vp && IS_LOCKING_VFS(vp)) {
 		if (VOP_ISLOCKED(vp, curthread) == LK_EXCLUSIVE) {
 			panic("%s: %p is locked but should not be", str, vp);

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.8 2004/05/19 22:52:58 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.9 2004/05/26 01:29:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -330,8 +330,8 @@ destroy_dev(dev_t dev)
 		compile_devsw(&dead_cdevsw);
 	if (dev->si_devsw && dev->si_devsw != &dead_cdevsw)
 		cdevsw_release(dev->si_devsw);
-	dev->si_drv1 = 0;
-	dev->si_drv2 = 0;
+	dev->si_drv1 = NULL;
+	dev->si_drv2 = NULL;
 	dev->si_devsw = &dead_cdevsw;
 	dev->si_port = dev->si_devsw->d_port;
 	--dev->si_refs;		/* release adhoc association reference */
