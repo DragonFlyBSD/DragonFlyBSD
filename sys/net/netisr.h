@@ -32,7 +32,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.13 2004/04/10 00:48:06 hsu Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.14 2004/04/10 09:35:34 hsu Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -73,6 +73,8 @@
 
 #define	NETISR_MAX	32
 
+TAILQ_HEAD(notifymsglist, netmsg_so_notify);
+
 #ifdef _KERNEL
 
 #include <sys/protosw.h>
@@ -109,8 +111,6 @@ struct netmsg_pr_timeout {
     netisr_fn_t		nm_handler;
     void		(*nm_prfn) (void);
 };
-
-TAILQ_HEAD(notifymsglist, netmsg_so_notify);
 
 struct netmsg_so_notify {
     struct lwkt_msg			nm_lmsg;
