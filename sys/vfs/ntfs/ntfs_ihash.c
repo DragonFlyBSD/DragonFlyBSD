@@ -34,7 +34,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ntfs/ntfs_ihash.c,v 1.7 1999/12/03 20:37:39 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.c,v 1.6 2003/10/19 18:11:37 hmp Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.c,v 1.7 2003/12/29 18:04:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -99,9 +99,10 @@ ntfs_nthashlookup(dev, inum)
 	struct ntnode *ip;
 
 	lwkt_gettoken(&ntfs_nthash_slock);
-	for (ip = NTNOHASH(dev, inum)->lh_first; ip; ip = ip->i_hash.le_next)
+	for (ip = NTNOHASH(dev, inum)->lh_first; ip; ip = ip->i_hash.le_next) {
 		if (inum == ip->i_number && dev == ip->i_dev)
 			break;
+	}
 	lwkt_reltoken(&ntfs_nthash_slock);
 
 	return (ip);
