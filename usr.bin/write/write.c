@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)write.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/write/write.c,v 1.12 1999/08/28 01:07:48 peter Exp $
- * $DragonFly: src/usr.bin/write/write.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
+ * $DragonFly: src/usr.bin/write/write.c,v 1.5 2004/12/31 08:05:37 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -65,13 +65,13 @@ int utmp_chk(char *, char *);
 int
 main(int argc, char **argv)
 {
-	register char *cp;
+	char *cp;
 	time_t atime;
 	uid_t myuid;
 	int msgsok, myttyfd;
 	char tty[MAXPATHLEN], *mytty;
 
-	(void)setlocale(LC_CTYPE, "");
+	setlocale(LC_CTYPE, "");
 
 	/* check that sender has write enabled */
 	if (isatty(fileno(stdin)))
@@ -120,7 +120,7 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: write user [tty]\n");
+	fprintf(stderr, "usage: write user [tty]\n");
 	exit(1);
 }
 
@@ -137,14 +137,15 @@ utmp_chk(char *user, char *tty)
 	if ((ufd = open(_PATH_UTMP, O_RDONLY)) < 0)
 		return(0);	/* ignore error, shouldn't happen anyway */
 
-	while (read(ufd, (char *) &u, sizeof(u)) == sizeof(u))
+	while (read(ufd, (char *) &u, sizeof(u)) == sizeof(u)) {
 		if (strncmp(user, u.ut_name, sizeof(u.ut_name)) == 0 &&
 		    strncmp(tty, u.ut_line, sizeof(u.ut_line)) == 0) {
-			(void)close(ufd);
+			close(ufd);
 			return(0);
 		}
+	}
 
-	(void)close(ufd);
+	close(ufd);
 	return(1);
 }
 
@@ -176,7 +177,7 @@ search_utmp(char *user, char *tty, char *mytty, uid_t myuid)
 	while (read(ufd, (char *) &u, sizeof(u)) == sizeof(u))
 		if (strncmp(user, u.ut_name, sizeof(u.ut_name)) == 0) {
 			++nloggedttys;
-			(void)strncpy(atty, u.ut_line, UT_LINESIZE);
+			strncpy(atty, u.ut_line, UT_LINESIZE);
 			atty[UT_LINESIZE] = '\0';
 			if (term_chk(atty, &msgsok, &atime, 0))
 				continue;	/* bad term? skip */
@@ -189,16 +190,16 @@ search_utmp(char *user, char *tty, char *mytty, uid_t myuid)
 			++nttys;
 			if (atime > bestatime) {
 				bestatime = atime;
-				(void)strcpy(tty, atty);
+				strcpy(tty, atty);
 			}
 		}
 
-	(void)close(ufd);
+	close(ufd);
 	if (nloggedttys == 0)
 		errx(1, "%s is not logged in", user);
 	if (nttys == 0) {
 		if (user_is_me) {		/* ok, so write to yourself! */
-			(void)strcpy(tty, mytty);
+			strcpy(tty, mytty);
 			return;
 		}
 		errx(1, "%s has messages disabled", user);
@@ -217,7 +218,7 @@ term_chk(char *tty, int *msgsokP, time_t *atimeP, int showerror)
 	struct stat s;
 	char path[MAXPATHLEN];
 
-	(void)snprintf(path, sizeof(path), "%s%s", _PATH_DEV, tty);
+	snprintf(path, sizeof(path), "%s%s", _PATH_DEV, tty);
 	if (stat(path, &s) < 0) {
 		if (showerror)
 			warn("%s", path);
@@ -234,8 +235,9 @@ term_chk(char *tty, int *msgsokP, time_t *atimeP, int showerror)
 void
 do_write(char *tty, char *mytty, uid_t myuid)
 {
-	register char *login, *nows;
-	register struct passwd *pwd;
+	const char *login;
+	char *nows;
+	struct passwd *pwd;
 	time_t now;
 	char path[MAXPATHLEN], host[MAXHOSTNAMELEN], line[512];
 
@@ -247,20 +249,20 @@ do_write(char *tty, char *mytty, uid_t myuid)
 			login = "???";
 	}
 
-	(void)snprintf(path, sizeof(path), "%s%s", _PATH_DEV, tty);
+	snprintf(path, sizeof(path), "%s%s", _PATH_DEV, tty);
 	if ((freopen(path, "w", stdout)) == NULL)
 		err(1, "%s", path);
 
-	(void)signal(SIGINT, done);
-	(void)signal(SIGHUP, done);
+	signal(SIGINT, done);
+	signal(SIGHUP, done);
 
 	/* print greeting */
 	if (gethostname(host, sizeof(host)) < 0)
-		(void)strcpy(host, "???");
+		strcpy(host, "???");
 	now = time((time_t *)NULL);
 	nows = ctime(&now);
 	nows[16] = '\0';
-	(void)printf("\r\n\007\007\007Message from %s@%s on %s at %s ...\r\n",
+	printf("\r\n\007\007\007Message from %s@%s on %s at %s ...\r\n",
 	    login, host, mytty, nows + 11);
 
 	while (fgets(line, sizeof(line), stdin) != NULL)
@@ -271,9 +273,9 @@ do_write(char *tty, char *mytty, uid_t myuid)
  * done - cleanup and exit
  */
 void
-done(int n)
+done(__unused int n)
 {
-	(void)printf("EOF\r\n");
+	printf("EOF\r\n");
 	exit(0);
 }
 
@@ -282,7 +284,7 @@ done(int n)
  *     turns \n into \r\n
  */
 void
-wr_fputs(register unsigned char *s)
+wr_fputs(unsigned char *s)
 {
 
 #define	PUTC(c)	if (putchar(c) == EOF) err(1, NULL);
