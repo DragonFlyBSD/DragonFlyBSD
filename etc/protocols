@@ -2,7 +2,7 @@
 # Internet protocols
 #
 # $FreeBSD: src/etc/protocols,v 1.13.2.3 2002/02/27 03:39:00 dd Exp $
-# $DragonFly: src/etc/protocols,v 1.3 2003/11/09 20:36:18 asmodai Exp $
+# $DragonFly: src/etc/protocols,v 1.4 2004/08/30 15:10:50 asmodai Exp $
 #	from: @(#)protocols	5.1 (Berkeley) 4/17/89
 #
 # See also http://www.iana.org/assignments/protocol-numbers
@@ -144,6 +144,9 @@ sctp	132	SCTP		# Stream Control Transmission Protocol
 fc	133	FC		# Fibre Channel
 rsvp-e2e-ignore	134	RSVP-E2E-IGNORE	# RSVP for IPv4 and IPv6 Reservations
 mobility	135	MOBILITY	# Mobility support in IPv6
-#	136-254			# Unassigned
+udplite	136	UDPLITE		# UDPLite
+#	137-254			# Unassigned
+testing	253	TESTING		# Use for experimentation and testing [RFC3692]
+#testing 254	TESTING		# Use for experimentation and testing [RFC3692]
 divert	254	DIVERT		# Divert pseudo-protocol [non IANA]
 #	255			# Reserved
