@@ -35,7 +35,7 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
- * $DragonFly: src/sys/sys/cdefs.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/cdefs.h,v 1.3 2003/08/14 18:28:47 dillon Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_
@@ -224,20 +224,6 @@
 
 #ifndef	__RCSID
 #define	__RCSID(s)	__IDSTRING(rcsid,s)
-#endif
-
-/*
- * Embed the rcs id of a source file in the resulting library.  Note that in
- * more recent ELF binutils, we use .ident allowing the ID to be stripped.
- * Usage:
- *	__FBSDID("$FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $");
- */
-#ifndef	__FBSDID
-#if !defined(lint) && !defined(STRIP_FBSDID)
-#define	__FBSDID(s)	__IDSTRING(__CONCAT(__rcsid_,__LINE__),s)
-#else
-#define	__FBSDID(s)	struct __hack
-#endif
 #endif
 
 #ifndef	__RCSID_SOURCE
