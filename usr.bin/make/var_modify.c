@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.4 2004/12/10 20:34:01 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.5 2004/12/13 21:45:05 okumoto Exp $
  */
 
 #include    <ctype.h>
@@ -187,7 +187,7 @@ VarRoot(const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
 	Buf_AddBytes(buf, strlen(word), (Byte *)word);
 	*dot = '.';
     } else {
-	Buf_AddBytes(buf, strlen(word),(Byte *)word);
+	Buf_AddBytes(buf, strlen(word), (Byte *)word);
     }
     return (TRUE);
 }
