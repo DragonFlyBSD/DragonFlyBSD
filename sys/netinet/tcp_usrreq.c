@@ -32,7 +32,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.6 2004/03/04 01:02:05 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.7 2004/03/05 16:57:15 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -87,7 +87,7 @@
  */
 extern	char *tcpstates[];	/* XXX ??? */
 
-static int	tcp_attach (struct socket *, struct thread *);
+static int	tcp_attach (struct socket *, struct pru_attach_info *);
 static int	tcp_connect (struct tcpcb *, struct sockaddr *, 
 				 struct thread *);
 #ifdef INET6
@@ -115,7 +115,7 @@ static struct tcpcb *
  * and an internet control block.
  */
 static int
-tcp_usr_attach(struct socket *so, int proto, struct thread *td)
+tcp_usr_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	int s = splnet();
 	int error;
@@ -129,7 +129,7 @@ tcp_usr_attach(struct socket *so, int proto, struct thread *td)
 		goto out;
 	}
 
-	error = tcp_attach(so, td);
+	error = tcp_attach(so, ai);
 	if (error)
 		goto out;
 
@@ -1004,7 +1004,7 @@ SYSCTL_INT(_net_inet_tcp, TCPCTL_RECVSPACE, recvspace, CTLFLAG_RW,
  * bufer space, and entering LISTEN state if to accept connections.
  */
 static int
-tcp_attach(struct socket *so, struct thread *td)
+tcp_attach(struct socket *so, struct pru_attach_info *ai)
 {
 	struct tcpcb *tp;
 	struct inpcb *inp;
@@ -1014,11 +1014,12 @@ tcp_attach(struct socket *so, struct thread *td)
 #endif
 
 	if (so->so_snd.sb_hiwat == 0 || so->so_rcv.sb_hiwat == 0) {
-		error = soreserve(so, tcp_sendspace, tcp_recvspace);
+		error = soreserve(so, tcp_sendspace, tcp_recvspace,
+				  ai->sb_rlimit);
 		if (error)
 			return (error);
 	}
-	error = in_pcballoc(so, &tcbinfo, td);
+	error = in_pcballoc(so, &tcbinfo);
 	if (error)
 		return (error);
 	inp = sotoinpcb(so);

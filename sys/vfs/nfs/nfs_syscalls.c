@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.11 2003/09/23 05:03:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.12 2004/03/05 16:57:16 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -51,6 +51,7 @@
 #include <sys/proc.h>
 #include <sys/buf.h>
 #include <sys/mbuf.h>
+#include <sys/resourcevar.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/domain.h>
@@ -339,7 +340,7 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 		siz = NFS_MAXPACKET + sizeof (u_long);
 	else
 		siz = NFS_MAXPACKET;
-	error = soreserve(so, siz, siz);
+	error = soreserve(so, siz, siz, &td->td_proc->p_rlimit[RLIMIT_SBSIZE]);
 	if (error) {
 		if (mynam != NULL)
 			FREE(mynam, M_SONAME);

@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.9 2004/02/06 09:17:41 rob Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.10 2004/03/05 16:57:16 hsu Exp $ */
 
 /*
  *
@@ -69,7 +69,7 @@ static u_long natm0_recvspace = 16*1024;
 /*
  * FreeBSD new usrreqs supersedes pr_usrreq.
  */
-static int natm_usr_attach (struct socket *, int, struct thread *);
+static int natm_usr_attach (struct socket *, int, struct pru_attach_info *ai);
 static int natm_usr_detach (struct socket *);
 static int natm_usr_connect (struct socket *, struct sockaddr *,
 				 struct thread *);
@@ -87,7 +87,7 @@ static int natm_usr_bind (struct socket *, struct sockaddr *,
 static int natm_usr_sockaddr (struct socket *, struct sockaddr **);
 
 static int
-natm_usr_attach(struct socket *so, int proto, struct thread *td)
+natm_usr_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
     struct natmpcb *npcb;
     int error = 0;
@@ -102,9 +102,11 @@ natm_usr_attach(struct socket *so, int proto, struct thread *td)
 
     if (so->so_snd.sb_hiwat == 0 || so->so_rcv.sb_hiwat == 0) {
 	if (proto == PROTO_NATMAAL5) 
-	    error = soreserve(so, natm5_sendspace, natm5_recvspace);
+	    error = soreserve(so, natm5_sendspace, natm5_recvspace,
+			      ai->sb_rlimit);
 	else
-	    error = soreserve(so, natm0_sendspace, natm0_recvspace);
+	    error = soreserve(so, natm0_sendspace, natm0_recvspace,
+			      ai->sb_rlimit);
         if (error)
           goto out;
     }

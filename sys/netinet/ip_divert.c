@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.7 2004/03/04 01:02:05 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.8 2004/03/05 16:57:15 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -336,7 +336,7 @@ cantsend:
 }
 
 static int
-div_attach(struct socket *so, int proto, struct thread *td)
+div_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct inpcb *inp;
 	int error, s;
@@ -344,14 +344,14 @@ div_attach(struct socket *so, int proto, struct thread *td)
 	inp  = sotoinpcb(so);
 	if (inp)
 		panic("div_attach");
-	if ((error = suser(td)) != 0)
+	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
 		return error;
 
-	error = soreserve(so, div_sendspace, div_recvspace);
+	error = soreserve(so, div_sendspace, div_recvspace, ai->sb_rlimit);
 	if (error)
 		return error;
 	s = splnet();
-	error = in_pcballoc(so, &divcbinfo, td);
+	error = in_pcballoc(so, &divcbinfo);
 	splx(s);
 	if (error)
 		return error;

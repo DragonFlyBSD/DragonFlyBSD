@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keysock.c,v 1.1.2.4 2003/01/11 19:10:59 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.7 2003/11/09 02:22:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.8 2004/03/05 16:57:16 hsu Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -387,7 +387,7 @@ key_abort(struct socket *so)
  * derived from net/rtsock.c:rts_attach()
  */
 static int
-key_attach(struct socket *so, int proto, struct thread *td)
+key_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct keycb *kp;
 	int s, error;
@@ -408,7 +408,7 @@ key_attach(struct socket *so, int proto, struct thread *td)
 	 */
 	s = splnet();
 	so->so_pcb = (caddr_t)kp;
-	error = raw_usrreqs.pru_attach(so, proto, td);
+	error = raw_usrreqs.pru_attach(so, proto, ai);
 	kp = (struct keycb *)sotorawcb(so);
 	if (error) {
 		free(kp, M_PCB);

@@ -32,7 +32,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.11 2004/03/04 06:13:05 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.12 2004/03/05 16:57:15 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -847,7 +847,7 @@ udp_abort(struct socket *so)
 }
 
 static int
-udp_attach(struct socket *so, int proto, struct thread *td)
+udp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct inpcb *inp;
 	int s, error;
@@ -856,11 +856,11 @@ udp_attach(struct socket *so, int proto, struct thread *td)
 	if (inp != 0)
 		return EINVAL;
 
-	error = soreserve(so, udp_sendspace, udp_recvspace);
+	error = soreserve(so, udp_sendspace, udp_recvspace, ai->sb_rlimit);
 	if (error)
 		return error;
 	s = splnet();
-	error = in_pcballoc(so, &udbinfo, td);
+	error = in_pcballoc(so, &udbinfo);
 	splx(s);
 	if (error)
 		return error;

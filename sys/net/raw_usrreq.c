@@ -32,7 +32,7 @@
  *
  *	@(#)raw_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_usrreq.c,v 1.18 1999/08/28 00:48:28 peter Exp $
- * $DragonFly: src/sys/net/raw_usrreq.c,v 1.4 2003/06/25 03:56:02 dillon Exp $
+ * $DragonFly: src/sys/net/raw_usrreq.c,v 1.5 2004/03/05 16:57:15 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -152,16 +152,16 @@ raw_uabort(struct socket *so)
 /* pru_accept is EOPNOTSUPP */
 
 static int
-raw_uattach(struct socket *so, int proto, struct thread *td)
+raw_uattach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct rawcb *rp = sotorawcb(so);
 	int error;
 
 	if (rp == 0)
 		return EINVAL;
-	if ((error = suser(td)) != 0)
+	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
 		return error;
-	return raw_attach(so, proto);
+	return raw_attach(so, proto, ai->sb_rlimit);
 }
 
 static int

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.12 2004/03/04 10:29:24 hsu Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.13 2004/03/05 16:57:16 hsu Exp $
  */
 
 /*
@@ -51,10 +51,12 @@
 #include <sys/mbuf.h>
 #include <sys/vnode.h>
 #include <sys/protosw.h>
+#include <sys/resourcevar.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/socketops.h>
 #include <sys/syslog.h>
+#include <sys/thread.h>
 #include <sys/tprintf.h>
 #include <sys/sysctl.h>
 #include <sys/signalvar.h>
@@ -350,7 +352,8 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 		rcvreserve = (nmp->nm_rsize + NFS_MAXPKTHDR +
 		    sizeof (u_int32_t)) * pktscale;
 	}
-	error = soreserve(so, sndreserve, rcvreserve);
+	error = soreserve(so, sndreserve, rcvreserve,
+			  &td->td_proc->p_rlimit[RLIMIT_SBSIZE]);
 	if (error)
 		goto bad;
 	so->so_rcv.sb_flags |= SB_NOINTR;

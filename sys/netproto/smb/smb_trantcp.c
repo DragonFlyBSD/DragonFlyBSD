@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_trantcp.c,v 1.3.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.8 2004/03/04 10:29:24 hsu Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.9 2004/03/05 16:57:16 hsu Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -39,6 +39,7 @@
 #include <sys/mbuf.h>
 #include <sys/proc.h>
 #include <sys/protosw.h>
+#include <sys/resourcevar.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/socketops.h>
@@ -207,7 +208,8 @@ nb_connect_in(struct nbpcb *nbp, struct sockaddr_in *to, struct thread *td)
 	so->so_rcv.sb_flags |= SB_UPCALL;
 	so->so_rcv.sb_timeo = (5 * hz);
 	so->so_snd.sb_timeo = (5 * hz);
-	error = soreserve(so, nbp->nbp_sndbuf, nbp->nbp_rcvbuf);
+	error = soreserve(so, nbp->nbp_sndbuf, nbp->nbp_rcvbuf,
+			  &td->td_proc->p_rlimit[RLIMIT_SBSIZE]);
 	if (error)
 		goto bad;
 	nb_setsockopt_int(so, SOL_SOCKET, SO_KEEPALIVE, 1);

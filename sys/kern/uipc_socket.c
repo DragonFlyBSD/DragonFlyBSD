@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.14 2004/03/04 10:29:23 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.15 2004/03/05 16:57:15 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -129,6 +129,7 @@ socreate(int dom, struct socket **aso, int type,
 	struct proc *p = td->td_proc;
 	struct protosw *prp;
 	struct socket *so;
+	struct pru_attach_info ai;
 	int error;
 
 	if (proto)
@@ -157,7 +158,10 @@ socreate(int dom, struct socket **aso, int type,
 	so->so_type = type;
 	so->so_cred = crhold(p->p_ucred);
 	so->so_proto = prp;
-	error = so_pru_attach(so, proto, td);
+	ai.sb_rlimit = &p->p_rlimit[RLIMIT_SBSIZE];
+	ai.p_ucred = p->p_ucred;
+	ai.fd_rdir = p->p_fd->fd_rdir;
+	error = so_pru_attach(so, proto, &ai);
 	if (error) {
 		so->so_state |= SS_NOFDREF;
 		sofree(so);
@@ -1174,7 +1178,8 @@ sosetopt(so, sopt)
 			case SO_RCVBUF:
 				if (sbreserve(sopt->sopt_name == SO_SNDBUF ?
 				    &so->so_snd : &so->so_rcv, (u_long)optval,
-				    so, curproc) == 0) {
+				    so,
+				    &curproc->p_rlimit[RLIMIT_SBSIZE]) == 0) {
 					error = ENOBUFS;
 					goto bad;
 				}

@@ -32,7 +32,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.8 2004/01/06 03:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.9 2004/03/05 16:57:15 hsu Exp $
  */
 
 
@@ -102,7 +102,7 @@ rts_abort(struct socket *so)
 /* pru_accept is EOPNOTSUPP */
 
 static int
-rts_attach(struct socket *so, int proto, struct thread *td)
+rts_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct rawcb *rp;
 	int s, error;
@@ -122,7 +122,7 @@ rts_attach(struct socket *so, int proto, struct thread *td)
 	 */
 	s = splnet();
 	so->so_pcb = (caddr_t)rp;
-	error = raw_attach(so, proto);
+	error = raw_attach(so, proto, ai->sb_rlimit);
 	rp = sotorawcb(so);
 	if (error) {
 		splx(s);

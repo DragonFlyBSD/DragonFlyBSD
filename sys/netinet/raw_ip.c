@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.9 2004/03/04 01:02:05 hsu Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.10 2004/03/05 16:57:15 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -497,7 +497,7 @@ SYSCTL_INT(_net_inet_raw, OID_AUTO, recvspace, CTLFLAG_RW,
     &rip_recvspace, 0, "Maximum incoming raw IP datagram size");
 
 static int
-rip_attach(struct socket *so, int proto, struct thread *td)
+rip_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct inpcb *inp;
 	int error, s;
@@ -505,14 +505,14 @@ rip_attach(struct socket *so, int proto, struct thread *td)
 	inp = sotoinpcb(so);
 	if (inp)
 		panic("rip_attach");
-	if ((error = suser(td)) != 0)
+	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
 		return error;
 
-	error = soreserve(so, rip_sendspace, rip_recvspace);
+	error = soreserve(so, rip_sendspace, rip_recvspace, ai->sb_rlimit);
 	if (error)
 		return error;
 	s = splnet();
-	error = in_pcballoc(so, &ripcbinfo, td);
+	error = in_pcballoc(so, &ripcbinfo);
 	splx(s);
 	if (error)
 		return error;

@@ -27,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/socketops.h,v 1.1 2004/03/04 10:29:24 hsu Exp $
+ * $DragonFly: src/sys/sys/socketops.h,v 1.2 2004/03/05 16:57:16 hsu Exp $
  */
 
 #ifndef _SOCKETOPS_H_
@@ -67,9 +67,9 @@ so_pru_accept(struct socket *so,
 }
 
 static __inline int
-so_pru_attach(struct socket *so, int proto, struct thread *td)
+so_pru_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
-	return ((*so->so_proto->pr_usrreqs->pru_attach)(so, proto, td));
+	return ((*so->so_proto->pr_usrreqs->pru_attach)(so, proto, ai));
 }
 
 static __inline int

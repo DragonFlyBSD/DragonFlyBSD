@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.8 2003/12/10 23:48:07 hsu Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.9 2004/03/05 16:57:16 hsu Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -295,6 +295,7 @@ extern so_gen_t so_gencnt;
 struct file;
 struct filedesc;
 struct mbuf;
+struct rlimit;
 struct sockaddr;
 struct stat;
 struct ucred;
@@ -338,7 +339,7 @@ void	sbflush (struct sockbuf *sb);
 void	sbinsertoob (struct sockbuf *sb, struct mbuf *m0);
 void	sbrelease (struct sockbuf *sb, struct socket *so);
 int	sbreserve (struct sockbuf *sb, u_long cc, struct socket *so,
-		       struct proc *p);
+		   struct rlimit *rl);
 void	sbtoxsockbuf (struct sockbuf *sb, struct xsockbuf *xsb);
 int	sbwait (struct sockbuf *sb);
 int	sb_lock (struct sockbuf *sb);
@@ -378,7 +379,8 @@ int	sopoll (struct socket *so, int events, struct ucred *cred,
 int	soreceive (struct socket *so, struct sockaddr **paddr,
 		       struct uio *uio, struct mbuf **mp0,
 		       struct mbuf **controlp, int *flagsp);
-int	soreserve (struct socket *so, u_long sndcc, u_long rcvcc);
+int	soreserve (struct socket *so, u_long sndcc, u_long rcvcc,
+		   struct rlimit *rl);
 void	sorflush (struct socket *so);
 int	sosend (struct socket *so, struct sockaddr *addr, struct uio *uio,
 		    struct mbuf *top, struct mbuf *control, int flags,

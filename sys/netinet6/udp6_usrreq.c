@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.9 2003/08/23 11:02:46 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.10 2004/03/05 16:57:15 hsu Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -541,7 +541,7 @@ udp6_abort(struct socket *so)
 }
 
 static int
-udp6_attach(struct socket *so, int proto, struct thread *td)
+udp6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct inpcb *inp;
 	int s, error;
@@ -551,12 +551,13 @@ udp6_attach(struct socket *so, int proto, struct thread *td)
 		return EINVAL;
 
 	if (so->so_snd.sb_hiwat == 0 || so->so_rcv.sb_hiwat == 0) {
-		error = soreserve(so, udp_sendspace, udp_recvspace);
+		error = soreserve(so, udp_sendspace, udp_recvspace,
+		    ai->sb_rlimit);
 		if (error)
 			return error;
 	}
 	s = splnet();
-	error = in_pcballoc(so, &udbinfo, td);
+	error = in_pcballoc(so, &udbinfo);
 	splx(s);
 	if (error)
 		return error;

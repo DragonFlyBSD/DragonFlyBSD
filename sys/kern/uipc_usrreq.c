@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.11 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.12 2004/03/05 16:57:15 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -77,7 +77,7 @@ static	struct unp_head unp_shead, unp_dhead;
 static struct	sockaddr sun_noname = { sizeof(sun_noname), AF_LOCAL };
 static ino_t	unp_ino;		/* prototype for fake inode numbers */
 
-static int     unp_attach (struct socket *);
+static int     unp_attach (struct socket *, struct pru_attach_info *);
 static void    unp_detach (struct unpcb *);
 static int     unp_bind (struct unpcb *,struct sockaddr *, struct thread *);
 static int     unp_connect (struct socket *,struct sockaddr *,
@@ -128,13 +128,13 @@ uipc_accept(struct socket *so, struct sockaddr **nam)
 }
 
 static int
-uipc_attach(struct socket *so, int proto, struct thread *td)
+uipc_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct unpcb *unp = sotounpcb(so);
 
 	if (unp != 0)
 		return EISCONN;
-	return unp_attach(so);
+	return unp_attach(so, ai);
 }
 
 static int
@@ -509,8 +509,7 @@ SYSCTL_DECL(_net_local);
 SYSCTL_INT(_net_local, OID_AUTO, inflight, CTLFLAG_RD, &unp_rights, 0, "");
 
 static int
-unp_attach(so)
-	struct socket *so;
+unp_attach(struct socket *so, struct pru_attach_info *ai)
 {
 	struct unpcb *unp;
 	int error;
@@ -519,11 +518,13 @@ unp_attach(so)
 		switch (so->so_type) {
 
 		case SOCK_STREAM:
-			error = soreserve(so, unpst_sendspace, unpst_recvspace);
+			error = soreserve(so, unpst_sendspace, unpst_recvspace,
+					  ai->sb_rlimit);
 			break;
 
 		case SOCK_DGRAM:
-			error = soreserve(so, unpdg_sendspace, unpdg_recvspace);
+			error = soreserve(so, unpdg_sendspace, unpdg_recvspace,
+					  ai->sb_rlimit);
 			break;
 
 		default:
@@ -540,7 +541,7 @@ unp_attach(so)
 	unp_count++;
 	LIST_INIT(&unp->unp_refs);
 	unp->unp_socket = so;
-	unp->unp_rvnode = curproc->p_fd->fd_rdir;
+	unp->unp_rvnode = ai->fd_rdir;		/* jail cruft XXX JH */
 	LIST_INSERT_HEAD(so->so_type == SOCK_DGRAM ? &unp_dhead
 			 : &unp_shead, unp, unp_link);
 	so->so_pcb = (caddr_t)unp;

@@ -32,7 +32,7 @@
  *
  *	@(#)raw_cb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_cb.c,v 1.16 1999/08/28 00:48:27 peter Exp $
- * $DragonFly: src/sys/net/raw_cb.c,v 1.4 2003/07/29 12:51:29 hmp Exp $
+ * $DragonFly: src/sys/net/raw_cb.c,v 1.5 2004/03/05 16:57:15 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -63,9 +63,7 @@ static u_long	raw_recvspace = RAWRCVQ;
  * of buffer space for the socket.
  */
 int
-raw_attach(so, proto)
-	struct socket *so;
-	int proto;
+raw_attach(struct socket *so, int proto, struct rlimit *rl)
 {
 	struct rawcb *rp = sotorawcb(so);
 	int error;
@@ -77,7 +75,7 @@ raw_attach(so, proto)
 	 */
 	if (rp == 0)
 		return (ENOBUFS);
-	error = soreserve(so, raw_sendspace, raw_recvspace);
+	error = soreserve(so, raw_sendspace, raw_recvspace, rl);
 	if (error)
 		return (error);
 	rp->rcb_socket = so;

@@ -32,7 +32,7 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/protosw.h,v 1.28.2.2 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/protosw.h,v 1.5 2004/02/25 17:38:51 joerg Exp $
+ * $DragonFly: src/sys/sys/protosw.h,v 1.6 2004/03/05 16:57:16 hsu Exp $
  */
 
 #ifndef _SYS_PROTOSW_H_
@@ -174,6 +174,12 @@ struct stat;
 struct ucred;
 struct uio;
 
+struct pru_attach_info {
+	struct rlimit *sb_rlimit;
+	struct ucred *p_ucred;
+	struct vnode *fd_rdir;
+};
+
 /*
  * If the ordering here looks odd, that's because it's alphabetical.
  * Having this structure separated out from the main protoswitch is allegedly
@@ -184,7 +190,7 @@ struct pr_usrreqs {
 	int	(*pru_abort) (struct socket *so);
 	int	(*pru_accept) (struct socket *so, struct sockaddr **nam);
 	int	(*pru_attach) (struct socket *so, int proto,
-				   struct thread *td);
+			       struct pru_attach_info *ai);
 	int	(*pru_bind) (struct socket *so, struct sockaddr *nam,
 				 struct thread *td);
 	int	(*pru_connect) (struct socket *so, struct sockaddr *nam,

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.14 2003/12/20 05:58:30 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.15 2004/03/05 16:57:15 hsu Exp $
  */
 
 /*
@@ -820,11 +820,21 @@ suser(struct thread *td)
 	}
 }
 
+/*
+ * A non-null credential is expected unless NULL_CRED_OKAY is set.
+ */
 int
 suser_cred(struct ucred *cred, int flag)
 {
-	KASSERT(cred != NULL, ("suser_cred: NULL cred!"));
+	KASSERT(cred != NULL || flag & NULL_CRED_OKAY,
+		("suser_cred: NULL cred!"));
 
+	if (cred == NULL) {
+		if (flag & NULL_CRED_OKAY)
+			return (0);
+		else
+			return (EPERM);
+	}
 	if (cred->cr_uid != 0) 
 		return (EPERM);
 	if (cred->cr_prison && !(flag & PRISON_ROOT))

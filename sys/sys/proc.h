@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.43 2004/03/01 06:33:19 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.44 2004/03/05 16:57:16 hsu Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -301,7 +301,8 @@ MALLOC_DECLARE(M_PARGS);
 #endif
 
 /* flags for suser_xxx() */
-#define PRISON_ROOT	1
+#define PRISON_ROOT	0x1
+#define	NULL_CRED_OKAY	0x2
 
 /* Handy macro to determine if p1 can mangle p2 */
 

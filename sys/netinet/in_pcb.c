@@ -32,7 +32,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.11 2004/03/04 01:02:05 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.12 2004/03/05 16:57:15 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -153,7 +153,7 @@ SYSCTL_PROC(_net_inet_ip_portrange, OID_AUTO, hilast, CTLTYPE_INT|CTLFLAG_RW,
  * Allocate a PCB and associate it with the socket.
  */
 int
-in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo, struct thread *td)
+in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 {
 	struct inpcb *inp;
 #ifdef IPSEC

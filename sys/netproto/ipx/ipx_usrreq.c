@@ -34,7 +34,7 @@
  *	@(#)ipx_usrreq.c
  *
  * $FreeBSD: src/sys/netipx/ipx_usrreq.c,v 1.26.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.5 2003/08/07 21:17:37 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.6 2004/03/05 16:57:16 hsu Exp $
  */
 
 #include "opt_ipx.h"
@@ -72,8 +72,10 @@ SYSCTL_INT(_net_ipx_ipx, OID_AUTO, ipxrecvspace, CTLFLAG_RW,
             &ipxrecvspace, 0, "");
 
 static	int ipx_usr_abort(struct socket *so);
-static	int ipx_attach(struct socket *so, int proto, struct thread *td);
-static	int ipx_bind(struct socket *so, struct sockaddr *nam, struct thread *td);
+static	int ipx_attach(struct socket *so, int proto,
+		       struct pru_attach_info *ai);
+static	int ipx_bind(struct socket *so, struct sockaddr *nam,
+		     struct thread *td);
 static	int ipx_connect(struct socket *so, struct sockaddr *nam,
 			struct thread *td);
 static	int ipx_detach(struct socket *so);
@@ -82,7 +84,8 @@ static	int ipx_send(struct socket *so, int flags, struct mbuf *m,
 		     struct sockaddr *addr, struct mbuf *control, 
 		     struct thread *td);
 static	int ipx_shutdown(struct socket *so);
-static	int ripx_attach(struct socket *so, int proto, struct thread *td);
+static	int ripx_attach(struct socket *so, int proto,
+			struct pru_attach_info *ai);
 static	int ipx_output(struct ipxpcb *ipxp, struct mbuf *m0);
 
 struct	pr_usrreqs ipx_usrreqs = {
@@ -434,7 +437,7 @@ ipx_usr_abort(so)
 }
 
 static int
-ipx_attach(struct socket *so, int proto, struct thread *td)
+ipx_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	int error;
 	int s;
@@ -443,10 +446,11 @@ ipx_attach(struct socket *so, int proto, struct thread *td)
 	if (ipxp != NULL)
 		return (EINVAL);
 	s = splnet();
-	error = ipx_pcballoc(so, &ipxpcb, td);
+	error = ipx_pcballoc(so, &ipxpcb);
 	splx(s);
 	if (error == 0)
-		error = soreserve(so, ipxsendspace, ipxrecvspace);
+		error = soreserve(so, ipxsendspace, ipxrecvspace,
+				  ai->sb_rlimit);
 	return (error);
 }
 
@@ -581,20 +585,20 @@ ipx_sockaddr(so, nam)
 }
 
 static int
-ripx_attach(struct socket *so, int proto, struct thread *td)
+ripx_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	int error = 0;
 	int s;
 	struct ipxpcb *ipxp = sotoipxpcb(so);
 
-	if ((error = suser(td)) != 0)
+	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
 		return (error);
 	s = splnet();
-	error = ipx_pcballoc(so, &ipxrawpcb, td);
+	error = ipx_pcballoc(so, &ipxrawpcb);
 	splx(s);
 	if (error)
 		return (error);
-	error = soreserve(so, ipxsendspace, ipxrecvspace);
+	error = soreserve(so, ipxsendspace, ipxrecvspace, ai->sb_rlimit);
 	if (error)
 		return (error);
 	ipxp = sotoipxpcb(so);

@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.9 2004/03/01 06:33:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.10 2004/03/05 16:57:16 hsu Exp $
  */
 
 /*
@@ -58,6 +58,7 @@
 #include <sys/malloc.h>
 #include <sys/namei.h>
 #include <sys/mbuf.h>
+#include <sys/resourcevar.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/un.h>
@@ -258,7 +259,7 @@ portal_open(ap)
 	 * Reserve some buffer space
 	 */
 	res = pt->pt_size + sizeof(pcred) + 512;	/* XXX */
-	error = soreserve(so, res, res);
+	error = soreserve(so, res, res, &td->td_proc->p_rlimit[RLIMIT_SBSIZE]);
 	if (error)
 		goto bad;
 

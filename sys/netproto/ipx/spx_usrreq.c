@@ -34,7 +34,7 @@
  *	@(#)spx_usrreq.h
  *
  * $FreeBSD: src/sys/netipx/spx_usrreq.c,v 1.27.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.5 2003/08/07 21:17:37 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.6 2004/03/05 16:57:16 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -88,8 +88,10 @@ static	struct spxpcb *spx_usrclosed(struct spxpcb *cb);
 
 static	int spx_usr_abort(struct socket *so);
 static	int spx_accept(struct socket *so, struct sockaddr **nam);
-static	int spx_attach(struct socket *so, int proto, struct thread *td);
-static	int spx_bind(struct socket *so, struct sockaddr *nam, struct thread *td);
+static	int spx_attach(struct socket *so, int proto,
+		       struct pru_attach_info *ai);
+static	int spx_bind(struct socket *so, struct sockaddr *nam,
+		     struct thread *td);
 static	int spx_connect(struct socket *so, struct sockaddr *nam,
 			struct thread *td);
 static	int spx_detach(struct socket *so);
@@ -101,7 +103,8 @@ static	int spx_send(struct socket *so, int flags, struct mbuf *m,
 		     struct sockaddr *addr, struct mbuf *control, 
 		     struct thread *td);
 static	int spx_shutdown(struct socket *so);
-static	int spx_sp_attach(struct socket *so, int proto, struct thread *td);
+static	int spx_sp_attach(struct socket *so, int proto,
+			  struct pru_attach_info *ai);
 
 struct	pr_usrreqs spx_usrreqs = {
 	spx_usr_abort, spx_accept, spx_attach, spx_bind,
@@ -1303,10 +1306,7 @@ spx_accept(so, nam)
 }
 
 static int
-spx_attach(so, proto, td)
-	struct socket *so;
-	int proto;
-	struct thread *td;
+spx_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	int error;
 	int s;
@@ -1321,11 +1321,12 @@ spx_attach(so, proto, td)
 	if (ipxp != NULL)
 		return (EISCONN);
 	s = splnet();
-	error = ipx_pcballoc(so, &ipxpcb, td);
+	error = ipx_pcballoc(so, &ipxpcb);
 	if (error)
 		goto spx_attach_end;
 	if (so->so_snd.sb_hiwat == 0 || so->so_rcv.sb_hiwat == 0) {
-		error = soreserve(so, (u_long) 3072, (u_long) 3072);
+		error = soreserve(so, (u_long) 3072, (u_long) 3072,
+				  ai->sb_rlimit);
 		if (error)
 			goto spx_attach_end;
 	}

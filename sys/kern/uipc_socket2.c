@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.6 2003/08/28 01:48:18 hmp Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.7 2004/03/05 16:57:15 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -174,6 +174,7 @@ struct socket *
 sonewconn(struct socket *head, int connstatus)
 {
 	struct socket *so;
+	struct pru_attach_info ai;
 
 	if (head->so_qlen > 3 * head->so_qlimit / 2)
 		return ((struct socket *)0);
@@ -190,8 +191,11 @@ sonewconn(struct socket *head, int connstatus)
 	so->so_proto = head->so_proto;
 	so->so_timeo = head->so_timeo;
 	so->so_cred = crhold(head->so_cred);
-	if (soreserve(so, head->so_snd.sb_hiwat, head->so_rcv.sb_hiwat) ||
-	    (*so->so_proto->pr_usrreqs->pru_attach)(so, 0, NULL)) {
+	ai.sb_rlimit = NULL;
+	ai.p_ucred = NULL;
+	ai.fd_rdir = NULL;		/* jail code cruft XXX JH */
+	if (soreserve(so, head->so_snd.sb_hiwat, head->so_rcv.sb_hiwat, NULL) ||
+	    (*so->so_proto->pr_usrreqs->pru_attach)(so, 0, &ai)) {
 		sodealloc(so);
 		return ((struct socket *)0);
 	}
@@ -341,15 +345,11 @@ sowakeup(so, sb)
  */
 
 int
-soreserve(so, sndcc, rcvcc)
-	struct socket *so;
-	u_long sndcc, rcvcc;
+soreserve(struct socket *so, u_long sndcc, u_long rcvcc, struct rlimit *rl)
 {
-	struct proc *p = curproc;
-
-	if (sbreserve(&so->so_snd, sndcc, so, p) == 0)
+	if (sbreserve(&so->so_snd, sndcc, so, rl) == 0)
 		goto bad;
-	if (sbreserve(&so->so_rcv, rcvcc, so, p) == 0)
+	if (sbreserve(&so->so_rcv, rcvcc, so, rl) == 0)
 		goto bad2;
 	if (so->so_rcv.sb_lowat == 0)
 		so->so_rcv.sb_lowat = 1;
@@ -390,21 +390,17 @@ sysctl_handle_sb_max(SYSCTL_HANDLER_ARGS)
  * if buffering efficiency is near the normal case.
  */
 int
-sbreserve(sb, cc, so, p)
-	struct sockbuf *sb;
-	u_long cc;
-	struct socket *so;
-	struct proc *p;
+sbreserve(struct sockbuf *sb, u_long cc, struct socket *so, struct rlimit *rl)
 {
 
 	/*
-	 * p will only be NULL when we're in an interrupt
-	 * (e.g. in tcp_input())
+	 * rl will only be NULL when we're in an interrupt (eg, in tcp_input)
+	 * or when called from netgraph (ie, ngd_attach)
 	 */
 	if (cc > sb_max_adj)
 		return (0);
 	if (!chgsbsize(so->so_cred->cr_uidinfo, &sb->sb_hiwat, cc,
-	    p ? p->p_rlimit[RLIMIT_SBSIZE].rlim_cur : RLIM_INFINITY)) {
+		       rl ? rl->rlim_cur : RLIM_INFINITY)) {
 		return (0);
 	}
 	sb->sb_mbmax = min(cc * sb_efficiency, sb_max);

@@ -32,7 +32,7 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.6 2004/03/04 01:02:05 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.7 2004/03/05 16:57:15 hsu Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -321,7 +321,7 @@ extern int	ipport_hilastauto;
 void	in_pcbpurgeif0 (struct inpcb *, struct ifnet *);
 void	in_losing (struct inpcb *);
 void	in_rtchange (struct inpcb *, int);
-int	in_pcballoc (struct socket *, struct inpcbinfo *, struct thread *);
+int	in_pcballoc (struct socket *, struct inpcbinfo *);
 int	in_pcbbind (struct inpcb *, struct sockaddr *, struct thread *);
 int	in_pcbconnect (struct inpcb *, struct sockaddr *, struct thread *);
 void	in_pcbdetach (struct inpcb *);

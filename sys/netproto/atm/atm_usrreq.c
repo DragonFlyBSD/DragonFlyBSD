@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_usrreq.c,v 1.6 1999/08/28 00:48:39 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_usrreq.c,v 1.7 2004/02/06 09:17:40 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_usrreq.c,v 1.8 2004/03/05 16:57:16 hsu Exp $
  */
 
 /*
@@ -40,7 +40,8 @@
 /*
  * Local functions
  */
-static int	atm_dgram_attach (struct socket *, int, struct thread *);
+static int	atm_dgram_attach (struct socket *, int,
+			struct pru_attach_info *);
 static int	atm_dgram_control (struct socket *, u_long, caddr_t, 
 			struct ifnet *, struct thread *);
 static int	atm_dgram_info (caddr_t);
@@ -121,10 +122,7 @@ struct pr_usrreqs	atm_dgram_usrreqs = {
  *
  */
 static int
-atm_dgram_attach(so, proto, td)
-	struct socket	*so;
-	int		proto;
-	struct thread	*td;
+atm_dgram_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	ATM_INTRO();
 
