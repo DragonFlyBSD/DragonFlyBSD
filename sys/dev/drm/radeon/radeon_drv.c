@@ -27,7 +27,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/radeon_drv.c,v 1.6.2.1 2003/04/26 07:05:29 anholt Exp $
- * $DragonFly: src/sys/dev/drm/radeon/Attic/radeon_drv.c,v 1.4 2004/02/13 01:23:57 joerg Exp $
+ * $DragonFly: src/sys/dev/drm/radeon/Attic/radeon_drv.c,v 1.5 2004/07/14 07:44:52 asmodai Exp $
  */
 
 #include "radeon.h"
@@ -75,6 +75,7 @@ drm_chipinfo_t DRM(devicelist)[] = {
 	{0x1002, 0x516A, 1, "ATI Radeon Qj R200"},
 	{0x1002, 0x516B, 1, "ATI Radeon Qk R200"},
 	{0x1002, 0x516C, 1, "ATI Radeon Ql R200"},
+	{0x1002, 0x5961, 1, "ATI Radeon RV280 9200"},
 	{0, 0, 0, NULL}
 };
 
