@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.11 2003/12/01 19:32:53 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.12 2004/01/14 03:55:36 drhodus Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -345,11 +345,11 @@ buildworld: ${WMAKE_TGTS}
 #
 installcheck:
 .if !defined(NO_SENDMAIL)
-	@if ! `grep -q '^smmsp:' /etc/passwd`; then \
+	@if ! `id -u smmsp > /dev/null`; then \
 		echo "ERROR: Required smmsp user is missing, see /usr/src/UPDATING."; \
 		false; \
 	fi
-	@if ! `grep -q '^smmsp:' /etc/group`; then \
+	@if ! `id -g smmsp > /dev/null`; then \
 		echo "ERROR: Required smmsp group is missing, see /usr/src/UPDATING."; \
 		false; \
 	fi
