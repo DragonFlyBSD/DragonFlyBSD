@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/donations.cgi,v 1.5 2004/09/20 15:14:26 justin Exp $
+# $DragonFly: site/data/docs/Attic/donations.cgi,v 1.6 2005/03/10 20:55:24 hsu Exp $
 
 $TITLE(DragonFly - Donations)
 
@@ -137,6 +137,81 @@ or damaged.
         <td>
 	PF, ALTQ, general development
         </td>
+</tr>
+
+<!-- posted 03/10/2005 -->
+<tr>
+	<td>
+		Jeffrey Hsu<br />
+		hsu at dragonflybsd dot org
+		San Jose, California
+	</td>
+	<td>
+		Rack of client machines, one server, and gigE switch.
+	</td>
+	<td>
+		Network stress testing, performance tuning, and benchmarking.
+	</td>
+</tr>
+
+<!-- posted 03/10/2005 -->
+<tr>
+	<td>
+		Jeffrey Hsu<br />
+		hsu at dragonflybsd dot org
+		San Jose, California
+	</td>
+	<td>
+		two 10gigE NICs, one 10gigE switch, two PCI-Express machines
+	</td>
+	<td>
+		High-speed networking
+	</td>
+</tr>
+
+<!-- posted 03/10/2005 -->
+<tr>
+	<td>
+		Jeffrey Hsu<br />
+		hsu at dragonflybsd dot org
+		San Jose, California
+	</td>
+	<td>
+		Amazon wish list for hsu at dragonflybsd dot org
+	</td>
+	<td>
+		reading
+	</td>
+</tr>
+
+<!-- posted 03/10/2005 -->
+<tr>
+	<td>
+		Jeffrey Hsu<br />
+		hsu at dragonflybsd dot org
+		San Jose, California
+	</td>
+	<td>
+		CSRG code respository from http://www.mckusick.com/csrg/index.html
+	</td>
+	<td>
+		looking up orignal reason for historical code changes
+	</td>
+</tr>
+
+<!-- posted 03/10/2005 -->
+<tr>
+	<td>
+		Jeffrey Hsu<br />
+		hsu at dragonflybsd dot org
+		San Jose, California
+	</td>
+	<td>
+		8-way or higher multiprocessor machine
+	</td>
+	<td>
+		improving MP scalability
+	</td>
 </tr>
 
 </table>
