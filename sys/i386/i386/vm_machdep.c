@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.27 2004/02/17 19:38:53 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.28 2004/03/29 17:30:23 drhodus Exp $
  */
 
 #include "use_npx.h"
@@ -98,22 +98,6 @@ static volatile u_int	cpu_reset_proxy_active;
 #endif
 extern int	_ucodesel, _udatasel;
 
-/*
- * quick version of vm_fault
- */
-int
-vm_fault_quick(v, prot)
-	caddr_t v;
-	int prot;
-{
-	int r;
-
-	if (prot & VM_PROT_WRITE)
-		r = subyte(v, fubyte(v));
-	else
-		r = fubyte(v);
-	return(r);
-}
 
 /*
  * Finish a fork operation, with process p2 nearly set up.

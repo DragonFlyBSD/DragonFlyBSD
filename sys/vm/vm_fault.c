@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.12 2004/03/23 22:54:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.13 2004/03/29 17:30:23 drhodus Exp $
  */
 
 /*
@@ -882,6 +882,21 @@ readrest:
 
 	return (KERN_SUCCESS);
 
+}
+
+/*
+ * quick version of vm_fault
+ */
+int
+vm_fault_quick(caddr_t v, int prot)
+{
+	int r;
+
+	if (prot & VM_PROT_WRITE)
+		r = subyte(v, fubyte(v));
+	else
+		r = fubyte(v);
+	return(r);
 }
 
 /*
