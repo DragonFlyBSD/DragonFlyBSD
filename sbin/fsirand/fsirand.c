@@ -30,7 +30,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsirand/fsirand.c,v 1.7.2.1 2000/07/01 06:23:36 ps Exp $
- * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.7 2005/02/13 19:12:26 cpressey Exp $
  */
 
 #include <sys/disklabel.h>
@@ -103,8 +103,8 @@ int
 fsirand(char *device)
 {
 	static struct dinode *inodebuf;
-	static size_t oldibufsize;
-	size_t ibufsize;
+	static ssize_t oldibufsize = 0;
+	ssize_t ibufsize;
 	struct fs *sblock;
 	ino_t inumber, maxino;
 	daddr_t dblk;
