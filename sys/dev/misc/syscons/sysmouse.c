@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/sysmouse.c,v 1.2.2.2 2001/07/16 05:21:24 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.7 2004/05/13 23:49:17 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.8 2004/05/19 22:52:44 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -259,6 +259,7 @@ sm_attach_mouse(void *unused)
 {
 	dev_t dev;
 
+	cdevsw_add(&sm_cdevsw, -1, SC_MOUSE);
 	dev = make_dev(&sm_cdevsw, SC_MOUSE, UID_ROOT, GID_WHEEL, 0600,
 		       "sysmouse");
 	/* sysmouse doesn't have scr_stat */

@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.14 2004/05/03 18:46:34 cpressey Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.15 2004/05/19 22:53:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -113,6 +113,8 @@ static struct vnodeopv_desc spec_vnodeop_opv_desc =
 
 VNODEOP_SET(spec_vnodeop_opv_desc);
 
+extern int dev_ref_debug;
+
 /*
  * spec_vnoperate(struct vnodeop_desc *a_desc, ...)
  */
@@ -135,8 +137,9 @@ static int
 spec_open(struct vop_open_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	dev_t dev = vp->v_rdev;
+	dev_t dev;
 	int error;
+	int isblk = (vp->v_type == VBLK) ? 1 : 0;
 	const char *cp;
 
 	/*
@@ -145,10 +148,40 @@ spec_open(struct vop_open_args *ap)
 	if (vp->v_mount && (vp->v_mount->mnt_flag & MNT_NODEV))
 		return (ENXIO);
 
-	if (dev_dport(dev) == NULL)
-		return ENXIO;
+	/*
+	 * Resolve the device.  If the vnode is already open v_rdev may
+	 * already be resolved.  However, if the device changes out from
+	 * under us we report it (and, for now, we allow it).
+	 */
+	if (vp->v_rdev != NULL) {
+		dev = udev2dev(vp->v_udev, isblk);
+		if (dev != vp->v_rdev) {
+			printf(
+			    "Warning: spec_open: dev %s was lost",
+			    vp->v_rdev->si_name);
+			v_release_rdev(vp);
+			error = v_associate_rdev(vp, 
+					udev2dev(vp->v_udev, isblk));
+			if (error)
+				printf(", reacquisition failed\n");
+			else
+				printf(", reacquisition successful\n");
+		} else {
+			error = 0;
+		}
+	} else {
+		error = v_associate_rdev(vp, udev2dev(vp->v_udev, isblk));
+	}
+	if (error)
+		return(error);
 
-	/* Make this field valid before any I/O in ->d_open */
+	dev = vp->v_rdev;
+
+	/*
+	 * Make this field valid before any I/O in ->d_open.  XXX the
+	 * device itself should probably be required to initialize
+	 * this field in d_open.
+	 */
 	if (!dev->si_iosize_max)
 		dev->si_iosize_max = DFLTPHYS;
 
@@ -163,35 +196,45 @@ spec_open(struct vop_open_args *ap)
 		/*
 		 * Never allow opens for write if the device is mounted R/W
 		 */
-		if (vp->v_specmountpoint != NULL &&
-		    !(vp->v_specmountpoint->mnt_flag & MNT_RDONLY))
-				return (EBUSY);
+		if (vp->v_rdev && vp->v_rdev->si_mountpoint &&
+		    !(vp->v_rdev->si_mountpoint->mnt_flag & MNT_RDONLY)) {
+				error = EBUSY;
+				goto done;
+		}
 
 		/*
 		 * When running in secure mode, do not allow opens
 		 * for writing if the device is mounted
 		 */
-		if (securelevel >= 1 && vp->v_specmountpoint != NULL)
-			return (EPERM);
+		if (securelevel >= 1 && vfs_mountedon(vp)) {
+			error = EPERM;
+			goto done;
+		}
 
 		/*
 		 * When running in very secure mode, do not allow
 		 * opens for writing of any devices.
 		 */
-		if (securelevel >= 2)
-			return (EPERM);
+		if (securelevel >= 2) {
+			error = EPERM;
+			goto done;
+		}
 	}
 
 	/* XXX: Special casing of ttys for deadfs.  Probably redundant */
 	if (dev_dflags(dev) & D_TTY)
 		vp->v_flag |= VISTTY;
 
+	/*
+	 * dev_dopen() is always called for each open.  dev_dclose() is
+	 * only called for the last close unless D_TRACKCLOSE is set.
+	 */
 	VOP_UNLOCK(vp, NULL, 0, ap->a_td);
 	error = dev_dopen(dev, ap->a_mode, S_IFCHR, ap->a_td);
 	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, ap->a_td);
 
 	if (error)
-		return (error);
+		goto done;
 
 	if (dev_dflags(dev) & D_TTY) {
 		if (dev->si_tty) {
@@ -214,6 +257,14 @@ spec_open(struct vop_open_args *ap)
 			printf("WARNING: driver %s should register devices with make_dev() (dev_t = \"%s\")\n",
 			    dev_dname(dev), cp);
 		}
+	}
+	++vp->v_opencount;
+	if (dev_ref_debug)
+		printf("spec_open: %s %d\n", dev->si_name, vp->v_opencount);
+done:
+	if (error) {
+		if (vp->v_opencount == 0)
+			v_release_rdev(vp);
 	}
 	return (error);
 }
@@ -430,7 +481,7 @@ spec_strategy(struct vop_strategy_args *ap)
 	 * and write counts for disks that have associated filesystems.
 	 */
 	vp = ap->a_vp;
-	if (vn_isdisk(vp, NULL) && (mp = vp->v_specmountpoint) != NULL) {
+	if (vn_isdisk(vp, NULL) && (mp = vp->v_rdev->si_mountpoint) != NULL) {
 		if ((bp->b_flags & B_READ) == 0) {
 			if (bp->b_lock.lk_lockholder == LK_KERNTHREAD)
 				mp->mnt_stat.f_asyncwrites++;
@@ -443,14 +494,7 @@ spec_strategy(struct vop_strategy_args *ap)
 				mp->mnt_stat.f_syncreads++;
 		}
 	}
-#if 0
-	KASSERT(devsw(bp->b_dev) != NULL, 
-	   ("No devsw on dev %s responsible for buffer %p\n", 
-	   devtoname(bp->b_dev), bp));
-	KASSERT(devsw(bp->b_dev)->d_strategy != NULL, 
-	   ("No strategy on dev %s responsible for buffer %p\n", 
-	   devtoname(bp->b_dev), bp));
-#endif
+	bp->b_dev = vp->v_rdev;
 	BUF_STRATEGY(bp, 0);
 	return (0);
 }
@@ -520,6 +564,7 @@ spec_close(struct vop_close_args *ap)
 	struct proc *p = ap->a_td->td_proc;
 	struct vnode *vp = ap->a_vp;
 	dev_t dev = vp->v_rdev;
+	int error;
 
 	/*
 	 * Hack: a tty device that is a controlling terminal
@@ -530,28 +575,41 @@ spec_close(struct vop_close_args *ap)
 	 * if the reference count is 2 (this last descriptor
 	 * plus the session), release the reference from the session.
 	 */
-	if (vcount(vp) == 2 && p && (vp->v_flag & VXLOCK) == 0 &&
-	    vp == p->p_session->s_ttyvp) {
+	reference_dev(dev);
+	if (vcount(vp) == 2 && vp->v_opencount == 1 && 
+	    p && (vp->v_flag & VXLOCK) == 0 && vp == p->p_session->s_ttyvp) {
 		vrele(vp);
 		p->p_session->s_ttyvp = NULL;
 	}
+
 	/*
-	 * We do not want to really close the device if it
-	 * is still in use unless we are trying to close it
-	 * forcibly. Since every use (buffer, vnode, swap, cmap)
-	 * holds a reference to the vnode, and because we mark
-	 * any other vnodes that alias this device, when the
-	 * sum of the reference counts on all the aliased
-	 * vnodes descends to one, we are on last close.
+	 * Vnodes can be opened and close multiple times.  Do not really
+	 * close the device unless (1) it is being closed forcibly,
+	 * (2) the device wants to track closes, or (3) this is the last
+	 * vnode doing its last close on the device.
+	 *
+	 * XXX the VXLOCK (force close) case can leave vnodes referencing
+	 * a closed device.
 	 */
-	if (vp->v_flag & VXLOCK) {
-		/* Forced close */
-	} else if (dev_dflags(dev) & D_TRACKCLOSE) {
-		/* Keep device updated on status */
-	} else if (vcount(vp) > 1) {
-		return (0);
+	if ((vp->v_flag & VXLOCK) ||
+	    (dev_dflags(dev) & D_TRACKCLOSE) ||
+	    (vcount(vp) <= 1 && vp->v_opencount == 1)) {
+		error = dev_dclose(dev, ap->a_fflag, S_IFCHR, ap->a_td);
+	} else {
+		error = 0;
 	}
-	return (dev_dclose(dev, ap->a_fflag, S_IFCHR, ap->a_td));
+
+	/*
+	 * Track the actual opens and closes on the vnode.  The last close
+	 * disassociates the rdev.
+	 */
+	KKASSERT(vp->v_opencount > 0);
+	if (dev_ref_debug)
+		printf("spec_close: %s %d\n", dev->si_name, vp->v_opencount - 1);
+	if (--vp->v_opencount == 0)
+		v_release_rdev(vp);
+	release_dev(dev);
+	return(error);
 }
 
 /*
@@ -631,7 +689,7 @@ spec_getpages(struct vop_getpages_args *ap)
 	 * the device.  i.e. it's usually '/dev'.  We need the physical block
 	 * size for the device itself.
 	 *
-	 * We can't use v_specmountpoint because it only exists when the
+	 * We can't use v_rdev->si_mountpoint because it only exists when the
 	 * block device is mounted.  However, we can use v_rdev.
 	 */
 

@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.9 2004/05/13 23:49:20 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.10 2004/05/19 22:52:49 dillon Exp $
  */
 
 #ifndef lint
@@ -599,6 +599,7 @@ try_next2:
 		done_chartimes = 1;
 	}
 
+	cdevsw_add(&si_cdevsw, 0x7f, unit);
 /*	path	name	devsw		minor	type   uid gid perm*/
 	for (x = 0; x < sc->sc_nport; x++) {
 		/* sync with the manuals that start at 1 */

@@ -42,7 +42,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:06:31 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_hdr.h,v 1.36.2.3 2001/08/06 15:30:21 joerg Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_hdr.h,v 1.4 2004/02/13 01:45:15 joerg Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_hdr.h,v 1.5 2004/05/19 22:52:54 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -1121,6 +1121,7 @@ u_char sgr_tab_imono[16] = {
 extern u_char		vga_type;
 extern struct tty	*pcconsp;
 extern video_state	*vsp;
+extern struct cdevsw	pc_cdevsw;
 
 #if PCVT_EMU_MOUSE
 extern struct mousestat mouse;

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.15 2004/05/13 23:49:20 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.16 2004/05/19 22:52:49 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -1182,6 +1182,7 @@ determined_type: ;
 		sio_registered = TRUE;
 	}
 	minorbase = UNIT_TO_MINOR(unit);
+	cdevsw_add(&sio_cdevsw, UNIT_TO_MINOR(-1), minorbase);
 	make_dev(&sio_cdevsw, minorbase,
 	    UID_ROOT, GID_WHEEL, 0600, "ttyd%r", unit);
 	make_dev(&sio_cdevsw, minorbase | CONTROL_INIT_STATE,
@@ -2963,7 +2964,9 @@ siocnprobe(cp)
 
 			splx(s);
 			if (COM_CONSOLE(flags) && !COM_LLCONSOLE(flags)) {
-				cp->cn_dev = makedev(CDEV_MAJOR, unit);
+				cp->cn_dev = make_dev(&sio_cdevsw, unit,
+						UID_ROOT, GID_WHEEL, 0600,
+						"ttyd%r", unit);
 				cp->cn_pri = COM_FORCECONSOLE(flags)
 					     || boothowto & RB_SERIAL
 					     ? CN_REMOTE : CN_NORMAL;
@@ -2975,7 +2978,9 @@ siocnprobe(cp)
 				siogdbiobase = iobase;
 				siogdbunit = unit;
 #if DDB > 0
-				gdbdev = makedev(CDEV_MAJOR, unit);
+				gdbdev = make_dev(&sio_cdevsw, unit,
+						UID_ROOT, GID_WHEEL, 0600,
+						"ttyd%r", unit);
 				gdb_getc = siocngetc;
 				gdb_putc = siocnputc;
 #endif
@@ -2996,7 +3001,9 @@ siocnprobe(cp)
 		printf("configuration file (currently sio only).\n");
 		siogdbiobase = siocniobase;
 		siogdbunit = siocnunit;
-		gdbdev = makedev(CDEV_MAJOR, siocnunit);
+		gdbdev = make_dev(&sio_cdevsw, siocnunit,
+				UID_ROOT, GID_WHEEL, 0600,
+				"ttyd%r", siocnunit);
 		gdb_getc = siocngetc;
 		gdb_putc = siocnputc;
 	}
@@ -3021,7 +3028,8 @@ siocnattach(port, speed)
 	siocniobase = port;
 	comdefaultrate = speed;
 	sio_consdev.cn_pri = CN_NORMAL;
-	sio_consdev.cn_dev = makedev(CDEV_MAJOR, 0);
+	sio_consdev.cn_dev = make_dev(&sio_cdevsw, 0, UID_ROOT, GID_WHEEL, 
+					0600, "ttyd%r", 0);
 
 	s = spltty();
 

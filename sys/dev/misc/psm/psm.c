@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.7 2003/11/12 04:26:26 mikeh Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.10 2004/05/13 23:49:17 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.11 2004/05/19 22:52:44 dillon Exp $
  */
 
 /*
@@ -130,7 +130,7 @@
 /* some macros */
 #define PSM_UNIT(dev)		(minor(dev) >> 1)
 #define PSM_NBLOCKIO(dev)	(minor(dev) & 1)
-#define PSM_MKMINOR(unit,block)	(((unit) << 1) | ((block) ? 0:1))
+#define PSM_MKMINOR(unit,block)	((((unit) & 0xff) << 1) | ((block) ? 0:1))
 
 #ifndef max
 #define max(x,y)		((x) > (y) ? (x) : (y))
@@ -173,8 +173,6 @@ struct psm_softc {		/* Driver status information */
     struct timeval inputtimeout;
     int		  watchdog;	/* watchdog timer flag */
     struct callout_handle callout;	/* watchdog timer call out */
-    dev_t	  dev;
-    dev_t	  bdev;
 };
 devclass_t psm_devclass;
 #define PSM_SOFTC(unit)	((struct psm_softc*)devclass_get_softc(psm_devclass, unit))
@@ -1250,10 +1248,9 @@ psmattach(device_t dev)
     }
 
     /* Done */
-    sc->dev = make_dev(&psm_cdevsw, PSM_MKMINOR(unit, FALSE), 0, 0, 0666,
-		       "psm%d", unit);
-    sc->bdev = make_dev(&psm_cdevsw, PSM_MKMINOR(unit, TRUE), 0, 0, 0666,
-			"bpsm%d", unit);
+    cdevsw_add(&psm_cdevsw, PSM_MKMINOR(-1, 0), PSM_MKMINOR(unit, 0));
+    make_dev(&psm_cdevsw, PSM_MKMINOR(unit, FALSE), 0, 0, 0666, "psm%d", unit);
+    make_dev(&psm_cdevsw, PSM_MKMINOR(unit, TRUE), 0, 0, 0666, "bpsm%d", unit);
 
     if (!verbose) {
         printf("psm%d: model %s, device ID %d\n", 
@@ -1279,17 +1276,18 @@ psmdetach(device_t dev)
 {
     struct psm_softc *sc;
     int rid;
+    int unit;
 
     sc = device_get_softc(dev);
     if (sc->state & PSM_OPEN)
 	return EBUSY;
 
+    unit = device_get_unit(dev);
+
     rid = 0;
     BUS_TEARDOWN_INTR(device_get_parent(dev), dev, sc->intr, sc->ih);
     bus_release_resource(dev, SYS_RES_IRQ, rid, sc->intr);
-
-    destroy_dev(sc->dev);
-    destroy_dev(sc->bdev);
+    cdevsw_remove(&psm_cdevsw, PSM_MKMINOR(-1, 0), PSM_MKMINOR(unit, 0));
 
     return 0;
 }

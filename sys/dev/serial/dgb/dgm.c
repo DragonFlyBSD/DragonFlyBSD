@@ -1,6 +1,6 @@
 /*-
  * $FreeBSD: src/sys/dev/dgb/dgm.c,v 1.31.2.3 2001/10/07 09:02:25 brian Exp $
- * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.8 2004/05/13 23:49:19 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.9 2004/05/19 22:52:49 dillon Exp $
  *
  *  This driver and the associated header files support the ISA PC/Xem
  *  Digiboards.  Its evolutionary roots are described below.
@@ -111,6 +111,9 @@
 #define MINOR_TO_PORT(mynor)	((mynor) & PORT_MASK)
 #define IO_SIZE			0x04
 #define MEM_SIZE		0x8000
+
+#define DGM_UNITMASK		0x30000
+#define DGM_UNIT(unit)		((unit) << 16)
 
 struct dgm_softc;
 
@@ -261,11 +264,8 @@ dgmmodhandler(module_t mod, int event, void *arg)
 
 	switch (event) {
 	case MOD_LOAD:
-		cdevsw_add(&dgm_cdevsw);
 		break;
-
 	case MOD_UNLOAD:
-		cdevsw_remove(&dgm_cdevsw);
 		break;
 	}
 
@@ -421,7 +421,15 @@ dgmprobe(device_t dev)
 	struct dgm_softc *sc = device_get_softc(dev);
 	int i, v;
 
+	/*
+	 * Assign unit number.  Due to bits we use in the minor number for
+	 * the various tty types, only 4 units are supported.
+	 */
 	sc->unit = device_get_unit(dev);
+	if (sc->unit > 3) {
+		device_printf(dev, "Too many units, only 4 supported\n");
+		return(ENXIO);
+	}
 
 	/* Check that we've got a valid i/o address */
 	if ((sc->port = bus_get_resource_start(dev, SYS_RES_IOPORT, 0)) == 0)
@@ -775,6 +783,7 @@ dgmattach(device_t dev)
 	else
 		shrinkmem = 0;
 
+	cdevsw_add(&dgm_cdevsw, DGM_UNITMASK, DGM_UNIT(sc->unit));
 	for (i = 0; i < sc->numports; i++, bc++) {
 		DPRINT3(DB_INFO, "dgm%d: Set up port %d\n", sc->unit, i);
 		port = &sc->ports[i];
@@ -887,14 +896,12 @@ dgmdetach(device_t dev)
 
 	DPRINT2(DB_INFO, "dgm%d: detach\n", sc->unit);
 
-	for (i = 0; i < sc->numports; i++) {
-		destroy_dev(makedev(CDEV_MAJOR, sc->unit * 65536 + i));
-		destroy_dev(makedev(CDEV_MAJOR, sc->unit * 65536 + i + 64));
-		destroy_dev(makedev(CDEV_MAJOR, sc->unit * 65536 + i + 128));
-		destroy_dev(makedev(CDEV_MAJOR, sc->unit * 65536 + i + 262144));
-		destroy_dev(makedev(CDEV_MAJOR, sc->unit * 65536 + i + 262208));
-		destroy_dev(makedev(CDEV_MAJOR, sc->unit * 65536 + i + 262272));
-	}
+	/*
+	 * The cdevsw_remove() call will destroy all associated devices
+	 * and dereference any ad-hoc-created devices, but does not
+	 * dereference devices created via make_dev().
+	 */
+	cdevsw_remove(&dgm_cdevsw, DGM_UNITMASK, DGM_UNIT(sc->unit));
 
 	untimeout(dgmpoll, (void *)(int)sc->unit, sc->toh);
 	callout_handle_init(&sc->toh);

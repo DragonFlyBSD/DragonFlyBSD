@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.12 2004/05/13 23:49:24 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.13 2004/05/19 22:53:00 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -144,7 +144,7 @@ tapmodevent(mod, type, data)
 		if (attached)
 			return (EEXIST);
 
-		cdevsw_add(&tap_cdevsw);
+		cdevsw_add(&tap_cdevsw, 0, 0);
 		attached = 1;
 	break;
 
@@ -152,7 +152,7 @@ tapmodevent(mod, type, data)
 		if (taprefcnt > 0)
 			return (EBUSY);
 
-		cdevsw_remove(&tap_cdevsw);
+		cdevsw_remove(&tap_cdevsw, 0, 0);
 
 		/* XXX: maintain tap ifs in a local list */
 		unit = 0;
@@ -227,6 +227,7 @@ tapcreate(dev)
 	tp->tap_dev = make_dev(&tap_cdevsw, minor(dev), UID_ROOT, GID_WHEEL, 
 						0600, "%s%d", name, unit);
 	tp->tap_dev->si_drv1 = dev->si_drv1 = tp;
+	reference_dev(tp->tap_dev);	/* so we can destroy it later */
 
 	/* generate fake MAC address: 00 bd xx xx xx unit_no */
 	ether_addr[0] = 0x00;

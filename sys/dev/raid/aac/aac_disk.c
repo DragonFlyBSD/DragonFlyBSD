@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_disk.c,v 1.3.2.8 2003/01/11 18:39:39 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.7 2004/05/13 23:49:18 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.8 2004/05/19 22:52:46 dillon Exp $
  */
 
 #include "opt_aac.h"
@@ -221,22 +221,18 @@ aac_disk_strategy(struct bio *bp)
  * for the controller to complete the requests.
  */
 static int
-aac_disk_dump(dev_t dev)
+aac_disk_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
 {
 	struct aac_disk *ad;
 	struct aac_softc *sc;
 	vm_offset_t addr;
 	long blkcnt;
-	unsigned int count, blkno, secsize;
 	int dumppages;
 	int i, error;
 
 	ad = dev->si_drv1;
 	addr = 0;
 	dumppages = AAC_MAXIO / PAGE_SIZE;
-
-	if ((error = disk_dumpcheck(dev, &count, &blkno, &secsize)))
-		return (error);
 
 	if (ad == NULL)
 		return (ENXIO);

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vnops.c	8.15 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vnops.c,v 1.64 2000/01/10 12:04:25 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.7 2004/05/18 00:16:46 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.8 2004/05/19 22:53:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -129,8 +129,8 @@ ffs_fsync(struct vop_fsync_args *ap)
 	wait = (ap->a_waitfor == MNT_WAIT);
 	if (vn_isdisk(vp, NULL)) {
 		lbn = INT_MAX;
-		if (vp->v_specmountpoint != NULL &&
-		    (vp->v_specmountpoint->mnt_flag & MNT_SOFTDEP))
+		if (vp->v_rdev && vp->v_rdev->si_mountpoint != NULL &&
+		    (vp->v_rdev->si_mountpoint->mnt_flag & MNT_SOFTDEP))
 			softdep_fsync_mountdev(vp);
 	} else {
 		struct inode *ip;

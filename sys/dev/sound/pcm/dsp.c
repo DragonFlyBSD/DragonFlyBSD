@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/dsp.c,v 1.15.2.13 2002/08/30 13:53:03 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.5 2004/05/13 23:49:21 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.6 2004/05/19 22:52:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,7 +32,7 @@
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.5 2004/05/13 23:49:21 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.6 2004/05/19 22:52:50 dillon Exp $");
 
 #define OLDPCM_IOCTL
 
@@ -453,7 +453,8 @@ dsp_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 	if (IOCGROUP(cmd) == 'M') {
 		dev_t pdev;
 
-		pdev = makedev(SND_CDEV_MAJOR, PCMMKMINOR(PCMUNIT(i_dev), SND_DEV_CTL, 0));
+		pdev = make_adhoc_dev(&dsp_cdevsw, 
+				PCMMKMINOR(PCMUNIT(i_dev), SND_DEV_CTL, 0));
 		return mixer_ioctl(pdev, cmd, arg, mode, td);
 	}
 
@@ -575,7 +576,7 @@ dsp_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 			 	     (wrch? chn_getformats(wrch) : 0xffffffff);
 			if (rdch && wrch)
 				p->formats |= (dsp_get_flags(i_dev) & SD_F_SIMPLEX)? 0 : AFMT_FULLDUPLEX;
-			pdev = makedev(SND_CDEV_MAJOR, PCMMKMINOR(PCMUNIT(i_dev), SND_DEV_CTL, 0));
+			pdev = make_adhoc_dev(&dsp_cdevsw, PCMMKMINOR(PCMUNIT(i_dev), SND_DEV_CTL, 0));
 	    		p->mixers = 1; /* default: one mixer */
 	    		p->inputs = pdev->si_drv1? mix_getdevs(pdev->si_drv1) : 0;
 	    		p->left = p->right = 100;
@@ -1049,6 +1050,7 @@ dsp_mmap(dev_t i_dev, vm_offset_t offset, int nprot)
 int
 dsp_register(int unit, int channel)
 {
+	cdevsw_add(&dsp_cdevsw, PCMMKMINOR(-1, 0, 0), PCMMKMINOR(unit, 0, 0));
 	make_dev(&dsp_cdevsw, PCMMKMINOR(unit, SND_DEV_DSP, channel),
 		 UID_ROOT, GID_WHEEL, 0666, "dsp%d.%d", unit, channel);
 	make_dev(&dsp_cdevsw, PCMMKMINOR(unit, SND_DEV_DSP16, channel),
@@ -1071,26 +1073,14 @@ dsp_registerrec(int unit, int channel)
 int
 dsp_unregister(int unit, int channel)
 {
-	dev_t pdev;
-
-	pdev = makedev(SND_CDEV_MAJOR, PCMMKMINOR(unit, SND_DEV_DSP, channel));
-	destroy_dev(pdev);
-	pdev = makedev(SND_CDEV_MAJOR, PCMMKMINOR(unit, SND_DEV_DSP16, channel));
-	destroy_dev(pdev);
-	pdev = makedev(SND_CDEV_MAJOR, PCMMKMINOR(unit, SND_DEV_AUDIO, channel));
-	destroy_dev(pdev);
-
+	cdevsw_remove(&dsp_cdevsw,
+			PCMMKMINOR(-1, 0, 0), PCMMKMINOR(unit, 0, 0));
 	return 0;
 }
 
 int
 dsp_unregisterrec(int unit, int channel)
 {
-	dev_t pdev;
-
-	pdev = makedev(SND_CDEV_MAJOR, PCMMKMINOR(unit, SND_DEV_DSPREC, channel));
-	destroy_dev(pdev);
-
 	return 0;
 }
 
@@ -1124,7 +1114,7 @@ dsp_clone(void *arg, char *name, int namelen, dev_t *dev)
 
 	cont = 1;
 	for (i = 0; cont; i++) {
-		pdev = makedev(SND_CDEV_MAJOR, PCMMKMINOR(unit, devtype, i));
+		pdev = make_adhoc_dev(&dsp_cdevsw, PCMMKMINOR(unit, devtype, i));
 		if (pdev->si_flags & SI_NAMED) {
 			if ((pdev->si_drv1 == NULL) && (pdev->si_drv2 == NULL)) {
 				*dev = pdev;

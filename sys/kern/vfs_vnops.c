@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.19 2004/05/13 23:49:23 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.20 2004/05/19 22:52:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -538,9 +538,18 @@ vn_stat(struct vnode *vp, struct stat *sb, struct thread *td)
 	if (vap->va_type == VREG) {
 		sb->st_blksize = vap->va_blocksize;
 	} else if (vn_isdisk(vp, NULL)) {
-		sb->st_blksize = vp->v_rdev->si_bsize_best;
-		if (sb->st_blksize < vp->v_rdev->si_bsize_phys)
-			sb->st_blksize = vp->v_rdev->si_bsize_phys;
+		/*
+		 * XXX this is broken.  If the device is not yet open (aka
+		 * stat() call, aka v_rdev == NULL), how are we supposed
+		 * to get a valid block size out of it?
+		 */
+		dev_t dev;
+
+		if ((dev = vp->v_rdev) == NULL)
+			dev = udev2dev(vp->v_udev, vp->v_type == VBLK);
+		sb->st_blksize = dev->si_bsize_best;
+		if (sb->st_blksize < dev->si_bsize_phys)
+			sb->st_blksize = dev->si_bsize_phys;
 		if (sb->st_blksize < BLKDEV_IOSIZE)
 			sb->st_blksize = BLKDEV_IOSIZE;
 	} else {

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.h,v 1.11.2.5 2002/03/18 08:37:34 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-tape.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-tape.h,v 1.3 2004/05/19 22:52:41 dillon Exp $
  */
 
 /* ATAPI tape drive Capabilities and Mechanical Status Page */
@@ -159,5 +159,4 @@ struct ast_softc {
     struct atapi_params		*param;		/* drive parameters table */
     struct ast_cappage		cap;		/* capabilities page info */
     struct devstat		stats;		/* devstat entry */
-    dev_t			dev1, dev2;	/* device place holders */
 };

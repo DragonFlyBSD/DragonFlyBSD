@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.95 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.13 2004/05/13 23:49:14 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.14 2004/05/19 22:52:39 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -317,14 +317,16 @@ USB_ATTACH(usb)
 	usb_create_event_thread(sc);
 	/* The per controller devices (used for usb_discover) */
 	/* XXX This is redundant now, but old usbd's will want it */
-	make_dev(&usb_cdevsw, device_get_unit(self), UID_ROOT, GID_OPERATOR,
-		0660, "usb%d", device_get_unit(self));
 	if (!global_init_done) {
 		/* The device spitting out events */
+		cdevsw_add(&usb_cdevsw, -1, USB_DEV_MINOR);
 		make_dev(&usb_cdevsw, USB_DEV_MINOR, UID_ROOT, GID_OPERATOR,
 			0660, "usb");
 		global_init_done = 1;
 	}
+	cdevsw_add(&usb_cdevsw, -1, device_get_unit(self));
+	make_dev(&usb_cdevsw, device_get_unit(self), UID_ROOT, GID_OPERATOR,
+		0660, "usb%d", device_get_unit(self));
 #endif
 
 	USB_ATTACH_SUCCESS_RETURN;

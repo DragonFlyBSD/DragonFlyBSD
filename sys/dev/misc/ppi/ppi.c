@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppi.c,v 1.21.2.3 2000/08/07 18:24:43 peter Exp $
- * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.7 2004/05/13 23:49:17 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.8 2004/05/19 22:52:43 dillon Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -181,6 +181,7 @@ ppi_attach(device_t dev)
 						&zero, irq, irq, 1, RF_ACTIVE);
 #endif /* PERIPH_1284 */
 
+	cdevsw_add(&ppi_cdevsw, -1, device_get_unit(dev));
 	make_dev(&ppi_cdevsw, device_get_unit(dev),	/* XXX cleanup */
 		 UID_ROOT, GID_WHEEL,
 		 0600, "ppi%d", device_get_unit(dev));

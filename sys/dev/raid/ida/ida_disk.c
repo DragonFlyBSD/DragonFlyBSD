@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_disk.c,v 1.12.2.6 2001/11/27 20:21:02 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.7 2004/05/13 23:49:18 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.8 2004/05/19 22:52:47 dillon Exp $
  */
 
 /*
@@ -200,17 +200,13 @@ done:
 }
 
 static int
-idad_dump(dev_t dev)
+idad_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
 {
 	struct idad_softc *drv;
-	u_int count, blkno, secsize;
 	long blkcnt;
 	int i, error, dumppages;
         caddr_t va;
 	vm_offset_t addr, a;
-
-	if ((error = disk_dumpcheck(dev, &count, &blkno, &secsize)))
-		return (error);
 
 	drv = idad_getsoftc(dev);
 	if (drv == NULL)

@@ -27,7 +27,7 @@
  * Copyright (c) 2000 Andrew Miklic, Andrew Gallatin, and Thomas V. Crimi
  *
  * $FreeBSD: src/sys/dev/gfb/gfb_pci.c,v 1.1.2.1 2001/11/01 08:33:15 obrien Exp $
- * $DragonFly: src/sys/dev/video/gfb/Attic/gfb_pci.c,v 1.4 2003/08/07 21:17:16 dillon Exp $
+ * $DragonFly: src/sys/dev/video/gfb/Attic/gfb_pci.c,v 1.5 2004/05/19 22:52:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -245,7 +245,7 @@ pcigfb_detach(device_t dev)
 
 	sc = device_get_softc(dev);
 #ifdef FB_INSTALL_CDEV
-	destroy_dev(sc->devt);
+	fb_detach(sc->devt, sc->adp);
 #endif /*FB_INSTALL_CDEV*/
 	bus_teardown_intr(dev, sc->irq, sc->intrhand);
 	rid = 0x0;

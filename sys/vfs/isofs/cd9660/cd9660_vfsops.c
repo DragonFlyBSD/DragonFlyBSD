@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.14 2004/04/24 04:32:04 drhodus Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.15 2004/05/19 22:53:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -268,7 +268,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	struct iso_mnt *isomp = (struct iso_mnt *)0;
 	struct buf *bp = NULL;
 	struct buf *pribp = NULL, *supbp = NULL;
-	dev_t dev = devvp->v_rdev;
+	dev_t dev;
 	int error = EINVAL;
 	int needclose = 0;
 	int high_sierra = 0;
@@ -293,7 +293,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	 */
 	if ((error = vfs_mountedon(devvp)))
 		return error;
-	if (vcount(devvp) > 1 && devvp != rootvp)
+	if (count_udev(devvp) > 0 && devvp != rootvp)
 		return EBUSY;
 	if ((error = vinvalbuf(devvp, V_SAVE, td, 0, 0)))
 		return (error);
@@ -303,8 +303,9 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	VOP_UNLOCK(devvp, NULL, 0, td);
 	if (error)
 		return error;
-	if (devvp->v_rdev->si_iosize_max != 0)
-		mp->mnt_iosize_max = devvp->v_rdev->si_iosize_max;
+	dev = devvp->v_rdev;
+	if (dev->si_iosize_max != 0)
+		mp->mnt_iosize_max = dev->si_iosize_max;
 	if (mp->mnt_iosize_max > MAXPHYS)
 		mp->mnt_iosize_max = MAXPHYS;
 
@@ -440,7 +441,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	isomp->im_dev = dev;
 	isomp->im_devvp = devvp;
 
-	devvp->v_specmountpoint = mp;
+	dev->si_mountpoint = mp;
 
 	/* Check the Rock Ridge Extention support */
 	if (!(argp->flags & ISOFSMNT_NORRIP)) {
@@ -507,7 +508,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 
 	return 0;
 out:
-	devvp->v_specmountpoint = NULL;
+	dev->si_mountpoint = NULL;
 	if (bp)
 		brelse(bp);
 	if (pribp)
@@ -544,7 +545,7 @@ cd9660_unmount(struct mount *mp, int mntflags, struct thread *td)
 
 	isomp = VFSTOISOFS(mp);
 
-	isomp->im_devvp->v_specmountpoint = NULL;
+	isomp->im_devvp->v_rdev->si_mountpoint = NULL;
 	error = VOP_CLOSE(isomp->im_devvp, FREAD, td);
 	vrele(isomp->im_devvp);
 	free((caddr_t)isomp, M_ISOFSMNT);

@@ -21,7 +21,7 @@
  *
  * Version 1.3, Thu Nov 11 12:09:13 MSK 1993
  * $FreeBSD: src/sys/i386/isa/wt.c,v 1.57.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.7 2004/05/13 23:49:15 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.8 2004/05/19 22:52:42 dillon Exp $
  *
  */
 
@@ -208,10 +208,6 @@ static int
 wtprobe (struct isa_device *id)
 {
 	wtinfo_t *t = wttab + id->id_unit;
-	static int once;
-
-	if (!once++)
-		cdevsw_add(&wt_cdevsw);
 
 	t->unit = id->id_unit;
 	t->chan = id->id_drq;
@@ -268,6 +264,7 @@ wtattach (struct isa_device *id)
 	t->dens = -1;                           /* unknown density */
 	isa_dmainit(t->chan, 1024);
 
+	cdevsw_add(&wt_cdevsw, -1, id->id_unit);
 	make_dev(&wt_cdevsw, id->id_unit, 0, 0, 0600, "rwt%d", id->id_unit);
 	return (1);
 }

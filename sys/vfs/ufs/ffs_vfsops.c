@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.17 2004/05/18 00:16:46 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.18 2004/05/19 22:53:06 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -316,18 +316,22 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 		 ********************
 		 * UPDATE
 		 * If it's not the same vnode, or at least the same device
-		 * then it's not correct.
+		 * then it's not correct.  NOTE: devvp->v_rdev may be NULL
+		 * since we haven't opened it, so we compare udev instead.
 		 ********************
 		 */
-
 		if (devvp != ump->um_devvp) {
-			if ( devvp->v_rdev == ump->um_devvp->v_rdev) {
+			if (devvp->v_udev == ump->um_devvp->v_udev) {
 				vrele(devvp);
 			} else {
+				printf("cannot update mount, udev does"
+					" not match %08x vs %08x\n",
+					devvp->v_udev, ump->um_devvp->v_udev);
 				err = EINVAL;	/* needs translation */
 			}
-		} else
+		} else {
 			vrele(devvp);
+		}
 		/*
 		 * Update device name only on success
 		 */
@@ -459,7 +463,6 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 		panic("ffs_reload: dirty1");
 
 	dev = devvp->v_rdev;
-
 	/*
 	 * Only VMIO the backing device if the backing device is a real
 	 * block device.  See ffs_mountmfs() for more details.
@@ -617,9 +620,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	int32_t *lp;
 	u_int64_t maxfilesize;					/* XXX */
 	size_t strsize;
-	int ncount;
 
-	dev = devvp->v_rdev;
 	/*
 	 * Disallow multiple mounts of the same device.
 	 * Disallow mounting of a device that is currently in use
@@ -629,9 +630,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	error = vfs_mountedon(devvp);
 	if (error)
 		return (error);
-	ncount = vcount(devvp);
-
-	if (ncount > 1 && devvp != rootvp)
+	if (count_udev(devvp->v_udev) > 0 && devvp != rootvp)
 		return (EBUSY);
 	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
@@ -658,8 +657,9 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	VOP_UNLOCK(devvp, NULL, 0, td);
 	if (error)
 		return (error);
-	if (devvp->v_rdev->si_iosize_max != 0)
-		mp->mnt_iosize_max = devvp->v_rdev->si_iosize_max;
+	dev = devvp->v_rdev;
+	if (dev->si_iosize_max != 0)
+		mp->mnt_iosize_max = dev->si_iosize_max;
 	if (mp->mnt_iosize_max > MAXPHYS)
 		mp->mnt_iosize_max = MAXPHYS;
 
@@ -768,7 +768,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	ump->um_seqinc = fs->fs_frag;
 	for (i = 0; i < MAXQUOTAS; i++)
 		ump->um_quotas[i] = NULLVP;
-	devvp->v_specmountpoint = mp;
+	dev->si_mountpoint = mp;
 	ffs_oldfscompat(fs);
 
 	/*
@@ -808,10 +808,10 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	}
 	return (0);
 out:
-	devvp->v_specmountpoint = NULL;
+	dev->si_mountpoint = NULL;
 	if (bp)
 		brelse(bp);
-	(void)VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, td);
+	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, td);
 	if (ump) {
 		free(ump->um_fs, M_UFSMNT);
 		free(ump, M_UFSMNT);
@@ -881,7 +881,7 @@ ffs_unmount(struct mount *mp, int mntflags, struct thread *td)
 			return (error);
 		}
 	}
-	ump->um_devvp->v_specmountpoint = NULL;
+	ump->um_devvp->v_rdev->si_mountpoint = NULL;
 
 	vinvalbuf(ump->um_devvp, V_SAVE, td, 0, 0);
 	error = VOP_CLOSE(ump->um_devvp, fs->fs_ronly ? FREAD : FREAD|FWRITE, td);

@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/amr/amr_disk.c,v 1.5.2.5 2002/12/20 15:12:04 emoore Exp $
- * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.8 2004/05/13 23:49:18 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.9 2004/05/19 22:52:46 dillon Exp $
  */
 
 /*
@@ -195,12 +195,11 @@ amrd_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
  * System crashdump support
  */
 int
-amrd_dump(dev_t dev)
+amrd_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
 {
     
     struct amrd_softc	*amrd_sc = (struct amrd_softc *)dev->si_drv1;
     struct amr_softc	*amr_sc;
-    u_int		count, blkno, secsize;
     vm_paddr_t		addr = 0;
     long		blkcnt;
     int			dumppages = MAXDUMPPGS;
@@ -209,9 +208,6 @@ amrd_dump(dev_t dev)
     int			i;
 
     debug_called(1);
-
-    if ((error = disk_dumpcheck(dev, &count, &blkno, &secsize)))
-        return(error);
 
     amr_sc  = (struct amr_softc *)amrd_sc->amrd_controller;
 

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.10 2004/05/13 23:49:20 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.11 2004/05/19 22:52:49 dillon Exp $
  */
 
 /* 
@@ -813,7 +813,6 @@ rp_attachcommon(CONTROLLER_T *ctlp, int num_aiops, int num_ports)
 	int	retval;
 	struct	rp_port *rp;
 	struct	tty	*tty;
-	dev_t	*dev_nodes;
 
 	unit = device_get_unit(ctlp->dev);
 
@@ -847,32 +846,26 @@ rp_attachcommon(CONTROLLER_T *ctlp, int num_aiops, int num_ports)
 	rp_addr(unit) = rp;
 	splx(oldspl);
 
-	dev_nodes = ctlp->dev_nodes = malloc(sizeof(*(ctlp->dev_nodes)) * rp_num_ports[unit] * 6, M_DEVBUF, M_NOWAIT | M_ZERO);
-	if(ctlp->dev_nodes == NULL) {
-		device_printf(ctlp->dev, "rp_attachcommon: Could not malloc device node structures.\n");
-		retval = ENOMEM;
-		goto nogo;
-	}
-
+	cdevsw_add(&rp_cdevsw, 0xffff0000, (unit + 1) << 16);
 	for (i = 0 ; i < rp_num_ports[unit] ; i++) {
-		*(dev_nodes++) = make_dev(&rp_cdevsw, ((unit + 1) << 16) | i,
-					  UID_ROOT, GID_WHEEL, 0666, "ttyR%c",
-					  i <= 9 ? '0' + i : 'a' + i - 10);
-		*(dev_nodes++) = make_dev(&rp_cdevsw, ((unit + 1) << 16) | i | 0x20,
-					  UID_ROOT, GID_WHEEL, 0666, "ttyiR%c",
-					  i <= 9 ? '0' + i : 'a' + i - 10);
-		*(dev_nodes++) = make_dev(&rp_cdevsw, ((unit + 1) << 16) | i | 0x40,
-					  UID_ROOT, GID_WHEEL, 0666, "ttylR%c",
-					  i <= 9 ? '0' + i : 'a' + i - 10);
-		*(dev_nodes++) = make_dev(&rp_cdevsw, ((unit + 1) << 16) | i | 0x80,
-					  UID_ROOT, GID_WHEEL, 0666, "cuaR%c",
-					  i <= 9 ? '0' + i : 'a' + i - 10);
-		*(dev_nodes++) = make_dev(&rp_cdevsw, ((unit + 1) << 16) | i | 0xa0,
-					  UID_ROOT, GID_WHEEL, 0666, "cuaiR%c",
-					  i <= 9 ? '0' + i : 'a' + i - 10);
-		*(dev_nodes++) = make_dev(&rp_cdevsw, ((unit + 1) << 16) | i | 0xc0,
-					  UID_ROOT, GID_WHEEL, 0666, "cualR%c",
-					  i <= 9 ? '0' + i : 'a' + i - 10);
+		make_dev(&rp_cdevsw, ((unit + 1) << 16) | i,
+			  UID_ROOT, GID_WHEEL, 0666, "ttyR%c",
+			  i <= 9 ? '0' + i : 'a' + i - 10);
+		make_dev(&rp_cdevsw, ((unit + 1) << 16) | i | 0x20,
+			  UID_ROOT, GID_WHEEL, 0666, "ttyiR%c",
+			  i <= 9 ? '0' + i : 'a' + i - 10);
+		make_dev(&rp_cdevsw, ((unit + 1) << 16) | i | 0x40,
+			  UID_ROOT, GID_WHEEL, 0666, "ttylR%c",
+			  i <= 9 ? '0' + i : 'a' + i - 10);
+		make_dev(&rp_cdevsw, ((unit + 1) << 16) | i | 0x80,
+			  UID_ROOT, GID_WHEEL, 0666, "cuaR%c",
+			  i <= 9 ? '0' + i : 'a' + i - 10);
+		make_dev(&rp_cdevsw, ((unit + 1) << 16) | i | 0xa0,
+			  UID_ROOT, GID_WHEEL, 0666, "cuaiR%c",
+			  i <= 9 ? '0' + i : 'a' + i - 10);
+		make_dev(&rp_cdevsw, ((unit + 1) << 16) | i | 0xc0,
+			  UID_ROOT, GID_WHEEL, 0666, "cualR%c",
+			  i <= 9 ? '0' + i : 'a' + i - 10);
 	}
 
 	port = 0;
@@ -950,12 +943,9 @@ rp_releaseresource(CONTROLLER_t *ctlp)
 		free(ctlp->tty, M_DEVBUF);
 		ctlp->tty = NULL;
 	}
-	if (ctlp->dev != NULL) {
-		for (i = 0 ; i < rp_num_ports[unit] * 6 ; i++)
-			destroy_dev(ctlp->dev_nodes[i]);
-		free(ctlp->dev_nodes, M_DEVBUF);
+	if (ctlp->dev != NULL)
 		ctlp->dev = NULL;
-	}
+	cdevsw_remove(&rp_cdevsw, 0xffff0000, (unit + 1) << 16);
 }
 
 int

@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/gsc.c,v 1.35.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.8 2004/05/13 23:49:22 dillon Exp $
+ * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.9 2004/05/19 22:52:54 dillon Exp $
  *
  */
 
@@ -387,10 +387,6 @@ gscprobe (struct isa_device *isdp)
   struct gsc_unit *scu = unittab + unit;
   int stb;
   struct gsc_geom geom = NEW_GEOM;
-  static int once;
-
-  if (!once++)
-	cdevsw_add(&gsc_cdevsw);
 
   scu->flags = FLAG_DEBUG;
 
@@ -533,6 +529,7 @@ gscattach(struct isa_device *isdp)
   scu->flags &= ~FLAG_DEBUG;
 #define GSC_UID 0
 #define GSC_GID 13
+  cdevsw_add(&gsc_cdevsw, 0xc0, unit << 6);
   make_dev(&gsc_cdevsw, unit<<6, GSC_UID, GSC_GID, 0666, "gsc%d", unit);
   make_dev(&gsc_cdevsw, ((unit<<6) + FRMT_PBM),
      GSC_UID,  GSC_GID, 0666, "gsc%dp", unit);

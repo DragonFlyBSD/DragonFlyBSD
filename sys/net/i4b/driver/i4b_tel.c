@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_tel.c,v 1.10.2.4 2001/12/16 15:12:57 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.8 2004/05/13 23:49:24 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.9 2004/05/19 22:53:00 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:07:05 2001]
  *
@@ -186,7 +186,7 @@ PSEUDO_SET(i4btelattach, i4b_tel);
 PDEVSTATIC void
 i4btelinit(void *unused)
 {
-	cdevsw_add(&i4btel_cdevsw);
+	cdevsw_add(&i4btel_cdevsw, 0, 0);
 }
 
 SYSINIT(i4bteldev, SI_SUB_DRIVERS,

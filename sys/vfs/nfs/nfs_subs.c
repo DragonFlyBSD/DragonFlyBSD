@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.16 2004/04/24 04:32:04 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.17 2004/05/19 22:53:05 dillon Exp $
  */
 
 /*
@@ -1178,7 +1178,8 @@ nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
 	struct nfsnode *np;
 	int32_t t1;
 	caddr_t cp2;
-	int error = 0, rdev;
+	int error = 0;
+	udev_t rdev;
 	struct mbuf *md;
 	enum vtype vtyp;
 	u_short vmode;
@@ -1226,7 +1227,7 @@ nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
 		/*
 		 * Really ugly NFSv2 kludge.
 		 */
-		if (vtyp == VCHR && rdev == 0xffffffff)
+		if (vtyp == VCHR && rdev == (udev_t)0xffffffff)
 			vtyp = VFIFO;
 	}
 

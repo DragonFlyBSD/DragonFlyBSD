@@ -39,7 +39,7 @@
  *
  * $Id: vinumvar.h,v 1.24 2000/03/01 02:34:57 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumvar.h,v 1.32.2.4 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumvar.h,v 1.4 2003/08/07 21:17:10 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumvar.h,v 1.5 2004/05/19 22:52:48 dillon Exp $
  */
 
 #include <sys/time.h>
@@ -108,18 +108,43 @@ enum constants {
 			      | (s << VINUM_SD_SHIFT)		\
 			      | (t << VINUM_TYPE_SHIFT) )
 
-    /* Create device minor numbers */
-#define VINUMDEV(v,p,s,t)  makedev (VINUM_CDEV_MAJOR, VINUMMINOR (v, p, s, t))
+/* Create device minor numbers */
 
-#define VINUM_PLEX(p)	makedev (VINUM_CDEV_MAJOR,				\
-				 (VINUM_RAWPLEX_TYPE << VINUM_TYPE_SHIFT) \
-				 | (p & 0xff)				\
-				 | ((p & ~0xff) << 8) )
+#ifdef _KERNEL
 
-#define VINUM_SD(s)	makedev (VINUM_CDEV_MAJOR,				\
-				 (VINUM_RAWSD_TYPE << VINUM_TYPE_SHIFT) \
-				 | (s & 0xff)				\
-				 | ((s & ~0xff) << 8) )
+#define VINUMDEV(v,p,s,t)  	\
+		make_adhoc_dev (&vinum_cdevsw, VINUMMINOR (v, p, s, t))
+
+#define VINUM_PLEX(p)		\
+		make_adhoc_dev (&vinum_cdevsw,			\
+		 (VINUM_RAWPLEX_TYPE << VINUM_TYPE_SHIFT) 	\
+		 | (p & 0xff)					\
+		 | ((p & ~0xff) << 8) )
+
+#define VINUM_SD(s)		\
+		make_adhoc_dev (&vinum_cdevsw,			\
+		 (VINUM_RAWSD_TYPE << VINUM_TYPE_SHIFT) 	\
+		 | (s & 0xff)					\
+		 | ((s & ~0xff) << 8) )
+
+#else
+
+#define VINUMDEV(v,p,s,t)  	\
+		makedev(VINUM_CDEV_MAJOR, VINUMMINOR (v, p, s, t))
+
+#define VINUM_PLEX(p)		\
+		makedev(VINUM_CDEV_MAJOR,			\
+		 (VINUM_RAWPLEX_TYPE << VINUM_TYPE_SHIFT) 	\
+		 | (p & 0xff)					\
+		 | ((p & ~0xff) << 8) )
+
+#define VINUM_SD(s)		\
+		makedev(VINUM_CDEV_MAJOR,			\
+		 (VINUM_RAWSD_TYPE << VINUM_TYPE_SHIFT) 	\
+		 | (s & 0xff)					\
+		 | ((s & ~0xff) << 8) )
+
+#endif
 
     /* Create a bit mask for x bits */
 #define MASK(x)	 ((1 << (x)) - 1)
@@ -129,8 +154,6 @@ enum constants {
 			  | ((d & ~MASK (VINUM_VOL_WIDTH))			\
 			     << (VINUM_PLEX_SHIFT + VINUM_VOL_WIDTH))		\
 			  | (t << VINUM_TYPE_SHIFT) )
-
-#define VINUMRBDEV(d,t)	makedev (VINUM_BDEV_MAJOR, VINUMRMINOR (d, t))
 
     /* extract device type */
 #define DEVTYPE(x) ((minor (x) >> VINUM_TYPE_SHIFT) & 7)

@@ -35,7 +35,7 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
- * $DragonFly: src/sys/i386/isa/Attic/asc.c,v 1.7 2004/05/13 23:49:23 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/asc.c,v 1.8 2004/05/19 22:52:57 dillon Exp $
  */
 
 #include "use_asc.h"
@@ -363,10 +363,6 @@ ascprobe (struct isa_device *isdp)
   int unit = isdp->id_unit;
   struct asc_unit *scu = unittab + unit;
   int stb;
-  static int once;
-
-  if (!once++)
-      cdevsw_add(&asc_cdevsw);
 
   scu->base = isdp->id_iobase; /*** needed by the following macros ***/
   scu->flags = FLAG_DEBUG;
@@ -483,6 +479,7 @@ ascattach(struct isa_device *isdp)
     scu->selp.si_pid=(pid_t)0;
 #define ASC_UID 0
 #define ASC_GID 13
+  cdevsw_add(&asc_cdevsw, 0xc0, unit << 6);
   make_dev(&asc_cdevsw, unit<<6, ASC_UID, ASC_GID, 0666, "asc%d", unit);
   make_dev(&asc_cdevsw, ((unit<<6) + FRMT_PBM),
     ASC_UID,  ASC_GID, 0666, "asc%dp", unit);

@@ -36,7 +36,7 @@
  *	@(#)null_subr.c	8.7 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null_subr.c,v 1.21.2.4 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.9 2004/04/24 04:32:04 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.10 2004/05/19 22:53:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -177,7 +177,7 @@ null_node_alloc(struct mount *mp, struct vnode *lowervp, struct vnode **vpp)
 	 * This still needs to be investigated.
 	 */
 	if (vp->v_type == VCHR || vp->v_type == VBLK)
-		addalias(vp, lowervp->v_un.vu_spec.vu_specinfo);
+		addaliasu(vp, lowervp->v_udev);
 	else
 		vp->v_un = lowervp->v_un;
 	lockinit(&xp->null_lock, 0, "nullnode", 0, LK_CANRECURSE);

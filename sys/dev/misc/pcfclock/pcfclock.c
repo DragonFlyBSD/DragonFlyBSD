@@ -22,7 +22,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/pcfclock.c,v 1.3.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.6 2004/05/13 23:49:16 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.7 2004/05/19 22:52:43 dillon Exp $
  *
  */
 
@@ -152,6 +152,7 @@ pcfclock_attach(device_t dev)
 	
 	unit = device_get_unit(dev);
 
+	cdevsw_add(&pcfclock_cdevsw, -1, unit);
 	make_dev(&pcfclock_cdevsw, unit,
 			UID_ROOT, GID_WHEEL, 0444, PCFCLOCK_NAME "%d", unit);
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agppriv.h,v 1.3.2.1 2000/07/19 09:48:04 ru Exp $
- *	$DragonFly: src/sys/dev/agp/agppriv.h,v 1.3 2003/08/07 21:16:48 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agppriv.h,v 1.4 2004/05/19 22:52:40 dillon Exp $
  */
 
 #ifndef _PCI_AGPPRIV_H_
@@ -76,7 +76,6 @@ struct agp_softc {
 	struct agp_memory_list	as_memory;	/* list of allocated memory */
 	int			as_nextid;	/* next memory block id */
 	int			as_isopen;	/* user device is open */
-	dev_t			as_devnode;	/* from make_dev */
 	struct lock		as_lock;	/* lock for access to GATT */
 };
 

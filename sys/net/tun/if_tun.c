@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.13 2004/05/13 23:49:24 dillon Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.14 2004/05/19 22:53:01 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -98,11 +98,9 @@ static struct cdevsw tun_cdevsw = {
 };
 
 static void
-tunattach(dummy)
-	void *dummy;
+tunattach(void *dummy)
 {
-
-	cdevsw_add(&tun_cdevsw);
+	cdevsw_add(&tun_cdevsw, 0, 0);
 }
 
 static void

@@ -29,7 +29,7 @@
  * netgraph node.
  *
  * $FreeBSD: src/sys/netgraph/ng_device.c,v 1.1.2.1 2002/08/23 07:15:44 julian Exp $
- * $DragonFly: src/sys/netgraph/ng_device.c,v 1.4 2004/05/13 23:49:24 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ng_device.c,v 1.5 2004/05/19 22:53:01 dillon Exp $
  *
  */
 
@@ -151,13 +151,14 @@ ng_device_mod_event(module_t mod, int event, void *data)
 
 	switch (event) {
 		case MOD_LOAD:
+			cdevsw_add(&ngd_cdevsw, 0, 0);
 			ng_device_init();
 			break;
 
 		case MOD_UNLOAD:
 			/* XXX do we need to do something specific ? */
 			/* ng_device_breakdown */
-			/* cdevsw_remove(&ngd_cdevsw);*/
+			cdevsw_remove(&ngd_cdevsw, 0, 0);
 			error = EBUSY; /* no unload! */
 			break;
 
@@ -193,7 +194,6 @@ ng_device_init()
                 return(ENXIO);
         }
         NG_NODE_SET_PRIVATE(sc->node, sc);
-	cdevsw_add(&ngd_cdevsw);
 
 	return(0);
 }

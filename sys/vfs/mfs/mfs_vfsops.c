@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.14 2004/05/13 23:49:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.15 2004/05/19 22:53:04 dillon Exp $
  */
 
 
@@ -49,6 +49,7 @@
 #include <sys/vnode.h>
 #include <sys/malloc.h>
 #include <sys/linker.h>
+#include <sys/fcntl.h>
 
 #include <sys/buf2.h>
 
@@ -65,8 +66,6 @@
 MALLOC_DEFINE(M_MFSNODE, "MFS node", "MFS vnode private part");
 
 
-static int mfs_minor;		/* used for building internal dev_t */
-
 extern vop_t **mfs_vnodeop_p;
 
 static int	mfs_mount (struct mount *mp,
@@ -77,6 +76,10 @@ static int	mfs_statfs (struct mount *mp, struct statfs *sbp,
 			struct thread *td);
 static int	mfs_init (struct vfsconf *);
 
+d_open_t	mfsopen;
+d_close_t	mfsclose;
+d_strategy_t	mfsstrategy;
+
 #define MFS_CDEV_MAJOR	253
 
 static struct cdevsw mfs_cdevsw = {
@@ -86,14 +89,14 @@ static struct cdevsw mfs_cdevsw = {
 	/* port */	NULL,
 	/* clone */	NULL,
 
-	/* open */      noopen,
-	/* close */     noclose,
+	/* open */      mfsopen,
+	/* close */     mfsclose,
 	/* read */      physread,
 	/* write */     physwrite,
 	/* ioctl */     noioctl,
 	/* poll */      nopoll,
 	/* mmap */      nommap,
-	/* strategy */  nostrategy,
+	/* strategy */  mfsstrategy,
 	/* dump */      nodump,
 	/* psize */     nopsize
 };
@@ -120,6 +123,54 @@ static struct vfsops mfs_vfsops = {
 
 VFS_SET(mfs_vfsops, mfs, 0);
 
+/*
+ * We allow the underlying MFS block device to be opened and read.
+ */
+int
+mfsopen(dev_t dev, int flags, int mode, struct thread *td)
+{
+	if (flags & FWRITE)
+		return(EROFS);
+	if (dev->si_drv1)
+		return(0);
+	return(ENXIO);
+}
+
+int
+mfsclose(dev_t dev, int flags, int mode, struct thread *td)
+{
+	return(0);
+}
+
+void
+mfsstrategy(struct buf *bp)
+{
+	struct mfsnode *mfsp;
+
+	if ((mfsp = bp->b_dev->si_drv1) != NULL) {
+		off_t boff = (off_t)bp->b_blkno << DEV_BSHIFT;
+		off_t eoff = boff + bp->b_bcount;
+
+		if (eoff <= mfsp->mfs_size) {
+			bufq_insert_tail(&mfsp->buf_queue, bp);
+			wakeup((caddr_t)mfsp);
+		} else if (boff < mfsp->mfs_size) {
+			bp->b_bcount = mfsp->mfs_size - boff;
+			bufq_insert_tail(&mfsp->buf_queue, bp);
+			wakeup((caddr_t)mfsp);
+		} else if (boff == mfsp->mfs_size) {
+			bp->b_resid = bp->b_bcount;
+			biodone(bp);
+		} else {
+			bp->b_error = EINVAL;
+			biodone(bp);
+		}
+	} else {
+		bp->b_error = ENXIO;
+		bp->b_flags |= B_ERROR;
+		biodone(bp);
+	}
+}
 
 /*
  * mfs_mount
@@ -170,6 +221,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	struct mfsnode *mfsp;
 	size_t size;
 	int flags, err;
+	int minnum;
 	dev_t dev;
 
 	/*
@@ -243,16 +295,23 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 		FREE(mfsp, M_MFSNODE);
 		goto error_1;
 	}
+
+	minnum = (curproc->p_pid & 0xFF) |
+		((curproc->p_pid & ~0xFF) << 8);
+
 	devvp->v_type = VCHR;
-	dev = make_dev(&mfs_cdevsw, mfs_minor, 0, 0, 0, "MFS%d", mfs_minor);
+	dev = make_dev(&mfs_cdevsw, minnum, UID_ROOT, GID_WHEEL, 0600,
+			"MFS%d", minnum >> 16);
 	/* It is not clear that these will get initialized otherwise */
 	dev->si_bsize_phys = DEV_BSIZE;
 	dev->si_iosize_max = DFLTPHYS;
-	addaliasu(devvp, makeudev(253, mfs_minor++));
+	dev->si_drv1 = mfsp;
+	addaliasu(devvp, makeudev(MFS_CDEV_MAJOR, minnum));
 	devvp->v_data = mfsp;
 	mfsp->mfs_baseoff = args.base;
 	mfsp->mfs_size = args.size;
 	mfsp->mfs_vnode = devvp;
+	mfsp->mfs_dev = reference_dev(dev);
 	mfsp->mfs_td = td;
 	mfsp->mfs_active = 1;
 	bufq_init(&mfsp->buf_queue);
@@ -365,10 +424,12 @@ mfs_start(struct mount *mp, int flags, struct thread *td)
 					SIGDELSET(td->td_proc->p_siglist, sig);
 			}
 		}
-		else if (tsleep((caddr_t)vp, PCATCH, "mfsidl", 0))
+		else if (tsleep((caddr_t)mfsp, PCATCH, "mfsidl", 0))
 			gotsig++;	/* try to unmount in next pass */
 	}
 	PRELE(curproc);
+	v_release_rdev(vp);	/* hack because we do not implement CLOSE */
+	/* XXX destroy/release devvp */
 	return (0);
 }
 
@@ -391,6 +452,6 @@ mfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 static int
 mfs_init(struct vfsconf *vfsp)
 {
-	cdevsw_add(&mfs_cdevsw);
+	cdevsw_add(&mfs_cdevsw, 0, 0);
 	return (0);
 }

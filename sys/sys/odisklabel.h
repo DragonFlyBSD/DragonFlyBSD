@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/Attic/odisklabel.h,v 1.5 2004/03/04 01:37:57 dillon Exp $
+ * $DragonFly: src/sys/sys/Attic/odisklabel.h,v 1.6 2004/05/19 22:53:02 dillon Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -42,6 +42,7 @@
 #include <sys/types.h>
 #endif
 #include <sys/ioccom.h>
+#include <sys/conf.h>
 
 /*
  * Disk description table, see disktab(5)
@@ -384,6 +385,19 @@ struct partinfo {
 				(((slice) << 16) | (((unit) & 0x1e0) << 16) | \
 				(((unit) & 0x1f) << 3) | (part & 7) | \
 				((part & 0x08) << 17))
+
+static __inline u_int
+dkunitmask(void)
+{
+	return (0x01e000f8);
+}
+
+static __inline u_int
+dkmakeunit(int unit)
+{
+	return(dkmakeminor(unit, 0, 0));
+}
+
 static __inline dev_t
 dkmodpart(dev_t dev, int part)
 {
@@ -393,13 +407,13 @@ dkmodpart(dev_t dev, int part)
 		val = (part & 7);
 	else
 		val = (part & 7) | 0x100000;
-	return (makedev(major(dev), (minor(dev) & ~0x100007) | val));
+	return (make_sub_dev(dev, (minor(dev) & ~0x100007) | val));
 }
 
 static __inline dev_t
 dkmodslice(dev_t dev, int slice)
 {
-	return (makedev(major(dev), (minor(dev) & ~0x0f0000) | (slice << 16)));
+	return (make_sub_dev(dev, (minor(dev) & ~0x0f0000) | (slice << 16)));
 }
 
 static __inline int

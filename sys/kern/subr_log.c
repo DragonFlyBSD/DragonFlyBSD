@@ -32,7 +32,7 @@
  *
  *	@(#)subr_log.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/subr_log.c,v 1.39.2.2 2001/06/02 08:11:25 phk Exp $
- * $DragonFly: src/sys/kern/subr_log.c,v 1.6 2004/05/13 23:49:23 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_log.c,v 1.7 2004/05/19 22:52:58 dillon Exp $
  */
 
 /*
@@ -265,7 +265,7 @@ logioctl(dev_t dev, u_long com, caddr_t data, int flag, struct thread *td)
 static void
 log_drvinit(void *unused)
 {
-
+	cdevsw_add(&log_cdevsw, 0, 0);
 	make_dev(&log_cdevsw, 0, UID_ROOT, GID_WHEEL, 0600, "klog");
 }
 

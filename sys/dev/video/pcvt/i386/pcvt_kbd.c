@@ -48,7 +48,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:01:50 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_kbd.c,v 1.32.2.1 2000/10/29 16:59:28 dwmalone Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_kbd.c,v 1.4 2003/08/07 21:17:16 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_kbd.c,v 1.5 2004/05/19 22:52:54 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -1263,8 +1263,12 @@ loop:
 				}
 				move;
 				struct timeval now;
-				dev_t dummy = makedev(0, mouse.minor);
-				struct tty *mousetty = get_pccons(dummy);
+				dev_t dummy;
+				struct tty *mousetty;
+
+				dummy = make_adhoc_dev(&pc_cdevsw, mouse.minor);
+				mousetty = get_pccons(dummy);
+
 				/*
 				 * strings to send for each mouse event,
 				 * indexed by the movement direction and

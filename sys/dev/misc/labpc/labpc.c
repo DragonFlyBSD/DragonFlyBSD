@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.7 2004/05/13 23:49:16 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.8 2004/05/19 22:52:43 dillon Exp $
  *
  */
 
@@ -413,7 +413,6 @@ labpcinit(void)
 	if (labpcs) {
 		return 1;
 	}
-	cdevsw_add(&labpc_cdevsw);
 	return 0;
 }
 
@@ -491,7 +490,9 @@ labpcattach(struct isa_device *dev)
 	ctlr->dcr_is = 0x80;
 	loutb(DCR(ctlr), ctlr->dcr_val);
 
-	make_dev(&labpc_cdevsw, 0, 0, 0, 0600, "labpc%d", dev->id_unit);
+	cdevsw_add(&labpc_cdevsw, -1, dev->id_unit);
+	make_dev(&labpc_cdevsw, dev->id_unit, 0, 0, 0600, 
+		"labpc%d", dev->id_unit);
 	return 1;
 }
 

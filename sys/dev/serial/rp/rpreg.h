@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rpreg.h,v 1.4.2.1 2002/06/18 03:11:46 obrien Exp $
- * $DragonFly: src/sys/dev/serial/rp/rpreg.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rpreg.h,v 1.3 2004/05/19 22:52:49 dillon Exp $
  */
 
 /*
@@ -370,9 +370,6 @@ struct CONTROLLER_str
 
 	struct rp_port		*rp;		/* port */
 	struct tty		*tty;		/* tty */
-
-	/* Device nodes */
-	dev_t			*dev_nodes;
 
 	/* Bus-specific properties */
 	void			*bus_ctlp;

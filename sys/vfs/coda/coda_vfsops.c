@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.13 2004/03/31 02:34:37 cpressey Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.14 2004/05/19 22:53:04 dillon Exp $
  * 
  */
 
@@ -118,7 +118,7 @@ coda_mount(struct mount *vfsp,	/* Allocated and initialized by mount(2) */
 {
     struct vnode *dvp;
     struct cnode *cp;
-    dev_t dev;
+    udev_t udev;
     struct coda_mntinfo *mi;
     struct vnode *rootvp;
     ViceFid rootfid;
@@ -151,7 +151,7 @@ coda_mount(struct mount *vfsp,	/* Allocated and initialized by mount(2) */
 	NDFREE(ndp, NDF_ONLY_PNBUF);
 	return(ENXIO);
     }
-    dev = dvp->v_rdev;
+    udev = dvp->v_rdev;
     vrele(dvp);
     NDFREE(ndp, NDF_ONLY_PNBUF);
 
@@ -166,7 +166,7 @@ coda_mount(struct mount *vfsp,	/* Allocated and initialized by mount(2) */
     }
 #endif
     
-    if (minor(dev) >= NVCODA || minor(dev) < 0) {
+    if (uminor(udev) >= NVCODA || uminor(udev) < 0) {
 	MARK_INT_FAIL(CODA_MOUNT_STATS);
 	return(ENXIO);
     }
@@ -174,7 +174,7 @@ coda_mount(struct mount *vfsp,	/* Allocated and initialized by mount(2) */
     /*
      * Initialize the mount record and link it to the vfs struct
      */
-    mi = &coda_mnttbl[minor(dev)];
+    mi = &coda_mnttbl[uminor(udev)];
     
     if (!VC_OPEN(&mi->mi_vcomm)) {
 	MARK_INT_FAIL(CODA_MOUNT_STATS);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.5 2002/03/07 09:57:02 msmith Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.9 2004/05/13 23:49:19 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.10 2004/05/19 22:52:48 dillon Exp $
  */
 
 /*
@@ -200,6 +200,7 @@ twe_attach(device_t dev)
     struct twe_softc	*sc;
     int			rid, error;
     u_int32_t		command;
+    dev_t		xdev;
 
     debug_called(4);
 
@@ -310,9 +311,12 @@ twe_attach(device_t dev)
     /*
      * Create the control device.
      */
-    sc->twe_dev_t = make_dev(&twe_cdevsw, device_get_unit(sc->twe_dev), UID_ROOT, GID_OPERATOR,
-			     S_IRUSR | S_IWUSR, "twe%d", device_get_unit(sc->twe_dev));
-    sc->twe_dev_t->si_drv1 = sc;
+    cdevsw_add(&twe_cdevsw, -1, device_get_unit(sc->twe_dev));
+    xdev = make_dev(&twe_cdevsw, device_get_unit(sc->twe_dev), 
+			    UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR, 
+			    "twe%d", device_get_unit(sc->twe_dev));
+    xdev->si_drv1 = sc;
+
     /*
      * Schedule ourselves to bring the controller up once interrupts are available.
      * This isn't strictly necessary, since we disable interrupts while probing the
@@ -364,9 +368,7 @@ twe_free(struct twe_softc *sc)
     if (sc->twe_io != NULL)
 	bus_release_resource(sc->twe_dev, SYS_RES_IOPORT, TWE_IO_CONFIG_REG, sc->twe_io);
 
-    /* destroy control device */
-    if (sc->twe_dev_t != (dev_t)NULL)
-	destroy_dev(sc->twe_dev_t);
+    cdevsw_remove(&twe_cdevsw, -1, device_get_unit(sc->twe_dev));
 
     sysctl_ctx_free(&sc->sysctl_ctx);
 }
@@ -727,19 +729,15 @@ twed_strategy(twe_bio *bp)
  * System crashdump support
  */
 int
-twed_dump(dev_t dev)
+twed_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
 {
     struct twed_softc	*twed_sc = (struct twed_softc *)dev->si_drv1;
     struct twe_softc	*twe_sc  = (struct twe_softc *)twed_sc->twed_controller;
-    u_int		count, blkno, secsize;
     vm_paddr_t		addr = 0;
     long		blkcnt;
     int			dumppages = MAXDUMPPGS;
     int			error;
     int			i;
-
-    if ((error = disk_dumpcheck(dev, &count, &blkno, &secsize)))
-        return(error);
 
     if (!twed_sc || !twe_sc)
 	return(ENXIO);

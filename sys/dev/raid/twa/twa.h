@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa.h,v 1.1 2004/04/16 20:13:16 drhodus Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa.h,v 1.2 2004/05/19 22:52:48 dillon Exp $
  */
 
 /*
@@ -175,7 +175,6 @@ struct twa_softc {
 					between ioctl calls */
     
 	device_t		twa_bus_dev;	/* bus device */
-	dev_t			twa_ctrl_dev;	/* control device */
 	struct resource		*twa_io_res;	/* register interface window */
 	bus_space_handle_t	twa_bus_handle;	/* bus space handle */
 	bus_space_tag_t		twa_bus_tag;	/* bus space tag */

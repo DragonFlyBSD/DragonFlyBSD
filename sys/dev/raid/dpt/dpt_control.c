@@ -37,7 +37,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_control.c,v 1.16 1999/09/25 18:23:48 phk Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.6 2004/05/13 23:49:18 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.7 2004/05/19 22:52:47 dillon Exp $"
 
 #include "opt_dpt.h"
 
@@ -849,14 +849,13 @@ static          dpt_devsw_installed = 0;
 static void
 dpt_drvinit(void *unused)
 {
-
 	if (!dpt_devsw_installed) {
 		if (bootverbose)
 			printf("DPT:  RAID Manager driver, Version %d.%d.%d\n",
 			       DPT_CTL_RELEASE, DPT_CTL_VERSION, DPT_CTL_PATCH);
 
 		/* Add the I/O (data) channel */
-		cdevsw_add(&dpt_cdevsw);
+		cdevsw_add(&dpt_cdevsw, 0, 0);
 
 		dpt_devsw_installed = 1;
 	}

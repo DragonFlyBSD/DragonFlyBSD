@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.h,v 1.5 2003/11/27 08:37:36 mbr Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.1 2004/01/15 15:41:23 drhodus Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.2 2004/05/19 22:52:47 dillon Exp $
  */
 
 
@@ -460,7 +460,6 @@ typedef struct ips_softc {
 	bus_dma_tag_t		command_dmatag;
 	bus_dma_tag_t		sg_dmatag;
 	device_t		dev;
-	dev_t			device_file;
 	struct callout_handle	timer;
 	u_int16_t		adapter_type;
 	ips_adapter_info_t	adapter_info;

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.9 2004/05/13 23:49:11 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.10 2004/05/19 22:52:38 dillon Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -148,7 +148,6 @@ struct ch_softc {
 	ch_quirks	quirks;
 	union ccb	saved_ccb;
 	struct devstat	device_stats;
-	dev_t		dev;
 
 	int		sc_picker;	/* current picker */
 
@@ -311,10 +310,10 @@ chcleanup(struct cam_periph *periph)
 	softc = (struct ch_softc *)periph->softc;
 
 	devstat_remove_entry(&softc->device_stats);
-	destroy_dev(softc->dev);
 	cam_extend_release(chperiphs, periph->unit_number);
 	xpt_print_path(periph->path);
 	printf("removing device entry\n");
+	cdevsw_remove(&ch_cdevsw, -1, periph->unit_number);
 	free(softc, M_DEVBUF);
 }
 
@@ -395,9 +394,10 @@ chregister(struct cam_periph *periph, void *arg)
 			  DEVSTAT_PRIORITY_OTHER);
 
 	/* Register the device */
-	softc->dev = make_dev(&ch_cdevsw, periph->unit_number, UID_ROOT,
-			      GID_OPERATOR, 0600, "%s%d", periph->periph_name,
-			      periph->unit_number);
+	cdevsw_add(&ch_cdevsw, -1, periph->unit_number);
+	make_dev(&ch_cdevsw, periph->unit_number, UID_ROOT,
+		  GID_OPERATOR, 0600, "%s%d", periph->periph_name,
+		  periph->unit_number);
 
 	/*
 	 * Add an async callback so that we get

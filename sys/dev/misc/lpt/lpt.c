@@ -49,7 +49,7 @@
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  *	From Id: nlpt.c,v 1.14 1999/02/08 13:55:43 des Exp
  * $FreeBSD: src/sys/dev/ppbus/lpt.c,v 1.15.2.3 2000/07/07 00:30:40 obrien Exp $
- * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.8 2004/05/13 23:49:16 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.9 2004/05/19 22:52:43 dillon Exp $
  */
 
 /*
@@ -115,6 +115,7 @@ struct lpt_data {
 	   prime once */
 	u_char	sc_control;
 	char	sc_flags;
+#define LP_UNITMASK	0x03	/* up to 4 units */
 #define LP_POS_INIT	0x04	/* if we are a postive init signal */
 #define LP_POS_ACK	0x08	/* if we are a positive going ack */
 #define LP_NO_PRIME	0x10	/* don't prime the printer at all */
@@ -415,6 +416,7 @@ lpt_attach(device_t dev)
 
 	lpt_release_ppbus(dev);
 
+	cdevsw_add(&lpt_cdevsw, LP_UNITMASK, unit);
 	make_dev(&lpt_cdevsw, unit,
 	    UID_ROOT, GID_WHEEL, 0600, LPT_NAME "%d", unit);
 	make_dev(&lpt_cdevsw, unit | LP_BYPASS,

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.17 2004/05/13 23:49:14 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.18 2004/05/19 22:52:40 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -297,6 +297,10 @@ adclose(dev_t dev, int flags, int fmt, struct thread *td)
     return 0;
 }
 
+/*
+ * note: always use the passed device rather then bp->b_dev, as the bp
+ * may have been translated through several layers.
+ */
 static void 
 adstrategy(struct buf *bp)
 {
@@ -316,20 +320,15 @@ adstrategy(struct buf *bp)
 }
 
 int
-addump(dev_t dev)
+addump(dev_t dev, u_int count, u_int blkno, u_int secsize)
 {
     struct ad_softc *adp = dev->si_drv1;
     struct ad_request request;
-    u_int count, blkno, secsize;
     vm_paddr_t addr = 0;
     long blkcnt;
     int dumppages = MAXDUMPPGS;
-    int error;
     int i;
 
-    if ((error = disk_dumpcheck(dev, &count, &blkno, &secsize)))
-	return error;
-	
     if (!adp)
 	return ENXIO;
 

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/device.h,v 1.1 2003/07/22 17:03:34 dillon Exp $
+ * $DragonFly: src/sys/sys/device.h,v 1.2 2004/05/19 22:53:02 dillon Exp $
  */
 
 #ifndef _SYS_DEVICE_H_
@@ -39,7 +39,6 @@
 struct cdevmsg  {
     lwkt_msg	msg;
     dev_t	dev;
-    struct cdevsw *csw;
 };
 
 /*
@@ -86,6 +85,9 @@ struct cdevmsg_ioctl {
  */
 struct cdevmsg_dump {
     struct cdevmsg msg;
+    u_int count;
+    u_int blkno;
+    u_int secsize;
 };
 
 /*
@@ -203,18 +205,6 @@ int dev_dwrite(dev_t dev, struct uio *uio, int ioflag);
 int dev_dpoll(dev_t dev, int events, struct thread *td);
 int dev_dkqfilter(dev_t dev, struct knote *kn);
 int dev_dmmap(dev_t dev, vm_offset_t offset, int nprot);
-
-int dev_port_dopen(lwkt_port_t port, dev_t dev, int oflags, int devtype, struct thread *td);
-int dev_port_dclose(lwkt_port_t port, dev_t dev, int fflag, int devtype, struct thread *td);
-void dev_port_dstrategy(lwkt_port_t port, dev_t dev, struct buf *bp);
-int dev_port_dioctl(lwkt_port_t port, dev_t dev, u_long cmd, caddr_t data, int fflag, struct thread *td);
-int dev_port_ddump(lwkt_port_t port, dev_t dev);
-int dev_port_dpsize(lwkt_port_t port, dev_t dev);
-int dev_port_dread(lwkt_port_t port, dev_t dev, struct uio *uio, int ioflag);
-int dev_port_dwrite(lwkt_port_t port, dev_t dev, struct uio *uio, int ioflag);
-int dev_port_dpoll(lwkt_port_t port, dev_t dev, int events, struct thread *td);
-int dev_port_dkqfilter(lwkt_port_t port, dev_t dev, struct knote *kn);
-int dev_port_dmmap(lwkt_port_t port, dev_t dev, vm_offset_t offset, int nprot);
 
 #endif
 

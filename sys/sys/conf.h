@@ -37,7 +37,7 @@
  *
  *	@(#)conf.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/conf.h,v 1.103.2.6 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/sys/conf.h,v 1.6 2004/05/13 23:49:25 dillon Exp $
+ * $DragonFly: src/sys/sys/conf.h,v 1.7 2004/05/19 22:53:02 dillon Exp $
  */
 
 #ifndef _SYS_CONF_H_
@@ -50,6 +50,7 @@
 struct tty;
 struct disk;
 struct vnode;
+struct lwkt_port;
 
 struct specinfo {
 	u_int		si_flags;
@@ -59,8 +60,10 @@ struct specinfo {
 	char		si_name[SPECNAMELEN + 1];
 	void		*si_drv1;
 	void		*si_drv2;
-	struct cdevsw	*si_devsw;	/* cached */
+	struct cdevsw	*si_devsw;	/* direct device switch */
+	struct lwkt_port *si_port;	/* direct port dispatch */
 	int		si_iosize_max;	/* maximum I/O size (for physio &al) */
+	int		si_refs;
 	union {
 		struct {
 			struct tty *__sit_tty;
@@ -75,6 +78,8 @@ struct specinfo {
 };
 
 #define SI_STASHED	0x0001	/* created in stashed storage */
+#define SI_HASHED	0x0002	/* in (maj,min) hash table */
+#define SI_ADHOC	0x0004	/* created via make_adhoc_dev() or udev2dev() */
 
 #define si_tty		__si_u.__si_tty.__sit_tty
 #define si_disk		__si_u.__si_disk.__sid_disk
@@ -82,11 +87,7 @@ struct specinfo {
 #define si_bsize_phys	__si_u.__si_disk.__sid_bsize_phys
 #define si_bsize_best	__si_u.__si_disk.__sid_bsize_best
 
-/*
- * Exported shorthand
- */
-#define v_hashchain v_rdev->si_hlist
-#define v_specmountpoint v_rdev->si_mountpoint
+#define CDEVSW_ALL_MINORS	0	/* mask of 0 always matches 0 */
 
 /*
  * Special device management
@@ -129,7 +130,7 @@ typedef int d_close_t (dev_t dev, int fflag, int devtype, d_thread_t *td);
 typedef void d_strategy_t (struct buf *bp);
 typedef int d_ioctl_t (dev_t dev, u_long cmd, caddr_t data,
 			   int fflag, d_thread_t *td);
-typedef int d_dump_t (dev_t dev);
+typedef int d_dump_t (dev_t dev, u_int count, u_int blkno, u_int secsize);
 typedef int d_psize_t (dev_t dev);
 
 typedef int d_read_t (dev_t dev, struct uio *uio, int ioflag);
@@ -204,6 +205,19 @@ struct cdevsw {
 	d_dump_t	*old_dump;
 	d_psize_t	*old_psize;
 	d_kqfilter_t	*old_kqfilter;
+	void		(*old_dummy1)(void);	/* expansion space */
+	void		(*old_dummy2)(void);
+	void		(*old_dummy3)(void);
+	void		(*old_dummy4)(void);
+	int		d_refs;			/* ref count */
+	void		*d_data;		/* custom driver data */
+};
+
+struct cdevlink {
+	struct cdevlink	*next;
+	u_int		mask;
+	u_int		match;
+	struct cdevsw	*devsw;
 };
 
 /*
@@ -250,19 +264,15 @@ d_close_t	noclose;
 d_read_t	noread;
 d_write_t	nowrite;
 d_ioctl_t	noioctl;
+d_clone_t	noclone;
 d_mmap_t	nommap;
 d_kqfilter_t	nokqfilter;
-#define	nostrategy	((d_strategy_t *)NULL)
-#define	nopoll	seltrue
-
+d_strategy_t	nostrategy;
+d_poll_t	nopoll;
+d_psize_t	nopsize;
 d_dump_t	nodump;
 
 #define NUMCDEVSW 256
-
-/*
- * nopsize is little used, so not worth having dummy functions for.
- */
-#define	nopsize	((d_psize_t *)NULL)
 
 d_open_t	nullopen;
 d_close_t	nullclose;
@@ -287,22 +297,33 @@ static moduledata_t name##_mod = {					\
 };									\
 DECLARE_MODULE(name, name##_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE)
 
-void	compile_devsw(struct cdevsw *devsw);
-int	cdevsw_add (struct cdevsw *new);
-struct lwkt_port *cdevsw_add_override (struct cdevsw *new, struct lwkt_port *port);
+extern struct cdevsw dead_cdevsw;
+
+void	compile_devsw(struct cdevsw *);
+int	cdevsw_add (struct cdevsw *, u_int mask, u_int match);
+struct cdevsw *cdevsw_add_override (dev_t, u_int mask, u_int match);
 struct lwkt_port *cdevsw_dev_override(dev_t dev, struct lwkt_port *port);
 
-int	cdevsw_remove (struct cdevsw *old);
+int	cdevsw_remove (struct cdevsw *, u_int mask, u_int match);
+struct cdevsw *cdevsw_get (int x, int y);
+void	cdevsw_release (struct cdevsw *);
 int	count_dev (dev_t dev);
+int	count_udev (udev_t dev);
 void	destroy_dev (dev_t dev);
+void	destroy_all_dev (struct cdevsw *, u_int mask, u_int match);
+void	release_dev (dev_t dev);
+dev_t	reference_dev (dev_t dev);
 struct cdevsw *devsw (dev_t dev);
 const char *devtoname (dev_t dev);
 void	freedev (dev_t dev);
 int	iszerodev (dev_t dev);
 dev_t	make_dev (struct cdevsw *devsw, int minor, uid_t uid, gid_t gid, int perms, const char *fmt, ...) __printflike(6, 7);
+dev_t	make_adhoc_dev (struct cdevsw *devsw, int minor);
+dev_t	make_sub_dev (dev_t dev, int minor);
 int	lminor (dev_t dev);
 void	setconf (void);
 dev_t	getdiskbyname(char *name);
+int	dev_is_good(dev_t dev);
 
 /*
  * XXX: This included for when DEVFS resurfaces 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.16 2004/05/13 23:49:14 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.17 2004/05/19 22:52:40 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -201,9 +201,9 @@ acddetach(struct ata_device *atadev)
 		bp->b_error = ENXIO;
 		biodone(bp);
 	    }
-	    destroy_dev(cdp->driver[subdev]->dev);
+	    release_dev(cdp->driver[subdev]->dev);
 	    while ((entry = TAILQ_FIRST(&cdp->driver[subdev]->dev_list))) {
-		destroy_dev(entry->dev);
+		release_dev(entry->dev);
 		TAILQ_REMOVE(&cdp->driver[subdev]->dev_list, entry, chain);
 		free(entry, M_ACD);
 	    }
@@ -221,12 +221,13 @@ acddetach(struct ata_device *atadev)
 	biodone(bp);
     }
     while ((entry = TAILQ_FIRST(&cdp->dev_list))) {
-	destroy_dev(entry->dev);
+	release_dev(entry->dev);
 	TAILQ_REMOVE(&cdp->dev_list, entry, chain);
 	free(entry, M_ACD);
     }
-    destroy_dev(cdp->dev);
+    release_dev(cdp->dev);
     devstat_remove_entry(cdp->stats);
+    cdevsw_remove(&acd_cdevsw, dkunitmask(), dkmakeunit(cdp->lun));
     free(cdp->stats, M_ACD);
     ata_free_name(atadev);
     ata_free_lun(&acd_lun_map, cdp->lun);
@@ -256,8 +257,10 @@ acd_make_dev(struct acd_softc *cdp)
 {
     dev_t dev;
 
+    cdevsw_add(&acd_cdevsw, dkunitmask(), dkmakeunit(cdp->lun));
     dev = make_dev(&acd_cdevsw, dkmakeminor(cdp->lun, 0, 0),
 		   UID_ROOT, GID_OPERATOR, 0644, "acd%d", cdp->lun);
+    reference_dev(dev);
     dev->si_drv1 = cdp;
     cdp->dev = dev;
     cdp->device->flags |= ATA_D_MEDIA_CHANGED;
@@ -1330,6 +1333,7 @@ acd_read_toc(struct acd_softc *cdp)
 	entry->dev = make_dev(&acd_cdevsw, (cdp->lun << 3) | (track << 16),
 			      0, 0, 0644, name, NULL);
 	entry->dev->si_drv1 = cdp->dev->si_drv1;
+	reference_dev(entry->dev);
 	TAILQ_INSERT_TAIL(&cdp->dev_list, entry, chain);
     }
 

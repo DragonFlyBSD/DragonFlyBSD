@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.10 2004/05/13 23:49:11 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.11 2004/05/19 22:52:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -349,9 +349,10 @@ ptctor(struct cam_periph *periph, void *arg)
 			  SID_TYPE(&cgd->inq_data) | DEVSTAT_TYPE_IF_SCSI,
 			  DEVSTAT_PRIORITY_OTHER);
 
-	softc->dev = make_dev(&pt_cdevsw, periph->unit_number, UID_ROOT,
-			      GID_OPERATOR, 0600, "%s%d", periph->periph_name,
-			      periph->unit_number);
+	cdevsw_add(&pt_cdevsw, -1, periph->unit_number);
+	make_dev(&pt_cdevsw, periph->unit_number, UID_ROOT,
+		  GID_OPERATOR, 0600, "%s%d", periph->periph_name,
+		  periph->unit_number);
 	/*
 	 * Add async callbacks for bus reset and
 	 * bus device reset calls.  I don't bother
@@ -431,11 +432,10 @@ ptdtor(struct cam_periph *periph)
 
 	devstat_remove_entry(&softc->device_stats);
 
-	destroy_dev(softc->dev);
-
 	cam_extend_release(ptperiphs, periph->unit_number);
 	xpt_print_path(periph->path);
 	printf("removing device entry\n");
+	cdevsw_remove(&pt_cdevsw, -1, periph->unit_number);
 	free(softc, M_DEVBUF);
 }
 

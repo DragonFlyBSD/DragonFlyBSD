@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.14 2004/03/15 16:27:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.15 2004/05/19 22:53:06 dillon Exp $
  */
 
 /*
@@ -4087,8 +4087,8 @@ softdep_sync_metadata(ap)
 		if (!DOINGSOFTDEP(vp))
 			return (0);
 	} else
-		if (vp->v_specmountpoint == NULL ||
-		    (vp->v_specmountpoint->mnt_flag & MNT_SOFTDEP) == 0)
+		if (vp->v_rdev->si_mountpoint == NULL ||
+		    (vp->v_rdev->si_mountpoint->mnt_flag & MNT_SOFTDEP) == 0)
 			return (0);
 	/*
 	 * Ensure that any direct block dependencies have been cleared.
@@ -4311,8 +4311,9 @@ loop:
 	 * this happens rarely).
 	 */
 	if (vn_isdisk(vp, NULL) && 
-	    vp->v_specmountpoint && !VOP_ISLOCKED(vp, NULL) &&
-	    (error = VFS_SYNC(vp->v_specmountpoint, MNT_WAIT, ap->a_td)) != 0)
+	    vp->v_rdev &&
+	    vp->v_rdev->si_mountpoint && !VOP_ISLOCKED(vp, NULL) &&
+	    (error = VFS_SYNC(vp->v_rdev->si_mountpoint, MNT_WAIT, ap->a_td)) != 0)
 		return (error);
 	return (0);
 }

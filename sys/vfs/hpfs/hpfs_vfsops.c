@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.15 2004/04/24 04:32:04 drhodus Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.16 2004/05/19 22:53:04 dillon Exp $
  */
 
 
@@ -231,7 +231,7 @@ hpfs_mount(struct mount *mp,
 		err = ENOTBLK;
 		goto error_2;
 	}
-	if (major(devvp->v_rdev) >= nblkdev) {
+	if (umajor(devvp->v_udev) >= nblkdev) {
 		err = ENXIO;
 		goto error_2;
 	}
@@ -302,7 +302,7 @@ hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp,
 	struct hpfsmount *hpmp;
 	struct buf *bp = NULL;
 	struct vnode *vp;
-	dev_t dev = devvp->v_rdev;
+	dev_t dev;
 
 	dprintf(("hpfs_mountfs():\n"));
 	/*
@@ -314,12 +314,12 @@ hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp,
 	error = vfs_mountedon(devvp);
 	if (error)
 		return (error);
-	ncount = vcount(devvp);
+	ncount = count_udev(devvp);
 #if defined(__DragonFly__)
 	if (devvp->v_object)
 		ncount -= 1;
 #endif
-	if (ncount > 1 && devvp != rootvp)
+	if (ncount > 0 && devvp != rootvp)
 		return (EBUSY);
 
 #if defined(__DragonFly__)
@@ -338,6 +338,7 @@ hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp,
 	VOP__UNLOCK(devvp, 0, td);
 	if (error)
 		return (error);
+	dev = devvp->v_rdev;
 
 	/*
 	 * Do actual mount
@@ -376,7 +377,7 @@ hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp,
 
 	mp->mnt_data = (qaddr_t)hpmp;
 	hpmp->hpm_devvp = devvp;
-	hpmp->hpm_dev = devvp->v_rdev;
+	hpmp->hpm_dev = dev;
 	hpmp->hpm_mp = mp;
 	hpmp->hpm_uid = argsp->uid;
 	hpmp->hpm_gid = argsp->gid;
@@ -410,7 +411,7 @@ hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp,
 #endif
 	mp->mnt_maxsymlinklen = 0;
 	mp->mnt_flag |= MNT_LOCAL;
-	devvp->v_specmountpoint = mp;
+	dev->si_mountpoint = mp;
 	return (0);
 
 failed:
@@ -418,7 +419,7 @@ failed:
 		brelse (bp);
 	mp->mnt_data = (qaddr_t)NULL;
 #if defined(__DragonFly__)
-	devvp->v_specmountpoint = NULL;
+	dev->si_mountpoint = NULL;
 #else
 	devvp->v_specflags &= ~SI_MOUNTEDON;
 #endif
@@ -457,7 +458,7 @@ hpfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 	}
 
 #if defined(__DragonFly__)
-	hpmp->hpm_devvp->v_specmountpoint = NULL;
+	hpmp->hpm_devvp->v_rdev->si_mountpoint = NULL;
 #else
 	hpmp->hpm_devvp->v_specflags &= ~SI_MOUNTEDON;
 #endif

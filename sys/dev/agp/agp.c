@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.3.2.4 2002/08/11 19:58:12 alc Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.12 2004/05/13 23:49:14 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.13 2004/05/19 22:52:40 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -260,12 +260,9 @@ agp_generic_attach(device_t dev)
 	TAILQ_INIT(&sc->as_memory);
 	sc->as_nextid = 1;
 
-	sc->as_devnode = make_dev(&agp_cdevsw,
-				  device_get_unit(dev),
-				  UID_ROOT,
-				  GID_WHEEL,
-				  0600,
-				  "agpgart");
+	cdevsw_add(&agp_cdevsw, -1, device_get_unit(dev));
+	make_dev(&agp_cdevsw, device_get_unit(dev), UID_ROOT, GID_WHEEL,
+		  0600, "agpgart");
 
 	return 0;
 }
@@ -276,8 +273,8 @@ agp_generic_detach(device_t dev)
 	struct agp_softc *sc = device_get_softc(dev);
 	bus_release_resource(dev, SYS_RES_MEMORY, AGP_APBASE, sc->as_aperture);
 	lockmgr(&sc->as_lock, LK_DRAIN, NULL, curthread); /* XXX */
-	destroy_dev(sc->as_devnode);
 	agp_flush_cache();
+	cdevsw_remove(&agp_cdevsw, -1, device_get_unit(dev));
 	return 0;
 }
 

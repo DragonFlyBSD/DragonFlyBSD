@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.12 2004/05/15 17:54:13 joerg Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.13 2004/05/19 22:52:54 dillon Exp $
  */
 
 /*		Change History:
@@ -528,11 +528,6 @@ int		err = 0;
 static	const char *
 met_probe (pcici_t tag, pcidi_t type)
 {
-	static int once;
-
-	if (!once++)
-		cdevsw_add(&meteor_cdevsw);
-	
 	switch (type) {
 	case SAA7116_PHILIPS_ID:	/* meteor */
 		return("Philips SAA 7116");
@@ -1118,6 +1113,7 @@ met_attach(pcici_t tag, int unit)
 
     	mtr->flags |= METEOR_INITALIZED | METEOR_AUTOMODE | METEOR_DEV0 |
 		   METEOR_RGB16;
+	cdevsw_add(&meteor_cdevsw, -1, unit);
 	make_dev(&meteor_cdevsw, unit, 0, 0, 0644, "meteor");
 }
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.8 2004/05/13 23:49:19 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.9 2004/05/19 22:52:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -206,8 +206,10 @@ mly_attach(struct mly_softc *sc)
     /*
      * Create the control device.
      */
-    sc->mly_dev_t = make_dev(&mly_cdevsw, device_get_unit(sc->mly_dev), UID_ROOT, GID_OPERATOR,
-			     S_IRUSR | S_IWUSR, "mly%d", device_get_unit(sc->mly_dev));
+    cdevsw_add(&mly_cdevsw, -1, device_get_unit(sc->mly_dev));
+    sc->mly_dev_t = make_dev(&mly_cdevsw, device_get_unit(sc->mly_dev),
+    				UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR, 
+				"mly%d", device_get_unit(sc->mly_dev));
     sc->mly_dev_t->si_drv1 = sc;
 
     /* enable interrupts now */

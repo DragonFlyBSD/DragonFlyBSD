@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/pci/xrpu.c,v 1.19.2.1 2000/08/02 22:19:57 peter Exp $
- * $DragonFly: src/sys/dev/misc/xrpu/Attic/xrpu.c,v 1.7 2004/05/13 23:49:18 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/xrpu/Attic/xrpu.c,v 1.8 2004/05/19 22:52:45 dillon Exp $
  *
  * A very simple device driver for PCI cards based on Xilinx 6200 series
  * FPGA/RPU devices.  Current Functionality is to allow you to open and
@@ -253,7 +253,8 @@ xrpu_attach(device_t self)
 		printf("Mapped physbase %#lx to virbase %#lx\n",
 		    (u_long)sc->physbase, (u_long)sc->virbase);
 
-	make_dev(&xrpu_cdevsw, 0, UID_ROOT, GID_WHEEL, 0600, "xrpu%d", unit);
+	cdevsw_add(&xrpu_cdevsw, -1, unit);
+	make_dev(&xrpu_cdevsw, unit, UID_ROOT, GID_WHEEL, 0600, "xrpu%d", unit);
 	return 0;
 }
 

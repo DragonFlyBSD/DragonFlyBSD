@@ -32,7 +32,7 @@
  *
  *	@(#)tty_tty.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/tty_tty.c,v 1.30 1999/09/25 18:24:24 phk Exp $
- * $DragonFly: src/sys/kern/tty_tty.c,v 1.8 2004/05/13 23:49:23 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_tty.c,v 1.9 2004/05/19 22:52:58 dillon Exp $
  */
 
 /*
@@ -49,6 +49,7 @@
 #include <sys/kernel.h>
 
 static	d_open_t	cttyopen;
+static	d_close_t	cttyclose;
 static	d_read_t	cttyread;
 static	d_write_t	cttywrite;
 static	d_ioctl_t	cttyioctl;
@@ -64,7 +65,7 @@ struct cdevsw ctty_cdevsw = {
 	/* clone */	NULL,
 
 	/* open */	cttyopen,
-	/* close */	nullclose,
+	/* close */	cttyclose,
 	/* read */	cttyread,
 	/* write */	cttywrite,
 	/* ioctl */	cttyioctl,
@@ -87,26 +88,30 @@ cttyopen(dev_t dev, int flag, int mode, struct thread *td)
 
 	KKASSERT(p);
 	ttyvp = cttyvp(p);
-
-	if (ttyvp == NULL)
-		return (ENXIO);
-	vn_lock(ttyvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
-#ifdef PARANOID
-	/*
-	 * Since group is tty and mode is 620 on most terminal lines
-	 * and since sessions protect terminals from processes outside
-	 * your session, this check is probably no longer necessary.
-	 * Since it inhibits setuid root programs that later switch
-	 * to another user from accessing /dev/tty, we have decided
-	 * to delete this test. (mckusick 5/93)
-	 */
-	error = VOP_ACCESS(ttyvp,
-	  (flag&FREAD ? VREAD : 0) | (flag&FWRITE ? VWRITE : 0), p->p_ucred, td);
-	if (!error)
-#endif /* PARANOID */
+	if (ttyvp) {
+		vn_lock(ttyvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 		error = VOP_OPEN(ttyvp, flag, NOCRED, td);
-	VOP_UNLOCK(ttyvp, NULL, 0, td);
+		VOP_UNLOCK(ttyvp, NULL, 0, td);
+	} else {
+		error = ENXIO;
+	}
 	return (error);
+}
+
+static int
+cttyclose(dev_t dev, int fflag, int devtype, struct thread *td)
+{
+	struct proc *p = td->td_proc;
+	struct vnode *ttyvp;
+	int error;
+
+	KKASSERT(p);
+	ttyvp = cttyvp(p);
+	if (ttyvp == NULL)
+		error = EIO;
+	else
+		error = VOP_CLOSE(ttyvp, fflag, td);
+	return(error);
 }
 
 /*ARGSUSED*/
@@ -201,7 +206,7 @@ static void
 ctty_drvinit(unused)
 	void *unused;
 {
-
+	cdevsw_add(&ctty_cdevsw, 0, 0);
 	make_dev(&ctty_cdevsw, 0, 0, 0, 0666, "tty");
 }
 

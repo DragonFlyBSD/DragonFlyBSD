@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.4.2.4 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.7 2004/05/13 23:49:25 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.8 2004/05/19 22:53:01 dillon Exp $	*/
 /*	$OpenBSD: cryptodev.c,v 1.52 2002/06/19 07:22:46 deraadt Exp $	*/
 
 /*
@@ -763,7 +763,6 @@ static struct cdevsw crypto_cdevsw = {
 	/* psize */	nopsize,
 	/* kqfilter */	NULL
 };
-static dev_t crypto_dev;
 
 /*
  * Initialization code, both for static and dynamic loading.
@@ -775,13 +774,13 @@ cryptodev_modevent(module_t mod, int type, void *unused)
 	case MOD_LOAD:
 		if (bootverbose)
 			printf("crypto: <crypto device>\n");
-		crypto_dev = make_dev(&crypto_cdevsw, 0, 
-				      UID_ROOT, GID_WHEEL, 0666,
-				      "crypto");
+		cdevsw_add(&crypto_cdevsw, 0, 0);
+		make_dev(&crypto_cdevsw, 0, UID_ROOT, GID_WHEEL,
+			0666, "crypto");
 		return 0;
 	case MOD_UNLOAD:
 		/*XXX disallow if active sessions */
-		destroy_dev(crypto_dev);
+		cdevsw_remove(&crypto_cdevsw, 0, 0);
 		return 0;
 	}
 	return EINVAL;

@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.11 2004/05/04 12:12:13 hmp Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.12 2004/05/19 22:52:45 dillon Exp $
  *
  */
 #undef DEBUG
@@ -294,6 +294,7 @@ cxattach (struct isa_device *id)
 		timeout (cxtimeout, 0, hz*5);
 
 	printf ("cx%d: <Cronyx-%s>\n", unit, b->name);
+	cdevsw_add(&cx_cdevsw, -1, unit);
 	make_dev(&cx_cdevsw, unit, UID_ROOT, GID_WHEEL, 0600, "cx%d", unit);
 	return (1);
 }

@@ -41,7 +41,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.8 2004/05/13 23:49:15 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.9 2004/05/19 22:52:41 dillon Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
@@ -257,6 +257,7 @@ int mcd_attach(struct isa_device *dev)
 	mcd_configure(cd);
 #endif
 	/* name filled in probe */
+	cdevsw_add(&mcd_cdevsw, dkunitmask(), dkmakeunit(unit));
 	make_dev(&mcd_cdevsw, dkmakeminor(unit, 0, 0),
 	    UID_ROOT, GID_OPERATOR, 0640, "rmcd%da", unit);
 	make_dev(&mcd_cdevsw, dkmakeminor(unit, 0, RAW_PART),
@@ -728,10 +729,6 @@ mcd_probe(struct isa_device *dev)
 	int unit = dev->id_unit;
 	int i, j;
 	unsigned char stbytes[3];
-	static int once;
-
-	if (!once++)
-		cdevsw_add(&mcd_cdevsw);
 
 	mcd_data[unit].flags = MCDPROBING;
 

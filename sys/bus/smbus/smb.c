@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/smbus/smb.c,v 1.20 1999/11/18 05:44:56 peter Exp $
- * $DragonFly: src/sys/bus/smbus/smb.c,v 1.6 2004/05/13 23:49:13 dillon Exp $
+ * $DragonFly: src/sys/bus/smbus/smb.c,v 1.7 2004/05/19 22:52:39 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -134,6 +134,7 @@ smb_probe(device_t dev)
 static int
 smb_attach(device_t dev)
 {
+	cdevsw_add(&smb_cdevsw, -1, device_get_unit(dev));
 	make_dev(&smb_cdevsw, device_get_unit(dev),	/* XXX cleanup */
 			UID_ROOT, GID_WHEEL,
 			0600, "smb%d", device_get_unit(dev));

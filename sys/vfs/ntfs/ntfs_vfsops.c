@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.15 2004/04/24 04:32:04 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.16 2004/05/19 22:53:05 dillon Exp $
  */
 
 
@@ -314,7 +314,7 @@ ntfs_mount(struct mount *mp,
 		err = ENOTBLK;
 		goto error_2;
 	}
-	if (major(devvp->v_rdev) >= nblkdev) {
+	if (umajor(devvp->v_udev) >= nblkdev) {
 		err = ENXIO;
 		goto error_2;
 	}
@@ -410,7 +410,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 {
 	struct buf *bp;
 	struct ntfsmount *ntmp;
-	dev_t dev = devvp->v_rdev;
+	dev_t dev;
 	int error, ronly, ncount, i;
 	struct vnode *vp;
 	struct ucred *cred;
@@ -427,7 +427,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 	error = vfs_mountedon(devvp);
 	if (error)
 		return (error);
-	ncount = vcount(devvp);
+	ncount = count_udev(devvp);
 #if defined(__DragonFly__)
 	if (devvp->v_object)
 		ncount -= 1;
@@ -450,6 +450,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 	VOP__UNLOCK(devvp, 0, td);
 	if (error)
 		return (error);
+	dev = devvp->v_rdev;
 
 	bp = NULL;
 
@@ -594,7 +595,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 #endif
 	mp->mnt_maxsymlinklen = 0;
 	mp->mnt_flag |= MNT_LOCAL;
-	devvp->v_specmountpoint = mp;
+	dev->si_mountpoint = mp;
 	return (0);
 
 out1:
@@ -605,7 +606,7 @@ out1:
 		dprintf(("ntfs_mountfs: vflush failed\n"));
 
 out:
-	devvp->v_specmountpoint = NULL;
+	dev->si_mountpoint = NULL;
 	if (bp)
 		brelse(bp);
 
@@ -668,7 +669,7 @@ ntfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 	 * field is NULL and touching it causes null pointer derefercence.
 	 */
 	if (ntmp->ntm_devvp->v_type != VBAD)
-		ntmp->ntm_devvp->v_specmountpoint = NULL;
+		ntmp->ntm_devvp->v_rdev->si_mountpoint = NULL;
 
 	vinvalbuf(ntmp->ntm_devvp, V_SAVE, td, 0, 0);
 

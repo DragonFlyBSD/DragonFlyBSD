@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.29 2004/04/08 17:56:48 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.30 2004/05/19 22:52:58 dillon Exp $
  */
 
 /*
@@ -191,6 +191,8 @@ static int	vfs_hang_addrlist (struct mount *mp, struct netexport *nep,
 static void vbusy(struct vnode *vp);
 static void vfree(struct vnode *vp);
 static void vmaybefree(struct vnode *vp);
+
+extern int dev_ref_debug;
 
 /*
  * NOTE: the vnode interlock must be held on call.
@@ -1458,7 +1460,8 @@ reassignbuf(bp, newvp)
 				break;
 			case VCHR:
 			case VBLK:
-				if (newvp->v_specmountpoint != NULL) {
+				if (newvp->v_rdev && 
+				    newvp->v_rdev->si_mountpoint != NULL) {
 					delay = metadelay;
 					break;
 				}
@@ -1541,9 +1544,7 @@ reassignbuf(bp, newvp)
  * Used for mounting the root file system.
  */
 int
-bdevvp(dev, vpp)
-	dev_t dev;
-	struct vnode **vpp;
+bdevvp(dev_t dev, struct vnode **vpp)
 {
 	struct vnode *vp;
 	struct vnode *nvp;
@@ -1559,47 +1560,60 @@ bdevvp(dev, vpp)
 		return (error);
 	}
 	vp = nvp;
-	vp->v_type = VBLK;
-	addalias(vp, dev);
+	vp->v_type = VCHR;
+	vp->v_udev = dev->si_udev;
 	*vpp = vp;
 	return (0);
 }
 
-/*
- * Add a vnode to the alias list hung off the dev_t.
- *
- * The reason for this gunk is that multiple vnodes can reference
- * the same physical device, so checking vp->v_usecount to see
- * how many users there are is inadequate; the v_usecount for
- * the vnodes need to be accumulated.  vcount() does that.
- */
-void
-addaliasu(struct vnode *nvp, udev_t nvp_rdev)
-{
-	dev_t dev;
-
-	if (nvp->v_type != VBLK && nvp->v_type != VCHR)
-		panic("addaliasu on non-special vnode");
-	dev = udev2dev(nvp_rdev, nvp->v_type == VBLK ? 1 : 0);
-	if (dev != NODEV) {
-		nvp->v_rdev = dev;
-		addalias(nvp, dev);
-	} else
-		nvp->v_rdev = NULL;
-}
-
-void
-addalias(struct vnode *nvp, dev_t dev)
+int
+v_associate_rdev(struct vnode *vp, dev_t dev)
 {
 	lwkt_tokref ilock;
 
-	if (nvp->v_type != VBLK && nvp->v_type != VCHR)
-		panic("addalias on non-special vnode");
-
-	nvp->v_rdev = dev;
+	if (dev == NULL || dev == NODEV)
+		return(ENXIO);
+	if (dev_is_good(dev) == 0)
+		return(ENXIO);
+	KKASSERT(vp->v_rdev == NULL);
+	if (dev_ref_debug)
+		printf("Z1");
+	vp->v_rdev = reference_dev(dev);
 	lwkt_gettoken(&ilock, &spechash_token);
-	SLIST_INSERT_HEAD(&dev->si_hlist, nvp, v_specnext);
+	SLIST_INSERT_HEAD(&dev->si_hlist, vp, v_specnext);
 	lwkt_reltoken(&ilock);
+	return(0);
+}
+
+void
+v_release_rdev(struct vnode *vp)
+{
+	lwkt_tokref ilock;
+	dev_t dev;
+
+	if ((dev = vp->v_rdev) != NULL) {
+		lwkt_gettoken(&ilock, &spechash_token);
+		SLIST_REMOVE(&dev->si_hlist, vp, vnode, v_specnext);
+		if (dev_ref_debug)
+			printf("Y2");
+		vp->v_rdev = NULL;
+		release_dev(dev);
+		lwkt_reltoken(&ilock);
+	}
+}
+
+/*
+ * Add a vnode to the alias list hung off the dev_t.  We only associate
+ * the device number with the vnode.  The actual device is not associated
+ * until the vnode is opened (usually in spec_open()), and will be 
+ * disassociated on last close.
+ */
+void
+addaliasu(struct vnode *nvp, udev_t nvp_udev)
+{
+	if (nvp->v_type != VBLK && nvp->v_type != VCHR)
+		panic("addaliasu on non-special vnode");
+	nvp->v_udev = nvp_udev;
 }
 
 /*
@@ -2150,15 +2164,28 @@ vop_revoke(ap)
 		tsleep((caddr_t)vp, 0, "vop_revokeall", 0);
 		return (0);
 	}
-	dev = vp->v_rdev;
+
+	/*
+	 * If the vnode has a device association, scrap all vnodes associated
+	 * with the device.  Don't let the device disappear on us while we
+	 * are scrapping the vnodes.
+	 */
+	if (vp->v_type != VCHR && vp->v_type != VBLK)
+		return(0);
+	if ((dev = vp->v_rdev) == NULL) {
+		if ((dev = udev2dev(vp->v_udev, vp->v_type == VBLK)) == NODEV)
+			return(0);
+	}
+	reference_dev(dev);
 	for (;;) {
 		lwkt_gettoken(&ilock, &spechash_token);
 		vq = SLIST_FIRST(&dev->si_hlist);
 		lwkt_reltoken(&ilock);
-		if (!vq)
+		if (vq == NULL)
 			break;
 		vgone(vq);
 	}
+	release_dev(dev);
 	return (0);
 }
 
@@ -2232,11 +2259,7 @@ vgonel(struct vnode *vp, lwkt_tokref_t vlock, struct thread *td)
 	 * if it is on one.
 	 */
 	if ((vp->v_type == VBLK || vp->v_type == VCHR) && vp->v_rdev != NULL) {
-		lwkt_gettoken(&ilock, &spechash_token);
-		SLIST_REMOVE(&vp->v_hashchain, vp, vnode, v_specnext);
-		freedev(vp->v_rdev);
-		lwkt_reltoken(&ilock);
-		vp->v_rdev = NULL;
+		v_release_rdev(vp);
 	}
 
 	/*
@@ -2290,38 +2313,44 @@ vfinddev(dev, type, vpp)
 }
 
 /*
- * Calculate the total number of references to a special device.
+ * Calculate the total number of references to a special device.  This
+ * routine may only be called for VBLK and VCHR vnodes since v_rdev is
+ * an overloaded field.  Since udev2dev can now return NODEV, we have
+ * to check for a NULL v_rdev.
  */
 int
-vcount(vp)
-	struct vnode *vp;
+count_dev(dev_t dev)
 {
 	lwkt_tokref ilock;
-	struct vnode *vq;
-	int count;
+	struct vnode *vp;
+	int count = 0;
 
-	count = 0;
-	lwkt_gettoken(&ilock, &spechash_token);
-	SLIST_FOREACH(vq, &vp->v_hashchain, v_specnext)
-		count += vq->v_usecount;
-	lwkt_reltoken(&ilock);
-	return (count);
+	if (SLIST_FIRST(&dev->si_hlist)) {
+		lwkt_gettoken(&ilock, &spechash_token);
+		SLIST_FOREACH(vp, &dev->si_hlist, v_specnext) {
+			count += vp->v_usecount;
+		}
+		lwkt_reltoken(&ilock);
+	}
+	return(count);
 }
 
-/*
- * Same as above, but using the dev_t as argument
- */
+int
+count_udev(udev_t udev)
+{
+	dev_t dev;
+
+	if ((dev = udev2dev(udev, 0)) == NODEV)
+		return(0);
+	return(count_dev(dev));
+}
 
 int
-count_dev(dev)
-	dev_t dev;
+vcount(struct vnode *vp)
 {
-	struct vnode *vp;
-
-	vp = SLIST_FIRST(&dev->si_hlist);
-	if (vp == NULL)
-		return (0);
-	return(vcount(vp));
+	if (vp->v_rdev == NULL)
+		return(0);
+	return(count_dev(vp->v_rdev));
 }
 
 /*
@@ -2557,11 +2586,13 @@ SYSCTL_PROC(_kern, KERN_VNODE, vnode, CTLTYPE_OPAQUE|CTLFLAG_RD,
  * Check to see if a filesystem is mounted on a block device.
  */
 int
-vfs_mountedon(vp)
-	struct vnode *vp;
+vfs_mountedon(struct vnode *vp)
 {
+	dev_t dev;
 
-	if (vp->v_specmountpoint != NULL)
+	if ((dev = vp->v_rdev) == NULL)
+		dev = udev2dev(vp->v_udev, (vp->v_type == VBLK));
+	if (dev != NODEV && dev->si_mountpoint)
 		return (EBUSY);
 	return (0);
 }
@@ -3266,41 +3297,46 @@ sync_print(ap)
 }
 
 /*
- * extract the dev_t from a VBLK or VCHR
+ * extract the dev_t from a VBLK or VCHR.  The vnode must have been opened
+ * (or v_rdev might be NULL).
  */
 dev_t
-vn_todev(vp)
-	struct vnode *vp;
+vn_todev(struct vnode *vp)
 {
 	if (vp->v_type != VBLK && vp->v_type != VCHR)
 		return (NODEV);
+	KKASSERT(vp->v_rdev != NULL);
 	return (vp->v_rdev);
 }
 
 /*
- * Check if vnode represents a disk device
+ * Check if vnode represents a disk device.  The vnode does not need to be
+ * opened.
  */
 int
-vn_isdisk(vp, errp)
-	struct vnode *vp;
-	int *errp;
+vn_isdisk(struct vnode *vp, int *errp)
 {
+	dev_t dev;
+
 	if (vp->v_type != VBLK && vp->v_type != VCHR) {
 		if (errp != NULL)
 			*errp = ENOTBLK;
 		return (0);
 	}
-	if (vp->v_rdev == NULL) {
+
+	if ((dev = vp->v_rdev) == NULL)
+		dev = udev2dev(vp->v_udev, (vp->v_type == VBLK));
+	if (dev == NULL || dev == NODEV) {
 		if (errp != NULL)
 			*errp = ENXIO;
 		return (0);
 	}
-	if (!dev_dport(vp->v_rdev)) {
+	if (dev_is_good(dev) == 0) {
 		if (errp != NULL)
 			*errp = ENXIO;
 		return (0);
 	}
-	if (!(dev_dflags(vp->v_rdev) & D_DISK)) {
+	if ((dev_dflags(dev) & D_DISK) == 0) {
 		if (errp != NULL)
 			*errp = ENOTBLK;
 		return (0);

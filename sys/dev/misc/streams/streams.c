@@ -31,7 +31,7 @@
  * in 3.0-980524-SNAP then hacked a bit (but probably not enough :-).
  *
  * $FreeBSD: src/sys/dev/streams/streams.c,v 1.16.2.1 2001/02/26 04:23:07 jlemon Exp $
- * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.11 2004/05/13 23:49:17 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.12 2004/05/19 22:52:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -96,9 +96,6 @@ enum {
 	dev_unix_ord_stream	= 40
 };
 
-dev_t dt_ptm, dt_arp, dt_icmp, dt_ip, dt_tcp, dt_udp, dt_rawip,
-	dt_unix_dgram, dt_unix_stream, dt_unix_ord_stream;
-
 static struct fileops svr4_netops = {
 	NULL,	/* port */
 	NULL,	/* clone */
@@ -140,46 +137,23 @@ streams_modevent(module_t mod, int type, void *unused)
 	switch (type) {
 	case MOD_LOAD:
 		/* XXX should make sure it isn't already loaded first */
-		dt_ptm = make_dev(&streams_cdevsw, dev_ptm, 0, 0, 0666,
-			"ptm");
-		dt_arp = make_dev(&streams_cdevsw, dev_arp, 0, 0, 0666,
-			"arp");
-		dt_icmp = make_dev(&streams_cdevsw, dev_icmp, 0, 0, 0666,
-			"icmp");
-		dt_ip = make_dev(&streams_cdevsw, dev_ip, 0, 0, 0666,
-			"ip");
-		dt_tcp = make_dev(&streams_cdevsw, dev_tcp, 0, 0, 0666,
-			"tcp");
-		dt_udp = make_dev(&streams_cdevsw, dev_udp, 0, 0, 0666,
-			"udp");
-		dt_rawip = make_dev(&streams_cdevsw, dev_rawip, 0, 0, 0666,
-			"rawip");
-		dt_unix_dgram = make_dev(&streams_cdevsw, dev_unix_dgram,
-			0, 0, 0666, "ticlts");
-		dt_unix_stream = make_dev(&streams_cdevsw, dev_unix_stream,
+		cdevsw_add(&streams_cdevsw, 0, 0);
+		make_dev(&streams_cdevsw, dev_ptm, 0, 0, 0666, "ptm");
+		make_dev(&streams_cdevsw, dev_arp, 0, 0, 0666, "arp");
+		make_dev(&streams_cdevsw, dev_icmp, 0, 0, 0666, "icmp");
+		make_dev(&streams_cdevsw, dev_ip, 0, 0, 0666, "ip");
+		make_dev(&streams_cdevsw, dev_tcp, 0, 0, 0666, "tcp");
+		make_dev(&streams_cdevsw, dev_udp, 0, 0, 0666, "udp");
+		make_dev(&streams_cdevsw, dev_rawip, 0, 0, 0666, "rawip");
+		make_dev(&streams_cdevsw, dev_unix_dgram, 0, 0, 0666, "ticlts");
+		make_dev(&streams_cdevsw, dev_unix_stream, 
 			0, 0, 0666, "ticots");
-		dt_unix_ord_stream = make_dev(&streams_cdevsw,
-			dev_unix_ord_stream, 0, 0, 0666, "ticotsord");
-
-		if (! (dt_ptm && dt_arp && dt_icmp && dt_ip && dt_tcp &&
-				dt_udp && dt_rawip && dt_unix_dgram &&
-				dt_unix_stream && dt_unix_ord_stream)) {
-			printf("WARNING: device config for STREAMS failed\n");
-			printf("Suggest unloading streams KLD\n");
-		}
+		make_dev(&streams_cdevsw, dev_unix_ord_stream, 
+			0, 0, 0666, "ticotsord");
 		return 0;
 	case MOD_UNLOAD:
 	  	/* XXX should check to see if it's busy first */
-		destroy_dev(dt_ptm);
-		destroy_dev(dt_arp);
-		destroy_dev(dt_icmp);
-		destroy_dev(dt_ip);
-		destroy_dev(dt_tcp);
-		destroy_dev(dt_udp);
-		destroy_dev(dt_rawip);
-		destroy_dev(dt_unix_dgram);
-		destroy_dev(dt_unix_stream);
-		destroy_dev(dt_unix_ord_stream);
+		cdevsw_remove(&streams_cdevsw, 0, 0);
 
 		return 0;
 	default:

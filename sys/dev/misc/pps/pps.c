@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/ppbus/pps.c,v 1.24.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.8 2004/05/13 23:49:17 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.9 2004/05/19 22:52:43 dillon Exp $
  *
  * This driver implements a draft-mogul-pps-api-02.txt PPS source.
  *
@@ -91,14 +91,9 @@ ppsprobe(device_t ppsdev)
 {
 	struct pps_data *sc;
 	dev_t dev;
-	int unit;
 
 	sc = DEVTOSOFTC(ppsdev);
 	bzero(sc, sizeof(struct pps_data));
-
-	unit = device_get_unit(ppsdev);
-	dev = make_dev(&pps_cdevsw, unit,
-	    UID_ROOT, GID_WHEEL, 0644, PPS_NAME "%d", unit);
 
 	device_set_desc(ppsdev, "Pulse per second Timing Interface");
 
@@ -113,6 +108,7 @@ ppsattach(device_t dev)
 	struct pps_data *sc = DEVTOSOFTC(dev);
 	device_t ppbus = device_get_parent(dev);
 	int irq, zero = 0;
+	int unit;
 
 	/* retrieve the ppbus irq */
 	BUS_READ_IVAR(ppbus, dev, PPBUS_IVAR_IRQ, &irq);
@@ -126,6 +122,10 @@ ppsattach(device_t dev)
 	if (sc->intr_resource == 0)
 		return (ENXIO);
 
+	unit = device_get_unit(ppsdev);
+	cdevsw_add(&pps_cdevsw, -1, unit);
+	dev = make_dev(&pps_cdevsw, unit, UID_ROOT, GID_WHEEL, 0644,
+			PPS_NAME "%d", unit);
 	return (0);
 }
 

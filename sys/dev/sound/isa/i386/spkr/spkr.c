@@ -5,7 +5,7 @@
  * modified for FreeBSD by Andrew A. Chernov <ache@astral.msk.su>
  *
  * $FreeBSD: src/sys/i386/isa/spkr.c,v 1.45 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.10 2004/05/13 23:49:21 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.11 2004/05/19 22:52:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -571,6 +571,7 @@ spkrioctl(dev_t	dev, unsigned long cmd, caddr_t	cmdarg, int flags, struct thread
 static void
 spkr_drvinit(void *unused)
 {
+	cdevsw_add(&spkr_cdevsw, 0, 0);
 	make_dev(&spkr_cdevsw, 0, UID_ROOT, GID_WHEEL, 0600, "speaker");
 }
 

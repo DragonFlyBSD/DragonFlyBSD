@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.5 2003/08/07 21:17:09 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.6 2004/05/19 22:52:48 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -134,15 +134,13 @@ open_drive(struct drive *drive, struct proc *p, int verbose)
     if ((devminor & 7) == 2)				    /* partition c */
 	return ENOTTY;					    /* not buying that */
 
-    drive->dev = makedev(devmajor, devminor);		    /* find the device */
-    if (drive->dev == NULL)				    /* didn't find anything */
-	return ENODEV;
+    drive->dev = udev2dev(makeudev(devmajor, devminor), 0);
 
     drive->dev->si_iosize_max = DFLTPHYS;
-    if (dev_dport(drive->dev) == NULL)
-	drive->lasterror = ENOENT;
-    else
+    if (dev_is_good(drive->dev))
 	drive->lasterror = dev_dopen(drive->dev, FWRITE, 0, NULL);
+    else
+	drive->lasterror = ENOENT;
 
     if (drive->lasterror != 0) {			    /* failed */
 	drive->state = drive_down;			    /* just force it down */
@@ -771,6 +769,7 @@ write_volume_label(int volno)
     struct disklabel *dlp;
     struct volume *vol;
     int error;
+    dev_t dev;
 
     lp = (struct disklabel *) Malloc((sizeof(struct disklabel) + (DEV_BSIZE - 1)) & (DEV_BSIZE - 1));
     if (lp == 0)
@@ -794,7 +793,8 @@ write_volume_label(int volno)
      * unless it's already there.
      */
     bp = geteblk((int) lp->d_secsize);			    /* get a buffer */
-    bp->b_dev = makedev(VINUM_CDEV_MAJOR, vol->volno);	    /* our own raw volume */
+    dev = make_adhoc_dev(&vinum_cdevsw, vol->volno);
+    bp->b_dev = dev;
     bp->b_blkno = LABELSECTOR * ((int) lp->d_secsize / DEV_BSIZE);
     bp->b_bcount = lp->d_secsize;
     bzero(bp->b_data, lp->d_secsize);
@@ -814,7 +814,6 @@ write_volume_label(int volno)
     error = biowait(bp);
     bp->b_flags |= B_INVAL | B_AGE;
     bp->b_flags &= ~B_ERROR;
-
     brelse(bp);
     return error;
 }

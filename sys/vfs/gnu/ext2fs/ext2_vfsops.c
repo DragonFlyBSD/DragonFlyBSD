@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.14 2004/04/24 04:32:03 drhodus Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.15 2004/05/19 22:53:04 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -639,7 +639,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 	struct buf *bp;
 	struct ext2_sb_info *fs;
 	struct ext2_super_block * es;
-	dev_t dev = devvp->v_rdev;
+	dev_t dev;
 	struct partinfo dpart;
 	int havepart = 0;
 	int error, i, size;
@@ -653,7 +653,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 	 */
 	if ((error = vfs_mountedon(devvp)) != 0)
 		return (error);
-	if (vcount(devvp) > 1 && devvp != rootvp)
+	if (count_udev(devvp) > 0 && devvp != rootvp)
 		return (EBUSY);
 	if ((error = vinvalbuf(devvp, V_SAVE, td, 0, 0)) != 0)
 		return (error);
@@ -668,8 +668,9 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 	VOP_UNLOCK(devvp, NULL, 0, td);
 	if (error)
 		return (error);
-	if (devvp->v_rdev->si_iosize_max != 0)
-		mp->mnt_iosize_max = devvp->v_rdev->si_iosize_max;
+	dev = devvp->v_rdev;
+	if (dev->si_iosize_max != 0)
+		mp->mnt_iosize_max = dev->si_iosize_max;
 	if (mp->mnt_iosize_max > MAXPHYS)
 		mp->mnt_iosize_max = MAXPHYS;
 	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, NOCRED, td) != 0)
@@ -751,7 +752,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 	ump->um_seqinc = EXT2_FRAGS_PER_BLOCK(fs);
 	for (i = 0; i < MAXQUOTAS; i++)
 		ump->um_quotas[i] = NULLVP; 
-	devvp->v_specmountpoint = mp;
+	dev->si_mountpoint = mp;
 	if (ronly == 0) 
 		ext2_sbupdate(ump, MNT_WAIT);
 	return (0);
@@ -809,7 +810,7 @@ ext2_unmount(struct mount *mp, int mntflags, struct thread *td)
                 if (fs->s_block_bitmap[i])
 			ULCK_BUF(fs->s_block_bitmap[i])
 
-	ump->um_devvp->v_specmountpoint = NULL;
+	ump->um_devvp->v_rdev->si_mountpoint = NULL;
 	error = VOP_CLOSE(ump->um_devvp, ronly ? FREAD : FREAD|FWRITE, td);
 	vrele(ump->um_devvp);
 	bsd_free(fs->s_es, M_UFSMNT);

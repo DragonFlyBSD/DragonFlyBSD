@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.14 2004/05/13 23:49:11 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.15 2004/05/19 22:52:38 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -545,7 +545,7 @@ cdcleanup(struct cam_periph *periph)
 	}
 	devstat_remove_entry(&softc->device_stats);
 	cam_extend_release(cdperiphs, periph->unit_number);
-	if (softc->disk.d_dev) {
+	if (softc->disk.d_rawdev) {
 		disk_destroy(&softc->disk);
 	}
 	free(softc, M_DEVBUF);
@@ -2856,7 +2856,7 @@ cdcheckmedia(struct cam_periph *periph)
 			 * We don't bother checking the return value here,
 			 * since we already have an error...
 			 */
-			dsioctl(softc->disk.d_dev, DIOCSYNCSLICEINFO,
+			dsioctl(softc->disk.d_cdev, DIOCSYNCSLICEINFO,
 				/*data*/(caddr_t)&force, /*flags*/ 0,
 				&softc->disk.d_slice);
 		}
@@ -2887,7 +2887,7 @@ cdcheckmedia(struct cam_periph *periph)
 
 			force = 1;
 
-			error = dsioctl(softc->disk.d_dev, DIOCSYNCSLICEINFO,
+			error = dsioctl(softc->disk.d_cdev, DIOCSYNCSLICEINFO,
 					/*data*/(caddr_t)&force, /*flags*/ 0,
 					&softc->disk.d_slice);
 			if (error != 0) {

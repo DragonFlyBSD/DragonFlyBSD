@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.9 2004/05/13 23:49:22 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.10 2004/05/19 22:52:52 dillon Exp $
  */
 
 /*
@@ -147,9 +147,6 @@ struct urio_softc {
 	int sc_epaddr[2];
 
 	int sc_refcnt;
-#if defined(__FreeBSD__) || defined(__DragonFly__)
-	dev_t sc_dev_t;
-#endif	/* defined(__FreeBSD__) */
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	u_char sc_dying;
 #endif
@@ -262,8 +259,8 @@ USB_ATTACH(urio)
 	}
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-	/* XXX no error trapping, no storing of dev_t */
-	sc->sc_dev_t = make_dev(&urio_cdevsw, device_get_unit(self),
+	cdevsw_add(&urio_cdevsw, -1, device_get_unit(self));
+	make_dev(&urio_cdevsw, device_get_unit(self),
 			UID_ROOT, GID_OPERATOR,
 			0644, "urio%d", device_get_unit(self));
 #elif defined(__NetBSD__) || defined(__OpenBSD__)
@@ -675,10 +672,8 @@ USB_DETACH(urio)
 Static int
 urio_detach(device_t self)
 {
-	struct urio_softc *sc = device_get_softc(self);
-
 	DPRINTF(("%s: disconnected\n", USBDEVNAME(self)));
-	destroy_dev(sc->sc_dev_t);
+	cdevsw_remove(&urio_cdevsw, -1, device_get_unit(self));
 	/* XXX not implemented yet */
 	device_set_desc(self, NULL);
 	return 0;

@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.16 2004/05/13 23:49:24 dillon Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.17 2004/05/19 22:52:59 dillon Exp $
  */
 
 #include "use_bpf.h"
@@ -1397,11 +1397,9 @@ bpfdetach(ifp)
 static void bpf_drvinit (void *unused);
 
 static void
-bpf_drvinit(unused)
-	void *unused;
+bpf_drvinit(void *unused)
 {
-
-	cdevsw_add(&bpf_cdevsw);
+	cdevsw_add(&bpf_cdevsw, 0, 0);
 }
 
 SYSINIT(bpfdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,bpf_drvinit,NULL)

@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_fbsd.cr,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_fbsd.c,v 1.18 1999/09/25 18:23:43 phk Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.6 2004/05/13 23:49:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.7 2004/05/19 22:53:03 dillon Exp $
  * 
  */
 
@@ -91,12 +91,12 @@ int     vcdebug = 1;
 static int
 codadev_modevent(module_t mod, int type, void *data)
 {
-
 	switch (type) {
 	case MOD_LOAD:
-		cdevsw_add(&codadevsw);
+		cdevsw_add(&codadevsw, 0, 0);
 		break;
 	case MOD_UNLOAD:
+		cdevsw_remove(&codadevsw, 0, 0);
 		break;
 	default:
 		break;

@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.9 2004/05/13 23:49:15 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.10 2004/05/19 22:52:42 dillon Exp $
  */
 
 /*
@@ -180,31 +180,29 @@ vnfindvn(dev_t dev)
 	struct vn_softc *vn;
 
 	unit = dkunit(dev);
-	vn = dev->si_drv1;
-	if (!vn) {
-		SLIST_FOREACH(vn, &vn_list, sc_list) {
-			if (vn->sc_unit == unit) {
-				dev->si_drv2 = vn->sc_devlist;
-				vn->sc_devlist = dev;
-				dev->si_drv1 = vn;
-				break;
-			}
+	SLIST_FOREACH(vn, &vn_list, sc_list) {
+		if (vn->sc_unit == unit) {
+			dev->si_drv2 = vn->sc_devlist;
+			vn->sc_devlist = dev;
+			reference_dev(dev);
+			dev->si_drv1 = vn;
+			break;
 		}
 	}
-	if (!vn) {
-		vn = malloc(sizeof *vn, M_DEVBUF, M_WAITOK);
-		if (!vn)
-			return (NULL);
-		bzero(vn, sizeof *vn);
+	if (vn == NULL) {
+		vn = malloc(sizeof *vn, M_DEVBUF, M_WAITOK | M_ZERO);
 		vn->sc_unit = unit;
 		dev->si_drv1 = vn;
-		vn->sc_devlist = make_dev(&vn_cdevsw, 0,
-		    UID_ROOT, GID_OPERATOR, 0640, "vn%d", unit);
+		vn->sc_devlist = make_dev(&vn_cdevsw, 0, UID_ROOT,
+					GID_OPERATOR, 0640, "vn%d", unit);
+		reference_dev(vn->sc_devlist);
 		vn->sc_devlist->si_drv1 = vn;
 		vn->sc_devlist->si_drv2 = NULL;
 		if (vn->sc_devlist != dev) {
+			dev->si_drv1 = vn;
 			dev->si_drv2 = vn->sc_devlist;
 			vn->sc_devlist = dev;
+			reference_dev(dev);
 		}
 		SLIST_INSERT_HEAD(&vn_list, vn, sc_list);
 	}
@@ -293,8 +291,7 @@ vnstrategy(struct buf *bp)
 	int error;
 
 	unit = dkunit(bp->b_dev);
-	vn = bp->b_dev->si_drv1;
-	if (!vn)
+	if ((vn = bp->b_dev->si_drv1) == NULL)
 		vn = vnfindvn(bp->b_dev);
 
 	IFOPT(vn, VN_DEBUG)
@@ -772,9 +769,8 @@ vn_modevent(module_t mod, int type, void *data)
 
 	switch (type) {
 	case MOD_LOAD:
-		cdevsw_add(&vn_cdevsw);
+		cdevsw_add(&vn_cdevsw, 0, 0);
 		break;
-
 	case MOD_UNLOAD:
 		/* fall through */
 	case MOD_SHUTDOWN:
@@ -789,13 +785,11 @@ vn_modevent(module_t mod, int type, void *data)
 			while ((dev = vn->sc_devlist) != NULL) {
 				vn->sc_devlist = dev->si_drv2;
 				dev->si_drv1 = dev->si_drv2 = NULL;
-				/* If the last one, destroy it. */
-				if (vn->sc_devlist == NULL)
-					destroy_dev(dev);
+				destroy_dev(dev);
 			}
 			free(vn, M_DEVBUF);
 		}
-		cdevsw_remove(&vn_cdevsw);
+		cdevsw_remove(&vn_cdevsw, -1, 0);
 		break;
 	default:
 		break;

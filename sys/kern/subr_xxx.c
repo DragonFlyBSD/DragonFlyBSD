@@ -32,7 +32,7 @@
  *
  *	@(#)subr_xxx.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/subr_xxx.c,v 1.15.2.1 2001/02/26 04:23:16 jlemon Exp $
- * $DragonFly: src/sys/kern/Attic/subr_xxx.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/subr_xxx.c,v 1.4 2004/05/19 22:52:58 dillon Exp $
  */
 
 /*
@@ -40,15 +40,15 @@
  */
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/buf.h>
 
 /*
  * Return error for operation not supported
  * on a specific object or file type.
  */
 int
-eopnotsupp()
+eopnotsupp(void)
 {
-
 	return (EOPNOTSUPP);
 }
 
@@ -57,9 +57,8 @@ eopnotsupp()
  * on a specific object or file type.
  */
 int
-einval()
+einval(void)
 {
-
 	return (EINVAL);
 }
 
@@ -67,9 +66,8 @@ einval()
  * Generic null operation, always returns success.
  */
 int
-nullop()
+nullop(void)
 {
-
 	return (0);
 }
 
@@ -81,84 +79,78 @@ nullop()
  */
 
 int
-noopen(dev, flags, fmt, td)
-	dev_t dev;
-	int flags;
-	int fmt;
-	struct thread *td;
+noclone(dev_t dev)
 {
+	/* take no action */
+	return (0);	/* allow the clone */
+}
 
+int
+noopen(dev_t dev, int flags, int fmt, struct thread *td)
+{
 	return (ENODEV);
 }
 
 int
-noclose(dev, flags, fmt, td)
-	dev_t dev;
-	int flags;
-	int fmt;
-	struct thread *td;
+noclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
-
 	return (ENODEV);
 }
 
 int
-noread(dev, uio, ioflag)
-	dev_t dev;
-	struct uio *uio;
-	int ioflag;
+noread(dev_t dev, struct uio *uio, int ioflag)
 {
-
 	return (ENODEV);
 }
 
 int
-nowrite(dev, uio, ioflag)
-	dev_t dev;
-	struct uio *uio;
-	int ioflag;
+nowrite(dev_t dev, struct uio *uio, int ioflag)
 {
-
 	return (ENODEV);
 }
 
 int
-noioctl(dev, cmd, data, flags, td)
-	dev_t dev;
-	u_long cmd;
-	caddr_t data;
-	int flags;
-	struct thread *td;
+noioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 {
-
 	return (ENODEV);
 }
 
 int
-nokqfilter(dev, kn)
-	dev_t dev;
-	struct knote *kn;
+nokqfilter(dev_t dev, struct knote *kn)
 {
-
 	return (ENODEV);
 }
 
 int
-nommap(dev, offset, nprot)
-	dev_t dev;
-	vm_offset_t offset;
-	int nprot;
+nommap(dev_t dev, vm_offset_t offset, int nprot)
 {
-
 	/* Don't return ENODEV.  That would allow mapping address ENODEV! */
 	return (-1);
 }
 
 int
-nodump(dev)
-	dev_t dev;
+nopoll(dev_t dev, int events, d_thread_t *td)
 {
+	return(0);
+}
 
+void
+nostrategy(struct buf *bp)
+{
+	bp->b_flags |= B_ERROR;
+	bp->b_error = EOPNOTSUPP;
+	biodone(bp);
+}
+
+int
+nopsize(dev_t dev)
+{
+	return(0);
+}
+
+int
+nodump(dev_t dev, u_int count, u_int blkno, u_int secsize) 
+{
 	return (ENODEV);
 }
 
@@ -173,23 +165,14 @@ nodump(dev)
  * minor number.
  */
 int
-nullopen(dev, flags, fmt, td)
-	dev_t dev;
-	int flags;
-	int fmt;
-	struct thread *td;
+nullopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
-
 	return (0);
 }
 
 int
-nullclose(dev, flags, fmt, td)
-	dev_t dev;
-	int flags;
-	int fmt;
-	struct thread *td;
+nullclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
-
 	return (0);
 }
+

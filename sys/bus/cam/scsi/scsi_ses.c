@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.10 2004/05/13 23:49:11 dillon Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.11 2004/05/19 22:52:38 dillon Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -149,7 +149,6 @@ struct ses_softc {
 	ses_encstat	ses_encstat;	/* overall status */
 	u_int8_t	ses_flags;
 	union ccb	ses_saved_ccb;
-	dev_t		ses_dev;
 	struct cam_periph *periph;
 };
 #define	SES_FLAG_INVALID	0x01
@@ -271,11 +270,10 @@ sescleanup(struct cam_periph *periph)
 
 	softc = (struct ses_softc *)periph->softc;
 
-	destroy_dev(softc->ses_dev);
-
 	cam_extend_release(sesperiphs, periph->unit_number);
 	xpt_print_path(periph->path);
 	printf("removing device entry\n");
+	cdevsw_remove(&ses_cdevsw, -1, periph->unit_number);
 	free(softc, M_DEVBUF);
 }
 
@@ -379,9 +377,10 @@ sesregister(struct cam_periph *periph, void *arg)
 
 	cam_extend_set(sesperiphs, periph->unit_number, periph);
 
-	softc->ses_dev = make_dev(&ses_cdevsw, periph->unit_number,
-	    UID_ROOT, GID_OPERATOR, 0600, "%s%d",
-	    periph->periph_name, periph->unit_number);
+	cdevsw_add(&ses_cdevsw, -1, periph->unit_number);
+	make_dev(&ses_cdevsw, periph->unit_number,
+		    UID_ROOT, GID_OPERATOR, 0600, "%s%d",
+		    periph->periph_name, periph->unit_number);
 
 	/*
 	 * Add an async callback so that we get

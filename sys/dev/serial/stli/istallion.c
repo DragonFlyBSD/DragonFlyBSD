@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/istallion.c,v 1.36.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.10 2004/05/13 23:49:20 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.11 2004/05/19 22:52:50 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -816,10 +816,6 @@ static int stliprobe(struct isa_device *idp)
 {
 	stlibrd_t	*brdp;
 	int		btype, bclass;
-	static int once;
-
-	if (!once++)
-		cdevsw_add(&stli_cdevsw);
 
 #if STLDEBUG
 	printf("stliprobe(idp=%x): unit=%d iobase=%x flags=%x\n", (int) idp,
@@ -3543,6 +3539,7 @@ static int stli_brdattach(stlibrd_t *brdp)
 	printf("stli%d: %s (driver version %s), unit=%d nrpanels=%d "
 		"nrports=%d\n", brdp->unitid, stli_brdnames[brdp->brdtype],
 		stli_drvversion, brdp->brdnr, brdp->nrpanels, brdp->nrports);
+	cdevsw_add(&stli_cdevsw, -1, brdp->unitid);
 	return(0);
 }
 

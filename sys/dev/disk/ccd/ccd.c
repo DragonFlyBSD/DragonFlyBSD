@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.15 2004/05/13 23:49:15 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.16 2004/05/19 22:52:41 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -159,7 +159,7 @@ struct ccdbuf {
 #define CCDPF_MIRROR_DONE 1	/* if set, mirror counterpart is done */
 
 #define CCDLABELDEV(dev)	\
-	(makedev(major((dev)), dkmakeminor(ccdunit((dev)), 0, RAW_PART)))
+	(make_sub_dev(dev, dkmakeminor(ccdunit((dev)), 0, RAW_PART)))
 
 static d_open_t ccdopen;
 static d_close_t ccdclose;
@@ -316,7 +316,7 @@ ccdattach()
 			    M_WAITOK | M_ZERO);
 	numccd = num;
 
-	cdevsw_add(&ccd_cdevsw);
+	cdevsw_add(&ccd_cdevsw, 0, 0);
 	/* XXX: is this necessary? */
 	for (i = 0; i < numccd; ++i)
 		ccddevs[i].ccd_dk = -1;
@@ -1462,9 +1462,10 @@ ccdioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		error = setdisklabel(&cs->sc_label,
 		    (struct disklabel *)data, 0);
 		if (error == 0) {
-			if (cmd == DIOCWDINFO)
-				error = writedisklabel(CCDLABELDEV(dev),
-				    &cs->sc_label);
+			if (cmd == DIOCWDINFO) {
+				dev_t cdev = CCDLABELDEV(dev);
+				error = writedisklabel(cdev, &cs->sc_label);
+			}
 		}
 
 		cs->sc_flags &= ~CCDF_LABELLING;
@@ -1521,10 +1522,8 @@ ccdsize(dev_t dev)
 }
 
 static int
-ccddump(dev)
-	dev_t dev;
+ccddump(dev_t dev, u_int count, u_int blkno, u_int secsize)
 {
-
 	/* Not implemented. */
 	return ENXIO;
 }
@@ -1593,6 +1592,7 @@ ccdgetdisklabel(dev)
 	char *errstring;
 	struct disklabel *lp = &cs->sc_label;
 	struct ccdgeom *ccg = &cs->sc_geom;
+	dev_t cdev;
 
 	bzero(lp, sizeof(*lp));
 
@@ -1625,7 +1625,8 @@ ccdgetdisklabel(dev)
 	/*
 	 * Call the generic disklabel extraction routine.
 	 */
-	errstring = readdisklabel(CCDLABELDEV(dev), &cs->sc_label);
+	cdev = CCDLABELDEV(dev);
+	errstring = readdisklabel(cdev, &cs->sc_label);
 	if (errstring != NULL)
 		ccdmakedisklabel(cs);
 

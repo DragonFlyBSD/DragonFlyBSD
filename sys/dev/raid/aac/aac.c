@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.11 2004/05/13 23:49:18 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.12 2004/05/19 22:52:46 dillon Exp $
  */
 
 /*
@@ -296,6 +296,7 @@ aac_attach(struct aac_softc *sc)
 	 * Make the control device.
 	 */
 	unit = device_get_unit(sc->aac_dev);
+	cdevsw_add(&aac_cdevsw, -1, unit);
 	sc->aac_dev_t = make_dev(&aac_cdevsw, unit, UID_ROOT, GID_WHEEL, 0644,
 				 "aac%d", unit);
 #if defined(__FreeBSD__) && __FreeBSD_version > 500005
@@ -303,6 +304,7 @@ aac_attach(struct aac_softc *sc)
 	(void)make_dev_alias(sc->aac_dev_t, "hpn%d", unit);
 #endif
 	sc->aac_dev_t->si_drv1 = sc;
+	reference_dev(sc->aac_dev_t);
 
 	/* Create the AIF thread */
 #if defined(__FreeBSD__) && __FreeBSD_version > 500005
@@ -466,9 +468,11 @@ aac_free(struct aac_softc *sc)
 		bus_dma_tag_destroy(sc->aac_parent_dmat);
 
 	/* release the register window mapping */
-	if (sc->aac_regs_resource != NULL)
+	if (sc->aac_regs_resource != NULL) {
 		bus_release_resource(sc->aac_dev, SYS_RES_MEMORY,
 				     sc->aac_regs_rid, sc->aac_regs_resource);
+	}
+	cdevsw_remove(&aac_cdevsw, -1, device_get_unit(sc->aac_dev));
 }
 
 /*

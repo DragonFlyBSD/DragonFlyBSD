@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.14 2004/05/03 19:08:08 cpressey Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.15 2004/05/19 22:53:05 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -362,7 +362,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 {
 	struct msdosfsmount *pmp;
 	struct buf *bp;
-	dev_t dev = devvp->v_rdev;
+	dev_t dev;
 #ifndef __DragonFly__
 	struct partinfo dpart;
 	int bsize = 0, dtype = 0, tmp;
@@ -384,7 +384,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	error = vfs_mountedon(devvp);
 	if (error)
 		return (error);
-	if (vcount(devvp) > 1 && devvp != rootvp)
+	if (count_udev(devvp) > 0 && devvp != rootvp)
 		return (EBUSY);
 	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
@@ -398,7 +398,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	VOP_UNLOCK(devvp, NULL, 0, td);
 	if (error)
 		return (error);
-
+	dev = devvp->v_rdev;
 	bp  = NULL; /* both used in error_exit */
 	pmp = NULL;
 
@@ -725,7 +725,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	mp->mnt_stat.f_fsid.val[0] = dev2udev(dev);
 	mp->mnt_stat.f_fsid.val[1] = mp->mnt_vfc->vfc_typenum;
 	mp->mnt_flag |= MNT_LOCAL;
-	devvp->v_specmountpoint = mp;
+	dev->si_mountpoint = mp;
 
 	return 0;
 
@@ -758,7 +758,7 @@ msdosfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 	if (error)
 		return error;
 	pmp = VFSTOMSDOSFS(mp);
-	pmp->pm_devvp->v_specmountpoint = NULL;
+	pmp->pm_devvp->v_rdev->si_mountpoint = NULL;
 #ifdef MSDOSFS_DEBUG
 	{
 		struct vnode *vp = pmp->pm_devvp;

@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.11 2004/03/23 22:54:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.12 2004/05/19 22:53:06 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -203,14 +203,14 @@ swapon(struct swapon_args *uap)
 	vp = nd.ni_vp;
 
 	if (vn_isdisk(vp, &error))
-		error = swaponvp(td, vp, vp->v_rdev, 0);
+		error = swaponvp(td, vp, 0);
 	else if (vp->v_type == VREG && vp->v_tag == VT_NFS &&
 	    (error = VOP_GETATTR(vp, &attr, td)) == 0) {
 		/*
 		 * Allow direct swapping to NFS regular files in the same
 		 * way that nfs_mountroot() sets up diskless swapping.
 		 */
-		error = swaponvp(td, vp, NODEV, attr.va_size / DEV_BSIZE);
+		error = swaponvp(td, vp, attr.va_size / DEV_BSIZE);
 	}
 
 	if (error)
@@ -231,16 +231,17 @@ swapon(struct swapon_args *uap)
  * XXX locking when multiple swapon's run in parallel
  */
 int
-swaponvp(struct thread *td, struct vnode *vp, dev_t dev, u_long nblks)
+swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 {
-	int index;
-	struct swdevt *sp;
-	swblk_t vsbase;
-	long blk;
-	swblk_t dvbase;
-	int error;
 	u_long aligned_nblks;
 	struct ucred *cred;
+	struct swdevt *sp;
+	swblk_t vsbase;
+	swblk_t dvbase;
+	dev_t dev;
+	int index;
+	int error;
+	long blk;
 
 	KKASSERT(td->td_proc);
 	cred = td->td_proc->p_ucred;
@@ -268,6 +269,15 @@ swaponvp(struct thread *td, struct vnode *vp, dev_t dev, u_long nblks)
 	VOP_UNLOCK(vp, NULL, 0, td);
 	if (error)
 		return (error);
+
+	/*
+	 * v_rdev is not valid until after the VOP_OPEN() call.  dev_psize()
+	 * must be supported if a character device has been specified.
+	 */
+	if (vp->v_type == VCHR)
+		dev = vp->v_rdev;
+	else
+		dev = NODEV;
 
 	if (nblks == 0 && dev != NODEV && ((nblks = dev_dpsize(dev)) == -1)) {
 		(void) VOP_CLOSE(vp, FREAD | FWRITE, td);

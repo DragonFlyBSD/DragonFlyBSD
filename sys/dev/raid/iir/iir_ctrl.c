@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir_ctrl.c,v 1.2.2.4 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.6 2004/05/13 23:49:19 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.7 2004/05/19 22:52:47 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -115,6 +115,7 @@ gdt_make_dev(int unit)
                    S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, "iir");
     sdev_made = 1;
 #endif
+    reference_dev(dev);
     return (dev);
 }
 
@@ -366,7 +367,7 @@ iir_drvinit(void *unused)
                 
     if (!iir_devsw_installed) {
         /* Add the I/O (data) channel */
-        cdevsw_add(&iir_cdevsw);
+        cdevsw_add(&iir_cdevsw, 0, 0);
         iir_devsw_installed = 1;
     }
 }

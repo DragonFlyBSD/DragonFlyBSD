@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
- * $DragonFly: src/sys/kern/tty_cons.c,v 1.12 2004/05/13 23:49:23 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_cons.c,v 1.13 2004/05/19 22:52:58 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -60,37 +60,30 @@
 
 #include <machine/cpu.h>
 
-static	d_open_t	cnopen;
-static	d_close_t	cnclose;
-static	d_read_t	cnread;
-static	d_write_t	cnwrite;
-static	d_ioctl_t	cnioctl;
-static	d_poll_t	cnpoll;
-static	d_kqfilter_t	cnkqfilter;
+static int cnopen(struct cdevmsg_open *msg);
+static int cnclose(struct cdevmsg_close *msg);
+static int cnread(struct cdevmsg_read *msg);
+static int cnwrite(struct cdevmsg_write *msg);
+static int cnioctl(struct cdevmsg_ioctl *msg);
+static int cnpoll(struct cdevmsg_poll *msg);
+static int cnkqfilter(struct cdevmsg_kqfilter *msg);
+
 static int console_putport(lwkt_port_t port, lwkt_msg_t lmsg);
+static int console_interceptport(lwkt_port_t port, lwkt_msg_t lmsg);
+
+static struct lwkt_port	cn_port;	/* console device port */
+static struct lwkt_port	cn_iport;	/* intercept port */
 
 #define	CDEV_MAJOR	0
 static struct cdevsw cn_cdevsw = {
 	/* name */	"console",
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_TTY | D_KQFILTER,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	cnopen,
-	/* close */	cnclose,
-	/* read */	cnread,
-	/* write */	cnwrite,
-	/* ioctl */	cnioctl,
-	/* poll */	cnpoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* kqfilter */	cnkqfilter
+	/* port */	&cn_port,
+	/* clone */	NULL
 };
 
-static dev_t	cn_dev_t; 	/* seems to be never really used */
+static dev_t	cn_dev_t;
 static udev_t	cn_udev_t;
 SYSCTL_OPAQUE(_machdep, CPU_CONSDEV, consdev, CTLFLAG_RD,
 	&cn_udev_t, sizeof cn_udev_t, "T,dev_t", "");
@@ -112,8 +105,6 @@ static char *console_pausestr=
 "<pause; press any key to proceed to next line or '.' to end pause mode>";
 
 static lwkt_port_t	cn_fwd_port;
-static struct lwkt_port	cn_port;
-
 
 CONS_DRIVER(cons, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 SET_DECLARE(cons_set, struct consdev);
@@ -128,6 +119,8 @@ cninit()
 	 */
 	lwkt_initport(&cn_port, NULL);
 	cn_port.mp_putport = console_putport;
+	lwkt_initport(&cn_iport, NULL);
+	cn_iport.mp_putport = console_interceptport;
 
 	/*
 	 * Find the first console with the highest priority.
@@ -180,6 +173,9 @@ cninit()
 	cn_tab = best_cp;
 }
 
+/*
+ * Hook the open and close functions on the selected device.
+ */
 void
 cninit_finish()
 {
@@ -187,10 +183,10 @@ cninit_finish()
 		return;
 
 	/*
-	 * Hook the open and close functions.
+	 * Hook the open and close functions.  XXX bad hack.
 	 */
-	if (dev_dport(cn_tab->cn_dev))
-		cn_fwd_port = cdevsw_dev_override(cn_tab->cn_dev, &cn_port);
+	if (dev_is_good(cn_tab->cn_dev))
+		cn_fwd_port = cdevsw_dev_override(cn_tab->cn_dev, &cn_iport);
 	cn_dev_t = cn_tab->cn_dev;
 	cn_udev_t = dev2udev(cn_dev_t);
 	console_pausing = 0;
@@ -203,9 +199,10 @@ cnuninit(void)
 		return;
 
 	/*
-	 * Unhook the open and close functions.
+	 * Unhook the open and close functions.  XXX bad hack
 	 */
-	cdevsw_dev_override(cn_tab->cn_dev, NULL);
+	if (cn_fwd_port)
+		cdevsw_dev_override(cn_tab->cn_dev, cn_fwd_port);
 	cn_fwd_port = NULL;
 	cn_dev_t = NODEV;
 	cn_udev_t = NOUDEV;
@@ -230,10 +227,11 @@ sysctl_kern_consmute(SYSCTL_HANDLER_ARGS)
 			 * if the console has been openned
 			 */
 			cninit_finish();
-			if(cn_is_open)
+			if (cn_is_open) {
 				/* XXX curproc is not what we want really */
-				error = cnopen(cn_dev_t, openflag,
-					openmode, curthread);
+				error = dev_dopen(cn_dev_t, openflag,
+						openmode, curthread);
+			}
 			/* if it failed, back it out */
 			if ( error != 0) cnuninit();
 		} else if (!ocn_mute && cn_mute) {
@@ -241,10 +239,12 @@ sysctl_kern_consmute(SYSCTL_HANDLER_ARGS)
 			 * going from unmuted to muted.. close the physical dev 
 			 * if it's only open via /dev/console
 			 */
-			if(cn_is_open)
-				error = cnclose(cn_dev_t, openflag,
-					openmode, curthread);
-			if ( error == 0) cnuninit();
+			if (cn_is_open) {
+				error = dev_dclose(cn_dev_t, openflag,
+						openmode, curthread);
+			}
+			if (error == 0)
+				cnuninit();
 		}
 		if (error != 0) {
 			/* 
@@ -259,6 +259,38 @@ sysctl_kern_consmute(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_kern, OID_AUTO, consmute, CTLTYPE_INT|CTLFLAG_RW,
 	0, sizeof cn_mute, sysctl_kern_consmute, "I", "");
 
+/*
+ * We intercept the OPEN and CLOSE calls on the original device, and
+ * forward the rest through.
+ */
+static int
+console_interceptport(lwkt_port_t port, lwkt_msg_t lmsg)
+{
+	cdevallmsg_t msg = (cdevallmsg_t)lmsg;
+	int error;
+
+	switch(msg->am_lmsg.ms_cmd.cm_op) {
+	case CDEV_CMD_OPEN:
+		error = cnopen(&msg->am_open);
+		break;
+	case CDEV_CMD_CLOSE:
+		error = cnclose(&msg->am_close);
+		break;
+	default:
+		error = lwkt_forwardmsg(cn_fwd_port, &msg->am_lmsg);
+		break;
+	}
+	return(error);
+}
+
+/*
+ * This is the port handler for /dev/console.  These functions will basically
+ * past the request through to the actual physical device representing the
+ * console. 
+ *
+ * Note, however, that cnopen() and cnclose() are also called from the mute
+ * code and the intercept code.
+ */
 static int
 console_putport(lwkt_port_t port, lwkt_msg_t lmsg)
 {
@@ -267,34 +299,60 @@ console_putport(lwkt_port_t port, lwkt_msg_t lmsg)
 
 	switch(msg->am_lmsg.ms_cmd.cm_op) {
 	case CDEV_CMD_OPEN:
-		error = cnopen(
-			    msg->am_open.msg.dev,
-			    msg->am_open.oflags,
-			    msg->am_open.devtype,
-			    msg->am_open.td
-			);
+		error = cnopen(&msg->am_open);
 		break;
 	case CDEV_CMD_CLOSE:
-		error = cnclose(
-			    msg->am_close.msg.dev,
-			    msg->am_close.fflag,
-			    msg->am_close.devtype,
-			    msg->am_close.td
-			);
+		error = cnclose(&msg->am_close);
+		break;
+	case CDEV_CMD_STRATEGY:
+		nostrategy(msg->am_strategy.bp);
+		error = 0;
+		break;
+	case CDEV_CMD_IOCTL:
+		error = cnioctl(&msg->am_ioctl);
+		break;
+	case CDEV_CMD_DUMP:
+		error = nodump(msg->am_dump.msg.dev, 0, 0, 0);
+		break;
+	case CDEV_CMD_PSIZE:
+		error = nopsize(msg->am_psize.msg.dev);
+		break;
+	case CDEV_CMD_READ:
+		error = cnread(&msg->am_read);
+		break;
+	case CDEV_CMD_WRITE:
+		error = cnwrite(&msg->am_write);
+		break;
+	case CDEV_CMD_POLL:
+		error = cnpoll(&msg->am_poll);
+		break;
+	case CDEV_CMD_KQFILTER:
+		error = cnkqfilter(&msg->am_kqfilter);
+		break;
+	case CDEV_CMD_MMAP:
+		error = nommap(msg->am_mmap.msg.dev,
+				msg->am_mmap.offset,
+				msg->am_mmap.nprot);
 		break;
 	default:
-		 error = lwkt_forwardmsg(cn_fwd_port, &msg->am_lmsg);
-		 break;
+		error = ENODEV;
+		break;
 	}
 	return(error);
 }
 
+/*
+ * cnopen() is called as a port intercept function (dev will be that of the
+ * actual physical device representing our console), and also called from
+ * the muting code and from the /dev/console switch (dev will have the
+ * console's cdevsw).
+ */
 static int
-cnopen(dev, flag, mode, td)
-	dev_t dev;
-	int flag, mode;
-	struct thread *td;
+cnopen(struct cdevmsg_open *msg)
 {
+	dev_t dev = msg->msg.dev;
+	int flag = msg->oflags;
+	int mode = msg->devtype;
 	dev_t cndev, physdev;
 	int retval = 0;
 
@@ -302,13 +360,19 @@ cnopen(dev, flag, mode, td)
 		return (0);
 	cndev = cn_tab->cn_dev;
 	physdev = (major(dev) == major(cndev) ? dev : cndev);
+
 	/*
 	 * If mute is active, then non console opens don't get here
-	 * so we don't need to check for that. They 
-	 * bypass this and go straight to the device.
+	 * so we don't need to check for that. They bypass this and go
+	 * straight to the device.
+	 *
+	 * XXX at the moment we assume that the port forwarding function
+	 * is synchronous for open.
 	 */
-	if(!cn_mute)
-		retval = dev_port_dopen(cn_fwd_port, physdev, flag, mode, td);
+	if (!cn_mute) {
+		msg->msg.dev = physdev;
+		retval = lwkt_forwardmsg(cn_fwd_port, &msg->msg.msg);
+	}
 	if (retval == 0) {
 		/* 
 		 * check if we openned it via /dev/console or 
@@ -326,12 +390,16 @@ cnopen(dev, flag, mode, td)
 	return (retval);
 }
 
+/*
+ * cnclose() is called as a port intercept function (dev will be that of the
+ * actual physical device representing our console), and also called from
+ * the muting code and from the /dev/console switch (dev will have the
+ * console's cdevsw).
+ */
 static int
-cnclose(dev, flag, mode, td)
-	dev_t dev;
-	int flag, mode;
-	struct thread *td;
+cnclose(struct cdevmsg_close *msg)
 {
+	dev_t dev = msg->msg.dev;
 	dev_t cndev;
 	struct tty *cn_tp;
 
@@ -364,30 +432,33 @@ cnclose(dev, flag, mode, td)
 			return (0);
 		dev = cndev;
 	}
-	if (cn_fwd_port)
-		return (dev_port_dclose(cn_fwd_port, dev, flag, mode, td));
+	if (cn_fwd_port) {
+		msg->msg.dev = dev;
+		return(lwkt_forwardmsg(cn_fwd_port, &msg->msg.msg));
+	}
 	return (0);
 }
 
+/*
+ * The following functions are dispatched solely from the /dev/console
+ * port switch.  Their job is primarily to forward the request through.
+ * If the console is not attached to anything then write()'s are sunk
+ * to null and reads return 0 (mostly).
+ */
 static int
-cnread(dev, uio, flag)
-	dev_t dev;
-	struct uio *uio;
-	int flag;
+cnread(struct cdevmsg_read *msg)
 {
-
 	if (cn_tab == NULL || cn_fwd_port == NULL)
 		return (0);
-	dev = cn_tab->cn_dev;
-	return (dev_port_dread(cn_fwd_port, dev, uio, flag));
+	msg->msg.dev = cn_tab->cn_dev;
+	return(lwkt_forwardmsg(cn_fwd_port, &msg->msg.msg));
 }
 
 static int
-cnwrite(dev, uio, flag)
-	dev_t dev;
-	struct uio *uio;
-	int flag;
+cnwrite(struct cdevmsg_write *msg)
 {
+	struct uio *uio = msg->uio;
+	dev_t dev;
 
 	if (cn_tab == NULL || cn_fwd_port == NULL) {
 		uio->uio_resid = 0; /* dump the data */
@@ -398,65 +469,59 @@ cnwrite(dev, uio, flag)
 	else
 		dev = cn_tab->cn_dev;
 	log_console(uio);
-	return (dev_port_dwrite(cn_fwd_port, dev, uio, flag));
+	msg->msg.dev = dev;
+	return(lwkt_forwardmsg(cn_fwd_port, &msg->msg.msg));
 }
 
 static int
-cnioctl(dev, cmd, data, flag, td)
-	dev_t dev;
-	u_long cmd;
-	caddr_t data;
-	int flag;
-	struct thread *td;
+cnioctl(struct cdevmsg_ioctl *msg)
 {
+	u_long cmd = msg->cmd;
 	int error;
 
 	if (cn_tab == NULL || cn_fwd_port == NULL)
 		return (0);
-	KKASSERT(td->td_proc != NULL);
+	KKASSERT(msg->td->td_proc != NULL);
 	/*
 	 * Superuser can always use this to wrest control of console
 	 * output from the "virtual" console.
 	 */
 	if (cmd == TIOCCONS && constty) {
-		error = suser(td);
+		error = suser(msg->td);
 		if (error)
 			return (error);
 		constty = NULL;
 		return (0);
 	}
-	dev = cn_tab->cn_dev;
-	return (dev_port_dioctl(cn_fwd_port, dev, cmd, data, flag, td));
+	msg->msg.dev = cn_tab->cn_dev;
+	return(lwkt_forwardmsg(cn_fwd_port, &msg->msg.msg));
 }
 
 static int
-cnpoll(dev, events, td)
-	dev_t dev;
-	int events;
-	struct thread *td;
+cnpoll(struct cdevmsg_poll *msg)
 {
 	if ((cn_tab == NULL) || cn_mute || cn_fwd_port == NULL)
 		return (1);
-
-	dev = cn_tab->cn_dev;
-
-	return (dev_port_dpoll(cn_fwd_port, dev, events, td));
+	msg->msg.dev = cn_tab->cn_dev;
+	return(lwkt_forwardmsg(cn_fwd_port, &msg->msg.msg));
 }
 
 static int
-cnkqfilter(dev, kn)
-	dev_t dev;
-	struct knote *kn;
+cnkqfilter(struct cdevmsg_kqfilter *msg)
 {
 	if ((cn_tab == NULL) || cn_mute || cn_fwd_port == NULL)
 		return (1);
-
-	dev = cn_tab->cn_dev;
-	return (dev_port_dkqfilter(cn_fwd_port, dev, kn));
+	msg->msg.dev = cn_tab->cn_dev;
+	return(lwkt_forwardmsg(cn_fwd_port, &msg->msg.msg));
 }
 
+/*
+ * These synchronous functions are primarily used the kernel needs to 
+ * access the keyboard (e.g. when running the debugger), or output data
+ * directly to the console.
+ */
 int
-cngetc()
+cngetc(void)
 {
 	int c;
 	if ((cn_tab == NULL) || cn_mute)
@@ -467,7 +532,7 @@ cngetc()
 }
 
 int
-cncheckc()
+cncheckc(void)
 {
 	if ((cn_tab == NULL) || cn_mute)
 		return (-1);
@@ -475,8 +540,7 @@ cncheckc()
 }
 
 void
-cnputc(c)
-	int c;
+cnputc(int c)
 {
 	char *cp;
 
@@ -504,8 +568,7 @@ cnputc(c)
 }
 
 void
-cndbctl(on)
-	int on;
+cndbctl(int on)
 {
 	static int refcount;
 
@@ -522,9 +585,9 @@ cndbctl(on)
 static void
 cn_drvinit(void *unused)
 {
-
-	cn_devfsdev = make_dev(&cn_cdevsw, 0, UID_ROOT, GID_WHEEL, 0600,
-	    "console");
+	cdevsw_add(&cn_cdevsw, 0, 0);
+	cn_devfsdev = make_dev(&cn_cdevsw, 0, UID_ROOT, GID_WHEEL,
+				0600, "console");
 }
 
 SYSINIT(cndev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,cn_drvinit,NULL)

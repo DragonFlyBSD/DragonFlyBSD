@@ -16,7 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.11 2004/05/13 23:49:18 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.12 2004/05/19 22:52:45 dillon Exp $
  *
  */
 #undef DEBUG
@@ -945,13 +945,13 @@ void cxtimeout (void *a)
 
 
 #if defined(__DragonFly__) || (defined(__FreeBSD__) && (__FreeBSD__ > 1 ))
-static void 	cx_drvinit(void *unused)
-{
 
-	cdevsw_add(&cx_cdevsw);
+static 
+void
+cx_drvinit(void *unused)
+{
 }
 
 SYSINIT(cxdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,cx_drvinit,NULL)
-
 
 #endif

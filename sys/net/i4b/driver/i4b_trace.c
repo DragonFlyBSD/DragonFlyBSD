@@ -30,7 +30,7 @@
  *	last edit-date: [Sat Aug 11 18:07:15 2001]
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_trace.c,v 1.9.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.9 2004/05/13 23:49:24 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.10 2004/05/19 22:53:00 dillon Exp $
  *
  *	NOTE: the code assumes that SPLI4B >= splimp !
  *
@@ -155,7 +155,7 @@ static struct cdevsw i4btrc_cdevsw = {
 static
 void i4btrcinit(void *unused)
 {
-	cdevsw_add(&i4btrc_cdevsw);
+	cdevsw_add(&i4btrc_cdevsw, 0, 0);
 }
 
 SYSINIT(i4btrcdev, SI_SUB_DRIVERS,

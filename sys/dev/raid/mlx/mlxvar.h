@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlxvar.h,v 1.5.2.3 2001/06/25 04:37:51 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlxvar.h,v 1.3 2003/06/23 17:55:32 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlxvar.h,v 1.4 2004/05/19 22:52:47 dillon Exp $
  */
 
 /*
@@ -108,7 +108,6 @@ struct mlx_softc
 {
     /* bus connections */
     device_t		mlx_dev;
-    dev_t		mlx_dev_t;
     struct resource	*mlx_mem;	/* mailbox interface window */
     int			mlx_mem_rid;
     int			mlx_mem_type;

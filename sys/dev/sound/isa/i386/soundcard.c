@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/sound/soundcard.c,v 1.87 1999/12/20 18:05:01 eivind Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/Attic/soundcard.c,v 1.6 2004/05/13 23:49:20 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/Attic/soundcard.c,v 1.7 2004/05/19 22:52:50 dillon Exp $
  *
  */
 #include "use_snd.h"
@@ -501,7 +501,7 @@ sndattach(struct isa_device * dev)
 	sequencer_init();
     }
 
-    cdevsw_add(&snd_cdevsw);
+    cdevsw_add(&snd_cdevsw, 0xf0, dev->id_unit << 4);
 #define GID_SND GID_GAMES
 #define UID_SND UID_ROOT
 #define PERM_SND 0660

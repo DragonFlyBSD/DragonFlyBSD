@@ -31,7 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.45 2004/03/17 17:50:28 njl Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.9 2004/05/15 17:54:12 joerg Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.10 2004/05/19 22:52:52 dillon Exp $
  */
 
 /*
@@ -363,12 +363,10 @@ bktr_attach( device_t dev )
 	common_bktr_attach( bktr, unit, fun, rev );
 
 	/* make the device entries */
-	bktr->bktrdev = make_dev(&bktr_cdevsw, unit,    
-				0, 0, 0444, "bktr%d",  unit);
-	bktr->tunerdev= make_dev(&bktr_cdevsw, unit+16,
-				0, 0, 0444, "tuner%d", unit);
-	bktr->vbidev  = make_dev(&bktr_cdevsw, unit+32,
-				0, 0, 0444, "vbi%d"  , unit);
+	cdevsw_add(&bktr_cdevsw, 0x0f, unit);
+	make_dev(&bktr_cdevsw, unit,    0, 0, 0444, "bktr%d",  unit);
+	make_dev(&bktr_cdevsw, unit+16, 0, 0, 0444, "tuner%d", unit);
+	make_dev(&bktr_cdevsw, unit+32, 0, 0, 0444, "vbi%d"  , unit);
 
 
 	return 0;
@@ -413,11 +411,8 @@ bktr_detach( device_t dev )
 	/* The memory is retained by the bktr_mem module so we can unload and */
 	/* then reload the main bktr driver module */
 
-	/* Unregister the /dev/bktrN, tunerN and vbiN devices,
-	 * the aliases for unit 0 are automatically destroyed */
-	destroy_dev(bktr->vbidev);
-	destroy_dev(bktr->tunerdev);
-	destroy_dev(bktr->bktrdev);
+	/* removing the cdevsw automatically destroys all related devices */
+	cdevsw_remove(&bktr_cdevsw, 0x0f, device_get_unit(dev));
 
 	/*
 	 * Deallocate resources.

@@ -2,7 +2,7 @@
  * $NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $
  * $NetBSD: ucom.c,v 1.40 2001/11/13 06:24:54 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/ucom.c,v 1.35 2003/11/16 11:58:21 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.14 2004/05/13 23:49:21 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.15 2004/05/19 22:52:51 dillon Exp $
  */
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -182,6 +182,7 @@ ucom_attach(struct ucom_softc *sc)
 {
 	struct tty *tp;
 	int unit;
+	dev_t dev;
 
 	unit = device_get_unit(sc->sc_dev);
 
@@ -194,10 +195,11 @@ ucom_attach(struct ucom_softc *sc)
 
 	DPRINTF(("ucom_attach: make_dev: ucom%d\n", unit));
 
-	sc->dev = make_dev(&ucom_cdevsw, unit | UCOM_CALLOUT_MASK,
+	cdevsw_add(&ucom_cdevsw, UCOMUNIT_MASK, unit);
+	dev = make_dev(&ucom_cdevsw, unit | UCOM_CALLOUT_MASK,
 			UID_UUCP, GID_DIALER, 0660,
 			"ucom%d", unit);
-	sc->dev->si_tty = tp;
+	dev->si_tty = tp;
 
 	return (0);
 }
@@ -207,6 +209,7 @@ ucom_detach(struct ucom_softc *sc)
 {
 	struct tty *tp = sc->sc_tty;
 	int s;
+	int unit;
 
 	DPRINTF(("ucom_detach: sc = %p, tp = %p\n", sc, sc->sc_tty));
 
@@ -239,7 +242,8 @@ ucom_detach(struct ucom_softc *sc)
 	}
 	splx(s);
 
-	destroy_dev(sc->dev);
+	unit = device_get_unit(sc->sc_dev);
+	cdevsw_remove(&ucom_cdevsw, UCOMUNIT_MASK, unit);
 
 	return (0);
 }
@@ -302,7 +306,7 @@ ucomopen(dev_t dev, int flag, int mode, usb_proc_ptr td)
 		sc->sc_poll = 0;
 		sc->sc_lsr = sc->sc_msr = sc->sc_mcr = 0;
 
-		tp->t_dev = dev;
+		tp->t_dev = reference_dev(dev);
 
 		/*
 		 * Initialize the termios status to the defaults.  Add in the
@@ -471,6 +475,11 @@ ucomclose(dev_t dev, int flag, int mode, usb_proc_ptr p)
 
 	DPRINTF(("%s: ucomclose: unit = %d\n",
 		USBDEVNAME(sc->sc_dev), UCOMUNIT(dev)));
+
+	if (tp->t_dev) {
+		release_dev(tp->t_dev);
+		tp->t_dev = NULL;
+	}
 
 	if (!ISSET(tp->t_state, TS_ISOPEN))
 		goto quit;

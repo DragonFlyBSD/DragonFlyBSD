@@ -1,7 +1,7 @@
 /* 
  * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.8 2004/05/13 23:49:22 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.9 2004/05/19 22:52:52 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -227,9 +227,6 @@ struct uscanner_softc {
 	USBBASEDEVICE		sc_dev;		/* base device */
 	usbd_device_handle	sc_udev;
 	usbd_interface_handle	sc_iface;
-#if defined(__FreeBSD__) || defined(__DragonFly__)
-	dev_t			dev;
-#endif
 
 	u_int			sc_dev_flags;
 
@@ -371,7 +368,8 @@ USB_ATTACH(uscanner)
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 	/* the main device, ctrl endpoint */
-	sc->dev = make_dev(&uscanner_cdevsw, USBDEVUNIT(sc->sc_dev),
+	cdevsw_add(&uscanner_cdevsw, -1, USBDEVUNIT(sc->sc_dev));
+	make_dev(&uscanner_cdevsw, USBDEVUNIT(sc->sc_dev),
 		UID_ROOT, GID_OPERATOR, 0644, "%s", USBDEVNAME(sc->sc_dev));
 #endif
 
@@ -666,7 +664,7 @@ USB_DETACH(uscanner)
 	vdevgone(maj, mn, mn + USB_MAX_ENDPOINTS - 1, VCHR);
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
 	/* destroy the device for the control endpoint */
-	destroy_dev(sc->dev);
+	cdevsw_remove(&uscanner_cdevsw, -1, USBDEVUNIT(sc->sc_dev));
 #endif
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev,

@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.9 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.10 2004/05/19 22:52:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -533,8 +533,10 @@ retry:
 			if ((error = VOP_GETATTR(vp, &vat, td)) != 0)
 				goto retn;
 			object = vnode_pager_alloc(vp, vat.va_size, 0, 0);
-		} else if (dev_dport(vp->v_rdev) != NULL) {
+		} else if (vp->v_rdev && dev_is_good(vp->v_rdev)) {
 			/*
+			 * XXX v_rdev uses NULL/non-NULL instead of NODEV
+			 *
 			 * This simply allocates the biggest object possible
 			 * for a disk vnode.  This should be fixed, but doesn't
 			 * cause any problems (yet).

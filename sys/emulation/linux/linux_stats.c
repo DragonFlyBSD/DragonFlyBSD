@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.11 2003/11/13 04:04:42 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.12 2004/05/19 22:52:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -76,7 +76,7 @@ newstat_copyout(struct stat *buf, void *ubuf)
 	 */
 	if (S_ISCHR(tbuf.st_mode) &&
 	    (dev = udev2dev(buf->st_rdev, 0)) != NODEV) {
-		if (dev_dport(dev) != NULL && (dev_dflags(dev) & D_DISK)) {
+		if (dev_is_good(dev) && (dev_dflags(dev) & D_DISK)) {
 			tbuf.st_mode &= ~S_IFMT;
 			tbuf.st_mode |= S_IFBLK;
 
@@ -311,19 +311,19 @@ linux_ustat(struct linux_ustat_args *args)
 	 * dev_t returned from previous syscalls. Just return a bzeroed
 	 * ustat in that case.
 	 */
-	dev = makedev(args->dev >> 8, args->dev & 0xFF);
-	if (vfinddev(dev, VCHR, &vp)) {
-		if (vp->v_mount == NULL)
+	dev = udev2dev(makeudev(args->dev >> 8, args->dev & 0xFF), 0);
+	if (dev != NODEV && vfinddev(dev, VCHR, &vp)) {
+		if (vp->v_mount == NULL) {
 			return (EINVAL);
+		}
 		stat = &(vp->v_mount->mnt_stat);
 		error = VFS_STATFS(vp->v_mount, stat, td);
-		if (error)
+		if (error) {
 			return (error);
-
+		}
 		lu.f_tfree = stat->f_bfree;
 		lu.f_tinode = stat->f_ffree;
 	}
-
 	return (copyout(&lu, args->ubuf, sizeof(lu)));
 }
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.13 2004/03/15 03:05:08 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.14 2004/05/19 22:52:46 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -602,8 +602,7 @@ STATIC u_int32_t         asr_time_delta (IN struct timeval start,
  * Initialize the dynamic cdevsw hooks.
  */
 STATIC void
-asr_drvinit (
-        void * unused)
+asr_drvinit (void * unused)
 {
         static int asr_devsw_installed = 0;
 
@@ -614,25 +613,28 @@ asr_drvinit (
         /*
          * Find a free spot (the report during driver load used by
          * osd layer in engine to generate the controlling nodes).
+	 *
+	 * XXX this is garbage code, store a unit number in asr_cdevsw
+	 * and iterate through that instead?
          */
-        while ((asr_cdevsw.d_maj < NUMCDEVSW)
-         && (dev_dport(makedev(asr_cdevsw.d_maj,0)) != NULL)) {
+        while (asr_cdevsw.d_maj < NUMCDEVSW &&
+		cdevsw_get(asr_cdevsw.d_maj, -1) != NULL
+	) {
                 ++asr_cdevsw.d_maj;
         }
-        if (asr_cdevsw.d_maj >= NUMCDEVSW) for (
-          asr_cdevsw.d_maj = 0;
-          (asr_cdevsw.d_maj < CDEV_MAJOR)
-           && (dev_dport(makedev(asr_cdevsw.d_maj,0)) != NULL);
-          ++asr_cdevsw.d_maj);
+        if (asr_cdevsw.d_maj >= NUMCDEVSW) {
+		asr_cdevsw.d_maj = 0;
+		while (asr_cdevsw.d_maj < CDEV_MAJOR &&
+			cdevsw_get(asr_cdevsw.d_maj, -1) != NULL
+		) {
+			++asr_cdevsw.d_maj;
+		}
+	}
+
         /*
          *      Come to papa
          */
-        cdevsw_add(&asr_cdevsw);
-        /*
-         *      delete any nodes that would attach to the primary adapter,
-         * let the adapter scans add them.
-         */
-        destroy_dev(makedev(asr_cdevsw.d_maj,0));
+        cdevsw_add(&asr_cdevsw, 0, 0);
 } /* asr_drvinit */
 
 /* Must initialize before CAM layer picks up our HBA driver */
@@ -3176,8 +3178,7 @@ asr_attach (ATTACH_ARGS)
         /*
          *      Generate the device node information
          */
-        (void)make_dev(&asr_cdevsw, unit, 0, 0, S_IRWXU, "rasr%d", unit);
-        destroy_dev(makedev(asr_cdevsw.d_maj,unit+1));
+        make_dev(&asr_cdevsw, unit, 0, 0, S_IRWXU, "rasr%d", unit);
         ATTACH_RETURN(0);
 } /* asr_attach */
 

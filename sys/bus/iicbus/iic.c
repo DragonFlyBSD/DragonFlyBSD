@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iic.c,v 1.18 1999/11/18 05:43:32 peter Exp $
- * $DragonFly: src/sys/bus/iicbus/iic.c,v 1.6 2004/05/13 23:49:13 dillon Exp $
+ * $DragonFly: src/sys/bus/iicbus/iic.c,v 1.7 2004/05/19 22:52:38 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -133,6 +133,7 @@ iic_probe(device_t dev)
 static int
 iic_attach(device_t dev)
 {
+	cdevsw_add(&iic_cdevsw, -1, device_get_unit(dev));
 	make_dev(&iic_cdevsw, device_get_unit(dev),	/* XXX cleanup */
 			UID_ROOT, GID_WHEEL,
 			0600, "iic%d", device_get_unit(dev));

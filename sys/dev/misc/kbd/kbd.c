@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.9 2004/05/13 23:49:16 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.10 2004/05/19 22:52:42 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -447,6 +447,7 @@ kbd_attach(keyboard_t *kbd)
 	if (keyboard[kbd->kb_index] != kbd)
 		return EINVAL;
 
+	cdevsw_add(&kbd_cdevsw, -1, kbd->kb_index);
 	dev = make_dev(&kbd_cdevsw, kbd->kb_index, UID_ROOT, GID_WHEEL, 0600,
 		       "kbd%r", kbd->kb_index);
 	if (dev->si_drv1 == NULL)
@@ -468,10 +469,17 @@ kbd_detach(keyboard_t *kbd)
 	if (keyboard[kbd->kb_index] != kbd)
 		return EINVAL;
 
-	dev = makedev(kbd_cdevsw.d_maj, kbd->kb_index);
-	if (dev->si_drv1)
-		free(dev->si_drv1, M_DEVBUF);
-	destroy_dev(dev);
+	/*
+	 * Deal with refs properly.  The KBD driver really ought to have
+	 * recorded the dev_t separately.
+	 */
+	if ((dev = make_adhoc_dev(&kbd_cdevsw, kbd->kb_index)) != NODEV) {
+		if (dev->si_drv1) {
+			free(dev->si_drv1, M_DEVBUF);
+			dev->si_drv1 = NULL;
+		}
+	}
+	cdevsw_remove(&kbd_cdevsw, -1, kbd->kb_index);
 	return 0;
 }
 

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nmdm/nmdm.c,v 1.5.2.1 2001/08/11 00:54:14 mp Exp $
- * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.9 2004/05/13 23:49:16 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.10 2004/05/19 22:52:43 dillon Exp $
  */
 
 /*
@@ -130,15 +130,19 @@ nmdminit(n)
 	dev_t dev1, dev2;
 	struct nm_softc *pt;
 
-	/* For now we only map the lower 8 bits of the minor */
-	if (n & ~0xff)
+	/*
+	 * Simplified unit number, use low 8 bits of minor number
+	 * (remember, the minor number mask is 0xffff00ff).
+	 */
+	if (n & ~0x7f)
 		return;
 
 	pt = malloc(sizeof(*pt), M_NLMDM, M_WAITOK);
 	bzero(pt, sizeof(*pt));
-	pt->part1.dev = dev1 = make_dev(&nmdm_cdevsw, n+n,
+	cdevsw_add(&nmdm_cdevsw, ~1, n << 1);
+	pt->part1.dev = dev1 = make_dev(&nmdm_cdevsw, n << 1,
 	    0, 0, 0666, "nmdm%dA", n);
-	pt->part2.dev = dev2 = make_dev(&nmdm_cdevsw, n+n+1,
+	pt->part2.dev = dev2 = make_dev(&nmdm_cdevsw, (n << 1) + 1,
 	    0, 0, 0666, "nmdm%dB", n);
 
 	dev1->si_drv1 = dev2->si_drv1 = pt;
@@ -162,7 +166,9 @@ nmdmopen(dev_t dev, int flag, int devtype, struct thread *td)
 	struct tty *tp, *tp2;
 	int error;
 	int minr;
+#if 0
 	dev_t nextdev;
+#endif
 	struct nm_softc *pti;
 	int is_b;
 	int	pair;
@@ -170,21 +176,23 @@ nmdmopen(dev_t dev, int flag, int devtype, struct thread *td)
 
 	KKASSERT(p != NULL);
 
+	minr = lminor(dev);
+	pair = minr >> 1;
+	is_b = minr & 1;
+	
+#if 0
 	/*
 	 * XXX: Gross hack for DEVFS:
 	 * If we openned this device, ensure we have the
 	 * next one too, so people can open it.
 	 */
-	minr = lminor(dev);
-	pair = minr >> 1;
-	is_b = minr & 1;
-	
 	if (pair < 127) {
 		nextdev = makedev(major(dev), (pair+pair) + 1);
 		if (!nextdev->si_drv1) {
 			nmdminit(pair + 1);
 		}
 	}
+#endif
 	if (!dev->si_drv1)
 		nmdminit(pair);
 
@@ -565,7 +573,6 @@ static void
 nmdm_drvinit(unused)
 	void *unused;
 {
-	cdevsw_add(&nmdm_cdevsw);
 	/* XXX: Gross hack for DEVFS */
 	nmdminit(0);
 }

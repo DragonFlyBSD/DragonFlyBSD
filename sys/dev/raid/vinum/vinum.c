@@ -37,7 +37,7 @@
  *
  * $Id: vinum.c,v 1.33 2001/01/09 06:19:15 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinum.c,v 1.38.2.3 2003/01/07 12:14:16 joerg Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.10 2004/05/13 23:49:19 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.11 2004/05/19 22:52:48 dillon Exp $
  */
 
 #define STATIC static					    /* nothing while we're testing XXX */
@@ -54,7 +54,7 @@ extern struct mc malloced[];
 #endif
 #include "request.h"
 
-STATIC struct cdevsw vinum_cdevsw =
+struct cdevsw vinum_cdevsw =
 {
     /* name */ "vinum",
     /* cmaj */	VINUM_CDEV_MAJOR, 
@@ -96,7 +96,7 @@ vinumattach(void *dummy)
     daemonq = NULL;					    /* initialize daemon's work queue */
     dqend = NULL;
 
-    cdevsw_add(&vinum_cdevsw);				    /* add the cdevsw entry */
+    cdevsw_add(&vinum_cdevsw, 0, 0);			    /* add the cdevsw entry */
 
     /* allocate space: drives... */
     DRIVE = (struct drive *) Malloc(sizeof(struct drive) * INITIAL_DRIVES);
@@ -153,8 +153,10 @@ vinumattach(void *dummy)
 	for (i = 0; i < vinum_conf.volumes_used; i++) {
 	    vol = &vinum_conf.volume[i];
 	    if ((vol->state == volume_up)
-		&& (strcmp (vol->name, cp) == 0) ) {
-		rootdev = makedev(VINUM_CDEV_MAJOR, i); 
+		&& (strcmp (vol->name, cp) == 0) 
+	    ) {
+		rootdev = make_dev(&vinum_cdevsw, i, UID_ROOT, GID_OPERATOR,
+				0640, "vinum");
 		log(LOG_INFO, "vinum: using volume %s for root device\n", cp);
 		break;
 	    }
@@ -276,7 +278,7 @@ vinum_modevent(module_t mod, modeventtype_t type, void *unused)
 	    }
 	}
 #endif
-	cdevsw_remove(&vinum_cdevsw);
+	cdevsw_remove(&vinum_cdevsw, 0, 0);
 	log(LOG_INFO, "vinum: unloaded\n");		    /* tell the world */
 	return 0;
     default:
@@ -496,7 +498,7 @@ vinumsize(dev_t dev)
 }
 
 int
-vinumdump(dev_t dev)
+vinumdump(dev_t dev, u_int count, u_int blkno, u_int secsize)
 {
     /* Not implemented. */
     return ENXIO;

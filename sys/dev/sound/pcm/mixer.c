@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/mixer.c,v 1.4.2.8 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.5 2004/05/13 23:49:21 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.6 2004/05/19 22:52:50 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.5 2004/05/13 23:49:21 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.6 2004/05/19 22:52:50 dillon Exp $");
 
 MALLOC_DEFINE(M_MIXER, "mixer", "mixer");
 
@@ -105,7 +105,7 @@ mixer_get_devt(device_t dev)
 	int unit;
 
 	unit = device_get_unit(dev);
-	pdev = makedev(SND_CDEV_MAJOR, PCMMKMINOR(unit, SND_DEV_CTL, 0));
+	pdev = make_adhoc_dev(&mixer_cdevsw, PCMMKMINOR(unit, SND_DEV_CTL, 0));
 
 	return pdev;
 }
@@ -224,6 +224,7 @@ mixer_init(device_t dev, kobj_class_t cls, void *devinfo)
 	mixer_setrecsrc(m, SOUND_MASK_MIC);
 
 	unit = device_get_unit(dev);
+	cdevsw_add(&mixer_cdevsw, PCMMKMINOR(-1, 0, 0), PCMMKMINOR(unit, 0, 0));
 	pdev = make_dev(&mixer_cdevsw, PCMMKMINOR(unit, SND_DEV_CTL, 0),
 		 UID_ROOT, GID_WHEEL, 0666, "mixer%d", unit);
 	pdev->si_drv1 = m;
@@ -254,6 +255,13 @@ mixer_uninit(device_t dev)
 	}
 
 	pdev->si_drv1 = NULL;
+
+	/*
+	 * The mixer might be used by several entities, so we do not 
+	 * want to remove the cdevsw here.  Destroy the device instead.
+	 * destroy_dev() requires a reference count.
+	 */
+	reference_dev(pdev);
 	destroy_dev(pdev);
 
 	for (i = 0; i < SOUND_MIXER_NRDEVICES; i++)
@@ -497,7 +505,8 @@ mixer_clone(void *arg, char *name, int namelen, dev_t *dev)
 	if (*dev != NODEV)
 		return;
 	if (strcmp(name, "mixer") == 0) {
-		pdev = makedev(SND_CDEV_MAJOR, PCMMKMINOR(snd_unit, SND_DEV_CTL, 0));
+		pdev = make_adhoc_dev(&mixer_cdevsw,
+					PCMMKMINOR(snd_unit, SND_DEV_CTL, 0));
 		if (pdev->si_flags & SI_NAMED)
 			*dev = pdev;
 	}

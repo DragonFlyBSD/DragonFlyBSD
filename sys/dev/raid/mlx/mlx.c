@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.7 2004/05/13 23:49:19 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.8 2004/05/19 22:52:47 dillon Exp $
  */
 
 /*
@@ -208,9 +208,7 @@ mlx_free(struct mlx_softc *sc)
     if (sc->mlx_enq2 != NULL)
 	free(sc->mlx_enq2, M_DEVBUF);
 
-    /* destroy control device */
-    if (sc->mlx_dev_t != (dev_t)NULL)
-	destroy_dev(sc->mlx_dev_t);
+    cdevsw_remove(&mlx_cdevsw, -1, device_get_unit(sc->mlx_dev));
 }
 
 /********************************************************************************
@@ -483,8 +481,10 @@ mlx_attach(struct mlx_softc *sc)
     /*
      * Create the control device.
      */
-    sc->mlx_dev_t = make_dev(&mlx_cdevsw, device_get_unit(sc->mlx_dev), UID_ROOT, GID_OPERATOR, 
-			     S_IRUSR | S_IWUSR, "mlx%d", device_get_unit(sc->mlx_dev));
+    cdevsw_add(&mlx_cdevsw, -1, device_get_unit(sc->mlx_dev));
+    make_dev(&mlx_cdevsw, device_get_unit(sc->mlx_dev), 
+	    UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
+	    "mlx%d", device_get_unit(sc->mlx_dev));
 
     /*
      * Start the timeout routine.

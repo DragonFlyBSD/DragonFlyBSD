@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.118 2004/02/19 18:20:03 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.3 2004/05/13 23:49:14 dillon Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.4 2004/05/19 22:52:40 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -523,6 +523,7 @@ acpi_attach(device_t dev)
     sc->acpi_sleep_disabled = 0;
 
     /* Create the control device */
+    cdevsw_add(&acpi_cdevsw, 0, 0);
     sc->acpi_dev_t = make_dev(&acpi_cdevsw, 0, UID_ROOT, GID_WHEEL, 0644,
 			      "acpi");
     sc->acpi_dev_t->si_drv1 = sc;

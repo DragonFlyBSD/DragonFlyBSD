@@ -17,7 +17,7 @@
  * all derivative works or modified versions.
  *
  * $FreeBSD: src/sys/i386/isa/gpib.c,v 1.29 2000/01/29 16:17:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/gpib/gpib.c,v 1.8 2004/05/13 23:49:16 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/gpib/gpib.c,v 1.9 2004/05/19 22:52:42 dillon Exp $
  *
  */
 /*Please read the README file for usage information*/
@@ -106,10 +106,6 @@ gpprobe(struct isa_device *dvp)
 {
 	int	status;
         struct gpib_softc *sc = &gpib_sc;
-	static int once;
-
-	if (!once++)
-		cdevsw_add(&gp_cdevsw);
 
 	gpib_port = dvp->id_iobase;
         status=1;
@@ -141,7 +137,8 @@ gpattach(isdp)
            printf ("gp%d: type AT-GPIB chip NAT4882A\n",sc->sc_unit);
         sc->sc_flags |=ATTACHED;
 
-	make_dev(&gp_cdevsw, 0, 0, 0, 0600, "gp");
+	cdevsw_add(&gp_cdevsw, -1, sc->sc_unit);
+	make_dev(&gp_cdevsw, sc->sc_unit, 0, 0, 0600, "gp");
         return (1);
 }
 

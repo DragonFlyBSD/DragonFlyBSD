@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)newfs.c	8.13 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/newfs/newfs.c,v 1.30.2.9 2003/05/13 12:03:55 joerg Exp $
- * $DragonFly: src/sbin/newfs/newfs.c,v 1.8 2004/03/04 00:03:23 dillon Exp $
+ * $DragonFly: src/sbin/newfs/newfs.c,v 1.9 2004/05/19 22:52:34 dillon Exp $
  */
 
 /*
@@ -200,11 +200,13 @@ int	unlabeled;
 #endif
 
 char	device[MAXPATHLEN];
+char	mfsdevname[256];
 char	*progname;
 
 struct disklabel *getdisklabel(char *, int);
 static void rewritelabel(char *, int, struct disklabel *);
 static void usage(void);
+static void mfsintr(int signo);
 
 int
 main(int argc, char **argv)
@@ -222,7 +224,6 @@ main(int argc, char **argv)
 #ifdef MFS
 	struct vfsconf vfc;
 	int error;
-	char buf[BUFSIZ];
 #endif
 
 	vflag = 0;
@@ -622,9 +623,11 @@ havelabel:
 #ifdef MFS
 	if (mfs) {
 		struct mfs_args args;
+		int udev;
 
-		snprintf(buf, sizeof(buf), "mfs:%d", getpid());
-		args.fspec = buf;
+		snprintf(mfsdevname, sizeof(mfsdevname), "/dev/mfs%d",
+			getpid());
+		args.fspec = mfsdevname;
 		args.export.ex_root = -2;
 		if (mntflags & MNT_RDONLY)
 			args.export.ex_flags = MNT_EXRDONLY;
@@ -643,15 +646,31 @@ havelabel:
 		if (error)
 			fatal("mfs filesystem not available");
 
+		udev = (253 << 8) | (getpid() & 255) | 
+			((getpid() & ~0xFF) << 8);
+		if (mknod(mfsdevname, S_IFCHR | 0700, udev) < 0)
+			printf("Warning: unable to create %s\n", mfsdevname);
+		signal(SIGINT, mfsintr);
 		if (mount(vfc.vfc_name, argv[1], mntflags, &args) < 0)
 			fatal("%s: %s", argv[1], strerror(errno));
-		if (filename) {
-			munmap(membase,fssize * sectorsize);
-		}
+		signal(SIGINT, SIG_DFL);
+		mfsintr(SIGINT);
 	}
 #endif
 	exit(0);
 }
+
+#ifdef MFS
+
+static void
+mfsintr(int signo)
+{
+	if (filename)
+		munmap(membase, fssize * sectorsize);
+	remove(mfsdevname);
+}
+
+#endif
 
 #ifdef COMPAT
 char lmsg[] = "%s: can't read disk label; disk type must be specified";

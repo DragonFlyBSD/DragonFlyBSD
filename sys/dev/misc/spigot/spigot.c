@@ -43,7 +43,7 @@
  * Version 1.7, December 1995.
  *
  * $FreeBSD: src/sys/i386/isa/spigot.c,v 1.44 2000/01/29 16:17:36 peter Exp $
- * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.8 2004/05/13 23:49:17 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.9 2004/05/19 22:52:44 dillon Exp $
  *
  */
 
@@ -120,13 +120,10 @@ static ointhand2_t	spigintr;
 static int
 spigot_probe(struct isa_device *devp)
 {
-int			status;
-struct	spigot_softc	*ss=(struct spigot_softc *)&spigot_softc[devp->id_unit];
-static int once;
+	struct spigot_softc *ss;
+	int status;
 
-	if (!once++)
-		cdevsw_add(&spigot_cdevsw);
-
+	ss = (struct spigot_softc *)&spigot_softc[devp->id_unit];
 	ss->flags = 0;
 	ss->maddr = 0;
 	ss->irq = 0;
@@ -150,6 +147,7 @@ spigot_attach(struct isa_device *devp)
 	devp->id_ointr = spigintr;
 	ss->maddr = kvtop(devp->id_maddr);
 	ss->irq = devp->id_irq;
+	cdevsw_add(&spigot_cdevsw, -1, unit);
 	make_dev(&spigot_cdevsw, unit, 0, 0, 0644, "spigot%d", unit);
 	return 1;
 }

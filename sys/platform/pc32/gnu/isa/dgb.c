@@ -1,6 +1,6 @@
 /*-
  *  dgb.c $FreeBSD: src/sys/gnu/i386/isa/dgb.c,v 1.56.2.1 2001/02/26 04:23:09 jlemon Exp $
- *  dgb.c $DragonFly: src/sys/platform/pc32/gnu/isa/dgb.c,v 1.10 2004/05/13 23:49:23 dillon Exp $
+ *  dgb.c $DragonFly: src/sys/platform/pc32/gnu/isa/dgb.c,v 1.11 2004/05/19 22:52:57 dillon Exp $
  *
  *  Digiboard driver.
  *
@@ -405,10 +405,7 @@ dgbprobe(dev)
 	int i, v;
 	u_long win_size;  /* size of vizible memory window */
 	int unit=dev->id_unit;
-	static int once;
 
-	if (!once++)
-		cdevsw_add(&dgb_cdevsw);
 	sc->unit=dev->id_unit;
 	sc->port=dev->id_iobase;
 
@@ -897,22 +894,23 @@ load_fep:
 		port->it_out = port->it_in;
 		/* MAX_DGB_PORTS is 32 => [0-9a-v] */
 		suffix = i < 10 ? '0' + i : 'a' + i - 10;
-		make_dev(&dgb_cdevsw, (unit*32)+i,
+		cdevsw_add(&dgb_cdevsw, 0xffff0000, unit << 16);
+		make_dev(&dgb_cdevsw, (unit<<16)+i,
 		    UID_ROOT, GID_WHEEL, 0600, "ttyD%d%c", unit, suffix);
 
-		make_dev(&dgb_cdevsw, (unit*32)+i+32,
+		make_dev(&dgb_cdevsw, (unit<<16)+i+32,
 		    UID_ROOT, GID_WHEEL, 0600, "ttyiD%d%c", unit, suffix);
 
-		make_dev(&dgb_cdevsw, (unit*32)+i+64,
+		make_dev(&dgb_cdevsw, (unit<<16)+i+64,
 		    UID_ROOT, GID_WHEEL, 0600, "ttylD%d%c", unit, suffix);
 
-		make_dev(&dgb_cdevsw, (unit*32)+i+128,
+		make_dev(&dgb_cdevsw, (unit<<16)+i+128,
 		    UID_UUCP, GID_DIALER, 0660, "cuaD%d%c", unit, suffix);
 
-		make_dev(&dgb_cdevsw, (unit*32)+i+160,
+		make_dev(&dgb_cdevsw, (unit<<16)+i+160,
 		    UID_UUCP, GID_DIALER, 0660, "cuaiD%d%c", unit, suffix);
 
-		make_dev(&dgb_cdevsw, (unit*32)+i+192,
+		make_dev(&dgb_cdevsw, (unit<<16)+i+192,
 		    UID_UUCP, GID_DIALER, 0660, "cualD%d%c", unit, suffix);
 	}
 

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.11 2004/05/13 23:49:22 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.12 2004/05/19 22:52:51 dillon Exp $
  */
 
 /*
@@ -130,8 +130,6 @@ struct ums_softc {
 #	  define	UMS_ASLEEP	0x01	/* readFromDevice is waiting */
 #	  define	UMS_SELECT	0x02	/* select is waiting */
 	struct selinfo	rsel;		/* process waiting in select */
-
-	dev_t		dev;		/* specfs */
 };
 
 #define MOUSE_FLAGS_MASK (HIO_CONST|HIO_RELATIVE)
@@ -349,10 +347,10 @@ USB_ATTACH(ums)
 	sc->rsel.si_flags = 0;
 	sc->rsel.si_pid = 0;
 #endif
-
-	sc->dev = make_dev(&ums_cdevsw, device_get_unit(self),
-			UID_ROOT, GID_OPERATOR,
-			0644, "ums%d", device_get_unit(self));
+	cdevsw_add(&ums_cdevsw, -1, device_get_unit(self));
+	make_dev(&ums_cdevsw, device_get_unit(self),
+		UID_ROOT, GID_OPERATOR,
+		0644, "ums%d", device_get_unit(self));
 
 	if (usbd_get_quirks(uaa->device)->uq_flags & UQ_SPUR_BUT_UP) {
 		DPRINTF(("%s: Spurious button up events\n",
@@ -393,8 +391,7 @@ ums_detach(device_t self)
 		sc->state &= ~UMS_SELECT;
 		selwakeuppri(&sc->rsel, 0);
 	}
-
-	destroy_dev(sc->dev);
+	cdevsw_remove(&ums_cdevsw, -1, device_get_unit(self));
 
 	return 0;
 }

@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.12 2004/05/13 23:49:21 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.13 2004/05/19 22:52:51 dillon Exp $
  */
 
 /* 
@@ -129,9 +129,6 @@ struct ugen_endpoint {
 struct ugen_softc {
 	USBBASEDEVICE sc_dev;		/* base device */
 	usbd_device_handle sc_udev;
-#if defined(__FreeBSD__) || defined(__DragonFly__)
-	dev_t dev;
-#endif
 
 	char sc_is_open[USB_MAX_ENDPOINTS];
 	struct ugen_endpoint sc_endpoints[USB_MAX_ENDPOINTS][2];
@@ -192,9 +189,10 @@ Static usb_config_descriptor_t *ugen_get_cdesc(struct ugen_softc *sc,
 Static usbd_status ugen_set_interface(struct ugen_softc *, int, int);
 Static int ugen_get_alt_index(struct ugen_softc *sc, int ifaceidx);
 
-#define UGENUNIT(n) ((minor(n) >> 4) & 0xf)
+#define UGENUNIT(n) ((lminor(n) >> 4) & 0xff)
 #define UGENENDPOINT(n) (minor(n) & 0xf)
-#define UGENMINOR(u, e) (((u) << 4) | (e))
+#define UGENMINOR(u, e) (((u & 0xf) << 4) | ((u & 0xf0) << 12) | (e))
+#define UGENUNITMASK	0xffff00f0
 
 USB_DECLARE_DRIVER(ugen);
 
@@ -249,7 +247,9 @@ USB_ATTACH(ugen)
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 	/* the main device, ctrl endpoint */
-	sc->dev = make_dev(&ugen_cdevsw, UGENMINOR(USBDEVUNIT(sc->sc_dev), 0),
+	cdevsw_add(&ugen_cdevsw, 
+		    UGENUNITMASK, UGENMINOR(USBDEVUNIT(sc->sc_dev), 0));
+	make_dev(&ugen_cdevsw, UGENMINOR(USBDEVUNIT(sc->sc_dev), 0),
 		UID_ROOT, GID_OPERATOR, 0644, "%s", USBDEVNAME(sc->sc_dev));
 #endif
 
@@ -279,10 +279,20 @@ ugen_make_devnodes(struct ugen_softc *sc)
 				UID_ROOT, GID_OPERATOR, 0644,
 				"%s.%d",
 				USBDEVNAME(sc->sc_dev), endptno);
-			if (sc->sc_endpoints[endptno][IN].sc != NULL)
+			if (sc->sc_endpoints[endptno][IN].sc != NULL) {
+				printf("X1");
+				reference_dev(dev);
+				if (sc->sc_endpoints[endptno][IN].dev)
+					release_dev(sc->sc_endpoints[endptno][IN].dev);
 				sc->sc_endpoints[endptno][IN].dev = dev;
-			if (sc->sc_endpoints[endptno][OUT].sc != NULL)
+			}
+			if (sc->sc_endpoints[endptno][OUT].sc != NULL) {
+				printf("X2");
+				reference_dev(dev);
+				if (sc->sc_endpoints[endptno][OUT].dev)
+					release_dev(sc->sc_endpoints[endptno][OUT].dev);
 				sc->sc_endpoints[endptno][OUT].dev = dev;
+			}
 		}
 	}
 }
@@ -305,11 +315,18 @@ ugen_destroy_devnodes(struct ugen_softc *sc)
 			 * In the if clause above we check whether one
 			 * of the structs is populated.
 			 */
-			if (sc->sc_endpoints[endptno][IN].sc != NULL)
-				dev = sc->sc_endpoints[endptno][IN].dev;
-			else
-				dev = sc->sc_endpoints[endptno][OUT].dev;
-			destroy_dev(dev);
+			dev = sc->sc_endpoints[endptno][IN].dev;
+			if (dev != NULL) {
+				printf("X3");
+				destroy_dev(dev);
+				sc->sc_endpoints[endptno][IN].dev = NULL;
+			}
+			dev = sc->sc_endpoints[endptno][OUT].dev;
+			if (dev != NULL) {
+				printf("X4");
+				destroy_dev(dev);
+				sc->sc_endpoints[endptno][OUT].dev = NULL;
+			}
 		}
 	}
 }
@@ -337,13 +354,14 @@ ugen_set_config(struct ugen_softc *sc, int configno)
 	/* We start at 1, not 0, because we don't care whether the
 	 * control endpoint is open or not. It is always present.
 	 */
-	for (endptno = 1; endptno < USB_MAX_ENDPOINTS; endptno++)
+	for (endptno = 1; endptno < USB_MAX_ENDPOINTS; endptno++) {
 		if (sc->sc_is_open[endptno]) {
 			DPRINTFN(1,
 			     ("ugen_set_config: %s - endpoint %d is open\n",
 			      USBDEVNAME(sc->sc_dev), endptno));
 			return (USBD_IN_USE);
 		}
+	}
 
 	/* Avoid setting the current value. */
 	if (usbd_get_config_descriptor(dev)->bConfigurationValue != configno) {
@@ -891,7 +909,6 @@ USB_DETACH(ugen)
 				usbd_abort_pipe(sce->pipeh);
 		}
 	}
-
 	s = splusb();
 	if (--sc->sc_refcnt >= 0) {
 		/* Wake everyone */
@@ -913,10 +930,10 @@ USB_DETACH(ugen)
 	vdevgone(maj, mn, mn + USB_MAX_ENDPOINTS - 1, VCHR);
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
 	/* destroy the device for the control endpoint */
-	destroy_dev(sc->dev);
 	ugen_destroy_devnodes(sc);
+	cdevsw_remove(&ugen_cdevsw, 
+		    UGENUNITMASK, UGENMINOR(USBDEVUNIT(sc->sc_dev), 0));
 #endif
-
 	return (0);
 }
 

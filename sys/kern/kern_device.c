@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.10 2004/05/13 23:49:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.11 2004/05/19 22:52:58 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -43,10 +43,11 @@
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 
-static struct cdevsw 	*cdevsw[NUMCDEVSW];
-static struct lwkt_port	*cdevport[NUMCDEVSW];
+static struct cdevlink 	*cdevbase[NUMCDEVSW];
 
 static int cdevsw_putport(lwkt_port_t port, lwkt_msg_t msg);
+
+struct cdevsw dead_cdevsw;
 
 /*
  * Initialize a message port to serve as the default message-handling port
@@ -69,7 +70,7 @@ int
 cdevsw_putport(lwkt_port_t port, lwkt_msg_t lmsg)
 {
     cdevallmsg_t msg = (cdevallmsg_t)lmsg;
-    struct cdevsw *csw = msg->am_msg.csw;
+    struct cdevsw *devsw = msg->am_msg.dev->si_devsw;
     int error;
 
     /*
@@ -78,25 +79,25 @@ cdevsw_putport(lwkt_port_t port, lwkt_msg_t lmsg)
      */
     switch(msg->am_lmsg.ms_cmd.cm_op) {
     case CDEV_CMD_OPEN:
-	error = csw->old_open(
+	error = devsw->old_open(
 		    msg->am_open.msg.dev,
 		    msg->am_open.oflags,
 		    msg->am_open.devtype,
 		    msg->am_open.td);
 	break;
     case CDEV_CMD_CLOSE:
-	error = csw->old_close(
+	error = devsw->old_close(
 		    msg->am_close.msg.dev,
 		    msg->am_close.fflag,
 		    msg->am_close.devtype,
 		    msg->am_close.td);
 	break;
     case CDEV_CMD_STRATEGY:
-	csw->old_strategy(msg->am_strategy.bp);
+	devsw->old_strategy(msg->am_strategy.bp);
 	error = 0;
 	break;
     case CDEV_CMD_IOCTL:
-	error = csw->old_ioctl(
+	error = devsw->old_ioctl(
 		    msg->am_ioctl.msg.dev,
 		    msg->am_ioctl.cmd,
 		    msg->am_ioctl.data,
@@ -104,39 +105,43 @@ cdevsw_putport(lwkt_port_t port, lwkt_msg_t lmsg)
 		    msg->am_ioctl.td);
 	break;
     case CDEV_CMD_DUMP:
-	error = csw->old_dump(msg->am_ioctl.msg.dev);
+	error = devsw->old_dump(
+		    msg->am_dump.msg.dev,
+		    msg->am_dump.count,
+		    msg->am_dump.blkno,
+		    msg->am_dump.secsize);
 	break;
     case CDEV_CMD_PSIZE:
-	msg->am_psize.result = csw->old_psize(msg->am_psize.msg.dev);
+	msg->am_psize.result = devsw->old_psize(msg->am_psize.msg.dev);
 	error = 0;	/* XXX */
 	break;
     case CDEV_CMD_READ:
-	error = csw->old_read(
+	error = devsw->old_read(
 		    msg->am_read.msg.dev,
 		    msg->am_read.uio,
 		    msg->am_read.ioflag);
 	break;
     case CDEV_CMD_WRITE:
-	error = csw->old_write(
+	error = devsw->old_write(
 		    msg->am_read.msg.dev,
 		    msg->am_read.uio,
 		    msg->am_read.ioflag);
 	break;
     case CDEV_CMD_POLL:
-	msg->am_poll.events = csw->old_poll(
+	msg->am_poll.events = devsw->old_poll(
 				msg->am_poll.msg.dev,
 				msg->am_poll.events,
 				msg->am_poll.td);
 	error = 0;
 	break;
     case CDEV_CMD_KQFILTER:
-	msg->am_kqfilter.result = csw->old_kqfilter(
+	msg->am_kqfilter.result = devsw->old_kqfilter(
 				msg->am_kqfilter.msg.dev,
 				msg->am_kqfilter.kn);
 	error = 0;
 	break;
     case CDEV_CMD_MMAP:
-	msg->am_mmap.result = csw->old_mmap(
+	msg->am_mmap.result = devsw->old_mmap(
 		    msg->am_mmap.msg.dev,
 		    msg->am_mmap.offset,
 		    msg->am_mmap.nprot);
@@ -150,40 +155,13 @@ cdevsw_putport(lwkt_port_t port, lwkt_msg_t lmsg)
     return(error);
 }
 
-/*
- * These device dispatch functions provide convenient entry points for
- * any code wishing to make a dev call.
- *
- * YYY we ought to be able to optimize the port lookup by caching it in
- * the dev_t structure itself.
- */
-static __inline
-struct cdevsw *
-_devsw(dev_t dev)
-{
-    if (dev == NULL)
-	return(NULL);
-    if (dev->si_devsw)
-	return (dev->si_devsw);
-    return(cdevsw[major(dev)]);
-}
-
 static __inline
 lwkt_port_t
 _init_cdevmsg(dev_t dev, cdevmsg_t msg, int cmd)
 {
-    struct cdevsw *csw;
-
     lwkt_initmsg_simple(&msg->msg, cmd);
     msg->dev = dev;
-    msg->csw = csw = _devsw(dev);
-    if (csw != NULL) {			/* YYY too hackish */
-	KKASSERT(csw->d_port);		/* YYY too hackish */
-	if (cdevport[major(dev)])	/* YYY too hackish */
-	    return(cdevport[major(dev)]);
-	return(csw->d_port);
-    }
-    return(NULL);
+    return(dev->si_port);
 }
 
 int
@@ -244,6 +222,10 @@ dev_dioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, thread_t td)
     return(lwkt_domsg(port, &msg.msg.msg));
 }
 
+/*
+ * note: the disk layer is expected to set count, blkno, and secsize before
+ * forwarding the message.
+ */
 int
 dev_ddump(dev_t dev)
 {
@@ -253,6 +235,9 @@ dev_ddump(dev_t dev)
     port = _init_cdevmsg(dev, &msg.msg, CDEV_CMD_DUMP);
     if (port == NULL)
 	return(ENXIO);
+    msg.count = 0;
+    msg.blkno = 0;
+    msg.secsize = 0;
     return(lwkt_domsg(port, &msg.msg.msg));
 }
 
@@ -353,215 +338,29 @@ dev_dmmap(dev_t dev, vm_offset_t offset, int nprot)
     return(-1);
 }
 
-int
-dev_port_dopen(lwkt_port_t port, dev_t dev, int oflags, int devtype, thread_t td)
-{
-    struct cdevmsg_open	msg;
-
-    _init_cdevmsg(dev, &msg.msg, CDEV_CMD_OPEN);
-    if (port == NULL)
-	return(ENXIO);
-    msg.oflags = oflags;
-    msg.devtype = devtype;
-    msg.td = td;
-    return(lwkt_domsg(port, &msg.msg.msg));
-}
-
-int
-dev_port_dclose(lwkt_port_t port, dev_t dev, int fflag, int devtype, thread_t td)
-{
-    struct cdevmsg_close msg;
-
-    _init_cdevmsg(dev, &msg.msg, CDEV_CMD_CLOSE);
-    if (port == NULL)
-	return(ENXIO);
-    msg.fflag = fflag;
-    msg.devtype = devtype;
-    msg.td = td;
-    return(lwkt_domsg(port, &msg.msg.msg));
-}
-
-void
-dev_port_dstrategy(lwkt_port_t port, dev_t dev, struct buf *bp)
-{
-    struct cdevmsg_strategy msg;
-
-    _init_cdevmsg(dev, &msg.msg, CDEV_CMD_STRATEGY);
-    KKASSERT(port);	/* 'nostrategy' function is NULL YYY */
-    msg.bp = bp;
-    lwkt_domsg(port, &msg.msg.msg);
-}
-
-int
-dev_port_dioctl(lwkt_port_t port, dev_t dev, u_long cmd, caddr_t data, int fflag, thread_t td)
-{
-    struct cdevmsg_ioctl msg;
-
-    _init_cdevmsg(dev, &msg.msg, CDEV_CMD_IOCTL);
-    if (port == NULL)
-	return(ENXIO);
-    msg.cmd = cmd;
-    msg.data = data;
-    msg.fflag = fflag;
-    msg.td = td;
-    return(lwkt_domsg(port, &msg.msg.msg));
-}
-
-int
-dev_port_ddump(lwkt_port_t port, dev_t dev)
-{
-    struct cdevmsg_dump	msg;
-
-    _init_cdevmsg(dev, &msg.msg, CDEV_CMD_DUMP);
-    if (port == NULL)
-	return(ENXIO);
-    return(lwkt_domsg(port, &msg.msg.msg));
-}
-
-int
-dev_port_dpsize(lwkt_port_t port, dev_t dev)
-{
-    struct cdevmsg_psize msg;
-    int error;
-
-    _init_cdevmsg(dev, &msg.msg, CDEV_CMD_PSIZE);
-    if (port == NULL)
-	return(-1);
-    error = lwkt_domsg(port, &msg.msg.msg);
-    if (error == 0)
-	return(msg.result);
-    return(-1);
-}
-
-int
-dev_port_dread(lwkt_port_t port, dev_t dev, struct uio *uio, int ioflag)
-{
-    struct cdevmsg_read msg;
-
-    _init_cdevmsg(dev, &msg.msg, CDEV_CMD_READ);
-    if (port == NULL)
-	return(ENXIO);
-    msg.uio = uio;
-    msg.ioflag = ioflag;
-    return(lwkt_domsg(port, &msg.msg.msg));
-}
-
-int
-dev_port_dwrite(lwkt_port_t port, dev_t dev, struct uio *uio, int ioflag)
-{
-    struct cdevmsg_write msg;
-
-    _init_cdevmsg(dev, &msg.msg, CDEV_CMD_WRITE);
-    if (port == NULL)
-	return(ENXIO);
-    msg.uio = uio;
-    msg.ioflag = ioflag;
-    return(lwkt_domsg(port, &msg.msg.msg));
-}
-
-int
-dev_port_dpoll(lwkt_port_t port, dev_t dev, int events, thread_t td)
-{
-    struct cdevmsg_poll msg;
-    int error;
-
-    _init_cdevmsg(dev, &msg.msg, CDEV_CMD_POLL);
-    if (port == NULL)
-	return(ENXIO);
-    msg.events = events;
-    msg.td = td;
-    error = lwkt_domsg(port, &msg.msg.msg);
-    if (error == 0)
-	return(msg.events);
-    return(seltrue(dev, msg.events, td));
-}
-
-int
-dev_port_dkqfilter(lwkt_port_t port, dev_t dev, struct knote *kn)
-{
-    struct cdevmsg_kqfilter msg;
-    int error;
-
-    _init_cdevmsg(dev, &msg.msg, CDEV_CMD_KQFILTER);
-    if (port == NULL)
-	return(ENXIO);
-    msg.kn = kn;
-    error = lwkt_domsg(port, &msg.msg.msg);
-    if (error == 0)
-	return(msg.result);
-    return(ENODEV);
-}
-
-int
-dev_port_dmmap(lwkt_port_t port, dev_t dev, vm_offset_t offset, int nprot)
-{
-    struct cdevmsg_mmap msg;
-    int error;
-
-    _init_cdevmsg(dev, &msg.msg, CDEV_CMD_MMAP);
-    if (port == NULL)
-	return(-1);
-    msg.offset = offset;
-    msg.nprot = nprot;
-    error = lwkt_domsg(port, &msg.msg.msg);
-    if (error == 0)
-	return(msg.result);
-    return(-1);
-}
-
 const char *
 dev_dname(dev_t dev)
 {
-    struct cdevsw *csw;
-
-    if ((csw = _devsw(dev)) != NULL)
-	return(csw->d_name);
-    return(NULL);
+    return(dev->si_devsw->d_name);
 }
 
 int
 dev_dflags(dev_t dev)
 {
-    struct cdevsw *csw;
-
-    if ((csw = _devsw(dev)) != NULL)
-	return(csw->d_flags);
-    return(0);
+    return(dev->si_devsw->d_flags);
 }
 
 int
 dev_dmaj(dev_t dev)
 {
-    struct cdevsw *csw;
-
-    if ((csw = _devsw(dev)) != NULL)
-	return(csw->d_maj);
-    return(0);
+    return(dev->si_devsw->d_maj);
 }
 
 lwkt_port_t
 dev_dport(dev_t dev)
 {
-    struct cdevsw *csw;
-
-    if ((csw = _devsw(dev)) != NULL) {
-	if (cdevport[major(dev)])	/* YYY too hackish */
-	    return(cdevport[major(dev)]);
-	return(csw->d_port);
-    }
-    return(NULL);
+    return(dev->si_port);
 }
-
-#if 0
-/*
- * cdevsw[] array functions, moved from kern/kern_conf.c
- */
-struct cdevsw *
-devsw(dev_t dev)
-{
-    return(_devsw(dev));
-}
-#endif
 
 /*
  * Convert a cdevsw template into the real thing, filling in fields the
@@ -600,67 +399,179 @@ compile_devsw(struct cdevsw *devsw)
 
     if (devsw->d_port == NULL)
 	devsw->d_port = &devsw_compat_port;
+    if (devsw->d_clone == NULL)
+	devsw->d_clone = noclone;
 }
 
 /*
- * Add a cdevsw entry
+ * This makes a cdevsw entry visible to userland (e.g /dev/<blah>).
+ *
+ * The kernel can overload a major number with multiple cdevsw's but only
+ * the one installed in cdevbase[] is visible to userland.  make_dev() does
+ * not automatically call cdevsw_add() (nor do we want it to, since 
+ * partition-managed disk devices are overloaded on top of the raw device).
  */
 int
-cdevsw_add(struct cdevsw *newentry)
+cdevsw_add(struct cdevsw *devsw, u_int mask, u_int match)
 {
-    compile_devsw(newentry);
-    if (newentry->d_maj < 0 || newentry->d_maj >= NUMCDEVSW) {
+    int maj;
+    struct cdevlink *link;
+
+    compile_devsw(devsw);
+    maj = devsw->d_maj;
+    if (maj < 0 || maj >= NUMCDEVSW) {
 	printf("%s: ERROR: driver has bogus cdevsw->d_maj = %d\n",
-	    newentry->d_name, newentry->d_maj);
+	    devsw->d_name, maj);
 	return (EINVAL);
     }
-    if (cdevsw[newentry->d_maj]) {
-	printf("WARNING: \"%s\" is usurping \"%s\"'s cdevsw[]\n",
-	    newentry->d_name, cdevsw[newentry->d_maj]->d_name);
+    for (link = cdevbase[maj]; link; link = link->next) {
+	/*
+	 * If we get an exact match we usurp the target, but we only print
+	 * a warning message if a different device switch is installed.
+	 */
+	if (link->mask == mask && link->match == match) {
+	    if (link->devsw != devsw) {
+		    printf("WARNING: \"%s\" (%p) is usurping \"%s\"'s (%p)"
+			" cdevsw[]\n",
+			devsw->d_name, devsw, 
+			link->devsw->d_name, link->devsw);
+		    link->devsw = devsw;
+		    ++devsw->d_refs;
+	    }
+	    return(0);
+	}
+	/*
+	 * XXX add additional warnings for overlaps
+	 */
     }
-    cdevsw[newentry->d_maj] = newentry;
-    return (0);
+
+    link = malloc(sizeof(struct cdevlink), M_DEVBUF, M_INTWAIT|M_ZERO);
+    link->mask = mask;
+    link->match = match;
+    link->devsw = devsw;
+    link->next = cdevbase[maj];
+    cdevbase[maj] = link;
+    ++devsw->d_refs;
+    return(0);
 }
 
 /*
- * Add a cdevsw entry and override the port.
+ * Should only be used by udev2dev().
+ *
+ * If the minor number is -1, we match the first cdevsw we find for this
+ * major. 
+ *
+ * Note that this function will return NULL if the minor number is not within
+ * the bounds of the installed mask(s).
  */
-lwkt_port_t
-cdevsw_add_override(struct cdevsw *newentry, lwkt_port_t port)
+struct cdevsw *
+cdevsw_get(int x, int y)
 {
-    int error;
+    struct cdevlink *link;
 
-    if ((error = cdevsw_add(newentry)) == 0)
-	cdevport[newentry->d_maj] = port;
-    return(newentry->d_port);
-}
-
-lwkt_port_t
-cdevsw_dev_override(dev_t dev, lwkt_port_t port)
-{
-    struct cdevsw *csw;
-
-    KKASSERT(major(dev) >= 0 && major(dev) < NUMCDEVSW);
-    if ((csw = _devsw(dev)) != NULL) {
-	cdevport[major(dev)] = port;
-	return(csw->d_port);
+    if (x < 0 || x >= NUMCDEVSW)
+	return(NULL);
+    for (link = cdevbase[x]; link; link = link->next) {
+	if (y == -1 || (link->mask & y) == link->match)
+	    return(link->devsw);
     }
     return(NULL);
 }
 
 /*
- *  Remove a cdevsw entry
+ * Use the passed cdevsw as a template to create our intercept cdevsw,
+ * and install and return ours.
+ */
+struct cdevsw *
+cdevsw_add_override(dev_t backing_dev, u_int mask, u_int match)
+{
+    struct cdevsw *devsw;
+    struct cdevsw *bsw = backing_dev->si_devsw;
+
+    devsw = malloc(sizeof(struct cdevsw), M_DEVBUF, M_INTWAIT|M_ZERO);
+    devsw->d_name = bsw->d_name;
+    devsw->d_maj = bsw->d_maj;
+    devsw->d_flags = bsw->d_flags;
+    compile_devsw(devsw);
+    cdevsw_add(devsw, mask, match);
+
+    return(devsw);
+}
+
+/*
+ * Override a device's port, returning the previously installed port.  This
+ * is XXX very dangerous.
+ */
+lwkt_port_t
+cdevsw_dev_override(dev_t dev, lwkt_port_t port)
+{
+    lwkt_port_t oport;
+
+    oport = dev->si_port;
+    dev->si_port = port;
+    return(oport);
+}
+
+/*
+ * Remove a cdevsw entry from the cdevbase[] major array so no new user opens
+ * can be performed, and destroy all devices installed in the hash table
+ * which are associated with this cdevsw.  (see destroy_all_dev()).
  */
 int
-cdevsw_remove(struct cdevsw *oldentry)
+cdevsw_remove(struct cdevsw *devsw, u_int mask, u_int match)
 {
-    if (oldentry->d_maj < 0 || oldentry->d_maj >= NUMCDEVSW) {
+    int maj = devsw->d_maj;
+    struct cdevlink *link;
+    struct cdevlink **plink;
+ 
+    if (maj < 0 || maj >= NUMCDEVSW) {
 	printf("%s: ERROR: driver has bogus cdevsw->d_maj = %d\n",
-	    oldentry->d_name, oldentry->d_maj);
+	    devsw->d_name, maj);
 	return EINVAL;
     }
-    cdevsw[oldentry->d_maj] = NULL;
-    cdevport[oldentry->d_maj] = NULL;
+    if (devsw != &dead_cdevsw)
+	destroy_all_dev(devsw, mask, match);
+    for (plink = &cdevbase[maj]; (link = *plink) != NULL; plink = &link->next) {
+	if (link->mask == mask && link->match == match) {
+	    if (link->devsw == devsw)
+		break;
+	    printf("%s: ERROR: cannot remove from cdevsw[], its major"
+		    " number %d was stolen by %s\n",
+		    devsw->d_name, maj,
+		    link->devsw->d_name
+	    );
+	}
+    }
+    if (link == NULL) {
+	printf("%s(%d): WARNING: cdevsw removed multiple times!\n",
+		devsw->d_name, maj);
+    } else {
+	*plink = link->next;
+	--devsw->d_refs; /* XXX cdevsw_release() / record refs */
+	free(link, M_DEVBUF);
+    }
+    if (devsw->d_refs != 0) {
+	printf("%s: Warning: cdevsw_remove() called while %d device refs"
+		" still exist! (major %d)\n", 
+		devsw->d_name,
+		devsw->d_refs,
+		maj);
+    } else {
+	printf("%s: cdevsw removed\n", devsw->d_name);
+    }
     return 0;
+}
+
+/*
+ * Release a cdevsw entry.  When the ref count reaches zero, recurse
+ * through the stack.
+ */
+void
+cdevsw_release(struct cdevsw *devsw)
+{
+    --devsw->d_refs;
+    if (devsw->d_refs == 0) {
+	/* XXX */
+    }
 }
 

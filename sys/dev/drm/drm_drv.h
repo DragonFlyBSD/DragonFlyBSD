@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_drv.h,v 1.13.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.7 2004/05/13 23:49:16 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.8 2004/05/19 22:52:42 dillon Exp $
  */
 
 /*
@@ -654,12 +654,14 @@ static int DRM(init)( device_t nbdev )
 	dev = device_get_softc(nbdev);
 	memset( (void *)dev, 0, sizeof(*dev) );
 	dev->device = nbdev;
+	cdevsw_add(&DRM(cdevsw), -1, unit);
 	dev->devnode = make_dev( &DRM(cdevsw),
 			unit,
 			DRM_DEV_UID,
 			DRM_DEV_GID,
 			DRM_DEV_MODE,
 			"dri/card%d", unit );
+	reference_dev(dev->devnode);
 #elif defined(__NetBSD__)
 	unit = minor(dev->device.dv_unit);
 #endif
@@ -772,6 +774,7 @@ static void DRM(cleanup)(device_t nbdev)
 #endif
 	}
 #endif
+	cdevsw_remove(&DRM(cdevsw), -1, device_get_unit(nbdev));
 
 	DRM(takedown)( dev );
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.17 2004/05/13 23:49:14 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.18 2004/05/19 22:52:40 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -1582,6 +1582,7 @@ static void
 ata_init(void)
 {
     /* register controlling device */
+    cdevsw_add(&ata_cdevsw, 0, 0);
     make_dev(&ata_cdevsw, 0, UID_ROOT, GID_OPERATOR, 0600, "ata");
 
     /* register boot attach to be run when interrupts are enabled */

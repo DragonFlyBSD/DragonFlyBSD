@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_machdep.c,v 1.15 2003/11/01 00:18:29 njl Exp $
- * $DragonFly: src/sys/i386/acpica5/Attic/acpi_machdep.c,v 1.2 2004/05/13 23:49:23 dillon Exp $
+ * $DragonFly: src/sys/i386/acpica5/Attic/acpi_machdep.c,v 1.3 2004/05/19 22:52:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -303,6 +303,7 @@ apmpoll(dev_t dev, int events, d_thread_t *td)
 static void
 acpi_capm_init(struct acpi_softc *sc)
 {
+	cdevsw_add(&apm_cdevsw, 0, 0);
         make_dev(&apm_cdevsw, 0, 0, 5, 0664, "apm");
 }
 

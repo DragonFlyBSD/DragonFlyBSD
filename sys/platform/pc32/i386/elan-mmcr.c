@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/i386/elan-mmcr.c,v 1.6.2.1 2002/09/17 22:39:53 sam Exp $
- * $DragonFly: src/sys/platform/pc32/i386/elan-mmcr.c,v 1.6 2004/05/13 23:49:23 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/elan-mmcr.c,v 1.7 2004/05/19 22:52:57 dillon Exp $
  * The AMD Elan sc520 is a system-on-chip gadget which is used in embedded
  * kind of things, see www.soekris.com for instance, and it has a few quirks
  * we need to deal with.
@@ -147,6 +147,7 @@ elan_drvinit(void)
 	if (elan_mmcr == NULL)
 		return;
 	printf("Elan-mmcr driver: MMCR at %p\n", elan_mmcr);
+	cdevsw_add(&elan_cdevsw, 0, 0);
 	make_dev(&elan_cdevsw, 0, UID_ROOT, GID_WHEEL, 0600, "elan-mmcr");
 	return;
 }

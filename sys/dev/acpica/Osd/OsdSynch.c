@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/Osd/OsdSynch.c,v 1.17.2.1 2003/08/22 20:49:21 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdSynch.c,v 1.3 2004/05/05 22:18:09 dillon Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdSynch.c,v 1.4 2004/05/19 22:52:40 dillon Exp $ 
  */
 
 /*
@@ -121,7 +121,9 @@ ACPI_STATUS
 AcpiOsDeleteSemaphore (ACPI_HANDLE Handle)
 {
 #ifndef ACPI_NO_SEMAPHORES
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
     struct acpi_semaphore *as = (struct acpi_semaphore *)Handle;
+#endif
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.9.2.2 2002/04/27 17:37:12 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.6 2004/05/13 23:49:14 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.7 2004/05/19 22:52:39 dillon Exp $
  */
 
 
@@ -55,8 +55,6 @@
 #include "ip_auth.h"
 #include "ip_frag.h"
 #include "ip_proxy.h"
-
-static dev_t ipf_devs[IPL_LOGMAX + 1];
 
 SYSCTL_DECL(_net_inet);
 SYSCTL_NODE(_net_inet, OID_AUTO, ipf, CTLFLAG_RW, 0, "IPF");
@@ -136,6 +134,7 @@ ipfilter_modevent(module_t mod, int type, void *unused)
 		error = iplattach();
 		if (error)
 			break;
+		cdevsw_add(&ipl_cdevsw, 0, 0);
 
 		c = NULL;
 		for(i=strlen(IPL_NAME); i>0; i--)
@@ -145,8 +144,7 @@ ipfilter_modevent(module_t mod, int type, void *unused)
 			}
 		if (!c)
 			c = IPL_NAME;
-		ipf_devs[IPL_LOGIPF] =
-		    make_dev(&ipl_cdevsw, IPL_LOGIPF, 0, 0, 0600, c);
+		make_dev(&ipl_cdevsw, IPL_LOGIPF, 0, 0, 0600, c);
 
 		c = NULL;
 		for(i=strlen(IPL_NAT); i>0; i--)
@@ -156,8 +154,7 @@ ipfilter_modevent(module_t mod, int type, void *unused)
 			}
 		if (!c)
 			c = IPL_NAT;
-		ipf_devs[IPL_LOGNAT] =
-		    make_dev(&ipl_cdevsw, IPL_LOGNAT, 0, 0, 0600, c);
+		make_dev(&ipl_cdevsw, IPL_LOGNAT, 0, 0, 0600, c);
 
 		c = NULL;
 		for(i=strlen(IPL_STATE); i>0; i--)
@@ -167,8 +164,7 @@ ipfilter_modevent(module_t mod, int type, void *unused)
 			}
 		if (!c)
 			c = IPL_STATE;
-		ipf_devs[IPL_LOGSTATE] =
-		    make_dev(&ipl_cdevsw, IPL_LOGSTATE, 0, 0, 0600, c);
+		make_dev(&ipl_cdevsw, IPL_LOGSTATE, 0, 0, 0600, c);
 
 		c = NULL;
 		for(i=strlen(IPL_AUTH); i>0; i--)
@@ -178,15 +174,11 @@ ipfilter_modevent(module_t mod, int type, void *unused)
 			}
 		if (!c)
 			c = IPL_AUTH;
-		ipf_devs[IPL_LOGAUTH] =
-		    make_dev(&ipl_cdevsw, IPL_LOGAUTH, 0, 0, 0600, c);
+		make_dev(&ipl_cdevsw, IPL_LOGAUTH, 0, 0, 0600, c);
 
 		break;
 	case MOD_UNLOAD :
-		destroy_dev(ipf_devs[IPL_LOGIPF]);
-		destroy_dev(ipf_devs[IPL_LOGNAT]);
-		destroy_dev(ipf_devs[IPL_LOGSTATE]);
-		destroy_dev(ipf_devs[IPL_LOGAUTH]);
+		cdevsw_remove(&ipl_cdevsw, 0, 0);
 		error = ipldetach();
 		break;
 	default:

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vgareg.h,v 1.4 1999/12/29 04:35:37 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/vgareg.h,v 1.4 2003/07/22 17:03:28 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/vgareg.h,v 1.5 2004/05/19 22:52:54 dillon Exp $
  */
 
 #ifndef _DEV_FB_VGAREG_H_
@@ -63,7 +63,7 @@
 
 #define VGA_DRIVER_NAME		"vga"
 #define VGA_UNIT(dev)		minor(dev)
-#define VGA_MKMINOR(unit)	(unit)
+#define VGA_MKMINOR(unit)	(unit & 0xff)
 
 #ifdef _KERNEL
 

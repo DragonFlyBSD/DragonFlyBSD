@@ -32,7 +32,7 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.11 2004/05/13 23:49:23 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.12 2004/05/19 22:52:58 dillon Exp $
  */
 
 /*
@@ -177,26 +177,29 @@ ptsopen(dev_t dev, int flag, int devtype, struct thread *td)
 	struct tty *tp;
 	int error;
 	int minr;
+#if 0
 	dev_t nextdev;
+#endif
 	struct pt_ioctl *pti;
 	struct proc *p;
 
 	p = td->td_proc;
 	KKASSERT(p != NULL);
 
-	/*
-	 * XXX: Gross hack for DEVFS:
-	 * XXX: DEVFS is no more, should this be removed?
-	 * If we openned this device, ensure we have the
-	 * next one too, so people can open it.
-	 */
 	minr = lminor(dev);
+#if 0
+	/*
+	 * REMOVED gross hack for devfs.  also note that makedev()
+	 * no longer exists in this form and reference counting makes
+	 * this a problem if we don't clean it out later.
+	 */
 	if (minr < 255) {
-		nextdev = makedev(major(dev), minr + 1);
+		nextdev = make_sub_dev(dev, minr + 1);
 		if (!nextdev->si_drv1) {
 			ptyinit(minr + 1);
 		}
 	}
+#endif
 	if (!dev->si_drv1)
 		ptyinit(minor(dev));
 	if (!dev->si_drv1)
@@ -831,8 +834,8 @@ static void
 ptc_drvinit(unused)
 	void *unused;
 {
-	cdevsw_add(&pts_cdevsw);
-	cdevsw_add(&ptc_cdevsw);
+	cdevsw_add(&pts_cdevsw, 0, 0);
+	cdevsw_add(&ptc_cdevsw, 0, 0);
 	/* XXX: Gross hack for DEVFS */
 	/* XXX: DEVFS is no more, should this be removed? */
 	ptyinit(0);

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.23 2004/05/13 23:49:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.24 2004/05/19 22:52:58 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1717,9 +1717,11 @@ fildesc_drvinit(void *unused)
 {
 	int fd;
 
-	for (fd = 0; fd < NUMFDESC; fd++)
+	cdevsw_add(&fildesc_cdevsw, 0, 0);
+	for (fd = 0; fd < NUMFDESC; fd++) {
 		make_dev(&fildesc_cdevsw, fd,
 		    UID_BIN, GID_BIN, 0666, "fd/%d", fd);
+	}
 	make_dev(&fildesc_cdevsw, 0, UID_ROOT, GID_WHEEL, 0666, "stdin");
 	make_dev(&fildesc_cdevsw, 1, UID_ROOT, GID_WHEEL, 0666, "stdout");
 	make_dev(&fildesc_cdevsw, 2, UID_ROOT, GID_WHEEL, 0666, "stderr");

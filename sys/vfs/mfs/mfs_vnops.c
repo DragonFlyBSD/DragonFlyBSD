@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.12 2004/04/15 00:59:41 cpressey Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.13 2004/05/19 22:53:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -100,6 +100,10 @@ VNODEOP_SET(mfs_vnodeop_opv_desc);
  * validate before actual IO. Record our process identifier
  * so we can tell when we are doing I/O to ourself.
  *
+ * NOTE: new device sequencing.  mounts check the device reference count
+ * before calling open, so we must associate the device in open and 
+ * disassociate it in close rather then faking it when we created the vnode.
+ *
  * mfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
  *	    struct thread *a_td)
  */
@@ -107,10 +111,11 @@ VNODEOP_SET(mfs_vnodeop_opv_desc);
 static int
 mfs_open(struct vop_open_args *ap)
 {
-	if (ap->a_vp->v_type != VCHR) {
+	struct vnode *vp = ap->a_vp;
+
+	if (vp->v_type != VCHR)
 		panic("mfs_open not VCHR");
-		/* NOTREACHED */
-	}
+	v_associate_rdev(vp, udev2dev(vp->v_udev, 0));
 	return (0);
 }
 
@@ -136,14 +141,11 @@ static int
 mfs_freeblks(struct vop_freeblks_args *ap)
 {       
 	struct buf *bp;
-	struct vnode *vp;
-
-	if (!vfinddev(ap->a_vp->v_rdev, VCHR, &vp) || vp->v_usecount == 0)
-		panic("mfs_freeblks: bad dev");
+	struct vnode *vp = ap->a_vp;
 
 	bp = geteblk(ap->a_length);
 	bp->b_flags |= B_FREEBUF | B_ASYNC;
-	bp->b_dev = ap->a_vp->v_rdev;
+	bp->b_dev = vp->v_rdev;
 	bp->b_blkno = ap->a_addr;
 	bp->b_offset = dbtob(ap->a_addr);
 	bp->b_bcount = ap->a_length;
@@ -162,13 +164,17 @@ mfs_strategy(struct vop_strategy_args *ap)
 {
 	struct buf *bp = ap->a_bp;
 	struct mfsnode *mfsp;
-	struct vnode *vp;
 	struct thread *td = curthread;		/* XXX */
 	int s;
 
-	if (!vfinddev(bp->b_dev, VCHR, &vp) || vp->v_usecount == 0)
-		panic("mfs_strategy: bad dev");
-	mfsp = VTOMFS(vp);
+	bp->b_dev = ap->a_vp->v_rdev;
+	mfsp = bp->b_dev->si_drv1;
+	if (mfsp == NULL) {
+		bp->b_error = ENXIO;
+		bp->b_flags |= B_ERROR;
+		biodone(bp);
+		return(0);
+	}
 
 	/*
 	 * splbio required for queueing/dequeueing, in case of forwarded
@@ -205,7 +211,7 @@ mfs_strategy(struct vop_strategy_args *ap)
 		 * wake it up.
 		 */
 		bufq_insert_tail(&mfsp->buf_queue, bp);
-		wakeup((caddr_t)vp);
+		wakeup((caddr_t)mfsp);
 	}
 	splx(s);
 	return (0);
@@ -331,7 +337,12 @@ mfs_close(struct vop_close_args *ap)
 	 * Send a request to the filesystem server to exit.
 	 */
 	mfsp->mfs_active = 0;
-	wakeup((caddr_t)vp);
+	v_release_rdev(vp);
+	if (mfsp->mfs_dev) {
+		destroy_dev(mfsp->mfs_dev);
+		mfsp->mfs_dev = NULL;
+	}
+	wakeup((caddr_t)mfsp);
 	return (0);
 }
 

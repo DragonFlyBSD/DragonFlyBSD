@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.1 2004/04/16 20:13:16 drhodus Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.2 2004/05/19 22:52:48 dillon Exp $
  */
 
 /*
@@ -232,6 +232,7 @@ twa_attach(device_t dev)
 	u_int32_t		command;
 	int			res_id;
 	int			error;
+	dev_t			xdev;
 
 	twa_dbg_dprint_enter(3, sc);
 
@@ -298,10 +299,11 @@ twa_attach(device_t dev)
 	twa_describe_controller(sc);
 
 	/* Create the control device. */
-	sc->twa_ctrl_dev = make_dev(&twa_cdevsw, device_get_unit(sc->twa_bus_dev),
-					UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
-					"twa%d", device_get_unit(sc->twa_bus_dev));
-	sc->twa_ctrl_dev->si_drv1 = sc;
+	cdevsw_add(&twa_cdevsw, -1, device_get_unit(sc->twa_bus_dev));
+	xdev = make_dev(&twa_cdevsw, device_get_unit(sc->twa_bus_dev),
+			UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
+			"twa%d", device_get_unit(sc->twa_bus_dev));
+	xdev->si_drv1 = sc;
 
 	/*
 	 * Schedule ourselves to bring the controller up once interrupts are
@@ -376,9 +378,7 @@ twa_free(struct twa_softc *sc)
 		bus_release_resource(sc->twa_bus_dev, SYS_RES_IOPORT,
 					TWA_IO_CONFIG_REG, sc->twa_io_res);
 
-	/* Destroy the control device. */
-	if (sc->twa_ctrl_dev != (dev_t)NULL)
-		destroy_dev(sc->twa_ctrl_dev);
+	cdevsw_remove(&twa_cdevsw, -1, device_get_unit(sc->twa_bus_dev));
 
 	sysctl_ctx_free(&sc->twa_sysctl_ctx);
 }

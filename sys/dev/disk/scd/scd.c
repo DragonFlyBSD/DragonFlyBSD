@@ -42,7 +42,7 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.9 2004/05/13 23:49:15 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.10 2004/05/19 22:52:41 dillon Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
@@ -218,6 +218,7 @@ scd_attach(struct isa_device *dev)
 	cd->audio_status = CD_AS_AUDIO_INVALID;
 	bufq_init(&cd->head);
 
+	cdevsw_add(&scd_cdevsw, dkunitmask(), dkmakeunit(unit));
 	make_dev(&scd_cdevsw, dkmakeminor(unit, 0, 0),
 	    UID_ROOT, GID_OPERATOR, 0640, "rscd%da", unit);
 	make_dev(&scd_cdevsw, dkmakeminor(unit, 0, RAW_PART),
@@ -694,10 +695,6 @@ scd_probe(struct isa_device *dev)
 	static char namebuf[8+16+8+3];
 	char *s = namebuf;
 	int loop_count = 0;
-	static int once;
-
-	if (!once++)
-		cdevsw_add(&scd_cdevsw);
 
 	scd_data[unit].flags = SCDPROBING;
 	scd_data[unit].iobase = dev->id_iobase;

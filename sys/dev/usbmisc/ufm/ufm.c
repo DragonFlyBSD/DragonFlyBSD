@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.7 2004/05/13 23:49:21 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.8 2004/05/19 22:52:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -208,7 +208,8 @@ USB_ATTACH(ufm)
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 	/* XXX no error trapping, no storing of dev_t */
-	(void) make_dev(&ufm_cdevsw, device_get_unit(self),
+	cdevsw_add(&ufm_cdevsw, -1, device_get_unit(self));
+	make_dev(&ufm_cdevsw, device_get_unit(self),
 			UID_ROOT, GID_OPERATOR,
 			0644, "ufm%d", device_get_unit(self));
 #elif defined(__NetBSD__) || defined(__OpenBSD__)

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.7 2004/05/13 23:49:18 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.8 2004/05/19 22:52:46 dillon Exp $
  */
 
 /*
@@ -407,6 +407,7 @@ ciss_attach(device_t dev)
    /*
      * Create the control device.
      */
+    cdevsw_add(&ciss_cdevsw, -1, device_get_unit(sc->ciss_dev));
     sc->ciss_dev_t = make_dev(&ciss_cdevsw, device_get_unit(sc->ciss_dev),
 			      UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
 			      "ciss%d", device_get_unit(sc->ciss_dev));

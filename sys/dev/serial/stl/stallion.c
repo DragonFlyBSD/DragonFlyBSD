@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.9 2004/05/13 23:49:20 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.10 2004/05/19 22:52:49 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -767,8 +767,6 @@ static struct cdevsw stl_cdevsw = {
 
 static void stl_drvinit(void *unused)
 {
-
-	cdevsw_add(&stl_cdevsw);
 }
 
 SYSINIT(sidev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,stl_drvinit,NULL)
@@ -880,6 +878,7 @@ static int stlattach(struct isa_device *idp)
 
 	/* register devices for DEVFS */
 	boardnr = brdp->brdnr;
+	cdevsw_add(&stl_cdevsw, 31, boardnr);
 	make_dev(&stl_cdevsw, boardnr + 0x1000000, UID_ROOT, GID_WHEEL,
 		 0600, "staliomem%d", boardnr);
 

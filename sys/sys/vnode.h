@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.15 2004/04/24 04:32:03 drhodus Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.16 2004/05/19 22:53:03 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -89,12 +89,16 @@ typedef	int 	vop_t (void *);
  * v_flag, v_usecount, v_holdcount and v_writecount are
  *    locked by the v_interlock token.
  * v_pollinfo is locked by the lock contained inside it.
+ *
+ * XXX note: v_opencount currently only used by specfs.  It should be used
+ * universally.
  */
 struct vnode {
 	u_long	v_flag;				/* vnode flags (see below) */
 	int	v_usecount;			/* reference count of users */
 	int	v_writecount;			/* reference count of writers */
 	int	v_holdcnt;			/* page & buffer references */
+	int	v_opencount;			/* number of explicit opens */
 	u_long	v_id;				/* capability identifier */
 	struct	mount *v_mount;			/* ptr to vfs we are in */
 	vop_t	**v_op;				/* vnode operations vector */
@@ -109,6 +113,7 @@ struct vnode {
 		struct mount	*vu_mountedhere;/* ptr to mounted vfs (VDIR) */
 		struct socket	*vu_socket;	/* unix ipc (VSOCK) */
 		struct {
+			udev_t	vu_udev;	/* device number for attach */
 			struct specinfo	*vu_specinfo; /* device (VCHR, VBLK) */
 			SLIST_ENTRY(vnode) vu_specnext;
 		} vu_spec;
@@ -140,6 +145,7 @@ struct vnode {
 };
 #define	v_mountedhere	v_un.vu_mountedhere
 #define	v_socket	v_un.vu_socket
+#define v_udev		v_un.vu_spec.vu_udev
 #define	v_rdev		v_un.vu_spec.vu_specinfo
 #define	v_specnext	v_un.vu_spec.vu_specnext
 #define	v_fifoinfo	v_un.vu_fifoinfo
@@ -525,8 +531,9 @@ struct vop_bwrite_args;
 
 extern int	(*lease_check_hook) (struct vop_lease_args *);
 
-void	addalias (struct vnode *vp, dev_t nvp_rdev);
-void	addaliasu (struct vnode *vp, udev_t nvp_rdev);
+void	addaliasu (struct vnode *vp, udev_t nvp_udev);
+int	v_associate_rdev(struct vnode *vp, dev_t dev);
+void	v_release_rdev(struct vnode *vp);
 int 	bdevvp (dev_t dev, struct vnode **vpp);
 void	cvtstat (struct stat *st, struct ostat *ost);
 void	cvtnstat (struct stat *sb, struct nstat *nsb);

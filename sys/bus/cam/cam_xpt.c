@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.14 2004/05/13 23:49:09 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.15 2004/05/19 22:52:37 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -882,6 +882,7 @@ dev_allocq_is_runnable(struct cam_devq *devq)
 static void
 xpt_periph_init()
 {
+	cdevsw_add(&xpt_cdevsw, 0, 0);
 	make_dev(&xpt_cdevsw, 0, UID_ROOT, GID_OPERATOR, 0600, "xpt0");
 }
 

@@ -12,7 +12,7 @@
  * without express or implied warranty.
  *
  * $FreeBSD: src/sys/i386/isa/mse.c,v 1.49.2.1 2000/03/20 13:58:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.8 2004/05/13 23:49:16 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.9 2004/05/19 22:52:43 dillon Exp $
  */
 /*
  * Driver for the Logitech and ATI Inport Bus mice for use with 386bsd and
@@ -95,8 +95,6 @@ typedef struct mse_softc {
 	u_char		sc_bytes[MOUSE_SYS_PACKETSIZE];
 	struct		callout_handle sc_callout;
 	int		sc_watchdog;
-	dev_t		sc_dev;
-	dev_t		sc_ndev;
 	mousehw_t	hw;
 	mousemode_t	mode;
 	mousestatus_t	status;
@@ -362,10 +360,9 @@ mse_attach(dev)
 	sc->mode.accelfactor = (flags & MSE_CONFIG_ACCEL) >> 4;
 	callout_handle_init(&sc->sc_callout);
 
-	sc->sc_dev = make_dev(&mse_cdevsw, unit << 1, 0, 0, 0600,
-			      "mse%d", unit);
-	sc->sc_ndev = make_dev(&mse_cdevsw, (unit<<1)+1, 0, 0, 0600,
-			       "nmse%d", unit);
+	cdevsw_add(&mse_cdevsw, ~1, unit << 1);
+	make_dev(&mse_cdevsw, unit << 1, 0, 0, 0600, "mse%d", unit);
+	make_dev(&mse_cdevsw, (unit<<1)+1, 0, 0, 0600, "nmse%d", unit);
 
 	return 0;
 }
@@ -385,9 +382,7 @@ mse_detach(dev)
 	BUS_TEARDOWN_INTR(device_get_parent(dev), dev, sc->sc_intr, sc->sc_ih);
 	bus_release_resource(dev, SYS_RES_IRQ, rid, sc->sc_intr);
 	bus_release_resource(dev, SYS_RES_IOPORT, rid, sc->sc_port);
-
-	destroy_dev(sc->sc_dev);
-	destroy_dev(sc->sc_ndev);
+	cdevsw_remove(&mse_cdevsw, ~1, device_get_unit(dev) << 1);
 
 	return 0;
 }

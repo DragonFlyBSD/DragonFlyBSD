@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.11 2004/05/13 23:49:11 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.12 2004/05/19 22:52:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -81,7 +81,6 @@ struct pass_softc {
 	struct		buf_queue_head buf_queue;
 	union ccb	saved_ccb;
 	struct devstat	device_stats;
-	dev_t		dev;
 };
 
 #define PASS_CDEV_MAJOR 31
@@ -236,14 +235,13 @@ passcleanup(struct cam_periph *periph)
 
 	devstat_remove_entry(&softc->device_stats);
 
-	destroy_dev(softc->dev);
-
 	cam_extend_release(passperiphs, periph->unit_number);
 
 	if (bootverbose) {
 		xpt_print_path(periph->path);
 		printf("removing device entry\n");
 	}
+	cdevsw_remove(&pass_cdevsw, -1, periph->unit_number);
 	free(softc, M_DEVBUF);
 }
 
@@ -325,9 +323,10 @@ passregister(struct cam_periph *periph, void *arg)
 			  DEVSTAT_PRIORITY_PASS);
 
 	/* Register the device */
-	softc->dev = make_dev(&pass_cdevsw, periph->unit_number, UID_ROOT,
-			      GID_OPERATOR, 0600, "%s%d", periph->periph_name,
-			      periph->unit_number);
+	cdevsw_add(&pass_cdevsw, -1, periph->unit_number);
+	make_dev(&pass_cdevsw, periph->unit_number, UID_ROOT,
+		  GID_OPERATOR, 0600, "%s%d", periph->periph_name,
+		  periph->unit_number);
 
 	/*
 	 * Add an async callback so that we get

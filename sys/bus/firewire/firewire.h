@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.h,v 1.17 2003/11/07 09:01:41 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.h,v 1.4 2004/02/05 17:51:43 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.h,v 1.5 2004/05/19 22:52:38 dillon Exp $
  *
  */
 
@@ -421,6 +421,9 @@ struct fw_crom_buf {
 	unit2minor((f) | (((u) & 0xff) << 8) | (s & 0xff))
 #define DEV2UNIT(x)	((dev2unit(x) & 0xff00) >> 8)
 #define DEV2SUB(x)	(dev2unit(x) & 0xff)
+
+#define FW_UNITMASK	MAKEMINOR(0, -1, 0)
+#define FW_UNIT(unit)	MAKEMINOR(0, unit, 0)
 
 #define FWMEM_FLAG	0x10000
 #define DEV_FWMEM(x)	(dev2unit(x) & FWMEM_FLAG)

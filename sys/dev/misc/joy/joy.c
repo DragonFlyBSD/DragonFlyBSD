@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/joy.c,v 1.38.2.1 2001/09/01 05:55:31 murray Exp $
- * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.6 2004/05/13 23:49:16 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.7 2004/05/19 22:52:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -143,7 +143,8 @@ joy_attach (device_t dev)
     joy->bt = rman_get_bustag(res);
     joy->port = rman_get_bushandle(res);
     joy->timeout[0] = joy->timeout[1] = 0;
-    make_dev(&joy_cdevsw, 0, 0, 0, 0600, "joy%d", unit);
+    cdevsw_add(&joy_cdevsw, -1, unit);
+    make_dev(&joy_cdevsw, unit, 0, 0, 0600, "joy%d", unit);
     return 0;
 }
 

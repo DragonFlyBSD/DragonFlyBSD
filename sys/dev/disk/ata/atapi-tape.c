@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.c,v 1.36.2.12 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.10 2004/05/13 23:49:14 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.11 2004/05/19 22:52:41 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -136,16 +136,15 @@ astattach(struct ata_device *atadev)
 		      DEVSTAT_NO_ORDERED_TAGS,
 		      DEVSTAT_TYPE_SEQUENTIAL | DEVSTAT_TYPE_IF_IDE,
 		      DEVSTAT_PRIORITY_TAPE);
+    cdevsw_add(&ast_cdevsw, dkunitmask(), dkmakeunit(stp->lun));
     dev = make_dev(&ast_cdevsw, dkmakeminor(stp->lun, 0, 0),
 		   UID_ROOT, GID_OPERATOR, 0640, "ast%d", stp->lun);
     dev->si_drv1 = stp;
     dev->si_iosize_max = 256 * DEV_BSIZE;
-    stp->dev1 = dev;
     dev = make_dev(&ast_cdevsw, dkmakeminor(stp->lun, 0, 1),
 		   UID_ROOT, GID_OPERATOR, 0640, "nast%d", stp->lun);
     dev->si_drv1 = stp;
     dev->si_iosize_max = 256 * DEV_BSIZE;
-    stp->dev2 = dev;
     stp->device->flags |= ATA_D_MEDIA_CHANGED;
     ast_describe(stp);
     atadev->driver = stp;
@@ -164,9 +163,8 @@ astdetach(struct ata_device *atadev)
 	bp->b_error = ENXIO;
 	biodone(bp);
     }
-    destroy_dev(stp->dev1);
-    destroy_dev(stp->dev2);
     devstat_remove_entry(&stp->stats);
+    cdevsw_remove(&ast_cdevsw, dkunitmask(), dkmakeunit(stp->lun));
     ata_free_name(atadev);
     ata_free_lun(&ast_lun_map, stp->lun);
     free(stp, M_AST);

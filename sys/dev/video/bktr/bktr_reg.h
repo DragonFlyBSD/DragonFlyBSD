@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/bktr/bktr_reg.h,v 1.46 2003/12/01 19:03:50 truckman Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_reg.h,v 1.5 2004/05/15 17:54:13 joerg Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_reg.h,v 1.6 2004/05/19 22:52:52 dillon Exp $
  *
  * Copyright (c) 1999 Roger Hardiman
  * Copyright (c) 1998 Amancio Hasty
@@ -455,12 +455,6 @@ struct bktr_softc {
     int             irq_rid;	/* 4.x resource id */
     struct resource *res_irq;	/* 4.x resource descriptor for interrupt */
     void            *res_ih;	/* 4.x newbus interrupt handler cookie */
-    dev_t           bktrdev;	/* 4.x device entry for /dev/bktrN */
-    dev_t           tunerdev;	/* 4.x device entry for /dev/tunerN */
-    dev_t           vbidev;	/* 4.x device entry for /dev/vbiN */
-    dev_t           bktrdev_alias;	/* alias /dev/bktr to /dev/bktr0 */
-    dev_t           tunerdev_alias;	/* alias /dev/tuner to /dev/tuner0 */
-    dev_t           vbidev_alias;	/* alias /dev/vbi to /dev/vbi0 */
     bus_space_tag_t	memt;	/* Bus space register access functions */
     bus_space_handle_t	memh;	/* Bus space register access functions */
     bus_size_t		obmemsz;/* Size of card (bytes) */

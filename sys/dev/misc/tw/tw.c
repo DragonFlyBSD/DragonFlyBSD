@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/tw.c,v 1.38 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.9 2004/05/13 23:49:18 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.10 2004/05/19 22:52:45 dillon Exp $
  *
  */
 
@@ -347,10 +347,7 @@ static int twprobe(idp)
   struct tw_sc sc;
   int d;
   int tries;
-  static int once;
 
-  if (!once++)
-	cdevsw_add(&tw_cdevsw);
   sc.sc_port = idp->id_iobase;
   /* Search for the zero crossing signal at ports, bit combinations. */
   tw_zcport = tw_control;
@@ -406,6 +403,7 @@ static int twattach(idp)
   sc->sc_state = 0;
   sc->sc_rcount = 0;
   callout_handle_init(&sc->abortrcv_ch);
+  cdevsw_add(&tw_cdevsw, -1, unit);
   make_dev(&tw_cdevsw, unit, 0, 0, 0600, "tw%d", unit);
   return (1);
 }

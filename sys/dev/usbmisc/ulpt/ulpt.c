@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.9 2004/05/13 23:49:21 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.10 2004/05/19 22:52:51 dillon Exp $
  */
 
 /*
@@ -120,11 +120,6 @@ struct ulpt_softc {
 
 	int sc_refcnt;
 	u_char sc_dying;
-
-#if defined(__FreeBSD__) || defined(__DragonFly__)
-	dev_t dev;
-	dev_t dev_noprime;
-#endif
 };
 
 #if defined(__NetBSD__)
@@ -345,9 +340,10 @@ USB_ATTACH(ulpt)
 #endif
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-	sc->dev = make_dev(&ulpt_cdevsw, device_get_unit(self),
+	cdevsw_add(&ulpt_cdevsw, -1, device_get_unit(self));
+	make_dev(&ulpt_cdevsw, device_get_unit(self),
 		UID_ROOT, GID_OPERATOR, 0644, "ulpt%d", device_get_unit(self));
-	sc->dev_noprime = make_dev(&ulpt_cdevsw,
+	make_dev(&ulpt_cdevsw,
 		device_get_unit(self)|ULPT_NOPRIME,
 		UID_ROOT, GID_OPERATOR, 0644, "unlpt%d", device_get_unit(self));
 #endif
@@ -418,8 +414,7 @@ USB_DETACH(ulpt)
 	mn = self->dv_unit;
 	vdevgone(maj, mn, mn, VCHR);
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
-	destroy_dev(sc->dev);
-	destroy_dev(sc->dev_noprime);
+	cdevsw_remove(&ulpt_cdevsw, -1, device_get_unit(self));
 #endif
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev,

@@ -22,7 +22,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *      $DragonFly: src/sys/i386/acpica/Attic/acpi_machdep.c,v 1.2 2004/02/12 23:33:26 joerg Exp $ 
+ *      $DragonFly: src/sys/i386/acpica/Attic/acpi_machdep.c,v 1.3 2004/05/19 22:52:56 dillon Exp $ 
  */
 
 #include <sys/cdefs.h>
@@ -320,7 +320,7 @@ apmpoll(dev_t dev, int events, d_thread_t *td)
 static void
 acpi_capm_init(struct acpi_softc *sc)
 {
-
+	cdevsw_add(&apm_cdevsw, 0, 0);
         make_dev(&apm_cdevsw, 0, 0, 5, 0664, "apm");
 }
 

@@ -51,7 +51,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:03:36 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_drv.c,v 1.63.2.1 2001/02/26 04:23:13 jlemon Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.9 2004/05/13 23:49:23 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.10 2004/05/19 22:52:54 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -102,7 +102,7 @@ static	d_ioctl_t	pcioctl;
 static	d_mmap_t	pcmmap;
 
 #define	CDEV_MAJOR	12
-static struct cdevsw pc_cdevsw = {
+struct cdevsw pc_cdevsw = {
 	/* name */	"vt",
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_TTY | D_KQFILTER,
@@ -335,6 +335,7 @@ pcattach(struct isa_device *dev)
 #endif  /* PCVT_NETBSD || PCVT_FREEBSD */
 
 #if !PCVT_NETBSD && !(PCVT_FREEBSD > 110 && PCVT_FREEBSD < 200)
+	cdevsw_add(&pc_cdevsw, 0, 0);
 	for(i = 0; i < totalscreens; i++)
 	{
 		ttyregister(&pccons[i]);
@@ -1127,7 +1128,7 @@ pccnprobe(struct consdev *cp)
 
 	/* initialize required fields */
 
-	cp->cn_dev = makedev(CDEV_MAJOR, 0);
+	cp->cn_dev = make_adhoc_dev(&pc_cdevsw, 0);
 	cp->cn_pri = CN_INTERNAL;
 
 #if !PCVT_NETBSD

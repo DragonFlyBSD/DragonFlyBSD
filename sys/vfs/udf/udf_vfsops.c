@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.4 2004/04/24 04:32:05 drhodus Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.5 2004/05/19 22:53:06 dillon Exp $
  */
 
 /* udf_vfsops.c */
@@ -225,7 +225,8 @@ udf_checktag(struct desc_tag *tag, uint16_t id)
 }
 
 static int
-udf_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td) {
+udf_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td) 
+{
 	struct buf *bp = NULL;
 	struct anchor_vdp avdp;
 	struct udf_mnt *udfmp = NULL;
@@ -233,6 +234,7 @@ udf_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td) {
 	struct logvol_desc *lvd;
 	struct fileset_desc *fsd;
 	struct file_entry *root_fentry;
+	dev_t dev;
 	uint32_t sector, size, mvds_start, mvds_end;
 	uint32_t fsd_offset = 0;
 	uint16_t part_num = 0, fsd_part = 0;
@@ -246,7 +248,7 @@ udf_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td) {
 	 */
 	if ((error = vfs_mountedon(devvp)))
 		return(error);
-	if (vcount(devvp) > 1)
+	if (count_udev(devvp) > 0)
 		return(EBUSY);
 	if ((error = vinvalbuf(devvp, V_SAVE, td, 0, 0)))
 		return(error);
@@ -257,16 +259,17 @@ udf_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td) {
 	if (error)
 		return(error);
 	needclose = 1;
+	dev = devvp->v_rdev;
 
 	udfmp = malloc(sizeof(*udfmp), M_UDFMOUNT, M_WAITOK | M_ZERO);
 
 	mp->mnt_data = (qaddr_t)udfmp;
-	mp->mnt_stat.f_fsid.val[0] = dev2udev(devvp->v_rdev);
+	mp->mnt_stat.f_fsid.val[0] = dev2udev(dev);
 	mp->mnt_stat.f_fsid.val[1] = mp->mnt_vfc->vfc_typenum;
 	mp->mnt_maxsymlinklen = 0;
 	mp->mnt_flag |= MNT_LOCAL;
 	udfmp->im_mountp = mp;
-	udfmp->im_dev = devvp->v_rdev;
+	udfmp->im_dev = dev;
 	udfmp->im_devvp = devvp;
 
 	bsize = 2048;	/* XXX Should probe the media for it's size */
@@ -410,7 +413,7 @@ udf_unmount(struct mount *mp, int mntflags, struct thread *td)
 	if ((error = vflush(mp, 0, flags)))
 		return (error);
 
-	udfmp->im_devvp->v_specmountpoint = NULL;
+	udfmp->im_devvp->v_rdev->si_mountpoint = NULL;
 	error = VOP_CLOSE(udfmp->im_devvp, FREAD, td);
 	vrele(udfmp->im_devvp);
 

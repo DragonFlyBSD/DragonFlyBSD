@@ -9,7 +9,7 @@
  *	for damages incurred with its use.
  *
  * $FreeBSD: src/sys/i386/isa/ctx.c,v 1.36 2000/01/29 16:17:31 peter Exp $
- * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.7 2004/05/13 23:49:22 dillon Exp $
+ * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.8 2004/05/19 22:52:53 dillon Exp $
  */
 
 /*
@@ -182,15 +182,11 @@ static int
 ctxprobe(struct isa_device * devp)
 {
 	int     status;
-	static int once;
 
-	if (!once++)
-		cdevsw_add(&ctx_cdevsw);
 	if (inb(devp->id_iobase) == 0xff)	/* 0xff only if board absent */
 		status = 0;
-	else {
-		status = 1; /*XXX uses only one port? */
-	}
+	else
+		status = 1;			/*XXX uses only one port? */
 	return (status);
 }
 
@@ -206,7 +202,9 @@ ctxattach(struct isa_device * devp)
 	sr->iobase = devp->id_iobase;
 	sr->maddr = devp->id_maddr;
 	sr->msize = devp->id_msize;
-	make_dev(&ctx_cdevsw, 0, 0, 0, 0600, "ctx%d", devp->id_unit);
+	cdevsw_add(&ctx_cdevsw, -1, devp->id_unit);
+	make_dev(&ctx_cdevsw, devp->id_unit, 0, 0, 0600, 
+		"ctx%d", devp->id_unit);
 	return (1);
 }
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.c,v 1.6 2003/11/27 08:37:36 mbr
- * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.3 2004/05/13 23:49:19 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.4 2004/05/19 22:52:47 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -416,6 +416,7 @@ int
 ips_adapter_init(ips_softc_t *sc)
 {
 	int i;
+	dev_t dev;
 
 	DEVICE_PRINTF(1, sc->dev, "initializing\n");
 	if (bus_dma_tag_create(	/* parent    */	sc->adapter_dmatag,
@@ -494,10 +495,11 @@ ips_adapter_init(ips_softc_t *sc)
 		    "failed to initialize command buffers\n");
 		goto error;
 	}
-	sc->device_file = make_dev(&ips_cdevsw, device_get_unit(sc->dev),
+	cdevsw_add(&ips_cdevsw, -1, device_get_unit(sc->dev));
+	dev = make_dev(&ips_cdevsw, device_get_unit(sc->dev),
 				   UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
 				   "ips%d", device_get_unit(sc->dev));
-	sc->device_file->si_drv1 = sc;
+	dev->si_drv1 = sc;
 	ips_diskdev_init(sc);
 	sc->timer = timeout(ips_timeout, sc, 10*hz);
 	return 0;
@@ -587,8 +589,7 @@ ips_adapter_free(ips_softc_t *sc)
 		bus_dma_tag_destroy(sc->sg_dmatag);
 	if (sc->command_dmatag)
 		bus_dma_tag_destroy(sc->command_dmatag);
-	if (sc->device_file)
-		destroy_dev(sc->device_file);
+	cdevsw_remove(&ips_cdevsw, -1, device_get_unit(sc->dev));
 	return 0;
 }
 

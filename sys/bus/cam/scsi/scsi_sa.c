@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.11 2004/05/13 23:49:11 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.12 2004/05/19 22:52:38 dillon Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -195,18 +195,10 @@ typedef enum {
 	((ctl << 29) | ((unit & 0x3f0) << 16) | ((unit & 0xf) << 4) | \
 	(mode << 0x2) | (access & 0x3))
 
+#define SA_UNITMASK	SAMINOR(0, -1, 0, 0)
+#define SA_UNIT(unit)	SAMINOR(0, unit, 0, 0)
+
 #define SA_NUM_MODES	4
-struct sa_devs {
-	dev_t	ctl_dev;
-	struct sa_mode_devs {
-		dev_t	r_dev;
-		dev_t	nr_dev;
-		dev_t	er_dev;
-	} mode_devs[SA_NUM_MODES];
-	dev_t	r_dev;
-	dev_t	nr_dev;
-	dev_t	er_dev;
-};
 
 struct sa_softc {
 	sa_state	state;
@@ -215,7 +207,6 @@ struct sa_softc {
 	struct		buf_queue_head buf_queue;
 	int		queue_count;
 	struct		devstat device_stats;
-	struct sa_devs	devs;
 	int		blk_gran;
 	int		blk_mask;
 	int		blk_shift;
@@ -1365,26 +1356,15 @@ static void
 sacleanup(struct cam_periph *periph)
 {
 	struct sa_softc *softc;
-	int i;
 
 	softc = (struct sa_softc *)periph->softc;
 
 	devstat_remove_entry(&softc->device_stats);
 
-	destroy_dev(softc->devs.ctl_dev);
-	destroy_dev(softc->devs.r_dev);
-	destroy_dev(softc->devs.nr_dev);
-	destroy_dev(softc->devs.er_dev);
-
-	for (i = 0; i < SA_NUM_MODES; i++) {
-		destroy_dev(softc->devs.mode_devs[i].r_dev);
-		destroy_dev(softc->devs.mode_devs[i].nr_dev);
-		destroy_dev(softc->devs.mode_devs[i].er_dev);
-	}
-
 	cam_extend_release(saperiphs, periph->unit_number);
 	xpt_print_path(periph->path);
 	printf("removing device entry\n");
+	cdevsw_remove(&sa_cdevsw, SA_UNITMASK, SA_UNIT(periph->unit_number));
 	free(softc, M_DEVBUF);
 }
 
@@ -1489,36 +1469,37 @@ saregister(struct cam_periph *periph, void *arg)
 	    DEVSTAT_BS_UNAVAILABLE, SID_TYPE(&cgd->inq_data) |
 	    DEVSTAT_TYPE_IF_SCSI, DEVSTAT_PRIORITY_TAPE);
 
-	softc->devs.ctl_dev = make_dev(&sa_cdevsw, SAMINOR(SA_CTLDEV,
+	cdevsw_add(&sa_cdevsw, SA_UNITMASK, SA_UNIT(periph->unit_number));
+	make_dev(&sa_cdevsw, SAMINOR(SA_CTLDEV,
 	    periph->unit_number, 0, SA_ATYPE_R), UID_ROOT, GID_OPERATOR,
 	    0660, "r%s%d.ctl", periph->periph_name, periph->unit_number);
 
-	softc->devs.r_dev = make_dev(&sa_cdevsw, SAMINOR(SA_NOT_CTLDEV,
+	make_dev(&sa_cdevsw, SAMINOR(SA_NOT_CTLDEV,
 	    periph->unit_number, 0, SA_ATYPE_R), UID_ROOT, GID_OPERATOR,
 	    0660, "r%s%d", periph->periph_name, periph->unit_number);
 
-	softc->devs.nr_dev = make_dev(&sa_cdevsw, SAMINOR(SA_NOT_CTLDEV,
+	make_dev(&sa_cdevsw, SAMINOR(SA_NOT_CTLDEV,
 	    periph->unit_number, 0, SA_ATYPE_NR), UID_ROOT, GID_OPERATOR,
 	    0660, "nr%s%d", periph->periph_name, periph->unit_number);
 
-	softc->devs.er_dev = make_dev(&sa_cdevsw, SAMINOR(SA_NOT_CTLDEV,
+	make_dev(&sa_cdevsw, SAMINOR(SA_NOT_CTLDEV,
 	    periph->unit_number, 0, SA_ATYPE_ER), UID_ROOT, GID_OPERATOR,
 	    0660, "er%s%d", periph->periph_name, periph->unit_number);
 
 	for (i = 0; i < SA_NUM_MODES; i++) {
 
-		softc->devs.mode_devs[i].r_dev = make_dev(&sa_cdevsw,
+		make_dev(&sa_cdevsw,
 		    SAMINOR(SA_NOT_CTLDEV, periph->unit_number, i, SA_ATYPE_R),
 		    UID_ROOT, GID_OPERATOR, 0660, "r%s%d.%d",
 		    periph->periph_name, periph->unit_number, i);
 
-		softc->devs.mode_devs[i].nr_dev = make_dev(&sa_cdevsw,
+		make_dev(&sa_cdevsw,
 		    SAMINOR(SA_NOT_CTLDEV, periph->unit_number, i, SA_ATYPE_NR),
 		    UID_ROOT, GID_OPERATOR, 0660, "nr%s%d.%d",
 		    periph->periph_name, periph->unit_number, i);
 
 
-		softc->devs.mode_devs[i].er_dev = make_dev(&sa_cdevsw,
+		make_dev(&sa_cdevsw,
 		    SAMINOR(SA_NOT_CTLDEV, periph->unit_number, i, SA_ATYPE_ER),
 		    UID_ROOT, GID_OPERATOR, 0660, "er%s%d.%d",
 		    periph->periph_name, periph->unit_number, i);

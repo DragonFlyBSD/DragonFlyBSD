@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.25 2004/05/13 17:40:15 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.26 2004/05/19 22:52:58 dillon Exp $
  */
 
 /*
@@ -2753,6 +2753,10 @@ biowait(struct buf * bp)
  *	biodone does not mess with B_INVAL, allowing the I/O routine or the
  *	initiator to leave B_INVAL set to brelse the buffer out of existance
  *	in the biodone routine.
+ *
+ *	b_dev is required to be reinitialized prior to the top level strategy
+ *	call in a device stack.  To avoid improper reuse, biodone() sets
+ *	b_dev to NODEV.
  */
 void
 biodone(struct buf * bp)
@@ -2765,6 +2769,7 @@ biodone(struct buf * bp)
 	KASSERT(!(bp->b_flags & B_DONE), ("biodone: bp %p already done", bp));
 
 	bp->b_flags |= B_DONE;
+	bp->b_dev = NODEV;
 	runningbufwakeup(bp);
 
 	if (bp->b_flags & B_FREEBUF) {

@@ -28,7 +28,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.10 2004/05/13 23:49:24 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.11 2004/05/19 22:52:59 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
@@ -221,7 +221,7 @@ PSEUDO_SET(i4brbchattach, i4b_rbch);
 static void
 i4brbchinit(void *unused)
 {
-	cdevsw_add(&i4brbch_cdevsw);
+	cdevsw_add(&i4brbch_cdevsw, 0, 0);
 }
 
 SYSINIT(i4brbchdev, SI_SUB_DRIVERS,

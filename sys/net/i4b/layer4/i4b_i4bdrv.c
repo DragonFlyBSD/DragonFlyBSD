@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_i4bdrv.c,v 1.11.2.5 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.9 2004/05/13 23:49:24 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.10 2004/05/19 22:53:00 dillon Exp $
  *
  *      last edit-date: [Sat Aug 11 18:08:10 2001]
  *
@@ -204,7 +204,7 @@ static void
 i4b_drvinit(void *unused)
 {
 #if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 4)
-	cdevsw_add(&i4b_cdevsw);
+	cdevsw_add(&i4b_cdevsw, 0, 0);
 #else
 	static int i4b_devsw_installed = 0;
 	dev_t dev;

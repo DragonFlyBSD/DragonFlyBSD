@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwdev.c,v 1.36 2004/01/22 14:41:17 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.8 2004/04/07 05:54:27 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.9 2004/05/19 22:52:38 dillon Exp $
  *
  */
 
@@ -789,41 +789,21 @@ fw_strategy(struct bio *bp)
 int
 fwdev_makedev(struct firewire_softc *sc)
 {
-	int err = 0;
-
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-	cdevsw_add(&firewire_cdevsw);
-#else
-	dev_t d;
 	int unit;
 
 	unit = device_get_unit(sc->fc->bdev);
-	sc->dev = make_dev(&firewire_cdevsw, MAKEMINOR(0, unit, 0),
-			UID_ROOT, GID_OPERATOR, 0660,
-			"fw%d.%d", unit, 0);
-	d = make_dev(&firewire_cdevsw,
-			MAKEMINOR(FWMEM_FLAG, unit, 0),
-			UID_ROOT, GID_OPERATOR, 0660,
-			"fwmem%d.%d", unit, 0);
-	dev_depends(sc->dev, d);
-	make_dev_alias(sc->dev, "fw%d", unit);
-	make_dev_alias(d, "fwmem%d", unit);
-#endif
-
-	return (err);
+	cdevsw_add(&firewire_cdevsw, FW_UNITMASK, FW_UNIT(unit));
+	return(0);
 }
 
 int
 fwdev_destroydev(struct firewire_softc *sc)
 {
-	int err = 0;
+	int unit;
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-	cdevsw_remove(&firewire_cdevsw);
-#else
-	destroy_dev(sc->dev);
-#endif
-	return (err);
+	unit = device_get_unit(sc->fc->bdev);
+	cdevsw_remove(&firewire_cdevsw, FW_UNITMASK, FW_UNIT(unit));
+	return(0);
 }
 
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000

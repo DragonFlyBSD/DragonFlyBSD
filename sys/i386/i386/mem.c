@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mem.c,v 1.10 2004/05/13 23:49:23 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mem.c,v 1.11 2004/05/19 22:52:57 dillon Exp $
  */
 
 /*
@@ -528,6 +528,7 @@ mem_drvinit(void *unused)
 	if (mem_range_softc.mr_op != NULL)
 		mem_range_softc.mr_op->init(&mem_range_softc);
 
+	cdevsw_add(&mem_cdevsw, 0xf0, 0);
 	make_dev(&mem_cdevsw, 0, UID_ROOT, GID_KMEM, 0640, "mem");
 	make_dev(&mem_cdevsw, 1, UID_ROOT, GID_KMEM, 0640, "kmem");
 	make_dev(&mem_cdevsw, 2, UID_ROOT, GID_WHEEL, 0666, "null");

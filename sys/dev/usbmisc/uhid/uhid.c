@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.12 2004/05/13 23:49:21 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.13 2004/05/19 22:52:51 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -135,10 +135,6 @@ struct uhid_softc {
 
 	int sc_refcnt;
 	u_char sc_dying;
-
-#if defined(__FreeBSD__) || defined(__DragonFly__)
-	dev_t dev;
-#endif
 };
 
 #define	UHIDUNIT(dev)	(minor(dev))
@@ -276,9 +272,10 @@ USB_ATTACH(uhid)
 	sc->sc_repdesc_size = size;
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-	sc->dev = make_dev(&uhid_cdevsw, device_get_unit(self),
-			UID_ROOT, GID_OPERATOR,
-			0644, "uhid%d", device_get_unit(self));
+	cdevsw_add(&uhid_cdevsw, -1, device_get_unit(self));
+	make_dev(&uhid_cdevsw, device_get_unit(self),
+		UID_ROOT, GID_OPERATOR,
+		0644, "uhid%d", device_get_unit(self));
 #endif
 
 	USB_ATTACH_SUCCESS_RETURN;
@@ -341,7 +338,7 @@ USB_DETACH(uhid)
 	mn = self->dv_unit;
 	vdevgone(maj, mn, mn, VCHR);
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
-	destroy_dev(sc->dev);
+	cdevsw_remove(&uhid_cdevsw, -1, device_get_unit(self));
 #endif
 
 	if (sc->sc_repdesc)

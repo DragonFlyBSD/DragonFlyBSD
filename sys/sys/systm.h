@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.18 2004/03/05 19:29:17 hsu Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.19 2004/05/19 22:53:03 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -363,7 +363,6 @@ void	wakeup_one (void *chan);
 
 int major(dev_t x);
 int minor(dev_t x);
-dev_t makedev(int x, int y);
 udev_t dev2udev(dev_t x);
 dev_t udev2dev(udev_t x, int b);
 int uminor(udev_t dev);

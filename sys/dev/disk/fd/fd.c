@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.15 2004/05/13 23:49:15 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.16 2004/05/19 22:52:41 dillon Exp $
  *
  */
 
@@ -1019,14 +1019,10 @@ fd_attach(device_t dev)
 	int	typemynor;
 	int	typesize;
 #endif
-	static int cdevsw_add_done = 0;
 
 	fd = device_get_softc(dev);
 
-	if (!cdevsw_add_done) {
-		cdevsw_add(&fd_cdevsw);	/* XXX */
-		cdevsw_add_done++;
-	}
+	cdevsw_add(&fd_cdevsw, -1 << 6, fd->fdu << 6);
 	make_dev(&fd_cdevsw, (fd->fdu << 6),
 		UID_ROOT, GID_OPERATOR, 0640, "rfd%d", fd->fdu);
 
@@ -2102,16 +2098,18 @@ retrier(struct fdc_data *fdc)
 	fail:
 		{
 			int printerror = (fd->options & FDOPT_NOERRLOG) == 0;
-			dev_t sav_b_dev = bp->b_dev;
+			dev_t sav_b_dev;
 
 			/* Trick diskerr */
-			bp->b_dev = makedev(major(bp->b_dev),
+			if (printerror) {
+				sav_b_dev = bp->b_dev;
+				bp->b_dev = make_sub_dev(bp->b_dev,
 				    (FDUNIT(minor(bp->b_dev))<<3)|RAW_PART);
-			if (printerror)
 				diskerr(bp, "hard error", LOG_PRINTF,
 					fdc->fd->skip / DEV_BSIZE,
 					(struct disklabel *)NULL);
-			bp->b_dev = sav_b_dev;
+				bp->b_dev = sav_b_dev;
+			}
 			if (printerror) {
 				if (fdc->flags & FDC_STAT_VALID)
 					printf(

@@ -35,7 +35,7 @@
  *
  * $Id: vinumext.h,v 1.26 2000/05/16 07:38:08 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumext.h,v 1.25.2.3 2001/05/11 02:11:06 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumext.h,v 1.3 2003/06/29 03:28:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumext.h,v 1.4 2004/05/19 22:52:48 dillon Exp $
  */
 
 /* vinumext.h: external definitions */
@@ -147,6 +147,7 @@ void sdio(struct buf *bp);
 int vinumpart(dev_t);
 
 extern jmp_buf command_fail;				    /* return here if config fails */
+extern struct cdevsw vinum_cdevsw;
 
 #ifdef VINUMDEBUG
 /* Memory allocation and request tracing */
@@ -154,12 +155,12 @@ void vinum_meminfo(caddr_t data);
 int vinum_mallocinfo(caddr_t data);
 int vinum_rqinfo(caddr_t data);
 void LongJmp(jmp_buf, int);
-char *basename(char *);
 #else
 void longjmp(jmp_buf, int);				    /* the kernel doesn't define this */
 #endif
 int setjmp(jmp_buf);
 
+char *basename(char *);
 void expand_table(void **, int, int);
 
 struct request;

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcaudio.c,v 1.58 2000/01/25 21:58:43 dfr Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/pca/Attic/pcaudio.c,v 1.9 2004/05/13 23:49:21 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/pca/Attic/pcaudio.c,v 1.10 2004/05/19 22:52:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -345,6 +345,7 @@ static int
 pcaattach(device_t dev)
 {
 	pca_init();
+	cdevsw_add(&pca_cdevsw, 0, 0);
 	make_dev(&pca_cdevsw, 0, 0, 0, 0600, "pcaudio");
 	make_dev(&pca_cdevsw, 128, 0, 0, 0600, "pcaudioctl");
 	return 0;

@@ -30,7 +30,7 @@
  *	$Id: i4b_ctl.c,v 1.37 2000/05/31 08:04:43 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ctl.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.8 2004/05/13 23:49:24 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.9 2004/05/19 22:52:59 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:38 2001]
  *
@@ -161,9 +161,9 @@ static void
 i4bctlinit(void *unused)
 {
 #if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 4)
-	cdevsw_add(&i4bctl_cdevsw);
+	cdevsw_add(&i4bctl_cdevsw, 0, 0);
 #else
-	dev_t dev = makedev(CDEV_MAJOR, 0);
+	dev_t dev = make_adhoc_dev(&i4bctl, 0);
 	cdevsw_add(&dev, &i4bctl_cdevsw, NULL);
 #endif
 }

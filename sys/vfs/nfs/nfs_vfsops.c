@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.17 2004/05/08 04:11:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.18 2004/05/19 22:53:05 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -566,7 +566,7 @@ nfs_mountroot(mp)
 		vp->v_type = VREG;
 		vp->v_flag = 0;
 		vref(vp);
-		swaponvp(td, vp, NODEV, nd->swap_nblks);
+		swaponvp(td, vp, nd->swap_nblks);
 	}
 
 	mp->mnt_flag |= MNT_ROOTFS;

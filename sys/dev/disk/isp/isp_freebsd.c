@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.c,v 1.32.2.20 2002/10/11 18:49:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.9 2004/05/13 23:49:15 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.10 2004/05/19 22:52:41 dillon Exp $ */
 /*
  * Platform (FreeBSD) dependent common attachment code for Qlogic adapters.
  *
@@ -203,7 +203,8 @@ isp_attach(struct ispsoftc *isp)
 	/*
 	 * Create device nodes
 	 */
-	(void) make_dev(&isp_cdevsw, device_get_unit(isp->isp_dev), UID_ROOT,
+	cdevsw_add(&isp_cdevsw, -1, device_get_unit(isp->isp_dev));
+	make_dev(&isp_cdevsw, device_get_unit(isp->isp_dev), UID_ROOT,
 	    GID_OPERATOR, 0600, "%s", device_get_nameunit(isp->isp_dev));
 
 	if (isp->isp_role != ISP_ROLE_NONE) {

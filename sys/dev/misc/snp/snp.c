@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
- * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.9 2004/05/13 23:49:17 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.10 2004/05/19 22:52:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -386,8 +386,9 @@ snpopen(dev_t dev, int flag, int mode, d_thread_t *td)
 		    0600, "snp%d", minor(dev));
 		dev->si_drv1 = snp = malloc(sizeof(*snp), M_SNP,
 		    M_WAITOK | M_ZERO);
-	} else
+	} else {
 		return (EBUSY);
+	}
 
 	/*
 	 * We intentionally do not OR flags with SNOOP_OPEN, but set them so
@@ -596,13 +597,13 @@ snp_modevent(mod, type, data)
 	switch (type) {
 	case MOD_LOAD:
 		snooplinedisc = ldisc_register(LDISC_LOAD, &snpdisc);
-		cdevsw_add(&snp_cdevsw);
+		cdevsw_add(&snp_cdevsw, 0, 0);
 		break;
 	case MOD_UNLOAD:
 		if (!LIST_EMPTY(&snp_sclist))
 			return (EBUSY);
 		ldisc_deregister(snooplinedisc);
-		cdevsw_remove(&snp_cdevsw);
+		cdevsw_remove(&snp_cdevsw, 0, 0);
 		break;
 	default:
 		break;

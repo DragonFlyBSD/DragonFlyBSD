@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.8 2004/05/13 23:49:11 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.9 2004/05/19 22:52:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -174,6 +174,7 @@ targopen(dev_t dev, int flags, int fmt, struct proc *p)
 	
 	/* Mark device busy before any potentially blocking operations */
 	dev->si_drv1 = (void *)~0;
+	reference_dev(dev);		/* save ref for later destroy_dev() */
 
 	/* Create the targ device, allocate its softc, initialize it */
 	make_dev(&targ_cdevsw, minor(dev), UID_ROOT, GID_WHEEL, 0600,
@@ -208,8 +209,10 @@ targclose(dev_t dev, int flag, int fmt, struct proc *p)
 			cam_periph_invalidate(softc->periph);
 			softc->periph = NULL;
 		}
-		destroy_dev(dev);
+		destroy_dev(dev);	/* eats the open ref */
 		FREE(softc, M_TARG);
+	} else {
+		release_dev(dev);
 	}
 	return (error);
 }
@@ -1006,7 +1009,7 @@ targgetdescr(struct targ_softc *softc)
 static void
 targinit(void)
 {
-	cdevsw_add(&targ_cdevsw);
+	cdevsw_add(&targ_cdevsw, 0, 0);
 }
 
 static void

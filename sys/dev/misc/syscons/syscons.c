@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.10 2004/05/13 23:49:17 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.11 2004/05/19 22:52:44 dillon Exp $
  */
 
 #include "use_splash.h"
@@ -216,8 +216,8 @@ static struct cdevsw sc_cdevsw = {
 	/* poll */	ttypoll,
 	/* mmap */	scmmap,
 	/* strategy */	nostrategy,
-	/* psize */	nopsize,
 	/* dump */	nodump,
+	/* psize */	nopsize,
 	/* kqfilter */	ttykqfilter
 };
 
@@ -378,6 +378,12 @@ sc_attach_unit(int unit, int flags)
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, scshutdown, 
 			      (void *)(uintptr_t)unit, SHUTDOWN_PRI_DEFAULT);
 
+    /* 
+     * create devices.  cdevsw_add() must be called to make devices under
+     * this major number available to userland.
+     */
+    cdevsw_add(&sc_cdevsw, ~(MAXCONS - 1), unit * MAXCONS);
+
     for (vc = 0; vc < sc->vtys; vc++) {
 	dev = make_dev(&sc_cdevsw, vc + unit * MAXCONS,
 	    UID_ROOT, GID_WHEEL, 0600, "ttyv%r", vc + unit * MAXCONS);
@@ -389,6 +395,7 @@ sc_attach_unit(int unit, int flags)
 	 */
     }
 
+    cdevsw_add(&sc_cdevsw, -1, SC_CONSOLECTL);	/* XXX */
     dev = make_dev(&sc_cdevsw, SC_CONSOLECTL,
 		   UID_ROOT, GID_WHEEL, 0600, "consolectl");
     dev->si_tty = sc_console_tty = ttymalloc(sc_console_tty);
@@ -1328,7 +1335,8 @@ sccnprobe(struct consdev *cp)
 	return;
 
     /* initialize required fields */
-    cp->cn_dev = makedev(CDEV_MAJOR, SC_CONSOLECTL);
+    cp->cn_dev = make_dev(&sc_cdevsw, SC_CONSOLECTL,
+		   UID_ROOT, GID_WHEEL, 0600, "consolectl");
 #endif /* __i386__ */
 
 #if __alpha__
@@ -1408,7 +1416,8 @@ sccnattach(void)
     scinit(unit, flags | SC_KERNEL_CONSOLE);
     sc_console_unit = unit;
     sc_console = SC_STAT(sc_get_softc(unit, SC_KERNEL_CONSOLE)->dev[0]);
-    consdev.cn_dev = makedev(CDEV_MAJOR, 0);
+    consdev.cn_dev = make_dev(&sc_cdevsw, 0, UID_ROOT, GID_WHEEL, 0600,
+				"ttyv%r", 0);
     cn_tab = &consdev;
 }
 
@@ -2559,7 +2568,8 @@ scinit(int unit, int flags)
 	sc->vtys = MAXCONS;		/* XXX: should be configurable */
 	if (flags & SC_KERNEL_CONSOLE) {
 	    sc->dev = main_devs;
-	    sc->dev[0] = makedev(CDEV_MAJOR, unit*MAXCONS);
+	    sc->dev[0] = make_dev(&sc_cdevsw, unit*MAXCONS, UID_ROOT, 
+				GID_WHEEL, 0600, "ttyv%r", unit*MAXCONS);
 	    sc->dev[0]->si_tty = &main_tty;
 	    ttyregister(&main_tty);
 	    scp = &main_console;
@@ -2575,7 +2585,8 @@ scinit(int unit, int flags)
 	    /* assert(sc_malloc) */
 	    sc->dev = malloc(sizeof(dev_t)*sc->vtys, M_DEVBUF, M_WAITOK);
 	    bzero(sc->dev, sizeof(dev_t)*sc->vtys);
-	    sc->dev[0] = makedev(CDEV_MAJOR, unit*MAXCONS);
+	    sc->dev[0] = make_dev(&sc_cdevsw, unit*MAXCONS, UID_ROOT, 
+				GID_WHEEL, 0600, "ttyv%r", unit*MAXCONS);
 	    sc->dev[0]->si_tty = ttymalloc(sc->dev[0]->si_tty);
 	    scp = alloc_scp(sc, sc->first_vty);
 	}

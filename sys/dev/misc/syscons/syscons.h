@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.h,v 1.60.2.6 2002/09/15 22:30:45 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.5 2003/11/12 22:08:04 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.6 2004/05/19 22:52:44 dillon Exp $
  */
 
 #ifndef _DEV_SYSCONS_SYSCONS_H_
@@ -45,7 +45,7 @@
 /* default values for configuration options */
 
 #ifndef MAXCONS
-#define MAXCONS		16
+#define MAXCONS		16	/* power of 2 */
 #endif
 
 #ifdef SC_NO_SYSMOUSE

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.16 2004/05/13 23:49:11 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.17 2004/05/19 22:52:38 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -807,20 +807,15 @@ daioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 }
 
 static int
-dadump(dev_t dev)
+dadump(dev_t dev, u_int num, u_int blknum, u_int secsize) 
 {
 	struct	    cam_periph *periph;
 	struct	    da_softc *softc;
 	u_int	    unit;
-	u_int	    part;
-	u_int	    secsize;
-	u_int	    num;	/* number of sectors to write */
-	u_int	    blknum;
 	long	    blkcnt;
 	vm_paddr_t  addr;	
 	struct	    ccb_scsiio csio;
 	int         dumppages = MAXDUMPPGS;
-	int	    error;
 	int         i;
 
 	/* toss any characters present prior to dump */
@@ -828,7 +823,6 @@ dadump(dev_t dev)
 		;
 
 	unit = dkunit(dev);
-	part = dkpart(dev);
 	periph = cam_extend_get(daperiphs, unit);
 	if (periph == NULL) {
 		return (ENXIO);
@@ -837,10 +831,6 @@ dadump(dev_t dev)
 	
 	if ((softc->flags & DA_FLAG_PACK_INVALID) != 0)
 		return (ENXIO);
-
-	error = disk_dumpcheck(dev, &num, &blknum, &secsize);
-	if (error)
-		return (error);
 
 	addr = 0;	/* starting address */
 	blkcnt = howmany(PAGE_SIZE, secsize);
@@ -1060,7 +1050,7 @@ dacleanup(struct cam_periph *periph)
 		xpt_print_path(periph->path);
 		printf("can't remove sysctl context\n");
 	}
-	if (softc->disk.d_dev) {
+	if (softc->disk.d_rawdev) {
 		disk_destroy(&softc->disk);
 	}
 	free(softc, M_DEVBUF);

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.20 2004/05/13 23:49:13 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.21 2004/05/19 22:52:39 dillon Exp $
  *
  */
 
@@ -1373,6 +1373,10 @@ static int
 pci_attach(device_t dev)
 {
 	int busno;
+	int lunit = device_get_unit(dev);
+
+	cdevsw_add(&pcicdev, -1, lunit);
+	make_dev(&pcicdev, lunit, UID_ROOT, GID_WHEEL, 0644, "pci%d", lunit);
 
         /*
          * Since there can be multiple independantly numbered PCI
@@ -1752,17 +1756,11 @@ pci_assign_interrupt_method(device_t dev, device_t child)
 static int
 pci_modevent(module_t mod, int what, void *arg)
 {
-	static dev_t pci_cdev;
-
 	switch (what) {
 	case MOD_LOAD:
 		STAILQ_INIT(&pci_devq);
-		pci_cdev = make_dev(&pcicdev, 0, UID_ROOT, GID_WHEEL, 0644,
-				    "pci");
 		break;
-
 	case MOD_UNLOAD:
-		destroy_dev(pci_cdev);
 		break;
 	}
 

@@ -16,7 +16,7 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/apm/Attic/apm.c,v 1.7 2004/05/13 23:49:23 dillon Exp $
+ * $DragonFly: src/sys/i386/apm/Attic/apm.c,v 1.8 2004/05/19 22:52:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1118,6 +1118,7 @@ apm_attach(device_t dev)
 
 	sc->initialized = 1;
 
+	cdevsw_add(&apm_cdevsw, 0, 0);
 	make_dev(&apm_cdevsw, 0, 0, 5, 0660, "apm");
 	make_dev(&apm_cdevsw, 8, 0, 5, 0660, "apmctl");
 	return 0;

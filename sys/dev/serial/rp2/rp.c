@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rp.c,v 1.33.2.2 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.11 2004/05/13 23:49:20 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.12 2004/05/19 22:52:49 dillon Exp $
  */
 
 /* 
@@ -1131,7 +1131,7 @@ rp_pciattach(pcici_t tag, int unit)
 	rp_addr(unit) = rp;
 	splx(oldspl);
 
-	cdevsw_add(&rp_cdevsw);
+	cdevsw_add(&rp_cdevsw, 0, 0);
 
 	port = 0;
 	for(aiop=0; aiop < num_aiops; aiop++) {
@@ -1234,7 +1234,7 @@ struct	isa_device	*dev;
 	rp_addr(unit) = rp;
 	splx(oldspl);
 
-	cdevsw_add(&rp_cdevsw);
+	cdevsw_add(&rp_cdevsw, 0, 0);
 
 	port = 0;
 	for(aiop=0; aiop < num_aiops; aiop++) {

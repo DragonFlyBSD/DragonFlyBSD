@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.7 2004/03/01 06:33:17 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.8 2004/05/19 22:52:58 dillon Exp $
  */
 
 /*
@@ -215,7 +215,7 @@ vfs_mountroot_try(char *mountfrom)
 		printf("setrootbyname failed\n");
 
 	/* If the root device is a type "memory disk", mount RW */
-	if (rootdev != NODEV && dev_dport(rootdev) &&
+	if (rootdev != NODEV && dev_is_good(rootdev) &&
 	    (dev_dflags(rootdev) & D_MEMDISK)) {
 		mp->mnt_flag &= ~MNT_RDONLY;
 	}
@@ -270,8 +270,8 @@ vfs_mountroot_ask(void)
 		if (name[0] == '?') {
 			printf("Possibly valid devices for 'ufs' root:\n");
 			for (i = 0; i < NUMCDEVSW; i++) {
-				dev = makedev(i, 0);
-				if (dev_dport(dev) != NULL)
+				dev = udev2dev(makeudev(i, 0), 0);
+				if (dev_is_good(dev))
 					printf(" \"%s\"", dev_dname(dev));
 			}
 			printf("\n");
@@ -325,10 +325,12 @@ gets(char *cp)
  * it refers to.
  */
 dev_t
-getdiskbyname(char *name) {
+getdiskbyname(char *name) 
+{
 	char *cp;
 	int cd, unit, slice, part;
 	dev_t dev;
+	dev_t rdev;
 
 	slice = 0;
 	part = 0;
@@ -347,17 +349,19 @@ getdiskbyname(char *name) {
 		unit = *cp - '0';
 	*cp++ = '\0';
 	for (cd = 0; cd < NUMCDEVSW; cd++) {
-		dev = makedev(cd, 0);
-		if (dev_dport(dev) != NULL &&
-		    strcmp(dev_dname(dev), name) == 0)
+		dev = udev2dev(makeudev(cd, 0), 0);
+		if (dev_is_good(dev) && dev_dname(dev) &&
+		    strcmp(dev_dname(dev), name) == 0) {
 			goto gotit;
+		}
 	}
 	printf("no such device '%s'\n", name);
 	return (NODEV);
 gotit:
-	if (dev_dmaj(dev) == major(rootdev))
+	if (dev_dmaj(dev) == major(rootdev)) {
 		/* driver has already configured rootdev, e. g. vinum */
 		return (rootdev);
+	}
 	if (unit == -1) {
 		printf("missing unit number\n");
 		return (NODEV);
@@ -376,7 +380,8 @@ gotit:
 		printf("junk after name\n");
 		return (NODEV);
 	}
-	return (makedev(cd, dkmakeminor(unit, slice, part)));
+	rdev = make_sub_dev(dev, dkmakeminor(unit, slice, part));
+	return(rdev);
 }
 
 /*

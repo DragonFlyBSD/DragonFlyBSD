@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_dev.c,v 1.2.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.8 2004/05/13 23:49:25 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.9 2004/05/19 22:53:01 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -125,12 +125,13 @@ nsmb_dev_open(dev_t dev, int oflags, int devtype, d_thread_t *td)
 		dev->si_drv1 = (void*)sdp;
 	}
 	/*
-	 * XXX: this is just crazy - make a device for an already passed device...
-	 * someone should take care of it.
+	 * XXX: this is just crazy - make a device for an already passed
+	 * device...  someone should take care of it.
 	 */
-	if ((dev->si_flags & SI_NAMED) == 0)
-		make_dev(&nsmb_cdevsw, minor(dev), cred->cr_uid, cred->cr_gid, 0700,
-		    NSMB_NAME"%d", lminor(dev));
+	if ((dev->si_flags & SI_NAMED) == 0) {
+		make_dev(&nsmb_cdevsw, minor(dev), cred->cr_uid, cred->cr_gid,
+			0700, NSMB_NAME"%d", lminor(dev));
+	}
 	bzero(sdp, sizeof(*sdp));
 /*
 	STAILQ_INIT(&sdp->sd_rqlist);
@@ -172,7 +173,6 @@ nsmb_dev_close(dev_t dev, int flag, int fmt, d_thread_t *td)
 */
 	dev->si_drv1 = NULL;
 	free(sdp, M_NSMBDEV);
-	destroy_dev(dev);
 	splx(s);
 	return 0;
 }
@@ -355,14 +355,14 @@ nsmb_dev_load(module_t mod, int cmd, void *arg)
 			smb_sm_done();
 			break;
 		}
-		cdevsw_add(&nsmb_cdevsw);
+		cdevsw_add(&nsmb_cdevsw, 0, 0);
 		printf("netsmb_dev: loaded\n");
 		break;
 	    case MOD_UNLOAD:
 		smb_iod_done();
 		error = smb_sm_done();
 		error = 0;
-		cdevsw_remove(&nsmb_cdevsw);
+		cdevsw_remove(&nsmb_cdevsw, 0, 0);
 		printf("netsmb_dev: unloaded\n");
 		break;
 	    default:

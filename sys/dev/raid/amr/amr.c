@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.9 2004/05/13 23:49:18 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.10 2004/05/19 22:52:46 dillon Exp $
  */
 
 /*
@@ -253,9 +253,12 @@ amr_attach(struct amr_softc *sc)
     /*
      * Create the control device.
      */
-    sc->amr_dev_t = make_dev(&amr_cdevsw, device_get_unit(sc->amr_dev), UID_ROOT, GID_OPERATOR,
-			     S_IRUSR | S_IWUSR, "amr%d", device_get_unit(sc->amr_dev));
+    cdevsw_add(&amr_cdevsw, -1, device_get_unit(sc->amr_dev));
+    sc->amr_dev_t = make_dev(&amr_cdevsw, device_get_unit(sc->amr_dev), 
+			    UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
+			    "amr%d", device_get_unit(sc->amr_dev));
     sc->amr_dev_t->si_drv1 = sc;
+    reference_dev(sc->amr_dev_t);
 
     /*
      * Schedule ourselves to bring the controller up once interrupts are
@@ -360,6 +363,7 @@ amr_free(struct amr_softc *sc)
     /* destroy control device */
     if( sc->amr_dev_t != (dev_t)NULL)
 	    destroy_dev(sc->amr_dev_t);
+    cdevsw_remove(&amr_cdevsw, -1, device_get_unit(sc->amr_dev));
 }
 
 /*******************************************************************************

@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)newfs.8	8.6 (Berkeley) 5/3/95
 .\" $FreeBSD: src/sbin/newfs/newfs.8,v 1.26.2.15 2003/05/13 12:16:08 joerg Exp $
-.\" $DragonFly: src/sbin/newfs/newfs.8,v 1.3 2003/12/01 04:36:57 dillon Exp $
+.\" $DragonFly: src/sbin/newfs/newfs.8,v 1.4 2004/05/19 22:52:34 dillon Exp $
 .\"
 .Dd May 13, 2003
 .Dt NEWFS 8
@@ -130,6 +130,13 @@ The special file is typically that of the primary swap area,
 since that is where the file system will be backed up when
 free memory gets low and the memory supporting
 the file system has to be paged.
+.Pp
+.Nm mount_mfs
+creates the raw character device
+.Pa /dev/mfs<PID>
+to represent the backing store while the mount is active.  This device may
+be read but not written and allows swap-based MFS filesystems to be dumped
+if desired.
 .Pp
 The following options define the general layout policies:
 .Bl -tag -width indent
