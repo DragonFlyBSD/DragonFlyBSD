@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.10 2004/03/14 15:36:51 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.11 2004/03/23 22:19:02 hsu Exp $
  *
  */
 
@@ -312,7 +312,7 @@ static void	ray_intr		(void *xsc);
 static void	ray_intr_ccs		(struct ray_softc *sc, u_int8_t cmd, u_int8_t status, size_t ccs);
 static void	ray_intr_rcs		(struct ray_softc *sc, u_int8_t cmd, size_t ccs);
 static void	ray_intr_updt_errcntrs	(struct ray_softc *sc);
-static int	ray_ioctl		(struct ifnet *ifp, u_long command, caddr_t data);
+static int	ray_ioctl		(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr);
 static void	ray_mcast		(struct ray_softc *sc, struct ray_comq_entry *com); 
 static void	ray_mcast_done		(struct ray_softc *sc, u_int8_t status, size_t ccs); 
 static int	ray_mcast_user		(struct ray_softc *sc); 
@@ -628,7 +628,8 @@ ray_detach(device_t dev)
  * Network ioctl request.
  */
 static int
-ray_ioctl(register struct ifnet *ifp, u_long command, caddr_t data)
+ray_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
+    struct ucred *cr)
 {
 	struct ray_softc *sc = ifp->if_softc;
 	struct ray_param_req pr;

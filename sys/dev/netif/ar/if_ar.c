@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.52.2.1 2002/06/17 15:10:57 jhay Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.6 2004/01/06 01:40:46 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.7 2004/03/23 22:18:58 hsu Exp $
  */
 
 /*
@@ -191,7 +191,7 @@ static void arintr(void *arg);
 static void ar_xmit(struct ar_softc *sc);
 #ifndef NETGRAPH
 static void arstart(struct ifnet *ifp);
-static int arioctl(struct ifnet *ifp, u_long cmd, caddr_t data);
+static int arioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *);
 static void arwatchdog(struct ifnet *ifp);
 #else	/* NETGRAPH */
 static void arstart(struct ar_softc *sc);
@@ -767,7 +767,7 @@ top_arstart:
 
 #ifndef	NETGRAPH
 static int
-arioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
+arioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	int s, error;
 	int was_up, should_be_up;

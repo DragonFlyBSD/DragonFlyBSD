@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.9 2004/03/14 15:36:53 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.10 2004/03/23 22:19:05 hsu Exp $
  */
 
 /*
@@ -106,7 +106,7 @@
 
 static void wi_intr(void *);
 static void wi_reset(struct wi_softc *);
-static int wi_ioctl(struct ifnet *, u_long, caddr_t);
+static int wi_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void wi_init(void *);
 static void wi_start(struct ifnet *);
 static void wi_stop(struct wi_softc *);
@@ -1616,10 +1616,11 @@ wi_setdef(sc, wreq)
 }
 
 static int
-wi_ioctl(ifp, command, data)
+wi_ioctl(ifp, command, data, cr)
 	struct ifnet		*ifp;
 	u_long			command;
 	caddr_t			data;
+	struct ucred		*cr;
 {
 	int			error = 0;
 	int			len;
@@ -1629,7 +1630,6 @@ wi_ioctl(ifp, command, data)
 	struct wi_req		wreq;
 	struct ifreq		*ifr;
 	struct ieee80211req	*ireq;
-	struct thread		*td = curthread;
 	int			s;
 
 	sc = ifp->if_softc;
@@ -1695,7 +1695,8 @@ wi_ioctl(ifp, command, data)
 			break;
 		}
 		/* Don't show WEP keys to non-root users. */
-		if (wreq.wi_type == WI_RID_DEFLT_CRYPT_KEYS && suser(td))
+		if (wreq.wi_type == WI_RID_DEFLT_CRYPT_KEYS &&
+		    suser_cred(cr, NULL_CRED_OKAY))
 			break;
 		if (wreq.wi_type == WI_RID_IFACE_STATS) {
 			bcopy((char *)&sc->wi_stats, (char *)&wreq.wi_val,
@@ -1740,7 +1741,7 @@ wi_ioctl(ifp, command, data)
 		error = copyout(&wreq, ifr->ifr_data, sizeof(wreq));
 		break;
 	case SIOCSWAVELAN:
-		if ((error = suser(td)))
+		if ((error = suser_cred(cr, NULL_CRED_OKAY)))
 			goto out;
 		error = copyin(ifr->ifr_data, &wreq, sizeof(wreq));
 		if (error)
@@ -1787,7 +1788,7 @@ wi_ioctl(ifp, command, data)
 			error = copyout(&wreq, ifr->ifr_data, sizeof(wreq));
 		break;
 	case SIOCSPRISM2DEBUG:
-		if ((error = suser(td)))
+		if ((error = suser_cred(cr, NULL_CRED_OKAY)))
 			goto out;
 		error = copyin(ifr->ifr_data, &wreq, sizeof(wreq));
 		if (error)
@@ -1836,7 +1837,7 @@ wi_ioctl(ifp, command, data)
 				break;
 			}
 			len = sc->wi_keys.wi_keys[ireq->i_val].wi_keylen;
-			if (suser(td))
+			if (suser_cred(cr, NULL_CRED_OKAY))
 				bcopy(sc->wi_keys.wi_keys[ireq->i_val].wi_keydat,
 				    tmpkey, len);
 			else
@@ -1889,7 +1890,7 @@ wi_ioctl(ifp, command, data)
 		}
 		break;
 	case SIOCS80211:
-		if ((error = suser(td)))
+		if ((error = suser_cred(cr, NULL_CRED_OKAY)))
 			goto out;
 		switch(ireq->i_type) {
 		case IEEE80211_IOC_SSID:

@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_iface.c,v 1.7.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.6 2004/01/06 03:17:27 dillon Exp $
+ * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.7 2004/03/23 22:19:07 hsu Exp $
  * $Whistle: ng_iface.c,v 1.33 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -112,7 +112,8 @@ typedef struct ng_iface_private *priv_p;
 
 /* Interface methods */
 static void	ng_iface_start(struct ifnet *ifp);
-static int	ng_iface_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data);
+static int	ng_iface_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data,
+			struct ucred *cr);
 static int	ng_iface_output(struct ifnet *ifp, struct mbuf *m0,
 			struct sockaddr *dst, struct rtentry *rt0);
 static void	ng_iface_bpftap(struct ifnet *ifp,
@@ -337,7 +338,8 @@ ng_iface_free_unit(int unit)
  * Process an ioctl for the virtual interface
  */
 static int
-ng_iface_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
+ng_iface_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
+    struct ucred *cr)
 {
 	struct ifreq *const ifr = (struct ifreq *) data;
 	int s, error = 0;

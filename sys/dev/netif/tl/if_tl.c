@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.8 2004/03/14 15:36:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.9 2004/03/23 22:19:04 hsu Exp $
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
  */
@@ -279,7 +279,8 @@ static int tl_encap		(struct tl_softc *, struct tl_chain *,
 
 static void tl_intr		(void *);
 static void tl_start		(struct ifnet *);
-static int tl_ioctl		(struct ifnet *, u_long, caddr_t);
+static int tl_ioctl		(struct ifnet *, u_long, caddr_t,
+						struct ucred *);
 static void tl_init		(void *);
 static void tl_stop		(struct tl_softc *);
 static void tl_watchdog		(struct ifnet *);
@@ -2165,10 +2166,11 @@ static void tl_ifmedia_sts(ifp, ifmr)
 	return;
 }
 
-static int tl_ioctl(ifp, command, data)
+static int tl_ioctl(ifp, command, data, cr)
 	struct ifnet		*ifp;
 	u_long			command;
 	caddr_t			data;
+	struct ucred		*cr;
 {
 	struct tl_softc		*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;

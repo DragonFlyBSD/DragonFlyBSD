@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.8 2004/03/14 15:36:49 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.9 2004/03/23 22:19:00 hsu Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -105,7 +105,7 @@ static int	ep_media2if_media[] =
 
 /* if functions */
 static void	ep_if_init	(void *);
-static int	ep_if_ioctl	(struct ifnet *, u_long, caddr_t);
+static int	ep_if_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	ep_if_start	(struct ifnet *);
 static void	ep_if_watchdog	(struct ifnet *);
 
@@ -854,10 +854,11 @@ ep_ifmedia_sts(ifp, ifmr)
 }
 
 static int
-ep_if_ioctl(ifp, cmd, data)
+ep_if_ioctl(ifp, cmd, data, cr)
 	struct ifnet *		ifp;
 	u_long			cmd;
 	caddr_t			data;
+	struct ucred *		cr;
 {
 	struct ep_softc *	sc = ifp->if_softc;
 	struct ifreq *		ifr = (struct ifreq *)data;

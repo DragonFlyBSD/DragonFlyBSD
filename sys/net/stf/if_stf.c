@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.7 2004/01/06 01:40:51 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.8 2004/03/23 22:19:07 hsu Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -153,7 +153,7 @@ static int stf_checkaddr4 (struct stf_softc *, struct in_addr *,
 static int stf_checkaddr6 (struct stf_softc *, struct in6_addr *,
 	struct ifnet *);
 static void stf_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
-static int stf_ioctl (struct ifnet *, u_long, caddr_t);
+static int stf_ioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 
 static int
 stfmodevent(mod, type, data)
@@ -633,10 +633,11 @@ stf_rtrequest(cmd, rt, info)
 }
 
 static int
-stf_ioctl(ifp, cmd, data)
+stf_ioctl(ifp, cmd, data, cr)
 	struct ifnet *ifp;
 	u_long cmd;
 	caddr_t data;
+	struct ucred *cr;
 {
 	struct ifaddr *ifa;
 	struct ifreq *ifr;

@@ -28,7 +28,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.6 2004/03/14 15:36:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.7 2004/03/23 22:18:59 hsu Exp $
  *
  * Device driver for Crystal Semiconductor CS8920 based ethernet
  *   adapters. By Maxim Bolotin and Oleg Sharoiko, 27-April-1997
@@ -73,16 +73,16 @@
 static int	cs_recv_delay = 570;
 SYSCTL_INT(_machdep, OID_AUTO, cs_recv_delay, CTLFLAG_RW, &cs_recv_delay, 0, "");
 
-static void	cs_init		(void *);
-static int	cs_ioctl	(struct ifnet *, u_long, caddr_t);
-static void	cs_start	(struct ifnet *);
-static void	cs_stop		(struct cs_softc *);
-static void	cs_reset	(struct cs_softc *);
-static void	cs_watchdog	(struct ifnet *);
+static void	cs_init(void *);
+static int	cs_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
+static void	cs_start(struct ifnet *);
+static void	cs_stop(struct cs_softc *);
+static void	cs_reset(struct cs_softc *);
+static void	cs_watchdog(struct ifnet *);
 
-static int	cs_mediachange	(struct ifnet *);
-static void	cs_mediastatus	(struct ifnet *, struct ifmediareq *);
-static int      cs_mediaset	(struct cs_softc *, int);
+static int	cs_mediachange(struct ifnet *);
+static void	cs_mediastatus(struct ifnet *, struct ifmediareq *);
+static int      cs_mediaset(struct cs_softc *, int);
 
 static void	cs_write_mbufs(struct cs_softc*, struct mbuf*);
 static void	cs_xmit_buf(struct cs_softc*);
@@ -92,8 +92,8 @@ static void	cs_setmode(struct cs_softc*);
 static int	get_eeprom_data(struct cs_softc *sc, int, int, int *);
 static int	get_eeprom_cksum(int, int, int *);
 static int	wait_eeprom_ready( struct cs_softc *);
-static void	control_dc_dc( struct cs_softc *, int );
-static int	send_test_pkt( struct cs_softc * );
+static void	control_dc_dc(struct cs_softc *, int );
+static int	send_test_pkt(struct cs_softc * );
 static int	enable_tp(struct cs_softc *);
 static int	enable_aui(struct cs_softc *);
 static int	enable_bnc(struct cs_softc *);
@@ -1087,7 +1087,8 @@ cs_setmode(struct cs_softc *sc)
 }
 
 static int
-cs_ioctl(register struct ifnet *ifp, u_long command, caddr_t data)
+cs_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
+    struct ucred *cr)
 {
 	struct cs_softc *sc=ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;

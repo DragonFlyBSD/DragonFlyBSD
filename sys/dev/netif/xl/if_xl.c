@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.10 2004/03/19 06:30:08 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.11 2004/03/23 22:19:05 hsu Exp $
  */
 
 /*
@@ -217,7 +217,8 @@ static void xl_txeoc		(struct xl_softc *);
 static void xl_intr		(void *);
 static void xl_start		(struct ifnet *);
 static void xl_start_90xB	(struct ifnet *);
-static int xl_ioctl		(struct ifnet *, u_long, caddr_t);
+static int xl_ioctl		(struct ifnet *, u_long, caddr_t,
+						struct ucred *);
 static void xl_init		(void *);
 static void xl_stop		(struct xl_softc *);
 static void xl_watchdog		(struct ifnet *);
@@ -3107,10 +3108,11 @@ xl_ifmedia_sts(ifp, ifmr)
 }
 
 static int
-xl_ioctl(ifp, command, data)
+xl_ioctl(ifp, command, data, cr)
 	struct ifnet		*ifp;
 	u_long			command;
 	caddr_t			data;
+	struct ucred		*cr;
 {
 	struct xl_softc		*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;

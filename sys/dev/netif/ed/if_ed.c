@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.11 2004/03/14 15:36:49 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.12 2004/03/23 22:18:59 hsu Exp $
  */
 
 /*
@@ -79,7 +79,7 @@
 devclass_t ed_devclass;
 
 static void	ed_init		(void *);
-static int	ed_ioctl	(struct ifnet *, u_long, caddr_t);
+static int	ed_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	ed_start	(struct ifnet *);
 static void	ed_reset	(struct ifnet *);
 static void	ed_watchdog	(struct ifnet *);
@@ -2661,10 +2661,11 @@ edintr(arg)
  *	pretty ugly.
  */
 static int
-ed_ioctl(ifp, command, data)
+ed_ioctl(ifp, command, data, cr)
 	struct ifnet *ifp;
 	u_long     command;
 	caddr_t data;
+	struct ucred *cr;
 {
 	struct ed_softc *sc = ifp->if_softc;
 #ifndef ED_NO_MIIBUS

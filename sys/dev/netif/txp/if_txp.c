@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.8 2004/03/14 15:36:53 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.9 2004/03/23 22:19:04 hsu Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -114,7 +114,7 @@ static int txp_detach	(device_t);
 static void txp_intr	(void *);
 static void txp_tick	(void *);
 static int txp_shutdown	(device_t);
-static int txp_ioctl	(struct ifnet *, u_long, caddr_t);
+static int txp_ioctl	(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void txp_start	(struct ifnet *);
 static void txp_stop	(struct txp_softc *);
 static void txp_init	(void *);
@@ -1059,10 +1059,11 @@ txp_alloc_rings(sc)
 }
 
 static int
-txp_ioctl(ifp, command, data)
+txp_ioctl(ifp, command, data, cr)
 	struct ifnet *ifp;
 	u_long command;
 	caddr_t data;
+	struct ucred *cr;
 {
 	struct txp_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;

@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.8 2004/03/14 15:36:53 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.9 2004/03/23 22:19:05 hsu Exp $
  */
 
 /*
@@ -175,7 +175,7 @@ static int	 xe_activate		(device_t dev);
 static void	 xe_deactivate		(device_t dev);
 static void      xe_init		(void *xscp);
 static void      xe_start		(struct ifnet *ifp);
-static int       xe_ioctl		(struct ifnet *ifp, u_long command, caddr_t data);
+static int       xe_ioctl		(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *);
 static void      xe_watchdog		(struct ifnet *ifp);
 static int       xe_media_change	(struct ifnet *ifp);
 static void      xe_media_status	(struct ifnet *ifp, struct ifmediareq *mrp);
@@ -724,7 +724,7 @@ xe_start(struct ifnet *ifp) {
  * Process an ioctl request.  Adapted from the ed driver.
  */
 static int
-xe_ioctl (struct ifnet *ifp, u_long command, caddr_t data) {
+xe_ioctl (struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr) {
   struct xe_softc *scp;
   int s, error;
 

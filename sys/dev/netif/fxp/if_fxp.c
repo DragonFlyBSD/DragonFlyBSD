@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.8 2004/03/14 15:36:50 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.9 2004/03/23 22:19:00 hsu Exp $
  */
 
 /*
@@ -203,7 +203,7 @@ static void 		fxp_start(struct ifnet *ifp);
 static void		fxp_stop(struct fxp_softc *sc);
 static void 		fxp_release(struct fxp_softc *sc);
 static int		fxp_ioctl(struct ifnet *ifp, u_long command,
-			    caddr_t data);
+			    caddr_t data, struct ucred *);
 static void 		fxp_watchdog(struct ifnet *ifp);
 static int		fxp_add_rfabuf(struct fxp_softc *sc, struct mbuf *oldm);
 static int		fxp_mc_addrs(struct fxp_softc *sc);
@@ -1984,7 +1984,7 @@ fxp_miibus_writereg(device_t dev, int phy, int reg, int value)
 }
 
 static int
-fxp_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
+fxp_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct fxp_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.9 2004/03/14 15:36:51 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.10 2004/03/23 22:19:02 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -153,7 +153,7 @@ enum State { NOT_LOADED, DOWN, ACTIVATION, ACTIVE };
 static int	sbsh_probe(device_t);
 static int	sbsh_attach(device_t);
 static int	sbsh_detach(device_t);
-static int	sbsh_ioctl(struct ifnet	*, u_long, caddr_t);
+static int	sbsh_ioctl(struct ifnet	*, u_long, caddr_t, struct ucred *);
 static void	sbsh_shutdown(device_t);
 static int	sbsh_suspend(device_t);
 static int	sbsh_resume(device_t);
@@ -398,13 +398,12 @@ init_card(struct sbsh_softc *sc)
 
 
 static int
-sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data)
+sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct sbsh_softc	*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;
 	struct cx28975_cfg	cfg;
 	struct dsl_stats	ds;
-	struct thread		*td = curthread;
 	int			s, error = 0;
 	u_int8_t		t;
 
@@ -412,7 +411,7 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data)
 
 	switch(cmd) {
 	case SIOCLOADFIRMW:
-		if ((error = suser(td)) != 0)
+		if ((error = suser_cred(cr, NULL_CRED_OKAY)) != 0)
 			break;
 		if (ifp->if_flags & IFF_UP)
 			error = EBUSY;
@@ -432,7 +431,7 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data)
 		break;
 
 	case  SIOCGETSTATS :
-		if ((error = suser(td)) != 0)
+		if ((error = suser_cred(cr, NULL_CRED_OKAY)) != 0)
 			break;
 
 		t = 0;
@@ -466,7 +465,7 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data)
 		break;
 
 	case  SIOCCLRSTATS :
-		if (!(error = suser(td))) {
+		if (!(error = suser_cred(cr, NULL_CRED_OKAY))) {
 			bzero(&sc->in_stats, sizeof(struct sbni16_stats));
 			t = 2;
 			if (issue_cx28975_cmd(sc, _DSL_CLEAR_ERROR_CTRS, &t, 1))

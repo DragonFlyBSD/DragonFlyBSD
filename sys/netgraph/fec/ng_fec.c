@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.5 2004/03/14 15:36:54 joerg Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.6 2004/03/23 22:19:07 hsu Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -444,7 +444,7 @@ ng_fec_delport(struct ng_fec_private *priv, char *iface)
 
 	/* Stop interface */
 	bifp->if_flags &= ~IFF_UP;
-	(*bifp->if_ioctl)(bifp, SIOCSIFFLAGS, NULL);
+	(*bifp->if_ioctl)(bifp, SIOCSIFFLAGS, NULL, NULL);
 
 	/* Restore MAC address. */
 	ac = (struct arpcom *)bifp;
@@ -480,7 +480,7 @@ ng_fec_setport(struct ifnet *ifp, u_long command, caddr_t data)
 	TAILQ_FOREACH(p, &b->ng_fec_ports, fec_list) {
 		oifp = p->fec_if;
 		if (oifp != NULL)
-			(*oifp->if_ioctl)(oifp, command, data);
+			(*oifp->if_ioctl)(oifp, command, data, NULL);
 	}
 
 	return(0);
@@ -510,7 +510,7 @@ ng_fec_init(void *arg)
 	TAILQ_FOREACH(p, &b->ng_fec_ports, fec_list) {
 		bifp = p->fec_if;
 		bifp->if_flags |= IFF_UP;
-                (*bifp->if_ioctl)(bifp, SIOCSIFFLAGS, NULL);
+                (*bifp->if_ioctl)(bifp, SIOCSIFFLAGS, NULL, NULL);
 		/* mark iface as up and let the monitor check it */
 		p->fec_ifstat = -1;
 	}
@@ -534,7 +534,7 @@ ng_fec_stop(struct ifnet *ifp)
 	TAILQ_FOREACH(p, &b->ng_fec_ports, fec_list) {
 		bifp = p->fec_if;
 		bifp->if_flags &= ~IFF_UP;
-                (*bifp->if_ioctl)(bifp, SIOCSIFFLAGS, NULL);
+                (*bifp->if_ioctl)(bifp, SIOCSIFFLAGS, NULL, NULL);
 	}
 
 	untimeout(ng_fec_tick, priv, priv->fec_ch);
@@ -558,7 +558,8 @@ ng_fec_tick(void *arg)
 	TAILQ_FOREACH(p, &b->ng_fec_ports, fec_list) {
 		bzero((char *)&ifmr, sizeof(ifmr));
 		ifp = p->fec_if;
-		error = (*ifp->if_ioctl)(ifp, SIOCGIFMEDIA, (caddr_t)&ifmr);
+		error = (*ifp->if_ioctl)(ifp, SIOCGIFMEDIA, (caddr_t)&ifmr,
+					 NULL);
 		if (error) {
 			printf("fec%d: failed to check status "
 			    "of link %s\n", priv->unit, ifp->if_xname);

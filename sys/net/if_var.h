@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.9 2004/03/15 20:08:40 joerg Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.10 2004/03/23 22:19:05 hsu Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -73,6 +73,7 @@ struct	rtentry;
 struct	rt_addrinfo;
 struct	socket;
 struct	ether_header;
+struct	ucred;
 #endif
 
 #include <sys/queue.h>		/* get TAILQ macros */
@@ -162,7 +163,7 @@ struct ifnet {
 		int	uif_capabilities;	/* interface capabilities */
 	} _u1;
 	int	(*if_ioctl)		/* ioctl routine */
-		(struct ifnet *, u_long, caddr_t);
+		(struct ifnet *, u_long, caddr_t, struct ucred *);
 	void	(*if_watchdog)		/* timer routine */
 		(struct ifnet *);
 	union {

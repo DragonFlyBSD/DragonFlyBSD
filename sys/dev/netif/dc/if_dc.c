@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.9 2004/03/14 15:36:49 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.10 2004/03/23 22:18:59 hsu Exp $
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
  */
@@ -209,7 +209,8 @@ static void dc_tick		(void *);
 static void dc_tx_underrun	(struct dc_softc *);
 static void dc_intr		(void *);
 static void dc_start		(struct ifnet *);
-static int dc_ioctl		(struct ifnet *, u_long, caddr_t);
+static int dc_ioctl		(struct ifnet *, u_long, caddr_t,
+					struct ucred *);
 static void dc_init		(void *);
 static void dc_stop		(struct dc_softc *);
 static void dc_watchdog		(struct ifnet *);
@@ -3364,10 +3365,11 @@ static void dc_ifmedia_sts(ifp, ifmr)
 	return;
 }
 
-static int dc_ioctl(ifp, command, data)
+static int dc_ioctl(ifp, command, data, cr)
 	struct ifnet		*ifp;
 	u_long			command;
 	caddr_t			data;
+	struct ucred		*cr;
 {
 	struct dc_softc		*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;

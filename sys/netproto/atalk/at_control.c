@@ -2,7 +2,7 @@
  * Copyright (c) 1990,1991 Regents of The University of Michigan.
  * All Rights Reserved.
  *
- * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.5 2003/08/07 21:17:33 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.6 2004/03/23 22:19:08 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -323,7 +323,7 @@ at_control(struct socket *so, u_long cmd, caddr_t data,
     default:
 	if ( ifp == 0 || ifp->if_ioctl == 0 )
 	    return( EOPNOTSUPP );
-	return( (*ifp->if_ioctl)( ifp, cmd, data ));
+	return( (*ifp->if_ioctl)( ifp, cmd, data, td->td_proc->p_ucred ));
     }
     return( 0 );
 }
@@ -575,7 +575,8 @@ at_ifinit( ifp, aa, sat )
      * about it, just in case it needs to adjust something.
      */
     if ( ifp->if_ioctl &&
-	    ( error = (*ifp->if_ioctl)( ifp, SIOCSIFADDR, (caddr_t)aa ))) {
+	    ( error = (*ifp->if_ioctl)( ifp, SIOCSIFADDR, (caddr_t)aa,
+	   			        (struct ucred *)NULL ))) {
 	/*
 	 * of course this could mean that it objects violently
 	 * so if it does, we back out again..

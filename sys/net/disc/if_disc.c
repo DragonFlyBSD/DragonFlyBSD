@@ -32,7 +32,7 @@
  *
  *	From: @(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_disc.c,v 1.26.2.2 2001/12/20 10:30:16 ru Exp $
- * $DragonFly: src/sys/net/disc/if_disc.c,v 1.5 2004/01/06 03:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/disc/if_disc.c,v 1.6 2004/03/23 22:19:06 hsu Exp $
  */
 
 /*
@@ -68,7 +68,7 @@ static struct	ifnet discif;
 static int discoutput(struct ifnet *, struct mbuf *, struct sockaddr *,
 		    struct rtentry *);
 static void discrtrequest(int cmd, struct rtentry *rt, struct rt_addrinfo *info);
-static int discioctl(struct ifnet *, u_long, caddr_t);
+static int discioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 
 /* ARGSUSED */
 static void
@@ -170,10 +170,11 @@ discrtrequest(cmd, rt, info)
  */
 /* ARGSUSED */
 static int
-discioctl(ifp, cmd, data)
+discioctl(ifp, cmd, data, cr)
 	struct ifnet *ifp;
 	u_long cmd;
 	caddr_t data;
+	struct ucred *cr;
 {
 	struct ifaddr *ifa;
 	struct ifreq *ifr = (struct ifreq *)data;

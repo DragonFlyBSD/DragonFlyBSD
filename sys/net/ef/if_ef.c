@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.8 2004/03/14 15:36:54 joerg Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.9 2004/03/23 22:19:06 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -102,7 +102,7 @@ static void ef_reset (struct ifnet *);
 static int ef_attach(struct efnet *sc);
 static int ef_detach(struct efnet *sc);
 static void ef_init(void *);
-static int ef_ioctl(struct ifnet *, u_long, caddr_t);
+static int ef_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void ef_start(struct ifnet *);
 static int ef_input(struct ifnet*, struct ether_header *, struct mbuf *);
 static int ef_output(struct ifnet *ifp, struct mbuf **mp,
@@ -175,7 +175,7 @@ ef_init(void *foo) {
 }
 
 static int
-ef_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
+ef_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct efnet *sc = ifp->if_softc;
 	struct ifaddr *ifa = (struct ifaddr*)data;

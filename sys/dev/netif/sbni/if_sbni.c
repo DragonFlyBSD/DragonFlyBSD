@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.11 2004/03/14 15:36:51 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.12 2004/03/23 22:19:02 hsu Exp $
  */
 
 /*
@@ -87,7 +87,7 @@
 
 static void	sbni_init(void *);
 static void	sbni_start(struct ifnet *);
-static int	sbni_ioctl(struct ifnet *, u_long, caddr_t);
+static int	sbni_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	sbni_watchdog(struct ifnet *);
 static void	sbni_stop(struct sbni_softc *);
 static void	handle_channel(struct sbni_softc *);
@@ -1048,9 +1048,8 @@ timeout_change_level(struct sbni_softc *sc)
  */
 
 static int
-sbni_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
+sbni_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
-	struct thread *td = curthread;	/* XXX */
 	struct sbni_softc *sc;
 	struct ifreq *ifr;
 	struct sbni_in_stats *in_stats;
@@ -1123,7 +1122,8 @@ sbni_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 
 	case SIOCSHWFLAGS:	/* set flags */
 		/* root only */
-		error = suser(td);	/* NOTE: returns EPERM if no proc */
+		error = suser_cred(cr, NULL_CRED_OKAY);
+					/* NOTE: returns EPERM if no proc */
 		if (error)
 			break;
 		flags = *(struct sbni_flags*)&ifr->ifr_data;
@@ -1145,7 +1145,7 @@ sbni_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 		break;
 
 	case SIOCRINSTATS:
-		if (!(error = suser(td)))	/* root only */
+		if (!(error = suser_cred(cr, NULL_CRED_OKAY)))	/* root only */
 			bzero(&sc->in_stats, sizeof(struct sbni_in_stats));
 		break;
 

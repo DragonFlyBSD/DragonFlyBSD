@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.9 2004/03/14 15:36:50 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.10 2004/03/23 22:19:00 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -72,7 +72,7 @@
 
 /* network interface */
 static void fwe_start (struct ifnet *);
-static int fwe_ioctl (struct ifnet *, u_long, caddr_t);
+static int fwe_ioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 static void fwe_init (void *);
 
 static void fwe_output_callback (struct fw_xfer *);
@@ -391,7 +391,7 @@ found:
 
 
 static int
-fwe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
+fwe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct fwe_softc *fwe = ((struct fwe_eth_softc *)ifp->if_softc)->fwe;
 	struct ifstat *ifs = NULL;

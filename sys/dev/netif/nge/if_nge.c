@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.7 2004/03/14 15:36:51 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.8 2004/03/23 22:19:01 hsu Exp $
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
  */
@@ -162,7 +162,8 @@ static void nge_txeof		(struct nge_softc *);
 static void nge_intr		(void *);
 static void nge_tick		(void *);
 static void nge_start		(struct ifnet *);
-static int nge_ioctl		(struct ifnet *, u_long, caddr_t);
+static int nge_ioctl		(struct ifnet *, u_long, caddr_t,
+					struct ucred *);
 static void nge_init		(void *);
 static void nge_stop		(struct nge_softc *);
 static void nge_watchdog		(struct ifnet *);
@@ -2151,10 +2152,11 @@ static void nge_ifmedia_sts(ifp, ifmr)
 	return;
 }
 
-static int nge_ioctl(ifp, command, data)
+static int nge_ioctl(ifp, command, data, cr)
 	struct ifnet		*ifp;
 	u_long			command;
 	caddr_t			data;
+	struct ucred		*cr;
 {
 	struct nge_softc	*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;

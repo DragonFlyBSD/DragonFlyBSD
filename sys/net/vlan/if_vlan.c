@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.7 2004/03/14 15:36:54 joerg Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.8 2004/03/23 22:19:07 hsu Exp $
  */
 
 /*
@@ -101,7 +101,8 @@ static	void vlan_ifinit(void *foo);
 static	int vlan_input(struct ether_header *eh, struct mbuf *m);
 static	int vlan_input_tag(struct ether_header *eh, struct mbuf *m,
 		u_int16_t t);
-static	int vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr);
+static	int vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr,
+		struct ucred *cr);
 static	int vlan_setmulti(struct ifnet *ifp);
 static	int vlan_unconfig(struct ifnet *ifp);
 static	int vlan_config(struct ifvlan *ifv, struct ifnet *p);
@@ -554,7 +555,7 @@ vlan_unconfig(struct ifnet *ifp)
 }
 
 static int
-vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
+vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct ifaddr *ifa;
 	struct ifnet *p;
@@ -594,7 +595,8 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 
 	case SIOCGIFMEDIA:
 		if (ifv->ifv_p != NULL) {
-			error = (ifv->ifv_p->if_ioctl)(ifv->ifv_p, SIOCGIFMEDIA, data);
+			error = (ifv->ifv_p->if_ioctl)(ifv->ifv_p,
+						       SIOCGIFMEDIA, data, cr);
 			/* Limit the result to the parent's current config. */
 			if (error == 0) {
 				struct ifmediareq *ifmr;

@@ -32,7 +32,7 @@
  *
  *	@(#)ns.c	8.2 (Berkeley) 11/15/93
  * $FreeBSD: src/sys/netns/ns.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns.c,v 1.6 2004/02/16 20:37:20 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns.c,v 1.7 2004/03/23 22:19:08 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -177,7 +177,8 @@ ns_control(so, cmd, data, ifp)
 		}
 		if (ifp->if_ioctl) {
 			error = (*ifp->if_ioctl)(ifp, SIOCSIFDSTADDR, 
-							(caddr_t)ia);
+							(caddr_t)ia,
+							(struct ucred *)NULL);
 			if (error)
 				return (error);
 		}
@@ -239,7 +240,7 @@ ns_control(so, cmd, data, ifp)
 	default:
 		if (ifp->if_ioctl == 0)
 			return (EOPNOTSUPP);
-		return ((*ifp->if_ioctl)(ifp, cmd, data));
+		return ((*ifp->if_ioctl)(ifp, cmd, data, (struct ucred *)NULL));
 	}
 }
 
@@ -294,7 +295,8 @@ ns_ifinit(ifp, ia, sns, scrub)
 	if (ns_hosteqnh(ns_thishost, ns_zerohost)) {
 		if (ifp->if_ioctl &&
 		     (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, 
-						(caddr_t)ia))) {
+						(caddr_t)ia,
+						(struct ucred *)NULL))) {
 			ia->ia_addr = oldaddr;
 			splx(s);
 			return (error);
@@ -305,7 +307,8 @@ ns_ifinit(ifp, ia, sns, scrub)
 		*h = ns_thishost;
 		if (ifp->if_ioctl &&
 		     (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, 
-						(caddr_t)ia))) {
+						(caddr_t)ia,
+						(struct ucred *)NULL))) {
 			ia->ia_addr = oldaddr;
 			splx(s);
 			return (error);

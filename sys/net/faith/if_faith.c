@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_faith.c,v 1.3.2.6 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/faith/if_faith.c,v 1.7 2004/01/06 01:40:50 dillon Exp $
+ * $DragonFly: src/sys/net/faith/if_faith.c,v 1.8 2004/03/23 22:19:06 hsu Exp $
  */
 /*
  * derived from
@@ -94,7 +94,7 @@ struct faith_softc {
 	LIST_ENTRY(faith_softc) sc_list;
 };
 
-static int faithioctl (struct ifnet *, u_long, caddr_t);
+static int faithioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 int faithoutput (struct ifnet *, struct mbuf *, struct sockaddr *,
 	struct rtentry *);
 static void faithrtrequest (int, struct rtentry *, struct rt_addrinfo *);
@@ -290,10 +290,11 @@ faithrtrequest(cmd, rt, info)
  */
 /* ARGSUSED */
 static int
-faithioctl(ifp, cmd, data)
+faithioctl(ifp, cmd, data, cr)
 	struct ifnet *ifp;
 	u_long cmd;
 	caddr_t data;
+	struct ucred *cr;
 {
 	struct ifaddr *ifa;
 	struct ifreq *ifr = (struct ifreq *)data;

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.6 2004/03/14 15:36:50 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.7 2004/03/23 22:19:01 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -159,7 +159,8 @@ static void	gx_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr);
 static int 	gx_miibus_readreg(device_t dev, int phy, int reg);
 static void 	gx_miibus_writereg(device_t dev, int phy, int reg, int value);
 static void 	gx_miibus_statchg(device_t dev);
-static int	gx_ioctl(struct ifnet *ifp, u_long command, caddr_t data);
+static int	gx_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
+		    struct ucred *);
 static void	gx_setmulti(struct gx_softc *gx);
 static void	gx_reset(struct gx_softc *gx);
 static void 	gx_phy_reset(struct gx_softc *gx);
@@ -906,7 +907,7 @@ gx_miibus_statchg(device_t dev)
 }
 
 static int
-gx_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
+gx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct gx_softc	*gx = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;

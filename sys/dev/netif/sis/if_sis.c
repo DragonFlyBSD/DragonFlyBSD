@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.9 2004/03/16 22:48:00 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.10 2004/03/23 22:19:03 hsu Exp $
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
  */
@@ -125,7 +125,7 @@ static void	sis_txeof(struct sis_softc *);
 static void	sis_intr(void *);
 static void	sis_tick(void *);
 static void	sis_start(struct ifnet *);
-static int	sis_ioctl(struct ifnet *, u_long, caddr_t);
+static int	sis_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	sis_init(void *);
 static void	sis_stop(struct sis_softc *);
 static void	sis_watchdog(struct ifnet *);
@@ -1920,7 +1920,7 @@ sis_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 }
 
 static int
-sis_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
+sis_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct sis_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *) data;

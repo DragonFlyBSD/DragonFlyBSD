@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.17 2004/03/22 13:33:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.18 2004/03/23 22:18:59 hsu Exp $
  *
  */
 
@@ -192,7 +192,8 @@ static int bge_encap		(struct bge_softc *, struct mbuf *,
 
 static void bge_intr		(void *);
 static void bge_start		(struct ifnet *);
-static int bge_ioctl		(struct ifnet *, u_long, caddr_t);
+static int bge_ioctl		(struct ifnet *, u_long, caddr_t,
+					struct ucred *);
 static void bge_init		(void *);
 static void bge_stop		(struct bge_softc *);
 static void bge_watchdog		(struct ifnet *);
@@ -2801,10 +2802,11 @@ bge_ifmedia_sts(ifp, ifmr)
 }
 
 static int
-bge_ioctl(ifp, command, data)
+bge_ioctl(ifp, command, data, cr)
 	struct ifnet *ifp;
 	u_long command;
 	caddr_t data;
+	struct ucred *cr;
 {
 	struct bge_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *) data;

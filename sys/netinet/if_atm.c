@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/if_atm.c,v 1.8.2.1 2001/12/20 10:30:18 ru Exp $
- * $DragonFly: src/sys/netinet/if_atm.c,v 1.4 2003/08/07 21:54:32 dillon Exp $
+ * $DragonFly: src/sys/netinet/if_atm.c,v 1.5 2004/03/23 22:19:07 hsu Exp $
  */
 
 /*
@@ -155,7 +155,7 @@ atm_rtrequest(req, rt, info)
 		bcopy(LLADDR(SDL(gate)), &api.aph, sizeof(api.aph));
 		api.rxhand = NULL;
 		if (rt->rt_ifp->if_ioctl(rt->rt_ifp, SIOCATMENA, 
-							(caddr_t)&api) != 0) {
+		    (caddr_t)&api, (struct ucred *)NULL) != 0) {
 			printf("atm: couldn't add VC\n");
 			goto failed;
 		}
@@ -198,7 +198,7 @@ failed:
 		bcopy(LLADDR(SDL(gate)), &api.aph, sizeof(api.aph));
 		api.rxhand = NULL;
 		(void)rt->rt_ifp->if_ioctl(rt->rt_ifp, SIOCATMDIS, 
-							(caddr_t)&api);
+		    (caddr_t)&api, (struct ucred *)NULL);
 
 		break;
 	}

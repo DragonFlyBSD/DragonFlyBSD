@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.8 2004/03/06 05:00:41 hsu Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.9 2004/03/23 22:19:07 hsu Exp $
  */
 
 #include "opt_bootp.h"
@@ -347,8 +347,9 @@ in_control(so, cmd, data, ifp, td)
 			return (EINVAL);
 		oldaddr = ia->ia_dstaddr;
 		ia->ia_dstaddr = *(struct sockaddr_in *)&ifr->ifr_dstaddr;
-		if (ifp->if_ioctl && (error = (*ifp->if_ioctl)
-					(ifp, SIOCSIFDSTADDR, (caddr_t)ia))) {
+		if (ifp->if_ioctl &&
+		    (error = (*ifp->if_ioctl)(ifp, SIOCSIFDSTADDR, (caddr_t)ia,
+					      td->td_proc->p_ucred))) {
 			ia->ia_dstaddr = oldaddr;
 			return (error);
 		}
@@ -441,9 +442,9 @@ in_control(so, cmd, data, ifp, td)
 		break;
 
 	default:
-		if (ifp == 0 || ifp->if_ioctl == 0)
+		if (ifp == NULL || ifp->if_ioctl == NULL)
 			return (EOPNOTSUPP);
-		return ((*ifp->if_ioctl)(ifp, cmd, data));
+		return ((*ifp->if_ioctl)(ifp, cmd, data, td->td_proc->p_ucred));
 	}
 
 	/*
@@ -686,7 +687,8 @@ in_ifinit(ifp, ia, sin, scrub)
 	 * and to validate the address if necessary.
 	 */
 	if (ifp->if_ioctl &&
-	    (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, (caddr_t)ia))) {
+	    (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, (caddr_t)ia,
+	    			      (struct ucred *)NULL))) {
 		splx(s);
 		/* LIST_REMOVE(ia, ia_hash) is done in in_control */
 		ia->ia_addr = oldaddr;

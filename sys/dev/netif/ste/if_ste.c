@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.8 2004/03/14 15:36:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.9 2004/03/23 22:19:04 hsu Exp $
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
  */
@@ -95,7 +95,8 @@ static void ste_txeof		(struct ste_softc *);
 static void ste_stats_update	(void *);
 static void ste_stop		(struct ste_softc *);
 static void ste_reset		(struct ste_softc *);
-static int ste_ioctl		(struct ifnet *, u_long, caddr_t);
+static int ste_ioctl		(struct ifnet *, u_long, caddr_t,
+					struct ucred *);
 static int ste_encap		(struct ste_softc *, struct ste_chain *,
 					struct mbuf *);
 static void ste_start		(struct ifnet *);
@@ -1405,10 +1406,11 @@ static void ste_reset(sc)
 	return;
 }
 
-static int ste_ioctl(ifp, command, data)
+static int ste_ioctl(ifp, command, data, cr)
 	struct ifnet		*ifp;
 	u_long			command;
 	caddr_t			data;
+	struct ucred		*cr;
 {
 	struct ste_softc	*sc;
 	struct ifreq		*ifr;

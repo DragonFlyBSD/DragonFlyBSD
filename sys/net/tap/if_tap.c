@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.10 2004/03/14 15:36:54 joerg Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.11 2004/03/23 22:19:07 hsu Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -84,7 +84,8 @@ static void		tapcreate	(dev_t);
 
 /* network interface */
 static void		tapifstart	(struct ifnet *);
-static int		tapifioctl	(struct ifnet *, u_long, caddr_t);
+static int		tapifioctl	(struct ifnet *, u_long, caddr_t,
+					 struct ucred *);
 static void		tapifinit	(void *);
 
 /* character device */
@@ -404,10 +405,11 @@ tapifinit(xtp)
  * Process an ioctl request on network interface
  */
 int
-tapifioctl(ifp, cmd, data)
+tapifioctl(ifp, cmd, data, cr)
 	struct ifnet	*ifp;
 	u_long		 cmd;
 	caddr_t		 data;
+	struct ucred	*cr;
 {
 	struct tap_softc 	*tp = (struct tap_softc *)(ifp->if_softc);
 	struct ifstat		*ifs = NULL;

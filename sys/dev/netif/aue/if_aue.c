@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.8 2004/03/14 15:36:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.9 2004/03/23 22:18:58 hsu Exp $
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
  */
@@ -192,7 +192,7 @@ Static void aue_txeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
 Static void aue_tick(void *);
 Static void aue_rxstart(struct ifnet *);
 Static void aue_start(struct ifnet *);
-Static int aue_ioctl(struct ifnet *, u_long, caddr_t);
+Static int aue_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 Static void aue_init(void *);
 Static void aue_stop(struct aue_softc *);
 Static void aue_watchdog(struct ifnet *);
@@ -1372,7 +1372,7 @@ aue_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 }
 
 Static int
-aue_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
+aue_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct aue_softc	*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *)data;

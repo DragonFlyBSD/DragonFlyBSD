@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.8 2004/03/14 15:36:51 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.9 2004/03/23 22:19:02 hsu Exp $
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
  */
@@ -125,7 +125,8 @@ static void pcn_txeof		(struct pcn_softc *);
 static void pcn_intr		(void *);
 static void pcn_tick		(void *);
 static void pcn_start		(struct ifnet *);
-static int pcn_ioctl		(struct ifnet *, u_long, caddr_t);
+static int pcn_ioctl		(struct ifnet *, u_long, caddr_t,
+					struct ucred *);
 static void pcn_init		(void *);
 static void pcn_stop		(struct pcn_softc *);
 static void pcn_watchdog		(struct ifnet *);
@@ -1260,10 +1261,11 @@ static void pcn_ifmedia_sts(ifp, ifmr)
 	return;
 }
 
-static int pcn_ioctl(ifp, command, data)
+static int pcn_ioctl(ifp, command, data, cr)
 	struct ifnet		*ifp;
 	u_long			command;
 	caddr_t			data;
+	struct ucred		*cr;
 {
 	struct pcn_softc	*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.7 2004/03/14 15:36:52 joerg Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.8 2004/03/23 22:19:03 hsu Exp $
  */
 
 /*
@@ -129,7 +129,7 @@
 /* Exported variables */
 devclass_t sn_devclass;
 
-static int snioctl(struct ifnet * ifp, u_long, caddr_t);
+static int snioctl(struct ifnet * ifp, u_long, caddr_t, struct ucred *);
 
 static void snresume(struct ifnet *);
 
@@ -1134,7 +1134,7 @@ out:
  * changes.
  */
 static int
-snioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
+snioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct sn_softc *sc = ifp->if_softc;
 	int             s, error = 0;

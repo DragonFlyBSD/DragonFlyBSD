@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.8 2004/03/14 15:36:51 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.9 2004/03/23 22:19:02 hsu Exp $
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
  */
@@ -167,7 +167,8 @@ static void rl_txeof		(struct rl_softc *);
 static void rl_intr		(void *);
 static void rl_tick		(void *);
 static void rl_start		(struct ifnet *);
-static int rl_ioctl		(struct ifnet *, u_long, caddr_t);
+static int rl_ioctl		(struct ifnet *, u_long, caddr_t,
+					struct ucred *);
 static void rl_init		(void *);
 static void rl_stop		(struct rl_softc *);
 static void rl_watchdog		(struct ifnet *);
@@ -1610,10 +1611,11 @@ static void rl_ifmedia_sts(ifp, ifmr)
 	return;
 }
 
-static int rl_ioctl(ifp, command, data)
+static int rl_ioctl(ifp, command, data, cr)
 	struct ifnet		*ifp;
 	u_long			command;
 	caddr_t			data;
+	struct ucred		*cr;
 {
 	struct rl_softc		*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;

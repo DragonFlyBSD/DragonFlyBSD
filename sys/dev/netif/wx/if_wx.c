@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/pci/if_wx.c,v 1.5.2.12 2003/03/05 18:42:34 njl Exp $ */
-/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.7 2004/03/14 15:36:53 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.8 2004/03/23 22:19:05 hsu Exp $ */
 /*
  * Principal Author: Matthew Jacob <mjacob@feral.com>
  * Copyright (c) 1999, 2001 by Traakan Software
@@ -79,7 +79,7 @@ static void wx_check_link(wx_softc_t *);
 static void wx_handle_rxint(wx_softc_t *);
 static void wx_gc(wx_softc_t *);
 static void wx_start(struct ifnet *);
-static int wx_ioctl(struct ifnet *, IOCTL_CMD_TYPE, caddr_t);
+static int wx_ioctl(struct ifnet *, IOCTL_CMD_TYPE, caddr_t, struct ucred *);
 static int wx_ifmedia_upd(struct ifnet *);
 static void wx_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 static int wx_init(void *);
@@ -1910,7 +1910,8 @@ wx_get_rbuf(wx_softc_t *sc, rxpkt_t *rxpkt)
 }
 
 static int
-wx_ioctl(struct ifnet *ifp, IOCTL_CMD_TYPE command, caddr_t data)
+wx_ioctl(struct ifnet *ifp, IOCTL_CMD_TYPE command, caddr_t data,
+    struct ucred *cr)
 {
 	wx_softc_t *sc = SOFTC_IFP(ifp);
 	struct ifreq *ifr = (struct ifreq *) data;

@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.7 2004/03/14 15:36:51 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.8 2004/03/23 22:19:01 hsu Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -123,7 +123,7 @@ static void     my_txeof(struct my_softc *);
 static void     my_txeoc(struct my_softc *);
 static void     my_intr(void *);
 static void     my_start(struct ifnet *);
-static int      my_ioctl(struct ifnet *, u_long, caddr_t);
+static int      my_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void     my_init(void *);
 static void     my_stop(struct my_softc *);
 static void     my_watchdog(struct ifnet *);
@@ -1741,7 +1741,7 @@ my_ifmedia_sts(struct ifnet * ifp, struct ifmediareq * ifmr)
 }
 
 static int
-my_ioctl(struct ifnet * ifp, u_long command, caddr_t data)
+my_ioctl(struct ifnet * ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct my_softc *sc = ifp->if_softc;
 	struct ifreq   *ifr = (struct ifreq *) data;

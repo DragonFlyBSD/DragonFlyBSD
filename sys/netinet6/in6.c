@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.6 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.7 2004/03/23 22:19:08 hsu Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -755,7 +755,7 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 	default:
 		if (ifp == NULL || ifp->if_ioctl == 0)
 			return(EOPNOTSUPP);
-		return((*ifp->if_ioctl)(ifp, cmd, data));
+		return((*ifp->if_ioctl)(ifp, cmd, data, td->td_proc->p_ucred));
 	}
 
 	return(0);
@@ -1594,7 +1594,8 @@ in6_ifinit(ifp, ia, sin6, newhost)
 	ia->ia_addr = *sin6;
 
 	if (ifacount <= 1 && ifp->if_ioctl &&
-	    (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, (caddr_t)ia))) {
+	    (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, (caddr_t)ia,
+	    			      (struct ucred *)NULL))) {
 		splx(s);
 		return(error);
 	}

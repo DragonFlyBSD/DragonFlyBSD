@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.12 2004/03/14 15:36:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.13 2004/03/23 22:19:03 hsu Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -175,7 +175,8 @@ static void sk_txeof		(struct sk_if_softc *);
 static int sk_encap		(struct sk_if_softc *, struct mbuf *,
 					u_int32_t *);
 static void sk_start		(struct ifnet *);
-static int sk_ioctl		(struct ifnet *, u_long, caddr_t);
+static int sk_ioctl		(struct ifnet *, u_long, caddr_t,
+					struct ucred *);
 static void sk_init		(void *);
 static void sk_init_xmac	(struct sk_if_softc *);
 static void sk_init_yukon	(struct sk_if_softc *);
@@ -1202,10 +1203,11 @@ static void sk_ifmedia_sts(ifp, ifmr)
 	return;
 }
 
-static int sk_ioctl(ifp, command, data)
+static int sk_ioctl(ifp, command, data, cr)
 	struct ifnet		*ifp;
 	u_long			command;
 	caddr_t			data;
+	struct ucred		*cr;
 {
 	struct sk_if_softc	*sc_if = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;

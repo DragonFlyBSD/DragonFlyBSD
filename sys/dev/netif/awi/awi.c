@@ -1,6 +1,6 @@
 /*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.10 2004/03/14 15:36:48 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.11 2004/03/23 22:18:58 hsu Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -162,7 +162,7 @@
 #include "awivar.h"
 #endif
 
-static int awi_ioctl (struct ifnet *ifp, u_long cmd, caddr_t data);
+static int awi_ioctl (struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *);
 #ifdef IFM_IEEE80211
 static int awi_media_rate2opt (struct awi_softc *sc, int rate);
 static int awi_media_opt2rate (struct awi_softc *sc, int opt);
@@ -444,12 +444,12 @@ awi_power(sc, why)
 #endif /* __NetBSD__ */
 
 static int
-awi_ioctl(ifp, cmd, data)
+awi_ioctl(ifp, cmd, data, cr)
 	struct ifnet *ifp;
 	u_long cmd;
 	caddr_t data;
+	struct ucred *cr;
 {
-	struct thread *td = curthread;
 	struct awi_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct ifaddr *ifa = (struct ifaddr *)data;
@@ -515,7 +515,7 @@ awi_ioctl(ifp, cmd, data)
 		break;
 	case SIOCS80211NWID:
 #if defined(__DragonFly__) || defined(__FreeBSD__)
-		error = suser(td);	/* EPERM if no proc */
+		error = suser_cred(cr, NULL_CRED_OKAY);	/* EPERM if no proc */
 		if (error)
 			break;
 #endif
@@ -549,7 +549,7 @@ awi_ioctl(ifp, cmd, data)
 		break;
 	case SIOCS80211NWKEY:
 #if defined(__DragonFly__) || defined(__FreeBSD__)
-		error = suser(td);	/* EPERM if no proc */
+		error = suser_cred(cr, NULL_CRED_OKAY);	/* EPERM if no proc */
 		if (error)
 			break;
 #endif

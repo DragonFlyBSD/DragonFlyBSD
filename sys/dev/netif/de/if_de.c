@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.9 2004/03/14 15:36:49 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.10 2004/03/23 22:18:59 hsu Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -4550,7 +4550,8 @@ static int
 tulip_ifioctl(
     struct ifnet * ifp,
     u_long cmd,
-    caddr_t data)
+    caddr_t data,
+    struct ucred * cr)
 {
     TULIP_PERFSTART(ifioctl)
     tulip_softc_t * const sc = (tulip_softc_t *)ifp->if_softc;

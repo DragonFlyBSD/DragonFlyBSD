@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $ 
- * $DragonFly: src/sys/net/if.c,v 1.14 2004/03/15 22:37:40 hmp Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.15 2004/03/23 22:19:05 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -1082,7 +1082,8 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 			ifp->if_flags &= ~IFF_PROMISC;
 		}
 		if (ifp->if_ioctl)
-			(void) (*ifp->if_ioctl)(ifp, cmd, data);
+			(void) (*ifp->if_ioctl)(ifp, cmd, data,
+						td->td_proc->p_ucred);
 		getmicrotime(&ifp->if_lastchange);
 		break;
 
@@ -1092,7 +1093,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 			return (error);
 		if (ifr->ifr_reqcap & ~ifp->if_capabilities)
 			return (EINVAL);
-		(void) (*ifp->if_ioctl)(ifp, cmd, data);
+		(void) (*ifp->if_ioctl)(ifp, cmd, data, td->td_proc->p_ucred);
 		break;
 
  	case SIOCSIFNAME:
@@ -1151,7 +1152,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 			return error;
 		if (!ifp->if_ioctl)
 		        return EOPNOTSUPP;
-		error = (*ifp->if_ioctl)(ifp, cmd, data);
+		error = (*ifp->if_ioctl)(ifp, cmd, data, td->td_proc->p_ucred);
 		if (error == 0)
 			getmicrotime(&ifp->if_lastchange);
 		return(error);
@@ -1167,7 +1168,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 			return (EOPNOTSUPP);
 		if (ifr->ifr_mtu < IF_MINMTU || ifr->ifr_mtu > IF_MAXMTU)
 			return (EINVAL);
-		error = (*ifp->if_ioctl)(ifp, cmd, data);
+		error = (*ifp->if_ioctl)(ifp, cmd, data, td->td_proc->p_ucred);
 		if (error == 0) {
 			getmicrotime(&ifp->if_lastchange);
 			rt_ifmsg(ifp);
@@ -1220,7 +1221,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 			return (error);
 		if (ifp->if_ioctl == 0)
 			return (EOPNOTSUPP);
-		error = (*ifp->if_ioctl)(ifp, cmd, data);
+		error = (*ifp->if_ioctl)(ifp, cmd, data, td->td_proc->p_ucred);
 		if (error == 0)
 			getmicrotime(&ifp->if_lastchange);
 		return error;
@@ -1236,7 +1237,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 	case SIOCGIFGENERIC:
 		if (ifp->if_ioctl == 0)
 			return (EOPNOTSUPP);
-		return ((*ifp->if_ioctl)(ifp, cmd, data));
+		return ((*ifp->if_ioctl)(ifp, cmd, data, td->td_proc->p_ucred));
 
 	case SIOCSIFLLADDR:
 		error = suser(td);
@@ -1359,7 +1360,8 @@ ifpromisc(ifp, pswitch)
 	}
 	ifr.ifr_flags = ifp->if_flags;
 	ifr.ifr_flagshigh = ifp->if_ipending >> 16;
-	error = (*ifp->if_ioctl)(ifp, SIOCSIFFLAGS, (caddr_t)&ifr);
+	error = (*ifp->if_ioctl)(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
+				 (struct ucred *)NULL);
 	if (error == 0)
 		rt_ifmsg(ifp);
 	else
@@ -1471,7 +1473,8 @@ if_allmulti(ifp, onswitch)
 			ifp->if_flags |= IFF_ALLMULTI;
 			ifr.ifr_flags = ifp->if_flags;
 			ifr.ifr_flagshigh = ifp->if_ipending >> 16;
-			error = ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr);
+			error = ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
+					      (struct ucred *)NULL);
 		}
 	} else {
 		if (ifp->if_amcount > 1) {
@@ -1481,7 +1484,8 @@ if_allmulti(ifp, onswitch)
 			ifp->if_flags &= ~IFF_ALLMULTI;
 			ifr.ifr_flags = ifp->if_flags;
 			ifr.ifr_flagshigh = ifp->if_ipending >> 16;
-			error = ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr);
+			error = ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
+					      (struct ucred *)NULL);
 		}
 	}
 	splx(s);
@@ -1576,7 +1580,7 @@ if_addmulti(ifp, sa, retifma)
 	 * interface to let them know about it.
 	 */
 	s = splimp();
-	ifp->if_ioctl(ifp, SIOCADDMULTI, 0);
+	ifp->if_ioctl(ifp, SIOCADDMULTI, 0, (struct ucred *)NULL);
 	splx(s);
 
 	return 0;
@@ -1614,7 +1618,7 @@ if_delmulti(ifp, sa)
 	 * in the case of a link layer mcast group being left.
 	 */
 	if (ifma->ifma_addr->sa_family == AF_LINK && sa == 0)
-		ifp->if_ioctl(ifp, SIOCDELMULTI, 0);
+		ifp->if_ioctl(ifp, SIOCDELMULTI, 0, (struct ucred *)NULL);
 	splx(s);
 	free(ifma->ifma_addr, M_IFMADDR);
 	free(ifma, M_IFMADDR);
@@ -1645,7 +1649,7 @@ if_delmulti(ifp, sa)
 
 	s = splimp();
 	LIST_REMOVE(ifma, ifma_link);
-	ifp->if_ioctl(ifp, SIOCDELMULTI, 0);
+	ifp->if_ioctl(ifp, SIOCDELMULTI, 0, (struct ucred *)NULL);
 	splx(s);
 	free(ifma->ifma_addr, M_IFMADDR);
 	free(sa, M_IFMADDR);
@@ -1698,11 +1702,13 @@ if_setlladdr(struct ifnet *ifp, const u_char *lladdr, int len)
 		ifp->if_flags &= ~IFF_UP;
 		ifr.ifr_flags = ifp->if_flags;
 		ifr.ifr_flagshigh = ifp->if_ipending >> 16;
-		(*ifp->if_ioctl)(ifp, SIOCSIFFLAGS, (caddr_t)&ifr);
+		(*ifp->if_ioctl)(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
+				 (struct ucred *)NULL);
 		ifp->if_flags |= IFF_UP;
 		ifr.ifr_flags = ifp->if_flags;
 		ifr.ifr_flagshigh = ifp->if_ipending >> 16;
-		(*ifp->if_ioctl)(ifp, SIOCSIFFLAGS, (caddr_t)&ifr);
+		(*ifp->if_ioctl)(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
+				 (struct ucred *)NULL);
 #ifdef INET
 		/*
 		 * Also send gratuitous ARPs to notify other nodes about

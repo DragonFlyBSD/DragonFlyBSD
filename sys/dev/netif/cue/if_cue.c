@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.7 2004/03/14 15:36:49 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.8 2004/03/23 22:18:59 hsu Exp $
  *
  */
 
@@ -107,7 +107,7 @@ Static void cue_txeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
 Static void cue_tick(void *);
 Static void cue_rxstart(struct ifnet *);
 Static void cue_start(struct ifnet *);
-Static int cue_ioctl(struct ifnet *, u_long, caddr_t);
+Static int cue_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 Static void cue_init(void *);
 Static void cue_stop(struct cue_softc *);
 Static void cue_watchdog(struct ifnet *);
@@ -1024,7 +1024,7 @@ cue_init(void *xsc)
 }
 
 Static int
-cue_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
+cue_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct cue_softc	*sc = ifp->if_softc;
 	int			error = 0;

@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.9 2004/01/06 03:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.10 2004/03/23 22:19:05 hsu Exp $
  */
 
 /*
@@ -87,7 +87,7 @@
 #include <netproto/atalk/at_var.h>
 #endif
 
-int loioctl (struct ifnet *, u_long, caddr_t);
+int loioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 static void lortrequest (int, struct rtentry *, struct rt_addrinfo *);
 
 static void loopattach (void *);
@@ -317,10 +317,11 @@ lortrequest(cmd, rt, info)
  */
 /* ARGSUSED */
 int
-loioctl(ifp, cmd, data)
+loioctl(ifp, cmd, data, cr)
 	struct ifnet *ifp;
 	u_long cmd;
 	caddr_t data;
+	struct ucred *cr;
 {
 	struct ifaddr *ifa;
 	struct ifreq *ifr = (struct ifreq *)data;

@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.10 2004/01/06 03:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.11 2004/03/23 22:19:06 hsu Exp $
  */
 
 /*
@@ -186,7 +186,7 @@ static timeout_t sl_keepalive;
 static timeout_t sl_outfill;
 static int	slclose (struct tty *,int);
 static int	slinput (int, struct tty *);
-static int	slioctl (struct ifnet *, u_long, caddr_t);
+static int	slioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 static int	sltioctl (struct tty *, u_long, caddr_t, int, struct thread *);
 static int	slopen (dev_t, struct tty *);
 static int	sloutput (struct ifnet *,
@@ -928,10 +928,11 @@ newpack:
  * Process an ioctl request.
  */
 static int
-slioctl(ifp, cmd, data)
+slioctl(ifp, cmd, data, cr)
 	struct ifnet *ifp;
 	u_long cmd;
 	caddr_t data;
+	struct ucred *cr;
 {
 	struct ifaddr *ifa = (struct ifaddr *)data;
 	struct ifreq *ifr = (struct ifreq *)data;

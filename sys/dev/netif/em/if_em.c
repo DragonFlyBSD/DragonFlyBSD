@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.8 2004/03/17 04:59:41 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.9 2004/03/23 22:19:00 hsu Exp $*/
 
 #include "if_em.h"
 
@@ -121,7 +121,7 @@ static int  em_detach(device_t);
 static int  em_shutdown(device_t);
 static void em_intr(void *);
 static void em_start(struct ifnet *);
-static int  em_ioctl(struct ifnet *, u_long, caddr_t);
+static int  em_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void em_watchdog(struct ifnet *);
 static void em_init(void *);
 static void em_stop(void *);
@@ -668,7 +668,7 @@ em_start(struct ifnet *ifp)
  **********************************************************************/
 
 static int
-em_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
+em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	int             s, mask, error = 0;
 	struct ifreq   *ifr = (struct ifreq *) data;

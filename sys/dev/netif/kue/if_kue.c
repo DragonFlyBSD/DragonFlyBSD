@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  *  $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.7 2004/03/14 15:36:50 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.8 2004/03/23 22:19:01 hsu Exp $
  */
 
 /*
@@ -139,7 +139,7 @@ Static void kue_rxeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
 Static void kue_txeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
 Static void kue_start(struct ifnet *);
 Static void kue_rxstart(struct ifnet *);
-Static int kue_ioctl(struct ifnet *, u_long, caddr_t);
+Static int kue_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 Static void kue_init(void *);
 Static void kue_stop(struct kue_softc *);
 Static void kue_watchdog(struct ifnet *);
@@ -957,7 +957,7 @@ kue_init(void *xsc)
 }
 
 Static int
-kue_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
+kue_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct kue_softc	*sc = ifp->if_softc;
 	int			error = 0;

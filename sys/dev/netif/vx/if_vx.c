@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.9 2004/03/14 15:36:53 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.10 2004/03/23 22:19:05 hsu Exp $
  *
  */
 
@@ -108,7 +108,7 @@ static struct connector_entry {
 static void vxtxstat (struct vx_softc *);
 static int vxstatus (struct vx_softc *);
 static void vxinit (void *);
-static int vxioctl (struct ifnet *, u_long, caddr_t); 
+static int vxioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 static void vxstart (struct ifnet *ifp);
 static void vxwatchdog (struct ifnet *);
 static void vxreset (struct vx_softc *);
@@ -834,10 +834,11 @@ vxget(sc, totlen)
 
 
 static int
-vxioctl(ifp, cmd, data)
+vxioctl(ifp, cmd, data, cr)
     struct ifnet *ifp;
     u_long cmd;
     caddr_t data;
+    struct ucred *cr;
 {
     struct vx_softc *sc = ifp->if_softc;
     struct ifreq *ifr = (struct ifreq *) data;

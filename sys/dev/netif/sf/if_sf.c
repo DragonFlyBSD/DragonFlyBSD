@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.7 2004/03/14 15:36:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.8 2004/03/23 22:19:03 hsu Exp $
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
  */
@@ -138,7 +138,8 @@ static int sf_encap		(struct sf_softc *,
 					struct sf_tx_bufdesc_type0 *,
 					struct mbuf *);
 static void sf_start		(struct ifnet *);
-static int sf_ioctl		(struct ifnet *, u_long, caddr_t);
+static int sf_ioctl		(struct ifnet *, u_long, caddr_t,
+					struct ucred *);
 static void sf_init		(void *);
 static void sf_stop		(struct sf_softc *);
 static void sf_watchdog		(struct ifnet *);
@@ -521,10 +522,11 @@ static void sf_ifmedia_sts(ifp, ifmr)
 	return;
 }
 
-static int sf_ioctl(ifp, command, data)
+static int sf_ioctl(ifp, command, data, cr)
 	struct ifnet		*ifp;
 	u_long			command;
 	caddr_t			data;
+	struct ucred		*cr;
 {
 	struct sf_softc		*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.3 2004/03/14 15:36:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.4 2004/03/23 22:18:59 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -92,7 +92,7 @@ static int	bfe_detach(device_t);
 static void	bfe_release_resources(struct bfe_softc *);
 static void	bfe_intr(void *);
 static void	bfe_start(struct ifnet *);
-static int	bfe_ioctl(struct ifnet *, u_long, caddr_t);
+static int	bfe_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	bfe_init(void *);
 static void	bfe_stop(struct bfe_softc *);
 static void	bfe_watchdog(struct ifnet *);
@@ -1426,7 +1426,7 @@ bfe_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 }
 
 static int
-bfe_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
+bfe_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct bfe_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *) data;

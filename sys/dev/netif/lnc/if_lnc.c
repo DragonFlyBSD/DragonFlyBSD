@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc.c,v 1.89 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.8 2004/03/14 15:36:50 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.9 2004/03/23 22:19:01 hsu Exp $
  */
 
 /*
@@ -136,7 +136,8 @@ static void lnc_init(void *);
 static __inline int mbuf_to_buffer(struct mbuf *m, char *buffer);
 static __inline struct mbuf *chain_to_cluster(struct mbuf *m);
 static void lnc_start(struct ifnet *ifp);
-static int lnc_ioctl(struct ifnet *ifp, u_long command, caddr_t data);
+static int lnc_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
+		     struct ucred *);
 static void lnc_watchdog(struct ifnet *ifp);
 #ifdef DEBUG
 void lnc_dump_state(struct lnc_softc *sc);
@@ -1398,7 +1399,7 @@ lnc_start(struct ifnet *ifp)
 }
 
 static int
-lnc_ioctl(struct ifnet * ifp, u_long command, caddr_t data)
+lnc_ioctl(struct ifnet * ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 
 	struct lnc_softc *sc = ifp->if_softc;

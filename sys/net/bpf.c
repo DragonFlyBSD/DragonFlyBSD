@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.13 2004/03/09 14:57:18 hmp Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.14 2004/03/23 22:19:05 hsu Exp $
  */
 
 #include "use_bpf.h"
@@ -727,7 +727,8 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 				error = EINVAL;
 			else {
 				ifp = d->bd_bif->bif_ifp;
-				error = (*ifp->if_ioctl)(ifp, cmd, addr);
+				error = (*ifp->if_ioctl)(ifp, cmd, addr,
+							 td->td_proc->p_ucred);
 			}
 			break;
 		}

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_mroute.c,v 1.2.2.9 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.5 2004/01/08 18:39:18 asmodai Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.6 2004/03/23 22:19:08 hsu Exp $	*/
 /*	$KAME: ip6_mroute.c,v 1.58 2001/12/18 02:36:31 itojun Exp $	*/
 
 /*
@@ -463,7 +463,8 @@ ip6_mrouter_done()
 				ifr.ifr_addr.sin6_addr= in6addr_any;
 				ifp = mif6table[mifi].m6_ifp;
 				(*ifp->if_ioctl)(ifp, SIOCDELMULTI,
-						 (caddr_t)&ifr);
+						 (caddr_t)&ifr,
+						 (struct ucred *)NULL);
 			}
 		}
 	}

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.8 2004/03/14 15:36:49 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.9 2004/03/23 22:19:00 hsu Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -97,7 +97,7 @@ u_char plus_ee2irqmap[] =
 /* Network Interface Functions */
 static void	ex_init		(void *);
 static void	ex_start	(struct ifnet *);
-static int	ex_ioctl	(struct ifnet *, u_long, caddr_t);
+static int	ex_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	ex_watchdog	(struct ifnet *);
 
 /* ifmedia Functions	*/
@@ -778,7 +778,7 @@ rx_another: ;
 
 
 static int
-ex_ioctl(register struct ifnet *ifp, u_long cmd, caddr_t data)
+ex_ioctl(register struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct ex_softc *	sc = ifp->if_softc;
 	struct ifreq *		ifr = (struct ifreq *)data;

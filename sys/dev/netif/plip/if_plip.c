@@ -25,7 +25,7 @@
  *
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  * $FreeBSD: src/sys/dev/ppbus/if_plip.c,v 1.19.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.6 2004/01/06 03:17:24 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.7 2004/03/23 22:19:02 hsu Exp $
  */
 
 /*
@@ -168,7 +168,7 @@ static u_char *ctxmith;
 
 /* Functions for the lp# interface */
 static int lpinittables(void);
-static int lpioctl(struct ifnet *, u_long, caddr_t);
+static int lpioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static int lpoutput(struct ifnet *, struct mbuf *, struct sockaddr *,
 	struct rtentry *);
 static void lp_intr(void *);
@@ -295,7 +295,7 @@ lpinittables (void)
  */
 
 static int
-lpioctl (struct ifnet *ifp, u_long cmd, caddr_t data)
+lpioctl (struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
     device_t dev = UNITODEVICE(ifp->if_dunit);
     device_t ppbus = device_get_parent(dev);

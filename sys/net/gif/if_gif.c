@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $	*/
-/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.8 2004/01/06 01:40:50 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.9 2004/03/23 22:19:06 hsu Exp $	*/
 /*	$KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $	*/
 
 /*
@@ -450,10 +450,11 @@ gif_input(m, af, ifp)
 
 /* XXX how should we handle IPv6 scope on SIOC[GS]IFPHYADDR? */
 int
-gif_ioctl(ifp, cmd, data)
+gif_ioctl(ifp, cmd, data, cr)
 	struct ifnet *ifp;
 	u_long cmd;
 	caddr_t data;
+	struct ucred *cr;
 {
 	struct gif_softc *sc  = (struct gif_softc*)ifp;
 	struct ifreq     *ifr = (struct ifreq*)data;

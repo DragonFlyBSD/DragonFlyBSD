@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.7 2004/02/13 02:44:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.8 2004/03/23 22:19:03 hsu Exp $
  */
 
 /*
@@ -232,7 +232,8 @@ static void	srintr(void *arg);
 static void	sr_xmit(struct sr_softc *sc);
 #ifndef NETGRAPH
 static void	srstart(struct ifnet *ifp);
-static int	srioctl(struct ifnet *ifp, u_long cmd, caddr_t data);
+static int	srioctl(struct ifnet *ifp, u_long cmd, caddr_t data,
+			struct ucred *);
 static void	srwatchdog(struct ifnet *ifp);
 #else
 static void	srstart(struct sr_softc *sc);
@@ -1001,7 +1002,7 @@ static int bug_splats[] = {0, 0, 0, 0, 0, 0, 0, 0};
 #endif
 
 static int
-srioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
+srioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	int s, error, was_up, should_be_up;
 	struct sr_softc *sc = ifp->if_softc;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.8 2004/03/14 15:36:53 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.9 2004/03/23 22:19:05 hsu Exp $
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
  */
@@ -157,7 +157,8 @@ static void wb_txeoc		(struct wb_softc *);
 static void wb_intr		(void *);
 static void wb_tick		(void *);
 static void wb_start		(struct ifnet *);
-static int wb_ioctl		(struct ifnet *, u_long, caddr_t);
+static int wb_ioctl		(struct ifnet *, u_long, caddr_t,
+					struct ucred *);
 static void wb_init		(void *);
 static void wb_stop		(struct wb_softc *);
 static void wb_watchdog		(struct ifnet *);
@@ -1739,10 +1740,11 @@ static void wb_ifmedia_sts(ifp, ifmr)
 	return;
 }
 
-static int wb_ioctl(ifp, command, data)
+static int wb_ioctl(ifp, command, data, cr)
 	struct ifnet		*ifp;
 	u_long			command;
 	caddr_t			data;
+	struct ucred		*cr;
 {
 	struct wb_softc		*sc = ifp->if_softc;
 	struct mii_data		*mii;

@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.11 2004/01/06 01:40:51 dillon Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.12 2004/03/23 22:19:07 hsu Exp $
  */
 
 #include "opt_atalk.h"
@@ -67,7 +67,7 @@ SYSCTL_INT(_debug, OID_AUTO, if_tun_debug, CTLFLAG_RW, &tundebug, 0, "");
 
 static int tunoutput (struct ifnet *, struct mbuf *, struct sockaddr *,
 	    struct rtentry *rt);
-static int tunifioctl (struct ifnet *, u_long, caddr_t);
+static int tunifioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 static int tuninit (struct ifnet *);
 
 static	d_open_t	tunopen;
@@ -258,10 +258,11 @@ tuninit(ifp)
  * Process an ioctl request.
  */
 int
-tunifioctl(ifp, cmd, data)
+tunifioctl(ifp, cmd, data, cr)
 	struct ifnet *ifp;
 	u_long	cmd;
 	caddr_t	data;
+	struct ucred *cr;
 {
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct tun_softc *tp = ifp->if_softc;

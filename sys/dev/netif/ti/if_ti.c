@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.8 2004/03/14 15:36:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.9 2004/03/23 22:19:04 hsu Exp $
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
  */
@@ -168,7 +168,8 @@ static int ti_encap		(struct ti_softc *, struct mbuf *,
 
 static void ti_intr		(void *);
 static void ti_start		(struct ifnet *);
-static int ti_ioctl		(struct ifnet *, u_long, caddr_t);
+static int ti_ioctl		(struct ifnet *, u_long, caddr_t,
+					struct ucred *);
 static void ti_init		(void *);
 static void ti_init2		(struct ti_softc *);
 static void ti_stop		(struct ti_softc *);
@@ -2406,10 +2407,11 @@ static void ti_ifmedia_sts(ifp, ifmr)
 	return;
 }
 
-static int ti_ioctl(ifp, command, data)
+static int ti_ioctl(ifp, command, data, cr)
 	struct ifnet		*ifp;
 	u_long			command;
 	caddr_t			data;
+	struct ucred		*cr;
 {
 	struct ti_softc		*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932.c,v 1.1.2.2 2003/02/11 08:52:00 nyan Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.7 2004/03/14 15:36:52 joerg Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.8 2004/03/23 22:19:03 hsu Exp $	*/
 /*	$NecBSD: dp83932.c,v 1.5 1999/07/29 05:08:44 kmatsuda Exp $	*/
 /*	$NetBSD: if_snc.c,v 1.18 1998/04/25 21:27:40 scottr Exp $	*/
 
@@ -100,7 +100,8 @@
 hide void	sncwatchdog (struct ifnet *);
 hide void	sncinit (void *);
 hide int	sncstop (struct snc_softc *sc);
-hide int	sncioctl (struct ifnet *ifp, u_long cmd, caddr_t data);
+hide int	sncioctl (struct ifnet *ifp, u_long cmd, caddr_t data,
+			  struct ucred *);
 hide void	sncstart (struct ifnet *ifp);
 hide void	sncreset (struct snc_softc *sc);
 
@@ -259,10 +260,11 @@ snc_mediastatus(ifp, ifmr)
 
 
 hide int
-sncioctl(ifp, cmd, data)
+sncioctl(ifp, cmd, data, cr)
 	struct ifnet *ifp;
 	u_long cmd;
 	caddr_t data;
+	struct ucred *cr;
 {
 	struct ifreq *ifr;
 	struct snc_softc *sc = ifp->if_softc;

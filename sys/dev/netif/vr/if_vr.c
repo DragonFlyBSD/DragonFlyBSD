@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.8 2004/03/14 15:36:53 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.9 2004/03/23 22:19:04 hsu Exp $
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
  */
@@ -141,7 +141,8 @@ static void vr_txeoc		(struct vr_softc *);
 static void vr_tick		(void *);
 static void vr_intr		(void *);
 static void vr_start		(struct ifnet *);
-static int vr_ioctl		(struct ifnet *, u_long, caddr_t);
+static int vr_ioctl		(struct ifnet *, u_long, caddr_t,
+					struct ucred *);
 static void vr_init		(void *);
 static void vr_stop		(struct vr_softc *);
 static void vr_watchdog		(struct ifnet *);
@@ -1665,10 +1666,11 @@ static void vr_ifmedia_sts(ifp, ifmr)
 	return;
 }
 
-static int vr_ioctl(ifp, command, data)
+static int vr_ioctl(ifp, command, data, cr)
 	struct ifnet		*ifp;
 	u_long			command;
 	caddr_t			data;
+	struct ucred		*cr;
 {
 	struct vr_softc		*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;

@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.8 2004/03/14 15:36:50 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.9 2004/03/23 22:19:01 hsu Exp $
  */
 
 /*
@@ -171,7 +171,8 @@ static int	ee16_probe(struct isa_device * dvp);
 static int	check_ie_present(int unit, caddr_t where, unsigned size);
 static void	ieinit(void *);
 static void	ie_stop(int unit);
-static int	ieioctl(struct ifnet * ifp, u_long command, caddr_t data);
+static int	ieioctl(struct ifnet * ifp, u_long command, caddr_t data,
+			struct ucred *);
 static void	iestart(struct ifnet * ifp);
 
 static void	el_reset_586(int unit);
@@ -1741,7 +1742,7 @@ iereset(int unit)
 	}
 	printf("ie%d: reset\n", unit);
 	ie_softc[unit].arpcom.ac_if.if_flags &= ~IFF_UP;
-	ieioctl(&ie_softc[unit].arpcom.ac_if, SIOCSIFFLAGS, 0);
+	ieioctl(&ie_softc[unit].arpcom.ac_if, SIOCSIFFLAGS, 0, (struct ucred *)NULL);
 
 	/*
 	 * Stop i82586 dead in its tracks.
@@ -1759,7 +1760,7 @@ iereset(int unit)
 #endif
 
 	ie_softc[unit].arpcom.ac_if.if_flags |= IFF_UP;
-	ieioctl(&ie_softc[unit].arpcom.ac_if, SIOCSIFFLAGS, 0);
+	ieioctl(&ie_softc[unit].arpcom.ac_if, SIOCSIFFLAGS, 0, (struct ucred *)NULL);
 
 	splx(s);
 	return;
@@ -2123,7 +2124,7 @@ ie_stop(int unit)
 }
 
 static int
-ieioctl(struct ifnet *ifp, u_long command, caddr_t data)
+ieioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	int	s, error = 0;
 
@@ -2195,7 +2196,8 @@ ie_mc_reset(int unit)
 		/* XXX - this is broken... */
 		if (ie->mcast_count >= MAXMCAST) {
 			ie->arpcom.ac_if.if_flags |= IFF_ALLMULTI;
-			ieioctl(&ie->arpcom.ac_if, SIOCSIFFLAGS, (void *) 0);
+			ieioctl(&ie->arpcom.ac_if, SIOCSIFFLAGS, (void *) 0,
+			        (struct ucred *)NULL);
 			goto setflag;
 		}
 		bcopy(LLADDR((struct sockaddr_dl *) ifma->ifma_addr),

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.8 2004/03/14 15:36:50 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.9 2004/03/23 22:19:01 hsu Exp $
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
  */
@@ -144,7 +144,8 @@ static void lge_txeof		(struct lge_softc *);
 static void lge_intr		(void *);
 static void lge_tick		(void *);
 static void lge_start		(struct ifnet *);
-static int lge_ioctl		(struct ifnet *, u_long, caddr_t);
+static int lge_ioctl		(struct ifnet *, u_long, caddr_t,
+					struct ucred *);
 static void lge_init		(void *);
 static void lge_stop		(struct lge_softc *);
 static void lge_watchdog		(struct ifnet *);
@@ -1536,10 +1537,11 @@ static void lge_ifmedia_sts(ifp, ifmr)
 	return;
 }
 
-static int lge_ioctl(ifp, command, data)
+static int lge_ioctl(ifp, command, data, cr)
 	struct ifnet		*ifp;
 	u_long			command;
 	caddr_t			data;
+	struct ucred		*cr;
 {
 	struct lge_softc	*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;

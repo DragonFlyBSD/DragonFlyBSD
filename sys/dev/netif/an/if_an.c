@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.10 2004/03/14 15:36:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.11 2004/03/23 22:18:58 hsu Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
  */
@@ -138,7 +138,8 @@
 /* These are global because we need them in sys/pci/if_an_p.c. */
 static void an_reset		(struct an_softc *);
 static int			an_init_mpi350_desc	(struct an_softc *);
-static int an_ioctl		(struct ifnet *, u_long, caddr_t);
+static int an_ioctl		(struct ifnet *, u_long, caddr_t,
+					struct ucred *);
 static void an_init		(void *);
 static int an_init_tx_ring	(struct an_softc *);
 static void an_start		(struct ifnet *);
@@ -1839,17 +1840,17 @@ an_promisc(sc, promisc)
 }
 
 static int
-an_ioctl(ifp, command, data)
+an_ioctl(ifp, command, data, cr)
 	struct ifnet		*ifp;
 	u_long			command;
 	caddr_t			data;
+	struct ucred		*cr;
 {
 	int			s, error = 0;
 	int			len;
 	int			i;
 	struct an_softc		*sc;
 	struct ifreq		*ifr;
-	struct thread		*td = curthread;
 	struct ieee80211req	*ireq;
 	u_int8_t		tmpstr[IEEE80211_NWID_LEN*2];
 	u_int8_t		*tmpptr;
@@ -1915,7 +1916,7 @@ an_ioctl(ifp, command, data)
 			break;
 #ifdef ANCACHE
 		if (sc->areq.an_type == AN_RID_ZERO_CACHE) {
-			error = suser(td);
+			error = suser_cred(cr, NULL_CRED_OKAY);
 			if (error)
 				break;
 			sc->an_sigitems = sc->an_nextitem = 0;
@@ -1939,7 +1940,7 @@ an_ioctl(ifp, command, data)
 		error = copyout(&sc->areq, ifr->ifr_data, sizeof(sc->areq));
 		break;
 	case SIOCSAIRONET:
-		if ((error = suser(td)))
+		if ((error = suser_cred(cr, NULL_CRED_OKAY)))
 			goto out;
 		error = copyin(ifr->ifr_data, &sc->areq, sizeof(sc->areq));
 		if (error != 0)
@@ -1947,7 +1948,7 @@ an_ioctl(ifp, command, data)
 		an_setdef(sc, &sc->areq);
 		break;
 	case SIOCGPRIVATE_0:              /* used by Cisco client utility */
-		if ((error = suser(td)))
+		if ((error = suser_cred(cr, NULL_CRED_OKAY)))
 			goto out;
 		copyin(ifr->ifr_data, &l_ioctl, sizeof(l_ioctl));
 		mode = l_ioctl.command;
@@ -1967,7 +1968,7 @@ an_ioctl(ifp, command, data)
 
 		break;
 	case SIOCGPRIVATE_1:              /* used by Cisco client utility */
-		if ((error = suser(td)))
+		if ((error = suser_cred(cr, NULL_CRED_OKAY)))
 			goto out;
 		copyin(ifr->ifr_data, &l_ioctl, sizeof(l_ioctl));
 		l_ioctl.command = 0;
@@ -2200,7 +2201,7 @@ an_ioctl(ifp, command, data)
 		}
 		break;
 	case SIOCS80211:
-		if ((error = suser(td)))
+		if ((error = suser_cred(cr, NULL_CRED_OKAY)))
 			goto out;
 		sc->areq.an_len = sizeof(sc->areq);
 		/*

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.8 2004/03/14 15:36:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.9 2004/03/23 22:19:04 hsu Exp $
  */
 
 /*
@@ -81,7 +81,7 @@
 #include "if_txreg.h"
 #include "if_txvar.h"
 
-static int epic_ifioctl(struct ifnet *, u_long, caddr_t);
+static int epic_ifioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void epic_intr(void *);
 static void epic_tx_underrun(epic_softc_t *);
 static int epic_common_attach(epic_softc_t *);
@@ -402,10 +402,11 @@ epic_shutdown(dev)
  * This is if_ioctl handler.
  */
 static int
-epic_ifioctl(ifp, command, data)
+epic_ifioctl(ifp, command, data, cr)
 	struct ifnet *ifp;
 	u_long command;
 	caddr_t data;
+	struct ucred *cr;
 {
 	epic_softc_t *sc = ifp->if_softc;
 	struct mii_data	*mii;
