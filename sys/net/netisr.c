@@ -3,7 +3,7 @@
  * Copyright (c) 2003 Jonathan Lemon
  * Copyright (c) 2003 Matthew Dillon
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.4 2003/11/10 05:00:50 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.5 2003/11/14 00:45:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -57,10 +57,14 @@ netmsg_service_loop(void *arg)
 	struct mbuf *m = msg->nm_packet;
 	netisr_fn_t handler = msg->nm_handler;
 
-	if (handler)
+	if (handler) {
 		handler(m);
-	else if (m)
+	} else if (m) {
+		while (m->m_type == MT_TAG)
+			m = m->m_next;
+		KKASSERT(m != NULL);
 		m_freem(m);
+	}
 	free(msg, M_TEMP);
     }
 }
