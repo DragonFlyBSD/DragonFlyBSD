@@ -82,7 +82,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.29 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.30 2004/12/29 01:19:53 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -452,7 +452,7 @@ udp_input(struct mbuf *m, ...)
 	    ip->ip_dst, uh->uh_dport, 1, m->m_pkthdr.rcvif);
 	if (inp == NULL) {
 		if (log_in_vain) {
-			char buf[4*sizeof "123"];
+			char buf[sizeof "aaa.bbb.ccc.ddd"];
 
 			strcpy(buf, inet_ntoa(ip->ip_dst));
 			log(LOG_INFO,

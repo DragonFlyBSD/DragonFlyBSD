@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.46 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.47 2004/12/29 01:19:53 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -745,7 +745,8 @@ findpcb:
 #ifdef INET6
 			char dbuf[INET6_ADDRSTRLEN+2], sbuf[INET6_ADDRSTRLEN+2];
 #else
-			char dbuf[4 * sizeof "123"], sbuf[4 * sizeof "123"];
+			char dbuf[sizeof "aaa.bbb.ccc.ddd"];
+			char sbuf[sizeof "aaa.bbb.ccc.ddd"];
 #endif
 			if (isipv6) {
 				strcpy(dbuf, "[");

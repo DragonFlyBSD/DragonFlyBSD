@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.15 2004/12/28 22:56:12 liamfoy Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.16 2004/12/29 01:19:53 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -275,7 +275,8 @@ icmp_input(struct mbuf *m, ...)
 	 */
 #ifdef ICMPPRINTFS
 	if (icmpprintfs) {
-		char buf[4 * sizeof "123"];
+		char buf[sizeof "aaa.bbb.ccc.ddd"];
+
 		strcpy(buf, inet_ntoa(ip->ip_src));
 		printf("icmp_input from %s to %s, len %d\n",
 		       buf, inet_ntoa(ip->ip_dst), icmplen);
@@ -570,9 +571,9 @@ reflect:
 		icmpdst.sin_addr = icp->icmp_gwaddr;
 #ifdef	ICMPPRINTFS
 		if (icmpprintfs) {
-			char buf[4 * sizeof "123"];
-			strcpy(buf, inet_ntoa(icp->icmp_ip.ip_dst));
+			char buf[sizeof "aaa.bbb.ccc.ddd"];
 
+			strcpy(buf, inet_ntoa(icp->icmp_ip.ip_dst));
 			printf("redirect dst %s to %s\n",
 			       buf, inet_ntoa(icp->icmp_gwaddr));
 		}
@@ -777,10 +778,10 @@ icmp_send(m, opts, rt)
 	m->m_pkthdr.rcvif = (struct ifnet *)0;
 #ifdef ICMPPRINTFS
 	if (icmpprintfs) {
-		char buf[4 * sizeof "123"];
+		char buf[sizeof "aaa.bbb.ccc.ddd"];
+
 		strcpy(buf, inet_ntoa(ip->ip_dst));
-		printf("icmp_send dst %s src %s\n",
-		       buf, inet_ntoa(ip->ip_src));
+		printf("icmp_send dst %s src %s\n", buf, inet_ntoa(ip->ip_src));
 	}
 #endif
 	ip_output(m, opts, rt, 0, NULL, NULL);

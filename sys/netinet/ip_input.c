@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.41 2004/12/28 08:09:59 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.42 2004/12/29 01:19:53 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -1527,7 +1527,8 @@ ip_dooptions(struct mbuf *m, int pass, struct sockaddr_in *next_hop)
 				goto dropit;
 			if (!ip_dosourceroute) {
 				if (ipforwarding) {
-					char buf[16]; /* aaa.bbb.ccc.ddd\0 */
+					char buf[sizeof "aaa.bbb.ccc.ddd"];
+
 					/*
 					 * Acting as a router, so generate ICMP
 					 */

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec.c,v 1.2.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.7 2004/10/15 22:59:10 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.8 2004/12/29 01:19:53 hsu Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -1826,7 +1826,7 @@ vshiftl(bitmap, nbit, wsize)
 static char *
 inet_ntoa4(struct in_addr ina)
 {
-	static char buf[4][4 * sizeof "123" + 4];
+	static char buf[4][sizeof "aaa.bbb.ccc.ddd"];
 	unsigned char *ucp = (unsigned char *) &ina;
 	static int i = 3;
 
