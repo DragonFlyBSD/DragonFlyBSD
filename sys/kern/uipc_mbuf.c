@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.5 2003/07/10 04:47:54 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.6 2003/07/19 21:09:24 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -437,7 +437,8 @@ struct mbuf *
 m_retry(i, t)
 	int i, t;
 {
-	register struct mbuf *m;
+	struct mbuf *m;
+	int ms;
 
 	/*
 	 * Must only do the reclaim if not in an interrupt context.
@@ -450,21 +451,24 @@ m_retry(i, t)
 		m_reclaim();
 	}
 
-	/*
-	 * Both m_mballoc_wait and m_retry must be nulled because
-	 * when the MGET macro is run from here, we deffinately do _not_
-	 * want to enter an instance of m_mballoc_wait() or m_retry() (again!)
-	 */
-#define m_mballoc_wait(caller,type)    (struct mbuf *)0
-#define m_retry(i, t)	(struct mbuf *)0
-	MGET(m, i, t);
-#undef m_retry
-#undef m_mballoc_wait
-
-	if (m != NULL)
+	ms = splimp();
+	if (mmbfree == NULL)
+		(void)m_mballoc(1, i);
+	m = mmbfree;
+	if (m != NULL) {
+		mmbfree = m->m_next;
+		mbtypes[MT_FREE]--;
+		m->m_type = t;
+		mbtypes[t]++;
+		m->m_next = NULL;
+		m->m_nextpkt = NULL;
+		m->m_data = m->m_dat;
+		m->m_flags = 0;
+		splx(ms);
 		mbstat.m_wait++;
-	else {
+	} else {
 		static int last_report ; /* when we did that (in ticks) */
+		splx(ms);
 		mbstat.m_drops++;
 		if (ticks < last_report || (ticks - last_report) >= hz) {
 			last_report = ticks;
@@ -482,7 +486,8 @@ struct mbuf *
 m_retryhdr(i, t)
 	int i, t;
 {
-	register struct mbuf *m;
+	struct mbuf *m;
+	int ms;
 
 	/*
 	 * Must only do the reclaim if not in an interrupt context.
@@ -495,16 +500,28 @@ m_retryhdr(i, t)
 		m_reclaim();
 	}
 
-#define m_mballoc_wait(caller,type)    (struct mbuf *)0
-#define m_retryhdr(i, t) (struct mbuf *)0
-	MGETHDR(m, i, t);
-#undef m_retryhdr
-#undef m_mballoc_wait
-
-	if (m != NULL)  
+	ms = splimp();
+	if (mmbfree == NULL)
+		(void)m_mballoc(1, i);
+	m = mmbfree;
+	if (m != NULL) {
+		mmbfree = m->m_next;
+		mbtypes[MT_FREE]--;
+		m->m_type = t;
+		mbtypes[t]++;
+		m->m_next = NULL;
+		m->m_nextpkt = NULL;
+		m->m_data = m->m_pktdat;
+		m->m_flags = M_PKTHDR;
+		m->m_pkthdr.rcvif = NULL;
+		SLIST_INIT(&m->m_pkthdr.tags);
+		m->m_pkthdr.csum_flags = 0;
+		splx(ms);
 		mbstat.m_wait++;
-	else    {
+	} else {
 		static int last_report ; /* when we did that (in ticks) */
+
+		splx(ms);
 		mbstat.m_drops++;
 		if (ticks < last_report || (ticks - last_report) >= hz) {
 			last_report = ticks;
@@ -539,9 +556,29 @@ struct mbuf *
 m_get(how, type)
 	int how, type;
 {
-	register struct mbuf *m;
+	struct mbuf *m;
+	int ms;
 
-	MGET(m, how, type);
+	ms = splimp();
+	if (mmbfree == NULL)
+		(void)m_mballoc(1, how);
+	m = mmbfree;
+	if (m != NULL) {
+		mmbfree = m->m_next;
+		mbtypes[MT_FREE]--;
+		m->m_type = type;
+		mbtypes[type]++;
+		m->m_next = NULL;
+		m->m_nextpkt = NULL;
+		m->m_data = m->m_dat;
+		m->m_flags = 0;
+		splx(ms);
+	} else {
+		splx(ms);
+		m = m_retry(how, type);
+		if (m == NULL && how == M_WAIT)
+			m = m_mballoc_wait(MGET_C, type);
+	}
 	return (m);
 }
 
@@ -549,9 +586,32 @@ struct mbuf *
 m_gethdr(how, type)
 	int how, type;
 {
-	register struct mbuf *m;
+	struct mbuf *m;
+	int ms;
 
-	MGETHDR(m, how, type);
+	ms = splimp();
+	if (mmbfree == NULL)
+		(void)m_mballoc(1, how);
+	m = mmbfree;
+	if (m != NULL) {
+		mmbfree = m->m_next;
+		mbtypes[MT_FREE]--;
+		m->m_type = type;
+		mbtypes[type]++;
+		m->m_next = NULL;
+		m->m_nextpkt = NULL;
+		m->m_data = m->m_pktdat;
+		m->m_flags = M_PKTHDR;
+		m->m_pkthdr.rcvif = NULL;
+		SLIST_INIT(&m->m_pkthdr.tags);
+		m->m_pkthdr.csum_flags = 0;
+		splx(ms);
+	} else {
+		splx(ms);
+		m = m_retryhdr(how, type);
+		if (m == NULL && how == M_WAIT)
+			m = m_mballoc_wait(MGETHDR_C, type);
+	}
 	return (m);
 }
 

@@ -32,7 +32,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.3 2003/07/19 21:09:27 dillon Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -300,7 +300,7 @@ union mcluster {
 } while (0)
 
 /*
- * mbuf allocation/deallocation macros:
+ * mbuf allocation/deallocation macros (YYY deprecated, too big):
  *
  *	MGET(struct mbuf *m, int how, int type)
  * allocates an mbuf and initializes it to contain internal data.
@@ -310,66 +310,11 @@ union mcluster {
  * and internal data.
  */
 #define	MGET(m, how, type) do {						\
-	struct mbuf *_mm;						\
-	int _mhow = (how);						\
-	int _mtype = (type);						\
-	int _ms = splimp();						\
-									\
-	if (mmbfree == NULL)						\
-		(void)m_mballoc(1, _mhow);				\
-	_mm = mmbfree;							\
-	if (_mm != NULL) {						\
-		mmbfree = _mm->m_next;					\
-		mbtypes[MT_FREE]--;					\
-		_mm->m_type = _mtype;					\
-		mbtypes[_mtype]++;					\
-		_mm->m_next = NULL;					\
-		_mm->m_nextpkt = NULL;					\
-		_mm->m_data = _mm->m_dat;				\
-		_mm->m_flags = 0;					\
-		(m) = _mm;						\
-		splx(_ms);						\
-	} else {							\
-		splx(_ms);						\
-		_mm = m_retry(_mhow, _mtype);				\
-		if (_mm == NULL && _mhow == M_WAIT)			\
-			(m) = m_mballoc_wait(MGET_C, _mtype);		\
-		else							\
-			(m) = _mm;					\
-	}								\
+	(m) = m_get((how), (type));					\
 } while (0)
 
 #define	MGETHDR(m, how, type) do {					\
-	struct mbuf *_mm;						\
-	int _mhow = (how);						\
-	int _mtype = (type);						\
-	int _ms = splimp();						\
-									\
-	if (mmbfree == NULL)						\
-		(void)m_mballoc(1, _mhow);				\
-	_mm = mmbfree;							\
-	if (_mm != NULL) {						\
-		mmbfree = _mm->m_next;					\
-		mbtypes[MT_FREE]--;					\
-		_mm->m_type = _mtype;					\
-		mbtypes[_mtype]++;					\
-		_mm->m_next = NULL;					\
-		_mm->m_nextpkt = NULL;					\
-		_mm->m_data = _mm->m_pktdat;				\
-		_mm->m_flags = M_PKTHDR;				\
-		_mm->m_pkthdr.rcvif = NULL;				\
-		SLIST_INIT(&_mm->m_pkthdr.tags); 			\
-		_mm->m_pkthdr.csum_flags = 0;				\
-		(m) = _mm;						\
-		splx(_ms);						\
-	} else {							\
-		splx(_ms);						\
-		_mm = m_retryhdr(_mhow, _mtype);			\
-		if (_mm == NULL && _mhow == M_WAIT)			\
-			(m) = m_mballoc_wait(MGETHDR_C, _mtype);	\
-		else							\
-			(m) = _mm;					\
-	}								\
+	(m) = m_gethdr((how), (type));					\
 } while (0)
 
 /*
