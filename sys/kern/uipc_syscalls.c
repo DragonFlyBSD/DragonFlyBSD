@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.11 2003/08/30 18:29:23 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.12 2003/09/06 20:34:35 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -57,6 +57,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/signalvar.h>
+#include <sys/syscall1.h>
 #include <sys/uio.h>
 #include <sys/vnode.h>
 #include <sys/lock.h>
@@ -133,7 +134,7 @@ socket(struct socket_args *uap)
 	return (error);
 }
 
-static int
+int
 bind1(int s, struct sockaddr *sa)
 {
 	struct thread *td = curthread;
@@ -195,7 +196,7 @@ listen(struct listen_args *uap)
  * sockaddr which must be freed later with FREE().  The caller must
  * initialize *name to NULL.
  */
-static int
+int
 accept1(int s, struct sockaddr **name, int *namelen, int *res)
 {
 	struct thread *td = curthread;
@@ -409,7 +410,7 @@ oaccept(struct accept_args *uap)
 }
 #endif /* COMPAT_OLDSOCK */
 
-static int
+int
 connect1(int s, struct sockaddr *sa)
 {
 	struct thread *td = curthread;
@@ -1354,16 +1355,16 @@ sockargs(mp, buf, buflen, type)
 }
 
 int
-getsockaddr(namp, uaddr, len)
-	struct sockaddr **namp;
-	caddr_t uaddr;
-	size_t len;
+getsockaddr(struct sockaddr **namp, caddr_t uaddr, size_t len)
 {
 	struct sockaddr *sa;
 	int error;
 
+	*namp = NULL;
 	if (len > SOCK_MAXADDRLEN)
 		return ENAMETOOLONG;
+	if (len < offsetof(struct sockaddr, sa_data[0]))
+		return EDOM;
 	MALLOC(sa, struct sockaddr *, len, M_SONAME, M_WAITOK);
 	error = copyin(uaddr, sa, len);
 	if (error) {
