@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.15 2004/03/29 16:22:23 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.16 2004/04/07 06:22:15 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -115,10 +115,7 @@ ad_attach(struct ata_device *atadev, int alreadylocked)
     struct ad_softc *adp;
     dev_t dev;
 
-    if (!(adp = malloc(sizeof(struct ad_softc), M_AD, M_WAITOK | M_ZERO))) {
-	ata_prtdev(atadev, "failed to allocate driver storage\n");
-	return;
-    }
+    adp = malloc(sizeof(struct ad_softc), M_AD, M_WAITOK | M_ZERO);
 
     KKASSERT(atadev->channel->req_mpipe.max_count != 0);
 

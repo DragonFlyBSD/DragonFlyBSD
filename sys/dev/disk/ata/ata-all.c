@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.15 2004/03/29 16:22:23 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.16 2004/04/07 06:22:15 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -458,8 +458,7 @@ ataioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, struct thread *td)
 				 ATA_ATAPI_MASTER : ATA_ATAPI_SLAVE)))
 		return ENODEV;
 
-	    if (!(buf = malloc(iocmd->u.atapi.count, M_ATA, M_WAITOK)))
-		return ENOMEM;
+	    buf = malloc(iocmd->u.atapi.count, M_ATA, M_INTWAIT);
 
 	    if (iocmd->u.atapi.flags & ATAPI_CMD_WRITE) {
 		error = copyin(iocmd->u.atapi.data, buf, iocmd->u.atapi.count);
@@ -496,10 +495,7 @@ ata_getparam(struct ata_device *atadev, u_int8_t command)
     struct ata_params *ata_parm;
     int retry = 0;
 
-    if (!(ata_parm = malloc(sizeof(struct ata_params), M_ATA, M_WAITOK))) {
-	ata_prtdev(atadev, "malloc for identify data failed\n");
-	return -1;
-    }
+    ata_parm = malloc(sizeof(struct ata_params), M_ATA, M_INTWAIT);
 
     /* apparently some devices needs this repeated */
     do {
@@ -1433,9 +1429,8 @@ ata_prtdev(struct ata_device *atadev, const char * fmt, ...)
 void
 ata_set_name(struct ata_device *atadev, char *name, int lun)
 {
-    atadev->name = malloc(strlen(name) + 4, M_ATA, M_WAITOK);
-    if (atadev->name)
-	sprintf(atadev->name, "%s%d", name, lun);
+    atadev->name = malloc(strlen(name) + 4, M_ATA, M_INTWAIT);
+    sprintf(atadev->name, "%s%d", name, lun);
 }
 
 void
@@ -1590,12 +1585,8 @@ ata_init(void)
     make_dev(&ata_cdevsw, 0, UID_ROOT, GID_OPERATOR, 0600, "ata");
 
     /* register boot attach to be run when interrupts are enabled */
-    if (!(ata_delayed_attach = (struct intr_config_hook *)
-			       malloc(sizeof(struct intr_config_hook),
-				      M_TEMP, M_WAITOK | M_ZERO))) {
-	printf("ata: malloc of delayed attach hook failed\n");
-	return;
-    }
+    ata_delayed_attach = malloc(sizeof(struct intr_config_hook),
+				      M_TEMP, M_WAITOK | M_ZERO);
 
     ata_delayed_attach->ich_func = (void*)ata_boot_attach;
     if (config_intrhook_establish(ata_delayed_attach) != 0) {

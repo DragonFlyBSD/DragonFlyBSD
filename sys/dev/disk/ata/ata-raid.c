@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.9 2003/11/30 20:14:18 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.10 2004/04/07 06:22:15 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -114,12 +114,9 @@ ata_raiddisk_attach(struct ad_softc *adp)
 	}
     }
 
-    if (!ar_table)
+    if (!ar_table) {
 	ar_table = malloc(sizeof(struct ar_soft *) * MAX_ARRAYS,
 			  M_AR, M_WAITOK | M_ZERO);
-    if (!ar_table) {
-	ata_prtdev(adp->device, "no memory for ATA raid array\n");
-	return 0;
     }
 
     switch(adp->device->channel->chiptype) {
@@ -248,12 +245,9 @@ ata_raid_create(struct raid_setup *setup)
     int array, disk;
     int ctlr = 0, disk_size = 0, total_disks = 0;
 
-    if (!ar_table)
+    if (!ar_table) {
 	ar_table = malloc(sizeof(struct ar_soft *) * MAX_ARRAYS,
 			  M_AR, M_WAITOK | M_ZERO);
-    if (!ar_table) {
-	printf("ar: no memory for ATA raid array\n");
-	return 0;
     }
     for (array = 0; array < MAX_ARRAYS; array++) {
 	if (!ar_table[array])
@@ -262,11 +256,7 @@ ata_raid_create(struct raid_setup *setup)
     if (array >= MAX_ARRAYS)
 	return ENOSPC;
 
-    if (!(rdp = (struct ar_softc*)malloc(sizeof(struct ar_softc), M_AR,
-					 M_WAITOK | M_ZERO))) {
-	printf("ar%d: failed to allocate raid config storage\n", array);
-	return ENOMEM;
-    }
+    rdp = malloc(sizeof(struct ar_softc), M_AR, M_WAITOK | M_ZERO);
 
     for (disk = 0; disk < setup->total_disks; disk++) {
 	if ((atadev = ar_locate_disk(setup->disks[disk]))) {
@@ -550,7 +540,7 @@ arstrategy(struct buf *bp)
 	    return;
 	}
 
-	buf1 = malloc(sizeof(struct ar_buf), M_AR, M_WAITOK | M_ZERO);
+	buf1 = malloc(sizeof(struct ar_buf), M_AR, M_INTWAIT | M_ZERO);
 	BUF_LOCKINIT(&buf1->bp);
 	BUF_LOCK(&buf1->bp, LK_EXCLUSIVE);
 	buf1->bp.b_pblkno = lba;
@@ -631,7 +621,7 @@ arstrategy(struct buf *bp)
 			((rdp->flags & AR_F_REBUILDING) &&
 			 (rdp->disks[buf1->drive].flags & AR_DF_SPARE) &&
 			 buf1->bp.b_pblkno < rdp->lock_start)) {
-			buf2 = malloc(sizeof(struct ar_buf), M_AR, M_WAITOK);
+			buf2 = malloc(sizeof(struct ar_buf), M_AR, M_INTWAIT);
 			bcopy(buf1, buf2, sizeof(struct ar_buf));
 			BUF_LOCKINIT(&buf2->bp);
 			BUF_LOCK(&buf2->bp, LK_EXCLUSIVE);
@@ -895,9 +885,7 @@ ar_highpoint_read_conf(struct ad_softc *adp, struct ar_softc **raidp)
     struct ar_softc *raid = NULL;
     int array, disk_number = 0, retval = 0;
 
-    if (!(info = (struct highpoint_raid_conf *)
-	  malloc(sizeof(struct highpoint_raid_conf), M_AR, M_WAITOK | M_ZERO)))
-	return retval;
+    info = malloc(sizeof(struct highpoint_raid_conf), M_AR, M_INTWAIT|M_ZERO);
 
     if (ar_rw(adp, HPT_LBA, sizeof(struct highpoint_raid_conf),
 	      (caddr_t)info, AR_READ | AR_WAIT)) {
@@ -923,13 +911,8 @@ ar_highpoint_read_conf(struct ad_softc *adp, struct ar_softc **raidp)
     /* now convert HighPoint config info into our generic form */
     for (array = 0; array < MAX_ARRAYS; array++) {
 	if (!raidp[array]) {
-	    raidp[array] = 
-		(struct ar_softc*)malloc(sizeof(struct ar_softc), M_AR,
-					 M_WAITOK | M_ZERO);
-	    if (!raidp[array]) {
-		printf("ar%d: failed to allocate raid config storage\n", array);
-		goto highpoint_out;
-	    }
+	    raidp[array] = malloc(sizeof(struct ar_softc), M_AR,
+					 M_INTWAIT | M_ZERO);
 	}
 	raid = raidp[array];
 	if (raid->flags & AR_F_PROMISE_RAID)
@@ -1043,12 +1026,8 @@ ar_highpoint_write_conf(struct ar_softc *rdp)
     rdp->magic_1 = timestamp.tv_sec;
    
     for (disk = 0; disk < rdp->total_disks; disk++) {
-	if (!(config = (struct highpoint_raid_conf *)
-	      malloc(sizeof(struct highpoint_raid_conf),
-		     M_AR, M_WAITOK | M_ZERO))) {
-	    printf("ar%d: Highpoint write conf failed\n", rdp->lun);
-	    return -1;
-	}
+	config = malloc(sizeof(struct highpoint_raid_conf),
+		     M_AR, M_INTWAIT | M_ZERO);
 	if ((rdp->disks[disk].flags & (AR_DF_PRESENT | AR_DF_ONLINE)) ==
 	    (AR_DF_PRESENT | AR_DF_ONLINE))
 	    config->magic = HPT_MAGIC_OK;
@@ -1124,9 +1103,7 @@ ar_promise_read_conf(struct ad_softc *adp, struct ar_softc **raidp, int local)
     u_int32_t magic, cksum, *ckptr;
     int array, count, disk, disksum = 0, retval = 0; 
 
-    if (!(info = (struct promise_raid_conf *)
-	  malloc(sizeof(struct promise_raid_conf), M_AR, M_WAITOK | M_ZERO)))
-	return retval;
+    info = malloc(sizeof(struct promise_raid_conf), M_AR, M_INTWAIT | M_ZERO);
 
     if (ar_rw(adp, PR_LBA(adp), sizeof(struct promise_raid_conf),
 	      (caddr_t)info, AR_READ | AR_WAIT)) {
@@ -1169,13 +1146,8 @@ ar_promise_read_conf(struct ad_softc *adp, struct ar_softc **raidp, int local)
 
     for (array = 0; array < MAX_ARRAYS; array++) {
 	if (!raidp[array]) {
-	    raidp[array] = 
-		(struct ar_softc*)malloc(sizeof(struct ar_softc), M_AR,
-					 M_WAITOK | M_ZERO);
-	    if (!raidp[array]) {
-		printf("ar%d: failed to allocate raid config storage\n", array);
-		goto promise_out;
-	    }
+	    raidp[array] = malloc(sizeof(struct ar_softc), M_AR,
+					M_INTWAIT | M_ZERO);
 	}
 	raid = raidp[array];
 	if (raid->flags & AR_F_HIGHPOINT_RAID)
@@ -1285,12 +1257,7 @@ ar_promise_write_conf(struct ar_softc *rdp)
     microtime(&timestamp);
 
     for (disk = 0; disk < rdp->total_disks; disk++) {
-	if (!(config = (struct promise_raid_conf *)
-	      malloc(sizeof(struct promise_raid_conf), M_AR, M_WAITOK))) {
-	    printf("ar%d: %s write conf failed\n",
-		   rdp->lun, local ? "FreeBSD" : "Promise");
-	    return -1;
-	}
+	config = malloc(sizeof(struct promise_raid_conf), M_AR, M_INTWAIT);
 	for (count = 0; count < sizeof(struct promise_raid_conf); count++)
 	    *(((u_int8_t *)config) + count) = 255 - (count % 256);
 
@@ -1411,8 +1378,7 @@ ar_rw(struct ad_softc *adp, u_int32_t lba, int count, caddr_t data, int flags)
     struct buf *bp;
     int retry = 0, error = 0;
 
-    if (!(bp = (struct buf *)malloc(sizeof(struct buf), M_AR, M_WAITOK|M_ZERO)))
-	return ENOMEM;
+    bp = malloc(sizeof(struct buf), M_AR, M_INTWAIT|M_ZERO);
     BUF_LOCKINIT(bp);
     BUF_LOCK(bp, LK_EXCLUSIVE);
     bp->b_dev = adp->dev;

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.10 2004/03/15 01:10:42 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.11 2004/04/07 06:22:15 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -94,9 +94,8 @@ atapi_attach(struct ata_device *atadev, int alreadylocked)
 		    -1, -1);
     ATA_UNLOCK_CH(atadev->channel);
 
-    if (!(atadev->result = malloc(sizeof(struct atapi_reqsense), M_ATAPI,
-				  M_WAITOK | M_ZERO)))
-	ata_prtdev(atadev, "no memory for sense data\n");
+    atadev->result = malloc(sizeof(struct atapi_reqsense), M_ATAPI,
+				  M_INTWAIT | M_ZERO);
 
     switch (atadev->param->type) {
 #if NATAPICD > 0
@@ -179,7 +178,7 @@ atapi_queue_cmd(struct ata_device *atadev, int8_t *ccb, caddr_t data,
     struct atapi_request *request;
     int error, s;
 
-    request = malloc(sizeof(struct atapi_request), M_ATAPI, M_WAITOK|M_ZERO);
+    request = malloc(sizeof(struct atapi_request), M_ATAPI, M_INTWAIT|M_ZERO);
     request->device = atadev;
     request->data = data;
     request->bytecount = count;

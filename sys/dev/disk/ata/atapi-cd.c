@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.14 2004/03/12 22:21:12 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.15 2004/04/07 06:22:15 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -134,11 +134,6 @@ acdattach(struct ata_device *atadev)
 			   0, 0, 0, 0, 0, 0 };
 
 	chp = malloc(sizeof(struct changer), M_ACD, M_WAITOK | M_ZERO);
-	if (chp == NULL) {
-	    ata_prtdev(atadev, "out of memory\n");
-	    free(cdp, M_ACD);
-	    return 0;
-	}
 	if (!atapi_queue_cmd(cdp->device, ccb, (caddr_t)chp, 
 			     sizeof(struct changer),
 			     ATPR_F_READ, 60, NULL, NULL)) {
@@ -148,13 +143,8 @@ acdattach(struct ata_device *atadev)
 	    int count;
 
 	    chp->table_length = htons(chp->table_length);
-	    if (!(cdparr = malloc(sizeof(struct acd_softc) * chp->slots,
-				  M_ACD, M_WAITOK))) {
-		ata_prtdev(atadev, "out of memory\n");
-		free(chp, M_ACD);
-		free(cdp, M_ACD);
-		return 0;
-	    }
+	    cdparr = malloc(sizeof(struct acd_softc) * chp->slots,
+				  M_ACD, M_WAITOK);
 	    for (count = 0; count < chp->slots; count++) {
 		if (count > 0) {
 		    tmpcdp = acd_init_lun(atadev);
@@ -249,8 +239,7 @@ acd_init_lun(struct ata_device *atadev)
 {
     struct acd_softc *cdp;
 
-    if (!(cdp = malloc(sizeof(struct acd_softc), M_ACD, M_WAITOK | M_ZERO)))
-	return NULL;
+    cdp = malloc(sizeof(struct acd_softc), M_ACD, M_WAITOK | M_ZERO);
     TAILQ_INIT(&cdp->dev_list);
     bufq_init(&cdp->queue);
     cdp->device = atadev;
@@ -258,11 +247,7 @@ acd_init_lun(struct ata_device *atadev)
     cdp->block_size = 2048;
     cdp->slot = -1;
     cdp->changer_info = NULL;
-    if (!(cdp->stats = malloc(sizeof(struct devstat), M_ACD,
-			      M_WAITOK | M_ZERO))) {
-	free(cdp, M_ACD);
-	return NULL;
-    }
+    cdp->stats = malloc(sizeof(struct devstat), M_ACD, M_WAITOK | M_ZERO);
     return cdp;
 }
 
