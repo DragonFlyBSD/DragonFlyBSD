@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.16 2004/11/02 23:49:30 dillon Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.17 2004/11/17 21:04:05 joerg Exp $
  */
 
 /*
@@ -636,7 +636,7 @@ match:
 		m_freem(m);
 		return;
 	}
-	if (isaddr.s_addr == myaddr.s_addr) {
+	if (isaddr.s_addr == myaddr.s_addr && myaddr.s_addr != 0) {
 		log(LOG_ERR,
 		   "arp: %*D is using my IP address %s!\n",
 		   ifp->if_addrlen, (u_char *)ar_sha(ah), ":",
