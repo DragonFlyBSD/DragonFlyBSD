@@ -1,6 +1,6 @@
 /*-
  *  dgb.c $FreeBSD: src/sys/gnu/i386/isa/dgb.c,v 1.56.2.1 2001/02/26 04:23:09 jlemon Exp $
- *  dgb.c $DragonFly: src/sys/platform/pc32/gnu/isa/dgb.c,v 1.12 2004/06/02 13:49:46 joerg Exp $
+ *  dgb.c $DragonFly: src/sys/platform/pc32/gnu/isa/dgb.c,v 1.13 2004/09/17 00:28:44 joerg Exp $
  *
  *  Digiboard driver.
  *
@@ -160,6 +160,9 @@ struct dgb_softc {
 	struct dgb_p *ports;	/* pointer to array of port descriptors */
 	struct tty *ttys;	/* pointer to array of TTY structures */
 	volatile struct global_data *mailbox;
+	struct callout dgb_pause;
+	struct callout dgbpoll;
+	struct callout wakeflush;
 	};
 	
 
@@ -529,6 +532,10 @@ dgbattach(dev)
 		DPRINT2(DB_EXCEPT,"dbg%d: try to attach a disabled card\n",unit);
 		return 0;
 		}
+
+	callout_init(&sc->dgb_pause);
+	callout_init(&sc->dgbpoll);
+	callout_init(&sc->wakeflush);
 
 	mem=sc->vmem;
 
@@ -917,7 +924,7 @@ load_fep:
 	hidewin(sc);
 
 	/* register the polling function */
-	timeout(dgbpoll, (void *)unit, hz/POLLSPERSEC);
+	callout_reset(&sc->dgbpoll, hz / POLLSPERSEC, dgbpoll, (void *)unit);
 
 	return 1;
 }
@@ -1179,7 +1186,7 @@ dgbhardclose(port)
 	hidewin(sc);
 	splx(cs);
 
-	timeout(dgb_pause, &port->brdchan, hz/2);
+	callout_reset(&sc->dgb_pause, hz / 2, dgb_pause, &port->brdchan);
 	tsleep(&port->brdchan, PCATCH, "dgclo", 0);
 }
 
@@ -1451,7 +1458,7 @@ dgbpoll(unit_c)
 	sc->mailbox->eout=tail;
 	bmws_set(ws);
 
-	timeout(dgbpoll, unit_c, hz/POLLSPERSEC);
+	callout_reset(&sc->dgbpoll, hz / POLLSPERSEC, dgbpoll, unit_c);
 }
 
 static	int
@@ -1783,7 +1790,7 @@ dgbdrain(port)
 
 		hidewin(sc);
 		port->draining=1;
-		timeout(wakeflush,port, hz);
+		callout_reset(&sc->wakeflush, hz, wakeflush,port);
 		error=tsleep(&port->draining, PCATCH, "dgdrn", 0);
 		port->draining=0;
 		setwin(sc,0);
@@ -1841,7 +1848,7 @@ dgb_drain_or_flush(port)
 
 		hidewin(sc);
 		port->draining=1;
-		timeout(wakeflush,port, hz);
+		callout_reset(&sc->wakeflush, hz, wakeflush, port);
 		error=tsleep(&port->draining, PCATCH, "dgfls", 0);
 		port->draining=0;
 		setwin(sc,0);
