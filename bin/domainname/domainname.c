@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)hostname.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/domainname/domainname.c,v 1.12.2.1 2001/08/01 02:32:16 obrien Exp $
- * $DragonFly: src/bin/domainname/domainname.c,v 1.4 2003/09/28 14:39:14 hmp Exp $
+ * $DragonFly: src/bin/domainname/domainname.c,v 1.5 2004/08/15 12:27:37 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -44,8 +44,7 @@
 #include <string.h>
 #include <unistd.h>
 
-int main (int, char *[]);
-void usage (void);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
@@ -53,31 +52,39 @@ main(int argc, char **argv)
 	int ch;
 	char domainname[MAXHOSTNAMELEN];
 
-	while ((ch = getopt(argc, argv, "")) != -1)
+	while ((ch = getopt(argc, argv, "")) != -1) {
 		switch (ch) {
 		default:
 			usage();
 		}
+	}
 	argc -= optind;
 	argv += optind;
 
 	if (argc > 1)
 		usage();
 
-	if (*argv) {
-		if (setdomainname(*argv, (int)strlen(*argv)))
+	if (argv[0] != NULL) {
+		size_t len = strlen(argv[0]);
+		if (len > MAXHOSTNAMELEN) {
+			fprintf(stderr, "%s: domain name to longgetprogname()",
+				getprogname());
+			exit(1);
+		}
+		if (setdomainname(*argv, strlen(argv[0])))
 			err(1, "setdomainname");
 	} else {
-		if (getdomainname(domainname, (int)sizeof(domainname)))
+		if (getdomainname(domainname, sizeof(domainname)))
 			err(1, "getdomainname");
-		(void)printf("%s\n", domainname);
+		domainname[MAXHOSTNAMELEN-1] = '\0';
+		printf("%s\n", domainname);
 	}
 	exit(0);
 }
 
-void
+static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: domainname [ypdomain]\n");
+	fprintf(stderr, "usage: domainname [ypdomain]\n");
 	exit(1);
 }
