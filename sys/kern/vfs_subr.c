@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.38 2004/08/28 19:02:05 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.39 2004/09/04 23:12:54 dillon Exp $
  */
 
 /*
@@ -1681,8 +1681,11 @@ vref(struct vnode *vp)
 }
 
 /*
- * Vnode put/release.
- * If count drops to zero, call inactive routine and return to freelist.
+ * Release a usecount on a vnode.  This routine does not call unlock on the
+ * vnode.
+ *
+ * If the usecount drops to zero, call the inactive routine and return the
+ * vnode to the freelist.
  */
 void
 vrele(struct vnode *vp)
@@ -1723,6 +1726,30 @@ vrele(struct vnode *vp)
 	}
 }
 
+/*
+ * Release a usecount on a vnode.  This routine does not call unlock on the
+ * vnode.   No action is taken if the usecount drops to zero.  This routine
+ * is typically called only from within a *_inactive() procedure to avoid
+ * recursing the procedure.
+ */
+void
+vrele_noinactive(struct vnode *vp)
+{
+	struct thread *td = curthread;	/* XXX */
+	lwkt_tokref vlock;
+
+	KASSERT(vp != NULL && vp->v_usecount >= 0,
+	    ("vrele: null vp or <=0 v_usecount"));
+
+	lwkt_gettoken(&vlock, vp->v_interlock);
+	vp->v_usecount--;
+	lwkt_reltoken(&vlock);
+}
+
+/*
+ * Unlock a vnode and release a usecount on it, inactivating the vnode if
+ * the count drops to 0.
+ */
 void
 vput(struct vnode *vp)
 {

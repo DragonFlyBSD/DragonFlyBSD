@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.21 2004/08/28 19:02:07 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.22 2004/09/04 23:12:53 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -579,6 +579,7 @@ int	vop_stdgetvobject (struct vop_getvobject_args *ap);
 
 void	vput (struct vnode *vp);
 void	vrele (struct vnode *vp);
+void	vrele_noinactive (struct vnode *vp);
 void	vref (struct vnode *vp);
 
 extern	struct vop_ops *default_vnode_vops;

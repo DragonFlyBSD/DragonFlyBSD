@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.13 2004/08/28 19:02:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.14 2004/09/04 23:12:55 dillon Exp $
  */
 
 
@@ -189,6 +189,9 @@ loop:
 
 /*
  * nfs_inactive(struct vnode *a_vp, struct thread *a_td)
+ *
+ * NOTE: the passed vnode is locked but not referenced.  On return the
+ * vnode must be unlocked and not referenced.
  */
 int
 nfs_inactive(struct vop_inactive_args *ap)
@@ -208,18 +211,14 @@ nfs_inactive(struct vop_inactive_args *ap)
 		/*
 		 * We need a reference to keep the vnode from being
 		 * recycled by getnewvnode while we do the I/O
-		 * associated with discarding the buffers unless we
-		 * are being forcibly unmounted in which case we already
-		 * have our own reference.
+		 * associated with discarding the buffers.  The vnode
+		 * is already locked.
 		 */
-		if (ap->a_vp->v_usecount > 0)
-			(void) nfs_vinvalbuf(ap->a_vp, 0, ap->a_td, 1);
-		else if (vget(ap->a_vp, NULL, 0, ap->a_td))
-			panic("nfs_inactive: lost vnode");
-		else {
-			(void) nfs_vinvalbuf(ap->a_vp, 0, ap->a_td, 1);
-			vrele(ap->a_vp);
-		}
+		vref(ap->a_vp);
+		nfs_vinvalbuf(ap->a_vp, 0, ap->a_td, 1);
+		vrele_noinactive(ap->a_vp);
+		KKASSERT(ap->a_vp->v_usecount == 0);
+
 		/*
 		 * Remove the silly file that was rename'd earlier
 		 */
