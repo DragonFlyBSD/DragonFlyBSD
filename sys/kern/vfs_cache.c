@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.51 2005/02/12 18:56:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.52 2005/03/09 05:16:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -657,6 +657,11 @@ cache_inval(struct namecache *ncp, int flags)
  *
  * Returns non-zero if any namecache entries remain after the invalidation
  * loop completed.
+ *
+ * NOTE: unlike the namecache topology which guarentees that ncp's will not
+ * be ripped out of the topology while held, the vnode's v_namecache list
+ * has no such restriction.  NCP's can be ripped out of the list at virtually
+ * any time if not locked, even if held.
  */
 int
 cache_inval_vp(struct vnode *vp, int flags)
@@ -664,17 +669,31 @@ cache_inval_vp(struct vnode *vp, int flags)
 	struct namecache *ncp;
 	struct namecache *next;
 
+restart:
 	ncp = TAILQ_FIRST(&vp->v_namecache);
 	if (ncp)
 		cache_hold(ncp);
 	while (ncp) {
 		/* loop entered with ncp held */
-		if ((next = TAILQ_NEXT(ncp, nc_entry)) != NULL)
+		if ((next = TAILQ_NEXT(ncp, nc_vnode)) != NULL)
 			cache_hold(next);
 		cache_lock(ncp);
+		if (ncp->nc_vp != vp) {
+			printf("Warning: cache_inval_vp: race-A detected on "
+				"%s\n", ncp->nc_name);
+			cache_put(ncp);
+			cache_drop(next);
+			goto restart;
+		}
 		cache_inval(ncp, flags);
 		cache_put(ncp);		/* also releases reference */
 		ncp = next;
+		if (ncp && ncp->nc_vp != vp) {
+			printf("Warning: cache_inval_vp: race-B detected on "
+				"%s\n", ncp->nc_name);
+			cache_drop(ncp);
+			goto restart;
+		}
 	}
 	return(TAILQ_FIRST(&vp->v_namecache) != NULL);
 }
