@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)su.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/su/su.c,v 1.34.2.4 2002/06/16 21:04:15 nectar Exp $
- * $DragonFly: src/usr.bin/su/su.c,v 1.7 2004/12/20 19:59:54 cpressey Exp $
+ * $DragonFly: src/usr.bin/su/su.c,v 1.8 2005/03/14 11:55:33 joerg Exp $
  */
 
 #include <sys/cdefs.h>
@@ -157,6 +157,12 @@ main(int argc, char **argv)
 		default:
 			usage();
 		}
+
+	if (optind < argc && strcmp(argv[optind], "-") == 0) {
+		asme = 0;
+		asthem = 1;
+		optind++;
+	}
 
 	if (optind < argc)
 		user = argv[optind++];
