@@ -1,12 +1,9 @@
 # $FreeBSD: src/sbin/ldconfig/Makefile,v 1.15.2.1 2001/04/25 10:58:31 ru Exp $
-# $DragonFly: src/sbin/ldconfig/Makefile,v 1.2 2003/06/17 04:27:33 dillon Exp $
+# $DragonFly: src/sbin/ldconfig/Makefile,v 1.3 2004/11/04 13:14:11 joerg Exp $
 
 PROG=	ldconfig
-SRCS=	elfhints.c ldconfig.c shlib.c support.c
-LDDIR?= ${.CURDIR}/../../libexec/rtld-aout
-CFLAGS+=-I${LDDIR} -DFREEBSD_AOUT
+SRCS=	elfhints.c ldconfig.c
 MAN=	ldconfig.8
-
-.PATH: ${LDDIR}
+WARNS?=	6
 
 .include <bsd.prog.mk>
