@@ -21,6 +21,7 @@ Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. */
 /* This file is heavily based on the function __gen_tempname() in the
    file tempname.c which is part of the fileutils package. */
 
+/* $DragonFly: src/contrib/groff/src/libs/libgroff/Attic/tmpname.cc,v 1.2 2003/11/03 22:51:48 dillon Exp $ */
 
 #include "lib.h"
 
@@ -57,8 +58,10 @@ extern "C" {
    (approximately 2**35.725) from uint64_t, so ancient hosts where
    uintmax_t is only 32 bits lose about 3.725 bits of randomness,
    which is better than not having mkstemp at all.  */
+#if 0
 #if !defined UINT64_MAX && !defined uint64_t
 # define uint64_t uintmax_t
+#endif
 #endif
 
 /* These are the characters used in temporary filenames.  */
