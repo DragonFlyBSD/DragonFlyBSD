@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.12 2003/07/19 21:14:39 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.13 2003/07/22 05:04:41 dillon Exp $
  */
 
 /*
@@ -2478,7 +2478,9 @@ vfs_hang_addrlist(mp, nep, argp)
 		return (0);
 	}
 
-	if (argp->ex_addrlen > MLEN)
+	if (argp->ex_addrlen < 0 || argp->ex_addrlen > MLEN)
+		return (EINVAL);
+	if (argp->ex_masklen < 0 || argp->ex_masklen > MLEN)
 		return (EINVAL);
 
 	i = sizeof(struct netcred) + argp->ex_addrlen + argp->ex_masklen;
