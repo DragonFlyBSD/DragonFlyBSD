@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.3 2004/12/10 19:22:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.4 2004/12/10 20:34:01 okumoto Exp $
  */
 
 #include    <ctype.h>
@@ -64,17 +64,17 @@
  *-----------------------------------------------------------------------
  */
 Boolean
-VarHead (const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
+VarHead(const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
 {
     char *slash;
 
-    slash = strrchr (word, '/');
+    slash = strrchr(word, '/');
     if (slash != NULL) {
 	if (addSpace) {
-	    Buf_AddByte (buf, (Byte)' ');
+	    Buf_AddByte(buf, (Byte)' ');
 	}
 	*slash = '\0';
-	Buf_AddBytes (buf, strlen (word), (Byte *)word);
+	Buf_AddBytes(buf, strlen(word), (Byte *)word);
 	*slash = '/';
 	return (TRUE);
     } else {
@@ -111,16 +111,16 @@ VarTail(const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
     char *slash;
 
     if (addSpace) {
-	Buf_AddByte (buf, (Byte)' ');
+	Buf_AddByte(buf, (Byte)' ');
     }
 
-    slash = strrchr (word, '/');
+    slash = strrchr(word, '/');
     if (slash != NULL) {
 	*slash++ = '\0';
-	Buf_AddBytes (buf, strlen(slash), (Byte *)slash);
+	Buf_AddBytes(buf, strlen(slash), (Byte *)slash);
 	slash[-1] = '/';
     } else {
-	Buf_AddBytes (buf, strlen(word), (Byte *)word);
+	Buf_AddBytes(buf, strlen(word), (Byte *)word);
     }
     return (TRUE);
 }
@@ -140,17 +140,17 @@ VarTail(const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
  *-----------------------------------------------------------------------
  */
 Boolean
-VarSuffix (const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
+VarSuffix(const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
 {
     char *dot;
 
-    dot = strrchr (word, '.');
+    dot = strrchr(word, '.');
     if (dot != NULL) {
 	if (addSpace) {
-	    Buf_AddByte (buf, (Byte)' ');
+	    Buf_AddByte(buf, (Byte)' ');
 	}
 	*dot++ = '\0';
-	Buf_AddBytes (buf, strlen (dot), (Byte *)dot);
+	Buf_AddBytes(buf, strlen(dot), (Byte *)dot);
 	dot[-1] = '.';
 	addSpace = TRUE;
     }
@@ -173,21 +173,21 @@ VarSuffix (const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
  *-----------------------------------------------------------------------
  */
 Boolean
-VarRoot (const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
+VarRoot(const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
 {
     char *dot;
 
     if (addSpace) {
-	Buf_AddByte (buf, (Byte)' ');
+	Buf_AddByte(buf, (Byte)' ');
     }
 
-    dot = strrchr (word, '.');
+    dot = strrchr(word, '.');
     if (dot != NULL) {
 	*dot = '\0';
-	Buf_AddBytes (buf, strlen (word), (Byte *)word);
+	Buf_AddBytes(buf, strlen(word), (Byte *)word);
 	*dot = '.';
     } else {
-	Buf_AddBytes (buf, strlen(word), (Byte *)word);
+	Buf_AddBytes(buf, strlen(word),(Byte *)word);
     }
     return (TRUE);
 }
