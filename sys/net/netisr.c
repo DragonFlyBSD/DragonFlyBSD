@@ -3,7 +3,7 @@
  * Copyright (c) 2003 Jonathan Lemon
  * Copyright (c) 2003 Matthew Dillon
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.6 2003/11/20 06:05:31 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.7 2003/11/23 00:28:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -93,7 +93,7 @@ netisr_queue(int num, struct mbuf *m)
     lwkt_port_t port;
 
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
-	("bad isr %d", num));
+	("netisr_queue: bad isr %d", num));
 
     ni = &netisrs[num];
     if (ni->ni_handler == NULL) {
@@ -119,7 +119,7 @@ void
 netisr_register(int num, lwkt_portfn_t mportfn, netisr_fn_t handler)
 {
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
-	("bad isr %d", num));
+	("netisr_register: bad isr %d", num));
 
     netisrs[num].ni_mport = mportfn;
     netisrs[num].ni_handler = handler;
@@ -157,7 +157,7 @@ schednetisr(int num)
     lwkt_port_t port = &netisr_cpu[0].td_msgport;
 
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
-	("bad isr %d", num));
+	("schednetisr: bad isr %d", num));
 
     if (!(pmsg = malloc(sizeof(struct netmsg), M_TEMP, M_NOWAIT)))
 	return;
