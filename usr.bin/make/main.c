@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.22 2004/12/01 01:10:17 joerg Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.23 2004/12/01 01:29:31 joerg Exp $
  */
 
 /*-
@@ -350,9 +350,14 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 	 * on the end of the "create" list.
 	 */
 	for (argv += optind, argc -= optind; *argv; ++argv, --argc)
-		if (Parse_IsVar(*argv))
+		if (Parse_IsVar(*argv)) {
+			char *ptr = Var_Quote(*argv);
+
+			Var_Append(MAKEFLAGS, ptr, VAR_GLOBAL);
+			free(ptr);
+
 			Parse_DoVar(*argv, VAR_CMD);
-		else {
+		} else {
 			if (!**argv)
 				Punt("illegal (null) argument.");
 			if (**argv == '-') {
@@ -628,10 +633,6 @@ main(int argc, char **argv)
 #endif
 
 	MainParseArgs(argc, argv);
-
-#ifdef POSIX
-	Var_AddCmdLine(MAKEFLAGS);
-#endif
 
 	/*
 	 * Find where we are...
