@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # $Id: pfi,v 1.4 2004/08/06 23:26:05 cpressey Exp $
-# $DragonFly: src/nrelease/installer/etc/rc.d/pfi,v 1.5 2005/03/07 17:44:40 cpressey Exp $
+# $DragonFly: src/nrelease/installer/etc/rc.d/pfi,v 1.6 2005/03/07 18:02:07 cpressey Exp $
 #
 
 # PROVIDE: pfi
@@ -35,6 +35,16 @@ get_pfi_config()
 	fi
 }
 
+get_authorized_hosts()
+{
+	[ -r /root/.ssh/authorized_hosts ] && return 0
+	if [ -r $1/authorized_hosts ]; then
+		echo "authorized_hosts found!"
+		mkdir -p /root/.ssh/
+		tr -d "\r" < $1/authorized_hosts > /root/.ssh/authorized_hosts
+	fi
+}
+
 look_for_pfi_config_msdos()
 {
 	[ -r /etc/pfi.conf ] && return 0
@@ -47,6 +57,7 @@ look_for_pfi_config_msdos()
 		if mount_msdos -o rdonly /dev/$try_device /mnt ; then
 			echo -n " /dev/$try_device ok..."
 			if get_pfi_config /mnt /dev/$try_device; then
+				get_authorized_hosts /mnt
 				umount /mnt
 				return 0
 			fi
@@ -69,6 +80,7 @@ look_for_pfi_config_cd9660()
 		if mount_cd9660 /dev/$try_device /mnt ; then
 			echo -n " /dev/$try_device ok..."
 			if get_pfi_config /mnt /dev/$try_device; then
+				get_authorized_hosts /mnt
 				umount /mnt
 				return 0
 			fi
