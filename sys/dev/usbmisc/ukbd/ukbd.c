@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ukbd.c,v 1.45 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.8 2004/03/15 02:27:57 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.9 2004/09/05 21:23:34 dillon Exp $
  */
 
 /*
@@ -129,6 +129,9 @@ typedef void usbd_disco_t(void *);
 Static int		ukbd_resume(device_t self);
 Static usbd_intr_t	ukbd_intr;
 Static int		ukbd_driver_load(module_t mod, int what, void *arg);
+Static int		ukbd_default_term(keyboard_t *kbd);
+
+Static keyboard_t	default_kbd;
 
 USB_DECLARE_DRIVER_INIT(ukbd, DEVMETHOD(device_resume, ukbd_resume));
 
@@ -208,13 +211,19 @@ ukbd_detach(device_t self)
 	(*kbdsw[kbd->kb_index]->disable)(kbd);
 
 #ifdef KBD_INSTALL_CDEV
-	error = kbd_detach(kbd);
-	if (error)
-		return error;
+	if (kbd != &default_kbd) {
+		error = kbd_detach(kbd);
+		if (error)
+			return error;
+	}
 #endif
-	error = (*kbdsw[kbd->kb_index]->term)(kbd);
-	if (error)
-		return error;
+	if (kbd == &default_kbd) {
+		ukbd_default_term(kbd);
+	} else {
+		error = (*kbdsw[kbd->kb_index]->term)(kbd);
+		if (error)
+			return error;
+	}
 
 	DPRINTF(("%s: disconnected\n", USBDEVNAME(self)));
 
@@ -428,7 +437,6 @@ Static int		keycode2scancode(int keycode, int shift, int up);
 #include <dev/misc/kbd/kbdtables.h>
 
 /* structures for the default keyboard */
-Static keyboard_t	default_kbd;
 Static ukbd_state_t	default_kbd_state;
 Static keymap_t		default_keymap;
 Static accentmap_t	default_accentmap;
@@ -487,7 +495,6 @@ ukbd_probe(int unit, void *arg, int flags)
 	data = (void **)arg;
 	uaa = (struct usb_attach_arg *)data[0];
 
-	/* XXX */
 	if (unit == UKBD_DEFAULT) {
 		if (KBD_IS_PROBED(&default_kbd))
 			return 0;
@@ -497,7 +504,13 @@ ukbd_probe(int unit, void *arg, int flags)
 	return 0;
 }
 
-/* reset and initialize the device */
+/*
+ * Reset and initialize the device.  Note that unit 0 (UKBD_DEFAULT) is an
+ * always-connected device once it has been initially detected.  We do not
+ * deregister it if the usb keyboard is unplugged to avoid losing the 
+ * connection to the console.  This feature also handles the USB bus reset
+ * which detaches and reattaches USB devices during boot.
+ */
 Static int
 ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 {
@@ -510,7 +523,6 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 	void **data = (void **)arg;
 	struct usb_attach_arg *uaa = (struct usb_attach_arg *)data[0];
 
-	/* XXX */
 	if (unit == UKBD_DEFAULT) {
 		*kbdp = kbd = &default_kbd;
 		if (KBD_IS_INITIALIZED(kbd) && KBD_IS_CONFIGURED(kbd))
@@ -553,7 +565,13 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 	}
 
 	if (!KBD_IS_PROBED(kbd)) {
-		kbd_init_struct(kbd, DRIVER_NAME, KB_OTHER, unit, flags, 0, 0);
+		if (KBD_IS_CONFIGURED(kbd)) {
+			kbd_reinit_struct(kbd, flags, KB_PRI_USB);
+		} else {
+			kbd_init_struct(kbd, DRIVER_NAME, KB_OTHER, 
+					unit, flags, KB_PRI_USB,
+					0, 0);
+		}
 		bzero(state, sizeof(*state));
 		bcopy(&key_map, keymap, sizeof(key_map));
 		bcopy(&accent_map, accmap, sizeof(accent_map));
@@ -584,16 +602,17 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 				     &kbd->kb_type, kbd->kb_flags))
 			return ENXIO;
 		ukbd_ioctl(kbd, KDSETLED, (caddr_t)&(state->ks_state));
-		KBD_INIT_DONE(kbd);
 	}
 	if (!KBD_IS_CONFIGURED(kbd)) {
 		if (kbd_register(kbd) < 0)
 			return ENXIO;
-		if (ukbd_enable_intr(kbd, TRUE, (usbd_intr_t *)data[1]) == 0)
-			ukbd_timeout((void *)kbd);
 		KBD_CONFIG_DONE(kbd);
 	}
-
+	if (!KBD_IS_INITIALIZED(kbd) && !(flags & KB_CONF_PROBE_ONLY)) {
+		if (ukbd_enable_intr(kbd, TRUE, (usbd_intr_t *)data[1]) == 0)
+			ukbd_timeout((void *)kbd);
+		KBD_INIT_DONE(kbd);
+	}
 	return 0;
 }
 
@@ -669,6 +688,37 @@ ukbd_term(keyboard_t *kbd)
 	return error;
 }
 
+/*
+ * Finish using the default keyboard.  Shutdown the USB side of the keyboard
+ * but do not unregister it.
+ */
+Static int
+ukbd_default_term(keyboard_t *kbd)
+{
+	ukbd_state_t *state;
+	int s;
+
+	s = splusb();
+
+	state = (ukbd_state_t *)kbd->kb_data;
+	DPRINTF(("ukbd_default_term: ks_ifstate=0x%x\n", state->ks_ifstate));
+
+	untimeout(ukbd_timeout, (void *)kbd, state->ks_timeout_handle);
+	callout_handle_init(&state->ks_timeout_handle);
+
+	if (state->ks_ifstate & INTRENABLED)
+		ukbd_enable_intr(kbd, FALSE, NULL);
+	if (state->ks_ifstate & INTRENABLED) {
+		splx(s);
+		DPRINTF(("ukbd_term: INTRENABLED!\n"));
+		return ENXIO;
+	}
+	KBD_LOST_DEVICE(kbd);
+	KBD_LOST_PROBE(kbd);
+	KBD_LOST_INIT(kbd);
+	splx(s);
+	return (0);
+}
 
 /* keyboard interrupt routine */
 
@@ -900,7 +950,7 @@ ukbd_read(keyboard_t *kbd, int wait)
 
 	/* XXX */
 	usbcode = ukbd_getc(state);
-	if (!KBD_IS_ACTIVE(kbd) || (usbcode == -1))
+	if (!KBD_IS_ACTIVE(kbd) || !KBD_HAS_DEVICE(kbd) || (usbcode == -1))
 		return -1;
 	++kbd->kb_count;
 #ifdef UKBD_EMULATE_ATSCANCODE
@@ -936,7 +986,7 @@ ukbd_read(keyboard_t *kbd, int wait)
 Static int
 ukbd_check(keyboard_t *kbd)
 {
-	if (!KBD_IS_ACTIVE(kbd))
+	if (!KBD_IS_ACTIVE(kbd) || !KBD_HAS_DEVICE(kbd))
 		return FALSE;
 #ifdef UKBD_EMULATE_ATSCANCODE
 	if (((ukbd_state_t *)kbd->kb_data)->ks_buffered_char[0])
@@ -1139,7 +1189,7 @@ ukbd_check_char(keyboard_t *kbd)
 {
 	ukbd_state_t *state;
 
-	if (!KBD_IS_ACTIVE(kbd))
+	if (!KBD_IS_ACTIVE(kbd) || !KBD_HAS_DEVICE(kbd))
 		return FALSE;
 	state = (ukbd_state_t *)kbd->kb_data;
 	if (!(state->ks_flags & COMPOSE) && (state->ks_composed_char > 0))
