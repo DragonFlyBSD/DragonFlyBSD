@@ -3,7 +3,7 @@
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Johannes Hofmann <Hoannes.Hofmann.gmx.de> and
- * Joerg Sonnenberger <joerg@bec.de.
+ * Joerg Sonnenberger <joerg@bec.de>.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_firmware.c,v 1.1 2005/03/19 14:54:50 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_firmware.c,v 1.2 2005/03/24 17:24:04 joerg Exp $
  */
 
 #include <sys/param.h>
