@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.17 2004/02/21 06:37:05 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.18 2004/02/21 09:16:27 dillon Exp $
  *
  */
 
@@ -328,7 +328,7 @@ pci_hdrtypedata(device_t pcib, int b, int s, int f, pcicfgregs *cfg)
 /* read configuration header into pcicfgrect structure */
 
 struct pci_devinfo *
-pci_read_device(device_t pcib, int b, int s, int f, int width)
+pci_read_device(device_t pcib, int b, int s, int f, size_t size)
 {
 #define REG(n, w)	PCIB_READ_CONFIG(pcib, b, s, f, n, w)
 
@@ -342,8 +342,7 @@ pci_read_device(device_t pcib, int b, int s, int f, int width)
 
 	if (PCIB_READ_CONFIG(pcib, b, s, f, PCIR_DEVVENDOR, 4) != -1) {
 
-		devlist_entry = malloc(width,
-				       M_DEVBUF, M_WAITOK | M_ZERO);
+		devlist_entry = malloc(size, M_DEVBUF, M_WAITOK | M_ZERO);
 		if (devlist_entry == NULL)
 			return (NULL);
 
@@ -1357,33 +1356,17 @@ pci_add_child(device_t bus, struct pci_devinfo *dinfo)
 	pci_print_verbose(dinfo);
 }
 
+/*
+ * Probe the PCI bus.  Note: probe code is not supposed to add children
+ * or call attach.
+ */
 static int
 pci_probe(device_t dev)
 {
-	static int once, busno;
-
 	device_set_desc(dev, "PCI bus");
 
-	if (bootverbose)
-		device_printf(dev, "physical bus=%d\n", pcib_get_bus(dev));
-
-	/*
-	 * Since there can be multiple independently numbered PCI
-	 * busses on some large alpha systems, we can't use the unit
-	 * number to decide what bus we are probing. We ask the parent
-	 * pcib what our bus number is.
-	 */
-	busno = pcib_get_bus(dev);
-	if (busno < 0)
-		return ENXIO;
-	pci_add_children(dev, busno, sizeof(struct pci_devinfo));
-
-	if (!once) {
-		make_dev(&pcicdev, 0, UID_ROOT, GID_WHEEL, 0644, "pci");
-		once++;
-	}
-
-	return 0;
+	/* Allow other subclasses to override this driver */
+	return(-1000);
 }
 
 static int

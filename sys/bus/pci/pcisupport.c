@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/pcisupport.c,v 1.154.2.15 2003/04/29 15:55:06 simokawa Exp $
-** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.10 2004/02/21 06:37:05 dillon Exp $
+** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.11 2004/02/21 09:16:27 dillon Exp $
 **
 **  Device driver for DEC/INTEL PCI chipsets.
 **
@@ -50,6 +50,9 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
+#include <sys/rman.h>
+
+#include <machine/resource.h>
 
 #include "pcivar.h"
 #include "pcireg.h"
@@ -786,8 +789,13 @@ static int pcib_probe(device_t dev)
  * a motherboard PCI id, otherwise the device probe will believe that
  * the later motherboard bridge bus has already been probed and refuse
  * to probe it.  The result: disappearing busses!
+ *
+ * Bridges will cause recursions or duplicate attach attempts.  If
+ * we have already attached this bus we don't do it again!
  */
-int pcib_attach(device_t dev)
+
+int
+pcib_attach(device_t dev)
 {
 	u_int8_t secondary;
 	device_t child;
@@ -824,6 +832,163 @@ pcib_write_ivar(device_t dev, device_t child, int which, uintptr_t value)
 	}
 	return (ENOENT);
 }
+
+/*
+ * Is the prefetch window open (eg, can we allocate memory in it?)
+ */
+static int
+pcib_is_prefetch_open(struct pcib_softc *sc)
+{
+	return (sc->pmembase > 0 && sc->pmembase < sc->pmemlimit);
+}
+
+/*
+ * Is the nonprefetch window open (eg, can we allocate memory in it?)
+ */
+static int
+pcib_is_nonprefetch_open(struct pcib_softc *sc)
+{
+	return (sc->membase > 0 && sc->membase < sc->memlimit);
+}
+
+/*
+ * Is the io window open (eg, can we allocate ports in it?)
+ */
+static int
+pcib_is_io_open(struct pcib_softc *sc)
+{
+	return (sc->iobase > 0 && sc->iobase < sc->iolimit);
+}
+
+/*
+ * We have to trap resource allocation requests and ensure that the bridge
+ * is set up to, or capable of handling them.
+ */
+struct resource *
+pcib_alloc_resource(device_t dev, device_t child, int type, int *rid, 
+		    u_long start, u_long end, u_long count, u_int flags)
+{
+	struct pcib_softc	*sc = device_get_softc(dev);
+	int ok;
+
+	/*
+	 * Fail the allocation for this range if it's not supported.
+	 */
+	switch (type) {
+	case SYS_RES_IOPORT:
+		ok = 0;
+		if (!pcib_is_io_open(sc))
+			break;
+		ok = (start >= sc->iobase && end <= sc->iolimit);
+		if ((sc->flags & PCIB_SUBTRACTIVE) == 0) {
+			if (!ok) {
+				if (start < sc->iobase)
+					start = sc->iobase;
+				if (end > sc->iolimit)
+					end = sc->iolimit;
+			}
+		} else {
+			ok = 1;
+#if 0
+			if (start < sc->iobase && end > sc->iolimit) {
+				start = sc->iobase;
+				end = sc->iolimit;
+			}
+#endif			
+		}
+		if (end < start) {
+			device_printf(dev, "ioport: end (%lx) < start (%lx)\n", end, start);
+			start = 0;
+			end = 0;
+			ok = 0;
+		}
+		if (!ok) {
+			device_printf(dev, "device %s requested unsupported I/O "
+			    "range 0x%lx-0x%lx (decoding 0x%x-0x%x)\n",
+			    device_get_nameunit(child), start, end,
+			    sc->iobase, sc->iolimit);
+			return (NULL);
+		}
+		if (bootverbose)
+			device_printf(dev, "device %s requested decoded I/O range 0x%lx-0x%lx\n",
+			    device_get_nameunit(child), start, end);
+		break;
+
+	case SYS_RES_MEMORY:
+		ok = 0;
+		if (pcib_is_nonprefetch_open(sc))
+			ok = ok || (start >= sc->membase && end <= sc->memlimit);
+		if (pcib_is_prefetch_open(sc))
+			ok = ok || (start >= sc->pmembase && end <= sc->pmemlimit);
+		if ((sc->flags & PCIB_SUBTRACTIVE) == 0) {
+			if (!ok) {
+				ok = 1;
+				if (flags & RF_PREFETCHABLE) {
+					if (pcib_is_prefetch_open(sc)) {
+						if (start < sc->pmembase)
+							start = sc->pmembase;
+						if (end > sc->pmemlimit)
+							end = sc->pmemlimit;
+					} else {
+						ok = 0;
+					}
+				} else {	/* non-prefetchable */
+					if (pcib_is_nonprefetch_open(sc)) {
+						if (start < sc->membase)
+							start = sc->membase;
+						if (end > sc->memlimit)
+							end = sc->memlimit;
+					} else {
+						ok = 0;
+					}
+				}
+			}
+		} else if (!ok) {
+			ok = 1;	/* subtractive bridge: always ok */
+#if 0
+			if (pcib_is_nonprefetch_open(sc)) {
+				if (start < sc->membase && end > sc->memlimit) {
+					start = sc->membase;
+					end = sc->memlimit;
+				}
+			}
+			if (pcib_is_prefetch_open(sc)) {
+				if (start < sc->pmembase && end > sc->pmemlimit) {
+					start = sc->pmembase;
+					end = sc->pmemlimit;
+				}
+			}
+#endif
+		}
+		if (end < start) {
+			device_printf(dev, "memory: end (%lx) < start (%lx)\n", end, start);
+			start = 0;
+			end = 0;
+			ok = 0;
+		}
+		if (!ok && bootverbose)
+			device_printf(dev,
+			    "device %s requested unsupported memory range "
+			    "0x%lx-0x%lx (decoding 0x%x-0x%x, 0x%x-0x%x)\n",
+			    device_get_nameunit(child), start, end,
+			    sc->membase, sc->memlimit, sc->pmembase,
+			    sc->pmemlimit);
+		if (!ok)
+			return (NULL);
+		if (bootverbose)
+			device_printf(dev,"device %s requested decoded memory range 0x%lx-0x%lx\n",
+			    device_get_nameunit(child), start, end);
+		break;
+
+	default:
+		break;
+	}
+	/*
+	 * Bridge is OK decoding this resource, so pass it up.
+	 */
+	return (bus_generic_alloc_resource(dev, child, type, rid, start, end, count, flags));
+}
+
 
 int
 pcib_maxslots(device_t dev)
@@ -985,20 +1150,18 @@ static device_method_t pcib_methods[] = {
 	DEVMETHOD(bus_print_child,	bus_generic_print_child),
 	DEVMETHOD(bus_read_ivar,	pcib_read_ivar),
 	DEVMETHOD(bus_write_ivar,	pcib_write_ivar),
-	DEVMETHOD(bus_alloc_resource,	bus_generic_alloc_resource),
+	DEVMETHOD(bus_alloc_resource,	pcib_alloc_resource),
 	DEVMETHOD(bus_release_resource,	bus_generic_release_resource),
 	DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
 	DEVMETHOD(bus_deactivate_resource, bus_generic_deactivate_resource),
 	DEVMETHOD(bus_setup_intr,	bus_generic_setup_intr),
 	DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),
 
-	/* pci interface */
-	DEVMETHOD(pci_route_interrupt,	pcib_route_interrupt),
-
 	/* pcib interface */
 	DEVMETHOD(pcib_maxslots,	pcib_maxslots),
 	DEVMETHOD(pcib_read_config,	pcib_read_config),
 	DEVMETHOD(pcib_write_config,	pcib_write_config),
+	DEVMETHOD(pcib_route_interrupt,	pcib_route_interrupt),
 
 	{ 0, 0 }
 };
