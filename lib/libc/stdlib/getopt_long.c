@@ -1,5 +1,5 @@
 /*	$NetBSD: getopt_long.c,v 1.16 2003/10/27 00:12:42 lukem Exp $	*/
-/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.7 2005/01/12 00:08:13 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.8 2005/02/28 13:14:56 joerg Exp $ */
 
 /*-
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -138,9 +138,9 @@ permute_args(int panonopt_start, int panonopt_end, int opt_end,
 				pos += nopts;
 			swap = nargv[pos];
 			/* LINTED const cast */
-			((char **) nargv)[pos] = nargv[cstart];
+			(__DECONST(char **, nargv))[pos] = nargv[cstart];
 			/* LINTED const cast */
-			((char **)nargv)[cstart] = swap;
+			(__DECONST(char **, nargv))[cstart] = swap;
 		}
 	}
 }
