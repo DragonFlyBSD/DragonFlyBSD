@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1988 Regents of the University of California. All rights reserved.
  * @(#)slattach.c	4.6 (Berkeley) 6/1/90
  * $FreeBSD: src/sbin/slattach/slattach.c,v 1.36 1999/08/28 00:14:25 peter Exp $
- * $DragonFly: src/sbin/slattach/slattach.c,v 1.5 2004/12/18 21:43:46 swildner Exp $
+ * $DragonFly: src/sbin/slattach/slattach.c,v 1.6 2005/02/02 07:59:48 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -60,15 +60,15 @@
 
 #define DEFAULT_BAUD	9600
 
-void	sighup_handler();	/* SIGHUP handler */
-void	sigint_handler();	/* SIGINT handler */
-void	sigterm_handler();	/* SIGTERM handler */
-void    sigurg_handler();       /* SIGURG handler */
-void	exit_handler(int ret);	/* run exit_cmd iff specified upon exit. */
-void	setup_line(int cflag);	/* configure terminal settings */
-void	slip_discipline();	/* switch to slip line discipline */
-void	configure_network();	/* configure slip interface */
-void	acquire_line();		/* get tty device as controlling terminal */
+static void sighup_handler(int);	/* SIGHUP handler */
+static void sigint_handler(int);	/* SIGINT handler */
+static void sigterm_handler(int);	/* SIGTERM handler */
+static void sigurg_handler(int);	/* SIGURG handler */
+static void exit_handler(int);		/* run exit_cmd iff specified upon exit. */
+static void setup_line(int);		/* configure terminal settings */
+static void slip_discipline(void);	/* switch to slip line discipline */
+static void configure_network(void);	/* configure slip interface */
+static void acquire_line(void);		/* get tty device as controlling terminal */
 static void usage(void);
 
 int	fd = -1;
@@ -98,7 +98,7 @@ char	*config_cmd = 0;	/* command to exec if slip unit changes. */
 char	*exit_cmd = 0;		/* command to exec before exiting. */
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
 "usage: slattach [-acfhlnz] [-e command] [-r command] [-s speed] [-u command]",
@@ -210,7 +210,7 @@ main(int argc, char **argv)
 		syslog(LOG_NOTICE,"cannot install SIGHUP handler: %m");
 
 	if (redial_on_startup)
-		sighup_handler();
+		sighup_handler(0);
 	else if (!(modem_control & CLOCAL)) {
 		if (ioctl(fd, TIOCMGET, &comstate) < 0)
 			syslog(LOG_NOTICE,"cannot get carrier state: %m");
@@ -231,11 +231,12 @@ main(int argc, char **argv)
 
 /* Close all FDs, fork, reopen tty port as 0-2, and make it the
    controlling terminal for our process group. */
-void acquire_line(void)
+static void
+acquire_line(void)
 {
 	int ttydisc = TTYDISC;
 	int oflags;
-	FILE *pidfile;
+	FILE *pid_file;
 
 	/* reset to tty discipline */
 	if (fd >= 0 && ioctl(fd, TIOCSETD, &ttydisc) < 0) {
@@ -259,9 +260,9 @@ void acquire_line(void)
 		sleep (1);	/* Wait for parent to die. */
 
 	/* create PID file */
-	if((pidfile = fopen(pidfilename, "w"))) {
-		fprintf(pidfile, "%ld\n", (long)getpid());
-		fclose(pidfile);
+	if((pid_file = fopen(pidfilename, "w"))) {
+		fprintf(pid_file, "%ld\n", (long)getpid());
+		fclose(pid_file);
 	}
 
 	if (signal(SIGHUP,sighup_handler) == SIG_ERR) /* Re-enable HUP signal */
@@ -312,7 +313,8 @@ void acquire_line(void)
 
 /* Set the tty flags and set DTR. */
 /* Call as setup_line(CLOCAL) to force clocal assertion. */
-void setup_line(int cflag)
+static void
+setup_line(int cflag)
 {
 	tty.c_lflag = tty.c_iflag = tty.c_oflag = 0;
 	tty.c_cflag = CREAD | CS8 | flow_control | modem_control | cflag;
@@ -331,7 +333,8 @@ void setup_line(int cflag)
 }
 
 /* Put the line in slip discipline. */
-void slip_discipline(void)
+static void
+slip_discipline(void)
 {
 	struct ifreq ifr;
 	int slipdisc = SLIPDISC;
@@ -397,7 +400,8 @@ void slip_discipline(void)
 }
 
 /* configure the interface, e.g. by passing the unit number to a script. */
-void configure_network(void)
+static void
+configure_network(void)
 {
 	int new_unit;
 
@@ -435,7 +439,8 @@ void configure_network(void)
 }
 
 /* sighup_handler() is invoked when carrier drops, eg. before redial. */
-void sighup_handler(void)
+static void
+sighup_handler(int signo __unused)
 {
 	if(exiting) return;
 
@@ -509,15 +514,19 @@ again:
 	slip_discipline();
 	configure_network();
 }
+
 /* Signal handler for SIGINT.  We just log and exit. */
-void sigint_handler(void)
+static void
+sigint_handler(int signo __unused)
 {
 	if(exiting) return;
 	syslog(LOG_NOTICE,"SIGINT on %s (sl%d); exiting",dev,unit);
 	exit_handler(0);
 }
+
 /* Signal handler for SIGURG. */
-void sigurg_handler(void)
+static void
+sigurg_handler(int signo __unused)
 {
 	int ttydisc = TTYDISC;
 
@@ -538,15 +547,19 @@ void sigurg_handler(void)
 		kill (getpid(), SIGHUP);
 
 }
+
 /* Signal handler for SIGTERM.  We just log and exit. */
-void sigterm_handler(void)
+static void
+sigterm_handler(int signo __unused)
 {
 	if(exiting) return;
 	syslog(LOG_NOTICE,"SIGTERM on %s (sl%d); exiting",dev,unit);
 	exit_handler(0);
 }
+
 /* Run config_cmd if specified before exiting. */
-void exit_handler(int ret)
+static void
+exit_handler(int ret)
 {
 	if(exiting) return;
 	exiting = 1;
