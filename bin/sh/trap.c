@@ -35,7 +35,7 @@
  *
  * @(#)trap.c	8.5 (Berkeley) 6/5/95
  * $FreeBSD: src/bin/sh/trap.c,v 1.20.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/trap.c,v 1.3 2003/10/14 23:03:08 dillon Exp $
+ * $DragonFly: src/bin/sh/trap.c,v 1.4 2004/01/30 18:21:18 dillon Exp $
  */
 
 #include <signal.h>
@@ -85,6 +85,8 @@ static int getsigaction(int, sig_t *);
 
 /*
  * Map a string to a signal number.
+ *
+ * Note: the signal number may exceed NSIG.
  */
 static int
 sigstring_to_signum(char *sig)
@@ -118,13 +120,23 @@ static void
 printsignals(void)
 {
 	int n;
+	int outlen = 0;
 
 	for (n = 1; n < sys_nsig; n++) {
-		out1fmt("%s", sys_signame[n]);
-		if (n == (NSIG / 2) || n == (NSIG - 1))
+		if (sys_signame[n]) {
+			out1fmt("%s", sys_signame[n]);
+			outlen += strlen(sys_signame[n]);
+		} else {
+			out1fmt("%d", n);
+			outlen += 3;	/* good enough */
+		}
+		++outlen;
+		if (outlen > 70 || n == sys_nsig - 1) {
 			out1str("\n");
-		else
+			outlen = 0;
+		} else {
 			out1c(' ');
+		}
 	}
 }
 
@@ -140,9 +152,18 @@ trapcmd(int argc, char **argv)
 
 	if (argc <= 1) {
 		for (signo = 0 ; signo < sys_nsig; signo++) {
-			if (trap[signo] != NULL) {
-				out1fmt("trap -- '%s' %s\n", trap[signo],
-					(signo) ? sys_signame[signo] : "exit");
+			if (signo < NSIG && trap[signo] != NULL) {
+				if (signo == 0) {
+					out1fmt("trap -- '%s' %s\n", 
+						trap[signo], "exit");
+				} else if (sys_signame[signo]) {
+					out1fmt("trap -- '%s' %s\n", 
+						trap[signo],
+						sys_signame[signo]);
+				} else {
+					out1fmt("trap -- '%s' %d\n", 
+						trap[signo], signo);
+				}
 			}
 		}
 		return 0;
