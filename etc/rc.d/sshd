@@ -1,0 +1,75 @@
+#!/bin/sh
+#
+# $NetBSD: sshd,v 1.18 2002/04/29 08:23:34 lukem Exp $
+# $FreeBSD: src/etc/rc.d/sshd,v 1.3 2003/07/13 01:49:07 mtm Exp $
+# $DragonFly: src/etc/rc.d/sshd,v 1.1 2003/07/24 06:35:37 dillon Exp $
+#
+
+# PROVIDE: sshd
+# REQUIRE: LOGIN
+# KEYWORD: DragonFly FreeBSD NetBSD
+
+. /etc/rc.subr
+
+name="sshd"
+rcvar=`set_rcvar`
+keygen_cmd="sshd_keygen"
+start_precmd="sshd_precmd"
+pidfile="/var/run/${name}.pid"
+extra_commands="keygen reload"
+case ${OSTYPE} in
+NetBSD)
+	command="/usr/sbin/${name}"
+	required_files="/etc/ssh/sshd_config"
+	;;
+esac
+
+sshd_keygen()
+{
+	(
+	umask 022
+
+	# Can't do anything if ssh is not installed
+	[ -x /usr/bin/ssh-keygen ] || {
+		warn "/usr/bin/ssh-keygen does not exist."
+		return 1
+	}
+
+	if [ -f /etc/ssh/ssh_host_key ]; then
+		echo "You already have an RSA host key" \
+		    "in /etc/ssh/ssh_host_key"
+		echo "Skipping protocol version 1 RSA Key Generation"
+	else
+		/usr/bin/ssh-keygen -t rsa1 -b 1024 \
+		    -f /etc/ssh/ssh_host_key -N ''
+	fi
+
+	if [ -f /etc/ssh/ssh_host_dsa_key ]; then
+		echo "You already have a DSA host key" \
+		    "in /etc/ssh/ssh_host_dsa_key"
+		echo "Skipping protocol version 2 DSA Key Generation"
+	else
+		/usr/bin/ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key -N ''
+	fi
+
+	if [ -f /etc/ssh/ssh_host_rsa_key ]; then
+		echo "You already have a RSA host key" \
+		    "in /etc/ssh/ssh_host_rsa_key"
+		echo "Skipping protocol version 2 RSA Key Generation"
+	else
+		/usr/bin/ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N ''
+	fi
+	)
+}
+
+sshd_precmd()
+{
+	if [ ! -f /etc/ssh/ssh_host_key -o \
+	    ! -f /etc/ssh/ssh_host_dsa_key -o \
+	    ! -f /etc/ssh/ssh_host_rsa_key ]; then
+		run_rc_command keygen
+	fi
+}
+
+load_rc_config $name
+run_rc_command "$1"

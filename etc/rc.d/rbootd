@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# $NetBSD: rbootd,v 1.6 2002/03/22 04:34:00 thorpej Exp $
+# $FreeBSD: src/etc/rc.d/rbootd,v 1.2 2002/06/13 22:14:36 gordon Exp $
+# $DragonFly: src/etc/rc.d/Attic/rbootd,v 1.1 2003/07/24 06:35:37 dillon Exp $
+#
+
+# PROVIDE: rbootd
+# REQUIRE: DAEMON
+# BEFORE:  LOGIN
+
+. /etc/rc.subr
+
+name="rbootd"
+rcvar=$name
+command="/usr/sbin/${name}"
+pidfile="/var/run/${name}.pid"
+required_files="/etc/${name}.conf"
+extra_commands="reload"
+
+load_rc_config $name
+run_rc_command "$1"

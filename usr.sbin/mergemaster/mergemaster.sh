@@ -8,15 +8,15 @@
 # Copyright 1998-2003 Douglas Barton
 # DougB@FreeBSD.org
 
-# $FreeBSD: src/usr.sbin/mergemaster/mergemaster.sh,v 1.6.2.17 2003/03/10 06:55:48 dougb Exp $
-# $DragonFly: src/usr.sbin/mergemaster/mergemaster.sh,v 1.2 2003/06/17 04:29:57 dillon Exp $
+# $FreeBSD: src/usr.sbin/mergemaster/mergemaster.sh,v 1.46 2003/05/03 06:35:19 dougb Exp $
+# $DragonFly: src/usr.sbin/mergemaster/mergemaster.sh,v 1.3 2003/07/24 06:35:39 dillon Exp $
 
 PATH=/bin:/usr/bin:/usr/sbin
 
 display_usage () {
   VERSION_NUMBER=`grep "[$]FreeBSD:" $0 | cut -d ' ' -f 4`
   echo "mergemaster version ${VERSION_NUMBER}"
-  echo 'Usage: mergemaster [-scrvahipC] [-m /path]'
+  echo 'Usage: mergemaster [-scrvahipCP] [-m /path]'
   echo '         [-t /path] [-d] [-u N] [-w N] [-D /path]'
   echo "Options:"
   echo "  -s  Strict comparison (diff every pair of files)"
@@ -28,6 +28,7 @@ display_usage () {
   echo '  -i  Automatically install files that do not exist in destination directory'
   echo '  -p  Pre-buildworld mode, only compares crucial files'
   echo '  -C  Compare local rc.conf variables to the defaults'
+  echo '  -P  Preserve files that are overwritten'
   echo "  -m /path/directory  Specify location of source to do the make in"
   echo "  -t /path/directory  Specify temp root directory"
   echo "  -d  Add date and time to directory name (e.g., /var/tmp/temproot.`date +%m%d.%H.%M`)"
@@ -238,7 +239,7 @@ fi
 
 # Check the command line options
 #
-while getopts ":ascrvhipCm:t:du:w:D:" COMMAND_LINE_ARGUMENT ; do
+while getopts ":ascrvhipCPm:t:du:w:D:" COMMAND_LINE_ARGUMENT ; do
   case "${COMMAND_LINE_ARGUMENT}" in
   s)
     STRICT=yes
@@ -270,6 +271,9 @@ while getopts ":ascrvhipCm:t:du:w:D:" COMMAND_LINE_ARGUMENT ; do
   C)
     COMP_CONFS=yes
     ;;
+  P)
+    PRESERVE_FILES=yes
+    ;;
   p)
     PRE_WORLD=yes
     unset COMP_CONFS
@@ -299,6 +303,11 @@ while getopts ":ascrvhipCm:t:du:w:D:" COMMAND_LINE_ARGUMENT ; do
     ;;
   esac
 done
+
+# Don't force the user to set this in the mergemaster rc file
+if [ -n "${PRESERVE_FILES}" -a -z "${PRESERVE_FILES_DIR}" ]; then
+  PRESERVE_FILES_DIR=/var/tmp/mergemaster/preserved-files-`date +%y%m%d-%H%M%S`
+fi
 
 echo ''
 
@@ -352,9 +361,10 @@ case "${DONT_CHECK_PAGER}" in
 esac
 
 # If user has a pager defined, or got assigned one above, use it.
-# If not, use more.
+# If not, use less.
 #
-PAGER=${PAGER:-more}
+PAGER=${PAGER:-less}
+PAGER="${PAGER} -c"
 
 if [ -n "${VERBOSE}" -a ! "${PAGER}" = "more" ]; then
   echo " *** You have ${PAGER} defined as your pager so we will use that"
@@ -547,11 +557,16 @@ case "${RERUN}" in
      ;;
   esac
 
+  # Avoid trying to update MAKEDEV if /dev is on a devfs
+  if /sbin/sysctl vfs.devfs.generation > /dev/null 2>&1 ; then
+    rm -f ${TEMPROOT}/dev/MAKEDEV ${TEMPROOT}/dev/MAKEDEV.local
+  fi
+
   ;; # End of the "RERUN" test
 esac
 
-# We really don't want to deal with derived files like login.conf.db, pwd.db,
-# passwd, or spwd.db.  Instead, we want to compare the masters, and run *_mkdb.
+# We really don't want to have to deal with files like login.conf.db, pwd.db,
+# or spwd.db.  Instead, we want to compare the text versions, and run *_mkdb.
 # Prompt the user to do so below, as needed.
 #
 rm -f ${TEMPROOT}/etc/*.db ${TEMPROOT}/etc/passwd
@@ -592,51 +607,73 @@ fi
 
 CONFIRMED_UMASK=${NEW_UMASK:-0022}
 
-# Warn users who still have ${DESTDIR}/etc/sysconfig
 #
-if [ -e "${DESTDIR}/etc/sysconfig" ]; then
+# Warn users who still have old rc files
+#
+for file in atm devfs diskless1 diskless2 isdn network network6 pccard \
+  serial syscons sysctl alpha amd64 i386 ia64 sparc64; do
+  if [ -f "${DESTDIR}/etc/rc.${file}" ]; then
+    OLD_RC_PRESENT=1
+    break
+  fi
+done
+
+case "${OLD_RC_PRESENT}" in
+1)
   echo ''
-  echo " *** There is a sysconfig file on this system in ${DESTDIR}/etc/."
+  echo " *** There are elements of the old rc system in ${DESTDIR}/etc/."
   echo ''
-  echo '     Starting with FreeBSD version 2.2.2 those settings moved from'
-  echo '     /etc/sysconfig to /etc/rc.conf.  If you are upgrading an older'
-  echo '     system make sure that you transfer your settings by hand from'
-  echo '     sysconfig to rc.conf and install the rc.conf file.  If you'
-  echo '     have already made this transition, you should consider'
-  echo '     renaming or deleting the sysconfig file.'
+  echo '     While these scripts will not hurt anything, they are not'
+  echo '     functional on an up to date system, and can be removed.'
   echo ''
+
   case "${AUTO_RUN}" in
   '')
-    echo -n "Continue with the merge process? [yes] "
-    read CONT_OR_NOT
+    echo -n 'Move these files to /var/tmp/mergemaster/old_rc? [yes] '
+    read MOVE_OLD_RC
 
-    case "${CONT_OR_NOT}" in
-    [nN]*)
-      exit 0
-      ;;
+    case "${MOVE_OLD_RC}" in
+    [nN]*) ;;
     *)
-      echo "   *** Continuing"
-      echo ''
+      mkdir -p /var/tmp/mergemaster/old_rc
+        for file in atm devfs diskless1 diskless2 isdn network network6 pccard \
+          serial syscons sysctl alpha amd64 i386 ia64 sparc64; do
+          if [ -f "${DESTDIR}/etc/rc.${file}" ]; then
+            mv ${DESTDIR}/etc/rc.${file} /var/tmp/mergemaster/old_rc/
+          fi
+        done
+      echo '  The files have been moved'
+      press_to_continue
       ;;
     esac
     ;;
   *) ;;
   esac
-fi
+esac
 
 # Use the umask/mode information to install the files
 # Create directories as needed
 #
 do_install_and_rm () {
+  case "${PRESERVE_FILES}" in
+  [Yy][Ee][Ss])
+    if [ -f "${3}/${2##*/}" ]; then
+      mkdir -p ${PRESERVE_FILES_DIR}/${2%/*}
+      cp ${3}/${2##*/} ${PRESERVE_FILES_DIR}/${2%/*}
+    fi
+    ;;
+  esac
+
   install -m "${1}" "${2}" "${3}" &&
   rm -f "${2}"
 }
 
+# 4095 = "obase=10;ibase=8;07777" | bc
 find_mode () {
   local OCTAL
-  OCTAL=`perl -e 'printf "%04o\n", (((stat("$ARGV[0]"))[2] & 07777) &~ \
-    oct("$ARGV[1]"))' "${1}" "${CONFIRMED_UMASK}"`
-  echo "${OCTAL}"
+  OCTAL=$(( ~$(echo "obase=10; ibase=8; ${CONFIRMED_UMASK}" | bc) & 4095 &
+    $(echo "obase=10; ibase=8; $(stat -f "%OMp%OLp" ${1})" | bc) )) 
+  printf "%04o\n" ${OCTAL}
 }
 
 mm_install () {
@@ -1007,7 +1044,7 @@ esac
 case "${PRE_WORLD}" in
 '') ;;
 *)
-  MAKE_CONF="${SOURCEDIR}/defaults/make.conf"
+  MAKE_CONF="${SOURCEDIR%etc}share/examples/etc/make.conf"
 
   (echo ''
   echo '*** Comparing make variables'

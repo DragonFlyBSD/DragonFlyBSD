@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# $NetBSD: pwcheck,v 1.4 2002/03/22 04:33:59 thorpej Exp $
+# $FreeBSD: src/etc/rc.d/pwcheck,v 1.2 2002/06/13 22:14:36 gordon Exp $
+# $DragonFly: src/etc/rc.d/pwcheck,v 1.1 2003/07/24 06:35:37 dillon Exp $
+#
+
+# PROVIDE: pwcheck
+# REQUIRE: mountcritremote syslogd
+# BEFORE:  DAEMON
+# KEYWORD: DragonFly FreeBSD NetBSD
+
+. /etc/rc.subr
+
+name="pwcheck"
+start_cmd="pwcheck_start"
+stop_cmd=":"
+
+pwcheck_start()
+{
+	#	check the password temp/lock file
+	#
+	if [ -f /etc/ptmp ]; then
+		logger -s -p auth.err \
+		    "password file may be incorrect -- /etc/ptmp exists"
+	fi
+}
+
+load_rc_config $name
+run_rc_command "$1"

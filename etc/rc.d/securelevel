@@ -1,0 +1,70 @@
+#!/bin/sh
+#
+# $NetBSD: securelevel,v 1.4 2002/03/22 04:34:00 thorpej Exp $
+# $FreeBSD: src/etc/rc.d/securelevel,v 1.6 2003/05/05 15:38:41 mtm Exp $
+# $DragonFly: src/etc/rc.d/securelevel,v 1.1 2003/07/24 06:35:37 dillon Exp $
+#
+
+# PROVIDE: securelevel
+# KEYWORD: DragonFly FreeBSD NetBSD
+
+. /etc/rc.subr
+
+name="securelevel"
+start_cmd="securelevel_start"
+stop_cmd=":"
+
+securelevel_start()
+{
+	# Last chance to set sysctl variables that failed the first time.
+	#
+	/etc/rc.d/sysctl lastload
+
+	case ${OSTYPE} in
+	DragonFly)
+		 case ${kern_securelevel_enable} in
+                [Yy][Ee][Ss])
+                        if [ ${kern_securelevel} -ge 0 ]; then
+                                echo 'Raising kernel security level: '
+                                ${SYSCTL_W} kern.securelevel=${kern_securelevel}
+                        fi
+                        ;;
+                esac
+                ;;
+
+	FreeBSD)
+		case ${kern_securelevel_enable} in
+		[Yy][Ee][Ss])
+			if [ ${kern_securelevel} -ge 0 ]; then
+				echo 'Raising kernel security level: '
+				${SYSCTL_W} kern.securelevel=${kern_securelevel}
+			fi
+			;;
+		esac
+		;;
+	NetBSD)
+		#	if $securelevel is set higher, change it here, else if
+		#	it is 0, change it to 1 here, before we start daemons
+		#	or login services.
+		#
+		osecurelevel=`sysctl -n kern.securelevel`
+		if [ -n "$securelevel" -a "$securelevel" != "$osecurelevel" ]; then
+			if [ "$securelevel" -lt "$osecurelevel" ]; then
+				echo "Can't lower securelevel."
+				exit 1
+			else
+				echo -n "Setting securelevel: "
+				${SYSCTL_W} kern.securelevel=$securelevel
+			fi
+		else
+			if [ "$osecurelevel" = 0 ]; then
+				echo -n "Setting securelevel: "
+				${SYSCTL_W} kern.securelevel=1
+			fi
+		fi
+		;;
+	esac
+}
+
+load_rc_config $name
+run_rc_command "$1"

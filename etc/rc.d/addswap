@@ -1,0 +1,35 @@
+#!/bin/sh
+#
+# Add additional swap files
+#
+# $FreeBSD: src/etc/rc.d/addswap,v 1.2 2002/10/12 10:31:31 schweikh Exp $
+# $DragonFly: src/etc/rc.d/addswap,v 1.1 2003/07/24 06:35:37 dillon Exp $
+#
+
+# PROVIDE: addswap
+# REQUIRE: mountcritlocal
+# BEFORE: sysctl
+# KEYWORD: DragonFly FreeBSD 
+
+. /etc/rc.subr
+
+name="addswap"
+start_cmd="addswap_start"
+stop_cmd=":"
+
+addswap_start()
+{
+	case ${swapfile} in
+	[Nn][Oo] | '')
+		;;
+	*)
+		if [ -w "${swapfile}" -a -c /dev/mdctl ]; then
+			echo "Adding ${swapfile} as additional swap"
+			mdev=`mdconfig -a -t vnode -f ${swapfile}` && swapon /dev/${mdev}
+		fi
+		;;
+	esac
+}
+
+load_rc_config $name
+run_rc_command "$1"

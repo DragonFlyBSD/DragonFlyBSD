@@ -1,0 +1,52 @@
+#!/bin/sh
+#
+# $NetBSD: routed,v 1.7 2002/03/22 04:34:00 thorpej Exp $
+# $FreeBSD: src/etc/rc.d/routed,v 1.6 2003/06/29 05:15:57 mtm Exp $
+# $DragonFly: src/etc/rc.d/routed,v 1.1 2003/07/24 06:35:37 dillon Exp $
+#
+
+# PROVIDE: routed
+# REQUIRE: netif routing
+# KEYWORD: DragonFly FreeBSD NetBSD
+
+. /etc/rc.subr
+
+name="routed"
+
+# XXX - Executable may be in a different location. The $name variable
+#       is different from the variable in rc.conf(5) so the
+#       subroutines in rc.subr won't catch it.
+#
+load_rc_config $name
+
+case ${OSTYPE} in
+DragonFly)
+	rcvar="router_enable"
+        command="${router:-/sbin/${name}}"
+        eval ${name}_flags=${router_flags}
+        start_precmd=
+        ;;
+ 
+
+FreeBSD)
+	rcvar="router_enable"
+	command="${router:-/sbin/${name}}"
+	eval ${name}_flags=${router_flags}
+	start_precmd=
+	;;
+NetBSD)
+	rcvar=${name}
+	command="/sbin/${name}"
+	start_precmd="routed_precmd"
+	;;
+esac
+
+routed_precmd()
+{
+	if checkyesno gated && checkyesno routed; then
+		warn "gated and routed both requested to be run: only running gated."
+		return 1
+	fi
+}
+
+run_rc_command "$1"

@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.root.dist,v 1.45.2.4 2002/06/10 15:33:27 obrien Exp $
-# $DragonFly: src/etc/mtree/BSD.root.dist,v 1.2 2003/06/17 04:24:48 dillon Exp $
+# $DragonFly: src/etc/mtree/BSD.root.dist,v 1.3 2003/07/24 06:35:36 dillon Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -49,6 +49,8 @@
         ..
         ppp
         ..
+	rc.d
+	..
         skel
         ..
         ssh

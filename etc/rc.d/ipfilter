@@ -1,0 +1,227 @@
+#!/bin/sh
+#
+# $NetBSD: ipfilter,v 1.10 2001/02/28 17:03:50 lukem Exp $
+# $FreeBSD: src/etc/rc.d/ipfilter,v 1.10 2003/04/30 02:54:17 mtm Exp $
+# $DragonFly: src/etc/rc.d/ipfilter,v 1.1 2003/07/24 06:35:37 dillon Exp $
+#
+
+# PROVIDE: ipfilter
+# REQUIRE: root beforenetlkm mountcritlocal tty ipmon
+# BEFORE:  netif
+# KEYWORD: DragonFly FreeBSD NetBSD
+
+. /etc/rc.subr
+
+name="ipfilter"
+rcvar=`set_rcvar`
+load_rc_config $name
+
+case ${OSTYPE} in
+DragonFly)
+	stop_precmd="test -f ${ipfilter_rules} -o -f ${ipv6_ipfilter_rules}"
+        ;;
+
+FreeBSD)
+	stop_precmd="test -f ${ipfilter_rules} -o -f ${ipv6_ipfilter_rules}"
+	;;
+NetBSD)
+	stop_precmd="test -f /etc/ipf.conf -o -f /etc/ipf6.conf"
+	;;
+esac
+
+start_precmd="ipfilter_prestart"
+start_cmd="ipfilter_start"
+stop_cmd="ipfilter_stop"
+reload_precmd="$stop_precmd"
+reload_cmd="ipfilter_reload"
+resync_precmd="$stop_precmd"
+resync_cmd="ipfilter_resync"
+status_precmd="$stop_precmd"
+status_cmd="ipfilter_status"
+extra_commands="reload resync status"
+
+ipfilter_prestart()
+{
+case ${OSTYPE} in
+DragonFly)
+	 # load ipfilter kernel module if needed
+        if ! sysctl net.inet.ipf.fr_pass > /dev/null 2>&1; then
+                if kldload ipl; then
+                        info 'IP-filter module loaded.'
+                else
+                        err 1 'IP-filter module failed to load.'
+                fi
+        fi
+        # check for ipfilter rules
+        if [ ! -r "${ipfilter_rules}" ] && [ ! -r "${ipv6_ipfilter_rules}" ]
+        then
+                warn 'IP-filter: NO IPF RULES'
+                return 1
+        fi
+        ;;
+
+FreeBSD)
+	# load ipfilter kernel module if needed
+	if ! sysctl net.inet.ipf.fr_pass > /dev/null 2>&1; then
+		if kldload ipl; then
+			info 'IP-filter module loaded.'
+		else
+			err 1 'IP-filter module failed to load.'
+		fi
+	fi
+
+	# check for ipfilter rules
+	if [ ! -r "${ipfilter_rules}" ] && [ ! -r "${ipv6_ipfilter_rules}" ]
+	then
+		warn 'IP-filter: NO IPF RULES'
+		return 1
+	fi
+	;;
+NetBSD)
+	if [ ! -f /etc/ipf.conf ] && [ ! -f /etc/ipf6.conf ]; then
+		warn "/etc/ipf*.conf not readable; ipfilter start aborted."
+			#
+			# If booting directly to multiuser, send SIGTERM to
+			# the parent (/etc/rc) to abort the boot
+			#
+		if [ "$autoboot" = yes ]; then
+			echo "ERROR: ABORTING BOOT (sending SIGTERM to parent)!"
+			kill -TERM $$
+			exit 1
+		fi
+		return 1
+	fi
+	;;
+esac
+	return 0
+}
+
+ipfilter_start()
+{
+	echo "Enabling ipfilter."
+	case ${OSTYPE} in
+	DragonFly)
+		 ${ipfilter_program:-/sbin/ipf} -EFa
+                if [ -r "${ipfilter_rules}" ]; then
+                        ${ipfilter_program:-/sbin/ipf} \
+                            -f "${ipfilter_rules}" ${ipfilter_flags}
+                fi
+                ${ipfilter_program:-/sbin/ipf} -6 -EFa
+                if [ -r "${ipv6_ipfilter_rules}" ]; then
+                        ${ipfilter_program:-/sbin/ipf} -6 \
+                            -f "${ipv6_ipfilter_rules}" ${ipfilter_flags}
+                fi
+                ;;
+
+	FreeBSD)
+		${ipfilter_program:-/sbin/ipf} -EFa
+		if [ -r "${ipfilter_rules}" ]; then
+			${ipfilter_program:-/sbin/ipf} \
+			    -f "${ipfilter_rules}" ${ipfilter_flags}
+		fi
+		${ipfilter_program:-/sbin/ipf} -6 -EFa
+		if [ -r "${ipv6_ipfilter_rules}" ]; then
+			${ipfilter_program:-/sbin/ipf} -6 \
+			    -f "${ipv6_ipfilter_rules}" ${ipfilter_flags}
+		fi
+		;;
+	NetBSD)
+		/sbin/ipf -E -Fa
+		if [ -f /etc/ipf.conf ]; then
+			/sbin/ipf -f /etc/ipf.conf
+		fi
+		if [ -f /etc/ipf6.conf ]; then
+			/sbin/ipf -6 -f /etc/ipf6.conf
+		fi
+		;;
+	esac
+}
+
+ipfilter_stop()
+{
+	case ${OSTYPE} in
+	DragonFly)
+		echo "Saving firewall state tables"
+                ${ipfs_program:-/sbin/ipfs} -W ${ipfs_flags}
+                ;;
+	FreeBSD)
+		echo "Saving firewall state tables"
+		${ipfs_program:-/sbin/ipfs} -W ${ipfs_flags}
+		;;
+	NetBSD)
+		;;
+	esac
+	# XXX - The following command is not effective for 'lkm's
+	echo "Disabling ipfilter."
+	/sbin/ipf -D
+}
+
+ipfilter_reload()
+{
+	echo "Reloading ipfilter rules."
+
+	case ${OSTYPE} in
+	DragonFly)
+		 ${ipfilter_program:-/sbin/ipf} -I -Fa
+                if [ -r "${ipfilter_rules}" ]; then
+                        ${ipfilter_program:-/sbin/ipf} -I \
+                            -f "${ipfilter_rules}" ${ipfilter_flags}
+                fi
+                ${ipfilter_program:-/sbin/ipf} -I -6 -Fa
+                if [ -r "${ipv6_ipfilter_rules}" ]; then
+                        ${ipfilter_program:-/sbin/ipf} -I -6 \
+                            -f "${ipv6_ipfilter_rules}" ${ipfilter_flags}
+                fi
+                ${ipfilter_program:-/sbin/ipf} -s
+                ;;
+	FreeBSD)
+		${ipfilter_program:-/sbin/ipf} -I -Fa
+		if [ -r "${ipfilter_rules}" ]; then
+			${ipfilter_program:-/sbin/ipf} -I \
+			    -f "${ipfilter_rules}" ${ipfilter_flags}
+		fi
+		${ipfilter_program:-/sbin/ipf} -I -6 -Fa
+		if [ -r "${ipv6_ipfilter_rules}" ]; then
+			${ipfilter_program:-/sbin/ipf} -I -6 \
+			    -f "${ipv6_ipfilter_rules}" ${ipfilter_flags}
+		fi
+		${ipfilter_program:-/sbin/ipf} -s
+		;;
+	NetBSD)
+		/sbin/ipf -I -Fa
+		if [ -f /etc/ipf.conf ] && ! /sbin/ipf -I -f /etc/ipf.conf; then
+			err 1 "reload of ipf.conf failed; not swapping to" \
+			    " new ruleset."
+		fi
+		if [ -f /etc/ipf6.conf ] && \
+		    ! /sbin/ipf -I -6 -f /etc/ipf6.conf; then
+			err 1 "reload of ipf6.conf failed; not swapping to" \
+			    " new ruleset."
+		fi
+		/sbin/ipf -s
+		;;
+	esac
+
+}
+
+ipfilter_resync()
+{
+	case ${OSTYPE} in
+	DragonFly)
+		# Don't resync if ipfilter is not loaded
+                [ sysctl net.inet.ipf.fr_pass > /dev/null 2>&1 ] && return
+                ;;
+	FreeBSD)
+		# Don't resync if ipfilter is not loaded
+		[ sysctl net.inet.ipf.fr_pass > /dev/null 2>&1 ] && return
+		;;
+	esac
+	${ipfilter_program:-/sbin/ipf} -y ${ipfilter_flags}
+}
+
+ipfilter_status()
+{
+	${ipfilter_program:-/sbin/ipf} -V
+}
+
+run_rc_command "$1"

@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.3 2003/06/17 05:14:56 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.4 2003/07/24 06:35:32 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -13,20 +13,15 @@ BIN1=	amd.map apmd.conf auth.conf \
 	inetd.conf login.access login.conf \
 	motd modems networks newsyslog.conf \
 	pam.conf phones printcap profile protocols \
-	rc rc.atm rc.diskless1 rc.diskless2 rc.firewall rc.firewall6 \
-	rc.network rc.network6 rc.pccard rc.sendmail rc.serial rc.shutdown \
-	rc.syscons rc.sysctl remote rpc services \
+	rc rc.firewall rc.firewall6 \
+	rc.sendmail rc.shutdown \
+	remote rpc services \
 	shells sysctl.conf syslog.conf usbd.conf \
 	etc.${MACHINE_ARCH}/disktab \
-	etc.${MACHINE_ARCH}/rc.${MACHINE_ARCH} \
 	etc.${MACHINE_ARCH}/ttys \
 	${.CURDIR}/../gnu/usr.bin/man/manpath/manpath.config \
 	${.CURDIR}/../usr.bin/mail/misc/mail.rc \
 	${.CURDIR}/../usr.bin/locate/locate/locate.rc
-
-.if !defined(NO_I4B)
-BIN1+=	rc.isdn
-.endif
 
 .if exists(${.CURDIR}/../crypto) && !defined(NO_OPENSSL)
 .if !defined(NO_OPENSSH)
@@ -38,7 +33,7 @@ SSL=	${.CURDIR}/../crypto/openssl/apps/openssl.cnf
 .endif
 
 # -rwxr-xr-x root:wheel, for the new cron root:wheel
-BIN2=	netstart pccard_ether rc.suspend rc.resume
+BIN2=	pccard_ether rc.suspend rc.resume
 
 DEFAULTS= rc.conf make.conf pccard.conf periodic.conf
 
@@ -78,6 +73,7 @@ distribution:
 	cd ${.CURDIR}/defaults; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
 	    ${DEFAULTS} ${DESTDIR}/etc/defaults
 	cd ${.CURDIR}/periodic; ${MAKE} install
+	cd ${.CURDIR}/rc.d; ${MAKE} install 
 	cd ${.CURDIR}/../gnu/usr.bin/send-pr; ${MAKE} etc-gnats-freefall
 	cd ${.CURDIR}/../share/termcap; ${MAKE} etc-termcap
 	cd ${.CURDIR}/../usr.sbin/rmt; ${MAKE} etc-rmt

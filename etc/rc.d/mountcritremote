@@ -1,0 +1,135 @@
+#!/bin/sh
+#
+# $NetBSD: mountcritremote,v 1.7 2002/04/29 12:29:53 lukem Exp $
+# $FreeBSD: src/etc/rc.d/mountcritremote,v 1.6 2003/06/01 01:43:37 gordon Exp $
+# $DragonFly: src/etc/rc.d/mountcritremote,v 1.1 2003/07/24 06:35:37 dillon Exp $
+#
+
+# PROVIDE: mountcritremote
+# REQUIRE: NETWORKING root mountcritlocal
+# KEYWORD: DragonFly FreeBSD NetBSD
+
+. /etc/rc.subr
+
+name="mountcritremote"
+stop_cmd=":"
+
+case ${OSTYPE} in
+	DragonFly)
+	start_cmd="mountcritremote_start"
+        start_precmd="mountcritremote_precmd"
+        ;;
+	FreeBSD)
+	start_cmd="mountcritremote_start"
+	start_precmd="mountcritremote_precmd"
+	;;
+NetBSD)
+	start_cmd="mountcritremote_start"
+	;;
+esac
+
+# Mount NFS filesystems if present in /etc/fstab
+#
+# XXX When the vfsload() issues with nfsclient support and related sysctls
+# have been resolved, this block can be removed, and the condition that
+# skips nfs in the following block (for "other network filesystems") can
+# be removed.
+#
+mountcritremote_precmd()
+{
+	case "`mount -d -a -t nfs 2> /dev/null`" in
+	*mount_nfs*)
+		# Handle absent nfs client support
+		if ! sysctl vfs.nfs >/dev/null 2>&1; then
+			kldload nfsclient || warn 'nfs mount ' \
+			    'requested, but no nfs client in kernel' \
+			return 1
+		fi
+		;;
+	esac
+	return 0
+}
+
+mountcritremote_start()
+{
+	case ${OSTYPE} in
+	DragonFly)
+		# Mount nfs filesystems.
+                #
+                echo -n 'Mounting NFS file systems:'
+                mount -a -t nfs
+                echo '.'
+                # Mount other network filesystems if present in /etc/fstab.
+                case ${extra_netfs_types} in
+                [Nn][Oo])
+                        ;;
+                *)
+                        netfs_types="${netfs_types} ${extra_netfs_types}"
+                        ;;
+                esac
+                for i in ${netfs_types}; do
+                        fstype=${i%:*}
+                        fsdecr=${i#*:}
+                        [ "${fstype}" = "nfs" ] && continue
+                        case "`mount -d -a -t ${fstype}`" in
+                        *mount_${fstype}*)
+                                echo -n "Mounting ${fsdecr} file systems:"
+                                mount -a -t ${fstype}
+                                echo '.'
+                                ;;
+                        esac
+                done
+
+		# Cleanup /var again just in case it's a network mount.
+                /etc/rc.d/cleanvar reload
+                rm -f /var/run/clean_var /var/spool/lock/clean_var
+                ;;
+
+               
+	FreeBSD)
+		# Mount nfs filesystems.
+		#
+		echo -n 'Mounting NFS file systems:'
+		mount -a -t nfs
+		echo '.'
+
+		# Mount other network filesystems if present in /etc/fstab.
+		case ${extra_netfs_types} in
+		[Nn][Oo])
+			;;
+		*)
+			netfs_types="${netfs_types} ${extra_netfs_types}"
+			;;
+		esac
+
+		for i in ${netfs_types}; do
+			fstype=${i%:*}
+			fsdecr=${i#*:}
+
+			[ "${fstype}" = "nfs" ] && continue
+
+			case "`mount -d -a -t ${fstype}`" in
+			*mount_${fstype}*)
+				echo -n "Mounting ${fsdecr} file systems:"
+				mount -a -t ${fstype}
+				echo '.'
+				;;
+			esac
+		done
+
+		# Cleanup /var again just in case it's a network mount.
+		/etc/rc.d/cleanvar reload
+		rm -f /var/run/clean_var /var/spool/lock/clean_var
+		;;
+	NetBSD)
+		#	Mount critical filesystems that may be `remote'.
+		#	(as specified in $critical_filesystems_remote)
+		#	This usually includes /usr.
+		#
+		mount_critical_filesystems remote
+		;;
+	esac
+}
+
+load_rc_config $name
+run_rc_command "$1"

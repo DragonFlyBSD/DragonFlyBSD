@@ -1,0 +1,20 @@
+#!/bin/sh
+#
+# $NetBSD: screenblank,v 1.5 2002/03/22 04:34:00 thorpej Exp $
+# $FreeBSD: src/etc/rc.d/screenblank,v 1.2 2002/06/13 22:14:36 gordon Exp $
+# $DragonFly: src/etc/rc.d/Attic/screenblank,v 1.1 2003/07/24 06:35:37 dillon Exp $
+#
+
+# PROVIDE: screenblank
+# REQUIRE: DAEMON
+# BEFORE:  LOGIN
+
+. /etc/rc.subr
+
+name="screenblank"
+rcvar=$name
+command="/usr/sbin/${name}"
+pidfile="/var/run/${name}.pid"
+
+load_rc_config $name
+run_rc_command "$1"

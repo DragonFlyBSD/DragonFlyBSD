@@ -1,7 +1,7 @@
 #!/bin/sh -
 #
 # $FreeBSD: src/etc/pccard_ether,v 1.15.2.10 2001/09/14 17:28:11 imp Exp $
-# $DragonFly: src/etc/pccard_ether,v 1.2 2003/06/17 04:24:45 dillon Exp $
+# $DragonFly: src/etc/pccard_ether,v 1.3 2003/07/24 06:35:32 dillon Exp $
 #
 # pccard_ether interfacename [start|stop] [ifconfig option]
 #
@@ -22,14 +22,23 @@ stop_dhcp() {
 
 start_dhcp() {
 	stop_dhcp
-	if [ -x "${dhcp_program}" ]; then
-		if [ `basename ${dhcp_program}` = "dhclient" ]; then
+	case ${pccard_ether_delay} in
+	[Nn][Oo])
+		;;
+	[0-9])
+		sleep ${pccard_ether_delay}
+		;;
+	esac
+	[ -n "$dhcp_program" ] && dhclient_program="$dhcp_program"
+	[ -n "$dhcp_flags" ] && dhclient_flags="$dhcp_flags"
+	if [ -x "${dhclient_program}" ]; then
+		if [ `basename ${dhclient_program}` = "dhclient" ]; then
 			pidfile="/var/run/dhclient.${interface}.pid"
-			dhcp_flags="${dhcp_flags} -pf ${pidfile}"
+			dhclient_flags="${dhcp_flags} -pf ${pidfile}"
 		fi
-		${dhcp_program} ${dhcp_flags} ${interface}
+		${dhclient_program} ${dhcp_flags} ${interface}
 	else
-		echo "${dhcp_program}: DHCP client software not available"
+		echo "${dhclient_program}: DHCP client software not available"
 	fi
 }
 
@@ -47,19 +56,9 @@ shift
 startstop=$1
 shift
 
-case ${pccard_ether_delay} in
-[Nn][Oo])
-	;;
-[0-9])
-	sleep ${pccard_ether_delay}
-	;;
-*)	# Default until it has had a chance to make it to /etc/defaults/rc.conf
-	sleep 5
-	;;
-esac
-
 case ${pccard_ifconfig} in
 [Nn][Oo] | '')
+	expr "${removable_interfaces}" : ".*${interface}" > /dev/null || exit 0
 	;;
 *)
 	# Backward compatible
@@ -69,6 +68,11 @@ esac
 
 case ${startstop} in
 [Ss][Tt][Aa][Rr][Tt] | '')
+	if ifconfig ${interface} | grep -s UP, > /dev/null 2>&1; then
+		# Interface is already up, so ignore it.
+		exit 0
+	fi
+
 	if [ -r /etc/start_if.${interface} ]; then
 		. /etc/start_if.${interface}
 	fi
@@ -133,8 +137,8 @@ case ${startstop} in
 	# IPv6 setup
 	case ${ipv6_enable} in
 	[Yy][Ee][Ss])
-		if [ -r /etc/rc.network6 ]; then
-			. /etc/rc.network6
+		if [ -r /etc/network.subr ]; then
+			. /etc/network.subr
 			network6_interface_setup ${interface}
 		fi
 		;;
@@ -155,7 +159,7 @@ case ${startstop} in
 		stop_dhcp
 		;;
 	*)
-		# Delelte static route if specified
+		# Delete static route if specified
 		eval ifx_routes=\$static_routes_${interface}
 		if [ -n "${ifx_routes}" ]; then
 			for i in ${ifx_routes}; do
@@ -179,8 +183,18 @@ case ${startstop} in
 		;;
 	esac
 
-	# Remove the network interface and clean the ARP table
+	# Remove the network interface and cleaning the ARP table
 	ifconfig ${interface} delete
 	arp -d -a
+	
+	# Clean the routing table
+	case ${removable_route_flush} in
+	[Nn][Oo])
+		;;
+	*)      
+		# flush beforehand, just in case....
+		route -n flush -inet
+		;;
+	esac
 	;;
 esac

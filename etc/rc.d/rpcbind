@@ -1,0 +1,25 @@
+#!/bin/sh
+#
+# $NetBSD: rpcbind,v 1.6 2002/01/31 01:26:06 lukem Exp $
+# $FreeBSD: src/etc/rc.d/rpcbind,v 1.6 2002/09/06 16:18:05 gordon Exp $
+# $DragonFly: src/etc/rc.d/rpcbind,v 1.1 2003/07/24 06:35:37 dillon Exp $
+#
+
+# PROVIDE: rpcbind
+# REQUIRE: NETWORKING ntpdate syslogd named ppp
+# KEYWORD: DragonFly FreeBSD NetBSD
+
+. /etc/rc.subr
+
+name="rpcbind"
+rcvar=`set_rcvar`
+command="/usr/sbin/${name}"
+
+case ${OSTYPE} in
+NetBSD)
+	pidfile="/var/run/${name}.pid"
+	;;
+esac
+
+load_rc_config $name
+run_rc_command "$1"

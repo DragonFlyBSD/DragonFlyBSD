@@ -1,0 +1,101 @@
+#!/bin/sh
+#
+# $NetBSD: amd,v 1.10 2002/04/29 12:08:17 lukem Exp $
+# $FreeBSD: src/etc/rc.d/amd,v 1.9 2002/10/12 10:31:31 schweikh Exp $
+# $DragonFly: src/etc/rc.d/amd,v 1.1 2003/07/24 06:35:37 dillon Exp $
+#
+
+# PROVIDE: amd
+# REQUIRE: rpcbind mountall ypbind nfsclient
+# BEFORE: DAEMON
+# KEYWORD: DragonFly FreeBSD NetBSD 
+
+. /etc/rc.subr
+
+name="amd"
+rcvar=`set_rcvar`
+command="/usr/sbin/${name}"
+
+case ${OSTYPE} in
+DragonFly)
+	start_precmd="amd_precmd"
+        command_args="&"
+        ;;
+FreeBSD)
+	start_precmd="amd_precmd"
+	command_args="&"
+	;;
+NetBSD)
+	command_args='-p -a '$amd_dir' -F /etc/amd.conf >/var/run/amd.pid'
+	required_dirs="$amd_dir"
+	required_files="/etc/amd.conf"
+	required_vars="rpcbind"
+	;;
+esac
+
+amd_precmd()
+{
+	case ${OSTYPE} in
+	DragonFly)
+		if ! checkyesno nfs_client_enable; then
+                        force_depend nfsclient || return 1
+                fi
+
+                if ! checkyesno rpcbind_enable  && \
+                    ! /etc/rc.d/rpcbind forcestatus 1>/dev/null 2>&1
+                then
+                        force_depend rpcbind || return 1
+                fi
+
+                case ${amd_map_program} in
+                [Nn][Oo] | '')
+                        ;;
+                *)
+                        rc_flags="${rc_flags} `eval ${amd_map_program}`"
+                        ;;
+                esac
+
+                case "${amd_flags}" in
+                '')
+                        if [ ! -r /etc/amd.conf ]; then
+                                warn 'amd will not load without arguments'
+                                return 1
+                        fi
+                        ;;
+                esac
+                ;;
+
+	FreeBSD)
+		if ! checkyesno nfs_client_enable; then
+			force_depend nfsclient || return 1
+		fi
+
+		if ! checkyesno rpcbind_enable  && \
+		    ! /etc/rc.d/rpcbind forcestatus 1>/dev/null 2>&1
+		then
+			force_depend rpcbind || return 1
+		fi
+
+		case ${amd_map_program} in
+		[Nn][Oo] | '')
+			;;
+		*)
+			rc_flags="${rc_flags} `eval ${amd_map_program}`"
+			;;
+		esac
+
+		case "${amd_flags}" in
+		'')
+			if [ ! -r /etc/amd.conf ]; then
+				warn 'amd will not load without arguments'
+				return 1
+			fi
+			;;
+		esac
+		;;
+	esac
+	return 0
+}
+
+load_rc_config $name
+run_rc_command "$1"

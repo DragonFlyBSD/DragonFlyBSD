@@ -1,0 +1,20 @@
+#!/bin/sh
+#
+# $NetBSD: rwho,v 1.5 2002/03/22 04:34:00 thorpej Exp $
+# $FreeBSD: src/etc/rc.d/rwho,v 1.2 2002/06/13 22:14:36 gordon Exp $
+# $DragonFly: src/etc/rc.d/rwho,v 1.1 2003/07/24 06:35:37 dillon Exp $
+#
+
+# PROVIDE: rwho
+# REQUIRE: DAEMON
+# BEFORE:  LOGIN
+# KEYWORD: DragonFly FreeBSD NetBSD
+
+. /etc/rc.subr
+
+name="rwhod"
+rcvar="`set_rcvar`"
+command="/usr/sbin/${name}"
+
+load_rc_config $name
+run_rc_command "$1"

@@ -1,0 +1,49 @@
+#!/bin/sh
+#
+# $NetBSD: moused,v 1.1 2001/10/29 23:25:01 augustss Exp $
+# $FreeBSD: src/etc/rc.d/moused,v 1.3 2002/09/27 16:54:21 gordon Exp $
+# $DragonFly: src/etc/rc.d/moused,v 1.1 2003/07/24 06:35:37 dillon Exp $
+#
+
+# PROVIDE: moused
+# REQUIRE: DAEMON
+# KEYWORD: DragonFly FreeBSD NetBSD
+
+. /etc/rc.subr
+
+name=moused
+rcvar=`set_rcvar`
+command="/usr/sbin/${name}"
+
+case ${OSTYPE} in
+DragonFly)
+	start_cmd="moused_start"
+	;;
+FreeBSD)
+	start_cmd="moused_start"
+	;;
+esac
+
+moused_start()
+{
+	echo -n 'Starting moused:'
+	/usr/sbin/moused ${moused_flags} -p ${moused_port} -t ${moused_type}
+
+	_mousechar_arg=
+	case ${mousechar_start} in
+	[Nn][Oo] | '')
+		;;
+	*)
+		echo -n ' mousechar_start'
+		_mousechar_arg="-M ${mousechar_start}"
+		;;
+	esac
+
+	for ttyv in /dev/ttyv* ; do
+		vidcontrol < ${ttyv} ${_mousechar_arg} -m on
+	done
+	echo '.'
+}
+
+load_rc_config $name
+run_rc_command "$1"

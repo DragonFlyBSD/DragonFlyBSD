@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+# $NetBSD: dhcpd,v 1.5 2002/03/22 04:33:58 thorpej Exp $
+# $FreeBSD: src/etc/rc.d/dhcpd,v 1.2 2002/06/13 22:14:36 gordon Exp $
+# $DragonFly: src/etc/rc.d/Attic/dhcpd,v 1.1 2003/07/24 06:35:37 dillon Exp $
+#
+
+# PROVIDE: dhcpd
+# REQUIRE: DAEMON
+# BEFORE:  LOGIN
+
+. /etc/rc.subr
+
+name="dhcpd"
+rcvar=$name
+command="/usr/sbin/${name}"
+pidfile="/var/run/${name}.pid"
+required_files="/etc/${name}.conf /var/db/${name}.leases"
+
+load_rc_config $name
+run_rc_command "$1"

@@ -1,0 +1,41 @@
+#!/bin/sh
+#
+# $NetBSD: route6d,v 1.5 2002/03/22 04:34:00 thorpej Exp $
+# $FreeBSD: src/etc/rc.d/route6d,v 1.5 2003/01/25 23:14:08 mtm Exp $
+# $DragonFly: src/etc/rc.d/route6d,v 1.1 2003/07/24 06:35:37 dillon Exp $
+#
+
+# PROVIDE: route6d
+# REQUIRE: network_ipv6
+# KEYWORD: DragonFly FreeBSD NetBSD
+
+. /etc/rc.subr
+
+name="route6d"
+
+# XXX - Executable may be in a different location. The $name variable
+#       is different from the variable in rc.conf(5) so the
+#       subroutines in rc.subr won't catch it. In this case, it
+#	is also needed by the eval statement in the FreeBSD conditional.
+#
+load_rc_config $name
+
+case ${OSTYPE} in
+DragonFly)
+	rcvar="ipv6_router_enable"
+        command="${ipv6_router:-/usr/sbin/${name}}"
+        eval ${name}_flags=\"${ipv6_router_flags}\"
+        ;;
+
+FreeBSD)
+	rcvar="ipv6_router_enable"
+	command="${ipv6_router:-/usr/sbin/${name}}"
+	eval ${name}_flags=\"${ipv6_router_flags}\"
+	;;
+NetBSD)
+	rcvar=$name
+	command="/usr/sbin/${name}"
+	;;
+esac
+
+run_rc_command "$1"

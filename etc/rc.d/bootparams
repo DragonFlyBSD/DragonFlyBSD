@@ -1,0 +1,32 @@
+#!/bin/sh
+#
+# $NetBSD: bootparams,v 1.6 2002/03/22 04:33:58 thorpej Exp $
+# $FreeBSD: src/etc/rc.d/bootparams,v 1.4 2002/09/06 16:18:05 gordon Exp $
+# $DragonFly: src/etc/rc.d/bootparams,v 1.1 2003/07/24 06:35:37 dillon Exp $
+#
+
+# PROVIDE: bootparams
+# REQUIRE: rpcbind DAEMON
+# BEFORE:  LOGIN
+# KEYWORD: DragonFly FreeBSD
+
+. /etc/rc.subr
+
+name="bootparamd"
+rcvar=`set_rcvar`
+required_files="/etc/bootparams"
+
+case ${OSTYPE} in
+DragonFly)
+	command="/usr/sbin/${name}"
+	;;
+FreeBSD)
+	command="/usr/sbin/${name}"
+	;;
+NetBSD)
+	command="/usr/sbin/rpc.${name}"
+	;;
+esac
+
+load_rc_config $name
+run_rc_command "$1"

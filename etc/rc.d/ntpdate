@@ -1,0 +1,49 @@
+#!/bin/sh
+#
+# $NetBSD: ntpdate,v 1.8 2002/03/22 04:16:39 lukem Exp $
+# $FreeBSD: src/etc/rc.d/ntpdate,v 1.4 2002/10/12 10:31:31 schweikh Exp $
+# $DragonFly: src/etc/rc.d/Attic/ntpdate,v 1.1 2003/07/24 06:35:37 dillon Exp $
+#
+
+# PROVIDE: ntpdate
+# REQUIRE: NETWORKING syslogd
+# KEYWORD: DragonFly FreeBSD NetBSD
+
+. /etc/rc.subr
+
+name="ntpdate"
+rcvar=`set_rcvar`
+
+case ${OSTYPE} in
+DragonFly)
+	command="/usr/sbin/${name}"
+        command_args=">/dev/null 2>&1"
+        pidfile="/var/run/${name}.pid"
+        ;;
+FreeBSD)
+	command="/usr/sbin/${name}"
+	command_args=">/dev/null 2>&1"
+	pidfile="/var/run/${name}.pid"
+	;;
+NetBSD)
+	start_cmd="ntpdate_start"
+	stop_cmd=":"
+	;;
+esac
+
+ntpdate_start()
+{
+	if [ -z "$ntpdate_hosts" ]; then
+		ntpdate_hosts=`awk '
+			/^server[ \t]*127.127/      {next}
+			/^(server|peer)/            {print $2}
+		' </etc/ntp.conf`
+	fi
+	if [ -n "$ntpdate_hosts"  ]; then
+		echo "Setting date via ntp."
+		ntpdate $rc_flags $ntpdate_hosts
+	fi
+}
+
+load_rc_config $name
+run_rc_command "$1"
