@@ -1,4 +1,5 @@
 /* $FreeBSD: src/share/examples/ses/srcs/setencstat.c,v 1.1 2000/02/29 05:44:19 mjacob Exp $ */
+/* $DragonFly: src/share/examples/ses/srcs/setencstat.c,v 1.2 2003/06/17 04:36:58 dillon Exp $ */
 /*
  * Copyright (c) 2000 by Matthew Jacob
  * All rights reserved.

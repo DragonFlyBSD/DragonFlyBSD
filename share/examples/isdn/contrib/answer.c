@@ -1,4 +1,5 @@
 // $FreeBSD: src/share/examples/isdn/contrib/answer.c,v 1.1.2.1 2001/08/10 14:59:47 obrien Exp $
+// $DragonFly: src/share/examples/isdn/contrib/answer.c,v 1.2 2003/06/17 04:36:57 dillon Exp $
 // changed ".g711a" to ".al" (-hm)
 // Tue Mar  3 02:42:14 MET 1998 	dave@turbocat.de
 // started

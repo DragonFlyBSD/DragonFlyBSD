@@ -6,6 +6,7 @@
 # ----------------------------------------------------------------------------
 #
 # $FreeBSD: src/share/examples/BSD_daemon/README,v 1.2.2.1 2001/03/04 09:19:23 phk Exp $
+# $DragonFly: src/share/examples/BSD_daemon/Attic/README,v 1.2 2003/06/17 04:36:57 dillon Exp $
 #
 
 This directory contains various stuff relating to the FreeBSD daemon

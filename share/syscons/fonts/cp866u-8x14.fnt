@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/syscons/fonts/cp866u-8x14.fnt,v 1.1.2.1 2001/05/31 15:07:27 sobomax Exp $
+# $DragonFly: src/share/syscons/fonts/cp866u-8x14.fnt,v 1.2 2003/06/17 04:37:02 dillon Exp $
 begin 644 cp866u-8x14.fnt
 M`````````````````````'Z!I8&!I9F!?@``````?O_;___#Y_]^````````
 M;/[^_OY\.!`````````0.'S^?#@0````````&#P\Y^?G&!@\```````8/'[_

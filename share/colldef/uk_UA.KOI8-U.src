@@ -1,6 +1,7 @@
 # koi8-u (backward compatible with ASCII)
 #
 # $FreeBSD: src/share/colldef/uk_UA.KOI8-U.src,v 1.1.2.1 2000/05/04 18:09:13 phantom Exp $
+# $DragonFly: src/share/colldef/uk_UA.KOI8-U.src,v 1.2 2003/06/17 04:36:56 dillon Exp $
 #
 charmap map.KOI8-U
 order \

@@ -1,4 +1,5 @@
 .\" $FreeBSD: src/share/doc/smm/01.setup/stubs,v 1.1.2.1 2000/11/27 18:02:02 ru Exp $
+.\" $DragonFly: src/share/doc/smm/01.setup/stubs,v 1.2 2003/06/17 04:36:57 dillon Exp $
 .\"
 .if n \{\
 .	ftr CW R

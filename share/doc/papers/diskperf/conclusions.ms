@@ -31,6 +31,7 @@
 .\"
 .\"	@(#)conclusions.ms	6.2 (Berkeley) 4/16/91
 .\" $FreeBSD: src/share/doc/papers/diskperf/conclusions.ms,v 1.6 1999/08/28 00:18:04 peter Exp $
+.\" $DragonFly: src/share/doc/papers/diskperf/conclusions.ms,v 1.2 2003/06/17 04:36:56 dillon Exp $
 .\"
 .ds RH Conclusions
 .NH

@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/share/examples/worm/makecdfs.sh,v 1.4.6.1 2000/05/25 20:16:09 dirk Exp $
+# $DragonFly: src/share/examples/worm/Attic/makecdfs.sh,v 1.2 2003/06/17 04:36:58 dillon Exp $
 #
 # usage: makecdfs "cd title" input-tree output-file "copyright string"
 #

@@ -1,6 +1,7 @@
 #! /bin/sh
 
 # $FreeBSD: src/share/zoneinfo/yearistype.sh,v 1.1.2.3.8.1 2000/10/25 19:44:09 wollman Exp $
+# $DragonFly: src/share/zoneinfo/yearistype.sh,v 1.2 2003/06/17 04:37:04 dillon Exp $
 
 : '@(#)yearistype.sh	7.7'
 

@@ -1,5 +1,6 @@
 \ Screen manipulation related words.
 \ $FreeBSD: src/share/examples/bootforth/screen.4th,v 1.2 1999/08/28 00:19:10 peter Exp $
+\ $DragonFly: src/share/examples/bootforth/screen.4th,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
 marker task-screen.4th
 

@@ -31,6 +31,7 @@
 .\"
 .\"	@(#)beyond43.ms	5.1 (Berkeley) 6/5/90
 .\" $FreeBSD: src/share/doc/papers/beyond4.3/beyond43.ms,v 1.2.6.1 2000/11/28 11:35:48 ru Exp $
+.\" $DragonFly: src/share/doc/papers/beyond4.3/beyond43.ms,v 1.2 2003/06/17 04:36:56 dillon Exp $
 .\"
 .\" *troff -ms
 .rm CM

@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/syscons/keymaps/Makefile,v 1.44.2.11 2003/05/18 08:57:28 murray Exp $
+# $DragonFly: src/share/syscons/keymaps/Makefile,v 1.2 2003/06/17 04:37:02 dillon Exp $
 
 KEYMAPS=  INDEX.keymaps
 KEYMAPS+= be.iso.kbd be.iso.acc.kbd

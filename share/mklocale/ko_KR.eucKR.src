@@ -9,6 +9,7 @@
  * It is based on manpage mklocale(1), euc(4), ja_JP.EUC.src.
  *
  * $FreeBSD: src/share/mklocale/ko_KR.eucKR.src,v 1.4.2.3 2002/02/26 16:58:42 phantom Exp $
+ * $DragonFly: src/share/mklocale/Attic/ko_KR.eucKR.src,v 1.2 2003/06/17 04:37:02 dillon Exp $
  */
 
 ENCODING     "EUC"

@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/share/man/man8/Makefile,v 1.13.2.12 2002/07/16 14:05:30 ru Exp $
+# $DragonFly: src/share/man/man8/Makefile,v 1.2 2003/06/17 04:37:00 dillon Exp $
 
 .PATH: ${.CURDIR}/../../../release/sysinstall
 

@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/skel/dot.cshrc,v 1.10.2.3 2001/08/01 17:15:46 obrien Exp $
+# $DragonFly: src/share/skel/dot.cshrc,v 1.2 2003/06/17 04:37:02 dillon Exp $
 #
 # .cshrc - csh resource script, read at beginning of execution by each shell
 #

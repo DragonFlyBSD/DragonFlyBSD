@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/share/examples/perfmon/perfmon.c,v 1.5 1999/08/28 00:19:26 peter Exp $
+ * $DragonFly: src/share/examples/perfmon/perfmon.c,v 1.2 2003/06/17 04:36:57 dillon Exp $
  */
 
 #include <sys/types.h>

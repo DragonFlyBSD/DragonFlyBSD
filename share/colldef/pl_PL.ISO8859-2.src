@@ -2,6 +2,7 @@
 # with much help from Adam Liberacki and Jan Srzednicki
 #
 # $FreeBSD: src/share/colldef/pl_PL.ISO8859-2.src,v 1.1.2.1 2002/08/17 19:14:44 ache Exp $
+# $DragonFly: src/share/colldef/pl_PL.ISO8859-2.src,v 1.2 2003/06/17 04:36:56 dillon Exp $
 #
 charmap map.ISO8859-2
 order \

@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/examples/nwclient/dot.nwfsrc,v 1.1.2.1 2002/04/30 08:23:56 bp Exp $
+# $DragonFly: src/share/examples/nwclient/dot.nwfsrc,v 1.2 2003/06/17 04:36:57 dillon Exp $
 #
 # Example for .nwfsrc file
 #

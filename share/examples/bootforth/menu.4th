@@ -2,6 +2,7 @@
 \ XXX This is far too trivial - I don't have time now to think
 \ XXX about something more fancy... :-/
 \ $FreeBSD: src/share/examples/bootforth/menu.4th,v 1.4 1999/08/28 00:19:10 peter Exp $
+\ $DragonFly: src/share/examples/bootforth/menu.4th,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
 : title
 	f_single

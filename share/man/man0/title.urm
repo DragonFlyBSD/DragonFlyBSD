@@ -31,6 +31,7 @@
 .\"
 .\"	@(#)title.urm	8.7 (Berkeley) 4/20/94
 .\" $FreeBSD: src/share/man/man0/title.urm,v 1.7 1999/08/28 00:19:38 peter Exp $
+.\" $DragonFly: src/share/man/man0/Attic/title.urm,v 1.2 2003/06/17 04:36:58 dillon Exp $
 .\"
 .af % i
 .EH ''''

@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/man/man4/man4.i386/Makefile,v 1.122.2.12 2003/04/15 17:23:32 fjoe Exp $
+# $DragonFly: src/share/man/man4/man4.i386/Makefile,v 1.2 2003/06/17 04:36:59 dillon Exp $
 
 MAN=	aic.4 alpm.4 amdpm.4 apm.4 ar.4 asc.4 asr.4 \
 	cs.4 cx.4 cy.4 \

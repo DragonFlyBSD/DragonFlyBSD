@@ -6,6 +6,7 @@
 # Date:	Fr  22 Mai 1998 14:18:40 CEST
 #
 # $FreeBSD: src/share/examples/isdn/contrib/convert.sh,v 1.1.2.1 2001/08/10 14:59:47 obrien Exp $
+# $DragonFly: src/share/examples/isdn/contrib/convert.sh,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
 CAT=/bin/cat
 RM=/bin/rm

@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/misc/iso3166,v 1.6.2.2 2002/08/18 09:06:33 blackend Exp $
+# $DragonFly: src/share/misc/Attic/iso3166,v 1.2 2003/06/17 04:37:01 dillon Exp $
 #
 # ISO 3166 country codes
 # This includes many places that are not legally independent countries,

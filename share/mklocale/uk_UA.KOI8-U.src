@@ -2,6 +2,7 @@
  * LOCALE_CTYPE for Ukrainian koi8-u character set (RFC2319)
  *
  * $FreeBSD: src/share/mklocale/uk_UA.KOI8-U.src,v 1.1.2.2 2002/03/12 17:42:33 phantom Exp $
+ * $DragonFly: src/share/mklocale/Attic/uk_UA.KOI8-U.src,v 1.2 2003/06/17 04:37:02 dillon Exp $
  */
 ENCODING	"NONE"
 VARIABLE        Ukrainian koi8-u character set

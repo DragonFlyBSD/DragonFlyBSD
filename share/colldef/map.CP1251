@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/colldef/map.CP1251,v 1.1.2.1 2001/12/10 09:05:07 roam Exp $
+# $DragonFly: src/share/colldef/map.CP1251,v 1.2 2003/06/17 04:36:56 dillon Exp $
 NU \x00
 SH \x01
 SX \x02

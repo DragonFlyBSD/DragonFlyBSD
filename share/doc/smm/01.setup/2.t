@@ -31,6 +31,7 @@
 .\"
 .\"	@(#)2.t	8.1 (Berkeley) 7/27/93
 .\" $FreeBSD: src/share/doc/smm/01.setup/2.t,v 1.7 1999/08/28 00:18:35 peter Exp $
+.\" $DragonFly: src/share/doc/smm/01.setup/2.t,v 1.2 2003/06/17 04:36:57 dillon Exp $
 .\"
 .ds lq ``
 .ds rq ''

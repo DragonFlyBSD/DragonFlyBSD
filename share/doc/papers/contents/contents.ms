@@ -22,6 +22,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/doc/papers/contents/contents.ms,v 1.4 1999/08/28 00:18:03 peter Exp $
+.\" $DragonFly: src/share/doc/papers/contents/contents.ms,v 1.2 2003/06/17 04:36:56 dillon Exp $
 .\"
 .OH '''Papers Contents'
 .EH 'Papers Contents'''

@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.sys.mk,v 1.3.2.5 2002/07/03 16:59:14 des Exp $
+# $DragonFly: src/share/mk/bsd.sys.mk,v 1.2 2003/06/17 04:37:02 dillon Exp $
 #
 # This file contains common settings used for building FreeBSD
 # sources.

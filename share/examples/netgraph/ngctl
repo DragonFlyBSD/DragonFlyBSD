@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/examples/netgraph/ngctl,v 1.1 1999/11/30 02:45:08 archie Exp $
+# $DragonFly: src/share/examples/netgraph/ngctl,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
 #
 # This is an example that shows how to send ASCII formatted control

@@ -1,5 +1,6 @@
 #	From: @(#)Makefile	8.1 (Berkeley) 6/10/93
 # $FreeBSD: src/share/doc/smm/Makefile,v 1.14.2.3 2002/07/07 08:19:19 dougb Exp $
+# $DragonFly: src/share/doc/smm/Makefile,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
 # The following modules do not describe FreeBSD:
 # 14.uucpimpl, 15.uucpnet

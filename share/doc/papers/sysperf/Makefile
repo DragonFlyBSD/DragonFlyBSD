@@ -1,5 +1,6 @@
 #	From: @(#)Makefile	1.6 (Berkeley) 6/8/93
 # $FreeBSD: src/share/doc/papers/sysperf/Makefile,v 1.5.2.1 2000/11/28 11:18:48 ru Exp $
+# $DragonFly: src/share/doc/papers/sysperf/Makefile,v 1.2 2003/06/17 04:36:56 dillon Exp $
 
 VOLUME=	papers
 DOC=	sysperf

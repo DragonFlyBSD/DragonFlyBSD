@@ -7,6 +7,7 @@
 # ----------------------------------------------------------------------------
 #
 # $FreeBSD: src/share/examples/BSD_daemon/poster.sh,v 1.1.2.1 2001/03/04 09:19:24 phk Exp $
+# $DragonFly: src/share/examples/BSD_daemon/Attic/poster.sh,v 1.2 2003/06/17 04:36:57 dillon Exp $
 #
 
 echo '%!'

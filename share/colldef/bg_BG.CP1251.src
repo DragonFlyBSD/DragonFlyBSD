@@ -1,6 +1,7 @@
 # CP1251 (backward compatible with ASCII)
 #
 # $FreeBSD: src/share/colldef/bg_BG.CP1251.src,v 1.1.2.1 2001/12/10 09:05:07 roam Exp $
+# $DragonFly: src/share/colldef/bg_BG.CP1251.src,v 1.2 2003/06/17 04:36:56 dillon Exp $
 #
 charmap map.CP1251
 order \

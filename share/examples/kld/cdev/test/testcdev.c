@@ -69,6 +69,7 @@
  *
  *
  * $FreeBSD: src/share/examples/kld/cdev/test/testcdev.c,v 1.2.2.2 2000/12/11 01:03:26 obrien Exp $
+ * $DragonFly: src/share/examples/kld/cdev/test/testcdev.c,v 1.2 2003/06/17 04:36:57 dillon Exp $
  */
 
 #include <stdio.h>

@@ -1,5 +1,6 @@
 #	From: @(#)Makefile	1.8 (Berkeley) 6/8/93
 # $FreeBSD: src/share/doc/papers/memfs/Makefile,v 1.9.2.1 2001/04/26 17:13:04 ru Exp $
+# $DragonFly: src/share/doc/papers/memfs/Makefile,v 1.2 2003/06/17 04:36:56 dillon Exp $
 
 VOLUME=	papers
 DOC=	memfs

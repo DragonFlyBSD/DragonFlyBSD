@@ -7,6 +7,7 @@
 #	last edit-date: [Fri May 25 15:21:05 2001]
 #
 # $FreeBSD: src/share/examples/isdn/contrib/answer.sh,v 1.1.2.1 2001/08/10 14:59:47 obrien Exp $
+# $DragonFly: src/share/examples/isdn/contrib/answer.sh,v 1.2 2003/06/17 04:36:57 dillon Exp $
 #
 #---------------------------------------------------------------------------
 VARDIR=/var/isdn

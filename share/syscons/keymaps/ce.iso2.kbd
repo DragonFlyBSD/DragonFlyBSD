@@ -4,6 +4,7 @@
 # Version 1.0 - 1999-03-18
 #
 # $FreeBSD: src/share/syscons/keymaps/ce.iso2.kbd,v 1.1.4.1 2000/07/18 00:47:52 ache Exp $
+# $DragonFly: src/share/syscons/keymaps/ce.iso2.kbd,v 1.2 2003/06/17 04:37:03 dillon Exp $
 #
 # This map uses the US QWERTY keyboard for its basic layout.
 # It adds a "third row" to the top of the PC keyboard. To

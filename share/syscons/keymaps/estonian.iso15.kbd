@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/syscons/keymaps/estonian.iso15.kbd,v 1.1 1999/11/28 07:38:19 yokota Exp $
+# $DragonFly: src/share/syscons/keymaps/estonian.iso15.kbd,v 1.2 2003/06/17 04:37:03 dillon Exp $
 #                                                         alt
 # scan                       cntrl          alt    alt   cntrl lock
 # code  base   shift  cntrl  shift  alt    shift  cntrl  shift state

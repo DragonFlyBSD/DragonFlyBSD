@@ -31,6 +31,7 @@
 .\"
 .\"	@(#)1.2.t	8.1 (Berkeley) 6/8/93
 .\" $FreeBSD: src/share/doc/psd/05.sysman/1.2.t,v 1.5 1999/08/28 00:18:18 peter Exp $
+.\" $DragonFly: src/share/doc/psd/05.sysman/1.2.t,v 1.2 2003/06/17 04:36:56 dillon Exp $
 .\"
 .sh "Memory management\(dg
 .NH 3

@@ -31,6 +31,7 @@
 .\"
 .\"	@(#)a.t	5.1 (Berkeley) 4/16/91
 .\" $FreeBSD: src/share/doc/papers/newvm/a.t,v 1.6 1999/08/28 00:18:14 peter Exp $
+.\" $DragonFly: src/share/doc/papers/newvm/a.t,v 1.2 2003/06/17 04:36:56 dillon Exp $
 .\"
 .sp 2
 .ne 2i

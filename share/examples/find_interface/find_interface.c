@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/share/examples/find_interface/find_interface.c,v 1.5 1999/08/28 00:19:18 peter Exp $
+ * $DragonFly: src/share/examples/find_interface/find_interface.c,v 1.2 2003/06/17 04:36:57 dillon Exp $
  */
 
 /*

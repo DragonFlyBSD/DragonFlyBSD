@@ -1,4 +1,5 @@
 $FreeBSD: src/share/dict/freebsd,v 1.2.2.3 2003/05/04 06:21:17 murray Exp $
+$DragonFly: src/share/dict/freebsd,v 1.2 2003/06/17 04:36:56 dillon Exp $
 ABI
 ACPI
 AMD

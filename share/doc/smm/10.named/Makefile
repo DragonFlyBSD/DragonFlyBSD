@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/doc/smm/10.named/Makefile,v 1.4.2.1 2000/12/01 13:52:21 ru Exp $
+# $DragonFly: src/share/doc/smm/10.named/Attic/Makefile,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
 SRCDIR=	${.CURDIR}/../../../../contrib/bind/doc/bog
 

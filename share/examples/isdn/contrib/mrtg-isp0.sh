@@ -9,6 +9,7 @@
 #	last edit-date: [Fri May 25 15:22:45 2001]
 #
 # $FreeBSD: src/share/examples/isdn/contrib/mrtg-isp0.sh,v 1.1.2.1 2001/08/10 14:59:48 obrien Exp $
+# $DragonFly: src/share/examples/isdn/contrib/mrtg-isp0.sh,v 1.2 2003/06/17 04:36:57 dillon Exp $
 #
 #---------------------------------------------------------------------------
 #

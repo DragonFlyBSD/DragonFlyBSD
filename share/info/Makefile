@@ -1,5 +1,6 @@
 #       @(#)Makefile    8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/share/info/Makefile,v 1.9.2.3 2002/08/07 16:31:50 ru Exp $
+# $DragonFly: src/share/info/Makefile,v 1.2 2003/06/17 04:36:58 dillon Exp $
 
 NOOBJ=  noobj
 

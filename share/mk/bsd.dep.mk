@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.dep.mk,v 1.27.2.3 2002/12/23 16:33:37 ru Exp $
+# $DragonFly: src/share/mk/bsd.dep.mk,v 1.2 2003/06/17 04:37:02 dillon Exp $
 #
 # The include file <bsd.dep.mk> handles Makefile dependencies.
 #

@@ -2,6 +2,7 @@
 # by Rudolf Cejka <cejkar@dcse.fee.vutbr.cz>
 #
 # $FreeBSD: src/share/colldef/cs_CZ.ISO8859-2.src,v 1.2.2.3 2002/04/08 09:42:32 ache Exp $
+# $DragonFly: src/share/colldef/cs_CZ.ISO8859-2.src,v 1.2 2003/06/17 04:36:56 dillon Exp $
 #
 charmap map.ISO8859-2
 substitute <ss> with "ss"

@@ -31,6 +31,7 @@
 .\"
 .\"	@(#)00.contents	8.1 (Berkeley) 7/5/93
 .\" $FreeBSD: src/share/doc/smm/contents/contents.ms,v 1.1.10.1 2000/08/27 17:31:41 gshapiro Exp $
+.\" $DragonFly: src/share/doc/smm/contents/contents.ms,v 1.2 2003/06/17 04:36:57 dillon Exp $
 .\"
 .OH '''SMM Contents'
 .EH 'SMM Contents'''

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/share/syscons/scrnmaps/mkscrfil.c,v 1.1.14.1 2001/09/17 15:37:00 ru Exp $
+ * $DragonFly: src/share/syscons/scrnmaps/mkscrfil.c,v 1.2 2003/06/17 04:37:03 dillon Exp $
  */
 
 #include <sys/ioctl.h>

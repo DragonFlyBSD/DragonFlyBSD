@@ -217,4 +217,5 @@ o For the AA-DATA request signal, only PR=NO is supported (Q.SAAL1 only)
 
 
 	@(#) $FreeBSD: src/share/examples/atm/sscop-design.txt,v 1.2 1999/08/28 00:19:08 peter Exp $
+	@(#) $DragonFly: src/share/examples/atm/sscop-design.txt,v 1.2 2003/06/17 04:36:57 dillon Exp $
 

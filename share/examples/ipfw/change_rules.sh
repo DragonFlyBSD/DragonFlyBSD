@@ -25,6 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/share/examples/ipfw/change_rules.sh,v 1.2.2.4 2003/02/16 10:02:42 brueffer Exp $
+# $DragonFly: src/share/examples/ipfw/change_rules.sh,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
 # Change ipfw(8) rules with safety guarantees for remote operation
 #

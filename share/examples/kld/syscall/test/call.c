@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/share/examples/kld/syscall/test/call.c,v 1.3 1999/08/28 00:19:24 peter Exp $
+ * $DragonFly: src/share/examples/kld/syscall/test/call.c,v 1.2 2003/06/17 04:36:57 dillon Exp $
  */
 
 #include <stdio.h>

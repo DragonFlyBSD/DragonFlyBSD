@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/numericdef/Makefile,v 1.36.2.3 2002/08/17 19:34:11 ache Exp $
+# $DragonFly: src/share/numericdef/Makefile,v 1.2 2003/06/17 04:37:02 dillon Exp $
 
 NOMAN=YES
 CLEANFILES+= ${LOCALES:S/$/.out/g}

@@ -1,6 +1,7 @@
 #	example of a configuration file for the isdn daemon & user-ppp
 #
 # $FreeBSD: src/share/examples/ppp/isdnd.rc,v 1.2.4.1 2000/11/30 23:12:22 brian Exp $
+# $DragonFly: src/share/examples/ppp/isdnd.rc,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
 
 # SYSTEM section: isdnd global configuration parameters

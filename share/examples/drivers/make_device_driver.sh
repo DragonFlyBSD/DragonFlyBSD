@@ -30,6 +30,7 @@ cat >${UPPER} <<DONE
 # Configuration file for kernel type: ${UPPER}
 ident	${UPPER}
 # \$FreeBSD: src/share/examples/drivers/make_device_driver.sh,v 1.6.2.1 2001/07/25 15:56:09 dd Exp $"
+# \$DragonFly: src/share/examples/drivers/make_device_driver.sh,v 1.2 2003/06/17 04:36:57 dillon Exp $"
 DONE
 
 grep -v GENERIC < GENERIC >>${UPPER}

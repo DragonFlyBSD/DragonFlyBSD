@@ -32,6 +32,7 @@
 .\"
 .\"	@(#)1.t	1.2 (Berkeley) 11/8/90
 .\" $FreeBSD: src/share/doc/papers/kerntune/1.t,v 1.5 1999/08/28 00:18:07 peter Exp $
+.\" $DragonFly: src/share/doc/papers/kerntune/1.t,v 1.2 2003/06/17 04:36:56 dillon Exp $
 .\"
 .ds RH Introduction
 .NH 1

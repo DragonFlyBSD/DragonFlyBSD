@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 12/13/93
 # $FreeBSD: src/share/man/man3/Makefile,v 1.15.2.3 2001/04/25 11:11:30 ru Exp $
+# $DragonFly: src/share/man/man3/Makefile,v 1.2 2003/06/17 04:36:58 dillon Exp $
 
 MAN=	assert.3 bitstring.3 end.3 fpgetround.3 intro.3 pthread.3 queue.3 \
 	stdarg.3 sysexits.3

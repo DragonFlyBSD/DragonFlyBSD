@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/misc/iso639,v 1.2.2.1 2002/02/06 20:59:18 wollman Exp $
+# $DragonFly: src/share/misc/iso639,v 1.2 2003/06/17 04:37:01 dillon Exp $
 #
 # ISO 639-2 language codes
 #

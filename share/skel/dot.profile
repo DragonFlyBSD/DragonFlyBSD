@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/skel/dot.profile,v 1.19.2.2 2002/07/13 16:29:10 mp Exp $
+# $DragonFly: src/share/skel/dot.profile,v 1.2 2003/06/17 04:37:02 dillon Exp $
 #
 # .profile - Bourne Shell startup script for login shells
 #

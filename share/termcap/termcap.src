@@ -31,6 +31,7 @@
 #
 #	@(#)termcap.src	8.2 (Berkeley) 11/17/93
 # $FreeBSD: src/share/termcap/termcap.src,v 1.89.2.26 2003/05/26 18:52:13 ache Exp $
+# $DragonFly: src/share/termcap/termcap.src,v 1.2 2003/06/17 04:37:03 dillon Exp $
 
 #	Termcap source file
 #	John Kunze, Berkeley

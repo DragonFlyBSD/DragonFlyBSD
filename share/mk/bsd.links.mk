@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.links.mk,v 1.2.2.2 2002/07/17 19:08:23 ru Exp $
+# $DragonFly: src/share/mk/bsd.links.mk,v 1.2 2003/06/17 04:37:02 dillon Exp $
 
 .if !target(__<bsd.init.mk>__)
 .error bsd.links.mk cannot be included directly.

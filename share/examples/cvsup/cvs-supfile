@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/examples/cvsup/cvs-supfile,v 1.26.2.10 2003/03/05 23:03:06 peter Exp $
+# $DragonFly: src/share/examples/cvsup/Attic/cvs-supfile,v 1.2 2003/06/17 04:36:57 dillon Exp $
 #
 # This file contains all of the "CVSup collections" that make up the
 # CVS development tree of the FreeBSD system.

@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/share/man/man1/Makefile,v 1.12.2.5 2001/04/25 11:11:29 ru Exp $
+# $DragonFly: src/share/man/man1/Makefile,v 1.2 2003/06/17 04:36:58 dillon Exp $
 
 MAN=	builtin.1 intro.1
 

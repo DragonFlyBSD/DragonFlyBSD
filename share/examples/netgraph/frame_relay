@@ -2,6 +2,7 @@
 # script to set up a frame relay link on the sr card.
 # The dlci used is selected below. The default is 16
 # $FreeBSD: src/share/examples/netgraph/frame_relay,v 1.1 1999/11/19 06:56:34 julian Exp $
+# $DragonFly: src/share/examples/netgraph/frame_relay,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
 CARD=sr0
 DLCI=16

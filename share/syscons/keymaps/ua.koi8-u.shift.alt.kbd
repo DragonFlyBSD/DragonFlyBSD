@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/syscons/keymaps/ua.koi8-u.shift.alt.kbd,v 1.1.2.5 2002/05/21 14:54:22 sobomax Exp $
+# $DragonFly: src/share/syscons/keymaps/ua.koi8-u.shift.alt.kbd,v 1.2 2003/06/17 04:37:03 dillon Exp $
 #
 # keyboard mapping for both Ukrainian and Russian languages, koi8-u charset.
 #   by sia@lot.cs.kiev.ua

@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.libnames.mk,v 1.28.2.10 2002/08/08 09:33:28 ru Exp $
+# $DragonFly: src/share/mk/bsd.libnames.mk,v 1.2 2003/06/17 04:37:02 dillon Exp $
 #
 # The include file <bsd.libnames.mk> define library names. 
 # Other include files (e.g. bsd.prog.mk, bsd.lib.mk) include this 

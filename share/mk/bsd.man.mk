@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.man.mk,v 1.31.2.11 2002/12/19 13:48:33 ru Exp $
+# $DragonFly: src/share/mk/bsd.man.mk,v 1.2 2003/06/17 04:37:02 dillon Exp $
 #
 # The include file <bsd.man.mk> handles installing manual pages and 
 # their links.

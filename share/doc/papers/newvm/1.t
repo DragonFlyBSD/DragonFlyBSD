@@ -31,6 +31,7 @@
 .\"
 .\"	@(#)1.t	5.1 (Berkeley) 4/16/91
 .\" $FreeBSD: src/share/doc/papers/newvm/1.t,v 1.6 1999/08/28 00:18:13 peter Exp $
+.\" $DragonFly: src/share/doc/papers/newvm/1.t,v 1.2 2003/06/17 04:36:56 dillon Exp $
 .\"
 .NH
 Motivations for a New Virtual Memory System

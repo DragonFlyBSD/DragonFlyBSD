@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.obj.mk,v 1.30.2.10 2003/02/15 05:36:25 kris Exp $
+# $DragonFly: src/share/mk/bsd.obj.mk,v 1.2 2003/06/17 04:37:02 dillon Exp $
 #
 # The include file <bsd.obj.mk> handles creating the 'obj' directory
 # and cleaning up object files, etc.

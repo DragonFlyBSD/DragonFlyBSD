@@ -1,5 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/share/Makefile,v 1.22.2.4 2002/03/12 17:13:32 phantom Exp $
+# $DragonFly: src/share/Makefile,v 1.2 2003/06/17 04:36:52 dillon Exp $
 
 # Do not include `info' in the SUBDIR list, it is handled separately.
 

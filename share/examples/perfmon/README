@@ -23,3 +23,4 @@ monitored, defined in <machine/perfmon.h>.  All numbers can be
 specified in any format acceptable to strtol(3).
 
 $FreeBSD: src/share/examples/perfmon/README,v 1.4.2.1 2001/05/16 02:01:25 dd Exp $
+$DragonFly: src/share/examples/perfmon/README,v 1.2 2003/06/17 04:36:57 dillon Exp $

@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/mk/Makefile,v 1.27.2.8 2002/07/22 14:21:51 ru Exp $
+# $DragonFly: src/share/mk/Makefile,v 1.2 2003/06/17 04:37:02 dillon Exp $
 #	@(#)Makefile	8.1 (Berkeley) 6/8/93
 
 FILES=	bsd.README

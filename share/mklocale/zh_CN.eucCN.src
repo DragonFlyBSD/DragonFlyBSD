@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/share/mklocale/zh_CN.eucCN.src,v 1.4.2.3 2002/02/26 16:58:42 phantom Exp $
+ * $DragonFly: src/share/mklocale/Attic/zh_CN.eucCN.src,v 1.2 2003/06/17 04:37:02 dillon Exp $
  */
 
 ENCODING	"EUC"

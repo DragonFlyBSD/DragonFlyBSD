@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/zoneinfo/Makefile,v 1.16.2.3 2002/08/07 16:31:52 ru Exp $
+# $DragonFly: src/share/zoneinfo/Makefile,v 1.2 2003/06/17 04:37:04 dillon Exp $
 
 CLEANFILES+=	yearistype
 

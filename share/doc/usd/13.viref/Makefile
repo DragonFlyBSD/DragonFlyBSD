@@ -1,5 +1,6 @@
 #	From: @(#)Makefile	8.16 (Berkeley) 8/15/94
 # $FreeBSD: src/share/doc/usd/13.viref/Makefile,v 1.8.2.2 2000/12/01 11:34:38 ru Exp $
+# $DragonFly: src/share/doc/usd/13.viref/Makefile,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
 VOLUME=	usd/13.viref
 SRCS=	vi.ref

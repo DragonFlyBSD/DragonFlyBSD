@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/syscons/keymaps/be.iso.kbd,v 1.8.2.2 2003/05/18 08:47:08 murray Exp $
+# $DragonFly: src/share/syscons/keymaps/be.iso.kbd,v 1.2 2003/06/17 04:37:02 dillon Exp $
 #                                                         alt
 # scan                       cntrl          alt    alt   cntrl lock
 # code  base   shift  cntrl  shift  alt    shift  cntrl  shift state

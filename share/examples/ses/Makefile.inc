@@ -1,6 +1,7 @@
 # $NetBSD: $
 # $OpenBSD: $
 # $FreeBSD: src/share/examples/ses/Makefile.inc,v 1.1 2000/02/29 05:44:06 mjacob Exp $
+# $DragonFly: src/share/examples/ses/Makefile.inc,v 1.2 2003/06/17 04:36:57 dillon Exp $
 #
 # Copyright (c) 2000 by Matthew Jacob
 # All rights reserved.

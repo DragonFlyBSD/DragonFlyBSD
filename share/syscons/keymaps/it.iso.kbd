@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/syscons/keymaps/it.iso.kbd,v 1.6.2.2 2003/03/16 14:20:10 luigi Exp $
+# $DragonFly: src/share/syscons/keymaps/it.iso.kbd,v 1.2 2003/06/17 04:37:03 dillon Exp $
 #
 # Aggiunte ad una tastiera italiana standard :
 #

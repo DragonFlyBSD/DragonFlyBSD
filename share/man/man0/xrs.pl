@@ -22,6 +22,7 @@
 # usage: xrs manpages ...
 #
 # $FreeBSD: src/share/man/man0/xrs.pl,v 1.5 1999/08/28 00:19:39 peter Exp $
+# $DragonFly: src/share/man/man0/Attic/xrs.pl,v 1.2 2003/06/17 04:36:58 dillon Exp $
 
 sub mysort {
 

@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/share/examples/libvgl/demo.c,v 1.4 1999/12/14 08:47:42 billf Exp $
+ * $DragonFly: src/share/examples/libvgl/demo.c,v 1.2 2003/06/17 04:36:57 dillon Exp $
  */
 
 #include <sys/types.h>

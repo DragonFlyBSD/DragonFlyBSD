@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  *     $FreeBSD: src/share/examples/kld/dyn_sysctl/dyn_sysctl.c,v 1.1.2.2 2002/03/27 20:45:11 abial Exp $
+ *     $DragonFly: src/share/examples/kld/dyn_sysctl/dyn_sysctl.c,v 1.2 2003/06/17 04:36:57 dillon Exp $
  */
 
 #include <sys/types.h>

@@ -24,6 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/share/examples/ppp/ppp.conf.isdn,v 1.5.2.7 2003/05/03 21:35:06 keramida Exp $
+# $DragonFly: src/share/examples/ppp/ppp.conf.isdn,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
 # This is an example ppp profile for bringing up a multilink ppp connection
 # over ISDN.  It needs at least version 0.83.0 of the i4b code.  An example

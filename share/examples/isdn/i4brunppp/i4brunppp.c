@@ -28,6 +28,7 @@
  *	------------------------------------------------------------
  *
  * $FreeBSD: src/share/examples/isdn/i4brunppp/i4brunppp.c,v 1.2.2.1 2001/08/12 01:57:09 obrien Exp $
+ * $DragonFly: src/share/examples/isdn/i4brunppp/i4brunppp.c,v 1.2 2003/06/17 04:36:57 dillon Exp $
  *
  *      last edit-date: [Sat Jul 21 13:38:10 2001]
  *

@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/examples/ipfilter/Makefile,v 1.3.2.1 2002/04/27 20:04:18 darrenr Exp $
+# $DragonFly: src/share/examples/ipfilter/Makefile,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
 NOOBJ=	noobj
 

@@ -1,4 +1,5 @@
 .\"	$FreeBSD: src/share/examples/ses/sesd/sesd.0,v 1.1.2.1 2001/08/17 13:08:35 ru Exp $
+.\"	$DragonFly: src/share/examples/ses/sesd/sesd.0,v 1.2 2003/06/17 04:36:57 dillon Exp $
 .\"
 .\" Copyright (c) 2000 Matthew Jacob
 .\" All rights reserved.

@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/examples/ses/setencstat/Makefile,v 1.1.2.1 2002/07/29 04:43:57 mjacob Exp $
+# $DragonFly: src/share/examples/ses/setencstat/Makefile,v 1.2 2003/06/17 04:36:57 dillon Exp $
 #
 # Copyright (c) 2000 by Matthew Jacob
 # All rights reserved.

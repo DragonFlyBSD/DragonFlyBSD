@@ -2,6 +2,7 @@
 # script to connect a raw synchronous card to a system interface.
 # Assumes the file if_sr was compiled with options NETGRAPH.
 # $FreeBSD: src/share/examples/netgraph/raw,v 1.1 1999/11/19 07:04:36 julian Exp $
+# $DragonFly: src/share/examples/netgraph/raw,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
 CARD=sr0
 

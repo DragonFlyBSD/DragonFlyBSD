@@ -65,6 +65,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/share/examples/kld/cdev/test/Makefile,v 1.2.2.1 2000/10/25 09:02:34 sobomax Exp $
+# $DragonFly: src/share/examples/kld/cdev/test/Makefile,v 1.2 2003/06/17 04:36:57 dillon Exp $
 #
 PROG=	testcdev
 NOMAN=

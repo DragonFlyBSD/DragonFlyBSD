@@ -31,6 +31,7 @@
 .\"
 .\"	@(#)0.t	5.1 (Berkeley) 4/17/91
 .\" $FreeBSD: src/share/doc/papers/relengr/0.t,v 1.1.1.1.14.1 2000/11/27 07:57:48 ru Exp $
+.\" $DragonFly: src/share/doc/papers/relengr/0.t,v 1.2 2003/06/17 04:36:56 dillon Exp $
 .\"
 .R1
 database ref.bib

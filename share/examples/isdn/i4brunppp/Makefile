@@ -1,4 +1,5 @@
 # $FreeBSD: src/share/examples/isdn/i4brunppp/Makefile,v 1.1.2.3 2002/08/07 16:31:49 ru Exp $
+# $DragonFly: src/share/examples/isdn/i4brunppp/Makefile,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
 PROG	 =	i4brunppp
 SRCS	 =	i4brunppp.c
