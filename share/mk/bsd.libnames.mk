@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.libnames.mk,v 1.28.2.10 2002/08/08 09:33:28 ru Exp $
-# $DragonFly: src/share/mk/bsd.libnames.mk,v 1.4 2004/01/16 07:45:19 dillon Exp $
+# $DragonFly: src/share/mk/bsd.libnames.mk,v 1.5 2004/11/10 18:02:24 joerg Exp $
 #
 # The include file <bsd.libnames.mk> define library names. 
 # Other include files (e.g. bsd.prog.mk, bsd.lib.mk) include this 
@@ -14,6 +14,7 @@ LIBKZHEAD?=	${DESTDIR}${LIBDIR}/kzhead.o
 LIBKZTAIL?=	${DESTDIR}${LIBDIR}/kztail.o
 
 LIBALIAS?=	${DESTDIR}${LIBDIR}/libalias.a
+LIBARCHIVE?=	${DESTDIR}${LIBDIR}/libarchive.a
 LIBASN1?=	${DESTDIR}${LIBDIR}/libasn1.a	# XXX in secure dist, not base
 LIBATM?=	${DESTDIR}${LIBDIR}/libatm.a
 LIBBZ2?=	${DESTDIR}${LIBDIR}/libbz2.a

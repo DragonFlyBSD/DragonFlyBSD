@@ -1,0 +1,189 @@
+$DragonFly: src/usr.bin/tar/patches/Attic/write.c.patch,v 1.1 2004/11/10 18:02:24 joerg Exp $
+
+--- write.c.orig	2004-11-10 01:04:37.000000000 +0100
++++ write.c	2004-11-10 01:12:35.000000000 +0100
+@@ -91,7 +91,10 @@
+ 	int	hits;
+ 	size_t	size;
+ 	struct {
+-		id_t id;
++		union {
++			uid_t uid;
++			gid_t gid;
++		} id;
+ 		const char *name;
+ 	} cache[name_cache_size];
+ };
+@@ -109,12 +112,12 @@
+ static void		 free_cache(struct name_cache *cache);
+ static const char *	 lookup_gname(struct bsdtar *bsdtar, gid_t gid);
+ static int		 lookup_gname_helper(struct bsdtar *bsdtar,
+-			     const char **name, id_t gid);
++			     const char **name, gid_t gid);
+ static void		 lookup_hardlink(struct bsdtar *,
+ 			     struct archive_entry *entry, const struct stat *);
+ static const char *	 lookup_uname(struct bsdtar *bsdtar, uid_t uid);
+ static int		 lookup_uname_helper(struct bsdtar *bsdtar,
+-			     const char **name, id_t uid);
++			     const char **name, uid_t uid);
+ static int		 new_enough(struct bsdtar *, const char *path,
+ 			     time_t mtime_sec, int mtime_nsec);
+ static void		 setup_acls(struct bsdtar *, struct archive_entry *,
+@@ -1157,18 +1160,14 @@
+ 	}
+ }
+ 
+-/*
+- * Lookup uid/gid from uname/gname, return NULL if no match.
+- */
+ static const char *
+-lookup_name(struct bsdtar *bsdtar, struct name_cache **name_cache_variable,
+-    int (*lookup_fn)(struct bsdtar *, const char **, id_t), id_t id)
++lookup_uname(struct bsdtar *bsdtar, uid_t uid)
+ {
+-	struct name_cache	*cache;
++	struct name_cache **name_cache_variable = &bsdtar->uname_cache;
++	struct name_cache *cache;
+ 	const char *name;
+ 	int slot;
+ 
+-
+ 	if (*name_cache_variable == NULL) {
+ 		*name_cache_variable = malloc(sizeof(struct name_cache));
+ 		if (*name_cache_variable == NULL)
+@@ -1180,9 +1179,9 @@
+ 	cache = *name_cache_variable;
+ 	cache->probes++;
+ 
+-	slot = id % cache->size;
++	slot = uid % cache->size;
+ 	if (cache->cache[slot].name != NULL) {
+-		if (cache->cache[slot].id == id) {
++		if (cache->cache[slot].id.uid == uid) {
+ 			cache->hits++;
+ 			if (cache->cache[slot].name == NO_NAME)
+ 				return (NULL);
+@@ -1193,15 +1192,15 @@
+ 		cache->cache[slot].name = NULL;
+ 	}
+ 
+-	if (lookup_fn(bsdtar, &name, id) == 0) {
++	if (lookup_uname_helper(bsdtar, &name, uid) == 0) {
+ 		if (name == NULL || name[0] == '\0') {
+ 			/* Cache the negative response. */
+ 			cache->cache[slot].name = NO_NAME;
+-			cache->cache[slot].id = id;
++			cache->cache[slot].id.uid = uid;
+ 		} else {
+ 			cache->cache[slot].name = strdup(name);
+ 			if (cache->cache[slot].name != NULL) {
+-				cache->cache[slot].id = id;
++				cache->cache[slot].id.uid = uid;
+ 				return (cache->cache[slot].name);
+ 			}
+ 			/*
+@@ -1214,26 +1213,17 @@
+ 	return (NULL);
+ }
+ 
+-static const char *
+-lookup_uname(struct bsdtar *bsdtar, uid_t uid)
+-{
+-	return (lookup_name(bsdtar, &bsdtar->uname_cache,
+-		    &lookup_uname_helper, (id_t)uid));
+-}
+-
+ static int
+-lookup_uname_helper(struct bsdtar *bsdtar, const char **name, id_t id)
++lookup_uname_helper(struct bsdtar *bsdtar __unused, const char **name, uid_t uid)
+ {
+ 	struct passwd	*pwent;
+ 
+-	(void)bsdtar; /* UNUSED */
+-
+ 	errno = 0;
+-	pwent = getpwuid((uid_t)id);
++	pwent = getpwuid(uid);
+ 	if (pwent == NULL) {
+ 		*name = NULL;
+ 		if (errno != 0)
+-			bsdtar_warnc(bsdtar, errno, "getpwuid(%d) failed", id);
++			bsdtar_warnc(bsdtar, errno, "getpwuid(%d) failed", uid);
+ 		return (errno);
+ 	}
+ 
+@@ -1244,23 +1234,69 @@
+ static const char *
+ lookup_gname(struct bsdtar *bsdtar, gid_t gid)
+ {
+-	return (lookup_name(bsdtar, &bsdtar->gname_cache,
+-		    &lookup_gname_helper, (id_t)gid));
++	struct name_cache **name_cache_variable = &bsdtar->gname_cache;
++	struct name_cache *cache;
++	const char *name;
++	int slot;
++
++	if (*name_cache_variable == NULL) {
++		*name_cache_variable = malloc(sizeof(struct name_cache));
++		if (*name_cache_variable == NULL)
++			bsdtar_errc(bsdtar, 1, ENOMEM, "No more memory");
++		memset(*name_cache_variable, 0, sizeof(struct name_cache));
++		(*name_cache_variable)->size = name_cache_size;
++	}
++
++	cache = *name_cache_variable;
++	cache->probes++;
++
++	slot = gid % cache->size;
++	if (cache->cache[slot].name != NULL) {
++		if (cache->cache[slot].id.gid == gid) {
++			cache->hits++;
++			if (cache->cache[slot].name == NO_NAME)
++				return (NULL);
++			return (cache->cache[slot].name);
++		}
++		if (cache->cache[slot].name != NO_NAME)
++			free((void *)(uintptr_t)cache->cache[slot].name);
++		cache->cache[slot].name = NULL;
++	}
++
++	if (lookup_gname_helper(bsdtar, &name, gid) == 0) {
++		if (name == NULL || name[0] == '\0') {
++			/* Cache the negative response. */
++			cache->cache[slot].name = NO_NAME;
++			cache->cache[slot].id.gid = gid;
++		} else {
++			cache->cache[slot].name = strdup(name);
++			if (cache->cache[slot].name != NULL) {
++				cache->cache[slot].id.gid = gid;
++				return (cache->cache[slot].name);
++			}
++			/*
++			 * Conveniently, NULL marks an empty slot, so
++			 * if the strdup() fails, we've just failed to
++			 * cache it.  No recovery necessary.
++			 */
++		}
++	}
++	return (NULL);
+ }
+ 
+ static int
+-lookup_gname_helper(struct bsdtar *bsdtar, const char **name, id_t id)
++lookup_gname_helper(struct bsdtar *bsdtar, const char **name, gid_t gid)
+ {
+ 	struct group	*grent;
+ 
+ 	(void)bsdtar; /* UNUSED */
+ 
+ 	errno = 0;
+-	grent = getgrgid((gid_t)id);
++	grent = getgrgid(gid);
+ 	if (grent == NULL) {
+ 		*name = NULL;
+ 		if (errno != 0)
+-			bsdtar_warnc(bsdtar, errno, "getgrgid(%d) failed", id);
++			bsdtar_warnc(bsdtar, errno, "getgrgid(%d) failed", gid);
+ 		return (errno);
+ 	}
+ 
