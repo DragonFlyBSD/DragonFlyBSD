@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keydb.c,v 1.1.2.1 2000/07/15 07:14:42 kris Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keydb.c,v 1.4 2003/08/07 21:17:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keydb.c,v 1.5 2003/08/23 10:06:24 rob Exp $	*/
 /*	$KAME: keydb.c,v 1.64 2000/05/11 17:02:30 itojun Exp $	*/
 
 /*
@@ -57,7 +57,7 @@
 
 MALLOC_DEFINE(M_SECA, "key mgmt", "security associations, key management");
 
-static void keydb_delsecasvar __P((struct secasvar *));
+static void keydb_delsecasvar (struct secasvar *);
 
 /*
  * secpolicy management

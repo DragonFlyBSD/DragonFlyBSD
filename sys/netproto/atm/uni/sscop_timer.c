@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscop_timer.c,v 1.6 2000/01/17 20:49:53 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_timer.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_timer.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -44,15 +44,15 @@
 /*
  * Local functions
  */
-static void	sscop_poll_expire __P((struct sscop *));
-static void	sscop_noresponse_expire __P((struct sscop *));
-static void	sscop_cc_expire __P((struct sscop *));
-static void	sscop_idle_expire __P((struct sscop *));
+static void	sscop_poll_expire (struct sscop *);
+static void	sscop_noresponse_expire (struct sscop *);
+static void	sscop_cc_expire (struct sscop *);
+static void	sscop_idle_expire (struct sscop *);
 
 /*
  * Local variables
  */
-static void	(*sscop_expired[SSCOP_T_NUM]) __P((struct sscop *)) = {
+static void	(*sscop_expired[SSCOP_T_NUM]) (struct sscop *) = {
 	sscop_poll_expire,
 	sscop_noresponse_expire,
 	sscop_cc_expire,

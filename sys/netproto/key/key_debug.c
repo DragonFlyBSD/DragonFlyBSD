@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key_debug.c,v 1.10.2.5 2002/04/28 05:40:28 suz Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/key_debug.c,v 1.3 2003/08/07 21:17:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key_debug.c,v 1.4 2003/08/23 10:06:24 rob Exp $	*/
 /*	$KAME: key_debug.c,v 1.26 2001/06/27 10:46:50 sakane Exp $	*/
 
 /*
@@ -60,17 +60,17 @@
 #include <stdlib.h>
 #endif /* !_KERNEL */
 
-static void kdebug_sadb_prop __P((struct sadb_ext *));
-static void kdebug_sadb_identity __P((struct sadb_ext *));
-static void kdebug_sadb_supported __P((struct sadb_ext *));
-static void kdebug_sadb_lifetime __P((struct sadb_ext *));
-static void kdebug_sadb_sa __P((struct sadb_ext *));
-static void kdebug_sadb_address __P((struct sadb_ext *));
-static void kdebug_sadb_key __P((struct sadb_ext *));
-static void kdebug_sadb_x_sa2 __P((struct sadb_ext *));
+static void kdebug_sadb_prop (struct sadb_ext *);
+static void kdebug_sadb_identity (struct sadb_ext *);
+static void kdebug_sadb_supported (struct sadb_ext *);
+static void kdebug_sadb_lifetime (struct sadb_ext *);
+static void kdebug_sadb_sa (struct sadb_ext *);
+static void kdebug_sadb_address (struct sadb_ext *);
+static void kdebug_sadb_key (struct sadb_ext *);
+static void kdebug_sadb_x_sa2 (struct sadb_ext *);
 
 #ifdef _KERNEL
-static void kdebug_secreplay __P((struct secreplay *));
+static void kdebug_secreplay (struct secreplay *);
 #endif
 
 #ifndef _KERNEL

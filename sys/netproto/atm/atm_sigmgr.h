@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_sigmgr.h,v 1.2 1999/08/28 00:48:37 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_sigmgr.h,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_sigmgr.h,v 1.3 2003/08/23 10:06:21 rob Exp $
  *
  */
 
@@ -51,21 +51,21 @@ struct	sigmgr {
 	struct siginst	*sm_prinst;	/* List of protocol instances */
 /* Exported functions */
 	int		(*sm_attach)	/* Attach interface */
-				__P((struct sigmgr *, struct atm_pif *));
+				(struct sigmgr *, struct atm_pif *);
 	int		(*sm_detach)	/* Detach interface */
-				__P((struct atm_pif *));
+				(struct atm_pif *);
 	int		(*sm_setup)	/* Connection setup */
-				__P((Atm_connvc *, int *));
+				(Atm_connvc *, int *);
 	int		(*sm_accept)	/* Call accepted */
-				__P((struct vccb *, int *));
+				(struct vccb *, int *);
 	int		(*sm_reject)	/* Call rejected */
-				__P((struct vccb *, int *));
+				(struct vccb *, int *);
 	int		(*sm_release)	/* Connection release */
-				__P((struct vccb *, int *));
+				(struct vccb *, int *);
 	int		(*sm_free)	/* Free connection resources */
-				__P((struct vccb *));
+				(struct vccb *);
 	int		(*sm_ioctl)	/* Ioctl handler */
-				__P((int, caddr_t, caddr_t));
+				(int, caddr_t, caddr_t);
 };
 #endif	/* ATM_KERNEL */
 

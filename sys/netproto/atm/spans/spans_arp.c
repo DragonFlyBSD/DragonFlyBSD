@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_arp.c,v 1.7 2000/01/15 20:34:55 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_arp.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_arp.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -52,9 +52,9 @@ struct spansarp		*spansarp_arptab[SPANSARP_HASHSIZ] = {NULL};
 /*
  * Local functions
  */
-static int		spansarp_request __P((struct spansarp *));
-static void		spansarp_aging __P((struct atm_time *));
-static void		spansarp_retry __P((struct atm_time *));
+static int		spansarp_request (struct spansarp *);
+static void		spansarp_aging (struct atm_time *);
+static void		spansarp_retry (struct atm_time *);
 
 /*
  * Local variables

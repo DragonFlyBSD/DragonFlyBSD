@@ -34,7 +34,7 @@
  *	@(#)ipx_var.h
  *
  * $FreeBSD: src/sys/netipx/ipx_var.h,v 1.14 1999/12/29 04:46:09 peter Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_var.h,v 1.3 2003/07/21 07:57:50 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_var.h,v 1.4 2003/08/23 10:06:23 rob Exp $
  */
 
 #ifndef _NETIPX_IPX_VAR_H_
@@ -87,22 +87,22 @@ struct sockaddr;
 struct socket;
 struct sockopt;
 
-void	ipx_abort __P((struct ipxpcb *ipxp));
-u_short	ipx_cksum __P((struct mbuf *m, int len));
-int	ipx_control __P((struct socket *so, u_long cmd, caddr_t data,
-			 struct ifnet *ifp, struct thread *td));
-void	ipx_ctlinput __P((int cmd, struct sockaddr *arg_as_sa, void *dummy));
-int	ipx_ctloutput __P((struct socket *so, struct sockopt *sopt));
-void	ipx_drop __P((struct ipxpcb *ipxp, int errno));
-void	ipx_init __P((void));
-void	ipx_input __P((struct mbuf *m, struct ipxpcb *ipxp));
-void	ipxintr __P((void));
-int	ipx_outputfl __P((struct mbuf *m0, struct route *ro, int flags));
-int	ipx_output_type20 __P((struct mbuf *));
-int	ipx_peeraddr __P((struct socket *so, struct sockaddr **nam));
-void	ipx_printhost __P((struct ipx_addr *addr));
-int	ipx_sockaddr __P((struct socket *so, struct sockaddr **nam));
-void	ipx_watch_output __P((struct mbuf *m, struct ifnet *ifp));
+void	ipx_abort (struct ipxpcb *ipxp);
+u_short	ipx_cksum (struct mbuf *m, int len);
+int	ipx_control (struct socket *so, u_long cmd, caddr_t data,
+			 struct ifnet *ifp, struct thread *td);
+void	ipx_ctlinput (int cmd, struct sockaddr *arg_as_sa, void *dummy);
+int	ipx_ctloutput (struct socket *so, struct sockopt *sopt);
+void	ipx_drop (struct ipxpcb *ipxp, int errno);
+void	ipx_init (void);
+void	ipx_input (struct mbuf *m, struct ipxpcb *ipxp);
+void	ipxintr (void);
+int	ipx_outputfl (struct mbuf *m0, struct route *ro, int flags);
+int	ipx_output_type20 (struct mbuf *);
+int	ipx_peeraddr (struct socket *so, struct sockaddr **nam);
+void	ipx_printhost (struct ipx_addr *addr);
+int	ipx_sockaddr (struct socket *so, struct sockaddr **nam);
+void	ipx_watch_output (struct mbuf *m, struct ifnet *ifp);
 
 #endif /* _KERNEL */
 

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_if.c,v 1.6 1999/08/28 00:48:49 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_if.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_if.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -65,15 +65,15 @@ struct sp_info	spans_msgpool = {
 /*
  * Local functions
  */
-static int	spans_start __P((void));
-static int	spans_stop __P((void));
-static int	spans_attach __P((struct sigmgr *, struct atm_pif *));
-static int	spans_detach __P((struct atm_pif *));
-static int	spans_setup __P((Atm_connvc *, int *));
-static int	spans_release __P((struct vccb *, int *));
-static int	spans_accept __P((struct vccb *, int *));
-static int	spans_reject __P((struct vccb *, int *));
-static int	spans_ioctl __P((int, caddr_t, caddr_t));
+static int	spans_start (void);
+static int	spans_stop (void);
+static int	spans_attach (struct sigmgr *, struct atm_pif *);
+static int	spans_detach (struct atm_pif *);
+static int	spans_setup (Atm_connvc *, int *);
+static int	spans_release (struct vccb *, int *);
+static int	spans_accept (struct vccb *, int *);
+static int	spans_reject (struct vccb *, int *);
+static int	spans_ioctl (int, caddr_t, caddr_t);
 
 /*
  * Local variables
@@ -1054,8 +1054,8 @@ spans_ioctl(code, data, arg1)
  *
  *******************************************************************
  */
-static int	spans_doload __P((void));
-static int	spans_dounload __P((void));
+static int	spans_doload (void);
+static int	spans_dounload (void);
 
 /*
  * Generic module load processing
@@ -1298,7 +1298,7 @@ spans_mod(lkmtp, cmd, ver)
  *
  *******************************************************************
  */
-static void	spans_doload __P((void *));
+static void	spans_doload (void *);
 
 SYSINIT(atmspans, SI_SUB_PROTO_END, SI_ORDER_ANY, spans_doload, NULL)
 

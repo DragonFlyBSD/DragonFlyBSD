@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_usrreq.c,v 1.6 1999/08/28 00:48:39 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_usrreq.c,v 1.4 2003/08/07 21:17:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_usrreq.c,v 1.5 2003/08/23 10:06:21 rob Exp $
  */
 
 /*
@@ -40,10 +40,10 @@
 /*
  * Local functions
  */
-static int	atm_dgram_attach __P((struct socket *, int, struct thread *));
-static int	atm_dgram_control __P((struct socket *, u_long, caddr_t, 
-			struct ifnet *, struct thread *));
-static int	atm_dgram_info __P((caddr_t));
+static int	atm_dgram_attach (struct socket *, int, struct thread *);
+static int	atm_dgram_control (struct socket *, u_long, caddr_t, 
+			struct ifnet *, struct thread *);
+static int	atm_dgram_info (caddr_t);
 
 
 /*

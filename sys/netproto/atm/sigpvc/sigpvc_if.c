@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/sigpvc/sigpvc_if.c,v 1.7 2000/01/17 20:49:46 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/sigpvc/sigpvc_if.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/sigpvc/sigpvc_if.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -57,14 +57,14 @@ struct sp_info	sigpvc_vcpool = {
 /*
  * Local functions
  */
-static int	sigpvc_start __P((void));
-static int	sigpvc_stop __P((void));
-static int	sigpvc_attach __P((struct sigmgr *, struct atm_pif *));
-static int	sigpvc_detach __P((struct atm_pif *));
-static int	sigpvc_setup __P((Atm_connvc *, int *));
-static int	sigpvc_release __P((struct vccb *, int *));
-static int	sigpvc_free __P((struct vccb *));
-static int	sigpvc_ioctl __P((int, caddr_t, caddr_t));
+static int	sigpvc_start (void);
+static int	sigpvc_stop (void);
+static int	sigpvc_attach (struct sigmgr *, struct atm_pif *);
+static int	sigpvc_detach (struct atm_pif *);
+static int	sigpvc_setup (Atm_connvc *, int *);
+static int	sigpvc_release (struct vccb *, int *);
+static int	sigpvc_free (struct vccb *);
+static int	sigpvc_ioctl (int, caddr_t, caddr_t);
 
 /*
  * Local variables
@@ -670,8 +670,8 @@ sigpvc_ioctl(code, data, arg1)
  *
  *******************************************************************
  */
-static int	sigpvc_doload __P((void));
-static int	sigpvc_dounload __P((void));
+static int	sigpvc_doload (void);
+static int	sigpvc_dounload (void);
 
 /*
  * Generic module load processing
@@ -914,7 +914,7 @@ sigpvc_mod(lkmtp, cmd, ver)
  *
  *******************************************************************
  */
-static void	sigpvc_doload __P((void *));
+static void	sigpvc_doload (void *);
 
 SYSINIT(atmsigpvc, SI_SUB_PROTO_END, SI_ORDER_ANY, sigpvc_doload, NULL)
 

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_decode.c,v 1.5 2000/01/17 20:49:56 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_decode.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_decode.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -51,29 +51,29 @@
 /*
  * Local functions
  */
-static int	usf_dec_ie __P((struct usfmt *, struct unisig_msg *, struct ie_generic *));
-static int	usf_dec_ie_hdr __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_aalp __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_clrt __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_bbcp __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_bhli __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_blli __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_clst __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_cdad __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_cdsa __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_cgad __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_cgsa __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_caus __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_cnid __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_qosp __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_brpi __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_rsti __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_bsdc __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_trnt __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_uimp __P((struct usfmt *, struct ie_generic *));
-static int	usf_dec_ie_ident __P((struct usfmt *, struct ie_generic *,
-			struct ie_decode_tbl *));
-static int	usf_dec_atm_addr __P((struct usfmt *, Atm_addr *, int));
+static int	usf_dec_ie (struct usfmt *, struct unisig_msg *, struct ie_generic *);
+static int	usf_dec_ie_hdr (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_aalp (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_clrt (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_bbcp (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_bhli (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_blli (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_clst (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_cdad (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_cdsa (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_cgad (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_cgsa (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_caus (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_cnid (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_qosp (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_brpi (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_rsti (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_bsdc (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_trnt (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_uimp (struct usfmt *, struct ie_generic *);
+static int	usf_dec_ie_ident (struct usfmt *, struct ie_generic *,
+			struct ie_decode_tbl *);
+static int	usf_dec_atm_addr (struct usfmt *, Atm_addr *, int);
 
 
 /*

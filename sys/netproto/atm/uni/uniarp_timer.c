@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp_timer.c,v 1.4 2000/01/17 20:49:55 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_timer.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_timer.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -44,8 +44,8 @@
 /*
  * Local functions
  */
-static void	uniarp_svc_oldage __P((struct uniarp *));
-static void	uniarp_pvc_oldage __P((struct uniarp *));
+static void	uniarp_svc_oldage (struct uniarp *);
+static void	uniarp_pvc_oldage (struct uniarp *);
 
 
 /*

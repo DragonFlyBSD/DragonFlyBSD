@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscop_lower.c,v 1.5 2000/01/17 20:49:51 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_lower.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_lower.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -113,8 +113,8 @@ sscop_lower(cmd, tok, arg1, arg2)
 	int	arg2;
 {
 	struct sscop	*sop = (struct sscop *)tok;
-	void		(**stab) __P((struct sscop *, int, int));
-	void		(*func) __P((struct sscop *, int, int));
+	void		(**stab) (struct sscop *, int, int);
+	void		(*func) (struct sscop *, int, int);
 	int		val;
 
 	ATM_DEBUG5("sscop_lower: cmd=0x%x, sop=%p, state=%d, arg1=0x%x, arg2=0x%x\n",

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp.c,v 1.8 2000/01/15 20:46:07 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -81,8 +81,8 @@ struct sp_info	uniarp_pool = {
 /*
  * Local variables
  */
-static void	uniarp_server_mode __P((struct uniip *));
-static void	uniarp_client_mode __P((struct uniip *, Atm_addr *));
+static void	uniarp_server_mode (struct uniip *);
+static void	uniarp_client_mode (struct uniip *, Atm_addr *);
 
 
 /*

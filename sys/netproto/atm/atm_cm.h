@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_cm.h,v 1.2 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_cm.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_cm.h,v 1.3 2003/08/23 10:06:21 rob Exp $
  *
  */
 
@@ -59,40 +59,40 @@ struct atm_endpoint {
 
 /* Exported functions: Miscellaneous */
 	int		(*ep_ioctl)	/* Ioctl */
-				__P((int, caddr_t, caddr_t));
+				(int, caddr_t, caddr_t);
 	caddr_t		(*ep_getname)	/* Get application/owner name */
-				__P((void *));
+				(void *);
 
 /* Exported functions: Connection Manager Control API */
 	void		(*ep_connected)	/* Call connected */
-				__P((void *));
+				(void *);
 	void		(*ep_cleared)	/* Call cleared */
-				__P((void *, struct t_atm_cause *));
+				(void *, struct t_atm_cause *);
 	int		(*ep_incoming)	/* Incoming call */
-				__P((void *, struct atm_connection *,
-					struct atm_attributes *, void **));
+				(void *, struct atm_connection *,
+					struct atm_attributes *, void **);
 	int		(*ep_addparty)	/* Add Party notification */
-				__P((void *, int, int));
+				(void *, int, int);
 	int		(*ep_dropparty)	/* Drop Party notification */
-				__P((void *, int, int));
+				(void *, int, int);
 
 /* Exported functions: Connection Manager Data API: CPCS */ 
 	void		(*ep_cpcs_ctl)	/* Control operation */
-				__P((int, void *, void *));
+				(int, void *, void *);
 	void		(*ep_cpcs_data)	/* Received data */
-				__P((void *, KBuffer *));
+				(void *, KBuffer *);
 
 /* Exported functions: Connection Manager Data API: SAAL */ 
 	void		(*ep_saal_ctl)	/* Control operation */
-				__P((int, void *, void *));
+				(int, void *, void *);
 	void		(*ep_saal_data)	/* Received data */
-				__P((void *, KBuffer *));
+				(void *, KBuffer *);
 
 /* Exported functions: Connection Manager Data API: SSCOP */ 
 	void		(*ep_sscop_ctl)	/* Control operation */
-				__P((int, void *, void *, void *));
+				(int, void *, void *, void *);
 	void		(*ep_sscop_data)	/* Received data */
-				__P((void *, KBuffer *, u_int));
+				(void *, KBuffer *, u_int);
 };
 typedef struct atm_endpoint	Atm_endpoint;
 #endif	/* ATM_KERNEL */
@@ -289,7 +289,7 @@ struct atm_connvc {
 	u_char		cvc_state;	/* CM - VCC state (see below) */
 	void		*cvc_tokl;	/* Stack lower layer token */
 	void		(*cvc_lower)	/* Stack lower layer handler */
-				__P((int, void *, int, int));
+				(int, void *, int, int);
 	u_short		cvc_upcnt;	/* Up stack calls in progress */
 	u_short		cvc_downcnt;	/* Down stack calls in progress */
 	KBuffer		*cvc_rcvq;	/* Packet receive queue */

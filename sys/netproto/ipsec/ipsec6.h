@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec6.h,v 1.1.4.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec6.h,v 1.3 2003/08/07 21:17:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec6.h,v 1.4 2003/08/23 10:06:23 rob Exp $	*/
 /*	$KAME: ipsec.h,v 1.44 2001/03/23 08:08:47 itojun Exp $	*/
 
 /*
@@ -60,19 +60,19 @@ struct inpcb;
 #define	out_polvio		ips_out_polvio
 #define	key_freesp(_x)		KEY_FREESP(&_x)
 
-extern int ipsec6_delete_pcbpolicy __P((struct inpcb *));
-extern int ipsec6_set_policy __P((struct inpcb *inp, int optname,
-	caddr_t request, size_t len, int priv));
+extern int ipsec6_delete_pcbpolicy (struct inpcb *);
+extern int ipsec6_set_policy (struct inpcb *inp, int optname,
+	caddr_t request, size_t len, int priv);
 extern int ipsec6_get_policy
-	__P((struct inpcb *inp, caddr_t request, size_t len, struct mbuf **mp));
-extern int ipsec6_in_reject __P((struct mbuf *, struct inpcb *));
+	(struct inpcb *inp, caddr_t request, size_t len, struct mbuf **mp);
+extern int ipsec6_in_reject (struct mbuf *, struct inpcb *);
 
 struct tcp6cb;
 
-extern size_t ipsec6_hdrsiz __P((struct mbuf *, u_int, struct inpcb *));
+extern size_t ipsec6_hdrsiz (struct mbuf *, u_int, struct inpcb *);
 
 struct ip6_hdr;
-extern const char *ipsec6_logpacketstr __P((struct ip6_hdr *, u_int32_t));
+extern const char *ipsec6_logpacketstr (struct ip6_hdr *, u_int32_t);
 
 struct m_tag;
 extern int ipsec6_common_input(struct mbuf **mp, int *offp, int proto);
@@ -81,10 +81,10 @@ extern int ipsec6_common_input_cb(struct mbuf *m, struct secasvar *sav,
 extern void esp6_ctlinput(int, struct sockaddr *, void *);
 
 struct ipsec_output_state;
-extern int ipsec6_output_trans __P((struct ipsec_output_state *, u_char *,
-	struct mbuf *, struct secpolicy *, int, int *));
-extern int ipsec6_output_tunnel __P((struct ipsec_output_state *,
-	struct secpolicy *, int));
+extern int ipsec6_output_trans (struct ipsec_output_state *, u_char *,
+	struct mbuf *, struct secpolicy *, int, int *);
+extern int ipsec6_output_tunnel (struct ipsec_output_state *,
+	struct secpolicy *, int);
 #endif /*_KERNEL*/
 
 #endif /*_NETIPSEC_IPSEC6_H_*/

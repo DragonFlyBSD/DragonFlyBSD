@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_signal.c,v 1.4 1999/08/28 00:48:37 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_signal.c,v 1.3 2003/08/07 21:17:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_signal.c,v 1.4 2003/08/23 10:06:21 rob Exp $
  */
 
 /*
@@ -411,7 +411,7 @@ int
 atm_create_stack(cvp, tlp, upf)
 	Atm_connvc		*cvp;
 	struct stack_list	*tlp;
-	void			(*upf)__P((int, void *, int, int));
+	void			(*upf)(int, void *, int, int);
 {
 	struct stack_defn	*sdp, usd;
 	struct stack_inst	svs;

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_cls.c,v 1.6 1999/08/28 00:48:49 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_cls.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_cls.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -65,15 +65,15 @@ struct spanscls_hdr	spanscls_hdr = {
 /*
  * Local functions
  */
-static int	spanscls_ipact __P((struct ip_nif *));
-static int	spanscls_ipdact __P((struct ip_nif *));
-static int	spanscls_bcast_output __P((struct ip_nif *, KBuffer *));
-static void	spanscls_cpcs_data __P((void *, KBuffer *));
-static void	spanscls_connected __P((void *));
-static void	spanscls_cleared __P((void *, struct t_atm_cause *));
-static caddr_t	spanscls_getname __P((void *));
-static void	spanscls_pdu_print __P((struct spanscls *, KBuffer *,
-			char *));
+static int	spanscls_ipact (struct ip_nif *);
+static int	spanscls_ipdact (struct ip_nif *);
+static int	spanscls_bcast_output (struct ip_nif *, KBuffer *);
+static void	spanscls_cpcs_data (void *, KBuffer *);
+static void	spanscls_connected (void *);
+static void	spanscls_cleared (void *, struct t_atm_cause *);
+static caddr_t	spanscls_getname (void *);
+static void	spanscls_pdu_print (struct spanscls *, KBuffer *,
+			char *);
 
 /*
  * Local variables

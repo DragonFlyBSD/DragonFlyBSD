@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_stack.h,v 1.2 1999/08/28 00:48:38 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_stack.h,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_stack.h,v 1.3 2003/08/23 10:06:21 rob Exp $
  *
  */
 
@@ -54,11 +54,11 @@ struct stack_defn {
 	u_char		sd_flag;	/* Flags (see below) */
 /* Exported functions */
 	int		(*sd_inst)	/* Stack instantiation */
-				__P((struct stack_defn **, Atm_connvc *));
+				(struct stack_defn **, Atm_connvc *);
 	void		(*sd_lower)	/* Lower (from above) command handler */
-				__P((int, void *, int, int));
+				(int, void *, int, int);
 	void		(*sd_upper)	/* Upper (from below) command handler */
-				__P((int, void *, int, int));
+				(int, void *, int, int);
 /* Variables used during stack instantiation */
 	void		*sd_toku;	/* Stack service instance token */
 };
@@ -267,7 +267,7 @@ struct stackq_entry {
 	struct stackq_entry *sq_next;	/* Next entry in queue */
 	int		sq_cmd;		/* Stack command */
 	void		(*sq_func)	/* Destination function */
-				__P((int, void *, int, int));
+				(int, void *, int, int);
 	void		*sq_token;	/* Destination token */
 	int		sq_arg1;	/* Command-specific argument */
 	int		sq_arg2;	/* Command-specific argument */

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscop_pdu.c,v 1.5 2000/01/17 20:49:52 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_pdu.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_pdu.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -45,12 +45,12 @@
 /*
  * Local functions
  */
-static KBuffer *	sscop_stat_init __P((struct sscop *));
-static KBuffer *	sscop_stat_add __P((sscop_seq, KBuffer *));
-static int		sscop_stat_end __P((struct sscop *, sscop_seq,
-				KBuffer *, KBuffer *));
-static int		sscop_recv_locate __P((struct sscop *, sscop_seq,
-				struct pdu_hdr **));
+static KBuffer *	sscop_stat_init (struct sscop *);
+static KBuffer *	sscop_stat_add (sscop_seq, KBuffer *);
+static int		sscop_stat_end (struct sscop *, sscop_seq,
+				KBuffer *, KBuffer *);
+static int		sscop_recv_locate (struct sscop *, sscop_seq,
+				struct pdu_hdr **);
 
 
 /*

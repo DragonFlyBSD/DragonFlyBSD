@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_sys.h,v 1.3 1999/08/28 00:48:38 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_sys.h,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_sys.h,v 1.3 2003/08/23 10:06:21 rob Exp $
  *
  */
 
@@ -162,7 +162,7 @@ struct atm_time {
 	u_short		ti_ticks;	/* Delta of ticks until timeout */
 	u_char		ti_flag;	/* Timer flag bits (see below) */
 	void 		(*ti_func)	/* Call at timeout expiration */
-				__P((struct atm_time *));
+				(struct atm_time *);
 	struct atm_time	*ti_next;	/* Next on queue */
 };
 

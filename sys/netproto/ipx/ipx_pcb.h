@@ -34,7 +34,7 @@
  *	@(#)ipx_pcb.h
  *
  * $FreeBSD: src/sys/netipx/ipx_pcb.h,v 1.15 1999/12/29 04:46:08 peter Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_pcb.h,v 1.3 2003/07/21 07:57:50 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_pcb.h,v 1.4 2003/08/23 10:06:23 rob Exp $
  */
 
 #ifndef _NETIPX_IPX_PCB_H_
@@ -83,20 +83,20 @@ struct ipxpcb {
 #ifdef _KERNEL
 extern struct ipxpcb ipxpcb;			/* head of list */
 
-int	ipx_pcballoc __P((struct socket *so, struct ipxpcb *head,
-			  struct thread *td));
-int	ipx_pcbbind __P((struct ipxpcb *ipxp, struct sockaddr *nam,
-			 struct thread *td));
-int	ipx_pcbconnect __P((struct ipxpcb *ipxp, struct sockaddr *nam,
-			    struct thread *td));
-void	ipx_pcbdetach __P((struct ipxpcb *ipxp));
-void	ipx_pcbdisconnect __P((struct ipxpcb *ipxp));
+int	ipx_pcballoc (struct socket *so, struct ipxpcb *head,
+			  struct thread *td);
+int	ipx_pcbbind (struct ipxpcb *ipxp, struct sockaddr *nam,
+			 struct thread *td);
+int	ipx_pcbconnect (struct ipxpcb *ipxp, struct sockaddr *nam,
+			    struct thread *td);
+void	ipx_pcbdetach (struct ipxpcb *ipxp);
+void	ipx_pcbdisconnect (struct ipxpcb *ipxp);
 struct ipxpcb *
-	ipx_pcblookup __P((struct ipx_addr *faddr, int lport, int wildp));
-void	ipx_pcbnotify __P((struct ipx_addr *dst, int errno,
-			   void (*notify)(struct ipxpcb *), long param));
-void	ipx_setpeeraddr __P((struct ipxpcb *ipxp, struct sockaddr **nam));
-void	ipx_setsockaddr __P((struct ipxpcb *ipxp, struct sockaddr **nam));
+	ipx_pcblookup (struct ipx_addr *faddr, int lport, int wildp);
+void	ipx_pcbnotify (struct ipx_addr *dst, int errno,
+			   void (*notify)(struct ipxpcb *), long param);
+void	ipx_setpeeraddr (struct ipxpcb *ipxp, struct sockaddr **nam);
+void	ipx_setsockaddr (struct ipxpcb *ipxp, struct sockaddr **nam);
 #endif /* _KERNEL */
 
 #endif /* !_NETIPX_IPX_PCB_H_ */

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniip.c,v 1.4 1999/08/28 00:49:03 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniip.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniip.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -44,8 +44,8 @@
 /*
  * Local functions
  */
-static int	uniip_ipact __P((struct ip_nif *));
-static int	uniip_ipdact __P((struct ip_nif *));
+static int	uniip_ipact (struct ip_nif *);
+static int	uniip_ipdact (struct ip_nif *);
 
 
 /*

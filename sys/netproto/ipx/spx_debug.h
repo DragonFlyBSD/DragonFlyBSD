@@ -34,7 +34,7 @@
  *	@(#)spx_debug.h
  *
  * $FreeBSD: src/sys/netipx/spx_debug.h,v 1.12 1999/12/29 04:46:10 peter Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_debug.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_debug.h,v 1.3 2003/08/23 10:06:23 rob Exp $
  */
 
 #ifndef _NETIPX_SPX_DEBUG_H_
@@ -73,8 +73,8 @@ extern char *prurequests[];
 extern char *sanames[];
 extern char *tcpstates[];
 
-void	spx_trace __P((int act, int ostate, struct spxpcb *sp, struct spx *si,
-		       int req));
+void	spx_trace (int act, int ostate, struct spxpcb *sp, struct spx *si,
+		       int req);
 #endif
 
 #endif /* !_NETIPX_SPX_DEBUG_H_ */

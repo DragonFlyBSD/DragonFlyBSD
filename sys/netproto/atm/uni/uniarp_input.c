@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp_input.c,v 1.6 2000/01/17 20:49:55 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_input.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_input.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -44,11 +44,11 @@
 /*
  * Local functions
  */
-static void	proc_arp_req __P((struct ipvcc *, KBuffer *));
-static void	proc_arp_rsp __P((struct ipvcc *, KBuffer *));
-static void	proc_arp_nak __P((struct ipvcc *, KBuffer *));
-static void	proc_inarp_req __P((struct ipvcc *, KBuffer *));
-static void	proc_inarp_rsp __P((struct ipvcc *, KBuffer *));
+static void	proc_arp_req (struct ipvcc *, KBuffer *);
+static void	proc_arp_rsp (struct ipvcc *, KBuffer *);
+static void	proc_arp_nak (struct ipvcc *, KBuffer *);
+static void	proc_inarp_req (struct ipvcc *, KBuffer *);
+static void	proc_inarp_rsp (struct ipvcc *, KBuffer *);
 
 
 /*

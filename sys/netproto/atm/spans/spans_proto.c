@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_proto.c,v 1.4 1999/08/28 00:48:51 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_proto.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_proto.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -43,10 +43,10 @@
 /*
  * Internal functions
  */
-caddr_t	spans_getname __P((void *));
-void	spans_connected __P((void *));
-void	spans_cleared __P((void *, struct t_atm_cause *));
-void	spans_cpcs_data __P((void *, KBuffer *));
+caddr_t	spans_getname (void *);
+void	spans_connected (void *);
+void	spans_cleared (void *, struct t_atm_cause *);
+void	spans_cpcs_data (void *, KBuffer *);
 
 
 /*

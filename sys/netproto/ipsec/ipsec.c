@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec.c,v 1.2.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.3 2003/08/07 21:17:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.4 2003/08/23 10:06:23 rob Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -184,24 +184,24 @@ SYSCTL_INT(_net_inet6_ipsec6, IPSECCTL_ESP_RANDPAD,
 	esp_randpad, CTLFLAG_RW,	&ip6_esp_randpad,	0, "");
 #endif /* INET6 */
 
-static int ipsec4_setspidx_inpcb __P((struct mbuf *, struct inpcb *pcb));
+static int ipsec4_setspidx_inpcb (struct mbuf *, struct inpcb *pcb);
 #ifdef INET6
-static int ipsec6_setspidx_in6pcb __P((struct mbuf *, struct in6pcb *pcb));
+static int ipsec6_setspidx_in6pcb (struct mbuf *, struct in6pcb *pcb);
 #endif
-static int ipsec_setspidx __P((struct mbuf *, struct secpolicyindex *, int));
-static void ipsec4_get_ulp __P((struct mbuf *m, struct secpolicyindex *, int));
-static int ipsec4_setspidx_ipaddr __P((struct mbuf *, struct secpolicyindex *));
+static int ipsec_setspidx (struct mbuf *, struct secpolicyindex *, int);
+static void ipsec4_get_ulp (struct mbuf *m, struct secpolicyindex *, int);
+static int ipsec4_setspidx_ipaddr (struct mbuf *, struct secpolicyindex *);
 #ifdef INET6
-static void ipsec6_get_ulp __P((struct mbuf *m, struct secpolicyindex *, int));
-static int ipsec6_setspidx_ipaddr __P((struct mbuf *, struct secpolicyindex *));
+static void ipsec6_get_ulp (struct mbuf *m, struct secpolicyindex *, int);
+static int ipsec6_setspidx_ipaddr (struct mbuf *, struct secpolicyindex *);
 #endif
-static void ipsec_delpcbpolicy __P((struct inpcbpolicy *));
-static struct secpolicy *ipsec_deepcopy_policy __P((struct secpolicy *src));
-static int ipsec_set_policy __P((struct secpolicy **pcb_sp,
-	int optname, caddr_t request, size_t len, int priv));
-static int ipsec_get_policy __P((struct secpolicy *pcb_sp, struct mbuf **mp));
-static void vshiftl __P((unsigned char *, int, int));
-static size_t ipsec_hdrsiz __P((struct secpolicy *));
+static void ipsec_delpcbpolicy (struct inpcbpolicy *);
+static struct secpolicy *ipsec_deepcopy_policy (struct secpolicy *src);
+static int ipsec_set_policy (struct secpolicy **pcb_sp,
+	int optname, caddr_t request, size_t len, int priv);
+static int ipsec_get_policy (struct secpolicy *pcb_sp, struct mbuf **mp);
+static void vshiftl (unsigned char *, int, int);
+static size_t ipsec_hdrsiz (struct secpolicy *);
 
 /*
  * Return a held reference to the default SP.

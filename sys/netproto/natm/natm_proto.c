@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netnatm/natm_proto.c,v 1.4.2.2 2000/08/03 18:56:28 peter Exp $
- * $DragonFly: src/sys/netproto/natm/natm_proto.c,v 1.3 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/natm/natm_proto.c,v 1.4 2003/08/23 10:06:24 rob Exp $
  */
 
 /*
@@ -55,7 +55,7 @@
 
 extern	struct domain natmdomain;
 
-static	void natm_init __P((void));
+static	void natm_init (void);
 
 static struct protosw natmsw[] = {
 { SOCK_STREAM,	&natmdomain,	PROTO_NATMAAL5, PR_CONNREQUIRED,

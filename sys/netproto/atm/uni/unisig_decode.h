@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_decode.h,v 1.2 1999/08/28 00:49:05 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_decode.h,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_decode.h,v 1.3 2003/08/23 10:06:22 rob Exp $
  *
  */
 
@@ -56,7 +56,7 @@ struct ie_ent {
 	int		max_len;	/* Max. length */
 	int		p_idx;		/* IE pointer index in msg */
 	int		(*decode)	/* Decoding function */
-				__P((struct usfmt *, struct ie_generic *));
+				(struct usfmt *, struct ie_generic *);
 };
 
 /*

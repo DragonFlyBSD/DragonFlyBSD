@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_load.c,v 1.6 2000/01/17 20:49:43 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_load.c,v 1.4 2003/08/07 21:54:33 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_load.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -95,8 +95,8 @@ struct sp_info	ipatm_nifpool = {
 /*
  * Local functions
  */
-static int	ipatm_start __P((void));
-static int	ipatm_stop __P((void));
+static int	ipatm_start (void);
+static int	ipatm_stop (void);
 
 
 /*
@@ -593,8 +593,8 @@ done:
  *
  *******************************************************************
  */
-static int	ipatm_doload __P((void));
-static int	ipatm_dounload __P((void));
+static int	ipatm_doload (void);
+static int	ipatm_dounload (void);
 
 /*
  * Generic module load processing
@@ -837,7 +837,7 @@ ipatm_mod(lkmtp, cmd, ver)
  *
  *******************************************************************
  */
-static void	ipatm_doload __P((void *));
+static void	ipatm_doload (void *);
 
 SYSINIT(atmipatm, SI_SUB_PROTO_END, SI_ORDER_ANY, ipatm_doload, NULL)
 

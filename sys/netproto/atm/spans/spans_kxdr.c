@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_kxdr.c,v 1.3 1999/08/28 00:48:50 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_kxdr.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_kxdr.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -418,12 +418,12 @@ xdr_opaque(xdrs, cp, cnt)
  */
 
 
-void		xdrmbuf_init __P((XDR *, KBuffer *, enum xdr_op));
-static bool_t	xdrmbuf_getlong __P((XDR *, long *));
-static bool_t	xdrmbuf_putlong __P((XDR *, long *));
-static bool_t	xdrmbuf_getbytes __P((XDR *, caddr_t, u_int));
-static bool_t	xdrmbuf_putbytes __P((XDR *, caddr_t, u_int));
-static u_int	xdrmbuf_getpos __P((XDR *));
+void		xdrmbuf_init (XDR *, KBuffer *, enum xdr_op);
+static bool_t	xdrmbuf_getlong (XDR *, long *);
+static bool_t	xdrmbuf_putlong (XDR *, long *);
+static bool_t	xdrmbuf_getbytes (XDR *, caddr_t, u_int);
+static bool_t	xdrmbuf_putbytes (XDR *, caddr_t, u_int);
+static u_int	xdrmbuf_getpos (XDR *);
 
 static struct	xdr_ops xdrmbuf_ops = {
 	xdrmbuf_getlong,

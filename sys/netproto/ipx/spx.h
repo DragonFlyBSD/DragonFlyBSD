@@ -34,7 +34,7 @@
  *	@(#)spx.h
  *
  * $FreeBSD: src/sys/netipx/spx.h,v 1.16 1999/12/29 04:46:09 peter Exp $
- * $DragonFly: src/sys/netproto/ipx/spx.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx.h,v 1.3 2003/08/23 10:06:23 rob Exp $
  */
 
 #ifndef _NETIPX_SPX_H_
@@ -173,12 +173,12 @@ struct spxpcb {
 extern struct pr_usrreqs spx_usrreqs;
 extern struct pr_usrreqs spx_usrreq_sps;
 
-void	spx_ctlinput __P((int cmd, struct sockaddr *arg_as_sa, void *dummy));
-int	spx_ctloutput __P((struct socket *so, struct sockopt *sopt));
-void	spx_fasttimo __P((void));
-void	spx_init __P((void));
-void	spx_input __P((struct mbuf *m, struct ipxpcb *ipxp));
-void	spx_slowtimo __P((void));
+void	spx_ctlinput (int cmd, struct sockaddr *arg_as_sa, void *dummy);
+int	spx_ctloutput (struct socket *so, struct sockopt *sopt);
+void	spx_fasttimo (void);
+void	spx_init (void);
+void	spx_input (struct mbuf *m, struct ipxpcb *ipxp);
+void	spx_slowtimo (void);
 
 #endif /* _KERNEL */
 

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscf_uni.c,v 1.7.2.1 2001/09/30 22:54:35 kris Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscf_uni.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscf_uni.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -48,7 +48,7 @@ int	sscf_uni_vccnt = 0;
 /*
  * Local functions
  */
-static int	sscf_uni_inst __P((struct stack_defn **, Atm_connvc *));
+static int	sscf_uni_inst (struct stack_defn **, Atm_connvc *);
 
 /*
  * Local variables

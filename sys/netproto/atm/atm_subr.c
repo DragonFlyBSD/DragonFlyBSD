@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_subr.c,v 1.7 2000/02/13 03:31:59 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.3 2003/08/07 21:17:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.4 2003/08/23 10:06:21 rob Exp $
  */
 
 /*
@@ -69,8 +69,8 @@ struct sp_info	atm_attributes_pool = {
 /*
  * Local functions
  */
-static void	atm_compact __P((struct atm_time *));
-static KTimeout_ret	atm_timexp __P((void *));
+static void	atm_compact (struct atm_time *);
+static KTimeout_ret	atm_timexp (void *);
 
 /*
  * Local variables
@@ -524,7 +524,7 @@ atm_timexp(arg)
 	 * Dispatch expired timers
 	 */
 	while (((tip = atm_timeq) != NULL) && (tip->ti_ticks == 0)) {
-		void	(*func)__P((struct atm_time *));
+		void	(*func)(struct atm_time *);
 
 		/*
 		 * Remove expired block from queue
@@ -583,7 +583,7 @@ void
 atm_timeout(tip, t, func)
 	struct atm_time	*tip;
 	int		t;
-	void		(*func)__P((struct atm_time *));
+	void		(*func)(struct atm_time *);
 {
 	struct atm_time	*tip1, *tip2;
 	int		s;
@@ -718,7 +718,7 @@ atm_untimeout(tip)
 int
 atm_stack_enq(cmd, func, token, cvp, arg1, arg2)
 	int		cmd;
-	void		(*func)__P((int, void *, int, int));
+	void		(*func)(int, void *, int, int);
 	void		*token;
 	Atm_connvc	*cvp;
 	int		arg1;

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/sigpvc/sigpvc_var.h,v 1.2 1999/08/28 00:48:47 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/sigpvc/sigpvc_var.h,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/sigpvc/sigpvc_var.h,v 1.3 2003/08/23 10:06:22 rob Exp $
  *
  */
 
@@ -88,8 +88,8 @@ struct sigpvc_vccb {
 	/* sigpvc_if.c */
 
 	/* sigpvc_subr.c */
-int		sigpvc_create_pvc __P((struct sigpvc *, Atm_connvc *, int *));
-void		sigpvc_close_vcc __P((struct vccb *));
+int		sigpvc_create_pvc (struct sigpvc *, Atm_connvc *, int *);
+void		sigpvc_close_vcc (struct vccb *);
 
 #endif	/* ATM_KERNEL */
 

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscf_uni_var.h,v 1.2 1999/08/28 00:48:58 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscf_uni_var.h,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscf_uni_var.h,v 1.3 2003/08/23 10:06:22 rob Exp $
  *
  */
 
@@ -53,9 +53,9 @@ struct univcc {
 	void		*uv_toku;	/* Stack upper layer's token */
 	void		*uv_tokl;	/* Stack lower layer's token */
 	void		(*uv_upper)	/* Stack upper layer's interface */
-				__P((int, void *, int, int));
+				(int, void *, int, int);
 	void		(*uv_lower)	/* Stack lower layer's interface */
-				__P((int, void *, int, int));
+				(int, void *, int, int);
 };
 
 /*
@@ -93,17 +93,17 @@ struct univcc {
  * Global function declarations
  */
 	/* sscf_uni.c */
-int		sscf_uni_start __P((void));
-int		sscf_uni_stop __P((void));
-void		sscf_uni_abort __P((struct univcc *, char *));
-void		sscf_uni_pdu_print __P((struct univcc *, KBuffer *,
-			char *));
+int		sscf_uni_start (void);
+int		sscf_uni_stop (void);
+void		sscf_uni_abort (struct univcc *, char *);
+void		sscf_uni_pdu_print (struct univcc *, KBuffer *,
+			char *);
 
 	/* sscf_uni_lower.c */
-void		sscf_uni_lower __P((int, void *, int, int));
+void		sscf_uni_lower (int, void *, int, int);
 
 	/* sscf_uni_upper.c */
-void		sscf_uni_upper __P((int, void *, int, int));
+void		sscf_uni_upper (int, void *, int, int);
 
 
 /*

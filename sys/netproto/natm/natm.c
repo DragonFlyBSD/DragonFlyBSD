@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.4 2003/08/07 21:17:38 dillon Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.5 2003/08/23 10:06:24 rob Exp $ */
 
 /*
  *
@@ -69,22 +69,22 @@ static u_long natm0_recvspace = 16*1024;
 /*
  * FreeBSD new usrreqs supersedes pr_usrreq.
  */
-static int natm_usr_attach __P((struct socket *, int, struct thread *));
-static int natm_usr_detach __P((struct socket *));
-static int natm_usr_connect __P((struct socket *, struct sockaddr *,
-				 struct thread *));
-static int natm_usr_disconnect __P((struct socket *));
-static int natm_usr_shutdown __P((struct socket *));
-static int natm_usr_send __P((struct socket *, int, struct mbuf *,
+static int natm_usr_attach (struct socket *, int, struct thread *);
+static int natm_usr_detach (struct socket *);
+static int natm_usr_connect (struct socket *, struct sockaddr *,
+				 struct thread *);
+static int natm_usr_disconnect (struct socket *);
+static int natm_usr_shutdown (struct socket *);
+static int natm_usr_send (struct socket *, int, struct mbuf *,
 			      struct sockaddr *, struct mbuf *, 
-			      struct thread *));
-static int natm_usr_peeraddr __P((struct socket *, struct sockaddr **));
-static int natm_usr_control __P((struct socket *, u_long, caddr_t,
-				 struct ifnet *, struct thread *));
-static int natm_usr_abort __P((struct socket *));
-static int natm_usr_bind __P((struct socket *, struct sockaddr *, 
-			      struct thread *));
-static int natm_usr_sockaddr __P((struct socket *, struct sockaddr **));
+			      struct thread *);
+static int natm_usr_peeraddr (struct socket *, struct sockaddr **);
+static int natm_usr_control (struct socket *, u_long, caddr_t,
+				 struct ifnet *, struct thread *);
+static int natm_usr_abort (struct socket *);
+static int natm_usr_bind (struct socket *, struct sockaddr *, 
+			      struct thread *);
+static int natm_usr_sockaddr (struct socket *, struct sockaddr **);
 
 static int
 natm_usr_attach(struct socket *so, int proto, struct thread *td)

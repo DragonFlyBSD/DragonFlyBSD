@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_print.c,v 1.4 2000/01/17 20:49:57 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_print.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_print.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -53,30 +53,30 @@ struct type_name {
 /*
  * Local functions
  */
-static char *	find_type __P((struct type_name *, u_char));
-static void	usp_print_atm_addr __P((Atm_addr *));
-static void	usp_print_ie __P((struct ie_generic *));
-static void	usp_print_ie_aalp __P((struct ie_generic *));
-static void	usp_print_ie_clrt __P((struct ie_generic *));
-static void	usp_print_ie_bbcp __P((struct ie_generic *));
-static void	usp_print_ie_bhli __P((struct ie_generic *));
-static void	usp_print_ie_blli __P((struct ie_generic *));
-static void	usp_print_ie_clst __P((struct ie_generic *));
-static void	usp_print_ie_cdad __P((struct ie_generic *));
-static void	usp_print_ie_cdsa __P((struct ie_generic *));
-static void	usp_print_ie_cgad __P((struct ie_generic *));
-static void	usp_print_ie_cgsa __P((struct ie_generic *));
-static void	usp_print_ie_caus __P((struct ie_generic *));
-static void	usp_print_ie_cnid __P((struct ie_generic *));
-static void	usp_print_ie_qosp __P((struct ie_generic *));
-static void	usp_print_ie_brpi __P((struct ie_generic *));
-static void	usp_print_ie_rsti __P((struct ie_generic *));
-static void	usp_print_ie_blsh __P((struct ie_generic *));
-static void	usp_print_ie_bnsh __P((struct ie_generic *));
-static void	usp_print_ie_bsdc __P((struct ie_generic *));
-static void	usp_print_ie_trnt __P((struct ie_generic *));
-static void	usp_print_ie_eprf __P((struct ie_generic *));
-static void	usp_print_ie_epst __P((struct ie_generic *));
+static char *	find_type (struct type_name *, u_char);
+static void	usp_print_atm_addr (Atm_addr *);
+static void	usp_print_ie (struct ie_generic *);
+static void	usp_print_ie_aalp (struct ie_generic *);
+static void	usp_print_ie_clrt (struct ie_generic *);
+static void	usp_print_ie_bbcp (struct ie_generic *);
+static void	usp_print_ie_bhli (struct ie_generic *);
+static void	usp_print_ie_blli (struct ie_generic *);
+static void	usp_print_ie_clst (struct ie_generic *);
+static void	usp_print_ie_cdad (struct ie_generic *);
+static void	usp_print_ie_cdsa (struct ie_generic *);
+static void	usp_print_ie_cgad (struct ie_generic *);
+static void	usp_print_ie_cgsa (struct ie_generic *);
+static void	usp_print_ie_caus (struct ie_generic *);
+static void	usp_print_ie_cnid (struct ie_generic *);
+static void	usp_print_ie_qosp (struct ie_generic *);
+static void	usp_print_ie_brpi (struct ie_generic *);
+static void	usp_print_ie_rsti (struct ie_generic *);
+static void	usp_print_ie_blsh (struct ie_generic *);
+static void	usp_print_ie_bnsh (struct ie_generic *);
+static void	usp_print_ie_bsdc (struct ie_generic *);
+static void	usp_print_ie_trnt (struct ie_generic *);
+static void	usp_print_ie_eprf (struct ie_generic *);
+static void	usp_print_ie_epst (struct ie_generic *);
 
 
 /*

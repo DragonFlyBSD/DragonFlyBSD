@@ -34,7 +34,7 @@
  *	@(#)ipx.h
  *
  * $FreeBSD: src/sys/netipx/ipx.h,v 1.15 1999/08/28 18:21:52 jhay Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx.h,v 1.3 2003/08/23 10:06:23 rob Exp $
  */
 
 #ifndef _NETIPX_IPX_H_
@@ -166,8 +166,8 @@ struct ipx {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-struct	ipx_addr ipx_addr __P((const char *));
-char	*ipx_ntoa __P((struct ipx_addr));
+struct	ipx_addr ipx_addr (const char *);
+char	*ipx_ntoa (struct ipx_addr);
 __END_DECLS
 
 #endif /* !_NETIPX_IPX_H_ */

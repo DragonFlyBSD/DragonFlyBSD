@@ -34,7 +34,7 @@
  *	@(#)ipx_if.h
  *
  * $FreeBSD: src/sys/netipx/ipx_if.h,v 1.11 1999/12/29 04:46:07 peter Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_if.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_if.h,v 1.3 2003/08/23 10:06:23 rob Exp $
  */
 
 #ifndef _NETIPX_IPX_IF_H_
@@ -92,7 +92,7 @@ struct ipxip_req {
 extern struct	ifqueue	ipxintrq;	/* IPX input packet queue */
 extern struct	ipx_ifaddr *ipx_ifaddr;
 
-struct ipx_ifaddr *ipx_iaonnetof __P((struct ipx_addr *dst));
+struct ipx_ifaddr *ipx_iaonnetof (struct ipx_addr *dst);
 #endif
 
 #endif /* !_NETIPX_IPX_IF_H_ */

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/keysock.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.3 2003/08/07 21:17:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.4 2003/08/23 10:06:23 rob Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -70,7 +70,7 @@ static struct key_cb key_cb;
 static struct sockaddr key_dst = { 2, PF_KEY, };
 static struct sockaddr key_src = { 2, PF_KEY, };
 
-static int key_sendup0 __P((struct rawcb *, struct mbuf *, int));
+static int key_sendup0 (struct rawcb *, struct mbuf *, int);
 
 struct pfkeystat pfkeystat;
 

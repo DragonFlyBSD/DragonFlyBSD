@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_msg.c,v 1.6 2000/01/17 20:49:56 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_msg.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_msg.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -45,8 +45,8 @@
 /*
  * Local functions
  */
-static void	unisig_rcv_restart __P((struct unisig *, struct unisig_msg *));
-static void	unisig_rcv_setup __P((struct unisig *, struct unisig_msg *));
+static void	unisig_rcv_restart (struct unisig *, struct unisig_msg *);
+static void	unisig_rcv_setup (struct unisig *, struct unisig_msg *);
 
 
 /*

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_encode.c,v 1.5 2000/01/17 20:49:56 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_encode.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_encode.c,v 1.5 2003/08/23 10:06:22 rob Exp $
  */
 
 /*
@@ -45,28 +45,28 @@
 /*
  * Local functions
  */
-static int	usf_enc_ie __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_aalp __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_clrt __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_bbcp __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_bhli __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_blli __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_clst __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_cdad __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_cdsa __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_cgad __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_cgsa __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_caus __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_cnid __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_qosp __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_brpi __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_rsti __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_bsdc __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_trnt __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_uimp __P((struct usfmt *, struct ie_generic *));
-static int	usf_enc_ie_ident __P((struct usfmt *, struct ie_generic *,
-			struct ie_decode_tbl *));
-static int	usf_enc_atm_addr __P((struct usfmt *, Atm_addr *));
+static int	usf_enc_ie (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_aalp (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_clrt (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_bbcp (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_bhli (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_blli (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_clst (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_cdad (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_cdsa (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_cgad (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_cgsa (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_caus (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_cnid (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_qosp (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_brpi (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_rsti (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_bsdc (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_trnt (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_uimp (struct usfmt *, struct ie_generic *);
+static int	usf_enc_ie_ident (struct usfmt *, struct ie_generic *,
+			struct ie_decode_tbl *);
+static int	usf_enc_atm_addr (struct usfmt *, Atm_addr *);
 
 
 /*
@@ -74,7 +74,7 @@ static int	usf_enc_atm_addr __P((struct usfmt *, Atm_addr *));
  */
 static struct {
 	u_char	ident;			/* IE identifier */
-	int	(*encode) __P((struct usfmt *, struct ie_generic *));
+	int	(*encode) (struct usfmt *, struct ie_generic *);
 					/* Encoding function */
 } ie_table[] = {
         { UNI_IE_AALP, usf_enc_ie_aalp },
