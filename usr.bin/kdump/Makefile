@@ -1,12 +1,13 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
 # $FreeBSD: src/usr.bin/kdump/Makefile,v 1.4.2.2 2002/07/23 09:16:07 ru Exp $
-# $DragonFly: src/usr.bin/kdump/Makefile,v 1.3 2004/01/16 07:45:19 dillon Exp $
+# $DragonFly: src/usr.bin/kdump/Makefile,v 1.4 2004/02/04 14:36:11 rob Exp $
 
 .PATH: ${.CURDIR}/../ktrace
 
 PROG=		kdump
 SRCS=		kdump.c ioctl.c subr.c
 CFLAGS+=	-I${.CURDIR}/../ktrace -I${.CURDIR}/../.. -I${.CURDIR}/../../sys
+CFLAGS+=	-D__FreeBSD__
 
 CLEANFILES=	ioctl.c
 
