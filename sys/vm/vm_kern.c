@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.20 2005/03/28 18:49:25 joerg Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.21 2005/04/02 15:58:16 joerg Exp $
  */
 
 /*
@@ -294,9 +294,8 @@ kmem_malloc(vm_map_t map, vm_size_t size, int flags)
 	vm_map_entry_t entry;
 	vm_offset_t addr;
 	vm_page_t m;
-	int count;
+	int count, vmflags, wanted_reserve;
 	thread_t td;
-	int wanted_reserve;
 
 	if (map != kernel_map)
 		panic("kmem_malloc: map != kernel_map");
@@ -331,21 +330,20 @@ kmem_malloc(vm_map_t map, vm_size_t size, int flags)
 	td = curthread;
 	wanted_reserve = 0;
 
+	vmflags = VM_ALLOC_SYSTEM;	/* XXX M_USE_RESERVE? */
+	if ((flags & (M_WAITOK|M_RNOWAIT)) == 0)
+		panic("kmem_malloc: bad flags %08x (%p)\n", flags, ((int **)&map)[-1]);
+	if (flags & M_USE_INTERRUPT_RESERVE)
+		vmflags |= VM_ALLOC_INTERRUPT;
+
 	for (i = 0; i < size; i += PAGE_SIZE) {
-		int vmflags;
-
-		vmflags = VM_ALLOC_SYSTEM;	/* XXX M_USE_RESERVE? */
-		if ((flags & (M_WAITOK|M_RNOWAIT)) == 0)
-			printf("kmem_malloc: bad flags %08x (%p)\n", flags, ((int **)&map)[-1]);
-		if (flags & M_USE_INTERRUPT_RESERVE)
-			vmflags |= VM_ALLOC_INTERRUPT;
-
 		/*
 		 * Only allocate PQ_CACHE pages for M_WAITOK requests and 
 		 * then only if we are not preempting.
 		 */
 		if (flags & M_WAITOK) {
 			if (td->td_preempted) {
+				vmflags &= ~VM_ALLOC_NORMAL;
 				wanted_reserve = 1;
 			} else {
 				vmflags |= VM_ALLOC_NORMAL;
