@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.3 2003/06/25 03:56:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.4 2003/07/01 18:48:31 dillon Exp $
  */
 
 /*
@@ -1997,12 +1997,18 @@ nfsmout:
 
 #endif
 
+/*
+ * Send a message to the originating process's terminal.  The thread and/or
+ * process may be NULL.  YYY the thread should not be NULL but there may
+ * still be some uio_td's that are still being passed as NULL through to
+ * nfsm_request().
+ */
 static int
 nfs_msg(struct thread *td, char *server, char *msg)
 {
 	tpr_t tpr;
 
-	if (td->td_proc)
+	if (td && td->td_proc)
 		tpr = tprintf_open(td->td_proc);
 	else
 		tpr = NULL;

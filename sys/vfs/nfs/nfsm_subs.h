@@ -35,7 +35,7 @@
  *
  *	@(#)nfsm_subs.h	8.2 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfsm_subs.h,v 1.27.2.1 2000/10/28 16:27:27 dwmalone Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsm_subs.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsm_subs.h,v 1.3 2003/07/01 18:48:31 dillon Exp $
  */
 
 
@@ -385,9 +385,9 @@ struct mbuf *nfsm_rpchead __P((struct ucred *cr, int nmflag, int procid,
 
 #define nfsm_rndup(a)	(((a)+3)&(~0x3))
 
-#define	nfsm_request(v, t, p, c) \
+#define	nfsm_request(v, t, td, c) \
 	do { \
-		if ((error = nfs_request((v), mreq, (t), (p), \
+		if ((error = nfs_request((v), mreq, (t), (td), \
 		   (c), &mrep, &md, &dpos)) != 0) { \
 			if (error & NFSERR_RETERR) \
 				error &= ~NFSERR_RETERR; \
