@@ -82,7 +82,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.17 2005/03/04 02:21:48 hsu Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.18 2005/03/04 02:54:31 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -255,13 +255,8 @@ rtfree(struct rtentry *rt)
  * N.B.: must be called at splnet
  */
 void
-rtredirect(
-	struct sockaddr *dst,
-	struct sockaddr *gateway,
-	struct sockaddr *netmask,
-	int flags,
-	struct sockaddr *src,
-	struct rtentry **rtp)
+rtredirect(struct sockaddr *dst, struct sockaddr *gateway,
+	   struct sockaddr *netmask, int flags, struct sockaddr *src)
 {
 	struct rtentry *rt;
 	struct rt_addrinfo info;
@@ -341,12 +336,8 @@ create:
 	}
 
 done:
-	if (rt != NULL) {
-		if (rtp != NULL && error == 0)
-			*rtp = rt;
-		else
-			rtfree(rt);
-	}
+	if (rt != NULL)
+		rtfree(rt);
 
 out:
 	if (error != 0)

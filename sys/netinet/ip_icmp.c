@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.20 2005/02/11 22:25:57 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.21 2005/03/04 02:54:31 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -581,7 +581,7 @@ reflect:
 		rtredirect((struct sockaddr *)&icmpsrc,
 		  (struct sockaddr *)&icmpdst,
 		  (struct sockaddr *)0, RTF_GATEWAY | RTF_HOST,
-		  (struct sockaddr *)&icmpgw, (struct rtentry **)0);
+		  (struct sockaddr *)&icmpgw);
 		pfctlinput(PRC_REDIRECT_HOST, (struct sockaddr *)&icmpsrc);
 #ifdef IPSEC
 		key_sa_routechange((struct sockaddr *)&icmpsrc);

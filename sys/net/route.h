@@ -82,7 +82,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.12 2005/01/31 21:44:10 joerg Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.13 2005/03/04 02:54:31 hsu Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -371,7 +371,7 @@ void	 rtfree (struct rtentry *);
 int	 rtinit (struct ifaddr *, int, int);
 int	 rtioctl (u_long, caddr_t, struct thread *);
 void	 rtredirect (struct sockaddr *, struct sockaddr *,
-	    struct sockaddr *, int, struct sockaddr *, struct rtentry **);
+	    struct sockaddr *, int, struct sockaddr *);
 int	 rtrequest (int, struct sockaddr *,
 	    struct sockaddr *, struct sockaddr *, int, struct rtentry **);
 int	 rtrequest1 (int, struct rt_addrinfo *, struct rtentry **);

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.18 2005/02/08 22:56:19 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.19 2005/03/04 02:54:31 hsu Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -2349,8 +2349,7 @@ icmp6_redirect_input(struct mbuf *m, int off)
 		bcopy(&src6, &ssrc.sin6_addr, sizeof(struct in6_addr));
 		rtredirect((struct sockaddr *)&sdst, (struct sockaddr *)&sgw,
 			   (struct sockaddr *)NULL, RTF_GATEWAY | RTF_HOST,
-			   (struct sockaddr *)&ssrc,
-			   (struct rtentry **)NULL);
+			   (struct sockaddr *)&ssrc);
 	}
 	/* finally update cached route in each socket via pfctlinput */
     {
