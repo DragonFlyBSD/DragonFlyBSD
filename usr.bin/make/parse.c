@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.61 2005/03/31 23:47:02 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.62 2005/04/01 00:32:03 okumoto Exp $
  */
 
 /*-
@@ -2350,160 +2350,178 @@ ParseFinishLine(void)
 void
 Parse_File(char *name, FILE *stream)
 {
-    char	  *cp,		/* pointer into the line */
-                  *line;	/* the line we're working on */
-    Buffer	  *buf;
+	char	*cp;	/* pointer into the line */
+	char	*line;	/* the line we're working on */
+	Buffer	*buf;
 
-    inLine = FALSE;
-    curFile.fname = name;
-    curFile.F = stream;
-    curFile.lineno = 0;
-    fatals = 0;
+	inLine = FALSE;
+	curFile.fname = name;
+	curFile.F = stream;
+	curFile.lineno = 0;
+	fatals = 0;
 
-    Var_Append(".MAKEFILE_LIST", name, VAR_GLOBAL);
+	Var_Append(".MAKEFILE_LIST", name, VAR_GLOBAL);
 
-    do {
-	while ((line = ParseReadLine()) != NULL) {
-	    if (*line == '.') {
-		/*
-		 * Lines that begin with the special character are either
-		 * include or undef directives.
-		 */
-		for (cp = line + 1; isspace((unsigned char)*cp); cp++) {
-		    continue;
-		}
-		if (strncmp(cp, "include", 7) == 0) {
-		    ParseDoInclude(cp + 7);
-		    goto nextLine;
-		} else if (strncmp(cp, "error", 5) == 0) {
-		    ParseDoError(cp + 5);
-	            goto nextLine;
-		} else if (strncmp(cp, "warning", 7) == 0) {
-		    ParseDoWarning(cp + 7);
-	            goto nextLine;
-		} else if (strncmp(cp, "undef", 5) == 0) {
-		    cp = stripvarname(cp + 5);
-		    buf = Var_Subst(NULL, cp, VAR_CMD, FALSE);
-		    cp = Buf_Peel(buf);
+	do {
+		while ((line = ParseReadLine()) != NULL) {
+			if (*line == '.') {
+				/*
+				 * Lines that begin with the special character
+				 * are either include or undef directives.
+				 */
+				for (cp = line + 1; isspace((unsigned char)*cp);
+				    cp++) {
+					continue;
+				}
+				if (strncmp(cp, "include", 7) == 0) {
+					ParseDoInclude(cp + 7);
+					goto nextLine;
+				} else if (strncmp(cp, "error", 5) == 0) {
+					ParseDoError(cp + 5);
+					goto nextLine;
+				} else if (strncmp(cp, "warning", 7) == 0) {
+					ParseDoWarning(cp + 7);
+					goto nextLine;
+				} else if (strncmp(cp, "undef", 5) == 0) {
+					cp = stripvarname(cp + 5);
+					buf = Var_Subst(NULL, cp, VAR_CMD,
+					    FALSE);
+					cp = Buf_Peel(buf);
 
-		    Var_Delete(cp, VAR_GLOBAL);
-		    goto nextLine;
-		} else if (strncmp(cp, "makeenv", 7) == 0) {
-		    cp = stripvarname(cp + 7);
-		    Var_SetEnv(cp, VAR_GLOBAL);
-		    goto nextLine;
-		}
-	    }
-	    if (*line == '#') {
-		/* If we're this far, the line must be a comment. */
-		goto nextLine;
-	    }
-
-	    if (*line == '\t') {
-		/*
-		 * If a line starts with a tab, it can only hope to be
-		 * a creation command.
-		 */
-		for (cp = line + 1; isspace((unsigned char)*cp); cp++) {
-		    continue;
-		}
-		if (*cp) {
-		    if (inLine) {
-			LstNode	*ln;
-			GNode	*gn;
-
-			/*
-			 * So long as it's not a blank line and we're actually
-			 * in a dependency spec, add the command to the list of
-			 * commands of all targets in the dependency spec
-			 */
-			LST_FOREACH(ln, &targets) {
-			    gn = Lst_Datum(ln);
-
-			    /* if target already supplied, ignore commands */
-			    if (!(gn->type & OP_HAS_COMMANDS))
-				Lst_AtEnd(&gn->commands, cp);
-			    else
-				Parse_Error(PARSE_WARNING, "duplicate script "
-				    "for target \"%s\" ignored", gn->name);
+					Var_Delete(cp, VAR_GLOBAL);
+					goto nextLine;
+				} else if (strncmp(cp, "makeenv", 7) == 0) {
+					cp = stripvarname(cp + 7);
+					Var_SetEnv(cp, VAR_GLOBAL);
+					goto nextLine;
+				}
 			}
-			continue;
-		    } else {
-			Parse_Error(PARSE_FATAL,
-				     "Unassociated shell command \"%s\"",
-				     cp);
-		    }
-		}
+			if (*line == '#') {
+				/*
+				 * If we're this far, the line must be
+				 * a comment.
+				 */
+				goto nextLine;
+			}
+
+			if (*line == '\t') {
+				/*
+				 * If a line starts with a tab, it can only
+				 * hope to be a creation command.
+				 */
+				for (cp = line + 1;
+				    isspace((unsigned char)*cp); cp++) {
+					continue;
+				}
+				if (*cp) {
+					if (inLine) {
+						LstNode	*ln;
+						GNode	*gn;
+
+						/*
+						 * So long as it's not a blank
+						 * line and we're actually in a
+						 * dependency spec, add the
+						 * command to the list of
+						 * commands of all targets in
+						 * the dependency spec.
+						 */
+						LST_FOREACH(ln, &targets) {
+							gn = Lst_Datum(ln);
+
+							/*
+							 * if target already
+							 * supplied, ignore
+							 * commands
+							 */
+							if (!(gn->type &
+							    OP_HAS_COMMANDS))
+								Lst_AtEnd(&gn->commands, cp);
+							else
+								Parse_Error(PARSE_WARNING, "duplicate script "
+								    "for target \"%s\" ignored", gn->name);
+						}
+						continue;
+					} else {
+						Parse_Error(PARSE_FATAL,
+						     "Unassociated shell command \"%s\"",
+						     cp);
+					}
+				}
 #ifdef SYSVINCLUDE
-	    } else if (strncmp(line, "include", 7) == 0 &&
-		       isspace((unsigned char)line[7]) &&
-		       strchr(line, ':') == NULL) {
-		/*
-		 * It's an S3/S5-style "include".
-		 */
-		ParseTraditionalInclude(line + 7);
-		goto nextLine;
+			} else if (strncmp(line, "include", 7) == 0 &&
+			    isspace((unsigned char)line[7]) &&
+			    strchr(line, ':') == NULL) {
+				/*
+				 * It's an S3/S5-style "include".
+				 */
+				ParseTraditionalInclude(line + 7);
+				goto nextLine;
 #endif
-	    } else if (Parse_IsVar(line)) {
-		ParseFinishLine();
-		Parse_DoVar(line, VAR_GLOBAL);
-	    } else {
-		/*
-		 * We now know it's a dependency line so it needs to have all
-		 * variables expanded before being parsed. Tell the variable
-		 * module to complain if some variable is undefined...
-		 * To make life easier on novices, if the line is indented we
-		 * first make sure the line has a dependency operator in it.
-		 * If it doesn't have an operator and we're in a dependency
-		 * line's script, we assume it's actually a shell command
-		 * and add it to the current list of targets.
-		 */
-		cp = line;
-		if (isspace((unsigned char)line[0])) {
-		    while ((*cp != '\0') && isspace((unsigned char)*cp)) {
-			cp++;
-		    }
-		    if (*cp == '\0') {
-			goto nextLine;
-		    }
+			} else if (Parse_IsVar(line)) {
+				ParseFinishLine();
+				Parse_DoVar(line, VAR_GLOBAL);
+
+			} else {
+				/*
+				 * We now know it's a dependency line so it
+				 * needs to have all variables expanded before
+				 * being parsed. Tell the variable module to
+				 * complain if some variable is undefined...
+				 * To make life easier on novices, if the line
+				 * is indented we first make sure the line has
+				 * a dependency operator in it. If it doesn't
+				 * have an operator and we're in a dependency
+				 * line's script, we assume it's actually a
+				 * shell command and add it to the current
+				 * list of targets.
+				 */
+				cp = line;
+				if (isspace((unsigned char)line[0])) {
+					while ((*cp != '\0') &&
+					    isspace((unsigned char)*cp)) {
+						cp++;
+					}
+					if (*cp == '\0') {
+						goto nextLine;
+					}
+				}
+
+				ParseFinishLine();
+
+				buf = Var_Subst(NULL, line, VAR_CMD, TRUE);
+				cp = Buf_Peel(buf);
+
+				free(line);
+				line = cp;
+
+				/*
+				 * Need a non-circular list for the target nodes
+				 */
+				Lst_Destroy(&targets, NOFREE);
+				inLine = TRUE;
+
+				ParseDoDependency(line);
+			}
+
+    nextLine:
+			free(line);
 		}
 
-		ParseFinishLine();
-
-		buf = Var_Subst(NULL, line, VAR_CMD, TRUE);
-		cp = Buf_Peel(buf);
-
-		free(line);
-		line = cp;
-
 		/*
-		 * Need a non-circular list for the target nodes
+		 * Reached EOF, but it may be just EOF of an include file...
 		 */
-		Lst_Destroy(&targets, NOFREE);
-		inLine = TRUE;
+	} while (ParseEOF(1) == CONTINUE);
 
-		ParseDoDependency(line);
-	    }
-
-	    nextLine:
-
-	    free(line);
-	}
+	ParseFinishLine();
 
 	/*
-	 * Reached EOF, but it may be just EOF of an include file...
+	 * Make sure conditionals are clean
 	 */
-    } while (ParseEOF(1) == CONTINUE);
+	Cond_End();
 
-    ParseFinishLine();
-
-    /*
-     * Make sure conditionals are clean
-     */
-    Cond_End();
-
-    if (fatals)
-	errx(1, "fatal errors encountered -- cannot continue");
+	if (fatals)
+		errx(1, "fatal errors encountered -- cannot continue");
 }
 
 /*-
