@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.7 2003/11/10 06:12:13 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.8 2004/06/02 17:18:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -78,9 +78,7 @@ static void partition_info (char *sname, int part, struct partition *pp);
 static void slice_info (char *sname, struct diskslice *sp);
 static void set_ds_label (struct diskslices *ssp, int slice,
 			      struct disklabel *lp);
-static void set_ds_labeldevs (dev_t dev, struct diskslices *ssp);
-static void set_ds_wlabel (struct diskslices *ssp, int slice,
-			       int wlabel);
+static void set_ds_wlabel (struct diskslices *ssp, int slice, int wlabel);
 
 /*
  * Duplicate a label for the whole disk, and initialize defaults in the
@@ -89,8 +87,7 @@ static void set_ds_wlabel (struct diskslices *ssp, int slice,
  * that are to be defaulted.
  */
 static struct disklabel *
-clone_label(lp)
-	struct disklabel *lp;
+clone_label(struct disklabel *lp)
 {
 	struct disklabel *lp1;
 
@@ -135,16 +132,14 @@ clone_label(lp)
  *	o Finish cleaning this up.
  */
 int
-dscheck(bp, ssp)
-	struct buf *bp;
-	struct diskslices *ssp;
+dscheck(struct buf *bp, struct diskslices *ssp)
 {
 	daddr_t	blkno;
 	u_long	endsecno;
 	daddr_t	labelsect;
 	struct disklabel *lp;
 	char *msg;
-	long	nsec;
+	long nsec;
 	struct partition *pp;
 	daddr_t	secno;
 	daddr_t	slicerel_secno;
@@ -186,7 +181,8 @@ dscheck(bp, ssp)
 		slicerel_secno = secno;
 	} else {
 		labelsect = lp->d_partitions[LABEL_PART].p_offset;
-if (labelsect != 0) Debugger("labelsect != 0 in dscheck()");
+		if (labelsect != 0)
+			Debugger("labelsect != 0 in dscheck()");
 		pp = &lp->d_partitions[dkpart(bp->b_dev)];
 		endsecno = pp->p_size;
 		slicerel_secno = pp->p_offset + secno;
@@ -303,12 +299,9 @@ bad:
 }
 
 void
-dsclose(dev, mode, ssp)
-	dev_t	dev;
-	int	mode;
-	struct diskslices *ssp;
+dsclose(dev_t dev, int mode, struct diskslices *ssp)
 {
-	u_char	mask;
+	u_char mask;
 	struct diskslice *sp;
 
 	sp = &ssp->dss_slices[dkslice(dev)];
@@ -317,10 +310,9 @@ dsclose(dev, mode, ssp)
 }
 
 void
-dsgone(sspp)
-	struct diskslices **sspp;
+dsgone(struct diskslices **sspp)
 {
-	int	slice;
+	int slice;
 	struct diskslice *sp;
 	struct diskslices *ssp;
 
@@ -337,19 +329,15 @@ dsgone(sspp)
  * is subject to the same restriction as dsopen().
  */
 int
-dsioctl(dev, cmd, data, flags, sspp)
-	dev_t	dev;
-	u_long	cmd;
-	caddr_t	data;
-	int	flags;
-	struct diskslices **sspp;
+dsioctl(dev_t dev, u_long cmd, caddr_t data, 
+	int flags, struct diskslices **sspp)
 {
-	int	error;
+	int error;
 	struct disklabel *lp;
-	int	old_wlabel;
-	u_char	openmask;
-	int	part;
-	int	slice;
+	int old_wlabel;
+	u_char openmask;
+	int part;
+	int slice;
 	struct diskslice *sp;
 	struct diskslices *ssp;
 	struct partition *pp;
@@ -459,7 +447,6 @@ dsioctl(dev, cmd, data, flags, sspp)
 		}
 		free_ds_label(ssp, slice);
 		set_ds_label(ssp, slice, lp);
-		set_ds_labeldevs(dev, ssp);
 		return (0);
 
 	case DIOCSYNCSLICEINFO:
@@ -547,8 +534,7 @@ dsioctl(dev, cmd, data, flags, sspp)
 }
 
 static void
-dsiodone(bp)
-	struct buf *bp;
+dsiodone(struct buf *bp)
 {
 	struct iodone_chain *ic;
 	char *msg;
@@ -572,16 +558,16 @@ dsiodone(bp)
 }
 
 int
-dsisopen(ssp)
-	struct diskslices *ssp;
+dsisopen(struct diskslices *ssp)
 {
-	int	slice;
+	int slice;
 
 	if (ssp == NULL)
 		return (0);
-	for (slice = 0; slice < ssp->dss_nslices; slice++)
+	for (slice = 0; slice < ssp->dss_nslices; slice++) {
 		if (ssp->dss_slices[slice].ds_openmask)
 			return (1);
+	}
 	return (0);
 }
 
@@ -592,9 +578,7 @@ dsisopen(ssp)
  * slices beginning at BASE_SLICE.
  */
 struct diskslices *
-dsmakeslicestruct(nslices, lp)
-	int nslices;
-	struct disklabel *lp;
+dsmakeslicestruct(int nslices, struct disklabel *lp)
 {
 	struct diskslice *sp;
 	struct diskslices *ssp;
@@ -617,12 +601,7 @@ dsmakeslicestruct(nslices, lp)
 }
 
 char *
-dsname(dev, unit, slice, part, partname)
-	dev_t	dev;
-	int	unit;
-	int	slice;
-	int	part;
-	char	*partname;
+dsname(dev_t dev, int unit, int slice, int part, char *partname)
 {
 	static char name[32];
 	const char *dname;
@@ -635,9 +614,10 @@ dsname(dev, unit, slice, part, partname)
 	if (slice != WHOLE_DISK_SLICE || part != RAW_PART) {
 		partname[0] = 'a' + part;
 		partname[1] = '\0';
-		if (slice != COMPATIBILITY_SLICE)
+		if (slice != COMPATIBILITY_SLICE) {
 			snprintf(name + strlen(name),
 			    sizeof(name) - strlen(name), "s%d", slice - 1);
+		}
 	}
 	return (name);
 }
@@ -648,26 +628,22 @@ dsname(dev, unit, slice, part, partname)
  * strategy routine must be special to allow activity.
  */
 int
-dsopen(dev, mode, flags, sspp, lp)
-	dev_t	dev;
-	int	mode;
-	u_int	flags;
-	struct diskslices **sspp;
-	struct disklabel *lp;
+dsopen(dev_t dev, int mode, u_int flags, 
+	struct diskslices **sspp, struct disklabel *lp)
 {
-	dev_t	dev1;
-	int	error;
+	dev_t dev1;
+	int error;
 	struct disklabel *lp1;
-	char	*msg;
-	u_char	mask;
-	bool_t	need_init;
-	int	part;
-	char	partname[2];
-	int	slice;
-	char	*sname;
+	char *msg;
+	u_char mask;
+	bool_t need_init;
+	int part;
+	char partname[2];
+	int slice;
+	char *sname;
 	struct diskslice *sp;
 	struct diskslices *ssp;
-	int	unit;
+	int unit;
 
 	dev->si_bsize_phys = lp->d_secsize;
 
@@ -795,7 +771,6 @@ dsopen(dev, mode, flags, sspp, lp)
 			continue;
 		}
 		set_ds_label(ssp, slice, lp1);
-		set_ds_labeldevs(dev1, ssp);
 		set_ds_wlabel(ssp, slice, FALSE);
 	}
 
@@ -813,13 +788,11 @@ dsopen(dev, mode, flags, sspp, lp)
 }
 
 int
-dssize(dev, sspp)
-	dev_t	dev;
-	struct diskslices **sspp;
+dssize(dev_t dev, struct diskslices **sspp)
 {
 	struct disklabel *lp;
-	int	part;
-	int	slice;
+	int part;
+	int slice;
 	struct diskslices *ssp;
 
 	slice = dkslice(dev);
@@ -839,9 +812,7 @@ dssize(dev, sspp)
 }
 
 static void
-free_ds_label(ssp, slice)
-	struct diskslices *ssp;
-	int	slice;
+free_ds_label(struct diskslices *ssp, int slice)
 {
 	struct disklabel *lp;
 	struct diskslice *sp;
@@ -855,18 +826,14 @@ free_ds_label(ssp, slice)
 }
 
 static char *
-fixlabel(sname, sp, lp, writeflag)
-	char	*sname;
-	struct diskslice *sp;
-	struct disklabel *lp;
-	int	writeflag;
+fixlabel(char *sname, struct diskslice *sp, struct disklabel *lp, int writeflag)
 {
-	u_long	end;
-	u_long	offset;
-	int	part;
+	u_long end;
+	u_long offset;
+	int part;
 	struct partition *pp;
-	u_long	start;
-	bool_t	warned;
+	u_long start;
+	bool_t warned;
 
 	/* These errors "can't happen" so don't bother reporting details. */
 	if (lp->d_magic != DISKMAGIC || lp->d_magic2 != DISKMAGIC)
@@ -941,10 +908,7 @@ fixlabel(sname, sp, lp, writeflag)
 }
 
 static void
-partition_info(sname, part, pp)
-	char	*sname;
-	int	part;
-	struct partition *pp;
+partition_info(char *sname, int part, struct partition *pp)
 {
 	printf("%s%c: start %lu, end %lu, size %lu\n", sname, 'a' + part,
 	       (u_long)pp->p_offset, (u_long)(pp->p_offset + pp->p_size - 1),
@@ -952,19 +916,14 @@ partition_info(sname, part, pp)
 }
 
 static void
-slice_info(sname, sp)
-	char	*sname;
-	struct diskslice *sp;
+slice_info(char *sname, struct diskslice *sp)
 {
 	printf("%s: start %lu, end %lu, size %lu\n", sname,
 	       sp->ds_offset, sp->ds_offset + sp->ds_size - 1, sp->ds_size);
 }
 
 static void
-set_ds_label(ssp, slice, lp)
-	struct diskslices *ssp;
-	int	slice;
-	struct disklabel *lp;
+set_ds_label(struct diskslices *ssp, int slice, struct disklabel *lp)
 {
 	ssp->dss_slices[slice].ds_label = lp;
 	if (slice == COMPATIBILITY_SLICE)
@@ -973,19 +932,8 @@ set_ds_label(ssp, slice, lp)
 		ssp->dss_slices[COMPATIBILITY_SLICE].ds_label = lp;
 }
 
-/* XXX remove this? */
 static void
-set_ds_labeldevs(dev, ssp)
-	dev_t	dev;
-	struct diskslices *ssp;
-{
-}
-
-static void
-set_ds_wlabel(ssp, slice, wlabel)
-	struct diskslices *ssp;
-	int	slice;
-	int	wlabel;
+set_ds_wlabel(struct diskslices *ssp, int slice, int wlabel)
 {
 	ssp->dss_slices[slice].ds_wlabel = wlabel;
 	if (slice == COMPATIBILITY_SLICE)
