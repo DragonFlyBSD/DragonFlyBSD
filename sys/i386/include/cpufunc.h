@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/i386/include/Attic/cpufunc.h,v 1.8 2004/02/17 19:38:53 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cpufunc.h,v 1.9 2005/02/03 11:20:31 joerg Exp $
  */
 
 /*
@@ -176,13 +176,6 @@ fls(int mask)
 	return (mask == 0 ? mask : bsrl((u_int)mask) + 1);
 }
 
-#if __GNUC__ < 2
-
-#define	inb(port)		inbv(port)
-#define	outb(port, data)	outbv(port, data)
-
-#else /* __GNUC >= 2 */
-
 /*
  * The following complications are to get around gcc not having a
  * constraint letter for the range 0..255.  We still put "d" in the
@@ -227,8 +220,6 @@ outbc(u_int port, u_char data)
 {
 	__asm __volatile("outb %0,%1" : : "a" (data), "id" ((u_short)(port)));
 }
-
-#endif /* __GNUC <= 2 */
 
 static __inline u_char
 inbv(u_int port)

@@ -37,7 +37,7 @@
  *
  *	@(#)varargs.h	8.2 (Berkeley) 3/22/94
  * $FreeBSD: src/sys/i386/include/varargs.h,v 1.8 1999/08/28 00:44:27 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/varargs.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/varargs.h,v 1.3 2005/02/03 11:20:31 joerg Exp $
  */
 
 #ifndef _VARARGS_H_
@@ -50,11 +50,9 @@ typedef char *va_list;
 
 #ifdef __GNUC__
 #define	va_alist	__builtin_va_alist
-#endif
-#if __GNUC__ > 1
 #define	va_dcl	int va_alist; ...
 #else
-#define	va_dcl	int va_alist; 
+#define	va_dcl	int va_alist;
 #endif
 
 #define	va_start(ap) \
