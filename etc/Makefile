@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.42 2005/01/13 23:06:05 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.43 2005/01/13 23:29:40 drhodus Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -169,7 +169,7 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/sbin/prebind
 	rm -f ${DESTDIR}/modules/checkpt.ko
 	rm -rf ${DESTDIR}/usr/libdata/perl
-	csh -c "rm -f ${DESTDIR}/usr/bin/{find2perl,perl5,perl5.00503,pod2latex}"
+	csh -c "rm -f ${DESTDIR}/usr/bin/{find2perl,perl,perl5,perl5.00503,pod2latex}"
 	csh -c "rm -f ${DESTDIR}/usr/bin/{pod2text,sperl5,sperl5.00503,splain,suidperl}"
 .for prog in a2p c2ph h2ph h2xs perlbug perlcc pl2pm pod2html pod2man s2p
 	rm -f ${DESTDIR}/usr/bin/${prog}
