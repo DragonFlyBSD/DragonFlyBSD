@@ -25,7 +25,7 @@
  *    without specific prior written permission.
  *
  * $FreeBSD: src/usr.bin/make/util.c,v 1.5.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/util.c,v 1.5 2004/11/13 07:25:17 dillon Exp $
+ * $DragonFly: src/usr.bin/make/util.c,v 1.6 2004/11/18 02:01:39 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -262,9 +262,9 @@ eunlink(file)
 int
 PrintAddr(a, b)
     void * a;
-    void * b;
+    void * b __unused;
 {
-    printf("%lx ", (unsigned long) a);
-    return b ? 0 : 0;
+    printf("%p ", a);
+    return 0;
 }
 

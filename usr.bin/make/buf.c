@@ -38,7 +38,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.5 2004/11/12 22:57:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.6 2004/11/18 02:01:39 dillon Exp $
  */
 
 /*-
@@ -93,9 +93,8 @@
 void
 Buf_OvAddByte (Buffer bp, int byte)
 {
-    int nbytes = 1;
     bp->left = 0;
-    BufExpand (bp, nbytes);
+    BufExpand (bp, 1);
 
     *bp->inPtr++ = byte;
     bp->left--;

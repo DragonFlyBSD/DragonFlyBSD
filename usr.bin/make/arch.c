@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.12 2004/11/14 20:13:12 dillon Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.13 2004/11/18 02:01:39 dillon Exp $
  */
 
 /*-
@@ -468,7 +468,7 @@ ArchStatMember (char *archive, char *member, Boolean hash)
     Arch	  *ar;	      /* Archive descriptor */
     Hash_Entry	  *he;	      /* Entry containing member's description */
     struct ar_hdr arh;        /* archive-member header for reading archive */
-    char	  memName[MAXPATHLEN+1];
+    char	  memName[MAXPATHLEN];
     	    	    	    /* Current member name while hashing. */
 
     /*
@@ -737,7 +737,7 @@ ArchSVR4Entry(Arch *ar, char *name, size_t size, FILE *arch)
     DEBUGF(ARCH, ("Replaced %s with %s\n", name, &ar->fnametab[entry]));
 
     (void) strncpy(name, &ar->fnametab[entry], MAXPATHLEN);
-    name[MAXPATHLEN] = '\0';
+    name[MAXPATHLEN - 1] = '\0';
     return 1;
 }
 #endif

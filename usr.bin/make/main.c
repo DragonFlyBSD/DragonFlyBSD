@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.15 2004/11/14 20:05:25 dillon Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.16 2004/11/18 02:01:39 dillon Exp $
  */
 
 /*-
@@ -264,9 +264,7 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 			break;
 		}
 		case 'E':
-			p = malloc(strlen(optarg) + 1);
-			if (!p)
-				Punt("make: cannot allocate memory.");
+			p = emalloc(strlen(optarg) + 1);
 			(void)strcpy(p, optarg);
 			(void)Lst_AtEnd(envFirstVars, (void *)p);
 			Var_Append(MAKEFLAGS, "-E", VAR_GLOBAL);
@@ -402,19 +400,11 @@ chdir_verify_path(char *path, char *obpath)
 	struct stat sb;
 
 	if (stat(path, &sb) == 0 && S_ISDIR(sb.st_mode)) {
-		if (chdir(path)) {
+		if (chdir(path) == -1 || getcwd(obpath, MAXPATHLEN) == NULL) {
 			warn("warning: %s", path);
 			return 0;
 		}
-		else {
-			if (path[0] != '/') {
-				(void) snprintf(obpath, MAXPATHLEN, "%s/%s",
-						curdir, path);
-				return obpath;
-			}
-			else
-				return path;
-		}
+		return obpath;
 	}
 
 	return 0;
@@ -445,13 +435,9 @@ main(int argc, char **argv)
 	Boolean outOfDate = TRUE; 	/* FALSE if all targets up to date */
 	struct stat sa;
 	char *p, *p1, *path, *pathp;
-#ifdef WANT_ENV_PWD
-	struct stat sb;
-	char *pwd;
-#endif
-	char mdpath[MAXPATHLEN + 1];
-	char obpath[MAXPATHLEN + 1];
-	char cdpath[MAXPATHLEN + 1];
+	char mdpath[MAXPATHLEN];
+	char obpath[MAXPATHLEN];
+	char cdpath[MAXPATHLEN];
     	char *machine = getenv("MACHINE");
 	char *machine_arch = getenv("MACHINE_ARCH");
 	char *machine_cpu = getenv("MACHINE_CPU");
@@ -490,7 +476,7 @@ main(int argc, char **argv)
 	}
 #endif
 	/*
-	 * Find where we are and take care of PWD for the automounter...
+	 * Find where we are...
 	 * All this code is so that we know where we are when we start up
 	 * on a different machine with pmake.
 	 */
@@ -500,14 +486,6 @@ main(int argc, char **argv)
 
 	if (stat(curdir, &sa) == -1)
 	    err(2, "%s", curdir);
-
-#ifdef WANT_ENV_PWD
-	if ((pwd = getenv("PWD")) != NULL) {
-	    if (stat(pwd, &sb) == 0 && sa.st_ino == sb.st_ino &&
-		sa.st_dev == sb.st_dev)
-		(void) strcpy(curdir, pwd);
-	}
-#endif
 
 #if defined(__i386__) && defined(__DragonFly_version)
 	/*
@@ -612,10 +590,6 @@ main(int argc, char **argv)
 			objdir = curdir;
 	}
 
-#ifdef WANT_ENV_PWD
-	setenv("PWD", objdir, 1);
-#endif
-
 	create = Lst_Init(FALSE);
 	makefiles = Lst_Init(FALSE);
 	envFirstVars = Lst_Init(FALSE);
@@ -674,6 +648,9 @@ main(int argc, char **argv)
 	Var_Set("MACHINE", machine, VAR_GLOBAL);
 	Var_Set("MACHINE_ARCH", machine_arch, VAR_GLOBAL);
 	Var_Set("MACHINE_CPU", machine_cpu, VAR_GLOBAL);
+#ifdef MAKE_VERSION
+	Var_Set("MAKE_VERSION", MAKE_VERSION, VAR_GLOBAL);
+#endif
 
 	/*
 	 * First snag any flags out of the MAKE environment variable.
@@ -833,9 +810,7 @@ main(int argc, char **argv)
 		    ln = Lst_Succ(ln)) {
 			char *value;
 			if (expandVars) {
-				p1 = malloc(strlen((char *)Lst_Datum(ln)) + 1 + 3);
-				if (!p1)
-					Punt("make: cannot allocate memory.");
+				p1 = emalloc(strlen((char *)Lst_Datum(ln)) + 1 + 3);
 				/* This sprintf is safe, because of the malloc above */
 				(void)sprintf(p1, "${%s}", (char *)Lst_Datum(ln));
 				value = Var_Subst(NULL, p1, VAR_GLOBAL, FALSE);
@@ -921,7 +896,7 @@ ReadMakefile(void *p, void *q __unused)
 {
 	char *fname;		/* makefile to read */
 	FILE *stream;
-	char *name, path[MAXPATHLEN + 1];
+	char *name, path[MAXPATHLEN];
 	char *MAKEFILE;
 	int setMAKEFILE;
 

@@ -35,7 +35,7 @@
  *
  *	from: @(#)lstInt.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.lib/lstInt.h,v 1.7 1999/08/28 01:03:53 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInt.h,v 1.3 2004/11/12 21:41:54 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInt.h,v 1.4 2004/11/18 02:01:44 dillon Exp $
  */
 
 /*-
@@ -51,7 +51,7 @@
 typedef struct ListNode {
 	struct ListNode	*prevPtr;   /* previous element in list */
 	struct ListNode	*nextPtr;   /* next in list */
-	short	    	useCount:8, /* Count of functions using the node.
+	int	    	useCount:8, /* Count of functions using the node.
 				     * node may not be deleted until count
 				     * goes to 0 */
  	    	    	flags:8;    /* Node status flags */

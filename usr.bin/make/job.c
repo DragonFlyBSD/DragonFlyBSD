@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.15 2004/11/14 20:05:25 dillon Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.16 2004/11/18 02:01:39 dillon Exp $
  */
 
 #ifndef OLD_JOKE
@@ -106,13 +106,14 @@
 #include <sys/file.h>
 #include <sys/time.h>
 #include <sys/wait.h>
-#include <fcntl.h>
+#include <err.h>
 #include <errno.h>
-#include <utime.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+#include <utime.h>
 #include "make.h"
 #include "hash.h"
 #include "dir.h"
@@ -1002,7 +1003,7 @@ Job_Touch(GNode *gn, Boolean silent)
 		 * modification time, then close the file.
 		 */
 		if (read(streamID, &c, 1) == 1) {
-		    (void) lseek(streamID, 0L, SEEK_SET);
+		    (void) lseek(streamID, (off_t)0, SEEK_SET);
 		    (void) write(streamID, &c, 1);
 		}
 
@@ -1166,7 +1167,7 @@ JobExec(Job *job, char **argv)
 	if (dup2(FILENO(job->cmdFILE), 0) == -1)
 	    Punt("Cannot dup2: %s", strerror(errno));
 	(void) fcntl(0, F_SETFD, 0);
-	(void) lseek(0, 0, SEEK_SET);
+	(void) lseek(0, (off_t)0, SEEK_SET);
 
 	if (usePipes) {
 	    /*
@@ -1571,9 +1572,6 @@ JobStart(GNode *gn, int flags, Job *previous)
 	job = previous;
     } else {
 	job = (Job *) emalloc(sizeof(Job));
-	if (job == NULL) {
-	    Punt("JobStart out of memory");
-	}
 	flags |= JOB_FIRST;
     }
 

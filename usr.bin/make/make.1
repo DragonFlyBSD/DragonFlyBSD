@@ -31,7 +31,7 @@
 .\"
 .\"	from: @(#)make.1	8.4 (Berkeley) 3/19/94
 .\" $FreeBSD: src/usr.bin/make/make.1,v 1.29.2.15 2002/12/17 19:01:18 seanc Exp $
-.\" $DragonFly: src/usr.bin/make/make.1,v 1.5 2004/11/12 22:02:51 dillon Exp $
+.\" $DragonFly: src/usr.bin/make/make.1,v 1.6 2004/11/18 02:01:39 dillon Exp $
 .\"
 .Dd July 2, 2004
 .Dt MAKE 1
@@ -178,8 +178,9 @@ flag is also specified.
 Continue processing after errors are encountered, but only on those targets
 that do not depend on the target whose creation caused the error.
 .It Fl m Ar directory
-Specify a directory in which to search for sys.mk and makefiles included
-via the <...> style.
+Specify a directory in which to search for
+.Pa sys.mk
+and makefiles included via the <...> style.
 Multiple directories can be added to form a search path.
 This path will override the default system include path:
 .Pa /usr/share/mk .
@@ -518,6 +519,12 @@ If they are undefined and
 .Nm
 is unable to change into any of the remaining three directories,
 then the current directory is used.
+.Pp
+.Nm Make
+sets
+.Va .OBJDIR
+to the canonical path given by
+.Xr getcwd 3 .
 .It Va .MAKEFILE_LIST
 As
 .Nm
@@ -556,29 +563,6 @@ executes.
 A synonym for
 .Va .MAKEFLAGS
 provided for backward compatibility.
-.It Ev PWD
-Alternate path to the current directory.
-Supported if built with WANT_ENV_PWD defined.
-.Nm
-normally sets
-.Ql Va .CURDIR
-to the canonical path given by
-.Xr getcwd 3 .
-However, if the environment variable
-.Ev PWD
-is set and gives a path to the current directory, then
-.Nm
-sets
-.Ql Va .CURDIR
-to the value of
-.Ev PWD
-instead.
-.Ev PWD
-is always set to the value of
-.Ql Va .OBJDIR
-for all programs which
-.Nm
-executes.
 .It Va .TARGETS
 List of targets
 .Nm
@@ -608,9 +592,7 @@ Makefiles may assign a colon-delimited list of directories to
 .Va VPATH .
 These directories will be searched for source files by
 .Nm
-after
-.Nm
-has finished parsing all input makefiles.
+after it has finished parsing all input makefiles.
 .El
 .Pp
 Variable expansion may be modified to select or modify each word of the
@@ -682,7 +664,7 @@ the rest of the modifier.
 .It Cm Q
 Quotes every shell meta-character in the variable, so that it can be passed
 safely through recursive invocations of
-.Nm .
+.Nm Ns .
 .It Cm R
 Replaces each word in the variable with everything but its suffix.
 .Sm off
@@ -730,8 +712,6 @@ with the single exception that a backslash is used to prevent the expansion
 of a dollar sign
 .Pq Ql \&$ ,
 not a preceding dollar sign as is usual.
-.It Cm T
-Replaces each word in the variable with its last component.
 .It Ar old_string=new_string
 This is the
 .At V
@@ -752,13 +732,15 @@ is the substring of
 .Ar old_string
 to be replaced in
 .Ar new_string
+.It Cm T
+Replaces each word in the variable with its last component.
 .It Cm U
 Converts variable to upper-case letters.
 .El
 .Sh DIRECTIVES, CONDITIONALS, AND FOR LOOPS
 Directives, conditionals, and for loops reminiscent
 of the C programming language are provided in
-.Nm .
+.Nm Ns .
 All such structures are identified by a line beginning with a single
 dot
 .Pq Ql \&.
@@ -886,7 +868,8 @@ The
 may be any one of the following:
 .Bl -tag -width "Cm XX"
 .It Cm \&|\&|
-logical OR
+logical
+.Tn OR
 .It Cm \&&&
 Logical
 .Tn AND ;
@@ -1139,7 +1122,9 @@ no effect.
 .It Ic .NOTPARALLEL
 Disable parallel mode.
 .It Ic .NO_PARALLEL
-Same as above, for compatibility with other pmake variants.
+Same as above, for compatibility with other
+.Nm pmake
+variants.
 .It Ic .ORDER
 The named targets are made in sequence.
 .\" XXX: NOT YET!!!!
@@ -1193,7 +1178,7 @@ attribute is applied to every
 command in the file.
 .It Ic .SUFFIXES
 Each source specifies a suffix to
-.Nm .
+.Nm Ns .
 If no sources are specified, any previous specified suffices are deleted.
 .El
 .Sh COMPATIBILITY
@@ -1221,9 +1206,8 @@ utility uses the following environment variables, if they exist:
 .Ev MAKE ,
 .Ev MAKEFLAGS ,
 .Ev MAKEOBJDIR ,
-.Ev MAKEOBJDIRPREFIX ,
 and
-.Ev PWD .
+.Ev MAKEOBJDIRPREFIX .
 .Sh FILES
 .Bl -tag -width /usr/share/doc/psd/12.make -compact
 .It Pa .depend
@@ -1299,5 +1283,4 @@ in
 .Sh HISTORY
 A
 .Nm
-command appeared in
-.At v7 .
+command appeared in PWB UNIX.
