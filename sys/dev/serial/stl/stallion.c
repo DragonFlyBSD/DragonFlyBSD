@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.11 2004/09/18 20:02:38 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.12 2004/09/19 02:00:25 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -153,6 +153,7 @@ static int		stl_brdprobed[STL_MAXBRDS];
 
 static int		stl_nrbrds = 0;
 static int		stl_doingtimeout = 0;
+static struct callout	stl_poll_ch;
 
 static const char 	__file__[] = /*__FILE__*/ "stallion.c";
 
@@ -231,6 +232,7 @@ typedef struct stlport {
 	stlrq_t		tx;
 	stlrq_t		rx;
 	stlrq_t		rxstatus;
+	struct callout	dtr_ch;
 } stlport_t;
 
 typedef struct stlpanel {
@@ -1559,7 +1561,8 @@ static int stl_rawclose(stlport_t *portp)
 		stl_setsignals(portp, 0, 0);
 		if (portp->dtrwait != 0) {
 			portp->state |= ASY_DTRWAIT;
-			timeout(stl_dtrwakeup, portp, portp->dtrwait);
+			callout_reset(&portp->dtr_ch, portp->dtrwait,
+					stl_dtrwakeup, portp);
 		}
 	}
 	portp->callout = 0;
@@ -1929,9 +1932,10 @@ static void stl_dotimeout()
 #if STLDEBUG
 	printf("stl_dotimeout()\n");
 #endif
-
 	if (stl_doingtimeout == 0) {
-		timeout(stl_poll, 0, 1);
+		if ((stl_poll_ch.c_flags & CALLOUT_DID_INIT) == 0)
+			callout_init(&stl_poll_ch);
+		callout_reset(&stl_poll_ch, 1, stl_poll, NULL);
 		stl_doingtimeout++;
 	}
 }
@@ -2236,6 +2240,7 @@ static int stl_initports(stlbrd_t *brdp, stlpanel_t *panelp)
                         sizeof(portp->initintios.c_cc));
                 portp->initouttios = portp->initintios;
                 portp->dtrwait = 3 * hz;
+		callout_init(&portp->dtr_ch);
 
                 stl_portinit(brdp, panelp, portp);
         }

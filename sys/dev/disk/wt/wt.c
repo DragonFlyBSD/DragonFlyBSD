@@ -21,7 +21,7 @@
  *
  * Version 1.3, Thu Nov 11 12:09:13 MSK 1993
  * $FreeBSD: src/sys/i386/isa/wt.c,v 1.57.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.8 2004/05/19 22:52:42 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.9 2004/09/19 02:02:28 dillon Exp $
  *
  */
 
@@ -155,6 +155,7 @@ typedef struct {
 	unsigned short DATAPORT, CMDPORT, STATPORT, CTLPORT, SDMAPORT, RDMAPORT;
 	unsigned char BUSY, NOEXCEP, RESETMASK, RESETVAL;
 	unsigned char ONLINE, RESET, REQUEST, IEN;
+	struct callout timeout_ch;
 } wtinfo_t;
 
 static wtinfo_t wttab[NWT];                    /* tape info by unit number */
@@ -209,6 +210,7 @@ wtprobe (struct isa_device *id)
 {
 	wtinfo_t *t = wttab + id->id_unit;
 
+	callout_init(&t->timeout_ch);
 	t->unit = id->id_unit;
 	t->chan = id->id_drq;
 	t->port = id->id_iobase;
@@ -838,7 +840,8 @@ wtclock (wtinfo_t *t)
 		t->flags |= TPTIMER;
 		/* Some controllers seem to lose dma interrupts too often.
 		 * To make the tape stream we need 1 tick timeout. */
-		timeout (wtimer, (caddr_t)t, (t->flags & TPACTIVE) ? 1 : hz);
+		callout_reset(&t->timeout_ch, ((t->flags & TPACTIVE) ? 1 : hz),
+				wtimer, t);
 	}
 }
 
