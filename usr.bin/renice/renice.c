@@ -33,10 +33,9 @@
  * @(#) Copyright (c) 1983, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)renice.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/renice/renice.c,v 1.4.2.3 2002/06/17 23:58:46 tjr Exp $
- * $DragonFly: src/usr.bin/renice/renice.c,v 1.3 2005/01/23 16:30:07 liamfoy Exp $
+ * $DragonFly: src/usr.bin/renice/renice.c,v 1.4 2005/02/10 21:06:36 liamfoy Exp $
  */
 
-#include <sys/types.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 
