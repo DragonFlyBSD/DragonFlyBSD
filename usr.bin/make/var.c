@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.51 2005/01/29 00:30:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.52 2005/01/30 07:20:59 okumoto Exp $
  */
 
 /*-
@@ -134,6 +134,11 @@ GNode          *VAR_CMD;      /* variables defined on the command-line */
 #define	FIND_CMD	0x1   /* look in VAR_CMD when searching */
 #define	FIND_GLOBAL	0x2   /* look in VAR_GLOBAL as well */
 #define	FIND_ENV  	0x4   /* look in the environment also */
+
+#define	OPEN_PAREN		'('
+#define	CLOSE_PAREN		')'
+#define	OPEN_BRACKET		'{'
+#define	CLOSE_BRACKET		'}'
 
 static char *VarPossiblyExpand(const char *, GNode *);
 static Var *VarFind(const char *, GNode *, int);
@@ -730,14 +735,14 @@ VarGetPattern(GNode *ctxt, int err, char **tstr, int delim, int *flags,
 		} else {
 		    char *cp2 = &cp[1];
 
-		    if (*cp2 == '(' || *cp2 == '{') {
+		    if (*cp2 == OPEN_PAREN || *cp2 == OPEN_BRACKET) {
 			/*
 			 * Find the end of this variable reference
 			 * and suck it in without further ado.
 			 * It will be interperated later.
 			 */
 			int have = *cp2;
-			int want = (*cp2 == '(') ? ')' : '}';
+			int want = (*cp2 == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACKET;
 			int depth = 1;
 
 			for (++cp2; *cp2 != '\0' && depth > 0; ++cp2) {
@@ -883,7 +888,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
     dynamic = FALSE;
     start = str;
 
-    if (str[1] != '(' && str[1] != '{') {
+    if (str[1] != OPEN_PAREN && str[1] != OPEN_BRACKET) {
 	/*
 	 * If it's not bounded by braces of some sort, life is much simpler.
 	 * We just need to check for the first character and return the
@@ -939,7 +944,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 	Buffer	*buf = Buf_Init(MAKE_BSIZE);
 
 	startc = str[1];
-	endc = startc == '(' ? ')' : '}';
+	endc = (startc == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACKET;
 
 	/*
 	 * Skip to the end character or a colon, whichever comes first,
@@ -1762,11 +1767,14 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 	    Buf_AppendRange(buf, cp, str);
 
 	} else {
+	    /*
+	     * Variable invocation.
+	     */
 	    if (var != NULL) {
 		int expand;
 		for (;;) {
-		    if (str[1] != '(' && str[1] != '{') {
-			if (str[1] != *var || var[1] != '\0') {
+		    if (str[1] != OPEN_PAREN && str[1] != OPEN_BRACKET) {
+			if (str[1] != var[0] || var[1] != '\0') {
 			    Buf_AddBytes(buf, 2, (const Byte *)str);
 			    str += 2;
 			    expand = FALSE;
@@ -1775,15 +1783,18 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 			}
 			break;
 		    } else {
-			const char *p;
+			const char *p = str + 2;
 
 			/*
 			 * Scan up to the end of the variable name.
 			 */
-			for (p = &str[2]; *p &&
-			     *p != ':' && *p != ')' && *p != '}'; p++)
-			    if (*p == '$')
-				break;
+			while (*p != '\0' &&
+			       *p != ':' &&
+			       *p != CLOSE_PAREN &&
+			       *p != CLOSE_BRACKET &&
+			       *p != '$') {
+			    ++p;
+			}
 			/*
 			 * A variable inside the variable. We cannot expand
 			 * the external variable yet, so we try again with
