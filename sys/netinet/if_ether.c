@@ -82,7 +82,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.24 2005/01/06 17:59:32 hsu Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.25 2005/01/23 06:41:55 hsu Exp $
  */
 
 /*
@@ -777,6 +777,7 @@ match:
 		la->la_asked = 0;
 		la->la_preempt = arp_maxtries;
 		if (la->la_hold != NULL) {
+			m_adj(la->la_hold, sizeof(struct ether_header));
 			(*ifp->if_output)(ifp, la->la_hold, rt_key(rt), rt);
 			la->la_hold = NULL;
 		}
