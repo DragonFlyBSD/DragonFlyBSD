@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/taskqueue.h,v 1.3.2.2 2003/09/10 00:40:39 ken Exp $
- * $DragonFly: src/sys/sys/taskqueue.h,v 1.3 2003/12/29 06:42:07 dillon Exp $
+ * $DragonFly: src/sys/sys/taskqueue.h,v 1.4 2004/08/02 19:32:28 dillon Exp $
  */
 
 #ifndef _SYS_TASKQUEUE_H_
@@ -98,7 +98,7 @@ static void								\
 taskqueue_define_##name(void *arg)					\
 {									\
 	taskqueue_##name =						\
-	    taskqueue_create(#name, M_NOWAIT, (enqueue), (context));	\
+	    taskqueue_create(#name, M_INTWAIT, (enqueue), (context));	\
 	init;								\
 }									\
 									\
