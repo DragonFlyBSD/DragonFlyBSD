@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.3 2003/07/24 02:13:42 cvstest Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.4 2003/10/26 17:29:50 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -29,8 +29,7 @@ static int  OSize;
 static int  OMax;
 static char *Title;
 
-static void generate_top_headers(void);
-static void generate_side_headers(void);
+static void generate_side_headers(char *, char * []);
 static void process_vars(const char *ptr, int len);
 static void process_command(char *cmd, char *args);
 static void *safe_malloc(int bytes);
@@ -40,6 +39,34 @@ static void buildout(const char *ptr, int len);
 static void buildflush(void);
 static const char *choppath(const char *path);
 static const char *filecomp(const char *path);
+
+char *Main[] = {
+    "bugs.cgi",
+    "download.cgi",
+    "forums.cgi",
+    "index.cgi",
+    "mascot.cgi",
+    NULL
+};
+
+char *Goals[] = {
+    "caching.cgi",
+    "index.cgi",
+    "iomodel.cgi",
+    "messaging.cgi",
+    "packages.cgi",
+    "threads.cgi",
+    "userapi.cgi",
+    "vfsmodel.cgi",
+    NULL
+};
+
+char *Status[] = {
+        "diary.cgi",
+        "index.cgi",
+        NULL
+};
+
 
 int
 main(int ac, char **av)
@@ -107,6 +134,7 @@ main(int ac, char **av)
     printf("<HTML>\n");
     printf("<HEAD>\n");
     printf("<TITLE></TITLE>\n");
+    printf("<LINK REL=\"stylesheet\" HREF=\"/stylesheet.css\" TYPE=\"text/css\">");
     printf("</HEAD>\n");
     printf("<BODY>\n");
     /*
@@ -146,23 +174,27 @@ main(int ac, char **av)
 	}
 	fclose(fi);
     }
-    printf("<TABLE BORDER=0 WIDTH=100%% BGCOLOR=\"#b0b0e0\">\n");
-    printf("<TR><TD><IMG SRC=\"/smalldf.jpg\"></TD>");
-    printf("<TD WIDTH=100%%>");
-	printf("<TABLE BORDER=0 WIDTH=100%%>");
-	printf("<TR><TD ALIGN=center WIDTH=100%%>");
+    printf("<TABLE BORDER=0 WIDTH=100%% BGCOLOR=\"#FFFFFF\">\n");
+    printf("<TR><TD ALIGN=CENTER COLSPAN=2>");
+
+    printf("<TABLE BORDER=0 WIDTH=100%% BGCOLOR=\"#FFFFFF\">\n");
+    printf("<TR><TD VALIGN=\"bottom\" ALIGN=\"right\">");
+
 	if (Title) {
 	    printf("<H2>%s</H2>", Title);
 	}
-	printf("</TD></TR>");
-	printf("<TR><TD ALIGN=left>");
-	generate_top_headers();
-	printf("</TD></TR>\n");
-	printf("</TABLE>");
-    printf("</TD></TR>");
-    printf("<TR><TD VALIGN=top>");
-    generate_side_headers();
-    printf("</TD><TD WIDTH=100%%  BGCOLOR=\"#c0c0ff\">");
+    printf("</TD><TD ALIGN=\"right\"><IMG SRC=\"/smalldf.jpg\"></TD>");
+    printf("</TR><TR><TD COLSPAN=\"2\"><HR></TD>");
+    printf("</TR></TABLE>");
+
+    printf("</TD></TR>\n");
+    printf("<TR><TD VALIGN=top WIDTH=\"20%%\">");
+
+    generate_side_headers("Main", Main);
+    generate_side_headers("Goals", Goals);
+    generate_side_headers("Status", Status);
+
+    printf("</TD><TD WIDTH=100%%  BGCOLOR=\"#ffffff\">");
     fflush(stdout);
     buildflush();
     printf("<PRE>\n");
@@ -179,74 +211,46 @@ main(int ac, char **av)
 }
 
 /*
- * The headers along the top are synthesized from the directory level
- * just above the file.
+ * The menu is synthesized from arrays above listing the files
+ * we want to have available in the side menu.  A peek at the 
+ * filesystem is needed so we know where we are, and how to 
+ * format accordingly.
  */
 static void
-generate_top_headers(void)
+generate_side_headers(char *section, char *files[])
 {
-    DIR *dir;
-    struct dirent *den;
+    int len;
+    const char *ptr;
+    int i;
+    const char *fileclass = "";
 
-    printf("<TABLE BORDER=0 CELLPADDING=4>");
-    if ((dir = opendir(ParentDir)) != NULL) {
-	printf("<TR>");
-	while ((den = readdir(dir)) != NULL) {
-	    const char *bgcolor = "";
+    printf("\n<TABLE BORDER=\"0\" CELLPADDING=\"4\" WIDTH=\"100%%\">\n");
+    printf("\t<TR>");
+    printf("<TD><H2><A HREF=\"../%s\">%s</A></H2>", section, section);
 
-	    if (den->d_name[0] == '.')
-		continue;
-	    if (strchr(den->d_name, '.'))
-		continue;
-	    if (strcmp(den->d_name, "CVS") == 0)
-		continue;
-	    if (den->d_type != DT_DIR)
-		continue;
-	    if (strcmp(den->d_name, DirName) == 0)
-		bgcolor = " BGCOLOR=\"lightgreen\"";
-	    printf("<TD%s><H2><A HREF=\"../%s\">%s</A></H2></TD>", 
-		bgcolor, den->d_name, den->d_name);
-	}
-	printf("<TD WIDTH=100%%></TD>");
-	printf("</TR>");
-	closedir(dir);
+    printf("</TD></TR>\n\t<TR><TD>\n<TABLE BORDER=\"0\" WIDTH=\"100%%\">\n");
+
+    for (i = 0; files[i] != NULL; i++) {
+        if ((strcmp(files[i], FileName) == 0) &&
+        (strcmp(section, DirName) == 0) )
+            fileclass = " CLASS=\"topLevelSelected\"";
+        else
+            fileclass = " CLASS=\"topLevel\"";
+      
+        if ((ptr = strchr(files[i], '.')) != NULL &&
+            (strcmp(ptr + 1, "cgi") == 0 ||
+            strcmp(ptr + 1, "html") == 0)
+        ) {
+            len = ptr - files[i];
+            printf("\t<TR><TD%s><A HREF=\"/%s/%s\">%*.*s</A></TD></TR>\n",
+            fileclass,
+            section, 
+            files[i], len, len, files[i]);
+        }
+
     }
-    printf("</TABLE>");
-}
-
-static void
-generate_side_headers(void)
-{
-    DIR *dir;
-    struct dirent *den;
-
-    printf("<TABLE BORDER=\"0\">");
-    if ((dir = opendir(DirPath)) != NULL) {
-	while ((den = readdir(dir)) != NULL) {
- 	    int len;
-	    const char *ptr;
-	    const char *bgcolor = "";
-
-	    if (den->d_name[0] == '.')
-		continue;
-	    if (den->d_type != DT_REG)
-		continue;
-	    if (strcmp(den->d_name, FileName) == 0)
-		bgcolor = " BGCOLOR=\"lightgreen\"";
-
-	    if ((ptr = strchr(den->d_name, '.')) != NULL &&
-		(strcmp(ptr + 1, "cgi") == 0 ||
-		 strcmp(ptr + 1, "html") == 0)
-	    ) {
-		len = ptr - den->d_name;
-		printf("<TR><TD%s><H2><A HREF=\"%s\">%*.*s</A></H2></TD></TR>\n",
-		    bgcolor,
-		    den->d_name,
-		    len, len, den->d_name);
-	    }
-	}
-	closedir(dir);
-    }
+    printf("</TABLE>\n</TD>");
+    printf("</TR>\n\t<TR><TD WIDTH=100%%></TD></TR>\n");
     printf("</TABLE>\n");
 }
 

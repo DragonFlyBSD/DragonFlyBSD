@@ -1,0 +1,196 @@
+/*
+ * Copyright (c) 2003 Hiten M. Pandya <hmp@backplane.com>.
+ *
+ * Cascading Style Sheet, version 2.
+ *
+ * DragonFly WWW Site: http://www.dragonflybsd.org/
+ *
+ * $DragonFly: site/data/stylesheet.css,v 1.1 2003/10/26 17:29:49 hmp Exp $
+ *
+ */
+
+BODY { 
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+   background-color: #FFFFFF; 
+   font-size : 76%; 
+   font-weight : normal; 
+   color : #000000; 
+}
+
+H1 {
+   font-size : 124%;
+   color: #990000; 
+}
+   
+H2 {
+   font-size : 112%;
+   color: #990000;
+}  
+  
+H3 {
+   font-size : 100%;
+   color: #990000;
+}
+
+B  {
+   font-weight : bold; 
+}
+
+
+TABLE {
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+}
+
+FONT
+{
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+}
+
+TD {
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+}
+
+P {
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+   font-size: 80%;
+}
+
+
+/* main */
+
+A:link 	{
+   text-decoration : none; 
+   color : #0033FF; /* #333366; */
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+   }
+
+A:visited {
+   text-decoration : none; 
+   color : #666699; 
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+}
+
+A:active  {
+   text-decoration : none; 
+   color : #CC3300; 
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+}
+
+A:hover  {
+   text-decoration : none; 
+   color : #CC3300; 
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+}	
+
+.related  {
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+   font-size : 86%; 
+}
+
+.date  {
+   font-size : 11px; 
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+   color : #000000; 
+}
+
+.sectiontitle  {
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+   font-size : 15px; 
+   font-weight : bold; 
+   color : #CC3300; 
+}
+
+.search  {
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+   font-size : 11px; 
+   font-weight : bold; 
+   color : #000000; 
+}
+
+/* Right hand side content */
+
+.sidebartitle, .relatedlocaltitle {
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif";
+   font-size: 90%;
+   font-weight: bold;
+   color : #FFFFFF;
+}
+
+.relatedwebtitle {
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif";
+   font-size: 90%;
+   font-weight: bold;
+   color : #FF0000;
+}
+
+.sidebarcontent, .relatedcontent {
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif";
+   font-size: 80%;
+}
+
+.disclaimer  {
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+   font-size : 11px; 
+   color : #000000; 
+}
+
+/* 
+ * Left hand side navigation components
+ */
+
+.topLevel {
+   font-weight : 600; 
+   font-size : 11px; 
+   line-height : 15px; 
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+   letter-spacing : 0px; 
+   text-decoration : none; 
+   text-align : right; 
+}
+
+.keyMenu {
+   /*font-weight : 600; */
+   font-size : 12px; 
+   line-height : 15px; 
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+   letter-spacing : 0px; 
+   text-decoration : none; 
+   text-align : right; 
+}
+
+.topLevelSelected {
+   font-weight : 600; 
+   font-size : 11px; 
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+   background-color : #ffcc66; 
+   text-align : right; 
+}
+
+.sublist { 
+   background-color: #CCCCCC; 
+   font-weight : 600; 
+   font-size : 11px; 
+   line-height : 15px; 
+   font-family : Verdana, Arial, Helvetica, sans-serif, "MS sans serif"; 
+   letter-spacing : 0px; 
+   text-decoration : none; 
+   text-align : right; 
+}
+
+.published {
+   color : #999999; 
+   font-family : Verdana, Arial, Helvetica, sans-serif; 
+   font-size:11px;
+}
+
+.endmatter {
+   color: #999999;
+   font-family : Verdana, Arial, Helvetica, sans-serif;
+   font-size:11px;
+}
+
+.copyright {
+   font-family : Verdana, Arial, Helvetica, sans-serif;
+   font-size:11px;
+}
+
