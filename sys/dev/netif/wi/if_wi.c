@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.166 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.18 2005/01/26 00:37:39 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.19 2005/02/02 14:14:20 joerg Exp $
  */
 
 /*
@@ -571,7 +571,7 @@ wi_intr(void *arg)
 		wi_poll(ifp, 0, 1);
 		return;
 	}
-#endif DEVICE_POLLING
+#endif /* DEVICE_POLLING */
 
 	if (sc->wi_gone || !sc->sc_enabled || (ifp->if_flags & IFF_UP) == 0) {
 		CSR_WRITE_2(sc, WI_INT_EN, 0);
