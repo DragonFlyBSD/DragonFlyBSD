@@ -39,7 +39,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/var.h,v 1.1 2002/10/28 23:33:57 jmallett Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.6 2005/01/06 13:18:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.7 2005/01/06 23:29:09 okumoto Exp $
  */
 
 #include <regex.h>
@@ -113,6 +113,7 @@ Boolean VarSubstitute(const char *, Boolean, struct Buffer *, void *);
 
 void Var_Delete(char *, struct GNode *);
 void Var_Set(char *, char *, struct GNode *);
+void Var_SetEnv(char *, struct GNode *);
 void Var_Append(char *, char *, struct GNode *);
 Boolean Var_Exists(char *, struct GNode *);
 char *Var_Value(char *, struct GNode *, char **);
