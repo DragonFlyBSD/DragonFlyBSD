@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/checkpt/Attic/support.c,v 1.3 2004/06/05 10:04:38 eirikn Exp $
+ * $DragonFly: src/sys/checkpt/Attic/support.c,v 1.4 2004/06/05 16:34:04 dillon Exp $
  */
 
 /* prune the includes XXX */
@@ -89,8 +89,11 @@ char *
 ckpt_expand_name(const char *name, uid_t uid, pid_t pid)
 {
 	char *temp;
+	char *bp;
 	char buf[11];		/* Buffer for pid/uid -- max 4B */
-	int i, n;
+	int error;
+	int i;
+	int n;
 	char *format = ckptfilename;
 	size_t namelen;
 
@@ -100,11 +103,12 @@ ckpt_expand_name(const char *name, uid_t uid, pid_t pid)
 	namelen = strlen(name);
 	n = 0;
 	if (ckptfilename[0] != '/') {
-		if (kern_getcwd(temp, MAXPATHLEN - 1) != 0) {
+		if ((bp = kern_getcwd(temp, MAXPATHLEN - 1, &error)) == NULL) {
 			free(temp, M_TEMP);
 			return NULL;
 		}
-		n = strlen(temp);
+		n = strlen(bp);
+		bcopy(bp, temp, n + 1);	/* normalize location of the path */
 		temp[n++] = '/';
 		temp[n] = '\0';
 	}

@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.17 2004/06/05 09:58:15 eirikn Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.18 2004/06/05 16:34:07 dillon Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -144,7 +144,7 @@ int kern_utimes(struct nameidata *nd, struct timeval *tptr);
 /*
  * Prototypes for syscalls in kern/vfs_cache.c
  */
-int kern_getcwd(char *, size_t);
+char *kern_getcwd(char *, size_t, int *);
 
 /*
  * Prototypes for syscalls in vm/vm_mmap.c

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.22 2004/06/05 10:27:58 eirikn Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.23 2004/06/05 16:34:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -955,34 +955,39 @@ static u_long numcwdfound; STATNODE(CTLFLAG_RD, numcwdfound, &numcwdfound);
 int
 __getcwd(struct __getcwd_args *uap)
 {
-	char *buf, *bp;
+	int buflen;
 	int error;
+	char *buf;
+	char *bp;
 
-	bp = buf = malloc(uap->buflen, M_TEMP, M_WAITOK);
-	error = kern_getcwd(buf, uap->buflen);
+	if (disablecwd)
+		return (ENODEV);
+
+	buflen = uap->buflen;
+	if (buflen < 2)
+		return (EINVAL);
+	if (buflen > MAXPATHLEN)
+		buflen = MAXPATHLEN;
+
+	buf = malloc(buflen, M_TEMP, M_WAITOK);
+	bp = kern_getcwd(buf, buflen, &error);
 	if (error == 0)
-		error = copyout(buf, uap->buf, strlen(buf) + 1);
-	free(bp, M_TEMP);
+		error = copyout(bp, uap->buf, strlen(bp) + 1);
+	free(buf, M_TEMP);
 	return (error);
 }
 
-int
-kern_getcwd(char *buf, size_t buflen)
+char *
+kern_getcwd(char *buf, size_t buflen, int *error)
 {
 	struct proc *p = curproc;
 	char *bp;
-	int error = 0, i, slash_prefixed;
+	int i, slash_prefixed;
 	struct filedesc *fdp;
 	struct namecache *ncp;
 	struct vnode *vp;
 
 	numcwdcalls++;
-	if (disablecwd)
-		return (ENODEV);
-	if (buflen < 2)
-		return (EINVAL);
-	if (buflen > MAXPATHLEN)
-		buflen = MAXPATHLEN;
 	bp = buf;
 	bp += buflen - 1;
 	*bp = '\0';
@@ -991,7 +996,8 @@ kern_getcwd(char *buf, size_t buflen)
 	for (vp = fdp->fd_cdir; vp != fdp->fd_rdir && vp != rootvnode;) {
 		if (vp->v_flag & VROOT) {
 			if (vp->v_mount == NULL) {	/* forced unmount */
-				return (EBADF);
+				*error = EBADF;
+				return(NULL);
 			}
 			vp = vp->v_mount->mnt_vnodecovered;
 			continue;
@@ -1004,18 +1010,21 @@ kern_getcwd(char *buf, size_t buflen)
 		}
 		if (ncp == NULL) {
 			numcwdfail2++;
-			return (ENOENT);
+			*error = ENOENT;
+			return(NULL);
 		}
 		for (i = ncp->nc_nlen - 1; i >= 0; i--) {
 			if (bp == buf) {
 				numcwdfail4++;
-				return (ENOMEM);
+				*error = ENOMEM;
+				return(NULL);
 			}
 			*--bp = ncp->nc_name[i];
 		}
 		if (bp == buf) {
 			numcwdfail4++;
-			return (ENOMEM);
+			*error = ENOMEM;
+			return(NULL);
 		}
 		*--bp = '/';
 		slash_prefixed = 1;
@@ -1024,13 +1033,14 @@ kern_getcwd(char *buf, size_t buflen)
 	if (!slash_prefixed) {
 		if (bp == buf) {
 			numcwdfail4++;
-			return (ENOMEM);
+			*error = ENOMEM;
+			return(NULL);
 		}
 		*--bp = '/';
 	}
 	numcwdfound++;
-	bcopy(bp, buf, buflen);
-	return (error);
+	*error = 0;
+	return (bp);
 }
 
 /*
