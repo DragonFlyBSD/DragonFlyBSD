@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.9 2003/08/27 06:48:15 rob Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.10 2004/02/24 19:35:30 joerg Exp $
  */
 
 /*		Change History:
@@ -1095,7 +1095,7 @@ met_attach(pcici_t tag, int unit)
 	else
 		buf = 0;
 	if(bootverbose) {
-		printf("meteor%d: buffer size %d, addr 0x%x\n",
+		printf("meteor%d: buffer size %d, addr 0x%llx\n",
 			unit, METEOR_ALLOC, vtophys(buf));
 	}
 
