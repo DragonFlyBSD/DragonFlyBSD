@@ -922,7 +922,8 @@ int	blen;
 	}
 #if (SOLARIS || \
 	(defined(NetBSD) && (NetBSD <= 1991011) && (NetBSD >= 199603)) || \
-	(defined(OpenBSD) && (OpenBSD >= 199603))) || defined(linux)
+	(defined(OpenBSD) && (OpenBSD >= 199603))) || defined(linux) || \
+	defined(__DragonFly__)
 	{
 	char	ifname[sizeof(ipf->fl_ifname) + 1];
 
