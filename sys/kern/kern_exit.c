@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.29 2003/11/21 05:29:04 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.30 2004/01/18 12:29:49 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -64,6 +64,7 @@
 #include <sys/jail.h>
 #include <sys/kern_syscall.h>
 #include <sys/upcall.h>
+#include <sys/caps.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -122,6 +123,8 @@ exit1(int rv)
 		    WTERMSIG(rv), WEXITSTATUS(rv));
 		panic("Going nowhere without my init!");
 	}
+
+	caps_exit(p->p_thread);
 
 	aio_proc_rundown(p);
 

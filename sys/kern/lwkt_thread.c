@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.47 2003/12/30 03:19:02 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.48 2004/01/18 12:29:49 dillon Exp $
  */
 
 /*
@@ -51,6 +51,7 @@
 #include <sys/kthread.h>
 #include <machine/cpu.h>
 #include <sys/lock.h>
+#include <sys/caps.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -1308,6 +1309,7 @@ lwkt_exit(void)
 
     if (td->td_flags & TDF_VERBOSE)
 	printf("kthread %p %s has exited\n", td, td->td_comm);
+    caps_exit(td);
     crit_enter();
     lwkt_deschedule_self();
     ++mycpu->gd_tdfreecount;

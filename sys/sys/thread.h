@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.38 2003/12/07 04:20:38 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.39 2004/01/18 12:29:50 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -136,6 +136,7 @@ typedef struct lwkt_rwlock {
  * but this does not effect how the thread is scheduled by LWKT.
  */
 struct md_intr_info;
+struct caps_kinfo;
 
 struct thread {
     TAILQ_ENTRY(thread) td_threadq;
@@ -172,6 +173,7 @@ struct thread {
 #endif
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
     struct thread *td_preempted; /* we preempted this thread */
+    struct caps_kinfo *td_caps;	/* list of client and server registrations */
     struct md_thread td_mach;
 };
 

@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.11 2003/11/24 20:46:05 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.12 2004/01/18 12:29:50 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -41,11 +41,11 @@ typedef struct lwkt_msg {
     } opaque;
     lwkt_port_t ms_target_port;		/* current target or relay port */
     lwkt_port_t	ms_reply_port;		/* asynch replies returned here */
-    int		ms_maxsize;		/* maximum returned message size */
+    int		ms_unused1;
     int		ms_cmd;			/* message command */
     int		ms_flags;		/* message flags */
 #define ms_copyout_start	ms_msgsize
-    int		ms_msgsize;		/* sent/returned size of message */
+    int		ms_msgsize;		/* size of message */
     int		ms_error;		/* positive error code or 0 */
     union {
 	void	*ms_resultp;		/* misc pointer data or result */

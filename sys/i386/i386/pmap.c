@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.26 2003/12/20 05:52:26 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.27 2004/01/18 12:29:47 dillon Exp $
  */
 
 /*
@@ -684,7 +684,44 @@ pmap_extract(pmap_t pmap, vm_offset_t va)
 		return rtval;
 	}
 	return 0;
+}
 
+/*
+ * Extract user accessible page only, return NULL if the page is not
+ * present or if it's current state is not sufficient.  Caller will
+ * generally call vm_fault() on failure and try again.
+ */
+vm_page_t
+pmap_extract_vmpage(pmap_t pmap, vm_offset_t va, int prot)
+{
+	vm_offset_t rtval;
+	vm_offset_t pdirindex;
+
+	pdirindex = va >> PDRSHIFT;
+	if (pmap && (rtval = (unsigned) pmap->pm_pdir[pdirindex])) {
+		unsigned *pte;
+		vm_page_t m;
+
+		if ((rtval & PG_PS) != 0) {
+			if ((rtval & (PG_V|PG_U)) != (PG_V|PG_U))
+				return (NULL);
+			if ((prot & VM_PROT_WRITE) && (rtval & PG_RW) == 0)
+				return (NULL);
+			rtval &= ~(NBPDR - 1);
+			rtval |= va & (NBPDR - 1);
+			m = PHYS_TO_VM_PAGE(rtval);
+		} else {
+			pte = get_ptbase(pmap) + i386_btop(va);
+			if ((*pte & (PG_V|PG_U)) != (PG_V|PG_U))
+				return (NULL);
+			if ((prot & VM_PROT_WRITE) && (*pte & PG_RW) == 0)
+				return (NULL);
+			rtval = ((*pte & PG_FRAME) | (va & PAGE_MASK));
+			m = PHYS_TO_VM_PAGE(rtval);
+		}
+		return(m);
+	}
+	return (NULL);
 }
 
 /***************************************************
@@ -2658,6 +2695,39 @@ pmap_copy_page(vm_paddr_t src, vm_paddr_t dst)
 	cpu_invlpg(gd->gd_CADDR2);
 
 	bcopy(gd->gd_CADDR1, gd->gd_CADDR2, PAGE_SIZE);
+
+	*(int *) gd->gd_CMAP1 = 0;
+	*(int *) gd->gd_CMAP2 = 0;
+	crit_exit();
+}
+
+/*
+ * pmap_copy_page_frag:
+ *
+ *	Copy the physical page from the source PA to the target PA.
+ *	This function may be called from an interrupt.  No locking
+ *	is required.
+ */
+void
+pmap_copy_page_frag(vm_paddr_t src, vm_paddr_t dst, size_t bytes)
+{
+	struct mdglobaldata *gd = mdcpu;
+
+	crit_enter();
+	if (*(int *) gd->gd_CMAP1)
+		panic("pmap_copy_page: CMAP1 busy");
+	if (*(int *) gd->gd_CMAP2)
+		panic("pmap_copy_page: CMAP2 busy");
+
+	*(int *) gd->gd_CMAP1 = PG_V | (src & PG_FRAME) | PG_A;
+	*(int *) gd->gd_CMAP2 = PG_V | PG_RW | (dst & PG_FRAME) | PG_A | PG_M;
+
+	cpu_invlpg(gd->gd_CADDR1);
+	cpu_invlpg(gd->gd_CADDR2);
+
+	bcopy((char *)gd->gd_CADDR1 + (src & PAGE_MASK),
+	      (char *)gd->gd_CADDR2 + (dst & PAGE_MASK),
+	      bytes);
 
 	*(int *) gd->gd_CMAP1 = 0;
 	*(int *) gd->gd_CMAP2 = 0;

@@ -3,7 +3,7 @@
  *
  *	Implements Inlines for LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport2.h,v 1.5 2003/11/24 20:46:05 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport2.h,v 1.6 2004/01/18 12:29:50 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT2_H_
@@ -17,7 +17,6 @@ lwkt_initmsg(lwkt_msg_t msg, lwkt_port_t rport, int cmd)
     msg->ms_flags = MSGF_DONE;
     msg->ms_reply_port = rport;
     msg->ms_msgsize = 0;
-    msg->ms_maxsize = 0;
 }
 
 static __inline
