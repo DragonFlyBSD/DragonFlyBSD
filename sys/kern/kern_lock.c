@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.12 2004/11/09 17:41:30 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.13 2005/01/19 18:00:39 drhodus Exp $
  */
 
 #include "opt_lint.h"
@@ -169,7 +169,7 @@ debuglockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
 	error = 0;
 
 	if (lockmgr_from_int && mycpu->gd_intr_nesting_level &&
-	    (flags & LK_NOWAIT) == 0 && 
+	    (flags & LK_NOWAIT) == 0 &&
 	    (flags & LK_TYPE_MASK) != LK_RELEASE && didpanic == 0) {
 #ifndef DEBUG_LOCKS
 		    if (lockmgr_from_int == 2) {
@@ -443,7 +443,7 @@ debuglockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
 }
 
 static int
-acquiredrain(struct lock *lkp, int extflags) 
+acquiredrain(struct lock *lkp, int extflags)
 {
 	int error;
 
@@ -488,7 +488,7 @@ lockinit(struct lock *lkp, int prio, char *wmesg, int timo, int flags)
 
 /*
  * Reinitialize a lock that is being reused for a different purpose, but
- * which may have pending (blocked) threads sitting on it.  The caller 
+ * which may have pending (blocked) threads sitting on it.  The caller
  * must already hold the interlock.
  */
 void
@@ -529,8 +529,7 @@ lockstatus(struct lock *lkp, struct thread *td)
  * The non-blocking version can usually be used for assertions.
  */
 int
-lockcount(lkp)
-	struct lock *lkp;
+lockcount(struct lock *lkp)
 {
 	lwkt_tokref ilock;
 	int count;
@@ -542,8 +541,7 @@ lockcount(lkp)
 }
 
 int
-lockcountnb(lkp)
-	struct lock *lkp;
+lockcountnb(struct lock *lkp)
 {
 	return (lkp->lk_exclusivecount + lkp->lk_sharecount);
 }
@@ -553,8 +551,7 @@ lockcountnb(lkp)
  * routines to display status about contained locks.
  */
 void
-lockmgr_printinfo(lkp)
-	struct lock *lkp;
+lockmgr_printinfo(struct lock *lkp)
 {
 	struct thread *td = lkp->lk_lockholder;
 	struct proc *p;
