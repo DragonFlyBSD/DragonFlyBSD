@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.9 2003/04/15 14:37:35 ru Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.4 2004/01/26 18:16:18 drhodus Exp $
  */
 
 /*-
@@ -513,16 +513,13 @@ main(argc, argv)
 	}
 #endif
 
-#if defined(__i386__) && defined(__FreeBSD_version) && \
-    __FreeBSD_version > 300003
+#if defined(__i386__) && defined(__DragonFly_version)
 	/*
 	 * PC-98 kernel sets the `i386' string to the utsname.machine and
 	 * it cannot be distinguished from IBM-PC by uname(3).  Therefore,
 	 * we check machine.ispc98 and adjust the machine variable before
 	 * using usname(3) below.
-	 * NOTE: machdep.ispc98 was defined on 1998/8/31. At that time,
-	 * __FreeBSD_version was defined as 300003. So, this check can
-	 * safely be done with any kernel with version > 300003.
+	 * NOTE: machdep.ispc98 was defined on 1998/8/31.
 	 */
 	if (!machine) {
 		int	ispc98;

@@ -30,7 +30,7 @@
  *	BSDI tty.c,v 2.4 1996/04/08 22:03:27 prb Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/tty.c,v 1.8.2.2 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/tty.c,v 1.5 2004/01/22 03:22:53 rob Exp $
+ * $DragonFly: src/usr.bin/doscmd/tty.c,v 1.6 2004/01/26 18:16:18 drhodus Exp $
  */
 
 #include <sys/ioctl.h>
@@ -48,17 +48,7 @@
 #include <unistd.h>
 #ifdef __DragonFly__ 
 # include <osreldate.h>
-# if __FreeBSD_version >= 500014
-#   include <sys/kbio.h>
-# else
-#   include <machine/console.h>
-# endif
-#else
-# ifdef __NetBSD__
-#  include "machine/pccons.h"
-# else	/* BSD/OS */
-#  include "/sys/i386/isa/pcconsioctl.h"
-# endif
+# include <machine/console.h>
 #endif
 
 #ifndef NO_X
