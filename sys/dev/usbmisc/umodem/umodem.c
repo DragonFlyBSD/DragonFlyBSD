@@ -2,7 +2,7 @@
  * $NetBSD: umodem.c,v 1.5 1999/01/08 11:58:25 augustss Exp $
  * $NetBSD: umodem.c,v 1.45 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/umodem.c,v 1.48 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.8 2003/12/30 01:01:47 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.9 2004/01/08 18:56:20 asmodai Exp $
  */
 
 /*-
@@ -69,8 +69,8 @@
  */
 
 /*
- * Comm Class spec:  http://www.usb.org/developers/data/devclass/usbcdc10.pdf
- *                   http://www.usb.org/developers/data/devclass/usbcdc11.pdf
+ * Comm Class spec:  http://www.usb.org/developers/devclass_docs/usbccs10.pdf
+ *                   http://www.usb.org/developers/devclass_docs/usbcdc11.pdf
  */
 
 /*
