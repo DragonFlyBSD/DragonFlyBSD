@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.16 2004/03/22 10:22:26 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.17 2004/03/22 13:33:34 joerg Exp $
  *
  */
 
@@ -1637,7 +1637,7 @@ bge_probe(dev)
 			    "%s, ASIC rev. %#04x", t->bge_name,
 			    pci_read_config(dev, BGE_PCI_MISC_CTL, 4) >> 16);
 			device_set_desc_copy(dev, descbuf);
-			if (pci_get_subvendor(dev) == DELL_VENDORID)
+			if (pci_get_subvendor(dev) == PCI_VENDOR_DELL)
 				sc->bge_no_3_led = 1;
 			free(descbuf, M_TEMP);
 			return(0);
