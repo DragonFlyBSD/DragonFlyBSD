@@ -37,7 +37,7 @@
  *
  *	@(#)exec.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/exec.h,v 1.26 1999/12/29 04:24:40 peter Exp $
- * $DragonFly: src/sys/sys/exec.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/exec.h,v 1.4 2004/06/08 10:14:45 hsu Exp $
  */
 
 #ifndef _SYS_EXEC_H_
@@ -90,7 +90,7 @@ int exec_unregister (const struct execsw *);
 
 #include <sys/module.h>
 
-#define EXEC_SET(name, execsw_arg) \
+#define DEFINE_EXEC_MODULE(name, execsw_arg) \
 	static int name ## _modevent(module_t mod, int type, void *data) \
 	{ \
 		struct execsw *exec = (struct execsw *)data; \
@@ -117,8 +117,15 @@ int exec_unregister (const struct execsw *);
 		#name, \
 		name ## _modevent, \
 		(void *)& execsw_arg \
-	}; \
-	DECLARE_MODULE(name, name ## _mod, SI_SUB_EXEC, SI_ORDER_ANY)
+	};
+
+#define EXEC_SET_ORDERED(name, execsw_arg, order)			\
+	DEFINE_EXEC_MODULE(name, execsw_arg)				\
+	DECLARE_MODULE(name, name ## _mod, SI_SUB_EXEC, order)
+
+#define EXEC_SET(name, execsw_arg)					\
+	EXEC_SET_ORDERED(name, execsw_arg, SI_ORDER_ANY)
+
 #endif
 
 #endif

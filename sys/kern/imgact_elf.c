@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.19 2004/04/11 00:10:30 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.20 2004/06/08 10:14:45 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -1342,4 +1342,4 @@ elf_puttextvp(struct proc *p, elf_buf_t target)
  * Tell kern_execve.c about it, with a little help from the linker.
  */
 static struct execsw elf_execsw = {exec_elf_imgact, "ELF"};
-EXEC_SET(elf, elf_execsw);
+EXEC_SET_ORDERED(elf, elf_execsw, SI_ORDER_FIRST);
