@@ -35,7 +35,7 @@
  *
  * $NetBSD: stat.c,v 1.10 2003/05/08 13:05:38 atatat Exp $
  * $FreeBSD: src/usr.bin/stat/stat.c,v 1.5 2003/05/11 23:02:09 dougb Exp $
- * $DragonFly: src/usr.bin/stat/stat.c,v 1.4 2003/08/14 18:28:45 dillon Exp $
+ * $DragonFly: src/usr.bin/stat/stat.c,v 1.5 2004/07/09 19:13:40 drhodus Exp $
  */
 
 #include <sys/cdefs.h>
@@ -503,7 +503,6 @@ format1(const struct stat *st,
 	struct group *gr;
 	const struct timespec *tsp;
 	struct timespec ts;
-	struct tm *tm;
 	int l, small, formats;
 
 	tsp = NULL;
