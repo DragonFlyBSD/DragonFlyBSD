@@ -1,11 +1,12 @@
 # $FreeBSD: src/usr.bin/top/Makefile,v 1.5.6.2 2002/08/11 17:09:54 dwmalone Exp $
-# $DragonFly: src/usr.bin/top/Makefile,v 1.3 2004/05/29 05:11:15 hmp Exp $
+# $DragonFly: src/usr.bin/top/Makefile,v 1.4 2004/05/29 09:51:43 hmp Exp $
 PROG=	top
 
 TOPDIR=	${.CURDIR}/../../contrib/top
 .PATH:	${TOPDIR}
 
-CFLAGS+= -DHAVE_GETOPT -DHAVE_STRERROR -I${.CURDIR} -I${TOPDIR} -I. -DORDER
+CFLAGS+= -DHAVE_GETOPT -DHAVE_STRERROR -I${.CURDIR} -I${.OBJDIR} \
+		 -I${TOPDIR} -I. -DORDER
 
 #
 # The table size should be a prime number approximately twice as
