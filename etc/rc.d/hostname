@@ -24,13 +24,13 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/hostname,v 1.2 2003/04/24 08:20:47 mtm Exp $
-# $DragonFly: src/etc/rc.d/hostname,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/hostname,v 1.2 2004/01/26 17:21:15 rob Exp $
 #
 
 # PROVIDE: hostname
 # REQUIRE: mountcritlocal tty
 # BEFORE:  netif
-# KEYWORD: DragonFly FreeBSD
+# KEYWORD: DragonFly 
 
 . /etc/rc.subr
 

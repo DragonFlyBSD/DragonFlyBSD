@@ -2,13 +2,13 @@
 #
 # $NetBSD: dmesg,v 1.8 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/dmesg,v 1.2 2002/06/13 22:14:36 gordon Exp $
-# $DragonFly: src/etc/rc.d/dmesg,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/dmesg,v 1.2 2004/01/26 17:21:15 rob Exp $
 #
 
 # PROVIDE: dmesg
 # REQUIRE: mountcritremote
 # BEFORE:  DAEMON
-# KEYWORD: DragonFly FreeBSD Daemon
+# KEYWORD: DragonFly  Daemon
 
 . /etc/rc.subr
 

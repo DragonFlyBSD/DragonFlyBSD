@@ -1,13 +1,13 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/kpasswdd,v 1.2 2003/05/06 02:28:03 mtm Exp $
-# $DragonFly: src/etc/rc.d/kpasswdd,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/kpasswdd,v 1.2 2004/01/26 17:21:15 rob Exp $
 #
 
 # PROVIDE: kpasswdd
 # REQUIRE: kadmin
 # BEFORE: DAEMON
-# KEYWORD: DragonFly FreeBSD
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 

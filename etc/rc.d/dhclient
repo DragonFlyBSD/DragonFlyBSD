@@ -2,13 +2,13 @@
 #
 # $NetBSD: dhclient,v 1.8 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/dhclient,v 1.6 2003/06/29 05:34:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/dhclient,v 1.4 2003/12/13 03:02:20 dillon Exp $
+# $DragonFly: src/etc/rc.d/dhclient,v 1.5 2004/01/26 17:21:15 rob Exp $
 #
 
 # PROVIDE: dhclient
 # REQUIRE: network netif mountcritlocal
 # BEFORE:  NETWORKING
-# KEYWORD: DragonFly FreeBSD NetBSD
+# KEYWORD: DragonFly
 #
 #	Note that there no syslog logging of dhclient messages at boot because
 #	dhclient needs to start before services that syslog depends upon do.
@@ -19,29 +19,13 @@
 
 name="dhclient"
 pidfile="/var/run/${name}.pid"
-case "${OSTYPE}" in
-DragonFly)
 	rcvar=
 	start_precmd="dhclient_prestart"
 	start_postcmd="dhclient_poststart"
 	stop_cmd="dhclient_stop"
 	stop_precmd="dhclient_prestop"
 	stop_postcmd="dhclient_poststop"
-	;;
 
-FreeBSD)
-	rcvar=
-	start_precmd="dhclient_prestart"
-	start_postcmd="dhclient_poststart"
-	stop_cmd="dhclient_stop"
-	stop_precmd="dhclient_prestop"
-	stop_postcmd="dhclient_poststop"
-	;;
-NetBSD)
-	rcvar=$name
-	command="/sbin/${name}"
-	;;
-esac
 
 dhclient_common()
 {

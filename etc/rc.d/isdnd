@@ -2,33 +2,21 @@
 #
 # $NetBSD: isdnd,v 1.9 2002/04/10 23:37:13 martin Exp $
 # $FreeBSD: src/etc/rc.d/isdnd,v 1.15 2003/07/15 12:39:37 mtm Exp $
-# $DragonFly: src/etc/rc.d/isdnd,v 1.2 2003/11/19 10:32:45 eirikn Exp $
+# $DragonFly: src/etc/rc.d/isdnd,v 1.3 2004/01/26 17:21:15 rob Exp $
 #
 # Mostly based on original script (/etc/rc.isdn) written by  Hellmuth Michaelis
 #
 
 # PROVIDE: isdnd
 # REQUIRE: netif mountcritlocal
-# KEYWORD: DragonFly FreeBSD NetBSD
+# KEYWORD: DragonFly 
 
 . /etc/rc.subr
 
 name="isdnd"
 rcvar=`set_rcvar isdn`
 pidfile="/var/run/${name}.pid"
-
-case ${OSTYPE} in
-DragonFly)
-	start_cmd="isdnd_start"
-	;;
-FreeBSD)
-	start_cmd="isdnd_start"
-	;;
-NetBSD)
-	command="/usr/sbin/${name}"
-	required_files="/etc/isdn/${name}.rc"
-	;;
-esac
+start_cmd="isdnd_start"
 
 isdnd_start()
 {

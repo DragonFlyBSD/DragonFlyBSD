@@ -2,12 +2,12 @@
 #
 # $NetBSD: inetd,v 1.6 2000/09/19 13:04:38 lukem Exp $
 # $FreeBSD: src/etc/rc.d/inetd,v 1.2 2002/06/13 22:14:36 gordon Exp $
-# $DragonFly: src/etc/rc.d/inetd,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/inetd,v 1.2 2004/01/26 17:21:15 rob Exp $
 #
 
 # PROVIDE: inetd
 # REQUIRE: DAEMON LOGIN
-# KEYWORD: DragonFly FreeBSD NetBSD shutdown
+# KEYWORD: DragonFly shutdown
 
 . /etc/rc.subr
 

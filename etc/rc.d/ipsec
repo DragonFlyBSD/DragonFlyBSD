@@ -2,13 +2,13 @@
 #
 # $NetBSD: ipsec,v 1.7 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/ipsec,v 1.5 2003/02/16 20:46:08 mtm Exp $
-# $DragonFly: src/etc/rc.d/ipsec,v 1.2 2003/11/19 10:32:45 eirikn Exp $
+# $DragonFly: src/etc/rc.d/ipsec,v 1.3 2004/01/26 17:21:15 rob Exp $
 #
 
 # PROVIDE: ipsec
 # REQUIRE: root beforenetlkm mountcritlocal tty
 # BEFORE:  DAEMON
-# KEYWORD: DragonFly FreeBSD NetBSD
+# KEYWORD: DragonFly 
 
 #	it does not really require beforenetlkm.
 
@@ -22,22 +22,8 @@ stop_precmd="test -f /etc/ipsec.conf"
 stop_cmd="ipsec_stop"
 reload_cmd="ipsec_reload"
 extra_commands="reload"
-
-case ${OSTYPE} in
-DragonFly)
-	ipsec_program="/usr/sbin/setkey"
-	# ipsec_file is set by rc.conf
-	;;
-
-FreeBSD)
-	ipsec_program="/usr/sbin/setkey"
-	# ipsec_file is set by rc.conf
-	;;
-NetBSD)
-	ipsec_program="/sbin/setkey"
-	ipsec_file="/etc/ipsec.conf"
-	;;
-esac
+ipsec_program="/usr/sbin/setkey"
+# ipsec_file is set by rc.conf
 
 ipsec_prestart()
 {

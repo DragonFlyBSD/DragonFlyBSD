@@ -2,13 +2,13 @@
 #
 # $NetBSD: accounting,v 1.7 2002/03/22 04:33:57 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/accounting,v 1.4 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/accounting,v 1.2 2003/11/19 10:32:45 eirikn Exp $
+# $DragonFly: src/etc/rc.d/accounting,v 1.3 2004/01/26 17:21:15 rob Exp $
 #
 
 # PROVIDE: accounting
 # REQUIRE: mountall
 # BEFORE: DAEMON
-# KEYWORD: DragonFly FreeBSD NetBSD 
+# KEYWORD: DragonFly 
 
 . /etc/rc.subr
 
@@ -21,40 +21,15 @@ stop_cmd="accounting_stop"
 
 accounting_start()
 {
-	case ${OSTYPE} in
-	DragonFly)
-		_dir=`dirname "$accounting_file"`
-		if [ ! -d `dirname "$_dir"` ]; then
-			if ! mkdir -p "$_dir"; then
-				warn "Could not create $_dir."
-				return 1
-			fi
+	_dir=`dirname "$accounting_file"`
+	if [ ! -d `dirname "$_dir"` ]; then
+		if ! mkdir -p "$_dir"; then
+			warn "Could not create $_dir."
+			return 1
 		fi
-		if [ ! -e "$accounting_file" ]; then
-			touch "$accounting_file"
-		fi
-		;;
-	FreeBSD) 
-		_dir=`dirname "$accounting_file"`
-		if [ ! -d `dirname "$_dir"` ]; then
-			if ! mkdir -p "$_dir"; then
-				warn "Could not create $_dir."
-				return 1
-			fi
-		fi
-		if [ ! -e "$accounting_file" ]; then
-			touch "$accounting_file"
-		fi
-		;;
-	
-
-	*)
-		;;
-	esac
-
-	if [ ! -f ${accounting_file} ]; then
-		echo "Creating accounting file ${accounting_file}"
-		( umask 022 ; > ${accounting_file} )
+	fi
+	if [ ! -e "$accounting_file" ]; then
+		touch "$accounting_file"
 	fi
 	echo "Turning on accounting."
 	${accounting_command} ${accounting_file}

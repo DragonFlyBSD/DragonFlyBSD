@@ -25,13 +25,13 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/atm2.sh,v 1.13 2003/06/29 05:15:57 mtm Exp $
-# $DragonFly: src/etc/rc.d/atm2.sh,v 1.2 2003/12/11 23:28:41 dillon Exp $
+# $DragonFly: src/etc/rc.d/atm2.sh,v 1.3 2004/01/26 17:21:15 rob Exp $
 #
 
 # PROVIDE: atm2
 # REQUIRE: atm1 netif
 # BEFORE:  routing
-# KEYWORD: DragonFly FreeBSD 
+# KEYWORD: DragonFly 
 
 #
 # Additional ATM interface configuration

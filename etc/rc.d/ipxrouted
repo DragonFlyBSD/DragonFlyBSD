@@ -1,13 +1,13 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/ipxrouted,v 1.1 2002/06/13 22:14:36 gordon Exp $
-# $DragonFly: src/etc/rc.d/ipxrouted,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/ipxrouted,v 1.2 2004/01/26 17:21:15 rob Exp $
 #
 
 # PROVIDE: ipxrouted
 # REQUIRE: SERVERS
 # BEFORE: DAEMON
-# KEYWORD: DragonFly FreeBSD
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 

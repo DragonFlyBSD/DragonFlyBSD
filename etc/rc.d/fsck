@@ -2,12 +2,12 @@
 #
 # $NetBSD: fsck,v 1.2 2001/06/18 06:42:35 lukem Exp $
 # $FreeBSD: src/etc/rc.d/fsck,v 1.4 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/fsck,v 1.2 2003/11/19 10:32:45 eirikn Exp $
+# $DragonFly: src/etc/rc.d/fsck,v 1.3 2004/01/26 17:21:15 rob Exp $
 #
 
 # PROVIDE: fsck
 # REQUIRE: localswap
-# KEYWORD: DragonFly FreeBSD NetBSD
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 
@@ -35,17 +35,7 @@ fsck_start()
 		trap : 3
 
 		echo "Starting file system checks:"
-		case ${OSTYPE} in
-		DragonFly)
 			fsck -p
-			;;
-		FreeBSD)
-			fsck -p
-			;;
-		NetBSD)
-			fsck -p
-			;;
-		esac
 
 		case $? in
 		0)
@@ -60,8 +50,6 @@ fsck_start()
 			stop_boot
 			;;
 		8)
-		case ${OSTYPE} in
-		DragonFly)
 			if checkyesno fsck_y_enable; then
 				echo "File system preen failed, trying fsck -y."
 				fsck -y
@@ -77,31 +65,7 @@ fsck_start()
 				echo "Automatic file system check failed; help!"
 				stop_boot
 			fi
-		;;
-
-		FreeBSD)
-			if checkyesno fsck_y_enable; then
-				echo "File system preen failed, trying fsck -y."
-				fsck -y
-				case $? in
-				0)
-					;;
-				*)
-				echo "Automatic file system check failed; help!"
-					stop_boot
-					;;
-				esac
-			else
-				echo "Automatic file system check failed; help!"
-				stop_boot
-			fi
 			;;
-		NetBSD)
-			echo "Automatic file system check failed; help!"
-			stop_boot
-			;;
-		esac
-		;;
 		12)
 			echo "Boot interrupted."
 			stop_boot

@@ -1,13 +1,13 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/early.sh,v 1.1 2003/04/24 08:27:29 mtm Exp $
-# $DragonFly: src/etc/rc.d/Attic/early.sh,v 1.2 2003/12/11 23:28:41 dillon Exp $
+# $DragonFly: src/etc/rc.d/Attic/early.sh,v 1.3 2004/01/26 17:21:15 rob Exp $
 #
 
 # PROVIDE: early
 # REQUIRE: disks localswap
 # BEFORE:  fsck
-# KEYWORD: DragonFly FreeBSD
+# KEYWORD: DragonFly
 
 #
 # Support for legacy /etc/rc.early script
