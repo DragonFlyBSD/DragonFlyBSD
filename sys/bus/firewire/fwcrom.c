@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwcrom.c,v 1.5 2004/02/05 17:51:43 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/fwcrom.c,v 1.6 2005/03/21 22:07:24 dillon Exp $
  */
 
 #ifndef __DragonFly__
@@ -72,6 +72,18 @@ crom_init_context(struct crom_context *cc, u_int32_t *p)
 	struct csrhdr *hdr;
 
 	hdr = (struct csrhdr *)p;
+	if (hdr->info_len == 0) {
+		/* 
+		 * This isn't supposed to happen but it does.   The problem
+		 * is possibly related to fw_attach_dev()'s going from an
+		 * FWDEVINIT to a FWDEVATTACHED state, or in a host<->host
+		 * situation where one host gets the root directory for
+		 * another before the other has actually initialized it.
+		 */
+		printf("crom_init_context: WARNING, info_len is 0\n");
+		cc->depth = -1;
+		return;
+	}
 	if (hdr->info_len == 1) {
 		/* minimum ROM */
 		cc->depth = -1;
