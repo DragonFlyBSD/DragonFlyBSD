@@ -3,15 +3,18 @@
  *
  * Test a standard function call to a function which does nothing much.
  *
- * $DragonFly: src/test/sysperf/call3.c,v 1.1 2004/03/20 01:51:01 dillon Exp $
+ * $DragonFly: src/test/sysperf/call3.c,v 1.2 2004/03/20 02:04:28 dillon Exp $
  */
 
 #include "blib.h"
 
 #define LOOP 500000000
 
+__asm(".p2align 6");
 static void nop1(void) { }
+__asm(".p2align 6");
 static void nop2(void) { }
+__asm(".p2align 6");
 static void nop(void (*func)(void)) { func(); }
 
 int
