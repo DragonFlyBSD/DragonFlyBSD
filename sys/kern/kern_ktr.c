@@ -35,8 +35,8 @@
  */
 
 /*
- * $FreeBSD: /repoman/r/ncvs/src/sys/kern/kern_ktr.c,v 1.43 2003/09/10 01:09:32 jhb Exp $
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.2 2005/02/12 21:09:46 eirikn Exp $
+ * $FreeBSD: src/sys/kern/kern_ktr.c,v 1.43 2003/09/10 01:09:32 jhb Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.3 2005/03/09 03:25:44 hmp Exp $
  */
 
 #include "opt_ddb.h"
