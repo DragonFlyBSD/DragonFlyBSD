@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_nfs.c	8.11 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/mount_nfs/mount_nfs.c,v 1.36.2.6 2003/05/13 14:45:40 trhodes Exp $
- * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.6 2003/11/01 17:16:00 drhodus Exp $
+ * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.7 2003/12/29 00:07:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -64,6 +64,7 @@
 #include <strings.h>
 #include <sysexits.h>
 #include <unistd.h>
+#include <resolv.h>
 
 #include "mntopts.h"
 #include "mounttab.h"
@@ -149,8 +150,11 @@ struct nfhret {
 	long		fhsize;
 	u_char		nfh[NFSX_V3FHMAX];
 };
-#define	BGRND	1
-#define	ISBGRND	2
+
+#define	BGRND	0x0001
+#define	ISBGRND	0x0002
+#define DIDWARN 0x0004
+
 int retrycnt = -1;
 int opflags = 0;
 int nfsproto = IPPROTO_UDP;
@@ -569,6 +573,7 @@ getnfsargs(char *spec, struct nfs_args *nfsargsp)
 	struct sockaddr_in saddr;
 	enum tryret ret;
 	int speclen, remoteerr;
+	int save_retry, save_retrans;
 	char *hostp, *delimp, *errstr;
 #ifdef NFSKERB
 	char *cp;
@@ -617,35 +622,91 @@ getnfsargs(char *spec, struct nfs_args *nfsargsp)
 	bzero(&saddr, sizeof saddr);
 	saddr.sin_family = AF_INET;
 	saddr.sin_len = sizeof saddr;
+
 	if (port_no != 0)
 		saddr.sin_port = htons(port_no);
-	if (isdigit(*hostp)) {
-		if ((saddr.sin_addr.s_addr = inet_addr(hostp)) == -1) {
-			warnx("bad net address %s", hostp);
-			return (0);
+
+	for (;;) {
+		int haserror = 0;
+
+		/*
+		 * Adjust DNS timeouts so we do not linger in the foreground
+		 * if we can be backgrounded.
+		 */
+		switch(opflags & (BGRND | ISBGRND)) {
+		case BGRND:
+			_res.retry = 1;
+			_res.retrans = 1;
+			break;
+		case BGRND|ISBGRND:
+			_res.retry = 3;
+			_res.retrans = 3;
+			break;
 		}
-	} else if ((hp = gethostbyname(hostp)) != NULL)
-		memmove(&saddr.sin_addr, hp->h_addr, 
-		    MIN(hp->h_length, sizeof(saddr.sin_addr)));
-	else {
-		warnx("can't get net id for host");
-		return (0);
-        }
+		if (isdigit(*hostp)) {
+			if ((saddr.sin_addr.s_addr = inet_addr(hostp)) == -1) {
+				warnx("bad net address %s", hostp);
+				haserror = EAI_FAIL;
+			}
+		} else if ((hp = gethostbyname(hostp)) != NULL) {
+			memmove(&saddr.sin_addr, hp->h_addr, 
+			    MIN(hp->h_length, sizeof(saddr.sin_addr)));
+		} else {
+			warnx("can't get net id for host: %s", hostp);
+			opflags |= DIDWARN;
+			haserror = h_errno;
+		}
 #ifdef NFSKERB
-	if ((nfsargsp->flags & NFSMNT_KERB)) {
-		if ((hp = gethostbyaddr((char *)&saddr.sin_addr.s_addr,
-		    sizeof (u_long), AF_INET)) == (struct hostent *)0) {
-			warnx("can't reverse resolve net address");
-			return (0);
+		if (haserror == 0 && (nfsargsp->flags & NFSMNT_KERB)) {
+			if ((hp = gethostbyaddr((char *)&saddr.sin_addr.s_addr,
+			    sizeof (u_long), AF_INET)) == NULL) {
+				warnx("can't reverse resolve net address");
+				opflags |= DIDWARN;
+				haserror = h_errno;
+			} else {
+				memmove(&saddr.sin_addr, hp->h_addr, 
+				    MIN(hp->h_length, sizeof(saddr.sin_addr)));
+				strncpy(inst, hp->h_name, INST_SZ);
+				inst[INST_SZ - 1] = '\0';
+				if (cp = strchr(inst, '.'))
+					*cp = '\0';
+			}
 		}
-		memmove(&saddr.sin_addr, hp->h_addr, 
-		    MIN(hp->h_length, sizeof(saddr.sin_addr)));
-		strncpy(inst, hp->h_name, INST_SZ);
-		inst[INST_SZ - 1] = '\0';
-		if (cp = strchr(inst, '.'))
-			*cp = '\0';
-	}
 #endif /* NFSKERB */
+		/*
+		 * If no error occured we do not have to retry again. 
+		 * Otherwise try to backgruond us if possible.
+		 */
+		if (haserror == 0)
+		    break;
+
+		switch(opflags & (BGRND | ISBGRND)) {
+		case BGRND:
+			if (haserror != EAI_AGAIN)
+				return(0);
+			/* recoverable error */
+			warnx("Cannot immediately mount %s:%s, backgrounding",
+			    hostp, spec);
+			opflags |= DIDWARN;
+			opflags |= ISBGRND;
+			if (daemon(0, 0) != 0)
+				err(1, "daemon");
+			break;
+		default:
+			/*
+			 * Already backgrounded or cannot be backgrounded.
+			 */
+			if (haserror != EAI_AGAIN)
+				return(0);
+			break;
+		}
+		sleep(20);
+		endhostent();
+	}
+	if (opflags & DIDWARN) {
+		opflags &= ~DIDWARN;
+		warnx("successfully resolved %s after prior failures", hostp);
+	}
 
 	ret = TRYRET_LOCALERR;
 	for (;;) {
@@ -673,10 +734,15 @@ getnfsargs(char *spec, struct nfs_args *nfsargsp)
 			warnx("Cannot immediately mount %s:%s, backgrounding",
 			    hostp, spec);
 			opflags |= ISBGRND;
+			opflags |= DIDWARN;
 			if (daemon(0, 0) != 0)
 				err(1, "daemon");
 		}
-		sleep(60);
+		sleep(20);
+	}
+	if (opflags & DIDWARN) {
+		opflags &= ~DIDWARN;
+		warnx("successfully mounted %s after prior failures", spec);
 	}
 	nfsargsp->hostname = nam;
 	/* Add mounted filesystem to PATH_MOUNTTAB */
