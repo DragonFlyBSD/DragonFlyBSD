@@ -33,8 +33,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $DragonFly: src/lib/libcr/stdlib/Attic/heapsort.c,v 1.6 2004/04/25 12:40:50 joerg Exp $
+ *
  * @(#)heapsort.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libcr/stdlib/Attic/heapsort.c,v 1.5 2003/12/08 13:56:35 eirikn Exp $
  */
 
 #include <errno.h>

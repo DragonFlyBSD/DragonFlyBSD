@@ -33,8 +33,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $DragonFly: src/lib/libcr/stdlib/Attic/radixsort.c,v 1.7 2004/04/25 12:40:50 joerg Exp $
+ *
  * @(#)radixsort.c	8.2 (Berkeley) 4/28/95
- * $DragonFly: src/lib/libcr/stdlib/Attic/radixsort.c,v 1.6 2004/03/13 19:46:56 eirikn Exp $
  */
 
 /*

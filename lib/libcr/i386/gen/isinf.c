@@ -31,9 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/gen/isinf.c,v 1.6 1999/08/27 23:59:21 peter Exp $
- * $DragonFly: src/lib/libcr/i386/gen/Attic/isinf.c,v 1.2 2003/06/17 04:26:43 dillon Exp $
- *
- * $FreeBSD: src/lib/libc/i386/gen/isinf.c,v 1.6 1999/08/27 23:59:21 peter Exp $
+ * $DragonFly: src/lib/libcr/i386/gen/Attic/isinf.c,v 1.3 2004/04/25 12:40:48 joerg Exp $
  */
 
 #include <sys/types.h>

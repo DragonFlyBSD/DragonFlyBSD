@@ -34,9 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/sys/syscall.S,v 1.6 1999/08/27 23:59:46 peter Exp $
- * $DragonFly: src/lib/libcr/i386/sys/Attic/syscall.S,v 1.2 2003/06/17 04:26:43 dillon Exp $
- *
- * $FreeBSD: src/lib/libc/i386/sys/syscall.S,v 1.6 1999/08/27 23:59:46 peter Exp $
+ * $DragonFly: src/lib/libcr/i386/sys/Attic/syscall.S,v 1.3 2004/04/25 12:40:50 joerg Exp $
  */
 
 #include "SYS.h"

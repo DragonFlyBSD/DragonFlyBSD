@@ -36,7 +36,7 @@
  *	from: @(#)SYS.h	5.5 (Berkeley) 5/7/91
  *
  * $FreeBSD: src/lib/libc/i386/SYS.h,v 1.17.2.2 2002/10/15 19:46:46 fjoe Exp $
- * $DragonFly: src/lib/libcr/i386/Attic/SYS.h,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libcr/i386/Attic/SYS.h,v 1.3 2004/04/25 12:40:48 joerg Exp $
  */
 
 #include <sys/syscall.h>
@@ -88,8 +88,4 @@
 #define	PPSEUDO(x,y)	PSEUDO(x,y)
 #endif
 
-#ifdef __ELF__
-#define KERNCALL	int $0x80	/* Faster */
-#else
-#define KERNCALL	LCALL(7,0)	/* The old way */
-#endif
+#define KERNCALL int $0x80	/* Faster */

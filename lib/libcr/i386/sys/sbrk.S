@@ -34,9 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/sys/sbrk.S,v 1.7.2.2 2002/08/22 20:21:17 kan Exp $
- * $DragonFly: src/lib/libcr/i386/sys/Attic/sbrk.S,v 1.2 2003/06/17 04:26:43 dillon Exp $
- *
- * $FreeBSD: src/lib/libc/i386/sys/sbrk.S,v 1.7.2.2 2002/08/22 20:21:17 kan Exp $
+ * $DragonFly: src/lib/libcr/i386/sys/Attic/sbrk.S,v 1.3 2004/04/25 12:40:50 joerg Exp $
  */
 
 #include "SYS.h"
