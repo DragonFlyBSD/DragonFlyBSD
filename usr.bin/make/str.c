@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.12.2.2 2004/02/23 12:10:57 ru Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.11 2004/12/16 00:17:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.12 2004/12/17 00:09:17 okumoto Exp $
  */
 
 #include "make.h"
@@ -79,8 +79,7 @@ str_end(void)
 
 /*-
  * str_concat --
- *	concatenate the two strings, inserting a space or slash between them,
- *	freeing them if requested.
+ *	concatenate the two strings, inserting a space or slash between them.
  *
  * returns --
  *	the resulting string in allocated space.
@@ -112,6 +111,7 @@ str_concat(const char *s1, const char *s2, int flags)
 
 	/* copy second string plus EOS into place */
 	memcpy(result + len1, s2, len2 + 1);
+
 	return (result);
 }
 
