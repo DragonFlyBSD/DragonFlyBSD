@@ -31,12 +31,13 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/test/pcpu/ncache-stats.c,v 1.3 2004/07/16 05:04:36 hmp Exp $
+ * $DragonFly: src/test/pcpu/ncache-stats.c,v 1.4 2005/03/07 04:19:22 hmp Exp $
  */
 
 #include <sys/param.h>
 #include <sys/nchstats.h>
 #include <sys/sysctl.h>
+#include <sys/accumulator.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,9 +48,9 @@
 #define _NCH_ENT(t, n, tt)                       \
     printf("%-20s", t);                          \
     for (i = 1; i <= ncpus; ++i) {               \
-        printf("%-9ld%s", nch[i-1]. ## n, "\t"); \
+        printf("%-9ld%s", nch[i-1]. #n, "\t"); \
 		if (i == ncpus)                          \
-			printf("(%-9ld)\n", tt. ## n);       \
+			printf("(%-9ld)\n", tt. #n);       \
 	}                                            \
 
 /*
