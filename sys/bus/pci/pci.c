@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.14 2004/01/16 20:21:42 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.15 2004/02/06 23:09:36 joerg Exp $
  *
  */
 
@@ -61,6 +61,7 @@
 #include <sys/pciio.h>
 #include "pcireg.h"
 #include "pcivar.h"
+#include "pci_private.h"
 
 #include "pcib_if.h"
 
@@ -326,8 +327,8 @@ pci_hdrtypedata(device_t pcib, int b, int s, int f, pcicfgregs *cfg)
 
 /* read configuration header into pcicfgrect structure */
 
-static struct pci_devinfo *
-pci_read_device(device_t pcib, int b, int s, int f)
+struct pci_devinfo *
+pci_read_device(device_t pcib, int b, int s, int f, int width)
 {
 #define REG(n, w)	PCIB_READ_CONFIG(pcib, b, s, f, n, w)
 
@@ -341,7 +342,7 @@ pci_read_device(device_t pcib, int b, int s, int f)
 
 	if (PCIB_READ_CONFIG(pcib, b, s, f, PCIR_DEVVENDOR, 4) != -1) {
 
-		devlist_entry = malloc(sizeof(struct pci_devinfo),
+		devlist_entry = malloc(width,
 				       M_DEVBUF, M_WAITOK | M_ZERO);
 		if (devlist_entry == NULL)
 			return (NULL);
@@ -482,10 +483,9 @@ pci_read_extcap(device_t pcib, pcicfgregs *cfg)
 #undef REG
 }
 
-#if 0
 /* free pcicfgregs structure and all depending data structures */
 
-static int
+int
 pci_freecfg(struct pci_devinfo *dinfo)
 {
 	struct devlist *devlist_head;
@@ -494,8 +494,6 @@ pci_freecfg(struct pci_devinfo *dinfo)
 
 	if (dinfo->cfg.hdrspec != NULL)
 		free(dinfo->cfg.hdrspec, M_DEVBUF);
-	if (dinfo->cfg.map != NULL)
-		free(dinfo->cfg.map, M_DEVBUF);
 	/* XXX this hasn't been tested */
 	STAILQ_REMOVE(devlist_head, dinfo, pci_devinfo, pci_links);
 	free(dinfo, M_DEVBUF);
@@ -507,7 +505,6 @@ pci_freecfg(struct pci_devinfo *dinfo)
 	pci_numdevs--;
 	return (0);
 }
-#endif
 
 
 /*
@@ -1130,7 +1127,7 @@ static struct cdevsw pcicdev = {
  * pci-pci-bridge.  Both kinds are represented by instances of pcib.
  */
 
-static void
+void
 pci_print_verbose(struct pci_devinfo *dinfo)
 {
 	if (bootverbose) {
@@ -1286,7 +1283,7 @@ pci_add_children(device_t dev, int busno)
 		int pcifunchigh = 0;
 		for (f = 0; f <= pcifunchigh; f++) {
 			struct pci_devinfo *dinfo = 
-				pci_read_device(pcib, busno, s, f);
+				pci_read_device(pcib, busno, s, f, sizeof *dinfo);
 			if (dinfo != NULL) {
 				if (dinfo->cfg.mfdev)
 					pcifunchigh = 7;
@@ -1422,7 +1419,7 @@ pci_probe_nomatch(device_t dev, device_t child)
 	return;
 }
 
-static int
+int
 pci_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
 {
 	struct pci_devinfo *dinfo;
@@ -1486,7 +1483,7 @@ pci_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
 	return 0;
 }
 
-static int
+int
 pci_write_ivar(device_t dev, device_t child, int which, uintptr_t value)
 {
 	struct pci_devinfo *dinfo;

@@ -23,8 +23,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/pci/pcivar.h,v 1.41.2.2 2002/01/10 12:08:22 mdodd Exp $
- * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.5 2004/01/15 20:35:06 joerg Exp $
+ * $FreeBSD: src/sys/pci/pcivar.h,v 1.48 2000/09/28 00:37:32 peter Exp $
+ * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.6 2004/02/06 23:09:36 joerg Exp $
  *
  */
 
@@ -197,6 +197,7 @@ enum pci_device_ivars {
 	PCI_IVAR_FUNCTION,
 	PCI_IVAR_SECONDARYBUS,
 	PCI_IVAR_SUBORDINATEBUS,
+	PCI_IVAR_ETHADDR,
 };
 
 /*

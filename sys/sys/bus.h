@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.4 2002/10/10 15:13:33 jhb Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.4 2003/11/22 19:30:57 asmodai Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.5 2004/02/06 23:09:36 joerg Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -173,6 +173,7 @@ struct resource *bus_generic_alloc_resource(device_t bus, device_t child,
 					    u_long start, u_long end,
 					    u_long count, u_int flags);
 int	bus_generic_attach(device_t dev);
+int	bus_generic_child_present(device_t dev, device_t child);
 int	bus_generic_deactivate_resource(device_t dev, device_t child, int type,
 					int rid, struct resource *r);
 int	bus_generic_detach(device_t dev);

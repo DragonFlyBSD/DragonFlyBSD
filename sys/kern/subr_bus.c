@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.9 2003/11/18 05:10:31 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.10 2004/02/06 23:09:36 joerg Exp $
  */
 
 #include "opt_bus.h"
@@ -1912,6 +1912,12 @@ bus_generic_teardown_intr(device_t dev, device_t child, struct resource *irq,
 		return (BUS_TEARDOWN_INTR(dev->parent, child, irq, cookie));
 	else
 		return (EINVAL);
+}
+
+int
+bus_generic_child_present(device_t bus, device_t child)
+{
+	return (BUS_CHILD_PRESENT(device_get_parent(bus), bus));
 }
 
 struct resource *

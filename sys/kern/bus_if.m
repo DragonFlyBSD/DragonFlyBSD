@@ -24,7 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/kern/bus_if.m,v 1.16 1999/10/12 21:35:50 dfr Exp $
-# $DragonFly: src/sys/kern/bus_if.m,v 1.3 2003/11/17 00:54:40 asmodai Exp $
+# $DragonFly: src/sys/kern/bus_if.m,v 1.4 2004/02/06 23:09:36 joerg Exp $
 #
 
 #include <sys/bus.h>
@@ -236,4 +236,41 @@ METHOD void delete_resource {
 	device_t	child;
 	int		type;
 	int		rid;
+};
+
+#
+# Is the hardware described by _child still attached to the system?
+#
+# This method should return 0 if the device is not present.  It should
+# return -1 if it is present.  Any errors in determining should be
+# returned as a normal errno value.  Client drivers are to assume that
+# the device is present, even if there is an error determining if it is
+# there.  Busses are to try to avoid returning errors, but newcard will return
+# an error if the device fails to implement this method.
+#
+METHOD int child_present {
+	device_t	_dev;
+	device_t	_child;
+} DEFAULT bus_generic_child_present;
+
+#
+# Returns the pnp info for this device.  Return it as a string.  If the
+# string is insufficient for the storage, then return EOVERFLOW.
+#
+METHOD int child_pnpinfo_str {
+	device_t	_dev;
+	device_t	_child;
+	char		*_buf;
+	size_t		_buflen;
+};
+
+#
+# Returns the location for this device.  Return it as a string.  If the
+# string is insufficient for the storage, then return EOVERFLOW.
+#
+METHOD int child_location_str {
+	device_t	_dev;
+	device_t	_child;
+	char		*_buf;
+	size_t		_buflen;
 };
