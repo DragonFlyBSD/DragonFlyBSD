@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.6 2003/08/08 19:22:45 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.7 2003/08/11 00:25:14 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -757,4 +757,11 @@ ${entry}.${__target}__D: .PHONY
 par-${__target}: ${SUBDIR:S/$/.${__target}__D/}
 .endfor
 
+# The wmake target is used by /usr/bin/wmake to run make in a
+# world build environment.
+#
+wmake:
+	@echo '${WMAKEENV} ${MAKE} ${WMAKE_ARGS}'
+
 .include <bsd.subdir.mk>
+
