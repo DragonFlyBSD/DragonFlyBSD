@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: /src/usr.bin/newgrp/newgrp.c,v 1.2 2003/10/30 15:14:34 harti Exp $
- * $DragonFly: src/usr.bin/newgrp/newgrp.c,v 1.2 2004/12/08 22:00:32 liamfoy Exp $
+ * $DragonFly: src/usr.bin/newgrp/newgrp.c,v 1.3 2004/12/08 22:26:42 liamfoy Exp $
  */
 
 /*
@@ -285,9 +285,11 @@ loginshell(void)
 		err(EXIT_FAILURE, "setenv failed");
 
 	if (term != NULL)
-		setenv("TERM", term, 1);
+		if (setenv("TERM", term, 1) == -1)
+			err(EXIT_FAILURE, "setenv failed");
 	if (ticket != NULL)
-		setenv("KRBTKFILE", ticket, 1);
+		if (setenv("KRBTKFILE", ticket, 1) == -1)
+			err(EXIT_FAILURE, "setenv failed");
 
 	if (asprintf(args, "-%s", basename(shell)) < 0)
 		err(1, "asprintf");
