@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.27 2004/08/15 15:00:22 joerg Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.28 2004/09/05 21:25:53 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -275,6 +275,7 @@ vm_fork(struct proc *p1, struct proc *p2, int flags)
 void
 vm_waitproc(struct proc *p)
 {
+	p->p_stats = NULL;
 	cpu_proc_wait(p);
 	vmspace_exitfree(p);	/* and clean-out the vmspace */
 }
