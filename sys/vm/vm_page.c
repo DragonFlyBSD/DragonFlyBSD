@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.22 2004/05/20 21:40:50 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.23 2004/05/20 22:35:39 dillon Exp $
  */
 
 /*
@@ -64,9 +64,9 @@
  * any improvements or extensions that they make and grant Carnegie the
  * rights to redistribute these changes.
  */
-
 /*
- *	Resident memory management module.
+ * Resident memory management module.  The module manipulates 'VM pages'.
+ * A VM page is the core building block for memory management.
  */
 
 #include <sys/param.h>
@@ -89,55 +89,49 @@
 #include <vm/vm_extern.h>
 #include <vm/vm_page2.h>
 
-static void	vm_page_queue_init (void);
-static vm_page_t vm_page_select_cache (vm_object_t, vm_pindex_t);
+static void vm_page_queue_init(void);
+static void vm_page_free_wakeup(void);
+static vm_page_t vm_page_select_cache(vm_object_t, vm_pindex_t);
 static vm_page_t _vm_page_list_find2(int basequeue, int index);
 
-/*
- *	Associated with page of user-allocatable memory is a
- *	page structure.
- */
-
-static struct vm_page **vm_page_buckets; /* Array of buckets */
 static int vm_page_bucket_count;	/* How big is array? */
 static int vm_page_hash_mask;		/* Mask for hash function */
+static struct vm_page **vm_page_buckets; /* Array of buckets */
 static volatile int vm_page_bucket_generation;
-
-struct vpgqueues vm_page_queues[PQ_COUNT];
+struct vpgqueues vm_page_queues[PQ_COUNT]; /* Array of tailq lists */
 
 static void
-vm_page_queue_init(void) {
+vm_page_queue_init(void) 
+{
 	int i;
 
-	for(i=0;i<PQ_L2_SIZE;i++) {
+	for (i = 0; i < PQ_L2_SIZE; i++)
 		vm_page_queues[PQ_FREE+i].cnt = &vmstats.v_free_count;
-	}
-	vm_page_queues[PQ_INACTIVE].cnt = &vmstats.v_inactive_count;
+	for (i = 0; i < PQ_L2_SIZE; i++)
+		vm_page_queues[PQ_CACHE+i].cnt = &vmstats.v_cache_count;
 
+	vm_page_queues[PQ_INACTIVE].cnt = &vmstats.v_inactive_count;
 	vm_page_queues[PQ_ACTIVE].cnt = &vmstats.v_active_count;
 	vm_page_queues[PQ_HOLD].cnt = &vmstats.v_active_count;
-	for(i=0;i<PQ_L2_SIZE;i++) {
-		vm_page_queues[PQ_CACHE+i].cnt = &vmstats.v_cache_count;
-	}
-	for(i=0;i<PQ_COUNT;i++) {
+	/* PQ_NONE has no queue */
+
+	for (i = 0; i < PQ_COUNT; i++)
 		TAILQ_INIT(&vm_page_queues[i].pl);
-	}
 }
 
-vm_page_t vm_page_array = 0;
-int vm_page_array_size = 0;
+/*
+ * note: place in initialized data section?  Is this necessary?
+ */
 long first_page = 0;
+int vm_page_array_size = 0;
 int vm_page_zero_count = 0;
-
-static __inline int vm_page_hash (vm_object_t object, vm_pindex_t pindex);
-static void vm_page_free_wakeup (void);
+vm_page_t vm_page_array = 0;
 
 /*
- *	vm_set_page_size:
+ * (low level boot)
  *
- *	Sets the page size, perhaps based upon the memory
- *	size.  Must be called before any use of page-size
- *	dependent functions.
+ * Sets the page size, perhaps based upon the memory size.
+ * Must be called before any use of page-size dependent functions.
  */
 void
 vm_set_page_size(void)
@@ -149,20 +143,20 @@ vm_set_page_size(void)
 }
 
 /*
- *	vm_add_new_page:
+ * (low level boot)
  *
- *	Add a new page to the freelist for use by the system.  New pages
- *	are added to both the head and tail of the associated free page
- *	queue in a bottom-up fashion, so both zero'd and non-zero'd page
- *	requests pull 'recent' adds (higher physical addresses) first.
+ * Add a new page to the freelist for use by the system.  New pages
+ * are added to both the head and tail of the associated free page
+ * queue in a bottom-up fashion, so both zero'd and non-zero'd page
+ * requests pull 'recent' adds (higher physical addresses) first.
  *
- *	Must be called at splhigh().
+ * Must be called at splhigh().
  */
 vm_page_t
 vm_add_new_page(vm_paddr_t pa)
 {
-	vm_page_t m;
 	struct vpgqueues *vpq;
+	vm_page_t m;
 
 	++vmstats.v_page_count;
 	++vmstats.v_free_count;
@@ -171,26 +165,27 @@ vm_add_new_page(vm_paddr_t pa)
 	m->flags = 0;
 	m->pc = (pa >> PAGE_SHIFT) & PQ_L2_MASK;
 	m->queue = m->pc + PQ_FREE;
+
 	vpq = &vm_page_queues[m->queue];
 	if (vpq->flipflop)
 		TAILQ_INSERT_TAIL(&vpq->pl, m, pageq);
 	else
 		TAILQ_INSERT_HEAD(&vpq->pl, m, pageq);
 	vpq->flipflop = 1 - vpq->flipflop;
+
 	vm_page_queues[m->queue].lcnt++;
 	return (m);
 }
 
 /*
- *	vm_page_startup:
+ * (low level boot)
  *
- *	Initializes the resident memory module.
+ * Initializes the resident memory module.
  *
- *	Allocates memory for the page cells, and
- *	for the object/offset-to-page hash table headers.
- *	Each page cell is initialized and placed on the free list.
+ * Allocates memory for the page cells, and for the object/offset-to-page
+ * hash table headers.  Each page cell is initialized and placed on the
+ * free list.
  */
-
 vm_offset_t
 vm_page_startup(vm_offset_t starta, vm_offset_t enda, vm_offset_t vaddr)
 {
@@ -286,14 +281,13 @@ vm_page_startup(vm_offset_t starta, vm_offset_t enda, vm_offset_t vaddr)
 	 * use (taking into account the overhead of a page structure per
 	 * page).
 	 */
-
 	first_page = phys_avail[0] / PAGE_SIZE;
-
 	page_range = phys_avail[(nblocks - 1) * 2 + 1] / PAGE_SIZE - first_page;
 	npages = (total - (page_range * sizeof(struct vm_page)) -
 	    (end - new_end)) / PAGE_SIZE;
 
 	end = new_end;
+
 	/*
 	 * Initialize the mem entry structures now, and put them in the free
 	 * queue.
@@ -304,7 +298,6 @@ vm_page_startup(vm_offset_t starta, vm_offset_t enda, vm_offset_t vaddr)
 	/*
 	 * Validate these addresses.
 	 */
-
 	new_end = trunc_page(end - page_range * sizeof(struct vm_page));
 	mapped = pmap_map(mapped, new_end, end,
 	    VM_PROT_READ | VM_PROT_WRITE);
@@ -338,15 +331,13 @@ vm_page_startup(vm_offset_t starta, vm_offset_t enda, vm_offset_t vaddr)
 }
 
 /*
- *	vm_page_hash:
+ * Distributes the object/offset key pair among hash buckets.
  *
- *	Distributes the object/offset key pair among hash buckets.
+ * NOTE:  This macro depends on vm_page_bucket_count being a power of 2.
+ * This routine may not block.
  *
- *	NOTE:  This macro depends on vm_page_bucket_count being a power of 2.
- *	This routine may not block.
- *
- *	We try to randomize the hash based on the object to spread the pages
- *	out in the hash table without it costing us too much.
+ * We try to randomize the hash based on the object to spread the pages
+ * out in the hash table without it costing us too much.
  */
 static __inline int
 vm_page_hash(vm_object_t object, vm_pindex_t pindex)
@@ -356,6 +347,13 @@ vm_page_hash(vm_object_t object, vm_pindex_t pindex)
 	return(i & vm_page_hash_mask);
 }
 
+/*
+ * The opposite of vm_page_hold().  A page can be freed while being held,
+ * which places it on the PQ_HOLD queue.  We must call vm_page_free_toq()
+ * in this case to actually free it once the hold count drops to 0.
+ *
+ * This routine must be called at splvm().
+ */
 void
 vm_page_unhold(vm_page_t mem)
 {
@@ -366,17 +364,15 @@ vm_page_unhold(vm_page_t mem)
 }
 
 /*
- *	vm_page_insert:		[ internal use only ]
+ * Inserts the given mem entry into the object and object list.
  *
- *	Inserts the given mem entry into the object and object list.
+ * The pagetables are not updated but will presumably fault the page
+ * in if necessary, or if a kernel page the caller will at some point
+ * enter the page into the kernel's pmap.  We are not allowed to block
+ * here so we *can't* do this anyway.
  *
- *	The pagetables are not updated but will presumably fault the page
- *	in if necessary, or if a kernel page the caller will at some point
- *	enter the page into the kernel's pmap.  We are not allowed to block
- *	here so we *can't* do this anyway.
- *
- *	This routine may not block.
- *	This routine must be called at splvm().
+ * This routine may not block.
+ * This routine must be called at splvm().
  */
 void
 vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
@@ -403,14 +399,12 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 	/*
 	 * Now link into the object's list of backed pages.
 	 */
-
 	TAILQ_INSERT_TAIL(&object->memq, m, listq);
 	object->generation++;
 
 	/*
 	 * show that the object has one more resident page.
 	 */
-
 	object->resident_page_count++;
 
 	/*
@@ -422,16 +416,13 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 }
 
 /*
- *	vm_page_remove:
- *				NOTE: used by device pager as well -wfj
+ * Removes the given mem entry from the object/offset-page table and
+ * the object page list, but do not invalidate/terminate the backing store.
  *
- *	Removes the given mem entry from the object/offset-page
- *	table and the object page list, but do not invalidate/terminate
- *	the backing store.
- *
- *	This routine must be called at splvm()
- *	The underlying pmap entry (if any) is NOT removed here.
- *	This routine may not block.
+ * This routine must be called at splvm().
+ * The underlying pmap entry (if any) is NOT removed here.
+ * This routine may not block.
+ * The page must be BUSY.
  */
 void
 vm_page_remove(vm_page_t m)
@@ -441,14 +432,12 @@ vm_page_remove(vm_page_t m)
 	if (m->object == NULL)
 		return;
 
-	if ((m->flags & PG_BUSY) == 0) {
+	if ((m->flags & PG_BUSY) == 0)
 		panic("vm_page_remove: page not busy");
-	}
 
 	/*
 	 * Basically destroy the page.
 	 */
-
 	vm_page_wakeup(m);
 
 	object = m->object;
@@ -466,7 +455,7 @@ vm_page_remove(vm_page_t m)
 		bucket = &vm_page_buckets[vm_page_hash(m->object, m->pindex)];
 		while (*bucket != m) {
 			if (*bucket == NULL)
-				panic("vm_page_remove(): page not found in hash");
+			    panic("vm_page_remove(): page not found in hash");
 			bucket = &(*bucket)->hnext;
 		}
 		*bucket = m->hnext;
@@ -489,22 +478,19 @@ vm_page_remove(vm_page_t m)
 }
 
 /*
- *	vm_page_lookup:
+ * Locate and return the page at (object, pindex), or NULL if the
+ * page could not be found.
  *
- *	Locate and return the page at (object, pindex), or NULL if the
- *	page could not be found.
+ * This routine will operate properly without spl protection, but
+ * the returned page could be in flux if it is busy.  Because an
+ * interrupt can race a caller's busy check (unbusying and freeing the
+ * page we return before the caller is able to check the busy bit),
+ * the caller should generally call this routine at splvm().
  *
- *	This routine will operate properly without spl protection, but
- *	the returned page could be in flux if it is busy.  Because an
- *	interrupt can race a caller's busy check (unbusying and freeing the
- *	page we return before the caller is able to check the busy bit),
- *	the caller should generally call this routine at splvm().
- *
- *	Callers may call this routine without spl protection if they know
- *	'for sure' that the page will not be ripped out from under them
- *	by an interrupt.
+ * Callers may call this routine without spl protection if they know
+ * 'for sure' that the page will not be ripped out from under them
+ * by an interrupt.
  */
-
 vm_page_t
 vm_page_lookup(vm_object_t object, vm_pindex_t pindex)
 {
@@ -515,7 +501,6 @@ vm_page_lookup(vm_object_t object, vm_pindex_t pindex)
 	/*
 	 * Search the hash table for this object/offset pair
 	 */
-
 retry:
 	generation = vm_page_bucket_generation;
 	bucket = &vm_page_buckets[vm_page_hash(object, pindex)];
@@ -532,29 +517,28 @@ retry:
 }
 
 /*
- *	vm_page_rename:
+ * vm_page_rename()
  *
- *	Move the given memory entry from its
- *	current object to the specified target object/offset.
+ * Move the given memory entry from its current object to the specified
+ * target object/offset.
  *
- *	The object must be locked.
- *	This routine may not block.
+ * The object must be locked.
+ * This routine may not block.
  *
- *	Note: this routine will raise itself to splvm(), the caller need not. 
+ * Note: This routine will raise itself to splvm(), the caller need not. 
  *
- *	Note: swap associated with the page must be invalidated by the move.  We
- *	      have to do this for several reasons:  (1) we aren't freeing the
- *	      page, (2) we are dirtying the page, (3) the VM system is probably
- *	      moving the page from object A to B, and will then later move
- *	      the backing store from A to B and we can't have a conflict.
+ * Note: Swap associated with the page must be invalidated by the move.  We
+ *       have to do this for several reasons:  (1) we aren't freeing the
+ *       page, (2) we are dirtying the page, (3) the VM system is probably
+ *       moving the page from object A to B, and will then later move
+ *       the backing store from A to B and we can't have a conflict.
  *
- *	Note: we *always* dirty the page.  It is necessary both for the
- *	      fact that we moved it, and because we may be invalidating
- *	      swap.  If the page is on the cache, we have to deactivate it
- *	      or vm_page_dirty() will panic.  Dirty pages are not allowed
- *	      on the cache.
+ * Note: We *always* dirty the page.  It is necessary both for the
+ *       fact that we moved it, and because we may be invalidating
+ *	 swap.  If the page is on the cache, we have to deactivate it
+ *	 or vm_page_dirty() will panic.  Dirty pages are not allowed
+ *	 on the cache.
  */
-
 void
 vm_page_rename(vm_page_t m, vm_object_t new_object, vm_pindex_t new_pindex)
 {
@@ -570,19 +554,19 @@ vm_page_rename(vm_page_t m, vm_object_t new_object, vm_pindex_t new_pindex)
 }
 
 /*
- * vm_page_unqueue_nowakeup:
+ * vm_page_unqueue() without any wakeup.  This routine is used when a page
+ * is being moved between queues or otherwise is to remain BUSYied by the
+ * caller.
  *
- * 	vm_page_unqueue() without any wakeup
- *
- *	This routine must be called at splhigh().
- *	This routine may not block.
+ * This routine must be called at splhigh().
+ * This routine may not block.
  */
-
 void
 vm_page_unqueue_nowakeup(vm_page_t m)
 {
 	int queue = m->queue;
 	struct vpgqueues *pq;
+
 	if (queue != PQ_NONE) {
 		pq = &vm_page_queues[queue];
 		m->queue = PQ_NONE;
@@ -593,19 +577,18 @@ vm_page_unqueue_nowakeup(vm_page_t m)
 }
 
 /*
- * vm_page_unqueue:
+ * vm_page_unqueue() - Remove a page from its queue, wakeup the pagedemon
+ * if necessary.
  *
- *	Remove a page from its queue.
- *
- *	This routine must be called at splhigh().
- *	This routine may not block.
+ * This routine must be called at splhigh().
+ * This routine may not block.
  */
-
 void
 vm_page_unqueue(vm_page_t m)
 {
 	int queue = m->queue;
 	struct vpgqueues *pq;
+
 	if (queue != PQ_NONE) {
 		m->queue = PQ_NONE;
 		pq = &vm_page_queues[queue];
@@ -619,25 +602,22 @@ vm_page_unqueue(vm_page_t m)
 	}
 }
 
-#if PQ_L2_SIZE > 1
-
 /*
- *	vm_page_list_find:
+ * vm_page_list_find()
  *
- *	Find a page on the specified queue with color optimization.
+ * Find a page on the specified queue with color optimization.
  *
- *	The page coloring optimization attempts to locate a page
- *	that does not overload other nearby pages in the object in
- *	the cpu's L1 or L2 caches.  We need this optimization because 
- *	cpu caches tend to be physical caches, while object spaces tend 
- *	to be virtual.
+ * The page coloring optimization attempts to locate a page that does
+ * not overload other nearby pages in the object in the cpu's L1 or L2
+ * caches.  We need this optimization because cpu caches tend to be
+ * physical caches, while object spaces tend to be virtual.
  *
- *	This routine must be called at splvm().
- *	This routine may not block.
+ * This routine must be called at splvm().
+ * This routine may not block.
  *
- *	Note that this routine is carefully inlined.  A non-inlined version
- *	is available for outside callers but the only critical path is
- *	from within this source file.
+ * Note that this routine is carefully inlined.  A non-inlined version
+ * is available for outside callers but the only critical path is
+ * from within this source file.
  */
 static __inline
 vm_page_t
@@ -685,17 +665,13 @@ vm_page_list_find(int basequeue, int index, boolean_t prefer_zero)
 	return(_vm_page_list_find(basequeue, index, prefer_zero));
 }
 
-#endif
-
 /*
- *	vm_page_select_cache:
+ * Find a page on the cache queue with color optimization.  As pages
+ * might be found, but not applicable, they are deactivated.  This
+ * keeps us from using potentially busy cached pages.
  *
- *	Find a page on the cache queue with color optimization.  As pages
- *	might be found, but not applicable, they are deactivated.  This
- *	keeps us from using potentially busy cached pages.
- *
- *	This routine must be called at splvm().
- *	This routine may not block.
+ * This routine must be called at splvm().
+ * This routine may not block.
  */
 vm_page_t
 vm_page_select_cache(vm_object_t object, vm_pindex_t pindex)
@@ -715,19 +691,17 @@ vm_page_select_cache(vm_object_t object, vm_pindex_t pindex)
 		}
 		return m;
 	}
+	/* not reached */
 }
 
 /*
- *	vm_page_select_free:
+ * Find a free or zero page, with specified preference.  We attempt to
+ * inline the nominal case and fall back to _vm_page_select_free() 
+ * otherwise.
  *
- *	Find a free or zero page, with specified preference.  We attempt to
- *	inline the nominal case and fall back to _vm_page_select_free() 
- *	otherwise.
- *
- *	This routine must be called at splvm().
- *	This routine may not block.
+ * This routine must be called at splvm().
+ * This routine may not block.
  */
-
 static __inline vm_page_t
 vm_page_select_free(vm_object_t object, vm_pindex_t pindex, boolean_t prefer_zero)
 {
@@ -742,25 +716,25 @@ vm_page_select_free(vm_object_t object, vm_pindex_t pindex, boolean_t prefer_zer
 }
 
 /*
- *	vm_page_alloc:
+ * vm_page_alloc()
  *
- *	Allocate and return a memory cell associated
- *	with this VM object/offset pair.
+ * Allocate and return a memory cell associated with this VM object/offset
+ * pair.
  *
  *	page_req classes:
+ *
  *	VM_ALLOC_NORMAL		allow use of cache pages, nominal free drain
  *	VM_ALLOC_SYSTEM		greater free drain
  *	VM_ALLOC_INTERRUPT	allow free list to be completely drained
  *	VM_ALLOC_ZERO		advisory request for pre-zero'd page
  *
- *	Object must be locked.
- *	This routine may not block.
+ * The object must be locked.
+ * This routine may not block.
  *
- *	Additional special handling is required when called from an
- *	interrupt (VM_ALLOC_INTERRUPT).  We are not allowed to mess with
- *	the page cache in this case.
+ * Additional special handling is required when called from an interrupt
+ * (VM_ALLOC_INTERRUPT).  We are not allowed to mess with the page cache
+ * in this case.
  */
-
 vm_page_t
 vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 {
@@ -889,12 +863,9 @@ loop:
 }
 
 /*
- *	vm_wait:	(also see VM_WAIT macro)
- *
- *	Block until free pages are available for allocation
- *	- Called in various places before memory allocations.
+ * Block until free pages are available for allocation, called in various
+ * places before memory allocations.
  */
-
 void
 vm_wait(void)
 {
@@ -915,16 +886,15 @@ vm_wait(void)
 }
 
 /*
- *	vm_waitpfault:	(also see VM_WAITPFAULT macro)
+ * Block until free pages are available for allocation
  *
- *	Block until free pages are available for allocation
- *	- Called only in vm_fault so that processes page faulting
- *	  can be easily tracked.
- *	- Sleeps at a lower priority than vm_wait() so that vm_wait()ing
- *	  processes will be able to grab memory first.  Do not change
- *	  this balance without careful testing first.
+ * Called only in vm_fault so that processes page faulting can be
+ * easily tracked.
+ *
+ * Sleeps at a lower priority than vm_wait() so that vm_wait()ing
+ * processes will be able to grab memory first.  Do not change
+ * this balance without careful testing first.
  */
-
 void
 vm_waitpfault(void)
 {
@@ -940,14 +910,11 @@ vm_waitpfault(void)
 }
 
 /*
- *	vm_page_activate:
+ * Put the specified page on the active list (if appropriate).  Ensure
+ * that act_count is at least ACT_INIT but do not otherwise mess with it.
  *
- *	Put the specified page on the active list (if appropriate).
- *	Ensure that act_count is at least ACT_INIT but do not otherwise
- *	mess with it.
- *
- *	The page queues must be locked.
- *	This routine may not block.
+ * The page queues must be locked.
+ * This routine may not block.
  */
 void
 vm_page_activate(vm_page_t m)
@@ -964,7 +931,8 @@ vm_page_activate(vm_page_t m)
 		if (m->wire_count == 0 && (m->flags & PG_UNMANAGED) == 0) {
 			m->queue = PQ_ACTIVE;
 			vm_page_queues[PQ_ACTIVE].lcnt++;
-			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
+			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl,
+					    m, pageq);
 			if (m->act_count < ACT_INIT)
 				m->act_count = ACT_INIT;
 			vmstats.v_active_count++;
@@ -978,14 +946,12 @@ vm_page_activate(vm_page_t m)
 }
 
 /*
- *	vm_page_free_wakeup:
+ * Helper routine for vm_page_free_toq() and vm_page_cache().  This
+ * routine is called when a page has been added to the cache or free
+ * queues.
  *
- *	Helper routine for vm_page_free_toq() and vm_page_cache().  This
- *	routine is called when a page has been added to the cache or free
- *	queues.
- *
- *	This routine may not block.
- *	This routine must be called at splvm()
+ * This routine may not block.
+ * This routine must be called at splvm()
  */
 static __inline void
 vm_page_free_wakeup(void)
@@ -995,10 +961,13 @@ vm_page_free_wakeup(void)
 	 * some free.
 	 */
 	if (vm_pageout_pages_needed &&
-	    vmstats.v_cache_count + vmstats.v_free_count >= vmstats.v_pageout_free_min) {
+	    vmstats.v_cache_count + vmstats.v_free_count >= 
+	    vmstats.v_pageout_free_min
+	) {
 		wakeup(&vm_pageout_pages_needed);
 		vm_pageout_pages_needed = 0;
 	}
+
 	/*
 	 * wakeup processes that are waiting on memory if we hit a
 	 * high water mark. And wakeup scheduler process if we have
@@ -1025,12 +994,8 @@ vm_page_free_toq(vm_page_t m)
 {
 	int s;
 	struct vpgqueues *pq;
-#if 0
-	vm_object_t object = m->object;
-#endif
 
 	s = splvm();
-
 	mycpu->gd_cnt.v_tfree++;
 
 	if (m->busy || ((m->queue - m->pc) == PQ_FREE)) {
@@ -1050,7 +1015,6 @@ vm_page_free_toq(vm_page_t m)
 	 * callback routine until after we've put the page on the
 	 * appropriate free queue.
 	 */
-
 	vm_page_unqueue_nowakeup(m);
 	vm_page_remove(m);
 
@@ -1058,7 +1022,6 @@ vm_page_free_toq(vm_page_t m)
 	 * If fictitious remove object association and
 	 * return, otherwise delay object association removal.
 	 */
-
 	if ((m->flags & PG_FICTITIOUS) != 0) {
 		splx(s);
 		return;
@@ -1069,34 +1032,16 @@ vm_page_free_toq(vm_page_t m)
 
 	if (m->wire_count != 0) {
 		if (m->wire_count > 1) {
-			panic("vm_page_free: invalid wire count (%d), pindex: 0x%lx",
-				m->wire_count, (long)m->pindex);
+		    panic(
+			"vm_page_free: invalid wire count (%d), pindex: 0x%lx",
+			m->wire_count, (long)m->pindex);
 		}
 		panic("vm_page_free: freeing wired page");
 	}
 
 	/*
-	 * We used to free the underlying vnode if the object was empty,
-	 * but we no longer do that because it can block.  Instead, the
-	 * sync code is made responsible for the cleanup.
-	 */
-#if 0
-	if (object && 
-	    (object->type == OBJT_VNODE) &&
-	    ((object->flags & OBJ_DEAD) == 0) &&
-	    object->handle != NULL
-	) {
-		struct vnode *vp = (struct vnode *)object->handle;
-
-		if (vp && VSHOULDFREE(vp))
-			vfree(vp);
-	}
-#endif
-
-	/*
 	 * Clear the UNMANAGED flag when freeing an unmanaged page.
 	 */
-
 	if (m->flags & PG_UNMANAGED) {
 	    m->flags &= ~PG_UNMANAGED;
 	} else {
@@ -1108,8 +1053,9 @@ vm_page_free_toq(vm_page_t m)
 	if (m->hold_count != 0) {
 		m->flags &= ~PG_ZERO;
 		m->queue = PQ_HOLD;
-	} else
+	} else {
 		m->queue = PQ_FREE + m->pc;
+	}
 	pq = &vm_page_queues[m->queue];
 	pq->lcnt++;
 	++(*pq->cnt);
@@ -1118,7 +1064,6 @@ vm_page_free_toq(vm_page_t m)
 	 * Put zero'd pages on the end ( where we look for zero'd pages
 	 * first ) and non-zerod pages at the head.
 	 */
-
 	if (m->flags & PG_ZERO) {
 		TAILQ_INSERT_TAIL(&pq->pl, m, pageq);
 		++vm_page_zero_count;
@@ -1127,29 +1072,27 @@ vm_page_free_toq(vm_page_t m)
 	}
 
 	vm_page_free_wakeup();
-
 	splx(s);
 }
 
 /*
- *	vm_page_unmanage:
+ * vm_page_unmanage()
  *
- * 	Prevent PV management from being done on the page.  The page is
- *	removed from the paging queues as if it were wired, and as a 
- *	consequence of no longer being managed the pageout daemon will not
- *	touch it (since there is no way to locate the pte mappings for the
- *	page).  madvise() calls that mess with the pmap will also no longer
- *	operate on the page.
+ * Prevent PV management from being done on the page.  The page is
+ * removed from the paging queues as if it were wired, and as a 
+ * consequence of no longer being managed the pageout daemon will not
+ * touch it (since there is no way to locate the pte mappings for the
+ * page).  madvise() calls that mess with the pmap will also no longer
+ * operate on the page.
  *
- *	Beyond that the page is still reasonably 'normal'.  Freeing the page
- *	will clear the flag.
+ * Beyond that the page is still reasonably 'normal'.  Freeing the page
+ * will clear the flag.
  *
- *	This routine is used by OBJT_PHYS objects - objects using unswappable
- *	physical memory as backing store rather then swap-backed memory and
- *	will eventually be extended to support 4MB unmanaged physical 
- *	mappings.
+ * This routine is used by OBJT_PHYS objects - objects using unswappable
+ * physical memory as backing store rather then swap-backed memory and
+ * will eventually be extended to support 4MB unmanaged physical 
+ * mappings.
  */
-
 void
 vm_page_unmanage(vm_page_t m)
 {
@@ -1165,14 +1108,11 @@ vm_page_unmanage(vm_page_t m)
 }
 
 /*
- *	vm_page_wire:
+ * Mark this page as wired down by yet another map, removing it from
+ * paging queues as necessary.
  *
- *	Mark this page as wired down by yet
- *	another map, removing it from paging queues
- *	as necessary.
- *
- *	The page queues must be locked.
- *	This routine may not block.
+ * The page queues must be locked.
+ * This routine may not block.
  */
 void
 vm_page_wire(vm_page_t m)
@@ -1199,32 +1139,29 @@ vm_page_wire(vm_page_t m)
 }
 
 /*
- *	vm_page_unwire:
+ * Release one wiring of this page, potentially enabling it to be paged again.
  *
- *	Release one wiring of this page, potentially
- *	enabling it to be paged again.
+ * Many pages placed on the inactive queue should actually go
+ * into the cache, but it is difficult to figure out which.  What
+ * we do instead, if the inactive target is well met, is to put
+ * clean pages at the head of the inactive queue instead of the tail.
+ * This will cause them to be moved to the cache more quickly and
+ * if not actively re-referenced, freed more quickly.  If we just
+ * stick these pages at the end of the inactive queue, heavy filesystem
+ * meta-data accesses can cause an unnecessary paging load on memory bound 
+ * processes.  This optimization causes one-time-use metadata to be
+ * reused more quickly.
  *
- *	Many pages placed on the inactive queue should actually go
- *	into the cache, but it is difficult to figure out which.  What
- *	we do instead, if the inactive target is well met, is to put
- *	clean pages at the head of the inactive queue instead of the tail.
- *	This will cause them to be moved to the cache more quickly and
- *	if not actively re-referenced, freed more quickly.  If we just
- *	stick these pages at the end of the inactive queue, heavy filesystem
- *	meta-data accesses can cause an unnecessary paging load on memory bound 
- *	processes.  This optimization causes one-time-use metadata to be
- *	reused more quickly.
+ * BUT, if we are in a low-memory situation we have no choice but to
+ * put clean pages on the cache queue.
  *
- *	BUT, if we are in a low-memory situation we have no choice but to
- *	put clean pages on the cache queue.
+ * A number of routines use vm_page_unwire() to guarantee that the page
+ * will go into either the inactive or active queues, and will NEVER
+ * be placed in the cache - for example, just after dirtying a page.
+ * dirty pages in the cache are not allowed.
  *
- *	A number of routines use vm_page_unwire() to guarantee that the page
- *	will go into either the inactive or active queues, and will NEVER
- *	be placed in the cache - for example, just after dirtying a page.
- *	dirty pages in the cache are not allowed.
- *
- *	The page queues must be locked.
- *	This routine may not block.
+ * The page queues must be locked.
+ * This routine may not block.
  */
 void
 vm_page_unwire(vm_page_t m, int activate)
@@ -1323,12 +1260,9 @@ vm_page_try_to_cache(vm_page_t m)
 }
 
 /*
- * vm_page_try_to_free()
- *
- *	Attempt to free the page.  If we cannot free it, we do nothing.
- *	1 is returned on success, 0 on failure.
+ * Attempt to free the page.  If we cannot free it, we do nothing.
+ * 1 is returned on success, 0 on failure.
  */
-
 int
 vm_page_try_to_free(vm_page_t m)
 {
@@ -1344,7 +1278,6 @@ vm_page_try_to_free(vm_page_t m)
 	vm_page_free(m);
 	return(1);
 }
-
 
 /*
  * vm_page_cache
@@ -1387,27 +1320,26 @@ vm_page_cache(vm_page_t m)
 }
 
 /*
- * vm_page_dontneed
+ * vm_page_dontneed()
  *
- *	Cache, deactivate, or do nothing as appropriate.  This routine
- *	is typically used by madvise() MADV_DONTNEED.
+ * Cache, deactivate, or do nothing as appropriate.  This routine
+ * is typically used by madvise() MADV_DONTNEED.
  *
- *	Generally speaking we want to move the page into the cache so
- *	it gets reused quickly.  However, this can result in a silly syndrome
- *	due to the page recycling too quickly.  Small objects will not be
- *	fully cached.  On the otherhand, if we move the page to the inactive
- *	queue we wind up with a problem whereby very large objects 
- *	unnecessarily blow away our inactive and cache queues.
+ * Generally speaking we want to move the page into the cache so
+ * it gets reused quickly.  However, this can result in a silly syndrome
+ * due to the page recycling too quickly.  Small objects will not be
+ * fully cached.  On the otherhand, if we move the page to the inactive
+ * queue we wind up with a problem whereby very large objects 
+ * unnecessarily blow away our inactive and cache queues.
  *
- *	The solution is to move the pages based on a fixed weighting.  We
- *	either leave them alone, deactivate them, or move them to the cache,
- *	where moving them to the cache has the highest weighting.
- *	By forcing some pages into other queues we eventually force the
- *	system to balance the queues, potentially recovering other unrelated
- *	space from active.  The idea is to not force this to happen too
- *	often.
+ * The solution is to move the pages based on a fixed weighting.  We
+ * either leave them alone, deactivate them, or move them to the cache,
+ * where moving them to the cache has the highest weighting.
+ * By forcing some pages into other queues we eventually force the
+ * system to balance the queues, potentially recovering other unrelated
+ * space from active.  The idea is to not force this to happen too
+ * often.
  */
-
 void
 vm_page_dontneed(vm_page_t m)
 {
@@ -1513,7 +1445,6 @@ done:
  *
  * Inputs are required to range within a page.
  */
-
 __inline int
 vm_page_bits(int base, int size)
 {
@@ -1535,16 +1466,14 @@ vm_page_bits(int base, int size)
 }
 
 /*
- *	vm_page_set_validclean:
+ * Sets portions of a page valid and clean.  The arguments are expected
+ * to be DEV_BSIZE aligned but if they aren't the bitmap is inclusive
+ * of any partial chunks touched by the range.  The invalid portion of
+ * such chunks will be zero'd.
  *
- *	Sets portions of a page valid and clean.  The arguments are expected
- *	to be DEV_BSIZE aligned but if they aren't the bitmap is inclusive
- *	of any partial chunks touched by the range.  The invalid portion of
- *	such chunks will be zero'd.
+ * This routine may not block.
  *
- *	This routine may not block.
- *
- *	(base + size) must be less then or equal to PAGE_SIZE.
+ * (base + size) must be less then or equal to PAGE_SIZE.
  */
 void
 vm_page_set_validclean(vm_page_t m, int base, int size)
@@ -1621,16 +1550,6 @@ vm_page_set_validclean(vm_page_t m, int base, int size)
 	}
 }
 
-#if 0
-
-void
-vm_page_set_dirty(vm_page_t m, int base, int size)
-{
-	m->dirty |= vm_page_bits(base, size);
-}
-
-#endif
-
 void
 vm_page_clear_dirty(vm_page_t m, int base, int size)
 {
@@ -1638,12 +1557,10 @@ vm_page_clear_dirty(vm_page_t m, int base, int size)
 }
 
 /*
- *	vm_page_set_invalid:
+ * Invalidates DEV_BSIZE'd chunks within a page.  Both the
+ * valid and dirty bits for the effected areas are cleared.
  *
- *	Invalidates DEV_BSIZE'd chunks within a page.  Both the
- *	valid and dirty bits for the effected areas are cleared.
- *
- *	May not block.
+ * May not block.
  */
 void
 vm_page_set_invalid(vm_page_t m, int base, int size)
@@ -1657,17 +1574,14 @@ vm_page_set_invalid(vm_page_t m, int base, int size)
 }
 
 /*
- * vm_page_zero_invalid()
+ * The kernel assumes that the invalid portions of a page contain 
+ * garbage, but such pages can be mapped into memory by user code.
+ * When this occurs, we must zero out the non-valid portions of the
+ * page so user code sees what it expects.
  *
- *	The kernel assumes that the invalid portions of a page contain 
- *	garbage, but such pages can be mapped into memory by user code.
- *	When this occurs, we must zero out the non-valid portions of the
- *	page so user code sees what it expects.
- *
- *	Pages are most often semi-valid when the end of a file is mapped 
- *	into memory and the file's size is not page aligned.
+ * Pages are most often semi-valid when the end of a file is mapped 
+ * into memory and the file's size is not page aligned.
  */
-
 void
 vm_page_zero_invalid(vm_page_t m, boolean_t setvalid)
 {
@@ -1680,7 +1594,6 @@ vm_page_zero_invalid(vm_page_t m, boolean_t setvalid)
 	 * valid bit may be set ) have already been zerod by
 	 * vm_page_set_validclean().
 	 */
-
 	for (b = i = 0; i <= PAGE_SIZE / DEV_BSIZE; ++i) {
 		if (i == (PAGE_SIZE / DEV_BSIZE) || 
 		    (m->valid & (1 << i))
@@ -1701,21 +1614,17 @@ vm_page_zero_invalid(vm_page_t m, boolean_t setvalid)
 	 * as being valid.  We can do this if there are no cache consistency
 	 * issues.  e.g. it is ok to do with UFS, but not ok to do with NFS.
 	 */
-
 	if (setvalid)
 		m->valid = VM_PAGE_BITS_ALL;
 }
 
 /*
- *	vm_page_is_valid:
+ * Is a (partial) page valid?  Note that the case where size == 0
+ * will return FALSE in the degenerate case where the page is entirely
+ * invalid, and TRUE otherwise.
  *
- *	Is (partial) page valid?  Note that the case where size == 0
- *	will return FALSE in the degenerate case where the page is
- *	entirely invalid, and TRUE otherwise.
- *
- *	May not block.
+ * May not block.
  */
-
 int
 vm_page_is_valid(vm_page_t m, int base, int size)
 {
@@ -1730,7 +1639,6 @@ vm_page_is_valid(vm_page_t m, int base, int size)
 /*
  * update dirty bits from pmap/mmu.  May not block.
  */
-
 void
 vm_page_test_dirty(vm_page_t m)
 {
