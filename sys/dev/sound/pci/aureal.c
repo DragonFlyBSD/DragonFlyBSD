@@ -24,17 +24,17 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/aureal.c,v 1.8.2.7 2002/04/22 15:49:31 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.4 2005/01/24 15:06:07 drhodus Exp $
+ * $DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.5 2005/01/24 15:38:30 drhodus Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 #include <dev/sound/pci/aureal.h>
 
-#include <bus/<pci/pcireg.h>
+#include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.4 2005/01/24 15:06:07 drhodus Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.5 2005/01/24 15:38:30 drhodus Exp $");
 
 /* PCI IDs of supported chips */
 #define AU8820_PCI_ID 0x000112eb
