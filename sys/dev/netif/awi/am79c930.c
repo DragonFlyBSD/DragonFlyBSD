@@ -1,6 +1,6 @@
 /* $NetBSD: am79c930.c,v 1.5 2000/03/23 13:57:58 onoe Exp $ */
 /* $FreeBSD: src/sys/dev/awi/am79c930.c,v 1.2.2.1 2000/12/07 04:09:39 imp Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/am79c930.c,v 1.4 2003/08/27 09:38:29 rob Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/am79c930.c,v 1.5 2004/02/13 02:44:47 joerg Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -64,12 +64,12 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#ifndef __FreeBSD__
+#if !defined(__DragonFly__) && !defined(__FreeBSD__)
 #include <sys/device.h>
 #endif
 
 #include <machine/cpu.h>
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <machine/bus_pio.h>
 #include <machine/bus_memio.h>
 #endif
@@ -82,7 +82,7 @@
 #include <dev/ic/am79c930reg.h>
 #include <dev/ic/am79c930var.h>
 #endif
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "am79c930reg.h"
 #include "am79c930var.h"
 #endif

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.5 2003/12/30 01:01:46 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.6 2004/02/13 02:44:47 joerg Exp $
  *
  */
 
@@ -69,7 +69,7 @@
 
 #include <sys/bus.h>
 #include <machine/bus.h>
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <machine/clock.h>
 #endif
 
@@ -369,7 +369,7 @@ cue_setmulti(struct cue_softc *sc)
 		sc->cue_mctab[i] = 0;
 
 	/* now program new ones */
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
 #else
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
@@ -386,7 +386,7 @@ cue_setmulti(struct cue_softc *sc)
 	 * so we can receive broadcast frames.
  	 */
 	if (ifp->if_flags & IFF_BROADCAST) {
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 		h = cue_mchash(ifp->if_broadcastaddr);
 #else
 		h = cue_mchash(etherbroadcastaddr);
@@ -497,7 +497,7 @@ USB_ATTACH(cue)
 		}
 	}
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	mtx_init(&sc->cue_mtx, device_get_nameunit(self), MTX_NETWORK_LOCK,
 	    MTX_DEF | MTX_RECURSE);
 #endif
@@ -538,7 +538,7 @@ USB_ATTACH(cue)
 	/*
 	 * Call MI attach routine.
 	 */
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	ether_ifattach(ifp, eaddr);
 #else
 	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
@@ -563,7 +563,7 @@ cue_detach(device_ptr_t dev)
 
 	sc->cue_dying = 1;
 	untimeout(cue_tick, sc, sc->cue_stat_ch);
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	ether_ifdetach(ifp);
 #else
 	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
@@ -577,7 +577,7 @@ cue_detach(device_ptr_t dev)
 		usbd_abort_pipe(sc->cue_ep[CUE_ENDPT_INTR]);
 
 	CUE_UNLOCK(sc);
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	mtx_destroy(&sc->cue_mtx);
 #endif
 

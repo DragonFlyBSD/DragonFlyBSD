@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_kuereg.h,v 1.13 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kuereg.h,v 1.3 2003/12/30 01:01:46 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kuereg.h,v 1.4 2004/02/13 02:44:48 joerg Exp $
  */
 
 /*
@@ -170,7 +170,7 @@ struct kue_softc {
 	u_int16_t		kue_rxfilt;
 	u_int8_t		*kue_mcfilters;
 	struct kue_cdata	kue_cdata;
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	struct mtx		kue_mtx;
 #endif
 	char			kue_dying;

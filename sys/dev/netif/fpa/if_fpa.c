@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fpa.c,v 1.13 1999/08/28 00:50:50 peter Exp $
- * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.6 2004/01/06 03:17:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.7 2004/02/13 02:44:48 joerg Exp $
  *
  */
 
@@ -41,7 +41,7 @@
 
 #include <net/if.h>
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "use_fpa.h"
 #include <sys/eventhandler.h>
 #include <net/ethernet.h>
@@ -76,7 +76,7 @@
 #define	PCI_CBMA	0x10	/* Configuration Base Memory Address */
 #define	PCI_CBIO	0x14	/* Configuration Base I/O Address */
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #if NFPA < 4
 #undef NFPA
 #define NFPA	4
@@ -107,7 +107,7 @@ pdq_pci_ifwatchdog(
 }
 #endif
 
-#if defined(__FreeBSD__) && BSD >= 199506
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && BSD >= 199506)
 static void
 pdq_pci_ifintr(
     void *arg)
@@ -120,7 +120,7 @@ pdq_pci_ifintr(
     void *arg)
 {
     pdq_softc_t * const sc = (pdq_softc_t *) arg;
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
     return pdq_interrupt(sc->sc_pdq);
 #elif defined(__bsdi__) || defined(__NetBSD__)
     (void) pdq_interrupt(sc->sc_pdq);
@@ -129,7 +129,7 @@ pdq_pci_ifintr(
 }
 #endif /* __FreeBSD && BSD */
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 static void pdq_pci_shutdown(void *, int);
 
 /*

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.7 2004/01/06 03:17:24 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.8 2004/02/13 02:44:49 joerg Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -673,7 +673,7 @@ wlinit(void *xsc)
     if (sc->wl_if.if_flags & IFF_DEBUG)
 	printf("wl%d: entered wlinit()\n",sc->unit);
 #endif
-#if defined(__FreeBSD__) && __FreeBSD_version >= 300000
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD_version >= 300000)
     if (ifp->if_addrhead.tqh_first == (struct ifaddr *)0) {
 #else
     if (ifp->if_addrlist == (struct ifaddr *)0) {
@@ -1982,7 +1982,7 @@ wlconfig(int unit)
     short		base = sc->base;
 
 #if	MULTICAST
-#if defined(__FreeBSD__) && __FreeBSD_version >= 300000
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD_version >= 300000)
     struct ifmultiaddr *ifma;
     u_char *addrp;
 #else
@@ -2051,7 +2051,7 @@ wlconfig(int unit)
     outw(PIOP1(base), 0);				/* ac_status */
     outw(PIOP1(base), AC_MCSETUP|AC_CW_EL);		/* ac_command */
     outw(PIOR1(base), OFFSET_CU + 8);
-#if defined(__FreeBSD__) && __FreeBSD_version >= 300000
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD_version >= 300000)
     for (ifma = sc->wl_if.if_multiaddrs.lh_first; ifma;
 	 ifma = ifma->ifma_link.le_next) {
 	if (ifma->ifma_addr->sa_family != AF_LINK)

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.6 2004/01/06 01:40:47 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.7 2004/02/13 02:44:48 joerg Exp $
  */
 
 /*
@@ -356,7 +356,7 @@ fxp_probe(device_t dev)
 static void
 fxp_powerstate_d0(device_t dev)
 {
-#if __FreeBSD_version >= 430002
+#if defined(__DragonFly__) || __FreeBSD_version >= 430002
 	u_int32_t iobase, membase, irq;
 
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
@@ -2072,7 +2072,7 @@ fxp_mc_addrs(struct fxp_softc *sc)
 
 	nmcasts = 0;
 	if ((sc->flags & FXP_FLAG_ALL_MCAST) == 0) {
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 		LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 #else
 		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {

@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wep.c,v 1.4 2000/08/14 11:28:03 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wep.c,v 1.3.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.6 2003/08/27 09:38:30 rob Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.7 2004/02/13 02:44:47 joerg Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -60,7 +60,7 @@
 #include <sys/socket.h>
 #include <sys/errno.h>
 #include <sys/sockio.h>
-#if defined(__FreeBSD__) && __FreeBSD__ >= 4
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 4)
 #include <sys/bus.h>
 #else
 #include <sys/device.h>
@@ -68,7 +68,7 @@
 
 #include <net/if.h>
 #include <net/if_dl.h>
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/ethernet.h>
 #include <net/if_arp.h>
 #else
@@ -79,7 +79,7 @@
 
 #include <machine/cpu.h>
 #include <machine/bus.h>
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <machine/clock.h>
 #endif
 
@@ -92,7 +92,7 @@
 #include <crypto/arc4/arc4.h>
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "am79c930reg.h"
 #include "am79c930var.h"
 #include "awireg.h"
@@ -190,7 +190,7 @@ awi_wep_getnwkey(sc, nwkey)
 	nwkey->i_wepon = awi_wep_getalgo(sc);
 	nwkey->i_defkid = sc->sc_wep_defkid + 1;
 	/* do not show any keys to non-root user */
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	suerr = suser(curthread);	/* note: EPERM if no proc */
 #else
 	suerr = suser(curproc->p_ucred, &curproc->p_acflag);

@@ -27,10 +27,10 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/gx/if_gxvar.h,v 1.1.2.1 2001/11/15 03:09:23 jlemon Exp $
- *	$DragonFly: src/sys/dev/netif/gx/Attic/if_gxvar.h,v 1.2 2003/06/17 04:28:26 dillon Exp $
+ *	$DragonFly: src/sys/dev/netif/gx/Attic/if_gxvar.h,v 1.3 2004/02/13 02:44:48 joerg Exp $
  */
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #define GX_LOCK(gx)		
 #define GX_UNLOCK(gx)		
 #define mtx_init(a, b, c)

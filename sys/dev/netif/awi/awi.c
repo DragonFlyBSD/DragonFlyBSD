@@ -1,6 +1,6 @@
 /*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.8 2003/11/20 22:07:26 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.9 2004/02/13 02:44:47 joerg Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -87,9 +87,9 @@
  */
 
 #include "opt_inet.h"
-#if defined(__FreeBSD__) && __FreeBSD__ >= 4
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 4)
 #define	NBPFILTER	1
-#elif defined(__FreeBSD__) && __FreeBSD__ >= 3
+#elif defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 3)
 #include "use_bpf.h"
 #define	NBPFILTER	NBPF
 #else
@@ -106,7 +106,7 @@
 #include <sys/sockio.h>
 #include <sys/errno.h>
 #include <sys/syslog.h>
-#if defined(__FreeBSD__) && __FreeBSD__ >= 4
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 4)
 #include <sys/bus.h>
 #else
 #include <sys/device.h>
@@ -114,7 +114,7 @@
 
 #include <net/if.h>
 #include <net/if_dl.h>
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/ethernet.h>
 #else
 #include <net/if_ether.h>
@@ -145,7 +145,7 @@
 #ifdef __NetBSD__
 #include <machine/intr.h>
 #endif
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <machine/clock.h>
 #endif
 
@@ -155,7 +155,7 @@
 #include <dev/ic/awireg.h>
 #include <dev/ic/awivar.h>
 #endif
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "am79c930reg.h"
 #include "am79c930var.h"
 #include "awireg.h"
@@ -220,7 +220,7 @@ int awi_dump_len = 28;
 #if NBPFILTER > 0
 #define	AWI_BPF_NORM	0
 #define	AWI_BPF_RAW	1
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define	AWI_BPF_MTAP(sc, m, raw) do {					\
 	if ((sc)->sc_ifp->if_bpf && (sc)->sc_rawbpf == (raw))		\
 		bpf_mtap((sc)->sc_ifp, (m));				\
@@ -239,8 +239,8 @@ int awi_dump_len = 28;
 #define llc_snap              llc_un.type_snap
 #endif
 
-#ifdef __FreeBSD__
-#if __FreeBSD__ >= 4
+#if defined(__DragonFly__) || defined(__FreeBSD__)
+#if defined(__DragonFly__) || __FreeBSD__ >= 4
 devclass_t awi_devclass;
 #endif
 
@@ -308,7 +308,7 @@ awi_attach(sc)
 #ifdef __NetBSD__
 	memcpy(ifp->if_xname, sc->sc_dev.dv_xname, IFNAMSIZ);
 #endif
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	ifp->if_output = ether_output;
 	ifp->if_snd.ifq_maxlen = ifqmaxlen;
 	memcpy(sc->sc_ec.ac_enaddr, sc->sc_mib_addr.aMAC_Address,
@@ -321,7 +321,7 @@ awi_attach(sc)
 	    sc->sc_tx_rate / 10, sc->sc_banner);
 	printf("%s: address %s\n",
 	    sc->sc_dev.dv_xname,  ether_sprintf(sc->sc_mib_addr.aMAC_Address));
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
 #else
 	if_attach(ifp);
@@ -498,7 +498,7 @@ awi_ioctl(ifp, cmd, data)
 
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		error = ENETRESET;	/*XXX*/
 #else
 		error = (cmd == SIOCADDMULTI) ?
@@ -522,7 +522,7 @@ awi_ioctl(ifp, cmd, data)
 			ifp->if_mtu = ifr->ifr_mtu;
 		break;
 	case SIOCS80211NWID:
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		error = suser(td);	/* EPERM if no proc */
 		if (error)
 			break;
@@ -556,7 +556,7 @@ awi_ioctl(ifp, cmd, data)
 		error = copyout(p + 1, ifr->ifr_data, 1 + IEEE80211_NWID_LEN);
 		break;
 	case SIOCS80211NWKEY:
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		error = suser(td);	/* EPERM if no proc */
 		if (error)
 			break;
@@ -778,7 +778,7 @@ awi_init(sc)
 	int error, ostatus;
 	int n;
 	struct ifnet *ifp = sc->sc_ifp;
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct ifmultiaddr *ifma;
 #else
 	struct ether_multi *enm;
@@ -794,7 +794,7 @@ awi_init(sc)
 		goto set_mib;
 	}
 	sc->sc_mib_mac.aPromiscuous_Enable = 0;
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	if (ifp->if_amcount != 0)
 		goto set_mib;
 	for (ifma = LIST_FIRST(&ifp->if_multiaddrs); ifma != NULL;
@@ -1267,7 +1267,7 @@ awi_input(sc, m, rxts, rssi)
 			break;
 		}
 		ifp->if_ipackets++;
-#if !(defined(__FreeBSD__) && __FreeBSD__ >= 4)
+#if !(defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 4))
 		AWI_BPF_MTAP(sc, m, AWI_BPF_NORM);
 #endif
 #ifdef __NetBSD__

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.6 2004/01/06 01:40:49 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.7 2004/02/13 02:44:48 joerg Exp $
  */
 
 /*
@@ -153,7 +153,7 @@ struct sr_softc {
 #define	SCF_RUNNING	0x01		/* board is active */
 #define	SCF_OACTIVE	0x02		/* output is active */
 	int		out_dog;	/* watchdog cycles output count-down */
-#if ( __FreeBSD__ >= 3 )
+#if defined(__DragonFly__) || ( __FreeBSD__ >= 3 )
 	struct callout_handle handle;	/* timeout(9) handle */
 #endif
 	u_long		inbytes, outbytes;	/* stats */

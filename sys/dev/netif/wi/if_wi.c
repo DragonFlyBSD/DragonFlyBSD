@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.7 2004/01/06 01:40:50 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.8 2004/02/13 02:44:48 joerg Exp $
  */
 
 /*
@@ -64,7 +64,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#if __FreeBSD_version >= 500033
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500033
 #include <sys/endian.h>
 #endif
 #include <sys/sockio.h>
@@ -203,7 +203,7 @@ wi_generic_detach(dev)
 	sc->wi_gone = 1;
 
 	WI_UNLOCK(sc, s);
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	mtx_destroy(&sc->wi_mtx);
 #endif
 
@@ -233,7 +233,7 @@ wi_generic_attach(device_t dev)
 		return (error);
 	}
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	mtx_init(&sc->wi_mtx, device_get_nameunit(dev), MTX_NETWORK_LOCK,
 	    MTX_DEF | MTX_RECURSE);
 #endif
@@ -1505,7 +1505,7 @@ wi_setmulti(sc)
 		return;
 	}
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 #else
 	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {

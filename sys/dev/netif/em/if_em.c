@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.5 2004/01/06 01:40:47 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.6 2004/02/13 02:44:47 joerg Exp $*/
 
 #include "if_em.h"
 
@@ -469,7 +469,7 @@ em_detach(device_t dev)
 
 	em_stop(adapter);
 	em_phy_hw_reset(&adapter->hw);
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
         ether_ifdetach(&adapter->interface_data.ac_if, ETHER_BPF_SUPPORTED);
 #else
         ether_ifdetach(&adapter->interface_data.ac_if);
@@ -561,7 +561,7 @@ em_start(struct ifnet *ifp)
                 }
 
 		/* Send a copy of the frame to the BPF listener */
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
                 if (ifp->if_bpf)
                         bpf_mtap(ifp, m_head);
 #else
@@ -924,7 +924,7 @@ em_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 			ifmr->ifm_active |= IFM_100_TX;
 			break;
 		case 1000:
-#if __FreeBSD_version < 500000 
+#if defined(__DragonFly__) || __FreeBSD_version < 500000 
 			ifmr->ifm_active |= IFM_1000_TX;
 #else
 			ifmr->ifm_active |= IFM_1000_T;
@@ -964,7 +964,7 @@ em_media_change(struct ifnet *ifp)
 		adapter->hw.autoneg_advertised = AUTONEG_ADV_DEFAULT;
 		break;
 	case IFM_1000_SX:
-#if __FreeBSD_version < 500000 
+#if defined(__DragonFly__) || __FreeBSD_version < 500000 
 	case IFM_1000_TX:
 #else
 	case IFM_1000_T:
@@ -1017,7 +1017,7 @@ em_encap(struct adapter *adapter, struct mbuf *m_head)
         int             txd_used, i, txd_saved;
         struct mbuf     *mp;
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
         struct ifvlan *ifv = NULL;
 #else
         struct m_tag    *mtag;
@@ -1047,7 +1047,7 @@ em_encap(struct adapter *adapter, struct mbuf *m_head)
 
 
         /* Find out if we are in vlan mode */
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
         if ((m_head->m_flags & (M_PROTO1|M_PKTHDR)) == (M_PROTO1|M_PKTHDR) &&
             m_head->m_pkthdr.rcvif != NULL &&
             m_head->m_pkthdr.rcvif->if_type == IFT_L2VLAN)
@@ -1088,7 +1088,7 @@ em_encap(struct adapter *adapter, struct mbuf *m_head)
 	adapter->num_tx_desc_avail -= txd_used;
 	adapter->next_avail_tx_desc = i;
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
         if (ifv != NULL) {
                 /* Set the vlan id */
                 current_tx_desc->upper.fields.special = ifv->ifv_tag;
@@ -1316,7 +1316,7 @@ em_set_multi(struct adapter * adapter)
                 msec_delay(5);
         }
         
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
         LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 #else
         TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
@@ -1647,7 +1647,7 @@ em_setup_interface(device_t dev, struct adapter * adapter)
 	ifp->if_watchdog = em_watchdog;
 	ifp->if_snd.ifq_maxlen = adapter->num_tx_desc - 1;
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
         ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
 #else
         ether_ifattach(ifp, adapter->interface_data.ac_enaddr);
@@ -1662,7 +1662,7 @@ em_setup_interface(device_t dev, struct adapter * adapter)
          * Tell the upper layer(s) we support long frames.
          */
         ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
         ifp->if_capabilities |= IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU;
 #endif
 
@@ -1686,7 +1686,7 @@ em_setup_interface(device_t dev, struct adapter * adapter)
 			    0, NULL);
 		ifmedia_add(&adapter->media, IFM_ETHER | IFM_100_TX | IFM_FDX, 
 			    0, NULL);
-#if __FreeBSD_version < 500000 
+#if defined(__DragonFly__) || __FreeBSD_version < 500000 
 		ifmedia_add(&adapter->media, IFM_ETHER | IFM_1000_TX | IFM_FDX, 
 			    0, NULL);
 		ifmedia_add(&adapter->media, IFM_ETHER | IFM_1000_TX, 0, NULL);
@@ -2294,7 +2294,7 @@ em_process_receive_interrupts(struct adapter * adapter, int count)
 {
 	struct ifnet        *ifp;
 	struct mbuf         *mp;
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
         struct ether_header *eh;
 #endif
 	u_int8_t            accept_frame = 0;
@@ -2385,7 +2385,7 @@ em_process_receive_interrupts(struct adapter * adapter, int count)
                                 adapter->fmp->m_pkthdr.rcvif = ifp;
 				ifp->if_ipackets++;
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
                                 eh = mtod(adapter->fmp, struct ether_header *);
                                 /* Remove ethernet header from mbuf */
                                 m_adj(adapter->fmp, sizeof(struct ether_header));

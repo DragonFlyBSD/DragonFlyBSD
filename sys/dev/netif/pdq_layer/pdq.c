@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq.c,v 1.5 1999/08/28 00:42:19 peter Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq.c,v 1.3 2003/08/07 21:17:04 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq.c,v 1.4 2004/02/13 02:44:48 joerg Exp $
  *
  */
 
@@ -40,7 +40,7 @@
 
 #define	PDQ_HWSUPPORT	/* for pdq.h */
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "pdqvar.h"
 #include "pdqreg.h"
 #else

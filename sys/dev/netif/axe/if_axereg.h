@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axereg.h,v 1.2 2003/06/15 21:45:43 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axereg.h,v 1.1 2003/12/30 01:01:46 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axereg.h,v 1.2 2004/02/13 02:44:47 joerg Exp $
  */
 
 /*
@@ -145,7 +145,7 @@ struct axe_cdata {
 #define AXE_INC(x, y)		(x) = (x + 1) % y
 
 struct axe_softc {
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define GET_MII(sc) (device_get_softc((sc)->axe_miibus))
 #elif defined(__NetBSD__)
 #define GET_MII(sc) (&(sc)->axe_mii)

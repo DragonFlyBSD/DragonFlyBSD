@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wicfg.c,v 1.3 2000/07/06 17:22:25 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wicfg.c,v 1.3.2.2 2002/06/18 08:06:15 jhay Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wicfg.c,v 1.6 2003/08/27 09:38:30 rob Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wicfg.c,v 1.7 2004/02/13 02:44:47 joerg Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -51,7 +51,7 @@
 #include <sys/socket.h>
 #include <sys/errno.h>
 #include <sys/sockio.h>
-#if defined(__FreeBSD__) && __FreeBSD__ >= 4
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 4)
 #include <sys/bus.h>
 #else
 #include <sys/device.h>
@@ -59,7 +59,7 @@
 
 #include <net/if.h>
 #include <net/if_dl.h>
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/ethernet.h>
 #include <net/if_arp.h>
 #else
@@ -70,7 +70,7 @@
 
 #include <machine/cpu.h>
 #include <machine/bus.h>
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <machine/clock.h>
 #endif
 
@@ -82,7 +82,7 @@
 
 #include <dev/pcmcia/if_wi_ieee.h>	/* XXX */
 #endif
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "am79c930reg.h"
 #include "am79c930var.h"
 
@@ -110,7 +110,7 @@ awi_wicfg(ifp, cmd, data)
 		error = awi_cfgget(ifp, cmd, data);
 		break;
 	case SIOCSWAVELAN:
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		error = suser(td);	/* note: EPERM if no proc */
 #else
 		error = suser(curproc->p_ucred, &curproc->p_acflag);
@@ -275,7 +275,7 @@ awi_cfgget(ifp, cmd, data)
 	case WI_RID_DEFLT_CRYPT_KEYS:
 		keys = (struct wi_ltv_keys *)&wreq;
 		/* do not show keys to non-root user */
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		error = suser(td);	/* note: EPERM if no proc */
 #else
 		error = suser(curproc->p_ucred, &curproc->p_acflag);

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  *  $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.5 2003/12/30 01:01:46 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.6 2004/02/13 02:44:48 joerg Exp $
  */
 
 /*
@@ -83,7 +83,7 @@
 
 #include <sys/bus.h>
 #include <machine/bus.h>
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <machine/clock.h>
 #endif
 
@@ -331,7 +331,7 @@ kue_setmulti(struct kue_softc *sc)
 
 	sc->kue_rxfilt &= ~KUE_RXFILT_ALLMULTI;
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
 #else
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
@@ -451,7 +451,7 @@ USB_ATTACH(kue)
 		}
 	}
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	mtx_init(&sc->kue_mtx, device_get_nameunit(self), MTX_NETWORK_LOCK,
 	    MTX_DEF | MTX_RECURSE);
 #endif
@@ -460,7 +460,7 @@ USB_ATTACH(kue)
 	/* Load the firmware into the NIC. */
 	if (kue_load_fw(sc)) {
 		KUE_UNLOCK(sc);
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 		mtx_destroy(&sc->kue_mtx);
 #endif
 		USB_ATTACH_ERROR_RETURN;
@@ -504,7 +504,7 @@ USB_ATTACH(kue)
 	/*
 	 * Call MI attach routine.
 	 */
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	ether_ifattach(ifp, sc->kue_desc.kue_macaddr);
 #else
 	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
@@ -530,7 +530,7 @@ kue_detach(device_ptr_t dev)
 	sc->kue_dying = 1;
 
 	if (ifp != NULL)
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 		ether_ifdetach(ifp);
 #else
 		ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
@@ -547,7 +547,7 @@ kue_detach(device_ptr_t dev)
 		free(sc->kue_mcfilters, M_USBDEV);
 
 	KUE_UNLOCK(sc);
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	mtx_destroy(&sc->kue_mtx);
 #endif
 

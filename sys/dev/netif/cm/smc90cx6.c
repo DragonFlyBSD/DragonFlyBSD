@@ -1,6 +1,6 @@
 /*	$NetBSD: smc90cx6.c,v 1.38 2001/07/07 15:57:53 thorpej Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6.c,v 1.1.2.3 2003/02/05 18:42:14 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.6 2004/01/06 03:17:22 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.7 2004/02/13 02:44:47 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -61,7 +61,7 @@
 #include <sys/rman.h>
 #include <machine/resource.h>
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <machine/clock.h>
 #endif
 
@@ -332,7 +332,7 @@ cm_attach(dev)
 		(void (*) (void *))cm_start, ifp);
 #endif
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	callout_init(&sc->sc_recon_ch);
 #else
 	callout_init(&sc->sc_recon_ch, 0);

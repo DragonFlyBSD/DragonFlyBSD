@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq_ifsubr.c,v 1.11.2.1 2000/08/02 22:39:30 peter Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.4 2003/08/07 21:17:04 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.5 2004/02/13 02:44:48 joerg Exp $
  *
  */
 
@@ -48,7 +48,7 @@
 
 #include <net/bpf.h>
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #ifdef INET
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
@@ -67,7 +67,7 @@
 #include <netns/ns_if.h>
 #endif
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "pdqvar.h"
 #include "pdqreg.h"
 #else
@@ -365,7 +365,7 @@ pdq_ifattach(
 
     ifp->if_flags = IFF_BROADCAST|IFF_SIMPLEX|IFF_NOTRAILERS|IFF_MULTICAST;
 
-#if (defined(__FreeBSD__) && BSD >= 199506) || defined(__NetBSD__)
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && BSD >= 199506) || defined(__NetBSD__)
     ifp->if_watchdog = pdq_ifwatchdog;
 #else
     ifp->if_watchdog = ifwatchdog;

@@ -16,7 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.8 2004/01/06 03:17:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.9 2004/02/13 02:44:47 joerg Exp $
  *
  */
 #undef DEBUG
@@ -33,8 +33,8 @@
 #include <sys/socket.h>
 #include <net/if.h>
 
-#ifdef __FreeBSD__
-#   if __FreeBSD__ < 2
+#if defined(__DragonFly__) || defined(__FreeBSD__)
+#   if defined(__FreeBSD__) && __FreeBSD__ < 2
 #      include <machine/pio.h>
 #      define RB_GETC(q) getc(q)
 #   endif
@@ -45,7 +45,7 @@
 #   define tsleep(tp,pri,msg,x) ((tp)->t_state |= TS_WOPEN,\
 		ttysleep (tp, (caddr_t)&tp->t_rawq, pri, msg, x))
 #endif
-#if !defined (__FreeBSD__) || __FreeBSD__ >= 2
+#if defined(__DragonFly__) || !defined (__FreeBSD__) || __FreeBSD__ >= 2
 #      define t_out t_outq
 #      define RB_LEN(q) ((q).c_cc)
 #      define RB_GETC(q) getc(&q)
@@ -80,7 +80,7 @@ timeout_t cxtimeout;
 
 extern cx_board_t cxboard [NCX];        /* adapter state structures */
 extern cx_chan_t *cxchan [NCX*NCHAN];   /* unit to channel struct pointer */
-#if __FreeBSD__ >= 2
+#if defined(__DragonFly__) || __FreeBSD__ >= 2
 static struct tty cx_tty [NCX*NCHAN];          /* tty data */
 
 static	d_open_t	cxopen;
@@ -135,8 +135,8 @@ int cxopen (dev_t dev, int flag, int mode, struct thread *td)
 	if (c->mode != M_ASYNC)
 		return (EBUSY);
 	if (! c->ttyp) {
-#ifdef __FreeBSD__
-#if __FreeBSD__ >= 2
+#if defined(__DragonFly__) || defined(__FreeBSD__)
+#if defined(__DragonFly__) || __FreeBSD__ >= 2
 		c->ttyp = &cx_tty[unit];
 #else
 		c->ttyp = cx_tty[unit] = ttymalloc (cx_tty[unit]);
@@ -244,7 +244,7 @@ int cxopen (dev_t dev, int flag, int mode, struct thread *td)
 	spl0 ();
 	if (error)
 		return (error);
-#if __FreeBSD__ >= 2
+#if defined(__DragonFly__) || __FreeBSD__ >= 2
 	error = (*linesw[tp->t_line].l_open) (dev, tp);
 #else
 	error = (*linesw[tp->t_line].l_open) (dev, tp, 0);
@@ -422,7 +422,7 @@ int cxioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	tp = c->ttyp;
 	if (! tp)
 		return (EINVAL);
-#if __FreeBSD__ >= 2
+#if defined(__DragonFly__) || __FreeBSD__ >= 2
 	error = (*linesw[tp->t_line].l_ioctl) (tp, cmd, data, flag, td);
 #else
 	error = (*linesw[tp->t_line].l_ioctl) (tp, cmd, data, flag);
@@ -945,7 +945,7 @@ void cxtimeout (void *a)
 }
 
 
-#if defined(__FreeBSD__) && (__FreeBSD__ > 1 )
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && (__FreeBSD__ > 1 ))
 static void 	cx_drvinit(void *unused)
 {
 

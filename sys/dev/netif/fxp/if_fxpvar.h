@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxpvar.h,v 1.17.2.6 2002/11/13 20:58:31 iedowse Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxpvar.h,v 1.3 2004/01/06 03:17:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxpvar.h,v 1.4 2004/02/13 02:44:48 joerg Exp $
  */
 
 /*
@@ -89,7 +89,7 @@
  */
 #define TUNABLE_BUNDLE_MAX 6
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #define	FXP_LOCK(_sc)
 #define	FXP_UNLOCK(_sc)
 #define mtx_init(a, b, c)

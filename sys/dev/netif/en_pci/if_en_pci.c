@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_en_pci.c,v 1.12 1999/08/21 22:10:49 msmith Exp $
- * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.6 2004/01/06 01:40:47 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.7 2004/02/13 02:44:47 joerg Exp $
  */
 
 /*
@@ -51,7 +51,7 @@
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <sys/eventhandler.h>
 #endif
 #include <sys/malloc.h>
@@ -320,7 +320,7 @@ en_pci_shutdown(
 
 #if !defined(MIDWAY_ENIONLY)
 
-#if defined(sparc) || defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(sparc) || defined(__FreeBSD__)
 #define bus_space_read_1(t, h, o) \
   		((void)t, (*(volatile u_int8_t *)((h) + (o))))
 #endif

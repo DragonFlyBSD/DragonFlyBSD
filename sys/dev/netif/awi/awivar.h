@@ -1,6 +1,6 @@
 /* $NetBSD: awivar.h,v 1.12 2000/07/21 04:48:56 onoe Exp $ */
 /* $FreeBSD: src/sys/dev/awi/awivar.h,v 1.6.2.1 2000/12/07 04:09:39 imp Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awivar.h,v 1.3 2003/08/27 09:38:30 rob Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awivar.h,v 1.4 2004/02/13 02:44:47 joerg Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -95,8 +95,8 @@ struct awi_softc
 	struct ethercom		sc_ec;
 	void			*sc_ih; /* interrupt handler */
 #endif
-#ifdef __FreeBSD__
-#if __FreeBSD__ >= 4
+#if defined(__DragonFly__) || defined(__FreeBSD__)
+#if defined(__DragonFly__) || __FreeBSD__ >= 4
 	struct {
 		char	dv_xname[64];	/*XXX*/
 	}			sc_dev;

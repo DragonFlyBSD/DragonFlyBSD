@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cuereg.h,v 1.12 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cuereg.h,v 1.3 2003/12/30 01:01:46 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cuereg.h,v 1.4 2004/02/13 02:44:47 joerg Exp $
  */
 
 /*
@@ -178,7 +178,7 @@ struct cue_softc {
 	u_int16_t		cue_rxfilt;
 	struct cue_cdata	cue_cdata;
 	struct callout_handle	cue_stat_ch;
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	struct mtx		cue_mtx;
 #endif
 	char			cue_dying;

@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdqvar.h,v 1.3.2.1 2002/05/14 21:02:11 gallatin Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.3 2004/02/13 02:44:48 joerg Exp $
  *
  */
 
@@ -59,7 +59,7 @@ enum _pdq_type_t {
 
 #if defined(PDQTEST)
 #include <pdq_os_test.h>
-#elif defined(__FreeBSD__) || defined(__bsdi__) || defined(__NetBSD__)
+#elif defined(__DragonFly__) || defined(__FreeBSD__) || defined(__bsdi__) || defined(__NetBSD__)
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -78,7 +78,7 @@ enum _pdq_type_t {
 #define	PDQ_OS_PREFIX			"%s%d: "
 #define	PDQ_OS_PREFIX_ARGS		pdq->pdq_os_name, pdq->pdq_unit
 #endif
-#if defined(__FreeBSD__) && BSD >= 199506
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && BSD >= 199506)
 #define	PDQ_OS_PAGESIZE			PAGE_SIZE
 #else
 #define	PDQ_OS_PAGESIZE			NBPG
@@ -87,14 +87,14 @@ enum _pdq_type_t {
 #define	PDQ_OS_MEMZERO(p, n)		bzero((caddr_t)(p), (n))
 #if defined(__NetBSD__) && defined(__alpha__)
 #define	PDQ_OS_VA_TO_PA(pdq, p)		(vtophys((vm_offset_t)p) | (pdq->pdq_type == PDQ_DEFTA ? 0 : 0x40000000))
-#elif defined(__FreeBSD__) && defined(__alpha__)
+#elif (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(__alpha__)
 #define	PDQ_OS_VA_TO_PA(pdq, p)		(vtophys((vm_offset_t)p) | (pdq->pdq_type == PDQ_DEFTA ? 0 : alpha_XXX_dmamap_or))
 #else
 #define	PDQ_OS_VA_TO_PA(pdq, p)		vtophys(p)
 #endif
 #define	PDQ_OS_MEMALLOC(n)		malloc(n, M_DEVBUF, M_NOWAIT)
 #define	PDQ_OS_MEMFREE(p, n)		free((void *) p, M_DEVBUF)
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define	PDQ_OS_MEMALLOC_CONTIG(n)	vm_page_alloc_contig(n, 0, 0xffffffff, PAGE_SIZE)
 #define	PDQ_OS_MEMFREE_CONTIG(p, n)	kmem_free(kernel_map, (vm_offset_t) p, n)
 #else
@@ -102,7 +102,7 @@ enum _pdq_type_t {
 #define	PDQ_OS_MEMFREE_CONTIG(p, n)	kmem_free(kernel_map, (vm_offset_t) p, n)
 #endif /* __FreeBSD__ */
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <vm/pmap.h>
 #include <vm/vm_extern.h>
 #include <machine/bus.h>
@@ -114,7 +114,7 @@ typedef enum { PDQ_BUS_EISA, PDQ_BUS_PCI } pdq_bus_t;
 typedef	u_int16_t pdq_bus_ioport_t;
 typedef volatile pdq_uint32_t *pdq_bus_memaddr_t;
 typedef pdq_bus_memaddr_t pdq_bus_memoffset_t;
-#if BSD >= 199506	/* __FreeBSD__ */
+#if defined(__DragonFly__) || BSD >= 199506	/* __FreeBSD__ */
 #define	PDQ_BPF_MTAP(sc, m)	bpf_mtap(&(sc)->sc_if, m)
 #define	PDQ_BPFATTACH(sc, t, s)	bpfattach(&(sc)->sc_if, t, s)
 #endif
@@ -204,7 +204,7 @@ typedef struct {
     struct device sc_dev;		/* base device */
     void *sc_ih;			/* interrupt vectoring */
     void *sc_ats;			/* shutdown hook */
-#elif defined(__FreeBSD__)
+#elif defined(__DragonFly__) || defined(__FreeBSD__)
     struct kern_devconf *sc_kdc;	/* freebsd cruft */
 #endif
     struct arpcom sc_ac;
