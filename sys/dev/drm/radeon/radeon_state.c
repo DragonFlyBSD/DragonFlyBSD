@@ -27,7 +27,7 @@
  *    Kevin E. Martin <martin@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/radeon_state.c,v 1.6.2.1 2003/04/26 07:05:30 anholt Exp $
- * $DragonFly: src/sys/dev/drm/radeon/Attic/radeon_state.c,v 1.3 2003/08/07 21:16:55 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/radeon/Attic/radeon_state.c,v 1.4 2005/02/15 18:31:48 joerg Exp $
  */
 
 #include "radeon.h"
@@ -1228,7 +1228,7 @@ static int radeon_cp_dispatch_texture( DRMFILE filp,
 		/* Update the input parameters for next time */
 		image->y += height;
 		image->height -= height;
-		(const u8 *)image->data += size;
+		image->data = (const u8 *) image->data+ size;
 	} while (image->height > 0);
 
 	/* Flush the pixel cache after the blit completes.  This ensures
