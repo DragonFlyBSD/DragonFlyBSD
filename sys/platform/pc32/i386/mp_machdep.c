@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.29 2004/06/25 17:16:27 hmp Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.30 2004/07/21 17:19:35 drhodus Exp $
  */
 
 #include "opt_cpu.h"
@@ -393,7 +393,7 @@ mp_announce(void)
 
 	POSTCODE(MP_ANNOUNCE_POST);
 
-	printf("FreeBSD/SMP: Multiprocessor motherboard\n");
+	printf("DragonFly/MP: Multiprocessor motherboard\n");
 	printf(" cpu0 (BSP): apic id: %2d", CPU_TO_ID(0));
 	printf(", version: 0x%08x", cpu_apic_versions[0]);
 	printf(", at 0x%08x\n", cpu_apic_address);
