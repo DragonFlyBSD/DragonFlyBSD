@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.5 2004/08/02 13:35:02 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.6 2004/08/02 15:10:08 joerg Exp $
  */
 
 /*
@@ -1195,7 +1195,7 @@ re_detach(device_t dev)
 	if (sc->re_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->re_irq);
 	if (sc->re_res)
-		bus_release_resource(dev, SYS_RES_IOPORT, RE_PCI_LOMEM,
+		bus_release_resource(dev, SYS_RES_IOPORT, RE_PCI_LOIO,
 				     sc->re_res);
 
 	/* Unload and free the RX DMA ring memory and map */
@@ -1434,8 +1434,6 @@ re_rxeof(struct re_softc *sc)
 			re_newbuf(sc, i, m);
 			continue;
 		}
-
-		RE_DESC_INC(i);
 
 		if (sc->re_head != NULL) {
 			m->m_len = total_len % (MCLBYTES - ETHER_ALIGN);
