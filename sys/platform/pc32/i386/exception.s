@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.16 2003/07/24 01:41:16 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.17 2003/07/24 23:52:36 dillon Exp $
  */
 
 #include "npx.h"
@@ -304,7 +304,6 @@ IDTVEC(int0x80_syscall)
 	movl	$1,PCPU(intr_nesting_level)
 	jmp	doreti
 
-#if 0
 /*
  * Trap gate entry for FreeBSD syscall messaging interface (int 0x81).
  * Arguments are passed in registers, the return value is placed in %eax.
@@ -337,8 +336,6 @@ IDTVEC(int0x81_syscall)
 	pushl	$0			/* cpl to restore */
 	movl	$1,PCPU(intr_nesting_level)
 	jmp	doreti
-
-#endif
 
 /*
  * This function is what cpu_heavy_restore jumps to after a new process

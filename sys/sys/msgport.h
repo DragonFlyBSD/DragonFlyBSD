@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.3 2003/07/24 01:41:27 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.4 2003/07/24 23:52:39 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -31,6 +31,11 @@ typedef TAILQ_HEAD(lwkt_msg_queue, lwkt_msg) lwkt_msg_queue;
  */
 typedef struct lwkt_msg {
     TAILQ_ENTRY(lwkt_msg) ms_node;	/* link node (not always used) */
+    union {
+	struct lwkt_msg	*ms_next;	/* chaining / cache */
+	union sysunion  *ms_sysnext;	/* chaining / cache */
+	struct lwkt_msg  *ms_umsg;	/* user message (UVA address) */
+    } opaque;
     lwkt_port_t ms_target_port;		/* only used in certain situations */
     lwkt_port_t	ms_reply_port;		/* asynch replies returned here */
     int		ms_abortreq;		/* set asynchronously */
@@ -69,6 +74,7 @@ typedef struct lwkt_port {
 #ifdef _KERNEL
 
 extern void lwkt_init_port(lwkt_port_t port, struct thread *td);
+extern void lwkt_initmsg_td(lwkt_msg_t msg, struct thread *td);
 extern void lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg);
 extern int lwkt_domsg(lwkt_port_t port, lwkt_msg_t msg);
 extern int lwkt_waitmsg(lwkt_msg_t msg);

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.26 2003/07/24 01:41:16 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.27 2003/07/24 23:52:36 dillon Exp $
  */
 
 /*
@@ -61,6 +61,7 @@
 #include <sys/sysent.h>
 #include <sys/uio.h>
 #include <sys/vmmeter.h>
+#include <sys/malloc.h>
 #ifdef KTRACE
 #include <sys/ktrace.h>
 #endif
@@ -165,6 +166,8 @@ SYSCTL_INT(_machdep, OID_AUTO, fast_release, CTLFLAG_RW,
 static int slow_release;
 SYSCTL_INT(_machdep, OID_AUTO, slow_release, CTLFLAG_RW,
 	&slow_release, 0, "Passive Release was nonoptimal");
+
+MALLOC_DEFINE(M_SYSMSG, "sysmsg", "sysmsg structure");
 
 /*
  * USER->KERNEL transition.  Do not transition us out of userland from the
@@ -1359,8 +1362,6 @@ bad:
 #endif
 }
 
-#if 0	/* work in progress */
-
 /*
  *	sendsys2 -	MP aware system message request C handler
  */
@@ -1369,12 +1370,14 @@ sendsys2(struct trapframe frame)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
+	register_t orig_tf_eflags;
 	struct sysent *callp;
-	sysunion_t sysmsg;
+	sysmsg_t sysmsg;
+	lwkt_msg_t umsg;
 	u_quad_t sticks;
 	int error;
 	int narg;
-	u_int code;
+	u_int code = 0;
 	int msgsize;
 
 #ifdef DIAGNOSTIC
@@ -1400,52 +1403,74 @@ sendsys2(struct trapframe frame)
 	crit_exit();
 
 	p->p_md.md_regs = &frame;
+	orig_tf_eflags = frame.tf_eflags;
 
 	/*
 	 * Extract the system call message.  If msgsize is zero we are 
-	 * blocking on a message and/or message port.
+	 * blocking on a message and/or message port. YYY
 	 */
 	if ((msgsize = frame.tf_edx) == 0) {
-		... handle waiting ...
+		printf("waitport %08x msg %08x\n", frame.tf_eax, frame.tf_ecx);
+		error = ENOSYS;
+		goto bad2;
 	}
 
 	/*
 	 * Bad message size
 	 */
-	if (msgsize < 0 || msgsize > sizeof(*sysmsg)) {
+	if (msgsize < sizeof(struct lwkt_msg) || msgsize > sizeof(*sysmsg)) {
 		error = ENOSYS;
-		goto bad;
+		goto bad2;
 	}
 
 	/*
-	 * Obtain a sysunion structure from our per-cpu cache or allocate
-	 * one.  This per-cpu cache may be accessed by interrupts returning
-	 * a message.
+	 * Obtain a sysmsg from our per-cpu cache or allocate a new one.  Use
+	 * the opaque field to store the original (user) message pointer.
+	 * A critical section is necessary to interlock against interrupts
+	 * returning system messages to the thread cache.
 	 */
 	crit_enter();
-	if ((sysmsg = TAILQ_FIRST(&mycpu->gd_sysmsgq)) != NULL) {
-		TAILQ_REMOVE(&mycpu->gd_sysmsgq, sysmsg, lmsg.ms_node);
-		crit_exit();
+	if ((sysmsg = mycpu->gd_freesysmsg) != NULL) {
+	    mycpu->gd_freesysmsg = sysmsg->lmsg.opaque.ms_sysnext;
+	    crit_exit();
 	} else {
-		crit_exit();
-		sysmsg = malloc(sizeof(*sysmsg), M_SYSMSG, M_WAITOK);
+	    crit_exit();
+	    sysmsg = malloc(sizeof(*sysmsg), M_SYSMSG, M_WAITOK);
 	}
+
+	/*
+	 * Copy the user request in.  YYY if the userland lwkt_msg is
+	 * different from the kernel lwkt_msg, this is where we deal with
+	 * it.
+	 */
 	umsg = (void *)frame.tf_ecx;
 	if ((error = copyin(umsg, sysmsg, msgsize)) != 0)
-		goto bad;
+		goto bad1;
 
-	code = sysmsg->lmsg.ms_cmd;
+	/*
+	 * Initialize the parts of the message required for kernel sanity.
+	 */
+	sysmsg->lmsg.opaque.ms_umsg = umsg;
+	sysmsg->lmsg.ms_reply_port = &td->td_msgport;
+	sysmsg->lmsg.ms_flags &= MSGF_ASYNC;
 
+	/*
+	 * Extract the system call number, lookup the system call, and
+	 * set the default return value.
+	 */
+	code = (u_int)sysmsg->lmsg.ms_cmd;
 	if (code >= p->p_sysent->sv_size) {
 		error = ENOSYS;
-		goto bad;
+		goto bad1;
 	}
 
 	callp = &p->p_sysent->sv_table[code];
 
+	narg = (msgsize - sizeof(sysmsg->lmsg)) / sizeof(register_t);
+
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSCALL)) {
-		ktrsyscall(p->p_tracep, code, narg, (void *)(&args + 1));
+		ktrsyscall(p->p_tracep, code, narg, (void *)(&sysmsg->lmsg + 1));
 	}
 #endif
 	p->p_retval[0] = 0;
@@ -1455,19 +1480,33 @@ sendsys2(struct trapframe frame)
 
 	/*
 	 * Make the system call.  An error code is always returned, results
-	 * are copied back via ms_result32 or ms_result64.
+	 * are copied back via ms_result32 or ms_result64.  YYY temporary
+	 * stage copy p_retval[] into ms_result32/64
 	 *
 	 * NOTE!  XXX if this is a child returning from a fork curproc
-	 * might be different.
+	 * might be different.  YYY huh? a child returning from a fork
+	 * should never 'return' from this call, it should go right to the
+	 * fork_trampoline function.
 	 */
 	error = (*callp->sy_call)(sysmsg);
 
+bad1:
 	/*
-	 * If a synchronous return copy p_retval to ms_result64.
+	 * If a synchronous return copy p_retval to ms_result64 and return
+	 * the sysmsg to the free pool.
 	 */
 	if (error != EASYNC) {
-		error = copyout(p->p_retval, &umsg->ms_result64, sizeof(umsg->ms_result64));
+		crit_enter();
+		sysmsg->lmsg.opaque.ms_sysnext = mycpu->gd_freesysmsg;
+		mycpu->gd_freesysmsg = sysmsg;
+		crit_exit();
+		if (error == 0) {
+			error = suword(&umsg->u.ms_result32 + 0, p->p_retval[0]);
+			error = suword(&umsg->u.ms_result32 + 1, p->p_retval[1]);
+			/*error = copyout(p->p_retval, &umsg->u.ms_result64, sizeof(umsg->u.ms_result64));*/
+		}
 	}
+bad2:
 	frame.tf_eax = error;
 
 	/*
@@ -1505,8 +1544,6 @@ sendsys2(struct trapframe frame)
 	rel_mplock();
 #endif
 }
-
-#endif
 
 /*
  * Simplified back end of syscall(), used when returning from fork()

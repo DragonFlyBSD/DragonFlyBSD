@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.2 2003/07/22 17:03:33 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.3 2003/07/24 23:52:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -65,6 +65,13 @@ static void lwkt_replyport_remote(lwkt_msg_t msg);
 static void lwkt_putport_remote(lwkt_msg_t msg);
 static void lwkt_abortport_remote(lwkt_port_t port);
 
+void
+lwkt_initmsg_td(lwkt_msg_t msg, thread_t td)
+{
+    lwkt_initmsg(msg, 0);
+    msg->ms_reply_port = &td->td_msgport;
+}
+
 /*
  * lwkt_sendmsg()
  *
@@ -87,7 +94,7 @@ lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg)
     msg->ms_flags &= ~(MSGF_REPLY | MSGF_QUEUED);
     msg->ms_reply_port = &curthread->td_msgport;
     msg->ms_abortreq = 0;
-    if ((error = lwkt_beginmsg(port, msg)) != EINPROGRESS) {
+    if ((error = lwkt_beginmsg(port, msg)) != EASYNC) {
 	lwkt_replymsg(msg, error);
     }
 }
@@ -116,7 +123,7 @@ lwkt_domsg(lwkt_port_t port, lwkt_msg_t msg)
     msg->ms_flags &= ~(MSGF_ASYNC | MSGF_REPLY | MSGF_QUEUED);
     msg->ms_reply_port = &curthread->td_msgport;
     msg->ms_abortreq = 0;
-    if ((error = lwkt_beginmsg(port, msg)) == EINPROGRESS) {
+    if ((error = lwkt_beginmsg(port, msg)) == EASYNC) {
 	error = lwkt_waitmsg(msg);
     }
     return(error);
@@ -253,7 +260,7 @@ lwkt_replyport(lwkt_port_t port, lwkt_msg_t msg)
  *	This function is typically assigned to the mp_beginmsg port vector.
  *
  *	Queue a message to the target port and wakeup the thread owning it.
- *	This function always returns EINPROGRESS and may be assigned to a
+ *	This function always returns EASYNC and may be assigned to a
  *	message port's mp_beginmsg function vector.
  */
 static
@@ -287,7 +294,7 @@ lwkt_putport(lwkt_port_t port, lwkt_msg_t msg)
     crit_enter();
     _lwkt_putport(port, msg);
     crit_exit();
-    return(EINPROGRESS);
+    return(EASYNC);
 }
 
 /*

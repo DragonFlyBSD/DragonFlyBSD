@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.2 2003/07/23 02:30:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.3 2003/07/24 23:52:38 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -88,7 +88,7 @@ cdevsw_putport(lwkt_port_t port, lwkt_msg_t lmsg)
 
     /*
      * Run the device switch function synchronously in the context of the
-     * caller and return a synchronous error code (anything not EINPROGRESS).
+     * caller and return a synchronous error code (anything not EASYNC).
      */
     switch(msg->am_lmsg.ms_cmd) {
     case CDEV_CMD_OPEN:
@@ -160,7 +160,7 @@ cdevsw_putport(lwkt_port_t port, lwkt_msg_t lmsg)
 	error = ENOSYS;
 	break;
     }
-    KKASSERT(error != EINPROGRESS);
+    KKASSERT(error != EASYNC);
     return(error);
 }
 

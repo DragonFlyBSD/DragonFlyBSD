@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.26 2003/07/22 17:03:34 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.27 2003/07/24 23:52:39 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -26,6 +26,7 @@ struct lwkt_cpu_port;
 struct lwkt_rwlock;
 struct lwkt_msg;
 struct lwkt_port;
+union sysunion;
 
 typedef struct lwkt_queue	*lwkt_queue_t;
 typedef struct lwkt_token	*lwkt_token_t;

@@ -37,7 +37,7 @@
  *
  *	@(#)errno.h	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/errno.h,v 1.14.2.2 2002/01/22 10:46:56 keramida Exp $
- * $DragonFly: src/sys/sys/errno.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/errno.h,v 1.3 2003/07/24 23:52:39 dillon Exp $
  */
 
 #ifndef _SYS_ERRNO_H_
@@ -168,7 +168,20 @@ __END_DECLS
 #define	EOVERFLOW	84		/* Value too large to be stored in data type */
 #define	ECANCELED	85		/* Operation canceled */
 #define	EILSEQ		86		/* Illegal byte sequence */
-#define	ELAST		86		/* Must be equal largest errno */
+#define ENOATTR		87		/* (from FreeBSD-5.x) */
+#define EDOOFUS		88		/* (from FreeBSD-5.x) */
+#define EUNUSED89	89
+#define EUNUSED90	90
+#define EUNUSED91	91
+#define EUNUSED92	92
+#define EUNUSED93	93
+#define EUNUSED94	94
+#define EUNUSED95	95
+#define EUNUSED96	96
+#define EUNUSED97	97
+#define EUNUSED98	98
+#define EASYNC		99
+#define	ELAST		99		/* Must be equal largest errno */
 
 #endif /* _POSIX_SOURCE */
 
