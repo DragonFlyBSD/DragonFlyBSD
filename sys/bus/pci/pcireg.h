@@ -1,6 +1,3 @@
-#ifndef PCI_COMPAT
-#define PCI_COMPAT
-#endif
 /*
  * Copyright (c) 1997, Stefan Esser <se@freebsd.org>
  * All rights reserved.
@@ -27,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcireg.h,v 1.24.2.5 2002/08/31 10:06:51 gibbs Exp $
- * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.3 2004/01/07 18:13:19 joerg Exp $
  *
  */
 
@@ -315,9 +312,13 @@
 #define PCID_INTEL_SATURN	0x0483
 #define PCID_INTEL_ORION	0x84c4
 
-/* for compatibility to FreeBSD-2.2 version of PCI code */
+/* for compatibility to FreeBSD-2.2 and 3.x versions of PCI code */
 
-#ifdef PCI_COMPAT
+#if defined(_KERNEL) && !defined(KLD_MODULE)
+#include "opt_compat_oldpci.h"
+#endif
+
+#ifdef COMPAT_OLDPCI
 
 #define PCI_ID_REG		0x00
 #define PCI_COMMAND_STATUS_REG	0x04
@@ -338,4 +339,4 @@
 #define	PCI_MAP_IO			0x00000001
 #define	PCI_INTERRUPT_REG	0x3c
 
-#endif /* PCI_COMPAT */
+#endif /* COMPAT_OLDPCI */

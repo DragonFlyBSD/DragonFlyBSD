@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.38 2004/01/06 00:56:49 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.39 2004/01/07 18:13:19 joerg Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1103,7 +1103,7 @@ dev/disk/ncr/ncr.c		optional ncr
 dev/disk/sym/sym_hipd.c		optional sym				\
 	dependency	"$S/dev/disk/sym/sym_{conf,defs}.h"
 bus/pci/pci.c			optional pci
-bus/pci/pci_compat.c		optional pci
+bus/pci/pci_compat.c		optional pci compat_oldpci
 bus/pci/pcisupport.c		optional pci
 bus/pci/pci_if.m		optional pci
 dev/disk/simos/simos.c		optional simos

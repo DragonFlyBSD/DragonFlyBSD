@@ -24,16 +24,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcivar.h,v 1.41.2.2 2002/01/10 12:08:22 mdodd Exp $
- * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.3 2004/01/07 18:13:19 joerg Exp $
  *
  */
 
 #ifndef _PCIVAR_H_
 #define _PCIVAR_H_
-
-#ifndef PCI_COMPAT
-#define PCI_COMPAT
-#endif
 
 #include <sys/queue.h>
 
@@ -143,16 +139,17 @@ typedef struct {
     u_int8_t	seclat;		/* CardBus latency timer */
 } pcih2cfgregs;
 
-/* PCI bus attach definitions (there could be multiple PCI bus *trees* ... */
-
-typedef struct pciattach {
-    int		unit;
-    int		pcibushigh;
-    struct pciattach *next;
-} pciattach;
-
 extern u_int32_t pci_numdevs;
 
+/* Only if the prerequisites are present */
+#if defined(_SYS_BUS_H_) && defined(_SYS_PCIIO_H_)
+struct pci_devinfo {
+        STAILQ_ENTRY(pci_devinfo) pci_links;
+	struct resource_list resources;
+	pcicfgregs		cfg;
+	struct pci_conf		conf;
+};
+#endif
 
 /* externally visible functions */
 
@@ -344,9 +341,14 @@ device_t pci_find_bsf(u_int8_t, u_int8_t, u_int8_t);
 device_t pci_find_device(u_int16_t, u_int16_t);
 #endif
 
-/* for compatibility to FreeBSD-2.2 version of PCI code */
+/* for compatibility to FreeBSD-2.2 and 3.x versions of PCI code */
 
-#ifdef PCI_COMPAT
+#if defined(_KERNEL) && !defined(KLD_MODULE)
+#include "opt_compat_oldpci.h"
+#endif
+
+#ifdef COMPAT_OLDPCI
+/* all this is going some day */
 
 typedef pcicfgregs *pcici_t;
 typedef unsigned pcidi_t;
@@ -394,5 +396,5 @@ static moduledata_t name##_mod = {					\
 DECLARE_MODULE(name, name##_mod, SI_SUB_DRIVERS, SI_ORDER_ANY)
 
 
-#endif /* PCI_COMPAT */
+#endif /* COMPAT_OLDPCI */
 #endif /* _PCIVAR_H_ */

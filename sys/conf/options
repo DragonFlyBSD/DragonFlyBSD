@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.11 2003/12/02 08:00:22 asmodai Exp $
+# $DragonFly: src/sys/conf/options,v 1.12 2004/01/07 18:13:19 joerg Exp $
 #
 #        On the handling of kernel options
 #
@@ -427,6 +427,7 @@ MSGBUF_SIZE		opt_msgbuf.h
 # PCI related options
 PCI_QUIET		opt_pci.h
 PCI_ENABLE_IO_MODES	opt_pci.h
+COMPAT_OLDPCI
 
 # NFS options
 NFS_MINATTRTIMO		opt_nfs.h

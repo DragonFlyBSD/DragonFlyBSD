@@ -24,35 +24,35 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci_compat.c,v 1.35.2.1 2001/10/14 21:14:14 luigi Exp $
- * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.3 2003/08/07 21:16:47 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.4 2004/01/07 18:13:19 joerg Exp $
  *
  */
 
 #include "opt_bus.h"
 
-/* for compatibility to FreeBSD-2.2 version of PCI code */
+/* for compatibility to FreeBSD-2.2 and 3.x versions of PCI code */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
+#include <sys/module.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
-#include <sys/interrupt.h>
 
 #include <sys/bus.h>
 #include <machine/bus.h>
 #include <sys/rman.h>
 #include <machine/resource.h>
+#include <sys/interrupt.h>
 
+#include <sys/pciio.h>
 #include "pcireg.h"
 #include "pcivar.h"
 
 #ifdef APIC_IO
 #include <machine/smp.h>
 #endif
-
-#ifdef PCI_COMPAT
 
 /* ------------------------------------------------------------------------- */
 
@@ -232,4 +232,95 @@ pci_get_bus_from_tag(pcici_t tag)
 	return tag->bus;
 }
 
-#endif /* PCI_COMPAT */
+/*
+ * A simple driver to wrap the old pci driver mechanism for back-compat.
+ */
+
+static int
+pci_compat_probe(device_t dev)
+{
+	struct pci_device *dvp;
+	struct pci_devinfo *dinfo;
+	pcicfgregs *cfg;
+	const char *name;
+	int error;
+	
+	dinfo = device_get_ivars(dev);
+	cfg = &dinfo->cfg;
+	dvp = device_get_driver(dev)->priv;
+
+	/*
+	 * Do the wrapped probe.
+	 */
+	error = ENXIO;
+	if (dvp && dvp->pd_probe) {
+		name = dvp->pd_probe(cfg, (cfg->device << 16) + cfg->vendor);
+		if (name) {
+			device_set_desc_copy(dev, name);
+			/* Allow newbus drivers to match "better" */
+			error = -200;
+		}
+	}
+
+	return error;
+}
+
+static int
+pci_compat_attach(device_t dev)
+{
+	struct pci_device *dvp;
+	struct pci_devinfo *dinfo;
+	pcicfgregs *cfg;
+	int unit;
+
+	dinfo = device_get_ivars(dev);
+	cfg = &dinfo->cfg;
+	dvp = device_get_driver(dev)->priv;
+
+	unit = device_get_unit(dev);
+	if (unit > *dvp->pd_count)
+		*dvp->pd_count = unit;
+	if (dvp->pd_attach)
+		dvp->pd_attach(cfg, unit);
+	device_printf(dev, "driver is using old-style compatability shims\n");
+	return 0;
+}
+
+static device_method_t pci_compat_methods[] = {
+	/* Device interface */
+	DEVMETHOD(device_probe,		pci_compat_probe),
+	DEVMETHOD(device_attach,	pci_compat_attach),
+
+	{ 0, 0 }
+};
+
+/*
+ * Create a new style driver around each old pci driver.
+ */
+int
+compat_pci_handler(module_t mod, int type, void *data)
+{
+	struct pci_device *dvp = (struct pci_device *)data;
+	driver_t *driver;
+	devclass_t pci_devclass = devclass_find("pci");
+
+	switch (type) {
+	case MOD_LOAD:
+		driver = malloc(sizeof(driver_t), M_DEVBUF, M_NOWAIT);
+		if (!driver)
+			return ENOMEM;
+		bzero(driver, sizeof(driver_t));
+		driver->name = dvp->pd_name;
+		driver->methods = pci_compat_methods;
+		driver->size = sizeof(struct pci_devinfo *);
+		driver->priv = dvp;
+		devclass_add_driver(pci_devclass, driver);
+		break;
+	case MOD_UNLOAD:
+		printf("%s: module unload not supported!\n", dvp->pd_name);
+		return EOPNOTSUPP;
+	default:
+		break;
+	}
+	return 0;
+}
