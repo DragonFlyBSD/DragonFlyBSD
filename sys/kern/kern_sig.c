@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.34 2005/02/20 01:17:44 davidxu Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.35 2005/02/21 01:36:05 davidxu Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1036,8 +1036,8 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 	savedmask = p->p_sigmask;
 
 	if (timeout) {
-		if (timeout->tv_sec < 0 || 
-		    (timeout->tv_nsec >= 0 && timeout->tv_nsec < 1000000000)) {
+		if (timeout->tv_sec >= 0 && timeout->tv_nsec >= 0 &&
+		    timeout->tv_nsec < 1000000000) {
 			timevalid = 1;
 			getnanouptime(&rts);
 		 	ets = rts;
