@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.18 2004/05/10 10:51:31 hmp Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.19 2004/06/02 15:25:01 hmp Exp $
  */
 
 #include "opt_bus.h"
@@ -1270,6 +1270,8 @@ resource_new_name(const char *name, int unit)
 	new[devtab_count].unit = unit;
 	new[devtab_count].resource_count = 0;
 	new[devtab_count].resources = NULL;
+	if (devtab && devtab != config_devtab)
+		free(devtab, M_TEMP);
 	devtab = new;
 	return devtab_count++;
 }
