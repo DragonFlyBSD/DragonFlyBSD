@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.14 2005/01/23 20:23:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.15 2005/02/20 03:04:51 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
  */
@@ -190,6 +190,7 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -1294,7 +1295,8 @@ static int tl_attach(dev)
 	ifp->if_watchdog = tl_watchdog;
 	ifp->if_init = tl_init;
 	ifp->if_mtu = ETHERMTU;
-	ifp->if_snd.ifq_maxlen = TL_TX_LIST_CNT - 1;
+	ifq_set_maxlen(&ifp->if_snd, TL_TX_LIST_CNT - 1);
+	ifq_set_ready(&ifp->if_snd);
 	callout_init(&sc->tl_stat_timer);
 
 	/* Reset the adapter again. */
@@ -1758,7 +1760,7 @@ static void tl_intr(xsc)
 		CMD_PUT(sc, TL_CMD_ACK | r | type);
 	}
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		tl_start(ifp);
 
 	return;
@@ -1947,7 +1949,7 @@ static void tl_start(ifp)
 	start_tx = sc->tl_cdata.tl_tx_free;
 
 	while(sc->tl_cdata.tl_tx_free != NULL) {
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
