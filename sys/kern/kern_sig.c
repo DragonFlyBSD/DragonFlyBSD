@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.27 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.28 2004/04/10 18:15:37 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -71,14 +71,14 @@
 #include <machine/cpu.h>
 #include <machine/smp.h>
 
-static int coredump	(struct proc *);
-static char *expand_name (const char *, uid_t, pid_t);
-static int killpg	(int sig, int pgid, int all);
-static int sig_ffs	(sigset_t *set);
-static int sigprop	(int sig);
-static void stop	(struct proc *);
+static int	coredump(struct proc *);
+static char	*expand_name(const char *, uid_t, pid_t);
+static int	killpg(int sig, int pgid, int all);
+static int	sig_ffs(sigset_t *set);
+static int	sigprop(int sig);
+static void	stop(struct proc *);
 #ifdef SMP
-static void signotify_remote(void *arg);
+static void	signotify_remote(void *arg);
 #endif
 
 static int	filt_sigattach(struct knote *kn);
@@ -112,7 +112,7 @@ SYSCTL_INT(_kern, KERN_LOGSIGEXIT, logsigexit, CTLFLAG_RW,
 
 int sugid_coredump;
 SYSCTL_INT(_kern, OID_AUTO, sugid_coredump, CTLFLAG_RW, 
-    &sugid_coredump, 0, "Enable coredumping set user/group ID processes");
+	&sugid_coredump, 0, "Enable coredumping set user/group ID processes");
 
 static int	do_coredump = 1;
 SYSCTL_INT(_kern, OID_AUTO, coredump, CTLFLAG_RW,
@@ -258,7 +258,7 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 		/*
 		 * Change setting atomically.
 		 */
-		(void) splhigh();
+		splhigh();
 
 		ps->ps_catchmask[_SIG_IDX(sig)] = act->sa_mask;
 		SIG_CANTMASK(ps->ps_catchmask[_SIG_IDX(sig)]);
@@ -302,8 +302,9 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 					p->p_procsig->ps_flag &= ~PS_NOCLDWAIT;
 				else
 					p->p_procsig->ps_flag |= PS_NOCLDWAIT;
-			} else
+			} else {
 				p->p_procsig->ps_flag &= ~PS_NOCLDWAIT;
+			}
 		}
 		/*
 		 * Set bit in p_sigignore for signals that are set to SIG_IGN,
@@ -328,7 +329,7 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 				SIGADDSET(p->p_sigcatch, sig);
 		}
 
-		(void) spl0();
+		spl0();
 	}
 	return (0);
 }
@@ -359,8 +360,7 @@ sigaction(struct sigaction_args *uap)
  * set to ignore signals that are ignored by default.
  */
 void
-siginit(p)
-	struct proc *p;
+siginit(struct proc *p)
 {
 	int i;
 
@@ -373,8 +373,7 @@ siginit(p)
  * Reset signals for an exec of the specified process.
  */
 void
-execsigs(p)
-	struct proc *p;
+execsigs(struct proc *p)
 {
 	struct sigacts *ps = p->p_sigacts;
 	int sig;
@@ -604,7 +603,7 @@ killpg(int sig, int pgid, int all)
 	struct pgrp *pgrp;
 	int nfound = 0;
 
-	if (all)
+	if (all) {
 		/*
 		 * broadcast
 		 */
@@ -616,13 +615,13 @@ killpg(int sig, int pgid, int all)
 			if (sig)
 				psignal(p, sig);
 		}
-	else {
-		if (pgid == 0)
+	} else {
+		if (pgid == 0) {
 			/*
 			 * zero pgid means send to my process group.
 			 */
 			pgrp = cp->p_pgrp;
-		else {
+		} else {
 			pgrp = pgfind(pgid);
 			if (pgrp == NULL)
 				return (ESRCH);
@@ -696,9 +695,7 @@ gsignal(int pgid, int sig)
  * limit to members which have a controlling terminal.
  */
 void
-pgsignal(pgrp, sig, checkctty)
-	struct pgrp *pgrp;
-	int sig, checkctty;
+pgsignal(struct pgrp *pgrp, int sig, int checkctty)
 {
 	struct proc *p;
 
@@ -714,10 +711,7 @@ pgsignal(pgrp, sig, checkctty)
  * Otherwise, post it normally.
  */
 void
-trapsignal(p, sig, code)
-	struct proc *p;
-	int sig;
-	u_long code;
+trapsignal(struct proc *p, int sig, u_long code)
 {
 	struct sigacts *ps = p->p_sigacts;
 
@@ -783,9 +777,7 @@ register_ckpt_func(proc_func_t func)
 }
 
 void
-psignal(p, sig)
-	struct proc *p;
-	int sig;
+psignal(struct proc *p, int sig)
 {
 	int s, prop;
 	sig_t action;
@@ -806,9 +798,9 @@ psignal(p, sig)
 	 * if signal event is tracked by procfs, give *that*
 	 * a chance, as well.
 	 */
-	if ((p->p_flag & P_TRACED) || (p->p_stops & S_SIG))
+	if ((p->p_flag & P_TRACED) || (p->p_stops & S_SIG)) {
 		action = SIG_DFL;
-	else {
+	} else {
 		/*
 		 * If the signal is being ignored,
 		 * then we forget about it immediately.
@@ -827,8 +819,9 @@ psignal(p, sig)
 	}
 
 	if (p->p_nice > NZERO && action == SIG_DFL && (prop & SA_KILL) &&
-	    (p->p_flag & P_TRACED) == 0)
+	    (p->p_flag & P_TRACED) == 0) {
 		p->p_nice = NZERO;
+	}
 
 	if (prop & SA_CONT)
 		SIG_STOPSIGMASK(p->p_siglist);
@@ -842,8 +835,9 @@ psignal(p, sig)
 		 * and don't clear any pending SIGCONT.
 		 */
 		if (prop & SA_TTYSTOP && p->p_pgrp->pg_jobc == 0 &&
-		    action == SIG_DFL)
+		    action == SIG_DFL) {
 		        return;
+		}
 		SIG_CONTSIGMASK(p->p_siglist);
 	}
 	SIGADDSET(p->p_siglist, sig);
@@ -856,7 +850,6 @@ psignal(p, sig)
 		return;
 	s = splhigh();
 	switch (p->p_stat) {
-
 	case SSLEEP:
 		/*
 		 * If process is sleeping uninterruptibly
@@ -903,10 +896,10 @@ psignal(p, sig)
 				psignal(p->p_pptr, SIGCHLD);
 			stop(p);
 			goto out;
-		} else
+		} else {
 			goto run;
+		}
 		/*NOTREACHED*/
-
 	case SSTOP:
 		/*
 		 * If traced process is already stopped,
@@ -960,7 +953,6 @@ psignal(p, sig)
 		if (p->p_wchan && (p->p_flag & P_SINTR))
 			unsleep(p->p_thread);
 		goto out;
-
 	default:
 		/*
 		 * SRUN, SIDL, SZOMB do nothing with the signal,
@@ -1042,8 +1034,7 @@ iscaught(struct proc *p)
  *		postsig(sig);
  */
 int
-issignal(p)
-	struct proc *p;
+issignal(struct proc *p)
 {
 	sigset_t mask;
 	int sig, prop;
@@ -1166,8 +1157,10 @@ issignal(p)
 				 * Default action is to ignore; drop it.
 				 */
 				break;		/* == ignore */
-			} else
+			} else {
 				return (sig);
+			}
+
 			/*NOTREACHED*/
 
 		case (int)SIG_IGN:
@@ -1199,10 +1192,8 @@ issignal(p)
  * on the run queue.
  */
 void
-stop(p)
-	struct proc *p;
+stop(struct proc *p)
 {
-
 	p->p_stat = SSTOP;
 	p->p_flag &= ~P_WAITED;
 	wakeup((caddr_t)p->p_pptr);
@@ -1213,8 +1204,7 @@ stop(p)
  * from the current set of pending signals.
  */
 void
-postsig(sig)
-	int sig;
+postsig(int sig)
 {
 	struct proc *p = curproc;
 	struct sigacts *ps = p->p_sigacts;
@@ -1255,12 +1245,13 @@ postsig(sig)
 		 * mask from before the sigsuspend is what we want
 		 * restored after the signal processing is completed.
 		 */
-		(void) splhigh();
+		splhigh();
 		if (p->p_flag & P_OLDMASK) {
 			returnmask = p->p_oldsigmask;
 			p->p_flag &= ~P_OLDMASK;
-		} else
+		} else {
 			returnmask = p->p_sigmask;
+		}
 
 		SIGSETOR(p->p_sigmask, ps->ps_catchmask[_SIG_IDX(sig)]);
 		if (!SIGISMEMBER(ps->ps_signodefer, sig))
@@ -1276,7 +1267,7 @@ postsig(sig)
 				SIGADDSET(p->p_sigignore, sig);
 			ps->ps_sigact[_SIG_IDX(sig)] = SIG_DFL;
 		}
-		(void) spl0();
+		spl0();
 		p->p_stats->p_ru.ru_nsignals++;
 		if (p->p_sig != sig) {
 			code = 0;
@@ -1293,9 +1284,7 @@ postsig(sig)
  * Kill the current process for stated reason.
  */
 void
-killproc(p, why)
-	struct proc *p;
-	char *why;
+killproc(struct proc *p, char *why)
 {
 	log(LOG_ERR, "pid %d (%s), uid %d, was killed: %s\n", p->p_pid, p->p_comm,
 		p->p_ucred ? p->p_ucred->cr_uid : -1, why);
@@ -1353,8 +1342,8 @@ SYSCTL_STRING(_kern, OID_AUTO, corefile, CTLFLAG_RW, corefilename,
  */
 
 static char *
-expand_name(name, uid, pid)
-const char *name; uid_t uid; pid_t pid; {
+expand_name(const char *name, uid_t uid, pid_t pid)
+{
 	char *temp;
 	char buf[11];		/* Buffer for pid/uid -- max 4B */
 	int i, n;
@@ -1572,7 +1561,6 @@ filt_sigdetach(struct knote *kn)
 static int
 filt_signal(struct knote *kn, long hint)
 {
-
 	if (hint & NOTE_SIGNAL) {
 		hint &= ~NOTE_SIGNAL;
 
