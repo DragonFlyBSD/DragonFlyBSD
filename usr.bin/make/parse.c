@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.28 2004/12/17 21:09:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.29 2005/01/05 23:28:20 okumoto Exp $
  */
 
 /*-
@@ -62,8 +62,6 @@
  *	Parse_Init	    	    Initialization function which must be
  *	    	  	    	    called before anything else in this module
  *	    	  	    	    is used.
- *
- *	Parse_End		    Cleanup the module
  *
  *	Parse_File	    	    Function used to parse a makefile. It must
  *	    	  	    	    be given the name of the file, which should
@@ -2527,17 +2525,6 @@ Parse_Init(void)
 
     mainNode = NULL;
 }
-
-void
-Parse_End(void)
-{
-
-    Lst_Destroy(&targets, NOFREE);
-    Lst_Destroy(&sysIncPath, Dir_Destroy);
-    Lst_Destroy(&parseIncPath, Dir_Destroy);
-    Lst_Destroy(&includes, NOFREE);	/* Should be empty now */
-}
-
 
 /*-
  *-----------------------------------------------------------------------

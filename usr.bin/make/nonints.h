@@ -37,7 +37,7 @@
  *
  *	from: @(#)nonints.h	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/nonints.h,v 1.8 1999/08/28 01:03:35 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.21 2004/12/17 08:13:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.22 2005/01/05 23:28:20 okumoto Exp $
  */
 
 /* arch.c */
@@ -49,7 +49,6 @@ int Arch_MemMTime(GNode *);
 void Arch_FindLib(GNode *, Lst *);
 Boolean Arch_LibOODate(GNode *);
 void Arch_Init(void);
-void Arch_End(void);
 
 /* compat.c */
 void Compat_Run(Lst *);
@@ -87,13 +86,11 @@ void Parse_DoVar(char *, GNode *);
 void Parse_AddIncludeDir(char *);
 void Parse_File(char *, FILE *);
 void Parse_Init(void);
-void Parse_End(void);
 void Parse_FromString(char *, int);
 void Parse_MainName(Lst *);
 
 /* str.c */
 void str_init(void);
-void str_end(void);
 char *str_concat(const char *, const char *, int);
 char **brk_string(char *, int *, Boolean);
 int Str_Match(const char *, const char *);
@@ -113,12 +110,10 @@ void Suff_AddLib(char *);
 void Suff_FindDeps(GNode *);
 void Suff_SetNull(char *);
 void Suff_Init(void);
-void Suff_End(void);
 void Suff_PrintAll(void);
 
 /* targ.c */
 void Targ_Init(void);
-void Targ_End(void);
 GNode *Targ_NewGN(char *);
 GNode *Targ_FindNode(char *, int);
 void Targ_FindList(Lst *, Lst *, int);
@@ -144,5 +139,4 @@ char *Var_Subst(char *, char *, GNode *, Boolean);
 char *Var_GetTail(char *);
 char *Var_GetHead(char *);
 void Var_Init(void);
-void Var_End(void);
 void Var_Dump(GNode *);

@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.22 2004/12/17 21:09:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.23 2005/01/05 23:28:20 okumoto Exp $
  */
 
 /*-
@@ -84,8 +84,6 @@
  *	    	  	    	is out-of-date.
  *
  *	Arch_Init 	    	Initialize this module.
- *
- *	Arch_End 	    	Cleanup this module.
  */
 
 #include    <sys/types.h>
@@ -113,45 +111,12 @@ typedef struct Arch {
     size_t	  fnamesize;  /* Size of the string table */
 } Arch;
 
-static void ArchFree(void *);
 static struct ar_hdr *ArchStatMember(char *, char *, Boolean);
 static FILE *ArchFindMember(char *, char *, struct ar_hdr *, char *);
 #if defined(__svr4__) || defined(__SVR4) || defined(__ELF__)
 #define	SVR4ARCHIVES
 static int ArchSVR4Entry(Arch *, char *, size_t, FILE *);
 #endif
-
-/*-
- *-----------------------------------------------------------------------
- * ArchFree --
- *	Free memory used by an archive
- *
- * Results:
- *	None.
- *
- * Side Effects:
- *	None.
- *
- *-----------------------------------------------------------------------
- */
-static void
-ArchFree(void *ap)
-{
-    Arch *a = ap;
-    Hash_Search	  search;
-    Hash_Entry	  *entry;
-
-    /* Free memory from hash entries */
-    for (entry = Hash_EnumFirst(&a->members, &search);
-	 entry != NULL;
-	 entry = Hash_EnumNext(&search))
-	free(Hash_GetValue(entry));
-
-    free(a->name);
-    free(a->fnametab);
-    Hash_DeleteTable(&a->members);
-    free(a);
-}
 
 /*-
  *-----------------------------------------------------------------------
@@ -1181,24 +1146,4 @@ Arch_LibOODate(GNode *gn)
 void
 Arch_Init(void)
 {
-}
-
-/*-
- *-----------------------------------------------------------------------
- * Arch_End --
- *	Cleanup things for this module.
- *
- * Results:
- *	None.
- *
- * Side Effects:
- *	The 'archives' list is freed
- *
- *-----------------------------------------------------------------------
- */
-void
-Arch_End(void)
-{
-
-    Lst_Destroy(&archives, ArchFree);
 }

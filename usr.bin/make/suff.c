@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.2 2004/06/10 13:07:53 ru Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.23 2004/12/17 21:09:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.24 2005/01/05 23:28:20 okumoto Exp $
  */
 
 /*-
@@ -47,8 +47,6 @@
  *
  * Interface:
  *	Suff_Init 	    	Initialize all things to do with suffixes.
- *
- *	Suff_End 	    	Cleanup the module
  *
  *	Suff_DoPaths	    	This function is used to make life easier
  *	    	  	    	when searching for a file according to its
@@ -159,7 +157,6 @@ static Suff 	    *emptySuff;	/* The empty suffix required for POSIX
 				 * single-suffix transformation rules */
 
 
-static void SuffFree(void *);
 static void SuffInsert(Lst *, Suff *);
 static void SuffRemove(Lst *, Suff *);
 static Boolean SuffParseTransform(char *, Suff **, Suff **);
@@ -338,6 +335,11 @@ SuffGNHasNameP(const void *gn, const void *name)
 
  	    /*********** Maintenance Functions ************/
 
+#if 0
+/*
+ * Keep this function for now until it is clear why a .SUFFIXES: doesn't
+ * actually delete the suffixes but just puts them on the suffClean list.
+ */
 /*-
  *-----------------------------------------------------------------------
  * SuffFree  --
@@ -369,6 +371,7 @@ SuffFree(void *sp)
     free(s->name);
     free(s);
 }
+#endif
 
 /*-
  *-----------------------------------------------------------------------
@@ -2241,31 +2244,6 @@ Suff_Init(void)
     suffNull->sNum = sNum++;
     suffNull->flags = SUFF_NULL;
     suffNull->refCount = 1;
-}
-
-/*-
- *----------------------------------------------------------------------
- * Suff_End --
- *	Cleanup the this module
- *
- * Results:
- *	None
- *
- * Side Effects:
- *	The memory is free'd.
- *----------------------------------------------------------------------
- */
-
-void
-Suff_End(void)
-{
-
-    Lst_Destroy(&sufflist, SuffFree);
-    Lst_Destroy(&suffClean, SuffFree);
-    if (suffNull)
-	SuffFree(suffNull);
-    Lst_Destroy(&srclist, NOFREE);
-    Lst_Destroy(&transforms, NOFREE);
 }
 
 /********************* DEBUGGING FUNCTIONS **********************/

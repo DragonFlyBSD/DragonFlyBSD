@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.39 2004/12/17 21:09:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.40 2005/01/05 23:28:20 okumoto Exp $
  */
 
 /*-
@@ -878,14 +878,6 @@ main(int argc, char **argv)
 	/* print the graph now it's been processed if the user requested it */
 	if (DEBUG(GRAPH2))
 		Targ_PrintGraph(2);
-
-	Suff_End();
-        Targ_End();
-	Arch_End();
-	str_end();
-	Var_End();
-	Parse_End();
-	Dir_End();
 
 	if (queryFlag && outOfDate)
 		return (1);

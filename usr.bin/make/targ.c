@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.19 2004/12/17 08:13:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.20 2005/01/05 23:28:20 okumoto Exp $
  */
 
 /*-
@@ -48,8 +48,6 @@
  *
  * Interface:
  *	Targ_Init 	    	Initialization procedure.
- *
- *	Targ_End 	    	Cleanup the module
  *
  *	Targ_NewGN	    	Create a new GNode for the passed target
  *	    	  	    	(string). The node is *not* placed in the
@@ -115,26 +113,6 @@ Targ_Init(void)
 {
 
     Hash_InitTable(&targets, HTSIZE);
-}
-
-/*-
- *-----------------------------------------------------------------------
- * Targ_End --
- *	Finalize this module
- *
- * Results:
- *	None
- *
- * Side Effects:
- *	All lists and gnodes are cleared
- *-----------------------------------------------------------------------
- */
-void
-Targ_End(void)
-{
-
-    Lst_Destroy(&allTargets, NOFREE);
-    Hash_DeleteTable(&targets);
 }
 
 /*-

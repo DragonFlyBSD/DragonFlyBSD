@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.26 2004/12/17 08:13:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.27 2005/01/05 23:28:20 okumoto Exp $
  */
 
 /*-
@@ -49,8 +49,6 @@
  *
  * The interface for this module is:
  *	Dir_Init  	    Initialize the module.
- *
- *	Dir_End  	    Cleanup the module.
  *
  *	Dir_HasWildcards    Returns TRUE if the name given it needs to
  *	    	  	    be wildcard-expanded.
@@ -239,31 +237,6 @@ Dir_InitDot(void)
 	 * reference count to make sure it's not destroyed.
 	 */
 	dot->refCount += 1;
-}
-
-/*-
- *-----------------------------------------------------------------------
- * Dir_End --
- *	cleanup things for this module
- *
- * Results:
- *	none
- *
- * Side Effects:
- *	none
- *-----------------------------------------------------------------------
- */
-void
-Dir_End(void)
-{
-
-	dot->refCount -= 1;
-	Dir_Destroy(dot);
-	Dir_ClearPath(&dirSearchPath);
-	Lst_Destroy(&dirSearchPath, NOFREE);
-	Dir_ClearPath(&openDirectories);
-	Lst_Destroy(&openDirectories, NOFREE);
-	Hash_DeleteTable(&mtimes);
 }
 
 /*-

@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.12.2.2 2004/02/23 12:10:57 ru Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.13 2004/12/17 07:05:22 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.14 2005/01/05 23:28:20 okumoto Exp $
  */
 
 #include "make.h"
@@ -57,24 +57,6 @@ str_init(void)
 
     argv = emalloc(((argmax = 50) + 1) * sizeof(char *));
     argv[0] = Var_Value(".MAKE", VAR_GLOBAL, &p1);
-}
-
-
-/*
- * str_end --
- *	Cleanup the strings package
- *
- */
-void
-str_end(void)
-{
-    if (argv) {
-	if (argv[0])
-	    free(argv[0]);
-	free(argv);
-    }
-    if (buffer)
-	free(buffer);
 }
 
 /*-
