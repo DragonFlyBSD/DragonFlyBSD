@@ -1,5 +1,5 @@
-/* $FreeBSD: src/sys/msdosfs/msdosfs_vfsops.c,v 1.60.2.6 2002/09/12 21:33:38 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.13 2004/04/21 04:28:00 hmp Exp $ */
+/* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.14 2004/05/03 19:08:08 cpressey Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -663,9 +663,11 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		if (!bcmp(fp->fsisig1, "RRaA", 4)
 		    && !bcmp(fp->fsisig2, "rrAa", 4)
 		    && !bcmp(fp->fsisig3, "\0\0\125\252", 4)
-		    && !bcmp(fp->fsisig4, "\0\0\125\252", 4))
+		    && !bcmp(fp->fsisig4, "\0\0\125\252", 4)) {
 			pmp->pm_nxtfree = getulong(fp->fsinxtfree);
-		else
+			if (pmp->pm_nxtfree == 0xffffffff)
+				pmp->pm_nxtfree = CLUST_FIRST;
+		} else
 			pmp->pm_fsinfo = 0;
 		brelse(bp);
 		bp = NULL;
