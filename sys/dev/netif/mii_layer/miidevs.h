@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.4 2004/02/09 16:41:33 hmp Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.5 2004/02/10 21:14:14 hmp Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.3 2003/11/07 05:57:21 dillon Exp 
+ *	DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.4 2004/02/09 16:41:33 hmp Exp 
  */
 /* $FreeBSD: src/sys/dev/mii/miidevs,v 1.4.2.13 2003/07/22 02:12:55 ps Exp $ */
 /*$NetBSD: miidevs,v 1.6 1999/05/14 11:37:30 drochner Exp $*/
@@ -130,6 +130,8 @@
 #define	MII_STR_xxBROADCOM_BCM5703	"BCM5703 10/100/1000baseTX PHY"
 #define	MII_MODEL_xxBROADCOM_BCM5704	0x0019
 #define	MII_STR_xxBROADCOM_BCM5704	"BCM5704 10/100/1000baseTX PHY"
+#define	MII_MODEL_xxBROADCOM_BCM5705	0x001a
+#define	MII_STR_xxBROADCOM_BCM5705	"BCM5705 10/100/1000baseTX PHY"
 
 /* Davicom Semiconductor PHYs */
 #define	MII_MODEL_xxDAVICOM_DM9101	0x0000

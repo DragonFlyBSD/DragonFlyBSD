@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.3 2003/08/07 21:17:03 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.4 2004/02/10 21:14:14 hmp Exp $
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
  */
@@ -46,16 +46,19 @@
 #include <sys/socket.h>
 #include <sys/bus.h>
 
+#include <machine/bus.h>
 #include <machine/clock.h>
 
 #include <net/if.h>
 #include <net/if_media.h>
+#include <net/if_arp.h>
 
 #include "mii.h"
 #include "miivar.h"
 #include "miidevs.h"
 
 #include "brgphyreg.h"
+#include <dev/netif/bge/if_bgereg.h>
 
 #include "miibus_if.h"
 
@@ -132,6 +135,12 @@ static int brgphy_probe(dev)
 	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_xxBROADCOM &&
 	    MII_MODEL(ma->mii_id2) == MII_MODEL_xxBROADCOM_BCM5704) {
 		device_set_desc(dev, MII_STR_xxBROADCOM_BCM5704);
+		return(0);
+	}
+
+	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_xxBROADCOM &&
+	    MII_MODEL(ma->mii_id2) == MII_MODEL_xxBROADCOM_BCM5705) {
+		device_set_desc(dev, MII_STR_xxBROADCOM_BCM5705);
 		return(0);
 	}
 
@@ -568,6 +577,8 @@ static void
 brgphy_reset(struct mii_softc *sc)
 {
 	u_int32_t	val;
+	struct ifnet	*ifp;
+	struct bge_softc	*bge_sc;
 
 	mii_phy_reset(sc);
 
@@ -586,8 +597,30 @@ brgphy_reset(struct mii_softc *sc)
 		break;
 	}
 
+	ifp = sc->mii_pdata->mii_ifp;
+	bge_sc = ifp->if_softc;
+
+	/*
+	 * Don't enable Ethernet@WireSpeed for the 5700 or the
+	 * 5705 A1 and A2 chips. Make sure we only do this test
+	 * on "bge" NICs, since other drivers may use this same
+	 * PHY subdriver.
+	 */
+	if (strcmp(ifp->if_dname, "bge") == 0 &&
+	    (bge_sc->bge_asicrev == BGE_ASICREV_BCM5700 ||
+	    bge_sc->bge_chipid == BGE_CHIPID_BCM5705_A1 ||
+	    bge_sc->bge_chipid == BGE_CHIPID_BCM5705_A2))
+		return;
+
 	/* Enable Ethernet@WireSpeed. */
 	PHY_WRITE(sc, BRGPHY_MII_AUXCTL, 0x7007);
 	val = PHY_READ(sc, BRGPHY_MII_AUXCTL);
-	PHY_WRITE(sc, BRGPHY_MII_AUXCTL, val | (1 << 15) || (1 << 4));
+	PHY_WRITE(sc, BRGPHY_MII_AUXCTL, val | (1 << 15) | (1 << 4));
+
+	/* Enable Link LED on Dell boxes */
+	if (bge_sc->bge_no_3_led) {
+		PHY_WRITE(sc, BRGPHY_MII_PHY_EXTCTL, 
+		    PHY_READ(sc, BRGPHY_MII_PHY_EXTCTL)
+		    & ~BRGPHY_PHY_EXTCTL_3_LED);
+	}
 }

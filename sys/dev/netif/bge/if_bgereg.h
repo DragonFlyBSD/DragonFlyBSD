@@ -30,8 +30,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.10 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.13 2003/12/01 21:06:59 ambrisko Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.3 2004/02/10 21:14:14 hmp Exp $
  */
 
 /*
@@ -230,6 +230,10 @@
 #define BGE_CHIPID_BCM5704_A0		0x20000000
 #define BGE_CHIPID_BCM5704_A1		0x20010000
 #define BGE_CHIPID_BCM5704_A2		0x20020000
+#define BGE_CHIPID_BCM5705_A0		0x30000000
+#define BGE_CHIPID_BCM5705_A1		0x30010000
+#define BGE_CHIPID_BCM5705_A2		0x30020000
+#define BGE_CHIPID_BCM5705_A3		0x30030000
 
 /* shorthand one */
 #define BGE_ASICREV(x)			((x) >> 28)
@@ -237,6 +241,7 @@
 #define BGE_ASICREV_BCM5701		0x00
 #define BGE_ASICREV_BCM5703		0x01
 #define BGE_ASICREV_BCM5704		0x02
+#define BGE_ASICREV_BCM5705		0x03
 
 /* chip revisions */
 #define BGE_CHIPREV(x)			((x) >> 24)
@@ -1051,7 +1056,7 @@
 #define BGE_HCC_RX_COAL_TICKS_INT	0x3C18 /* ticks during interrupt */
 #define BGE_HCC_TX_COAL_TICKS_INT	0x3C1C /* ticks during interrupt */
 #define BGE_HCC_RX_MAX_COAL_BDS_INT	0x3C20 /* BDs during interrupt */
-#define BGE_HCC_TX_MAX_COAL_BDS_INT	0x3C34 /* BDs during interrupt */
+#define BGE_HCC_TX_MAX_COAL_BDS_INT	0x3C24 /* BDs during interrupt */
 #define BGE_HCC_STATS_TICKS		0x3C28
 #define BGE_HCC_STATS_ADDR_HI		0x3C30
 #define BGE_HCC_STATS_ADDR_LO		0x3C34
@@ -1697,7 +1702,11 @@ typedef struct {
 	u_int32_t		bge_addr_hi;
 	u_int32_t		bge_addr_lo;
 } bge_hostaddr;
-#define BGE_HOSTADDR(x)	((x).bge_addr_lo)
+#define BGE_HOSTADDR(x, y)						\
+	do {								\
+		(x).bge_addr_lo = ((u_int64_t) (y) & 0xffffffff);	\
+		(x).bge_addr_hi = ((u_int64_t) (y) >> 32);		\
+	} while(0)
 
 /* Ring control block structure */
 struct bge_rcb {
@@ -1798,10 +1807,16 @@ struct bge_status_block {
 #define BCOM_VENDORID			0x14E4
 #define BCOM_DEVICEID_BCM5700		0x1644
 #define BCOM_DEVICEID_BCM5701		0x1645
-#define BCOM_DEVICEID_BCM5702X		0x16A6
-#define BCOM_DEVICEID_BCM5703X		0x16A7
+#define BCOM_DEVICEID_BCM5702		0x16A6
+#define BCOM_DEVICEID_BCM5702X		0x16C6
+#define BCOM_DEVICEID_BCM5703		0x16A7
+#define BCOM_DEVICEID_BCM5703X		0x16C7
 #define BCOM_DEVICEID_BCM5704C		0x1648
 #define BCOM_DEVICEID_BCM5704S		0x16A8
+#define BCOM_DEVICEID_BCM5705		0x1653
+#define BCOM_DEVICEID_BCM5705M		0x165D
+#define BCOM_DEVICEID_BCM5705M_ALT	0x165E
+#define BCOM_DEVICEID_BCM5782		0x1696
 
 /*
  * Alteon AceNIC PCI vendor/device ID.
@@ -1832,7 +1847,14 @@ struct bge_status_block {
  */
 #define ALTIMA_VENDORID			0x173b
 #define ALTIMA_DEVICE_AC1000		0x03e8
+#define ALTIMA_DEVICE_AC1002		0x03e9
 #define ALTIMA_DEVICE_AC9100	 	0x03ea			
+
+/*
+ * Dell PCI vendor ID
+ */
+
+#define DELL_VENDORID			0x1028
 
 /*
  * Offset of MAC address inside EEPROM.
@@ -1870,6 +1892,10 @@ struct bge_status_block {
 #define BGE_MINI_RX_RING_CNT	1024
 #define BGE_RETURN_RING_CNT	1024
 
+/* 5705 has smaller return ring size */
+
+#define BGE_RETURN_RING_CNT_5705	512
+
 /*
  * Possible TX ring sizes.
  */
@@ -1888,10 +1914,8 @@ struct bge_status_block {
 /*
  * Tigon III statistics counters.
  */
-struct bge_stats {
-	u_int8_t		Reserved0[256];
-
-	/* Statistics maintained by Receive MAC. */
+/* Statistics maintained MAC Receive block. */
+struct bge_rx_mac_stats {
 	bge_hostaddr		ifHCInOctets;
 	bge_hostaddr		Reserved1;
 	bge_hostaddr		etherStatsFragments;
@@ -1919,10 +1943,11 @@ struct bge_stats {
 	bge_hostaddr		etherStatsPkts2048Octetsto4095Octets;
 	bge_hostaddr		etherStatsPkts4096Octetsto8191Octets;
 	bge_hostaddr		etherStatsPkts8192Octetsto9022Octets;
+};
 
-	bge_hostaddr		Unused1[37];
 
-	/* Statistics maintained by Transmit MAC. */
+/* Statistics maintained MAC Transmit block. */
+struct bge_tx_mac_stats {
 	bge_hostaddr		ifHCOutOctets;
 	bge_hostaddr		Reserved2;
 	bge_hostaddr		etherStatsCollisions;
@@ -1956,6 +1981,55 @@ struct bge_stats {
 	bge_hostaddr		dot3StatsCarrierSenseErrors;
 	bge_hostaddr		ifOutDiscards;
 	bge_hostaddr		ifOutErrors;
+};
+
+/* Stats counters access through registers */
+struct bge_mac_stats_regs {
+	u_int32_t		ifHCOutOctets;
+	u_int32_t		Reserved0;
+	u_int32_t		etherStatsCollisions;
+	u_int32_t		outXonSent;
+	u_int32_t		outXoffSent;
+	u_int32_t		Reserved1;
+	u_int32_t		dot3StatsInternalMacTransmitErrors;
+	u_int32_t		dot3StatsSingleCollisionFrames;
+	u_int32_t		dot3StatsMultipleCollisionFrames;
+	u_int32_t		dot3StatsDeferredTransmissions;
+	u_int32_t		Reserved2;
+	u_int32_t		dot3StatsExcessiveCollisions;
+	u_int32_t		dot3StatsLateCollisions;
+	u_int32_t		Reserved3[14];
+	u_int32_t		ifHCOutUcastPkts;
+	u_int32_t		ifHCOutMulticastPkts;
+	u_int32_t		ifHCOutBroadcastPkts;
+	u_int32_t		Reserved4[2];
+	u_int32_t		ifHCInOctets;
+	u_int32_t		Reserved5;
+	u_int32_t		etherStatsFragments;
+	u_int32_t		ifHCInUcastPkts;
+	u_int32_t		ifHCInMulticastPkts;
+	u_int32_t		ifHCInBroadcastPkts;
+	u_int32_t		dot3StatsFCSErrors;
+	u_int32_t		dot3StatsAlignmentErrors;
+	u_int32_t		xonPauseFramesReceived;
+	u_int32_t		xoffPauseFramesReceived;
+	u_int32_t		macControlFramesReceived;
+	u_int32_t		xoffStateEntered;
+	u_int32_t		dot3StatsFramesTooLong;
+	u_int32_t		etherStatsJabbers;
+	u_int32_t		etherStatsUndersizePkts;
+};
+
+struct bge_stats {
+	u_int8_t		Reserved0[256];
+
+	/* Statistics maintained by Receive MAC. */
+	struct bge_rx_mac_stats rxstats;
+
+	bge_hostaddr		Unused1[37];
+
+	/* Statistics maintained by Transmit MAC. */
+	struct bge_tx_mac_stats txstats;
 
 	bge_hostaddr		Unused2[31];
 
@@ -2131,7 +2205,7 @@ struct bge_type {
 
 #define BGE_HWREV_TIGON		0x01
 #define BGE_HWREV_TIGON_II	0x02
-#define BGE_TIMEOUT		1000
+#define BGE_TIMEOUT		100000
 #define BGE_TXCONS_UNSET		0xFFFF	/* impossible value */
 
 struct bge_jpool_entry {
@@ -2162,11 +2236,13 @@ struct bge_softc {
 	u_int32_t		bge_chipid;
 	u_int8_t		bge_asicrev;
 	u_int8_t		bge_chiprev;
+	u_int8_t		bge_no_3_led;
 	struct bge_ring_data	*bge_rdata;	/* rings */
 	struct bge_chain_data	bge_cdata;	/* mbufs */
 	u_int16_t		bge_tx_saved_considx;
 	u_int16_t		bge_rx_saved_considx;
 	u_int16_t		bge_ev_saved_considx;
+	u_int16_t		bge_return_ring_cnt;
 	u_int16_t		bge_std;	/* current std ring head */
 	u_int16_t		bge_jumbo;	/* current jumo ring head */
 	SLIST_HEAD(__bge_jfreehead, bge_jpool_entry)	bge_jfree_listhead;
