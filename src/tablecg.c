@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.31 2005/03/11 00:28:26 hmp Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.32 2005/03/11 00:50:42 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -323,7 +323,7 @@ generate_side_headers(char *section1, char *section2, char *files[])
 	fileclass = " class=\"unselected\"";
     }
 
-    printf("<td%s><a href=\"%s/%s/\">%s</a></td></tr>\n",
+    printf("<td%s><a href=\"%s/%s\">%s</a></td></tr>\n",
 	fileclass, SITE_ROOT, section1, section2);
 
 	if (files[0] != NULL) {
