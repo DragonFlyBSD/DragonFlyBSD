@@ -1,0 +1,87 @@
+$DragonFly: src/gnu/usr.bin/cc3/Attic/gcc.c.patch,v 1.1 2004/06/16 01:06:45 dillon Exp $
+--- old/gcc.c	Tue Jun 15 14:07:53 2004
++++ new/gcc.c	Tue Jun 15 14:28:14 2004
+@@ -1345,8 +1345,7 @@
+ static const char *md_startfile_prefix = MD_STARTFILE_PREFIX;
+ static const char *md_startfile_prefix_1 = MD_STARTFILE_PREFIX_1;
+ static const char *const standard_startfile_prefix = STANDARD_STARTFILE_PREFIX;
+-static const char *const standard_startfile_prefix_1 = "/lib/";
+-static const char *const standard_startfile_prefix_2 = "/usr/lib/";
++static const char *const standard_startfile_prefix_1 = STANDARD_STARTFILE_PREFIX_1;
+ 
+ static const char *const tooldir_base_prefix = TOOLDIR_BASE_PREFIX;
+ static const char *tooldir_prefix;
+@@ -3171,8 +3170,6 @@
+       set_std_prefix (gcc_exec_prefix, len);
+       add_prefix (&exec_prefixes, gcc_exec_prefix, "GCC",
+ 		  PREFIX_PRIORITY_LAST, 0, NULL, 0);
+-      add_prefix (&startfile_prefixes, gcc_exec_prefix, "GCC",
+-		  PREFIX_PRIORITY_LAST, 0, NULL, 0);
+     }
+ 
+   /* COMPILER_PATH and LIBRARY_PATH have values
+@@ -3686,11 +3683,6 @@
+ 	      PREFIX_PRIORITY_LAST, 2, warn_std_ptr, 0);
+ #endif
+ 
+-  add_prefix (&startfile_prefixes, standard_exec_prefix, "BINUTILS",
+-	      PREFIX_PRIORITY_LAST, 1, warn_std_ptr, 0);
+-  add_prefix (&startfile_prefixes, standard_exec_prefix_1, "BINUTILS",
+-	      PREFIX_PRIORITY_LAST, 1, warn_std_ptr, 0);
+-
+   tooldir_prefix = concat (tooldir_base_prefix, spec_machine,
+ 			   dir_separator_str, NULL);
+ 
+@@ -3713,10 +3705,6 @@
+ 		      concat (gcc_exec_tooldir_prefix, "bin",
+ 			      dir_separator_str, NULL),
+ 		      NULL, PREFIX_PRIORITY_LAST, 0, NULL, 0);
+-	  add_prefix (&startfile_prefixes,
+-		      concat (gcc_exec_tooldir_prefix, "lib",
+-			      dir_separator_str, NULL),
+-		      NULL, PREFIX_PRIORITY_LAST, 0, NULL, 1);
+ 	}
+ 
+       tooldir_prefix = concat (standard_exec_prefix, spec_machine,
+@@ -3727,9 +3715,6 @@
+   add_prefix (&exec_prefixes,
+ 	      concat (tooldir_prefix, "bin", dir_separator_str, NULL),
+ 	      "BINUTILS", PREFIX_PRIORITY_LAST, 0, NULL, 0);
+-  add_prefix (&startfile_prefixes,
+-	      concat (tooldir_prefix, "lib", dir_separator_str, NULL),
+-	      "BINUTILS", PREFIX_PRIORITY_LAST, 0, NULL, 1);
+ 
+ #if defined(TARGET_SYSTEM_ROOT_RELOCATABLE) && !defined(VMS)
+   /* If the normal TARGET_SYSTEM_ROOT is inside of $exec_prefix,
+@@ -6106,27 +6091,10 @@
+ 	add_sysrooted_prefix (&startfile_prefixes, md_startfile_prefix_1,
+ 			      "GCC", PREFIX_PRIORITY_LAST, 0, NULL, 1);
+ 
+-      /* Base standard_startfile_prefix (unlibsubdir) on standard_exec_prefix.
+-	 This lets us move the installed tree as a unit.  If GCC_EXEC_PREFIX
+-	 is defined, base standard_startfile_prefix on that as well.  */
+-      if (*cross_compile == '0')
+-	{
+-	  if (gcc_exec_prefix)
+-	    add_prefix (&startfile_prefixes,
+-			concat (gcc_exec_prefix, machine_suffix,
+-				standard_startfile_prefix, NULL),
+-			NULL, PREFIX_PRIORITY_LAST, 0, NULL, 1);
+-	  add_prefix (&startfile_prefixes,
+-		      concat (standard_exec_prefix,
+-			      machine_suffix,
+-			      standard_startfile_prefix, NULL),
+-		      NULL, PREFIX_PRIORITY_LAST, 0, NULL, 1);
+-	}
+-
+-      add_sysrooted_prefix (&startfile_prefixes, standard_startfile_prefix_1,
+-			    "BINUTILS", PREFIX_PRIORITY_LAST, 0, NULL, 1);
+-      add_sysrooted_prefix (&startfile_prefixes, standard_startfile_prefix_2,
+-			    "BINUTILS", PREFIX_PRIORITY_LAST, 0, NULL, 1);
++      add_prefix (&startfile_prefixes, standard_startfile_prefix,
++			    "GCC", PREFIX_PRIORITY_LAST, 0, NULL, 1);
++      add_prefix (&startfile_prefixes, standard_startfile_prefix_1,
++			    "GCC", PREFIX_PRIORITY_LAST, 0, NULL, 1);
+ #if 0 /* Can cause surprises, and one can use -B./ instead.  */
+       add_prefix (&startfile_prefixes, "./", NULL,
+ 		  PREFIX_PRIORITY_LAST, 1, NULL, 0);

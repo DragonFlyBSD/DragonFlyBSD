@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.21 2004/06/14 20:08:02 joerg Exp $
+# $DragonFly: src/etc/Makefile,v 1.22 2004/06/16 01:06:42 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -103,13 +103,9 @@ upgrade_etc:
 	rm -f ${DESTDIR}/usr/bin/dnskeygen
 	rm -f ${DESTDIR}/usr/sbin/ndc
 .endif
-.if exists(${DESTDIR}/usr/libexec/gcc2)
-	csh -c "rm -f ${DESTDIR}/usr/libexec/gcc2/{crtbegin.o,crtbeginS.o}"
-	csh -c "rm -f ${DESTDIR}/usr/libexec/gcc2/{crtend.o,crtendS.o}"
-.endif
-.if exists(${DESTDIR}/usr/libexec/gcc3)
-	csh -c "rm -f ${DESTDIR}/usr/libexec/gcc3/{crtbegin.o,crtbeginS.o}"
-	csh -c "rm -f ${DESTDIR}/usr/libexec/gcc3/{crtend.o,crtendS.o}"
+.if exists(${DESTDIR}/usr/lib/crtbegin.o)
+	csh -c "rm -f ${DESTDIR}/usr/lib/gcc2/{crtbegin.o,crtbeginS.o,crtend.o,crtendS.o}"
+	csh -c "rm -f ${DESTDIR}/usr/lib/gcc3/{crtbegin.o,crtbeginS.o,crtend.o,crtendS.o}"
 .endif
 .if exists(${DESTDIR}/usr/libexec/binutils212/elf/as)
 	ldconfig -m ${DESTDIR}/usr/lib/gcc2
