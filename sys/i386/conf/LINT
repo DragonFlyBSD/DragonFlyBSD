@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.17 2004/01/08 18:39:18 asmodai Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.18 2004/01/09 20:52:05 drhodus Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -123,7 +123,6 @@ options 	ROOTDEVNAME=\"ufs:da0s2e\"
 # Mandatory:
 options 	SMP			# Symmetric MultiProcessor Kernel
 options 	APIC_IO			# Symmetric (APIC) I/O
-options 	HTT			# HyperThreading Technology
 
 #
 # Rogue SMP hardware:

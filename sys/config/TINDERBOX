@@ -10,7 +10,7 @@
 #
 # Tinderbox maintained by:	Hiten Pandya (hmp@nxad.com)
 #
-# $DragonFly: src/sys/config/Attic/TINDERBOX,v 1.6 2003/09/26 19:23:35 dillon Exp $
+# $DragonFly: src/sys/config/Attic/TINDERBOX,v 1.7 2004/01/09 20:52:05 drhodus Exp $
 
 machine		i386
 cpu		I386_CPU
@@ -60,9 +60,6 @@ options 	KBD_INSTALL_CDEV	# install a CDEV entry in /dev
 # To make an SMP kernel, the next two are needed
 #options 	SMP			# Symmetric MultiProcessor Kernel
 #options 	APIC_IO			# Symmetric (APIC) I/O
-
-# To support HyperThreading, HTT is needed in addition to SMP and APIC_IO
-#options 	HTT			# HyperThreading Technology
 
 device		isa
 device		eisa
