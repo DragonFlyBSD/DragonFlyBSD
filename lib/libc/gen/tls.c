@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libc/gen/tls.c,v 1.7 2005/03/01 23:42:00 davidxu Exp $
- *	$DragonFly: src/lib/libc/gen/tls.c,v 1.5 2005/03/29 19:26:19 joerg Exp $
+ *	$DragonFly: src/lib/libc/gen/tls.c,v 1.6 2005/03/29 23:04:36 joerg Exp $
  */
 
 /*
@@ -52,9 +52,8 @@ __weak_reference(___libc_tls_get_addr, ___tls_get_addr);
 #endif
 __weak_reference(__libc_tls_get_addr, __tls_get_addr);
 
-struct tls_tcb *__libc_allocate_tls(struct tls_tcb *old_tcb, size_t tcbsize,
-				    int flags);
-void __libc_free_tls(struct tls_tcb *tcb, size_t tcb_size);
+struct tls_tcb *__libc_allocate_tls(struct tls_tcb *old_tcb);
+void __libc_free_tls(struct tls_tcb *tcb);
 
 #if !defined(RTLD_STATIC_TLS_VARIANT_II)
 #error "Unsupported TLS layout"
@@ -99,7 +98,7 @@ __libc_tls_get_addr(void *ti __unused)
  * Free Static TLS
  */
 void
-__libc_free_tls(struct tls_tcb *tcb, size_t tcb_size __unused)
+__libc_free_tls(struct tls_tcb *tcb)
 {
 	size_t data_size;
 
@@ -114,7 +113,7 @@ __libc_free_tls(struct tls_tcb *tcb, size_t tcb_size __unused)
  * Allocate Static TLS.
  */
 struct tls_tcb *
-__libc_allocate_tls(struct tls_tcb *old_tcb, size_t tcb_size, int flags)
+__libc_allocate_tls(struct tls_tcb *old_tcb)
 {
 	size_t data_size;
 	struct tls_tcb *tcb;
@@ -122,7 +121,7 @@ __libc_allocate_tls(struct tls_tcb *old_tcb, size_t tcb_size, int flags)
 
 	data_size = (tls_static_space + RTLD_STATIC_TLS_ALIGN_MASK) &
 		    ~RTLD_STATIC_TLS_ALIGN_MASK;
-	tcb = malloc(data_size + tcb_size);
+	tcb = malloc(data_size + sizeof(*tcb));
 	tcb = (struct tls_tcb *)((char *)tcb + data_size);
 	dtv = malloc(3 * sizeof(Elf_Addr));
 
@@ -148,7 +147,7 @@ __libc_allocate_tls(struct tls_tcb *old_tcb, size_t tcb_size, int flags)
 		 * We assume that this block was the one we created with
 		 * allocate_initial_tls().
 		 */
-		_rtld_free_tls(old_tcb, sizeof(struct tls_tcb));
+		_rtld_free_tls(old_tcb);
 	} else {
 		memcpy((char *)tcb - tls_static_space,
 			tls_init, tls_init_size);
@@ -161,14 +160,13 @@ __libc_allocate_tls(struct tls_tcb *old_tcb, size_t tcb_size, int flags)
 #else
 
 struct tls_tcb *
-__libc_allocate_tls(struct tls_tcb *old_tls __unused, size_t tcb_size __unused,
-			int flags __unused)
+__libc_allocate_tls(struct tls_tcb *old_tls __unused)
 {
 	return (0);
 }
 
 void
-__libc_free_tls(struct tls_tcb *tcb __unused, size_t tcb_size __unused)
+__libc_free_tls(struct tls_tcb *tcb __unused)
 {
 }
 
@@ -221,7 +219,7 @@ _init_tls()
 	}
 
 	if (tls_static_space) {
-		tcb = _rtld_allocate_tls(NULL, sizeof(struct tls_tcb), 0);
+		tcb = _rtld_allocate_tls(NULL);
 		tls_set_tcb(tcb);
 	}
 #endif

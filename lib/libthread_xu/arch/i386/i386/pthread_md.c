@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/arch/i386/i386/pthread_md.c,v 1.6 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/i386/i386/pthread_md.c,v 1.7 2005/03/29 23:04:36 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -51,12 +51,10 @@ _tcb_ctor(struct pthread *thread, int initial)
 		 * level libc startup code
 		 */
 		struct tls_info info;
-		if (sys_get_tls_area(0, &info, sizeof(info)) == 0) {
+		if (sys_get_tls_area(0, &info, sizeof(info)) == 0)
 			old_tcb = info.base;
-			flags = RTLD_ALLOC_TLS_FREE_OLD;
-		}
 	}
-	tcb = _rtld_allocate_tls(old_tcb, sizeof(*tcb), flags);
+	tcb = _rtld_allocate_tls(old_tcb);
 
 	if (tcb)
 		tcb->tcb_pthread = thread;
@@ -67,5 +65,5 @@ _tcb_ctor(struct pthread *thread, int initial)
 void
 _tcb_dtor(struct tls_tcb *tcb)
 {
-	_rtld_free_tls(tcb, sizeof(*tcb));
+	_rtld_free_tls(tcb);
 }

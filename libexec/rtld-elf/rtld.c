@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.20 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.21 2005/03/29 23:04:36 joerg Exp $
  */
 
 /*
@@ -2615,12 +2615,10 @@ tls_get_addr_common(void **dtvp, int index, size_t offset)
  * static area is based on negative offsets relative to the tcb.
  */
 struct tls_tcb *
-allocate_tls(Obj_Entry *objs, struct tls_tcb *old_tcb, 
-		size_t tcb_size, int flags)
+allocate_tls(Obj_Entry *objs, struct tls_tcb *old_tcb)
 {
     Obj_Entry *obj;
     size_t data_size;
-    size_t full_size;
     size_t dtv_size;
     struct tls_tcb *tcb;
     Elf_Addr *dtv, *old_dtv;
@@ -2631,11 +2629,9 @@ allocate_tls(Obj_Entry *objs, struct tls_tcb *old_tcb,
      * Allocate the new TCB.  static TLS storage is placed just before the
      * TCB to support the %gs:OFFSET (negative offset) model.
      */
-    assert(tcb_size >= 2*sizeof(Elf_Addr));
     data_size = (tls_static_space + RTLD_STATIC_TLS_ALIGN_MASK) &
 		~RTLD_STATIC_TLS_ALIGN_MASK;
-    full_size = data_size + tcb_size;
-    tcb = malloc(full_size);
+    tcb = malloc(data_size + sizeof(*tcb));
     tcb = (void *)((char *)tcb + data_size);	/* actual tcb location */
 
     dtv_size = (tls_max_index + 2) * sizeof(Elf_Addr);
@@ -2674,8 +2670,7 @@ allocate_tls(Obj_Entry *objs, struct tls_tcb *old_tcb,
 		old_dtv[i + 2] = 0;
 	    }
 	}
-	if (flags & RTLD_ALLOC_TLS_FREE_OLD)
-	    free_tls(old_tcb, tcb_size);
+	free_tls(old_tcb);
     } else {
 	for (obj = objs; obj; obj = obj->next) {
 	    if (obj->tlsoffset) {
@@ -2692,7 +2687,7 @@ allocate_tls(Obj_Entry *objs, struct tls_tcb *old_tcb,
 }
 
 void
-free_tls(struct tls_tcb *tcb, size_t tcb_size)
+free_tls(struct tls_tcb *tcb)
 {
     Elf_Addr *dtv;
     int dtv_size, i;
@@ -2799,22 +2794,22 @@ free_tls_offset(Obj_Entry *obj)
 }
 
 struct tls_tcb *
-_rtld_allocate_tls(struct tls_tcb *old_tcb, size_t tcb_size, int flags)
+_rtld_allocate_tls(struct tls_tcb *old_tcb)
 {
     struct tls_tcb *new_tcb;
 
     wlock_acquire();
-    new_tcb = allocate_tls(obj_list, old_tcb, tcb_size, flags);
+    new_tcb = allocate_tls(obj_list, old_tcb);
     wlock_release();
 
     return (new_tcb);
 }
 
 void
-_rtld_free_tls(struct tls_tcb *tcb, size_t tcb_size)
+_rtld_free_tls(struct tls_tcb *tcb)
 {
     wlock_acquire();
-    free_tls(tcb, tcb_size);
+    free_tls(tcb);
     wlock_release();
 }
 

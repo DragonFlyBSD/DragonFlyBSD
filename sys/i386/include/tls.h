@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/i386/include/Attic/tls.h,v 1.1 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/sys/i386/include/Attic/tls.h,v 1.2 2005/03/29 23:04:36 joerg Exp $
  */
 
 #ifndef	_MACHINE_TLS_H_
@@ -100,12 +100,7 @@ tls_set_tcb(struct tls_tcb *tcb)
 	__asm __volatile("movl %0, %%gs" : : "r" (seg));
 }
 
-/*
- * flags for _rtld_allocate_tls() and allocate_tls()
- */
-#define RTLD_ALLOC_TLS_FREE_OLD		0x0001
-
-struct tls_tcb	*_rtld_allocate_tls(struct tls_tcb *, size_t, int);
-void		 _rtld_free_tls(struct tls_tcb *, size_t);
+struct tls_tcb	*_rtld_allocate_tls(struct tls_tcb *);
+void		 _rtld_free_tls(struct tls_tcb *);
 
 #endif	/* !_MACHINE_TLS_H_ */
