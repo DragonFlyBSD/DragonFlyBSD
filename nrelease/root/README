@@ -12,15 +12,46 @@
     If you just want to play with DragonFly and not mess with your hard disk,
     this CDROM boots into a fully operational console-based system, though
     without swap it should be noted that you are limited by available memory.
+    It is a good idea to test your hardware for compatibility from a CD boot
+    before spending time installing the dist on your hard disk.
+
 
 			    AUTOMATIC INSTALLATION
 
-    We are currently developing automatic installation tools.  There are none
-    on this CD.
+    We are currently developing automatic installation tools.  This cd 
+    contains 'rconfig', which is a client/server protocol and examples in
+    /usr/share/examples/rconfig.  If you have multiple machines you can setup
+    an installation script and run rconfig on a server and then install the
+    clients from CD boot with network connectivity (e.g. dhclient <blah>)
+    and, typically, 'rconfig -a'.
 
-			    MANUAL INSTALLATION
+    You can also just boot from the CD, copy the sample script to /tmp, edit,
+    and run it directly (assuming that blowing away your existing disk is ok).
 
-    Manual installation of DragonFly onto an HD involve the following sequence
+
+				  CONSOLE OPERATION
+
+    The second stage boot (boot2) and third stage boot (loader) default
+    to dual serial & video console I/O.  You can direct the boot output
+    to just the serial port by creating the file /boot.config with the
+    line '-h', or to just the screen using '-V'.  If you wish to leave
+    boot2 in dual I/O mode but want the third stage to use just one or the
+    other, you can set the 'console' environment variable in /boot/loader.conf
+    to either 'console=vidconsole' or 'console=comconsole'.
+
+    The dual serial port operation might have to be disabled if you use
+    the serial port for things like UPSs.  Also note that by default
+    the CD will run a login prompt on the serial port after booting is
+    complete.  This can be disabled by editing the 'ttyd0' line in /etc/ttys
+    after installation is complete.
+
+    Note that the kernel itself currently only supports one console or the
+    other.  If both are enabled, the kernel will use the video console or
+    the last one for which input was received.
+
+				MANUAL INSTALLATION
+
+    Manual installation of DragonFly onto an HD involves the following sequence
     of commands.  You must be familiar with BSD style UNIX systems to do
     installations manually.  The primary IDE hard drive is typically 'ad0'
     and DragonFly is typically installed onto the first free slice
@@ -138,13 +169,16 @@
 	# 
 	disklabel ad0s1 > /mnt/etc/disklabel.ad0s1
 
+
+			MISC CLEANUPS BEFORE REBOOTING
+
     Once you've duplicated the CD onto your HD you have to make some edits
     so the system boots properly from your HD.  Primarily you must remove
     or edit /mnt/boot/loader.conf, which exists on the CD to tell the kernel
     to mount the CD's root partition.
 
-	# Remove /mnt/boot/loader.conf so the kernel does not try to
-	# obtain the root filesystem from the CD, and remove the other
+	# Remove or edit /mnt/boot/loader.conf so the kernel does not try
+	# to obtain the root filesystem from the CD, and remove the other
 	# cruft that was sitting on the CD that you don't need on the HD.
 	#
 	rm /mnt/boot/loader.conf
@@ -153,22 +187,46 @@
 	rm -r /mnt/rr_moved
 
     At this point it should be possible to reboot.  The CD may be locked
-    since it is currently mounted.  Be careful of the CD drawer closing
-    on you when you open it during the reboot.  Remove the CD and allow
-    the system to boot from the HD.
+    since it is currently mounted.  To remove the CD, type 'halt' instead
+    of 'reboot', wait for the machine to halt, then the CD door should be
+    unlocked.  Remove the CD and hit any key to reboot.
+
+    Be careful of the CD drawer closing on you if you try to remove the CD
+    while the machine is undergoing a reboot or reset.
 
     WARNING do not just hit reset, the kernel may not have written out
     all the pending data to your HD.  Either unmount the HD partitions
-    or type reboot.
+    or type halt or reboot.
 
-	# reboot
-	reboot
+	# halt
+	(let the machine halt)
 	(remove CD when convenient, be careful of the CD drawer closing on you)
+	(hit any key to reboot)
 
-    WHAT TO TRY IF THE SYSTEM WILL NOT BOOT FROM YOUR HD.  There are a
-    couple of things to try.  If you can select CHS or LBA mode in your BIOS,
-    try changing the mode to LBA.  If that doesn't work boot from the CD
-    again and use boot0cfg to turn on packet mode (boot0cfg -o packet ad0).
+
+				    THE ACPI ISSUE
+
+    You will notice in the boot menu that you can choose to boot with or 
+    without ACPI.  ACPI is an infrastructure designed to allow an operating
+    to configure hardware devices associated with the system.  Unfortunately,
+    as usual, PC BIOS makers have royally screwed up the standard and ACPI
+    is as likely to hurt as it is to help.  Worse, some PCs cannot be booted
+    without it, so there is no good 'default' choice.
+
+    The system will use ACPI by default.  You can disable it in the default
+    boot by adding the line 'hint.acpi.0.disabled=1' in /boot/loader.conf.
+    If you boot without hitting any menu options the system will boot without
+    ACPI.  To boot without ACPI no matter what, place 'unset acpi_load' in
+    our /boot/loader.conf instead.  This is not recommended.
+
+
+			IF YOU HAVE PROBLEMS BOOTING FROM HD
+
+    There are a couple of things to try.  If you can select CHS or LBA mode
+    in your BIOS, try changing the mode to LBA.  If that doesn't work boot
+    from the CD again and use boot0cfg to turn on packet mode (boot0cfg -o
+    packet ad0).  Also try booting with and without ACPI (option 1 or 2 in
+    the boot menu).
 
     Once you have a working HD based system you can clean up /etc/rc.conf
     to enable things like cron, sendmail, setup your networking, and so
@@ -247,5 +305,5 @@
     what they are, simply cat /mnt/etc/fstab after mounting the root
     partition.
 
-$DragonFly: src/nrelease/root/README,v 1.13 2004/05/24 14:00:04 justin Exp $
+$DragonFly: src/nrelease/root/README,v 1.14 2004/06/28 04:18:55 dillon Exp $
 
