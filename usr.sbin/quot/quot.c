@@ -29,7 +29,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/quot/quot.c,v 1.11.2.4 2002/03/15 18:12:41 mikeh Exp $
- * $DragonFly: src/usr.sbin/quot/quot.c,v 1.3 2003/08/08 04:18:47 dillon Exp $
+ * $DragonFly: src/usr.sbin/quot/quot.c,v 1.4 2004/03/20 17:09:44 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -95,10 +95,7 @@ static void	quot(char *, char *);
 #define	INOSZ(fs)	(sizeof(struct dinode) * INOCNT(fs))
 
 static struct dinode *
-get_inode(fd,super,ino)
-	int fd;
-	struct fs *super;
-	ino_t ino;
+get_inode(int fd, struct fs *super, ino_t ino)
 {
 	static struct dinode *ip;
 	static ino_t last;
@@ -130,11 +127,9 @@ get_inode(fd,super,ino)
 #define	actualblocks(super,ip)	((ip)->di_blocks)
 #endif
 
-static int virtualblocks(super,ip)
-	struct fs *super;
-	struct dinode *ip;
+static int virtualblocks(struct fs *super, struct dinode *ip)
 {
-	register off_t nblk, sz;
+	off_t nblk, sz;
 	
 	sz = ip->di_size;
 #ifdef	COMPAT
@@ -165,8 +160,7 @@ static int virtualblocks(super,ip)
 }
 
 static int
-isfree(ip)
-	struct dinode *ip;
+isfree(struct dinode *ip)
 {
 #ifdef	COMPAT
 	return (ip->di_mode&IFMT) == 0;
@@ -196,10 +190,10 @@ static struct user {
 static int nusers;
 
 static void
-inituser()
+inituser(void)
 {
-	register int i;
-	register struct user *usr;
+	int i;
+	struct user *usr;
 	
 	if (!nusers) {
 		nusers = 8;
@@ -215,12 +209,12 @@ inituser()
 }
 
 static void
-usrrehash()
+usrrehash(void)
 {
-	register int i;
-	register struct user *usr, *usrn;
+	int i;
+	struct user *usr, *usrn;
 	struct user *svusr;
-	
+
 	svusr = users;
 	nusers <<= 1;
 	if (!(users = (struct user *)calloc(nusers,sizeof(struct user))))
@@ -236,13 +230,12 @@ usrrehash()
 }
 
 static struct user *
-user(uid)
-	uid_t uid;
+user(uid_t uid)
 {
-	register struct user *usr;
-	register int i;
+	struct user *usr;
+	int i;
 	struct passwd *pwd;
-	
+
 	while (1) {
 		for (usr = users + (uid&(nusers - 1)), i = nusers; --i >= 0;
 		    usr--) {
@@ -273,8 +266,7 @@ user(uid)
 }
 
 static int
-cmpusers(v1,v2)
-	const void *v1, *v2;
+cmpusers(const void *v1, const void *v2)
 {
 	const struct user *u1, *u2;
 	u1 = (const struct user *)v1;
@@ -287,21 +279,18 @@ cmpusers(v1,v2)
 				    cmpusers))
 
 static void
-uses(uid,blks,act)
-	uid_t uid;
-	daddr_t blks;
-	time_t act;
+uses(uid_t uid, daddr_t blks, time_t act)
 {
 	static time_t today;
-	register struct user *usr;
-	
+	struct user *usr;
+
 	if (!today)
 		time(&today);
-	
+
 	usr = user(uid);
 	usr->count++;
 	usr->space += blks;
-	
+
 	if (today - act > 90L * 24L * 60L * 60L)
 		usr->spc90 += blks;
 	if (today - act > 60L * 24L * 60L * 60L)
@@ -323,10 +312,10 @@ struct fsizes {
 } *fsizes;
 
 static void
-initfsizes()
+initfsizes(void)
 {
-	register struct fsizes *fp;
-	register int i;
+	struct fsizes *fp;
+	int i;
 	
 	for (fp = fsizes; fp; fp = fp->fsz_next) {
 		for (i = FSZCNT; --i >= 0;) {
@@ -337,17 +326,14 @@ initfsizes()
 }
 
 static void
-dofsizes(fd,super,name)
-	int fd;
-	struct fs *super;
-	char *name;
+dofsizes(int fd, struct fs *super, char *name)
 {
 	ino_t inode, maxino;
 	struct dinode *ip;
 	daddr_t sz, ksz;
 	struct fsizes *fp, **fsp;
-	register int i;
-	
+	int i;
+
 	maxino = super->fs_ncg * super->fs_ipg - 1;
 #ifdef	COMPAT
 	if (!(fsizes = (struct fsizes *)malloc(sizeof(struct fsizes))))
@@ -411,16 +397,13 @@ dofsizes(fd,super,name)
 }
 
 static void
-douser(fd,super,name)
-	int fd;
-	struct fs *super;
-	char *name;
+douser(int fd, struct fs *super, char *name)
 {
 	ino_t inode, maxino;
 	struct user *usr, *usrs;
 	struct dinode *ip;
-	register int n;
-	
+	int n;
+
 	maxino = super->fs_ncg * super->fs_ipg - 1;
 	for (inode = 0; inode < maxino; inode++) {
 		errno = 0;
@@ -454,10 +437,7 @@ douser(fd,super,name)
 }
 
 static void
-donames(fd,super,name)
-	int fd;
-	struct fs *super;
-	char *name;
+donames(int fd, struct fs *super, char *name)
 {
 	int c;
 	ino_t inode, inode1;
@@ -514,11 +494,10 @@ usage()
 static char superblock[SBSIZE];
 
 void
-quot(name,mp)
-	char *name, *mp;
+quot(char *name, char *mp)
 {
 	int fd;
-	
+
 	get_inode(-1, NULL, 0);		/* flush cache */
 	inituser();
 	initfsizes();
@@ -543,9 +522,7 @@ quot(name,mp)
 }
 
 int
-main(argc,argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	char all = 0;
 	struct statfs *mp;
@@ -553,7 +530,7 @@ main(argc,argv)
 	char dev[MNAMELEN + 1];
 	char *nm;
 	int cnt;
-	
+
 	func = douser;
 #ifndef	COMPAT
 	header = getbsize(&headerlen,&blocksize);
