@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.15 2004/06/02 16:41:28 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.16 2004/06/03 13:30:26 joerg Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -770,7 +770,7 @@ in6_pcbnotify(struct inpcbhead *head, struct sockaddr *dst, u_int fport_arg,
 	/*
 	 * note that src can be NULL when we get notify by local fragmentation.
 	 */
-	sa6_src = (src == NULL) ? sa6_any : *(struct sockaddr_in6 *)src;
+	sa6_src = (src == NULL) ? sa6_any : *(const struct sockaddr_in6 *)src;
 	flowinfo = sa6_src.sin6_flowinfo;
 
 	/*
