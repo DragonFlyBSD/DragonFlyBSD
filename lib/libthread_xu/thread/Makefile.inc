@@ -1,10 +1,12 @@
-# $DragonFly: src/lib/libthread_xu/thread/Makefile.inc,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+# $DragonFly: src/lib/libthread_xu/thread/Makefile.inc,v 1.2 2005/02/26 02:26:32 davidxu Exp $
 
 # thr sources
 .PATH: ${.CURDIR}/thread
 
 SRCS+= \
 	thr_attr.c \
+	thr_barrier.c \
+	thr_barrierattr.c \
 	thr_cancel.c \
 	thr_clean.c \
 	thr_concurrency.c \
