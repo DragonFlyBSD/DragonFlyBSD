@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.4 2003/08/07 21:54:32 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.5 2003/08/23 11:18:00 rob Exp $
  */
 
 #include "opt_ipsec.h"
@@ -127,9 +127,9 @@ SYSCTL_INT(_net_inet_icmp, OID_AUTO, bmcastecho, CTLFLAG_RW,
 int	icmpprintfs = 0;
 #endif
 
-static void	icmp_reflect __P((struct mbuf *));
-static void	icmp_send __P((struct mbuf *, struct mbuf *, struct route *));
-static int	ip_next_mtu __P((int, int));
+static void	icmp_reflect (struct mbuf *);
+static void	icmp_send (struct mbuf *, struct mbuf *, struct route *);
+static int	ip_next_mtu (int, int);
 
 extern	struct protosw inetsw[];
 
@@ -255,7 +255,7 @@ icmp_input(m, off, proto)
 	int icmplen = ip->ip_len;
 	int i;
 	struct in_ifaddr *ia;
-	void (*ctlfunc) __P((int, struct sockaddr *, void *));
+	void (*ctlfunc) (int, struct sockaddr *, void *);
 	int code;
 
 	/*

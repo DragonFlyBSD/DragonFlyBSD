@@ -35,7 +35,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_id.c,v 1.1.2.1 2001/07/19 06:37:26 kris Exp $
- * $DragonFly: src/sys/netinet/ip_id.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_id.c,v 1.3 2003/08/23 11:18:00 rob Exp $
  */
 
 /* 
@@ -88,9 +88,9 @@ static u_int16_t ru_msb = 0;
 static long ru_reseed;
 static u_int32_t tmp;		/* Storage for unused random */
 
-static u_int16_t pmod __P((u_int16_t, u_int16_t, u_int16_t));
-static void ip_initid __P((void));
-u_int16_t ip_randomid __P((void));
+static u_int16_t pmod (u_int16_t, u_int16_t, u_int16_t);
+static void ip_initid (void);
+u_int16_t ip_randomid (void);
 
 /*
  * Do a fast modular exponation, returned value will be in the range

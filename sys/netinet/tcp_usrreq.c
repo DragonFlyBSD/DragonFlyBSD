@@ -32,7 +32,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.4 2003/07/26 21:00:04 rob Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.5 2003/08/23 11:18:00 rob Exp $
  */
 
 #include "opt_ipsec.h"
@@ -87,17 +87,17 @@
  */
 extern	char *tcpstates[];	/* XXX ??? */
 
-static int	tcp_attach __P((struct socket *, struct thread *));
-static int	tcp_connect __P((struct tcpcb *, struct sockaddr *, 
-				 struct thread *));
+static int	tcp_attach (struct socket *, struct thread *);
+static int	tcp_connect (struct tcpcb *, struct sockaddr *, 
+				 struct thread *);
 #ifdef INET6
-static int	tcp6_connect __P((struct tcpcb *, struct sockaddr *,
-				 struct thread *));
+static int	tcp6_connect (struct tcpcb *, struct sockaddr *,
+				 struct thread *);
 #endif /* INET6 */
 static struct tcpcb *
-		tcp_disconnect __P((struct tcpcb *));
+		tcp_disconnect (struct tcpcb *);
 static struct tcpcb *
-		tcp_usrclosed __P((struct tcpcb *));
+		tcp_usrclosed (struct tcpcb *);
 
 #ifdef TCPDEBUG
 #define	TCPDEBUG0	int ostate = 0

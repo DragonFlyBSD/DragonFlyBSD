@@ -32,7 +32,7 @@
  *
  *	@(#)in_systm.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_systm.h,v 1.9 1999/12/29 04:41:00 peter Exp $
- * $DragonFly: src/sys/netinet/in_systm.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_systm.h,v 1.3 2003/08/23 11:18:00 rob Exp $
  */
 
 #ifndef _NETINET_IN_SYSTM_H_
@@ -57,7 +57,7 @@ typedef u_int32_t n_long;		/* long as received from the net */
 typedef	u_int32_t n_time;		/* ms since 00:00 GMT, byte rev */
 
 #ifdef _KERNEL
-n_time	 iptime __P((void));
+n_time	 iptime (void);
 #endif
 
 #endif

@@ -32,7 +32,7 @@
  *
  *	@(#)in_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in_var.h,v 1.33.2.3 2001/12/14 20:09:34 jlemon Exp $
- * $DragonFly: src/sys/netinet/in_var.h,v 1.3 2003/06/25 03:56:04 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_var.h,v 1.4 2003/08/23 11:18:00 rob Exp $
  */
 
 #ifndef _NETINET_IN_VAR_H_
@@ -224,17 +224,17 @@ do { \
 } while(0)
 
 struct	route;
-struct	in_multi *in_addmulti __P((struct in_addr *, struct ifnet *));
-void	in_delmulti __P((struct in_multi *));
-int	in_control __P((struct socket *, u_long, caddr_t, struct ifnet *,
-			struct thread *));
-void	in_rtqdrain __P((void));
-void	ip_input __P((struct mbuf *));
-int	in_ifadown __P((struct ifaddr *ifa, int));
-void	in_ifscrub __P((struct ifnet *, struct in_ifaddr *));
-int	ipflow_fastforward __P((struct mbuf *));
-void	ipflow_create __P((const struct route *, struct mbuf *));
-void	ipflow_slowtimo __P((void));
+struct	in_multi *in_addmulti (struct in_addr *, struct ifnet *);
+void	in_delmulti (struct in_multi *);
+int	in_control (struct socket *, u_long, caddr_t, struct ifnet *,
+			struct thread *);
+void	in_rtqdrain (void);
+void	ip_input (struct mbuf *);
+int	in_ifadown (struct ifaddr *ifa, int);
+void	in_ifscrub (struct ifnet *, struct in_ifaddr *);
+int	ipflow_fastforward (struct mbuf *);
+void	ipflow_create (const struct route *, struct mbuf *);
+void	ipflow_slowtimo (void);
 
 #endif /* _KERNEL */
 

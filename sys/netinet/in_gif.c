@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/in_gif.c,v 1.5.2.11 2003/01/23 21:06:45 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet/in_gif.c,v 1.4 2003/08/07 21:17:33 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/in_gif.c,v 1.5 2003/08/23 11:18:00 rob Exp $	*/
 /*	$KAME: in_gif.c,v 1.54 2001/05/14 14:02:16 itojun Exp $	*/
 
 /*
@@ -66,8 +66,8 @@
 
 #include <net/net_osdep.h>
 
-static int gif_validate4 __P((const struct ip *, struct gif_softc *,
-	struct ifnet *));
+static int gif_validate4 (const struct ip *, struct gif_softc *,
+	struct ifnet *);
 
 extern  struct domain inetdomain;
 struct protosw in_gif_protosw =

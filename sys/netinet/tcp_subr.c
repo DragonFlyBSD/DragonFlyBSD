@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.7 2003/07/26 21:00:04 rob Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.8 2003/08/23 11:18:00 rob Exp $
  */
 
 #include "opt_compat.h"
@@ -178,8 +178,8 @@ static int     tcp_inflight_stab = 20;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_stab, CTLFLAG_RW,
     &tcp_inflight_stab, 0, "Slop in maximal packets / 10 (20 = 2 packets)");
 
-static void	tcp_cleartaocache __P((void));
-static void	tcp_notify __P((struct inpcb *, int));
+static void	tcp_cleartaocache (void);
+static void	tcp_notify (struct inpcb *, int);
 
 /*
  * Target size of TCP PCB hash tables. Must be a power of two.
@@ -1014,7 +1014,7 @@ tcp_ctlinput(cmd, sa, vip)
 	struct in_addr faddr;
 	struct inpcb *inp;
 	struct tcpcb *tp;
-	void (*notify) __P((struct inpcb *, int)) = tcp_notify;
+	void (*notify) (struct inpcb *, int) = tcp_notify;
 	tcp_seq icmp_seq;
 	int s;
 
@@ -1073,7 +1073,7 @@ tcp6_ctlinput(cmd, sa, d)
 	void *d;
 {
 	struct tcphdr th;
-	void (*notify) __P((struct inpcb *, int)) = tcp_notify;
+	void (*notify) (struct inpcb *, int) = tcp_notify;
 	struct ip6_hdr *ip6;
 	struct mbuf *m;
 	struct ip6ctlparam *ip6cp = NULL;

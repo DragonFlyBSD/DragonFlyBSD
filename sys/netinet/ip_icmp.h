@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/ip_icmp.h,v 1.16 1999/12/29 04:41:01 peter Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.h,v 1.3 2003/08/23 11:18:00 rob Exp $
  */
 
 #ifndef _NETINET_IP_ICMP_H_
@@ -186,8 +186,8 @@ struct icmp {
 	(type) == ICMP_MASKREQ || (type) == ICMP_MASKREPLY)
 
 #ifdef _KERNEL
-void	icmp_error __P((struct mbuf *, int, int, n_long, struct ifnet *));
-void	icmp_input __P((struct mbuf *, int, int));
+void	icmp_error (struct mbuf *, int, int, n_long, struct ifnet *);
+void	icmp_input (struct mbuf *, int, int);
 #endif
 
 #endif

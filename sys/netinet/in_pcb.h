@@ -32,7 +32,7 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.3 2003/06/25 03:56:04 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.4 2003/08/23 11:18:00 rob Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -311,31 +311,31 @@ extern int	ipport_lastauto;
 extern int	ipport_hifirstauto;
 extern int	ipport_hilastauto;
 
-void	in_pcbpurgeif0 __P((struct inpcb *, struct ifnet *));
-void	in_losing __P((struct inpcb *));
-void	in_rtchange __P((struct inpcb *, int));
-int	in_pcballoc __P((struct socket *, struct inpcbinfo *, struct thread *));
-int	in_pcbbind __P((struct inpcb *, struct sockaddr *, struct thread *));
-int	in_pcbconnect __P((struct inpcb *, struct sockaddr *, struct thread *));
-void	in_pcbdetach __P((struct inpcb *));
-void	in_pcbdisconnect __P((struct inpcb *));
-int	in_pcbinshash __P((struct inpcb *));
-int	in_pcbladdr __P((struct inpcb *, struct sockaddr *,
-	    struct sockaddr_in **));
+void	in_pcbpurgeif0 (struct inpcb *, struct ifnet *);
+void	in_losing (struct inpcb *);
+void	in_rtchange (struct inpcb *, int);
+int	in_pcballoc (struct socket *, struct inpcbinfo *, struct thread *);
+int	in_pcbbind (struct inpcb *, struct sockaddr *, struct thread *);
+int	in_pcbconnect (struct inpcb *, struct sockaddr *, struct thread *);
+void	in_pcbdetach (struct inpcb *);
+void	in_pcbdisconnect (struct inpcb *);
+int	in_pcbinshash (struct inpcb *);
+int	in_pcbladdr (struct inpcb *, struct sockaddr *,
+	    struct sockaddr_in **);
 struct inpcb *
-	in_pcblookup_local __P((struct inpcbinfo *,
-	    struct in_addr, u_int, int));
+	in_pcblookup_local (struct inpcbinfo *,
+	    struct in_addr, u_int, int);
 struct inpcb *
-	in_pcblookup_hash __P((struct inpcbinfo *,
+	in_pcblookup_hash (struct inpcbinfo *,
 			       struct in_addr, u_int, struct in_addr, u_int,
-			       int, struct ifnet *));
-void	in_pcbnotifyall __P((struct inpcbhead *, struct in_addr,
-	    int, void (*)(struct inpcb *, int)));
-void	in_pcbrehash __P((struct inpcb *));
-int	in_setpeeraddr __P((struct socket *so, struct sockaddr **nam));
-int	in_setsockaddr __P((struct socket *so, struct sockaddr **nam));
-void	in_pcbremlists __P((struct inpcb *inp));
-int	prison_xinpcb __P((struct thread *p, struct inpcb *inp));
+			       int, struct ifnet *);
+void	in_pcbnotifyall (struct inpcbhead *, struct in_addr,
+	    int, void (*)(struct inpcb *, int));
+void	in_pcbrehash (struct inpcb *);
+int	in_setpeeraddr (struct socket *so, struct sockaddr **nam);
+int	in_setsockaddr (struct socket *so, struct sockaddr **nam);
+void	in_pcbremlists (struct inpcb *inp);
+int	prison_xinpcb (struct thread *p, struct inpcb *inp);
 #endif /* _KERNEL */
 
 #endif /* !_NETINET_IN_PCB_H_ */

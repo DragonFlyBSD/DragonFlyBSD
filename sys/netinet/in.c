@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.6 2003/07/26 21:00:04 rob Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.7 2003/08/23 11:18:00 rob Exp $
  */
 
 #include "opt_bootp.h"
@@ -57,14 +57,14 @@
 
 static MALLOC_DEFINE(M_IPMADDR, "in_multi", "internet multicast address");
 
-static int in_mask2len __P((struct in_addr *));
-static void in_len2mask __P((struct in_addr *, int));
-static int in_lifaddr_ioctl __P((struct socket *, u_long, caddr_t,
-	struct ifnet *, struct thread *));
+static int in_mask2len (struct in_addr *);
+static void in_len2mask (struct in_addr *, int);
+static int in_lifaddr_ioctl (struct socket *, u_long, caddr_t,
+	struct ifnet *, struct thread *);
 
-static void	in_socktrim __P((struct sockaddr_in *));
-static int	in_ifinit __P((struct ifnet *,
-	    struct in_ifaddr *, struct sockaddr_in *, int));
+static void	in_socktrim (struct sockaddr_in *);
+static int	in_ifinit (struct ifnet *,
+	    struct in_ifaddr *, struct sockaddr_in *, int);
 
 static int subnetsarelocal = 0;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, subnets_are_local, CTLFLAG_RW, 

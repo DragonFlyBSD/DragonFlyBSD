@@ -61,7 +61,7 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/netinet/ipprotosw.h,v 1.1 1999/12/22 19:13:23 shin Exp $
- * $DragonFly: src/sys/netinet/Attic/ipprotosw.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/Attic/ipprotosw.h,v 1.3 2003/08/23 11:18:00 rob Exp $
  */
 
 #ifndef _NETINET_IPPROTOSW_H_
@@ -80,23 +80,23 @@ struct ipprotosw {
 	short	pr_protocol;		/* protocol number */
 	short	pr_flags;		/* see below */
 /* protocol-protocol hooks */
-	void	(*pr_input) __P((struct mbuf *, int off, int proto));
+	void	(*pr_input) (struct mbuf *, int off, int proto);
 					/* input to protocol (from below) */
-	int	(*pr_output)	__P((struct mbuf *m, struct socket *so));
+	int	(*pr_output)	(struct mbuf *m, struct socket *so);
 					/* output to protocol (from above) */
-	void	(*pr_ctlinput)__P((int, struct sockaddr *, void *));
+	void	(*pr_ctlinput)(int, struct sockaddr *, void *);
 					/* control input (from below) */
-	int	(*pr_ctloutput)__P((struct socket *, struct sockopt *));
+	int	(*pr_ctloutput)(struct socket *, struct sockopt *);
 					/* control output (from above) */
 /* user-protocol hook */
 	void	*pr_ousrreq;
 /* utility hooks */
-	void	(*pr_init) __P((void));	/* initialization hook */
-	void	(*pr_fasttimo) __P((void));
+	void	(*pr_init) (void);	/* initialization hook */
+	void	(*pr_fasttimo) (void);
 					/* fast timeout (200ms) */
-	void	(*pr_slowtimo) __P((void));
+	void	(*pr_slowtimo) (void);
 					/* slow timeout (500ms) */
-	void	(*pr_drain) __P((void));
+	void	(*pr_drain) (void);
 					/* flush any excess space possible */
 	struct	pr_usrreqs *pr_usrreqs;	/* supersedes pr_usrreq() */
 };

@@ -36,7 +36,7 @@
  *
  *	from: @(#)igmp_var.h	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/sys/netinet/igmp_var.h,v 1.17 1999/12/29 04:40:59 peter Exp $
- * $DragonFly: src/sys/netinet/igmp_var.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/igmp_var.h,v 1.3 2003/08/23 11:18:00 rob Exp $
  */
 
 #ifndef _NETINET_IGMP_VAR_H_
@@ -86,12 +86,12 @@ struct igmpstat {
  */
 #define IGMP_AGE_THRESHOLD			540
 
-void	igmp_init __P((void));
-void	igmp_input __P((struct mbuf *, int, int));
-void	igmp_joingroup __P((struct in_multi *));
-void	igmp_leavegroup __P((struct in_multi *));
-void	igmp_fasttimo __P((void));
-void	igmp_slowtimo __P((void));
+void	igmp_init (void);
+void	igmp_input (struct mbuf *, int, int);
+void	igmp_joingroup (struct in_multi *);
+void	igmp_leavegroup (struct in_multi *);
+void	igmp_fasttimo (void);
+void	igmp_slowtimo (void);
 
 SYSCTL_DECL(_net_inet_igmp);
 

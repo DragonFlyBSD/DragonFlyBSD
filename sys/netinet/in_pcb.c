@@ -32,7 +32,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.26 2003/01/24 05:11:33 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.7 2003/08/07 21:54:32 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.8 2003/08/23 11:18:00 rob Exp $
  */
 
 #include "opt_ipsec.h"
@@ -654,7 +654,7 @@ void
 in_pcbnotifyall(head, faddr, errno, notify)
 	struct inpcbhead *head;
 	struct in_addr faddr;
-	void (*notify) __P((struct inpcb *, int));
+	void (*notify) (struct inpcb *, int);
 {
 	struct inpcb *inp, *ninp;
 	int s;

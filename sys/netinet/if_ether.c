@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.4 2003/08/07 21:54:32 dillon Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.5 2003/08/23 11:18:00 rob Exp $
  */
 
 /*
@@ -117,16 +117,16 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, useloopback, CTLFLAG_RW,
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
 	   &arp_proxyall, 0, "");
 
-static void	arp_rtrequest __P((int, struct rtentry *, struct rt_addrinfo *));
-static void	arprequest __P((struct ifnet *,
-			struct in_addr *, struct in_addr *, u_char *));
-static void	arpintr __P((void));
-static void	arptfree __P((struct llinfo_arp *));
-static void	arptimer __P((void *));
+static void	arp_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
+static void	arprequest (struct ifnet *,
+			struct in_addr *, struct in_addr *, u_char *);
+static void	arpintr (void);
+static void	arptfree (struct llinfo_arp *);
+static void	arptimer (void *);
 static struct llinfo_arp
-		*arplookup __P((u_long, int, int));
+		*arplookup (u_long, int, int);
 #ifdef INET
-static void	in_arpinput __P((struct mbuf *));
+static void	in_arpinput (struct mbuf *);
 #endif
 
 u_char arcbroadcastaddr = 0;

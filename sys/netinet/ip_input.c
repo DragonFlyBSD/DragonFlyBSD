@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.5 2003/08/07 21:54:32 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.6 2003/08/23 11:18:00 rob Exp $
  */
 
 #define	_IP_VHL
@@ -206,7 +206,7 @@ int fw_one_pass = 1;
 /* Dummynet hooks */
 ip_dn_io_t *ip_dn_io_ptr;
 
-int (*fr_checkp) __P((struct ip *, int, struct ifnet *, int, struct mbuf **)) = NULL;
+int (*fr_checkp) (struct ip *, int, struct ifnet *, int, struct mbuf **) = NULL;
 
 /*
  * XXX this is ugly -- the following two global variables are

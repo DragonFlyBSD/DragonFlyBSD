@@ -36,7 +36,7 @@
  *
  *	@(#)igmp.c	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/sys/netinet/igmp.c,v 1.29.2.2 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/netinet/igmp.c,v 1.3 2003/07/26 21:00:04 rob Exp $
+ * $DragonFly: src/sys/netinet/igmp.c,v 1.4 2003/08/23 11:18:00 rob Exp $
  */
 
 /*
@@ -73,7 +73,7 @@
 static MALLOC_DEFINE(M_IGMP, "igmp", "igmp state");
 
 static struct router_info *
-		find_rti __P((struct ifnet *ifp));
+		find_rti (struct ifnet *ifp);
 
 static struct igmpstat igmpstat;
 
@@ -86,7 +86,7 @@ static u_long igmp_all_rtrs_group;
 static struct mbuf *router_alert;
 static struct router_info *Head;
 
-static void igmp_sendpkt __P((struct in_multi *, int, unsigned long));
+static void igmp_sendpkt (struct in_multi *, int, unsigned long);
 
 void
 igmp_init()

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/in_rmx.c,v 1.37.2.3 2002/08/09 14:49:23 ru Exp $
- * $DragonFly: src/sys/netinet/in_rmx.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_rmx.c,v 1.3 2003/08/23 11:18:00 rob Exp $
  */
 
 /*
@@ -57,7 +57,7 @@
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
 
-extern int	in_inithead __P((void **head, int off));
+extern int	in_inithead (void **head, int off);
 
 #define RTPRF_OURS		RTF_PROTO3	/* set on routes we manage */
 

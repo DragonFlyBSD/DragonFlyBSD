@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_timer.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp_timer.h,v 1.18.2.1 2002/08/16 22:16:39 dillon Exp $
- * $DragonFly: src/sys/netinet/tcp_timer.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_timer.h,v 1.3 2003/08/23 11:18:00 rob Exp $
  */
 
 #ifndef _NETINET_TCP_TIMER_H_
@@ -141,11 +141,11 @@ extern int tcp_msl;
 extern int tcp_ttl;			/* time to live for TCP segs */
 extern int tcp_backoff[];
 
-void	tcp_timer_2msl __P((void *xtp));
-void	tcp_timer_keep __P((void *xtp));
-void	tcp_timer_persist __P((void *xtp));
-void	tcp_timer_rexmt __P((void *xtp));
-void	tcp_timer_delack __P((void *xtp));
+void	tcp_timer_2msl (void *xtp);
+void	tcp_timer_keep (void *xtp);
+void	tcp_timer_persist (void *xtp);
+void	tcp_timer_rexmt (void *xtp);
+void	tcp_timer_delack (void *xtp);
 
 #endif /* _KERNEL */
 

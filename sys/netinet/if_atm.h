@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/netinet/if_atm.h,v 1.2.6.2 2001/12/20 10:30:18 ru Exp $ */
-/* $DragonFly: src/sys/netinet/if_atm.h,v 1.2 2003/06/17 04:28:51 dillon Exp $ */
+/* $DragonFly: src/sys/netinet/if_atm.h,v 1.3 2003/08/23 11:18:00 rob Exp $ */
 /*      $NetBSD: if_atm.h,v 1.2 1996/07/03 17:17:17 chuck Exp $       */
 
 /*
@@ -43,6 +43,6 @@ struct mbuf;
 struct rtentry;
 struct sockaddr;
 
-void atm_rtrequest __P((int, struct rtentry *, struct rt_addrinfo *));
-int atmresolve __P((struct rtentry *, struct mbuf *, struct sockaddr *, 
-		struct atm_pseudohdr *));
+void atm_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
+int atmresolve (struct rtentry *, struct mbuf *, struct sockaddr *, 
+		struct atm_pseudohdr *);

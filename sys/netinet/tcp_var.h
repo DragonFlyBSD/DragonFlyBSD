@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.7 2003/08/14 23:09:33 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.8 2003/08/23 11:18:00 rob Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -457,42 +457,42 @@ extern	int path_mtu_discovery;
 extern	int ss_fltsz;
 extern	int ss_fltsz_local;
 
-void	 tcp_canceltimers __P((struct tcpcb *));
+void	 tcp_canceltimers (struct tcpcb *);
 struct tcpcb *
-	 tcp_close __P((struct tcpcb *));
-void	 tcp_ctlinput __P((int, struct sockaddr *, void *));
-int	 tcp_ctloutput __P((struct socket *, struct sockopt *));
+	 tcp_close (struct tcpcb *);
+void	 tcp_ctlinput (int, struct sockaddr *, void *);
+int	 tcp_ctloutput (struct socket *, struct sockopt *);
 struct tcpcb *
-	 tcp_drop __P((struct tcpcb *, int));
-void	 tcp_drain __P((void));
-void	 tcp_fasttimo __P((void));
+	 tcp_drop (struct tcpcb *, int);
+void	 tcp_drain (void);
+void	 tcp_fasttimo (void);
 struct rmxp_tao *
-	 tcp_gettaocache __P((struct in_conninfo *));
-void	 tcp_init __P((void));
-void	 tcp_input __P((struct mbuf *, int, int));
-void	 tcp_mss __P((struct tcpcb *, int));
-int	 tcp_mssopt __P((struct tcpcb *));
-void	 tcp_drop_syn_sent __P((struct inpcb *, int));
-void	 tcp_mtudisc __P((struct inpcb *, int));
+	 tcp_gettaocache (struct in_conninfo *);
+void	 tcp_init (void);
+void	 tcp_input (struct mbuf *, int, int);
+void	 tcp_mss (struct tcpcb *, int);
+int	 tcp_mssopt (struct tcpcb *);
+void	 tcp_drop_syn_sent (struct inpcb *, int);
+void	 tcp_mtudisc (struct inpcb *, int);
 struct tcpcb *
-	 tcp_newtcpcb __P((struct inpcb *));
-int	 tcp_output __P((struct tcpcb *));
-void	 tcp_quench __P((struct inpcb *, int));
-void	 tcp_respond __P((struct tcpcb *, void *,
-	    struct tcphdr *, struct mbuf *, tcp_seq, tcp_seq, int));
+	 tcp_newtcpcb (struct inpcb *);
+int	 tcp_output (struct tcpcb *);
+void	 tcp_quench (struct inpcb *, int);
+void	 tcp_respond (struct tcpcb *, void *,
+	    struct tcphdr *, struct mbuf *, tcp_seq, tcp_seq, int);
 struct rtentry *
-	 tcp_rtlookup __P((struct in_conninfo *));
+	 tcp_rtlookup (struct in_conninfo *);
 void	 tcp_save_congestion_state(struct tcpcb *tp);
 void	 tcp_revert_congestion_state(struct tcpcb *tp);
-void	 tcp_setpersist __P((struct tcpcb *));
-void	 tcp_slowtimo __P((void));
+void	 tcp_setpersist (struct tcpcb *);
+void	 tcp_slowtimo (void);
 struct tcptemp *
-	 tcp_maketemplate __P((struct tcpcb *));
-void	 tcp_fillheaders __P((struct tcpcb *, void *, void *));
+	 tcp_maketemplate (struct tcpcb *);
+void	 tcp_fillheaders (struct tcpcb *, void *, void *);
 struct tcpcb *
-	 tcp_timers __P((struct tcpcb *, int));
-void	 tcp_trace __P((int, int, struct tcpcb *, void *, struct tcphdr *,
-			int));
+	 tcp_timers (struct tcpcb *, int);
+void	 tcp_trace (int, int, struct tcpcb *, void *, struct tcphdr *,
+			int);
 void	 tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq);
 void	 syncache_init(void);
 void	 syncache_unreach(struct in_conninfo *, struct tcphdr *);
@@ -506,7 +506,7 @@ void	 syncache_badack(struct in_conninfo *);
 extern	struct pr_usrreqs tcp_usrreqs;
 extern	u_long tcp_sendspace;
 extern	u_long tcp_recvspace;
-tcp_seq tcp_new_isn __P((struct tcpcb *));
+tcp_seq tcp_new_isn (struct tcpcb *);
 
 #endif /* _KERNEL */
 

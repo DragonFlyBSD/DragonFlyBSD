@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip_encap.c,v 1.1.2.5 2003/01/23 21:06:45 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.3 2003/07/29 12:51:30 hmp Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.4 2003/08/23 11:18:00 rob Exp $	*/
 /*	$KAME: ip_encap.c,v 1.41 2001/03/15 08:35:08 itojun Exp $	*/
 
 /*
@@ -94,10 +94,10 @@
 #include <sys/malloc.h>
 MALLOC_DEFINE(M_NETADDR, "Export Host", "Export host address structure");
 
-static void encap_add __P((struct encaptab *));
-static int mask_match __P((const struct encaptab *, const struct sockaddr *,
-		const struct sockaddr *));
-static void encap_fillarg __P((struct mbuf *, const struct encaptab *));
+static void encap_add (struct encaptab *);
+static int mask_match (const struct encaptab *, const struct sockaddr *,
+		const struct sockaddr *);
+static void encap_fillarg (struct mbuf *, const struct encaptab *);
 
 #ifndef LIST_HEAD_INITIALIZER
 /* rely upon BSS initialization */
@@ -375,7 +375,7 @@ const struct encaptab *
 encap_attach_func(af, proto, func, psw, arg)
 	int af;
 	int proto;
-	int (*func) __P((const struct mbuf *, int, int, void *));
+	int (*func) (const struct mbuf *, int, int, void *);
 	const struct protosw *psw;
 	void *arg;
 {
