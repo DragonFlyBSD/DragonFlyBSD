@@ -1,4 +1,36 @@
 /*
+ * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * 
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ * 
  * Copyright (c) 1998 Robert Nordier
  * All rights reserved.
  *
@@ -13,7 +45,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot1.s,v 1.23 2003/08/22 01:59:28 imp Exp $
- * $DragonFly: src/sys/boot/i386/boot2/Attic/boot1.S,v 1.6 2004/07/19 01:24:58 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/boot2/Attic/boot1.S,v 1.7 2004/07/19 23:30:32 dillon Exp $
  */
 
 #include "../bootasm.h"
@@ -116,11 +148,11 @@ main:		cld				// String ops inc
 		mov %cx,%ss			// Set up
 		mov $start,%sp			//  stack
 //
-// Relocate ourself to MEM_REL.  Since %cx == 0, the inc %ch sets
-// %cx == 0x100.
+// Relocate ourself to BOOT1_ORIGIN.  Since %cx == 0, the inc %ch sets
+// %cx == 0x100 (256 words == 512 bytes).
 // 
 		mov %sp,%si			// Source
-		mov $MEM_REL,%di		// Destination
+		mov $BOOT1_ORIGIN,%di		// Destination
 		incb %ch			// Word count
 		rep				// Copy
 		movsw				//  code
@@ -178,23 +210,30 @@ main.4: 	xor %dx,%dx			// Partition:drive
 // That entry point is relative to MEM_BTX_USR; thus boot2.bin starts
 // at 0xc000.
 // 
-main.5: 	mov %dx,MEM_ARG			// Save args
+// MEM_BTX_USR_ARG will be overwritten by the disk read and the relocation
+// loop, so we must store the argument after completing said loops.
+//
+main.5: 	pushw %dx			// Save args
 		movb $NSECT,%dh			// Sector count
 		callw nread			// Read disk
 		mov $MEM_BTX_ORG,%bx		// BTX
 		mov 0xa(%bx),%si		// Get BTX length and set
 		add %bx,%si			//  %si to start of boot2.bin
 		mov $MEM_BTX_USR+SIZ_PAG*2,%di	// Client page 2
-		mov $MEM_BTX_ORG+(NSECT-1)*SIZ_SEC,%cx // Byte
+		mov $MEM_BTX_ORG+(NSECT-1)*SIZ_SEC,%cx // Size of client data
 		sub %si,%cx			//  count
 		rep				// Relocate
 		movsb				//  client
-		sub %di,%cx			// Byte count
+		popw MEM_BTX_USR_ARG		// save (disk,slice) for boot2
+		sub %di,%cx			// count = 0x[1]0000 - DSTPTR
 		xorb %al,%al			// Zero assumed bss from
 		rep				//  the end of boot2.bin
 		stosb				//  up to 0x10000
 		callw seta20			// Enable A20
-		jmp start+MEM_BTX_ENTRY-MEM_ORG	// Start BTX
+
+		// YYY
+		pushw $MEM_BTX_ENTRY		// Start BTX
+		retw
 // 
 // Enable A20 so we can access memory above 1 meg.
 // 
@@ -323,7 +362,7 @@ read.5: 	shlb %bl			//  buffer
 		sub %al,0x2(%bp)		//  block count
 		ja read				// If not done
 read.6: 	retw				// To caller
-read.7:		testb $FL_PACKET,%cs:MEM_REL+flags-start // LBA support enabled?
+read.7:		testb $FL_PACKET,%cs:BOOT1_ORIGIN+flags-start // LBA support enabled?
 		jz ereturn			// No, so return an error
 		mov $0x55aa,%bx			// Magic
 		push %dx			// Save

@@ -14,7 +14,7 @@
  *
  *
  * $FreeBSD: src/sys/boot/i386/cdboot/cdboot.s,v 1.9 2001/11/07 01:20:33 jhb Exp $
- * $DragonFly: src/sys/boot/i386/cdboot/Attic/cdboot.S,v 1.5 2004/07/18 23:40:07 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/cdboot/Attic/cdboot.S,v 1.6 2004/07/19 23:30:36 dillon Exp $
  */
 
 /*
@@ -248,7 +248,7 @@ pm_end:		sti				# Turn interrupts back on now
 		 * can see them.
 		 */
 		mov $MEM_ARG,%si		# where the args are at now
-		mov $MEM_BTX_USR_ARG,%di		# where the args are moving to
+		mov $MEM_BTX_USR_ARG,%di	# where the args are moving to
 		mov $(MEM_ARG_SIZE/4),%cx	# size of the arguments in longs
 		rep				# Relocate
 		movsl				#  the words

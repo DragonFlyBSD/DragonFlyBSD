@@ -1,4 +1,36 @@
 /*
+ * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * 
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ * 
  * Copyright (c) 1998 Robert Nordier
  * All rights reserved.
  *
@@ -13,7 +45,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/btx/btx/btx.s,v 1.32 2002/10/08 18:19:02 jhb Exp $
- * $DragonFly: src/sys/boot/i386/btx/btx/Attic/btx.S,v 1.6 2004/07/19 01:25:00 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/btx/btx/Attic/btx.S,v 1.7 2004/07/19 23:30:33 dillon Exp $
  */
 
 #include "../../bootasm.h"
@@ -81,6 +113,8 @@
 
 		/*
 		 * Code segment.
+		 *
+		 * BTX start.
 		 */
 		.globl start
 		.code16
@@ -115,7 +149,7 @@ init:		cli				# Disable interrupts
 		 * Initialize memory.
 		 */
 		mov $MEM_BTX_IDT,%di		# Memory to initialize
-		mov $(MEM_BTX_ORG-MEM_BTX_IDT)/2,%cx	# Words to zero
+		mov $(MEM_BTX_ZEND-MEM_BTX_IDT)/2,%cx	# Words to zero
 		push %di			# Save
 		rep				# Zero-fill
 		stosw				#  memory
@@ -217,18 +251,31 @@ init.8: 	xorl %ecx,%ecx			# Zero
 		 */
 		movb $SEL_TSS,%cl		# Set task
 		ltr %cx				#  register
+
+		/*
+		 * BTX user area base of VM, for converting physical stack
+		 * addresses to btx-client virtual stack addresses.
+		 */
+		movl $MEM_BTX_USR,%edx
+#if !defined(MEM_BTX_USR_STK)
 		/* 
 		 * XXX We should NOT use BDA_MEM here.  Use a fixed location
-		 * instead.
+		 * instead.  (%eax is a physical stack addr)
 		 */
-		movl $MEM_BTX_USR,%edx		# User base address
 		movzwl %ss:BDA_MEM,%eax 	# Get free memory
 		shll $0xa,%eax			# To bytes
+#else
+		/*
+		 * Use a fixed user stack instead of depending on BDA_MEM.
+		 * %eax is a physical * stack address.
+		 */
+		movl $MEM_BTX_USR_STK,%eax
+#endif
 		subl $USR_ARGSPACE,%eax		# Less arg space
-		subl %edx,%eax			# Less base
+		subl %edx,%eax			# Less base Phys->Virt
 		movb $SEL_UDATA,%cl		# User data selector
 		pushl %ecx			# Set SS
-		pushl %eax			# Set ESP
+		pushl %eax			# Set ESP (virtual address)
 		push $0x202			# Set flags (IF set)
 		push $SEL_UCODE			# Set CS
 		pushl btx_hdr+0xc		# Set EIP
@@ -236,7 +283,7 @@ init.8: 	xorl %ecx,%ecx			# Zero
 		pushl %ecx			# Set FS
 		pushl %ecx			# Set DS
 		pushl %ecx			# Set ES
-		pushl %edx			# Set EAX
+		pushl %edx			# Set EAX (phys base addr of VM)
 		movb $0x7,%cl			# Set remaining
 init.9:		push $0x0			#  general
 		loop init.9			#  registers
@@ -1127,6 +1174,21 @@ putchr.4:	movw %dx,(%ebx) 		# Update position
 
 		/*
 		 * Global descriptor table.
+		 *
+		 * 16: segment extent lsb
+		 * 24: segment base lsb
+		 *
+		 * 5:TYPE
+		 * 2:DPL
+		 * 1:PRESENT
+		 *
+		 * 4:  segment extent msb
+		 * 2:  unused
+		 * 1:  32 bit, else 16 bit
+		 * 1:  limit granularity byte/page units
+
+		 * 8:  segment base msb
+		 *
 		 */
 		.p2align 4
 gdt:		.word 0x0,0x0,0x0,0x0		# Null entry

@@ -1,11 +1,13 @@
 # $FreeBSD: src/sys/boot/i386/boot0/Makefile,v 1.17 2002/09/17 01:48:54 peter Exp $
-# $DragonFly: src/sys/boot/i386/boot0/Attic/Makefile,v 1.4 2004/07/18 23:39:59 dillon Exp $
+# $DragonFly: src/sys/boot/i386/boot0/Attic/Makefile,v 1.5 2004/07/19 23:30:31 dillon Exp $
 
 PROG=		boot0
 NOMAN=
 STRIP=
 BINDIR?=	/boot
 BINMODE=	444
+
+.PATH: ${.CURDIR}/..
 
 # The default set of flags compiled into boot0.  This enables update (writing
 # the modified boot0 back to disk after running so that the selection made is
@@ -18,18 +20,18 @@ BOOT_BOOT0_FLAGS?=	0xf
 # 0xb6 (182d) corresponds to 10 seconds.
 BOOT_BOOT0_TICKS?=	0xb6
 
-# The base address that we the boot0 code to to run it.  Don't change this
-# unless you are glutton for punishment.
-BOOT_BOOT0_ORG?=	0x600
-
-boot0: boot0.o
-	${LD} -N -e start -Ttext ${BOOT_BOOT0_ORG} -o boot0.out boot0.o
+# pull BOOT0_ORIGIN out of bootasm.h
+#
+#
+boot0: boot0.o bootasmdef.nx
+	@echo "boot0 origin set to `${.OBJDIR}/bootasmdef.nx BOOT0_ORIGIN`"
+	${LD} -N -e start -Ttext `${.OBJDIR}/bootasmdef.nx BOOT0_ORIGIN` -o boot0.out boot0.o
 	objcopy -S -O binary boot0.out ${.TARGET}
 
 boot0.o: boot0.S
 	${CC} -c -DFLAGS=${BOOT_BOOT0_FLAGS} -DTICKS=${BOOT_BOOT0_TICKS} \
 		${AFLAGS} ${.IMPSRC} -o ${.TARGET}
 
-CLEANFILES+= boot0.out boot0.o
+CLEANFILES+= boot0.out boot0.o bootasmdef.nx
 
 .include <bsd.prog.mk>

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/boot2/Makefile,v 1.47 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/pc32/boot2/Makefile,v 1.8 2004/07/19 01:24:58 dillon Exp $
+# $DragonFly: src/sys/boot/pc32/boot2/Makefile,v 1.9 2004/07/19 23:30:32 dillon Exp $
 
 PROG=		boot2
 NOMAN=
@@ -11,6 +11,10 @@ CLEANFILES=	boot boot1 boot1.out boot1.o \
 		boot2.s sio.o
 
 NM?=		nm
+NXCFLAGS=
+NXLDFLAGS=
+
+.PATH: ${.CURDIR}/..
 
 # A value of 0x80 enables LBA support.
 B1FLAGS=	0x80
@@ -25,10 +29,12 @@ BTX=	${.OBJDIR}/../btx
 BTX=	${.CURDIR}/../btx
 .endif
 
-# WARNING!   These constants are also defined in bootasm.h
+# These origins are taken from bootasm.h.
 #
-REL1=	0x700
-ORG1=	0x7c00
+REL1 = `${.OBJDIR}/bootasmdef.nx BOOT1_ORIGIN`
+REL1D = `${.OBJDIR}/bootasmdef.nx -d BOOT1_ORIGIN`
+ORG1 = `${.OBJDIR}/bootasmdef.nx MEM_BIOS_LADDR`
+ORG1D = `${.OBJDIR}/bootasmdef.nx -d MEM_BIOS_LADDR`
 
 # WARNING!  The ORG2 calculation is the origin of boot2.bin relative to 
 # the start of the BTX *USER* address space, not the start of physical 
@@ -66,7 +72,7 @@ boot: boot1 boot2
 boot1: boot1.out
 	objcopy -S -O binary boot1.out ${.TARGET}
 
-boot1.out: boot1.o
+boot1.out: boot1.o bootasmdef.nx
 	${LD} ${LDFLAGS} -e start -Ttext ${ORG1} -o ${.TARGET} boot1.o
 
 boot1.o: boot1.S
@@ -79,12 +85,12 @@ boot2.o: boot2.c ${.CURDIR}/../../common/ufsread.c
 	rm -f boot2.s.tmp
 	${AS} ${AFLAGS} -o boot2.o boot2.s
 
-boot2.h: boot1.out
+boot2.h: boot1.out bootasmdef.nx
+	@echo "NOTE: boot2 using xread from boot1 at ${REL1}"
 	${NM} -t d ${.ALLSRC} | awk '/([0-9])+ T xread/ \
 	 	{ x = $$1 - ORG1; \
 		printf("#define XREADORG %#x\n", REL1 + x) }' \
-	 	ORG1=`printf "%d" ${ORG1}` \
-		REL1=`printf "%d" ${REL1}` > boot2.h
+	 	ORG1=${ORG1D} REL1=${REL1D} > boot2.h
 
 boot2: boot2.ldr boot2.bin ${BTX}/btx/btx
 	btxld -v -E ${ORG2} -f bin -b ${BTX}/btx/btx -l boot2.ldr \
@@ -130,4 +136,6 @@ machine:
 
 CLEANFILES+=	machine
 .endif
+
+CLEANFILES+=	bootasmdef.nx
 

@@ -1,4 +1,36 @@
 /*
+ * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * 
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ * 
  * Copyright (c) 1998 Robert Nordier
  * All rights reserved.
  *
@@ -13,7 +45,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/btx/btxldr/Makefile,v 1.17 2004/04/27 19:45:16 ru Exp $
- * $DragonFly: src/sys/boot/pc32/btx/btxldr/btxldr.S,v 1.2 2004/07/19 01:25:01 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/btx/btxldr/btxldr.S,v 1.3 2004/07/19 23:30:34 dillon Exp $
  */
 
 /*
@@ -50,6 +82,11 @@
 		.set SIZ_STUB,0x1a		# Size of stub
 /*
  * We expect to be loaded by boot2 at the origin defined in ./Makefile.
+ * This is typically 0x200000.
+ *
+ * I *THINK* (not sure) that execution begins with us in 'virtual mode',
+ * meaning everything is offset by MEM_BTX_USR.  We will load a gdt to
+ * set the base offsets back to 0.
  */
 		.globl start
 /*
@@ -58,18 +95,29 @@
 start:		cld				# String ops inc
 		movl $m_logo,%esi		# Identify
 		call putstr			#  ourselves
+#if !defined(MEM_BTX_USR_STK)
 		movzwl BDA_MEM,%eax		# Get base memory
 		shll $0xa,%eax			# Convert to bytes
+#else
+		movl $MEM_BTX_USR_STK,%eax
+#endif
 		movl %eax,%ebp			# Base of user stack
 #ifdef BTXLDR_VERBOSE
 		movl $m_mem,%esi		# Display
 		call hexout			#  amount of
 		call putstr			#  base memory
 #endif
-		lgdt gdtdesc			# Load new GDT
-/*
- * Relocate caller's arguments.
- */
+
+		/*
+		 * Load a new GDT.  XXX what does this do to running code
+		 * segments?  What if an interrupt occurs?  What if the 
+		 * segment registers are reloaded?
+		 */
+		lgdt gdtdesc
+
+		/*
+		 * Relocate caller's arguments.
+		 */
 #ifdef BTXLDR_VERBOSE
 		movl $m_esp,%esi		# Display
 		movl %esp,%eax			#  caller
@@ -142,19 +190,33 @@ start_null_bi:	movl $0x18,%ecx 		# Allocate space
 		addb $'0',%al			# Display
 		call putchr			#  units
 		call putstr			# End message
-		movl %ebx,%esi			# BTX image
-		movzwl 0x8(%ebx),%edi		# Compute
-		orl $PAG_SIZ/PAG_ENT-1,%edi	#  the
-		incl %edi			#  BTX
-		shll $0x2,%edi			#  load
-		addl $MEM_BTX_TBL,%edi		#  address
+
+		# Relocate the BTX image from wherever it was loaded (%ebx),
+		# which is typically offset 0x1000 in the load data, to
+		# MEM_BTX_ORG (typically 0x9000).
+		#
+		# MEM_BTX_TBL + ((mappages | 0x3ff) + 1) * 4
+		# mappages is typically 0x0ffn so we get 0x1000*4 = 0x4000
+		# MEM_BTX_TBL is traditionally mapped at 0x5000 so the
+		# whole calculation translated to MEM_BTX_ORG (0x9000).
+#if 0
+		/* XXX what is all of this junk? */
+		movzwl 0x8(%ebx),%edi		# Compute the BTX load address
+		orl $PAG_SIZ/PAG_ENT-1,%edi	# (by skipping the page table)
+		incl %edi
+		shll $0x2,%edi
+		addl $MEM_BTX_TBL,%edi
+#else
+		movl $MEM_BTX_ORG,%edi
+#endif
+		movl %ebx,%esi			# %esi = BTX image source
 		pushl %edi			# Save load address
-		movzwl 0xa(%ebx),%ecx		# Image size
+		movzwl 0xa(%ebx),%ecx		# Image size (bytes)
 #ifdef BTXLDR_VERBOSE
 		pushl %ecx			# Save image size
 #endif
-		rep				# Relocate
-		movsb				#  BTX
+		rep				# Relocate BTX
+		movsb
 		movl %esi,%ebx			# Keep place
 #ifdef BTXLDR_VERBOSE
 		movl $m_rel_btx,%esi		# Restore
@@ -167,7 +229,12 @@ start_null_bi:	movl $0x18,%ecx 		# Allocate space
 		call hexout			#  relocation
 		call putstr			#  message
 #endif
-		addl $PAG_SIZ,%ebp		# Display
+		/*
+		 * ADJUST EBP FOR USER BASE ADDRESS
+		 *
+		 * XXX why not just move MEM_BTX_USR into %ebp ?
+		 */
+		addl $MEM_BTX_USR-MEM_BTX_ORG,%ebp
 #ifdef BTXLDR_VERBOSE
 		movl $m_base,%esi		#  the
 		movl %ebp,%eax			#  user

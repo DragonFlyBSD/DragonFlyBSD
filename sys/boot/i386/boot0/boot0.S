@@ -1,4 +1,36 @@
 /*
+ * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * 
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ * 
  * Copyright (c) 1998 Robert Nordier
  * All rights reserved.
  *
@@ -14,7 +46,7 @@
  *
  *
  * $FreeBSD: src/sys/boot/i386/boot0/boot0.s,v 1.26 2003/06/01 20:41:04 obrien Exp $
- * $DragonFly: src/sys/boot/i386/boot0/Attic/boot0.S,v 1.5 2004/07/18 23:39:59 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/boot0/Attic/boot0.S,v 1.6 2004/07/19 23:30:31 dillon Exp $
  */
 
 #include "../bootasm.h"
@@ -38,6 +70,11 @@
 		 * Addresses in the sector of embedded data values.  Accessed
 		 * with negative offsets from the end of the relocated sector
 		 * (%ebp).
+		 *
+		 * Note that %ebp is the base of our variable space and 
+		 * points at the end of the sector (base + 0x200).  The
+		 * fake partition and menu option is thus stored in the
+		 * memory just after the boot0 sector.
 		 */
 		.set _NXTDRV,-0x48		# Next drive
 		.set _OPT,-0x47 		# Default option
@@ -60,7 +97,7 @@ start:		cld				# String ops inc
 		movw %ax,%es			# Address
 		movw %ax,%ds			#  data
 		movw %ax,%ss			# Set up
-		movw $LOAD,%sp			#  stack
+		movw $MEM_BIOS_LADDR,%sp	#  stack
 	
 		/*
 		 * Copy this code to the address it was linked for
@@ -82,10 +119,13 @@ start:		cld				# String ops inc
 		stosw				#  them
 
 		/*
-		 * Relocate to the new copy of the code.
+		 * Relocate to the new copy of the code.  Do not make
+		 * assumptions with regard to a relative-PC near jump
+		 * capability.
 		 */
 		incb -0xe(%di)			# Sector number
-		jmp main-LOAD+BOOT0_ORIGIN	# To relocated code
+		pushw $main			# Jump to relocated code
+		retw
 
 		/*
 		 * Check what flags were loaded with us, specifically, Use a
@@ -166,7 +206,7 @@ main.5: 	incw %dx			# Next item
 		 */
 		popw %ax			# Drive number
 		subb $0x80-0x1,%al		# Does next
-		cmpb NHRDRV,%al			#  drive exist? (from BIOS?)
+		cmpb BDA_NHRDRV,%al		#  drive exist? (from BIOS?)
 		jb main.6			# Yes
 
 		/*
@@ -276,7 +316,7 @@ main.12:	cbtw				# Option
 		 * for rewriting to the disk.
 		 */
 		movb %al,_OPT(%bp)		# Save option
-		movw $FAKE,%si			# Partition for write
+		lea _FAKE(%bp),%si		# Partition for write
 		movb (%si),%dl			# Drive number
 		movw %si,%bx			# Partition for read
 		cmpb $0x4,%al			# F5 pressed?
@@ -308,12 +348,12 @@ main.14:	popw %si			# Restore
 		subb $'0',%dl			#  number
 
 		/* 
-		 * load  selected bootsector to the LOAD location in RAM.
-		 * If it fails to read or isn't marked bootable, treat it
-		 * as a bad selection.
+		 * load  selected bootsector to the MEM_BIOS_LADDR location
+		 * in RAM.  If it fails to read or isn't marked bootable,
+		 * treat it as a bad selection.
 		 * XXX what does %si carry?
 		 */
-main.15:	movw $LOAD,%bx			# Address for read
+main.15:	movw $MEM_BIOS_LADDR,%bx	# Address for read
 		movb $0x2,%ah			# Read sector
 		callw intx13			#  from disk
 		jc main.10			# If error

@@ -24,8 +24,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/amd64_tramp.S,v 1.2 2003/05/17 00:30:51 peter Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/amd64_tramp.S,v 1.2 2003/11/22 19:30:55 asmodai Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/amd64_tramp.S,v 1.3 2004/07/19 23:30:37 dillon Exp $
  */
+
+#include "../bootasm.h"
 
 /*
  * Quick and dirty trampoline to get into 64 bit (long) mode and running
@@ -38,8 +40,7 @@
 #define CR0_PG		0x80000000
 
 /* GRRR. Deal with BTX that links us for a non-zero location */
-#define VPBASE	0xa000
-#define VTOP(x)	((x) + VPBASE)
+#define VTOP(x)	((x) + MEM_BTX_USR)
 
 	.data
 

@@ -13,11 +13,11 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/btx/lib/btxcsu.s,v 1.3 1999/08/28 00:40:07 peter Exp $
- * $DragonFly: src/sys/boot/i386/btx/lib/Attic/btxcsu.S,v 1.4 2004/07/19 01:25:02 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/btx/lib/Attic/btxcsu.S,v 1.5 2004/07/19 23:30:35 dillon Exp $
  */
 
 /*
- * BTX C startup code (ELF).
+ * BTX C startup code (ELF).  Executed from ../btx/btx.S
  */
 
 #include "../../bootasm.h"
@@ -31,6 +31,7 @@
 		 * Client entry point.
 		 */
 _start: 	movl %eax,__base		# Set base address
+						# for Virt->Phys conversions
 		movl %esp,%eax			# Get base of arguments
 		addl $USR_ARGSPACE-USR_ARGOFFSET,%eax
 		movl %eax,__args

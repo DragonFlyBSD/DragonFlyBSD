@@ -1,11 +1,20 @@
 # $FreeBSD: src/sys/boot/i386/loader/Makefile,v 1.66 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/i386/loader/Attic/Makefile,v 1.5 2004/01/28 19:24:14 dillon Exp $
+# $DragonFly: src/sys/boot/i386/loader/Attic/Makefile,v 1.6 2004/07/19 23:30:38 dillon Exp $
+#
 
 PROG=		loader
 STRIP=
 NEWVERSWHAT=	"bootstrap loader" i386
 BINDIR?=	/boot
 INSTALLFLAGS=	-b
+
+# Notes: the 'loader' client is brought in with a virtual base of (typically)
+# 0xa000 and a code offset of 0x0.  The btxldr is loaded at 0x200000 (?).  
+#
+# MEM_BTX_USR_ARG is not used in the boot2->loader stage, only in the
+# boot1->boot2 stage (XXX what about the use in cdboot and pxeboot?)
+#
+ORG= 0x0
 
 # architecture-specific loader code
 SRCS=		main.c conf.c
@@ -49,7 +58,7 @@ CFLAGS+=	-I${.CURDIR}/../../.. -I.
 CLEANFILES+=	vers.c vers.o ${PROG}.list ${PROG}.bin ${PROG}.sym ${PROG}.help
 
 CFLAGS+=	-Wall
-LDFLAGS=	-nostdlib -static -Ttext 0x0
+LDFLAGS=	-nostdlib -static -Ttext ${ORG}
 
 # i386 standalone support library
 LIBI386=	${.OBJDIR}/../libi386/libi386.a

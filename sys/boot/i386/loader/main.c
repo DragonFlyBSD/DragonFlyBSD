@@ -1,4 +1,36 @@
-/*-
+/*
+ * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * 
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ * 
  * Copyright (c) 1998 Michael Smith <msmith@freebsd.org>
  * All rights reserved.
  *
@@ -24,7 +56,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/loader/main.c,v 1.28 2003/08/25 23:28:32 obrien Exp $
- * $DragonFly: src/sys/boot/i386/loader/Attic/main.c,v 1.6 2004/06/26 22:37:11 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/loader/Attic/main.c,v 1.7 2004/07/19 23:30:38 dillon Exp $
  */
 
 /*
@@ -72,6 +104,7 @@ extern	char bootprog_name[], bootprog_rev[], bootprog_date[], bootprog_maker[];
 /* XXX debugging */
 extern char end[];
 
+#define COMCONSOLE_DEBUG
 #ifdef COMCONSOLE_DEBUG
 
 static void
@@ -98,10 +131,12 @@ WDEBUG(char c)
 
 #endif
 
+static void nop(void) { }
 int
 main(void)
 {
-    int			i;
+    char *memend;
+    int i;
 
     WDEBUG_INIT();
     WDEBUG('X');
@@ -119,15 +154,28 @@ main(void)
 
     /* 
      * Initialize the heap as early as possible.  Once this is done, 
-     * malloc() is usable.
+     * malloc() is usable. 
+     *
+     * Don't include our stack in the heap.  If the stack is in low
+     * user memory use {end,bios_basemem}.  If the stack is in high
+     * user memory but not extended memory then don't let the heap
+     * overlap the stack.  If the stack is in extended memory limit
+     * the heap to bios_basemem.
+     *
+     * Be sure to use the virtual bios_basemem address rather then
+     * the physical bios_basemem address or we may overwrite BIOS 
+     * data.
      */
     bios_getmem();
-#if 0	/* FUTURE */
-    if (bios_basemem > 0x9f000)
-	bios_basemem = 0x9f000;
-#endif
-
-    setheap((void *)end, (void *)bios_basemem);
+    memend = (char *)&memend - 0x8000;	/* space for stack */
+    memend = (char *)((uintptr_t)memend & ~(uintptr_t)(0x1000 - 1));
+    if (memend < (char *)end) {
+	setheap((void *)end, PTOV(bios_basemem));
+    } else {
+	if (memend > (char *)PTOV(bios_basemem))
+	    memend = (char *)PTOV(bios_basemem);
+	setheap((void *)end, memend);
+    }
 
     /* 
      * XXX Chicken-and-egg problem; we want to have console output early, 
