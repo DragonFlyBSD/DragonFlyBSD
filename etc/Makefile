@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.7 2003/11/19 01:05:32 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.8 2004/01/09 20:25:13 drhodus Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -76,7 +76,6 @@ upgrade_etc:
 	    ${DEFAULTS} ${DESTDIR}/etc/defaults
 	cd ${.CURDIR}/periodic; ${MAKE} install
 	cd ${.CURDIR}/rc.d; ${MAKE} install 
-	cd ${.CURDIR}/../gnu/usr.bin/send-pr; ${MAKE} etc-gnats-freefall
 	cd ${.CURDIR}/../share/termcap; ${MAKE} etc-termcap
 	cd ${.CURDIR}/../usr.sbin/rmt; ${MAKE} etc-rmt
 .if !defined(NO_I4B)
@@ -111,7 +110,6 @@ distribution:
 	    ${DEFAULTS} ${DESTDIR}/etc/defaults
 	cd ${.CURDIR}/periodic; ${MAKE} install
 	cd ${.CURDIR}/rc.d; ${MAKE} install 
-	cd ${.CURDIR}/../gnu/usr.bin/send-pr; ${MAKE} etc-gnats-freefall
 	cd ${.CURDIR}/../share/termcap; ${MAKE} etc-termcap
 	cd ${.CURDIR}/../usr.sbin/rmt; ${MAKE} etc-rmt
 .if !defined(NO_I4B)
