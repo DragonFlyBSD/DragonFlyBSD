@@ -1,6 +1,6 @@
 /* io.c			 Larn is copyrighted 1986 by Noah Morgan.
  * $FreeBSD: src/games/larn/io.c,v 1.7 1999/11/16 02:57:22 billf Exp $
- * $DragonFly: src/games/larn/io.c,v 1.3 2004/01/24 21:00:14 joerg Exp $
+ * $DragonFly: src/games/larn/io.c,v 1.4 2004/06/21 02:28:34 dillon Exp $
  *
  *	Below are the functions in this file:
  *
@@ -25,7 +25,7 @@
  *	FILE INPUT ROUTINES
  *
  *	long lgetc()				read one character from input buffer
- *	long lrint()				read one integer from input buffer
+ *	long lrint_x()				read one integer from input buffer
  *	lrfill(address,number)		put input bytes into a buffer
  *	char *lgetw()				get a whitespace ended word from input
  *	char *lgetl()				get a \n or EOF ended line from input
@@ -343,7 +343,7 @@ long lgetc()
     }
 
 /*
- *	long lrint()			Read one integer from input buffer
+ *	long lrint_x()			Read one integer from input buffer
  *
  *		+---------+---------+---------+---------+
  *		|	high  |			|		  |	  low	|
@@ -355,7 +355,7 @@ long lgetc()
  *	The save order is low order first, to high order (4 bytes total)
  *	Returns the int read
  */
-long lrint()
+long lrint_x()
 	{
 	unsigned long i;
 	i  = 255 & lgetc();				i |= (255 & lgetc()) << 8;

@@ -1,4 +1,5 @@
 /*	header.h		Larn is copyrighted 1986 by Noah Morgan. */
+/* $DragonFly: src/games/larn/header.h,v 1.2 2004/06/21 02:28:34 dillon Exp $ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -359,7 +360,7 @@ extern struct _itm itm[];
 
 char *fortune(),*lgetw(),*lgetl();
 char *tmcapcnv();
-long paytaxes(),lgetc(),lrint();
+long paytaxes(),lgetc(),lrint_x();
 unsigned long readnum();
 
 	/* macro to create scroll #'s with probability of occurrence */

@@ -1,6 +1,6 @@
 /*	diag.c		Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/diag.c,v 1.5 1999/11/16 02:57:21 billf Exp $ */
-/* $DragonFly: src/games/larn/diag.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/larn/diag.c,v 1.3 2004/06/21 02:28:34 dillon Exp $ */
 #include <sys/types.h>
 #include <sys/times.h>
 #include <sys/stat.h>
@@ -210,7 +210,7 @@ restoregame(fname)
 		if (beenhere[k])
 			lrfill((char*)&cell[k*MAXX*MAXY],sizeof(struct cel)*MAXY*MAXX);
 
-	lrfill((char*)&c[0],100*sizeof(long));	gtime = lrint();
+	lrfill((char*)&c[0],100*sizeof(long));	gtime = lrint_x();
 	level = c[CAVELEVEL] = lgetc();
 	playerx = lgetc();		playery = lgetc();
 	lrfill((char*)iven,26);		lrfill((char*)ivenarg,26*sizeof(short));
@@ -241,7 +241,7 @@ restoregame(fname)
 		}
 
 	time(&zzz);
-	initialtime = zzz-lrint();
+	initialtime = zzz-lrint_x();
 	fstat(fd,&filetimes);	/*	get the creation and modification time of file	*/
 	lrfill((char*)&zzz,sizeof(long));	zzz += 6;
 	if (filetimes.st_ctime > zzz) fsorry();	/*	file create time	*/
@@ -249,7 +249,7 @@ restoregame(fname)
 	if (c[HP]<0) { died(284); return; }	/* died a post mortem death */
 
 	oldx = oldy = 0;
-	i = lrint();  /* inode # */
+	i = lrint_x();  /* inode # */
 	if (i && (filetimes.st_ino!=i)) fsorry();
 	lrclose();
 	if (strcmp(fname,ckpfile) == 0)
