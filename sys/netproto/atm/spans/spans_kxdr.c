@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_kxdr.c,v 1.3 1999/08/28 00:48:50 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_kxdr.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_kxdr.c,v 1.3 2003/07/26 20:36:58 rob Exp $
  */
 
 /*
@@ -157,7 +157,7 @@ xdr_u_int(xdrs, up)
  */
 bool_t
 xdr_long(xdrs, lp)
-	register XDR *xdrs;
+	XDR *xdrs;
 	long *lp;
 {
 
@@ -179,7 +179,7 @@ xdr_long(xdrs, lp)
  */
 bool_t
 xdr_u_long(xdrs, ulp)
-	register XDR *xdrs;
+	XDR *xdrs;
 	u_long *ulp;
 {
 
@@ -197,7 +197,7 @@ xdr_u_long(xdrs, ulp)
  */
 bool_t
 xdr_short(xdrs, sp)
-	register XDR *xdrs;
+	XDR *xdrs;
 	short *sp;
 {
 	long l;
@@ -226,7 +226,7 @@ xdr_short(xdrs, sp)
  */
 bool_t
 xdr_u_short(xdrs, usp)
-	register XDR *xdrs;
+	XDR *xdrs;
 	u_short *usp;
 {
 	u_long l;
@@ -292,7 +292,7 @@ xdr_u_char(xdrs, cp)
  */
 bool_t
 xdr_bool(xdrs, bp)
-	register XDR *xdrs;
+	XDR *xdrs;
 	bool_t *bp;
 {
 	long lb;
@@ -350,11 +350,11 @@ xdr_enum(xdrs, ep)
  */
 bool_t
 xdr_opaque(xdrs, cp, cnt)
-	register XDR *xdrs;
+	XDR *xdrs;
 	caddr_t cp;
-	register u_int cnt;
+	u_int cnt;
 {
-	register u_int rndup;
+	u_int rndup;
 	static char crud[BYTES_PER_XDR_UNIT];
 
 	/*
@@ -442,7 +442,7 @@ static struct	xdr_ops xdrmbuf_ops = {
  */
 void
 xdrmbuf_init(xdrs, m, op)
-	register XDR *xdrs;
+	XDR *xdrs;
 	KBuffer	*m;
 	enum xdr_op op;
 {
@@ -456,7 +456,7 @@ xdrmbuf_init(xdrs, m, op)
 
 static bool_t
 xdrmbuf_getlong(xdrs, lp)
-	register XDR *xdrs;
+	XDR *xdrs;
 	long *lp;
 {
 
@@ -464,7 +464,7 @@ xdrmbuf_getlong(xdrs, lp)
 	 * See if long is contained in this buffer
 	 */
 	if ((xdrs->x_handy -= sizeof(long)) < 0) {
-		register KBuffer	*m;
+		KBuffer	*m;
 
 		/*
 		 * We (currently) don't allow a long to span a buffer
@@ -512,7 +512,7 @@ xdrmbuf_getlong(xdrs, lp)
 
 static bool_t
 xdrmbuf_putlong(xdrs, lp)
-	register XDR *xdrs;
+	XDR *xdrs;
 	long *lp;
 {
 
@@ -520,7 +520,7 @@ xdrmbuf_putlong(xdrs, lp)
 	 * See if long will fit in this buffer
 	 */
 	if ((xdrs->x_handy -= sizeof(long)) < 0) {
-		register KBuffer	*m;
+		KBuffer	*m;
 
 		/*
 		 * We (currently) don't allow a long to span a buffer
@@ -568,16 +568,16 @@ xdrmbuf_putlong(xdrs, lp)
 
 static bool_t
 xdrmbuf_getbytes(xdrs, addr, len)
-	register XDR *xdrs;
+	XDR *xdrs;
 	caddr_t addr;
-	register u_int len;
+	u_int len;
 {
 
 	while (len > 0) {
 		u_int	copy;
 
 		if (xdrs->x_handy <= 0) {
-			register KBuffer	*m;
+			KBuffer	*m;
 
 			/*
 			 * No data in current buffer, move to a chained buffer
@@ -619,16 +619,16 @@ xdrmbuf_getbytes(xdrs, addr, len)
 
 static bool_t
 xdrmbuf_putbytes(xdrs, addr, len)
-	register XDR *xdrs;
+	XDR *xdrs;
 	caddr_t addr;
-	register u_int len;
+	u_int len;
 {
 
 	while (len > 0) {
 		u_int	copy;
 
 		if (xdrs->x_handy <= 0) {
-			register KBuffer	*m;
+			KBuffer	*m;
 
 			/*
 			 * No data in current buffer, move to a chained buffer
@@ -670,7 +670,7 @@ xdrmbuf_putbytes(xdrs, addr, len)
 
 static u_int
 xdrmbuf_getpos(xdrs)
-	register XDR *xdrs;
+	XDR *xdrs;
 {
 
 	return ((u_int)xdrs->x_private - (u_int)xdrs->x_base);
