@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.12 2004/05/09 11:51:10 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.13 2004/05/11 00:06:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -262,7 +262,6 @@ restart:
 
 	if (range != NULL) {
 		struct lockf_range *brange;
-		int error;
 
 		if ((flags & F_WAIT) == 0) {
 			error = EAGAIN;
