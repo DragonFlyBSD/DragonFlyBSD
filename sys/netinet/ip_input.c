@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.24 2004/05/03 15:18:25 hmp Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.25 2004/05/04 11:53:26 hmp Exp $
  */
 
 #define	_IP_VHL
@@ -1827,7 +1827,7 @@ ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
 
 #ifdef DIAGNOSTIC
 	if (ipprintfs)
-		printf("forward: src %lx dst %lx ttl %x\n",
+		printf("forward: src %x dst %x ttl %x\n",
 		       ip->ip_src.s_addr, pkt_dst.s_addr, ip->ip_ttl);
 #endif
 
@@ -1926,7 +1926,7 @@ ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
 			code = ICMP_REDIRECT_HOST;
 #ifdef DIAGNOSTIC
 			if (ipprintfs)
-				printf("redirect (%d) to %lx\n", code, dest);
+				printf("redirect (%d) to %x\n", code, dest);
 #endif
 		}
 	}
