@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pci_cfgreg.c,v 1.1.2.7 2001/11/28 05:47:03 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.c,v 1.5 2004/01/15 08:05:41 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.c,v 1.6 2004/02/07 15:56:58 joerg Exp $
  *
  */
 
@@ -36,6 +36,7 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/malloc.h>
+#include <sys/sysctl.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
 #include <machine/md_var.h>
@@ -54,6 +55,11 @@
 	if (bootverbose)						\
 		printf a ;						\
 } while(0)
+
+static int pci_disable_bios_route = 0;
+SYSCTL_INT(_hw, OID_AUTO, pci_disable_bios_route, CTLFLAG_RD,
+	&pci_disable_bios_route, 0, "disable interrupt routing via PCI-BIOS");
+TUNABLE_INT("hw.pci_disable_bios_route", &pci_disable_bios_route);
 
 static int cfgmech;
 static int devmax;
@@ -324,6 +330,8 @@ pci_cfgintr(int bus, int device, int pin, int oldirq)
 		if (irq == PCI_INVALID_IRQ)
 			break;
 
+		if (pci_disable_bios_route != 0)
+			break;
 		/*
 		 * Ask the BIOS to route the interrupt. If we picked an
 		 * interrupt that failed, we should really try other
