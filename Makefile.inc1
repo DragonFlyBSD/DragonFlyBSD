@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.14 2004/01/24 22:43:09 joerg Exp $
+# $DragonFly: src/Makefile.inc1,v 1.15 2004/01/28 16:41:16 joerg Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -223,7 +223,7 @@ USRDIRS=	usr/bin usr/bin/gcc2 usr/bin/gcc3 \
 		usr/libdata/gcc2 usr/libdata/gcc2/ldscripts \
 		usr/libdata/gcc3 usr/libdata/gcc3/ldscripts \
 		usr/libexec/gcc2 usr/libexec/gcc3 \
-		usr/libexec/gcc2/${OBJFORMAT} usr/libexec/gcc3/${OBJFORMAT} \
+		usr/libexec/binutils212/${OBJFORMAT} \
 		usr/sbin usr/share/misc \
 		usr/share/dict \
 		usr/share/groff_font/devX100 \
@@ -244,7 +244,7 @@ USRDIRS=	usr/bin usr/bin/gcc2 usr/bin/gcc3 \
 
 # XXX remove in favor of the BSD.include.dist mtree that we already have.
 #
-INCDIRS=	arpa dev g++/std isc libmilter objc openssl \
+INCDIRS=	arpa dev c++/2.95 isc libmilter objc openssl \
 		protocols readline rpc rpcsvc security
 
 #

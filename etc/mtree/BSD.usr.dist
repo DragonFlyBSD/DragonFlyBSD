@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.6 2004/01/16 07:45:18 dillon Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.7 2004/01/28 16:41:16 joerg Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -157,15 +157,15 @@
         ..
     ..
     libexec
-	gcc2
+        binutils212
 	    aout
 	    ..
 	    elf
 	    ..
 	..
+	gcc2
+	..
 	gcc3
-	    elf
-	    ..
 	..
         lpr
             ru

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.5 2004/01/23 22:30:25 joerg Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.6 2004/01/28 16:41:18 joerg Exp $
  */
 
 #include <err.h>
@@ -109,7 +109,7 @@ main(int argc, char **argv)
 				break;
 			case BINUTILS:
 				env_name = "BINUTILSVER";
-				env_default = "gcc2";
+				env_default = "binutils212";
 				base_path = "/usr/libexec";
 				use_objformat = 1;
 				break;

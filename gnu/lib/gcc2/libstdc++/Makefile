@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/lib/libstdc++/Makefile,v 1.24.2.1 2001/11/21 18:55:27 obrien Exp $
-# $DragonFly: src/gnu/lib/gcc2/libstdc++/Attic/Makefile,v 1.1 2004/01/16 07:45:20 dillon Exp $
+# $DragonFly: src/gnu/lib/gcc2/libstdc++/Attic/Makefile,v 1.2 2004/01/28 16:41:17 joerg Exp $
 
 SRCDIR=	${.CURDIR}/../../../../contrib/libstdc++
 
@@ -76,10 +76,10 @@ beforeinstall:
 	    ${HDRS:S;^;${SRCDIR}/;} \
 	    ${IHDRS:S;^;${SRCDIR}/../libio/;} \
 	    ${STLHDRS:S;^;${SRCDIR}/stl/;} \
-	    ${DESTDIR}/usr/include/g++
+	    ${DESTDIR}/usr/include/c++/2.95
 	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${STDHDRS:S;^;${SRCDIR}/std/;} \
-	    ${DESTDIR}/usr/include/g++/std
+	    ${DESTDIR}/usr/include/c++/2.95/std
 
 CLEANFILES+=	dummy.h dummy.c dummy.C
 

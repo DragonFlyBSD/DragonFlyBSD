@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc1plus/Makefile,v 1.22.2.1 2002/06/20 23:13:31 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc/cc1plus/Attic/Makefile,v 1.3 2004/01/16 07:45:21 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc/cc1plus/Attic/Makefile,v 1.4 2004/01/28 16:41:17 joerg Exp $
 
 .include "../Makefile.inc"
 
@@ -30,6 +30,6 @@ CPPHDRS=	exception new new.h typeinfo
 beforeinstall:
 	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${CPPHDRS:S;^;${GCCDIR}/cp/inc/;} \
-	    ${DESTDIR}/usr/include/g++
+	    ${DESTDIR}/usr/include/c++/2.95
 
 .include <bsd.prog.mk>

@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/gnu/lib/libg++/Makefile,v 1.22 1999/08/27 23:32:45 peter Exp $
-# $DragonFly: src/gnu/lib/gcc2/libg++/Attic/Makefile,v 1.1 2004/01/16 07:45:19 dillon Exp $
+# $DragonFly: src/gnu/lib/gcc2/libg++/Attic/Makefile,v 1.2 2004/01/28 16:41:17 joerg Exp $
 #
 
 GPPDIR=	${.CURDIR}/../../../../contrib/libg++
@@ -13,7 +13,7 @@ LIB=		g++
 SHLIB_MAJOR=	4
 SHLIB_MINOR=	0
 
-CFLAGS+=	-I${GPPDIR}/include -I${DESTDIR}/usr/include/g++
+CFLAGS+=	-I${GPPDIR}/include -I${DESTDIR}/usr/include/c++/2.95
 CXXFLAGS+=	-I${GPPDIR}/include -I${GPPDIR}/libio -I${GPPDIR}/libstdc++
 
 # Strictly speaking, libg++ should depend on libstdc++, but 1) It doesn't
@@ -52,6 +52,6 @@ beforeinstall:
 	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
 		${HDRS:S;^;${GPPDIR}/libg++/src/;} \
 		${GPPDIR}/librx/rx.h \
-		${DESTDIR}/usr/include/g++
+		${DESTDIR}/usr/include/c++/2.95
 
 .include <bsd.lib.mk>
