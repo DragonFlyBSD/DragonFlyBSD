@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.6 2004/03/23 22:19:07 hsu Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.7 2004/07/19 09:23:23 joerg Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -178,7 +178,8 @@ static void	ng_fec_init(void *arg);
 static void	ng_fec_stop(struct ifnet *ifp);
 static int	ng_fec_ifmedia_upd(struct ifnet *ifp);
 static void	ng_fec_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr);
-static int	ng_fec_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data);
+static int	ng_fec_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data,
+			     struct ucred *);
 static int	ng_fec_output(struct ifnet *ifp, struct mbuf *m0,
 			struct sockaddr *dst, struct rtentry *rt0);
 static void	ng_fec_tick(void *arg);
@@ -626,7 +627,7 @@ static void ng_fec_ifmedia_sts(struct ifnet *ifp,
  * Process an ioctl for the virtual interface
  */
 static int
-ng_fec_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
+ng_fec_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct ifreq *const ifr = (struct ifreq *) data;
 	int s, error = 0;
