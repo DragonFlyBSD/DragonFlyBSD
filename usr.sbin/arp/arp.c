@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1984, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: arp.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.sbin/arp/arp.c,v 1.22.2.12 2003/04/16 10:02:37 ru Exp $
- * $DragonFly: src/usr.sbin/arp/arp.c,v 1.4 2004/06/19 20:38:22 joerg Exp $
+ * $DragonFly: src/usr.sbin/arp/arp.c,v 1.5 2004/11/02 23:49:35 dillon Exp $
  */
 
 /*
@@ -429,9 +429,20 @@ delete:
 		printf("cannot locate %s\n", host);
 		return(1);
 	}
-	if (rtmsg(RTM_DELETE) == 0) {
-		printf("%s (%s) deleted\n", host, inet_ntoa(addr->sin_addr));
-		return(0);
+	if (aflag && (rtm->rtm_flags & RTF_STATIC)) {
+		sdl->sdl_alen = 0;
+		sdl->sdl_slen = 0;
+		if (rtmsg(RTM_CHANGE) == 0) {
+			printf("%s (%s) cleared\n", 
+				host, inet_ntoa(addr->sin_addr));
+			return(0);
+		}
+	} else {
+		if (rtmsg(RTM_DELETE) == 0) {
+			printf("%s (%s) deleted\n", 
+				host, inet_ntoa(addr->sin_addr));
+			return(0);
+		}
 	}
 	return(1);
 }
@@ -597,7 +608,7 @@ rtmsg(int cmd)
 	int l;
 
 	errno = 0;
-	if (cmd == RTM_DELETE)
+	if (cmd == RTM_DELETE || cmd == RTM_CHANGE)
 		goto doit;
 	bzero((char *)&m_rtmsg, sizeof(m_rtmsg));
 	rtm->rtm_flags = flags;
@@ -638,7 +649,7 @@ doit:
 	rtm->rtm_seq = ++seq;
 	rtm->rtm_type = cmd;
 	if ((rlen = write(s, (char *)&m_rtmsg, l)) < 0) {
-		if (errno != ESRCH || cmd != RTM_DELETE) {
+		if (errno != ESRCH || (cmd != RTM_DELETE && cmd != RTM_CHANGE)) {
 			warn("writing to routing socket");
 			return(-1);
 		}

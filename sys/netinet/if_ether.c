@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.15 2004/09/16 23:14:29 joerg Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.16 2004/11/02 23:49:30 dillon Exp $
  */
 
 /*
@@ -466,7 +466,7 @@ arpresolve(ifp, rt, m, dst, desten, rt0)
 	if (la->la_hold)
 		m_freem(la->la_hold);
 	la->la_hold = m;
-	if (rt->rt_expire) {
+	if (rt->rt_expire || ((rt->rt_flags & RTF_STATIC) && !sdl->sdl_alen)) {
 		rt->rt_flags &= ~RTF_REJECT;
 		if (la->la_asked == 0 || rt->rt_expire != time_second) {
 			rt->rt_expire = time_second;
@@ -838,7 +838,12 @@ reply:
 #endif
 
 /*
- * Free an arp entry.
+ * Free an arp entry.  If the arp entry is actively referenced or represents
+ * a static entry we only clear it back to an unresolved state, otherwise
+ * we destroy the entry entirely.
+ *
+ * Note that static entries are created when route add ... -interface is used
+ * to create an interface route to a (direct) destination.
  */
 static void
 arptfree(la)
@@ -846,10 +851,11 @@ arptfree(la)
 {
 	struct rtentry *rt = la->la_rt;
 	struct sockaddr_dl *sdl;
-	if (rt == 0)
+	if (rt == NULL)
 		panic("arptfree");
-	if (rt->rt_refcnt > 0 && (sdl = SDL(rt->rt_gateway)) &&
-	    sdl->sdl_family == AF_LINK) {
+	sdl = SDL(rt->rt_gateway);
+	if ((rt->rt_refcnt > 0 && sdl && sdl->sdl_family == AF_LINK) || 
+	    (rt->rt_flags & RTF_STATIC)) {
 		sdl->sdl_alen = 0;
 		la->la_preempt = la->la_asked = 0;
 		rt->rt_flags &= ~RTF_REJECT;

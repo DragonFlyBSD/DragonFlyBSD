@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/route/route.c,v 1.40.2.11 2003/02/27 23:10:10 ru Exp $
- * $DragonFly: src/sbin/route/route.c,v 1.7 2004/03/23 18:25:51 dillon Exp $
+ * $DragonFly: src/sbin/route/route.c,v 1.8 2004/11/02 23:49:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -940,8 +940,15 @@ getaddr(int which, char *s, struct hostent **hpp)
 				 * sockaddr_storage member in sockunion{}.
 				 * Note that we need to copy before calling
 				 * freeifaddrs().
+				 *
+				 * Interface routes are routed only by their
+				 * sdl_index or interface name (we provide
+				 * both here), not by the ARP address of the
+				 * local interface (alen, slen = 0).
 				 */
 				memcpy(&su->sdl, sdl, sdl->sdl_len);
+				su->sdl.sdl_alen = 0;
+				su->sdl.sdl_slen = 0;
 			}
 			freeifaddrs(ifap);
 			if (sdl)
