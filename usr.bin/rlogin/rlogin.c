@@ -39,8 +39,8 @@
  *
  * @(#) Copyright (c) 1983, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rlogin.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/rlogin/rlogin.c,v 1.24.2.2 2002/07/19 18:03:41 ru Exp $
- * $DragonFly: src/usr.bin/rlogin/rlogin.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
+ * $FreeBSD: src/usr.bin/rlogin/rlogin.c,v 1.27 2002/02/27 22:45:10 fenner Exp $
+ * $DragonFly: src/usr.bin/rlogin/rlogin.c,v 1.5 2005/02/15 01:00:39 cpressey Exp $
  */
 
 /*
@@ -773,6 +773,7 @@ reader(omask)
 #endif
 	(void)signal(SIGTTOU, SIG_IGN);
 	(void)signal(SIGURG, oob);
+	(void)signal(SIGUSR1, oob); /* When propogating SIGURG from parent */
 	ppid = getppid();
 	(void)fcntl(rem, F_SETOWN, pid);
 	(void)setjmp(rcvtop);
@@ -864,12 +865,12 @@ lostpeer(signo)
 	done(1);
 }
 
-/* copy SIGURGs to the child process. */
+/* copy SIGURGs to the child process via SIGUSR1. */
 void
 copytochild(signo)
 	int signo;
 {
-	(void)kill(child, SIGURG);
+	(void)kill(child, SIGUSR1);
 }
 
 void
