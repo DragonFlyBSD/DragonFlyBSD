@@ -33,27 +33,26 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)kill.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/bin/kill/kill.c,v 1.11.2.2 2002/07/28 10:19:57 tjr Exp $
- * $DragonFly: src/bin/kill/kill.c,v 1.6 2004/11/11 21:16:46 cpressey Exp $
+ * $DragonFly: src/bin/kill/kill.c,v 1.7 2005/03/05 19:41:38 liamfoy Exp $
  */
 
 #include <ctype.h>
 #include <err.h>
-#include <errno.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static void nosig(const char *);
-static void printsignals(FILE *);
-static int signame_to_signum(const char *);
-static void usage(void);
+static void	nosig(const char *);
+static void	printsignals(FILE *);
+static int	signame_to_signum(const char *);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
 {
 	int errors, numsig;
-	pid_t  pid;
+	pid_t pid;
 	char *ep;
 
 	if (argc < 2)
@@ -119,7 +118,7 @@ main(int argc, char **argv)
 
 	for (errors = 0; argc; argc--, argv++) {
 		pid = (pid_t)strtol(*argv, &ep, 10);
-		if (!**argv || *ep) {
+		if (**argv == '\0' || *ep != '\0') {
 			warnx("illegal process id: %s", *argv);
 			errors = 1;
 		} else if (kill(pid, numsig) == -1) {
@@ -136,7 +135,7 @@ signame_to_signum(const char *sig)
 {
 	int n;
 
-	if (strncasecmp(sig, "sig", (size_t)3) == 0)
+	if (strncasecmp(sig, "sig", 3) == 0)
 		sig += 3;
 	for (n = 1; n < sys_nsig; n++) {
 		if (strcasecmp(sys_signame[n], sig) == 0)
