@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.4 2003/09/21 04:24:47 drhodus Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.5 2003/09/28 14:39:15 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -107,9 +107,7 @@ char vfmt[] = "pid state time sl re pagein vsz rss lim tsiz %cpu %mem command";
 kvm_t *kd;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	struct kinfo_proc *kp;
 	struct varent *vent;
@@ -438,7 +436,7 @@ getuids(const char *arg, int *nuids)
 }
 
 static void
-scanvars()
+scanvars(void)
 {
 	struct varent *vent;
 	VAR *v;
@@ -457,8 +455,7 @@ scanvars()
 }
 
 static void
-dynsizevars(ki)
-	KINFO *ki;
+dynsizevars(KINFO *ki)
 {
 	struct varent *vent;
 	VAR *v;
@@ -477,7 +474,7 @@ dynsizevars(ki)
 }
 
 static void
-sizevars()
+sizevars(void)
 {
 	struct varent *vent;
 	VAR *v;
@@ -494,11 +491,8 @@ sizevars()
 }
 
 static char *
-fmt(fn, ki, comm, maxlen)
-	char **(*fn) (kvm_t *, const struct kinfo_proc *, int);
-	KINFO *ki;
-	char *comm;
-	int maxlen;
+fmt(char **(*fn) (kvm_t *, const struct kinfo_proc *, int), KINFO *ki, char
+    *comm, int maxlen)
 {
 	char *s;
 
@@ -511,8 +505,7 @@ fmt(fn, ki, comm, maxlen)
 #define UREADOK(ki)	(forceuread || (KI_PROC(ki)->p_flag & P_INMEM))
 
 static void
-saveuser(ki)
-	KINFO *ki;
+saveuser(KINFO *ki)
 {
 	struct usave *usp;
 
@@ -554,8 +547,7 @@ saveuser(ki)
 }
 
 static int
-pscomp(a, b)
-	const void *a, *b;
+pscomp(const void *a, const void *b)
 {
 	int i;
 #define VSIZE(k) (KI_EPROC(k)->e_vm.vm_dsize + KI_EPROC(k)->e_vm.vm_ssize + \
@@ -583,8 +575,7 @@ pscomp(a, b)
  * feature is available with the option 'T', which takes no argument.
  */
 static char *
-kludge_oldps_options(s)
-	char *s;
+kludge_oldps_options(char *s)
 {
 	size_t len;
 	char *newopts, *ns, *cp;
@@ -637,7 +628,7 @@ kludge_oldps_options(s)
 }
 
 static void
-usage()
+usage(void)
 {
 
 	(void)fprintf(stderr, "%s\n%s\n%s\n",

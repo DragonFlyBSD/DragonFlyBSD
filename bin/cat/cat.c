@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cat.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/bin/cat/cat.c,v 1.14.2.8 2002/06/29 05:09:26 tjr Exp $
- * $DragonFly: src/bin/cat/cat.c,v 1.4 2003/09/21 04:13:50 drhodus Exp $
+ * $DragonFly: src/bin/cat/cat.c,v 1.5 2003/09/28 14:39:13 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -72,9 +72,7 @@ static int udom_open (const char *path, int flags);
 #endif
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch;
 
@@ -122,9 +120,7 @@ main(argc, argv)
 }
 
 void
-scanfiles(argv, cooked)
-    char **argv;
-    int cooked;
+scanfiles(char **argv, int cooked)
 {
 	int i = 0;
 	char *path;
@@ -167,8 +163,7 @@ scanfiles(argv, cooked)
 }
 
 static void
-cook_cat(fp)
-	register FILE *fp;
+cook_cat(register FILE *fp)
 {
 	register int ch, gobble, line, prev;
 
@@ -235,8 +230,7 @@ cook_cat(fp)
 }
 
 static void
-raw_cat(rfd)
-	register int rfd;
+raw_cat(register int rfd)
 {
 	register int off, wfd;
 	ssize_t nr, nw;
@@ -265,9 +259,7 @@ raw_cat(rfd)
 #ifndef NO_UDOM_SUPPORT
 
 static int
-udom_open(path, flags)
-    const char *path;
-    int flags;
+udom_open(const char *path, int flags)
 {
 	struct sockaddr_un sou;
 	int fd;

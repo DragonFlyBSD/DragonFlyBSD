@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)swapon.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/swapon/swapon.c,v 1.8.2.2 2001/07/30 10:30:11 dd Exp $
- * $DragonFly: src/sbin/swapon/swapon.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/swapon/swapon.c,v 1.3 2003/09/28 14:39:22 hmp Exp $
  */
 
 #include <err.h>
@@ -105,7 +105,7 @@ add(char *name, int ignoreebusy)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: swapon [-a] [special_file ...]\n");
 	exit(1);

@@ -38,6 +38,7 @@
  *
  *  @(#)pt_tcp.c  8.3 (Berkeley) 3/27/94
  *
+ * $DragonFly: src/sbin/mount_portal/pt_tcplisten.c,v 1.2 2003/09/28 14:39:19 hmp Exp $
  * pt_tcp.c,v 1.1.1.1 1994/05/26 06:34:34 rgrimes Exp
  */
 
@@ -68,12 +69,8 @@
  * 	 may cause remote auth (identd) to return unexpected results.
  *
  */
-int portal_tcplisten(pcr, key, v, kso, fdp)
-       struct portal_cred *pcr;
-       char *key;
-       char **v;
-       int kso;
-       int *fdp;
+int portal_tcplisten(struct portal_cred *pcr, char *key, char **v, int kso,
+                     int *fdp)
 {
        char host[MAXHOSTNAMELEN];
        char port[MAXHOSTNAMELEN];

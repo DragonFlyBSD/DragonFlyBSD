@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm_inet.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm_inet.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm_inet.c,v 1.3 2003/09/28 14:39:16 hmp Exp $
  */
 
 /*
@@ -74,12 +74,8 @@
  *
  */
 void
-ip_pvcadd(argc, argv, cmdp, app, intp)
-	int			argc;
-	char			**argv;
-	struct cmd		*cmdp;
-	struct atmaddreq	*app;
-	struct air_int_rsp	*intp;
+ip_pvcadd(int argc, char **argv, struct cmd *cmdp, struct atmaddreq *app,
+          struct air_int_rsp *intp)
 {
 	char	*cp;
 	char	nhelp[128];

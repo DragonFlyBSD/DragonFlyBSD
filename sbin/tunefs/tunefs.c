@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tunefs.c	8.2 (Berkeley) 4/19/94
  * $FreeBSD: src/sbin/tunefs/tunefs.c,v 1.11.2.5 2001/10/14 21:50:39 iedowse Exp $
- * $DragonFly: src/sbin/tunefs/tunefs.c,v 1.3 2003/08/08 04:18:41 dillon Exp $
+ * $DragonFly: src/sbin/tunefs/tunefs.c,v 1.4 2003/09/28 14:39:22 hmp Exp $
  */
 
 /*
@@ -75,9 +75,7 @@ void usage __P((void));
 void printfs __P((void));
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	char *cp, *special;
 	const char *name, *action;
@@ -291,7 +289,7 @@ again:
 }
 
 void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n",
 "usage: tunefs [-A] [-a maxcontig] [-d rotdelay] [-e maxbpg] [-f avgfilesize]",
@@ -301,9 +299,7 @@ usage()
 }
 
 void
-getsb(fs, file)
-	struct fs *fs;
-	const char *file;
+getsb(struct fs *fs, const char *file)
 {
 
 	fi = open(file, O_RDONLY);
@@ -317,10 +313,7 @@ getsb(fs, file)
 }
 
 void
-putsb(fs, file, all)
-	struct fs *fs;
-	const char *file;
-	int all;
+putsb(struct fs *fs, const char *file, int all)
 {
 	int i;
 
@@ -343,7 +336,7 @@ putsb(fs, file, all)
 }
 
 void
-printfs()
+printfs(void)
 {
 	warnx("soft updates:  (-n)                                %s", 
 		(sblock.fs_flags & FS_DOSOFTDEP)? "enabled" : "disabled");
@@ -370,10 +363,7 @@ printfs()
 }
 
 void
-bwrite(blk, buf, size)
-	daddr_t blk;
-	const char *buf;
-	int size;
+bwrite(daddr_t blk, const char *buf, int size)
 {
 
 	if (lseek(fi, (off_t)blk * dev_bsize, SEEK_SET) < 0)
@@ -383,10 +373,7 @@ bwrite(blk, buf, size)
 }
 
 int
-bread(bno, buf, cnt)
-	daddr_t bno;
-	char *buf;
-	int cnt;
+bread(daddr_t bno, char *buf, int cnt)
 {
 	int i;
 

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_nfs.c	8.11 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/mount_nfs/mount_nfs.c,v 1.36.2.6 2003/05/13 14:45:40 trhodes Exp $
- * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.4 2003/08/08 04:18:39 dillon Exp $
+ * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.5 2003/09/28 14:39:19 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -237,9 +237,7 @@ set_flags(int* altflags, int* nfsflags, int dir)
 }
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register int c;
 	register struct nfs_args *nfsargsp;
@@ -565,9 +563,7 @@ main(argc, argv)
 }
 
 int
-getnfsargs(spec, nfsargsp)
-	char *spec;
-	struct nfs_args *nfsargsp;
+getnfsargs(char *spec, struct nfs_args *nfsargsp)
 {
 	struct hostent *hp;
 	struct sockaddr_in saddr;
@@ -879,17 +875,13 @@ returncode(enum clnt_stat stat, struct rpc_err *rpcerr)
  * xdr routines for mount rpc's
  */
 int
-xdr_dir(xdrsp, dirp)
-	XDR *xdrsp;
-	char *dirp;
+xdr_dir(XDR *xdrsp, char *dirp)
 {
 	return (xdr_string(xdrsp, &dirp, RPCMNT_PATHLEN));
 }
 
 int
-xdr_fh(xdrsp, np)
-	XDR *xdrsp;
-	register struct nfhret *np;
+xdr_fh(XDR *xdrsp, register struct nfhret *np)
 {
 	register int i;
 	long auth, authcnt, authfnd = 0;
@@ -929,7 +921,7 @@ xdr_fh(xdrsp, np)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "%s\n%s\n%s\n%s\n",
 "usage: mount_nfs [-23KNPTUbcdilqs] [-D deadthresh] [-I readdirsize]",

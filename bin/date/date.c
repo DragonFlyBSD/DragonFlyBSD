@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)date.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/bin/date/date.c,v 1.32.2.6 2001/10/31 17:31:51 dillon Exp $
- * $DragonFly: src/bin/date/date.c,v 1.3 2003/09/21 04:19:10 drhodus Exp $
+ * $DragonFly: src/bin/date/date.c,v 1.4 2003/09/28 14:39:13 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -65,9 +65,7 @@ static void usage (void);
 int logwtmp (char *, char *, char *);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	struct timezone tz;
 	int ch, rflag;
@@ -173,10 +171,7 @@ main(argc, argv)
 #define	ATOI2(s)	((s) += 2, ((s)[-2] - '0') * 10 + ((s)[-1] - '0'))
 
 void
-setthetime(fmt, p, jflag, nflag)
-	const char *fmt;
-	register const char *p;
-	int jflag, nflag;
+setthetime(const char *fmt, register const char *p, int jflag, int nflag)
 {
 	register struct tm *lt;
 	struct timeval tv;
@@ -286,14 +281,14 @@ setthetime(fmt, p, jflag, nflag)
 }
 
 static void
-badformat()
+badformat(void)
 {
 	warnx("illegal time format");
 	usage();
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "%s\n%s\n",
 	    "usage: date [-jnu] [-d dst] [-r seconds] [-t west] "

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)nfsd.c	8.9 (Berkeley) 3/29/95
  * $FreeBSD: src/sbin/nfsd/nfsd.c,v 1.15.2.1 2000/09/16 22:52:23 brian Exp $
- * $DragonFly: src/sbin/nfsd/nfsd.c,v 1.3 2003/08/05 07:45:42 asmodai Exp $
+ * $DragonFly: src/sbin/nfsd/nfsd.c,v 1.4 2003/09/28 14:39:20 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -119,9 +119,7 @@ void	usage __P((void));
  * followed by "n" which is the number of nfsds' to fork off
  */
 int
-main(argc, argv, envp)
-	int argc;
-	char *argv[], *envp[];
+main(int argc, char **argv, char **envp)
 {
 	struct nfsd_args nfsdargs;
 	struct sockaddr_in inetaddr, inetpeer;
@@ -656,22 +654,20 @@ setbindhost(struct sockaddr_in *ia, const char *bindhost)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: nfsd %s\n", USAGE);
 	exit(1);
 }
 
 void
-nonfs(signo)
-	int signo;
+nonfs(int signo)
 {
 	syslog(LOG_ERR, "missing system call: NFS not available");
 }
 
 void
-reapchild(signo)
-	int signo;
+reapchild(int signo)
 {
 
 	while (wait3(NULL, WNOHANG, NULL) > 0);
@@ -680,8 +676,7 @@ reapchild(signo)
 #ifdef OLD_SETPROCTITLE
 #ifdef __FreeBSD__
 void
-setproctitle(a)
-	char *a;
+setproctitle(char *a)
 {
 	register char *cp;
 	char buf[80];

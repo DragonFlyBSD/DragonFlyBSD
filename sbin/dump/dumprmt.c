@@ -32,7 +32,7 @@
  *
  * @(#)dumprmt.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/dump/dumprmt.c,v 1.14.2.1 2000/07/01 06:31:52 ps Exp $
- * $DragonFly: src/sbin/dump/dumprmt.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
+ * $DragonFly: src/sbin/dump/dumprmt.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -91,8 +91,7 @@ extern	int dokerberos;
 extern	int ntrec;		/* blocking factor on tape */
 
 int
-rmthost(host)
-	char *host;
+rmthost(char *host)
 {
 
 	rmtpeer = malloc(strlen(host) + 1);
@@ -108,7 +107,7 @@ rmthost(host)
 }
 
 static void
-rmtconnaborted()
+rmtconnaborted(void)
 {
 	msg("Lost connection to remote host.\n");
 	if (errfd != -1) {
@@ -135,7 +134,7 @@ rmtconnaborted()
 }
 
 void
-rmtgetconn()
+rmtgetconn(void)
 {
 	register char *cp;
 	register const char *rmt;
@@ -202,8 +201,7 @@ rmtgetconn()
 }
 
 static int
-okname(cp0)
-	char *cp0;
+okname(char *cp0)
 {
 	register char *cp;
 	register int c;
@@ -219,9 +217,7 @@ okname(cp0)
 }
 
 int
-rmtopen(tape, mode)
-	char *tape;
-	int mode;
+rmtopen(char *tape, int mode)
 {
 	char buf[256];
 
@@ -231,7 +227,7 @@ rmtopen(tape, mode)
 }
 
 void
-rmtclose()
+rmtclose(void)
 {
 
 	if (rmtstate != TS_OPEN)
@@ -241,9 +237,7 @@ rmtclose()
 }
 
 int
-rmtread(buf, count)
-	char *buf;
-	int count;
+rmtread(char *buf, int count)
 {
 	char line[30];
 	int n, i, cc;
@@ -262,9 +256,7 @@ rmtread(buf, count)
 }
 
 int
-rmtwrite(buf, count)
-	char *buf;
-	int count;
+rmtwrite(char *buf, int count)
 {
 	char line[30];
 
@@ -275,8 +267,7 @@ rmtwrite(buf, count)
 }
 
 void
-rmtwrite0(count)
-	int count;
+rmtwrite0(int count)
 {
 	char line[30];
 
@@ -285,24 +276,21 @@ rmtwrite0(count)
 }
 
 void
-rmtwrite1(buf, count)
-	char *buf;
-	int count;
+rmtwrite1(char *buf, int count)
 {
 
 	write(rmtape, buf, count);
 }
 
 int
-rmtwrite2()
+rmtwrite2(void)
 {
 
 	return (rmtreply("write"));
 }
 
 int
-rmtseek(offset, pos)
-	int offset, pos;
+rmtseek(int offset, int pos)
 {
 	char line[80];
 
@@ -313,7 +301,7 @@ rmtseek(offset, pos)
 struct	mtget mts;
 
 struct mtget *
-rmtstatus()
+rmtstatus(void)
 {
 	register int i;
 	register char *cp;
@@ -327,8 +315,7 @@ rmtstatus()
 }
 
 int
-rmtioctl(cmd, count)
-	int cmd, count;
+rmtioctl(int cmd, int count)
 {
 	char buf[256];
 
@@ -339,8 +326,7 @@ rmtioctl(cmd, count)
 }
 
 static int
-rmtcall(cmd, buf)
-	char *cmd, *buf;
+rmtcall(char *cmd, char *buf)
 {
 
 	if (write(rmtape, buf, strlen(buf)) != strlen(buf))
@@ -349,8 +335,7 @@ rmtcall(cmd, buf)
 }
 
 static int
-rmtreply(cmd)
-	char *cmd;
+rmtreply(char *cmd)
 {
 	register char *cp;
 	char code[30], emsg[BUFSIZ];
@@ -378,7 +363,7 @@ rmtreply(cmd)
 }
 
 int
-rmtgetb()
+rmtgetb(void)
 {
 	char c;
 
@@ -389,9 +374,7 @@ rmtgetb()
 
 /* Get a line (guaranteed to have a trailing newline). */
 void
-rmtgets(line, len)
-	char *line;
-	int len;
+rmtgets(char *line, int len)
 {
 	register char *cp = line;
 

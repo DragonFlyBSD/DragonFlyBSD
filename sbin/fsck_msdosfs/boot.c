@@ -31,7 +31,7 @@
  *
  * $NetBSD: boot.c,v 1.5 1997/10/17 11:19:23 ws Exp $
  * $FreeBSD: src/sbin/fsck_msdosfs/boot.c,v 1.1.2.1 2001/08/01 05:47:55 obrien Exp $
- * $DragonFly: src/sbin/fsck_msdosfs/boot.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/fsck_msdosfs/boot.c,v 1.3 2003/09/28 14:39:17 hmp Exp $
  */
 
 
@@ -47,9 +47,7 @@
 #include "fsutil.h"
 
 int
-readboot(dosfs, boot)
-	int dosfs;
-	struct bootblock *boot;
+readboot(int dosfs, struct bootblock *boot)
 {
 	u_char block[DOSBOOTBLOCKSIZE];
 	u_char fsinfo[2 * DOSBOOTBLOCKSIZE];
@@ -225,9 +223,7 @@ readboot(dosfs, boot)
 }
 
 int
-writefsinfo(dosfs, boot)
-	int dosfs;
-	struct bootblock *boot;
+writefsinfo(int dosfs, struct bootblock *boot)
 {
 	u_char fsinfo[2 * DOSBOOTBLOCKSIZE];
 

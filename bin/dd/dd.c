@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)dd.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/dd.c,v 1.27.2.3 2001/08/01 01:37:35 obrien Exp $
- * $DragonFly: src/bin/dd/dd.c,v 1.3 2003/09/21 04:19:42 drhodus Exp $
+ * $DragonFly: src/bin/dd/dd.c,v 1.4 2003/09/28 14:39:13 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -77,9 +77,7 @@ quad_t	files_cnt = 1;		/* # of files to copy */
 const	u_char *ctab;		/* conversion table */
 
 int
-main(argc, argv)
-	int argc __unused;
-	char *argv[];
+main(int argc __unused, char **argv)
 {
 	(void)setlocale(LC_CTYPE, "");
 	jcl(argv);
@@ -98,7 +96,7 @@ main(argc, argv)
 }
 
 static void
-setup()
+setup(void)
 {
 	u_int cnt;
 	struct timeval tv;
@@ -200,8 +198,7 @@ setup()
 }
 
 static void
-getfdtype(io)
-	IO *io;
+getfdtype(IO *io)
 {
 	struct stat sb;
 	int type;
@@ -237,7 +234,7 @@ getfdtype(io)
 }
 
 static void
-dd_in()
+dd_in(void)
 {
 	ssize_t n;
 
@@ -344,7 +341,7 @@ dd_in()
  * is truncated.
  */
 static void
-dd_close()
+dd_close(void)
 {
 	if (cfunc == def)
 		def_close();
@@ -364,8 +361,7 @@ dd_close()
 }
 
 void
-dd_out(force)
-	int force;
+dd_out(int force)
 {
 	u_char *outp;
 	size_t cnt, i, n;

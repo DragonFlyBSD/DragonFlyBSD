@@ -32,7 +32,7 @@
  *
  * @(#)pass3.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/sbin/fsck/pass3.c,v 1.7.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass3.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
+ * $DragonFly: src/sbin/fsck/pass3.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -46,7 +46,7 @@
 #include "fsck.h"
 
 void
-pass3()
+pass3(void)
 {
 	struct inoinfo *inp;
 	int loopcnt, inpindex, state;

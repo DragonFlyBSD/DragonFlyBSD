@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)newfs.c	8.13 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/newfs/newfs.c,v 1.30.2.9 2003/05/13 12:03:55 joerg Exp $
- * $DragonFly: src/sbin/newfs/newfs.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
+ * $DragonFly: src/sbin/newfs/newfs.c,v 1.4 2003/09/28 14:39:20 hmp Exp $
  */
 
 /*
@@ -79,11 +79,7 @@ struct mntopt mopts[] = {
 	{ NULL },
 };
 
-#if __STDC__
 void	fatal(const char *fmt, ...);
-#else
-void	fatal();
-#endif
 
 #define	COMPAT			/* allow non-labeled disks */
 
@@ -208,9 +204,7 @@ extern void mkfs __P((struct partition *, char *, int, int));
 static void usage __P((void));
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register int ch;
 	register struct partition *pp;
@@ -659,9 +653,7 @@ char lmsg[] = "%s: can't read disk label";
 #endif
 
 struct disklabel *
-getdisklabel(s, fd)
-	char *s;
-	int fd;
+getdisklabel(char *s, int fd)
 {
 	static struct disklabel lab;
 
@@ -683,10 +675,7 @@ getdisklabel(s, fd)
 	return (&lab);
 }
 
-rewritelabel(s, fd, lp)
-	char *s;
-	int fd;
-	register struct disklabel *lp;
+rewritelabel(char *s, int fd, register struct disklabel *lp)
 {
 #ifdef COMPAT
 	if (unlabeled)
@@ -702,21 +691,11 @@ rewritelabel(s, fd, lp)
 
 /*VARARGS*/
 void
-#if __STDC__
 fatal(const char *fmt, ...)
-#else
-fatal(fmt, va_alist)
-	char *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
 
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	if (fcntl(STDERR_FILENO, F_GETFL) < 0) {
 		openlog(progname, LOG_CONS, LOG_DAEMON);
 		vsyslog(LOG_ERR, fmt, ap);
@@ -730,7 +709,7 @@ fatal(fmt, va_alist)
 }
 
 static void
-usage()
+usage(void)
 {
 	if (mfs) {
 		fprintf(stderr,

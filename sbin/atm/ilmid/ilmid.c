@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *      @(#) $FreeBSD: src/sbin/atm/ilmid/ilmid.c,v 1.6.2.2 2001/03/04 07:15:30 kris Exp $
- *      @(#) $DragonFly: src/sbin/atm/ilmid/ilmid.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
+ *      @(#) $DragonFly: src/sbin/atm/ilmid/ilmid.c,v 1.4 2003/09/28 14:39:16 hmp Exp $
  */
 
 /*
@@ -351,7 +351,7 @@ static char	*Months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
  *
  */
 void
-write_timestamp()
+write_timestamp(void)
 {
 	time_t		clock;
 	struct tm 	*tm;
@@ -381,9 +381,7 @@ write_timestamp()
  *
  */
 void
-hexdump ( bp, len )
-	u_char	*bp;
-	int	len;
+hexdump ( u_char *bp, int len )
 {
 	int	i, j;
 
@@ -445,9 +443,7 @@ hexdump ( bp, len )
  *
  */
 int
-asn_get_pdu_len ( bufp, plen )
-	u_char	**bufp;
-	int	*plen;
+asn_get_pdu_len ( u_char **bufp, int *plen )
 {
 	u_char	*bp = *bufp;
 	int	len = 0;

@@ -24,7 +24,7 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: src/sbin/i386/fdisk/fdisk.c,v 1.36.2.11 2002/04/25 21:02:21 trhodes Exp $
- * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.3 2003/09/28 14:39:18 hmp Exp $
  */
 
 #include <sys/disklabel.h>
@@ -579,7 +579,7 @@ struct dos_partition *partp = ((struct dos_partition *) &mboot.parts) + i - 1;
 }
 
 static void
-print_params()
+print_params(void)
 {
 	printf("parameters extracted from in-core disklabel are:\n");
 	printf("cylinders=%d heads=%d sectors/track=%d (%d blks/cyl)\n\n"
@@ -630,14 +630,14 @@ setactive:
 }
 
 static void
-change_code()
+change_code(void)
 {
 	if (ok("Do you want to change the boot code?"))
 		init_boot();
 }
 
 void
-get_params_to_use()
+get_params_to_use(void)
 {
 	int	tmp;
 	print_params();
@@ -747,7 +747,7 @@ write_disk(off_t sector, void *buf)
 }
 
 static int
-get_params()
+get_params(void)
 {
 
     if (ioctl(fd, DIOCGDINFO, &disklabel) == -1) {
@@ -771,7 +771,7 @@ get_params()
 
 
 static int
-read_s0()
+read_s0(void)
 {
 	mboot.bootinst_size = secsize;
 	if (mboot.bootinst != NULL)
@@ -795,7 +795,7 @@ read_s0()
 }
 
 static int
-write_s0()
+write_s0(void)
 {
 #ifdef NOT_NOW
 	int	flag;

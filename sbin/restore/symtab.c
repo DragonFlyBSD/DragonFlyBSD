@@ -32,7 +32,7 @@
  *
  * @(#)symtab.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/restore/symtab.c,v 1.7.2.1 2001/12/19 14:54:14 tobez Exp $
- * $DragonFly: src/sbin/restore/symtab.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
+ * $DragonFly: src/sbin/restore/symtab.c,v 1.4 2003/09/28 14:39:21 hmp Exp $
  */
 
 /*
@@ -78,8 +78,7 @@ static void		 removeentry __P((struct entry *));
  * Look up an entry by inode number
  */
 struct entry *
-lookupino(inum)
-	ino_t inum;
+lookupino(ino_t inum)
 {
 	register struct entry *ep;
 
@@ -95,9 +94,7 @@ lookupino(inum)
  * Add an entry into the entry table
  */
 static void
-addino(inum, np)
-	ino_t inum;
-	struct entry *np;
+addino(ino_t inum, struct entry *np)
 {
 	struct entry **epp;
 
@@ -117,8 +114,7 @@ addino(inum, np)
  * Delete an entry from the entry table
  */
 void
-deleteino(inum)
-	ino_t inum;
+deleteino(ino_t inum)
 {
 	register struct entry *next;
 	struct entry **prev;
@@ -141,8 +137,7 @@ deleteino(inum)
  * Look up an entry by name
  */
 struct entry *
-lookupname(name)
-	char *name;
+lookupname(char *name)
 {
 	register struct entry *ep;
 	register char *np, *cp;
@@ -171,8 +166,7 @@ lookupname(name)
  * Look up the parent of a pathname
  */
 static struct entry *
-lookupparent(name)
-	char *name;
+lookupparent(char *name)
 {
 	struct entry *ep;
 	char *tailindex;
@@ -194,8 +188,7 @@ lookupparent(name)
  * Determine the current pathname of a node or leaf
  */
 char *
-myname(ep)
-	register struct entry *ep;
+myname(register struct entry *ep)
 {
 	register char *cp;
 	static char namebuf[MAXPATHLEN];
@@ -222,10 +215,7 @@ static struct entry *freelist = NULL;
  * add an entry to the symbol table
  */
 struct entry *
-addentry(name, inum, type)
-	char *name;
-	ino_t inum;
-	int type;
+addentry(char *name, ino_t inum, int type)
 {
 	register struct entry *np, *ep;
 
@@ -273,8 +263,7 @@ addentry(name, inum, type)
  * delete an entry from the symbol table
  */
 void
-freeentry(ep)
-	register struct entry *ep;
+freeentry(register struct entry *ep)
 {
 	register struct entry *np;
 	ino_t inum;
@@ -317,9 +306,7 @@ freeentry(ep)
  * Relocate an entry in the tree structure
  */
 void
-moveentry(ep, newname)
-	register struct entry *ep;
-	char *newname;
+moveentry(register struct entry *ep, char *newname)
 {
 	struct entry *np;
 	char *cp;
@@ -347,8 +334,7 @@ moveentry(ep, newname)
  * Remove an entry in the tree structure
  */
 static void
-removeentry(ep)
-	register struct entry *ep;
+removeentry(register struct entry *ep)
 {
 	register struct entry *np;
 
@@ -393,8 +379,7 @@ static struct strhdr strtblhdr[allocsize(NAME_MAX) / STRTBLINCR];
  * has an appropriate sized entry, and if not allocates a new one.
  */
 char *
-savename(name)
-	char *name;
+savename(char *name)
 {
 	struct strhdr *np;
 	long len;
@@ -421,8 +406,7 @@ savename(name)
  * appropriate free list.
  */
 void
-freename(name)
-	char *name;
+freename(char *name)
 {
 	struct strhdr *tp, *np;
 
@@ -449,9 +433,7 @@ struct symtableheader {
  * dump a snapshot of the symbol table
  */
 void
-dumpsymtable(filename, checkpt)
-	char *filename;
-	long checkpt;
+dumpsymtable(char *filename, long checkpt)
 {
 	register struct entry *ep, *tep;
 	register ino_t i;
@@ -537,8 +519,7 @@ dumpsymtable(filename, checkpt)
  * Initialize a symbol table from a file
  */
 void
-initsymtable(filename)
-	char *filename;
+initsymtable(char *filename)
 {
 	char *base;
 	long tblsize;

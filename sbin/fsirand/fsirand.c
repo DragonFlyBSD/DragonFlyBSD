@@ -30,7 +30,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsirand/fsirand.c,v 1.7.2.1 2000/07/01 06:23:36 ps Exp $
- * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.3 2003/08/08 04:18:38 dillon Exp $
+ * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.4 2003/09/28 14:39:18 hmp Exp $
  */
 
 #include <sys/disklabel.h>
@@ -55,9 +55,7 @@ int fsirand __P((char *));
 int printonly = 0, force = 0, ignorelabel = 0;
 
 int
-main(argc, argv)
-	int	argc;
-	char	*argv[];
+main(int argc, char **argv)
 {
 	int n, ex = 0;
 	struct rlimit rl;
@@ -102,8 +100,7 @@ main(argc, argv)
 }
 
 int
-fsirand(device)
-	char *device;
+fsirand(char *device)
 {
 	static struct dinode *inodebuf;
 	static size_t oldibufsize;
@@ -280,7 +277,7 @@ fsirand(device)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, 
 		"usage: fsirand [-b] [-f] [-p] special [special ...]\n");

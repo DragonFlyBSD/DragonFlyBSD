@@ -36,7 +36,7 @@
  *
  * @(#)conv.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/conv.c,v 1.15 1999/09/13 21:47:10 green Exp $
- * $DragonFly: src/bin/dd/conv.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/dd/conv.c,v 1.3 2003/09/28 14:39:13 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -54,7 +54,7 @@
  * Worst case buffer calculation is (ibs + obs - 1).
  */
 void
-def()
+def(void)
 {
 	u_char *inp;
 	const u_char *t;
@@ -83,7 +83,7 @@ def()
 }
 
 void
-def_close()
+def_close(void)
 {
 	/* Just update the count, everything is already in the buffer. */
 	if (in.dbcnt)
@@ -98,7 +98,7 @@ def_close()
  * max out buffer: obs + cbsz
  */
 void
-block()
+block(void)
 {
 	u_char *inp, *outp;
 	const u_char *t;
@@ -184,7 +184,7 @@ block()
 }
 
 void
-block_close()
+block_close(void)
 {
 	/*
 	 * Copy any remaining data into the output buffer and pad to a record.
@@ -211,7 +211,7 @@ block_close()
  * max out buffer: obs + cbsz
  */
 void
-unblock()
+unblock(void)
 {
 	u_char *inp;
 	const u_char *t;
@@ -245,7 +245,7 @@ unblock()
 }
 
 void
-unblock_close()
+unblock_close(void)
 {
 	u_char *t;
 	size_t cnt;

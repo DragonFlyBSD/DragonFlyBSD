@@ -10,7 +10,7 @@
  * This program is in the Public Domain.
  *
  * $FreeBSD: src/bin/test/test.c,v 1.29.2.7 2002/09/10 09:10:57 maxim Exp $
- * $DragonFly: src/bin/test/test.c,v 1.3 2003/09/21 04:27:16 drhodus Exp $
+ * $DragonFly: src/bin/test/test.c,v 1.4 2003/09/28 14:39:15 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -190,9 +190,7 @@ static void	syntax (const char *, const char *);
 static enum	token t_lex (char *);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	gid_t	egid, gid;
 	uid_t	euid, uid;
@@ -234,9 +232,7 @@ main(argc, argv)
 }
 
 static void
-syntax(op, msg)
-	const char	*op;
-	const char	*msg;
+syntax(const char *op, const char *msg)
 {
 
 	if (op && *op)
@@ -246,8 +242,7 @@ syntax(op, msg)
 }
 
 static int
-oexpr(n)
-	enum token n;
+oexpr(enum token n)
 {
 	int res;
 
@@ -261,8 +256,7 @@ oexpr(n)
 }
 
 static int
-aexpr(n)
-	enum token n;
+aexpr(enum token n)
 {
 	int res;
 
@@ -276,8 +270,7 @@ aexpr(n)
 }
 
 static int
-nexpr(n)
-	enum token n;			/* token */
+nexpr(enum token n)
 {
 	if (n == UNOT)
 		return !nexpr(t_lex(nargc > 0 ? (--nargc, *++t_wp) : NULL));
@@ -285,8 +278,7 @@ nexpr(n)
 }
 
 static int
-primary(n)
-	enum token n;
+primary(enum token n)
 {
 	enum token nn;
 	int res;
@@ -327,7 +319,7 @@ primary(n)
 }
 
 static int
-binop()
+binop(void)
 {
 	const char *opnd1, *opnd2;
 	struct t_op const *op;
@@ -373,9 +365,7 @@ binop()
 }
 
 static int
-filstat(nm, mode)
-	char *nm;
-	enum token mode;
+filstat(char *nm, enum token mode)
 {
 	struct stat s;
 
@@ -428,8 +418,7 @@ filstat(nm, mode)
 }
 
 static enum token
-t_lex(s)
-	char *s;
+t_lex(char *s)
 {
 	struct t_op const *op = ops;
 
@@ -452,7 +441,7 @@ t_lex(s)
 }
 
 static int
-isoperand()
+isoperand(void)
 {
 	struct t_op const *op = ops;
 	char *s;
@@ -475,8 +464,7 @@ isoperand()
 
 /* atoi with error detection */
 static int
-getn(s)
-	const char *s;
+getn(const char *s)
 {
 	char *p;
 	long r;
@@ -499,8 +487,7 @@ getn(s)
 
 /* atoi with error detection and 64 bit range */
 static quad_t
-getq(s)
-	const char *s;
+getq(const char *s)
 {
 	char *p;
 	quad_t r;
@@ -522,8 +509,7 @@ getq(s)
 }
 
 static int
-intcmp (s1, s2)
-	const char *s1, *s2;
+intcmp (const char *s1, const char *s2)
 {
 	quad_t q1, q2;
 
@@ -541,8 +527,7 @@ intcmp (s1, s2)
 }
 
 static int
-newerf (f1, f2)
-	const char *f1, *f2;
+newerf (const char *f1, const char *f2)
 {
 	struct stat b1, b2;
 
@@ -558,15 +543,13 @@ newerf (f1, f2)
 }
 
 static int
-olderf (f1, f2)
-	const char *f1, *f2;
+olderf (const char *f1, const char *f2)
 {
 	return (newerf(f2, f1));
 }
 
 static int
-equalf (f1, f2)
-	const char *f1, *f2;
+equalf (const char *f1, const char *f2)
 {
 	struct stat b1, b2;
 

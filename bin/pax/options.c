@@ -36,7 +36,7 @@
  *
  * @(#)options.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/options.c,v 1.13.2.3 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/options.c,v 1.3 2003/09/21 04:24:17 drhodus Exp $
+ * $DragonFly: src/bin/pax/options.c,v 1.4 2003/09/28 14:39:14 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -145,15 +145,8 @@ int ford[] = {5, 4, 3, 2, 1, 0, -1 };
  *	parser
  */
 
-#ifdef __STDC__
 void
 options(register int argc, register char **argv)
-#else
-void
-options(argc, argv)
-	register int argc;
-	register char **argv;
-#endif
 {
 
 	/*
@@ -181,15 +174,8 @@ options(argc, argv)
  *	the user specified a legal set of flags. If not, complain and exit
  */
 
-#ifdef __STDC__
 static void
 pax_options(register int argc, register char **argv)
-#else
-static void
-pax_options(argc, argv)
-	register int argc;
-	register char **argv;
-#endif
 {
 	register int c;
 	register int i;
@@ -586,15 +572,8 @@ pax_options(argc, argv)
  *	the user specified a legal set of flags. If not, complain and exit
  */
 
-#ifdef __STDC__
 static void
 tar_options(register int argc, register char **argv)
-#else
-static void
-tar_options(argc, argv)
-	register int argc;
-	register char **argv;
-#endif
 {
 	register int c;
 	int fstdin = 0;
@@ -987,8 +966,7 @@ tar_options(argc, argv)
 }
 
 int
-mkpath(path)
-	char *path;
+mkpath(char *path)
 {
 	struct stat sb;
 	register char *slash;
@@ -1025,15 +1003,8 @@ mkpath(path)
  *	the user specified a legal set of flags. If not, complain and exit
  */
 
-#ifdef __STDC__
 static void
 cpio_options(register int argc, register char **argv)
-#else
-static void
-cpio_options(argc, argv)
-	register int argc;
-	register char **argv;
-#endif
 {
 	register int c, i;
 	char *str;
@@ -1292,14 +1263,8 @@ cpio_options(argc, argv)
  *	print out those invalid flag sets found to the user
  */
 
-#ifdef __STDC__
 static void
 printflg(unsigned int flg)
-#else
-static void
-printflg(flg)
-	unsigned int flg;
-#endif
 {
 	int nxt;
 	int pos = 0;
@@ -1319,15 +1284,8 @@ printflg(flg)
  *	by the user
  */
 
-#ifdef __STDC__
 static int
 c_frmt(const void *a, const void *b)
-#else
-static int
-c_frmt(a, b)
-	void *a;
-	void *b;
-#endif
 {
 	return(strcmp(((FSUB *)a)->name, ((FSUB *)b)->name));
 }
@@ -1340,13 +1298,8 @@ c_frmt(a, b)
  *	pointer to next OPLIST entry or NULL (end of list).
  */
 
-#ifdef __STDC__
 OPLIST *
 opt_next(void)
-#else
-OPLIST *
-opt_next()
-#endif
 {
 	OPLIST *opt;
 
@@ -1361,13 +1314,8 @@ opt_next()
  *	when the format does not support options.
  */
 
-#ifdef __STDC__
 int
 bad_opt(void)
-#else
-int
-bad_opt()
-#endif
 {
 	register OPLIST *opt;
 
@@ -1392,14 +1340,8 @@ bad_opt()
  *	0 if format in name=value format, -1 if -o is passed junk
  */
 
-#ifdef __STDC__
 int
 opt_add(register char *str)
-#else
-int
-opt_add(str)
-	register char *str;
-#endif
 {
 	register OPLIST *opt;
 	register char *frpt;
@@ -1467,14 +1409,8 @@ opt_add(str)
  *	0 for an error, a positive value o.w.
  */
 
-#ifdef __STDC__
 static off_t
 str_offt(char *val)
-#else
-static off_t
-str_offt(val)
-	char *val;
-#endif
 {
 	char *expr;
 	off_t num, t;
@@ -1535,14 +1471,8 @@ str_offt(val)
 	return(num);
 }
 
-#ifdef __STDC__
 char *
 getline(FILE *f)
-#else
-char *
-getline(f)
-	FILE *f;
-#endif
 {
 	char *name, *temp;
 	size_t len;
@@ -1571,13 +1501,8 @@ getline(f)
  *	0
  */
 
-#ifdef __STDC__
 static int
 no_op(void)
-#else
-static int
-no_op()
-#endif
 {
 	return(0);
 }
@@ -1587,13 +1512,8 @@ no_op()
  *	print the usage summary to the user
  */
 
-#ifdef __STDC__
 void
 pax_usage(void)
-#else
-void
-pax_usage()
-#endif
 {
 	(void)fputs("usage: pax [-cdnvz] [-E limit] [-f archive] ", stderr);
 	(void)fputs("[-s replstr] ... [-U user] ...", stderr);
@@ -1626,13 +1546,8 @@ pax_usage()
  *	print the usage summary to the user
  */
 
-#ifdef __STDC__
 void
 tar_usage(void)
-#else
-void
-tar_usage()
-#endif
 {
 	(void)fputs("usage: tar [-]{crtux}[-befhjmopqsvwyzHLOPXZ014578] [blocksize] ",
 		 stderr);
@@ -1646,13 +1561,8 @@ tar_usage()
  *	print the usage summary to the user
  */
 
-#ifdef __STDC__
 void
 cpio_usage(void)
-#else
-void
-cpio_usage()
-#endif
 {
 	(void)fputs("usage: cpio -o [-aABcLvVzZ] [-C bytes] [-H format] [-O archive]\n", stderr);
 	(void)fputs("               [-F archive] < name-list [> archive]\n", stderr);

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_msdos/mount_msdos.c,v 1.19.2.1 2000/07/20 10:35:13 kris Exp $
- * $DragonFly: src/sbin/mount_msdos/mount_msdos.c,v 1.3 2003/08/08 04:18:39 dillon Exp $
+ * $DragonFly: src/sbin/mount_msdos/mount_msdos.c,v 1.4 2003/09/28 14:39:19 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -80,9 +80,7 @@ static void     load_u2wtable __P((struct msdosfs_args *, char *));
 static void     load_ultable __P((struct msdosfs_args *, char *));
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	struct msdosfs_args args;
 	struct stat sb;
@@ -188,8 +186,7 @@ main(argc, argv)
 }
 
 gid_t
-a_gid(s)
-	char *s;
+a_gid(char *s)
 {
 	struct group *gr;
 	char *gname;
@@ -208,8 +205,7 @@ a_gid(s)
 }
 
 uid_t
-a_uid(s)
-	char *s;
+a_uid(char *s)
 {
 	struct passwd *pw;
 	char *uname;
@@ -228,8 +224,7 @@ a_uid(s)
 }
 
 mode_t
-a_mask(s)
-	char *s;
+a_mask(char *s)
 {
 	int done, rv;
 	char *ep;
@@ -246,7 +241,7 @@ a_mask(s)
 }
 
 void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n", 
 	"usage: mount_msdos [-o options] [-u user] [-g group] [-m mask]",
@@ -255,9 +250,7 @@ usage()
 }
 
 void
-load_u2wtable (pargs, name)
-	struct msdosfs_args *pargs;
-	char *name;
+load_u2wtable (struct msdosfs_args *pargs, char *name)
 {
 	FILE *f;
 	int i, j, code[8];
@@ -322,9 +315,7 @@ code, code + 1, code + 2, code + 3, code + 4, code + 5, code + 6, code + 7) != 8
 }
 
 void
-load_ultable (pargs, name)
-	struct msdosfs_args *pargs;
-	char *name;
+load_ultable (struct msdosfs_args *pargs, char *name)
 {
 	int i;
 

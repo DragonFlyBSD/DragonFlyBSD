@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/stty/print.c,v 1.12.2.2 2001/07/04 22:40:00 kris Exp $
- * $DragonFly: src/bin/stty/print.c,v 1.3 2003/09/21 04:26:26 drhodus Exp $
+ * $DragonFly: src/bin/stty/print.c,v 1.4 2003/09/28 14:39:15 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -51,11 +51,7 @@ static void  bput (const char *);
 static const char *ccval (struct cchar *, int);
 
 void
-print(tp, wp, ldisc, fmt)
-	struct termios *tp;
-	struct winsize *wp;
-	int ldisc;
-	enum FMT fmt;
+print(struct termios *tp, struct winsize *wp, int ldisc, enum FMT fmt)
 {
 	struct cchar *p;
 	long tmp;
@@ -224,8 +220,7 @@ static int col;
 static const char *label;
 
 static void
-binit(lb)
-	const char *lb;
+binit(const char *lb)
 {
 
 	if (col) {
@@ -236,8 +231,7 @@ binit(lb)
 }
 
 static void
-bput(s)
-	const char *s;
+bput(const char *s)
 {
 
 	if (col == 0) {
@@ -253,9 +247,7 @@ bput(s)
 }
 
 static const char *
-ccval(p, c)
-	struct cchar *p;
-	int c;
+ccval(struct cchar *p, int c)
 {
 	static char buf[5];
 	char *bp;

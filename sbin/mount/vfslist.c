@@ -32,7 +32,7 @@
  *
  * @(#)vfslist.c	8.1 (Berkeley) 5/8/95
  * $FreeBSD: src/sbin/mount/vfslist.c,v 1.4 1999/08/28 00:13:27 peter Exp $
- * $DragonFly: src/sbin/mount/vfslist.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount/vfslist.c,v 1.3 2003/09/28 14:39:18 hmp Exp $
  */
 
 #include <err.h>
@@ -44,9 +44,7 @@
 static int	  skipvfs;
 
 int
-checkvfsname(vfsname, vfslist)
-	const char *vfsname;
-	const char **vfslist;
+checkvfsname(const char *vfsname, const char **vfslist)
 {
 
 	if (vfslist == NULL)
@@ -60,8 +58,7 @@ checkvfsname(vfsname, vfslist)
 }
 
 const char **
-makevfslist(fslist)
-	char *fslist;
+makevfslist(char *fslist)
 {
 	const char **av;
 	int i;

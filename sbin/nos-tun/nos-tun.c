@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/nos-tun/nos-tun.c,v 1.6.2.2 2001/08/01 23:14:00 obrien Exp $
- * $DragonFly: src/sbin/nos-tun/nos-tun.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/nos-tun/nos-tun.c,v 1.3 2003/09/28 14:39:20 hmp Exp $
  */
 
 /*
@@ -359,7 +359,7 @@ int main (int argc, char **argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr,
 "usage: nos-tun -t <tun_name> -s <source_addr> -d <dest_addr> -p <protocol_number> <target_addr>\n");

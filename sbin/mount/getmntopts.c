@@ -32,7 +32,7 @@
  *
  * @(#)getmntopts.c	8.3 (Berkeley) 3/29/95
  * $FreeBSD: src/sbin/mount/getmntopts.c,v 1.9 1999/10/09 11:54:06 phk Exp $
- * $DragonFly: src/sbin/mount/getmntopts.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount/getmntopts.c,v 1.3 2003/09/28 14:39:18 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -49,11 +49,8 @@
 int getmnt_silent = 0;
 
 void
-getmntopts(options, m0, flagp, altflagp)
-	const char *options;
-	const struct mntopt *m0;
-	int *flagp;
-	int *altflagp;
+getmntopts(const char *options, const struct mntopt *m0, int *flagp,
+           int *altflagp)
 {
 	const struct mntopt *m;
 	int negative, len;
@@ -106,9 +103,7 @@ getmntopts(options, m0, flagp, altflagp)
 }
 
 void
-rmslashes(rrpin, rrpout)
-	char *rrpin;
-	char *rrpout;
+rmslashes(char *rrpin, char *rrpout)
 {
 	char *rrpoutstart;
 
@@ -128,9 +123,7 @@ rmslashes(rrpin, rrpout)
 }
 
 void
-checkpath(path, resolved)
-	const char *path;
-	char *resolved;
+checkpath(const char *path, char *resolved)
 {
 	struct stat sb;
 

@@ -24,7 +24,7 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: src/sbin/pc98/fdisk/fdisk.c,v 1.1.2.3 2000/12/11 01:03:25 obrien Exp $
- * $DragonFly: src/sbin/pc98/fdisk/Attic/fdisk.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/pc98/fdisk/Attic/fdisk.c,v 1.3 2003/09/28 14:39:20 hmp Exp $
  */
 
 #include <sys/disklabel.h>
@@ -489,7 +489,7 @@ main(int argc, char *argv[])
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s%s",
 		"usage: fdisk [-Batu] [-b bootcode] [-12345678] [disk]\n",
@@ -691,7 +691,7 @@ struct dos_partition *partp = ((struct dos_partition *) &mboot.parts) + i - 1;
 }
 
 static void
-print_params()
+print_params(void)
 {
 	printf("parameters extracted from in-core disklabel are:\n");
 	printf("cylinders=%d heads=%d sectors/track=%d (%d blks/cyl)\n\n"
@@ -754,7 +754,7 @@ setactive:
 }
 
 static void
-change_code()
+change_code(void)
 {
 	if (ok("Do you want to change the boot code?"))
 		init_boot();
@@ -762,7 +762,7 @@ change_code()
 }
 
 void
-get_params_to_use()
+get_params_to_use(void)
 {
 	int	tmp;
 	print_params();
@@ -785,13 +785,10 @@ get_params_to_use()
 * Change real numbers into strange dos numbers	*
 \***********************************************/
 static void
-dos(sec, size, c, s, h)
-int sec, size;
 #ifdef PC98
-unsigned short *c;
-unsigned char *s, *h;
+dos(int sec, int size, unsigned short *c, unsigned char *s, unsigned char *h)
 #else
-unsigned char *c, *s, *h;
+dos(int sec, int size, unsigned char *c, unsigned char *s, unsigned char *h)
 #endif
 {
 int cy;
@@ -887,7 +884,7 @@ write_disk(off_t sector, void *buf)
 }
 
 static int
-get_params()
+get_params(void)
 {
 
     if (ioctl(fd, DIOCGDINFO, &disklabel) == -1) {
@@ -916,7 +913,7 @@ get_params()
 
 
 static int
-read_s0()
+read_s0(void)
 {
 	if (read_disk(0, (char *) mboot.bootinst) == -1) {
 		warnx("can't read fdisk partition table");
@@ -931,7 +928,7 @@ read_s0()
 }
 
 static int
-write_s0()
+write_s0(void)
 {
 #ifdef NOT_NOW
 	int	flag;
@@ -964,8 +961,7 @@ write_s0()
 
 
 static int
-ok(str)
-char *str;
+ok(char *str)
 {
 	printf("%s [n] ", str);
 	fgets(lbuf, LBUF, stdin);
@@ -1124,9 +1120,7 @@ get_type(int type)
 
 #ifndef PC98
 static void
-parse_config_line(line, command)
-    char	*line;
-    CMD		*command;
+parse_config_line(char *line, CMD *command)
 {
     char	*cp, *end;
 
@@ -1176,8 +1170,7 @@ parse_config_line(line, command)
 
 
 static int
-process_geometry(command)
-    CMD		*command;
+process_geometry(CMD *command)
 {
     int		status = 1, i;
 
@@ -1283,8 +1276,7 @@ process_geometry(command)
 
 
 static int
-process_partition(command)
-    CMD		*command;
+process_partition(CMD *command)
 {
     int				status = 0, partition;
     unsigned long		chunks, adj_size, max_end;
@@ -1392,8 +1384,7 @@ process_partition(command)
 
 
 static int
-process_active(command)
-    CMD		*command;
+process_active(CMD *command)
 {
     int				status = 0, partition, i;
     struct dos_partition	*partp;
@@ -1431,8 +1422,7 @@ process_active(command)
 
 
 static int
-process_line(line)
-    char	*line;
+process_line(char *line)
 {
     CMD		command;
     int		status = 1;
@@ -1470,8 +1460,7 @@ process_line(line)
 
 
 static int
-read_config(config_file)
-    char *config_file;
+read_config(char *config_file)
 {
     FILE	*fp = NULL;
     int		status = 1;

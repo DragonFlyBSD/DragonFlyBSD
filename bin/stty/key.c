@@ -32,7 +32,7 @@
  *
  * @(#)key.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/stty/key.c,v 1.11.2.2 2001/10/15 13:45:05 dd Exp $
- * $DragonFly: src/bin/stty/key.c,v 1.3 2003/09/21 04:26:26 drhodus Exp $
+ * $DragonFly: src/bin/stty/key.c,v 1.4 2003/09/28 14:39:15 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -96,17 +96,14 @@ static struct key {
 };
 
 static int
-c_key(a, b)
-        const void *a, *b;
+c_key(const void *a, const void *b)
 {
 
         return (strcmp(((const struct key *)a)->name, ((const struct key *)b)->name));
 }
 
 int
-ksearch(argvp, ip)
-	char ***argvp;
-	struct info *ip;
+ksearch(char ***argvp, struct info *ip)
 {
 	char *name;
 	struct key *kp, tmp;
@@ -135,15 +132,13 @@ ksearch(argvp, ip)
 }
 
 void
-f_all(ip)
-	struct info *ip;
+f_all(struct info *ip)
 {
 	print(&ip->t, &ip->win, ip->ldisc, BSD);
 }
 
 void
-f_cbreak(ip)
-	struct info *ip;
+f_cbreak(struct info *ip)
 {
 
 	if (ip->off)
@@ -158,8 +153,7 @@ f_cbreak(ip)
 }
 
 void
-f_columns(ip)
-	struct info *ip;
+f_columns(struct info *ip)
 {
 
 	ip->win.ws_col = atoi(ip->arg);
@@ -167,8 +161,7 @@ f_columns(ip)
 }
 
 void
-f_dec(ip)
-	struct info *ip;
+f_dec(struct info *ip)
 {
 
 	ip->t.c_cc[VERASE] = (u_char)0177;
@@ -181,8 +174,7 @@ f_dec(ip)
 }
 
 void
-f_ek(ip)
-	struct info *ip;
+f_ek(struct info *ip)
 {
 
 	ip->t.c_cc[VERASE] = CERASE;
@@ -191,16 +183,14 @@ f_ek(ip)
 }
 
 void
-f_everything(ip)
-	struct info *ip;
+f_everything(struct info *ip)
 {
 
 	print(&ip->t, &ip->win, ip->ldisc, BSD);
 }
 
 void
-f_extproc(ip)
-	struct info *ip;
+f_extproc(struct info *ip)
 {
 
 	if (ip->off) {
@@ -213,8 +203,7 @@ f_extproc(ip)
 }
 
 void
-f_ispeed(ip)
-	struct info *ip;
+f_ispeed(struct info *ip)
 {
 
 	cfsetispeed(&ip->t, (speed_t)atoi(ip->arg));
@@ -222,8 +211,7 @@ f_ispeed(ip)
 }
 
 void
-f_nl(ip)
-	struct info *ip;
+f_nl(struct info *ip)
 {
 
 	if (ip->off) {
@@ -237,8 +225,7 @@ f_nl(ip)
 }
 
 void
-f_ospeed(ip)
-	struct info *ip;
+f_ospeed(struct info *ip)
 {
 
 	cfsetospeed(&ip->t, (speed_t)atoi(ip->arg));
@@ -246,8 +233,7 @@ f_ospeed(ip)
 }
 
 void
-f_raw(ip)
-	struct info *ip;
+f_raw(struct info *ip)
 {
 
 	if (ip->off)
@@ -261,8 +247,7 @@ f_raw(ip)
 }
 
 void
-f_rows(ip)
-	struct info *ip;
+f_rows(struct info *ip)
 {
 
 	ip->win.ws_row = atoi(ip->arg);
@@ -270,8 +255,7 @@ f_rows(ip)
 }
 
 void
-f_sane(ip)
-	struct info *ip;
+f_sane(struct info *ip)
 {
 
 	ip->t.c_cflag = TTYDEF_CFLAG | (ip->t.c_cflag & CLOCAL);
@@ -285,24 +269,21 @@ f_sane(ip)
 }
 
 void
-f_size(ip)
-	struct info *ip;
+f_size(struct info *ip)
 {
 
 	(void)printf("%d %d\n", ip->win.ws_row, ip->win.ws_col);
 }
 
 void
-f_speed(ip)
-	struct info *ip;
+f_speed(struct info *ip)
 {
 
 	(void)printf("%lu\n", (u_long)cfgetospeed(&ip->t));
 }
 
 void
-f_tty(ip)
-	struct info *ip;
+f_tty(struct info *ip)
 {
 	int tmp;
 

@@ -32,7 +32,7 @@
  *
  * @(#)pass5.c	8.9 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass5.c,v 1.17.2.2 2002/11/26 04:46:59 julian Exp $
- * $DragonFly: src/sbin/fsck/pass5.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
+ * $DragonFly: src/sbin/fsck/pass5.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -46,7 +46,7 @@
 #include "fsck.h"
 
 void
-pass5()
+pass5(void)
 {
 	int c, blk, frags, basesize, sumsize, mapsize, savednrpos = 0;
 	int inomapsize, blkmapsize;

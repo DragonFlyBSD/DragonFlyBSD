@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.6.2.2 2000/12/11 01:03:24 obrien Exp $
- *	@(#) $DragonFly: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.3 2003/08/08 04:18:36 dillon Exp $
+ *	@(#) $DragonFly: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.4 2003/09/28 14:39:16 hmp Exp $
  */
 
 /*
@@ -105,8 +105,7 @@ delay(cnt)
 }
 
 unsigned long
-CP_READ ( val )
-unsigned long val;
+CP_READ ( unsigned long val )
 {
 	if ( endian )
 		return ( ntohl ( val ) );
@@ -115,8 +114,7 @@ unsigned long val;
 }
 
 unsigned long
-CP_WRITE ( val )
-unsigned long val;
+CP_WRITE ( unsigned long val )
 {
 	if ( endian )
 		return ( htonl ( val ) );
@@ -134,8 +132,7 @@ unsigned long val;
  *	none
  */
 void
-error ( msg )
-char *msg;
+error ( char *msg )
 {
 	printf ( "%s\n", msg );
 	exit (1);
@@ -151,8 +148,7 @@ char *msg;
  *	c				Character from uart
  */
 char
-getbyte ( prn )
-int prn;
+getbyte ( int prn )
 {
 	int	c;
 
@@ -193,8 +189,7 @@ int prn;
  *	none				Line in global string 'line[]'
  */
 void
-getline ( prn )
-int prn;
+getline ( int prn )
 {
 	char	c = '\0';
 	int	i = 0;
@@ -228,9 +223,7 @@ int prn;
  *	none
  */
 void
-xmit_byte ( c, dn )
-unsigned char c;
-int dn;
+xmit_byte ( unsigned char c, int dn )
 {
 	int	val;
 
@@ -260,10 +253,7 @@ int dn;
  *	none
  */
 void
-xmit_to_i960 ( line, len, dn )
-char *line;
-int len;
-int dn;
+xmit_to_i960 ( char *line, int len, int dn )
 {
 	int	i;
 
@@ -281,7 +271,7 @@ int dn;
  *	none
  */
 void
-autobaud()
+autobaud(void)
 {
 	if ( strncmp ( line, "Mon960", 6 ) == 0 )
 		xmit_to_i960 ( "\r\n\r\n\r\n\r\n", 8, 0 );
@@ -298,7 +288,7 @@ autobaud()
  *
  */
 void
-finish ( ret )
+finish ( int ret )
 {
 	sgtty.c_lflag |= ( ICANON | ECHO );
 	sgtty.c_cc[VMIN] = vmin;
@@ -318,8 +308,7 @@ finish ( ret )
  *
  */
 char *
-basename ( path )
-	char *path;
+basename ( char *path )
 {
 	char *fname;
 
@@ -411,8 +400,7 @@ unsigned short crctab[1<<B] = {
  *	-1				unable to send file
  */
 int
-xmitfile ( filename )
-char *filename;
+xmitfile ( char *filename )
 {
 	int	fd;
 	int	numsect;
@@ -664,10 +652,7 @@ char *filename;
 
 
 int
-loadmicrocode ( ucode, size, ram )
-u_char *ucode;
-int size;
-u_char *ram;
+loadmicrocode ( u_char *ucode, int size, u_char *ram )
 {
 	struct {
 		u_long	Id;
@@ -765,9 +750,7 @@ u_char *ram;
 }
 
 int
-sendbinfile ( fname, ram )
-char *fname;
-u_char *ram;
+sendbinfile ( char *fname, u_char *ram )
 {
 	struct {
 		u_long	Id;
@@ -912,9 +895,7 @@ u_char *ram;
  * Program to download previously processed microcode to series-200 host adapter
  */
 int
-main( argc, argv )
-int argc;
-char *argv[];
+main( int argc, char **argv )
 {
 	int	fd;			/* mmap for Uart */
 	u_char	*ram;			/* pointer to RAM */

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm.c,v 1.3 2003/09/28 14:39:16 hmp Exp $
  */
 
 /*
@@ -213,9 +213,7 @@ char	prefix[128] = "";
 
 
 int
-main(argc, argv)
-	int	argc;
-	char	**argv;
+main(int argc, char **argv)
 {
 	int	error;
 
@@ -256,10 +254,7 @@ main(argc, argv)
  *
  */
 int
-do_cmd(descp, argc, argv)
-	struct cmd	*descp;
-	int		argc;
-	char		**argv;
+do_cmd(struct cmd *descp, int argc, char **argv)
 {
 	struct cmd	*cmdp = 0;
 
@@ -338,9 +333,7 @@ do_cmd(descp, argc, argv)
  *
  */
 void
-usage(cmdp, pref)
-	struct cmd	*cmdp;
-	char		*pref;
+usage(struct cmd *cmdp, char *pref)
 {
 	fprintf(stderr, "usage: %s command [arg] [arg]...\n", prog);
 	fprintf(stderr, USAGE_STR);
@@ -363,10 +356,7 @@ usage(cmdp, pref)
  *
  */
 void
-attach(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+attach(int argc, char **argv, struct cmd *cmdp)
 {
 	struct atmcfgreq	aar;
 	struct proto	*prp;
@@ -462,10 +452,7 @@ attach(argc, argv, cmdp)
  *
  */
 void
-detach(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+detach(int argc, char **argv, struct cmd *cmdp)
 {
 	struct atmcfgreq	adr;
 	int		s;
@@ -531,10 +518,7 @@ detach(argc, argv, cmdp)
  *
  */
 void
-pvc_add(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+pvc_add(int argc, char **argv, struct cmd *cmdp)
 {
 	struct atmaddreq	apr;
 	struct atminfreq	air;
@@ -715,10 +699,7 @@ pvc_add(argc, argv, cmdp)
  *
  */
 void
-arp_add(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+arp_add(int argc, char **argv, struct cmd *cmdp)
 {
 	int			len, s;
 	struct atmaddreq	apr;
@@ -824,10 +805,7 @@ arp_add(argc, argv, cmdp)
  *
  */
 void
-pvc_dlt(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+pvc_dlt(int argc, char **argv, struct cmd *cmdp)
 {
 	struct atmdelreq	apr;
 
@@ -859,10 +837,7 @@ pvc_dlt(argc, argv, cmdp)
  *
  */
 void
-svc_dlt(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+svc_dlt(int argc, char **argv, struct cmd *cmdp)
 {
 	struct atmdelreq	apr;
 
@@ -892,11 +867,7 @@ svc_dlt(argc, argv, cmdp)
  *
  */
 void
-vcc_dlt(argc, argv, cmdp, apr)
-	int			argc;
-	char			**argv;
-	struct cmd		*cmdp;
-	struct atmdelreq	*apr;
+vcc_dlt(int argc, char **argv, struct cmd *cmdp, struct atmdelreq *apr)
 {
 	char	*cp;
 	long	v;
@@ -983,10 +954,7 @@ vcc_dlt(argc, argv, cmdp, apr)
  *
  */
 void
-arp_dlt(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+arp_dlt(int argc, char **argv, struct cmd *cmdp)
 {
 	int	s;
 	struct atmdelreq	apr;
@@ -1059,10 +1027,7 @@ arp_dlt(argc, argv, cmdp)
  *
  */
 void
-help(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+help(int argc, char **argv, struct cmd *cmdp)
 {
 	usage(cmds, "");
 }

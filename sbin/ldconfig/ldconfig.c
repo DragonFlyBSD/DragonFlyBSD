@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ldconfig/ldconfig.c,v 1.31.2.3 2001/07/11 23:59:10 obrien Exp $
- * $DragonFly: src/sbin/ldconfig/ldconfig.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/ldconfig/ldconfig.c,v 1.3 2003/09/28 14:39:18 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -94,9 +94,7 @@ static int		readhints __P((void));
 static void		usage __P((void));
 
 int
-main(argc, argv)
-int	argc;
-char	*argv[];
+main(int argc, char **argv)
 {
 	int		i, c;
 	int		rval = 0;
@@ -208,7 +206,7 @@ char	*argv[];
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr,
 	"usage: ldconfig [-aout | -elf] [-Rimrsv] [-f hints_file] [dir | file ...]\n");
@@ -216,9 +214,7 @@ usage()
 }
 	
 int
-dofile(fname, silent)
-char	*fname;
-int	silent;
+dofile(char *fname, int silent)
 {
 	FILE *hfp;
 	char buf[MAXPATHLEN];
@@ -255,9 +251,7 @@ int	silent;
 }
 
 int
-dodir(dir, silent)
-char	*dir;
-int	silent;
+dodir(char *dir, int silent)
 {
 	DIR		*dd;
 	struct dirent	*dp;
@@ -314,9 +308,7 @@ int	silent;
 }
 
 static void
-enter(dir, file, name, dewey, ndewey)
-char	*dir, *file, *name;
-int	dewey[], ndewey;
+enter(char *dir, char *file, char *name, int *dewey, int ndewey)
 {
 	struct shlib_list	*shp;
 
@@ -364,9 +356,7 @@ int	dewey[], ndewey;
 
 
 int
-hinthash(cp, vmajor)
-char	*cp;
-int	vmajor;
+hinthash(char *cp, int vmajor)
 {
 	int	k = 0;
 
@@ -379,7 +369,7 @@ int	vmajor;
 }
 
 int
-buildhints()
+buildhints(void)
 {
 	struct hints_header	hdr;
 	struct hints_bucket	*blist;
@@ -511,7 +501,7 @@ buildhints()
 }
 
 static int
-readhints()
+readhints(void)
 {
 	int			fd;
 	void			*addr;
@@ -602,7 +592,7 @@ readhints()
 }
 
 static void
-listhints()
+listhints(void)
 {
 	struct shlib_list	*shp;
 	int			i;

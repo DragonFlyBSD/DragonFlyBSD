@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pathconf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/sbin/sysctl/pathconf.c,v 1.4 1999/08/28 00:14:30 peter Exp $
- * $DragonFly: src/sbin/sysctl/Attic/pathconf.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/sysctl/Attic/pathconf.c,v 1.3 2003/09/28 14:39:22 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -78,9 +78,7 @@ void parse __P((char *, char *, int));
 static void usage __P((void));
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	char *path;
 	int ch;
@@ -128,9 +126,7 @@ main(argc, argv)
  * List all variables known to the system.
  */
 void
-listall(path, lp)
-	char *path;
-	struct list *lp;
+listall(char *path, struct list *lp)
 {
 	int lvl2;
 
@@ -148,10 +144,7 @@ listall(path, lp)
  * Lookup and print out the attribute if it exists.
  */
 void
-parse(pathname, string, flags)
-	char *pathname;
-	char *string;
-	int flags;
+parse(char *pathname, char *string, int flags)
 {
 	int indx, value;
 	char *bufp, buf[BUFSIZ];
@@ -195,7 +188,7 @@ parse(pathname, string, flags)
  * Scan a list of names searching for a particular name.
  */
 int
-findname(string, level, bufp, namelist)
+findname(char *string, char *level, char **bufp, struct list *namelist)
 	char *string;
 	char *level;
 	char **bufp;
@@ -220,7 +213,7 @@ findname(string, level, bufp, namelist)
 }
 
 static void
-usage()
+usage(void)
 {
 
 	(void)fprintf(stderr, "%s\n%s\n%s\n",

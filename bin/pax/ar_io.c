@@ -36,7 +36,7 @@
  *
  * @(#)ar_io.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/ar_io.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/ar_io.c,v 1.4 2003/09/21 04:24:16 drhodus Exp $
+ * $DragonFly: src/bin/pax/ar_io.c,v 1.5 2003/09/28 14:39:14 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -94,14 +94,8 @@ static void ar_start_gzip (int, const char *, int);
  *	-1 on failure, 0 otherwise
  */
 
-#ifdef __STDC__
 int
 ar_open(char *name)
-#else
-int
-ar_open(name)
-	char *name;
-#endif
 {
 	struct mtget mb;
 
@@ -299,13 +293,8 @@ ar_open(name)
  * ar_close()
  *	closes archive device, increments volume number, and prints i/o summary
  */
-#ifdef __STDC__
 void
 ar_close(void)
-#else
-void
-ar_close()
-#endif
 {
 	int status;
 
@@ -423,13 +412,8 @@ ar_close()
  *	other side of the pipe from getting a SIGPIPE (pax will stop
  *	reading an archive once a format dependent trailer is detected).
  */
-#ifdef __STDC__
 void
 ar_drain(void)
-#else
-void
-ar_drain()
-#endif
 {
 	register int res;
 	char drbuf[MAXBLK];
@@ -460,13 +444,8 @@ ar_drain()
  *	0 if all ready to write, -1 otherwise
  */
 
-#ifdef __STDC__
 int
 ar_set_wr(void)
-#else
-int
-ar_set_wr()
-#endif
 {
 	off_t cpos;
 
@@ -503,13 +482,8 @@ ar_set_wr()
  *	0 if we can append, -1 otherwise.
  */
 
-#ifdef __STDC__
 int
 ar_app_ok(void)
-#else
-int
-ar_app_ok()
-#endif
 {
 	if (artyp == ISPIPE) {
 		paxwarn(1, "Cannot append to an archive obtained from a pipe.");
@@ -532,15 +506,8 @@ ar_app_ok()
  *	Number of bytes in buffer. 0 for end of file, -1 for a read error.
  */
 
-#ifdef __STDC__
 int
 ar_read(register char *buf, register int cnt)
-#else
-int
-ar_read(buf, cnt)
-	register char *buf;
-	register int cnt;
-#endif
 {
 	register int res = 0;
 
@@ -622,15 +589,8 @@ ar_read(buf, cnt)
  *	error in the archive occured.
  */
 
-#ifdef __STDC__
 int
 ar_write(register char *buf, register int bsz)
-#else
-int
-ar_write(buf, bsz)
-	register char *buf;
-	register int bsz;
-#endif
 {
 	register int res;
 	off_t cpos;
@@ -747,13 +707,8 @@ ar_write(buf, bsz)
  *	0 when ok to try i/o again, -1 otherwise.
  */
 
-#ifdef __STDC__
 int
 ar_rdsync(void)
-#else
-int
-ar_rdsync()
-#endif
 {
 	long fsbz;
 	off_t cpos;
@@ -838,15 +793,8 @@ ar_rdsync()
  *	partial move (the amount moved is in skipped)
  */
 
-#ifdef __STDC__
 int
 ar_fow(off_t sksz, off_t *skipped)
-#else
-int
-ar_fow(sksz, skipped)
-	off_t sksz;
-	off_t *skipped;
-#endif
 {
 	off_t cpos;
 	off_t mpos;
@@ -904,14 +852,8 @@ ar_fow(sksz, skipped)
  *	0 if moved the requested distance, -1 on complete failure
  */
 
-#ifdef __STDC__
 int
 ar_rev(off_t sksz)
-#else
-int
-ar_rev(sksz)
-	off_t sksz;
-#endif
 {
 	off_t cpos;
 	struct mtop mb;
@@ -1042,13 +984,8 @@ ar_rev(sksz)
  *	physical block size if ok (ok > 0), -1 otherwise
  */
 
-#ifdef __STDC__
 static int
 get_phys(void)
-#else
-static int
-get_phys()
-#endif
 {
 	register int padsz = 0;
 	register int res;
@@ -1160,13 +1097,8 @@ get_phys()
  *	0 when ready to continue, -1 when all done
  */
 
-#ifdef __STDC__
 int
 ar_next(void)
-#else
-int
-ar_next()
-#endif
 {
 	char buf[PAXPATHLEN+2];
 	static int freeit = 0;

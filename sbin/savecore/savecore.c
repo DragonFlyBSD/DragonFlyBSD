@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1986, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)savecore.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/sbin/savecore/savecore.c,v 1.28.2.13 2002/04/07 21:17:50 asmodai Exp $
- * $DragonFly: src/sbin/savecore/savecore.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/savecore/savecore.c,v 1.3 2003/09/28 14:39:22 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -139,9 +139,7 @@ void	 usage __P((void));
 void	 Write __P((int, void *, int));
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch;
 
@@ -215,7 +213,7 @@ main(argc, argv)
 }
 
 void
-kmem_setup()
+kmem_setup(void)
 {
 	int kmem, i;
 	const char *dump_sys;
@@ -292,7 +290,7 @@ kmem_setup()
 }
 
 void
-check_kmem()
+check_kmem(void)
 {
 	char core_vers[1024], *p;
 
@@ -318,7 +316,7 @@ check_kmem()
  * Clear the magic number in the dump header.
  */
 void
-clear_dump()
+clear_dump(void)
 {
 	u_long newdumpmag;
 
@@ -333,7 +331,7 @@ clear_dump()
  * header.
  */
 int
-dump_exists()
+dump_exists(void)
 {
 	u_long newdumpmag;
 
@@ -357,7 +355,7 @@ char buf[1024 * 1024];
  * Save the core dump.
  */
 void
-save_core()
+save_core(void)
 {
 	register FILE *fp;
 	register int bounds, ifd, nr, nw;
@@ -504,9 +502,7 @@ err2:			syslog(LOG_WARNING,
  * specified device.
  */
 int
-verify_dev(name, dev)
-	char *name;
-	register dev_t dev;
+verify_dev(char *name, register dev_t dev)
 {
 	struct stat sb;
 
@@ -525,8 +521,7 @@ verify_dev(name, dev)
  *  3) as a last resort, try to create the node we need
  */
 void
-find_dev(dev)
-	register dev_t dev;
+find_dev(register dev_t dev)
 {
 	struct dirent *ent;
 	char *dn, *dnp;
@@ -561,7 +556,7 @@ find_dev(dev)
  * make sure it looks sane (within one week of current date and time).
  */
 int
-get_crashtime()
+get_crashtime(void)
 {
 	time_t dumptime;			/* Time the dump was taken. */
 
@@ -585,7 +580,7 @@ get_crashtime()
  * Extract the size of the dump from the dump header.
  */
 void
-get_dumpsize()
+get_dumpsize(void)
 {
 	int kdumpsize;	/* Number of pages in dump. */
 
@@ -600,7 +595,7 @@ get_dumpsize()
  * save directory.
  */
 int
-check_space()
+check_space(void)
 {
 	register FILE *fp;
 	const char *tkernel;
@@ -649,9 +644,7 @@ check_space()
 }
 
 int
-Open(name, rw)
-	const char *name;
-	int rw;
+Open(const char *name, int rw)
 {
 	int fd;
 
@@ -663,9 +656,7 @@ Open(name, rw)
 }
 
 int
-Read(fd, bp, size)
-	int fd, size;
-	void *bp;
+Read(int fd, void *bp, int size)
 {
 	int nr;
 
@@ -678,9 +669,7 @@ Read(fd, bp, size)
 }
 
 void
-Lseek(fd, off, flag)
-	int fd, flag;
-	off_t off;
+Lseek(int fd, off_t off, int flag)
 {
 	off_t ret;
 
@@ -696,10 +685,7 @@ Lseek(fd, off, flag)
  */
 #define DUMPBUFSIZE	8192
 void
-DumpWrite(fd, bp, size, off, flag)
-	int fd, size, flag;
-	void *bp;
-	off_t off;
+DumpWrite(int fd, void *bp, int size, off_t off, int flag)
 {
 	unsigned char buf[DUMPBUFSIZE], *p, *q;
 	off_t pos;
@@ -729,10 +715,7 @@ DumpWrite(fd, bp, size, off, flag)
 }
 
 void
-DumpRead(fd, bp, size, off, flag)
-	int fd, size, flag;
-	void *bp;
-	off_t off;
+DumpRead(int fd, void *bp, int size, off_t off, int flag)
 {
 	unsigned char buf[DUMPBUFSIZE], *p, *q;
 	off_t pos;
@@ -760,9 +743,7 @@ DumpRead(fd, bp, size, off, flag)
 }
 
 void
-Write(fd, bp, size)
-	int fd, size;
-	void *bp;
+Write(int fd, void *bp, int size)
 {
 	int n;
 
@@ -773,7 +754,7 @@ Write(fd, bp, size)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)syslog(LOG_ERR, "usage: savecore [-cfkvz] [-N system] directory");
 	exit(1);

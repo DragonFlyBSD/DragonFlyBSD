@@ -49,7 +49,7 @@
  *
  * $Id: ip6fw.c,v 1.1.2.2.2.2 1999/05/14 05:13:50 shin Exp $
  * $FreeBSD: src/sbin/ip6fw/ip6fw.c,v 1.1.2.9 2003/04/05 10:54:51 ume Exp $
- * $DragonFly: src/sbin/ip6fw/ip6fw.c,v 1.3 2003/08/08 04:18:38 dillon Exp $
+ * $DragonFly: src/sbin/ip6fw/ip6fw.c,v 1.4 2003/09/28 14:39:18 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -158,10 +158,7 @@ struct in6_addr *plen2mask(int n)
 }
 
 void
-print_port(prot, port, comma)
-	u_char  prot;
-	u_short port;
-	const char *comma;
+print_port(u_char prot, u_short port, const char *comma)
 {
 	struct servent *se;
 	struct protoent *pe;
@@ -442,9 +439,7 @@ show_ip6fw(struct ip6_fw *chain)
 }
 
 void
-list(ac, av)
-	int	ac;
-	char 	**av;
+list(int ac, char **av)
 {
 	struct ip6_fw *r, *rules;
 	int l,i;
@@ -544,9 +539,7 @@ show_usage(const char *fmt, ...)
 }
 
 static int
-lookup_host (host, addr, family)
-	char *host;
-	u_char *addr;
+lookup_host (char *host, u_char *addr, int family)
 {
 	struct hostent *he;
 
@@ -559,10 +552,7 @@ lookup_host (host, addr, family)
 }
 
 void
-fill_ip6(ipno, mask, acp, avp)
-	struct in6_addr *ipno, *mask;
-	int *acp;
-	char ***avp;
+fill_ip6(struct in6_addr *ipno, struct in6_addr *mask, int *acp, char ***avp)
 {
 	int ac = *acp;
 	char **av = *avp;
@@ -624,8 +614,7 @@ fill_reject_code6(u_short *codep, char *str)
 }
 
 static void
-add_port(cnt, ptr, off, port)
-	u_short *cnt, *ptr, off, port;
+add_port(u_short *cnt, u_short *ptr, u_short off, u_short port)
 {
 	if (off + *cnt >= IPV6_FW_MAX_PORTS)
 		errx(1, "too many ports (max is %d)", IPV6_FW_MAX_PORTS);
@@ -665,9 +654,7 @@ lookup_port(const char *arg, int test, int nodash)
 }
 
 int
-fill_port(cnt, ptr, off, arg)
-	u_short *cnt, *ptr, off;
-	char *arg;
+fill_port(u_short *cnt, u_short *ptr, u_short off, char *arg)
 {
 	char *s;
 	int initial_range = 0;
@@ -697,9 +684,7 @@ fill_port(cnt, ptr, off, arg)
 }
 
 void
-fill_tcpflag(set, reset, vp)
-	u_char *set, *reset;
-	char **vp;
+fill_tcpflag(u_char *set, u_char *reset, char **vp)
 {
 	char *p = *vp,*q;
 	u_char *d;
@@ -766,10 +751,7 @@ fill_ip6opt(u_char *set, u_char *reset, char **vp)
 }
 
 void
-fill_icmptypes(types, vp, fw_flg)
-	u_long *types;
-	char **vp;
-	u_short *fw_flg;
+fill_icmptypes(u_long *types, char **vp, u_short *fw_flg)
 {
 	char *c = *vp;
 
@@ -795,9 +777,7 @@ fill_icmptypes(types, vp, fw_flg)
 }
 
 void
-delete(ac,av)
-	int ac;
-	char **av;
+delete(int ac, char **av)
 {
 	struct ip6_fw rule;
 	int i;
@@ -866,9 +846,7 @@ fill_iface(char *which, union ip6_fw_if *ifu, int *byname, int ac, char *arg)
 }
 
 static void
-add(ac,av)
-	int ac;
-	char **av;
+add(int ac, char **av)
 {
 	struct ip6_fw rule;
 	int i;
@@ -1156,9 +1134,7 @@ badviacombo:
 }
 
 static void
-zero (ac, av)
-	int ac;
-	char **av;
+zero (int ac, char **av)
 {
 	av++; ac--;
 
@@ -1195,9 +1171,7 @@ zero (ac, av)
 }
 
 int
-ip6fw_main(ac,av)
-	int 	ac;
-	char 	**av;
+ip6fw_main(int ac, char **av)
 {
 	int 		ch;
 	extern int 	optind;
@@ -1285,9 +1259,7 @@ ip6fw_main(ac,av)
 }
 
 int
-main(ac, av)
-	int	ac;
-	char	**av;
+main(int ac, char **av)
 {
 #define	MAX_ARGS	32
 #define	WHITESP		" \t\f\v\n\r"

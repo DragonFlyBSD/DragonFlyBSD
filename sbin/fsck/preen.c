@@ -32,7 +32,7 @@
  *
  * @(#)preen.c	8.5 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/preen.c,v 1.16 1999/12/30 16:32:40 peter Exp $
- * $DragonFly: src/sbin/fsck/preen.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
+ * $DragonFly: src/sbin/fsck/preen.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -70,11 +70,8 @@ static int startdisk __P((struct disk *dk,
 		int (*checkit)(char *, char *, long, int)));
 
 int
-checkfstab(preen, maxrun, docheck, chkit)
-	int preen;
-	int maxrun;
-	int (*docheck)(struct fstab *);
-	int (*chkit)(char *, char *, long, int);
+checkfstab(int preen, int maxrun, int (*docheck)(struct fstab *),
+           int (*chkit)(char *, char *, long, int))
 {
 	register struct fstab *fsp;
 	register struct disk *dk, *nextdisk;
@@ -197,8 +194,7 @@ checkfstab(preen, maxrun, docheck, chkit)
 }
 
 static struct disk *
-finddisk(name)
-	char *name;
+finddisk(char *name)
 {
 	register struct disk *dk, **dkp;
 	register char *p;
@@ -235,9 +231,7 @@ finddisk(name)
 }
 
 static void
-addpart(name, fsname, auxdata)
-	char *name, *fsname;
-	long auxdata;
+addpart(char *name, char *fsname, long auxdata)
 {
 	struct disk *dk = finddisk(name);
 	register struct part *pt, **ppt = &dk->part;
@@ -267,9 +261,7 @@ addpart(name, fsname, auxdata)
 }
 
 static int
-startdisk(dk, checkit)
-	register struct disk *dk;
-	int (*checkit)(char *, char *, long, int);
+startdisk(register struct disk *dk, int (*checkit)(char *, char *, long ,int))
 {
 	register struct part *pt = dk->part;
 
@@ -285,8 +277,7 @@ startdisk(dk, checkit)
 }
 
 char *
-blockcheck(origname)
-	char *origname;
+blockcheck(char *origname)
 {
 	struct stat stslash, stblock, stchar;
 	char *newname, *raw;

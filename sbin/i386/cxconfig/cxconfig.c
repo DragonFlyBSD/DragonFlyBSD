@@ -22,7 +22,7 @@
  *              -- set channel options
  *
  * $FreeBSD: src/sbin/i386/cxconfig/cxconfig.c,v 1.4 1999/08/28 00:13:00 peter Exp $
- * $DragonFly: src/sbin/i386/cxconfig/cxconfig.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/i386/cxconfig/cxconfig.c,v 1.3 2003/09/28 14:39:18 hmp Exp $
  */
 
 #include <err.h>
@@ -70,7 +70,7 @@ unsigned char atosym (char *s)
 	return (*s);
 }
 
-void usage ()
+void usage (void)
 {
 	fprintf (stderr,
 		"Cronyx-Sigma Adapter Configuration Utility, Version 1.0\n");
@@ -141,7 +141,7 @@ int printstats (int channel, int hflag)
 	return (0);
 }
 
-void printallstats ()
+void printallstats (void)
 {
 	int b, c;
 
@@ -163,7 +163,7 @@ void setchan (int channel)
 	close (s);
 }
 
-void printopt ()
+void printopt (void)
 {
 	/* Common channel options */
 	/* channel option register 4 */
@@ -395,7 +395,7 @@ void printchan (int channel)
 		printopt ();
 }
 
-void printall ()
+void printall (void)
 {
 	struct ifconf ifc;
 	struct ifreq *ifr;

@@ -10,7 +10,7 @@
  * Ari Suutari <suutari@iki.fi>
  *
  * $FreeBSD: src/sbin/natd/natd.c,v 1.25.2.5 2002/02/01 09:18:32 ru Exp $
- * $DragonFly: src/sbin/natd/natd.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/natd/natd.c,v 1.3 2003/09/28 14:39:20 hmp Exp $
  */
 
 #define SYSLOG_NAMES
@@ -383,7 +383,7 @@ int main (int argc, char** argv)
 	return 0;
 }
 
-static void DaemonMode ()
+static void DaemonMode (void)
 {
 	FILE*	pidFile;
 
@@ -1307,7 +1307,7 @@ void ReadConfigFile (const char* fileName)
 	fclose (file);
 }
 
-static void Usage ()
+static void Usage (void)
 {
 	int			i;
 	int			max;

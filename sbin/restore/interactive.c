@@ -32,7 +32,7 @@
  *
  * @(#)interactive.c	8.5 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/interactive.c,v 1.8.2.1 2001/01/03 14:36:08 iedowse Exp $
- * $DragonFly: src/sbin/restore/interactive.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
+ * $DragonFly: src/sbin/restore/interactive.c,v 1.4 2003/09/28 14:39:21 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -90,7 +90,7 @@ static void	 printlist __P((char *, char *));
  * Read and execute commands from the terminal.
  */
 void
-runcmdshell()
+runcmdshell(void)
 {
 	register struct entry *np;
 	ino_t ino;
@@ -298,10 +298,7 @@ loop:
  * eliminate any embedded ".." components.
  */
 static void
-getcmd(curdir, cmd, name, size, ap)
-	char *curdir, *cmd, *name;
-	struct arglist *ap;
-	int size;
+getcmd(char *curdir, char *cmd, char *name, int size, struct arglist *ap)
 {
 	register char *cp;
 	static char input[BUFSIZ];
@@ -386,8 +383,7 @@ retnext:
  * Strip off the next token of the input.
  */
 static char *
-copynext(input, output)
-	char *input, *output;
+copynext(char *input, char *output)
 {
 	register char *cp, *bp;
 	char quote;
@@ -436,9 +432,7 @@ copynext(input, output)
  * remove any embedded "." and ".." components.
  */
 void
-canon(rawname, canonname, len)
-	char *rawname, *canonname;
-	int len;
+canon(char *rawname, char *canonname, int len)
 {
 	register char *cp, *np;
 
@@ -492,9 +486,7 @@ canon(rawname, canonname, len)
  * Do an "ls" style listing of a directory
  */
 static void
-printlist(name, basename)
-	char *name;
-	char *basename;
+printlist(char *name, char *basename)
 {
 	register struct afile *fp, *list, *listp;
 	register struct direct *dp;
@@ -576,10 +568,7 @@ printlist(name, basename)
  * Read the contents of a directory.
  */
 static void
-mkentry(name, dp, fp)
-	char *name;
-	struct direct *dp;
-	register struct afile *fp;
+mkentry(char *name, struct direct *dp, register struct afile *fp)
 {
 	char *cp;
 	struct entry *np;
@@ -639,9 +628,7 @@ mkentry(name, dp, fp)
  * Print out a pretty listing of a directory
  */
 static void
-formatf(list, nentry)
-	register struct afile *list;
-	int nentry;
+formatf(register struct afile *list, int nentry)
 {
 	register struct afile *fp, *endlist;
 	int width, bigino, haveprefix, havepostfix;
@@ -712,8 +699,7 @@ formatf(list, nentry)
 #undef d_ino
 
 struct dirent *
-glob_readdir(dirp)
-	RST_DIR *dirp;
+glob_readdir(RST_DIR *dirp)
 {
 	struct direct *dp;
 	static struct dirent adirent;
@@ -736,9 +722,7 @@ glob_readdir(dirp)
  * Return st_mode information in response to stat or lstat calls
  */
 static int
-glob_stat(name, stp)
-	const char *name;
-	struct stat *stp;
+glob_stat(const char *name, struct stat *stp)
 {
 	register struct direct *dp;
 
@@ -757,8 +741,7 @@ glob_stat(name, stp)
  * Comparison routine for qsort.
  */
 static int
-fcmp(f1, f2)
-	register const void *f1, *f2;
+fcmp(register const void *f1, register const void *f2)
 {
 	return (strcmp(((struct afile *)f1)->fname,
 	    ((struct afile *)f2)->fname));
@@ -768,8 +751,7 @@ fcmp(f1, f2)
  * respond to interrupts
  */
 void
-onintr(signo)
-	int signo;
+onintr(int signo)
 {
 	if (command == 'i' && runshell)
 		longjmp(reset, 1);

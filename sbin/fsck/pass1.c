@@ -32,7 +32,7 @@
  *
  * @(#)pass1.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass1.c,v 1.16.2.5 2002/06/23 22:34:58 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass1.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
+ * $DragonFly: src/sbin/fsck/pass1.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -53,7 +53,7 @@ static ino_t lastino;		/* last inode in use */
 static void checkinode __P((ino_t inumber, struct inodesc *));
 
 void
-pass1()
+pass1(void)
 {
 	u_int8_t *cp;
 	ino_t inumber;
@@ -348,8 +348,7 @@ unknown:
 }
 
 int
-pass1check(idesc)
-	register struct inodesc *idesc;
+pass1check(register struct inodesc *idesc)
 {
 	int res = KEEPON;
 	int anyout, nfrags;

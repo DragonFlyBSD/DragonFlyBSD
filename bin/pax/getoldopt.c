@@ -10,7 +10,7 @@
  * in the Pubic Domain for your edification and enjoyment.
  *
  * $FreeBSD: src/bin/pax/getoldopt.c,v 1.1.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/getoldopt.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/pax/getoldopt.c,v 1.3 2003/09/28 14:39:14 hmp Exp $
  */
 
 #include <stdio.h>
@@ -18,10 +18,7 @@
 #include <unistd.h>
 
 int
-getoldopt(argc, argv, optstring)
-	int	argc;
-	char	**argv;
-	char	*optstring;
+getoldopt(int argc, char **argv, char *optstring)
 {
 	static char	*key;		/* Points to next keyletter */
 	static char	use_getopt;	/* !=0 if argv[1][0] was '-' */

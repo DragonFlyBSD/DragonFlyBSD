@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm_eni.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm_eni.c,v 1.3 2003/08/08 04:18:36 dillon Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm_eni.c,v 1.4 2003/09/28 14:39:16 hmp Exp $
  */
 
 /*
@@ -120,10 +120,7 @@ Errs        Errs    Errs      Errs     Errs     Errs   Errs\n"
  *
  */
 void
-show_eni_stats(intf, argc, argv)
-	char		*intf;
-	int		argc;
-	char		**argv;
+show_eni_stats(char *intf, int argc, char **argv)
 {
 	int	buf_len, stats_type;
 	struct atminfreq	air;
@@ -216,8 +213,7 @@ show_eni_stats(intf, argc, argv)
  *
  */
 void
-print_eni_oc3(vi)
-	struct air_vinfo_rsp	*vi;
+print_eni_oc3(struct air_vinfo_rsp *vi)
 {
 	Eni_stats	*stats;
 
@@ -257,8 +253,7 @@ print_eni_oc3(vi)
  *
  */
 void
-print_eni_atm(vi)
-	struct air_vinfo_rsp	*vi;
+print_eni_atm(struct air_vinfo_rsp *vi)
 {
 	Eni_stats	*stats;
 
@@ -293,8 +288,7 @@ print_eni_atm(vi)
  *
  */
 void
-print_eni_aal0(vi)
-	struct air_vinfo_rsp	*vi;
+print_eni_aal0(struct air_vinfo_rsp *vi)
 {
 	Eni_stats	*stats;
 
@@ -330,8 +324,7 @@ print_eni_aal0(vi)
  *
  */
 void
-print_eni_aal5(vi)
-	struct air_vinfo_rsp	*vi;
+print_eni_aal5(struct air_vinfo_rsp *vi)
 {
 	Eni_stats	*stats;
 
@@ -372,8 +365,7 @@ print_eni_aal5(vi)
  *
  */
 void
-print_eni_driver(vi)
-        struct air_vinfo_rsp    *vi;
+print_eni_driver(struct air_vinfo_rsp *vi)
 {
         Eni_stats       *stats;
 

@@ -36,7 +36,7 @@
  *
  * @(#)ftree.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/ftree.c,v 1.13.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/ftree.c,v 1.3 2003/09/21 04:24:17 drhodus Exp $
+ * $DragonFly: src/bin/pax/ftree.c,v 1.4 2003/09/28 14:39:14 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -87,13 +87,8 @@ static int ftree_arg (void);
  *	0 if there is at least one valid file arg to process, -1 otherwise
  */
 
-#ifdef __STDC__
 int
 ftree_start(void)
-#else
-int
-ftree_start()
-#endif
 {
 	/*
 	 * set up the operation mode of fts, open the first file arg. We must
@@ -146,15 +141,8 @@ ftree_start()
  *	0 if added to the linked list, -1 if failed
  */
 
-#ifdef __STDC__
 int
 ftree_add(register char *str, int chflg)
-#else
-int
-ftree_add(str, chflg)
-	register char *str;
-	int chflg;
-#endif
 {
 	register FTREE *ft;
 	register int len;
@@ -198,14 +186,8 @@ ftree_add(str, chflg)
  *	-n and -d processing.
  */
 
-#ifdef __STDC__
 void
 ftree_sel(register ARCHD *arcn)
-#else
-void
-ftree_sel(arcn)
-	register ARCHD *arcn;
-#endif
 {
 	/*
 	 * set reference bit for this pattern. This linked list is only used
@@ -237,13 +219,8 @@ ftree_sel(arcn)
  *	have a selected member (reference count still 0)
  */
 
-#ifdef __STDC__
 void
 ftree_chk(void)
-#else
-void
-ftree_chk()
-#endif
 {
 	register FTREE *ft;
 	register int wban = 0;
@@ -279,13 +256,8 @@ ftree_chk()
  *	stdin).
  */
 
-#ifdef __STDC__
 static int
 ftree_arg(void)
-#else
-static int
-ftree_arg()
-#endif
 {
 	register char *pt;
 
@@ -358,14 +330,8 @@ ftree_arg()
  *	0 when contents of arcn have been set with the next file, -1 when done.
  */
 
-#ifdef __STDC__
 int
 next_file(register ARCHD *arcn)
-#else
-int
-next_file(arcn)
-	register ARCHD *arcn;
-#endif
 {
 	register int cnt;
 	time_t atime;

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)startslip.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/startslip/startslip.c,v 1.31.2.1 2000/05/07 18:26:51 joe Exp $
- * $DragonFly: src/sbin/startslip/startslip.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/startslip/startslip.c,v 1.3 2003/09/28 14:39:22 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -101,9 +101,7 @@ int getline __P((char *, int, int, time_t));
 static void usage __P((void));
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	char *cp, **ap;
 	int ch, disc;
@@ -469,7 +467,7 @@ restart:
 }
 
 void
-sighup()
+sighup(void)
 {
 
 	printd("hup\n");
@@ -479,7 +477,7 @@ sighup()
 }
 
 void
-sigurg()
+sigurg(void)
 {
 
 	printd("urg\n");
@@ -489,7 +487,7 @@ sigurg()
 }
 
 void
-sigterm()
+sigterm(void)
 {
 
 	printd("terminate\n");
@@ -499,10 +497,7 @@ sigterm()
 }
 
 int
-getline(buf, size, fd, fintimeout)
-	char *buf;
-	int size, fd;
-	time_t fintimeout;
+getline(char *buf, int size, int fd, time_t fintimeout)
 {
 	register int i;
 	int ret;
@@ -556,7 +551,7 @@ getline(buf, size, fd, fintimeout)
 }
 
 int
-carrier()
+carrier(void)
 {
 	int comstate;
 
@@ -569,7 +564,7 @@ carrier()
 }
 
 void
-down(code)
+down(int code)
 {
 	if (fd > -1)
 		close(fd);
@@ -581,7 +576,7 @@ down(code)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "%s\n%s\n%s\n%s\n",  
 "usage: startslip [-d] [-b speed] [-s string1 [-s string2 [...]]] [-h] [-l]",

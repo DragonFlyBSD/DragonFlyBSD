@@ -31,7 +31,7 @@
  *
  * $NetBSD: fat.c,v 1.12 2000/10/10 20:24:52 is Exp $
  * $FreeBSD: src/sbin/fsck_msdosfs/fat.c,v 1.1.2.1 2001/08/01 05:47:56 obrien Exp $
- * $DragonFly: src/sbin/fsck_msdosfs/fat.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/fsck_msdosfs/fat.c,v 1.3 2003/09/28 14:39:17 hmp Exp $
  */
 
 
@@ -55,11 +55,7 @@ static int _readfat __P((int, struct bootblock *, int, u_char **));
  * Check a cluster number for valid value
  */
 static int
-checkclnum(boot, fat, cl, next)
-	struct bootblock *boot;
-	int fat;
-	cl_t cl;
-	cl_t *next;
+checkclnum(struct bootblock *boot, int fat, cl_t cl, cl_t *next)
 {
 	if (*next >= (CLUST_RSRVD&boot->ClustMask))
 		*next |= ~boot->ClustMask;
@@ -90,11 +86,7 @@ checkclnum(boot, fat, cl, next)
  * Read a FAT from disk. Returns 1 if successful, 0 otherwise.
  */
 static int
-_readfat(fs, boot, no, buffer)
-	int fs;
-	struct bootblock *boot;
-	int no;
-	u_char **buffer;
+_readfat(int fs, struct bootblock *boot, int no, u_char **buffer)
 {
 	off_t off;
 
@@ -129,11 +121,7 @@ _readfat(fs, boot, no, buffer)
  * Read a FAT and decode it into internal format
  */
 int
-readfat(fs, boot, no, fp)
-	int fs;
-	struct bootblock *boot;
-	int no;
-	struct fatEntry **fp;
+readfat(int fs, struct bootblock *boot, int no, struct fatEntry **fp)
 {
 	struct fatEntry *fat;
 	u_char *buffer, *p;
@@ -251,8 +239,7 @@ readfat(fs, boot, no, fp)
  * Get type of reserved cluster
  */
 char *
-rsrvdcltype(cl)
-	cl_t cl;
+rsrvdcltype(cl_t cl)
 {
 	if (cl == CLUST_FREE)
 		return "free";
@@ -264,11 +251,7 @@ rsrvdcltype(cl)
 }
 
 static int
-clustdiffer(cl, cp1, cp2, fatnum)
-	cl_t cl;
-	cl_t *cp1;
-	cl_t *cp2;
-	int fatnum;
+clustdiffer(cl_t cl, cl_t *cp1, cl_t *cp2, int fatnum)
 {
 	if (*cp1 == CLUST_FREE || *cp1 >= CLUST_RSRVD) {
 		if (*cp2 == CLUST_FREE || *cp2 >= CLUST_RSRVD) {
@@ -338,11 +321,8 @@ clustdiffer(cl, cp1, cp2, fatnum)
  * into the first one.
  */
 int
-comparefat(boot, first, second, fatnum)
-	struct bootblock *boot;
-	struct fatEntry *first;
-	struct fatEntry *second;
-	int fatnum;
+comparefat(struct bootblock *boot, struct fatEntry *first, 
+           struct fatEntry *second, int fatnum)
 {
 	cl_t cl;
 	int ret = FSOK;
@@ -354,10 +334,7 @@ comparefat(boot, first, second, fatnum)
 }
 
 void
-clearchain(boot, fat, head)
-	struct bootblock *boot;
-	struct fatEntry *fat;
-	cl_t head;
+clearchain(struct bootblock *boot, struct fatEntry *fat, cl_t head)
 {
 	cl_t p, q;
 
@@ -371,11 +348,7 @@ clearchain(boot, fat, head)
 }
 
 int
-tryclear(boot, fat, head, trunc)
-	struct bootblock *boot;
-	struct fatEntry *fat;
-	cl_t head;
-	cl_t *trunc;
+tryclear(struct bootblock *boot, struct fatEntry *fat, cl_t head, cl_t *trunc)
 {
 	if (ask(0, "Clear chain starting at %u", head)) {
 		clearchain(boot, fat, head);
@@ -391,9 +364,7 @@ tryclear(boot, fat, head, trunc)
  * Check a complete FAT in-memory for crosslinks
  */
 int
-checkfat(boot, fat)
-	struct bootblock *boot;
-	struct fatEntry *fat;
+checkfat(struct bootblock *boot, struct fatEntry *fat)
 {
 	cl_t head, p, h, n;
 	u_int len;
@@ -487,11 +458,7 @@ checkfat(boot, fat)
  * Write out FATs encoding them from the internal format
  */
 int
-writefat(fs, boot, fat, correct_fat)
-	int fs;
-	struct bootblock *boot;
-	struct fatEntry *fat;
-	int correct_fat;
+writefat(int fs, struct bootblock *boot, struct fatEntry *fat, int correct_fat)
 {
 	u_char *buffer, *p;
 	cl_t cl;
@@ -599,10 +566,7 @@ writefat(fs, boot, fat, correct_fat)
  * Check a complete in-memory FAT for lost cluster chains
  */
 int
-checklost(dosfs, boot, fat)
-	int dosfs;
-	struct bootblock *boot;
-	struct fatEntry *fat;
+checklost(int dosfs, struct bootblock *boot, struct fatEntry *fat)
 {
 	cl_t head;
 	int mod = FSOK;

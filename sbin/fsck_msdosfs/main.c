@@ -31,7 +31,7 @@
  *
  * $NetBSD: main.c,v 1.10 1997/10/01 02:18:14 enami Exp $
  * $FreeBSD: src/sbin/fsck_msdosfs/main.c,v 1.4.2.1 2001/08/01 05:47:56 obrien Exp $
- * $DragonFly: src/sbin/fsck_msdosfs/main.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/fsck_msdosfs/main.c,v 1.3 2003/09/28 14:39:17 hmp Exp $
  */
 
 
@@ -61,15 +61,13 @@ static void usage __P((void));
 int main __P((int, char **));
 
 static void
-usage()
+usage(void)
 {
 	errexit("Usage: fsck_msdos [-fnpy] filesystem ... \n");
 }
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	int ret = 0, erg;
 	int ch;
@@ -124,14 +122,7 @@ main(argc, argv)
 
 /*VARARGS*/
 int
-#if __STDC__
 ask(int def, const char *fmt, ...)
-#else
-ask(def, fmt, va_alist)
-	int def;
-	char *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
 
@@ -146,11 +137,7 @@ ask(def, fmt, va_alist)
 		return def;
 	}
 
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	vsnprintf(prompt, sizeof(prompt), fmt, ap);
 	if (alwaysyes || rdonly) {
 		printf("%s? %s\n", prompt, rdonly ? "no" : "yes");

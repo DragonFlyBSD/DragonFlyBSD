@@ -36,7 +36,7 @@
  *
  * @(#)buf_subs.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/buf_subs.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/buf_subs.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/pax/buf_subs.c,v 1.3 2003/09/28 14:39:14 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -80,13 +80,8 @@ off_t rdcnt;				/* # of bytes read on current vol */
  *	0 if ok, -1 if the user specified write block size violates pax spec
  */
 
-#ifdef __STDC__
 int
 wr_start(void)
-#else
-int
-wr_start()
-#endif
 {
 	buf = &(bufmem[BLKMULT]);
 	/*
@@ -133,13 +128,8 @@ wr_start()
  *	0 if ok, -1 otherwise
  */
 
-#ifdef __STDC__
 int
 rd_start(void)
-#else
-int
-rd_start()
-#endif
 {
 	/*
 	 * leave space for the header pushback (see get_arc()). If we are
@@ -176,13 +166,8 @@ rd_start()
  *	set up buffer system for copying within the file system
  */
 
-#ifdef __STDC__
 void
 cp_start(void)
-#else
-void
-cp_start()
-#endif
 {
 	buf = &(bufmem[BLKMULT]);
 	rdblksz = blksz = MAXBLK;
@@ -220,14 +205,8 @@ cp_start()
  *	0 for success, -1 for failure
  */
 
-#ifdef __STDC__
 int
 appnd_start(off_t skcnt)
-#else
-int
-appnd_start(skcnt)
-	off_t skcnt;
-#endif
 {
 	register int res;
 	off_t cnt;
@@ -325,13 +304,8 @@ appnd_start(skcnt)
  *	0 on success, and -1 on failure
  */
 
-#ifdef __STDC__
 int
 rd_sync(void)
-#else
-int
-rd_sync()
-#endif
 {
 	register int errcnt = 0;
 	register int res;
@@ -398,15 +372,8 @@ rd_sync()
  *	pback space is increased.
  */
 
-#ifdef __STDC__
 void
 pback(char *pt, int cnt)
-#else
-void
-pback(pt, cnt)
-	char *pt;
-	int cnt;
-#endif
 {
 	bufpt -= cnt;
 	memcpy(bufpt, pt, cnt);
@@ -421,14 +388,8 @@ pback(pt, cnt)
  *	0 if ok, -1 failure, and 1 when EOF on the archive volume was detected.
  */
 
-#ifdef __STDC__
 int
 rd_skip(off_t skcnt)
-#else
-int
-rd_skip(skcnt)
-	off_t skcnt;
-#endif
 {
 	off_t res;
 	off_t cnt;
@@ -496,13 +457,8 @@ rd_skip(skcnt)
  *	BE a requirement....
  */
 
-#ifdef __STDC__
 void
 wr_fin(void)
-#else
-void
-wr_fin()
-#endif
 {
 	if (bufpt > buf) {
 		memset(bufpt, 0, bufend - bufpt);
@@ -522,15 +478,8 @@ wr_fin()
  *	0 if buffer was filled ok, -1 o.w. (buffer flush failure)
  */
 
-#ifdef __STDC__
 int
 wr_rdbuf(register char *out, register int outcnt)
-#else
-int
-wr_rdbuf(out, outcnt)
-	register char *out;
-	register int outcnt;
-#endif
 {
 	register int cnt;
 
@@ -565,15 +514,8 @@ wr_rdbuf(out, outcnt)
  *	-1 is a read error
  */
 
-#ifdef __STDC__
 int
 rd_wrbuf(register char *in, register int cpcnt)
-#else
-int
-rd_wrbuf(in, cpcnt)
-	register char *in;
-	register int cpcnt;
-#endif
 {
 	register int res;
 	register int cnt;
@@ -620,14 +562,8 @@ rd_wrbuf(in, cpcnt)
  *	0 if ok, -1 if there was a buf_flush failure
  */
 
-#ifdef __STDC__
 int
 wr_skip(off_t skcnt)
-#else
-int
-wr_skip(skcnt)
-	off_t skcnt;
-#endif
 {
 	register int cnt;
 
@@ -664,16 +600,8 @@ wr_skip(skcnt)
  *	0, but "left" is set to be greater than zero.
  */
 
-#ifdef __STDC__
 int
 wr_rdfile(ARCHD *arcn, int ifd, off_t *left)
-#else
-int
-wr_rdfile(arcn, ifd, left)
-	ARCHD *arcn;
-	int ifd;
-	off_t *left;
-#endif
 {
 	register int cnt;
 	register int res = 0;
@@ -733,16 +661,8 @@ wr_rdfile(arcn, ifd, left)
  *	we return a 0 but "left" is set to be the amount unwritten
  */
 
-#ifdef __STDC__
 int
 rd_wrfile(ARCHD *arcn, int ofd, off_t *left)
-#else
-int
-rd_wrfile(arcn, ofd, left)
-	ARCHD *arcn;
-	int ofd;
-	off_t *left;
-#endif
 {
 	register int cnt = 0;
 	register off_t size = arcn->sb.st_size;
@@ -829,16 +749,8 @@ rd_wrfile(arcn, ofd, left)
  *	destination file so we can properly copy files with holes.
  */
 
-#ifdef __STDC__
 void
 cp_file(ARCHD *arcn, int fd1, int fd2)
-#else
-void
-cp_file(arcn, fd1, fd2)
-	ARCHD *arcn;
-	int fd1;
-	int fd2;
-#endif
 {
 	register int cnt;
 	register off_t cpcnt = 0L;
@@ -918,13 +830,8 @@ cp_file(arcn, fd1, fd2)
  *	0 when finished (user specified termination in ar_next()).
  */
 
-#ifdef __STDC__
 int
 buf_fill(void)
-#else
-int
-buf_fill()
-#endif
 {
 	register int cnt;
 	static int fini = 0;
@@ -968,14 +875,8 @@ buf_fill()
  *	0 if all is ok, -1 when a write error occurs.
  */
 
-#ifdef __STDC__
 int
 buf_flush(register int bufcnt)
-#else
-int
-buf_flush(bufcnt)
-	register int bufcnt;
-#endif
 {
 	register int cnt;
 	register int push = 0;

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_lfs.c	8.3 (Berkeley) 3/27/94
  * $FreeBSD: src/sbin/mount_ext2fs/mount_ext2fs.c,v 1.11 1999/10/09 11:54:09 phk Exp $
- * $DragonFly: src/sbin/mount_ext2fs/mount_ext2fs.c,v 1.3 2003/08/08 04:18:39 dillon Exp $
+ * $DragonFly: src/sbin/mount_ext2fs/mount_ext2fs.c,v 1.4 2003/09/28 14:39:19 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -61,9 +61,7 @@ struct mntopt mopts[] = {
 static void	usage __P((void)) __dead2;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	struct ufs_args args;
 	int ch, mntflags;
@@ -122,7 +120,7 @@ main(argc, argv)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 		"usage: mount_ext2fs [-o options] special node\n");

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dmesg.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/dmesg/dmesg.c,v 1.11.2.3 2001/08/08 22:32:15 obrien Exp $
- * $DragonFly: src/sbin/dmesg/dmesg.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/dmesg/dmesg.c,v 1.3 2003/09/28 14:39:16 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -62,9 +62,7 @@ void usage __P((void));
 	kvm_read(kd, addr, &var, sizeof(var)) != sizeof(var)
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch, newl, skip;
 	char *p, *ep;
@@ -183,7 +181,7 @@ main(argc, argv)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: dmesg [-a] [-M core] [-N system]\n");
 	exit(1);

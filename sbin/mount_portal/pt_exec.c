@@ -37,7 +37,7 @@
  *	@(#)pt_exec.c	8.1 (Berkeley) 6/5/93
  *
  * $FreeBSD: src/sbin/mount_portal/pt_exec.c,v 1.5 1999/08/28 00:13:37 peter Exp $
- * $DragonFly: src/sbin/mount_portal/pt_exec.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount_portal/pt_exec.c,v 1.3 2003/09/28 14:39:19 hmp Exp $
  */
 
 #include <errno.h>
@@ -46,12 +46,7 @@
 
 #include "portald.h"
 
-int portal_exec(pcr, key, v, so, fdp)
-struct portal_cred *pcr;
-char *key;
-char **v;
-int so;
-int *fdp;
+int portal_exec(struct portal_cred *pcr, char *key, char **v, int so, int *fdp)
 {
 	return (ENOEXEC);
 }

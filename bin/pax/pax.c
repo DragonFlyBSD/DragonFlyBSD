@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pax.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/pax.c,v 1.13.2.4 2002/11/07 15:29:53 imp Exp $
- * $DragonFly: src/bin/pax/pax.c,v 1.3 2003/09/21 04:24:17 drhodus Exp $
+ * $DragonFly: src/bin/pax/pax.c,v 1.4 2003/09/28 14:39:14 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -219,15 +219,8 @@ char	*tempbase;		/* basename of tempfile to use for mkstemp(3) */
  * Return: 0 if ok, 1 otherwise
  */
 
-#ifdef __STDC__
 int
 main(int argc, char **argv)
-#else
-int
-main(argc, argv)
-	int argc;
-	char **argv;
-#endif
 {
 	char *tmpdir;
 	size_t tdlen;
@@ -303,14 +296,8 @@ main(argc, argv)
  *	never....
  */
 
-#ifdef __STDC__
 void
 sig_cleanup(int which_sig)
-#else
-void
-sig_cleanup(which_sig)
-	int which_sig;
-#endif
 {
 	/*
 	 * restore modes and times for any dirs we may have created
@@ -336,13 +323,8 @@ sig_cleanup(which_sig)
  *	when dealing with a medium to large sized archives.
  */
 
-#ifdef __STDC__
 static int
 gen_init(void)
-#else
-static int
-gen_init()
-#endif
 {
 	struct rlimit reslimit;
 	struct sigaction n_hand;

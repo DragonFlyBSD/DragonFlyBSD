@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mknod.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/mknod/mknod.c,v 1.13 2000/01/06 17:51:46 obrien Exp $
- * $DragonFly: src/sbin/mknod/mknod.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mknod/mknod.c,v 1.3 2003/09/28 14:39:18 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -52,7 +52,7 @@
 #include <string.h>
 
 static void
-usage()
+usage(void)
 {
 
 	(void)fprintf(stderr,
@@ -61,8 +61,7 @@ usage()
 }
 
 static u_long
-id(name, type)
-	char *name, *type;
+id(char *name, char *type)
 {
 	u_long val;
 	char *ep;
@@ -81,8 +80,7 @@ id(name, type)
 }
 
 static gid_t
-a_gid(s)
-	char *s;
+a_gid(char *s)
 {
 	struct group *gr;
 
@@ -92,8 +90,7 @@ a_gid(s)
 }
 
 static uid_t
-a_uid(s)
-	char *s;
+a_uid(char *s)
 {
 	struct passwd *pw;
 
@@ -103,9 +100,7 @@ a_uid(s)
 }
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	int range_error;
 	uid_t uid;

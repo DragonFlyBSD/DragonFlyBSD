@@ -25,7 +25,7 @@
  *
  * @(#)Copyright (C) 1993-1996 by Andrey A. Chernov, Moscow, Russia. All rights reserved.
  * $FreeBSD: src/sbin/adjkerntz/adjkerntz.c,v 1.25.2.1 2001/07/30 10:38:04 dd Exp $
- * $DragonFly: src/sbin/adjkerntz/adjkerntz.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/adjkerntz/adjkerntz.c,v 1.3 2003/09/28 14:39:16 hmp Exp $
  */
 
 /*
@@ -62,16 +62,13 @@ static void fake __P((int));
 static void usage __P((void));
 
 static void
-fake(unused)
-	int unused __unused;
+fake(int unused __unused)
 {
 
 	/* Do nothing. */
 }
 
-int main(argc, argv)
-	int argc;
-	char **argv;
+int main(int argc, char **argv)
 {
 	struct tm local;
 	struct timeval tv, *stv;
@@ -369,7 +366,7 @@ recalculate:
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n%s\n",
 		"usage: adjkerntz -i",

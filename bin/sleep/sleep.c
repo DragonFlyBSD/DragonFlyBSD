@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)sleep.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/sleep/sleep.c,v 1.9.2.1 2001/08/01 05:23:25 obrien Exp $
- * $DragonFly: src/bin/sleep/sleep.c,v 1.3 2003/09/21 04:26:06 drhodus Exp $
+ * $DragonFly: src/bin/sleep/sleep.c,v 1.4 2003/09/28 14:39:15 hmp Exp $
  */
 
 #include <ctype.h>
@@ -47,9 +47,7 @@ int main (int, char *[]);
 void usage (void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	struct timespec time_to_sleep;
 	long l;
@@ -120,7 +118,7 @@ main(argc, argv)
 }
 
 void
-usage()
+usage(void)
 {
 
 	(void)fprintf(stderr, "usage: sleep seconds\n");

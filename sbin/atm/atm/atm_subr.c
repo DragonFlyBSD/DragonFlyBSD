@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm_subr.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm_subr.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm_subr.c,v 1.3 2003/09/28 14:39:16 hmp Exp $
  */
 
 /*
@@ -125,8 +125,7 @@ tbl_ent bus_types[] = {
  *
  */
 char *
-get_vendor(vendor)
-	int	vendor;
+get_vendor(int vendor)
 {
 	int	i;
 
@@ -150,8 +149,7 @@ get_vendor(vendor)
  *
  */
 char *
-get_adapter(dev)
-	int	dev;
+get_adapter(int dev)
 {
 	int	i;
 
@@ -175,8 +173,7 @@ get_adapter(dev)
  *
  */
 char *
-get_media_type(media)
-	int	media;
+get_media_type(int media)
 {
 	int	i;
 
@@ -200,8 +197,7 @@ get_media_type(media)
  *
  */
 char *
-get_bus_type(bus)
-	int	bus;
+get_bus_type(int bus)
 {
 	int	i;
 
@@ -227,8 +223,7 @@ get_bus_type(bus)
  *
  */
 char *
-get_adapter_name(intf)
-	char	*intf;
+get_adapter_name(char *intf)
 {
 	int			buf_len;
 	struct atminfreq	air;
@@ -275,8 +270,7 @@ get_adapter_name(intf)
  *
  */
 char *
-format_mac_addr(addr)
-	Mac_addr *addr;
+format_mac_addr(Mac_addr *addr)
 {
 	static char	str[256];
 
@@ -319,9 +313,7 @@ format_mac_addr(addr)
  *
  */
 int
-parse_ip_prefix(cp, op)
-	char		*cp;
-	struct in_addr	*op;
+parse_ip_prefix(char *cp, struct in_addr *op)
 {
 	int		len;
 	char		*mp;
@@ -423,9 +415,7 @@ parse_ip_prefix(cp, op)
  *
  */
 int
-compress_prefix_list(ipp, ilen)
-	struct in_addr	*ipp;
-	int		ilen;
+compress_prefix_list(struct in_addr *ipp, int ilen)
 {
 	int		i, j, n;
 	struct in_addr	*ip1, *ip2, *m1, *m2;
@@ -534,8 +524,7 @@ compress_prefix_list(ipp, ilen)
  *
  */
 void
-check_netif_name(nif)
-	char	*nif;
+check_netif_name(char *nif)
 {
 	int	rc;
 
@@ -595,8 +584,7 @@ check_netif_name(nif)
  *
  */
 void
-sock_error(err)
-	int	err;
+sock_error(int err)
 {
 	fprintf(stderr, "%s: ", prog);
 

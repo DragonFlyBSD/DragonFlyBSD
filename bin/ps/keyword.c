@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.7 2003/09/21 04:24:47 drhodus Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.8 2003/09/28 14:39:15 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -188,7 +188,7 @@ VAR var[] = {
 };
 
 void
-showkey()
+showkey(void)
 {
 	VAR *v;
 	int i;
@@ -209,8 +209,7 @@ showkey()
 }
 
 void
-parsefmt(p)
-	char *p;
+parsefmt(char *p)
 {
 	static struct varent *vtail;
 
@@ -243,8 +242,7 @@ parsefmt(p)
 }
 
 static VAR *
-findvar(p)
-	char *p;
+findvar(char *p)
 {
 	VAR *v, key;
 	char *hp;
@@ -274,8 +272,7 @@ findvar(p)
 }
 
 static int
-vcmp(a, b)
-        const void *a, *b;
+vcmp(const void *a, const void *b)
 {
         return (strcmp(((VAR *)a)->name, ((VAR *)b)->name));
 }

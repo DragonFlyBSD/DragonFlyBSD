@@ -32,7 +32,7 @@
  *
  * @(#)gfmt.c	8.6 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/stty/gfmt.c,v 1.10.2.2 2001/08/01 05:26:12 obrien Exp $
- * $DragonFly: src/bin/stty/gfmt.c,v 1.3 2003/09/21 04:26:26 drhodus Exp $
+ * $DragonFly: src/bin/stty/gfmt.c,v 1.4 2003/09/28 14:39:15 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -47,8 +47,7 @@
 static void gerr (const char *s);
 
 static void
-gerr(s)
-	const char *s;
+gerr(const char *s)
 {
 	if (s)
 		errx(1, "illegal gfmt1 option -- %s", s);
@@ -57,10 +56,7 @@ gerr(s)
 }
 
 void
-gprint(tp, wp, ldisc)
-	struct termios *tp;
-	struct winsize *wp __unused;
-	int ldisc __unused;
+gprint(struct termios *tp, struct winsize *wp __unused, int ldisc __unused)
 {
 	struct cchar *cp;
 
@@ -74,9 +70,7 @@ gprint(tp, wp, ldisc)
 }
 
 void
-gread(tp, s)
-	struct termios *tp;
-	char *s;
+gread(struct termios *tp, char *s)
 {
 	struct cchar *cp;
 	char *ep, *p;

@@ -36,7 +36,7 @@
  *
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * $FreeBSD: src/sbin/mount_std/mount_std.c,v 1.10.2.1 2001/07/30 10:30:07 dd Exp $
- * $DragonFly: src/sbin/mount_std/mount_std.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount_std/mount_std.c,v 1.3 2003/09/28 14:39:19 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -60,9 +60,7 @@ static void	usage __P((void)) __dead2;
 static const char *fsname;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch, mntflags;
 	char mntpath[MAXPATHLEN];
@@ -120,7 +118,7 @@ main(argc, argv)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 		"usage: mount_%s [-o options] what_to_mount mount_point\n",

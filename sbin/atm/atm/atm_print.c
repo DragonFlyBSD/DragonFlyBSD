@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm_print.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm_print.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm_print.c,v 1.3 2003/09/28 14:39:16 hmp Exp $
  */
 
 /*
@@ -259,8 +259,7 @@ struct state	arp_origins[] = {
  *
  */
 void
-print_arp_info(ai)
-	struct air_arp_rsp	*ai;
+print_arp_info(struct air_arp_rsp *ai)
 {
 	int	i;
 	char	*atm_addr, *ip_addr, *origin;
@@ -339,8 +338,7 @@ print_arp_info(ai)
  *
  */
 void
-print_asrv_info(si)
-	struct air_asrv_rsp	*si;
+print_asrv_info(struct air_asrv_rsp *si)
 {
 	int		i;
 	char		*atm_addr, *state;
@@ -410,8 +408,7 @@ print_asrv_info(si)
  *
  */
 void
-print_cfg_info(si)
-	struct air_cfg_rsp	*si;
+print_cfg_info(struct air_cfg_rsp *si)
 {
 	char	*adapter, *bus, *media, *vendor;
 
@@ -463,8 +460,7 @@ print_cfg_info(si)
  *
  */
 void
-print_intf_info(ni)
-	struct air_int_rsp	*ni;
+print_intf_info(struct air_int_rsp *ni)
 {
 	int	i;
 	char	nif_names[(IFNAMSIZ *2)+4];
@@ -544,8 +540,7 @@ print_intf_info(ni)
  *
  */
 void
-print_ip_vcc_info(ai)
-	struct air_ip_vcc_rsp	*ai;
+print_ip_vcc_info(struct air_ip_vcc_rsp *ai)
 {
 	int	i;
 	char	*ip_addr, *state;

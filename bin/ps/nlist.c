@@ -32,7 +32,7 @@
  *
  * @(#)nlist.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/nlist.c,v 1.12.6.2 2001/08/01 05:04:48 obrien Exp $
- * $DragonFly: src/bin/ps/nlist.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/ps/nlist.c,v 1.3 2003/09/28 14:39:15 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -46,7 +46,7 @@ int	mempages;			/* number of pages of phys. memory */
 int	fscale;				/* kernel _fscale variable */
 
 int
-donlist()
+donlist(void)
 {
 	size_t oldlen;
 

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)init.c	8.1 (Berkeley) 7/15/93
  * $FreeBSD: src/sbin/init/init.c,v 1.38.2.8 2001/10/22 11:27:32 des Exp $
- * $DragonFly: src/sbin/init/init.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/init/init.c,v 1.3 2003/09/28 14:39:18 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -180,9 +180,7 @@ DB *session_db;
  * The mother of all processes.
  */
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	int c;
 	struct sigaction sa;
@@ -315,25 +313,14 @@ invalid:
  * Associate a function with a signal handler.
  */
 void
-#ifdef __STDC__
 handle(sig_t handler, ...)
-#else
-handle(va_alist)
-	va_dcl
-#endif
 {
 	int sig;
 	struct sigaction sa;
 	sigset_t mask_everything;
 	va_list ap;
-#ifndef __STDC__
-	sig_t handler;
 
-	va_start(ap);
-	handler = va_arg(ap, sig_t);
-#else
 	va_start(ap, handler);
-#endif
 
 	sa.sa_handler = handler;
 	sigfillset(&mask_everything);
@@ -351,23 +338,12 @@ handle(va_alist)
  * Delete a set of signals from a mask.
  */
 void
-#ifdef __STDC__
 delset(sigset_t *maskp, ...)
-#else
-delset(va_alist)
-	va_dcl
-#endif
 {
 	int sig;
 	va_list ap;
-#ifndef __STDC__
-	sigset_t *maskp;
 
-	va_start(ap);
-	maskp = va_arg(ap, sigset_t *);
-#else
 	va_start(ap, maskp);
-#endif
 
 	while ((sig = va_arg(ap, int)) != NULL)
 		sigdelset(maskp, sig);
@@ -380,22 +356,11 @@ delset(va_alist)
  * NB: should send a message to the session logger to avoid blocking.
  */
 void
-#ifdef __STDC__
 stall(char *message, ...)
-#else
-stall(va_alist)
-	va_dcl
-#endif
 {
 	va_list ap;
-#ifndef __STDC__
-	char *message;
 
-	va_start(ap);
-	message = va_arg(ap, char *);
-#else
 	va_start(ap, message);
-#endif
 
 	vsyslog(LOG_ALERT, message, ap);
 	va_end(ap);
@@ -408,22 +373,11 @@ stall(va_alist)
  * NB: should send a message to the session logger to avoid blocking.
  */
 void
-#ifdef __STDC__
 warning(char *message, ...)
-#else
-warning(va_alist)
-	va_dcl
-#endif
 {
 	va_list ap;
-#ifndef __STDC__
-	char *message;
 
-	va_start(ap);
-	message = va_arg(ap, char *);
-#else
 	va_start(ap, message);
-#endif
 
 	vsyslog(LOG_ALERT, message, ap);
 	va_end(ap);
@@ -434,22 +388,11 @@ warning(va_alist)
  * NB: should send a message to the session logger to avoid blocking.
  */
 void
-#ifdef __STDC__
 emergency(char *message, ...)
-#else
-emergency(va_alist)
-	va_dcl
-#endif
 {
 	va_list ap;
-#ifndef __STDC__
-	char *message;
 
-	va_start(ap);
-	message = va_arg(ap, char *);
-#else
 	va_start(ap, message);
-#endif
 
 	vsyslog(LOG_EMERG, message, ap);
 	va_end(ap);
@@ -462,8 +405,7 @@ emergency(va_alist)
  * We tolerate up to 25 of these, then throw in the towel.
  */
 void
-badsys(sig)
-	int sig;
+badsys(int sig)
 {
 	static int badcount = 0;
 
@@ -476,8 +418,7 @@ badsys(sig)
  * Catch an unexpected signal.
  */
 void
-disaster(sig)
-	int sig;
+disaster(int sig)
 {
 	emergency("fatal signal: %s",
 		(unsigned)sig < NSIG ? sys_siglist[sig] : "unknown signal");
@@ -490,7 +431,7 @@ disaster(sig)
  * Get the security level of the kernel.
  */
 int
-getsecuritylevel()
+getsecuritylevel(void)
 {
 #ifdef KERN_SECURELVL
 	int name[2], curlevel;
@@ -514,8 +455,7 @@ getsecuritylevel()
  * Set the security level of the kernel.
  */
 void
-setsecuritylevel(newlevel)
-	int newlevel;
+setsecuritylevel(int newlevel)
 {
 #ifdef KERN_SECURELVL
 	int name[2], curlevel;
@@ -543,8 +483,7 @@ setsecuritylevel(newlevel)
  * The initial state is passed as an argument.
  */
 void
-transition(s)
-	state_t s;
+transition(state_t s)
 {
 	for (;;)
 		s = (state_t) (*s)();
@@ -555,8 +494,7 @@ transition(s)
  * NB: should send a message to the session logger to avoid blocking.
  */
 void
-clear_session_logs(sp)
-	session_t *sp;
+clear_session_logs(session_t *sp)
 {
 	char *line = sp->se_device + sizeof(_PATH_DEV) - 1;
 
@@ -569,8 +507,7 @@ clear_session_logs(sp)
  * Only called by children of init after forking.
  */
 void
-setctty(name)
-	char *name;
+setctty(char *name)
 {
 	int fd;
 
@@ -589,7 +526,7 @@ setctty(name)
  * Bring the system up single user.
  */
 state_func_t
-single_user()
+single_user(void)
 {
 	pid_t pid, wpid;
 	int status;
@@ -740,7 +677,7 @@ single_user()
  * Run the system startup script.
  */
 state_func_t
-runcom()
+runcom(void)
 {
 	pid_t pid, wpid;
 	int status;
@@ -835,7 +772,7 @@ runcom()
  * NB: We could pass in the size here; is it necessary?
  */
 int
-start_session_db()
+start_session_db(void)
 {
 	if (session_db && (*session_db->close)(session_db))
 		emergency("session database close: %s", strerror(errno));
@@ -851,8 +788,7 @@ start_session_db()
  * Add a new login session.
  */
 void
-add_session(sp)
-	session_t *sp;
+add_session(session_t *sp)
 {
 	DBT key;
 	DBT data;
@@ -870,8 +806,7 @@ add_session(sp)
  * Delete an old login session.
  */
 void
-del_session(sp)
-	session_t *sp;
+del_session(session_t *sp)
 {
 	DBT key;
 
@@ -886,12 +821,7 @@ del_session(sp)
  * Look up a login session by pid.
  */
 session_t *
-#ifdef __STDC__
 find_session(pid_t pid)
-#else
-find_session(pid)
-	pid_t pid;
-#endif
 {
 	DBT key;
 	DBT data;
@@ -909,8 +839,7 @@ find_session(pid)
  * Construct an argument vector from a command line.
  */
 char **
-construct_argv(command)
-	char *command;
+construct_argv(char *command)
 {
 	char *strk (char *);
 	register int argc = 0;
@@ -930,8 +859,7 @@ construct_argv(command)
  * Deallocate a session descriptor.
  */
 void
-free_session(sp)
-	register session_t *sp;
+free_session(register session_t *sp)
 {
 	free(sp->se_device);
 	if (sp->se_getty) {
@@ -954,10 +882,7 @@ free_session(sp)
  * Mark it SE_PRESENT.
  */
 session_t *
-new_session(sprev, session_index, typ)
-	session_t *sprev;
-	int session_index;
-	register struct ttyent *typ;
+new_session(session_t *sprev, int session_index, register struct ttyent *typ)
 {
 	register session_t *sp;
 	int fd;
@@ -1008,9 +933,7 @@ new_session(sprev, session_index, typ)
  * Calculate getty and if useful window argv vectors.
  */
 int
-setupargv(sp, typ)
-	session_t *sp;
-	struct ttyent *typ;
+setupargv(session_t *sp, struct ttyent *typ)
 {
 
 	if (sp->se_getty) {
@@ -1059,7 +982,7 @@ setupargv(sp, typ)
  * Walk the list of ttys and create sessions for each active line.
  */
 state_func_t
-read_ttys()
+read_ttys(void)
 {
 	int session_index = 0;
 	register session_t *sp, *snext;
@@ -1096,8 +1019,7 @@ read_ttys()
  * Start a window system running.
  */
 void
-start_window_system(sp)
-	session_t *sp;
+start_window_system(session_t *sp)
 {
 	pid_t pid;
 	sigset_t mask;
@@ -1141,8 +1063,7 @@ start_window_system(sp)
  * Start a login session running.
  */
 pid_t
-start_getty(sp)
-	session_t *sp;
+start_getty(session_t *sp)
 {
 	pid_t pid;
 	sigset_t mask;
@@ -1207,12 +1128,7 @@ start_getty(sp)
  * If an exiting login, start a new login running.
  */
 void
-#ifdef __STDC__
 collect_child(pid_t pid)
-#else
-collect_child(pid)
-	pid_t pid;
-#endif
 {
 	register session_t *sp, *sprev, *snext;
 
@@ -1252,8 +1168,7 @@ collect_child(pid)
  * Catch a signal and request a state transition.
  */
 void
-transition_handler(sig)
-	int sig;
+transition_handler(int sig)
 {
 
 	switch (sig) {
@@ -1282,7 +1197,7 @@ transition_handler(sig)
  * Take the system multiuser.
  */
 state_func_t
-multi_user()
+multi_user(void)
 {
 	pid_t pid;
 	register session_t *sp;
@@ -1322,7 +1237,7 @@ multi_user()
  * This is an (n*2)+(n^2) algorithm.  We hope it isn't run often...
  */
 state_func_t
-clean_ttys()
+clean_ttys(void)
 {
 	register session_t *sp, *sprev;
 	register struct ttyent *typ;
@@ -1420,7 +1335,7 @@ clean_ttys()
  * Block further logins.
  */
 state_func_t
-catatonia()
+catatonia(void)
 {
 	register session_t *sp;
 
@@ -1434,8 +1349,7 @@ catatonia()
  * Note SIGALRM.
  */
 void
-alrm_handler(sig)
-	int sig;
+alrm_handler(int sig)
 {
 	(void)sig;
 	clang = 1;
@@ -1445,7 +1359,7 @@ alrm_handler(sig)
  * Bring the system down to single user.
  */
 state_func_t
-death()
+death(void)
 {
 	register session_t *sp;
 	register int i;
@@ -1493,7 +1407,7 @@ death()
  * >0       some error (exit code)
  */
 int
-runshutdown()
+runshutdown(void)
 {
 	pid_t pid, wpid;
 	int status;
@@ -1668,8 +1582,7 @@ strk (char *p)
 
 #ifdef LOGIN_CAP
 void
-setprocresources(cname)
-	const char *cname;
+setprocresources(const char *cname)
 {
 	login_cap_t *lc;
 	if ((lc = login_getclassbyname(cname, NULL)) != NULL) {

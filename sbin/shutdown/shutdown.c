@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)shutdown.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/shutdown/shutdown.c,v 1.21.2.1 2001/07/30 10:38:08 dd Exp $
- * $DragonFly: src/sbin/shutdown/shutdown.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/shutdown/shutdown.c,v 1.3 2003/09/28 14:39:22 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -99,9 +99,7 @@ void timewarn __P((int));
 void usage __P((const char *));
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	char *p, *endp;
 	struct passwd *pw;
@@ -216,7 +214,7 @@ main(argc, argv)
 }
 
 void
-loop()
+loop(void)
 {
 	struct interval *tp;
 	u_int sltime;
@@ -265,8 +263,7 @@ static const char *restricted_environ[] = {
 };
 
 void
-timewarn(timeleft)
-	int timeleft;
+timewarn(int timeleft)
 {
 	static int first;
 	static char hostname[MAXHOSTNAMELEN + 1];
@@ -317,14 +314,13 @@ timewarn(timeleft)
 }
 
 void
-timeout(signo)
-	int signo __unused;
+timeout(int signo __unused)
 {
 	longjmp(alarmbuf, 1);
 }
 
 void
-die_you_gravy_sucking_pig_dog()
+die_you_gravy_sucking_pig_dog(void)
 {
 	char *empty_environ[] = { NULL };
 
@@ -385,8 +381,7 @@ die_you_gravy_sucking_pig_dog()
 #define	ATOI2(p)	(p[0] - '0') * 10 + (p[1] - '0'); p += 2;
 
 void
-getoffset(timearg)
-	char *timearg;
+getoffset(char *timearg)
 {
 	struct tm *lt;
 	char *p;
@@ -469,7 +464,7 @@ getoffset(timearg)
 
 #define	NOMSG	"\n\nNO LOGINS: System going down at "
 void
-nolog()
+nolog(void)
 {
 	int logfd;
 	char *ct;
@@ -491,8 +486,7 @@ nolog()
 }
 
 void
-finish(signo)
-	int signo __unused;
+finish(int signo __unused)
 {
 	if (!killflg)
 		(void)unlink(_PATH_NOLOGIN);
@@ -500,14 +494,13 @@ finish(signo)
 }
 
 void
-badtime()
+badtime(void)
 {
 	errx(1, "bad time format");
 }
 
 void
-usage(cp)
-	const char *cp;
+usage(const char *cp)
 {
 	if (cp != NULL)
 		warnx("%s", cp);

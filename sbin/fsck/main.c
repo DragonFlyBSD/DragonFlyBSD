@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/14/95
  * $FreeBSD: src/sbin/fsck/main.c,v 1.21.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/main.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
+ * $DragonFly: src/sbin/fsck/main.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -61,9 +61,7 @@ static struct statfs *getmntpt __P((const char *));
 int main __P((int argc, char *argv[]));
 
 int
-main(argc, argv)
-	int	argc;
-	char	*argv[];
+main(int argc, char **argv)
 {
 	int ch;
 	int ret, maxrun = 0;
@@ -154,10 +152,7 @@ main(argc, argv)
 }
 
 static int
-argtoi(flag, req, str, base)
-	int flag;
-	char *req, *str;
-	int base;
+argtoi(int flag, char *req, char *str, int base)
 {
 	char *cp;
 	int ret;
@@ -172,8 +167,7 @@ argtoi(flag, req, str, base)
  * Determine whether a filesystem should be checked.
  */
 static int
-docheck(fsp)
-	register struct fstab *fsp;
+docheck(register struct fstab *fsp)
 {
 
 	if (strcmp(fsp->fs_vfstype, "ufs") ||
@@ -189,10 +183,7 @@ docheck(fsp)
  */
 /* ARGSUSED */
 static int
-checkfilesys(filesys, mntpt, auxdata, child)
-	char *filesys, *mntpt;
-	long auxdata;
-	int child;
+checkfilesys(char *filesys, char *mntpt, long auxdata, int child)
 {
 	ufs_daddr_t n_ffree, n_bfree;
 	struct dups *dp;
@@ -380,8 +371,7 @@ checkfilesys(filesys, mntpt, auxdata, child)
  * Get the directory that the device is mounted on.
  */
 static struct statfs *
-getmntpt(name)
-	const char *name;
+getmntpt(const char *name)
 {
 	struct stat devstat, mntdevstat;
 	char device[sizeof(_PATH_DEV) - 1 + MNAMELEN];

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/restore/main.c,v 1.10.2.3 2001/10/02 08:30:17 cjc Exp $
- * $DragonFly: src/sbin/restore/main.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
+ * $DragonFly: src/sbin/restore/main.c,v 1.4 2003/09/28 14:39:21 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -71,9 +71,7 @@ static void obsolete __P((int *, char **[]));
 static void usage __P((void));
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch;
 	ino_t ino;
@@ -282,7 +280,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage:\t%s\n\t%s\n\t%s\n\t%s\n\t%s\n",
 	  "restore -i [-cdhkmNuvy] [-b blocksize] [-f file] [-s fileno]",

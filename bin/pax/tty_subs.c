@@ -36,7 +36,7 @@
  *
  * @(#)tty_subs.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/tty_subs.c,v 1.11.2.1 2001/08/01 05:03:12 obrien Exp $
- * $DragonFly: src/bin/pax/tty_subs.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/pax/tty_subs.c,v 1.3 2003/09/28 14:39:14 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -68,13 +68,8 @@ static FILE *ttyinf = NULL;		/* input pointing at control tty */
  *	open fails, future ops that require user input will get an EOF
  */
 
-#ifdef __STDC__
 int
 tty_init(void)
-#else
-int
-tty_init()
-#endif
 {
 	int ttyfd;
 
@@ -100,15 +95,8 @@ tty_init()
  *	if there is no controlling terminal, just return.
  */
 
-#ifdef __STDC__
 void
 tty_prnt(const char *fmt, ...)
-#else
-void
-tty_prnt(fmt, va_alist)
-	const char *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
 #	ifdef __STDC__
@@ -131,15 +119,8 @@ tty_prnt(fmt, va_alist)
  *	0 if data was read, -1 otherwise.
  */
 
-#ifdef __STDC__
 int
 tty_read(char *str, int len)
-#else
-int
-tty_read(str, len)
-	char *str;
-	int len;
-#endif
 {
 	register char *pt;
 
@@ -161,16 +142,8 @@ tty_read(str, len)
  *	will be non-zero.
  */
 
-#ifdef __STDC__
 void
 paxwarn(int set, const char *fmt, ...)
-#else
-void
-paxwarn(set, fmt, va_alist)
-	int set;
-	const char *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
 #	ifdef __STDC__
@@ -201,17 +174,8 @@ paxwarn(set, fmt, va_alist)
  *	will be non-zero.
  */
 
-#ifdef __STDC__
 void
 syswarn(int set, int errnum, const char *fmt, ...)
-#else
-void
-syswarn(set, errnum, fmt, va_alist)
-	int set;
-	int errnum;
-	const char *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
 #	ifdef __STDC__

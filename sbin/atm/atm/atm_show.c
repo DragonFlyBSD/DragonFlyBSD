@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm_show.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm_show.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm_show.c,v 1.3 2003/09/28 14:39:16 hmp Exp $
  */
 
 /*
@@ -79,10 +79,7 @@ static int	arp_compare __P((const void *, const void *));
  *
  */
 void
-show_arp(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+show_arp(int argc, char **argv, struct cmd *cmdp)
 {
 	int			buf_len, arp_info_len;
 	struct atminfreq	air;
@@ -177,10 +174,7 @@ show_arp(argc, argv, cmdp)
  *
  */
 void
-show_arpserv(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+show_arpserv(int argc, char **argv, struct cmd *cmdp)
 {
 	int	asrv_info_len, buf_len = sizeof(struct air_asrv_rsp) * 3;
 	struct atminfreq	air;
@@ -257,10 +251,7 @@ show_arpserv(argc, argv, cmdp)
  *
  */
 void
-show_config(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+show_config(int argc, char **argv, struct cmd *cmdp)
 {
 	int	buf_len = sizeof(struct air_asrv_rsp) * 3;
 	struct atminfreq	air;
@@ -332,10 +323,7 @@ show_config(argc, argv, cmdp)
  *
  */
 void
-show_intf(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+show_intf(int argc, char **argv, struct cmd *cmdp)
 {
 	int	buf_len = sizeof(struct air_int_rsp) * 3;
 	struct atminfreq	air;
@@ -407,10 +395,7 @@ show_intf(argc, argv, cmdp)
  *
  */
 void
-show_ip_vcc(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+show_ip_vcc(int argc, char **argv, struct cmd *cmdp)
 {
 	int			buf_len, ip_info_len, rc;
 	char			*if_name = (char *)0;
@@ -535,10 +520,7 @@ show_ip_vcc(argc, argv, cmdp)
  *
  */
 void
-show_netif(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+show_netif(int argc, char **argv, struct cmd *cmdp)
 {
 	int	buf_len = sizeof(struct air_netif_rsp) * 3;
 	struct atminfreq	air;
@@ -609,10 +591,7 @@ show_netif(argc, argv, cmdp)
  *
  */
 void
-show_intf_stats(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+show_intf_stats(int argc, char **argv, struct cmd *cmdp)
 {
 	int			buf_len;
 	char			intf[IFNAMSIZ];
@@ -739,10 +718,7 @@ show_intf_stats(argc, argv, cmdp)
  *
  */
 void
-show_vcc_stats(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+show_vcc_stats(int argc, char **argv, struct cmd *cmdp)
 {
 	int	vcc_info_len;
 	int	vpi = -1, vci = -1;
@@ -851,10 +827,7 @@ show_vcc_stats(argc, argv, cmdp)
  *
  */
 void
-show_vcc(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+show_vcc(int argc, char **argv, struct cmd *cmdp)
 {
 	int	vcc_info_len;
 	int	vpi = -1, vci = -1, show_pvc = 0, show_svc = 0;
@@ -974,10 +947,7 @@ show_vcc(argc, argv, cmdp)
  *
  */
 void
-show_version(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+show_version(int argc, char **argv, struct cmd *cmdp)
 {
 	int	buf_len = sizeof(struct air_version_rsp);
 	struct atminfreq	air;
@@ -1032,8 +1002,7 @@ show_version(argc, argv, cmdp)
  *
  */
 static int
-vcc_compare(p1, p2)
-	const void *p1, *p2;
+vcc_compare(const void *p1, const void *p2)
 {
 	int rc;
 	struct air_vcc_rsp	*c1, *c2;
@@ -1084,8 +1053,7 @@ vcc_compare(p1, p2)
  *
  */
 static int
-ip_vcc_compare(p1, p2)
-	const void *p1, *p2;
+ip_vcc_compare(const void *p1, const void *p2)
 {
 	int rc;
 	struct air_ip_vcc_rsp	*c1, *c2;
@@ -1129,8 +1097,7 @@ ip_vcc_compare(p1, p2)
  *
  */
 static int
-arp_compare(p1, p2)
-	const void *p1, *p2;
+arp_compare(const void *p1, const void *p2)
 {
 	int rc;
 	struct air_arp_rsp	*c1, *c2;

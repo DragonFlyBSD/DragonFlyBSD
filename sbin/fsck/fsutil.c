@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsck/fsutil.c,v 1.2.2.1 2001/08/01 05:47:55 obrien Exp $
- * $DragonFly: src/sbin/fsck/fsutil.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/fsck/fsutil.c,v 1.3 2003/09/28 14:39:17 hmp Exp $
  *
  * $NetBSD: fsutil.c,v 1.7 1998/07/30 17:41:03 thorpej Exp $
  */
@@ -68,55 +68,38 @@ extern char *__progname;
 static void vmsg __P((int, const char *, va_list));
 
 void
-setcdevname(cd, pr)
-	const char *cd;
-	int pr;
+setcdevname(const char *cd, int pr)
 {
 	dev = cd;
 	preen = pr;
 }
 
 const char *
-cdevname()
+cdevname(void)
 {
 	return dev;
 }
 
 int
-hotroot()
+hotroot(void)
 {
 	return hot;
 }
 
 /*VARARGS*/
 void
-#if __STDC__
 errexit(const char *fmt, ...)
-#else
-errexit(va_alist)
-	va_dcl
-#endif
 {
 	va_list ap;
 
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	const char *fmt;
-
-	va_start(ap);
-	fmt = va_arg(ap, const char *);
-#endif
 	(void) vfprintf(stderr, fmt, ap);
 	va_end(ap);
 	exit(8);
 }
 
 static void
-vmsg(fatal, fmt, ap)
-	int fatal;
-	const char *fmt;
-	va_list ap;
+vmsg(int fatal, const char *fmt, va_list ap)
 {
 	if (!fatal && preen)
 		(void) printf("%s: ", dev);
@@ -136,82 +119,44 @@ vmsg(fatal, fmt, ap)
 
 /*VARARGS*/
 void
-#if __STDC__
 pfatal(const char *fmt, ...)
-#else
-pfatal(va_alist)
-	va_dcl
-#endif
 {
 	va_list ap;
 
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	const char *fmt;
-
-	va_start(ap);
-	fmt = va_arg(ap, const char *);
-#endif
 	vmsg(1, fmt, ap);
 	va_end(ap);
 }
 
 /*VARARGS*/
 void
-#if __STDC__
 pwarn(const char *fmt, ...)
-#else
-pwarn(va_alist)
-	va_dcl
-#endif
 {
 	va_list ap;
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	const char *fmt;
-
-	va_start(ap);
-	fmt = va_arg(ap, const char *);
-#endif
 	vmsg(0, fmt, ap);
 	va_end(ap);
 }
 
 void
-perror(s)
-	const char *s;
+perror(const char *s)
 {
 	pfatal("%s (%s)", s, strerror(errno));
 }
 
 void
-#if __STDC__
 panic(const char *fmt, ...)
-#else
-panic(va_alist)
-	va_dcl
-#endif
 {
 	va_list ap;
 
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	const char *fmt;
-
-	va_start(ap);
-	fmt = va_arg(ap, const char *);
-#endif
 	vmsg(1, fmt, ap);
 	va_end(ap);
 	exit(8);
 }
 
 const char *
-unrawname(name)
-	const char *name;
+unrawname(const char *name)
 {
 	static char unrawbuf[32];
 	const char *dp;
@@ -230,8 +175,7 @@ unrawname(name)
 }
 
 const char *
-rawname(name)
-	const char *name;
+rawname(const char *name)
 {
 	static char rawbuf[32];
 	const char *dp;
@@ -243,8 +187,7 @@ rawname(name)
 }
 
 const char *
-devcheck(origname)
-	const char *origname;
+devcheck(const char *origname)
 {
 	struct stat stslash, stchar;
 
@@ -269,8 +212,7 @@ devcheck(origname)
  * Get the mount point information for name.
  */
 struct statfs *
-getmntpt(name)
-	const char *name;
+getmntpt(const char *name)
 {
 	struct stat devstat, mntdevstat;
 	char device[sizeof(_PATH_DEV) - 1 + MNAMELEN];
@@ -312,8 +254,7 @@ getmntpt(name)
  * don't have blockdevs. I don't think its needed.
  */
 const char *
-blockcheck(origname)
-	const char *origname;
+blockcheck(const char *origname)
 {
 	struct stat stslash, stblock, stchar;
 	const char *newname, *raw;
@@ -367,8 +308,7 @@ retry:
 
 
 void *
-emalloc(s)
-	size_t s;
+emalloc(size_t s)
 {
 	void *p;
 
@@ -380,9 +320,7 @@ emalloc(s)
 
 
 void *
-erealloc(p, s)
-	void *p;
-	size_t s;
+erealloc(void *p, size_t s)
 {
 	void *q;
 
@@ -394,8 +332,7 @@ erealloc(p, s)
 
 
 char *
-estrdup(s)
-	const char *s;
+estrdup(const char *s)
 {
 	char *p;
 

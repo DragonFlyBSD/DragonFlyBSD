@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ping.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/ping/ping.c,v 1.52.2.13 2002/10/29 10:23:21 maxim Exp $
- * $DragonFly: src/sbin/ping/ping.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/ping/ping.c,v 1.3 2003/09/28 14:39:20 hmp Exp $
  */
 
 /*
@@ -185,9 +185,7 @@ static void tvsub(struct timeval *, struct timeval *);
 static void usage(void) __dead2;
 
 int
-main(argc, argv)
-	int argc;
-	char *const *argv;
+main(int argc, char **argv)
 {
 	struct in_addr ifaddr;
 	struct iovec iov;
@@ -726,8 +724,7 @@ main(argc, argv)
  * to be called from a signal handler.
  */
 void
-stopit(sig)
-	int sig __unused;
+stopit(int sig __unused)
 {
 
 	finish_up = 1;
@@ -793,11 +790,7 @@ pinger(void)
  * program to be run without having intermingled output (or statistics!).
  */
 static void
-pr_pack(buf, cc, from, tv)
-	char *buf;
-	int cc;
-	struct sockaddr_in *from;
-	struct timeval *tv;
+pr_pack(char *buf, int cc, struct sockaddr_in *from, struct timeval *tv)
 {
 	struct icmp *icp;
 	struct ip *ip;
@@ -1022,9 +1015,7 @@ pr_pack(buf, cc, from, tv)
  *	Checksum routine for Internet Protocol family headers (C Version)
  */
 u_short
-in_cksum(addr, len)
-	u_short *addr;
-	int len;
+in_cksum(u_short *addr, int len)
 {
 	int nleft, sum;
 	u_short *w;
@@ -1068,8 +1059,7 @@ in_cksum(addr, len)
  * be >= in.
  */
 static void
-tvsub(out, in)
-	struct timeval *out, *in;
+tvsub(struct timeval *out, struct timeval *in)
 {
 
 	if ((out->tv_usec -= in->tv_usec) < 0) {
@@ -1085,15 +1075,14 @@ tvsub(out, in)
  */
 
 static void
-status(sig)
-	int sig __unused;
+status(int sig __unused)
 {
 
 	siginfo_p = 1;
 }
 
 static void
-check_status()
+check_status(void)
 {
 
 	if (siginfo_p) {
@@ -1113,7 +1102,7 @@ check_status()
  *	Print out statistics, and give up.
  */
 static void
-finish()
+finish(void)
 {
 
 	struct termios ts;
@@ -1176,8 +1165,7 @@ static char *ttab[] = {
  *	Print a descriptive string about an ICMP header.
  */
 static void
-pr_icmph(icp)
-	struct icmp *icp;
+pr_icmph(struct icmp *icp)
 {
 
 	switch(icp->icmp_type) {
@@ -1324,8 +1312,7 @@ pr_icmph(icp)
  *	Print an IP header with options.
  */
 static void
-pr_iph(ip)
-	struct ip *ip;
+pr_iph(struct ip *ip)
 {
 	u_char *cp;
 	int hlen;
@@ -1357,8 +1344,7 @@ pr_iph(ip)
  * a hostname.
  */
 static char *
-pr_addr(ina)
-	struct in_addr ina;
+pr_addr(struct in_addr ina)
 {
 	struct hostent *hp;
 	static char buf[16 + 3 + MAXHOSTNAMELEN];
@@ -1377,8 +1363,7 @@ pr_addr(ina)
  *	Dump some info on a returned (via ICMP) IP packet.
  */
 static void
-pr_retip(ip)
-	struct ip *ip;
+pr_retip(struct ip *ip)
 {
 	u_char *cp;
 	int hlen;
@@ -1396,8 +1381,7 @@ pr_retip(ip)
 }
 
 static void
-fill(bp, patp)
-	char *bp, *patp;
+fill(char *bp, char *patp)
 {
 	char *cp;
 	int pat[16];
@@ -1428,7 +1412,7 @@ fill(bp, patp)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "%s\n%s\n%s\n",
 "usage: ping [-AQRadfnqrv] [-c count] [-i wait] [-l preload] [-m ttl]",

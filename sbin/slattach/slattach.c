@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1988 Regents of the University of California. All rights reserved.
  * @(#)slattach.c	4.6 (Berkeley) 6/1/90
  * $FreeBSD: src/sbin/slattach/slattach.c,v 1.36 1999/08/28 00:14:25 peter Exp $
- * $DragonFly: src/sbin/slattach/slattach.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/slattach/slattach.c,v 1.3 2003/09/28 14:39:22 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -231,7 +231,7 @@ main(int argc, char **argv)
 
 /* Close all FDs, fork, reopen tty port as 0-2, and make it the
    controlling terminal for our process group. */
-void acquire_line()
+void acquire_line(void)
 {
 	int ttydisc = TTYDISC;
 	int oflags;
@@ -331,7 +331,7 @@ void setup_line(int cflag)
 }
 
 /* Put the line in slip discipline. */
-void slip_discipline()
+void slip_discipline(void)
 {
 	struct ifreq ifr;
 	int slipdisc = SLIPDISC;
@@ -397,7 +397,7 @@ void slip_discipline()
 }
 
 /* configure the interface, e.g. by passing the unit number to a script. */
-void configure_network()
+void configure_network(void)
 {
 	int new_unit;
 
@@ -435,7 +435,7 @@ void configure_network()
 }
 
 /* sighup_handler() is invoked when carrier drops, eg. before redial. */
-void sighup_handler()
+void sighup_handler(void)
 {
 	if(exiting) return;
 
@@ -510,14 +510,14 @@ again:
 	configure_network();
 }
 /* Signal handler for SIGINT.  We just log and exit. */
-void sigint_handler()
+void sigint_handler(void)
 {
 	if(exiting) return;
 	syslog(LOG_NOTICE,"SIGINT on %s (sl%d); exiting",dev,unit);
 	exit_handler(0);
 }
 /* Signal handler for SIGURG. */
-void sigurg_handler()
+void sigurg_handler(void)
 {
 	int ttydisc = TTYDISC;
 
@@ -539,7 +539,7 @@ void sigurg_handler()
 
 }
 /* Signal handler for SIGTERM.  We just log and exit. */
-void sigterm_handler()
+void sigterm_handler(void)
 {
 	if(exiting) return;
 	syslog(LOG_NOTICE,"SIGTERM on %s (sl%d); exiting",dev,unit);

@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: hash.c,v 1.1.1.1 1999/11/19 04:30:56 mrg Exp $
- * $DragonFly: src/sbin/rcorder/hash.c,v 1.1 2003/07/24 06:35:38 dillon Exp $
+ * $DragonFly: src/sbin/rcorder/hash.c,v 1.2 2003/09/28 14:39:21 hmp Exp $
  */
 
 #ifdef MAKE_BOOTSTRAP
@@ -102,14 +102,16 @@ static void RebuildTable __P((Hash_Table *));
  *---------------------------------------------------------
  */
 
+/*
+ * register Hash_Table *t;	Structure to use to hold table. 
+ * int numBuckets;			How many buckets to create for starters.
+ * 								This number is rounded up to a power of
+ * 								two.   If <= 0, a reasonable default is
+ * 								chosen. The table will grow in size later
+ * 								as needed.
+ */
 void
-Hash_InitTable(t, numBuckets)
-	register Hash_Table *t;	/* Structure to use to hold table. */
-	int numBuckets;		/* How many buckets to create for starters.
-				 * This number is rounded up to a power of
-				 * two.   If <= 0, a reasonable default is
-				 * chosen. The table will grow in size later
-				 * as needed. */
+Hash_InitTable(register Hash_Table *t, int numBuckets)
 {
 	register int i;
 	register struct Hash_Entry **hp;
@@ -150,8 +152,7 @@ Hash_InitTable(t, numBuckets)
  */
 
 void
-Hash_DeleteTable(t)
-	Hash_Table *t;
+Hash_DeleteTable(Hash_Table *t)
 {
 	register struct Hash_Entry **hp, *h, *nexth = NULL;
 	register int i;
@@ -190,9 +191,7 @@ Hash_DeleteTable(t)
  */
 
 Hash_Entry *
-Hash_FindEntry(t, key)
-	Hash_Table *t;		/* Hash table to search. */
-	char *key;		/* A hash key. */
+Hash_FindEntry(Hash_Table *t, char *key)
 {
 	register Hash_Entry *e;
 	register unsigned h;
@@ -227,11 +226,7 @@ Hash_FindEntry(t, key)
  */
 
 Hash_Entry *
-Hash_CreateEntry(t, key, newPtr)
-	register Hash_Table *t;	/* Hash table to search. */
-	char *key;		/* A hash key. */
-	Boolean *newPtr;	/* Filled in with TRUE if new entry created,
-				 * FALSE otherwise. */
+Hash_CreateEntry(register Hash_Table *t, char *key, Boolean *newPtr)
 {
 	register Hash_Entry *e;
 	register unsigned h;
@@ -294,9 +289,7 @@ Hash_CreateEntry(t, key, newPtr)
  */
 
 void
-Hash_DeleteEntry(t, e)
-	Hash_Table *t;
-	Hash_Entry *e;
+Hash_DeleteEntry(Hash_Table *t, Hash_Entry *e)
 {
 	register Hash_Entry **hp, *p;
 
@@ -335,10 +328,7 @@ Hash_DeleteEntry(t, e)
  */
 
 Hash_Entry *
-Hash_EnumFirst(t, searchPtr)
-	Hash_Table *t;			/* Table to be searched. */
-	register Hash_Search *searchPtr;/* Area in which to keep state
-					 * about search.*/
+Hash_EnumFirst(Hash_Table *t, register Hash_Search *searchPtr)
 {
 	searchPtr->tablePtr = t;
 	searchPtr->nextIndex = 0;
@@ -365,9 +355,7 @@ Hash_EnumFirst(t, searchPtr)
  */
 
 Hash_Entry *
-Hash_EnumNext(searchPtr)
-	register Hash_Search *searchPtr; /* Area used to keep state about
-					    search. */
+Hash_EnumNext(register Hash_Search *searchPtr)
 {
 	register Hash_Entry *e;
 	Hash_Table *t = searchPtr->tablePtr;
@@ -411,8 +399,7 @@ Hash_EnumNext(searchPtr)
  */
 
 static void
-RebuildTable(t)
-	register Hash_Table *t;
+RebuildTable(register Hash_Table *t)
 {
 	register Hash_Entry *e, *next = NULL, **hp, **xp;
 	register int i, mask;

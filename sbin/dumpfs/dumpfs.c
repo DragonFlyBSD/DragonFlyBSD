@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dumpfs.c	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/sbin/dumpfs/dumpfs.c,v 1.13.2.1 2001/01/22 18:10:11 iedowse Exp $
- * $DragonFly: src/sbin/dumpfs/dumpfs.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
+ * $DragonFly: src/sbin/dumpfs/dumpfs.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -68,9 +68,7 @@ void	pbits __P((void *, int));
 void	usage __P((void));
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register struct fstab *fs;
 	int ch, eval;
@@ -96,8 +94,7 @@ main(argc, argv)
 }
 
 int
-dumpfs(name)
-	char *name;
+dumpfs(char *name)
 {
 	ssize_t n;
 	int fd, c, i, j, k, size;
@@ -235,9 +232,7 @@ err:	if (fd != -1)
 };
 
 int
-dumpcg(name, fd, c)
-	char *name;
-	int fd, c;
+dumpcg(char *name, int fd, int c)
 {
 	off_t cur;
 	int i, j;
@@ -302,9 +297,7 @@ dumpcg(name, fd, c)
 };
 
 void
-pbits(vp, max)
-	register void *vp;
-	int max;
+pbits(register void *vp, int max)
 {
 	register int i;
 	register char *p;
@@ -326,7 +319,7 @@ pbits(vp, max)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: dumpfs filesys | device\n");
 	exit(1);

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)clri.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sbin/clri/clri.c,v 1.4 1999/08/28 00:12:32 peter Exp $
- * $DragonFly: src/sbin/clri/clri.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
+ * $DragonFly: src/sbin/clri/clri.c,v 1.4 2003/09/28 14:39:16 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -59,9 +59,7 @@ usage(void)
 }
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register struct fs *sbp;
 	register struct dinode *ip;

@@ -26,7 +26,7 @@
  *
  * @(#)undo.c,v 1.1 1994/02/01 00:34:44 alm Exp
  * $FreeBSD: src/bin/ed/undo.c,v 1.9 1999/08/27 23:14:15 peter Exp $
- * $DragonFly: src/bin/ed/undo.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/ed/undo.c,v 1.3 2003/09/28 14:39:14 hmp Exp $
  */
 
 #include "ed.h"
@@ -39,10 +39,7 @@ long u_p = 0;					/* undo stack pointer */
 
 /* push_undo_stack: return pointer to initialized undo node */
 undo_t *
-push_undo_stack(type, from, to)
-	int type;
-	long from;
-	long to;
+push_undo_stack(int type, long from, long to)
 {
 	undo_t *t;
 
@@ -86,7 +83,7 @@ long u_addr_last = -1;		/* if >= 0, undo enabled */
 
 /* pop_undo_stack: undo last change to the editor buffer */
 int
-pop_undo_stack()
+pop_undo_stack(void)
 {
 	long n;
 	long o_current_addr = current_addr;
@@ -135,7 +132,7 @@ pop_undo_stack()
 
 /* clear_undo_stack: clear the undo stack */
 void
-clear_undo_stack()
+clear_undo_stack(void)
 {
 	line_t *lp, *ep, *tl;
 

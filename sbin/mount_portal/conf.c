@@ -37,7 +37,7 @@
  *	@(#)conf.c	8.2 (Berkeley) 3/27/94
  *
  * $FreeBSD: src/sbin/mount_portal/conf.c,v 1.8 1999/08/28 00:13:35 peter Exp $
- * $DragonFly: src/sbin/mount_portal/conf.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount_portal/conf.c,v 1.3 2003/09/28 14:39:19 hmp Exp $
  */
 
 #include <errno.h>
@@ -74,8 +74,7 @@ static path *curp;		/* XXX for regerror */
  * Add an element to a 2-way list,
  * just after (pred)
  */
-static void ins_que(elem, pred)
-qelem *elem, *pred;
+static void ins_que(qelem *elem, qelem *pred)
 {
 	qelem *p = pred->q_forw;
 	elem->q_back = pred;
@@ -87,8 +86,7 @@ qelem *elem, *pred;
 /*
  * Remove an element from a 2-way list
  */
-static void rem_que(elem)
-qelem *elem;
+static void rem_que(qelem *elem)
 {
 	qelem *p = elem->q_forw;
 	qelem *p2 = elem->q_back;
@@ -99,8 +97,7 @@ qelem *elem;
 /*
  * Error checking malloc
  */
-static void *xmalloc(siz)
-unsigned siz;
+static void *xmalloc(unsigned siz)
 {
 	void *p = malloc(siz);
 	if (p)
@@ -116,9 +113,7 @@ unsigned siz;
  * not found then the path is added to the end of the list
  * and 1 is returned.
  */
-static int pinsert(p0, q0)
-path *p0;
-qelem *q0;
+static int pinsert(path *p0, qelem *q0)
 {
 	qelem *q;
 
@@ -135,9 +130,7 @@ qelem *q0;
 
 }
 
-static path *palloc(cline, lno)
-char *cline;
-int lno;
+static path *palloc(char *cline, int lno)
 {
 	int c;
 	char *s;
@@ -223,8 +216,7 @@ int lno;
 /*
  * Free a path structure
  */
-static void pfree(p)
-path *p;
+static void pfree(path *p)
 {
 	free(p->p_args);
 	if (p->p_rxvalid) {
@@ -238,9 +230,7 @@ path *p;
  * Discard all currently held path structures on q0.
  * and add all the ones on xq.
  */
-static void preplace(q0, xq)
-qelem *q0;
-qelem *xq;
+static void preplace(qelem *q0, qelem *xq)
 {
 	/*
 	 * While the list is not empty,
@@ -263,9 +253,7 @@ qelem *xq;
  * Read the lines from the configuration file and
  * add them to the list of paths.
  */
-static void readfp(q0, fp)
-qelem *q0;
-FILE *fp;
+static void readfp(qelem *q0, FILE *fp)
 {
 	char cline[LINE_MAX];
 	int nread = 0;
@@ -300,9 +288,7 @@ FILE *fp;
  * the existing path list with the new version.
  * If the file is not readable, then no changes take place
  */
-void conf_read(q, conf)
-qelem *q;
-char *conf;
+void conf_read(qelem *q, char *conf)
 {
 	FILE *fp = fopen(conf, "r");
 	if (fp) {
@@ -316,9 +302,7 @@ char *conf;
 }
 
 
-char **conf_match(q0, key)
-qelem *q0;
-char *key;
+char **conf_match(qelem *q0, char *key)
 {
 	qelem *q;
 

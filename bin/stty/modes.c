@@ -32,7 +32,7 @@
  *
  * @(#)modes.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/stty/modes.c,v 1.8.2.2 2001/07/04 22:40:00 kris Exp $
- * $DragonFly: src/bin/stty/modes.c,v 1.3 2003/09/21 04:26:26 drhodus Exp $
+ * $DragonFly: src/bin/stty/modes.c,v 1.4 2003/09/28 14:39:15 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -205,9 +205,7 @@ struct modes omodes[] = {
 #define	CHK(s)	(*name == s[0] && !strcmp(name, s))
 
 int
-msearch(argvp, ip)
-	char ***argvp;
-	struct info *ip;
+msearch(char ***argvp, struct info *ip)
 {
 	struct modes *mp;
 	char *name;

@@ -32,7 +32,7 @@
  *
  * @(#)itime.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/dump/itime.c,v 1.3.2.1 2001/08/01 06:29:35 obrien Exp $
- * $DragonFly: src/sbin/dump/itime.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
+ * $DragonFly: src/sbin/dump/itime.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -75,7 +75,7 @@ static	int makedumpdate __P((struct dumpdates *, char *));
 static	void readdumptimes __P((FILE *));
 
 void
-initdumptimes()
+initdumptimes(void)
 {
 	FILE *df;
 
@@ -107,8 +107,7 @@ initdumptimes()
 }
 
 static void
-readdumptimes(df)
-	FILE *df;
+readdumptimes(FILE *df)
 {
 	register int i;
 	register struct	dumptime *dtwalk;
@@ -134,7 +133,7 @@ readdumptimes(df)
 }
 
 void
-getdumptime()
+getdumptime(void)
 {
 	register struct dumpdates *ddp;
 	register int i;
@@ -166,7 +165,7 @@ getdumptime()
 }
 
 void
-putdumptime()
+putdumptime(void)
 {
 	FILE *df;
 	register struct dumpdates *dtwalk;
@@ -222,9 +221,7 @@ putdumptime()
 }
 
 static void
-dumprecout(file, what)
-	FILE *file;
-	struct dumpdates *what;
+dumprecout(FILE *file, struct dumpdates *what)
 {
 
 	if (fprintf(file, DUMPOUTFMT,
@@ -237,9 +234,7 @@ dumprecout(file, what)
 int	recno;
 
 static int
-getrecord(df, ddatep)
-	FILE *df;
-	struct dumpdates *ddatep;
+getrecord(FILE *df, struct dumpdates *ddatep)
 {
 	char tbuf[BUFSIZ];
 
@@ -259,9 +254,7 @@ getrecord(df, ddatep)
 }
 
 static int
-makedumpdate(ddp, tbuf)
-	struct dumpdates *ddp;
-	char *tbuf;
+makedumpdate(struct dumpdates *ddp, char *tbuf)
 {
 	char un_buf[128];
 

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_umap.c	8.5 (Berkeley) 4/26/95
  * $FreeBSD: src/sbin/mount_umap/mount_umap.c,v 1.15 1999/10/09 11:54:13 phk Exp $
- * $DragonFly: src/sbin/mount_umap/Attic/mount_umap.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
+ * $DragonFly: src/sbin/mount_umap/Attic/mount_umap.c,v 1.4 2003/09/28 14:39:20 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -79,9 +79,7 @@ static struct mntopt mopts[] = {
 static void	usage __P((void)) __dead2;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	static char not[] = "; not mounted";
 	struct stat statbuf;
@@ -233,7 +231,7 @@ main(argc, argv)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 "usage: mount_umap [-o options] -u usermap -g groupmap target_fs mount_point\n");

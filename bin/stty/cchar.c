@@ -32,7 +32,7 @@
  *
  * @(#)cchar.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/stty/cchar.c,v 1.9.2.2 2001/07/04 22:40:00 kris Exp $
- * $DragonFly: src/bin/stty/cchar.c,v 1.3 2003/09/21 04:26:26 drhodus Exp $
+ * $DragonFly: src/bin/stty/cchar.c,v 1.4 2003/09/28 14:39:15 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -86,17 +86,14 @@ struct cchar cchars2[] = {
 };
 
 static int
-c_cchar(a, b)
-        const void *a, *b;
+c_cchar(const void *a, const void *b)
 {
 
         return (strcmp(((const struct cchar *)a)->name, ((const struct cchar *)b)->name));
 }
 
 int
-csearch(argvp, ip)
-	char ***argvp;
-	struct info *ip;
+csearch(char ***argvp, struct info *ip)
 {
 	struct cchar *cp, tmp;
 	long val;

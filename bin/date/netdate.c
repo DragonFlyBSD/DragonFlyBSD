@@ -32,7 +32,7 @@
  *
  * @(#)netdate.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/date/netdate.c,v 1.11.2.1 2001/05/12 17:14:22 fenner Exp $
- * $DragonFly: src/bin/date/netdate.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/date/netdate.c,v 1.3 2003/09/28 14:39:13 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -64,8 +64,7 @@ extern int retval;
  * Returns 0 on success.  Returns > 0 on failure, setting retval to 2;
  */
 int
-netsettime(tval)
-	time_t tval;
+netsettime(time_t tval)
 {
 	struct timeval tout;
 	struct servent *sp;

@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)df.c	8.9 (Berkeley) 5/8/95
  * $FreeBSD: src/bin/df/df.c,v 1.23.2.9 2002/07/01 00:14:24 iedowse Exp $
- * $DragonFly: src/bin/df/df.c,v 1.3 2003/08/08 04:18:29 dillon Exp $
+ * $DragonFly: src/bin/df/df.c,v 1.4 2003/09/28 14:39:14 hmp Exp $
  */
 
 #include <sys/cdefs.h>
@@ -123,7 +123,7 @@ static __inline int imax(int a, int b)
 }
 
 int
-main(int argc, char *argv[])
+main(int argc, char **argv)
 {
 	struct stat stbuf;
 	struct statfs statfsbuf, *mntbuf;

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount.c	8.25 (Berkeley) 5/8/95
  * $FreeBSD: src/sbin/mount/mount.c,v 1.39.2.3 2001/08/01 08:26:23 obrien Exp $
- * $DragonFly: src/sbin/mount/mount.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount/mount.c,v 1.3 2003/09/28 14:39:18 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -113,9 +113,7 @@ remountable_fs_names[] = {
 };
 
 int
-main(argc, argv)
-	int argc;
-	char * const argv[];
+main(int argc, char **argv)
 {
 	const char *mntfromname, **vfslist, *vfstype;
 	struct fstab *fs;
@@ -301,10 +299,7 @@ main(argc, argv)
 }
 
 int
-ismounted(fs, mntbuf, mntsize)
-	struct fstab *fs;
-	struct statfs *mntbuf;
-	int mntsize;
+ismounted(struct fstab *fs, struct statfs *mntbuf, int mntsize)
 {
 	int i;
 
@@ -321,8 +316,7 @@ ismounted(fs, mntbuf, mntsize)
 }
 
 int
-isremountable(vfsname)
-	const char *vfsname;
+isremountable(const char *vfsname)
 {
 	const char **cp;
 
@@ -333,8 +327,7 @@ isremountable(vfsname)
 }
 
 int
-hasopt(mntopts, option)
-	const char *mntopts, *option;
+hasopt(const char *mntopts, const char *option)
 {
 	int negative, found;
 	char *opt, *optbuf;
@@ -358,9 +351,8 @@ hasopt(mntopts, option)
 }
 
 int
-mountfs(vfstype, spec, name, flags, options, mntopts)
-	const char *vfstype, *spec, *name, *options, *mntopts;
-	int flags;
+mountfs(const char *vfstype, const char *spec, const char *name, int flags,
+        const char *options, const char *mntopts)
 {
 	/* List of directories containing mount_xxx subcommands. */
 	static const char *edirs[] = {
@@ -490,8 +482,7 @@ mountfs(vfstype, spec, name, flags, options, mntopts)
 }
 
 void
-prmount(sfp)
-	struct statfs *sfp;
+prmount(struct statfs *sfp)
 {
 	int flags;
 	struct opt *o;
@@ -525,8 +516,7 @@ prmount(sfp)
 }
 
 struct statfs *
-getmntpt(name)
-	const char *name;
+getmntpt(const char *name)
 {
 	struct statfs *mntbuf;
 	int i, mntsize;
@@ -541,9 +531,7 @@ getmntpt(name)
 }
 
 char *
-catopt(s0, s1)
-	char *s0;
-	const char *s1;
+catopt(char *s0, const char *s1)
 {
 	size_t i;
 	char *cp;
@@ -565,10 +553,7 @@ catopt(s0, s1)
 }
 
 void
-mangle(options, argcp, argv)
-	char *options;
-	int *argcp;
-	const char **argv;
+mangle(char *options, int *argcp, const char **argv)
 {
 	char *p, *s;
 	int argc;
@@ -594,10 +579,7 @@ mangle(options, argcp, argv)
 
 
 char *
-update_options(opts, fstab, curflags)
-	char *opts;
-	char *fstab;
-	int curflags;
+update_options(char *opts, char *fstab, int curflags)
 {
 	char *o, *p;
 	char *cur;
@@ -652,9 +634,7 @@ update_options(opts, fstab, curflags)
 }
 
 void
-remopt(string, opt)
-	char *string;
- 	const char *opt;
+remopt(char *string, const char *opt)
 {
 	char *o, *p, *r;
 
@@ -676,7 +656,7 @@ remopt(string, opt)
 }
 
 void
-usage()
+usage(void)
 {
 
 	(void)fprintf(stderr, "%s\n%s\n%s\n",
@@ -687,8 +667,7 @@ usage()
 }
 
 void
-putfsent(ent)
-	const struct statfs *ent;
+putfsent(const struct statfs *ent)
 {
 	struct fstab *fst;
 	char *opts;
@@ -713,8 +692,7 @@ putfsent(ent)
 
 
 char *
-flags2opts(flags)
-	int flags;
+flags2opts(int flags)
 {
 	char *res;
 

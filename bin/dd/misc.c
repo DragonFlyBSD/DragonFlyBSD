@@ -36,7 +36,7 @@
  *
  * @(#)misc.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/misc.c,v 1.18.2.1 2001/08/01 01:40:03 obrien Exp $
- * $DragonFly: src/bin/dd/misc.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/dd/misc.c,v 1.3 2003/09/28 14:39:13 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -52,7 +52,7 @@
 #include "extern.h"
 
 void
-summary()
+summary(void)
 {
 	struct timeval tv;
 	double secs;
@@ -85,8 +85,7 @@ summary()
 
 /* ARGSUSED */
 void
-summaryx(notused)
-	int notused __unused;
+summaryx(int notused __unused)
 {
 	int save_errno = errno;
 
@@ -96,8 +95,7 @@ summaryx(notused)
 
 /* ARGSUSED */
 void
-terminate(sig)
-	int sig;
+terminate(int sig)
 {
 
 	summary();

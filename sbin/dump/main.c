@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/main.c,v 1.20.2.9 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/main.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
+ * $DragonFly: src/sbin/dump/main.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -85,9 +85,7 @@ static void obsolete __P((int *, char **[]));
 static void usage __P((void));
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	struct stat sb;
 	register ino_t ino;
@@ -504,7 +502,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr,
 		"usage: dump [-0123456789ac"
@@ -523,9 +521,7 @@ usage()
  * range (except that a vmax of 0 means unlimited).
  */
 static long
-numarg(meaning, vmin, vmax)
-	char *meaning;
-	long vmin, vmax;
+numarg(char *meaning, long vmin, long vmax)
 {
 	char *p;
 	long val;
@@ -539,8 +535,7 @@ numarg(meaning, vmin, vmax)
 }
 
 void
-sig(signo)
-	int signo;
+sig(int signo)
 {
 	switch(signo) {
 	case SIGALRM:
@@ -566,8 +561,7 @@ sig(signo)
 }
 
 char *
-rawname(cp)
-	char *cp;
+rawname(char *cp)
 {
 	static char rawbuf[MAXPATHLEN];
 	char *dp;
@@ -601,9 +595,7 @@ rawname(cp)
  *	getopt(3) will like.
  */
 static void
-obsolete(argcp, argvp)
-	int *argcp;
-	char **argvp[];
+obsolete(int *argcp, char ***argvp)
 {
 	int argc, flags;
 	char *ap, **argv, *flagsp, **nargv, *p;

@@ -37,7 +37,7 @@
  *	@(#)activate.c	8.3 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/mount_portal/activate.c,v 1.7 1999/08/28 00:13:35 peter Exp $
- * $DragonFly: src/sbin/mount_portal/activate.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount_portal/activate.c,v 1.3 2003/09/28 14:39:19 hmp Exp $
  */
 
 #include <errno.h>
@@ -55,12 +55,8 @@
  * Scan the providers list and call the
  * appropriate function.
  */
-static int activate_argv(pcr, key, v, so, fdp)
-struct portal_cred *pcr;
-char *key;
-char **v;
-int so;
-int *fdp;
+static int activate_argv(struct portal_cred *pcr, char *key, char **v, int so,
+                         int *fdp)
 {
 	provider *pr;
 
@@ -71,11 +67,7 @@ int *fdp;
 	return (ENOENT);
 }
 
-static int get_request(so, pcr, key, klen)
-int so;
-struct portal_cred *pcr;
-char *key;
-int klen;
+static int get_request(int so, struct portal_cred *pcr, char *key, int klen)
 {
 	struct iovec iov[2];
 	struct msghdr msg;
@@ -103,10 +95,7 @@ int klen;
 	return (0);
 }
 
-static void send_reply(so, fd, error)
-int so;
-int fd;
-int error;
+static void send_reply(int so, int fd, int error)
 {
 	int n;
 	struct iovec iov;
@@ -162,9 +151,7 @@ int error;
 	(void) close(fd);
 }
 
-void activate(q, so)
-qelem *q;
-int so;
+void activate(qelem *q, int so)
 {
 	struct portal_cred pcred;
 	char key[MAXPATHLEN+1];

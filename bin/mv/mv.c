@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mv.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/mv/mv.c,v 1.24.2.5 2002/08/19 00:26:41 johan Exp $
- * $DragonFly: src/bin/mv/mv.c,v 1.3 2003/09/21 04:23:40 drhodus Exp $
+ * $DragonFly: src/bin/mv/mv.c,v 1.4 2003/09/28 14:39:14 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -66,9 +66,7 @@ int	main (int, char *[]);
 void	usage (void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register int baselen, len, rval;
 	register char *p, *endp;
@@ -146,8 +144,7 @@ main(argc, argv)
 }
 
 int
-do_move(from, to)
-	char *from, *to;
+do_move(char *from, char *to)
 {
 	struct stat sb;
 	int ask, ch, first;
@@ -231,9 +228,7 @@ do_move(from, to)
 }
 
 int
-fastcopy(from, to, sbp)
-	char *from, *to;
-	struct stat *sbp;
+fastcopy(char *from, char *to, struct stat *sbp)
 {
 	struct timeval tval[2];
 	static u_int blen;
@@ -324,8 +319,7 @@ err:		if (unlink(to))
 }
 
 int
-copy(from, to)
-	char *from, *to;
+copy(char *from, char *to)
 {
 	int pid, status;
 
@@ -370,7 +364,7 @@ copy(from, to)
 }
 
 void
-usage()
+usage(void)
 {
 
 	(void)fprintf(stderr, "%s\n%s\n",

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_union.c	8.5 (Berkeley) 3/27/94
  * $FreeBSD: src/sbin/mount_union/mount_union.c,v 1.12 1999/10/09 11:54:14 phk Exp $
- * $DragonFly: src/sbin/mount_union/mount_union.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
+ * $DragonFly: src/sbin/mount_union/mount_union.c,v 1.4 2003/09/28 14:39:20 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -62,9 +62,7 @@ static int	subdir __P((const char *, const char *));
 static void	usage __P((void)) __dead2;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	struct union_args args;
 	int ch, mntflags;
@@ -125,9 +123,7 @@ main(argc, argv)
 }
 
 int
-subdir(p, dir)
-	const char *p;
-	const char *dir;
+subdir(const char *p, const char *dir)
 {
 	int l;
 
@@ -142,7 +138,7 @@ subdir(p, dir)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 		"usage: mount_union [-br] [-o options] target_fs mount_point\n");

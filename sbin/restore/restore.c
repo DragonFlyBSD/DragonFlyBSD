@@ -32,7 +32,7 @@
  *
  * @(#)restore.c	8.3 (Berkeley) 9/13/94
  * $FreeBSD: src/sbin/restore/restore.c,v 1.7.2.1 2002/03/01 21:32:28 iedowse Exp $
- * $DragonFly: src/sbin/restore/restore.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
+ * $DragonFly: src/sbin/restore/restore.c,v 1.4 2003/09/28 14:39:21 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -52,10 +52,7 @@ static char *keyval __P((int));
  * List entries on the tape.
  */
 long
-listfile(name, ino, type)
-	char *name;
-	ino_t ino;
-	int type;
+listfile(char *name, ino_t ino, int type)
 {
 	long descend = hflag ? GOOD : FAIL;
 
@@ -71,10 +68,7 @@ listfile(name, ino, type)
  * Request that new entries be extracted.
  */
 long
-addfile(name, ino, type)
-	char *name;
-	ino_t ino;
-	int type;
+addfile(char *name, ino_t ino, int type)
 {
 	register struct entry *ep;
 	long descend = hflag ? GOOD : FAIL;
@@ -115,10 +109,7 @@ addfile(name, ino, type)
  */
 /* ARGSUSED */
 long
-deletefile(name, ino, type)
-	char *name;
-	ino_t ino;
-	int type;
+deletefile(char *name, ino_t ino, int type)
 {
 	long descend = hflag ? GOOD : FAIL;
 	struct entry *ep;
@@ -156,7 +147,7 @@ static struct entry *removelist;
  *	Remove directories from the lookup chains.
  */
 void
-removeoldleaves()
+removeoldleaves(void)
 {
 	register struct entry *ep, *nextep;
 	register ino_t i, mydirino;
@@ -209,10 +200,7 @@ removeoldleaves()
  *	Renames are done at the same time.
  */
 long
-nodeupdates(name, ino, type)
-	char *name;
-	ino_t ino;
-	int type;
+nodeupdates(char *name, ino_t ino, int type)
 {
 	register struct entry *ep, *np, *ip;
 	long descend = GOOD;
@@ -498,8 +486,7 @@ nodeupdates(name, ino, type)
  * Calculate the active flags in a key.
  */
 static char *
-keyval(key)
-	int key;
+keyval(int key)
 {
 	static char keybuf[32];
 
@@ -520,7 +507,7 @@ keyval(key)
  * Find unreferenced link names.
  */
 void
-findunreflinks()
+findunreflinks(void)
 {
 	register struct entry *ep, *np;
 	register ino_t i;
@@ -568,7 +555,7 @@ findunreflinks()
  * time O(N).
  */
 void
-removeoldnodes()
+removeoldnodes(void)
 {
 	register struct entry *ep, **prev;
 	long change;
@@ -597,8 +584,7 @@ removeoldnodes()
  * Extract new leaves.
  */
 void
-createleaves(symtabfile)
-	char *symtabfile;
+createleaves(char *symtabfile)
 {
 	register struct entry *ep;
 	ino_t first;
@@ -677,7 +663,7 @@ createleaves(symtabfile)
  * Efficiently extract a subset of the files on a tape.
  */
 void
-createfiles()
+createfiles(void)
 {
 	register ino_t first, next, last;
 	register struct entry *ep;
@@ -773,7 +759,7 @@ createfiles()
  * Add links.
  */
 void
-createlinks()
+createlinks(void)
 {
 	register struct entry *np, *ep;
 	register ino_t i;
@@ -813,7 +799,7 @@ createlinks()
  * that no temporary names remain.
  */
 void
-checkrestore()
+checkrestore(void)
 {
 	register struct entry *ep;
 	register ino_t i;
@@ -835,10 +821,7 @@ checkrestore()
  * A paranoid check that things are as they should be.
  */
 long
-verifyfile(name, ino, type)
-	char *name;
-	ino_t ino;
-	int type;
+verifyfile(char *name, ino_t ino, int type)
 {
 	struct entry *np, *ep;
 	long descend = GOOD;

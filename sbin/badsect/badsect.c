@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1981, 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)badsect.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/badsect/badsect.c,v 1.7.2.2 2001/07/30 10:30:04 dd Exp $
- * $DragonFly: src/sbin/badsect/badsect.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
+ * $DragonFly: src/sbin/badsect/badsect.c,v 1.4 2003/09/28 14:39:16 hmp Exp $
  */
 
 /*
@@ -89,9 +89,7 @@ usage(void)
 }
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	daddr_t diskbn;
 	daddr_t number;
@@ -154,9 +152,7 @@ main(argc, argv)
 }
 
 int
-chkuse(blkno, cnt)
-	daddr_t blkno;
-	int cnt;
+chkuse(daddr_t blkno, int cnt)
 {
 	int cg;
 	daddr_t fsbn, bn;
@@ -197,10 +193,7 @@ chkuse(blkno, cnt)
  * read a block from the file system
  */
 void
-rdfs(bno, size, bf)
-	daddr_t bno;
-	int size;
-	char *bf;
+rdfs(daddr_t bno, int size, char *bf)
 {
 	int n;
 

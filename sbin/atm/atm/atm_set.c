@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm_set.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm_set.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm_set.c,v 1.3 2003/09/28 14:39:16 hmp Exp $
  */
 
 /*
@@ -72,10 +72,7 @@
  *
  */
 void
-set_arpserver(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+set_arpserver(int argc, char **argv, struct cmd *cmdp)
 {
 	int			i, len, prefix_len = 0, rc, s;
 	char			*intf;
@@ -271,10 +268,7 @@ set_arpserver(argc, argv, cmdp)
  *
  */
 void
-set_macaddr(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+set_macaddr(int argc, char **argv, struct cmd *cmdp)
 {
 	int			s;
 	char			*intf;
@@ -367,10 +361,7 @@ set_macaddr(argc, argv, cmdp)
  *
  */
 void
-set_netif(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+set_netif(int argc, char **argv, struct cmd *cmdp)
 {
 	struct atmsetreq	anr;
 	char			str[16];
@@ -455,10 +446,7 @@ set_netif(argc, argv, cmdp)
  *
  */
 void
-set_prefix(argc, argv, cmdp)
-	int		argc;
-	char		**argv;
-	struct cmd	*cmdp;
+set_prefix(int argc, char **argv, struct cmd *cmdp)
 {
 	int			s;
 	char			*intf;

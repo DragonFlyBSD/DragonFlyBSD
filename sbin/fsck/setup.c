@@ -32,7 +32,7 @@
  *
  * @(#)setup.c	8.10 (Berkeley) 5/9/95
  * $FreeBSD: src/sbin/fsck/setup.c,v 1.17.2.4 2002/06/24 05:10:41 dillon Exp $
- * $DragonFly: src/sbin/fsck/setup.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
+ * $DragonFly: src/sbin/fsck/setup.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
  */
 
 #define DKTYPENAMES
@@ -66,8 +66,7 @@ static int readsb __P((int listerr));
  * is already clean (preen mode only).
  */
 int
-setup(dev)
-	char *dev;
+setup(char *dev)
 {
 	long cg, size, asked, i, j;
 	long skipclean, bmapsize;
@@ -316,8 +315,7 @@ badsb:
  * Read in the super block and its summary info.
  */
 static int
-readsb(listerr)
-	int listerr;
+readsb(int listerr)
 {
 	ufs_daddr_t super = bflag ? bflag : SBOFF / dev_bsize;
 
@@ -391,9 +389,7 @@ readsb(listerr)
 }
 
 static void
-badsb(listerr, s)
-	int listerr;
-	char *s;
+badsb(int listerr, char *s)
 {
 
 	if (!listerr)
@@ -410,10 +406,7 @@ badsb(listerr, s)
  * their needed information is available!
  */
 static int
-calcsb(dev, devfd, fs)
-	char *dev;
-	int devfd;
-	register struct fs *fs;
+calcsb(char *dev, int devfd, register struct fs *fs)
 {
 	register struct disklabel *lp;
 	register struct partition *pp;
@@ -471,9 +464,7 @@ calcsb(dev, devfd, fs)
 }
 
 static struct disklabel *
-getdisklabel(s, fd)
-	char *s;
-	int	fd;
+getdisklabel(char *s, int fd)
 {
 	static struct disklabel lab;
 

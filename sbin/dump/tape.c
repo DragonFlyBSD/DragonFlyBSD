@@ -32,7 +32,7 @@
  *
  * @(#)tape.c	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/tape.c,v 1.12.2.3 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/tape.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
+ * $DragonFly: src/sbin/dump/tape.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -124,7 +124,7 @@ static jmp_buf jmpbuf;	/* where to jump to if we are ready when the */
 			/* SIGUSR2 arrives from the previous slave */
 
 int
-alloctape()
+alloctape(void)
 {
 	int pgoff = getpagesize() - 1;
 	char *buf;
@@ -164,9 +164,7 @@ alloctape()
 }
 
 void
-writerec(dp, isspcl)
-	char *dp;
-	int isspcl;
+writerec(char *dp, int isspcl)
 {
 
 	slp->req[trecno].dblk = (daddr_t)0;
@@ -185,9 +183,7 @@ writerec(dp, isspcl)
 }
 
 void
-dumpblock(blkno, size)
-	daddr_t blkno;
-	int size;
+dumpblock(daddr_t blkno, int size)
 {
 	int avail, tpblks, dblkno;
 
@@ -208,8 +204,7 @@ dumpblock(blkno, size)
 int	nogripe = 0;
 
 void
-tperror(signo)
-	int signo;
+tperror(int signo)
 {
 
 	if (pipeout) {
@@ -230,15 +225,14 @@ tperror(signo)
 }
 
 void
-sigpipe(signo)
-	int signo;
+sigpipe(int signo)
 {
 
 	quit("Broken pipe\n");
 }
 
 static void
-flushtape()
+flushtape(void)
 {
 	int i, blks, got;
 	long lastfirstrec;
@@ -315,7 +309,7 @@ flushtape()
 }
 
 void
-trewind()
+trewind(void)
 {
 	struct stat sb;
 	int f;
@@ -373,7 +367,7 @@ trewind()
 }
 
 void
-close_rewind()
+close_rewind(void)
 {
 	time_t tstart_changevol, tend_changevol;
 
@@ -396,7 +390,7 @@ close_rewind()
 }
 
 void
-rollforward()
+rollforward(void)
 {
 	register struct req *p, *q, *prev;
 	register struct slave *tslp;
@@ -511,8 +505,7 @@ rollforward()
  * everything continues as if nothing had happened.
  */
 void
-startnewtape(top)
-	int top;
+startnewtape(int top)
 {
 	int	parentpid;
 	int	childpid;
@@ -648,8 +641,7 @@ restore_check_point:
 }
 
 void
-dumpabort(signo)
-	int signo;
+dumpabort(int signo)
 {
 
 	if (master != 0 && master != getpid())
@@ -666,8 +658,7 @@ dumpabort(signo)
 }
 
 void
-Exit(status)
-	int status;
+Exit(int status)
 {
 
 #ifdef TDEBUG
@@ -680,8 +671,7 @@ Exit(status)
  * proceed - handler for SIGUSR2, used to synchronize IO between the slaves.
  */
 void
-proceed(signo)
-	int signo;
+proceed(int signo)
 {
 
 	if (ready)
@@ -690,7 +680,7 @@ proceed(signo)
 }
 
 void
-enslave()
+enslave(void)
 {
 	int cmd[2];
 	register int i, j;
@@ -734,7 +724,7 @@ enslave()
 }
 
 void
-killall()
+killall(void)
 {
 	register int i;
 
@@ -753,9 +743,7 @@ killall()
  * get the lock back for the next cycle by swapping descriptors.
  */
 static void
-doslave(cmd, slave_number)
-	register int cmd;
-        int slave_number;
+doslave(register int cmd, int slave_number)
 {
 	register int nread;
 	int nextslave, size, wrote, eot_count;
@@ -869,11 +857,7 @@ doslave(cmd, slave_number)
  * loop until the count is satisfied (or error).
  */
 static int
-atomic(func, fd, buf, count)
-	ssize_t (*func)();
-	int fd;
-	char *buf;
-	int count;
+atomic(ssize_t (*func)(), int fd, char *buf, int count)
 {
 	int got, need = count;
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/atacontrol/atacontrol.c,v 1.11.2.5 2002/08/21 13:18:17 sos Exp $
- * $DragonFly: src/sbin/atacontrol/atacontrol.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/atacontrol/atacontrol.c,v 1.3 2003/09/28 14:39:16 hmp Exp $
  */
 
 #include <stdio.h>
@@ -81,7 +81,7 @@ str2mode(char *str)
 
 
 void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: atacontrol <command> channel [args]\n");
 	exit(1);

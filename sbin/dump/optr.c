@@ -32,7 +32,7 @@
  *
  * @(#)optr.c	8.2 (Berkeley) 1/6/94
  * $FreeBSD: src/sbin/dump/optr.c,v 1.9.2.5 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/optr.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/dump/optr.c,v 1.3 2003/09/28 14:39:17 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -72,8 +72,7 @@ static	int timeout;
 static	char *attnmessage;		/* attention message */
 
 int
-query(question)
-	char	*question;
+query(char *question)
 {
 	char	replybuffer[64];
 	int	back, errcount;
@@ -146,8 +145,7 @@ alarmcatch()
  *	Here if an inquisitive operator interrupts the dump program
  */
 void
-interrupt(signo)
-	int signo;
+interrupt(int signo)
 {
 	msg("Interrupt received.\n");
 	if (query("Do you want to abort dump?"))
@@ -158,8 +156,7 @@ interrupt(signo)
  *	We now use wall(1) to do the actual broadcasting.
  */
 void
-broadcast(message)
-	char	*message;
+broadcast(char *message)
 {
 	FILE *fp;
 	char buf[sizeof(_PATH_WALL) + sizeof(OPGRENT) + 3];
@@ -187,7 +184,7 @@ broadcast(message)
 time_t	tschedule = 0;
 
 void
-timeest()
+timeest(void)
 {
 	double percent;
 	time_t	tnow;
@@ -215,20 +212,13 @@ timeest()
  * Schedule a printout of the estimate in the next call to timeest().
  */
 void
-infosch(signal)
-	int signal;
+infosch(int signal)
 {
 	tschedule = 0;
 }
 
 void
-#if __STDC__
 msg(const char *fmt, ...)
-#else
-msg(fmt, va_alist)
-	char *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
 
@@ -236,11 +226,7 @@ msg(fmt, va_alist)
 #ifdef TDEBUG
 	(void) fprintf(stderr, "pid=%d ", getpid());
 #endif
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	(void) vfprintf(stderr, fmt, ap);
 	(void) fflush(stdout);
 	(void) fflush(stderr);
@@ -249,32 +235,17 @@ msg(fmt, va_alist)
 }
 
 void
-#if __STDC__
 msgtail(const char *fmt, ...)
-#else
-msgtail(fmt, va_alist)
-	char *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
-#if __STDC__
+
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	(void) vfprintf(stderr, fmt, ap);
 	va_end(ap);
 }
 
 void
-#if __STDC__
 quit(const char *fmt, ...)
-#else
-quit(fmt, va_alist)
-	char *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
 
@@ -282,11 +253,7 @@ quit(fmt, va_alist)
 #ifdef TDEBUG
 	(void) fprintf(stderr, "pid=%d ", getpid());
 #endif
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	(void) vfprintf(stderr, fmt, ap);
 	va_end(ap);
 	(void) fflush(stdout);
@@ -300,8 +267,7 @@ quit(fmt, va_alist)
  */
 
 struct fstab *
-allocfsent(fs)
-	register struct fstab *fs;
+allocfsent(register struct fstab *fs)
 {
 	register struct fstab *new;
 
@@ -324,7 +290,7 @@ struct	pfstab {
 static	SLIST_HEAD(, pfstab) table;
 
 void
-getfstab()
+getfstab(void)
 {
 	register struct fstab *fs;
 	register struct pfstab *pf;
@@ -355,8 +321,7 @@ getfstab()
  * The file name can omit the leading '/'.
  */
 struct fstab *
-fstabsearch(key)
-	char *key;
+fstabsearch(char *key)
 {
 	register struct pfstab *pf;
 	register struct fstab *fs;
@@ -384,10 +349,11 @@ fstabsearch(key)
 
 /*
  *	Tell the operator what to do
+ *
+ * char arg: w ==> just what to do; W ==> most recent dumps 
  */
 void
-lastdump(arg)
-	char	arg;	/* w ==> just what to do; W ==> most recent dumps */
+lastdump(int arg)
 {
 	register int i;
 	register struct fstab *dt;
@@ -434,8 +400,7 @@ lastdump(arg)
 }
 
 int
-datesort(a1, a2)
-	const void *a1, *a2;
+datesort(const void *a1, const void *a2)
 {
 	struct dumpdates *d1 = *(struct dumpdates **)a1;
 	struct dumpdates *d2 = *(struct dumpdates **)a2;

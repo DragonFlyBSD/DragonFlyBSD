@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chmod.c	8.8 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/chmod/chmod.c,v 1.16.2.6 2002/10/18 01:36:38 trhodes Exp $
- * $DragonFly: src/bin/chmod/chmod.c,v 1.3 2003/09/21 04:18:00 drhodus Exp $
+ * $DragonFly: src/bin/chmod/chmod.c,v 1.4 2003/09/28 14:39:13 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -48,13 +48,11 @@
 #include <string.h>
 #include <unistd.h>
 
-int main (int, char *[]);
+int main (int, char **);
 void usage (void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	FTS *ftsp;
 	FTSENT *p;

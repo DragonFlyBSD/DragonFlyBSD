@@ -27,7 +27,7 @@
  *
  * @(#)re.c,v 1.6 1994/02/01 00:34:43 alm Exp
  * $FreeBSD: src/bin/ed/re.c,v 1.15.2.1 2001/08/01 02:36:03 obrien Exp $
- * $DragonFly: src/bin/ed/re.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/ed/re.c,v 1.3 2003/09/28 14:39:14 hmp Exp $
  */
 
 #include "ed.h"
@@ -40,7 +40,7 @@ char errmsg[PATH_MAX + 40] = "";
 /* get_compiled_pattern: return pointer to compiled pattern from command
    buffer */
 pattern_t *
-get_compiled_pattern()
+get_compiled_pattern(void)
 {
 	static pattern_t *exp = NULL;
 
@@ -77,8 +77,7 @@ get_compiled_pattern()
 /* extract_pattern: copy a pattern string from the command buffer; return
    pointer to the copy */
 char *
-extract_pattern(delimiter)
-	int delimiter;
+extract_pattern(int delimiter)
 {
 	static char *lhbuf = NULL;	/* buffer */
 	static int lhbufsz = 0;		/* buffer size */
@@ -114,8 +113,7 @@ extract_pattern(delimiter)
 
 /* parse_char_class: expand a POSIX character class */
 char *
-parse_char_class(s)
-	char *s;
+parse_char_class(char *s)
 {
 	int c, d;
 

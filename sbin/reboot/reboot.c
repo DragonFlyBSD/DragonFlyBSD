@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)reboot.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/reboot/reboot.c,v 1.9.2.4 2002/04/28 22:50:00 wes Exp $
- * $DragonFly: src/sbin/reboot/reboot.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/reboot/reboot.c,v 1.3 2003/09/28 14:39:21 hmp Exp $
  */
 
 #include <sys/reboot.h>
@@ -199,7 +199,7 @@ restart:
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: %s [-dnpq] [-k kernel]\n",
 	    dohalt ? "halt" : "reboot");
@@ -207,7 +207,7 @@ usage()
 }
 
 u_int
-get_pageins()
+get_pageins(void)
 {
 	u_int pageins;
 	size_t len;

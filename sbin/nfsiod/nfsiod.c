@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)nfsiod.c	8.4 (Berkeley) 5/3/95
  * $FreeBSD: src/sbin/nfsiod/nfsiod.c,v 1.9 1999/08/28 00:13:55 peter Exp $
- * $DragonFly: src/sbin/nfsiod/nfsiod.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/nfsiod/nfsiod.c,v 1.3 2003/09/28 14:39:20 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -70,9 +70,7 @@ void usage __P((void));
  * improve throughput.
  */
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch, num_servers;
 	struct vfsconf vfc;
@@ -150,15 +148,13 @@ main(argc, argv)
 }
 
 void
-nonfs(signo)
-	int signo;
+nonfs(int signo)
 {
 	syslog(LOG_ERR, "missing system call: NFS not available");
 }
 
 void
-reapchild(signo)
-	int signo;
+reapchild(int signo)
 {
 
 	while (wait3(NULL, WNOHANG, NULL) > 0) {
@@ -167,7 +163,7 @@ reapchild(signo)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: nfsiod [-n num_servers]\n");
 	exit(1);

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_null.c	8.6 (Berkeley) 4/26/95
  * $FreeBSD: src/sbin/mount_null/mount_null.c,v 1.13 1999/10/09 11:54:11 phk Exp $
- * $DragonFly: src/sbin/mount_null/mount_null.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
+ * $DragonFly: src/sbin/mount_null/mount_null.c,v 1.4 2003/09/28 14:39:19 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -61,9 +61,7 @@ int	subdir __P((const char *, const char *));
 static void	usage __P((void)) __dead2;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	struct null_args args;
 	int ch, mntflags;
@@ -114,9 +112,7 @@ main(argc, argv)
 }
 
 int
-subdir(p, dir)
-	const char *p;
-	const char *dir;
+subdir(const char *p, const char *dir)
 {
 	int l;
 
@@ -131,7 +127,7 @@ subdir(p, dir)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 		"usage: mount_null [-o options] target_fs mount_point\n");

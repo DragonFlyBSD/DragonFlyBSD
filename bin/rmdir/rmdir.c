@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rmdir.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/rmdir/rmdir.c,v 1.9.2.2 2001/08/01 05:16:47 obrien Exp $
- * $DragonFly: src/bin/rmdir/rmdir.c,v 1.3 2003/09/21 04:25:36 drhodus Exp $
+ * $DragonFly: src/bin/rmdir/rmdir.c,v 1.4 2003/09/28 14:39:15 hmp Exp $
  */
 
 #include <err.h>
@@ -48,9 +48,7 @@ int rm_path (char *);
 void usage (void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch, errors;
 	int pflag;
@@ -83,8 +81,7 @@ main(argc, argv)
 }
 
 int
-rm_path(path)
-	char *path;
+rm_path(char *path)
 {
 	char *p;
 
@@ -108,7 +105,7 @@ rm_path(path)
 }
 
 void
-usage()
+usage(void)
 {
 
 	(void)fprintf(stderr, "usage: rmdir [-p] directory ...\n");

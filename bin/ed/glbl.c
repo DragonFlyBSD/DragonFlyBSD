@@ -27,7 +27,7 @@
  *
  * @(#)glob.c,v 1.1 1994/02/01 00:34:40 alm Exp
  * $FreeBSD: src/bin/ed/glbl.c,v 1.9.2.1 2001/01/23 14:38:31 asmodai Exp $
- * $DragonFly: src/bin/ed/glbl.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/ed/glbl.c,v 1.3 2003/09/28 14:39:14 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -40,8 +40,7 @@
 
 /* build_active_list:  add line matching a pattern to the global-active list */
 int
-build_active_list(isgcmd)
-	int isgcmd;
+build_active_list(int isgcmd)
 {
 	pattern_t *pat;
 	line_t *lp;
@@ -74,9 +73,7 @@ build_active_list(isgcmd)
 /* exec_global: apply command list in the command buffer to the active
    lines in a range; return command status */
 long
-exec_global(interact, gflag)
-	int interact;
-	int gflag;
+exec_global(int interact, int gflag)
 {
 	static char *ocmd = NULL;
 	static int ocmdsz = 0;
@@ -148,8 +145,7 @@ long active_ndx;		/* active_list index (modulo active_last) */
 
 /* set_active_node: add a line node to the global-active list */
 int
-set_active_node(lp)
-	line_t *lp;
+set_active_node(line_t *lp)
 {
 	if (active_last + 1 > active_size) {
 		int ti = active_size;
@@ -187,8 +183,7 @@ set_active_node(lp)
 
 /* unset_active_nodes: remove a range of lines from the global-active list */
 void
-unset_active_nodes(np, mp)
-	line_t *np, *mp;
+unset_active_nodes(line_t *np, line_t *mp)
 {
 	line_t *lp;
 	long i;
@@ -205,7 +200,7 @@ unset_active_nodes(np, mp)
 
 /* next_active_node: return the next global-active line node */
 line_t *
-next_active_node()
+next_active_node(void)
 {
 	while (active_ptr < active_last && active_list[active_ptr] == NULL)
 		active_ptr++;
@@ -215,7 +210,7 @@ next_active_node()
 
 /* clear_active_list: clear the global-active list */
 void
-clear_active_list()
+clear_active_list(void)
 {
 	SPL1();
 	active_size = active_last = active_ptr = active_ndx = 0;

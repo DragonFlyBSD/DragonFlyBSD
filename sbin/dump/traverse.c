@@ -32,7 +32,7 @@
  *
  * @(#)traverse.c	8.7 (Berkeley) 6/15/95
  * $FreeBSD: src/sbin/dump/traverse.c,v 1.10.2.6 2003/04/14 20:10:35 johan Exp $
- * $DragonFly: src/sbin/dump/traverse.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
+ * $DragonFly: src/sbin/dump/traverse.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -84,8 +84,7 @@ static	int searchdir __P((ino_t ino, daddr_t blkno, long size, long filesize,
  * hence the estimate may be high.
  */
 long
-blockest(dp)
-	register struct dinode *dp;
+blockest(register struct dinode *dp)
 {
 	long blkest, sizeest;
 
@@ -137,9 +136,7 @@ blockest(dp)
  * the directories in the filesystem.
  */
 int
-mapfiles(maxino, tapesize)
-	ino_t maxino;
-	long *tapesize;
+mapfiles(ino_t maxino, long *tapesize)
 {
 	register int mode;
 	register ino_t ino;
@@ -194,9 +191,7 @@ mapfiles(maxino, tapesize)
  * pass using this algorithm.
  */
 int
-mapdirs(maxino, tapesize)
-	ino_t maxino;
-	long *tapesize;
+mapdirs(ino_t maxino, long *tapesize)
 {
 	register struct	dinode *dp;
 	register int i, isdir, nodump;
@@ -266,13 +261,8 @@ mapdirs(maxino, tapesize)
  * require the directory to be dumped.
  */
 static int
-dirindir(ino, blkno, ind_level, filesize, tapesize, nodump)
-	ino_t ino;
-	daddr_t blkno;
-	int ind_level;
-	long *filesize;
-	long *tapesize;
-	int nodump;
+dirindir(ino_t ino, daddr_t blkno, int ind_level, long *filesize,
+         long *tapesize, int nodump)
 {
 	int ret = 0;
 	register int i;
@@ -308,13 +298,8 @@ dirindir(ino, blkno, ind_level, filesize, tapesize, nodump)
  * contains any subdirectories.
  */
 static int
-searchdir(ino, blkno, size, filesize, tapesize, nodump)
-	ino_t ino;
-	daddr_t blkno;
-	register long size;
-	long filesize;
-	long *tapesize;
-	int nodump;
+searchdir(ino_t ino, daddr_t blkno, register long size, long filesize,
+          long *tapesize, int nodump)
 {
 	register struct direct *dp;
 	register struct dinode *ip;
@@ -373,9 +358,7 @@ searchdir(ino, blkno, size, filesize, tapesize, nodump)
  * Dump the contents of an inode to tape.
  */
 void
-dumpino(dp, ino)
-	register struct dinode *dp;
-	ino_t ino;
+dumpino(register struct dinode *dp, ino_t ino)
 {
 	int ind_level, cnt;
 	fsizeT size;
@@ -450,11 +433,7 @@ dumpino(dp, ino)
  * Read indirect blocks, and pass the data blocks to be dumped.
  */
 static void
-dmpindir(ino, blk, ind_level, size)
-	ino_t ino;
-	daddr_t blk;
-	int ind_level;
-	fsizeT *size;
+dmpindir(ino_t ino, daddr_t blk, int ind_level, fsizeT *size)
 {
 	int i, cnt;
 	daddr_t idblk[MAXNINDIR];
@@ -484,10 +463,7 @@ dmpindir(ino, blk, ind_level, size)
  * Collect up the data into tape record sized buffers and output them.
  */
 void
-blksout(blkp, frags, ino)
-	daddr_t *blkp;
-	int frags;
-	ino_t ino;
+blksout(daddr_t *blkp, int frags, ino_t ino)
 {
 	register daddr_t *bp;
 	int i, j, count, blks, tbperdb;
@@ -522,10 +498,7 @@ blksout(blkp, frags, ino)
  * Dump a map to the tape.
  */
 void
-dumpmap(map, type, ino)
-	char *map;
-	int type;
-	ino_t ino;
+dumpmap(char *map, int type, ino_t ino)
 {
 	register int i;
 	char *cp;
@@ -541,8 +514,7 @@ dumpmap(map, type, ino)
  * Write a header record to the dump tape.
  */
 void
-writeheader(ino)
-	ino_t ino;
+writeheader(ino_t ino)
 {
 	register int32_t sum, cnt, *lp;
 
@@ -563,8 +535,7 @@ writeheader(ino)
 }
 
 struct dinode *
-getino(inum)
-	ino_t inum;
+getino(ino_t inum)
 {
 	static daddr_t minino, maxino;
 	static struct dinode inoblock[MAXINOPB];
@@ -589,10 +560,7 @@ int	breaderrors = 0;
 #define	BREADEMAX 32
 
 void
-bread(blkno, buf, size)
-	daddr_t blkno;
-	char *buf;
-	int size;
+bread(daddr_t blkno, char *buf, int size)
 {
 	int cnt, i;
 

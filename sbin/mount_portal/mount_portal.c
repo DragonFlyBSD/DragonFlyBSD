@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_portal.c	8.6 (Berkeley) 4/26/95
  * $FreeBSD: src/sbin/mount_portal/mount_portal.c,v 1.16 1999/10/09 11:54:11 phk Exp $
- * $DragonFly: src/sbin/mount_portal/mount_portal.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount_portal/mount_portal.c,v 1.3 2003/09/28 14:39:19 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -68,14 +68,12 @@ static void usage __P((void)) __dead2;
 
 static sig_atomic_t readcf;	/* Set when SIGHUP received */
 
-static void sighup(sig)
-int sig;
+static void sighup(int sig)
 {
 	readcf ++;
 }
 
-static void sigchld(sig)
-int sig;
+static void sigchld(int sig)
 {
 	pid_t pid;
 
@@ -89,9 +87,7 @@ int sig;
 }
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	struct portal_args args;
 	struct sockaddr_un un;
@@ -278,7 +274,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 		"usage: mount_portal [-o options] config mount-point\n");

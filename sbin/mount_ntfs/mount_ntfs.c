@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_ntfs/mount_ntfs.c,v 1.3.2.2 2001/10/12 22:08:43 semenu Exp $
- * $DragonFly: src/sbin/mount_ntfs/mount_ntfs.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
+ * $DragonFly: src/sbin/mount_ntfs/mount_ntfs.c,v 1.4 2003/09/28 14:39:19 hmp Exp $
  *
  */
 
@@ -65,9 +65,7 @@ static void	usage __P((void)) __dead2;
 static void     load_u2wtable __P((struct ntfs_args *, char *));
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	struct ntfs_args args;
 	struct stat sb;
@@ -182,8 +180,7 @@ main(argc, argv)
 }
 
 gid_t
-a_gid(s)
-	char *s;
+a_gid(char *s)
 {
 	struct group *gr;
 	char *gname;
@@ -202,8 +199,7 @@ a_gid(s)
 }
 
 uid_t
-a_uid(s)
-	char *s;
+a_uid(char *s)
 {
 	struct passwd *pw;
 	char *uname;
@@ -222,8 +218,7 @@ a_uid(s)
 }
 
 mode_t
-a_mask(s)
-	char *s;
+a_mask(char *s)
 {
 	int done, rv=0;
 	char *ep;
@@ -239,16 +234,14 @@ a_mask(s)
 }
 
 void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: mount_ntfs [-a] [-i] [-u user] [-g group] [-m mask] [-W u2wtable] bdev dir\n");
 	exit(EX_USAGE);
 }
 
 void
-load_u2wtable (pargs, name)
-	struct ntfs_args *pargs;
-	char *name;
+load_u2wtable (struct ntfs_args *pargs, char *name)
 {
 	FILE *f;
 	int i, j, code[8];

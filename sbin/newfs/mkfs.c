@@ -32,7 +32,7 @@
  *
  * @(#)mkfs.c	8.11 (Berkeley) 5/3/95
  * $FreeBSD: src/sbin/newfs/mkfs.c,v 1.29.2.6 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sbin/newfs/mkfs.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
+ * $DragonFly: src/sbin/newfs/mkfs.c,v 1.4 2003/09/28 14:39:20 hmp Exp $
  */
 
 #include <err.h>
@@ -167,10 +167,7 @@ caddr_t realloc __P((char *, u_long));
 int mfs_ppid = 0;
 
 void
-mkfs(pp, fsys, fi, fo)
-	struct partition *pp;
-	char *fsys;
-	int fi, fo;
+mkfs(struct partition *pp, char *fsys, int fi, int fo)
 {
 	register long i, mincpc, mincpg, inospercg;
 	long cylno, rpos, blk, j, warn = 0;
@@ -765,9 +762,7 @@ next:
  * Initialize a cylinder group.
  */
 void
-initcg(cylno, utime)
-	int cylno;
-	time_t utime;
+initcg(int cylno, time_t utime)
 {
 	daddr_t cbase, d, dlower, dupper, dmax, blkno;
 	long i;
@@ -965,8 +960,7 @@ struct odirect olost_found_dir[] = {
 char buf[MAXBSIZE];
 
 void
-fsinit(utime)
-	time_t utime;
+fsinit(time_t utime)
 {
 #ifdef LOSTDIR
 	int i;
@@ -1024,9 +1018,7 @@ fsinit(utime)
  * return size of directory.
  */
 int
-makedir(protodir, entries)
-	register struct direct *protodir;
-	int entries;
+makedir(register struct direct *protodir, int entries)
 {
 	char *cp;
 	int i, spcleft;
@@ -1047,9 +1039,7 @@ makedir(protodir, entries)
  * allocate a block or frag
  */
 daddr_t
-alloc(size, mode)
-	int size;
-	int mode;
+alloc(int size, int mode)
 {
 	int i, frag;
 	daddr_t d, blkno;
@@ -1102,10 +1092,7 @@ goth:
  * Calculate number of inodes per group.
  */
 long
-calcipg(cpg, bpcg, usedbp)
-	long cpg;
-	long bpcg;
-	off_t *usedbp;
+calcipg(long cpg, long bpcg, off_t *usedbp)
 {
 	int i;
 	long ipg, new_ipg, ncg, ncyl;
@@ -1139,9 +1126,7 @@ calcipg(cpg, bpcg, usedbp)
  * Allocate an inode on the disk
  */
 void
-iput(ip, ino)
-	register struct dinode *ip;
-	register ino_t ino;
+iput(register struct dinode *ip, register ino_t ino)
 {
 	struct dinode buf[MAXINOPB];
 	daddr_t d;
@@ -1179,7 +1164,7 @@ iput(ip, ino)
  * We have to wait until the mount has actually completed!
  */
 void
-started()
+started(void)
 {
 	int retry = 100;	/* 10 seconds, 100ms */
 
@@ -1206,8 +1191,7 @@ started()
  * Replace libc function with one suited to our needs.
  */
 caddr_t
-malloc(size)
-	register u_long size;
+malloc(register u_long size)
 {
 	char *base, *i;
 	static u_long pgsz;
@@ -1238,9 +1222,7 @@ malloc(size)
  * Replace libc function with one suited to our needs.
  */
 caddr_t
-realloc(ptr, size)
-	char *ptr;
-	u_long size;
+realloc(char *ptr, u_long size)
 {
 	void *p;
 
@@ -1255,8 +1237,7 @@ realloc(ptr, size)
  * Replace libc function with one suited to our needs.
  */
 char *
-calloc(size, numelm)
-	u_long size, numelm;
+calloc(u_long size, u_long numelm)
 {
 	caddr_t base;
 
@@ -1271,8 +1252,7 @@ calloc(size, numelm)
  * Replace libc function with one suited to our needs.
  */
 void
-free(ptr)
-	char *ptr;
+free(char *ptr)
 {
 
 	/* do not worry about it for now */
@@ -1281,7 +1261,7 @@ free(ptr)
 #else   /* !STANDALONE */
 
 void
-raise_data_limit()
+raise_data_limit(void)
 {
 	struct rlimit rlp;
 
@@ -1300,7 +1280,7 @@ extern char *etext;
 #endif
 
 void
-get_memleft()
+get_memleft(void)
 {
 	static u_long pgsz;
 	struct rlimit rlp;
@@ -1322,10 +1302,7 @@ get_memleft()
  * read a block from the file system
  */
 void
-rdfs(bno, size, bf)
-	daddr_t bno;
-	int size;
-	char *bf;
+rdfs(daddr_t bno, int size, char *bf)
 {
 	int n;
 
@@ -1354,7 +1331,7 @@ static char wc[WCSIZE];		/* bytes */
  * Flush dirty write behind buffer.
  */
 void
-wtfsflush()
+wtfsflush(void)
 {
 	int n;
 	if (wc_end) {
@@ -1375,10 +1352,7 @@ wtfsflush()
  * write a block to the file system
  */
 void
-wtfs(bno, size, bf)
-	daddr_t bno;
-	int size;
-	char *bf;
+wtfs(daddr_t bno, int size, char *bf)
 {
 	int n;
 	int done;
@@ -1424,10 +1398,7 @@ wtfs(bno, size, bf)
  * check if a block is available
  */
 int
-isblock(fs, cp, h)
-	struct fs *fs;
-	unsigned char *cp;
-	int h;
+isblock(struct fs *fs, unsigned char *cp, int h)
 {
 	unsigned char mask;
 
@@ -1457,10 +1428,7 @@ isblock(fs, cp, h)
  * take a block out of the map
  */
 void
-clrblock(fs, cp, h)
-	struct fs *fs;
-	unsigned char *cp;
-	int h;
+clrblock(struct fs *fs, unsigned char *cp, int h)
 {
 	switch ((fs)->fs_frag) {
 	case 8:
@@ -1489,10 +1457,7 @@ clrblock(fs, cp, h)
  * put a block into the map
  */
 void
-setblock(fs, cp, h)
-	struct fs *fs;
-	unsigned char *cp;
-	int h;
+setblock(struct fs *fs, unsigned char *cp, int h)
 {
 	switch (fs->fs_frag) {
 	case 8:
@@ -1523,7 +1488,7 @@ setblock(fs, cp, h)
  */
 
 static int
-charsperline()
+charsperline(void)
 {
 	int columns;
 	char *cp;

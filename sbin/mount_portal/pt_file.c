@@ -37,7 +37,7 @@
  *	@(#)pt_file.c	8.3 (Berkeley) 7/3/94
  *
  * $FreeBSD: src/sbin/mount_portal/pt_file.c,v 1.8 1999/08/28 00:13:38 peter Exp $
- * $DragonFly: src/sbin/mount_portal/pt_file.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount_portal/pt_file.c,v 1.3 2003/09/28 14:39:19 hmp Exp $
  */
 
 #include <errno.h>
@@ -50,12 +50,7 @@
 
 #include "portald.h"
 
-int portal_file(pcr, key, v, so, fdp)
-struct portal_cred *pcr;
-char *key;
-char **v;
-int so;
-int *fdp;
+int portal_file(struct portal_cred *pcr, char *key, char **v, int so, int *fdp)
 {
 	int fd;
 	char pbuf[MAXPATHLEN];

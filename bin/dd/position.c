@@ -36,7 +36,7 @@
  *
  * @(#)position.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/position.c,v 1.17.2.2 2001/01/23 14:23:55 asmodai Exp $
- * $DragonFly: src/bin/dd/position.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/dd/position.c,v 1.3 2003/09/28 14:39:13 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -56,7 +56,7 @@
  * output.
  */
 void
-pos_in()
+pos_in(void)
 {
 	off_t cnt;
 	int warned;
@@ -119,7 +119,7 @@ pos_in()
 }
 
 void
-pos_out()
+pos_out(void)
 {
 	struct mtop t_op;
 	off_t cnt;

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm_fore200.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm_fore200.c,v 1.3 2003/08/08 04:18:36 dillon Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm_fore200.c,v 1.4 2003/09/28 14:39:16 hmp Exp $
  */
 
 /*
@@ -133,10 +133,7 @@ Errs        Errs    Errs      Errs     Errs     Errs   Errs\n"
  *
  */
 void
-show_fore200_stats(intf, argc, argv)
-	char		*intf;
-	int		argc;
-	char		**argv;
+show_fore200_stats(char *intf, int argc, char **argv)
 {
 	int			buf_len, stats_type;
 	struct air_cfg_rsp	*cfg;
@@ -280,8 +277,7 @@ show_fore200_stats(intf, argc, argv)
  *
  */
 void
-print_fore200_taxi(vi)
-	struct air_vinfo_rsp	*vi;
+print_fore200_taxi(struct air_vinfo_rsp *vi)
 {
 	Fore_stats	*stats;
 
@@ -316,8 +312,7 @@ print_fore200_taxi(vi)
  *
  */
 void
-print_fore200_oc3(vi)
-	struct air_vinfo_rsp	*vi;
+print_fore200_oc3(struct air_vinfo_rsp *vi)
 {
 	Fore_stats	*stats;
 
@@ -357,8 +352,7 @@ print_fore200_oc3(vi)
  *
  */
 void
-print_fore200_dev(vi)
-	struct air_vinfo_rsp	*vi;
+print_fore200_dev(struct air_vinfo_rsp *vi)
 {
 	Fore_stats	*stats;
 
@@ -397,8 +391,7 @@ print_fore200_dev(vi)
  *
  */
 void
-print_fore200_atm(vi)
-	struct air_vinfo_rsp	*vi;
+print_fore200_atm(struct air_vinfo_rsp *vi)
 {
 	Fore_stats	*stats;
 
@@ -437,8 +430,7 @@ print_fore200_atm(vi)
  *
  */
 void
-print_fore200_aal0(vi)
-	struct air_vinfo_rsp	*vi;
+print_fore200_aal0(struct air_vinfo_rsp *vi)
 {
 	Fore_stats	*stats;
 
@@ -474,8 +466,7 @@ print_fore200_aal0(vi)
  *
  */
 void
-print_fore200_aal4(vi)
-	struct air_vinfo_rsp	*vi;
+print_fore200_aal4(struct air_vinfo_rsp *vi)
 {
 	Fore_stats	*stats;
 
@@ -517,8 +508,7 @@ print_fore200_aal4(vi)
  *
  */
 void
-print_fore200_aal5(vi)
-	struct air_vinfo_rsp	*vi;
+print_fore200_aal5(struct air_vinfo_rsp *vi)
 {
 	Fore_stats	*stats;
 
@@ -560,8 +550,7 @@ print_fore200_aal5(vi)
  *
  */
 void
-print_fore200_driver(vi)
-	struct air_vinfo_rsp	*vi;
+print_fore200_driver(struct air_vinfo_rsp *vi)
 {
 	Fore_stats	*stats;
 

@@ -37,7 +37,7 @@
  *
  * @(#)tape.c	8.9 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/tape.c,v 1.16.2.8 2002/06/30 22:57:52 iedowse Exp $
- * $DragonFly: src/sbin/restore/tape.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
+ * $DragonFly: src/sbin/restore/tape.c,v 1.4 2003/09/28 14:39:22 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -111,8 +111,7 @@ static int readmapflag;
  * Set up an input source
  */
 void
-setinput(source)
-	char *source;
+setinput(char *source)
 {
 	FLUSHTAPEBUF();
 	if (bflag)
@@ -157,8 +156,7 @@ setinput(source)
 }
 
 void
-newtapebuf(size)
-	long size;
+newtapebuf(long size)
 {
 	static tapebufsize = -1;
 
@@ -180,7 +178,7 @@ newtapebuf(size)
  * that it actually is a dump tape.
  */
 void
-setup()
+setup(void)
 {
 	int i, j, *ip;
 	struct stat stbuf;
@@ -292,8 +290,7 @@ setup()
  * the user when only extracting a subset of the files.
  */
 void
-getvol(nextvol)
-	long nextvol;
+getvol(long nextvol)
 {
 	long newvol, prevtapea, savecnt, i;
 	union u_spcl tmpspcl;
@@ -464,7 +461,7 @@ gethdr:
  * Handle unexpected EOF.
  */
 static void
-terminateinput()
+terminateinput(void)
 {
 
 	if (gettingfile && curfile.action == USING) {
@@ -486,7 +483,7 @@ terminateinput()
  * appropriate one.
  */
 static void
-setdumpnum()
+setdumpnum(void)
 {
 	struct mtop tcom;
 
@@ -508,7 +505,7 @@ setdumpnum()
 }
 
 void
-printdumpinfo()
+printdumpinfo(void)
 {
 	fprintf(stdout, "Dump   date: %s", ctime(&spcl.c_date));
 	fprintf(stdout, "Dumped from: %s",
@@ -521,8 +518,7 @@ printdumpinfo()
 }
 
 int
-extractfile(name)
-	char *name;
+extractfile(char *name)
 {
 	int flags;
 	uid_t uid;
@@ -654,7 +650,7 @@ extractfile(name)
  * skip over bit maps on the tape
  */
 void
-skipmaps()
+skipmaps(void)
 {
 
 	while (spcl.c_type == TS_BITS || spcl.c_type == TS_CLRI)
@@ -665,7 +661,7 @@ skipmaps()
  * skip over a file on the tape
  */
 void
-skipfile()
+skipfile(void)
 {
 
 	curfile.action = SKIP;
@@ -679,9 +675,7 @@ skipfile()
  * to the skip function.
  */
 void
-getfile(fill, skip)
-	void	(*fill) __P((char *, long));
-	void	(*skip) __P((char *, long));
+getfile(void (*fill) (char *, long), void (*skip) (char *, long))
 {
 	register int i;
 	int curblk = 0;
@@ -740,9 +734,7 @@ loop:
  * Write out the next block of a file.
  */
 static void
-xtrfile(buf, size)
-	char	*buf;
-	long	size;
+xtrfile(char *buf, long size)
 {
 
 	if (Nflag)
@@ -759,9 +751,7 @@ xtrfile(buf, size)
  */
 /* ARGSUSED */
 static void
-xtrskip(buf, size)
-	char *buf;
-	long size;
+xtrskip(char *buf, long size)
 {
 
 	if (lseek(ofile, size, SEEK_CUR) == -1) {
@@ -776,9 +766,7 @@ xtrskip(buf, size)
  * Collect the next block of a symbolic link.
  */
 static void
-xtrlnkfile(buf, size)
-	char	*buf;
-	long	size;
+xtrlnkfile(char *buf, long size)
 {
 
 	pathlen += size;
@@ -795,9 +783,7 @@ xtrlnkfile(buf, size)
  */
 /* ARGSUSED */
 static void
-xtrlnkskip(buf, size)
-	char *buf;
-	long size;
+xtrlnkskip(char *buf, long size)
 {
 
 	fprintf(stderr, "unallocated block in symbolic link %s\n",
@@ -809,9 +795,7 @@ xtrlnkskip(buf, size)
  * Collect the next block of a bit map.
  */
 static void
-xtrmap(buf, size)
-	char	*buf;
-	long	size;
+xtrmap(char *buf, long size)
 {
 
 	memmove(map, buf, size);
@@ -823,9 +807,7 @@ xtrmap(buf, size)
  */
 /* ARGSUSED */
 static void
-xtrmapskip(buf, size)
-	char *buf;
-	long size;
+xtrmapskip(char *buf, long size)
 {
 
 	panic("hole in map\n");
@@ -837,9 +819,7 @@ xtrmapskip(buf, size)
  */
 /* ARGSUSED */
 void
-xtrnull(buf, size)
-	char *buf;
-	long size;
+xtrnull(char *buf, long size)
 {
 
 	return;
@@ -850,8 +830,7 @@ xtrnull(buf, size)
  * Handle read errors, and end of media.
  */
 static void
-readtape(buf)
-	char *buf;
+readtape(char *buf)
 {
 	long rd, newvol, i;
 	int cnt, seek_failed;
@@ -969,7 +948,7 @@ getmore:
 }
 
 static void
-findtapeblksize()
+findtapeblksize(void)
 {
 	register long i;
 
@@ -998,7 +977,7 @@ findtapeblksize()
 }
 
 void
-closemt()
+closemt(void)
 {
 
 	if (mt < 0)
@@ -1018,8 +997,7 @@ closemt()
  * If it is not any valid header, return an error.
  */
 static int
-gethead(buf)
-	struct s_spcl *buf;
+gethead(struct s_spcl *buf)
 {
 	long i;
 	union {
@@ -1167,8 +1145,7 @@ good:
  * Check that a header is where it belongs and predict the next header
  */
 static void
-accthdr(header)
-	struct s_spcl *header;
+accthdr(struct s_spcl *header)
 {
 	static ino_t previno = 0x7fffffff;
 	static int prevtype;
@@ -1225,8 +1202,7 @@ newcalc:
  * Complain if had to skip.
  */
 static void
-findinode(header)
-	struct s_spcl *header;
+findinode(struct s_spcl *header)
 {
 	static long skipcnt = 0;
 	long i;
@@ -1298,8 +1274,7 @@ findinode(header)
 }
 
 static int
-checksum(buf)
-	register int *buf;
+checksum(register int *buf)
 {
 	register int i, j;
 
@@ -1326,36 +1301,20 @@ checksum(buf)
 }
 
 #ifdef RRESTORE
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 void
-#if __STDC__
 msg(const char *fmt, ...)
-#else
-msg(fmt, va_alist)
-	char *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	(void)vfprintf(stderr, fmt, ap);
 	va_end(ap);
 }
 #endif /* RRESTORE */
 
 static u_char *
-swabshort(sp, n)
-	register u_char *sp;
-	register int n;
+swabshort(register u_char *sp, register int n)
 {
 	char c;
 
@@ -1367,9 +1326,7 @@ swabshort(sp, n)
 }
 
 static u_char *
-swablong(sp, n)
-	register u_char *sp;
-	register int n;
+swablong(register u_char *sp, register int n)
 {
 	char c;
 
@@ -1382,8 +1339,7 @@ swablong(sp, n)
 }
 
 void
-swabst(cp, sp)
-	register u_char *cp, *sp;
+swabst(register u_char *cp, register u_char *sp)
 {
 	int n = 0;
 
@@ -1418,8 +1374,7 @@ swabst(cp, sp)
 }
 
 static u_long
-swabl(x)
-	u_long x;
+swabl(u_long x)
 {
 	swabst((u_char *)"l", (u_char *)&x);
 	return (x);

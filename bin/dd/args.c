@@ -36,7 +36,7 @@
  *
  * @(#)args.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/args.c,v 1.25.2.2 2001/01/23 14:20:03 asmodai Exp $
- * $DragonFly: src/bin/dd/args.c,v 1.3 2003/09/21 04:19:42 drhodus Exp $
+ * $DragonFly: src/bin/dd/args.c,v 1.4 2003/09/28 14:39:13 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -92,8 +92,7 @@ static char *oper;
  * args -- parse JCL syntax of dd.
  */
 void
-jcl(argv)
-	char **argv;
+jcl(char **argv)
 {
 	struct arg *ap, tmp;
 	char *arg;
@@ -169,8 +168,7 @@ jcl(argv)
 }
 
 static int
-c_arg(a, b)
-	const void *a, *b;
+c_arg(const void *a, const void *b)
 {
 
 	return (strcmp(((const struct arg *)a)->name,
@@ -178,8 +176,7 @@ c_arg(a, b)
 }
 
 static void
-f_bs(arg)
-	char *arg;
+f_bs(char *arg)
 {
 	quad_t res;
 
@@ -190,8 +187,7 @@ f_bs(arg)
 }
 
 static void
-f_cbs(arg)
-	char *arg;
+f_cbs(char *arg)
 {
 	quad_t res;
 
@@ -202,8 +198,7 @@ f_cbs(arg)
 }
 
 static void
-f_count(arg)
-	char *arg;
+f_count(char *arg)
 {
 
 	cpy_cnt = get_num(arg);
@@ -214,8 +209,7 @@ f_count(arg)
 }
 
 static void
-f_files(arg)
-	char *arg;
+f_files(char *arg)
 {
 
 	files_cnt = get_num(arg);
@@ -224,8 +218,7 @@ f_files(arg)
 }
 
 static void
-f_ibs(arg)
-	char *arg;
+f_ibs(char *arg)
 {
 	quad_t res;
 
@@ -238,16 +231,14 @@ f_ibs(arg)
 }
 
 static void
-f_if(arg)
-	char *arg;
+f_if(char *arg)
 {
 
 	in.name = arg;
 }
 
 static void
-f_obs(arg)
-	char *arg;
+f_obs(char *arg)
 {
 	quad_t res;
 
@@ -260,24 +251,21 @@ f_obs(arg)
 }
 
 static void
-f_of(arg)
-	char *arg;
+f_of(char *arg)
 {
 
 	out.name = arg;
 }
 
 static void
-f_seek(arg)
-	char *arg;
+f_seek(char *arg)
 {
 
 	out.offset = get_offset(arg);
 }
 
 static void
-f_skip(arg)
-	char *arg;
+f_skip(char *arg)
 {
 
 	in.offset = get_offset(arg);
@@ -307,8 +295,7 @@ static const struct conv {
 };
 
 static void
-f_conv(arg)
-	char *arg;
+f_conv(char *arg)
 {
 	struct conv *cp, tmp;
 
@@ -327,8 +314,7 @@ f_conv(arg)
 }
 
 static int
-c_conv(a, b)
-	const void *a, *b;
+c_conv(const void *a, const void *b)
 {
 
 	return (strcmp(((const struct conv *)a)->name,
@@ -348,8 +334,7 @@ c_conv(a, b)
  *	   the product of the indicated values.
  */
 static quad_t
-get_num(val)
-	char *val;
+get_num(char *val)
 {
 	quad_t num, t;
 	char *expr;
@@ -418,8 +403,7 @@ erange:
 }
 
 static off_t
-get_offset(val)
-	char *val;
+get_offset(char *val)
 {
 	quad_t num;
 
