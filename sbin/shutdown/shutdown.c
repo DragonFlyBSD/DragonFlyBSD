@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)shutdown.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/shutdown/shutdown.c,v 1.21.2.1 2001/07/30 10:38:08 dd Exp $
- * $DragonFly: src/sbin/shutdown/shutdown.c,v 1.5 2004/12/18 21:43:46 swildner Exp $
+ * $DragonFly: src/sbin/shutdown/shutdown.c,v 1.6 2005/01/02 01:22:49 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -262,6 +262,8 @@ static const char *restricted_environ[] = {
 	NULL
 };
 
+extern const char **environ;
+
 void
 timewarn(int timeleft)
 {
@@ -269,7 +271,6 @@ timewarn(int timeleft)
 	static char hostname[MAXHOSTNAMELEN + 1];
 	FILE *pf;
 	char wcmd[MAXPATHLEN + 4];
-	extern const char **environ;
 
 	if (!first++)
 		gethostname(hostname, sizeof(hostname));
