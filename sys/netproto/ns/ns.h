@@ -32,7 +32,7 @@
  *
  *	@(#)ns.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns.h,v 1.13.2.1 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/netproto/ns/ns.h,v 1.4 2003/09/06 21:51:12 drhodus Exp $
+ * $DragonFly: src/sys/netproto/ns/ns.h,v 1.5 2004/06/04 04:59:57 dillon Exp $
  */
 
 #ifndef _NETNS_NS_H_
@@ -151,6 +151,7 @@ u_short ns_cksum (struct mbuf *, int);
 int ns_output (struct mbuf *, struct route *, int);
 int ns_control (struct socket *, int, caddr_t, struct ifnet *);
 void ns_init (void);
+void ns_pcb_init (void);
 void idp_forward (struct mbuf *);
 void idp_ctlinput (int, caddr_t);
 int idp_do_route (struct ns_addr *, struct route *);
