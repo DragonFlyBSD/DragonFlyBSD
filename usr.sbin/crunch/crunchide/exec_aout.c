@@ -27,7 +27,7 @@
  *
  * $NetBSD: exec_aout.c,v 1.6 1997/08/02 21:30:17 perry Exp $
  * $FreeBSD: src/usr.sbin/crunch/crunchide/exec_aout.c,v 1.1.6.1 2002/07/25 09:33:17 ru Exp $
- * $DragonFly: src/usr.sbin/crunch/crunchide/exec_aout.c,v 1.4 2004/02/03 04:23:25 dillon Exp $
+ * $DragonFly: src/usr.sbin/crunch/crunchide/exec_aout.c,v 1.5 2004/02/08 10:48:30 rob Exp $
  */
 #include <sys/cdefs.h>
  
@@ -133,7 +133,7 @@ hide_aout(int inf, const char *filename)
 
     hdrp = (struct exec *) aoutdata;
 
-#ifdef __DragonFly__
+#if defined  (__DragonFly__) || defined (__FreeBSD__)
     textrel = (struct relocation_info *) (aoutdata + N_RELOFF(*hdrp));
     datarel = (struct relocation_info *) (aoutdata + N_RELOFF(*hdrp) +
 					  hdrp->a_trsize);
