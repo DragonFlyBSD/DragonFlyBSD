@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/cond.h,v 1.2 2005/02/01 22:05:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.h,v 1.3 2005/04/01 01:12:55 okumoto Exp $
  */
 
 #ifndef cond_h_6e96ad7c
@@ -48,7 +48,7 @@
 #define	COND_SKIP	1	/* Skip the next lines */
 #define	COND_INVALID	2	/* Not a conditional statement */
 
-int Cond_Eval(char *);
+int Cond_Eval(char *, int);
 void Cond_End(void);
 
 #endif /* cond_h_6e96ad7c */

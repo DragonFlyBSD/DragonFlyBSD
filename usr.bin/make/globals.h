@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/globals.h,v 1.3 2005/03/31 22:16:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/globals.h,v 1.4 2005/04/01 01:12:55 okumoto Exp $
  */
 
 #ifndef globals_h_1c1edb96
@@ -51,7 +51,6 @@
 #include "sprite.h"
 
 struct GNode;
-struct IFile;
 struct Path;
 
 /*
@@ -62,8 +61,6 @@ extern Lst create;
 
 /* The list of directories to search when looking for targets */
 extern struct Path dirSearchPath;
-
-extern struct IFile curFile;	/* current makefile */
 
 /* The list of directories to search when looking for includes */
 extern struct Path parseIncPath;

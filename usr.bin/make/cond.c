@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.39 2005/02/07 07:49:16 harti Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.33 2005/03/31 22:16:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.34 2005/04/01 01:12:55 okumoto Exp $
  */
 
 /*-
@@ -1033,16 +1033,14 @@ CondE(Boolean doEval)
  *-----------------------------------------------------------------------
  */
 int
-Cond_Eval(char *line)
+Cond_Eval(char *line, int lineno)
 {
     struct If	    *ifp;
     Boolean 	    isElse;
     Boolean 	    value = FALSE;
     int	    	    level;  	/* Level at which to report errors. */
-    int		    lineno;
 
     level = PARSE_FATAL;
-    lineno = curFile.lineno;
 
     for (line++; *line == ' ' || *line == '\t'; line++) {
 	continue;

@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/parse.h,v 1.4 2005/02/04 06:45:16 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.h,v 1.5 2005/04/01 01:12:55 okumoto Exp $
  */
 
 #ifndef parse_h_470eeb9a
@@ -48,26 +48,12 @@
 struct GNode;
 struct Lst;
 
-/*
- * Definitions for handling #include specifications
- */
-typedef struct {
-    char *str;
-    char *ptr;
-} PTR;
-typedef struct IFile {
-    char            *fname;	    /* name of previous file */
-    int             lineno;	    /* saved line number */
-    FILE	    *F;		    /* the open stream */
-    PTR		    *p;	    	    /* the char pointer */
-} IFile;
-
 void Parse_Error(int, const char *, ...);
 Boolean Parse_AnyExport(void);
 Boolean Parse_IsVar(char *);
 void Parse_DoVar(char *, struct GNode *);
 void Parse_AddIncludeDir(char *);
-void Parse_File(char *, FILE *);
+void Parse_File(const char *, FILE *);
 void Parse_Init(void);
 void Parse_FromString(char *, int);
 void Parse_MainName(struct Lst *);
