@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.22 2005/02/01 16:09:37 hrs Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.23 2005/02/01 23:14:54 joerg Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -308,6 +308,7 @@ do {									\
 #define	IFQ_DEC_LEN(ifq)		(--(ifq)->ifq_len)
 #define	IFQ_INC_DROPS(ifq)		((ifq)->ifq_drops++)
 #define	IFQ_SET_MAXLEN(ifq, len)	((ifq)->ifq_maxlen = (len))
+#define	IFQ_SET_DRV_MAXLEN(ifq, len)	/* nothing */
 
 #define	IFQ_HANDOFF_ADJ(ifp, m, adj, err)				\
 do {									\
@@ -329,55 +330,10 @@ do {									\
 #define	IFQ_HANDOFF(ifp, m, err)					\
 	IFQ_HANDOFF_ADJ(ifp, m, 0, err)
 
-#define	IFQ_DRV_DEQUEUE(ifq, m)						\
-do {									\
-	(m) = (ifq)->ifq_drv_head;					\
-	if (m) {							\
-		if (((ifq)->ifq_drv_head = (m)->m_nextpkt) == NULL)	\
-			(ifq)->ifq_drv_tail = NULL;			\
-		(m)->m_nextpkt = NULL;					\
-		(ifq)->ifq_drv_len--;					\
-	} else {							\
-		IFQ_DEQUEUE(ifq, m);				\
-		while ((ifq)->ifq_drv_len < (ifq)->ifq_drv_maxlen) {	\
-			struct mbuf *m0;				\
-			IFQ_DEQUEUE(ifq, m0);			\
-			if (m0 == NULL)					\
-				break;					\
-			m0->m_nextpkt = NULL;				\
-			if ((ifq)->ifq_drv_tail == NULL)		\
-				(ifq)->ifq_drv_head = m0;		\
-			else						\
-				(ifq)->ifq_drv_tail->m_nextpkt = m0;	\
-			(ifq)->ifq_drv_tail = m0;			\
-			(ifq)->ifq_drv_len++;				\
-		}							\
-	}								\
-} while (0)
-
-#define	IFQ_DRV_PREPEND(ifq, m)						\
-do {									\
-	(m)->m_nextpkt = (ifq)->ifq_drv_head;				\
-	if ((ifq)->ifq_tail == NULL)					\
-		(ifq)->ifq_tail = (m);					\
-	(ifq)->ifq_drv_head = (m);					\
-	(ifq)->ifq_drv_len++;						\
-} while (0)
-
-#define	IFQ_DRV_IS_EMPTY(ifq)						\
-	(((ifq)->ifq_drv_len == 0) && ((ifq)->ifq_len == 0))
-
-#define	IFQ_DRV_PURGE(ifq)						\
-do {									\
-	struct mbuf *m = (ifq)->ifq_drv_head;				\
-	while(m != NULL) {						\
-		m = m->m_nextpkt;					\
-		m_freem(m);						\
-	}								\
-	(ifq)->ifq_drv_head = (ifq)->ifq_drv_tail = NULL;		\
-	(ifq)->ifq_drv_len = 0;						\
-	IFQ_PURGE(ifq);							\
-} while (0)
+#define	IFQ_DRV_DEQUEUE(ifq, m)	IF_DEQUEUE(ifq, m)
+#define	IFQ_DRV_PREPEND(ifq, m)	IF_PREPEND(ifq, m)
+#define	IFQ_DRV_IS_EMPTY(ifq)	IFQ_IS_EMPTY(ifq)
+#define	IFQ_DRV_PURGE(ifq)	IFQ_PURGE(ifq)
 
 /*
  * 72 was chosen below because it is the size of a TCP/IP
