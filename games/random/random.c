@@ -35,8 +35,8 @@
  *
  * @(#) Copyright (c) 1994 The Regents of the University of California.  All rights reserved.
  * @(#)random.c	8.5 (Berkeley) 4/5/94
- * $FreeBSD: src/games/random/random.c,v 1.11.2.1 2003/02/15 10:34:35 seanc Exp $
- * $DragonFly: src/games/random/random.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $FreeBSD: src/games/random/random.c,v 1.16 2004/10/03 15:34:15 stefanf Exp $
+ * $DragonFly: src/games/random/random.c,v 1.3 2005/03/02 05:00:21 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -61,10 +61,11 @@ main(int argc, char *argv[])
 	double denom;
 	int ch, fd, random_exit, randomize_lines, random_type, ret,
 		selected, unique_output, unbuffer_output;
-	char *ep, *filename;
+	char *ep;
+	const char *filename;
 
 	denom = 0;
-	filename = NULL;
+	filename = "/dev/fd/0";
 	random_type = RANDOM_TYPE_UNSET;
 	random_exit = randomize_lines = random_type = unbuffer_output = 0;
 	unique_output = 1;
@@ -75,9 +76,7 @@ main(int argc, char *argv[])
 			break;
 		case 'f':
 			randomize_lines = 1;
-			if (!strcmp(optarg, "-"))
-				filename = strdup("/dev/fd/0");
-			else
+			if (strcmp(optarg, "-") != 0)
 				filename = optarg;
 			break;
 		case 'l':
