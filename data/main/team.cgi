@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.24 2004/12/20 15:35:09 liamfoy Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.25 2005/01/05 13:29:00 okumoto Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -155,6 +155,11 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 <tr><td valign="top"><a href="mailto:geekgod 'at' geekgod 'dot' com">Scott Ullrich</a></td>
 <td valign="top">Installer
 (commit access)</td>
+</tr>
+
+<tr>
+<td valign="top"><a href="mailto:okumoto 'at' ucsd 'dot' edu">Max Okumoto</a></td>
+<td valign="top">usr.bin/make (commit access)</td>
 </tr>
 
 </table>
