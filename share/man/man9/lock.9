@@ -25,7 +25,7 @@
 .\" DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/lock.9,v 1.11 2003/09/08 19:57:21 ru Exp $
-.\" $DragonFly: src/share/man/man9/lock.9,v 1.2 2004/05/10 13:06:53 hmp Exp $
+.\" $DragonFly: src/share/man/man9/lock.9,v 1.3 2004/12/22 07:12:24 hmp Exp $
 .\"
 .Dd July 9, 2001
 .Dt LOCK 9
@@ -44,6 +44,8 @@
 .Fn lockinit "struct lock *lkp" "int prio" "char *wmesg" "int timo" "int flags"
 .Ft int
 .Fn lockcount "struct lock *lkp"
+.Ft int
+.Fn lockcountnb "struct lock *lkp"
 .Ft int
 .Fn lockmgr "struct lock *lkp" "u_int flags" "lwkt_tokref_t interlkp" "struct thread *td"
 .Ft int
@@ -96,6 +98,13 @@ held against the lock
 .Fa lkp .
 .Pp
 The
+.Fn lockcountnb
+function is a non-blocking counter-part of
+.Fn lockcount .
+which, can be safely used in assertion statements e.g. a
+.Xr KASSERT 9 .
+.Pp
+The
 .Fn lockmgr
 function handles general locking functionality within the kernel, including
 support for shared and exclusive locks, and recursion.
@@ -145,7 +154,7 @@ This is used before freeing a lock that is part of a piece of memory that is
 about to be freed.
 .Po
 As documented in
-.Pa sys/lockmgr.h .
+.Pa sys/lock.h .
 .Pc
 .It Dv LK_SLEEPFAIL
 Fail if operation has slept.
