@@ -1,6 +1,6 @@
-# $DragonFly: src/lib/libmagic/Makefile,v 1.2 2004/12/18 17:22:54 asmodai Exp $
+# $DragonFly: src/lib/libmagic/Makefile,v 1.3 2004/12/18 17:30:11 asmodai Exp $
 
-FILEVER=	4.12
+FILEVER= 4.12
 SRCDIR=	${.CURDIR}/../../contrib/file-${FILEVER}/src
 .PATH: ${SRCDIR}
 
