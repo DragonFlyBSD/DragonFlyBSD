@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.7 2003/08/11 00:25:14 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.8 2003/11/09 02:36:35 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -762,6 +762,9 @@ par-${__target}: ${SUBDIR:S/$/.${__target}__D/}
 #
 wmake:
 	@echo '${WMAKEENV} ${MAKE} ${WMAKE_ARGS}'
+
+wmakeenv:
+	@echo '${WMAKEENV} /bin/sh'
 
 .include <bsd.subdir.mk>
 
