@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truss/main.c,v 1.15.2.3 2002/05/16 23:41:23 peter Exp $
- * $DragonFly: src/usr.bin/truss/main.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/truss/main.c,v 1.3 2003/08/28 02:42:00 hmp Exp $
  */
 
 /*
@@ -142,6 +142,11 @@ main(int ac, char **av) {
     switch (c) {
     case 'p':	/* specified pid */
       pid = atoi(optarg);
+      if (pid == getpid()) {
+	      /* make sure truss doesn't trace itself */
+	      fprintf(stderr, "truss: attempt to self trace: %d\n", pid);
+	      exit(2);
+      }
       break;
     case 'o':	/* Specified output file */
       fname = optarg;
