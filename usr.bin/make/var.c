@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.151 2005/03/12 12:05:21 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.152 2005/03/16 00:09:46 okumoto Exp $
  */
 
 /*-
@@ -104,10 +104,11 @@
  */
 typedef struct VarParser {
 	const char	*const input;	/* pointer to input string */
+	const char	*ptr;		/* current parser pos in input str */
 	GNode		*ctxt;
 	Boolean		err;
 } VarParser;
-static char *VarParse(const char [], VarParser *, size_t *, Boolean *);
+static char *VarParse(VarParser *, size_t *, Boolean *);
 
 /*
  * This is a harmless return value for Var_Parse that can be used by Var_Subst
@@ -1934,26 +1935,31 @@ VarParseShort(const char input[], VarParser *vp,
 }
 
 static char *
-VarParse(const char input[], VarParser *vp, size_t *consumed, Boolean *freeResult)
+VarParse(VarParser *vp, size_t *consumed, Boolean *freeResult)
 {
-	/* assert(input[0] == '$'); */
+	char	*value;
 
-	*consumed += 1;	/* consume '$' */
-	input += 1;
+	/* assert(vp->ptr[0] == '$'); */
 
-	if (input[0] == '\0') {
+	vp->ptr += 1;	/* consume '$' */
+
+	if (vp->ptr[0] == '\0') {
+		*consumed += 1;	/* consume '$' */
 		/* Error, there is only a dollar sign in the input string. */
 		*freeResult = FALSE;
-		return (vp->err ? var_Error : varNoError);
+		value = vp->err ? var_Error : varNoError;
 
-	} else if (input[0] == OPEN_PAREN || input[0] == OPEN_BRACE) {
+	} else if (vp->ptr[0] == OPEN_PAREN || vp->ptr[0] == OPEN_BRACE) {
+		*consumed += 1;	/* consume '$' */
 		/* multi letter variable name */
-		return (VarParseLong(input, vp, consumed, freeResult));
+		value = VarParseLong(vp->ptr, vp, consumed, freeResult);
 
 	} else {
+		*consumed += 1;	/* consume '$' */
 		/* single letter variable name */
-		return (VarParseShort(input, vp, consumed, freeResult));
+		value = VarParseShort(vp->ptr, vp, consumed, freeResult);
 	}
+	return (value);
 }
 
 /*-
@@ -1986,11 +1992,12 @@ Var_Parse(const char input[], GNode *ctxt, Boolean err,
 {
 	VarParser	vp = {
 		input,
+		input,
 		ctxt,
 		err
 	};
 
-	return VarParse(input, &vp, consumed, freeResult);
+	return VarParse(&vp, consumed, freeResult);
 }
 
 /*-
