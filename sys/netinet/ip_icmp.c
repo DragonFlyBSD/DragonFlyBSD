@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.14 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.15 2004/12/28 22:56:12 liamfoy Exp $
  */
 
 #include "opt_ipsec.h"
@@ -244,23 +244,21 @@ freeit:
 	m_freem(n);
 }
 
-static struct sockaddr_in icmpsrc = { sizeof (struct sockaddr_in), AF_INET };
-static struct sockaddr_in icmpdst = { sizeof (struct sockaddr_in), AF_INET };
-static struct sockaddr_in icmpgw = { sizeof (struct sockaddr_in), AF_INET };
-
 /*
  * Process a received ICMP message.
  */
 void
 icmp_input(struct mbuf *m, ...)
 {
-	int hlen;
+	struct sockaddr_in icmpsrc = { sizeof(struct sockaddr_in), AF_INET };
+	struct sockaddr_in icmpdst = { sizeof(struct sockaddr_in), AF_INET };
+	struct sockaddr_in icmpgw = { sizeof(struct sockaddr_in), AF_INET };
 	struct icmp *icp;
-	struct ip *ip = mtod(m, struct ip *);
-	int icmplen = ip->ip_len;
-	int i;
 	struct in_ifaddr *ia;
+	struct ip *ip = mtod(m, struct ip *);
 	void (*ctlfunc) (int, struct sockaddr *, void *);
+	int icmplen = ip->ip_len;
+	int i, hlen;
 	int code, off, proto;
 	__va_list ap;
 
