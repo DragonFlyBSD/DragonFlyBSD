@@ -33,7 +33,7 @@
  *
  *	@(#)lang.l	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/lang.l,v 1.27 1999/11/09 07:20:22 peter Exp $
- * $DragonFly: src/usr.sbin/config/lang.l,v 1.8 2004/03/08 03:24:27 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/lang.l,v 1.9 2004/03/08 03:28:01 dillon Exp $
  */
 
 #include <ctype.h>
@@ -183,7 +183,7 @@ kw_lookup(char *word)
 	struct kt *kp;
 
 	for (kp = key_words; kp->kt_name != NULL; kp++)
-		if (eq(word, kp->kt_name))
+		if (!strcmp(word, kp->kt_name))
 			return(kp->kt_val);
 	return(-1);
 }

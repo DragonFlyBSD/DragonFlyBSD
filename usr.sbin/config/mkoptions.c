@@ -33,7 +33,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkoptions.c,v 1.17.2.3 2001/12/13 19:18:01 dillon Exp $
- * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.11 2004/03/08 03:24:27 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.12 2004/03/08 03:28:02 dillon Exp $
  */
 
 /*
@@ -65,7 +65,7 @@ options(void)
 	for (cp = cputype; cp != NULL; cp = cp->cpu_next) {
 		op = malloc(sizeof(*op));
 		bzero(op, sizeof(*op));
-		op->op_name = ns(cp->cpu_name);
+		op->op_name = strdup(cp->cpu_name);
 		op->op_next = opt;
 		opt = op;
 	}	
@@ -85,7 +85,7 @@ options(void)
 	bzero(op, sizeof(*op));
 	op->op_name = "MAXUSERS";
 	snprintf(buf, sizeof(buf), "%d", maxusers);
-	op->op_value = ns(buf);
+	op->op_value = strdup(buf);
 	op->op_next = opt;
 	opt = op;
 
@@ -124,12 +124,12 @@ do_option(char *name)
 	 */
 	value = NULL;
 	for (op = opt; op != NULL; op = op->op_next) {
-		if (eq(name, op->op_name)) {
+		if (!strcmp(name, op->op_name)) {
 			oldvalue = value;
 			value = op->op_value;
 			if (value == NULL)
-				value = ns("1");
-			if (oldvalue != NULL && !eq(value, oldvalue))
+				value = strdup("1");
+			if (oldvalue != NULL && strcmp(value, oldvalue))
 				printf(
 			    "%s:%d: option \"%s\" redefined from %s to %s\n",
 				   PREFIX, op->op_line, op->op_name, oldvalue,
@@ -154,7 +154,7 @@ do_option(char *name)
 	}
 	basefile = "";
 	for (ol = otab; ol != NULL; ol = ol->o_next)
-		if (eq(name, ol->o_name)) {
+		if (!strcmp(name, ol->o_name)) {
 			basefile = ol->o_file;
 			break;
 		}
@@ -172,25 +172,25 @@ do_option(char *name)
 		/* get the option name */
 		if ((inw = get_word(inf)) == NULL || inw == (char *)EOF)
 			break;
-		inw = ns(inw);
+		inw = strdup(inw);
 		/* get the option value */
 		if ((cp = get_word(inf)) == NULL || cp == (char *)EOF)
 			break;
 		/* option value */
-		invalue = ns(cp); /* malloced */
-		if (eq(inw, name)) {
+		invalue = strdup(cp); /* malloced */
+		if (!strcmp(inw, name)) {
 			oldvalue = invalue;
 			invalue = value;
 			seen++;
 		}
 		for (ol = otab; ol != NULL; ol = ol->o_next)
-			if (eq(inw, ol->o_name))
+			if (!strcmp(inw, ol->o_name))
 				break;
-		if (!eq(inw, name) && ol == NULL) {
+		if (strcmp(inw, name) && ol == NULL) {
 			printf("WARNING: unknown option `%s' removed from %s\n",
 				inw, file);
 			tidy++;
-		} else if (ol != NULL && !eq(basefile, ol->o_file)) {
+		} else if (ol != NULL && strcmp(basefile, ol->o_file)) {
 			printf("WARNING: option `%s' moved from %s to %s\n",
 				inw, basefile, ol->o_file);
 			tidy++;
@@ -210,7 +210,7 @@ do_option(char *name)
 	}
 	fclose(inf);
 	if (!tidy && ((value == NULL && oldvalue == NULL) ||
-	    (value && oldvalue && eq(value, oldvalue)))) {	
+	    (value && oldvalue && !strcmp(value, oldvalue)))) {	
 		for (op = op_head; op != NULL; op = topp) {
 			topp = op->op_next;
 			free(op->op_name);
@@ -224,8 +224,8 @@ do_option(char *name)
 		/* New option appears */
 		op = malloc(sizeof(*op));
 		bzero(op, sizeof(*op));
-		op->op_name = ns(name);
-		op->op_value = value != NULL ? ns(value) : NULL;
+		op->op_name = strdup(name);
+		op->op_value = value != NULL ? strdup(value) : NULL;
 		op->op_next = op_head;
 		op_head = op;
 	}
@@ -261,7 +261,7 @@ tooption(char *name)
 	strlcpy(nbuf, "options.h", sizeof(nbuf));
 
 	for (po = otab ; po != NULL; po = po->o_next) {
-		if (eq(po->o_name, name)) {
+		if (!strcmp(po->o_name, name)) {
 			strlcpy(nbuf, po->o_file, sizeof(nbuf));
 			break;
 		}
@@ -325,22 +325,22 @@ next:
 			;
 		goto next;
 	}
-	this = ns(wd);
+	this = strdup(wd);
 	val = get_word(fp);
 	if (val == (char *)EOF)
 		return;
 	if (val == 0) {
 		char *s;
 	
-		s = ns(this);
+		s = strdup(this);
 		snprintf(genopt, sizeof(genopt), "opt_%s.h", lower(s));
 		val = genopt;
 		free(s);
 	}
-	val = ns(val);
+	val = strdup(val);
 
 	for (po = otab; po != NULL; po = po->o_next) {
-		if (eq(po->o_name, this)) {
+		if (!strcmp(po->o_name, this)) {
 			printf("%s: Duplicate option %s.\n",
 			       fname, this);
 			exit(1);

@@ -83,7 +83,7 @@
  *
  *	@(#)config.y	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.y,v 1.42.2.1 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.y,v 1.9 2004/03/08 03:24:27 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/config.y,v 1.10 2004/03/08 03:28:01 dillon Exp $
  */
 
 #include <ctype.h>
@@ -102,8 +102,6 @@ int	yyline;
 struct  file_list *ftab;
 char	errbuf[80];
 int	maxusers;
-
-#define ns(s)	strdup(s)
 
 static int connect(char *, int);
 static void yyerror(char *s);
@@ -175,7 +173,7 @@ System_id:
 
 		op = malloc(sizeof(struct opt));
 		bzero(op, sizeof(*op));
-		op->op_name = ns("KERNEL");
+		op->op_name = strdup("KERNEL");
 		op->op_ownfile = 0;
 		op->op_next = mkopt;
 		op->op_value = $1;
@@ -196,14 +194,16 @@ device_name:
 			char buf[80];
 
 			snprintf(buf, sizeof(buf), "%s%d", $1, $2);
-			$$ = ns(buf); free($1);
+			$$ = strdup(buf);
+			free($1);
 		}
 	| Save_id NUMBER ID
 		= {
 			char buf[80];
 
 			snprintf(buf, sizeof(buf), "%s%d%s", $1, $2, $3);
-			$$ = ns(buf); free($1);
+			$$ = strdup(buf);
+			free($1);
 		}
 	| Save_id NUMBER ID NUMBER
 		= {
@@ -211,7 +211,8 @@ device_name:
 
 			snprintf(buf, sizeof(buf), "%s%d%s%d",
 			     $1, $2, $3, $4);
-			$$ = ns(buf); free($1);
+			$$ = strdup(buf);
+			free($1);
 		}
 	| Save_id NUMBER ID NUMBER ID
 		= {
@@ -219,7 +220,8 @@ device_name:
 
 			snprintf(buf, sizeof(buf), "%s%d%s%d%s",
 			     $1, $2, $3, $4, $5);
-			$$ = ns(buf); free($1);
+			$$ = strdup(buf);
+			free($1);
 		}
 	;
 
@@ -269,7 +271,7 @@ Opt_value:
 			char buf[80];
 
 			snprintf(buf, sizeof(buf), "%d", $1);
-			$$ = ns(buf);
+			$$ = strdup(buf);
 		} ;
 
 Save_id:
@@ -421,7 +423,7 @@ newdev(struct device *dp)
 	if (dp->d_unit >= 0) {
 		for (xp = dtab; xp != NULL; xp = xp->d_next) {
 			if ((xp->d_unit == dp->d_unit) &&
-			    eq(xp->d_name, dp->d_name)) {
+			    !strcmp(xp->d_name, dp->d_name)) {
 				errx(1, "line %d: already seen device %s%d",
 				    yyline, xp->d_name, xp->d_unit);
 			}
@@ -450,7 +452,7 @@ connect(char *dev, int num)
 
 	if (num == QUES) {
 		for (dp = dtab; dp != NULL; dp = dp->d_next)
-			if (eq(dp->d_name, dev))
+			if (!strcmp(dp->d_name, dev))
 				break;
 		if (dp == NULL) {
 			snprintf(errbuf, sizeof(errbuf),
@@ -461,7 +463,7 @@ connect(char *dev, int num)
 		return(1);
 	}
 	for (dp = dtab; dp != NULL; dp = dp->d_next) {
-		if ((num != dp->d_unit) || !eq(dev, dp->d_name))
+		if ((num != dp->d_unit) || strcmp(dev, dp->d_name))
 			continue;
 		if (dp->d_type != DEVICE) {
 			snprintf(errbuf, sizeof(errbuf), 

@@ -32,7 +32,7 @@
  *
  *	@(#)config.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.h,v 1.35.2.1 2000/08/03 00:09:56 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.h,v 1.4 2004/01/31 03:26:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/config.h,v 1.5 2004/03/08 03:28:01 dillon Exp $
  */
 
 /*
@@ -168,6 +168,3 @@ extern int	maxusers;
 
 extern char *PREFIX;		/* Config file name - for error messages */
 extern char srcdir[];		/* root of the kernel source tree */
-
-#define eq(a,b)	(!strcmp(a,b))
-#define ns(s)	strdup(s)

@@ -32,7 +32,7 @@
  *
  * @(#)mkmakefile.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkmakefile.c,v 1.51.2.3 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.9 2004/03/08 03:24:27 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.10 2004/03/08 03:28:01 dillon Exp $
  */
 
 /*
@@ -93,7 +93,7 @@ fl_lookup(char *file)
 	struct file_list *fp;
 
 	for (fp = ftab; fp != NULL; fp = fp->f_next) {
-		if (eq(fp->f_fn, file))
+		if (!strcmp(fp->f_fn, file))
 			return(fp);
 	}
 	return(0);
@@ -108,7 +108,7 @@ fltail_lookup(char *file)
 	struct file_list *fp;
 
 	for (fp = ftab; fp != NULL; fp = fp->f_next) {
-		if (eq(tail(fp->f_fn), tail(file)))
+		if (!strcmp(tail(fp->f_fn), tail(file)))
 			return(fp);
 	}
 	return(0);
@@ -180,19 +180,19 @@ makefile(void)
 			fprintf(ofp, "%s", line);
 			continue;
 		}
-		if (eq(line, "%BEFORE_DEPEND\n"))
+		if (!strcmp(line, "%BEFORE_DEPEND\n"))
 			do_before_depend(ofp);
-		else if (eq(line, "%OBJS\n"))
+		else if (!strcmp(line, "%OBJS\n"))
 			do_objs(ofp);
-		else if (eq(line, "%MFILES\n"))
+		else if (!strcmp(line, "%MFILES\n"))
 			do_mfiles(ofp);
-		else if (eq(line, "%CFILES\n"))
+		else if (!strcmp(line, "%CFILES\n"))
 			do_cfiles(ofp);
-		else if (eq(line, "%SFILES\n"))
+		else if (!strcmp(line, "%SFILES\n"))
 			do_sfiles(ofp);
-		else if (eq(line, "%RULES\n"))
+		else if (!strcmp(line, "%RULES\n"))
 			do_rules(ofp);
-		else if (eq(line, "%CLEAN\n"))
+		else if (!strcmp(line, "%CLEAN\n"))
 			do_clean(ofp);
 		else if (strncmp(line, "%VERSREQ=", sizeof("%VERSREQ=") - 1) == 0) {
 			versreq = atoi(line + sizeof("%VERSREQ=") - 1);
@@ -289,7 +289,7 @@ next:
 			;
 		goto next;
 	}
-	this = ns(wd);
+	this = strdup(wd);
 	next_word(fp, wd);
 	if (wd == 0) {
 		printf("%s: No type for %s.\n",
@@ -322,16 +322,16 @@ next:
 	no_obj = 0;
 	before_depend = 0;
 	filetype = NORMAL;
-	if (eq(wd, "standard"))
+	if (!strcmp(wd, "standard"))
 		std = 1;
 	/*
 	 * If an entry is marked "mandatory", config will abort if it's
 	 * not called by a configuration line in the config file.  Apart
 	 * from this, the device is handled like one marked "optional".
 	 */
-	else if (eq(wd, "mandatory"))
+	else if (!strcmp(wd, "mandatory"))
 		mandatory = 1;
-	else if (!eq(wd, "optional")) {
+	else if (strcmp(wd, "optional")) {
 		printf("%s: %s must be optional, mandatory or standard\n",
 		       fname, this);
 		printf("Your version of config(8) is out of sync with your kernel source.\n");
@@ -341,15 +341,15 @@ nextparam:
 	next_word(fp, wd);
 	if (wd == NULL)
 		goto doneparam;
-	if (eq(wd, "config-dependent")) {
+	if (!strcmp(wd, "config-dependent")) {
 		configdep++;
 		goto nextparam;
 	}
-	if (eq(wd, "no-obj")) {
+	if (!strcmp(wd, "no-obj")) {
 		no_obj++;
 		goto nextparam;
 	}
-	if (eq(wd, "no-implicit-rule")) {
+	if (!strcmp(wd, "no-implicit-rule")) {
 		if (special == NULL) {
 			printf("%s: alternate rule required when "
 			       "\"no-implicit-rule\" is specified.\n",
@@ -358,73 +358,73 @@ nextparam:
 		imp_rule++;
 		goto nextparam;
 	}
-	if (eq(wd, "before-depend")) {
+	if (!strcmp(wd, "before-depend")) {
 		before_depend++;
 		goto nextparam;
 	}
-	if (eq(wd, "dependency")) {
+	if (!strcmp(wd, "dependency")) {
 		next_quoted_word(fp, wd);
 		if (wd == NULL) {
 			printf("%s: %s missing compile command string.\n",
 			       fname, this);
 			exit(1);
 		}
-		depends = ns(wd);
+		depends = strdup(wd);
 		goto nextparam;
 	}
-	if (eq(wd, "clean")) {
+	if (!strcmp(wd, "clean")) {
 		next_quoted_word(fp, wd);
 		if (wd == NULL) {
 			printf("%s: %s missing clean file list.\n",
 			       fname, this);
 			exit(1);
 		}
-		clean = ns(wd);
+		clean = strdup(wd);
 		goto nextparam;
 	}
-	if (eq(wd, "compile-with")) {
+	if (!strcmp(wd, "compile-with")) {
 		next_quoted_word(fp, wd);
 		if (wd == NULL) {
 			printf("%s: %s missing compile command string.\n",
 			       fname, this);
 			exit(1);
 		}
-		special = ns(wd);
+		special = strdup(wd);
 		goto nextparam;
 	}
-	if (eq(wd, "warning")) {
+	if (!strcmp(wd, "warning")) {
 		next_quoted_word(fp, wd);
 		if (wd == NULL) {
 			printf("%s: %s missing warning text string.\n",
 				fname, this);
 			exit(1);
 		}
-		warn = ns(wd);
+		warn = strdup(wd);
 		goto nextparam;
 	}
 	nreqs++;
-	if (eq(wd, "local")) {
+	if (!strcmp(wd, "local")) {
 		filetype = LOCAL;
 		goto nextparam;
 	}
-	if (eq(wd, "no-depend")) {
+	if (!strcmp(wd, "no-depend")) {
 		filetype = NODEPEND;
 		goto nextparam;
 	}
-	if (eq(wd, "device-driver")) {
+	if (!strcmp(wd, "device-driver")) {
 		printf("%s: `device-driver' flag obsolete.\n", fname);
 		exit(1);
 	}
-	if (eq(wd, "profiling-routine")) {
+	if (!strcmp(wd, "profiling-routine")) {
 		filetype = PROFILING;
 		goto nextparam;
 	}
 	if (needs == 0 && nreqs == 1)
-		needs = ns(wd);
+		needs = strdup(wd);
 	if (isdup)
 		goto invis;
 	for (dp = dtab; dp != NULL; save_dp = dp, dp = dp->d_next)
-		if (eq(dp->d_name, wd)) {
+		if (!strcmp(dp->d_name, wd)) {
 			if (std && dp->d_type == PSEUDO_DEVICE &&
 			    dp->d_count <= 0)
 				dp->d_count = 1;
@@ -439,7 +439,7 @@ nextparam:
 		dp = malloc(sizeof(*dp));
 		bzero(dp, sizeof(*dp));
 		init_dev(dp);
-		dp->d_name = ns(wd);
+		dp->d_name = strdup(wd);
 		dp->d_type = PSEUDO_DEVICE;
 		dp->d_count = 1;
 		save_dp->d_next = dp;
