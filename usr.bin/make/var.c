@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.106 2005/02/18 01:21:52 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.107 2005/02/18 01:23:22 okumoto Exp $
  */
 
 /*-
@@ -747,6 +747,7 @@ VarGetPattern(GNode *ctxt, int err, char **tstr, int delim, int *flags,
 		     * delimiter, assume it's a variable
 		     * substitution and recurse.
 		     */
+		    len = 0;
 		    cp2 = Var_Parse(cp, ctxt, err, &len, &freeIt);
 		    Buf_Append(buf, cp2);
 		    if (freeIt)
@@ -1042,6 +1043,7 @@ ParseModifier(const char input[], char tstr[],
 				size_t	len;
 				Boolean	freeIt;
 
+				len = 0;
 				cp2 = Var_Parse(cp, ctxt, err, &len, &freeIt);
 				Buf_Append(buf, cp2);
 				if (freeIt) {
@@ -1106,6 +1108,7 @@ ParseModifier(const char input[], char tstr[],
 			    size_t	len;
 			    Boolean	freeIt;
 
+			    len = 0;
 			    cp2 = Var_Parse(cp, ctxt, err, &len, &freeIt);
 			    Buf_Append(buf, cp2);
 			    cp += len - 1;
@@ -1542,6 +1545,7 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		Boolean	rfree;
 		char	*rval;
 
+		rlen = 0;
 		rval = Var_Parse(tstr, ctxt, err, &rlen, &rfree);
 		if (rval == var_Error) {
 			Fatal("Error expanding embedded variable.");
@@ -1932,6 +1936,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 		    continue;
 	    }
 
+	    length = 0;
 	    val = Var_Parse(str, ctxt, undefErr, &length, &doFree);
 
 	    /*

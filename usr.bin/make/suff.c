@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.33 2005/02/15 01:01:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.34 2005/02/18 01:23:22 okumoto Exp $
  */
 
 /*-
@@ -1366,7 +1366,7 @@ SuffExpandChildren(void *cgnp, void *pgnp)
 			 * to find the end so we can skip over it.
 			 */
 			char	*junk;
-			size_t len;
+			size_t	len = 0;
 			Boolean	doFree;
 
 			junk = Var_Parse(cp, pgn, TRUE, &len, &doFree);
