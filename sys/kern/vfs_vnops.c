@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.23 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.24 2004/11/05 18:43:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -92,8 +92,6 @@ vn_open(ndp, fmode, cmode)
 	struct vattr vat;
 	struct vattr *vap = &vat;
 	int mode, error;
-
-	KKASSERT(cred == td->td_proc->p_ucred);
 
 	if (fmode & O_CREAT) {
 		ndp->ni_cnd.cn_nameiop = NAMEI_CREATE;
