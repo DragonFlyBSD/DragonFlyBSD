@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/FAQ.cgi,v 1.9 2004/08/09 20:16:38 justin Exp $
+# $DragonFly: site/data/main/Attic/FAQ.cgi,v 1.10 2004/10/01 01:44:06 dillon Exp $
 
 $TITLE(DragonFly Frequently Asked Questions)
 
@@ -14,6 +14,19 @@ FreeBSD-4.  In addition, we plan to implement asynchronous system call messaging
 
 <p>For DragonFly news and events, keep an eye on Matthew Dillon's <a href="/status/diary.cgi">diary</a>, 
 the <a href="http://www.shiningsilence.com/dbsdlog/">DragonFly BSD Log</a>, and the DragonFly <a href="/main/forums.cgi">mailing lists/newsgroups</a>.</p>
+
+<p><b>Is there a branch oriented towards stability, like the FreeBSD's
+-STABLE?</b><br/>
+Not yet.  We intend to emplace most major features on our goals list before
+we start branching.  We do not yet have the development resources required
+to maintain multiple branches.  However, we do have a "DragonFly_Stable" tag
+which users can synchronize to instead of HEAD.  It is just a float tag
+indicating a 'reasonably stable point' in development i.e. where the 
+buildworld / buildrelease / buildkernel sequence is likely to work and not
+produce something that is unusable or too buggy.  Keep in mind that
+"DragonFly_Stable" is a just another tag, so it's not like *BSD's -STABLE.
+You can use <a href="dragonfly-stable-supfile">this cvsup config file</a>
+obtaining source tagged "DragonFly_Stable" via cvsup.</p>
 
 <p><b>I get garbage on the screen when I boot</b> <i>or</i> <b>I can't seem to pause at the initial boot menu.</b><br/>
 DragonFly, when booting, outputs to both video and serial ports.  If the booting computer has a 'noisy' serial device connected, it may read data from it during the boot process.  Serial console activation during boot can be disabled by creating the file /boot.config with the contents: '-V'</p>
