@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)script.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/usr.bin/script/script.c,v 1.11.2.2 2004/03/13 09:21:00 cperciva Exp $
- * $DragonFly: src/usr.bin/script/script.c,v 1.7 2005/03/01 20:05:14 cpressey Exp $
+ * $DragonFly: src/usr.bin/script/script.c,v 1.8 2005/03/01 21:20:17 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -150,6 +150,7 @@ main(int argc, char **argv)
 	}
 	if (child == 0)
 		doshell(argv);
+	close(slave);
 
 	if (flushtime > 0)
 		tvp = &tv;
