@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.15 2004/11/07 19:29:27 liamfoy Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.16 2004/11/14 13:58:42 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -588,7 +588,7 @@ pagein(const KINFO *k, const VARENT *ve)
 
 /* ARGSUSED */
 void
-maxrss(const KINFO *k, const VARENT *ve)
+maxrss(const KINFO *k __unused, const VARENT *ve)
 {
 	const VAR *v;
 
