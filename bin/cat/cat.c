@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cat.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/bin/cat/cat.c,v 1.14.2.8 2002/06/29 05:09:26 tjr Exp $
- * $DragonFly: src/bin/cat/cat.c,v 1.5 2003/09/28 14:39:13 hmp Exp $
+ * $DragonFly: src/bin/cat/cat.c,v 1.6 2004/06/01 01:15:59 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -163,9 +163,9 @@ scanfiles(char **argv, int cooked)
 }
 
 static void
-cook_cat(register FILE *fp)
+cook_cat(FILE *fp)
 {
-	register int ch, gobble, line, prev;
+	int ch, gobble, line, prev;
 
 	/* Reset EOF condition on stdin. */
 	if (fp == stdin && feof(stdin))
@@ -230,9 +230,9 @@ cook_cat(register FILE *fp)
 }
 
 static void
-raw_cat(register int rfd)
+raw_cat(int rfd)
 {
-	register int off, wfd;
+	int off, wfd;
 	ssize_t nr, nw;
 	static size_t bsize;
 	static char *buf = NULL;
@@ -287,7 +287,7 @@ udom_open(const char *path, int flags)
 	 * handle the open flags by shutting down appropriate directions
 	 */
 	if (fd >= 0) {
-		switch(flags & O_ACCMODE) {
+		switch (flags & O_ACCMODE) {
 		case O_RDONLY:
 			if (shutdown(fd, SHUT_WR) == -1)
 				perror("cat");
