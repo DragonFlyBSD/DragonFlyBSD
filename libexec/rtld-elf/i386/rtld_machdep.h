@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.3.2.2 2002/07/02 04:10:51 jdp Exp $
- * $DragonFly: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.3 2003/09/18 21:23:02 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.4 2003/10/05 23:06:45 dillon Exp $
  */
 
 #ifndef RTLD_MACHDEP_H
@@ -76,10 +76,13 @@ uniqid_hash_block(u_int32_t hash, u_int32_t key, u_int32_t block)
 			"lea	(%%edx,%%edx,4),%%edx\n\t"
 			"addl	%%edx,%%eax\n\t"
 			"lea	0x5(%%eax),%%edx\n\t"
-			"cmovcl	%%edx,%%eax\n\t"
-			"addl	%3,%%eax\n\t"
+			"jnc	1f\n\t"
+			"movl	%%edx,%%eax\n\t"
+			"1:; addl	%3,%%eax\n\t"
 			"lea	0x5(%%eax),%%edx\n\t"
-			"cmovcl	%%edx,%%eax\n\t"
+			"jnc	1f\n\t"
+			"movl	%%edx,%%eax\n\t"
+			"1:;\n\t"
 	: "=a"(ret) : "a"(hash), "rm"(key), "g"(block) : "cc", "dx");
 
     return ret;
