@@ -33,7 +33,7 @@
  *	@(#)extern.h	8.2 (Berkeley) 4/20/95 
  *
  * $FreeBSD: src/usr.bin/mail/extern.h,v 1.3.6.3 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/extern.h,v 1.3 2003/08/22 19:38:36 asmodai Exp $
+ * $DragonFly: src/usr.bin/mail/extern.h,v 1.4 2004/09/07 21:31:45 joerg Exp $
  */
 
 struct name *cat(struct name *, struct name *);
@@ -74,6 +74,7 @@ char	*username(void);
 char	*value(const char *);
 char	*vcopy(const char *);
 char	*yankword(char *, char []);
+char	*yanklogin(char *, char []);
 int	 Fclose(FILE *);
 int	 More(int *);
 int	 Pclose(FILE *);

@@ -32,7 +32,7 @@
  *
  * @(#)lex.c	8.2 (Berkeley) 4/20/95
  * $FreeBSD: src/usr.bin/mail/lex.c,v 1.5.6.5 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/lex.c,v 1.4 2003/10/04 20:36:48 hmp Exp $
+ * $DragonFly: src/usr.bin/mail/lex.c,v 1.5 2004/09/07 21:31:45 joerg Exp $
  */
 
 #include "rcv.h"
@@ -56,17 +56,23 @@ extern const char *version;
  * If the first character of name is %, we are considered to be
  * editing the file, otherwise we are reading our mail which has
  * signficance for mbox and so forth.
+ *
+ * If the -e option is passed to mail, this function has a
+ * tri-state return code: -1 on error, 0 on no mail, 1 if there is
+ * mail.
  */
 int
 setfile(char *name)
 {
 	FILE *ibuf;
-	int i, fd;
+	int checkmode, i, fd;
 	struct stat stb;
 	char isedit = *name != '%' || getuserid(myname) != getuid();
 	char *who = name[1] ? name + 1 : myname;
 	char tempname[PATHSIZE];
 	static int shudclob;
+
+	checkmode = value("checkmode") != NULL;
 
 	if ((name = expand(name)) == NULL)
 		return (-1);
@@ -142,12 +148,16 @@ setfile(char *name)
 	(void)Fclose(ibuf);
 	relsesigs();
 	sawcom = 0;
-	if (!edit && msgCount == 0) {
+	if ((checkmode || !edit) && msgCount == 0) {
 nomail:
-		fprintf(stderr, "No mail for %s\n", who);
-		return (-1);
+		if (!checkmode) {
+			fprintf(stderr, "No mail for %s\n", who);
+			return (-1);
+		} else {
+			return (0);
+		}
 	}
-	return (0);
+	return (checkmode ? 1 : 0);
 }
 
 /*

@@ -31,9 +31,9 @@
 .\"
 .\"	@(#)mail.1	8.8 (Berkeley) 4/28/95
 .\" $FreeBSD: src/usr.bin/mail/mail.1,v 1.18.2.12 2003/01/06 05:46:03 mikeh Exp $
-.\" $DragonFly: src/usr.bin/mail/mail.1,v 1.2 2003/06/17 04:29:28 dillon Exp $
+.\" $DragonFly: src/usr.bin/mail/mail.1,v 1.3 2004/09/07 21:31:45 joerg Exp $
 .\"
-.Dd April 28, 1995
+.Dd February 29, 2004
 .Dt MAIL 1
 .Os
 .Sh NAME
@@ -47,15 +47,23 @@
 .Op Fl s Ar subject
 .Op Fl c Ar cc-addr
 .Op Fl b Ar bcc-addr
+.Op Fl F
 .Ar to-addr ...
 .Op Fl Ar sendmail-option ...
 .Nm
-.Op Fl EiInNv
+.Op Fl EHiInNv
+.Op Fl F
 .Fl f
 .Op Ar name
 .Nm
-.Op Fl EiInNv
+.Op Fl EHiInNv
+.Op Fl F
 .Op Fl u Ar user
+.Nm
+.Fl e
+.Op Fl f Ar name
+.Nm
+.Op Fl H
 .Sh INTRODUCTION
 The
 .Nm
@@ -70,6 +78,13 @@ The following options are available:
 Verbose mode.
 The details of
 delivery are displayed on the user's terminal.
+.It Fl e
+Test for the presence of mail in the (by default, system)
+mailbox.
+An exit status of 0 is returned if
+it has mail; otherwise an exit status of 1 is returned.
+.It Fl H
+Write a header summary only.
 .It Fl E
 Do not send messages with an empty body.
 This is useful for piping errors from
@@ -127,6 +142,15 @@ for processing; when you
 .Ic quit ,
 .Nm
 writes undeleted messages back to this file.
+.It Fl F
+Record the message in a file named after the first recipient.
+The name is the login-name portion of the
+address found first on the
+.Dq Li To:
+line in the mail header.
+Overrides the
+.Va record
+variable, if set.
 .It Fl u
 Is equivalent to:
 .Pp
@@ -853,6 +877,10 @@ Execute the given
 .Nm
 command.
 Not all commands, however, are allowed.
+.It Ic ~.
+Simulate end-of-file on input.
+.It Ic ~?
+Print a summary of the available command escapes.
 .It Ic ~~ Ar string
 Insert the string of text in the message prefaced by a single
 .Ql ~ .
@@ -875,7 +903,7 @@ case the actual value is of interest.
 If an option is not set,
 .Nm
 will look for an environment variable of the same name.
-The binary options include the following:
+The available options include the following:
 .Bl -tag -width indent
 .It Va append
 Causes messages saved in
