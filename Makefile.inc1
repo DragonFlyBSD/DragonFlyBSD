@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.38 2004/08/18 16:37:15 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.39 2004/09/28 20:56:38 joerg Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -734,7 +734,7 @@ _strfile=	games/fortune/strfile
 
 bootstrap-tools:
 .for _tool in ${_strfile} \
-    gnu/usr.bin/patch \
+    usr.bin/patch \
     bin/chmod bin/cp bin/dd bin/mkdir bin/rm bin/echo bin/test \
     bin/cat bin/date bin/ln bin/mv bin/csh bin/expr bin/sh bin/ls \
     bin/hostname bin/kill \
