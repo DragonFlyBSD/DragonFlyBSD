@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/at/privs.h,v 1.7 1999/12/05 19:57:14 charnier Exp $
- * $DragonFly: src/usr.bin/at/privs.h,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/at/privs.h,v 1.3 2004/09/20 13:11:54 joerg Exp $
  */
 
 #ifndef _PRIVS_H
@@ -66,15 +66,8 @@
  * to the real userid before calling any of them.
  */
 
-#ifndef MAIN
-extern
-#endif
-uid_t real_uid, effective_uid;
-
-#ifndef MAIN 
-extern
-#endif
-gid_t real_gid, effective_gid;
+extern uid_t real_uid, effective_uid;
+extern gid_t real_gid, effective_gid;
 
 #define RELINQUISH_PRIVS { \
 			      real_uid = getuid(); \

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/at/at.c,v 1.18.2.1 2001/08/02 00:55:58 obrien Exp $
- * $DragonFly: src/usr.bin/at/at.c,v 1.4 2004/01/22 03:22:52 rob Exp $
+ * $DragonFly: src/usr.bin/at/at.c,v 1.5 2004/09/20 13:11:54 joerg Exp $
  */
 
 #define _USE_BSD 1
@@ -51,11 +51,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <utmp.h>
-#ifndef __DragonFly__
-#include <getopt.h>
-#else
 #include <locale.h>
-#endif
 
 #if (MAXLOGNAME-1) > UT_NAMESIZE
 #define LOGNAMESIZE UT_NAMESIZE
@@ -96,19 +92,21 @@ enum { ATQ, ATRM, AT, BATCH, CAT };	/* what program we want to run */
 
 /* File scope variables */
 
-char *no_export[] =
+const char *no_export[] =
 {
     "TERM", "TERMCAP", "DISPLAY", "_"
 } ;
 static int send_mail = 0;
 
 /* External variables */
+uid_t real_uid, effective_uid;
+gid_t real_gid, effective_gid;
 
 extern char **environ;
 int fcreated;
-char atfile[] = ATJOB_DIR "12345678901234";
+char atfile[sizeof(ATJOB_DIR) + 14] = ATJOB_DIR;
 
-char *atinput = (char*)0;	/* where to get input from */
+char *atinput = NULL;		/* where to get input from */
 char atqueue = 0;		/* which queue to examine for jobs (atq) */
 char atverify = 0;		/* verify time instead of queuing job */
 
@@ -122,7 +120,8 @@ static void list_jobs(void);
 
 /* Signal catching functions */
 
-static void sigc(int signo)
+static
+void sigc(int signo __unused)
 {
 /* If the user presses ^C, remove the spool file and exit 
  */
@@ -136,7 +135,8 @@ static void sigc(int signo)
     exit(EXIT_FAILURE);
 }
 
-static void alarmc(int signo)
+static
+void alarmc(int sign __unused)
 {
 /* Time out after some seconds
  */
@@ -176,7 +176,7 @@ static char *cwdname(void)
 }
 
 static long
-nextjob()
+nextjob(void)
 {
     long jobno;
     FILE *fid;
@@ -217,9 +217,7 @@ writefile(time_t runtimer, char queue)
     mode_t cmask;
     struct flock lock;
     
-#ifdef __DragonFly__
-    (void) setlocale(LC_TIME, "");
-#endif
+    setlocale(LC_TIME, "");
 
 /* Install the signal handler for SIGINT; terminate after removing the
  * spool file if necessary
@@ -229,8 +227,6 @@ writefile(time_t runtimer, char queue)
     act.sa_flags = 0;
 
     sigaction(SIGINT, &act, NULL);
-
-    ppos = atfile + strlen(ATJOB_DIR);
 
     /* Loop over all possible file names for running something at this
      * particular time, see if a file is there; the first empty slot at any
@@ -261,8 +257,9 @@ writefile(time_t runtimer, char queue)
     if ((jobno = nextjob()) == EOF)
 	perr("cannot generate job number");
 
-    sprintf(ppos, "%c%5lx%8lx", queue, 
-	    jobno, (unsigned long) (runtimer/60));
+    ppos = atfile + strlen(atfile);
+    snprintf(ppos, sizeof(atfile) - strlen(atfile), "%c%5lx%8lx", queue, 
+	     jobno, (unsigned long) (runtimer/60));
 
     for(ap=ppos; *ap != '\0'; ap ++)
 	if (*ap == ' ')
@@ -353,7 +350,7 @@ writefile(time_t runtimer, char queue)
 	    eqp = *atenv;
 	else
 	{
-	    int i;
+	    unsigned int i;
 	    for (i=0; i<sizeof(no_export)/sizeof(no_export[0]); i++)
 	    {
 		export = export
@@ -455,9 +452,7 @@ list_jobs(void)
     char timestr[TIMESIZE];
     int first=1;
     
-#ifdef __DragonFly__
-    (void) setlocale(LC_TIME, "");
-#endif
+    setlocale(LC_TIME, "");
 
     PRIV_START
 
@@ -594,9 +589,8 @@ main(int argc, char **argv)
     char queue_set = 0;
     char *pgm;
 
-    enum { ATQ, ATRM, AT, BATCH, CAT };	/* what program we want to run */
     int program = AT;			/* our default program */
-    char *options = "q:f:mvldbVc";	/* default options for at */
+    const char *options = "q:f:mvldbVc"; /* default options for at */
     int disp_version = 0;
     time_t timer;
 

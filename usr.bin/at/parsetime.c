@@ -33,7 +33,7 @@
  *                                   \PLUS NUMBER MINUTES|HOURS|DAYS|WEEKS/
  *
  * $FreeBSD: src/usr.bin/at/parsetime.c,v 1.19.2.3 2001/12/19 11:19:16 brian Exp $
- * $DragonFly: src/usr.bin/at/parsetime.c,v 1.4 2004/01/22 03:22:52 rob Exp $
+ * $DragonFly: src/usr.bin/at/parsetime.c,v 1.5 2004/09/20 13:11:54 joerg Exp $
  */
 
 /* System Headers */
@@ -47,14 +47,12 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#ifndef  __DragonFly__
-#include <getopt.h>
-#endif
 
 /* Local headers */
 
 #include "at.h"
 #include "panic.h"
+#include "parsetime.h"
 
 
 /* Structures and unions */
@@ -72,9 +70,9 @@ enum {	/* symbols */
 /* parse translation table - table driven parsers can be your FRIEND!
  */
 struct {
-    char *name;	/* token name */
-    int value;	/* token id */
-    int plural;	/* is this plural? */
+    const char *name;	/* token name */
+    int value;		/* token id */
+    int plural;		/* is this plural? */
 } Specials[] = {
     { "midnight", MIDNIGHT,0 },	/* 00:00:00 of today or tomorrow */
     { "noon", NOON,0 },		/* 12:00:00 of today or tomorrow */
@@ -157,7 +155,7 @@ static int sc_tokplur;	/* scanner - is token plural? */
 static int
 parse_token(char *arg)
 {
-    int i;
+    unsigned int i;
 
     for (i=0; i<(sizeof Specials/sizeof Specials[0]); i++)
 	if (strcasecmp(Specials[i].name, arg) == 0) {
@@ -191,7 +189,7 @@ init_scanner(int argc, char **argv)
  * token() fetches a token from the input stream
  */
 static int
-token()
+token(void)
 {
     int idx;
 

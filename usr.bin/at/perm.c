@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/at/perm.c,v 1.9.2.1 2001/08/02 00:55:58 obrien Exp $
- * $DragonFly: src/usr.bin/at/perm.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
+ * $DragonFly: src/usr.bin/at/perm.c,v 1.4 2004/09/20 13:11:54 joerg Exp $
  */
 
 /* System Headers */
@@ -40,6 +40,7 @@
 
 /* Local headers */
 
+#include "perm.h"
 #include "privs.h"
 #include "at.h"
 
@@ -51,11 +52,12 @@
 
 /* Function declarations */
 
-static int check_for_user(FILE *fp,const char *name);
+static int check_for_user(FILE *fp, const char *name);
 
 /* Local functions */
 
-static int check_for_user(FILE *fp,const char *name)
+static int
+check_for_user(FILE *fp, const char *name)
 {
     char *buffer;
     size_t len;
@@ -78,8 +80,10 @@ static int check_for_user(FILE *fp,const char *name)
     free(buffer);
     return found;
 }
+
 /* Global functions */
-int check_permission(void)
+int
+check_permission(void)
 {
     FILE *fp;
     uid_t uid = geteuid();
@@ -93,7 +97,7 @@ int check_permission(void)
 
     PRIV_START
 
-    fp=fopen(PERM_PATH "at.allow","r");
+    fp = fopen(PERM_PATH "at.allow","r");
 
     PRIV_END
 
@@ -106,7 +110,7 @@ int check_permission(void)
 
 	PRIV_START
 
-	fp=fopen(PERM_PATH "at.deny", "r");
+	fp = fopen(PERM_PATH "at.deny", "r");
 
 	PRIV_END
 

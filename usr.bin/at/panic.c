@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/at/panic.c,v 1.10 1999/12/05 19:57:14 charnier Exp $
- * $DragonFly: src/usr.bin/at/panic.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/at/panic.c,v 1.3 2004/09/20 13:11:54 joerg Exp $
  */
 
 /* System Headers */
@@ -44,7 +44,7 @@
 /* Global functions */
 
 void
-panic(char *a)
+panic(const char *a)
 {
 /* Something fatal has happened, print error message and exit.
  */
@@ -55,7 +55,7 @@ panic(char *a)
 }
 
 void
-perr(char *a)
+perr(const char *a)
 {
 /* Some operating system error; print error message and exit.
  */

@@ -22,26 +22,9 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/at/panic.h,v 1.3 2004/01/22 03:22:52 rob Exp $
+ * $DragonFly: src/usr.bin/at/panic.h,v 1.4 2004/09/20 13:11:54 joerg Exp $
  */
 
-
-#ifdef __DragonFly__
-#define __NORETURN
-#endif
-
-void
-#ifdef __GNUC__
-__NORETURN
-#endif
-panic(char *a);
-void
-#ifdef __GNUC__
-__NORETURN
-#endif
-perr(char *a);
-void
-#ifdef __GNUC__
-__NORETURN
-#endif
-usage(void);
+void	panic(const char *a) __dead2;
+void	perr(const char *a) __dead2;
+void	usage(void) __dead2;
