@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.3 2003/06/18 18:29:53 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -93,7 +93,7 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 			pp = p;
 
 		db_printf("%5d %8p %8p %4d %5d %5d %06x  %d",
-		    p->p_pid, (volatile void *)p, (void *)p->p_addr,
+		    p->p_pid, (volatile void *)p, (void *)p->p_thread->td_pcb,
 		    p->p_cred ? p->p_cred->p_ruid : 0, pp->p_pid,
 		    p->p_pgrp ? p->p_pgrp->pg_id : 0, p->p_flag, p->p_stat);
 		if (p->p_wchan) {

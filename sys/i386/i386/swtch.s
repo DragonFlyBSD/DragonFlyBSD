@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.5 2003/06/18 16:30:09 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.6 2003/06/18 18:29:55 dillon Exp $
  */
 
 #include "npx.h"
@@ -300,7 +300,8 @@ ENTRY(cpu_switch)
 #endif /* SMP */
 	btrl	%eax, VM_PMAP+PM_ACTIVE(%edx)
 
-	movl	P_ADDR(%ecx),%edx
+	movl	_curthread,%edx
+	movl	TD_PCB(%edx),%edx
 
 	movl	(%esp),%eax			/* Hardware registers */
 	movl	%eax,PCB_EIP(%edx)
@@ -395,8 +396,8 @@ sw1a:
 	cmpb	$SRUN,P_STAT(%ecx)
 	jne	badsw2
 #endif
-
-	movl	P_ADDR(%ecx),%edx
+	movl	P_THREAD(%ecx),%edx
+	movl	TD_PCB(%edx),%edx
 
 #if defined(SWTCH_OPTIM_STATS)
 	incl	_swtch_optim_stats
@@ -425,9 +426,13 @@ sw1a:
 	jmp	2f
 1:
 
-	/* update common_tss.tss_esp0 pointer */
-	movl	%edx, %ebx			/* pcb */
-	addl	$(UPAGES * PAGE_SIZE - 16), %ebx
+	/*
+	 * update common_tss.tss_esp0 pointer.  This is the supervisor
+	 * stack pointer on entry from user mode.  Since the pcb is
+	 * at the top of the supervisor stack esp0 starts just below it.
+	 * We leave enough space for vm86 (16 bytes).
+	 */
+	leal	-16(%edx),%ebx
 	movl	%ebx, _common_tss + TSS_ESP0
 
 	btrl	%esi, _private_tss
@@ -476,7 +481,6 @@ sw1a:
 	movl	_cpuid,%eax
 	movb	%al, P_ONCPU(%ecx)
 #endif /* SMP */
-	movl	%edx, _curpcb
 	movl	P_THREAD(%ecx),%ecx		/* ecx = thread */
 	movl	%ecx, _curthread
 	movl	TD_PROC(%ecx),%ecx  /* YYY does %ecx need to be restored? */
@@ -599,8 +603,7 @@ ENTRY(savectx)
 	je	1f
 
 	pushl	%ecx
-	movl	TD_PROC(%eax),%eax
-	movl	P_ADDR(%eax),%eax
+	movl	TD_PCB(%eax),%eax
 	leal	PCB_SAVEFPU(%eax),%eax
 	pushl	%eax
 	pushl	%eax

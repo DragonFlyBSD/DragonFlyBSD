@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.3 2003/06/18 18:30:13 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -239,6 +239,7 @@ vm_fork(p1, p2, flags)
 	}
 
 	pmap_new_proc(p2);
+	pmap_new_thread(p2);
 
 	up = p2->p_addr;
 

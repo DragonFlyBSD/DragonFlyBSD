@@ -32,7 +32,7 @@
  *
  *	@(#)user.h	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/sys/user.h,v 1.24.2.1 2001/10/11 08:20:18 peter Exp $
- * $DragonFly: src/sys/sys/user.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/user.h,v 1.3 2003/06/18 18:30:11 dillon Exp $
  */
 
 #ifndef _SYS_USER_H_
@@ -100,7 +100,6 @@ void fill_eproc __P((struct proc *, struct eproc *));
  * when the process isn't running (esp. when swapped out).
  */
 struct	user {
-	struct	pcb u_pcb;
 	struct	sigacts u_sigacts;	/* p_sigacts points here (use it!) */
 	struct	pstats u_stats;		/* p_stats points here (use it!) */
 	/*

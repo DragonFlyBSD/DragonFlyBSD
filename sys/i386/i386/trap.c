@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.3 2003/06/18 18:29:55 dillon Exp $
  */
 
 /*
@@ -510,7 +510,7 @@ kernel_trap:
 				 * a signal.
 				 */
 				if (frame.tf_eip == (int)cpu_switch_load_gs) {
-					curpcb->pcb_gs = 0;
+					curthread->td_pcb->pcb_gs = 0;
 					psignal(p, SIGBUS);
 					return;
 				}
@@ -522,8 +522,8 @@ kernel_trap:
 						   doreti_popl_es_fault);
 				MAYBE_DORETI_FAULT(doreti_popl_fs,
 						   doreti_popl_fs_fault);
-				if (curpcb && curpcb->pcb_onfault) {
-					frame.tf_eip = (int)curpcb->pcb_onfault;
+				if (curthread->td_pcb->pcb_onfault) {
+					frame.tf_eip = (int)curthread->td_pcb->pcb_onfault;
 					return;
 				}
 			}
@@ -691,8 +691,8 @@ trap_pfault(frame, usermode, eva)
 
 		if (p == NULL ||
 		    (!usermode && va < VM_MAXUSER_ADDRESS &&
-		     (intr_nesting_level != 0 || curpcb == NULL ||
-		      curpcb->pcb_onfault == NULL))) {
+		     (intr_nesting_level != 0 || 
+		      curthread->td_pcb->pcb_onfault == NULL))) {
 			trap_fatal(frame, eva);
 			return (-1);
 		}
@@ -754,8 +754,8 @@ trap_pfault(frame, usermode, eva)
 		return (0);
 nogo:
 	if (!usermode) {
-		if (intr_nesting_level == 0 && curpcb && curpcb->pcb_onfault) {
-			frame->tf_eip = (int)curpcb->pcb_onfault;
+		if (intr_nesting_level == 0 && curthread->td_pcb->pcb_onfault) {
+			frame->tf_eip = (int)curthread->td_pcb->pcb_onfault;
 			return (0);
 		}
 		trap_fatal(frame, eva);
@@ -861,8 +861,8 @@ trap_pfault(frame, usermode, eva)
 		return (0);
 nogo:
 	if (!usermode) {
-		if (intr_nesting_level == 0 && curpcb && curpcb->pcb_onfault) {
-			frame->tf_eip = (int)curpcb->pcb_onfault;
+		if (intr_nesting_level == 0 && curthread->td_pcb->pcb_onfault) {
+			frame->tf_eip = (int)curthread->td_pcb->pcb_onfault;
 			return (0);
 		}
 		trap_fatal(frame, eva);

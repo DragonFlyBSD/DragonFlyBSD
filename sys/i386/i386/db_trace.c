@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/db_trace.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/db_trace.c,v 1.3 2003/06/18 18:29:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -317,7 +317,7 @@ db_stack_trace_cmd(addr, have_addr, count, modif)
 				db_printf("pid %d swapped out\n", pid);
 				return;
 			}
-			pcb = &p->p_addr->u_pcb;
+			pcb = p->p_thread->td_pcb;
 			frame = (struct i386_frame *)pcb->pcb_ebp;
 			if (frame == NULL)
 				frame = (struct i386_frame *)

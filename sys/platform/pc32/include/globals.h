@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globals.h,v 1.5.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/globals.h,v 1.4 2003/06/18 07:04:28 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/globals.h,v 1.5 2003/06/18 18:29:58 dillon Exp $
  */
 
 #ifndef	_MACHINE_GLOBALS_H_
@@ -84,7 +84,6 @@
  */
 #define	curthread	GLOBAL_RVALUE_NV(curthread, struct thread *)
 #define	idlethread	GLOBAL_RVALUE_NV(idlethread, struct thread)
-#define	curpcb		GLOBAL_RVALUE_NV(curpcb, struct pcb *)
 #define	npxthread	GLOBAL_LVALUE(npxthread, struct thread *)
 #define	common_tss	GLOBAL_LVALUE(common_tss, struct i386tss)
 #define	switchtime	GLOBAL_LVALUE(switchtime, struct timeval)
@@ -125,16 +124,14 @@ extern struct timeval switchtime;       /* Uptime at last context switch */
 #endif
 
 /*
- * note: curthread is never NULL, but curproc can be.  curpcb is a separate
- * entity in other BSDs.  In Turtle it is integrated into the thread 
- * structure.
+ * note: curthread is never NULL, but curproc can be.  Also note that
+ * in Turtle, the current pcb is stored in the thread structure.
  */
 #define	curproc		(curthread->td_proc)
 
 GLOBAL_FUNC(curthread)
 GLOBAL_FUNC(idlethread)
 GLOBAL_FUNC(astpending)
-GLOBAL_FUNC(curpcb)
 GLOBAL_FUNC(npxthread)
 GLOBAL_FUNC(common_tss)
 GLOBAL_FUNC(switchtime)

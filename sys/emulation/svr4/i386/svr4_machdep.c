@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/svr4/svr4_machdep.c,v 1.13.2.1 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_machdep.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_machdep.c,v 1.3 2003/06/18 18:30:06 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -81,7 +81,7 @@ svr4_setregs(p, epp, stack)
 	struct exec_package *epp;
 	u_long stack;
 {
-	register struct pcb *pcb = &p->p_addr->u_pcb;
+	register struct pcb *pcb = p->p_thread->td_pcb;
 
 	pcb->pcb_savefpu.sv_env.en_cw = __SVR4_NPXCW__;
 	setregs(p, epp, stack, 0UL);

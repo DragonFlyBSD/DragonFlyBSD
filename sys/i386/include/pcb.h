@@ -35,7 +35,7 @@
  *
  *	from: @(#)pcb.h	5.10 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pcb.h,v 1.32.2.1 2001/08/15 01:23:52 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/pcb.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/pcb.h,v 1.3 2003/06/18 18:29:58 dillon Exp $
  */
 
 #ifndef _I386_PCB_H_
@@ -91,10 +91,6 @@ struct md_coredump {
 };
 
 #ifdef _KERNEL
-
-#ifndef curpcb
-extern struct pcb *curpcb;		/* our current running pcb */
-#endif
 
 void	savectx __P((struct pcb *));
 #endif

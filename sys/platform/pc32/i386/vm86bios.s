@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86bios.s,v 1.15.2.1 2000/05/16 06:58:07 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm86bios.s,v 1.4 2003/06/18 07:04:25 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm86bios.s,v 1.5 2003/06/18 18:29:55 dillon Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
@@ -76,8 +76,7 @@ ENTRY(vm86_bioscall)
 	testl	%ecx,%ecx
 	je 	1f			/* no curthread/npxthread */
 	pushl	%edx
-	movl	TD_PROC(%ecx),%ecx
-	movl	P_ADDR(%ecx),%ecx
+	movl	TD_PCB(%ecx),%ecx
 	addl	$PCB_SAVEFPU,%ecx
 	pushl	%ecx
 	call	_npxsave
@@ -95,10 +94,14 @@ ENTRY(vm86_bioscall)
 	rep
 	movsl				/* copy frame to new stack */
 
-	/* YYY when pcb is in thread vm86_bios will be in its own thread */
-	movl	_curpcb,%eax
+	/* 
+	 * YYY I really dislike replacing td_pcb, even temporarily.  Find
+	 * another way.
+	 */
+	movl	_curthread,%ebx
+	movl	TD_PCB(%ebx),%eax	/* save curpcb */
 	pushl	%eax			/* save curpcb */
-	movl	%edx,_curpcb		/* set curpcb to vm86pcb */
+	movl	%edx,TD_PCB(%ebx)	/* set curpcb to vm86pcb */
 
 	movl	_tss_gdt,%ebx		/* entry in GDT */
 	movl	0(%ebx),%eax
@@ -179,8 +182,9 @@ ENTRY(vm86_biosret)
 	movl	%eax,4(%ebx)		/* restore second word */
 	movl	$GPROC0_SEL*8,%esi	/* GSEL(entry, SEL_KPL) */
 	ltr	%si
-	
-	popl	_curpcb			/* restore curpcb/curproc */
+
+	movl	_curthread,%eax
+	popl	TD_PCB(%eax)		/* restore curpcb */
 	movl	SCR_ARGFRAME(%edx),%edx	/* original stack frame */
 	movl	TF_TRAPNO(%edx),%eax	/* return (trapno) */
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.3 2003/06/18 18:29:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -141,9 +141,9 @@ vm86_emulate(vmf)
 	 * the extension is not present.  (This check should not be needed,
 	 * as we can't enter vm86 mode until we set up an extension area)
 	 */
-	if (curpcb->pcb_ext == 0)
+	if (curthread->td_pcb->pcb_ext == 0)
 		return (SIGBUS);
-	vm86 = &curpcb->pcb_ext->ext_vm86;
+	vm86 = &curthread->td_pcb->pcb_ext->ext_vm86;
 
 	if (vmf->vmf_eflags & PSL_T)
 		retcode = SIGTRAP;
@@ -503,7 +503,7 @@ static void
 vm86_initflags(struct vm86frame *vmf)
 {
 	int eflags = vmf->vmf_eflags;
-	struct vm86_kernel *vm86 = &curpcb->pcb_ext->ext_vm86;
+	struct vm86_kernel *vm86 = &curthread->td_pcb->pcb_ext->ext_vm86;
 
 	if (vm86->vm86_has_vme) {
 		eflags = (vmf->vmf_eflags & ~VME_USERCHANGE) |
@@ -656,10 +656,10 @@ vm86_sysarch(p, args)
 	if ((error = copyin(args, &ua, sizeof(struct i386_vm86_args))) != 0)
 		return (error);
 
-	if (p->p_addr->u_pcb.pcb_ext == 0)
+	if (p->p_thread->td_pcb->pcb_ext == 0)
 		if ((error = i386_extend_pcb(p)) != 0)
 			return (error);
-	vm86 = &p->p_addr->u_pcb.pcb_ext->ext_vm86;
+	vm86 = &p->p_thread->td_pcb->pcb_ext->ext_vm86;
 
 	switch (ua.sub_op) {
 	case VM86_INIT: {

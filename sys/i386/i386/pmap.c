@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.4 2003/06/18 16:30:09 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.5 2003/06/18 18:29:55 dillon Exp $
  */
 
 /*
@@ -850,6 +850,8 @@ pmap_new_thread(struct proc *p)
 	if (p) {
 		p->p_thread = td;
 		td->td_proc = p;
+		td->td_pcb = (struct pcb *)
+				((char *)p->p_addr + UPAGES * PAGE_SIZE) - 1;
 	}
 	return(td);
 }
@@ -3389,7 +3391,8 @@ pmap_activate(struct proc *p)
 #if defined(SWTCH_OPTIM_STATS)
 	tlb_flush_count++;
 #endif
-	load_cr3(p->p_addr->u_pcb.pcb_cr3 = vtophys(pmap->pm_pdir));
+	p->p_thread->td_pcb->pcb_cr3 = vtophys(pmap->pm_pdir);
+	load_cr3(p->p_thread->td_pcb->pcb_cr3);
 }
 
 vm_offset_t

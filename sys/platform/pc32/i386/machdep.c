@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.3 2003/06/18 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.4 2003/06/18 18:29:55 dillon Exp $
  */
 
 #include "apm.h"
@@ -569,7 +569,7 @@ osendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	 */
 	if (regs->tf_eflags & PSL_VM) {
 		struct trapframe_vm86 *tf = (struct trapframe_vm86 *)regs;
-		struct vm86_kernel *vm86 = &p->p_addr->u_pcb.pcb_ext->ext_vm86;
+		struct vm86_kernel *vm86 = &p->p_thread->td_pcb->pcb_ext->ext_vm86;
 
 		sf.sf_siginfo.si_sc.sc_gs = tf->tf_vm86_gs;
 		sf.sf_siginfo.si_sc.sc_fs = tf->tf_vm86_fs;
@@ -676,7 +676,7 @@ sendsig(catcher, sig, mask, code)
 	 */
 	if (regs->tf_eflags & PSL_VM) {
 		struct trapframe_vm86 *tf = (struct trapframe_vm86 *)regs;
-		struct vm86_kernel *vm86 = &p->p_addr->u_pcb.pcb_ext->ext_vm86;
+		struct vm86_kernel *vm86 = &p->p_thread->td_pcb->pcb_ext->ext_vm86;
 
 		sf.sf_uc.uc_mcontext.mc_gs = tf->tf_vm86_gs;
 		sf.sf_uc.uc_mcontext.mc_fs = tf->tf_vm86_fs;
@@ -757,9 +757,9 @@ osigreturn(p, uap)
 		 * if pcb_ext == 0 or vm86_inited == 0, the user hasn't
 		 * set up the vm86 area, and we can't enter vm86 mode.
 		 */
-		if (p->p_addr->u_pcb.pcb_ext == 0)
+		if (p->p_thread->td_pcb->pcb_ext == 0)
 			return (EINVAL);
-		vm86 = &p->p_addr->u_pcb.pcb_ext->ext_vm86;
+		vm86 = &p->p_thread->td_pcb->pcb_ext->ext_vm86;
 		if (vm86->vm86_inited == 0)
 			return (EINVAL);
 
@@ -877,9 +877,9 @@ sigreturn(p, uap)
 		 * if pcb_ext == 0 or vm86_inited == 0, the user hasn't
 		 * set up the vm86 area, and we can't enter vm86 mode.
 		 */
-		if (p->p_addr->u_pcb.pcb_ext == 0)
+		if (p->p_thread->td_pcb->pcb_ext == 0)
 			return (EINVAL);
-		vm86 = &p->p_addr->u_pcb.pcb_ext->ext_vm86;
+		vm86 = &p->p_thread->td_pcb->pcb_ext->ext_vm86;
 		if (vm86->vm86_inited == 0)
 			return (EINVAL);
 
@@ -1009,7 +1009,7 @@ setregs(p, entry, stack, ps_strings)
 	u_long ps_strings;
 {
 	struct trapframe *regs = p->p_md.md_regs;
-	struct pcb *pcb = &p->p_addr->u_pcb;
+	struct pcb *pcb = p->p_thread->td_pcb;
 
 	/* Reset pc->pcb_gs and %gs before possibly invalidating it. */
 	pcb->pcb_gs = _udatasel;
@@ -1044,7 +1044,7 @@ setregs(p, entry, stack, ps_strings)
                 pcb->pcb_dr3 = 0;
                 pcb->pcb_dr6 = 0;
                 pcb->pcb_dr7 = 0;
-                if (pcb == curpcb) {
+                if (pcb == curthread->td_pcb) {
 		        /*
 			 * Clear the debug registers on the running
 			 * CPU, otherwise they will end up affecting
@@ -1062,7 +1062,7 @@ setregs(p, entry, stack, ps_strings)
 	 * traps to the emulator (if it is done at all) mainly because
 	 * emulators don't provide an entry point for initialization.
 	 */
-	p->p_addr->u_pcb.pcb_flags &= ~FP_SOFTFP;
+	p->p_thread->td_pcb->pcb_flags &= ~FP_SOFTFP;
 
 	/*
 	 * Arrange to trap the next npx or `fwait' instruction (see npx.c
@@ -1865,6 +1865,10 @@ init386(first)
 	safepri = cpl;
 
 	proc0.p_addr = proc0paddr;
+	proc0.p_thread = &thread0;
+	thread0.td_proc = &proc0;
+	thread0.td_pcb = (struct pcb *)
+	    ((char *)proc0paddr + UPAGES*PAGE_SIZE - sizeof(struct pcb));
 
 	atdevbase = ISA_HOLE_START + KERNBASE;
 
@@ -1997,8 +2001,11 @@ init386(first)
 	setidt(13, &IDTVEC(prot),  SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	initializecpu();	/* Initialize CPU registers */
 
-	/* make an initial tss so cpu can get interrupt stack on syscall! */
-	common_tss.tss_esp0 = (int) proc0.p_addr + UPAGES*PAGE_SIZE - 16;
+	/*
+	 * make an initial tss so cpu can get interrupt stack on syscall!
+	 * The 16 bytes is to save room for a VM86 context.
+	 */
+	common_tss.tss_esp0 = (int) thread0.td_pcb - 16;
 	common_tss.tss_ss0 = GSEL(GDATA_SEL, SEL_KPL) ;
 	gsel_tss = GSEL(GPROC0_SEL, SEL_KPL);
 	private_tss = 0;
@@ -2054,12 +2061,12 @@ init386(first)
 	_udatasel = LSEL(LUDATA_SEL, SEL_UPL);
 
 	/* setup proc 0's pcb */
-	proc0.p_addr->u_pcb.pcb_flags = 0;
-	proc0.p_addr->u_pcb.pcb_cr3 = (int)IdlePTD;
+	thread0.td_pcb->pcb_flags = 0;
+	thread0.td_pcb->pcb_cr3 = (int)IdlePTD;	/* should already be setup */
 #ifdef SMP
-	proc0.p_addr->u_pcb.pcb_mpnest = 1;
+	thread0.td_pcb->pcb_mpnest = 1;
 #endif
-	proc0.p_addr->u_pcb.pcb_ext = 0;
+	thread0.td_pcb->pcb_ext = 0;
 	proc0.p_md.md_regs = &proc0_tf;
 }
 
@@ -2163,7 +2170,12 @@ int ptrace_write_u(p, off, data)
 		*(int*)((char *)p->p_addr + off) = data;
 		return (0);
 	}
-	min = offsetof(struct user, u_pcb) + offsetof(struct pcb, pcb_save);
+
+	/*
+	 * The PCB is at the end of the user area YYY
+	 */
+	min = (char *)p->p_thread->td_pcb - (char *)p->p_addr;
+	min += offsetof(struct pcb, pcb_save);
 	if (off >= min && off <= min + sizeof(union savefpu) - sizeof(int)) {
 		*(int*)((char *)p->p_addr + off) = data;
 		return (0);
@@ -2195,7 +2207,7 @@ fill_regs(p, regs)
 	regs->r_eflags = tp->tf_eflags;
 	regs->r_esp = tp->tf_esp;
 	regs->r_ss = tp->tf_ss;
-	pcb = &p->p_addr->u_pcb;
+	pcb = p->p_thread->td_pcb;
 	regs->r_gs = pcb->pcb_gs;
 	return (0);
 }
@@ -2227,7 +2239,7 @@ set_regs(p, regs)
 	tp->tf_eflags = regs->r_eflags;
 	tp->tf_esp = regs->r_esp;
 	tp->tf_ss = regs->r_ss;
-	pcb = &p->p_addr->u_pcb;
+	pcb = p->p_thread->td_pcb;
 	pcb->pcb_gs = regs->r_gs;
 	return (0);
 }
@@ -2293,12 +2305,12 @@ fill_fpregs(p, fpregs)
 {
 #ifdef CPU_ENABLE_SSE
 	if (cpu_fxsr) {
-		fill_fpregs_xmm(&p->p_addr->u_pcb.pcb_save.sv_xmm,
+		fill_fpregs_xmm(&p->p_thread->td_pcb->pcb_save.sv_xmm,
 						(struct save87 *)fpregs);
 		return (0);
 	}
 #endif /* CPU_ENABLE_SSE */
-	bcopy(&p->p_addr->u_pcb.pcb_save.sv_87, fpregs, sizeof *fpregs);
+	bcopy(&p->p_thread->td_pcb->pcb_save.sv_87, fpregs, sizeof *fpregs);
 	return (0);
 }
 
@@ -2310,11 +2322,11 @@ set_fpregs(p, fpregs)
 #ifdef CPU_ENABLE_SSE
 	if (cpu_fxsr) {
 		set_fpregs_xmm((struct save87 *)fpregs,
-					   &p->p_addr->u_pcb.pcb_save.sv_xmm);
+				       &p->p_thread->td_pcb->pcb_save.sv_xmm);
 		return (0);
 	}
 #endif /* CPU_ENABLE_SSE */
-	bcopy(fpregs, &p->p_addr->u_pcb.pcb_save.sv_87, sizeof *fpregs);
+	bcopy(fpregs, &p->p_thread->td_pcb->pcb_save.sv_87, sizeof *fpregs);
 	return (0);
 }
 
@@ -2336,7 +2348,7 @@ fill_dbregs(p, dbregs)
                 dbregs->dr7 = rdr7();
         }
         else {
-                pcb = &p->p_addr->u_pcb;
+                pcb = p->p_thread->td_pcb;
                 dbregs->dr0 = pcb->pcb_dr0;
                 dbregs->dr1 = pcb->pcb_dr1;
                 dbregs->dr2 = pcb->pcb_dr2;
@@ -2380,7 +2392,7 @@ set_dbregs(p, dbregs)
 			if ((dbregs->dr7 & mask1) == mask2)
 				return (EINVAL);
 		
-		pcb = &p->p_addr->u_pcb;
+		pcb = p->p_thread->td_pcb;
 		
 		/*
 		 * Don't let a process set a breakpoint that is not within the

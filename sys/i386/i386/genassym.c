@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/i386/i386/Attic/genassym.c,v 1.5 2003/06/18 16:30:09 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/genassym.c,v 1.6 2003/06/18 18:29:55 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -83,6 +83,7 @@ ASSYM(P_WCHAN, offsetof(struct proc, p_wchan));
 ASSYM(P_THREAD, offsetof(struct proc, p_thread));
 
 ASSYM(TD_PROC, offsetof(struct thread, td_proc));
+ASSYM(TD_PCB, offsetof(struct thread, td_pcb));
 
 #ifdef SMP
 ASSYM(P_ONCPU, offsetof(struct proc, p_oncpu));
@@ -141,9 +142,7 @@ ASSYM(PCB_SAVEFPU_SIZE, sizeof(union savefpu));
 ASSYM(PCB_SAVE87_SIZE, sizeof(struct save87));
 ASSYM(PCB_ONFAULT, offsetof(struct pcb, pcb_onfault));
 
-#ifdef SMP
 ASSYM(PCB_SIZE, sizeof(struct pcb));
-#endif
 
 ASSYM(TF_TRAPNO, offsetof(struct trapframe, tf_trapno));
 ASSYM(TF_ERR, offsetof(struct trapframe, tf_err));
@@ -176,7 +175,6 @@ ASSYM(BI_KERNEND, offsetof(struct bootinfo, bi_kernend));
 ASSYM(GD_SIZEOF, sizeof(struct globaldata));
 ASSYM(GD_CURTHREAD, offsetof(struct globaldata, gd_curthread));
 ASSYM(GD_NPXTHREAD, offsetof(struct globaldata, gd_npxthread));
-ASSYM(GD_CURPCB, offsetof(struct globaldata, gd_curpcb));
 ASSYM(GD_COMMON_TSS, offsetof(struct globaldata, gd_common_tss));
 ASSYM(GD_SWITCHTIME, offsetof(struct globaldata, gd_switchtime));
 ASSYM(GD_SWITCHTICKS, offsetof(struct globaldata, gd_switchticks));

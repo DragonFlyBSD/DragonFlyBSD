@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.4 2003/06/18 16:30:11 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.5 2003/06/18 18:30:01 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -513,8 +513,7 @@ npxinit(control)
 		fninit();
 #endif
 	fldcw(&control);
-	if (curpcb != NULL)
-		fpusave(&curpcb->pcb_save);
+	fpusave(&curthread->td_pcb->pcb_save);
 	start_emulating();
 }
 
@@ -527,13 +526,14 @@ npxexit(p)
 {
 
 	if (p->p_thread == npxthread)
-		npxsave(&curpcb->pcb_save);
+		npxsave(&curthread->td_pcb->pcb_save);
 #ifdef NPX_DEBUG
 	if (npx_exists) {
 		u_int	masked_exceptions;
 
-		masked_exceptions = curpcb->pcb_save.sv_87.sv_env.en_cw
-				    & curpcb->pcb_save.sv_87.sv_env.en_sw & 0x7f;
+		masked_exceptions = 
+		    curthread->td_pcb->pcb_save.sv_87.sv_env.en_cw
+		    & curthread->td_pcb->pcb_save.sv_87.sv_env.en_sw & 0x7f;
 		/*
 		 * Log exceptions that would have trapped with the old
 		 * control word (overflow, divide by 0, and invalid operand).
@@ -754,7 +754,7 @@ npx_intr(dummy)
 		panic("npxintr from non-current process");
 	}
 
-	exstat = GET_FPU_EXSW_PTR(curpcb);
+	exstat = GET_FPU_EXSW_PTR(curthread->td_pcb);
 	outb(0xf0, 0);
 	fnstsw(exstat);
 	fnstcw(&control);
@@ -827,7 +827,7 @@ npxdna()
 	 * Record new context early in case frstor causes an IRQ13.
 	 */
 	npxthread = curthread;
-	exstat = GET_FPU_EXSW_PTR(curpcb);
+	exstat = GET_FPU_EXSW_PTR(curthread->td_pcb);
 	*exstat = 0;
 	/*
 	 * The following frstor may cause an IRQ13 when the state being
@@ -841,7 +841,7 @@ npxdna()
 	 * fnsave are broken, so our treatment breaks fnclex if it is the
 	 * first FPU instruction after a context switch.
 	 */
-	fpurstor(&curpcb->pcb_save);
+	fpurstor(&curthread->td_pcb->pcb_save);
 
 	return (1);
 }

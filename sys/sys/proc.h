@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.4 2003/06/18 16:30:17 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.5 2003/06/18 18:30:11 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -382,6 +382,7 @@ extern u_long pgrphash;
 #endif
 
 extern struct proc proc0;		/* Process slot for swapper. */
+extern struct thread thread0;		/* Thread slot for swapper. */
 extern int hogticks;			/* Limit on kernel cpu hogs. */
 extern int nprocs, maxproc;		/* Current and max number of procs. */
 extern int maxprocperuid;		/* Max procs per uid. */

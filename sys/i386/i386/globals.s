@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/globals.s,v 1.4 2003/06/18 07:04:25 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/globals.s,v 1.5 2003/06/18 18:29:55 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -64,12 +64,11 @@ globaldata:
 #else
 	.set	globaldata,0
 #endif
-	.globl	gd_curthread, gd_curpcb, gd_npxthread, gd_astpending
+	.globl	gd_curthread, gd_npxthread, gd_astpending
 	.globl	gd_common_tss, gd_switchtime, gd_switchticks, gd_idlethread
 	.set	gd_curthread,globaldata + GD_CURTHREAD
 	.set	gd_idlethread,globaldata + GD_IDLETHREAD
 	.set	gd_astpending,globaldata + GD_ASTPENDING
-	.set	gd_curpcb,globaldata + GD_CURPCB
 	.set	gd_npxthread,globaldata + GD_NPXTHREAD
 	.set	gd_common_tss,globaldata + GD_COMMON_TSS
 	.set	gd_switchtime,globaldata + GD_SWITCHTIME
@@ -85,12 +84,11 @@ globaldata:
 #endif
 
 #ifndef SMP
-	.globl	_curthread, _curpcb, _npxthread, _astpending
+	.globl	_curthread, _npxthread, _astpending
 	.globl	_common_tss, _switchtime, _switchticks, _idlethread
 	.set	_curthread,globaldata + GD_CURTHREAD
 	.set	_idlethread,globaldata + GD_IDLETHREAD
 	.set	_astpending,globaldata + GD_ASTPENDING
-	.set	_curpcb,globaldata + GD_CURPCB
 	.set	_npxthread,globaldata + GD_NPXTHREAD
 	.set	_common_tss,globaldata + GD_COMMON_TSS
 	.set	_switchtime,globaldata + GD_SWITCHTIME

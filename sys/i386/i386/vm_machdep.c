@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.4 2003/06/18 16:30:09 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.5 2003/06/18 18:29:55 dillon Exp $
  */
 
 #include "npx.h"
@@ -127,7 +127,7 @@ cpu_fork(p1, p2, flags)
 #ifdef USER_LDT
 		if ((flags & RFMEM) == 0) {
 			/* unshare user LDT */
-			struct pcb *pcb1 = &p1->p_addr->u_pcb;
+			struct pcb *pcb1 = p1->p_thread->td_pcb;
 			struct pcb_ldt *pcb_ldt = pcb1->pcb_ldt;
 			if (pcb_ldt && pcb_ldt->ldt_refcnt > 1) {
 				pcb_ldt = user_ldt_alloc(pcb1,pcb_ldt->ldt_len);
@@ -143,20 +143,22 @@ cpu_fork(p1, p2, flags)
 #if NNPX > 0
 	/* Ensure that p1's pcb is up to date. */
 	if (npxthread == p1->p_thread)
-		npxsave(&p1->p_addr->u_pcb.pcb_save);
+		npxsave(&p1->p_thread->td_pcb->pcb_save);
 #endif
 
 	/* Copy p1's pcb. */
-	p2->p_addr->u_pcb = p1->p_addr->u_pcb;
-	pcb2 = &p2->p_addr->u_pcb;
+	*p2->p_thread->td_pcb = *p1->p_thread->td_pcb;
+	pcb2 = p2->p_thread->td_pcb;
 
 	/*
 	 * Create a new fresh stack for the new process.
 	 * Copy the trap frame for the return to user mode as if from a
-	 * syscall.  This copies the user mode register values.
+	 * syscall.  This copies the user mode register values.  The
+	 * 16 byte offset saves space for vm86, and must match 
+	 * common_tss.esp0 (kernel stack pointer on entry from user mode)
 	 */
 	p2->p_md.md_regs = (struct trapframe *)
-			   ((int)p2->p_addr + UPAGES * PAGE_SIZE - 16) - 1;
+			    ((char *)p2->p_thread->td_pcb - 16) - 1;
 	bcopy(p1->p_md.md_regs, p2->p_md.md_regs, sizeof(*p2->p_md.md_regs));
 
 	/*
@@ -224,15 +226,15 @@ cpu_set_fork_handler(p, func, arg)
 	 * Note that the trap frame follows the args, so the function
 	 * is really called like this:  func(arg, frame);
 	 */
-	p->p_addr->u_pcb.pcb_esi = (int) func;	/* function */
-	p->p_addr->u_pcb.pcb_ebx = (int) arg;	/* first arg */
+	p->p_thread->td_pcb->pcb_esi = (int) func;	/* function */
+	p->p_thread->td_pcb->pcb_ebx = (int) arg;	/* first arg */
 }
 
 void
 cpu_exit(p)
 	register struct proc *p;
 {
-	struct pcb *pcb = &p->p_addr->u_pcb; 
+	struct pcb *pcb = p->p_thread->td_pcb; 
 
 #if NNPX > 0
 	npxexit(p);
@@ -291,6 +293,7 @@ cpu_coredump(p, vp, cred)
 	bcopy(p->p_md.md_regs,
 	      tempuser + ((caddr_t) p->p_md.md_regs - (caddr_t) p->p_addr),
 	      sizeof(struct trapframe));
+	bcopy(p->p_thread->td_pcb, tempuser + ((char *)p->p_thread->td_pcb - (char *)p->p_addr), sizeof(struct pcb));
 
 	error = vn_rdwr(UIO_WRITE, vp, (caddr_t) tempuser, ctob(UPAGES),
 			(off_t)0, UIO_SYSSPACE, IO_UNIT, cred, (int *)NULL, p);

@@ -35,7 +35,7 @@
  *
  *	from: @(#)locore.s	7.3 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/locore.s,v 1.132.2.10 2003/02/03 20:54:49 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/locore.s,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/locore.s,v 1.3 2003/06/18 18:29:55 dillon Exp $
  *
  *		originally from: locore.s, by William F. Jolitz
  *
@@ -355,14 +355,18 @@ NON_GPROF_ENTRY(btext)
 
 /* now running relocated at KERNBASE where the system is linked to run */
 begin:
+	/*
+	 * set up the bootstrap stack.  The pcb sits at the end of the
+	 * bootstrap stack.
+	 */
 	/* set up bootstrap stack */
 	movl	_proc0paddr,%esp	/* location of in-kernel pages */
-	addl	$UPAGES*PAGE_SIZE,%esp	/* bootstrap stack end location */
-	xorl	%eax,%eax			/* mark end of frames */
+	addl	$UPAGES*PAGE_SIZE-PCB_SIZE,%esp	
+	xorl	%eax,%eax		/* mark end of frames */
 	movl	%eax,%ebp
-	movl	_proc0paddr,%eax
+	/*movl	_proc0paddr,%eax*/
 	movl	_IdlePTD, %esi
-	movl	%esi,PCB_CR3(%eax)
+	movl	%esi,PCB_CR3(%esp)
 
 	testl	$CPUID_PGE, R(_cpu_feature)
 	jz	1f

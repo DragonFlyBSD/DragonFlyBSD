@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.3 2003/06/18 18:29:55 dillon Exp $
  *
  */
 
@@ -137,9 +137,9 @@ i386_extend_pcb(struct proc *p)
 	ext = (struct pcb_ext *)kmem_alloc(kernel_map, ctob(IOPAGES+1));
 	if (ext == 0)
 		return (ENOMEM);
-	p->p_addr->u_pcb.pcb_ext = ext;
+	p->p_thread->td_pcb->pcb_ext = ext;
 	bzero(ext, sizeof(struct pcb_ext)); 
-	ext->ext_tss.tss_esp0 = (unsigned)p->p_addr + ctob(UPAGES) - 16;
+	ext->ext_tss.tss_esp0 = (unsigned)((char *)p->p_thread->td_pcb - 16);
 	ext->ext_tss.tss_ss0 = GSEL(GDATA_SEL, SEL_KPL);
 	/*
 	 * The last byte of the i/o map must be followed by an 0xff byte.
@@ -189,10 +189,10 @@ i386_set_ioperm(p, args)
 	 * cause confusion.  This probably requires a global 'usage registry'.
 	 */
 
-	if (p->p_addr->u_pcb.pcb_ext == 0)
+	if (p->p_thread->td_pcb->pcb_ext == 0)
 		if ((error = i386_extend_pcb(p)) != 0)
 			return (error);
-	iomap = (char *)p->p_addr->u_pcb.pcb_ext->ext_iomap;
+	iomap = (char *)p->p_thread->td_pcb->pcb_ext->ext_iomap;
 
 	if (ua.start + ua.length > IOPAGES * PAGE_SIZE * NBBY)
 		return (EINVAL);
@@ -220,12 +220,12 @@ i386_get_ioperm(p, args)
 	if (ua.start >= IOPAGES * PAGE_SIZE * NBBY)
 		return (EINVAL);
 
-	if (p->p_addr->u_pcb.pcb_ext == 0) {
+	if (p->p_thread->td_pcb->pcb_ext == 0) {
 		ua.length = 0;
 		goto done;
 	}
 
-	iomap = (char *)p->p_addr->u_pcb.pcb_ext->ext_iomap;
+	iomap = (char *)p->p_thread->td_pcb->pcb_ext->ext_iomap;
 
 	i = ua.start;
 	state = (iomap[i >> 3] >> (i & 7)) & 1;
@@ -253,7 +253,7 @@ set_user_ldt(struct pcb *pcb)
 {
 	struct pcb_ldt *pcb_ldt;
 
-	if (pcb != curpcb)
+	if (pcb != curthread->td_pcb)
 		return;
 
 	pcb_ldt = pcb->pcb_ldt;
@@ -309,7 +309,7 @@ user_ldt_free(struct pcb *pcb)
 	if (pcb_ldt == NULL)
 		return;
 
-	if (pcb == curpcb) {
+	if (pcb == curthread->td_pcb) {
 		lldt(_default_ldt);
 		currentldt = _default_ldt;
 	}
@@ -328,7 +328,7 @@ i386_get_ldt(p, args)
 	char *args;
 {
 	int error = 0;
-	struct pcb *pcb = &p->p_addr->u_pcb;
+	struct pcb *pcb = p->p_thread->td_pcb;
 	struct pcb_ldt *pcb_ldt = pcb->pcb_ldt;
 	int nldt, num;
 	union descriptor *lp;
@@ -378,7 +378,7 @@ i386_set_ldt(p, args)
 {
 	int error = 0, i, n;
 	int largest_ld;
-	struct pcb *pcb = &p->p_addr->u_pcb;
+	struct pcb *pcb = p->p_thread->td_pcb;
 	struct pcb_ldt *pcb_ldt = pcb->pcb_ldt;
 	union descriptor *descs;
 	int descs_size, s;

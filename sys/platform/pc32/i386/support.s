@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/support.s,v 1.67.2.5 2001/08/15 01:23:50 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.4 2003/06/18 07:04:25 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.5 2003/06/18 18:29:55 dillon Exp $
  */
 
 #include "npx.h"
@@ -671,7 +671,8 @@ ENTRY(copyout)
 	jmp	*_copyout_vector
 
 ENTRY(generic_copyout)
-	movl	_curpcb,%eax
+	movl	_curthread,%eax
+	movl	TD_PCB(%eax),%eax
 	movl	$copyout_fault,PCB_ONFAULT(%eax)
 	pushl	%esi
 	pushl	%edi
@@ -782,7 +783,8 @@ done_copyout:
 	popl	%edi
 	popl	%esi
 	xorl	%eax,%eax
-	movl	_curpcb,%edx
+	movl	_curthread,%edx
+	movl	TD_PCB(%edx),%edx
 	movl	%eax,PCB_ONFAULT(%edx)
 	ret
 
@@ -791,7 +793,8 @@ copyout_fault:
 	popl	%ebx
 	popl	%edi
 	popl	%esi
-	movl	_curpcb,%edx
+	movl	_curthread,%edx
+	movl	TD_PCB(%edx),%edx
 	movl	$0,PCB_ONFAULT(%edx)
 	movl	$EFAULT,%eax
 	ret
@@ -801,7 +804,8 @@ ENTRY(i586_copyout)
 	/*
 	 * Duplicated from generic_copyout.  Could be done a bit better.
 	 */
-	movl	_curpcb,%eax
+	movl	_curthread,%eax
+	movl	TD_PCB(%eax),%eax
 	movl	$copyout_fault,PCB_ONFAULT(%eax)
 	pushl	%esi
 	pushl	%edi
@@ -858,7 +862,8 @@ ENTRY(copyin)
 	jmp	*_copyin_vector
 
 ENTRY(generic_copyin)
-	movl	_curpcb,%eax
+	movl	_curthread,%eax
+	movl	TD_PCB(%eax),%eax
 	movl	$copyin_fault,PCB_ONFAULT(%eax)
 	pushl	%esi
 	pushl	%edi
@@ -896,7 +901,8 @@ done_copyin:
 	popl	%edi
 	popl	%esi
 	xorl	%eax,%eax
-	movl	_curpcb,%edx
+	movl	_curthread,%edx
+	movl	TD_PCB(%edx),%edx
 	movl	%eax,PCB_ONFAULT(%edx)
 	ret
 
@@ -904,7 +910,8 @@ done_copyin:
 copyin_fault:
 	popl	%edi
 	popl	%esi
-	movl	_curpcb,%edx
+	movl	_curthread,%edx
+	movl	TD_PCB(%edx),%edx
 	movl	$0,PCB_ONFAULT(%edx)
 	movl	$EFAULT,%eax
 	ret
@@ -914,7 +921,8 @@ ENTRY(i586_copyin)
 	/*
 	 * Duplicated from generic_copyin.  Could be done a bit better.
 	 */
-	movl	_curpcb,%eax
+	movl	_curthread,%eax
+	movl	TD_PCB(%eax),%eax
 	movl	$copyin_fault,PCB_ONFAULT(%eax)
 	pushl	%esi
 	pushl	%edi
@@ -971,7 +979,8 @@ ENTRY(fastmove)
 	cmpl	$0,_npxthread
 	je	6f
 /*    fnsave(&curpcb->pcb_savefpu); */
-	movl	_curpcb,%eax
+	movl	_curthread,%eax
+	movl	TD_PCB(%eax),%eax
 	fnsave	PCB_SAVEFPU(%eax)
 /*   npxthread = NULL; */
 	movl	$0,_npxthread
@@ -991,7 +1000,8 @@ ENTRY(fastmove)
 	movl	%esi,-8(%ebp)
 	movl	%edi,-4(%ebp)
 	movl	%esp,%edi
-	movl	_curpcb,%esi
+	movl	_curthread,%esi
+	movl	TD_PCB(%esi),%esi
 	addl	$PCB_SAVEFPU,%esi
 	cld
 	movl	$PCB_SAVE87_SIZE>>2,%ecx
@@ -1005,7 +1015,8 @@ ENTRY(fastmove)
 /* npxthread = curthread; */
 	movl	_curthread,%eax
 	movl	%eax,_npxthread
-	movl	_curpcb,%eax
+	movl	_curthread,%eax
+	movl	TD_PCB(%eax),%eax
 	movl	$fastmove_fault,PCB_ONFAULT(%eax)
 4:
 	movl	%ecx,-12(%ebp)
@@ -1067,7 +1078,8 @@ fastmove_loop:
 	movl	%ecx,-12(%ebp)
 	movl	%esi,-8(%ebp)
 	movl	%edi,-4(%ebp)
-	movl	_curpcb,%edi
+	movl	_curthread,%edi
+	movl	TD_PCB(%edi),%edi
 	addl	$PCB_SAVEFPU,%edi
 	movl	%esp,%esi
 	cld
@@ -1087,7 +1099,8 @@ fastmove_loop:
 
 	ALIGN_TEXT
 fastmove_tail:
-	movl	_curpcb,%eax
+	movl	_curthread,%eax
+	movl	TD_PCB(%eax),%eax
 	movl	$fastmove_tail_fault,PCB_ONFAULT(%eax)
 
 	movb	%cl,%al
@@ -1106,7 +1119,8 @@ fastmove_tail:
 
 	ALIGN_TEXT
 fastmove_fault:
-	movl	_curpcb,%edi
+	movl	_curthread,%edi
+	movl	TD_PCB(%edi),%edi
 	addl	$PCB_SAVEFPU,%edi
 	movl	%esp,%esi
 	cld
@@ -1126,7 +1140,8 @@ fastmove_tail_fault:
 	popl	%ebx
 	popl	%edi
 	popl	%esi
-	movl	_curpcb,%edx
+	movl	_curthread,%edx
+	movl	TD_PCB(%edx),%edx
 	movl	$0,PCB_ONFAULT(%edx)
 	movl	$EFAULT,%eax
 	ret
@@ -1138,7 +1153,8 @@ fastmove_tail_fault:
  *	Fetch a byte (sword, word) from user memory
  */
 ENTRY(fuword)
-	movl	_curpcb,%ecx
+	movl	_curthread,%ecx
+	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
 	movl	4(%esp),%edx			/* from */
 
@@ -1164,7 +1180,8 @@ ENTRY(fuswintr)
  * fusword - MP SAFE
  */
 ENTRY(fusword)
-	movl	_curpcb,%ecx
+	movl	_curthread,%ecx
+	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
 	movl	4(%esp),%edx
 
@@ -1179,7 +1196,8 @@ ENTRY(fusword)
  * fubyte - MP SAFE
  */
 ENTRY(fubyte)
-	movl	_curpcb,%ecx
+	movl	_curthread,%ecx
+	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
 	movl	4(%esp),%edx
 
@@ -1192,7 +1210,8 @@ ENTRY(fubyte)
 
 	ALIGN_TEXT
 fusufault:
-	movl	_curpcb,%ecx
+	movl	_curthread,%ecx
+	movl	TD_PCB(%ecx),%ecx
 	xorl	%eax,%eax
 	movl	%eax,PCB_ONFAULT(%ecx)
 	decl	%eax
@@ -1204,7 +1223,8 @@ fusufault:
  *	Write a byte (word, longword) to user memory
  */
 ENTRY(suword)
-	movl	_curpcb,%ecx
+	movl	_curthread,%ecx
+	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
 	movl	4(%esp),%edx
 
@@ -1248,7 +1268,8 @@ ENTRY(suword)
 	movl	8(%esp),%eax
 	movl	%eax,(%edx)
 	xorl	%eax,%eax
-	movl	_curpcb,%ecx
+	movl	_curthread,%ecx
+	movl	TD_PCB(%ecx),%ecx
 	movl	%eax,PCB_ONFAULT(%ecx)
 	ret
 
@@ -1256,7 +1277,8 @@ ENTRY(suword)
  * susword - MP SAFE (if not I386_CPU)
  */
 ENTRY(susword)
-	movl	_curpcb,%ecx
+	movl	_curthread,%ecx
+	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
 	movl	4(%esp),%edx
 
@@ -1300,7 +1322,8 @@ ENTRY(susword)
 	movw	8(%esp),%ax
 	movw	%ax,(%edx)
 	xorl	%eax,%eax
-	movl	_curpcb,%ecx			/* restore trashed register */
+	movl	_curthread,%ecx			/* restore trashed register */
+	movl	TD_PCB(%ecx),%ecx
 	movl	%eax,PCB_ONFAULT(%ecx)
 	ret
 
@@ -1309,7 +1332,8 @@ ENTRY(susword)
  */
 ALTENTRY(suibyte)
 ENTRY(subyte)
-	movl	_curpcb,%ecx
+	movl	_curthread,%ecx
+	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
 	movl	4(%esp),%edx
 
@@ -1352,7 +1376,8 @@ ENTRY(subyte)
 	movb	8(%esp),%al
 	movb	%al,(%edx)
 	xorl	%eax,%eax
-	movl	_curpcb,%ecx			/* restore trashed register */
+	movl	_curthread,%ecx			/* restore trashed register */
+	movl	TD_PCB(%ecx),%ecx
 	movl	%eax,PCB_ONFAULT(%ecx)
 	ret
 
@@ -1367,7 +1392,8 @@ ENTRY(subyte)
 ENTRY(copyinstr)
 	pushl	%esi
 	pushl	%edi
-	movl	_curpcb,%ecx
+	movl	_curthread,%ecx
+	movl	TD_PCB(%ecx),%ecx
 	movl	$cpystrflt,PCB_ONFAULT(%ecx)
 
 	movl	12(%esp),%esi			/* %esi = from */
@@ -1415,7 +1441,8 @@ cpystrflt:
 
 cpystrflt_x:
 	/* set *lencopied and return %eax */
-	movl	_curpcb,%ecx
+	movl	_curthread,%ecx
+	movl	TD_PCB(%ecx),%ecx
 	movl	$0,PCB_ONFAULT(%ecx)
 	movl	20(%esp),%ecx
 	subl	%edx,%ecx

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_ptrace.c,v 1.7.4.3 2003/01/03 17:13:23 kan Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.3 2003/06/18 18:30:03 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -225,7 +225,7 @@ linux_proc_read_fpxregs(struct proc *p, struct linux_pt_fpxreg *fpxregs)
 	if (cpu_fxsr == 0 || (p->p_flag & P_INMEM) == 0)
 		error = EIO;
 	else
-		bcopy(&p->p_addr->u_pcb.pcb_save.sv_xmm,
+		bcopy(&p->p_thread->td_pcb->pcb_save.sv_xmm,
 		    fpxregs, sizeof(*fpxregs));
 	return (error);
 }
@@ -239,7 +239,7 @@ linux_proc_write_fpxregs(struct proc *p, struct linux_pt_fpxreg *fpxregs)
 	if (cpu_fxsr == 0 || (p->p_flag & P_INMEM) == 0)
 		error = EIO;
 	else
-		bcopy(fpxregs, &p->p_addr->u_pcb.pcb_save.sv_xmm,
+		bcopy(fpxregs, &p->p_thread->td_pcb->pcb_save.sv_xmm,
 		    sizeof(*fpxregs));
 	return (error);
 }
