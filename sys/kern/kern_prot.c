@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.10 2003/08/08 21:47:49 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.11 2003/11/04 22:13:22 drhodus Exp $
  */
 
 /*
@@ -55,6 +55,7 @@
 #include <sys/malloc.h>
 #include <sys/pioctl.h>
 #include <sys/resourcevar.h>
+#include <sys/thread2.h>
 #include <sys/jail.h>
 
 static MALLOC_DEFINE(M_CRED, "cred", "credentials");
@@ -883,10 +884,16 @@ crhold(struct ucred *cr)
 /*
  * Free a cred structure.
  * Throws away space when ref count gets to 0.
+ * MPSAFE
  */
 void
 crfree(struct ucred *cr)
 {
+	/* Protect crfree() as a critical section as there
+	 * appears to be a crfree race  which can occur on
+	 * SMP systems.
+	 */
+	crit_enter();
 	if (cr->cr_ref == 0)
 		panic("Freeing already free credential! %p", cr);
 	
@@ -913,6 +920,7 @@ crfree(struct ucred *cr)
 
 		FREE((caddr_t)cr, M_CRED);
 	}
+	crit_exit();
 }
 
 /*
