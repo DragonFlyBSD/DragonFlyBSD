@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.10 2004/05/19 22:52:49 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.11 2004/09/18 19:54:27 dillon Exp $
  */
 
 #ifndef lint
@@ -262,6 +262,7 @@ siattach(device_t dev)
 	struct speedtab *spt;
 	int nmodule, nport, x, y;
 	int uart_type;
+	int n;
 
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
@@ -512,6 +513,8 @@ mem_fail:
 	}
 	bzero(sc->sc_ports, sizeof(struct si_port) * nport);
 	sc->sc_nport = nport;
+	for (n = 0; n < nport; ++n)
+		callout_init(&sc->sc_ports[n].lstart_ch);
 
 	/*
 	 * allocate tty structures for ports
@@ -828,7 +831,7 @@ siclose(dev_t dev, int flag, int mode, struct thread *td)
 	/* ok. we are now still on the right track.. nuke the hardware */
 
 	if (pp->sp_state & SS_LSTART) {
-		untimeout(si_lstart, (caddr_t)pp, pp->lstart_ch);
+		callout_stop(&pp->lstart_ch);
 		pp->sp_state &= ~SS_LSTART;
 	}
 
@@ -1961,12 +1964,12 @@ si_start(struct tty *tp)
 		}
 
 		if ((pp->sp_state & (SS_LSTART|SS_INLSTART)) == SS_LSTART) {
-			untimeout(si_lstart, (caddr_t)pp, pp->lstart_ch);
+			callout_stop(&pp->lstart_ch);
 		} else {
 			pp->sp_state |= SS_LSTART;
 		}
 		DPRINT((pp, DBG_START, "arming lstart, time=%d\n", time));
-		pp->lstart_ch = timeout(si_lstart, (caddr_t)pp, time);
+		callout_reset(&pp->lstart_ch, time, si_lstart, (void *)pp);
 	}
 
 out:

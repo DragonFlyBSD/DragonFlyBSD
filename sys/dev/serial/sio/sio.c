@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.17 2004/07/03 21:23:37 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.18 2004/09/18 19:54:28 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -286,8 +286,7 @@ static	int	siogdbunit = -1;
 static	bool_t	sio_registered;
 static	int	sio_timeout;
 static	int	sio_timeouts_until_log;
-static	struct	callout_handle sio_timeout_handle
-    = CALLOUT_HANDLE_INITIALIZER(&sio_timeout_handle);
+static	struct	callout	sio_timeout_handle;
 static	int	sio_numunits;
 
 #ifdef COM_ESP
@@ -984,6 +983,12 @@ sioattach(dev, xrid, rclk)
 	int		rid;
 	struct resource *port;
 	int		ret;
+	static int	did_init;
+
+	if (did_init == 0) {
+		did_init = 1;
+		callout_init(&sio_timeout_handle);
+	}
 
 	rid = xrid;
 	port = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
@@ -2657,7 +2662,7 @@ siosettimeout()
 	 * Otherwise set it to max(1/200, 1/hz).
 	 * Enable timeouts iff some device is open.
 	 */
-	untimeout(comwakeup, (void *)NULL, sio_timeout_handle);
+	callout_stop(&sio_timeout_handle);
 	sio_timeout = hz;
 	someopen = FALSE;
 	for (unit = 0; unit < sio_numunits; ++unit) {
@@ -2673,13 +2678,13 @@ siosettimeout()
 	}
 	if (someopen) {
 		sio_timeouts_until_log = hz / sio_timeout;
-		sio_timeout_handle = timeout(comwakeup, (void *)NULL,
-					     sio_timeout);
+		callout_reset(&sio_timeout_handle, sio_timeout,
+				comwakeup, NULL);
 	} else {
 		/* Flush error messages, if any. */
 		sio_timeouts_until_log = 1;
 		comwakeup((void *)NULL);
-		untimeout(comwakeup, (void *)NULL, sio_timeout_handle);
+		callout_stop(&sio_timeout_handle);
 	}
 }
 
@@ -2690,7 +2695,7 @@ comwakeup(chan)
 	struct com_s	*com;
 	int		unit;
 
-	sio_timeout_handle = timeout(comwakeup, (void *)NULL, sio_timeout);
+	callout_reset(&sio_timeout_handle, sio_timeout, comwakeup, NULL);
 
 	/*
 	 * Recover from lost output interrupts.

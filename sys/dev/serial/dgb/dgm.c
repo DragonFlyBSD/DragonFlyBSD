@@ -1,6 +1,6 @@
 /*-
  * $FreeBSD: src/sys/dev/dgb/dgm.c,v 1.31.2.3 2001/10/07 09:02:25 brian Exp $
- * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.9 2004/05/19 22:52:49 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.10 2004/09/18 19:54:26 dillon Exp $
  *
  *  This driver and the associated header files support the ISA PC/Xem
  *  Digiboards.  Its evolutionary roots are described below.
@@ -195,7 +195,7 @@ struct dgm_softc {
 	struct resource *mem_res;
 	int iorid;
 	int mrid;
-	struct callout_handle toh;	/* poll timeout handle */
+	struct callout	toh;		/* poll timeout handle */
 };
 
 static void	dgmpoll(void *);
@@ -544,6 +544,7 @@ dgmattach(device_t dev)
 
 	DPRINT2(DB_INFO, "dbg%d: attaching\n", device_get_unit(dev));
 
+	callout_init(&sc->toh);
 	sc->unit = device_get_unit(dev);
 	bus_get_resource(dev, SYS_RES_IOPORT, 0, &sc->port, &iosize);
 	bus_get_resource(dev, SYS_RES_MEMORY, 0, &sc->pmem, &msize);
@@ -877,7 +878,8 @@ dgmattach(device_t dev)
 	hidewin(sc);
 
 	/* start the polling function */
-	sc->toh = timeout(dgmpoll, (void *)(int)sc->unit, hz / POLLSPERSEC);
+	callout_reset(&sc->toh, hz / POLLSPERSEC,
+			dgmpoll, (void *)(int)sc->unit);
 
 	DPRINT2(DB_INFO, "dgm%d: poll thread started\n", sc->unit);
 
@@ -903,8 +905,7 @@ dgmdetach(device_t dev)
 	 */
 	cdevsw_remove(&dgm_cdevsw, DGM_UNITMASK, DGM_UNIT(sc->unit));
 
-	untimeout(dgmpoll, (void *)(int)sc->unit, sc->toh);
-	callout_handle_init(&sc->toh);
+	callout_stop(&sc->toh);
 
 	bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
 	bus_release_resource(dev, SYS_RES_IOPORT, sc->iorid, sc->io_res);
@@ -1225,7 +1226,6 @@ dgmpoll(void *unit_c)
 
 	sc = devclass_get_softc(dgmdevclass, unit);
 	DPRINT2(DB_INFO, "dgm%d: poll\n", sc->unit);
-	callout_handle_init(&sc->toh);
 
 	if (!sc->enabled) {
 		printf("dgm%d: polling of disabled board stopped\n", unit);
@@ -1478,7 +1478,7 @@ dgmpoll(void *unit_c)
 	sc->mailbox->eout = tail;
 	bmws_set(ws);
 
-	sc->toh = timeout(dgmpoll, unit_c, hz / POLLSPERSEC);
+	callout_reset(&sc->toh, hz / POLLSPERSEC, dgmpoll, unit_c);
 
 	DPRINT2(DB_INFO, "dgm%d: poll done\n", sc->unit);
 }
