@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.9 2004/05/31 17:38:08 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.10 2004/07/04 05:16:30 dillon Exp $
  */
 
 /*
@@ -77,12 +77,13 @@ struct vnode	*rootvnode;
 static char *cdrom_rootdevnames[] = {
 	"cd9660:cd0a",
 	"cd9660:acd0a",
-	"cd9660:wcd0a",
+	"cd9660:cd1a",
+	"cd9660:acd1a",
 	NULL
 };
 
 static void	vfs_mountroot(void *junk);
-static int	vfs_mountroot_try(char *mountfrom);
+static int	vfs_mountroot_try(const char *mountfrom);
 static int	vfs_mountroot_ask(void);
 static void	gets(char *cp);
 
@@ -98,7 +99,8 @@ SYSINIT(mountroot, SI_SUB_MOUNT_ROOT, SI_ORDER_SECOND, vfs_mountroot, NULL);
 static void
 vfs_mountroot(void *junk)
 {
-	int		i;
+	int	i;
+	dev_t	save_rootdev = rootdev;
 	
 	/* 
 	 * The root filesystem information is compiled in, and we are
@@ -138,13 +140,22 @@ vfs_mountroot(void *junk)
 	if (!vfs_mountroot_try(getenv("vfs.root.mountfrom")))
 		return;
 
+	/*
+	 * If a vfs set rootdev, try it (XXX VINUM HACK!)
+	 */
+	if (save_rootdev != NODEV) {
+		rootdev = save_rootdev;
+		if (!vfs_mountroot_try(""))
+			return;
+	}
+
 	/* 
 	 * Try values that may have been computed by the machine-dependant
 	 * legacy code.
 	 */
-	if (!vfs_mountroot_try(rootdevnames[0]))
+	if (rootdevnames[0] && !vfs_mountroot_try(rootdevnames[0]))
 		return;
-	if (!vfs_mountroot_try(rootdevnames[1]))
+	if (rootdevnames[1] && !vfs_mountroot_try(rootdevnames[1]))
 		return;
 
 	/*
@@ -170,18 +181,18 @@ vfs_mountroot(void *junk)
  * Mount (mountfrom) as the root filesystem.
  */
 static int
-vfs_mountroot_try(char *mountfrom)
+vfs_mountroot_try(const char *mountfrom)
 {
 	struct thread	*td = curthread;
         struct mount	*mp;
-	char		*vfsname, *path;
+	char		*vfsname, *devname;
 	int		error;
 	char		patt[32];
 	lwkt_tokref	ilock;
 	int		s;
 
 	vfsname = NULL;
-	path    = NULL;
+	devname = NULL;
 	mp      = NULL;
 	error   = EINVAL;
 
@@ -192,17 +203,17 @@ vfs_mountroot_try(char *mountfrom)
 	printf("Mounting root from %s\n", mountfrom);
 	splx(s);
 
-	/* parse vfs name and path */
+	/* parse vfs name and devname */
 	vfsname = malloc(MFSNAMELEN, M_MOUNT, M_WAITOK);
-	path = malloc(MNAMELEN, M_MOUNT, M_WAITOK);
-	vfsname[0] = path[0] = 0;
+	devname = malloc(MNAMELEN, M_MOUNT, M_WAITOK);
+	vfsname[0] = devname[0] = 0;
 	sprintf(patt, "%%%d[a-z0-9]:%%%ds", MFSNAMELEN, MNAMELEN);
-	if (sscanf(mountfrom, patt, vfsname, path) < 1)
+	if (sscanf(mountfrom, patt, vfsname, devname) < 1)
 		goto done;
 
 	/* allocate a root mount */
-	error = vfs_rootmountalloc(vfsname, path[0] != 0 ? path : ROOTNAME,
-				   &mp);
+	error = vfs_rootmountalloc(vfsname, 
+			devname[0] != 0 ? devname : ROOTNAME, &mp);
 	if (error != 0) {
 		printf("Can't allocate root mount for filesystem '%s': %d\n",
 		       vfsname, error);
@@ -211,7 +222,7 @@ vfs_mountroot_try(char *mountfrom)
 	mp->mnt_flag |= MNT_ROOTFS;
 
 	/* do our best to set rootdev */
-	if ((path[0] != 0) && setrootbyname(path))
+	if ((devname[0] != 0) && setrootbyname(devname))
 		printf("setrootbyname failed\n");
 
 	/* If the root device is a type "memory disk", mount RW */
@@ -225,8 +236,8 @@ vfs_mountroot_try(char *mountfrom)
 done:
 	if (vfsname != NULL)
 		free(vfsname, M_MOUNT);
-	if (path != NULL)
-		free(path, M_MOUNT);
+	if (devname != NULL)
+		free(devname, M_MOUNT);
 	if (error != 0) {
 		if (mp != NULL) {
 			vfs_unbusy(mp, td);
@@ -260,7 +271,7 @@ vfs_mountroot_ask(void)
 	for(;;) {
 		printf("\nManual root filesystem specification:\n");
 		printf("  <fstype>:<device>  Mount <device> using filesystem <fstype>\n");
-		printf("                       eg. ufs:%sda0s1a\n", __SYS_PATH_DEV);
+		printf("                       eg. ufs:da0s1a\n");
 		printf("  ?                  List valid disk boot devices\n");
 		printf("  <empty line>       Abort manual input\n");
 		printf("\nmountroot> ");
@@ -325,61 +336,94 @@ gets(char *cp)
  * it refers to.
  */
 dev_t
-getdiskbyname(char *name) 
+getdiskbyname(const char *name) 
 {
 	char *cp;
+	int nlen;
 	int cd, unit, slice, part;
 	dev_t dev;
 	dev_t rdev;
 
-	slice = 0;
-	part = 0;
+	/*
+	 * Get the base name of the device
+	 */
 	if (strncmp(name, __SYS_PATH_DEV, sizeof(__SYS_PATH_DEV) - 1) == 0)
 		name += sizeof(__SYS_PATH_DEV) - 1;
-	cp = name;
-	while (*cp != '\0' && (*cp < '0' || *cp > '9') && *cp != '/')
-		cp++;
+	cp = __DECONST(char *, name);
+	while (*cp == '/')
+		++cp;
+	while (*cp >= 'a' && *cp <= 'z')
+		++cp;
 	if (cp == name) {
 		printf("missing device name\n");
 		return (NODEV);
 	}
-	if (*cp == '\0' || *cp == '/')
-		unit = -1;
-	else
-		unit = *cp - '0';
-	*cp++ = '\0';
-	for (cd = 0; cd < NUMCDEVSW; cd++) {
-		dev = udev2dev(makeudev(cd, dkmakeminor(unit, slice, part)), 0);
-		if (dev_is_good(dev) && dev_dname(dev) &&
-		    strcmp(dev_dname(dev), name) == 0) {
-			goto gotit;
-		}
-	}
-	printf("no such device '%s'\n", name);
-	return (NODEV);
-gotit:
-	if (dev_dmaj(dev) == major(rootdev)) {
-		/* driver has already configured rootdev, e. g. vinum */
-		return (rootdev);
-	}
-	if (unit == -1) {
-		printf("missing unit number\n");
+	nlen = cp - name;
+
+	/*
+	 * Get the unit.
+	 */
+	unit = strtol(cp, &cp, 10);
+	if (name + nlen == (const char *)cp || unit < 0 || unit > DKMAXUNIT) {
+		printf("bad unit: %d\n", unit);
 		return (NODEV);
 	}
-	while (*cp >= '0' && *cp <= '9')
-		unit = 10 * unit + *cp++ - '0';
-	if (*cp == 's' && cp[1] >= '0' && cp[1] <= '9') {
-		slice = cp[1] - '0' + 1;
+
+	/*
+	 * Get the slice.  Note that if no partition or partition 'a' is
+	 * specified, and no slice is specified, we will try both 'ad0a'
+	 * (which is what you get when slice is 0), and also 'ad0' (the
+	 * whole-disk partition, slice == 1).
+	 */
+	if (*cp == 's') {
+		slice = cp[1] - '0';
+		if (slice < 1 || slice > 9) {
+			printf("bad slice number\n");
+			return(NODEV);
+		}
+		++slice;	/* slice #1 starts at 2 */
 		cp += 2;
+	} else {
+		slice = 0;
 	}
-	if (*cp >= 'a' && *cp <= 'h') {
+
+	/*
+	 * Get the partition.
+	 */
+	if (*cp >= 'a' && *cp <= 'p') {
 		part = *cp - 'a';
-		cp++;
+		++cp;
+	} else {
+		part = 0;
 	}
+
 	if (*cp != '\0') {
 		printf("junk after name\n");
 		return (NODEV);
 	}
+
+	/*
+	 * Locate the device
+	 */
+	for (cd = 0; cd < NUMCDEVSW; cd++) {
+		const char *dname;
+
+		dev = udev2dev(makeudev(cd, dkmakeminor(unit, slice, part)), 0);
+		if (dev_is_good(dev) && (dname = dev_dname(dev)) != NULL) {
+			if (strlen(dname) == nlen &&
+			    strncmp(dname, name, nlen) == 0) {
+				break;
+			}
+		}
+	}
+	if (cd == NUMCDEVSW) {
+		printf("no such device '%*.*s'\n", nlen, nlen, name);
+		return (NODEV);
+	}
+
+	/*
+	 * FOUND DEVICE
+	 */
 	rdev = make_sub_dev(dev, dkmakeminor(unit, slice, part));
 	return(rdev);
 }

@@ -37,7 +37,7 @@
  *
  *	@(#)conf.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/conf.h,v 1.103.2.6 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/sys/conf.h,v 1.7 2004/05/19 22:53:02 dillon Exp $
+ * $DragonFly: src/sys/sys/conf.h,v 1.8 2004/07/04 05:16:32 dillon Exp $
  */
 
 #ifndef _SYS_CONF_H_
@@ -322,7 +322,7 @@ dev_t	make_adhoc_dev (struct cdevsw *devsw, int minor);
 dev_t	make_sub_dev (dev_t dev, int minor);
 int	lminor (dev_t dev);
 void	setconf (void);
-dev_t	getdiskbyname(char *name);
+dev_t	getdiskbyname(const char *name);
 int	dev_is_good(dev_t dev);
 
 /*

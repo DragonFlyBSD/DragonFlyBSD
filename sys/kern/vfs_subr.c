@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.33 2004/06/15 00:30:53 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.34 2004/07/04 05:16:30 dillon Exp $
  */
 
 /*
@@ -308,9 +308,10 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 
 	if (fstypename == NULL)
 		return (ENODEV);
-	for (vfsp = vfsconf; vfsp; vfsp = vfsp->vfc_next)
+	for (vfsp = vfsconf; vfsp; vfsp = vfsp->vfc_next) {
 		if (!strcmp(vfsp->vfc_name, fstypename))
 			break;
+	}
 	if (vfsp == NULL)
 		return (ENODEV);
 	mp = malloc((u_long)sizeof(struct mount), M_MOUNT, M_WAITOK);
