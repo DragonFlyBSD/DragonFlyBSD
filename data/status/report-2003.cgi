@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/report-2003.cgi,v 1.3 2004/01/12 17:24:59 justin Exp $
+# $DragonFly: site/data/status/Attic/report-2003.cgi,v 1.4 2004/01/15 19:29:06 justin Exp $
 
 $TITLE(DragonFly - Activity Summary)
 
@@ -209,6 +209,16 @@ libcaps has been created.  This is a library that allows userland threading, sim
 	<a href="http://www.csl.sony.co.jp/person/kjc/kjc/software.html">ALTQ</a> and
 	<A HREF="http://kerneltrap.org/node/view/1021">CARP</A>.
 </BLOCKQUOTE>
+
+<H2>Prelinking</H2>
+<BLOCKQUOTE>
+Prelinking capability was added to DragonFly by Simon 'corecode'
+Schubert, which allows faster loading of applications that use a large
+number of dynamic libraries while running, like Qt/KDE.  It is not 
+currently hooked into the
+system or any port building process.
+</BLOCKQUOTE>
+
 
 <H2>RAID support at install</H2>
 <BLOCKQUOTE>
