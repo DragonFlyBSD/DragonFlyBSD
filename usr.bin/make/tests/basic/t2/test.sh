@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# $DragonFly: src/usr.bin/make/tests/basic/t2/test.sh,v 1.3 2005/02/25 11:57:32 okumoto Exp $
+# $DragonFly: src/usr.bin/make/tests/basic/t2/test.sh,v 1.4 2005/02/25 12:28:13 okumoto Exp $
 
-. ../../env.sh
+. ../../common.sh
 
 run_test()
 {
