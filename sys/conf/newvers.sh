@@ -33,23 +33,30 @@
 #
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
-# $DragonFly: src/sys/conf/newvers.sh,v 1.10 2004/10/22 23:43:25 dillon Exp $
+# $DragonFly: src/sys/conf/newvers.sh,v 1.11 2005/04/05 21:41:19 dillon Exp $
 
 tag="\$Name:  $"
 
-# Set BRANCH based on TAG, remove any DragonFly_ prefix to the tag.
-# If there is no tag set the branch name to CURRENT. 
+# Extract the tag name, if any.
 #
-BRANCH="`echo $tag | awk '{ print $2; }' | sed -e 's/DragonFly_//'`"
+BRANCH=$(echo $tag | awk '{ print $2; }')
+
+# Remove any DragonFly_ prefix or _Slip suffix.  Release branches are 
+# typically extracted using a slip tag rather then the branch tag in order
+# to guarentee that the subversion file is synchronized with the files being
+# extracted.
+#
+BRANCH=${BRANCH#DragonFly_}
+BRANCH=${BRANCH%_Slip}
 
 # This case occurs if we have checked out without a tag (i.e. HEAD), either
 # implicitly or explicitly.
 #
 if [ "X${BRANCH}" = "X$" ]; then
-    BRANCH="CURRENT"
+    BRANCH="DEVELOPMENT"
 fi
 if [ "X${BRANCH}" = "XHEAD" ]; then
-    BRANCH="CURRENT"
+    BRANCH="DEVELOPMENT"
 fi
 
 # This case occurs if the $Name:  $ field has not been expanded.
@@ -59,7 +66,41 @@ if [ "X${BRANCH}" = "X" ]; then
 fi
 
 TYPE="DragonFly"
-REVISION="1.1"
+
+# The SHORTTAG is inclusive of the BLAH_X_Y version (if any)
+#
+SHORTTAG=${BRANCH}
+
+# Figure out the revision and subversion, if any.  If the tag is in 
+# the form NAME_X_Y the revision is extracted from X and Y and the branch
+# tag is truncated to just NAME.  Otherwise we are on the HEAD branch and
+# we are either HEAD or PREVIEW and the programmed revision is used.
+#
+# If we are on a branch-tag we must also figure out the sub-version.  The
+# sub-version is extracted from the 'subvers-${SHORTTAG}' file.  This file
+# typically only exists within branches.
+#
+REVISION=${BRANCH#*_}
+BRANCH=${BRANCH%%_*}
+
+if [ "${REVISION}" != "${BRANCH}" ]; then
+    REVISION=$(echo $REVISION | sed -e 's/_/./g')
+    for chkdir in machine/../../.. .. ../.. ../../.. /usr/src; do
+	if [ -f ${chkdir}/sys/conf/subvers-${SHORTTAG} ]; then
+	    SUBVER=$(tail -1 ${chkdir}/sys/conf/subvers-${SHORTTAG} | awk '{ print $1; }')
+	    if [ "X${SUBVER}" != "X" ]; then
+		REVISION="${REVISION}.${SUBVER}"
+		break
+	    fi
+	fi
+    done
+else
+    # Applies to HEAD branch or tags on the HEAD branch only, ignored when
+    # run on a branch.
+    #
+    REVISION="1.1"
+fi
+
 RELEASE="${REVISION}-${BRANCH}"
 VERSION="${TYPE} ${RELEASE}"
 
