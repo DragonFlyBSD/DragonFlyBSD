@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.17 2004/06/26 08:35:15 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.18 2004/06/26 17:03:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,14 +53,23 @@
 
 #include <sys/lockf.h>
 #include <machine/limits.h>	/* for LLONG_MAX */
+#include <machine/stdarg.h>
 
 #ifdef INVARIANTS
 int lf_global_counter = 0;
 #endif
+
 #ifdef LOCKF_DEBUG
 int lf_print_ranges = 0;
 
-static void	lf_print_lock(const struct lockf *);
+static void _lf_print_lock(const struct lockf *);
+static void _lf_printf(const char *, ...);
+
+#define lf_print_lock(lock) if (lf_print_ranges) _lf_print_lock(lock)
+#define lf_printf(ctl, args...)	if (lf_print_ranges) _lf_printf(ctl, args)
+#else
+#define lf_print_lock(lock)
+#define lf_printf(ctl, args...)
 #endif
 
 static MALLOC_DEFINE(M_LOCKF, "lockf", "Byte-range locking structures");
@@ -242,10 +251,7 @@ restart:
 	insert_point = NULL;
 	wakeup_needed = 0;
 
-#ifdef LOCKF_DEBUG
-	if (lf_print_ranges)
-		lf_print_lock(lock);
-#endif
+	lf_print_lock(lock);
 
 	TAILQ_FOREACH(range, &lock->lf_range, lf_link) {
 		if (insert_point == NULL && range->lf_start >= start)
@@ -516,10 +522,7 @@ restart:
 	}
 
 do_wakeup:
-#ifdef LOCKF_DEBUG
-	if (lf_print_ranges)
-		lf_print_lock(lock);
-#endif
+	lf_print_lock(lock);
 	if (wakeup_needed)
 		lf_wakeup(lock, start, end);
 	error = 0;
@@ -762,11 +765,8 @@ lf_create_range(struct lockf_range *range, struct proc *owner, int type,
 	range->lf_end = end;
 	range->lf_owner = owner;
 
-#ifdef LOCKF_DEBUG
-	if (lf_print_ranges)
-		printf("lf_create_range: %lld..%lld\n", range->lf_start,
-		       range->lf_end);
-#endif
+	lf_printf("lf_create_range: %lld..%lld\n",
+			range->lf_start, range->lf_end);
 }
 
 static void
@@ -775,11 +775,8 @@ lf_destroy_range(struct lockf_range *range, int accounting)
 	struct proc *owner = range->lf_owner;
 	int flags = range->lf_flags;
 
-#ifdef LOCKF_DEBUG
-	if (lf_print_ranges)
-		printf("lf_destroy_range: %lld..%lld\n", range->lf_start,
-		       range->lf_end);
-#endif
+	lf_printf("lf_destroy_range: %lld..%lld\n",
+			range->lf_start, range->lf_end);
 
 	free(range, M_LOCKF);
 	if (owner != NULL && (flags & F_POSIX) && accounting) {
@@ -796,15 +793,35 @@ lf_destroy_range(struct lockf_range *range, int accounting)
 }
 
 #ifdef LOCKF_DEBUG
+
 static void
-lf_print_lock(const struct lockf *lock)
+_lf_printf(const char *ctl, ...)
+{
+	struct proc *p;
+	__va_list va;
+
+	if (lf_print_ranges) {
+	    if ((p = curproc) != NULL)
+		printf("pid %d (%s): ", p->p_pid, p->p_comm);
+	}
+	__va_start(va, ctl);
+	vprintf(ctl, va);
+	__va_end(va);
+}
+
+static void
+_lf_print_lock(const struct lockf *lock)
 {
 	struct lockf_range *range;
 
-	if (TAILQ_EMPTY(&lock->lf_range))
-		printf("lockf %p: no ranges locked\n", lock);
-	else
-		printf("lockf %p:\n", lock);
+	if (lf_print_ranges == 0)
+		return;
+
+	if (TAILQ_EMPTY(&lock->lf_range)) {
+		lf_printf("lockf %p: no ranges locked\n", lock);
+	} else {
+		lf_printf("lockf %p:\n", lock);
+	}
 	TAILQ_FOREACH(range, &lock->lf_range, lf_link)
 		printf("\t%lld..%lld type %s owned by %d\n",
 		       range->lf_start, range->lf_end,
