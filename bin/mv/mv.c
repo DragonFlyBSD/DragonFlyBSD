@@ -32,7 +32,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mv.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/bin/mv/mv.c,v 1.24.2.6 2004/03/24 08:34:36 pjd Exp $
- * $DragonFly: src/bin/mv/mv.c,v 1.8 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/mv/mv.c,v 1.9 2004/11/29 21:45:00 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -53,18 +53,18 @@
 
 #include "pathnames.h"
 
-int fflg, iflg, nflg, vflg;
+static int	fflg, iflg, nflg, vflg;
 
-int	copy (char *, char *);
-int	do_move (char *, char *);
-int	fastcopy (char *, char *, struct stat *);
-int	main (int, char *[]);
-void	usage (void);
+static int	copy(const char *, const char *);
+static int	do_move (const char *, const char *);
+static int	fastcopy (const char *, const char *, struct stat *);
+static void	usage (void);
 
 int
 main(int argc, char **argv)
 {
-	int baselen, len, rval;
+	size_t baselen, len;
+	int rval;
 	char *p, *endp;
 	struct stat sb;
 	int ch;
@@ -139,8 +139,8 @@ main(int argc, char **argv)
 	exit(rval);
 }
 
-int
-do_move(char *from, char *to)
+static int
+do_move(const char *from, const char *to)
 {
 	struct stat sb;
 	int ask, ch, first;
@@ -234,8 +234,8 @@ do_move(char *from, char *to)
 	    fastcopy(from, to, &sb) : copy(from, to));
 }
 
-int
-fastcopy(char *from, char *to, struct stat *sbp)
+static int
+fastcopy(const char *from, const char *to, struct stat *sbp)
 {
 	struct timeval tval[2];
 	static u_int blen;
@@ -325,8 +325,8 @@ err:		if (unlink(to))
 	return (0);
 }
 
-int
-copy(char *from, char *to)
+static int
+copy(const char *from, const char *to)
 {
 	int pid, status;
 
@@ -370,7 +370,7 @@ copy(char *from, char *to)
 	return (0);
 }
 
-void
+static void
 usage(void)
 {
 
