@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.10 2004/02/01 04:15:28 justin Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.11 2004/02/01 04:27:03 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -174,18 +174,16 @@ main(int ac, char **av)
 	fclose(fi);
     }
     /*
-     * Generate table structure
-     * dr: Moved table structure below the reading of the web page to allow the title tags to populate.
+     * Generate the table structure after processing the web page so
+     * we can populate the tags properly.
      */
     printf("<HTML>\n");
     printf("<HEAD>\n");
 
-       if (Title) {
-    printf("<TITLE>%s</TITLE>\n", Title);
-       }
-       else {
-    printf("<TITLE>DragonFly</TITLE>\n");
-       }
+    if (Title)
+	printf("<TITLE>%s</TITLE>\n", Title);
+    else
+	printf("<TITLE>DragonFly</TITLE>\n");
 
     printf("<LINK REL=\"stylesheet\" HREF=\"/stylesheet.css\" TYPE=\"text/css\">");
     printf("</HEAD>\n");
@@ -197,9 +195,8 @@ main(int ac, char **av)
     printf("<TABLE BORDER=0 WIDTH=100%% BGCOLOR=\"#FFFFFF\">\n");
     printf("<TR><TD VALIGN=\"bottom\" ALIGN=\"right\">");
 
-	if (Title) {
-	    printf("<H2>%s</H2>", Title);
-	}
+    if (Title)
+	printf("<H2>%s</H2>", Title);
     printf("</TD><TD ALIGN=\"right\"><IMG SRC=\"/smalldf.jpg\"></TD>");
     printf("</TR><TR><TD COLSPAN=\"2\"><HR></TD>");
     printf("</TR></TABLE>");
