@@ -32,7 +32,7 @@
  *
  *	@(#)subr_prof.c	8.3 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/subr_prof.c,v 1.32.2.2 2000/08/03 00:09:32 ps Exp $
- * $DragonFly: src/sys/kern/subr_prof.c,v 1.7 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/subr_prof.c,v 1.8 2003/10/12 23:38:53 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -136,7 +136,7 @@ kmstartup(dummy)
 	 * Disable interrupts to avoid interference while we calibrate
 	 * things.
 	 */
-	disable_intr();
+	cpu_disable_intr();
 
 	/*
 	 * Determine overheads.
@@ -190,7 +190,7 @@ kmstartup(dummy)
 	p->state = GMON_PROF_OFF;
 	stopguprof(p);
 
-	enable_intr();
+	cpu_enable_intr();
 
 	nullfunc_loop_profiled_time = 0;
 	for (tmp_addr = (uintfptr_t)nullfunc_loop_profiled;
