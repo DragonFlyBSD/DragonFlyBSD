@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ed/if_ed_isa.c,v 1.5.2.2 2002/07/29 07:52:57 takawata Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.5 2003/11/20 22:07:27 dillon Exp $
+ * $FreeBSD: src/sys/dev/ed/if_ed_isa.c,v 1.5.2.4 2003/12/24 17:02:00 shiba Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.6 2004/02/08 06:47:35 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -94,6 +94,11 @@ ed_isa_probe(dev)
 	ed_release_resources(dev);
 
 	error = ed_probe_3Com(dev, 0, flags);
+	if (error == 0)
+		goto end;
+	ed_release_resources(dev);
+
+	error = ed_probe_SIC(dev, 0, flags);
 	if (error == 0)
 		goto end;
 	ed_release_resources(dev);

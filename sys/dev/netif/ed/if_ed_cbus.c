@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ed/if_ed_cbus.c,v 1.1.2.1 2000/09/10 08:45:11 nyan Exp $
- * $DragonFly: src/sys/dev/netif/ed/Attic/if_ed_cbus.c,v 1.5 2003/11/20 22:07:27 dillon Exp $
+ * $FreeBSD: src/sys/dev/ed/if_ed_cbus.c,v 1.1.2.3 2003/12/24 17:02:00 shiba Exp $
+ * $DragonFly: src/sys/dev/netif/ed/Attic/if_ed_cbus.c,v 1.6 2004/02/08 06:47:35 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -889,8 +889,8 @@ ed_probe_SIC98(dev, port_rid, flags)
 		return (error);
 	}
 
-	sc->asic_offset = ED_NOVELL_ASIC_OFFSET;
-	sc->nic_offset  = ED_NOVELL_NIC_OFFSET;
+	sc->asic_offset = ED_SIC_ASIC_OFFSET;
+	sc->nic_offset  = ED_SIC_NIC_OFFSET;
 
 	error = ed98_alloc_memory(dev, 0);
 	if (error) {
@@ -936,7 +936,7 @@ ed_probe_SIC98(dev, port_rid, flags)
 		return (ENXIO);
 	}
 
-	sc->vendor   = ED_VENDOR_MISC;
+	sc->vendor   = ED_VENDOR_SIC;
 	sc->type_str = "SIC98";
 	sc->isa16bit = 1;
 	sc->cr_proto = 0;

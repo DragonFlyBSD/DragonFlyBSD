@@ -6,8 +6,8 @@
  *   of this software, nor does the author assume any responsibility
  *   for damages incurred with its use.
  *
- * $FreeBSD: src/sys/dev/ed/if_edreg.h,v 1.27.2.3 2001/07/25 18:06:01 iedowse Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_edreg.h,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $FreeBSD: src/sys/dev/ed/if_edreg.h,v 1.27.2.4 2003/12/24 17:02:00 shiba Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_edreg.h,v 1.3 2004/02/08 06:47:35 hmp Exp $
  */
 /*
  * National Semiconductor DS8390 NIC register definitions
@@ -579,6 +579,7 @@ struct ed_ring	{
 #define ED_VENDOR_PCCARD	0x03		/* PCMCIA/PCCARD */
 #define ED_VENDOR_HP		0x04		/* Hewlett Packard */
 #define ED_VENDOR_LINKSYS	0x05		/* Linksys (Dlink) */
+#define ED_VENDOR_SIC		0x06		/* Allied-Telesis SIC */
 
 /*
  * Compile-time config flags
@@ -1100,6 +1101,14 @@ struct ed_ring	{
  */
 
 #define ED_TYPE_HP_PCLANPLUS	0x00
+
+/*
+ *			Definitions for Allied-Telesis SIC
+ */
+#define ED_SIC_NIC_OFFSET	0
+#define ED_SIC_ASIC_OFFSET	0x10		/* offset to nic i/o regs */
+
+#define ED_SIC_IO_PORTS		17		/* # of i/o addresses used */
 
 /*
  * Chip types.

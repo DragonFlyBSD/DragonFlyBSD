@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ed/if_edvar.h,v 1.4.2.4 2001/07/25 18:06:01 iedowse Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_edvar.h,v 1.3 2003/08/27 09:38:30 rob Exp $
+ * $FreeBSD: src/sys/dev/ed/if_edvar.h,v 1.4.2.5 2003/12/24 17:02:00 shiba Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_edvar.h,v 1.4 2004/02/08 06:47:35 hmp Exp $
  */
 
 /*
@@ -198,6 +198,7 @@ int	ed_probe_generic8390	(struct ed_softc *);
 int	ed_probe_WD80x3		(device_t, int, int);
 int	ed_probe_WD80x3_generic	(device_t, int, unsigned short *[]);
 int	ed_probe_3Com		(device_t, int, int);
+int	ed_probe_SIC		(device_t, int, int);
 int	ed_probe_Novell		(device_t, int, int);
 int	ed_probe_Novell_generic	(device_t, int);
 int	ed_probe_HP_pclanp	(device_t, int, int);
