@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/initrandom,v 1.1 2002/06/13 22:14:36 gordon Exp $
-# $DragonFly: src/etc/rc.d/initrandom,v 1.2 2003/07/28 19:30:53 rob Exp $
+# $DragonFly: src/etc/rc.d/initrandom,v 1.3 2004/01/16 07:11:23 dillon Exp $
 #
 
 # PROVIDE: initrandom
@@ -43,7 +43,7 @@ initrandom_start()
 	# Entropy below is not great,
 	# but better than nothing.
 	( ps -fauxww; sysctl -a; date; df -ib; dmesg; ps -fauxww; ) \
-	    | dd of=/dev/random bs=8k 2>/dev/null
+	    2>&1 | dd of=/dev/random bs=8k 2>/dev/null
 	cat /bin/ls | dd of=/dev/random bs=8k 2>/dev/null
 }
 
