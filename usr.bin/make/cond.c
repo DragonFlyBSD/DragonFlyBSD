@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.8 2004/11/12 22:42:36 dillon Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.9 2004/11/12 22:57:04 dillon Exp $
  */
 
 /*-
@@ -152,8 +152,7 @@ static Boolean	  skipLine = FALSE; 	/* Whether the parse module is skipping
  *-----------------------------------------------------------------------
  */
 static void
-CondPushBack (t)
-    Token   	  t;	/* Token to push back into the "stream" */
+CondPushBack (Token t)
 {
     condPushBack = t;
 }
@@ -161,7 +160,8 @@ CondPushBack (t)
 /*-
  *-----------------------------------------------------------------------
  * CondGetArg --
- *	Find the argument of a built-in function.
+ *	Find the argument of a built-in function.  parens is set to TRUE
+ *	if the arguments are bounded by parens.
  *
  * Results:
  *	The length of the argument and the address of the argument.
@@ -173,11 +173,7 @@ CondPushBack (t)
  *-----------------------------------------------------------------------
  */
 static int
-CondGetArg (linePtr, argPtr, func, parens)
-    char    	  **linePtr;
-    char    	  **argPtr;
-    char    	  *func;
-    Boolean 	  parens;   	/* TRUE if arg should be bounded by parens */
+CondGetArg (char **linePtr, char **argPtr, char *func, Boolean parens)
 {
     char	  *cp;
     int	    	  argLen;
@@ -275,9 +271,7 @@ CondGetArg (linePtr, argPtr, func, parens)
  *-----------------------------------------------------------------------
  */
 static Boolean
-CondDoDefined (argLen, arg)
-    int	    argLen;
-    char    *arg;
+CondDoDefined (int argLen, char *arg)
 {
     char    savec = arg[argLen];
     char    *p1;
@@ -309,9 +303,7 @@ CondDoDefined (argLen, arg)
  *-----------------------------------------------------------------------
  */
 static int
-CondStrMatch(string, pattern)
-    void *    string;
-    void *    pattern;
+CondStrMatch(void *string, void *pattern)
 {
     return(!Str_Match((char *) string,(char *) pattern));
 }
@@ -330,9 +322,7 @@ CondStrMatch(string, pattern)
  *-----------------------------------------------------------------------
  */
 static Boolean
-CondDoMake (argLen, arg)
-    int	    argLen;
-    char    *arg;
+CondDoMake (int argLen, char *arg)
 {
     char    savec = arg[argLen];
     Boolean result;
@@ -361,9 +351,7 @@ CondDoMake (argLen, arg)
  *-----------------------------------------------------------------------
  */
 static Boolean
-CondDoExists (argLen, arg)
-    int	    argLen;
-    char    *arg;
+CondDoExists (int argLen, char *arg)
 {
     char    savec = arg[argLen];
     Boolean result;
@@ -395,9 +383,7 @@ CondDoExists (argLen, arg)
  *-----------------------------------------------------------------------
  */
 static Boolean
-CondDoTarget (argLen, arg)
-    int	    argLen;
-    char    *arg;
+CondDoTarget (int argLen, char *arg)
 {
     char    savec = arg[argLen];
     Boolean result;
@@ -435,9 +421,7 @@ CondDoTarget (argLen, arg)
  *-----------------------------------------------------------------------
  */
 static char *
-CondCvtArg(str, value)
-    char		*str;
-    double		*value;
+CondCvtArg(char *str, double *value)
 {
     if ((*str == '0') && (str[1] == 'x')) {
 	long i;
@@ -476,8 +460,7 @@ CondCvtArg(str, value)
  *-----------------------------------------------------------------------
  */
 static Token
-CondToken(doEval)
-    Boolean doEval;
+CondToken(Boolean doEval)
 {
     Token	  t;
 
@@ -907,8 +890,7 @@ error:
  *-----------------------------------------------------------------------
  */
 static Token
-CondT(doEval)
-    Boolean doEval;
+CondT(Boolean doEval)
 {
     Token   t;
 
@@ -956,8 +938,7 @@ CondT(doEval)
  *-----------------------------------------------------------------------
  */
 static Token
-CondF(doEval)
-    Boolean doEval;
+CondF(Boolean doEval)
 {
     Token   l, o;
 
@@ -1003,8 +984,7 @@ CondF(doEval)
  *-----------------------------------------------------------------------
  */
 static Token
-CondE(doEval)
-    Boolean doEval;
+CondE(Boolean doEval)
 {
     Token   l, o;
 
@@ -1058,8 +1038,7 @@ CondE(doEval)
  *-----------------------------------------------------------------------
  */
 int
-Cond_Eval (line)
-    char    	    *line;    /* Line to parse */
+Cond_Eval (char *line)
 {
     struct If	    *ifp;
     Boolean 	    isElse;
@@ -1239,7 +1218,7 @@ Cond_Eval (line)
  *-----------------------------------------------------------------------
  */
 void
-Cond_End()
+Cond_End(void)
 {
     if (condTop != MAXIF) {
 	Parse_Error(PARSE_FATAL, "%d open conditional%s", MAXIF-condTop,

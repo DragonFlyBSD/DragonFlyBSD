@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.7 2004/11/12 22:42:36 dillon Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.8 2004/11/12 22:57:04 dillon Exp $
  */
 
 /*-
@@ -107,9 +107,7 @@ static int MakePrintStatus(void *, void *);
  *-----------------------------------------------------------------------
  */
 int
-Make_TimeStamp (pgn, cgn)
-    GNode *pgn;	/* the current parent */
-    GNode *cgn;	/* the child we've just examined */
+Make_TimeStamp (GNode *pgn, GNode *cgn)
 {
     if (cgn->mtime > pgn->cmtime) {
 	pgn->cmtime = cgn->mtime;
@@ -118,9 +116,7 @@ Make_TimeStamp (pgn, cgn)
 }
 
 static int
-MakeTimeStamp (pgn, cgn)
-    void * pgn;	/* the current parent */
-    void * cgn;	/* the child we've just examined */
+MakeTimeStamp (void *pgn, void *cgn)
 {
     return Make_TimeStamp((GNode *) pgn, (GNode *) cgn);
 }
@@ -144,8 +140,7 @@ MakeTimeStamp (pgn, cgn)
  *-----------------------------------------------------------------------
  */
 Boolean
-Make_OODate (gn)
-    GNode *gn;		      /* the node to check */
+Make_OODate (GNode *gn)
 {
     Boolean         oodate;
 
@@ -269,9 +264,7 @@ Make_OODate (gn)
  *-----------------------------------------------------------------------
  */
 static int
-MakeAddChild (gnp, lp)
-    void *     gnp;		/* the node to add */
-    void *     lp;		/* the list to which to add it */
+MakeAddChild (void *gnp, void *lp)
 {
     GNode          *gn = (GNode *) gnp;
     Lst            l = (Lst) lp;
@@ -306,9 +299,7 @@ MakeAddChild (gnp, lp)
  *-----------------------------------------------------------------------
  */
 int
-Make_HandleUse (cgn, pgn)
-    GNode	*cgn;		/* The .USE node */
-    GNode   	*pgn;		/* The target of the .USE node */
+Make_HandleUse (GNode *cgn, GNode *pgn)
 {
     GNode	*gn;	 	/* A child of the .USE node */
     LstNode	ln;	 	/* An element in the children list */
@@ -351,9 +342,7 @@ Make_HandleUse (cgn, pgn)
     return (0);
 }
 static int
-MakeHandleUse (pgn, cgn)
-    void * pgn;	/* the current parent */
-    void * cgn;	/* the child we've just examined */
+MakeHandleUse (void *pgn, void *cgn)
 {
     return Make_HandleUse((GNode *) pgn, (GNode *) cgn);
 }
@@ -384,8 +373,7 @@ MakeHandleUse (pgn, cgn)
  *-----------------------------------------------------------------------
  */
 void
-Make_Update (cgn)
-    GNode *cgn;			/* the child node */
+Make_Update (GNode *cgn)
 {
     GNode 	*pgn;		/* the parent node */
     char  	*cname;		/* the child's name */
@@ -546,10 +534,7 @@ Make_Update (cgn)
  *-----------------------------------------------------------------------
  */
 static int
-MakeAddAllSrc (cgnp, pgnp)
-    void *	cgnp;	/* The child to add */
-    void *	pgnp;	/* The parent to whose ALLSRC variable it should be */
-			/* added */
+MakeAddAllSrc (void *cgnp, void *pgnp)
 {
     GNode	*cgn = (GNode *) cgnp;
     GNode	*pgn = (GNode *) pgnp;
@@ -619,8 +604,7 @@ MakeAddAllSrc (cgnp, pgnp)
  *-----------------------------------------------------------------------
  */
 void
-Make_DoAllVar (gn)
-    GNode	*gn;
+Make_DoAllVar (GNode *gn)
 {
     Lst_ForEach (gn->children, MakeAddAllSrc, (void *) gn);
 
@@ -655,7 +639,7 @@ Make_DoAllVar (gn)
  *-----------------------------------------------------------------------
  */
 static Boolean
-MakeStartJobs ()
+MakeStartJobs (void)
 {
     GNode	*gn;
 
@@ -720,7 +704,9 @@ MakeStartJobs ()
  * MakePrintStatus --
  *	Print the status of a top-level node, viz. it being up-to-date
  *	already or not created due to an error in a lower level.
- *	Callback function for Make_Run via Lst_ForEach.
+ *	Callback function for Make_Run via Lst_ForEach.  If gn->unmade is
+ *	nonzero and that is meant to imply a cycle in the graph, then
+ *	cycle is TRUE.
  *
  * Results:
  *	Always returns 0.
@@ -731,11 +717,7 @@ MakeStartJobs ()
  *-----------------------------------------------------------------------
  */
 static int
-MakePrintStatus(gnp, cyclep)
-    void *  gnp;	    /* Node to examine */
-    void * 	cyclep;	    /* True if gn->unmade being non-zero implies
-			     * a cycle in the graph, not an error in an
-			     * inferior */
+MakePrintStatus(void *gnp, void *cyclep)
 {
     GNode   	*gn = (GNode *) gnp;
     Boolean 	cycle = *(Boolean *) cyclep;
@@ -792,8 +774,7 @@ MakePrintStatus(gnp, cyclep)
  *-----------------------------------------------------------------------
  */
 Boolean
-Make_Run (targs)
-    Lst             targs;	/* the initial list of targets */
+Make_Run (Lst targs)
 {
     GNode	    *gn;	/* a temporary pointer */
     Lst		    examine; 	/* List of targets to examine */

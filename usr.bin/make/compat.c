@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.8 2004/11/12 22:42:36 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.9 2004/11/12 22:57:04 dillon Exp $
  */
 
 /*-
@@ -102,8 +102,7 @@ static char *sh_builtin[] = {
  *-----------------------------------------------------------------------
  */
 static void
-CompatInterrupt (signo)
-    int	    signo;
+CompatInterrupt (int signo)
 {
     GNode   *gn;
 
@@ -147,8 +146,7 @@ CompatInterrupt (signo)
  *-----------------------------------------------------------------------
  */
 static int
-shellneed (cmd)
-	char *cmd;
+shellneed (char *cmd)
 {
 	char **av, **p;
 	int ac;
@@ -165,6 +163,7 @@ shellneed (cmd)
  * CompatRunCommand --
  *	Execute the next command for a target. If the command returns an
  *	error, the node's made field is set to ERROR and creation stops.
+ *	The node from which the command came is also given.
  *
  * Results:
  *	0 if the command succeeded, 1 if an error occurred.
@@ -175,9 +174,7 @@ shellneed (cmd)
  *-----------------------------------------------------------------------
  */
 static int
-CompatRunCommand (cmdp, gnp)
-    void *    cmdp;	    	/* Command to execute */
-    void *    gnp;    	/* Node from which the command came */
+CompatRunCommand (void *cmdp, void *gnp)
 {
     char    	  *cmdStart;	/* Start of expanded command */
     char	  *cp;
@@ -405,7 +402,7 @@ CompatRunCommand (cmdp, gnp)
 /*-
  *-----------------------------------------------------------------------
  * CompatMake --
- *	Make a target.
+ *	Make a target, given the parent, to abort if necessary.
  *
  * Results:
  *	0
@@ -416,9 +413,7 @@ CompatRunCommand (cmdp, gnp)
  *-----------------------------------------------------------------------
  */
 static int
-CompatMake (gnp, pgnp)
-    void *	gnp;	    /* The node to make */
-    void *  pgnp;	    /* Parent to abort if necessary */
+CompatMake (void *gnp, void *pgnp)
 {
     GNode *gn = (GNode *) gnp;
     GNode *pgn = (GNode *) pgnp;
@@ -623,7 +618,7 @@ CompatMake (gnp, pgnp)
 /*-
  *-----------------------------------------------------------------------
  * Compat_Run --
- *	Initialize this mode and start making.
+ *	Start making again, given a list of target nodes.
  *
  * Results:
  *	None.
@@ -634,8 +629,7 @@ CompatMake (gnp, pgnp)
  *-----------------------------------------------------------------------
  */
 void
-Compat_Run(targs)
-    Lst	    	  targs;    /* List of target nodes to re-create */
+Compat_Run(Lst targs)
 {
     char    	  *cp;	    /* Pointer to string of shell meta-characters */
     GNode   	  *gn = NULL;/* Current root target */

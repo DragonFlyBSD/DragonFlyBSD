@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.12.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.7 2004/11/12 22:42:36 dillon Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.8 2004/11/12 22:57:04 dillon Exp $
  */
 
 /*-
@@ -279,7 +279,10 @@ extern Lst  	create;	    	/* The list of target names specified on the
 				 * make(...) statements */
 extern Lst     	dirSearchPath; 	/* The list of directories to search when
 				 * looking for targets */
+extern Lst	parseIncPath;	/* The list of directories to search when
+				 * looking for includes */
 
+extern Boolean	jobsRunning;	/* True if jobs are running */
 extern Boolean	compatMake;	/* True if we are make compatible */
 extern Boolean	ignoreErrors;  	/* True if should ignore all errors */
 extern Boolean  beSilent;    	/* True if should print no commands */

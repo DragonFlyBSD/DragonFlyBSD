@@ -1,336 +1,271 @@
 /*
- * Missing stuff from OS's
+/*
+ * Copyright (c) 2002 Juli Mallett.  All rights reserved.
+ * Copyright (c) 1988, 1989, 1990, 1993
+ *      The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 1989 by Berkeley Softworks
+ * All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * Adam de Boor.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *      This product includes software developed by the University of
+ *      California, Berkeley and its contributors.
+ * 4. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
  *
  * $FreeBSD: src/usr.bin/make/util.c,v 1.5.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/util.c,v 1.3 2004/11/12 22:11:33 dillon Exp $
+ * $DragonFly: src/usr.bin/make/util.c,v 1.4 2004/11/12 22:57:04 dillon Exp $
  */
 
-#include <stdio.h>
-#include <errno.h>
-#include "make.h"
-
-#ifdef sun
-extern int errno, sys_nerr;
-extern char *sys_errlist[];
-
-char *
-strerror(e)
-    int e;
-{
-    static char buf[100];
-    if (e < 0 || e >= sys_nerr) {
-	sprintf(buf, "Unknown error %d", e);
-	return buf;
-    }
-    else
-	return sys_errlist[e];
-}
-#endif
-
-#ifdef ultrix
-#include <string.h>
-
-/* strdup
- *
- * Make a duplicate of a string.
- * For systems which lack this function.
- */
-char *
-strdup(str)
-    const char *str;
-{
-    size_t len;
-
-    if (str == NULL)
-	return NULL;
-    len = strlen(str) + 1;
-    if ((p = malloc(len)) == NULL)
-	return NULL;
-
-    return memcpy(p, str, len);
-}
-
-#endif
-
-#if defined(sun) || defined(__hpux) || defined(__sgi)
-
-int
-setenv(name, value, dum)
-    const char *name;
-    const char *value;
-    int dum;
-{
-    register char *p;
-    int len = strlen(name) + strlen(value) + 2; /* = \0 */
-    char *ptr = (char*) malloc(len);
-
-    (void) dum;
-
-    if (ptr == NULL)
-	return -1;
-
-    p = ptr;
-
-    while (*name)
-	*p++ = *name++;
-
-    *p++ = '=';
-
-    while (*value)
-	*p++ = *value++;
-
-    *p = '\0';
-
-    len = putenv(ptr);
-/*    free(ptr); */
-    return len;
-}
-#endif
-
-#ifdef __hpux
 #include <sys/types.h>
-#include <sys/param.h>
-#include <sys/syscall.h>
-#include <sys/signal.h>
 #include <sys/stat.h>
+#include <err.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
-#include <dirent.h>
-#include <sys/time.h>
-#include <time.h>
+#include <sysexits.h>
+#include <stdarg.h>
 #include <unistd.h>
 
+#include "make.h"
+#include "hash.h"
+#include "dir.h"
+#include "job.h"
+#include "pathnames.h"
 
-int
-killpg(pid, sig)
-    int pid, sig;
-{
-    return kill(-pid, sig);
-}
-
-void
-srandom(seed)
-    long seed;
-{
-    srand48(seed);
-}
-
-long
-random()
-{
-    return lrand48();
-}
-
-/* turn into bsd signals */
-void (*
-signal(s, a)) ()
-    int     s;
-    void (*a)();
-{
-    struct sigvec osv, sv;
-
-    (void) sigvector(s, (struct sigvec *) 0, &osv);
-    sv = osv;
-    sv.sv_handler = a;
-#ifdef SV_BSDSIG
-    sv.sv_flags = SV_BSDSIG;
-#endif
-
-    if (sigvector(s, &sv, (struct sigvec *) 0) == -1)
-        return (BADSIG);
-    return (osv.sv_handler);
-}
-
-#if !defined(BSD) && !defined(d_fileno)
-# define d_fileno d_ino
-#endif
-
-#ifndef DEV_DEV_COMPARE
-# define DEV_DEV_COMPARE(a, b) ((a) == (b))
-#endif
-
-/* strrcpy():
- *	Like strcpy, going backwards and returning the new pointer
+/*-
+ * Debug --
+ *	Print a debugging message given its format.
+ *
+ * Results:
+ *	None.
+ *
+ * Side Effects:
+ *	The message is printed.
  */
-static char *
-strrcpy(ptr, str)
-    register char *ptr, *str;
+/* VARARGS */
+void
+Debug(const char *fmt, ...)
 {
-    register int len = strlen(str);
+	va_list ap;
 
-    while (len)
-	*--ptr = str[--len];
+	va_start(ap, fmt);
+	(void)vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	(void)fflush(stderr);
+}
 
-    return (ptr);
-} /* end strrcpy */
-
-
-char   *
-getwd(pathname)
-    char   *pathname;
+/*-
+ * Error --
+ *	Print an error message given its format.
+ *
+ * Results:
+ *	None.
+ *
+ * Side Effects:
+ *	The message is printed.
+ */
+/* VARARGS */
+void
+Error(const char *fmt, ...)
 {
-    DIR    *dp;
-    struct dirent *d;
+	va_list ap;
+	va_start(ap, fmt);
+	(void)vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	(void)fprintf(stderr, "\n");
+	(void)fflush(stderr);
+}
 
-    struct stat st_root, st_cur, st_next, st_dotdot;
-    char    pathbuf[MAXPATHLEN], nextpathbuf[MAXPATHLEN * 2];
-    char   *pathptr, *nextpathptr, *cur_name_add;
+/*-
+ * Fatal --
+ *	Produce a Fatal error message. If jobs are running, waits for them
+ *	to finish.
+ *
+ * Results:
+ *	None
+ *
+ * Side Effects:
+ *	The program exits
+ */
+/* VARARGS */
+void
+Fatal(const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	if (jobsRunning)
+		Job_Wait();
 
-    /* find the inode of root */
-    if (stat("/", &st_root) == -1) {
-	(void) sprintf(pathname,
-			"getwd: Cannot stat \"/\" (%s)", strerror(errno));
-	return (NULL);
-    }
-    pathbuf[MAXPATHLEN - 1] = '\0';
-    pathptr = &pathbuf[MAXPATHLEN - 1];
-    nextpathbuf[MAXPATHLEN - 1] = '\0';
-    cur_name_add = nextpathptr = &nextpathbuf[MAXPATHLEN - 1];
+	(void)vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	(void)fprintf(stderr, "\n");
+	(void)fflush(stderr);
 
-    /* find the inode of the current directory */
-    if (lstat(".", &st_cur) == -1) {
-	(void) sprintf(pathname,
-			"getwd: Cannot stat \".\" (%s)", strerror(errno));
-	return (NULL);
-    }
-    nextpathptr = strrcpy(nextpathptr, "../");
+	if (DEBUG(GRAPH2))
+		Targ_PrintGraph(2);
+	exit(2);		/* Not 1 so -q can distinguish error */
+}
 
-    /* Descend to root */
-    for (;;) {
+/*
+ * Punt --
+ *	Major exception once jobs are being created. Kills all jobs, prints
+ *	a message and exits.
+ *
+ * Results:
+ *	None
+ *
+ * Side Effects:
+ *	All children are killed indiscriminately and the program Lib_Exits
+ */
+/* VARARGS */
+void
+Punt(const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
 
-	/* look if we found root yet */
-	if (st_cur.st_ino == st_root.st_ino &&
-	    DEV_DEV_COMPARE(st_cur.st_dev, st_root.st_dev)) {
-	    (void) strcpy(pathname, *pathptr != '/' ? "/" : pathptr);
-	    return (pathname);
+	(void)fprintf(stderr, "make: ");
+	(void)vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	(void)fprintf(stderr, "\n");
+	(void)fflush(stderr);
+
+	DieHorribly();
+}
+
+/*-
+ * DieHorribly --
+ *	Exit without giving a message.
+ *
+ * Results:
+ *	None
+ *
+ * Side Effects:
+ *	A big one...
+ */
+void
+DieHorribly(void)
+{
+	if (jobsRunning)
+		Job_AbortAll();
+	if (DEBUG(GRAPH2))
+		Targ_PrintGraph(2);
+	exit(2);		/* Not 1, so -q can distinguish error */
+}
+
+/*
+ * Finish --
+ *	Called when aborting due to errors in child shell to signal
+ *	abnormal exit.
+ *
+ * Results:
+ *	None
+ *
+ * Side Effects:
+ *	The program exits
+ */
+void
+Finish(errors)
+	int errors;	/* number of errors encountered in Make_Make */
+{
+	Fatal("%d error%s", errors, errors == 1 ? "" : "s");
+}
+
+/*
+ * emalloc --
+ *	malloc, but die on error.
+ */
+void *
+emalloc(len)
+	size_t len;
+{
+	void *p;
+
+	if ((p = malloc(len)) == NULL)
+		enomem();
+	return(p);
+}
+
+/*
+ * estrdup --
+ *	strdup, but die on error.
+ */
+char *
+estrdup(str)
+	const char *str;
+{
+	char *p;
+
+	if ((p = strdup(str)) == NULL)
+		enomem();
+	return(p);
+}
+
+/*
+ * erealloc --
+ *	realloc, but die on error.
+ */
+void *
+erealloc(ptr, size)
+	void *ptr;
+	size_t size;
+{
+	if ((ptr = realloc(ptr, size)) == NULL)
+		enomem();
+	return(ptr);
+}
+
+/*
+ * enomem --
+ *	die when out of memory.
+ */
+void
+enomem()
+{
+	err(2, NULL);
+}
+
+/*
+ * enunlink --
+ *	Remove a file carefully, avoiding directories.
+ */
+int
+eunlink(file)
+	const char *file;
+{
+	struct stat st;
+
+	if (lstat(file, &st) == -1)
+		return -1;
+
+	if (S_ISDIR(st.st_mode)) {
+		errno = EISDIR;
+		return -1;
 	}
+	return unlink(file);
+}
 
-	/* open the parent directory */
-	if (stat(nextpathptr, &st_dotdot) == -1) {
-	    snprintf(pathname, sizeof(pathname),
-			    "getwd: Cannot stat directory \"%s\" (%s)",
-			    nextpathptr, strerror(errno));
-	    return (NULL);
-	}
-	if ((dp = opendir(nextpathptr)) == NULL) {
-	     snprintf(pathname, sizeof(pathname),
-			    "getwd: Cannot open directory \"%s\" (%s)",
-			    nextpathptr, strerror(errno));
-	    return (NULL);
-	}
-
-	/* look in the parent for the entry with the same inode */
-	if (DEV_DEV_COMPARE(st_dotdot.st_dev, st_cur.st_dev)) {
-	    /* Parent has same device. No need to stat every member */
-	    for (d = readdir(dp); d != NULL; d = readdir(dp))
-		if (d->d_fileno == st_cur.st_ino)
-		    break;
-	}
-	else {
-	    /*
-	     * Parent has a different device. This is a mount point so we
-	     * need to stat every member
-	     */
-	    for (d = readdir(dp); d != NULL; d = readdir(dp)) {
-		if (ISDOT(d->d_name) || ISDOTDOT(d->d_name))
-		    continue;
-		(void) strcpy(cur_name_add, d->d_name);
-		if (lstat(nextpathptr, &st_next) == -1) {
-		    snprintf(pathname, sizeof(pathname), "getwd: Cannot stat \"%s\" (%s)",
-				    d->d_name, strerror(errno));
-		    (void) closedir(dp);
-		    return (NULL);
-		}
-		/* check if we found it yet */
-		if (st_next.st_ino == st_cur.st_ino &&
-		    DEV_DEV_COMPARE(st_next.st_dev, st_cur.st_dev))
-		    break;
-	    }
-	}
-	if (d == NULL) {
-	    (void) sprintf(pathname, "getwd: Cannot find \".\" in \"..\"");
-	    (void) closedir(dp);
-	    return (NULL);
-	}
-	st_cur = st_dotdot;
-	pathptr = strrcpy(pathptr, d->d_name);
-	pathptr = strrcpy(pathptr, "/");
-	nextpathptr = strrcpy(nextpathptr, "../");
-	(void) closedir(dp);
-	*cur_name_add = '\0';
-    }
-} /* end getwd */
-
-
-char    *sys_siglist[] = {
-        "Signal 0",
-        "Hangup",                       /* SIGHUP    */
-        "Interrupt",                    /* SIGINT    */
-        "Quit",                         /* SIGQUIT   */
-        "Illegal instruction",          /* SIGILL    */
-        "Trace/BPT trap",               /* SIGTRAP   */
-        "IOT trap",                     /* SIGIOT    */
-        "EMT trap",                     /* SIGEMT    */
-        "Floating point exception",     /* SIGFPE    */
-        "Killed",                       /* SIGKILL   */
-        "Bus error",                    /* SIGBUS    */
-        "Segmentation fault",           /* SIGSEGV   */
-        "Bad system call",              /* SIGSYS    */
-        "Broken pipe",                  /* SIGPIPE   */
-        "Alarm clock",                  /* SIGALRM   */
-        "Terminated",                   /* SIGTERM   */
-        "User defined signal 1",        /* SIGUSR1   */
-        "User defined signal 2",        /* SIGUSR2   */
-        "Child exited",                 /* SIGCLD    */
-        "Power-fail restart",           /* SIGPWR    */
-        "Virtual timer expired",        /* SIGVTALRM */
-        "Profiling timer expired",      /* SIGPROF   */
-        "I/O possible",                 /* SIGIO     */
-        "Window size changes",          /* SIGWINDOW */
-        "Stopped (signal)",             /* SIGSTOP   */
-        "Stopped",                      /* SIGTSTP   */
-        "Continued",                    /* SIGCONT   */
-        "Stopped (tty input)",          /* SIGTTIN   */
-        "Stopped (tty output)",         /* SIGTTOU   */
-        "Urgent I/O condition",         /* SIGURG    */
-        "Remote lock lost (NFS)",       /* SIGLOST   */
-        "Signal 31",                    /* reserved  */
-        "DIL signal"                    /* SIGDIL    */
-};
 
 int
-utimes(file, tvp)
-    char *file;
-    struct timeval tvp[2];
+PrintAddr(a, b)
+    void * a;
+    void * b;
 {
-    struct utimbuf t;
-
-    t.actime  = tvp[0].tv_sec;
-    t.modtime = tvp[1].tv_sec;
-    return(utime(file, &t));
+    printf("%lx ", (unsigned long) a);
+    return b ? 0 : 0;
 }
 
-
-#endif /* __hpux */
-
-#if defined(sun) && defined(__svr4__)
-#include <signal.h>
-
-/* turn into bsd signals */
-void (*
-signal(s, a)) ()
-    int     s;
-    void (*a)();
-{
-    struct sigaction sa, osa;
-
-    sa.sa_handler = a;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART;
-
-    if (sigaction(s, &sa, &osa) == -1)
-	return SIG_ERR;
-    else
-	return osa.sa_handler;
-}
-
-#endif

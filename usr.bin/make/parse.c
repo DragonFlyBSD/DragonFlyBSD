@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.10 2004/11/12 22:42:36 dillon Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.11 2004/11/12 22:57:04 dillon Exp $
  */
 
 /*-
@@ -265,8 +265,7 @@ static void ParseFinishLine(void);
  *----------------------------------------------------------------------
  */
 static int
-ParseFindKeyword (str)
-    char	    *str;		/* String to find */
+ParseFindKeyword (char *str)
 {
     int		    start,
 		    end,
@@ -338,9 +337,7 @@ Parse_Error(int type, const char *fmt, ...)
  *---------------------------------------------------------------------
  */
 static int
-ParseLinkSrc (pgnp, cgnp)
-    void *     pgnp;	/* The parent node */
-    void *     cgnp;	/* The child node */
+ParseLinkSrc (void *pgnp, void *cgnp)
 {
     GNode          *pgn = (GNode *) pgnp;
     GNode          *cgn = (GNode *) cgnp;
@@ -371,10 +368,7 @@ ParseLinkSrc (pgnp, cgnp)
  *---------------------------------------------------------------------
  */
 static int
-ParseDoOp (gnp, opp)
-    void *     gnp;		/* The node to which the operator is to be
-				 * applied */
-    void *     opp;		/* The operator to apply */
+ParseDoOp (void *gnp, void *opp)
 {
     GNode          *gn = (GNode *) gnp;
     int             op = *(int *) opp;
@@ -449,9 +443,7 @@ ParseDoOp (gnp, opp)
  *---------------------------------------------------------------------
  */
 static int
-ParseAddDep(pp, sp)
-    void * pp;
-    void * sp;
+ParseAddDep(void *pp, void *sp)
 {
     GNode *p = (GNode *) pp;
     GNode *s = (GNode *) sp;
@@ -489,10 +481,7 @@ ParseAddDep(pp, sp)
  *---------------------------------------------------------------------
  */
 static void
-ParseDoSrc (tOp, src, allsrc)
-    int		tOp;	/* operator (if any) from special targets */
-    char	*src;	/* name of the source to handle */
-    Lst		allsrc;	/* List of all sources to wait for */
+ParseDoSrc (int tOp, char *src, Lst allsrc)
 {
     GNode	*gn = NULL;
 
@@ -602,17 +591,15 @@ ParseDoSrc (tOp, src, allsrc)
  *-----------------------------------------------------------------------
  */
 static int
-ParseFindMain(gnp, dummy)
-    void *	  gnp;	    /* Node to examine */
-    void *    dummy;
+ParseFindMain(void *gnp, void *dummy __unused)
 {
     GNode   	  *gn = (GNode *) gnp;
     if ((gn->type & (OP_NOTMAIN|OP_USE|OP_EXEC|OP_TRANSFORM)) == 0) {
 	mainNode = gn;
 	Targ_SetMain(gn);
-	return (dummy ? 1 : 1);
+	return (1);
     } else {
-	return (dummy ? 0 : 0);
+	return (0);
     }
 }
 
@@ -630,9 +617,7 @@ ParseFindMain(gnp, dummy)
  *-----------------------------------------------------------------------
  */
 static int
-ParseAddDir(path, name)
-    void *	  path;
-    void *    name;
+ParseAddDir(void *path, void *name)
 {
     Dir_AddDir((Lst) path, (char *) name);
     return(0);
@@ -652,12 +637,10 @@ ParseAddDir(path, name)
  *-----------------------------------------------------------------------
  */
 static int
-ParseClearPath(path, dummy)
-    void * path;
-    void * dummy;
+ParseClearPath(void *path, void *dummy __unused)
 {
     Dir_ClearPath((Lst) path);
-    return(dummy ? 0 : 0);
+    return (0);
 }
 
 /*-
@@ -695,8 +678,7 @@ ParseClearPath(path, dummy)
  *---------------------------------------------------------------------
  */
 static void
-ParseDoDependency (line)
-    char           *line;	/* the line to parse */
+ParseDoDependency (char *line)
 {
     char  	   *cp;		/* our current position */
     GNode 	   *gn;		/* a general purpose temporary node */
@@ -884,8 +866,6 @@ ParseDoDependency (line)
 			break;
 		    case NotParallel:
 		    {
-			extern int  maxJobs;
-
 			maxJobs = 1;
 			break;
 		    }
@@ -1249,8 +1229,7 @@ ParseDoDependency (line)
  *---------------------------------------------------------------------
  */
 Boolean
-Parse_IsVar (line)
-    char  *line;		/* the line to check */
+Parse_IsVar (char *line)
 {
     Boolean wasSpace = FALSE;	/* set TRUE if found a space */
     Boolean haveName = FALSE;	/* Set TRUE if have a variable name */
@@ -1351,10 +1330,7 @@ Parse_IsVar (line)
  *---------------------------------------------------------------------
  */
 void
-Parse_DoVar (line, ctxt)
-    char            *line;	/* a line guaranteed to be a variable
-				 * assignment. This reduces error checks */
-    GNode   	    *ctxt;    	/* Context in which to do the assignment */
+Parse_DoVar (char *line, GNode *ctxt)
 {
     char	   *cp;	/* pointer into line */
     enum {
@@ -1516,9 +1492,7 @@ Parse_DoVar (line, ctxt)
  *	A new element is added to the commands list of the node.
  */
 static int
-ParseAddCmd(gnp, cmd)
-    void * gnp;	/* the node to which the command is to be added */
-    void * cmd;	/* the command to add */
+ParseAddCmd(void *gnp, void *cmd)
 {
     GNode *gn = (GNode *) gnp;
     /* if target already supplied, ignore commands */
@@ -1544,8 +1518,7 @@ ParseAddCmd(gnp, cmd)
  *-----------------------------------------------------------------------
  */
 static void
-ParseHasCommands(gnp)
-    void * 	  gnp;	    /* Node to examine */
+ParseHasCommands(void *gnp)
 {
     GNode *gn = (GNode *) gnp;
     if (!Lst_IsEmpty(gn->commands)) {
@@ -1568,8 +1541,7 @@ ParseHasCommands(gnp)
  *-----------------------------------------------------------------------
  */
 void
-Parse_AddIncludeDir (dir)
-    char    	  *dir;	    /* The name of the directory to add */
+Parse_AddIncludeDir (char *dir)
 {
     Dir_AddDir (parseIncPath, dir);
 }
@@ -1585,8 +1557,7 @@ Parse_AddIncludeDir (dir)
  *---------------------------------------------------------------------
  */
 static void
-ParseDoError(errmsg)
-    char          *errmsg;	/* error message */
+ParseDoError(char *errmsg)
 {
 	if (!isspace((unsigned char) *errmsg)) {
 		Parse_Error(PARSE_WARNING, "invalid syntax: .error%s", errmsg);
@@ -1622,8 +1593,7 @@ ParseDoError(errmsg)
  *---------------------------------------------------------------------
  */
 static void
-ParseDoInclude (file)
-    char          *file;	/* file specification */
+ParseDoInclude (char *file)
 {
     char          *fullname;	/* full pathname of file */
     IFile         *oldFile;	/* state associated with current file */
@@ -1802,8 +1772,7 @@ ParseDoInclude (file)
  *---------------------------------------------------------------------
  */
 void
-Parse_FromString(str)
-    char *str;
+Parse_FromString(char *str)
 {
     IFile         *oldFile;	/* state associated with this file */
 
@@ -1843,8 +1812,7 @@ Parse_FromString(str)
  *---------------------------------------------------------------------
  */
 static void
-ParseTraditionalInclude (file)
-    char          *file;	/* file specification */
+ParseTraditionalInclude (char *file)
 {
     char          *fullname;	/* full pathname of file */
     IFile         *oldFile;	/* state associated with current file */
@@ -1987,8 +1955,7 @@ ParseTraditionalInclude (file)
  *---------------------------------------------------------------------
  */
 static int
-ParseEOF (opened)
-    int opened;
+ParseEOF (int opened)
 {
     IFile     *ifile;	/* the state on the top of the includes stack */
 
@@ -2027,7 +1994,7 @@ ParseEOF (opened)
  *---------------------------------------------------------------------
  */
 static int
-ParseReadc()
+ParseReadc(void)
 {
     if (curFILE)
 	return fgetc(curFILE);
@@ -2050,8 +2017,7 @@ ParseReadc()
  *---------------------------------------------------------------------
  */
 static void
-ParseUnreadc(c)
-    int c;
+ParseUnreadc(int c)
 {
     if (curFILE) {
 	ungetc(c, curFILE);
@@ -2065,11 +2031,11 @@ ParseUnreadc(c)
 
 
 /* ParseSkipLine():
- *	Grab the next line
+ *	Grab the next line unless it begins with a dot (`.') and we're told to
+ *	ignore such lines.
  */
 static char *
-ParseSkipLine(skip)
-    int skip; 		/* Skip lines that don't start with . */
+ParseSkipLine(int skip)
 {
     char *line;
     int c, lastc, lineLength = 0;
@@ -2131,7 +2097,7 @@ ParseSkipLine(skip)
  *---------------------------------------------------------------------
  */
 static char *
-ParseReadLine ()
+ParseReadLine (void)
 {
     Buffer  	  buf;	    	/* Buffer for current line */
     int		  c;	      	/* the current character */
@@ -2390,7 +2356,7 @@ test_char:
  *-----------------------------------------------------------------------
  */
 static void
-ParseFinishLine()
+ParseFinishLine(void)
 {
     if (inLine) {
 	Lst_ForEach(targets, Suff_EndTransform, (void *)NULL);
@@ -2431,9 +2397,7 @@ stripvarname(char *cp)
  *---------------------------------------------------------------------
  */
 void
-Parse_File(name, stream)
-    char          *name;	/* the name of the file being read */
-    FILE *	  stream;   	/* Stream open to makefile to parse */
+Parse_File(char *name, FILE *stream)
 {
     char	  *cp,		/* pointer into the line */
                   *line;	/* the line we're working on */
@@ -2611,7 +2575,7 @@ Parse_File(name, stream)
  *---------------------------------------------------------------------
  */
 void
-Parse_Init ()
+Parse_Init (void)
 {
     mainNode = NULL;
     parseIncPath = Lst_Init (FALSE);
@@ -2621,7 +2585,7 @@ Parse_Init ()
 }
 
 void
-Parse_End()
+Parse_End (void)
 {
     Lst_Destroy(targCmds, (void (*) (void *)) free);
     if (targets)
@@ -2647,7 +2611,7 @@ Parse_End()
  *-----------------------------------------------------------------------
  */
 Lst
-Parse_MainName()
+Parse_MainName(void)
 {
     Lst           listmain;	/* result list */
 

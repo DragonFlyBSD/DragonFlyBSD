@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.12 2004/11/12 22:42:36 dillon Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.13 2004/11/12 22:57:04 dillon Exp $
  */
 
 static
@@ -57,21 +57,6 @@ catch_child(int sig)
  *				treats them as if they were given when first
  *				invoked. Used by the parse module to implement
  *				the .MFLAGS target.
- *
- *	Error			Print a tagged error message. The global
- *				MAKE variable must have been defined. This
- *				takes a format string and two optional
- *				arguments for it.
- *
- *	Fatal			Print an error message and exit. Also takes
- *				a format string and two arguments.
- *
- *	Punt			Aborts all jobs and exits with a message. Also
- *				takes a format string and two arguments.
- *
- *	Finish			Finish things up by printing the number of
- *				errors which occured, as passed to it, and
- *				exiting.
  */
 
 #include <sys/types.h>
@@ -136,7 +121,7 @@ Boolean			beVerbose;	/* -v flag */
 Boolean			oldVars;	/* variable substitution style */
 Boolean			checkEnvFirst;	/* -e flag */
 Lst			envFirstVars;	/* (-E) vars to override from env */
-static Boolean		jobsRunning;	/* TRUE if the jobs might be running */
+Boolean			jobsRunning;	/* TRUE if the jobs might be running */
 
 static void		MainParseArgs(int, char **);
 char *			chdir_verify_path(char *, char *);
@@ -161,9 +146,7 @@ static char *objdir;			/* where we chdir'ed to */
  *	given
  */
 static void
-MainParseArgs(argc, argv)
-	int argc;
-	char **argv;
+MainParseArgs(int argc, char **argv)
 {
 	extern int optind;
 	extern char *optarg;
@@ -401,8 +384,7 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
  *	Only those that come from the various arguments.
  */
 void
-Main_ParseArgLine(line)
-	char *line;			/* Line to fracture */
+Main_ParseArgLine(char *line)
 {
 	char **argv;			/* Manufactured argument vector */
 	int argc;			/* Number of arguments in argv */
@@ -419,9 +401,7 @@ Main_ParseArgLine(line)
 }
 
 char *
-chdir_verify_path(path, obpath)
-	char *path;
-	char *obpath;
+chdir_verify_path(char *path, char *obpath)
 {
 	struct stat sb;
 
@@ -463,9 +443,7 @@ chdir_verify_path(path, obpath)
  *	The program exits when done. Targets are created. etc. etc. etc.
  */
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	Lst targs;	/* target nodes to create -- passed to Make_Init */
 	Boolean outOfDate = TRUE; 	/* FALSE if all targets up to date */
@@ -816,7 +794,7 @@ main(argc, argv)
 	 * <directory>:<directory>:<directory>...
 	 */
 	if (Var_Exists("VPATH", VAR_CMD)) {
-		char *vpath, *path, *cp, savec;
+		char *vpath, savec;
 		/*
 		 * GCC stores string constants in read-only memory, but
 		 * Var_Subst will want to write this thing, so store it
@@ -943,16 +921,15 @@ main(argc, argv)
  *	lots
  */
 static Boolean
-ReadMakefile(p, q)
-	void *p;
-	void *q __unused;
+ReadMakefile(void *p, void *q __unused)
 {
-	char *fname = p;		/* makefile to read */
-	extern Lst parseIncPath;
+	char *fname;		/* makefile to read */
 	FILE *stream;
 	char *name, path[MAXPATHLEN + 1];
 	char *MAKEFILE;
 	int setMAKEFILE;
+
+	fname = p;
 
 	if (!strcmp(fname, "-")) {
 		Parse_File("(stdin)", stdin);
@@ -1037,9 +1014,7 @@ found:
  *	The string must be freed by the caller.
  */
 char *
-Cmd_Exec(cmd, err)
-    char *cmd;
-    char **err;
+Cmd_Exec(char *cmd, char **error)
 {
     char	*args[4];   	/* Args for invoking the shell */
     int 	fds[2];	    	/* Pipe streams */
@@ -1051,8 +1026,7 @@ Cmd_Exec(cmd, err)
     char	*cp;
     int		cc;
 
-
-    *err = NULL;
+    *error = NULL;
 
     /*
      * Set up arguments for shell
@@ -1066,7 +1040,7 @@ Cmd_Exec(cmd, err)
      * Open a pipe for fetching its output
      */
     if (pipe(fds) == -1) {
-	*err = "Couldn't create pipe for \"%s\"";
+	*error = "Couldn't create pipe for \"%s\"";
 	goto bad;
     }
 
@@ -1093,7 +1067,7 @@ Cmd_Exec(cmd, err)
 	/*NOTREACHED*/
 
     case -1:
-	*err = "Couldn't exec \"%s\"";
+	*error = "Couldn't exec \"%s\"";
 	goto bad;
 
     default:
@@ -1124,13 +1098,13 @@ Cmd_Exec(cmd, err)
 	    continue;
 
 	if (cc == -1)
-	    *err = "Error reading shell's output for \"%s\"";
+	    *error = "Error reading shell's output for \"%s\"";
 
 	res = (char *)Buf_GetAll (buf, &cc);
 	Buf_Destroy (buf, FALSE);
 
 	if (status)
-	    *err = "\"%s\" returned non-zero status";
+	    *error = "\"%s\" returned non-zero status";
 
 	/*
 	 * Null-terminate the result, convert newlines to spaces and
@@ -1160,219 +1134,6 @@ bad:
     return res;
 }
  
-/*-
- * Debug --
- *	Print a debugging message given its format.
- *
- * Results:
- *	None.
- *
- * Side Effects:
- *	The message is printed.
- */
-/* VARARGS */
-void
-Debug(const char *fmt, ...)
-{
-	va_list ap;
-
-	va_start(ap, fmt);
-	(void)vfprintf(stderr, fmt, ap);
-	va_end(ap);
-	(void)fflush(stderr);
-}
-
-/*-
- * Error --
- *	Print an error message given its format.
- *
- * Results:
- *	None.
- *
- * Side Effects:
- *	The message is printed.
- */
-/* VARARGS */
-void
-Error(const char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-	(void)vfprintf(stderr, fmt, ap);
-	va_end(ap);
-	(void)fprintf(stderr, "\n");
-	(void)fflush(stderr);
-}
-
-/*-
- * Fatal --
- *	Produce a Fatal error message. If jobs are running, waits for them
- *	to finish.
- *
- * Results:
- *	None
- *
- * Side Effects:
- *	The program exits
- */
-/* VARARGS */
-void
-Fatal(const char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-	if (jobsRunning)
-		Job_Wait();
-
-	(void)vfprintf(stderr, fmt, ap);
-	va_end(ap);
-	(void)fprintf(stderr, "\n");
-	(void)fflush(stderr);
-
-	if (DEBUG(GRAPH2))
-		Targ_PrintGraph(2);
-	exit(2);		/* Not 1 so -q can distinguish error */
-}
-
-/*
- * Punt --
- *	Major exception once jobs are being created. Kills all jobs, prints
- *	a message and exits.
- *
- * Results:
- *	None
- *
- * Side Effects:
- *	All children are killed indiscriminately and the program Lib_Exits
- */
-/* VARARGS */
-void
-Punt(const char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-
-	(void)fprintf(stderr, "make: ");
-	(void)vfprintf(stderr, fmt, ap);
-	va_end(ap);
-	(void)fprintf(stderr, "\n");
-	(void)fflush(stderr);
-
-	DieHorribly();
-}
-
-/*-
- * DieHorribly --
- *	Exit without giving a message.
- *
- * Results:
- *	None
- *
- * Side Effects:
- *	A big one...
- */
-void
-DieHorribly()
-{
-	if (jobsRunning)
-		Job_AbortAll();
-	if (DEBUG(GRAPH2))
-		Targ_PrintGraph(2);
-	exit(2);		/* Not 1, so -q can distinguish error */
-}
-
-/*
- * Finish --
- *	Called when aborting due to errors in child shell to signal
- *	abnormal exit.
- *
- * Results:
- *	None
- *
- * Side Effects:
- *	The program exits
- */
-void
-Finish(errors)
-	int errors;	/* number of errors encountered in Make_Make */
-{
-	Fatal("%d error%s", errors, errors == 1 ? "" : "s");
-}
-
-/*
- * emalloc --
- *	malloc, but die on error.
- */
-void *
-emalloc(len)
-	size_t len;
-{
-	void *p;
-
-	if ((p = malloc(len)) == NULL)
-		enomem();
-	return(p);
-}
-
-/*
- * estrdup --
- *	strdup, but die on error.
- */
-char *
-estrdup(str)
-	const char *str;
-{
-	char *p;
-
-	if ((p = strdup(str)) == NULL)
-		enomem();
-	return(p);
-}
-
-/*
- * erealloc --
- *	realloc, but die on error.
- */
-void *
-erealloc(ptr, size)
-	void *ptr;
-	size_t size;
-{
-	if ((ptr = realloc(ptr, size)) == NULL)
-		enomem();
-	return(ptr);
-}
-
-/*
- * enomem --
- *	die when out of memory.
- */
-void
-enomem()
-{
-	err(2, NULL);
-}
-
-/*
- * enunlink --
- *	Remove a file carefully, avoiding directories.
- */
-int
-eunlink(file)
-	const char *file;
-{
-	struct stat st;
-
-	if (lstat(file, &st) == -1)
-		return -1;
-
-	if (S_ISDIR(st.st_mode)) {
-		errno = EISDIR;
-		return -1;
-	}
-	return unlink(file);
-}
-
 /*
  * usage --
  *	exit with usage message
@@ -1387,12 +1148,3 @@ usage()
 	exit(2);
 }
 
-
-int
-PrintAddr(a, b)
-    void * a;
-    void * b;
-{
-    printf("%lx ", (unsigned long) a);
-    return b ? 0 : 0;
-}

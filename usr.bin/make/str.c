@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.12.2.2 2004/02/23 12:10:57 ru Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.5 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.6 2004/11/12 22:57:04 dillon Exp $
  */
 
 #include "make.h"
@@ -51,7 +51,7 @@ static int argmax, curlen;
  *
  */
 void
-str_init()
+str_init(void)
 {
     char *p1;
     argv = (char **)emalloc(((argmax = 50) + 1) * sizeof(char *));
@@ -65,7 +65,7 @@ str_init()
  *
  */
 void
-str_end()
+str_end(void)
 {
     if (argv) {
 	if (argv[0])
@@ -85,9 +85,7 @@ str_end()
  *	the resulting string in allocated space.
  */
 char *
-str_concat(s1, s2, flags)
-	const char *s1, *s2;
-	int flags;
+str_concat(const char *s1, char *s2, int flags)
 {
 	int len1, len2;
 	char *result;
@@ -133,10 +131,7 @@ str_concat(s1, s2, flags)
  *	the first word is always the value of the .MAKE variable.
  */
 char **
-brk_string(str, store_argc, expand)
-	char *str;
-	int *store_argc;
-	Boolean expand;
+brk_string(char *str, int *store_argc, Boolean expand)
 {
 	int argc, ch;
 	char inquote, *p, *start, *t;
@@ -254,11 +249,11 @@ done:	argv[argc] = (char *)NULL;
  * character-for-character basis with no wildcards or special characters.
  *
  * Side effects: None.
+ *
+ * XXX should be strstr(3).
  */
 char *
-Str_FindSubstring(string, substring)
-	char *string;			/* String to search. */
-	char *substring;		/* Substring to find in string */
+Str_FindSubstring(char *string, char *substring)
 {
 	char *a, *b;
 
@@ -295,9 +290,7 @@ Str_FindSubstring(string, substring)
  * Side effects: None.
  */
 int
-Str_Match(string, pattern)
-	char *string;		/* String */
-	char *pattern;		/* Pattern */
+Str_Match(char *string, char *pattern)
 {
 	char c2;
 
@@ -400,10 +393,7 @@ thisCharOK:	++pattern;
  *-----------------------------------------------------------------------
  */
 char *
-Str_SYSVMatch(word, pattern, len)
-    char	*word;		/* Word to examine */
-    char	*pattern;	/* Pattern to examine against */
-    int		*len;		/* Number of characters to substitute */
+Str_SYSVMatch(char *word, char *pattern, int *len)
 {
     char *p = pattern;
     char *w = word;
@@ -466,11 +456,7 @@ Str_SYSVMatch(word, pattern, len)
  *-----------------------------------------------------------------------
  */
 void
-Str_SYSVSubst(buf, pat, src, len)
-    Buffer buf;
-    char *pat;
-    char *src;
-    int   len;
+Str_SYSVSubst(Buffer buf, char *pat, char *src, int len)
 {
     char *m;
 
