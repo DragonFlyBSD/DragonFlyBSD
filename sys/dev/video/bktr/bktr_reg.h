@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/bktr/bktr_reg.h,v 1.36.2.4 2000/11/01 09:36:14 roger Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_reg.h,v 1.3 2003/08/07 21:17:15 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_reg.h,v 1.4 2004/02/13 01:45:15 joerg Exp $
  *
  * Copyright (c) 1999 Roger Hardiman
  * Copyright (c) 1998 Amancio Hasty
@@ -35,8 +35,8 @@
  *
  */
 
-#ifdef __FreeBSD__
-#  if (__FreeBSD_version >= 310000)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
+#  if defined(__DragonFly__) || (__FreeBSD_version >= 310000)
 #    include "use_smbus.h"
 #  else
 #    define NSMBUS 0		/* FreeBSD before 3.1 does not have SMBUS */
@@ -62,7 +62,7 @@
  * Support the older kernel options on FreeBSD and OpenBSD.
  *
  */
-#if defined(__FreeBSD__) || defined(__OpenBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 #if defined(BROOKTREE_ALLOC_PAGES)
 #define BKTR_ALLOC_PAGES BROOKTREE_ALLOC_PAGES
 #endif
@@ -471,7 +471,7 @@ struct bktr_i2c_softc {
  * memory mapped structure method only works on 32 bit processors
  * with the right type of endianness.
  */
-#if defined(__NetBSD__) || ( defined(__FreeBSD__) && (__FreeBSD_version >=300000) )
+#if defined(__DragonFly__) || defined(__NetBSD__) || ( defined(__FreeBSD__) && (__FreeBSD_version >=300000) )
 #define INB(bktr,offset)	bus_space_read_1((bktr)->memt,(bktr)->memh,(offset))
 #define INW(bktr,offset)	bus_space_read_2((bktr)->memt,(bktr)->memh,(offset))
 #define INL(bktr,offset)	bus_space_read_4((bktr)->memt,(bktr)->memh,(offset))
@@ -534,12 +534,12 @@ struct bktr_softc {
     vm_offset_t		phys_base;	/* Bt848 register physical address */
 #endif
 
-#if defined (__FreeBSD__)
-    #if (__FreeBSD_version < 400000)
+#if defined(__DragonFly__) || defined (__FreeBSD__)
+#   if defined(__FreeBSD__) && (__FreeBSD_version < 400000)
     vm_offset_t     phys_base;	/* 2.x Bt848 register physical address */
     pcici_t         tag;	/* 2.x PCI tag, for doing PCI commands */
-    #endif
-    #if (__FreeBSD_version >= 400000)
+#   endif
+#   if defined(__DragonFly__) || (__FreeBSD_version >= 400000)
     int             mem_rid;	/* 4.x resource id */
     struct resource *res_mem;	/* 4.x resource descriptor for registers */
     int             irq_rid;	/* 4.x resource id */
@@ -552,14 +552,14 @@ struct bktr_softc {
     dev_t           tunerdev_alias;	/* alias /dev/tuner to /dev/tuner0 */
     dev_t           vbidev_alias;	/* alias /dev/vbi to /dev/vbi0 */
     #endif
-    #if (__FreeBSD_version >= 310000)
+#   if defined(__DragonFly__) || (__FreeBSD_version >= 310000)
     bus_space_tag_t	memt;	/* Bus space register access functions */
     bus_space_handle_t	memh;	/* Bus space register access functions */
     bus_size_t		obmemsz;/* Size of card (bytes) */
-    #endif
-    #if (NSMBUS > 0)
+#   endif
+#   if (NSMBUS > 0)
       struct bktr_i2c_softc i2c_sc;	/* bt848_i2c device */
-    #endif
+#   endif
     char	bktr_xname[7];	/* device name and unit number */
 #endif
 
@@ -723,12 +723,12 @@ struct bt848_card_sig {
 /* ioctl_cmd_t int on old versions, u_long on new versions */
 /***********************************************************/
 
-#if (__FreeBSD__ == 2)
+#if defined(__FreeBSD__) && (__FreeBSD__ == 2)
 typedef int ioctl_cmd_t;
 #endif
 
-#if defined(__FreeBSD__)
-#if (__FreeBSD_version >= 300000)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
+#if defined(__DragonFly__) || (__FreeBSD_version >= 300000)
 typedef u_long ioctl_cmd_t;
 #endif
 #endif

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_i2c.c,v 1.13.2.3 2000/10/26 16:38:46 roger Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_i2c.c,v 1.3 2003/08/07 21:17:15 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_i2c.c,v 1.4 2004/02/13 01:45:15 joerg Exp $
  *
  */
 
@@ -44,11 +44,11 @@
 #include <sys/uio.h>
 #include <sys/select.h>
 
-#if (__FreeBSD_version < 500000)
+#if defined(__DragonFly__) || (__FreeBSD_version < 500000)
 #include <machine/clock.h>              /* for DELAY */
 #endif
 
-#if (__FreeBSD_version >=300000)
+#if defined(__DragonFly__) || (__FreeBSD_version >=300000)
 #include <machine/bus_memio.h>          /* for bus space */
 #include <machine/bus.h>
 #include <sys/bus.h>
@@ -133,7 +133,7 @@ static device_method_t bti2c_methods[] = {
 	{ 0, 0 }
 };
 
-#if (__FreeBSD_version < 400000)
+#if defined(__FreeBSD__) && (__FreeBSD_version < 400000)
 /* FreeBSD 3.x needs DRIVER_TYPE_MISC */
 static driver_t bti2c_driver = {
 	"bti2c",
@@ -143,7 +143,7 @@ static driver_t bti2c_driver = {
 };
 #endif
 
-#if (__FreeBSD_version >=400000)
+#if defined(__DragonFly__) || (__FreeBSD_version >=400000)
 	static driver_t bti2c_driver = {
 	"bti2c",
 	bti2c_methods,
@@ -165,14 +165,14 @@ bt848_i2c_attach(int unit, struct bktr_softc * bktr, struct bktr_i2c_softc *i2c_
 	btdata[unit].memt = bktr->memt;
 
 	/* XXX add the I2C interface to the root_bus until pcibus is ready */
-#if (__FreeBSD_version < 400000)
+#if defined(__FreeBSD__) && (__FreeBSD_version < 400000)
 	interface = device_add_child(root_bus, "bti2c", unit, NULL);
 #else
 	interface = device_add_child(root_bus, "bti2c", unit);
 #endif
 
 	/* add bit-banging generic code onto bti2c interface */
-#if (__FreeBSD_version < 400000)
+#if defined(__FreeBSD__) && (__FreeBSD_version < 400000)
 	bitbang = device_add_child(interface, "iicbb", -1, NULL);
 #else
 	bitbang = device_add_child(interface, "iicbb", -1);

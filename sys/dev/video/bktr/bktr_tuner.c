@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_tuner.c,v 1.5.2.3 2000/10/26 16:38:46 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_tuner.c,v 1.4 2003/08/07 21:17:15 dillon Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_tuner.c,v 1.5 2004/02/13 01:45:15 joerg Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -54,14 +54,14 @@
 #include <sys/proc.h>
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <bus/pci/pcivar.h>
 
-#if (__FreeBSD_version < 500000)
+#if defined(__DragonFly__) || (__FreeBSD_version < 500000)
 #include <machine/clock.h>              /* for DELAY */
 #endif
 
-#if (__FreeBSD_version >=300000)
+#if defined(__DragonFly__) || (__FreeBSD_version >=300000)
 #include <machine/bus_memio.h>          /* for bus space */
 #include <machine/bus.h>
 #include <sys/bus.h>

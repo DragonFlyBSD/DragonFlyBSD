@@ -42,7 +42,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:06:31 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_hdr.h,v 1.36.2.3 2001/08/06 15:30:21 joerg Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_hdr.h,v 1.3 2003/08/07 21:17:16 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_hdr.h,v 1.4 2004/02/13 01:45:15 joerg Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -50,7 +50,7 @@
 				/* see also: pcvt_ioctl.h	*/
 
 #include "opt_pcvt.h"
-#if defined(__FreeBSD__) && !defined(PCVT_FREEBSD)
+#if (defined(__DragonFly__) || defined(__FreeBSD__)) && !defined(PCVT_FREEBSD)
 #  define PCVT_FREEBSD 210
 #endif
 

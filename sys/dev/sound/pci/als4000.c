@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/als4000.c,v 1.2.2.5 2002/04/22 15:49:31 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.3 2003/08/07 21:17:13 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.4 2004/02/13 01:45:14 joerg Exp $
  */
 
 /*
@@ -45,7 +45,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.3 2003/08/07 21:17:13 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.4 2004/02/13 01:45:14 joerg Exp $");
 
 /* Debugging macro's */
 #undef DEB
@@ -780,7 +780,7 @@ als_pci_attach(device_t dev)
          * ALS4000 is entirely controlled by the pci powerstate.  We
          * could attempt finer grained control by setting GCR6.31.
 	 */
-#if __FreeBSD_version > 500000
+#if defined(__FreeBSD__) && __FreeBSD_version > 500000
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
 		/* Reset the power state. */
 		device_printf(dev, "chip is in D%d power mode "

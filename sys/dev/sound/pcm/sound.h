@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sound.h,v 1.10.2.11 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.3 2003/08/07 21:17:13 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.4 2004/02/13 01:45:14 joerg Exp $
  */
 
 /*
@@ -53,7 +53,7 @@
 #include <sys/errno.h>
 #include <sys/malloc.h>
 #include <sys/bus.h>
-#if __FreeBSD_version > 500000
+#if defined(__FreeBSD__) && __FreeBSD_version > 500000
 #include <sys/bio.h>
 #endif
 #include <sys/buf.h>
@@ -74,7 +74,7 @@
 #undef	USING_MUTEX
 #undef	USING_DEVFS
 
-#if __FreeBSD_version > 500000
+#if defined(__FreeBSD__) && __FreeBSD_version > 500000
 #define USING_MUTEX
 #define USING_DEVFS
 #endif

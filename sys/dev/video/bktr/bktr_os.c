@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.4.2.3 2000/10/27 00:46:09 jhb Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.6 2003/08/27 06:48:15 rob Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.7 2004/02/13 01:45:15 joerg Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -49,7 +49,7 @@
  */
 
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "use_bktr.h"
 #endif /* __FreeBSD__ */
 
@@ -62,7 +62,7 @@
 /*******************/
 /* *** FreeBSD *** */
 /*******************/
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -80,22 +80,22 @@
 #include <vm/pmap.h>
 #include <vm/vm_extern.h>
 
-#if (__FreeBSD_version >=400000) || (NSMBUS > 0)
+#if defined(__DragonFly__) || (__FreeBSD_version >=400000) || (NSMBUS > 0)
 #include <sys/bus.h>		/* used by smbus and newbus */
 #endif
 
-#if (__FreeBSD_version >=300000)
+#if defined(__DragonFly__) || (__FreeBSD_version >=300000)
 #include <machine/bus_memio.h>	/* used by bus space */
 #include <machine/bus.h>	/* used by bus space and newbus */
 #include <sys/bus.h>
 #endif
 
-#if (__FreeBSD_version >=400000)
+#if defined(__DragonFly__) || (__FreeBSD_version >=400000)
 #include <sys/rman.h>		/* used by newbus */
 #include <machine/resource.h>	/* used by newbus */
 #endif
 
-#if (__FreeBSD_version < 500000)
+#if defined(__DragonFly__) || (__FreeBSD_version < 500000)
 #include <machine/clock.h>              /* for DELAY */
 #endif
 
@@ -116,7 +116,7 @@ SYSCTL_INT(_hw_bt848, OID_AUTO, reverse_mute, CTLFLAG_RW, &bt848_reverse_mute, -
 SYSCTL_INT(_hw_bt848, OID_AUTO, format, CTLFLAG_RW, &bt848_format, -1, "");
 SYSCTL_INT(_hw_bt848, OID_AUTO, slow_msp_audio, CTLFLAG_RW, &bt848_slow_msp_audio, -1, "");
 
-#if (__FreeBSD__ == 2)
+#if defined(__FreeBSD__) && (__FreeBSD__ == 2)
 #define PCIR_REVID     PCI_CLASS_REG
 #endif
 
@@ -197,7 +197,7 @@ int bktr_debug = 0;
 /****************************/
 /* *** FreeBSD 4.x code *** */
 /****************************/
-#if (__FreeBSD_version >= 400000)
+#if defined(__DragonFly__) || (__FreeBSD_version >= 400000)
 
 static int	bktr_probe( device_t dev );
 static int	bktr_attach( device_t dev );
@@ -252,7 +252,7 @@ static struct cdevsw bktr_cdevsw = {
 };
 
 DRIVER_MODULE(bktr, pci, bktr_driver, bktr_devclass, 0, 0);
-#if (__FreeBSD_version > 410000)
+#if defined(__DragonFly__) || (__FreeBSD_version > 410000)
 MODULE_DEPEND(bktr, bktr_mem, 1,1,1);
 MODULE_VERSION(bktr, 1);
 #endif
@@ -442,7 +442,7 @@ bktr_attach( device_t dev )
 
 	/* if this is unit 0 (/dev/bktr0, /dev/tuner0, /dev/vbi0) then make */
 	/* alias entries to /dev/bktr /dev/tuner and /dev/vbi */
-#if (__FreeBSD_version >=500000)
+#if defined(__FreeBSD__) && (__FreeBSD_version >=500000)
 	if (unit == 0) {
 		bktr->bktrdev_alias = make_dev_alias(bktr->bktrdev,  "bktr");
 		bktr->tunerdev_alias= make_dev_alias(bktr->tunerdev, "tuner");
@@ -487,7 +487,7 @@ bktr_detach( device_t dev )
 	destroy_dev(bktr->bktrdev);
 
 	/* If this is unit 0, then destroy the alias entries too */
-#if (__FreeBSD_version >=500000)
+#if defined(__FreeBSD__) && (__FreeBSD_version >=500000)
 	if (unit == 0) {
 	    destroy_dev(bktr->vbidev_alias);
 	    destroy_dev(bktr->tunerdev_alias);
@@ -818,7 +818,7 @@ int bktr_poll( dev_t dev, int events, d_thread_t *td)
 /* *** FreeBSD 2.2.x and 3.x  *** */
 /**********************************/
 
-#if ((__FreeBSD__ == 2) || (__FreeBSD__ == 3))
+#if defined(__FreeBSD__) && (((__FreeBSD__ == 2) || (__FreeBSD__ == 3)))
 
 static bktr_reg_t brooktree[ NBKTR ];
 
@@ -939,7 +939,7 @@ bktr_attach( pcici_t tag, int unit )
 	 */
 	pci_map_mem( tag, PCI_MAP_REG_START, (vm_offset_t *) &base,
 		     &bktr->phys_base );
-#if (__FreeBSD_version >= 300000)
+#if defined(__DragonFly__) || (__FreeBSD_version >= 300000)
 	bktr->memt = I386_BUS_SPACE_MEM; /* XXX should use proper bus space */
 	bktr->memh = (bus_space_handle_t)base; /* XXX functions here */
 #endif

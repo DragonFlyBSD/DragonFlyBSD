@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.103.2.4 2000/11/01 09:36:14 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.8 2003/11/09 02:22:35 dillon Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.9 2004/02/13 01:45:15 joerg Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -97,12 +97,12 @@
 
 #include "opt_bktr.h"		/* Include any kernel config options */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "use_bktr.h"
 #endif /* __FreeBSD__ */
 
 #if (                                                            \
-       (defined(__FreeBSD__) && (NBKTR > 0))                     \
+       (defined(__DragonFly__) || (defined(__FreeBSD__)) && (NBKTR > 0))                     \
     || (defined(__bsdi__))                                       \
     || (defined(__OpenBSD__))                                    \
     || (defined(__NetBSD__))                                     \
@@ -112,7 +112,7 @@
 /*******************/
 /* *** FreeBSD *** */
 /*******************/
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -125,17 +125,17 @@
 #include <vm/pmap.h>
 #include <vm/vm_extern.h>
 
-#if (__FreeBSD_version >=400000) || (NSMBUS > 0)
+#if defined(__DragonFly__) || (__FreeBSD_version >=400000) || (NSMBUS > 0)
 #include <sys/bus.h>		/* used by smbus and newbus */
 #endif
 
-#if (__FreeBSD_version < 500000)
+#if defined(__DragonFly__) || (__FreeBSD_version < 500000)
 #include <machine/clock.h>              /* for DELAY */
 #endif
 
 #include <bus/pci/pcivar.h>
 
-#if (__FreeBSD_version >=300000)
+#if defined(__DragonFly__) || (__FreeBSD_version >=300000)
 #include <machine/bus_memio.h>	/* for bus space */
 #include <machine/bus.h>
 #include <sys/bus.h>
@@ -168,7 +168,7 @@ bktr_name(bktr_ptr_t bktr)
 }
 
 
-#if (__FreeBSD__ == 2)
+#if defined(__FreeBSD__) && (__FreeBSD__ == 2)
 typedef unsigned int uintptr_t;
 #endif
 #endif  /* __FreeBSD__ */
@@ -489,7 +489,7 @@ common_bktr_attach( bktr_ptr_t bktr, int unit, u_long pci_id, u_int rev )
                 buf = 0;
 #endif
 
-#if defined(__FreeBSD__) || defined(__bsdi__)
+#if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__bsdi__)
 
 /* If this is a module, check if there is any currently saved contiguous memory */
 #if defined(BKTR_FREEBSD_MODULE)

@@ -28,7 +28,7 @@
  * muting.
  * 
  * $FreeBSD: src/sys/dev/sound/pci/vibes.c,v 1.4.2.6 2002/04/22 15:49:33 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.3 2003/08/07 21:17:13 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.4 2004/02/13 01:45:14 joerg Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.3 2003/08/07 21:17:13 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.4 2004/02/13 01:45:14 joerg Exp $");
 
 /* ------------------------------------------------------------------------- */
 /* Constants */
@@ -734,7 +734,7 @@ sv_attach(device_t dev) {
 	pci_write_config(dev, PCIR_COMMAND, data, 2);
 	data = pci_read_config(dev, PCIR_COMMAND, 2);
 
-#if __FreeBSD_version > 500000
+#if defined(__FreeBSD__) && __FreeBSD_version > 500000
         if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
                 device_printf(dev, "chip is in D%d power mode "
                               "-- setting to D0\n", pci_get_powerstate(dev));

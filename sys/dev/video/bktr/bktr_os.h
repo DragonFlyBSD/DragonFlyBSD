@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_os.h,v 1.1.4.2 2000/09/11 07:59:57 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_os.h,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_os.h,v 1.3 2004/02/13 01:45:15 joerg Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -48,7 +48,7 @@
 /******************************/
 /* *** Memory Allocation  *** */
 /******************************/
-#if (defined(__FreeBSD__) || defined(__bsdi__))
+#if defined(__DragonFly__) || (defined(__FreeBSD__) || defined(__bsdi__))
 vm_offset_t     get_bktr_mem( int unit, unsigned size );
 #endif
 
@@ -60,7 +60,7 @@ void            free_bktr_mem(bktr_ptr_t, bus_dmamap_t, vm_offset_t);
 /************************************/
 /* *** Interrupt Enable/Disable *** */
 /************************************/
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define DECLARE_INTR_MASK(s)	intrmask_t s
 #define DISABLE_INTR(s)		s=spltty()
 #define ENABLE_INTR(s)		splx(s)
