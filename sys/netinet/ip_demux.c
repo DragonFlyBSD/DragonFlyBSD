@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.30 2005/01/19 17:30:54 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.31 2005/02/08 22:56:19 hsu Exp $
  */
 
 /*
@@ -295,7 +295,7 @@ tcp_soport(struct socket *so, struct sockaddr *nam, int req)
 	    req == PRU_LISTEN)
 		return (&tcp_thread[0].td_msgport);
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (!inp)		/* connection reset by peer */
 		return (&tcp_thread[0].td_msgport);
 
@@ -337,7 +337,7 @@ udp_soport(struct socket *so, struct sockaddr *nam, int req)
 	if (nam != NULL || so == NULL)
 		return (&udp_thread[0].td_msgport);
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 
 	if (IN_MULTICAST(ntohl(inp->inp_laddr.s_addr)))
 		return (&udp_thread[0].td_msgport);

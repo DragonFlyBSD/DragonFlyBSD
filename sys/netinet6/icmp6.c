@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.17 2005/02/01 16:09:37 hrs Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.18 2005/02/08 22:56:19 hsu Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -128,8 +128,6 @@
 #define in6p_sp		inp_sp
 #define in6p_next	inp_next
 #define in6p_prev	inp_prev
-/* macro names */
-#define sotoin6pcb	sotoinpcb
 /* function names */
 #define in6_pcbdetach	in_pcbdetach
 #define in6_rtchange	in_rtchange
@@ -2659,7 +2657,6 @@ fail:
 }
 
 #ifdef HAVE_NRL_INPCB
-#define sotoin6pcb	sotoinpcb
 #define in6pcb		inpcb
 #define in6p_icmp6filt	inp_icmp6filt
 #endif
@@ -2671,7 +2668,7 @@ icmp6_ctloutput(struct socket *so, struct sockopt *sopt)
 {
 	int error = 0;
 	int optlen;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	int level, op, optname;
 
 	if (sopt) {
@@ -2735,7 +2732,6 @@ icmp6_ctloutput(struct socket *so, struct sockopt *sopt)
 	return(error);
 }
 #ifdef HAVE_NRL_INPCB
-#undef sotoin6pcb
 #undef in6pcb
 #undef in6p_icmp6filt
 #endif

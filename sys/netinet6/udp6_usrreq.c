@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.17 2004/10/15 22:59:10 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.18 2005/02/08 22:56:19 hsu Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -527,7 +527,7 @@ udp6_abort(struct socket *so)
 	struct inpcb *inp;
 	int s;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp == 0)
 		return EINVAL;	/* ??? possible? panic instead? */
 	soisdisconnected(so);
@@ -543,7 +543,7 @@ udp6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	struct inpcb *inp;
 	int s, error;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp != 0)
 		return EINVAL;
 
@@ -581,7 +581,7 @@ udp6_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	struct inpcb *inp;
 	int s, error;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp == 0)
 		return EINVAL;
 
@@ -620,7 +620,7 @@ udp6_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	struct inpcb *inp;
 	int s, error;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp == 0)
 		return EINVAL;
 
@@ -677,7 +677,7 @@ udp6_detach(struct socket *so)
 	struct inpcb *inp;
 	int s;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp == 0)
 		return EINVAL;
 	s = splnet();
@@ -692,7 +692,7 @@ udp6_disconnect(struct socket *so)
 	struct inpcb *inp;
 	int s;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp == 0)
 		return EINVAL;
 
@@ -720,7 +720,7 @@ udp6_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	struct inpcb *inp;
 	int error = 0;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp == 0) {
 		error = EINVAL;
 		goto bad;

@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.19 2005/01/06 17:36:44 hsu Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.20 2005/02/08 22:56:19 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -251,7 +251,7 @@ int
 rip_output(struct mbuf *m, struct socket *so, ...)
 {
 	struct ip *ip;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	__va_list ap;
 	int flags = (so->so_options & SO_DONTROUTE) | IP_ALLOWBROADCAST;
 	u_long dst;
@@ -316,7 +316,7 @@ rip_output(struct mbuf *m, struct socket *so, ...)
 int
 rip_ctloutput(struct socket *so, struct sockopt *sopt)
 {
-	struct	inpcb *inp = sotoinpcb(so);
+	struct	inpcb *inp = so->so_pcb;
 	int	error, optval;
 
 	if (sopt->sopt_level != IPPROTO_IP)
@@ -513,7 +513,7 @@ rip_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	struct inpcb *inp;
 	int error, s;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp)
 		panic("rip_attach");
 	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
@@ -539,7 +539,7 @@ rip_detach(struct socket *so)
 {
 	struct inpcb *inp;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp == 0)
 		panic("rip_detach");
 	if (so == ip_mrouter && ip_mrouter_done)
@@ -572,7 +572,7 @@ rip_disconnect(struct socket *so)
 static int
 rip_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct sockaddr_in *addr = (struct sockaddr_in *)nam;
 
 	if (nam->sa_len != sizeof(*addr))
@@ -590,7 +590,7 @@ rip_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 static int
 rip_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct sockaddr_in *addr = (struct sockaddr_in *)nam;
 
 	if (nam->sa_len != sizeof(*addr))
@@ -616,7 +616,7 @@ static int
 rip_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	 struct mbuf *control, struct thread *td)
 {
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	u_long dst;
 
 	if (so->so_state & SS_ISCONNECTED) {

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec.c,v 1.3.2.12 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.9 2004/07/31 07:52:55 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.10 2005/02/08 22:56:19 hsu Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -248,12 +248,12 @@ ipsec4_getpolicybysock(struct mbuf *m, u_int dir, struct socket *so, int *error)
 	switch (so->so_proto->pr_domain->dom_family) {
 	case AF_INET:
 		/* set spidx in pcb */
-		*error = ipsec4_setspidx_inpcb(m, sotoinpcb(so));
+		*error = ipsec4_setspidx_inpcb(m, so->so_pcb);
 		break;
 #ifdef INET6
 	case AF_INET6:
 		/* set spidx in pcb */
-		*error = ipsec6_setspidx_in6pcb(m, sotoin6pcb(so));
+		*error = ipsec6_setspidx_in6pcb(m, so->so_pcb);
 		break;
 #endif
 	default:
@@ -470,7 +470,7 @@ ipsec6_getpolicybysock(struct mbuf *m, u_int dir, struct socket *so, int *error)
 #endif
 
 	/* set spidx in pcb */
-	ipsec6_setspidx_in6pcb(m, sotoin6pcb(so));
+	ipsec6_setspidx_in6pcb(m, so->so_pcb);
 
 	pcbsp = sotoin6pcb(so)->in6p_sp;
 

@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.51 2005/02/01 16:09:37 hrs Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.52 2005/02/08 22:56:19 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -893,7 +893,7 @@ findpcb:
 				 * Socket is created in state SYN_RECEIVED.
 				 * Continue processing segment.
 				 */
-				inp = sotoinpcb(so);
+				inp = so->so_pcb;
 				tp = intotcpcb(inp);
 				/*
 				 * This is what would have happened in
@@ -1021,7 +1021,7 @@ findpcb:
 			/*
 			 * Segment passed TAO tests.
 			 */
-			inp = sotoinpcb(so);
+			inp = so->so_pcb;
 			tp = intotcpcb(inp);
 			tp->snd_wnd = tiwin;
 			tp->t_starttime = ticks;

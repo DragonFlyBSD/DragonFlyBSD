@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.17 2005/02/01 16:09:37 hrs Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.18 2005/02/08 22:56:19 hsu Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -1287,7 +1287,7 @@ int
 ip6_ctloutput(struct socket *so, struct sockopt *sopt)
 {
 	int privileged;
-	struct inpcb *in6p = sotoinpcb(so);
+	struct inpcb *in6p = so->so_pcb;
 	int error, optval;
 	int level, op, optname;
 	int optlen;

@@ -86,7 +86,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.20 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.21 2005/02/08 22:56:19 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -665,7 +665,7 @@ syncache_socket(sc, lso)
 	struct syncache *sc;
 	struct socket *lso;
 {
-	struct inpcb *inp = NULL;
+	struct inpcb *inp = NULL, *linp;
 	struct socket *so;
 	struct tcpcb *tp;
 #ifdef INET6
@@ -690,7 +690,7 @@ syncache_socket(sc, lso)
 		goto abort;
 	}
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 
 	/*
 	 * Insert new socket into hash list.
@@ -718,13 +718,13 @@ syncache_socket(sc, lso)
 		inp->inp_lport = 0;
 		goto abort;
 	}
+	linp = so->so_pcb;
 #ifdef IPSEC
 	/* copy old policy into new socket's */
-	if (ipsec_copy_policy(sotoinpcb(lso)->inp_sp, inp->inp_sp))
+	if (ipsec_copy_policy(linp->inp_sp, inp->inp_sp))
 		printf("syncache_expand: could not copy policy\n");
 #endif
 	if (isipv6) {
-		struct inpcb *oinp = sotoinpcb(lso);
 		struct in6_addr laddr6;
 		struct sockaddr_in6 sin6;
 		/*
@@ -736,10 +736,10 @@ syncache_socket(sc, lso)
 		 * If we copied in6p_inputopts, a user would not be able to
 		 * receive options just after calling the accept system call.
 		 */
-		inp->inp_flags |= oinp->inp_flags & INP_CONTROLOPTS;
-		if (oinp->in6p_outputopts)
+		inp->inp_flags |= linp->inp_flags & INP_CONTROLOPTS;
+		if (linp->in6p_outputopts)
 			inp->in6p_outputopts =
-			    ip6_copypktopts(oinp->in6p_outputopts, M_INTWAIT);
+			    ip6_copypktopts(linp->in6p_outputopts, M_INTWAIT);
 		inp->in6p_route = sc->sc_route6;
 		sc->sc_route6.ro_rt = NULL;
 

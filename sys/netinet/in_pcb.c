@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.32 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.33 2005/02/08 22:56:19 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -664,7 +664,7 @@ in_setsockaddr(so, nam)
 	sin->sin_len = sizeof *sin;
 
 	s = splnet();
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (!inp) {
 		splx(s);
 		free(sin, M_SONAME);
@@ -696,7 +696,7 @@ in_setpeeraddr(so, nam)
 	sin->sin_len = sizeof *sin;
 
 	s = splnet();
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (!inp) {
 		splx(s);
 		free(sin, M_SONAME);

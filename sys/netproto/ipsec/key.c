@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key.c,v 1.3.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.10 2004/10/15 22:59:10 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.11 2005/02/08 22:56:19 hsu Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -1091,7 +1091,7 @@ key_freeso(struct socket *so)
 #ifdef INET
 	case PF_INET:
 	    {
-		struct inpcb *pcb = sotoinpcb(so);
+		struct inpcb *pcb = so->so_pcb;
 
 		/* Does it have a PCB ? */
 		if (pcb == NULL)
@@ -1105,7 +1105,7 @@ key_freeso(struct socket *so)
 	case PF_INET6:
 	    {
 #ifdef HAVE_NRL_INPCB
-		struct inpcb *pcb  = sotoinpcb(so);
+		struct inpcb *pcb  = so->so_pcb;
 
 		/* Does it have a PCB ? */
 		if (pcb == NULL)
@@ -1113,7 +1113,7 @@ key_freeso(struct socket *so)
 		key_freesp_so(&pcb->inp_sp->sp_in);
 		key_freesp_so(&pcb->inp_sp->sp_out);
 #else
-		struct in6pcb *pcb  = sotoin6pcb(so);
+		struct in6pcb *pcb  = so->so_pcb;
 
 		/* Does it have a PCB ? */
 		if (pcb == NULL)

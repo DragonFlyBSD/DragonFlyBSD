@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.24 2004/12/28 08:09:59 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.25 2005/02/08 22:56:19 hsu Exp $
  */
 
 #define _IP_VHL
@@ -1371,7 +1371,7 @@ ip_optcopy(struct ip *ip, struct ip *jp)
 int
 ip_ctloutput(struct socket *so, struct sockopt *sopt)
 {
-	struct	inpcb *inp = sotoinpcb(so);
+	struct	inpcb *inp = so->so_pcb;
 	int	error, optval;
 
 	error = optval = 0;
@@ -1606,7 +1606,7 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 				req = mtod(m, caddr_t);
 				len = m->m_len;
 			}
-			error = ipsec4_get_policy(sotoinpcb(so), req, len, &m);
+			error = ipsec4_get_policy(so->so_pcb, req, len, &m);
 			if (error == 0)
 				error = soopt_mcopyout(sopt, m); /* XXX */
 			if (error == 0)

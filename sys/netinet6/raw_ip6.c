@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.16 2004/10/15 22:59:10 hsu Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.17 2005/02/08 22:56:19 hsu Exp $
  */
 
 /*
@@ -330,7 +330,7 @@ rip6_output(struct mbuf *m, struct socket *so, ...)
 	control = __va_arg(ap, struct mbuf *);
 	__va_end(ap);
 
-	in6p = sotoin6pcb(so);
+	in6p = so->so_pcb;
 
 	priv = 0;
 	if (so->so_cred->cr_uid == 0)
@@ -546,7 +546,7 @@ rip6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	struct inpcb *inp;
 	int error, s;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp)
 		panic("rip6_attach");
 	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
@@ -576,7 +576,7 @@ rip6_detach(struct socket *so)
 {
 	struct inpcb *inp;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp == 0)
 		panic("rip6_detach");
 	/* xxx: RSVP */
@@ -600,7 +600,7 @@ rip6_abort(struct socket *so)
 static int
 rip6_disconnect(struct socket *so)
 {
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 
 	if ((so->so_state & SS_ISCONNECTED) == 0)
 		return ENOTCONN;
@@ -611,7 +611,7 @@ rip6_disconnect(struct socket *so)
 static int
 rip6_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct sockaddr_in6 *addr = (struct sockaddr_in6 *)nam;
 	struct ifaddr *ia = NULL;
 
@@ -641,7 +641,7 @@ rip6_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 static int
 rip6_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct sockaddr_in6 *addr = (struct sockaddr_in6 *)nam;
 	struct in6_addr *in6a = NULL;
 	int error = 0;
@@ -686,7 +686,7 @@ static int
 rip6_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	  struct mbuf *control, struct thread *td)
 {
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct sockaddr_in6 tmp;
 	struct sockaddr_in6 *dst;
 

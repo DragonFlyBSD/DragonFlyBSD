@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.23 2005/02/08 15:54:01 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.24 2005/02/08 22:56:19 hsu Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -643,7 +643,7 @@ in6_setsockaddr(struct socket *so, struct sockaddr **nam)
 	sin6->sin6_len = sizeof(*sin6);
 
 	s = splnet();
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (!inp) {
 		splx(s);
 		free(sin6, M_SONAME);
@@ -679,7 +679,7 @@ in6_setpeeraddr(struct socket *so, struct sockaddr **nam)
 	sin6->sin6_len = sizeof(struct sockaddr_in6);
 
 	s = splnet();
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (!inp) {
 		splx(s);
 		free(sin6, M_SONAME);
@@ -702,7 +702,7 @@ in6_setpeeraddr(struct socket *so, struct sockaddr **nam)
 int
 in6_mapped_sockaddr(struct socket *so, struct sockaddr **nam)
 {
-	struct	inpcb *inp = sotoinpcb(so);
+	struct	inpcb *inp = so->so_pcb;
 	int	error;
 
 	if (inp == NULL)
@@ -721,7 +721,7 @@ in6_mapped_sockaddr(struct socket *so, struct sockaddr **nam)
 int
 in6_mapped_peeraddr(struct socket *so, struct sockaddr **nam)
 {
-	struct	inpcb *inp = sotoinpcb(so);
+	struct	inpcb *inp = so->so_pcb;
 	int	error;
 
 	if (inp == NULL)

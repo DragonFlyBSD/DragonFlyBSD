@@ -82,7 +82,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.33 2005/02/02 07:51:19 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.34 2005/02/08 22:56:19 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -834,7 +834,7 @@ udp_abort(struct socket *so)
 	struct inpcb *inp;
 	int s;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp == NULL)
 		return EINVAL;	/* ??? possible? panic instead? */
 	soisdisconnected(so);
@@ -850,7 +850,7 @@ udp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	struct inpcb *inp;
 	int s, error;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp != NULL)
 		return EINVAL;
 
@@ -876,7 +876,7 @@ udp_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	struct inpcb *inp;
 	int s, error;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp == NULL)
 		return EINVAL;
 	s = splnet();
@@ -897,7 +897,7 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	int s, error;
 	struct sockaddr_in *sin;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp == NULL)
 		return EINVAL;
 	if (inp->inp_faddr.s_addr != INADDR_ANY)
@@ -937,7 +937,7 @@ udp_detach(struct socket *so)
 	struct inpcb *inp;
 	int s;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp == NULL)
 		return EINVAL;
 	s = splnet();
@@ -952,7 +952,7 @@ udp_disconnect(struct socket *so)
 	struct inpcb *inp;
 	int s;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp == NULL)
 		return EINVAL;
 	if (inp->inp_faddr.s_addr == INADDR_ANY)
@@ -971,7 +971,7 @@ udp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 {
 	struct inpcb *inp;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp == NULL) {
 		m_freem(m);
 		return EINVAL;
@@ -984,7 +984,7 @@ udp_shutdown(struct socket *so)
 {
 	struct inpcb *inp;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp == NULL)
 		return EINVAL;
 	socantsendmore(so);

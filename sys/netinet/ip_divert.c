@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.19 2005/01/06 17:38:26 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.20 2005/02/08 22:56:19 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -280,7 +280,7 @@ div_output(struct socket *so, struct mbuf *m,
 
 	/* Reinject packet into the system as incoming or outgoing */
 	if (!sin || sin->sin_addr.s_addr == 0) {
-		struct inpcb *const inp = sotoinpcb(so);
+		struct inpcb *const inp = so->so_pcb;
 		struct ip *const ip = mtod(m, struct ip *);
 
 		/*
@@ -338,7 +338,7 @@ div_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	struct inpcb *inp;
 	int error, s;
 
-	inp  = sotoinpcb(so);
+	inp  = so->so_pcb;
 	if (inp)
 		panic("div_attach");
 	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
@@ -369,7 +369,7 @@ div_detach(struct socket *so)
 {
 	struct inpcb *inp;
 
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp == NULL)
 		panic("div_detach");
 	in_pcbdetach(inp);
@@ -399,7 +399,7 @@ div_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	int error;
 
 	s = splnet();
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	/* in_pcbbind assumes that nam is a sockaddr_in
 	 * and in_pcbbind requires a valid address. Since divert
 	 * sockets don't we need to make sure the address is

@@ -82,7 +82,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.32 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.33 2005/02/08 22:56:19 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -176,7 +176,7 @@ tcp_usr_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	int s = splnet();
 	int error;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct tcpcb *tp = 0;
 	TCPDEBUG0;
 
@@ -211,7 +211,7 @@ tcp_usr_detach(struct socket *so)
 {
 	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct tcpcb *tp;
 	TCPDEBUG0;
 
@@ -255,7 +255,7 @@ tcp_usr_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct tcpcb *tp;
 	struct sockaddr_in *sinp;
 
@@ -284,7 +284,7 @@ tcp6_usr_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct tcpcb *tp;
 	struct sockaddr_in6 *sin6p;
 
@@ -348,7 +348,7 @@ tcp_usr_listen(struct socket *so, struct thread *td)
 {
 	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct tcpcb *tp;
 #ifdef SMP
 	int cpu;
@@ -397,7 +397,7 @@ tcp6_usr_listen(struct socket *so, struct thread *td)
 {
 	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct tcpcb *tp;
 #ifdef SMP
 	int cpu;
@@ -455,7 +455,7 @@ tcp_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct tcpcb *tp;
 	struct sockaddr_in *sinp;
 
@@ -485,7 +485,7 @@ tcp6_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct tcpcb *tp;
 	struct sockaddr_in6 *sin6p;
 
@@ -543,7 +543,7 @@ tcp_usr_disconnect(struct socket *so)
 {
 	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct tcpcb *tp;
 
 	COMMON_START();
@@ -561,7 +561,7 @@ tcp_usr_accept(struct socket *so, struct sockaddr **nam)
 {
 	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct tcpcb *tp = NULL;
 	TCPDEBUG0;
 
@@ -585,7 +585,7 @@ tcp6_usr_accept(struct socket *so, struct sockaddr **nam)
 {
 	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct tcpcb *tp = NULL;
 	TCPDEBUG0;
 
@@ -611,7 +611,7 @@ tcp_usr_shutdown(struct socket *so)
 {
 	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct tcpcb *tp;
 
 	COMMON_START();
@@ -630,7 +630,7 @@ tcp_usr_rcvd(struct socket *so, int flags)
 {
 	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct tcpcb *tp;
 
 	COMMON_START();
@@ -651,7 +651,7 @@ tcp_usr_send(struct socket *so, int flags, struct mbuf *m,
 {
 	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct tcpcb *tp;
 #ifdef INET6
 	int isipv6;
@@ -775,7 +775,7 @@ tcp_usr_abort(struct socket *so)
 {
 	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct tcpcb *tp;
 
 	COMMON_START();
@@ -791,7 +791,7 @@ tcp_usr_rcvoob(struct socket *so, struct mbuf *m, int flags)
 {
 	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp = so->so_pcb;
 	struct tcpcb *tp;
 
 	COMMON_START();
@@ -1077,7 +1077,7 @@ tcp_ctloutput(so, sopt)
 
 	error = 0;
 	s = splnet();		/* XXX */
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 	if (inp == NULL) {
 		splx(s);
 		return (ECONNRESET);
@@ -1218,7 +1218,7 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 	error = in_pcballoc(so, &tcbinfo[cpu]);
 	if (error)
 		return (error);
-	inp = sotoinpcb(so);
+	inp = so->so_pcb;
 #ifdef INET6
 	if (isipv6) {
 		inp->inp_vflag |= INP_IPV6;
