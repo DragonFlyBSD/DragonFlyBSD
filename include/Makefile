@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.9 2003/11/09 02:22:28 dillon Exp $
+# $DragonFly: src/include/Makefile,v 1.10 2003/11/14 20:12:53 dillon Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -73,6 +73,9 @@ LSUBDIRS3= vfs/isofs/cd9660 net/i4b/include \
 # and netproto/atm/* are taken care of
 LSYMSUBDIRS=	${LSUBDIRS:Nbus/cam/scsi:Nnetproto/atm/*:Nnet/*:Nnetgraph/*}
 LSYMSUBDIRS3=	${LSUBDIRS3:Nnet/*}
+
+# For obsolete headers which need to be removed
+RMHEADERS=	machine/ansi.h sys/inttypes.h
 
 # Define SHARED to indicate whether you want symbolic links to the system
 # source (``symlinks''), or a separate copy (``copies'').  ``symlinks'' is
@@ -164,6 +167,9 @@ copies:		mtree_setup
 .endif
 .for i in ${SHDRS}
 	ln -sf ../sys/$i ${DESTDIR}/usr/include/machine/$i
+.endfor
+.for i in ${RMHEADERS}
+	rm -f ${DESTDIR}/usr/include/$i
 .endfor
 
 symlinks:	mtree_setup
