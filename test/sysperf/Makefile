@@ -1,5 +1,5 @@
 #
-# $DragonFly: src/test/sysperf/Makefile,v 1.9 2004/08/13 02:28:42 dillon Exp $
+# $DragonFly: src/test/sysperf/Makefile,v 1.10 2004/10/31 20:19:23 eirikn Exp $
 #
 
 TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 \
@@ -17,7 +17,7 @@ CFLAGS= -O2 -g -I/usr/src/sys
 
 all:	$(TARGETS)
 
-/tmp/sc1: syscall1.c getuid_msg.c blib.c
+/tmp/sc1: syscall1.c blib.c
 	$(CC) $(CFLAGS) syscall1.c blib.c -o /tmp/sc1
 
 /tmp/sc2: syscall2.c getuid_msg.c blib.c
