@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.50 2003/12/28 06:11:30 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.51 2003/12/30 03:19:00 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -867,8 +867,14 @@ cpu_halt(void)
  * cases lwkt_switch() sets TDF_IDLE_NOHLT.
  */
 static int	cpu_idle_hlt = 1;
+static int	cpu_idle_hltcnt;
+static int	cpu_idle_spincnt;
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
     &cpu_idle_hlt, 0, "Idle loop HLT enable");
+SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hltcnt, CTLFLAG_RW,
+    &cpu_idle_hltcnt, 0, "Idle loop entry halts");
+SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_spincnt, CTLFLAG_RW,
+    &cpu_idle_spincnt, 0, "Idle loop entry spins");
 
 void
 cpu_idle(void)
@@ -897,9 +903,12 @@ cpu_idle(void)
 			__asm __volatile("cli");
 			splz();
 			__asm __volatile("sti; hlt");
+			++cpu_idle_hltcnt;
 		} else {
 			td->td_flags &= ~TDF_IDLE_NOHLT;
+			splz();
 			__asm __volatile("sti");
+			++cpu_idle_spincnt;
 		}
 	}
 }

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.15 2003/11/03 02:08:35 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.16 2003/12/30 03:19:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -138,6 +138,7 @@ chooseproc(struct proc *chkp)
 	u_int32_t *which;
 	u_int32_t pri;
 
+	clear_resched();
 	if (rtqueuebits) {
 		pri = bsfl(rtqueuebits);
 		q = &rtqueues[pri];

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.46 2003/12/04 20:09:33 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.47 2003/12/30 03:19:02 dillon Exp $
  */
 
 /*
@@ -505,11 +505,11 @@ again:
 #endif
 	} else {
 	    /*
-	     * Nothing to run but we may still need the BGL to deal with
-	     * pending interrupts, spin in idle if so.
+	     * We have nothing to run but only let the idle loop halt
+	     * the cpu if there are no pending interrupts.
 	     */
 	    ntd = &gd->gd_idlethread;
-	    if (gd->gd_reqflags)
+	    if (gd->gd_reqflags & RQF_IDLECHECK_MASK)
 		ntd->td_flags |= TDF_IDLE_NOHLT;
 	}
     }

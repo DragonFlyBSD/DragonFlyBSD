@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.21 2003/11/21 22:46:13 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.22 2003/12/30 03:19:04 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -125,6 +125,7 @@ typedef struct globaldata *globaldata_t;
 #define RQF_AST_UPCALL	(1 << RQB_AST_UPCALL)
 #define RQF_AST_MASK	(RQF_AST_OWEUPC|RQF_AST_SIGNAL|RQF_AST_RESCHED|\
 			 RQF_AST_UPCALL)
+#define RQF_IDLECHECK_MASK	(RQF_IPIQ|RQF_INTPEND)
 
 #endif
 
