@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.29 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.30 2004/12/24 02:22:14 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -1182,26 +1182,29 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 	 * The process of preparing the TCB list is too time-consuming and
 	 * resource-intensive to repeat twice on every request.
 	 */
-	if (req->oldptr == 0) {
+	if (req->oldptr == NULL) {
 		n = pcbinfo->ipi_count;
 		req->oldidx = (n + n/8 + 10) * sizeof(struct xinpcb);
 		return 0;
 	}
 
-	if (req->newptr != 0)
+	if (req->newptr != NULL)
 		return EPERM;
 
 	/*
-	 * OK, now we're committed to doing something.
+	 * OK, now we're committed to doing something.  Re-fetch ipi_count
+	 * after obtaining the generation count.
 	 */
 	gencnt = pcbinfo->ipi_gencnt;
 	n = pcbinfo->ipi_count;
 
 	marker = malloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
 	marker->inp_flags |= INP_PLACEMARKER;
-
 	LIST_INSERT_HEAD(&pcbinfo->pcblisthead, marker, inp_list);
+
 	i = 0;
+	error = 0;
+
 	while ((inp = LIST_NEXT(marker, inp_list)) != NULL && i < n) {
 		LIST_REMOVE(marker, inp_list);
 		LIST_INSERT_AFTER(inp, marker, inp_list);
