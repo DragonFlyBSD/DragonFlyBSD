@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options.i386,v 1.132.2.18 2003/03/14 21:22:35 jhb Exp $
-# $DragonFly: src/sys/conf/Attic/options.amd64,v 1.3 2005/01/31 23:44:34 joerg Exp $
+# $DragonFly: src/sys/conf/Attic/options.amd64,v 1.4 2005/03/28 14:42:44 joerg Exp $
 
 DISABLE_PSE
 IDE_DELAY
@@ -135,11 +135,6 @@ PCVT_SCANSET		opt_pcvt.h
 PCVT_SCREENSAVER	opt_pcvt.h
 PCVT_USEKBDSEC		opt_pcvt.h
 PCVT_VT220KEYB		opt_pcvt.h
-
-# voxware options
-GUS_DMA2		opt_sound.h
-GUS_DMA			opt_sound.h
-GUS_IRQ			opt_sound.h
 
 # Video spigot
 SPIGOT_UNSECURE		opt_spigot.h

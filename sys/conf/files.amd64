@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.amd64,v 1.4 2005/01/31 23:44:34 joerg Exp $
+# $DragonFly: src/sys/conf/Attic/files.amd64,v 1.5 2005/03/28 14:42:44 joerg Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -197,7 +197,6 @@ bus/mca/i386/mca_machdep.c		optional	mca
 dev/disk/mcd/mcd.c			optional	mcd
 dev/misc/mse/mse.c			optional	mse
 i386/isa/npx.c				mandatory	npx
-dev/sound/isa/i386/pca/pcaudio.c	optional	pca
 bus/iicbus/i386/pcf.c			optional	pcf
 bus/pci/i386/pci_cfgreg.c		optional	pci
 bus/pci/i386/pcibus.c			optional	pci
@@ -212,72 +211,8 @@ i386/isa/pmtimer.c			optional	acpica
 i386/isa/prof_machdep.c			optional	profiling-routine
 dev/serial/rc/rc.c			optional	rc
 dev/disk/scd/scd.c			optional	scd
-dev/sound/isa/i386/ad1848.c		optional	css
-dev/sound/isa/i386/ad1848.c		optional	gus
-dev/sound/isa/i386/ad1848.c		optional	gusxvi
-dev/sound/isa/i386/ad1848.c		optional	mss
-dev/sound/isa/i386/ad1848.c		optional	sscape
-dev/sound/isa/i386/ad1848.c		optional	trix
-dev/sound/isa/i386/ad1848.c		optional	sscape_mss
-dev/sound/isa/i386/adlib_card.c		optional	opl
-dev/sound/isa/i386/adlib_card.c		optional	trix
-dev/sound/isa/i386/audio.c		optional	snd	\
-	warning "The snd drivers are deprecated. Please see pcm/sbc/etc."
-dev/sound/isa/i386/css/cs4232.c		optional	css
-dev/sound/isa/i386/dev_table.c		optional	snd
-dev/sound/isa/i386/dmabuf.c		optional	snd
-dev/sound/isa/i386/gus/gus_card.c	optional	gus
-dev/sound/isa/i386/gus/gus_midi.c	optional	gus
-dev/sound/isa/i386/gus/gus_vol.c	optional	gus
-dev/sound/isa/i386/gus/gus_wave.c	optional	gus
-dev/sound/isa/i386/gus/ics2101.c	optional	gus
-dev/sound/isa/i386/midi_synth.c		optional	css
-dev/sound/isa/i386/midi_synth.c		optional	gus
-dev/sound/isa/i386/midi_synth.c		optional	mpu
-dev/sound/isa/i386/midi_synth.c		optional	mss
-dev/sound/isa/i386/midi_synth.c		optional	pas
-dev/sound/isa/i386/midi_synth.c		optional	sb
-dev/sound/isa/i386/midi_synth.c		optional	sscape
-dev/sound/isa/i386/midi_synth.c		optional	uart
-dev/sound/isa/i386/midibuf.c		optional	css
-dev/sound/isa/i386/midibuf.c		optional	gus
-dev/sound/isa/i386/midibuf.c		optional	mpu
-dev/sound/isa/i386/midibuf.c		optional	mss
-dev/sound/isa/i386/midibuf.c		optional	pas
-dev/sound/isa/i386/midibuf.c		optional	sb
-dev/sound/isa/i386/midibuf.c		optional	sscape
-dev/sound/isa/i386/midibuf.c		optional	uart
-dev/sound/isa/i386/mpu/mpu401.c		optional	mpu
-dev/sound/isa/i386/mpu/mpu401.c		optional	sscape
-dev/sound/isa/i386/opl3.c		optional	opl
-dev/sound/isa/i386/opl3.c		optional	trix
-dev/sound/isa/i386/pas2/pas2_card.c	optional	pas
-dev/sound/isa/i386/pas2/pas2_midi.c	optional	pas
-dev/sound/isa/i386/pas2/pas2_mixer.c	optional	pas
-dev/sound/isa/i386/pas2/pas2_pcm.c	optional	pas
-dev/sound/isa/i386/patmgr.c		optional	snd
-dev/sound/isa/i386/sbxvi/sb16_dsp.c	optional	sbxvi
-dev/sound/isa/i386/sbmidi/sb16_midi.c	optional	sbmidi
-dev/sound/isa/i386/sb/sb_card.c		optional	sb
-dev/sound/isa/i386/sb/sb_dsp.c		optional	sb
-dev/sound/isa/i386/sb/sb_midi.c		optional	sb
-dev/sound/isa/i386/sb/sb_mixer.c	optional	sb
-dev/sound/isa/i386/sequencer.c	optional	snd
-dev/sound/isa/i386/sound_switch.c	optional	snd
-dev/sound/isa/i386/sound_timer.c	optional	css
-dev/sound/isa/i386/sound_timer.c	optional	gus
-dev/sound/isa/i386/sound_timer.c	optional	mss
-dev/sound/isa/i386/sound_timer.c	optional	mss
-dev/sound/isa/i386/sound_timer.c	optional	sscape
-dev/sound/isa/i386/sound_timer.c	optional	trix
-dev/sound/isa/i386/soundcard.c		optional	snd
-dev/sound/isa/i386/sscape/sscape.c	optional	sscape
-dev/sound/isa/i386/sys_timer.c		optional	snd
-dev/sound/isa/i386/trix/trix.c		optional	trix
-dev/sound/isa/i386/uart/uart6850.c	optional	uart
 dev/misc/spic/spic.c			optional	spic
 dev/misc/spigot/spigot.c		optional	spigot
-dev/sound/isa/i386/spkr/spkr.c		optional	speaker
 dev/serial/stl/stallion.c		optional	stl
 dev/misc/tw/tw.c			optional	tw
 dev/video/i386/vesa/vesa.c		optional	vga vesa

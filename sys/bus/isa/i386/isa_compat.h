@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.h,v 1.27.2.11 2002/10/05 18:31:48 scottl Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.7 2005/01/31 23:44:34 joerg Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.8 2005/03/28 14:42:44 joerg Exp $
  */
 
 #include "use_vt.h"
@@ -34,18 +34,6 @@
 #include "use_rdp.h"
 #include "use_wl.h"
 #include "use_pcm.h"
-#include "use_pas.h"
-#include "use_sb.h"
-#include "use_sbxvi.h"
-#include "use_sbmidi.h"
-#include "use_gus.h"
-#include "use_mss.h"
-#include "use_css.h"
-#include "use_sscape.h"
-#include "use_trix.h"
-#include "use_opl.h"
-#include "use_mpu.h"
-#include "use_uart.h"
 #include "use_mcd.h"
 #include "use_scd.h"
 #include "use_wt.h"
@@ -74,19 +62,6 @@ extern struct isa_driver  eldriver;
 extern struct isa_driver  ledriver;
 extern struct isa_driver rdpdriver;
 extern struct isa_driver  wldriver;
-extern struct isa_driver pasdriver;
-extern struct isa_driver  sbdriver;
-extern struct isa_driver sbxvidriver;
-extern struct isa_driver sbmididriver;
-extern struct isa_driver gusdriver;
-extern struct isa_driver mssdriver;
-extern struct isa_driver cssdriver;
-extern struct isa_driver sscapedriver;
-extern struct isa_driver trixdriver;
-extern struct isa_driver sscape_mssdriver;
-extern struct isa_driver opldriver;
-extern struct isa_driver mpudriver;
-extern struct isa_driver uartdriver;
 extern struct isa_driver mcddriver;
 extern struct isa_driver scddriver;
 extern struct isa_driver  wtdriver;
@@ -190,45 +165,6 @@ static struct old_isa_driver old_drivers[] = {
 
 /* MISC */
 
-#if NPAS > 0
-	{ INTR_TYPE_MISC, &pasdriver },
-#endif
-#if NSB > 0
-	{ INTR_TYPE_MISC, &sbdriver },
-#endif
-#if NSBXVI > 0
-	{ INTR_TYPE_MISC, &sbxvidriver },
-#endif
-#if NSBMIDI > 0
-	{ INTR_TYPE_MISC, &sbmididriver },
-#endif
-#if NGUS > 0
-	{ INTR_TYPE_MISC, &gusdriver },
-#endif
-#if NMSS > 0
-	{ INTR_TYPE_MISC, &mssdriver },
-#endif
-#if NCSS > 0
-	{ INTR_TYPE_MISC, &cssdriver },
-#endif
-#if NSSCAPE > 0
-	{ INTR_TYPE_MISC, &sscapedriver },
-#endif
-#if NTRIX > 0
-	{ INTR_TYPE_MISC, &trixdriver },
-#endif
-#if NSSCAPE > 0
-	{ INTR_TYPE_MISC, &sscape_mssdriver },
-#endif
-#if NOPL > 0
-	{ INTR_TYPE_MISC, &opldriver },
-#endif
-#if NMPU > 0
-	{ INTR_TYPE_MISC, &mpudriver },
-#endif
-#if NUART > 0
-	{ INTR_TYPE_MISC, &uartdriver },
-#endif
 #if NCTX > 0
 	{ INTR_TYPE_MISC, &ctxdriver },
 #endif

@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.48 2005/02/26 12:00:55 swildner Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.49 2005/03/28 14:42:45 joerg Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -992,7 +992,6 @@ options 	SES_ENABLE_PASSTHROUGH
 # `xterm', among others.
 
 pseudo-device	pty		#Pseudo ttys
-pseudo-device	speaker		#Play IBM BASIC-style noises out your speaker
 pseudo-device	gzip		#Exec gzipped a.out's
 pseudo-device	vn		#Vnode driver (turns a file into a device)
 pseudo-device	md		#Memory/malloc disk
@@ -1457,32 +1456,6 @@ device		en
 options 	NATM			#native ATM
 
 #
-# Audio drivers: `snd', `sb', `pas', `gus', `pca'
-#
-# snd: Voxware sound support code
-# sb: SoundBlaster PCM - SoundBlaster, SB Pro, SB16, ProAudioSpectrum
-# sbxvi: SoundBlaster 16
-# sbmidi: SoundBlaster 16 MIDI interface
-# pas: ProAudioSpectrum PCM and MIDI
-# gus: Gravis Ultrasound - Ultrasound, Ultrasound 16, Ultrasound MAX
-# gusxvi: Gravis Ultrasound 16-bit PCM	(do not use)
-# mss: Microsoft Sound System
-# css: Crystal Sound System (CSS 423x PnP)
-# sscape: Ensoniq Soundscape MIDI interface
-# sscape_mss: Ensoniq Soundscape PCM (requires sscape)
-# opl: Yamaha OPL-2 and OPL-3 FM - SB, SB Pro, SB 16, ProAudioSpectrum
-# uart: stand-alone 6850 UART for MIDI
-# mpu: Roland MPU-401 stand-alone card
-#
-# Note: It has been reported that ISA DMA with the SoundBlaster will
-# lock up the machine (PR docs/5358).  If this happens to you,
-# turning off USWC write posting in your machine's BIOS may fix
-# the problem.
-#
-# Beware!  The addresses specified below are also hard-coded in
-# src/sys/i386/isa/sound/sound_config.h.  If you change the values here, you
-# must also change the values in the include file.
-#
 # pcm: PCM audio through various sound cards.
 #
 # This has support for a large number of new audio cards, based on
@@ -1499,8 +1472,6 @@ options 	NATM			#native ATM
 #		    since this is unsupported at the moment...).
 #
 # This driver will use the new PnP code if it's available.
-#
-# pca: PCM audio through your PC speaker
 #
 # If you have a GUS-MAX card and want to use the CS4231 codec on the
 # card the drqs for the gus max must be 8 bit (1, 2, or 3).
@@ -1521,25 +1492,6 @@ options 	NATM			#native ATM
 # options GUS_IRQ
 #
 # The src/sys/i386/isa/sound/sound.doc has more information.
-
-# Controls all "VOXWARE" driver sound devices.  See Luigi's driver
-# below for an alternate which may work better for some cards.
-#
-#device		snd
-#device pas0	at isa? port 0x388 irq 10 drq 6
-#device sb0	at isa? port 0x220 irq 5 drq 1
-#device sbxvi0	at isa? drq 5
-#device sbmidi0	at isa? port 0x330
-#device gus0	at isa? port 0x220 irq 12 drq 1
-##device gus0	at isa? port 0x220 irq 12 drq 1 flags 0x3
-#device mss0	at isa? port 0x530 irq 10 drq 1
-#device css0	at isa? port 0x534 irq 5 drq 1 flags 0x08
-#device sscape0	at isa? port 0x330 irq 9 drq 0
-#device trix0	at isa? port 0x330 irq 6 drq 0
-#device sscape_mss0 at isa? port 0x534 irq 5 drq 1
-#device opl0	at isa? port 0x388
-#device mpu0	at isa? port 0x330 irq 6 drq 0
-#device uart0	at isa? port 0x330 irq 5
 
 # The newpcm driver (use INSTEAD of snd0 and all VOXWARE drivers!).
 # Note that motherboard sound devices may require device PNPBIOS.
@@ -1570,10 +1522,6 @@ device		pcm
 # For non-PnP cards:
 device		sbc0	at isa? port 0x220 irq 5 drq 1 flags 0x15
 device		gusc0	at isa? port 0x220 irq 5 drq 1 flags 0x13
-
-# Not controlled by `snd'
-# XXX-Hiten The pca driver needs to readded back into LINT!
-# device		pca0 at isa? port IO_TIMER1
 
 #
 # Miscellaneous hardware:
