@@ -15,7 +15,7 @@
  * `state' of FTP_t
  *
  * $FreeBSD: src/lib/libftpio/ftpio.c,v 1.33.2.4 2002/07/25 15:25:32 ume Exp $
- * $DragonFly: src/lib/libftpio/ftpio.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libftpio/ftpio.c,v 1.3 2004/08/16 12:59:21 joerg Exp $
  *
  */
 
@@ -54,19 +54,24 @@ static void	check_passive(FILE *fp);
 static int	ftp_read_method(void *n, char *buf, int nbytes);
 static int	ftp_write_method(void *n, const char *buf, int nbytes);
 static int	ftp_close_method(void *n);
-static int	writes(int fd, char *s);
-static __inline char *get_a_line(FTP_t ftp);
+static int	writes(int fd, const char *s);
+static char	*get_a_line(FTP_t ftp);
 static int	get_a_number(FTP_t ftp, char **q);
-static int	botch(char *func, char *botch_state);
+static int	botch(const char *func, const char *botch_state);
 static int	cmd(FTP_t ftp, const char *fmt, ...);
-static int	ftp_login_session(FTP_t ftp, char *host, int af, char *user, char *passwd, int port, int verbose);
-static int	ftp_file_op(FTP_t ftp, char *operation, char *file, FILE **fp, char *mode, off_t *seekto);
+static int	ftp_login_session(FTP_t ftp, const char *host, int af,
+				  const char *user, const char *passwd,
+				  int port, int verbose);
+static int	ftp_file_op(FTP_t ftp, const char *operation, const char *file,
+			    FILE **fp, const char *mode, off_t *seekto);
 static int	ftp_close(FTP_t ftp);
 static int	get_url_info(char *url_in, char *host_ret, int *port_ret, char *name_ret);
 static void	ftp_timeout(int sig);
 static void	ftp_set_timeout(void);
 static void	ftp_clear_timeout(void);
 static void	ai_unmapped(struct addrinfo *);
+
+int		networkInit(void);
 
 
 /* Global status variable - ick */
@@ -90,15 +95,17 @@ int FtpTimedOut;
 
 /*
  * XXX
- * gross!  evil!  bad!  We really need an access primitive for cookie in stdio itself.
- * it's too convenient a hook to bury and it's already exported through funopen as it is, so...
+ * gross!  evil!  bad!  We really need an access primitive for cookie in stdio
+ * itself.
+ * it's too convenient a hook to bury and it's already exported through funopen
+ * as it is, so...
  * XXX
  */
 #define fcookie(fp)	((fp)->_cookie)
 
 /* Placeholder in case we want to do any pre-init stuff at some point */ 
 int
-networkInit()
+networkInit(void)
 {
     return SUCCESS;	/* XXX dummy function for now XXX */
 }
@@ -535,7 +542,7 @@ check_passive(FILE *fp)
 }
 
 static void
-ftp_timeout(int sig)
+ftp_timeout(int sig __unused) 
 {
     FtpTimedOut = TRUE;
     /* Debug("ftp_pkg: ftp_timeout called - operation timed out"); */
@@ -572,7 +579,7 @@ ftp_clear_timeout(void)
 }
 
 static int
-writes(int fd, char *s)
+writes(int fd, const char *s)
 {
     int n, i = strlen(s);
 
@@ -584,7 +591,7 @@ writes(int fd, char *s)
     return FALSE;
 }
 
-static __inline char *
+static char *
 get_a_line(FTP_t ftp)
 {
     static char buf[BUFSIZ];
@@ -670,7 +677,7 @@ ftp_close(FTP_t ftp)
 }
 
 static int
-botch(char *func, char *botch_state)
+botch(const char *func __unused, const char *botch_state __unused)
 {
     /* Debug("ftp_pkg: botch: %s(%s)", func, botch_state); */
     return FAILURE;
@@ -703,8 +710,8 @@ cmd(FTP_t ftp, const char *fmt, ...)
 }
 
 static int
-ftp_login_session(FTP_t ftp, char *host, int af,
-		  char *user, char *passwd, int port, int verbose)
+ftp_login_session(FTP_t ftp, const char *host, int af,
+		  const char *user, const char *passwd, int port, int verbose)
 {
     char pbuf[10];
     struct addrinfo	hints, *res, *res0;
@@ -781,7 +788,8 @@ ftp_login_session(FTP_t ftp, char *host, int af,
 }
 
 static int
-ftp_file_op(FTP_t ftp, char *operation, char *file, FILE **fp, char *mode, off_t *seekto)
+ftp_file_op(FTP_t ftp, const char *operation, const char *file, FILE **fp,
+	    const char *mode, off_t *seekto)
 {
     int i,l,s;
     char *q;
@@ -790,7 +798,7 @@ ftp_file_op(FTP_t ftp, char *operation, char *file, FILE **fp, char *mode, off_t
 	struct sockaddr_in sin4;
 	struct sockaddr_in6 sin6;
     } sin;
-    char *cmdstr;
+    const char *cmdstr;
 
     if (!fp)
 	return FAILURE;

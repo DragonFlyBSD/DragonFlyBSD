@@ -1,9 +1,8 @@
 # $FreeBSD: src/lib/libftpio/Makefile,v 1.9.2.2 2001/04/25 10:04:30 ru Exp $
-# $DragonFly: src/lib/libftpio/Makefile,v 1.2 2003/06/17 04:26:49 dillon Exp $
+# $DragonFly: src/lib/libftpio/Makefile,v 1.3 2004/08/16 12:59:21 joerg Exp $
 
 LIB=		ftpio
 SHLIB_MAJOR=	5
-SHLIB_MINOR=	0
 
 SRCS=		ftpio.c ftperr.c
 INCS=		ftpio.h
@@ -11,6 +10,7 @@ CFLAGS+=	-I${.CURDIR} -Wall
 CFLAGS+=	-DINET6
 MAN=		ftpio.3
 CLEANFILES=	ftperr.c
+WARNS?=		6
 
 ftperr.c:	ftp.errors
 	@echo '#include <stdio.h>' > ${.TARGET}
