@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.23 2004/12/17 00:18:20 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.24 2004/12/19 00:06:55 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1037,7 +1037,7 @@ restart:
 	MALLOC(ip, struct inode *, sizeof(struct inode), M_EXT2NODE, M_WAITOK);
 
 	/* Allocate a new vnode/inode. */
-	if ((error = getnewvnode(VT_UFS, mp, &vp, 0, 0)) != 0) {
+	if ((error = getnewvnode(VT_UFS, mp, &vp, 0, LK_CANRECURSE)) != 0) {
 		if (ext2fs_inode_hash_lock < 0)
 			wakeup(&ext2fs_inode_hash_lock);
 		ext2fs_inode_hash_lock = 0;
