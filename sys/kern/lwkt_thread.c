@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.24 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.25 2003/07/20 01:37:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -198,6 +198,7 @@ lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
     td->td_gd = gd;
     td->td_pri = TDPRI_CRIT;
     td->td_cpu = gd->gd_cpuid;	/* YYY don't really need this if have td_gd */
+    lwkt_init_port(&td->td_msgport, td);
     pmap_init_thread(td);
     crit_enter();
     TAILQ_INSERT_TAIL(&mycpu->gd_tdallq, td, td_allq);
@@ -852,6 +853,12 @@ lwkt_preempted_proc(void)
     return(td->td_proc);
 }
 
+typedef struct lwkt_gettoken_req {
+    lwkt_token_t tok;
+    int	cpu;
+} lwkt_gettoken_req;
+
+#if 0
 
 /*
  * This function deschedules the current thread and blocks on the specified
@@ -864,10 +871,6 @@ lwkt_preempted_proc(void)
  *
  * Note: wait queue signals normally ping-pong the cpu as an optimization.
  */
-typedef struct lwkt_gettoken_req {
-    lwkt_token_t tok;
-    int	cpu;
-} lwkt_gettoken_req;
 
 void
 lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen)
@@ -881,7 +884,13 @@ lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen)
 	++w->wa_count;
 	td->td_wait = w;
 	td->td_wmesg = wmesg;
+again:
 	lwkt_switch();
+	lwkt_regettoken(&w->wa_token);
+	if (td->td_wmesg != NULL) {
+	    _lwkt_dequeue(td);
+	    goto again;
+	}
     }
     /* token might be lost, doesn't matter for gen update */
     *gen = w->wa_gen;
@@ -897,14 +906,15 @@ lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen)
  * queue.  YYY implement as sysctl.
  */
 void
-lwkt_signal(lwkt_wait_t w)
+lwkt_signal(lwkt_wait_t w, int count)
 {
     thread_t td;
     int count;
 
     lwkt_gettoken(&w->wa_token);
     ++w->wa_gen;
-    count = w->wa_count;
+    if (count < 0)
+	count = w->wa_count;
     while ((td = TAILQ_FIRST(&w->wa_waitq)) != NULL && count) {
 	--count;
 	--w->wa_count;
@@ -920,6 +930,8 @@ lwkt_signal(lwkt_wait_t w)
     }
     lwkt_reltoken(&w->wa_token);
 }
+
+#endif
 
 /*
  * Acquire ownership of a token

@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.24 2003/07/12 17:54:36 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.25 2003/07/20 01:37:22 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -20,18 +20,16 @@ struct thread;
 struct lwkt_queue;
 struct lwkt_token;
 struct lwkt_wait;
-struct lwkt_msg;
 struct lwkt_ipiq;
-struct lwkt_port;
 struct lwkt_cpu_msg;
 struct lwkt_cpu_port;
 struct lwkt_rwlock;
+struct lwkt_msg;
+struct lwkt_port;
 
 typedef struct lwkt_queue	*lwkt_queue_t;
 typedef struct lwkt_token	*lwkt_token_t;
 typedef struct lwkt_wait	*lwkt_wait_t;
-typedef struct lwkt_msg		*lwkt_msg_t;
-typedef struct lwkt_port	*lwkt_port_t;
 typedef struct lwkt_cpu_msg	*lwkt_cpu_msg_t;
 typedef struct lwkt_cpu_port	*lwkt_cpu_port_t;
 typedef struct lwkt_rwlock	*lwkt_rwlock_t;
@@ -43,6 +41,9 @@ typedef TAILQ_HEAD(lwkt_msg_queue, lwkt_msg) lwkt_msg_queue;
 
 #ifndef _MACHINE_THREAD_H_
 #include <machine/thread.h>		/* md_thread */
+#endif
+#ifndef _SYS_MSGPORT_H_
+#include <sys/msgport.h>
 #endif
 
 /*
@@ -70,29 +71,6 @@ typedef struct lwkt_wait {
     int		wa_gen;
     int		wa_count;
 } lwkt_wait;
-
-/*
- * The standard message and port structure for communications between
- * threads.
- */
-typedef struct lwkt_msg {
-    TAILQ_ENTRY(lwkt_msg) ms_node;
-    lwkt_port_t	ms_replyport;
-    int		ms_cmd;
-    int		ms_flags;
-    int		ms_error;
-} lwkt_msg;
-
-#define MSGF_DONE	0x0001
-#define MSGF_REPLY	0x0002
-#define MSGF_QUEUED	0x0004
-
-typedef struct lwkt_port {
-    lwkt_msg_queue	mp_msgq;
-    lwkt_wait		mp_wait;
-} lwkt_port;
-
-#define mp_token	mp_wait.wa_token
 
 #define MAXCPUFIFO      16	/* power of 2 */
 #define MAXCPUFIFO_MASK	(MAXCPUFIFO - 1)
@@ -148,6 +126,7 @@ struct md_intr_info;
 struct thread {
     TAILQ_ENTRY(thread) td_threadq;
     TAILQ_ENTRY(thread) td_allq;
+    lwkt_port	td_msgport;	/* built-in message port for replies */
     struct proc	*td_proc;	/* (optional) associated process */
     struct pcb	*td_pcb;	/* points to pcb and top of kstack */
     struct globaldata *td_gd;	/* associated with this cpu */
@@ -262,7 +241,7 @@ extern void lwkt_hold(thread_t td);
 extern void lwkt_rele(thread_t td);
 
 extern void lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen);
-extern void lwkt_signal(lwkt_wait_t w);
+extern void lwkt_signal(lwkt_wait_t w, int count);
 extern int lwkt_trytoken(lwkt_token_t tok);
 extern int lwkt_gettoken(lwkt_token_t tok);
 extern int lwkt_gentoken(lwkt_token_t tok, int *gen);

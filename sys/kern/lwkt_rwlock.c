@@ -25,7 +25,7 @@
  *
  * Implements simple shared/exclusive locks using LWKT. 
  *
- * $DragonFly: src/sys/kern/Attic/lwkt_rwlock.c,v 1.3 2003/06/22 20:32:19 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/lwkt_rwlock.c,v 1.4 2003/07/20 01:37:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,6 +43,8 @@ lwkt_rwlock_init(lwkt_rwlock_t lock)
 {
     lwkt_init_wait(&lock->rw_wait);
 }
+
+#if 0
 
 void
 lwkt_exlock(lwkt_rwlock_t lock, const char *wmesg)
@@ -91,7 +93,7 @@ lwkt_exunlock(lwkt_rwlock_t lock)
     if (--lock->rw_count == 0) {
 	lock->rw_owner = NULL;
 	if (lock->rw_requests)
-	    lwkt_signal(&lock->rw_wait);
+	    lwkt_signal(&lock->rw_wait, 1);
     }
     lwkt_reltoken(&lock->rw_token);
 }
@@ -103,8 +105,9 @@ lwkt_shunlock(lwkt_rwlock_t lock)
     KASSERT(lock->rw_owner == NULL, ("lwkt_shunlock: exclusive lock"));
     if (--lock->rw_count == 0) {
 	if (lock->rw_requests)
-	    lwkt_signal(&lock->rw_wait);
+	    lwkt_signal(&lock->rw_wait, 1);
     }
     lwkt_reltoken(&lock->rw_token);
 }
 
+#endif
