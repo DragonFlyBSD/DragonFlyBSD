@@ -22,8 +22,8 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man9/ktr.9,v 1.7 2003/09/08 19:57:21 ru Exp $
-.\" $DragonFly: src/share/man/man9/ktr.9,v 1.4 2005/03/08 01:19:10 hmp Exp $
+.\" $FreeBSD: src/share/man/man9/ktr.9,v 1.8 2005/03/08 01:37:36 hmp Exp $ 
+.\" $DragonFly: src/share/man/man9/ktr.9,v 1.5 2005/03/08 01:57:23 hmp Exp $
 .\"
 .Dd February 15, 2001
 .Dt KTR 9
@@ -59,10 +59,11 @@ KTR provides a circular buffer of events that can be logged in a
 .Xr printf 9
 style
 fashion.
-These events can then be dumped either via
-.Xr ddb 4
+These events can then be dumped with
+.Xr ddb 4 ,
+.Xr gdb 1
 or
-.Xr gdb 1 .
+.Xr ktrdump 8 .
 .Pp
 Events are created and logged in the kernel via the
 .Dv CTR Ns Ar x
