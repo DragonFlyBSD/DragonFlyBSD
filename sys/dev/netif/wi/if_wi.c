@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.166 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.16 2004/09/06 13:52:24 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.17 2005/01/14 02:35:09 joerg Exp $
  */
 
 /*
@@ -292,6 +292,10 @@ wi_attach(device_t dev)
 	ifp->if_watchdog = wi_watchdog;
 	ifp->if_init = wi_init;
 	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+#ifdef DEVICE_POLLING
+	ifp->if_capabilities |= IFCAP_POLLING;
+#endif
+	ifp->if_capenable = ifp->if_capabilities;
 
 	ic->ic_phytype = IEEE80211_T_DS;
 	ic->ic_opmode = IEEE80211_M_STA;
@@ -514,6 +518,43 @@ wi_shutdown(device_t dev)
 	wi_stop(&sc->sc_if, 1);
 }
 
+#ifdef DEVICE_POLLING
+static void
+wi_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+{
+	struct wi_softc *sc = ifp->if_softc;
+	uint16_t status;
+
+	if ((ifp->if_capenable & IFCAP_POLLING) == 0) {
+		ether_poll_deregister(ifp);
+		cmd = POLL_DEREGISTER;
+	}
+	if (cmd == POLL_DEREGISTER) {
+		CSR_WRITE_2(sc, WI_INT_EN, WI_INTRS);
+		return;
+	}
+
+	status = CSR_READ_2(sc, WI_EVENT_STAT);
+
+	if (status & WI_EV_RX)
+		wi_rx_intr(sc);
+	if (status & WI_EV_ALLOC)
+		wi_tx_intr(sc);
+	if (status & WI_EV_INFO)
+		wi_info_intr(sc);
+
+	if (cmd == POLL_AND_CHECK_STATUS) {
+		if (status & WI_EV_INFO)
+			wi_info_intr(sc);
+	}
+
+	if ((ifp->if_flags & IFF_OACTIVE) == 0 &&
+	    (sc->sc_flags & WI_FLAGS_OUTRANGE) == 0 &&
+	    IF_QLEN(&ifp->if_snd) != NULL)
+		wi_start(ifp);
+}
+#endif /* DEVICE_POLLING */
+
 void
 wi_intr(void *arg)
 {
@@ -522,14 +563,24 @@ wi_intr(void *arg)
 	u_int16_t status;
 	WI_LOCK_DECL();
 
-	WI_LOCK(sc);
+#ifdef DEVICE_POLLING
+	if (ifp->if_flags & IFF_POLLING)
+		return;
+	if ((ifp->if_capenable & IFCAP_POLLING) && 
+	    (ether_poll_register(wi_poll, ifp))) {
+		CSR_WRITE_2(sc, WI_INT_EN, 0);
+		wi_poll(ifp, 0, 1);
+		return;
+	}
+#endif DEVICE_POLLING
 
 	if (sc->wi_gone || !sc->sc_enabled || (ifp->if_flags & IFF_UP) == 0) {
 		CSR_WRITE_2(sc, WI_INT_EN, 0);
 		CSR_WRITE_2(sc, WI_EVENT_ACK, 0xFFFF);
-		WI_UNLOCK(sc);
 		return;
 	}
+
+	WI_LOCK(sc);
 
 	/* Disable interrupts. */
 	CSR_WRITE_2(sc, WI_INT_EN, 0);
@@ -710,8 +761,11 @@ wi_init(void *arg)
 	    ic->ic_opmode == IEEE80211_M_HOSTAP)
 		ieee80211_new_state(ic, IEEE80211_S_RUN, -1);
 
-	/* Enable interrupts */
-	CSR_WRITE_2(sc, WI_INT_EN, WI_INTRS);
+	/* Enable interrupts if not polling */
+#ifdef DEVICE_POLLING
+	if ((ifp->if_flags & IFF_POLLING) == 0)
+#endif
+		CSR_WRITE_2(sc, WI_INT_EN, WI_INTRS);
 
 	if (!wasenabled &&
 	    ic->ic_opmode == IEEE80211_M_HOSTAP &&
@@ -778,6 +832,9 @@ wi_stop(struct ifnet *ifp, int disable)
 	sc->sc_false_syns = 0;
 	sc->sc_naps = 0;
 	ifp->if_flags &= ~(IFF_OACTIVE | IFF_RUNNING);
+#ifdef DEVICE_POLLING
+	ether_poll_deregister(ifp);
+#endif
 	ifp->if_timer = 0;
 
 	WI_UNLOCK(sc);
@@ -1125,6 +1182,12 @@ wi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			error = ieee80211_ioctl(ifp, cmd, data, cr);
 			break;
 		}
+		break;
+	case SIOCSIFCAP:
+		ifp->if_capenable &= ~(IFCAP_POLLING);
+		ifp->if_capenable |= ifr->ifr_reqcap & (IFCAP_POLLING);
+		if (ifp->if_flags & IFF_RUNNING)
+			wi_init(sc);
 		break;
 	default:
 		error = ieee80211_ioctl(ifp, cmd, data, cr);
