@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/i386/i386/Attic/bcopy.s,v 1.3 2004/04/30 02:59:14 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/bcopy.s,v 1.4 2004/05/01 03:38:36 dillon Exp $
  */
 /*
  * bcopy(source:%esi, target:%edi, count:%ecx)
@@ -43,8 +43,46 @@
 	.text
 
 	/*
+	 * bcopyb() is a 'dumb' byte-granular bcopy.  It is only used by
+	 * devices which need to bcopy device-mapped memory which cannot
+	 * otherwise handle 16 or 32 bit ops.
+	 */
+	ALIGN_TEXT
+ENTRY(bcopyb)
+	pushl	%esi
+	pushl	%edi
+	movl	12(%esp),%esi
+	movl	16(%esp),%edi
+	movl	20(%esp),%ecx
+	movl	%edi,%eax
+	subl	%esi,%eax
+	cmpl	%ecx,%eax			/* overlapping && src < dst? */
+	jb	1f
+	cld					/* nope, copy forwards */
+	rep
+	movsb
+	popl	%edi
+	popl	%esi
+	ret
+
+	ALIGN_TEXT
+1:
+	addl	%ecx,%edi			/* copy backwards. */
+	addl	%ecx,%esi
+	decl	%edi
+	decl	%esi
+	std
+	rep
+	movsb
+	popl	%edi
+	popl	%esi
+	cld
+	ret
+
+
+	/*
 	 * If memcpy/bcopy is called as part of a copyin or copyout, the
-	 * on-fault routine is set up to do a 'ret'.  We hve to restore
+	 * on-fault routine is set up to do a 'ret'.  We have to restore
 	 * %ebx and return to the copyin/copyout fault handler.
 	 */
 generic_onfault:
