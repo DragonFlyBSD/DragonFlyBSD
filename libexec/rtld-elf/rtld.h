@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.h,v 1.15.2.6 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.h,v 1.4 2004/01/20 21:32:46 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.h,v 1.5 2005/02/03 23:28:24 joerg Exp $
  */
 
 #ifndef RTLD_H /* { */
@@ -183,6 +183,11 @@ extern void *xmalloc(size_t);
 extern void *xrealloc(void *, size_t);
 extern char *xstrdup(const char *);
 extern Elf_Addr _GLOBAL_OFFSET_TABLE_[];
+
+extern void dump_relocations (Obj_Entry *);
+extern void dump_obj_relocations (Obj_Entry *);
+extern void dump_Elf_Rel (Obj_Entry *, const Elf_Rel *, u_long);
+extern void dump_Elf_Rela (Obj_Entry *, const Elf_Rela *, u_long);
 
 /*
  * Function declarations.

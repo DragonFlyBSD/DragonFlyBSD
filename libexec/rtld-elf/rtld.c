@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.8 2004/11/18 10:01:47 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.9 2005/02/03 23:28:24 joerg Exp $
  */
 
 /*
@@ -413,6 +413,11 @@ resident_skip1:
     if (ld_resident)		/* XXX clean this up! */
 	goto resident_skip2;
 
+    if (getenv("LD_DUMP_REL_PRE") != NULL) {
+       dump_relocations(obj_main);
+       exit (0);
+    }
+
     if (relocate_objects(obj_main,
 	ld_bind_now != NULL && *ld_bind_now != '\0') == -1)
 	die();
@@ -430,6 +435,11 @@ resident_skip2:
 	}
 	dbg("exec_sys_unregister success\n");
 	exit(0);
+    }
+
+    if (getenv("LD_DUMP_REL_POST") != NULL) {
+       dump_relocations(obj_main);
+       exit (0);
     }
 
     dbg("initializing key program variables");
