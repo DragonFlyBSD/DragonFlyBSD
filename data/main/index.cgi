@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/index.cgi,v 1.8 2004/07/12 18:12:28 dillon Exp $
+# $DragonFly: site/data/main/Attic/index.cgi,v 1.9 2004/07/12 18:34:12 dillon Exp $
 
 $TITLE(The DragonFly BSD Project)
 <h1>NEWS!</h1>
@@ -8,6 +8,63 @@ $TITLE(The DragonFly BSD Project)
 12-Jul-2004: DragonFly's first release, 1.0, is here!  Visit the download page for a
 list of download links for the ISO!
 </p>
+<ul>
+    <h1>DragonFly-1.0 RELEASED!</h1>
+    <h1>http://www.dragonflybsd.org/</h1>
+    <h1>12 July 2004</h1>
+
+    <p>
+One year after starting the project as a fork off the FreeBSD-4.x tree,
+the DragonFly team is pleased to announce our 1.0 release!</p>
+
+    <p>
+We've made excellent progress in our first year.  We have replaced nearly
+all of the core threading, process, interrupt, and network infrastructure 
+with DragonFly native subsystems.  We have our own MP-friendly slab allocator,
+a Light Weight Kernel Threading (LWKT) system that is separate from the
+dynamic userland scheduler, a fine-grained system timer abstraction for
+kernel use, a fully integrated light weight messaging system, and a core
+IPI (Inter Processor Interrupts) messaging system for inter-processor
+communications.</p>
+
+    <p>
+We have managed to retain 4.x's vaunted stability throughout the development
+process, despite ripping out and replacing major subsystems, and we have
+a demonstratively superior coding model which is both UP (Uni-Processor) and
+MP (Multi-Processor) friendly and which is nearly as efficient on UP systems
+as the original 4.x UP-centric code is on UP systems.</p>
+
+    <p>
+We have made excellent progress bringing in those pieces from FreeBSD, NetBSD,
+and OpenBSD that fit our model.  For example, NEWBUS/BUS_DMA, the USB 
+infrastructure, RCNG (next generation system startup infrastructure), and
+so forth, and we have made an excellent start reformulating the build
+and release infrastructure including an excellent new system installer
+which, while still in its infancy for the 1.0 release, has been coded in
+a manner that will allow us to greatly improve and expand its capabilities
+in coming months.</p>
+
+    <p>
+We have done so much that it cannot all be listed here.  Please checkout the
+diary on our main site for the technical minutia.</p>
+
+    <p>
+The two largest user-visible subsystems that still have major work pending
+are the userland threading and ports/packages subsystems.  People will find
+that the DragonFly-1.0 release is still using the old 4.x pthreads model,
+and at the moment we are relying on the FreeBSD ports tree with DragonFly
+specific overrides for third party application support... about as severe a
+hack as it is possible to have.  These two stop-gap items will be at the
+forefront of the work for the next year, along with a major move to start
+removing the BGL (Big Giant Lock, also known as the MP lock) from code
+inherited from 4.x, threading the VFS (Virtual File System) subsystem (the
+network subsystem is already threaded as of 1.0), and implementing
+asynchronous messaged system calls.  And that is just the tip of the iceberg,
+we will be doing far more in the coming year!</p>
+
+    <br />
+					-The DragonFly Team-
+</ul>
 <h1>What is it?</h1>
 <p>
 DragonFly is an operating system and environment designed to be the logical
