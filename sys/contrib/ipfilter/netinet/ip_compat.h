@@ -6,7 +6,7 @@
  * @(#)ip_compat.h	1.8 1/14/96
  * $Id: ip_compat.h,v 2.26.2.46 2002/06/27 14:39:40 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.13.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.6 2003/08/27 11:02:14 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.7 2003/10/09 03:31:33 dillon Exp $
  */
 
 #ifndef	__IP_COMPAT_H__
@@ -99,20 +99,18 @@ struct  ether_addr {
 #endif
 
 /*
- * This is a workaround for <sys/uio.h> troubles on FreeBSD and OpenBSD.
+ * This is a workaround for <sys/uio.h> troubles on FreeBSD
  */
 #ifndef _KERNEL
 # define ADD_KERNEL
-# define _KERNEL
-# define KERNEL
+# define _KERNEL_STRUCTURES
 #endif
 #ifdef __OpenBSD__
 struct file;
 #endif
 #include <sys/uio.h>
 #ifdef ADD_KERNEL
-# undef _KERNEL
-# undef KERNEL
+# undef _KERNEL_STRUCTURES
 #endif
 
 #if	SOLARIS
