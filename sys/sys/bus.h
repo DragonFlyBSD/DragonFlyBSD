@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.4 2002/10/10 15:13:33 jhb Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.5 2004/02/06 23:09:36 joerg Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.6 2004/02/16 18:48:03 joerg Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -248,6 +248,7 @@ void	*device_get_softc(device_t dev);
 device_state_t	device_get_state(device_t dev);
 int	device_get_unit(device_t dev);
 int	device_is_alive(device_t dev); /* did probe succeed? */
+int	device_is_attached(device_t dev);	/* did attach succeed? */
 int	device_is_enabled(device_t dev);
 int	device_is_quiet(device_t dev);
 int	device_print_prettyname(device_t dev);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.10 2004/02/06 23:09:36 joerg Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.11 2004/02/16 18:48:03 joerg Exp $
  */
 
 #include "opt_bus.h"
@@ -947,6 +947,12 @@ int
 device_is_alive(device_t dev)
 {
     return dev->state >= DS_ALIVE;
+}
+
+int
+device_is_attached(device_t dev)
+{
+	return (dev->state >= DS_ATTACHED);
 }
 
 int
