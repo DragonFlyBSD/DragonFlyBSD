@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/gifconfig/gifconfig.c,v 1.2.2.4 2002/08/30 14:23:39 sobomax Exp $	*/
-/*	$DragonFly: src/usr.sbin/gifconfig/gifconfig.c,v 1.5 2004/02/04 15:39:54 rob Exp $	*/
+/*	$DragonFly: src/usr.sbin/gifconfig/gifconfig.c,v 1.6 2004/03/24 18:23:46 cpressey Exp $	*/
 /*	$KAME: gifconfig.c,v 1.14 2001/01/01 04:04:56 jinmei Exp $	*/
 
 /*
@@ -61,7 +61,7 @@
 #include <net/if.h>
 #if defined(__DragonFly__)
 #include <net/if_var.h>
-#endif /* __DragonFly >= 3 */
+#endif /* __DragonFly__ */
 #include <net/if_dl.h>
 #include <net/if_types.h>
 #include <net/route.h>
@@ -383,7 +383,7 @@ ifconfig(int argc, char **argv, int af, struct afswtch *rafp)
 	}
 
 	while (argc > 0) {
-		register struct cmd *p;
+		struct cmd *p;
 
 		for (p = cmds; p->c_name; p++)
 			if (strcmp(*argv, p->c_name) == 0)
@@ -783,7 +783,7 @@ SIN(addreq.ifra_addr), SIN(addreq.ifra_dstaddr)};
 void
 in_getaddr(char *s, int which)
 {
-	register struct sockaddr_in *sin = sintab[which];
+	struct sockaddr_in *sin = sintab[which];
 	struct hostent *hp;
 	struct netent *np;
 
@@ -808,7 +808,7 @@ SIN6(in6_addreq.ifra_addr), SIN6(in6_addreq.ifra_dstaddr)};
 void
 in6_getaddr(char *s, int which)
 {
-	register struct sockaddr_in6 *sin = sin6tab[which];
+	struct sockaddr_in6 *sin = sin6tab[which];
 
 	sin->sin6_len = sizeof(*sin);
 	sin->sin6_family = AF_INET6;
@@ -820,8 +820,8 @@ in6_getaddr(char *s, int which)
 void
 in6_getprefix(char *plen, int which)
 {
-	register struct sockaddr_in6 *sin = sin6tab[which];
-	register u_char *cp;
+	struct sockaddr_in6 *sin = sin6tab[which];
+	u_char *cp;
 	int len = atoi(plen);
 
 	if ((len < 0) || (len > 128))
@@ -842,10 +842,10 @@ in6_getprefix(char *plen, int which)
  * Print a value a la the %b format of the kernel's printf
  */
 void
-printb(char *s, register unsigned int v, register char *bits)
+printb(char *s, unsigned int v, char *bits)
 {
-	register int i, any = 0;
-	register char c;
+	int i, any = 0;
+	char c;
 
 	if (bits && *bits == 8)
 		printf("%s=%o", s, v & 0xffff);
@@ -873,8 +873,8 @@ printb(char *s, register unsigned int v, register char *bits)
 int
 prefix(void *val, int size)
 {
-        register u_char *name = (u_char *)val;
-        register int byte, bit, plen = 0;
+        u_char *name = (u_char *)val;
+        int byte, bit, plen = 0;
 
         for (byte = 0; byte < size; byte++, plen += 8)
                 if (name[byte] != 0xff)

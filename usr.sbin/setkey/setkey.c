@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/setkey/setkey.c,v 1.1.2.3 2003/04/26 23:53:54 sumikawa Exp $	*/
-/*	$DragonFly: src/usr.sbin/setkey/setkey.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $	*/
+/*	$DragonFly: src/usr.sbin/setkey/setkey.c,v 1.4 2004/03/24 18:23:47 cpressey Exp $	*/
 /*	$KAME: setkey.c,v 1.18 2001/05/08 04:36:39 itojun Exp $	*/
 
 /*
@@ -107,20 +107,18 @@ Usage()
 }
 
 int
-main(ac, av)
-	int ac;
-	char **av;
+main(int argc, char **argv)
 {
 	FILE *fp = stdin;
 	int c;
 
-	pname = *av;
+	pname = *argv;
 
-	if (ac == 1) Usage();
+	if (argc == 1) Usage();
 
 	thiszone = gmt2local(0);
 
-	while ((c = getopt(ac, av, "acdf:hlvxDFP")) != -1) {
+	while ((c = getopt(argc, argv, "acdf:hlvxDFP")) != -1) {
 		switch (c) {
 		case 'c':
 			f_mode = MODE_SCRIPT;
@@ -195,7 +193,7 @@ main(ac, av)
 }
 
 int
-get_supported()
+get_supported(void)
 {
 	int so;
 
@@ -218,8 +216,7 @@ get_supported()
 }
 
 void
-sendkeyshort(type)
-        u_int type;
+sendkeyshort(u_int type)
 {
 	struct sadb_msg *m_msg = (struct sadb_msg *)m_buf;
 
@@ -235,12 +232,10 @@ sendkeyshort(type)
 	m_msg->sadb_msg_pid = getpid();
 
 	sendkeymsg();
-
-	return;
 }
 
 void
-promisc()
+promisc(void)
 {
 	struct sadb_msg *m_msg = (struct sadb_msg *)m_buf;
 	u_char rbuf[1024 * 32];	/* XXX: Enough ? Should I do MSG_PEEK ? */
@@ -313,28 +308,25 @@ promisc()
 }
 
 int
-sendkeymsg()
+sendkeymsg(void)
 {
 	int so;
-
 	u_char rbuf[1024 * 32];	/* XXX: Enough ? Should I do MSG_PEEK ? */
 	int len;
 	struct sadb_msg *msg;
+	struct timeval tv;
 
 	if ((so = pfkey_open()) < 0) {
 		perror("pfkey_open");
 		return -1;
 	}
 
-    {
-	struct timeval tv;
 	tv.tv_sec = 1;
 	tv.tv_usec = 0;
 	if (setsockopt(so, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
 		perror("setsockopt");
 		goto end;
 	}
-    }
 
 	if (f_forever)
 		shortdump_hdr();
@@ -381,11 +373,8 @@ end:
 }
 
 int
-postproc(msg, len)
-	struct sadb_msg *msg;
-	int len;
+postproc(struct sadb_msg *msg, int len)
 {
-
 	if (msg->sadb_msg_errno != 0) {
 		char inf[80];
 		char *errmsg = NULL;
@@ -489,8 +478,7 @@ static char *ipproto[] = {
 	(((x) < sizeof(tab)/sizeof(tab[0]) && tab[(x)])	? tab[(x)] : numstr(x))
 
 const char *
-numstr(x)
-	int x;
+numstr(int x)
 {
 	static char buf[20];
 	snprintf(buf, sizeof(buf), "#%d", x);
@@ -505,8 +493,7 @@ shortdump_hdr()
 }
 
 void
-shortdump(msg)
-	struct sadb_msg *msg;
+shortdump(struct sadb_msg *msg)
 {
 	caddr_t mhp[SADB_EXT_MAX + 1];
 	char buf[NI_MAXHOST], pbuf[NI_MAXSERV];
@@ -515,7 +502,9 @@ shortdump(msg)
 	struct sadb_lifetime *lts, *lth, *ltc;
 	struct sockaddr *s;
 	u_int t;
-	time_t cur = time(0);
+	time_t cur;
+
+	cur = time(0);
 
 	pfkey_align(msg, mhp);
 	pfkey_check(mhp);
@@ -592,7 +581,7 @@ shortdump(msg)
  * Print the timestamp
  */
 static void
-printdate()
+printdate(void)
 {
 	struct timeval tp;
 	int s;
@@ -623,8 +612,8 @@ printdate()
 int32_t
 gmt2local(time_t t)
 {
-	register int dt, dir;
-	register struct tm *gmt, *loc;
+	int dt, dir;
+	struct tm *gmt, *loc;
 	struct tm sgmt;
 
 	if (t == 0)

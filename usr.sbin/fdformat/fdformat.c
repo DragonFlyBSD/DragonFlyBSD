@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/fdformat/fdformat.c,v 1.11.2.4 2001/07/19 13:20:42 joerg Exp $
- * $DragonFly: src/usr.sbin/fdformat/fdformat.c,v 1.3 2003/11/16 14:10:45 eirikn Exp $
+ * $DragonFly: src/usr.sbin/fdformat/fdformat.c,v 1.4 2004/03/24 18:23:46 cpressey Exp $
  */
 
 /*
@@ -58,14 +58,15 @@ format_track(int fd, int cyl, int secs, int head, int rate,
              int gaplen, int secsize, int fill,int interleave)
 {
 	struct fd_formb f;
-	register int i,j;
+	int i, j;
 	int il[FD_MAX_NSEC + 1];
 
-	memset(il,0,sizeof il);
-	for(j = 0, i = 1; i <= secs; i++) {
-	    while(il[(j%secs)+1]) j++;
-	    il[(j%secs)+1] = i;
-	    j += interleave;
+	memset(il, 0, sizeof(il));
+	for (j = 0, i = 1; i <= secs; i++) {
+		while (il[(j % secs) + 1])
+			j++;
+		il[(j % secs) + 1] = i;
+		j += interleave;
 	}
 
 	f.format_version = FD_FORMAT_VERSION;
@@ -77,20 +78,20 @@ format_track(int fd, int cyl, int secs, int head, int rate,
 	f.fd_formb_nsecs = secs;
 	f.fd_formb_gaplen = gaplen;
 	f.fd_formb_fillbyte = fill;
-	for(i = 0; i < secs; i++) {
+	for (i = 0; i < secs; i++) {
 		f.fd_formb_cylno(i) = cyl;
 		f.fd_formb_headno(i) = head;
 		f.fd_formb_secno(i) = il[i+1];
 		f.fd_formb_secsize(i) = secsize;
 	}
-	if(ioctl(fd, FD_FORM, (caddr_t)&f) < 0)
+	if (ioctl(fd, FD_FORM, (caddr_t)&f) < 0)
 		err(1, "ioctl(FD_FORM)");
 }
 
 static int
 verify_track(int fd, int track, int tracksize)
 {
-	static char *buf = 0;
+	static char *buf = NULL;
 	static int bufsz = 0;
 	int fdopts = -1, ofdopts, rv = 0;
 
@@ -99,28 +100,28 @@ verify_track(int fd, int track, int tracksize)
 	else {
 		ofdopts = fdopts;
 		fdopts |= FDOPT_NORETRY;
-		(void)ioctl(fd, FD_SOPTS, &fdopts);
+		ioctl(fd, FD_SOPTS, &fdopts);
 	}
 
 	if (bufsz < tracksize) {
-		if (buf)
-			free (buf);
+		if (buf != NULL)	/* XXX why would this ever be? */
+			free(buf);
 		bufsz = tracksize;
-		buf = 0;
+		buf = NULL;
 	}
-	if (! buf)
-		buf = malloc (bufsz);
-	if (! buf)
+	if (buf == NULL)
+		buf = malloc(bufsz);
+	if (buf == NULL)
 		errx(2, "out of memory");
-	if (lseek (fd, (long) track*tracksize, 0) < 0)
+	if (lseek(fd, (long)track * tracksize, 0) < 0)
 		rv = -1;
 	/* try twice reading it, without using the normal retrier */
-	else if (read (fd, buf, tracksize) != tracksize
-		 && read (fd, buf, tracksize) != tracksize)
+	else if (read(fd, buf, tracksize) != tracksize
+		 && read(fd, buf, tracksize) != tracksize)
 		rv = -1;
 	if(fdopts != -1)
-		(void)ioctl(fd, FD_SOPTS, &ofdopts);
-	return (rv);
+		ioctl(fd, FD_SOPTS, &ofdopts);
+	return(rv);
 }
 
 static const char *
@@ -130,17 +131,17 @@ makename(const char *arg, const char *suffix)
 
 	memset(namebuff, 0, 20);
 	if(*arg == '\0') /* ??? */
-		return arg;
+		return(arg);
 	if(*arg == '/')  /* do not convert absolute pathnames */
-		return arg;
+		return(arg);
 	strcpy(namebuff, _PATH_DEV);
 	strncat(namebuff, arg, 3);
 	strcat(namebuff, suffix);
-	return namebuff;
+	return(namebuff);
 }
 
 static void
-usage (void)
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
 	"usage: fdformat [-y] [-q] [-n | -v] [-f #] [-c #] [-s #] [-h #]",
@@ -149,21 +150,21 @@ usage (void)
 }
 
 static int
-yes (void)
+yes(void)
 {
-	char reply [256], *p;
+	char reply[256], *p;
 
-	reply[sizeof(reply)-1] = 0;
+	reply[sizeof(reply) - 1] = 0;
 	for (;;) {
 		fflush(stdout);
-		if (! fgets (reply, sizeof(reply)-1, stdin))
-			return (0);
-		for (p=reply; *p==' ' || *p=='\t'; ++p)
+		if (fgets(reply, sizeof(reply) - 1, stdin) == NULL)
+			return(0);
+		for (p = reply; *p == ' ' || *p == '\t'; ++p)
 			continue;
-		if (*p=='y' || *p=='Y')
-			return (1);
-		if (*p=='n' || *p=='N' || *p=='\n' || *p=='\r')
-			return (0);
+		if (*p == 'y' || *p == 'Y')
+			return(1);
+		if (*p == 'n' || *p == 'N' || *p == '\n' || *p == '\r')
+			return(0);
 		printf("Answer `yes' or `no': ");
 	}
 }
@@ -236,8 +237,8 @@ main(int argc, char **argv)
 #define MAXPRINTERRS 10
 	struct fdc_status fdcs[MAXPRINTERRS];
 
-	while((c = getopt(argc, argv, "f:c:s:h:r:g:S:F:t:i:qyvn")) != -1)
-		switch(c) {
+	while ((c = getopt(argc, argv, "f:c:s:h:r:g:S:F:t:i:qyvn")) != -1)
+		switch (c) {
 		case 'f':	/* format in kilobytes */
 			format = atoi(optarg);
 			break;
@@ -299,10 +300,10 @@ main(int argc, char **argv)
 			usage();
 		}
 
-	if(optind != argc - 1)
+	if (optind != argc - 1)
 		usage();
 
-	switch(format) {
+	switch (format) {
 	default:
 		errx(2, "bad floppy size: %dK", format);
 	case -1:   suffix = "";      break;
@@ -320,10 +321,10 @@ main(int argc, char **argv)
 
 	devname = makename(argv[optind], suffix);
 
-	if((fd = open(devname, O_RDWR)) < 0)
+	if ((fd = open(devname, O_RDWR)) < 0)
 		err(1, "%s", devname);
 
-	if(ioctl(fd, FD_GTYPE, &fdt) < 0)
+	if (ioctl(fd, FD_GTYPE, &fdt) < 0)
 		errx(1, "not a floppy disk: %s", devname);
 	fdopts = FDOPT_NOERRLOG;
 	if (ioctl(fd, FD_SOPTS, &fdopts) == -1)
@@ -348,31 +349,31 @@ main(int argc, char **argv)
 	if (steps >= 0)   fdt.steptrac = steps;
 	if (intleave >= 0) fdt.f_inter = intleave;
 
-	bytes_per_track = fdt.sectrac * (1<<fdt.secsize) * 128;
+	bytes_per_track = fdt.sectrac * (1 << fdt.secsize) * 128;
 
 	/* XXX  20/40 = 0.5 */
 	tracks_per_dot = (fdt.tracks * fdt.heads + 20) / 40;
 
 	if (verify_only) {
-		if(!quiet)
+		if (!quiet)
 			printf("Verify %dK floppy `%s'.\n",
 				fdt.tracks * fdt.heads * bytes_per_track / 1024,
 				devname);
 	}
-	else if(!quiet && !confirm) {
+	else if (!quiet && !confirm) {
 		printf("Format %dK floppy `%s'? (y/n): ",
 			fdt.tracks * fdt.heads * bytes_per_track / 1024,
 			devname);
-		if(! yes ()) {
+		if (!yes()) {
 			printf("Not confirmed.\n");
-			return 3;
+			return(3);
 		}
 	}
 
 	/*
 	 * Formatting.
 	 */
-	if(!quiet) {
+	if (!quiet) {
 		int i;
 
 		printf("Processing ");
@@ -418,7 +419,7 @@ main(int argc, char **argv)
 			}
 		}
 	}
-	if(!quiet)
+	if (!quiet)
 		printf(" done.\n");
 
 	if (!quiet && errs) {
@@ -435,7 +436,7 @@ main(int argc, char **argv)
 			fprintf(stderr, "(Further errors not printed.)\n");
 	}
 
-	return errs != 0;
+	return(errs != 0);
 }
 /*
  * Local Variables:

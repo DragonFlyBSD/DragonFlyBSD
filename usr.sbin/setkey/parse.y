@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/setkey/parse.y,v 1.1.2.2 2001/07/03 11:02:17 ume Exp $	*/
-/*	$DragonFly: src/usr.sbin/setkey/parse.y,v 1.3 2003/11/03 19:31:43 eirikn Exp $	*/
+/*	$DragonFly: src/usr.sbin/setkey/parse.y,v 1.4 2004/03/24 18:23:46 cpressey Exp $	*/
 /*	$KAME: kame/kame/kame/setkey/parse.y,v 1.36 2001/06/07 15:53:12 sakane Exp $	*/
 
 /*
@@ -600,7 +600,7 @@ policy_requests
 %%
 
 int
-setkeymsg()
+setkeymsg(void)
 {
 	struct sadb_msg m_msg;
 
@@ -853,10 +853,7 @@ setkeymsg()
 }
 
 static struct addrinfo *
-parse_addr(host, port, flag)
-	char *host;
-	char *port;
-	int flag;
+parse_addr(char *host, char *port, int flag)
 {
 	struct addrinfo hints, *res = NULL;
 	int error;
@@ -877,10 +874,7 @@ parse_addr(host, port, flag)
 }
 
 static int
-setvarbuf(off, ebuf, elen, vbuf, vlen)
-	caddr_t vbuf;
-	struct sadb_ext *ebuf;
-	int *off, elen, vlen;
+setvarbuf(int *off, struct sadb_ext *ebuf, int elen, caddr_t vbuf, int vlen)
 {
 	memset(m_buf + *off, 0, PFKEY_UNUNIT64(ebuf->sadb_ext_len));
 	memcpy(m_buf + *off, (caddr_t)ebuf, elen);
@@ -891,7 +885,7 @@ setvarbuf(off, ebuf, elen, vbuf, vlen)
 }
 
 void
-parse_init()
+parse_init(void)
 {
 	p_type = 0;
 	p_spi = 0;
@@ -922,7 +916,7 @@ parse_init()
 }
 
 void
-free_buffer()
+free_buffer(void)
 {
 	if (p_src) free(p_src);
 	if (p_dst) free(p_dst);

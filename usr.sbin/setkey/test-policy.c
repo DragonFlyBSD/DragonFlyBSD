@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/setkey/test-policy.c,v 1.1 2000/01/06 12:40:53 shin Exp $
- * $DragonFly: src/usr.sbin/setkey/test-policy.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/setkey/test-policy.c,v 1.3 2004/03/24 18:23:47 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -73,7 +73,8 @@ u_char	*p_secpolicy;
 int	test(char *buf, int family);
 char	*setpolicy(char *req);
 
-main()
+int
+main(int argc __unused, char **argv __unused)
 {
 	int i;
 	char *buf;
@@ -93,11 +94,13 @@ main()
 	}
 }
 
-int test(char *policy, int family)
+int
+test(char *policy, int family)
 {
 	int so, proto, optname;
 	int len;
 	char getbuf[1024];
+	char *buf = NULL;
 
 	switch (family) {
 	case PF_INET:
@@ -121,9 +124,6 @@ int test(char *policy, int family)
 	if (getsockopt(so, proto, optname, getbuf, &len) < 0)
 		perror("getsockopt");
 
-    {
-	char *buf = NULL;
-
 	printf("\tgetlen:%d\n", len);
 
 	if ((buf = ipsec_dump_policy(getbuf, NULL)) == NULL)
@@ -132,12 +132,12 @@ int test(char *policy, int family)
 		printf("\t[%s]\n", buf);
 
 	free(buf);
-    }
 
 	close (so);
 }
 
-char *setpolicy(char *req)
+char *
+setpolicy(char *req)
 {
 	int len;
 	char *buf;

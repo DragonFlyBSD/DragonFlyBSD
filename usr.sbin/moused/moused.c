@@ -46,7 +46,7 @@
 
 /*
  * $FreeBSD: src/usr.sbin/moused/moused.c,v 1.37.2.11 2002/04/15 00:52:08 will Exp $
- * $DragonFly: src/usr.sbin/moused/moused.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/moused/moused.c,v 1.3 2004/03/24 18:23:46 cpressey Exp $
  */
 #include <ctype.h>
 #include <err.h>
@@ -506,7 +506,7 @@ static void	mremote_clientchg(int add);
 static int kidspad(u_char rxc, mousestatus_t *act);
 
 int
-main(int argc, char *argv[])
+main(int argc, char **argv)
 {
     int c;
     int	i;
@@ -985,8 +985,8 @@ moused(void)
 	    }
 	}
     }
-    /* NOT REACHED */
-}	    	
+    /* NOTREACHED */
+}
 
 static void
 hup(int sig)
@@ -2092,8 +2092,8 @@ r_installmap(char *arg)
 static void
 r_map(mousestatus_t *act1, mousestatus_t *act2)
 {
-    register int pb;
-    register int pbuttons;
+    int pb;
+    int pbuttons;
     int lbuttons;
 
     pbuttons = act1->button;
