@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.13 2004/01/16 07:45:15 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.14 2004/01/24 22:43:09 joerg Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -631,7 +631,8 @@ _sysinstall= release/sysinstall
 .endif
 
 build-tools:
-.for _tool in bin/csh bin/sh ${_games} gnu/usr.bin/cc/cc_tools ${_fortran} \
+.for _tool in bin/csh bin/sh ${_games} gnu/usr.bin/cc/cc_tools \
+    gnu/usr.bin/cc3/cc_tools ${_fortran} \
     ${_perl} ${_libroken4} ${_libkrb5} lib/libncurses ${_share} \
     usr.bin/awk usr.bin/file ${_sysinstall}
 	${ECHODIR} "===> ${_tool}"; \
@@ -654,7 +655,7 @@ _btxld=	usr.sbin/btxld
 cross-tools:
 .for _tool in ${_btxld} ${_elf2exe} usr.bin/genassym usr.bin/gensetdefs \
     gnu/usr.bin/binutils usr.bin/objformat usr.sbin/crunch/crunchide \
-    gnu/usr.bin/cc
+    gnu/usr.bin/cc gnu/usr.bin/cc3
 	${ECHODIR} "===> ${_tool}"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
@@ -687,7 +688,8 @@ libraries:
 # gnu/lib/csu, gnu/lib/libgcc and lib/csu must be built before all
 # shared libraries for ELF.
 #
-_startup_libs=	gnu/lib/gcc2/csu gnu/lib/gcc2/libgcc
+_startup_libs=	gnu/lib/gcc2/csu gnu/lib/gcc3/csu gnu/lib/gcc2/libgcc \
+		gnu/lib/gcc3/libgcc
 .if exists(${.CURDIR}/lib/csu/${MACHINE_ARCH}-${OBJFORMAT})
 _startup_libs+=	lib/csu/${MACHINE_ARCH}-${OBJFORMAT}
 .else
