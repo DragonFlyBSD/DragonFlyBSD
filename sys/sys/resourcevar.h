@@ -32,7 +32,7 @@
  *
  *	@(#)resourcevar.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/resourcevar.h,v 1.16.2.1 2000/09/07 19:13:55 truckman Exp $
- * $DragonFly: src/sys/sys/resourcevar.h,v 1.7 2004/05/03 16:06:26 joerg Exp $
+ * $DragonFly: src/sys/sys/resourcevar.h,v 1.8 2004/06/20 05:55:30 hmp Exp $
  */
 
 #ifndef	_SYS_RESOURCEVAR_H_
@@ -53,11 +53,10 @@ struct pstats {
 #define	pstat_startzero	p_ru
 	struct	rusage p_ru;		/* stats for this proc */
 	struct	rusage p_cru;		/* sum of stats for reaped children */
+	struct	itimerval p_timer[3];	/* virtual-time timers */
 #define	pstat_endzero	pstat_startcopy
 
-#define	pstat_startcopy	p_timer
-	struct	itimerval p_timer[3];	/* virtual-time timers */
-
+#define	pstat_startcopy	p_prof
 	struct uprof {			/* profile arguments */
 		caddr_t	pr_base;	/* buffer base */
 		u_long	pr_size;	/* buffer size */
