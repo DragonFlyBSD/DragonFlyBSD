@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.9 2003/11/08 07:57:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.10 2004/03/02 20:41:13 rob Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -54,6 +54,8 @@ struct tseg_qent {
 	struct	mbuf	*tqe_m;		/* mbuf contains packet */
 };
 LIST_HEAD(tsegqe_head, tseg_qent);
+extern int	tcp_reass_maxseg;
+extern int	tcp_reass_qsize;
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_TSEGQ);
 #endif

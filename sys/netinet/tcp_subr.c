@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.10 2004/02/14 21:12:39 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.11 2004/03/02 20:41:13 rob Exp $
  */
 
 #include "opt_compat.h"
@@ -246,6 +246,11 @@ tcp_init()
 					&tcbinfo.porthashmask);
 	tcbinfo.ipi_zone = zinit("tcpcb", sizeof(struct inp_tp), maxsockets,
 				 ZONE_INTERRUPT, 0);
+
+	tcp_reass_maxseg = nmbclusters / 16;
+	TUNABLE_INT_FETCH("net.inet.tcp.reass.maxsegments",
+	    &tcp_reass_maxseg);
+
 #ifdef INET6
 #define TCP_MINPROTOHDR (sizeof(struct ip6_hdr) + sizeof(struct tcphdr))
 #else /* INET6 */
@@ -751,6 +756,7 @@ tcp_close(tp)
 		LIST_REMOVE(q, tqe_q);
 		m_freem(q->tqe_m);
 		FREE(q, M_TSEGQ);
+		tcp_reass_qsize--;
 	}
 	inp->inp_ppcb = NULL;
 	soisdisconnected(so);
@@ -788,6 +794,7 @@ tcp_drain()
 					LIST_REMOVE(te, tqe_q);
 					m_freem(te->tqe_m);
 					FREE(te, M_TSEGQ);
+					tcp_reass_qsize--;
 				}
 			}
 		}
