@@ -34,7 +34,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ntfs/ntfs_ihash.c,v 1.7 1999/12/03 20:37:39 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.c,v 1.8 2004/03/01 06:33:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.c,v 1.9 2004/04/20 19:59:30 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -65,7 +65,7 @@ struct lock ntfs_hashlock;
  * Initialize inode hash table.
  */
 void
-ntfs_nthashinit()
+ntfs_nthashinit(void)
 {
 	lockinit(&ntfs_hashlock, 0, "ntfs_nthashlock", 0, 0);
 	ntfs_nthashtbl = HASHINIT(desiredvnodes, M_NTFSNTHASH, M_WAITOK,
@@ -94,9 +94,7 @@ ntfs_nthash_uninit(struct vfsconf *vfc)
  * to it. If it is in core, return it, even if it is locked.
  */
 struct ntnode *
-ntfs_nthashlookup(dev, inum)
-	dev_t dev;
-	ino_t inum;
+ntfs_nthashlookup(dev_t dev, ino_t inum)
 {
 	struct ntnode *ip;
 	lwkt_tokref ilock;
@@ -115,8 +113,7 @@ ntfs_nthashlookup(dev, inum)
  * Insert the ntnode into the hash table.
  */
 void
-ntfs_nthashins(ip)
-	struct ntnode *ip;
+ntfs_nthashins(struct ntnode *ip)
 {
 	struct nthashhead *ipp;
 	lwkt_tokref ilock;
@@ -132,8 +129,7 @@ ntfs_nthashins(ip)
  * Remove the inode from the hash table.
  */
 void
-ntfs_nthashrem(ip)
-	struct ntnode *ip;
+ntfs_nthashrem(struct ntnode *ip)
 {
 	lwkt_tokref ilock;
 

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.13 2004/03/01 06:33:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.14 2004/04/20 19:59:30 cpressey Exp $
  */
 
 
@@ -118,18 +118,13 @@ static int	ntfs_checkexp (struct mount *, struct mbuf *,
  * exflagsp and credanonp.
  */
 static int
-ntfs_checkexp(mp, nam, exflagsp, credanonp)
+ntfs_checkexp(struct mount *mp,
 #if defined(__DragonFly__)
-	struct mount *mp;
-	struct sockaddr *nam;
-	int *exflagsp;
-	struct ucred **credanonp;
+	      struct sockaddr *nam,
 #else /* defined(__NetBSD__) */
-	struct mount *mp;
-	struct mbuf *nam;
-	int *exflagsp;
-	struct ucred **credanonp;
+	      struct mbuf *nam,
 #endif
+	      int *exflagsp, struct ucred **credanonp)
 {
 	struct netcred *np;
 	struct ntfsmount *ntm = VFSTONTFS(mp);
@@ -149,20 +144,14 @@ ntfs_checkexp(mp, nam, exflagsp, credanonp)
 #if defined(__NetBSD__)
 /*ARGSUSED*/
 static int
-ntfs_sysctl(name, namelen, oldp, oldlenp, newp, newlen, td)
-	int *name;
-	u_int namelen;
-	void *oldp;
-	size_t *oldlenp;
-	void *newp;
-	size_t newlen;
-	struct thread *td;
+ntfs_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
+	    size_t newlen, struct thread *td)
 {
 	return (EINVAL);
 }
 
 static int
-ntfs_mountroot()
+ntfs_mountroot(void)
 {
 	struct mount *mp;
 	extern struct vnode *rootvp;
@@ -207,7 +196,7 @@ ntfs_mountroot()
 }
 
 static void
-ntfs_init ()
+ntfs_init(void)
 {
 	ntfs_nthashinit();
 	ntfs_toupper_init();
@@ -216,8 +205,7 @@ ntfs_init ()
 #elif defined(__DragonFly__)
 
 static int
-ntfs_init (
-	struct vfsconf *vcp )
+ntfs_init(struct vfsconf *vcp)
 {
 	ntfs_nthashinit();
 	ntfs_toupper_init();
@@ -227,18 +215,14 @@ ntfs_init (
 #endif /* NetBSD */
 
 static int
-ntfs_mount ( 
-	struct mount *mp,
+ntfs_mount(struct mount *mp,
 #if defined(__DragonFly__)
-	char *path,
-	caddr_t data,
+	   char *path, caddr_t data,
 #else
-	const char *path,
-	void *data,
+	   const char *path, void *data,
 #endif
-	struct nameidata *ndp,
-	struct thread *td
-) {
+	   struct nameidata *ndp, struct thread *td)
+{
 	size_t		size;
 	int		err = 0;
 	struct vnode	*devvp;
@@ -421,11 +405,8 @@ success:
  * Common code for mount and mountroot
  */
 int
-ntfs_mountfs(devvp, mp, argsp, td)
-	struct vnode *devvp;
-	struct mount *mp;
-	struct ntfs_args *argsp;
-	struct thread *td;
+ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
+	     struct thread *td)
 {
 	struct buf *bp;
 	struct ntfsmount *ntmp;
@@ -642,20 +623,14 @@ out:
 
 #if !defined(__DragonFly__)
 static int
-ntfs_start (
-	struct mount *mp,
-	int flags,
-	struct thread *td)
+ntfs_start(struct mount *mp, int flags, struct thread *td)
 {
 	return (0);
 }
 #endif
 
 static int
-ntfs_unmount( 
-	struct mount *mp,
-	int mntflags,
-	struct thread *td)
+ntfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
 	struct ntfsmount *ntmp;
 	int error, ronly = 0, flags, i;
@@ -722,9 +697,7 @@ ntfs_unmount(
 }
 
 static int
-ntfs_root(
-	struct mount *mp,
-	struct vnode **vpp )
+ntfs_root(struct mount *mp, struct vnode **vpp)
 {
 	struct vnode *nvp;
 	int error = 0;
@@ -743,12 +716,8 @@ ntfs_root(
 
 #if !defined(__DragonFly__)
 static int
-ntfs_quotactl ( 
-	struct mount *mp,
-	int cmds,
-	uid_t uid,
-	caddr_t arg,
-	struct thread *td)
+ntfs_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
+	      struct thread *td)
 {
 	printf("\nntfs_quotactl():\n");
 	return EOPNOTSUPP;
@@ -756,9 +725,7 @@ ntfs_quotactl (
 #endif
 
 int
-ntfs_calccfree(
-	struct ntfsmount *ntmp,
-	cn_t *cfreep)
+ntfs_calccfree(struct ntfsmount *ntmp, cn_t *cfreep)
 {
 	struct vnode *vp;
 	u_int8_t *tmp;
@@ -788,10 +755,7 @@ ntfs_calccfree(
 }
 
 static int
-ntfs_statfs(
-	struct mount *mp,
-	struct statfs *sbp,
-	struct thread *td)
+ntfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
 	struct ntfsmount *ntmp = VFSTONTFS(mp);
 	u_int64_t mftsize,mftallocated;
@@ -831,11 +795,7 @@ ntfs_statfs(
 
 #if !defined(__DragonFly__)
 static int
-ntfs_sync (
-	struct mount *mp,
-	int waitfor,
-	struct ucred *cred,
-	struct thread *td)
+ntfs_sync(struct mount *mp, int waitfor, struct ucred *cred, struct thread *td)
 {
 	/*dprintf(("ntfs_sync():\n"));*/
 	return (0);
@@ -844,10 +804,7 @@ ntfs_sync (
 
 /*ARGSUSED*/
 static int
-ntfs_fhtovp(
-	struct mount *mp,
-	struct fid *fhp,
-	struct vnode **vpp)
+ntfs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 {
 	struct vnode *nvp;
 	struct ntfid *ntfhp = (struct ntfid *)fhp;
@@ -867,9 +824,7 @@ ntfs_fhtovp(
 }
 
 static int
-ntfs_vptofh(
-	struct vnode *vp,
-	struct fid *fhp)
+ntfs_vptofh(struct vnode *vp, struct fid *fhp)
 {
 	struct ntnode *ntp;
 	struct ntfid *ntfhp;
@@ -885,15 +840,9 @@ ntfs_vptofh(
 }
 
 int
-ntfs_vgetex(
-	struct mount *mp,
-	ino_t ino,
-	u_int32_t attrtype,
-	char *attrname,
-	u_long lkflags,
-	u_long flags,
-	struct thread *td,
-	struct vnode **vpp) 
+ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
+	    u_long lkflags, u_long flags, struct thread *td,
+	    struct vnode **vpp) 
 {
 	int error;
 	struct ntfsmount *ntmp;
@@ -998,10 +947,7 @@ ntfs_vgetex(
 }
 
 static int
-ntfs_vget(
-	struct mount *mp,
-	ino_t ino,
-	struct vnode **vpp) 
+ntfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp) 
 {
 	return ntfs_vgetex(mp, ino, NTFS_A_DATA, NULL,
 			LK_EXCLUSIVE | LK_RETRY, 0, curthread, vpp);
