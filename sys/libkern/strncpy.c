@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/strncpy.c,v 1.6 1999/08/28 00:46:38 peter Exp $
- * $DragonFly: src/sys/libkern/strncpy.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/strncpy.c,v 1.3 2003/07/26 20:04:12 rob Exp $
  */
 
 #include <string.h>
@@ -47,11 +47,11 @@ char *
 strncpy(dst, src, n)
 	char *dst;
 	const char *src;
-	register size_t n;
+	size_t n;
 {
 	if (n != 0) {
-		register char *d = dst;
-		register const char *s = src;
+		char *d = dst;
+		const char *s = src;
 
 		do {
 			if ((*d++ = *s++) == 0) {

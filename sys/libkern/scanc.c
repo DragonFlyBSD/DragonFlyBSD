@@ -33,7 +33,7 @@
  *	@(#)scanc.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/libkern/scanc.c,v 1.8 1999/08/28 00:46:36 peter Exp $
- * $DragonFly: src/sys/libkern/scanc.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/scanc.c,v 1.3 2003/07/26 20:04:12 rob Exp $
  */
 
 #include <sys/libkern.h>
@@ -41,11 +41,11 @@
 int
 scanc(size, cp, table, mask0)
 	u_int size;
-	register const u_char *cp, table[];
+	const u_char *cp, table[];
 	int mask0;
 {
-	register const u_char *end;
-	register u_char mask;
+	const u_char *end;
+	u_char mask;
 
 	mask = mask0;
 	for (end = &cp[size]; cp < end; ++cp) {

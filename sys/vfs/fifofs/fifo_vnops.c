@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.5 2003/07/19 21:14:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.6 2003/07/26 20:05:56 rob Exp $
  */
 
 #include <sys/param.h>
@@ -530,8 +530,8 @@ fifo_close(ap)
 		struct thread *a_td;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
-	register struct fifoinfo *fip = vp->v_fifoinfo;
+	struct vnode *vp = ap->a_vp;
+	struct fifoinfo *fip = vp->v_fifoinfo;
 	int error1, error2;
 
 	if (ap->a_fflag & FREAD) {
@@ -563,7 +563,7 @@ int
 fifo_printinfo(vp)
 	struct vnode *vp;
 {
-	register struct fifoinfo *fip = vp->v_fifoinfo;
+	struct fifoinfo *fip = vp->v_fifoinfo;
 
 	printf(", fifo with %ld readers and %ld writers",
 		fip->fi_readers, fip->fi_writers);

@@ -32,7 +32,7 @@
  *
  *	@(#)locc.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/libkern/locc.c,v 1.6 1999/08/28 00:46:32 peter Exp $
- * $DragonFly: src/sys/libkern/locc.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/locc.c,v 1.3 2003/07/26 20:04:12 rob Exp $
  */
 
 #include <sys/libkern.h>
@@ -43,7 +43,7 @@ locc(mask0, cp0, size)
 	char *cp0;
 	u_int size;
 {
-	register u_char *cp, *end, mask;
+	u_char *cp, *end, mask;
 
 	mask = mask0;
 	cp = (u_char *)cp0;

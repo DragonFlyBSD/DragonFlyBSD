@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/muldi3.c,v 1.6 1999/08/28 00:46:34 peter Exp $
- * $DragonFly: src/sys/libkern/muldi3.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/muldi3.c,v 1.3 2003/07/26 20:04:12 rob Exp $
  */
 
 #include "quad.h"
@@ -104,8 +104,8 @@ __muldi3(a, b)
 	quad_t a, b;
 {
 	union uu u, v, low, prod;
-	register u_long high, mid, udiff, vdiff;
-	register int negall, negmid;
+	u_long high, mid, udiff, vdiff;
+	int negall, negmid;
 #define	u1	u.ul[H]
 #define	u0	u.ul[L]
 #define	v1	v.ul[H]

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/mcount.c,v 1.16 1999/12/29 04:54:41 peter Exp $
- * $DragonFly: src/sys/libkern/mcount.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/mcount.c,v 1.3 2003/07/26 20:04:12 rob Exp $
  */
 
 #include <sys/param.h>
@@ -65,16 +65,16 @@ void	user __P((void));
  * perform this optimization.
  */
 _MCOUNT_DECL(frompc, selfpc)	/* _mcount; may be static, inline, etc */
-	register uintfptr_t frompc, selfpc;
+	uintfptr_t frompc, selfpc;
 {
 #ifdef GUPROF
 	int delta;
 #endif
-	register fptrdiff_t frompci;
-	register u_short *frompcindex;
-	register struct tostruct *top, *prevtop;
-	register struct gmonparam *p;
-	register long toindex;
+	fptrdiff_t frompci;
+	u_short *frompcindex;
+	struct tostruct *top, *prevtop;
+	struct gmonparam *p;
+	long toindex;
 #ifdef _KERNEL
 	MCOUNT_DECL(s)
 #endif

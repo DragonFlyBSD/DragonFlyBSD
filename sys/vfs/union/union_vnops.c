@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.4 2003/06/26 05:55:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.5 2003/07/26 20:05:56 rob Exp $
  */
 
 #include <sys/param.h>
@@ -1898,7 +1898,7 @@ union_advlock(ap)
 		int  a_flags;
 	} */ *ap;
 {
-	register struct vnode *ovp = OTHERVP(ap->a_vp);
+	struct vnode *ovp = OTHERVP(ap->a_vp);
 
 	ap->a_vp = ovp;
 	return (VCALL(ovp, VOFFSET(vop_advlock), ap));

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/qsort.c,v 1.10 1999/08/28 00:46:35 peter Exp $
- * $DragonFly: src/sys/libkern/qsort.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/qsort.c,v 1.3 2003/07/26 20:04:12 rob Exp $
  */
 
 #include <sys/libkern.h>
@@ -47,10 +47,10 @@ static __inline void	 swapfunc __P((char *, char *, int, int));
  */
 #define swapcode(TYPE, parmi, parmj, n) { 		\
 	long i = (n) / sizeof (TYPE); 			\
-	register TYPE *pi = (TYPE *) (parmi); 		\
-	register TYPE *pj = (TYPE *) (parmj); 		\
+	TYPE *pi = (TYPE *) (parmi); 		\
+	TYPE *pj = (TYPE *) (parmj); 		\
 	do { 						\
-		register TYPE	t = *pi;		\
+		TYPE	t = *pi;		\
 		*pi++ = *pj;				\
 		*pj++ = t;				\
         } while (--i > 0);				\

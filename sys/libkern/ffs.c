@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/ffs.c,v 1.5 1999/08/28 00:46:32 peter Exp $
- * $DragonFly: src/sys/libkern/ffs.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/ffs.c,v 1.3 2003/07/26 20:04:12 rob Exp $
  */
 
 #include <string.h>
@@ -41,9 +41,9 @@
  */
 int
 ffs(mask)
-	register int mask;
+	int mask;
 {
-	register int bit;
+	int bit;
 
 	if (mask == 0)
 		return(0);

@@ -32,7 +32,7 @@
  *
  *	@(#)random.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/libkern/random.c,v 1.7 1999/08/28 00:46:36 peter Exp $
- * $DragonFly: src/sys/libkern/random.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/random.c,v 1.3 2003/07/26 20:04:12 rob Exp $
  */
 
 #include <sys/libkern.h>
@@ -54,7 +54,7 @@ srandom(seed)
 u_long
 random()
 {
-	register long x, hi, lo, t;
+	long x, hi, lo, t;
 
 	/*
 	 * Compute x[n + 1] = (7^5 * x[n]) mod (2^31 - 1).

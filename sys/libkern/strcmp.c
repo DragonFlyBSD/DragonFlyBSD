@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/strcmp.c,v 1.7 1999/08/28 00:46:37 peter Exp $
- * $DragonFly: src/sys/libkern/strcmp.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/strcmp.c,v 1.3 2003/07/26 20:04:12 rob Exp $
  */
 
 #include <string.h>
@@ -44,7 +44,7 @@
  */
 int
 strcmp(s1, s2)
-	register const char *s1, *s2;
+	const char *s1, *s2;
 {
 	while (*s1 == *s2++)
 		if (*s1++ == 0)

@@ -32,7 +32,7 @@
  *
  *	@(#)dead_vnops.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/miscfs/deadfs/dead_vnops.c,v 1.26 1999/08/28 00:46:42 peter Exp $
- * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.4 2003/07/19 21:14:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.5 2003/07/26 20:05:55 rob Exp $
  */
 
 #include <sys/param.h>
@@ -272,7 +272,7 @@ dead_badop()
  */
 int
 chkvnlock(vp)
-	register struct vnode *vp;
+	struct vnode *vp;
 {
 	int locked = 0;
 

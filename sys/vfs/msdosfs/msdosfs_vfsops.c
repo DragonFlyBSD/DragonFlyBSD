@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vfsops.c,v 1.60.2.6 2002/09/12 21:33:38 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.5 2003/07/06 21:23:52 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.6 2003/07/26 20:08:38 rob Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -159,7 +159,7 @@ update_mp(mp, argp)
 int
 msdosfs_mountroot()
 {
-	register struct mount *mp;
+	struct mount *mp;
 	struct thread *td = curthread;	/* XXX */
 	size_t size;
 	int error;
