@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_kobj.c,v 1.4.2.1 2001/02/02 19:49:13 cg Exp $
- * $DragonFly: src/sys/kern/subr_kobj.c,v 1.5 2004/04/01 08:41:24 joerg Exp $
+ * $DragonFly: src/sys/kern/subr_kobj.c,v 1.6 2004/04/01 13:50:47 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -33,6 +33,8 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/errno.h>
+#include <sys/thread.h>
+#include <sys/thread2.h>
 #ifndef TEST
 #include <sys/systm.h>
 #endif
@@ -58,7 +60,16 @@ SYSCTL_UINT(_kern, OID_AUTO, kobj_misses, CTLFLAG_RD,
 
 #endif
 
+static struct lwkt_token kobj_token;
 static int kobj_next_id = 1;
+
+static void
+kobj_init_token(void *arg)
+{
+	lwkt_token_init(&kobj_token);
+}
+
+SYSINIT(kobj, SI_SUB_LOCK, SI_ORDER_ANY, kobj_init_token, NULL);
 
 static int
 kobj_error_method(void)
@@ -82,6 +93,7 @@ static void
 kobj_class_compile(kobj_class_t cls)
 {
 	kobj_method_t *m;
+	kobj_ops_t ops;
 
 	/*
 	 * Don't do anything if we are already compiled.
@@ -92,10 +104,22 @@ kobj_class_compile(kobj_class_t cls)
 	/*
 	 * Allocate space for the compiled ops table.
 	 */
-	cls->ops = malloc(sizeof(struct kobj_ops), M_KOBJ, M_INTWAIT | M_ZERO);
-	if (!cls->ops)
+	ops = malloc(sizeof(struct kobj_ops), M_KOBJ, M_INTWAIT | M_ZERO);
+	if (cls->ops) {
+		/*
+		 * In case of preemption, another thread might have been faster,
+		 * but that's fine for us.
+		 */
+		if (ops)
+			free(ops, M_KOBJ);
+		return;
+	}	
+
+	if (!ops)
 		panic("kobj_compile_methods: out of memory");
-	cls->ops->cls = cls;
+
+	ops->cls = cls;
+	cls->ops = ops;
 
 	/*
 	 * Afterwards register any methods which need it.
@@ -145,17 +169,33 @@ kobj_class_free(kobj_class_t cls)
 void
 kobj_class_instantiate(kobj_class_t cls)
 {
+	lwkt_tokref ilock;
+
+	lwkt_gettoken(&ilock, &kobj_token);
+	crit_enter();
+
 	if (!cls->ops)
 		kobj_class_compile(cls);
 	cls->refs++;
+
+	crit_exit();
+	lwkt_reltoken(&ilock);
 }
 
 void
 kobj_class_uninstantiate(kobj_class_t cls)
 {
+	lwkt_tokref ilock;
+
+	lwkt_gettoken(&ilock, &kobj_token);
+	crit_enter();
+
 	cls->refs--;
 	if (cls->refs == 0)
 		kobj_class_free(cls);
+
+	crit_exit();
+	lwkt_reltoken(&ilock);
 }
 
 kobj_t
