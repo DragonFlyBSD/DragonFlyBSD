@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/mcount.c,v 1.16 1999/12/29 04:54:41 peter Exp $
- * $DragonFly: src/sys/libkern/mcount.c,v 1.3 2003/07/26 20:04:12 rob Exp $
+ * $DragonFly: src/sys/libkern/mcount.c,v 1.4 2003/08/26 21:00:17 rob Exp $
  */
 
 #include <sys/param.h>
@@ -43,10 +43,10 @@
 #include <vm/vm.h>
 #include <vm/vm_param.h>
 #include <vm/pmap.h>
-void	bintr __P((void));
-void	btrap __P((void));
-void	eintr __P((void));
-void	user __P((void));
+void	bintr (void);
+void	btrap (void);
+void	eintr (void);
+void	user (void);
 #endif
 
 /*
