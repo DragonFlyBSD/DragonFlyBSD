@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
- * $DragonFly: src/sys/i386/i386/Attic/busdma_machdep.c,v 1.11 2004/10/26 04:22:32 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/busdma_machdep.c,v 1.12 2005/01/18 14:02:05 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -635,6 +635,8 @@ bus_dmamap_load_mbuf(bus_dma_tag_t dmat, bus_dmamap_t map,
 		struct mbuf *m;
 
 		for (m = m0; m != NULL && error == 0; m = m->m_next) {
+			if ( m->m_len == 0 )
+				continue;
 			error = _bus_dmamap_load_buffer(dmat,
 					m->m_data, m->m_len,
 					curthread, flags, &lastaddr,
