@@ -82,7 +82,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.26 2004/08/11 02:36:22 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.27 2004/10/27 03:43:47 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -215,15 +215,21 @@ tcp_usr_detach(struct socket *so)
 	struct tcpcb *tp;
 	TCPDEBUG0;
 
-	if (inp == 0) {
+	if (inp == NULL) {
 		splx(s);
 		return EINVAL;	/* XXX */
 	}
-	tp = intotcpcb(inp);
-	TCPDEBUG1();
-	tp = tcp_disconnect(tp);
 
-	TCPDEBUG2(PRU_DETACH);
+	/*
+	 * It's possible for the tcpcb (tp) to disconnect from the inp due
+	 * to tcp_drop()->tcp_close() being called.  This may occur *after*
+	 * the detach message has been queued so we may find a NULL tp here.
+	 */
+	if ((tp = intotcpcb(inp)) != NULL) {
+		TCPDEBUG1();
+		tp = tcp_disconnect(tp);
+		TCPDEBUG2(PRU_DETACH);
+	}
 	splx(s);
 	return error;
 }
