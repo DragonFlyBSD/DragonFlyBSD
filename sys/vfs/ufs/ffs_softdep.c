@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.7 2003/07/06 20:11:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.8 2003/07/06 20:12:15 dillon Exp $
  */
 
 /*
@@ -4700,7 +4700,6 @@ clear_remove(struct thread *td)
 static void
 clear_inodedeps(struct thread *td)
 {
-	struct ucred *cred;
 	struct inodedep_hashhead *inodedephd;
 	struct inodedep *inodedep;
 	static int next = 0;
@@ -4709,9 +4708,6 @@ clear_inodedeps(struct thread *td)
 	struct fs *fs;
 	int error, cnt;
 	ino_t firstino, lastino, ino;
-
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
 
 	ACQUIRE_LOCK(&lk);
 	/*
