@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.15 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.16 2003/08/27 01:43:07 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -2193,6 +2193,9 @@ install_ap_tramp(u_int boot_addr)
  * to accomplish this.  This is necessary because of the nuances
  * of the different hardware we might encounter.  It ain't pretty,
  * but it seems to work.
+ *
+ * NOTE: eventually an AP gets to ap_init(), which is called just 
+ * before the AP goes into the LWKT scheduler's idle loop.
  */
 static int
 start_ap(int logical_cpu, u_int boot_addr)
@@ -2460,6 +2463,15 @@ ap_init(void)
 		smp_started = 1; /* enable IPI's, tlb shootdown, freezes etc */
 		smp_active = 1;	 /* historic */
 	}
+
+	/*
+	 * AP helper function for kernel memory support.  This will create
+	 * a memory reserve for the AP that is necessary to avoid certain
+	 * memory deadlock situations, such as when the kernel_map needs
+	 * a vm_map_entry and zalloc has no free entries and tries to allocate
+	 * a new one from the ... kernel_map :-)
+	 */
+	kmem_cpu_init();
 
 	/*
 	 * Startup helper thread(s) one per cpu.

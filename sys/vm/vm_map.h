@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.6 2003/08/25 17:01:13 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.7 2003/08/27 01:43:08 dillon Exp $
  */
 
 /*
@@ -137,6 +137,13 @@ struct vm_map_entry {
  * flags for vm_map_[un]clip_range()
  */
 #define MAP_CLIP_NO_HOLES		0x0001
+
+/*
+ * This reserve count for vm_map_entry_reserve() should cover all nominal
+ * single-insertion operations, including any necessary clipping.
+ */
+#define MAP_RESERVE_COUNT	4
+#define MAP_RESERVE_SLOP	32
 
 static __inline u_char   
 vm_map_entry_behavior(struct vm_map_entry *entry)
@@ -330,10 +337,12 @@ vmspace_resident_count(struct vmspace *vmspace)
 	return pmap_resident_count(vmspace_pmap(vmspace));
 }
 
-/* XXX: number of kernel maps and entries to statically allocate */
+/*
+ * Number of kernel maps and entries to statically allocate, required
+ * during boot to bootstrap the VM system.
+ */
 #define MAX_KMAP	10
-#define	MAX_KMAPENT	128
-#define	MAX_MAPENT	128
+#define	MAX_MAPENT	256
 
 /*
  * Copy-on-write flags for vm_map operations
@@ -360,16 +369,20 @@ vmspace_resident_count(struct vmspace *vmspace)
 #ifdef _KERNEL
 boolean_t vm_map_check_protection (vm_map_t, vm_offset_t, vm_offset_t, vm_prot_t);
 struct pmap;
+int vm_map_entry_reserve(int);
+int vm_map_entry_kreserve(int);
+void vm_map_entry_release(int);
+void vm_map_entry_krelease(int);
 vm_map_t vm_map_create (struct pmap *, vm_offset_t, vm_offset_t);
-int vm_map_delete (vm_map_t, vm_offset_t, vm_offset_t);
+int vm_map_delete (vm_map_t, vm_offset_t, vm_offset_t, int *);
 int vm_map_find (vm_map_t, vm_object_t, vm_ooffset_t, vm_offset_t *, vm_size_t, boolean_t, vm_prot_t, vm_prot_t, int);
 int vm_map_findspace (vm_map_t, vm_offset_t, vm_size_t, vm_offset_t, vm_offset_t *);
 int vm_map_inherit (vm_map_t, vm_offset_t, vm_offset_t, vm_inherit_t);
 void vm_map_init (struct vm_map *, vm_offset_t, vm_offset_t);
-int vm_map_insert (vm_map_t, vm_object_t, vm_ooffset_t, vm_offset_t, vm_offset_t, vm_prot_t, vm_prot_t, int);
+int vm_map_insert (vm_map_t, int *, vm_object_t, vm_ooffset_t, vm_offset_t, vm_offset_t, vm_prot_t, vm_prot_t, int);
 int vm_map_lookup (vm_map_t *, vm_offset_t, vm_prot_t, vm_map_entry_t *, vm_object_t *,
     vm_pindex_t *, vm_prot_t *, boolean_t *);
-void vm_map_lookup_done (vm_map_t, vm_map_entry_t);
+void vm_map_lookup_done (vm_map_t, vm_map_entry_t, int);
 boolean_t vm_map_lookup_entry (vm_map_t, vm_offset_t, vm_map_entry_t *);
 int vm_map_pageable (vm_map_t, vm_offset_t, vm_offset_t, boolean_t);
 int vm_map_user_pageable (vm_map_t, vm_offset_t, vm_offset_t, boolean_t);
@@ -379,13 +392,14 @@ int vm_map_remove (vm_map_t, vm_offset_t, vm_offset_t);
 void vm_map_startup (void);
 int vm_map_submap (vm_map_t, vm_offset_t, vm_offset_t, vm_map_t);
 int vm_map_madvise (vm_map_t, vm_offset_t, vm_offset_t, int);
-void vm_map_simplify_entry (vm_map_t, vm_map_entry_t);
+void vm_map_simplify_entry (vm_map_t, vm_map_entry_t, int *);
 void vm_init2 (void);
 int vm_uiomove (vm_map_t, vm_object_t, off_t, int, vm_offset_t, int *);
 void vm_freeze_copyopts (vm_object_t, vm_pindex_t, vm_pindex_t);
 int vm_map_stack (vm_map_t, vm_offset_t, vm_size_t, vm_prot_t, vm_prot_t, int);
 int vm_map_growstack (struct proc *p, vm_offset_t addr);
 int vmspace_swap_count (struct vmspace *vmspace);
+void vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size, int *);
 
 #endif
 #endif				/* _VM_MAP_ */

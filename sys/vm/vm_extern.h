@@ -32,7 +32,7 @@
  *
  *	@(#)vm_extern.h	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_extern.h,v 1.46.2.3 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_extern.h,v 1.4 2003/08/20 08:03:01 rob Exp $
+ * $DragonFly: src/sys/vm/vm_extern.h,v 1.5 2003/08/27 01:43:08 dillon Exp $
  */
 
 #ifndef _VM_EXTERN_H_
@@ -70,6 +70,7 @@ vm_offset_t kmem_alloc_wait (vm_map_t, vm_size_t);
 void kmem_free (vm_map_t, vm_offset_t, vm_size_t);
 void kmem_free_wakeup (vm_map_t, vm_offset_t, vm_size_t);
 void kmem_init (vm_offset_t, vm_offset_t);
+void kmem_cpu_init (void);
 vm_offset_t kmem_malloc (vm_map_t, vm_size_t, boolean_t);
 vm_map_t kmem_suballoc (vm_map_t, vm_offset_t *, vm_offset_t *, vm_size_t);
 void munmapfd (struct proc *, int);

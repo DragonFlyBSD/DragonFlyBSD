@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.11 2003/08/11 17:07:30 drhodus Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.12 2003/08/27 01:43:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -79,7 +79,7 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval) {
 	if (rv != KERN_SUCCESS)
 		return EINVAL;
 
-	vm_map_lookup_done (tmap, out_entry);
+	vm_map_lookup_done (tmap, out_entry, 0);
 
 	/* Find space in kernel_map for the page we're interested in */
 	rv = vm_map_find (kernel_map, object, IDX_TO_OFF(pindex),
@@ -157,7 +157,7 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
 	 * Okay, we've got the page.  Let's release tmap.
 	 */
 
-	vm_map_lookup_done (tmap, out_entry);
+	vm_map_lookup_done (tmap, out_entry, 0);
 
 	/*
 	 * Fault the page in...

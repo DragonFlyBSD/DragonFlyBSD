@@ -24,11 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.15 2003/08/12 02:36:15 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.16 2003/08/27 01:43:07 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
 #define _SYS_GLOBALDATA_H_
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 #ifndef _SYS_TIME_H_
 #include <sys/time.h>	/* struct timeval */
@@ -38,6 +40,9 @@
 #endif
 #ifndef _SYS_THREAD_H_
 #include <sys/thread.h>	/* struct thread */
+#endif
+#ifndef _SYS_SLABALLOC_H_
+#include <sys/slaballoc.h> /* SLGlobalData */
 #endif
 
 /*
@@ -60,10 +65,16 @@
  * further checks are necessary.  Interrupts are typically managed on a
  * per-processor basis at least until you leave a critical section, but
  * may then be scheduled to other cpus.
+ *
+ * gd_vme_avail and gd_vme_base cache free vm_map_entry structures for use
+ * in various vm_map related operations.  gd_vme_avail is *NOT* a count of
+ * the number of structures in the cache but is instead a count of the number
+ * of unreserved structures in the cache.  See vm_map_entry_reserve().
  */
 
 union sysmsg;
 struct privatespace;
+struct vm_map_entry;
 
 struct globaldata {
 	struct privatespace *gd_prvspace;	/* self-reference */
@@ -85,6 +96,10 @@ struct globaldata {
 	struct lwkt_ipiq *gd_ipiq;
 	struct thread	gd_schedthread;
 	struct thread	gd_idlethread;
+	SLGlobalData	gd_slab;		/* slab allocator */
+	int		gd_vme_kdeficit;	/* vm_map_entry reservation */
+	int		gd_vme_avail;		/* vm_map_entry reservation */
+	struct vm_map_entry *gd_vme_base;	/* vm_map_entry reservation */
 	/* extended by <machine/pcpu.h> */
 };
 
@@ -102,6 +117,8 @@ typedef struct globaldata *globaldata_t;
 #define RQF_AST_SIGNAL	(1 << RQB_AST_SIGNAL)
 #define RQF_AST_RESCHED	(1 << RQB_AST_RESCHED)
 #define RQF_AST_MASK	(RQF_AST_OWEUPC|RQF_AST_SIGNAL|RQF_AST_RESCHED)
+
+#endif
 
 #ifdef _KERNEL
 struct globaldata *globaldata_find(int cpu);

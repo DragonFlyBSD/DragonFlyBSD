@@ -38,7 +38,7 @@
  *	@(#)procfs_mem.c	8.5 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_mem.c,v 1.46.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.5 2003/08/20 09:56:33 rob Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.6 2003/08/27 01:43:07 dillon Exp $
  */
 
 /*
@@ -183,7 +183,7 @@ procfs_rwmem(curp, p, uio)
 			 */
 			object = NULL;
 
-			vm_map_lookup_done(tmap, out_entry);
+			vm_map_lookup_done(tmap, out_entry, 0);
 
 			break;
 		}
@@ -199,7 +199,7 @@ procfs_rwmem(curp, p, uio)
 		 * it.
 		 */
 		vm_object_reference(object);
-		vm_map_lookup_done(tmap, out_entry);
+		vm_map_lookup_done(tmap, out_entry, 0);
 
 		pmap_kenter(kva, VM_PAGE_TO_PHYS(m));
 

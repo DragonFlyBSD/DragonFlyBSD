@@ -32,7 +32,7 @@
  *
  *	@(#)types.h	8.3 (Berkeley) 1/5/94
  * $FreeBSD: src/sys/i386/include/types.h,v 1.19.2.1 2001/03/21 10:50:58 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/types.h,v 1.4 2003/06/29 03:28:43 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/types.h,v 1.5 2003/08/27 01:43:07 dillon Exp $
  */
 
 #ifndef _MACHINE_TYPES_H_
@@ -48,10 +48,12 @@ typedef struct label_t {
 } label_t;
 #endif
 
-typedef	unsigned int	vm_offset_t;
-typedef	__int64_t	vm_ooffset_t;
-typedef	unsigned int	vm_pindex_t;
-typedef	unsigned int	vm_size_t;
+typedef	unsigned int	vm_offset_t;	/* address space bounded offset */
+typedef	unsigned int	vm_size_t;	/* address space bounded size */
+typedef	__int64_t	vm_ooffset_t;	/* VM object bounded offset */
+typedef	unsigned int	vm_pindex_t;	/* physical page index */
+typedef __uint64_t	vm_poff_t;	/* physical offset */
+typedef __uint64_t	vm_paddr_t;	/* physical addr (same as vm_poff_t) */
 
 typedef	__int32_t	register_t;
 typedef	__uint32_t	u_register_t;

@@ -32,17 +32,23 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.6 2003/08/25 19:50:33 dillon Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.7 2003/08/27 01:43:07 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
 #define	_SYS_MALLOC_H_
+
+#ifdef _KERNEL
 
 #ifndef _MACHINE_VMPARAM_H_
 #include <machine/vmparam.h>	/* for VM_MIN_KERNEL_ADDRESS */
 #endif
 
 #define splmem splhigh
+
+#endif
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 /*
  * flags to malloc.
@@ -51,6 +57,7 @@
 #define	M_WAITOK     	0x0002	/* wait for resources */
 #define	M_ZERO       	0x0100	/* bzero() the allocation */
 #define	M_USE_RESERVE	0x0200	/* can alloc out of reserve memory */
+#define	M_NULLOK	0x0400	/* ok to return NULL in M_WAITOK case */
 
 #define	M_MAGIC		877983977	/* time when first defined :-) */
 
@@ -67,6 +74,8 @@ struct malloc_type {
 	u_short	ks_limblocks;	/* number of times blocked for hitting limit */
 	u_short	ks_mapblocks;	/* number of times blocked for kernel map */
 };
+
+#endif
 
 #ifdef _KERNEL
 #define	MALLOC_DEFINE(type, shortdesc, longdesc) \
@@ -86,6 +95,8 @@ MALLOC_DECLARE(M_TEMP);
 MALLOC_DECLARE(M_IP6OPT); /* for INET6 */
 MALLOC_DECLARE(M_IP6NDP); /* for INET6 */
 #endif /* _KERNEL */
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 /*
  * Array of descriptors that describe the contents of each page
@@ -114,7 +125,6 @@ struct kmembuckets {
 	long	kb_couldfree;	/* over high water mark and could free */
 };
 
-#ifdef _KERNEL
 #define	MINALLOCSIZE	(1 << MINBUCKET)
 #define BUCKETINDX(size) \
 	((size) <= (MINALLOCSIZE * 128) \
@@ -148,6 +158,10 @@ struct kmembuckets {
 				: (size) <= (MINALLOCSIZE * 16384) \
 					? (MINBUCKET + 14) \
 					: (MINBUCKET + 15))
+
+#endif
+
+#ifdef _KERNEL
 
 /*
  * Turn virtual addresses into kmem map indices
@@ -188,6 +202,7 @@ void	*realloc (void *addr, unsigned long size,
 		      struct malloc_type *type, int flags);
 void	*reallocf (void *addr, unsigned long size,
 		      struct malloc_type *type, int flags);
+
 #endif /* _KERNEL */
 
 #endif /* !_SYS_MALLOC_H_ */

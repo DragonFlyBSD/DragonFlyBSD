@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.7 2003/08/25 19:50:33 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.8 2003/08/27 01:43:08 dillon Exp $
  */
 
 /*
@@ -148,22 +148,21 @@ kmem_alloc_nofault(map, size)
  *	or a submap.
  */
 vm_offset_t
-kmem_alloc(map, size)
-	vm_map_t map;
-	vm_size_t size;
+kmem_alloc(vm_map_t map, vm_size_t size)
 {
 	vm_offset_t addr;
 	vm_offset_t offset;
 	vm_offset_t i;
+	int count;
 
 	size = round_page(size);
+
+	count = vm_map_entry_kreserve(MAP_RESERVE_COUNT);
 
 	/*
 	 * Use the kernel object for wired-down kernel pages. Assume that no
 	 * region of the kernel object is referenced more than once.
-	 */
-
-	/*
+	 *
 	 * Locate sufficient space in the map.  This will give us the final
 	 * virtual address for the new memory, and thus will tell us the
 	 * offset within the kernel map.
@@ -171,13 +170,16 @@ kmem_alloc(map, size)
 	vm_map_lock(map);
 	if (vm_map_findspace(map, vm_map_min(map), size, 1, &addr)) {
 		vm_map_unlock(map);
+		vm_map_entry_krelease(count);
 		return (0);
 	}
 	offset = addr - VM_MIN_KERNEL_ADDRESS;
 	vm_object_reference(kernel_object);
-	vm_map_insert(map, kernel_object, offset, addr, addr + size,
+	vm_map_insert(map, &count,
+		kernel_object, offset, addr, addr + size,
 		VM_PROT_ALL, VM_PROT_ALL, 0);
 	vm_map_unlock(map);
+	vm_map_entry_krelease(count);
 
 	/*
 	 * Guarantee that there are pages already in this object before
@@ -299,15 +301,13 @@ kmem_suballoc(parent, min, max, size)
  *	I have not verified that it actually does not block.
  */
 vm_offset_t
-kmem_malloc(map, size, flags)
-	vm_map_t map;
-	vm_size_t size;
-	int flags;
+kmem_malloc(vm_map_t map, vm_size_t size, int flags)
 {
 	vm_offset_t offset, i;
 	vm_map_entry_t entry;
 	vm_offset_t addr;
 	vm_page_t m;
+	int count;
 
 #if defined(NO_KMEM_MAP)
 	if (map != kernel_map && map != mb_map)
@@ -326,8 +326,10 @@ kmem_malloc(map, size, flags)
 	 * offset within the kernel map.
 	 */
 	vm_map_lock(map);
+	count = vm_map_entry_kreserve(MAP_RESERVE_COUNT);
 	if (vm_map_findspace(map, vm_map_min(map), size, 1, &addr)) {
 		vm_map_unlock(map);
+		vm_map_entry_krelease(count);
 		if (map == mb_map) {
 			mb_map_full = TRUE;
 			printf("Out of mbuf clusters - adjust NMBCLUSTERS or increase maxusers!\n");
@@ -345,7 +347,8 @@ kmem_malloc(map, size, flags)
 	}
 	offset = addr - VM_MIN_KERNEL_ADDRESS;
 	vm_object_reference(kmem_object);
-	vm_map_insert(map, kmem_object, offset, addr, addr + size,
+	vm_map_insert(map, &count,
+		kmem_object, offset, addr, addr + size,
 		VM_PROT_ALL, VM_PROT_ALL, 0);
 
 	for (i = 0; i < size; i += PAGE_SIZE) {
@@ -387,8 +390,9 @@ retry:
 						   OFF_TO_IDX(offset + i));
 				vm_page_free(m);
 			}
-			vm_map_delete(map, addr, addr + size);
+			vm_map_delete(map, addr, addr + size, &count);
 			vm_map_unlock(map);
+			vm_map_entry_krelease(count);
 			return (0);
 		}
 		vm_page_flag_clear(m, PG_ZERO);
@@ -407,7 +411,7 @@ retry:
 		panic("kmem_malloc: entry not found or misaligned");
 	entry->wired_count = 1;
 
-	vm_map_simplify_entry(map, entry);
+	vm_map_simplify_entry(map, entry, &count);
 
 	/*
 	 * Loop thru pages, entering them in the pmap. (We cannot add them to
@@ -425,6 +429,7 @@ retry:
 		vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE | PG_REFERENCED);
 	}
 	vm_map_unlock(map);
+	vm_map_entry_krelease(count);
 
 	return (addr);
 }
@@ -439,13 +444,14 @@ retry:
  */
 
 vm_offset_t
-kmem_alloc_wait(map, size)
-	vm_map_t map;
-	vm_size_t size;
+kmem_alloc_wait(vm_map_t map, vm_size_t size)
 {
 	vm_offset_t addr;
+	int count;
 
 	size = round_page(size);
+
+	count = vm_map_entry_kreserve(MAP_RESERVE_COUNT);
 
 	for (;;) {
 		/*
@@ -457,14 +463,18 @@ kmem_alloc_wait(map, size)
 			break;
 		/* no space now; see if we can ever get space */
 		if (vm_map_max(map) - vm_map_min(map) < size) {
+			vm_map_entry_krelease(count);
 			vm_map_unlock(map);
 			return (0);
 		}
 		vm_map_unlock(map);
 		tsleep(map, 0, "kmaw", 0);
 	}
-	vm_map_insert(map, NULL, (vm_offset_t) 0, addr, addr + size, VM_PROT_ALL, VM_PROT_ALL, 0);
+	vm_map_insert(map, &count,
+		    NULL, (vm_offset_t) 0,
+		    addr, addr + size, VM_PROT_ALL, VM_PROT_ALL, 0);
 	vm_map_unlock(map);
+	vm_map_entry_krelease(count);
 	return (addr);
 }
 
@@ -480,10 +490,14 @@ kmem_free_wakeup(map, addr, size)
 	vm_offset_t addr;
 	vm_size_t size;
 {
+	int count;
+
+	count = vm_map_entry_kreserve(MAP_RESERVE_COUNT);
 	vm_map_lock(map);
-	(void) vm_map_delete(map, trunc_page(addr), round_page(addr + size));
+	(void) vm_map_delete(map, trunc_page(addr), round_page(addr + size), &count);
 	wakeup(map);
 	vm_map_unlock(map);
+	vm_map_entry_krelease(count);
 }
 
 /*
@@ -493,22 +507,39 @@ kmem_free_wakeup(map, addr, size)
  *	data, bss, and all space allocated thus far (`boostrap' data).  The 
  *	new map will thus map the range between VM_MIN_KERNEL_ADDRESS and 
  *	`start' as allocated, and the range between `start' and `end' as free.
+ *
+ *	Depend on the zalloc bootstrap cache to get our vm_map_entry_t.
  */
-
 void
-kmem_init(start, end)
-	vm_offset_t start, end;
+kmem_init(vm_offset_t start, vm_offset_t end)
 {
 	vm_map_t m;
+	int count;
 
 	m = vm_map_create(kernel_pmap, VM_MIN_KERNEL_ADDRESS, end);
 	vm_map_lock(m);
 	/* N.B.: cannot use kgdb to debug, starting with this assignment ... */
 	kernel_map = m;
 	kernel_map->system_map = 1;
-	(void) vm_map_insert(m, NULL, (vm_offset_t) 0,
+	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
+	(void) vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
 	    VM_MIN_KERNEL_ADDRESS, start, VM_PROT_ALL, VM_PROT_ALL, 0);
 	/* ... and ending with the completion of the above `insert' */
 	vm_map_unlock(m);
+	vm_map_entry_release(count);
+}
+
+/*
+ *	kmem_cpu_init:
+ *
+ *	Load up extra vm_map_entry structures in each cpu's globaldata
+ *	cache.  These allow us to expand the mapent zone for kernel_map.
+ *	Without them we would get into a recursion deadlock trying to
+ *	reserve map entries (reserve->zalloc->kmem_alloc->reserve->...)
+ */
+void
+kmem_cpu_init(void)
+{
+	vm_map_entry_reserve(MAP_RESERVE_COUNT * 2);
 }
 

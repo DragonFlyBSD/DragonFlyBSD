@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.6 2003/08/20 08:03:01 rob Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.7 2003/08/27 01:43:08 dillon Exp $
  */
 
 /*
@@ -127,7 +127,7 @@ static __inline void
 unlock_map(struct faultstate *fs)
 {
 	if (fs->lookup_still_valid) {
-		vm_map_lookup_done(fs->map, fs->entry);
+		vm_map_lookup_done(fs->map, fs->entry, 0);
 		fs->lookup_still_valid = FALSE;
 	}
 }

@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.8 2003/08/25 17:01:13 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.9 2003/08/27 01:43:08 dillon Exp $
  */
 
 /*
@@ -1713,6 +1713,7 @@ contigmalloc1(
 	vm_offset_t addr, phys, tmp_addr;
 	int pass;
 	vm_page_t pga = vm_page_array;
+	int count;
 
 	size = round_page(size);
 	if (size == 0)
@@ -1848,6 +1849,7 @@ again1:
 		 * return kernel VM pointer.
 		 */
 		vm_map_lock(map);
+		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 		if (vm_map_findspace(map, vm_map_min(map), size, 1, &addr) !=
 		    KERN_SUCCESS) {
 			/*
@@ -1856,13 +1858,16 @@ again1:
 			 * above available.
 			 */
 			vm_map_unlock(map);
+			vm_map_entry_release(count);
 			splx(s);
 			return (NULL);
 		}
 		vm_object_reference(kernel_object);
-		vm_map_insert(map, kernel_object, addr - VM_MIN_KERNEL_ADDRESS,
+		vm_map_insert(map, &count, 
+		    kernel_object, addr - VM_MIN_KERNEL_ADDRESS,
 		    addr, addr + size, VM_PROT_ALL, VM_PROT_ALL, 0);
 		vm_map_unlock(map);
+		vm_map_entry_release(count);
 
 		tmp_addr = addr;
 		for (i = start; i < (start + size / PAGE_SIZE); i++) {

@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.13 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.14 2003/08/27 01:43:07 dillon Exp $
  */
 
 /*
@@ -442,15 +442,20 @@ bufinit(void)
 static void
 bfreekva(struct buf * bp)
 {
+	int count;
+
 	if (bp->b_kvasize) {
 		++buffreekvacnt;
+		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 		vm_map_lock(buffer_map);
 		bufspace -= bp->b_kvasize;
 		vm_map_delete(buffer_map,
 		    (vm_offset_t) bp->b_kvabase,
-		    (vm_offset_t) bp->b_kvabase + bp->b_kvasize
+		    (vm_offset_t) bp->b_kvabase + bp->b_kvasize,
+		    &count
 		);
 		vm_map_unlock(buffer_map);
+		vm_map_entry_release(count);
 		bp->b_kvasize = 0;
 		bufspacewakeup();
 	}
@@ -1707,9 +1712,11 @@ restart:
 
 		if (maxsize != bp->b_kvasize) {
 			vm_offset_t addr = 0;
+			int count;
 
 			bfreekva(bp);
 
+			count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 			vm_map_lock(buffer_map);
 
 			if (vm_map_findspace(buffer_map,
@@ -1720,6 +1727,7 @@ restart:
 				 * must defragment the map.
 				 */
 				vm_map_unlock(buffer_map);
+				vm_map_entry_release(count);
 				++bufdefragcnt;
 				defrag = 1;
 				bp->b_flags |= B_INVAL;
@@ -1727,7 +1735,8 @@ restart:
 				goto restart;
 			}
 			if (addr) {
-				vm_map_insert(buffer_map, NULL, 0,
+				vm_map_insert(buffer_map, &count,
+					NULL, 0,
 					addr, addr + maxsize,
 					VM_PROT_ALL, VM_PROT_ALL, MAP_NOFAULT);
 
@@ -1737,6 +1746,7 @@ restart:
 				++bufreusecnt;
 			}
 			vm_map_unlock(buffer_map);
+			vm_map_entry_release(count);
 		}
 		bp->b_data = bp->b_kvabase;
 	}

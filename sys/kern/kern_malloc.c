@@ -32,10 +32,12 @@
  *
  *	@(#)kern_malloc.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/kern_malloc.c,v 1.64.2.5 2002/03/16 02:19:51 archie Exp $
- * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.11 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.12 2003/08/27 01:43:07 dillon Exp $
  */
 
 #include "opt_vm.h"
+
+#if !defined(USE_SLAB_ALLOCATOR)
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -587,7 +589,7 @@ malloc_init(data)
 {
 	struct malloc_type *type = (struct malloc_type *)data;
 #if defined(NO_KMEM_MAP)
-	uintptr_t limsize;
+	vm_poff_t limsize;
 #endif
 
 	if (type->ks_magic != M_MAGIC)
@@ -604,7 +606,7 @@ malloc_init(data)
 	 * memory or 1/10 of our KVA space, whichever is lower.
 	 */
 #if defined(NO_KMEM_MAP)
-	limsize = (uintptr_t)vmstats.v_page_count * PAGE_SIZE;
+	limsize = (vm_poff_t)vmstats.v_page_count * PAGE_SIZE;
 	if (limsize > VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS)
 		limsize = VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS;
 	type->ks_limit = limsize / 10;
@@ -668,3 +670,5 @@ malloc_uninit(data)
 	type->ks_next = NULL;
 	type->ks_limit = 0;
 }
+
+#endif

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_aout.c,v 1.59.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/imgact_aout.c,v 1.5 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/imgact_aout.c,v 1.6 2003/08/27 01:43:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -77,12 +77,12 @@ struct sysentvec aout_sysvec = {
 };
 
 static int
-exec_aout_imgact(imgp)
-	struct image_params *imgp;
+exec_aout_imgact(struct image_params *imgp)
 {
 	const struct exec *a_out = (const struct exec *) imgp->image_header;
 	struct vmspace *vmspace;
 	struct vnode *vp;
+	int count;
 	vm_map_t map;
 	vm_object_t object;
 	vm_offset_t text_end, data_end;
@@ -182,44 +182,49 @@ exec_aout_imgact(imgp)
 
 	vp = imgp->vp;
 	map = &vmspace->vm_map;
+	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 	vm_map_lock(map);
 	VOP_GETVOBJECT(vp, &object);
 	vm_object_reference(object);
 
 	text_end = virtual_offset + a_out->a_text;
-	error = vm_map_insert(map, object,
+	error = vm_map_insert(map, &count, object,
 		file_offset,
 		virtual_offset, text_end,
 		VM_PROT_READ | VM_PROT_EXECUTE, VM_PROT_ALL,
 		MAP_COPY_ON_WRITE | MAP_PREFAULT);
 	if (error) {
 		vm_map_unlock(map);
+		vm_map_entry_release(count);
 		return (error);
 	}
 	data_end = text_end + a_out->a_data;
 	if (a_out->a_data) {
 		vm_object_reference(object);
-		error = vm_map_insert(map, object,
+		error = vm_map_insert(map, &count, object,
 			file_offset + a_out->a_text,
 			text_end, data_end,
 			VM_PROT_ALL, VM_PROT_ALL,
 			MAP_COPY_ON_WRITE | MAP_PREFAULT);
 		if (error) {
 			vm_map_unlock(map);
+			vm_map_entry_release(count);
 			return (error);
 		}
 	}
 
 	if (bss_size) {
-		error = vm_map_insert(map, NULL, 0,
+		error = vm_map_insert(map, &count, NULL, 0,
 			data_end, data_end + bss_size,
 			VM_PROT_ALL, VM_PROT_ALL, 0);
 		if (error) {
 			vm_map_unlock(map);
+			vm_map_entry_release(count);
 			return (error);
 		}
 	}
 	vm_map_unlock(map);
+	vm_map_entry_release(count);
 
 	/* Fill in process VM information */
 	vmspace->vm_tsize = a_out->a_text >> PAGE_SHIFT;

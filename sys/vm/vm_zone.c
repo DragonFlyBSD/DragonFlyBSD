@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.8 2003/08/25 19:50:33 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.9 2003/08/27 01:43:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -167,7 +167,10 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 
 	/*
 	 * If we cannot wait, allocate KVA space up front, and we will fill
-	 * in pages as needed.
+	 * in pages as needed.  This is particularly required when creating
+	 * an allocation space for map entries in kernel_map, because we
+	 * do not want to go into a recursion deadlock with 
+	 * vm_map_entry_reserve().
 	 */
 	if (z->zflags & ZONE_INTERRUPT) {
 
@@ -394,6 +397,12 @@ zget(vm_zone_t z)
 	} else {
 		item = NULL;
 	}
+
+	/*
+	 * Recover any reserve missing due to a zalloc/kreserve/krelease
+	 * recursion.
+	 */
+	vm_map_entry_reserve(0);
 
 	return item;
 }

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.7 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.8 2003/08/27 01:43:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -190,6 +190,7 @@ elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp, vm_o
 	size_t map_len;
 	vm_offset_t map_addr;
 	int error, rv, cow;
+	int count;
 	size_t copy_len;
 	vm_object_t object;
 	vm_offset_t file_addr;
@@ -234,8 +235,9 @@ elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp, vm_o
 		cow = MAP_COPY_ON_WRITE | MAP_PREFAULT |
 		    (prot & VM_PROT_WRITE ? 0 : MAP_DISABLE_COREDUMP);
 
+		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 		vm_map_lock(&vmspace->vm_map);
-		rv = vm_map_insert(&vmspace->vm_map,
+		rv = vm_map_insert(&vmspace->vm_map, &count,
 				      object,
 				      file_addr,	/* file offset */
 				      map_addr,		/* virtual start */
@@ -244,6 +246,7 @@ elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp, vm_o
 				      VM_PROT_ALL,
 				      cow);
 		vm_map_unlock(&vmspace->vm_map);
+		vm_map_entry_release(count);
 		if (rv != KERN_SUCCESS) {
 			vm_object_deallocate(object);
 			return EINVAL;
@@ -268,11 +271,14 @@ elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp, vm_o
 
 	/* This had damn well better be true! */
         if (map_len != 0) {
+		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 		vm_map_lock(&vmspace->vm_map);
-		rv = vm_map_insert(&vmspace->vm_map, NULL, 0,
+		rv = vm_map_insert(&vmspace->vm_map, &count,
+					NULL, 0,
 					map_addr, map_addr + map_len,
 					VM_PROT_ALL, VM_PROT_ALL, 0);
 		vm_map_unlock(&vmspace->vm_map);
+		vm_map_entry_release(count);
 		if (rv != KERN_SUCCESS) {
 			return EINVAL; 
 		}
