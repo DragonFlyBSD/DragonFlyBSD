@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.16 2004/05/19 22:52:49 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.17 2004/07/03 21:23:37 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -730,6 +730,21 @@ sioprobe(dev, xrid, rclk)
 		sio_setreg(com, com_dlbh, divisor >> 8);
 		sio_setreg(com, com_cfcr, CFCR_8BITS);
 		DELAY((16 + 1) * 1000000 / (SIO_TEST_SPEED / 10));
+	}
+
+	/*
+	 * Make sure we can drain the receiver.  If we can't, the serial
+	 * port may not exist.
+	 */
+	for (fn = 0; fn < 256; ++fn) {
+		if ((sio_getreg(com, com_lsr) & LSR_RXRDY) == 0)
+			break;
+		(void)sio_getreg(com, com_data);
+	}
+	if (fn == 256) {
+		printf("sio%d: can't drain, serial port might "
+			"not exist, disabling\n", device_get_unit(dev));
+		return (ENXIO);
 	}
 
 	/*
