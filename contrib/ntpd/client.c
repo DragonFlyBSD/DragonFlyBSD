@@ -1,4 +1,4 @@
-/*	$OpenBSD: client.c,v 1.33 2004/09/14 22:01:28 henning Exp $ */
+/*	$OpenBSD: src/usr.sbin/ntpd/client.c,v 1.44 2004/11/05 23:39:46 dtucker Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -83,10 +83,7 @@ client_addr_init(struct ntp_peer *p)
 		}
 	}
 
-	if (p->addr != NULL &&
-	    (p->query->fd = socket(p->addr->ss.ss_family, SOCK_DGRAM, 0)) == -1)
-		fatal("client_query socket");
-
+	p->query->fd = -1;
 	set_next(p, 0);
 
 	return (0);
@@ -106,9 +103,6 @@ client_nextaddr(struct ntp_peer *p)
 	if ((p->addr = p->addr->next) == NULL)
 		p->addr = p->addr_head.a;
 
-	if ((p->query->fd = socket(p->addr->ss.ss_family, SOCK_DGRAM, 0)) == -1)
-		fatal("client_query socket");
-
 	p->shift = 0;
 	p->trustlevel = TRUSTLEVEL_PATHETIC;
 
@@ -118,9 +112,31 @@ client_nextaddr(struct ntp_peer *p)
 int
 client_query(struct ntp_peer *p)
 {
+	int	tos = IPTOS_LOWDELAY;
+
 	if (p->addr == NULL && client_nextaddr(p) == -1) {
 		set_next(p, INTERVAL_QUERY_PATHETIC);
 		return (-1);
+	}
+
+	if (p->query->fd == -1) {
+		struct sockaddr *sa = (struct sockaddr *)&p->addr->ss;
+
+		if ((p->query->fd = socket(p->addr->ss.ss_family, SOCK_DGRAM,
+		    0)) == -1)
+			fatal("client_query socket");
+		if (connect(p->query->fd, sa, SA_LEN(sa)) == -1) {
+			if (errno == ECONNREFUSED || errno == ENETUNREACH ||
+			    errno == EHOSTUNREACH) {
+				client_nextaddr(p);
+				set_next(p, INTERVAL_QUERY_PATHETIC);
+				return (-1);
+			} else
+				fatal("client_query connect");
+		}
+		if (p->addr->ss.ss_family == AF_INET && setsockopt(p->query->fd,
+		    IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) == -1)
+			log_warn("setsockopt IPTOS_LOWDELAY");
 	}
 
 	/*
@@ -141,8 +157,8 @@ client_query(struct ntp_peer *p)
 	p->query->msg.xmttime.fraction = arc4random();
 	p->query->xmttime = gettime();
 
-	if (ntp_sendmsg(p->query->fd, (struct sockaddr *)&p->addr->ss,
-	    &p->query->msg, NTP_MSGSIZE_NOAUTH, 0) == -1) {
+	if (ntp_sendmsg(p->query->fd, NULL, &p->query->msg,
+	    NTP_MSGSIZE_NOAUTH, 0) == -1) {
 		set_next(p, INTERVAL_QUERY_PATHETIC);
 		return (-1);
 	}
@@ -154,10 +170,8 @@ client_query(struct ntp_peer *p)
 }
 
 int
-client_dispatch(struct ntp_peer *p)
+client_dispatch(struct ntp_peer *p, u_int8_t settime)
 {
-	struct sockaddr_storage	 fsa;
-	socklen_t		 fsa_len;
 	char			 buf[NTP_MSGSIZE];
 	ssize_t			 size;
 	struct ntp_msg		 msg;
@@ -165,13 +179,12 @@ client_dispatch(struct ntp_peer *p)
 	double			 abs_offset;
 	time_t			 interval;
 
-	fsa_len = sizeof(fsa);
 	if ((size = recvfrom(p->query->fd, &buf, sizeof(buf), 0,
-	    (struct sockaddr *)&fsa, &fsa_len)) == -1) {
+	    NULL, NULL)) == -1) {
 		if (errno == EHOSTUNREACH || errno == EHOSTDOWN ||
-		    errno == ENETDOWN) {
+		    errno == ENETDOWN || errno == ECONNREFUSED) {
 			log_warn("recvfrom %s",
-			    log_sockaddr((struct sockaddr *)&fsa));
+			    log_sockaddr((struct sockaddr *)&p->addr->ss));
 			return (0);
 		} else
 			fatal("recvfrom");
@@ -188,7 +201,7 @@ client_dispatch(struct ntp_peer *p)
 	/*
 	 * From RFC 2030 (with a correction to the delay math):
 	 *
-	 *      Timestamp Name          ID   When Generated
+	 *     Timestamp Name          ID   When Generated
 	 *     ------------------------------------------------------------
 	 *     Originate Timestamp     T1   time request sent by client
 	 *     Receive Timestamp       T2   time request received by server
@@ -212,11 +225,12 @@ client_dispatch(struct ntp_peer *p)
 
 	p->reply[p->shift].status.leap = (msg.status & LIMASK) >> 6;
 	p->reply[p->shift].status.precision = msg.precision;
-	p->reply[p->shift].status.rootdelay = sfp_to_d(msg.distance);
+	p->reply[p->shift].status.rootdelay = sfp_to_d(msg.rootdelay);
 	p->reply[p->shift].status.rootdispersion = sfp_to_d(msg.dispersion);
-	p->reply[p->shift].status.refid = htonl(msg.refid);
+	p->reply[p->shift].status.refid = ntohl(msg.refid);
 	p->reply[p->shift].status.reftime = lfp_to_d(msg.reftime);
 	p->reply[p->shift].status.poll = msg.ppoll;
+	p->reply[p->shift].status.stratum = msg.stratum;
 
 	if (p->trustlevel < TRUSTLEVEL_PATHETIC)
 		interval = INTERVAL_QUERY_PATHETIC;
@@ -246,14 +260,16 @@ client_dispatch(struct ntp_peer *p)
 		if (p->trustlevel < TRUSTLEVEL_BADPEER &&
 		    p->trustlevel + 1 >= TRUSTLEVEL_BADPEER)
 			log_info("peer %s now valid",
-			    log_sockaddr((struct sockaddr *)&fsa));
+			    log_sockaddr((struct sockaddr *)&p->addr->ss));
 		p->trustlevel++;
 	}
 
 	client_update(p);
+	if (settime)
+		ntp_settime(p->reply[p->shift].offset);
 
 	log_debug("reply from %s: offset %f delay %f, "
-	    "next query %ds", log_sockaddr((struct sockaddr *)&fsa),
+	    "next query %ds", log_sockaddr((struct sockaddr *)&p->addr->ss),
 	    p->reply[p->shift].offset, p->reply[p->shift].delay, interval);
 
 	if (++p->shift >= OFFSET_ARRAY_SIZE)

@@ -1,4 +1,4 @@
-/*	$OpenBSD: ntp_msg.c,v 1.6 2004/08/30 11:50:56 deraadt Exp $ */
+/*	$OpenBSD: src/usr.sbin/ntpd/ntp_msg.c,v 1.11 2004/10/22 21:24:20 henning Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -29,13 +29,7 @@
 int
 ntp_getmsg(char *p, ssize_t len, struct ntp_msg *msg)
 {
-	int		 auth, i;
-
-	if (len == NTP_MSGSIZE)
-		auth = 1;
-	else if (len == NTP_MSGSIZE_NOAUTH)
-		auth = 0;
-	else {
+	if (len != NTP_MSGSIZE_NOAUTH && len != NTP_MSGSIZE) {
 		log_warnx("malformed packet received");
 		return (-1);
 	}
@@ -48,10 +42,10 @@ ntp_getmsg(char *p, ssize_t len, struct ntp_msg *msg)
 	p += sizeof(msg->ppoll);
 	memcpy(&msg->precision, p, sizeof(msg->precision));
 	p += sizeof(msg->precision);
-	memcpy(&msg->distance.int_part, p, sizeof(msg->distance.int_part));
-	p += sizeof(msg->distance.int_part);
-	memcpy(&msg->distance.fraction, p, sizeof(msg->distance.fraction));
-	p += sizeof(msg->distance.fraction);
+	memcpy(&msg->rootdelay.int_part, p, sizeof(msg->rootdelay.int_part));
+	p += sizeof(msg->rootdelay.int_part);
+	memcpy(&msg->rootdelay.fraction, p, sizeof(msg->rootdelay.fraction));
+	p += sizeof(msg->rootdelay.fraction);
 	memcpy(&msg->dispersion.int_part, p, sizeof(msg->dispersion.int_part));
 	p += sizeof(msg->dispersion.int_part);
 	memcpy(&msg->dispersion.fraction, p, sizeof(msg->dispersion.fraction));
@@ -75,17 +69,6 @@ ntp_getmsg(char *p, ssize_t len, struct ntp_msg *msg)
 	memcpy(&msg->xmttime.fraction, p, sizeof(msg->xmttime.fraction));
 	p += sizeof(msg->xmttime.fraction);
 
-	if (auth) {
-		memcpy(&msg->keyid, p, sizeof(msg->keyid));
-		p += sizeof(msg->keyid);
-		for (i = 0; i < NTP_DIGESTSIZE; i++) {
-			memcpy(&msg->digest[i], p, sizeof(msg->digest[i]));
-			p += sizeof(msg->digest[i]);
-		}
-
-		/* XXX check auth */
-	}
-
 	return (0);
 }
 
@@ -93,8 +76,9 @@ int
 ntp_sendmsg(int fd, struct sockaddr *sa, struct ntp_msg *msg, ssize_t len,
     int auth)
 {
-	char	 buf[NTP_MSGSIZE];
-	char	*p;
+	char		 buf[NTP_MSGSIZE];
+	char		*p;
+	u_int8_t	sa_len;
 
 	p = buf;
 	memcpy(p, &msg->status, sizeof(msg->status));
@@ -105,10 +89,10 @@ ntp_sendmsg(int fd, struct sockaddr *sa, struct ntp_msg *msg, ssize_t len,
 	p += sizeof(msg->ppoll);
 	memcpy(p, &msg->precision, sizeof(msg->precision));
 	p += sizeof(msg->precision);
-	memcpy(p, &msg->distance.int_part, sizeof(msg->distance.int_part));
-	p += sizeof(msg->distance.int_part);
-	memcpy(p, &msg->distance.fraction, sizeof(msg->distance.fraction));
-	p += sizeof(msg->distance.fraction);
+	memcpy(p, &msg->rootdelay.int_part, sizeof(msg->rootdelay.int_part));
+	p += sizeof(msg->rootdelay.int_part);
+	memcpy(p, &msg->rootdelay.fraction, sizeof(msg->rootdelay.fraction));
+	p += sizeof(msg->rootdelay.fraction);
 	memcpy(p, &msg->dispersion.int_part, sizeof(msg->dispersion.int_part));
 	p += sizeof(msg->dispersion.int_part);
 	memcpy(p, &msg->dispersion.fraction, sizeof(msg->dispersion.fraction));
@@ -132,11 +116,12 @@ ntp_sendmsg(int fd, struct sockaddr *sa, struct ntp_msg *msg, ssize_t len,
 	memcpy(p, &msg->xmttime.fraction, sizeof(msg->xmttime.fraction));
 	p += sizeof(msg->xmttime.fraction);
 
-	if (auth) {
-		/* XXX */
-	}
+	if (sa != NULL)
+		sa_len = SA_LEN(sa);
+	else
+		sa_len = 0;
 
-	if (sendto(fd, &buf, len, 0, sa, SA_LEN(sa)) != len) {
+	if (sendto(fd, &buf, len, 0, sa, sa_len) != len) {
 		if (errno == ENOBUFS || errno == EHOSTUNREACH ||
 		    errno == ENETDOWN || errno == EHOSTDOWN) {
 			/* logging is futile */
