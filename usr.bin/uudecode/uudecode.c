@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)uudecode.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/uudecode/uudecode.c,v 1.13.2.6 2003/04/07 20:10:33 fanf Exp $
- * $DragonFly: src/usr.bin/uudecode/uudecode.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/uudecode/uudecode.c,v 1.3 2004/12/22 11:25:51 liamfoy Exp $
  */
 
 /*
@@ -169,10 +169,11 @@ decode(void)
 static int
 decode2(void)
 {
-	int flags, fd, mode;
+	int flags, fd;
 	size_t n, m;
 	char *p, *q;
 	void *handle;
+	mode_t mode;
 	struct passwd *pw;
 	struct stat st;
 	char buf[MAXPATHLEN+1];
@@ -204,11 +205,16 @@ decode2(void)
 			break;
 	}
 
-	handle = setmode(p);
-	if (handle == NULL) {
-		warnx("%s: unable to parse file mode", infile);
-		return (1);
+	errno = 0;
+	if ((handle = setmode(p)) == NULL) {
+		if (!errno)
+			warnx("invalid file mode: %s", infile);
+		else
+			warn("setmode malloc failed: %s", infile);
+
+		return(1);
 	}
+
 	mode = getmode(handle, 0) & 0666;
 	free(handle);
 
