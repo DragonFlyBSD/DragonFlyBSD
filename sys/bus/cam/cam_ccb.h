@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_ccb.h,v 1.15.2.3 2003/07/29 04:00:34 njl Exp $
- * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.5 2003/12/29 23:09:30 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.6 2003/12/29 23:30:58 dillon Exp $
  */
 
 #ifndef _CAM_CAM_CCB_H
@@ -35,9 +35,7 @@
 #include <sys/queue.h>
 #include <sys/cdefs.h>
 #include <sys/time.h>
-#ifndef _KERNEL
 #include <sys/callout.h>
-#endif
 #include "cam_debug.h"
 #include "scsi/scsi_all.h"
 

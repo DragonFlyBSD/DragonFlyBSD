@@ -26,11 +26,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam.c,v 1.3 1999/08/28 00:40:38 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam.c,v 1.3 2003/08/07 21:16:44 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam.c,v 1.4 2003/12/29 23:30:58 dillon Exp $
  */
 #include <sys/param.h>
 
 #include "cam.h"
+#include "cam_ccb.h"
 
 void
 cam_strvis(u_int8_t *dst, const u_int8_t *src, int srclen, int dstlen)
@@ -108,3 +109,29 @@ cam_quirkmatch(caddr_t target, caddr_t quirk_table, int num_entries,
 	}
 	return (NULL);
 }
+
+/*
+ * Common calculate geometry fuction
+ *
+ * Caller should set ccg->volume_size and block_size.
+ * The extended parameter should be zero if extended translation
+ * should not be used.
+ */
+void
+cam_calc_geometry(struct ccb_calc_geometry *ccg, int extended)
+{
+	uint32_t size_mb, secs_per_cylinder;
+
+	size_mb = ccg->volume_size / ((1024L * 1024L) / ccg->block_size);
+	if (size_mb > 1024 && extended) {
+		ccg->heads = 255;
+		ccg->secs_per_track = 63;
+	} else {
+		ccg->heads = 64;
+		ccg->secs_per_track = 32;
+	}
+	secs_per_cylinder = ccg->heads * ccg->secs_per_track;
+	ccg->cylinders = ccg->volume_size / secs_per_cylinder;
+	ccg->ccb_h.status = CAM_REQ_CMP;
+}
+

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.5 2003/12/29 06:42:10 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.6 2003/12/29 23:31:00 dillon Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -1285,26 +1285,7 @@ settings_out:
 	}
 
 	case XPT_CALC_GEOMETRY: { /* not yet HN2 */
-		struct	  ccb_calc_geometry *ccg;
-		u_int32_t size_mb;
-		u_int32_t secs_per_cylinder;
-		int       extended;
-
-		extended = 1;
-		ccg = &ccb->ccg;
-		size_mb = ccg->volume_size
-			/ ((1024L * 1024L) / ccg->block_size);
-		
-		if (size_mb > 1024 && extended) {
-		        ccg->heads = 255;
-		        ccg->secs_per_track = 63;
-		} else {
-		        ccg->heads = 64;
-		        ccg->secs_per_track = 32;
-		}
-		secs_per_cylinder = ccg->heads * ccg->secs_per_track;
-		ccg->cylinders = ccg->volume_size / secs_per_cylinder;
-		ccb->ccb_h.status = CAM_REQ_CMP;
+		cam_calc_geometry(&ccb->ccg, /*extended*/1);
 		xpt_done(ccb);
 		break;
 	}
