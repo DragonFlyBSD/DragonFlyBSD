@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.11 2003/09/29 18:52:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.12 2004/02/14 12:14:30 eirikn Exp $
  */
 
 #include "opt_ktrace.h"
@@ -63,8 +63,7 @@ static int ktrops (struct proc *,struct proc *,int,int,struct vnode *);
 
 
 static struct ktr_header *
-ktrgetheader(type)
-	int type;
+ktrgetheader(int type)
 {
 	struct ktr_header *kth;
 	struct proc *p = curproc;	/* XXX */
@@ -79,10 +78,7 @@ ktrgetheader(type)
 }
 
 void
-ktrsyscall(vp, code, narg, args)
-	struct vnode *vp;
-	int code, narg;
-	register_t args[];
+ktrsyscall(struct vnode *vp, int code, int narg, register_t args[])
 {
 	struct	ktr_header *kth;
 	struct	ktr_syscall *ktp;
@@ -109,10 +105,7 @@ ktrsyscall(vp, code, narg, args)
 }
 
 void
-ktrsysret(vp, code, error, retval)
-	struct vnode *vp;
-	int code, error;
-	register_t retval;
+ktrsysret(struct vnode *vp, int code, int error, register_t retval)
 {
 	struct ktr_header *kth;
 	struct ktr_sysret ktp;
@@ -133,9 +126,7 @@ ktrsysret(vp, code, error, retval)
 }
 
 void
-ktrnamei(vp, path)
-	struct vnode *vp;
-	char *path;
+ktrnamei(struct vnode *vp, char *path)
 {
 	struct ktr_header *kth;
 	struct proc *p = curproc;	/* XXX */
@@ -158,12 +149,7 @@ ktrnamei(vp, path)
 }
 
 void
-ktrgenio(vp, fd, rw, uio, error)
-	struct vnode *vp;
-	int fd;
-	enum uio_rw rw;
-	struct uio *uio;
-	int error;
+ktrgenio(struct vnode *vp, int fd, enum uio_rw rw, struct uio *uio, int error)
 {
 	struct ktr_header *kth;
 	struct ktr_genio ktg;
@@ -193,12 +179,7 @@ ktrgenio(vp, fd, rw, uio, error)
 }
 
 void
-ktrpsig(vp, sig, action, mask, code)
-	struct vnode *vp;
-	int sig;
-	sig_t action;
-	sigset_t *mask;
-	int code;
+ktrpsig(struct vnode *vp, int sig, sig_t action, sigset_t *mask, int code)
 {
 	struct ktr_header *kth;
 	struct ktr_psig	kp;
@@ -226,9 +207,7 @@ ktrpsig(vp, sig, action, mask, code)
 }
 
 void
-ktrcsw(vp, out, user)
-	struct vnode *vp;
-	int out, user;
+ktrcsw(struct vnode *vp, int out, int user)
 {
 	struct ktr_header *kth;
 	struct	ktr_csw kc;
@@ -411,10 +390,7 @@ utrace(struct utrace_args *uap)
 
 #ifdef KTRACE
 static int
-ktrops(curp, p, ops, facs, vp)
-	struct proc *p, *curp;
-	int ops, facs;
-	struct vnode *vp;
+ktrops(struct proc *curp, struct proc *p, int ops, int facs, struct vnode *vp)
 {
 
 	if (!ktrcanset(curp, p))
@@ -454,10 +430,8 @@ ktrops(curp, p, ops, facs, vp)
 }
 
 static int
-ktrsetchildren(curp, top, ops, facs, vp)
-	struct proc *curp, *top;
-	int ops, facs;
-	struct vnode *vp;
+ktrsetchildren(struct proc *curp, struct proc *top, int ops, int facs,
+               struct vnode *vp)
 {
 	struct proc *p;
 	int ret = 0;
