@@ -2,7 +2,7 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/net/ethernet.h,v 1.8 2004/07/23 07:16:30 joerg Exp $
+ * $DragonFly: src/sys/net/ethernet.h,v 1.9 2004/07/26 14:41:17 joerg Exp $
  *
  */
 
@@ -76,6 +76,8 @@ struct	ether_addr {
 };
 
 extern const uint8_t	etherbroadcastaddr[ETHER_ADDR_LEN];
+
+#define	ETHER_IS_MULTICAST(addr) (*(addr) & 0x01) /* is address mcast/bcast? */
 
 /*
  *  NOTE: 0x0000-0x05DC (0..1500) are generally IEEE 802.3 length fields.
