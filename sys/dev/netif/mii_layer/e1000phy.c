@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mii/e1000phy.c,v 1.1.2.2 2002/11/08 21:53:49 semenu Exp $ */
-/* $DragonFly: src/sys/dev/netif/mii_layer/e1000phy.c,v 1.3 2003/08/07 21:17:03 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/mii_layer/e1000phy.c,v 1.4 2003/11/07 05:57:21 dillon Exp $ */
 /*
  * Principal Author: Parag Patel
  * Copyright (c) 2001
@@ -33,6 +33,13 @@
 
 /*
  * driver for the Marvell 88E1000 series external 1000/100/10-BT PHY.
+ */
+
+/*
+ * Support added for the Marvell 88E1011 (Alaska) 1000/100/10baseTX and
+ * 1000baseSX PHY.
+ * Nathan Binkert <nate@openbsd.org>
+ * Jung-uk Kim <jkim@niksun.com>
  */
 
 #include <sys/param.h>
@@ -78,7 +85,7 @@ void	e1000phy_status(struct mii_softc *);
 
 static int	e1000phy_mii_phy_auto(struct mii_softc *, int);
 extern void	mii_phy_auto_timeout(void *);
-static void e1000phy_reset(struct mii_softc *);
+static void	e1000phy_reset(struct mii_softc *);
 
 static int e1000phy_debug = 0;
 
@@ -90,8 +97,9 @@ e1000phy_probe(device_t	dev)
 
 	ma = device_get_ivars(dev);
 	id = ((ma->mii_id1 << 16) | ma->mii_id2) & E1000_ID_MASK;
-
-	if (id != E1000_ID_88E1000 && id != E1000_ID_88E1000S) {
+	if (id != E1000_ID_88E1000
+	    && id != E1000_ID_88E1000S
+	    && id != E1000_ID_88E1011) {
 		return ENXIO;
 	}
 
@@ -106,6 +114,7 @@ e1000phy_attach(device_t dev)
 	struct mii_attach_args *ma;
 	struct mii_data *mii;
 	const char *sep = "";
+	u_int32_t id;
 
 	getenv_int("e1000phy_debug", &e1000phy_debug);
 
@@ -119,8 +128,12 @@ e1000phy_attach(device_t dev)
 	sc->mii_phy = ma->mii_phyno;
 	sc->mii_service = e1000phy_service;
 	sc->mii_pdata = mii;
-
 	sc->mii_flags |= MIIF_NOISOLATE;
+
+	id = ((ma->mii_id1 << 16) | ma->mii_id2) & E1000_ID_MASK;
+	if (id == E1000_ID_88E1011
+	    && (PHY_READ(sc, E1000_ESSR) & E1000_ESSR_FIBER_LINK))
+		sc->mii_flags |= MIIF_HAVEFIBER;
 	mii->mii_instance++;
 	e1000phy_reset(sc);
 
@@ -133,27 +146,33 @@ e1000phy_attach(device_t dev)
 #endif
 
 	device_printf(dev, " ");
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_TX, IFM_FDX, sc->mii_inst),
-			E1000_CR_SPEED_1000 | E1000_CR_FULL_DUPLEX);
-	PRINT("1000baseTX-FDX");
-	/*
-	TODO - apparently 1000BT-simplex not supported?
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_TX, 0, sc->mii_inst),
-			E1000_CR_SPEED_1000);
-	PRINT("1000baseTX");
-	*/
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, IFM_FDX, sc->mii_inst),
-			E1000_CR_SPEED_100 | E1000_CR_FULL_DUPLEX);
-	PRINT("100baseTX-FDX");
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, 0, sc->mii_inst),
-			E1000_CR_SPEED_100);
-	PRINT("100baseTX");
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_10_T, IFM_FDX, sc->mii_inst),
-			E1000_CR_SPEED_10 | E1000_CR_FULL_DUPLEX);
-	PRINT("10baseTX-FDX");
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_10_T, 0, sc->mii_inst),
-			E1000_CR_SPEED_10);
-	PRINT("10baseTX");
+	if ((sc->mii_flags & MIIF_HAVEFIBER) == 0) {
+		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_TX, IFM_FDX, sc->mii_inst),
+				E1000_CR_SPEED_1000 | E1000_CR_FULL_DUPLEX);
+		PRINT("1000baseTX-FDX");
+		/*
+		TODO - apparently 1000BT-simplex not supported?
+		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_TX, 0, sc->mii_inst),
+				E1000_CR_SPEED_1000);
+		PRINT("1000baseTX");
+		*/
+		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, IFM_FDX, sc->mii_inst),
+				E1000_CR_SPEED_100 | E1000_CR_FULL_DUPLEX);
+		PRINT("100baseTX-FDX");
+		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, 0, sc->mii_inst),
+				E1000_CR_SPEED_100);
+		PRINT("100baseTX");
+		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_10_T, IFM_FDX, sc->mii_inst),
+				E1000_CR_SPEED_10 | E1000_CR_FULL_DUPLEX);
+		PRINT("10baseTX-FDX");
+		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_10_T, 0, sc->mii_inst),
+				E1000_CR_SPEED_10);
+		PRINT("10baseTX");
+	} else {
+		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_SX, IFM_FDX, sc->mii_inst),
+				E1000_CR_SPEED_1000);
+		PRINT("1000baseSX-FDX");
+	}
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_AUTO, 0, sc->mii_inst), 0);
 	PRINT("auto");
 
@@ -265,6 +284,14 @@ e1000phy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 			}
 			e1000phy_reset(sc);
 			(void)e1000phy_mii_phy_auto(sc, 1);
+			break;
+
+		case IFM_1000_SX:
+			e1000phy_reset(sc);
+
+			PHY_WRITE(sc, E1000_CR,
+			    E1000_CR_FULL_DUPLEX | E1000_CR_SPEED_1000);
+			PHY_WRITE(sc, E1000_AR, E1000_FA_1000X_FD);
 			break;
 
 		case IFM_1000_TX:
@@ -402,27 +429,34 @@ e1000phy_status(struct mii_softc *sc)
 		return;
 	}
 
-	if (ssr & E1000_SSR_1000MBS)
-		mii->mii_media_active |= IFM_1000_TX;
-	else if (ssr & E1000_SSR_100MBS)
-		mii->mii_media_active |= IFM_100_TX;
-	else
-		mii->mii_media_active |= IFM_10_T;
+	if ((sc->mii_flags & MIIF_HAVEFIBER) == 0) {
+		if (ssr & E1000_SSR_1000MBS)
+			mii->mii_media_active |= IFM_1000_TX;
+		else if (ssr & E1000_SSR_100MBS)
+			mii->mii_media_active |= IFM_100_TX;
+		else
+			mii->mii_media_active |= IFM_10_T;
+	} else {
+		if (ssr & E1000_SSR_1000MBS)
+			mii->mii_media_active |= IFM_1000_SX;
+	}
 
 	if (ssr & E1000_SSR_DUPLEX)
 		mii->mii_media_active |= IFM_FDX;
 	else
 		mii->mii_media_active |= IFM_HDX;
 
-	/* FLAG0==rx-flow-control FLAG1==tx-flow-control */
-	if ((ar & E1000_AR_PAUSE) && (lpar & E1000_LPAR_PAUSE)) {
-		mii->mii_media_active |= IFM_FLAG0 | IFM_FLAG1;
-	} else if (!(ar & E1000_AR_PAUSE) && (ar & E1000_AR_ASM_DIR) &&
-	    (lpar & E1000_LPAR_PAUSE) && (lpar & E1000_LPAR_ASM_DIR)) {
-		mii->mii_media_active |= IFM_FLAG1;
-	} else if ((ar & E1000_AR_PAUSE) && (ar & E1000_AR_ASM_DIR) &&
-	    !(lpar & E1000_LPAR_PAUSE) && (lpar & E1000_LPAR_ASM_DIR)) {
-		mii->mii_media_active |= IFM_FLAG0;
+	if ((sc->mii_flags & MIIF_HAVEFIBER) == 0) {
+		/* FLAG0==rx-flow-control FLAG1==tx-flow-control */
+		if ((ar & E1000_AR_PAUSE) && (lpar & E1000_LPAR_PAUSE)) {
+			mii->mii_media_active |= IFM_FLAG0 | IFM_FLAG1;
+		} else if (!(ar & E1000_AR_PAUSE) && (ar & E1000_AR_ASM_DIR) &&
+		    (lpar & E1000_LPAR_PAUSE) && (lpar & E1000_LPAR_ASM_DIR)) {
+			mii->mii_media_active |= IFM_FLAG1;
+		} else if ((ar & E1000_AR_PAUSE) && (ar & E1000_AR_ASM_DIR) &&
+		    !(lpar & E1000_LPAR_PAUSE) && (lpar & E1000_LPAR_ASM_DIR)) {
+			mii->mii_media_active |= IFM_FLAG0;
+		}
 	}
 }
 
@@ -432,17 +466,19 @@ e1000phy_mii_phy_auto(struct mii_softc *mii, int waitfor)
 	int bmsr, i;
 
 	if ((mii->mii_flags & MIIF_DOINGAUTO) == 0) {
-		PHY_WRITE(mii, E1000_AR, E1000_AR_10T | E1000_AR_10T_FD |
-		    E1000_AR_100TX | E1000_AR_100TX_FD | 
-		    E1000_AR_PAUSE | E1000_AR_ASM_DIR);
-		PHY_WRITE(mii, E1000_1GCR, E1000_1GCR_1000T_FD);
-		PHY_WRITE(mii, E1000_CR,
-		    E1000_CR_AUTO_NEG_ENABLE | E1000_CR_RESTART_AUTO_NEG);
+		if ((mii->mii_flags & MIIF_HAVEFIBER) == 0) {
+			PHY_WRITE(mii, E1000_AR, E1000_AR_10T | E1000_AR_10T_FD |
+			    E1000_AR_100TX | E1000_AR_100TX_FD | 
+			    E1000_AR_PAUSE | E1000_AR_ASM_DIR);
+			PHY_WRITE(mii, E1000_1GCR, E1000_1GCR_1000T_FD);
+			PHY_WRITE(mii, E1000_CR,
+			    E1000_CR_AUTO_NEG_ENABLE | E1000_CR_RESTART_AUTO_NEG);
+		}
 	}
 
 	if (waitfor) {
-		/* Wait 500ms for it to complete. */
-		for (i = 0; i < 500; i++) {
+		/* Wait 5 seconds for it to complete. */
+		for (i = 0; i < 5000; i++) {
 			bmsr =
 			    PHY_READ(mii, E1000_SR) | PHY_READ(mii, E1000_SR);
 
@@ -467,7 +503,7 @@ e1000phy_mii_phy_auto(struct mii_softc *mii, int waitfor)
 	if ((mii->mii_flags & MIIF_DOINGAUTO) == 0) {
 		mii->mii_flags |= MIIF_DOINGAUTO;
 		mii->mii_ticks = 0;
-		mii->mii_auto_ch = timeout(mii_phy_auto_timeout, mii, hz >> 1);
+		mii->mii_auto_ch = timeout(mii_phy_auto_timeout, mii, 5 * hz);
 	}
 	return (EJUSTRETURN);
 }

@@ -1,5 +1,5 @@
 $FreeBSD: src/sys/dev/mii/miidevs,v 1.4.2.12 2003/05/13 21:21:33 ps Exp $
-$DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.2 2003/06/17 04:28:28 dillon Exp $
+$DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.3 2003/11/07 05:57:21 dillon Exp $
 /*$NetBSD: miidevs,v 1.6 1999/05/14 11:37:30 drochner Exp $*/
 
 /*-
@@ -163,3 +163,4 @@ model XAQTI XMACII		0x0000 XaQti Corp. XMAC II gigabit interface
 
 /* Marvell Semiconductor PHYs */
 model MARVELL E1000		0x0000 Marvell Semiconductor 88E1000* gigabit PHY
+model MARVELL E1011		0x0002 Marvell Semiconductor 88E1011 Gigabit PHY

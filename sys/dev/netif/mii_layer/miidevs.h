@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/mii/miidevs.h,v 1.4.2.12 2003/05/13 21:21:33 ps Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.2 2003/06/17 04:28:28 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.3 2003/11/07 05:57:21 dillon Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
@@ -204,3 +204,5 @@
 /* Marvell Semiconductor PHYs */
 #define	MII_MODEL_MARVELL_E1000	0x0000
 #define	MII_STR_MARVELL_E1000	"Marvell Semiconductor 88E1000* gigabit PHY"
+#define	MII_MODEL_MARVELL_E1011	0x0002
+#define	MII_STR_MARVELL_E1011	"Marvell Semiconductor 88E1011 Gigabit PHY"
