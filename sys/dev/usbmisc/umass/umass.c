@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.12 2004/09/14 23:48:27 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.13 2004/09/15 01:38:13 dillon Exp $
  */
 
 /*
@@ -1067,6 +1067,7 @@ USB_DETACH(umass)
 	USB_DETACH_START(umass, sc);
 	int err = 0;
 	int i;
+	int to;
 
 	DPRINTF(UDMASS_USB, ("%s: detached\n", USBDEVNAME(sc->sc_dev)));
 
@@ -1083,6 +1084,24 @@ USB_DETACH(umass)
 		usbd_abort_pipe(sc->bulkin_pipe);
 	if (sc->intrin_pipe)
 		usbd_abort_pipe(sc->intrin_pipe);
+
+	/*
+	 * Wait until we go idle to make sure that all of our xfer requests
+	 * have finished.  We could be in the middle of a BBB reset (which
+	 * would not be effected by the pipe aborts above).
+	 */
+	to = hz;
+	while (sc->transfer_state != TSTATE_IDLE) {
+		printf("%s: state %d waiting for idle\n",
+		    USBDEVNAME(sc->sc_dev), sc->transfer_state);
+		tsleep(sc, 0, "umassidl", to);
+		if (to >= hz * 10) {
+			printf("%s: state %d giving up!\n",
+			    USBDEVNAME(sc->sc_dev), sc->transfer_state);
+			break;
+		}
+		to += hz;
+	}
 
 	if ((sc->proto & UMASS_PROTO_SCSI) ||
 	    (sc->proto & UMASS_PROTO_ATAPI) ||
