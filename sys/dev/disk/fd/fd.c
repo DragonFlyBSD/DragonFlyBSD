@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.18 2004/09/18 18:44:41 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.19 2004/09/19 00:36:37 joerg Exp $
  *
  */
 
@@ -200,6 +200,7 @@ struct fd_data {
 	int	options;	/* user configurable options, see ioctl_fd.h */
 	struct	callout	toffhandle;
 	struct	callout	tohandle;
+	struct	callout motor;
 	struct	devstat device_stats;
 	device_t dev;
 	fdu_t	fdu;
@@ -976,6 +977,7 @@ fd_probe(device_t dev)
 	fd->options = 0;
 	callout_init(&fd->toffhandle);
 	callout_init(&fd->tohandle);
+	callout_init(&fd->motor);
 
 	switch (fdt) {
 	case RTCFDT_12M:
@@ -1047,6 +1049,7 @@ fd_detach(device_t dev)
 
 	fd = device_get_softc(dev);
 	callout_stop(&fd->toffhandle);
+	callout_stop(&fd->motor);
 
 	return (0);
 }
@@ -1167,7 +1170,7 @@ fd_turnon(fd_p fd)
 	{
 		fd->flags |= (FD_MOTOR + FD_MOTOR_WAIT);
 		set_motor(fd->fdc, fd->fdsu, TURNON);
-		timeout(fd_motor_on, fd, hz); /* in 1 sec its ok */
+		callout_reset(&fd->motor, hz, fd_motor_on, fd);
 	}
 }
 
@@ -1682,7 +1685,8 @@ fdstate(fdc_p fdc)
 		return(0);	/* will return later */
 	case SEEKWAIT:
 		/* allow heads to settle */
-		timeout(fd_pseudointr, fdc, hz / 16);
+		callout_reset(&fdc->pseudointr_ch, hz / 16,
+			       fd_pseudointr, fdc);
 		fdc->state = SEEKCOMPLETE;
 		return(0);	/* will return later */
 	case SEEKCOMPLETE : /* SEEK DONE, START DMA */
@@ -1990,7 +1994,7 @@ fdstate(fdc_p fdc)
 		return (0);	/* will return later */
 	case RECALWAIT:
 		/* allow heads to settle */
-		timeout(fd_pseudointr, fdc, hz / 8);
+		callout_reset(&fdc->pseudointr_ch, hz / 8, fd_pseudointr, fdc);
 		fdc->state = RECALCOMPLETE;
 		return (0);	/* will return later */
 	case RECALCOMPLETE:
