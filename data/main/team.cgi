@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.16 2004/07/24 06:44:28 hmp Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.17 2004/08/10 16:39:38 justin Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -141,12 +141,6 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 <a href="mailto:justin 'at' shiningsilence 'dot' com">Justin Sherrill</a></td>
 <td valign="top">Secretarial work, documentation, website cleanup
 (commit access)</td>
-</tr>
-
-<tr><td valign="top">
-<a href="mailto:qhwt+dragonfly-website 'at' les 'dot' ath 'dot' cx">YONETANI Tomokazu</a></td>
-<td valign="top">ACPI
-</td>
 </tr>
 
 <tr><td valign="top"><a href="mailto:geekgod 'at' geekgod 'dot' com">Scott Ullrich</a></td>
