@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.165 2005/03/16 22:49:01 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.166 2005/03/16 22:49:51 okumoto Exp $
  */
 
 /*-
@@ -966,27 +966,26 @@ modifier_M(VarParser *vp, const char value[], char endc)
 static char *
 modifier_S(VarParser *vp, const char value[], Var *v)
 {
-	const char	*mod = vp->ptr;
 	VarPattern	pattern;
 	Buffer		*buf;		/* Buffer for patterns */
 	char		delim;
-	const char	*cur;
 	char		*newValue;
 
 	pattern.flags = 0;
 	buf = Buf_Init(0);
 
-	delim = mod[1];	/* used to find end of pattern */
+	vp->ptr++;		/* consume 'S' */
+
+	delim = *vp->ptr;	/* used to find end of pattern */
+	vp->ptr++;		/* consume 1st delim */
 
 	/*
 	 * If pattern begins with '^', it is anchored to the start of the
 	 * word -- skip over it and flag pattern.
 	 */
-	if (mod[2] == '^') {
+	if (*vp->ptr == '^') {
 		pattern.flags |= VAR_MATCH_START;
-		cur = mod + 3;
-	} else {
-		cur = mod + 2;
+		vp->ptr++;
 	}
 
 	/*
@@ -995,30 +994,30 @@ modifier_S(VarParser *vp, const char value[], Var *v)
 	 * unescaped $'s that aren't before the delimiter (expand the
 	 * variable substitution). The result is left in the Buffer buf.
 	 */
-	while (cur[0] != delim) {
-		if (cur[0] == '\0') {
+	while (vp->ptr[0] != delim) {
+		if (vp->ptr[0] == '\0') {
 			/*
 			 * LHS didn't end with the delim, complain and exit.
 			 */
 			Fatal("Unclosed substitution for %s (%c missing)",
 			    v->name, delim);
 
-		} else if ((cur[0] == '\\') &&
-			   ((cur[1] == delim) ||
-			    (cur[1] == '$') ||
-			    (cur[1] == '\\'))) {
-			cur++;	/* skip backslash */
-			Buf_AddByte(buf, (Byte)cur[0]);
-			cur++;
+		} else if ((vp->ptr[0] == '\\') &&
+			   ((vp->ptr[1] == delim) ||
+			    (vp->ptr[1] == '$') ||
+			    (vp->ptr[1] == '\\'))) {
+			vp->ptr++;	/* consume backslash */
+			Buf_AddByte(buf, (Byte)vp->ptr[0]);
+			vp->ptr++;
 
-		} else if (cur[0] == '$') {
-			if (cur[1] == delim) {
+		} else if (vp->ptr[0] == '$') {
+			if (vp->ptr[1] == delim) {
 				/*
 				 * Unescaped $ at end of pattern => anchor
 				 * pattern at end.
 				 */
 				pattern.flags |= VAR_MATCH_END;
-				cur++;
+				vp->ptr++;
 			} else {
 				/*
 				 * If unescaped dollar sign not before the
@@ -1030,19 +1029,19 @@ modifier_S(VarParser *vp, const char value[], Var *v)
 				Boolean freeIt;
 
 				len = 0;
-				cp2 = Var_Parse(cur, vp->ctxt, vp->err, &len, &freeIt);
-				cur += len;
+				cp2 = Var_Parse(vp->ptr, vp->ctxt, vp->err, &len, &freeIt);
+				vp->ptr += len;
 				Buf_Append(buf, cp2);
 				if (freeIt) {
 					free(cp2);
 				}
 			}
 		} else {
-			Buf_AddByte(buf, (Byte)cur[0]);
-			cur++;
+			Buf_AddByte(buf, (Byte)vp->ptr[0]);
+			vp->ptr++;
 		}
 	}
-	cur++;	/* skip over delim */
+	vp->ptr++;	/* consume 2nd delim */
 
 	/*
 	 * Fetch pattern and destroy buffer, but preserve the data in it,
@@ -1060,49 +1059,49 @@ modifier_S(VarParser *vp, const char value[], Var *v)
 	 */
 	buf = Buf_Init(0);
 
-	while (cur[0] != delim) {
-		if (cur[0] == '\0') {
+	while (vp->ptr[0] != delim) {
+		if (vp->ptr[0] == '\0') {
 			/*
 			 * Didn't end with delim character, complain
 			 */
 			Fatal("Unclosed substitution for %s (%c missing)",
 			     v->name, delim);
 
-		} else if ((cur[0] == '\\') &&
-		    ((cur[1] == delim) ||
-		     (cur[1] == '&') ||
-		     (cur[1] == '\\') ||
-		     (cur[1] == '$'))) {
-			cur++;	/* skip backslash */
-			Buf_AddByte(buf, (Byte)cur[0]);
-			cur++;
+		} else if ((vp->ptr[0] == '\\') &&
+		    ((vp->ptr[1] == delim) ||
+		     (vp->ptr[1] == '&') ||
+		     (vp->ptr[1] == '\\') ||
+		     (vp->ptr[1] == '$'))) {
+			vp->ptr++;	/* skip backslash */
+			Buf_AddByte(buf, (Byte)vp->ptr[0]);
+			vp->ptr++;
 
-		} else if (cur[0] == '$') {
-			 if (cur[1] == delim) {
-				Buf_AddByte(buf, (Byte)cur[0]);
-				cur++;
+		} else if (vp->ptr[0] == '$') {
+			 if (vp->ptr[1] == delim) {
+				Buf_AddByte(buf, (Byte)vp->ptr[0]);
+				vp->ptr++;
 			} else {
 				char   *cp2;
 				size_t  len;
 				Boolean freeIt;
 
 				len = 0;
-				cp2 = Var_Parse(cur, vp->ctxt, vp->err, &len, &freeIt);
-				cur += len;
+				cp2 = Var_Parse(vp->ptr, vp->ctxt, vp->err, &len, &freeIt);
+				vp->ptr += len;
 				Buf_Append(buf, cp2);
 				if (freeIt) {
 					free(cp2);
 				}
 			}
-		} else if (cur[0] == '&') {
+		} else if (vp->ptr[0] == '&') {
 			Buf_AddBytes(buf, pattern.leftLen, (Byte *)pattern.lhs);
-			cur++;
+			vp->ptr++;
 		} else {
-			Buf_AddByte(buf, (Byte)cur[0]);
-			cur++;
+			Buf_AddByte(buf, (Byte)vp->ptr[0]);
+			vp->ptr++;
 		}
 	}
-	cur++;	/* skip over delim */
+	vp->ptr++;	/* consume last delim */
 
 	pattern.rhs = (char *)Buf_GetAll(buf, &pattern.rightLen);
 	Buf_Destroy(buf, FALSE);
@@ -1111,12 +1110,10 @@ modifier_S(VarParser *vp, const char value[], Var *v)
 	 * Check for global substitution. If 'g' after the final delimiter,
 	 * substitution is global and is marked that way.
 	 */
-	if (cur[0] == 'g') {
+	if (vp->ptr[0] == 'g') {
 		pattern.flags |= VAR_SUB_GLOBAL;
-		cur++;
+		vp->ptr++;
 	}
-
-	vp->ptr += (cur - mod);
 
 	/*
 	 * Global substitution of the empty string causes an infinite number
