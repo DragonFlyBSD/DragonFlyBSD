@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.4 2003/06/25 03:56:04 dillon Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.5 2003/07/24 20:46:47 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -183,6 +183,8 @@ static int in_interfaces;	/* number of external internet interfaces */
 /*
  * Generic internet control operations (ioctl's).
  * Ifp is 0 if not an interface-specific ioctl.
+ *
+ * NOTE! td might be NULL.
  */
 /* ARGSUSED */
 int
@@ -200,14 +202,15 @@ in_control(so, cmd, data, ifp, td)
 	struct in_ifaddr *oia;
 	struct in_aliasreq *ifra = (struct in_aliasreq *)data;
 	struct sockaddr_in oldaddr;
-	int error, hostIsNew, iaIsNew, maskIsNew, s;
+	int hostIsNew, iaIsNew, maskIsNew, s;
+	int error = 0;
 
 	iaIsNew = 0;
 
 	switch (cmd) {
 	case SIOCALIFADDR:
 	case SIOCDLIFADDR:
-		if ((error = suser(td)) != 0)
+		if (td && (error = suser(td)) != 0)
 			return error;
 		/*fall through*/
 	case SIOCGLIFADDR:
@@ -266,7 +269,7 @@ in_control(so, cmd, data, ifp, td)
 	case SIOCSIFADDR:
 	case SIOCSIFNETMASK:
 	case SIOCSIFDSTADDR:
-		if ((error = suser(td)) != 0)
+		if (td && (error = suser(td)) != 0)
 			return error;
 
 		if (ifp == 0)
@@ -305,7 +308,7 @@ in_control(so, cmd, data, ifp, td)
 		break;
 
 	case SIOCSIFBRDADDR:
-		if ((error = suser(td)) != 0)
+		if (td && (error = suser(td)) != 0)
 			return error;
 		/* FALLTHROUGH */
 
@@ -472,6 +475,8 @@ in_control(so, cmd, data, ifp, td)
  *	EINVAL on invalid parameters
  *	EADDRNOTAVAIL on prefix match failed/specified address not found
  *	other values may be returned from in_ioctl()
+ *
+ * NOTE! td might be NULL.
  */
 static int
 in_lifaddr_ioctl(so, cmd, data, ifp, td)
