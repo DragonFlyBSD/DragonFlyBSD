@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.25 2004/03/06 19:03:24 hmp Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.26 2004/03/17 17:35:09 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -465,10 +465,10 @@ parse_http_date(const char *header)
     	return 0;
     len = strlen(val);
     if (len == strptime(val, "%a, %d %b %Y %H:%M:%S GMT", &t) - val)
-    	return mktime(&t);
+    	return timegm(&t);
     if (len == strptime(val, "%a %b %d %H:%M:%S %Y", &t) - val)
-    	return mktime(&t);
+    	return timegm(&t);
     if (len == strptime(val, "%A %d-%b-%C %H:%M:%S GMT", &t) - val)
-    	return mktime(&t);
+    	return timegm(&t);
     return 0;
 }
