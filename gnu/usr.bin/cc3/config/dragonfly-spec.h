@@ -20,7 +20,7 @@ Boston, MA 02111-1307, USA.  */
 
 /*
  * $FreeBSD: src/contrib/gcc/config/freebsd-spec.h,v 1.15 2003/11/10 18:52:57 deischen Exp $
- * $DragonFly: src/gnu/usr.bin/cc3/config/Attic/dragonfly-spec.h,v 1.1 2004/02/02 23:35:11 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/cc3/config/Attic/dragonfly-spec.h,v 1.2 2004/02/03 03:47:12 dillon Exp $
  */
 
 /* Common DragonFly configuration. 
@@ -31,7 +31,6 @@ Boston, MA 02111-1307, USA.  */
    Loren J. Rittle <ljrittle@acm.org>.
    Adapted for Dragonfly by Matthew Dillon <dillon@backplane.com>
  */
-
 
 /* In case we need to know.  */
 #define USING_CONFIG_FREEBSD_SPEC 1

@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc/Makefile,v 1.28 2002/06/05 21:30:43 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/cc/Attic/Makefile,v 1.5 2004/02/02 23:35:10 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/cc/Attic/Makefile,v 1.6 2004/02/03 03:47:11 dillon Exp $
 
 .include "../Makefile.inc"
 .include "../Makefile.fe"
@@ -11,7 +11,7 @@ CFLAGS+=        -I${.CURDIR}/../config
 PROG=	cc
 MAN=	gcc.1
 SRCS=	gcc_local.c gccspec.c
-SRCS+=	make-relative-prefix.c lrealpath.c
+SRCS+=	make-relative-prefix.c lrealpath.c xmalloc.c xexit.c
 NOSHARED?=yes
 
 LINKS=	${BINDIR}/cc ${BINDIR}/gcc

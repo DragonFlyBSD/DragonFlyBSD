@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/f77/Makefile,v 1.21 2004/01/05 20:23:16 kan Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/f77/Attic/Makefile,v 1.5 2004/02/02 23:35:11 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/f77/Attic/Makefile,v 1.6 2004/02/03 03:47:12 dillon Exp $
 
 .include "../Makefile.inc"
 .include "../Makefile.fe"
@@ -10,7 +10,7 @@ CFLAGS+=        -I${.CURDIR}/../config
 
 PROG=	f77
 SRCS=	gcc_local.c g77spec.c
-SRCS+=  make-relative-prefix.c lrealpath.c
+SRCS+=  make-relative-prefix.c lrealpath.c xmalloc.c xexit.c
 
 CFLAGS+= -DDEFAULT_TARGET_VERSION=\"$(version)\"
 CFLAGS+= -DDEFAULT_TARGET_MACHINE=\"$(target)\"

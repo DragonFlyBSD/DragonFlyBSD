@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/Makefile.inc,v 1.63 2002/06/04 19:45:08 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile.inc,v 1.5 2004/02/02 23:35:09 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile.inc,v 1.6 2004/02/03 03:47:08 dillon Exp $
 
 BINDIR?=/usr/libexec/gcc3
 MY_CCVER=gcc3
@@ -53,6 +53,10 @@ LIBCC_INT=	${.CURDIR}/../cc_int/libcc_int.a
 
 gcc_local.c : gcc.c
 	sed -e 's%startfile_prefix_1 = "/lib/"%startfile_prefix_1 = STANDARD_STARTFILE_PREFIX_1%' < ${.ALLSRC:M*c} > ${.TARGET}.new
+	mv -f ${.TARGET}.new ${.TARGET}
+
+version_local.c : version.c
+	sed -e 's/const char version.*".* /&[DragonFly] /' < ${.ALLSRC:M*c} > ${.TARGET}.new
 	mv -f ${.TARGET}.new ${.TARGET}
 
 .endif # !__CC_MAKEFILE_INC__

@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cpp/Makefile,v 1.23 2003/06/06 13:46:55 kuriyama Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/cpp/Attic/Makefile,v 1.7 2004/02/02 23:35:11 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/cpp/Attic/Makefile,v 1.8 2004/02/03 03:47:12 dillon Exp $
 
 .include "../Makefile.inc"
 .include "../Makefile.fe"
@@ -10,7 +10,7 @@ CFLAGS+=        -I${.CURDIR}/../config
 
 PROG=	cpp
 SRCS=	gcc_local.c cppspec.c
-SRCS+=  make-relative-prefix.c lrealpath.c
+SRCS+=  make-relative-prefix.c lrealpath.c xmalloc.c xexit.c
 
 CFLAGS+= -DDEFAULT_TARGET_VERSION=\"$(version)\"
 CFLAGS+= -DDEFAULT_TARGET_MACHINE=\"$(target)\"

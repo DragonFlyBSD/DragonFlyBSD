@@ -1,14 +1,14 @@
 # $FreeBSD: src/gnu/usr.bin/cc/protoize/Makefile,v 1.2 2002/05/10 08:54:49 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/protoize/Attic/Makefile,v 1.3 2004/02/02 23:35:12 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/protoize/Attic/Makefile,v 1.4 2004/02/03 03:47:12 dillon Exp $
 
 .include "../Makefile.inc"
 
 CFLAGS+=	-I${.CURDIR}/../config
 
-.PATH: ${.CURDIR}/../cc_tools ${GCCDIR}/gcc
+.PATH: ${.CURDIR}/../cc_tools ${GCCDIR}/gcc ${GCCDIR}/libiberty
 
 PROG=	protoize
-SRCS=	protoize.c
+SRCS=	protoize.c xmalloc.c xexit.c
 NOMAN=
 
 # things are rather hard-coded, we work around that here

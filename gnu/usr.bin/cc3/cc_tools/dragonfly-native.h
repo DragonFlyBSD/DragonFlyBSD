@@ -1,6 +1,7 @@
-/* $FreeBSD: src/gnu/usr.bin/cc/cc_tools/freebsd-native.h,v 1.23 2003/07/11 05:33:24 kan Exp $ */
-/* $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/dragonfly-native.h,v 1.3 2004/02/02 23:35:10 dillon Exp $
-*/
+/*
+ * $FreeBSD: src/gnu/usr.bin/cc/cc_tools/freebsd-native.h,v 1.23 2003/07/11 05:33:24 kan Exp $
+ * $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/dragonfly-native.h,v 1.4 2004/02/03 03:47:11 dillon Exp $
+ */
 
 /* FREEBSD_NATIVE is defined when gcc is integrated into the FreeBSD
    source tree so it can be configured appropriately without using
@@ -63,11 +64,20 @@
 /* FreeBSD is 4.4BSD derived */
 #define bsd4_4
 
-/* Dike out [stupid, IMHO] libiberty functions.  */
+/*
+ * Dike out [stupid, IMHO] libiberty functions.  This is a real mess
+ * because gcc's system.h define's malloc->xmalloc etc if certain defines
+ * exist, and some of the lexer files also redefine malloc and realloc,
+ * so don't even try to fix it if we're coming from a parser.
+ */
+#if !defined(FLEX_SCANNER) && !defined(YYBISON) && !defined(YYBYACC)
+#if 0
 #define	xmalloc_set_program_name(dummy)
 #define	xmalloc		malloc
 #define	xcalloc		calloc
 #define	xrealloc	realloc
+#endif
+#endif
 #define	xstrdup		strdup
 #define	xstrerror	strerror
 

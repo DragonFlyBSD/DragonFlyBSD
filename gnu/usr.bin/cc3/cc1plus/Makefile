@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc1plus/Makefile,v 1.33 2003/07/11 05:37:23 kan Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/cc1plus/Attic/Makefile,v 1.4 2004/02/02 23:35:10 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/cc1plus/Attic/Makefile,v 1.5 2004/02/03 03:47:11 dillon Exp $
 
 .include "../Makefile.inc"
 
@@ -12,12 +12,13 @@ SRCS=	parse+%DIKED.c parse.h cfns.h
 SRCS+=	main.c cp-lang.c c-opts.c \
 	call.c class.c cvt.c decl.c decl2.c error.c except.c expr.c friend.c \
 	init.c lex.c mangle.c method.c pt.c ptree.c repo.c rtti.c search.c \
-	semantics.c spew.c tree.c typeck.c typeck2.c dump.c optimize.c 
+	semantics.c spew.c tree.c typeck.c typeck2.c dump.c optimize.c \
+	xmalloc.c xexit.c
 
 NOMAN=	1
 NOSHARED?=yes
 
-CFLAGS+= -I${GCCDIR}/cp -I.
+CFLAGS+= -I${GCCDIR}/gcc/cp -I.
 
 DPADD+=	${LIBCC_INT} 
 LDADD+=	${LIBCC_INT}

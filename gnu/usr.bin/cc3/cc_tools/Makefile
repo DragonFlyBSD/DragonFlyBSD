@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc_tools/Makefile,v 1.73 2004/01/15 10:07:59 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/Makefile,v 1.4 2004/02/02 23:35:10 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/Makefile,v 1.5 2004/02/03 03:47:11 dillon Exp $
 
 #
 # This could probably be merged with ../cc_int/Makefile, but bsd.lib.mk
@@ -43,7 +43,8 @@ gen-time-stamp: genattr genattrtab genconditions genconstants genemit \
 build-tools: gen$F
 
 gen$F: gen$F.o rtl.o obstack.o print-rtl.o bitmap.o errors.o gensupport.o \
-	ggc-none.o hashtab.o read-rtl.o concat.o insn-conditions.o
+	ggc-none.o hashtab.o read-rtl.o concat.o insn-conditions.o \
+	xmalloc.o xexit.o
 	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC}
 
 GENSRCS+=	gen$F.c
@@ -57,7 +58,8 @@ build-tools: genattrtab
 
 genattrtab : genattrtab.o rtl.o obstack.o print-rtl.o bitmap.o errors.o \
 	gensupport.o ggc-none.o hashtab.o read-rtl.o concat.o \
-	insn-conditions.o genautomata.o varray.o getruntime.o
+	insn-conditions.o genautomata.o varray.o getruntime.o \
+	xmalloc.o xexit.o
 	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC} -lm
 
 GENSRCS+=	genattrtab.c
@@ -71,7 +73,8 @@ CLEANFILES+=	genattrtab
 build-tools: gen$F
 
 gen$F: gen$F.o rtl.o obstack.o bitmap.o errors.o gensupport.o \
-       ggc-none.o hashtab.o read-rtl.o concat.o dummy-conditions.o
+       ggc-none.o hashtab.o read-rtl.o concat.o dummy-conditions.o \
+       xmalloc.o xexit.o
 	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC}
 
 GENSRCS+=	gen$F.c
@@ -97,7 +100,8 @@ GENSRCS+=	genrtl.c genrtl.h
 
 SRCS+=	bitmap.c concat.c dummy-conditions.c errors.c genautomata.c \
 	gensupport.c getruntime.c ggc-none.c hashtab.c \
-	obstack.c physmem.c print-rtl.c read-rtl.c rtl.c varray.c xmemdup.c
+	obstack.c physmem.c print-rtl.c read-rtl.c rtl.c varray.c xmemdup.c \
+	xmalloc.c xexit.c
 
 #-----------------------------------------------------------------------
 # Common parser stuff.
@@ -135,7 +139,7 @@ gengtype-yacc+%DIKED.c: gengtype-yacc.c
 	    -e "s/realloc/xrealloc/g" \
 	    ${.ALLSRC} > ${.TARGET}
 
-gengtype: gengtype.o gengtype-yacc+%DIKED.o gengtype-lex.o xmemdup.o
+gengtype: gengtype.o gengtype-yacc+%DIKED.o gengtype-lex.o xmemdup.o xmalloc.o xexit.o
 	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC}
 
 GENSRCS+=	gengtype.c
@@ -427,7 +431,7 @@ ${OBJS}: ${SRCS:M*.h:Ngtype-desc.h:Ngenrtl.h:Ntree-check.h:Ntm-preds.h:Ninsn-*.h
 
 ${OBJS:Ngencheck.o:Ngengenrtl.o:Ngenpreds.o}: tree-check.h tm-preds.h genrtl.h
 
-${OBJS:Ngengtype*.o:Nxmemdup.o:Ngengenrtl.o:Ngencheck.o:Ngenpreds.o}: gtype-desc.h
+${OBJS:Ngengtype*.o:Nxmemdup.o:Ngengenrtl.o:Ngencheck.o:Ngenpreds.o:Nxmalloc.o:Nxexit.o}: gtype-desc.h
 
 genextract.o: insn-config.h
 

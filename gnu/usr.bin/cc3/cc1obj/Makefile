@@ -1,15 +1,16 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc1obj/Makefile,v 1.22 2002/05/13 03:27:02 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/cc1obj/Attic/Makefile,v 1.4 2004/02/02 23:35:10 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/cc1obj/Attic/Makefile,v 1.5 2004/02/03 03:47:11 dillon Exp $
 
 .include "../Makefile.inc"
 
 CFLAGS+=        -I${.CURDIR}/../config
 CFLAGS+=	-I${GCCDIR}/gcc/objc
 
-.PATH: ${GCCDIR}/gcc/objc ${GCCDIR}/gcc
+.PATH: ${GCCDIR}/gcc/objc ${GCCDIR}/gcc ${GCCDIR}/libiberty
 
 PROG=	cc1obj
-SRCS=	objc-parse+DIKED.c objc-act.c objc-lang.c main.c c-decl.c
+SRCS=	objc-parse+DIKED.c objc-act.c objc-lang.c main.c c-decl.c \
+	xmalloc.c xexit.c
 NOMAN=	1
 NOSHARED?=yes
 

@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc_int/Makefile,v 1.39 2004/01/12 22:02:31 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/cc_int/Attic/Makefile,v 1.2 2004/02/02 23:35:10 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/cc_int/Attic/Makefile,v 1.3 2004/02/03 03:47:11 dillon Exp $
 
 .include "../Makefile.inc"
 
@@ -48,7 +48,8 @@ insn-$F.c: ${.OBJDIR}/../cc_tools/gen$F ${MD_FILE}
 .endfor
 
 #	shared between the drivers
-SRCS+=	multilib.h choose-temp.c obstack.c prefix.c pexecute.c version.c mbchar.c concat.c make-temp-file.c
+SRCS+=	multilib.h choose-temp.c obstack.c prefix.c pexecute.c \
+	version_local.c mbchar.c concat.c make-temp-file.c
 #	C_AND_OBJC_OBJS
 #SRCS+=	attribs.c c-errors.c c-lex.c c-pragma.c c-decl.c c-typeck.c \
 #	c-convert.c c-aux-info.c c-common.c c-format.c c-semantics.c \
