@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/agp.4,v 1.2.2.3 2003/02/25 15:27:32 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/agp.4,v 1.2 2003/06/17 04:36:58 dillon Exp $
+.\" $DragonFly: src/share/man/man4/agp.4,v 1.3 2003/12/09 19:40:54 dillon Exp $
 .\"
 .Dd October 5, 2001
 .Dt AGP 4
@@ -42,16 +42,21 @@ the following devices:
 .It
 Ali M1541 host-to-AGP bridge
 .It
-.\" 761 not in -stable
-AMD 751 host-to-AGP bridge
+AMD 751, 761, 762 host-to-AGP bridge
 .It
-Intel i820, i840, i845, i850, and i860 host-to-AGP bridge
+Intel 440 LX, 440 BX, 440 GX, i815, and i820 host-to-AGP bridge
 .It
-Intel i810, i810-DC100, i810E, and i815 SVGA controllers
+Intel i830, i840, i845, i850, and i855 host-to-AGP bridge
 .It
-Intel 82443GX host-to-AGP bridge
+Intel i860, i865, and i875 host-to-AGP bridge
 .It
-SiS 5591 host-to-AGP bridge
+Intel i810, i810-DC100, i810E, i815, i830, and i845 SVGA controllers
+.It
+NVIDIA nForce, and nForce2 host-to-AGP bridge
+.It
+SiS 5591, and 648 host-to-AGP bridge
+.It
+Via Apollo KT133A, MVP4, VP3, MVP3, Pro 133A, and Pro host-to-AGP bridge
 .El
 .Pp
 The most common application of

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_i810.c,v 1.1.2.5 2002/09/15 08:45:41 anholt Exp $
- *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.3 2003/08/07 21:16:48 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.4 2003/12/09 19:40:56 dillon Exp $
  */
 
 /*
@@ -239,6 +239,10 @@ agp_i810_attach(device_t dev)
 	sc->bsh = rman_get_bushandle(sc->regs);
 
 	sc->initial_aperture = AGP_GET_APERTURE(dev);
+	if (sc->initial_aperture == 0) {
+		device_printf(dev, "bad initial aperture size, disabling\n");
+		return ENXIO;
+	}
 
 	gatt = malloc( sizeof(struct agp_gatt), M_AGP, M_NOWAIT);
 	if (!gatt) {
@@ -629,3 +633,5 @@ static driver_t agp_i810_driver = {
 static devclass_t agp_devclass;
 
 DRIVER_MODULE(agp_i810, pci, agp_i810_driver, agp_devclass, 0, 0);
+MODULE_DEPEND(agp_i810, agp, 1, 1, 1);
+MODULE_DEPEND(agp_i810, pci, 1, 1, 1);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_sis.c,v 1.1.2.1 2000/07/19 09:48:04 ru Exp $
- *	$DragonFly: src/sys/dev/agp/agp_sis.c,v 1.3 2003/08/07 21:16:48 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_sis.c,v 1.4 2003/12/09 19:40:56 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -65,6 +65,8 @@ agp_sis_match(device_t dev)
 	switch (pci_get_devid(dev)) {
 	case 0x00011039:
 		return ("SiS 5591 host to AGP bridge");
+	case 0x06481039:
+		return ("SiS 648 host to AGP bridge");
 	};
 
 	if (pci_get_vendor(dev) == 0x1039)
@@ -100,6 +102,10 @@ agp_sis_attach(device_t dev)
 		return error;
 
 	sc->initial_aperture = AGP_GET_APERTURE(dev);
+	if (sc->initial_aperture == 0) {
+		device_printf(dev, "bad initial aperture size, disabling\n");
+		return ENXIO;
+	}
 
 	for (;;) {
 		gatt = agp_alloc_gatt(dev);
@@ -255,3 +261,5 @@ static driver_t agp_sis_driver = {
 static devclass_t agp_devclass;
 
 DRIVER_MODULE(agp_sis, pci, agp_sis_driver, agp_devclass, 0, 0);
+MODULE_DEPEND(agp_sis, agp, 1, 1, 1);
+MODULE_DEPEND(agp_sis, pci, 1, 1, 1);

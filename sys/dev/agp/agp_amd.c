@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_amd.c,v 1.3.2.4 2002/04/25 23:41:36 cokane Exp $
- *	$DragonFly: src/sys/dev/agp/agp_amd.c,v 1.3 2003/08/07 21:16:48 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_amd.c,v 1.4 2003/12/09 19:40:56 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -238,6 +238,10 @@ agp_amd_attach(device_t dev)
 	sc->bsh = rman_get_bushandle(sc->regs);
 
 	sc->initial_aperture = AGP_GET_APERTURE(dev);
+	if (sc->initial_aperture == 0) {
+		device_printf(dev, "bad initial aperture size, disabling\n");
+		return ENXIO;
+	}
 
 	for (;;) {
 		gatt = agp_amd_alloc_gatt(dev);
@@ -416,3 +420,5 @@ static driver_t agp_amd_driver = {
 static devclass_t agp_devclass;
 
 DRIVER_MODULE(agp_amd, pci, agp_amd_driver, agp_devclass, 0, 0);
+MODULE_DEPEND(agp_amd, agp, 1, 1, 1);
+MODULE_DEPEND(agp_amd, pci, 1, 1, 1);

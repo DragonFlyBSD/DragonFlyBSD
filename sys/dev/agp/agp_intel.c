@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_intel.c,v 1.1.2.5 2003/06/02 17:38:19 jhb Exp $
- *	$DragonFly: src/sys/dev/agp/agp_intel.c,v 1.3 2003/08/07 21:16:48 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_intel.c,v 1.4 2003/12/09 19:40:56 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -98,11 +98,17 @@ agp_intel_match(device_t dev)
 	case 0x25308086:
 		return ("Intel 82850 host to AGP bridge");
 
+	case 0x33408086:
+		return ("Intel 82855 host to AGP bridge");
+
 	case 0x25318086:
 		return ("Intel 82860 host to AGP bridge");
 
 	case 0x25708086:
 		return ("Intel 82865 host to AGP bridge");
+
+	case 0x25788086:
+		return ("Intel 82875P host to AGP bridge");
 	};
 
 	if (pci_get_vendor(dev) == 0x8086)
@@ -146,6 +152,10 @@ agp_intel_attach(device_t dev)
 	    MAX_APSIZE;
 	pci_write_config(dev, AGP_INTEL_APSIZE, value, 1);
 	sc->initial_aperture = AGP_GET_APERTURE(dev);
+	if (sc->initial_aperture == 0) {
+		device_printf(dev, "bad initial aperture size, disabling\n");
+		return ENXIO;
+	}
 
 	for (;;) {
 		gatt = agp_alloc_gatt(dev);
@@ -201,7 +211,9 @@ agp_intel_attach(device_t dev)
 		break;
 
 	case 0x1a308086: /* i845 */
+	case 0x33408086: /* i855 */
 	case 0x25708086: /* i865 */
+	case 0x25788086: /* i875P */
 		pci_write_config(dev, AGP_INTEL_I845_MCHCFG,
 				 (pci_read_config(dev, AGP_INTEL_I845_MCHCFG, 1)
 				  | (1 << 1)), 1);
@@ -222,8 +234,10 @@ agp_intel_attach(device_t dev)
 	case 0x25018086: /* i820 */
 	case 0x1a308086: /* i845 */
 	case 0x25308086: /* i850 */
+	case 0x33408086: /* i855 */
 	case 0x25318086: /* i860 */
 	case 0x25708086: /* i865 */
+	case 0x25788086: /* i875P */
 		pci_write_config(dev, AGP_INTEL_I8XX_ERRSTS, 0x00ff, 2);
 		break;
 
@@ -266,7 +280,9 @@ agp_intel_detach(device_t dev)
 				& ~(1 << 1)), 1);
 
 	case 0x1a308086: /* i845 */
+	case 0x33408086: /* i855 */
 	case 0x25708086: /* i865 */
+	case 0x25788086: /* i875P */
 		printf("%s: set MCHCFG to %x\n", __FUNCTION__, (unsigned)
 				(pci_read_config(dev, AGP_INTEL_I845_MCHCFG, 1)
 				& ~(1 << 1)));
@@ -396,3 +412,5 @@ static driver_t agp_intel_driver = {
 static devclass_t agp_devclass;
 
 DRIVER_MODULE(agp_intel, pci, agp_intel_driver, agp_devclass, 0, 0);
+MODULE_DEPEND(agp_intel, agp, 1, 1, 1);
+MODULE_DEPEND(agp_intel, pci, 1, 1, 1);
