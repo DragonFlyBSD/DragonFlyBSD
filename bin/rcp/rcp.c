@@ -40,9 +40,10 @@
  * @(#) Copyright (c) 1983, 1990, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rcp.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/rcp/rcp.c,v 1.26.2.5 2002/08/16 20:06:34 ume Exp $
- * $DragonFly: src/bin/rcp/rcp.c,v 1.4 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/rcp/rcp.c,v 1.5 2004/11/19 19:01:52 eirikn Exp $
  */
 
+#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -110,7 +111,6 @@ void	 oldw(const char *, ...) __printflike(1, 2);
 #endif
 int	 response(void);
 void	 rsource(char *, struct stat *);
-void	 run_err(const char *, ...) __printflike(1, 2);
 void	 sink(int, char *[]);
 void	 source(int, char *[]);
 void	 tolocal(int, char *[]);
@@ -135,7 +135,7 @@ main(int argc, char *argv[])
 	if (argv_copy == NULL)
 		err(1, "malloc");
 	argv_copy[0] = argv[0];
-	argv_copy[1] = "-K";
+	argv_copy[1] = __DECONST(char *, "-K");
 	for (i = 1; i < argc; ++i) {
 		argv_copy[i + 1] = strdup(argv[i]);
 		if (argv_copy[i + 1] == NULL)
@@ -203,9 +203,10 @@ main(int argc, char *argv[])
 	    use_kerberos = 0;
 	if (use_kerberos) {
 #ifdef CRYPT
-		shell = doencrypt ? "ekshell" : "kshell";
+		shell = doencrypt ? __DECONST(char *, "ekshell") :
+		                    __DECONST(char *, "kshell");
 #else
-		shell = "kshell";
+		shell = __DECONST(char *, "kshell");
 #endif
 		if ((sp = getservbyname(shell, "tcp")) == NULL) {
 			use_kerberos = 0;
@@ -213,9 +214,11 @@ main(int argc, char *argv[])
 			sp = getservbyname(shell = "shell", "tcp");
 		}
 	} else
-		sp = getservbyname(shell = "shell", "tcp");
+		shell = __DECONST(char *, "shell");
+		sp = getservbyname(shell, "tcp");
 #else
-	sp = getservbyname(shell = "shell", "tcp");
+	shell = __DECONST(char *, "shell");
+	sp = getservbyname(shell, "tcp");
 #endif
 	if (sp == NULL)
 		errx(1, "%s/tcp: unknown service", shell);
@@ -281,7 +284,7 @@ toremote(char *targ, int argc, char *argv[])
 
 	*targ++ = 0;
 	if (*targ == 0)
-		targ = ".";
+		targ = __DECONST(char *, ".");
 
 	if ((thost = strchr(argv[argc - 1], '@'))) {
 		/* user@host */
@@ -301,7 +304,7 @@ toremote(char *targ, int argc, char *argv[])
 		if (src) {			/* remote to remote */
 			*src++ = 0;
 			if (*src == 0)
-				src = ".";
+				src = __DECONST(char *, ".");
 			host = strchr(argv[i], '@');
 			len = strlen(_PATH_RSH) + strlen(argv[i]) +
 			    strlen(src) + (tuser ? strlen(tuser) : 0) +
@@ -388,7 +391,7 @@ tolocal(int argc, char *argv[])
 		}
 		*src++ = 0;
 		if (*src == 0)
-			src = ".";
+			src = __DECONST(char *, ".");
 		if ((host = strchr(argv[i], '@')) == NULL) {
 			host = argv[i];
 			suser = pwd->pw_name;
@@ -585,7 +588,7 @@ sink(int argc, char *argv[])
 
 #define	atime	tv[0]
 #define	mtime	tv[1]
-#define	SCREWUP(str)	{ why = str; goto screwup; }
+#define	SCREWUP(str)	{ why = __DECONST(char *, str); goto screwup; }
 
 	setimes = targisdir = 0;
 	mask = umask(0);

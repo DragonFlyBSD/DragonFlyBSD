@@ -32,7 +32,7 @@
  *
  * @(#)util.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/rcp/util.c,v 1.9.2.3 2002/07/19 07:54:51 jmallett Exp $
- * $DragonFly: src/bin/rcp/util.c,v 1.4 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/rcp/util.c,v 1.5 2004/11/19 19:01:52 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -152,7 +152,7 @@ allocbuf(BUF *bp, int fd, int blksize)
 
 /* ARGSUSED */
 void
-lostconn(int signo)
+lostconn(int signo __unused)
 {
 	if (!iamremote)
 		warnx("lost connection");
