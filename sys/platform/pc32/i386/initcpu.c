@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/initcpu.c,v 1.19.2.9 2003/04/05 13:47:19 dwmalone Exp $
- * $DragonFly: src/sys/platform/pc32/i386/initcpu.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/initcpu.c,v 1.3 2003/07/06 21:23:48 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -87,7 +87,7 @@ init_bluelightning(void)
 #endif
 
 	eflags = read_eflags();
-	disable_intr();
+	cpu_disable_intr();
 
 	load_cr0(rcr0() | CR0_CD | CR0_NW);
 	invd();
@@ -121,7 +121,7 @@ init_486dlc(void)
 	u_char	ccr0;
 
 	eflags = read_eflags();
-	disable_intr();
+	cpu_disable_intr();
 	invd();
 
 	ccr0 = read_cyrix_reg(CCR0);
@@ -167,7 +167,7 @@ init_cy486dx(void)
 	u_char	ccr2;
 
 	eflags = read_eflags();
-	disable_intr();
+	cpu_disable_intr();
 	invd();
 
 	ccr2 = read_cyrix_reg(CCR2);
@@ -198,7 +198,7 @@ init_5x86(void)
 	u_char	ccr2, ccr3, ccr4, pcr0;
 
 	eflags = read_eflags();
-	disable_intr();
+	cpu_disable_intr();
 
 	load_cr0(rcr0() | CR0_CD | CR0_NW);
 	wbinvd();
@@ -302,7 +302,7 @@ init_i486_on_386(void)
 #endif
 
 	eflags = read_eflags();
-	disable_intr();
+	cpu_disable_intr();
 
 	load_cr0(rcr0() & ~(CR0_CD | CR0_NW));	/* CD = 0, NW = 0 */
 
@@ -322,7 +322,7 @@ init_6x86(void)
 	u_char	ccr3, ccr4;
 
 	eflags = read_eflags();
-	disable_intr();
+	cpu_disable_intr();
 
 	load_cr0(rcr0() | CR0_CD | CR0_NW);
 	wbinvd();
@@ -403,7 +403,7 @@ init_6x86MX(void)
 	u_char	ccr3, ccr4;
 
 	eflags = read_eflags();
-	disable_intr();
+	cpu_disable_intr();
 
 	load_cr0(rcr0() | CR0_CD | CR0_NW);
 	wbinvd();
@@ -483,7 +483,7 @@ init_mendocino(void)
 	u_int64_t	bbl_cr_ctl3;
 
 	eflags = read_eflags();
-	disable_intr();
+	cpu_disable_intr();
 
 	load_cr0(rcr0() | CR0_CD | CR0_NW);
 	wbinvd();
@@ -657,7 +657,7 @@ enable_K5_wt_alloc(void)
 	 * a stepping of 4 or greater.
 	 */
 	if (((cpu_id & 0xf0) > 0) && ((cpu_id & 0x0f) > 3)) {
-		disable_intr();
+		cpu_disable_intr();
 		msr = rdmsr(0x83);		/* HWCR */
 		wrmsr(0x83, msr & !(0x10));
 
@@ -701,7 +701,7 @@ enable_K6_wt_alloc(void)
 	u_long	eflags;
 
 	eflags = read_eflags();
-	disable_intr();
+	cpu_disable_intr();
 	wbinvd();
 
 #ifdef CPU_DISABLE_CACHE
@@ -763,7 +763,7 @@ enable_K6_2_wt_alloc(void)
 	u_long	eflags;
 
 	eflags = read_eflags();
-	disable_intr();
+	cpu_disable_intr();
 	wbinvd();
 
 #ifdef CPU_DISABLE_CACHE
@@ -832,7 +832,7 @@ DB_SHOW_COMMAND(cyrixreg, cyrixreg)
 	cr0 = rcr0();
 	if (strcmp(cpu_vendor,"CyrixInstead") == 0) {
 		eflags = read_eflags();
-		disable_intr();
+		cpu_disable_intr();
 
 
 		if ((cpu != CPU_M1SC) && (cpu != CPU_CY486DX)) {

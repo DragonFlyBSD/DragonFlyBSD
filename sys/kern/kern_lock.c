@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.3 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.4 2003/07/06 21:23:51 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -73,7 +73,6 @@
 	LK_SHARE_NONZERO | LK_WAIT_NONZERO)
 
 static int acquire(struct lock *lkp, int extflags, int wanted);
-static int apause(struct lock *lkp, int flags);
 static int acquiredrain(struct lock *lkp, int extflags) ;
 
 static LOCK_INLINE void
@@ -98,36 +97,9 @@ shareunlock(struct lock *lkp, int decr) {
 	}
 }
 
-/*
- * This is the waitloop optimization, and note for this to work
- * simple_lock and simple_unlock should be subroutines to avoid
- * optimization troubles.
- */
 static int
-apause(struct lock *lkp, int flags)
+acquire(struct lock *lkp, int extflags, int wanted) 
 {
-#ifdef SMP
-	int i, lock_wait;
-#endif
-
-	if ((lkp->lk_flags & flags) == 0)
-		return 0;
-#ifdef SMP
-	for (lock_wait = LOCK_WAIT_TIME; lock_wait > 0; lock_wait--) {
-		simple_unlock(&lkp->lk_interlock);
-		for (i = LOCK_SAMPLE_WAIT; i > 0; i--)
-			if ((lkp->lk_flags & flags) == 0)
-				break;
-		simple_lock(&lkp->lk_interlock);
-		if ((lkp->lk_flags & flags) == 0)
-			return 0;
-	}
-#endif
-	return 1;
-}
-
-static int
-acquire(struct lock *lkp, int extflags, int wanted) {
 	int s, error;
 
 	if ((extflags & LK_NOWAIT) && (lkp->lk_flags & wanted)) {
@@ -135,8 +107,7 @@ acquire(struct lock *lkp, int extflags, int wanted) {
 	}
 
 	if (((lkp->lk_flags | extflags) & LK_NOPAUSE) == 0) {
-		error = apause(lkp, wanted);
-		if (error == 0)
+		if ((lkp->lk_flags & wanted) == 0)
 			return 0;
 	}
 
@@ -144,10 +115,10 @@ acquire(struct lock *lkp, int extflags, int wanted) {
 	while ((lkp->lk_flags & wanted) != 0) {
 		lkp->lk_flags |= LK_WAIT_NONZERO;
 		lkp->lk_waitcount++;
-		simple_unlock(&lkp->lk_interlock);
+		lwkt_reltoken(&lkp->lk_interlock);
 		error = tsleep(lkp, lkp->lk_prio, lkp->lk_wmesg, 
 			    ((extflags & LK_TIMELOCK) ? lkp->lk_timo : 0));
-		simple_lock(&lkp->lk_interlock);
+		lwkt_gettoken(&lkp->lk_interlock);
 		if (lkp->lk_waitcount == 1) {
 			lkp->lk_flags &= ~LK_WAIT_NONZERO;
 			lkp->lk_waitcount = 0;
@@ -176,10 +147,10 @@ acquire(struct lock *lkp, int extflags, int wanted) {
  */
 int
 #ifndef	DEBUG_LOCKS
-lockmgr(struct lock *lkp, u_int flags, struct simplelock *interlkp,
+lockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
 	struct thread *td)
 #else
-debuglockmgr(struct lock *lkp, u_int flags, struct simplelock *interlkp,
+debuglockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
 	struct thread *td, const char *name, const char *file, int line)
 #endif
 {
@@ -188,9 +159,9 @@ debuglockmgr(struct lock *lkp, u_int flags, struct simplelock *interlkp,
 
 	error = 0;
 
-	simple_lock(&lkp->lk_interlock);
+	lwkt_gettoken(&lkp->lk_interlock);
 	if (flags & LK_INTERLOCK)
-		simple_unlock(interlkp);
+		lwkt_reltoken(interlkp);
 
 	extflags = (flags | lkp->lk_flags) & LK_EXTFLG_MASK;
 
@@ -417,7 +388,7 @@ debuglockmgr(struct lock *lkp, u_int flags, struct simplelock *interlkp,
 		break;
 
 	default:
-		simple_unlock(&lkp->lk_interlock);
+		lwkt_reltoken(&lkp->lk_interlock);
 		panic("lockmgr: unknown locktype request %d",
 		    flags & LK_TYPE_MASK);
 		/* NOTREACHED */
@@ -428,29 +399,29 @@ debuglockmgr(struct lock *lkp, u_int flags, struct simplelock *interlkp,
 		lkp->lk_flags &= ~LK_WAITDRAIN;
 		wakeup((void *)&lkp->lk_flags);
 	}
-	simple_unlock(&lkp->lk_interlock);
+	lwkt_reltoken(&lkp->lk_interlock);
 	return (error);
 }
 
 static int
-acquiredrain(struct lock *lkp, int extflags) {
+acquiredrain(struct lock *lkp, int extflags) 
+{
 	int error;
 
 	if ((extflags & LK_NOWAIT) && (lkp->lk_flags & LK_ALL)) {
 		return EBUSY;
 	}
 
-	error = apause(lkp, LK_ALL);
-	if (error == 0)
+	if ((lkp->lk_flags & LK_ALL) == 0)
 		return 0;
 
 	while (lkp->lk_flags & LK_ALL) {
 		lkp->lk_flags |= LK_WAITDRAIN;
-		simple_unlock(&lkp->lk_interlock);
+		lwkt_reltoken(&lkp->lk_interlock);
 		error = tsleep(&lkp->lk_flags, lkp->lk_prio,
 			lkp->lk_wmesg, 
 			((extflags & LK_TIMELOCK) ? lkp->lk_timo : 0));
-		simple_lock(&lkp->lk_interlock);
+		lwkt_gettoken(&lkp->lk_interlock);
 		if (error)
 			return error;
 		if (extflags & LK_SLEEPFAIL) {
@@ -471,8 +442,7 @@ lockinit(lkp, prio, wmesg, timo, flags)
 	int timo;
 	int flags;
 {
-
-	simple_lock_init(&lkp->lk_interlock);
+	lwkt_inittoken(&lkp->lk_interlock);
 	lkp->lk_flags = (flags & LK_EXTFLG_MASK);
 	lkp->lk_sharecount = 0;
 	lkp->lk_waitcount = 0;
@@ -491,15 +461,16 @@ lockstatus(struct lock *lkp, struct thread *td)
 {
 	int lock_type = 0;
 
-	simple_lock(&lkp->lk_interlock);
+	lwkt_gettoken(&lkp->lk_interlock);
 	if (lkp->lk_exclusivecount != 0) {
 		if (td == NULL || lkp->lk_lockholder == td)
 			lock_type = LK_EXCLUSIVE;
 		else
 			lock_type = LK_EXCLOTHER;
-	} else if (lkp->lk_sharecount != 0)
+	} else if (lkp->lk_sharecount != 0) {
 		lock_type = LK_SHARED;
-	simple_unlock(&lkp->lk_interlock);
+	}
+	lwkt_reltoken(&lkp->lk_interlock);
 	return (lock_type);
 }
 
@@ -512,9 +483,9 @@ lockcount(lkp)
 {
 	int count;
 
-	simple_lock(&lkp->lk_interlock);
+	lwkt_gettoken(&lkp->lk_interlock);
 	count = lkp->lk_exclusivecount + lkp->lk_sharecount;
-	simple_unlock(&lkp->lk_interlock);
+	lwkt_reltoken(&lkp->lk_interlock);
 	return (count);
 }
 
@@ -545,99 +516,3 @@ lockmgr_printinfo(lkp)
 		printf(" with %d pending", lkp->lk_waitcount);
 }
 
-#if defined(SIMPLELOCK_DEBUG) && (MAXCPU == 1 || defined(COMPILING_LINT))
-#include <sys/kernel.h>
-#include <sys/sysctl.h>
-
-static int lockpausetime = 0;
-SYSCTL_INT(_debug, OID_AUTO, lockpausetime, CTLFLAG_RW, &lockpausetime, 0, "");
-
-static int simplelockrecurse;
-
-/*
- * Simple lock functions so that the debugger can see from whence
- * they are being called.
- */
-void
-simple_lock_init(alp)
-	struct simplelock *alp;
-{
-
-	alp->lock_data = 0;
-}
-
-void
-_simple_lock(alp, id, l)
-	struct simplelock *alp;
-	const char *id;
-	int l;
-{
-
-	if (simplelockrecurse)
-		return;
-	if (alp->lock_data == 1) {
-		if (lockpausetime == -1)
-			panic("%s:%d: simple_lock: lock held", id, l);
-		printf("%s:%d: simple_lock: lock held\n", id, l);
-		if (lockpausetime == 1) {
-			Debugger("simple_lock");
-			/*BACKTRACE(curproc); */
-		} else if (lockpausetime > 1) {
-			printf("%s:%d: simple_lock: lock held...", id, l);
-			tsleep(&lockpausetime, PCATCH | PPAUSE, "slock",
-			    lockpausetime * hz);
-			printf(" continuing\n");
-		}
-	}
-	alp->lock_data = 1;
-	if (curproc)
-		curproc->p_simple_locks++;
-}
-
-int
-_simple_lock_try(alp, id, l)
-	struct simplelock *alp;
-	const char *id;
-	int l;
-{
-
-	if (alp->lock_data)
-		return (0);
-	if (simplelockrecurse)
-		return (1);
-	alp->lock_data = 1;
-	if (curproc)
-		curproc->p_simple_locks++;
-	return (1);
-}
-
-void
-_simple_unlock(alp, id, l)
-	struct simplelock *alp;
-	const char *id;
-	int l;
-{
-
-	if (simplelockrecurse)
-		return;
-	if (alp->lock_data == 0) {
-		if (lockpausetime == -1)
-			panic("%s:%d: simple_unlock: lock not held", id, l);
-		printf("%s:%d: simple_unlock: lock not held\n", id, l);
-		if (lockpausetime == 1) {
-			Debugger("simple_unlock");
-			/* BACKTRACE(curproc); */
-		} else if (lockpausetime > 1) {
-			printf("%s:%d: simple_unlock: lock not held...", id, l);
-			tsleep(&lockpausetime, PCATCH | PPAUSE, "sunlock",
-			    lockpausetime * hz);
-			printf(" continuing\n");
-		}
-	}
-	alp->lock_data = 0;
-	if (curproc)
-		curproc->p_simple_locks--;
-}
-#elif defined(SIMPLELOCK_DEBUG)
-#error "SIMPLELOCK_DEBUG is not compatible with SMP!"
-#endif /* SIMPLELOCK_DEBUG && MAXCPU == 1 */

@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.h,v 1.13.2.2 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.h,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.h,v 1.3 2003/07/06 21:23:56 dillon Exp $
  */
 
 #ifndef _SYS_ZONE_H
@@ -23,10 +23,14 @@
 #define ZONE_PANICFAIL 0x0002	/* panic if the zalloc fails */
 #define ZONE_BOOT      0x0010	/* Internal flag used by zbootinit */
 
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
+
 #include	<machine/lock.h>
 
 typedef struct vm_zone {
-	struct simplelock zlock;	/* lock for data structure */
+	struct lwkt_token zlock;	/* lock for data structure */
 	void		*zitems;	/* linked list of items */
 	int		zfreecnt;	/* free entries */
 	int		zfreemin;	/* minimum number of free entries */
@@ -53,10 +57,7 @@ int		zinitna __P((vm_zone_t z, struct vm_object *obj, char *name,
 			     int size, int nentries, int flags, int zalloc));
 void *		zalloc __P((vm_zone_t z));
 void		zfree __P((vm_zone_t z, void *item));
-void *		zalloci __P((vm_zone_t z));
-void		zfreei __P((vm_zone_t z, void *item));
 void		zbootinit __P((vm_zone_t z, char *name, int size, void *item,
 			       int nitems));
-void *		_zget __P((vm_zone_t z));
 
 #endif /* _SYS_ZONE_H */

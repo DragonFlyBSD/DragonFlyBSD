@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.5 2003/06/26 05:55:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.6 2003/07/06 21:23:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -655,6 +655,7 @@ qsync(struct mount *mp)
 	struct vnode *vp, *nextvp;
 	struct dquot *dq;
 	int i, error;
+	int gen;
 
 	/*
 	 * Check if the mount point has any quotas.
@@ -669,7 +670,7 @@ qsync(struct mount *mp)
 	 * Search vnodes associated with this mount point,
 	 * synchronizing any modified dquot structures.
 	 */
-	simple_lock(&mntvnode_slock);
+	gen = lwkt_gettoken(&mntvnode_token);
 again:
 	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp != NULL; vp = nextvp) {
 		if (vp->v_mount != mp)
@@ -677,13 +678,17 @@ again:
 		nextvp = TAILQ_NEXT(vp, v_nmntvnodes);
 		if (vp->v_type == VNON)
 			continue;
-		simple_lock(&vp->v_interlock);
-		simple_unlock(&mntvnode_slock);
+		lwkt_gettoken(&vp->v_interlock);
+		if (lwkt_gentoken(&mntvnode_token, &gen) != 0) {
+			lwkt_reltoken(&vp->v_interlock);
+			goto again;
+		}
 		error = vget(vp, LK_EXCLUSIVE | LK_NOWAIT | LK_INTERLOCK, td);
 		if (error) {
-			simple_lock(&mntvnode_slock);
-			if (error == ENOENT)
+			if (error == ENOENT) {
+				lwkt_gentoken(&mntvnode_token, &gen);
 				goto again;
+			}
 			continue;
 		}
 		for (i = 0; i < MAXQUOTAS; i++) {
@@ -692,11 +697,11 @@ again:
 				dqsync(vp, dq);
 		}
 		vput(vp);
-		simple_lock(&mntvnode_slock);
+		lwkt_gentoken(&mntvnode_token, &gen);
 		if (TAILQ_NEXT(vp, v_nmntvnodes) != nextvp)
 			goto again;
 	}
-	simple_unlock(&mntvnode_slock);
+	lwkt_reltoken(&mntvnode_token);
 	return (0);
 }
 

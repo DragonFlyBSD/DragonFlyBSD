@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/smptests.h,v 1.33.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/smptests.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/smptests.h,v 1.3 2003/07/06 21:23:49 dillon Exp $
  */
 
 #ifndef _MACHINE_SMPTESTS_H_
@@ -63,16 +63,6 @@
 #define PUSHDOWN_LEVEL_2
 #define PUSHDOWN_LEVEL_3_NOT
 #define PUSHDOWN_LEVEL_4_NOT
-
-/*
- * Debug version of simple_lock.  This will store the CPU id of the
- * holding CPU along with the lock.  When a CPU fails to get the lock
- * it compares its own id to the holder id.  If they are the same it
- * panic()s, as simple locks are binary, and this would cause a deadlock.
- *
- */
-#define SL_DEBUG
-
 
 /*
  * Put FAST_INTR() ISRs at an APIC priority above the regular INTs.
@@ -191,21 +181,6 @@
 #define GIANT_LOCK
 
 #ifdef APIC_IO
-/*
- * Enable extra counters for some selected locations in the interrupt handlers.
- * Look in apic_vector.s, apic_ipl.s and ipl.s for APIC_ITRACE or 
- * APIC_INTR_DIAGNOSTIC.
- */
-#undef APIC_INTR_DIAGNOSTIC
-
-/*
- * Add extra tracking of a specific interrupt. Look in apic_vector.s, 
- * apic_ipl.s and ipl.s for APIC_ITRACE and log_intr_event.
- * APIC_INTR_DIAGNOSTIC must be defined for this to work.
- */
-#ifdef APIC_INTR_DIAGNOSTIC
-#define APIC_INTR_DIAGNOSTIC_IRQ 17
-#endif
 
 /*
  * Don't assume that slow interrupt handler X is called from vector

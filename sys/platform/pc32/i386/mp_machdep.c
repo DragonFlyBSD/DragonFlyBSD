@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.8 2003/06/28 04:16:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.9 2003/07/06 21:23:48 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -52,13 +52,11 @@
 #include <vm/pmap.h>
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
-#ifdef BETTER_CLOCK
 #include <sys/lock.h>
 #include <vm/vm_map.h>
 #include <sys/user.h>
 #ifdef GPROF 
 #include <sys/gmon.h>
-#endif
 #endif
 
 #include <machine/smp.h>
@@ -187,8 +185,8 @@ typedef struct BASETABLE_ENTRY {
  * it follows the very early stages of AP boot by placing values in CMOS ram.
  * it NORMALLY will never be needed and thus the primitive method for enabling.
  *
-#define CHECK_POINTS
  */
+#define CHECK_POINTS
 
 #if defined(CHECK_POINTS) && !defined(PC98)
 #define CHECK_READ(A)	 (outb(CMOS_REG, (A)), inb(CMOS_DATA))
@@ -259,27 +257,7 @@ extern	int nkpt;
 u_int32_t cpu_apic_versions[MAXCPU];
 u_int32_t *io_apic_versions;
 
-#ifdef APIC_INTR_DIAGNOSTIC
-int apic_itrace_enter[32];
-int apic_itrace_tryisrlock[32];
-int apic_itrace_gotisrlock[32];
-int apic_itrace_active[32];
-int apic_itrace_masked[32];
-int apic_itrace_noisrlock[32];
-int apic_itrace_masked2[32];
-int apic_itrace_unmask[32];
-int apic_itrace_noforward[32];
-int apic_itrace_leave[32];
-int apic_itrace_enter2[32];
-int apic_itrace_doreti[32];
-int apic_itrace_splz[32];
-int apic_itrace_eoi[32];
-#ifdef APIC_INTR_DIAGNOSTIC_IRQ
-unsigned short apic_itrace_debugbuffer[32768];
-int apic_itrace_debugbuffer_idx;
-struct simplelock apic_itrace_debuglock;
-#endif
-#endif
+struct apic_intmapinfo	int_to_apicintpin[APIC_INTMAPSIZE];
 
 #ifdef APIC_INTR_REORDER
 struct {
@@ -288,7 +266,6 @@ struct {
 } apic_isrbit_location[32];
 #endif
 
-struct apic_intmapinfo	int_to_apicintpin[APIC_INTMAPSIZE];
 
 /*
  * APIC ID logical/physical mapping structures.
@@ -337,7 +314,6 @@ static int	mptable_pass2(void);
 static void	default_mp_table(int type);
 static void	fix_mp_table(void);
 static void	setup_apic_irq_mapping(void);
-static void	init_locks(void);
 static int	start_all_aps(u_int boot_addr);
 static void	install_ap_tramp(u_int boot_addr);
 static int	start_ap(int logicalCpu, u_int boot_addr);
@@ -463,11 +439,12 @@ init_secondary(void)
 	int	gsel_tss;
 	int	x, myid = bootAP;
 	u_int	cr0;
+	struct mdglobaldata *md;
 
 	gdt_segs[GPRIV_SEL].ssd_base = (int) &CPU_prvspace[myid];
 	gdt_segs[GPROC0_SEL].ssd_base =
-		(int) &CPU_prvspace[myid].globaldata.gd_common_tss;
-	CPU_prvspace[myid].globaldata.gd_prvspace = &CPU_prvspace[myid];
+		(int) &CPU_prvspace[myid].mdglobaldata.gd_common_tss;
+	CPU_prvspace[myid].mdglobaldata.mi.gd_prvspace = &CPU_prvspace[myid];
 
 	for (x = 0; x < NGDT; x++) {
 		ssdtosd(&gdt_segs[x], &gdt[myid * NGDT + x].sd);
@@ -486,11 +463,14 @@ init_secondary(void)
 
 	gsel_tss = GSEL(GPROC0_SEL, SEL_KPL);
 	gdt[myid * NGDT + GPROC0_SEL].sd.sd_type = SDT_SYS386TSS;
-	common_tss.tss_esp0 = 0;	/* not used until after switch */
-	common_tss.tss_ss0 = GSEL(GDATA_SEL, SEL_KPL);
-	common_tss.tss_ioopt = (sizeof common_tss) << 16;
-	tss_gdt = &gdt[myid * NGDT + GPROC0_SEL].sd;
-	common_tssd = *tss_gdt;
+
+	md = mdcpu;
+
+	md->gd_common_tss.tss_esp0 = 0;	/* not used until after switch */
+	md->gd_common_tss.tss_ss0 = GSEL(GDATA_SEL, SEL_KPL);
+	md->gd_common_tss.tss_ioopt = (sizeof md->gd_common_tss) << 16;
+	md->gd_tss_gdt = &gdt[myid * NGDT + GPROC0_SEL].sd;
+	md->gd_common_tssd = *md->gd_tss_gdt;
 	ltr(gsel_tss);
 
 	/*
@@ -575,9 +555,6 @@ mp_enable(u_int boot_addr)
 	if (x)
 		default_mp_table(x);
 
-	/* initialize all SMP locks */
-	init_locks();
-
 	/* post scan cleanup */
 	fix_mp_table();
 	setup_apic_irq_mapping();
@@ -604,10 +581,12 @@ mp_enable(u_int boot_addr)
 	setidt(XINVLTLB_OFFSET, Xinvltlb,
 	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 
+#if 0
 #ifdef BETTER_CLOCK
 	/* install an inter-CPU IPI for reading processor state */
 	setidt(XCPUCHECKSTATE_OFFSET, Xcpucheckstate,
 	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+#endif
 #endif
 	
 	/* install an inter-CPU IPI for all-CPU rendezvous */
@@ -745,7 +724,7 @@ static int lookup_bus_type	__P((char *name));
  * 1st pass on motherboard's Intel MP specification table.
  *
  * initializes:
- *	mp_ncpus = 1
+ *	ncpus = 1
  *
  * determines:
  *	cpu_apic_address (common to all CPUs)
@@ -862,7 +841,7 @@ mptable_pass1(void)
 	 * Count the BSP.
 	 * This is also used as a counter while starting the APs.
 	 */
-	mp_ncpus = 1;
+	ncpus = 1;
 
 	--mp_naps;	/* subtract the BSP */
 }
@@ -1998,82 +1977,6 @@ default_mp_table(int type)
 #endif	/* APIC_IO */
 }
 
-
-/*
- * initialize all the SMP locks
- */
-
-/* critical region around IO APIC, apic_imen */
-struct simplelock	imen_lock;
-
-/* critical region around splxx(), cpl, cml, cil, ipending */
-struct simplelock	cpl_lock;
-
-/* Make FAST_INTR() routines sequential */
-struct simplelock	fast_intr_lock;
-
-/* critical region around INTR() routines */
-struct simplelock	intr_lock;
-
-/* lock regions protected in UP kernel via cli/sti */
-struct simplelock	mpintr_lock;
-
-/* lock region used by kernel profiling */
-struct simplelock	mcount_lock;
-
-#ifdef USE_COMLOCK
-/* locks com (tty) data/hardware accesses: a FASTINTR() */
-struct simplelock	com_lock;
-#endif /* USE_COMLOCK */
-
-#ifdef USE_CLOCKLOCK
-/* lock regions around the clock hardware */
-struct simplelock	clock_lock;
-#endif /* USE_CLOCKLOCK */
-
-/* lock around the MP rendezvous */
-static struct simplelock smp_rv_lock;
-
-static void
-init_locks(void)
-{
-	/*
-	 * Get the initial mp_lock with a count of 1 for the BSP.
-	 * This uses a LOGICAL cpu ID, ie BSP == 0.
-	 */
-	mp_lock = 0x00000001;
-
-#if 0
-	/* ISR uses its own "giant lock" */
-	isr_lock = FREE_LOCK;
-#endif
-
-#if defined(APIC_INTR_DIAGNOSTIC) && defined(APIC_INTR_DIAGNOSTIC_IRQ)
-	s_lock_init((struct simplelock*)&apic_itrace_debuglock);
-#endif
-
-	s_lock_init((struct simplelock*)&mpintr_lock);
-
-	s_lock_init((struct simplelock*)&mcount_lock);
-
-	s_lock_init((struct simplelock*)&fast_intr_lock);
-	s_lock_init((struct simplelock*)&intr_lock);
-	s_lock_init((struct simplelock*)&imen_lock);
-	s_lock_init((struct simplelock*)&cpl_lock);
-	s_lock_init(&smp_rv_lock);
-
-#ifdef USE_COMLOCK
-	s_lock_init((struct simplelock*)&com_lock);
-#endif /* USE_COMLOCK */
-#ifdef USE_CLOCKLOCK
-	s_lock_init((struct simplelock*)&clock_lock);
-#endif /* USE_CLOCKLOCK */
-}
-
-
-/* Wait for all APs to be fully initialized */
-extern int wait_ap(unsigned int);
-
 /*
  * start each AP in our list
  */
@@ -2083,7 +1986,7 @@ start_all_aps(u_int boot_addr)
 	int     x, i, pg;
 	u_char  mpbiosreason;
 	u_long  mpbioswarmvec;
-	struct globaldata *gd;
+	struct mdglobaldata *gd;
 	char *stack;
 	uintptr_t kptbase;
 
@@ -2124,24 +2027,29 @@ start_all_aps(u_int boot_addr)
 		pg = x * i386_btop(sizeof(struct privatespace));
 
 		/* allocate a new private data page */
-		gd = (struct globaldata *)kmem_alloc(kernel_map, PAGE_SIZE);
+		gd = (struct mdglobaldata *)kmem_alloc(kernel_map, PAGE_SIZE);
 
 		/* wire it into the private page table page */
 		SMPpt[pg] = (pt_entry_t)(PG_V | PG_RW | vtophys(gd));
 
 		/* allocate and set up an idle stack data page */
 		stack = (char *)kmem_alloc(kernel_map, UPAGES*PAGE_SIZE);
-		for (i = 0; i < UPAGES; i++)
+		for (i = 0; i < UPAGES; i++) {
 			SMPpt[pg + 5 + i] = (pt_entry_t)
 			    (PG_V | PG_RW | vtophys(PAGE_SIZE * i + stack));
+		}
 
 		SMPpt[pg + 1] = 0;		/* *gd_CMAP1 */
 		SMPpt[pg + 2] = 0;		/* *gd_CMAP2 */
 		SMPpt[pg + 3] = 0;		/* *gd_CMAP3 */
 		SMPpt[pg + 4] = 0;		/* *gd_PMAP1 */
 
+		gd = &CPU_prvspace[x].mdglobaldata;	/* official location */
+		bzero(gd, sizeof(*gd));
+		gd->mi.gd_prvspace = &CPU_prvspace[x];
+
 		/* prime data page for it to use */
-		mi_gdinit(gd, x);
+		mi_gdinit(&gd->mi, x);
 		cpu_gdinit(gd, x);
 		gd->gd_cpu_lockid = x << 24;
 		gd->gd_CMAP1 = &SMPpt[pg + 1];
@@ -2161,7 +2069,10 @@ start_all_aps(u_int boot_addr)
 		outb(CMOS_DATA, BIOS_WARM);	/* 'warm-start' */
 #endif
 
-		bootSTK = &CPU_prvspace[x].idlestack[UPAGES*PAGE_SIZE];
+		/*
+		 * Setup the AP boot stack
+		 */
+		bootSTK = &CPU_prvspace[x].idlestack[UPAGES*PAGE_SIZE/2];
 		bootAP = x;
 
 		/* attempt to start the Application Processor */
@@ -2183,7 +2094,7 @@ start_all_aps(u_int boot_addr)
 	}
 
 	/* build our map of 'other' CPUs */
-	other_cpus = all_cpus & ~(1 << cpuid);
+	mycpu->gd_other_cpus = all_cpus & ~(1 << mycpu->gd_cpuid);
 
 	/* fill in our (BSP) APIC version */
 	cpu_apic_versions[0] = lapic.version;
@@ -2196,24 +2107,15 @@ start_all_aps(u_int boot_addr)
 #endif
 
 	/*
-	 * Set up the idle context for the BSP.  Similar to above except
-	 * that some was done by locore, some by pmap.c and some is implicit
-	 * because the BSP is cpu#0 and the page is initially zero, and also
-	 * because we can refer to variables by name on the BSP..
+	 * NOTE!  The idlestack for the BSP was setup by locore.  Finish
+	 * up, clean out the P==V mapping we did earlier.
 	 */
-
-	/* Allocate and setup BSP idle stack */
-	stack = (char *)kmem_alloc(kernel_map, UPAGES * PAGE_SIZE);
-	for (i = 0; i < UPAGES; i++)
-		SMPpt[5 + i] = (pt_entry_t)
-		    (PG_V | PG_RW | vtophys(PAGE_SIZE * i + stack));
-
 	for (x = 0; x < NKPT; x++)
 		PTD[x] = 0;
 	pmap_set_opt();
 
 	/* number of APs actually started */
-	return mp_ncpus - 1;
+	return ncpus - 1;
 }
 
 
@@ -2301,7 +2203,10 @@ start_ap(int logical_cpu, u_int boot_addr)
 	vector = (boot_addr >> 12) & 0xff;
 
 	/* used as a watchpoint to signal AP startup */
-	cpus = mp_ncpus;
+	cpus = ncpus;
+
+	/* Make sure the target cpu sees everything */
+	wbinvd();
 
 	/*
 	 * first we do an INIT/RESET IPI this INIT IPI might be run, reseting
@@ -2358,12 +2263,12 @@ start_ap(int logical_cpu, u_int boot_addr)
 		 /* spin */ ;
 	u_sleep(200);		/* wait ~200uS */
 
-	/* wait for it to start */
+	/* wait for it to start, see ap_init() */
 	set_apic_timer(5000000);/* == 5 seconds */
-	while (read_apic_timer())
-		if (mp_ncpus > cpus)
+	while (read_apic_timer()) {
+		if (ncpus > cpus)
 			return 1;	/* return SUCCESS */
-
+	}
 	return 0;		/* return FAILURE */
 }
 
@@ -2473,29 +2378,42 @@ SYSCTL_INT(_machdep, OID_AUTO, forward_roundrobin_enabled, CTLFLAG_RW,
 	   &forward_roundrobin_enabled, 0, "");
 
 /*
- * This is called once the rest of the system is up and running and we're
- * ready to let the AP's out of the pen.
+ * This is called once the mpboot code has gotten us properly relocated
+ * and the MMU turned on, etc.   ap_init() is actually the idle thread,
+ * and when it returns the scheduler will call the real cpu_idle() main
+ * loop for the idlethread.  Interrupts are disabled on entry and should
+ * remain disabled at return.
  */
-void ap_init(void);
 
 void
-ap_init()
+ap_init(void)
 {
 	u_int	apic_id;
 
+	/*
+	 * Signal the BSP that we have started up successfully by incrementing
+	 * ncpus.  Note that we do not hold the BGL yet.  The BSP is waiting
+	 * for our signal.
+	 */
+	++ncpus;
+
+	/*
+	 * Get the MP lock so we can finish initializing.
+	 */
+	while (cpu_try_mplock() == 0)
+	    ;
+
 	/* BSP may have changed PTD while we're waiting for the lock */
 	cpu_invltlb();
-
-	smp_cpus++;
 
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)
 	lidt(&r_idt);
 #endif
 
 	/* Build our map of 'other' CPUs. */
-	other_cpus = all_cpus & ~(1 << cpuid);
+	mycpu->gd_other_cpus = all_cpus & ~(1 << mycpu->gd_cpuid);
 
-	printf("SMP: AP CPU #%d Launched!\n", cpuid);
+	printf("SMP: AP CPU #%d Launched!\n", mycpu->gd_cpuid);
 
 	/* set up CPU registers and state */
 	cpu_setregs();
@@ -2508,8 +2426,8 @@ ap_init()
 
 	/* A quick check from sanity claus */
 	apic_id = (apic_id_to_logical[(lapic.id & 0x0f000000) >> 24]);
-	if (cpuid != apic_id) {
-		printf("SMP: cpuid = %d\n", cpuid);
+	if (mycpu->gd_cpuid != apic_id) {
+		printf("SMP: cpuid = %d\n", mycpu->gd_cpuid);
 		printf("SMP: apic_id = %d\n", apic_id);
 		printf("PTD[MPPTDI] = %p\n", (void *)PTD[MPPTDI]);
 		panic("cpuid mismatch! boom!!");
@@ -2522,15 +2440,23 @@ ap_init()
 	mem_range_AP_init();
 
 	/*
-	 * Activate smp_invltlb, although strictly speaking, this isn't
-	 * quite correct yet.  We should have a bitfield for cpus willing
-	 * to accept TLB flush IPI's or something and sync them.
+	 * Since we have the BGL if smp_cpus matches ncpus then we are
+	 * the last AP to get to this point and we can enable IPI's,
+	 * tlb shootdowns, freezes, and so forth.
 	 */
-	if (smp_cpus == mp_ncpus) {
+	++smp_cpus;
+	if (smp_cpus == ncpus) {
 		invltlb_ok = 1;
 		smp_started = 1; /* enable IPI's, tlb shootdown, freezes etc */
 		smp_active = 1;	 /* historic */
 	}
+
+	/*
+	 * The idle loop doesn't expect the BGL to be held and while
+	 * lwkt_switch() normally cleans things up this is a special case
+	 * because we returning almost directly into the idle loop.
+	 */
+	cpu_rel_mplock();
 }
 
 #ifdef BETTER_CLOCK
@@ -2540,7 +2466,7 @@ ap_init()
 #define CHECKSTATE_INTR	2
 
 /* Do not staticize.  Used from apic_vector.s */
-struct proc*	checkstate_curproc[MAXCPU];
+struct thread   *checkstate_curtd[MAXCPU];
 int		checkstate_cpustate[MAXCPU];
 u_long		checkstate_pc[MAXCPU];
 
@@ -2548,6 +2474,7 @@ u_long		checkstate_pc[MAXCPU];
         ((int)(((u_quad_t)((pc) - (prof)->pr_off) *	\
             (u_quad_t)((prof)->pr_scale)) >> 16) & ~1)
 
+#if 0
 static void
 addupc_intr_forwarded(struct proc *p, int id, int *astmap)
 {
@@ -2567,28 +2494,30 @@ addupc_intr_forwarded(struct proc *p, int id, int *astmap)
 		*astmap |= (1 << id);
 	}
 }
+#endif
 
 static void
 forwarded_statclock(int id, int pscnt, int *astmap)
 {
+#if 0
 	struct pstats *pstats;
 	long rss;
 	struct rusage *ru;
 	struct vmspace *vm;
 	int cpustate;
-	struct proc *p;
+	struct thread *td;
 #ifdef GPROF
 	register struct gmonparam *g;
 	int i;
 #endif
 
-	p = checkstate_curproc[id];
+	t = checkstate_curtd[id];
 	cpustate = checkstate_cpustate[id];
 
 	switch (cpustate) {
 	case CHECKSTATE_USER:
-		if (p->p_flag & P_PROFIL)
-			addupc_intr_forwarded(p, id, astmap);
+		if (td->td_proc && td->td_proc->p_flag & P_PROFIL)
+			addupc_intr_forwarded(td->td_proc, id, astmap);
 		if (pscnt > 1)
 			return;
 		p->p_uticks++;
@@ -2657,6 +2586,7 @@ forwarded_statclock(int id, int pscnt, int *astmap)
 				ru->ru_maxrss = rss;
         	}
 	}
+#endif
 }
 
 void
@@ -2680,9 +2610,10 @@ forward_statclock(int pscnt)
 	if (!smp_started || !invltlb_ok || cold || panicstr)
 		return;
 
+	printf("forward_statclock\n");
 	/* Step 1: Probe state   (user, cpu, interrupt, spinlock, idle ) */
 	
-	map = other_cpus & ~stopped_cpus ;
+	map = mycpu->gd_other_cpus & ~stopped_cpus ;
 	checkstate_probed_cpus = 0;
 	if (map != 0)
 		selected_apic_ipi(map,
@@ -2707,8 +2638,8 @@ forward_statclock(int pscnt)
 	 */
 	
 	map = 0;
-	for (id = 0; id < mp_ncpus; id++) {
-		if (id == cpuid)
+	for (id = 0; id < ncpus; id++) {
+		if (id == mycpu->gd_cpuid)
 			continue;
 		if (((1 << id) & checkstate_probed_cpus) == 0)
 			continue;
@@ -2737,8 +2668,10 @@ forward_hardclock(int pscnt)
 {
 	int map;
 	int id;
+#if 0
 	struct proc *p;
 	struct pstats *pstats;
+#endif
 	int i;
 
 	/* Kludge. We don't yet have separate locks for the interrupts
@@ -2757,7 +2690,7 @@ forward_hardclock(int pscnt)
 
 	/* Step 1: Probe state   (user, cpu, interrupt, spinlock, idle) */
 	
-	map = other_cpus & ~stopped_cpus ;
+	map = mycpu->gd_other_cpus & ~stopped_cpus ;
 	checkstate_probed_cpus = 0;
 	if (map != 0)
 		selected_apic_ipi(map,
@@ -2783,11 +2716,13 @@ forward_hardclock(int pscnt)
 	 */
 	
 	map = 0;
-	for (id = 0; id < mp_ncpus; id++) {
-		if (id == cpuid)
+	for (id = 0; id < ncpus; id++) {
+		if (id == mycpu->gd_cpuid)
 			continue;
 		if (((1 << id) & checkstate_probed_cpus) == 0)
 			continue;
+		printf("forward_hardclock\n");
+#if 0
 		p = checkstate_curproc[id];
 		if (p) {
 			pstats = p->p_stats;
@@ -2806,6 +2741,7 @@ forward_hardclock(int pscnt)
 		if (stathz == 0) {
 			forwarded_statclock( id, pscnt, &map);
 		}
+#endif
 	}
 	if (map != 0) {
 		checkstate_need_ast |= map;
@@ -2830,6 +2766,8 @@ forward_hardclock(int pscnt)
 void 
 forward_signal(struct proc *p)
 {
+	/* YYY forward_signal */
+#if 0
 	int map;
 	int id;
 	int i;
@@ -2873,11 +2811,14 @@ forward_signal(struct proc *p)
 		if (id == p->p_oncpu)
 			return;
 	}
+#endif
 }
 
 void
 forward_roundrobin(void)
 {
+	/* YYY forward_roundrobin */
+#if 0
 	u_int map;
 	int i;
 
@@ -2885,8 +2826,8 @@ forward_roundrobin(void)
 		return;
 	if (!forward_roundrobin_enabled)
 		return;
-	resched_cpus |= other_cpus;
-	map = other_cpus & ~stopped_cpus ;
+	resched_cpus |= mycpu->gd_other_cpus;
+	map = mycpu->gd_other_cpus & ~stopped_cpus ;
 #if 1
 	selected_apic_ipi(map, XCPUAST_OFFSET, APIC_DELMODE_FIXED);
 #else
@@ -2904,20 +2845,20 @@ forward_roundrobin(void)
 			break;
 		}
 	}
+#endif
 }
-
 
 #ifdef APIC_INTR_REORDER
 /*
- *	Maintain mapping from softintr vector to isr bit in local apic.
+ *     Maintain mapping from softintr vector to isr bit in local apic.
  */
 void
 set_lapic_isrloc(int intr, int vector)
 {
 	if (intr < 0 || intr > 32)
-		panic("set_apic_isrloc: bad intr argument: %d",intr);
+	       panic("set_apic_isrloc: bad intr argument: %d",intr);
 	if (vector < ICU_OFFSET || vector > 255)
-		panic("set_apic_isrloc: bad vector argument: %d",vector);
+	       panic("set_apic_isrloc: bad vector argument: %d",vector);
 	apic_isrbit_location[intr].location = &lapic.isr0 + ((vector>>5)<<2);
 	apic_isrbit_location[intr].bit = (1<<(vector & 31));
 }
@@ -2946,14 +2887,14 @@ smp_rendezvous_action(void)
 		smp_rv_setup_func(smp_rv_func_arg);
 	/* spin on entry rendezvous */
 	atomic_add_int(&smp_rv_waiters[0], 1);
-	while (smp_rv_waiters[0] < mp_ncpus)
+	while (smp_rv_waiters[0] < ncpus)
 		;
 	/* action function */
 	if (smp_rv_action_func != NULL)
 		smp_rv_action_func(smp_rv_func_arg);
 	/* spin on exit rendezvous */
 	atomic_add_int(&smp_rv_waiters[1], 1);
-	while (smp_rv_waiters[1] < mp_ncpus)
+	while (smp_rv_waiters[1] < ncpus)
 		;
 	/* teardown function */
 	if (smp_rv_teardown_func != NULL)
@@ -2966,10 +2907,8 @@ smp_rendezvous(void (* setup_func)(void *),
 	       void (* teardown_func)(void *),
 	       void *arg)
 {
-	u_int	efl;
-	
-	/* obtain rendezvous lock */
-	s_lock(&smp_rv_lock);		/* XXX sleep here? NOWAIT flag? */
+	/* obtain rendezvous lock.  This disables interrupts */
+	spin_lock(&smp_rv_spinlock);	/* XXX sleep here? NOWAIT flag? */
 
 	/* set static function pointers */
 	smp_rv_setup_func = setup_func;
@@ -2979,19 +2918,12 @@ smp_rendezvous(void (* setup_func)(void *),
 	smp_rv_waiters[0] = 0;
 	smp_rv_waiters[1] = 0;
 
-	/* disable interrupts on this CPU, save interrupt status */
-	efl = read_eflags();
-	write_eflags(efl & ~PSL_I);
-
 	/* signal other processors, which will enter the IPI with interrupts off */
 	all_but_self_ipi(XRENDEZVOUS_OFFSET);
 
 	/* call executor function */
 	smp_rendezvous_action();
 
-	/* restore interrupt flag */
-	write_eflags(efl);
-
 	/* release lock */
-	s_unlock(&smp_rv_lock);
+	spin_unlock(&smp_rv_spinlock);
 }

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.5 2003/07/03 17:24:04 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.6 2003/07/06 21:23:56 dillon Exp $
  */
 
 /*
@@ -131,9 +131,7 @@ static int	vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int cur
  */
 
 struct object_q vm_object_list;
-#ifndef NULL_SIMPLELOCKS
-static struct simplelock vm_object_list_lock;
-#endif
+static struct lwkt_token vm_object_list_token;
 static long vm_object_count;		/* count of all objects */
 vm_object_t kernel_object;
 vm_object_t kmem_object;
@@ -202,7 +200,7 @@ void
 vm_object_init()
 {
 	TAILQ_INIT(&vm_object_list);
-	simple_lock_init(&vm_object_list_lock);
+	lwkt_inittoken(&vm_object_list_token);
 	vm_object_count = 0;
 	
 	kernel_object = &kernel_object_store;
@@ -487,9 +485,9 @@ vm_object_terminate(object)
 	/*
 	 * Remove the object from the global object list.
 	 */
-	simple_lock(&vm_object_list_lock);
+	lwkt_gettoken(&vm_object_list_token);
 	TAILQ_REMOVE(&vm_object_list, object, object_list);
-	simple_unlock(&vm_object_list_lock);
+	lwkt_reltoken(&vm_object_list_token);
 
 	wakeup(object);
 
@@ -645,9 +643,9 @@ vm_object_page_clean(object, start, end, flags)
                 if (object->type == OBJT_VNODE &&
                     (vp = (struct vnode *)object->handle) != NULL) {
                         if (vp->v_flag & VOBJDIRTY) {
-                                simple_lock(&vp->v_interlock);
+                                lwkt_gettoken(&vp->v_interlock);
                                 vp->v_flag &= ~VOBJDIRTY;
-                                simple_unlock(&vp->v_interlock);
+                                lwkt_reltoken(&vp->v_interlock);
                         }
                 }
 	}
@@ -1711,9 +1709,9 @@ vm_object_set_writeable_dirty(vm_object_t object)
 	if (object->type == OBJT_VNODE &&
 	    (vp = (struct vnode *)object->handle) != NULL) {
 		if ((vp->v_flag & VOBJDIRTY) == 0) {
-			simple_lock(&vp->v_interlock);
+			lwkt_gettoken(&vp->v_interlock);
 			vp->v_flag |= VOBJDIRTY;
-			simple_unlock(&vp->v_interlock);
+			lwkt_reltoken(&vp->v_interlock);
 		}
 	}
 }

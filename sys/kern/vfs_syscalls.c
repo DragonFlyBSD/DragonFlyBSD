@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.7 2003/06/27 01:53:25 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.8 2003/07/06 21:23:51 dillon Exp $
  */
 
 /* For 4.3 integer FS ID compatibility */
@@ -176,16 +176,16 @@ mount(struct mount_args *uap)
 			vput(vp);
 			return (EBUSY);
 		}
-		simple_lock(&vp->v_interlock);
+		lwkt_gettoken(&vp->v_interlock);
 		if ((vp->v_flag & VMOUNT) != 0 ||
 		    vp->v_mountedhere != NULL) {
-			simple_unlock(&vp->v_interlock);
+			lwkt_reltoken(&vp->v_interlock);
 			vfs_unbusy(mp, td);
 			vput(vp);
 			return (EBUSY);
 		}
 		vp->v_flag |= VMOUNT;
-		simple_unlock(&vp->v_interlock);
+		lwkt_reltoken(&vp->v_interlock);
 		mp->mnt_flag |=
 		    SCARG(uap, flags) & (MNT_RELOAD | MNT_FORCE | MNT_UPDATE);
 		VOP_UNLOCK(vp, 0, td);
@@ -261,15 +261,15 @@ mount(struct mount_args *uap)
 			return (ENODEV);
 		}
 	}
-	simple_lock(&vp->v_interlock);
+	lwkt_gettoken(&vp->v_interlock);
 	if ((vp->v_flag & VMOUNT) != 0 ||
 	    vp->v_mountedhere != NULL) {
-		simple_unlock(&vp->v_interlock);
+		lwkt_reltoken(&vp->v_interlock);
 		vput(vp);
 		return (EBUSY);
 	}
 	vp->v_flag |= VMOUNT;
-	simple_unlock(&vp->v_interlock);
+	lwkt_reltoken(&vp->v_interlock);
 
 	/*
 	 * Allocate and initialize the filesystem.
@@ -331,9 +331,9 @@ update:
 			mp->mnt_syncer = NULL;
 		}
 		vfs_unbusy(mp, td);
-		simple_lock(&vp->v_interlock);
+		lwkt_gettoken(&vp->v_interlock);
 		vp->v_flag &= ~VMOUNT;
-		simple_unlock(&vp->v_interlock);
+		lwkt_reltoken(&vp->v_interlock);
 		vrele(vp);
 		return (error);
 	}
@@ -343,13 +343,13 @@ update:
 	 */
 	cache_purge(vp);
 	if (!error) {
-		simple_lock(&vp->v_interlock);
+		lwkt_gettoken(&vp->v_interlock);
 		vp->v_flag &= ~VMOUNT;
 		vp->v_mountedhere = mp;
-		simple_unlock(&vp->v_interlock);
-		simple_lock(&mountlist_slock);
+		lwkt_reltoken(&vp->v_interlock);
+		lwkt_gettoken(&mountlist_token);
 		TAILQ_INSERT_TAIL(&mountlist, mp, mnt_list);
-		simple_unlock(&mountlist_slock);
+		lwkt_reltoken(&mountlist_token);
 		checkdirs(vp);
 		VOP_UNLOCK(vp, 0, td);
 		if ((mp->mnt_flag & MNT_RDONLY) == 0)
@@ -358,9 +358,9 @@ update:
 		if ((error = VFS_START(mp, 0, td)) != 0)
 			vrele(vp);
 	} else {
-		simple_lock(&vp->v_interlock);
+		lwkt_gettoken(&vp->v_interlock);
 		vp->v_flag &= ~VMOUNT;
-		simple_unlock(&vp->v_interlock);
+		lwkt_reltoken(&vp->v_interlock);
 		mp->mnt_vfc->vfc_refcount--;
 		vfs_unbusy(mp, td);
 		free((caddr_t)mp, M_MOUNT);
@@ -480,9 +480,9 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	int error;
 	int async_flag;
 
-	simple_lock(&mountlist_slock);
+	lwkt_gettoken(&mountlist_token);
 	if (mp->mnt_kern_flag & MNTK_UNMOUNT) {
-		simple_unlock(&mountlist_slock);
+		lwkt_reltoken(&mountlist_token);
 		return (EBUSY);
 	}
 	mp->mnt_kern_flag |= MNTK_UNMOUNT;
@@ -490,7 +490,7 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	if (flags & MNT_FORCE)
 		mp->mnt_kern_flag |= MNTK_UNMOUNTF;
 	error = lockmgr(&mp->mnt_lock, LK_DRAIN | LK_INTERLOCK |
-	    ((flags & MNT_FORCE) ? 0 : LK_NOWAIT), &mountlist_slock, td);
+	    ((flags & MNT_FORCE) ? 0 : LK_NOWAIT), &mountlist_token, td);
 	if (error) {
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
 		if (mp->mnt_kern_flag & MNTK_MWAIT)
@@ -511,14 +511,14 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	     (error = VFS_SYNC(mp, MNT_WAIT, td)) == 0) ||
 	    (flags & MNT_FORCE))
 		error = VFS_UNMOUNT(mp, flags, td);
-	simple_lock(&mountlist_slock);
+	lwkt_gettoken(&mountlist_token);
 	if (error) {
 		if ((mp->mnt_flag & MNT_RDONLY) == 0 && mp->mnt_syncer == NULL)
 			(void) vfs_allocate_syncvnode(mp);
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
 		mp->mnt_flag |= async_flag;
 		lockmgr(&mp->mnt_lock, LK_RELEASE | LK_INTERLOCK | LK_REENABLE,
-		    &mountlist_slock, td);
+		    &mountlist_token, td);
 		if (mp->mnt_kern_flag & MNTK_MWAIT)
 			wakeup((caddr_t)mp);
 		return (error);
@@ -531,7 +531,7 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	mp->mnt_vfc->vfc_refcount--;
 	if (!TAILQ_EMPTY(&mp->mnt_nvnodelist))
 		panic("unmount: dangling vnode");
-	lockmgr(&mp->mnt_lock, LK_RELEASE | LK_INTERLOCK, &mountlist_slock, td);
+	lockmgr(&mp->mnt_lock, LK_RELEASE | LK_INTERLOCK, &mountlist_token, td);
 	if (mp->mnt_kern_flag & MNTK_MWAIT)
 		wakeup((caddr_t)mp);
 	free((caddr_t)mp, M_MOUNT);
@@ -560,9 +560,9 @@ sync(struct sync_args *uap)
 	struct mount *mp, *nmp;
 	int asyncflag;
 
-	simple_lock(&mountlist_slock);
+	lwkt_gettoken(&mountlist_token);
 	for (mp = TAILQ_FIRST(&mountlist); mp != NULL; mp = nmp) {
-		if (vfs_busy(mp, LK_NOWAIT, &mountlist_slock, td)) {
+		if (vfs_busy(mp, LK_NOWAIT, &mountlist_token, td)) {
 			nmp = TAILQ_NEXT(mp, mnt_list);
 			continue;
 		}
@@ -573,11 +573,11 @@ sync(struct sync_args *uap)
 			VFS_SYNC(mp, MNT_NOWAIT, td);
 			mp->mnt_flag |= asyncflag;
 		}
-		simple_lock(&mountlist_slock);
+		lwkt_gettoken(&mountlist_token);
 		nmp = TAILQ_NEXT(mp, mnt_list);
 		vfs_unbusy(mp, td);
 	}
-	simple_unlock(&mountlist_slock);
+	lwkt_reltoken(&mountlist_token);
 #if 0
 /*
  * XXX don't call vfs_bufstats() yet because that routine
@@ -715,9 +715,9 @@ getfsstat(struct getfsstat_args *uap)
 	maxcount = SCARG(uap, bufsize) / sizeof(struct statfs);
 	sfsp = (caddr_t)SCARG(uap, buf);
 	count = 0;
-	simple_lock(&mountlist_slock);
+	lwkt_gettoken(&mountlist_token);
 	for (mp = TAILQ_FIRST(&mountlist); mp != NULL; mp = nmp) {
-		if (vfs_busy(mp, LK_NOWAIT, &mountlist_slock, td)) {
+		if (vfs_busy(mp, LK_NOWAIT, &mountlist_token, td)) {
 			nmp = TAILQ_NEXT(mp, mnt_list);
 			continue;
 		}
@@ -731,7 +731,7 @@ getfsstat(struct getfsstat_args *uap)
 			if (((SCARG(uap, flags) & (MNT_LAZY|MNT_NOWAIT)) == 0 ||
 			    (SCARG(uap, flags) & MNT_WAIT)) &&
 			    (error = VFS_STATFS(mp, sp, td))) {
-				simple_lock(&mountlist_slock);
+				lwkt_gettoken(&mountlist_token);
 				nmp = TAILQ_NEXT(mp, mnt_list);
 				vfs_unbusy(mp, td);
 				continue;
@@ -745,11 +745,11 @@ getfsstat(struct getfsstat_args *uap)
 			sfsp += sizeof(*sp);
 		}
 		count++;
-		simple_lock(&mountlist_slock);
+		lwkt_gettoken(&mountlist_token);
 		nmp = TAILQ_NEXT(mp, mnt_list);
 		vfs_unbusy(mp, td);
 	}
-	simple_unlock(&mountlist_slock);
+	lwkt_reltoken(&mountlist_token);
 	if (sfsp && count > maxcount)
 		p->p_retval[0] = maxcount;
 	else

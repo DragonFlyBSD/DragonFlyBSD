@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.14 2003/06/30 23:54:02 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.15 2003/07/06 21:23:51 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -446,9 +446,11 @@ loop:
 			 * The process's thread may still be in the middle
 			 * of switching away, we can't rip its stack out from
 			 * under it until TDF_EXITED is set.
+			 *
+			 * YYY no wakeup occurs so we depend on the timeout.
 			 */
 			if ((p->p_thread->td_flags & TDF_EXITED) == 0) {
-				tsleep(p->p_thread, PWAIT, "reap", 0);
+				tsleep(p->p_thread, PWAIT, "reap", 1);
 				goto loop;
 			}
 

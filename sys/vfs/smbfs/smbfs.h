@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs.h,v 1.2.2.2 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs.h,v 1.4 2003/06/26 05:55:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs.h,v 1.5 2003/07/06 21:23:48 dillon Exp $
  */
 #ifndef _SMBFS_SMBFS_H_
 #define _SMBFS_SMBFS_H_
@@ -86,7 +86,7 @@ struct smbmount {
 	int			sm_flags;
 	long			sm_nextino;
 	struct smb_share * 	sm_share;
-/*	struct simplelock	sm_npslock;*/
+/*	struct lwkt_token	sm_npslock;*/
 	struct smbnode *	sm_npstack[SMBFS_MAXPATHCOMP];
 	int			sm_caseopt;
 	struct lock		sm_hashlock;

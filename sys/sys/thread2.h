@@ -8,7 +8,7 @@
  *	on a different cpu will not be immediately scheduled by a yield() on
  *	this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.4 2003/06/30 19:50:32 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.5 2003/07/06 21:23:54 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -54,6 +54,21 @@ crit_exit(void)
 	crit_panic();
     if (td->td_pri < mycpu->gd_reqpri)
 	lwkt_yield_quick();
+}
+
+static __inline int
+crit_panic_save(void)
+{
+    thread_t td = curthread;
+    int pri = td->td_pri;
+    td->td_pri = td->td_pri & TDPRI_MASK;
+    return(pri);
+}
+
+static __inline void
+crit_panic_restore(int cpri)
+{
+    curthread->td_pri = cpri;
 }
 
 static __inline int

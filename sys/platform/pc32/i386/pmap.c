@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.15 2003/07/04 00:32:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.16 2003/07/06 21:23:48 dillon Exp $
  */
 
 /*
@@ -373,25 +373,27 @@ pmap_bootstrap(firstaddr, loadaddr)
 		ptditmp |= PG_V | PG_RW | PG_PS | PG_U | pgeflag;
 		pdir4mb = ptditmp;
 
-		if (ncpus == 1) {
-			/*
-			 * Enable the PSE mode.
-			 */
-			load_cr4(rcr4() | CR4_PSE);
+#ifndef SMP
+		/*
+		 * Enable the PSE mode.  If we are SMP we can't do this
+		 * now because the APs will not be able to use it when
+		 * they boot up.
+		 */
+		load_cr4(rcr4() | CR4_PSE);
 
-			/*
-			 * We can do the mapping here for the single processor
-			 * case.  We simply ignore the old page table page from
-			 * now on.
-			 */
-			/*
-			 * For SMP, we still need 4K pages to bootstrap APs,
-			 * PSE will be enabled as soon as all APs are up.
-			 */
-			PTD[KPTDI] = (pd_entry_t) ptditmp;
-			kernel_pmap->pm_pdir[KPTDI] = (pd_entry_t) ptditmp;
-			invltlb();
-		}
+		/*
+		 * We can do the mapping here for the single processor
+		 * case.  We simply ignore the old page table page from
+		 * now on.
+		 */
+		/*
+		 * For SMP, we still need 4K pages to bootstrap APs,
+		 * PSE will be enabled as soon as all APs are up.
+		 */
+		PTD[KPTDI] = (pd_entry_t) ptditmp;
+		kernel_pmap->pm_pdir[KPTDI] = (pd_entry_t) ptditmp;
+		invltlb();
+#endif
 	}
 #endif
 #ifdef APIC_IO
@@ -827,6 +829,9 @@ pmap_init_proc(struct proc *p, struct thread *td)
 	p->p_thread = td;
 	td->td_proc = p;
 	td->td_switch = cpu_heavy_switch;
+#ifdef SMP
+	td->td_mpcount = 1;
+#endif
 	bzero(p->p_addr, sizeof(*p->p_addr));
 }
 
@@ -1405,21 +1410,20 @@ pmap_reference(pmap)
  ***************************************************/
 
 /*
- * free the pv_entry back to the free list
+ * free the pv_entry back to the free list.  This function may be
+ * called from an interrupt.
  */
 static PMAP_INLINE void
 free_pv_entry(pv)
 	pv_entry_t pv;
 {
 	pv_entry_count--;
-	zfreei(pvzone, pv);
+	zfree(pvzone, pv);
 }
 
 /*
  * get a new pv_entry, allocating a block from the system
- * when needed.
- * the memory allocation is performed bypassing the malloc code
- * because of the possibility of allocations at interrupt time.
+ * when needed.  This function may be called from an interrupt.
  */
 static pv_entry_t
 get_pv_entry(void)
@@ -1431,7 +1435,7 @@ get_pv_entry(void)
 		pmap_pagedaemon_waken = 1;
 		wakeup (&vm_pages_needed);
 	}
-	return zalloci(pvzone);
+	return zalloc(pvzone);
 }
 
 /*

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.6 2003/06/27 01:53:25 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.7 2003/07/06 21:23:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -634,10 +634,10 @@ debug_vn_lock(struct vnode *vp, int flags, struct thread *td,
 	
 	do {
 		if ((flags & LK_INTERLOCK) == 0)
-			simple_lock(&vp->v_interlock);
+			lwkt_gettoken(&vp->v_interlock);
 		if ((vp->v_flag & VXLOCK) && vp->v_vxproc != curproc) {
 			vp->v_flag |= VXWANT;
-			simple_unlock(&vp->v_interlock);
+			lwkt_reltoken(&vp->v_interlock);
 			tsleep((caddr_t)vp, PINOD, "vn_lock", 0);
 			error = ENOENT;
 		} else {

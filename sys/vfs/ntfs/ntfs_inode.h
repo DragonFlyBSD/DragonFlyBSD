@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_inode.h,v 1.6 1999/12/03 20:37:39 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_inode.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_inode.h,v 1.3 2003/07/06 21:23:53 dillon Exp $
  */
 
 /* These flags are kept in i_flag. */
@@ -70,7 +70,7 @@ struct ntnode {
 
 	/* locking */
 	struct lock	i_lock;
-	struct simplelock i_interlock;
+	struct lwkt_token i_interlock;
 	int		i_usecount;
 
 	LIST_HEAD(,fnode)	i_fnlist;

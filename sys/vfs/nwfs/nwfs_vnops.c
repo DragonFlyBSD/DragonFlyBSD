@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.4 2003/06/26 05:55:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.5 2003/07/06 21:23:54 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -248,24 +248,25 @@ nwfs_close(ap)
 
 	if (vp->v_type == VDIR) return 0;	/* nothing to do now */
 	error = 0;
-	simple_lock(&vp->v_interlock);
+	lwkt_gettoken(&vp->v_interlock);
 	if (np->opened == 0) {
-		simple_unlock(&vp->v_interlock);
+		lwkt_reltoken(&vp->v_interlock);
 		return 0;
 	}
-	simple_unlock(&vp->v_interlock);
+	lwkt_reltoken(&vp->v_interlock);
 	error = nwfs_vinvalbuf(vp, V_SAVE, ap->a_td, 1);
-	simple_lock(&vp->v_interlock);
+	lwkt_gettoken(&vp->v_interlock);
 	if (np->opened == 0) {
-		simple_unlock(&vp->v_interlock);
+		lwkt_reltoken(&vp->v_interlock);
 		return 0;
 	}
 	if (--np->opened == 0) {
-		simple_unlock(&vp->v_interlock);
+		lwkt_reltoken(&vp->v_interlock);
 		error = ncp_close_file(NWFSTOCONN(VTONWFS(vp)), &np->n_fh, 
 		   ap->a_td, proc0.p_ucred);
-	} else
-		simple_unlock(&vp->v_interlock);
+	} else {
+		lwkt_reltoken(&vp->v_interlock);
+	}
 	np->n_atime = 0;
 	return (error);
 }

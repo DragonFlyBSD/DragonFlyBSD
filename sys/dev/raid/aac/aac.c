@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.3 2003/06/27 01:53:21 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.4 2003/07/06 21:23:47 dillon Exp $
  */
 
 /*
@@ -2681,8 +2681,10 @@ aac_handle_aif(struct aac_softc *sc, struct aac_fib *fib)
 		/* On the off chance that someone is sleeping for an aif... */
 		if (sc->aac_state & AAC_STATE_AIF_SLEEPER)
 			wakeup(sc->aac_aifq);
+		/* token may have been lost */
 		/* Wakeup any poll()ers */
 		selwakeup(&sc->rcv_select);
+		/* token may have been lost */
 	}
 	AAC_LOCK_RELEASE(&sc->aac_aifq_lock);
 
@@ -2770,6 +2772,8 @@ aac_getnext_aif(struct aac_softc *sc, caddr_t arg)
 
 /*
  * Hand the next AIF off the top of the queue out to userspace.
+ *
+ * YYY token could be lost during copyout
  */
 static int
 aac_return_aif(struct aac_softc *sc, caddr_t uptr)

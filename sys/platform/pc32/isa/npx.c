@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.6 2003/06/28 04:16:04 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.7 2003/07/06 21:23:49 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -257,7 +257,7 @@ npx_probe(dev)
 		npx_irq = 13;
 	npx_intrno = NRSVIDT + npx_irq;
 	save_eflags = read_eflags();
-	disable_intr();
+	cpu_disable_intr();
 	save_icu1_mask = inb(IO_ICU1 + 1);
 	save_icu2_mask = inb(IO_ICU2 + 1);
 	save_idt_npxintr = idt[npx_intrno];
@@ -267,9 +267,9 @@ npx_probe(dev)
 	setidt(16, probetrap, SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	setidt(npx_intrno, probeintr, SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	npx_idt_probeintr = idt[npx_intrno];
-	enable_intr();
+	cpu_enable_intr();
 	result = npx_probe1(dev);
-	disable_intr();
+	cpu_disable_intr();
 	outb(IO_ICU1 + 1, save_icu1_mask);
 	outb(IO_ICU2 + 1, save_icu2_mask);
 	idt[npx_intrno] = save_idt_npxintr;
@@ -733,6 +733,9 @@ static char fpetable[128] = {
  * longjmp() out.  Both preserving the state and longjmp()ing may be
  * destroyed by IRQ13 bugs.  Clearing FP exceptions is not an acceptable
  * solution for signals other than SIGFPE.
+ *
+ * The MP lock is not held on entry (see i386/i386/exception.s) and
+ * should not be held on exit.
  */
 void
 npx_intr(dummy)
@@ -744,11 +747,13 @@ npx_intr(dummy)
 	u_long *exstat;
 
 	if (npxthread == NULL || !npx_exists) {
+		get_mplock();
 		printf("npxintr: npxthread = %p, curthread = %p, npx_exists = %d\n",
 		       npxthread, curthread, npx_exists);
 		panic("npxintr from nowhere");
 	}
 	if (npxthread != curthread) {
+		get_mplock();
 		printf("npxintr: npxthread = %p, curthread = %p, npx_exists = %d\n",
 		       npxthread, curthread, npx_exists);
 		panic("npxintr from non-current process");
@@ -759,6 +764,8 @@ npx_intr(dummy)
 	fnstsw(exstat);
 	fnstcw(&control);
 	fnclex();
+
+	get_mplock();
 
 	/*
 	 * Pass exception to process.
@@ -801,6 +808,7 @@ npx_intr(dummy)
 		 */
 		psignal(curproc, SIGFPE);
 	}
+	rel_mplock();
 }
 
 /*
@@ -874,21 +882,23 @@ npxsave(addr)
 	u_char	old_icu1_mask;
 	u_char	old_icu2_mask;
 	struct gate_descriptor	save_idt_npxintr;
+	u_long	save_eflags;
 
-	disable_intr();
+	save_eflags = read_eflags();
+	cpu_disable_intr();
 	old_icu1_mask = inb(IO_ICU1 + 1);
 	old_icu2_mask = inb(IO_ICU2 + 1);
 	save_idt_npxintr = idt[npx_intrno];
 	outb(IO_ICU1 + 1, old_icu1_mask & ~(IRQ_SLAVE | npx0_imask));
 	outb(IO_ICU2 + 1, old_icu2_mask & ~(npx0_imask >> 8));
 	idt[npx_intrno] = npx_idt_probeintr;
-	enable_intr();
+	cpu_enable_intr();
 	stop_emulating();
 	fnsave(addr);
 	fnop();
 	start_emulating();
 	npxthread = NULL;
-	disable_intr();
+	cpu_disable_intr();
 	icu1_mask = inb(IO_ICU1 + 1);	/* masks may have changed */
 	icu2_mask = inb(IO_ICU2 + 1);
 	outb(IO_ICU1 + 1,
@@ -897,7 +907,7 @@ npxsave(addr)
 	     (icu2_mask & ~(npx0_imask >> 8))
 	     | (old_icu2_mask & (npx0_imask >> 8)));
 	idt[npx_intrno] = save_idt_npxintr;
-	enable_intr();		/* back to usual state */
+	write_eflags(save_eflags); 	/* back to usual state */
 
 #endif /* SMP */
 }

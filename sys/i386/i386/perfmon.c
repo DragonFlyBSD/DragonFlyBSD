@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/perfmon.c,v 1.21 1999/09/25 18:24:04 phk Exp $
- * $DragonFly: src/sys/i386/i386/Attic/perfmon.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/perfmon.c,v 1.4 2003/07/06 21:23:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -124,11 +124,11 @@ perfmon_setup(int pmc, unsigned int control)
 
 	perfmon_inuse |= (1 << pmc);
 	control &= ~(PMCF_SYS_FLAGS << 16);
-	disable_intr();
+	mpintr_lock();	/* doesn't have to be mpintr_lock YYY */
 	ctl_shadow[pmc] = control;
 	writectl(pmc);
 	wrmsr(msr_pmc[pmc], pmc_shadow[pmc] = 0);
-	enable_intr();
+	mpintr_unlock();
 	return 0;
 }
 
@@ -167,11 +167,11 @@ perfmon_start(int pmc)
 		return EINVAL;
 
 	if (perfmon_inuse & (1 << pmc)) {
-		disable_intr();
+		mpintr_lock();	/* doesn't have to be mpintr YYY */
 		ctl_shadow[pmc] |= (PMCF_EN << 16);
 		wrmsr(msr_pmc[pmc], pmc_shadow[pmc]);
 		writectl(pmc);
-		enable_intr();
+		mpintr_unlock();
 		return 0;
 	}
 	return EBUSY;
@@ -184,11 +184,11 @@ perfmon_stop(int pmc)
 		return EINVAL;
 
 	if (perfmon_inuse & (1 << pmc)) {
-		disable_intr();
+		mpintr_lock();
 		pmc_shadow[pmc] = rdmsr(msr_pmc[pmc]) & 0xffffffffffULL;
 		ctl_shadow[pmc] &= ~(PMCF_EN << 16);
 		writectl(pmc);
-		enable_intr();
+		mpintr_unlock();
 		return 0;
 	}
 	return EBUSY;

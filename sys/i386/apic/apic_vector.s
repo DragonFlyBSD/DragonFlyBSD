@@ -1,62 +1,23 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.7 2003/07/01 20:31:38 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.8 2003/07/06 21:23:49 dillon Exp $
  */
 
 
 #include <machine/apic.h>
 #include <machine/smp.h>
-
 #include "i386/isa/intr_machdep.h"
 
 /* convert an absolute IRQ# into a bitmask */
-#define IRQ_BIT(irq_num)	(1 << (irq_num))
+#define IRQ_LBIT(irq_num)	(1 << (irq_num))
 
 /* make an index into the IO APIC from the IRQ# */
 #define REDTBL_IDX(irq_num)	(0x10 + ((irq_num) * 2))
 
-
 /*
- * Macros for interrupt interrupt entry, call to handler, and exit.
- */
-
-#define	FAST_INTR(irq_num, vec_name)					\
-	.text ;								\
-	SUPERALIGN_TEXT ;						\
-IDTVEC(vec_name) ;							\
-	pushl	%eax ;		/* save only call-used registers */	\
-	pushl	%ecx ;							\
-	pushl	%edx ;							\
-	pushl	%ds ;							\
-	pushl	%es ; 							\
-	pushl	%fs ;							\
-	movl	$KDSEL,%eax ;						\
-	mov	%ax,%ds ;						\
-	movl	%ax,%es ;						\
-	movl	$KPSEL,%eax ;						\
-	mov	%ax,%fs ;						\
-	FAKE_MCOUNT(6*4(%esp)) ;					\
-	pushl	intr_unit + (irq_num) * 4 ;				\
-	call	*intr_handler + (irq_num) * 4 ; /* do the work ASAP */ \
-	addl	$4, %esp ;						\
-	movl	$0, lapic_eoi ;						\
-	lock ; 								\
-	incl	cnt+V_INTR ;	/* book-keeping can wait */		\
-	movl	intr_countp + (irq_num) * 4, %eax ;			\
-	lock ; 								\
-	incl	(%eax) ;						\
-	MEXITCOUNT ;							\
-	popl	%fs ;							\
-	popl	%es ;							\
-	popl	%ds ;							\
-	popl	%edx ;							\
-	popl	%ecx ;							\
-	popl	%eax ;							\
-	iret
-
-/*
- * 
+ * Push an interrupt frame in a format acceptable to doreti, reload
+ * the segment registers for the kernel.
  */
 #define PUSH_FRAME							\
 	pushl	$0 ;		/* dummy error code */			\
@@ -64,23 +25,54 @@ IDTVEC(vec_name) ;							\
 	pushal ;							\
 	pushl	%ds ;		/* save data and extra segments ... */	\
 	pushl	%es ;							\
-	pushl	%fs
+	pushl	%fs ;							\
+	mov	$KDSEL,%ax ;						\
+	mov	%ax,%ds ;						\
+	mov	%ax,%es ;						\
+	mov	$KPSEL,%ax ;						\
+	mov	%ax,%fs ;						\
 
+#define PUSH_DUMMY							\
+	pushfl ;		/* phys int frame / flags */		\
+	pushl %cs ;		/* phys int frame / cs */		\
+	pushl	12(%esp) ;	/* original caller eip */		\
+	pushl	$0 ;		/* dummy error code */			\
+	pushl	$0 ;		/* dummy trap type */			\
+	subl	$11*4,%esp ;	/* pushal + 3 seg regs (dummy) */	\
+
+/*
+ * Warning: POP_FRAME can only be used if there is no chance of a
+ * segment register being changed (e.g. by procfs), which is why syscalls
+ * have to use doreti.
+ */
 #define POP_FRAME							\
 	popl	%fs ;							\
 	popl	%es ;							\
 	popl	%ds ;							\
 	popal ;								\
-	addl	$4+4,%esp
+	addl	$2*4,%esp ;	/* dummy trap & error codes */		\
+
+#define POP_DUMMY							\
+	addl	$16*4,%esp ;						\
 
 #define IOAPICADDR(irq_num) CNAME(int_to_apicintpin) + 16 * (irq_num) + 8
 #define REDIRIDX(irq_num) CNAME(int_to_apicintpin) + 16 * (irq_num) + 12
+
+/*
+ * Interrupts are expected to already be disabled when using these
+ * IMASK_*() macros.
+ */
+#define IMASK_LOCK							\
+	SPIN_LOCK(imen_spinlock) ; 					\
+
+#define IMASK_UNLOCK							\
+	SPIN_UNLOCK(imen_spinlock) ;					\
 	
 #define MASK_IRQ(irq_num)						\
 	IMASK_LOCK ;				/* into critical reg */	\
-	testl	$IRQ_BIT(irq_num), apic_imen ;				\
+	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
 	jne	7f ;			/* masked, don't mask */	\
-	orl	$IRQ_BIT(irq_num), apic_imen ;	/* set the mask bit */	\
+	orl	$IRQ_LBIT(irq_num), apic_imen ;	/* set the mask bit */	\
 	movl	IOAPICADDR(irq_num), %ecx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\
 	movl	%eax, (%ecx) ;			/* write the index */	\
@@ -88,17 +80,18 @@ IDTVEC(vec_name) ;							\
 	orl	$IOART_INTMASK, %eax ;		/* set the mask */	\
 	movl	%eax, IOAPIC_WINDOW(%ecx) ;	/* new value */		\
 7: ;						/* already masked */	\
-	IMASK_UNLOCK
+	IMASK_UNLOCK ;							\
+
 /*
  * Test to see whether we are handling an edge or level triggered INT.
  *  Level-triggered INTs must still be masked as we don't clear the source,
  *  and the EOI cycle would cause redundant INTs to occur.
  */
 #define MASK_LEVEL_IRQ(irq_num)						\
-	testl	$IRQ_BIT(irq_num), apic_pin_trigger ;			\
+	testl	$IRQ_LBIT(irq_num), apic_pin_trigger ;			\
 	jz	9f ;				/* edge, don't mask */	\
 	MASK_IRQ(irq_num) ;						\
-9:
+9: ;									\
 
 
 #ifdef APIC_INTR_REORDER
@@ -108,27 +101,26 @@ IDTVEC(vec_name) ;							\
 	testl	apic_isrbit_location + 4 + 8 * (irq_num), %eax ;	\
 	jz	9f ;				/* not active */	\
 	movl	$0, lapic_eoi ;						\
-	APIC_ITRACE(apic_itrace_eoi, irq_num, APIC_ITRACE_EOI) ;	\
-9:
+9:									\
 
 #else
+
 #define EOI_IRQ(irq_num)						\
-	testl	$IRQ_BIT(irq_num), lapic_isr1;				\
+	testl	$IRQ_LBIT(irq_num), lapic_isr1;				\
 	jz	9f	;			/* not active */	\
 	movl	$0, lapic_eoi;						\
-	APIC_ITRACE(apic_itrace_eoi, irq_num, APIC_ITRACE_EOI) ;	\
-9:
+9:									\
+
 #endif
-	
 	
 /*
  * Test to see if the source is currntly masked, clear if so.
  */
 #define UNMASK_IRQ(irq_num)					\
 	IMASK_LOCK ;				/* into critical reg */	\
-	testl	$IRQ_BIT(irq_num), apic_imen ;				\
+	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
 	je	7f ;			/* bit clear, not masked */	\
-	andl	$~IRQ_BIT(irq_num), apic_imen ;/* clear mask bit */	\
+	andl	$~IRQ_LBIT(irq_num), apic_imen ;/* clear mask bit */	\
 	movl	IOAPICADDR(irq_num),%ecx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\
 	movl	%eax,(%ecx) ;			/* write the index */	\
@@ -136,174 +128,189 @@ IDTVEC(vec_name) ;							\
 	andl	$~IOART_INTMASK,%eax ;		/* clear the mask */	\
 	movl	%eax,IOAPIC_WINDOW(%ecx) ;	/* new value */		\
 7: ;									\
-	IMASK_UNLOCK
+	IMASK_UNLOCK ;							\
 
-#ifdef APIC_INTR_DIAGNOSTIC
-#ifdef APIC_INTR_DIAGNOSTIC_IRQ
-log_intr_event:
-	pushf
-	cli
-	pushl	$CNAME(apic_itrace_debuglock)
-	call	CNAME(s_lock_np)
-	addl	$4, %esp
-	movl	CNAME(apic_itrace_debugbuffer_idx), %ecx
-	andl	$32767, %ecx
-	movl	PCPU(cpuid), %eax
-	shll	$8,	%eax
-	orl	8(%esp), %eax
-	movw	%ax,	CNAME(apic_itrace_debugbuffer)(,%ecx,2)
-	incl	%ecx
-	andl	$32767, %ecx
-	movl	%ecx,	CNAME(apic_itrace_debugbuffer_idx)
-	pushl	$CNAME(apic_itrace_debuglock)
-	call	CNAME(s_unlock_np)
-	addl	$4, %esp
-	popf
-	ret
-	
+/*
+ * Fast interrupt call handlers run in the following sequence:
+ *
+ *	- Push the trap frame required by doreti
+ *	- Mask the interrupt and reenable its source
+ *	- If we cannot take the interrupt set its fpending bit and
+ *	  doreti.
+ *	- If we can take the interrupt clear its fpending bit,
+ *	  call the handler, then unmask and doreti.
+ *
+ * YYY can cache gd base opitner instead of using hidden %fs prefixes.
+ */
 
-#define APIC_ITRACE(name, irq_num, id)					\
-	lock ;					/* MP-safe */		\
-	incl	CNAME(name) + (irq_num) * 4 ;				\
-	pushl	%eax ;							\
-	pushl	%ecx ;							\
-	pushl	%edx ;							\
-	movl	$(irq_num), %eax ;					\
-	cmpl	$APIC_INTR_DIAGNOSTIC_IRQ, %eax ;			\
-	jne	7f ;							\
-	pushl	$id ;							\
-	call	log_intr_event ;					\
-	addl	$4, %esp ;						\
-7: ;									\
-	popl	%edx ;							\
-	popl	%ecx ;							\
-	popl	%eax
-#else
-#define APIC_ITRACE(name, irq_num, id)					\
-	lock ;					/* MP-safe */		\
-	incl	CNAME(name) + (irq_num) * 4
-#endif
-
-#define APIC_ITRACE_ENTER 1
-#define APIC_ITRACE_EOI 2
-#define APIC_ITRACE_TRYISRLOCK 3
-#define APIC_ITRACE_GOTISRLOCK 4
-#define APIC_ITRACE_ENTER2 5
-#define APIC_ITRACE_LEAVE 6
-#define APIC_ITRACE_UNMASK 7
-#define APIC_ITRACE_ACTIVE 8
-#define APIC_ITRACE_MASKED 9
-#define APIC_ITRACE_NOISRLOCK 10
-#define APIC_ITRACE_MASKED2 11
-#define APIC_ITRACE_SPLZ 12
-#define APIC_ITRACE_DORETI 13	
-	
-#else	
-#define APIC_ITRACE(name, irq_num, id)
-#endif
-		
-#define	INTR(irq_num, vec_name, maybe_extra_ipending)			\
+#define	FAST_INTR(irq_num, vec_name)					\
 	.text ;								\
 	SUPERALIGN_TEXT ;						\
-/* XintrNN: entry point used by IDT/HWIs & splz_unpend via _vec[]. */	\
 IDTVEC(vec_name) ;							\
 	PUSH_FRAME ;							\
-	movl	$KDSEL, %eax ;	/* reload with kernel's data segment */	\
-	mov	%ax, %ds ;						\
-	mov	%ax, %es ;						\
-	movl	$KPSEL, %eax ;						\
-	mov	%ax, %fs ;						\
-;									\
+	FAKE_MCOUNT(13*4(%esp)) ;					\
+	MASK_LEVEL_IRQ(irq_num) ;					\
+	EOI_IRQ(irq_num) ;						\
+	incl	PCPU(intr_nesting_level) ;				\
+	movl	PCPU(curthread),%ebx ;					\
+	movl	TD_CPL(%ebx),%eax ;					\
+	pushl	%eax ;							\
+	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
+	jge	1f ;							\
+	testl	$IRQ_LBIT(irq_num), %eax ;				\
+	jz	2f ;							\
+1: ;									\
+	/* set the pending bit and return, leave interrupt masked */	\
+	orl	$IRQ_LBIT(irq_num),PCPU(fpending) ;			\
+	movl	$TDPRI_CRIT, PCPU(reqpri) ;				\
+	jmp	5f ;							\
+2: ;									\
+	/* clear pending bit, run handler */				\
+	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
+	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
+	pushl	intr_unit + (irq_num) * 4 ;				\
+	call	*intr_handler + (irq_num) * 4 ; /* do the work ASAP */ 	\
+	addl	$4, %esp ;						\
+	subl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
+	incl	PCPU(cnt)+V_INTR ;	/* book-keeping make per cpu YYY */ \
+	movl	intr_countp + (irq_num) * 4, %eax ;			\
+	incl	(%eax) ;						\
+	UNMASK_IRQ(irq_num) ;						\
+5: ;									\
+	MEXITCOUNT ;							\
+	jmp	doreti ;						\
+
+/*
+ * Restart fast interrupt held up by critical section or cpl.
+ *
+ *	- Push a dummy trape frame as required by doreti
+ *	- The interrupt source is already masked
+ *	- Clear the fpending bit
+ *	- Run the handler
+ *	- Unmask the interrupt
+ *	- Pop the dummy frame and do a normal return
+ *
+ *	YYY can cache gd base pointer instead of using hidden %fs
+ *	prefixes.
+ */
+
+#define FAST_UNPEND(irq_num, vec_name)					\
+	.text ;								\
+	SUPERALIGN_TEXT ;						\
+IDTVEC(vec_name) ;							\
+	pushl	%ebp ;							\
+	movl	%esp,%ebp ;						\
+	PUSH_DUMMY ;							\
+	pushl	intr_unit + (irq_num) * 4 ;				\
+	call	*intr_handler + (irq_num) * 4 ; /* do the work ASAP */ 	\
+	addl	$4, %esp ;						\
+	incl	PCPU(cnt)+V_INTR ;	/* book-keeping make per cpu YYY */ \
+	movl	intr_countp + (irq_num) * 4, %eax ;			\
+	incl	(%eax) ;						\
+	UNMASK_IRQ(irq_num) ;						\
+	POP_DUMMY ;							\
+	popl %ebp ;							\
+	ret ;								\
+
+/*
+ * Slow interrupt call handlers run in the following sequence:
+ *
+ *	- Push the trap frame required by doreti.
+ *	- Mask the interrupt and reenable its source.
+ *	- If we cannot take the interrupt set its ipending bit and
+ *	  doreti.  In addition to checking for a critical section
+ *	  and cpl mask we also check to see if the thread is still
+ *	  running.
+ *	- If we can take the interrupt clear its ipending bit,
+ *	  set its irunning bit, and schedule the thread.  Leave
+ *	  interrupts masked and doreti.
+ *
+ *	the interrupt thread will run its handlers and loop if
+ *	ipending is found to be set.  ipending/irunning interlock
+ *	the interrupt thread with the interrupt.  The handler calls
+ *	UNPEND when it is through.
+ *
+ *	Note that we do not enable interrupts when calling sched_ithd.
+ *	YYY sched_ithd may preempt us synchronously (fix interrupt stacking)
+ *
+ *	YYY can cache gd base pointer instead of using hidden %fs
+ *	prefixes.
+ */
+
+#define INTR(irq_num, vec_name, maybe_extra_ipending)			\
+	.text ;								\
+	SUPERALIGN_TEXT ;						\
+IDTVEC(vec_name) ;							\
+	PUSH_FRAME ;							\
 	maybe_extra_ipending ;						\
-;									\
-	APIC_ITRACE(apic_itrace_enter, irq_num, APIC_ITRACE_ENTER) ;	\
-	lock ;					/* MP-safe */		\
-	btsl	$(irq_num), iactive ;		/* lazy masking */	\
-	jc	1f ;				/* already active */	\
 ;									\
 	MASK_LEVEL_IRQ(irq_num) ;					\
 	EOI_IRQ(irq_num) ;						\
-0: ;									\
-	APIC_ITRACE(apic_itrace_tryisrlock, irq_num, APIC_ITRACE_TRYISRLOCK) ;\
-	MP_TRYLOCK ;		/* XXX this is going away... */		\
-	testl	%eax, %eax ;			/* did we get it? */	\
-	jz	3f ;				/* no */		\
-;									\
-	APIC_ITRACE(apic_itrace_gotisrlock, irq_num, APIC_ITRACE_GOTISRLOCK) ;\
+	incl	PCPU(intr_nesting_level) ;				\
 	movl	PCPU(curthread),%ebx ;					\
-	testl	$IRQ_BIT(irq_num), TD_MACH+MTD_CPL(%eax) ;		\
-	jne	2f ;				/* this INT masked */	\
+	movl	TD_CPL(%ebx),%eax ;					\
+	pushl	%eax ;		/* cpl do restore */			\
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
-	jge	2f ;				/* in critical sec */	\
-;									\
-	incb	PCPU(intr_nesting_level) ;				\
-;	 								\
-  /* entry point used by doreti_unpend for HWIs. */			\
-__CONCAT(Xresume,irq_num): ;						\
-	FAKE_MCOUNT(13*4(%esp)) ;		/* XXX avoid dbl cnt */ \
-	lock ;	incl	_cnt+V_INTR ;		/* tally interrupts */	\
-	movl	_intr_countp + (irq_num) * 4, %eax ;			\
-	lock ;	incl	(%eax) ;					\
-;									\
-	movl	PCPU(curthread), %ebx ;					\
-	movl	TD_MACH+MTD_CPL(%ebx), %eax ;				\
-	pushl	%eax ;	 /* cpl restored by doreti */			\
-	orl	_intr_mask + (irq_num) * 4, %eax ;			\
-	movl	%eax, TD_MACH+MTD_CPL(%ebx) ;				\
-	lock ;								\
-	andl	$~IRQ_BIT(irq_num), PCPU(ipending) ;			\
-;									\
-	pushl	_intr_unit + (irq_num) * 4 ;				\
-	APIC_ITRACE(apic_itrace_enter2, irq_num, APIC_ITRACE_ENTER2) ;	\
+	jge	1f ;							\
+	testl	$IRQ_LBIT(irq_num),PCPU(irunning) ;			\
+	jnz	1f ;							\
+	testl	$IRQ_LBIT(irq_num),%eax ;				\
+	jz	1f ;							\
+1: ;									\
+	/* set the pending bit and return, leave the interrupt masked */ \
+	orl	$IRQ_LBIT(irq_num), PCPU(ipending) ;			\
+	movl	$TDPRI_CRIT, PCPU(reqpri) ;				\
+	jmp	5f ;							\
+2: ;									\
+	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
+	/* set running bit, clear pending bit, run handler */		\
+	orl	$IRQ_LBIT(irq_num), PCPU(irunning) ;			\
+	andl	$~IRQ_LBIT(irq_num), PCPU(ipending) ;			\
 	sti ;								\
-	call	*_intr_handler + (irq_num) * 4 ;			\
-	cli ;								\
-	APIC_ITRACE(apic_itrace_leave, irq_num, APIC_ITRACE_LEAVE) ;	\
+	pushl	$irq_num ;						\
+	call	sched_ithd ;						\
 	addl	$4,%esp ;						\
-;									\
-	lock ;	andl	$~IRQ_BIT(irq_num), iactive ;			\
-	UNMASK_IRQ(irq_num) ;						\
-	APIC_ITRACE(apic_itrace_unmask, irq_num, APIC_ITRACE_UNMASK) ;	\
-	sti ;				/* doreti repeats cli/sti */	\
+	subl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
+	incl	PCPU(cnt)+V_INTR ; /* book-keeping YYY make per-cpu */	\
+	movl	intr_countp + (irq_num) * 4,%eax ;			\
+	incl	(%eax) ;						\
+5: ;									\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\
-;									\
-	ALIGN_TEXT ;							\
-1: ;						/* active  */		\
-	APIC_ITRACE(apic_itrace_active, irq_num, APIC_ITRACE_ACTIVE) ;	\
-	MASK_IRQ(irq_num) ;						\
-	EOI_IRQ(irq_num) ;						\
-	lock ;								\
-	orl	$IRQ_BIT(irq_num), PCPU(ipending) ;			\
-	movl	$TDPRI_CRIT, PCPU(reqpri) ;				\
-	lock ;								\
-	btsl	$(irq_num), iactive ;		/* still active */	\
-	jnc	0b ;				/* retry */		\
-	POP_FRAME ;							\
-	iret ;		/* XXX:	 iactive bit might be 0 now */		\
-	ALIGN_TEXT ;							\
-2: ;				/* masked by cpl, leave iactive set */	\
-	APIC_ITRACE(apic_itrace_masked, irq_num, APIC_ITRACE_MASKED) ;	\
-	lock ;								\
-	orl	$IRQ_BIT(irq_num), PCPU(ipending) ;			\
-	movl	$TDPRI_CRIT, PCPU(reqpri) ;				\
-	MP_RELLOCK ;							\
-	POP_FRAME ;							\
-	iret ;								\
+
+/*
+ * Unmask a slow interrupt.  This function is used by interrupt threads
+ * after they have descheduled themselves to reenable interrupts and
+ * possibly cause a reschedule to occur.  The interrupt's irunning bit
+ * is cleared prior to unmasking.
+ */
+
+#define INTR_UNMASK(irq_num, vec_name, icu)				\
+	.text ;								\
+	SUPERALIGN_TEXT ;						\
+IDTVEC(vec_name) ;							\
+	pushl %ebp ;	 /* frame for ddb backtrace */			\
+	movl	%esp, %ebp ;						\
+	andl	$~IRQ_LBIT(irq_num), PCPU(irunning) ;			\
+	UNMASK_IRQ(irq_num) ;						\
+	popl %ebp ;							\
+	ret ;								\
+
+#if 0
+	/* XXX forward_irq to cpu holding the BGL? */
+
 	ALIGN_TEXT ;							\
 3: ; 			/* other cpu has isr lock */			\
-	APIC_ITRACE(apic_itrace_noisrlock, irq_num, APIC_ITRACE_NOISRLOCK) ;\
 	lock ;								\
-	orl	$IRQ_BIT(irq_num), PCPU(ipending) ;			\
+	orl	$IRQ_LBIT(irq_num), PCPU(ipending) ;			\
 	movl	$TDPRI_CRIT,_reqpri ;					\
-	testl	$IRQ_BIT(irq_num), TD_MACH+MTD_CPL(%ebx) ;		\
+	testl	$IRQ_LBIT(irq_num), TD_CPL(%ebx) ;		\
 	jne	4f ;				/* this INT masked */	\
 	call	forward_irq ;	 /* forward irq to lock holder */	\
 	POP_FRAME ;	 			/* and return */	\
 	iret ;								\
 	ALIGN_TEXT ;							\
 4: ;	 					/* blocked */		\
-	APIC_ITRACE(apic_itrace_masked2, irq_num, APIC_ITRACE_MASKED2) ;\
 	POP_FRAME ;	 			/* and return */	\
 	iret
 
@@ -314,6 +321,9 @@ __CONCAT(Xresume,irq_num): ;						\
  *   8259 PIC for missing INTs.  See the APIC documentation for details.
  *  This routine should NOT do an 'EOI' cycle.
  */
+
+#endif
+
 	.text
 	SUPERALIGN_TEXT
 	.globl Xspuriousint
@@ -329,8 +339,8 @@ Xspuriousint:
  */
 	.text
 	SUPERALIGN_TEXT
-	.globl	_Xinvltlb
-_Xinvltlb:
+	.globl	Xinvltlb
+Xinvltlb:
 	pushl	%eax
 
 #ifdef COUNT_XINVLTLB_HITS
@@ -353,6 +363,7 @@ _Xinvltlb:
 	iret
 
 
+#if 0
 #ifdef BETTER_CLOCK
 
 /*
@@ -413,13 +424,14 @@ Xcpucheckstate:
 	iret
 
 #endif /* BETTER_CLOCK */
+#endif
 
 /*
  * Executed by a CPU when it receives an Xcpuast IPI from another CPU,
  *
  *  - Signals its receipt by clearing bit cpuid in checkstate_need_ast.
- *
- *  - We need a better method of triggering asts on other cpus.
+ *  - MP safe in regards to setting AST_PENDING because doreti is in
+ *    a cli mode when it checks.
  */
 
 	.text
@@ -427,11 +439,6 @@ Xcpucheckstate:
 	.globl Xcpuast
 Xcpuast:
 	PUSH_FRAME
-	movl	$KDSEL, %eax
-	mov	%ax, %ds		/* use KERNEL data segment */
-	mov	%ax, %es
-	movl	$KPSEL, %eax
-	mov	%ax, %fs
 
 	movl	PCPU(cpuid), %eax
 	lock				/* checkstate_need_ast &= ~(1<<id) */
@@ -444,14 +451,8 @@ Xcpuast:
 
 	FAKE_MCOUNT(13*4(%esp))
 
-	/* 
-	 * Giant locks do not come cheap.
-	 * A lot of cycles are going to be wasted here.
-	 */
-	call	get_mplock
-
 	movl	PCPU(curthread), %eax
-	pushl	TD_MACH+MTD_CPL(%eax)		/* cpl restored by doreti */
+	pushl	TD_CPL(%eax)		/* cpl restored by doreti */
 
 	orl	$AST_PENDING, PCPU(astpending)	/* XXX */
 	incb	PCPU(intr_nesting_level)
@@ -464,11 +465,7 @@ Xcpuast:
 	btrl	%eax, CNAME(resched_cpus)
 	jnc	2f
 	orl	$AST_PENDING+AST_RESCHED,PCPU(astpending)
-	lock
-	incl	CNAME(want_resched_cnt)
 2:		
-	lock
-	incl	CNAME(cpuast_cnt)
 	MEXITCOUNT
 	jmp	doreti
 1:
@@ -486,27 +483,19 @@ Xcpuast:
 	.globl Xforward_irq
 Xforward_irq:
 	PUSH_FRAME
-	movl	$KDSEL, %eax
-	mov	%ax, %ds		/* use KERNEL data segment */
-	mov	%ax, %es
-	movl	$KPSEL, %eax
-	mov	%ax, %fs
 
 	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
 
 	FAKE_MCOUNT(13*4(%esp))
 
-	MP_TRYLOCK
+	call	try_mplock
 	testl	%eax,%eax		/* Did we get the lock ? */
 	jz  1f				/* No */
 
-	lock
-	incl	CNAME(forward_irq_hitcnt)
-	cmpb	$4, PCPU(intr_nesting_level)
-	jae	2f
+	incl	PCPU(cnt)+V_FORWARDED_HITS
 	
 	movl	PCPU(curthread), %eax
-	pushl	TD_MACH+MTD_CPL(%eax)		/* cpl restored by doreti */
+	pushl	TD_CPL(%eax)		/* cpl restored by doreti */
 
 	incb	PCPU(intr_nesting_level)
 	sti
@@ -514,17 +503,13 @@ Xforward_irq:
 	MEXITCOUNT
 	jmp	doreti			/* Handle forwarded interrupt */
 1:
-	lock
-	incl	CNAME(forward_irq_misscnt)
+	incl	PCPU(cnt)+V_FORWARDED_MISSES
 	call	forward_irq	/* Oops, we've lost the isr lock */
 	MEXITCOUNT
 	POP_FRAME
 	iret
-2:
-	lock
-	incl	CNAME(forward_irq_toodeepcnt)
 3:	
-	MP_RELLOCK
+	call	rel_mplock
 	MEXITCOUNT
 	POP_FRAME
 	iret
@@ -534,19 +519,19 @@ Xforward_irq:
  */
 forward_irq:
 	MCOUNT
-	cmpl	$0,_invltlb_ok
+	cmpl	$0,invltlb_ok
 	jz	4f
 
 	cmpl	$0, CNAME(forward_irq_enabled)
 	jz	4f
 
-	movl	_mp_lock,%eax
-	cmpl	$FREE_LOCK,%eax
+	movl	mp_lock,%eax
+	cmpl	$MP_FREE_LOCK,%eax
 	jne	1f
 	movl	$0, %eax		/* Pick CPU #0 if noone has lock */
 1:
 	shrl	$24,%eax
-	movl	_cpu_num_to_apic_id(,%eax,4),%ecx
+	movl	cpu_num_to_apic_id(,%eax,4),%ecx
 	shll	$24,%ecx
 	movl	lapic_icr_hi, %eax
 	andl	$~APIC_ID_MASK, %eax
@@ -662,12 +647,11 @@ MCOUNT_LABEL(bintr)
 	FAST_INTR(22,fastintr22)
 	FAST_INTR(23,fastintr23)
 	
+	/* YYY what is this garbage? */
 #define	CLKINTR_PENDING							\
-	pushl $clock_lock ;						\
-	call s_lock ;							\
+	call	clock_lock ;						\
 	movl $1,CNAME(clkintr_pending) ;				\
-	call s_unlock ;							\
-	addl $4, %esp
+	call	clock_unlock ;						\
 
 	INTR(0,intr0, CLKINTR_PENDING)
 	INTR(1,intr1,)
@@ -693,17 +677,42 @@ MCOUNT_LABEL(bintr)
 	INTR(21,intr21,)
 	INTR(22,intr22,)
 	INTR(23,intr23,)
+
+	FAST_UNPEND(0,fastunpend0)
+	FAST_UNPEND(1,fastunpend1)
+	FAST_UNPEND(2,fastunpend2)
+	FAST_UNPEND(3,fastunpend3)
+	FAST_UNPEND(4,fastunpend4)
+	FAST_UNPEND(5,fastunpend5)
+	FAST_UNPEND(6,fastunpend6)
+	FAST_UNPEND(7,fastunpend7)
+	FAST_UNPEND(8,fastunpend8)
+	FAST_UNPEND(9,fastunpend9)
+	FAST_UNPEND(10,fastunpend10)
+	FAST_UNPEND(11,fastunpend11)
+	FAST_UNPEND(12,fastunpend12)
+	FAST_UNPEND(13,fastunpend13)
+	FAST_UNPEND(14,fastunpend14)
+	FAST_UNPEND(15,fastunpend15)
+	FAST_UNPEND(16,fastunpend16)
+	FAST_UNPEND(17,fastunpend17)
+	FAST_UNPEND(18,fastunpend18)
+	FAST_UNPEND(19,fastunpend19)
+	FAST_UNPEND(20,fastunpend20)
+	FAST_UNPEND(21,fastunpend21)
+	FAST_UNPEND(22,fastunpend22)
+	FAST_UNPEND(23,fastunpend23)
 MCOUNT_LABEL(eintr)
 
-/*
- * Executed by a CPU when it receives a RENDEZVOUS IPI from another CPU.
- *
- * - Calls the generic rendezvous action function.
- */
+	/*
+	 * Executed by a CPU when it receives a RENDEZVOUS IPI from another CPU.
+	 *
+	 * - Calls the generic rendezvous action function.
+	 */
 	.text
 	SUPERALIGN_TEXT
-	.globl	_Xrendezvous
-_Xrendezvous:
+	.globl	Xrendezvous
+Xrendezvous:
 	PUSH_FRAME
 	movl	$KDSEL, %eax
 	mov	%ax, %ds		/* use KERNEL data segment */
@@ -711,7 +720,7 @@ _Xrendezvous:
 	movl	$KPSEL, %eax
 	mov	%ax, %fs
 
-	call	_smp_rendezvous_action
+	call	smp_rendezvous_action
 
 	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
 	POP_FRAME
@@ -750,11 +759,8 @@ imasks:				/* masks for interrupt handlers */
 
 	.long	SWI_TTY_MASK, SWI_NET_MASK, SWI_CAMNET_MASK, SWI_CAMBIO_MASK
 	.long	SWI_VM_MASK, SWI_TQ_MASK, SWI_CLOCK_MASK
-#endif
+#endif	/* 0 */
 
-/* active flag for lazy masking */
-iactive:
-	.long	0
 
 #ifdef COUNT_XINVLTLB_HITS
 	.globl	xhits
@@ -779,24 +785,9 @@ checkstate_need_ast:
 	.long	0
 checkstate_pending_ast:
 	.long	0
-	.globl CNAME(forward_irq_misscnt)
-	.globl CNAME(forward_irq_toodeepcnt)
-	.globl CNAME(forward_irq_hitcnt)
 	.globl CNAME(resched_cpus)
-	.globl CNAME(want_resched_cnt)
-	.globl CNAME(cpuast_cnt)
 	.globl CNAME(cpustop_restartfunc)
-CNAME(forward_irq_misscnt):	
-	.long 0
-CNAME(forward_irq_hitcnt):	
-	.long 0
-CNAME(forward_irq_toodeepcnt):
-	.long 0
 CNAME(resched_cpus):
-	.long 0
-CNAME(want_resched_cnt):
-	.long 0
-CNAME(cpuast_cnt):
 	.long 0
 CNAME(cpustop_restartfunc):
 	.long 0

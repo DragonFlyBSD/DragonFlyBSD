@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.3 2003/07/06 21:23:51 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -1029,6 +1029,9 @@ device_disable(device_t dev)
     dev->flags &= ~DF_ENABLED;
 }
 
+/*
+ * YYY cannot block
+ */
 void
 device_busy(device_t dev)
 {
@@ -1040,6 +1043,9 @@ device_busy(device_t dev)
     dev->state = DS_BUSY;
 }
 
+/*
+ * YYY cannot block
+ */
 void
 device_unbusy(device_t dev)
 {
@@ -2283,8 +2289,8 @@ root_bus_configure(void)
     PDEBUG(("."));
 
     for (dev = TAILQ_FIRST(&root_bus->children); dev;
-	 dev = TAILQ_NEXT(dev, link)) {
-	device_probe_and_attach(dev);
+	    dev = TAILQ_NEXT(dev, link)) {
+	    device_probe_and_attach(dev);
     }
 }
 

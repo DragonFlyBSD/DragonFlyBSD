@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_dma.h,v 1.5.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_dma.h,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_dma.h,v 1.3 2003/07/06 21:23:47 dillon Exp $
  */
 
 #include "dev/drm/drmP.h"
@@ -347,6 +347,7 @@ void DRM(vbl_send_signals)( drm_device_t *dev )
 
 	DRM_SPINLOCK(&dev->vbl_lock);
 
+loop:
 	vbl_sig = TAILQ_FIRST(&dev->vbl_sig_list);
 	while (vbl_sig != NULL) {
 		drm_vbl_sig_t *next = TAILQ_NEXT(vbl_sig, link);
@@ -357,7 +358,9 @@ void DRM(vbl_send_signals)( drm_device_t *dev )
 				psignal(p, vbl_sig->signo);
 
 			TAILQ_REMOVE(&dev->vbl_sig_list, vbl_sig, link);
+			DRM_SPINUNLOCK(&dev->vbl_lock);
 			DRM_FREE(vbl_sig,sizeof(*vbl_sig));
+			goto loop;
 		}
 		vbl_sig = next;
 	}

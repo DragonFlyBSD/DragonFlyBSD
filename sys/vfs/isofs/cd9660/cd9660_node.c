@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.c,v 1.29.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.3 2003/06/25 03:55:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.4 2003/07/06 21:23:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -60,7 +60,7 @@ static struct iso_node **isohashtbl;
 static u_long isohash;
 #define	INOHASH(device, inum)	((minor(device) + ((inum)>>12)) & isohash)
 #ifndef NULL_SIMPLELOCKS
-static struct simplelock cd9660_ihash_slock;
+static struct lwkt_token cd9660_ihash_token;
 #endif
 
 static void cd9660_ihashrem __P((struct iso_node *));
@@ -75,7 +75,7 @@ cd9660_init(vfsp)
 {
 
 	isohashtbl = hashinit(desiredvnodes, M_ISOFSMNT, &isohash);
-	simple_lock_init(&cd9660_ihash_slock);
+	lwkt_inittoken(&cd9660_ihash_token);
 	return (0);
 }
 
@@ -104,18 +104,18 @@ cd9660_ihashget(dev, inum)
 	struct vnode *vp;
 
 loop:
-	simple_lock(&cd9660_ihash_slock);
+	lwkt_gettoken(&cd9660_ihash_token);
 	for (ip = isohashtbl[INOHASH(dev, inum)]; ip; ip = ip->i_next) {
 		if (inum == ip->i_number && dev == ip->i_dev) {
 			vp = ITOV(ip);
-			simple_lock(&vp->v_interlock);
-			simple_unlock(&cd9660_ihash_slock);
+			lwkt_gettoken(&vp->v_interlock); /* YYY */
+			lwkt_reltoken(&cd9660_ihash_token);
 			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td))
 				goto loop;
 			return (vp);
 		}
 	}
-	simple_unlock(&cd9660_ihash_slock);
+	lwkt_reltoken(&cd9660_ihash_token);
 	return (NULL);
 }
 
@@ -128,16 +128,16 @@ cd9660_ihashins(struct iso_node *ip)
 	struct thread *td = curthread;	/* XXX */
 	struct iso_node **ipp, *iq;
 
-	simple_lock(&cd9660_ihash_slock);
+	lwkt_gettoken(&cd9660_ihash_token);
 	ipp = &isohashtbl[INOHASH(ip->i_dev, ip->i_number)];
 	if ((iq = *ipp) != NULL)
 		iq->i_prev = &ip->i_next;
 	ip->i_next = iq;
 	ip->i_prev = ipp;
 	*ipp = ip;
-	simple_unlock(&cd9660_ihash_slock);
+	lwkt_reltoken(&cd9660_ihash_token);
 
-	lockmgr(&ip->i_lock, LK_EXCLUSIVE, (struct simplelock *)0, td);
+	lockmgr(&ip->i_lock, LK_EXCLUSIVE, NULL, td);
 }
 
 /*
@@ -149,7 +149,7 @@ cd9660_ihashrem(ip)
 {
 	register struct iso_node *iq;
 
-	simple_lock(&cd9660_ihash_slock);
+	lwkt_gettoken(&cd9660_ihash_token);
 	if ((iq = ip->i_next) != NULL)
 		iq->i_prev = ip->i_prev;
 	*ip->i_prev = iq;
@@ -157,7 +157,7 @@ cd9660_ihashrem(ip)
 	ip->i_next = NULL;
 	ip->i_prev = NULL;
 #endif
-	simple_unlock(&cd9660_ihash_slock);
+	lwkt_reltoken(&cd9660_ihash_token);
 }
 
 /*
@@ -186,7 +186,7 @@ cd9660_inactive(ap)
 	 * so that it can be reused immediately.
 	 */
 	if (ip->inode.iso_mode == 0)
-		vrecycle(vp, (struct simplelock *)0, td);
+		vrecycle(vp, NULL, td);
 	return error;
 }
 

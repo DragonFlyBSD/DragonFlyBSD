@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.5 2003/07/04 00:32:28 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.6 2003/07/06 21:23:49 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -472,7 +472,7 @@ icu_setup(int intr, inthand2_t *handler, void *arg, u_int *maskptr, int flags)
 		return (EBUSY);
 
 	ef = read_eflags();
-	disable_intr();
+	cpu_disable_intr();	/* YYY */
 	intr_handler[intr] = handler;
 	intr_mptr[intr] = maskptr;
 	intr_mask[intr] = mask | SWI_CLOCK_MASK | (1 << intr);
@@ -530,7 +530,7 @@ icu_unset(intr, handler)
 
 	INTRDIS(1 << intr);
 	ef = read_eflags();
-	disable_intr();
+	cpu_disable_intr();	/* YYY */
 	intr_countp[intr] = &intrcnt[1 + intr];
 	intr_handler[intr] = isa_strayintr;
 	intr_mptr[intr] = NULL;

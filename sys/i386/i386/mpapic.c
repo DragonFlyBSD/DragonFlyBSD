@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mpapic.c,v 1.3 2003/07/04 00:32:24 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mpapic.c,v 1.4 2003/07/06 21:23:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -74,11 +74,13 @@ apic_initialize(void)
 	/* set the Task Priority Register as needed */
 	temp = lapic.tpr;
 	temp &= ~APIC_TPR_PRIO;		/* clear priority field */
-#ifdef GRAB_LOPRIO
-	/* Leave the BSP at TPR 0 during boot to make sure it gets interrupts */
+
+	/*
+	 * Leave the BSP and TPR 0 during boot so it gets all the interrupts,
+	 * set APs at TPR 0xF0 at boot so they get no ints.
+	 */
 	if (mycpu->gd_cpuid != 0)
-		temp |= LOPRIO_LEVEL;	/* allow INT arbitration */
-#endif
+		temp |= TPR_IPI_ONLY;	/* disable INTs on this cpu */
 	lapic.tpr = temp;
 
 	/* enable the local APIC */
@@ -188,7 +190,6 @@ io_apic_setup_intpin(int apic, int pin)
 	u_int32_t	target;		/* the window register is 32 bits */
 	u_int32_t	vector;		/* the window register is 32 bits */
 	int		level;
-	u_int		eflags;
 
 	target = IOART_DEST;
 
@@ -209,14 +210,11 @@ io_apic_setup_intpin(int apic, int pin)
 	 * shouldn't and stop the carnage.
 	 */
 	vector = NRSVIDT + pin;			/* IDT vec */
-	eflags = read_eflags();
-	__asm __volatile("cli" : : : "memory");
-	s_lock(&imen_lock);
+	imen_lock();
 	io_apic_write(apic, select,
 		      (io_apic_read(apic, select) & ~IOART_INTMASK 
 		       & ~0xff)|IOART_INTMSET|vector);
-	s_unlock(&imen_lock);
-	write_eflags(eflags);
+	imen_unlock();
 	
 	/* we only deal with vectored INTs here */
 	if (apic_int_type(apic, pin) != 0)
@@ -260,13 +258,10 @@ io_apic_setup_intpin(int apic, int pin)
 		printf("IOAPIC #%d intpin %d -> irq %d\n",
 		       apic, pin, irq);
 	vector = NRSVIDT + irq;			/* IDT vec */
-	eflags = read_eflags();
-	__asm __volatile("cli" : : : "memory");
-	s_lock(&imen_lock);
+	imen_lock();
 	io_apic_write(apic, select, flags | vector);
 	io_apic_write(apic, select + 1, target);
-	s_unlock(&imen_lock);
-	write_eflags(eflags);
+	imen_unlock();
 }
 
 int

@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.4 2003/06/25 03:56:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.5 2003/07/06 21:23:55 dillon Exp $
  */
 
 
@@ -331,6 +331,7 @@ mfs_start(struct mount *mp, int flags, struct thread *td)
 	 * and the system can loop trying to kill the unkillable ( while
 	 * references exist ) MFS process when swap space is low.
 	 */
+	KKASSERT(curproc);
 	PHOLD(curproc);
 
 	while (mfsp->mfs_active) {

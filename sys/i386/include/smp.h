@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/smp.h,v 1.50.2.5 2001/02/13 22:32:45 tegge Exp $
- * $DragonFly: src/sys/i386/include/Attic/smp.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/smp.h,v 1.3 2003/07/06 21:23:49 dillon Exp $
  *
  */
 
@@ -47,23 +47,6 @@ extern int			bootMP_size;
 /* functions in mpboot.s */
 void	bootMP			__P((void));
 
-/* global data in mplock.s */
-extern u_int			mp_lock;
-extern u_int			isr_lock;
-#ifdef RECURSIVE_MPINTRLOCK
-extern u_int			mpintr_lock;
-#endif /*  RECURSIVE_MPINTRLOCK */
-
-/* functions in mplock.s */
-void	get_mplock		__P((void));
-void	rel_mplock		__P((void));
-int		try_mplock		__P((void));
-#ifdef RECURSIVE_MPINTRLOCK
-void	get_mpintrlock		__P((void));
-void	rel_mpintrlock		__P((void));
-int		try_mpintrlock		__P((void));
-#endif /*  RECURSIVE_MPINTRLOCK */
-
 /* global data in apic_vector.s */
 extern volatile u_int		stopped_cpus;
 extern volatile u_int		started_cpus;
@@ -80,7 +63,6 @@ void	io_apic_write		__P((int, int, u_int));
 
 /* global data in mp_machdep.c */
 extern int			bsp_apic_ready;
-extern int			mp_ncpus;
 extern int			mp_naps;
 extern int			mp_nbusses;
 extern int			mp_napics;
@@ -126,8 +108,8 @@ void	assign_apic_irq		__P((int apic, int intpin, int irq));
 void	revoke_apic_irq		__P((int irq));
 void	bsp_apic_configure	__P((void));
 void	init_secondary		__P((void));
-void	smp_invltlb		__P((void));
 int	stop_cpus		__P((u_int));
+void	ap_init			__P((void));
 int	restart_cpus		__P((u_int));
 #ifdef BETTER_CLOCK 
 void	forward_statclock	__P((int pscnt));
@@ -177,20 +159,6 @@ extern volatile int		smp_idle_loops;
 
 #endif /* !LOCORE */
 #else	/* !SMP && !APIC_IO */
-
-/*
- * Create dummy MP lock empties
- */
-
-static __inline void
-get_mplock(void)
-{
-}
-
-static __inline void
-rel_mplock(void)
-{
-}
 
 #endif
 

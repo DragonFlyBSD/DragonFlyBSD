@@ -5,7 +5,7 @@
  * modified for FreeBSD by Andrew A. Chernov <ache@astral.msk.su>
  *
  * $FreeBSD: src/sys/i386/isa/spkr.c,v 1.45 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.3 2003/06/23 17:55:39 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.4 2003/07/06 21:23:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -98,10 +98,10 @@ tone(thz, ticks)
 	return;
     }
     splx(sps);
-    disable_intr();
+    clock_lock();
     outb(TIMER_CNTR2, (divisor & 0xff));	/* send lo byte */
     outb(TIMER_CNTR2, (divisor >> 8));	/* send hi byte */
-    enable_intr();
+    clock_unlock();
 
     /* turn the speaker on */
     outb(IO_PPI, inb(IO_PPI) | PPI_SPKR);

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vfsops.c,v 1.60.2.6 2002/09/12 21:33:38 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.4 2003/06/26 05:55:17 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.5 2003/07/06 21:23:52 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -856,6 +856,7 @@ msdosfs_sync(mp, waitfor, td)
 	struct denode *dep;
 	struct msdosfsmount *pmp = VFSTOMSDOSFS(mp);
 	int error, allerror = 0;
+	int gen;
 
 	/*
 	 * If we ever switch to not updating all of the fats all the time,
@@ -870,31 +871,39 @@ msdosfs_sync(mp, waitfor, td)
 	}
 	/*
 	 * Write back each (modified) denode.
+	 *
+	 * YYY gen number handling needs more work.
 	 */
-	simple_lock(&mntvnode_slock);
+	gen = lwkt_gettoken(&mntvnode_token);
 loop:
 	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp != NULL; vp = nvp) {
+		lwkt_gettoken(&vp->v_interlock);
 		/*
 		 * If the vnode that we are about to sync is no longer
-		 * associated with this mount point, start over.
+		 * associated with this mount point, start over.  If
+		 * we lost the mntvnode token, start over.
 		 */
-		if (vp->v_mount != mp)
+		if (vp->v_mount != mp) {
+			lwkt_reltoken(&vp->v_interlock);
 			goto loop;
-
-		simple_lock(&vp->v_interlock);
+		}
+		if (lwkt_gentoken(&mntvnode_token, &gen) != 0) {
+			lwkt_reltoken(&vp->v_interlock);
+			goto loop;
+		}
 		nvp = TAILQ_NEXT(vp, v_nmntvnodes);
 		dep = VTODE(vp);
 		if (vp->v_type == VNON ||
 		    ((dep->de_flag &
 		    (DE_ACCESS | DE_CREATE | DE_UPDATE | DE_MODIFIED)) == 0 &&
 		    (TAILQ_EMPTY(&vp->v_dirtyblkhd) || waitfor == MNT_LAZY))) {
-			simple_unlock(&vp->v_interlock);
+			lwkt_reltoken(&vp->v_interlock);
 			continue;
 		}
-		simple_unlock(&mntvnode_slock);
+		lwkt_reltoken(&mntvnode_token);
 		error = vget(vp, LK_EXCLUSIVE | LK_NOWAIT | LK_INTERLOCK, td);
 		if (error) {
-			simple_lock(&mntvnode_slock);
+			lwkt_gettoken(&mntvnode_token);
 			if (error == ENOENT)
 				goto loop;
 			continue;
@@ -904,9 +913,9 @@ loop:
 			allerror = error;
 		VOP_UNLOCK(vp, 0, td);
 		vrele(vp);
-		simple_lock(&mntvnode_slock);
+		lwkt_gettoken(&mntvnode_token);
 	}
-	simple_unlock(&mntvnode_slock);
+	lwkt_reltoken(&mntvnode_token);
 
 	/*
 	 * Flush filesystem control info.

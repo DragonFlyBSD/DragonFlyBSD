@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.4 2003/06/26 05:55:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.5 2003/07/06 21:23:53 dillon Exp $
  */
 
 
@@ -1185,9 +1185,9 @@ nqnfs_lease_updatetime(int deltat)
 	 * Search the mount list for all nqnfs mounts and do their timer
 	 * queues.
 	 */
-	simple_lock(&mountlist_slock);
+	lwkt_gettoken(&mountlist_token);
 	for (mp = TAILQ_FIRST(&mountlist); mp != NULL; mp = nxtmp) {
-		if (vfs_busy(mp, LK_NOWAIT, &mountlist_slock, td)) {
+		if (vfs_busy(mp, LK_NOWAIT, &mountlist_token, td)) {
 			nxtmp = TAILQ_NEXT(mp, mnt_list);
 			continue;
 		}
@@ -1201,11 +1201,11 @@ nqnfs_lease_updatetime(int deltat)
 				}
 			}
 		}
-		simple_lock(&mountlist_slock);
+		lwkt_gettoken(&mountlist_token);
 		nxtmp = TAILQ_NEXT(mp, mnt_list);
 		vfs_unbusy(mp, td);
 	}
-	simple_unlock(&mountlist_slock);
+	lwkt_reltoken(&mountlist_token);
 }
 
 #ifndef NFS_NOSERVER 

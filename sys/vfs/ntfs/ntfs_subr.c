@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.4 2003/06/26 05:55:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.5 2003/07/06 21:23:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -359,7 +359,7 @@ ntfs_ntget(ip)
 	dprintf(("ntfs_ntget: get ntnode %d: %p, usecount: %d\n",
 		ip->i_number, ip, ip->i_usecount));
 
-	simple_lock(&ip->i_interlock);
+	lwkt_gettoken(&ip->i_interlock);
 	ip->i_usecount++;
 	LOCKMGR(&ip->i_lock, LK_EXCLUSIVE | LK_INTERLOCK, &ip->i_interlock);
 
@@ -409,7 +409,7 @@ ntfs_ntlookup(
 
 	/* init lock and lock the newborn ntnode */
 	lockinit(&ip->i_lock, PINOD, "ntnode", 0, LK_EXCLUSIVE);
-	simple_lock_init(&ip->i_interlock);
+	lwkt_inittoken(&ip->i_interlock);
 	ntfs_ntget(ip);
 
 	ntfs_nthashins(ip);
@@ -439,7 +439,7 @@ ntfs_ntput(ip)
 	dprintf(("ntfs_ntput: rele ntnode %d: %p, usecount: %d\n",
 		ip->i_number, ip, ip->i_usecount));
 
-	simple_lock(&ip->i_interlock);
+	lwkt_gettoken(&ip->i_interlock);
 	ip->i_usecount--;
 
 #ifdef DIAGNOSTIC
@@ -477,9 +477,9 @@ void
 ntfs_ntref(ip)
 	struct ntnode *ip;
 {
-	simple_lock(&ip->i_interlock);
+	lwkt_gettoken(&ip->i_interlock);
 	ip->i_usecount++;
-	simple_unlock(&ip->i_interlock);
+	lwkt_reltoken(&ip->i_interlock);
 
 	dprintf(("ntfs_ntref: ino %d, usecount: %d\n",
 		ip->i_number, ip->i_usecount));
@@ -496,13 +496,13 @@ ntfs_ntrele(ip)
 	dprintf(("ntfs_ntrele: rele ntnode %d: %p, usecount: %d\n",
 		ip->i_number, ip, ip->i_usecount));
 
-	simple_lock(&ip->i_interlock);
+	lwkt_gettoken(&ip->i_interlock);
 	ip->i_usecount--;
 
 	if (ip->i_usecount < 0)
 		panic("ntfs_ntrele: ino: %d usecount: %d \n",
 		      ip->i_number,ip->i_usecount);
-	simple_unlock(&ip->i_interlock);
+	lwkt_reltoken(&ip->i_interlock);
 }
 
 /*

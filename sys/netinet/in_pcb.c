@@ -32,7 +32,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.26 2003/01/24 05:11:33 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.4 2003/06/25 03:56:04 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.5 2003/07/06 21:23:52 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -152,7 +152,7 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo, struct thread *td)
 	int error;
 #endif
 
-	inp = zalloci(pcbinfo->ipi_zone);
+	inp = zalloc(pcbinfo->ipi_zone);
 	if (inp == NULL)
 		return (ENOBUFS);
 	bzero((caddr_t)inp, sizeof(*inp));
@@ -162,7 +162,7 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo, struct thread *td)
 #ifdef IPSEC
 	error = ipsec_init_policy(so, &inp->inp_sp);
 	if (error != 0) {
-		zfreei(pcbinfo->ipi_zone, inp);
+		zfree(pcbinfo->ipi_zone, inp);
 		return error;
 	}
 #endif /*IPSEC*/
@@ -573,7 +573,7 @@ in_pcbdetach(inp)
 		rtfree(inp->inp_route.ro_rt);
 	ip_freemoptions(inp->inp_moptions);
 	inp->inp_vflag = 0;
-	zfreei(ipi->ipi_zone, inp);
+	zfree(ipi->ipi_zone, inp);
 }
 
 /*

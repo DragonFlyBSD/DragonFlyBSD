@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.5 2003/06/26 02:17:45 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.6 2003/07/06 21:23:51 dillon Exp $
  */
 
 /*
@@ -610,6 +610,8 @@ aio_process(struct aiocblist *aiocbe)
 /*
  * The AIO daemon, most of the actual work is done in aio_process,
  * but the setup (and address space mgmt) is done in this routine.
+ *
+ * The MP lock is held on entry.
  */
 static void
 aio_daemon(void *uproc)

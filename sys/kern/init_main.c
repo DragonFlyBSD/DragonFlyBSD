@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.18 2003/07/03 17:24:02 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.19 2003/07/06 21:23:51 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -164,6 +164,7 @@ sysinit_add(struct sysinit **set)
 void
 mi_startup(void)
 {
+	struct sysinit *sip;		/* system initialization*/
 	struct sysinit **sipp;		/* system initialization*/
 	struct sysinit **xipp;		/* interior loop of sort*/
 	struct sysinit *save;		/* bubble*/
@@ -192,19 +193,18 @@ restart:
 	 * The last item on the list is expected to be the scheduler,
 	 * which will not return.
 	 */
-	for (sipp = sysinit; *sipp; sipp++) {
-
-		if ((*sipp)->subsystem == SI_SUB_DUMMY)
+	for (sipp = sysinit; (sip = *sipp) != NULL; sipp++) {
+		if (sip->subsystem == SI_SUB_DUMMY)
 			continue;	/* skip dummy task(s)*/
 
-		if ((*sipp)->subsystem == SI_SUB_DONE)
+		if (sip->subsystem == SI_SUB_DONE)
 			continue;
 
 		/* Call function */
-		(*((*sipp)->func))((*sipp)->udata);
+		(*(sip->func))(sip->udata);
 
 		/* Check off the one we're just done */
-		(*sipp)->subsystem = SI_SUB_DONE;
+		sip->subsystem = SI_SUB_DONE;
 
 		/* Check if we've installed more sysinit items via KLD */
 		if (newsysinit != NULL) {
@@ -423,6 +423,8 @@ SYSCTL_STRING(_kern, OID_AUTO, init_path, CTLFLAG_RD, init_path, 0, "");
 /*
  * Start the initial user process; try exec'ing each pathname in init_path.
  * The program is invoked with one argument containing the boot flags.
+ *
+ * The MP lock is held on entry.
  */
 static void
 start_init(void *dummy)
@@ -529,8 +531,10 @@ start_init(void *dummy)
 		 * Otherwise, return via fork_trampoline() all the way
 		 * to user mode as init!
 		 */
-		if ((error = execve(&args)) == 0)
+		if ((error = execve(&args)) == 0) {
+			rel_mplock();
 			return;
+		}
 		if (error != ENOENT)
 			printf("exec %.*s: error %d\n", (int)(next - path), 
 			    path, error);

@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.4 2003/06/26 05:55:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.5 2003/07/06 21:23:52 dillon Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -589,7 +589,7 @@ null_lock(ap)
 		if (vp->v_vnlock != NULL) {
 			/* lock is shared across layers */
 			if (flags & LK_INTERLOCK)
-				simple_unlock(&vp->v_interlock);
+				lwkt_reltoken(&vp->v_interlock);
 			return 0;
 		}
 		error = lockmgr(&np->null_lock, flags & ~LK_THISLAYER,

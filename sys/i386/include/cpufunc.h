@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/i386/include/Attic/cpufunc.h,v 1.4 2003/06/29 03:28:43 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cpufunc.h,v 1.5 2003/07/06 21:23:49 dillon Exp $
  */
 
 /*
@@ -123,15 +123,6 @@ btrl(u_int *mask, int bit)
 }
 
 static __inline void
-disable_intr(void)
-{
-	__asm __volatile("cli" : : : "memory");
-#ifdef SMP
-	MPINTR_LOCK();
-#endif
-}
-
-static __inline void
 do_cpuid(u_int ax, u_int *p)
 {
 	__asm __volatile("cpuid"
@@ -140,11 +131,14 @@ do_cpuid(u_int ax, u_int *p)
 }
 
 static __inline void
-enable_intr(void)
+cpu_disable_intr(void)
 {
-#ifdef SMP
-	MPINTR_UNLOCK();
-#endif
+	__asm __volatile("cli" : : : "memory");
+}
+
+static __inline void
+cpu_enable_intr(void)
+{
 	__asm __volatile("sti");
 }
 
@@ -286,7 +280,9 @@ invd(void)
  * will cause the invl*() functions to be equivalent to the cpu_invl*()
  * functions.
  */
-#ifndef SMP
+#ifdef SMP
+void smp_invltlb(void);
+#else
 #define smp_invltlb()
 #endif
 
@@ -630,9 +626,9 @@ load_dr7(u_int sel)
 int	breakpoint	__P((void));
 u_int	bsfl		__P((u_int mask));
 u_int	bsrl		__P((u_int mask));
-void	disable_intr	__P((void));
+void	cpu_disable_intr __P((void));
 void	do_cpuid	__P((u_int ax, u_int *p));
-void	enable_intr	__P((void));
+void	cpu_enable_intr	__P((void));
 u_char	inb		__P((u_int port));
 u_int	inl		__P((u_int port));
 void	insb		__P((u_int port, void *addr, size_t cnt));

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.3 2003/06/25 03:55:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.4 2003/07/06 21:23:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -651,7 +651,7 @@ hpfs_inactive(ap)
 	if (hp->h_flag & H_INVAL) {
 		VOP__UNLOCK(vp,0,ap->a_p);
 #if defined(__FreeBSD__)
-		vrecycle(vp, (struct simplelock *)0, ap->a_p);
+		vrecycle(vp, NULL, ap->a_p);
 #else /* defined(__NetBSD__) */
 		vgone(vp);
 #endif

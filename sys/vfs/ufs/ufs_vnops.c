@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.5 2003/06/26 05:55:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.6 2003/07/06 21:23:55 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -294,10 +294,10 @@ ufs_close(ap)
 {
 	register struct vnode *vp = ap->a_vp;
 
-	simple_lock(&vp->v_interlock);
+	lwkt_gettoken(&vp->v_interlock);
 	if (vp->v_usecount > 1)
 		ufs_itimes(vp);
-	simple_unlock(&vp->v_interlock);
+	lwkt_reltoken(&vp->v_interlock);
 	return (0);
 }
 
@@ -1842,10 +1842,10 @@ ufsspec_close(ap)
 {
 	struct vnode *vp = ap->a_vp;
 
-	simple_lock(&vp->v_interlock);
+	lwkt_gettoken(&vp->v_interlock);
 	if (vp->v_usecount > 1)
 		ufs_itimes(vp);
-	simple_unlock(&vp->v_interlock);
+	lwkt_reltoken(&vp->v_interlock);
 	return (VOCALL(spec_vnodeop_p, VOFFSET(vop_close), ap));
 }
 
@@ -1916,10 +1916,10 @@ ufsfifo_close(ap)
 {
 	struct vnode *vp = ap->a_vp;
 
-	simple_lock(&vp->v_interlock);
+	lwkt_gettoken(&vp->v_interlock);
 	if (vp->v_usecount > 1)
 		ufs_itimes(vp);
-	simple_unlock(&vp->v_interlock);
+	lwkt_reltoken(&vp->v_interlock);
 	return (VOCALL(fifo_vnodeop_p, VOFFSET(vop_close), ap));
 }
 
@@ -2205,9 +2205,9 @@ ufs_kqfilter(ap)
 
 	kn->kn_hook = (caddr_t)vp;
 
-	simple_lock(&vp->v_pollinfo.vpi_lock);
+	lwkt_gettoken(&vp->v_pollinfo.vpi_token);
 	SLIST_INSERT_HEAD(&vp->v_pollinfo.vpi_selinfo.si_note, kn, kn_selnext);
-	simple_unlock(&vp->v_pollinfo.vpi_lock);
+	lwkt_reltoken(&vp->v_pollinfo.vpi_token);
 
 	return (0);
 }
@@ -2217,10 +2217,10 @@ filt_ufsdetach(struct knote *kn)
 {
 	struct vnode *vp = (struct vnode *)kn->kn_hook;
 
-	simple_lock(&vp->v_pollinfo.vpi_lock);
+	lwkt_gettoken(&vp->v_pollinfo.vpi_token);
 	SLIST_REMOVE(&vp->v_pollinfo.vpi_selinfo.si_note,
 	    kn, knote, kn_selnext);
-	simple_unlock(&vp->v_pollinfo.vpi_lock);
+	lwkt_reltoken(&vp->v_pollinfo.vpi_token);
 }
 
 /*ARGSUSED*/

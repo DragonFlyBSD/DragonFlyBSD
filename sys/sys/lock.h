@@ -36,24 +36,26 @@
  *
  *	@(#)lock.h	8.12 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/lock.h,v 1.17.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/sys/lock.h,v 1.3 2003/06/25 03:56:10 dillon Exp $
+ * $DragonFly: src/sys/sys/lock.h,v 1.4 2003/07/06 21:23:54 dillon Exp $
  */
 
 #ifndef	_LOCK_H_
 #define	_LOCK_H_
 
-
 #include <machine/lock.h>
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>		/* lwkt_token */
+#endif
 
 /*
  * The general lock structure.  Provides for multiple shared locks,
  * upgrading from shared to exclusive, and sleeping until the lock
- * can be gained. The simple locks are defined in <machine/param.h>.
+ * can be gained.
  */
 struct thread;
 
 struct lock {
-	struct	simplelock lk_interlock; /* lock on remaining fields */
+	lwkt_token lk_interlock;	/* lock on remaining fields */
 	u_int	lk_flags;		/* see below */
 	int	lk_sharecount;		/* # of accepted shared locks */
 	int	lk_waitcount;		/* # of processes sleeping for lock */
@@ -183,7 +185,7 @@ void	lockinit __P((struct lock *, int prio, char *wmesg, int timo,
 			int flags));
 #ifdef DEBUG_LOCKS
 int	debuglockmgr __P((struct lock *, u_int flags,
-			struct simplelock *, struct thread *p,
+			struct lwkt_token *, struct thread *p,
 			const char *,
 			const char *,
 			int));
@@ -192,28 +194,10 @@ int	debuglockmgr __P((struct lock *, u_int flags,
 	    "lockmgr", __FILE__, __LINE__)
 #else
 int	lockmgr __P((struct lock *, u_int flags,
-			struct simplelock *, struct thread *td));
+			struct lwkt_token *, struct thread *td));
 #endif
 void	lockmgr_printinfo __P((struct lock *));
 int	lockstatus __P((struct lock *, struct thread *));
 int	lockcount __P((struct lock *));
-
-#ifdef SIMPLELOCK_DEBUG
-void _simple_unlock __P((struct simplelock *alp, const char *, int));
-#define simple_unlock(alp) _simple_unlock(alp, __FILE__, __LINE__)
-int _simple_lock_try __P((struct simplelock *alp, const char *, int));
-#define simple_lock_try(alp) _simple_lock_try(alp, __FILE__, __LINE__)
-void _simple_lock __P((struct simplelock *alp, const char *, int));
-#define simple_lock(alp) _simple_lock(alp, __FILE__, __LINE__)
-void simple_lock_init __P((struct simplelock *alp));
-#else /* !SIMPLELOCK_DEBUG */
-#if MAXCPU == 1 /* no multiprocessor locking is necessary */
-#define	NULL_SIMPLELOCKS
-#define	simple_lock_init(alp)
-#define	simple_lock(alp)
-#define	simple_lock_try(alp)	(1)	/* always succeeds */
-#define	simple_unlock(alp)
-#endif /* MAXCPU == 1 */
-#endif /* !SIMPLELOCK_DEBUG */
 
 #endif /* !_LOCK_H_ */

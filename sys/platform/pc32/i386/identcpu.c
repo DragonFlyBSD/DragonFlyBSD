@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.3 2003/07/06 21:23:48 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -813,12 +813,10 @@ identblue(void)
 static void
 identifycyrix(void)
 {
-	u_int	eflags;
 	int	ccr2_test = 0, dir_test = 0;
 	u_char	ccr2, ccr3;
 
-	eflags = read_eflags();
-	disable_intr();
+	mpintr_lock();
 
 	ccr2 = read_cyrix_reg(CCR2);
 	write_cyrix_reg(CCR2, ccr2 ^ CCR2_LOCK_NW);
@@ -843,7 +841,7 @@ identifycyrix(void)
 	else
 		cyrix_did = 0x00ff;		/* Old 486SLC/DLC and TI486SXLC/SXL */
 
-	write_eflags(eflags);
+	mpintr_unlock();
 }
 
 /*
@@ -1097,12 +1095,10 @@ u_int32_t longrun_modes[LONGRUN_MODE_MAX][3] = {
 static u_int 
 tmx86_get_longrun_mode(void)
 {
-	u_long		eflags;
 	union msrinfo	msrinfo;
 	u_int		low, high, flags, mode;
 
-	eflags = read_eflags();
-	disable_intr();
+	mpintr_lock();
 
 	msrinfo.msr = rdmsr(MSR_TMx86_LONGRUN);
 	low = LONGRUN_MODE_MASK(msrinfo.regs[0]);
@@ -1118,40 +1114,36 @@ tmx86_get_longrun_mode(void)
 	}
 	mode = LONGRUN_MODE_UNKNOWN;
 out:
-	write_eflags(eflags);
+	mpintr_unlock();
 	return (mode);
 }
 
 static u_int 
 tmx86_get_longrun_status(u_int * frequency, u_int * voltage, u_int * percentage)
 {
-	u_long		eflags;
 	u_int		regs[4];
 
-	eflags = read_eflags();
-	disable_intr();
+	mpintr_lock();
 
 	do_cpuid(0x80860007, regs);
 	*frequency = regs[0];
 	*voltage = regs[1];
 	*percentage = regs[2];
 
-	write_eflags(eflags);
+	mpintr_unlock();
 	return (1);
 }
 
 static u_int 
 tmx86_set_longrun_mode(u_int mode)
 {
-	u_long		eflags;
 	union msrinfo	msrinfo;
 
 	if (mode >= LONGRUN_MODE_UNKNOWN) {
 		return (0);
 	}
 
-	eflags = read_eflags();
-	disable_intr();
+	mpintr_lock();
 
 	/* Write LongRun mode values to Model Specific Register. */
 	msrinfo.msr = rdmsr(MSR_TMx86_LONGRUN);
@@ -1166,7 +1158,7 @@ tmx86_set_longrun_mode(u_int mode)
 	msrinfo.regs[0] = (msrinfo.regs[0] & ~0x01) | longrun_modes[mode][2];
 	wrmsr(MSR_TMx86_LONGRUN_FLAGS, msrinfo.msr);
 
-	write_eflags(eflags);
+	mpintr_unlock();
 	return (1);
 }
 

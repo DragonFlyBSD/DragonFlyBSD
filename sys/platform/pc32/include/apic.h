@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 1996, by Peter Wemm and Steve Passe
- * All rights reserved.
+ * Copyright (c) 1996, by Peter Wemm and Steve Passe, All rights reserved.
+ * Copyright (c) 2003, by Matthew Dillon, All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,100 +23,241 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/apic.h,v 1.14.2.2 2003/03/21 21:46:15 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/apic.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/apic.h,v 1.3 2003/07/06 21:23:49 dillon Exp $
  */
 
 #ifndef _MACHINE_APIC_H_
 #define _MACHINE_APIC_H_
 
 /*
- * Local && I/O APIC definitions.
- */
-
-/*
- * Pentium P54C+ Build-in APIC
- * (Advanced programmable Interrupt Controller)
- * 
- * Base Address of Build-in APIC in memory location
- * is 0xfee00000.
- * 
- * Map of APIC REgisters:
- * 
- * Offset (hex)    Description                     Read/Write state
- * 000             Reserved
- * 010             Reserved
- * 020 ID          Local APIC ID                   R/W
- * 030 VER         Local APIC Version              R
- * 040             Reserved
- * 050             Reserved
- * 060             Reserved
- * 070             Reserved
- * 080             Task Priority Register          R/W
- * 090             Arbitration Priority Register   R
- * 0A0             Processor Priority Register     R
- * 0B0             EOI Register                    W
- * 0C0 RRR         Remote read                     R
- * 0D0             Logical Destination             R/W
- * 0E0             Destination Format Register     0..27 R;  28..31 R/W
- * 0F0 SVR         Spurious Interrupt Vector Reg.  0..3  R;  4..9   R/W
- * 100             ISR  000-031                    R
- * 110             ISR  032-063                    R
- * 120             ISR  064-095                    R
- * 130             ISR  095-128                    R
- * 140             ISR  128-159                    R
- * 150             ISR  160-191                    R
- * 160             ISR  192-223                    R
- * 170             ISR  224-255                    R
- * 180             TMR  000-031                    R
- * 190             TMR  032-063                    R
- * 1A0             TMR  064-095                    R
- * 1B0             TMR  095-128                    R
- * 1C0             TMR  128-159                    R
- * 1D0             TMR  160-191                    R
- * 1E0             TMR  192-223                    R
- * 1F0             TMR  224-255                    R
- * 200             IRR  000-031                    R
- * 210             IRR  032-063                    R
- * 220             IRR  064-095                    R
- * 230             IRR  095-128                    R
- * 240             IRR  128-159                    R
- * 250             IRR  160-191                    R
- * 260             IRR  192-223                    R
- * 270             IRR  224-255                    R
- * 280             Error Status Register           R
- * 290             Reserved
- * 2A0             Reserved
- * 2B0             Reserved
- * 2C0             Reserved
- * 2D0             Reserved
- * 2E0             Reserved
- * 2F0             Reserved
- * 300 ICR_LOW     Interrupt Command Reg. (0-31)   R/W
- * 310 ICR_HI      Interrupt Command Reg. (32-63)  R/W
- * 320             Local Vector Table (Timer)      R/W
- * 330             Reserved
- * 340             Reserved
- * 350 LVT1        Local Vector Table (LINT0)      R/W
- * 360 LVT2        Local Vector Table (LINT1)      R/W
- * 370 LVT3        Local Vector Table (ERROR)      R/W
- * 380             Initial Count Reg. for Timer    R/W
- * 390             Current Count of Timer          R
- * 3A0             Reserved
- * 3B0             Reserved
- * 3C0             Reserved
- * 3D0             Reserved
- * 3E0             Timer Divide Configuration Reg. R/W
- * 3F0             Reserved
- */
-
-
-/******************************************************************************
- * global defines, etc.
- */
-
-
-/******************************************************************************
- * LOCAL APIC structure
+ * Local && I/O APIC definitions for Pentium P54C+ Built-in APIC.
+ *
+ * A per-cpu APIC resides in memory location 0xFEE00000.
+ *
+ *		  31 ... 24   23 ... 16   15 ... 8     7 ... 0
+ *		+-----------+-----------+-----------+-----------+
+ * 0000 	|           |           |           |           |
+ * 0010 	|           |           |           |           |
+ *		+-----------+-----------+-----------+-----------+
+ *
+ *		+-----------+-----------+-----------+-----------+
+ * 0020 ID	|     | ID  |           |           |           | RW
+ *		+-----------+-----------+-----------+-----------+
+ *
+ *		    The physical APIC ID is used with physical interrupt
+ *		    delivery modes.
+ *
+ *		+-----------+-----------+-----------+-----------+
+ * 0030 VER	|           |           |           |           |
+ *		+-----------+-----------+-----------+-----------+
+ * 0040 	|           |           |           |           |
+ * 0050 	|           |           |           |           |
+ * 0060 	|           |           |           |           |
+ * 0070 	|           |           |           |           |
+ *		+-----------+-----------+-----------+-----------+
+ * 0080 TPR	|           |           |           | PRIO SUBC |
+ * 0090 APR	|           |           |           |           |
+ * 00A0 PPR	|           |           |           |           |
+ *		+-----------+-----------+-----------+-----------+
+ *
+ *		    The Task Priority Register provides a priority threshold
+ *		    mechanism for interrupting the processor.  Only interrupts
+ *		    with a higher priority then that specified in the TPR will
+ *		    be served.   Other interrupts are recorded and serviced
+ *		    as soon as the TPR value decreases enough to allow that
+ *		    (unless EOId by another APIC).
+ *
+ *		    PRIO (7:4).  Main priority.  If 15 the APIC will not
+ *		    		 accept any interrupts.
+ *		    SUBC (3:0)	 Sub priority.  See APR/PPR.
+ *
+ *
+ *		    The Processor Priority Register determines whether a
+ *		    pending interrupt can be dispensed to the processor.  ISRV
+ *		    Is the vector of the highest priority ISR bit set or
+ *		    zero if no ISR bit is set.
+ *
+ *		    IF TPR[7:4] >= ISRV[7:4]
+ *			PPR[7:0] = TPR[7:0]
+ *		    ELSE
+ *			PPR[7:0] = ISRV[7:4].000
+ *			
+ *		    The Arbitration Priority Register holds the current
+ *		    lowest priority of the procsesor, a value used during
+ *		    lowest-priority arbitration.
+ *
+ *		    IF (TPR[7:4] >= IRRV[7:4] AND TPR[7:4] > ISRV[7:4])
+ *			APR[7:0] = TPR[7:0]
+ *		    ELSE
+ *			APR[7:4] = max((TPR[7:4]&ISRV[7:4]),IRRV[7:4]).000
+ *		    
+ *		+-----------+-----------+-----------+-----------+
+ * 00B0 EOI	|           |           |           |           |
+ *		+-----------+-----------+-----------+-----------+
+ * 00C0 	|           |           |           |           |
+ *		+-----------+-----------+-----------+-----------+
+ * 00D0 LDR	|LOG APICID |           |           |           |
+ *		+-----------+-----------+-----------+-----------+
+ * 00E0 DFR	|MODEL|     |           |           |           |
+ *		+-----------+-----------+-----------+-----------+
+ *
+ *		    The logical APIC ID is used with logical interrupt
+ *		    delivery modes.  Interpretation of logical destination
+ *		    information depends on the MODEL bits in the Destination
+ *		    Format Regiuster.  
+ *
+ *		    MODEL=1111 FLAT MODEL - The MDA is interpreted as
+ *					    a decoded address.  By setting
+ *					    one bit in the LDR for each
+ *					    local apic 8 APICs can coexist.
+ *
+ *		    MODEL=0000 CLUSTER MODEL - 
+ *
+ *		  31 ... 24   23 ... 16   15 ... 8     7 ... 0
+ *		+-----------+-----------+-----------+-----------+
+ * 00F0 SVR	|           |           |           |           |
+ *		+-----------+-----------+-----------+-----------+
+ * 0100-0170 ISR|           |           |           |           |
+ * 0180-01F0 TMR|           |           |           |           |
+ * 0200-0270 IRR|           |           |           |           |
+ *		+-----------+-----------+-----------+-----------+
+ *
+ *		    These registers represent 256 bits, one bit for each
+ *		    possible interrupt.  Interrupts 0-15 are reserved so
+ *		    bits 0-15 are also reserved.
+ *
+ *		    TMR - Trigger mode register.  Upon acceptance of an int
+ *			  the corresponding bit is cleared for edge-trig and
+ *			  set for level-trig.  If the TMR bit is set (level),
+ *			  the local APIC sends an EOI to all I/O APICs as
+ *			  a result of software issuing an EOI command.
+ *			  
+ *		    IRR - Interrupt Request Register.  Contains active
+ *			  interrupt requests that have been accepted but not
+ *			  yet dispensed by the current local APIC.  The bit is
+ *			  cleared and the corresponding ISR bit is set when
+ *			  the INTA cycle is issued.
+ *
+ *		    ISR - Interrupt In-Service register.  Interrupt has been
+ *			  delivered but not yet fully serviced.  Cleared when
+ *			  an EOI is issued from the processor.  An EOI will
+ *			  also send an EOI to all I/O APICs if TMR was set.
+ *
+ *		+-----------+-----------+-----------+-----------+
+ * 0280 ESR	|           |           |           |           |
+ * 0290-02F0    |           |           |           |           |
+ *		+--FEDCBA98-+--76543210-+--FEDCBA98-+-----------+
+ * 0300	ICR_LO	|           |      XX   |  TL SDMMM | vector    |
+ * 0310	ICR_HI	| DEST FIELD|           |           |           |
+ *		+-----------+-----------+-----------+-----------+
+ *
+ *		    The interrupt command register 
+ *
+ *			XX:	Destination Shorthand field:
+ *
+ *				00	Use Destination field
+ *				01	Self only.  Dest field ignored.
+ *				10	All including self (uses a 
+ *					destination field of 0x0F)
+ *				11	All excluding self (uses a
+ *					destination field of 0x0F)
+ *
+ *			T:	1 = Level 0 = Edge Trigger modde, used for
+ *				the INIT level de-assert delivery mode only.
+ *				Not sure.
+ *
+ *			L:	0 = De-Assert, 1 = Assert.  Not sure what this
+ *				is.  For INIT mode use 0, for all other modes
+ *				use 1.
+ *
+ *			S:	1 = Send Pending.  Interrupt has been injected
+ *				but APIC has not yet accepted it.
+ *
+ *			D:	0=physical 1=logical.  In physical mode
+ *				only 24-27 of DEST FIELD is used from ICR_HI.
+ *
+ *			MMM:	000 Fixed. Deliver to all processors according
+ *				    to the ICR.  Always treated as edge trig.
+ *
+ *				001 Lowest Priority.  Deliver to just the
+ *				    processor running at the lowest priority.
+ *
+ *				010 SMI.  The vector must be 00B.  Only edge
+ *				    triggered is allowed.  The vector field
+ *				    must be programmed to zero (huh?).
+ *
+ *				011 <reserved>
+ *
+ *				100 NMI.  Deliver as an NMI to all processors
+ *				    listed in the destination field.  The
+ *				    vector is ignored.  Alawys treated as 
+ *				    edge triggered.
+ *
+ *				101 INIT.  Deliver as an INIT signal to all
+ *				    processors (like FIXED).  Vector is ignored
+ *				    and it is always edge-triggered.
+ *
+ *				110 Start Up.  Sends a special message between
+ *				    cpus.  the vector contains a start-up
+ *				    address for MP boot protocol.
+ *				    Always edge triggered.  Note: a startup
+ *				    int is not automatically tried in case of
+ *				    failure.
+ *
+ *				111 <reserved>
+ *
+ *		+-----------+--------10-+--FEDCBA98-+-----------+
+ * 0320	LTIMER  |           |        TM |  ---S---- | vector    |
+ * 0330		|           |           |           |           |
+ *		+-----------+--------10-+--FEDCBA98-+-----------+
+ * 0340	LVPCINT	|           |        -M |  ---S-MMM | vector    |
+ * 0350	LVINT0	|           |        -M |  LRPS-MMM | vector    |
+ * 0360 LVINT1	|           |        -M |  LRPS-MMM | vector    |
+ * 0370	LVERROR	|           |        -M |  -------- | vector    |
+ *		+-----------+-----------+-----------+-----------+
+ *
+ *			T:	1 = periodic, 0 = one-shot
+ *
+ *			M:	1 = masked
+ *
+ *			L:	1 = level, 0 = edge
+ *
+ *			R:	For level triggered only, set to 1 when a
+ *				level int is accepted, cleared by EOI.
+ *
+ *			P:	Pin Polarity 0 = Active High, 1 = Active Low
+ *
+ *			S:	1 = Send Pending.  Interrupt has been injected
+ *				but APIC has not yet accepted it.
+ *
+ *			MMM 	000 = Fixed	deliver to cpu according to LVT
+ *
+ *			MMM 	100 = NMI	deliver as an NMI.  Always edge
+ *
+ *			MMM 	111 = ExtInt	deliver from 8259, routes INTA
+ *						bus cycle to external
+ *						controller.  Controller is 
+ *						expected to supply vector.
+ *						Always level.
+ *
+ *		+-----------+-----------+-----------+-----------+
+ * 0380	ICR	|           |           |           |           |
+ * 0390	CCR	|           |           |           |           |
+ * 03A0		|           |           |           |           |
+ * 03B0		|           |           |           |           |
+ * 03C0		|           |           |           |           |
+ * 03D0		|           |           |           |           |
+ * 03E0 DCR	|           |           |           |           |
+ *		+-----------+-----------+-----------+-----------+
+ *
+ *
+ *	NOTE ON EOI: Upon receiving an EOI the APIC clears the highest priority
+ *	interrupt in the ISR and selects the next highest priority interrupt
+ *	for posting to the CPU.  If the interrupt being EOId was level
+ *	triggered the APIC will send an EOI to all I/O APICs.  For the moment
+ *	you can write garbage to the EOI register but for future compatibility
+ *	0 should be written.
+ *
  */
 
 #ifndef LOCORE
@@ -128,8 +269,8 @@
 struct LAPIC {
 	/* reserved */		PAD4;
 	/* reserved */		PAD4;
-	u_int32_t id;		PAD3;
-	u_int32_t version;	PAD3;
+	u_int32_t id;		PAD3;	/* 0020	R/W */
+	u_int32_t version;	PAD3;	/* 0030	RO */
 	/* reserved */		PAD4;
 	/* reserved */		PAD4;
 	/* reserved */		PAD4;
@@ -219,11 +360,6 @@ typedef struct IOAPIC ioapic_t;
 #define LOPRIO_LEVEL		0x00000010	/* TPR of CPU accepting INTs */
 #define ALLHWI_LEVEL		0x00000000	/* TPR of CPU grabbing INTs */
 #endif /** GRAB_LOPRIO */
-
-/* XXX these 2 don't really belong here... */
-#define COUNT_FIELD		0x00ffffff	/* count portion of the lock */
-#define CPU_FIELD		0xff000000	/* cpu portion of the lock */
-#define FREE_LOCK		0xffffffff	/* value of lock when free */
 
 /*
  * XXX This code assummes that the reserved field of the

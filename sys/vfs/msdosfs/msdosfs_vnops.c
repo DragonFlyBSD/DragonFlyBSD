@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.6 2003/06/26 05:55:17 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.7 2003/07/06 21:23:52 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -234,12 +234,15 @@ msdosfs_close(ap)
 	struct denode *dep = VTODE(vp);
 	struct timespec ts;
 
-	simple_lock(&vp->v_interlock);
+	lwkt_gettoken(&vp->v_interlock);
 	if (vp->v_usecount > 1) {
 		getnanotime(&ts);
-		DETIMES(dep, &ts, &ts, &ts);
+		lwkt_regettoken(&vp->v_interlock);
+		if (vp->v_usecount > 1) {
+			DETIMES(dep, &ts, &ts, &ts);
+		}
 	}
-	simple_unlock(&vp->v_interlock);
+	lwkt_reltoken(&vp->v_interlock);
 	return 0;
 }
 

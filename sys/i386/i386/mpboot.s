@@ -32,7 +32,7 @@
  *		multiprocessor systems.
  *
  * $FreeBSD: src/sys/i386/i386/mpboot.s,v 1.13.2.3 2000/09/07 01:18:26 tegge Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mpboot.s,v 1.3 2003/07/01 20:30:40 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mpboot.s,v 1.4 2003/07/06 21:23:48 dillon Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
@@ -46,18 +46,18 @@
  * it follows the very early stages of AP boot by placing values in CMOS ram.
  * it NORMALLY will never be needed and thus the primitive method for enabling.
  *
-#define CHECK_POINTS
  */
 
+#define CHECK_POINTS
 #if defined(CHECK_POINTS) && !defined(PC98)
 
 #define CMOS_REG	(0x70)
 #define CMOS_DATA	(0x71)
 
 #define CHECKPOINT(A,D)		\
-	movb	$(A),%al ;	\
+	movb	$A,%al ;	\
 	outb	%al,$CMOS_REG ;	\
-	movb	$(D),%al ;	\
+	movb	D,%al ;		\
 	outb	%al,$CMOS_DATA
 
 #else
@@ -68,30 +68,31 @@
 
 
 /*
- * the APs enter here from their trampoline code (bootMP, below)
+ * The APs enter here from their trampoline code (bootMP, below)
+ * NOTE: %fs is not setup until the call to init_secondary()!
  */
 	.p2align 4
 
 NON_GPROF_ENTRY(MPentry)
-	CHECKPOINT(0x36, 3)
+	CHECKPOINT(0x36, $3)
 	/* Now enable paging mode */
 	movl	IdlePTD-KERNBASE, %eax
 	movl	%eax,%cr3	
 	movl	%cr0,%eax
 	orl	$CR0_PE|CR0_PG,%eax		/* enable paging */
 	movl	%eax,%cr0			/* let the games begin! */
-	movl	bootSTK,%esp			/* boot stack end loc. */
 
+	movl	bootSTK,%esp			/* boot stack end loc. */
 	pushl	$mp_begin			/* jump to high mem */
-	ret
+	NON_GPROF_RET
 
 	/*
 	 * Wait for the booting CPU to signal startup
 	 */
 mp_begin:	/* now running relocated at KERNBASE */
-	CHECKPOINT(0x37, 4)
+	CHECKPOINT(0x37, $4)
 	call	init_secondary			/* load i386 tables */
-	CHECKPOINT(0x38, 5)
+	CHECKPOINT(0x38, $5)
 
 	/*
 	 * If the [BSP] CPU has support for VME, turn it on.
@@ -108,47 +109,23 @@ mp_begin:	/* now running relocated at KERNBASE */
 	andl	$~APIC_SVR_SWEN, %eax		/* clear software enable bit */
 	movl	%eax, lapic_svr
 
-	/* signal our startup to the BSP */
+	/* data returned to BSP */
 	movl	lapic_ver, %eax			/* our version reg contents */
 	movl	%eax, cpu_apic_versions		/* into [ 0 ] */
-	incl	mp_ncpus			/* signal BSP */
 
-	CHECKPOINT(0x39, 6)
+	CHECKPOINT(0x39, $6)
 
-	/* wait till we can get into the kernel */
-	call	boot_get_mplock
-
-	/* Now, let's prepare for some REAL WORK :-) */
-	call	ap_init
-
-	call	rel_mplock
-	wbinvd				/* Avoid livelock */
-2:	
-	cmpl	$0, CNAME(smp_started)	/* Wait for last AP to be ready */
-	jz	2b
-	call	get_mplock
-	
-	/* let her rip! (loads new stack) */
-	jmp 	cpu_switch
-
-NON_GPROF_ENTRY(wait_ap)
-	pushl	%ebp
-	movl	%esp, %ebp
-	call	rel_mplock
-	wbinvd				/* Avoid livelock */
-	movl	%eax, 8(%ebp)
-1:		
-	cmpl	$0, CNAME(smp_started)
-	jnz	2f
-	decl	%eax
-	cmpl	$0, %eax
-	jge	1b
-2:
-	call	get_mplock
-	movl	%ebp, %esp
-	popl	%ebp
+	/*
+	 * Execute the context restore function for the idlethread which
+	 * has conveniently been set as curthread.  Remember, %eax must
+	 * contain the target thread.  Or BSP/AP synchronization occurs
+	 * in ap_init().  We do not need to mess with the BGL for this
+	 * because LWKT threads are self-contained on each cpu (or, at least,
+	 * the idlethread is!).
+	 */
+	movl	PCPU(curthread),%eax
+	movl	TD_SP(%eax),%esp
 	ret
-	
 
 /*
  * This is the embedded trampoline or bootstrap that is
@@ -167,7 +144,7 @@ BOOTMP1:
 NON_GPROF_ENTRY(bootMP)
 	.code16		
 	cli
-	CHECKPOINT(0x34, 1)
+	CHECKPOINT(0x34, $1)
 	/* First guarantee a 'clean slate' */
 	xorl	%eax, %eax
 	movl	%eax, %ebx
@@ -203,7 +180,7 @@ NON_GPROF_ENTRY(bootMP)
 
        .code32		
 protmode:
-	CHECKPOINT(0x35, 2)
+	CHECKPOINT(0x35, $2)
 
 	/*
 	 * we are NOW running for the first time with %eip

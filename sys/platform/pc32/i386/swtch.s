@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.20 2003/07/05 05:54:00 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.21 2003/07/06 21:23:48 dillon Exp $
  */
 
 #include "npx.h"
@@ -194,11 +194,13 @@ ENTRY(cpu_exit_switch)
 	 * any waiters.
 	 */
 	orl	$TDF_EXITED,TD_FLAGS(%ecx)
+#if 0			/* YYY MP lock may not be held by new target */
 	pushl	%eax
 	pushl	%ecx	/* wakeup(oldthread) */
 	call	wakeup
 	addl	$4,%esp
 	popl	%eax	/* note: next thread expects curthread in %eax */
+#endif
 
 	/*
 	 * Restore the next thread's state and resume it.  Note: the
@@ -317,20 +319,6 @@ ENTRY(cpu_heavy_restore)
 	movl	PCB_EDI(%edx),%edi
 	movl	PCB_EIP(%edx),%eax
 	movl	%eax,(%esp)
-
-	/*
-	 * SMP ickyness to direct interrupts.
-	 */
-
-#ifdef SMP
-#ifdef GRAB_LOPRIO				/* hold LOPRIO for INTs */
-#ifdef CHEAP_TPR
-	movl	$0, lapic_tpr
-#else
-	andl	$~APIC_TPR_PRIO, lapic_tpr
-#endif /** CHEAP_TPR */
-#endif /** GRAB_LOPRIO */
-#endif /* SMP */
 
 	/*
 	 * Restore the user LDT if we have one

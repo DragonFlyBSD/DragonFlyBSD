@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.3 2003/06/25 03:55:47 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.4 2003/07/06 21:23:47 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -94,11 +94,11 @@
 #else
 #define DRM_CURPROC		curproc
 #define DRM_STRUCTPROC		struct proc
-#define DRM_SPINTYPE		struct simplelock
-#define DRM_SPININIT(l,name)	simple_lock_init(&l)
+#define DRM_SPINTYPE		struct lwkt_token
+#define DRM_SPININIT(l,name)	lwkt_inittoken(&l)
 #define DRM_SPINUNINIT(l)
-#define DRM_SPINLOCK(l)		simple_lock(l)
-#define DRM_SPINUNLOCK(u)	simple_unlock(u);
+#define DRM_SPINLOCK(l)		lwkt_gettoken(l)
+#define DRM_SPINUNLOCK(u)	lwkt_reltoken(u);
 #define DRM_CURRENTPID		curproc->p_pid
 #endif
 

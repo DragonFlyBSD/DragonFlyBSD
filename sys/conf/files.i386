@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.i386,v 1.2 2003/06/17 04:28:19 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/files.i386,v 1.3 2003/07/06 21:23:45 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -206,7 +206,7 @@ i386/i386/perfmon.c		optional	perfmon
 i386/i386/perfmon.c		optional	perfmon	profiling-routine
 i386/i386/pmap.c		standard
 i386/i386/procfs_machdep.c	standard
-i386/i386/simplelock.s		optional	smp
+i386/i386/spinlock.s		standard
 i386/i386/support.s		standard
 i386/i386/swtch.s		standard
 i386/i386/sys_machdep.c		standard

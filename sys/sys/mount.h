@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.4 2003/06/26 05:55:20 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.5 2003/07/06 21:23:54 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -422,7 +422,7 @@ int	vfs_setpublicfs			    /* set publicly exported fs */
 int	vfs_lock __P((struct mount *));         /* lock a vfs */
 void	vfs_msync __P((struct mount *, int));
 void	vfs_unlock __P((struct mount *));       /* unlock a vfs */
-int	vfs_busy __P((struct mount *, int, struct simplelock *, struct thread *));
+int	vfs_busy __P((struct mount *, int, struct lwkt_token *, struct thread *));
 int	vfs_export			    /* process mount export info */
 	  __P((struct mount *, struct netexport *, struct export_args *));
 struct	netcred *vfs_export_lookup	    /* lookup host in fs export list */
@@ -439,7 +439,7 @@ void	vfs_unmountall __P((void));
 int	vfs_register __P((struct vfsconf *));
 int	vfs_unregister __P((struct vfsconf *));
 extern	TAILQ_HEAD(mntlist, mount) mountlist;	/* mounted filesystem list */
-extern	struct simplelock mountlist_slock;
+extern	struct lwkt_token mountlist_token;
 extern	struct nfs_public nfs_pub;
 
 /* 

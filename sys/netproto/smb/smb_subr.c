@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.5 2003/06/25 03:56:06 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.6 2003/07/06 21:23:53 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -423,15 +423,21 @@ kthread_create2(void (*func)(void *), void *arg,
 	return 0;
 }
 
+/*
+ * smb_sleep() icky compat routine.  Leave the token held through the tsleep
+ * to interlock against the sleep.  Remember that the token could be lost
+ * since we blocked, so reget or release as appropriate.
+ */
 int
-msleep(void *chan, struct simplelock *mtx, int pri, const char *wmesg, int timo)
+smb_sleep(void *chan, struct lwkt_token *mtx, int pri, const char *wmesg, int timo)
 {
 	int error;
 
-	if (mtx)
-		simple_unlock(mtx);
 	error = tsleep(chan, pri, wmesg, timo);
 	if ((pri & PDROP) == 0 && mtx)
-		simple_lock(mtx);
+		lwkt_regettoken(mtx);
+	else
+		lwkt_reltoken(mtx);
 	return error;
 }
+

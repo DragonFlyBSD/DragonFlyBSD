@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.3 2003/06/26 05:55:12 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.4 2003/07/06 21:23:48 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -528,6 +528,7 @@ ext2_reload(mountp, cred, p)
 	struct ext2_super_block * es;
 	struct ext2_sb_info *fs;
 	int error;
+	int gen;
 
 	if ((mountp->mnt_flag & MNT_RDONLY) == 0)
 		return (EINVAL);
@@ -561,25 +562,28 @@ ext2_reload(mountp, cred, p)
 #endif
 	brelse(bp);
 
+	gen = lwkt_gettoken(&mntvnode_token);
 loop:
-	simple_lock(&mntvnode_slock);
 	for (vp = TAILQ_FIRST(&mountp->mnt_nvnodelist); vp != NULL; vp = nvp) {
-		if (vp->v_mount != mountp) {
-			simple_unlock(&mntvnode_slock);
-			goto loop;
-		}
+		KKASSERT(vp->v_mount == mountp);
 		nvp = TAILQ_NEXT(vp, v_nmntvnodes);
 		/*
 		 * Step 4: invalidate all inactive vnodes.
 		 */
-  		if (vrecycle(vp, &mntvnode_slock, p))
+  		if (vrecycle(vp, NULL, p)) {
+			lwkt_gentoken(&mntvnode_token, &gen);
   			goto loop;
+		}
 		/*
 		 * Step 5: invalidate all cached file data.
 		 */
-		simple_lock(&vp->v_interlock);
-		simple_unlock(&mntvnode_slock);
+		lwkt_gettoken(&vp->v_interlock);
+		if (lwkt_gentoken(&mntvnode_token, &gen)) {
+			lwkt_reltoken(&vp->v_interlock);
+			goto loop;
+		}
 		if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, p)) {
+			lwkt_gentoken(&mntvnode_token, &gen);
 			goto loop;
 		}
 		if (vinvalbuf(vp, 0, p, 0, 0))
@@ -600,9 +604,10 @@ loop:
 		    &ip->i_din);
 		brelse(bp);
 		vput(vp);
-		simple_lock(&mntvnode_slock);
+		if (lwkt_gentoken(&mntvnode_token, &gen))
+			goto loop;
 	}
-	simple_unlock(&mntvnode_slock);
+	lwkt_reltoken(&mntvnode_token);
 	return (0);
 }
 
@@ -914,6 +919,7 @@ ext2_sync(mp, waitfor, cred, p)
 	struct ufsmount *ump = VFSTOUFS(mp);
 	struct ext2_sb_info *fs;
 	int error, allerror = 0;
+	int gen;
 
 	fs = ump->um_e2fs;
 	if (fs->s_dirt != 0 && fs->s_rd_only != 0) {		/* XXX */
@@ -923,29 +929,33 @@ ext2_sync(mp, waitfor, cred, p)
 	/*
 	 * Write back each (modified) inode.
 	 */
-	simple_lock(&mntvnode_slock);
+	gen = lwkt_gettoken(&mntvnode_token);
 loop:
 	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp != NULL; vp = nvp) {
 		/*
 		 * If the vnode that we are about to sync is no longer
 		 * associated with this mount point, start over.
 		 */
-		if (vp->v_mount != mp)
+		if (vp->v_mount != mp) {
+			lwkt_gentoken(&mntvnode_token, &gen);
 			goto loop;
-		simple_lock(&vp->v_interlock);
+		}
+		lwkt_gettoken(&vp->v_interlock);
+		if (lwkt_gentoken(&mntvnode_token, &gen)) {
+			lwkt_reltoken(&vp->v_interlock);
+			goto loop;
+		}
 		nvp = TAILQ_NEXT(vp, v_nmntvnodes);
 		ip = VTOI(vp);
 		if (vp->v_type == VNON ||
 		    ((ip->i_flag &
 		    (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE)) == 0 &&
 		    (TAILQ_EMPTY(&vp->v_dirtyblkhd) || waitfor == MNT_LAZY))) {
-			simple_unlock(&vp->v_interlock);
+			lwkt_reltoken(&vp->v_interlock);
 			continue;
 		}
-		simple_unlock(&mntvnode_slock);
 		error = vget(vp, LK_EXCLUSIVE | LK_NOWAIT | LK_INTERLOCK, p);
 		if (error) {
-			simple_lock(&mntvnode_slock);
 			if (error == ENOENT)
 				goto loop;
 			continue;
@@ -954,9 +964,9 @@ loop:
 			allerror = error;
 		VOP_UNLOCK(vp, 0, p);
 		vrele(vp);
-		simple_lock(&mntvnode_slock);
+		lwkt_gentoken(&mntvnode_token, &gen);
 	}
-	simple_unlock(&mntvnode_slock);
+	lwkt_reltoken(&mntvnode_token);
 	/*
 	 * Force stale file system control information to be flushed.
 	 */

@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.3 2003/07/01 20:30:40 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.4 2003/07/06 21:23:48 dillon Exp $
  *
  * Functions for locking between CPUs in a SMP system.
  *
@@ -25,320 +25,130 @@
 #include <machine/smptests.h>		/** GRAB_LOPRIO */
 #include <machine/apic.h>
 
-#define GLPROFILE_NOT
+#include "assym.s"
 
-#ifdef CHEAP_TPR
+	.data
+	ALIGN_DATA
+#ifdef SMP
+	.globl	mp_lock
+mp_lock:
+	.long	-1			/* initialized to not held */
+#endif
 
-/* we assumme that the 'reserved bits' can be written with zeros */
+	.text
+	SUPERALIGN_TEXT
 
-#else /* CHEAP_TPR */
+	/*
+	 * Note on cmpxchgl... exchanges ecx with mem if mem matches eax.
+	 * Z=1 (jz) on success. 
+	 */
+NON_GPROF_ENTRY(cpu_get_initial_mplock)
+	movl	PCPU(curthread),%ecx
+	movl	$1,TD_MPCOUNT(%ecx)	/* curthread has mpcount of 1 */
+	movl	$0,mp_lock		/* owned by cpu 0 */
+	NON_GPROF_RET
 
-#error HEADS UP: this code needs work
-/*
- * The APIC doc says that reserved bits must be written with whatever
- * value they currently contain, ie you should:	read, modify, write,
- * instead of just writing new values to the TPR register.  Current
- * silicon seems happy with just writing.  If the behaviour of the
- * silicon changes, all code that access the lapic_tpr must be modified.
- * The last version to contain such code was:
- *   Id: mplock.s,v 1.17 1997/08/10 20:59:07 fsmp Exp
- */
+	/*
+	 * cpu_try_mplock() returns non-zero on success, 0 on failure.  It
+	 * only adjusts mp_lock.  It does not touch td_mpcount, and it
+	 * must be called from inside a critical section.
+	 */
+NON_GPROF_ENTRY(cpu_try_mplock)
+	movl	PCPU(cpuid),%ecx
+	movl	$-1,%eax
+	cmpxchgl %ecx,mp_lock		/* ecx<->mem if eax matches */
+	jnz	1f
+	movl	$1,%eax
+	NON_GPROF_RET
+1:
+	movl	$0,%eax
+	NON_GPROF_RET
 
-#endif /* CHEAP_TPR */
+NON_GPROF_ENTRY(get_mplock)
+	movl	PCPU(curthread),%edx
+	cmpl	$0,TD_MPCOUNT(%edx)
+	je	1f
+	incl	TD_MPCOUNT(%edx)	/* already have it, just ++mpcount */
+	NON_GPROF_RET
+1:
+	pushfl
+	cli
+	movl	$1,TD_MPCOUNT(%edx)
+	movl	PCPU(cpuid),%ecx
+	movl	$-1,%eax
+	cmpxchgl %ecx,mp_lock		/* ecx<->mem & JZ if eax matches */
+	jnz	2f
+	popfl				/* success */
+	NON_GPROF_RET
+2:
+	movl	PCPU(cpuid),%eax	/* failure */
+	cmpl	%eax,mp_lock
+	je	badmp_get
+	popfl
+	jmp	lwkt_switch		/* will be correct on return */
 
-#ifdef GRAB_LOPRIO
-/*
- * Claim LOWest PRIOrity, ie. attempt to grab ALL INTerrupts.
- */
+NON_GPROF_ENTRY(try_mplock)
+	movl	PCPU(curthread),%edx
+	cmpl	$0,TD_MPCOUNT(%edx)
+	je	1f
+	incl	TD_MPCOUNT(%edx)	/* already have it, just ++mpcount */
+	movl	$1,%eax
+	NON_GPROF_RET
+1:
+	pushfl
+	cli
+	movl	PCPU(cpuid),%ecx
+	movl	$-1,%eax
+	cmpxchgl %ecx,mp_lock		/* ecx<->mem & JZ if eax matches */
+	jnz	2f
+	movl	$1,TD_MPCOUNT(%edx)
+	popfl				/* success */
+	movl	$1,%eax
+	NON_GPROF_RET
+2:
+	movl	PCPU(cpuid),%eax	/* failure */
+	cmpl	%eax,mp_lock
+	je	badmp_get
+	popfl
+	movl	$0,%eax
+	NON_GPROF_RET
 
+NON_GPROF_ENTRY(rel_mplock)
+	movl	PCPU(curthread),%edx
+	cmpl	$1,TD_MPCOUNT(%edx)
+	je	1f
+	subl	$1,TD_MPCOUNT(%edx)
+	NON_GPROF_RET
+1:
+	pushfl
+	cli
+	movl	$0,TD_MPCOUNT(%edx)
+	movl	$MP_FREE_LOCK,mp_lock
+	popfl
+	NON_GPROF_RET
+
+badmp_get:
+	pushl	$bmpsw1
+	call	panic
+badmp_rel:
+	pushl	$bmpsw2
+	call	panic
+
+	.data
+
+bmpsw1:
+	.asciz	"try/get_mplock(): already have lock!"
+
+bmpsw2:
+	.asciz	"rel_mplock(): not holding lock!"
+
+#if 0
 /* after 1st acquire of lock we grab all hardware INTs */
+#ifdef GRAB_LOPRIO
 #define GRAB_HWI	movl	$ALLHWI_LEVEL, lapic_tpr
 
 /* after last release of lock give up LOW PRIO (ie, arbitrate INTerrupts) */
 #define ARB_HWI		movl	$LOPRIO_LEVEL, lapic_tpr /* CHEAP_TPR */
-
-#else /* GRAB_LOPRIO */
-
-#define GRAB_HWI	/* nop */
-#define ARB_HWI		/* nop */
-
-#endif /* GRAB_LOPRIO */
-
-
-	.text
-
-#ifdef SMP 
-
-/***********************************************************************
- *  void MPgetlock_edx(unsigned int *lock : %edx)
- *  ----------------------------------
- *  Destroys	%eax, %ecx.  %edx must hold lock argument.
- *
- *  Grabs hardware interrupts on first aquire.
- *
- *  NOTE: Serialization is not required if we already hold the lock, since
- *  we already hold the lock, nor do we need a locked instruction if we 
- *  already hold the lock.
- */
-
-NON_GPROF_ENTRY(MPgetlock_edx)
-1:
-	movl	(%edx), %eax		/* Get current contents of lock */
-	movl	%eax, %ecx
-	andl	$CPU_FIELD,%ecx
-	cmpl	cpu_lockid, %ecx	/* Do we already own the lock? */
-	jne	2f
-	incl	%eax			/* yes, just bump the count */
-	movl	%eax, (%edx)		/* serialization not required */
-	ret
-2:
-	movl	$FREE_LOCK, %eax	/* lock must be free */
-	movl	cpu_lockid, %ecx
-	incl	%ecx
-	lock
-	cmpxchg	%ecx, (%edx)		/* attempt to replace %eax<->%ecx */
-#ifdef GLPROFILE
-	jne	3f
-	incl	gethits2
-#else
-	jne	1b
-#endif /* GLPROFILE */
-	GRAB_HWI			/* 1st acquire, grab hw INTs */
-	ret
-#ifdef GLPROFILE
-3:
-	incl	gethits3
-	jmp	1b
+#endif
 #endif
 
-/***********************************************************************
- *  int MPtrylock(unsigned int *lock)
- *  ---------------------------------
- *  Destroys	%eax, %ecx and %edx.
- *  Returns	1 if lock was successfull
- */
-
-NON_GPROF_ENTRY(MPtrylock)
-	movl	4(%esp), %edx		/* Get the address of the lock */
-
-	movl	$FREE_LOCK, %eax	/* Assume it's free */
-	movl	cpu_lockid, %ecx	/* - get pre-shifted logical cpu id */
-	incl	%ecx			/* - new count is one */
-	lock
-	cmpxchg	%ecx, (%edx)		/* - try it atomically */
-	jne	1f			/* ...do not collect $200 */
-#ifdef GLPROFILE
-	incl	tryhits2
-#endif /* GLPROFILE */
-	GRAB_HWI			/* 1st acquire, grab hw INTs */
-	movl	$1, %eax
-	ret
-1:
-  	movl	(%edx), %eax		/* Try to see if we have it already */
-	andl	$COUNT_FIELD, %eax	/* - get count */
-	movl	cpu_lockid, %ecx	/* - get pre-shifted logical cpu id */
-	orl	%ecx, %eax		/* - combine them */
-	movl	%eax, %ecx
-	incl	%ecx			/* - new count is one more */
-	lock
-	cmpxchg	%ecx, (%edx)		/* - try it atomically */
-	jne	2f			/* - miss */
-#ifdef GLPROFILE
-	incl	tryhits
-#endif /* GLPROFILE */
-	movl	$1, %eax
-	ret
-2:
-#ifdef GLPROFILE
-	incl	tryhits3
-#endif /* GLPROFILE */
-	movl	$0, %eax
-	ret
-
-
-/***********************************************************************
- *  void MPrellock_edx(unsigned int *lock : %edx)
- *  ----------------------------------
- *  Destroys	%ecx, argument must be in %edx
- *
- *  SERIALIZATION NOTE!
- *
- *  After a lot of arguing, it turns out that there is no problem with
- *  not having a synchronizing instruction in the MP unlock code.  There
- *  are two things to keep in mind:  First, Intel guarentees that writes
- *  are ordered amoungst themselves.  Second, the P6 is allowed to reorder
- *  reads around writes.  Third, the P6 maintains cache consistency (snoops
- *  the bus).  The second is not an issue since the one read we do is the 
- *  basis for the conditional which determines whether the write will be 
- *  made or not.
- *
- *  Therefore, no synchronizing instruction is required on unlock.  There are
- *  three performance cases:  First, if a single cpu is getting and releasing
- *  the lock the removal of the synchronizing instruction saves approx
- *  200 nS (testing w/ duel cpu PIII 450).  Second, if one cpu is contending
- *  for the lock while the other holds it, the removal of the synchronizing
- *  instruction results in a 700nS LOSS in performance.  Third, if two cpu's
- *  are switching off ownership of the MP lock but not contending for it (the
- *  most common case), this results in a 400nS IMPROVEMENT in performance.
- *
- *  Since our goal is to reduce lock contention in the first place, we have
- *  decided to remove the synchronizing instruction from the unlock code.
- */
-
-NON_GPROF_ENTRY(MPrellock_edx)
-  	movl	(%edx), %ecx		/* - get the value */
-	decl	%ecx			/* - new count is one less */
-	testl	$COUNT_FIELD, %ecx	/* - Unless it's zero... */
-	jnz	2f
-	ARB_HWI				/* last release, arbitrate hw INTs */
-	movl	$FREE_LOCK, %ecx	/* - In which case we release it */
-#if 0
-	lock
-	addl	$0,0(%esp)		/* see note above */
-#endif
-2:
-	movl	%ecx, (%edx)
-	ret
-
-/***********************************************************************
- *  void get_mplock()
- *  -----------------
- *  All registers preserved
- *
- *  Stack (after call to _MPgetlock):
- *	
- *	edx		 4(%esp)
- *	ecx		 8(%esp)
- *	eax		12(%esp)
- *
- * Requirements:  Interrupts should be enabled on call so we can take
- *		  IPI's and FAST INTs while we are waiting for the lock
- *		  (else the system may not be able to halt).
- *
- *		  XXX there are still places where get_mplock() is called
- *		  with interrupts disabled, so we have to temporarily reenable
- *		  interrupts.
- *
- * Side effects:  The current cpu will be given ownership of the
- *		  hardware interrupts when it first aquires the lock.
- *
- * Costs:	  Initial aquisition requires the use of a costly locked
- *		  instruction, but recursive aquisition is cheap.  Release
- *		  is very cheap.
- */
-
-NON_GPROF_ENTRY(get_mplock)
-	pushl	%eax
-	pushl	%ecx
-	pushl	%edx
-	movl	$mp_lock, %edx
-	pushfl	
-	testl   $(1<<9), (%esp)
-	jz     2f           
-	call	MPgetlock_edx
-	addl	$4,%esp
-1:
-	popl	%edx
-	popl	%ecx
-	popl	%eax
-	ret
-2:
-	sti
-	call	MPgetlock_edx
-	popfl
-	jmp	1b
-
-/*
- * Special version of get_mplock that is used during bootstrap when we can't
- * yet enable interrupts of any sort since the APIC isn't online yet.  We
- * do an endrun around MPgetlock_edx to avoid enabling interrupts.
- *
- * XXX FIXME.. - APIC should be online from the start to simplify IPI's.
- */
-NON_GPROF_ENTRY(boot_get_mplock)
-	pushl	%eax
-	pushl	%ecx
-	pushl	%edx
-#ifdef GRAB_LOPRIO	
-	pushfl
-	pushl	lapic_tpr
-	cli
-#endif
-	
-	movl	$mp_lock, %edx
-	call	MPgetlock_edx
-
-#ifdef GRAB_LOPRIO	
-	popl	lapic_tpr
-	popfl
-#endif
-	popl	%edx
-	popl	%ecx
-	popl	%eax
-	ret
-
-/***********************************************************************
- *  void try_mplock()
- *  -----------------
- *  reg %eax == 1 if success
- */
-
-NON_GPROF_ENTRY(try_mplock)
-	pushl	%ecx
-	pushl	%edx
-	pushl	$mp_lock
-	call	MPtrylock
-	add	$4, %esp
-	popl	%edx
-	popl	%ecx
-	ret
-
-/***********************************************************************
- *  void rel_mplock()
- *  -----------------
- *  All registers preserved
- */
-
-NON_GPROF_ENTRY(rel_mplock)
-	pushl	%ecx
-	pushl	%edx
-	movl	$mp_lock,%edx
-	call	MPrellock_edx
-	popl	%edx
-	popl	%ecx
-	ret
-
-#endif
-
-/***********************************************************************
- * 
- */
-	.data
-	.p2align 2			/* xx_lock aligned on int boundary */
-
-#ifdef SMP
-
-	.globl mp_lock
-mp_lock:	.long	0		
-
-#ifdef GLPROFILE
-	.globl	gethits
-gethits:
-	.long	0
-gethits2:
-	.long	0
-gethits3:
-	.long	0
-
-	.globl	tryhits
-tryhits:
-	.long	0
-tryhits2:
-	.long	0
-tryhits3:
-	.long	0
-
-msg:
-	.asciz	"lock hits: 0x%08x, 0x%08x, 0x%08x, 0x%08x, 0x%08x, 0x%08x\n"
-#endif /* GLPROFILE */
-#endif /* SMP */

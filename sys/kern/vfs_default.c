@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.4 2003/06/26 05:55:14 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.5 2003/07/06 21:23:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -249,7 +249,7 @@ vop_stdlock(ap)
 
 	if ((l = (struct lock *)ap->a_vp->v_data) == NULL) {
 		if (ap->a_flags & LK_INTERLOCK)
-			simple_unlock(&ap->a_vp->v_interlock);
+			lwkt_reltoken(&ap->a_vp->v_interlock);
 		return 0;
 	}
 
@@ -273,7 +273,7 @@ vop_stdunlock(ap)
 
 	if ((l = (struct lock *)ap->a_vp->v_data) == NULL) {
 		if (ap->a_flags & LK_INTERLOCK)
-			simple_unlock(&ap->a_vp->v_interlock);
+			lwkt_reltoken(&ap->a_vp->v_interlock);
 		return 0;
 	}
 
@@ -379,7 +379,7 @@ vop_sharedlock(ap)
 
 	if (l == NULL) {
 		if (ap->a_flags & LK_INTERLOCK)
-			simple_unlock(&ap->a_vp->v_interlock);
+			lwkt_reltoken(&ap->a_vp->v_interlock);
 		return 0;
 	}
 	switch (flags & LK_TYPE_MASK) {
@@ -473,7 +473,7 @@ vop_nolock(ap)
 	 * the interlock here.
 	 */
 	if (ap->a_flags & LK_INTERLOCK)
-		simple_unlock(&ap->a_vp->v_interlock);
+		lwkt_reltoken(&ap->a_vp->v_interlock);
 	return (0);
 #endif
 }
@@ -490,7 +490,7 @@ vop_nounlock(ap)
 	} */ *ap;
 {
 	if (ap->a_flags & LK_INTERLOCK)
-		simple_unlock(&ap->a_vp->v_interlock);
+		lwkt_reltoken(&ap->a_vp->v_interlock);
 	return (0);
 }
 

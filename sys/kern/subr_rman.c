@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_rman.c,v 1.10.2.1 2001/06/05 08:06:08 imp Exp $
- * $DragonFly: src/sys/kern/subr_rman.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_rman.c,v 1.3 2003/07/06 21:23:51 dillon Exp $
  */
 
 /*
@@ -70,9 +70,7 @@
 static MALLOC_DEFINE(M_RMAN, "rman", "Resource manager");
 
 struct	rman_head rman_head;
-#ifndef NULL_SIMPLELOCKS
-static	struct simplelock rman_lock; /* mutex to protect rman_head */
-#endif
+static	struct lwkt_token rman_tok; /* mutex to protect rman_head */
 static	int int_rman_activate_resource(struct rman *rm, struct resource *r,
 				       struct resource **whohas);
 static	int int_rman_deactivate_resource(struct resource *r);
@@ -88,7 +86,7 @@ rman_init(struct rman *rm)
 	if (once == 0) {
 		once = 1;
 		TAILQ_INIT(&rman_head);
-		simple_lock_init(&rman_lock);
+		lwkt_inittoken(&rman_tok);
 	}
 
 	if (rm->rm_type == RMAN_UNINIT)
@@ -98,13 +96,13 @@ rman_init(struct rman *rm)
 
 	CIRCLEQ_INIT(&rm->rm_list);
 	rm->rm_slock = malloc(sizeof *rm->rm_slock, M_RMAN, M_NOWAIT);
-	if (rm->rm_slock == 0)
+	if (rm->rm_slock == NULL)
 		return ENOMEM;
-	simple_lock_init(rm->rm_slock);
+	lwkt_inittoken(rm->rm_slock);
 
-	simple_lock(&rman_lock);
+	lwkt_gettoken(&rman_tok);
 	TAILQ_INSERT_TAIL(&rman_head, rm, rm_link);
-	simple_unlock(&rman_lock);
+	lwkt_reltoken(&rman_tok);
 	return 0;
 }
 
@@ -128,7 +126,7 @@ rman_manage_region(struct rman *rm, u_long start, u_long end)
 	r->r_dev = 0;
 	r->r_rm = rm;
 
-	simple_lock(rm->rm_slock);
+	lwkt_gettoken(rm->rm_slock);
 	for (s = CIRCLEQ_FIRST(&rm->rm_list);	
 	     !CIRCLEQ_TERMCOND(s, rm->rm_list) && s->r_end < r->r_start;
 	     s = CIRCLEQ_NEXT(s, r_link))
@@ -140,7 +138,7 @@ rman_manage_region(struct rman *rm, u_long start, u_long end)
 		CIRCLEQ_INSERT_BEFORE(&rm->rm_list, s, r, r_link);
 	}
 
-	simple_unlock(rm->rm_slock);
+	lwkt_reltoken(rm->rm_slock);
 	return 0;
 }
 
@@ -149,10 +147,10 @@ rman_fini(struct rman *rm)
 {
 	struct resource *r;
 
-	simple_lock(rm->rm_slock);
+	lwkt_gettoken(rm->rm_slock);
 	CIRCLEQ_FOREACH(r, &rm->rm_list, r_link) {
 		if (r->r_flags & RF_ALLOCATED) {
-			simple_unlock(rm->rm_slock);
+			lwkt_reltoken(rm->rm_slock);
 			return EBUSY;
 		}
 	}
@@ -166,10 +164,10 @@ rman_fini(struct rman *rm)
 		CIRCLEQ_REMOVE(&rm->rm_list, r, r_link);
 		free(r, M_RMAN);
 	}
-	simple_unlock(rm->rm_slock);
-	simple_lock(&rman_lock);
+	lwkt_reltoken(rm->rm_slock);
+	lwkt_gettoken(&rman_tok);
 	TAILQ_REMOVE(&rman_head, rm, rm_link);
-	simple_unlock(&rman_lock);
+	lwkt_reltoken(&rman_tok);
 	free(rm->rm_slock, M_RMAN);
 
 	return 0;
@@ -193,7 +191,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 	want_activate = (flags & RF_ACTIVE);
 	flags &= ~RF_ACTIVE;
 
-	simple_lock(rm->rm_slock);
+	lwkt_gettoken(rm->rm_slock);
 
 	for (r = CIRCLEQ_FIRST(&rm->rm_list); 
 	     !CIRCLEQ_TERMCOND(r, rm->rm_list) && r->r_end < start;
@@ -399,7 +397,7 @@ out:
 		}
 	}
 			
-	simple_unlock(rm->rm_slock);
+	lwkt_reltoken(rm->rm_slock);
 	return (rv);
 }
 
@@ -446,9 +444,9 @@ rman_activate_resource(struct resource *r)
 	struct rman *rm;
 
 	rm = r->r_rm;
-	simple_lock(rm->rm_slock);
+	lwkt_gettoken(rm->rm_slock);
 	rv = int_rman_activate_resource(rm, r, &whohas);
-	simple_unlock(rm->rm_slock);
+	lwkt_reltoken(rm->rm_slock);
 	return rv;
 }
 
@@ -461,28 +459,28 @@ rman_await_resource(struct resource *r, int pri, int timo)
 
 	rm = r->r_rm;
 	for (;;) {
-		simple_lock(rm->rm_slock);
+		lwkt_gettoken(rm->rm_slock);
 		rv = int_rman_activate_resource(rm, r, &whohas);
 		if (rv != EBUSY)
-			return (rv);	/* returns with simplelock */
+			return (rv);	/* returns with simple token */
 
 		if (r->r_sharehead == 0)
 			panic("rman_await_resource");
 		/*
 		 * splhigh hopefully will prevent a race between
-		 * simple_unlock and tsleep where a process
+		 * lwkt_reltoken and tsleep where a process
 		 * could conceivably get in and release the resource
-		 * before we have a chance to sleep on it.
+		 * before we have a chance to sleep on it. YYY
 		 */
 		s = splhigh();
 		whohas->r_flags |= RF_WANTED;
-		simple_unlock(rm->rm_slock);
+		lwkt_reltoken(rm->rm_slock);	/* YYY */
 		rv = tsleep(r->r_sharehead, pri, "rmwait", timo);
 		if (rv) {
 			splx(s);
 			return rv;
 		}
-		simple_lock(rm->rm_slock);
+		lwkt_gettoken(rm->rm_slock);
 		splx(s);
 	}
 }
@@ -507,9 +505,9 @@ rman_deactivate_resource(struct resource *r)
 	struct	rman *rm;
 
 	rm = r->r_rm;
-	simple_lock(rm->rm_slock);
+	lwkt_gettoken(rm->rm_slock);
 	int_rman_deactivate_resource(r);
-	simple_unlock(rm->rm_slock);
+	lwkt_reltoken(rm->rm_slock);
 	return 0;
 }
 
@@ -607,9 +605,9 @@ rman_release_resource(struct resource *r)
 	int	rv;
 	struct	rman *rm = r->r_rm;
 
-	simple_lock(rm->rm_slock);
+	lwkt_gettoken(rm->rm_slock);
 	rv = int_rman_release_resource(rm, r);
-	simple_unlock(rm->rm_slock);
+	lwkt_reltoken(rm->rm_slock);
 	return (rv);
 }
 

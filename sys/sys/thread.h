@@ -4,11 +4,15 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.18 2003/07/04 00:32:32 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.19 2003/07/06 21:23:54 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
 #define _SYS_THREAD_H_
+
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>		/* TAILQ_* macros */
+#endif
 
 struct globaldata;
 struct proc;
@@ -48,6 +52,7 @@ typedef TAILQ_HEAD(lwkt_msg_queue, lwkt_msg) lwkt_msg_queue;
 typedef struct lwkt_token {
     int		t_cpu;		/* the current owner of the token */
     int		t_reqcpu;	/* return ownership to this cpu on release */
+    int		t_gen;		/* generation number */
 #if 0
     int		t_pri;		/* raise thread priority to hold token */
 #endif
@@ -144,6 +149,11 @@ struct thread {
     u_int64_t	td_iticks;	/* Statclock hits processing intr (uS) */
     int		td_locks;	/* lockmgr lock debugging YYY */
     int		td_refs;	/* hold position in gd_tdallq / hold free */
+#ifdef SMP
+    int		td_mpcount;	/* MP lock held (count) */
+#else
+    int		td_unused001;
+#endif
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
     struct thread *td_preempted; /* we preempted this thread */
     struct md_thread td_mach;
@@ -155,9 +165,10 @@ struct thread {
  * cleaned up the MMU state.
  */
 #define TDF_EXITED		0x0001	/* thread finished exiting */
-#define TDF_RUNQ		0x0002	/* on run queue */
+#define TDF_RUNQ		0x0002	/* on run queue (if not on bglq) */
 #define TDF_PREEMPT_LOCK	0x0004	/* I have been preempted */
 #define TDF_PREEMPT_DONE	0x0008	/* acknowledge preemption complete */
+#define TDF_BGLQ		0x0010	/* on BGL queue */
 
 #define TDF_ONALLQ		0x0100	/* on gd_tdallq */
 #define TDF_ALLOCATED_THREAD	0x0200	/* zalloc allocated thread */
@@ -223,7 +234,8 @@ extern void lwkt_rele(thread_t td);
 
 extern void lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen);
 extern void lwkt_signal(lwkt_wait_t w);
-extern void lwkt_gettoken(lwkt_token_t tok);
+extern int lwkt_gettoken(lwkt_token_t tok);
+extern int lwkt_gentoken(lwkt_token_t tok, int *gen);
 extern void lwkt_reltoken(lwkt_token_t tok);
 extern void lwkt_inittoken(lwkt_token_t tok);
 extern int  lwkt_regettoken(lwkt_token_t tok);

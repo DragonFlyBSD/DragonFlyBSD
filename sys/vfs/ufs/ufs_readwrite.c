@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.7 2003/07/03 17:24:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.8 2003/07/06 21:23:55 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -466,7 +466,7 @@ ffs_write(ap)
 	 * file servers have no limits, I don't think it matters.
 	 */
 	td = uio->uio_td;
-	if (vp->v_type == VREG && td->td_proc &&
+	if (vp->v_type == VREG && td && td->td_proc &&
 	    uio->uio_offset + uio->uio_resid >
 	    td->td_proc->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
 		psignal(td->td_proc, SIGXFSZ);

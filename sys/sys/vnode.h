@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.5 2003/06/26 05:55:20 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.6 2003/07/06 21:23:54 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -80,10 +80,10 @@ struct namecache;
 
 /*
  * Reading or writing any of these items requires holding the appropriate lock.
- * v_freelist is locked by the global vnode_free_list simple lock.
- * v_mntvnodes is locked by the global mntvnodes simple lock.
+ * v_freelist is locked by the global vnode_free_list token.
+ * v_mntvnodes is locked by the global mntvnodes token.
  * v_flag, v_usecount, v_holdcount and v_writecount are
- *    locked by the v_interlock simple lock.
+ *    locked by the v_interlock token.
  * v_pollinfo is locked by the lock contained inside it.
  */
 struct vnode {
@@ -116,7 +116,7 @@ struct vnode {
 	daddr_t	v_lasta;			/* last allocation */
 	int	v_clen;				/* length of current cluster */
 	struct vm_object *v_object;		/* Place to store VM object */
-	struct	simplelock v_interlock;		/* lock on usecount and flag */
+	struct	lwkt_token v_interlock;		/* lock on usecount and flag */
 	struct	lock *v_vnlock;			/* used for non-locking fs's */
 	enum	vtagtype v_tag;			/* type of underlying data */
 	void 	*v_data;			/* private data for fs */
@@ -125,7 +125,7 @@ struct vnode {
 	struct	vnode *v_dd;			/* .. vnode */
 	u_long	v_ddid;				/* .. capability identifier */
 	struct	{
-		struct	simplelock vpi_lock;	/* lock to protect below */
+		struct	lwkt_token vpi_token;	/* lock to protect below */
 		struct	selinfo vpi_selinfo;	/* identity of poller(s) */
 		short	vpi_events;		/* what they are looking for */
 		short	vpi_revents;		/* what has happened */
@@ -320,9 +320,8 @@ extern void	(*lease_updatetime) __P((int deltat));
 	(((vp)->v_flag & VFREE) && \
 	 ((vp)->v_holdcnt || (vp)->v_usecount))
 
-#define	VI_LOCK(vp)	simple_lock(&(vp)->v_interlock)
-#define	VI_TRYLOCK(vp)	simple_lock_try(&(vp)->v_interlock)
-#define	VI_UNLOCK(vp)	simple_unlock(&(vp)->v_interlock)
+#define	VI_LOCK(vp)	lwkt_gettoken(&(vp)->v_interlock)
+#define	VI_UNLOCK(vp)	lwkt_reltoken(&(vp)->v_interlock)
 
 #endif /* _KERNEL */
 
@@ -385,7 +384,7 @@ extern struct vnodeop_desc *vnodeop_descs[];
 /*
  * Interlock for scanning list of vnodes attached to a mountpoint
  */
-extern struct simplelock mntvnode_slock;
+extern struct lwkt_token mntvnode_token;
 
 /*
  * This macro is very helpful in defining those offsets in the vdesc struct.
@@ -591,7 +590,7 @@ int	vinvalbuf __P((struct vnode *vp, int save,
 int	vtruncbuf __P((struct vnode *vp, struct thread *td,
 		off_t length, int blksize));
 void	vprint __P((char *label, struct vnode *vp));
-int	vrecycle __P((struct vnode *vp, struct simplelock *inter_lkp,
+int	vrecycle __P((struct vnode *vp, struct lwkt_token *inter_lkp,
 	    struct thread *td));
 int 	vn_close __P((struct vnode *vp, int flags, struct thread *td));
 int	vn_isdisk __P((struct vnode *vp, int *errp));

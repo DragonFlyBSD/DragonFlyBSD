@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.10 2003/07/03 17:24:01 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.11 2003/07/06 21:23:48 dillon Exp $
  */
 
 #include "npx.h"
@@ -194,8 +194,7 @@ IDTVEC(xmm)
 	 * Note that int0x80_syscall is a trap gate.  Only page faults
 	 * use an interrupt gate.
 	 *
-	 * Note that all calls to MP_LOCK must occur with interrupts enabled
-	 * in order to be able to take IPI's while waiting for the lock.
+	 * Note that we are MP through to the call to trap().
 	 */
 
 	SUPERALIGN_TEXT
@@ -216,7 +215,6 @@ alltraps_with_regs_pushed:
 calltrap:
 	FAKE_MCOUNT(btrap)		/* init "from" _btrap -> calltrap */
 	incl PCPU(cnt)+V_TRAP		/* YYY per-cpu */
-	MP_LOCK
 	movl	PCPU(curthread),%eax	/* keep orig cpl here during call */
 	movl	TD_CPL(%eax),%ebx
 	call	trap
@@ -268,9 +266,6 @@ IDTVEC(syscall)
 	cli				/* atomic astpending access */
 	cmpl    $0,PCPU(astpending)
 	je	doreti_syscall_ret
-#ifdef SMP
-	MP_LOCK
-#endif
 	pushl	$0			/* cpl to restore */
 	movl	$1,PCPU(intr_nesting_level)
 	jmp	doreti
@@ -305,9 +300,6 @@ IDTVEC(int0x80_syscall)
 	cli				/* atomic astpending access */
 	cmpl    $0,PCPU(astpending)
 	je	doreti_syscall_ret
-#ifdef SMP
-	MP_LOCK
-#endif
 	pushl	$0			/* cpl to restore */
 	movl	$1,PCPU(intr_nesting_level)
 	jmp	doreti
@@ -318,6 +310,9 @@ IDTVEC(int0x80_syscall)
  * cpu_heavy_restore from being interrupted (especially since it stores
  * its context in a static place!), so the first thing we do is release
  * the critical section.
+ *
+ * The MP lock is held on entry, but for processes fork_return (esi)
+ * releases it.  'doreti' always runs without the MP lock.
  */
 ENTRY(fork_trampoline)
 	movl	PCPU(curthread),%eax

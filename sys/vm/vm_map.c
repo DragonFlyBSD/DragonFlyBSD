@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.4 2003/07/03 17:24:04 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.5 2003/07/06 21:23:56 dillon Exp $
  */
 
 /*
@@ -327,26 +327,10 @@ vm_map_init(map, min, max)
 }
 
 /*
- *	vm_map_entry_dispose:	[ internal use only ]
- *
- *	Inverse of vm_map_entry_create.
- */
-static void
-vm_map_entry_dispose(map, entry)
-	vm_map_t map;
-	vm_map_entry_t entry;
-{
-	if (map->system_map || !mapentzone)
-		zfreei(kmapentzone, entry);
-	else
-		zfree(mapentzone, entry);
-}
-
-/*
  *	vm_map_entry_create:	[ internal use only ]
  *
- *	Allocates a VM map entry for insertion.
- *	No entry fields are filled in.  This routine is
+ *	Allocates a VM map entry for insertion.  No entry fields are filled 
+ *	in.  this ruotine may be called from an interrupt.
  */
 static vm_map_entry_t
 vm_map_entry_create(map)
@@ -355,13 +339,31 @@ vm_map_entry_create(map)
 	vm_map_entry_t new_entry;
 
 	if (map->system_map || !mapentzone)
-		new_entry = zalloci(kmapentzone);
+		new_entry = zalloc(kmapentzone);
 	else
 		new_entry = zalloc(mapentzone);
 	if (new_entry == NULL)
-	    panic("vm_map_entry_create: kernel resources exhausted");
+		panic("vm_map_entry_create: kernel resources exhausted");
 	return(new_entry);
 }
+
+/*
+ *	vm_map_entry_dispose:	[ internal use only ]
+ *
+ *	Dispose of a vm_map_entry that is no longer being referenced.  This
+ *	function may be called from an interrupt.
+ */
+static void
+vm_map_entry_dispose(map, entry)
+	vm_map_t map;
+	vm_map_entry_t entry;
+{
+	if (map->system_map || !mapentzone)
+		zfree(kmapentzone, entry);
+	else
+		zfree(mapentzone, entry);
+}
+
 
 /*
  *	vm_map_entry_{un,}link:

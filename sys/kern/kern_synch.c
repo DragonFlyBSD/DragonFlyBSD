@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.14 2003/07/03 17:24:02 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.15 2003/07/06 21:23:51 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -89,6 +89,7 @@ static void	maybe_resched __P((struct proc *chk));
 static void	roundrobin __P((void *arg));
 static void	schedcpu __P((void *arg));
 static void	updatepri __P((struct proc *p));
+static void	crit_panicints(void);
 
 static int
 sysctl_kern_quantum(SYSCTL_HANDLER_ARGS)
@@ -155,18 +156,15 @@ static void
 roundrobin(arg)
 	void *arg;
 {
-#ifndef SMP
- 	struct proc *p = curproc; /* XXX */
-#endif
- 
+	struct proc *p = lwkt_preempted_proc();
 #ifdef SMP
-	need_resched();
+ 	if (p == NULL || RTP_PRIO_NEED_RR(p->p_rtprio.type))
+		need_resched();
 	forward_roundrobin();
 #else 
- 	if (p == 0 || RTP_PRIO_NEED_RR(p->p_rtprio.type))
+ 	if (p == NULL || RTP_PRIO_NEED_RR(p->p_rtprio.type))
  		need_resched();
 #endif
-
  	timeout(roundrobin, NULL, sched_quantum);
 }
 
@@ -400,8 +398,6 @@ tsleep(ident, priority, wmesg, timo)
 	 * NOTE: removed KTRPOINT, it could cause races due to blocking
 	 * even in stable.  Just scrap it for now.
 	 */
-	s = splhigh();
-
 	if (cold || panicstr) {
 		/*
 		 * After a panic, or during autoconfiguration,
@@ -409,10 +405,10 @@ tsleep(ident, priority, wmesg, timo)
 		 * don't run any other procs or panic below,
 		 * in case this is the idle process and already asleep.
 		 */
-		splx(safepri);
-		splx(s);
+		crit_panicints();
 		return (0);
 	}
+	s = splhigh();
 	KASSERT(ident != NULL, ("tsleep: no ident"));
 	KASSERT(p == NULL || p->p_stat == SRUN, ("tsleep %p %s %d",
 		ident, wmesg, p->p_stat));
@@ -519,8 +515,6 @@ xsleep(struct xwait *w, int priority, const char *wmesg, int timo, int *gen)
 	if (KTRPOINT(td, KTR_CSW))
 		ktrcsw(p->p_tracep, 1, 0);
 #endif
-	s = splhigh();
-
 	if (cold || panicstr) {
 		/*
 		 * After a panic, or during autoconfiguration,
@@ -528,10 +522,10 @@ xsleep(struct xwait *w, int priority, const char *wmesg, int timo, int *gen)
 		 * don't run any other procs or panic below,
 		 * in case this is the idle process and already asleep.
 		 */
-		splx(safepri);
-		splx(s);
+		crit_panicints();
 		return (0);
 	}
+	s = splhigh();
 	KASSERT(p != NULL, ("xsleep1"));
 	KASSERT(w != NULL && p->p_stat == SRUN, ("xsleep"));
 
@@ -844,11 +838,6 @@ mi_switch()
 	 */
 	_relscurproc(p);
 
-#ifdef SIMPLELOCK_DEBUG
-	if (p->p_simple_locks)
-		printf("sleep: holding simple lock\n");
-#endif
-
 	/*
 	 * Check if the process exceeds its cpu resource allocation.
 	 * If over max, kill it.  Time spent in interrupts is not 
@@ -1084,3 +1073,18 @@ schedclock(p)
 	if ((p->p_estcpu % INVERSE_ESTCPU_WEIGHT) == 0)
 		resetpriority(p);
 }
+
+static
+void
+crit_panicints(void)
+{
+    int s;
+    int cpri;
+
+    s = splhigh();
+    cpri = crit_panic_save();
+    splx(safepri);
+    crit_panic_restore(cpri);
+    splx(s);
+}
+

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.3 2003/06/25 03:56:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.4 2003/07/06 21:23:55 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -103,7 +103,7 @@ out:
 	 * so that it can be reused immediately.
 	 */
 	if (ip->i_mode == 0)
-		vrecycle(vp, (struct simplelock *)0, td);
+		vrecycle(vp, NULL, td);
 	return (error);
 }
 

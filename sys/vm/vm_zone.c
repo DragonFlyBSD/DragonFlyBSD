@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.3 2003/07/03 17:24:04 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.4 2003/07/06 21:23:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,51 +40,55 @@ static MALLOC_DEFINE(M_ZONE, "ZONE", "Zone header");
 #define ZONE_ROUNDING	32
 
 #define ZENTRY_FREE	0x12342378
+
+static void *zget(vm_zone_t z);
+
 /*
- * void *zalloc(vm_zone_t zone) --
- *	Returns an item from a specified zone.
- *
- * void zfree(vm_zone_t zone, void *item) --
- *  Frees an item back to a specified zone.
+ * Return an item from the specified zone.   This function is interrupt/MP
+ * thread safe, but might block.
  */
-static __inline__ void *
-_zalloc(vm_zone_t z)
+void *
+zalloc(vm_zone_t z)
 {
 	void *item;
 
 #ifdef INVARIANTS
-	if (z == 0)
+	if (z == NULL)
 		zerror(ZONE_ERROR_INVALID);
 #endif
-
+	lwkt_gettoken(&z->zlock);
 	if (z->zfreecnt <= z->zfreemin) {
-		item = _zget(z);
+		item = zget(z);
 		/*
 		 * PANICFAIL allows the caller to assume that the zalloc()
 		 * will always succeed.  If it doesn't, we panic here.
 		 */
 		if (item == NULL && (z->zflags & ZONE_PANICFAIL))
 			panic("zalloc(%s) failed", z->zname);
-		return(item);
-	}
-
-	item = z->zitems;
-	z->zitems = ((void **) item)[0];
+	} else {
+		item = z->zitems;
+		z->zitems = ((void **) item)[0];
 #ifdef INVARIANTS
-	KASSERT(item != NULL, ("zitems unexpectedly NULL"));
-	if (((void **) item)[1] != (void *) ZENTRY_FREE)
-		zerror(ZONE_ERROR_NOTFREE);
-	((void **) item)[1] = 0;
+		KASSERT(item != NULL, ("zitems unexpectedly NULL"));
+		if (((void **) item)[1] != (void *) ZENTRY_FREE)
+			zerror(ZONE_ERROR_NOTFREE);
+		((void **) item)[1] = 0;
 #endif
-
-	z->zfreecnt--;
-	z->znalloc++;
+		z->zfreecnt--;
+		z->znalloc++;
+	}
+	lwkt_reltoken(&z->zlock);
 	return item;
 }
 
-static __inline__ void
-_zfree(vm_zone_t z, void *item)
+/*
+ * Free an item to the specified zone.   This function is interrupt/MP
+ * thread safe, but might block.
+ */
+void
+zfree(vm_zone_t z, void *item)
 {
+	lwkt_gettoken(&z->zlock);
 	((void **) item)[0] = z->zitems;
 #ifdef INVARIANTS
 	if (((void **) item)[1] == (void *) ZENTRY_FREE)
@@ -93,6 +97,7 @@ _zfree(vm_zone_t z, void *item)
 #endif
 	z->zitems = item;
 	z->zfreecnt++;
+	lwkt_reltoken(&z->zlock);
 }
 
 /*
@@ -147,7 +152,7 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 
 	if ((z->zflags & ZONE_BOOT) == 0) {
 		z->zsize = (size + ZONE_ROUNDING - 1) & ~(ZONE_ROUNDING - 1);
-		simple_lock_init(&z->zlock);
+		lwkt_inittoken(&z->zlock);
 		z->zfreecnt = 0;
 		z->ztotal = 0;
 		z->zmax = 0;
@@ -249,7 +254,7 @@ zbootinit(vm_zone_t z, char *name, int size, void *item, int nitems)
 	z->zpagecount = 0;
 	z->zalloc = 0;
 	z->znalloc = 0;
-	simple_lock_init(&z->zlock);
+	lwkt_inittoken(&z->zlock);
 
 	bzero(item, nitems * z->zsize);
 	z->zitems = NULL;
@@ -274,26 +279,6 @@ zbootinit(vm_zone_t z, char *name, int size, void *item, int nitems)
 }
 
 /*
- * Zone critical region locks.
- */
-static __inline int
-zlock(vm_zone_t z)
-{
-	int s;
-
-	s = splhigh();
-	simple_lock(&z->zlock);
-	return s;
-}
-
-static __inline void
-zunlock(vm_zone_t z, int s)
-{
-	simple_unlock(&z->zlock);
-	splx(s);
-}
-
-/*
  * void *zalloc(vm_zone_t zone) --
  *	Returns an item from a specified zone.
  *
@@ -308,58 +293,11 @@ zunlock(vm_zone_t z, int s)
  *
  */
 
-void *
-zalloc(vm_zone_t z)
-{
-#if defined(SMP)
-	return zalloci(z);
-#else
-	return _zalloc(z);
-#endif
-}
-
-void
-zfree(vm_zone_t z, void *item)
-{
-#ifdef SMP
-	zfreei(z, item);
-#else
-	_zfree(z, item);
-#endif
-}
- 
-/*
- * Zone allocator/deallocator.  These are interrupt / (or potentially SMP)
- * safe.  The raw zalloc/zfree routines are not interrupt safe, but are fast.
- */
-void *
-zalloci(vm_zone_t z)
-{
-	int s;
-	void *item;
-
-	s = zlock(z);
-	item = _zalloc(z);
-	zunlock(z, s);
-	return item;
-}
-
-void
-zfreei(vm_zone_t z, void *item)
-{
-	int s;
-
-	s = zlock(z);
-	_zfree(z, item);
-	zunlock(z, s);
-	return;
-}
-
 /*
  * Internal zone routine.  Not to be called from external (non vm_zone) code.
  */
-void *
-_zget(vm_zone_t z)
+static void *
+zget(vm_zone_t z)
 {
 	int i;
 	vm_page_t m;
@@ -381,9 +319,10 @@ _zget(vm_zone_t z)
 					  z->zallocflag);
 			if (m == NULL)
 				break;
+			lwkt_regettoken(&z->zlock);
 
 			zkva = z->zkva + z->zpagecount * PAGE_SIZE;
-			pmap_kenter(zkva, VM_PAGE_TO_PHYS(m));
+			pmap_kenter(zkva, VM_PAGE_TO_PHYS(m)); /* YYY */
 			bzero((caddr_t) zkva, PAGE_SIZE);
 			z->zpagecount++;
 			zone_kmem_pages++;
@@ -394,39 +333,30 @@ _zget(vm_zone_t z)
 		nbytes = z->zalloc * PAGE_SIZE;
 
 		/*
-		 * Check to see if the kernel map is already locked.  We could allow
-		 * for recursive locks, but that eliminates a valuable debugging
-		 * mechanism, and opens up the kernel map for potential corruption
-		 * by inconsistent data structure manipulation.  We could also use
-		 * the interrupt allocation mechanism, but that has size limitations.
-		 * Luckily, we have kmem_map that is a submap of kernel map available
-		 * for memory allocation, and manipulation of that map doesn't affect
-		 * the kernel map structures themselves.
+		 * Check to see if the kernel map is already locked. 
+		 * We could allow for recursive locks, but that eliminates
+		 * a valuable debugging mechanism, and opens up the kernel
+		 * map for potential corruption by inconsistent data structure
+		 * manipulation.  We could also use the interrupt allocation
+		 * mechanism, but that has size limitations.   Luckily, we
+		 * have kmem_map that is a submap of kernel map available
+		 * for memory allocation, and manipulation of that map doesn't
+		 * affect the kernel map structures themselves.
 		 *
-		 * We can wait, so just do normal map allocation in the appropriate
-		 * map.
+		 * We can wait, so just do normal map allocation in the
+		 * appropriate map.
 		 */
 		if (lockstatus(&kernel_map->lock, NULL)) {
 			int s;
 			s = splvm();
-#ifdef SMP
-			simple_unlock(&z->zlock);
-#endif
 			item = (void *) kmem_malloc(kmem_map, nbytes, M_WAITOK);
-#ifdef SMP
-			simple_lock(&z->zlock);
-#endif
+			lwkt_regettoken(&z->zlock);
 			if (item != NULL)
 				zone_kmem_pages += z->zalloc;
 			splx(s);
 		} else {
-#ifdef SMP
-			simple_unlock(&z->zlock);
-#endif
 			item = (void *) kmem_alloc(kernel_map, nbytes);
-#ifdef SMP
-			simple_lock(&z->zlock);
-#endif
+			lwkt_regettoken(&z->zlock);
 			if (item != NULL)
 				zone_kern_pages += z->zalloc;
 		}

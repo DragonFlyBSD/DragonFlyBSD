@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs.h,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.3 2003/07/06 21:23:47 dillon Exp $
  */
 
 /*#define HPFS_DEBUG 10*/
@@ -336,9 +336,7 @@ struct hpfsmount {
 #define	H_INVAL		0x0010		/* Invalid node */
 struct hpfsnode {
 	struct lock	h_lock;		/* Must be first, for std vops */
-#ifndef NULL_SIMPLELOCKS
-	struct simplelock h_interlock;
-#endif
+	struct lwkt_token h_interlock;
 
 	LIST_ENTRY(hpfsnode)	h_hash;
 

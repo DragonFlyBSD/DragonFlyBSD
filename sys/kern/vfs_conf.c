@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.3 2003/06/25 03:55:57 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.4 2003/07/06 21:23:51 dillon Exp $
  */
 
 /*
@@ -233,11 +233,11 @@ done:
 	} else {
 
 		/* register with list of mounted filesystems */
-		simple_lock(&mountlist_slock);
+		lwkt_gettoken(&mountlist_token);
 		TAILQ_INSERT_HEAD(&mountlist, mp, mnt_list);
-		simple_unlock(&mountlist_slock);
+		lwkt_reltoken(&mountlist_token);
 
-		/* sanity check system clock against root filesystem timestamp */
+		/* sanity check system clock against root fs timestamp */
 		inittodr(mp->mnt_time);
 		vfs_unbusy(mp, td);
 	}

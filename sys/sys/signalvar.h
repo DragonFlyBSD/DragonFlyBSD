@@ -32,7 +32,7 @@
  *
  *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
- * $DragonFly: src/sys/sys/signalvar.h,v 1.3 2003/06/23 17:55:50 dillon Exp $
+ * $DragonFly: src/sys/sys/signalvar.h,v 1.4 2003/07/06 21:23:54 dillon Exp $
  */
 
 #ifndef	_SYS_SIGNALVAR_H_		/* tmp for user.h */
@@ -40,7 +40,7 @@
 
 #include <sys/signal.h>
 #include <sys/proc.h>
-#include <machine/smp.h>
+#include <machine/lock.h>
 
 /*
  * Kernel signal definitions and data structures,
@@ -241,9 +241,7 @@ extern __inline int __cursig(struct proc *p)
 	     (!(p->p_flag & P_TRACED) && SIGISEMPTY(tmpset))) {
 		return(0);
 	}
-	get_mplock();
 	r = issignal(p);
-	rel_mplock();
 	return(r);
 }
 

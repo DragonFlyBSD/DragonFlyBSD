@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.21 2003/07/04 00:32:32 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.22 2003/07/06 21:23:54 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -180,8 +180,6 @@ struct	proc {
 	u_char	p_unused02;		/* Last cpu we were on */
 	char	p_rqindex;		/* Run queue index */
 
-	short	p_locks;		/* DEBUG: lockmgr count of held locks */
-	short	p_simple_locks;		/* DEBUG: count of held simple locks */
 	unsigned int	p_stops;	/* procfs event bitmask */
 	unsigned int	p_stype;	/* procfs stop event type */
 	char	p_step;			/* procfs stop *once* flag */
@@ -316,15 +314,13 @@ MALLOC_DECLARE(M_PARGS);
 }
 
 /*
- * STOPEVENT is MP SAFE.
+ * STOPEVENT
  */
 extern void stopevent(struct proc*, unsigned int, unsigned int);
 #define	STOPEVENT(p,e,v)			\
 	do {					\
 		if ((p)->p_stops & (e)) {	\
-			get_mplock();		\
 			stopevent(p,e,v);	\
-			rel_mplock(); 		\
 		}				\
 	} while (0)
 

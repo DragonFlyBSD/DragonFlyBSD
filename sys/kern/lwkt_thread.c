@@ -27,7 +27,7 @@
  *	thread scheduler, which means that generally speaking we only need
  *	to use a critical section to prevent hicups.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.14 2003/07/04 00:32:30 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.15 2003/07/06 21:23:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -185,6 +185,7 @@ lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
     td->td_flags |= flags;
     td->td_gd = gd;
     td->td_pri = TDPRI_CRIT;
+    td->td_cpu = gd->gd_cpuid;	/* YYY don't need this if have td_gd */
     pmap_init_thread(td);
     crit_enter();
     TAILQ_INSERT_TAIL(&mycpu->gd_tdallq, td, td_allq);
@@ -277,21 +278,44 @@ lwkt_switch(void)
     struct globaldata *gd;
     thread_t td = curthread;
     thread_t ntd;
+#ifdef SMP
+    int mpheld;
+#endif
 
     if (mycpu->gd_intr_nesting_level && td->td_preempted == NULL)
 	panic("lwkt_switch: cannot switch from within an interrupt, yet\n");
 
     crit_enter();
     ++switch_count;
+
+#ifdef SMP
+    /*
+     * td_mpcount cannot be used to determine if we currently hold the
+     * MP lock because get_mplock() will increment it prior to attempting
+     * to get the lock, and switch out if it can't.  Look at the actual lock.
+     */
+    mpheld = MP_LOCK_HELD();
+#endif
     if ((ntd = td->td_preempted) != NULL) {
 	/*
 	 * We had preempted another thread on this cpu, resume the preempted
 	 * thread.  This occurs transparently, whether the preempted thread
 	 * was scheduled or not (it may have been preempted after descheduling
-	 * itself).
+	 * itself). 
+	 *
+	 * We have to setup the MP lock for the original thread after backing
+	 * out the adjustment that was made to curthread when the original
+	 * was preempted.
 	 */
 	KKASSERT(ntd->td_flags & TDF_PREEMPT_LOCK);
+#ifdef SMP
+	if (ntd->td_mpcount) {
+	    td->td_mpcount -= ntd->td_mpcount;
+	    KKASSERT(td->td_mpcount >= 0);
+	}
+#endif
 	ntd->td_flags |= TDF_PREEMPT_DONE;
+	/* YYY release mp lock on switchback if original doesn't need it */
     } else {
 	/*
 	 * Priority queue / round-robin at each priority.  Note that user
@@ -299,9 +323,12 @@ lwkt_switch(void)
 	 * scheduler deals with interactions between user processes
 	 * by scheduling and descheduling them from the LWKT queue as
 	 * necessary.
+	 *
+	 * We have to adjust the MP lock for the target thread.  If we 
+	 * need the MP lock and cannot obtain it we try to locate a
+	 * thread that does not need the MP lock.
 	 */
 	gd = mycpu;
-
 again:
 	if (gd->gd_runqmask) {
 	    int nq = bsrl(gd->gd_runqmask);
@@ -309,16 +336,60 @@ again:
 		gd->gd_runqmask &= ~(1 << nq);
 		goto again;
 	    }
+#ifdef SMP
+	    if (ntd->td_mpcount && mpheld == 0 && !cpu_try_mplock()) {
+		/*
+		 * Target needs MP lock and we couldn't get it.
+		 */
+		u_int32_t rqmask = gd->gd_runqmask;
+		while (rqmask) {
+		    TAILQ_FOREACH(ntd, &gd->gd_tdrunq[nq], td_threadq) {
+			if (ntd->td_mpcount == 0)
+			    break;
+		    }
+		    if (ntd)
+			break;
+		    rqmask &= ~(1 << nq);
+		    nq = bsrl(rqmask);
+		}
+		if (ntd == NULL) {
+		    ntd = gd->gd_idletd;
+		} else {
+		    TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
+		    TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
+		}
+	    } else {
+		TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
+		TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
+	    }
+#else
 	    TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
 	    TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
+#endif
 	} else {
 	    ntd = gd->gd_idletd;
 	}
     }
     KASSERT(ntd->td_pri >= TDPRI_CRIT,
 	("priority problem in lwkt_switch %d %d", td->td_pri, ntd->td_pri));
-    if (td != ntd)
+
+    /*
+     * Do the actual switch.  If the new target does not need the MP lock
+     * and we are holding it, release the MP lock.  If the new target requires
+     * the MP lock we have already acquired it for the target.
+     */
+#ifdef SMP
+    if (ntd->td_mpcount == 0 ) {
+	if (MP_LOCK_HELD())
+	    cpu_rel_mplock();
+    } else {
+	ASSERT_MP_LOCK_HELD();
+    }
+#endif
+
+    if (td != ntd) {
 	td->td_switch(ntd);
+    }
     crit_exit();
 }
 
@@ -328,7 +399,9 @@ again:
  *
  *	+ We aren't trying to preempt ourselves (it can happen!)
  *	+ We are not currently being preempted
- *	+ the target is not currently being preempted
+ *	+ The target is not currently being preempted
+ *	+ The target either does not need the MP lock or we can get it
+ *	  for the target immediately.
  *
  * XXX at the moment we run the target thread in a critical section during
  * the preemption in order to prevent the target from taking interrupts
@@ -344,11 +417,18 @@ again:
  *
  * CAREFUL! either we or the target thread may get interrupted during the
  * switch.
+ *
+ * The target thread inherits our MP count (added to its own) for the
+ * duration of the preemption in order to preserve the atomicy of the
+ * preemption.
  */
 void
 lwkt_preempt(thread_t ntd, int id)
 {
     thread_t td = curthread;
+#ifdef SMP
+    int mpheld;
+#endif
 
     /*
      * The caller has put us in a critical section, and in order to have
@@ -370,6 +450,15 @@ lwkt_preempt(thread_t ntd, int id)
 	++preempt_miss;
 	return;
     }
+#ifdef SMP
+    mpheld = MP_LOCK_HELD();
+    ntd->td_mpcount += td->td_mpcount;
+    if (mpheld == 0 && ntd->td_mpcount && !cpu_try_mplock()) {
+	ntd->td_mpcount -= td->td_mpcount;
+	++preempt_miss;
+	return;
+    }
+#endif
 
     ++preempt_hit;
     ntd->td_preempted = td;
@@ -727,7 +816,7 @@ lwkt_signal(lwkt_wait_t w)
  * Note that the spl and critical section characteristics of a token
  * may not be changed once the token has been initialized.
  */
-void
+int
 lwkt_gettoken(lwkt_token_t tok)
 {
     /*
@@ -746,8 +835,9 @@ lwkt_gettoken(lwkt_token_t tok)
 #endif
     /*
      * leave us in a critical section on return.  This will be undone
-     * by lwkt_reltoken()
+     * by lwkt_reltoken().  Bump the generation number.
      */
+    return(++tok->t_gen);
 }
 
 /*
@@ -771,9 +861,29 @@ lwkt_reltoken(lwkt_token_t tok)
 }
 
 /*
- * Reaquire a token that might have been lost.  Returns 1 if we blocked
- * while reaquiring the token (meaning that you might have lost other
- * tokens you held when you made this call), return 0 if we did not block.
+ * Reacquire a token that might have been lost and compare and update the
+ * generation number.  0 is returned if the generation has not changed
+ * (nobody else obtained the token while we were blocked, on this cpu or
+ * any other cpu).
+ *
+ * This function returns with the token re-held whether the generation
+ * number changed or not.
+ */
+int
+lwkt_gentoken(lwkt_token_t tok, int *gen)
+{
+    if (lwkt_regettoken(tok) == *gen) {
+	return(0);
+    } else {
+	*gen = tok->t_gen;
+	return(-1);
+    }
+}
+
+
+/*
+ * Reacquire a token that might have been lost.  Returns the generation 
+ * number of the token.
  */
 int
 lwkt_regettoken(lwkt_token_t tok)
@@ -785,10 +895,9 @@ lwkt_regettoken(lwkt_token_t tok)
 	    initTokenReqMsg(&msg.mu_TokenReq);
 	    cpu_domsg(&msg);
 	}
-	return(1);
     }
 #endif
-    return(0);
+    return(tok->t_gen);
 }
 
 void
@@ -805,6 +914,8 @@ lwkt_inittoken(lwkt_token_t tok)
  * with proc0 - ie: kernel only.
  *
  * XXX should be renamed to lwkt_create()
+ *
+ * The thread will be entered with the MP lock held.
  */
 int
 lwkt_create(void (*func)(void *), void *arg,
@@ -817,6 +928,9 @@ lwkt_create(void (*func)(void *), void *arg,
     td = *tdp = lwkt_alloc_thread(template);
     cpu_set_thread_handler(td, kthread_exit, func, arg);
     td->td_flags |= TDF_VERBOSE | tdflags;
+#ifdef SMP
+    td->td_mpcount = 1;
+#endif
 
     /*
      * Set up arg0 for 'ps' etc
@@ -868,6 +982,9 @@ kthread_create(void (*func)(void *), void *arg,
     td = *tdp = lwkt_alloc_thread(NULL);
     cpu_set_thread_handler(td, kthread_exit, func, arg);
     td->td_flags |= TDF_VERBOSE;
+#ifdef SMP
+    td->td_mpcount = 1;
+#endif
 
     /*
      * Set up arg0 for 'ps' etc

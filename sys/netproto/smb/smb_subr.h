@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.h,v 1.1.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.4 2003/06/25 03:56:06 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.5 2003/07/06 21:23:53 dillon Exp $
  */
 #ifndef _NETSMB_SMB_SUBR_H_
 #define _NETSMB_SMB_SUBR_H_
@@ -80,11 +80,11 @@ void m_dumpm(struct mbuf *m);
 #include <sys/lock.h>
 
 #define	lockdestroy(lock)
-#define	smb_slock			simplelock
-#define	smb_sl_init(mtx, desc)		simple_lock_init(mtx)
+#define	smb_slock			lwkt_token
+#define	smb_sl_init(mtx, desc)		lwkt_inittoken(mtx)
 #define	smb_sl_destroy(mtx)
-#define	smb_sl_lock(mtx)		simple_lock(mtx)
-#define	smb_sl_unlock(mtx)		simple_unlock(mtx)
+#define	smb_sl_lock(mtx)		lwkt_gettoken(mtx)
+#define	smb_sl_unlock(mtx)		lwkt_reltoken(mtx)
 
 #define SMB_STRFREE(p)	do { if (p) smb_strfree(p); } while(0)
 
@@ -140,7 +140,7 @@ extern smb_unichar smb_unieol;
 struct mbchain;
 struct proc;
 struct thread;
-struct simplelock;
+struct lwkt_token;
 struct smb_vc;
 struct smb_rq;
 
@@ -172,7 +172,7 @@ int  smb_checksmp(void);
  */
 int kthread_create2(void (*func)(void *), void *arg,
     struct proc **newpp, int flags, const char *fmt, ...);
-int msleep(void *chan, struct simplelock *mtx, int pri, const char *wmesg, int timo);
+int smb_sleep(void *chan, struct lwkt_token *mtx, int pri, const char *wmesg, int timo);
 
 
 #endif /* !_NETSMB_SMB_SUBR_H_ */

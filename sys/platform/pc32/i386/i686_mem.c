@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/i686_mem.c,v 1.8.2.4 2002/09/24 08:12:51 mdodd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/i686_mem.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/i686_mem.c,v 1.3 2003/07/06 21:23:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -39,6 +39,7 @@
 #ifdef SMP
 #include <machine/smp.h>
 #endif
+#include <machine/lock.h>
 
 /*
  * i686 memory range operations
@@ -268,9 +269,9 @@ i686_mrstore(struct mem_range_softc *sc)
      */
     smp_rendezvous(NULL, i686_mrstoreone, NULL, (void *)sc);
 #else
-    disable_intr();				/* disable interrupts */
+    mpintr_lock();			/* doesn't have to be mpintr YYY */
     i686_mrstoreone((void *)sc);
-    enable_intr();
+    mpintr_unlock();
 #endif
 }
 

@@ -34,7 +34,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ntfs/ntfs_ihash.c,v 1.7 1999/12/03 20:37:39 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.c,v 1.3 2003/07/06 21:23:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -58,9 +58,7 @@ MALLOC_DEFINE(M_NTFSNTHASH, "NTFS nthash", "NTFS ntnode hash tables");
 static LIST_HEAD(nthashhead, ntnode) *ntfs_nthashtbl;
 static u_long	ntfs_nthash;		/* size of hash table - 1 */
 #define	NTNOHASH(device, inum)	(&ntfs_nthashtbl[(minor(device) + (inum)) & ntfs_nthash])
-#ifndef NULL_SIMPLELOCKS
-static struct simplelock ntfs_nthash_slock;
-#endif
+static struct lwkt_token ntfs_nthash_slock;
 struct lock ntfs_hashlock;
 
 /*
@@ -72,7 +70,7 @@ ntfs_nthashinit()
 	lockinit(&ntfs_hashlock, PINOD, "ntfs_nthashlock", 0, 0);
 	ntfs_nthashtbl = HASHINIT(desiredvnodes, M_NTFSNTHASH, M_WAITOK,
 	    &ntfs_nthash);
-	simple_lock_init(&ntfs_nthash_slock);
+	lwkt_inittoken(&ntfs_nthash_slock);
 }
 
 /*
@@ -86,11 +84,11 @@ ntfs_nthashlookup(dev, inum)
 {
 	struct ntnode *ip;
 
-	simple_lock(&ntfs_nthash_slock);
+	lwkt_gettoken(&ntfs_nthash_slock);
 	for (ip = NTNOHASH(dev, inum)->lh_first; ip; ip = ip->i_hash.le_next)
 		if (inum == ip->i_number && dev == ip->i_dev)
 			break;
-	simple_unlock(&ntfs_nthash_slock);
+	lwkt_reltoken(&ntfs_nthash_slock);
 
 	return (ip);
 }
@@ -104,11 +102,11 @@ ntfs_nthashins(ip)
 {
 	struct nthashhead *ipp;
 
-	simple_lock(&ntfs_nthash_slock);
+	lwkt_gettoken(&ntfs_nthash_slock);
 	ipp = NTNOHASH(ip->i_dev, ip->i_number);
 	LIST_INSERT_HEAD(ipp, ip, i_hash);
 	ip->i_flag |= IN_HASHED;
-	simple_unlock(&ntfs_nthash_slock);
+	lwkt_reltoken(&ntfs_nthash_slock);
 }
 
 /*
@@ -118,7 +116,7 @@ void
 ntfs_nthashrem(ip)
 	struct ntnode *ip;
 {
-	simple_lock(&ntfs_nthash_slock);
+	lwkt_gettoken(&ntfs_nthash_slock);
 	if (ip->i_flag & IN_HASHED) {
 		ip->i_flag &= ~IN_HASHED;
 		LIST_REMOVE(ip, i_hash);
@@ -127,5 +125,5 @@ ntfs_nthashrem(ip)
 		ip->i_hash.le_prev = NULL;
 #endif
 	}
-	simple_unlock(&ntfs_nthash_slock);
+	lwkt_reltoken(&ntfs_nthash_slock);
 }

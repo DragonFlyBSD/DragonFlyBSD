@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/fs/hpfs/hpfs_hash.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.3 2003/07/06 21:23:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -55,7 +55,7 @@ static LIST_HEAD(hphashhead, hpfsnode) *hpfs_hphashtbl;
 static u_long	hpfs_hphash;		/* size of hash table - 1 */
 #define	HPNOHASH(dev, lsn)	(&hpfs_hphashtbl[(minor(dev) + (lsn)) & hpfs_hphash])
 #ifndef NULL_SIMPLELOCKS
-static struct simplelock hpfs_hphash_slock;
+static struct lwkt_token hpfs_hphash_token;
 #endif
 struct lock hpfs_hphash_lock;
 
@@ -69,7 +69,7 @@ hpfs_hphashinit()
 	lockinit (&hpfs_hphash_lock, PINOD, "hpfs_hphashlock", 0, 0);
 	hpfs_hphashtbl = HASHINIT(desiredvnodes, M_HPFSHASH, M_WAITOK,
 	    &hpfs_hphash);
-	simple_lock_init(&hpfs_hphash_slock);
+	lwkt_inittoken(&hpfs_hphash_token);
 }
 
 /*
@@ -83,11 +83,11 @@ hpfs_hphashlookup(dev, ino)
 {
 	struct hpfsnode *hp;
 
-	simple_lock(&hpfs_hphash_slock);
+	lwkt_gettoken(&hpfs_hphash_token);
 	for (hp = HPNOHASH(dev, ino)->lh_first; hp; hp = hp->h_hash.le_next)
 		if (ino == hp->h_no && dev == hp->h_dev)
 			break;
-	simple_unlock(&hpfs_hphash_slock);
+	lwkt_reltoken(&hpfs_hphash_token);
 
 	return (hp);
 }
@@ -101,14 +101,14 @@ hpfs_hphashget(dev, ino)
 	struct hpfsnode *hp;
 
 loop:
-	simple_lock(&hpfs_hphash_slock);
+	lwkt_gettoken(&hpfs_hphash_token);
 	for (hp = HPNOHASH(dev, ino)->lh_first; hp; hp = hp->h_hash.le_next) {
 		if (ino == hp->h_no && dev == hp->h_dev) {
-			LOCKMGR(&hp->h_intlock, LK_EXCLUSIVE | LK_INTERLOCK, &hpfs_hphash_slock, NULL);
+			LOCKMGR(&hp->h_intlock, LK_EXCLUSIVE | LK_INTERLOCK, &hpfs_hphash_token, NULL);
 			return (hp);
 		}
 	}
-	simple_unlock(&hpfs_hphash_slock);
+	lwkt_reltoken(&hpfs_hphash_token);
 	return (hp);
 }
 #endif
@@ -121,20 +121,24 @@ hpfs_hphashvget(dev, ino, p)
 {
 	struct hpfsnode *hp;
 	struct vnode *vp;
+	int gen;
 
+	gen = lwkt_gettoken(&hpfs_hphash_token);
 loop:
-	simple_lock(&hpfs_hphash_slock);
 	for (hp = HPNOHASH(dev, ino)->lh_first; hp; hp = hp->h_hash.le_next) {
 		if (ino == hp->h_no && dev == hp->h_dev) {
 			vp = HPTOV(hp);
-			simple_lock (&vp->v_interlock);
-			simple_unlock (&hpfs_hphash_slock);
-			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, p))
+			lwkt_gettoken (&vp->v_interlock);
+			if (lwkt_gentoken(&hpfs_hphash_token, &gen))
 				goto loop;
+			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, p)) {
+				gen = lwkt_regettoken(&hpfs_hphash_token);
+				goto loop;
+			}
 			return (vp);
 		}
 	}
-	simple_unlock(&hpfs_hphash_slock);
+	lwkt_reltoken(&hpfs_hphash_token);
 	return (NULLVP);
 }
 
@@ -147,11 +151,11 @@ hpfs_hphashins(hp)
 {
 	struct hphashhead *hpp;
 
-	simple_lock(&hpfs_hphash_slock);
+	lwkt_gettoken(&hpfs_hphash_token);
 	hpp = HPNOHASH(hp->h_dev, hp->h_no);
 	hp->h_flag |= H_HASHED;
 	LIST_INSERT_HEAD(hpp, hp, h_hash);
-	simple_unlock(&hpfs_hphash_slock);
+	lwkt_reltoken(&hpfs_hphash_token);
 }
 
 /*
@@ -161,7 +165,7 @@ void
 hpfs_hphashrem(hp)
 	struct hpfsnode *hp;
 {
-	simple_lock(&hpfs_hphash_slock);
+	lwkt_gettoken(&hpfs_hphash_token);
 	if (hp->h_flag & H_HASHED) {
 		hp->h_flag &= ~H_HASHED;
 		LIST_REMOVE(hp, h_hash);
@@ -170,5 +174,5 @@ hpfs_hphashrem(hp)
 		hp->h_hash.le_prev = NULL;
 #endif
 	}
-	simple_unlock(&hpfs_hphash_slock);
+	lwkt_reltoken(&hpfs_hphash_token);
 }

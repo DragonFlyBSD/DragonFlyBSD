@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.20 2003/07/04 00:32:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.21 2003/07/06 21:23:48 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -50,6 +50,7 @@
 #include <sys/errno.h>
 #include <sys/mount.h>
 #include <sys/socket.h>
+#include <sys/lock.h>
 #include <sys/resourcevar.h>
 #include <machine/frame.h>
 #include <machine/bootinfo.h>
@@ -87,8 +88,14 @@ ASSYM(TD_SP, offsetof(struct thread, td_sp));
 ASSYM(TD_PRI, offsetof(struct thread, td_pri));
 ASSYM(TD_MACH, offsetof(struct thread, td_mach));
 ASSYM(TD_WCHAN, offsetof(struct thread, td_wchan));
+#ifdef SMP
+ASSYM(TD_MPCOUNT, offsetof(struct thread, td_mpcount));
+#endif
 ASSYM(TD_FLAGS, offsetof(struct thread, td_flags));
 ASSYM(TDF_EXITED, TDF_EXITED);
+#ifdef SMP
+ASSYM(MP_FREE_LOCK, MP_FREE_LOCK);
+#endif
 
 ASSYM(RW_OWNER, offsetof(struct lwkt_rwlock, rw_owner));
 
@@ -101,6 +108,8 @@ ASSYM(SRUN, SRUN);
 ASSYM(V_TRAP, offsetof(struct vmmeter, v_trap));
 ASSYM(V_SYSCALL, offsetof(struct vmmeter, v_syscall));
 ASSYM(V_INTR, offsetof(struct vmmeter, v_intr));
+ASSYM(V_FORWARDED_HITS, offsetof(struct vmmeter, v_forwarded_hits));
+ASSYM(V_FORWARDED_MISSES, offsetof(struct vmmeter, v_forwarded_misses));
 ASSYM(UPAGES, UPAGES);
 ASSYM(PAGE_SIZE, PAGE_SIZE);
 ASSYM(NPTEPG, NPTEPG);

@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/isa_dma.c,v 1.4.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_dma.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_dma.c,v 1.3 2003/07/06 21:23:49 dillon Exp $
  */
 
 /*
@@ -448,14 +448,14 @@ isa_dmastatus(int chan)
 		waport = DMA2_CHN(chan - 4) + 2;
 	}
 
-	disable_intr();			/* no interrupts Mr Jones! */
+	cpu_disable_intr();		/* YYY *//* no interrupts Mr Jones! */
 	outb(ffport, 0);		/* clear register LSB flipflop */
 	low1 = inb(waport);
 	high1 = inb(waport);
 	outb(ffport, 0);		/* clear again */
 	low2 = inb(waport);
 	high2 = inb(waport);
-	enable_intr();			/* enable interrupts again */
+	cpu_enable_intr();		/* enable interrupts again */
 
 	/* 
 	 * Now decide if a wrap has tried to skew our results.

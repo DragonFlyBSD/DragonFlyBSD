@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/crypto.c,v 1.4.2.7 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.4 2003/06/29 03:28:45 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.5 2003/07/06 21:23:54 dillon Exp $	*/
 /*	$OpenBSD: crypto.c,v 1.38 2002/06/11 11:14:29 beck Exp $	*/
 /*
  * The author of this code is Angelos D. Keromytis (angelos@cis.upenn.edu)
@@ -837,40 +837,26 @@ void
 crypto_freereq(struct cryptop *crp)
 {
 	struct cryptodesc *crd;
-	int s;
 
-	if (crp == NULL)
-		return;
-
-	/* NB: see below for an explanation */
-	s = splcrypto();
-	while ((crd = crp->crp_desc) != NULL) {
-		crp->crp_desc = crd->crd_next;
-		zfree(cryptodesc_zone, crd);
+	if (crp) {
+		while ((crd = crp->crp_desc) != NULL) {
+			crp->crp_desc = crd->crd_next;
+			zfree(cryptodesc_zone, crd);
+		}
+		zfree(cryptop_zone, crp);
 	}
-	zfree(cryptop_zone, crp);
-	splx(s);
 }
 
 /*
- * Acquire a set of crypto descriptors.
+ * Acquire a set of crypto descriptors.  The descriptors are self contained
+ * so no special spl protection is necessary.
  */
 struct cryptop *
 crypto_getreq(int num)
 {
 	struct cryptodesc *crd;
 	struct cryptop *crp;
-	int s;
 
-	/*
-	 * Must interlock access to the zone. Calls may come in
-	 * at raised ipl from network protocols, but in general
-	 * we cannot be certain where we'll be called from.  We
-	 * could use zalloci/zfreei which is safe to be called
-	 * from anywhere or use splhigh, but for now splcrypto
-	 * is safe as it blocks crypto drivers and network threads.
-	 */
-	s = splcrypto();
 	crp = zalloc(cryptop_zone);
 	if (crp != NULL) {
 		bzero(crp, sizeof (*crp));
@@ -878,16 +864,14 @@ crypto_getreq(int num)
 			crd = zalloc(cryptodesc_zone);
 			if (crd == NULL) {
 				crypto_freereq(crp);
-				splx(s);
-				return NULL;
+				crp = NULL;
+				break;
 			}
-
 			bzero(crd, sizeof (*crd));
 			crd->crd_next = crp->crp_desc;
 			crp->crp_desc = crd;
 		}
 	}
-	splx(s);
 	return crp;
 }
 

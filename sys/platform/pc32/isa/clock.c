@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.3 2003/06/29 07:37:06 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.4 2003/07/06 21:23:49 dillon Exp $
  */
 
 /*
@@ -91,10 +91,6 @@
 #include <i386/isa/mca_machdep.h>
 #endif
 
-#ifdef SMP
-#define disable_intr()	CLOCK_DISABLE_INTR()
-#define enable_intr()	CLOCK_ENABLE_INTR()
-
 #ifdef APIC_IO
 #include <i386/isa/intr_machdep.h>
 /* The interrupt triggered by the 8254 (timer) chip */
@@ -102,7 +98,6 @@ int apic_8254_intr;
 static u_long read_intr_count __P((int vec));
 static void setup_8254_mixed_mode __P((void));
 #endif
-#endif /* SMP */
 
 /*
  * 32-bit time_t's can't reach leap years before 1904 or after 2036, so we
@@ -204,7 +199,7 @@ static void
 clkintr(struct clockframe frame)
 {
 	if (timecounter->tc_get_timecount == i8254_get_timecount) {
-		disable_intr();
+		clock_lock();
 		if (i8254_ticked)
 			i8254_ticked = 0;
 		else {
@@ -212,7 +207,7 @@ clkintr(struct clockframe frame)
 			i8254_lastcount = 0;
 		}
 		clkintr_pending = 0;
-		enable_intr();
+		clock_unlock();
 	}
 	timer_func(&frame);
 	switch (timer0_state) {
@@ -231,14 +226,14 @@ clkintr(struct clockframe frame)
 		break;
 
 	case ACQUIRE_PENDING:
-		disable_intr();
+		clock_lock();
 		i8254_offset = i8254_get_timecount(NULL);
 		i8254_lastcount = 0;
 		timer0_max_count = TIMER_DIV(new_rate);
 		outb(TIMER_MODE, TIMER_SEL0 | TIMER_RATEGEN | TIMER_16BIT);
 		outb(TIMER_CNTR0, timer0_max_count & 0xff);
 		outb(TIMER_CNTR0, timer0_max_count >> 8);
-		enable_intr();
+		clock_unlock();
 		timer_func = new_function;
 		timer0_state = ACQUIRED;
 		setdelayed();
@@ -247,7 +242,7 @@ clkintr(struct clockframe frame)
 	case RELEASE_PENDING:
 		if ((timer0_prescaler_count += timer0_max_count)
 		    >= hardclock_max_count) {
-			disable_intr();
+			clock_lock();
 			i8254_offset = i8254_get_timecount(NULL);
 			i8254_lastcount = 0;
 			timer0_max_count = hardclock_max_count;
@@ -255,7 +250,7 @@ clkintr(struct clockframe frame)
 			     TIMER_SEL0 | TIMER_RATEGEN | TIMER_16BIT);
 			outb(TIMER_CNTR0, timer0_max_count & 0xff);
 			outb(TIMER_CNTR0, timer0_max_count >> 8);
-			enable_intr();
+			clock_unlock();
 			timer0_prescaler_count = 0;
 			timer_func = hardclock;
 			timer0_state = RELEASED;
@@ -402,11 +397,9 @@ DB_SHOW_COMMAND(rtc, rtc)
 static int
 getit(void)
 {
-	u_long ef;
 	int high, low;
 
-	ef = read_eflags();
-	disable_intr();
+	clock_lock();
 
 	/* Select timer0 and latch counter value. */
 	outb(TIMER_MODE, TIMER_SEL0 | TIMER_LATCH);
@@ -414,8 +407,7 @@ getit(void)
 	low = inb(TIMER_CNTR0);
 	high = inb(TIMER_CNTR0);
 
-	CLOCK_UNLOCK();
-	write_eflags(ef);
+	clock_unlock();
 	return ((high << 8) | low);
 }
 
@@ -529,10 +521,10 @@ sysbeep(int pitch, int period)
 			splx(x);
 			return (-1); /* XXX Should be EBUSY, but nobody cares anyway. */
 		}
-	disable_intr();
+	clock_lock();
 	outb(TIMER_CNTR2, pitch);
 	outb(TIMER_CNTR2, (pitch>>8));
-	enable_intr();
+	clock_unlock();
 	if (!beeping) {
 		/* enable counter2 output to speaker */
 		outb(IO_PPI, inb(IO_PPI) | 3);
@@ -681,11 +673,9 @@ fail:
 static void
 set_timer_freq(u_int freq, int intr_freq)
 {
-	u_long ef;
 	int new_timer0_max_count;
 
-	ef = read_eflags();
-	disable_intr();
+	clock_lock();
 	timer_freq = freq;
 	new_timer0_max_count = hardclock_max_count = TIMER_DIV(intr_freq);
 	if (new_timer0_max_count != timer0_max_count) {
@@ -694,22 +684,17 @@ set_timer_freq(u_int freq, int intr_freq)
 		outb(TIMER_CNTR0, timer0_max_count & 0xff);
 		outb(TIMER_CNTR0, timer0_max_count >> 8);
 	}
-	CLOCK_UNLOCK();
-	write_eflags(ef);
+	clock_unlock();
 }
 
 static void
 i8254_restore(void)
 {
-	u_long ef;
-
-	ef = read_eflags();
-	disable_intr();
+	clock_lock();
 	outb(TIMER_MODE, TIMER_SEL0 | TIMER_RATEGEN | TIMER_16BIT);
 	outb(TIMER_CNTR0, timer0_max_count & 0xff);
 	outb(TIMER_CNTR0, timer0_max_count >> 8);
-	CLOCK_UNLOCK();
-	write_eflags(ef);
+	clock_unlock();
 }
 
 static void
@@ -1212,7 +1197,7 @@ i8254_get_timecount(struct timecounter *tc)
 	u_int high, low;
 
 	ef = read_eflags();
-	disable_intr();
+	clock_lock();
 
 	/* Select timer0 and latch counter value. */
 	outb(TIMER_MODE, TIMER_SEL0 | TIMER_LATCH);
@@ -1236,8 +1221,7 @@ i8254_get_timecount(struct timecounter *tc)
 	}
 	i8254_lastcount = count;
 	count += i8254_offset;
-	CLOCK_UNLOCK();
-	write_eflags(ef);
+	clock_unlock();
 	return (count);
 }
 

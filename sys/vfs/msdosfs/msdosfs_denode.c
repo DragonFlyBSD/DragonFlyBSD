@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.4 2003/06/26 05:55:17 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.5 2003/07/06 21:23:52 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -73,9 +73,7 @@ static struct denode **dehashtbl;
 static u_long dehash;			/* size of hash table - 1 */
 #define	DEHASH(dev, dcl, doff)	(dehashtbl[(minor(dev) + (dcl) + (doff) / 	\
 				sizeof(struct direntry)) & dehash])
-#ifndef NULL_SIMPLELOCKS
-static struct simplelock dehash_slock;
-#endif
+static struct lwkt_token dehash_token;
 
 union _qcvt {
 	quad_t qcvt;
@@ -106,7 +104,7 @@ msdosfs_init(vfsp)
 	struct vfsconf *vfsp;
 {
 	dehashtbl = hashinit(desiredvnodes/2, M_MSDOSFSMNT, &dehash);
-	simple_lock_init(&dehash_slock);
+	lwkt_inittoken(&dehash_token);
 	return (0);
 }
 
@@ -131,21 +129,21 @@ msdosfs_hashget(dev, dirclust, diroff)
 	struct vnode *vp;
 
 loop:
-	simple_lock(&dehash_slock);
+	lwkt_gettoken(&dehash_token);
 	for (dep = DEHASH(dev, dirclust, diroff); dep; dep = dep->de_next) {
 		if (dirclust == dep->de_dirclust
 		    && diroff == dep->de_diroffset
 		    && dev == dep->de_dev
 		    && dep->de_refcnt != 0) {
 			vp = DETOV(dep);
-			simple_lock(&vp->v_interlock);
-			simple_unlock(&dehash_slock);
+			lwkt_gettoken(&vp->v_interlock);
+			lwkt_reltoken(&dehash_token);
 			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td))
 				goto loop;
 			return (dep);
 		}
 	}
-	simple_unlock(&dehash_slock);
+	lwkt_reltoken(&dehash_token);
 	return (NULL);
 }
 
@@ -155,7 +153,7 @@ msdosfs_hashins(dep)
 {
 	struct denode **depp, *deq;
 
-	simple_lock(&dehash_slock);
+	lwkt_gettoken(&dehash_token);
 	depp = &DEHASH(dep->de_dev, dep->de_dirclust, dep->de_diroffset);
 	deq = *depp;
 	if (deq)
@@ -163,7 +161,7 @@ msdosfs_hashins(dep)
 	dep->de_next = deq;
 	dep->de_prev = depp;
 	*depp = dep;
-	simple_unlock(&dehash_slock);
+	lwkt_reltoken(&dehash_token);
 }
 
 static void
@@ -172,7 +170,7 @@ msdosfs_hashrem(dep)
 {
 	struct denode *deq;
 
-	simple_lock(&dehash_slock);
+	lwkt_gettoken(&dehash_token);
 	deq = dep->de_next;
 	if (deq)
 		deq->de_prev = dep->de_prev;
@@ -181,7 +179,7 @@ msdosfs_hashrem(dep)
 	dep->de_next = NULL;
 	dep->de_prev = NULL;
 #endif
-	simple_unlock(&dehash_slock);
+	lwkt_reltoken(&dehash_token);
 }
 
 /*
@@ -278,7 +276,7 @@ deget(pmp, dirclust, diroffset, depp)
 	 * of at the start of msdosfs_hashins() so that reinsert() can
 	 * call msdosfs_hashins() with a locked denode.
 	 */
-	if (lockmgr(&ldep->de_lock, LK_EXCLUSIVE, (struct simplelock *)0, td))
+	if (lockmgr(&ldep->de_lock, LK_EXCLUSIVE, NULL, td))
 		panic("deget: unexpected lock failure");
 
 	/*
@@ -724,6 +722,6 @@ out:
 	       dep->de_Name[0]);
 #endif
 	if (dep->de_Name[0] == SLOT_DELETED)
-		vrecycle(vp, (struct simplelock *)0, ap->a_td);
+		vrecycle(vp, NULL, ap->a_td);
 	return (error);
 }

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.21 2003/07/03 18:19:51 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.22 2003/07/06 21:23:48 dillon Exp $
  */
 
 #include "apm.h"
@@ -135,6 +135,7 @@ static void fill_fpregs_xmm __P((struct savexmm *, struct save87 *));
 #ifdef DIRECTIO
 extern void ffs_rawread_setup(void);
 #endif /* DIRECTIO */
+static void init_locks(void);
 
 SYSINIT(cpu, SI_SUB_CPU, SI_ORDER_FIRST, cpu_startup, NULL)
 
@@ -950,7 +951,7 @@ cpu_halt(void)
  * Note on cpu_idle_hlt:  On an SMP system this may cause the system to 
  * halt until the next clock tick, even if a thread is ready YYY
  */
-static int	cpu_idle_hlt = 1;
+static int	cpu_idle_hlt = 0;
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
     &cpu_idle_hlt, 0, "Idle loop HLT enable");
 
@@ -1829,6 +1830,7 @@ init386(int first)
 	 * Prevent lowering of the ipl if we call tsleep() early.
 	 */
 	gd = &CPU_prvspace[0].mdglobaldata;
+	bzero(gd, sizeof(*gd));
 
 	gd->mi.gd_curthread = &thread0;
 
@@ -1915,6 +1917,8 @@ init386(int first)
 #ifdef USER_LDT
 	gd->gd_currentldt = _default_ldt;
 #endif
+	/* spinlocks and the BGL */
+	init_locks();
 
 	/* exceptions */
 	for (x = 0; x < NIDT; x++)
@@ -2633,3 +2637,66 @@ outb(u_int port, u_char data)
 }
 
 #endif /* DDB */
+
+
+
+#include "opt_cpu.h"
+#include "opt_htt.h"
+#include "opt_user_ldt.h"
+
+
+/*
+ * initialize all the SMP locks
+ */
+
+/* critical region around IO APIC, apic_imen */
+struct spinlock	imen_spinlock;
+
+/* Make FAST_INTR() routines sequential */
+struct spinlock	fast_intr_spinlock;
+
+/* critical region for old style disable_intr/enable_intr */
+struct spinlock	mpintr_spinlock;
+
+/* critical region around INTR() routines */
+struct spinlock	intr_spinlock;
+
+/* lock region used by kernel profiling */
+struct spinlock	mcount_spinlock;
+
+/* locks com (tty) data/hardware accesses: a FASTINTR() */
+struct spinlock	com_spinlock;
+
+/* locks kernel printfs */
+struct spinlock	cons_spinlock;
+
+/* lock regions around the clock hardware */
+struct spinlock	clock_spinlock;
+
+/* lock around the MP rendezvous */
+struct spinlock smp_rv_spinlock;
+
+static void
+init_locks(void)
+{
+	/*
+	 * mp_lock = 0;	BSP already owns the MP lock 
+	 */
+	/*
+	 * Get the initial mp_lock with a count of 1 for the BSP.
+	 * This uses a LOGICAL cpu ID, ie BSP == 0.
+	 */
+#ifdef SMP
+	cpu_get_initial_mplock();
+#endif
+	spin_lock_init(&mcount_spinlock);
+	spin_lock_init(&fast_intr_spinlock);
+	spin_lock_init(&intr_spinlock);
+	spin_lock_init(&mpintr_spinlock);
+	spin_lock_init(&imen_spinlock);
+	spin_lock_init(&smp_rv_spinlock);
+	spin_lock_init(&com_spinlock);
+	spin_lock_init(&clock_spinlock);
+	spin_lock_init(&cons_spinlock);
+}
+

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.3 2003/06/25 03:56:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.4 2003/07/06 21:23:55 dillon Exp $
  */
 
 #include "opt_ufs.h"
@@ -747,7 +747,7 @@ ufs_direnter(dvp, tvp, dirp, cnp, newdirbp)
 	int error, ret, blkoff, loc, spacefree, flags;
 	char *dirbuf;
 
-	KKASSERT(td->td_proc);
+	KKASSERT(td->td_proc);	/* YYY use/require cred passed in cnp? */
 	cred = td->td_proc->p_ucred;
 
 	dp = VTOI(dvp);

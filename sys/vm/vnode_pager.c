@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.6 2003/07/03 17:24:04 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.7 2003/07/06 21:23:56 dillon Exp $
  */
 
 /*
@@ -546,7 +546,7 @@ vnode_pager_input_old(object, m)
 		auio.uio_resid = size;
 		auio.uio_td = curthread;
 
-		error = VOP_READ(object->handle, &auio, 0, curproc->p_ucred);
+		error = VOP_READ(object->handle, &auio, 0, proc0.p_ucred);
 		if (!error) {
 			register int count = size - auio.uio_resid;
 
@@ -1022,7 +1022,7 @@ vnode_pager_generic_putpages(vp, m, bytecount, flags, rtvals)
 	auio.uio_rw = UIO_WRITE;
 	auio.uio_resid = maxsize;
 	auio.uio_td = NULL;
-	error = VOP_WRITE(vp, &auio, ioflags, curproc->p_ucred);
+	error = VOP_WRITE(vp, &auio, ioflags, proc0.p_ucred);
 	mycpu->gd_cnt.v_vnodeout++;
 	mycpu->gd_cnt.v_vnodepgsout += ncount;
 

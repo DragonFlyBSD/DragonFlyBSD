@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.3 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.4 2003/07/06 21:23:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,6 +52,7 @@
 #include <sys/cons.h>
 #include <sys/uio.h>
 #include <sys/sysctl.h>
+#include <sys/lock.h>
 
 /*
  * Note that stdarg.h and the ANSI style va_start macro is used for both
@@ -126,6 +127,7 @@ uprintf(const char *fmt, ...)
 		va_start(ap, fmt);
 		pca.tty = p->p_session->s_ttyp;
 		pca.flags = TOTTY;
+
 		retval = kvprintf(fmt, putchar, &pca, 10, ap);
 		va_end(ap);
 	}
@@ -300,7 +302,9 @@ printf(const char *fmt, ...)
 	pca.tty = NULL;
 	pca.flags = TOCONS | TOLOG;
 	pca.pri = -1;
+	cons_lock();
 	retval = kvprintf(fmt, putchar, &pca, 10, ap);
+	cons_unlock();
 	va_end(ap);
 	if (!panicstr)
 		msgbuftrigger = 1;
@@ -320,7 +324,9 @@ vprintf(const char *fmt, va_list ap)
 	pca.tty = NULL;
 	pca.flags = TOCONS | TOLOG;
 	pca.pri = -1;
+	cons_lock();
 	retval = kvprintf(fmt, putchar, &pca, 10, ap);
+	cons_unlock();
 	if (!panicstr)
 		msgbuftrigger = 1;
 	consintr = savintr;		/* reenable interrupts */

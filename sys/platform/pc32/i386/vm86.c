@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.5 2003/06/25 03:55:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.6 2003/07/06 21:23:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -544,6 +544,9 @@ vm86_prepcall(struct vm86frame vmf)
 /*
  * vm86 trap handler; determines whether routine succeeded or not.
  * Called while in vm86 space, returns to calling process.
+ *
+ * A MP lock ref is held on entry from trap() and must be released prior
+ * to returning to the VM86 call.
  */
 void
 vm86_trap(struct vm86frame *vmf)
@@ -560,6 +563,7 @@ vm86_trap(struct vm86frame *vmf)
 	else
 		vmf->vmf_trapno = vmf->vmf_trapno << 16;
 
+	rel_mplock();
 	vm86_biosret(vmf);
 }
 
@@ -568,6 +572,8 @@ vm86_intcall(int intnum, struct vm86frame *vmf)
 {
 	if (intnum < 0 || intnum > 0xff)
 		return (EINVAL);
+
+	ASSERT_MP_LOCK_HELD();
 
 	vmf->vmf_trapno = intnum;
 	return (vm86_bioscall(vmf));
@@ -588,6 +594,8 @@ vm86_datacall(intnum, vmf, vmc)
 	pt_entry_t pte = (pt_entry_t)vm86paddr;
 	u_int page;
 	int i, entry, retval;
+
+	ASSERT_MP_LOCK_HELD();
 
 	for (i = 0; i < vmc->npages; i++) {
 		page = vtophys(vmc->pmap[i].kva & PG_FRAME);

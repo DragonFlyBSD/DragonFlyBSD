@@ -32,7 +32,7 @@
  *
  *	@(#)dead_vnops.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/miscfs/deadfs/dead_vnops.c,v 1.26 1999/08/28 00:46:42 peter Exp $
- * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.3 2003/07/06 21:23:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -212,7 +212,7 @@ dead_lock(ap)
 	 * the interlock here.
 	 */
 	if (ap->a_flags & LK_INTERLOCK) {
-		simple_unlock(&vp->v_interlock);
+		lwkt_reltoken(&vp->v_interlock);
 		ap->a_flags &= ~LK_INTERLOCK;
 	}
 	if (!chkvnlock(vp))

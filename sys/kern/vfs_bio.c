@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.8 2003/07/03 17:24:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.9 2003/07/06 21:23:51 dillon Exp $
  */
 
 /*
@@ -339,7 +339,7 @@ bufinit(void)
 
 	TAILQ_INIT(&bswlist);
 	LIST_INIT(&invalhash);
-	simple_lock_init(&buftimelock);
+	lwkt_inittoken(&buftimetoken);
 
 	for (i = 0; i <= bufhashmask; i++)
 		LIST_INIT(&bufhashtbl[i]);

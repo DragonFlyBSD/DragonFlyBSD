@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.3 2003/06/23 17:55:28 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.4 2003/07/06 21:23:47 dillon Exp $
  */
 
 /*
@@ -259,10 +259,10 @@ typedef struct mtx aac_lock_t;
 #define AAC_LOCK_ACQUIRE(l)	mtx_lock(l)
 #define AAC_LOCK_RELEASE(l)	mtx_unlock(l)
 #else
-typedef struct simplelock aac_lock_t;
-#define AAC_LOCK_INIT(l, s)	simple_lock_init(l)
-#define AAC_LOCK_ACQUIRE(l)	simple_lock(l)
-#define AAC_LOCK_RELEASE(l)	simple_unlock(l)
+typedef struct lwkt_token aac_lock_t;
+#define AAC_LOCK_INIT(l, s)	lwkt_inittoken(l)
+#define AAC_LOCK_ACQUIRE(l)	lwkt_gettoken(l)
+#define AAC_LOCK_RELEASE(l)	lwkt_reltoken(l)
 #endif
 
 #if __FreeBSD_version >= 500005

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.5 2003/07/06 21:23:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -516,9 +516,9 @@ exec_elf_imgact(struct image_params *imgp)
 	 * a context switch.  Better safe than sorry; I really don't want
 	 * the file to change while it's being loaded.
 	 */
-	simple_lock(&imgp->vp->v_interlock);
+	lwkt_gettoken(&imgp->vp->v_interlock);
 	imgp->vp->v_flag |= VTEXT;
-	simple_unlock(&imgp->vp->v_interlock);
+	lwkt_reltoken(&imgp->vp->v_interlock);
 
 	vmspace = imgp->proc->p_vmspace;
 

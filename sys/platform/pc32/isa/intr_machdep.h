@@ -31,14 +31,16 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.3 2003/06/29 03:28:43 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.4 2003/07/06 21:23:49 dillon Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
 #define	_I386_ISA_INTR_MACHDEP_H_
 
 #ifndef _SYS_INTERRUPT_H_
+#ifndef LOCORE
 #include <sys/interrupt.h>
+#endif
 #endif
 
 /*
@@ -99,6 +101,7 @@
 #define TPR_IGNORE_HWI		0x5f		/* ignore INTs */
 #define TPR_BLOCK_FHWI		0x7f		/* hardware FAST INTs */
 #define TPR_IGNORE_FHWI		0x8f		/* ignore FAST INTs */
+#define TPR_IPI_ONLY		0x8f		/* ignore FAST INTs */
 #define TPR_BLOCK_XINVLTLB	0x9f		/*  */
 #define TPR_BLOCK_XCPUSTOP	0xaf		/*  */
 #define TPR_BLOCK_ALL		0xff		/* all INTs */

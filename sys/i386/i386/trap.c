@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.17 2003/07/03 21:22:38 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.18 2003/07/06 21:23:48 dillon Exp $
  */
 
 /*
@@ -162,7 +162,9 @@ SYSCTL_INT(_machdep, OID_AUTO, panic_on_nmi, CTLFLAG_RW,
  * point of view of the userland scheduler unless we actually have to
  * switch.
  *
- * usertdsw is called from within a critical section.
+ * usertdsw is called from within a critical section, but the BGL will
+ * have already been released by lwkt_switch() so only call MP safe functions
+ * that don't block!
  */
 static void
 usertdsw(struct thread *ntd)
@@ -205,9 +207,8 @@ userenter(void)
 	td->td_switch = usertdsw;
 }
 
-static int
-userret(struct proc *p, struct trapframe *frame,
-	u_quad_t oticks, int have_mplock)
+static void
+userret(struct proc *p, struct trapframe *frame, u_quad_t oticks)
 {
 	int sig, s;
 	struct thread *td = curthread;
@@ -217,10 +218,6 @@ userret(struct proc *p, struct trapframe *frame,
 	 */
 	crit_enter();
 	while ((sig = CURSIG(p)) != 0) {
-		if (have_mplock == 0) {
-			get_mplock();
-			have_mplock = 1;
-		}
 		crit_exit();
 		postsig(sig);
 		crit_enter();
@@ -257,10 +254,6 @@ userret(struct proc *p, struct trapframe *frame,
 	 */
 	if (resched_wanted()) {
 		uio_yield();
-		if (have_mplock == 0) {
-			get_mplock();
-			have_mplock = 1;
-		}
 		while ((sig = CURSIG(p)) != 0)
 			postsig(sig);
 	}
@@ -269,10 +262,6 @@ userret(struct proc *p, struct trapframe *frame,
 	 * Charge system time if profiling.
 	 */
 	if (p->p_flag & P_PROFIL) {
-		if (have_mplock == 0) {
-			get_mplock();
-			have_mplock = 1;
-		}
 		addupc_task(p, frame->tf_eip, 
 		    (u_int)(curthread->td_sticks - oticks) * psratio);
 	}
@@ -290,8 +279,6 @@ userret(struct proc *p, struct trapframe *frame,
 	}
 	splx(s);
 	KKASSERT(mycpu->gd_uprocscheduled == 1);
-
-	return(have_mplock);
 }
 
 #ifdef DEVICE_POLLING
@@ -315,11 +302,13 @@ trap(frame)
 	int i = 0, ucode = 0, type, code;
 	vm_offset_t eva;
 
+	get_mplock();
+
 #ifdef DDB
 	if (db_active) {
 		eva = (frame.tf_trapno == T_PAGEFLT ? rcr2() : 0);
 		trap_fatal(&frame, eva);
-		return;
+		goto out2;
 	}
 #endif
 
@@ -342,7 +331,7 @@ trap(frame)
 			 */
 			printf("kernel trap %d with interrupts disabled\n",
 			    type);
-		enable_intr();
+		cpu_enable_intr();
 	}
 
 	eva = 0;
@@ -359,7 +348,7 @@ trap(frame)
 		 * correct.
 		 */
 		eva = rcr2();
-		enable_intr();
+		cpu_enable_intr();
 	}
 
 #ifdef DEVICE_POLLING
@@ -377,12 +366,13 @@ restart:
 		if (frame.tf_eflags & PSL_VM &&
 		    (type == T_PROTFLT || type == T_STKFLT)) {
 			i = vm86_emulate((struct vm86frame *)&frame);
-			if (i != 0)
+			if (i != 0) {
 				/*
 				 * returns to original process
 				 */
 				vm86_trap((struct vm86frame *)&frame);
-			return;
+			}
+			goto out2;
 		}
 		switch (type) {
 			/*
@@ -392,7 +382,7 @@ restart:
 		case T_PROTFLT:
 		case T_SEGNPFLT:
 			trap_fatal(&frame, eva);
-			return;
+			goto out2;
 		case T_TRCTRAP:
 			type = T_BPTFLT;	/* kernel breakpoint */
 			/* FALL THROUGH */
@@ -494,7 +484,7 @@ restart:
 					kdb_trap (type, 0, &frame);
 				}
 #endif /* DDB */
-				return;
+				goto out2;
 			} else if (panic_on_nmi)
 				panic("NMI indicates hardware failure");
 			break;
@@ -525,7 +515,7 @@ restart:
 			i = (*pmath_emulate)(&frame);
 			if (i == 0) {
 				if (!(frame.tf_eflags & PSL_T))
-					return;
+					goto out2;
 				frame.tf_eflags &= ~PSL_T;
 				i = SIGTRAP;
 			}
@@ -549,7 +539,7 @@ kernel_trap:
 		switch (type) {
 		case T_PAGEFLT:			/* page fault */
 			(void) trap_pfault(&frame, FALSE, eva);
-			return;
+			goto out2;
 
 		case T_DNA:
 #if NNPX > 0
@@ -559,7 +549,7 @@ kernel_trap:
 			 * registered such use.
 			 */
 			if (npxdna())
-				return;
+				goto out2;
 #endif
 			break;
 
@@ -579,7 +569,7 @@ kernel_trap:
 	do {								\
 		if (frame.tf_eip == (int)where) {			\
 			frame.tf_eip = (int)whereto;			\
-			return;						\
+			goto out2;					\
 		}							\
 	} while (0)
 
@@ -596,7 +586,7 @@ kernel_trap:
 				if (frame.tf_eip == (int)cpu_switch_load_gs) {
 					curthread->td_pcb->pcb_gs = 0;
 					psignal(p, SIGBUS);
-					return;
+					goto out2;
 				}
 				MAYBE_DORETI_FAULT(doreti_iret,
 						   doreti_iret_fault);
@@ -608,7 +598,7 @@ kernel_trap:
 						   doreti_popl_fs_fault);
 				if (curthread->td_pcb->pcb_onfault) {
 					frame.tf_eip = (int)curthread->td_pcb->pcb_onfault;
-					return;
+					goto out2;
 				}
 			}
 			break;
@@ -625,7 +615,7 @@ kernel_trap:
 			 */
 			if (frame.tf_eflags & PSL_NT) {
 				frame.tf_eflags &= ~PSL_NT;
-				return;
+				goto out2;
 			}
 			break;
 
@@ -637,7 +627,7 @@ kernel_trap:
 				 * silently until the syscall handler has
 				 * saved the flags.
 				 */
-				return;
+				goto out2;
 			}
 			if (frame.tf_eip == (int)IDTVEC(syscall) + 1) {
 				/*
@@ -645,7 +635,7 @@ kernel_trap:
 				 * flags.  Stop single stepping it.
 				 */
 				frame.tf_eflags &= ~PSL_T;
-				return;
+				goto out2;
 			}
                         /*
                          * Ignore debug register trace traps due to
@@ -663,7 +653,7 @@ kernel_trap:
                                  * processor doesn't
                                  */
                                 load_dr6(rdr6() & 0xfffffff0);
-                                return;
+                                goto out2;
                         }
 			/*
 			 * Fall through (TRCTRAP kernel mode, kernel address)
@@ -675,7 +665,7 @@ kernel_trap:
 			 */
 #ifdef DDB
 			if (kdb_trap (type, 0, &frame))
-				return;
+				goto out2;
 #endif
 			break;
 
@@ -695,7 +685,8 @@ kernel_trap:
 		      sysbeep(TIMER_FREQ/880, hz);
 		      lastalert = time_second;
 		    }
-		  return;
+		    /* YYY mp count */
+		  goto out2;
 		}
 #else /* !POWERFAIL_NMI */
 			/* machine/parity/power fail/"kitchen sink" faults */
@@ -710,16 +701,16 @@ kernel_trap:
 					kdb_trap (type, 0, &frame);
 				}
 #endif /* DDB */
-				return;
+				goto out2;
 			} else if (panic_on_nmi == 0)
-				return;
+				goto out2;
 			/* FALL THROUGH */
 #endif /* POWERFAIL_NMI */
 #endif /* NISA > 0 */
 		}
 
 		trap_fatal(&frame, eva);
-		return;
+		goto out2;
 	}
 
 	/* Translate fault for emulators (e.g. Linux) */
@@ -739,7 +730,13 @@ kernel_trap:
 #endif
 
 out:
-	userret(p, &frame, sticks, 1);
+#ifdef SMP
+        if (ISPL(frame.tf_cs) == SEL_UPL)
+		KASSERT(curthread->td_mpcount == 1, ("badmpcount trap from %p", (void *)frame.tf_eip));
+#endif
+	userret(p, &frame, sticks);
+out2:
+	rel_mplock();
 }
 
 #ifdef notyet
@@ -979,7 +976,7 @@ trap_fatal(frame, eva)
 #ifdef SMP
 	/* three seperate prints in case of a trap on an unmapped page */
 	printf("mp_lock = %08x; ", mp_lock);
-	printf("cpuid = %d; ", cpuid);
+	printf("cpuid = %d; ", mycpu->gd_cpuid);
 	printf("lapic.id = %08x\n", lapic.id);
 #endif
 	if (type == T_PAGEFLT) {
@@ -1089,7 +1086,7 @@ dblfault_handler()
 #ifdef SMP
 	/* three seperate prints in case of a trap on an unmapped page */
 	printf("mp_lock = %08x; ", mp_lock);
-	printf("cpuid = %d; ", cpuid);
+	printf("cpuid = %d; ", mycpu->gd_cpuid);
 	printf("lapic.id = %08x\n", lapic.id);
 #endif
 	panic("double fault");
@@ -1164,7 +1161,6 @@ syscall2(frame)
 	int error;
 	int narg;
 	int args[8];
-	int have_mplock = 0;
 	u_int code;
 
 #ifdef DIAGNOSTIC
@@ -1175,10 +1171,14 @@ syscall2(frame)
 	}
 #endif
 
+#ifdef SMP
+	KASSERT(curthread->td_mpcount == 0, ("badmpcount syscall from %p", (void *)frame.tf_eip));
+	get_mplock();
+#endif
 	/*
 	 * access non-atomic field from critical section.  p_sticks is
 	 * updated by the clock interrupt.  Also use this opportunity
-	 * to raise our LWKT priority.
+	 * to lazy-raise our LWKT priority.
 	 */
 	crit_enter();
 	userenter();
@@ -1194,9 +1194,7 @@ syscall2(frame)
 		/*
 		 * The prep code is not MP aware.
 		 */
-		get_mplock();
 		(*p->p_sysent->sv_prepsyscall)(&frame, args, &code, &params);
-		rel_mplock();
 	} else {
 		/*
 		 * Need to check if this is a 32 bit or 64 bit syscall.
@@ -1233,8 +1231,6 @@ syscall2(frame)
 	 */
 	if (params && (i = narg * sizeof(int)) &&
 	    (error = copyin(params, (caddr_t)args, (u_int)i))) {
-		get_mplock();
-		have_mplock = 1;
 #ifdef KTRACE
 		if (KTRPOINT(td, KTR_SYSCALL))
 			ktrsyscall(p->p_tracep, code, narg, args);
@@ -1242,6 +1238,7 @@ syscall2(frame)
 		goto bad;
 	}
 
+#if 0
 	/*
 	 * Try to run the syscall without the MP lock if the syscall
 	 * is MP safe.  We have to obtain the MP lock no matter what if 
@@ -1251,13 +1248,10 @@ syscall2(frame)
 		get_mplock();
 		have_mplock = 1;
 	}
+#endif
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSCALL)) {
-		if (have_mplock == 0) {
-			get_mplock();
-			have_mplock = 1;
-		}
 		ktrsyscall(p->p_tracep, code, narg, args);
 	}
 #endif
@@ -1311,10 +1305,6 @@ bad:
 	 * Traced syscall.  trapsignal() is not MP aware.
 	 */
 	if ((orig_tf_eflags & PSL_T) && !(orig_tf_eflags & PSL_VM)) {
-		if (have_mplock == 0) {
-			get_mplock();
-			have_mplock = 1;
-		}
 		frame.tf_eflags &= ~PSL_T;
 		trapsignal(p, SIGTRAP, 0);
 	}
@@ -1322,14 +1312,10 @@ bad:
 	/*
 	 * Handle reschedule and other end-of-syscall issues
 	 */
-	have_mplock = userret(p, &frame, sticks, have_mplock);
+	userret(p, &frame, sticks);
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
-		if (have_mplock == 0) {
-			get_mplock();
-			have_mplock = 1;
-		}
 		ktrsysret(p->p_tracep, code, error, p->p_retval[0]);
 	}
 #endif
@@ -1341,17 +1327,20 @@ bad:
 	 */
 	STOPEVENT(p, S_SCX, code);
 
+#ifdef SMP
 	/*
 	 * Release the MP lock if we had to get it
 	 */
-	if (have_mplock)
-		rel_mplock();
+	KASSERT(curthread->td_mpcount == 1, ("badmpcount syscall from %p", (void *)frame.tf_eip));
+	rel_mplock();
+#endif
 }
 
 /*
  * Simplified back end of syscall(), used when returning from fork()
- * directly into user mode.  MP lock is held on entry and should be 
- * held on return.
+ * directly into user mode.  MP lock is held on entry and should be
+ * released on return.  This code will return back into the fork
+ * trampoline code which then runs doreti.
  */
 void
 fork_return(p, frame)
@@ -1362,9 +1351,14 @@ fork_return(p, frame)
 	frame.tf_eflags &= ~PSL_C;	/* success */
 	frame.tf_edx = 1;
 
-	userret(p, &frame, 0, 1);
+	userret(p, &frame, 0);
 #ifdef KTRACE
 	if (KTRPOINT(p->p_thread, KTR_SYSRET))
 		ktrsysret(p->p_tracep, SYS_fork, 0, 0);
 #endif
+#ifdef SMP
+	KKASSERT(curthread->td_mpcount == 1);
+	rel_mplock();
+#endif
 }
+

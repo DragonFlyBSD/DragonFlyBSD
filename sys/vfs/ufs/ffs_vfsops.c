@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.5 2003/07/03 18:35:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.6 2003/07/06 21:23:55 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -430,9 +430,9 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 	struct partinfo dpart;
 	dev_t dev;
 	int i, blks, size, error;
+	int gen;
+	int vgen;
 	int32_t *lp;
-
-	KKASSERT(td->td_proc && td->td_proc->p_ucred == cred);
 
 	if ((mp->mnt_flag & MNT_RDONLY) == 0)
 		return (EINVAL);
@@ -455,7 +455,7 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 	if (devvp->v_tag != VT_MFS && vn_isdisk(devvp, NULL)) {
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
 		vfs_object_create(devvp, td);
-		simple_lock(&devvp->v_interlock);
+		lwkt_gettoken(&devvp->v_interlock);
 		VOP_UNLOCK(devvp, LK_INTERLOCK, td);
 	}
 
@@ -520,25 +520,33 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 			*lp++ = fs->fs_contigsumsize;
 	}
 
+	gen = lwkt_gettoken(&mntvnode_token);
 loop:
-	simple_lock(&mntvnode_slock);
 	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp != NULL; vp = nvp) {
 		if (vp->v_mount != mp) {
-			simple_unlock(&mntvnode_slock);
+			lwkt_gentoken(&mntvnode_token, &gen);
 			goto loop;
 		}
 		nvp = TAILQ_NEXT(vp, v_nmntvnodes);
 		/*
-		 * Step 4: invalidate all inactive vnodes.
+		 * Step 4: invalidate all inactive vnodes. 
 		 */
-		if (vrecycle(vp, &mntvnode_slock, td))
+		if (vrecycle(vp, NULL, td)) {
+			lwkt_gentoken(&mntvnode_token, &gen);
 			goto loop;
+		}
 		/*
 		 * Step 5: invalidate all cached file data.
 		 */
-		simple_lock(&vp->v_interlock);
-		simple_unlock(&mntvnode_slock);
+		vgen = lwkt_gettoken(&vp->v_interlock);
+		if (lwkt_gentoken(&mntvnode_token, &gen) != 0 ||
+		    lwkt_gentoken(&vp->v_interlock, &vgen) != 0) {
+			lwkt_reltoken(&vp->v_interlock);
+			lwkt_gentoken(&mntvnode_token, &gen);
+			goto loop;
+		}
 		if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td)) {
+			lwkt_gentoken(&mntvnode_token, &gen);
 			goto loop;
 		}
 		if (vinvalbuf(vp, 0, td, 0, 0))
@@ -559,9 +567,8 @@ loop:
 		ip->i_effnlink = ip->i_nlink;
 		brelse(bp);
 		vput(vp);
-		simple_lock(&mntvnode_slock);
 	}
-	simple_unlock(&mntvnode_slock);
+	lwkt_reltoken(&mntvnode_token);
 	return (0);
 }
 
@@ -616,7 +623,7 @@ ffs_mountfs(devvp, mp, td, malloctype)
 	if (devvp->v_tag != VT_MFS && vn_isdisk(devvp, NULL)) {
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
 		vfs_object_create(devvp, td);
-		simple_lock(&devvp->v_interlock);
+		lwkt_gettoken(&devvp->v_interlock);
 		VOP_UNLOCK(devvp, LK_INTERLOCK, td);
 	}
 
@@ -874,10 +881,6 @@ ffs_flushfiles(struct mount *mp, int flags, struct thread *td)
 {
 	struct ufsmount *ump;
 	int error;
-	struct ucred *cred;
-
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
 
 	ump = VFSTOUFS(mp);
 #ifdef QUOTA
@@ -966,7 +969,7 @@ ffs_sync(struct mount *mp, int waitfor, struct thread *td)
 	/*
 	 * Write back each (modified) inode.
 	 */
-	simple_lock(&mntvnode_slock);
+	lwkt_gettoken(&mntvnode_token);
 loop:
 	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp != NULL; vp = nvp) {
 		/*
@@ -977,7 +980,7 @@ loop:
 			goto loop;
 
 		/*
-		 * Depend on the mntvnode_slock to keep things stable enough
+		 * Depend on the mntvnode_token to keep things stable enough
 		 * for a quick test.  Since there might be hundreds of 
 		 * thousands of vnodes, we cannot afford even a subroutine
 		 * call unless there's a good chance that we have work to do.
@@ -990,10 +993,10 @@ loop:
 			continue;
 		}
 		if (vp->v_type != VCHR) {
-			simple_unlock(&mntvnode_slock);
+			lwkt_reltoken(&mntvnode_token);
 			error = vget(vp, LK_EXCLUSIVE | LK_NOWAIT, td);
 			if (error) {
-				simple_lock(&mntvnode_slock);
+				lwkt_gettoken(&mntvnode_token);
 				if (error == ENOENT)
 					goto loop;
 			} else {
@@ -1001,7 +1004,7 @@ loop:
 					allerror = error;
 				VOP_UNLOCK(vp, 0, td);
 				vrele(vp);
-				simple_lock(&mntvnode_slock);
+				lwkt_gettoken(&mntvnode_token);
 			}
 		} else {
 			/*
@@ -1011,16 +1014,16 @@ loop:
 			 * we holding a vnode lock?
 			 */
 			VREF(vp);
-			simple_unlock(&mntvnode_slock);
+			lwkt_reltoken(&mntvnode_token);
 			/* UFS_UPDATE(vp, waitfor == MNT_WAIT); */
 			UFS_UPDATE(vp, 0);
 			vrele(vp);
-			simple_lock(&mntvnode_slock);
+			lwkt_gettoken(&mntvnode_token);
 		}
 		if (TAILQ_NEXT(vp, v_nmntvnodes) != nvp)
 			goto loop;
 	}
-	simple_unlock(&mntvnode_slock);
+	lwkt_reltoken(&mntvnode_token);
 	/*
 	 * Force stale file system control information to be flushed.
 	 */

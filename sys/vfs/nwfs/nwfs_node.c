@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.4 2003/06/26 05:55:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.5 2003/07/06 21:23:54 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -143,13 +143,14 @@ nwfs_allocvp(struct mount *mp, ncpfid fid, struct vnode **vpp)
 	struct nwmount *nmp = VFSTONWFS(mp);
 	struct vnode *vp;
 	int error;
+	int gen;
 
 loop:
 	lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, td);
 rescan:
 	if (nwfs_hashlookup(nmp, fid, &np) == 0) {
 		vp = NWTOV(np);
-		simple_lock(&vp->v_interlock);
+		gen = lwkt_gettoken(&vp->v_interlock);
 		lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
 		if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td))
 			goto loop;

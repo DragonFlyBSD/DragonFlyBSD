@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.22 2002/12/15 09:24:23 maxim Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.5 2003/06/26 02:17:45 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.6 2003/07/06 21:23:51 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -111,7 +111,7 @@ soalloc(waitok)
 {
 	struct socket *so;
 
-	so = zalloci(socket_zone);
+	so = zalloc(socket_zone);
 	if (so) {
 		/* XXX race condition for reentrant kernel */
 		bzero(so, sizeof *so);
@@ -200,7 +200,7 @@ sodealloc(struct socket *so)
 	}
 #endif /* INET */
 	crfree(so->so_cred);
-	zfreei(socket_zone, so);
+	zfree(socket_zone, so);
 }
 
 int
