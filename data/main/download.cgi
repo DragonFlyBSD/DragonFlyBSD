@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.62 2004/10/09 22:05:23 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.63 2004/10/14 13:16:26 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -196,6 +196,16 @@ rsync
 <TD>
 <a href="http://mirror.isp.net.au/ftp/pub/DragonFly/iso-images/">HTTP</a>,
 <a href="ftp://mirror.isp.net.au/pub/DragonFly/iso-images/">FTP</a>
+</TD>
+</TR>
+
+
+<TR>
+<TD>ftp.tu-clausthal.de (Germany)</TD>
+<TD>Official ISOs</TD>
+<TD>
+<a href="http://ftp.tu-clausthal.de/pub/DragonFly/">HTTP</a>,
+<a href="ftp://ftp.tu-clausthal.de/pub/DragonFly/">FTP</a>
 </TD>
 </TR>
 
