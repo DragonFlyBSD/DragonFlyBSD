@@ -28,7 +28,7 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/compat/linux/linux_util.c,v 1.12.2.2 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.7 2003/09/23 05:03:51 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.8 2003/11/13 04:04:42 daver Exp $
  */
 
 #include <sys/param.h>
@@ -43,88 +43,65 @@
 const char      linux_emul_path[] = "/compat/linux";
 
 /*
- * Search an alternate path before passing pathname arguments on
- * to system calls. Useful for keeping a separate 'emulation tree'.
+ * Search for an alternate path before passing pathname arguments on
+ * to system calls.
  *
- * If cflag is set, we check if an attempt can be made to create
- * the named file, i.e. we check if the directory it should
- * be in exists.
+ * Only signal an error if something really bad happens.  In most cases
+ * we can just return the untranslated path, eg. name lookup failures.
  */
 int
-linux_emul_find(td, sgp, prefix, path, pbuf, cflag)
-	struct thread	*td;
-	caddr_t		*sgp;		/* Pointer to stackgap memory */
-	const char	*prefix;
-	char		*path;
-	char		**pbuf;
-	int		cflag;
+linux_copyin_path(char *uname, char **kname, int flags)
 {
-	struct nameidata	 nd;
-	struct nameidata	 ndroot;
-	struct vattr		 vat;
-	struct vattr		 vatroot;
-	int			 error;
-	char			*ptr, *buf, *cp;
-	size_t			 sz, len;
-	struct ucred		*cred;
-
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
+	struct thread *td = curthread;
+	struct nameidata nd, ndroot;
+	struct vattr vat, vatroot;
+	char *buf, *cp;
+	int error, length, dummy;
 
 	buf = (char *) malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
-	*pbuf = path;
-
-	for (ptr = buf; (*ptr = *prefix) != '\0'; ptr++, prefix++)
-		continue;
-
-	sz = MAXPATHLEN - (ptr - buf);
-
-	/* 
-	 * If sgp is not given then the path is already in kernel space
-	 */
-	if (sgp == NULL)
-		error = copystr(path, ptr, sz, &len);
-	else
-		error = copyinstr(path, ptr, sz, &len);
-
-	if (error) {
-		free(buf, M_TEMP);
-		return error;
-	}
-
-	if (*ptr != '/') {
-		free(buf, M_TEMP);
-		return EINVAL;
-	}
+	*kname = buf;
 
 	/*
-	 * We know that there is a / somewhere in this pathname.
-	 * Search backwards for it, to find the file's parent dir
-	 * to see if it exists in the alternate tree. If it does,
-	 * and we want to create a file (cflag is set). We don't
-	 * need to worry about the root comparison in this case.
+	 * Don't bother trying to translate if the path is relative.
 	 */
+	if (fubyte(uname) != '/')
+		goto dont_translate;
 
-	if (cflag) {
-		for (cp = &ptr[len] - 1; *cp != '/'; cp--);
+	/*
+	 * The path is absolute.  Prepend the buffer with the emulation
+	 * path and copy in.
+	 */
+	length = strlen(linux_emul_path);
+	bcopy(linux_emul_path, buf, length);
+	error = copyinstr(uname, buf + length, MAXPATHLEN - length, &dummy);
+	if (error) {
+		linux_free_path(kname);
+		return (error);
+	}
+
+	switch (flags) {
+	case LINUX_PATH_CREATE:
+		/*
+		 * Check to see if the parent directory exists in the
+		 * emulation tree.  Walk the string backwards to find
+		 * the last '/'.
+		 */
+		cp = buf + strlen(buf);
+		while (*--cp != '/');
 		*cp = '\0';
 
 		NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, buf, td);
-
-		if ((error = namei(&nd)) != 0) {
-			free(buf, M_TEMP);
-			return error;
-		}
+		error = namei(&nd);
+		if (error)
+			goto dont_translate;
 
 		*cp = '/';
-	}
-	else {
+		return (0);
+	case LINUX_PATH_EXISTS:
 		NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, buf, td);
-
-		if ((error = namei(&nd)) != 0) {
-			free(buf, M_TEMP);
-			return error;
-		}
+		error = namei(&nd);
+		if (error)
+			goto dont_translate;
 
 		/*
 		 * We now compare the vnode of the linux_root to the one
@@ -133,59 +110,82 @@ linux_emul_find(td, sgp, prefix, path, pbuf, cflag)
 		 * This avoids the problem of traversing "../.." to find the
 		 * root directory and never finding it, because "/" resolves
 		 * to the emulation root directory. This is expensive :-(
+		 *
+		 * The next three function calls should not return errors.
+		 * If they do something is seriously wrong, eg. the
+		 * emulation subtree does not exist.  Cross our fingers
+		 * and return the untranslated path if something happens.
 		 */
 		NDINIT(&ndroot, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE,
-			linux_emul_path, td);
+		    linux_emul_path, td);
+		error = namei(&ndroot);
+		if (error)
+			goto dont_translate;
+		
+		error = VOP_GETATTR(nd.ni_vp, &vat, td);
+		if (error)
+			goto dont_translate;
 
-		if ((error = namei(&ndroot)) != 0) {
-			/* Cannot happen! */
-			free(buf, M_TEMP);
-			NDFREE(&nd, NDF_ONLY_PNBUF);
-			vrele(nd.ni_vp);
-			return error;
-		}
-
-		if ((error = VOP_GETATTR(nd.ni_vp, &vat, td)) != 0) {
-			goto bad;
-		}
-
-		if ((error = VOP_GETATTR(ndroot.ni_vp, &vatroot, td))
-		    != 0) {
-			goto bad;
-		}
+		error = VOP_GETATTR(ndroot.ni_vp, &vatroot, td);
+		if (error)
+			goto dont_translate;
 
 		if (vat.va_fsid == vatroot.va_fsid &&
-		    vat.va_fileid == vatroot.va_fileid) {
-			error = ENOENT;
-			goto bad;
-		}
+		    vat.va_fileid == vatroot.va_fileid)
+			goto dont_translate;
 
+		return (0);
+	default:
+		linux_free_path(kname);
+		return (EINVAL);
 	}
-	if (sgp == NULL)
-		*pbuf = buf;
-	else {
-		sz = &ptr[len] - buf;
-		*pbuf = stackgap_alloc(sgp, sz + 1);
-		if (*pbuf != NULL)
-			error = copyout(buf, *pbuf, sz);
-		else
-			error = ENAMETOOLONG;
-		free(buf, M_TEMP);
+	
+dont_translate:
+
+	error = copyinstr(uname, buf, MAXPATHLEN, &dummy);
+	if (error)
+		linux_free_path(kname);
+	return (error);
+}
+
+/*
+ * Smaller version of the above for translating in kernel buffers.  Only
+ * used in exec_linux_imgact_try().  Only check is path exists.
+ */
+int
+linux_translate_path(char *path, int size)
+{
+	struct thread *td = curthread;
+	struct nameidata nd;
+	char *buf;
+	int error, length, dummy;
+
+	buf = (char *) malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
+	length = strlen(linux_emul_path);
+	bcopy(linux_emul_path, buf, length);
+	error = copystr(path, buf + length, MAXPATHLEN - length, &dummy);
+	if (error)
+		goto cleanup;
+	
+	/*
+	 * If this errors, then the path probably doesn't exists.
+	 */
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, buf, td);
+	error = namei(&nd);
+	if (error) {
+		error = 0;
+		goto cleanup;
 	}
 
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	vrele(nd.ni_vp);
-	if (!cflag) {
-		NDFREE(&ndroot, NDF_ONLY_PNBUF);
-		vrele(ndroot.ni_vp);
-	}
-	return error;
+	/*
+	 * The alternate path does exist.  Return it in the buffer if
+	 * it fits.
+	 */
+	if (strlen(buf) + 1 <= size)
+		error = copystr(buf, path, size, &dummy);
 
-bad:
-	NDFREE(&ndroot, NDF_ONLY_PNBUF);
-	vrele(ndroot.ni_vp);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	vrele(nd.ni_vp);
+cleanup:
+
 	free(buf, M_TEMP);
-	return error;
+	return (error);
 }

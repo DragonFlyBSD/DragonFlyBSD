@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.26 2003/11/12 10:11:09 daver Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.27 2003/11/13 04:04:42 daver Exp $
  */
 
 #include <sys/param.h>
@@ -1172,44 +1172,56 @@ mknod(struct mknod_args *uap)
 	return (error);
 }
 
-/*
- * mkfifo_args(char *path, int mode)
- *
- * Create a named pipe.
- */
-/* ARGSUSED */
 int
-mkfifo(struct mkfifo_args *uap)
+kern_mkfifo(struct nameidata *nd, int mode)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct vattr vattr;
 	int error;
-	struct nameidata nd;
 
 	bwillwrite();
-	NDINIT(&nd, NAMEI_CREATE, CNP_LOCKPARENT, UIO_USERSPACE,
-		SCARG(uap, path), td);
-	if ((error = namei(&nd)) != 0)
+	error = namei(nd);
+	if (error);
 		return (error);
-	if (nd.ni_vp != NULL) {
-		NDFREE(&nd, NDF_ONLY_PNBUF);
-		if (nd.ni_dvp == nd.ni_vp)
-			vrele(nd.ni_dvp);
+	if (nd->ni_vp != NULL) {
+		NDFREE(nd, NDF_ONLY_PNBUF);
+		if (nd->ni_dvp == nd->ni_vp)
+			vrele(nd->ni_dvp);
 		else
-			vput(nd.ni_dvp);
-		vrele(nd.ni_vp);
+			vput(nd->ni_dvp);
+		vrele(nd->ni_vp);
 		return (EEXIST);
 	}
 	VATTR_NULL(&vattr);
 	vattr.va_type = VFIFO;
-	vattr.va_mode = (SCARG(uap, mode) & ALLPERMS) &~ p->p_fd->fd_cmask;
-	VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
-	error = VOP_MKNOD(nd.ni_dvp, NCPNULL, &nd.ni_vp, &nd.ni_cnd, &vattr);
+	vattr.va_mode = (mode & ALLPERMS) &~ p->p_fd->fd_cmask;
+	VOP_LEASE(nd->ni_dvp, td, p->p_ucred, LEASE_WRITE);
+	error = VOP_MKNOD(nd->ni_dvp, NCPNULL, &nd->ni_vp, &nd->ni_cnd, &vattr);
 	if (error == 0)
-		vput(nd.ni_vp);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	vput(nd.ni_dvp);
+		vput(nd->ni_vp);
+	NDFREE(nd, NDF_ONLY_PNBUF);
+	vput(nd->ni_dvp);
+	return (error);
+}
+
+/*
+ * mkfifo_args(char *path, int mode)
+ *
+ * Create a named pipe.
+ */
+int
+mkfifo(struct mkfifo_args *uap)
+{
+	struct thread *td = curthread;
+	struct nameidata nd;
+	int error;
+
+	NDINIT(&nd, NAMEI_CREATE, CNP_LOCKPARENT, UIO_USERSPACE, uap->path,
+	    td);
+
+	error = kern_mkfifo(&nd, uap->mode);
+
 	return (error);
 }
 

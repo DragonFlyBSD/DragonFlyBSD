@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.13 2003/11/10 20:57:16 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.14 2003/11/13 04:04:42 daver Exp $
  */
 
 #include "opt_compat.h"
@@ -42,6 +42,7 @@
 #include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
+#include <sys/namei.h>
 #include <sys/proc.h>
 #include <sys/sysproto.h>
 #include <sys/tty.h>
@@ -60,123 +61,121 @@
 int
 linux_creat(struct linux_creat_args *args)
 {
-    struct open_args bsd_open_args;
-    caddr_t sg;
-    int error;
+	struct thread *td = curthread;
+	struct nameidata nd;
+	char *path;
+	int error;
 
-    sg = stackgap_init();
-    CHECKALTCREAT(&sg, args->path);
-
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_CREATE);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(creat))
-		printf(ARGS(creat, "%s, %d"), args->path, args->mode);
+		printf(ARGS(creat, "%s, %d"), path, args->mode);
 #endif
-    bsd_open_args.sysmsg_result = 0;
-    bsd_open_args.path = args->path;
-    bsd_open_args.mode = args->mode;
-    bsd_open_args.flags = O_WRONLY | O_CREAT | O_TRUNC;
-    error = open(&bsd_open_args);
-    args->sysmsg_result = bsd_open_args.sysmsg_result;
-    return(error);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
+
+	error = kern_open(&nd, O_WRONLY | O_CREAT | O_TRUNC, args->mode,
+	    &args->sysmsg_result);
+
+	linux_free_path(&path);
+	return(error);
 }
 #endif /*!__alpha__*/
 
 int
 linux_open(struct linux_open_args *args)
 {
-    struct open_args bsd_open_args;
-    int error;
-    caddr_t sg;
-    struct thread *td = curthread;
-    struct proc *p = td->td_proc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct nameidata nd;
+	char *path;
+	int error, flags;
 
-    KKASSERT(p);
+	KKASSERT(p);
 
-    sg = stackgap_init();
-    
-    if (args->flags & LINUX_O_CREAT)
-	CHECKALTCREAT(&sg, args->path);
-    else
-	CHECKALTEXIST(&sg, args->path);
+	if (args->flags & LINUX_O_CREAT) {
+		error = linux_copyin_path(args->path, &path,
+		    LINUX_PATH_CREATE);
+	} else {
+		error = linux_copyin_path(args->path, &path,
+		    LINUX_PATH_EXISTS);
+	}
+	if (error)
+		return (error);
 
 #ifdef DEBUG
 	if (ldebug(open))
-		printf(ARGS(open, "%s, 0x%x, 0x%x"),
-		    args->path, args->flags, args->mode);
+		printf(ARGS(open, "%s, 0x%x, 0x%x"), path, args->flags,
+		    args->mode);
 #endif
-    bsd_open_args.flags = 0;
-    if (args->flags & LINUX_O_RDONLY)
-	bsd_open_args.flags |= O_RDONLY;
-    if (args->flags & LINUX_O_WRONLY) 
-	bsd_open_args.flags |= O_WRONLY;
-    if (args->flags & LINUX_O_RDWR)
-	bsd_open_args.flags |= O_RDWR;
-    if (args->flags & LINUX_O_NDELAY)
-	bsd_open_args.flags |= O_NONBLOCK;
-    if (args->flags & LINUX_O_APPEND)
-	bsd_open_args.flags |= O_APPEND;
-    if (args->flags & LINUX_O_SYNC)
-	bsd_open_args.flags |= O_FSYNC;
-    if (args->flags & LINUX_O_NONBLOCK)
-	bsd_open_args.flags |= O_NONBLOCK;
-    if (args->flags & LINUX_FASYNC)
-	bsd_open_args.flags |= O_ASYNC;
-    if (args->flags & LINUX_O_CREAT)
-	bsd_open_args.flags |= O_CREAT;
-    if (args->flags & LINUX_O_TRUNC)
-	bsd_open_args.flags |= O_TRUNC;
-    if (args->flags & LINUX_O_EXCL)
-	bsd_open_args.flags |= O_EXCL;
-    if (args->flags & LINUX_O_NOCTTY)
-	bsd_open_args.flags |= O_NOCTTY;
-    bsd_open_args.path = args->path;
-    bsd_open_args.mode = args->mode;
-    bsd_open_args.sysmsg_result = 0;
-    error = open(&bsd_open_args);
-    args->sysmsg_result = bsd_open_args.sysmsg_result;
+	flags = 0;
+	if (args->flags & LINUX_O_RDONLY)
+		flags |= O_RDONLY;
+	if (args->flags & LINUX_O_WRONLY)
+		flags |= O_WRONLY;
+	if (args->flags & LINUX_O_RDWR)
+		flags |= O_RDWR;
+	if (args->flags & LINUX_O_NDELAY)
+		flags |= O_NONBLOCK;
+	if (args->flags & LINUX_O_APPEND)
+		flags |= O_APPEND;
+	if (args->flags & LINUX_O_SYNC)
+		flags |= O_FSYNC;
+	if (args->flags & LINUX_O_NONBLOCK)
+		flags |= O_NONBLOCK;
+	if (args->flags & LINUX_FASYNC)
+		flags |= O_ASYNC;
+	if (args->flags & LINUX_O_CREAT)
+		flags |= O_CREAT;
+	if (args->flags & LINUX_O_TRUNC)
+		flags |= O_TRUNC;
+	if (args->flags & LINUX_O_EXCL)
+		flags |= O_EXCL;
+	if (args->flags & LINUX_O_NOCTTY)
+		flags |= O_NOCTTY;
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
 
-    if (!error && !(bsd_open_args.flags & O_NOCTTY) && 
-	SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
-	struct filedesc *fdp = p->p_fd;
-	struct file *fp = fdp->fd_ofiles[bsd_open_args.sysmsg_result];
+	error = kern_open(&nd, flags, args->mode, &args->sysmsg_result);
 
-	if (fp->f_type == DTYPE_VNODE)
-	    fo_ioctl(fp, TIOCSCTTY, (caddr_t) 0, td);
+	if (error == 0 && !(flags & O_NOCTTY) && 
+		SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
+		struct filedesc *fdp = p->p_fd;
+		struct file *fp = fdp->fd_ofiles[args->sysmsg_result];
+
+		if (fp->f_type == DTYPE_VNODE)
+			fo_ioctl(fp, TIOCSCTTY, (caddr_t) 0, td);
     }
 #ifdef DEBUG
 	if (ldebug(open))
 		printf(LMSG("open returns error %d"), error);
 #endif
-    return error;
+	linux_free_path(&path);
+	return error;
 }
 
 int
 linux_lseek(struct linux_lseek_args *args)
 {
-    struct lseek_args tmp_args;
-    int error;
+	int error;
 
 #ifdef DEBUG
 	if (ldebug(lseek))
 		printf(ARGS(lseek, "%d, %ld, %d"),
 		    args->fdes, (long)args->off, args->whence);
 #endif
-    tmp_args.fd = args->fdes;
-    tmp_args.offset = (off_t)args->off;
-    tmp_args.whence = args->whence;
-    tmp_args.sysmsg_result = 0;
-    error = lseek(&tmp_args);
-    args->sysmsg_offset = tmp_args.sysmsg_offset;
-    return error;
+	error = kern_lseek(args->fdes, args->off, args->whence,
+	    &args->sysmsg_offset);
+
+	return error;
 }
 
 #ifndef __alpha__
 int
 linux_llseek(struct linux_llseek_args *args)
 {
-	struct lseek_args bsd_args;
 	int error;
-	off_t off;
+	off_t off, res;
 
 #ifdef DEBUG
 	if (ldebug(llseek))
@@ -185,19 +184,11 @@ linux_llseek(struct linux_llseek_args *args)
 #endif
 	off = (args->olow) | (((off_t) args->ohigh) << 32);
 
-	bsd_args.fd = args->fd;
-	bsd_args.offset = off;
-	bsd_args.whence = args->whence;
-	bsd_args.sysmsg_offset = 0;
+	error = kern_lseek(args->fd, off, args->whence, &res);
 
-	if ((error = lseek(&bsd_args)))
-		return error;
-
-	if ((error = copyout(&bsd_args.sysmsg_offset, (caddr_t)args->res, sizeof (off_t)))) {
-		return error;
-	}
-	args->sysmsg_result = 0;
-	return 0;
+	if (error == 0)
+		error = copyout(&res, args->res, sizeof(res));
+	return (error);
 }
 #endif /*!__alpha__*/
 
@@ -470,232 +461,255 @@ linux_getdents64(struct linux_getdents64_args *args)
 int
 linux_access(struct linux_access_args *args)
 {
-	struct access_args bsd;
-	caddr_t sg;
+	struct thread *td = curthread;
+	struct nameidata nd;
+	char *path;
 	int error;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->path);
-
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(access))
-		printf(ARGS(access, "%s, %d"), args->path, args->flags);
+		printf(ARGS(access, "%s, %d"), path, args->flags);
 #endif
-	bsd.path = args->path;
-	bsd.flags = args->flags;
-	bsd.sysmsg_result = 0;
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
+	    UIO_SYSSPACE, path, td);
 
-	error = access(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
+	error = kern_access(&nd, args->flags);
+
+	linux_free_path(&path);
 	return(error);
 }
 
 int
 linux_unlink(struct linux_unlink_args *args)
 {
-	struct unlink_args bsd;
-	caddr_t sg;
+	struct thread *td = curthread;
+	struct nameidata nd;
+	char *path;
 	int error;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->path);
-
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(unlink))
-		printf(ARGS(unlink, "%s"), args->path);
+		printf(ARGS(unlink, "%s"), path);
 #endif
-	bsd.path = args->path;
-	bsd.sysmsg_result = 0;
+	NDINIT(&nd, NAMEI_DELETE, CNP_LOCKPARENT, UIO_SYSSPACE, path, td);
 
-	error = unlink(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
+	error = kern_unlink(&nd);
+
+	linux_free_path(&path);
 	return(error);
 }
 
 int
 linux_chdir(struct linux_chdir_args *args)
 {
-	struct chdir_args bsd;
-	caddr_t sg;
+	struct thread *td = curthread;
+	struct nameidata nd;
+	char *path;
 	int error;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->path);
-
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(chdir))
-		printf(ARGS(chdir, "%s"), args->path);
+		printf(ARGS(chdir, "%s"), path);
 #endif
-	bsd.path = args->path;
-	bsd.sysmsg_result = 0;
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF, UIO_SYSSPACE,
+	    path, td);
 
-	error = chdir(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
+	error = kern_chdir(&nd);
+
+	linux_free_path(&path);
 	return(error);
 }
 
 int
 linux_chmod(struct linux_chmod_args *args)
 {
-	struct chmod_args bsd;
-	caddr_t sg;
+	struct thread *td = curthread;
+	struct nameidata nd;
+	char *path;
 	int error;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->path);
-
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(chmod))
-		printf(ARGS(chmod, "%s, %d"), args->path, args->mode);
+		printf(ARGS(chmod, "%s, %d"), path, args->mode);
 #endif
-	bsd.path = args->path;
-	bsd.mode = args->mode;
-	bsd.sysmsg_result = 0;
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
 
-	error = chmod(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
+	error = kern_chmod(&nd, args->mode);
+
+	linux_free_path(&path);
 	return(error);
 }
 
 int
 linux_mkdir(struct linux_mkdir_args *args)
 {
-	struct mkdir_args bsd;
-	caddr_t sg;
+	struct thread *td = curthread;
+	struct nameidata nd;
+	char *path;
 	int error;
 
-	sg = stackgap_init();
-	CHECKALTCREAT(&sg, args->path);
-
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_CREATE);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(mkdir))
-		printf(ARGS(mkdir, "%s, %d"), args->path, args->mode);
+		printf(ARGS(mkdir, "%s, %d"), path, args->mode);
 #endif
-	bsd.path = args->path;
-	bsd.mode = args->mode;
-	bsd.sysmsg_result = 0;
+	NDINIT(&nd, NAMEI_CREATE, CNP_LOCKPARENT, UIO_SYSSPACE, path, td);
 
-	error = mkdir(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
+	error = kern_mkdir(&nd, args->mode);
+
+	linux_free_path(&path);
 	return(error);
 }
 
 int
 linux_rmdir(struct linux_rmdir_args *args)
 {
-	struct rmdir_args bsd;
-	caddr_t sg;
+	struct thread *td = curthread;
+	struct nameidata nd;
+	char *path;
 	int error;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->path);
-
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(rmdir))
-		printf(ARGS(rmdir, "%s"), args->path);
+		printf(ARGS(rmdir, "%s"), path);
 #endif
-	bsd.path = args->path;
-	bsd.sysmsg_result = 0;
+	NDINIT(&nd, NAMEI_DELETE, CNP_LOCKPARENT | CNP_LOCKLEAF,
+	    UIO_SYSSPACE, path, td);
 
-	error = rmdir(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
+	error = kern_rmdir(&nd);
+
+	linux_free_path(&path);
 	return(error);
 }
 
 int
 linux_rename(struct linux_rename_args *args)
 {
-	struct rename_args bsd;
-	caddr_t sg;
+	struct thread *td = curthread;
+	struct nameidata fromnd, tond;
+	char *from, *to;
 	int error;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->from);
-	CHECKALTCREAT(&sg, args->to);
-
+	error = linux_copyin_path(args->from, &from, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
+	error = linux_copyin_path(args->to, &to, LINUX_PATH_CREATE);
+	if (error) {
+		linux_free_path(&from);
+		return (error);
+	}
 #ifdef DEBUG
 	if (ldebug(rename))
 		printf(ARGS(rename, "%s, %s"), args->from, args->to);
 #endif
-	bsd.from = args->from;
-	bsd.to = args->to;
-	bsd.sysmsg_result = 0;
+	NDINIT(&fromnd, NAMEI_DELETE, CNP_WANTPARENT | CNP_SAVESTART,
+	    UIO_SYSSPACE, from, td);
+	NDINIT(&tond, NAMEI_RENAME,
+	    CNP_LOCKPARENT | CNP_LOCKLEAF | CNP_NOCACHE |
+	    CNP_SAVESTART | CNP_NOOBJ,
+	    UIO_SYSSPACE, to, td);
 
-	error = rename(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
+	error = kern_rename(&fromnd, &tond);
+
+	linux_free_path(&from);
+	linux_free_path(&to);
 	return(error);
 }
 
 int
 linux_symlink(struct linux_symlink_args *args)
 {
-	struct symlink_args bsd;
-	caddr_t sg;
+	struct thread *td = curthread;
+	struct nameidata nd;
+	char *path, *link;
 	int error;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->path);
-	CHECKALTCREAT(&sg, args->to);
-
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
+	error = linux_copyin_path(args->to, &link, LINUX_PATH_CREATE);
+	if (error) {
+		linux_free_path(&path);
+		return (error);
+	}
 #ifdef DEBUG
 	if (ldebug(symlink))
-		printf(ARGS(symlink, "%s, %s"), args->path, args->to);
+		printf(ARGS(symlink, "%s, %s"), path, link);
 #endif
-	bsd.path = args->path;
-	bsd.link = args->to;
-	bsd.sysmsg_result = 0;
+	NDINIT(&nd, NAMEI_CREATE, CNP_LOCKPARENT | CNP_NOOBJ, UIO_SYSSPACE,
+	    link, td);
 
-	error = symlink(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
+	error = kern_symlink(path, &nd);
+
+	linux_free_path(&path);
+	linux_free_path(&link);
 	return(error);
 }
 
 int
 linux_readlink(struct linux_readlink_args *args)
 {
-	struct readlink_args bsd;
-	caddr_t sg;
+	struct thread *td = curthread;
+	struct nameidata nd;
+	char *path;
 	int error;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->name);
-
+	error = linux_copyin_path(args->name, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(readlink))
-		printf(ARGS(readlink, "%s, %p, %d"),
-		    args->name, (void *)args->buf, args->count);
+		printf(ARGS(readlink, "%s, %p, %d"), path, (void *)args->buf,
+		    args->count);
 #endif
-	bsd.path = args->name;
-	bsd.buf = args->buf;
-	bsd.count = args->count;
-	bsd.sysmsg_result = 0;
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_NOOBJ, UIO_SYSSPACE,
+	   path, td);
 
-	error = readlink(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
+	error = kern_readlink(&nd, args->buf, args->count,
+	    &args->sysmsg_result);
+
+	linux_free_path(&path);
 	return(error);
 }
 
 int
 linux_truncate(struct linux_truncate_args *args)
 {
-	struct truncate_args bsd;
-	caddr_t sg;
+	struct thread *td = curthread;
+	struct nameidata nd;
+	char *path;
 	int error;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->path);
-
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(truncate))
 		printf(ARGS(truncate, "%s, %ld"), args->path,
 		    (long)args->length);
 #endif
-	bsd.path = args->path;
-	bsd.length = args->length;
-	bsd.sysmsg_result = 0;
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
 
-	error = truncate(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
+	error = kern_truncate(&nd, args->length);
+
+	linux_free_path(&path);
 	return(error);
 }
 
@@ -717,26 +731,33 @@ linux_ftruncate(struct linux_ftruncate_args *args)
 int
 linux_link(struct linux_link_args *args)
 {
-    struct link_args bsd;
-    caddr_t sg;
-    int error;
+	struct thread *td = curthread;
+	struct nameidata nd, linknd;
+	char *path, *link;
+	int error;
 
-    sg = stackgap_init();
-    CHECKALTEXIST(&sg, args->path);
-    CHECKALTCREAT(&sg, args->to);
-
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
+	error = linux_copyin_path(args->to, &link, LINUX_PATH_CREATE);
+	if (error) {
+		linux_free_path(&path);
+		return (error);
+	}
 #ifdef DEBUG
 	if (ldebug(link))
-		printf(ARGS(link, "%s, %s"), args->path, args->to);
+		printf(ARGS(link, "%s, %s"), path, link);
 #endif
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_NOOBJ, UIO_SYSSPACE,
+	    path, td);
+	NDINIT(&linknd, NAMEI_CREATE, CNP_LOCKPARENT | CNP_NOOBJ,
+	    UIO_SYSSPACE, link, td);
 
-    bsd.path = args->path;
-    bsd.link = args->to;
-    bsd.sysmsg_result = 0;
+	error = kern_link(&nd, &linknd);
 
-    error = link(&bsd);
-    args->sysmsg_result = bsd.sysmsg_result;
-    return(error);
+	linux_free_path(&path);
+	linux_free_path(&link);
+	return(error);
 }
 
 #ifndef __alpha__
@@ -1129,51 +1150,46 @@ linux_fcntl64(struct linux_fcntl64_args *args)
 int
 linux_chown(struct linux_chown_args *args)
 {
-	struct chown_args bsd;
-	caddr_t sg;
+	struct thread *td = curthread;
+	struct nameidata nd;
+	char *path;
 	int error;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->path);
-
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(chown))
-		printf(ARGS(chown, "%s, %d, %d"), args->path, args->uid,
-		    args->gid);
+		printf(ARGS(chown, "%s, %d, %d"), path, args->uid, args->gid);
 #endif
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
 
-	bsd.path = args->path;
-	bsd.uid = args->uid;
-	bsd.gid = args->gid;
-	bsd.sysmsg_result = 0;
-	error = chown(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
+	error = kern_chown(&nd, args->uid, args->gid);
+
+	linux_free_path(&path);
 	return(error);
 }
 
 int
 linux_lchown(struct linux_lchown_args *args)
 {
-	struct lchown_args bsd;
-	caddr_t sg;
+	struct thread *td = curthread;
+	struct nameidata nd;
+	char *path;
 	int error;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->path);
-
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(lchown))
-		printf(ARGS(lchown, "%s, %d, %d"), args->path, args->uid,
-		    args->gid);
+		printf(ARGS(lchown, "%s, %d, %d"), path, args->uid, args->gid);
 #endif
+	NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_SYSSPACE, path, td);
 
-	bsd.path = args->path;
-	bsd.uid = args->uid;
-	bsd.gid = args->gid;
-	bsd.sysmsg_result = 0;
+	error = kern_chown(&nd, args->uid, args->gid);
 
-	error = lchown(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
+	linux_free_path(&path);
 	return(error);
 }
 

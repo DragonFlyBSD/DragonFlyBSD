@@ -29,7 +29,7 @@
  * from: svr4_util.h,v 1.5 1994/11/18 02:54:31 christos Exp
  * from: linux_util.h,v 1.2 1995/03/05 23:23:50 fvdl Exp
  * $FreeBSD: src/sys/compat/linux/linux_util.h,v 1.12.2.2 2000/11/02 23:31:28 obrien Exp $
- * $DragonFly: src/sys/emulation/linux/linux_util.h,v 1.5 2003/08/27 06:30:03 rob Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_util.h,v 1.6 2003/11/13 04:04:42 daver Exp $
  */
 
 /*
@@ -49,6 +49,20 @@
 #include <sys/exec.h>
 #include <sys/sysent.h>
 #include <sys/cdefs.h>
+
+#define LINUX_PATH_CREATE 1
+#define LINUX_PATH_EXISTS 2
+
+int linux_translate_path(char *, int);
+int linux_copyin_path(char *, char **, int);
+
+static __inline void
+linux_free_path(char **kname) {
+	if (*kname) {
+		free(*kname, M_TEMP);
+		*kname = NULL;
+	}
+}
 
 static __inline caddr_t stackgap_init(void);
 static __inline void *stackgap_alloc(caddr_t *, size_t);
@@ -74,23 +88,6 @@ stackgap_alloc(sgp, sz)
 	*sgp += sz;
 	return p;
 }
-
-extern const char linux_emul_path[];
-
-int linux_emul_find (struct thread *, caddr_t *, const char *, char *, char **, int);
-
-#define CHECKALT(sgp, path, i) 						\
-	do {								\
-		int _error;						\
-									\
-		_error = linux_emul_find(curthread, sgp, linux_emul_path, path, \
-		    &path, i);						\
-		if (_error == EFAULT)					\
-			return (_error);				\
-	} while (0)
-
-#define CHECKALTEXIST(sgp, path) CHECKALT(sgp, path, 0)
-#define CHECKALTCREAT(sgp, path) CHECKALT(sgp, path, 1)
 
 #define DUMMY(s)							\
 int									\

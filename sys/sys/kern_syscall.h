@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.12 2003/11/12 01:00:33 daver Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.13 2003/11/13 04:04:42 daver Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -127,6 +127,7 @@ int kern_getdirentries(int fd, char *buf, u_int count, long *basep, int *res);
 int kern_link(struct nameidata *nd, struct nameidata *linknd);
 int kern_lseek(int fd, off_t offset, int whence, off_t *res);
 int kern_mkdir(struct nameidata *nd, int mode);
+int kern_mkfifo(struct nameidata *nd, int mode);
 int kern_mknod(struct nameidata *nd, int mode, int dev);
 int kern_open(struct nameidata *nd, int flags, int mode, int *res);
 int kern_readlink(struct nameidata *nd, char *buf, int count, int *res);

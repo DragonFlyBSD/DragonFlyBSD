@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.10 2003/10/21 01:05:09 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.11 2003/11/13 04:04:42 daver Exp $
  */
 
 #include <sys/param.h>
@@ -55,6 +55,7 @@ newstat_copyout(struct stat *buf, void *ubuf)
 {
 	struct l_newstat tbuf;
 	dev_t dev;
+	int error;
 
 	tbuf.st_dev = uminor(buf->st_dev) | (umajor(buf->st_dev) << 8);
 	tbuf.st_ino = buf->st_ino;
@@ -86,7 +87,8 @@ newstat_copyout(struct stat *buf, void *ubuf)
 		}
 	}
 
-	return (copyout(&tbuf, ubuf, sizeof(tbuf)));
+	error = copyout(&tbuf, ubuf, sizeof(tbuf));
+	return (error);
 }
 
 int
@@ -95,62 +97,52 @@ linux_newstat(struct linux_newstat_args *args)
 	struct thread *td = curthread;
 	struct stat buf;
 	struct nameidata nd;
+	char *path;
 	int error;
-	caddr_t sg;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->path);
-
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(newstat))
-		printf(ARGS(newstat, "%s, *"), args->path);
+		printf(ARGS(newstat, "%s, *"), path);
 #endif
-
 	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
-	    UIO_USERSPACE, args->path, td);
-	error = namei(&nd);
-	if (error)
-		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
+	    UIO_SYSSPACE, path, td);
 
-	error = vn_stat(nd.ni_vp, &buf, td);
-	vput(nd.ni_vp);
-	if (error)
-		return (error);
+	error = kern_stat(&nd, &buf);
 
-	return (newstat_copyout(&buf, args->buf));
+	if (error == 0)
+		error = newstat_copyout(&buf, args->buf);
+	linux_free_path(&path);
+	return (error);
 }
 
 int
 linux_newlstat(struct linux_newlstat_args *args)
 {
 	struct thread *td = curthread;
-	int error;
 	struct stat sb;
 	struct nameidata nd;
-	caddr_t sg;
+	char *path;
+	int error;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->path);
-
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(newlstat))
-		printf(ARGS(newlstat, "%s, *"), args->path);
+		printf(ARGS(newlstat, "%s, *"), path);
 #endif
-
 	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_NOOBJ,
-	    UIO_USERSPACE, args->path, td);
-	error = namei(&nd);
-	if (error)
-		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF); 
+	    UIO_SYSSPACE, path, td);
 
-	error = vn_stat(nd.ni_vp, &sb, td);
-	vput(nd.ni_vp);
-	if (error)
-		return (error);
+	error = kern_stat(&nd, &sb);
 
-	return (newstat_copyout(&sb, args->buf));
+	if (error == 0)
+		error = newstat_copyout(&sb, args->buf);
+	linux_free_path(&path);
+	return (error);
 }
 
 int
@@ -219,90 +211,68 @@ bsd_to_linux_ftype(const char *fstypename)
 	return (0L);
 }
 
+static int
+statfs_copyout(struct statfs *statfs, struct l_statfs_buf *buf)
+{
+	struct l_statfs linux_statfs;
+	int error;
+
+	linux_statfs.f_type = bsd_to_linux_ftype(statfs->f_fstypename);
+	linux_statfs.f_bsize = statfs->f_bsize;
+	linux_statfs.f_blocks = statfs->f_blocks;
+	linux_statfs.f_bfree = statfs->f_bfree;
+	linux_statfs.f_bavail = statfs->f_bavail;
+  	linux_statfs.f_ffree = statfs->f_ffree;
+	linux_statfs.f_files = statfs->f_files;
+	linux_statfs.f_fsid.val[0] = statfs->f_fsid.val[0];
+	linux_statfs.f_fsid.val[1] = statfs->f_fsid.val[1];
+	linux_statfs.f_namelen = MAXNAMLEN; /* Bogus */
+
+	error = copyout(&linux_statfs, buf, sizeof(linux_statfs));
+	return (error);
+}
+
 int
 linux_statfs(struct linux_statfs_args *args)
 {
 	struct thread *td = curthread;
-	struct mount *mp;
-	struct nameidata *ndp;
-	struct statfs *bsd_statfs;
+	struct statfs statfs;
 	struct nameidata nd;
-	struct l_statfs linux_statfs;
+	char *path;
 	int error;
-	caddr_t sg;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->path);
-
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(statfs))
-		printf(ARGS(statfs, "%s, *"), args->path);
+		printf(ARGS(statfs, "%s, *"), path);
 #endif
-	ndp = &nd;
-	NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args->path, td);
-	error = namei(ndp);
-	if (error)
-		return error;
-	NDFREE(ndp, NDF_ONLY_PNBUF);
-	mp = ndp->ni_vp->v_mount;
-	bsd_statfs = &mp->mnt_stat;
-	vrele(ndp->ni_vp);
-	error = VFS_STATFS(mp, bsd_statfs, td);
-	if (error)
-		return error;
-	bsd_statfs->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
-	linux_statfs.f_type = bsd_to_linux_ftype(bsd_statfs->f_fstypename);
-	linux_statfs.f_bsize = bsd_statfs->f_bsize;
-	linux_statfs.f_blocks = bsd_statfs->f_blocks;
-	linux_statfs.f_bfree = bsd_statfs->f_bfree;
-	linux_statfs.f_bavail = bsd_statfs->f_bavail;
-  	linux_statfs.f_ffree = bsd_statfs->f_ffree;
-	linux_statfs.f_files = bsd_statfs->f_files;
-	linux_statfs.f_fsid.val[0] = bsd_statfs->f_fsid.val[0];
-	linux_statfs.f_fsid.val[1] = bsd_statfs->f_fsid.val[1];
-	linux_statfs.f_namelen = MAXNAMLEN;
-	return copyout((caddr_t)&linux_statfs, (caddr_t)args->buf,
-	    sizeof(linux_statfs));
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
+
+	error = kern_statfs(&nd, &statfs);
+
+	if (error == 0)
+		error = statfs_copyout(&statfs, args->buf);
+	linux_free_path(&path);
+	return (error);
 }
 
 int
 linux_fstatfs(struct linux_fstatfs_args *args)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct file *fp;
-	struct mount *mp;
-	struct statfs *bsd_statfs;
-	struct l_statfs linux_statfs;
+	struct statfs statfs;
 	int error;
-
-	KKASSERT(p);
 
 #ifdef DEBUG
 	if (ldebug(fstatfs))
 		printf(ARGS(fstatfs, "%d, *"), args->fd);
 #endif
-	error = getvnode(p->p_fd, args->fd, &fp);
-	if (error)
-		return error;
-	mp = ((struct vnode *)fp->f_data)->v_mount;
-	bsd_statfs = &mp->mnt_stat;
-	error = VFS_STATFS(mp, bsd_statfs, td);
-	if (error)
-		return error;
-	bsd_statfs->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
-	linux_statfs.f_type = bsd_to_linux_ftype(bsd_statfs->f_fstypename);
-	linux_statfs.f_bsize = bsd_statfs->f_bsize;
-	linux_statfs.f_blocks = bsd_statfs->f_blocks;
-	linux_statfs.f_bfree = bsd_statfs->f_bfree;
-	linux_statfs.f_bavail = bsd_statfs->f_bavail;
-  	linux_statfs.f_ffree = bsd_statfs->f_ffree;
-	linux_statfs.f_files = bsd_statfs->f_files;
-	linux_statfs.f_fsid.val[0] = bsd_statfs->f_fsid.val[0];
-	linux_statfs.f_fsid.val[1] = bsd_statfs->f_fsid.val[1];
-	linux_statfs.f_namelen = MAXNAMLEN;
-	return copyout((caddr_t)&linux_statfs, (caddr_t)args->buf,
-	    sizeof(linux_statfs));
+	error = kern_fstatfs(args->fd, &statfs);
+
+	if (error == 0)
+		error = statfs_copyout(&statfs, args->buf);
+	return (error);
 }
 
 struct l_ustat 
@@ -363,6 +333,7 @@ static int
 stat64_copyout(struct stat *buf, void *ubuf)
 {
 	struct l_stat64 lbuf;
+	int error;
 
 	bzero(&lbuf, sizeof(lbuf));
 	lbuf.st_dev = uminor(buf->st_dev) | (umajor(buf->st_dev) << 8);
@@ -387,71 +358,62 @@ stat64_copyout(struct stat *buf, void *ubuf)
 	 */
 	lbuf.__st_ino = buf->st_ino;
 
-	return (copyout(&lbuf, ubuf, sizeof(lbuf)));
+	error = copyout(&lbuf, ubuf, sizeof(lbuf));
+	return (error);
 }
 
 int
 linux_stat64(struct linux_stat64_args *args)
 {
 	struct thread *td = curthread;
-	struct stat buf;
 	struct nameidata nd;
+	struct stat buf;
+	char *path;
 	int error;
-	caddr_t sg;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->filename);
-
+	error = linux_copyin_path(args->filename, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(stat64))
-		printf(ARGS(stat64, "%s, *"), args->filename);
+		printf(ARGS(stat64, "%s, *"), path);
 #endif
-
 	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
-		UIO_USERSPACE, args->filename, td);
-	error = namei(&nd);
-	if (error)
-		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
+		UIO_SYSSPACE, path, td);
 
-	error = vn_stat(nd.ni_vp, &buf, td);
-	vput(nd.ni_vp);
-	if (error)
-		return (error);
+	error = kern_stat(&nd, &buf);
 
-	return (stat64_copyout(&buf, args->statbuf));
+	if (error == 0)
+		error = stat64_copyout(&buf, args->statbuf);
+	linux_free_path(&path);
+	return (error);
 }
 
 int
 linux_lstat64(struct linux_lstat64_args *args)
 {
 	struct thread *td = curthread;
-	int error;
-	struct stat sb;
 	struct nameidata nd;
-	caddr_t sg;
+	struct stat sb;
+	char *path;
+	int error;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->filename);
-
+	error = linux_copyin_path(args->filename, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(lstat64))
-		printf(ARGS(lstat64, "%s, *"), args->filename);
+		printf(ARGS(lstat64, "%s, *"), path);
 #endif
-
 	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_NOOBJ,
-		UIO_USERSPACE, args->filename, td);
-	error = namei(&nd);
-	if (error)
-		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF); 
+	    UIO_SYSSPACE, path, td);
 
-	error = vn_stat(nd.ni_vp, &sb, td);
-	vput(nd.ni_vp);
-	if (error)
-		return (error);
+	error = kern_stat(&nd, &sb);
 
-	return (stat64_copyout(&sb, args->statbuf));
+	if (error == 0)
+		error = stat64_copyout(&sb, args->statbuf);
+	linux_free_path(&path);
+	return (error);
 }
 
 int

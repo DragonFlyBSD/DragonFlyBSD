@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.15 2003/11/03 15:57:33 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.16 2003/11/13 04:04:42 daver Exp $
  */
 
 #include "opt_compat.h"
@@ -251,18 +251,18 @@ linux_uselib(struct linux_uselib_args *args)
 	vm_offset_t buffer;
 	unsigned long bss_size;
 	int error;
-	caddr_t sg;
 	int locked;
+	char *path;
 
 	KKASSERT(td->td_proc);
 	p = td->td_proc;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->library);
-
+	error = linux_copyin_path(args->library, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(uselib))
-		printf(ARGS(uselib, "%s"), args->library);
+		printf(ARGS(uselib, "%s"), path);
 #endif
 
 	a_out = NULL;
@@ -270,7 +270,7 @@ linux_uselib(struct linux_uselib_args *args)
 	vp = NULL;
 
 	NDINIT(&ni, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF,
-		UIO_USERSPACE, args->library, td);
+		UIO_SYSSPACE, path, td);
 	error = namei(&ni);
 	if (error)
 		goto cleanup;
@@ -471,6 +471,7 @@ cleanup:
 		vm_map_remove(kernel_map, (vm_offset_t)a_out,
 		    (vm_offset_t)a_out + PAGE_SIZE);
 
+	linux_free_path(&path);
 	return error;
 }
 
@@ -739,45 +740,37 @@ struct l_utimbuf {
 int
 linux_utime(struct linux_utime_args *args)
 {
-	struct utimes_args /* {
-		char	*path;
-		struct	timeval *tptr;
-	} */ bsdutimes;
-	struct timeval tv[2], *tvp;
+	struct thread *td = curthread;
+	struct timeval tv[2];
 	struct l_utimbuf lut;
+	struct nameidata nd;
+	char *path;
 	int error;
-	caddr_t sg;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->fname);
-
+	error = linux_copyin_path(args->fname, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(utime))
-		printf(ARGS(utime, "%s, *"), args->fname);
+		printf(ARGS(utime, "%s, *"), path);
 #endif
 
 	if (args->times) {
-		if ((error = copyin((caddr_t)args->times, &lut, sizeof lut)))
-			return error;
+		error = copyin(args->times, &lut, sizeof(lut));
+		if (error)
+			goto cleanup;
 		tv[0].tv_sec = lut.l_actime;
 		tv[0].tv_usec = 0;
 		tv[1].tv_sec = lut.l_modtime;
 		tv[1].tv_usec = 0;
-		/* so that utimes can copyin */
-		tvp = (struct timeval *)stackgap_alloc(&sg, sizeof(tv));
-		if (tvp == NULL)
-			return (ENAMETOOLONG);
-		if ((error = copyout(tv, tvp, sizeof(tv))))
-			return error;
-		bsdutimes.tptr = tvp;
-	} else
-		bsdutimes.tptr = NULL;
+	}
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
 
-	bsdutimes.path = args->fname;
-	bsdutimes.sysmsg_result = 0;
-	error = utimes(&bsdutimes);
-	args->sysmsg_result = bsdutimes.sysmsg_result;
-	return(error);
+	error = kern_utimes(&nd, args->times ? tv : NULL);
+
+cleanup:
+	linux_free_path(&path);
+	return (error);
 }
 #endif /* __i386__ */
 
@@ -863,35 +856,28 @@ linux_wait4(struct linux_wait4_args *args)
 int
 linux_mknod(struct linux_mknod_args *args)
 {
+	struct thread *td = curthread;
+	struct nameidata nd;
+	char *path;
 	int error;
-	caddr_t sg;
-	struct mknod_args bsd_mknod;
-	struct mkfifo_args bsd_mkfifo;
 
-	sg = stackgap_init();
-
-	CHECKALTCREAT(&sg, args->path);
-
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_CREATE);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(mknod))
 		printf(ARGS(mknod, "%s, %d, %d"),
-		    args->path, args->mode, args->dev);
+		    path, args->mode, args->dev);
 #endif
+	NDINIT(&nd, NAMEI_CREATE, CNP_LOCKPARENT, UIO_SYSSPACE, path, td);
 
 	if (args->mode & S_IFIFO) {
-		bsd_mkfifo.path = args->path;
-		bsd_mkfifo.mode = args->mode;
-		bsd_mkfifo.sysmsg_result = 0;
-		error = mkfifo(&bsd_mkfifo);
-		args->sysmsg_result = bsd_mkfifo.sysmsg_result;
+		error = kern_mkfifo(&nd, args->mode);
 	} else {
-		bsd_mknod.path = args->path;
-		bsd_mknod.mode = args->mode;
-		bsd_mknod.dev = args->dev;
-		bsd_mknod.sysmsg_result = 0;
-		error = mknod(&bsd_mknod);
-		args->sysmsg_result = bsd_mknod.sysmsg_result;
+		error = kern_mknod(&nd, args->mode, args->dev);
 	}
+
+	linux_free_path(&path);
 	return(error);
 }
 

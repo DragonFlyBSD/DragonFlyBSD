@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.11 2003/11/12 01:00:33 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.12 2003/11/13 04:04:42 daver Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -753,18 +753,8 @@ exec_linux_imgact_try(imgp)
 	     * path is found, use our stringspace to store it.
 	     */
 	    if ((error = exec_shell_imgact(imgp)) == 0) {
-		    char *rpath = NULL;
-
-		    linux_emul_find(imgp->proc->p_thread, NULL, linux_emul_path, 
-			imgp->interpreter_name, &rpath, 0);
-		    if (rpath != imgp->interpreter_name) {
-			    int len = strlen(rpath) + 1;
-
-			    if (len <= MAXSHELLCMDLEN) {
-				memcpy(imgp->interpreter_name, rpath, len);
-			    }
-			    free(rpath, M_TEMP);
-		    }
+		    linux_translate_path(imgp->interpreter_name,
+			MAXSHELLCMDLEN);
 	    }
     }
     return(error);

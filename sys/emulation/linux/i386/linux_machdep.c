@@ -26,14 +26,16 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.10 2003/10/24 14:10:45 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.11 2003/11/13 04:04:42 daver Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/imgact.h>
 #include <sys/kern_syscall.h>
 #include <sys/lock.h>
 #include <sys/mman.h>
+#include <sys/namei.h>
 #include <sys/proc.h>
 #include <sys/resource.h>
 #include <sys/resourcevar.h>
@@ -102,28 +104,41 @@ bsd_to_linux_sigaltstack(int bsa)
 int
 linux_execve(struct linux_execve_args *args)
 {
-	struct execve_args bsd;
+	struct thread *td = curthread;
+	struct nameidata nd;
+	struct image_args exec_args;
+	char *path;
 	int error;
-	caddr_t sg;
 
-	sg = stackgap_init();
-	CHECKALTEXIST(&sg, args->path);
-
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
 #ifdef DEBUG
 	if (ldebug(execve))
-		printf(ARGS(execve, "%s"), args->path);
+		printf(ARGS(execve, "%s"), path);
 #endif
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_FOLLOW | CNP_SAVENAME,
+	    UIO_SYSSPACE, path, td);
+
+	error = exec_copyin_args(&exec_args, path, PATH_SYSSPACE,
+	    args->argp, args->envp);
+	if (error) {
+		linux_free_path(&path);
+		return (error);
+	}
+
+	error = kern_execve(&nd, &exec_args);
 
 	/*
-	 * Note: inherit and set the full 64 bit syscall return
-	 * value so a successful execve() sets %edx to 0.
+	 * The syscall result is returned in registers to the new program.
+	 * Linux will register %edx as an atexit function and we must be
+	 * sure to set it to 0.  XXX
 	 */
-	bsd.sysmsg_result64 = args->sysmsg_result64;
-	bsd.fname = args->path;
-	bsd.argv = args->argp;
-	bsd.envv = args->envp;
-	error = execve(&bsd);
-	args->sysmsg_result64 = bsd.sysmsg_result64;
+	if (error == 0)
+		args->sysmsg_result64 = 0;
+
+	exec_free_args(&exec_args);
+	linux_free_path(&path);
 	return(error);
 }
 
