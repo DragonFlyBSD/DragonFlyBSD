@@ -12,7 +12,7 @@
  * without express or implied warranty.
  *
  * $FreeBSD: src/sys/i386/isa/mse.c,v 1.49.2.1 2000/03/20 13:58:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.9 2004/05/19 22:52:43 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.10 2004/09/18 19:08:07 dillon Exp $
  */
 /*
  * Driver for the Logitech and ATI Inport Bus mice for use with 386bsd and
@@ -93,7 +93,7 @@ typedef struct mse_softc {
 	int		sc_buttons;
 	int		sc_bytesread;
 	u_char		sc_bytes[MOUSE_SYS_PACKETSIZE];
-	struct		callout_handle sc_callout;
+	struct		callout	sc_callout;
 	int		sc_watchdog;
 	mousehw_t	hw;
 	mousemode_t	mode;
@@ -358,7 +358,7 @@ mse_attach(dev)
 
 	flags = device_get_flags(dev);
 	sc->mode.accelfactor = (flags & MSE_CONFIG_ACCEL) >> 4;
-	callout_handle_init(&sc->sc_callout);
+	callout_init(&sc->sc_callout);
 
 	cdevsw_add(&mse_cdevsw, ~1, unit << 1);
 	make_dev(&mse_cdevsw, unit << 1, 0, 0, 0600, "mse%d", unit);
@@ -412,7 +412,7 @@ mseopen(dev, flags, fmt, td)
 	sc->sc_deltax = sc->sc_deltay = 0;
 	sc->sc_bytesread = sc->mode.packetsize = MOUSE_MSC_PACKETSIZE;
 	sc->sc_watchdog = FALSE;
-	sc->sc_callout = timeout(msetimeout, dev, hz*2);
+	callout_reset(&sc->sc_callout, hz * 2, msetimeout, dev);
 	sc->mode.level = 0;
 	sc->status.flags = 0;
 	sc->status.button = sc->status.obutton = 0;
@@ -440,8 +440,7 @@ mseclose(dev, flags, fmt, td)
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 	int s;
 
-	untimeout(msetimeout, dev, sc->sc_callout);
-	callout_handle_init(&sc->sc_callout);
+	callout_stop(&sc->sc_callout);
 	s = spltty();
 	(*sc->sc_disablemouse)(sc->sc_iot, sc->sc_ioh);
 	sc->sc_flags &= ~MSESC_OPEN;
@@ -683,7 +682,7 @@ msetimeout(arg)
 		mseintr(sc);
 	}
 	sc->sc_watchdog = TRUE;
-	sc->sc_callout = timeout(msetimeout, dev, hz);
+	callout_reset(&sc->sc_callout, hz, msetimeout, dev);
 }
 
 /*

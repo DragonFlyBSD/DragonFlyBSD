@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.7 2003/11/12 04:26:26 mikeh Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.12 2004/07/02 18:59:01 eirikn Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.13 2004/09/18 19:08:08 dillon Exp $
  */
 
 /*
@@ -172,7 +172,7 @@ struct psm_softc {		/* Driver status information */
     int		  syncerrors;
     struct timeval inputtimeout;
     int		  watchdog;	/* watchdog timer flag */
-    struct callout_handle callout;	/* watchdog timer call out */
+    struct callout callout;	/* watchdog timer call out */
 };
 devclass_t psm_devclass;
 #define PSM_SOFTC(unit)	((struct psm_softc*)devclass_get_softc(psm_devclass, unit))
@@ -796,7 +796,7 @@ doopen(struct psm_softc *sc, int command_byte)
 
     /* start the watchdog timer */
     sc->watchdog = FALSE;
-    sc->callout = timeout(psmtimeout, (void *)(uintptr_t)sc, hz*2);
+    callout_reset(&sc->callout, hz * 2, psmtimeout, (void *)(uintptr_t)sc);
 
     return (0);
 }
@@ -815,8 +815,7 @@ reinitialize(struct psm_softc *sc, int doinit)
 
     /* block our watchdog timer */
     sc->watchdog = FALSE;
-    untimeout(psmtimeout, (void *)(uintptr_t)sc, sc->callout);
-    callout_handle_init(&sc->callout);
+    callout_stop(&sc->callout);
 
     /* save the current controller command byte */
     empty_both_buffers(sc->kbdc, 10);
@@ -1235,7 +1234,7 @@ psmattach(device_t dev)
 
     /* Setup initial state */
     sc->state = PSM_VALID;
-    callout_handle_init(&sc->callout);
+    callout_init(&sc->callout);
 
     /* Setup our interrupt handler */
     rid = 0;
@@ -1420,8 +1419,7 @@ psmclose(dev_t dev, int flag, int fmt, struct thread *td)
     splx(s);
 
     /* stop the watchdog timer */
-    untimeout(psmtimeout, (void *)(uintptr_t)sc, sc->callout);
-    callout_handle_init(&sc->callout);
+    callout_stop(&sc->callout);
 
     /* remove anything left in the output buffer */
     empty_aux_buffer(sc->kbdc, 10);
@@ -1960,7 +1958,7 @@ psmtimeout(void *arg)
     }
     sc->watchdog = TRUE;
     splx(s);
-    sc->callout = timeout(psmtimeout, (void *)(uintptr_t)sc, hz);
+    callout_reset(&sc->callout, hz, psmtimeout, (void *)(uintptr_t)sc);
 }
 
 static void

@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.8 2004/05/19 22:52:43 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.9 2004/09/18 19:08:06 dillon Exp $
  *
  */
 
@@ -146,7 +146,7 @@ struct ctlr
 	/*
 	 * Handle for canceling our timeout.
 	 */
-	struct callout_handle ch;
+	struct callout	ch;
 
 	/* Device configuration structure:
 	 */
@@ -334,7 +334,7 @@ done_and_start_next(struct ctlr *ctlr, struct buf *bp, int err)
 	ctlr->start_queue.b_actf = bp->b_actf;
 	bp_done(bp, err);
 
-	untimeout(tmo_stop, ctlr, ctlr->ch);
+	callout_stop(&ctlr->ch);
 
 	start(ctlr);
 }
@@ -480,7 +480,7 @@ labpcattach(struct isa_device *dev)
 	struct ctlr *ctlr = labpcs[dev->id_unit];
 
 	dev->id_ointr = labpcintr;
-	callout_handle_init(&ctlr->ch);
+	callout_init(&ctlr->ch);
 	ctlr->sample_us = (1000000.0 / (double)LABPC_DEFAULT_HERZ) + .50;
 	reset(ctlr);
 
@@ -810,7 +810,7 @@ start(struct ctlr *ctlr)
 		(*ctlr->intr)(ctlr);
 	}
 
-	ctlr->ch = timeout(tmo_stop, ctlr, ctlr->tmo);
+	callout_reset(&ctlr->ch, ctlr->tmo, tmo_stop, ctlr);
 }
 
 static void
