@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.1 2003/12/01 09:59:43 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.2 2003/12/01 10:10:22 dillon Exp $
 #
 ISODIR ?= /usr/release
 ISOFILE ?= ${ISODIR}/dfly.iso
@@ -41,9 +41,9 @@ buildiso:
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
-	cp /usr/local/bin/mkisofs ${ISOROOT}
+	cp /usr/local/bin/mkisofs ${ISOROOT}/usr/local/bin
 	cp /usr/local/man/man8/mkisofs.8.gz ${ISOROOT}/usr/local/man/man8
-	cp /usr/local/bin/cvsup ${ISOROOT}
+	cp /usr/local/bin/cvsup ${ISOROOT}/usr/local/bin
 	cp /usr/local/man/man1/cvsup.1.gz ${ISOROOT}/usr/local/man/man1
 
 mkiso:
