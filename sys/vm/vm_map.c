@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.16 2003/11/29 18:56:22 drhodus Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.17 2003/12/27 05:13:32 hsu Exp $
  */
 
 /*
@@ -2901,8 +2901,7 @@ Retry:
 	}
 
 	/* If we would blow our VMEM resource limit, no go */
-	if (map->size + grow_amount >
-	    curproc->p_rlimit[RLIMIT_VMEM].rlim_cur) {
+	if (map->size + grow_amount > p->p_rlimit[RLIMIT_VMEM].rlim_cur) {
 		rv = KERN_NO_SPACE;
 		goto done;
 	}
