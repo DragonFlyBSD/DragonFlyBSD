@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.18 2004/10/12 19:21:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.19 2004/11/09 04:22:52 dillon Exp $
  */
 
 /*
@@ -1678,8 +1678,20 @@ setup_allocindir_phase2(bp, ip, aip)
 			FREE_LOCK(&lk);
 		}
 		if (newindirdep) {
-			if (indirdep->ir_savebp != NULL)
+			/*
+			 * We must invalidate ir_savebp to retire the original
+			 * getblk() that brought it in.  VMIO backed buffers
+			 * will tend to do the right thing anyway, but 
+			 * non-VMIO backed buffers must be properly retired
+			 * according to getblk()'s semantics because B_CACHE    
+			 * is set in getblk() if the non-VMIO-backed bp 
+			 * already exists.
+			 */
+			if (indirdep->ir_savebp != NULL) {
+				indirdep->ir_savebp->b_flags |=
+						B_INVAL | B_NOCACHE;
 				brelse(newindirdep->ir_savebp);
+			}
 			WORKITEM_FREE((caddr_t)newindirdep, D_INDIRDEP);
 		}
 		if (indirdep)
