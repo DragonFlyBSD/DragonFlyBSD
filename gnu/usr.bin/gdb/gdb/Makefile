@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/gdb/gdb/Makefile,v 1.4 2004/11/14 15:16:59 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/gdb/Makefile,v 1.5 2004/11/17 12:27:59 joerg Exp $
 
 .include "../Makefile.inc"
 
@@ -28,14 +28,14 @@ SRCS+=	nm.h observer.h tm.h xm.h
 # libgdb
 SRCS+=	annotate.c arch-utils.c auxv.c ax-gdb.c ax-general.c bcache.c
 SRCS+=	bfd-target.c block.c blockframe.c breakpoint.c bsd-kvm.c buildsym.c
-SRCS+=	c-exp.c c-lang.c c-typeprint.c c-valprint.c charset.c cli-cmds.c
+SRCS+=	c-exp.y c-lang.c c-typeprint.c c-valprint.c charset.c cli-cmds.c
 SRCS+=	cli-decode.c cli-dump.c cli-interp.c cli-logging.c cli-out.c
 SRCS+=	cli-script.c cli-setshow.c cli-utils.c coff-pe-read.c coffread.c
 SRCS+=	complaints.c completer.c copying.c corefile.c corelow.c cp-abi.c
 SRCS+=	cp-namespace.c cp-support.c cp-valprint.c dbxread.c dcache.c demangle.c
 SRCS+=	dictionary.c disasm.c doublest.c dummy-frame.c dwarf2-frame.c
 SRCS+=	dwarf2expr.c dwarf2loc.c dwarf2read.c dwarfread.c elfread.c environ.c
-SRCS+=	eval.c event-loop.c event-top.c exec.c expprint.c f-exp.c f-lang.c
+SRCS+=	eval.c event-loop.c event-top.c exec.c expprint.c f-exp.y f-lang.c
 SRCS+=	f-typeprint.c f-valprint.c fbsd-proc.c findvar.c fork-child.c
 SRCS+=	frame-base.c frame-unwind.c frame.c gcore.c gdb-events.c gdbarch.c
 SRCS+=	gdbtypes.c gnu-v2-abi.c gnu-v3-abi.c hpacc-abi.c inf-loop.c infcall.c
