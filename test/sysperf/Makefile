@@ -1,8 +1,8 @@
 #
-# $DragonFly: src/test/sysperf/Makefile,v 1.2 2003/11/13 07:10:36 dillon Exp $
+# $DragonFly: src/test/sysperf/Makefile,v 1.3 2003/11/19 00:59:19 dillon Exp $
 #
 
-TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 \
+TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 \
 	/tmp/loop1 /tmp/loop2 /tmp/loop3 \
 	/tmp/mt2 \
 	/tmp/fork1 /tmp/pipe1 \
@@ -21,6 +21,9 @@ all:	$(TARGETS)
 
 /tmp/sc3: syscall3.c getuid_msg.c blib.c
 	$(CC) $(CFLAGS) syscall3.c getuid_msg.c blib.c -o /tmp/sc3
+
+/tmp/sc4: syscall4.c blib.c
+	$(CC) $(CFLAGS) syscall4.c blib.c -o /tmp/sc4
 
 /tmp/fork1: fork1.c blib.c
 	$(CC) $(CFLAGS) fork1.c blib.c -o /tmp/fork1

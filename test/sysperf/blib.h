@@ -3,12 +3,13 @@
  *
  * Simple benchmarking library
  *
- * $DragonFly: src/test/sysperf/blib.h,v 1.1 2003/08/12 02:29:44 dillon Exp $
+ * $DragonFly: src/test/sysperf/blib.h,v 1.2 2003/11/19 00:59:19 dillon Exp $
  */
 
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
