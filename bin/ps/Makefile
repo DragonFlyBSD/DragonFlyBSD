@@ -1,5 +1,5 @@
 # $FreeBSD: src/bin/ps/Makefile,v 1.13 1999/11/17 13:37:30 peter Exp $
-# $DragonFly: src/bin/ps/Makefile,v 1.3 2004/11/14 13:58:42 eirikn Exp $
+# $DragonFly: src/bin/ps/Makefile,v 1.4 2005/02/06 06:16:40 okumoto Exp $
 #	@(#)Makefile	8.1 (Berkeley) 6/2/93
 
 PROG=	ps
@@ -15,7 +15,5 @@ DPADD=	${LIBM} ${LIBKVM}
 LDADD=	-lm -lkvm
 #BINGRP=	kmem
 #BINMODE=2555
-
-WARNS?= 6
 
 .include <bsd.prog.mk>

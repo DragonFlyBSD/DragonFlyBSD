@@ -1,11 +1,13 @@
 # $FreeBSD: src/bin/csh/Makefile,v 1.11.2.8 2002/02/19 00:36:40 mp Exp $
-# $DragonFly: src/bin/csh/Makefile,v 1.4 2004/07/27 21:01:44 dillon Exp $
+# $DragonFly: src/bin/csh/Makefile,v 1.5 2005/02/06 06:16:39 okumoto Exp $
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 #
 # C Shell with process control; VM/UNIX VAX Makefile
 # Bill Joy UC Berkeley; Jim Kulp IIASA, Austria
 #
 # To profile, put -DPROF in DEFS and -pg in CFLAGS, and recompile.
+
+WARNS?=	0	# Net yet
 
 TCSHDIR= ${.CURDIR}/../../contrib/tcsh
 CONTRIBDIR=${TCSHDIR}

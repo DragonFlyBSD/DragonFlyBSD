@@ -1,10 +1,8 @@
-# $DragonFly: src/bin/cpdup/Makefile,v 1.3 2004/11/14 18:18:30 joerg Exp $
+# $DragonFly: src/bin/cpdup/Makefile,v 1.4 2005/02/06 06:16:39 okumoto Exp $
 #
 
 PROG=	cpdup
 SRCS=	cpdup.c misc.c
-
-WARNS?=	6
 
 LDADD+= -lmd
 DPADD+= ${LIBMD}
