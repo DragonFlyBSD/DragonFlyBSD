@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.dep.mk,v 1.27.2.3 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/bsd.dep.mk,v 1.2 2003/06/17 04:37:02 dillon Exp $
+# $DragonFly: src/share/mk/bsd.dep.mk,v 1.3 2004/03/05 01:06:50 joerg Exp $
 #
 # The include file <bsd.dep.mk> handles Makefile dependencies.
 #
@@ -66,6 +66,19 @@ tags: ${SRCS}
 
 .if defined(SRCS)
 CLEANFILES?=
+
+.for _PSRC in ${SRCS:M*.patch}
+.for _PC in ${_PSRC:T:S/.patch$//:S|,|/|g}
+
+${_PC}: ${CONTRIBDIR}/${_PC} ${_PSRC}
+	mkdir -p ${.TARGET:H}
+	patch -o ${.TARGET} -i ${.ALLSRC:M*.patch} ${CONTRIBDIR}/${.TARGET}
+
+SRCS:=	${SRCS:N${_PC}:S|${_PSRC}|${_PC}|}
+CLEANFILES:=	${CLEANFILES} ${_PC}
+.endfor
+.endfor
+ 
 
 .for _LSRC in ${SRCS:M*.l:N*/*}
 .for _LC in ${_LSRC:S/.l/.c/}
