@@ -2,6 +2,9 @@
  * Copyright (c) 1998 Kazutaka YOKOTA <yokota@zodiac.mech.utsunomiya-u.ac.jp>
  * All rights reserved.
  *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Sascha Wildner <saw@online.de>
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -24,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvidctl.c,v 1.19.2.2 2000/05/05 09:16:08 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.5 2003/11/10 06:12:06 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.6 2004/09/04 06:15:08 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -354,16 +357,29 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
     if ((info.vi_width < xsize*8) || (info.vi_height < ysize*fontsize))
 	return EINVAL;
 
-    /* only 16 color, 4 plane modes are supported XXX */
-    if ((info.vi_depth != 4) || (info.vi_planes != 4))
-	return ENODEV;
-
     /*
-     * set_pixel_mode() currently does not support video modes whose
-     * memory size is larger than 64K. Because such modes require
-     * bank switching to access the entire screen. XXX
+     * We currently support the following graphic modes:
+     *
+     * - 4 bpp planar modes whose memory size does not exceed 64K
+     * - 15, 16, 24 and 32 bpp linear modes
      */
-    if (info.vi_width*info.vi_height/8 > info.vi_window_size)
+
+    if (info.vi_mem_model == V_INFO_MM_PLANAR) {
+	if (info.vi_planes != 4)
+	    return ENODEV;
+
+	/*
+	 * A memory size >64K requires bank switching to access the entire
+	 * screen. XXX
+	 */
+
+	if (info.vi_width * info.vi_height / 8 > info.vi_window_size)
+	    return ENODEV;
+    } else if (info.vi_mem_model == V_INFO_MM_DIRECT) {
+	if ((info.vi_depth != 15) && (info.vi_depth != 16) &&
+	    (info.vi_depth != 24) && (info.vi_depth != 32))
+	    return ENODEV;
+    } else
 	return ENODEV;
 
     /* stop screen saver, etc */
