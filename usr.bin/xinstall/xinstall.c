@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)xinstall.c	8.1 (Berkeley) 7/21/93
  * $FreeBSD: src/usr.bin/xinstall/xinstall.c,v 1.38.2.8 2002/08/07 16:29:48 ru Exp $
- * $DragonFly: src/usr.bin/xinstall/xinstall.c,v 1.4 2004/09/05 01:18:27 dillon Exp $
+ * $DragonFly: src/usr.bin/xinstall/xinstall.c,v 1.5 2004/09/23 19:13:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -78,6 +78,9 @@ int dobackup, docompare, dodir, dopreserve, dostrip, nommap, safecopy, verbose;
 mode_t mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 const char *suffix = BACKUP_SUFFIX;
 
+static int file_getgroup(const char *etcdir, const char *group, gid_t *gid);
+static int file_getowner(const char *etcdir, const char *owner, uid_t *uid);
+
 void	copy(int, const char *, int, const char *, off_t);
 int	compare(int, const char *, size_t, int, const char *, size_t);
 int	create_newfile(const char *, int, struct stat *);
@@ -96,14 +99,23 @@ main(int argc, char **argv)
 	mode_t *set;
 	u_long fset;
 	int ch, no_target;
+	int trysys;
 	u_int iflags;
 	char *flags;
 	const char *group, *owner, *to_name;
+	const char *etcdir;
 
 	iflags = 0;
-	group = owner = NULL;
-	while ((ch = getopt(argc, argv, "B:bCcdf:g:Mm:o:pSsv")) != -1)
+	trysys = 0;
+	group = NULL;
+	owner = NULL;
+	etcdir = NULL;
+
+	while ((ch = getopt(argc, argv, "L:B:bCcdf:g:lMm:o:pSsv")) != -1)
 		switch((char)ch) {
+		case 'L':
+			etcdir = optarg;
+			break;
 		case 'B':
 			suffix = optarg;
 			/* FALLTHROUGH */
@@ -127,6 +139,9 @@ main(int argc, char **argv)
 			break;
 		case 'g':
 			group = optarg;
+			break;
+		case 'l':
+			trysys = 1;
 			break;
 		case 'M':
 			nommap = 1;
@@ -172,22 +187,32 @@ main(int argc, char **argv)
 	if (docompare && dostrip)
 		safecopy = 1;
 
+	/* no etcdir specified, always try the system */
+	if (etcdir == NULL)
+		trysys = 1;
+	uid = (uid_t)-1;
+	gid = (gid_t)-1;
+
 	/* get group and owner id's */
 	if (group != NULL) {
-		if ((gp = getgrnam(group)) != NULL)
+		if (etcdir && file_getgroup(etcdir, group, &gid)) {
+			;
+		} else if (trysys && (gp = getgrnam(group)) != NULL) {
 			gid = gp->gr_gid;
-		else
+		} else {
 			gid = (gid_t)numeric_id(group, "group");
-	} else
-		gid = (gid_t)-1;
+		}
+	}
 
 	if (owner != NULL) {
-		if ((pp = getpwnam(owner)) != NULL)
+		if (etcdir && file_getowner(etcdir, owner, &uid)) {
+			;
+		} else if (trysys && (pp = getpwnam(owner)) != NULL) {
 			uid = pp->pw_uid;
-		else
+		} else {
 			uid = (uid_t)numeric_id(owner, "user");
-	} else
-		uid = (uid_t)-1;
+		}
+	}
 
 	if (dodir) {
 		for (; *argv != NULL; ++argv)
@@ -242,6 +267,76 @@ numeric_id(const char *name, const char *type)
 	if (*ep != '\0')
 		errx(EX_NOUSER, "unknown %s %s", type, name);
 	return (val);
+}
+
+static
+int
+file_getgroup(const char *etcdir, const char *group, gid_t *gid)
+{
+	FILE *fp;
+	size_t len;
+	size_t grlen;
+	char *path;
+	char *ptr;
+	char *scan;
+
+	grlen = strlen(group);
+
+	if (asprintf(&path, "%s/group", etcdir) < 0)
+		errx(EX_OSERR, "asprintf()");
+	if ((fp = fopen(path, "r")) != NULL) {
+		while ((ptr = fgetln(fp, &len)) != NULL && len) {
+			ptr[len - 1] = 0;
+			if ((scan = strchr(ptr, ':')) == NULL)
+				continue;
+			if (scan - ptr != grlen)
+				continue;
+			if (strncmp(ptr, group, grlen) != 0)
+				continue;
+			if ((scan = strchr(scan + 1, ':')) == NULL)
+				continue;
+			*gid = strtoul(scan + 1, NULL, 10);
+			break;
+		}
+		fclose(fp);
+	}
+	free(path);
+	return((*gid == (gid_t)-1) ? 0 : 1);
+}
+
+static
+int
+file_getowner(const char *etcdir, const char *owner, uid_t *uid)
+{
+	FILE *fp;
+	size_t len;
+	size_t owner_len;
+	char *path;
+	char *ptr;
+	char *scan;
+
+	owner_len = strlen(owner);
+
+	if (asprintf(&path, "%s/master.passwd", etcdir) < 0)
+		errx(EX_OSERR, "asprintf()");
+	if ((fp = fopen(path, "r")) != NULL) {
+		while ((ptr = fgetln(fp, &len)) != NULL && len) {
+			ptr[len - 1] = 0;
+			if ((scan = strchr(ptr, ':')) == NULL)
+				continue;
+			if (scan - ptr != owner_len)
+				continue;
+			if (strncmp(ptr, owner, owner_len) != 0)
+				continue;
+			if ((scan = strchr(scan + 1, ':')) == NULL)
+				continue;
+			*uid = strtoul(scan + 1, NULL, 10);
+			break;
+		}
+		fclose(fp);
+	}
+	free(path);
+	return((*uid == (uid_t)-1) ? 0 : 1);
 }
 
 /*

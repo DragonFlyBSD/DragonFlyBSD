@@ -31,7 +31,7 @@
 .\"
 .\"	From: @(#)install.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/xinstall/install.1,v 1.16.2.9 2002/07/01 21:01:23 des Exp $
-.\" $DragonFly: src/usr.bin/xinstall/install.1,v 1.2 2003/06/17 04:29:34 dillon Exp $
+.\" $DragonFly: src/usr.bin/xinstall/install.1,v 1.3 2004/09/23 19:13:51 dillon Exp $
 .\"
 .Dd May 7, 2001
 .Dt INSTALL 1
@@ -41,7 +41,8 @@
 .Nd install binaries
 .Sh SYNOPSIS
 .Nm
-.Op Fl bCcMpSsv
+.Op Fl bCclMpSsv
+.Op Fl L Ar etcdir
 .Op Fl B Ar suffix
 .Op Fl f Ar flags
 .Op Fl g Ar group
@@ -49,7 +50,8 @@
 .Op Fl o Ar owner
 .Ar file1 file2
 .Nm
-.Op Fl bCcMpSsv
+.Op Fl bCclMpSsv
+.Op Fl L Ar etcdir
 .Op Fl B Ar suffix
 .Op Fl f Ar flags
 .Op Fl g Ar group
@@ -58,7 +60,8 @@
 .Ar file1 ... fileN directory
 .Nm
 .Fl d
-.Op Fl v
+.Op Fl vl
+.Op Fl L Ar etcdir
 .Op Fl g Ar group
 .Op Fl m Ar mode
 .Op Fl o Ar owner
@@ -92,6 +95,11 @@ them to
 See
 .Fl B
 for specifying a different backup suffix.
+.It Fl L Ar etcdir
+Specify the location of the /etc directory containing the group and password
+files.  The default is "/etc".  If an alternative directory is specified
+group and username lookups will be made from the alternative group and
+password files rather then the system group and password files.
 .It Fl B Ar suffix
 Use
 .Ar suffix
@@ -118,6 +126,11 @@ for a list of possible flags and their meanings.
 .It Fl g
 Specify a group.
 A numeric GID is allowed.
+.It Fl l
+When the
+.Fl L
+option is specified and the owner or group cannot be found, fallback to
+system files.
 .It Fl M
 Disable all use of
 .Xr mmap 2 .
