@@ -1,14 +1,14 @@
-/*	$DragonFly: src/sys/bus/pccard/pccarddevs.h,v 1.1 2004/02/10 07:55:45 joerg Exp $	*/
+/*	$DragonFly: src/sys/bus/pccard/pccarddevs.h,v 1.2 2004/02/11 17:34:08 joerg Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	FreeBSD: src/sys/dev/pccard/pccarddevs,v 1.79 2003/11/03 16:09:17 imp Exp 
+ *	DragonFly: src/sys/bus/pccard/pccarddevs,v 1.2 2004/02/11 17:33:40 joerg Exp 
  */
 /* $NetBSD: pcmciadevs,v 1.186 2003/09/16 08:26:37 onoe Exp $ */
 /* $OpenBSD: pcmciadevs,v 1.93 2002/06/21 08:31:10 henning Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccarddevs.h,v 1.1 2004/02/10 07:55:45 joerg Exp $ */
+/* $FreeBSD: src/sys/dev/pccard/pccarddevs,v 1.79 2003/11/03 16:09:17 imp Exp $ */
 
 /*-
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -633,6 +633,9 @@
 #define	PCMCIA_CIS_PANASONIC_KXLC005	{ NULL, NULL, NULL, NULL }
 #define	PCMCIA_PRODUCT_PANASONIC_KXLC005	0x2704
 #define	PCMCIA_STR_PANASONIC_KXLC005	"Panasonic 16X CD-ROM Interface Card"
+#define	PCMCIA_CIS_PANASONIC_KXLC005_1	{ NULL, NULL, NULL, NULL }
+#define	PCMCIA_PRODUCT_PANASONIC_KXLC005_1	0x2904
+#define	PCMCIA_STR_PANASONIC_KXLC005_1	"Panasonic 16X CD-ROM Interface Card"
 #define	PCMCIA_CIS_PANASONIC_KME	{ NULL, NULL, NULL, NULL }
 #define	PCMCIA_PRODUCT_PANASONIC_KME	0x2604
 #define	PCMCIA_STR_PANASONIC_KME	"Panasonic CD-R/RW Interface"
@@ -771,6 +774,9 @@
 #define	PCMCIA_CIS_TDK_C6500012	{ NULL, NULL, NULL, NULL }
 #define	PCMCIA_PRODUCT_TDK_C6500012	0x410a
 #define	PCMCIA_STR_TDK_C6500012	"TDK ELSA MicroLink MC all"
+#define	PCMCIA_CIS_TDK_LAK_CD031	{ NULL, NULL, NULL, NULL }
+#define	PCMCIA_PRODUCT_TDK_LAK_CD031	0xc1ab
+#define	PCMCIA_STR_TDK_LAK_CD031	"TDK LAK-CD031 Ethernet"
 
 /* Telecom Device */
 #define	PCMCIA_CIS_TELECOMDEVICE_TCD_HPC100	{ NULL, NULL, NULL, NULL }
