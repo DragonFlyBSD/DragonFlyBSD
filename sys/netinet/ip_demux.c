@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.13 2004/04/03 22:17:59 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.14 2004/04/05 09:17:48 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -36,7 +36,8 @@ static struct thread tcp_thread[MAXCPU];
 static struct thread udp_thread[MAXCPU];
 
 static __inline int
-INP_MPORT_HASH(in_addr_t src, in_addr_t dst, in_port_t sport, in_port_t dport)
+INP_MPORT_HASH(in_addr_t faddr, in_addr_t laddr,
+	       in_port_t fport, in_port_t lport)
 {
 	/*
 	 * Use low order bytes.
@@ -44,10 +45,10 @@ INP_MPORT_HASH(in_addr_t src, in_addr_t dst, in_port_t sport, in_port_t dport)
 
 #if (BYTE_ORDER == LITTLE_ENDIAN)
 	KASSERT(ncpus2 < 256, ("need different hash function"));  /* XXX JH */
-	return (((src >> 24) ^ (sport >> 8) ^ (dst >> 24) ^ (dport >> 8)) &
+	return (((faddr >> 24) ^ (fport >> 8) ^ (laddr >> 24) ^ (lport >> 8)) &
 		ncpus2_mask);
 #else
-	return ((src ^ sport ^ dst ^ dport) & ncpus2_mask);
+	return ((faddr ^ fport ^ laddr ^ lport) & ncpus2_mask);
 #endif
 }
 
@@ -184,9 +185,8 @@ tcp_soport(struct socket *so, struct sockaddr *nam)
 	 * to fix race condition here w/ deallocation of inp.  XXX JH
 	 */
 
-	return (&tcp_thread[INP_MPORT_HASH(inp->inp_laddr.s_addr,
-	    inp->inp_faddr.s_addr, inp->inp_lport,
-	    inp->inp_fport)].td_msgport);
+	return (&tcp_thread[INP_MPORT_HASH(inp->inp_faddr.s_addr,
+	    inp->inp_laddr.s_addr, inp->inp_fport, inp->inp_lport)].td_msgport);
 }
 
 /*
@@ -216,27 +216,26 @@ udp_soport(struct socket *so, struct sockaddr *nam)
 	 * to fix race condition here w/ deallocation of inp.  XXX JH
 	 */
 
-	return (&udp_thread[INP_MPORT_HASH(inp->inp_laddr.s_addr,
-	    inp->inp_faddr.s_addr, inp->inp_lport,
-	    inp->inp_fport)].td_msgport);
+	return (&udp_thread[INP_MPORT_HASH(inp->inp_faddr.s_addr,
+	    inp->inp_laddr.s_addr, inp->inp_fport, inp->inp_lport)].td_msgport);
 }
 
 /*
  * Map a network address to a processor.
  */
 int
-tcp_addrcpu(in_addr_t src, in_port_t sport, in_addr_t dst, in_port_t dport)
+tcp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
-	return (INP_MPORT_HASH(src, dst, sport, dport));
+	return (INP_MPORT_HASH(faddr, laddr, fport, lport));
 }
 
 int
-udp_addrcpu(in_addr_t src, in_port_t sport, in_addr_t dst, in_port_t dport)
+udp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
-	if (IN_MULTICAST(ntohl(dst)))
+	if (IN_MULTICAST(ntohl(laddr)))
 		return (0);
 	else
-		return (INP_MPORT_HASH(src, dst, sport, dport));
+		return (INP_MPORT_HASH(faddr, laddr, fport, lport));
 }
 
 /*

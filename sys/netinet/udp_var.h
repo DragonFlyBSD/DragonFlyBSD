@@ -32,7 +32,7 @@
  *
  *	@(#)udp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/udp_var.h,v 1.22.2.1 2001/02/18 07:12:25 luigi Exp $
- * $DragonFly: src/sys/netinet/udp_var.h,v 1.7 2004/03/08 19:44:32 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_var.h,v 1.8 2004/04/05 09:17:48 hsu Exp $
  */
 
 #ifndef _NETINET_UDP_VAR_H_
@@ -105,8 +105,8 @@ extern u_long	udp_recvspace;
 extern struct	udpstat udpstat;
 extern int	log_in_vain;
 
-int			udp_addrcpu (in_addr_t src, in_port_t sport,
-				     in_addr_t dst, in_port_t dport);
+int			udp_addrcpu (in_addr_t faddr, in_port_t fport,
+				     in_addr_t laddr, in_port_t lport);
 void			udp_ctlinput (int, struct sockaddr *, void *);
 void			udp_init (void);
 void			udp_thread_init (void);
