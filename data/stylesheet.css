@@ -5,7 +5,7 @@
  *
  * DragonFly WWW Site: http://www.dragonflybsd.org/
  *
- * $DragonFly: site/data/stylesheet.css,v 1.7 2004/02/24 18:59:27 justin Exp $
+ * $DragonFly: site/data/stylesheet.css,v 1.8 2004/02/25 15:36:09 justin Exp $
  *
  */
 
@@ -64,21 +64,6 @@ TD {
 /* 
  * Left hand side navigation components
  */
-
-   line-height : 15px; 
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-   letter-spacing : 0px; 
-   text-decoration : none; 
-   text-align : right; 
-}
-
-.topLevelSelected {
-   font-weight : 600; 
-   font-size : 11px; 
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-   background-color : #ffcc66; 
-   text-align : right; 
-}
 
 .selected {
    font-weight : 600; 
