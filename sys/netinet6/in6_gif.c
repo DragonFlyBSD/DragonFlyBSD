@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_gif.c,v 1.2.2.7 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.12 2005/02/01 16:09:37 hrs Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.13 2005/02/22 02:52:48 joerg Exp $	*/
 /*	$KAME: in6_gif.c,v 1.49 2001/05/14 14:02:17 itojun Exp $	*/
 
 /*
@@ -71,6 +71,7 @@
 
 #include <net/net_osdep.h>
 
+#ifdef INET6
 static int gif_validate6(const struct ip6_hdr *, struct gif_softc *,
 			 struct ifnet *);
 
@@ -383,3 +384,5 @@ in6_gif_detach(struct gif_softc *sc)
 		sc->encap_cookie6 = NULL;
 	return error;
 }
+
+#endif /* INET6 */

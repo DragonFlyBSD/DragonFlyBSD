@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/netinet/in_gif.c,v 1.5.2.11 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/in_gif.c,v 1.13 2005/01/06 17:59:32 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_gif.c,v 1.14 2005/02/22 02:52:48 joerg Exp $
  * $KAME: in_gif.c,v 1.54 2001/05/14 14:02:16 itojun Exp $
  */
 /*
@@ -70,6 +70,7 @@
 
 #include <sys/thread2.h>	/* ipstat */
 
+#ifdef INET
 static int gif_validate4 (const struct ip *, struct gif_softc *,
 			  struct ifnet *);
 
@@ -389,3 +390,5 @@ in_gif_detach(struct gif_softc *sc)
 		sc->encap_cookie4 = NULL;
 	return error;
 }
+
+#endif /* INET */
