@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.19 2005/02/21 02:46:50 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.20 2005/02/21 03:04:00 joerg Exp $
  */
 
 /*
@@ -250,15 +250,6 @@ struct isa_driver ledriver = {
 
 static unsigned le_intrs[NLE];
 
-#define	LE_ADDREQUAL(a1, a2) \
-	(((u_short *)a1)[0] == ((u_short *)a2)[0] \
-	 || ((u_short *)a1)[1] == ((u_short *)a2)[1] \
-	 || ((u_short *)a1)[2] == ((u_short *)a2)[2])
-#define	LE_ADDRBRDCST(a1) \
-	(((u_short *)a1)[0] == 0xFFFFU \
-	 || ((u_short *)a1)[1] == 0xFFFFU \
-	 || ((u_short *)a1)[2] == 0xFFFFU)
-
 #define LE_INL(sc, reg) \
 ({ u_int data; \
         __asm __volatile("inl %1, %0": "=a" (data): "d" ((u_short)((sc)->le_iobase + (reg)))); \
@@ -284,10 +275,6 @@ static unsigned le_intrs[NLE];
 
 #define LE_OUTB(sc, reg, data) \
 	({__asm __volatile("outb %0, %1"::"a" ((u_char)(data)), "d" ((u_short)((sc)->le_iobase + (reg))));})
-
-#define	MEMCPY(to, from, len)		bcopy(from, to, len)
-#define	MEMSET(where, what, howmuch)	bzero(where, howmuch)
-#define	MEMCMP(l, r, len)		bcmp(l, r, len)
 
 static int
 le_probe(struct isa_device *dvp)
@@ -369,9 +356,11 @@ le_input(struct le_softc *sc, caddr_t seg1, size_t total_len,
 	sc->le_if.if_ierrors++;
 	return;
     }
-    MEMCPY(&eh, seg1, sizeof(eh));
+    bcopy(seg1, &eh, ETHER_HDR_LEN);
 
-    seg1 += sizeof(eh); total_len -= sizeof(eh); len1 -= sizeof(eh);
+    seg1 += ETHER_HDR_LEN;
+    total_len -= ETHER_HDR_LEN;
+    len1 -= ETHER_HDR_LEN;
 
     MGETHDR(m, MB_DONTWAIT, MT_DATA);
     if (m == NULL) {
@@ -396,15 +385,15 @@ le_input(struct le_softc *sc, caddr_t seg1, size_t total_len,
 	}
 	m->m_next->m_len = total_len - MHLEN - LE_XTRA;
 	len1 = total_len = MHLEN - LE_XTRA;
-	MEMCPY(mtod(m->m_next, caddr_t), &seg1[MHLEN-LE_XTRA], m->m_next->m_len);
+	bcopy(&seg1[MHLEN-LE_XTRA], mtod(m->m_next, caddr_t), m->m_next->m_len);
     } else if (total_len + LE_XTRA > MHLEN) {
 	panic("le_input: pkt of unknown length");
     }
     m->m_data += LE_XTRA;
     m->m_len = total_len;
-    MEMCPY(mtod(m, caddr_t), seg1, len1);
+    bcopy(seg1, mtod(m, caddr_t), len1);
     if (seg2 != NULL)
-	MEMCPY(mtod(m, caddr_t) + len1, seg2, total_len - len1);
+	bcopy(seg2, mtod(m, caddr_t) + len1, total_len - len1);
     ether_input(&sc->le_if, &eh, m);
 }
 
@@ -514,7 +503,7 @@ le_multi_filter(struct le_softc *sc)
     struct ifnet *ifp = &sc->le_ac.ac_if;
     struct ifmultiaddr *ifma;
 
-    MEMSET(sc->le_mctbl, 0, (sc->le_mcmask + 1) / 8);
+    bzero(sc->le_mctbl, (sc->le_mcmask + 1) / 8);
 
     if (sc->le_if.if_flags & IFF_ALLMULTI) {
 	sc->le_flags |= IFF_MULTICAST|IFF_ALLMULTI;
@@ -630,7 +619,7 @@ lemac_probe(struct le_softc *sc, const struct le_board *bd, int *msize)
     if (le_read_macaddr(sc, LEMAC_REG_APD, 0) < 0)
 	return 0;
 
-    MEMCPY(sc->le_ac.ac_enaddr, sc->le_hwaddr, 6);
+    bcopy(sc->le_hwaddr, sc->le_ac.ac_enaddr, ETHER_ADDR_LEN);
     /*
      *  Clear interrupts and set IRQ.
      */
@@ -770,9 +759,9 @@ lemac_init(void *xsc)
 	    le_multi_filter(sc);
 	    LE_OUTB(sc, LEMAC_REG_MPN, 0);
 	    if ((sc->le_flags | sc->le_if.if_flags) & IFF_ALLMULTI) {
-		MEMCPY(&sc->le_membase[LEMAC_MCTBL_OFF], lemac_allmulti_mctbl, sizeof(lemac_allmulti_mctbl));
+		bcopy(lemac_allmulti_mctbl, &sc->le_membase[LEMAC_MCTBL_OFF], sizeof(lemac_allmulti_mctbl));
 	    } else {
-		MEMCPY(&sc->le_membase[LEMAC_MCTBL_OFF], sc->lemac_mctbl, sizeof(sc->lemac_mctbl));
+		bcopy(sc->lemac_mctbl, &sc->le_membase[LEMAC_MCTBL_OFF], sizeof(sc->lemac_mctbl));
 	    }
 	    LE_OUTB(sc, LEMAC_REG_CS, LEMAC_CS_MCE);
 	}
@@ -1039,7 +1028,7 @@ lemac_read_eeprom(struct le_softc *sc)
     if (sc->lemac_eeprom[LEMAC_EEP_SWFLAGS] & LEMAC_EEP_SW_LAB)
 	sc->lemac_txctl |= LEMAC_TX_LAB;
 
-    MEMCPY(sc->lemac_prodname, &sc->lemac_eeprom[LEMAC_EEP_PRDNM], LEMAC_EEP_PRDNMSZ);
+    bcopy(&sc->lemac_eeprom[LEMAC_EEP_PRDNM], sc->lemac_prodname, LEMAC_EEP_PRDNMSZ);
     sc->lemac_prodname[LEMAC_EEP_PRDNMSZ] = '\0';
 
     return cksum % 256;
@@ -1288,7 +1277,7 @@ depca_probe(struct le_softc *sc, const struct le_board *bd, int *msize)
     if (le_read_macaddr(sc, DEPCA_REG_ADDRROM, idx == DEPCA_CLASSIC) < 0)
 	return 0;
 
-    MEMCPY(sc->le_ac.ac_enaddr, sc->le_hwaddr, 6);
+    bcopy(sc->le_hwaddr, sc->le_ac.ac_enaddr, ETHER_ADDR_LEN);
     /*
      * Renable shared RAM.
      */
