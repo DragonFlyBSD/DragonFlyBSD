@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.14 2004/07/23 07:16:24 joerg Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.15 2004/09/16 23:34:19 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -205,7 +205,7 @@ struct oltr_softc {
 	u_short			AdapterMode;
 	u_long			GroupAddress;
 	u_long			FunctionalAddress;
-	struct callout_handle	oltr_poll_ch;
+	struct callout		oltr_poll_ch;
 	/*struct callout_handle	oltr_stat_ch;*/
 	void			*work_memory;
 };
@@ -440,7 +440,7 @@ oltr_pci_detach(device_t dev)
 	if (sc->state > OL_CLOSED)
 		oltr_stop(sc);
 
-	untimeout(oltr_poll, (void *)sc, sc->oltr_poll_ch);
+	callout_stop(&sc->oltr_poll_ch);
 	/*untimeout(oltr_stat, (void *)sc, sc->oltr_stat_ch);*/
 
 	bus_teardown_intr(dev, sc->oltr_irq, sc->oltr_intrhand);
@@ -939,8 +939,8 @@ oltr_init(void * xsc)
 	/*
 	 * Set up adapter poll
 	 */
-	callout_handle_init(&sc->oltr_poll_ch);
-	sc->oltr_poll_ch = timeout(oltr_poll, (void *)sc, 1);
+	callout_init(&sc->oltr_poll_ch);
+	callout_reset(&sc->oltr_poll_ch, 1, oltr_poll, sc);
 
 	sc->state = OL_OPENING;
 
@@ -1068,7 +1068,8 @@ oltr_poll(void *arg)
 	if (DEBUG_MASK & DEBUG_POLL) printf("P");
 
 	/* Set up next adapter poll */
-	sc->oltr_poll_ch = timeout(oltr_poll, (void *)sc, (TRlldPoll(sc->TRlldAdapter) * hz / 1000));
+	callout_reset(&sc->oltr_poll_ch,
+		      (TRlldPoll(sc->TRlldAdapter) * hz / 1000), oltr_poll, sc);
 
 	(void)splx(s);
 }
