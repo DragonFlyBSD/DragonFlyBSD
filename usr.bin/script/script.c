@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)script.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/script/script.c,v 1.11.2.1 2000/07/20 10:35:21 kris Exp $
- * $DragonFly: src/usr.bin/script/script.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
+ * $DragonFly: src/usr.bin/script/script.c,v 1.4 2004/03/28 01:02:54 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -62,17 +62,17 @@ int	qflg;
 
 struct	termios tt;
 
-void	done(int) __dead2;
-void	dooutput(void);
-void	doshell(char **);
-void	fail(void);
-void	finish(void);
-static void usage(void);
+static void	done(int) __dead2;
+static void	dooutput(void);
+static void	doshell(char **);
+static void	fail(void);
+static void	finish(void);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
 {
-	register int cc;
+	int cc;
 	struct termios rtt, stt;
 	struct winsize win;
 	int aflg, kflg, ch, n;
@@ -118,21 +118,21 @@ main(int argc, char **argv)
 	if ((fscript = fopen(fname, aflg ? "a" : "w")) == NULL)
 		err(1, "%s", fname);
 
-	(void)tcgetattr(STDIN_FILENO, &tt);
-	(void)ioctl(STDIN_FILENO, TIOCGWINSZ, &win);
+	tcgetattr(STDIN_FILENO, &tt);
+	ioctl(STDIN_FILENO, TIOCGWINSZ, &win);
 	if (openpty(&master, &slave, NULL, &tt, &win) == -1)
 		err(1, "openpty");
 
 	if (!qflg) {
 		tvec = time(NULL);
-		(void)printf("Script started, output file is %s\n", fname);
-		(void)fprintf(fscript, "Script started on %s", ctime(&tvec));
+		printf("Script started, output file is %s\n", fname);
+		fprintf(fscript, "Script started on %s", ctime(&tvec));
 		fflush(fscript);
 	}
 	rtt = tt;
 	cfmakeraw(&rtt);
 	rtt.c_lflag &= ~ECHO;
-	(void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &rtt);
+	tcsetattr(STDIN_FILENO, TCSAFLUSH, &rtt);
 
 	child = fork();
 	if (child < 0) {
@@ -160,23 +160,23 @@ main(int argc, char **argv)
 		if (n < 0 && errno != EINTR)
 			break;
 		if (n > 0 && FD_ISSET(STDIN_FILENO, &rfd)) {
-			cc = read(STDIN_FILENO, ibuf, BUFSIZ);
+			cc = read(STDIN_FILENO, ibuf, sizeof(ibuf));
 			if (cc <= 0)
 				break;
 			if (cc > 0) {
-				(void)write(master, ibuf, cc);
+				write(master, ibuf, cc);
 				if (kflg && tcgetattr(master, &stt) >= 0 &&
 				    ((stt.c_lflag & ECHO) == 0)) {
-					(void)fwrite(ibuf, 1, cc, fscript);
+					fwrite(ibuf, 1, cc, fscript);
 				}
 			}
 		}
 		if (n > 0 && FD_ISSET(master, &rfd)) {
-			cc = read(master, obuf, sizeof (obuf));
+			cc = read(master, obuf, sizeof(obuf));
 			if (cc <= 0)
 				break;
-			(void)write(1, obuf, cc);
-			(void)fwrite(obuf, 1, cc, fscript);
+			write(STDOUT_FILENO, obuf, cc);
+			fwrite(obuf, 1, cc, fscript);
 		}
 		tvec = time(0);
 		if (tvec - start >= flushtime) {
@@ -191,7 +191,7 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-	(void)fprintf(stderr,
+	fprintf(stderr,
 	    "usage: script [-a] [-q] [-k] [-t time] [file] [command]\n");
 	exit(1);
 }
@@ -227,8 +227,8 @@ doshell(char **av)
 	if (shell == NULL)
 		shell = _PATH_BSHELL;
 
-	(void)close(master);
-	(void)fclose(fscript);
+	close(master);
+	fclose(fscript);
 	login_tty(slave);
 	if (av[0]) {
 		execvp(av[0], av);
@@ -243,7 +243,7 @@ doshell(char **av)
 void
 fail(void)
 {
-	(void)kill(0, SIGTERM);
+	kill(0, SIGTERM);
 	done(1);
 }
 
@@ -252,13 +252,13 @@ done(int eno)
 {
 	time_t tvec;
 
-	(void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &tt);
+	tcsetattr(STDIN_FILENO, TCSAFLUSH, &tt);
 	tvec = time(NULL);
 	if (!qflg) {
-		(void)fprintf(fscript,"\nScript done on %s", ctime(&tvec));
-		(void)printf("\nScript done, output file is %s\n", fname);
+		fprintf(fscript,"\nScript done on %s", ctime(&tvec));
+		printf("\nScript done, output file is %s\n", fname);
 	}
-	(void)fclose(fscript);
-	(void)close(master);
+	fclose(fscript);
+	close(master);
 	exit(eno);
 }
