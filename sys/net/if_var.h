@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.10 2004/03/23 22:19:05 hsu Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.11 2004/04/16 14:24:36 joerg Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -145,7 +145,8 @@ struct ifnet {
 	u_short	if_index;		/* numeric abbreviation for this if  */
 	short	if_timer;		/* time 'til if_watchdog called */
 	int	if_flags;		/* up/down, broadcast, etc. */
-	int	if_ipending;		/* interrupts pending */
+	int	if_capabilities;	/* interface capabilities */
+	int	if_capenable;		/* enabled features */
 	void	*if_linkmib;		/* link-type-specific MIB data */
 	size_t	if_linkmiblen;		/* length of above data */
 	struct	if_data if_data;
@@ -157,41 +158,18 @@ struct ifnet {
 		     struct rtentry *);
 	void	(*if_start)		/* initiate output routine */
 		(struct ifnet *);
-	union {
-		int	(*if_done)		/* output complete routine */
-			(struct ifnet *);	/* (XXX not used) */
-		int	uif_capabilities;	/* interface capabilities */
-	} _u1;
 	int	(*if_ioctl)		/* ioctl routine */
 		(struct ifnet *, u_long, caddr_t, struct ucred *);
 	void	(*if_watchdog)		/* timer routine */
 		(struct ifnet *);
-	union {
-		int	(*if_poll_recv)		/* polled receive routine */
-			(struct ifnet *, int *);
-		int	uif_capenable;		/* enabled features */
-	} _u2;
-	int	(*if_poll_xmit)		/* polled transmit routine */
-		(struct ifnet *, int *);
-	void	(*if_poll_intren)	/* polled interrupt reenable routine */
-		(struct ifnet *);
-	void	(*if_poll_slowinput)	/* input routine for slow devices */
-		(struct ifnet *, struct mbuf *);
 	void	(*if_init)		/* Init routine */
 		(void *);
 	int	(*if_resolvemulti)	/* validate/resolve multicast */
 		(struct ifnet *, struct sockaddr **, struct sockaddr *);
 	struct	ifqueue if_snd;		/* output queue */
-	struct	ifqueue *if_poll_slowq;	/* input queue for slow devices */
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */
 };
 typedef void if_init_f_t (void *);
-
-/*
- * Binary compatibility gunk for 4.x ONLY.
- */
-#define if_capabilities	_u1.uif_capabilities
-#define if_capenable	_u2.uif_capenable
 
 #define	if_mtu		if_data.ifi_mtu
 #define	if_type		if_data.ifi_type
@@ -220,12 +198,6 @@ typedef void if_init_f_t (void *);
 /* for compatibility with other BSDs */
 #define	if_addrlist	if_addrhead
 #define	if_list		if_link
-
-/*
- * Bit values in if_ipending
- */
-#define	IFI_RECV	1	/* I want to receive */
-#define	IFI_XMIT	2	/* I want to transmit */
 
 /*
  * Output queues (ifp->if_snd) and slow device input queues (*ifp->if_slowq)
