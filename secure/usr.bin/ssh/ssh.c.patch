@@ -1,0 +1,27 @@
+$DragonFly: src/secure/usr.bin/ssh/Attic/ssh.c.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+--- ssh.c.orig	2004-03-21 23:36:01.000000000 +0100
++++ ssh.c	2004-07-23 13:16:14.000000000 +0200
+@@ -554,6 +554,23 @@
+ 	if (options.hostname != NULL)
+ 		host = options.hostname;
+ 
++	/* Find canonic host name. */
++	if (strchr(host, '.') == 0) {
++		struct addrinfo hints;
++		struct addrinfo *ai = NULL;
++		int errgai;
++		memset(&hints, 0, sizeof(hints));
++		hints.ai_family = options.address_family;
++		hints.ai_flags = AI_CANONNAME;
++		hints.ai_socktype = SOCK_STREAM;
++		errgai = getaddrinfo(host, NULL, &hints, &ai);
++		if (errgai == 0) {
++			if (ai->ai_canonname != NULL)
++				host = xstrdup(ai->ai_canonname);
++			freeaddrinfo(ai);
++		}
++	}
++
+ 	/* force lowercase for hostkey matching */
+ 	if (options.host_key_alias != NULL) {
+ 		for (p = options.host_key_alias; *p; p++)

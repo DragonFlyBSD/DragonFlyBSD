@@ -1,0 +1,19 @@
+$DragonFly: src/secure/usr.sbin/sshd/Attic/monitor_wrap.c.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+--- monitor_wrap.c.orig	2004-07-23 14:26:51.000000000 +0200
++++ monitor_wrap.c	2004-07-23 14:20:00.000000000 +0200
+@@ -914,6 +914,7 @@
+ 	return ((authok == 0) ? -1 : 0);
+ }
+ 
++#ifdef SKEY
+ int
+ mm_skey_query(void *ctx, char **name, char **infotxt,
+    u_int *numprompts, char ***prompts, u_int **echo_on)
+@@ -977,6 +978,7 @@
+ 
+ 	return ((authok == 0) ? -1 : 0);
+ }
++#endif
+ 
+ void
+ mm_ssh1_session_id(u_char session_id[16])

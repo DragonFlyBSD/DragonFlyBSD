@@ -1,0 +1,12 @@
+$DragonFly: src/secure/usr.sbin/sshd/Attic/auth.c.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+--- auth.c.orig	2004-07-23 14:26:51.000000000 +0200
++++ auth.c	2004-07-23 14:20:00.000000000 +0200
+@@ -494,7 +494,7 @@
+ 	if (!allowed_user(pw))
+ 		return (NULL);
+ #ifdef HAVE_LOGIN_CAP
+-	if ((lc = login_getclass(pw->pw_class)) == NULL) {
++	if ((lc = login_getpwclass(pw)) == NULL) {
+ 		debug("unable to get login class: %s", user);
+ 		return (NULL);
+ 	}

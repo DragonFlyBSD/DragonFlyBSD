@@ -1,0 +1,12 @@
+$DragonFly: src/secure/lib/libssh/Attic/log.c.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+--- log.c.orig	2004-07-23 14:35:01.000000000 +0200
++++ log.c	2004-07-23 14:33:03.000000000 +0200
+@@ -42,6 +42,8 @@
+ #include <syslog.h>
+ #if defined(HAVE_STRNVIS) && defined(HAVE_VIS_H)
+ # include <vis.h>
++#else
++# include "openbsd-compat/vis.h"
+ #endif
+ 
+ static LogLevel log_level = SYSLOG_LEVEL_INFO;

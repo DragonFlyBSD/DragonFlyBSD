@@ -1,0 +1,17 @@
+$DragonFly: src/secure/usr.bin/ssh/Attic/ssh_config.no_obj.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+--- ssh_config.orig	2003-08-13 12:37:05.000000000 +0200
++++ ssh_config	2004-07-23 13:16:14.000000000 +0200
+@@ -23,7 +23,7 @@
+ #   PasswordAuthentication yes
+ #   HostbasedAuthentication no
+ #   BatchMode no
+-#   CheckHostIP yes
++#   CheckHostIP no
+ #   AddressFamily any
+ #   ConnectTimeout 0
+ #   StrictHostKeyChecking ask
+@@ -35,3 +35,4 @@
+ #   Cipher 3des
+ #   Ciphers aes128-cbc,3des-cbc,blowfish-cbc,cast128-cbc,arcfour,aes192-cbc,aes256-cbc
+ #   EscapeChar ~
++#   VersionAddendum DragonFly-20040710

@@ -1,0 +1,42 @@
+$DragonFly: src/secure/usr.bin/ssh/Attic/readconf.c.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+--- readconf.c.orig	2004-03-08 13:12:36.000000000 +0100
++++ readconf.c	2004-07-23 13:16:14.000000000 +0200
+@@ -106,6 +106,7 @@
+ 	oEnableSSHKeysign, oRekeyLimit, oVerifyHostKeyDNS, oConnectTimeout,
+ 	oAddressFamily, oGssAuthentication, oGssDelegateCreds,
+ 	oServerAliveInterval, oServerAliveCountMax, oIdentitiesOnly,
++	oVersionAddendum,
+ 	oDeprecated, oUnsupported
+ } OpCodes;
+ 
+@@ -193,6 +194,7 @@
+ 	{ "addressfamily", oAddressFamily },
+ 	{ "serveraliveinterval", oServerAliveInterval },
+ 	{ "serveralivecountmax", oServerAliveCountMax },
++	{ "versionaddendum", oVersionAddendum },
+ 	{ NULL, oBadOption }
+ };
+ 
+@@ -749,6 +751,13 @@
+ 		intptr = &options->server_alive_count_max;
+ 		goto parse_int;
+ 
++	case oVersionAddendum:
++		ssh_version_set_addendum(strtok(s, "\n"));
++		do {
++			arg = strdelim(&s);
++		} while (arg != NULL && *arg != '\0');
++		break;
++
+ 	case oDeprecated:
+ 		debug("%s line %d: Deprecated option \"%s\"",
+ 		    filename, linenum, keyword);
+@@ -924,7 +933,7 @@
+ 	if (options->batch_mode == -1)
+ 		options->batch_mode = 0;
+ 	if (options->check_host_ip == -1)
+-		options->check_host_ip = 1;
++		options->check_host_ip = 0;
+ 	if (options->strict_host_key_checking == -1)
+ 		options->strict_host_key_checking = 2;	/* 2 is default */
+ 	if (options->compression == -1)

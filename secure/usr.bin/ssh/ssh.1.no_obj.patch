@@ -1,0 +1,38 @@
+$DragonFly: src/secure/usr.bin/ssh/Attic/ssh.1.no_obj.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+--- ssh.1.orig	2004-03-08 13:12:36.000000000 +0100
++++ ssh.1	2004-07-23 13:16:14.000000000 +0200
+@@ -105,7 +105,7 @@
+ First, if the machine the user logs in from is listed in
+ .Pa /etc/hosts.equiv
+ or
+-.Pa /etc/shosts.equiv
++.Pa /etc/ssh/shosts.equiv
+ on the remote machine, and the user names are
+ the same on both sides, the user is immediately permitted to log in.
+ Second, if
+@@ -129,7 +129,7 @@
+ .Pa $HOME/.shosts ,
+ .Pa /etc/hosts.equiv ,
+ or
+-.Pa /etc/shosts.equiv ,
++.Pa /etc/ssh/shosts.equiv ,
+ and if additionally the server can verify the client's
+ host key (see
+ .Pa /etc/ssh/ssh_known_hosts
+@@ -332,6 +332,7 @@
+ .Ev DISPLAY .
+ Forwarding of X11 connections can be
+ configured on the command line or in configuration files.
++Take note that X11 forwarding can represent a security hazard.
+ .Pp
+ The
+ .Ev DISPLAY
+@@ -1004,7 +1005,7 @@
+ Additionally, successful RSA host authentication is normally
+ required.
+ This file should only be writable by root.
+-.It Pa /etc/shosts.equiv
++.It Pa /etc/ssh/shosts.equiv
+ This file is processed exactly as
+ .Pa /etc/hosts.equiv .
+ This file may be useful to permit logins using

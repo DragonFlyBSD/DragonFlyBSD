@@ -1,0 +1,20 @@
+$DragonFly: src/secure/usr.sbin/sshd/Attic/monitor.c.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+--- monitor.c.orig	2004-07-23 14:26:51.000000000 +0200
++++ monitor.c	2004-07-23 14:20:00.000000000 +0200
+@@ -30,8 +30,16 @@
+ #include <openssl/dh.h>
+ 
+ #ifdef SKEY
++#ifdef OPIE
++#include <opie.h>
++#define skey                    opie
++#define skeychallenge(k, u, c)  opiechallenge((k), (u), (c))
++#define skey_haskey(u)          opie_haskey((u))
++#define skey_passcheck(u, r)    opie_passverify((u), (r))
++#else
+ #include <skey.h>
+ #endif
++#endif
+ 
+ #include "ssh.h"
+ #include "auth.h"

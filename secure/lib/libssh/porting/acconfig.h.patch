@@ -1,0 +1,13 @@
+$DragonFly: src/secure/lib/libssh/porting/Attic/acconfig.h.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+--- acconfig.h.orig	2004-04-16 01:22:40.000000000 +0200
++++ acconfig.h	2004-07-10 15:48:49.000000000 +0200
+@@ -271,6 +272,9 @@
+ /* Define if you want S/Key support */
+ #undef SKEY
+ 
++/* Define if you want OPIE support */
++#undef OPIE
++
+ /* Define if you want TCP Wrappers support */
+ #undef LIBWRAP
+ 

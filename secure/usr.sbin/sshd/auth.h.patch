@@ -1,0 +1,16 @@
+$DragonFly: src/secure/usr.sbin/sshd/Attic/auth.h.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+--- auth.h.orig	2004-07-23 14:26:51.000000000 +0200
++++ auth.h	2004-07-23 14:20:00.000000000 +0200
+@@ -185,5 +185,12 @@
+ #define AUTH_FAIL_LOG (AUTH_FAIL_MAX/2)
+ #define AUTH_FAIL_MSG "Too many authentication failures for %.100s"
+ 
++#ifdef SKEY
++#ifdef OPIE
++#define SKEY_PROMPT "\nOPIE Password: "
++#else
+ #define SKEY_PROMPT "\nS/Key Password: "
+ #endif
++#endif
++
++#endif

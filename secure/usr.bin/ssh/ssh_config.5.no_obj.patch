@@ -1,0 +1,24 @@
+$DragonFly: src/secure/usr.bin/ssh/Attic/ssh_config.5.no_obj.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+--- ssh_config.5.orig	2004-03-08 13:12:36.000000000 +0100
++++ ssh_config.5	2004-07-23 13:16:14.000000000 +0200
+@@ -161,7 +161,7 @@
+ .Dq no ,
+ the check will not be executed.
+ The default is
+-.Dq yes .
++.Dq no .
+ .It Cm Cipher
+ Specifies the cipher to use for encrypting the session
+ in protocol version 1.
+@@ -714,6 +714,11 @@
+ The default is
+ .Dq no .
+ Note that this option applies to protocol version 2 only.
++.It Cm VersionAddendum
++Specifies a string to append to the regular version string to identify
++OS- or site-specific modifications.
++The default is
++.Dq DragonFly-20040710 .
+ .It Cm XAuthLocation
+ Specifies the full pathname of the
+ .Xr xauth 1

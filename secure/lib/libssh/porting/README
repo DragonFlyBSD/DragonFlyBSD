@@ -1,0 +1,4 @@
+Files in here are not used for the build, but are handy
+for porting to a new version.
+
+$DragonFly: src/secure/lib/libssh/porting/Attic/README,v 1.1 2004/07/31 20:05:00 geekgod Exp $

@@ -1,0 +1,11 @@
+$DragonFly: src/secure/usr.bin/ssh-agent/Attic/ssh-agent.c.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+--- ssh-agent.c.orig	2004-03-03 01:08:59.000000000 +0100
++++ ssh-agent.c	2004-07-23 13:12:03.000000000 +0200
+@@ -1026,6 +1026,7 @@
+ 	/* drop */
+ 	setegid(getgid());
+ 	setgid(getgid());
++	setuid(geteuid());
+ 
+ #if defined(HAVE_PRCTL) && defined(PR_SET_DUMPABLE)
+ 	/* Disable ptrace on Linux without sgid bit */

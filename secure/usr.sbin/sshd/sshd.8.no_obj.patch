@@ -1,0 +1,86 @@
+$DragonFly: src/secure/usr.sbin/sshd/Attic/sshd.8.no_obj.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+--- sshd.8.orig	2004-07-23 14:26:51.000000000 +0200
++++ sshd.8	2004-07-23 14:20:00.000000000 +0200
+@@ -67,7 +67,7 @@
+ .Nm
+ is the daemon that listens for connections from clients.
+ It is normally started at boot from
+-.Pa /etc/rc .
++.Pa /etc/rc.d/sshd .
+ It forks a new
+ daemon for each incoming connection.
+ The forked daemons handle
+@@ -253,8 +253,6 @@
+ The default is
+ .Pa /etc/ssh/ssh_host_key
+ for protocol version 1, and
+-.Pa /etc/ssh/ssh_host_rsa_key
+-and
+ .Pa /etc/ssh/ssh_host_dsa_key
+ for protocol version 2.
+ It is possible to have multiple host key files for
+@@ -365,8 +363,9 @@
+ If the login is on a tty, records login time.
+ .It
+ Checks
+-.Pa /etc/nologin ;
+-if it exists, prints contents and quits
++.Pa /etc/nologin and
++.Pa /var/run/nologin ;
++if one exists, it prints the contents and quits
+ (unless root).
+ .It
+ Changes to run with normal user privileges.
+@@ -388,11 +387,12 @@
+ exists, runs it; else if
+ .Pa /etc/ssh/sshrc
+ exists, runs
+-it; otherwise runs xauth.
++it; otherwise runs
++.Xr xauth 1 .
+ The
+ .Dq rc
+ files are given the X11
+-authentication protocol and cookie in standard input.
++authentication protocol and cookie (if applicable) in standard input.
+ .It
+ Runs user's shell or command.
+ .El
+@@ -596,15 +596,15 @@
+ .Nm sshd .
+ The file format and configuration options are described in
+ .Xr sshd_config 5 .
+-.It Pa /etc/ssh/ssh_host_key, /etc/ssh/ssh_host_dsa_key, /etc/ssh/ssh_host_rsa_key
+-These three files contain the private parts of the host keys.
++.It Pa /etc/ssh/ssh_host_key, /etc/ssh/ssh_host_dsa_key
++These two files contain the private parts of the host keys.
+ These files should only be owned by root, readable only by root, and not
+ accessible to others.
+ Note that
+ .Nm
+ does not start if this file is group/world-accessible.
+-.It Pa /etc/ssh/ssh_host_key.pub, /etc/ssh/ssh_host_dsa_key.pub, /etc/ssh/ssh_host_rsa_key.pub
+-These three files contain the public parts of the host keys.
++.It Pa /etc/ssh/ssh_host_key.pub, /etc/ssh/ssh_host_dsa_key.pub
++These two files contain the public parts of the host keys.
+ These files should be world-readable but writable only by
+ root.
+ Their contents should match the respective private parts.
+@@ -613,7 +613,7 @@
+ the user so their contents can be copied to known hosts files.
+ These files are created using
+ .Xr ssh-keygen 1 .
+-.It Pa /etc/moduli
++.It Pa /etc/ssh/moduli
+ Contains Diffie-Hellman groups used for the "Diffie-Hellman Group Exchange".
+ The file format is described in
+ .Xr moduli 5 .
+@@ -725,7 +725,7 @@
+ of is in negative entries.
+ .Pp
+ Note that this warning also applies to rsh/rlogin.
+-.It Pa /etc/shosts.equiv
++.It Pa /etc/ssh/shosts.equiv
+ This is processed exactly as
+ .Pa /etc/hosts.equiv .
+ However, this file may be useful in environments that want to run both

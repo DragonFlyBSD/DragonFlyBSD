@@ -1,0 +1,52 @@
+$DragonFly: src/secure/usr.sbin/sshd/Attic/sshd_config.no_obj.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+--- sshd_config.orig	2004-07-23 14:26:51.000000000 +0200
++++ sshd_config	2004-07-23 14:25:05.000000000 +0200
+@@ -10,15 +10,19 @@
+ # possible, but leave them commented.  Uncommented options change a
+ # default value.
+ 
++# Note that some of DragonFly's defaults differ from OpenBSD's, and
++# DragonFly has a few additional options.
++
++#VersionAddendum DragonFly-20040710
++
+ #Port 22
+-#Protocol 2,1
++#Protocol 2
+ #ListenAddress 0.0.0.0
+ #ListenAddress ::
+ 
+ # HostKey for protocol version 1
+ #HostKey /etc/ssh/ssh_host_key
+ # HostKeys for protocol version 2
+-#HostKey /etc/ssh/ssh_host_rsa_key
+ #HostKey /etc/ssh/ssh_host_dsa_key
+ 
+ # Lifetime and size of ephemeral version 1 server key
+@@ -33,7 +37,7 @@
+ # Authentication:
+ 
+ #LoginGraceTime 2m
+-#PermitRootLogin yes
++#PermitRootLogin no
+ #StrictModes yes
+ 
+ #RSAAuthentication yes
+@@ -54,7 +58,7 @@
+ #PasswordAuthentication yes
+ #PermitEmptyPasswords no
+ 
+-# Change to no to disable s/key passwords
++# Change to no to disable OPIE and PAM authentication
+ #ChallengeResponseAuthentication yes
+ 
+ # Kerberos options
+@@ -74,7 +78,7 @@
+ 
+ #AllowTcpForwarding yes
+ #GatewayPorts no
+-#X11Forwarding no
++#X11Forwarding yes
+ #X11DisplayOffset 10
+ #X11UseLocalhost yes
+ #PrintMotd yes

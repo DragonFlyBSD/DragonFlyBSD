@@ -1,0 +1,53 @@
+$DragonFly: src/secure/usr.sbin/sshd/Attic/auth2.c.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+--- auth2.c.orig	2004-07-23 14:26:51.000000000 +0200
++++ auth2.c	2004-07-23 14:20:00.000000000 +0200
+@@ -25,6 +25,7 @@
+ #include "includes.h"
+ RCSID("$OpenBSD: auth2.c,v 1.104 2003/11/04 08:54:09 djm Exp $");
+ 
++#include "canohost.h"
+ #include "ssh2.h"
+ #include "xmalloc.h"
+ #include "packet.h"
+@@ -134,6 +135,13 @@
+ 	Authmethod *m = NULL;
+ 	char *user, *service, *method, *style = NULL;
+ 	int authenticated = 0;
++#ifdef HAVE_LOGIN_CAP
++	login_cap_t *lc;
++	const char *from_host, *from_ip;
++
++        from_host = get_canonical_hostname(options.use_dns);
++        from_ip = get_remote_ipaddr();
++#endif
+ 
+ 	if (authctxt == NULL)
+ 		fatal("input_userauth_request: no authctxt");
+@@ -178,6 +186,27 @@
+ 		    "(%s,%s) -> (%s,%s)",
+ 		    authctxt->user, authctxt->service, user, service);
+ 	}
++
++#ifdef HAVE_LOGIN_CAP
++        if (authctxt->pw != NULL) {
++                lc = login_getpwclass(authctxt->pw);
++                if (lc == NULL)
++                        lc = login_getclassbyname(NULL, authctxt->pw);
++                if (!auth_hostok(lc, from_host, from_ip)) {
++                        logit("Denied connection for %.200s from %.200s [%.200s].",
++                            authctxt->pw->pw_name, from_host, from_ip);
++                        packet_disconnect("Sorry, you are not allowed to connect.");
++                }
++                if (!auth_timeok(lc, time(NULL))) {
++                        logit("LOGIN %.200s REFUSED (TIME) FROM %.200s",
++                            authctxt->pw->pw_name, from_host);
++                        packet_disconnect("Logins not available right now.");
++                }
++                login_close(lc);
++                lc = NULL;
++        }
++#endif  /* HAVE_LOGIN_CAP */
++
+ 	/* reset state */
+ 	auth2_challenge_stop(authctxt);
+ 
