@@ -283,7 +283,6 @@ checkup_mem(void)
 static void
 expand_error(char *f, char *e, int maxlen)
 {
-  extern int sys_nerr;
   char *p, *q;
   int error = errno;
   int len = 0;

@@ -40,7 +40,7 @@
  *
  * $Id: amq.c,v 1.6 1999/09/08 23:36:40 ezk Exp $
  * $FreeBSD: src/contrib/amd/amq/amq.c,v 1.5 1999/09/15 05:45:14 obrien Exp $
- * $DragonFly: src/contrib/amd/amq/amq.c,v 1.2 2003/06/17 04:23:57 dillon Exp $
+ * $DragonFly: src/contrib/amd/amq/amq.c,v 1.3 2004/01/23 19:49:35 joerg Exp $
  *
  */
 
@@ -235,7 +235,6 @@ show_mi(amq_mount_info_list *ml, enum show_opt e, int *mwid, int *dwid, int *twi
 	       mi->mi_up > 0 ? "up" :
 	       mi->mi_up < 0 ? "starting" : "down");
 	if (mi->mi_error > 0) {
-	  extern int sys_nerr;
 	  if (mi->mi_error < sys_nerr)
 #ifdef HAVE_STRERROR
 	    printf(" (%s)", strerror(mi->mi_error));

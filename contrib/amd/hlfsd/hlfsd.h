@@ -152,7 +152,6 @@ extern gid_t hlfs_gid;
 extern int cache_interval;
 extern int noverify;
 extern int serverpid;
-extern int sys_nerr;
 extern int untab_index(char *username);
 extern am_nfs_fh *root_fhp;
 extern am_nfs_fh root;
