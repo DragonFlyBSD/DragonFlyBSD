@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/index.cgi,v 1.11 2004/12/21 01:38:49 hmp Exp $
+# $DragonFly: site/data/main/Attic/index.cgi,v 1.12 2005/02/01 03:55:04 drhodus Exp $
 
 $TITLE(The DragonFly BSD Project)
 
@@ -11,10 +11,11 @@ $TITLE(The DragonFly BSD Project)
 	<p>The <a href="http://www.shiningsilence.com/dbsdlog/">DragonFly Digest</a>
     has up to date information on recent events and changes.</p>
 
-	<p>A <a href="http://www.sitetronics.com/dfwiki/">Wiki</a> has been
+	<p>The <a href="http://wiki.dragonflybsd.org/">DragonFlyBSD Wiki</a> has been
 	started by the
 	<a href="http://www.bsdinstaller.org/">DragonFly Installer Team</a> for
 	things related to DragonFly.</a></p>
+	<p>The <a href="http://gobsd.com">GoBSD Community</a> site has information about sub-projects such as adding DragonFly support into Pkgsrc and other developments to help make DragonFly a good general purpous operating system.</p>
 </td></tr>
 </table>
 <table border="0" width="100%" bgcolor="white">
