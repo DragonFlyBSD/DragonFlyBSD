@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.12 2003/11/15 03:52:33 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.13 2003/11/16 19:08:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -119,15 +119,10 @@ linux_execve(struct linux_execve_args *args)
 #endif
 	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_FOLLOW | CNP_SAVENAME,
 	    UIO_SYSSPACE, path, td);
-
 	error = exec_copyin_args(&exec_args, path, PATH_SYSSPACE,
-	    args->argp, args->envp);
-	if (error) {
-		linux_free_path(&path);
-		return (error);
-	}
-
-	error = kern_execve(&nd, &exec_args);
+				args->argp, args->envp);
+	if (error == 0)
+		error = kern_execve(&nd, &exec_args);
 
 	/*
 	 * The syscall result is returned in registers to the new program.
