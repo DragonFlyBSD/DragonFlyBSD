@@ -1,9 +1,10 @@
 #	@(#)Makefile	8.1 (Berkeley) 7/19/93
 # $FreeBSD: src/usr.bin/su/Makefile,v 1.29.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/usr.bin/su/Makefile,v 1.4 2004/11/17 19:16:09 dillon Exp $
+# $DragonFly: src/usr.bin/su/Makefile,v 1.5 2004/12/19 21:10:48 cpressey Exp $
 
 PROG=	su
 SRCS=	su.c
+WARNS?=	6
 
 COPTS+=	-DLOGIN_CAP -DSKEY
 DPADD=	${LIBUTIL} ${LIBSKEY} ${LIBMD} ${LIBCRYPT}

@@ -33,9 +33,10 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)su.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/su/su.c,v 1.34.2.4 2002/06/16 21:04:15 nectar Exp $
- * $DragonFly: src/usr.bin/su/su.c,v 1.5 2004/06/19 18:55:48 joerg Exp $
+ * $DragonFly: src/usr.bin/su/su.c,v 1.6 2004/12/19 21:10:48 cpressey Exp $
  */
 
+#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -90,16 +91,19 @@ char   *ontty(void);
 int	chshell(char *);
 static void usage(void);
 
+extern char **environ;
+
 int
 main(int argc, char **argv)
 {
-	extern char **environ;
 	struct passwd *pwd;
 #ifdef WHEELSU
 	char *targetpass;
 	int iswheelsu;
 #endif /* WHEELSU */
-	char *p, **g, *user, *shell=NULL, *username, **cleanenv, **nargv, **np;
+	const char *p, *user, *shell = NULL;
+	const char **nargv, **np;
+	char **g, **cleanenv, *username, *entered_pass;
 	struct group *gr;
 	uid_t ruid;
 	gid_t gid;
@@ -283,19 +287,23 @@ main(int argc, char **argv)
 				pwd = getpwnam(username);
 			}
 #endif /* WHEELSU */
-			p = skey_getpass("Password:", pwd, 1);
-			if (!(!strcmp(pwd->pw_passwd, skey_crypt(p, pwd->pw_passwd, pwd, 1))
+			entered_pass = skey_getpass("Password:", pwd, 1);
+			if (!(!strcmp(pwd->pw_passwd, skey_crypt(entered_pass,
+			    pwd->pw_passwd, pwd, 1))
 #ifdef WHEELSU
-			      || (iswheelsu && !strcmp(targetpass, crypt(p,targetpass)))
+			      || (iswheelsu && !strcmp(targetpass,
+				  crypt(entered_pass, targetpass)))
 #endif /* WHEELSU */
 			      )) {
 #else
-			p = getpass("Password:");
-			if (strcmp(pwd->pw_passwd, crypt(p, pwd->pw_passwd))) {
+			entered_pass = getpass("Password:");
+			if (strcmp(pwd->pw_passwd, crypt(entered_pass,
+			    pwd->pw_passwd))) {
 #endif
 #ifdef KERBEROS5
 				if (use_kerberos5 && kerberos5(context,
-				    username, user, su_principal, p) == 0)
+				    username, user, su_principal,
+				    entered_pass) == 0)
 					goto authok;
 #endif
 				fprintf(stderr, "Sorry\n");
@@ -417,7 +425,7 @@ main(int argc, char **argv)
 	login_close(lc);
 #endif
 
-	execv(shell, np);
+	execv(shell, __DECONST(char * const *, np));
 	err(1, "%s", shell);
 }
 
