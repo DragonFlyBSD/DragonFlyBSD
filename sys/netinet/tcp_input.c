@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.41 2004/11/17 21:50:46 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.42 2004/11/18 20:12:26 dillon Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -193,7 +193,7 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, eifel, CTLFLAG_RW,
  * Warning:  do not change setting in the middle of an existing active TCP flow,
  *   else strange things might happen to that flow.
  */
-int tcp_do_sack = 0;
+int tcp_do_sack = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, sack, CTLFLAG_RW,
     &tcp_do_sack, 0, "Enable SACK Algorithms");
 
