@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adv_eisa.c,v 1.9.2.1 2000/04/14 13:32:44 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adv_eisa.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adv_eisa.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,9 +47,9 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <dev/eisa/eisaconf.h>
+#include <bus/eisa/eisaconf.h>
 
-#include <dev/advansys/advansys.h>
+#include "advansys.h"
 
 #define EISA_DEVICE_ID_ADVANSYS_740	0x04507400
 #define EISA_DEVICE_ID_ADVANSYS_750	0x04507500

@@ -35,10 +35,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.25 2003/07/20 04:20:29 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.26 2003/08/07 21:17:22 dillon Exp $
  */
 
-#include "npx.h"
+#include "use_npx.h"
 #include "opt_user_ldt.h"
 
 #include <sys/rtprio.h>

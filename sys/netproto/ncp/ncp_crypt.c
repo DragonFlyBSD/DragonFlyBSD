@@ -1,11 +1,11 @@
 /* 
  * $FreeBSD: src/sys/netncp/ncp_crypt.c,v 1.3.2.1 2001/02/22 08:57:58 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_crypt.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_crypt.c,v 1.3 2003/08/07 21:17:38 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <netncp/ncp.h>
-#include <netncp/ncp_subr.h>
+#include "ncp.h"
+#include "ncp_subr.h"
 
 /*
  *  Routines in this file based on work of Volker Lendecke

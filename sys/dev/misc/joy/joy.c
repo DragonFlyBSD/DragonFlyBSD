@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/joy.c,v 1.38.2.1 2001/09/01 05:55:31 murray Exp $
- * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.4 2003/07/21 05:50:42 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.5 2003/08/07 21:16:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,7 +42,7 @@
 #include <sys/time.h>
 #include <sys/joystick.h>
 
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 #include "isa_if.h"
 
 /* The game port can manage 4 buttons and 4 variable resistors (usually 2

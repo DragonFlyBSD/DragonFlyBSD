@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/immio.c,v 1.10.2.3 2001/10/02 05:27:20 nsouch Exp $
- * $DragonFly: src/sys/dev/disk/vpo/immio.c,v 1.3 2003/07/26 14:25:23 rob Exp $
+ * $DragonFly: src/sys/dev/disk/vpo/immio.c,v 1.4 2003/08/07 21:16:54 dillon Exp $
  *
  */
 
@@ -46,11 +46,11 @@
 
 #include "opt_vpo.h"
 
-#include <dev/ppbus/ppbio.h>
-#include <dev/ppbus/ppbconf.h>
-#include <dev/ppbus/ppb_msq.h>
-#include <dev/ppbus/vpoio.h>
-#include <dev/ppbus/ppb_1284.h>
+#include <bus/ppbus/ppbio.h>
+#include <bus/ppbus/ppbconf.h>
+#include <bus/ppbus/ppb_msq.h>
+#include "vpoio.h"
+#include <bus/ppbus/ppb_1284.h>
 
 #include "ppbus_if.h"
 

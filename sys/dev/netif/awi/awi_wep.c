@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wep.c,v 1.4 2000/08/14 11:28:03 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wep.c,v 1.3.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.4 2003/06/25 03:55:46 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.5 2003/08/07 21:17:00 dillon Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -93,10 +93,10 @@
 #endif
 
 #ifdef __FreeBSD__
-#include <dev/awi/am79c930reg.h>
-#include <dev/awi/am79c930var.h>
-#include <dev/awi/awireg.h>
-#include <dev/awi/awivar.h>
+#include "am79c930reg.h"
+#include "am79c930var.h"
+#include "awireg.h"
+#include "awivar.h"
 
 #include <crypto/rc4/rc4.h>
 static __inline int

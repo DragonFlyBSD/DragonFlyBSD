@@ -26,14 +26,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.c,v 1.336.2.15 2002/10/24 00:35:31 kbyanc Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.6 2003/07/21 05:50:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.7 2003/08/07 21:16:59 dillon Exp $
  */
 
-#include "splash.h"
+#include "use_splash.h"
 #include "opt_syscons.h"
 #include "opt_ddb.h"
 #ifdef __i386__
-#include "apm.h"
+#include "use_apm.h"
 #endif
 
 #include <sys/param.h>
@@ -59,10 +59,10 @@
 #include <machine/frame.h>
 #endif
 
-#include <dev/kbd/kbdreg.h>
-#include <dev/fb/fbreg.h>
-#include <dev/fb/splashreg.h>
-#include <dev/syscons/syscons.h>
+#include <dev/misc/kbd/kbdreg.h>
+#include <dev/video/fb/fbreg.h>
+#include <dev/video/fb/splashreg.h>
+#include "syscons.h"
 
 #define COLD 0
 #define WARM 1

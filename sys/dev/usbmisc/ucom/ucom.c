@@ -1,6 +1,6 @@
 /*	$NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ucom.c,v 1.24.2.2 2003/01/17 17:32:10 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.7 2003/07/21 07:57:42 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.8 2003/08/07 21:17:14 dillon Exp $	*/
 
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -91,15 +91,15 @@
 #include <sys/poll.h>
 #include <sys/sysctl.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbcdc.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbcdc.h>
 
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbdevs.h>
-#include <dev/usb/usb_quirks.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
+#include <bus/usb/usbdevs.h>
+#include <bus/usb/usb_quirks.h>
 
-#include <dev/usb/ucomvar.h>
+#include "ucomvar.h"
 
 #ifdef USB_DEBUG
 static int	ucomdebug = 0;

@@ -61,7 +61,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/wm_sqrt.s,v 1.9.2.1 2000/07/07 00:38:42 obrien Exp $
- * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/wm_sqrt.s,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/wm_sqrt.s,v 1.3 2003/08/07 21:17:21 dillon Exp $
  *
  */
 
@@ -78,7 +78,7 @@
  |  The guess is kept in %esi:%edi                                           |
  +---------------------------------------------------------------------------*/
 
-#include <gnu/i386/fpemul/fpu_asm.h>
+#include "fpu_asm.h"
 
 
 .data

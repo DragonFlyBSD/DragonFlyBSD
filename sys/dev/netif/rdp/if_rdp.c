@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.3 2003/07/21 07:57:44 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.4 2003/08/07 21:17:04 dillon Exp $
  */
 
 /*
@@ -62,7 +62,7 @@
  * for this kind of service.
  */
 
-#include "rdp.h"
+#include "use_rdp.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -94,9 +94,9 @@
 #include <machine/clock.h>
 #include <machine/md_var.h>
 
-#include <i386/isa/isa_device.h>
+#include <bus/isa/i386/isa_device.h>
 #include <i386/isa/icu.h>
-#include <i386/isa/if_rdpreg.h>
+#include "if_rdpreg.h"
 #include <i386/isa/intr_machdep.h>
 
 #define IOCTL_CMD_T u_long

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.8 2003/07/21 05:50:28 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.9 2003/08/07 21:16:52 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -88,7 +88,7 @@
  *	Moffett Field, CA 94035
  */
 
-#include "ccd.h"
+#include "use_ccd.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>

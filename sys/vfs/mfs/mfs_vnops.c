@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.8 2003/07/26 22:04:27 rob Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.9 2003/08/07 21:17:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,8 +48,8 @@
 
 #include <sys/buf2.h>
 
-#include <ufs/mfs/mfsnode.h>
-#include <ufs/mfs/mfs_extern.h>
+#include "mfsnode.h"
+#include "mfs_extern.h"
 
 static int	mfs_badop __P((struct vop_generic_args *));
 static int	mfs_bmap __P((struct vop_bmap_args *));

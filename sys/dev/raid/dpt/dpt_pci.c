@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/dpt/dpt_pci.c,v 1.17.2.2 2000/08/26 22:21:21 peter Exp $
- *	$DragonFly: src/sys/dev/raid/dpt/dpt_pci.c,v 1.2 2003/06/17 04:28:23 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/dpt/dpt_pci.c,v 1.3 2003/08/07 21:17:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,12 +42,12 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_all.h>
 
-#include <dev/dpt/dpt.h>
+#include "dpt.h"
 
 #define	DPT_VENDOR_ID		0x1044
 #define	DPT_DEVICE_ID		0xa400

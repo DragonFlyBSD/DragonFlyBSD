@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.3 2003/08/07 21:17:29 dillon Exp $
  */
 
 #define        DEB(x)
@@ -64,7 +64,7 @@
 #include <netinet/ip.h>
 #include <netinet/ip_var.h>
 #include <netinet/ip_icmp.h>
-#include <netinet/ip_fw.h>
+#include "ip_fw.h"
 #include <netinet/ip_dummynet.h>
 #include <netinet/tcp.h>
 #include <netinet/tcp_timer.h>

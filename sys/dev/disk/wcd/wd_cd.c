@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/wd_cd.c,v 1.29 2000/01/29 16:00:33 peter Exp $
- * $DragonFly: src/sys/dev/disk/wcd/Attic/wd_cd.c,v 1.7 2003/07/23 02:30:19 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wcd/Attic/wd_cd.c,v 1.8 2003/08/07 21:16:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,7 @@
 #include <sys/stat.h>
 #include <sys/buf2.h>
 #include <i386/isa/atapi.h>
-#include <i386/isa/wd_cd.h>
+#include "wd_cd.h"
 
 static d_open_t		acdopen;
 static d_close_t	acdclose;

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/pccard.c,v 1.106.2.15 2003/02/26 18:42:00 imp Exp $
- * $DragonFly: src/sys/bus/pccard/pccard.c,v 1.6 2003/07/27 01:49:53 hmp Exp $
+ * $DragonFly: src/sys/bus/pccard/pccard.c,v 1.7 2003/08/07 21:16:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,10 +46,10 @@
 #include <sys/proc.h>
 #include <machine/bus.h>
 
-#include <pccard/cardinfo.h>
-#include <pccard/driver.h>
-#include <pccard/slot.h>
-#include <pccard/pccard_nbk.h>
+#include "cardinfo.h"
+#include "driver.h"
+#include "slot.h"
+#include "pccard_nbk.h"
 
 #include <machine/md_var.h>
 

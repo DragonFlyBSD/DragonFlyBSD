@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/dev/ichsmb/ichsmb_pci.c,v 1.1.2.3 2002/10/20 14:57:19 nyan Exp $
- * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb_pci.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb_pci.c,v 1.3 2003/08/07 21:17:07 dillon Exp $
  */
 
 /*
@@ -56,13 +56,13 @@
 #include <sys/rman.h>
 #include <machine/resource.h>
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
-#include <dev/smbus/smbconf.h>
+#include <bus/smbus/smbconf.h>
 
-#include <dev/ichsmb/ichsmb_var.h>
-#include <dev/ichsmb/ichsmb_reg.h>
+#include "ichsmb_var.h"
+#include "ichsmb_reg.h"
 
 /* PCI unique identifiers */
 #define ID_82801AA			0x24138086

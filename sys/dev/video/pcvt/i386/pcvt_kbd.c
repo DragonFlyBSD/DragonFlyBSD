@@ -48,16 +48,16 @@
  *	Last Edit-Date: [Mon Dec 27 14:01:50 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_kbd.c,v 1.32.2.1 2000/10/29 16:59:28 dwmalone Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_kbd.c,v 1.3 2003/07/26 19:07:49 rob Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_kbd.c,v 1.4 2003/08/07 21:17:16 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
-#include "vt.h"
+#include "use_vt.h"
 #include "opt_ddb.h"
 
 #if NVT > 0
 
-#include <i386/isa/pcvt/pcvt_hdr.h>	/* global include */
+#include "pcvt_hdr.h"	/* global include */
 
 #define LEDSTATE_UPDATE_PENDING	(1 << 3)
 
@@ -100,7 +100,7 @@ static void scrollback_restore_screen ( void );
 u_char rawkeybuf[80];
 #endif
 
-#include <i386/isa/pcvt/pcvt_kbd.h>	/* tables etc */
+#include "pcvt_kbd.h"	/* tables etc */
 
 #if PCVT_SHOWKEYS
 /*---------------------------------------------------------------------------*
@@ -1687,7 +1687,7 @@ scroll_reset:
 #endif /* PCVT_CTRL_ALT_DEL */
 
 #if !(PCVT_NETBSD || PCVT_FREEBSD >= 200)
-#include "ddb.h"
+#include "use_ddb.h"
 #endif /* !(PCVT_NETBSD || PCVT_FREEBSD >= 200) */
 
 #if NDDB > 0 || defined(DDB)		 /*   Check for cntl-alt-esc	*/

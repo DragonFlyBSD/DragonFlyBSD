@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.8 2003/07/21 05:50:42 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.9 2003/08/07 21:17:11 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -40,12 +40,12 @@
 #include "opt_compat.h"
 #include "opt_ddb.h"
 #include "opt_sio.h"
-#include "card.h"
-#include "pci.h"
+#include "use_card.h"
+#include "use_pci.h"
 #ifdef __i386__
-#include "puc.h"
+#include "use_puc.h"
 #endif
-#include "sio.h"
+#include "use_sio.h"
 
 /*
  * Serial driver, based on 386BSD-0.1 com driver.
@@ -78,14 +78,14 @@
 
 #include <machine/limits.h>
 
-#include <isa/isareg.h>
-#include <isa/isavar.h>
+#include <bus/isa/isareg.h>
+#include <bus/isa/isavar.h>
 #if NPCI > 0
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 #endif
 #if NPUC > 0
-#include <dev/puc/pucvar.h>
+#include <dev/misc/puc/pucvar.h>
 #endif
 #include <machine/lock.h>
 
@@ -96,12 +96,12 @@
 #endif
 #include <machine/resource.h>
 
-#include <isa/sioreg.h>
+#include "sioreg.h"
 
 #ifdef COM_ESP
-#include <dev/ic/esp.h>
+#include "../ic_layer/esp.h"
 #endif
-#include <dev/ic/ns16550.h>
+#include "../ic_layer/ns16550.h"
 
 #define	LOTS_OF_EVENTS	64	/* helps separate urgent events from input */
 

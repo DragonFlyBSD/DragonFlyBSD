@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/ppc.c,v 1.26.2.5 2001/10/02 05:21:45 nsouch Exp $
- * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.4 2003/07/26 19:25:18 rob Exp $
+ * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.5 2003/08/07 21:16:58 dillon Exp $
  *
  */
 
@@ -44,13 +44,13 @@
 #include <machine/vmparam.h>
 #include <sys/rman.h>
 
-#include <isa/isareg.h>
-#include <isa/isavar.h>
+#include <bus/isa/isareg.h>
+#include <bus/isa/isavar.h>
 
-#include <dev/ppbus/ppbconf.h>
-#include <dev/ppbus/ppb_msq.h>
+#include <bus/ppbus/ppbconf.h>
+#include <bus/ppbus/ppb_msq.h>
 
-#include <isa/ppcreg.h>
+#include "ppcreg.h"
 
 #include "ppbus_if.h"
 

@@ -25,12 +25,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
+ * $DragonFly: src/sys/dev/sound/isa/i386/gus/Attic/gus_midi.c,v 1.2 2003/08/07 21:17:12 dillon Exp $
  */
 
 #include <i386/isa/sound/sound_config.h>
 
 #if defined(CONFIG_GUS) && defined(CONFIG_MIDI)
-#include <i386/isa/sound/gus_hw.h>
+#include "gus_hw.h"
 
 static int      midi_busy = 0, input_opened = 0;
 static int      my_dev;

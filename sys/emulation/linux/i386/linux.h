@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux.h,v 1.41.2.4 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux.h,v 1.4 2003/07/21 07:57:46 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux.h,v 1.5 2003/08/07 21:17:18 dillon Exp $
  */
 
 #ifndef _I386_LINUX_LINUX_H_
@@ -34,7 +34,7 @@
 
 #include <sys/signal.h> /* for sigval union */
 
-#include <i386/linux/linux_syscall.h>
+#include "linux_syscall.h"
 
 /*
  * debugging support

@@ -1,6 +1,6 @@
 /*	$NetBSD: umodem.c,v 1.5 1999/01/08 11:58:25 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/umodem.c,v 1.17.2.9 2002/11/06 20:23:50 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.5 2003/07/21 05:50:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.6 2003/08/07 21:17:14 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -73,13 +73,13 @@
 #include <sys/poll.h>
 #include <sys/sysctl.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbcdc.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbcdc.h>
 
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbdevs.h>
-#include <dev/usb/usb_quirks.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
+#include <bus/usb/usbdevs.h>
+#include <bus/usb/usb_quirks.h>
 
 #include <dev/usb/usbdevs.h>
 

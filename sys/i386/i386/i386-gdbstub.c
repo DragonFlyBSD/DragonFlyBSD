@@ -92,7 +92,10 @@
  *
  ****************************************************************************/
 /* $FreeBSD: src/sys/i386/i386/i386-gdbstub.c,v 1.13.2.1 2000/08/03 00:54:41 peter Exp $ */
-/* $DragonFly: src/sys/i386/i386/Attic/i386-gdbstub.c,v 1.2 2003/06/17 04:28:35 dillon Exp $ */
+/* $DragonFly: src/sys/i386/i386/Attic/i386-gdbstub.c,v 1.3 2003/08/07 21:17:22 dillon Exp $ */
+
+#include "use_sio.h"
+#include "opt_ddb.h"
 
 #include <sys/param.h>
 #include <sys/reboot.h>
@@ -102,9 +105,6 @@
 #include <ddb/ddb.h>
 
 #include <setjmp.h>
-
-#include "sio.h"
-#include "opt_ddb.h"
 
 void		gdb_handle_exception (db_regs_t *, int, int);
 

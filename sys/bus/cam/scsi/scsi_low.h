@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/cam/scsi/scsi_low.h,v 1.1.2.4 2001/07/22 00:21:41 non Exp $	*/
-/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low.h,v 1.2 2003/06/17 04:28:19 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low.h,v 1.3 2003/08/07 21:16:45 dillon Exp $	*/
 /*	$NecBSD: scsi_low.h,v 1.24.10.5 2001/06/26 07:31:46 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -67,13 +67,13 @@
 
 #ifdef	__FreeBSD__
 #include <sys/device_port.h>
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt_sim.h>
-#include <cam/cam_debug.h>
+#include "../cam.h"
+#include "../cam_ccb.h"
+#include "../cam_sim.h"
+#include "../cam_xpt_sim.h"
+#include "../cam_debug.h"
 
-#include <cam/scsi/scsi_dvcfg.h>
+#include "scsi_dvcfg.h"
 #include <i386/isa/ccbque.h>
 #endif	/* __FreeBSD__ */
 

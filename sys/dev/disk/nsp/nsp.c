@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nsp.c,v 1.1.2.6 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.3 2003/07/26 14:25:23 rob Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.4 2003/08/07 21:16:53 dillon Exp $	*/
 /*	$NecBSD: nsp.c,v 1.21.12.6 2001/06/29 06:27:52 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -81,9 +81,9 @@
 #include <machine/dvcfg.h>
 #include <machine/physio_proc.h>
 
-#include <cam/scsi/scsi_low.h>
-#include <dev/nsp/nspreg.h>
-#include <dev/nsp/nspvar.h>
+#include <bus/cam/scsi/scsi_low.h>
+#include "nspreg.h"
+#include "nspvar.h"
 #endif /* __FreeBSD__ */
 
 /***************************************************

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.c,v 1.32.2.20 2002/10/11 18:49:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.5 2003/07/21 05:50:31 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.6 2003/08/07 21:16:52 dillon Exp $ */
 /*
  * Platform (FreeBSD) dependent common attachment code for Qlogic adapters.
  *
@@ -26,13 +26,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include <dev/isp/isp_freebsd.h>
+#include "isp_freebsd.h"
 #include <sys/unistd.h>
 #include <sys/kthread.h>
 #include <machine/stdarg.h>	/* for use by isp_prt below */
 #include <sys/conf.h>
 #include <sys/ioccom.h>
-#include <dev/isp/isp_ioctl.h>
+#include "isp_ioctl.h"
 
 
 static d_ioctl_t ispioctl;

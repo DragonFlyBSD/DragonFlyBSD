@@ -1,6 +1,6 @@
 /*	$NetBSD: hid.c,v 1.15 2000/04/27 15:26:46 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/hid.c,v 1.11.2.6 2002/11/06 14:03:37 joe Exp $ */
-/*	$DragonFly: src/sys/bus/usb/hid.c,v 1.2 2003/06/17 04:28:32 dillon Exp $ */
+/*	$DragonFly: src/sys/bus/usb/hid.c,v 1.3 2003/08/07 21:16:47 dillon Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -46,10 +46,10 @@
 #endif
 #include <sys/malloc.h>
  
-#include <dev/usb/usb.h>
-#include <dev/usb/usbhid.h>
+#include "usb.h"
+#include "usbhid.h"
 
-#include <dev/usb/hid.h>
+#include "hid.h"
 
 #ifdef USB_DEBUG
 #define DPRINTF(x)	if (usbdebug) logprintf x

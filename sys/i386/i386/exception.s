@@ -31,10 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.17 2003/07/24 23:52:36 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.18 2003/08/07 21:17:22 dillon Exp $
  */
 
-#include "npx.h"
+#include "use_npx.h"
 
 #include <machine/asmacros.h>
 #include <machine/ipl.h>

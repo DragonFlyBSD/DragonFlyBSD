@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.8 2003/07/26 13:40:57 rob Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.9 2003/08/07 21:17:40 dillon Exp $
  * 
  */
 
@@ -66,14 +66,14 @@
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
 
-#include <coda/coda.h>
-#include <coda/cnode.h>
-#include <coda/coda_vnops.h>
-#include <coda/coda_venus.h>
-#include <coda/coda_opstats.h>
-#include <coda/coda_subr.h>
-#include <coda/coda_namecache.h>
-#include <coda/coda_pioctl.h>
+#include "coda.h"
+#include "cnode.h"
+#include "coda_vnops.h"
+#include "coda_venus.h"
+#include "coda_opstats.h"
+#include "coda_subr.h"
+#include "coda_namecache.h"
+#include "coda_pioctl.h"
 
 /* 
  * These flags select various performance enhancements.

@@ -20,7 +20,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_eisa.c,v 1.18 2000/01/14 07:14:00 peter Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_eisa.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_eisa.c,v 1.3 2003/08/07 21:17:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,10 +41,10 @@
 
 #include <machine/clock.h>
 
-#include <dev/eisa/eisaconf.h>
+#include <bus/eisa/eisaconf.h>
 
-#include <dev/ep/if_epreg.h>
-#include <dev/ep/if_epvar.h>
+#include "if_epreg.h"
+#include "if_epvar.h"
 
 #define EISA_DEVICE_ID_3COM_3C509_TP	0x506d5090
 #define EISA_DEVICE_ID_3COM_3C509_BNC	0x506d5091

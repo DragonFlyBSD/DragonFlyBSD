@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_linux_ialloc.c,v 1.13.2.2 2001/08/14 18:03:19 gallatin Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.3 2003/07/21 07:57:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.4 2003/08/07 21:17:41 dillon Exp $
  */
 /*
  *  linux/fs/ext2/ialloc.c
@@ -37,20 +37,20 @@
 #include <sys/mount.h>
 #include <sys/vnode.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufsmount.h>
-#include <gnu/ext2fs/ext2_extern.h>
-#include <gnu/ext2fs/ext2_fs.h>
-#include <gnu/ext2fs/ext2_fs_sb.h>
-#include <gnu/ext2fs/fs.h>
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/inode.h>
+#include <vfs/ufs/ufsmount.h>
+#include "ext2_extern.h"
+#include "ext2_fs.h"
+#include "ext2_fs_sb.h"
+#include "fs.h"
 #include <sys/stat.h>
 #include <sys/buf2.h>
 
 #ifdef __i386__
-#include <gnu/ext2fs/i386-bitops.h>
+#include "i386-bitops.h"
 #elif defined(__alpha__)
-#include <gnu/ext2fs/alpha-bitops.h>
+#include "alpha-bitops.h"
 #else
 #error please provide bit operation functions
 #endif

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx_pci.c,v 1.4.2.5 2001/06/25 04:37:51 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx_pci.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx_pci.c,v 1.3 2003/08/07 21:17:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,13 +42,13 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <dev/mlx/mlx_compat.h>
-#include <dev/mlx/mlxio.h>
-#include <dev/mlx/mlxvar.h>
-#include <dev/mlx/mlxreg.h>
+#include "mlx_compat.h"
+#include "mlxio.h"
+#include "mlxvar.h"
+#include "mlxreg.h"
 
 static int			mlx_pci_probe(device_t dev);
 static int			mlx_pci_attach(device_t dev);

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_bio.c,v 1.83.2.4 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.9 2003/07/26 21:48:48 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.10 2003/08/07 21:17:42 dillon Exp $
  */
 
 
@@ -58,12 +58,12 @@
 
 #include <sys/buf2.h>
 
-#include <nfs/rpcv2.h>
-#include <nfs/nfsproto.h>
-#include <nfs/nfs.h>
-#include <nfs/nfsmount.h>
-#include <nfs/nqnfs.h>
-#include <nfs/nfsnode.h>
+#include "rpcv2.h"
+#include "nfsproto.h"
+#include "nfs.h"
+#include "nfsmount.h"
+#include "nqnfs.h"
+#include "nfsnode.h"
 
 static struct buf *nfs_getcacheblk __P((struct vnode *vp, daddr_t bn, int size,
 					struct thread *td));

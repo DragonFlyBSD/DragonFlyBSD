@@ -28,12 +28,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbdc.c,v 1.5.2.2 2002/03/31 11:02:02 murray Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbdc.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbdc.c,v 1.3 2003/08/07 21:16:56 dillon Exp $
  * from kbdio.c,v 1.13 1998/09/25 11:55:46 yokota Exp
  */
 
-#include "atkbdc.h"
 #include "opt_kbd.h"
+#include "use_atkbdc.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -47,9 +47,9 @@
 
 #include <machine/clock.h>
 
-#include <dev/kbd/atkbdcreg.h>
+#include "atkbdcreg.h"
 
-#include <isa/isareg.h>
+#include <bus/isa/isareg.h>
 
 /* constants */
 

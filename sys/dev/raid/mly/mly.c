@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.5 2003/07/21 05:50:33 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.6 2003/08/07 21:17:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,13 +43,13 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_all.h>
 
-#include <dev/mly/mlyreg.h>
-#include <dev/mly/mlyio.h>
-#include <dev/mly/mlyvar.h>
+#include "mlyreg.h"
+#include "mlyio.h"
+#include "mlyvar.h"
 #define MLY_DEFINE_TABLES
-#include <dev/mly/mly_tables.h>
+#include "mly_tables.h"
 
 static int	mly_get_controllerinfo(struct mly_softc *sc);
 static void	mly_scan_devices(struct mly_softc *sc);

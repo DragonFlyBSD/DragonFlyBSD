@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_subr.c,v 1.1.2.2 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_subr.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_subr.c,v 1.3 2003/08/07 21:17:43 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -48,9 +48,9 @@
 #include <netsmb/smb_rq.h>
 #include <netsmb/smb_dev.h>
 
-#include <fs/smbfs/smbfs.h>
-#include <fs/smbfs/smbfs_node.h>
-#include <fs/smbfs/smbfs_subr.h>
+#include "smbfs.h"
+#include "smbfs_node.h"
+#include "smbfs_subr.h"
 
 MALLOC_DEFINE(M_SMBFSDATA, "SMBFS data", "SMBFS private data");
 

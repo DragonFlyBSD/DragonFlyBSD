@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.6 2003/07/19 21:14:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.7 2003/08/07 21:17:43 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -51,10 +51,10 @@
 #include <netncp/ncp_conn.h>
 #include <netncp/ncp_subr.h>
 
-#include <nwfs/nwfs.h>
-#include <nwfs/nwfs_mount.h>
-#include <nwfs/nwfs_node.h>
-#include <nwfs/nwfs_subr.h>
+#include "nwfs.h"
+#include "nwfs_mount.h"
+#include "nwfs_node.h"
+#include "nwfs_subr.h"
 
 #define	NWNOHASH(fhsum) (&nwhashtbl[(fhsum.f_id) & nwnodehash])
 

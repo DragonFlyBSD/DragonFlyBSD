@@ -39,11 +39,11 @@
  *
  * $Id: vinumrevive.c,v 1.14 2000/12/21 01:55:11 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrevive.c,v 1.22.2.5 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.3 2003/08/07 21:17:09 dillon Exp $
  */
 
-#include <dev/vinum/vinumhdr.h>
-#include <dev/vinum/request.h>
+#include "vinumhdr.h"
+#include "request.h"
 
 /*
  * Revive a block of a subdisk.  Return an error

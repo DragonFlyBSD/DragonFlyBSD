@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.5 2003/07/22 17:03:33 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.6 2003/08/07 21:17:23 dillon Exp $
  */
 
 /*
@@ -58,7 +58,7 @@
 #include <sys/conf.h>
 #include <sys/cons.h>
 #include <sys/device.h>
-#include <paths.h>
+#include <sys/paths.h>
 
 #include "opt_ddb.h"
 #ifdef DDB
@@ -259,7 +259,7 @@ vfs_mountroot_ask(void)
 	for(;;) {
 		printf("\nManual root filesystem specification:\n");
 		printf("  <fstype>:<device>  Mount <device> using filesystem <fstype>\n");
-		printf("                       eg. ufs:%sda0s1a\n", _PATH_DEV);
+		printf("                       eg. ufs:%sda0s1a\n", __SYS_PATH_DEV);
 		printf("  ?                  List valid disk boot devices\n");
 		printf("  <empty line>       Abort manual input\n");
 		printf("\nmountroot> ");
@@ -331,8 +331,8 @@ getdiskbyname(char *name) {
 
 	slice = 0;
 	part = 0;
-	if (strncmp(name, _PATH_DEV, sizeof(_PATH_DEV) - 1) == 0)
-		name += sizeof(_PATH_DEV) - 1;
+	if (strncmp(name, __SYS_PATH_DEV, sizeof(__SYS_PATH_DEV) - 1) == 0)
+		name += sizeof(__SYS_PATH_DEV) - 1;
 	cp = name;
 	while (*cp != '\0' && (*cp < '0' || *cp > '9') && *cp != '/')
 		cp++;

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.3 2003/08/03 11:41:12 hmp Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.4 2003/08/07 21:17:33 dillon Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -105,7 +105,7 @@
 #endif
 
 #ifdef FAST_IPSEC
-#include <netipsec/ipsec.h>
+#include "ipsec.h"
 #include <netipsec/key.h>
 #define	IPSEC
 #endif

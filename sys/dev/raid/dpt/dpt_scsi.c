@@ -44,7 +44,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_scsi.c,v 1.28.2.3 2003/01/31 02:47:10 grog Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.3 2003/07/19 21:14:20 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.4 2003/08/07 21:17:08 dillon Exp $"
 
 #define _DPT_C_
 
@@ -63,18 +63,18 @@
 
 #include <machine/clock.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt_sim.h>
-#include <cam/cam_debug.h>
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_message.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_debug.h>
+#include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_message.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
-#include <dev/dpt/dpt.h>
+#include "dpt.h"
 
 /* dpt_isa.c, dpt_eisa.c, and dpt_pci.c need this in a central place */
 int dpt_controllers_present;

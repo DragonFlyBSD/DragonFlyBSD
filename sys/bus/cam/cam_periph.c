@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.4 2003/07/19 21:14:11 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.5 2003/08/07 21:16:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,16 +42,16 @@
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_xpt_periph.h>
-#include <cam/cam_periph.h>
-#include <cam/cam_debug.h>
+#include "cam.h"
+#include "cam_ccb.h"
+#include "cam_xpt_periph.h"
+#include "cam_periph.h"
+#include "cam_debug.h"
 
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_message.h>
-#include <cam/scsi/scsi_da.h>
-#include <cam/scsi/scsi_pass.h>
+#include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_message.h>
+#include <bus/cam/scsi/scsi_da.h>
+#include <bus/cam/scsi/scsi_pass.h>
 
 static	u_int		camperiphnextunit(struct periph_driver *p_drv,
 					  u_int newunit, int wired,

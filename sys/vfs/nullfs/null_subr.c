@@ -36,7 +36,7 @@
  *	@(#)null_subr.c	8.7 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null_subr.c,v 1.21.2.4 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.4 2003/07/19 21:14:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.5 2003/08/07 21:17:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,7 +46,7 @@
 #include <sys/vnode.h>
 #include <sys/mount.h>
 #include <sys/malloc.h>
-#include <miscfs/nullfs/null.h>
+#include "null.h"
 
 #define LOG2_SIZEVNODE 7		/* log2(sizeof struct vnode) */
 #define	NNULLNODECACHE 16

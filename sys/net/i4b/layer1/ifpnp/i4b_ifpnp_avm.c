@@ -34,13 +34,13 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.5.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.3 2003/07/26 19:20:31 rob Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.4 2003/08/07 21:17:26 dillon Exp $
  *
  *      last edit-date: [Fri Jan 12 17:05:28 2001]
  *
  *---------------------------------------------------------------------------*/
 
-#include "ifpnp.h"
+#include "use_ifpnp.h"
 #include "opt_i4b.h"
 
 #if (NIFPNP > 0)
@@ -54,24 +54,24 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 
 #include <sys/socket.h>
 #include <net/if.h>
 
-#include <machine/i4b_debug.h>
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_trace.h>
+#include <net/i4b/include/machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_trace.h>
 
-#include <i4b/include/i4b_global.h>
-#include <i4b/include/i4b_mbuf.h>
+#include "../../include/i4b_global.h"
+#include "../../include/i4b_mbuf.h"
 
-#include <i4b/layer1/i4b_l1.h>
-#include <i4b/layer1/isic/i4b_isic.h>
-#include <i4b/layer1/isic/i4b_isac.h>
-#include <i4b/layer1/isic/i4b_hscx.h>
+#include "../i4b_l1.h"
+#include "../isic/i4b_isic.h"
+#include "../isic/i4b_isac.h"
+#include "../isic/i4b_hscx.h"
 
-#include <i4b/layer1/ifpnp/i4b_ifpnp_ext.h>
+#include "i4b_ifpnp_ext.h"
 
 /* prototypes */
 static void avm_pnp_intr(void *);

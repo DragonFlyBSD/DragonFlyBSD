@@ -25,15 +25,15 @@
  *
  *	from: Mach, Revision 2.2  92/04/04  11:35:03  rpd
  * $FreeBSD: src/sys/i386/boot/biosboot/boot.h,v 1.25 1999/08/28 00:43:12 peter Exp $
- * $DragonFly: src/sys/i386/boot/biosboot/Attic/boot.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/i386/boot/biosboot/Attic/boot.h,v 1.3 2003/08/07 21:17:20 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/time.h>
 
-#include <ufs/ffs/fs.h>
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
+#include <vfs/ufs/fs.h>
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/inode.h>
 
 #define	RB_DUAL		0x40000		/* XXX */
 #define	RB_PROBEKBD	0x80000		/* XXX */

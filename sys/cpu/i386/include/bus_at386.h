@@ -68,12 +68,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /* $FreeBSD: src/sys/i386/include/bus_at386.h,v 1.8.2.3 2002/03/03 05:42:50 nyan Exp $ */
-/* $DragonFly: src/sys/cpu/i386/include/bus_at386.h,v 1.4 2003/07/26 01:04:08 dillon Exp $ */
+/* $DragonFly: src/sys/cpu/i386/include/bus_at386.h,v 1.5 2003/08/07 21:17:22 dillon Exp $ */
 
 #ifndef _I386_BUS_AT386_H_
 #define _I386_BUS_AT386_H_
 
-#include <machine/cpufunc.h>
+#include "cpufunc.h"
 
 /*
  * To remain compatible with NetBSD's interface, default to both memio and

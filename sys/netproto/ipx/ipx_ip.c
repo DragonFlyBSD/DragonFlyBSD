@@ -34,7 +34,7 @@
  *	@(#)ipx_ip.c
  *
  * $FreeBSD: src/sys/netipx/ipx_ip.c,v 1.24.2.2 2003/01/23 21:06:48 sam Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.5 2003/07/26 21:07:36 rob Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.6 2003/08/07 21:17:37 dillon Exp $
  */
 
 /*
@@ -68,10 +68,10 @@
 #include <netinet/ip.h>
 #include <netinet/ip_var.h>
 
-#include <netipx/ipx.h>
-#include <netipx/ipx_if.h>
-#include <netipx/ipx_ip.h>
-#include <netipx/ipx_var.h>
+#include "ipx.h"
+#include "ipx_if.h"
+#include "ipx_ip.h"
+#include "ipx_var.h"
 
 static struct	ifnet ipxipif;
 

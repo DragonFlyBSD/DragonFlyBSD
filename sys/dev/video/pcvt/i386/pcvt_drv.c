@@ -51,16 +51,16 @@
  *	Last Edit-Date: [Mon Dec 27 14:03:36 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_drv.c,v 1.63.2.1 2001/02/26 04:23:13 jlemon Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.6 2003/07/26 19:07:49 rob Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.7 2003/08/07 21:17:16 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
-#include "vt.h"
+#include "use_vt.h"
 #if NVT > 0
 
 #define EXTERN			/* allocate mem */
 
-#include <i386/isa/pcvt/pcvt_hdr.h>	/* global include */
+#include "pcvt_hdr.h"	/* global include */
 
 #if PCVT_FREEBSD >= 200
 #include <sys/bus.h>

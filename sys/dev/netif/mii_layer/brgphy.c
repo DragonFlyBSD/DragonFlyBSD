@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.3 2003/08/07 21:17:03 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
  */
@@ -51,11 +51,11 @@
 #include <net/if.h>
 #include <net/if_media.h>
 
-#include <dev/mii/mii.h>
-#include <dev/mii/miivar.h>
-#include <dev/mii/miidevs.h>
+#include "mii.h"
+#include "miivar.h"
+#include "miidevs.h"
 
-#include <dev/mii/brgphyreg.h>
+#include "brgphyreg.h"
 
 #include "miibus_if.h"
 

@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.8 2003/07/26 22:04:27 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.9 2003/08/07 21:17:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,9 +49,9 @@
 #include <sys/mount.h>
 #include <vm/vm_zone.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufsmount.h>
+#include "quota.h"
+#include "inode.h"
+#include "ufsmount.h"
 
 static MALLOC_DEFINE(M_DQUOT, "UFS quota", "UFS quota entries");
 

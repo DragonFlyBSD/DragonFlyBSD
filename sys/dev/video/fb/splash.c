@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/splash.c,v 1.8 2000/01/29 14:42:57 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/splash.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/splash.c,v 1.3 2003/08/07 21:17:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -34,8 +34,8 @@
 #include <sys/linker.h>
 #include <sys/fbio.h>
 
-#include <dev/fb/fbreg.h>
-#include <dev/fb/splashreg.h>
+#include "fbreg.h"
+#include "splashreg.h"
 
 /* video adapter and image decoder */
 static video_adapter_t	*splash_adp;

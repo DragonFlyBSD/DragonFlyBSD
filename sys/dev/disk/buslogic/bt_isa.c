@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt_isa.c,v 1.18 1999/10/12 21:35:43 dfr Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt_isa.c,v 1.2 2003/06/17 04:28:23 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt_isa.c,v 1.3 2003/08/07 21:16:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,10 +41,10 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <isa/isavar.h>
-#include <dev/buslogic/btreg.h>
+#include <bus/isa/isavar.h>
+#include "btreg.h"
 
-#include <cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_all.h>
 
 static	bus_dma_filter_t btvlbouncefilter;
 static	bus_dmamap_callback_t btmapsensebuffers;

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/splash/bmp/splash_bmp.c,v 1.10.2.3 2000/10/31 08:00:06 nyan Exp $
- * $DragonFly: src/sys/dev/video/fb/bmp/splash_bmp.c,v 1.2 2003/06/17 04:28:46 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/bmp/splash_bmp.c,v 1.3 2003/08/07 21:17:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -39,7 +39,7 @@
 #ifndef PC98
 #include <dev/fb/vgareg.h>
 
-#include <isa/isareg.h>
+#include <bus/isa/isareg.h>
 #endif
 
 #define FADE_TIMEOUT	15	/* sec */

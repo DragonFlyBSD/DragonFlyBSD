@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppb_1284.c,v 1.11 2000/01/14 08:03:14 nsouch Exp $
- * $DragonFly: src/sys/bus/ppbus/ppb_1284.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppb_1284.c,v 1.3 2003/08/07 21:16:47 dillon Exp $
  *
  */
 
@@ -40,12 +40,12 @@
 
 #include <machine/clock.h>
 
-#include <dev/ppbus/ppbconf.h>
-#include <dev/ppbus/ppb_1284.h>
+#include "ppbconf.h"
+#include "ppb_1284.h"
 
 #include "ppbus_if.h"
 
-#include <dev/ppbus/ppbio.h>
+#include "ppbio.h"
 
 #define DEVTOSOFTC(dev) ((struct ppb_data *)device_get_softc(dev))
 

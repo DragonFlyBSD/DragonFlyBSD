@@ -34,7 +34,7 @@
  *	@(#)ipx_usrreq.c
  *
  * $FreeBSD: src/sys/netipx/ipx_usrreq.c,v 1.26.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.4 2003/07/26 21:07:36 rob Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.5 2003/08/07 21:17:37 dillon Exp $
  */
 
 #include "opt_ipx.h"
@@ -54,11 +54,11 @@
 
 #include <netinet/in.h>
 
-#include <netipx/ipx.h>
-#include <netipx/ipx_pcb.h>
-#include <netipx/ipx_if.h>
-#include <netipx/ipx_var.h>
-#include <netipx/ipx_ip.h>
+#include "ipx.h"
+#include "ipx_pcb.h"
+#include "ipx_if.h"
+#include "ipx_var.h"
+#include "ipx_ip.h"
 
 /*
  * IPX protocol implementation.

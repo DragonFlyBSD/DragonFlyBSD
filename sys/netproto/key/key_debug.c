@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key_debug.c,v 1.10.2.5 2002/04/28 05:40:28 suz Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/key_debug.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key_debug.c,v 1.3 2003/08/07 21:17:37 dillon Exp $	*/
 /*	$KAME: key_debug.c,v 1.26 2001/06/27 10:46:50 sakane Exp $	*/
 
 /*
@@ -48,8 +48,8 @@
 
 #include <net/route.h>
 
-#include <netkey/key_var.h>
-#include <netkey/key_debug.h>
+#include "key_var.h"
+#include "key_debug.h"
 
 #include <netinet/in.h>
 #include <netinet6/ipsec.h>

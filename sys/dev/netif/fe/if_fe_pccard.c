@@ -20,7 +20,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fe_pccard.c,v 1.2.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.3 2003/08/07 21:17:02 dillon Exp $
  */
 
 #include "opt_fe.h"
@@ -46,11 +46,11 @@
 #include <netinet/if_ether.h>
 
 #include <i386/isa/ic/mb86960.h>
-#include <dev/fe/if_fereg.h>
-#include <dev/fe/if_fevar.h>
+#include "if_fereg.h"
+#include "if_fevar.h"
 
-#include <dev/pccard/pccardvar.h>
-#include <pccard/cardinfo.h>
+#include <bus/pccard/pccardvar.h>
+#include <bus/pccard/cardinfo.h>
 
 /*
  *	PC-Card (PCMCIA) specific code.

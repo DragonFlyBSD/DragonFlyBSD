@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.9 2003/07/19 21:14:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.10 2003/08/07 21:17:44 dillon Exp $
  */
 
 /*
@@ -61,14 +61,14 @@
 #include <sys/vnode.h>
 #include <sys/conf.h>
 #include <sys/buf2.h>
-#include <ufs/ufs/dir.h>
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufsmount.h>
-#include <ufs/ffs/fs.h>
-#include <ufs/ffs/softdep.h>
-#include <ufs/ffs/ffs_extern.h>
-#include <ufs/ufs/ufs_extern.h>
+#include "dir.h"
+#include "quota.h"
+#include "inode.h"
+#include "ufsmount.h"
+#include "fs.h"
+#include "softdep.h"
+#include "ffs_extern.h"
+#include "ufs_extern.h"
 
 /*
  * These definitions need to be adapted to the system to which

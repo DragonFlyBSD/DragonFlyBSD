@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.5 2003/07/26 20:05:56 rob Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.6 2003/08/07 21:17:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,7 +52,7 @@
 #include <sys/buf.h>
 #include <sys/lock.h>
 #include <sys/sysctl.h>
-#include <miscfs/union/union.h>
+#include "union.h"
 
 #include <vm/vm.h>
 #include <vm/vnode_pager.h>

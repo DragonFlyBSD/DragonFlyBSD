@@ -29,18 +29,18 @@
  * contributed towards power management.
  *
  * $FreeBSD: src/sys/dev/sound/pci/cs4281.c,v 1.2.2.8 2002/08/27 00:25:55 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.3 2003/07/27 01:49:50 hmp Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.4 2003/08/07 21:17:13 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #include <dev/sound/pci/cs4281.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.3 2003/07/27 01:49:50 hmp Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.4 2003/08/07 21:17:13 dillon Exp $");
 
 #define CS4281_DEFAULT_BUFSZ 16384
 

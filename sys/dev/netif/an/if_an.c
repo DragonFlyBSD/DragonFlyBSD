@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.5 2003/07/19 21:14:17 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.6 2003/08/07 21:16:59 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
  */
@@ -132,8 +132,8 @@
 
 #include <machine/md_var.h>
 
-#include <dev/an/if_aironet_ieee.h>
-#include <dev/an/if_anreg.h>
+#include "if_aironet_ieee.h"
+#include "if_anreg.h"
 
 /* These are global because we need them in sys/pci/if_an_p.c. */
 static void an_reset		__P((struct an_softc *));

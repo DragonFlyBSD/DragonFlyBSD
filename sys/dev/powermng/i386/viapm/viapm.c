@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/viapm.c,v 1.1.2.1 2002/04/19 05:52:15 nsouch Exp $
- * $DragonFly: src/sys/dev/powermng/i386/viapm/viapm.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/viapm/viapm.c,v 1.3 2003/08/07 21:17:07 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -42,14 +42,14 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
-#include <dev/iicbus/iiconf.h>
-#include <dev/iicbus/iicbus.h>
+#include <bus/iicbus/iiconf.h>
+#include <bus/iicbus/iicbus.h>
 
-#include <dev/smbus/smbconf.h>
-#include <dev/smbus/smbus.h>
+#include <bus/smbus/smbconf.h>
+#include <bus/smbus/smbus.h>
 
 #include "iicbb_if.h"
 #include "smbus_if.h"

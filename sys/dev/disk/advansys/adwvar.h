@@ -31,13 +31,13 @@
  * All rights reserved.
  *
  * $FreeBSD: src/sys/dev/advansys/adwvar.h,v 1.3.2.1 2000/08/08 23:50:48 peter Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwvar.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwvar.h,v 1.3 2003/08/07 21:16:50 dillon Exp $
  */
 
 #ifndef _ADWVAR_H_
 #define _ADWVAR_H_
 
-#include <dev/advansys/adwlib.h>
+#include "adwlib.h"
 
 struct adw_softc *	adw_alloc(device_t dev, struct resource *regs,
 				  int regs_type, int regs_id);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.c,v 1.16.2.25 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.3 2003/07/29 12:51:29 hmp Exp $
+ * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.4 2003/08/07 21:17:24 dillon Exp $
  */
 
 /*
@@ -111,7 +111,7 @@
 #include <net/route.h>
 #include <netinet/ip_fw.h>
 #include <netinet/ip_dummynet.h>
-#include <net/bridge.h>
+#include "bridge.h"
 
 /*--------------------*/
 

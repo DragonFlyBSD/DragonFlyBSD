@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_fs.h,v 1.8.2.2 2001/09/29 12:52:47 iedowse Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_fs.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_fs.h,v 1.3 2003/08/07 21:17:41 dillon Exp $
  */
 /*
  *  linux/include/linux/ext2_fs.h
@@ -265,7 +265,7 @@ struct ext2_group_desc
 #define	EXT2_IOC_SETVERSION		_IOW('v', 2, long)
 
 /*
- * Only declare `struct ext2_inode' if <ufs/ufs/inode.h> hasn't made things
+ * Only declare `struct ext2_inode' if <vfs/ufs/inode.h> hasn't made things
  * difficult by #defining i_mode and other struct members.  The details of
  * the struct are only needed in ext2_inode_cnv.c where the ext2fs on-disk
  * inode is converted to a ufs in-core inode.

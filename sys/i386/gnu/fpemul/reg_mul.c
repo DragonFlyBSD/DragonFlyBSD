@@ -57,7 +57,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/reg_mul.c,v 1.8 1999/08/28 00:42:56 peter Exp $
- * $DragonFly: src/sys/i386/gnu/fpemul/Attic/reg_mul.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/i386/gnu/fpemul/Attic/reg_mul.c,v 1.3 2003/08/07 21:17:20 dillon Exp $
  *
  */
 
@@ -65,7 +65,7 @@
  | The destination may be any FPU_REG, including one of the source FPU_REGs. |
  +---------------------------------------------------------------------------*/
 
-#include <gnu/i386/fpemul/reg_constant.h>
+#include "reg_constant.h"
 
 
 /* This routine must be called with non-empty source registers */

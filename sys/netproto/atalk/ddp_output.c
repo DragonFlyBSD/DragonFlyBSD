@@ -22,7 +22,7 @@
  */
 
 /* $FreeBSD: src/sys/netatalk/ddp_output.c,v 1.13.6.1 2000/06/02 22:39:07 archie Exp $ */
-/* $DragonFly: src/sys/netproto/atalk/ddp_output.c,v 1.2 2003/06/17 04:28:48 dillon Exp $ */
+/* $DragonFly: src/sys/netproto/atalk/ddp_output.c,v 1.3 2003/08/07 21:17:33 dillon Exp $ */
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -35,11 +35,11 @@
 
 #undef s_net
 
-#include <netatalk/at.h>
-#include <netatalk/at_var.h>
-#include <netatalk/ddp.h>
-#include <netatalk/ddp_var.h>
-#include <netatalk/at_extern.h>
+#include "at.h"
+#include "at_var.h"
+#include "ddp.h"
+#include "ddp_var.h"
+#include "at_extern.h"
 
 int	ddp_cksum = 1;
 

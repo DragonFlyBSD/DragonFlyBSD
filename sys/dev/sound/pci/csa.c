@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/csa.c,v 1.8.2.12 2002/10/05 19:53:18 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/csa.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/csa.c,v 1.3 2003/08/07 21:17:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,12 +46,12 @@
 #include <dev/sound/pci/csareg.h>
 #include <dev/sound/pci/csavar.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <gnu/dev/sound/pci/csaimg.h>
+#include "gnu/csaimg.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/csa.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/csa.c,v 1.3 2003/08/07 21:17:13 dillon Exp $");
 
 /* This is the pci device id. */
 #define CS4610_PCI_ID 0x60011013

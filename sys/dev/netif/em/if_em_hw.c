@@ -32,12 +32,12 @@
 *******************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em_hw.c,v 1.1.2.8 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em_hw.c,v 1.2 2003/06/17 04:28:25 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em_hw.c,v 1.3 2003/08/07 21:17:01 dillon Exp $*/
 /* if_em_hw.c
  * Shared functions for accessing and configuring the MAC
  */
 
-#include <dev/em/if_em_hw.h>
+#include "if_em_hw.h"
 
 static int32_t em_set_phy_type(struct em_hw *hw);
 static void em_phy_init_script(struct em_hw *hw);

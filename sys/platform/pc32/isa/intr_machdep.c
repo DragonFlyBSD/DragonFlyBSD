@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.12 2003/07/23 02:30:19 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.13 2003/08/07 21:17:23 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -44,9 +44,9 @@
  * See the notice for details.
  */
 
+#include "use_isa.h"
+#include "use_mca.h"
 #include "opt_auto_eoi.h"
-
-#include "isa.h"
 
 #include <sys/param.h>
 #ifndef SMP
@@ -74,24 +74,23 @@
 #include <pc98/pc98/pc98_machdep.h>
 #include <pc98/pc98/epsonio.h>
 #else
-#include <i386/isa/isa.h>
+#include <bus/isa/i386/isa.h>
 #endif
 #include <i386/isa/icu.h>
 
 #if NISA > 0
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 #endif
 #include <i386/isa/intr_machdep.h>
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 #include <sys/interrupt.h>
 #ifdef APIC_IO
 #include <machine/clock.h>
 #endif
 #include <machine/cpu.h>
 
-#include "mca.h"
 #if NMCA > 0
-#include <i386/isa/mca_machdep.h>
+#include <bus/mca/i386/mca_machdep.h>
 #endif
 
 /* XXX should be in suitable include files */

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_fat.c,v 1.23 2000/01/27 14:43:06 nyan Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_fat.c,v 1.3 2003/06/26 05:55:17 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_fat.c,v 1.4 2003/08/07 21:17:41 dillon Exp $ */
 /*	$NetBSD: msdosfs_fat.c,v 1.28 1997/11/17 15:36:49 ws Exp $	*/
 
 /*-
@@ -61,11 +61,11 @@
 /*
  * msdosfs include files.
  */
-#include <msdosfs/bpb.h>
-#include <msdosfs/msdosfsmount.h>
-#include <msdosfs/direntry.h>
-#include <msdosfs/denode.h>
-#include <msdosfs/fat.h>
+#include "bpb.h"
+#include "msdosfsmount.h"
+#include "direntry.h"
+#include "denode.h"
+#include "fat.h"
 
 /*
  * Fat cache stats.

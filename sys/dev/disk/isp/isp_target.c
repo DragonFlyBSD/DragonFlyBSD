@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_target.c,v 1.5.4.10 2002/07/29 04:25:59 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_target.c,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_target.c,v 1.3 2003/08/07 21:16:53 dillon Exp $ */
 /*
  * Machine and OS Independent Target Mode Code for the Qlogic SCSI/FC adapters.
  *
@@ -41,7 +41,7 @@
 #include <dev/ic/isp_netbsd.h>
 #endif
 #ifdef	__FreeBSD__
-#include <dev/isp/isp_freebsd.h>
+#include "isp_freebsd.h"
 #endif
 #ifdef	__OpenBSD__
 #include <dev/ic/isp_openbsd.h>

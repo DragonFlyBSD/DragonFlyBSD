@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adw_pci.c,v 1.12.2.1 2000/08/02 22:22:40 peter Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adw_pci.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adw_pci.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,15 +48,15 @@
 
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <cam/cam.h>
-#include <cam/scsi/scsi_all.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/scsi/scsi_all.h>
 
-#include <dev/advansys/adwvar.h>
-#include <dev/advansys/adwlib.h>
-#include <dev/advansys/adwmcode.h>
+#include "adwvar.h"
+#include "adwlib.h"
+#include "adwmcode.h"
 
 #define ADW_PCI_IOBASE	PCIR_MAPS		/* I/O Address */
 #define ADW_PCI_MEMBASE	PCIR_MAPS + 4		/* Mem I/O Address */

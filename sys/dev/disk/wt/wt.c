@@ -21,7 +21,7 @@
  *
  * Version 1.3, Thu Nov 11 12:09:13 MSK 1993
  * $FreeBSD: src/sys/i386/isa/wt.c,v 1.57.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.5 2003/07/21 07:57:45 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.6 2003/08/07 21:16:55 dillon Exp $
  *
  */
 
@@ -58,7 +58,7 @@
  * rights to redistribute these changes.
  */
 
-#include "wt.h"
+#include "use_wt.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -71,8 +71,8 @@
 
 #include <machine/clock.h>
 
-#include <i386/isa/isa_device.h>
-#include <i386/isa/wtreg.h>
+#include <bus/isa/i386/isa_device.h>
+#include "wtreg.h"
 
 
 /*

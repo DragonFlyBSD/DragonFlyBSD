@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.7 2003/07/26 21:48:48 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.8 2003/08/07 21:17:42 dillon Exp $
  */
 
 
@@ -67,14 +67,14 @@
 #include <vm/vm_zone.h>
 
 #include <netinet/in.h>
-#include <nfs/rpcv2.h>
-#include <nfs/nfsproto.h>
-#include <nfs/nfs.h>
-#include <nfs/nfsm_subs.h>
-#include <nfs/xdr_subs.h>
-#include <nfs/nqnfs.h>
-#include <nfs/nfsnode.h>
-#include <nfs/nfsmount.h>
+#include "rpcv2.h"
+#include "nfsproto.h"
+#include "nfs.h"
+#include "nfsm_subs.h"
+#include "xdr_subs.h"
+#include "nqnfs.h"
+#include "nfsnode.h"
+#include "nfsmount.h"
 
 static MALLOC_DEFINE(M_NQMHOST, "NQNFS Host", "Nqnfs host address table");
 

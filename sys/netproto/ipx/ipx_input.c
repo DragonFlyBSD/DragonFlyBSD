@@ -34,7 +34,7 @@
  *	@(#)ipx_input.c
  *
  * $FreeBSD: src/sys/netipx/ipx_input.c,v 1.22.2.2 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.3 2003/07/26 21:07:36 rob Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.4 2003/08/07 21:17:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,11 +51,11 @@
 #include <net/netisr.h>
 #include <net/intrq.h>
 
-#include <netipx/ipx.h>
-#include <netipx/spx.h>
-#include <netipx/ipx_if.h>
-#include <netipx/ipx_pcb.h>
-#include <netipx/ipx_var.h>
+#include "ipx.h"
+#include "spx.h"
+#include "ipx_if.h"
+#include "ipx_pcb.h"
+#include "ipx_var.h"
 
 int	ipxcksum = 0;
 SYSCTL_INT(_net_ipx_ipx, OID_AUTO, checksum, CTLFLAG_RW,

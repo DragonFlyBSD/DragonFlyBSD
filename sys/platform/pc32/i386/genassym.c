@@ -35,12 +35,10 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.27 2003/07/24 01:41:16 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.28 2003/08/07 21:17:22 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
-
-#include <stddef.h>
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -63,10 +61,10 @@
 #include <sys/user.h>
 #include <net/if.h>
 #include <netinet/in.h>
-#include <nfs/nfsv2.h>
-#include <nfs/rpcv2.h>
-#include <nfs/nfs.h>
-#include <nfs/nfsdiskless.h>
+#include <vfs/nfs/nfsv2.h>
+#include <vfs/nfs/rpcv2.h>
+#include <vfs/nfs/nfs.h>
+#include <vfs/nfs/nfsdiskless.h>
 #ifdef SMP
 #include <machine/apic.h>
 #endif

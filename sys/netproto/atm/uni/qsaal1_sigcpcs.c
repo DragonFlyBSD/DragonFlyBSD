@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/qsaal1_sigcpcs.c,v 1.4 2000/01/17 20:49:49 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/qsaal1_sigcpcs.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/qsaal1_sigcpcs.c,v 1.3 2003/08/07 21:17:35 dillon Exp $
  */
 
 /*
@@ -37,10 +37,10 @@
 
 #include <netatm/kern_include.h>
 
-#include <netatm/uni/sscop.h>
-#include <netatm/uni/sscop_misc.h>
-#include <netatm/uni/sscop_pdu.h>
-#include <netatm/uni/sscop_var.h>
+#include "sscop.h"
+#include "sscop_misc.h"
+#include "sscop_pdu.h"
+#include "sscop_var.h"
 
 /*
  * Local functions

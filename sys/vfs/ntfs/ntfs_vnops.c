@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.5 2003/07/26 21:13:15 rob Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.6 2003/08/07 21:17:42 dillon Exp $
  *
  */
 
@@ -70,9 +70,9 @@
 #include <sys/sysctl.h>
 
 /*#define NTFS_DEBUG 1*/
-#include <ntfs/ntfs.h>
-#include <ntfs/ntfs_inode.h>
-#include <ntfs/ntfs_subr.h>
+#include "ntfs.h"
+#include "ntfs_inode.h"
+#include "ntfs_subr.h"
 #if defined(__NetBSD__)
 #include <miscfs/specfs/specdev.h>
 #include <miscfs/genfs/genfs.h>

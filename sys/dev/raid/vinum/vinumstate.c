@@ -39,11 +39,11 @@
  *
  * $Id: vinumstate.c,v 2.18 2000/05/10 07:30:50 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumstate.c,v 1.28.2.2 2000/06/08 02:00:23 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumstate.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumstate.c,v 1.3 2003/08/07 21:17:10 dillon Exp $
  */
 
-#include <dev/vinum/vinumhdr.h>
-#include <dev/vinum/request.h>
+#include "vinumhdr.h"
+#include "request.h"
 
 /* Update drive state */
 /* Return 1 if the state changes, otherwise 0 */

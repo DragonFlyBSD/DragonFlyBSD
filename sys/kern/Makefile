@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/sys/kern/Makefile,v 1.6.2.1 2003/02/10 12:21:08 des Exp $
-# $DragonFly: src/sys/kern/Makefile,v 1.4 2003/07/28 05:59:10 hsu Exp $
+# $DragonFly: src/sys/kern/Makefile,v 1.5 2003/08/07 21:17:23 dillon Exp $
 
 # Makefile for kernel tags files, init_sysent, etc.
 
@@ -37,11 +37,11 @@ MFLAGS=SYS=${SYSDIR}
 DGEN=	conf \
 	dev \
 	kern libkern \
-	miscfs miscfs/deadfs miscfs/fdesc miscfs/fifofs \
-	miscfs/nullfs miscfs/portal miscfs/procfs \
-	miscfs/specfs miscfs/umapfs miscfs/union \
-	net netinet netns nfs sys \
-	ufs ufs/ffs ufs/mfs ufs/ufs \
+	vfs vfs/deadfs vfs/fdesc vfs/fifofs \
+	vfs/nullfs vfs/portal vfs/procfs \
+	vfs/specfs vfs/umapfs vfs/union \
+	vfs/ufs vfs/mfs vfs/nfs \
+	net netinet netns sys \
 	vm
 
 tags::

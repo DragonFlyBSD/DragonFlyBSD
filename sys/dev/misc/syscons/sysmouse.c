@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/sysmouse.c,v 1.2.2.2 2001/07/16 05:21:24 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.5 2003/07/21 05:50:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.6 2003/08/07 21:16:59 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -39,7 +39,7 @@
 #include <machine/console.h>
 #include <machine/mouse.h>
 
-#include <dev/syscons/syscons.h>
+#include "syscons.h"
 
 #ifndef SC_NO_SYSMOUSE
 

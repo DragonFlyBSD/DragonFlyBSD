@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/rndtest/rndtest.c,v 1.1.4.1 2003/06/04 17:10:30 sam Exp $	*/
-/*	$DragonFly: src/sys/dev/crypto/rndtest/rndtest.c,v 1.2 2003/06/17 04:28:29 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/crypto/rndtest/rndtest.c,v 1.3 2003/08/07 21:16:49 dillon Exp $	*/
 /*	$OpenBSD$	*/
 
 /*
@@ -44,7 +44,7 @@
 #include <sys/sysctl.h>
 #include <machine/stdarg.h>
 
-#include <dev/rndtest/rndtest.h>
+#include "rndtest.h"
 
 static	void rndtest_test(struct rndtest_state *);
 static	void rndtest_timeout(void *);

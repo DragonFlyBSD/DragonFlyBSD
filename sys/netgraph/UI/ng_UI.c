@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_UI.c,v 1.6.2.2 2000/10/24 18:36:44 julian Exp $
- * $DragonFly: src/sys/netgraph/UI/ng_UI.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ * $DragonFly: src/sys/netgraph/UI/ng_UI.c,v 1.3 2003/08/07 21:17:30 dillon Exp $
  * $Whistle: ng_UI.c,v 1.14 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -52,7 +52,7 @@
 
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
-#include <netgraph/ng_UI.h>
+#include "ng_UI.h"
 
 /*
  * DEFINITIONS

@@ -32,7 +32,7 @@
  *
  *	from: @(#) floatingpoint.h	1.0 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/i386/include/floatingpoint.h,v 1.10.2.1 2002/06/30 00:55:09 bde Exp $
- * $DragonFly: src/sys/cpu/i386/include/floatingpoint.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/floatingpoint.h,v 1.3 2003/08/07 21:17:22 dillon Exp $
  */
 
 #ifndef _FLOATINGPOINT_H_
@@ -49,7 +49,7 @@
  */
 
 #include <sys/cdefs.h>
-#include <machine/ieeefp.h>
+#include "ieeefp.h"
 
 #ifdef __GNUC__
 

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.7 2003/07/26 21:04:50 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.8 2003/08/07 21:17:33 dillon Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -114,8 +114,8 @@
 #endif /* IPSEC */
 
 #ifdef FAST_IPSEC
-#include <netipsec/ipsec.h>
-#include <netipsec/ipsec6.h>
+#include "ipsec.h"
+#include "ipsec6.h"
 #include <netipsec/key.h>
 #define	IPSEC
 #endif /* FAST_IPSEC */

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.5 2003/07/29 12:51:30 hmp Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.6 2003/08/07 21:17:33 dillon Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -115,17 +115,17 @@
 #endif
 
 #ifdef FAST_IPSEC
-#include <netipsec/ipsec.h>
-#include <netipsec/ipsec6.h>
+#include "ipsec.h"
+#include "ipsec6.h"
 #define	IPSEC
 #endif /* FAST_IPSEC */
 
-#include <netinet6/ip6_fw.h>
+#include <net/ip6fw/ip6_fw.h>
 
 #include <netinet6/ip6protosw.h>
 
 /* we need it for NLOOP. */
-#include "loop.h"
+#include "use_loop.h"
 
 #include <net/net_osdep.h>
 

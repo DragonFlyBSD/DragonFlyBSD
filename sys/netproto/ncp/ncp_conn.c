@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * $FreeBSD: src/sys/netncp/ncp_conn.c,v 1.3.2.5 2001/02/22 08:54:11 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.4 2003/07/19 21:14:44 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.5 2003/08/07 21:17:38 dillon Exp $
  *
  * Connection tables
  */
@@ -41,9 +41,9 @@
 #include <sys/lock.h>
 #include <sys/sysctl.h>
 
-#include <netncp/ncp.h>
-#include <netncp/ncp_subr.h>
-#include <netncp/ncp_conn.h>
+#include "ncp.h"
+#include "ncp_subr.h"
+#include "ncp_conn.h"
 
 SLIST_HEAD(ncp_handle_head,ncp_handle);
 

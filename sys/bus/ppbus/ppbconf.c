@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppbconf.c,v 1.17.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/bus/ppbus/ppbconf.c,v 1.3 2003/07/19 21:14:25 dillon Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppbconf.c,v 1.4 2003/08/07 21:16:47 dillon Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -36,8 +36,8 @@
 #include <sys/bus.h>
 #include <sys/malloc.h>
 
-#include <dev/ppbus/ppbconf.h>
-#include <dev/ppbus/ppb_1284.h>
+#include "ppbconf.h"
+#include "ppb_1284.h"
 
 #include "ppbus_if.h"
   

@@ -47,13 +47,13 @@
  *
  * $Id: vinumconfig.c,v 1.30 2000/05/01 09:45:50 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumconfig.c,v 1.32.2.6 2002/02/03 00:43:35 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.3 2003/07/19 21:14:31 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.4 2003/08/07 21:17:09 dillon Exp $
  */
 
 #define STATIC static
 
-#include <dev/vinum/vinumhdr.h>
-#include <dev/vinum/request.h>
+#include "vinumhdr.h"
+#include "request.h"
 
 #define MAXTOKEN 64					    /* maximum number of tokens in a line */
 

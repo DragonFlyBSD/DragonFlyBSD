@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdi.c,v 1.60 2000/01/19 00:23:58 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdi.c,v 1.34.2.7 2002/11/06 14:03:37 joe Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdi.c,v 1.4 2003/07/19 21:14:30 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi.c,v 1.5 2003/08/07 21:16:47 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -56,11 +56,11 @@
 
 #include <machine/bus.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbdivar.h>
-#include <dev/usb/usb_mem.h>
+#include "usb.h"
+#include "usbdi.h"
+#include "usbdi_util.h"
+#include "usbdivar.h"
+#include "usb_mem.h"
 
 #if defined(__FreeBSD__)
 #include "usb_if.h"

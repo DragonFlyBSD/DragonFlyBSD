@@ -32,13 +32,13 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.3 2003/07/26 20:19:33 rob Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.4 2003/08/07 21:17:24 dillon Exp $
  */
 
 /*
  * Loopback interface driver for protocol testing and timing.
  */
-#include "loop.h"
+#include "use_loop.h"
 
 #include "opt_atalk.h"
 #include "opt_inet.h"

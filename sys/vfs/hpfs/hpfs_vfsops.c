@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.6 2003/07/26 18:51:23 rob Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.7 2003/08/07 21:17:41 dillon Exp $
  */
 
 
@@ -53,9 +53,9 @@
 #include <miscfs/specfs/specdev.h>
 #endif
 
-#include <fs/hpfs/hpfs.h>
-#include <fs/hpfs/hpfsmount.h>
-#include <fs/hpfs/hpfs_subr.h>
+#include "hpfs.h"
+#include "hpfsmount.h"
+#include "hpfs_subr.h"
 
 #if defined(__FreeBSD__)
 MALLOC_DEFINE(M_HPFSMNT, "HPFS mount", "HPFS mount structure");

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/ums.c,v 1.36.2.6 2002/11/06 20:23:50 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.4 2003/07/21 05:50:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.5 2003/08/07 21:17:15 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -58,14 +58,14 @@
 #include <sys/poll.h>
 #include <sys/sysctl.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbhid.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbhid.h>
 
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbdevs.h>
-#include <dev/usb/usb_quirks.h>
-#include <dev/usb/hid.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
+#include <bus/usb/usbdevs.h>
+#include <bus/usb/usb_quirks.h>
+#include <bus/usb/hid.h>
 
 #include <machine/mouse.h>
 

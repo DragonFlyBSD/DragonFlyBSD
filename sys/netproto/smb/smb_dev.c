@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_dev.c,v 1.2.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.5 2003/07/21 05:50:44 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.6 2003/08/07 21:17:39 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -51,10 +51,10 @@
 
 #include <net/if.h>
 
-#include <netsmb/smb.h>
-#include <netsmb/smb_conn.h>
-#include <netsmb/smb_subr.h>
-#include <netsmb/smb_dev.h>
+#include "smb.h"
+#include "smb_conn.h"
+#include "smb_subr.h"
+#include "smb_dev.h"
 
 #define SMB_GETDEV(dev)		((struct smb_dev*)(dev)->si_drv1)
 #define	SMB_CHECKMINOR(dev)	do { \

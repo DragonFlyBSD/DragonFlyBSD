@@ -5,7 +5,7 @@
  * modified for FreeBSD by Andrew A. Chernov <ache@astral.msk.su>
  *
  * $FreeBSD: src/sys/i386/isa/spkr.c,v 1.45 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.6 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.7 2003/08/07 21:17:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -15,7 +15,7 @@
 #include <sys/uio.h>
 #include <sys/conf.h>
 #include <sys/ctype.h>
-#include <i386/isa/isa.h>
+#include <bus/isa/i386/isa.h>
 #include <i386/isa/timerreg.h>
 #include <machine/clock.h>
 #include <machine/speaker.h>

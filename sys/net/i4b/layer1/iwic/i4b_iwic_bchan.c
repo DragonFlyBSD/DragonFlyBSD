@@ -30,15 +30,15 @@
  *      ----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/iwic/i4b_iwic_bchan.c,v 1.7.2.1 2001/08/10 14:08:40 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_bchan.c,v 1.3 2003/07/26 19:20:32 rob Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_bchan.c,v 1.4 2003/08/07 21:17:28 dillon Exp $
  *
  *      last edit-date: [Tue Jan 16 13:21:24 2001]
  *
  *---------------------------------------------------------------------------*/
 
-#include "iwic.h"
+#include "use_iwic.h"
+#include "use_pci.h"
 #include "opt_i4b.h"
-#include "pci.h"
 
 #if (NIWIC > 0) && (NPCI > 0)
 
@@ -49,18 +49,17 @@
 
 #include <net/if.h>
 
+#include <net/i4b/include/machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_trace.h>
 
-#include <machine/i4b_debug.h>
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_trace.h>
+#include "../i4b_l1.h"
 
-#include <i4b/layer1/i4b_l1.h>
+#include "i4b_iwic.h"
+#include "i4b_w6692.h"
 
-#include <i4b/layer1/iwic/i4b_iwic.h>
-#include <i4b/layer1/iwic/i4b_w6692.h>
-
-#include <i4b/include/i4b_global.h>
-#include <i4b/include/i4b_mbuf.h>
+#include "../../include/i4b_global.h"
+#include "../../include/i4b_mbuf.h"
 
 static void iwic_bchan_init(struct iwic_softc *sc, int chan_no, int activate);
 

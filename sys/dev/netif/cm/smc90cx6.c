@@ -1,6 +1,6 @@
 /*	$NetBSD: smc90cx6.c,v 1.38 2001/07/07 15:57:53 thorpej Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6.c,v 1.1.2.3 2003/02/05 18:42:14 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.3 2003/08/07 21:17:00 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -70,8 +70,8 @@
 #include <net/if_types.h>
 #include <net/if_arc.h>
 
-#include <dev/cm/smc90cx6reg.h>
-#include <dev/cm/smc90cx6var.h>
+#include "smc90cx6reg.h"
+#include "smc90cx6var.h"
 
 MODULE_DEPEND(if_cm, arcnet, 1, 1, 1);
 

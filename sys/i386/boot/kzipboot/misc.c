@@ -5,9 +5,11 @@
  * adapted for Linux.
  *
  * Ported to 386bsd by Serge Vakulenko
+ *
+ * $DragonFly: src/sys/i386/boot/kzipboot/Attic/misc.c,v 1.2 2003/08/07 21:17:20 dillon Exp $
  */
 
-#include "gzip.h"
+#include "use_gzip.h"
 
 unsigned outcnt;
 unsigned insize;

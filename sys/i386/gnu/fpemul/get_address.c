@@ -57,7 +57,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/get_address.c,v 1.10 1999/10/12 02:23:14 msmith Exp $
- * $DragonFly: src/sys/i386/gnu/fpemul/Attic/get_address.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/i386/gnu/fpemul/Attic/get_address.c,v 1.3 2003/08/07 21:17:20 dillon Exp $
  *
  */
 
@@ -75,9 +75,9 @@
 #include <machine/pcb.h>
 #include <machine/reg.h>
 
-#include <gnu/i386/fpemul/fpu_emu.h>
-#include <gnu/i386/fpemul/fpu_system.h>
-#include <gnu/i386/fpemul/exception.h>
+#include "fpu_emu.h"
+#include "fpu_system.h"
+#include "exception.h"
 
 static int reg_offset[] = {
 tEAX, tECX, tEDX, tEBX, tESP, tEBP, tESI, tEDI};

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/smbus/smb.c,v 1.20 1999/11/18 05:44:56 peter Exp $
- * $DragonFly: src/sys/bus/smbus/smb.c,v 1.4 2003/07/21 07:57:42 dillon Exp $
+ * $DragonFly: src/sys/bus/smbus/smb.c,v 1.5 2003/08/07 21:16:47 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -40,8 +40,8 @@
 
 #include <machine/clock.h>
 
-#include <dev/smbus/smbconf.h>
-#include <dev/smbus/smbus.h>
+#include "smbconf.h"
+#include "smbus.h"
 #include <machine/smb.h>
 
 #include "smbus_if.h"

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly_pci.c,v 1.1.2.2 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_pci.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_pci.c,v 1.3 2003/08/07 21:17:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,12 +43,12 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <dev/mly/mlyreg.h>
-#include <dev/mly/mlyio.h>
-#include <dev/mly/mlyvar.h>
+#include "mlyreg.h"
+#include "mlyio.h"
+#include "mlyvar.h"
 
 static int	mly_pci_probe(device_t dev);
 static int	mly_pci_attach(device_t dev);

@@ -5,7 +5,7 @@
  *
  * $Id: ip_log.c,v 2.5.2.1 2000/07/19 13:11:47 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.17.2.4 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.3 2003/07/26 14:07:18 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.4 2003/08/07 21:16:48 dillon Exp $
  */
 #include <sys/param.h>
 #if defined(KERNEL) && !defined(_KERNEL)
@@ -113,9 +113,9 @@
 # ifndef _KERNEL
 #  include <syslog.h>
 # endif
-# include "netinet/ip_compat.h"
+# include "ip_compat.h"
 # include <netinet/tcpip.h>
-# include "netinet/ip_fil.h"
+# include "ip_fil.h"
 # if (__FreeBSD_version >= 300000)
 #  include <sys/malloc.h>
 # endif

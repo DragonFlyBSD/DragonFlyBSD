@@ -30,7 +30,7 @@
  *	$Id: i4b_l1l2.h,v 1.11 2000/06/02 16:14:35 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/include/i4b_l1l2.h,v 1.6.2.1 2001/08/10 14:08:36 obrien Exp $
- * $DragonFly: src/sys/net/i4b/include/i4b_l1l2.h,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/include/i4b_l1l2.h,v 1.3 2003/08/07 21:17:25 dillon Exp $
  *
  *	last edit-date: [Fri Jun  2 14:35:03 2000]
  *
@@ -40,7 +40,7 @@
 #define _I4B_L1L2_H_
 
 #ifdef __FreeBSD__
-#include <machine/i4b_trace.h>
+#include <net/i4b/include/machine/i4b_trace.h>
 #else
 #include <i4b/i4b_trace.h>
 #endif

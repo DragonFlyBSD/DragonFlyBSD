@@ -36,7 +36,7 @@
  *	@(#)umap_subr.c	8.9 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_subr.c,v 1.19 1999/09/04 11:51:41 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.3 2003/06/25 03:56:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.4 2003/08/07 21:17:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +45,7 @@
 #include <sys/vnode.h>
 #include <sys/mount.h>
 #include <sys/malloc.h>
-#include <miscfs/umapfs/umap.h>
+#include "umap.h"
 
 #define LOG2_SIZEVNODE 7		/* log2(sizeof struct vnode) */
 #define	NUMAPNODECACHE 16

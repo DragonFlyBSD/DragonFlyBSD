@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_ttold.c,v 1.7 1999/12/08 12:00:49 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ttold.c,v 1.3 2003/06/25 03:56:10 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ttold.c,v 1.4 2003/08/07 21:17:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,10 +38,10 @@
 #include <sys/termios.h>
 #include <sys/file2.h>
 
-#include <svr4/svr4.h>
-#include <svr4/svr4_util.h>
-#include <svr4/svr4_ttold.h>
-#include <svr4/svr4_ioctl.h>
+#include "svr4.h"
+#include "svr4_util.h"
+#include "svr4_ttold.h"
+#include "svr4_ioctl.h"
 
 
 static void svr4_tchars_to_bsd_tchars __P((const struct svr4_tchars *st,

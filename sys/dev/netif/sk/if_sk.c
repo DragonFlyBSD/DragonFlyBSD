@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.3 2003/07/26 21:56:10 rob Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.4 2003/08/07 21:17:05 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -98,17 +98,17 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <dev/mii/mii.h>
-#include <dev/mii/miivar.h>
-#include <dev/mii/brgphyreg.h>
+#include "../mii_layer/mii.h"
+#include "../mii_layer/miivar.h"
+#include "../mii_layer/brgphyreg.h"
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #define SK_USEIOSPACE
 
-#include <pci/if_skreg.h>
-#include <pci/xmaciireg.h>
+#include "if_skreg.h"
+#include "xmaciireg.h"
 
 /* "controller miibus0" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"

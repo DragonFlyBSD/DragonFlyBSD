@@ -26,16 +26,16 @@
  *	from: Mach, Revision 2.2  92/04/04  11:36:34  rpd
  *	fromL Id: sys.c,v 1.21 1997/06/09 05:10:56 bde Exp
  * $FreeBSD: src/sys/boot/alpha/boot1/sys.c,v 1.4.2.2 2002/01/19 02:16:09 iedowse Exp $
- * $DragonFly: src/sys/boot/alpha/boot1/Attic/sys.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ * $DragonFly: src/sys/boot/alpha/boot1/Attic/sys.c,v 1.3 2003/08/07 21:16:44 dillon Exp $
  */
 
 #include <string.h>
 #include <sys/param.h>
 #include <sys/time.h>
 
-#include <ufs/ffs/fs.h>
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
+#include <vfs/ufs/fs.h>
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/inode.h>
 
 #include <sys/dirent.h>
 

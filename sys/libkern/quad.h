@@ -36,7 +36,7 @@
  *
  *	@(#)quad.h	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/sys/libkern/quad.h,v 1.9 1999/08/28 00:46:36 peter Exp $
- * $DragonFly: src/sys/libkern/quad.h,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/quad.h,v 1.3 2003/08/07 21:17:23 dillon Exp $
  */
 
 /*
@@ -57,7 +57,8 @@
 
 #include <sys/cdefs.h>
 #include <sys/types.h>
-#include <limits.h>
+#include <machine/endian.h>
+#include <machine/limits.h>
 
 /*
  * Depending on the desired operation, we view a `long long' (aka quad_t) in

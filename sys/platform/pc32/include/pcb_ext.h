@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/pcb_ext.h,v 1.4 1999/12/29 04:33:04 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/pcb_ext.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/pcb_ext.h,v 1.3 2003/08/07 21:17:22 dillon Exp $
  */
 
 #ifndef _I386_PCB_EXT_H_
@@ -33,9 +33,9 @@
 /*
  * Extension to the 386 process control block
  */
-#include <machine/tss.h>
-#include <machine/vm86.h>
-#include <machine/segments.h>
+#include "tss.h"
+#include "vm86.h"
+#include "segments.h"
 
 struct pcb_ext {
 	struct 	segment_descriptor ext_tssd;	/* tss descriptor */

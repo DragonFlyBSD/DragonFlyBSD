@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.9.2.2 2002/04/27 17:37:12 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.3 2003/07/21 05:50:26 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.4 2003/08/07 21:16:48 dillon Exp $
  */
 
 
@@ -47,14 +47,14 @@
 #endif
 
 
-#include <netinet/ipl.h>
-#include <netinet/ip_compat.h>
-#include <netinet/ip_fil.h>
-#include <netinet/ip_state.h>
-#include <netinet/ip_nat.h>
-#include <netinet/ip_auth.h>
-#include <netinet/ip_frag.h>
-#include <netinet/ip_proxy.h>
+#include "ipl.h"
+#include "ip_compat.h"
+#include "ip_fil.h"
+#include "ip_state.h"
+#include "ip_nat.h"
+#include "ip_auth.h"
+#include "ip_frag.h"
+#include "ip_proxy.h"
 
 static dev_t ipf_devs[IPL_LOGMAX + 1];
 

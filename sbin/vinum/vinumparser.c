@@ -35,7 +35,7 @@
  *
  * $Id: vinumparser.c,v 1.21 2000/12/20 03:44:13 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumparser.c,v 1.20.2.5 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sbin/vinum/vinumparser.c,v 1.3 2003/06/25 03:55:50 dillon Exp $
+ * $DragonFly: src/sbin/vinum/vinumparser.c,v 1.4 2003/08/07 21:17:09 dillon Exp $
  */
 
 /*
@@ -59,7 +59,7 @@
  */
 
 #include <sys/param.h>
-#include <dev/vinum/vinumkw.h>
+#include "vinumkw.h"
 #ifdef _KERNEL
 #include <sys/systm.h>
 #include <sys/conf.h>
@@ -71,9 +71,9 @@
 #include <sys/disklabel.h>
 #include <sys/mount.h>
 
-#include <dev/vinum/vinumvar.h>
-#include <dev/vinum/vinumio.h>
-#include <dev/vinum/vinumext.h>
+#include "vinumvar.h"
+#include "vinumio.h"
+#include "vinumext.h"
 #define iswhite(c) ((c == ' ') || (c == '\t'))		    /* check for white space */
 #else /* userland */
 #include <ctype.h>

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi_pci.c,v 1.8.2.3 2002/06/16 18:07:18 nsayer Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi_pci.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi_pci.c,v 1.3 2003/08/07 21:17:06 dillon Exp $
  */
 
 /*
@@ -53,8 +53,8 @@
 #include <machine/clock.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -63,10 +63,10 @@
 #include <net/if_types.h>
 #include <net/if_ieee80211.h>
 
-#include <dev/wi/if_wavelan_ieee.h>
-#include <dev/wi/wi_hostap.h>
-#include <dev/wi/if_wivar.h>
-#include <dev/wi/if_wireg.h>
+#include "if_wavelan_ieee.h"
+#include "wi_hostap.h"
+#include "if_wivar.h"
+#include "if_wireg.h"
 
 static int wi_pci_probe(device_t);
 static int wi_pci_attach(device_t);

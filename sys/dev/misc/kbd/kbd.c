@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.5 2003/07/21 05:50:32 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.6 2003/08/07 21:16:56 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -42,7 +42,7 @@
 
 #include <machine/console.h>
 
-#include <dev/kbd/kbdreg.h>
+#include "kbdreg.h"
 
 #define KBD_INDEX(dev)	minor(dev)
 

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipip.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.3 2003/07/26 21:06:09 rob Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.4 2003/08/07 21:17:37 dillon Exp $	*/
 /*	$OpenBSD: ip_ipip.c,v 1.25 2002/06/10 18:04:55 itojun Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -65,10 +65,10 @@
 #include <netinet/ip_encap.h>
 #include <netinet/ipprotosw.h>
 
-#include <netipsec/ipsec.h>
-#include <netipsec/xform.h>
+#include "ipsec.h"
+#include "xform.h"
 
-#include <netipsec/ipip_var.h>
+#include "ipip_var.h"
 
 #ifdef MROUTING
 #include <netinet/ip_mroute.h>
@@ -76,14 +76,14 @@
 
 #ifdef INET6
 #include <netinet/ip6.h>
-#include <netipsec/ipsec6.h>
+#include "ipsec6.h"
 #include <netinet6/ip6_ecn.h>
 #include <netinet6/in6_var.h>
 #include <netinet6/ip6protosw.h>
 #endif
 
-#include <netipsec/key.h>
-#include <netipsec/key_debug.h>
+#include "key.h"
+#include "key_debug.h"
 
 #include <machine/stdarg.h>
 

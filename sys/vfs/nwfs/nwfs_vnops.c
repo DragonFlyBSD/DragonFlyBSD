@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.5 2003/07/06 21:23:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.6 2003/08/07 21:17:43 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -53,9 +53,9 @@
 #include <netncp/nwerror.h>
 #include <netncp/ncp_nls.h>
 
-#include <nwfs/nwfs.h>
-#include <nwfs/nwfs_node.h>
-#include <nwfs/nwfs_subr.h>
+#include "nwfs.h"
+#include "nwfs_node.h"
+#include "nwfs_subr.h"
 
 /*
  * Prototypes for NWFS vnode operations

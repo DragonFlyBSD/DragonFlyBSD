@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir_pci.c,v 1.3.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir_pci.c,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir_pci.c,v 1.3 2003/08/07 21:17:09 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -56,12 +56,12 @@
 #include <machine/clock.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_all.h>
 
-#include <dev/iir/iir.h>
+#include "iir.h"
 
 /* Mapping registers for various areas */
 #define PCI_DPMEM       PCIR_MAPS

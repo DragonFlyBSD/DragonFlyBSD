@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ksocket.c,v 1.5.2.13 2003/04/28 20:41:09 archie Exp $
- * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.3 2003/06/25 03:56:03 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.4 2003/08/07 21:17:32 dillon Exp $
  * $Whistle: ng_ksocket.c,v 1.1 1999/11/16 20:04:40 archie Exp $
  */
 
@@ -63,7 +63,7 @@
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
 #include <netgraph/ng_parse.h>
-#include <netgraph/ng_ksocket.h>
+#include "ng_ksocket.h"
 
 #include <netinet/in.h>
 #include <netatalk/at.h>

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.6 2003/07/26 21:48:48 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.7 2003/08/07 21:17:42 dillon Exp $
  */
 
 
@@ -50,11 +50,11 @@
 
 #include <vm/vm_zone.h>
 
-#include <nfs/rpcv2.h>
-#include <nfs/nfsproto.h>
-#include <nfs/nfs.h>
-#include <nfs/nfsnode.h>
-#include <nfs/nfsmount.h>
+#include "rpcv2.h"
+#include "nfsproto.h"
+#include "nfs.h"
+#include "nfsnode.h"
+#include "nfsmount.h"
 
 static vm_zone_t nfsnode_zone;
 static LIST_HEAD(nfsnodehashhead, nfsnode) *nfsnodehashtbl;

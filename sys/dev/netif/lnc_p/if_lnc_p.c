@@ -18,17 +18,17 @@
  *    are met.
  *
  * $FreeBSD: src/sys/pci/if_lnc_p.c,v 1.13 1999/08/28 00:50:51 peter Exp $
- * $DragonFly: src/sys/dev/netif/lnc_p/Attic/if_lnc_p.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lnc_p/Attic/if_lnc_p.c,v 1.3 2003/08/07 21:17:03 dillon Exp $
  */
+
+#include "use_lnc.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
-
-#include "lnc.h"
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #define PCI_DEVICE_ID_PCNet_PCI	0x20001022
 #define PCI_DEVICE_ID_PCHome_PCI 0x20011022

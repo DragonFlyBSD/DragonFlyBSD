@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/bktr/bktr_reg.h,v 1.36.2.4 2000/11/01 09:36:14 roger Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_reg.h,v 1.2 2003/06/17 04:28:23 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_reg.h,v 1.3 2003/08/07 21:17:15 dillon Exp $
  *
  * Copyright (c) 1999 Roger Hardiman
  * Copyright (c) 1998 Amancio Hasty
@@ -37,7 +37,7 @@
 
 #ifdef __FreeBSD__
 #  if (__FreeBSD_version >= 310000)
-#    include "smbus.h"
+#    include "use_smbus.h"
 #  else
 #    define NSMBUS 0		/* FreeBSD before 3.1 does not have SMBUS */
 #  endif

@@ -31,10 +31,10 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahd_pci.c#13 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/ahd_pci.c,v 1.2.2.5 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahd_pci.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahd_pci.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
  */
 
-#include <dev/aic7xxx/aic79xx_osm.h>
+#include "aic79xx_osm.h"
 
 #define	AHD_PCI_IOADDR0 PCIR_MAPS	/* Primary I/O BAR */
 #define	AHD_PCI_MEMADDR (PCIR_MAPS + 4) /* Mem I/O Address */

@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fpa.c,v 1.13 1999/08/28 00:50:50 peter Exp $
- * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.3 2003/07/26 14:25:23 rob Exp $
+ * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.4 2003/08/07 21:17:02 dillon Exp $
  *
  */
 
@@ -42,13 +42,13 @@
 #include <net/if.h>
 
 #if defined(__FreeBSD__)
-#include "fpa.h"
+#include "use_fpa.h"
 #include <sys/eventhandler.h>
 #include <net/ethernet.h>
 #include <net/if_arp.h>
-#include <pci/pcivar.h>
-#include <dev/pdq/pdqvar.h>
-#include <dev/pdq/pdqreg.h>
+#include <bus/pci/pcivar.h>
+#include <dev/netif/pdq_layer/pdqvar.h>
+#include <dev/netif/pdq_layer/pdqreg.h>
 #elif defined(__bsdi__)
 #include <i386/isa/isavar.h>
 #include <i386/isa/icu.h>

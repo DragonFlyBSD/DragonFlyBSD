@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.3 2003/07/19 21:14:26 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.4 2003/08/07 21:17:04 dillon Exp $
  *
  */
 
@@ -267,13 +267,13 @@
 
 #include <machine/limits.h>
 
-#include <dev/pccard/pccardvar.h>
+#include <bus/pccard/pccardvar.h>
 #include "card_if.h"
 
-#include <dev/ray/if_rayreg.h>
-#include <dev/ray/if_raymib.h>
-#include <dev/ray/if_raydbg.h>
-#include <dev/ray/if_rayvar.h>
+#include "if_rayreg.h"
+#include "if_raymib.h"
+#include "if_raydbg.h"
+#include "if_rayvar.h"
 
 /*
  * Prototyping

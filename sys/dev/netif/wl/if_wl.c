@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.4 2003/07/26 19:07:48 rob Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.5 2003/08/07 21:17:06 dillon Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -189,7 +189,7 @@ WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *	transmit buffer available in sram space.
  */
 
-#include "wl.h"
+#include "use_wl.h"
 #include "opt_wavelan.h"
 #include "opt_inet.h"
 
@@ -219,13 +219,12 @@ WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #include <machine/clock.h>
 
-#include <i386/isa/isa_device.h>
-
-#include <i386/isa/ic/if_wl_i82586.h>	/* Definitions for the Intel chip */
+#include <bus/isa/i386/isa_device.h>
+#include "if_wl_i82586.h"	/* Definitions for the Intel chip */
 
 /* was 1000 in original, fed to DELAY(x) */
 #define DELAYCONST	1000
-#include <i386/isa/if_wl.h>
+#include "if_wl.h"
 #include <machine/if_wl_wavelan.h>
 
 static char	t_packet[ETHERMTU + sizeof(struct ether_header) + sizeof(long)];

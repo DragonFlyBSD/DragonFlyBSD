@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.7 2003/07/21 05:50:27 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.8 2003/08/07 21:16:51 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -47,9 +47,9 @@
 #include <sys/conf.h>
 #include <sys/ctype.h>
 #include <sys/buf2.h>
-#include <dev/ata/ata-all.h>
-#include <dev/ata/atapi-all.h>
-#include <dev/ata/atapi-cd.h>
+#include "ata-all.h"
+#include "atapi-all.h"
+#include "atapi-cd.h"
 
 /* device structures */
 static d_open_t		acdopen;

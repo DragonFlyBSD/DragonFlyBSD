@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.6 2003/07/21 07:57:41 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.7 2003/08/07 21:17:11 dillon Exp $
  */
 
 #ifndef lint
@@ -68,9 +68,9 @@ static const char si_copyright1[] =  "@(#) Copyright (C) Specialix International
 
 #include <machine/stdarg.h>
 
-#include <dev/si/sireg.h>
-#include <dev/si/sivar.h>
-#include <dev/si/si.h>
+#include "sireg.h"
+#include "sivar.h"
+#include "si.h"
 
 /*
  * This device driver is designed to interface the Specialix International

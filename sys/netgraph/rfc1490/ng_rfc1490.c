@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_rfc1490.c,v 1.6.2.4 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/rfc1490/ng_rfc1490.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netgraph/rfc1490/ng_rfc1490.c,v 1.3 2003/08/07 21:17:32 dillon Exp $
  * $Whistle: ng_rfc1490.c,v 1.22 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -62,7 +62,7 @@
 
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
-#include <netgraph/ng_rfc1490.h>
+#include "ng_rfc1490.h"
 
 /*
  * DEFINITIONS

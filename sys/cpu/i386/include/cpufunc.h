@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.5 2003/07/06 21:23:49 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.6 2003/08/07 21:17:22 dillon Exp $
  */
 
 /*
@@ -55,7 +55,7 @@ __BEGIN_DECLS
 #ifdef	__GNUC__
 
 #ifdef SMP
-#include <machine/lock.h>		/* XXX */
+#include "lock.h"		/* XXX */
 #endif
 
 #ifdef SWTCH_OPTIM_STATS

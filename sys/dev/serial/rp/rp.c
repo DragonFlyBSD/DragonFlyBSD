@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.7 2003/07/26 14:25:24 rob Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.8 2003/08/07 21:17:11 dillon Exp $
  */
 
 /* 
@@ -52,8 +52,8 @@
 #include <sys/rman.h>
 
 #define ROCKET_C
-#include <dev/rp/rpreg.h>
-#include <dev/rp/rpvar.h>
+#include "rpreg.h"
+#include "rpvar.h"
 
 static const char RocketPortVersion[] = "3.02";
 

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/bs/bsif.c,v 1.10.2.1 2000/08/24 08:06:08 kato Exp $
- * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.c,v 1.3 2003/08/07 21:16:52 dillon Exp $
  */
 
 #if	0
@@ -42,17 +42,17 @@
 #include "opt_bs.h"
 #include "opt_pc98.h"
 #include "bs.h"
-#include <i386/isa/bs/bsif.h>
+#include "bsif.h"
 #endif	/* __FreeBSD__ */
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt_sim.h>
-#include <cam/cam_debug.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_debug.h>
 
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_message.h>
+#include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_message.h>
 
 /**************************************************
  * DEVICE DECLARE

@@ -32,13 +32,13 @@
  * Character conversion routines
  *
  * $FreeBSD: src/sys/netncp/ncp_nls.c,v 1.4 2000/01/29 02:10:37 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_nls.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_nls.c,v 1.3 2003/08/07 21:17:38 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>
 
-#include <netncp/ncp.h>
-#include <netncp/ncp_nls.h>
+#include "ncp.h"
+#include "ncp_nls.h"
 
 /*
  * 0 - character disallowed in NetWare file name.

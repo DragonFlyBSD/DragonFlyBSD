@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.3 2003/07/27 01:49:52 hmp Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.4 2003/08/07 21:17:33 dillon Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -73,7 +73,7 @@
 #include <netinet6/in6_prefix.h>
 #include <netinet/icmp6.h>
 
-#include "loop.h"
+#include "use_loop.h"
 
 #include <net/net_osdep.h>
 

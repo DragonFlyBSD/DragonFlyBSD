@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_proto.c,v 1.6.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_proto.c,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_proto.c,v 1.3 2003/08/07 21:17:33 dillon Exp $	*/
 /*	$KAME: in6_proto.c,v 1.91 2001/05/27 13:28:35 itojun Exp $	*/
 
 /*
@@ -128,7 +128,7 @@
 #endif /* IPSEC */
 
 #ifdef FAST_IPSEC
-#include <netipsec/ipsec6.h>
+#include "ipsec6.h"
 #define	IPSEC
 #define	IPSEC_ESP
 #define	ah6_input	ipsec6_common_input

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ipc.c,v 1.17.2.3 2001/11/05 19:08:22 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ipc.c,v 1.5 2003/07/30 00:19:13 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ipc.c,v 1.6 2003/08/07 21:17:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -36,10 +36,10 @@
 #include <sys/sem.h>
 #include <sys/shm.h>
 
-#include <machine/../linux/linux.h>
-#include <machine/../linux/linux_proto.h>
-#include <compat/linux/linux_ipc.h>
-#include <compat/linux/linux_util.h>
+#include <emulation/linux/machine/linux.h>
+#include <emulation/linux/machine/linux_proto.h>
+#include "linux_ipc.h"
+#include "linux_util.h"
 
 struct l_seminfo {
 	l_int semmap;

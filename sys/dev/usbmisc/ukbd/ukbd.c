@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/ukbd.c,v 1.24.2.6 2002/11/06 20:23:50 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.3 2003/08/07 21:17:14 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -58,16 +58,16 @@
 #include <sys/vnode.h>
 #include <sys/sysctl.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbhid.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbdevs.h>
-#include <dev/usb/usb_quirks.h>
-#include <dev/usb/hid.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbhid.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
+#include <bus/usb/usbdevs.h>
+#include <bus/usb/usb_quirks.h>
+#include <bus/usb/hid.h>
 
 #include <sys/kbio.h>
-#include <dev/kbd/kbdreg.h>
+#include <dev/misc/kbd/kbdreg.h>
 
 #define UKBD_EMULATE_ATSCANCODE	1
 
@@ -418,7 +418,7 @@ Static int		keycode2scancode(int keycode, int shift, int up);
 #define KBD_DFLT_KEYMAP
 #include "ukbdmap.h"
 #endif
-#include <dev/kbd/kbdtables.h>
+#include <dev/misc/kbd/kbdtables.h>
 
 /* structures for the default keyboard */
 Static keyboard_t	default_kbd;

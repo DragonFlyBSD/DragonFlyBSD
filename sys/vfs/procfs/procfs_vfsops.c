@@ -37,7 +37,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vfsops.c,v 1.32.2.1 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.3 2003/06/25 03:56:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.4 2003/08/07 21:17:43 dillon Exp $
  */
 
 /*
@@ -50,7 +50,7 @@
 #include <sys/proc.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
-#include <miscfs/procfs/procfs.h>
+#include <vfs/procfs/procfs.h>
 
 static int	procfs_mount __P((struct mount *mp, char *path, caddr_t data,
 				  struct nameidata *ndp, struct thread *td));

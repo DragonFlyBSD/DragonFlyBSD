@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key.c,v 1.16.2.13 2002/07/24 18:17:40 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/key.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key.c,v 1.3 2003/08/07 21:17:37 dillon Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -78,10 +78,10 @@
 #endif /* INET6 */
 
 #include <net/pfkeyv2.h>
-#include <netkey/keydb.h>
-#include <netkey/key.h>
-#include <netkey/keysock.h>
-#include <netkey/key_debug.h>
+#include "keydb.h"
+#include "key.h"
+#include "keysock.h"
+#include "key_debug.h"
 
 #include <netinet6/ipsec.h>
 #ifdef INET6

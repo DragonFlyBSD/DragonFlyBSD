@@ -58,7 +58,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/reg_u_mul.s,v 1.9 1999/08/28 00:42:58 peter Exp $
- * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/reg_u_mul.s,v 1.3 2003/07/31 12:37:39 hmp Exp $
+ * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/reg_u_mul.s,v 1.4 2003/08/07 21:17:21 dillon Exp $
  *
  */
 
@@ -72,7 +72,7 @@
  |   Result is rounded to nearest 53 or 64 bits, using "nearest or even".    |
  +---------------------------------------------------------------------------*/
 
-#include <gnu/i386/fpemul/fpu_asm.h>
+#include "fpu_asm.h"
 
 
 .data

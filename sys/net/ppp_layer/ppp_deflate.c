@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/net/ppp_deflate.c,v 1.12.2.1 2002/04/14 21:41:48 luigi Exp $	*/
-/* $DragonFly: src/sys/net/ppp_layer/ppp_deflate.c,v 1.2 2003/06/17 04:28:48 dillon Exp $	*/
+/* $DragonFly: src/sys/net/ppp_layer/ppp_deflate.c,v 1.3 2003/08/07 21:17:30 dillon Exp $	*/
 
 /*
  * ppp_deflate.c - interface the zlib procedures for Deflate compression
@@ -34,11 +34,11 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <net/ppp_defs.h>
+#include "ppp_defs.h"
 #include <net/zlib.h>
 
 #define PACKETPTR	struct mbuf *
-#include <net/ppp_comp.h>
+#include "ppp_comp.h"
 
 #if DO_DEFLATE
 

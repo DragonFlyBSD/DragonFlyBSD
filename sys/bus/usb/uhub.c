@@ -1,6 +1,6 @@
 /*	$NetBSD: uhub.c,v 1.47 2000/09/24 02:08:38 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhub.c,v 1.21.2.7 2002/11/06 20:23:50 joe Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhub.c,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhub.c,v 1.3 2003/08/07 21:16:47 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -59,10 +59,10 @@
 
 #include <machine/bus.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbdivar.h>
+#include "usb.h"
+#include "usbdi.h"
+#include "usbdi_util.h"
+#include "usbdivar.h"
 
 #define UHUB_INTR_INTERVAL 255	/* ms */
 

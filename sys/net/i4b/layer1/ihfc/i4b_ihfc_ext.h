@@ -32,15 +32,14 @@
  *      $Id: i4b_ihfc_ext.h,v 1.6 2000/08/20 07:14:08 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_ext.h,v 1.1.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_ext.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_ext.h,v 1.3 2003/08/07 21:17:26 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
 #ifndef I4B_IHFC_EXT_H_
 #define I4B_IHFC_EXT_H_
 
-#include <i4b/include/i4b_l3l4.h>
-
+#include "../../include/i4b_l3l4.h"
 
 /* prototypes from i4b_ihfc_l1if.c */
 

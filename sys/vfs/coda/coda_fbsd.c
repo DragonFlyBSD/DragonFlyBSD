@@ -28,11 +28,11 @@
  * 
  * 	@(#) src/sys/coda/coda_fbsd.cr,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_fbsd.c,v 1.18 1999/09/25 18:23:43 phk Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.3 2003/07/21 05:50:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.4 2003/08/07 21:17:40 dillon Exp $
  * 
  */
 
-#include "vcoda.h"
+#include "use_vcoda.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -47,10 +47,10 @@
 #include <vm/vm.h>
 #include <vm/vnode_pager.h>
 
-#include <coda/coda.h>
-#include <coda/cnode.h>
-#include <coda/coda_vnops.h>
-#include <coda/coda_psdev.h>
+#include "coda.h"
+#include "cnode.h"
+#include "coda_vnops.h"
+#include "coda_psdev.h"
 
 /* 
    From: "Jordan K. Hubbard" <jkh@time.cdrom.com>

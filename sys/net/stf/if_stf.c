@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.3 2003/07/23 02:30:21 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.4 2003/08/07 21:17:30 dillon Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -94,7 +94,7 @@
 #include <net/route.h>
 #include <net/netisr.h>
 #include <net/if_types.h>
-#include <net/if_stf.h>
+#include "if_stf.h"
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/istallion.c,v 1.36.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.7 2003/07/23 02:30:19 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.8 2003/08/07 21:17:11 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -55,7 +55,7 @@
 #include <machine/clock.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
-#include <i386/isa/isa_device.h>
+#include <bus/isa/i386/isa_device.h>
 #include <machine/cdk.h>
 #include <machine/comstats.h>
 

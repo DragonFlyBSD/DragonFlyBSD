@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ct/bshw_machdep.c,v 1.3.2.1 2001/07/26 02:32:18 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/ct/Attic/bshw_machdep.c,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ct/Attic/bshw_machdep.c,v 1.3 2003/08/07 21:16:52 dillon Exp $ */
 /*	$NecBSD: bshw_machdep.c,v 1.8.12.6 2001/06/29 06:28:05 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -80,12 +80,12 @@
 #include <machine/dvcfg.h>
 #include <machine/physio_proc.h>
 
-#include <cam/scsi/scsi_low.h>
+#include <bus/cam/scsi/scsi_low.h>
 
 #include <dev/ic/wd33c93reg.h>
-#include <dev/ct/ctvar.h>
-#include <dev/ct/ct_machdep.h>
-#include <dev/ct/bshwvar.h>
+#include "ctvar.h"
+#include "ct_machdep.h"
+#include "bshwvar.h"
 
 #include <vm/pmap.h>
 #endif /* __FreeBSD__ */

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/gfb.c,v 1.1.2.1 2001/11/01 08:33:14 obrien Exp $
- * $DragonFly: src/sys/dev/video/fb/Attic/gfb.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/Attic/gfb.c,v 1.3 2003/08/07 21:17:16 dillon Exp $
  */
 /*
  * Copyright (c) 1995, 1996 Carnegie-Mellon University.
@@ -80,11 +80,11 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <dev/fb/fbreg.h>
-#include <dev/fb/gfb.h>
+#include "fbreg.h"
+#include "gfb.h"
 #include <dev/gfb/gfb_pci.h>
 
 #include "opt_gfb.h"

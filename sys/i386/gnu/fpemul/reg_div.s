@@ -61,11 +61,11 @@
  *
  * 
  * $FreeBSD: src/sys/gnu/i386/fpemul/reg_div.s,v 1.9.2.1 2000/07/07 00:38:42 obrien Exp $
- * $DragonFly: src/sys/i386/gnu/fpemul/Attic/reg_div.s,v 1.3 2003/07/31 12:37:39 hmp Exp $
+ * $DragonFly: src/sys/i386/gnu/fpemul/Attic/reg_div.s,v 1.4 2003/08/07 21:17:20 dillon Exp $
  *
  */
 
-#include <gnu/i386/fpemul/fpu_asm.h>
+#include "fpu_asm.h"
 
 .text
 ENTRY(reg_div)

@@ -1,6 +1,6 @@
 /* $NetBSD: am79c930.c,v 1.5 2000/03/23 13:57:58 onoe Exp $ */
 /* $FreeBSD: src/sys/dev/awi/am79c930.c,v 1.2.2.1 2000/12/07 04:09:39 imp Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/am79c930.c,v 1.2 2003/06/17 04:28:22 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/am79c930.c,v 1.3 2003/08/07 21:17:00 dillon Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -83,8 +83,8 @@
 #include <dev/ic/am79c930var.h>
 #endif
 #ifdef __FreeBSD__
-#include <dev/awi/am79c930reg.h>
-#include <dev/awi/am79c930var.h>
+#include "am79c930reg.h"
+#include "am79c930var.h"
 #endif
 
 #define AM930_DELAY(x) /*nothing*/

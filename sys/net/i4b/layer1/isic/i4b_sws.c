@@ -45,13 +45,13 @@
  *	====================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_sws.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_sws.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_sws.c,v 1.3 2003/08/07 21:17:26 dillon Exp $
  *
  *	last edit-date: [Wed Jan 24 08:58:57 2001]
  *
  *---------------------------------------------------------------------------*/
 
-#include "isic.h"
+#include "use_isic.h"
 #include "opt_i4b.h"
 
 #if defined (SEDLBAUER) && NISIC > 0
@@ -71,11 +71,11 @@
 #include <sys/socket.h>
 #include <net/if.h>
 
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_trace.h>
-#include <i4b/layer1/i4b_l1.h>
-#include <i4b/layer1/isic/i4b_isic.h>
-#include <i4b/layer1/isic/i4b_hscx.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_trace.h>
+#include "../i4b_l1.h"
+#include "i4b_isic.h"
+#include "i4b_hscx.h"
 
 /*---------------------------------------------------------------------------*
  *      SWS P&P ISAC get fifo routine

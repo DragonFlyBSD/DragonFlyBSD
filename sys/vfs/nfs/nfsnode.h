@@ -35,7 +35,7 @@
  *
  *	@(#)nfsnode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/nfs/nfsnode.h,v 1.32.2.1 2001/06/26 04:20:11 bp Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.3 2003/06/25 03:56:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.4 2003/08/07 21:17:42 dillon Exp $
  */
 
 
@@ -43,7 +43,7 @@
 #define _NFS_NFSNODE_H_
 
 #if !defined(_NFS_NFS_H_) && !defined(_KERNEL)
-#include <nfs/nfs.h>
+#include "nfs.h"
 #endif
 
 /*

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/atkbdc_isa.c,v 1.14.2.1 2000/03/31 12:52:05 yokota Exp $
- * $DragonFly: src/sys/dev/misc/atkbdc_layer/atkbdc_isa.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/atkbdc_layer/atkbdc_isa.c,v 1.3 2003/08/07 21:16:56 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -39,10 +39,10 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <dev/kbd/atkbdcreg.h>
+#include <dev/misc/kbd/atkbdcreg.h>
 
-#include <isa/isareg.h>
-#include <isa/isavar.h>
+#include <bus/isa/isareg.h>
+#include <bus/isa/isavar.h>
 
 MALLOC_DEFINE(M_ATKBDDEV, "atkbddev", "AT Keyboard device");
 

@@ -23,10 +23,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
+ * $DragonFly: src/sys/dev/sound/isa/i386/Attic/sound_timer.c,v 1.2 2003/08/07 21:17:12 dillon Exp $
  */
 
 #define SEQUENCER_C
-#include <i386/isa/sound/sound_config.h>
+#include "sound_config.h"
 
 #if NSND > 0
 

@@ -34,13 +34,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.6 2003/07/21 07:57:45 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.7 2003/08/07 21:17:11 dillon Exp $
  */
 
 /*****************************************************************************/
 
 #define	TTYDEFCHARS	1
 
+#include "use_pci.h"
 #include "opt_compat.h"
 
 #include <sys/param.h>
@@ -51,15 +52,14 @@
 #include <sys/proc.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
-#include <i386/isa/isa_device.h>
+#include <bus/isa/i386/isa_device.h>
 #include <i386/isa/ic/scd1400.h>
 #include <i386/isa/ic/sc26198.h>
 #include <machine/comstats.h>
 
-#include "pci.h"
 #if NPCI > 0
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 #endif
 
 #undef STLDEBUG

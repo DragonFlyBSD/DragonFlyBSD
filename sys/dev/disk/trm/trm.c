@@ -45,7 +45,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/trm/trm.c,v 1.2.2.2 2002/12/19 20:34:45 cognet Exp $
- * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.3 2003/08/07 21:16:54 dillon Exp $
  */
 
 /*
@@ -73,23 +73,23 @@
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 #include <machine/resource.h>
 #include <machine/bus_pio.h>
 #include <machine/bus.h>
 #include <machine/clock.h>
 #include <sys/rman.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt_sim.h>
-#include <cam/cam_debug.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_debug.h>
 
-#include <cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_all.h>
 
-#include <dev/trm/trm.h>
+#include "trm.h"
 
 #define trm_reg_read8(reg)	bus_space_read_1(pACB->tag, pACB->bsh, reg)
 #define trm_reg_read16(reg)	bus_space_read_2(pACB->tag, pACB->bsh, reg)

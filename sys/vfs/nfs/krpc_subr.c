@@ -1,6 +1,6 @@
 /*	$NetBSD: krpc_subr.c,v 1.12.4.1 1996/06/07 00:52:26 cgd Exp $	*/
 /* $FreeBSD: src/sys/nfs/krpc_subr.c,v 1.13.2.1 2000/11/20 21:17:14 tegge Exp $	*/
-/* $DragonFly: src/sys/vfs/nfs/krpc_subr.c,v 1.3 2003/07/21 07:57:51 dillon Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/krpc_subr.c,v 1.4 2003/08/07 21:17:42 dillon Exp $	*/
 
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass
@@ -55,9 +55,9 @@
 #include <net/if.h>
 #include <netinet/in.h>
 
-#include <nfs/rpcv2.h>
-#include <nfs/krpc.h>
-#include <nfs/xdr_subs.h>
+#include "rpcv2.h"
+#include "krpc.h"
+#include "xdr_subs.h"
 
 /*
  * Kernel support for Sun RPC

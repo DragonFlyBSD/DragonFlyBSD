@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.173.2.13 2001/11/03 00:36:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.3 2003/07/26 14:25:20 rob Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.4 2003/08/07 21:17:01 dillon Exp $
  */
 
 /*
@@ -60,18 +60,18 @@
 #include <net/if_mib.h>
 #include <net/if_media.h>
 
-#include <dev/mii/mii.h>
-#include <dev/mii/miivar.h>
+#include "../mii_layer/mii.h"
+#include "../mii_layer/miivar.h"
 
 #include <net/bpf.h>
 #include "opt_bdg.h"
-#include <net/bridge.h>
+#include <net/bridge/bridge.h>
 
 #include <machine/clock.h>
 #include <machine/md_var.h>
 
-#include <dev/ed/if_edreg.h>
-#include <dev/ed/if_edvar.h>
+#include "if_edreg.h"
+#include "if_edvar.h"
 
 static void	ed_init		__P((void *));
 static int	ed_ioctl	__P((struct ifnet *, u_long, caddr_t));

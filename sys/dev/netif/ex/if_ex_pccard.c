@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ex/if_ex_pccard.c,v 1.2.2.1 2001/03/05 05:33:20 imp Exp $
- *	$DragonFly: src/sys/dev/netif/ex/if_ex_pccard.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ *	$DragonFly: src/sys/dev/netif/ex/if_ex_pccard.c,v 1.3 2003/08/07 21:17:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,10 +44,10 @@
 #include <net/if_media.h> 
 
 
-#include <dev/ex/if_exreg.h>
-#include <dev/ex/if_exvar.h>
+#include "if_exreg.h"
+#include "if_exvar.h"
 
-#include <dev/pccard/pccardvar.h>
+#include <bus/pccard/pccardvar.h>
 
 /* Bus Front End Functions */
 static int	ex_pccard_probe		__P((device_t));

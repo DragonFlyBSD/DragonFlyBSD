@@ -38,7 +38,7 @@
  *	@(#)procfs_mem.c	8.5 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_mem.c,v 1.46.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.3 2003/06/23 17:55:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.4 2003/08/07 21:17:43 dillon Exp $
  */
 
 /*
@@ -50,7 +50,7 @@
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
-#include <miscfs/procfs/procfs.h>
+#include <vfs/procfs/procfs.h>
 #include <vm/vm.h>
 #include <vm/vm_param.h>
 #include <sys/lock.h>

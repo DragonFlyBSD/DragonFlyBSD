@@ -46,7 +46,7 @@
  *	@(#)sun_misc.c	8.1 (Berkeley) 6/18/93
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_misc.c,v 1.34 1999/09/29 15:12:09 marcel Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_misc.c,v 1.6 2003/07/30 00:19:13 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_misc.c,v 1.7 2003/08/07 21:17:17 dillon Exp $
  */
 
 /*
@@ -76,13 +76,13 @@
 
 #include <machine/cpu.h>
 
-#include <i386/ibcs2/ibcs2_dirent.h>
-#include <i386/ibcs2/ibcs2_signal.h>
-#include <i386/ibcs2/ibcs2_proto.h>
-#include <i386/ibcs2/ibcs2_unistd.h>
-#include <i386/ibcs2/ibcs2_util.h>
-#include <i386/ibcs2/ibcs2_utime.h>
-#include <i386/ibcs2/ibcs2_xenix.h>
+#include "ibcs2_dirent.h"
+#include "ibcs2_signal.h"
+#include "ibcs2_proto.h"
+#include "ibcs2_unistd.h"
+#include "ibcs2_util.h"
+#include "ibcs2_utime.h"
+#include "ibcs2_xenix.h"
 
 int
 ibcs2_ulimit(struct ibcs2_ulimit_args *uap)

@@ -37,7 +37,7 @@
  *	$Id: i4b_isppp.c,v 1.44 2000/08/31 07:07:26 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_isppp.c,v 1.7.2.3 2003/02/06 14:50:53 gj Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.3 2003/08/07 21:17:25 dillon Exp $
  *
  *	last edit-date: [Thu Aug 31 09:02:27 2000]
  *
@@ -46,7 +46,7 @@
 
 #ifndef __NetBSD__
 #endif
-#include "i4bisppp.h"
+#include "use_i4bisppp.h"
 
 #ifndef __NetBSD__
 #if NI4BISPPP == 0
@@ -69,7 +69,7 @@
 
 
 #if defined(__FreeBSD_version) &&  __FreeBSD_version >= 400008                
-#include "bpf.h"     
+#include "use_bpf.h"     
 #else
 #include "bpfilter.h"
 #endif
@@ -79,18 +79,17 @@
 #endif
 
 #ifdef __FreeBSD__
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
 #else
 #include <i4b/i4b_ioctl.h>
 #include <i4b/i4b_cause.h>
 #include <i4b/i4b_debug.h>
 #endif
 
-#include <i4b/include/i4b_global.h>
-#include <i4b/include/i4b_l3l4.h>
-
-#include <i4b/layer4/i4b_l4.h>
+#include "../include/i4b_global.h"
+#include "../include/i4b_l3l4.h"
+#include "../layer4/i4b_l4.h"
 
 #ifdef __FreeBSD__
 #define ISPPP_FMT	"isp%d: "

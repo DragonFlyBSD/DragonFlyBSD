@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.1.2.19 2003/05/01 06:24:37 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.3 2003/08/07 21:16:45 dillon Exp $
  *
  */
 
@@ -65,17 +65,17 @@
 
 #include <machine/cpufunc.h>            /* for rdtsc proto for clock.h below */
 #include <machine/clock.h>
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
-#include <dev/firewire/firewire.h>
-#include <dev/firewire/firewirereg.h>
-#include <dev/firewire/fwdma.h>
-#include <dev/firewire/fwohcireg.h>
-#include <dev/firewire/fwohcivar.h>
-#include <dev/firewire/firewire_phy.h>
+#include "firewire.h"
+#include "firewirereg.h"
+#include "fwdma.h"
+#include "fwohcireg.h"
+#include "fwohcivar.h"
+#include "firewire_phy.h"
 
-#include <dev/firewire/iec68113.h>
+#include "iec68113.h"
 
 #undef OHCI_DEBUG
 

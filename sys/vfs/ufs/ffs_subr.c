@@ -32,14 +32,14 @@
  *
  *	@(#)ffs_subr.c	8.5 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_subr.c,v 1.25 1999/12/29 04:55:04 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.4 2003/07/26 22:04:26 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.5 2003/08/07 21:17:44 dillon Exp $
  */
 
 #include <sys/param.h>
-#include <ufs/ffs/fs.h>
+#include "fs.h"
 
 #ifndef _KERNEL
-#include <ufs/ufs/dinode.h>
+#include "dinode.h"
 #else
 #include "opt_ddb.h"
 
@@ -49,9 +49,9 @@
 #include <sys/buf.h>
 #include <sys/ucred.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ffs/ffs_extern.h>
+#include "quota.h"
+#include "inode.h"
+#include "ffs_extern.h"
 
 #ifdef DDB
 void	ffs_checkoverlap __P((struct buf *, struct inode *));

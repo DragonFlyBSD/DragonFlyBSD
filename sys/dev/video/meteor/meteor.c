@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.6 2003/07/26 21:56:10 rob Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.7 2003/08/07 21:17:16 dillon Exp $
  */
 
 /*		Change History:
@@ -146,8 +146,7 @@
 			future version of this driver.
 */
 
-#include "meteor.h"
-
+#include "use_meteor.h"
 #include "opt_meteor.h"
 
 #include <sys/param.h>
@@ -167,10 +166,10 @@
 #include <vm/pmap.h>
 #include <vm/vm_extern.h>
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 #include <machine/ioctl_meteor.h>
-#include <pci/meteor_reg.h>
+#include "meteor_reg.h"
 
 
 static void meteor_intr __P((void *arg));

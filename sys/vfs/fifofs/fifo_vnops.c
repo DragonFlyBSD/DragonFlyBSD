@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.6 2003/07/26 20:05:56 rob Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.7 2003/08/07 21:17:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,7 +50,7 @@
 #include <sys/event.h>
 #include <sys/poll.h>
 #include <sys/un.h>
-#include <miscfs/fifofs/fifo.h>
+#include "fifo.h"
 
 /*
  * This structure is associated with the FIFO vnode and stores

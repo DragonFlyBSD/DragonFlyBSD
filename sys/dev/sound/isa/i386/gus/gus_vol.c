@@ -2,11 +2,13 @@
  * gus_vol.c - Compute volume for GUS.
  * 
  * Greg Lee 1993.
+ *
+ * $DragonFly: src/sys/dev/sound/isa/i386/gus/Attic/gus_vol.c,v 1.2 2003/08/07 21:17:12 dillon Exp $
  */
 #include <i386/isa/sound/sound_config.h>
 
 #ifdef CONFIG_GUS
-#include <i386/isa/sound/gus_linearvol.h>
+#include "gus_linearvol.h"
 
 #define GUS_VOLUME	gus_wave_volume
 

@@ -28,7 +28,7 @@
  *
  * 	$Id: ng_eiface.c,v 1.14 2000/03/15 12:28:44 vitaly Exp $
  * $FreeBSD: src/sys/netgraph/ng_eiface.c,v 1.4.2.5 2002/12/17 21:47:48 julian Exp $
- * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.3 2003/08/07 21:17:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,7 +50,7 @@
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
 #include <netgraph/ng_parse.h>
-#include <netgraph/ng_eiface.h>
+#include "ng_eiface.h"
 
 #include <net/bpf.h>
 #include <net/ethernet.h>

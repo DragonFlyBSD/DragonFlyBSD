@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_pptpgre.c,v 1.2.2.13 2002/10/10 18:27:54 archie Exp $
- * $DragonFly: src/sys/netgraph/pptpgre/ng_pptpgre.c,v 1.3 2003/07/29 12:51:29 hmp Exp $
+ * $DragonFly: src/sys/netgraph/pptpgre/ng_pptpgre.c,v 1.4 2003/08/07 21:17:32 dillon Exp $
  * $Whistle: ng_pptpgre.c,v 1.7 1999/12/08 00:10:06 archie Exp $
  */
 
@@ -70,7 +70,7 @@
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
 #include <netgraph/ng_parse.h>
-#include <netgraph/ng_pptpgre.h>
+#include "ng_pptpgre.h"
 
 /* GRE packet format, as used by PPTP */
 struct greheader {

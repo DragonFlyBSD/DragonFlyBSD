@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/dev/ichsmb/ichsmb.c,v 1.1.2.1 2000/10/09 00:52:43 archie Exp $
- * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb.c,v 1.3 2003/07/19 21:14:21 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb.c,v 1.4 2003/08/07 21:17:07 dillon Exp $
  */
 
 /*
@@ -56,10 +56,10 @@
 #include <sys/rman.h>
 #include <machine/resource.h>
 
-#include <dev/smbus/smbconf.h>
+#include <bus/smbus/smbconf.h>
 
-#include <dev/ichsmb/ichsmb_var.h>
-#include <dev/ichsmb/ichsmb_reg.h>
+#include "ichsmb_var.h"
+#include "ichsmb_reg.h"
 
 /*
  * Enable debugging by defining ICHSMB_DEBUG to a non-zero value.

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_ccb.h,v 1.15.2.2 2000/09/22 23:09:19 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.3 2003/08/07 21:16:44 dillon Exp $
  */
 
 #ifndef _CAM_CAM_CCB_H
@@ -38,8 +38,8 @@
 #ifndef _KERNEL
 #include <sys/callout.h>
 #endif
-#include <cam/cam_debug.h>
-#include <cam/scsi/scsi_all.h>
+#include "cam_debug.h"
+#include "scsi/scsi_all.h"
 
 
 /* General allocation length definitions for CCB structures */

@@ -39,10 +39,11 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.22 2003/07/31 11:03:34 hmp Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.23 2003/08/07 21:17:22 dillon Exp $
  */
 
-#include "npx.h"
+#include "use_npx.h"
+#include "use_isa.h"
 #include "opt_user_ldt.h"
 #ifdef PC98
 #include "opt_pc98.h"
@@ -87,7 +88,7 @@
 #ifdef PC98
 #include <pc98/pc98/pc98.h>
 #else
-#include <i386/isa/isa.h>
+#include <bus/isa/i386/isa.h>
 #endif
 
 static void	cpu_reset_real __P((void));
@@ -629,8 +630,6 @@ SYSINIT(vm_setup, SI_SUB_CPU, SI_ORDER_ANY, swi_vm_setup, NULL);
  * dumping the ``ISA memory hole'' which could cause indefinite hangs,
  * or other unpredictable behaviour.
  */
-
-#include "isa.h"
 
 int
 is_physical_memory(addr)

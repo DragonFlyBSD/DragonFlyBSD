@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.22 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.4 2003/07/30 01:34:49 drhodus Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.5 2003/08/07 21:17:00 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.22 2003/05/11 18:00:55 ps Exp $
  */
@@ -91,7 +91,7 @@
 #include <net/bpf.h>
 
 #include <net/if_types.h>
-#include <net/if_vlan_var.h>
+#include <net/vlan/if_vlan_var.h>
 
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
@@ -106,15 +106,15 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <dev/mii/mii.h>
-#include <dev/mii/miivar.h>
-#include <dev/mii/miidevs.h>
-#include <dev/mii/brgphyreg.h>
+#include <dev/netif/mii_layer/mii.h>
+#include <dev/netif/mii_layer/miivar.h>
+#include <dev/netif/mii_layer/miidevs.h>
+#include <dev/netif/mii_layer/brgphyreg.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <dev/bge/if_bgereg.h>
+#include "if_bgereg.h"
 
 #define BGE_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
 

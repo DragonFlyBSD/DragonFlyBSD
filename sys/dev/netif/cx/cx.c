@@ -16,12 +16,12 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.6 2003/07/21 07:57:44 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.7 2003/08/07 21:17:00 dillon Exp $
  *
  */
 #undef DEBUG
 
-#include "cx.h"
+#include "use_cx.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -56,7 +56,7 @@
 #endif
 
 #include <machine/cronyx.h>
-#include <i386/isa/cxreg.h>
+#include "cxreg.h"
 
 /* XXX imported from if_cx.c. */
 void cxswitch (cx_chan_t *c, cx_soft_opt_t new);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.3 2003/08/07 21:17:24 dillon Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -79,12 +79,12 @@
 #include <netinet/in_systm.h>
 #include <netinet/in_var.h>
 #include <netinet/ip.h>
-#include <netinet/ip_fw.h>
-#include <netinet/ip_dummynet.h>
+#include <net/ipfw/ip_fw.h>
+#include "ip_dummynet.h"
 #include <netinet/ip_var.h>
 
 #include <netinet/if_ether.h> /* for struct arpcom */
-#include <net/bridge.h>
+#include <net/bridge/bridge.h>
 
 /*
  * We keep a private variable for the simulation time, but we could

@@ -27,10 +27,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_pci.c,v 1.20 2000/01/29 14:50:32 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.3 2003/08/07 21:17:06 dillon Exp $
  */
 
-#include "vx.h"
+#include "use_vx.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -41,9 +41,9 @@
 #include <net/if.h>
 #include <net/if_arp.h>
 
-#include <pci/pcivar.h>
+#include <bus/pci/pcivar.h>
 
-#include <dev/vx/if_vxreg.h>
+#include "if_vxreg.h"
 
 static void vx_pci_shutdown(void *, int);
 static const char *vx_pci_probe(pcici_t, pcidi_t);

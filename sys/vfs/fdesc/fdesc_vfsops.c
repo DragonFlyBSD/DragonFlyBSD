@@ -36,7 +36,7 @@
  *	@(#)fdesc_vfsops.c	8.4 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vfsops.c,v 1.22.2.3 2002/08/23 17:42:39 njl Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.3 2003/06/25 03:55:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.4 2003/08/07 21:17:40 dillon Exp $
  */
 
 /*
@@ -55,7 +55,7 @@
 #include <sys/socket.h>
 #include <sys/vnode.h>
 
-#include <miscfs/fdesc/fdesc.h>
+#include "fdesc.h"
 
 static MALLOC_DEFINE(M_FDESCMNT, "FDESC mount", "FDESC mount structure");
 

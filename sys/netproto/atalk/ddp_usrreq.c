@@ -2,7 +2,7 @@
  * Copyright (c) 1990,1994 Regents of The University of Michigan.
  * All Rights Reserved.  See COPYRIGHT.
  *
- * $DragonFly: src/sys/netproto/atalk/ddp_usrreq.c,v 1.3 2003/07/21 07:57:48 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_usrreq.c,v 1.4 2003/08/07 21:17:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -16,10 +16,10 @@
 #include <net/if.h>
 #include <net/route.h>
 
-#include <netatalk/at.h>
-#include <netatalk/at_var.h>
-#include <netatalk/ddp_var.h>
-#include <netatalk/at_extern.h>
+#include "at.h"
+#include "at_var.h"
+#include "ddp_var.h"
+#include "at_extern.h"
 
 static void at_pcbdisconnect( struct ddpcb *ddp );
 static void at_sockaddr(struct ddpcb *ddp, struct sockaddr **addr);

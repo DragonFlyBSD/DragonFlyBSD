@@ -28,7 +28,7 @@
  *	============================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_ctx_s0P.c,v 1.5.2.2 2001/12/10 12:18:11 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_ctx_s0P.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_ctx_s0P.c,v 1.3 2003/08/07 21:17:26 dillon Exp $
  *
  *	last edit-date: [Wed Jan 24 09:07:22 2001]
  *
@@ -41,7 +41,7 @@
  *
  *---------------------------------------------------------------------------*/
 
-#include "isic.h"
+#include "use_isic.h"
 #include "opt_i4b.h"
 
 #if (NISIC > 0) && (defined(CRTX_S0_P) || defined(TEL_S0_16_3_P) || defined(COMPAQ_M610))
@@ -51,12 +51,12 @@
 #include <sys/socket.h>
 #include <net/if.h>
 
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_trace.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_trace.h>
 
-#include <i4b/layer1/i4b_l1.h>
-#include <i4b/layer1/isic/i4b_isic.h>
-#include <i4b/layer1/isic/i4b_hscx.h>
+#include "../i4b_l1.h"
+#include "i4b_isic.h"
+#include "i4b_hscx.h"
 
 /*---------------------------------------------------------------------------*
  *      Creatix / Teles PnP ISAC get fifo routine

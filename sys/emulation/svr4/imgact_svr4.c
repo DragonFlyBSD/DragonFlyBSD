@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/svr4/imgact_svr4.c,v 1.8.2.1 2001/11/03 01:41:09 ps Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/imgact_svr4.c,v 1.3 2003/07/23 02:30:23 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/imgact_svr4.c,v 1.4 2003/08/07 21:17:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,7 +52,7 @@
 #include <vm/vm_map.h>
 #include <vm/vm_extern.h>
 
-#include <svr4/svr4.h>
+#include "svr4.h"
 
 static int	exec_svr4_imgact __P((struct image_params *iparams));
 

@@ -28,7 +28,7 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_util.c,v 1.7 1999/12/15 23:01:45 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_util.c,v 1.5 2003/06/26 05:55:13 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_util.c,v 1.6 2003/08/07 21:17:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,7 +38,7 @@
 #include <sys/malloc.h>
 #include <sys/vnode.h>
 
-#include <i386/ibcs2/ibcs2_util.h>
+#include "ibcs2_util.h"
 
 #include <vm/vm_zone.h>
 

@@ -1,6 +1,6 @@
 /*	$NetBSD: uhci.c,v 1.80 2000/01/19 01:16:38 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhci.c,v 1.40.2.10 2003/01/12 02:13:58 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.5 2003/07/19 21:14:30 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.6 2003/08/07 21:16:47 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -71,14 +71,14 @@
 #include <machine/bus.h>
 #include <machine/endian.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdivar.h>
-#include <dev/usb/usb_mem.h>
-#include <dev/usb/usb_quirks.h>
+#include "usb.h"
+#include "usbdi.h"
+#include "usbdivar.h"
+#include "usb_mem.h"
+#include "usb_quirks.h"
 
-#include <dev/usb/uhcireg.h>
-#include <dev/usb/uhcivar.h>
+#include "uhcireg.h"
+#include "uhcivar.h"
 
 #if defined(__FreeBSD__)
 #include <machine/clock.h>

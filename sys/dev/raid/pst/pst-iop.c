@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-iop.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-iop.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-iop.c,v 1.3 2003/08/07 21:16:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,10 +43,10 @@
 #include <machine/resource.h>
 #include <machine/bus.h>
 #include <sys/rman.h>
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
-#include "dev/pst/pst-iop.h"
+#include "pst-iop.h"
 
 /* local vars */
 MALLOC_DEFINE(M_PSTIOP, "PSTIOP", "Promise SuperTrak IOP driver");

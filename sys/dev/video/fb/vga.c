@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.5 2003/07/23 06:02:38 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.6 2003/08/07 21:17:16 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -50,10 +50,10 @@
 #include <machine/md_var.h>
 #include <machine/pc/bios.h>
 
-#include <dev/fb/fbreg.h>
-#include <dev/fb/vgareg.h>
+#include "fbreg.h"
+#include "vgareg.h"
 
-#include <isa/isareg.h>
+#include <bus/isa/isareg.h>
 
 #ifndef VGA_DEBUG
 #define VGA_DEBUG		0

@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwcrom.c,v 1.2.2.2 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwcrom.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwcrom.c,v 1.3 2003/08/07 21:16:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,8 +50,8 @@
 #include <stdlib.h>
 #include <string.h>
 #endif
-#include <dev/firewire/firewire.h>
-#include <dev/firewire/iec13213.h>
+#include "firewire.h"
+#include "iec13213.h"
 
 void
 crom_init_context(struct crom_context *cc, u_int32_t *p)

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.3 2003/07/26 21:56:10 rob Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.4 2003/08/07 21:17:06 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
  */
@@ -207,11 +207,11 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <dev/mii/mii.h>
-#include <dev/mii/miivar.h>
+#include "../mii_layer/mii.h"
+#include "../mii_layer/miivar.h"
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 /*
  * Default to using PIO register access mode to pacify certain
@@ -220,7 +220,7 @@
  */
 #define TL_USEIOSPACE
 
-#include <pci/if_tlreg.h>
+#include "if_tlreg.h"
 
 /* "controller miibus0" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"

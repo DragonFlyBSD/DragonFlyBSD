@@ -17,13 +17,13 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.3 2003/08/07 21:17:00 dillon Exp $
  *
  */
 #undef DEBUG
 
-#include "cx.h"
-#include "sppp.h"
+#include "use_cx.h"
+#include "use_sppp.h"
 #if NSPPP <= 0
 #error The device 'cx' requires sppp.
 #endif
@@ -41,13 +41,13 @@
 
 #include <net/bpf.h>
 
-#include <i386/isa/isa_device.h>
+#include <bus/isa/i386/isa_device.h>
 #define watchdog_func_t void(*)(struct ifnet *)
 #define start_func_t    void(*)(struct ifnet*)
 
 #include <net/if_sppp.h>
 #include <machine/cronyx.h>
-#include <i386/isa/cxreg.h>
+#include "cxreg.h"
 
 /* XXX exported. */
 void cxswitch (cx_chan_t *c, cx_soft_opt_t new);

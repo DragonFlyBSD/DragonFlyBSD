@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.103.2.4 2000/11/01 09:36:14 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.4 2003/07/19 21:14:19 dillon Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.5 2003/08/07 21:17:15 dillon Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -98,7 +98,7 @@
 #include "opt_bktr.h"		/* Include any kernel config options */
 
 #ifdef __FreeBSD__
-#include "bktr.h"
+#include "use_bktr.h"
 #endif /* __FreeBSD__ */
 
 #if (                                                            \
@@ -133,7 +133,7 @@
 #include <machine/clock.h>              /* for DELAY */
 #endif
 
-#include <pci/pcivar.h>
+#include <bus/pci/pcivar.h>
 
 #if (__FreeBSD_version >=300000)
 #include <machine/bus_memio.h>	/* for bus space */
@@ -143,20 +143,20 @@
 
 #include <machine/ioctl_meteor.h>
 #include <machine/ioctl_bt848.h>	/* extensions to ioctl_meteor.h */
-#include <dev/bktr/bktr_reg.h>
-#include <dev/bktr/bktr_tuner.h>
-#include <dev/bktr/bktr_card.h>
-#include <dev/bktr/bktr_audio.h>
-#include <dev/bktr/bktr_os.h>
-#include <dev/bktr/bktr_core.h>
+#include "bktr_reg.h"
+#include "bktr_tuner.h"
+#include "bktr_card.h"
+#include "bktr_audio.h"
+#include "bktr_os.h"
+#include "bktr_core.h"
 #if defined(BKTR_FREEBSD_MODULE)
-#include <dev/bktr/bktr_mem.h>
+#include "bktr_mem.h"
 #endif
 
 #if defined(BKTR_USE_FREEBSD_SMBUS)
-#include <dev/bktr/bktr_i2c.h>
-#include <dev/smbus/smbconf.h>
-#include <dev/iicbus/iiconf.h>
+#include "bktr_i2c.h"
+#include <bus/smbus/smbconf.h>
+#include <bus/iicbus/iiconf.h>
 #include "smbus_if.h"
 #include "iicbus_if.h"
 #endif

@@ -5,7 +5,7 @@
  *
  * @(#)$Id: ip_proxy.c,v 2.9.2.24 2002/08/28 12:45:51 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.11.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.4 2003/07/27 01:49:49 hmp Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.5 2003/08/07 21:16:48 dillon Exp $
  */
 #if defined(__FreeBSD__) && defined(KERNEL) && !defined(_KERNEL)
 # define	_KERNEL
@@ -68,12 +68,12 @@
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
-#include "netinet/ip_compat.h"
+#include "ip_compat.h"
 #include <netinet/tcpip.h>
-#include "netinet/ip_fil.h"
-#include "netinet/ip_nat.h"
-#include "netinet/ip_state.h"
-#include "netinet/ip_proxy.h"
+#include "ip_fil.h"
+#include "ip_nat.h"
+#include "ip_state.h"
+#include "ip_proxy.h"
 #if (__FreeBSD_version >= 300000)
 # include <sys/malloc.h>
 #endif
@@ -89,14 +89,14 @@ static int appr_fixseqack __P((fr_info_t *, ip_t *, ap_session_t *, int ));
 
 #define	AP_SESS_SIZE	53
 
-#include "netinet/ip_ftp_pxy.c"
+#include "ip_ftp_pxy.c"
 #if defined(_KERNEL)
-#include "netinet/ip_rcmd_pxy.c"
-#include "netinet/ip_raudio_pxy.c"
-#include "netinet/ip_netbios_pxy.c"
-#include "netinet/ip_h323_pxy.c"
+#include "ip_rcmd_pxy.c"
+#include "ip_raudio_pxy.c"
+#include "ip_netbios_pxy.c"
+#include "ip_h323_pxy.c"
 #endif
-#include "netinet/ip_ipsec_pxy.c"
+#include "ip_ipsec_pxy.c"
 
 ap_session_t	*ap_sess_tab[AP_SESS_SIZE];
 ap_session_t	*ap_sess_list = NULL;

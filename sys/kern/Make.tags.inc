@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/kern/Make.tags.inc,v 1.6.2.2 2003/02/10 12:21:08 des Exp $
-# $DragonFly: src/sys/kern/Make.tags.inc,v 1.3 2003/07/28 05:59:10 hsu Exp $
+# $DragonFly: src/sys/kern/Make.tags.inc,v 1.4 2003/08/07 21:17:23 dillon Exp $
 #	@(#)Make.tags.inc	8.1 (Berkeley) 6/11/93
 
 SYS?=	/sys
@@ -52,9 +52,8 @@ COMM=	${SYS}/conf/*.[ch] \
 	${SYS}/nfs/*.[ch] \
 	${SYS}/pci/*.[ch] \
 	${SYS}/posix4/*.[ch] \
-	${SYS}/ufs/ffs/*.[ch] \
-	${SYS}/ufs/mfs/*.[ch] \
-	${SYS}/ufs/ufs/*.[ch] \
+	${SYS}/vfs/mfs/*.[ch] \
+	${SYS}/vfs/ufs/*.[ch] \
 	${SYS}/vm/*.[ch] \
 	${SYS}/sys/*.[ch]
 
@@ -102,6 +101,5 @@ COMMDIR2= ${SYS}/dev/advansys \
 	${SYS}/miscfs/specfs \
 	${SYS}/miscfs/umapfs \
 	${SYS}/miscfs/union \
-	${SYS}/ufs/ffs \
-	${SYS}/ufs/mfs \
-	${SYS}/ufs/ufs
+	${SYS}/vfs/ufs \
+	${SYS}/vfs/mfs

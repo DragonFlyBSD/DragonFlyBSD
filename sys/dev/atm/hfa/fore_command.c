@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_command.c,v 1.6 1999/08/28 00:41:49 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_command.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_command.c,v 1.3 2003/08/07 21:16:49 dillon Exp $
  */
 
 /*
@@ -35,7 +35,7 @@
  *
  */
 
-#include <dev/hfa/fore_include.h>
+#include "fore_include.h"
 
 /*
  * Local variables

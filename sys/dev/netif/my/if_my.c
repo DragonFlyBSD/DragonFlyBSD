@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.3 2003/07/26 14:25:22 rob Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.4 2003/08/07 21:17:04 dillon Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -63,11 +63,11 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <dev/mii/mii.h>
-#include <dev/mii/miivar.h>
+#include "../mii_layer/mii.h"
+#include "../mii_layer/miivar.h"
 
 #include "miibus_if.h"
 
@@ -86,7 +86,7 @@ static int      MY_USEIOSPACE = 1;
 #endif
 
 
-#include <dev/my/if_myreg.h>
+#include "if_myreg.h"
 
 /*
  * Various supported device vendors/types and their names.

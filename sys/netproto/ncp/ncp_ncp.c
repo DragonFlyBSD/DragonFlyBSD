@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_ncp.c,v 1.3 1999/10/29 10:21:07 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.4 2003/06/26 02:17:46 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.5 2003/08/07 21:17:38 dillon Exp $
  *
  * Core of NCP protocol
  */
@@ -50,13 +50,13 @@
 #include <netipx/ipx_var.h>
 #endif
 
-#include <netncp/ncp.h>
-#include <netncp/ncp_conn.h>
-#include <netncp/ncp_sock.h>
-#include <netncp/ncp_subr.h>
-#include <netncp/ncp_ncp.h>
-#include <netncp/ncp_rq.h>
-#include <netncp/nwerror.h>
+#include "ncp.h"
+#include "ncp_conn.h"
+#include "ncp_sock.h"
+#include "ncp_subr.h"
+#include "ncp_ncp.h"
+#include "ncp_rq.h"
+#include "nwerror.h"
 
 static int ncp_do_request(struct ncp_conn *,struct ncp_rq *rqp);
 static int ncp_negotiate_buffersize(struct ncp_conn *conn, int size, int *target);

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.5 2003/07/26 22:04:27 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.6 2003/08/07 21:17:44 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -48,13 +48,13 @@
 #include <sys/mount.h>
 #include <sys/malloc.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufsmount.h>
-#include <ufs/ufs/ufs_extern.h>
+#include "quota.h"
+#include "inode.h"
+#include "ufsmount.h"
+#include "ufs_extern.h"
 #ifdef UFS_DIRHASH
-#include <ufs/ufs/dir.h>
-#include <ufs/ufs/dirhash.h>
+#include "dir.h"
+#include "dirhash.h"
 #endif
 
 int	prtactive = 0;		/* 1 => print out reclaim of active vnodes */

@@ -45,7 +45,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adv_isa.c,v 1.14.2.5 2002/01/06 21:21:42 dwmalone Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adv_isa.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adv_isa.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -58,11 +58,11 @@
 #include <sys/bus.h> 
 #include <sys/rman.h> 
 
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 
-#include <dev/advansys/advansys.h>
+#include "advansys.h"
 
-#include <cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_all.h>
 
 #define ADV_ISA_MAX_DMA_ADDR    (0x00FFFFFFL)
 #define ADV_ISA_MAX_DMA_COUNT   (0x00FFFFFFL)

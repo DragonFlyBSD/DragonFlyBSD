@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_alsubr.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_alsubr.c,v 1.3 2003/06/26 05:55:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_alsubr.c,v 1.4 2003/08/07 21:17:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,8 +40,8 @@
 #include <sys/malloc.h>
 #include <sys/buf.h>
 
-#include <fs/hpfs/hpfs.h>
-#include <fs/hpfs/hpfs_subr.h>
+#include "hpfs.h"
+#include "hpfs_subr.h"
 
 #define	AE_DONE		0		/* Nothing to change */
 #define	AE_SPLIT	2		/* Split was done, ranp is valid */

@@ -25,7 +25,7 @@
  *
  * $Id: maestro.c,v 1.12 2000/09/06 03:32:34 taku Exp $
  * $FreeBSD: src/sys/dev/sound/pci/maestro.c,v 1.2.2.5 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.3 2003/08/07 21:17:13 dillon Exp $
  */
 
 /*
@@ -48,12 +48,12 @@
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #include <dev/sound/pci/maestro_reg.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.3 2003/08/07 21:17:13 dillon Exp $");
 
 #define inline __inline
 

@@ -32,11 +32,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/gsc.c,v 1.35.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.6 2003/07/27 01:49:51 hmp Exp $
+ * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.7 2003/08/07 21:17:16 dillon Exp $
  *
  */
 
-#include "gsc.h"
+#include "use_gsc.h"
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
@@ -47,9 +47,9 @@
 
 #include <machine/gsc.h>
 
-#include <i386/isa/isa.h>
-#include <i386/isa/isa_device.h>
-#include <i386/isa/gscreg.h>
+#include <bus/isa/i386/isa.h>
+#include <bus/isa/i386/isa_device.h>
+#include "gscreg.h"
 
 /***********************************************************************
  *

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vnops.c	8.15 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vnops.c,v 1.64 2000/01/10 12:04:25 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.4 2003/07/19 21:14:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.5 2003/08/07 21:17:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -56,13 +56,13 @@
 
 #include <sys/buf2.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufsmount.h>
-#include <ufs/ufs/ufs_extern.h>
+#include "quota.h"
+#include "inode.h"
+#include "ufsmount.h"
+#include "ufs_extern.h"
 
-#include <ufs/ffs/fs.h>
-#include <ufs/ffs/ffs_extern.h>
+#include "fs.h"
+#include "ffs_extern.h"
 
 static int	ffs_fsync __P((struct vop_fsync_args *));
 static int	ffs_getpages __P((struct vop_getpages_args *));
@@ -108,7 +108,7 @@ VNODEOP_SET(ffs_vnodeop_opv_desc);
 VNODEOP_SET(ffs_specop_opv_desc);
 VNODEOP_SET(ffs_fifoop_opv_desc);
 
-#include <ufs/ufs/ufs_readwrite.c>
+#include "ufs_readwrite.c"
 
 /*
  * Synch an open file.

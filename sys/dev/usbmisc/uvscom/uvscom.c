@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/uvscom.c,v 1.9.2.3 2003/02/13 13:03:25 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.3 2003/07/19 21:14:30 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.4 2003/08/07 21:17:15 dillon Exp $
  */
 
 /*
@@ -60,15 +60,15 @@
 #include <sys/poll.h>
 #include <sys/sysctl.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbcdc.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbcdc.h>
 
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbdevs.h>
-#include <dev/usb/usb_quirks.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
+#include <bus/usb/usbdevs.h>
+#include <bus/usb/usb_quirks.h>
 
-#include <dev/usb/ucomvar.h>
+#include "../ucom/ucomvar.h"
 
 #ifdef USB_DEBUG
 static int	uvscomdebug = 0;

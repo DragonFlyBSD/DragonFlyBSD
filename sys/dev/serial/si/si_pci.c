@@ -18,7 +18,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si_pci.c,v 1.2 2000/01/24 08:11:10 peter Exp $
- * $DragonFly: src/sys/dev/serial/si/si_pci.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si_pci.c,v 1.3 2003/08/07 21:17:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -29,10 +29,10 @@
 #include <sys/rman.h>
 #include <machine/resource.h>
 
-#include <dev/si/sireg.h>
-#include <dev/si/sivar.h>
+#include "sireg.h"
+#include "sivar.h"
 
-#include <pci/pcivar.h>
+#include <bus/pci/pcivar.h>
 
 static int
 si_pci_probe(device_t dev)

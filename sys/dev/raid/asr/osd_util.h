@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/osd_util.h,v 1.1.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/osd_util.h,v 1.2 2003/06/17 04:28:22 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/osd_util.h,v 1.3 2003/08/07 21:17:08 dillon Exp $ */
 /*
  * Copyright (c) 1996-1999 Distributed Processing Technology Corporation
  * All rights reserved.
@@ -83,7 +83,7 @@
 # if (KERN_VERSION < 3)
 #  include        "i386/isa/dpt_osd_defs.h"
 # else
-#  include        "dev/asr/osd_defs.h"
+#  include "osd_defs.h"
 # endif
 #else
 # include        "osd_defs.h"

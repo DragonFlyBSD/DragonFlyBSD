@@ -18,7 +18,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si_eisa.c,v 1.1 2000/01/24 07:24:01 peter Exp $
- * $DragonFly: src/sys/dev/serial/si/si_eisa.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si_eisa.c,v 1.3 2003/08/07 21:17:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -30,10 +30,10 @@
 #include <sys/rman.h>
 #include <machine/resource.h>
 
-#include <dev/si/sireg.h>
-#include <dev/si/sivar.h>
+#include "sireg.h"
+#include "sivar.h"
 
-#include <dev/eisa/eisaconf.h>
+#include <bus/eisa/eisaconf.h>
 
 static int
 si_eisa_probe(device_t dev)

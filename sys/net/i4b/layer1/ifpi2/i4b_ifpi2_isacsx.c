@@ -31,14 +31,14 @@
  *	$Id$ 
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi2/i4b_ifpi2_isacsx.c,v 1.1.2.1 2002/04/25 20:26:50 gj Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_isacsx.c,v 1.3 2003/07/26 19:20:30 rob Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_isacsx.c,v 1.4 2003/08/07 21:17:25 dillon Exp $
  *
  *      last edit-date: [Mon May 29 15:22:52 2000]
  *
  *---------------------------------------------------------------------------*/
 
-#include "ifpi2.h"
-#include "pci.h"
+#include "use_ifpi2.h"
+#include "use_pci.h"
 
 #if (NIFPI2 > 0) && (NPCI > 0)
 
@@ -56,16 +56,15 @@
 #include <machine/i4b_ioctl.h>
 #include <machine/i4b_trace.h>
 
-#include <i4b/layer1/i4b_l1.h>
+#include "../i4b_l1.h"
+#include "../isic/i4b_isic.h"
+#include "../isic/i4b_hscx.h"
 
-#include <i4b/layer1/isic/i4b_isic.h>
-#include <i4b/layer1/isic/i4b_hscx.h>
+#include "i4b_ifpi2_ext.h"
+#include "i4b_ifpi2_isacsx.h"
 
-#include <i4b/layer1/ifpi2/i4b_ifpi2_ext.h>
-#include <i4b/layer1/ifpi2/i4b_ifpi2_isacsx.h>
-
-#include <i4b/include/i4b_global.h>
-#include <i4b/include/i4b_mbuf.h>
+#include "../../include/i4b_global.h"
+#include "../../include/i4b_mbuf.h"
 
 static u_char ifpi2_isacsx_exir_hdlr(struct l1_softc *sc, u_char exir);
 static void ifpi2_isacsx_ind_hdlr(struct l1_softc *sc, int ind);

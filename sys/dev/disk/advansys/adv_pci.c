@@ -58,7 +58,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adv_pci.c,v 1.11.2.3 2001/06/02 04:38:10 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adv_pci.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adv_pci.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,10 +71,10 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <dev/advansys/advansys.h>
+#include "advansys.h"
 
 #define PCI_BASEADR0	PCIR_MAPS		/* I/O Address */
 #define PCI_BASEADR1	PCIR_MAPS + 4		/* Mem I/O Address */

@@ -10,6 +10,8 @@
  *
  * The code in this file is derived from the file funzip.c written
  * and put in the public domain by Mark Adler.
+ *
+ * $DragonFly: src/sys/i386/boot/kzipboot/Attic/unzip.c,v 1.2 2003/08/07 21:17:20 dillon Exp $
  */
 
 /*
@@ -18,7 +20,7 @@
  * either deflated or stored.
  */
 
-#include "gzip.h"
+#include "use_gzip.h"
 
 #include <sys/types.h>
 #include <sys/inflate.h>

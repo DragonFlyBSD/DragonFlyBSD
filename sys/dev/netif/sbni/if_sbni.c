@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.6 2003/07/26 18:09:03 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.7 2003/08/07 21:17:04 dillon Exp $
  */
 
 /*
@@ -80,8 +80,8 @@
 #include <net/if_arp.h>
 #include <net/bpf.h>
 
-#include <dev/sbni/if_sbnireg.h>
-#include <dev/sbni/if_sbnivar.h>
+#include "if_sbnireg.h"
+#include "if_sbnivar.h"
 
 #define ASM_CRC 1
 

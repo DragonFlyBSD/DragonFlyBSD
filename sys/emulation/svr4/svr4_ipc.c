@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/svr4/svr4_ipc.c,v 1.5 1999/12/08 10:51:16 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ipc.c,v 1.3 2003/07/26 18:12:46 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ipc.c,v 1.4 2003/08/07 21:17:19 dillon Exp $
  *	Derived from:
  *	$NetBSD: svr4_ipc.c,v 1.7 1998/10/19 22:43:00 tron Exp $	*/
 
@@ -84,12 +84,12 @@
 #include <sys/proc.h>
 #include <sys/time.h>
 
-#include <svr4/svr4.h>
-#include <svr4/svr4_types.h>
-#include <svr4/svr4_signal.h>
-#include <svr4/svr4_proto.h>
-#include <svr4/svr4_util.h>
-#include <svr4/svr4_ipc.h>
+#include "svr4.h"
+#include "svr4_types.h"
+#include "svr4_signal.h"
+#include "svr4_proto.h"
+#include "svr4_util.h"
+#include "svr4_ipc.h"
 
 #if defined(SYSVMSG) || defined(SYSVSHM) || defined(SYSVSEM)
 static void svr4_to_bsd_ipc_perm __P((const struct svr4_ipc_perm *,

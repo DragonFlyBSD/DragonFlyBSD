@@ -30,10 +30,10 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/tdfx_drv.c,v 1.4.2.1 2003/04/26 07:05:30 anholt Exp $
- * $DragonFly: src/sys/dev/drm/tdfx/Attic/tdfx_drv.c,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/tdfx/Attic/tdfx_drv.c,v 1.3 2003/08/07 21:16:55 dillon Exp $
  */
 
-#include "dev/drm/tdfx.h"
+#include "tdfx.h"
 #include "dev/drm/drmP.h"
 
 #define DRIVER_AUTHOR		"VA Linux Systems Inc."

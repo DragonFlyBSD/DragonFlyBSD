@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.6 2003/07/21 05:50:43 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.7 2003/08/07 21:17:30 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -64,8 +64,8 @@
 
 #include <netinet/in.h>
 
-#include <net/if_tapvar.h>
-#include <net/if_tap.h>
+#include "if_tapvar.h"
+#include "if_tap.h"
 
 
 #define CDEV_NAME	"tap"

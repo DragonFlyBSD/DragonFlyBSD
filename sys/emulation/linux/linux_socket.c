@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.6 2003/07/30 00:19:13 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.7 2003/08/07 21:17:18 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -50,10 +50,10 @@
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 
-#include <machine/../linux/linux.h>
-#include <machine/../linux/linux_proto.h>
-#include <compat/linux/linux_socket.h>
-#include <compat/linux/linux_util.h>
+#include <emulation/linux/machine/linux.h>
+#include <emulation/linux/machine/linux_proto.h>
+#include "linux_socket.h"
+#include "linux_util.h"
 
 /*
  * FreeBSD's socket calls require the sockaddr struct length to agree

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_login.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_login.c,v 1.3 2003/06/25 03:56:05 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_login.c,v 1.4 2003/08/07 21:17:38 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -39,13 +39,13 @@
 #include <sys/proc.h>
 #include <sys/socket.h>
 
-#include <netncp/ncp.h>
-#include <netncp/ncp_conn.h>
-#include <netncp/ncp_subr.h>
-#include <netncp/ncp_ncp.h>
-#include <netncp/ncp_rq.h>
-#include <netncp/ncp_nls.h>
-#include <netncp/nwerror.h>
+#include "ncp.h"
+#include "ncp_conn.h"
+#include "ncp_subr.h"
+#include "ncp_ncp.h"
+#include "ncp_rq.h"
+#include "ncp_nls.h"
+#include "nwerror.h"
 
 static int  ncp_login_encrypted(struct ncp_conn *conn, struct ncp_bindery_object *object,
 		    unsigned char *key, unsigned char *passwd,

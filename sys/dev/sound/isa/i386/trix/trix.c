@@ -25,6 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
+ * $DragonFly: src/sys/dev/sound/isa/i386/trix/Attic/trix.c,v 1.2 2003/08/07 21:17:13 dillon Exp $
  */
 
 #include <i386/isa/sound/sound_config.h>
@@ -32,7 +33,7 @@
 #if NTRIX > 0
 
 #ifdef INCLUDE_TRIX_BOOT
-#include <i386/isa/sound/trix_boot.h>
+#include "trix_boot.h"
 #endif
 
 #if (NSB > 0)

@@ -27,14 +27,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt_sim.h,v 1.7 2000/01/14 23:08:46 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt_sim.h,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt_sim.h,v 1.3 2003/08/07 21:16:44 dillon Exp $
  */
 
 #ifndef _CAM_CAM_XPT_SIM_H
 #define _CAM_CAM_XPT_SIM_H 1
 
-#include <cam/cam_xpt.h>
-#include <cam/cam_queue.h>
+#include "cam_xpt.h"
+#include "cam_queue.h"
 
 /* Functions accessed by SIM drivers */
 #ifdef _KERNEL

@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.3 2003/07/23 02:30:23 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.4 2003/08/07 21:17:00 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -86,9 +86,9 @@
 
 #include <net/if_var.h>
 #include <vm/pmap.h>
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
-#include <pci/dc21040reg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/dc21040reg.h>
 
 /*
  * Intel CPUs should use I/O mapped access.
@@ -115,7 +115,7 @@
 
 #define	TULIP_HZ	10
 
-#include <pci/if_devar.h>
+#include "if_devar.h"
 
 /*
  * This module supports

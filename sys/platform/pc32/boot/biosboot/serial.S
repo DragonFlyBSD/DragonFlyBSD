@@ -25,7 +25,7 @@
  *
  *	from: Mach, Revision 2.2  92/04/04  11:34:26  rpd
  * $FreeBSD: src/sys/i386/boot/biosboot/serial.S,v 1.13 1999/08/28 00:43:14 peter Exp $
- * $DragonFly: src/sys/platform/pc32/boot/biosboot/Attic/serial.S,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/biosboot/Attic/serial.S,v 1.3 2003/08/07 21:17:20 dillon Exp $
  */
 
 /*
@@ -68,7 +68,7 @@ WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 	.file	"serial.S"
 
-#include <isa/sioreg.h>
+#include <dev/serial/sio/sioreg.h>
 #include "asm.h"
 
 	.text

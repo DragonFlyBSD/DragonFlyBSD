@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/usb/umass.c,v 1.11.2.19 2003/05/17 21:45:27 njl Exp $
- *	$DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ *	$DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.3 2003/08/07 21:17:14 dillon Exp $
  *	$NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  */
 
@@ -104,20 +104,20 @@
 #include <sys/sysctl.h>
 #include <machine/clock.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbdevs.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
+#include <bus/usb/usbdevs.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt_sim.h>
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_da.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_da.h>
 
 #include <sys/devicestat.h>
-#include <cam/cam_periph.h>
+#include <bus/cam/cam_periph.h>
 
 #ifdef USB_DEBUG
 #define DIF(m, x)	if (umassdebug & (m)) do { x ; } while (0)

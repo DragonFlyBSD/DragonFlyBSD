@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/bios/mca_machdep.c,v 1.4 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/i386/bios/Attic/mca_machdep.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/i386/bios/Attic/mca_machdep.c,v 1.3 2003/08/07 21:17:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,8 +38,8 @@
 #include <machine/pc/bios.h>
 #include <machine/cpufunc.h>
 
-#include <dev/mca/mca_busreg.h>
-#include <i386/isa/mca_machdep.h>
+#include <bus/mca/mca_busreg.h>
+#include "mca_machdep.h"
 
 /* Global MCA bus flag */
 int MCA_system = 0;

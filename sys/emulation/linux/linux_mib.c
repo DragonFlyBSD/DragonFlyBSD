@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_mib.c,v 1.7.2.2 2001/11/05 19:08:22 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_mib.c,v 1.5 2003/07/26 13:59:53 rob Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_mib.c,v 1.6 2003/08/07 21:17:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,8 +37,8 @@
 #include <sys/malloc.h>
 #include <sys/jail.h>
 
-#include <machine/../linux/linux.h>
-#include <compat/linux/linux_mib.h>
+#include <emulation/linux/machine/linux.h>
+#include "linux_mib.h"
 
 struct linux_prison {
 	char	pr_osname[LINUX_MAX_UTSNAME];

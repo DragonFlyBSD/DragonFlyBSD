@@ -26,13 +26,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_ustat.h,v 1.3 1999/08/28 00:51:28 peter Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ustat.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ustat.h,v 1.3 2003/08/07 21:17:19 dillon Exp $
  */
 
 #ifndef	_SVR4_USTAT_H_
 #define	_SVR4_USTAT_H_
 
-#include <svr4/svr4_types.h>
+#include "svr4_types.h"
 
 struct svr4_ustat {
 	svr4_daddr_t	f_tfree;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.25 2003/02/05 22:03:58 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.3 2003/07/26 21:56:10 rob Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.4 2003/08/07 21:17:07 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.25 2003/02/05 22:03:58 mbr Exp $
  */
@@ -130,11 +130,11 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <dev/mii/mii.h>
-#include <dev/mii/miivar.h>
+#include "../mii_layer/mii.h"
+#include "../mii_layer/miivar.h"
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 MODULE_DEPEND(xl, miibus, 1, 1, 1);
 
@@ -153,7 +153,7 @@ MODULE_DEPEND(xl, miibus, 1, 1, 1);
  */
 #define XL_USEIOSPACE
 
-#include <pci/if_xlreg.h>
+#include "if_xlreg.h"
 
 #define XL905B_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
 

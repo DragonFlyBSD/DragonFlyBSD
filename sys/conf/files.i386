@@ -2,20 +2,20 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.i386,v 1.3 2003/07/06 21:23:45 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/files.i386,v 1.4 2003/08/07 21:16:48 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
 # dependency lines other than the first are silently ignored.
 #
 linux_genassym.o		optional	compat_linux		   \
-	dependency 	"$S/i386/linux/linux_genassym.c"		   \
+	dependency 	"$S/emulation/linux/i386/linux_genassym.c"		   \
 	compile-with	"${CC} ${CFLAGS} -c ${.IMPSRC}"			   \
 	no-obj no-implicit-rule						   \
 	clean		"linux_genassym.o"
 #
 svr4_genassym.o			optional	compat_svr4		   \
-	dependency 	"$S/i386/svr4/svr4_genassym.c"			   \
+	dependency 	"$S/emulation/svr4/i386/svr4_genassym.c"			   \
 	compile-with	"${CC} ${CFLAGS} -c ${.IMPSRC}"			   \
 	no-obj no-implicit-rule						   \
 	clean		"svr4_genassym.o"
@@ -47,18 +47,18 @@ ukbdmap.h			optional	ukbd_dflt_keymap	\
 	no-obj no-implicit-rule before-depend				\
 	clean		"ukbdmap.h"
 #
-compat/linux/linux_file.c	optional	compat_linux
-compat/linux/linux_getcwd.c	optional	compat_linux
-compat/linux/linux_ioctl.c	optional	compat_linux
-compat/linux/linux_ipc.c	optional	compat_linux
-compat/linux/linux_mib.c	optional	compat_linux
-compat/linux/linux_misc.c	optional	compat_linux
-compat/linux/linux_signal.c	optional	compat_linux
-compat/linux/linux_socket.c	optional	compat_linux
-compat/linux/linux_stats.c	optional	compat_linux
-compat/linux/linux_sysctl.c     optional        compat_linux
-compat/linux/linux_uid16.c      optional        compat_linux
-compat/linux/linux_util.c	optional	compat_linux
+emulation/linux/linux_file.c	optional	compat_linux
+emulation/linux/linux_getcwd.c	optional	compat_linux
+emulation/linux/linux_ioctl.c	optional	compat_linux
+emulation/linux/linux_ipc.c	optional	compat_linux
+emulation/linux/linux_mib.c	optional	compat_linux
+emulation/linux/linux_misc.c	optional	compat_linux
+emulation/linux/linux_signal.c	optional	compat_linux
+emulation/linux/linux_socket.c	optional	compat_linux
+emulation/linux/linux_stats.c	optional	compat_linux
+emulation/linux/linux_sysctl.c     optional        compat_linux
+emulation/linux/linux_uid16.c      optional        compat_linux
+emulation/linux/linux_util.c	optional	compat_linux
 #
 contrib/dev/fla/fla.c		optional	fla
 msysosak.o			optional	fla			\
@@ -89,87 +89,87 @@ bf_enc.o			optional	crypto		\
 crypto/des/arch/i386/des_enc.S		optional	crypto
 crypto/des/des_ecb.c			optional	crypto
 crypto/des/des_setkey.c			optional	crypto
-dev/advansys/adv_isa.c		optional	adv isa
-dev/aic/aic_isa.c		optional	aic isa
-dev/ar/if_ar_isa.c		optional	ar isa
-dev/dgb/dgm.c			optional	dgm
-dev/cm/if_cm_isa.c		optional	cm isa
-dev/ed/if_ed.c			optional	ed
-dev/ed/if_ed_isa.c		optional	ed isa
-dev/ed/if_ed_pccard.c		optional	ed card
-dev/eisa/eisaconf.c		optional	eisa
-dev/em/if_em.c			optional	em
-dev/em/if_em_hw.c		optional	em
-dev/fb/fb.c			optional	fb
-dev/fb/fb.c			optional	vga
-dev/fb/splash.c			optional	splash
-dev/fb/vga.c			optional	vga
-dev/fe/if_fe_isa.c		optional	fe isa
-dev/kbd/atkbd.c			optional	atkbd
-dev/kbd/atkbdc.c		optional	atkbdc
-dev/kbd/kbd.c			optional	atkbd
-dev/kbd/kbd.c			optional	kbd
-dev/kbd/kbd.c			optional	sc
-dev/kbd/kbd.c			optional	ukbd
-dev/kbd/kbd.c			optional	vt
-dev/pst/pst-pci.c		optional	pst pci
-dev/pst/pst-iop.c		optional	pst
-dev/pst/pst-raid.c		optional	pst
-dev/puc/puc.c			optional	puc
-dev/puc/pucdata.c		optional	puc
-dev/sbni/if_sbni.c		optional	sbni
-dev/sbni/if_sbni_isa.c		optional	sbni isa
-dev/sr/if_sr_isa.c		optional	sr isa
-dev/syscons/schistory.c		optional	sc
-dev/syscons/scmouse.c		optional	sc
-dev/syscons/scterm.c		optional	sc
-dev/syscons/scterm-dumb.c	optional	sc
-dev/syscons/scterm-sc.c		optional	sc
-dev/syscons/scvesactl.c		optional	sc vga vesa
-dev/syscons/scvgarndr.c		optional	sc vga
-dev/syscons/scvidctl.c		optional	sc
-dev/syscons/scvtb.c		optional	sc
-dev/syscons/syscons.c		optional	sc
-dev/syscons/sysmouse.c		optional	sc
-fs/smbfs/smbfs_io.c		optional	smbfs
-fs/smbfs/smbfs_node.c		optional	smbfs
-fs/smbfs/smbfs_smb.c		optional	smbfs
-fs/smbfs/smbfs_subr.c		optional	smbfs
-fs/smbfs/smbfs_vfsops.c		optional	smbfs
-fs/smbfs/smbfs_vnops.c		optional	smbfs
-gnu/i386/fpemul/div_small.s	optional	gpl_math_emulate
-gnu/i386/fpemul/errors.c	optional	gpl_math_emulate
-gnu/i386/fpemul/fpu_arith.c	optional	gpl_math_emulate
-gnu/i386/fpemul/fpu_aux.c	optional	gpl_math_emulate
-gnu/i386/fpemul/fpu_entry.c	optional	gpl_math_emulate
-gnu/i386/fpemul/fpu_etc.c	optional	gpl_math_emulate
-gnu/i386/fpemul/fpu_trig.c	optional	gpl_math_emulate
-gnu/i386/fpemul/get_address.c	optional	gpl_math_emulate
-gnu/i386/fpemul/load_store.c	optional	gpl_math_emulate
-gnu/i386/fpemul/poly_2xm1.c	optional	gpl_math_emulate
-gnu/i386/fpemul/poly_atan.c	optional	gpl_math_emulate
-gnu/i386/fpemul/poly_div.s	optional	gpl_math_emulate
-gnu/i386/fpemul/poly_l2.c	optional	gpl_math_emulate
-gnu/i386/fpemul/poly_mul64.s	optional	gpl_math_emulate
-gnu/i386/fpemul/poly_sin.c	optional	gpl_math_emulate
-gnu/i386/fpemul/poly_tan.c	optional	gpl_math_emulate
-gnu/i386/fpemul/polynomial.s	optional	gpl_math_emulate
-gnu/i386/fpemul/reg_add_sub.c	optional	gpl_math_emulate
-gnu/i386/fpemul/reg_compare.c	optional	gpl_math_emulate
-gnu/i386/fpemul/reg_constant.c	optional	gpl_math_emulate
-gnu/i386/fpemul/reg_div.s	optional	gpl_math_emulate
-gnu/i386/fpemul/reg_ld_str.c	optional	gpl_math_emulate
-gnu/i386/fpemul/reg_mul.c	optional	gpl_math_emulate
-gnu/i386/fpemul/reg_norm.s	optional	gpl_math_emulate
-gnu/i386/fpemul/reg_round.s	optional	gpl_math_emulate
-gnu/i386/fpemul/reg_u_add.s	optional	gpl_math_emulate
-gnu/i386/fpemul/reg_u_div.s	optional	gpl_math_emulate
-gnu/i386/fpemul/reg_u_mul.s	optional	gpl_math_emulate
-gnu/i386/fpemul/reg_u_sub.s	optional	gpl_math_emulate
-gnu/i386/fpemul/wm_shrx.s	optional	gpl_math_emulate
-gnu/i386/fpemul/wm_sqrt.s	optional	gpl_math_emulate
-gnu/i386/isa/dgb.c		optional	dgb
-gnu/i386/isa/sound/awe_wave.c	optional	awe
+dev/disk/advansys/adv_isa.c		optional	adv isa
+dev/disk/aic/aic_isa.c		optional	aic isa
+dev/netif/ar/if_ar_isa.c		optional	ar isa
+dev/serial/dgb/dgm.c			optional	dgm
+dev/netif/cm/if_cm_isa.c		optional	cm isa
+dev/netif/ed/if_ed.c			optional	ed
+dev/netif/ed/if_ed_isa.c		optional	ed isa
+dev/netif/ed/if_ed_pccard.c		optional	ed card
+bus/eisa/eisaconf.c		optional	eisa
+dev/netif/em/if_em.c			optional	em
+dev/netif/em/if_em_hw.c		optional	em
+dev/video/fb/fb.c			optional	fb
+dev/video/fb/fb.c			optional	vga
+dev/video/fb/splash.c			optional	splash
+dev/video/fb/vga.c			optional	vga
+dev/netif/fe/if_fe_isa.c		optional	fe isa
+dev/misc/kbd/atkbd.c			optional	atkbd
+dev/misc/kbd/atkbdc.c		optional	atkbdc
+dev/misc/kbd/kbd.c			optional	atkbd
+dev/misc/kbd/kbd.c			optional	kbd
+dev/misc/kbd/kbd.c			optional	sc
+dev/misc/kbd/kbd.c			optional	ukbd
+dev/misc/kbd/kbd.c			optional	vt
+dev/misc/pst/pst-pci.c		optional	pst pci
+dev/misc/pst/pst-iop.c		optional	pst
+dev/misc/pst/pst-raid.c		optional	pst
+dev/misc/puc/puc.c			optional	puc
+dev/misc/puc/pucdata.c		optional	puc
+dev/netif/sbni/if_sbni.c		optional	sbni
+dev/netif/sbni/if_sbni_isa.c		optional	sbni isa
+dev/netif/sr/if_sr_isa.c		optional	sr isa
+dev/misc/syscons/schistory.c		optional	sc
+dev/misc/syscons/scmouse.c		optional	sc
+dev/misc/syscons/scterm.c		optional	sc
+dev/misc/syscons/scterm-dumb.c	optional	sc
+dev/misc/syscons/scterm-sc.c		optional	sc
+dev/misc/syscons/scvesactl.c		optional	sc vga vesa
+dev/misc/syscons/scvgarndr.c		optional	sc vga
+dev/misc/syscons/scvidctl.c		optional	sc
+dev/misc/syscons/scvtb.c		optional	sc
+dev/misc/syscons/syscons.c		optional	sc
+dev/misc/syscons/sysmouse.c		optional	sc
+vfs/smbfs/smbfs_io.c		optional	smbfs
+vfs/smbfs/smbfs_node.c		optional	smbfs
+vfs/smbfs/smbfs_smb.c		optional	smbfs
+vfs/smbfs/smbfs_subr.c		optional	smbfs
+vfs/smbfs/smbfs_vfsops.c		optional	smbfs
+vfs/smbfs/smbfs_vnops.c		optional	smbfs
+i386/gnu/fpemul/div_small.s	optional	gpl_math_emulate
+i386/gnu/fpemul/errors.c	optional	gpl_math_emulate
+i386/gnu/fpemul/fpu_arith.c	optional	gpl_math_emulate
+i386/gnu/fpemul/fpu_aux.c	optional	gpl_math_emulate
+i386/gnu/fpemul/fpu_entry.c	optional	gpl_math_emulate
+i386/gnu/fpemul/fpu_etc.c	optional	gpl_math_emulate
+i386/gnu/fpemul/fpu_trig.c	optional	gpl_math_emulate
+i386/gnu/fpemul/get_address.c	optional	gpl_math_emulate
+i386/gnu/fpemul/load_store.c	optional	gpl_math_emulate
+i386/gnu/fpemul/poly_2xm1.c	optional	gpl_math_emulate
+i386/gnu/fpemul/poly_atan.c	optional	gpl_math_emulate
+i386/gnu/fpemul/poly_div.s	optional	gpl_math_emulate
+i386/gnu/fpemul/poly_l2.c	optional	gpl_math_emulate
+i386/gnu/fpemul/poly_mul64.s	optional	gpl_math_emulate
+i386/gnu/fpemul/poly_sin.c	optional	gpl_math_emulate
+i386/gnu/fpemul/poly_tan.c	optional	gpl_math_emulate
+i386/gnu/fpemul/polynomial.s	optional	gpl_math_emulate
+i386/gnu/fpemul/reg_add_sub.c	optional	gpl_math_emulate
+i386/gnu/fpemul/reg_compare.c	optional	gpl_math_emulate
+i386/gnu/fpemul/reg_constant.c	optional	gpl_math_emulate
+i386/gnu/fpemul/reg_div.s	optional	gpl_math_emulate
+i386/gnu/fpemul/reg_ld_str.c	optional	gpl_math_emulate
+i386/gnu/fpemul/reg_mul.c	optional	gpl_math_emulate
+i386/gnu/fpemul/reg_norm.s	optional	gpl_math_emulate
+i386/gnu/fpemul/reg_round.s	optional	gpl_math_emulate
+i386/gnu/fpemul/reg_u_add.s	optional	gpl_math_emulate
+i386/gnu/fpemul/reg_u_div.s	optional	gpl_math_emulate
+i386/gnu/fpemul/reg_u_mul.s	optional	gpl_math_emulate
+i386/gnu/fpemul/reg_u_sub.s	optional	gpl_math_emulate
+i386/gnu/fpemul/wm_shrx.s	optional	gpl_math_emulate
+i386/gnu/fpemul/wm_sqrt.s	optional	gpl_math_emulate
+i386/gnu/isa/dgb.c		optional	dgb
+i386/gnu/isa/sound/awe_wave.c	optional	awe
 i386/apm/apm.c			optional	apm
 i386/i386/atomic.c		standard				\
 	compile-with	"${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
@@ -214,287 +214,284 @@ i386/i386/trap.c		standard
 i386/i386/userconfig.c		optional	userconfig
 i386/i386/vm86.c		standard
 i386/i386/vm_machdep.c		standard
-i386/ibcs2/ibcs2_errno.c	optional	ibcs2
-i386/ibcs2/ibcs2_fcntl.c	optional	ibcs2
-i386/ibcs2/ibcs2_ioctl.c	optional	ibcs2
-i386/ibcs2/ibcs2_ipc.c		optional	ibcs2
-i386/ibcs2/ibcs2_isc.c		optional	ibcs2
-i386/ibcs2/ibcs2_isc_sysent.c	optional	ibcs2
-i386/ibcs2/ibcs2_misc.c		optional	ibcs2
-i386/ibcs2/ibcs2_msg.c		optional	ibcs2
-i386/ibcs2/ibcs2_other.c	optional	ibcs2
-i386/ibcs2/ibcs2_signal.c	optional	ibcs2
-i386/ibcs2/ibcs2_socksys.c	optional	ibcs2
-i386/ibcs2/ibcs2_stat.c		optional	ibcs2
-i386/ibcs2/ibcs2_sysent.c	optional	ibcs2
-i386/ibcs2/ibcs2_sysi86.c	optional	ibcs2
-i386/ibcs2/ibcs2_sysvec.c	optional	ibcs2
-i386/ibcs2/ibcs2_util.c		optional	ibcs2
-i386/ibcs2/ibcs2_xenix.c	optional	ibcs2
-i386/ibcs2/ibcs2_xenix_sysent.c	optional	ibcs2
-i386/ibcs2/imgact_coff.c	optional	ibcs2
-i386/isa/asc.c			optional	asc
-i386/isa/atapi.c		optional	wdc	\
+emulation/ibcs2/i386/ibcs2_errno.c	optional	ibcs2
+emulation/ibcs2/i386/ibcs2_fcntl.c	optional	ibcs2
+emulation/ibcs2/i386/ibcs2_ioctl.c	optional	ibcs2
+emulation/ibcs2/i386/ibcs2_ipc.c	optional	ibcs2
+emulation/ibcs2/i386/ibcs2_isc.c	optional	ibcs2
+emulation/ibcs2/i386/ibcs2_isc_sysent.c	optional	ibcs2
+emulation/ibcs2/i386/ibcs2_misc.c	optional	ibcs2
+emulation/ibcs2/i386/ibcs2_msg.c	optional	ibcs2
+emulation/ibcs2/i386/ibcs2_other.c	optional	ibcs2
+emulation/ibcs2/i386/ibcs2_signal.c	optional	ibcs2
+emulation/ibcs2/i386/ibcs2_socksys.c	optional	ibcs2
+emulation/ibcs2/i386/ibcs2_stat.c	optional	ibcs2
+emulation/ibcs2/i386/ibcs2_sysent.c	optional	ibcs2
+emulation/ibcs2/i386/ibcs2_sysi86.c	optional	ibcs2
+emulation/ibcs2/i386/ibcs2_sysvec.c	optional	ibcs2
+emulation/ibcs2/i386/ibcs2_util.c	optional	ibcs2
+emulation/ibcs2/i386/ibcs2_xenix.c	optional	ibcs2
+emulation/ibcs2/i386/ibcs2_xenix_sysent.c optional	ibcs2
+emulation/ibcs2/coff/imgact_coff.c	optional	ibcs2
+i386/isa/asc.c				optional	asc
+i386/isa/atapi.c			optional	wdc	\
 	warning "The wdc driver is obsolete.  Please use the ata driver!"
-i386/isa/clock.c		standard
-i386/isa/cronyx.c		optional	cx
-i386/isa/ctx.c			optional	ctx
-i386/isa/cx.c			optional	cx
-i386/isa/cy.c			optional	cy
-i386/isa/elink.c		optional	ep
-i386/isa/elink.c		optional	ie
-isa/fd.c			optional	fd
-i386/isa/gpib.c			optional	gp
-i386/isa/gsc.c			optional	gsc
-i386/isa/if_cx.c		optional	cx
-i386/isa/if_el.c		optional	el
-i386/isa/if_le.c		optional	le
-i386/isa/if_lnc.c		optional	lnc
-i386/isa/if_rdp.c		optional	rdp
-i386/isa/if_wl.c		optional	wl
-i386/isa/if_wlp.c		optional	wlp
-i386/isa/intr_machdep.c		standard
-i386/isa/ipl_funcs.c		standard				   \
+i386/isa/clock.c			standard
+dev/serial/cronyx/cronyx.c		optional	cx
+dev/video/ctx/ctx.c			optional	ctx
+dev/serial/cy/cy.c			optional	cy
+dev/netif/elink_layer/elink.c		optional	ep
+dev/netif/elink_layer/elink.c		optional	ie
+dev/disk/fd/fd.c			optional	fd
+dev/misc/gpib/gpib.c			optional	gp
+dev/video/gsc/gsc.c			optional	gsc
+dev/netif/cx/if_cx.c			optional	cx
+dev/netif/el/if_el.c			optional	el
+dev/netif/le/if_le.c			optional	le
+dev/netif/lnc/if_lnc.c			optional	lnc
+dev/netif/rdp/if_rdp.c			optional	rdp
+dev/netif/wl/if_wl.c			optional	wl
+i386/isa/intr_machdep.c			standard
+i386/isa/ipl_funcs.c			standard		   \
 	compile-with	"${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
-i386/isa/isa.c			optional	isa
-i386/isa/isa_compat.c		optional	isa
-i386/isa/isa_dma.c		optional	isa
-i386/isa/istallion.c		optional	stli
-i386/isa/labpc.c		optional	labpc
-i386/isa/loran.c		optional	loran
-i386/isa/mca_machdep.c		optional	mca
-i386/isa/mcd.c			optional	mcd
-i386/isa/mse.c			optional	mse
-i386/isa/npx.c			mandatory	npx
-i386/isa/pcaudio.c		optional	pca
-i386/isa/pcf.c			optional	pcf
-i386/isa/pci_cfgreg.c		optional	pci
-i386/isa/pcibus.c		optional	pci
-i386/isa/pcvt/pcvt_drv.c	optional	vt
-i386/isa/pcvt/pcvt_ext.c	optional	vt
-i386/isa/pcvt/pcvt_kbd.c	optional	vt
-i386/isa/pcvt/pcvt_out.c	optional	vt
-i386/isa/pcvt/pcvt_sup.c	optional	vt
-i386/isa/pcvt/pcvt_vtf.c	optional	vt
-i386/isa/prof_machdep.c		optional	profiling-routine
-i386/isa/rc.c			optional	rc
-i386/isa/rp.c			optional	rp
-i386/isa/scd.c			optional	scd
-i386/isa/sound/ad1848.c		optional	css
-i386/isa/sound/ad1848.c		optional	gus
-i386/isa/sound/ad1848.c		optional	gusxvi
-i386/isa/sound/ad1848.c		optional	mss
-i386/isa/sound/ad1848.c		optional	sscape
-i386/isa/sound/ad1848.c		optional	trix
-i386/isa/sound/ad1848.c		optional	sscape_mss
-i386/isa/sound/adlib_card.c	optional	opl
-i386/isa/sound/adlib_card.c	optional	trix
-i386/isa/sound/audio.c		optional	snd	\
+bus/isa/i386/isa.c			optional	isa
+bus/isa/i386/isa_compat.c		optional	isa
+bus/isa/i386/isa_dma.c			optional	isa
+dev/serial/stli/istallion.c		optional	stli
+dev/misc/labpc/labpc.c			optional	labpc
+bus/mca/i386/mca_machdep.c		optional	mca
+dev/disk/mcd/mcd.c			optional	mcd
+dev/misc/mse/mse.c			optional	mse
+i386/isa/npx.c				mandatory	npx
+dev/sound/isa/i386/pca/pcaudio.c	optional	pca
+bus/iicbus/i386/pcf.c			optional	pcf
+bus/pci/i386/pci_cfgreg.c		optional	pci
+bus/pci/i386/pcibus.c			optional	pci
+dev/video/pcvt/i386/pcvt_drv.c		optional	vt
+dev/video/pcvt/i386/pcvt_ext.c		optional	vt
+dev/video/pcvt/i386/pcvt_kbd.c		optional	vt
+dev/video/pcvt/i386/pcvt_out.c		optional	vt
+dev/video/pcvt/i386/pcvt_sup.c		optional	vt
+dev/video/pcvt/i386/pcvt_vtf.c		optional	vt
+i386/isa/prof_machdep.c			optional	profiling-routine
+dev/serial/rc/rc.c			optional	rc
+dev/serial/rp2/rp.c			optional	rp
+dev/disk/scd/scd.c			optional	scd
+dev/sound/isa/i386/ad1848.c		optional	css
+dev/sound/isa/i386/ad1848.c		optional	gus
+dev/sound/isa/i386/ad1848.c		optional	gusxvi
+dev/sound/isa/i386/ad1848.c		optional	mss
+dev/sound/isa/i386/ad1848.c		optional	sscape
+dev/sound/isa/i386/ad1848.c		optional	trix
+dev/sound/isa/i386/ad1848.c		optional	sscape_mss
+dev/sound/isa/i386/adlib_card.c		optional	opl
+dev/sound/isa/i386/adlib_card.c		optional	trix
+dev/sound/isa/i386/audio.c		optional	snd	\
 	warning "The snd drivers are deprecated. Please see pcm/sbc/etc."
-i386/isa/sound/cs4232.c		optional	css
-i386/isa/sound/dev_table.c	optional	snd
-i386/isa/sound/dmabuf.c		optional	snd
-i386/isa/sound/gus_card.c	optional	gus
-i386/isa/sound/gus_midi.c	optional	gus
-i386/isa/sound/gus_vol.c	optional	gus
-i386/isa/sound/gus_wave.c	optional	gus
-i386/isa/sound/ics2101.c	optional	gus
-i386/isa/sound/midi_synth.c	optional	css
-i386/isa/sound/midi_synth.c	optional	gus
-i386/isa/sound/midi_synth.c	optional	mpu
-i386/isa/sound/midi_synth.c	optional	mss
-i386/isa/sound/midi_synth.c	optional	pas
-i386/isa/sound/midi_synth.c	optional	sb
-i386/isa/sound/midi_synth.c	optional	sscape
-i386/isa/sound/midi_synth.c	optional	uart
-i386/isa/sound/midibuf.c	optional	css
-i386/isa/sound/midibuf.c	optional	gus
-i386/isa/sound/midibuf.c	optional	mpu
-i386/isa/sound/midibuf.c	optional	mss
-i386/isa/sound/midibuf.c	optional	pas
-i386/isa/sound/midibuf.c	optional	sb
-i386/isa/sound/midibuf.c	optional	sscape
-i386/isa/sound/midibuf.c	optional	uart
-i386/isa/sound/mpu401.c		optional	mpu
-i386/isa/sound/mpu401.c		optional	sscape
-i386/isa/sound/opl3.c		optional	opl
-i386/isa/sound/opl3.c		optional	trix
-i386/isa/sound/pas2_card.c	optional	pas
-i386/isa/sound/pas2_midi.c	optional	pas
-i386/isa/sound/pas2_mixer.c	optional	pas
-i386/isa/sound/pas2_pcm.c	optional	pas
-i386/isa/sound/patmgr.c		optional	snd
-i386/isa/sound/sb16_dsp.c	optional	sbxvi
-i386/isa/sound/sb16_midi.c	optional	sbmidi
-i386/isa/sound/sb_card.c	optional	sb
-i386/isa/sound/sb_dsp.c		optional	sb
-i386/isa/sound/sb_midi.c	optional	sb
-i386/isa/sound/sb_mixer.c	optional	sb
-i386/isa/sound/sequencer.c	optional	snd
-i386/isa/sound/sound_switch.c	optional	snd
-i386/isa/sound/sound_timer.c	optional	css
-i386/isa/sound/sound_timer.c	optional	gus
-i386/isa/sound/sound_timer.c	optional	mss
-i386/isa/sound/sound_timer.c	optional	mss
-i386/isa/sound/sound_timer.c	optional	sscape
-i386/isa/sound/sound_timer.c	optional	trix
-i386/isa/sound/soundcard.c	optional	snd
-i386/isa/sound/sscape.c		optional	sscape
-i386/isa/sound/sys_timer.c	optional	snd
-i386/isa/sound/trix.c		optional	trix
-i386/isa/sound/uart6850.c	optional	uart
-i386/isa/spic.c			optional	spic
-i386/isa/spigot.c		optional	spigot
-i386/isa/spkr.c			optional	speaker
-i386/isa/stallion.c		optional	stl
-i386/isa/tw.c			optional	tw
-i386/isa/vesa.c			optional	vga vesa
-i386/isa/wd.c			optional	wd	\
+dev/sound/isa/i386/css/cs4232.c		optional	css
+dev/sound/isa/i386/dev_table.c		optional	snd
+dev/sound/isa/i386/dmabuf.c		optional	snd
+dev/sound/isa/i386/gus/gus_card.c	optional	gus
+dev/sound/isa/i386/gus/gus_midi.c	optional	gus
+dev/sound/isa/i386/gus/gus_vol.c	optional	gus
+dev/sound/isa/i386/gus/gus_wave.c	optional	gus
+dev/sound/isa/i386/gus/ics2101.c	optional	gus
+dev/sound/isa/i386/midi_synth.c		optional	css
+dev/sound/isa/i386/midi_synth.c		optional	gus
+dev/sound/isa/i386/midi_synth.c		optional	mpu
+dev/sound/isa/i386/midi_synth.c		optional	mss
+dev/sound/isa/i386/midi_synth.c		optional	pas
+dev/sound/isa/i386/midi_synth.c		optional	sb
+dev/sound/isa/i386/midi_synth.c		optional	sscape
+dev/sound/isa/i386/midi_synth.c		optional	uart
+dev/sound/isa/i386/midibuf.c		optional	css
+dev/sound/isa/i386/midibuf.c		optional	gus
+dev/sound/isa/i386/midibuf.c		optional	mpu
+dev/sound/isa/i386/midibuf.c		optional	mss
+dev/sound/isa/i386/midibuf.c		optional	pas
+dev/sound/isa/i386/midibuf.c		optional	sb
+dev/sound/isa/i386/midibuf.c		optional	sscape
+dev/sound/isa/i386/midibuf.c		optional	uart
+dev/sound/isa/i386/mpu/mpu401.c		optional	mpu
+dev/sound/isa/i386/mpu/mpu401.c		optional	sscape
+dev/sound/isa/i386/opl3.c		optional	opl
+dev/sound/isa/i386/opl3.c		optional	trix
+dev/sound/isa/i386/pas2/pas2_card.c	optional	pas
+dev/sound/isa/i386/pas2/pas2_midi.c	optional	pas
+dev/sound/isa/i386/pas2/pas2_mixer.c	optional	pas
+dev/sound/isa/i386/pas2/pas2_pcm.c	optional	pas
+dev/sound/isa/i386/patmgr.c		optional	snd
+dev/sound/isa/i386/sbxvi/sb16_dsp.c	optional	sbxvi
+dev/sound/isa/i386/sbmidi/sb16_midi.c	optional	sbmidi
+dev/sound/isa/i386/sb/sb_card.c		optional	sb
+dev/sound/isa/i386/sb/sb_dsp.c		optional	sb
+dev/sound/isa/i386/sb/sb_midi.c		optional	sb
+dev/sound/isa/i386/sb/sb_mixer.c	optional	sb
+dev/sound/isa/i386/sequencer.c	optional	snd
+dev/sound/isa/i386/sound_switch.c	optional	snd
+dev/sound/isa/i386/sound_timer.c	optional	css
+dev/sound/isa/i386/sound_timer.c	optional	gus
+dev/sound/isa/i386/sound_timer.c	optional	mss
+dev/sound/isa/i386/sound_timer.c	optional	mss
+dev/sound/isa/i386/sound_timer.c	optional	sscape
+dev/sound/isa/i386/sound_timer.c	optional	trix
+dev/sound/isa/i386/soundcard.c		optional	snd
+dev/sound/isa/i386/sscape/sscape.c	optional	sscape
+dev/sound/isa/i386/sys_timer.c		optional	snd
+dev/sound/isa/i386/trix/trix.c		optional	trix
+dev/sound/isa/i386/uart/uart6850.c	optional	uart
+dev/misc/spic/spic.c			optional	spic
+dev/misc/spigot/spigot.c		optional	spigot
+dev/sound/isa/i386/spkr/spkr.c		optional	speaker
+dev/serial/stl/stallion.c		optional	stl
+dev/misc/tw/tw.c			optional	tw
+dev/video/i386/vesa/vesa.c		optional	vga vesa
+dev/disk/wd/wd.c			optional	wd	\
 	warning "The wd  driver is obsolete.  Please use the atadisk driver!"
-i386/isa/wd.c			optional	wdc
-i386/isa/wd_cd.c		optional	wcd wdc	\
+dev/disk/wd/wd.c			optional	wdc
+dev/disk/wcd/wd_cd.c			optional	wcd wdc	\
 	warning "The wcd driver is obsolete.  Please use the atapicd driver!"
-i386/isa/wfd.c			optional	wfd wdc	\
+dev/disk/wfd/wfd.c			optional	wfd wdc	\
 	warning "The wfd driver is obsolete.  Please use the atapifd driver!"
-i386/isa/wst.c			optional	wst wdc	\
+dev/disk/wst/wst.c			optional	wst wdc	\
 	warning "The wst driver is obsolete.  Please use the atapist driver!"
-i386/isa/wt.c			optional	wt
-i386/linux/imgact_linux.c	optional	compat_linux
-i386/linux/linux_dummy.c	optional	compat_linux
-i386/linux/linux_locore.s	optional	compat_linux		   \
+dev/disk/wt/wt.c			optional	wt
+emulation/linux/i386/imgact_linux.c	optional	compat_linux
+emulation/linux/i386/linux_dummy.c	optional	compat_linux
+emulation/linux/i386/linux_locore.s	optional	compat_linux	  \
 	dependency 	"linux_assym.h"
-i386/linux/linux_machdep.c	optional	compat_linux
-i386/linux/linux_ptrace.c	optional	compat_linux
-i386/linux/linux_sysent.c	optional	compat_linux
-i386/linux/linux_sysvec.c	optional	compat_linux
-svr4/imgact_svr4.c		optional	compat_svr4
-svr4/svr4_fcntl.c		optional	compat_svr4
-svr4/svr4_filio.c		optional	compat_svr4
-svr4/svr4_ioctl.c		optional	compat_svr4
-svr4/svr4_ipc.c			optional	compat_svr4
-svr4/svr4_misc.c		optional	compat_svr4
-svr4/svr4_resource.c		optional	compat_svr4
-svr4/svr4_signal.c		optional	compat_svr4
-svr4/svr4_socket.c		optional	compat_svr4
-svr4/svr4_sockio.c		optional	compat_svr4
-svr4/svr4_stat.c		optional	compat_svr4
-svr4/svr4_stream.c		optional	compat_svr4
-svr4/svr4_syscallnames.c	optional	compat_svr4
-svr4/svr4_sysent.c		optional	compat_svr4
-svr4/svr4_sysvec.c		optional	compat_svr4
-svr4/svr4_termios.c		optional	compat_svr4
-svr4/svr4_ttold.c		optional	compat_svr4
-i386/svr4/svr4_locore.s		optional	compat_svr4		   \
+emulation/linux/i386/linux_machdep.c	optional	compat_linux
+emulation/linux/i386/linux_ptrace.c	optional	compat_linux
+emulation/linux/i386/linux_sysent.c	optional	compat_linux
+emulation/linux/i386/linux_sysvec.c	optional	compat_linux
+emulation/svr4/imgact_svr4.c		optional	compat_svr4
+emulation/svr4/svr4_fcntl.c		optional	compat_svr4
+emulation/svr4/svr4_filio.c		optional	compat_svr4
+emulation/svr4/svr4_ioctl.c		optional	compat_svr4
+emulation/svr4/svr4_ipc.c		optional	compat_svr4
+emulation/svr4/svr4_misc.c		optional	compat_svr4
+emulation/svr4/svr4_resource.c		optional	compat_svr4
+emulation/svr4/svr4_signal.c		optional	compat_svr4
+emulation/svr4/svr4_socket.c		optional	compat_svr4
+emulation/svr4/svr4_sockio.c		optional	compat_svr4
+emulation/svr4/svr4_stat.c		optional	compat_svr4
+emulation/svr4/svr4_stream.c		optional	compat_svr4
+emulation/svr4/svr4_syscallnames.c	optional	compat_svr4
+emulation/svr4/svr4_sysent.c		optional	compat_svr4
+emulation/svr4/svr4_sysvec.c		optional	compat_svr4
+emulation/svr4/svr4_termios.c		optional	compat_svr4
+emulation/svr4/svr4_ttold.c		optional	compat_svr4
+emulation/svr4/i386/svr4_locore.s	optional	compat_svr4   \
 	dependency	"svr4_assym.h"
-i386/svr4/svr4_machdep.c	optional	compat_svr4
+emulation/svr4/i386/svr4_machdep.c	optional	compat_svr4
 #
 # isdn4bsd, needed for isic | iwic | ifpi | | ifpi2 | ihfc | ifpnp | itjc
 #
-i4b/layer1/i4b_l1dmux.c         	optional        isic
-i4b/layer1/i4b_l1lib.c          	optional        isic
-i4b/layer1/i4b_l1dmux.c         	optional        iwic
-i4b/layer1/i4b_l1lib.c          	optional        iwic
-i4b/layer1/i4b_l1dmux.c         	optional        ifpi
-i4b/layer1/i4b_l1lib.c          	optional        ifpi
-i4b/layer1/i4b_l1dmux.c         	optional        ifpi2
-i4b/layer1/i4b_l1lib.c          	optional        ifpi2
-i4b/layer1/i4b_l1dmux.c         	optional        ihfc
-i4b/layer1/i4b_l1lib.c          	optional        ihfc
-i4b/layer1/i4b_l1dmux.c         	optional        ifpnp
-i4b/layer1/i4b_l1lib.c          	optional        ifpnp
-i4b/layer1/i4b_l1dmux.c         	optional        itjc
-i4b/layer1/i4b_l1lib.c          	optional        itjc
+net/i4b/layer1/i4b_l1dmux.c         	optional        isic
+net/i4b/layer1/i4b_l1lib.c          	optional        isic
+net/i4b/layer1/i4b_l1dmux.c         	optional        iwic
+net/i4b/layer1/i4b_l1lib.c          	optional        iwic
+net/i4b/layer1/i4b_l1dmux.c         	optional        ifpi
+net/i4b/layer1/i4b_l1lib.c          	optional        ifpi
+net/i4b/layer1/i4b_l1dmux.c         	optional        ifpi2
+net/i4b/layer1/i4b_l1lib.c          	optional        ifpi2
+net/i4b/layer1/i4b_l1dmux.c         	optional        ihfc
+net/i4b/layer1/i4b_l1lib.c          	optional        ihfc
+net/i4b/layer1/i4b_l1dmux.c         	optional        ifpnp
+net/i4b/layer1/i4b_l1lib.c          	optional        ifpnp
+net/i4b/layer1/i4b_l1dmux.c         	optional        itjc
+net/i4b/layer1/i4b_l1lib.c          	optional        itjc
 #
 # isdn4bsd, isic
 #
-i4b/layer1/isic/i4b_asuscom_ipac.c	optional	isic
-i4b/layer1/isic/i4b_avm_a1.c		optional	isic
-i4b/layer1/isic/i4b_bchan.c		optional	isic
-i4b/layer1/isic/i4b_ctx_s0P.c		optional	isic
-i4b/layer1/isic/i4b_drn_ngo.c		optional	isic
-i4b/layer1/isic/i4b_dynalink.c		optional	isic
-i4b/layer1/isic/i4b_elsa_qs1i.c		optional	isic
-i4b/layer1/isic/i4b_elsa_qs1p.c		optional	isic
-i4b/layer1/isic/i4b_elsa_pcc16.c	optional	isic
-i4b/layer1/isic/i4b_hscx.c		optional	isic
-i4b/layer1/isic/i4b_isac.c		optional	isic
-i4b/layer1/isic/i4b_isic.c		optional	isic
-i4b/layer1/isic/i4b_isic_isa.c		optional	isic
-i4b/layer1/isic/i4b_isic_pnp.c		optional	isic
-i4b/layer1/isic/i4b_itk_ix1.c		optional	isic
-i4b/layer1/isic/i4b_l1.c		optional	isic
-i4b/layer1/isic/i4b_l1fsm.c		optional	isic
-i4b/layer1/isic/i4b_siemens_isurf.c	optional	isic
-i4b/layer1/isic/i4b_sws.c		optional	isic
-i4b/layer1/isic/i4b_tel_s016.c		optional	isic
-i4b/layer1/isic/i4b_tel_s0163.c		optional	isic
-i4b/layer1/isic/i4b_tel_s08.c		optional	isic
-i4b/layer1/isic/i4b_usr_sti.c		optional	isic
-i4b/layer1/isic/i4b_diva.c		optional	isic
+net/i4b/layer1/isic/i4b_asuscom_ipac.c	optional	isic
+net/i4b/layer1/isic/i4b_avm_a1.c	optional	isic
+net/i4b/layer1/isic/i4b_bchan.c		optional	isic
+net/i4b/layer1/isic/i4b_ctx_s0P.c	optional	isic
+net/i4b/layer1/isic/i4b_drn_ngo.c	optional	isic
+net/i4b/layer1/isic/i4b_dynalink.c	optional	isic
+net/i4b/layer1/isic/i4b_elsa_qs1i.c	optional	isic
+net/i4b/layer1/isic/i4b_elsa_qs1p.c	optional	isic
+net/i4b/layer1/isic/i4b_elsa_pcc16.c	optional	isic
+net/i4b/layer1/isic/i4b_hscx.c		optional	isic
+net/i4b/layer1/isic/i4b_isac.c		optional	isic
+net/i4b/layer1/isic/i4b_isic.c		optional	isic
+net/i4b/layer1/isic/i4b_isic_isa.c	optional	isic
+net/i4b/layer1/isic/i4b_isic_pnp.c	optional	isic
+net/i4b/layer1/isic/i4b_itk_ix1.c	optional	isic
+net/i4b/layer1/isic/i4b_l1.c		optional	isic
+net/i4b/layer1/isic/i4b_l1fsm.c		optional	isic
+net/i4b/layer1/isic/i4b_siemens_isurf.c	optional	isic
+net/i4b/layer1/isic/i4b_sws.c		optional	isic
+net/i4b/layer1/isic/i4b_tel_s016.c	optional	isic
+net/i4b/layer1/isic/i4b_tel_s0163.c	optional	isic
+net/i4b/layer1/isic/i4b_tel_s08.c	optional	isic
+net/i4b/layer1/isic/i4b_usr_sti.c	optional	isic
+net/i4b/layer1/isic/i4b_diva.c		optional	isic
 #
 # isdn4bsd, iwic
 #
-i4b/layer1/iwic/i4b_iwic_pci.c		optional	iwic
-i4b/layer1/iwic/i4b_iwic_dchan.c	optional	iwic
-i4b/layer1/iwic/i4b_iwic_bchan.c	optional	iwic
-i4b/layer1/iwic/i4b_iwic_fsm.c		optional	iwic
-i4b/layer1/iwic/i4b_iwic_l1if.c		optional	iwic
+net/i4b/layer1/iwic/i4b_iwic_pci.c	optional	iwic
+net/i4b/layer1/iwic/i4b_iwic_dchan.c	optional	iwic
+net/i4b/layer1/iwic/i4b_iwic_bchan.c	optional	iwic
+net/i4b/layer1/iwic/i4b_iwic_fsm.c	optional	iwic
+net/i4b/layer1/iwic/i4b_iwic_l1if.c	optional	iwic
 #
 # isdn4bsd, ifpi
 #
-i4b/layer1/ifpi/i4b_ifpi_pci.c		optional	ifpi
-i4b/layer1/ifpi/i4b_ifpi_isac.c		optional	ifpi
-i4b/layer1/ifpi/i4b_ifpi_l1.c		optional	ifpi
-i4b/layer1/ifpi/i4b_ifpi_l1fsm.c	optional	ifpi
+net/i4b/layer1/ifpi/i4b_ifpi_pci.c	optional	ifpi
+net/i4b/layer1/ifpi/i4b_ifpi_isac.c	optional	ifpi
+net/i4b/layer1/ifpi/i4b_ifpi_l1.c	optional	ifpi
+net/i4b/layer1/ifpi/i4b_ifpi_l1fsm.c	optional	ifpi
 #
 # isdn4bsd, ifpi2
 #
-i4b/layer1/ifpi2/i4b_ifpi2_pci.c	optional	ifpi2
-i4b/layer1/ifpi2/i4b_ifpi2_isacsx.c	optional	ifpi2
-i4b/layer1/ifpi2/i4b_ifpi2_l1.c		optional	ifpi2
-i4b/layer1/ifpi2/i4b_ifpi2_l1fsm.c	optional	ifpi2
+net/i4b/layer1/ifpi2/i4b_ifpi2_pci.c	optional	ifpi2
+net/i4b/layer1/ifpi2/i4b_ifpi2_isacsx.c	optional	ifpi2
+net/i4b/layer1/ifpi2/i4b_ifpi2_l1.c	optional	ifpi2
+net/i4b/layer1/ifpi2/i4b_ifpi2_l1fsm.c	optional	ifpi2
 #
 # isdn4bsd, ifpnp
 #
-i4b/layer1/ifpnp/i4b_ifpnp_avm.c	optional	ifpnp
-i4b/layer1/ifpnp/i4b_ifpnp_isac.c	optional	ifpnp
-i4b/layer1/ifpnp/i4b_ifpnp_l1.c		optional	ifpnp
-i4b/layer1/ifpnp/i4b_ifpnp_l1fsm.c	optional	ifpnp
+net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c	optional	ifpnp
+net/i4b/layer1/ifpnp/i4b_ifpnp_isac.c	optional	ifpnp
+net/i4b/layer1/ifpnp/i4b_ifpnp_l1.c	optional	ifpnp
+net/i4b/layer1/ifpnp/i4b_ifpnp_l1fsm.c	optional	ifpnp
 #
 # isdn4bsd, ihfc
 #
-i4b/layer1/ihfc/i4b_ihfc_l1if.c		optional	ihfc
-i4b/layer1/ihfc/i4b_ihfc_pnp.c		optional	ihfc
-i4b/layer1/ihfc/i4b_ihfc_drv.c		optional	ihfc
+net/i4b/layer1/ihfc/i4b_ihfc_l1if.c	optional	ihfc
+net/i4b/layer1/ihfc/i4b_ihfc_pnp.c	optional	ihfc
+net/i4b/layer1/ihfc/i4b_ihfc_drv.c	optional	ihfc
 #
 # isdn4bsd, itjc
 #
-i4b/layer1/itjc/i4b_itjc_pci.c		optional	itjc
-i4b/layer1/itjc/i4b_itjc_isac.c		optional	itjc
-i4b/layer1/itjc/i4b_itjc_l1.c		optional	itjc
-i4b/layer1/itjc/i4b_itjc_l1fsm.c	optional	itjc
+net/i4b/layer1/itjc/i4b_itjc_pci.c	optional	itjc
+net/i4b/layer1/itjc/i4b_itjc_isac.c	optional	itjc
+net/i4b/layer1/itjc/i4b_itjc_l1.c	optional	itjc
+net/i4b/layer1/itjc/i4b_itjc_l1fsm.c	optional	itjc
 #
-isa/atkbd_isa.c			optional	atkbd
-isa/atkbdc_isa.c		optional	atkbdc
-isa/ppc.c			optional	ppc
-isa/psm.c			optional	psm
-isa/sio.c			optional	sio
-isa/syscons_isa.c		optional	sc
-isa/vga_isa.c			optional	vga
-kern/md4c.c			optional	netsmb
-kern/subr_diskmbr.c		standard
-libkern/divdi3.c		standard
-libkern/moddi3.c		standard
-libkern/qdivrem.c		standard
-libkern/udivdi3.c		standard
-libkern/umoddi3.c		standard
-netsmb/smb_conn.c		optional	netsmb
-netsmb/smb_crypt.c		optional	netsmb
-netsmb/smb_dev.c		optional	netsmb
-netsmb/smb_iod.c		optional	netsmb
-netsmb/smb_rq.c			optional	netsmb
-netsmb/smb_smb.c		optional	netsmb
-netsmb/smb_subr.c		optional	netsmb
-netsmb/smb_trantcp.c		optional	netsmb
-netsmb/smb_usr.c		optional	netsmb
-pci/ide_pci.c			optional	wdc pci
+dev/misc/atkbd/atkbd_isa.c		optional	atkbd
+dev/misc/atkbdc_layer/atkbdc_isa.c	optional	atkbdc
+dev/misc/ppc/ppc.c			optional	ppc
+dev/misc/psm/psm.c			optional	psm
+dev/serial/sio/sio.c			optional	sio
+bus/isa/syscons_isa.c			optional	sc
+bus/isa/vga_isa.c			optional	vga
+kern/md4c.c				optional	netsmb
+kern/subr_diskmbr.c			standard
+libkern/divdi3.c			standard
+libkern/moddi3.c			standard
+libkern/qdivrem.c			standard
+libkern/udivdi3.c			standard
+libkern/umoddi3.c			standard
+netproto/smb/smb_conn.c			optional	netsmb
+netproto/smb/smb_crypt.c		optional	netsmb
+netproto/smb/smb_dev.c			optional	netsmb
+netproto/smb/smb_iod.c			optional	netsmb
+netproto/smb/smb_rq.c			optional	netsmb
+netproto/smb/smb_smb.c			optional	netsmb
+netproto/smb/smb_subr.c			optional	netsmb
+netproto/smb/smb_trantcp.c		optional	netsmb
+netproto/smb/smb_usr.c			optional	netsmb
+bus/pci/ide_pci.c			optional	wdc pci

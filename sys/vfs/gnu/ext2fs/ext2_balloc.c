@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_balloc.c	8.4 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_balloc.c,v 1.9.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_balloc.c,v 1.4 2003/07/26 18:53:21 rob Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_balloc.c,v 1.5 2003/08/07 21:17:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,14 +48,14 @@
 #include <sys/ucred.h>
 #include <sys/vnode.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufs_extern.h>
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/inode.h>
+#include <vfs/ufs/ufs_extern.h>
 
-#include <gnu/ext2fs/ext2_fs.h>
-#include <gnu/ext2fs/ext2_fs_sb.h>
-#include <gnu/ext2fs/fs.h>
-#include <gnu/ext2fs/ext2_extern.h>
+#include "ext2_fs.h"
+#include "ext2_fs_sb.h"
+#include "fs.h"
+#include "ext2_extern.h"
 
 /*
  * Balloc defines the structure of file system storage

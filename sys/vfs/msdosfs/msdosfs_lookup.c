@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_lookup.c,v 1.30.2.1 2000/11/03 15:55:39 bp Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.4 2003/06/26 05:55:17 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.5 2003/08/07 21:17:41 dillon Exp $ */
 /*	$NetBSD: msdosfs_lookup.c,v 1.37 1997/11/17 15:36:54 ws Exp $	*/
 
 /*-
@@ -57,11 +57,11 @@
 #include <sys/namei.h>
 #include <sys/mount.h>
 
-#include <msdosfs/bpb.h>
-#include <msdosfs/direntry.h>
-#include <msdosfs/denode.h>
-#include <msdosfs/msdosfsmount.h>
-#include <msdosfs/fat.h>
+#include "bpb.h"
+#include "direntry.h"
+#include "denode.h"
+#include "msdosfsmount.h"
+#include "fat.h"
 
 /*
  * When we search a directory the blocks containing directory entries are

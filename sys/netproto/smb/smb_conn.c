@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_conn.c,v 1.1.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.4 2003/07/19 21:14:45 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.5 2003/08/07 21:17:38 dillon Exp $
  */
 
 /*
@@ -48,11 +48,11 @@
 
 #include <sys/iconv.h>
 
-#include <netsmb/smb.h>
-#include <netsmb/smb_subr.h>
-#include <netsmb/smb_conn.h>
-#include <netsmb/smb_tran.h>
-#include <netsmb/smb_trantcp.h>
+#include "smb.h"
+#include "smb_subr.h"
+#include "smb_conn.h"
+#include "smb_tran.h"
+#include "smb_trantcp.h"
 
 static struct smb_connobj smb_vclist;
 static int smb_vcnext = 1;	/* next unique id for VC */

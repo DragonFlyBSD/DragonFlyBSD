@@ -71,7 +71,7 @@
  */
 
 /* $FreeBSD: src/sys/net/ppp_tty.c,v 1.43.2.1 2002/02/13 00:43:11 dillon Exp $ */
-/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.6 2003/07/26 20:19:33 rob Exp $ */
+/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.7 2003/08/07 21:17:30 dillon Exp $ */
 
 #include "opt_ppp.h"		/* XXX for ppp_defs.h */
 
@@ -96,8 +96,8 @@
 #ifdef PPP_FILTER
 #include <net/bpf.h>
 #endif
-#include <net/if_ppp.h>
-#include <net/if_pppvar.h>
+#include <net/ppp/if_ppp.h>
+#include <net/ppp/if_pppvar.h>
 
 static int	pppopen __P((dev_t dev, struct tty *tp));
 static int	pppclose __P((struct tty *tp, int flag));

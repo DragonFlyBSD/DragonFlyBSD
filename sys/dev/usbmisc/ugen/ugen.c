@@ -1,6 +1,6 @@
 /*	$NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ugen.c,v 1.38.2.9 2002/11/06 14:41:01 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.6 2003/07/21 05:50:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.7 2003/08/07 21:17:14 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -63,9 +63,9 @@
 #include <sys/poll.h>
 #include <sys/sysctl.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
 
 #ifdef USB_DEBUG
 #define DPRINTF(x)	if (ugendebug) logprintf x

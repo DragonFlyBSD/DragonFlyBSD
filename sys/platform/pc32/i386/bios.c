@@ -25,16 +25,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/bios.c,v 1.29.2.3 2001/07/19 18:07:35 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.4 2003/06/28 04:16:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.5 2003/08/07 21:17:22 dillon Exp $
  */
 
 /*
  * Code for dealing with the BIOS in x86 PC systems.
  */
 
+#include "use_isa.h"
 #include "opt_pnp.h"
-
-#include "isa.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -50,10 +49,10 @@
 #include <machine/stdarg.h>
 #include <machine/vmparam.h>
 #include <machine/pc/bios.h>
-#include <isa/pnpreg.h>
-#include <isa/pnpvar.h>
+#include <bus/isa/pnpreg.h>
+#include <bus/isa/pnpvar.h>
 #if NISA > 0
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 #endif
 
 #define BIOS_START	0xe0000

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pc98/pc98/canbus.c,v 1.3.2.1 2003/02/10 13:11:51 nyan Exp $
- * $DragonFly: src/sys/bus/canbus/Attic/canbus.c,v 1.2 2003/06/17 04:28:55 dillon Exp $
+ * $DragonFly: src/sys/bus/canbus/Attic/canbus.c,v 1.3 2003/08/07 21:16:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,8 +42,8 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <pc98/pc98/canbus.h>
-#include <pc98/pc98/canbusvars.h>
+#include "canbus.h"
+#include "canbusvars.h"
 #include "canbus_if.h"
 
 

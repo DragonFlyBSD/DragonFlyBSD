@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/pnpparse.c,v 1.2.2.3 2000/11/07 05:53:55 msmith Exp $
- *	$DragonFly: src/sys/bus/isa/pnpparse.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ *	$DragonFly: src/sys/bus/isa/pnpparse.c,v 1.3 2003/08/07 21:16:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -33,9 +33,9 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <isa/isavar.h>
-#include <isa/pnpreg.h>
-#include <isa/pnpvar.h>
+#include "isavar.h"
+#include "pnpreg.h"
+#include "pnpvar.h"
 
 #define	MAXDEP	8
 

@@ -32,9 +32,9 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.2 2003/06/17 04:28:24 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.3 2003/08/07 21:17:01 dillon Exp $*/
 
-#include <dev/em/if_em.h>
+#include "if_em.h"
 
 /*********************************************************************
  *  Set this to one to display debug statistics                                                   

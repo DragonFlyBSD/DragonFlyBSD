@@ -18,7 +18,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pci.c,v 1.23.2.1 2000/09/10 08:45:11 nyan Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.3 2003/08/07 21:17:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,10 +37,10 @@
 #include <net/if_arp.h>
 #include <net/if_mib.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <dev/ed/if_edvar.h>
+#include "if_edvar.h"
 
 static struct _pcsid
 {

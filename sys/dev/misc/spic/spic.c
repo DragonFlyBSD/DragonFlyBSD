@@ -48,7 +48,7 @@
  * also provided sample code upon which this driver was based.
  *
  * $FreeBSD: src/sys/i386/isa/spic.c,v 1.4.2.1 2002/04/15 00:52:12 will Exp $
- * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.5 2003/07/21 07:57:45 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.6 2003/08/07 21:16:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -58,7 +58,7 @@
 #include <machine/bus.h>
 #include <sys/rman.h>
 #include <machine/resource.h>
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 #include <sys/poll.h>
 #include <machine/pci_cfgreg.h>
 #include <machine/clock.h>
@@ -71,7 +71,7 @@
 #include <sys/uio.h>
 #include <sys/proc.h>
 
-#include <i386/isa/spicreg.h>
+#include "spicreg.h"
 
 static int spic_pollrate;
 

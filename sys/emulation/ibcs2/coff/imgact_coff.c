@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/imgact_coff.c,v 1.40 1999/12/15 23:01:47 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/coff/Attic/imgact_coff.c,v 1.4 2003/06/26 05:55:13 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/coff/Attic/imgact_coff.c,v 1.5 2003/08/07 21:17:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,8 +49,8 @@
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
 
-#include <i386/ibcs2/coff.h>
-#include <i386/ibcs2/ibcs2_util.h>
+#include "../i386/coff.h"
+#include "../i386/ibcs2_util.h"
 
 extern struct sysentvec ibcs2_svr3_sysvec;
 

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_linux.c,v 1.1.4.1 2003/03/28 19:50:17 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_linux.c,v 1.3 2003/06/25 03:55:45 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_linux.c,v 1.4 2003/08/07 21:17:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,9 +37,9 @@
 #include <sys/file.h>
 #include <sys/proc.h>
 #include <sys/file2.h>
-#include <machine/../linux/linux.h>
-#include <machine/../linux/linux_proto.h>
-#include <compat/linux/linux_ioctl.h>
+#include <emulation/linux/i386/linux.h>
+#include <emulation/linux/i386/linux_proto.h>
+#include <emulation/linux/linux_ioctl.h>
 
 /* There are multiple ioctl number ranges that need to be handled */
 #define AAC_LINUX_IOCTL_MIN  0x0000

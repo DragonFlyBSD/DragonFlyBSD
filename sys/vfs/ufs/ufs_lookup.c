@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.5 2003/07/26 22:04:27 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.6 2003/08/07 21:17:44 dillon Exp $
  */
 
 #include "opt_ufs.h"
@@ -56,14 +56,14 @@
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/dir.h>
+#include "quota.h"
+#include "inode.h"
+#include "dir.h"
 #ifdef UFS_DIRHASH
-#include <ufs/ufs/dirhash.h>
+#include "dirhash.h"
 #endif
-#include <ufs/ufs/ufsmount.h>
-#include <ufs/ufs/ufs_extern.h>
+#include "ufsmount.h"
+#include "ufs_extern.h"
 
 #ifdef DIAGNOSTIC
 int	dirchk = 1;

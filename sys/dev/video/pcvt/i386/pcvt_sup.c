@@ -47,14 +47,14 @@
  *	Last Edit-Date: [Thu Dec 30 17:01:03 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_sup.c,v 1.16 1999/12/30 16:17:10 hm Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_sup.c,v 1.3 2003/07/26 19:07:49 rob Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_sup.c,v 1.4 2003/08/07 21:17:16 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
-#include "vt.h"
+#include "use_vt.h"
 #if NVT > 0
 
-#include <i386/isa/pcvt/pcvt_hdr.h>	/* global include */
+#include "pcvt_hdr.h"	/* global include */
 
 #include <sys/resource.h>
 

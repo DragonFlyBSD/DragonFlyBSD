@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_iso88025subr.c,v 1.7.2.7 2002/06/18 00:15:31 kbyanc Exp $
- * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.3 2003/07/26 20:19:33 rob Exp $
+ * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.4 2003/08/07 21:17:24 dillon Exp $
  *
  */
 
@@ -74,7 +74,7 @@
 #include <machine/clock.h>
 #include <machine/md_var.h>
 
-#include <i386/isa/isa_device.h>
+#include <bus/isa/i386/isa_device.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>

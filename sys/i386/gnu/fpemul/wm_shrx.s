@@ -63,12 +63,12 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/wm_shrx.s,v 1.8 1999/08/28 00:42:59 peter Exp $
- * $DragonFly: src/sys/i386/gnu/fpemul/Attic/wm_shrx.s,v 1.3 2003/07/31 12:37:39 hmp Exp $
+ * $DragonFly: src/sys/i386/gnu/fpemul/Attic/wm_shrx.s,v 1.4 2003/08/07 21:17:21 dillon Exp $
  *
  */
 
 
-#include <gnu/i386/fpemul/fpu_asm.h>
+#include "fpu_asm.h"
 
 .text
 

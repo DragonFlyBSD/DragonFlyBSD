@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_dev.h,v 1.3.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_dev.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_dev.h,v 1.3 2003/08/07 21:17:39 dillon Exp $
  */
 #ifndef _NETSMB_DEV_H_
 #define _NETSMB_DEV_H_
@@ -40,7 +40,7 @@
 #endif
 #include <sys/ioccom.h>
 
-#include <netsmb/smb.h>
+#include "smb.h"
 
 #define	NSMB_NAME		"nsmb"
 #define	NSMB_MAJOR		144

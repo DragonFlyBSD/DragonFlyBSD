@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_socket.c,v 1.7 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_socket.c,v 1.4 2003/06/25 03:56:10 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_socket.c,v 1.5 2003/08/07 21:17:19 dillon Exp $
  */
 
 /*
@@ -55,13 +55,13 @@
 #include <sys/proc.h>
 #include <sys/malloc.h>
 
-#include <svr4/svr4.h>
-#include <svr4/svr4_types.h>
-#include <svr4/svr4_util.h>
-#include <svr4/svr4_socket.h>
-#include <svr4/svr4_signal.h>
-#include <svr4/svr4_sockmod.h>
-#include <svr4/svr4_proto.h>
+#include "svr4.h"
+#include "svr4_types.h"
+#include "svr4_util.h"
+#include "svr4_socket.h"
+#include "svr4_signal.h"
+#include "svr4_sockmod.h"
+#include "svr4_proto.h"
 
 struct svr4_sockcache_entry {
 	struct thread *td;	/* Process for the socket		*/

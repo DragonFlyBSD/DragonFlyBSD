@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fea.c,v 1.19 2000/01/14 07:14:03 peter Exp $
- * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.3 2003/08/07 21:17:02 dillon Exp $
  */
 
 /*
@@ -44,9 +44,9 @@
 #include <machine/bus.h>
 #include <machine/resource.h>
 #include <sys/rman.h> 
-#include <dev/eisa/eisaconf.h>
-#include <dev/pdq/pdqvar.h>
-#include <dev/pdq/pdqreg.h>
+#include <bus/eisa/eisaconf.h>
+#include <dev/netif/pdq_layer/pdqvar.h>
+#include <dev/netif/pdq_layer/pdqreg.h>
 
 static void		pdq_eisa_subprobe	__P((pdq_bus_t, u_int32_t, u_int32_t *, u_int32_t *, u_int32_t *));
 static void		pdq_eisa_devinit	__P((pdq_softc_t *));

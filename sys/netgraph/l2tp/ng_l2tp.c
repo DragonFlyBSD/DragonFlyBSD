@@ -38,7 +38,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_l2tp.c,v 1.1.2.1 2002/08/20 23:48:15 archie Exp $
- * $DragonFly: src/sys/netgraph/l2tp/ng_l2tp.c,v 1.3 2003/07/29 12:51:29 hmp Exp $
+ * $DragonFly: src/sys/netgraph/l2tp/ng_l2tp.c,v 1.4 2003/08/07 21:17:32 dillon Exp $
  */
 
 /*
@@ -61,7 +61,7 @@
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
 #include <netgraph/ng_parse.h>
-#include <netgraph/ng_l2tp.h>
+#include "ng_l2tp.h"
 
 #ifdef NG_SEPARATE_MALLOC
 MALLOC_DEFINE(M_NETGRAPH_L2TP, "netgraph_l2tp", "netgraph l2tp node");

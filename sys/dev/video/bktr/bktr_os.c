@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.4.2.3 2000/10/27 00:46:09 jhb Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.4 2003/07/21 05:50:28 dillon Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.5 2003/08/07 21:17:15 dillon Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -50,7 +50,7 @@
 
 
 #ifdef __FreeBSD__
-#include "bktr.h"
+#include "use_bktr.h"
 #endif /* __FreeBSD__ */
 
 #include "opt_bktr.h"		/* include any kernel config options */
@@ -99,8 +99,8 @@
 #include <machine/clock.h>              /* for DELAY */
 #endif
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
 #include <sys/sysctl.h>
 int bt848_card = -1; 
@@ -181,14 +181,14 @@ int bktr_debug = 0;
 #else					/* Traditional location for .h files */
 #include <machine/ioctl_meteor.h>
 #include <machine/ioctl_bt848.h>	/* extensions to ioctl_meteor.h */
-#include <dev/bktr/bktr_reg.h>
-#include <dev/bktr/bktr_tuner.h>
-#include <dev/bktr/bktr_card.h>
-#include <dev/bktr/bktr_audio.h>
-#include <dev/bktr/bktr_core.h>
-#include <dev/bktr/bktr_os.h>
+#include "bktr_reg.h"
+#include "bktr_tuner.h"
+#include "bktr_card.h"
+#include "bktr_audio.h"
+#include "bktr_core.h"
+#include "bktr_os.h"
 #if defined(BKTR_USE_FREEBSD_SMBUS)
-#include <dev/bktr/bktr_i2c.h>
+#include "bktr_i2c.h"
 #endif
 #endif
 

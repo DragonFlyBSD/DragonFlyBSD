@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.5 2003/07/19 21:14:27 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.6 2003/08/07 21:17:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,10 +53,10 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <dev/sbsh/if_sbshreg.h>
+#include "if_sbshreg.h"
 
 /* -------------------------------------------------------------------------- */
 

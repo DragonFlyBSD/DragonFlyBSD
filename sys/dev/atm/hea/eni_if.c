@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_if.c,v 1.5 1999/08/28 00:41:44 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_if.c,v 1.2 2003/06/17 04:28:26 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_if.c,v 1.3 2003/08/07 21:16:49 dillon Exp $
  */
 
 /*
@@ -37,10 +37,10 @@
 
 #include <netatm/kern_include.h>
 
-#include <dev/hea/eni_stats.h>
-#include <dev/hea/eni.h>
-#include <dev/hea/eni_suni.h>
-#include <dev/hea/eni_var.h>
+#include "eni_stats.h"
+#include "eni.h"
+#include "eni_suni.h"
+#include "eni_var.h"
 
 static void	eni_get_stats __P((Eni_unit *));
 

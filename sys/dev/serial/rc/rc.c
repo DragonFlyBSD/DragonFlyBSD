@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rc.c,v 1.53.2.1 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.7 2003/07/26 19:07:48 rob Exp $
+ * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.8 2003/08/07 21:17:10 dillon Exp $
  *
  */
 
@@ -34,7 +34,7 @@
  *
  */
 
-#include "rc.h"
+#include "use_rc.h"
 
 /*#define RCDEBUG*/
 
@@ -50,10 +50,10 @@
 #include <machine/clock.h>
 #include <machine/ipl.h>
 
-#include <i386/isa/isa_device.h>
+#include <bus/isa/i386/isa_device.h>
 
 #include <i386/isa/ic/cd180.h>
-#include <i386/isa/rcreg.h>
+#include "rcreg.h"
 
 /* Prototypes */
 static int     rcprobe         __P((struct isa_device *));

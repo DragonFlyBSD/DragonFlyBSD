@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_crypt.c,v 1.1.2.3 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_crypt.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_crypt.c,v 1.3 2003/08/07 21:17:38 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/malloc.h>
@@ -46,10 +46,10 @@
 #include <sys/md4.h>
 #include <sys/iconv.h>
 
-#include <netsmb/smb.h>
-#include <netsmb/smb_conn.h>
-#include <netsmb/smb_subr.h>
-#include <netsmb/smb_dev.h>
+#include "smb.h"
+#include "smb_conn.h"
+#include "smb_subr.h"
+#include "smb_dev.h"
 
 #include "opt_netsmb.h"
 

@@ -2,7 +2,7 @@
  * os.h -- only included by sound_config.h right after local.h
  *
  * $FreeBSD: src/sys/i386/isa/sound/os.h,v 1.40.2.1 2000/08/03 01:01:27 peter Exp $
- * $DragonFly: src/sys/platform/pc32/isa/sound/Attic/os.h,v 1.3 2003/07/19 21:14:36 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/sound/Attic/os.h,v 1.4 2003/08/07 21:17:23 dillon Exp $
  */
 
 #ifndef _OS_H_
@@ -23,7 +23,7 @@
 
 #include <sys/soundcard.h>
 
-#include <i386/isa/isa_device.h>
+#include <bus/isa/i386/isa_device.h>
 
 #undef DELAY
 #define DELAY(x)  tenmicrosec(x)

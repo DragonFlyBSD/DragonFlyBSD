@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/amdpm.c,v 1.1.2.1 2001/10/10 12:10:26 murray Exp $
- * $DragonFly: src/sys/dev/powermng/i386/amdpm/amdpm.c,v 1.3 2003/07/23 02:30:23 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/amdpm/amdpm.c,v 1.4 2003/08/07 21:17:07 dillon Exp $
  *
  */
 
@@ -50,11 +50,11 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
-#include <dev/iicbus/iiconf.h>
-#include <dev/smbus/smbconf.h>
+#include <bus/iicbus/iiconf.h>
+#include <bus/smbus/smbconf.h>
 #include "smbus_if.h"
 
 #define AMDPM_DEBUG(x)	if (amdpm_debug) (x)

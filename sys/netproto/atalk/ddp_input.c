@@ -3,7 +3,7 @@
  * All Rights Reserved.  See COPYRIGHT.
  *
  * $FreeBSD: src/sys/netatalk/ddp_input.c,v 1.12 2000/02/13 03:31:58 peter Exp $
- * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.3 2003/08/07 21:17:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -17,11 +17,11 @@
 #include <net/route.h>
 #include <net/intrq.h>
 
-#include <netatalk/at.h>
-#include <netatalk/at_var.h>
-#include <netatalk/ddp.h>
-#include <netatalk/ddp_var.h>
-#include <netatalk/at_extern.h>
+#include "at.h"
+#include "at_var.h"
+#include "ddp.h"
+#include "ddp_var.h"
+#include "at_extern.h"
 
 static volatile int	ddp_forward = 1;
 static volatile int	ddp_firewall = 0;

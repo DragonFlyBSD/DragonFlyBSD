@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.11 2002/11/13 21:40:40 peter Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.3 2003/08/07 21:16:47 dillon Exp $
  *
  */
 
@@ -33,9 +33,9 @@
 #include <sys/bus.h>
 #include <sys/kernel.h>
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
-#include <i386/isa/pcibus.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include "pcibus.h"
 #include <machine/pci_cfgreg.h>
 #include <machine/md_var.h>
 

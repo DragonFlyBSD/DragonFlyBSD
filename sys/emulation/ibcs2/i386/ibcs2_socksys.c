@@ -21,6 +21,8 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_socksys.c,v 1.4 2003/08/07 21:17:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -29,8 +31,8 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 
-#include <i386/ibcs2/ibcs2_socksys.h>
-#include <i386/ibcs2/ibcs2_util.h>
+#include "ibcs2_socksys.h"
+#include "ibcs2_util.h"
 
 /* Local structures */
 struct getipdomainname_args {

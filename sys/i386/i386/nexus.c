@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.3 2003/08/07 21:17:22 dillon Exp $
  */
 
 /*
@@ -41,7 +41,7 @@
  * and I/O memory address space.
  */
 
-#include "mca.h"
+#include "use_mca.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -66,7 +66,7 @@
 #ifdef PC98
 #include <pc98/pc98/pc98.h>
 #else
-#include <i386/isa/isa.h>
+#include <bus/isa/i386/isa.h>
 #endif
 #include <i386/isa/intr_machdep.h>
 

@@ -35,7 +35,7 @@
  *
  *	@(#)umap_vnops.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vnops.c,v 1.30 1999/08/30 07:08:04 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.3 2003/06/25 03:56:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.4 2003/08/07 21:17:44 dillon Exp $
  */
 
 /*
@@ -52,8 +52,8 @@
 #include <sys/namei.h>
 #include <sys/malloc.h>
 #include <sys/buf.h>
-#include <miscfs/umapfs/umap.h>
-#include <miscfs/nullfs/null.h>
+#include "umap.h"
+#include <vfs/nullfs/null.h>
 
 static int umap_bug_bypass = 0;   /* for debugging: enables bypass printf'ing */
 SYSCTL_INT(_debug, OID_AUTO, umapfs_bug_bypass, CTLFLAG_RW,

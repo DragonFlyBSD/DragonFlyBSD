@@ -27,17 +27,17 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *	ibcs2_sysi86.c,v 1.1 1994/10/14 08:53:11 sos Exp
- *	$DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_sysi86.c,v 1.5 2003/07/30 00:19:14 dillon Exp $
+ *	$DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_sysi86.c,v 1.6 2003/08/07 21:17:17 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/sysctl.h>
 
-#include <i386/ibcs2/ibcs2_types.h>
-#include <i386/ibcs2/ibcs2_signal.h>
-#include <i386/ibcs2/ibcs2_util.h>
-#include <i386/ibcs2/ibcs2_proto.h>
+#include "ibcs2_types.h"
+#include "ibcs2_signal.h"
+#include "ibcs2_util.h"
+#include "ibcs2_proto.h"
 
 #define IBCS2_FP_NO     0       /* no fp support */
 #define IBCS2_FP_SW     1       /* software emulator */

@@ -1,12 +1,12 @@
- $DragonFly: src/sys/emulation/ibcs2/i386/Attic/syscalls.xenix,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ $DragonFly: src/sys/emulation/ibcs2/i386/Attic/syscalls.xenix,v 1.3 2003/08/07 21:17:17 dillon Exp $
  ; $FreeBSD: src/sys/i386/ibcs2/syscalls.xenix,v 1.6 1999/08/28 00:44:02 peter Exp $
 
 #include <sys/param.h>
 #include <sys/sysent.h>
 #include <sys/sysproto.h>
-#include <i386/ibcs2/ibcs2_types.h>
-#include <i386/ibcs2/ibcs2_signal.h>
-#include <i386/ibcs2/ibcs2_xenix.h>
+#include "ibcs2_types.h"
+#include "ibcs2_signal.h"
+#include "ibcs2_xenix.h"
 
 0	UNIMPL	XENIX	nosys
 1	UNIMPL	XENIX	xenix_xlocking

@@ -25,13 +25,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
+ * $DragonFly: src/sys/dev/sound/isa/i386/gus/Attic/gus_card.c,v 1.2 2003/08/07 21:17:12 dillon Exp $
  */
 
 #include <i386/isa/sound/sound_config.h>
 
 #if defined(CONFIG_GUS)
 
-#include <i386/isa/sound/gus_hw.h>
+#include "gus_hw.h"
 #include <i386/isa/sound/iwdefs.h>
 
 int             gus_base, gus_irq, gus_dma;

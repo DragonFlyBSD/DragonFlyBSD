@@ -2,7 +2,7 @@
  * Copyright (c) 1990,1991 Regents of The University of Michigan.
  * All Rights Reserved.
  *
- * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.4 2003/07/21 07:57:48 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.5 2003/08/07 21:17:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -18,9 +18,9 @@
 #undef s_net
 #include <netinet/if_ether.h>
 
-#include <netatalk/at.h>
-#include <netatalk/at_var.h>
-#include <netatalk/at_extern.h>
+#include "at.h"
+#include "at_var.h"
+#include "at_extern.h"
 
 struct at_ifaddr	*at_ifaddr;
 

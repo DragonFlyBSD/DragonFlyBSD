@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/svr4/svr4_fuser.h,v 1.3 1999/08/28 00:51:16 peter Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fuser.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fuser.h,v 1.3 2003/08/07 21:17:19 dillon Exp $
  *	Derived from:
  *	$NetBSD: svr4_fuser.h,v 1.4 1998/09/04 19:54:38 christos Exp $	 */
 
@@ -75,7 +75,7 @@
 #ifndef	_SVR4_FUSER_H_
 #define	_SVR4_FUSER_H_
 
-#include <svr4/svr4_types.h>
+#include "svr4_types.h"
 
 struct svr4_f_user {
 	svr4_pid_t	fu_pid;

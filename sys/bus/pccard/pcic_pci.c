@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/pcic_pci.c,v 1.54.2.22 2003/02/26 18:42:00 imp Exp $
- * $DragonFly: src/sys/bus/pccard/Attic/pcic_pci.c,v 1.2 2003/06/17 04:28:55 dillon Exp $
+ * $DragonFly: src/sys/bus/pccard/Attic/pcic_pci.c,v 1.3 2003/08/07 21:16:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,21 +37,16 @@
 #include <sys/sysctl.h>
 #include <sys/systm.h>
 
-#if __FreeBSD_version < 500000
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
-#else
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
-#endif
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <pccard/pcic_pci.h>
-#include <pccard/i82365.h>
-#include <pccard/cardinfo.h>
-#include <pccard/slot.h>
-#include <pccard/pcicvar.h>
+#include "pcic_pci.h"
+#include "i82365.h"
+#include "cardinfo.h"
+#include "slot.h"
+#include "pcicvar.h"
 
-#include <dev/pccard/pccardvar.h>
+#include <bus/pccard/pccardvar.h>
 #include "card_if.h"
 
 #define PRVERB(x)	do { \

@@ -34,7 +34,7 @@
  *	@(#)spx_usrreq.h
  *
  * $FreeBSD: src/sys/netipx/spx_usrreq.c,v 1.27.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.4 2003/07/26 21:07:36 rob Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.5 2003/08/07 21:17:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,13 +49,13 @@
 #include <net/route.h>
 #include <netinet/tcp_fsm.h>
 
-#include <netipx/ipx.h>
-#include <netipx/ipx_pcb.h>
-#include <netipx/ipx_var.h>
-#include <netipx/spx.h>
-#include <netipx/spx_timer.h>
-#include <netipx/spx_var.h>
-#include <netipx/spx_debug.h>
+#include "ipx.h"
+#include "ipx_pcb.h"
+#include "ipx_var.h"
+#include "spx.h"
+#include "spx_timer.h"
+#include "spx_var.h"
+#include "spx_debug.h"
 
 /*
  * SPX protocol implementation.

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.8 2003/07/23 02:30:15 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.9 2003/08/07 21:17:08 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -197,7 +197,7 @@
 #endif /* DEBUG_ASR_USR_CMD */
 
 #define dsDescription_size 46   /* Snug as a bug in a rug */
-#include "dev/asr/dptsig.h"
+#include "dptsig.h"
 
 static dpt_sig_S ASR_sig = {
         { 'd', 'P', 't', 'S', 'i', 'G'}, SIG_VERSION, PROC_INTEL,
@@ -225,14 +225,14 @@ static dpt_sig_S ASR_sig = {
 #include <sys/stat.h>
 #include <sys/device.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt_sim.h>
-#include <cam/cam_xpt_periph.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_xpt_periph.h>
 
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_message.h>
+#include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_message.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -240,8 +240,8 @@ static dpt_sig_S ASR_sig = {
 #include <machine/clock.h>
 #include <i386/include/vmparam.h>
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
 #define STATIC static
 #define INLINE
@@ -258,14 +258,14 @@ static dpt_sig_S ASR_sig = {
 
 #define osdSwap4(x) ((u_long)ntohl((u_long)(x)))
 #define KVTOPHYS(x) vtophys(x)
-#include        "dev/asr/dptalign.h"
-#include        "dev/asr/i2oexec.h"
-#include        "dev/asr/i2obscsi.h"
-#include        "dev/asr/i2odpt.h"
-#include        "dev/asr/i2oadptr.h"
+#include        "dptalign.h"
+#include        "i2oexec.h"
+#include        "i2obscsi.h"
+#include        "i2odpt.h"
+#include        "i2oadptr.h"
 #include        "opt_asr.h"
 
-#include        "dev/asr/sys_info.h"
+#include        "sys_info.h"
 
 /* Configuration Definitions */
 
@@ -3848,7 +3848,7 @@ typedef U32   DPT_MSG_T;
 typedef U32   DPT_RTN_T;
 
 #undef SCSI_RESET       /* Conflicts with "scsi/scsiconf.h" defintion */
-#include        "dev/asr/osd_unix.h"
+#include        "osd_unix.h"
 
 #define asr_unit(dev)     minor(dev)
 

@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.7 2003/07/26 13:40:57 rob Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.8 2003/08/07 21:17:40 dillon Exp $
  * 
  */
 
@@ -45,7 +45,7 @@
  * M. Satyanarayanan.  
  */
 
-#include <vcoda.h>
+#include "use_vcoda.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -59,12 +59,12 @@
 
 #include <vm/vm_zone.h>
 
-#include <coda/coda.h>
-#include <coda/cnode.h>
-#include <coda/coda_vfsops.h>
-#include <coda/coda_venus.h>
-#include <coda/coda_subr.h>
-#include <coda/coda_opstats.h>
+#include "coda.h"
+#include "cnode.h"
+#include "coda_vfsops.h"
+#include "coda_venus.h"
+#include "coda_subr.h"
+#include "coda_opstats.h"
 
 MALLOC_DEFINE(M_CODA, "CODA storage", "Various Coda Structures");
 
@@ -512,8 +512,8 @@ getNewVnode(vpp)
 		      NULL, NULL);
 }
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/ufsmount.h>
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/ufsmount.h>
 /* get the mount structure corresponding to a given device.  Assume 
  * device corresponds to a UFS. Return NULL if no device is found.
  */ 

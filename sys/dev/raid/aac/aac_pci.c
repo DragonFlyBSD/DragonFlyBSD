@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_pci.c,v 1.3.2.18 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_pci.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_pci.c,v 1.3 2003/08/07 21:17:07 dillon Exp $
  */
 
 /*
@@ -40,7 +40,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 
-#include <dev/aac/aac_compat.h>
+#include "aac_compat.h"
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/devicestat.h>
@@ -51,12 +51,12 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <dev/aac/aacreg.h>
-#include <dev/aac/aac_ioctl.h>
-#include <dev/aac/aacvar.h>
+#include "aacreg.h"
+#include "aac_ioctl.h"
+#include "aacvar.h"
 
 static int	aac_pci_probe(device_t dev);
 static int	aac_pci_attach(device_t dev);

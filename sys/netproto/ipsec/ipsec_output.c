@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netipsec/ipsec_output.c,v 1.3.2.2 2003/03/28 20:32:53 sam Exp $
- * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.3 2003/08/07 21:17:37 dillon Exp $
  */
 
 /*
@@ -65,19 +65,19 @@
 #include <netinet/icmp6.h>
 #endif
 
-#include <netipsec/ipsec.h>
+#include "ipsec.h"
 #ifdef INET6
-#include <netipsec/ipsec6.h>
+#include "ipsec6.h"
 #endif
-#include <netipsec/ah_var.h>
-#include <netipsec/esp_var.h>
-#include <netipsec/ipcomp_var.h>
+#include "ah_var.h"
+#include "esp_var.h"
+#include "ipcomp_var.h"
 
-#include <netipsec/xform.h>
+#include "xform.h"
 
-#include <netipsec/key.h>
-#include <netipsec/keydb.h>
-#include <netipsec/key_debug.h>
+#include "key.h"
+#include "keydb.h"
+#include "key_debug.h"
 
 #include <machine/in_cksum.h>
 

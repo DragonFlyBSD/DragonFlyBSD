@@ -37,7 +37,7 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_rlimit.c,v 1.5 1999/12/08 08:59:37 phk Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_rlimit.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_rlimit.c,v 1.3 2003/08/07 21:17:43 dillon Exp $
  */
 
 /*
@@ -53,7 +53,7 @@
 #include <sys/resourcevar.h>
 #include <sys/resource.h>
 #include <sys/types.h>
-#include <miscfs/procfs/procfs.h>
+#include <vfs/procfs/procfs.h>
 
 
 int

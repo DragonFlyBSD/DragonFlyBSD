@@ -28,7 +28,7 @@
  *      ----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/iwic/i4b_iwic.h,v 1.2.2.1 2001/08/10 14:08:40 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic.h,v 1.3 2003/08/07 21:17:28 dillon Exp $
  *
  *      last edit-date: [Sun Jan 21 11:08:44 2001]
  *
@@ -37,7 +37,7 @@
 #ifndef _I4B_IWIC_H_
 #define _I4B_IWIC_H_
 
-#include <i4b/layer1/iwic/i4b_iwic_ext.h>
+#include "i4b_iwic_ext.h"
 
 /*---------------------------------------------------------------------------*
  *	PCI resources used

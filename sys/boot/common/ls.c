@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/boot/common/ls.c,v 1.8.2.2 2000/07/07 00:09:45 obrien Exp $
- * $DragonFly: src/sys/boot/common/ls.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ * $DragonFly: src/sys/boot/common/ls.c,v 1.3 2003/08/07 21:16:44 dillon Exp $
  * From: $NetBSD: ls.c,v 1.3 1997/06/13 13:48:47 drochner Exp $
  */
 
@@ -41,8 +41,8 @@
 
 
 #include <sys/param.h>
-#include <ufs/ufs/dinode.h>
-#include <ufs/ufs/dir.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/dir.h>
 
 #include <stand.h>
 #include <string.h>

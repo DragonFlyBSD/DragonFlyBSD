@@ -32,7 +32,7 @@
  *
  *	@(#)ns_ip.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_ip.c,v 1.9 1999/08/28 00:49:50 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.3 2003/07/26 21:10:52 rob Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.4 2003/08/07 21:17:38 dillon Exp $
  */
 
 /*
@@ -62,9 +62,9 @@
 
 #include <machine/mtpr.h>
 
-#include <netns/ns.h>
-#include <netns/ns_if.h>
-#include <netns/idp.h>
+#include "ns.h"
+#include "ns_if.h"
+#include "idp.h"
 
 struct ifnet_en {
 	struct ifnet ifen_ifnet;

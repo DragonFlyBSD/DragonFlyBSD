@@ -62,12 +62,12 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/reg_norm.s,v 1.8 1999/08/28 00:42:57 peter Exp $
- * $DragonFly: src/sys/i386/gnu/fpemul/Attic/reg_norm.s,v 1.3 2003/07/31 12:37:39 hmp Exp $
+ * $DragonFly: src/sys/i386/gnu/fpemul/Attic/reg_norm.s,v 1.4 2003/08/07 21:17:20 dillon Exp $
  *
  */
 
 
-#include <gnu/i386/fpemul/fpu_asm.h>
+#include "fpu_asm.h"
 
 
 .text

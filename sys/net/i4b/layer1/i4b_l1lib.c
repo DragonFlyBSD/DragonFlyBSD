@@ -30,7 +30,7 @@
  *	$Id: i4b_l1lib.c,v 1.3 2000/05/29 15:41:41 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/i4b_l1lib.c,v 1.3.2.1 2001/08/10 14:08:36 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/i4b_l1lib.c,v 1.3 2003/07/26 19:20:29 rob Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/i4b_l1lib.c,v 1.4 2003/08/07 21:17:25 dillon Exp $
  *
  *      last edit-date: [Mon May 29 15:24:21 2000]
  *
@@ -43,7 +43,7 @@
 #include <machine/i4b_ioctl.h>
 #include <machine/i4b_trace.h>
 
-#include <i4b/layer1/i4b_l1.h>
+#include "i4b_l1.h"
 
 #define TEL_IDLE_MIN (BCH_MAX_DATALEN/2)
 

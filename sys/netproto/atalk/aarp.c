@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.3 2003/08/07 21:17:33 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -21,11 +21,11 @@
 #undef s_net
 #include <netinet/if_ether.h>
 
-#include <netatalk/at.h>
-#include <netatalk/at_var.h>
-#include <netatalk/aarp.h>
-#include <netatalk/phase2.h>
-#include <netatalk/at_extern.h>
+#include "at.h"
+#include "at_var.h"
+#include "aarp.h"
+#include "phase2.h"
+#include "at_extern.h"
 
 static void aarptfree( struct aarptab *aat);
 static void at_aarpinput( struct arpcom *ac, struct mbuf *m);

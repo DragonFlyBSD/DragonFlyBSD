@@ -1,5 +1,3 @@
-/*	$NetBSD: ibcs2_fcntl.h,v 1.2 1994/10/26 02:52:54 cgd Exp $	*/
-
 /*
  * Copyright (c) 1994 Scott Bartram
  * All rights reserved.
@@ -28,12 +26,15 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $NetBSD: ibcs2_fcntl.h,v 1.2 1994/10/26 02:52:54 cgd Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.h,v 1.2 2003/08/07 21:17:17 dillon Exp $
  */
 
 #ifndef _IBCS2_FCNTL_H
 #define _IBCS2_FCNTL_H 1
 
-#include <i386/ibcs2/ibcs2_types.h>
+#include "ibcs2_types.h"
 
 #define IBCS2_O_RDONLY		0x0000
 #define IBCS2_O_WRONLY		0x0001

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.7 2003/07/19 21:14:45 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.8 2003/08/07 21:17:39 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -51,10 +51,10 @@
 
 #include <sys/iconv.h>
 
-#include <netsmb/smb.h>
-#include <netsmb/smb_conn.h>
-#include <netsmb/smb_rq.h>
-#include <netsmb/smb_subr.h>
+#include "smb.h"
+#include "smb_conn.h"
+#include "smb_rq.h"
+#include "smb_subr.h"
 
 MALLOC_DEFINE(M_SMBDATA, "SMBDATA", "Misc netsmb data");
 MALLOC_DEFINE(M_SMBSTR, "SMBSTR", "netsmb string data");

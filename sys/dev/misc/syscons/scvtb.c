@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvtb.c,v 1.5.2.1 2001/07/16 05:21:23 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvtb.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvtb.c,v 1.3 2003/08/07 21:16:59 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -36,8 +36,8 @@
 #include <machine/console.h>
 #include <machine/md_var.h>
 
-#include <dev/fb/fbreg.h>
-#include <dev/syscons/syscons.h>
+#include <dev/video/fb/fbreg.h>
+#include "syscons.h"
 
 #define vtb_wrap(vtb, at, offset)				\
     (((at) + (offset) + (vtb)->vtb_size)%(vtb)->vtb_size)

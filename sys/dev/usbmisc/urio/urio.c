@@ -29,7 +29,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/usb/urio.c,v 1.11.2.4 2002/11/06 14:41:01 joe Exp $ */
-/* $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.5 2003/07/21 05:50:37 dillon Exp $ */
+/* $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.6 2003/08/07 21:17:15 dillon Exp $ */
 
 /*
  * 2000/3/24  added NetBSD/OpenBSD support (from Alex Nemirovsky)
@@ -71,12 +71,12 @@
 #include <sys/sysctl.h>
 #include <sys/proc.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
 
-#include <dev/usb/usbdevs.h>
-#include <dev/usb/rio500_usb.h>
+#include <bus/usb/usbdevs.h>
+#include <bus/usb/rio500_usb.h>
 
 #ifdef USB_DEBUG
 #define DPRINTF(x)	if (uriodebug) logprintf x

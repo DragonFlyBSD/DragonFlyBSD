@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.2 2003/06/17 04:28:26 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.3 2003/08/07 21:17:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,7 +47,7 @@
 
 #include <net/bpf.h>
 #include <net/if_types.h>
-#include <net/if_vlan_var.h>
+#include <net/vlan/if_vlan_var.h>
 
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
@@ -64,14 +64,14 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <dev/mii/mii.h>
-#include <dev/mii/miivar.h>
+#include "../mii_layer/mii.h"
+#include "../mii_layer/miivar.h"
 
-#include <dev/gx/if_gxreg.h>
-#include <dev/gx/if_gxvar.h>
+#include "if_gxreg.h"
+#include "if_gxvar.h"
 
 MODULE_DEPEND(gx, miibus, 1, 1, 1);
 #include "miibus_if.h"

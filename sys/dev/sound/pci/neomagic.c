@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/neomagic.c,v 1.7.2.11 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/neomagic.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/neomagic.c,v 1.3 2003/08/07 21:17:13 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,10 +34,10 @@
 #include <dev/sound/pci/neomagic.h>
 #include <dev/sound/pci/neomagic-coeff.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/neomagic.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/neomagic.c,v 1.3 2003/08/07 21:17:13 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 

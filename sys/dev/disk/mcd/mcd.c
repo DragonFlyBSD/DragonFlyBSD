@@ -41,11 +41,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.6 2003/07/23 02:30:19 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.7 2003/08/07 21:16:53 dillon Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
-#include "mcd.h"
+#include "use_mcd.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bootmaj.h>
@@ -58,8 +59,8 @@ static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 #include <sys/buf2.h>
 #include <machine/clock.h>
 
-#include <i386/isa/isa_device.h>
-#include <i386/isa/mcdreg.h>
+#include <bus/isa/i386/isa_device.h>
+#include "mcdreg.h"
 
 #define	MCD_TRACE(format, args...)						\
 {									\

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_sysctl.c,v 1.2.2.1 2001/10/21 03:57:35 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_sysctl.c,v 1.3 2003/06/23 17:55:26 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_sysctl.c,v 1.4 2003/08/07 21:17:18 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -36,9 +36,9 @@
 #include <sys/proc.h>
 #include <sys/sysproto.h>
 
-#include <machine/../linux/linux.h>
-#include <machine/../linux/linux_proto.h>
-#include <compat/linux/linux_util.h>
+#include <emulation/linux/machine/linux.h>
+#include <emulation/linux/machine/linux_proto.h>
+#include "linux_util.h"
 
 #define	LINUX_CTL_KERN		1
 #define	LINUX_CTL_VM		2

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.c,v 1.2.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.3 2003/07/19 21:14:22 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.4 2003/08/07 21:17:09 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -49,12 +49,11 @@
 /* #include "opt_iir.h" */
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/types.h>
 #include <sys/eventhandler.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
-
-#include <stddef.h>     /* For offsetof */
 
 #include <machine/bus_memio.h>
 #include <machine/bus_pio.h>
@@ -62,18 +61,18 @@
 #include <machine/clock.h>
 #include <machine/stdarg.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt_sim.h>
-#include <cam/cam_debug.h>
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_message.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_debug.h>
+#include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_message.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
-#include <dev/iir/iir.h>
+#include "iir.h"
 
 struct gdt_softc *gdt_wait_gdt;
 int     gdt_wait_index;

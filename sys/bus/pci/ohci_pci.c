@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/pci/ohci_pci.c,v 1.16.2.5 2002/08/28 20:51:56 joe Exp $ */
-/*	$DragonFly: src/sys/bus/pci/Attic/ohci_pci.c,v 1.2 2003/06/17 04:28:57 dillon Exp $ */
+/*	$DragonFly: src/sys/bus/pci/Attic/ohci_pci.c,v 1.3 2003/08/07 21:16:47 dillon Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -62,16 +62,16 @@
 #include <sys/rman.h>
 #include <machine/resource.h>
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include "pcivar.h"
+#include "pcireg.h"
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdivar.h>
-#include <dev/usb/usb_mem.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdivar.h>
+#include <bus/usb/usb_mem.h>
 
-#include <dev/usb/ohcireg.h>
-#include <dev/usb/ohcivar.h>
+#include <bus/usb/ohcireg.h>
+#include <bus/usb/ohcivar.h>
 
 #define PCI_OHCI_VENDORID_ACERLABS	0x10b9
 #define PCI_OHCI_VENDORID_AMD		0x1022

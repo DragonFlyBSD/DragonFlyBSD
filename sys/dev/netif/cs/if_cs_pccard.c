@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs_pccard.c,v 1.1.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs_pccard.c,v 1.2 2003/06/17 04:28:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs_pccard.c,v 1.3 2003/08/07 21:17:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,8 +41,8 @@
 #include <net/if.h> 
 #include <net/if_arp.h>
 
-#include <dev/cs/if_csvar.h>
-#include <dev/pccard/pccardvar.h>
+#include "if_csvar.h"
+#include <bus/pccard/pccardvar.h>
 
 #include "card_if.h"
 

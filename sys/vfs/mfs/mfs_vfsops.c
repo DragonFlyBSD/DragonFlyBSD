@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.9 2003/07/26 22:04:26 rob Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.10 2003/08/07 21:17:41 dillon Exp $
  */
 
 
@@ -52,16 +52,15 @@
 
 #include <sys/buf2.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufsmount.h>
-#include <ufs/ufs/ufs_extern.h>
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/inode.h>
+#include <vfs/ufs/ufsmount.h>
+#include <vfs/ufs/ufs_extern.h>
+#include <vfs/ufs/fs.h>
+#include <vfs/ufs/ffs_extern.h>
 
-#include <ufs/ffs/fs.h>
-#include <ufs/ffs/ffs_extern.h>
-
-#include <ufs/mfs/mfsnode.h>
-#include <ufs/mfs/mfs_extern.h>
+#include "mfsnode.h"
+#include "mfs_extern.h"
 
 MALLOC_DEFINE(M_MFSNODE, "MFS node", "MFS vnode private part");
 

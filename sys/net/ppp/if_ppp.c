@@ -70,11 +70,11 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.5 2003/07/26 20:19:33 rob Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.6 2003/08/07 21:17:30 dillon Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
-#include "ppp.h"
+#include "use_ppp.h"
 
 #include "opt_inet.h"
 #include "opt_ipx.h"
@@ -117,8 +117,8 @@
 #include <net/slcompress.h>
 #endif
 
-#include <net/if_ppp.h>
-#include <net/if_pppvar.h>
+#include "if_ppp.h"
+#include "if_pppvar.h"
 
 /* minimise diffs */
 #ifndef splsoftnet
@@ -127,7 +127,7 @@
 
 #ifdef PPP_COMPRESS
 #define PACKETPTR	struct mbuf *
-#include <net/ppp_comp.h>
+#include <net/ppp_layer/ppp_comp.h>
 #endif
 
 struct ppp_softc ppp_softc[NPPP];

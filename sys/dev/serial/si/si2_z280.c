@@ -26,12 +26,12 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si2_z280.c,v 1.4 2000/01/24 07:24:00 peter Exp $
- * $DragonFly: src/sys/dev/serial/si/si2_z280.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si2_z280.c,v 1.3 2003/08/07 21:17:11 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/bus.h>
-#include <dev/si/sivar.h>
+#include "sivar.h"
 
 /* SI2_Z280.C Version, Bootstrap and Download Code Arrays... */
 

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.14 2003/08/03 10:07:41 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.15 2003/08/07 21:17:23 dillon Exp $
  */
 
 /* For 4.3 integer FS ID compatibility */
@@ -64,7 +64,7 @@
 #include <sys/extattr.h>
 
 #include <machine/limits.h>
-#include <miscfs/union/union.h>
+#include <vfs/union/union.h>
 #include <sys/sysctl.h>
 #include <vm/vm.h>
 #include <vm/vm_object.h>

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keysock.c,v 1.1.2.4 2003/01/11 19:10:59 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.4 2003/07/29 12:51:30 hmp Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.5 2003/08/07 21:17:37 dillon Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -55,10 +55,10 @@
 #include <netinet/in.h>
 
 #include <net/pfkeyv2.h>
-#include <netkey/keydb.h>
-#include <netkey/key.h>
-#include <netkey/keysock.h>
-#include <netkey/key_debug.h>
+#include "keydb.h"
+#include "key.h"
+#include "keysock.h"
+#include "key_debug.h"
 
 #include <machine/stdarg.h>
 

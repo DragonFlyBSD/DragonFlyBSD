@@ -28,19 +28,19 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/sound/sb16_dsp.c,v 1.33 1999/12/27 04:37:18 tanimura Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/sbxvi/Attic/sb16_dsp.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/sbxvi/Attic/sb16_dsp.c,v 1.3 2003/08/07 21:17:12 dillon Exp $
  * 
  */
 
 #define DEB(x)
 #define DEB1(x)
-#include <i386/isa/sound/sound_config.h>
-#include "sb.h"
-#include <i386/isa/sound/sb_mixer.h>
-#include <i386/isa/sound/sbcard.h>
+#include "use_sb.h"
+
+#include <dev/sound/isa/i386/sound_config.h>
+#include <dev/sound/isa/i386/sb_mixer.h>
+#include <dev/sound/isa/i386/sbcard.h>
 
 #if defined(CONFIG_SB16) && (NSB > 0) && defined(CONFIG_AUDIO) && defined(CONFIG_SBPRO)
-
 
 extern sound_os_info *sb_osp;
 extern int      sbc_base;

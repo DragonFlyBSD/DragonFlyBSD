@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr_pci.c,v 1.15.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr_pci.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr_pci.c,v 1.3 2003/08/07 21:17:05 dillon Exp $
  */
 
 
@@ -43,11 +43,11 @@
 #include <machine/bus_memio.h>
 #include <sys/rman.h>
 
-#include <pci/pcivar.h>
+#include <bus/pci/pcivar.h>
 #include <machine/md_var.h>
 
-#include <dev/ic/hd64570.h>
-#include <dev/sr/if_srregs.h>
+#include "../ic_layer/hd64570.h"
+#include "if_srregs.h"
 
 #ifndef BUGGY
 #define BUGGY		0

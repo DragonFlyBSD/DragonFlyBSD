@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wicfg.c,v 1.3 2000/07/06 17:22:25 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wicfg.c,v 1.3.2.2 2002/06/18 08:06:15 jhay Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wicfg.c,v 1.4 2003/06/25 03:55:46 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wicfg.c,v 1.5 2003/08/07 21:17:00 dillon Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -83,14 +83,14 @@
 #include <dev/pcmcia/if_wi_ieee.h>	/* XXX */
 #endif
 #ifdef __FreeBSD__
-#include <dev/awi/am79c930reg.h>
-#include <dev/awi/am79c930var.h>
+#include "am79c930reg.h"
+#include "am79c930var.h"
 
 #undef	_KERNEL		/* XXX */
-#include <dev/wi/if_wavelan_ieee.h>	/* XXX */
+#include <dev/netif/wi/if_wavelan_ieee.h>	/* XXX */
 #define	_KERNEL		/* XXX */
-#include <dev/awi/awireg.h>
-#include <dev/awi/awivar.h>
+#include "awireg.h"
+#include "awivar.h"
 #endif
 
 static int awi_cfgget __P((struct ifnet *ifp, u_long cmd, caddr_t data));

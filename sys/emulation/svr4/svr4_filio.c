@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_filio.c,v 1.8 2000/01/15 15:30:44 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_filio.c,v 1.6 2003/07/30 00:19:15 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_filio.c,v 1.7 2003/08/07 21:17:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,13 +42,13 @@
 
 #include <sys/sysproto.h>
 
-#include <svr4/svr4.h>
-#include <svr4/svr4_types.h>
-#include <svr4/svr4_util.h>
-#include <svr4/svr4_signal.h>
-#include <svr4/svr4_proto.h>
-#include <svr4/svr4_ioctl.h>
-#include <svr4/svr4_filio.h>
+#include "svr4.h"
+#include "svr4_types.h"
+#include "svr4_util.h"
+#include "svr4_signal.h"
+#include "svr4_proto.h"
+#include "svr4_ioctl.h"
+#include "svr4_filio.h"
 
 /*#define GROTTY_READ_HACK*/
 

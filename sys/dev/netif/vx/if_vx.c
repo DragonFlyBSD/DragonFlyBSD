@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.3 2003/07/26 14:25:27 rob Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.4 2003/08/07 21:17:06 dillon Exp $
  *
  */
 
@@ -55,7 +55,7 @@
  *          babkin@hq.icb.chel.su
  */
 
-#include "vx.h"
+#include "use_vx.h"
 
 #if NVX < 4	/* These cost 4 bytes apiece, so give us 4 */
 #undef NVX
@@ -79,7 +79,7 @@
 
 #include <machine/clock.h>
 
-#include <dev/vx/if_vxreg.h>
+#include "if_vxreg.h"
 
 #define ETHER_MAX_LEN	1518
 #define ETHER_ADDR_LEN	6

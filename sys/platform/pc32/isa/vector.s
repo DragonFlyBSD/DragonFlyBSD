@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/vector.s,v 1.32 1999/08/28 00:45:04 peter Exp $
- * $DragonFly: src/sys/platform/pc32/isa/Attic/vector.s,v 1.4 2003/07/01 20:31:38 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/vector.s,v 1.5 2003/08/07 21:17:23 dillon Exp $
  */
 
 /*
@@ -14,7 +14,7 @@
 #ifdef PC98
 #include <pc98/pc98/pc98.h>
 #else
-#include <i386/isa/isa.h>
+#include <bus/isa/i386/isa.h>
 #endif
 
 	.data

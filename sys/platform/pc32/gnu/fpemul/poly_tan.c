@@ -57,12 +57,12 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/poly_tan.c,v 1.10 1999/08/28 00:42:54 peter Exp $
- * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/poly_tan.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/poly_tan.c,v 1.3 2003/08/07 21:17:20 dillon Exp $
  *
  */
 
-#include <gnu/i386/fpemul/reg_constant.h>
-#include <gnu/i386/fpemul/control_w.h>
+#include "reg_constant.h"
+#include "control_w.h"
 
 
 #define	HIPOWERop	3	/* odd poly, positive terms */

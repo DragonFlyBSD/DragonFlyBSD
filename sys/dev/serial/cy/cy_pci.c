@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/cy_pci.c,v 1.17.2.1 2002/03/17 04:14:18 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy_pci.c,v 1.2 2003/06/17 04:28:56 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy_pci.c,v 1.3 2003/08/07 21:17:10 dillon Exp $
  */
 
 /*
@@ -40,9 +40,9 @@
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
-#include <pci/pcivar.h>
+#include <bus/pci/pcivar.h>
 
-#include <pci/cy_pcireg.h>
+#include "cy_pcireg.h"
 
 #ifdef CY_PCI_FASTINTR
 #include <i386/isa/intr_machdep.h>

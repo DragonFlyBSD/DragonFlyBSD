@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.7 2003/07/26 20:19:33 rob Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.8 2003/08/07 21:17:30 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -48,8 +48,8 @@
 
 #include <net/bpf.h>
 
-#include <net/if_tunvar.h>
-#include <net/if_tun.h>
+#include "if_tunvar.h"
+#include "if_tun.h"
 
 static MALLOC_DEFINE(M_TUN, "tun", "Tunnel Interface");
 

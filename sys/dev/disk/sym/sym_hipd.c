@@ -56,14 +56,14 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.3 2003/07/27 01:49:51 hmp Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.4 2003/08/07 21:16:54 dillon Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
 /* #define SYM_DEBUG_GENERIC_SUPPORT */
 /* #define CAM_NEW_TRAN_CODE */
 
-#include <pci.h>
+#include "use_pci.h"
 #include <sys/param.h>
 
 /*
@@ -81,10 +81,10 @@
  *  Driver configuration options.
  */
 #include "opt_sym.h"
-#include <dev/sym/sym_conf.h>
+#include "sym_conf.h"
 
 #ifndef FreeBSD_Bus_Io_Abstraction
-#include "ncr.h"	/* To know if the ncr has been configured */
+#include "use_ncr.h"	/* To know if the ncr has been configured */
 #endif
 
 #include <sys/systm.h>
@@ -97,8 +97,8 @@
 
 #include <sys/proc.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #ifdef	FreeBSD_Bus_Space_Abstraction
 #include <machine/bus_memio.h>
@@ -119,14 +119,14 @@
 #endif
 #include <machine/clock.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt_sim.h>
-#include <cam/cam_debug.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_debug.h>
 
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_message.h>
+#include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_message.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -150,8 +150,8 @@ typedef	u_int32_t u32;
 /*
  *  Driver definitions.
  */
-#include <dev/sym/sym_defs.h>
-#include <dev/sym/sym_fw.h>
+#include "sym_defs.h"
+#include "sym_fw.h"
 
 /*
  *  IA32 architecture does not reorder STORES and prevents
@@ -1952,7 +1952,7 @@ static __inline char *sym_name(hcb_p np)
  */
 #define	SYM_FWA_SCR		sym_fw1a_scr
 #define	SYM_FWB_SCR		sym_fw1b_scr
-#include <dev/sym/sym_fw1.h>
+#include "sym_fw1.h"
 struct sym_fwa_ofs sym_fw1a_ofs = {
 	SYM_GEN_FW_A(struct SYM_FWA_SCR)
 };
@@ -1968,7 +1968,7 @@ struct sym_fwb_ofs sym_fw1b_ofs = {
  */
 #define	SYM_FWA_SCR		sym_fw2a_scr
 #define	SYM_FWB_SCR		sym_fw2b_scr
-#include <dev/sym/sym_fw2.h>
+#include "sym_fw2.h"
 struct sym_fwa_ofs sym_fw2a_ofs = {
 	SYM_GEN_FW_A(struct SYM_FWA_SCR)
 };

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_lnc.c,v 1.68.2.5 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.3 2003/08/07 21:17:03 dillon Exp $
  */
 
 /*
@@ -61,8 +61,8 @@
  *
  */
 
-#include "pci.h"
-#include "lnc.h"
+#include "use_pci.h"
+#include "use_lnc.h"
 
 #include "opt_inet.h"
 
@@ -94,8 +94,8 @@
 #endif
 #include <machine/md_var.h>
 
-#include <i386/isa/isa_device.h>
-#include <i386/isa/if_lnc.h>
+#include <bus/isa/i386/isa_device.h>
+#include "if_lnc.h"
 
 struct lnc_softc {
 	struct arpcom arpcom;	            /* see ../../net/if_arp.h */

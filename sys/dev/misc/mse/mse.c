@@ -12,7 +12,7 @@
  * without express or implied warranty.
  *
  * $FreeBSD: src/sys/i386/isa/mse.c,v 1.49.2.1 2000/03/20 13:58:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.5 2003/07/21 07:57:44 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.6 2003/08/07 21:16:57 dillon Exp $
  */
 /*
  * Driver for the Logitech and ATI Inport Bus mice for use with 386bsd and
@@ -61,7 +61,7 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 
 /* driver configuration flags (config) */
 #define MSE_CONFIG_ACCEL	0x00f0  /* acceleration factor */

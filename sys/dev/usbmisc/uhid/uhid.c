@@ -1,6 +1,6 @@
 /*	$NetBSD: uhid.c,v 1.38 2000/04/27 15:26:48 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhid.c,v 1.27.2.12 2002/11/06 20:23:50 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.5 2003/07/21 05:50:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.6 2003/08/07 21:17:14 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -67,12 +67,12 @@
 #include <sys/poll.h>
 #include <sys/sysctl.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbhid.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbhid.h>
 
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/hid.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
+#include <bus/usb/hid.h>
 
 #if defined(__FreeBSD__) && defined(__i386__)
 #include <i386/isa/intr_machdep.h>

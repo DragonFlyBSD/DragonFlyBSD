@@ -1,10 +1,10 @@
 #include "svr4_assym.h"			/* system definitions */
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
 
-#include <svr4/svr4_syscall.h>		/* system call numbers */
+#include "../svr4_syscall.h"		/* system call numbers */
 
 /* $FreeBSD: src/sys/i386/svr4/svr4_locore.s,v 1.10.2.1 2000/07/07 00:38:51 obrien Exp $ */
-/* $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_locore.s,v 1.3 2003/07/01 20:31:39 dillon Exp $ */
+/* $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_locore.s,v 1.4 2003/08/07 21:17:20 dillon Exp $ */
 	
 NON_GPROF_ENTRY(svr4_sigcode)
 	call	*SVR4_SIGF_HANDLER(%esp)

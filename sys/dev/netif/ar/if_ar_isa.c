@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar_isa.c,v 1.49.2.1 2002/06/17 15:10:57 jhay Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar_isa.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar_isa.c,v 1.3 2003/08/07 21:16:59 dillon Exp $
  */
 
 /*
@@ -57,11 +57,11 @@
 #include <machine/bus_memio.h>
 #include <sys/rman.h>
 
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 #include "isa_if.h"
 
-#include <dev/ic/hd64570.h>
-#include <dev/ar/if_arregs.h>
+#include "../ic_layer/hd64570.h"
+#include "if_arregs.h"
 
 #ifdef TRACE
 #define TRC(x)               x

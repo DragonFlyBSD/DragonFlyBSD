@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_targ_bh.c,v 1.4.2.5 2001/07/30 00:15:22 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.3 2003/07/27 01:49:48 hmp Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.4 2003/08/07 21:16:45 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -39,16 +39,16 @@
 #include <sys/malloc.h>
 #include <sys/uio.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_extend.h>
-#include <cam/cam_periph.h>
-#include <cam/cam_queue.h>
-#include <cam/cam_xpt_periph.h>
-#include <cam/cam_debug.h>
+#include "../cam.h"
+#include "../cam_ccb.h"
+#include "../cam_extend.h"
+#include "../cam_periph.h"
+#include "../cam_queue.h"
+#include "../cam_xpt_periph.h"
+#include "../cam_debug.h"
 
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_message.h>
+#include "scsi_all.h"
+#include "scsi_message.h"
 
 typedef enum {
 	TARGBH_STATE_NORMAL,

@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/musycc/musycc.c,v 1.17.2.3 2001/03/13 22:05:36 phk Exp $
- * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.3 2003/07/19 21:14:24 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.4 2003/08/07 21:16:57 dillon Exp $
  *
  *
  *
@@ -52,8 +52,8 @@
 #include <machine/clock.h>
 #include <sys/rman.h>
 #include <machine/resource.h>
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 #include "pci_if.h"
 
 

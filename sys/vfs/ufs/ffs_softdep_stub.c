@@ -33,7 +33,7 @@
  *
  *	from: @(#)ffs_softdep_stub.c	9.1 (McKusick) 7/10/97
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep_stub.c,v 1.7.2.1 2000/12/28 11:01:45 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep_stub.c,v 1.3 2003/07/24 20:42:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep_stub.c,v 1.4 2003/08/07 21:17:44 dillon Exp $
  */
 
 /* 
@@ -50,10 +50,10 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/vnode.h>
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ffs/ffs_extern.h>
-#include <ufs/ufs/ufs_extern.h>
+#include "quota.h"
+#include "inode.h"
+#include "ffs_extern.h"
+#include "ufs_extern.h"
 
 int
 softdep_flushfiles(struct mount *oldmnt, int flags, thread_t td)

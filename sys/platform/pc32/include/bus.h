@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/bus.h,v 1.7.2.2 2002/03/03 05:42:50 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/bus.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/bus.h,v 1.3 2003/08/07 21:17:22 dillon Exp $
  */
 
 #ifndef _I386_BUS_H_
@@ -37,11 +37,11 @@
 
 #ifdef	PC98
 /* NEC PC-98 */
-#include <machine/bus_pc98.h>
+#include "bus_pc98.h"
 #else
 /* IBM-PC */
-#include <machine/bus_at386.h>
+#include "bus_at386.h"
 #endif
-#include <machine/bus_dma.h>
+#include "bus_dma.h"
 
 #endif /* _I386_BUS_H_ */

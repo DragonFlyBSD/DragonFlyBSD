@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/hifn/hifn7751.c,v 1.5.2.5 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.3 2003/07/30 00:20:38 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.4 2003/08/07 21:16:49 dillon Exp $ */
 /*	$OpenBSD: hifn7751.c,v 1.120 2002/05/17 00:33:34 deraadt Exp $	*/
 
 /*
@@ -68,14 +68,14 @@
 #include <opencrypto/cryptodev.h>
 #include <sys/random.h>
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
 #ifdef HIFN_RNDTEST
-#include <dev/rndtest/rndtest.h>
+#include "../rndtest/rndtest.h"
 #endif
-#include <dev/hifn/hifn7751reg.h>
-#include <dev/hifn/hifn7751var.h>
+#include "hifn7751reg.h"
+#include "hifn7751var.h"
 
 /*
  * Prototypes and count for the pci_device structure

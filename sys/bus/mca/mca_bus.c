@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mca/mca_bus.c,v 1.7.2.1 2000/03/17 23:55:48 peter Exp $
- * $DragonFly: src/sys/bus/mca/Attic/mca_bus.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/bus/mca/Attic/mca_bus.c,v 1.3 2003/08/07 21:16:46 dillon Exp $
  */
 
 /*
@@ -47,8 +47,8 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <dev/mca/mca_busreg.h>
-#include <dev/mca/mca_busvar.h>
+#include "mca_busreg.h"
+#include "mca_busvar.h"
 
 #include <sys/interrupt.h>
 

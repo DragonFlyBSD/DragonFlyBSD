@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.3 2003/07/26 14:25:26 rob Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.4 2003/08/07 21:17:06 dillon Exp $
  */
 
 /*
@@ -56,7 +56,7 @@
 
 #include <net/bpf.h>
 
-#include <net/if_vlan_var.h>
+#include <net/vlan/if_vlan_var.h>
 
 #include <vm/vm.h>		/* for vtophys */
 #include <vm/pmap.h>		/* for vtophys */
@@ -68,19 +68,18 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <dev/mii/mii.h>
-#include <dev/mii/miivar.h>
-#include <dev/mii/miidevs.h>
-
-#include <dev/mii/lxtphyreg.h>
+#include "../mii_layer/mii.h"
+#include "../mii_layer/miivar.h"
+#include "../mii_layer/miidevs.h"
+#include "../mii_layer/lxtphyreg.h"
 
 #include "miibus_if.h"
 
-#include <dev/tx/if_txreg.h>
-#include <dev/tx/if_txvar.h>
+#include "if_txreg.h"
+#include "if_txvar.h"
 
 MODULE_DEPEND(tx, miibus, 1, 1, 1);
 

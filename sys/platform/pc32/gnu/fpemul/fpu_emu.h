@@ -55,7 +55,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/fpu_emu.h,v 1.7 1999/08/28 00:42:50 peter Exp $
- * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/fpu_emu.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/fpu_emu.h,v 1.3 2003/08/07 21:17:20 dillon Exp $
  *
  */
 
@@ -81,7 +81,7 @@
 #define PECULIAR_486
 
 #ifdef LOCORE
-#include <gnu/i386/fpemul/fpu_asm.h>
+#include "fpu_asm.h"
 #define	Const(x)	$/**/x
 #else
 #define	Const(x)	x
@@ -110,7 +110,7 @@
 #ifndef LOCORE
 
 #include <sys/types.h>
-#include <gnu/i386/fpemul/math_emu.h>
+#include "math_emu.h"
 
 #ifdef PARANOID
 extern char emulating;
@@ -181,7 +181,7 @@ polynomial(unsigned accum[], unsigned x[],
             unsigned int control_w);
 
 #ifndef MAKING_PROTO
-#include <gnu/i386/fpemul/fpu_proto.h>
+#include "fpu_proto.h"
 #endif
 
 #endif				/* LOCORE */

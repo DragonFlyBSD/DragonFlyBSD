@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvidctl.c,v 1.19.2.2 2000/05/05 09:16:08 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.3 2003/06/23 17:55:35 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.4 2003/08/07 21:16:59 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -38,8 +38,8 @@
 
 #include <machine/console.h>
 
-#include <dev/fb/fbreg.h>
-#include <dev/syscons/syscons.h>
+#include <dev/video/fb/fbreg.h>
+#include "syscons.h"
 
 /* for compatibility with previous versions */
 /* 3.0-RELEASE used the following structure */

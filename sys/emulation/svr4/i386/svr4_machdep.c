@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/svr4/svr4_machdep.c,v 1.13.2.1 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_machdep.c,v 1.5 2003/07/26 19:07:50 rob Exp $
+ * $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_machdep.c,v 1.6 2003/08/07 21:17:20 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -50,13 +50,13 @@
 #include <machine/vm86.h>
 #include <machine/vmparam.h>
 
-#include <svr4/svr4.h>
-#include <svr4/svr4_types.h>
-#include <svr4/svr4_signal.h>
-#include <i386/svr4/svr4_machdep.h>
-#include <svr4/svr4_ucontext.h>
-#include <svr4/svr4_proto.h>
-#include <svr4/svr4_util.h>
+#include "../svr4.h"
+#include "../svr4_types.h"
+#include "../svr4_signal.h"
+#include "svr4_machdep.h"
+#include "../svr4_ucontext.h"
+#include "../svr4_proto.h"
+#include "../svr4_util.h"
 
 #undef sigcode
 #undef szsigcode

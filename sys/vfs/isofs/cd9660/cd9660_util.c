@@ -38,14 +38,14 @@
  *
  *	@(#)cd9660_util.c	8.3 (Berkeley) 12/5/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_util.c,v 1.13.2.1 2001/02/27 12:36:34 sobomax Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_util.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_util.c,v 1.3 2003/08/07 21:17:41 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
 
-#include <isofs/cd9660/iso.h>
+#include "iso.h"
 
 /*
  * XXX: limited support for loading of Unicode

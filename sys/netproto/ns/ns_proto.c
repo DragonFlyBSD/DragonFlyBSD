@@ -32,7 +32,7 @@
  *
  *	From: @(#)ns_proto.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_proto.c,v 1.10 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_proto.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_proto.c,v 1.3 2003/08/07 21:17:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,7 @@
 
 #include <net/radix.h>
 
-#include <netns/ns.h>
+#include "ns.h"
 
 /*
  * NS protocol family: IDP, ERR, PE, SPP, ROUTE.

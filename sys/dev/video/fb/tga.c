@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/tga.c,v 1.1.2.1 2001/11/01 08:33:14 obrien Exp $
- * $DragonFly: src/sys/dev/video/fb/Attic/tga.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/Attic/tga.c,v 1.3 2003/08/07 21:17:16 dillon Exp $
  */
 /*
  * Copyright (c) 1995, 1996 Carnegie-Mellon University.
@@ -66,8 +66,8 @@
 #include <sys/fbio.h>
 #include <sys/consio.h>
 
-#include <isa/isareg.h>
-#include <dev/fb/vgareg.h>
+#include <bus/isa/isareg.h>
+#include "vgareg.h"
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -85,14 +85,14 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <dev/fb/fbreg.h>
+#include "fbreg.h"
 #include <dev/syscons/syscons.h>
-#include <dev/fb/gfb.h>
+#include "gfb.h"
 #include <dev/gfb/gfb_pci.h>
-#include <dev/fb/tga.h>
+#include "tga.h"
 #include <dev/tga/tga_pci.h>
 
 #include "opt_fb.h"

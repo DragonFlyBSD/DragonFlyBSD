@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.3 2003/07/23 02:30:15 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.4 2003/08/07 21:17:01 dillon Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -64,11 +64,11 @@
 #include <machine/clock.h>
 
 
-#include <isa/isavar.h>
-#include <isa/pnpvar.h>
+#include <bus/isa/isavar.h>
+#include <bus/isa/pnpvar.h>
 
-#include <dev/ex/if_exreg.h>
-#include <dev/ex/if_exvar.h>
+#include "if_exreg.h"
+#include "if_exvar.h"
 
 #ifdef EXDEBUG
 # define Start_End 1

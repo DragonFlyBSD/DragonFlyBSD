@@ -28,13 +28,13 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.6 2003/07/26 19:20:29 rob Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.7 2003/08/07 21:17:25 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
  *---------------------------------------------------------------------------*/
 
-#include "i4brbch.h"
+#include "use_i4brbch.h"
 
 #if NI4BRBCH > 0
 
@@ -71,20 +71,19 @@ extern cc_t ttydefchars;
 #endif
 
 #ifdef __FreeBSD__
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_rbch_ioctl.h>
-#include <machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_rbch_ioctl.h>
+#include <net/i4b/include/machine/i4b_debug.h>
 #else
 #include <i4b/i4b_ioctl.h>
 #include <i4b/i4b_rbch_ioctl.h>
 #include <i4b/i4b_debug.h>
 #endif
 
-#include <i4b/include/i4b_global.h>
-#include <i4b/include/i4b_mbuf.h>
-#include <i4b/include/i4b_l3l4.h>
-
-#include <i4b/layer4/i4b_l4.h>
+#include "../include/i4b_global.h"
+#include "../include/i4b_mbuf.h"
+#include "../include/i4b_l3l4.h"
+#include "../layer4/i4b_l4.h"
 
 #ifdef __bsdi__
 #include <sys/device.h>

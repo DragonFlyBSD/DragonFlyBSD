@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isavar.h,v 1.16.2.2 2000/10/29 13:07:56 nyan Exp $
- * $DragonFly: src/sys/bus/isa/isavar.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/isavar.h,v 1.3 2003/08/07 21:16:46 dillon Exp $
  */
 
 #ifndef _ISA_ISAVAR_H_
@@ -35,7 +35,7 @@ struct isa_pnp_id;
 typedef void isa_config_cb(void *arg, struct isa_config *config, int enable);
 
 #include "isa_if.h"
-#include <isa/pnpvar.h>
+#include "pnpvar.h"
 
 #ifdef _KERNEL
 

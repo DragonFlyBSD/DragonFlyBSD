@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/awi/if_awi_pccard.c,v 1.5.2.1 2000/12/07 04:09:39 imp Exp $
- * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.3 2003/08/07 21:17:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,10 +46,10 @@
 
 #include <machine/clock.h>
 
-#include <dev/awi/am79c930reg.h>
-#include <dev/awi/am79c930var.h>
-#include <dev/awi/awireg.h>
-#include <dev/awi/awivar.h>
+#include "am79c930reg.h"
+#include "am79c930var.h"
+#include "awireg.h"
+#include "awivar.h"
 
 struct awi_pccard_softc {
 	struct awi_softc	sc_awi;

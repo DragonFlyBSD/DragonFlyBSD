@@ -31,10 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/support.s,v 1.67.2.5 2001/08/15 01:23:50 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/support.s,v 1.8 2003/07/20 07:29:20 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/support.s,v 1.9 2003/08/07 21:17:22 dillon Exp $
  */
 
-#include "npx.h"
+#include "use_npx.h"
 
 #include <machine/asmacros.h>
 #include <machine/cputypes.h>

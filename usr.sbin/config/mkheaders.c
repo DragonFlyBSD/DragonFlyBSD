@@ -32,7 +32,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkheaders.c,v 1.14.2.2 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.3 2003/08/07 21:19:25 dillon Exp $
  */
 
 /*
@@ -222,8 +222,11 @@ toheader(dev)
 	char *dev;
 {
 	static char hbuf[MAXPATHLEN];
+	static char udev[MAXPATHLEN];
 
-	snprintf(hbuf, sizeof(hbuf), "%s.h", path(dev));
+	snprintf(udev, sizeof(udev), "use_%s", dev);
+
+	snprintf(hbuf, sizeof(hbuf), "%s.h", path(udev));
 	return (hbuf);
 }
 

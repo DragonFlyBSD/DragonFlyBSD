@@ -10,7 +10,7 @@
  *
  * MROUTING Revision: 3.5
  * $FreeBSD: src/sys/netinet/ip_mroute.c,v 1.56.2.7 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.3 2003/08/07 21:17:29 dillon Exp $
  */
 
 #include "opt_mrouting.h"
@@ -35,7 +35,7 @@
 #include <netinet/in_systm.h>
 #include <netinet/in_var.h>
 #include <netinet/ip.h>
-#include <netinet/ip_mroute.h>
+#include "ip_mroute.h"
 #include <netinet/ip_var.h>
 #include <netinet/udp.h>
 #include <machine/in_cksum.h>

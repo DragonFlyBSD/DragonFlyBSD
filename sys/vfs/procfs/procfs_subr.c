@@ -37,7 +37,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_subr.c,v 1.26.2.3 2002/02/18 21:28:04 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.4 2003/07/19 21:14:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.5 2003/08/07 21:17:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,7 +48,7 @@
 #include <sys/vnode.h>
 #include <sys/malloc.h>
 
-#include <miscfs/procfs/procfs.h>
+#include <vfs/procfs/procfs.h>
 
 static struct pfsnode *pfshead;
 static int pfsvplock;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/pnphy.c,v 1.1.2.1 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/pnphy.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/pnphy.c,v 1.3 2003/08/07 21:17:03 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/mii/pnphy.c,v 1.1.2.1 2002/11/08 21:53:49 semenu Exp $
  */
@@ -54,9 +54,9 @@
 #include <net/if_arp.h>
 #include <net/if_media.h>
 
-#include <dev/mii/mii.h>
-#include <dev/mii/miivar.h>
-#include <dev/mii/miidevs.h>
+#include "mii.h"
+#include "miivar.h"
+#include "miidevs.h"
 
 #include <machine/clock.h>
 #include <machine/bus_pio.h>
@@ -65,7 +65,7 @@
 #include <machine/resource.h>
 #include <sys/bus.h>
 
-#include <pci/if_dcreg.h>
+#include "../dc/if_dcreg.h"
 
 #include "miibus_if.h"
 

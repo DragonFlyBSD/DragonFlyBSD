@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ufs/ufs_dirhash.c,v 1.3.2.6 2002/04/10 21:41:14 dwmalone Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_dirhash.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_dirhash.c,v 1.3 2003/08/07 21:17:44 dillon Exp $
  */
 /*
  * This implements a hash-based lookup scheme for UFS directories.
@@ -45,12 +45,12 @@
 #include <sys/sysctl.h>
 #include <vm/vm_zone.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/dir.h>
-#include <ufs/ufs/dirhash.h>
-#include <ufs/ufs/ufsmount.h>
-#include <ufs/ufs/ufs_extern.h>
+#include "quota.h"
+#include "inode.h"
+#include "dir.h"
+#include "dirhash.h"
+#include "ufsmount.h"
+#include "ufs_extern.h"
 
 #define WRAPINCR(val, limit)	(((val) + 1 == (limit)) ? 0 : ((val) + 1))
 #define WRAPDECR(val, limit)	(((val) == 0) ? ((limit) - 1) : ((val) - 1))

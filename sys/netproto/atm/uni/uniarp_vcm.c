@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp_vcm.c,v 1.5 2000/01/17 20:49:55 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_vcm.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_vcm.c,v 1.3 2003/08/07 21:17:35 dillon Exp $
  */
 
 /*
@@ -39,7 +39,7 @@
 
 #include <netatm/ipatm/ipatm_var.h>
 #include <netatm/ipatm/ipatm_serv.h>
-#include <netatm/uni/uniip_var.h>
+#include "uniip_var.h"
 
 /*
  * Local variables

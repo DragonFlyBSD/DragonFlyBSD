@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni.h,v 1.2 1999/08/28 00:41:43 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.h,v 1.2 2003/06/17 04:28:26 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.h,v 1.3 2003/08/07 21:16:49 dillon Exp $
  *
  */
 
@@ -38,8 +38,8 @@
 #ifndef	_ENI_ENI_H
 #define	_ENI_ENI_H
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 /*
  * Physical device name - used to configure HARP devices

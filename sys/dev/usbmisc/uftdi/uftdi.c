@@ -1,6 +1,6 @@
 /*	$NetBSD: uftdi.c,v 1.12 2002/07/18 14:44:10 scw Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uftdi.c,v 1.3.2.1 2002/11/21 01:28:17 ticso Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.3 2003/08/07 21:17:14 dillon Exp $	*/
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -68,16 +68,16 @@
 
 #include <sys/sysctl.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbhid.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbhid.h>
 
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbdevs.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
+#include <bus/usb/usbdevs.h>
 
-#include <dev/usb/ucomvar.h>
+#include "../ucom/ucomvar.h"
 
-#include <dev/usb/uftdireg.h>
+#include "uftdireg.h"
 
 #ifdef USB_DEBUG
 static int uftdidebug = 0;

@@ -26,12 +26,14 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_utime.h,v 1.2 2003/08/07 21:17:17 dillon Exp $
  */
 
 #ifndef	_IBCS2_UTIME_H
 #define	_IBCS2_UTIME_H
 
-#include <i386/ibcs2/ibcs2_types.h>
+#include "ibcs2_types.h"
 
 struct ibcs2_utimbuf {
         ibcs2_time_t actime;

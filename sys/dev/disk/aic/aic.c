@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic.c,v 1.8 2000/01/14 23:42:35 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -39,16 +39,16 @@
 #include <machine/bus.h>
 #include <machine/clock.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt_sim.h>
-#include <cam/cam_debug.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_debug.h>
 
-#include <cam/scsi/scsi_message.h>
+#include <bus/cam/scsi/scsi_message.h>
 
-#include <dev/aic/aic6360reg.h>
-#include <dev/aic/aicvar.h>
+#include "aic6360reg.h"
+#include "aicvar.h"
 
 static void aic_action __P((struct cam_sim *sim, union ccb *ccb));
 static void aic_execute_scb __P((void *arg, bus_dma_segment_t *dm_segs,

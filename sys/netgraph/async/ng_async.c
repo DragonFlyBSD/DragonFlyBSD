@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_async.c,v 1.6.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/async/ng_async.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ * $DragonFly: src/sys/netgraph/async/ng_async.c,v 1.3 2003/08/07 21:17:30 dillon Exp $
  * $Whistle: ng_async.c,v 1.17 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -55,7 +55,7 @@
 
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
-#include <netgraph/ng_async.h>
+#include "ng_async.h"
 #include <netgraph/ng_parse.h>
 
 #include <net/ppp_defs.h>

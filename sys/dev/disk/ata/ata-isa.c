@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-isa.c,v 1.4.2.1 2002/03/18 08:37:33 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-isa.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-isa.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,8 +43,8 @@
 #include <machine/resource.h>
 #include <machine/bus.h>
 #include <sys/rman.h>
-#include <isa/isavar.h>
-#include <dev/ata/ata-all.h>
+#include <bus/isa/isavar.h>
+#include "ata-all.h"
 
 /* local vars */
 static struct isa_pnp_id ata_ids[] = {
@@ -106,7 +106,7 @@ DRIVER_MODULE(ata, isa, ata_isa_driver, ata_devclass, 0, 0);
  * the following is a bandaid to get ISA only setups to link,
  * since these are getting rare the ugliness is kept here
  */
-#include "pci.h"
+#include "use_pci.h"
 #if NPCI == 0
 void *
 ata_dmaalloc(struct ata_channel *ch, int device)

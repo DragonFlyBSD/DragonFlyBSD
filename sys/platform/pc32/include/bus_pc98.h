@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/include/bus_pc98.h,v 1.8.2.5 2002/03/03 05:42:50 nyan Exp $ */
-/* $DragonFly: src/sys/platform/pc32/include/Attic/bus_pc98.h,v 1.2 2003/06/17 04:28:35 dillon Exp $ */
+/* $DragonFly: src/sys/platform/pc32/include/Attic/bus_pc98.h,v 1.3 2003/08/07 21:17:22 dillon Exp $ */
 /*	$NecBSD: busio.h,v 3.25.4.2.2.1 2000/06/12 03:53:08 honda Exp $	*/
 /*	$NetBSD: bus.h,v 1.12 1997/10/01 08:25:15 fvdl Exp $	*/
 
@@ -49,7 +49,7 @@
 
 #include <sys/systm.h>
 
-#include <machine/cpufunc.h>
+#include "cpufunc.h"
 
 /*
  * Bus address and size types

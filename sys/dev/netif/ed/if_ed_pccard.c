@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.9.2.6 2001/07/25 18:06:01 iedowse Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.4 2003/07/22 17:03:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.5 2003/08/07 21:17:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,13 +48,13 @@
 #include <net/if_mib.h>
 #include <net/if_media.h>
 
-#include <dev/ed/if_edreg.h>
-#include <dev/ed/if_edvar.h>
-#include <dev/pccard/pccardvar.h>
-#include <pccard/cardinfo.h>
-#include <pccard/slot.h>
-#include <dev/mii/mii.h>
-#include <dev/mii/miivar.h>
+#include "if_edreg.h"
+#include "if_edvar.h"
+#include <bus/pccard/pccardvar.h>
+#include <bus/pccard/cardinfo.h>
+#include <bus/pccard/slot.h>
+#include "../mii_layer/mii.h"
+#include "../mii_layer/miivar.h"
 
 /* "device miibus" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"

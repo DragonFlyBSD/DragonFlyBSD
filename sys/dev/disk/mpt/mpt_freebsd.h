@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_freebsd.h,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.h,v 1.2 2003/06/17 04:28:28 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.h,v 1.3 2003/08/07 21:16:53 dillon Exp $ */
 /*
  * LSI MPT Host Adapter FreeBSD Wrapper Definitions (CAM version)
  *
@@ -57,26 +57,26 @@
 #include <machine/clock.h>
 #include <machine/cpu.h>
 
-#include <cam/cam.h>
-#include <cam/cam_debug.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt.h>
-#include <cam/cam_xpt_sim.h>
-#include <cam/cam_debug.h>
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_message.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_debug.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt.h>
+#include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_debug.h>
+#include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_message.h>
 
 #include "opt_ddb.h"
 
-#include "dev/mpt/mpilib/mpi_type.h"
-#include "dev/mpt/mpilib/mpi.h"
-#include "dev/mpt/mpilib/mpi_cnfg.h"
-#include "dev/mpt/mpilib/mpi_fc.h"
-#include "dev/mpt/mpilib/mpi_init.h"
-#include "dev/mpt/mpilib/mpi_ioc.h"
-#include "dev/mpt/mpilib/mpi_lan.h"
-#include "dev/mpt/mpilib/mpi_targ.h"
+#include "mpilib/mpi_type.h"
+#include "mpilib/mpi.h"
+#include "mpilib/mpi_cnfg.h"
+#include "mpilib/mpi_fc.h"
+#include "mpilib/mpi_init.h"
+#include "mpilib/mpi_ioc.h"
+#include "mpilib/mpi_lan.h"
+#include "mpilib/mpi_targ.h"
 
 
 #define INLINE __inline
@@ -305,7 +305,7 @@ typedef struct mpt_softc {
 
 } mpt_softc_t;
 
-#include <dev/mpt/mpt.h>
+#include "mpt.h"
 
 
 static INLINE void mpt_write(mpt_softc_t *, size_t, u_int32_t);

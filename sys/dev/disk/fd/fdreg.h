@@ -32,7 +32,7 @@
  *
  *	from: @(#)fdreg.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/isa/fdreg.h,v 1.13 2000/01/06 07:13:54 imp Exp $
- * $DragonFly: src/sys/dev/disk/fd/fdreg.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fdreg.h,v 1.3 2003/08/07 21:16:52 dillon Exp $
  */
 
 /*
@@ -40,7 +40,7 @@
  */
 
 /* uses NEC765 controller */
-#include <isa/ic/nec765.h>
+#include "nec765.h"
 
 /* registers */
 #define	FDOUT	2	/* Digital Output Register (W) */

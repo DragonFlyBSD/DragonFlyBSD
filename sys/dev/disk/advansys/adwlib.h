@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwlib.h,v 1.4 2000/03/02 00:08:35 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwlib.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwlib.h,v 1.3 2003/08/07 21:16:50 dillon Exp $
  */
 /*
  * Ported from:
@@ -49,10 +49,7 @@
 #define _ADWLIB_H_
 
 #include "opt_adw.h"
-
-#include <stddef.h>	/* for offsetof */
-
-#include <dev/advansys/adwmcode.h>
+#include "adwmcode.h"
 
 #define ADW_DEF_MAX_HOST_QNG	253
 #define ADW_DEF_MIN_HOST_QNG	16

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_vc_state.c,v 1.6.2.1 2001/07/25 20:53:44 pirzyk Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_vc_state.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_vc_state.c,v 1.3 2003/08/07 21:17:36 dillon Exp $
  */
 
 /*
@@ -37,8 +37,8 @@
 
 #include <netatm/kern_include.h>
 
-#include <netatm/uni/unisig_var.h>
-#include <netatm/uni/unisig_msg.h>
+#include "unisig_var.h"
+#include "unisig_msg.h"
 
 /*
  * Local functions

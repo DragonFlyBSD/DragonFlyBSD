@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.7 2003/07/26 21:48:49 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.8 2003/08/07 21:17:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -60,16 +60,16 @@
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <nfs/xdr_subs.h>
-#include <nfs/rpcv2.h>
-#include <nfs/nfsproto.h>
-#include <nfs/nfs.h>
-#include <nfs/nfsm_subs.h>
-#include <nfs/nfsrvcache.h>
-#include <nfs/nfsmount.h>
-#include <nfs/nfsnode.h>
-#include <nfs/nqnfs.h>
-#include <nfs/nfsrtt.h>
+#include "xdr_subs.h"
+#include "rpcv2.h"
+#include "nfsproto.h"
+#include "nfs.h"
+#include "nfsm_subs.h"
+#include "nfsrvcache.h"
+#include "nfsmount.h"
+#include "nfsnode.h"
+#include "nqnfs.h"
+#include "nfsrtt.h"
 
 static MALLOC_DEFINE(M_NFSSVC, "NFS srvsock", "Nfs server structure");
 

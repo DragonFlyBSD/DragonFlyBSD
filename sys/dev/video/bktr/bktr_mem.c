@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_mem.c,v 1.2.2.4 2001/10/09 04:08:41 jlemon Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_mem.c,v 1.3 2003/08/03 11:38:45 hmp Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_mem.c,v 1.4 2003/08/07 21:17:15 dillon Exp $ */
 
 /*
  * This is prt of the Driver for Video Capture Cards (Frame grabbers)
@@ -50,7 +50,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <dev/bktr/bktr_mem.h>
+#include "bktr_mem.h"
 
 struct memory_pointers {
 	int         addresses_stored;

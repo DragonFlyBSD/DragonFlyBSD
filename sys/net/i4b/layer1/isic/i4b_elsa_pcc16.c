@@ -28,13 +28,13 @@
  *	================================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_elsa_pcc16.c,v 1.5.2.2 2001/10/24 14:17:20 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_elsa_pcc16.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_elsa_pcc16.c,v 1.3 2003/08/07 21:17:26 dillon Exp $
  *
  *      last edit-date: [Wed Oct 24 16:15:26 2001]
  *
  *---------------------------------------------------------------------------*/
 
-#include "isic.h"
+#include "use_isic.h"
 #include "opt_i4b.h"
 
 #if (NISIC > 0) && defined(ELSA_PCC16)
@@ -46,8 +46,8 @@
 
 #include <machine/i4b_ioctl.h>
 
-#include <i4b/layer1/isic/i4b_isic.h>
-#include <i4b/layer1/isic/i4b_hscx.h>
+#include "i4b_isic.h"
+#include "i4b_hscx.h"
 
 static void i4b_epcc16_clrirq(struct l1_softc *sc);
 

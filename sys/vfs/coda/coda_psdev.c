@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_psdev.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_psdev.c,v 1.13 1999/09/29 15:03:46 marcel Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.6 2003/07/26 13:40:57 rob Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.7 2003/08/07 21:17:40 dillon Exp $
  * 
  */
 
@@ -55,7 +55,7 @@
 
 extern int coda_nc_initialized;    /* Set if cache has been initialized */
 
-#include <vcoda.h>
+#include "use_vcoda.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -68,11 +68,11 @@ extern int coda_nc_initialized;    /* Set if cache has been initialized */
 #include <sys/poll.h>
 #include <sys/conf.h>
 
-#include <coda/coda.h>
-#include <coda/cnode.h>
-#include <coda/coda_namecache.h>
-#include <coda/coda_io.h>
-#include <coda/coda_psdev.h>
+#include "coda.h"
+#include "cnode.h"
+#include "coda_namecache.h"
+#include "coda_io.h"
+#include "coda_psdev.h"
 
 #define CTL_C
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $	*/
-/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.4 2003/07/21 07:57:51 dillon Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.5 2003/08/07 21:17:42 dillon Exp $	*/
 
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass
@@ -65,12 +65,12 @@
 #include <net/if_types.h>
 #include <net/if_dl.h>
 
-#include <nfs/rpcv2.h>
-#include <nfs/nfsproto.h>
-#include <nfs/nfs.h>
-#include <nfs/nfsdiskless.h>
-#include <nfs/krpc.h>
-#include <nfs/xdr_subs.h>
+#include "rpcv2.h"
+#include "nfsproto.h"
+#include "nfs.h"
+#include "nfsdiskless.h"
+#include "krpc.h"
+#include "xdr_subs.h"
 
 
 #define BOOTP_MIN_LEN		300	/* Minimum size of bootp udp packet */

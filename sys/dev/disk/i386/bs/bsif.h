@@ -1,6 +1,6 @@
 /*	$NecBSD: bsif.h,v 1.5 1997/10/23 20:52:34 honda Exp $	*/
 /* $FreeBSD: src/sys/i386/isa/bs/bsif.h,v 1.12.2.2 2001/07/26 02:32:18 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.h,v 1.3 2003/07/26 19:07:48 rob Exp $ */
+/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.h,v 1.4 2003/08/07 21:16:52 dillon Exp $ */
 /*
  * Copyright (c) HONDA Naofumi, KATO Takenori, 1996.  All rights reserved.
  * 
@@ -118,14 +118,14 @@
 #include <machine/ipl.h>
 #include <machine/dvcfg.h>
 
-#include <cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_all.h>
 #if 0
-#include <cam/scsi/scsiconf.h>
+#include <bus/cam/scsi/scsiconf.h>
 #endif
-#include <cam/scsi/scsi_da.h>
+#include <bus/cam/scsi/scsi_da.h>
 
 #include <pc98/pc98/pc98.h>
-#include <i386/isa/isa_device.h>
+#include <bus/isa/i386/isa_device.h>
 #include <i386/isa/icu.h>
 #endif	/* __FreeBSD__ */
 
@@ -156,10 +156,10 @@
 #include <dev/ic/wd33c93reg.h>
 #include <i386/isa/ccbque.h>
 
-#include <cam/scsi/scsi_dvcfg.h>
-#include <i386/isa/bs/bsvar.h>
-#include <i386/isa/bs/bshw.h>
-#include <i386/isa/bs/bsfunc.h>
+#include <bus/cam/scsi/scsi_dvcfg.h>
+#include "bsvar.h"
+#include "bshw.h"
+#include "bsfunc.h"
 #endif	/* __FreeBSD__ */
 
 /***************************************************

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_ptrace.c,v 1.7.4.3 2003/01/03 17:13:23 kan Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.7 2003/08/01 10:58:59 rob Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.8 2003/08/07 21:17:18 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -46,8 +46,8 @@
 #include <machine/pcb.h>
 #include <machine/reg.h>
 
-#include <i386/linux/linux.h>
-#include <i386/linux/linux_proto.h>
+#include "linux.h"
+#include "linux_proto.h"
 
 /*
  *   Linux ptrace requests numbers. Mostly identical to FreeBSD,

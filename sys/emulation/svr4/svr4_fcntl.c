@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_fcntl.c,v 1.7 1999/12/12 10:27:04 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.10 2003/08/05 14:08:52 hmp Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.11 2003/08/07 21:17:19 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -47,12 +47,12 @@
 
 #include <sys/sysproto.h>
 
-#include <svr4/svr4.h>
-#include <svr4/svr4_types.h>
-#include <svr4/svr4_signal.h>
-#include <svr4/svr4_proto.h>
-#include <svr4/svr4_util.h>
-#include <svr4/svr4_fcntl.h>
+#include "svr4.h"
+#include "svr4_types.h"
+#include "svr4_signal.h"
+#include "svr4_proto.h"
+#include "svr4_util.h"
+#include "svr4_fcntl.h"
 
 static int svr4_to_bsd_flags __P((int));
 static u_long svr4_to_bsd_cmd __P((u_long));

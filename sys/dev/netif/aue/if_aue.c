@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.3 2003/07/26 14:25:26 rob Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.4 2003/08/07 21:16:59 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
  */
@@ -83,17 +83,17 @@
 #include <machine/clock.h>      /* for DELAY */
 #include <sys/bus.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbdivar.h>
-#include <dev/usb/usbdevs.h>
-#include <dev/usb/usb_ethersubr.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
+#include <bus/usb/usbdivar.h>
+#include <bus/usb/usbdevs.h>
+#include <bus/usb/usb_ethersubr.h>
 
-#include <dev/mii/mii.h>
-#include <dev/mii/miivar.h>
+#include "../mii_layer/mii.h"
+#include "../mii_layer/miivar.h"
 
-#include <dev/usb/if_auereg.h>
+#include "if_auereg.h"
 
 /* "controller miibus0" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"

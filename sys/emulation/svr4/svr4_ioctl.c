@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_ioctl.c,v 1.6 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.8 2003/07/30 00:19:15 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.9 2003/08/07 21:17:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,17 +38,17 @@
 #include <sys/socketvar.h>
 #include <sys/systm.h>
 
-#include <svr4/svr4.h>
-#include <svr4/svr4_types.h>
-#include <svr4/svr4_util.h>
-#include <svr4/svr4_signal.h>
-#include <svr4/svr4_proto.h>
-#include <svr4/svr4_stropts.h>
-#include <svr4/svr4_ioctl.h>
-#include <svr4/svr4_termios.h>
-#include <svr4/svr4_ttold.h>
-#include <svr4/svr4_filio.h>
-#include <svr4/svr4_sockio.h>
+#include "svr4.h"
+#include "svr4_types.h"
+#include "svr4_util.h"
+#include "svr4_signal.h"
+#include "svr4_proto.h"
+#include "svr4_stropts.h"
+#include "svr4_ioctl.h"
+#include "svr4_termios.h"
+#include "svr4_ttold.h"
+#include "svr4_filio.h"
+#include "svr4_sockio.h"
 
 #ifdef DEBUG_SVR4
 static void svr4_decode_cmd __P((u_long, char *, char *, int *, int *));

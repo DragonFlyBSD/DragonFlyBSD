@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7770.c#32 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7770.c,v 1.1.2.9 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7770.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7770.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
  */
 
 #ifdef __linux__
@@ -48,9 +48,9 @@
 #include "aic7xxx_inline.h"
 #include "aic7xxx_93cx6.h"
 #else
-#include <dev/aic7xxx/aic7xxx_osm.h>
-#include <dev/aic7xxx/aic7xxx_inline.h>
-#include <dev/aic7xxx/aic7xxx_93cx6.h>
+#include "aic7xxx_osm.h"
+#include "aic7xxx_inline.h"
+#include "aic7xxx_93cx6.h"
 #endif
 
 #define ID_AIC7770	0x04907770

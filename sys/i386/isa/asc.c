@@ -35,10 +35,10 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
- * $DragonFly: src/sys/i386/isa/Attic/asc.c,v 1.5 2003/07/21 07:57:44 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/asc.c,v 1.6 2003/08/07 21:17:23 dillon Exp $
  */
 
-#include "asc.h"
+#include "use_asc.h"
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
@@ -52,9 +52,9 @@
 
 #include <machine/asc_ioctl.h>
 
-#include <i386/isa/isa.h>
-#include <i386/isa/isa_device.h>
-#include <i386/isa/ascreg.h>
+#include <bus/isa/i386/isa.h>
+#include <bus/isa/i386/isa_device.h>
+#include "ascreg.h"
 
 /***
  *** CONSTANTS & DEFINES

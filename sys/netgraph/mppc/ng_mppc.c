@@ -38,7 +38,7 @@
  *
  * $Whistle: ng_mppc.c,v 1.4 1999/11/25 00:10:12 archie Exp $
  * $FreeBSD: src/sys/netgraph/ng_mppc.c,v 1.1.2.7 2002/12/16 17:58:42 archie Exp $
- * $DragonFly: src/sys/netgraph/mppc/ng_mppc.c,v 1.2 2003/06/17 04:28:50 dillon Exp $
+ * $DragonFly: src/sys/netgraph/mppc/ng_mppc.c,v 1.3 2003/08/07 21:17:32 dillon Exp $
  */
 
 /*
@@ -59,7 +59,7 @@
 
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
-#include <netgraph/ng_mppc.h>
+#include "ng_mppc.h"
 
 #include "opt_netgraph.h"
 

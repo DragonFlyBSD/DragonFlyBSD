@@ -27,7 +27,7 @@
  * Copyright (c) 2000 Andrew Miklic, Andrew Gallatin, and Thomas V. Crimi
  *
  * $FreeBSD: src/sys/dev/gfb/gfb_pci.c,v 1.1.2.1 2001/11/01 08:33:15 obrien Exp $
- * $DragonFly: src/sys/dev/video/gfb/Attic/gfb_pci.c,v 1.3 2003/07/22 17:03:29 dillon Exp $
+ * $DragonFly: src/sys/dev/video/gfb/Attic/gfb_pci.c,v 1.4 2003/08/07 21:17:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,12 +54,12 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #include <dev/fb/fbreg.h>
 #include <dev/fb/gfb.h>
-#include <dev/gfb/gfb_pci.h>
+#include "gfb_pci.h"
 
 #ifdef __alpha__
 

@@ -19,12 +19,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * $DragonFly: src/sys/i386/gnu/isa/sound/Attic/awe_wave.c,v 1.2 2003/08/07 21:17:21 dillon Exp $
  */
 
 #include <stddef.h>
 
 #ifdef __FreeBSD__
-#  include <gnu/i386/isa/sound/awe_config.h>
+#  include "awe_config.h"
 #else
 #  include "awe_config.h"
 #endif
@@ -34,13 +36,13 @@
 #ifdef CONFIG_AWE32_SYNTH
 
 #ifdef __FreeBSD__
-#  include <gnu/i386/isa/sound/awe_hw.h>
-#  include <gnu/i386/isa/sound/awe_version.h>
-#  include <gnu/i386/isa/sound/awe_voice.h>
+#  include "awe_hw.h"
+#  include "awe_version.h"
+#  include "awe_voice.h"
 #else
 #  include "awe_hw.h"
 #  include "awe_version.h"
-#  include <linux/awe_voice.h>
+#  include "awe_voice.h"
 #endif
 
 #ifdef AWE_HAS_GUS_COMPATIBILITY
@@ -449,7 +451,7 @@ static int awe_mixer_ioctl(int dev, unsigned int cmd, caddr_t arg);
 
 /* define macros for compatibility */
 #ifdef __FreeBSD__
-#  include <gnu/i386/isa/sound/awe_compat.h>
+#  include "awe_compat.h"
 #else
 #  include "awe_compat.h"
 #endif

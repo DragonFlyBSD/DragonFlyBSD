@@ -26,11 +26,11 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/i386/isa/sound/sequencer.c,v 1.25.2.1 2001/06/10 02:02:05 dd Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/Attic/sequencer.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/Attic/sequencer.c,v 1.3 2003/08/07 21:17:12 dillon Exp $
  */
 
 #define SEQUENCER_C
-#include <i386/isa/sound/sound_config.h>
+#include "sound_config.h"
 
 #if NSND > 0
 
@@ -38,7 +38,7 @@
 
 #include <sys/select.h>
 
-#include <i386/isa/sound/midi_ctrl.h>
+#include "midi_ctrl.h"
 
 static void seq_drain_midi_queues(void);
 int

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.5 2003/07/26 22:04:26 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.6 2003/08/07 21:17:44 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -48,13 +48,13 @@
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufs_extern.h>
-#include <ufs/ufs/ufsmount.h>
+#include "quota.h"
+#include "inode.h"
+#include "ufs_extern.h"
+#include "ufsmount.h"
 
-#include <ufs/ffs/fs.h>
-#include <ufs/ffs/ffs_extern.h>
+#include "fs.h"
+#include "ffs_extern.h"
 
 typedef ufs_daddr_t allocfcn_t __P((struct inode *ip, int cg, ufs_daddr_t bpref,
 				  int size));

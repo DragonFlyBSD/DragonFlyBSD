@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/alpm.c,v 1.8 1999/12/03 08:41:21 mdodd Exp $
- * $DragonFly: src/sys/dev/powermng/i386/alpm/alpm.c,v 1.3 2003/07/23 02:30:23 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/alpm/alpm.c,v 1.4 2003/08/07 21:17:07 dillon Exp $
  *
  */
 
@@ -47,14 +47,14 @@
 #include <machine/bus_memio.h>
 #include <machine/bus.h>
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
-#include <dev/iicbus/iiconf.h>
-#include <dev/smbus/smbconf.h>
+#include <bus/iicbus/iiconf.h>
+#include <bus/smbus/smbconf.h>
 #include "smbus_if.h"
 
-#include "alpm.h"
+#include "use_alpm.h"
 
 #define ALPM_DEBUG(x)	if (alpm_debug) (x)
 

@@ -26,10 +26,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/wst.c,v 1.28 2000/01/29 16:00:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/wst/Attic/wst.c,v 1.5 2003/07/23 02:30:19 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wst/Attic/wst.c,v 1.6 2003/08/07 21:16:55 dillon Exp $
  */
 
-#include "wdc.h"
+#include "use_wdc.h"
 #include "opt_ddb.h"
 
 #include <sys/param.h>

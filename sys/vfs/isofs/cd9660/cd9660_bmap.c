@@ -37,15 +37,15 @@
  *
  *	@(#)cd9660_bmap.c	8.3 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_bmap.c,v 1.8 1999/08/28 00:46:06 peter Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_bmap.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_bmap.c,v 1.3 2003/08/07 21:17:41 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
 
-#include <isofs/cd9660/iso.h>
-#include <isofs/cd9660/cd9660_node.h>
+#include "iso.h"
+#include "cd9660_node.h"
 
 /*
  * Bmap converts a the logical block number of a file to its physical block

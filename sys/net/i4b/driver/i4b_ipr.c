@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.5 2003/07/26 19:20:29 rob Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.6 2003/08/07 21:17:25 dillon Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -57,7 +57,7 @@
  *
  *---------------------------------------------------------------------------*/ 
 
-#include "i4bipr.h"
+#include "use_i4bipr.h"
 
 #if NI4BIPR > 0
 
@@ -116,7 +116,7 @@
 #endif /* IPR_VJ */
 
 #if defined(__FreeBSD_version) &&  __FreeBSD_version >= 400008
-#include "bpf.h"
+#include "use_bpf.h"
 #else
 #include "bpfilter.h"
 #endif
@@ -127,17 +127,17 @@
 #endif
 
 #ifdef __FreeBSD__
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
 #else
 #include <i4b/i4b_debug.h>
 #include <i4b/i4b_ioctl.h>
 #endif
 
-#include <i4b/include/i4b_global.h>
-#include <i4b/include/i4b_l3l4.h>
+#include "../include/i4b_global.h"
+#include "../include/i4b_l3l4.h"
 
-#include <i4b/layer4/i4b_l4.h>
+#include "../layer4/i4b_l4.h"
 
 #ifndef __FreeBSD__
 #include <machine/cpu.h> /* For softnet */

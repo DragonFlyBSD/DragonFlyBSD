@@ -37,12 +37,12 @@
  *
  * $Id: vinum.c,v 1.33 2001/01/09 06:19:15 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinum.c,v 1.38.2.3 2003/01/07 12:14:16 joerg Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.7 2003/07/31 12:01:38 hmp Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.8 2003/08/07 21:17:09 dillon Exp $
  */
 
 #define STATIC static					    /* nothing while we're testing XXX */
 
-#include <dev/vinum/vinumhdr.h>
+#include "vinumhdr.h"
 #include <sys/sysproto.h>				    /* for sync(2) */
 #include <sys/devicestat.h>
 #ifdef VINUMDEBUG
@@ -52,7 +52,7 @@ extern int total_malloced;
 extern int malloccount;
 extern struct mc malloced[];
 #endif
-#include <dev/vinum/request.h>
+#include "request.h"
 
 STATIC struct cdevsw vinum_cdevsw =
 {

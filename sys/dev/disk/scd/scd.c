@@ -42,13 +42,13 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.6 2003/07/23 02:30:19 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.7 2003/08/07 21:16:54 dillon Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
 #define	SCD_DEBUG	0
 
-#include "scd.h"
+#include "use_scd.h"
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
@@ -61,8 +61,8 @@
 #include <machine/clock.h>
 #include <machine/stdarg.h>
 
-#include <i386/isa/isa_device.h>
-#include <i386/isa/scdreg.h>
+#include <bus/isa/i386/isa_device.h>
+#include "scdreg.h"
 
 
 #define scd_part(dev)	((minor(dev)) & 7)

@@ -32,7 +32,7 @@
  *
  *	@(#)signal.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/signal.h,v 1.12 1999/11/12 13:52:11 marcel Exp $
- * $DragonFly: src/sys/cpu/i386/include/signal.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/signal.h,v 1.3 2003/08/07 21:17:22 dillon Exp $
  */
 
 #ifndef _MACHINE_SIGNAL_H_
@@ -46,7 +46,7 @@ typedef int sig_atomic_t;
 
 #if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
 
-#include <machine/trap.h>	/* codes for SIGILL, SIGFPE */
+#include "trap.h"	/* codes for SIGILL, SIGFPE */
 
 /*
  * Information pushed on stack when a signal is delivered.

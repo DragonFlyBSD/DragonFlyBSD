@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwmem.c,v 1.1.2.9 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.3 2003/08/07 21:16:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,9 +51,9 @@
 #include <sys/mman.h>
 #include <sys/ioccom.h>
 
-#include <dev/firewire/firewire.h>
-#include <dev/firewire/firewirereg.h>
-#include <dev/firewire/fwmem.h>
+#include "firewire.h"
+#include "firewirereg.h"
+#include "fwmem.h"
 
 static int fwmem_speed=2, fwmem_debug=0;
 static struct fw_eui64 fwmem_eui64;

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.5 2003/07/21 05:50:24 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.6 2003/08/07 21:16:44 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -49,18 +49,18 @@
 #include <machine/clock.h>
 #include <machine/ipl.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_periph.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt.h>
-#include <cam/cam_xpt_sim.h>
-#include <cam/cam_xpt_periph.h>
-#include <cam/cam_debug.h>
+#include "cam.h"
+#include "cam_ccb.h"
+#include "cam_periph.h"
+#include "cam_sim.h"
+#include "cam_xpt.h"
+#include "cam_xpt_sim.h"
+#include "cam_xpt_periph.h"
+#include "cam_debug.h"
 
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_message.h>
-#include <cam/scsi/scsi_pass.h>
+#include "scsi/scsi_all.h"
+#include "scsi/scsi_message.h"
+#include "scsi/scsi_pass.h"
 #include "opt_cam.h"
 
 /* Datastructures internal to the xpt layer */

@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_rrip.c	8.6 (Berkeley) 12/5/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_rrip.c,v 1.17 1999/08/28 00:46:06 peter Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_rrip.c,v 1.4 2003/07/26 19:27:41 rob Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_rrip.c,v 1.5 2003/08/07 21:17:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,10 +47,10 @@
 #include <sys/mount.h>
 #include <sys/kernel.h>
 
-#include <isofs/cd9660/iso.h>
-#include <isofs/cd9660/cd9660_node.h>
-#include <isofs/cd9660/cd9660_rrip.h>
-#include <isofs/cd9660/iso_rrip.h>
+#include "iso.h"
+#include "cd9660_node.h"
+#include "cd9660_rrip.h"
+#include "iso_rrip.h"
 
 typedef int	rrt_func_t __P((void *, ISO_RRIP_ANALYZE *ana));
 

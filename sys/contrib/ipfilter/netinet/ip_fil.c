@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.4 2003/07/26 14:07:18 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.5 2003/08/07 21:16:48 dillon Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -98,7 +98,7 @@
 # include <unistd.h>
 # include <syslog.h>
 #endif
-#include "netinet/ip_compat.h"
+#include "ip_compat.h"
 #ifdef USE_INET6
 # include <netinet/icmp6.h>
 # if !SOLARIS
@@ -106,12 +106,12 @@
 #  include <netinet6/nd6.h>
 # endif
 #endif
-#include "netinet/ip_fil.h"
-#include "netinet/ip_nat.h"
-#include "netinet/ip_frag.h"
-#include "netinet/ip_state.h"
-#include "netinet/ip_proxy.h"
-#include "netinet/ip_auth.h"
+#include "ip_fil.h"
+#include "ip_nat.h"
+#include "ip_frag.h"
+#include "ip_state.h"
+#include "ip_proxy.h"
+#include "ip_auth.h"
 #if defined(__FreeBSD_version) && (__FreeBSD_version >= 300000)
 # include <sys/malloc.h>
 #endif

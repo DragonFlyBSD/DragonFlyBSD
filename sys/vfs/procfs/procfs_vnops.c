@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.6 2003/07/19 21:14:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.7 2003/08/07 21:17:43 dillon Exp $
  */
 
 /*
@@ -60,7 +60,7 @@
 #include <sys/malloc.h>
 #include <machine/reg.h>
 #include <vm/vm_zone.h>
-#include <miscfs/procfs/procfs.h>
+#include <vfs/procfs/procfs.h>
 #include <sys/pioctl.h>
 
 static int	procfs_access __P((struct vop_access_args *));

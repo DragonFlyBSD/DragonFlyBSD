@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sn/if_sn_pccard.c,v 1.3.2.2 2001/01/25 19:40:27 imp Exp $
- * $DragonFly: src/sys/dev/netif/sn/if_sn_pccard.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sn/if_sn_pccard.c,v 1.3 2003/08/07 21:17:05 dillon Exp $
  */
 
 /*
@@ -52,9 +52,9 @@
 
 #include <machine/clock.h>
 
-#include <dev/sn/if_snreg.h>
-#include <dev/sn/if_snvar.h>
-#include <dev/pccard/pccardvar.h>
+#include "if_snreg.h"
+#include "if_snvar.h"
+#include <bus/pccard/pccardvar.h>
 
 /*
  * Initialize the device - called from Slot manager.

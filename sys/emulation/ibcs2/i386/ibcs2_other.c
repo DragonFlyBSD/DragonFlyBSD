@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_other.c,v 1.10 1999/08/28 00:43:59 peter Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_other.c,v 1.6 2003/07/30 00:19:13 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_other.c,v 1.7 2003/08/07 21:17:17 dillon Exp $
  */
 
 /*
@@ -35,10 +35,10 @@
 #include <sys/systm.h>
 #include <sys/sysproto.h>
 
-#include <i386/ibcs2/ibcs2_types.h>
-#include <i386/ibcs2/ibcs2_signal.h>
-#include <i386/ibcs2/ibcs2_proto.h>
-#include <i386/ibcs2/ibcs2_util.h>
+#include "ibcs2_types.h"
+#include "ibcs2_signal.h"
+#include "ibcs2_proto.h"
+#include "ibcs2_util.h"
 
 #define IBCS2_SECURE_GETLUID 1
 #define IBCS2_SECURE_SETLUID 2

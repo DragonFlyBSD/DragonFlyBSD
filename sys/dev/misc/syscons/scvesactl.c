@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvesactl.c,v 1.15 2000/01/29 15:08:47 peter Exp $
- * $DragonFly: src/sys/dev/misc/syscons/Attic/scvesactl.c,v 1.3 2003/06/23 17:55:35 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/Attic/scvesactl.c,v 1.4 2003/08/07 21:16:59 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -41,7 +41,7 @@
 #include <machine/pc/vesa.h>
 
 #include <dev/fb/fbreg.h>
-#include <dev/syscons/syscons.h>
+#include "syscons.h"
 
 static d_ioctl_t *prev_user_ioctl;
 

@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_pccard.c,v 1.12.2.2 2000/08/08 23:55:02 peter Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_pccard.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_pccard.c,v 1.3 2003/08/07 21:17:01 dillon Exp $
  */
 
 /*
@@ -56,8 +56,8 @@
 
 #include <machine/clock.h>
 
-#include <dev/ep/if_epreg.h>
-#include <dev/ep/if_epvar.h>
+#include "if_epreg.h"
+#include "if_epvar.h"
 
 static const char *ep_pccard_identify(u_short id);
 

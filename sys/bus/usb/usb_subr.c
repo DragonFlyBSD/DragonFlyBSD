@@ -1,6 +1,6 @@
 /*	$NetBSD: usb_subr.c,v 1.76 2000/04/27 15:26:50 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.23.2.8 2003/01/17 17:46:24 joe Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.4 2003/07/19 21:14:30 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.5 2003/08/07 21:16:47 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -54,13 +54,13 @@
 
 #include <machine/bus.h>
 
-#include <dev/usb/usb.h>
+#include "usb.h"
 
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbdivar.h>
-#include <dev/usb/usbdevs.h>
-#include <dev/usb/usb_quirks.h>
+#include "usbdi.h"
+#include "usbdi_util.h"
+#include "usbdivar.h"
+#include "usbdevs.h"
+#include "usb_quirks.h"
 
 #if defined(__FreeBSD__)
 #include <machine/clock.h>
@@ -107,7 +107,7 @@ struct usb_knowndev {
 };
 #define	USB_KNOWNDEV_NOPROD	0x01		/* match on vendor only */
 
-#include <dev/usb/usbdevs_data.h>
+#include "usbdevs_data.h"
 #endif /* USBVERBOSE */
 
 Static const char *usbd_error_strs[] = {

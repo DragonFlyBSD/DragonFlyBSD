@@ -25,6 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
+ * $DragonFly: src/sys/dev/sound/isa/i386/Attic/midi_synth.c,v 1.2 2003/08/07 21:17:12 dillon Exp $
  */
 
 #define USE_SEQ_MACROS
@@ -32,7 +33,7 @@
 
 #include <stddef.h>
 
-#include <i386/isa/sound/sound_config.h>
+#include "sound_config.h"
 
 #if defined(CONFIGURE_SOUNDCARD) /* && defined(CONFIG_MIDI) */
 
@@ -41,7 +42,7 @@
 static int     *sysex_sleeper = NULL;
 static volatile struct snd_wait sysex_sleep_flag = {0};
 
-#include <i386/isa/sound/midi_synth.h>
+#include "midi_synth.h"
 
 static int      midi2synth[MAX_MIDI_DEV];
 static int      sysex_state[MAX_MIDI_DEV] =

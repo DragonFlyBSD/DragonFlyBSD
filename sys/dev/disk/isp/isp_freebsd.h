@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.h,v 1.26.2.17 2002/10/11 17:35:11 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.h,v 1.4 2003/07/19 21:14:23 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.h,v 1.5 2003/08/07 21:16:53 dillon Exp $ */
 /*
  * Qlogic ISP SCSI Host Adapter FreeBSD Wrapper Definitions
  * Copyright (c) 1997, 1998, 1999, 2000, 2001, 2002 by Matthew Jacob
@@ -45,15 +45,15 @@
 #include <machine/clock.h>
 #include <machine/cpu.h>
 
-#include <cam/cam.h>
-#include <cam/cam_debug.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt.h>
-#include <cam/cam_xpt_sim.h>
-#include <cam/cam_debug.h>
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_message.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_debug.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt.h>
+#include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_debug.h>
+#include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_message.h>
 
 #include "opt_ddb.h"
 #include "opt_isp.h"
@@ -339,9 +339,9 @@ default:							\
  * Includes of common header files
  */
 
-#include <dev/isp/ispreg.h>
-#include <dev/isp/ispvar.h>
-#include <dev/isp/ispmbox.h>
+#include "ispreg.h"
+#include "ispvar.h"
+#include "ispmbox.h"
 
 /*
  * isp_osinfo definiitions && shorthand
@@ -484,5 +484,5 @@ strncat(char *d, const char *s, size_t c)
  * Common inline functions
  */
 
-#include <dev/isp/isp_inline.h>
+#include "isp_inline.h"
 #endif	/* _ISP_FREEBSD_H */

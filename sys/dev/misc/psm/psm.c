@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.6 2002/03/27 16:53:35 pb Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.6 2003/07/26 19:25:18 rob Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.7 2003/08/07 21:16:58 dillon Exp $
  */
 
 /*
@@ -84,8 +84,8 @@
 #include <machine/mouse.h>
 #include <machine/resource.h>
 
-#include <isa/isavar.h>
-#include <dev/kbd/atkbdcreg.h>
+#include <bus/isa/isavar.h>
+#include <dev/misc/kbd/atkbdcreg.h>
 
 /*
  * Driver specific options: the following options may be set by

@@ -45,14 +45,14 @@
  * 	Last Edit-Date: [Mon Dec 27 14:05:16 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_ext.c,v 1.17 1999/12/30 16:17:09 hm Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_ext.c,v 1.5 2003/07/21 07:57:45 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_ext.c,v 1.6 2003/08/07 21:17:16 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
-#include "vt.h"
+#include "use_vt.h"
 #if NVT > 0
 
-#include <i386/isa/pcvt/pcvt_hdr.h>	/* global include */
+#include "pcvt_hdr.h"	/* global include */
 
 #define ISSIGVALID(sig) ((sig) > 0 && (sig) < NSIG)
 

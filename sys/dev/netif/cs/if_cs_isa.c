@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs_isa.c,v 1.1.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs_isa.c,v 1.2 2003/06/17 04:28:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs_isa.c,v 1.3 2003/08/07 21:17:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,9 +42,9 @@
 #include <net/if.h>
 #include <net/if_arp.h>
 
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 
-#include <dev/cs/if_csvar.h>
+#include "if_csvar.h"
 
 static int		cs_isa_probe	(device_t);
 static int		cs_isa_attach	(device_t);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/lpbb.c,v 1.11.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/lpbb/lpbb.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/lpbb/lpbb.c,v 1.3 2003/08/07 21:16:56 dillon Exp $
  *
  */
 
@@ -43,12 +43,12 @@
 
 #include <machine/clock.h>
 
-#include <dev/ppbus/ppbconf.h>
+#include <bus/ppbus/ppbconf.h>
 #include "ppbus_if.h"
-#include <dev/ppbus/ppbio.h>
+#include <bus/ppbus/ppbio.h>
 
-#include <dev/iicbus/iiconf.h>
-#include <dev/iicbus/iicbus.h>
+#include <bus/iicbus/iiconf.h>
+#include <bus/iicbus/iicbus.h>
 
 #include "iicbb_if.h"
 

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.6 2003/07/19 21:14:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.7 2003/08/07 21:17:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,13 +47,13 @@
 #endif
 
 /* #define NTFS_DEBUG 1 */
-#include <ntfs/ntfs.h>
-#include <ntfs/ntfsmount.h>
-#include <ntfs/ntfs_inode.h>
-#include <ntfs/ntfs_vfsops.h>
-#include <ntfs/ntfs_subr.h>
-#include <ntfs/ntfs_compr.h>
-#include <ntfs/ntfs_ihash.h>
+#include "ntfs.h"
+#include "ntfsmount.h"
+#include "ntfs_inode.h"
+#include "ntfs_vfsops.h"
+#include "ntfs_subr.h"
+#include "ntfs_compr.h"
+#include "ntfs_ihash.h"
 
 #if defined(__FreeBSD__)
 MALLOC_DEFINE(M_NTFSNTVATTR, "NTFS vattr", "NTFS file attribute information");

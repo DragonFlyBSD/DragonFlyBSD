@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_conn.h,v 1.1.2.3 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_conn.h,v 1.3 2003/06/25 03:56:06 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_conn.h,v 1.4 2003/08/07 21:17:38 dillon Exp $
  */
 #ifndef _NETINET_IN_H_
 #include <netinet/in.h>
@@ -169,7 +169,7 @@ struct smb_share_info {
 #ifdef _KERNEL
 
 #include <sys/lock.h>
-#include <netsmb/smb_subr.h>
+#include "smb_subr.h"
 
 #define CONNADDREQ(a1,a2)	((a1)->sa_len == (a2)->sa_len && \
 				 bcmp(a1, a2, (a1)->sa_len) == 0)

@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.8 2003/07/23 02:30:18 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.9 2003/08/07 21:17:22 dillon Exp $
  */
 
 /*
@@ -54,7 +54,7 @@
 #include "opt_bus.h"
 #include "opt_rootdevname.h"
 
-#include "isa.h"
+#include "use_isa.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -86,7 +86,7 @@
 #include <machine/globaldata.h>
 
 #if NISA > 0
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 
 device_t isa_bus_device = 0;
 #endif
@@ -364,10 +364,10 @@ setroot()
 #include <net/if_var.h>
 #include <net/ethernet.h>
 #include <netinet/in.h>
-#include <nfs/rpcv2.h>
-#include <nfs/nfsproto.h>
-#include <nfs/nfs.h>
-#include <nfs/nfsdiskless.h>
+#include <vfs/nfs/rpcv2.h>
+#include <vfs/nfs/nfsproto.h>
+#include <vfs/nfs/nfs.h>
+#include <vfs/nfs/nfsdiskless.h>
 
 extern struct nfs_diskless	nfs_diskless;
 

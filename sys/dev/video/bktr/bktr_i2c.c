@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_i2c.c,v 1.13.2.3 2000/10/26 16:38:46 roger Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_i2c.c,v 1.2 2003/06/17 04:28:23 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_i2c.c,v 1.3 2003/08/07 21:17:15 dillon Exp $
  *
  */
 
@@ -34,7 +34,7 @@
  * From brooktree848.c <fsmp@freefall.org>
  */
 
-#include "bktr.h"
+#include "use_bktr.h"
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -54,18 +54,18 @@
 #include <sys/bus.h>
 #endif
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 #include <machine/ioctl_meteor.h>
 #include <machine/ioctl_bt848.h>	/* extensions to ioctl_meteor.h */
-#include <dev/bktr/bktr_reg.h>
+#include "bktr_reg.h"
 
-#include <dev/bktr/bktr_i2c.h>
+#include "bktr_i2c.h"
 
-#include <dev/iicbus/iiconf.h>
-#include <dev/iicbus/iicbus.h>
+#include <bus/iicbus/iiconf.h>
+#include <bus/iicbus/iicbus.h>
 
-#include <dev/smbus/smbconf.h>
+#include <bus/smbus/smbconf.h>
 
 #include "iicbb_if.h"
 #include "smbus_if.h"

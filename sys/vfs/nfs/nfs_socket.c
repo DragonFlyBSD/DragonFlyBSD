@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.6 2003/07/26 21:48:48 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.7 2003/08/07 21:17:42 dillon Exp $
  */
 
 /*
@@ -61,15 +61,15 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
-#include <nfs/rpcv2.h>
-#include <nfs/nfsproto.h>
-#include <nfs/nfs.h>
-#include <nfs/xdr_subs.h>
-#include <nfs/nfsm_subs.h>
-#include <nfs/nfsmount.h>
-#include <nfs/nfsnode.h>
-#include <nfs/nfsrtt.h>
-#include <nfs/nqnfs.h>
+#include "rpcv2.h"
+#include "nfsproto.h"
+#include "nfs.h"
+#include "xdr_subs.h"
+#include "nfsm_subs.h"
+#include "nfsmount.h"
+#include "nfsnode.h"
+#include "nfsrtt.h"
+#include "nqnfs.h"
 
 #define	TRUE	1
 #define	FALSE	0

@@ -30,7 +30,7 @@
  *	$Id$
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi2/i4b_ifpi2_ext.h,v 1.1.2.1 2002/04/25 20:26:50 gj Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_ext.h,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_ext.h,v 1.3 2003/08/07 21:17:25 dillon Exp $
  *
  *      last edit-date: [Fri Jun  2 14:53:31 2000]
  *
@@ -39,7 +39,7 @@
 #ifndef _I4B_IFPI2_EXT_H_
 #define _I4B_IFPI2_EXT_H_
 
-#include <i4b/include/i4b_l3l4.h>
+#include "../../include/i4b_l3l4.h"
 
 void ifpi2_set_linktab(int , int , drvr_link_t * );
 isdn_link_t *ifpi2_ret_linktab(int , int );

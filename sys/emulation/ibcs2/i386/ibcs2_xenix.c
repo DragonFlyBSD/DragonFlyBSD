@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_xenix.c,v 1.20 1999/12/15 23:01:46 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_xenix.c,v 1.7 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_xenix.c,v 1.8 2003/08/07 21:17:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,13 +43,13 @@
 
 #include <machine/cpu.h>
 
-#include <i386/ibcs2/ibcs2_types.h>
-#include <i386/ibcs2/ibcs2_unistd.h>
-#include <i386/ibcs2/ibcs2_signal.h>
-#include <i386/ibcs2/ibcs2_util.h>
-#include <i386/ibcs2/ibcs2_proto.h>
-#include <i386/ibcs2/ibcs2_xenix.h>
-#include <i386/ibcs2/ibcs2_xenix_syscall.h>
+#include "ibcs2_types.h"
+#include "ibcs2_unistd.h"
+#include "ibcs2_signal.h"
+#include "ibcs2_util.h"
+#include "ibcs2_proto.h"
+#include "ibcs2_xenix.h"
+#include "ibcs2_xenix_syscall.h"
 
 #include <vm/vm_zone.h>
 

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.7.2.6 2002/11/06 14:23:20 joe Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.3 2003/08/07 21:17:00 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.7.2.6 2002/11/06 14:23:20 joe Exp $
  */
@@ -71,14 +71,14 @@
 #include <machine/clock.h>      /* for DELAY */
 #include <sys/bus.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbdivar.h>
-#include <dev/usb/usbdevs.h>
-#include <dev/usb/usb_ethersubr.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
+#include <bus/usb/usbdivar.h>
+#include <bus/usb/usbdevs.h>
+#include <bus/usb/usb_ethersubr.h>
 
-#include <dev/usb/if_cuereg.h>
+#include "if_cuereg.h"
 
 /*
  * Various supported device vendors/products.

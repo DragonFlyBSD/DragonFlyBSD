@@ -59,7 +59,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ubsa.c,v 1.2.2.1 2002/12/11 20:54:47 kan Exp $
- * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.3 2003/08/07 21:17:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -82,15 +82,15 @@
 #include <sys/poll.h>
 #include <sys/sysctl.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbcdc.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbcdc.h>
 
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbdevs.h>
-#include <dev/usb/usb_quirks.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
+#include <bus/usb/usbdevs.h>
+#include <bus/usb/usb_quirks.h>
 
-#include <dev/usb/ucomvar.h>
+#include "../ucom/ucomvar.h"
 
 #ifdef UBSA_DEBUG
 Static int	ubsadebug = 0;

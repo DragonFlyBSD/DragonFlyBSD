@@ -26,16 +26,16 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/i386/isa/sound/sb16_midi.c,v 1.20 1999/12/27 04:37:18 tanimura Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/sbmidi/Attic/sb16_midi.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/sbmidi/Attic/sb16_midi.c,v 1.3 2003/08/07 21:17:12 dillon Exp $
  *
  */
+
+#include "use_sb.h"
 
 #include <i386/isa/sound/sound_config.h>
 #include <i386/isa/sound/sbcard.h>
 
 #if defined(CONFIG_SB) && defined(CONFIG_SB16) && defined(CONFIG_MIDI)
-
-#include "sb.h"
 
 #ifdef PC98
 #define DATAPORT   (sb16midi_base)

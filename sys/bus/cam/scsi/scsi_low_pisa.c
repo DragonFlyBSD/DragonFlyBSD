@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/cam/scsi/scsi_low_pisa.c,v 1.2.2.4 2001/12/17 13:30:20 non Exp $	*/
-/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low_pisa.c,v 1.2 2003/06/17 04:28:19 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low_pisa.c,v 1.3 2003/08/07 21:16:45 dillon Exp $	*/
 /*	$NecBSD: scsi_low_pisa.c,v 1.13 1998/11/26 14:26:11 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -129,8 +129,8 @@ scsi_low_notify_pisa(dh, ev)
 #include <sys/device_port.h>
 #include <sys/module.h>
 
-#include <cam/scsi/scsi_low.h>
-#include <cam/scsi/scsi_low_pisa.h>
+#include "scsi_low.h"
+#include "scsi_low_pisa.h"
 
 int
 scsi_low_deactivate_pisa(sc)

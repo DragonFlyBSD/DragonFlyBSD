@@ -1,6 +1,6 @@
 /*	$NetBSD: usb.h,v 1.38 1999/10/20 21:02:39 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb.h,v 1.17.2.11 2002/11/13 15:15:22 joe Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb.h,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb.h,v 1.3 2003/08/07 21:16:47 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -50,7 +50,7 @@
 #include <sys/ioctl.h>
 
 #if defined(_KERNEL)
-#include <dev/usb/usb_port.h>
+#include "usb_port.h"
 #endif /* _KERNEL */
 
 #elif defined(__FreeBSD__)
@@ -61,7 +61,7 @@ MALLOC_DECLARE(M_USB);
 MALLOC_DECLARE(M_USBDEV);
 MALLOC_DECLARE(M_USBHC);
 
-#include <dev/usb/usb_port.h>
+#include "usb_port.h"
 #endif /* _KERNEL */
 #endif /* __FreeBSD__ */
 

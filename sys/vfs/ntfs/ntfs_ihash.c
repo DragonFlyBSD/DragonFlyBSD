@@ -34,7 +34,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ntfs/ntfs_ihash.c,v 1.7 1999/12/03 20:37:39 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.c,v 1.4 2003/07/19 21:14:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.c,v 1.5 2003/08/07 21:17:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,9 +46,9 @@
 #include <sys/proc.h>
 #include <sys/mount.h>
 
-#include <ntfs/ntfs.h>
-#include <ntfs/ntfs_inode.h>
-#include <ntfs/ntfs_ihash.h>
+#include "ntfs.h"
+#include "ntfs_inode.h"
+#include "ntfs_ihash.h"
 
 MALLOC_DEFINE(M_NTFSNTHASH, "NTFS nthash", "NTFS ntnode hash tables");
 

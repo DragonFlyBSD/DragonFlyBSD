@@ -28,7 +28,7 @@
  *	should not include this file.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.18 2003/07/12 17:54:34 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.19 2003/08/07 21:17:22 dillon Exp $
  */
 
 #ifndef _MACHINE_GLOBALDATA_H_
@@ -41,10 +41,10 @@
 #include <sys/thread.h>		/* struct thread */
 #endif
 #ifndef _MACHINE_SEGMENTS_H_
-#include <machine/segments.h>	/* struct segment_descriptor */
+#include "segments.h"	/* struct segment_descriptor */
 #endif
 #ifndef _MACHINE_TSS_H_
-#include <machine/tss.h>	/* struct i386tss */
+#include "tss.h"	/* struct i386tss */
 #endif
 
 /*

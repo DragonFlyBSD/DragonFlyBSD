@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vfsops.c	8.8 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vfsops.c,v 1.17.2.3 2001/10/14 19:08:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.4 2003/07/26 22:04:27 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.5 2003/08/07 21:17:44 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -49,10 +49,10 @@
 #include <sys/malloc.h>
 #include <sys/vnode.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufsmount.h>
-#include <ufs/ufs/ufs_extern.h>
+#include "quota.h"
+#include "inode.h"
+#include "ufsmount.h"
+#include "ufs_extern.h"
 
 MALLOC_DEFINE(M_UFSMNT, "UFS mount", "UFS mount structure");
 /*

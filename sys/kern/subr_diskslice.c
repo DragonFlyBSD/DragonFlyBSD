@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.4 2003/07/22 17:03:33 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.5 2003/08/07 21:17:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -60,7 +60,7 @@
 #include <sys/vnode.h>
 #include <sys/device.h>
 
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/fs.h>
 
 #define TRACE(str)	do { if (ds_debug) printf str; } while (0)
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netipsec/ipsec_mbuf.c,v 1.5.2.2 2003/03/28 20:32:53 sam Exp $
- * $DragonFly: src/sys/netproto/ipsec/ipsec_mbuf.c,v 1.3 2003/07/26 21:06:09 rob Exp $
+ * $DragonFly: src/sys/netproto/ipsec/ipsec_mbuf.c,v 1.4 2003/08/07 21:17:37 dillon Exp $
  */
 
 /*
@@ -41,7 +41,7 @@
 #include <net/route.h>
 #include <netinet/in.h>
 
-#include <netipsec/ipsec.h>
+#include "ipsec.h"
 
 extern	struct mbuf *m_getptr(struct mbuf *, int, int *);
 

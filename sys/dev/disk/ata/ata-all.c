@@ -26,16 +26,16 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.6 2003/07/21 05:50:27 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.7 2003/08/07 21:16:51 dillon Exp $
  */
 
 #include "opt_ata.h"
-#include "ata.h"
-#include "atadisk.h"
-#include "atapicd.h"
-#include "atapifd.h"
-#include "atapist.h"
-#include "atapicam.h"
+#include "use_ata.h"
+#include "use_atadisk.h"
+#include "use_atapicd.h"
+#include "use_atapifd.h"
+#include "use_atapist.h"
+#include "use_atapicam.h"
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/ata.h>
@@ -56,10 +56,10 @@
 #ifdef __alpha__
 #include <machine/md_var.h>
 #endif
-#include <dev/ata/ata-all.h>
-#include <dev/ata/ata-disk.h>
-#include <dev/ata/ata-raid.h>
-#include <dev/ata/atapi-all.h>
+#include "ata-all.h"
+#include "ata-disk.h"
+#include "ata-raid.h"
+#include "atapi-all.h"
 
 /* device structures */
 static	d_ioctl_t	ataioctl;

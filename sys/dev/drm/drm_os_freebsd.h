@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.6 2003/07/21 07:57:40 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.7 2003/08/07 21:16:55 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -31,7 +31,7 @@
 #include <sys/mman.h>
 #include <sys/rman.h>
 #include <sys/memrange.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcivar.h>
 #if __FreeBSD_version >= 500000
 #include <sys/selinfo.h>
 #else
@@ -57,7 +57,7 @@
 #define __REALLY_HAVE_SG	(__HAVE_SG)
 
 #if __REALLY_HAVE_AGP
-#include <pci/agpvar.h>
+#include <dev/agp/agpvar.h>
 #include <sys/agpio.h>
 #endif
 

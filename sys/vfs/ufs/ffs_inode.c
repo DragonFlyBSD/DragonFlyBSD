@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_inode.c	8.13 (Berkeley) 4/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_inode.c,v 1.56.2.5 2002/02/05 18:35:03 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.7 2003/07/26 22:04:26 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.8 2003/08/07 21:17:44 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -51,13 +51,13 @@
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/ufsmount.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufs_extern.h>
+#include "quota.h"
+#include "ufsmount.h"
+#include "inode.h"
+#include "ufs_extern.h"
 
-#include <ufs/ffs/fs.h>
-#include <ufs/ffs/ffs_extern.h>
+#include "fs.h"
+#include "ffs_extern.h"
 
 #include <vm/vm_page2.h>
 

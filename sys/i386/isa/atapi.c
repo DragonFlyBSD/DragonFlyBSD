@@ -14,7 +14,7 @@
  * Version 1.9, Mon Oct  9 22:34:47 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/atapi.c,v 1.36.2.1 2000/04/03 20:13:06 n_hibma Exp $
- * $DragonFly: src/sys/i386/isa/Attic/atapi.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/atapi.c,v 1.4 2003/08/07 21:17:23 dillon Exp $
  */
 
 /*
@@ -102,11 +102,10 @@
  */
 #undef DEBUG
 
-#include "wdc.h"
-
-#include "wcd.h"
-#include "wfd.h"
-#include "wst.h"
+#include "use_wdc.h"
+#include "use_wcd.h"
+#include "use_wfd.h"
+#include "use_wst.h"
 /* #include "wmd.h" -- add your driver here */
 
 #if NWDC > 0

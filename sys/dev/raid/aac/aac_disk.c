@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_disk.c,v 1.3.2.8 2003/01/11 18:39:39 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.4 2003/07/22 17:03:27 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.5 2003/08/07 21:17:07 dillon Exp $
  */
 
 #include "opt_aac.h"
@@ -37,7 +37,7 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 
-#include <dev/aac/aac_compat.h>
+#include "aac_compat.h"
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/devicestat.h>
@@ -50,9 +50,9 @@
 #include <machine/bus.h>
 #include <sys/rman.h>
 
-#include <dev/aac/aacreg.h>
-#include <dev/aac/aac_ioctl.h>
-#include <dev/aac/aacvar.h>
+#include "aacreg.h"
+#include "aac_ioctl.h"
+#include "aacvar.h"
 
 /*
  * Interface to parent.

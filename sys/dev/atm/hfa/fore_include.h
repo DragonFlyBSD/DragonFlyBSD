@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_include.h,v 1.2 1999/08/28 00:41:50 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_include.h,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_include.h,v 1.3 2003/08/07 21:16:49 dillon Exp $
  *
  */
 
@@ -53,15 +53,15 @@
 #endif
 
 #ifdef FORE_PCI
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 #endif
 
-#include <dev/hfa/fore.h>
-#include <dev/hfa/fore_aali.h>
-#include <dev/hfa/fore_slave.h>
-#include <dev/hfa/fore_stats.h>
-#include <dev/hfa/fore_var.h>
+#include "fore.h"
+#include "fore_aali.h"
+#include "fore_slave.h"
+#include "fore_stats.h"
+#include "fore_var.h"
 
 /*
  * Global function declarations

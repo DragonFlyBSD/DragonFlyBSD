@@ -27,14 +27,14 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/r128_state.c,v 1.6.2.1 2003/04/26 07:05:29 anholt Exp $
- * $DragonFly: src/sys/dev/drm/r128/Attic/r128_state.c,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/r128/Attic/r128_state.c,v 1.3 2003/08/07 21:16:55 dillon Exp $
  */
 
-#include "dev/drm/r128.h"
+#include "r128.h"
 #include "dev/drm/drmP.h"
 #include "dev/drm/drm.h"
-#include "dev/drm/r128_drm.h"
-#include "dev/drm/r128_drv.h"
+#include "r128_drm.h"
+#include "r128_drv.h"
 
 
 /* ================================================================

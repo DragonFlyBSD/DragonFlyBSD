@@ -38,21 +38,21 @@
  *
  *	@(#)ext2_subr.c	8.2 (Berkeley) 9/21/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_subr.c,v 1.13.2.2 2000/08/03 18:48:27 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_subr.c,v 1.4 2003/07/26 18:53:21 rob Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_subr.c,v 1.5 2003/08/07 21:17:41 dillon Exp $
  */
 
 #include <sys/param.h>
-#include <gnu/ext2fs/ext2_fs_sb.h>
-#include <gnu/ext2fs/fs.h>
+#include "ext2_fs_sb.h"
+#include "fs.h"
 
 #include <sys/lock.h>
 #include <sys/systm.h>
 #include <sys/ucred.h>
 #include <sys/vnode.h>
-#include <gnu/ext2fs/ext2_extern.h>
+#include "ext2_extern.h"
 #include <sys/buf.h>
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/inode.h>
 
 #include "opt_ddb.h"
 

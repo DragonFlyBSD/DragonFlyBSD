@@ -30,14 +30,14 @@
  *	$Id: i4b_lme.c,v 1.15 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_lme.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_lme.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_lme.c,v 1.3 2003/08/07 21:17:29 dillon Exp $
  *
  *      last edit-date: [Mon May 29 16:55:12 2000]
  *
  *---------------------------------------------------------------------------*/
 
 #ifdef __FreeBSD__
-#include "i4bq921.h"
+#include "use_i4bq921.h"
 #else
 #define	NI4BQ921	1
 #endif
@@ -53,14 +53,14 @@
 #endif
 
 #ifdef __FreeBSD__
-#include <machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_debug.h>
 #else
 #include <i4b/i4b_debug.h>
 #include <i4b/i4b_ioctl.h>
 #endif
 
 
-#include <i4b/layer2/i4b_l2.h>
+#include "i4b_l2.h"
 
 /*---------------------------------------------------------------------------*
  *	mdl assign indication handler

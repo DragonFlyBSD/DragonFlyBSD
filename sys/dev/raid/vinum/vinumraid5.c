@@ -40,10 +40,10 @@
  *
  * $Id: vinumraid5.c,v 1.21 2001/01/09 04:21:27 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumraid5.c,v 1.6.2.2 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumraid5.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumraid5.c,v 1.3 2003/08/07 21:17:09 dillon Exp $
  */
-#include <dev/vinum/vinumhdr.h>
-#include <dev/vinum/request.h>
+#include "vinumhdr.h"
+#include "request.h"
 #include <sys/resourcevar.h>
 
 /*

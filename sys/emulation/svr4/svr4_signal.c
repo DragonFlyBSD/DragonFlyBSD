@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_signal.c,v 1.9 2000/01/15 15:38:17 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_signal.c,v 1.7 2003/07/30 00:19:15 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_signal.c,v 1.8 2003/08/07 21:17:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,12 +37,12 @@
 #include <sys/signalvar.h>
 #include <sys/sysproto.h>
 
-#include <svr4/svr4.h>
-#include <svr4/svr4_types.h>
-#include <svr4/svr4_signal.h>
-#include <svr4/svr4_proto.h>
-#include <svr4/svr4_util.h>
-#include <svr4/svr4_ucontext.h>
+#include "svr4.h"
+#include "svr4_types.h"
+#include "svr4_signal.h"
+#include "svr4_proto.h"
+#include "svr4_util.h"
+#include "svr4_ucontext.h"
 
 #define	svr4_sigmask(n)		(1 << (((n) - 1) & 31))
 #define	svr4_sigword(n)		(((n) - 1) >> 5)

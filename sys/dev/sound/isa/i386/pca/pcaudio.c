@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcaudio.c,v 1.58 2000/01/25 21:58:43 dfr Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/pca/Attic/pcaudio.c,v 1.5 2003/07/21 07:57:44 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/pca/Attic/pcaudio.c,v 1.6 2003/08/07 21:17:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,8 +42,8 @@
 #include <machine/clock.h>
 #include <machine/pcaudioio.h>
 
-#include <isa/isareg.h>
-#include <isa/isavar.h>
+#include <bus/isa/isareg.h>
+#include <bus/isa/isavar.h>
 #include <i386/isa/timerreg.h>
 
 #define BUF_SIZE 	8192

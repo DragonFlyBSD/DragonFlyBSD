@@ -32,14 +32,14 @@
  *	$Id: i4b_ihfc.h,v 1.9 2000/09/19 13:50:36 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc.h,v 1.1.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc.h,v 1.3 2003/08/07 21:17:26 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
 #ifndef _I4B_IHFC_H_
 #define _I4B_IHFC_H_
 
-#include <i4b/include/i4b_l3l4.h>
+#include "../../include/i4b_l3l4.h"
 
 /*---------------------------------------------------------------------------*
  *	global stuff						(HFC-1/S/SP)

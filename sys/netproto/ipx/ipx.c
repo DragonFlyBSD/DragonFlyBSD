@@ -34,7 +34,7 @@
  *	@(#)ipx.c
  *
  * $FreeBSD: src/sys/netipx/ipx.c,v 1.17.2.3 2003/04/04 09:35:43 tjr Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.4 2003/07/26 21:07:36 rob Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.5 2003/08/07 21:17:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,9 +47,9 @@
 #include <net/if.h>
 #include <net/route.h>
 
-#include <netipx/ipx.h>
-#include <netipx/ipx_if.h>
-#include <netipx/ipx_var.h>
+#include "ipx.h"
+#include "ipx_if.h"
+#include "ipx_var.h"
 
 struct ipx_ifaddr *ipx_ifaddr;
 

@@ -37,7 +37,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_control.c,v 1.16 1999/09/25 18:23:48 phk Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.3 2003/07/21 05:50:29 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.4 2003/08/07 21:17:08 dillon Exp $"
 
 #include "opt_dpt.h"
 
@@ -55,7 +55,7 @@
 #include <vm/pmap.h>
 #include <scsi/scsiconf.h>
 
-#include <dev/dpt/dpt.h>
+#include "dpt.h"
 
 #define INLINE __inline
 

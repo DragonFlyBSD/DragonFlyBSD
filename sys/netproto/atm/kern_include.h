@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/kern_include.h,v 1.3 1999/08/28 00:48:40 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/kern_include.h,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/kern_include.h,v 1.3 2003/08/07 21:17:34 dillon Exp $
  *
  */
 
@@ -93,22 +93,22 @@
 /*
  * Porting fluff
  */
-#include <netatm/port.h>
+#include "port.h"
 
 /*
  * ATM core services
  */
-#include <netatm/queue.h>
-#include <netatm/atm.h>
-#include <netatm/atm_sys.h>
-#include <netatm/atm_sap.h>
-#include <netatm/atm_cm.h>
-#include <netatm/atm_if.h>
-#include <netatm/atm_vc.h>
-#include <netatm/atm_ioctl.h>
-#include <netatm/atm_sigmgr.h>
-#include <netatm/atm_stack.h>
-#include <netatm/atm_pcb.h>
-#include <netatm/atm_var.h>
+#include "queue.h"
+#include "atm.h"
+#include "atm_sys.h"
+#include "atm_sap.h"
+#include "atm_cm.h"
+#include "atm_if.h"
+#include "atm_vc.h"
+#include "atm_ioctl.h"
+#include "atm_sigmgr.h"
+#include "atm_stack.h"
+#include "atm_pcb.h"
+#include "atm_var.h"
 
 #endif	/* _NETATM_KERN_INCLUDE_H */

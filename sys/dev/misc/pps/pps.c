@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/ppbus/pps.c,v 1.24.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.4 2003/07/21 07:57:41 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.5 2003/08/07 21:16:58 dillon Exp $
  *
  * This driver implements a draft-mogul-pps-api-02.txt PPS source.
  *
@@ -15,6 +15,8 @@
  * The echo output pin is pin#14
  *
  */
+
+#include "use_pps.h"
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -27,10 +29,9 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <dev/ppbus/ppbconf.h>
+#include <bus/ppbus/ppbconf.h>
 #include "ppbus_if.h"
-#include <dev/ppbus/ppbio.h>
-#include "pps.h"
+#include <bus/ppbus/ppbio.h>
 
 #define PPS_NAME	"pps"		/* our official name */
 

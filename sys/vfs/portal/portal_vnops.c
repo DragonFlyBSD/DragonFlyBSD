@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.5 2003/07/19 21:14:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.6 2003/08/07 21:17:43 dillon Exp $
  */
 
 /*
@@ -62,7 +62,7 @@
 #include <sys/socketvar.h>
 #include <sys/un.h>
 #include <sys/unpcb.h>
-#include <miscfs/portal/portal.h>
+#include "portal.h"
 
 static int portal_fileid = PORTAL_ROOTFILEID+1;
 

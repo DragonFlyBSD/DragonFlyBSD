@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_iod.c,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.6 2003/07/19 21:14:45 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.7 2003/08/07 21:17:39 dillon Exp $
  */
  
 #include <sys/param.h>
@@ -42,11 +42,11 @@
 #include <sys/mbuf.h>
 #include <sys/unistd.h>
 
-#include <netsmb/smb.h>
-#include <netsmb/smb_conn.h>
-#include <netsmb/smb_rq.h>
-#include <netsmb/smb_tran.h>
-#include <netsmb/smb_trantcp.h>
+#include "smb.h"
+#include "smb_conn.h"
+#include "smb_rq.h"
+#include "smb_tran.h"
+#include "smb_trantcp.h"
 
 
 #define SMBIOD_SLEEP_TIMO	2

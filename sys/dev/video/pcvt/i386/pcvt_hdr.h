@@ -42,7 +42,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:06:31 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_hdr.h,v 1.36.2.3 2001/08/06 15:30:21 joerg Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_hdr.h,v 1.2 2003/06/17 04:28:38 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_hdr.h,v 1.3 2003/08/07 21:17:16 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -98,12 +98,12 @@
 
 #endif /* PCVT_FREEBSD >= 200 */
 
-#include <i386/isa/pcvt/pcvt_conf.h>
+#include "pcvt_conf.h"
 
 #include <machine/bus.h>
 
-#include <dev/kbd/kbdreg.h>
-#include <dev/kbd/atkbdcreg.h>
+#include <dev/misc/kbd/kbdreg.h>
+#include <dev/misc/kbd/atkbdcreg.h>
 
 #if PCVT_NETBSD > 9
 #include "device.h"
@@ -113,7 +113,7 @@
 #include "i386/isa/isavar.h"
 #include "i386/cpufunc.h"
 #elif PCVT_FREEBSD >= 200
-#include <i386/isa/isa_device.h>
+#include <bus/isa/i386/isa_device.h>
 #else
 #include "i386/isa/isa_device.h"
 #endif
@@ -127,7 +127,7 @@
 #if PCVT_NETBSD > 100
 #include "i386/isa/isareg.h"
 #elif PCVT_FREEBSD >= 200
-#include <i386/isa/isa.h>
+#include <bus/isa/i386/isa.h>
 #else
 #include "i386/isa/isa.h"
 #endif

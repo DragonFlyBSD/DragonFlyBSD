@@ -1,6 +1,6 @@
 /*	$NetBSD: if_gre.c,v 1.42 2002/08/14 00:23:27 itojun Exp $ */
 /*	$FreeBSD: src/sys/net/if_gre.c,v 1.9.2.3 2003/01/23 21:06:44 sam Exp $ */
-/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.4 2003/06/25 03:56:02 dillon Exp $ */
+/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.5 2003/08/07 21:17:24 dillon Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -84,7 +84,7 @@
 #include <net/bpf.h>
 
 #include <net/net_osdep.h>
-#include <net/if_gre.h>
+#include "if_gre.h"
 
 /*
  * It is not easy to calculate the right value for a GRE MTU.

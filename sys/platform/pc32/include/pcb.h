@@ -35,7 +35,7 @@
  *
  *	from: @(#)pcb.h	5.10 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pcb.h,v 1.32.2.1 2001/08/15 01:23:52 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/pcb.h,v 1.5 2003/06/28 04:16:03 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/pcb.h,v 1.6 2003/08/07 21:17:22 dillon Exp $
  */
 
 #ifndef _I386_PCB_H_
@@ -44,7 +44,7 @@
 /*
  * Intel 386 process control block
  */
-#include <machine/npx.h>
+#include "npx.h"
 
 struct pcb {
 	int	pcb_cr3;

@@ -1,5 +1,5 @@
 $FreeBSD: src/sys/i386/isa/README.stl,v 1.3.6.2 2001/08/30 12:29:57 murray Exp $
-$DragonFly: src/sys/platform/pc32/isa/README.stl,v 1.2 2003/06/17 04:28:36 dillon Exp $
+$DragonFly: src/sys/platform/pc32/isa/README.stl,v 1.3 2003/08/07 21:17:23 dillon Exp $
 
 Stallion Multiport Serial Driver Readme
 ---------------------------------------
@@ -211,7 +211,7 @@ So there is a theoretical maximum of 512 ports.
             - add the following lines (in 2.1.0 I put them at line 729):
 
 /* Stallion Multiport Serial Driver */
-#include "stl.h"
+#include "use_stl.h"
 #if	NSTL > 0
 d_open_t        stlopen;
 d_close_t       stlclose;
@@ -257,7 +257,7 @@ d_ttycv_t	stldevtotty;
             - add the following lines (in 2.1.0 I put them at line 729):
 
 /* Stallion Intelligent Multiport Serial Driver */
-#include "stl.h"
+#include "use_stl.h"
 #if	NSTL > 0
 d_open_t        stliopen;
 d_close_t       stliclose;

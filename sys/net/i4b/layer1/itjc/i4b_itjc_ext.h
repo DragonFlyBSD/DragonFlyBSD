@@ -28,7 +28,7 @@
  *      ------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/itjc/i4b_itjc_ext.h,v 1.1.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_ext.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_ext.h,v 1.3 2003/08/07 21:17:28 dillon Exp $
  *
  *      last edit-date: [Wed Jan 10 17:15:31 2001]
  *
@@ -37,7 +37,7 @@
 #ifndef _I4B_ITJC_EXT_H_
 #define _I4B_ITJC_EXT_H_
 
-#include <i4b/include/i4b_l3l4.h>
+#include "../../include/i4b_l3l4.h"
 
 void itjc_set_linktab(int unit, int channel, drvr_link_t * dlt);
 isdn_link_t *itjc_ret_linktab(int unit, int channel);

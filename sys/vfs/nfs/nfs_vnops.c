@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.8 2003/07/26 21:48:49 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.9 2003/08/07 21:17:42 dillon Exp $
  */
 
 
@@ -70,16 +70,16 @@
 
 #include <sys/buf2.h>
 
-#include <miscfs/fifofs/fifo.h>
+#include <vfs/fifofs/fifo.h>
 
-#include <nfs/rpcv2.h>
-#include <nfs/nfsproto.h>
-#include <nfs/nfs.h>
-#include <nfs/nfsnode.h>
-#include <nfs/nfsmount.h>
-#include <nfs/xdr_subs.h>
-#include <nfs/nfsm_subs.h>
-#include <nfs/nqnfs.h>
+#include "rpcv2.h"
+#include "nfsproto.h"
+#include "nfs.h"
+#include "nfsnode.h"
+#include "nfsmount.h"
+#include "xdr_subs.h"
+#include "nfsm_subs.h"
+#include "nqnfs.h"
 
 #include <net/if.h>
 #include <netinet/in.h>

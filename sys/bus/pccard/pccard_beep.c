@@ -4,7 +4,7 @@
  * This file is in the public domain.
  */
 /* $FreeBSD: src/sys/pccard/pccard_beep.c,v 1.3.2.3 2001/06/05 19:11:34 imp Exp $ */
-/* $DragonFly: src/sys/bus/pccard/Attic/pccard_beep.c,v 1.2 2003/06/17 04:28:55 dillon Exp $ */
+/* $DragonFly: src/sys/bus/pccard/Attic/pccard_beep.c,v 1.3 2003/08/07 21:16:46 dillon Exp $ */
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -12,7 +12,7 @@
 
 #include <machine/clock.h>
 
-#include <pccard/driver.h>
+#include "driver.h"
 
 static enum beepstate allow_beep = BEEP_OFF;
 static int melody_type = 0;

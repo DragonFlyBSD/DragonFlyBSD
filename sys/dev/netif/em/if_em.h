@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.h,v 1.1.2.13 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.2 2003/06/17 04:28:25 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.3 2003/08/07 21:17:01 dillon Exp $*/
 
 #ifndef _EM_H_DEFINED_
 #define _EM_H_DEFINED_
@@ -55,7 +55,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include <net/bpf.h>
 #include <net/if_types.h>
-#include <net/if_vlan_var.h>
+#include <net/vlan/if_vlan_var.h>
 
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
@@ -70,13 +70,13 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <vm/vm.h>
 #include <vm/pmap.h>
 #include <machine/clock.h>
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 #include <sys/proc.h>
 #include <sys/sysctl.h>
 #include "opt_bdg.h"
 
-#include <dev/em/if_em_hw.h>
+#include "if_em_hw.h"
 
 /* Tunables */
 

@@ -6,7 +6,7 @@
  * @(#)ip_frag.c    1.11 3/24/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_frag.c,v 2.10.2.24 2002/08/28 12:41:04 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.15.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.3 2003/08/07 21:16:48 dillon Exp $
  */
 #if defined(KERNEL) && !defined(_KERNEL)
 # define      _KERNEL
@@ -67,13 +67,13 @@
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
-#include "netinet/ip_compat.h"
+#include "ip_compat.h"
 #include <netinet/tcpip.h>
-#include "netinet/ip_fil.h"
-#include "netinet/ip_nat.h"
-#include "netinet/ip_frag.h"
-#include "netinet/ip_state.h"
-#include "netinet/ip_auth.h"
+#include "ip_fil.h"
+#include "ip_nat.h"
+#include "ip_frag.h"
+#include "ip_state.h"
+#include "ip_auth.h"
 #if (__FreeBSD_version >= 300000)
 # include <sys/malloc.h>
 # if (defined(KERNEL) || defined(_KERNEL))

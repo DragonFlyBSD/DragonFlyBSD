@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_srvcache.c	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_srvcache.c,v 1.21 2000/02/13 03:32:06 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_srvcache.c,v 1.4 2003/07/26 21:48:48 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_srvcache.c,v 1.5 2003/08/07 21:17:42 dillon Exp $
  */
 
 /*
@@ -52,10 +52,10 @@
 #include <sys/socketvar.h>	/* for dup_sockaddr */
 
 #include <netinet/in.h>
-#include <nfs/rpcv2.h>
-#include <nfs/nfsproto.h>
-#include <nfs/nfs.h>
-#include <nfs/nfsrvcache.h>
+#include "rpcv2.h"
+#include "nfsproto.h"
+#include "nfs.h"
+#include "nfsrvcache.h"
 
 #ifndef NFS_NOSERVER 
 extern struct nfsstats nfsstats;

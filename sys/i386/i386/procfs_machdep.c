@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/i386/i386/procfs_machdep.c,v 1.14 1999/10/11 14:50:03 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/procfs_machdep.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/procfs_machdep.c,v 1.3 2003/08/07 21:17:22 dillon Exp $
  */
 
 /*
@@ -74,7 +74,7 @@
 #include <sys/vnode.h>
 #include <machine/reg.h>
 #include <machine/md_var.h>
-#include <miscfs/procfs/procfs.h>
+#include <vfs/procfs/procfs.h>
 
 #include <vm/vm.h>
 #include <sys/lock.h>

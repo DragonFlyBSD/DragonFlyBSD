@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.5 2003/07/19 21:14:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.6 2003/08/07 21:17:40 dillon Exp $
  */
 
 /*
@@ -60,7 +60,7 @@
 #include <sys/vnode.h>
 #include <sys/file2.h>
 
-#include <miscfs/fdesc/fdesc.h>
+#include "fdesc.h"
 
 #define FDL_WANT	0x01
 #define FDL_LOCKED	0x02

@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.2 2003/06/17 04:28:32 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.3 2003/08/07 21:17:06 dillon Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -55,7 +55,7 @@
 #include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
-#include <net/if_vlan_var.h>
+#include <net/vlan/if_vlan_var.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -78,16 +78,16 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <dev/mii/mii.h>
-#include <dev/mii/miivar.h>
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include "../mii_layer/mii.h"
+#include "../mii_layer/miivar.h"
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #define TXP_USEIOSPACE
 #define __STRICT_ALIGNMENT
 
-#include <dev/txp/if_txpreg.h>
-#include <dev/txp/3c990img.h>
+#include "if_txpreg.h"
+#include "3c990img.h"
 
 /*
  * Various supported device vendors/types and their names.

@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.3 2003/07/26 19:07:48 rob Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.4 2003/08/07 21:17:01 dillon Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -20,7 +20,7 @@
  *	- Does not currently support DMA
  *	- Does not currently support multicasts
  */
-#include "el.h"
+#include "use_el.h"
 #include "opt_inet.h"
 #include "opt_ipx.h"
 
@@ -41,8 +41,8 @@
 
 #include <machine/clock.h>
 
-#include <i386/isa/isa_device.h>
-#include <i386/isa/if_elreg.h>
+#include <bus/isa/i386/isa_device.h>
+#include "if_elreg.h"
 
 /* For debugging convenience */
 #ifdef EL_DEBUG

@@ -20,7 +20,7 @@
  *
  *      Utah $Hdr$
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode_cnv.c,v 1.11 2000/01/01 17:39:21 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode_cnv.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode_cnv.c,v 1.3 2003/08/07 21:17:41 dillon Exp $
  */
 
 /*
@@ -32,8 +32,8 @@
 #include <sys/stat.h>
 #include <sys/vnode.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/inode.h>
 
 /*
  * Undo the definitions in <ufs/ufs/inode.h> that would destroy the include
@@ -55,8 +55,8 @@
 #undef i_size
 #undef i_uid
 
-#include <gnu/ext2fs/ext2_fs.h>
-#include <gnu/ext2fs/ext2_extern.h>
+#include "ext2_fs.h"
+#include "ext2_extern.h"
 
 void
 ext2_print_dinode( di )

@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_alloc.c	8.8 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_alloc.c,v 1.28.2.2 2002/07/01 00:18:51 iedowse Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.3 2003/07/26 18:53:21 rob Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.4 2003/08/07 21:17:40 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -51,14 +51,14 @@
 #include <sys/mount.h>
 #include <sys/syslog.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufsmount.h>
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/inode.h>
+#include <vfs/ufs/ufsmount.h>
 
-#include <gnu/ext2fs/ext2_fs.h>
-#include <gnu/ext2fs/ext2_fs_sb.h>
-#include <gnu/ext2fs/fs.h>
-#include <gnu/ext2fs/ext2_extern.h>
+#include "ext2_fs.h"
+#include "ext2_fs_sb.h"
+#include "fs.h"
+#include "ext2_extern.h"
 
 static void	ext2_fserr __P((struct ext2_sb_info *, u_int, char *));
 

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500.c,v 1.1.2.4 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.3 2003/07/26 14:25:22 rob Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.4 2003/08/07 21:16:53 dillon Exp $	*/
 /*	$NecBSD: ncr53c500.c,v 1.30.12.3 2001/06/26 07:31:41 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -81,13 +81,13 @@
 #include <machine/dvcfg.h>
 #include <machine/physio_proc.h>
 
-#include <cam/scsi/scsi_low.h>
+#include <bus/cam/scsi/scsi_low.h>
 
-#include <dev/ncv/ncr53c500reg.h>
-#include <dev/ncv/ncr53c500hw.h>
-#include <dev/ncv/ncr53c500var.h>
+#include "ncr53c500reg.h"
+#include "ncr53c500hw.h"
+#include "ncr53c500var.h"
 
-#include <dev/ncv/ncr53c500hwtab.h>
+#include "ncr53c500hwtab.h"
 #endif /* __FreeBSD__ */
 
 #define	NCV_MAX_DATA_SIZE	(64 * 1024)

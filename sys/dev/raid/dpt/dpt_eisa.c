@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/dpt/dpt_eisa.c,v 1.12.2.1 2000/08/07 18:48:14 peter Exp $
- *	$DragonFly: src/sys/dev/raid/dpt/dpt_eisa.c,v 1.2 2003/06/17 04:28:23 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/dpt/dpt_eisa.c,v 1.3 2003/08/07 21:17:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,11 +38,11 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <dev/eisa/eisaconf.h>
+#include <bus/eisa/eisaconf.h>
 
-#include <cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_all.h>
 
-#include <dev/dpt/dpt.h>
+#include "dpt.h"
 
 #define DPT_EISA_IOSIZE			0x100
 #define DPT_EISA_SLOT_OFFSET		0x0c00

@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/cfs/coda_venus.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_venus.c,v 1.9 1999/08/28 00:40:56 peter Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_venus.c,v 1.3 2003/06/25 03:55:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_venus.c,v 1.4 2003/08/07 21:17:40 dillon Exp $
  * 
  */
 
@@ -40,10 +40,10 @@
 #include <sys/ioccom.h>
 #include <sys/fcntl.h>
 
-#include <coda/coda.h>
-#include <coda/cnode.h>
-#include <coda/coda_venus.h>
-#include <coda/coda_pioctl.h>
+#include "coda.h"
+#include "cnode.h"
+#include "coda_venus.h"
+#include "coda_pioctl.h"
 
 #define DECL_NO_IN(name) 				\
     struct coda_in_hdr *inp;				\

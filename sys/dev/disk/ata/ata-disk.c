@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.6 2003/07/22 17:03:27 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.7 2003/08/07 21:16:51 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -49,9 +49,9 @@
 #include <machine/bus.h>
 #include <machine/clock.h>
 #include <sys/rman.h>
-#include <dev/ata/ata-all.h>
-#include <dev/ata/ata-disk.h>
-#include <dev/ata/ata-raid.h>
+#include "ata-all.h"
+#include "ata-disk.h"
+#include "ata-raid.h"
 #include <sys/proc.h>
 #include <sys/buf2.h>
 

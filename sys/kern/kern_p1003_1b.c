@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/p1003_1b.c,v 1.5.2.2 2003/03/25 06:13:35 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_p1003_1b.c,v 1.5 2003/07/30 00:19:15 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_p1003_1b.c,v 1.6 2003/08/07 21:17:19 dillon Exp $
  */
 
 /* p1003_1b: Real Time common code.
@@ -46,7 +46,7 @@
 #include <sys/sysproto.h>
 #include <sys/sysctl.h>
 
-#include <posix4/posix4.h>
+#include "posix4.h"
 
 MALLOC_DEFINE(M_P31B, "p1003.1b", "Posix 1003.1B");
 

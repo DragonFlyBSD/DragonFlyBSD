@@ -28,14 +28,14 @@
  *	---------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/itjc/i4b_itjc_l1.c,v 1.1.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_l1.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_l1.c,v 1.3 2003/08/07 21:17:28 dillon Exp $
  *
  *      last edit-date: [Wed Jan 10 17:16:19 2001]
  *
  *---------------------------------------------------------------------------*/
 
-#include "itjc.h"
-#include "pci.h"
+#include "use_itjc.h"
+#include "use_pci.h"
 
 #if (NITJC > 0) && (NPCI > 0)
 
@@ -50,19 +50,19 @@
 
 #include <net/if.h>
 
-#include <machine/i4b_debug.h>
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_trace.h>
+#include <net/i4b/include/machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_trace.h>
 
-#include <i4b/layer1/isic/i4b_isic.h>
-#include <i4b/layer1/isic/i4b_isac.h>
+#include "../isic/i4b_isic.h"
+#include "../isic/i4b_isac.h"
 
-#include <i4b/layer1/itjc/i4b_itjc_ext.h>
+#include "i4b_itjc_ext.h"
 
-#include <i4b/layer1/i4b_l1.h>
+#include "../i4b_l1.h"
 
-#include <i4b/include/i4b_mbuf.h>
-#include <i4b/include/i4b_global.h>
+#include "../../include/i4b_mbuf.h"
+#include "../../include/i4b_global.h"
 
 /*---------------------------------------------------------------------------*
  *

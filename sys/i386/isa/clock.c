@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.4 2003/07/06 21:23:49 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.5 2003/08/07 21:17:23 dillon Exp $
  */
 
 /*
@@ -49,8 +49,9 @@
  * reintroduced and updated by Chris Stenton <chris@gnome.co.uk> 8/10/94
  */
 
+#include "use_apm.h"
+#include "use_mca.h"
 #include "opt_clock.h"
-#include "apm.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -80,15 +81,14 @@
 #include <machine/specialreg.h>
 
 #include <i386/isa/icu.h>
-#include <i386/isa/isa.h>
-#include <isa/rtc.h>
+#include <bus/isa/i386/isa.h>
+#include <bus/isa/rtc.h>
 #include <i386/isa/timerreg.h>
 
 #include <i386/isa/intr_machdep.h>
 
-#include "mca.h"
 #if NMCA > 0
-#include <i386/isa/mca_machdep.h>
+#include <bus/mca/i386/mca_machdep.h>
 #endif
 
 #ifdef APIC_IO

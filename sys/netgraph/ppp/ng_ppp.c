@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ppp.c,v 1.15.2.10 2003/03/10 17:55:48 archie Exp $
- * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.3 2003/07/29 12:51:29 hmp Exp $
+ * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.4 2003/08/07 21:17:32 dillon Exp $
  * $Whistle: ng_ppp.c,v 1.24 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -59,7 +59,7 @@
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
 #include <netgraph/ng_parse.h>
-#include <netgraph/ng_ppp.h>
+#include "ng_ppp.h"
 #include <netgraph/ng_vjc.h>
 
 #define PROT_VALID(p)		(((p) & 0x0101) == 0x0001)

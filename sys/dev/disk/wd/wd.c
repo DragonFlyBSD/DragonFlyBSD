@@ -35,7 +35,7 @@
  *
  *	from: @(#)wd.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/wd.c,v 1.219.2.2 2000/08/04 22:31:07 peter Exp $
- * $DragonFly: src/sys/dev/disk/wd/Attic/wd.c,v 1.7 2003/07/26 19:07:48 rob Exp $
+ * $DragonFly: src/sys/dev/disk/wd/Attic/wd.c,v 1.8 2003/08/07 21:16:54 dillon Exp $
  */
 
 /* TODO:
@@ -53,12 +53,12 @@
  *	  driver entries for polled reinit and polled write).
  */
 
-#include "wd.h"
+#include "use_wd.h"
 #ifdef  NWDC
 #undef  NWDC
 #endif
 
-#include "wdc.h"
+#include "use_wdc.h"
 
 #if     NWDC > 0
 
@@ -80,9 +80,9 @@
 #include <machine/bootinfo.h>
 #include <machine/clock.h>
 #include <machine/md_var.h>
-#include <i386/isa/isa.h>
-#include <i386/isa/isa_device.h>
-#include <i386/isa/wdreg.h>
+#include <bus/isa/i386/isa.h>
+#include <bus/isa/i386/isa_device.h>
+#include "wdreg.h"
 #include <sys/syslog.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>

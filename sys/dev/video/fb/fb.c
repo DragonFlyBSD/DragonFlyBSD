@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fb.c,v 1.11.2.2 2000/08/02 22:35:22 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.5 2003/07/22 17:03:28 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.6 2003/08/07 21:17:15 dillon Exp $
  */
 
 #include "opt_fb.h"
@@ -44,7 +44,7 @@
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
-#include <dev/fb/fbreg.h>
+#include "fbreg.h"
 
 /* local arrays */
 

@@ -45,17 +45,17 @@
  *	Last Edit-Date: [Mon Dec 27 14:13:33 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_vtf.c,v 1.11 1999/12/30 16:17:11 hm Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_vtf.c,v 1.4 2003/07/26 19:07:49 rob Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_vtf.c,v 1.5 2003/08/07 21:17:16 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
-#include "vt.h"
+#include "use_vt.h"
 #if NVT > 0
 
 #define PCVT_INCLUDE_VT_SELATTR	/* get inline function from pcvt_hdr.h */
 
-#include <i386/isa/pcvt/pcvt_hdr.h>	/* global include */
-#include <i386/isa/pcvt/pcvt_tbl.h>	/* character set conversion tables */
+#include "pcvt_hdr.h"	/* global include */
+#include "pcvt_tbl.h"	/* character set conversion tables */
 
 static void clear_dld ( struct video_state *svsp );
 static void init_dld ( struct video_state *svsp );

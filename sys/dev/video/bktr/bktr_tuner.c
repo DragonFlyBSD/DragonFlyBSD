@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_tuner.c,v 1.5.2.3 2000/10/26 16:38:46 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_tuner.c,v 1.3 2003/07/19 21:14:19 dillon Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_tuner.c,v 1.4 2003/08/07 21:17:15 dillon Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -55,7 +55,7 @@
 #endif
 
 #ifdef __FreeBSD__
-#include <pci/pcivar.h>
+#include <bus/pci/pcivar.h>
 
 #if (__FreeBSD_version < 500000)
 #include <machine/clock.h>              /* for DELAY */
@@ -77,10 +77,10 @@
 #else
 #include <machine/ioctl_meteor.h>	/* Traditional .h file location */
 #include <machine/ioctl_bt848.h>        /* extensions to ioctl_meteor.h */
-#include <dev/bktr/bktr_reg.h>
-#include <dev/bktr/bktr_tuner.h>
-#include <dev/bktr/bktr_card.h>
-#include <dev/bktr/bktr_core.h>
+#include "bktr_reg.h"
+#include "bktr_tuner.h"
+#include "bktr_card.h"
+#include "bktr_core.h"
 #endif
 
 

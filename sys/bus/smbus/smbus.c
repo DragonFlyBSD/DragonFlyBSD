@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/smbus/smbus.c,v 1.12.2.3 2002/04/19 05:52:12 nsouch Exp $
- * $DragonFly: src/sys/bus/smbus/smbus.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/bus/smbus/smbus.c,v 1.3 2003/08/07 21:16:47 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -33,8 +33,8 @@
 #include <sys/module.h>
 #include <sys/bus.h> 
 
-#include <dev/smbus/smbconf.h>
-#include <dev/smbus/smbus.h>
+#include "smbconf.h"
+#include "smbus.h"
 
 /*
  * Autoconfiguration and support routines for the Philips serial I2C bus

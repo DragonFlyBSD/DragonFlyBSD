@@ -37,7 +37,7 @@
  * Author: Julian Elisher <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_frame_relay.c,v 1.9.2.2 2000/10/24 18:36:45 julian Exp $
- * $DragonFly: src/sys/netgraph/frame_relay/ng_frame_relay.c,v 1.2 2003/06/17 04:28:50 dillon Exp $
+ * $DragonFly: src/sys/netgraph/frame_relay/ng_frame_relay.c,v 1.3 2003/08/07 21:17:31 dillon Exp $
  * $Whistle: ng_frame_relay.c,v 1.20 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -62,7 +62,7 @@
 
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
-#include <netgraph/ng_frame_relay.h>
+#include "ng_frame_relay.h"
 
 /*
  * Line info, and status per channel.

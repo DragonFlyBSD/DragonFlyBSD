@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/netnatm/natm_pcb.c,v 1.6.6.1 2000/08/03 18:56:28 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm_pcb.c,v 1.2 2003/06/17 04:28:53 dillon Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm_pcb.c,v 1.3 2003/08/07 21:17:38 dillon Exp $ */
 /*	$NetBSD: natm_pcb.c,v 1.4 1996/11/09 03:26:27 chuck Exp $	*/
 
 /*
@@ -49,7 +49,7 @@
 
 #include <netinet/in.h>
 
-#include <netnatm/natm.h>
+#include "natm.h"
 
 struct npcblist natm_pcbs;
 

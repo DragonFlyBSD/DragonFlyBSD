@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni_pci.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.3 2003/08/07 21:17:04 dillon Exp $
  */
 
  
@@ -45,11 +45,11 @@
 #include <net/ethernet.h>
 #include <net/if_arp.h>
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
-#include <dev/sbni/if_sbnireg.h>
-#include <dev/sbni/if_sbnivar.h>
+#include "if_sbnireg.h"
+#include "if_sbnivar.h"
 
 static int	sbni_pci_probe(device_t);
 static int	sbni_pci_attach(device_t);

@@ -27,10 +27,12 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_errno.c,v 1.2 2003/08/07 21:17:17 dillon Exp $
  */
 
 #include <sys/errno.h>
-#include <i386/ibcs2/ibcs2_errno.h>
+#include "ibcs2_errno.h"
 
 int bsd_to_ibcs2_errno[ELAST + 1] = {
 	0,			/* 0 */

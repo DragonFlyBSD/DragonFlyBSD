@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_sysvec.c,v 1.10.2.2 2002/07/09 14:12:43 robert Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.5 2003/06/26 05:55:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.6 2003/08/07 21:17:19 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -57,16 +57,16 @@
 #include <machine/cpu.h>
 #include <netinet/in.h>
 
-#include <svr4/svr4.h>
-#include <svr4/svr4_types.h>
-#include <svr4/svr4_syscall.h>
-#include <svr4/svr4_signal.h>
-#include <svr4/svr4_sockio.h>
-#include <svr4/svr4_socket.h>
-#include <svr4/svr4_errno.h>
-#include <svr4/svr4_proto.h>
-#include <svr4/svr4_siginfo.h>
-#include <svr4/svr4_util.h>
+#include "svr4.h"
+#include "svr4_types.h"
+#include "svr4_syscall.h"
+#include "svr4_signal.h"
+#include "svr4_sockio.h"
+#include "svr4_socket.h"
+#include "svr4_errno.h"
+#include "svr4_proto.h"
+#include "svr4_siginfo.h"
+#include "svr4_util.h"
 
 int bsd_to_svr4_errno[ELAST+1] = {
         0,

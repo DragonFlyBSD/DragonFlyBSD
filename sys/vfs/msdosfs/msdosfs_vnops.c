@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.9 2003/07/26 20:08:38 rob Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.10 2003/08/07 21:17:41 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -71,11 +71,11 @@
 
 #include <sys/buf2.h>
 
-#include <msdosfs/bpb.h>
-#include <msdosfs/direntry.h>
-#include <msdosfs/denode.h>
-#include <msdosfs/msdosfsmount.h>
-#include <msdosfs/fat.h>
+#include "bpb.h"
+#include "direntry.h"
+#include "denode.h"
+#include "msdosfsmount.h"
+#include "fat.h"
 
 #define	DOS_FILESIZE_MAX	0xffffffff
 

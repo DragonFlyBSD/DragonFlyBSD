@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.2 2003/06/17 04:28:20 dillon Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.3 2003/08/07 21:16:48 dillon Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -215,14 +215,14 @@ ${_src}:
 .endif
 .endfor
 
-MFILES?= kern/bus_if.m kern/device_if.m dev/iicbus/iicbb_if.m \
-    dev/iicbus/iicbus_if.m isa/isa_if.m dev/mii/miibus_if.m \
-    dev/pccard/card_if.m dev/pccard/power_if.m pci/pci_if.m \
-    dev/ppbus/ppbus_if.m dev/smbus/smbus_if.m dev/usb/usb_if.m \
+MFILES?= kern/bus_if.m kern/device_if.m bus/iicbus/iicbb_if.m \
+    bus/iicbus/iicbus_if.m bus/isa/isa_if.m dev/netif/mii_layer/miibus_if.m \
+    dev/misc/pccard/card_if.m dev/misc/pccard/power_if.m bus/pci/pci_if.m \
+    bus/ppbus/ppbus_if.m bus/smbus/smbus_if.m bus/usb/usb_if.m \
     dev/sound/pcm/ac97_if.m dev/sound/pcm/channel_if.m \
     dev/sound/pcm/feeder_if.m dev/sound/pcm/mixer_if.m \
-    libkern/iconv_converter_if.m pci/agp_if.m opencrypto/crypto_if.m \
-    pc98/pc98/canbus_if.m
+    libkern/iconv_converter_if.m dev/agp/agp_if.m opencrypto/crypto_if.m \
+    bus/canbus/canbus_if.m
 
 .for _srcsrc in ${MFILES}
 .for _ext in c h

@@ -36,11 +36,11 @@
  *      $Id: i4b_ihfc_pnp.c,v 1.9 2000/09/19 13:50:36 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_pnp.c,v 1.5.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_pnp.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_pnp.c,v 1.3 2003/08/07 21:17:26 dillon Exp $
  *     
  *---------------------------------------------------------------------------*/
 
-#include "ihfc.h"
+#include "use_ihfc.h"
 
 #if (NIHFC > 0)
 
@@ -51,21 +51,20 @@
 #include <net/if.h>
 
 
-#include <i4b/include/i4b_global.h>
+#include "../../include/i4b_global.h"
+#include <net/i4b/include/machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_trace.h>
 
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_trace.h>
-
-#include <i4b/layer1/i4b_l1.h>
-#include <i4b/layer1/ihfc/i4b_ihfc.h>
-#include <i4b/layer1/ihfc/i4b_ihfc_ext.h>
+#include "../i4b_l1.h"
+#include "i4b_ihfc.h"
+#include "i4b_ihfc_ext.h"
 
 #include <machine/bus.h>
 #include <machine/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 
 /*---------------------------------------------------------------------------*
  *	Softc

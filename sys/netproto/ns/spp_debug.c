@@ -32,7 +32,7 @@
  *
  *	@(#)spp_debug.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_debug.c,v 1.10 1999/08/28 00:49:52 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_debug.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_debug.c,v 1.3 2003/08/07 21:17:38 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -49,17 +49,17 @@
 #include <net/if.h>
 #include <netinet/tcp_fsm.h>
 
-#include <netns/ns.h>
-#include <netns/ns_pcb.h>
-#include <netns/idp.h>
-#include <netns/idp_var.h>
-#include <netns/sp.h>
-#include <netns/spidp.h>
+#include "ns.h"
+#include "ns_pcb.h"
+#include "idp.h"
+#include "idp_var.h"
+#include "sp.h"
+#include "spidp.h"
 #define SPPTIMERS
-#include <netns/spp_timer.h>
-#include <netns/spp_var.h>
+#include "spp_timer.h"
+#include "spp_var.h"
 #define	SANAMES
-#include <netns/spp_debug.h>
+#include "spp_debug.h"
 
 int	sppconsdebug = 0;
 /*

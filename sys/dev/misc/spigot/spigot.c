@@ -43,11 +43,11 @@
  * Version 1.7, December 1995.
  *
  * $FreeBSD: src/sys/i386/isa/spigot.c,v 1.44 2000/01/29 16:17:36 peter Exp $
- * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.5 2003/07/21 07:57:45 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.6 2003/08/07 21:16:58 dillon Exp $
  *
  */
 
-#include	"spigot.h"
+#include	"use_spigot.h"
 
 #if NSPIGOT > 1
 error "Can only have 1 spigot configured."
@@ -67,7 +67,7 @@ error "Can only have 1 spigot configured."
 #include	<machine/spigot.h>
 #include	<machine/psl.h>
 
-#include	<i386/isa/isa_device.h>
+#include	<bus/isa/i386/isa_device.h>
 
 static struct spigot_softc {
 	u_long		flags;

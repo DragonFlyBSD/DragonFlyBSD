@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_cisco.c,v 1.4.2.6 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/cisco/ng_cisco.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ * $DragonFly: src/sys/netgraph/cisco/ng_cisco.c,v 1.3 2003/08/07 21:17:31 dillon Exp $
  * $Whistle: ng_cisco.c,v 1.25 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -63,7 +63,7 @@
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
 #include <netgraph/ng_parse.h>
-#include <netgraph/ng_cisco.h>
+#include "ng_cisco.h"
 
 #define CISCO_MULTICAST         0x8f	/* Cisco multicast address */
 #define CISCO_UNICAST           0x0f	/* Cisco unicast address */

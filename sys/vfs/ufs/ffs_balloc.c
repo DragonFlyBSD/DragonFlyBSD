@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_balloc.c	8.8 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_balloc.c,v 1.26.2.1 2002/10/10 19:48:20 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.5 2003/06/26 05:55:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.6 2003/08/07 21:17:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,12 +43,12 @@
 #include <sys/mount.h>
 #include <sys/vnode.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufs_extern.h>
+#include "quota.h"
+#include "inode.h"
+#include "ufs_extern.h"
 
-#include <ufs/ffs/fs.h>
-#include <ufs/ffs/ffs_extern.h>
+#include "fs.h"
+#include "ffs_extern.h"
 
 /*
  * Balloc defines the structure of file system storage

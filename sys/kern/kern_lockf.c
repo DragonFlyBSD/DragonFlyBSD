@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.4 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.5 2003/08/07 21:17:23 dillon Exp $
  */
 
 #include "opt_debug_lockf.h"
@@ -62,8 +62,8 @@ static int maxlockdepth = MAXDEPTH;
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/inode.h>
 
 
 static int	lockf_debug = 0;

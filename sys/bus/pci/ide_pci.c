@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/ide_pci.c,v 1.42 2000/01/29 16:59:53 peter Exp $
- * $DragonFly: src/sys/bus/pci/Attic/ide_pci.c,v 1.2 2003/06/17 04:28:56 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/Attic/ide_pci.c,v 1.3 2003/08/07 21:16:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,17 +38,17 @@
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
-#include <i386/isa/wdreg.h>
+#include <dev/disk/wd/wdreg.h>
 #ifdef PC98
 #include <pc98/pc98/pc98.h>
 #else
-#include <i386/isa/isa.h>
+#include <bus/isa/i386/isa.h>
 #endif
-#include <i386/isa/isa_device.h>
+#include <bus/isa/i386/isa_device.h>
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
-#include <pci/ide_pcireg.h>
+#include "pcivar.h"
+#include "pcireg.h"
+#include "ide_pcireg.h"
 
 #ifndef MIN
 #define MIN(a,b) (((a)<(b))?(a):(b))

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_mod.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_mod.c,v 1.6 2003/07/30 00:19:15 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_mod.c,v 1.7 2003/08/07 21:17:38 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -43,13 +43,13 @@
 #include <sys/uio.h>
 #include <sys/msgport.h>
 
-#include <netncp/ncp.h>
-#include <netncp/ncp_conn.h>
-#include <netncp/ncp_subr.h>
-#include <netncp/ncp_ncp.h>
-#include <netncp/ncp_user.h>
-#include <netncp/ncp_rq.h>
-#include <netncp/ncp_nls.h>
+#include "ncp.h"
+#include "ncp_conn.h"
+#include "ncp_subr.h"
+#include "ncp_ncp.h"
+#include "ncp_user.h"
+#include "ncp_rq.h"
+#include "ncp_nls.h"
 
 int ncp_version = NCP_VERSION;
 

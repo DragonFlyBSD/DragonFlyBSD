@@ -28,13 +28,13 @@
  *	-------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ing.c,v 1.10.2.4 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.3 2003/07/26 19:20:29 rob Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.4 2003/08/07 21:17:25 dillon Exp $
  *
  *	last edit-date: [Tue Jan  1 10:43:58 2002]
  *
  *---------------------------------------------------------------------------*/ 
 
-#include "i4bing.h"
+#include "use_i4bing.h"
 
 #if NI4BING > 0
 
@@ -57,14 +57,13 @@
 #include <netgraph/ng_parse.h>
 #include <netgraph/netgraph.h>
 
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
 
-#include <i4b/include/i4b_global.h>
-#include <i4b/include/i4b_mbuf.h>
-#include <i4b/include/i4b_l3l4.h>
-
-#include <i4b/layer4/i4b_l4.h>
+#include "../include/i4b_global.h"
+#include "../include/i4b_mbuf.h"
+#include "../include/i4b_l3l4.h"
+#include "../layer4/i4b_l4.h"
 
 #define I4BINGACCT	1		/* enable accounting messages */
 #define	I4BINGACCTINTVL	2		/* accounting msg interval in secs */

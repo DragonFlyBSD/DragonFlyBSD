@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp_output.c,v 1.3 1999/08/28 00:49:03 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_output.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_output.c,v 1.3 2003/08/07 21:17:35 dillon Exp $
  */
 
 /*
@@ -39,7 +39,7 @@
 
 #include <netatm/ipatm/ipatm_var.h>
 #include <netatm/ipatm/ipatm_serv.h>
-#include <netatm/uni/uniip_var.h>
+#include "uniip_var.h"
 
 /*
  * Issue an ATMARP Request PDU

@@ -20,7 +20,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fe_cbus.c,v 1.2.2.5 2002/02/09 03:12:27 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/Attic/if_fe_cbus.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/Attic/if_fe_cbus.c,v 1.3 2003/08/07 21:17:02 dillon Exp $
  */
 
 #include "opt_fe.h"
@@ -48,10 +48,10 @@
 #include <netinet/if_ether.h>
 
 #include <i386/isa/ic/mb86960.h>
-#include <dev/fe/if_fereg.h>
-#include <dev/fe/if_fevar.h>
+#include "if_fereg.h"
+#include "if_fevar.h"
 
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 
 /*
  *	Cbus specific code.

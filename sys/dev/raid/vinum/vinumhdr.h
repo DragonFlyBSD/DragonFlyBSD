@@ -38,7 +38,7 @@
 /*
  * $Id: vinumhdr.h,v 1.18 2001/01/04 00:14:14 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumhdr.h,v 1.16.2.1 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumhdr.h,v 1.4 2003/07/22 17:03:31 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumhdr.h,v 1.5 2003/08/07 21:17:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -75,8 +75,8 @@
 
 #include <sys/buf2.h>
 
-#include <dev/vinum/vinumvar.h>
-#include <dev/vinum/vinumio.h>
-#include <dev/vinum/vinumkw.h>
-#include <dev/vinum/vinumext.h>
+#include "vinumvar.h"
+#include "vinumio.h"
+#include "vinumkw.h"
+#include "vinumext.h"
 #include <machine/cpu.h>

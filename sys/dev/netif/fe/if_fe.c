@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.3 2003/07/20 07:29:18 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.4 2003/08/07 21:17:02 dillon Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -98,8 +98,8 @@
 #include <net/bpf.h>
 
 #include <i386/isa/ic/mb86960.h>
-#include <dev/fe/if_fereg.h>
-#include <dev/fe/if_fevar.h>
+#include "if_fereg.h"
+#include "if_fevar.h"
 
 /*
  * Transmit just one packet per a "send" command to 86960.

@@ -38,10 +38,10 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.6 2003/07/26 20:19:33 rob Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.7 2003/08/07 21:17:24 dillon Exp $
  */
 
-#include "bpf.h"
+#include "use_bpf.h"
 
 #ifndef __GNUC__
 #define inline

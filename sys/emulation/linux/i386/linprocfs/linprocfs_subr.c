@@ -39,7 +39,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_subr.c,v 1.3.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.4 2003/07/19 21:14:36 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.5 2003/08/07 21:17:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,7 +47,7 @@
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/malloc.h>
-#include <i386/linux/linprocfs/linprocfs.h>
+#include "linprocfs.h"
 
 static struct pfsnode *pfshead;
 static int pfsvplock;

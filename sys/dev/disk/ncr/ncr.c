@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.3 2003/07/26 21:56:10 rob Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.4 2003/08/07 21:16:53 dillon Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -191,18 +191,18 @@
 #include <vm/vm_extern.h>
 #endif
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
-#include <pci/ncrreg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include "ncrreg.h"
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt_sim.h>
-#include <cam/cam_debug.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_debug.h>
 
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_message.h>
+#include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_message.h>
 
 /*==========================================================
 **

@@ -27,14 +27,14 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/radeon_drv.c,v 1.6.2.1 2003/04/26 07:05:29 anholt Exp $
- * $DragonFly: src/sys/dev/drm/radeon/Attic/radeon_drv.c,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/radeon/Attic/radeon_drv.c,v 1.3 2003/08/07 21:16:55 dillon Exp $
  */
 
-#include "dev/drm/radeon.h"
+#include "radeon.h"
 #include "dev/drm/drmP.h"
 #include "dev/drm/drm.h"
-#include "dev/drm/radeon_drm.h"
-#include "dev/drm/radeon_drv.h"
+#include "radeon_drm.h"
+#include "radeon_drv.h"
 #if __REALLY_HAVE_SG
 #include "dev/drm/ati_pcigart.h"
 #endif

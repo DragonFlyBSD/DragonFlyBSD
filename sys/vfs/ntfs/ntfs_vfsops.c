@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.7 2003/07/26 21:13:15 rob Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.8 2003/08/07 21:17:42 dillon Exp $
  */
 
 
@@ -61,12 +61,12 @@
 #endif
 
 /*#define NTFS_DEBUG 1*/
-#include <ntfs/ntfs.h>
-#include <ntfs/ntfs_inode.h>
-#include <ntfs/ntfs_subr.h>
-#include <ntfs/ntfs_vfsops.h>
-#include <ntfs/ntfs_ihash.h>
-#include <ntfs/ntfsmount.h>
+#include "ntfs.h"
+#include "ntfs_inode.h"
+#include "ntfs_subr.h"
+#include "ntfs_vfsops.h"
+#include "ntfs_ihash.h"
+#include "ntfsmount.h"
 
 #if defined(__FreeBSD__)
 MALLOC_DEFINE(M_NTFSMNT, "NTFS mount", "NTFS mount structure");

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/dec/mcclock.c,v 1.5.2.2 2001/12/17 14:03:15 gallatin Exp $ */
-/* $DragonFly: src/sys/dev/misc/dec/Attic/mcclock.c,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
+/* $DragonFly: src/sys/dev/misc/dec/Attic/mcclock.c,v 1.3 2003/08/07 21:16:56 dillon Exp $ */
 /* $NetBSD: mcclock.c,v 1.11 1998/04/19 07:50:25 jonathan Exp $ */
 
 /*
@@ -35,8 +35,8 @@
 #include <sys/bus.h>
 
 #include <machine/clockvar.h>
-#include <dev/dec/mcclockvar.h>
-#include <dev/dec/mc146818reg.h>
+#include "mcclockvar.h"
+#include "mc146818reg.h"
 
 /*
  * XXX rate is machine-dependent.

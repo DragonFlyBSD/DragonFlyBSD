@@ -57,7 +57,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/fpu_aux.c,v 1.11 1999/10/12 02:23:14 msmith Exp $
- * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/fpu_aux.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/fpu_aux.c,v 1.3 2003/08/07 21:17:20 dillon Exp $
  *
  */
 
@@ -70,10 +70,10 @@
 #include <machine/cpu.h>
 #include <machine/pcb.h>
 
-#include <gnu/i386/fpemul/fpu_emu.h>
-#include <gnu/i386/fpemul/fpu_system.h>
-#include <gnu/i386/fpemul/exception.h>
-#include <gnu/i386/fpemul/status_w.h>
+#include "fpu_emu.h"
+#include "fpu_system.h"
+#include "exception.h"
+#include "status_w.h"
 
 
 static void

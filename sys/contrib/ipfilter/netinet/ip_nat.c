@@ -8,7 +8,7 @@
  * @(#)ip_nat.c     1.11 6/5/96 (C) 1995 Darren Reed
  * @(#)$Id: ip_nat.c,v 2.37.2.70 2002/08/28 12:45:48 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.22.2.7 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.3 2003/07/26 14:07:18 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.4 2003/08/07 21:16:48 dillon Exp $
  */
 #if defined(__FreeBSD__) && defined(KERNEL) && !defined(_KERNEL)
 #define _KERNEL
@@ -96,13 +96,13 @@ extern struct ifnet vpnif;
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
-#include "netinet/ip_compat.h"
+#include "ip_compat.h"
 #include <netinet/tcpip.h>
-#include "netinet/ip_fil.h"
-#include "netinet/ip_nat.h"
-#include "netinet/ip_frag.h"
-#include "netinet/ip_state.h"
-#include "netinet/ip_proxy.h"
+#include "ip_fil.h"
+#include "ip_nat.h"
+#include "ip_frag.h"
+#include "ip_state.h"
+#include "ip_proxy.h"
 #if (__FreeBSD_version >= 300000)
 # include <sys/malloc.h>
 #endif

@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sn/if_sn_isa.c,v 1.3.2.1 2001/01/25 19:38:18 imp Exp $
- * $DragonFly: src/sys/dev/netif/sn/if_sn_isa.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sn/if_sn_isa.c,v 1.3 2003/08/07 21:17:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,9 +45,9 @@
 #include <net/if.h>
 #include <net/if_arp.h>
 
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 
-#include <dev/sn/if_snvar.h>
+#include "if_snvar.h"
 
 static int		sn_isa_probe	(device_t);
 static int		sn_isa_attach	(device_t);

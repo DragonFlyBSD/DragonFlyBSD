@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.3 2003/08/07 21:19:25 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -183,6 +183,37 @@ main(argc, argv)
 		    srcdir, machinename);
 	(void) symlink(xxx, path("machine"));
 	}
+
+	/*
+	 * XXX check directory structure for architecture subdirectories and
+	 * create the symlinks automatically XXX
+	 */
+	{
+	char xxx[MAXPATHLEN];
+	if (*srcdir == '\0')
+		(void)snprintf(xxx, sizeof(xxx), "../../../../../net/i4b/include/%s",
+		    machinename);
+	else
+		(void)snprintf(xxx, sizeof(xxx), "%s/net/i4b/include/%s",
+		    srcdir, machinename);
+	(void) mkdir(path("net"), 0755);
+	(void) mkdir(path("net/i4b"), 0755);
+	(void) mkdir(path("net/i4b/include"), 0755);
+	(void) symlink(xxx, path("net/i4b/include/machine"));
+	}
+	{
+	char xxx[MAXPATHLEN];
+	if (*srcdir == '\0')
+		(void)snprintf(xxx, sizeof(xxx), "../../../../emulation/linux/%s",
+		    machinename);
+	else
+		(void)snprintf(xxx, sizeof(xxx), "%s/emulation/linux/%s",
+		    srcdir, machinename);
+	(void) mkdir(path("emulation"), 0755);
+	(void) mkdir(path("emulation/linux"), 0755);
+	(void) symlink(xxx, path("emulation/linux/machine"));
+	}
+
 	options();			/* make options .h files */
 	makefile();			/* build Makefile */
 	headers();			/* make a lot of .h files */

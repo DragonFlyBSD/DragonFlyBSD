@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/i2obscsi.h,v 1.1.2.1 2000/09/21 20:33:50 msmith Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/i2obscsi.h,v 1.2 2003/06/17 04:28:22 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/i2obscsi.h,v 1.3 2003/08/07 21:17:08 dillon Exp $ */
 /****************************************************************
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000 Adaptec Corporation.
@@ -84,9 +84,9 @@
 
 #if ((defined(KERNEL) || defined(_KERNEL)) && defined(__FreeBSD__))
 # if (KERN_VERSION < 3)
-#  include    "i386/pci/i2omsg.h"          /* Include the Base Message file */
+#  include "i2omsg.h"          /* Include the Base Message file */
 # else
-#  include    "dev/asr/i2omsg.h"
+#  include "i2omsg.h"
 # endif
 #else
 # include    "i2omsg.h"          /* Include the Base Message file */

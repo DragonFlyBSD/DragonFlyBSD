@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/pcisupport.c,v 1.154.2.15 2003/04/29 15:55:06 simokawa Exp $
-** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.3 2003/08/07 21:16:47 dillon Exp $
 **
 **  Device driver for DEC/INTEL PCI chipsets.
 **
@@ -51,8 +51,8 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include "pcivar.h"
+#include "pcireg.h"
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>

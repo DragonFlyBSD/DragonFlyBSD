@@ -41,15 +41,15 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx_pci.c#75 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_pci.c,v 1.3.2.5 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_pci.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_pci.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
  */
 
 #ifdef __linux__
 #include "aic79xx_osm.h"
 #include "aic79xx_inline.h"
 #else
-#include <dev/aic7xxx/aic79xx_osm.h>
-#include <dev/aic7xxx/aic79xx_inline.h>
+#include "aic79xx_osm.h"
+#include "aic79xx_inline.h"
 #endif
 
 static __inline uint64_t

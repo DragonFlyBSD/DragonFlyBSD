@@ -55,7 +55,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/exception.h,v 1.9 1999/08/28 00:42:49 peter Exp $
- * $DragonFly: src/sys/i386/gnu/fpemul/Attic/exception.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/i386/gnu/fpemul/Attic/exception.h,v 1.3 2003/08/07 21:17:20 dillon Exp $
  *
  *
  */
@@ -71,7 +71,7 @@
 #endif
 
 #ifndef SW_C1
-#include <gnu/i386/fpemul/fpu_emu.h>
+#include "fpu_emu.h"
 #endif				/* SW_C1 */
 
 #define FPU_BUSY        Const_(0x8000)	/* FPU busy bit (8087 compatibility) */

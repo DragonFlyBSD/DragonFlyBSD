@@ -34,7 +34,7 @@
  *	@(#)spx_debug.c
  *
  * $FreeBSD: src/sys/netipx/spx_debug.c,v 1.14 1999/08/28 00:49:43 peter Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_debug.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_debug.c,v 1.3 2003/08/07 21:17:37 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -47,13 +47,13 @@
 #include <netinet/in_systm.h>
 #include <netinet/tcp_fsm.h>
 
-#include <netipx/ipx.h>
-#include <netipx/ipx_var.h>
-#include <netipx/spx.h>
+#include "ipx.h"
+#include "ipx_var.h"
+#include "spx.h"
 #define SPXTIMERS
-#include <netipx/spx_timer.h>
+#include "spx_timer.h"
 #define	SANAMES
-#include <netipx/spx_debug.h>
+#include "spx_debug.h"
 
 #ifdef TCPDEBUG
 static	int spxconsdebug = 0;

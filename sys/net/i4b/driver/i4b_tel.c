@@ -28,13 +28,13 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_tel.c,v 1.10.2.4 2001/12/16 15:12:57 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.6 2003/07/26 19:20:29 rob Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.7 2003/08/07 21:17:25 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:07:05 2001]
  *
  *---------------------------------------------------------------------------*/
 
-#include "i4btel.h"
+#include "use_i4btel.h"
 
 #if NI4BTEL > 0
 
@@ -58,15 +58,14 @@
 #include <sys/devfsext.h>
 #endif
 
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_tel_ioctl.h>
-#include <machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_tel_ioctl.h>
+#include <net/i4b/include/machine/i4b_debug.h>
 
-#include <i4b/include/i4b_global.h>
-#include <i4b/include/i4b_mbuf.h>
-#include <i4b/include/i4b_l3l4.h>
-
-#include <i4b/layer4/i4b_l4.h>
+#include "../include/i4b_global.h"
+#include "../include/i4b_mbuf.h"
+#include "../include/i4b_l3l4.h"
+#include "../layer4/i4b_l4.h"
 
 /* minor number: lower 6 bits = unit number */
 

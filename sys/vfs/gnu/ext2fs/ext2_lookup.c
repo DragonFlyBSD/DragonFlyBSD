@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_lookup.c,v 1.21.2.3 2002/11/17 02:02:42 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.4 2003/07/26 18:53:21 rob Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.5 2003/08/07 21:17:41 dillon Exp $
  */
 /*
  * Copyright (c) 1989, 1993
@@ -56,15 +56,15 @@
 #include <sys/malloc.h>
 #include <sys/dirent.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/dir.h>
-#include <ufs/ufs/ufsmount.h>
-#include <ufs/ufs/ufs_extern.h>
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/inode.h>
+#include <vfs/ufs/dir.h>
+#include <vfs/ufs/ufsmount.h>
+#include <vfs/ufs/ufs_extern.h>
 
-#include <gnu/ext2fs/ext2_extern.h>
-#include <gnu/ext2fs/ext2_fs.h>
-#include <gnu/ext2fs/ext2_fs_sb.h>
+#include "ext2_extern.h"
+#include "ext2_fs.h"
+#include "ext2_fs_sb.h"
 
 /* 
    DIRBLKSIZE in ffs is DEV_BSIZE (in most cases 512)

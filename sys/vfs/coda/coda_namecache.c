@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_namecache.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_namecache.c,v 1.10 1999/08/28 00:40:53 peter Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_namecache.c,v 1.4 2003/06/26 02:17:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_namecache.c,v 1.5 2003/08/07 21:17:40 dillon Exp $
  * 
  */
 
@@ -90,12 +90,12 @@
 #include <vm/vm.h>
 #include <vm/vm_object.h>
 
-#include <coda/coda.h>
-#include <coda/cnode.h>
-#include <coda/coda_namecache.h>
+#include "coda.h"
+#include "cnode.h"
+#include "coda_namecache.h"
 
 #ifdef	DEBUG
-#include <coda/coda_vnops.h>
+#include "coda_vnops.h"
 #endif
 
 /* 

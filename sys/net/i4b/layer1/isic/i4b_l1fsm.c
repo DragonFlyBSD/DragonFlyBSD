@@ -28,13 +28,13 @@
  *	--------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_l1fsm.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_l1fsm.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_l1fsm.c,v 1.3 2003/08/07 21:17:26 dillon Exp $
  *
  *      last edit-date: [Wed Jan 24 09:12:18 2001]
  *
  *---------------------------------------------------------------------------*/
 
-#include "isic.h"
+#include "use_isic.h"
 
 #if NISIC > 0
 
@@ -45,17 +45,15 @@
 
 #include <net/if.h>
 
-#include <machine/i4b_debug.h>
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_trace.h>
+#include <net/i4b/include/machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_trace.h>
 
-#include <i4b/layer1/isic/i4b_isic.h>
+#include "i4b_isic.h"
 
-#include <i4b/layer1/i4b_l1.h>
-
-#include <i4b/include/i4b_global.h>
-
-#include <i4b/include/i4b_mbuf.h>
+#include "../i4b_l1.h"
+#include "../../include/i4b_global.h"
+#include "../../include/i4b_mbuf.h"
 
 #if DO_I4B_DEBUG
 static char *state_text[N_STATES] = {

@@ -25,19 +25,19 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe.c,v 1.1.2.6 2002/03/07 09:57:02 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.3 2003/07/19 21:14:29 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.4 2003/08/07 21:17:09 dillon Exp $
  */
 
 /*
  * Driver for the 3ware Escalade family of IDE RAID controllers.
  */
 
-#include <dev/twe/twe_compat.h>
-#include <dev/twe/twereg.h>
-#include <dev/twe/tweio.h>
-#include <dev/twe/twevar.h>
+#include "twe_compat.h"
+#include "twereg.h"
+#include "tweio.h"
+#include "twevar.h"
 #define TWE_DEFINE_TABLES
-#include <dev/twe/twe_tables.h>
+#include "twe_tables.h"
 
 /*
  * Command submission.

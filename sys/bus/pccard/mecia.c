@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/mecia.c,v 1.2.2.4 2001/08/14 23:36:18 imp Exp $
- * $DragonFly: src/sys/bus/pccard/Attic/mecia.c,v 1.2 2003/06/17 04:28:55 dillon Exp $
+ * $DragonFly: src/sys/bus/pccard/Attic/mecia.c,v 1.3 2003/08/07 21:16:46 dillon Exp $
  *
  * Based heavily on the FreeBSD pcic driver's pcic98 support, derived
  * from PAO3 tree.  This copyright notice likely needs modification for
@@ -41,17 +41,17 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 
-#include <pccard/meciareg.h>
-#include <pccard/cardinfo.h>
-#include <pccard/slot.h>
+#include "meciareg.h"
+#include "cardinfo.h"
+#include "slot.h"
 #ifndef MECIA_IOBASE
 #define MECIA_IOBASE   0x80d0
 #endif
 
 /* Get pnp IDs */
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 
-#include <dev/pccard/pccardvar.h>
+#include <dev/misc/pccard/pccardvar.h>
 #include "card_if.h"
 
 #define MECIA_DEVICE2SOFTC(dev)	((struct mecia_slot *) device_get_softc(dev))

@@ -7,11 +7,12 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/contrib/dev/fla/fla.c,v 1.16 1999/12/08 04:45:16 ken Exp $ 
- * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.5 2003/07/22 17:03:26 dillon Exp $ 
+ * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.6 2003/08/07 21:16:48 dillon Exp $ 
  *
  */
 
-#include "fla.h"
+#include "use_fla.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/sysctl.h>
@@ -32,7 +33,7 @@
 #include <sys/buf2.h>
 
 #include <sys/bus.h>
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 
 #ifdef SMP
 #include <machine/smp.h>

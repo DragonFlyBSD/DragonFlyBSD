@@ -1,6 +1,6 @@
 /*	$NetBSD: uaudio.c,v 1.41 2001/01/23 14:04:13 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/sound/usb/uaudio.c,v 1.6.2.2 2002/11/06 21:18:17 joe Exp $: */
-/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.3 2003/06/19 01:02:29 dillon Exp $: */
+/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.4 2003/08/07 21:17:13 dillon Exp $: */
 
 /*
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -78,10 +78,10 @@
 #include <dev/sound/chip.h>
 #endif
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usb_quirks.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
+#include <bus/usb/usb_quirks.h>
 
 #include <dev/sound/usb/uaudioreg.h>
 #include <dev/sound/usb/uaudio.h>

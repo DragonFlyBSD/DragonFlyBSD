@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic_cbus.c,v 1.1.2.2 2000/06/21 09:37:09 nyan Exp $
- * $DragonFly: src/sys/dev/disk/aic/Attic/aic_cbus.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic/Attic/aic_cbus.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,9 +38,9 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
  
-#include <isa/isavar.h>
-#include <dev/aic/aic6360reg.h>
-#include <dev/aic/aicvar.h>
+#include <bus/isa/isavar.h>
+#include "aic6360reg.h"
+#include "aicvar.h"
   
 struct aic_isa_softc {
 	struct	aic_softc sc_aic;

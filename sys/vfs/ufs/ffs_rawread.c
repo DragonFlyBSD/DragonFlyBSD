@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.4 2003/07/19 21:14:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.5 2003/08/07 21:17:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,9 +40,9 @@
 #include <sys/filio.h>
 #include <sys/ttycom.h>
 #include <sys/buf.h>
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ffs/fs.h>
+#include "quota.h"
+#include "inode.h"
+#include "fs.h"
 
 #include <machine/limits.h>
 #include <vm/vm.h>

@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwdev.c,v 1.2.4.11 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.4 2003/07/21 05:50:30 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.5 2003/08/07 21:16:45 dillon Exp $
  *
  */
 
@@ -52,11 +52,11 @@
 
 #include <sys/ioccom.h>
 
-#include <dev/firewire/firewire.h>
-#include <dev/firewire/firewirereg.h>
-#include <dev/firewire/fwdma.h>
-#include <dev/firewire/fwmem.h>
-#include <dev/firewire/iec68113.h>
+#include "firewire.h"
+#include "firewirereg.h"
+#include "fwdma.h"
+#include "fwmem.h"
+#include "iec68113.h"
 
 #define CDEV_MAJOR 127
 #define	FWNODE_INVAL 0xffff

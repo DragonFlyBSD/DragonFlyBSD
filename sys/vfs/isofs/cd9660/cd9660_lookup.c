@@ -39,7 +39,7 @@
  *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.5 2003/07/26 19:27:41 rob Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.6 2003/08/07 21:17:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,9 +50,9 @@
 #include <sys/vnode.h>
 #include <sys/mount.h>
 
-#include <isofs/cd9660/iso.h>
-#include <isofs/cd9660/cd9660_node.h>
-#include <isofs/cd9660/iso_rrip.h>
+#include "iso.h"
+#include "cd9660_node.h"
+#include "iso_rrip.h"
 
 /*
  * Convert a component of a pathname into a pointer to a locked inode.

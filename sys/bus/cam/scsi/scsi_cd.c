@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.13 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.8 2003/07/27 01:49:48 hmp Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.9 2003/08/07 21:16:44 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -65,16 +65,16 @@
 #include <sys/proc.h>
 #include <sys/buf2.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_extend.h>
-#include <cam/cam_periph.h>
-#include <cam/cam_xpt_periph.h>
-#include <cam/cam_queue.h>
+#include "../cam.h"
+#include "../cam_ccb.h"
+#include "../cam_extend.h"
+#include "../cam_periph.h"
+#include "../cam_xpt_periph.h"
+#include "../cam_queue.h"
 
-#include <cam/scsi/scsi_message.h>
-#include <cam/scsi/scsi_da.h>
-#include <cam/scsi/scsi_cd.h>
+#include "scsi_message.h"
+#include "scsi_da.h"
+#include "scsi_cd.h"
 
 #define LEADOUT         0xaa            /* leadout toc entry */
 

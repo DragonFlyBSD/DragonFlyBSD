@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/vga_isa.c,v 1.17 2000/01/29 15:08:56 peter Exp $
- * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.5 2003/07/22 17:03:32 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.6 2003/08/07 21:16:46 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -49,11 +49,11 @@
 #include <machine/md_var.h>
 #include <machine/pc/bios.h>
 
-#include <dev/fb/fbreg.h>
-#include <dev/fb/vgareg.h>
+#include <dev/video/fb/fbreg.h>
+#include <dev/video/fb/vgareg.h>
 
-#include <isa/isareg.h>
-#include <isa/isavar.h>
+#include "isareg.h"
+#include "isavar.h"
 
 #define VGA_SOFTC(unit)		\
 	((vga_softc_t *)devclass_get_softc(isavga_devclass, unit))

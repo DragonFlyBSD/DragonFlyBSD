@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_subr.c,v 1.2.2.2 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_subr.c,v 1.3 2003/06/25 03:56:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_subr.c,v 1.4 2003/08/07 21:17:43 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -46,9 +46,9 @@
 #include <netncp/ncp_rq.h>
 #include <netncp/nwerror.h>
 
-#include <nwfs/nwfs.h>
-#include <nwfs/nwfs_node.h>
-#include <nwfs/nwfs_subr.h>
+#include "nwfs.h"
+#include "nwfs_node.h"
+#include "nwfs_subr.h"
 
 MALLOC_DEFINE(M_NWFSDATA, "NWFS data", "NWFS private data");
 

@@ -39,11 +39,11 @@
  *
  * $Id: vinumlock.c,v 1.13 2000/05/02 23:25:02 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumlock.c,v 1.18.2.3 2001/04/04 06:27:11 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumlock.c,v 1.3 2003/07/19 21:14:31 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumlock.c,v 1.4 2003/08/07 21:17:09 dillon Exp $
  */
 
-#include <dev/vinum/vinumhdr.h>
-#include <dev/vinum/request.h>
+#include "vinumhdr.h"
+#include "request.h"
 
 /* Lock a drive, wait if it's in use */
 #if VINUMDEBUG

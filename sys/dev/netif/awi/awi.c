@@ -1,6 +1,6 @@
 /*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.5 2003/07/19 21:14:18 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.6 2003/08/07 21:17:00 dillon Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -90,7 +90,7 @@
 #if defined(__FreeBSD__) && __FreeBSD__ >= 4
 #define	NBPFILTER	1
 #elif defined(__FreeBSD__) && __FreeBSD__ >= 3
-#include "bpf.h"
+#include "use_bpf.h"
 #define	NBPFILTER	NBPF
 #else
 #include "bpfilter.h"
@@ -156,10 +156,10 @@
 #include <dev/ic/awivar.h>
 #endif
 #ifdef __FreeBSD__
-#include <dev/awi/am79c930reg.h>
-#include <dev/awi/am79c930var.h>
-#include <dev/awi/awireg.h>
-#include <dev/awi/awivar.h>
+#include "am79c930reg.h"
+#include "am79c930var.h"
+#include "awireg.h"
+#include "awivar.h"
 #endif
 
 static int awi_ioctl __P((struct ifnet *ifp, u_long cmd, caddr_t data));

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_receive.c,v 1.5.2.2 2003/01/23 21:06:43 sam Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_receive.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_receive.c,v 1.3 2003/08/07 21:16:49 dillon Exp $
  */
 
 /*
@@ -35,7 +35,7 @@
  *
  */
 
-#include <dev/hfa/fore_include.h>
+#include "fore_include.h"
 
 /*
  * Local functions

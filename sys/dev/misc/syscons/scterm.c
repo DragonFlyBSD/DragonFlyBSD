@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scterm.c,v 1.2 2000/01/29 15:08:46 peter Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scterm.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scterm.c,v 1.3 2003/08/07 21:16:59 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -34,8 +34,8 @@
 #include <sys/kernel.h>
 #include <sys/consio.h>
 
-#include <dev/syscons/syscons.h>
-#include <dev/syscons/sctermvar.h>
+#include "syscons.h"
+#include "sctermvar.h"
 
 /* exported subroutines */
 

@@ -1,6 +1,6 @@
 /*	$NetBSD: usb.c,v 1.33 1999/11/22 21:57:09 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb.c,v 1.26.2.9 2002/11/13 15:15:22 joe Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.7 2003/07/21 05:50:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.8 2003/08/07 21:16:47 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -66,9 +66,9 @@
 #include <sys/signalvar.h>
 #include <sys/sysctl.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
+#include "usb.h"
+#include "usbdi.h"
+#include "usbdi_util.h"
 
 #define USBUNIT(d)	(minor(d))	/* usb_discover device nodes, kthread */
 #define USB_DEV_MINOR	255		/* event queue device */
@@ -83,8 +83,8 @@ MALLOC_DEFINE(M_USBHC, "USBHC", "USB host controller");
 
 #include <machine/bus.h>
 
-#include <dev/usb/usbdivar.h>
-#include <dev/usb/usb_quirks.h>
+#include "usbdivar.h"
+#include "usb_quirks.h"
 
 /* Define this unconditionally in case a kernel module is loaded that
  * has been compiled with debugging options.

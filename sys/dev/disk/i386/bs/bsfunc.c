@@ -1,7 +1,7 @@
 /*	$NecBSD: bsfunc.c,v 1.2 1997/10/31 17:43:37 honda Exp $	*/
 /*	$NetBSD$	*/
 /* $FreeBSD: src/sys/i386/isa/bs/bsfunc.c,v 1.7.2.2 2001/07/26 02:32:18 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsfunc.c,v 1.2 2003/06/17 04:28:37 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsfunc.c,v 1.3 2003/08/07 21:16:52 dillon Exp $ */
 /*
  * [NetBSD for NEC PC98 series]
  *  Copyright (c) 1994, 1995, 1996 NetBSD/pc98 porting staff.
@@ -38,7 +38,7 @@
 #include <i386/Cbus/dev/bs/bsif.h>
 #endif
 #ifdef	__FreeBSD__
-#include <i386/isa/bs/bsif.h>
+#include "bsif.h"
 #endif
 
 #ifdef	BS_STATICS

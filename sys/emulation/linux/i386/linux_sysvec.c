@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.7 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.8 2003/08/07 21:17:18 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -57,10 +57,10 @@
 #include <sys/module.h>
 #include <machine/cpu.h>
 
-#include <i386/linux/linux.h>
-#include <i386/linux/linux_proto.h>
-#include <compat/linux/linux_signal.h>
-#include <compat/linux/linux_util.h>
+#include "linux.h"
+#include "linux_proto.h"
+#include "../linux_signal.h"
+#include "../linux_util.h"
 
 MALLOC_DEFINE(M_LINUX, "linux", "Linux mode structures");
 

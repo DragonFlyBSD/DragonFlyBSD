@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.1.2.11 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.2 2003/06/17 04:28:26 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.3 2003/08/07 21:17:02 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -54,14 +54,14 @@
 #include <net/ethernet.h>
 #include <net/if.h>
 #include <net/if_arp.h>
-#include <net/if_vlan_var.h>
+#include <net/vlan/if_vlan_var.h>
 #include <net/route.h>
 
 #include <netinet/in.h>
 
-#include <dev/firewire/firewire.h>
-#include <dev/firewire/firewirereg.h>
-#include <dev/firewire/if_fwevar.h>
+#include <bus/firewire/firewire.h>
+#include <bus/firewire/firewirereg.h>
+#include "if_fwevar.h"
 
 #define FWEDEBUG	if (fwedebug) printf
 #define TX_MAX_QUEUE	(FWMAXQUEUE - 1)

@@ -33,7 +33,7 @@
  *	$Id: i4b_bsdi_ibc.c,v 1.3 2000/08/21 07:21:07 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_bsdi_ibc.c,v 1.3.2.1 2001/08/10 14:08:35 obrien Exp $
- * $DragonFly: src/sys/net/i4b/driver/Attic/i4b_bsdi_ibc.c,v 1.3 2003/07/26 19:20:29 rob Exp $
+ * $DragonFly: src/sys/net/i4b/driver/Attic/i4b_bsdi_ibc.c,v 1.4 2003/08/07 21:17:25 dillon Exp $
  *
  *	last edit-date: [Tue Dec 14 21:55:24 1999]
  *
@@ -65,12 +65,12 @@
 #include <netinet/in_var.h>
 #include <netinet/ip.h>
 
-#include <i4b/i4b_ioctl.h>
-#include <i4b/i4b_cause.h>
-#include <i4b/include/i4b_global.h>
-#include <i4b/include/i4b_mbuf.h>
-#include <i4b/include/i4b_l3l4.h>
-#include <i4b/layer4/i4b_l4.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_cause.h>
+#include "../../include/i4b_global.h"
+#include "../../include/i4b_mbuf.h"
+#include "../../include/i4b_l3l4.h"
+#include "../../layer4/i4b_l4.h"
 
 #define IFP2UNIT(ifp)	(ifp)->if_unit
 

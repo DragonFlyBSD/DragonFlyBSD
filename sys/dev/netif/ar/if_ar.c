@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.52.2.1 2002/06/17 15:10:57 jhay Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.3 2003/08/07 21:16:59 dillon Exp $
  */
 
 /*
@@ -68,7 +68,7 @@
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
 #include <sys/syslog.h>
-#include <dev/ar/if_ar.h>
+#include "if_ar.h"
 #else /* NETGRAPH */
 #include <net/if_sppp.h>
 #include <net/bpf.h>
@@ -77,8 +77,8 @@
 #include <machine/clock.h>
 #include <machine/md_var.h>
 
-#include <dev/ic/hd64570.h>
-#include <dev/ar/if_arregs.h>
+#include "../ic_layer/hd64570.h"
+#include "if_arregs.h"
 
 #ifdef TRACE
 #define TRC(x)               x

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30_isa.c,v 1.2.2.4 2001/09/04 04:45:23 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_isa.c,v 1.2 2003/06/17 04:28:31 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_isa.c,v 1.3 2003/08/07 21:16:54 dillon Exp $	*/
 /*	$NecBSD: tmc18c30_pisa.c,v 1.22 1998/11/26 01:59:21 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -61,18 +61,18 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 
 #include <machine/dvcfg.h>
 
 #include <sys/device_port.h>
 
-#include <cam/scsi/scsi_low.h>
-#include <isa/isa_common.h>
-#include <cam/scsi/scsi_low_pisa.h>
+#include <bus/cam/scsi/scsi_low.h>
+#include <bus/isa/isa_common.h>
+#include <bus/cam/scsi/scsi_low_pisa.h>
 
-#include <dev/stg/tmc18c30reg.h>
-#include <dev/stg/tmc18c30var.h>
+#include "tmc18c30reg.h"
+#include "tmc18c30var.h"
 
 #define	STG_HOSTID	7
 

@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.7.2.3 2002/02/13 00:43:12 dillon Exp $
- * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.4 2003/06/25 03:56:03 dillon Exp $
+ * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.5 2003/08/07 21:17:33 dillon Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -75,7 +75,7 @@
 
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
-#include <netgraph/ng_tty.h>
+#include "ng_tty.h"
 
 #ifdef __i386__			/* fiddle with the spl locking */
 #include <machine/ipl.h>

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vfsops.c,v 1.60.2.6 2002/09/12 21:33:38 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.6 2003/07/26 20:08:38 rob Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.7 2003/08/07 21:17:41 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -63,12 +63,12 @@
 #include <sys/stat.h> 				/* defines ALLPERMS */
 #include <vm/vm_zone.h>
 
-#include <msdosfs/bpb.h>
-#include <msdosfs/bootsect.h>
-#include <msdosfs/direntry.h>
-#include <msdosfs/denode.h>
-#include <msdosfs/msdosfsmount.h>
-#include <msdosfs/fat.h>
+#include "bpb.h"
+#include "bootsect.h"
+#include "direntry.h"
+#include "denode.h"
+#include "msdosfsmount.h"
+#include "fat.h"
 
 #define MSDOSFS_DFLTBSIZE       4096
 

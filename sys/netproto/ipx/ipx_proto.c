@@ -34,7 +34,7 @@
  *	@(#)ipx_proto.c
  *
  * $FreeBSD: src/sys/netipx/ipx_proto.c,v 1.15 1999/08/28 00:49:41 peter Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_proto.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_proto.c,v 1.3 2003/08/07 21:17:37 dillon Exp $
  */
 
 #include "opt_ipx.h"
@@ -49,9 +49,9 @@
 
 #include <net/radix.h>
 
-#include <netipx/ipx.h>
-#include <netipx/ipx_var.h>
-#include <netipx/spx.h>
+#include "ipx.h"
+#include "ipx_var.h"
+#include "spx.h"
 
 extern	struct domain ipxdomain;
 static	struct pr_usrreqs nousrreqs;

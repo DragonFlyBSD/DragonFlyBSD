@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.6 2003/07/19 21:14:43 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.7 2003/08/07 21:17:41 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -61,11 +61,11 @@
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 
-#include <msdosfs/bpb.h>
-#include <msdosfs/msdosfsmount.h>
-#include <msdosfs/direntry.h>
-#include <msdosfs/denode.h>
-#include <msdosfs/fat.h>
+#include "bpb.h"
+#include "msdosfsmount.h"
+#include "direntry.h"
+#include "denode.h"
+#include "fat.h"
 
 static MALLOC_DEFINE(M_MSDOSFSNODE, "MSDOSFS node", "MSDOSFS vnode private part");
 

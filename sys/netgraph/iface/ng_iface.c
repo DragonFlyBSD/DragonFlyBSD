@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_iface.c,v 1.7.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.2 2003/06/17 04:28:50 dillon Exp $
+ * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.3 2003/08/07 21:17:31 dillon Exp $
  * $Whistle: ng_iface.c,v 1.33 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -74,7 +74,7 @@
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
 #include <netgraph/ng_parse.h>
-#include <netgraph/ng_iface.h>
+#include "ng_iface.h"
 #include <netgraph/ng_cisco.h>
 
 /* This struct describes one address family */

@@ -29,14 +29,14 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/mga_drv.c,v 1.5.2.1 2003/04/26 07:05:29 anholt Exp $
- * $DragonFly: src/sys/dev/drm/mga/Attic/mga_drv.c,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/mga/Attic/mga_drv.c,v 1.3 2003/08/07 21:16:55 dillon Exp $
  */
 
-#include "dev/drm/mga.h"
+#include "mga.h"
 #include "dev/drm/drmP.h"
 #include "dev/drm/drm.h"
-#include "dev/drm/mga_drm.h"
-#include "dev/drm/mga_drv.h"
+#include "mga_drm.h"
+#include "mga_drv.h"
 
 /* List acquired from http://www.yourvote.com/pci/pcihdr.h and xc/xc/programs/Xserver/hw/xfree86/common/xf86PciInfo.h
  * Please report to anholt@teleport.com inaccuracies or if a chip you have works that is marked unsupported here.

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_isa.c,v 1.1.2.5 2003/02/01 03:25:12 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_isa.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_isa.c,v 1.3 2003/08/07 21:16:59 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an_isa.c,v 1.1.2.5 2003/02/01 03:25:12 ambrisko Exp $
  */
@@ -68,11 +68,11 @@
 #include <net/if_types.h>
 #include <net/if_media.h>
 
-#include <isa/isavar.h>
-#include <isa/pnpvar.h>
+#include <bus/isa/isavar.h>
+#include <bus/isa/pnpvar.h>
 
-#include <dev/an/if_aironet_ieee.h>
-#include <dev/an/if_anreg.h>
+#include "if_aironet_ieee.h"
+#include "if_anreg.h"
 
 static struct isa_pnp_id an_ids[] = {
 	{ 0x0100ec06, "Aironet ISA4500/ISA4800" },

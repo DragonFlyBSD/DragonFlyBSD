@@ -39,11 +39,11 @@
  *
  * $Id: vinumvar.h,v 1.24 2000/03/01 02:34:57 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumvar.h,v 1.32.2.4 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumvar.h,v 1.3 2003/07/21 05:50:38 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumvar.h,v 1.4 2003/08/07 21:17:10 dillon Exp $
  */
 
 #include <sys/time.h>
-#include <dev/vinum/vinumstate.h>
+#include "vinumstate.h"
 
 /*
  * Some configuration maxima.  They're an enum because

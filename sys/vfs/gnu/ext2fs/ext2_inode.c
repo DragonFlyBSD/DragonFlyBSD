@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_inode.c	8.5 (Berkeley) 12/30/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode.c,v 1.24.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.4 2003/07/26 18:53:21 rob Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.5 2003/08/07 21:17:41 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -53,15 +53,15 @@
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufsmount.h>
-#include <ufs/ufs/ufs_extern.h>
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/inode.h>
+#include <vfs/ufs/ufsmount.h>
+#include <vfs/ufs/ufs_extern.h>
 
-#include <gnu/ext2fs/ext2_fs.h>
-#include <gnu/ext2fs/ext2_fs_sb.h>
-#include <gnu/ext2fs/fs.h>
-#include <gnu/ext2fs/ext2_extern.h>
+#include "ext2_fs.h"
+#include "ext2_fs_sb.h"
+#include "fs.h"
+#include "ext2_extern.h"
 
 static int ext2_indirtrunc __P((struct inode *, daddr_t, daddr_t, daddr_t, int,
 	    long *));

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_compr.c,v 1.7 1999/12/03 20:37:38 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_compr.c,v 1.3 2003/06/25 03:56:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_compr.c,v 1.4 2003/08/07 21:17:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,8 +44,8 @@
 #include <miscfs/specfs/specdev.h>
 #endif
 
-#include <ntfs/ntfs.h>
-#include <ntfs/ntfs_compr.h>
+#include "ntfs.h"
+#include "ntfs_compr.h"
 
 #define GET_UINT16(addr)	(*((u_int16_t *)(addr)))
 

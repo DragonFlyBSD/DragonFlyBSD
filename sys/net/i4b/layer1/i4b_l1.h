@@ -28,7 +28,7 @@
  *	---------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/i4b_l1.h,v 1.7.2.3 2002/04/25 12:29:55 gj Exp $
- * $DragonFly: src/sys/net/i4b/layer1/i4b_l1.h,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/i4b_l1.h,v 1.3 2003/08/07 21:17:25 dillon Exp $
  *
  *      last edit-date: [Tue Jan 23 17:04:57 2001]
  *
@@ -37,7 +37,7 @@
 #ifndef _I4B_L1_H_
 #define _I4B_L1_H_
 
-#include <i4b/include/i4b_l3l4.h>
+#include "../include/i4b_l3l4.h"
 
 #define SEC_DELAY		1000000	/* one second DELAY for DELAY*/
 

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.2 2003/06/17 04:28:26 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.3 2003/08/07 21:17:02 dillon Exp $
  */
 
 /*
@@ -66,17 +66,17 @@
 #include <machine/clock.h>	/* for DELAY */
 
 #include <net/if_types.h>
-#include <net/if_vlan_var.h>
+#include <net/vlan/if_vlan_var.h>
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>		/* for PCIM_CMD_xxx */
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>		/* for PCIM_CMD_xxx */
 
-#include <dev/mii/mii.h>
-#include <dev/mii/miivar.h>
+#include "../mii_layer/mii.h"
+#include "../mii_layer/miivar.h"
 
-#include <dev/fxp/if_fxpreg.h>
-#include <dev/fxp/if_fxpvar.h>
-#include <dev/fxp/rcvbundl.h>
+#include "if_fxpreg.h"
+#include "if_fxpvar.h"
+#include "rcvbundl.h"
 
 MODULE_DEPEND(fxp, miibus, 1, 1, 1);
 #include "miibus_if.h"

@@ -19,6 +19,8 @@
  *	Ann Arbor, Michigan
  *	+1-313-763-0525
  *	netatalk@itd.umich.edu
+ *
+ * $DragonFly: src/sys/netproto/atalk/at_proto.c,v 1.2 2003/08/07 21:17:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -30,9 +32,9 @@
 
 #include <net/route.h>
 
-#include <netatalk/at.h>
-#include <netatalk/ddp_var.h>
-#include <netatalk/at_extern.h>
+#include "at.h"
+#include "ddp_var.h"
+#include "at_extern.h"
 
 extern struct domain	atalkdomain;
 

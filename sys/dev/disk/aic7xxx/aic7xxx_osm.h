@@ -32,7 +32,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.h#15 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.h,v 1.14.2.6 2003/06/10 03:26:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.3 2003/08/07 21:16:51 dillon Exp $
  */
 
 #ifndef _AIC7XXX_FREEBSD_H_
@@ -52,7 +52,7 @@
 #include <sys/queue.h>
 
 #if __FreeBSD_version < 500000
-#include <pci.h>
+#include <use_pci.h>
 #else
 #define NPCI 1
 #endif
@@ -70,18 +70,18 @@
 #include <sys/rman.h>
 
 #if NPCI > 0
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 #endif
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_debug.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt_sim.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_debug.h>
+#include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt_sim.h>
 
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_message.h>
+#include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_message.h>
 
 #ifdef CAM_NEW_TRAN_CODE
 #define AHC_NEW_TRAN_SETTINGS
@@ -231,7 +231,7 @@ typedef struct callout ahc_timer_t;
 #else
 #define AIC_DEBUG_REGISTERS 0
 #endif
-#include <dev/aic7xxx/aic7xxx.h>
+#include "aic7xxx.h"
 
 /***************************** Timer Facilities *******************************/
 timeout_t ahc_timeout;

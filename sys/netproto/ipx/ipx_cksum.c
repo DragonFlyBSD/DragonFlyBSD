@@ -34,15 +34,15 @@
  *	@(#)ipx_cksum.c
  *
  * $FreeBSD: src/sys/netipx/ipx_cksum.c,v 1.9 1999/08/28 18:21:53 jhay Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_cksum.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_cksum.c,v 1.3 2003/08/07 21:17:37 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/mbuf.h>
 #include <sys/libkern.h>
 
-#include <netipx/ipx.h>
-#include <netipx/ipx_var.h>
+#include "ipx.h"
+#include "ipx_var.h"
 
 
 #define SUMADV	sum += *w++

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_stat.c,v 1.10 1999/12/15 23:01:45 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.5 2003/07/26 19:07:47 rob Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.6 2003/08/07 21:17:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,12 +42,12 @@
 #include <sys/sysctl.h>
 #include <sys/sysproto.h>
 
-#include <i386/ibcs2/ibcs2_signal.h>
-#include <i386/ibcs2/ibcs2_stat.h>
-#include <i386/ibcs2/ibcs2_statfs.h>
-#include <i386/ibcs2/ibcs2_proto.h>
-#include <i386/ibcs2/ibcs2_util.h>
-#include <i386/ibcs2/ibcs2_utsname.h>
+#include "ibcs2_signal.h"
+#include "ibcs2_stat.h"
+#include "ibcs2_statfs.h"
+#include "ibcs2_proto.h"
+#include "ibcs2_util.h"
+#include "ibcs2_utsname.h"
 
 #include <vm/vm_zone.h>
 

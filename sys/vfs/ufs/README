@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/ufs/ffs/README,v 1.4 1999/12/03 00:34:26 billf Exp $
-# $DragonFly: src/sys/vfs/ufs/README,v 1.2 2003/06/17 04:28:59 dillon Exp $
+# $DragonFly: src/sys/vfs/ufs/README,v 1.3 2003/08/07 21:17:44 dillon Exp $
 
 Introduction
 
@@ -206,8 +206,8 @@ BSD/OS versions of the files. Because BSD/OS recently had
 point for figuring out the changes. There are 40 files that
 require change plus the two new files. Most of these files have
 only a few lines of changes in them. However, four files have
-fairly extensive changes: kern/vfs_subr.c, ufs/ufs/ufs_lookup.c,
-ufs/ufs/ufs_vnops.c, and ufs/ffs/ffs_alloc.c. For these four
+fairly extensive changes: kern/vfs_subr.c, vfs/ufs/ufs_lookup.c,
+vfs/ufs/ufs_vnops.c, and vfs/ffs/ffs_alloc.c. For these four
 files, I have provided the original Lite2 version, the Lite2
 version with the diffs merged in, and the diffs between the
 BSD/OS and merged version. Even so, I expect that there will

@@ -32,13 +32,14 @@
  *
  *	@(#)paths.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/paths.h,v 1.9.6.4 2002/07/19 07:53:41 jmallett Exp $
- * $DragonFly: src/include/paths.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/paths.h,v 1.3 2003/08/07 21:19:26 dillon Exp $
  */
 
 #ifndef _PATHS_H_
 #define	_PATHS_H_
 
 #include <sys/cdefs.h>
+#include <sys/paths.h>	/* dev paths */
 
 /* Default search path. */
 #define	_PATH_DEFPATH	"/usr/bin:/bin"
@@ -48,34 +49,34 @@
 
 #define	_PATH_AUTHCONF	"/etc/auth.conf"
 #define	_PATH_BSHELL	"/bin/sh"
-#define	_PATH_CONSOLE	"/dev/console"
+#define	_PATH_CONSOLE	__SYS_PATH_CONSOLE
 #define	_PATH_CP	"/bin/cp"
 #define	_PATH_CSHELL	"/bin/csh"
-#define	_PATH_DEFTAPE	"/dev/sa0"
+#define	_PATH_DEFTAPE	__SYS_PATH_DEFTAPE
 #define	_PATH_DEVDB	"/var/run/dev.db"
-#define	_PATH_DEVNULL	"/dev/null"
-#define	_PATH_DEVZERO	"/dev/zero"
-#define	_PATH_DRUM	"/dev/drum"
+#define	_PATH_DEVNULL	__SYS_PATH_DEVNULL
+#define	_PATH_DEVZERO	__SYS_PATH_DEVZERO
+#define	_PATH_DRUM	__SYS_PATH_DRUM
 #define	_PATH_ETC	"/etc"
 #define	_PATH_FTPUSERS	"/etc/ftpusers"
-#define	_PATH_KMEM	"/dev/kmem"
+#define	_PATH_KMEM	__SYS_PATH_KMEM
 #define	_PATH_LOGIN	"/usr/bin/login"
 #define	_PATH_MAILDIR	"/var/mail"
 #define	_PATH_MAN	"/usr/share/man"
-#define	_PATH_MEM	"/dev/mem"
+#define	_PATH_MEM	__SYS_PATH_MEM
 #define	_PATH_NOLOGIN	"/var/run/nologin"
 #define	_PATH_RCP	"/bin/rcp"
 #define	_PATH_RLOGIN	"/usr/bin/rlogin"
 #define	_PATH_RSH	"/usr/bin/rsh"
 #define	_PATH_SENDMAIL	"/usr/sbin/sendmail"
 #define	_PATH_SHELLS	"/etc/shells"
-#define	_PATH_TTY	"/dev/tty"
+#define	_PATH_TTY	__SYS_PATH_TTY
 #define	_PATH_UNIX	"don't use _PATH_UNIX"
 #define	_PATH_VI	"/usr/bin/vi"
 #define	_PATH_WALL	"/usr/bin/wall"
 
 /* Provide trailing slash, since mostly used for building pathnames. */
-#define	_PATH_DEV	"/dev/"
+#define	_PATH_DEV	__SYS_PATH_DEV
 #define	_PATH_TMP	"/tmp/"
 #define	_PATH_VARDB	"/var/db/"
 #define	_PATH_VARRUN	"/var/run/"

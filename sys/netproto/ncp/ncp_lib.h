@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_lib.h,v 1.2.2.1 2001/02/22 09:09:51 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_lib.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_lib.h,v 1.3 2003/08/07 21:17:38 dillon Exp $
  */
 
 #ifndef _NETNCP_NCP_LIB_H_
@@ -39,10 +39,10 @@
 #define IPX
 #define INET
 
-#include <netncp/ncp.h>
-#include <netncp/ncp_conn.h>
-#include <netncp/ncp_user.h>
-#include <netncp/ncp_rq.h>
+#include "ncp.h"
+#include "ncp_conn.h"
+#include "ncp_user.h"
+#include "ncp_rq.h"
 
 #define ncp_printf printf
 

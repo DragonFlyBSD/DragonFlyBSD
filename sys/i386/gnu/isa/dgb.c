@@ -1,6 +1,6 @@
 /*-
  *  dgb.c $FreeBSD: src/sys/gnu/i386/isa/dgb.c,v 1.56.2.1 2001/02/26 04:23:09 jlemon Exp $
- *  dgb.c $DragonFly: src/sys/i386/gnu/isa/Attic/dgb.c,v 1.7 2003/07/23 02:30:18 dillon Exp $
+ *  dgb.c $DragonFly: src/sys/i386/gnu/isa/Attic/dgb.c,v 1.8 2003/08/07 21:17:21 dillon Exp $
  *
  *  Digiboard driver.
  *
@@ -31,7 +31,7 @@
 #include "opt_compat.h"
 #include "opt_dgb.h"
 
-#include "dgb.h"
+#include "use_dgb.h"
 
 /* Helg: i.e.25 times per sec board will be polled */
 #define POLLSPERSEC 25
@@ -59,13 +59,13 @@
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
-#include <i386/isa/isa_device.h>
+#include <bus/isa/i386/isa_device.h>
 
-#include <gnu/i386/isa/dgbios.h>
-#include <gnu/i386/isa/dgfep.h>
+#include "dgbios.h"
+#include "dgfep.h"
 
 #define DGB_DEBUG		/* Enable debugging info via sysctl */
-#include <gnu/i386/isa/dgreg.h>
+#include "dgreg.h"
 
 #define	CALLOUT_MASK		0x80
 #define	CONTROL_MASK		0x60

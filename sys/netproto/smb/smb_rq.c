@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_rq.c,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_rq.c,v 1.5 2003/07/19 21:14:45 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_rq.c,v 1.6 2003/08/07 21:17:39 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -43,11 +43,11 @@
 #include <sys/socketvar.h>
 #include <sys/mbuf.h>
 
-#include <netsmb/smb.h>
-#include <netsmb/smb_conn.h>
-#include <netsmb/smb_rq.h>
-#include <netsmb/smb_subr.h>
-#include <netsmb/smb_tran.h>
+#include "smb.h"
+#include "smb_conn.h"
+#include "smb_rq.h"
+#include "smb_subr.h"
+#include "smb_tran.h"
 
 MALLOC_DEFINE(M_SMBRQ, "SMBRQ", "SMB request");
 

@@ -36,15 +36,15 @@
  *	$Id$
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.6.2.2 2002/05/15 08:12:42 gj Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.3 2003/07/26 19:20:30 rob Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.4 2003/08/07 21:17:25 dillon Exp $
  *
  *      last edit-date: [Fri Jan 12 17:01:26 2001]
  *
  *---------------------------------------------------------------------------*/
 
-#include "ifpi2.h"
+#include "use_ifpi2.h"
+#include "use_pci.h"
 #include "opt_i4b.h"
-#include "pci.h"
 
 #if (NIFPI2 > 0) && (NPCI > 0)
 
@@ -57,26 +57,26 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #include <sys/socket.h>
 #include <net/if.h>
 
-#include <machine/i4b_debug.h>
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_trace.h>
+#include <net/i4b/include/machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_trace.h>
 
-#include <i4b/include/i4b_global.h>
-#include <i4b/include/i4b_mbuf.h>
+#include "../../include/i4b_global.h"
+#include "../../include/i4b_mbuf.h"
 
-#include <i4b/layer1/i4b_l1.h>
-#include <i4b/layer1/isic/i4b_isic.h>
-/*#include <i4b/layer1/isic/i4b_isac.h>*/
-#include <i4b/layer1/isic/i4b_hscx.h>
+#include "../i4b_l1.h"
+#include "../isic/i4b_isic.h"
+/*#include "../isic/i4b_isac.h"*/
+#include "../isic/i4b_hscx.h"
 
-#include <i4b/layer1/ifpi2/i4b_ifpi2_ext.h>
-#include <i4b/layer1/ifpi2/i4b_ifpi2_isacsx.h>
+#include "i4b_ifpi2_ext.h"
+#include "i4b_ifpi2_isacsx.h"
 
 #define PCI_AVMA1_VID 0x1244
 #define PCI_AVMA1_V2_DID 0x0e00

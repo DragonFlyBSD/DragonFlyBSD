@@ -56,7 +56,7 @@
  * W. Metzenthen   June 1994.
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/fpu_entry.c,v 1.23 1999/10/12 02:23:14 msmith Exp $
- * $DragonFly: src/sys/i386/gnu/fpemul/Attic/fpu_entry.c,v 1.3 2003/06/26 20:27:51 dillon Exp $
+ * $DragonFly: src/sys/i386/gnu/fpemul/Attic/fpu_entry.c,v 1.4 2003/08/07 21:17:20 dillon Exp $
  *
  */
 
@@ -80,10 +80,10 @@
 #include <machine/cpu.h>
 #include <machine/pcb.h>
 
-#include <gnu/i386/fpemul/fpu_emu.h>
-#include <gnu/i386/fpemul/fpu_system.h>
-#include <gnu/i386/fpemul/exception.h>
-#include <gnu/i386/fpemul/status_w.h>
+#include "fpu_emu.h"
+#include "fpu_system.h"
+#include "exception.h"
+#include "status_w.h"
 
 
 #define __BAD__ Un_impl		/* Not implemented */

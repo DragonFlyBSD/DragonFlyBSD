@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.4 2003/07/21 05:50:26 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.5 2003/08/07 21:17:08 dillon Exp $
  */
 
 /*
@@ -65,7 +65,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 
-#include <dev/amr/amr_compat.h>
+#include "amr_compat.h"
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/devicestat.h>
@@ -78,14 +78,14 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <dev/amr/amrio.h>
-#include <dev/amr/amrreg.h>
-#include <dev/amr/amrvar.h>
+#include "amrio.h"
+#include "amrreg.h"
+#include "amrvar.h"
 #define AMR_DEFINE_TABLES
-#include <dev/amr/amr_tables.h>
+#include "amr_tables.h"
 
 #define AMR_CDEV_MAJOR	132
 

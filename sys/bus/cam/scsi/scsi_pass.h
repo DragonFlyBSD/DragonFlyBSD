@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.h,v 1.3 1999/08/28 00:40:48 peter Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.h,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.h,v 1.3 2003/08/07 21:16:45 dillon Exp $
  */
 
 #ifndef _SCSI_PASS_H
@@ -31,7 +31,7 @@
 
 #include <sys/ioccom.h>
 
-#include <cam/cam_ccb.h>
+#include "../cam_ccb.h"
 
 #define CAMIOCOMMAND	_IOWR(CAM_VERSION, 2, union ccb)
 #define CAMGETPASSTHRU	_IOWR(CAM_VERSION, 3, union ccb)

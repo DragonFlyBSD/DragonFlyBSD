@@ -40,7 +40,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_resource.c,v 1.4.2.1 2002/09/02 21:22:54 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_resource.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_resource.c,v 1.4 2003/08/07 21:17:19 dillon Exp $
  */
 
 /*
@@ -80,12 +80,12 @@
 #include <sys/resource.h>
 #include <sys/resourcevar.h>
 
-#include <svr4/svr4.h>
-#include <svr4/svr4_types.h>
-#include <svr4/svr4_resource.h>
-#include <svr4/svr4_signal.h>
-#include <svr4/svr4_proto.h>
-#include <svr4/svr4_util.h>
+#include "svr4.h"
+#include "svr4_types.h"
+#include "svr4_resource.h"
+#include "svr4_signal.h"
+#include "svr4_proto.h"
+#include "svr4_util.h"
 
 static __inline int svr4_to_native_rl __P((int));
 

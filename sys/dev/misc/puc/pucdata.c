@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/puc/pucdata.c,v 1.2.2.12 2003/05/14 09:43:22 wilko Exp $
- * $DragonFly: src/sys/dev/misc/puc/pucdata.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/puc/pucdata.c,v 1.3 2003/08/07 21:16:58 dillon Exp $
  */
 
 /*
@@ -40,10 +40,10 @@
 
 #include <sys/param.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
-#include <isa/sioreg.h>
-#include <dev/puc/pucvar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <dev/serial/sio/sioreg.h>
+#include "pucvar.h"
 
 #define COM_FREQ	DEFAULT_RCLK
 

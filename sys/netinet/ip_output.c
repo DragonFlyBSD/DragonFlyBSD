@@ -32,7 +32,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.5 2003/07/26 21:00:04 rob Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.6 2003/08/07 21:17:33 dillon Exp $
  */
 
 #define _IP_VHL
@@ -86,8 +86,8 @@ static MALLOC_DEFINE(M_IPMOPTS, "ip_moptions", "internet multicast options");
 #include <netipsec/key.h>
 #endif /*FAST_IPSEC*/
 
-#include <netinet/ip_fw.h>
-#include <netinet/ip_dummynet.h>
+#include <net/ipfw/ip_fw.h>
+#include <net/dummynet/ip_dummynet.h>
 
 #define print_ip(x, a, y)	 printf("%s %d.%d.%d.%d%s",\
 				x, (ntohl(a.s_addr)>>24)&0xFF,\

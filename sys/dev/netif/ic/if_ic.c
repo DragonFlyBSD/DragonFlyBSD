@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/if_ic.c,v 1.8 1999/12/29 04:35:39 peter Exp $
- * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.3 2003/08/07 21:17:02 dillon Exp $
  */
 
 /*
@@ -62,8 +62,8 @@
 
 #include <net/bpf.h>
 
-#include <dev/iicbus/iiconf.h>
-#include <dev/iicbus/iicbus.h>
+#include <bus/iicbus/iiconf.h>
+#include <bus/iicbus/iicbus.h>
 
 #include "iicbus_if.h"
 

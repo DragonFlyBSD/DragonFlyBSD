@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.5 2002/03/07 09:57:02 msmith Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.4 2003/07/22 17:03:31 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.5 2003/08/07 21:17:09 dillon Exp $
  */
 
 /*
@@ -39,11 +39,11 @@
 #include <machine/md_var.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
-#include <dev/twe/twe_compat.h>
-#include <dev/twe/twereg.h>
-#include <dev/twe/tweio.h>
-#include <dev/twe/twevar.h>
-#include <dev/twe/twe_tables.h>
+#include "twe_compat.h"
+#include "twereg.h"
+#include "tweio.h"
+#include "twevar.h"
+#include "twe_tables.h"
 
 #include <sys/devicestat.h>
 

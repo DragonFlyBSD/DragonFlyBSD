@@ -53,14 +53,14 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr_pci.c,v 1.1.2.9 2002/12/20 15:12:04 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr_pci.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr_pci.c,v 1.3 2003/08/07 21:17:08 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 
-#include <dev/amr/amr_compat.h>
+#include "amr_compat.h"
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/devicestat.h>
@@ -72,12 +72,12 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <dev/amr/amrio.h>
-#include <dev/amr/amrreg.h>
-#include <dev/amr/amrvar.h>
+#include "amrio.h"
+#include "amrreg.h"
+#include "amrvar.h"
 
 static int		amr_pci_probe(device_t dev);
 static int		amr_pci_attach(device_t dev);

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500_pccard.c,v 1.2.2.5 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.2 2003/06/17 04:28:28 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.3 2003/08/07 21:16:53 dillon Exp $	*/
 /*	$NecBSD: ncr53c500_pisa.c,v 1.28 1998/11/26 01:59:11 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -57,12 +57,12 @@
 
 #include <sys/device_port.h>
 
-#include <cam/scsi/scsi_low.h>
-#include <cam/scsi/scsi_low_pisa.h>
+#include <bus/cam/scsi/scsi_low.h>
+#include <bus/cam/scsi/scsi_low_pisa.h>
 
-#include <dev/ncv/ncr53c500reg.h>
-#include <dev/ncv/ncr53c500hw.h>
-#include <dev/ncv/ncr53c500var.h>
+#include "ncr53c500reg.h"
+#include "ncr53c500hw.h"
+#include "ncr53c500var.h"
 
 #define KME_KXLC004_01 0x100
 #define OFFSET_KME_KXLC004_01 0x10
@@ -72,8 +72,8 @@
 #if !defined(__FreeBSD__) || __FreeBSD_version < 500014
 #include	<sys/select.h>
 #endif
-#include	<pccard/cardinfo.h>
-#include	<pccard/slot.h>
+#include	<bus/pccard/cardinfo.h>
+#include	<bus/pccard/slot.h>
 
 static int ncvprobe(DEVPORT_PDEVICE devi);
 static int ncvattach(DEVPORT_PDEVICE devi);

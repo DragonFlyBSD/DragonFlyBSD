@@ -26,12 +26,12 @@
  *		The AVM ISDN controllers' PCI bus attachment handling.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_pci.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_pci.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_pci.c,v 1.3 2003/08/07 21:17:24 dillon Exp $
  */
 
-#include "iavc.h"
-#include "i4bcapi.h"
-#include "pci.h"
+#include "use_iavc.h"
+#include "use_i4bcapi.h"
+#include "use_pci.h"
 
 #if (NIAVC > 0) && (NI4BCAPI > 0) && (NPCI > 0)
 
@@ -51,20 +51,19 @@
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #include <machine/i4b_debug.h>
 #include <machine/i4b_ioctl.h>
 #include <machine/i4b_trace.h>
 
-#include <i4b/include/i4b_global.h>
-#include <i4b/include/i4b_l3l4.h>
-#include <i4b/include/i4b_mbuf.h>
+#include "../../include/i4b_global.h"
+#include "../../include/i4b_l3l4.h"
+#include "../../include/i4b_mbuf.h"
+#include "../capi.h"
 
-#include <i4b/capi/capi.h>
-
-#include <i4b/capi/iavc/iavc.h>
+#include "iavc.h"
 
 /* PCI device ids */
 

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_bmap.c	8.7 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_bmap.c,v 1.34.2.1 2000/03/17 10:12:14 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_bmap.c,v 1.4 2003/07/26 22:04:27 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_bmap.c,v 1.5 2003/08/07 21:17:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,10 +49,10 @@
 #include <sys/resourcevar.h>
 #include <sys/conf.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufsmount.h>
-#include <ufs/ufs/ufs_extern.h>
+#include "quota.h"
+#include "inode.h"
+#include "ufsmount.h"
+#include "ufs_extern.h"
 
 /*
  * Bmap converts a the logical block number of a file to its physical block

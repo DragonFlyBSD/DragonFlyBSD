@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932.c,v 1.1.2.2 2003/02/11 08:52:00 nyan Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.3 2003/07/26 14:25:25 rob Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.4 2003/08/07 21:17:05 dillon Exp $	*/
 /*	$NecBSD: dp83932.c,v 1.5 1999/07/29 05:08:44 kmatsuda Exp $	*/
 /*	$NetBSD: if_snc.c,v 1.18 1998/04/25 21:27:40 scottr Exp $	*/
 
@@ -94,8 +94,8 @@
 
 #include <sys/bus.h>
 #include <machine/bus.h>
-#include <dev/snc/dp83932reg.h>
-#include <dev/snc/dp83932var.h>
+#include "dp83932reg.h"
+#include "dp83932var.h"
 
 hide void	sncwatchdog __P((struct ifnet *));
 hide void	sncinit __P((void *));

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_debug.c,v 1.2.2.1 2002/08/23 06:59:05 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_debug.c,v 1.2 2003/06/17 04:28:28 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_debug.c,v 1.3 2003/08/07 21:16:53 dillon Exp $ */
 /*
  * Debug routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -31,7 +31,7 @@
  * Additional Copyright (c) 2002 by Matthew Jacob under same license.
  */
 
-#include <dev/mpt/mpt_freebsd.h>
+#include "mpt_freebsd.h"
 
 struct Error_Map {
 	int 	 Error_Code;

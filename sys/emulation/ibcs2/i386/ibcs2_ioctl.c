@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_ioctl.c,v 1.13.2.1 2001/07/31 20:14:21 jon Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ioctl.c,v 1.5 2003/07/26 19:07:47 rob Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ioctl.c,v 1.6 2003/08/07 21:17:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,13 +43,13 @@
 
 #include <sys/sysproto.h>
 
-#include <i386/ibcs2/ibcs2_signal.h>
-#include <i386/ibcs2/ibcs2_socksys.h>
-#include <i386/ibcs2/ibcs2_stropts.h>
-#include <i386/ibcs2/ibcs2_proto.h>
-#include <i386/ibcs2/ibcs2_termios.h>
-#include <i386/ibcs2/ibcs2_util.h>
-#include <i386/ibcs2/ibcs2_ioctl.h>
+#include "ibcs2_signal.h"
+#include "ibcs2_socksys.h"
+#include "ibcs2_stropts.h"
+#include "ibcs2_proto.h"
+#include "ibcs2_termios.h"
+#include "ibcs2_util.h"
+#include "ibcs2_ioctl.h"
 
 static void stios2btios __P((struct ibcs2_termios *, struct termios *));
 static void btios2stios __P((struct termios *, struct ibcs2_termios *));

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/syscons_isa.c,v 1.11.2.2 2001/08/01 10:42:28 yokota Exp $
- * $DragonFly: src/sys/bus/isa/syscons_isa.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/syscons_isa.c,v 1.3 2003/08/07 21:16:46 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -56,10 +56,10 @@
 
 #endif /* __i386__ */
 
-#include <dev/syscons/syscons.h>
+#include <dev/misc/syscons/syscons.h>
 
-#include <isa/isareg.h>
-#include <isa/isavar.h>
+#include "isareg.h"
+#include "isavar.h"
 
 static devclass_t	sc_devclass;
 

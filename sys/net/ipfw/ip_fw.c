@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.4 2003/07/29 12:51:30 hmp Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.5 2003/08/07 21:17:29 dillon Exp $
  */
 
 #define        DEB(x)
@@ -56,8 +56,8 @@
 #include <netinet/ip.h>
 #include <netinet/ip_var.h>
 #include <netinet/ip_icmp.h>
-#include <netinet/ip_fw.h>
-#include <netinet/ip_dummynet.h>
+#include "ip_fw.h"
+#include <net/dummynet/ip_dummynet.h>
 #include <netinet/tcp.h>
 #include <netinet/tcp_timer.h>
 #include <netinet/tcp_var.h>

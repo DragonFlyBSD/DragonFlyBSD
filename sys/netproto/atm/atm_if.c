@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.3 2003/07/23 02:30:21 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.4 2003/08/07 21:17:34 dillon Exp $
  */
 
 /*
@@ -35,7 +35,7 @@
  *
  */
 
-#include <netatm/kern_include.h>
+#include "kern_include.h"
 
 #if (defined(BSD) && (BSD < 199506))
 extern int		ifqmaxlen;

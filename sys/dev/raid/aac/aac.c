@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.7 2003/07/23 02:30:14 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.8 2003/08/07 21:17:07 dillon Exp $
  */
 
 /*
@@ -50,7 +50,7 @@
 #include <sys/select.h>
 #endif
 
-#include <dev/aac/aac_compat.h>
+#include "aac_compat.h"
 
 #include <sys/bus.h>
 #include <sys/conf.h>
@@ -64,11 +64,11 @@
 #include <machine/bus.h>
 #include <machine/resource.h>
 
-#include <dev/aac/aacreg.h>
-#include <dev/aac/aac_ioctl.h>
-#include <dev/aac/aacvar.h>
-#include <dev/aac/aac_tables.h>
-#include <dev/aac/aac_cam.h>
+#include "aacreg.h"
+#include "aac_ioctl.h"
+#include "aacvar.h"
+#include "aac_tables.h"
+#include "aac_cam.h"
 
 static void	aac_startup(void *arg);
 static void	aac_add_container(struct aac_softc *sc,

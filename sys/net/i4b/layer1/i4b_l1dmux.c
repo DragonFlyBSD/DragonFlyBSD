@@ -28,19 +28,19 @@
  *	--------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/i4b_l1dmux.c,v 1.3.2.2 2002/04/25 12:29:55 gj Exp $
- * $DragonFly: src/sys/net/i4b/layer1/i4b_l1dmux.c,v 1.3 2003/07/26 19:20:29 rob Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/i4b_l1dmux.c,v 1.4 2003/08/07 21:17:25 dillon Exp $
  *
  *      last edit-date: [Wed Jan 10 16:43:24 2001]
  *
  *---------------------------------------------------------------------------*/
 
-#include "isic.h"
-#include "iwic.h"
-#include "ifpi.h"
-#include "ifpi2.h"
-#include "ifpnp.h"
-#include "ihfc.h"
-#include "itjc.h"
+#include "use_isic.h"
+#include "use_iwic.h"
+#include "use_ifpi.h"
+#include "use_ifpi2.h"
+#include "use_ifpnp.h"
+#include "use_ihfc.h"
+#include "use_itjc.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -49,10 +49,10 @@
 #include <machine/i4b_ioctl.h>
 #include <machine/i4b_trace.h>
 
-#include <i4b/layer1/i4b_l1.h>
+#include "i4b_l1.h"
 
-#include <i4b/include/i4b_l1l2.h>
-#include <i4b/include/i4b_global.h>
+#include "../include/i4b_l1l2.h"
+#include "../include/i4b_global.h"
 
 /*
  * this code is nothing but a big dynamic switch to multiplex and demultiplex

@@ -32,7 +32,7 @@
  *
  *	@(#)ns_input.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_input.c,v 1.13 2000/02/13 03:32:04 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.3 2003/07/26 21:10:52 rob Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.4 2003/08/07 21:17:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,12 +53,12 @@
 #include <net/netisr.h>
 #include <net/intrq.h>
 
-#include <netns/ns.h>
-#include <netns/ns_if.h>
-#include <netns/ns_pcb.h>
-#include <netns/idp.h>
-#include <netns/idp_var.h>
-#include <netns/ns_error.h>
+#include "ns.h"
+#include "ns_if.h"
+#include "ns_pcb.h"
+#include "idp.h"
+#include "idp_var.h"
+#include "ns_error.h"
 
 /*
  * NS initialization.

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,9 +47,9 @@
 #include <machine/md_var.h>
 #endif
 #include <sys/rman.h>
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
-#include <dev/ata/ata-all.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include "ata-all.h"
 
 /* device structures */
 struct ata_pci_controller {

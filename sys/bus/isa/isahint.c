@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isahint.c,v 1.8.2.1 2001/03/21 11:18:25 nyan Exp $
- * $DragonFly: src/sys/bus/isa/isahint.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/isahint.c,v 1.3 2003/08/07 21:16:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,7 +32,7 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/module.h>
-#include <isa/isavar.h>
+#include "isavar.h"
 #include <machine/resource.h>
 
 static void

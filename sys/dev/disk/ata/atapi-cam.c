@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.10.2.3 2003/05/21 09:24:55 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,16 +38,16 @@
 #include <sys/ata.h>
 #include <machine/bus.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_periph.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt_sim.h>
-#include <cam/cam_debug.h>
-#include <cam/scsi/scsi_all.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_periph.h>
+#include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_debug.h>
+#include <bus/cam/scsi/scsi_all.h>
 
-#include <dev/ata/ata-all.h>
-#include <dev/ata/atapi-all.h>
+#include "ata-all.h"
+#include "atapi-all.h"
 
 /* hardware command descriptor block */
 struct atapi_hcb {

@@ -51,12 +51,12 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.9 2003/07/26 19:25:18 rob Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.10 2003/08/07 21:16:52 dillon Exp $
  *
  */
 
 #include "opt_fdc.h"
-#include "card.h"
+#include "use_card.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -85,11 +85,11 @@
 #include <machine/resource.h>
 #include <machine/stdarg.h>
 
-#include <isa/isavar.h>
-#include <isa/isareg.h>
-#include <isa/fdreg.h>
-#include <isa/fdc.h>
-#include <isa/rtc.h>
+#include <bus/isa/isavar.h>
+#include <bus/isa/isareg.h>
+#include "fdreg.h"
+#include "fdc.h"
+#include <bus/isa/rtc.h>
 
 /* misuse a flag to identify format operation */
 #define B_FORMAT B_XXX

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.4 2003/07/21 05:50:24 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.5 2003/08/07 21:16:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -39,11 +39,11 @@
 #include <sys/vnode.h>
 #include <sys/devicestat.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_periph.h>
-#include <cam/cam_xpt_periph.h>
-#include <cam/scsi/scsi_targetio.h>
+#include "../cam.h"
+#include "../cam_ccb.h"
+#include "../cam_periph.h"
+#include "../cam_xpt_periph.h"
+#include "scsi_targetio.h"
 
 /* Transaction information attached to each CCB sent by the user */
 struct targ_cmd_descr {

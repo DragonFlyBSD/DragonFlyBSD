@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.c,v 1.18.2.1 2001/05/17 23:05:06 imp Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.3 2003/08/07 21:16:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,9 +43,9 @@
 #include <machine/md_var.h>
 
 #include <machine/resource.h>
-#include <isa/isavar.h>
-#include <i386/isa/isa_compat.h>
-#include <i386/isa/isa_device.h>
+#include "../isavar.h"
+#include "isa_compat.h"
+#include "isa_device.h"
 
 struct isa_compat_resources {
     struct resource *ports;

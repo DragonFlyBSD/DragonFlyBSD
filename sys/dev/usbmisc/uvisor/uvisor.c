@@ -1,6 +1,6 @@
 /*	$NetBSD: uvisor.c,v 1.9 2001/01/23 14:04:14 augustss Exp $	*/
 /*      $FreeBSD: src/sys/dev/usb/uvisor.c,v 1.7.2.3 2002/08/27 13:46:28 joe Exp $	*/
-/*      $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
+/*      $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.3 2003/08/07 21:17:15 dillon Exp $	*/
 
 /* This version of uvisor is heavily based upon the version in NetBSD
  * but is missing the following patches:
@@ -67,14 +67,14 @@
 #include <sys/tty.h>
 #include <sys/sysctl.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbhid.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbhid.h>
 
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbdevs.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
+#include <bus/usb/usbdevs.h>
 
-#include <dev/usb/ucomvar.h>
+#include "../ucom/ucomvar.h"
 
 #ifdef USB_DEBUG
 #define DPRINTF(x)	if (uvisordebug) printf x

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppi.c,v 1.21.2.3 2000/08/07 18:24:43 peter Exp $
- * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.5 2003/07/21 05:50:34 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.6 2003/08/07 21:16:58 dillon Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -43,18 +43,18 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <dev/ppbus/ppbconf.h>
-#include <dev/ppbus/ppb_msq.h>
+#include <bus/ppbus/ppbconf.h>
+#include <bus/ppbus/ppb_msq.h>
 
 #ifdef PERIPH_1284
-#include <dev/ppbus/ppb_1284.h>
+#include <bus/ppbus/ppb_1284.h>
 #endif
 
-#include <dev/ppbus/ppi.h>
+#include "ppi.h"
 
 #include "ppbus_if.h"
 
-#include <dev/ppbus/ppbio.h>
+#include <bus/ppbus/ppbio.h>
 
 #define BUFSIZE		512
 

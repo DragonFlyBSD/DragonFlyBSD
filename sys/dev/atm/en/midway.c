@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.3 2003/08/07 21:16:49 dillon Exp $
  */
 
 /*
@@ -109,7 +109,7 @@
 #endif /* EN_DEBUG */
 
 #ifdef __FreeBSD__
-#include "en.h"			/* XXX for midwayvar.h's NEN */
+#include "use_en.h"		/* XXX for midwayvar.h's NEN */
 #include "opt_inet.h"
 #include "opt_natm.h"
 #include "opt_ddb.h"
@@ -159,8 +159,8 @@
 #endif
 #elif defined(__FreeBSD__)
 #include <machine/clock.h>              /* for DELAY */
-#include <dev/en/midwayreg.h>
-#include <dev/en/midwayvar.h>
+#include "midwayreg.h"
+#include "midwayvar.h"
 #include <vm/pmap.h>			/* for vtophys proto */
 
 #ifndef IFF_NOTRAILERS
@@ -169,7 +169,7 @@
 
 #endif	/* __FreeBSD__ */
 
-#include "bpf.h"
+#include "use_bpf.h"
 #if NBPF > 0
 #include <net/bpf.h>
 #ifdef __FreeBSD__

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.c,v 1.14.2.9 2002/10/21 05:38:11 simokawa Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.3 2003/08/07 21:16:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,13 +42,13 @@
 #include <string.h>
 #endif
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_xpt.h>
-#include <cam/cam_xpt_periph.h>
-#include <cam/scsi/scsi_all.h>
+#include "../cam.h"
+#include "../cam_ccb.h"
+#include "../cam_xpt.h"
+#include "../cam_xpt_periph.h"
+#include "scsi_all.h"
 #ifndef _KERNEL
-#include <camlib.h>
+#include <sys/camlib.h>
 
 #ifndef FALSE
 #define FALSE   0

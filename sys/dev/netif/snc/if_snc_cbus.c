@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/snc/if_snc_cbus.c,v 1.1.2.1 2000/10/21 03:30:03 nyan Exp $
- * $DragonFly: src/sys/dev/netif/snc/Attic/if_snc_cbus.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/snc/Attic/if_snc_cbus.c,v 1.3 2003/08/07 21:17:05 dillon Exp $
  */
 
 /*
@@ -52,15 +52,15 @@
 #include <net/if_media.h>
 #include <net/if_mib.h>
 
-#include <isa/isavar.h>
-#include <isa/pnpvar.h>
+#include <bus/isa/isavar.h>
+#include <bus/isa/pnpvar.h>
 #include <sys/malloc.h>		/* as dependency for isa/isa_common.h */
-#include <isa/isa_common.h>	/* for snc_isapnp_reconfig() */
+#include <bus/isa/isa_common.h>	/* for snc_isapnp_reconfig() */
 
-#include <dev/snc/dp83932var.h>
-#include <dev/snc/dp83932subr.h>
-#include <dev/snc/if_sncreg.h>
-#include <dev/snc/if_sncvar.h>
+#include "dp83932var.h"
+#include "dp83932subr.h"
+#include "if_sncreg.h"
+#include "if_sncvar.h"
 
 static void snc_isapnp_reconfig	__P((device_t));
 static int snc_isa_probe	__P((device_t));

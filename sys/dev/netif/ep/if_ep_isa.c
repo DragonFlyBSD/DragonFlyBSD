@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_isa.c,v 1.8.2.1 2000/12/16 03:47:57 nyan Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.3 2003/08/07 21:17:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,12 +49,12 @@
 
 #include <machine/clock.h>
 
-#include <isa/isavar.h>
-#include <isa/pnpvar.h>
+#include <bus/isa/isavar.h>
+#include <bus/isa/pnpvar.h>
 
-#include <dev/ep/if_epreg.h>
-#include <dev/ep/if_epvar.h>
-#include <i386/isa/elink.h>
+#include "if_epreg.h"
+#include "if_epvar.h"
+#include "../elink_layer/elink.h"
 
 static u_int16_t	get_eeprom_data	(int, int);
 

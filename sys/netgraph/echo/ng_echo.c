@@ -37,7 +37,7 @@
  * Author: Julian Elisher <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_echo.c,v 1.4.2.1 2000/10/24 18:36:44 julian Exp $
- * $DragonFly: src/sys/netgraph/echo/ng_echo.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ * $DragonFly: src/sys/netgraph/echo/ng_echo.c,v 1.3 2003/08/07 21:17:31 dillon Exp $
  * $Whistle: ng_echo.c,v 1.13 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -53,7 +53,7 @@
 #include <sys/mbuf.h>
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
-#include <netgraph/ng_echo.h>
+#include "ng_echo.h"
 
 /* Netgraph methods */
 static ng_rcvmsg_t	nge_rcvmsg;

@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.3.2.11 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.3 2003/08/07 21:16:45 dillon Exp $
  */
 
 #define BOUNCE_BUFFER_TEST	0
@@ -48,15 +48,15 @@
 #include <sys/malloc.h>
 #include <machine/resource.h>
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
-#include <dev/firewire/firewire.h>
-#include <dev/firewire/firewirereg.h>
+#include "firewire.h"
+#include "firewirereg.h"
 
-#include <dev/firewire/fwdma.h>
-#include <dev/firewire/fwohcireg.h>
-#include <dev/firewire/fwohcivar.h>
+#include "fwdma.h"
+#include "fwohcireg.h"
+#include "fwohcivar.h"
 
 static int fwohci_pci_attach(device_t self);
 static int fwohci_pci_detach(device_t self);

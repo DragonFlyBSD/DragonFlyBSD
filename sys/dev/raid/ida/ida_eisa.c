@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_eisa.c,v 1.1.2.4 2001/07/30 20:29:58 jlemon Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida_eisa.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida_eisa.c,v 1.3 2003/08/07 21:17:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,10 +42,10 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <dev/ida/idavar.h>
-#include <dev/ida/idareg.h>
+#include "idavar.h"
+#include "idareg.h"
 
-#include <dev/eisa/eisaconf.h>
+#include <bus/eisa/eisaconf.h>
 
 #define IDA_EISA_IOPORT_START	0x0c88
 #define IDA_EISA_IOPORT_LEN	0x0017

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.9 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.10 2003/08/07 21:17:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,7 +47,7 @@
 #include <vm/vm_page.h>
 
 #include <sys/user.h>
-#include <miscfs/procfs/procfs.h>
+#include <vfs/procfs/procfs.h>
 #include <sys/thread2.h>
 
 /* use the equivalent procfs code */

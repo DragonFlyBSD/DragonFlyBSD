@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pci.c,v 1.2.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.3 2003/08/07 21:16:59 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an_pci.c,v 1.2.2.8 2003/02/11 03:32:48 ambrisko Exp $
  */
@@ -81,11 +81,11 @@
 #include <net/if_dl.h>
 #include <net/if_media.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <dev/an/if_aironet_ieee.h>
-#include <dev/an/if_anreg.h>
+#include "if_aironet_ieee.h"
+#include "if_anreg.h"
 
 struct an_type {
 	u_int16_t		an_vid;

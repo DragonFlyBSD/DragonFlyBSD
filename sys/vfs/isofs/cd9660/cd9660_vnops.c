@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.5 2003/07/26 19:27:41 rob Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.6 2003/08/07 21:17:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,7 +49,7 @@
 #include <sys/buf.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
-#include <miscfs/fifofs/fifo.h>
+#include <vfs/fifofs/fifo.h>
 #include <sys/malloc.h>
 #include <sys/dirent.h>
 #include <sys/unistd.h>
@@ -59,9 +59,9 @@
 #include <vm/vm_zone.h>
 #include <vm/vnode_pager.h>
 
-#include <isofs/cd9660/iso.h>
-#include <isofs/cd9660/cd9660_node.h>
-#include <isofs/cd9660/iso_rrip.h>
+#include "iso.h"
+#include "cd9660_node.h"
+#include "iso_rrip.h"
 
 static int cd9660_setattr __P((struct vop_setattr_args *));
 static int cd9660_access __P((struct vop_access_args *));

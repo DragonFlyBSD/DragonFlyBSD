@@ -31,10 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/strncmp.c,v 1.7 1999/08/28 00:46:38 peter Exp $
- * $DragonFly: src/sys/libkern/strncmp.c,v 1.3 2003/07/26 20:04:12 rob Exp $
+ * $DragonFly: src/sys/libkern/strncmp.c,v 1.4 2003/08/07 21:17:23 dillon Exp $
  */
 
-#include <string.h>
+#include <sys/libkern.h>
 
 int
 strncmp(s1, s2, n)

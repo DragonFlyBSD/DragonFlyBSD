@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ispfw/ispfw.c,v 1.2.2.5 2002/10/12 00:13:09 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/ispfw/ispfw.c,v 1.2 2003/06/17 04:28:28 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ispfw/ispfw.c,v 1.3 2003/08/07 21:16:53 dillon Exp $ */
 /*
  * ISP Firmware Helper Pseudo Device for FreeBSD
  *
@@ -36,12 +36,12 @@
 #include <sys/malloc.h>
 #include <sys/linker.h>
 
-#include <dev/ispfw/asm_1040.h>
-#include <dev/ispfw/asm_1080.h>
-#include <dev/ispfw/asm_12160.h>
-#include <dev/ispfw/asm_2100.h>
-#include <dev/ispfw/asm_2200.h>
-#include <dev/ispfw/asm_2300.h>
+#include "asm_1040.h"
+#include "asm_1080.h"
+#include "asm_12160.h"
+#include "asm_2100.h"
+#include "asm_2200.h"
+#include "asm_2300.h"
 
 #define	ISPFW_VERSION	0
 

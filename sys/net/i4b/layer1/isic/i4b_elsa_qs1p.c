@@ -28,7 +28,7 @@
  *	==================================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_elsa_qs1p.c,v 1.6.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_elsa_qs1p.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_elsa_qs1p.c,v 1.3 2003/08/07 21:17:26 dillon Exp $
  *
  *      last edit-date: [Wed Jan 24 09:09:28 2001]
  *
@@ -36,9 +36,9 @@
  *
  *---------------------------------------------------------------------------*/
 
-#include "isic.h"
+#include "use_isic.h"
+#include "use_pci.h"
 #include "opt_i4b.h"
-#include "pci.h"
 
 #if (NISIC > 0) && (NPCI > 0) && defined(ELSA_QS1PCI)
 
@@ -53,13 +53,13 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #include <machine/i4b_ioctl.h>
 
-#include <i4b/layer1/isic/i4b_isic.h>
-#include <i4b/layer1/isic/i4b_ipac.h>
+#include "i4b_isic.h"
+#include "i4b_ipac.h"
 
 #define MEM0_MAPOFF	0
 #define PORT0_MAPOFF	4

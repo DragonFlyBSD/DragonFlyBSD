@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvgarndr.c,v 1.5.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.3 2003/08/07 21:16:59 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -36,11 +36,11 @@
 
 #include <machine/console.h>
 
-#include <dev/fb/fbreg.h>
-#include <dev/fb/vgareg.h>
-#include <dev/syscons/syscons.h>
+#include <dev/video/fb/fbreg.h>
+#include <dev/video/fb/vgareg.h>
+#include "syscons.h"
 
-#include <isa/isareg.h>
+#include <bus/isa/isareg.h>
 
 #ifndef SC_RENDER_DEBUG
 #define SC_RENDER_DEBUG		0

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.36 2003/05/17 21:48:30 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.7 2003/07/22 17:03:18 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.8 2003/08/07 21:16:45 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -62,16 +62,16 @@
 #include <string.h>
 #endif /* _KERNEL */
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_extend.h>
-#include <cam/cam_periph.h>
-#include <cam/cam_xpt_periph.h>
+#include "../cam.h"
+#include "../cam_ccb.h"
+#include "../cam_extend.h"
+#include "../cam_periph.h"
+#include "../cam_xpt_periph.h"
 
-#include <cam/scsi/scsi_message.h>
+#include "scsi_message.h"
 
 #ifndef _KERNEL 
-#include <cam/scsi/scsi_da.h>
+#include "scsi_da.h"
 #endif /* !_KERNEL */
 
 #ifdef _KERNEL

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/atkbd_isa.c,v 1.7.2.3 2001/08/01 10:42:28 yokota Exp $
- * $DragonFly: src/sys/dev/misc/atkbd/atkbd_isa.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/atkbd/atkbd_isa.c,v 1.3 2003/08/07 21:16:55 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -39,12 +39,12 @@
 #include <sys/rman.h>
 
 #include <sys/kbio.h>
-#include <dev/kbd/kbdreg.h>
-#include <dev/kbd/atkbdreg.h>
-#include <dev/kbd/atkbdcreg.h>
+#include <dev/misc/kbd/kbdreg.h>
+#include <dev/misc/kbd/atkbdreg.h>
+#include <dev/misc/kbd/atkbdcreg.h>
 
-#include <isa/isareg.h>
-#include <isa/isavar.h>
+#include <bus/isa/isareg.h>
+#include <bus/isa/isavar.h>
 
 typedef struct {
 	struct resource	*intr;

@@ -38,13 +38,13 @@
  *	--------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_isic_pnp.c,v 1.5.2.2 2001/12/10 12:18:11 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic_pnp.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic_pnp.c,v 1.3 2003/08/07 21:17:26 dillon Exp $
  *
  *      last edit-date: [Fri Jan 26 14:01:04 2001]
  *
  *---------------------------------------------------------------------------*/
 
-#include "isic.h"
+#include "use_isic.h"
 #include "opt_i4b.h"
 
 #if (NISIC > 0)
@@ -56,9 +56,9 @@
 #include <net/if.h>
 
 #include <machine/i4b_ioctl.h>
-#include <i4b/layer1/isic/i4b_isic.h>
+#include "i4b_isic.h"
 
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 
 #define VID_TEL163PNP		0x10212750	/* Teles 16.3 PnP	*/
 #define VID_CREATIXPP		0x0000980e	/* Creatix S0/16 P+P	*/

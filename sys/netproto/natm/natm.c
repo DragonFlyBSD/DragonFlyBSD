@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.3 2003/07/21 07:57:51 dillon Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.4 2003/08/07 21:17:38 dillon Exp $ */
 
 /*
  *
@@ -54,7 +54,7 @@
 
 #include <netinet/in.h>
 
-#include <netnatm/natm.h>
+#include "natm.h"
 
 static u_long natm5_sendspace = 16*1024;
 static u_long natm5_recvspace = 16*1024;

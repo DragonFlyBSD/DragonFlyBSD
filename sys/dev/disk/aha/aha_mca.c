@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha_mca.c,v 1.2 2000/01/24 07:08:40 imp Exp $
- * $DragonFly: src/sys/dev/disk/aha/Attic/aha_mca.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aha/Attic/aha_mca.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
  *
  * Based on aha_isa.c
  */
@@ -40,12 +40,11 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <i386/isa/isa_dma.h>
+#include <bus/isa/i386/isa_dma.h>
+#include <bus/mca/mca_busreg.h>
+#include <bus/mca/mca_busvar.h>
 
-#include <dev/mca/mca_busreg.h>
-#include <dev/mca/mca_busvar.h>
-
-#include <dev/aha/ahareg.h>
+#include "ahareg.h"
 
 static struct mca_ident aha_mca_devs[] = {
 	{ 0x0f1f, "Adaptec AHA-1640 SCSI Adapter" },

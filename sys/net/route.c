@@ -32,7 +32,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.4 2003/07/26 20:19:33 rob Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.5 2003/08/07 21:17:24 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -49,7 +49,7 @@
 #include <net/route.h>
 
 #include <netinet/in.h>
-#include <netinet/ip_mroute.h>
+#include <net/ip_mroute/ip_mroute.h>
 
 #define	SA(p) ((struct sockaddr *)(p))
 

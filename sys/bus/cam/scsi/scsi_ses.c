@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.5 2003/07/21 07:57:36 dillon Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.6 2003/08/07 21:16:45 dillon Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -40,18 +40,18 @@
 #include <sys/devicestat.h>
 #include <machine/stdarg.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_extend.h>
-#include <cam/cam_periph.h>
-#include <cam/cam_xpt_periph.h>
-#include <cam/cam_queue.h>
-#include <cam/cam_debug.h>
+#include "../cam.h"
+#include "../cam_ccb.h"
+#include "../cam_extend.h"
+#include "../cam_periph.h"
+#include "../cam_xpt_periph.h"
+#include "../cam_queue.h"
+#include "../cam_debug.h"
 
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_message.h>
+#include "scsi_all.h"
+#include "scsi_message.h"
 #include <sys/ioccom.h>
-#include <cam/scsi/scsi_ses.h>
+#include "scsi_ses.h"
 
 #include <opt_ses.h>
 

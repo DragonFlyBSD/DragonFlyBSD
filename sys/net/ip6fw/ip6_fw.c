@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_fw.c,v 1.2.2.9 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.3 2003/07/29 12:51:30 hmp Exp $	*/
+/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.4 2003/08/07 21:17:29 dillon Exp $	*/
 /*	$KAME: ip6_fw.c,v 1.21 2001/01/24 01:25:32 itojun Exp $	*/
 
 /*
@@ -86,7 +86,7 @@
 
 #include <netinet/in_pcb.h>
 
-#include <netinet6/ip6_fw.h>
+#include "ip6_fw.h"
 #include <netinet/ip_var.h>
 #include <netinet/tcp.h>
 #include <netinet/tcp_seq.h>

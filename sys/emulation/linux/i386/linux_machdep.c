@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.7 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.8 2003/08/07 21:17:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,11 +48,11 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 
-#include <i386/linux/linux.h>
-#include <i386/linux/linux_proto.h>
-#include <compat/linux/linux_ipc.h>
-#include <compat/linux/linux_signal.h>
-#include <compat/linux/linux_util.h>
+#include "linux.h"
+#include "linux_proto.h"
+#include "../linux_ipc.h"
+#include "../linux_signal.h"
+#include "../linux_util.h"
 
 struct l_descriptor {
 	l_uint		entry_number;

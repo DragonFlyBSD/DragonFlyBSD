@@ -1,6 +1,6 @@
 /*-
  * $FreeBSD: src/sys/dev/dgb/dgm.c,v 1.31.2.3 2001/10/07 09:02:25 brian Exp $
- * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.6 2003/07/21 07:57:40 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.7 2003/08/07 21:17:10 dillon Exp $
  *
  *  This driver and the associated header files support the ISA PC/Xem
  *  Digiboards.  Its evolutionary roots are described below.
@@ -95,9 +95,9 @@
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
-#include <dev/dgb/dgmfep.h>
-#include <dev/dgb/dgmbios.h>
-#include <dev/dgb/dgmreg.h>
+#include "dgmfep.h"
+#include "dgmbios.h"
+#include "dgmreg.h"
 
 #define	CALLOUT_MASK		0x40000
 #define	CONTROL_MASK		0xC0

@@ -24,14 +24,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/wfd.c,v 1.35 2000/01/29 16:00:33 peter Exp $
- * $DragonFly: src/sys/dev/disk/wfd/Attic/wfd.c,v 1.7 2003/07/23 02:30:19 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wfd/Attic/wfd.c,v 1.8 2003/08/07 21:16:54 dillon Exp $
  */
 
 /*
  * ATAPI Floppy, LS-120 driver
  */
 
-#include "wdc.h"
+#include "use_wdc.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr_isa.c,v 1.46.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr_isa.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr_isa.c,v 1.3 2003/08/07 21:17:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,11 +46,11 @@
 #include <sys/rman.h>
 #include <sys/time.h>
 
-#include <isa/isavar.h>
+#include <bus/isa/isavar.h>
 #include "isa_if.h"
 
-#include <dev/ic/hd64570.h>
-#include <dev/sr/if_srregs.h>
+#include "../ic_layer/hd64570.h"
+#include "if_srregs.h"
 
 /*
  * List of valid interrupt numbers for the N2 ISA card.

@@ -35,16 +35,16 @@
  *
  * $Id: vinummemory.c,v 1.25 2000/05/04 01:57:48 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinummemory.c,v 1.22.2.1 2000/06/02 04:26:11 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinummemory.c,v 1.3 2003/06/29 03:28:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinummemory.c,v 1.4 2003/08/07 21:17:09 dillon Exp $
  */
 
-#include <dev/vinum/vinumhdr.h>
+#include "vinumhdr.h"
 
 #ifdef VINUMDEBUG
 #undef longjmp						    /* this was defined as LongJmp */
 void longjmp(jmp_buf, int);				    /* the kernel doesn't define this */
 
-#include <dev/vinum/request.h>
+#include "request.h"
 extern struct rqinfo rqinfo[];
 extern struct rqinfo *rqip;
 int rqinfo_size = RQINFO_SIZE;				    /* for debugger */

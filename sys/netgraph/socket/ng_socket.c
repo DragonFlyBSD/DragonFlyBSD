@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_socket.c,v 1.11.2.6 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.4 2003/06/25 03:56:03 dillon Exp $
+ * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.5 2003/08/07 21:17:32 dillon Exp $
  * $Whistle: ng_socket.c,v 1.28 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -68,8 +68,8 @@
 #endif
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
-#include <netgraph/ng_socketvar.h>
-#include <netgraph/ng_socket.h>
+#include "ng_socketvar.h"
+#include "ng_socket.h"
 
 /*
  * It's Ascii-art time!

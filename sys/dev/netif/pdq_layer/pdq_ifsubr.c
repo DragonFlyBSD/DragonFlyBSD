@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq_ifsubr.c,v 1.11.2.1 2000/08/02 22:39:30 peter Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.3 2003/07/23 02:30:17 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.4 2003/08/07 21:17:04 dillon Exp $
  *
  */
 
@@ -68,8 +68,8 @@
 #endif
 
 #if defined(__FreeBSD__)
-#include <dev/pdq/pdqvar.h>
-#include <dev/pdq/pdqreg.h>
+#include "pdqvar.h"
+#include "pdqreg.h"
 #else
 #include "pdqvar.h"
 #include "pdqreg.h"

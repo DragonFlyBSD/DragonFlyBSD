@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/vpo.c,v 1.20.2.1 2000/05/07 21:08:18 n_hibma Exp $
- * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.3 2003/08/07 21:16:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -36,23 +36,23 @@
 
 #include <machine/clock.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt_sim.h>
-#include <cam/cam_debug.h>
-#include <cam/cam_periph.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_debug.h>
+#include <bus/cam/cam_periph.h>
 
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_message.h>
-#include <cam/scsi/scsi_da.h>
+#include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_message.h>
+#include <bus/cam/scsi/scsi_da.h>
 
 #include <sys/kernel.h>
 
 #include "opt_vpo.h"
 
-#include <dev/ppbus/ppbconf.h>
-#include <dev/ppbus/vpoio.h>
+#include <bus/ppbus/ppbconf.h>
+#include "vpoio.h"
 
 #include "ppbus_if.h"
 

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt_eisa.c,v 1.12 2000/01/29 14:27:26 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt_eisa.c,v 1.2 2003/06/17 04:28:23 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt_eisa.c,v 1.3 2003/08/07 21:16:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,9 +41,9 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <dev/eisa/eisaconf.h>
+#include <bus/eisa/eisaconf.h>
 
-#include <dev/buslogic/btreg.h>
+#include "btreg.h"
 
 #define EISA_DEVICE_ID_BUSLOGIC_74X_B	0x0ab34201
 #define EISA_DEVICE_ID_BUSLOGIC_74X_C	0x0ab34202

@@ -28,6 +28,7 @@
  * Modified: Hunyue Yau      Jan 6 1994 Added code to support the Sound Galaxy
  * NX Pro mixer.
  * 
+ * $DragonFly: src/sys/dev/sound/isa/i386/sb/Attic/sb_mixer.c,v 1.2 2003/08/07 21:17:12 dillon Exp $
  */
 
 #include <i386/isa/sound/sound_config.h>
@@ -36,7 +37,7 @@
 #define __SB_MIXER_C__
 
 #include <i386/isa/sound/sbcard.h>
-#include <i386/isa/sound/sb_mixer.h>
+#include "sb_mixer.h"
 #undef SB_TEST_IRQ
 
 extern int      sbc_base;

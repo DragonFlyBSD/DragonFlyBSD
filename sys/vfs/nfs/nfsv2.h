@@ -35,7 +35,7 @@
  *
  *	@(#)nfsv2.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/nfs/nfsv2.h,v 1.9 1999/08/28 00:50:04 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsv2.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsv2.h,v 1.3 2003/08/07 21:17:42 dillon Exp $
  */
 
-#include <nfs/nfsproto.h>
+#include "nfsproto.h"

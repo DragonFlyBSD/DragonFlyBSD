@@ -28,7 +28,7 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/compat/linux/linux_util.c,v 1.12.2.2 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.5 2003/06/26 05:55:10 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.6 2003/08/07 21:17:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,7 +38,7 @@
 #include <sys/malloc.h>
 #include <sys/vnode.h>
 
-#include <compat/linux/linux_util.h>
+#include "linux_util.h"
 
 const char      linux_emul_path[] = "/compat/linux";
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.6 2003/07/26 18:51:23 rob Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.7 2003/08/07 21:17:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,10 +62,10 @@
 
 #include <sys/unistd.h> /* for pathconf(2) constants */
 
-#include <fs/hpfs/hpfs.h>
-#include <fs/hpfs/hpfsmount.h>
-#include <fs/hpfs/hpfs_subr.h>
-#include <fs/hpfs/hpfs_ioctl.h>
+#include "hpfs.h"
+#include "hpfsmount.h"
+#include "hpfs_subr.h"
+#include "hpfs_ioctl.h"
 
 static int	hpfs_de_uiomove __P((struct hpfsmount *, struct hpfsdirent *,
 				     struct uio *));

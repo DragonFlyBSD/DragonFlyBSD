@@ -6,6 +6,7 @@
  * will become more like that of standard bsd code.
  * lr 970714
  *
+ * $DragonFly: src/sys/platform/pc32/isa/sound/Attic/local.h,v 1.2 2003/08/07 21:17:23 dillon Exp $
  */
 
 /* build hex2hex /tmp/foo.x trix_boot.h trix_boot */
@@ -16,7 +17,7 @@
  */
 #define ALLOW_BUFFER_MAPPING 1
 
-#include "snd.h"
+#include "use_snd.h"
 #if NSND > 0
 
 #include "opt_sound.h"
@@ -25,18 +26,18 @@
 
 #define CONFIG_SEQUENCER
 
-#include "gus.h"
+#include "use_gus.h"
 #if NGUS != 0 && !defined(CONFIG_GUS)
 #define CONFIG_GUS
 #define CONFIG_GUSMAX
 #endif
 
-#include "sscape.h"
+#include "use_sscape.h"
 #if NSSCAPE != 0 && !defined(CONFIG_SSCAPE)
 #define CONFIG_SSCAPE
 #endif
 
-#include "trix.h"
+#include "use_trix.h"
 #if NTRIX > 0
 #define INCLUDE_TRIX_BOOT
 #define CONFIG_TRIX	/* can use NTRIX > 0 instead */
@@ -51,58 +52,58 @@
 #define CONFIG_MIDI
 #endif
 
-#include "sb.h"
+#include "use_sb.h"
 #if NSB > 0
 #define CONFIG_SB
 #endif
 
-#include "mss.h"
+#include "use_mss.h"
 #if NMSS != 0
 #define CONFIG_AD1848
 #define CONFIG_MSS
 #undef  CONFIG_CS4232
 #endif
 
-#include "css.h"
+#include "use_css.h"
 #if NCSS != 0
 #define CONFIG_AD1848
 #undef  CONFIG_MSS
 #define CONFIG_CS4232
 #endif
 
-#include "sbxvi.h"
+#include "use_sbxvi.h"
 #if NSBXVI != 0 && !defined(CONFIG_SB16)
 #define CONFIG_SB16
 #define CONFIG_SBPRO                /*  FIXME: Also needs to be a sep option */
 #endif
 
-#include "sbmidi.h"
+#include "use_sbmidi.h"
 #if NSBMIDI != 0 && !defined(CONFIG_SB16MIDI)
 #define CONFIG_SB16MIDI
 #endif
 
-#include "awe.h"
+#include "use_awe.h"
 #if NAWE != 0 && !defined(CONFIG_AWE32)
 #define CONFIG_AWE32
 #endif
 
-#include "pas.h"
+#include "use_pas.h"
 #if NPAS != 0 && !defined(CONFIG_PAS)
 #define CONFIG_PAS
 #endif
 
-#include "mpu.h"
+#include "use_mpu.h"
 #if NMPU != 0 && !defined(CONFIG_MPU401)
 #define CONFIG_MPU401
 #endif
  
-#include "opl.h"
+#include "use_opl.h"
 #if NOPL != 0 && !defined(CONFIG_YM3812)
 #define CONFIG_YM3812
 #endif
 
 #ifdef PC98
-#include "nss.h"
+#include "use_nss.h"
 #if NNSS != 0
 #define CONFIG_NSS
 #endif

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isa_common.c,v 1.16.2.1 2000/09/16 15:49:52 roger Exp $
- * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.3 2003/08/07 21:16:46 dillon Exp $
  */
 /*
  * Modifications for Intel architecture by Garrett A. Wollman.
@@ -71,10 +71,10 @@
 
 #include <machine/resource.h>
 
-#include <isa/isavar.h>
-#include <isa/isa_common.h>
+#include "isavar.h"
+#include "isa_common.h"
 #ifdef __alpha__		/* XXX workaround a stupid warning */
-#include <alpha/isa/isavar.h>
+#include "isavar.h"
 #endif
 
 static int	isa_print_child		__P((device_t, device_t));

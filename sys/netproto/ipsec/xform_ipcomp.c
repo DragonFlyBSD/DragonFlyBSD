@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipcomp.c,v 1.1.4.2 2003/02/26 00:14:06 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipcomp.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipcomp.c,v 1.3 2003/08/07 21:17:37 dillon Exp $	*/
 /* $OpenBSD: ip_ipcomp.c,v 1.1 2001/07/05 12:08:52 jjbg Exp $ */
 
 /*
@@ -47,19 +47,19 @@
 #include <netinet/ip_var.h>
 
 #include <net/route.h>
-#include <netipsec/ipsec.h>
-#include <netipsec/xform.h>
+#include "ipsec.h"
+#include "xform.h"
 
 #ifdef INET6
 #include <netinet/ip6.h>
-#include <netipsec/ipsec6.h>
+#include "ipsec6.h"
 #endif
 
-#include <netipsec/ipcomp.h>
-#include <netipsec/ipcomp_var.h>
+#include "ipcomp.h"
+#include "ipcomp_var.h"
 
-#include <netipsec/key.h>
-#include <netipsec/key_debug.h>
+#include "key.h"
+#include "key_debug.h"
 
 #include <opencrypto/cryptodev.h>
 #include <opencrypto/deflate.h>

@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stream.c,v 1.12.2.2 2000/11/26 04:42:27 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.7 2003/07/30 00:19:15 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.8 2003/08/07 21:17:19 dillon Exp $
  */
 
 /*
@@ -65,16 +65,16 @@
 
 #include <sys/sysproto.h>
 
-#include <svr4/svr4.h>
-#include <svr4/svr4_types.h>
-#include <svr4/svr4_util.h>
-#include <svr4/svr4_signal.h>
-#include <svr4/svr4_proto.h>
-#include <svr4/svr4_stropts.h>
-#include <svr4/svr4_timod.h>
-#include <svr4/svr4_sockmod.h>
-#include <svr4/svr4_ioctl.h>
-#include <svr4/svr4_socket.h>
+#include "svr4.h"
+#include "svr4_types.h"
+#include "svr4_util.h"
+#include "svr4_signal.h"
+#include "svr4_proto.h"
+#include "svr4_stropts.h"
+#include "svr4_timod.h"
+#include "svr4_sockmod.h"
+#include "svr4_ioctl.h"
+#include "svr4_socket.h"
 
 /* Utils */
 static int clean_pipe __P((const char *));

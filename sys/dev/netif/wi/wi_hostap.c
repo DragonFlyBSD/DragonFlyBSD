@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/wi_hostap.c,v 1.7.2.4 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/Attic/wi_hostap.c,v 1.4 2003/06/25 03:55:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/Attic/wi_hostap.c,v 1.5 2003/08/07 21:17:06 dillon Exp $
  */
 
 /* This is experimental Host AP software for Prism 2 802.11b interfaces.
@@ -78,10 +78,10 @@
 #include <netinet/ip.h>
 #include <netinet/if_ether.h>
 
-#include <dev/wi/if_wavelan_ieee.h>
-#include <dev/wi/wi_hostap.h>
-#include <dev/wi/if_wivar.h>
-#include <dev/wi/if_wireg.h>
+#include "if_wavelan_ieee.h"
+#include "wi_hostap.h"
+#include "if_wivar.h"
+#include "if_wireg.h"
 
 MALLOC_DEFINE(M_HAP_STA, "hostap_sta", "if_wi host AP mode station entry");
 

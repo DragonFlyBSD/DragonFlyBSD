@@ -28,13 +28,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt_periph.h,v 1.3 1999/12/29 04:54:28 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt_periph.h,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt_periph.h,v 1.3 2003/08/07 21:16:44 dillon Exp $
  */
 
 #ifndef _CAM_CAM_XPT_PERIPH_H
 #define _CAM_CAM_XPT_PERIPH_H 1
 
-#include <cam/cam_xpt.h>
+#include "cam_xpt.h"
 
 /* Functions accessed by the peripheral drivers */
 #ifdef _KERNEL

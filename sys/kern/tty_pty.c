@@ -32,15 +32,16 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.8 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.9 2003/08/07 21:17:23 dillon Exp $
  */
 
 /*
  * Pseudo-teletype Driver
  * (Actually two drivers, requiring two entries in 'cdevsw')
  */
-#include "pty.h"		/* XXX */
+#include "use_pty.h"		/* XXX */
 #include "opt_compat.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_mca.c,v 1.2 1999/10/27 06:25:15 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ep/Attic/if_ep_mca.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/Attic/if_ep_mca.c,v 1.3 2003/08/07 21:17:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,11 +43,11 @@
 #include <net/if_arp.h>
 #include <net/if_media.h>
 
-#include <dev/mca/mca_busreg.h>
-#include <dev/mca/mca_busvar.h>
+#include <bus/mca/mca_busreg.h>
+#include <bus/mca/mca_busvar.h>
 
-#include <dev/ep/if_epreg.h>
-#include <dev/ep/if_epvar.h>
+#include "if_epreg.h"
+#include "if_epvar.h"
 
 #define EP_MCA_627C	0x627C
 #define EP_MCA_627D	0x627D

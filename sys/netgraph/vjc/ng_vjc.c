@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_vjc.c,v 1.9.2.5 2002/07/02 23:44:03 archie Exp $
- * $DragonFly: src/sys/netgraph/vjc/ng_vjc.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netgraph/vjc/ng_vjc.c,v 1.3 2003/08/07 21:17:33 dillon Exp $
  * $Whistle: ng_vjc.c,v 1.17 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -57,7 +57,7 @@
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
 #include <netgraph/ng_parse.h>
-#include <netgraph/ng_vjc.h>
+#include "ng_vjc.h"
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>

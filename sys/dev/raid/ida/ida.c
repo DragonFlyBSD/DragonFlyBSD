@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida.c,v 1.7.2.3 2001/03/01 01:57:32 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.4 2003/07/19 21:14:22 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.5 2003/08/07 21:17:09 dillon Exp $
  */
 
 /*
@@ -39,7 +39,7 @@
  *	i386/eisa/ida_eisa.c
  */
 
-#include <pci.h>
+#include <use_pci.h>
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -61,8 +61,8 @@
 #include <sys/rman.h>
 #include <sys/buf2.h>
 
-#include <dev/ida/idareg.h>
-#include <dev/ida/idavar.h>
+#include "idareg.h"
+#include "idavar.h"
 
 /* prototypes */
 static void ida_alloc_qcb(struct ida_softc *ida);

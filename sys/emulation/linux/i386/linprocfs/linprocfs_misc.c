@@ -39,7 +39,7 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_misc.c,v 1.3.2.8 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.4 2003/07/03 17:24:02 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.5 2003/08/07 21:17:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -67,7 +67,7 @@
 #include <machine/cputypes.h>
 #include <machine/md_var.h>
 
-#include <i386/linux/linprocfs/linprocfs.h>
+#include "linprocfs.h"
 
 /*
  * Various conversion macros

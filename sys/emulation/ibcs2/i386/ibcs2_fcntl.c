@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_fcntl.c,v 1.14 1999/09/19 17:00:14 green Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.7 2003/07/30 00:19:13 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.8 2003/08/07 21:17:17 dillon Exp $
  */
 
 #include "opt_spx_hack.h"
@@ -40,10 +40,10 @@
 #include <sys/proc.h>
 #include <sys/file2.h>
 
-#include <i386/ibcs2/ibcs2_fcntl.h>
-#include <i386/ibcs2/ibcs2_signal.h>
-#include <i386/ibcs2/ibcs2_proto.h>
-#include <i386/ibcs2/ibcs2_util.h>
+#include "ibcs2_fcntl.h"
+#include "ibcs2_signal.h"
+#include "ibcs2_proto.h"
+#include "ibcs2_util.h"
 
 static void cvt_iflock2flock __P((struct ibcs2_flock *, struct flock *));
 static void cvt_flock2iflock __P((struct flock *, struct ibcs2_flock *));

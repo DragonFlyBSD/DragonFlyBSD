@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwlib.c,v 1.6.2.1 2000/04/14 13:32:50 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwlib.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwlib.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
  */
 /*
  * Ported from:
@@ -54,13 +54,13 @@
 #include <machine/bus.h>
 #include <machine/clock.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt_sim.h>
-#include <cam/scsi/scsi_all.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/scsi/scsi_all.h>
 
-#include <dev/advansys/adwlib.h>
+#include "adwlib.h"
 
 const struct adw_eeprom adw_asc3550_default_eeprom =
 {

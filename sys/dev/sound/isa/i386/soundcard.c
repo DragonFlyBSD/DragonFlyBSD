@@ -26,19 +26,20 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/sound/soundcard.c,v 1.87 1999/12/20 18:05:01 eivind Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/Attic/soundcard.c,v 1.3 2003/07/21 05:50:41 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/Attic/soundcard.c,v 1.4 2003/08/07 21:17:12 dillon Exp $
  *
  */
-#include <i386/isa/sound/sound_config.h>
+#include "use_snd.h"
+#include "sound_config.h"
 #if NSND > 0	/* from "snd.h" */
-#include "uart.h"
+#include "use_uart.h"
 
 #include <sys/select.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
 #include <sys/mman.h>
 
-#include <i386/isa/isa_device.h>
+#include <bus/isa/i386/isa_device.h>
 
 
 /*

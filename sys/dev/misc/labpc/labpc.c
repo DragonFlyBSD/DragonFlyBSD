@@ -39,11 +39,11 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.4 2003/07/21 07:57:44 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.5 2003/08/07 21:16:56 dillon Exp $
  *
  */
 
-#include "labpc.h"
+#include "use_labpc.h"
 #include "opt_debug_outb.h"
 #include <sys/param.h>
 
@@ -60,7 +60,7 @@
 #include <machine/clock.h>
 #endif
 
-#include <i386/isa/isa_device.h>
+#include <bus/isa/i386/isa_device.h>
 
 
 

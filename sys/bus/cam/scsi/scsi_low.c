@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.4 2001/12/17 13:30:20 non Exp $	*/
-/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.2 2003/06/17 04:28:19 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.3 2003/08/07 21:16:45 dillon Exp $	*/
 /*	$NecBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -105,16 +105,16 @@
 #endif	/* __NetBSD__ */
 
 #ifdef __FreeBSD__
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_debug.h>
-#include <cam/cam_periph.h>
+#include "../cam.h"
+#include "../cam_ccb.h"
+#include "../cam_sim.h"
+#include "../cam_debug.h"
+#include "../cam_periph.h"
 
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_message.h>
+#include "scsi_all.h"
+#include "scsi_message.h"
 
-#include <cam/scsi/scsi_low.h>
+#include "scsi_low.h"
 
 #include <sys/cons.h>
 #endif	/* __FreeBSD__ */

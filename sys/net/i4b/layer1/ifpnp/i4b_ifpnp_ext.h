@@ -31,7 +31,7 @@
  *	$Ust: src/i4b/layer1-nb/ifpnp/i4b_ifpnp_ext.h,v 1.4 2000/04/18 08:03:05 ust Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpnp/i4b_ifpnp_ext.h,v 1.1.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_ext.h,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_ext.h,v 1.3 2003/08/07 21:17:26 dillon Exp $
  *
  *      last edit-date: [Fri Jun  2 14:54:57 2000]
  *
@@ -40,7 +40,7 @@
 #ifndef _I4B_IFPNP_EXT_H_
 #define _I4B_IFPNP_EXT_H_
 
-#include <i4b/include/i4b_l3l4.h>
+#include "../../include/i4b_l3l4.h"
 
 void ifpnp_set_linktab(int unit, int channel, drvr_link_t * dlt);
 isdn_link_t *ifpnp_ret_linktab(int unit, int channel);

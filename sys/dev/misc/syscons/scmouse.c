@@ -24,12 +24,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scmouse.c,v 1.12.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scmouse.c,v 1.3 2003/06/23 17:55:35 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scmouse.c,v 1.4 2003/08/07 21:16:59 dillon Exp $
  */
 
 #include "opt_syscons.h"
 
-#include <limits.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
@@ -41,7 +40,7 @@
 #include <machine/console.h>
 #include <machine/mouse.h>
 
-#include <dev/syscons/syscons.h>
+#include "syscons.h"
 
 #ifdef SC_TWOBUTTON_MOUSE
 #define SC_MOUSE_PASTEBUTTON	MOUSE_BUTTON3DOWN	/* right button */
@@ -869,7 +868,7 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag,
 	    if (mouse->u.mouse_char < 0) {
 		mouse->u.mouse_char = scp->sc->mouse_char;
 	    } else {
-		if (mouse->u.mouse_char >= UCHAR_MAX - 4)
+		if (mouse->u.mouse_char >= (unsigned char)-1 - 4)
 		    return EINVAL;
 		s = spltty();
 		sc_remove_all_mouse(scp->sc);

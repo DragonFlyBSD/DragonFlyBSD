@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.4 2003/07/26 14:25:27 rob Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.5 2003/08/07 21:17:07 dillon Exp $
  */
 
 /*
@@ -135,11 +135,11 @@
 #include <net/if_mib.h>
 #include <net/bpf.h>
 
-#include <dev/pccard/pccardvar.h>
+#include <bus/pccard/pccardvar.h>
 #include "card_if.h"
 
-#include <dev/xe/if_xereg.h>
-#include <dev/xe/if_xevar.h>
+#include "if_xereg.h"
+#include "if_xevar.h"
 
 #include <machine/clock.h>
 

@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.6 2003/07/26 18:53:21 rob Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.7 2003/08/07 21:17:41 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -69,16 +69,16 @@
 #include <sys/buf2.h>
 
 #include <sys/signalvar.h>
-#include <ufs/ufs/dir.h>
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufsmount.h>
-#include <ufs/ufs/ufs_extern.h>
+#include <vfs/ufs/dir.h>
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/inode.h>
+#include <vfs/ufs/ufsmount.h>
+#include <vfs/ufs/ufs_extern.h>
 
-#include <gnu/ext2fs/ext2_fs_sb.h>
-#include <gnu/ext2fs/fs.h>
-#include <gnu/ext2fs/ext2_extern.h>
-#include <gnu/ext2fs/ext2_fs.h>
+#include "ext2_fs_sb.h"
+#include "fs.h"
+#include "ext2_extern.h"
+#include "ext2_fs.h"
 
 static int ext2_makeinode __P((int mode, struct vnode *, struct vnode **, struct componentname *));
 
@@ -147,7 +147,7 @@ static struct vnodeopv_desc ext2fs_fifoop_opv_desc =
 	VNODEOP_SET(ext2fs_specop_opv_desc);
 	VNODEOP_SET(ext2fs_fifoop_opv_desc);
 
-#include <gnu/ext2fs/ext2_readwrite.c>
+#include "ext2_readwrite.c"
 
 /*
  * A virgin directory (no blushing please).

@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/pcic_isa.c,v 1.13.2.8 2003/02/26 18:42:00 imp Exp $
- * $DragonFly: src/sys/bus/pccard/Attic/pcic_isa.c,v 1.2 2003/06/17 04:28:55 dillon Exp $
+ * $DragonFly: src/sys/bus/pccard/Attic/pcic_isa.c,v 1.3 2003/08/07 21:16:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,16 +32,15 @@
 #include <sys/sysctl.h>
 #include <sys/systm.h>
 
-#include <pccard/i82365.h>
-#include <pccard/cardinfo.h>
-#include <pccard/slot.h>
-#include <pccard/pcicvar.h>
+#include "i82365.h"
+#include "cardinfo.h"
+#include "slot.h"
+#include "pcicvar.h"
 
 /* Get pnp IDs */
-#include <isa/isavar.h>
-#include <dev/pcic/i82365reg.h>
-
-#include <dev/pccard/pccardvar.h>
+#include <bus/isa/isavar.h>
+#include <dev/misc/pcic/i82365reg.h>
+#include "pccardvar.h"
 #include "card_if.h"
 
 static struct isa_pnp_id pcic_ids[] = {

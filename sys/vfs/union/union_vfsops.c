@@ -36,7 +36,7 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.3 2003/06/25 03:56:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.4 2003/08/07 21:17:44 dillon Exp $
  */
 
 /*
@@ -52,7 +52,7 @@
 #include <sys/namei.h>
 #include <sys/malloc.h>
 #include <sys/filedesc.h>
-#include <miscfs/union/union.h>
+#include "union.h"
 #include <vm/vm_zone.h>
 
 static MALLOC_DEFINE(M_UNIONFSMNT, "UNION mount", "UNION mount structure");

@@ -37,13 +37,13 @@
  *	In case of trouble please contact Udo Schweigert <ust@cert.siemens.de>
  
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_siemens_isurf.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_siemens_isurf.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_siemens_isurf.c,v 1.3 2003/08/07 21:17:26 dillon Exp $
  *
  *      last edit-date: [Wed Jan 24 09:13:25 2001]
  *
  *---------------------------------------------------------------------------*/
 
-#include "isic.h"
+#include "use_isic.h"
 #include "opt_i4b.h"
 
 #if NISIC > 0 && defined(SIEMENS_ISURF2)
@@ -56,8 +56,8 @@
 
 #include <machine/i4b_ioctl.h>
 
-#include <i4b/layer1/isic/i4b_isic.h>
-#include <i4b/layer1/isic/i4b_ipac.h>
+#include "i4b_isic.h"
+#include "i4b_ipac.h"
 
 /* masks for register encoded in base addr */
 

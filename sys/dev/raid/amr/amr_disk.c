@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/amr/amr_disk.c,v 1.5.2.5 2002/12/20 15:12:04 emoore Exp $
- * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.4 2003/07/22 17:03:27 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.5 2003/08/07 21:17:08 dillon Exp $
  */
 
 /*
@@ -65,7 +65,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 
-#include <dev/amr/amr_compat.h>
+#include "amr_compat.h"
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/devicestat.h>
@@ -74,10 +74,10 @@
 #include <machine/bus.h>
 #include <sys/rman.h>
 
-#include <dev/amr/amrio.h>
-#include <dev/amr/amrreg.h>
-#include <dev/amr/amrvar.h>
-#include <dev/amr/amr_tables.h>
+#include "amrio.h"
+#include "amrreg.h"
+#include "amrvar.h"
+#include "amr_tables.h"
 
 /* prototypes */
 static int amrd_probe(device_t dev);

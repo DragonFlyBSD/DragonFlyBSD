@@ -55,14 +55,14 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/reg_constant.h,v 1.7 1999/08/28 00:42:55 peter Exp $
- * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/reg_constant.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/reg_constant.h,v 1.3 2003/08/07 21:17:20 dillon Exp $
  *
  */
 
 #ifndef _REG_CONSTANT_H_
 #define _REG_CONSTANT_H_
 
-#include <gnu/i386/fpemul/fpu_emu.h>
+#include "fpu_emu.h"
 
 extern FPU_REG CONST_1;
 extern FPU_REG CONST_2;

@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_en_pci.c,v 1.12 1999/08/21 22:10:49 msmith Exp $
- * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.3 2003/08/07 21:17:01 dillon Exp $
  */
 
 /*
@@ -46,7 +46,7 @@
  * thanks to Matt Thomas for figuring out FreeBSD vs NetBSD vs etc.. diffs.
  */
 
-#include "en.h"
+#include "use_en.h"
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -61,11 +61,11 @@
 
 #include <net/if.h>
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
-#include <dev/en/midwayreg.h>
-#include <dev/en/midwayvar.h>
+#include <dev/atm/en/midwayreg.h>
+#include <dev/atm/en/midwayvar.h>
 
 
 /*

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_eisa.c,v 1.14 2000/01/29 14:50:31 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_eisa.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_eisa.c,v 1.3 2003/08/07 21:17:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,9 +44,9 @@
 #include <net/if.h>
 #include <net/if_arp.h>
 
-#include <dev/eisa/eisaconf.h>
+#include <bus/eisa/eisaconf.h>
 
-#include <dev/vx/if_vxreg.h>
+#include "if_vxreg.h"
 
 #define EISA_DEVICE_ID_3COM_3C592	0x506d5920
 #define EISA_DEVICE_ID_3COM_3C597_TX	0x506d5970

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/intrq.c,v 1.3 2000/01/29 16:13:08 peter Exp $
- * $DragonFly: src/sys/net/Attic/intrq.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/Attic/intrq.c,v 1.3 2003/08/07 21:17:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -39,7 +39,7 @@
 #include <net/intrq.h>
 
 #ifdef __i386__
-#include <netatm/kern_include.h>	/* XXX overkill, fixme! */
+#include <netproto/atm/kern_include.h>	/* XXX overkill, fixme! */
 #endif
 
 /*

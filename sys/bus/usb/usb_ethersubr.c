@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.4.2.4 2002/11/06 14:23:20 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.3 2003/08/07 21:16:47 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.4.2.4 2002/11/06 14:23:20 joe Exp $
  */
@@ -67,8 +67,8 @@
 #include <net/netisr.h>
 #include <net/bpf.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usb_ethersubr.h>
+#include "usb.h"
+#include "usb_ethersubr.h"
 
 Static struct ifqueue usbq_rx;
 Static struct ifqueue usbq_tx;

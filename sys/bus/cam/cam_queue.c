@@ -26,17 +26,17 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_queue.c,v 1.5 1999/08/28 00:40:41 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_queue.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_queue.c,v 1.3 2003/08/07 21:16:44 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/types.h>
 #include <sys/malloc.h>
 
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_queue.h>
-#include <cam/cam_debug.h>
+#include "cam.h"
+#include "cam_ccb.h"
+#include "cam_queue.h"
+#include "cam_debug.h"
 
 static __inline int
 		queue_cmp(cam_pinfo **queue_array, int i, int j);

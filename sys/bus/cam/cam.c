@@ -26,11 +26,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam.c,v 1.3 1999/08/28 00:40:38 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam.c,v 1.3 2003/08/07 21:16:44 dillon Exp $
  */
 #include <sys/param.h>
 
-#include <cam/cam.h>
+#include "cam.h"
 
 void
 cam_strvis(u_int8_t *dst, const u_int8_t *src, int srclen, int dstlen)

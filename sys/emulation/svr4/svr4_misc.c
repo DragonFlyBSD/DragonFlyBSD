@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.10 2003/08/05 18:07:41 hmp Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.11 2003/08/07 21:17:19 dillon Exp $
  */
 
 /*
@@ -64,19 +64,19 @@
 
 #include <sys/sysproto.h>
 
-#include <svr4/svr4.h>
-#include <svr4/svr4_types.h>
-#include <svr4/svr4_signal.h>
-#include <svr4/svr4_proto.h>
-#include <svr4/svr4_util.h>
-#include <svr4/svr4_sysconfig.h>
-#include <svr4/svr4_dirent.h>
-#include <svr4/svr4_acl.h>
-#include <svr4/svr4_ulimit.h>
-#include <svr4/svr4_statvfs.h>
-#include <svr4/svr4_hrt.h>
-#include <svr4/svr4_mman.h>
-#include <svr4/svr4_wait.h>
+#include "svr4.h"
+#include "svr4_types.h"
+#include "svr4_signal.h"
+#include "svr4_proto.h"
+#include "svr4_util.h"
+#include "svr4_sysconfig.h"
+#include "svr4_dirent.h"
+#include "svr4_acl.h"
+#include "svr4_ulimit.h"
+#include "svr4_statvfs.h"
+#include "svr4_hrt.h"
+#include "svr4_mman.h"
+#include "svr4_wait.h"
 
 #include <machine/vmparam.h>
 #include <vm/vm.h>

@@ -36,12 +36,15 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.30 2003/07/30 00:19:13 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.31 2003/08/07 21:17:22 dillon Exp $
  */
 
 /*
  * 386 Trap and System call handling
  */
+
+#include "use_isa.h"
+#include "use_npx.h"
 
 #include "opt_cpu.h"
 #include "opt_ddb.h"
@@ -98,9 +101,6 @@
 
 #include <ddb/ddb.h>
 #include <sys/thread2.h>
-
-#include "isa.h"
-#include "npx.h"
 
 int (*pmath_emulate) __P((struct trapframe *));
 

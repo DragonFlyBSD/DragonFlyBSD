@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_aout.c,v 1.26 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_aout.c,v 1.5 2003/07/18 05:12:39 dillon Exp $
+ * $DragonFly: src/sys/kern/link_aout.c,v 1.6 2003/08/07 21:17:23 dillon Exp $
  */
 
 #ifndef __alpha__
@@ -34,6 +34,7 @@
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
+#include <sys/types.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/namei.h>
@@ -49,8 +50,12 @@
 #include <machine/vmparam.h>
 #endif
 
-#include <a.out.h>
-#include <link.h>
+#include <machine/exec.h>
+#include <sys/imgact_aout.h>
+#include <machine/reloc.h>
+#define _AOUT_INCLUDE_
+#include <sys/nlist_aout.h>
+#include <sys/link_aout.h>
 
 static int		link_aout_load_module(const char*, linker_file_t*);
 

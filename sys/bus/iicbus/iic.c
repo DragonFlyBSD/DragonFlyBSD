@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iic.c,v 1.18 1999/11/18 05:43:32 peter Exp $
- * $DragonFly: src/sys/bus/iicbus/iic.c,v 1.4 2003/07/21 07:57:41 dillon Exp $
+ * $DragonFly: src/sys/bus/iicbus/iic.c,v 1.5 2003/08/07 21:16:45 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -40,8 +40,8 @@
 
 #include <machine/clock.h>
 
-#include <dev/iicbus/iiconf.h>
-#include <dev/iicbus/iicbus.h>
+#include "iiconf.h"
+#include "iicbus.h"
 
 #include <machine/iic.h>
 

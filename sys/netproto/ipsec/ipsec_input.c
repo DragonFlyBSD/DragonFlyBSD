@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec_input.c,v 1.2.4.2 2003/03/28 20:32:53 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.3 2003/08/07 21:17:37 dillon Exp $	*/
 /*	$OpenBSD: ipsec_input.c,v 1.63 2003/02/20 18:35:43 deraadt Exp $	*/
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -74,19 +74,19 @@
 #include <netinet/icmp6.h>
 #endif
 
-#include <netipsec/ipsec.h>
+#include "ipsec.h"
 #ifdef INET6
-#include <netipsec/ipsec6.h>
+#include "ipsec6.h"
 #endif
-#include <netipsec/ah_var.h>
-#include <netipsec/esp.h>
-#include <netipsec/esp_var.h>
-#include <netipsec/ipcomp_var.h>
+#include "ah_var.h"
+#include "esp.h"
+#include "esp_var.h"
+#include "ipcomp_var.h"
 
-#include <netipsec/key.h>
-#include <netipsec/keydb.h>
+#include "key.h"
+#include "keydb.h"
 
-#include <netipsec/xform.h>
+#include "xform.h"
 #include <netinet6/ip6protosw.h>
 
 #include <machine/in_cksum.h>

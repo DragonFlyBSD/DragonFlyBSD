@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_sysvec.c,v 1.17.2.1 2001/02/22 05:15:01 marcel Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_sysvec.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_sysvec.c,v 1.3 2003/08/07 21:17:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,8 +38,8 @@
 #include <sys/signalvar.h>
 #include <sys/proc.h>
 
-#include <i386/ibcs2/ibcs2_syscall.h>
-#include <i386/ibcs2/ibcs2_signal.h>
+#include "ibcs2_syscall.h"
+#include "ibcs2_signal.h"
 
 extern int bsd_to_ibcs2_errno[];
 extern struct sysent ibcs2_sysent[IBCS2_SYS_MAXSYSCALL];

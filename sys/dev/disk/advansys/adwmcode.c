@@ -3,7 +3,7 @@
  * Advanced Systems Inc. SCSI controllers
  *
  * $FreeBSD: src/sys/dev/advansys/adwmcode.c,v 1.3 2000/02/03 16:34:57 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwmcode.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwmcode.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
  *
  * Obtained from:
  * advansys.c - Linux Host Driver for AdvanSys SCSI Adapters
@@ -20,7 +20,7 @@
 
 #include <sys/param.h>
 
-#include <dev/advansys/adwmcode.h>
+#include "adwmcode.h"
 
 const u_int8_t adw_asc3550_mcode[] =
 {

@@ -22,7 +22,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/pcfclock.c,v 1.3.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.4 2003/07/21 07:57:41 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.5 2003/08/07 21:16:57 dillon Exp $
  *
  */
 
@@ -42,9 +42,9 @@
 #include <machine/resource.h>
 #include <machine/clock.h>      /* for DELAY */
 
-#include <dev/ppbus/ppbconf.h>
-#include <dev/ppbus/ppb_msq.h>
-#include <dev/ppbus/ppbio.h>
+#include <bus/ppbus/ppbconf.h>
+#include <bus/ppbus/ppb_msq.h>
+#include <bus/ppbus/ppbio.h>
 
 #include "ppbus_if.h"
 

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_trantcp.c,v 1.3.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.5 2003/07/29 12:45:42 hmp Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.6 2003/08/07 21:17:39 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -53,13 +53,13 @@
 
 #include <sys/mchain.h>
 
-#include <netsmb/netbios.h>
+#include "netbios.h"
 
-#include <netsmb/smb.h>
-#include <netsmb/smb_conn.h>
-#include <netsmb/smb_tran.h>
-#include <netsmb/smb_trantcp.h>
-#include <netsmb/smb_subr.h>
+#include "smb.h"
+#include "smb_conn.h"
+#include "smb_tran.h"
+#include "smb_trantcp.h"
+#include "smb_subr.h"
 
 #define M_NBDATA	M_PCB
 

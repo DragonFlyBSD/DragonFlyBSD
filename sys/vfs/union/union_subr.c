@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.5 2003/07/19 21:14:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.6 2003/08/07 21:17:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -56,7 +56,7 @@
 #include <vm/vm_extern.h>	/* for vnode_pager_setsize */
 #include <vm/vm_zone.h>
 #include <vm/vm_object.h>	/* for vm cache coherency */
-#include <miscfs/union/union.h>
+#include "union.h"
 
 extern int	union_init __P((void));
 

@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/posix4.h,v 1.6 1999/12/27 10:22:09 bde Exp $
- * $DragonFly: src/sys/sys/posix4.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/sys/posix4.h,v 1.3 2003/08/07 21:17:19 dillon Exp $
  */
 
 #include "opt_posix.h"
@@ -40,7 +40,7 @@
 #include <sys/param.h>
 #include <sys/ioccom.h>
 #include <sys/malloc.h>
-#include <posix4/sched.h>
+#include "sched.h"
 
 /* Generate syscall stubs for when something is optionally
  * loadable as a module.  References "syscall_not_present". 

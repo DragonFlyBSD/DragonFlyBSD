@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.4 2003/07/26 20:19:33 rob Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.5 2003/08/07 21:17:24 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -59,14 +59,14 @@
 #include <net/if_types.h>
 #include <net/bpf.h>
 #include <net/ethernet.h>
-#include <net/bridge.h>
+#include <net/bridge/bridge.h>
 
 #if defined(INET) || defined(INET6)
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #include <netinet/if_ether.h>
-#include <netinet/ip_fw.h>
-#include <netinet/ip_dummynet.h>
+#include <net/ipfw/ip_fw.h>
+#include <net/dummynet/ip_dummynet.h>
 #endif
 #ifdef INET6
 #include <netinet6/nd6.h>

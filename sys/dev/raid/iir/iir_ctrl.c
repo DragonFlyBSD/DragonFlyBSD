@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir_ctrl.c,v 1.2.2.4 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.4 2003/07/21 05:50:31 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.5 2003/08/07 21:17:09 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -54,7 +54,7 @@
 #include <vm/vm_extern.h>
 #include <vm/pmap.h>
 
-#include <dev/iir/iir.h>
+#include "iir.h"
 
 /* Entry points and other prototypes */
 static struct gdt_softc *gdt_minor2softc(int minor_no);

@@ -36,12 +36,13 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.31 2003/08/01 10:58:59 rob Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.32 2003/08/07 21:17:22 dillon Exp $
  */
 
-#include "apm.h"
-#include "ether.h"
-#include "npx.h"
+#include "use_apm.h"
+#include "use_ether.h"
+#include "use_npx.h"
+#include "use_isa.h"
 #include "opt_atalk.h"
 #include "opt_compat.h"
 #include "opt_cpu.h"
@@ -110,10 +111,10 @@
 #include <machine/cputypes.h>
 
 #ifdef OLD_BUS_ARCH
-#include <i386/isa/isa_device.h>
+#include <bus/isa/i386/isa_device.h>
 #endif
 #include <i386/isa/intr_machdep.h>
-#include <isa/rtc.h>
+#include <bus/isa/rtc.h>
 #include <machine/vm86.h>
 #include <sys/random.h>
 #include <sys/ptrace.h>
@@ -1977,7 +1978,6 @@ init386(int first)
 	if (metadata_missing)
 		printf("WARNING: loader(8) metadata is missing!\n");
 
-#include	"isa.h"
 #if	NISA >0
 	isa_defaultirq();
 #endif

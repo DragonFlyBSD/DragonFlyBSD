@@ -30,13 +30,13 @@
  *	$Id: i4b_ctl.c,v 1.37 2000/05/31 08:04:43 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ctl.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.4 2003/07/21 07:57:46 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.5 2003/08/07 21:17:25 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:38 2001]
  *
  *---------------------------------------------------------------------------*/
 
-#include "i4bctl.h"
+#include "use_i4bctl.h"
 
 #if NI4BCTL > 1
 #error "only 1 (one) i4bctl device allowed!"
@@ -71,8 +71,8 @@
 #endif /* __FreeBSD__ */
 
 #ifdef __FreeBSD__
-#include <machine/i4b_debug.h>
-#include <machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
 #elif defined(__bsdi__)
 #include <i4b/i4b_debug.h>
 #include <i4b/i4b_ioctl.h>
@@ -83,10 +83,9 @@
 #include <i4b/i4b_ioctl.h>
 #endif
 
-#include <i4b/include/i4b_global.h>
-#include <i4b/include/i4b_l3l4.h>
-
-#include <i4b/layer2/i4b_l2.h>
+#include "../include/i4b_global.h"
+#include "../include/i4b_l3l4.h"
+#include "../layer2/i4b_l2.h"
 
 static int openflag = 0;
 

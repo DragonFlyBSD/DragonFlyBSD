@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_disk.c,v 1.12.2.6 2001/11/27 20:21:02 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.5 2003/07/22 17:03:29 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.6 2003/08/07 21:17:09 dillon Exp $
  */
 
 /*
@@ -55,8 +55,8 @@
 #include <vm/pmap.h>
 #include <machine/md_var.h>
 
-#include <dev/ida/idareg.h>
-#include <dev/ida/idavar.h>
+#include "idareg.h"
+#include "idavar.h"
 
 /* prototypes */
 static int idad_probe(device_t dev);

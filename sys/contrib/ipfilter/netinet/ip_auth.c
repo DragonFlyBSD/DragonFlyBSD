@@ -5,7 +5,7 @@
  *
  * @(#)$Id: ip_auth.c,v 2.11.2.20 2002/06/04 14:40:42 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.21.2.7 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.3 2003/07/26 14:07:18 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.4 2003/08/07 21:16:48 dillon Exp $
  */
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
@@ -89,10 +89,10 @@ extern struct ifqueue   ipintrq;		/* ip packet input queue */
 #endif
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
-#include "netinet/ip_compat.h"
+#include "ip_compat.h"
 #include <netinet/tcpip.h>
-#include "netinet/ip_fil.h"
-#include "netinet/ip_auth.h"
+#include "ip_fil.h"
+#include "ip_auth.h"
 #if !SOLARIS && !defined(linux)
 # include <net/netisr.h>
 # ifdef __FreeBSD__

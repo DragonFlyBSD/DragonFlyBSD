@@ -34,7 +34,7 @@
  *	@(#)ipx_pcb.c
  *
  * $FreeBSD: src/sys/netipx/ipx_pcb.c,v 1.18.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.5 2003/07/26 21:07:36 rob Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.6 2003/08/07 21:17:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,10 +47,10 @@
 #include <net/if.h>
 #include <net/route.h>
 
-#include <netipx/ipx.h>
-#include <netipx/ipx_if.h>
-#include <netipx/ipx_pcb.h>
-#include <netipx/ipx_var.h>
+#include "ipx.h"
+#include "ipx_if.h"
+#include "ipx_pcb.h"
+#include "ipx_var.h"
 
 static struct	ipx_addr zeroipx_addr;
 

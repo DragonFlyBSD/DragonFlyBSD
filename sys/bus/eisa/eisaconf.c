@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/eisa/eisaconf.c,v 1.55 2000/01/14 07:13:57 peter Exp $
- * $DragonFly: src/sys/bus/eisa/eisaconf.c,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/bus/eisa/eisaconf.c,v 1.3 2003/08/07 21:16:45 dillon Exp $
  */
 
 #include "opt_eisa.h"
@@ -47,7 +47,7 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
-#include <dev/eisa/eisaconf.h>
+#include "eisaconf.h"
 
 typedef struct resvaddr {
         u_long	addr;				/* start address */

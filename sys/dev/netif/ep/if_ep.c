@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.3 2003/07/26 14:25:20 rob Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.4 2003/08/07 21:17:01 dillon Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -88,9 +88,9 @@
 
 #include <machine/clock.h>
 
-#include <dev/ep/if_epreg.h>
-#include <dev/ep/if_epvar.h>
-#include <i386/isa/elink.h>
+#include "if_epreg.h"
+#include "if_epvar.h"
+#include "../elink_layer/elink.h"
 
 /* Exported variables */
 devclass_t ep_devclass;

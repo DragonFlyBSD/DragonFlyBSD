@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.7 2003/07/26 22:04:27 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.8 2003/08/07 21:17:44 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -66,15 +66,15 @@
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 
-#include <miscfs/fifofs/fifo.h>
+#include <vfs/fifofs/fifo.h>
 
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/dir.h>
-#include <ufs/ufs/ufsmount.h>
-#include <ufs/ufs/ufs_extern.h>
+#include "quota.h"
+#include "inode.h"
+#include "dir.h"
+#include "ufsmount.h"
+#include "ufs_extern.h"
 #ifdef UFS_DIRHASH
-#include <ufs/ufs/dirhash.h>
+#include "dirhash.h"
 #endif
 
 static int ufs_access __P((struct vop_access_args *));

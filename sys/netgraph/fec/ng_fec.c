@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.2 2003/06/17 04:28:50 dillon Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.3 2003/08/07 21:17:31 dillon Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -125,7 +125,7 @@
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
 #include <netgraph/ng_parse.h>
-#include <netgraph/ng_fec.h>
+#include "ng_fec.h"
 
 #define IFP2NG(ifp)  ((struct ng_node *)((struct arpcom *)(ifp))->ac_netgraph)
 #define FEC_INC(x, y)	(x) = (x + 1) % y

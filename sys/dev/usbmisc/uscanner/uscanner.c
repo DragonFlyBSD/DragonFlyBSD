@@ -1,6 +1,6 @@
 /*	$NetBSD: uscanner.c,v 1.26 2001/12/31 12:15:22 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uscanner.c,v 1.2.2.12 2003/01/27 09:48:57 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.3 2003/07/21 05:50:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.4 2003/08/07 21:17:15 dillon Exp $	*/
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -63,11 +63,11 @@
 #include <sys/conf.h>
 #include <sys/sysctl.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
 
-#include <dev/usb/usbdevs.h>
+#include <bus/usb/usbdevs.h>
 
 #ifdef USB_DEBUG
 #define DPRINTF(x)	if (uscannerdebug) logprintf x

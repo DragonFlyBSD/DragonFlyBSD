@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_src.c,v 1.1.2.3 2002/02/26 18:02:06 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.4 2003/06/25 03:56:04 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.5 2003/08/07 21:17:33 dillon Exp $	*/
 /*	$KAME: in6_src.c,v 1.37 2001/03/29 05:34:31 itojun Exp $	*/
 
 /*
@@ -99,7 +99,7 @@
 
 #include <net/net_osdep.h>
 
-#include "loop.h"
+#include "use_loop.h"
 
 /*
  * Return an IPv6 address, which is the most appropriate for a given

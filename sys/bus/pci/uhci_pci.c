@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/uhci_pci.c,v 1.26.2.8 2003/05/07 16:46:55 jhb Exp $
- * $DragonFly: src/sys/bus/pci/Attic/uhci_pci.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/Attic/uhci_pci.c,v 1.3 2003/08/07 21:16:47 dillon Exp $
  */
 
 /* Universal Host Controller Interface
@@ -64,16 +64,16 @@
 #include <sys/rman.h>
 #endif
 
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
+#include "pcivar.h"
+#include "pcireg.h"
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdivar.h>
-#include <dev/usb/usb_mem.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdivar.h>
+#include <bus/usb/usb_mem.h>
 
-#include <dev/usb/uhcireg.h>
-#include <dev/usb/uhcivar.h>
+#include <bus/usb/uhcireg.h>
+#include <bus/usb/uhcivar.h>
 
 #define PCI_UHCI_VENDORID_INTEL		0x8086
 #define PCI_UHCI_VENDORID_VIA		0x1106

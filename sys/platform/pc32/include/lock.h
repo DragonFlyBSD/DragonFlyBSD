@@ -22,14 +22,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/lock.h,v 1.11.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/platform/pc32/include/lock.h,v 1.5 2003/07/13 05:45:10 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/lock.h,v 1.6 2003/08/07 21:17:22 dillon Exp $
  */
 
 #ifndef _MACHINE_LOCK_H_
 #define _MACHINE_LOCK_H_
 
 #ifndef _MACHINE_PSL_H_
-#include <machine/psl.h>
+#include "psl.h"
 #endif
 
 /*

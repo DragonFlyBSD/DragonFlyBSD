@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.6 2003/07/26 20:19:33 rob Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.7 2003/08/07 21:17:30 dillon Exp $
  */
 
 /*
@@ -66,7 +66,7 @@
  * interrupts and network activity; thus, splimp must be >= spltty.
  */
 
-#include "sl.h"
+#include "use_sl.h"
 
 #include "opt_inet.h"
 #if !defined(KLD_MODULE)
@@ -101,7 +101,7 @@
 #endif
 
 #include <net/slcompress.h>
-#include <net/if_slvar.h>
+#include "if_slvar.h"
 #include <net/slip.h>
 
 #include <net/bpf.h>

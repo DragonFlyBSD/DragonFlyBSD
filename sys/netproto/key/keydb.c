@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keydb.c,v 1.1.2.1 2000/07/15 07:14:42 kris Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keydb.c,v 1.3 2003/07/21 07:57:51 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keydb.c,v 1.4 2003/08/07 21:17:37 dillon Exp $	*/
 /*	$KAME: keydb.c,v 1.64 2000/05/11 17:02:30 itojun Exp $	*/
 
 /*
@@ -50,7 +50,7 @@
 #include <netinet/in.h>
 
 #include <net/pfkeyv2.h>
-#include <netkey/keydb.h>
+#include "keydb.h"
 #include <netinet6/ipsec.h>
 
 #include <net/net_osdep.h>

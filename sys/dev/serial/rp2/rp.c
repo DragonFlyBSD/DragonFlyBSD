@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rp.c,v 1.33.2.2 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.7 2003/07/26 19:07:48 rob Exp $
+ * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.8 2003/08/07 21:17:11 dillon Exp $
  */
 
 /* 
@@ -48,13 +48,13 @@
 #include <sys/conf.h>
 #include <sys/kernel.h>
 
-#include <i386/isa/isa_device.h>
+#include <bus/isa/i386/isa_device.h>
 
-#include <pci/pcivar.h>
+#include <bus/pci/pcivar.h>
 
 #define ROCKET_C
-#include <i386/isa/rpreg.h>
-#include <i386/isa/rpvar.h>
+#include "rpreg.h"
+#include "rpvar.h"
 
 #ifndef TRUE
 #define TRUE 1

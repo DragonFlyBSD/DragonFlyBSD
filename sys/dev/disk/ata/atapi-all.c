@@ -26,14 +26,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.3 2003/07/19 21:14:18 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.4 2003/08/07 21:16:51 dillon Exp $
  */
 
 #include "opt_ata.h"
-#include "atapicd.h"
-#include "atapifd.h"
-#include "atapist.h"
-#include "atapicam.h"
+#include "use_atapicd.h"
+#include "use_atapifd.h"
+#include "use_atapist.h"
+#include "use_atapicam.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/ata.h>
@@ -45,8 +46,8 @@
 #include <machine/bus.h>
 #include <machine/clock.h>
 #include <sys/rman.h>
-#include <dev/ata/ata-all.h>
-#include <dev/ata/atapi-all.h>
+#include "ata-all.h"
+#include "atapi-all.h"
 
 /* prototypes */
 static void atapi_read(struct atapi_request *, int);

@@ -23,13 +23,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/mpapic.h,v 1.14.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/i386/include/Attic/mpapic.h,v 1.3 2003/07/04 00:32:26 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/mpapic.h,v 1.4 2003/08/07 21:17:22 dillon Exp $
  */
 
 #ifndef _MACHINE_MPAPIC_H_
 #define _MACHINE_MPAPIC_H_
 
-#include <machine/apic.h>
+#include "apic.h"
 
 #include <i386/isa/icu.h>
 

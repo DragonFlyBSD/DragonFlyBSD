@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/pci/if_wxvar.h,v 1.4.2.6 2001/10/20 17:44:12 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wxvar.h,v 1.2 2003/06/17 04:28:57 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wxvar.h,v 1.3 2003/08/07 21:17:06 dillon Exp $ */
 /*                  
  * Principal Author: Matthew Jacob
  * Copyright (c) 1999, 2001 by Traakan Software
@@ -73,11 +73,11 @@
 #include <vm/vm.h>
 #include <vm/pmap.h>
 #include <machine/clock.h>
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
-#include <pci/if_wxreg.h>
-#include <dev/mii/mii.h>
-#include <dev/mii/miivar.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include "if_wxreg.h"
+#include "../mii_layer/mii.h"
+#include "../mii_layer/miivar.h"
 #include <sys/sysctl.h>
 
 #define	NBPFILTER	1

@@ -30,13 +30,13 @@
  *	$Id: i4b_l4mgmt.c,v 1.34 2000/09/01 14:11:51 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_l4mgmt.c,v 1.6.2.2 2001/08/10 14:08:43 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_l4mgmt.c,v 1.3 2003/07/26 19:20:33 rob Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_l4mgmt.c,v 1.4 2003/08/07 21:17:29 dillon Exp $
  *
  *      last edit-date: [Fri Oct 13 15:58:34 2000]
  *
  *---------------------------------------------------------------------------*/
 
-#include "i4b.h"
+#include "use_i4b.h"
 
 #if NI4B > 0
 
@@ -49,17 +49,17 @@
 #endif
 
 #ifdef __FreeBSD__
-#include <machine/i4b_debug.h>
-#include <machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
 #else
 #include <i4b/i4b_debug.h>
 #include <i4b/i4b_ioctl.h>
 #endif
 
-#include <i4b/include/i4b_l3l4.h>
-#include <i4b/include/i4b_global.h>
+#include "../include/i4b_l3l4.h"
+#include "../include/i4b_global.h"
 
-#include <i4b/layer4/i4b_l4.h>
+#include "i4b_l4.h"
 
 call_desc_t call_desc[N_CALL_DESC];	/* call descriptor array */
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_subr.c,v 1.1 1999/12/09 19:09:59 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_subr.c,v 1.4 2003/07/26 18:51:23 rob Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_subr.c,v 1.5 2003/08/07 21:17:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,9 +40,9 @@
 #include <sys/malloc.h>
 #include <sys/buf.h>
 
-#include <fs/hpfs/hpfs.h>
-#include <fs/hpfs/hpfsmount.h>
-#include <fs/hpfs/hpfs_subr.h>
+#include "hpfs.h"
+#include "hpfsmount.h"
+#include "hpfs_subr.h"
 
 u_long
 hpfs_checksum(

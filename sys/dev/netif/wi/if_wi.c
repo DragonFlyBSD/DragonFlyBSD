@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.4 2003/06/25 03:55:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.5 2003/08/07 21:17:06 dillon Exp $
  */
 
 /*
@@ -99,10 +99,10 @@
 
 #include <net/bpf.h>
 
-#include <dev/wi/if_wavelan_ieee.h>
-#include <dev/wi/wi_hostap.h>
-#include <dev/wi/if_wivar.h>
-#include <dev/wi/if_wireg.h>
+#include "if_wavelan_ieee.h"
+#include "wi_hostap.h"
+#include "if_wivar.h"
+#include "if_wireg.h"
 
 static void wi_intr(void *);
 static void wi_reset(struct wi_softc *);

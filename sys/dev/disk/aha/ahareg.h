@@ -31,16 +31,16 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/ahareg.h,v 1.8.2.1 2000/08/02 22:24:40 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/ahareg.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aha/ahareg.h,v 1.3 2003/08/07 21:16:50 dillon Exp $
  */
 
 #ifndef _AHAREG_H_
 #define _AHAREG_H_
 
-#include "aha.h"
+#include "use_aha.h"
 
 #include <sys/queue.h>
-#include <cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_all.h>
 
 #define AHA_MAXTRANSFER_SIZE	 0xffffff	/* limited by 24bit counter */
 #define AHA_NSEG		17	/* The number of dma segments 

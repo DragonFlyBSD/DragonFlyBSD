@@ -15,7 +15,7 @@
 
 /*
  * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.28.2.7 2002/10/10 15:53:24 iwasaki Exp $
- * $DragonFly: src/sys/boot/i386/boot2/Attic/boot2.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/boot2/Attic/boot2.c,v 1.3 2003/08/07 21:16:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -26,8 +26,8 @@
 #include <machine/bootinfo.h>
 #include <machine/elf.h>
 
-#include <ufs/ffs/fs.h>
-#include <ufs/ufs/dinode.h>
+#include <vfs/ufs/fs.h>
+#include <vfs/ufs/dinode.h>
 
 #include <stdarg.h>
 

@@ -35,7 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/i386/include/Attic/cpu.h,v 1.8 2003/07/12 17:54:34 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cpu.h,v 1.9 2003/08/07 21:17:22 dillon Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -44,9 +44,9 @@
 /*
  * Definitions unique to i386 cpu support.
  */
-#include <machine/psl.h>
-#include <machine/frame.h>
-#include <machine/segments.h>
+#include "psl.h"
+#include "frame.h"
+#include "segments.h"
 
 /*
  * definitions of cpu-dependent requirements
