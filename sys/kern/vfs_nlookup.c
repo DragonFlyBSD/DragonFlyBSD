@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.8 2004/11/18 20:04:24 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.9 2004/12/27 20:30:03 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -269,6 +269,7 @@ nlookup(struct nlookupdata *nd)
 {
     struct nlcomponent nlc;
     struct namecache *ncp;
+    int wasdotordotdot;
     char *ptr;
     char *xptr;
     int error;
@@ -347,9 +348,13 @@ nlookup(struct nlookupdata *nd)
 	 * The namecache topology is not allowed to be disconnected, so 
 	 * encountering a NULL parent will generate EINVAL.  This typically
 	 * occurs when a directory is removed out from under a process.
+	 *
+	 * If NLC_DELETE is set neither '.' or '..' can be the last component
+	 * of a path.
 	 */
 	if (nlc.nlc_namelen == 1 && nlc.nlc_nameptr[0] == '.') {
 	    ncp = cache_get(nd->nl_ncp);
+	    wasdotordotdot = 1;
 	} else if (nlc.nlc_namelen == 2 && 
 		   nlc.nlc_nameptr[0] == '.' && nlc.nlc_nameptr[1] == '.') {
 	    ncp = nd->nl_ncp;
@@ -375,6 +380,7 @@ nlookup(struct nlookupdata *nd)
 		}
 		ncp = cache_get(ncp);
 	    }
+	    wasdotordotdot = 1;
 	} else {
 	    ncp = cache_nlookup(nd->nl_ncp, &nlc);
 	    while ((error = cache_resolve(ncp, nd->nl_cred)) == EAGAIN) {
@@ -383,6 +389,7 @@ nlookup(struct nlookupdata *nd)
 		cache_put(ncp);
 		ncp = cache_nlookup(nd->nl_ncp, &nlc);
 	    }
+	    wasdotordotdot = 0;
 	}
 	/*
 	 * [end of subsection] ncp is locked and ref'd.  nd->nl_ncp is ref'd
@@ -406,11 +413,18 @@ nlookup(struct nlookupdata *nd)
 	 * Early completion.  ENOENT is not an error if this is the last
 	 * component and NLC_CREATE was requested.  Note that ncp->nc_error
 	 * is left as ENOENT in that case, which we check later on.
+	 *
+	 * Also handle invalid '.' or '..' components terminating a path
+	 * during removal.  The standard requires this and pax pretty
+	  *stupidly depends on it.
 	 */
 	for (xptr = ptr; *xptr == '/'; ++xptr)
 		;
-	if (error == ENOENT && *xptr == 0 && (nd->nl_flags & NLC_CREATE)) {
-	    error = naccess(ncp, VCREATE, nd->nl_cred);
+	if (*xptr == 0) {
+	    if (error == ENOENT && (nd->nl_flags & NLC_CREATE))
+		error = naccess(ncp, VCREATE, nd->nl_cred);
+	    if (error == 0 && wasdotordotdot && (nd->nl_flags & NLC_DELETE))
+		error = EINVAL;
 	}
 
 	/*
