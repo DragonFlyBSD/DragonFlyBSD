@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.14 2004/05/31 01:51:23 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.15 2004/06/03 15:29:43 hmp Exp $
  */
 
 /*
@@ -253,8 +253,6 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 #define ACT_ADVANCE		3
 #define ACT_INIT		5
 #define ACT_MAX			64
-#define PFCLUSTER_BEHIND	3
-#define PFCLUSTER_AHEAD		3
 
 #ifdef _KERNEL
 /*
