@@ -36,7 +36,7 @@
  *
  * @(#)lex.l	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mklocale/lex.l,v 1.5 2000/02/08 07:43:26 obrien Exp $
- * $DragonFly: src/usr.bin/mklocale/lex.l,v 1.4 2004/10/30 18:14:35 dillon Exp $
+ * $DragonFly: src/usr.bin/mklocale/lex.l,v 1.5 2004/10/30 18:46:07 dillon Exp $
  */
 
 #include <ctype.h>
@@ -47,7 +47,7 @@
 #include "y.tab.h"
 
 /*
- * Bootstrap support
+ * Bootstrapping
  */
 #ifndef _CTYPE_SW0
 #define _CTYPE_SW0	0
@@ -55,6 +55,7 @@
 #define _CTYPE_SW2	0
 #define _CTYPE_SW3	0
 #endif
+
 %}
 
 ODIGIT	[0-7]
@@ -121,10 +122,18 @@ SPECIAL				{ yylval.i = _CTYPE_T|_CTYPE_R|_CTYPE_G;
 				  return(LIST); }
 PHONOGRAM			{ yylval.i = _CTYPE_Q|_CTYPE_R|_CTYPE_G;
 				  return(LIST); }
-SWIDTH0				{ yylval.i = _CTYPE_SW0; return(LIST); }
-SWIDTH1				{ yylval.i = _CTYPE_SW1; return(LIST); }
-SWIDTH2				{ yylval.i = _CTYPE_SW2; return(LIST); }
-SWIDTH3				{ yylval.i = _CTYPE_SW3; return(LIST); }
+SWIDTH0				{ yylval.i = _CTYPE_SW0; 
+				  if (yylval.i) return(LIST);
+				  printf("Lex is skipping '%s'\n", yytext); }
+SWIDTH1				{ yylval.i = _CTYPE_SW1;
+				  if (yylval.i) return(LIST);
+				  printf("Lex is skipping '%s'\n", yytext); }
+SWIDTH2				{ yylval.i = _CTYPE_SW2;
+				  if (yylval.i) return(LIST);
+				  printf("Lex is skipping '%s'\n", yytext); }
+SWIDTH3				{ yylval.i = _CTYPE_SW3; 
+				  if (yylval.i) return(LIST);
+				  printf("Lex is skipping '%s'\n", yytext); }
 
 VARIABLE[\t ]			{ static char vbuf[1024];
 				  char *v = vbuf;
