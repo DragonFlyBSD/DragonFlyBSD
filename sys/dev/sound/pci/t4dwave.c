@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/t4dwave.c,v 1.9.2.11 2002/10/22 08:27:13 cognet Exp $
- * $DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.3 2003/08/07 21:17:13 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.4 2004/11/05 17:47:48 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.3 2003/08/07 21:17:13 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.4 2004/11/05 17:47:48 dillon Exp $");
 /* -------------------------------------------------------------------- */
 
 #define TDX_PCI_ID 	0x20001023
@@ -45,6 +45,16 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.3 2003/08/07 2
 #define TR_DEFAULT_BUFSZ 	0x1000
 #define TR_TIMEOUT_CDC	0xffff
 #define TR_MAXPLAYCH	4
+/*
+ * Though, it's not clearly documented in trident datasheet, trident
+ * audio cards can't handle DMA addresses located above 1GB. The LBA
+ * (loop begin address) register which holds DMA base address is 32bits
+ * register.
+ * But the MSB 2bits are used for other purposes(I guess it is really
+ * bad idea). This effectivly limits the DMA address space up to 1GB.
+ */
+#define TR_MAXADDR	((1 << 30) - 1)
+
 
 struct tr_info;
 
@@ -486,7 +496,7 @@ trpchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *
 	ch->buffer = b;
 	ch->parent = tr;
 	ch->channel = c;
-	if (sndbuf_alloc(ch->buffer, tr->parent_dmat, tr->bufsz) == -1)
+	if (sndbuf_alloc(ch->buffer, tr->parent_dmat, tr->bufsz) != 0)
 		return NULL;
 
 	return ch;
@@ -594,7 +604,7 @@ trrchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *
 	ch->buffer = b;
 	ch->parent = tr;
 	ch->channel = c;
-	if (sndbuf_alloc(ch->buffer, tr->parent_dmat, tr->bufsz) == -1)
+	if (sndbuf_alloc(ch->buffer, tr->parent_dmat, tr->bufsz) != 0)
 		return NULL;
 
 	return ch;
@@ -852,7 +862,7 @@ tr_pci_attach(device_t dev)
 	}
 
 	if (bus_dma_tag_create(/*parent*/NULL, /*alignment*/2, /*boundary*/0,
-		/*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
+		/*lowaddr*/TR_MAXADDR,
 		/*highaddr*/BUS_SPACE_MAXADDR,
 		/*filter*/NULL, /*filterarg*/NULL,
 		/*maxsize*/tr->bufsz, /*nsegments*/1, /*maxsegz*/0x3ffff,
