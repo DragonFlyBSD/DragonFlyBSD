@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.15 2005/01/26 23:09:57 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.16 2005/03/28 19:53:30 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -479,13 +479,13 @@ sbappend(sb, m)
 	struct mbuf *m;
 {
 	struct mbuf *n;
+	boolean_t wasempty = (sb->sb_mb == NULL);
 
 	if (m == 0)
 		return;
 	n = sb->sb_mb;
 	if (n) {
-		while (n->m_nextpkt)
-			n = n->m_nextpkt;
+		n = sb->sb_lastrecord;
 		do {
 			if (n->m_flags & M_EOR) {
 				sbappendrecord(sb, m); /* XXXXXX!!!! */
@@ -494,12 +494,15 @@ sbappend(sb, m)
 		} while (n->m_next && (n = n->m_next));
 	}
 	sbcompress(sb, m, n);
+	if (wasempty)
+		sb->sb_lastrecord = sb->sb_mb;
 }
 
 /*
  * sbappendstream() is an optimized form of sbappend() for protocols
  * such as TCP that only have one record in the socket buffer, are
- * not PR_ATOMIC, nor allow MT_CONTROL data.
+ * not PR_ATOMIC, nor allow MT_CONTROL data.  A protocol that uses
+ * sbappendstream() must use sbappendstream() exclusively.
  */
 void
 sbappendstream(struct sockbuf *sb, struct mbuf *m)
@@ -547,19 +550,18 @@ sbappendrecord(sb, m0)
 
 	if (m0 == 0)
 		return;
-	m = sb->sb_mb;
-	if (m)
-		while (m->m_nextpkt)
-			m = m->m_nextpkt;
+
+	sballoc(sb, m0);
 	/*
 	 * Put the first mbuf on the queue.
 	 * Note this permits zero length records.
 	 */
-	sballoc(sb, m0);
-	if (m)
-		m->m_nextpkt = m0;
+	if (sb->sb_mb)
+		sb->sb_lastrecord->m_nextpkt = m0;
 	else
 		sb->sb_mb = m0;
+	sb->sb_lastrecord = m0;
+
 	m = m0->m_next;
 	m0->m_next = 0;
 	if (m && (m0->m_flags & M_EOR)) {
@@ -606,6 +608,9 @@ sbinsertoob(sb, m0)
 	sballoc(sb, m0);
 	m0->m_nextpkt = *mp;
 	*mp = m0;
+	if (m0->m_nextpkt == NULL)
+		sb->sb_lastrecord = m0;
+
 	m = m0->m_next;
 	m0->m_next = 0;
 	if (m && (m0->m_flags & M_EOR)) {
@@ -656,13 +661,13 @@ sbappendaddr(sb, asa, m0, control)
 	m->m_next = control;
 	for (n = m; n; n = n->m_next)
 		sballoc(sb, n);
-	n = sb->sb_mb;
-	if (n) {
-		while (n->m_nextpkt)
-			n = n->m_nextpkt;
-		n->m_nextpkt = m;
-	} else
+
+	if (sb->sb_mb)
+		sb->sb_lastrecord->m_nextpkt = m;
+	else
 		sb->sb_mb = m;
+	sb->sb_lastrecord = m;
+
 	return (1);
 }
 
@@ -689,13 +694,13 @@ sbappendcontrol(sb, m0, control)
 	n->m_next = m0;			/* concatenate data to control */
 	for (m = control; m; m = m->m_next)
 		sballoc(sb, m);
-	n = sb->sb_mb;
-	if (n) {
-		while (n->m_nextpkt)
-			n = n->m_nextpkt;
-		n->m_nextpkt = control;
-	} else
+
+	if (sb->sb_mb)
+		sb->sb_lastrecord->m_nextpkt = control;
+	else
 		sb->sb_mb = control;
+	sb->sb_lastrecord = control;
+
 	return (1);
 }
 
@@ -773,7 +778,7 @@ sbflush(sb)
 		sbdrop(sb, (int)sb->sb_cc);
 	}
 	KASSERT(!(sb->sb_cc || sb->sb_mb || sb->sb_mbcnt || sb->sb_lastmbuf),
-	    ("sbflush: cc %ld || mb %p || mbcnt %ld || mbtail %p",
+	    ("sbflush: cc %ld || mb %p || mbcnt %ld || lastmbuf %p",
 	    sb->sb_cc, sb->sb_mb, sb->sb_mbcnt, sb->sb_lastmbuf));
 }
 

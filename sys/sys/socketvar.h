@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.17 2005/01/26 23:09:58 hsu Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.18 2005/03/28 19:53:30 hsu Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -93,7 +93,9 @@ struct socket {
 		u_long	sb_mbmax;	/* max chars of mbufs to use */
 		long	sb_lowat;	/* low water mark */
 		struct	mbuf *sb_mb;	/* the mbuf chain */
-		struct	mbuf *sb_lastmbuf; /* last mbuf in sb_mb */
+		struct	mbuf *sb_lastmbuf;	/* last mbuf in sb_mb */
+		struct	mbuf *sb_lastrecord;	/* last record in sb_mb
+						 * valid <=> sb_mb non-NULL */
 		struct	selinfo sb_sel;	/* process selecting read/write */
 		short	sb_flags;	/* flags, see below */
 		short	sb_timeo;	/* timeout for read/write */

@@ -82,7 +82,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.27 2005/01/13 23:05:32 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.28 2005/03/28 19:53:30 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -1052,19 +1052,25 @@ dontblock:
 		}
 	}
 
-	if (m && pr->pr_flags & PR_ATOMIC) {
+	if (m && pr->pr_flags & PR_ATOMIC)
 		flags |= MSG_TRUNC;
-		if ((flags & MSG_PEEK) == 0)
-			(void) sbdroprecord(&so->so_rcv);
-	}
-	if ((flags & MSG_PEEK) == 0) {
-		if (m == 0) {
+	if (!(flags & MSG_PEEK)) {
+		if (m == NULL) {
 			so->so_rcv.sb_mb = nextrecord;
 			so->so_rcv.sb_lastmbuf = NULL;
+		} else {
+			if (pr->pr_flags & PR_ATOMIC)
+				sbdroprecord(&so->so_rcv);
+			else if (m->m_nextpkt == NULL) {
+				KASSERT(so->so_rcv.sb_mb == m,
+				    ("sb_mb %p != m %p", so->so_rcv.sb_mb, m));
+				so->so_rcv.sb_lastrecord = m;
+			}
 		}
 		if (pr->pr_flags & PR_WANTRCVD && so->so_pcb)
 			so_pru_rcvd(so, flags);
 	}
+
 	if (orig_resid == uio->uio_resid && orig_resid &&
 	    (flags & MSG_EOR) == 0 && (so->so_state & SS_CANTRCVMORE) == 0) {
 		sbunlock(&so->so_rcv);
