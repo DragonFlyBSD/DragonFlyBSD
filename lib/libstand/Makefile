@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libstand/Makefile,v 1.14.2.10 2002/07/22 14:21:50 ru Exp $
-# $DragonFly: src/lib/libstand/Makefile,v 1.3 2003/11/10 06:14:44 dillon Exp $
+# $DragonFly: src/lib/libstand/Makefile,v 1.4 2004/01/25 01:08:41 joerg Exp $
 #
 # Originally from	$NetBSD: Makefile,v 1.21 1997/10/26 22:08:38 lukem Exp $
 #
@@ -15,7 +15,7 @@ INCS=		stand.h
 MAN=		libstand.3
 
 # Mostly OK, some of the libc imports are a bit noisy
-CFLAGS+=	-Wall
+CFLAGS+=	-Wall -ffreestanding
 
 .if ${MACHINE_ARCH} == "alpha"
 CFLAGS+=	-mno-fp-regs
