@@ -1,6 +1,6 @@
 This fortune brought to you by:
 $FreeBSD: src/games/fortune/datfiles/fortunes2,v 1.17.2.8 2002/10/19 05:10:15 fanf Exp $
-$DragonFly: src/games/fortune/datfiles/fortunes2,v 1.2 2003/06/17 04:25:23 dillon Exp $
+$DragonFly: src/games/fortune/datfiles/fortunes2,v 1.3 2003/11/04 14:17:26 eirikn Exp $
 
 %
 =======================================================================
@@ -34510,7 +34510,8 @@ just stupid.
 		-- J.D. Watson, "The Double Helix"
 %
 One day an elderly Jewish Pole, living in Warsaw, finds an old lamp in his
-attic.  He starts to polish it and (poof!) a genie appears in cloud of smoke.
+attic.  He starts to polish it and (poof!) a genie appears in a cloud of
+smoke.
 	"Greetings, Mortal!" exclaims the genie, stretching and yawning, "For
 releasing me I will grant you three wishes."
 	The old man thinks for a moment, then replies, "I want Genghis Khan
