@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.120 2005/03/01 23:28:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.121 2005/03/01 23:28:46 okumoto Exp $
  */
 
 /*-
@@ -1659,9 +1659,7 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 				}
 			}
 		}
-	}
-
-	if ((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) {
+	} else {
 		if (((vlen == 1)) ||
 		    ((vlen == 2) && (vname[1] == 'F' || vname[1] == 'D'))) {
 			/*
