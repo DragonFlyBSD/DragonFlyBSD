@@ -25,7 +25,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 # $FreeBSD: src/usr.sbin/setkey/Makefile,v 1.1.2.5 2001/04/25 14:05:11 ru Exp $
-# $DragonFly: src/usr.sbin/setkey/Makefile,v 1.5 2004/03/31 20:22:14 cpressey Exp $
+# $DragonFly: src/usr.sbin/setkey/Makefile,v 1.6 2004/11/16 22:04:37 joerg Exp $
 
 PROG=	setkey
 SRCS=	setkey.c parse.y token.l
@@ -49,7 +49,7 @@ DPADD+=	${LIBIPSEC}
 LDADD+=	-lipsec
 CLEANFILES+=	scriptdump y.tab.h
 
-SCRIPTS=scriptdump
+#SCRIPTS=scriptdump
 MAN=	setkey.8
 
 LOCALPREFIX=	/usr
