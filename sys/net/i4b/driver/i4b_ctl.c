@@ -30,7 +30,7 @@
  *	$Id: i4b_ctl.c,v 1.37 2000/05/31 08:04:43 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ctl.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.9 2004/05/19 22:52:59 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.10 2004/07/02 15:43:10 joerg Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:38 2001]
  *
@@ -354,7 +354,7 @@ i4bctlioctl(dev_t dev, int cmd, caddr_t data, int flag, struct proc *p)
 			break;
 	}
 	return(error);
-#endif DO_I4B_DEBUG
+#endif /* DO_I4B_DEBUG */
 }
 
 #if (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(OS_USES_POLL)

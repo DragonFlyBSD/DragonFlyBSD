@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.12 2004/04/24 04:32:03 drhodus Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.13 2004/07/02 15:43:10 joerg Exp $
  */
 
 #include "opt_quota.h"
@@ -772,7 +772,7 @@ ext2_mkdir(struct vop_mkdir_args *ap)
 #ifdef QUOTA
 		struct ucred ucred, *ucp;
 		ucp = cnp->cn_cred;
-#endif			I
+#endif
 		/*
 		 * if we are hacking owners here, (only do this where told to)
 		 * and we are not giving it TOO root, (would subvert quotas)
@@ -800,7 +800,7 @@ ext2_mkdir(struct vop_mkdir_args *ap)
 				ucred.cr_groups[0] = dp->i_gid;
 				ucp = &ucred;
 			}
-#endif			I
+#endif
 		} else {
 			ip->i_uid = cnp->cn_cred->cr_uid;
 		}
@@ -1029,7 +1029,7 @@ ext2_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 #ifdef QUOTA
 		struct ucred ucred, *ucp;
 		ucp = cnp->cn_cred;
-#endif			I
+#endif
 		/*
 		 * if we are
 		 * not the owner of the directory,
@@ -1056,7 +1056,7 @@ ext2_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 			ucred.cr_ngroups = 1;
 			ucred.cr_groups[0] = pdir->i_gid;
 			ucp = &ucred;
-#endif			I
+#endif
 		} else {
 			ip->i_uid = cnp->cn_cred->cr_uid;
 		}
