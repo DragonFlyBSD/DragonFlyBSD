@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.34 2004/12/18 20:53:19 asmodai Exp $
+# $DragonFly: src/etc/Makefile,v 1.35 2005/01/09 16:01:23 joerg Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -137,8 +137,8 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/include/dev/netif/wi/if_wavelan_ieee.h
 	rm -f ${DESTDIR}/usr/include/net/if_ieee80211.h
 .endif
-.if exists(${DESTDIR}/usr/libexec/binutils212/elf/as)
 	ldconfig -m ${DESTDIR}/usr/lib/gcc2
+.if exists(${DESTDIR}/usr/libexec/gcc34) && exists(${DESTDIR}/usr/libexec/binutils215)
 	rm -rf ${DESTDIR}/usr/lib/gcc3
 	rm -rf ${DESTDIR}/usr/libexec/gcc3
 	rm -rf ${DESTDIR}/usr/libdata/ldscripts
@@ -163,19 +163,35 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/lib/{libstdc++.so,libstdc++.so.3}"
 	csh -c "rm -f ${DESTDIR}/usr/lib/{libstdc++_p.a}"
 	csh -c "rm -f ${DESTDIR}/usr/bin/CC"
+	rm -f ${DESTDIR}/usr/libexec/binutils214
+.endif
 	rm -f ${DESTDIR}/usr/bin/makewhatis
 	rm -f ${DESTDIR}/usr/sbin/prebind
 	rm -f ${DESTDIR}/modules/checkpt.ko
-	ldconfig -R
-.endif
-.if exists(${DESTDIR}/usr/share/examples/bc)
+	rm -rf ${DESTDIR}/usr/libdata/perl
+	csh -c "rm -f ${DESTDIR}/usr/bin/{find2perl,perl5,perl5.00503,pod2latex}"
+	csh -c "rm -f ${DESTDIR}/usr/bin/{pod2text,sperl5,sperl5.00503,splain,suidperl}"
+.for prog in a2p c2ph h2ph h2xs perlbug perlcc pl2pm pod2html pod2man s2p
+	rm -f ${DESTDIR}/usr/bin/${prog}
+	rm -f ${DESTDIR}/usr/share/man/man1/${prog}.1.gz
+.endfor
+	csh -c "rm -f ${DESTDIR}/usr/lib/{libperl.a,libperl.so,libperl.so.3,libperl_p.a}"
+	rm -f ${DESTDIR}/usr/share/man/man1/perl.1.gz
+.for man in 5004delta apio book bot call data debug delta diag dsc embed faq \
+	    faq.1 faq2 faq3 faq4 faq5 faq6 faq7 faq8 faq9 form func guts hist \
+	    ipc locale lol mod modinstall modlib obj op opentut pod port re \
+	    ref reftut run sec style sub syn thrtut tie toc toot trap var xs \
+	    xstut 
+	rm -f ${DESTDIR}/usr/share/man/man1/perl${man}.1.gz
+.endfor
+	rm -rf ${DESTDIR}/usr/share/perl
 	rm -rf ${DESTDIR}/usr/share/examples/bc
-.endif
 .if exists(${DESTDIR}/usr/share/info/dc.info.gz)
 	gzip -d ${DESTDIR}/usr/share/info/dc.info.gz
 	install-info --delete ${DESTDIR}/usr/share/info/dc.info ${DESTDIR}/usr/share/info/dir
 	rm -f ${DESTDIR}/usr/share/info/dc.info ${DESTDIR}/usr/share/info/dc.info.gz
 .endif
+	ldconfig -R
 
 distribution:
 	cd ${.CURDIR}; \

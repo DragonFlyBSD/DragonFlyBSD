@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.27 2004/12/20 19:23:26 joerg Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.28 2005/01/09 16:01:23 joerg Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -37,125 +37,11 @@
         ..
         msdosfs
         ..
-        perl
-            5.00503
-                B
-                ..
-                CGI
-                ..
-                CPAN
-                ..
-                Class
-                ..
-                Data
-                ..
-                Devel
-                ..
-                ExtUtils
-                ..
-                File
-                    Spec
-                    ..
-                ..
-                Getopt
-                ..
-                I18N
-                ..
-                IPC
-                ..
-                Math
-                ..
-                Net
-                ..
-                Pod
-                ..
-                Search
-                ..
-                Sys
-                ..
-                Term
-                ..
-                Test
-                ..
-                Text
-                ..
-                Tie
-                ..
-                Time
-                ..
-                User
-                ..
-                auto
-                    Getopt
-                        Long
-                        ..
-                    ..
-                ..
-                mach
-                    B
-                    ..
-                    CORE
-                    ..
-                    Data
-                    ..
-                    IO
-                    ..
-                    IPC
-                    ..
-                    auto
-                        B
-                        ..
-                        DB_File
-                        ..
-                        Data
-                            Dumper
-                            ..
-                        ..
-                        DynaLoader
-                        ..
-                        Fcntl
-                        ..
-                        IO
-                        ..
-                        IPC
-                            SysV
-                            ..
-                        ..
-                        NDBM_File
-                        ..
-                        Opcode
-                        ..
-                        POSIX
-                        ..
-                        SDBM_File
-                        ..
-                        Socket
-                        ..
-                        attrs
-                        ..
-                        re
-                        ..
-                        sdbm
-                        ..
-                    ..
-                ..
-                pod
-                ..
-            ..
-        ..
         stallion
         ..
     ..
     libexec
         binutils212
-	    ldscripts
-	    ..
-	    aout
-	    ..
-	    elf
-	    ..
-	..
-	binutils214
 	    ldscripts
 	    ..
 	    aout
@@ -1277,14 +1163,6 @@
             Doc
             ..
             Etc
-            ..
-        ..
-        perl
-            man
-                cat3            uname=man
-                ..
-                man3
-                ..
             ..
         ..
         sendmail
