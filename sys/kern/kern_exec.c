@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.23 2004/04/19 20:07:16 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.24 2004/04/24 04:09:21 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -50,6 +50,7 @@
 #include <sys/shm.h>
 #include <sys/sysctl.h>
 #include <sys/vnode.h>
+#include <sys/vmmeter.h>
 #include <sys/aio.h>
 
 #include <vm/vm.h>
@@ -436,8 +437,10 @@ exec_fail_dealloc:
 		vrele(imgp->vp);
 	}
 
-	if (error == 0)
+	if (error == 0) {
+		++mycpu->gd_cnt.v_exec;
 		return (0);
+	}
 
 exec_fail:
 	/* we're done here, clear P_INEXEC */

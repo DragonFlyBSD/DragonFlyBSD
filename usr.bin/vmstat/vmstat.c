@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.10 2004/04/02 05:46:03 hmp Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.11 2004/04/24 04:09:22 drhodus Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -581,6 +581,7 @@ dosum(void)
 	(void)printf("%9u  fork() calls\n", vmm.v_forks);
 	(void)printf("%9u vfork() calls\n", vmm.v_vforks);
 	(void)printf("%9u rfork() calls\n", vmm.v_rforks);
+	(void)printf("%9u exec() calls\n", vmm.v_exec);
 	(void)printf("%9u swap pager pageins\n", vmm.v_swapin);
 	(void)printf("%9u swap pager pages paged in\n", vmm.v_swappgsin);
 	(void)printf("%9u swap pager pageouts\n", vmm.v_swapout);
