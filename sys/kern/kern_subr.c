@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.12 2003/10/08 01:30:32 daver Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.13 2003/10/15 08:43:37 daver Exp $
  */
 
 #include "opt_ddb.h"
@@ -471,13 +471,8 @@ iovec_copyin(struct iovec *uiov, struct iovec **kiov, struct iovec *siov,
 	if (error)
 		goto cleanup;
 	*iov_len = 0;
-	for (i = 0, iovp = *kiov; i < iov_cnt; i++, iovp++) {
+	for (i = 0, iovp = *kiov; i < iov_cnt; i++, iovp++)
 		*iov_len += iovp->iov_len;
-		if (iov_len < 0) {
-			error = EINVAL;
-			goto cleanup;
-		}
-	}
 
 cleanup:
 	if (error)

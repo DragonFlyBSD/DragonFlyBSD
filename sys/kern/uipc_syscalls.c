@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.19 2003/10/08 03:21:26 daver Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.20 2003/10/15 08:43:37 daver Exp $
  */
 
 #include "opt_ktrace.h"
@@ -534,6 +534,10 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 	error = holdsock(p->p_fd, s, &fp);
 	if (error)
 		return (error);
+	if (auio->uio_resid < 0) {
+		error = EINVAL;
+		goto done;
+	}
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_GENIO)) {
 		int iovlen = auio->uio_iovcnt * sizeof (struct iovec);
@@ -566,6 +570,7 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 #endif
 	if (error == 0)
 		*res  = len - auio->uio_resid;
+done:
 	fdrop(fp, td);
 	return (error);
 }
@@ -701,6 +706,10 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 	error = holdsock(p->p_fd, s, &fp);
 	if (error)
 		return (error);
+	if (auio->uio_resid < 0) {
+		error = EINVAL;
+		goto done;
+	}
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_GENIO)) {
 		int iovlen = auio->uio_iovcnt * sizeof (struct iovec);
@@ -731,6 +740,7 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 #endif
 	if (error == 0)
 		*res = len - auio->uio_resid;
+done:
 	fdrop(fp, td);
 	return (error);
 }
