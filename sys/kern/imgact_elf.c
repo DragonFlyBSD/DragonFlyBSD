@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.3 2003/06/24 02:11:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -818,7 +818,7 @@ elf_coredump(p, vp, limit)
 			error = vn_rdwr_inchunks(UIO_WRITE, vp, 
 			    (caddr_t)php->p_vaddr,
 			    php->p_filesz, offset, UIO_USERSPACE,
-			    IO_UNIT | IO_DIRECT, cred, (int *)NULL, p);
+			    IO_UNIT | IO_DIRECT | IO_CORE, cred, (int *)NULL, p);
 			if (error != 0)
 				break;
 			offset += php->p_filesz;
@@ -993,7 +993,7 @@ elf_corehdr(p, vp, cred, numsegs, hdr, hdrsize)
 
 	/* Write it to the core file. */
 	return vn_rdwr_inchunks(UIO_WRITE, vp, hdr, hdrsize, (off_t)0,
-	    UIO_SYSSPACE, IO_UNIT | IO_DIRECT, cred, NULL, p);
+	    UIO_SYSSPACE, IO_UNIT | IO_DIRECT | IO_CORE, cred, NULL, p);
 }
 
 static void

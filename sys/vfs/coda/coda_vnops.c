@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.3 2003/06/24 02:11:53 dillon Exp $
  * 
  */
 
@@ -438,7 +438,7 @@ coda_rdwr(vp, uiop, rw, ioflag, cred, p)
 	 * venus won't have the correct size of the core when
 	 * it's completely written.
 	 */
-	if (cp->c_inode != 0 && !(p && (p->p_acflag & ACORE))) { 
+	if (cp->c_inode != 0 && (ioflag & IO_CORE) == 0) { 
 	    igot_internally = 1;
 	    error = coda_grab_vnode(cp->c_device, cp->c_inode, &cfvp);
 	    if (error) {

@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.3 2003/06/24 02:12:00 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -207,16 +207,17 @@ struct vattr {
  * Flags for ioflag. (high 16 bits used to ask for read-ahead and
  * help with write clustering)
  */
-#define	IO_UNIT		0x01		/* do I/O as atomic unit */
-#define	IO_APPEND	0x02		/* append write to end */
-#define	IO_SYNC		0x04		/* do I/O synchronously */
-#define	IO_NODELOCKED	0x08		/* underlying node already locked */
-#define	IO_NDELAY	0x10		/* FNDELAY flag set in file table */
-#define	IO_VMIO		0x20		/* data already in VMIO space */
-#define	IO_INVAL	0x40		/* invalidate after I/O */
-#define IO_ASYNC	0x80		/* bawrite rather then bdwrite */
-#define IO_DIRECT	0x100		/* attempt to bypass buffer cache */
-#define IO_NOWDRAIN	0x200		/* do not block on wdrain */
+#define	IO_UNIT		0x0001		/* do I/O as atomic unit */
+#define	IO_APPEND	0x0002		/* append write to end */
+#define	IO_SYNC		0x0004		/* do I/O synchronously */
+#define	IO_NODELOCKED	0x0008		/* underlying node already locked */
+#define	IO_NDELAY	0x0010		/* FNDELAY flag set in file table */
+#define	IO_VMIO		0x0020		/* data already in VMIO space */
+#define	IO_INVAL	0x0040		/* invalidate after I/O */
+#define IO_ASYNC	0x0080		/* bawrite rather then bdwrite */
+#define IO_DIRECT	0x0100		/* attempt to bypass buffer cache */
+#define IO_NOWDRAIN	0x0200		/* do not block on wdrain */
+#define IO_CORE		0x0400		/* I/O is part of core dump */
 
 #define IO_SEQMAX	0x7F		/* seq heuristic max value */
 #define IO_SEQSHIFT	16		/* seq heuristic in upper 16 bits */
