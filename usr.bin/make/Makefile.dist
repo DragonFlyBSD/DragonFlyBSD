@@ -1,8 +1,7 @@
-# $DragonFly: src/usr.bin/make/Makefile.dist,v 1.2 2004/12/10 01:03:46 okumoto Exp $
+# $DragonFly: src/usr.bin/make/Makefile.dist,v 1.3 2005/01/06 11:35:27 okumoto Exp $
 # a very simple makefile...
 pmake:
 	@echo 'make started.'
 	cc -DDEFSHELL=1 -I. -c *.c
-	cd lst.lib; cc -I.. -c *.c
-	cc *.o lst.lib/*.o -o pmake
+	cc *.o -o pmake
 	@echo 'make completed.'
