@@ -1,7 +1,7 @@
 #!/bin/sh
 #
-# $FreeBSD: src/etc/rc.d/pflog,v 1.1 2004/04/02 19:25:27 mlaier Exp $
-# $DragonFly: src/etc/rc.d/pflog,v 1.1 2004/09/21 21:25:28 joerg Exp $
+# $FreeBSD: src/etc/rc.d/pflog,v 1.2 2004/08/31 14:23:51 mlaier Exp $
+# $DragonFly: src/etc/rc.d/pflog,v 1.2 2005/02/16 19:42:35 corecode Exp $
 #
 
 # PROVIDE: pflog
@@ -28,7 +28,7 @@ pflog_prestart()
 {
 	# load pflog kernel module if needed
 	if ! kldstat -v | grep -q pflog\$; then
-		if kldload pflog; then
+		if kldload pf; then
 			info 'pflog module loaded.'
 		else
 			err 1 'pflog module failed to load.'
@@ -40,7 +40,7 @@ pflog_prestart()
 		warn 'pflog: COULD NOT SET UP pflog0'
 	fi
 
-	# check for pf rules
+	# check for pflogd binary
 	if [ ! -x "${pflog_program:-/sbin/pflogd}" ]
 	then
 		warn 'pflog: NO PFLOGD BINARY FOUND'
