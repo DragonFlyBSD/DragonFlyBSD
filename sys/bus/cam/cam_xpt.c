@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.18 2004/09/17 09:09:21 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.19 2004/11/14 16:48:36 eirikn Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -688,7 +688,6 @@ static int	 xpt_schedule_dev(struct camq *queue, cam_pinfo *dev_pinfo,
 static void	 xpt_run_dev_allocq(struct cam_eb *bus);
 static void	 xpt_run_dev_sendq(struct cam_eb *bus);
 static timeout_t xpt_release_devq_timeout;
-static timeout_t xpt_release_simq_timeout;
 static void	 xpt_release_bus(struct cam_eb *bus);
 static void	 xpt_release_devq_device(struct cam_ed *dev, u_int count,
 					 int run_queue);
@@ -4532,15 +4531,6 @@ xpt_release_simq(struct cam_sim *sim, int run_queue)
 			splx(s);
 	} else
 		splx(s);
-}
-
-static void
-xpt_release_simq_timeout(void *arg)
-{
-	struct cam_sim *sim;
-
-	sim = (struct cam_sim *)arg;
-	xpt_release_simq(sim, /* run_queue */ TRUE);
 }
 
 void
