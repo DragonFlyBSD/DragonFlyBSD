@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.2 2005/01/09 03:06:14 dillon Exp $
+ * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.3 2005/03/04 05:17:37 dillon Exp $
  */
 /*
  * This utility implements the userland mountctl command which is used to
@@ -444,6 +444,8 @@ mountctl_add(const char *keyword, const char *mountpt, int fd)
 
     bzero(&joinfo, sizeof(joinfo));
     snprintf(joinfo.id, sizeof(joinfo.id), "%s", keyword);
+    if (memfifo_opt > 0)
+	joinfo.membufsize = memfifo_opt;
 
     error = mountctl(mountpt, MOUNTCTL_INSTALL_VFS_JOURNAL, fd,
 			&joinfo, sizeof(joinfo), NULL, 0);
