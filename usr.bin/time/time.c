@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)time.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/time/time.c,v 1.14.2.5 2002/06/28 08:35:15 tjr Exp $
- * $DragonFly: src/usr.bin/time/time.c,v 1.7 2004/08/14 13:37:46 joerg Exp $
+ * $DragonFly: src/usr.bin/time/time.c,v 1.8 2004/12/19 19:37:06 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -67,14 +67,14 @@ main(int argc, char **argv)
 	struct timeval before, after;
 	struct rusage ru;
 	FILE *out = stderr;
-	char *ofn = NULL;
+	const char *ofn = NULL;
 
 	setlocale(LC_NUMERIC, "");
 	decimal_point = localeconv()->decimal_point[0];
 
 	aflag = hflag = lflag = pflag = 0;
 	while ((ch = getopt(argc, argv, "ahlo:p")) != -1)
-		switch ((char)ch) {
+		switch (ch) {
 		case 'a':
 			aflag = 1;
 			break;
