@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)script.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/usr.bin/script/script.c,v 1.11.2.2 2004/03/13 09:21:00 cperciva Exp $
- * $DragonFly: src/usr.bin/script/script.c,v 1.5 2004/06/09 07:53:55 cpressey Exp $
+ * $DragonFly: src/usr.bin/script/script.c,v 1.6 2005/01/03 17:35:57 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -54,16 +54,15 @@
 #include <termios.h>
 #include <unistd.h>
 
-FILE	*fscript;
-int	master, slave;
-int	child;
-char	*fname;
-int	qflg, ttyflg;
+static FILE	*fscript;
+static int	master, slave;
+static pid_t	child;
+static const char *fname;
+static int	qflg, ttyflg;
 
 struct	termios tt;
 
 static void	done(int) __dead2;
-static void	dooutput(void);
 static void	doshell(char **);
 static void	fail(void);
 static void	finish(void);
@@ -82,7 +81,6 @@ main(int argc, char **argv)
 	char ibuf[BUFSIZ];
 	fd_set rfd;
 	int flushtime = 30;
-	int lastc = 1000;
 
 	aflg = kflg = 0;
 	while ((ch = getopt(argc, argv, "aqkt:")) != -1)
@@ -118,7 +116,7 @@ main(int argc, char **argv)
 	if ((fscript = fopen(fname, aflg ? "a" : "w")) == NULL)
 		err(1, "%s", fname);
 
-	if (ttyflg = isatty(STDIN_FILENO)) {
+	if ((ttyflg = isatty(STDIN_FILENO)) != 0) {
 		if (tcgetattr(STDIN_FILENO, &tt) == -1)
 			err(1, "tcgetattr");
 		if (ioctl(STDIN_FILENO, TIOCGWINSZ, &win) == -1)
@@ -208,10 +206,11 @@ usage(void)
 	exit(1);
 }
 
-void
+static void
 finish(void)
 {
-	int die, e, pid;
+	int die, e;
+	pid_t pid;
 	union wait status;
 
 	die = e = 0;
@@ -230,10 +229,10 @@ finish(void)
 		done(e);
 }
 
-void
+static void
 doshell(char **av)
 {
-	char *shell;
+	const char *shell;
 
 	shell = getenv("SHELL");
 	if (shell == NULL)
@@ -252,14 +251,14 @@ doshell(char **av)
 	fail();
 }
 
-void
+static void
 fail(void)
 {
 	kill(0, SIGTERM);
 	done(1);
 }
 
-void
+static void
 done(int eno)
 {
 	time_t tvec;
@@ -269,7 +268,7 @@ done(int eno)
 	tvec = time(NULL);
 	if (!qflg) {
 		fprintf(fscript,"\nScript done on %s", ctime(&tvec));
-		printf("\nScript done, output file is %s\n", fname);
+		printf("\nScript done, output file is '%s'\n", fname);
 	}
 	fclose(fscript);
 	close(master);
