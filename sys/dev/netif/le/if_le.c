@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.18 2005/02/21 02:33:42 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.19 2005/02/21 02:46:50 joerg Exp $
  */
 
 /*
@@ -228,8 +228,6 @@ static void le_input(struct le_softc *sc, caddr_t seg1, size_t total_len,
 static void le_multi_filter(struct le_softc *sc);
 static void le_multi_op(struct le_softc *sc, const u_char *mca, int oper_flg);
 static int le_read_macaddr(struct le_softc *sc, int ioreg, int skippat);
-
-#define	LE_CRC32_POLY		0xEDB88320UL	/* CRC-32 Poly -- Little Endian */
 
 static struct le_softc le_softc[NLE];
 
@@ -543,11 +541,10 @@ le_multi_filter(struct le_softc *sc)
 static void
 le_multi_op(struct le_softc *sc, const u_char *mca, int enable)
 {
-    u_int idx, bit, data, crc = 0xFFFFFFFFUL;
+    uint32_t bit, idx, crc;
 
-    for (idx = 0; idx < 6; idx++)
-        for (data = *mca++, bit = 0; bit < 8; bit++, data >>= 1)
-            crc = (crc >> 1) ^ (((crc ^ data) & 1) ? LE_CRC32_POLY : 0);
+    crc = ether_crc32_le(mca, ETHER_ADDR_LEN);
+
     /*
      * The following two line convert the N bit index into a longword index
      * and a longword mask.
