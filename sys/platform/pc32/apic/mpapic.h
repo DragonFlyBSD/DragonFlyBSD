@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/mpapic.h,v 1.14.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.h,v 1.4 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/mpapic.h,v 1.5 2004/02/17 19:38:53 dillon Exp $
  */
 
 #ifndef _MACHINE_MPAPIC_H_
@@ -75,32 +75,14 @@ selected_procs_ipi(int targetMap, int vector)
 }
 
 /*
- * send an IPI INTerrupt containing 'vector' to all CPUs, including myself
- */
-static __inline int
-all_procs_ipi(int vector)
-{
-	return apic_ipi(APIC_DEST_ALLISELF, vector, APIC_DELMODE_FIXED);
-}
-
-/*
  * send an IPI INTerrupt containing 'vector' to all CPUs EXCEPT myself
  */
 static __inline int
 all_but_self_ipi(int vector)
 {
-	if (ncpus <= 1)
+	if (smp_active_mask == 1)
 		return 0;
 	return apic_ipi(APIC_DEST_ALLESELF, vector, APIC_DELMODE_FIXED);
-}
-
-/*
- * send an IPI INTerrupt containing 'vector' to myself
- */
-static __inline int
-self_ipi(int vector)
-{
-	return apic_ipi(APIC_DEST_SELF, vector, APIC_DELMODE_FIXED);
 }
 
 #endif /* _MACHINE_MPAPIC_H */

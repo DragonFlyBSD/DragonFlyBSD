@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/bios.c,v 1.29.2.3 2001/07/19 18:07:35 imp Exp $
- * $DragonFly: src/sys/i386/i386/Attic/bios.c,v 1.8 2003/11/09 02:22:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/bios.c,v 1.9 2004/02/17 19:38:53 dillon Exp $
  */
 
 /*
@@ -395,10 +395,11 @@ bios16(struct bios_args *args, char *fmt, ...)
 	pte = PTmap;
     }
     /*
-     * install pointer to page 0.  flush the tlb for safety.
+     * install pointer to page 0.  Flush the tlb for safety.  We don't
+     * migrate between cpus so a local flush is sufficient.
      */
     *pte = (vm86pa - PAGE_SIZE) | PG_RW | PG_V; 
-    invltlb();
+    cpu_invltlb();
 
     stack_top = stack;
     __va_start(ap, fmt);
@@ -458,7 +459,7 @@ bios16(struct bios_args *args, char *fmt, ...)
     /*
      * XXX only needs to be invlpg(0) but that doesn't work on the 386 
      */
-    invltlb();
+    cpu_invltlb();
     return (i);
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/globals.s,v 1.19 2003/12/20 05:52:25 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/globals.s,v 1.20 2004/02/17 19:38:53 dillon Exp $
  */
 
 #include <machine/asmacros.h>
@@ -73,7 +73,7 @@
 	 * The BSP version of these get setup in locore.s and pmap.c, while
 	 * the AP versions are setup in mp_machdep.c.
 	 */
-	.globl  gd_cpuid, gd_cpu_lockid, gd_other_cpus
+	.globl  gd_cpuid, gd_other_cpus
 	.globl	gd_ss_eflags, gd_intr_nesting_level
 	.globl  gd_CMAP1, gd_CMAP2, gd_CMAP3, gd_PMAP1
 	.globl  gd_CADDR1, gd_CADDR2, gd_CADDR3, gd_PADDR1
@@ -81,7 +81,6 @@
 
 	.set    gd_cpuid,globaldata + GD_CPUID
 	.set    gd_private_tss,globaldata + GD_PRIVATE_TSS
-	.set    gd_cpu_lockid,globaldata + GD_CPU_LOCKID
 	.set    gd_other_cpus,globaldata + GD_OTHER_CPUS
 	.set    gd_ss_eflags,globaldata + GD_SS_EFLAGS
 	.set    gd_intr_nesting_level,globaldata + GD_INTR_NESTING_LEVEL

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.53 2004/02/14 19:58:50 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.54 2004/02/17 19:38:53 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1665,7 +1665,7 @@ physmap_done:
 			 * map page into kernel: valid, read/write,non-cacheable
 			 */
 			*pte = pa | PG_V | PG_RW | PG_N;
-			invltlb();
+			cpu_invltlb();
 
 			tmp = *(int *)ptr;
 			/*
@@ -1734,7 +1734,7 @@ physmap_done:
 		}
 	}
 	*pte = 0;
-	invltlb();
+	cpu_invltlb();
 
 	/*
 	 * XXX

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.2 2004/02/15 05:15:25 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.3 2004/02/17 19:38:49 dillon Exp $
  */
 
 /*
@@ -82,8 +82,9 @@
 #endif
 
 #ifdef SMP
-static __int64_t ipiq_count = 0;
-static __int64_t ipiq_fifofull = 0;
+static __int64_t ipiq_count;
+static __int64_t ipiq_fifofull;
+static __int64_t ipiq_cscount;
 #endif
 
 #ifdef _KERNEL
@@ -91,6 +92,7 @@ static __int64_t ipiq_fifofull = 0;
 #ifdef SMP
 SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_count, CTLFLAG_RW, &ipiq_count, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_fifofull, CTLFLAG_RW, &ipiq_fifofull, 0, "");
+SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_cscount, CTLFLAG_RW, &ipiq_cscount, 0, "");
 #endif
 
 #endif
@@ -254,8 +256,11 @@ again:
 	}
     }
     if (gd->gd_cpusyncq.ip_rindex != gd->gd_cpusyncq.ip_windex) {
-	if (lwkt_process_ipiq1(&gd->gd_cpusyncq, NULL))
-	    goto again;
+	if (lwkt_process_ipiq1(&gd->gd_cpusyncq, NULL)) {
+	    if (gd->gd_curthread->td_cscount == 0)
+		goto again;
+	    need_ipiq();
+	}
     }
 }
 
@@ -278,8 +283,11 @@ again:
 	}
     }
     if (gd->gd_cpusyncq.ip_rindex != gd->gd_cpusyncq.ip_windex) {
-	if (lwkt_process_ipiq1(&gd->gd_cpusyncq, &frame))
-	    goto again;
+	if (lwkt_process_ipiq1(&gd->gd_cpusyncq, &frame)) {
+	    if (gd->gd_curthread->td_cscount == 0)
+		goto again;
+	    need_ipiq();
+	}
     }
 }
 #endif
@@ -303,6 +311,27 @@ lwkt_process_ipiq1(lwkt_ipiq_t ip, struct intrframe *frame)
     }
     return(wi != ip->ip_windex);
 }
+
+#else
+
+/*
+ * !SMP dummy routines
+ */
+
+int
+lwkt_send_ipiq(globaldata_t target, ipifunc_t func, void *arg)
+{
+    panic("lwkt_send_ipiq: UP box! (%d,%p,%p)", target->gd_cpuid, func, arg);
+    return(0); /* NOT REACHED */
+}
+
+void
+lwkt_wait_ipiq(globaldata_t target, int seq)
+{
+    panic("lwkt_wait_ipiq: UP box! (%d,%d)", target->gd_cpuid, seq);
+}
+
+#endif
 
 /*
  * CPU Synchronization Support
@@ -375,63 +404,96 @@ lwkt_cpusync_fastdata(cpumask_t mask, cpusync_func2_t func, void *data)
 void
 lwkt_cpusync_start(cpumask_t mask, lwkt_cpusync_t poll)
 {
+    globaldata_t gd = mycpu;
+
     poll->cs_count = 0;
     poll->cs_mask = mask;
-    poll->cs_maxcount = lwkt_send_ipiq_mask(mask & mycpu->gd_other_cpus,
-				(ipifunc_t)lwkt_cpusync_remote1, poll);
-    if (mask & (1 << mycpu->gd_cpuid)) {
+#ifdef SMP
+    poll->cs_maxcount = lwkt_send_ipiq_mask(
+		mask & gd->gd_other_cpus & smp_active_mask,
+		(ipifunc_t)lwkt_cpusync_remote1, poll);
+#endif
+    if (mask & (1 << gd->gd_cpuid)) {
 	if (poll->cs_run_func)
 	    poll->cs_run_func(poll);
     }
-    while (poll->cs_count != poll->cs_maxcount) {
-	crit_enter();
-	lwkt_process_ipiq();
-	crit_exit();
+#ifdef SMP
+    if (poll->cs_maxcount) {
+	++ipiq_cscount;
+	++gd->gd_curthread->td_cscount;
+	while (poll->cs_count != poll->cs_maxcount) {
+	    crit_enter();
+	    lwkt_process_ipiq();
+	    crit_exit();
+	}
     }
+#endif
 }
 
 void
 lwkt_cpusync_add(cpumask_t mask, lwkt_cpusync_t poll)
 {
+    globaldata_t gd = mycpu;
+    int count;
+
     mask &= ~poll->cs_mask;
     poll->cs_mask |= mask;
-    poll->cs_maxcount += lwkt_send_ipiq_mask(mask & mycpu->gd_other_cpus,
-				(ipifunc_t)lwkt_cpusync_remote1, poll);
-    if (mask & (1 << mycpu->gd_cpuid)) {
+#ifdef SMP
+    count = lwkt_send_ipiq_mask(
+		mask & gd->gd_other_cpus & smp_active_mask,
+		(ipifunc_t)lwkt_cpusync_remote1, poll);
+#endif
+    if (mask & (1 << gd->gd_cpuid)) {
 	if (poll->cs_run_func)
 	    poll->cs_run_func(poll);
     }
-    while (poll->cs_count != poll->cs_maxcount) {
-	crit_enter();
-	lwkt_process_ipiq();
-	crit_exit();
+#ifdef SMP
+    poll->cs_maxcount += count;
+    if (poll->cs_maxcount) {
+	if (poll->cs_maxcount == count)
+	    ++gd->gd_curthread->td_cscount;
+	while (poll->cs_count != poll->cs_maxcount) {
+	    crit_enter();
+	    lwkt_process_ipiq();
+	    crit_exit();
+	}
     }
+#endif
 }
 
 /*
  * Finish synchronization with a set of target cpus.  The target cpus will
  * execute cs_fin1_func(poll) prior to this function returning, and will
  * execute cs_fin2_func(data) IN TANDEM WITH THIS FUNCTION'S RETURN.
+ *
+ * If cs_maxcount is non-zero then we are mastering a cpusync with one or
+ * more remote cpus and must account for it in our thread structure.
  */
 void
 lwkt_cpusync_finish(lwkt_cpusync_t poll)
 {
-    int count;
+    globaldata_t gd = mycpu;
 
-    count = -(poll->cs_maxcount + 1);
     poll->cs_count = -1;
-    if (poll->cs_mask & (1 << mycpu->gd_cpuid)) {
+    if (poll->cs_mask & (1 << gd->gd_cpuid)) {
 	if (poll->cs_fin1_func)
 	    poll->cs_fin1_func(poll);
 	if (poll->cs_fin2_func)
 	    poll->cs_fin2_func(poll->cs_data);
     }
-    while (poll->cs_count != count) {
-	crit_enter();
-	lwkt_process_ipiq();
-	crit_exit();
+#ifdef SMP
+    if (poll->cs_maxcount) {
+	while (poll->cs_count != -(poll->cs_maxcount + 1)) {
+	    crit_enter();
+	    lwkt_process_ipiq();
+	    crit_exit();
+	}
+	--gd->gd_curthread->td_cscount;
     }
+#endif
 }
+
+#ifdef SMP
 
 /*
  * helper IPI remote messaging function.
@@ -485,25 +547,6 @@ lwkt_cpusync_remote2(lwkt_cpusync_t poll)
 	ip->ip_arg[wi] = poll;
 	++ip->ip_windex;
     }
-}
-
-#else
-
-/*
- * !SMP dummy routines
- */
-
-int
-lwkt_send_ipiq(globaldata_t target, ipifunc_t func, void *arg)
-{
-    panic("lwkt_send_ipiq: UP box! (%d,%p,%p)", target->gd_cpuid, func, arg);
-    return(0); /* NOT REACHED */
-}
-
-void
-lwkt_wait_ipiq(globaldata_t target, int seq)
-{
-    panic("lwkt_wait_ipiq: UP box! (%d,%d)", target->gd_cpuid, seq);
 }
 
 #endif

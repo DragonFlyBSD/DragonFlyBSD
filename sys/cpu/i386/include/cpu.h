@@ -35,7 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.13 2004/01/30 05:42:16 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.14 2004/02/17 19:38:53 dillon Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -76,6 +76,8 @@
     atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_RESCHED)
 #define	need_proftick()		\
     atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_OWEUPC)
+#define	need_ipiq()		\
+    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_IPIQ)
 #define	signotify()		\
     atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_SIGNAL)
 #define	sigupcall()		\

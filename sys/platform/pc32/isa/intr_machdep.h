@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.9 2003/10/11 19:30:42 drhodus Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.10 2004/02/17 19:38:54 dillon Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
@@ -115,10 +115,8 @@
 /* TLB shootdowns */
 #define XINVLTLB_OFFSET		(ICU_OFFSET + 112)
 
-#ifdef BETTER_CLOCK
-/* inter-cpu clock handling */
-#define XCPUCHECKSTATE_OFFSET	(ICU_OFFSET + 113)
-#endif
+/* unused/open (was inter-cpu clock handling) */
+#define XUNUSED113_OFFSET	(ICU_OFFSET + 113)
 
 /* inter-CPU rendezvous */
 #define XRENDEZVOUS_OFFSET	(ICU_OFFSET + 114)
@@ -195,9 +193,6 @@ unpendhand_t
 #if defined(SMP)
 inthand_t
 	Xinvltlb,	/* TLB shootdowns */
-#ifdef BETTER_CLOCK
-	Xcpucheckstate,	/* Check cpu state */
-#endif
 	Xcpuast,	/* Additional software trap on other cpu */ 
 	Xforward_irq,	/* Forward irq to cpu holding ISR lock */
 	Xcpustop,	/* CPU stops & waits for another CPU to restart it */

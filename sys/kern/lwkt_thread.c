@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.54 2004/02/15 02:14:41 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.55 2004/02/17 19:38:49 dillon Exp $
  */
 
 /*
@@ -31,11 +31,6 @@
  * thread scheduler, which means that generally speaking we only need
  * to use a critical section to avoid problems.  Foreign thread 
  * scheduling is queued via (async) IPIs.
- *
- * NOTE: on UP machines smp_active is defined to be 0.  On SMP machines
- * smp_active is 0 prior to SMP activation, then it is 1.  The LWKT module
- * uses smp_active to optimize UP builds and to avoid sending IPIs during
- * early boot (primarily interrupt and network thread initialization).
  */
 
 #ifdef _KERNEL
@@ -88,6 +83,9 @@
 #endif
 
 static int untimely_switch = 0;
+#ifdef	INVARIANTS
+static int panic_on_cscount = 0;
+#endif
 static __int64_t switch_count = 0;
 static __int64_t preempt_hit = 0;
 static __int64_t preempt_miss = 0;
@@ -96,6 +94,9 @@ static __int64_t preempt_weird = 0;
 #ifdef _KERNEL
 
 SYSCTL_INT(_lwkt, OID_AUTO, untimely_switch, CTLFLAG_RW, &untimely_switch, 0, "");
+#ifdef	INVARIANTS
+SYSCTL_INT(_lwkt, OID_AUTO, panic_on_cscount, CTLFLAG_RW, &panic_on_cscount, 0, "");
+#endif
 SYSCTL_QUAD(_lwkt, OID_AUTO, switch_count, CTLFLAG_RW, &switch_count, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_hit, CTLFLAG_RW, &preempt_hit, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_miss, CTLFLAG_RW, &preempt_miss, 0, "");
@@ -263,13 +264,19 @@ lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
     td->td_pri = TDPRI_KERN_DAEMON + TDPRI_CRIT;
     lwkt_initport(&td->td_msgport, td);
     pmap_init_thread(td);
-    if (smp_active == 0 || gd == mycpu) {
+#ifdef SMP
+    if (gd == mycpu) {
 	crit_enter();
 	TAILQ_INSERT_TAIL(&gd->gd_tdallq, td, td_allq);
 	crit_exit();
     } else {
 	lwkt_send_ipiq(gd, lwkt_init_thread_remote, td);
     }
+#else
+    crit_enter();
+    TAILQ_INSERT_TAIL(&gd->gd_tdallq, td, td_allq);
+    crit_exit();
+#endif
 }
 
 #endif /* _KERNEL */
@@ -412,6 +419,14 @@ lwkt_switch(void)
      * actual value of mp_lock is not stable).
      */
     mpheld = MP_LOCK_HELD();
+#ifdef	INVARIANTS
+    if (td->td_cscount) {
+	printf("Diagnostic: attempt to switch while mastering cpusync: %p\n",
+		td);
+	if (panic_on_cscount)
+	    panic("switching while mastering cpusync");
+    }
+#endif
 #endif
     if ((ntd = td->td_preempted) != NULL) {
 	/*
@@ -796,16 +811,23 @@ lwkt_schedule(thread_t td)
 		TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
 		--w->wa_count;
 		td->td_wait = NULL;
-		if (smp_active == 0 || td->td_gd == mycpu) {
+#ifdef SMP
+		if (td->td_gd == mycpu) {
 		    _lwkt_enqueue(td);
-		    if (td->td_preemptable) {
+		    if (td->td_preemptable)
 			td->td_preemptable(td, TDPRI_CRIT*2); /* YYY +token */
-		    } else if (_lwkt_wantresched(td, curthread)) {
+		    else if (_lwkt_wantresched(td, curthread))
 			need_resched();
-		    }
 		} else {
 		    lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_schedule, td);
 		}
+#else
+		_lwkt_enqueue(td);
+		if (td->td_preemptable)
+		    td->td_preemptable(td, TDPRI_CRIT*2); /* YYY +token */
+		else if (_lwkt_wantresched(td, curthread))
+		    need_resched();
+#endif
 		lwkt_reltoken(&w->wa_token);
 	    } else {
 		lwkt_send_ipiq(w->wa_token.t_cpu, (ipifunc_t)lwkt_schedule, td);
@@ -817,7 +839,8 @@ lwkt_schedule(thread_t td)
 	     * do not own the thread there might be a race but the
 	     * target cpu will deal with it.
 	     */
-	    if (smp_active == 0 || td->td_gd == mycpu) {
+#ifdef SMP
+	    if (td->td_gd == mycpu) {
 		_lwkt_enqueue(td);
 		if (td->td_preemptable) {
 		    td->td_preemptable(td, TDPRI_CRIT);
@@ -827,6 +850,14 @@ lwkt_schedule(thread_t td)
 	    } else {
 		lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_schedule, td);
 	    }
+#else
+	    _lwkt_enqueue(td);
+	    if (td->td_preemptable) {
+		td->td_preemptable(td, TDPRI_CRIT);
+	    } else if (_lwkt_wantresched(td, curthread)) {
+		need_resched();
+	    }
+#endif
 	}
     }
     crit_exit();

@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/smp.h,v 1.50.2.5 2001/02/13 22:32:45 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/include/smp.h,v 1.8 2003/11/03 02:08:33 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/smp.h,v 1.9 2004/02/17 19:38:54 dillon Exp $
  *
  */
 
@@ -81,7 +81,6 @@ struct apic_intmapinfo {
 	int redirindex;
 };
 extern struct apic_intmapinfo	int_to_apicintpin[];
-extern u_int			all_cpus;
 extern struct pcb		stoppcbs[];
 
 /* functions in mp_machdep.c */
@@ -109,10 +108,6 @@ void	init_secondary		(void);
 int	stop_cpus		(u_int);
 void	ap_init			(void);
 int	restart_cpus		(u_int);
-#ifdef BETTER_CLOCK 
-void	forward_statclock	(int pscnt);
-void	forward_hardclock	(int pscnt);
-#endif /* BETTER_CLOCK */
 void	forward_signal		(struct proc *);
 void	forward_roundrobin	(void);
 #ifdef	APIC_INTR_REORDER
@@ -151,15 +146,12 @@ void	u_sleep			(int);
 void	cpu_send_ipiq		(int);
 
 /* global data in init_smp.c */
-extern int			invltlb_ok;
-extern int			smp_active;
-extern int			smp_started;
-extern volatile int		smp_idle_loops;
+extern cpumask_t		smp_active_mask;
 
 #endif /* !LOCORE */
 #else	/* !SMP && !APIC_IO */
 
-#define	smp_active	0	/* smp_active always 0 on UP machines */
+#define	smp_active_mask	1	/* smp_active_mask always 1 on UP machines */
 
 #endif
 

@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.45 2004/02/15 05:15:27 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.46 2004/02/17 19:38:50 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -199,8 +199,10 @@ struct thread {
     int		td_nest_count;	/* prevent splz nesting */
 #ifdef SMP
     int		td_mpcount;	/* MP lock held (count) */
+    int		td_cscount;	/* cpu synchronization master */
 #else
     int		td_unused001;
+    int		td_unused002;
 #endif
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
     struct thread *td_preempted; /* we preempted this thread */

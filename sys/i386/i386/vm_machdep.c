@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.26 2003/12/20 05:52:26 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.27 2004/02/17 19:38:53 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -417,16 +417,15 @@ void
 cpu_reset()
 {
 #ifdef SMP
-	if (smp_active == 0) {
+	if (smp_active_mask == 1) {
 		cpu_reset_real();
 		/* NOTREACHED */
 	} else {
-
 		u_int map;
 		int cnt;
 		printf("cpu_reset called on cpu#%d\n",mycpu->gd_cpuid);
 
-		map = mycpu->gd_other_cpus & ~ stopped_cpus;
+		map = mycpu->gd_other_cpus & ~stopped_cpus & smp_active_mask;
 
 		if (map != 0) {
 			printf("cpu_reset: Stopping other CPUs\n");
@@ -502,7 +501,7 @@ cpu_reset_real()
 	bzero((caddr_t) PTD, PAGE_SIZE);
 
 	/* "good night, sweet prince .... <THUNK!>" */
-	invltlb();
+	cpu_invltlb();
 	/* NOTREACHED */
 	while(1);
 }

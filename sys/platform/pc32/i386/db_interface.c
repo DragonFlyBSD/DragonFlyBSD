@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_interface.c,v 1.48.2.1 2000/07/07 00:38:46 obrien Exp $
- * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.8 2004/01/28 03:52:28 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.9 2004/02/17 19:38:53 dillon Exp $
  */
 
 /*
@@ -176,7 +176,7 @@ kdb_trap(type, code, regs)
 #endif /* VERBOSE_CPUSTOP_ON_DDBBREAK */
 
 	/* Restart all the CPUs we previously stopped */
-	if (stopped_cpus != mycpu->gd_other_cpus && smp_started != 0) {
+	if (stopped_cpus != mycpu->gd_other_cpus) {
 		db_printf("whoa, other_cpus: 0x%08x, stopped_cpus: 0x%08x\n",
 			  mycpu->gd_other_cpus, stopped_cpus);
 		panic("stop_cpus() failed");
@@ -278,7 +278,7 @@ db_write_bytes(addr, size, data)
 		}
 	    }
 
-	    invltlb();
+	    cpu_invltlb();
 	}
 
 	dst = (char *)addr;
@@ -294,7 +294,7 @@ db_write_bytes(addr, size, data)
 	    if (ptep1)
 		*ptep1 = oldmap1;
 
-	    invltlb();
+	    cpu_invltlb();
 	}
 }
 

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.7 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.8 2004/02/17 19:38:53 dillon Exp $
  */
 
 /*
@@ -140,6 +140,18 @@ static __inline void
 cpu_enable_intr(void)
 {
 	__asm __volatile("sti");
+}
+
+static __inline void
+cpu_mb1(void)
+{
+	__asm __volatile("" : : : "memory");
+}
+
+static __inline void
+cpu_mb2(void)
+{
+	__asm __volatile("cpuid" : : : "ax", "bx", "cx", "dx", "memory");
 }
 
 #define	HAVE_INLINE_FFS
@@ -309,35 +321,6 @@ cpu_invltlb(void)
 	__asm __volatile("movl %%cr3, %0; movl %0, %%cr3" : "=r" (temp)
 			 : : "memory");
 #if defined(SWTCH_OPTIM_STATS)
-	++tlb_flush_count;
-#endif
-}
-
-/*
- * Invalidate a patricular VA on all cpus
- */
-static __inline void
-invlpg(u_int addr)
-{
-	__asm __volatile("invlpg %0" : : "m" (*(char *)addr) : "memory");
-	smp_invltlb();
-}
-
-/*
- * Invalidate the TLB on all cpus
- */
-static __inline void
-invltlb(void)
-{
-	u_int	temp;
-	/*
-	 * This should be implemented as load_cr3(rcr3()) when load_cr3()
-	 * is inlined.
-	 */
-	__asm __volatile("movl %%cr3, %0; movl %0, %%cr3" : "=r" (temp)
-			 : : "memory");
-	smp_invltlb();
-#ifdef SWTCH_OPTIM_STATS
 	++tlb_flush_count;
 #endif
 }
@@ -635,8 +618,6 @@ void	insb		(u_int port, void *addr, size_t cnt);
 void	insl		(u_int port, void *addr, size_t cnt);
 void	insw		(u_int port, void *addr, size_t cnt);
 void	invd		(void);
-void	invlpg		(u_int addr);
-void	invltlb		(void);
 u_short	inw		(u_int port);
 u_int	loadandclear	(u_int *addr);
 void	outb		(u_int port, u_char data);

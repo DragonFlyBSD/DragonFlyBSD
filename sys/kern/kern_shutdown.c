@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.15 2004/01/08 18:39:18 asmodai Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.16 2004/02/17 19:38:49 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -69,7 +69,7 @@
 #include <machine/pcb.h>
 #include <machine/clock.h>
 #include <machine/md_var.h>
-#include <machine/smp.h>		/* smp_active, cpuid */
+#include <machine/smp.h>		/* smp_active_mask, cpuid */
 
 #include <sys/signalvar.h>
 
@@ -230,7 +230,7 @@ boot(int howto)
 	howto |= shutdown_howto;
 
 #ifdef SMP
-	if (smp_active) {
+	if (smp_active_mask > 1) {
 		printf("boot() called on cpu#%d\n", mycpu->gd_cpuid);
 	}
 #endif

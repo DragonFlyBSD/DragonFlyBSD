@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/amd64/amd64/Attic/genassym.c,v 1.1 2004/02/02 08:05:51 dillon Exp $
+ * $DragonFly: src/sys/amd64/amd64/Attic/genassym.c,v 1.2 2004/02/17 19:38:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -215,7 +215,6 @@ ASSYM(GD_COMMON_TSS, offsetof(struct mdglobaldata, gd_common_tss));
 ASSYM(GD_COMMON_TSSD, offsetof(struct mdglobaldata, gd_common_tssd));
 ASSYM(GD_TSS_GDT, offsetof(struct mdglobaldata, gd_tss_gdt));
 ASSYM(GD_NPXTHREAD, offsetof(struct mdglobaldata, gd_npxthread));
-ASSYM(GD_CPU_LOCKID, offsetof(struct mdglobaldata, gd_cpu_lockid));
 ASSYM(GD_OTHER_CPUS, offsetof(struct mdglobaldata, gd_other_cpus));
 ASSYM(GD_SS_EFLAGS, offsetof(struct mdglobaldata, gd_ss_eflags));
 ASSYM(GD_CMAP1, offsetof(struct mdglobaldata, gd_CMAP1));

@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/Attic/apic_vector.s,v 1.16 2004/02/12 06:57:46 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/apic_vector.s,v 1.17 2004/02/17 19:38:54 dillon Exp $
  */
 
 
@@ -338,69 +338,6 @@ Xinvltlb:
 	iret
 
 
-#if 0
-#ifdef BETTER_CLOCK
-
-/*
- * Executed by a CPU when it receives an Xcpucheckstate IPI from another CPU,
- *
- *  - Stores current cpu state in checkstate_cpustate[cpuid]
- *      0 == user, 1 == sys, 2 == intr
- *  - Stores current process in checkstate_curproc[cpuid]
- *
- *  - Signals its receipt by setting bit cpuid in checkstate_probed_cpus.
- *
- * stack: 0->ds, 4->fs, 8->ebx, 12->eax, 16->eip, 20->cs, 24->eflags
- */
-
-	.text
-	SUPERALIGN_TEXT
-	.globl Xcpucheckstate
-	.globl checkstate_cpustate
-	.globl checkstate_curproc
-	.globl checkstate_pc
-Xcpucheckstate:
-	pushl	%eax
-	pushl	%ebx		
-	pushl	%ds			/* save current data segment */
-	pushl	%fs
-
-	movl	$KDSEL, %eax
-	mov	%ax, %ds		/* use KERNEL data segment */
-	movl	$KPSEL, %eax
-	mov	%ax, %fs
-
-	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
-
-	movl	$0, %ebx		
-	movl	20(%esp), %eax	
-	andl	$3, %eax
-	cmpl	$3, %eax
-	je	1f
-	testl	$PSL_VM, 24(%esp)
-	jne	1f
-	incl	%ebx			/* system or interrupt */
-1:	
-	movl	PCPU(cpuid), %eax
-	movl	%ebx, checkstate_cpustate(,%eax,4)
-	movl	PCPU(curthread), %ebx
-	movl	TD_PROC(%ebx),%ebx
-	movl	%ebx, checkstate_curproc(,%eax,4)
-	movl	16(%esp), %ebx
-	movl	%ebx, checkstate_pc(,%eax,4)
-
-	lock				/* checkstate_probed_cpus |= (1<<id) */
-	btsl	%eax, checkstate_probed_cpus
-
-	popl	%fs
-	popl	%ds			/* restore previous data segment */
-	popl	%ebx
-	popl	%eax
-	iret
-
-#endif /* BETTER_CLOCK */
-#endif
-
 /*
  * Executed by a CPU when it receives an Xcpustop IPI from another CPU,
  *
@@ -650,11 +587,6 @@ stopped_cpus:
 started_cpus:
 	.long	0
 
-#ifdef BETTER_CLOCK
-	.globl checkstate_probed_cpus
-checkstate_probed_cpus:
-	.long	0	
-#endif /* BETTER_CLOCK */
 	.globl CNAME(cpustop_restartfunc)
 CNAME(cpustop_restartfunc):
 	.long 0
