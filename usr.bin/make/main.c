@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.8 2004/11/12 21:41:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.9 2004/11/12 21:52:04 dillon Exp $
  */
 
 static
@@ -797,7 +797,7 @@ main(argc, argv)
 	(void)ReadMakefile(".depend", NULL);
 
 	Var_Append("MFLAGS", Var_Value(MAKEFLAGS, VAR_GLOBAL, &p1), VAR_GLOBAL);
-	efree(p1);
+	free(p1);
 
 	/* Install all the flags into the MAKE envariable. */
 	if (((p = Var_Value(MAKEFLAGS, VAR_GLOBAL, &p1)) != NULL) && *p)
@@ -806,7 +806,7 @@ main(argc, argv)
 #else
 		setenv("MAKE", p, 1);
 #endif
-	efree(p1);
+	free(p1);
 
 	/*
 	 * For compatibility, look at the directories in the VPATH variable

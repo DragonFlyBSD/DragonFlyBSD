@@ -37,7 +37,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.6 2004/11/12 21:46:09 dillon Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.7 2004/11/12 21:52:04 dillon Exp $
  */
 
 #ifndef OLD_JOKE
@@ -1101,7 +1101,7 @@ Job_CheckCommands(gn, abortProc)
 	     */
 	    Make_HandleUse(DEFAULT, gn);
 	    Var_Set(IMPSRC, Var_Value(TARGET, gn, &p1), gn);
-	    efree(p1);
+	    free(p1);
 	} else if (Dir_MTime(gn) == 0) {
 	    /*
 	     * The node wasn't the target of an operator we have no .DEFAULT

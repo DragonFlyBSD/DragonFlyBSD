@@ -37,7 +37,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.4 2004/11/12 21:41:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.5 2004/11/12 21:52:04 dillon Exp $
  */
 
 /*-
@@ -112,7 +112,7 @@ CompatInterrupt (signo)
 	if (!noExecute && eunlink(file) != -1) {
 	    printf ("*** %s removed\n", file);
 	}
-	efree(p1);
+	free(p1);
 
 	/*
 	 * Run .INTERRUPT only if hit with interrupt signal
@@ -444,7 +444,7 @@ CompatMake (gnp, pgnp)
 	if (Lst_Member (gn->iParents, pgn) != NULL) {
 	    char *p1;
 	    Var_Set (IMPSRC, Var_Value(TARGET, gn, &p1), pgn);
-	    efree(p1);
+	    free(p1);
 	}
 
 	/*
@@ -584,7 +584,7 @@ CompatMake (gnp, pgnp)
 	    char *p1;
 
 	    printf ("\n\nStop in %s.\n", Var_Value(".CURDIR", gn, &p1));
-	    efree(p1);
+	    free(p1);
 	    exit (1);
 	}
     } else if (gn->made == ERROR) {
@@ -597,7 +597,7 @@ CompatMake (gnp, pgnp)
 	if (Lst_Member (gn->iParents, pgn) != NULL) {
 	    char *p1;
 	    Var_Set (IMPSRC, Var_Value(TARGET, gn, &p1), pgn);
-	    efree(p1);
+	    free(p1);
 	}
 	switch(gn->made) {
 	    case BEINGMADE:

@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.4 2004/11/12 21:41:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.5 2004/11/12 21:52:04 dillon Exp $
  */
 
 /*-
@@ -407,7 +407,7 @@ Make_Update (cgn)
     char *p1;
 
     cname = Var_Value (TARGET, cgn, &p1);
-    efree(p1);
+    free(p1);
 
     /*
      * If the child was actually made, see what its modification time is
@@ -536,7 +536,7 @@ Make_Update (cgn)
 		Var_Set (PREFIX, cpref, pgn);
 	    }
 	}
-	efree(p1);
+	free(p1);
 	Lst_Close (cgn->iParents);
     }
 }
@@ -607,7 +607,7 @@ MakeAddAllSrc (cgnp, pgnp)
 	     */
 	    Var_Append(OODATE, child, pgn);
 	}
-	efree(p1);
+	free(p1);
     }
     return (0);
 }
@@ -650,7 +650,7 @@ Make_DoAllVar (gn)
     if (gn->type & OP_JOIN) {
 	char *p1;
 	Var_Set (TARGET, Var_Value (ALLSRC, gn, &p1), gn);
-	efree(p1);
+	free(p1);
     }
 }
 

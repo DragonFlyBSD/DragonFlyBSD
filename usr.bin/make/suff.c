@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.2 2004/06/10 13:07:53 ru Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.6 2004/11/12 21:41:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.7 2004/11/12 21:52:04 dillon Exp $
  */
 
 /*-
@@ -1713,7 +1713,7 @@ SuffFindArchiveDeps(gn, slst)
     for (i = (sizeof(copy)/sizeof(copy[0]))-1; i >= 0; i--) {
 	char *p1;
 	Var_Set(copy[i], Var_Value(copy[i], mem, &p1), gn);
-	efree(p1);
+	free(p1);
 
     }
 
@@ -2047,7 +2047,7 @@ sfnd_abort:
 	    gn->suffix = (targ == NULL) ? NULL : targ->suff;
 	    if (gn->suffix)
 		gn->suffix->refCount++;
-	    efree(gn->path);
+	    free(gn->path);
 	    gn->path = estrdup(gn->name);
 	}
 
@@ -2147,7 +2147,7 @@ sfnd_abort:
     /*
      * So Dir_MTime doesn't go questing for it...
      */
-    efree(gn->path);
+    free(gn->path);
     gn->path = estrdup(gn->name);
 
     /*

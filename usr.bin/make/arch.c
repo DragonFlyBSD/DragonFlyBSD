@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.5 2004/11/12 21:41:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.6 2004/11/12 21:52:04 dillon Exp $
  */
 
 /*-
@@ -148,7 +148,7 @@ ArchFree(void *ap)
 	free(Hash_GetValue(entry));
 
     free(a->name);
-    efree(a->fnametab);
+    free(a->fnametab);
     Hash_DeleteTable(&a->members);
     free(a);
 }
@@ -650,7 +650,7 @@ ArchStatMember (archive, member, hash)
 badarch:
     fclose (arch);
     Hash_DeleteTable (&ar->members);
-    efree(ar->fnametab);
+    free(ar->fnametab);
     free (ar);
     return (NULL);
 }
@@ -933,8 +933,8 @@ Arch_Touch (gn)
     arch = ArchFindMember(Var_Value (ARCHIVE, gn, &p1),
 			  Var_Value (TARGET, gn, &p2),
 			  &arh, "r+");
-    efree(p1);
-    efree(p2);
+    free(p1);
+    free(p2);
     snprintf(arh.ar_date, sizeof(arh.ar_date), "%-12ld", (long) now);
 
     if (arch != NULL) {
@@ -1005,8 +1005,8 @@ Arch_MTime (gn)
     arhPtr = ArchStatMember (Var_Value (ARCHIVE, gn, &p1),
 			     Var_Value (TARGET, gn, &p2),
 			     TRUE);
-    efree(p1);
-    efree(p2);
+    free(p1);
+    free(p2);
 
     if (arhPtr != NULL) {
 	modTime = (int) strtol(arhPtr->ar_date, NULL, 10);

@@ -37,7 +37,7 @@
  *
  *	from: @(#)nonints.h	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/nonints.h,v 1.8 1999/08/28 01:03:35 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.5 2004/11/12 21:41:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.6 2004/11/12 21:52:04 dillon Exp $
  */
 
 /* arch.c */
@@ -74,9 +74,6 @@ int PrintAddr(void *, void *);
 void Finish(int);
 char *estrdup(const char *);
 void *emalloc(size_t);
-/* efree(x) works when x==NULL. STDC behavior, may need some different
- * definition for cross-builds on deficient systems */
-#define efree	free
 void *erealloc(void *, size_t);
 void enomem(void);
 int eunlink(const char *);

@@ -37,7 +37,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.5 2004/11/12 21:41:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.6 2004/11/12 21:52:04 dillon Exp $
  */
 
 /*-
@@ -288,7 +288,7 @@ CondDoDefined (argLen, arg)
     } else {
 	result = FALSE;
     }
-    efree(p1);
+    free(p1);
     arg[argLen] = savec;
     return (result);
 }
