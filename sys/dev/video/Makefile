@@ -1,6 +1,6 @@
-# $DragonFly: src/sys/dev/video/Makefile,v 1.1 2003/08/15 08:32:32 dillon Exp $
+# $DragonFly: src/sys/dev/video/Makefile,v 1.2 2003/10/23 17:32:52 dillon Exp $
 #
 
-SUBDIR=bktr fb
+SUBDIR=bktr fb ${MACHINE_ARCH}
 
 .include <bsd.subdir.mk>
