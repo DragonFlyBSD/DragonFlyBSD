@@ -86,7 +86,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.16 2004/08/08 06:33:24 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.17 2004/09/13 19:01:50 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -104,6 +104,8 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/in_cksum.h>
+
+#include <sys/msgport2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -174,20 +176,40 @@ static struct syncache *syncookie_lookup(struct in_conninfo *,
 #define TCP_SYNCACHE_HASHSIZE		512
 #define TCP_SYNCACHE_BUCKETLIMIT	30
 
+struct netmsg_sc_timer {
+	struct lwkt_msg nm_lmsg;
+	struct msgrec *nm_mrec;		/* back pointer to containing msgrec */
+};
+
+struct msgrec {
+	struct netmsg_sc_timer msg;
+	lwkt_port_t port;		/* constant after init */
+	int slot;			/* constant after init */
+};
+
+static int syncache_timer_handler(lwkt_msg_t);
+
 struct tcp_syncache {
-	struct	syncache_head *hashbase;
 	struct	vm_zone *zone;
 	u_int	hashsize;
 	u_int	hashmask;
 	u_int	bucket_limit;
-	u_int	cache_count;
 	u_int	cache_limit;
 	u_int	rexmt_limit;
 	u_int	hash_secret;
-	TAILQ_HEAD(, syncache) timerq[SYNCACHE_MAXREXMTS + 1];
-	struct	callout tt_timerq[SYNCACHE_MAXREXMTS + 1];
 };
 static struct tcp_syncache tcp_syncache;
+
+struct tcp_syncache_percpu {
+	struct syncache_head	*hashbase;
+	u_int			cache_count;
+	TAILQ_HEAD(, syncache)	timerq[SYNCACHE_MAXREXMTS + 1];
+	struct callout		tt_timerq[SYNCACHE_MAXREXMTS + 1];
+	struct msgrec		mrec[SYNCACHE_MAXREXMTS + 1];
+};
+static struct tcp_syncache_percpu tcp_syncache_percpu[MAXCPU];
+
+static struct lwkt_port syncache_null_rport;
 
 SYSCTL_NODE(_net_inet_tcp, OID_AUTO, syncache, CTLFLAG_RW, 0, "TCP SYN cache");
 
@@ -197,8 +219,11 @@ SYSCTL_INT(_net_inet_tcp_syncache, OID_AUTO, bucketlimit, CTLFLAG_RD,
 SYSCTL_INT(_net_inet_tcp_syncache, OID_AUTO, cachelimit, CTLFLAG_RD,
      &tcp_syncache.cache_limit, 0, "Overall entry limit for syncache");
 
+/* XXX JH */
+#if 0
 SYSCTL_INT(_net_inet_tcp_syncache, OID_AUTO, count, CTLFLAG_RD,
      &tcp_syncache.cache_count, 0, "Current number of entries in syncache");
+#endif
 
 SYSCTL_INT(_net_inet_tcp_syncache, OID_AUTO, hashsize, CTLFLAG_RD,
      &tcp_syncache.hashsize, 0, "Size of TCP syncache hashtable");
@@ -229,15 +254,20 @@ static MALLOC_DEFINE(M_SYNCACHE, "syncache", "TCP syncache");
 
 #define ENDPTS6_EQ(a, b) (memcmp(a, b, sizeof(*a)) == 0)
 
-#define SYNCACHE_TIMEOUT(sc, slot) do {					\
-	sc->sc_rxtslot = slot;						\
-	sc->sc_rxttime = ticks + TCPTV_RTOBASE * tcp_backoff[slot];	\
-	TAILQ_INSERT_TAIL(&tcp_syncache.timerq[slot], sc, sc_timerq);	\
-	if (!callout_active(&tcp_syncache.tt_timerq[slot]))		\
-		callout_reset(&tcp_syncache.tt_timerq[slot],		\
-		    TCPTV_RTOBASE * tcp_backoff[slot],			\
-		    syncache_timer, (void *)((intptr_t)slot));		\
-} while (0)
+static __inline void
+syncache_timeout(struct tcp_syncache_percpu *syncache_percpu,
+		 struct syncache *sc, int slot)
+{
+	sc->sc_rxtslot = slot;
+	sc->sc_rxttime = ticks + TCPTV_RTOBASE * tcp_backoff[slot];
+	TAILQ_INSERT_TAIL(&syncache_percpu->timerq[slot], sc, sc_timerq);
+	if (!callout_active(&syncache_percpu->tt_timerq[slot])) {
+		callout_reset(&syncache_percpu->tt_timerq[slot],
+			      TCPTV_RTOBASE * tcp_backoff[slot],
+			      syncache_timer,
+			      &syncache_percpu->mrec[slot]);
+	}
+}
 
 static void
 syncache_free(struct syncache *sc)
@@ -262,10 +292,11 @@ syncache_free(struct syncache *sc)
 		 */
 		if (rt->rt_flags & RTF_WASCLONED &&
 		    (sc->sc_flags & SCF_KEEPROUTE) == 0 &&
-		    rt->rt_refcnt == 1)
+		    rt->rt_refcnt == 1) {
 			rtrequest(RTM_DELETE, rt_key(rt),
 			    rt->rt_gateway, rt_mask(rt),
 			    rt->rt_flags, NULL);
+		}
 		RTFREE(rt);
 	}
 	zfree(tcp_syncache.zone, sc);
@@ -274,9 +305,8 @@ syncache_free(struct syncache *sc)
 void
 syncache_init(void)
 {
-	int i;
+	int i, cpu;
 
-	tcp_syncache.cache_count = 0;
 	tcp_syncache.hashsize = TCP_SYNCACHE_HASHSIZE;
 	tcp_syncache.bucket_limit = TCP_SYNCACHE_BUCKETLIMIT;
 	tcp_syncache.cache_limit =
@@ -296,21 +326,40 @@ syncache_init(void)
         }
 	tcp_syncache.hashmask = tcp_syncache.hashsize - 1;
 
-	/* Allocate the hash table. */
-	MALLOC(tcp_syncache.hashbase, struct syncache_head *,
-	    tcp_syncache.hashsize * sizeof(struct syncache_head),
-	    M_SYNCACHE, M_WAITOK);
+	lwkt_initport_null_rport(&syncache_null_rport, NULL);
 
-	/* Initialize the hash buckets. */
-	for (i = 0; i < tcp_syncache.hashsize; i++) {
-		TAILQ_INIT(&tcp_syncache.hashbase[i].sch_bucket);
-		tcp_syncache.hashbase[i].sch_length = 0;
-	}
+	for (cpu = 0; cpu < ncpus2; cpu++) {
+		struct tcp_syncache_percpu *syncache_percpu;
 
-	/* Initialize the timer queues. */
-	for (i = 0; i <= SYNCACHE_MAXREXMTS; i++) {
-		TAILQ_INIT(&tcp_syncache.timerq[i]);
-		callout_init(&tcp_syncache.tt_timerq[i]);
+		syncache_percpu = &tcp_syncache_percpu[cpu];
+		/* Allocate the hash table. */
+		MALLOC(syncache_percpu->hashbase, struct syncache_head *,
+		    tcp_syncache.hashsize * sizeof(struct syncache_head),
+		    M_SYNCACHE, M_WAITOK);
+
+		/* Initialize the hash buckets. */
+		for (i = 0; i < tcp_syncache.hashsize; i++) {
+			struct syncache_head *bucket;
+
+			bucket = &syncache_percpu->hashbase[i];
+			TAILQ_INIT(&bucket->sch_bucket);
+			bucket->sch_length = 0;
+		}
+
+		for (i = 0; i <= SYNCACHE_MAXREXMTS; i++) {
+			/* Initialize the timer queues. */
+			TAILQ_INIT(&syncache_percpu->timerq[i]);
+			callout_init(&syncache_percpu->tt_timerq[i]);
+
+			syncache_percpu->mrec[i].slot = i;
+			syncache_percpu->mrec[i].port = tcp_cport(cpu);
+			syncache_percpu->mrec[i].msg.nm_mrec =
+			    &syncache_percpu->mrec[i];
+			lwkt_initmsg(&syncache_percpu->mrec[i].msg.nm_lmsg,
+			    &syncache_null_rport, 0, 
+			    lwkt_cmd_func(syncache_timer_handler),
+			    lwkt_cmd_op_none);
+		}
 	}
 
 	/*
@@ -328,8 +377,11 @@ syncache_insert(sc, sch)
 	struct syncache *sc;
 	struct syncache_head *sch;
 {
+	struct tcp_syncache_percpu *syncache_percpu;
 	struct syncache *sc2;
 	int i;
+
+	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
 
 	/*
 	 * Make sure that we don't overflow the per-bucket
@@ -343,7 +395,7 @@ syncache_insert(sc, sch)
 		sc2->sc_tp->ts_recent = ticks;
 		syncache_drop(sc2, sch);
 		tcpstat.tcps_sc_bucketoverflow++;
-	} else if (tcp_syncache.cache_count >= tcp_syncache.cache_limit) {
+	} else if (syncache_percpu->cache_count >= tcp_syncache.cache_limit) {
 		/*
 		 * The cache is full.  Toss the oldest entry in the
 		 * entire cache.  This is the front entry in the
@@ -351,7 +403,7 @@ syncache_insert(sc, sch)
 		 * timeout value.
 		 */
 		for (i = SYNCACHE_MAXREXMTS; i >= 0; i--) {
-			sc2 = TAILQ_FIRST(&tcp_syncache.timerq[i]);
+			sc2 = TAILQ_FIRST(&syncache_percpu->timerq[i]);
 			if (sc2 != NULL)
 				break;
 		}
@@ -361,12 +413,12 @@ syncache_insert(sc, sch)
 	}
 
 	/* Initialize the entry's timer. */
-	SYNCACHE_TIMEOUT(sc, 0);
+	syncache_timeout(syncache_percpu, sc, 0);
 
 	/* Put it into the bucket. */
 	TAILQ_INSERT_TAIL(&sch->sch_bucket, sc, sc_hash);
 	sch->sch_length++;
-	tcp_syncache.cache_count++;
+	syncache_percpu->cache_count++;
 	tcpstat.tcps_sc_added++;
 }
 
@@ -375,58 +427,83 @@ syncache_drop(sc, sch)
 	struct syncache *sc;
 	struct syncache_head *sch;
 {
+	struct tcp_syncache_percpu *syncache_percpu;
 #ifdef INET6
 	const boolean_t isipv6 = sc->sc_inc.inc_isipv6;
 #else
 	const boolean_t isipv6 = FALSE;
 #endif
 
+	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
+
 	if (sch == NULL) {
 		if (isipv6) {
-			sch = &tcp_syncache.hashbase[
+			sch = &syncache_percpu->hashbase[
 			    SYNCACHE_HASH6(&sc->sc_inc, tcp_syncache.hashmask)];
 		} else {
-			sch = &tcp_syncache.hashbase[
+			sch = &syncache_percpu->hashbase[
 			    SYNCACHE_HASH(&sc->sc_inc, tcp_syncache.hashmask)];
 		}
 	}
 
 	TAILQ_REMOVE(&sch->sch_bucket, sc, sc_hash);
 	sch->sch_length--;
-	tcp_syncache.cache_count--;
+	syncache_percpu->cache_count--;
 
-	TAILQ_REMOVE(&tcp_syncache.timerq[sc->sc_rxtslot], sc, sc_timerq);
-	if (TAILQ_EMPTY(&tcp_syncache.timerq[sc->sc_rxtslot]))
-		callout_stop(&tcp_syncache.tt_timerq[sc->sc_rxtslot]);
+	/*
+	 * Remove the entry from the syncache timer/timeout queue.  Note
+	 * that we do not try to stop any running timer since we do not know
+	 * whether the timer's message is in-transit or not.  Since timeouts
+	 * are fairly long, taking an unneeded callout does not detrimentally
+	 * effect performance.
+	 */
+	TAILQ_REMOVE(&syncache_percpu->timerq[sc->sc_rxtslot], sc, sc_timerq);
 
 	syncache_free(sc);
 }
 
 /*
- * Walk the timer queues, looking for SYN,ACKs that need to be retransmitted.
- * If we have retransmitted an entry the maximum number of times, expire it.
+ * Place a timeout message on the TCP thread's message queue.
+ * This routine runs in soft interrupt context.
+ *
+ * An invariant is for this routine to be called, the callout must
+ * have been active.  Note that the callout is not deactivated until
+ * after the message has been processed in syncache_timer_handler() below.
  */
 static void
-syncache_timer(xslot)
-	void *xslot;
+syncache_timer(void *p)
 {
-	intptr_t slot = (intptr_t)xslot;
+	struct netmsg_sc_timer *msg = p;
+
+	lwkt_sendmsg(msg->nm_mrec->port, &msg->nm_lmsg);
+}
+
+/*
+ * Service a timer message queued by timer expiration.
+ * This routine runs in the TCP protocol thread.
+ *
+ * Walk the timer queues, looking for SYN,ACKs that need to be retransmitted.
+ * If we have retransmitted an entry the maximum number of times, expire it.
+ *
+ * When we finish processing timed-out entries, we restart the timer if there
+ * are any entries still on the queue and deactivate it otherwise.  Only after
+ * a timer has been deactivated here can it be restarted by syncache_timeout().
+ */
+static int
+syncache_timer_handler(lwkt_msg_t msg)
+{
+	struct tcp_syncache_percpu *syncache_percpu;
 	struct syncache *sc, *nsc;
 	struct inpcb *inp;
-	int s;
+	int slot;
 
-	s = splnet();
-        if (callout_pending(&tcp_syncache.tt_timerq[slot]) ||
-            !callout_active(&tcp_syncache.tt_timerq[slot])) {
-                splx(s);
-                return;
-        }
-        callout_deactivate(&tcp_syncache.tt_timerq[slot]);
+	slot = ((struct netmsg_sc_timer *)msg)->nm_mrec->slot;
+	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
 
-        nsc = TAILQ_FIRST(&tcp_syncache.timerq[slot]);
+        nsc = TAILQ_FIRST(&syncache_percpu->timerq[slot]);
 	while (nsc != NULL) {
 		if (ticks < nsc->sc_rxttime)
-			break;
+			break;	/* finished because timerq sorted by time */
 		sc = nsc;
 		inp = sc->sc_tp->t_inpcb;
 		if (slot == SYNCACHE_MAXREXMTS ||
@@ -445,13 +522,18 @@ syncache_timer(xslot)
 		(void) syncache_respond(sc, NULL);
 		nsc = TAILQ_NEXT(sc, sc_timerq);
 		tcpstat.tcps_sc_retransmitted++;
-		TAILQ_REMOVE(&tcp_syncache.timerq[slot], sc, sc_timerq);
-		SYNCACHE_TIMEOUT(sc, slot + 1);
+		TAILQ_REMOVE(&syncache_percpu->timerq[slot], sc, sc_timerq);
+		syncache_timeout(syncache_percpu, sc, slot + 1);
 	}
 	if (nsc != NULL)
-		callout_reset(&tcp_syncache.tt_timerq[slot],
-		    nsc->sc_rxttime - ticks, syncache_timer, (void *)(slot));
-	splx(s);
+		callout_reset(&syncache_percpu->tt_timerq[slot],
+		    nsc->sc_rxttime - ticks, syncache_timer,
+		    &syncache_percpu->mrec[slot]);
+	else
+		callout_deactivate(&syncache_percpu->tt_timerq[slot]);
+
+	lwkt_replymsg(msg, 0);
+	return (EASYNC);
 }
 
 /*
@@ -462,12 +544,14 @@ syncache_lookup(inc, schp)
 	struct in_conninfo *inc;
 	struct syncache_head **schp;
 {
+	struct tcp_syncache_percpu *syncache_percpu;
 	struct syncache *sc;
 	struct syncache_head *sch;
 
+	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
 #ifdef INET6
 	if (inc->inc_isipv6) {
-		sch = &tcp_syncache.hashbase[
+		sch = &syncache_percpu->hashbase[
 		    SYNCACHE_HASH6(inc, tcp_syncache.hashmask)];
 		*schp = sch;
 		TAILQ_FOREACH(sc, &sch->sch_bucket, sc_hash)
@@ -476,7 +560,7 @@ syncache_lookup(inc, schp)
 	} else
 #endif
 	{
-		sch = &tcp_syncache.hashbase[
+		sch = &syncache_percpu->hashbase[
 		    SYNCACHE_HASH(inc, tcp_syncache.hashmask)];
 		*schp = sch;
 		TAILQ_FOREACH(sc, &sch->sch_bucket, sc_hash) {
@@ -838,6 +922,7 @@ syncache_add(inc, to, th, sop, m)
 	struct socket **sop;
 	struct mbuf *m;
 {
+	struct tcp_syncache_percpu *syncache_percpu;
 	struct tcpcb *tp;
 	struct socket *so;
 	struct syncache *sc = NULL;
@@ -846,6 +931,7 @@ syncache_add(inc, to, th, sop, m)
 	struct rmxp_tao *taop;
 	int win;
 
+	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
 	so = *sop;
 	tp = sototcpcb(so);
 
@@ -888,9 +974,9 @@ syncache_add(inc, to, th, sop, m)
 		sc->sc_tp = tp;
 		sc->sc_inp_gencnt = tp->t_inpcb->inp_gencnt;
 		if (syncache_respond(sc, m) == 0) {
-			TAILQ_REMOVE(&tcp_syncache.timerq[sc->sc_rxtslot],
+			TAILQ_REMOVE(&syncache_percpu->timerq[sc->sc_rxtslot],
 			    sc, sc_timerq);
-			SYNCACHE_TIMEOUT(sc, sc->sc_rxtslot);
+			syncache_timeout(syncache_percpu, sc, sc->sc_rxtslot);
 		 	tcpstat.tcps_sndacks++;
 			tcpstat.tcps_sndtotal++;
 		}
