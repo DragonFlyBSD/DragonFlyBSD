@@ -2,7 +2,7 @@
 #
 # Common code used run regression tests for usr.bin/make.
 #
-# $DragonFly: src/usr.bin/make/tests/common.sh,v 1.7 2005/03/01 22:59:44 okumoto Exp $
+# $DragonFly: src/usr.bin/make/tests/common.sh,v 1.8 2005/03/02 10:55:37 okumoto Exp $
 
 IDTAG='$'DragonFly'$'
 
@@ -131,7 +131,7 @@ eval_cmd()
 		# down into them if the cmd is valid.
 		#
 		case $1 in
-		clean|compare|desc|diff|run|test|update)
+		clean|compare|desc|diff|run|test|update|run_output)
 			for d in $DIR; do
 				eval_subdir_cmd $d $1
 			done
@@ -179,6 +179,24 @@ eval_cmd()
 			sh $0 compare
 			sh $0 clean
 			;;
+		run_output)
+			sh $0 test
+			sh $0 compare
+			echo "------------------------"
+			echo "- stdout"
+			echo "------------------------"
+			cat $WORK_BASE/stdout
+			echo "------------------------"
+			echo "- stderr"
+			echo "------------------------"
+			cat $WORK_BASE/stderr
+			echo "------------------------"
+			echo "- status"
+			echo "------------------------"
+			echo -n "status ="
+			cat $WORK_BASE/status
+			sh $0 clean
+			;;
 		test)
 			[ -d $WORK_BASE ] || mkdir -p $WORK_BASE
 			setup_test
@@ -186,22 +204,35 @@ eval_cmd()
 			;;
 		update)
 			sh $0 test
-			# Create expected files if they don't exist.
-			[ -f expected.stdout ] || echo $IDTAG > expected.stdout
-			[ -f expected.stderr ] || echo $IDTAG > expected.stderr
-			[ -f expected.status ] || echo $IDTAG > expected.status
+			#
+			# Preserve the RCS id tag at top of file.
+			# Create initial tag if the file didn't
+			# exist.
+			#
+			if [ -f "."$SRC_BASE/expected.stdout ]; then
+				head -n 1 "."$SRC_BASE/expected.stdout
+			else
+				echo $IDTAG
+			fi > $WORK_BASE/expected.stdout
 
-			# Remove previous contents of expected files, and
-			# replace them with the new contents.
-			sed -e '2,$d' < expected.stdout > new.expected.stdout
-			sed -e '2,$d' < expected.stderr > new.expected.stderr
-			sed -e '2,$d' < expected.status > new.expected.status
-			cat stdout >> new.expected.stdout
-			cat stderr >> new.expected.stderr
-			cat status >> new.expected.status
-			mv new.expected.stdout expected.stdout
-			mv new.expected.stderr expected.stderr
-			mv new.expected.status expected.status
+			if [ -f "."$SRC_BASE/expected.stderr ]; then
+				head -n 1 "."$SRC_BASE/expected.stderr
+			else
+				echo $IDTAG
+			fi > $WORK_BASE/expected.stderr
+
+			if [ -f "."$SRC_BASE/expected.status ]; then
+				head -n 1 "."$SRC_BASE/expected.status
+			else
+				echo $IDTAG
+			fi > $WORK_BASE/expected.status
+
+			cat $WORK_BASE/stdout >> $WORK_BASE/expected.stdout
+			cat $WORK_BASE/stderr >> $WORK_BASE/expected.stderr
+			cat $WORK_BASE/status >> $WORK_BASE/expected.status
+			mv $WORK_BASE/expected.stdout "."$SRC_BASE/expected.stdout
+			mv $WORK_BASE/expected.stderr "."$SRC_BASE/expected.stderr
+			mv $WORK_BASE/expected.status "."$SRC_BASE/expected.status
 			;;
 		*)
 			print_usage
