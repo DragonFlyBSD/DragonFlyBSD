@@ -1,7 +1,8 @@
-/*	$FreeBSD: src/sys/netinet/in_gif.c,v 1.5.2.11 2003/01/23 21:06:45 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet/in_gif.c,v 1.6 2004/03/06 01:58:55 hsu Exp $	*/
-/*	$KAME: in_gif.c,v 1.54 2001/05/14 14:02:16 itojun Exp $	*/
-
+/*
+ * $FreeBSD: src/sys/netinet/in_gif.c,v 1.5.2.11 2003/01/23 21:06:45 sam Exp $
+ * $DragonFly: src/sys/netinet/in_gif.c,v 1.7 2004/05/03 18:43:22 dillon Exp $
+ * $KAME: in_gif.c,v 1.54 2001/05/14 14:02:16 itojun Exp $
+ */
 /*
  * Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
  * All rights reserved.
@@ -63,8 +64,9 @@
 #endif
 
 #include <net/gif/if_gif.h>	
-
 #include <net/net_osdep.h>
+
+#include <sys/thread2.h>	/* ipstat */
 
 static int gif_validate4 (const struct ip *, struct gif_softc *,
 	struct ifnet *);
