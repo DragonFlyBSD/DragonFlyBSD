@@ -35,7 +35,7 @@
  *
  * @(#)fgetpos.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fgetpos.c,v 1.8 1999/08/28 00:00:59 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fgetpos.c,v 1.3 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fgetpos.c,v 1.4 2004/06/07 20:57:15 hmp Exp $
  */
 
 #include <stdio.h>
@@ -46,7 +46,7 @@ fgetpos(FILE *fp, fpos_t *pos)
 {
 	int retval;
 	FLOCKFILE(fp);
-	retval = (*pos = ftello(fp)) == (fpos_t)-1;
+	retval = (*pos = ftello(fp)) == (fpos_t)-1 ? -1 : 0;
 	FUNLOCKFILE(fp);
 	return(retval);
 }
