@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.22 2004/06/06 19:16:06 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.23 2004/07/02 15:31:17 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -1519,7 +1519,7 @@ soopt_mcopyin(struct sockopt *sopt, struct mbuf *m)
 		} else
 			bcopy(sopt->sopt_val, mtod(m, char *), m->m_len);
 		sopt->sopt_valsize -= m->m_len;
-		(caddr_t)sopt->sopt_val += m->m_len;
+		sopt->sopt_val = (caddr_t)sopt->sopt_val + m->m_len;
 		m = m->m_next;
 	}
 	if (m != NULL) /* should be allocated enoughly at ip6_sooptmcopyin() */
@@ -1549,7 +1549,7 @@ soopt_mcopyout(struct sockopt *sopt, struct mbuf *m)
 		} else
 			bcopy(mtod(m, char *), sopt->sopt_val, m->m_len);
 	       sopt->sopt_valsize -= m->m_len;
-	       (caddr_t)sopt->sopt_val += m->m_len;
+	       sopt->sopt_val = (caddr_t)sopt->sopt_val + m->m_len;
 	       valsize += m->m_len;
 	       m = m->m_next;
 	}
