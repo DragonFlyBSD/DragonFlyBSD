@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.18 2004/03/29 17:17:09 drhodus Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.19 2004/04/11 00:10:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -364,13 +364,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	imgp->proc = p;
 	imgp->attr = attr;
 	imgp->firstpage = NULL;
-	imgp->image_header = (char *)kmem_alloc_wait(exec_map, PAGE_SIZE);
-
-	if (imgp->image_header == NULL) {
-		nd->ni_vp = NULL;
-		error = ENOMEM;
-		goto fail;
-	}
+	imgp->image_header = NULL;
 
         NDINIT(nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_FOLLOW,
 	    UIO_SYSSPACE, file, td);
@@ -458,9 +452,6 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 fail:
 	if (imgp->firstpage)
 		exec_unmap_first_page(imgp);
-	if (imgp->image_header)
-		kmem_free_wakeup(exec_map, (vm_offset_t)imgp->image_header,
-			PAGE_SIZE);
 	if (nd->ni_vp)
 		vrele(nd->ni_vp);
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.21 2004/03/12 23:09:36 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.22 2004/04/11 00:10:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,6 +45,7 @@
 #include <sys/signalvar.h>
 #include <sys/pioctl.h>
 #include <sys/namei.h>
+#include <sys/sfbuf.h>
 #include <sys/sysent.h>
 #include <sys/shm.h>
 #include <sys/sysctl.h>
@@ -155,16 +156,7 @@ kern_execve(struct nameidata *ndp, struct image_args *args)
 	imgp->vp = NULL;
 	imgp->firstpage = NULL;
 	imgp->ps_strings = 0;
-
-	/*
-	 * Allocate temporary demand zeroed space for argument and
-	 *	environment strings
-	 */
-	imgp->image_header = (char *)kmem_alloc_wait(exec_map, PAGE_SIZE);
-	if (imgp->image_header == NULL) {
-		error = ENOMEM;
-		goto exec_fail;
-	}
+	imgp->image_header = NULL;
 
 interpret:
 
@@ -172,12 +164,8 @@ interpret:
 	 * Translate the file name. namei() returns a vnode pointer
 	 *	in ni_vp amoung other things.
 	 */
-	error = namei(ndp);
-	if (error) {
-		kmem_free_wakeup(exec_map, (vm_offset_t)imgp->image_header,
-		    PAGE_SIZE);
+	if ((error = namei(ndp)) != 0)
 		goto exec_fail;
-	}
 
 	imgp->vp = ndp->ni_vp;
 
@@ -443,10 +431,6 @@ exec_fail_dealloc:
 	if (imgp->firstpage)
 		exec_unmap_first_page(imgp);
 
-	if (imgp->image_header != NULL)
-		kmem_free_wakeup(exec_map, (vm_offset_t)imgp->image_header,
-		    PAGE_SIZE);
-
 	if (imgp->vp) {
 		NDFREE(ndp, NDF_ONLY_PNBUF);
 		vrele(imgp->vp);
@@ -508,10 +492,8 @@ exec_map_first_page(struct image_params *imgp)
 	vm_page_t ma[VM_INITIAL_PAGEIN];
 	vm_object_t object;
 
-
-	if (imgp->firstpage) {
+	if (imgp->firstpage)
 		exec_unmap_first_page(imgp);
-	}
 
 	VOP_GETVOBJECT(imgp->vp, &object);
 	s = splvm();
@@ -554,8 +536,8 @@ exec_map_first_page(struct image_params *imgp)
 	vm_page_wakeup(ma[0]);
 	splx(s);
 
-	pmap_kenter((vm_offset_t) imgp->image_header, VM_PAGE_TO_PHYS(ma[0]));
-	imgp->firstpage = ma[0];
+	imgp->firstpage = sf_buf_alloc(ma[0], SFBA_QUICK);
+	imgp->image_header = (void *)sf_buf_kva(imgp->firstpage);
 
 	return 0;
 }
@@ -564,10 +546,14 @@ void
 exec_unmap_first_page(imgp)
 	struct image_params *imgp;
 {
-	if (imgp->firstpage) {
-		pmap_kremove((vm_offset_t) imgp->image_header);
-		vm_page_unwire(imgp->firstpage, 1);
+	vm_page_t m;
+
+	if (imgp->firstpage != NULL) {
+		m = sf_buf_page(imgp->firstpage);
+		sf_buf_free(imgp->firstpage);
 		imgp->firstpage = NULL;
+		imgp->image_header = NULL;
+		vm_page_unwire(m, 1);
 	}
 }
 

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/imgact.h,v 1.22.2.2 2001/12/22 01:21:44 jwd Exp $
- * $DragonFly: src/sys/sys/imgact.h,v 1.5 2004/01/20 18:41:51 dillon Exp $
+ * $DragonFly: src/sys/sys/imgact.h,v 1.6 2004/04/11 00:10:34 dillon Exp $
  */
 
 #ifndef _SYS_IMGACT_H_
@@ -62,7 +62,7 @@ struct image_params {
 	char interpreted;	/* flag - this executable is interpreted */
 	char interpreter_name[MAXSHELLCMDLEN]; /* name of the interpreter */
 	void *auxargs;		/* ELF Auxinfo structure pointer */
-	struct vm_page *firstpage;	/* first page that we mapped */
+	struct sf_buf *firstpage;	/* first page that we mapped */
 	unsigned long ps_strings; /* PS_STRINGS for BSD/OS binaries */
 };
 
