@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1995 - 2001 John Hay.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,14 +25,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ar/if_arregs.h,v 1.7.2.1 2002/06/17 15:10:57 jhay Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_arregs.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $FreeBSD: src/sys/dev/ar/if_arregs.h,v 1.10 2005/01/06 01:42:28 imp Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_arregs.h,v 1.3 2005/02/08 14:31:16 joerg Exp $
  */
 #ifndef _IF_ARREGS_H_
 #define _IF_ARREGS_H_
 
 #define NCHAN			2    /* A HD64570 chip have 2 channels */
-#define NPORT			4    /* A ArNet board can have 4 ports or */
+#define NPORT			4    /* An ArNet board can have 4 ports or */
 				     /* channels */
 
 #define AR_BUF_SIZ		512
@@ -170,21 +170,19 @@
 
 #define ARC_GET_WIN(addr)	((addr >> ARC_WIN_SHFT) & AR_WIN_MSK)
 
-#define ARC_SET_MEM(iobase,win)	outb(iobase+AR_MSCA_EN, AR_ENA_MEM | \
+#define ARC_SET_MEM(hc,win)	ar_outb(hc, AR_MSCA_EN, AR_ENA_MEM | \
 				ARC_GET_WIN(win))
-#define ARC_SET_SCA(iobase,ch)	outb(iobase+AR_MSCA_EN, AR_ENA_MEM | \
+#define ARC_SET_SCA(hc,ch)	ar_outb(hc, AR_MSCA_EN, AR_ENA_MEM | \
 				AR_ENA_SCA | (ch ? AR_SEL_SCA_1:AR_SEL_SCA_0))
-#define ARC_SET_OFF(iobase)	outb(iobase+AR_MSCA_EN, 0)
+#define ARC_SET_OFF(hc)		ar_outb(hc, AR_MSCA_EN, 0)
 
 struct ar_hardc {
 	int cunit;
 	struct ar_softc *sc;
-	u_short iobase;
 	int isa_irq;
 	int numports;
 	caddr_t mem_start;
 	caddr_t mem_end;
-	caddr_t plx_mem;
 	u_char *orbase;
 
 	u_int memsize;		/* in bytes */
@@ -224,5 +222,11 @@ int ar_allocate_plx_memory(device_t device, int rid, u_long size);
 int ar_deallocate_resources(device_t device);
 int ar_attach(device_t device);
 int ar_detach (device_t);
+
+#define ar_inb(hc, port) \
+	bus_space_read_1((hc)->bt, (hc)->bh, (port))
+
+#define ar_outb(hc, port, value) \
+	bus_space_write_1((hc)->bt, (hc)->bh, (port), (value))
 
 #endif /* _IF_ARREGS_H_ */

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1995 - 2001 John Hay.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.52.2.1 2002/06/17 15:10:57 jhay Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.11 2005/01/23 20:21:30 joerg Exp $
+ * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.66 2005/01/06 01:42:28 imp Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.12 2005/02/08 14:31:16 joerg Exp $
  */
 
 /*
@@ -43,7 +43,6 @@
  *
  * There should be a way to set/reset Raw HDLC/PPP, Loopback, DCE/DTE,
  * internal/external clock, etc.....
- *
  */
 
 #include "opt_netgraph.h"
@@ -68,17 +67,16 @@
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
 #include <sys/syslog.h>
-#include "if_ar.h"
+#include <dev/netif/ar/if_ar.h>
 #else /* NETGRAPH */
 #include <net/sppp/if_sppp.h>
 #include <net/bpf.h>
 #endif /* NETGRAPH */
 
-#include <machine/clock.h>
 #include <machine/md_var.h>
 
-#include "../ic_layer/hd64570.h"
-#include "if_arregs.h"
+#include <dev/netif/ic_layer/hd64570.h>
+#include <dev/netif/ar/if_arregs.h>
 
 #ifdef TRACE
 #define TRC(x)               x
@@ -89,6 +87,8 @@
 #define TRCL(x)              x
 
 #define PPP_HEADER_LEN       4
+
+devclass_t ar_devclass;
 
 struct ar_softc {
 #ifndef	NETGRAPH
@@ -220,7 +220,7 @@ static	void	ngar_init(void* ignored);
 
 static ng_constructor_t	ngar_constructor;
 static ng_rcvmsg_t	ngar_rcvmsg;
-static ng_shutdown_t	ngar_rmnode;
+static ng_shutdown_t	ngar_shutdown;
 static ng_newhook_t	ngar_newhook;
 /*static ng_findhook_t	ngar_findhook; */
 static ng_connect_t	ngar_connect;
@@ -233,7 +233,7 @@ static struct ng_type typestruct = {
 	NULL,
 	ngar_constructor,
 	ngar_rcvmsg,
-	ngar_rmnode,
+	ngar_shutdown,
 	ngar_newhook,
 	NULL,
 	ngar_connect,
@@ -295,7 +295,8 @@ ar_attach(device_t device)
 		ifp = &sc->ifsppp.pp_if;
 
 		ifp->if_softc = sc;
-		if_initname(ifp, "ar", unit);
+		if_initname(ifp, device_get_name(device),
+		    device_get_unit(device));
 		ifp->if_mtu = PP_MTU;
 		ifp->if_flags = IFF_POINTOPOINT | IFF_MULTICAST;
 		ifp->if_ioctl = arioctl;
@@ -330,22 +331,21 @@ ar_attach(device_t device)
 		if (ngar_done_init == 0) ngar_init(NULL);
 		if (ng_make_node_common(&typestruct, &sc->node) != 0)
 			return (1);
-		sc->node->private = sc;
+		sprintf(sc->nodename, "%s%d", NG_AR_NODE_TYPE, sc->unit);
+		if (ng_name_node(sc->node, sc->nodename)) {
+			NG_NODE_UNREF(sc->node); /* drop it again */
+			return (1);
+		}
+		NG_NODE_SET_PRIVATE(sc->node, sc);
 		callout_init(&sc->timer);
 		sc->xmitq.ifq_maxlen = IFQ_MAXLEN;
 		sc->xmitq_hipri.ifq_maxlen = IFQ_MAXLEN;
-		sprintf(sc->nodename, "%s%d", NG_AR_NODE_TYPE, sc->unit);
-		if (ng_name_node(sc->node, sc->nodename)) {
-			ng_rmnode(sc->node);
-			ng_unref(sc->node);
-			return (1);
-		}
 		sc->running = 0;
 #endif	/* NETGRAPH */
 	}
 
 	if(hc->bustype == AR_BUS_ISA)
-		ARC_SET_OFF(hc->iobase);
+		ARC_SET_OFF(hc);
 
 	return (0);
 }
@@ -385,6 +385,9 @@ ar_allocate_ioport(device_t device, int rid, u_long size)
 	if (hc->res_ioport == NULL) {
 		goto errexit;
 	}
+	hc->bt = rman_get_bustag(hc->res_ioport);
+	hc->bh = rman_get_bushandle(hc->res_ioport);
+
 	return (0);
 
 errexit:
@@ -398,8 +401,8 @@ ar_allocate_irq(device_t device, int rid, u_long size)
 	struct ar_hardc *hc = device_get_softc(device);
 
 	hc->rid_irq = rid;
-	hc->res_irq = bus_alloc_resource(device, SYS_RES_IRQ,
-			&hc->rid_irq, 0ul, ~0ul, 1, RF_SHAREABLE|RF_ACTIVE);
+	hc->res_irq = bus_alloc_resource_any(device, SYS_RES_IRQ,
+			&hc->rid_irq, RF_SHAREABLE|RF_ACTIVE);
 	if (hc->res_irq == NULL) {
 		goto errexit;
 	}
@@ -500,7 +503,7 @@ arintr(void *arg)
 	if(hc->bustype == AR_BUS_PCI)
 		arisr = hc->orbase[AR_ISTAT * 4];
 	else
-		arisr = inb(hc->iobase + AR_ISTAT);
+		arisr = ar_inb(hc, AR_ISTAT);
 
 	while(arisr & AR_BD_INT) {
 		TRC(printf("arisr = %x\n", arisr));
@@ -517,7 +520,7 @@ arintr(void *arg)
 		sca = hc->sca[scano];
 
 		if(hc->bustype == AR_BUS_ISA)
-			ARC_SET_SCA(hc->iobase, scano);
+			ARC_SET_SCA(hc, scano);
 
 		isr0 = sca->isr0;
 		isr1 = sca->isr1;
@@ -547,12 +550,12 @@ arintr(void *arg)
 			if(hc->bustype == AR_BUS_PCI)
 				arisr = hc->orbase[AR_ISTAT * 4];
 			else
-				arisr = inb(hc->iobase + AR_ISTAT);
+				arisr = ar_inb(hc, AR_ISTAT);
 		}
 	}
 
 	if(hc->bustype == AR_BUS_ISA)
-		ARC_SET_OFF(hc->iobase);
+		ARC_SET_OFF(hc);
 }
 
 
@@ -575,7 +578,7 @@ ar_xmit(struct ar_softc *sc)
 	dmac = &sc->sca->dmac[DMAC_TXCH(sc->scachan)];
 
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_SCA(sc->hc->iobase, sc->scano);
+		ARC_SET_SCA(sc->hc, sc->scano);
 	dmac->cda = (u_short)(sc->block[sc->txb_next_tx].txdesc & 0xffff);
 
 	dmac->eda = (u_short)(sc->block[sc->txb_next_tx].txeda & 0xffff);
@@ -593,7 +596,7 @@ ar_xmit(struct ar_softc *sc)
 	sc->out_dog = DOG_HOLDOFF;	/* give ourself some breathing space*/
 #endif	/* NETGRAPH */
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_OFF(sc->hc->iobase);
+		ARC_SET_OFF(sc->hc);
 }
 
 /*
@@ -664,7 +667,7 @@ top_arstart:
 	 * 16K window.
 	 */
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_MEM(sc->hc->iobase, sc->block[0].txdesc);
+		ARC_SET_MEM(sc->hc, sc->block[0].txdesc);
 
 	/*
 	 * We stay in this loop until there is nothing in the
@@ -759,7 +762,7 @@ top_arstart:
 		ar_xmit(sc);
 
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_OFF(sc->hc->iobase);
+		ARC_SET_OFF(sc->hc);
 
 	goto top_arstart;
 }
@@ -772,20 +775,20 @@ arioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	int was_up, should_be_up;
 	struct ar_softc *sc = ifp->if_softc;
 
-	TRC(printf("%s: arioctl.\n", ifp->if_xname);)
+	TRC(if_printf(ifp, "arioctl.\n");)
 
 	was_up = ifp->if_flags & IFF_RUNNING;
 
 	error = sppp_ioctl(ifp, cmd, data);
-	TRC(printf("%s: ioctl: ifsppp.pp_flags = %x, if_flags %x.\n", 
-		ifp->if_xname, ((struct sppp *)ifp)->pp_flags, ifp->if_flags);)
+	TRC(if_printf(ifp, "ioctl: ifsppp.pp_flags = %x, if_flags %x.\n", 
+		((struct sppp *)ifp)->pp_flags, ifp->if_flags);)
 	if(error)
 		return (error);
 
 	if((cmd != SIOCSIFFLAGS) && cmd != (SIOCSIFADDR))
 		return (0);
 
-	TRC(printf("%s: arioctl %s.\n", ifp->if_xname, 
+	TRC(if_printf(ifp, "arioctl %s.\n",
 		(cmd == SIOCSIFFLAGS) ? "SIOCSIFFLAGS" : "SIOCSIFADDR");)
 
 	s = splimp();
@@ -828,7 +831,7 @@ arwatchdog(struct ar_softc *sc)
 #endif	/* NETGRAPH */
 
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_SCA(sc->hc->iobase, sc->scano);
+		ARC_SET_SCA(sc->hc, sc->scano);
 
 	/* XXX if(sc->ifsppp.pp_if.if_flags & IFF_DEBUG) */
 		printf("ar%d: transmit failed, "
@@ -880,7 +883,7 @@ ar_up(struct ar_softc *sc)
 	 * Enable interrupts.
 	 */
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_SCA(sc->hc->iobase, sc->scano);
+		ARC_SET_SCA(sc->hc, sc->scano);
 
 	/* XXX
 	 * What about using AUTO mode in msci->md0 ???
@@ -895,7 +898,7 @@ ar_up(struct ar_softc *sc)
 			sc->hc->orbase[sc->hc->txc_dtr_off[sc->scano]] =
 				sc->hc->txc_dtr[sc->scano];
 		else
-			outb(sc->hc->iobase + sc->hc->txc_dtr_off[sc->scano],
+			ar_outb(sc->hc, sc->hc->txc_dtr_off[sc->scano],
 				sc->hc->txc_dtr[sc->scano]);
 	}
 
@@ -909,11 +912,11 @@ ar_up(struct ar_softc *sc)
 
 	msci->cmd = SCA_CMD_RXENABLE;
 	if(sc->hc->bustype == AR_BUS_ISA)
-		inb(sc->hc->iobase + AR_ID_5); /* XXX slow it down a bit. */
+		ar_inb(sc->hc, AR_ID_5); /* XXX slow it down a bit. */
 	msci->cmd = SCA_CMD_TXENABLE;
 
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_OFF(sc->hc->iobase);
+		ARC_SET_OFF(sc->hc);
 #ifdef	NETGRAPH
 	callout_reset(&sc->timer, hz, ngar_watchdog_frame, sc);
 	sc->running = 1;
@@ -939,10 +942,10 @@ ar_down(struct ar_softc *sc)
 	 * Disable interrupts.
 	 */
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_SCA(sc->hc->iobase, sc->scano);
+		ARC_SET_SCA(sc->hc, sc->scano);
 	msci->cmd = SCA_CMD_RXDISABLE;
 	if(sc->hc->bustype == AR_BUS_ISA)
-		inb(sc->hc->iobase + AR_ID_5); /* XXX slow it down a bit. */
+		ar_inb(sc->hc, AR_ID_5); /* XXX slow it down a bit. */
 	msci->cmd = SCA_CMD_TXDISABLE;
 
 	if(sc->hc->handshake & AR_SHSK_RTS)
@@ -954,7 +957,7 @@ ar_down(struct ar_softc *sc)
 			sc->hc->orbase[sc->hc->txc_dtr_off[sc->scano]] =
 				sc->hc->txc_dtr[sc->scano];
 		else
-			outb(sc->hc->iobase + sc->hc->txc_dtr_off[sc->scano],
+			ar_outb(sc->hc, sc->hc->txc_dtr_off[sc->scano],
 				sc->hc->txc_dtr[sc->scano]);
 	}
 
@@ -967,7 +970,7 @@ ar_down(struct ar_softc *sc)
 	}
 
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_OFF(sc->hc->iobase);
+		ARC_SET_OFF(sc->hc);
 }
 
 static int
@@ -1076,9 +1079,10 @@ arc_init(struct ar_hardc *hc)
 	u_int next;
 	u_int descneeded;
 	u_char isr, mar;
+	u_long memst;
 
 	MALLOC(sc, struct ar_softc *, hc->numports * sizeof(struct ar_softc),
-		M_DEVBUF, M_INTWAIT | M_ZERO);
+		M_DEVBUF, M_WAITOK | M_ZERO);
 	if (sc == NULL)
 		return;
 	hc->sc = sc;
@@ -1100,31 +1104,32 @@ arc_init(struct ar_hardc *hc)
 		hc->orbase[AR_TXC_DTR0 * 4] = ~AR_TXC_DTR_NOTRESET &
 			hc->txc_dtr[0];
 	else
-		outb(hc->iobase + AR_TXC_DTR0, ~AR_TXC_DTR_NOTRESET &
+		ar_outb(hc, AR_TXC_DTR0, ~AR_TXC_DTR_NOTRESET &
 			hc->txc_dtr[0]);
 	DELAY(2);
 	if(hc->bustype == AR_BUS_PCI)
 		hc->orbase[AR_TXC_DTR0 * 4] = hc->txc_dtr[0];
 	else
-		outb(hc->iobase + AR_TXC_DTR0, hc->txc_dtr[0]);
+		ar_outb(hc, AR_TXC_DTR0, hc->txc_dtr[0]);
 
 	if(hc->bustype == AR_BUS_ISA) {
 		/*
 		 * Configure the card.
 		 * Mem address, irq, 
 		 */
-		mar = kvtop(hc->mem_start) >> 16;
+		memst = rman_get_start(hc->res_memory);
+		mar = memst >> 16;
 		isr = irqtable[hc->isa_irq] << 1;
 		if(isr == 0)
 			printf("ar%d: Warning illegal interrupt %d\n",
 				hc->cunit, hc->isa_irq);
-		isr = isr | ((kvtop(hc->mem_start) & 0xc000) >> 10);
+		isr = isr | ((memst & 0xc000) >> 10);
 
 		hc->sca[0] = (sca_regs *)hc->mem_start;
 		hc->sca[1] = (sca_regs *)hc->mem_start;
 
-		outb(hc->iobase + AR_MEM_SEL, mar);
-		outb(hc->iobase + AR_INT_SEL, isr | AR_INTS_CEN);
+		ar_outb(hc, AR_MEM_SEL, mar);
+		ar_outb(hc, AR_INT_SEL, isr | AR_INTS_CEN);
 	}
 
 	if(hc->bustype == AR_BUS_PCI && hc->interface[0] == AR_IFACE_PIM)
@@ -1154,12 +1159,12 @@ arc_init(struct ar_hardc *hc)
 	if(hc->bustype == AR_BUS_PCI)
 		hc->orbase[AR_TXC_DTR0 * 4] = hc->txc_dtr[0];
 	else
-		outb(hc->iobase + AR_TXC_DTR0, hc->txc_dtr[0]);
+		ar_outb(hc, AR_TXC_DTR0, hc->txc_dtr[0]);
 	if(hc->numports > NCHAN) {
 		if(hc->bustype == AR_BUS_PCI)
 			hc->orbase[AR_TXC_DTR2 * 4] = hc->txc_dtr[1];
 		else
-			outb(hc->iobase + AR_TXC_DTR2, hc->txc_dtr[1]);
+			ar_outb(hc, AR_TXC_DTR2, hc->txc_dtr[1]);
 	}
 
 	chanmem = hc->memsize / hc->numports;
@@ -1226,7 +1231,7 @@ ar_init_sca(struct ar_hardc *hc, int scano)
 
 	sca = hc->sca[scano];
 	if(hc->bustype == AR_BUS_ISA)
-		ARC_SET_SCA(hc->iobase, scano);
+		ARC_SET_SCA(hc, scano);
 
 	/*
 	 * Do the wait registers.
@@ -1292,7 +1297,7 @@ ar_init_msci(struct ar_softc *sc)
 	msci = &sc->sca->msci[sc->scachan];
 
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_SCA(sc->hc->iobase, sc->scano);
+		ARC_SET_SCA(sc->hc, sc->scano);
 
 	msci->cmd = SCA_CMD_RESET;
 
@@ -1366,7 +1371,7 @@ ar_init_rx_dmac(struct ar_softc *sc)
 	dmac = &sc->sca->dmac[DMAC_RXCH(sc->scachan)];
 
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_MEM(sc->hc->iobase, sc->rxdesc);
+		ARC_SET_MEM(sc->hc, sc->rxdesc);
 
 	rxd = (sca_descriptor *)(sc->hc->mem_start + (sc->rxdesc&sc->hc->winmsk));
 	rxda_d = (u_int)sc->hc->mem_start - (sc->rxdesc & ~sc->hc->winmsk);
@@ -1394,7 +1399,7 @@ ar_init_rx_dmac(struct ar_softc *sc)
 	sc->rxhind = 0;
 
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_SCA(sc->hc->iobase, sc->scano);
+		ARC_SET_SCA(sc->hc, sc->scano);
 
 	dmac->dsr = 0;    /* Disable DMA transfer */
 	dmac->dcr = SCA_DCR_ABRT;
@@ -1432,7 +1437,7 @@ ar_init_tx_dmac(struct ar_softc *sc)
 	dmac = &sc->sca->dmac[DMAC_TXCH(sc->scachan)];
 
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_MEM(sc->hc->iobase, sc->block[0].txdesc);
+		ARC_SET_MEM(sc->hc, sc->block[0].txdesc);
 
 	for(blk = 0; blk < AR_TX_BLOCKS; blk++) {
 		blkp = &sc->block[blk];
@@ -1463,7 +1468,7 @@ ar_init_tx_dmac(struct ar_softc *sc)
 	}
 
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_SCA(sc->hc->iobase, sc->scano);
+		ARC_SET_SCA(sc->hc, sc->scano);
 
 	dmac->dsr = 0; /* Disable DMA */
 	dmac->dcr = SCA_DCR_ABRT;
@@ -1496,13 +1501,13 @@ ar_packet_avail(struct ar_softc *sc,
 	sca_descriptor *cda;
 
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_SCA(sc->hc->iobase, sc->scano);
+		ARC_SET_SCA(sc->hc, sc->scano);
 	dmac = &sc->sca->dmac[DMAC_RXCH(sc->scachan)];
 	cda = (sca_descriptor *)(sc->hc->mem_start +
 	      ((((u_int)dmac->sarb << 16) + dmac->cda) & sc->hc->winmsk));
 
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_MEM(sc->hc->iobase, sc->rxdesc);
+		ARC_SET_MEM(sc->hc, sc->rxdesc);
 	rxdesc = (sca_descriptor *)
 			(sc->hc->mem_start + (sc->rxdesc & sc->hc->winmsk));
 	endp = rxdesc;
@@ -1559,7 +1564,7 @@ ar_copy_rxbuf(struct mbuf *m,
 	while(len) {
 		tlen = (len < AR_BUF_SIZ) ? len : AR_BUF_SIZ;
 		if(sc->hc->bustype == AR_BUS_ISA)
-			ARC_SET_MEM(sc->hc->iobase, rxdata);
+			ARC_SET_MEM(sc->hc, rxdata);
 		bcopy(sc->hc->mem_start + (rxdata & sc->hc->winmsk), 
 			mtod(m, caddr_t) + off,
 			tlen);
@@ -1568,7 +1573,7 @@ ar_copy_rxbuf(struct mbuf *m,
 		len -= tlen;
 
 		if(sc->hc->bustype == AR_BUS_ISA)
-			ARC_SET_MEM(sc->hc->iobase, sc->rxdesc);
+			ARC_SET_MEM(sc->hc, sc->rxdesc);
 		rxdesc->len = 0;
 		rxdesc->stat = 0xff;
 
@@ -1597,7 +1602,7 @@ ar_eat_packet(struct ar_softc *sc, int single)
 	u_char stat;
 
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_SCA(sc->hc->iobase, sc->scano);
+		ARC_SET_SCA(sc->hc, sc->scano);
 	dmac = &sc->sca->dmac[DMAC_RXCH(sc->scachan)];
 	cda = (sca_descriptor *)(sc->hc->mem_start +
 	      ((((u_int)dmac->sarb << 16) + dmac->cda) & sc->hc->winmsk));
@@ -1608,7 +1613,7 @@ ar_eat_packet(struct ar_softc *sc, int single)
 	 * Increment the descriptor.
 	 */
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_MEM(sc->hc->iobase, sc->rxdesc);
+		ARC_SET_MEM(sc->hc, sc->rxdesc);
 	rxdesc = (sca_descriptor *)
 		(sc->hc->mem_start + (sc->rxdesc & sc->hc->winmsk));
 	endp = rxdesc;
@@ -1649,7 +1654,7 @@ ar_eat_packet(struct ar_softc *sc, int single)
 	 * Update the eda to the previous descriptor.
 	 */
 	if(sc->hc->bustype == AR_BUS_ISA)
-		ARC_SET_SCA(sc->hc->iobase, sc->scano);
+		ARC_SET_SCA(sc->hc, sc->scano);
 
 	rxdesc = (sca_descriptor *)sc->rxdesc;
 	rxdesc = &rxdesc[(sc->rxhind + sc->rxmax - 2 ) % sc->rxmax];
@@ -1671,6 +1676,9 @@ ar_get_packets(struct ar_softc *sc)
 	int i;
 	int len;
 	u_char rxstat;
+#ifdef NETGRAPH
+	int error;
+#endif
 
 	while(ar_packet_avail(sc, &len, &rxstat)) {
 		TRC(printf("apa: len %d, rxstat %x\n", len, rxstat));
@@ -1703,7 +1711,7 @@ ar_get_packets(struct ar_softc *sc)
 			sppp_input(&sc->ifsppp.pp_if, m);
 			sc->ifsppp.pp_if.if_ipackets++;
 #else	/* NETGRAPH */
-			ng_queue_data(sc->hook, m, NULL);
+			NG_SEND_DATA_ONLY(error, sc->hook, m);
 			sc->ipackets++;
 #endif	/* NETGRAPH */
 
@@ -1714,7 +1722,7 @@ ar_get_packets(struct ar_softc *sc)
 			sc->rxhind = (sc->rxhind + i) % sc->rxmax;
 
 			if(sc->hc->bustype == AR_BUS_ISA)
-				ARC_SET_SCA(sc->hc->iobase, sc->scano);
+				ARC_SET_SCA(sc->hc, sc->scano);
 
 			rxdesc = (sca_descriptor *)sc->rxdesc;
 			rxdesc =
@@ -1745,7 +1753,7 @@ ar_get_packets(struct ar_softc *sc)
 #endif	/* NETGRAPH */
 
 			if(sc->hc->bustype == AR_BUS_ISA)
-				ARC_SET_SCA(sc->hc->iobase, sc->scano);
+				ARC_SET_SCA(sc->hc, sc->scano);
 
 			TRCL(printf("ar%d: Receive error chan %d, "
 					"stat %x, msci st3 %x,"
@@ -1801,7 +1809,7 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 			dmac = &sca->dmac[DMAC_TXCH(mch)];
 
 			if(hc->bustype == AR_BUS_ISA)
-				ARC_SET_SCA(hc->iobase, scano);
+				ARC_SET_SCA(hc, scano);
 
 			dsr = dmac->dsr;
 			dmac->dsr = dsr;
@@ -1872,7 +1880,7 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 			dmac = &sca->dmac[DMAC_RXCH(mch)];
 
 			if(hc->bustype == AR_BUS_ISA)
-				ARC_SET_SCA(hc->iobase, scano);
+				ARC_SET_SCA(hc, scano);
 
 			dsr = dmac->dsr;
 			dmac->dsr = dsr;
@@ -1885,17 +1893,17 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 				TRC(int ind = sc->rxhind;)
 
 				ar_get_packets(sc);
-				TRC(
 #ifndef	NETGRAPH
-				if(tt == sc->ifsppp.pp_if.if_ipackets) {
+#define	IPACKETS sc->ifsppp.pp_if.if_ipackets
 #else	/* NETGRAPH */
-				if(tt == sc->ipackets) {
+#define	IPACKETS sc->ipackets
 #endif	/* NETGRAPH */
+				TRC(if(tt == IPACKETS) {
 					sca_descriptor *rxdesc;
 					int i;
 
 					if(hc->bustype == AR_BUS_ISA)
-						ARC_SET_SCA(hc->iobase, scano);
+						ARC_SET_SCA(hc, scano);
 					printf("AR: RXINTR isr1 %x, dsr %x, "
 					       "no data %d pkts, orxhind %d.\n",
 					       dotxstart,
@@ -1915,7 +1923,7 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 					       dmac->eda);
 
 					if(sc->hc->bustype == AR_BUS_ISA)
-						ARC_SET_MEM(sc->hc->iobase,
+						ARC_SET_MEM(sc->hc,
 						    sc->rxdesc);
 					rxdesc = (sca_descriptor *)
 						 (sc->hc->mem_start +
@@ -1946,7 +1954,7 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 			/* Buffer overflow */
 			if(dsr & SCA_DSR_BOF) {
 				if(hc->bustype == AR_BUS_ISA)
-					ARC_SET_SCA(hc->iobase, scano);
+					ARC_SET_SCA(hc, scano);
 				printf("ar%d: RX DMA Buffer overflow, "
 					"rxpkts %lu, rxind %d, "
 					"cda %x, eda %x, dsr %x.\n",
@@ -1971,7 +1979,7 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 				sc->ierrors[2]++;
 #endif	/* NETGRAPH */
 				if(hc->bustype == AR_BUS_ISA)
-					ARC_SET_SCA(hc->iobase, scano);
+					ARC_SET_SCA(hc, scano);
 				sca->msci[mch].cmd = SCA_CMD_RXMSGREJ;
 				dmac->dsr = SCA_DSR_DE;
 
@@ -2123,13 +2131,13 @@ ngar_constructor(node_p *nodep)
 static int
 ngar_newhook(node_p node, hook_p hook, const char *name)
 {
-	struct ar_softc *	sc = node->private;
+	struct ar_softc *	sc = NG_NODE_PRIVATE(node);
 
 	/*
 	 * check if it's our friend the debug hook
 	 */
 	if (strcmp(name, NG_AR_HOOK_DEBUG) == 0) {
-		hook->private = NULL; /* paranoid */
+		NG_HOOK_SET_PRIVATE(hook, NULL); /* paranoid */
 		sc->debug_hook = hook;
 		return (0);
 	}
@@ -2140,7 +2148,7 @@ ngar_newhook(node_p node, hook_p hook, const char *name)
 	if (strcmp(name, NG_AR_HOOK_RAW) != 0) {
 		return (EINVAL);
 	}
-	hook->private = sc;
+	NG_HOOK_SET_PRIVATE(hook, sc);
 	sc->hook = hook;
 	sc->datahooks++;
 	ar_up(sc);
@@ -2152,67 +2160,60 @@ ngar_newhook(node_p node, hook_p hook, const char *name)
  * Just respond to the generic TEXT_STATUS message
  */
 static	int
-ngar_rcvmsg(node_p node,
-	struct ng_mesg *msg, const char *retaddr, struct ng_mesg **resp)
+ngar_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
+	    struct ng_mesg **rptr)
 {
-	struct ar_softc *	sc;
+	struct ar_softc *sc;
 	int error = 0;
+	struct ng_mesg *resp = NULL;
 
-	sc = node->private;
+	sc = NG_NODE_PRIVATE(node);
 	switch (msg->header.typecookie) {
-	    case	NG_AR_COOKIE: 
+	case	NG_AR_COOKIE: 
 		error = EINVAL;
 		break;
-	    case	NGM_GENERIC_COOKIE: 
+	case	NGM_GENERIC_COOKIE: 
 		switch(msg->header.cmd) {
-		    case NGM_TEXT_STATUS: {
-			    char	*arg;
-			    int pos = 0;
-			    int resplen = sizeof(struct ng_mesg) + 512;
-			    MALLOC(*resp, struct ng_mesg *, resplen,
-					M_NETGRAPH, M_INTWAIT | M_ZERO);
-			    if (*resp == NULL) { 
+		case NGM_TEXT_STATUS: {
+			char        *arg;
+			int pos = 0;
+
+			int resplen = sizeof(struct ng_mesg) + 512;
+			NG_MKRESPONSE(resp, msg, resplen, M_INTWAIT);
+			if (resp == NULL) {
 				error = ENOMEM;
 				break;
-			    }       
-			    arg = (*resp)->data;
-
-			    /*
-			     * Put in the throughput information.
-			     */
-			    pos = sprintf(arg, "%ld bytes in, %ld bytes out\n"
+			}
+			arg = (resp)->data;
+			pos = sprintf(arg, "%ld bytes in, %ld bytes out\n"
 			    "highest rate seen: %ld B/S in, %ld B/S out\n",
-			    sc->inbytes, sc->outbytes,
-			    sc->inrate, sc->outrate);
-			    pos += sprintf(arg + pos,
+			sc->inbytes, sc->outbytes,
+			sc->inrate, sc->outrate);
+			pos += sprintf(arg + pos,
 				"%ld output errors\n",
 			    	sc->oerrors);
-			    pos += sprintf(arg + pos,
+			pos += sprintf(arg + pos,
 				"ierrors = %ld, %ld, %ld, %ld\n",
 			    	sc->ierrors[0],
 			    	sc->ierrors[1],
 			    	sc->ierrors[2],
 			    	sc->ierrors[3]);
 
-			    (*resp)->header.version = NG_VERSION;
-			    (*resp)->header.arglen = strlen(arg) + 1;
-			    (*resp)->header.token = msg->header.token;
-			    (*resp)->header.typecookie = NG_AR_COOKIE;
-			    (*resp)->header.cmd = msg->header.cmd;
-			    strncpy((*resp)->header.cmdstr, "status",
-					NG_CMDSTRLEN);
-			}
+			(resp)->header.arglen = pos + 1;
 			break;
-	    	    default:
+		      }
+		default:
 		 	error = EINVAL;
 		 	break;
 		    }
 		break;
-	    default:
+	default:
 		error = EINVAL;
 		break;
 	}
-	free(msg, M_NETGRAPH);
+	/* Take care of synchronous response, if any */
+	NG_RESPOND_MSG(error, node, retaddr, resp, rptr);
+	NG_FREE_MSG(msg);
 	return (error);
 }
 
@@ -2224,13 +2225,13 @@ ngar_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 {
 	int s;
 	int error = 0;
-	struct ar_softc * sc = hook->node->private;
+	struct ar_softc * sc = NG_NODE_PRIVATE(NG_HOOK_NODE(hook));
 	struct ifqueue	*xmitq_p;
 	
 	/*
 	 * data doesn't come in from just anywhere (e.g control hook)
 	 */
-	if ( hook->private == NULL) {
+	if ( NG_HOOK_PRIVATE(hook) == NULL) {
 		error = ENETDOWN;
 		goto bad;
 	}
@@ -2238,11 +2239,11 @@ ngar_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	/* 
 	 * Now queue the data for when it can be sent
 	 */
-	if (meta && meta->priority > 0) {
+	if (meta && meta->priority > 0)
 		xmitq_p = (&sc->xmitq_hipri);
-	} else {
+	else
 		xmitq_p = (&sc->xmitq);
-	}
+
 	s = splimp();
 	if (IF_QFULL(xmitq_p)) {
 		IF_DROP(xmitq_p);
@@ -2270,13 +2271,27 @@ bad:
  * don't unref the node, or remove our name. just clear our links up.
  */
 static	int
-ngar_rmnode(node_p node)
+ngar_shutdown(node_p node)
 {
-	struct ar_softc * sc = node->private;
+	struct ar_softc * sc = NG_NODE_PRIVATE(node);
 
 	ar_down(sc);
-	ng_cutlinks(node);
-	node->flags &= ~NG_INVALID; /* bounce back to life */
+	NG_NODE_UNREF(node);
+	/* XXX need to drain the output queues! */
+
+	/* The node is dead, long live the node! */
+	/* stolen from the attach routine */
+	if (ng_make_node_common(&typestruct, &sc->node) != 0)
+		return (0);
+	sprintf(sc->nodename, "%s%d", NG_AR_NODE_TYPE, sc->unit);
+	if (ng_name_node(sc->node, sc->nodename)) {
+		sc->node = NULL;
+		printf("node naming failed\n");
+		NG_NODE_UNREF(sc->node); /* node dissappears */
+		return (0);
+	}
+	NG_NODE_SET_PRIVATE(sc->node, sc);
+	sc->running = 0;
 	return (0);
 }
 
@@ -2302,12 +2317,12 @@ ngar_connect(hook_p hook)
 static	int
 ngar_disconnect(hook_p hook)
 {
-	struct ar_softc * sc = hook->node->private;
+	struct ar_softc * sc = NG_NODE_PRIVATE(NG_HOOK_NODE(hook));
 	int	s;
 	/*
 	 * If it's the data hook, then free resources etc.
 	 */
-	if (hook->private) {
+	if (NG_HOOK_PRIVATE(hook)) {
 		s = splimp();
 		sc->datahooks--;
 		if (sc->datahooks == 0)

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1995 - 2001 John Hay.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ar/if_ar_isa.c,v 1.49.2.1 2002/06/17 15:10:57 jhay Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar_isa.c,v 1.3 2003/08/07 21:16:59 dillon Exp $
+ * $FreeBSD: src/sys/dev/ar/if_ar_isa.c,v 1.54 2005/01/06 01:42:28 imp Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar_isa.c,v 1.4 2005/02/08 14:31:16 joerg Exp $
  */
 
 /*
@@ -43,7 +43,6 @@
  *
  * There should be a way to set/reset Raw HDLC/PPP, Loopback, DCE/DTE,
  * internal/external clock, etc.....
- *
  */
 
 #include <sys/param.h>
@@ -60,8 +59,8 @@
 #include <bus/isa/isavar.h>
 #include "isa_if.h"
 
-#include "../ic_layer/hd64570.h"
-#include "if_arregs.h"
+#include <dev/netif/ic_layer/hd64570.h>
+#include <dev/netif/ar/if_arregs.h>
 
 #ifdef TRACE
 #define TRC(x)               x
@@ -91,8 +90,6 @@ static driver_t ar_isa_driver = {
 	sizeof (struct ar_hardc)
 };
 
-devclass_t ar_devclass;
-
 DRIVER_MODULE(if_ar, isa, ar_isa_driver, ar_devclass, 0, 0);
 
 /*
@@ -103,11 +100,14 @@ static int
 ar_isa_probe(device_t device)
 {
 	int error;
-	u_long membase, memsize, port_start, port_count;
+	u_long membase, memsize;
+	struct ar_hardc *hc;
 
 	error = ISA_PNP_PROBE(device_get_parent(device), device, ar_ids);
 	if(error == ENXIO || error == 0)
 		return (error);
+
+	hc = (struct ar_hardc *)device_get_softc(device);
 
 	if((error = ar_allocate_ioport(device, 0, ARC_IO_SIZ))) {
 		return (ENXIO);
@@ -119,17 +119,14 @@ ar_isa_probe(device_t device)
 	 * XXX For now I just check the undocumented ports
 	 * for "570". We will probably have to do more checking.
 	 */
-	error = bus_get_resource(device, SYS_RES_IOPORT, 0, &port_start,
-	    &port_count);
-
-	if((inb(port_start + AR_ID_5) != '5') ||
-	   (inb(port_start + AR_ID_7) != '7') ||
-	   (inb(port_start + AR_ID_0) != '0')) {
+	if((ar_inb(hc, AR_ID_5) != '5') ||
+	   (ar_inb(hc, AR_ID_7) != '7') ||
+	   (ar_inb(hc, AR_ID_0) != '0')) {
 		ar_deallocate_resources(device);
 		return (ENXIO);
 	}
 	membase = bus_get_resource_start(device, SYS_RES_MEMORY, 0);
-	memsize = inb(port_start + AR_REV);
+	memsize = ar_inb(hc, AR_REV);
 	memsize = 1 << ((memsize & AR_WSIZ_MSK) >> AR_WSIZ_SHFT);
 	memsize *= ARC_WIN_SIZ;
 	error = bus_set_resource(device, SYS_RES_MEMORY, 0, membase, memsize);
@@ -155,12 +152,8 @@ ar_isa_attach(device_t device)
 	hc = (struct ar_hardc *)device_get_softc(device);
 	if(ar_allocate_ioport(device, 0, ARC_IO_SIZ))
 		return (ENXIO);
-	hc->bt = rman_get_bustag(hc->res_ioport);
-	hc->bh = rman_get_bushandle(hc->res_ioport);
 
-	hc->iobase = rman_get_start(hc->res_ioport);
-
-	tmp = inb(hc->iobase + AR_BMI);
+	tmp = ar_inb(hc, AR_BMI);
 	hc->bustype = tmp & AR_BUS_MSK;
 	hc->memsize = (tmp & AR_MEM_MSK) >> AR_MEM_SHFT;
 	hc->memsize = 1 << hc->memsize;
@@ -169,13 +162,13 @@ ar_isa_attach(device_t device)
 	hc->interface[1] = hc->interface[0];
 	hc->interface[2] = hc->interface[0];
 	hc->interface[3] = hc->interface[0];
-	tmp = inb(hc->iobase + AR_REV);
+	tmp = ar_inb(hc, AR_REV);
 	hc->revision = tmp & AR_REV_MSK;
 	hc->winsize = 1 << ((tmp & AR_WSIZ_MSK) >> AR_WSIZ_SHFT);
 	hc->winsize *= ARC_WIN_SIZ;
 	hc->winmsk = hc->winsize - 1;
-	hc->numports = inb(hc->iobase + AR_PNUM);
-	hc->handshake = inb(hc->iobase + AR_HNDSH);
+	hc->numports = ar_inb(hc, AR_PNUM);
+	hc->handshake = ar_inb(hc, AR_HNDSH);
 
 	if(ar_allocate_memory(device, 0, hc->winsize))
 		return (ENXIO);
@@ -228,12 +221,6 @@ ar_isa_attach(device_t device)
 
 	return (0);
 }
-
-
-
-
-
-
 
 /*
  ********************************* END ************************************

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1999 - 2001 John Hay.
  * All rights reserved.
  *
@@ -26,14 +26,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ar/if_ar_pci.c,v 1.6.2.1 2002/06/17 15:10:57 jhay Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar_pci.c,v 1.3 2003/08/07 21:16:59 dillon Exp $
+ * $FreeBSD: src/sys/dev/ar/if_ar_pci.c,v 1.11 2004/05/30 20:08:26 phk Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar_pci.c,v 1.4 2005/02/08 14:31:16 joerg Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
+#include <sys/module.h>
 #include <sys/bus.h>
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -44,8 +45,8 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-#include "../ic_layer/hd64570.h"
-#include "if_arregs.h"
+#include <dev/netif/ic_layer/hd64570.h>
+#include <dev/netif/ar/if_arregs.h>
 
 #ifdef TRACE
 #define TRC(x)               x
@@ -107,7 +108,6 @@ ar_pci_attach(device_t device)
 {
 	int error;
 	u_int i, tmp;
-	u_char *inten;
 	struct ar_hardc *hc;
 
 	hc = (struct ar_hardc *)device_get_softc(device);
@@ -125,13 +125,11 @@ ar_pci_attach(device_t device)
 	if(error)
 		goto errexit;
 
-	hc->plx_mem = rman_get_virtual(hc->res_plx_memory);
 	hc->mem_start = rman_get_virtual(hc->res_memory);
 
 	hc->cunit = device_get_unit(device);
 	hc->sca[0] = (sca_regs *)(hc->mem_start + AR_PCI_SCA_1_OFFSET);
 	hc->sca[1] = (sca_regs *)(hc->mem_start + AR_PCI_SCA_2_OFFSET);
-	hc->iobase = 0;
 	hc->orbase = (u_char *)(hc->mem_start + AR_PCI_ORBASE_OFFSET);
 
 	tmp = hc->orbase[AR_BMI * 4];
@@ -159,8 +157,8 @@ ar_pci_attach(device_t device)
 	ar_attach(device);
 
 	/* Magic to enable the card to generate interrupts. */
-	inten = (u_char *)hc->plx_mem;
-	inten[0x69] = 0x09;
+	bus_space_write_1(rman_get_bustag(hc->res_plx_memory),
+	    rman_get_bushandle(hc->res_plx_memory), 0x69, 0x09);
 
 	return (0);
 
