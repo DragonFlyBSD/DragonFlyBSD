@@ -25,9 +25,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/syscons.4,v 1.10.2.14 2003/04/25 21:21:36 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/syscons.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/syscons.4,v 1.3 2005/01/28 19:12:11 swildner Exp $
 .\"
-.Dd June 30, 1999
+.Dd January 28, 2005
 .Dt SYSCONS 4
 .Os
 .Sh NAME
@@ -295,7 +295,8 @@ A good candidate is 0x03.
 .It Dv SC_PIXEL_MODE
 Adds support for pixel (raster) mode console.
 This mode is useful on some laptop computers, but less so on
-most other systems, and it adds substantial amount of code to syscons.
+most other systems, and it adds substantial amount of code to
+.Nm .
 If this option is NOT defined, you can reduce the kernel size a lot.
 See the
 .Dv VESA800X600
@@ -403,10 +404,379 @@ option explained above.
 .\"Note also that the ``copy-and-paste'' function is not currently supported
 .\"in this mode and the mouse pointer will not be displayed.
 .It 0x0100 (AUTODETECT_KBD)
-This option instructs the syscons driver to periodically scan
+This option instructs the
+.Nm
+driver to periodically scan
 for a keyboard device if it is not currently attached to one.
 Otherwise, the driver only probes for a keyboard once during bootup.
 .El
+.Sh IOCTLS
+The following
+.Xr ioctl 2
+commands are defined for the
+.Nm
+driver in
+.Aq Pa sys/consio.h .
+.Pp
+.Bl -tag -width CONS -compact
+.It Dv KDGETMODE Ar int *mode
+.It Dv KDSETMODE Ar int *mode
+Get or set the mode of the current (virtual) console. The
+.Dv mode
+can be one of:
+.Pp
+.Bl -tag -width KD_GRAPHICS -compact
+.It Dv KD_TEXT
+same as
+.Dv KD_TEXT0
+.It Dv KD_TEXT0
+Text mode, restore fonts and palette
+.It Dv KD_GRAPHICS
+Graphics mode
+.It Dv KD_TEXT1
+Text mode, don't restore fonts and palette
+.It Dv KD_PIXEL
+Raster (pixel) text mode
+.El
+.Pp
+.It Dv KDSBORDER Ar int *color
+Set the border color of the current (virtual) console.
+.Pp
+.It Dv KDRASTER Ar scr_size_t *sizes
+Set raster (pixel) text mode and adjust the current (virtual) console's
+geometry and font size. The
+.Dv scr_size_t
+argument structure is as follows:
+.Bd -literal
+struct _scr_size {
+	int	scr_size[3];
+};
+.Ed
+.Pp
+.It Dv GIO_SCRNMAP Ar scrmap_t *map
+.It Dv PIO_SCRNMAP Ar scrmap_t *map
+Get or set the screen map for the current (virtual) console. The
+.Dv scrmap_t
+argument structure is defined as follows:
+.Bd -literal
+struct _scrmap {
+	char	scrmap[256];
+};
+.Ed
+.Pp
+.It Dv GIO_ATTR Ar int *attr
+Get the current text attribute.
+.Pp
+.It Dv GIO_COLOR Ar int *color
+Get the current text color.
+.Pp
+.It Dv CONS_CURRENT Ar int *type
+Get the adapter type. This is equivalent to
+.Dv FBIO_ADPTYPE .
+.Pp
+.It Dv CONS_GET Ar int *mode
+Get the current video mode. This is equivalent to
+.Dv FBIO_GETMODE .
+.Pp
+.It Dv CONS_BLANKTIME Ar int *time
+Set the screen saver blank interval (in seconds).
+.Pp
+.It Dv CONS_CURSORTYPE Ar int *type
+Set the text cursor shape. The argument
+.Dv type
+can be one or more of the following:
+.Pp
+.Bl -tag -width CONS_BLINK_CURSOR -compact
+.It Dv CONS_BLINK_CURSOR
+Set for a blinking cursor, unset for a non-blinking cursor.
+.It Dv CONS_CHAR_CURSOR
+Set for an underscore-shaped cursor, unset for a rectangle.
+.El
+.Pp
+.It Dv CONS_BELLTYPE Ar int *type
+Set the bell type. The argument
+.Dv type
+is one or more of:
+.Pp
+.Bl -tag -width CONS_VISUAL_BELL -compact
+.It Dv CONS_VISUAL_BELL
+Set for a visual bell, unset for an audible bell.
+.It Dv CONS_QUIET_BELL
+Set to enable the bell, unset to disable it.
+.El
+.Pp
+.It Dv CONS_HISTORY Ar int *size
+Set the history (scroll back) buffer size (in lines).
+.Pp
+.It Dv CONS_CLRHIST
+Clear the history (scroll back) buffer.
+.Pp
+.It Dv CONS_IDLE Ar int *idle
+Check if the (virtual) console has been idle.
+.Pp
+.It Dv CONS_SAVERMODE Ar int *mode
+Set the screen saver mode. The argument
+.Dv mode
+can be one of:
+.Pp
+.Bl -tag -width CONS_LKM_SAVER -compact
+.It Dv CONS_NO_SAVER
+Disable screen saver
+.It Dv CONS_USR_SAVER
+Enable screen saver
+.It Dv CONS_LKM_SAVER
+Add a new screen saver
+.El
+.Pp
+.It Dv CONS_SAVERSTART Ar int *start
+Start or stop the screen saver.
+.Pp
+.It Dv PIO_FONT8x8 Ar fnt8_t *font
+.It Dv GIO_FONT8x8 Ar fnt8_t *font
+Get or set the 8x8 font. The
+.Dv fnt8_t
+argument structure is defined as follows:
+.Bd -literal
+struct fnt8 {
+	char	fnt8x8[8*256];
+};
+.Ed
+.Pp
+.It Dv PIO_FONT8x14 Ar fnt14_t *font
+.It Dv GIO_FONT8x14 Ar fnt14_t *font
+Get or set the 8x14 font. The
+.Dv fnt14_t
+argument structure is defined as follows:
+.Bd -literal
+struct fnt14 {
+	char	fnt8x14[14*256];
+};
+.Ed
+.Pp
+.It Dv PIO_FONT8x16 Ar fnt16_t *font
+.It Dv GIO_FONT8x16 Ar fnt16_t *font
+Get or set the 8x16 font. The
+.Dv fnt16_t
+argument structure is defined as follows:
+.Bd -literal
+struct fnt16 {
+	char	fnt8x16[16*256];
+};
+.Ed
+.Pp
+.It Dv CONS_GETINFO Ar vid_info_t *info
+Get information about the current video mode. The
+.Dv vid_info_t
+structure is defined as follows:
+.Bd -literal
+struct vid_info {
+	short		size;
+	short		m_num;
+	u_short		font_size;
+	u_short		mv_row, mv_col;
+	u_short		mv_rsz, mv_csz;
+	struct colors	mv_norm,
+			mv_rev,
+			mv_grfc;
+	u_char		mv_ovscan;
+	u_char		mk_keylock;
+};
+.Ed
+.Pp
+.It Dv CONS_GETVERS Ar int *version
+Get the version of the driver.
+.Pp
+.It Dv CONS_CURRENTADP Ar int *adapter
+Get the video adapter index. This is equivalent to
+.Dv FBIO_ADAPTER .
+.Pp
+.It Dv CONS_ADPINFO Ar video_adapter_info_t *info
+Get the video adapter information. This is equivalent to
+.Dv FBIO_ADPINFO .
+.Pp
+.It Dv CONS_MODEINFO Ar video_info_t *info
+Get the video mode information. This is equivalent to
+.Dv FBIO_MODEINFO .
+.Pp
+.It Dv CONS_FINDMODE Ar video_info_t *info
+Find a video mode. This is equivalent to
+.Dv FBIO_FINDMODE .
+.Pp
+.It Dv CONS_SETWINORG Ar u_int *origin
+Set the frame buffer window origin. This is equivalent to
+.Dv FBIO_SETWINORG .
+.Pp
+.It Dv CONS_SETKBD Ar int *kbd
+Set a new keyboard.
+.Pp
+.It Dv CONS_RELKBD
+Release the current keyboard.
+.Pp
+.It Dv CONS_SCRSHOT Ar scrshot_t *data
+Make a snapshot of the current video buffer. The
+.Dv scrshot_t
+structure is defined as:
+.Bd -literal
+struct scrshot {
+	int		xsize;
+	int		ysize;
+	u_int16_t*	buf;
+};
+.Ed
+.Pp
+.It Dv CONS_GETTERM Ar term_info_t *info
+.It Dv CONS_SETTERM Ar term_info_t *info
+Get or set terminal characteristics. The
+.Dv term_info_t
+structure is defined as:
+.Bd -literal
+struct term_info {
+	int		ti_index;
+	int		ti_flags;
+	u_char		ti_name[TI_NAME_LEN];
+	u_char		ti_desc[TI_DESC_LEN];
+};
+.Ed
+.Pp
+.It Dv VT_OPENQRY Ar int *term
+Get the next available terminal.
+.Pp
+.It Dv VT_SETMODE Ar vtmode_t *mode
+.It Dv VT_GETMODE Ar vtmode_t *mode
+Get or set the terminal switching mode. The
+.Dv vtmode_t
+argument structure is defined as follows:
+.Bd -literal
+struct vt_mode {
+	char		mode;
+	char		waitv;
+	short		relsig;
+	short		acqsig;
+	short		frsig;
+};
+.Ed
+.Pp
+.It Dv VT_RELDISP Ar int *ack
+Acknowledge the release or acquisition of a terminal. The
+.Dv ack
+argument can be one of:
+.Pp
+.Bl -tag -width VT_ACKACQ -compact
+.It Dv VT_FALSE
+The user refuses to release the screen, abort
+.It Dv VT_TRUE
+The user has released the screen, go on
+.It Dv VT_ACKACQ
+Acquisition of the screen acknowledged, switch completed
+.El
+.Pp
+.It Dv VT_ACTIVATE Ar int *term
+Activate the specified terminal.
+.Pp
+.It Dv VT_WAITACTIVE Ar int *term
+Wait until the specified terminal is active.
+.Pp
+.It Dv VT_GETACTIVE Ar int *term
+Get the currently active terminal.
+.Pp
+.It Dv VT_GETINDEX Ar int *index
+Get the index of the terminal.
+.Pp
+.It Dv VT_LOCKSWITCH Ar int *lock
+Prevent or permit terminal switching.
+.El
+.Ss Commands for video mode switching
+The following
+.Xr ioctl 2
+commands are defined for switching video modes. See
+.Aq Pa sys/fbio.h
+for defined mode numbers (commands for higher mode numbers have to be
+supplied by the programmer):
+.Dv SW_B40x25 ,
+.Dv SW_B80x25 ,
+.Dv SW_C80x25 ,
+.Dv SW_BG320 ,
+.Dv SW_CG320 ,
+.Dv SW_BG640 ,
+.Dv SW_EGAMONO80x25 ,
+.Dv SW_CG320_D ,
+.Dv SW_CG640_E ,
+.Dv SW_EGAMONOAPA ,
+.Dv SW_CG640x350 ,
+.Dv SW_ENH_MONOAPA2 ,
+.Dv SW_ENH_CG640 ,
+.Dv SW_ENH_B40x25 ,
+.Dv SW_ENH_C40x25 ,
+.Dv SW_ENH_B80x25 ,
+.Dv SW_ENH_C80x25 ,
+.Dv SW_ENH_B80x43 ,
+.Dv SW_ENH_C80x43 ,
+.Dv SW_MCAMODE ,
+.Dv SW_VGA_C40x25 ,
+.Dv SW_VGA_C80x25 ,
+.Dv SW_VGA_C80x30 ,
+.Dv SW_VGA_C80x50 ,
+.Dv SW_VGA_C80x60 ,
+.Dv SW_VGA_M80x25 ,
+.Dv SW_VGA_M80x30 ,
+.Dv SW_VGA_M80x50 ,
+.Dv SW_VGA_M80x60 ,
+.Dv SW_VGA11 ,
+.Dv SW_BG640x480 ,
+.Dv SW_VGA12 ,
+.Dv SW_CG640x480 ,
+.Dv SW_VGA13 ,
+.Dv SW_VGA_CG320 ,
+.Dv SW_VGA_CG640 ,
+.Dv SW_VGA_MODEX ,
+.Dv SW_VGA_C90x25 ,
+.Dv SW_VGA_M90x25 ,
+.Dv SW_VGA_C90x30 ,
+.Dv SW_VGA_M90x30 ,
+.Dv SW_VGA_C90x43 ,
+.Dv SW_VGA_M90x43 ,
+.Dv SW_VGA_C90x50 ,
+.Dv SW_VGA_M90x50 ,
+.Dv SW_VGA_C90x60 ,
+.Dv SW_VGA_M90x60 ,
+.Dv SW_TEXT_80x25 ,
+.Dv SW_TEXT_80x30 ,
+.Dv SW_TEXT_80x43 ,
+.Dv SW_TEXT_80x50 ,
+.Dv SW_TEXT_80x60 ,
+.Dv SW_TEXT_132x25 ,
+.Dv SW_TEXT_132x30 ,
+.Dv SW_TEXT_132x43 ,
+.Dv SW_TEXT_132x50 ,
+.Dv SW_TEXT_132x60 ,
+.Dv SW_VESA_CG640x400 ,
+.Dv SW_VESA_CG640x480 ,
+.Dv SW_VESA_800x600 ,
+.Dv SW_VESA_CG800x600 ,
+.Dv SW_VESA_1024x768 ,
+.Dv SW_VESA_CG1024x768 ,
+.Dv SW_VESA_1280x1024 ,
+.Dv SW_VESA_CG1280x1024 ,
+.Dv SW_VESA_C80x60 ,
+.Dv SW_VESA_C132x25 ,
+.Dv SW_VESA_C132x43 ,
+.Dv SW_VESA_C132x50 ,
+.Dv SW_VESA_C132x60 ,
+.Dv SW_VESA_32K_320 ,
+.Dv SW_VESA_64K_320 ,
+.Dv SW_VESA_FULL_320 ,
+.Dv SW_VESA_32K_640 ,
+.Dv SW_VESA_64K_640 ,
+.Dv SW_VESA_FULL_640 ,
+.Dv SW_VESA_32K_800 ,
+.Dv SW_VESA_64K_800 ,
+.Dv SW_VESA_FULL_800 ,
+.Dv SW_VESA_32K_1024 ,
+.Dv SW_VESA_64K_1024 ,
+.Dv SW_VESA_FULL_1024 ,
+.Dv SW_VESA_32K_1280 ,
+.Dv SW_VESA_64K_1280 ,
+.Dv SW_VESA_FULL_1280
 .Sh FILES
 .Bl -tag -width /usr/share/syscons/xxxxyyyyzzz -compact
 .It Pa /dev/console
@@ -427,7 +797,6 @@ As the
 .Nm
 driver requires the keyboard driver and the video card driver,
 the kernel configuration file should contain the following lines.
-.Pp
 .Bd -literal -offset indent
 device atkbdc0 at isa? port IO_KBD
 device atkbd0 at atkbdc? irq 1
@@ -475,7 +844,7 @@ to the kernel.
 .Pp
 .\".Sh DIAGNOSTICS
 .Sh CAVEATS
-The Amount of data that is possible to insert from the cut buffer is limited
+The amount of data that is possible to insert from the cut buffer is limited
 by the
 .Brq Dv MAX_INPUT ,
 a system limit on the number of bytes that may be stored in the terminal
@@ -483,7 +852,7 @@ input queue - usually 1024 bytes
 (see
 .Xr termios 4 ) .
 .Sh BUGS
-This manual page is incomplete and urgently needs revision.
+This manual page is incomplete and needs revision.
 .Sh SEE ALSO
 .Xr kbdcontrol 1 ,
 .Xr login 1 ,
@@ -493,6 +862,7 @@ This manual page is incomplete and urgently needs revision.
 .Xr keyboard 4 ,
 .Xr screen 4 ,
 .Xr splash 4 ,
+.Xr sysmouse 4 ,
 .Xr ukbd 4 ,
 .Xr vga 4 ,
 .Xr kbdmap 5 ,
@@ -514,4 +884,6 @@ The
 driver was written by
 .An S\(/oren Schmidt Aq sos@FreeBSD.org .
 This manual page was written by
-.An Kazutaka Yokota Aq yokota@FreeBSD.org .
+.An Kazutaka Yokota Aq yokota@FreeBSD.org
+and
+.An Sascha Wildner .
