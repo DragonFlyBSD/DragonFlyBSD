@@ -36,7 +36,7 @@
  *
  * @(#)ar_io.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/ar_io.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/ar_io.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/pax/ar_io.c,v 1.3 2003/09/10 22:43:54 rob Exp $
  */
 
 #include <sys/types.h>
@@ -307,6 +307,7 @@ void
 ar_close()
 #endif
 {
+	int status;
 
 	if (arfd < 0) {
 		did_io = io_ok = flcnt = 0;
@@ -342,13 +343,14 @@ ar_close()
 	 * for a quick extract/list, pax frequently exits before the child
 	 * process is done
 	 */
-	if ((act == LIST || act == EXTRACT) && nflag && zpid > 0) {
-		int status;
+	if ((act == LIST || act == EXTRACT) && nflag && zpid > 0)
 		kill(zpid, SIGINT);
-		waitpid(zpid, &status, 0);
-	}
 
 	(void)close(arfd);
+
+	/* Do not exit before child to ensure data integrity */
+	if (zpid > 0)
+		waitpid(zpid, &status, 0);
 
 	if (vflag && (artyp == ISTAPE)) {
 		(void)fputs("done.\n", listf);
