@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vfsops.c,v 1.60.2.6 2002/09/12 21:33:38 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.9 2003/09/23 05:03:52 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.10 2004/02/05 21:03:37 rob Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -124,7 +124,7 @@ update_mp(mp, argp)
 		bcopy(argp->lu, pmp->pm_lu, sizeof(pmp->pm_lu));
 	}
 
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 	/*
 	 * GEMDOS knows nothing (yet) about win95
 	 */
@@ -155,7 +155,7 @@ update_mp(mp, argp)
 	return 0;
 }
 
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 int
 msdosfs_mountroot()
 {
@@ -372,7 +372,7 @@ mountmsdosfs(devvp, mp, td, argp)
 	struct msdosfsmount *pmp;
 	struct buf *bp;
 	dev_t dev = devvp->v_rdev;
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 	struct partinfo dpart;
 	int bsize = 0, dtype = 0, tmp;
 #endif
@@ -411,7 +411,7 @@ mountmsdosfs(devvp, mp, td, argp)
 	bp  = NULL; /* both used in error_exit */
 	pmp = NULL;
 
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 	if (argp->flags & MSDOSFSMNT_GEMDOSFS) {
 		/*
 	 	 * We need the disklabel to calculate the size of a FAT entry
@@ -451,7 +451,7 @@ mountmsdosfs(devvp, mp, td, argp)
 	b50 = (struct byte_bpb50 *)bsp->bs50.bsBPB;
 	b710 = (struct byte_bpb710 *)bsp->bs710.bsPBP;
 
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 	if (!(argp->flags & MSDOSFSMNT_GEMDOSFS)) {
 #endif
 #ifndef MSDOSFS_NOCHECKSIG
@@ -461,7 +461,7 @@ mountmsdosfs(devvp, mp, td, argp)
 			goto error_exit;
 		}
 #endif
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 	}
 #endif
 
@@ -488,7 +488,7 @@ mountmsdosfs(devvp, mp, td, argp)
 	/* calculate the ratio of sector size to DEV_BSIZE */
 	pmp->pm_BlkPerSec = pmp->pm_BytesPerSec / DEV_BSIZE;
 
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 	if (!(argp->flags & MSDOSFSMNT_GEMDOSFS)) {
 #endif
 		/* XXX - We should probably check more values here */
@@ -502,7 +502,7 @@ mountmsdosfs(devvp, mp, td, argp)
 			error = EINVAL;
 			goto error_exit;
 		}
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 	}
 #endif
 
@@ -587,7 +587,7 @@ mountmsdosfs(devvp, mp, td, argp)
 	    SecPerClust + 1;
 	pmp->pm_fatsize = pmp->pm_FATsecs * DEV_BSIZE; /* XXX not used? */
 
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 	if (argp->flags & MSDOSFSMNT_GEMDOSFS) {
 		if ((pmp->pm_maxcluster <= (0xff0 - 2))
 		      && ((dtype == DTYPE_FLOPPY) || ((dtype == DTYPE_VNODE)

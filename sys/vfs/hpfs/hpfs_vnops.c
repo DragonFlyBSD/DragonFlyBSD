@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.11 2003/10/09 22:27:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.12 2004/02/05 21:03:37 rob Exp $
  */
 
 #include <sys/param.h>
@@ -43,20 +43,20 @@
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 #include <vm/vm_prot.h>
 #endif
 #include <vm/vm_page.h>
 #include <vm/vm_object.h>
 #include <vm/vm_pager.h>
 #include <vm/vm_zone.h>
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 #include <vm/vnode_pager.h>
 #endif
 #include <vm/vm_extern.h>
 #include <sys/buf2.h>
 
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 #include <miscfs/specfs/specdev.h>
 #include <miscfs/genfs/genfs.h>
 #endif
@@ -87,14 +87,14 @@ static int	hpfs_lookup (struct vop_lookup_args *ap);
 static int	hpfs_create (struct vop_create_args *);
 static int	hpfs_remove (struct vop_remove_args *);
 static int	hpfs_bmap (struct vop_bmap_args *ap);
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 static int	hpfs_getpages (struct vop_getpages_args *ap);
 static int	hpfs_putpages (struct vop_putpages_args *);
 static int	hpfs_fsync (struct vop_fsync_args *ap);
 #endif
 static int	hpfs_pathconf (struct vop_pathconf_args *ap);
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 int
 hpfs_getpages(ap)
 	struct vop_getpages_args *ap;
@@ -313,7 +313,7 @@ hpfs_bmap(ap)
 
 	if (ap->a_vpp != NULL) 
 		*ap->a_vpp = hp->h_devvp;
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	if (ap->a_runb != NULL)
 		*ap->a_runb = 0;
 #endif
@@ -479,7 +479,7 @@ hpfs_getattr(ap)
 
 	dprintf(("hpfs_getattr(0x%x):\n", hp->h_no));
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	vap->va_fsid = dev2udev(hp->h_dev);
 #else /* defined(__NetBSD__) */
 	vap->va_fsid = ip->i_dev;
@@ -593,7 +593,7 @@ hpfs_setattr(ap)
 		}
 
 		if (vap->va_size < hp->h_fn.fn_size) {
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 			error = vtruncbuf(vp, td, vap->va_size, DEV_BSIZE);
 			if (error)
 				return (error);
@@ -605,7 +605,7 @@ hpfs_setattr(ap)
 				return (error);
 
 		} else if (vap->va_size > hp->h_fn.fn_size) {
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 			vnode_pager_setsize(vp, vap->va_size);
 #endif
 			error = hpfs_extend(hp, vap->va_size);
@@ -651,7 +651,7 @@ hpfs_inactive(ap)
 
 	if (hp->h_flag & H_INVAL) {
 		VOP__UNLOCK(vp,0,ap->a_td);
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 		vrecycle(vp, NULL, ap->a_td);
 #else /* defined(__NetBSD__) */
 		vgone(vp);
@@ -1107,7 +1107,7 @@ readdone:
 	if (!error && ap->a_ncookies != NULL) {
 		struct dirent* dpStart;
 		struct dirent* dp;
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 		u_long *cookies;
 		u_long *cookiep;
 #else /* defined(__NetBSD__) */
@@ -1121,7 +1121,7 @@ readdone:
 		dpStart = (struct dirent *)
 		     ((caddr_t)uio->uio_iov->iov_base -
 			 (uio->uio_offset - off));
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 		MALLOC(cookies, u_long *, ncookies * sizeof(u_long),
 		       M_TEMP, M_WAITOK);
 #else /* defined(__NetBSD__) */
@@ -1356,7 +1356,7 @@ hpfs_pathconf(ap)
  * Global vfs data structures
  */
 vop_t **hpfs_vnodeop_p;
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 struct vnodeopv_entry_desc hpfs_vnodeop_entries[] = {
 	{ &vop_default_desc, (vop_t *)vop_defaultop },
 

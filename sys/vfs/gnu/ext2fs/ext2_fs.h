@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_fs.h,v 1.8.2.2 2001/09/29 12:52:47 iedowse Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_fs.h,v 1.3 2003/08/07 21:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_fs.h,v 1.4 2004/02/05 21:03:37 rob Exp $
  */
 /*
  *  linux/include/linux/ext2_fs.h
@@ -122,7 +122,7 @@
 #define EXT2_MIN_BLOCK_SIZE		1024
 #define	EXT2_MAX_BLOCK_SIZE		4096
 #define EXT2_MIN_BLOCK_LOG_SIZE		  10
-#if defined(__KERNEL__) || (defined(__FreeBSD__) && defined(_KERNEL))
+#if defined(__KERNEL__) || (defined(__DragonFly__) && defined(_KERNEL))
 # define EXT2_BLOCK_SIZE(s)		((s)->s_blocksize)
 #else
 # define EXT2_BLOCK_SIZE(s)		(EXT2_MIN_BLOCK_SIZE << (s)->s_log_block_size)
@@ -164,7 +164,7 @@
 # define EXT2_FRAG_SIZE(s)		((s)->u.ext2_sb.s_frag_size)
 # define EXT2_FRAGS_PER_BLOCK(s)	((s)->u.ext2_sb.s_frags_per_block)
 #else
-# if defined(_KERNEL) && defined(__FreeBSD__)
+# if defined(_KERNEL) && defined(__DragonFly__)
 # define EXT2_FRAG_SIZE(s)		((s)->s_frag_size)
 # else
 # define EXT2_FRAG_SIZE(s)		(EXT2_MIN_FRAG_SIZE << (s)->s_log_frag_size)

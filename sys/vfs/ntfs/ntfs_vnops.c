@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.9 2003/10/09 22:27:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.10 2004/02/05 21:03:37 rob Exp $
  *
  */
 
@@ -62,7 +62,7 @@
 #include <vm/vm_page.h>
 #include <vm/vm_object.h>
 #include <vm/vm_pager.h>
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 #include <vm/vnode_pager.h>
 #endif
 #include <vm/vm_extern.h>
@@ -93,7 +93,7 @@ static int	ntfs_close (struct vop_close_args *ap);
 static int	ntfs_readdir (struct vop_readdir_args *ap);
 static int	ntfs_lookup (struct vop_lookup_args *ap);
 static int	ntfs_bmap (struct vop_bmap_args *ap);
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 static int	ntfs_getpages (struct vop_getpages_args *ap);
 static int	ntfs_putpages (struct vop_putpages_args *);
 static int	ntfs_fsync (struct vop_fsync_args *ap);
@@ -104,7 +104,7 @@ static int	ntfs_pathconf (void *);
 
 int	ntfs_prtactive = 1;	/* 1 => print out reclaim of active vnodes */
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 int
 ntfs_getpages(ap)
 	struct vop_getpages_args *ap;
@@ -207,7 +207,7 @@ ntfs_read(ap)
 	return (error);
 }
 
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 
 static int
 ntfs_bypass(ap)
@@ -239,7 +239,7 @@ ntfs_getattr(ap)
 
 	dprintf(("ntfs_getattr: %d, flags: %d\n",ip->i_number,ip->i_flag));
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	vap->va_fsid = dev2udev(ip->i_dev);
 #else /* NetBSD */
 	vap->va_fsid = ip->i_dev;
@@ -349,7 +349,7 @@ ntfs_strategy(ap)
 	struct ntfsmount *ntmp = ip->i_mp;
 	int error;
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	dprintf(("ntfs_strategy: offset: %d, blkno: %d, lblkno: %d\n",
 		(u_int32_t)bp->b_offset,(u_int32_t)bp->b_blkno,
 		(u_int32_t)bp->b_lblkno));
@@ -691,7 +691,7 @@ ntfs_readdir(ap)
 	if (!error && ap->a_ncookies != NULL) {
 		struct dirent* dpStart;
 		struct dirent* dp;
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 		u_long *cookies;
 		u_long *cookiep;
 #else /* defined(__NetBSD__) */
@@ -705,7 +705,7 @@ ntfs_readdir(ap)
 		dpStart = (struct dirent *)
 		     ((caddr_t)uio->uio_iov->iov_base -
 			 (uio->uio_offset - off));
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 		MALLOC(cookies, u_long *, ncookies * sizeof(u_long),
 		       M_TEMP, M_WAITOK);
 #else /* defined(__NetBSD__) */
@@ -831,7 +831,7 @@ ntfs_lookup(ap)
 	return (error);
 }
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 /*
  * Flush the blocks of a file to disk.
  *
@@ -898,7 +898,7 @@ ntfs_pathconf(v)
  * Global vfs data structures
  */
 vop_t **ntfs_vnodeop_p;
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 static
 struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
 	{ &vop_default_desc, (vop_t *)vop_defaultop },

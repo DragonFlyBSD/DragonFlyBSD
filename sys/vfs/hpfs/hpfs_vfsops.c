@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.11 2003/10/19 21:24:55 hmp Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.12 2004/02/05 21:03:37 rob Exp $
  */
 
 
@@ -58,7 +58,7 @@
 #include "hpfsmount.h"
 #include "hpfs_subr.h"
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 MALLOC_DEFINE(M_HPFSMNT, "HPFS mount", "HPFS mount structure");
 MALLOC_DEFINE(M_HPFSNO, "HPFS node", "HPFS node structure");
 #endif
@@ -75,7 +75,7 @@ static int	hpfs_vptofh (struct vnode *, struct fid *);
 static int	hpfs_fhtovp (struct mount *, struct fid *,
 				 struct vnode **);
 
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 static int	hpfs_quotactl (struct mount *, int, uid_t, caddr_t,
 				   struct proc *);
 static int	hpfs_start (struct mount *, int, struct proc *);
@@ -83,7 +83,7 @@ static int	hpfs_sync (struct mount *, int, struct ucred *,
 			       struct proc *);
 #endif
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 struct sockaddr;
 static int	hpfs_mount (struct mount *, char *, caddr_t,
 				struct nameidata *, struct thread *);
@@ -104,7 +104,7 @@ static int	hpfs_checkexp (struct mount *, struct mbuf *,
 /*ARGSUSED*/
 static int
 hpfs_checkexp(mp, nam, exflagsp, credanonp)
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	struct mount *mp;
 	struct sockaddr *nam;
 	int *exflagsp;
@@ -131,7 +131,7 @@ hpfs_checkexp(mp, nam, exflagsp, credanonp)
 	return (0);
 }
 
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 /*ARGSUSED*/
 static int
 hpfs_sysctl(name, namelen, oldp, oldlenp, newp, newlen, td)
@@ -153,7 +153,7 @@ hpfs_mountroot()
 }
 #endif
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 static int
 hpfs_init (
 	struct vfsconf *vcp )
@@ -165,7 +165,7 @@ hpfs_init ()
 	dprintf(("hpfs_init():\n"));
 	
 	hpfs_hphashinit();
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	return 0;
 #endif
 }
@@ -173,7 +173,7 @@ hpfs_init ()
 static int
 hpfs_mount ( 
 	struct mount *mp,
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	char *path,
 	caddr_t data,
 #else /* defined(__NetBSD__) */
@@ -239,7 +239,7 @@ hpfs_mount (
 
 	devvp = ndp->ni_vp;
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	if (!vn_isdisk(devvp, &err)) 
 		goto error_2;
 #else /* defined(__NetBSD__) */
@@ -334,14 +334,14 @@ hpfs_mountfs(devvp, mp, argsp, td)
 	if (error)
 		return (error);
 	ncount = vcount(devvp);
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	if (devvp->v_object)
 		ncount -= 1;
 #endif
 	if (ncount > 1 && devvp != rootvp)
 		return (EBUSY);
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY, td);
 	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
 	VOP__UNLOCK(devvp, 0, td);
@@ -420,7 +420,7 @@ hpfs_mountfs(devvp, mp, argsp, td)
 
 	vput(vp);
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	mp->mnt_stat.f_fsid.val[0] = (long)dev2udev(dev);
 	mp->mnt_stat.f_fsid.val[1] = mp->mnt_vfc->vfc_typenum;
 #else
@@ -436,7 +436,7 @@ failed:
 	if (bp)
 		brelse (bp);
 	mp->mnt_data = (qaddr_t)NULL;
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	devvp->v_specmountpoint = NULL;
 #else
 	devvp->v_specflags &= ~SI_MOUNTEDON;
@@ -445,7 +445,7 @@ failed:
 	return (error);
 }
 
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 static int
 hpfs_start (
 	struct mount *mp,
@@ -481,7 +481,7 @@ hpfs_unmount(
 		return (error);
 	}
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	hpmp->hpm_devvp->v_specmountpoint = NULL;
 #else
 	hpmp->hpm_devvp->v_specflags &= ~SI_MOUNTEDON;
@@ -531,7 +531,7 @@ hpfs_statfs(
 	dprintf(("hpfs_statfs(): HPFS%d.%d\n",
 		hpmp->hpm_su.su_hpfsver, hpmp->hpm_su.su_fnctver));
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	sbp->f_type = mp->mnt_vfc->vfc_typenum;
 #else /* defined(__NetBSD__) */
 	sbp->f_type = 0;
@@ -553,7 +553,7 @@ hpfs_statfs(
 	return (0);
 }
 
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 static int
 hpfs_sync (
 	struct mount *mp,
@@ -723,7 +723,7 @@ hpfs_vget(
 	return (0);
 }
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 static struct vfsops hpfs_vfsops = {
 	hpfs_mount,
 	vfs_stdstart,

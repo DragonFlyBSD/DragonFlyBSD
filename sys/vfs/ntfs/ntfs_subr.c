@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.9 2003/12/29 18:04:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.10 2004/02/05 21:03:37 rob Exp $
  */
 
 #include <sys/param.h>
@@ -55,7 +55,7 @@
 #include "ntfs_compr.h"
 #include "ntfs_ihash.h"
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 MALLOC_DEFINE(M_NTFSNTVATTR, "NTFS vattr", "NTFS file attribute information");
 MALLOC_DEFINE(M_NTFSRDATA, "NTFS res data", "NTFS resident data");
 MALLOC_DEFINE(M_NTFSRUN, "NTFS vrun", "NTFS vrun storage");
@@ -1444,7 +1444,7 @@ ntfs_writentvattr_plain(
 		off = ntfs_btocnoff(off);
 
 		while (left && ccl) {
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 			tocopy = min(left,
 				  min(ntfs_cntob(ccl) - off, MAXBSIZE - off));
 #else
@@ -1548,7 +1548,7 @@ ntfs_readntvattr_plain(
 				off = ntfs_btocnoff(off);
 
 				while (left && ccl) {
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 					tocopy = min(left,
 						  min(ntfs_cntob(ccl) - off,
 						      MAXBSIZE - off));

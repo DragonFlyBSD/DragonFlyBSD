@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.11 2003/10/19 18:11:37 hmp Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.12 2004/02/05 21:03:37 rob Exp $
  */
 
 
@@ -68,7 +68,7 @@
 #include "ntfs_ihash.h"
 #include "ntfsmount.h"
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 MALLOC_DEFINE(M_NTFSMNT, "NTFS mount", "NTFS mount structure");
 MALLOC_DEFINE(M_NTFSNTNODE,"NTFS ntnode",  "NTFS ntnode information");
 MALLOC_DEFINE(M_NTFSFNODE,"NTFS fnode",  "NTFS fnode information");
@@ -87,7 +87,7 @@ static int	ntfs_vptofh (struct vnode *, struct fid *);
 static int	ntfs_fhtovp (struct mount *, struct fid *,
 				 struct vnode **);
 
-#if !defined (__FreeBSD__)
+#if !defined (__DragonFly__)
 static int	ntfs_quotactl (struct mount *, int, uid_t, caddr_t,
 				   struct thread *);
 static int	ntfs_start (struct mount *, int, struct thread *);
@@ -95,7 +95,7 @@ static int	ntfs_sync (struct mount *, int, struct ucred *,
 			       struct thread *);
 #endif
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 struct sockaddr;
 static int	ntfs_mount (struct mount *, char *, caddr_t,
 				struct nameidata *, struct thread *);
@@ -119,7 +119,7 @@ static int	ntfs_checkexp (struct mount *, struct mbuf *,
  */
 static int
 ntfs_checkexp(mp, nam, exflagsp, credanonp)
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	struct mount *mp;
 	struct sockaddr *nam;
 	int *exflagsp;
@@ -212,7 +212,7 @@ ntfs_init ()
 	ntfs_toupper_init();
 }
 
-#elif defined(__FreeBSD__)
+#elif defined(__DragonFly__)
 
 static int
 ntfs_init (
@@ -228,7 +228,7 @@ ntfs_init (
 static int
 ntfs_mount ( 
 	struct mount *mp,
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	char *path,
 	caddr_t data,
 #else
@@ -243,7 +243,7 @@ ntfs_mount (
 	struct vnode	*devvp;
 	struct ntfs_args args;
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	/*
 	 * Use NULL path to flag a root mount
 	 */
@@ -321,7 +321,7 @@ ntfs_mount (
 	NDFREE(ndp, NDF_ONLY_PNBUF);
 	devvp = ndp->ni_vp;
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	if (!vn_isdisk(devvp, &err)) 
 		goto error_2;
 #else
@@ -391,7 +391,7 @@ ntfs_mount (
 		goto error_2;
 	}
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 dostatfs:
 #endif
 	/*
@@ -446,13 +446,13 @@ ntfs_mountfs(devvp, mp, argsp, td)
 	if (error)
 		return (error);
 	ncount = vcount(devvp);
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	if (devvp->v_object)
 		ncount -= 1;
 #endif
 	if (ncount > 1 && devvp != rootvp)
 		return (EBUSY);
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY, td);
 	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
 	VOP__UNLOCK(devvp, 0, td);
@@ -603,7 +603,7 @@ ntfs_mountfs(devvp, mp, argsp, td)
 		vput(vp);
 	}
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	mp->mnt_stat.f_fsid.val[0] = dev2udev(dev);
 	mp->mnt_stat.f_fsid.val[1] = mp->mnt_vfc->vfc_typenum;
 #else
@@ -639,7 +639,7 @@ out:
 	return (error);
 }
 
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 static int
 ntfs_start (
 	struct mount *mp,
@@ -740,7 +740,7 @@ ntfs_root(
 	return (0);
 }
 
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 static int
 ntfs_quotactl ( 
 	struct mount *mp,
@@ -800,7 +800,7 @@ ntfs_statfs(
 	mftsize = VTOF(ntmp->ntm_sysvn[NTFS_MFTINO])->f_size;
 	mftallocated = VTOF(ntmp->ntm_sysvn[NTFS_MFTINO])->f_allocated;
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	sbp->f_type = mp->mnt_vfc->vfc_typenum;
 #elif defined(__NetBSD__)
 	sbp->f_type = 0;
@@ -828,7 +828,7 @@ ntfs_statfs(
 	return (0);
 }
 
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 static int
 ntfs_sync (
 	struct mount *mp,
@@ -970,7 +970,7 @@ ntfs_vgetex(
 	}
 	dprintf(("ntfs_vget: vnode: %p for ntnode: %d\n", vp,ino));
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	lockinit(&fp->f_lock, 0, "fnode", VLKTIMEOUT, 0);
 #endif
 	fp->f_vp = vp;
@@ -1005,7 +1005,7 @@ ntfs_vget(
 			LK_EXCLUSIVE | LK_RETRY, 0, curthread, vpp);
 }
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 static struct vfsops ntfs_vfsops = {
 	ntfs_mount,
 	vfs_stdstart,

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfsmount.h,v 1.20.2.2 2000/10/27 09:45:07 bde Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfsmount.h,v 1.4 2003/08/27 02:03:23 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfsmount.h,v 1.5 2004/02/05 21:03:37 rob Exp $ */
 /*	$NetBSD: msdosfsmount.h,v 1.17 1997/11/17 15:37:07 ws Exp $	*/
 
 /*-
@@ -234,7 +234,7 @@ struct msdosfs_args {
 #define	MSDOSFSMNT_SHORTNAME	1	/* Force old DOS short names only */
 #define	MSDOSFSMNT_LONGNAME	2	/* Force Win'95 long names */
 #define	MSDOSFSMNT_NOWIN95	4	/* Completely ignore Win95 entries */
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 #define	MSDOSFSMNT_GEMDOSFS	8	/* This is a gemdos-flavour */
 #endif
 #define MSDOSFSMNT_U2WTABLE     0x10    /* Local->Unicode and local<->DOS   */

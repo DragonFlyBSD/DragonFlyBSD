@@ -26,11 +26,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_inode.h,v 1.6 1999/12/03 20:37:39 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_inode.h,v 1.3 2003/07/06 21:23:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_inode.h,v 1.4 2004/02/05 21:03:37 rob Exp $
  */
 
 /* These flags are kept in i_flag. */
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 #define	IN_ACCESS	0x0001	/* Access time update request. */
 #define	IN_CHANGE	0x0002	/* Inode change time update request. */
 #define	IN_UPDATE	0x0004	/* Modification time update request. */
@@ -85,7 +85,7 @@ struct ntnode {
 #define	FN_VALID	0x0002
 #define	FN_AATTRNAME	0x0004	/* space allocated for f_attrname */
 struct fnode {
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	struct lock	f_lock;	/* fnode lock >Keep this first< */
 #endif
 	

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs.h,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.8 2003/11/15 21:05:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.9 2004/02/05 21:03:37 rob Exp $
  */
 
 /*#define HPFS_DEBUG 10*/
@@ -378,11 +378,8 @@ struct hpfid {
 #define dprintf(a)
 #define ddprintf(a)
 #endif
-
-#if __FreeBSD_version >= 300000
 MALLOC_DECLARE(M_HPFSMNT);
 MALLOC_DECLARE(M_HPFSNO);
-#endif
 #define VFSTOHPFS(mp)	((struct hpfsmount *)((mp)->mnt_data))
 #define	VTOHP(v)	((struct hpfsnode *)((v)->v_data))
 #define	HPTOV(h)	((struct vnode *)((h)->h_vp))
@@ -400,7 +397,7 @@ typedef int (vop_t) (void *);
 #define VGET(a, b, c)		vget((a), LK_EXCLUSIVE)
 #define VN_LOCK(a, b, c)	vn_lock((a), LK_EXCLUSIVE)
 #define	LOCKMGR(a, b, c, d)	lockmgr((a), (b), (c))
-#else  /* defined(__FreeBSD__) */
+#else  /* defined(__DragonFly__) */
 #define HASHINIT(a, b, c, d)	hashinit((a), (b), (d))
 #define VOP__LOCK(a, b, c)	VOP_LOCK((a), (b), (c))
 #define VOP__UNLOCK(a, b, c)	VOP_UNLOCK((a), (b), (c))
