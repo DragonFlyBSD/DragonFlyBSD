@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/FAQ.cgi,v 1.1 2004/01/07 18:18:00 justin Exp $
+# $DragonFly: site/data/main/Attic/FAQ.cgi,v 1.2 2004/01/14 15:54:38 justin Exp $
 
 $TITLE(DragonFly Frequently Asked Questions)
 
@@ -22,11 +22,35 @@ that are as of this writing not complete yet.  For more information, check
 the <a href="/Goals/packages.cgi">existing packaging description</a>.
 <P>
 
+<B>What architectures does DragonFly support?</B><BR>
+DragonFly is currently targeted at the x86 line of processors; it should work 
+on 386 and up, though a 386 is certainly not recommended.  Work is also being 
+done on support for the new 64-bit processors from AMD.  There are currently 
+no plans for support of other processor types.  
+<P>
+However, support for Sparc or PowerPC or other systems is possible in the 
+future.  If you plan to submit code to the DragonFly project, please keep 
+this in mind. 
+<P>
+<B>How can I contribute?</B><BR>
+Pick a topic that you enjoy and start working.  Check the 
+<a href="/Main/team.cgi">Team page</a> to see if there are others 
+interested in your topic, or ask around in the 
+<a href="/Main/forums.cgi">appropriate forum</a>.  You can 
+<a href="/Main/download.cgi">download 
+the source</a> to the operating system and to this site, and send 
+patches in unified diff format (<code>diff -uN</code>) to 
+'submit at dragonflybsd.org' for review.  Subscribe to that same submit 
+<a href="/Main/forums.cgi">mailing list/newsgroup</a> to see feedback 
+on your patches, and to find if they have been accepted or rejected.
+
+<P>
 <B>Will DragonFly use a dynamic /dev filesystem, as in devfs?</B><BR>
-Current plans are to keep the existing filesystem model, with the removal of 
-minor/major numbering.  There may be a 'devd' process to handle dynamic devices.  
+Current plans are to keep the existing filesystem model, with the removal of
+minor/major numbering.  There may be a 'devd' process to handle dynamic devices.
 There are other features to complete first before this is tackled.
 <P>
+
 <B>Will DragonFly use (insert name here) technology?</B><BR>
 Yes and no.  Features must match the existing plan outlined on the site here, 
 and there's plenty of existing problems to solve before 'nonessential' work can be done.
