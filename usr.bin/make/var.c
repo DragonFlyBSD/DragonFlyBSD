@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.96 2005/02/15 11:05:22 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.97 2005/02/15 11:09:33 okumoto Exp $
  */
 
 /*-
@@ -1777,48 +1777,28 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 		return (err ? var_Error : varNoError);
 	    }
 	} else {
-	    dynamic = FALSE;
-	    rw_str = VarExpand(v, ctxt, err);
-	    *freePtr = TRUE;
-	    *lengthPtr = 2;
-	}
-
-	if (v->flags & VAR_FROM_ENV) {
-	    if (rw_str == (char *)Buf_GetAll(v->val, (size_t *)NULL)) {
-		/*
-		 * Returning the value unmodified, so tell the caller to free
-		 * the thing.
-		 */
-		*freePtr = TRUE;
-		VarDestroy(v, FALSE);
-		return (rw_str);
+	    if (v->flags & VAR_FROM_ENV) {
+		rw_str = VarExpand(v, ctxt, err);
+		if (rw_str == (char *)Buf_GetAll(v->val, (size_t *)NULL)) {
+		    /*
+		     * Returning the value unmodified, so tell the caller to free
+		     * the thing.
+		     */
+		    *freePtr = TRUE;
+		    *lengthPtr = 2;
+		    VarDestroy(v, FALSE);
+		    return (rw_str);
+		} else {
+		    *freePtr = TRUE;
+		    *lengthPtr = 2;
+		    VarDestroy(v, TRUE);
+		    return (rw_str);
+		}
 	    } else {
-		VarDestroy(v, TRUE);
-		return (rw_str);
-	    }
-	} else if (v->flags & VAR_JUNK) {
-	    /*
-	     * Perform any free'ing needed and set *freePtr to FALSE so the caller
-	     * doesn't try to free a static pointer.
-	     */
-	    if (*freePtr) {
-		free(rw_str);
-	    }
-	    if (dynamic) {
-		*freePtr = FALSE;
-		VarDestroy(v, TRUE);
-		rw_str = emalloc(*lengthPtr + 1);
-		strncpy(rw_str, input, *lengthPtr);
-		rw_str[*lengthPtr] = '\0';
 		*freePtr = TRUE;
-		return (rw_str);
-	    } else {
-		*freePtr = FALSE;
-		VarDestroy(v, TRUE);
-		return (err ? var_Error : varNoError);
+		*lengthPtr = 2;
+		return (VarExpand(v, ctxt, err));
 	    }
-	} else {
-	    return (rw_str);
 	}
     }
 }
