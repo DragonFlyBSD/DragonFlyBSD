@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/gdb/gdb/Makefile,v 1.2 2004/10/24 19:05:39 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/gdb/Makefile,v 1.3 2004/10/26 10:22:11 joerg Exp $
 
 .include "../Makefile.inc"
 
@@ -71,6 +71,8 @@ DPADD+=	../libbfd/libbfd.a ../libopcodes/libopcodes.a ../libiberty/libiberty.a
 LDADD=	-lreadline -lkvm -ltermcap -lm
 LDADD+=	-L../libbfd -lbfd -L../libopcodes -lopcodes -L../libiberty -liberty
 
+.include "Makefile.${MACHINE_ARCH}"
+
 init.c: ${SRCS:Ninit.c} Makefile
 	echo '#include "defs.h"' > ${.TARGET}
 	echo '#include "call-cmds.h"' >> ${.TARGET}
@@ -89,7 +91,5 @@ observer.inc: observer.sh doc/observer.texi
 
 nm.h: nm-fbsd.h
 	cp ${.ALLSRC} ${.TARGET}
-
-.include "Makefile.${MACHINE_ARCH}"
 
 .include <bsd.prog.mk>

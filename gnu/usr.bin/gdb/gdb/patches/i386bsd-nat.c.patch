@@ -1,0 +1,18 @@
+$DragonFly: src/gnu/usr.bin/gdb/gdb/patches/Attic/i386bsd-nat.c.patch,v 1.1 2004/10/26 10:22:11 joerg Exp $
+
+Index: i386bsd-nat.c
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gdb-6.2.1/gdb/i386bsd-nat.c,v
+retrieving revision 1.1
+diff -u -r1.1 i386bsd-nat.c
+--- i386bsd-nat.c	24 Oct 2004 19:56:25 -0000	1.1
++++ i386bsd-nat.c	26 Oct 2004 09:27:21 -0000
+@@ -349,7 +349,7 @@
+      system header files and sysctl(3) to get at the relevant
+      information.  */
+ 
+-#if defined (__FreeBSD_version) && __FreeBSD_version >= 400011
++#if defined(__DragonFly__) || (defined (__FreeBSD_version) && __FreeBSD_version >= 400011)
+ #define SC_REG_OFFSET i386fbsd4_sc_reg_offset
+ #elif defined (__FreeBSD_version) && __FreeBSD_version >= 300005
+ #define SC_REG_OFFSET i386fbsd_sc_reg_offset
