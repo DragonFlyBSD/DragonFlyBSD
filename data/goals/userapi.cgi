@@ -1,11 +1,11 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/userapi.cgi,v 1.2 2003/08/11 02:24:47 dillon Exp $
+# $DragonFly: site/data/goals/Attic/userapi.cgi,v 1.3 2003/08/17 21:59:10 hmp Exp $
 
 $TITLE(DragonFly - User API)
 <CENTER>Creating a Portable User API</CENTER>
 <P>
-Most standard UNIXes employ a system call table through which many types
+Most standard UNIX systems employ a system call table through which many types
 of data, including raw structures, are passed back and forth.   The biggest
 obstacle to the ability for user programs to interoperate with kernels
 which are older or newer than themselves is the fact that these raw structures
@@ -18,7 +18,7 @@ It is a goal of this project to (1) make all actual system calls message-based,
 (2) pass structural information through capability and element lists
 instead of as raw structures, and (3) implement a generic 'middle layer'
 that looks kinda like an emulation layer, managed by the kernel but loaded
-into userspace.  This layer layer implements all standard system call APIs
+into userspace.  This layer implements all standard system call APIs
 and converts them into the appropriate message(s).
 For example, linux emulation would
 operate in (kernel-protected) userland rather then in kernelland.  FreeBSD
@@ -33,7 +33,7 @@ Another huge advantage of converting system calls to message-based entities
 is that it completely solves the userland threads issue.  One no longer needs
 multiple kernel contexts or stacks to deal with multiple userland threads,
 one needs only *one* kernel context and stack per user process.  Userland
-threads would still use rfork() to create a real process for each cpu on the
+threads would still use rfork() to create a real process for each CPU on the
 system, but all other operations would use a thread-aware emulation layer.
 In fact, nearly all userland upcalls would be issued by the emulation layer
 in userland itself, not directly by the kernel.  Here is an example of how
