@@ -40,7 +40,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/camcontrol/util.c,v 1.6.2.2 2001/03/04 07:20:33 kris Exp $
- * $DragonFly: src/sbin/camcontrol/util.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/camcontrol/util.c,v 1.3 2005/01/11 23:58:55 cpressey Exp $
  */
 /*
  * Taken from the original scsi(8) program.
@@ -106,7 +106,7 @@ cget(void *hook, char *name)
 /* arg_put: "put argument" callback
  */
 void
-arg_put(void *hook, int letter, void *arg, int count, char *name)
+arg_put(void *hook __unused, int letter, void *arg, int count, char *name)
 {
 	if (verbose && name && *name)
 		printf("%s:  ", name);

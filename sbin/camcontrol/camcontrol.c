@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/camcontrol/camcontrol.c,v 1.21.2.13 2003/01/08 17:55:02 njl Exp $
- * $DragonFly: src/sbin/camcontrol/camcontrol.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/camcontrol/camcontrol.c,v 1.3 2005/01/11 23:58:55 cpressey Exp $
  */
 
 #include <sys/ioctl.h>
@@ -105,7 +105,7 @@ typedef enum {
 } cam_argmask;
 
 struct camcontrol_opts {
-	char 		*optname;	
+	const char 	*optname;	
 	cam_cmdmask	cmdnum;
 	cam_argmask	argnum;
 	const char	*subopt;
@@ -161,49 +161,44 @@ cam_argmask arglist;
 int bus, target, lun;
 
 
-camcontrol_optret getoption(char *arg, cam_cmdmask *cmdnum, cam_argmask *argnum,
-			    char **subopt);
+camcontrol_optret	getoption(char *, cam_cmdmask *, cam_argmask *,
+				  const char **);
 #ifndef MINIMALISTIC
-static int getdevlist(struct cam_device *device);
-static int getdevtree(void);
-static int testunitready(struct cam_device *device, int retry_count,
-			 int timeout, int quiet);
-static int scsistart(struct cam_device *device, int startstop, int loadeject,
-		     int retry_count, int timeout);
-static int scsidoinquiry(struct cam_device *device, int argc, char **argv,
-			 char *combinedopt, int retry_count, int timeout);
-static int scsiinquiry(struct cam_device *device, int retry_count, int timeout);
-static int scsiserial(struct cam_device *device, int retry_count, int timeout);
-static int scsixferrate(struct cam_device *device);
+static int	getdevlist(struct cam_device *);
+static int	getdevtree(void);
+static int	testunitready(struct cam_device *, int, int, int);
+static int	scsistart(struct cam_device *, int, int, int, int);
+static int	scsidoinquiry(struct cam_device *, int, char **, char *, int,
+		int);
+static int	scsiinquiry(struct cam_device *, int, int);
+static int	scsiserial(struct cam_device *, int, int);
+static int	scsixferrate(struct cam_device *);
 #endif /* MINIMALISTIC */
-static int parse_btl(char *tstr, int *bus, int *target, int *lun,
-		     cam_argmask *arglist);
-static int dorescan_or_reset(int argc, char **argv, int rescan);
-static int rescan_or_reset_bus(int bus, int rescan);
-static int scanlun_or_reset_dev(int bus, int target, int lun, int scan);
+static int	parse_btl(char *, int *, int *, int *, cam_argmask *);
+static int	dorescan_or_reset(int, char **, int);
+static int	rescan_or_reset_bus(int, int);
+static int	scanlun_or_reset_dev(int, int, int, int);
 #ifndef MINIMALISTIC
-static int readdefects(struct cam_device *device, int argc, char **argv,
-		       char *combinedopt, int retry_count, int timeout);
-static void modepage(struct cam_device *device, int argc, char **argv,
-		     char *combinedopt, int retry_count, int timeout);
-static int scsicmd(struct cam_device *device, int argc, char **argv, 
-		   char *combinedopt, int retry_count, int timeout);
-static int tagcontrol(struct cam_device *device, int argc, char **argv,
-		      char *combinedopt);
-static void cts_print(struct cam_device *device,
-		      struct ccb_trans_settings *cts);
-static void cpi_print(struct ccb_pathinq *cpi);
-static int get_cpi(struct cam_device *device, struct ccb_pathinq *cpi);
-static int get_print_cts(struct cam_device *device, int user_settings,
-			 int quiet, struct ccb_trans_settings *cts);
-static int ratecontrol(struct cam_device *device, int retry_count,
-		       int timeout, int argc, char **argv, char *combinedopt);
-static int scsiformat(struct cam_device *device, int argc, char **argv,
-		      char *combinedopt, int retry_count, int timeout);
+static int	readdefects(struct cam_device *, int, char **, char *, int,
+		int);
+static void	modepage(struct cam_device *, int, char **, char *, int, int);
+static int	scsicmd(struct cam_device *, int, char **, char *, int, int);
+static int	tagcontrol(struct cam_device *, int, char **, char *);
+static void	cts_print(struct cam_device *device,
+		struct ccb_trans_settings *);
+static void	cpi_print(struct ccb_pathinq *);
+static int	get_cpi(struct cam_device *, struct ccb_pathinq *);
+static int	get_print_cts(struct cam_device *, int, int,
+			 struct ccb_trans_settings *);
+static int	ratecontrol(struct cam_device *, int, int, int, char **,
+		char *);
+static int	scsiformat(struct cam_device *, int, char **, char *, int, int);
 #endif /* MINIMALISTIC */
 
+
 camcontrol_optret
-getoption(char *arg, cam_cmdmask *cmdnum, cam_argmask *argnum, char **subopt)
+getoption(char *arg, cam_cmdmask *cmdnum, cam_argmask *argnum,
+	  const char **subopt)
 {
 	struct camcontrol_opts *opts;
 	int num_matches = 0;
@@ -213,7 +208,7 @@ getoption(char *arg, cam_cmdmask *cmdnum, cam_argmask *argnum, char **subopt)
 		if (strncmp(opts->optname, arg, strlen(arg)) == 0) {
 			*cmdnum = opts->cmdnum;
 			*argnum = opts->argnum;
-			*subopt = (char *)opts->subopt;
+			*subopt = opts->subopt;
 			if (++num_matches > 1)
 				return(CC_OR_AMBIGUOUS);
 		}
@@ -986,7 +981,8 @@ xferrate_bailout:
  * Returns the number of parsed components, or 0.
  */
 static int
-parse_btl(char *tstr, int *bus, int *target, int *lun, cam_argmask *arglist)
+parse_btl(char *tstr, int *mybus, int *mytarget, int *mylun,
+	  cam_argmask *myarglist)
 {
 	char *tmpstr;
 	int convs = 0;
@@ -996,18 +992,18 @@ parse_btl(char *tstr, int *bus, int *target, int *lun, cam_argmask *arglist)
 
 	tmpstr = (char *)strtok(tstr, ":");
 	if ((tmpstr != NULL) && (*tmpstr != '\0')) {
-		*bus = strtol(tmpstr, NULL, 0);
-		*arglist |= CAM_ARG_BUS;
+		*mybus = strtol(tmpstr, NULL, 0);
+		*myarglist |= CAM_ARG_BUS;
 		convs++;
 		tmpstr = (char *)strtok(NULL, ":");
 		if ((tmpstr != NULL) && (*tmpstr != '\0')) {
-			*target = strtol(tmpstr, NULL, 0);
-			*arglist |= CAM_ARG_TARGET;
+			*mytarget = strtol(tmpstr, NULL, 0);
+			*myarglist |= CAM_ARG_TARGET;
 			convs++;
 			tmpstr = (char *)strtok(NULL, ":");
 			if ((tmpstr != NULL) && (*tmpstr != '\0')) {
-				*lun = strtol(tmpstr, NULL, 0);
-				*arglist |= CAM_ARG_LUN;
+				*mylun = strtol(tmpstr, NULL, 0);
+				*myarglist |= CAM_ARG_LUN;
 				convs++;
 			}
 		}
@@ -1022,7 +1018,7 @@ dorescan_or_reset(int argc, char **argv, int rescan)
 	static const char must[] =
 		"you must specify \"all\", a bus, or a bus:target:lun to %s";
 	int rv, error = 0;
-	int bus = -1, target = -1, lun = -1;
+	int mybus = -1, mytarget = -1, mylun = -1;
 	char *tstr;
 
 	if (argc < 3) {
@@ -1036,7 +1032,8 @@ dorescan_or_reset(int argc, char **argv, int rescan)
 	if (strncasecmp(tstr, "all", strlen("all")) == 0)
 		arglist |= CAM_ARG_BUS;
 	else {
-		rv = parse_btl(argv[optind], &bus, &target, &lun, &arglist);
+		rv = parse_btl(argv[optind], &mybus, &mytarget, &mylun,
+			       &arglist);
 		if (rv != 1 && rv != 3) {
 			warnx(must, rescan? "rescan" : "reset");
 			return(1);
@@ -1046,15 +1043,15 @@ dorescan_or_reset(int argc, char **argv, int rescan)
 	if ((arglist & CAM_ARG_BUS)
 	    && (arglist & CAM_ARG_TARGET)
 	    && (arglist & CAM_ARG_LUN))
-		error = scanlun_or_reset_dev(bus, target, lun, rescan);
+		error = scanlun_or_reset_dev(mybus, mytarget, mylun, rescan);
 	else
-		error = rescan_or_reset_bus(bus, rescan);
+		error = rescan_or_reset_bus(mybus, rescan);
 
 	return(error);
 }
 
 static int
-rescan_or_reset_bus(int bus, int rescan)
+rescan_or_reset_bus(int mybus, int rescan)
 {
 	union ccb ccb, matchccb;
 	int fd, retval;
@@ -1068,9 +1065,9 @@ rescan_or_reset_bus(int bus, int rescan)
 		return(1);
 	}
 
-	if (bus != -1) {
+	if (mybus != -1) {
 		ccb.ccb_h.func_code = rescan ? XPT_SCAN_BUS : XPT_RESET_BUS;
-		ccb.ccb_h.path_id = bus;
+		ccb.ccb_h.path_id = mybus;
 		ccb.ccb_h.target_id = CAM_TARGET_WILDCARD;
 		ccb.ccb_h.target_lun = CAM_LUN_WILDCARD;
 		ccb.crcn.flags = CAM_FLAG_NONE;
@@ -1086,10 +1083,10 @@ rescan_or_reset_bus(int bus, int rescan)
 
 		if ((ccb.ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP) {
 			fprintf(stdout, "%s of bus %d was successful\n",
-			    rescan ? "Re-scan" : "Reset", bus);
+			    rescan ? "Re-scan" : "Reset", mybus);
 		} else {
 			fprintf(stdout, "%s of bus %d returned error %#x\n",
-				rescan ? "Re-scan" : "Reset", bus,
+				rescan ? "Re-scan" : "Reset", mybus,
 				ccb.ccb_h.status & CAM_STATUS_MASK);
 			retval = 1;
 		}
@@ -1220,7 +1217,7 @@ bailout:
 }
 
 static int
-scanlun_or_reset_dev(int bus, int target, int lun, int scan)
+scanlun_or_reset_dev(int mybus, int mytarget, int mylun, int scan)
 {
 	union ccb ccb;
 	struct cam_device *device;
@@ -1228,18 +1225,18 @@ scanlun_or_reset_dev(int bus, int target, int lun, int scan)
 
 	device = NULL;
 
-	if (bus < 0) {
-		warnx("invalid bus number %d", bus);
+	if (mybus < 0) {
+		warnx("invalid bus number %d", mybus);
 		return(1);
 	}
 
-	if (target < 0) {
-		warnx("invalid target number %d", target);
+	if (mytarget < 0) {
+		warnx("invalid target number %d", mytarget);
 		return(1);
 	}
 
-	if (lun < 0) {
-		warnx("invalid lun number %d", lun);
+	if (mylun < 0) {
+		warnx("invalid lun number %d", mylun);
 		return(1);
 	}
 
@@ -1255,7 +1252,7 @@ scanlun_or_reset_dev(int bus, int target, int lun, int scan)
 			return(1);
 		}
 	} else {
-		device = cam_open_btl(bus, target, lun, O_RDWR, NULL);
+		device = cam_open_btl(mybus, mytarget, mylun, O_RDWR, NULL);
 		if (device == NULL) {
 			warnx("%s", cam_errbuf);
 			return(1);
@@ -1263,9 +1260,9 @@ scanlun_or_reset_dev(int bus, int target, int lun, int scan)
 	}
 
 	ccb.ccb_h.func_code = (scan)? XPT_SCAN_LUN : XPT_RESET_DEV;
-	ccb.ccb_h.path_id = bus;
-	ccb.ccb_h.target_id = target;
-	ccb.ccb_h.target_lun = lun;
+	ccb.ccb_h.path_id = mybus;
+	ccb.ccb_h.target_id = mytarget;
+	ccb.ccb_h.target_lun = mylun;
 	ccb.ccb_h.timeout = 5000;
 	ccb.crcn.flags = CAM_FLAG_NONE;
 
@@ -1298,11 +1295,11 @@ scanlun_or_reset_dev(int bus, int target, int lun, int scan)
 	 || ((!scan)
 	  && ((ccb.ccb_h.status & CAM_STATUS_MASK) == CAM_BDR_SENT))) {
 		fprintf(stdout, "%s of %d:%d:%d was successful\n",
-		    scan? "Re-scan" : "Reset", bus, target, lun);
+		    scan? "Re-scan" : "Reset", mybus, mytarget, mylun);
 		return(0);
 	} else {
 		fprintf(stdout, "%s of %d:%d:%d returned error %#x\n",
-		    scan? "Re-scan" : "Reset", bus, target, lun,
+		    scan? "Re-scan" : "Reset", mybus, mytarget, mylun,
 		    ccb.ccb_h.status & CAM_STATUS_MASK);
 		return(1);
 	}
@@ -2042,7 +2039,7 @@ static int
 camdebug(int argc, char **argv, char *combinedopt)
 {
 	int c, fd;
-	int bus = -1, target = -1, lun = -1;
+	int mybus = -1, mytarget = -1, mylun = -1;
 	char *tstr, *tmpstr = NULL;
 	union ccb ccb;
 	int error = 0;
@@ -2108,15 +2105,15 @@ camdebug(int argc, char **argv, char *combinedopt)
 	} else if (strncmp(tstr, "all", 3) != 0) {
 		tmpstr = (char *)strtok(tstr, ":");
 		if ((tmpstr != NULL) && (*tmpstr != '\0')){
-			bus = strtol(tmpstr, NULL, 0);
+			mybus = strtol(tmpstr, NULL, 0);
 			arglist |= CAM_ARG_BUS;
 			tmpstr = (char *)strtok(NULL, ":");
 			if ((tmpstr != NULL) && (*tmpstr != '\0')){
-				target = strtol(tmpstr, NULL, 0);
+				mytarget = strtol(tmpstr, NULL, 0);
 				arglist |= CAM_ARG_TARGET;
 				tmpstr = (char *)strtok(NULL, ":");
 				if ((tmpstr != NULL) && (*tmpstr != '\0')){
-					lun = strtol(tmpstr, NULL, 0);
+					mylun = strtol(tmpstr, NULL, 0);
 					arglist |= CAM_ARG_LUN;
 				}
 			}
@@ -2130,9 +2127,9 @@ camdebug(int argc, char **argv, char *combinedopt)
 	if (error == 0) {
 
 		ccb.ccb_h.func_code = XPT_DEBUG;
-		ccb.ccb_h.path_id = bus;
-		ccb.ccb_h.target_id = target;
-		ccb.ccb_h.target_lun = lun;
+		ccb.ccb_h.path_id = mybus;
+		ccb.ccb_h.target_id = mytarget;
+		ccb.ccb_h.target_lun = mylun;
 
 		if (ioctl(fd, CAMIOCOMMAND, &ccb) == -1) {
 			warn("CAMIOCOMMAND ioctl failed");
@@ -2159,7 +2156,7 @@ camdebug(int argc, char **argv, char *combinedopt)
 					fprintf(stderr,
 						"Debugging enabled for "
 						"%d:%d:%d\n",
-						bus, target, lun);
+						mybus, mytarget, mylun);
 				}
 			}
 		}
@@ -2388,7 +2385,7 @@ cpi_print(struct ccb_pathinq *cpi)
 		cpi->version_num);
 
 	for (i = 1; i < 0xff; i = i << 1) {
-		char *str;
+		const char *str;
 
 		if ((i & cpi->hba_inquiry) == 0)
 			continue;
@@ -2425,7 +2422,7 @@ cpi_print(struct ccb_pathinq *cpi)
 	}
 
 	for (i = 1; i < 0xff; i = i << 1) {
-		char *str;
+		const char *str;
 
 		if ((i & cpi->hba_misc) == 0)
 			continue;
@@ -2454,7 +2451,7 @@ cpi_print(struct ccb_pathinq *cpi)
 	}
 
 	for (i = 1; i < 0xff; i = i << 1) {
-		char *str;
+		const char *str;
 
 		if ((i & cpi->target_sprt) == 0)
 			continue;
@@ -3286,8 +3283,8 @@ main(int argc, char **argv)
 	int timeout = 0, retry_count = 1;
 	camcontrol_optret optreturn;
 	char *tstr;
-	char *mainopt = "C:En:t:u:v";
-	char *subopt = NULL;
+	const char *mainopt = "C:En:t:u:v";
+	const char *subopt = NULL;
 	char combinedopt[256];
 	int error = 0, optstart = 2;
 	int devopen = 1;

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/camcontrol/camcontrol.h,v 1.3.2.1 2000/08/14 05:42:32 kbyanc Exp $
- * $DragonFly: src/sbin/camcontrol/camcontrol.h,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/camcontrol/camcontrol.h,v 1.3 2005/01/11 23:58:55 cpressey Exp $
  */
 
 #ifndef _CAMCONTROL_H
@@ -41,17 +41,13 @@ struct get_hook
 	int got;
 };
 
-void mode_sense(struct cam_device *device, int mode_page, int page_control,
-		int dbd, int retry_count, int timeout, u_int8_t *data,
-		int datalen);
-void mode_select(struct cam_device *device, int save_pages, int retry_count,
-		 int timeout, u_int8_t *data, int datalen);
-void mode_edit(struct cam_device *device, int page, int page_control, int dbd,
-	       int edit, int binary, int retry_count, int timeout);
-void mode_list(struct cam_device *device, int page_control, int dbd,
-	       int retry_count, int timeout);
-char *cget(void *hook, char *name);
-int iget(void *hook, char *name);
-void arg_put(void *hook, int letter, void *arg, int count, char *name);
-void usage(int verbose);
+void	 mode_sense(struct cam_device *, int, int, int, int, int, u_int8_t *,
+		    int);
+void	 mode_select(struct cam_device *, int, int, int, u_int8_t *, int);
+void	 mode_edit(struct cam_device *, int, int, int, int, int, int, int);
+void	 mode_list(struct cam_device *, int, int, int, int);
+char 	*cget(void *, char *);
+int	 iget(void *, char *);
+void	 arg_put(void *, int, void *, int, char *);
+void	 usage(int);
 #endif /* _CAMCONTROL_H */

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/camcontrol/modeedit.c,v 1.5.2.2 2003/01/08 17:55:02 njl Exp $
- * $DragonFly: src/sbin/camcontrol/modeedit.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/camcontrol/modeedit.c,v 1.3 2005/01/11 23:58:55 cpressey Exp $
  */
 
 #include <sys/queue.h>
@@ -100,35 +100,24 @@ static char edit_path[] = "/tmp/camXXXXXX";
 
 
 /* Function prototypes. */
-static void		 editentry_create(void *hook, int letter, void *arg,
-					  int count, char *name);
-static void		 editentry_update(void *hook, int letter, void *arg,
-					  int count, char *name);
-static int		 editentry_save(void *hook, char *name);
-static struct editentry	*editentry_lookup(char *name);
-static int		 editentry_set(char *name, char *newvalue,
-				       int editonly);
-static void		 editlist_populate(struct cam_device *device,
-					   int modepage, int page_control,
-					   int dbd, int retries, int timeout);
-static void		 editlist_save(struct cam_device *device, int modepage,
-				       int page_control, int dbd, int retries,
-				       int timeout);
-static void		 nameentry_create(int pagenum, char *name);
-static struct pagename	*nameentry_lookup(int pagenum);
-static int		 load_format(char *pagedb_path, int page);
-static int		 modepage_write(FILE *file, int editonly);
-static int		 modepage_read(FILE *file);
+static void		 editentry_create(void *, int, void *, int, char *);
+static void		 editentry_update(void *, int, void *, int, char *);
+static int		 editentry_save(void *, char *);
+static struct editentry	*editentry_lookup(char *);
+static int		 editentry_set(char *, char *, int);
+static void		 editlist_populate(struct cam_device *, int, int, int,
+					   int, int);
+static void		 editlist_save(struct cam_device *, int, int, int, int,
+				       int);
+static void		 nameentry_create(int, char *);
+static struct pagename	*nameentry_lookup(int);
+static int		 load_format(const char *, int);
+static int		 modepage_write(FILE *, int);
+static int		 modepage_read(FILE *);
 static void		 modepage_edit(void);
-static void		 modepage_dump(struct cam_device *device, int page,
-				       int page_control, int dbd, int retries,
-				       int timeout);
+static void		 modepage_dump(struct cam_device *, int, int, int, int,
+				       int);
 static void		 cleanup_editfile(void);
-void			 mode_edit(struct cam_device *device, int page,
-				   int page_control, int dbd, int edit,
-				   int binary, int retry_count, int timeout);
-void			 mode_list(struct cam_device *device, int page_control,
-				   int dbd, int retry_count, int timeout);
 
 
 #define	returnerr(code) do {						\
@@ -145,7 +134,8 @@ void			 mode_list(struct cam_device *device, int page_control,
 
 
 static void
-editentry_create(void *hook, int letter, void *arg, int count, char *name)
+editentry_create(void *hook __unused, int letter, void *arg, int count,
+		 char *name)
 {
 	struct editentry *newentry;	/* Buffer to hold new entry. */
 
@@ -166,7 +156,8 @@ editentry_create(void *hook, int letter, void *arg, int count, char *name)
 }
 
 static void
-editentry_update(void *hook, int letter, void *arg, int count, char *name)
+editentry_update(void *hook __unused, int letter, void *arg, int count,
+		 char *name)
 {
 	struct editentry *dest;		/* Buffer to hold entry to update. */
 
@@ -193,7 +184,7 @@ editentry_update(void *hook, int letter, void *arg, int count, char *name)
 }
 
 static int
-editentry_save(void *hook, char *name)
+editentry_save(void *hook __unused, char *name)
 {
 	struct editentry *src;		/* Entry value to save. */
 
@@ -243,15 +234,7 @@ editentry_set(char *name, char *newvalue, int editonly)
 	char *convertend;	/* End-of-conversion pointer. */
 	int ival;		/* New integral value. */
 	int resolution;		/* Resolution in bits for integer conversion. */
-
-/*
- * Macro to determine the maximum value of the given size for the current
- * resolution.
- * XXX Lovely x86's optimize out the case of shifting by 32 and gcc doesn't
- *     currently workaround it (even for int64's), so we have to kludge it.
- */
-#define	RESOLUTION_MAX(size) ((resolution * (size) == 32)? 		\
-	0xffffffff: (1 << (resolution * (size))) - 1)
+	int resolution_max;	/* Maximum resolution for modepage's size. */
 
 	assert(newvalue != NULL);
 	if (*newvalue == '\0')
@@ -271,8 +254,21 @@ editentry_set(char *name, char *newvalue, int editonly)
 		ival = (int)strtol(newvalue, &convertend, 0);
 		if (*convertend != '\0')
 			returnerr(EINVAL);
-		if (ival > RESOLUTION_MAX(dest->size) || ival < 0) {
-			int newival = (ival < 0)? 0: RESOLUTION_MAX(dest->size);
+
+		/*
+		 * Determine the maximum value of the given size for the
+		 * current resolution.
+		 * XXX Lovely x86's optimize out the case of shifting by 32,
+		 * and gcc doesn't currently workaround it (even for int64's),
+		 * so we have to kludge it.
+		 */
+		if (resolution * dest->size == 32)
+			resolution_max = 0xffffffff;
+		else
+			resolution_max = (1 << (resolution * dest->size)) - 1;
+
+		if (ival > resolution_max || ival < 0) {
+			int newival = (ival < 0) ? 0 : resolution_max;
 			warnx("value %d is out of range for entry %s; clipping "
 			    "to %d", ival, name, newival);
 			ival = newival;
@@ -290,13 +286,13 @@ editentry_set(char *name, char *newvalue, int editonly)
 		strncpy(cval, newvalue, dest->size);
 		if (dest->type == 'z') {
 			/* Convert trailing spaces to nulls. */
-			char *convertend;
+			char *conv_end;
 
-			for (convertend = cval + dest->size;
-			    convertend >= cval; convertend--) {
-				if (*convertend == ' ')
-					*convertend = '\0';
-				else if (*convertend != '\0')
+			for (conv_end = cval + dest->size;
+			    conv_end >= cval; conv_end--) {
+				if (*conv_end == ' ')
+					*conv_end = '\0';
+				else if (*conv_end != '\0')
 					break;
 			}
 		}
@@ -319,7 +315,6 @@ editentry_set(char *name, char *newvalue, int editonly)
 	}
 
 	return (0);
-#undef RESOLUTION_MAX
 }
 
 static void
@@ -355,7 +350,7 @@ nameentry_lookup(int pagenum) {
 }
 
 static int
-load_format(char *pagedb_path, int page)
+load_format(const char *pagedb_path, int page)
 {
 	FILE *pagedb;
 	char str_pagenum[MAX_PAGENUM_LEN];
@@ -717,7 +712,7 @@ modepage_read(FILE *file)
 static void
 modepage_edit(void)
 {
-	char *editor;
+	const char *editor;
 	char *commandline;
 	int fd;
 	int written;
@@ -784,7 +779,7 @@ modepage_dump(struct cam_device *device, int page, int page_control, int dbd,
 	u_int8_t *mode_pars;		/* Pointer to modepage params. */
 	struct scsi_mode_header_6 *mh;	/* Location of mode header. */
 	struct scsi_mode_page_header *mph;
-	int index;			/* Index for scanning mode params. */
+	int mode_idx;			/* Index for scanning mode params. */
 
 	mode_sense(device, page, page_control, dbd, retries, timeout, data,
 		   sizeof(data));
@@ -794,9 +789,9 @@ modepage_dump(struct cam_device *device, int page, int page_control, int dbd,
 	mode_pars = MODE_PAGE_DATA(mph);
 
 	/* Print the raw mode page data with newlines each 8 bytes. */
-	for (index = 0; index < mph->page_length; index++) {
-		printf("%02x%c",mode_pars[index],
-		    (((index + 1) % 8) == 0) ? '\n' : ' ');
+	for (mode_idx = 0; mode_idx < mph->page_length; mode_idx++) {
+		printf("%02x%c", mode_pars[mode_idx],
+		    (((mode_idx + 1) % 8) == 0) ? '\n' : ' ');
 	}
 	putchar('\n');
 }
@@ -815,7 +810,7 @@ void
 mode_edit(struct cam_device *device, int page, int page_control, int dbd,
 	  int edit, int binary, int retry_count, int timeout)
 {
-	char *pagedb_path;		/* Path to modepage database. */
+	const char *pagedb_path;	/* Path to modepage database. */
 
 	if (edit && binary)
 		errx(EX_USAGE, "cannot edit in binary mode.");
@@ -873,7 +868,7 @@ mode_list(struct cam_device *device, int page_control, int dbd,
 	struct scsi_mode_header_6 *mh;	/* Location of mode header. */
 	struct scsi_mode_page_header *mph;
 	struct pagename *nameentry;
-	char *pagedb_path;
+	const char *pagedb_path;
 	int len;
 
 	if ((pagedb_path = getenv("SCSI_MODES")) == NULL)
