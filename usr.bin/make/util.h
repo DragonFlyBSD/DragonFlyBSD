@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/util.h,v 1.1 2005/01/06 11:41:47 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.h,v 1.2 2005/01/06 21:06:25 okumoto Exp $
  */
 
 #include <sys/types.h>
@@ -81,7 +81,6 @@ void Finish(int);
 char *estrdup(const char *);
 void *emalloc(size_t);
 void *erealloc(void *, size_t);
-void enomem(void);
 int eunlink(const char *);
 
 #endif /* util_h_b7020fdb */

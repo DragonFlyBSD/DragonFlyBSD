@@ -25,7 +25,7 @@
  *    without specific prior written permission.
  *
  * $FreeBSD: src/usr.bin/make/util.c,v 1.5.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/util.c,v 1.11 2005/01/06 10:53:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.c,v 1.12 2005/01/06 21:06:25 okumoto Exp $
  */
 
 #include <sys/stat.h>
@@ -41,6 +41,8 @@
 #include "job.h"
 #include "targ.h"
 #include "util.h"
+
+static void enomem(void);
 
 /*-
  * Debug --
@@ -228,7 +230,7 @@ erealloc(void *ptr, size_t size)
  * enomem --
  *	die when out of memory.
  */
-void
+static void
 enomem(void)
 {
 	err(2, NULL);
