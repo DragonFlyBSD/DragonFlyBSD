@@ -32,7 +32,7 @@
  *
  *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
- * $DragonFly: src/sys/sys/signalvar.h,v 1.11 2004/01/07 11:04:20 dillon Exp $
+ * $DragonFly: src/sys/sys/signalvar.h,v 1.12 2004/11/23 06:32:34 dillon Exp $
  */
 
 #ifndef	_SYS_SIGNALVAR_H_		/* tmp for user.h */
@@ -198,8 +198,6 @@ void	psignal (struct proc *p, int sig);
 void	siginit (struct proc *p);
 void	trapsignal (struct proc *p, int sig, u_long code);
 int	__cursig (struct proc *p);
-proc_func_t register_ckpt_func(proc_func_t func);
-
 
 /*
  * Machine-dependent functions:
@@ -208,6 +206,7 @@ void	sendsig (sig_t action, int sig, sigset_t *retmask, u_long code);
 void	sendupcall (struct vmupcall *vu, int morepending);
 int	fetchupcall (struct vmupcall *vu, int morepending, void *rsp);
 void	sigexit (struct proc *p, int sig);
+int	checkpoint_signal_handler(struct proc *p);
 
 /*
  * Inline functions:

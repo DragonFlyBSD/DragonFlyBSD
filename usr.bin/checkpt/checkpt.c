@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/checkpt/checkpt.c,v 1.2 2003/10/20 07:01:05 dillon Exp $
+ * $DragonFly: src/usr.bin/checkpt/checkpt.c,v 1.3 2004/11/23 06:32:39 dillon Exp $
  */
 
 #include <stdio.h>
@@ -34,10 +34,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/module.h>
+#include <sys/checkpoint.h>
 #include <signal.h>
 #include <fcntl.h>
-
-#include "call.h"
 
 static
 void
@@ -72,7 +71,7 @@ main(int ac, char **av)
 	fprintf(stderr, "unable to open %s\n", filename);
 	exit(1);
     }
-    error = ckpt_restore(fd, THAW_RETURN);
+    error = sys_checkpoint(CKPT_THAW, fd, -1, 1);
     if (error)
 	fprintf(stderr, "thaw failed error %d %s\n", error, strerror(error));
     else

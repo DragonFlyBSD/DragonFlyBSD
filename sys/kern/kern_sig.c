@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.32 2004/11/12 00:09:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.33 2004/11/23 06:32:32 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -764,18 +764,6 @@ trapsignal(struct proc *p, int sig, u_long code)
  * be in a module for the moment
  */
 
-static proc_func_t ckpt_func;
-
-proc_func_t
-register_ckpt_func(proc_func_t func) 
-{
-	proc_func_t old_func;
-
-	old_func = ckpt_func;
-	ckpt_func = func;
-	return (old_func);
-}
-
 void
 psignal(struct proc *p, int sig)
 {
@@ -1157,8 +1145,7 @@ issignal(struct proc *p)
 			 * Handle the in-kernel checkpoint action
 			 */
 			if (prop & SA_CKPT) {
-				if (ckpt_func)
-					ckpt_func(p);
+				checkpoint_signal_handler(p);
 				break;
 			}
 

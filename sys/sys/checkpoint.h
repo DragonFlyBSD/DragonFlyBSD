@@ -22,40 +22,36 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/checkpt/Attic/freeze.S,v 1.1 2003/10/20 04:46:14 dillon Exp $
+ * $DragonFly: src/sys/sys/checkpoint.h,v 1.1 2004/11/23 06:32:34 dillon Exp $
  */
 
-#include "DEFS.h"
+#ifndef _SYS_CHECKPOINT_H_
+#define _SYS_CHECKPOINT_H_
 
-ENTRY(ckpt_checkpoint)
-	pop	%ecx            /* rta */
-	/* fd - on top of stack */	
-	pushl   $0x1            /* CKPT_FREEZE */ ; 
-	push	%ecx
-	movl    $0xd2,%eax      /* ckpt_proc sysent offset */
-	int	$0x80		/* jump to kernel */
-	push	%ecx
-	jb	1f
-	ret
-	mov	%esi,%esi
-1:
-	PIC_PROLOGUE
-	jmp	PIC_PLT(HIDENAME(cerror))
+#define CKPT_FREEZE    0x1
+#define CKPT_THAW      0x2
+#define CKPT_FREEZEPID 0x3	/* not yet supported */
+#define CKPT_THAWBIN   0x4	/* not yet supported */
 
+#ifdef _KERNEL
 
-ENTRY(ckpt_restore)
-	pop	%ecx            /* rta */
-	/* fd - on top of stack */	
-	pushl   $0x2            /* CKPT_THAW */ ; 
-	push	%ecx
-	movl    $0xd2,%eax      /* ckpt_proc sysent offset */
-	int	$0x80		/* jump to kernel */
-	push	%ecx
-	jb	1f
-	ret
-	mov	%esi,%esi
-1:
-	PIC_PROLOGUE
-	jmp	PIC_PLT(HIDENAME(cerror))
+typedef struct {
+	prstatus_t *status;
+	prfpregset_t *fpregset;
+	prpsinfo_t *psinfo;
+} pstate_t;
 
+typedef struct {
+	pstate_t *pstate;
+	int offset;
+	int nthreads;
+} lc_args_t;
+
+#else
+
+int sys_checkpoint(int type, int fd, pid_t pid, int retval);
+
+#endif
+
+#endif /* PRIVATE_CKPT_H_ */
 
