@@ -1,6 +1,6 @@
 .\" @(#)rpc.3n	2.4 88/08/08 4.0 RPCSRC; from 1.19 88/06/24 SMI
 .\" $FreeBSD: src/lib/libc/rpc/rpc.3,v 1.11.2.5 2001/12/14 18:33:56 ru Exp $
-.\" $DragonFly: src/lib/libc/rpc/rpc.3,v 1.2 2003/06/17 04:26:45 dillon Exp $
+.\" $DragonFly: src/lib/libc/rpc/rpc.3,v 1.3 2004/09/14 18:23:15 joerg Exp $
 .\"
 .Dd February 16, 1988
 .Dt RPC 3
@@ -260,7 +260,7 @@ Otherwise, the socket remains open.
 .Ft CLIENT *
 .Xc
 .It Xo
-.Fn clnt_create "char *host" "u_long prog" "u_long vers" "char *proto"
+.Fn clnt_create "onst char *host" "u_long prog" "u_long vers" "const char *proto"
 .Xc
 .Pp
 Generic client creation routine.

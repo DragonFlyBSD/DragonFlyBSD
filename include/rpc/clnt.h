@@ -29,7 +29,7 @@
  *	from: @(#)clnt.h 1.31 88/02/08 SMI
  *	from: @(#)clnt.h	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/clnt.h,v 1.11.2.1 2001/06/28 21:44:09 iedowse Exp $
- * $DragonFly: src/include/rpc/clnt.h,v 1.3 2003/11/14 01:01:50 dillon Exp $
+ * $DragonFly: src/include/rpc/clnt.h,v 1.4 2004/09/14 18:23:15 joerg Exp $
  */
 
 /*
@@ -290,13 +290,13 @@ __END_DECLS
  * and "unix".
  * CLIENT *
  * clnt_create(host, prog, vers, prot);
- *	char *host; 	-- hostname
+ *	const char *host; 	-- hostname
  *	u_long prog;	-- program number
  *	u_long vers;	-- version number
- *	char *prot;	-- protocol
+ *	const char *prot;	-- protocol
  */
 __BEGIN_DECLS
-extern CLIENT *clnt_create	(char *, u_long, u_long, char *);
+CLIENT *	clnt_create(const char *, u_long, u_long, const char *);
 __END_DECLS
 
 

@@ -29,7 +29,7 @@
  * @(#)clnt_generic.c 1.4 87/08/11 (C) 1987 SMI
  * @(#)clnt_generic.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/clnt_generic.c,v 1.9.2.1 2001/03/05 10:48:28 obrien Exp $
- * $DragonFly: src/lib/libcr/rpc/Attic/clnt_generic.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/clnt_generic.c,v 1.3 2004/09/14 18:23:15 joerg Exp $
  */
 
 /*
@@ -47,11 +47,7 @@
  * change using the rpc equivalent of ioctl()'s.
  */
 CLIENT *
-clnt_create(hostname, prog, vers, proto)
-	char *hostname;
-	u_long prog;
-	u_long vers;
-	char *proto;
+clnt_create(const char *hostname, u_long prog, u_long vers, const char *proto)
 {
 	struct hostent *h;
 	struct protoent *p;
