@@ -3,7 +3,7 @@
  *
  *	Implements an architecture independant Capability Service API
  * 
- * $DragonFly: src/sys/sys/caps.h,v 1.7 2004/03/31 19:28:25 dillon Exp $
+ * $DragonFly: src/sys/sys/caps.h,v 1.8 2004/04/25 18:54:32 cpressey Exp $
  */
 
 #ifndef _SYS_CAPS_H_
@@ -185,6 +185,7 @@ int caps_sys_wait(int, void *, int, caps_msgid_t, caps_cred_t);
 int caps_sys_abort(int, off_t, int);
 int caps_sys_setgen(int, caps_gen_t);
 caps_gen_t caps_sys_getgen(int);
+int caps_sys_close(int);
 
 #endif
 
