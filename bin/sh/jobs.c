@@ -35,7 +35,7 @@
  *
  * @(#)jobs.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/jobs.c,v 1.27.2.10 2003/04/04 08:16:26 tjr Exp $
- * $DragonFly: src/bin/sh/jobs.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
+ * $DragonFly: src/bin/sh/jobs.c,v 1.4 2003/10/14 23:03:08 dillon Exp $
  */
 
 #include <fcntl.h>
@@ -358,7 +358,7 @@ showjob(struct job *jp, pid_t pid, int sformat, int lformat)
 			else
 #endif
 				i = WTERMSIG(ps->status);
-			if ((i & 0x7F) < NSIG && sys_siglist[i & 0x7F])
+			if ((i & 0x7F) < sys_nsig && sys_siglist[i & 0x7F])
 				scopy(sys_siglist[i & 0x7F], s);
 			else
 				fmtstr(s, 64, "Signal %d", i & 0x7F);
@@ -981,7 +981,7 @@ dowait(int block, struct job *job)
 			if (!mflag ||
 			    (thisjob->foreground && !WIFSTOPPED(status))) {
 				i = WTERMSIG(status);
-				if ((i & 0x7F) < NSIG && sys_siglist[i & 0x7F])
+				if ((i & 0x7F) < sys_nsig && sys_siglist[i & 0x7F])
 					out1str(sys_siglist[i & 0x7F]);
 				else
 					out1fmt("Signal %d", i & 0x7F);

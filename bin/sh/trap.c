@@ -35,7 +35,7 @@
  *
  * @(#)trap.c	8.5 (Berkeley) 6/5/95
  * $FreeBSD: src/bin/sh/trap.c,v 1.20.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/trap.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/trap.c,v 1.3 2003/10/14 23:03:08 dillon Exp $
  */
 
 #include <signal.h>
@@ -102,9 +102,10 @@ sigstring_to_signum(char *sig)
 
 		if (strncasecmp(sig, "sig", 3) == 0)
 			sig += 3;
-		for (n = 1; n < NSIG; n++)
-			if (strcasecmp(sys_signame[n], sig) == 0)
+		for (n = 1; n < sys_nsig; n++) {
+			if (sys_signame[n] && strcasecmp(sys_signame[n], sig) == 0)
 				return (n);
+		}
 	}
 	return (-1);
 }
@@ -118,7 +119,7 @@ printsignals(void)
 {
 	int n;
 
-	for (n = 1; n < NSIG; n++) {
+	for (n = 1; n < sys_nsig; n++) {
 		out1fmt("%s", sys_signame[n]);
 		if (n == (NSIG / 2) || n == (NSIG - 1))
 			out1str("\n");
@@ -138,10 +139,11 @@ trapcmd(int argc, char **argv)
 	int signo;
 
 	if (argc <= 1) {
-		for (signo = 0 ; signo < NSIG ; signo++) {
-			if (trap[signo] != NULL)
+		for (signo = 0 ; signo < sys_nsig; signo++) {
+			if (trap[signo] != NULL) {
 				out1fmt("trap -- '%s' %s\n", trap[signo],
 					(signo) ? sys_signame[signo] : "exit");
+			}
 		}
 		return 0;
 	}
