@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.9 2004/06/05 18:04:47 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.10 2004/07/30 21:56:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -189,14 +189,6 @@ sf_buf_alloc(struct vm_page *m, int flags)
 done:
 	crit_exit();
 	return (sf);
-}
-
-#define dtosf(x)	(&sf_bufs[((uintptr_t)(x) - (uintptr_t)sf_base) >> PAGE_SHIFT])
-
-struct sf_buf *
-sf_buf_tosf(caddr_t addr)
-{
-	return(dtosf(addr));
 }
 
 #if 0

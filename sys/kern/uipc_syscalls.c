@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.39 2004/07/29 08:46:21 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.40 2004/07/30 21:56:14 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1280,23 +1280,20 @@ holdsock(fdp, fdes, fpp)
  * XXX HACK XXX TEMPORARY UNTIL WE IMPLEMENT EXT MBUF REFERENCE COUNTING
  */
 static void
-sf_buf_mref(caddr_t addr, u_int size)
+sf_buf_mref(void *arg)
 {
-	struct sf_buf *sf;
-
-	sf = sf_buf_tosf(addr);
+	struct sf_buf *sf = arg;
 	++sf->aux2;
 }
 
 static void
-sf_buf_mext(caddr_t addr, u_int size)
+sf_buf_mfree(void *arg)
 {
-	struct sf_buf *sf;
+	struct sf_buf *sf = arg;
 	vm_page_t m;
 	int s;
 	int n;
 
-	sf = sf_buf_tosf(addr);
 	KKASSERT(sf->aux2 > 0);
 	if (--sf->aux2 == 0) {
 		m = sf_buf_page(sf);
@@ -1620,12 +1617,13 @@ retry_lookup:
 		}
 		++sf->aux1;	/* wiring count */
 		++sf->aux2;	/* initial reference */
-		m->m_ext.ext_nfree.old = sf_buf_mext;
-		m->m_ext.ext_nref.old = sf_buf_mref;
+		m->m_ext.ext_nfree.new = sf_buf_mfree;
+		m->m_ext.ext_nref.new = sf_buf_mref;
+		m->m_ext.ext_arg = sf;
 		m->m_ext.ext_buf = (void *)sf->kva;
 		m->m_ext.ext_size = PAGE_SIZE;
 		m->m_data = (char *) sf->kva + pgoff;
-		m->m_flags |= M_EXT | M_EXT_OLD;
+		m->m_flags |= M_EXT;
 		m->m_pkthdr.len = m->m_len = xfsize;
 
 		if (mheader != NULL) {

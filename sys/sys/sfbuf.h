@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/sfbuf.h,v 1.4 2004/04/01 17:58:06 dillon Exp $
+ * $DragonFly: src/sys/sys/sfbuf.h,v 1.5 2004/07/30 21:56:17 dillon Exp $
  */
 
 #ifndef _SFBUF_H_
@@ -68,7 +68,6 @@ extern int nsfbufs;
 struct sf_buf  *sf_buf_alloc(struct vm_page *, int flags);
 void		sf_buf_free(struct sf_buf *);
 void		sf_buf_ref(struct sf_buf *);
-struct sf_buf  *sf_buf_tosf(caddr_t addr);
 
 #endif
 
