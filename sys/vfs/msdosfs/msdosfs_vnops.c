@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.13 2004/03/01 06:33:21 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.14 2004/04/14 01:24:24 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -670,7 +670,7 @@ msdosfs_write(ap)
 	struct vnode *thisvp;
 	struct denode *dep = VTODE(vp);
 	struct msdosfsmount *pmp = dep->de_pmp;
-	struct proc *p = td->td_proc;
+	struct proc *p = (td ? td->td_proc : NULL);
 
 #ifdef MSDOSFS_DEBUG
 	printf("msdosfs_write(vp %p, uio %p, ioflag %x, cred %p\n",
