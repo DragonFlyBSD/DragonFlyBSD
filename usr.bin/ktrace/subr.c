@@ -32,8 +32,10 @@
  *
  * @(#)subr.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/ktrace/subr.c,v 1.6 1999/08/28 01:02:34 peter Exp $
- * $DragonFly: src/usr.bin/ktrace/subr.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/ktrace/subr.c,v 1.3 2003/08/27 03:21:50 dillon Exp $
  */
+
+#define _KERNEL_STRUCTURES
 
 #include <sys/param.h>
 #include <sys/file.h>

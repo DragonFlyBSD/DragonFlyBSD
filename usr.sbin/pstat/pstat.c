@@ -33,14 +33,15 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.3 2003/08/08 04:18:47 dillon Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.4 2003/08/27 03:21:50 dillon Exp $
  */
+
+#define _KERNEL_STRUCTURES
 
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/vnode.h>
 #include <sys/ucred.h>
-#define _KERNEL
 #include <sys/file.h>
 #include <vfs/ufs/quota.h>
 #include <vfs/ufs/inode.h>
@@ -48,7 +49,6 @@
 #include <sys/uio.h>
 #include <sys/namei.h>
 #include <vfs/union/union.h>
-#undef _KERNEL
 #include <sys/stat.h>
 #include <nfs/rpcv2.h>
 #include <nfs/nfsproto.h>

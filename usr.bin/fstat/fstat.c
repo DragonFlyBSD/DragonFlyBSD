@@ -33,8 +33,10 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.4 2003/08/08 04:18:43 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.5 2003/08/27 03:21:49 dillon Exp $
  */
+
+#define	_KERNEL_STRUCTURES
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -53,12 +55,10 @@
 #include <sys/queue.h>
 #include <sys/pipe.h>
 #include <sys/conf.h>
-#define	_KERNEL
 #include <sys/file.h>
 #include <vfs/ufs/quota.h>
 #include <vfs/ufs/inode.h>
 #include <sys/mount.h>
-#undef _KERNEL
 #include <nfs/nfsproto.h>
 #include <nfs/rpcv2.h>
 #include <nfs/nfs.h>

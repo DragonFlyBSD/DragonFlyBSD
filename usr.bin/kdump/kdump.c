@@ -33,13 +33,12 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)kdump.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/kdump/kdump.c,v 1.17 1999/12/29 05:05:33 peter Exp $
- * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.3 2003/08/27 03:21:50 dillon Exp $
  */
 
-#define _KERNEL
-extern int errno;
+#define _KERNEL_STRUCTURES
+
 #include <sys/errno.h>
-#undef _KERNEL
 #include <sys/param.h>
 #include <sys/errno.h>
 #include <sys/time.h>

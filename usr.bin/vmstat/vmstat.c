@@ -33,9 +33,10 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.4 2003/07/30 05:19:54 hmp Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.5 2003/08/27 03:21:50 dillon Exp $
  */
 
+#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/proc.h>
@@ -87,8 +88,12 @@ static struct nlist namelist[] = {
 	{ "_eintrcnt" },
 #define	X_KMEMSTATISTICS	9
 	{ "_kmemstatistics" },
+#if 0
 #define	X_KMEMBUCKETS	10
 	{ "_bucket" },
+#else
+	{ "_kmemstatistics" },
+#endif
 #define	X_ZLIST		11
 	{ "_zlist" },
 #ifdef notyet
@@ -750,7 +755,11 @@ domem()
 	char buf[1024];
 	struct kmembuckets buckets[MINBUCKET + 16];
 
+#ifdef X_KMEMBUCKETS
 	kread(X_KMEMBUCKETS, buckets, sizeof(buckets));
+#else
+	bzero(buckets, sizeof(buckets));
+#endif
 	kread(X_KMEMSTATISTICS, &kmsp, sizeof(kmsp));
 	for (nkms = 0; nkms < MAX_KMSTATS && kmsp != NULL; nkms++) {
 		if (sizeof(kmemstats[0]) != kvm_read(kd, (u_long)kmsp,

@@ -18,7 +18,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/gnu/usr.bin/binutils/gdb/i386/kvm-fbsd.c,v 1.17.4.3 2001/12/17 23:06:06 peter Exp $ */
-/* $DragonFly: src/gnu/usr.bin/binutils/gdb/i386/Attic/kvm-fbsd.c,v 1.3 2003/07/13 07:13:51 dillon Exp $ */
+/* $DragonFly: src/gnu/usr.bin/binutils/gdb/i386/Attic/kvm-fbsd.c,v 1.4 2003/08/27 03:21:48 dillon Exp $ */
+
+#define _KERNEL_STRUCTURES
 
 #include "defs.h"
 

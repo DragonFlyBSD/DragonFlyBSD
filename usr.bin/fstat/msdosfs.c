@@ -34,19 +34,19 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fstat/msdosfs.c,v 1.1.2.2 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/msdosfs.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/msdosfs.c,v 1.3 2003/08/27 03:21:49 dillon Exp $
  */
+
+#define	_KERNEL_STRUCTURES
 
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/vnode.h>
 
-#define	_KERNEL
 #include <sys/mount.h>
 #include <msdosfs/bpb.h>
 #include <msdosfs/msdosfsmount.h>
-#undef _KERNEL
 
 #include <msdosfs/denode.h>
 #include <msdosfs/direntry.h>

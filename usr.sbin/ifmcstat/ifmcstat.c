@@ -27,8 +27,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.3.2.2 2001/07/03 11:02:06 ume Exp $
- * $DragonFly: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.3 2003/08/27 03:21:50 dillon Exp $
  */
+
+#define _KERNEL_STRUCTURES
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,9 +49,7 @@
 #include <net/if_types.h>
 #include <net/if_dl.h>
 #include <netinet/in.h>
-#define	_KERNEL
 #include <netinet/if_ether.h>
-#undef	_KERNEL
 #include <netinet/in_var.h>
 #include <arpa/inet.h>
 

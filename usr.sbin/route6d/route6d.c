@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/route6d/route6d.c,v 1.2.2.5 2001/07/03 11:02:09 ume Exp $	*/
-/*	$DragonFly: src/usr.sbin/route6d/route6d.c,v 1.2 2003/06/17 04:30:02 dillon Exp $	*/
+/*	$DragonFly: src/usr.sbin/route6d/route6d.c,v 1.3 2003/08/27 03:21:50 dillon Exp $	*/
 /*	$KAME: route6d.c,v 1.64 2001/05/08 04:36:37 itojun Exp $	*/
 
 /*
@@ -33,6 +33,8 @@
  * $KAME: route6d.c,v 1.64 2001/05/08 04:36:37 itojun Exp $
  */
 
+#define _KERNEL_STRUCTURES
+
 #include <stdio.h>
 
 #include <time.h>
@@ -61,11 +63,7 @@
 #if defined(__FreeBSD__) && __FreeBSD__ >= 3
 #include <net/if_var.h>
 #endif /* __FreeBSD__ >= 3 */
-#define	KERNEL	1
-#define	_KERNEL	1
 #include <net/route.h>
-#undef KERNEL
-#undef _KERNEL
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #include <netinet/ip6.h>
