@@ -39,8 +39,8 @@
  *
  * @(#) Copyright (c) 1983, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rlogin.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/rlogin/rlogin.c,v 1.29 2002/03/23 23:35:42 imp Exp $
- * $DragonFly: src/usr.bin/rlogin/rlogin.c,v 1.6 2005/02/15 01:12:07 cpressey Exp $
+ * $FreeBSD: src/usr.bin/rlogin/rlogin.c,v 1.30 2002/04/28 11:16:43 markm Exp $
+ * $DragonFly: src/usr.bin/rlogin/rlogin.c,v 1.7 2005/02/15 01:24:49 cpressey Exp $
  */
 
 /*
@@ -71,7 +71,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <err.h>
 
 #ifdef KERBEROS
 #include <openssl/des.h>
@@ -100,7 +99,7 @@ int family = PF_UNSPEC;
 int noescape;
 u_char escapechar = '~';
 
-char *speeds[] = {
+const char *speeds[] = {
 	"0", "50", "75", "110", "134", "150", "200", "300", "600", "1200",
 	"1800", "2400", "4800", "9600", "19200", "38400", "57600", "115200"
 #define	MAX_SPEED_LENGTH	(sizeof("115200") - 1)
@@ -117,7 +116,7 @@ void		echo(char);
 u_int		getescape(char *);
 void		lostpeer(int);
 void		mode(int);
-void		msg(char *);
+void		msg(const char *);
 void		oob(int);
 int		reader(int);
 void		sendwindow(void);
@@ -449,7 +448,7 @@ int dosigwinch;
  * request to turn on the window-changing protocol.
  */
 void
-writeroob(int signo)
+writeroob(int signo __unused)
 {
 	if (dosigwinch == 0) {
 		sendwindow();
@@ -459,7 +458,7 @@ writeroob(int signo)
 }
 
 void
-catch_child(int signo)
+catch_child(int signo __unused)
 {
 	union wait status;
 	int pid;
@@ -588,8 +587,7 @@ stop(char cmdc)
 }
 
 void
-sigwinch(signo)
-	int signo;
+sigwinch(int signo __unused)
 {
 	struct winsize ws;
 
@@ -641,7 +639,7 @@ int ppid, rcvcnt, rcvstate;
 char rcvbuf[8 * 1024];
 
 void
-oob(int signo)
+oob(int signo __unused)
 {
 	struct sgttyb sb;
 	int atmark, n, out, rcvd;
@@ -657,7 +655,7 @@ oob(int signo)
 			 * to send it yet if we are blocked for output and
 			 * our input buffer is full.
 			 */
-			if (rcvcnt < sizeof(rcvbuf)) {
+			if (rcvcnt < (int)sizeof(rcvbuf)) {
 				n = read(rem, rcvbuf + rcvcnt,
 				    sizeof(rcvbuf) - rcvcnt);
 				if (n <= 0)
@@ -826,7 +824,7 @@ mode(int f)
 }
 
 void
-lostpeer(int signo)
+lostpeer(int signo __unused)
 {
 	(void)signal(SIGPIPE, SIG_IGN);
 	msg("\007connection closed.");
@@ -835,13 +833,13 @@ lostpeer(int signo)
 
 /* copy SIGURGs to the child process via SIGUSR1. */
 void
-copytochild(int signo)
+copytochild(int signo __unused)
 {
 	(void)kill(child, SIGUSR1);
 }
 
 void
-msg(char *str)
+msg(const char *str)
 {
 	(void)fprintf(stderr, "rlogin: %s\r\n", str);
 }
