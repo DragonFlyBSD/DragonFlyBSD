@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mkfifo.c	8.2 (Berkeley) 1/5/94
  * $FreeBSD: src/usr.bin/mkfifo/mkfifo.c,v 1.5 1999/08/28 01:04:06 peter Exp $
- * $DragonFly: src/usr.bin/mkfifo/mkfifo.c,v 1.5 2005/03/02 17:32:06 liamfoy Exp $
+ * $DragonFly: src/usr.bin/mkfifo/mkfifo.c,v 1.6 2005/03/02 19:27:39 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -95,7 +95,6 @@ main(int argc, char **argv)
 			warn("%s", *argv);
 			exitval = 1;
 		}
-	free(modep);
 	exit(exitval);
 }
 
