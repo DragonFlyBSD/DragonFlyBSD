@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/cam/scsi/scsi_low.h,v 1.1.2.4 2001/07/22 00:21:41 non Exp $	*/
-/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low.h,v 1.6 2004/09/17 01:50:06 joerg Exp $	*/
+/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low.h,v 1.7 2004/09/17 02:38:10 joerg Exp $	*/
 /*	$NecBSD: scsi_low.h,v 1.24.10.5 2001/06/26 07:31:46 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -73,11 +73,8 @@ struct scsi_low_osdep_interface {
 
 	int si_poll_count;
 
-	struct callout_handle engage_ch;
-	struct callout_handle timeout_ch;
-#ifdef	SCSI_LOW_POWFUNC
-	struct callout_handle recover_ch;
-#endif
+	struct callout engage_ch;
+	struct callout timeout_ch;
 };
 
 struct scsi_low_osdep_targ_interface {

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.10 2004/09/17 01:50:06 joerg Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.11 2004/09/17 02:38:10 joerg Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -1018,11 +1018,11 @@ scsi_low_timeout_cam(slp, ch, action)
 		switch (action)
 		{
 		case SCSI_LOW_TIMEOUT_START:
-			slp->sl_si.timeout_ch = timeout(scsi_low_timeout, slp,
-				hz / SCSI_LOW_TIMEOUT_HZ);
+			callout_reset(&slp->sl_si.timeout_ch,
+			    hz / SCSI_LOW_TIMEOUT_HZ, scsi_low_timeout, slp);
 			break;
 		case SCSI_LOW_TIMEOUT_STOP:
-			untimeout(scsi_low_timeout, slp, slp->sl_si.timeout_ch);
+			callout_stop(&slp->sl_si.timeout_ch);
 			break;
 		}
 		break;
@@ -1031,10 +1031,11 @@ scsi_low_timeout_cam(slp, ch, action)
 		switch (action)
 		{
 		case SCSI_LOW_TIMEOUT_START:
-			slp->sl_si.engage_ch = timeout(scsi_low_engage, slp, 1);
+			callout_reset(&slp->sl_si.engage_ch, 1,
+				      scsi_low_engage, slp);
 			break;
 		case SCSI_LOW_TIMEOUT_STOP:
-			untimeout(scsi_low_engage, slp, slp->sl_si.engage_ch);
+			callout_stop(&slp->sl_si.engage_ch);
 			break;
 		}
 		break;
@@ -1596,6 +1597,9 @@ scsi_low_attach(slp, openings, ntargs, nluns, targsize, lunsize)
 	TAILQ_INIT(&slp->sl_start);
 
 	/* call os depend attach */
+	callout_init(&slp->sl_si.timeout_ch);
+	callout_init(&slp->sl_si.engage_ch);
+
 	s = SCSI_LOW_SPLSCSI();
 	rv = (*slp->sl_osdep_fp->scsi_low_osdep_attach) (slp);
 	if (rv != 0)
