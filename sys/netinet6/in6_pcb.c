@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.14 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.15 2004/06/02 16:41:28 hsu Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -1012,12 +1012,16 @@ in6_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in6_addr *faddr,
 		}
 	}
 	if (wildcard) {
+		struct inpcontainerhead *chead;
+		struct inpcontainer *ic;
 		struct inpcb *local_wild = NULL;
 
-		head = &pcbinfo->wildcardhashbase[INP_PCBWILDCARDHASH(lport,
+		chead = &pcbinfo->wildcardhashbase[INP_PCBWILDCARDHASH(lport,
 		    pcbinfo->wildcardhashmask)];
-		LIST_FOREACH(inp, head, inp_hash) {
-			if ((inp->inp_vflag & INP_IPV6) == 0)
+		LIST_FOREACH(ic, chead, ic_list) {
+			inp = ic->ic_inp;
+
+			if (!(inp->inp_vflag & INP_IPV6))
 				continue;
 			if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr) &&
 			    inp->inp_lport == lport) {
