@@ -1151,8 +1151,8 @@ namespace std
       const ios_base::fmtflags __flags = __io.flags();
       if ((__flags & ios_base::boolalpha) == 0)
         {
-          unsigned long __uv = __v;
-          __s = _M_insert_int(__s, __io, __fill, __uv);
+          const long __l = __v;
+          __s = _M_insert_int(__s, __io, __fill, __l);
         }
       else
         {
@@ -1229,8 +1229,7 @@ namespace std
            const void* __v) const
     {
       const ios_base::fmtflags __flags = __io.flags();
-      const ios_base::fmtflags __fmt = ~(ios_base::showpos
-					 | ios_base::basefield
+      const ios_base::fmtflags __fmt = ~(ios_base::basefield
 					 | ios_base::uppercase
 					 | ios_base::internal);
       __io.flags(__flags & __fmt | (ios_base::hex | ios_base::showbase));
@@ -1674,22 +1673,22 @@ namespace std
       char* __cs = static_cast<char*>(__builtin_alloca(__cs_size));
       // _GLIBCXX_RESOLVE_LIB_DEFECTS
       // 328. Bad sprintf format modifier in money_put<>::do_put()
-      int __len = std::__convert_from_v(__cs, __cs_size, "%.0Lf", __units,
-					_S_get_c_locale());
+      int __len = std::__convert_from_v(__cs, __cs_size, "%.*Lf", __units,
+					_S_get_c_locale(), 0);
       // If the buffer was not large enough, try again with the correct size.
       if (__len >= __cs_size)
 	{
 	  __cs_size = __len + 1;
 	  __cs = static_cast<char*>(__builtin_alloca(__cs_size));
-	  __len = std::__convert_from_v(__cs, __cs_size, "%.0Lf", __units,
-					_S_get_c_locale());
+	  __len = std::__convert_from_v(__cs, __cs_size, "%.*Lf", __units,
+					_S_get_c_locale(), 0);
 	}
 #else
       // max_exponent10 + 1 for the integer part, + 2 for sign and '\0'.
       const int __cs_size = numeric_limits<long double>::max_exponent10 + 3;
       char* __cs = static_cast<char*>(__builtin_alloca(__cs_size));
-      int __len = std::__convert_from_v(__cs, 0, "%.0Lf", __units,
-					_S_get_c_locale());
+      int __len = std::__convert_from_v(__cs, 0, "%.*Lf", __units,
+					_S_get_c_locale(), 0);
 #endif
       _CharT* __ws = static_cast<_CharT*>(__builtin_alloca(sizeof(_CharT)
 							   * __cs_size));
@@ -1716,10 +1715,8 @@ namespace std
     time_get<_CharT, _InIter>::do_date_order() const
     { return time_base::no_order; }
 
-  // Recursively expand a strftime format string and parse it.  Starts w/ %x
-  // and %X from do_get_time() and do_get_date(), which translate to a more
-  // specific string, which may contain yet more strings.  I.e. %x => %r =>
-  // %H:%M:%S => extracted characters.
+  // Expand a strftime format string and parse it.  E.g., do_get_date() may
+  // pass %m/%d/%Y => extracted characters.
   template<typename _CharT, typename _InIter>
     _InIter
     time_get<_CharT, _InIter>::
@@ -1839,8 +1836,13 @@ namespace std
 						__tm, __wcs);
 		  break;
 		case 'S':
-		  // Seconds.
-		  __beg = _M_extract_num(__beg, __end, __tm->tm_sec, 0, 59, 2,
+		  // Seconds. [tm_sec]
+		  // [00, 60] in C99 (one leap-second), [00, 61] in C89.
+#ifdef _GLIBCXX_USE_C99
+		  __beg = _M_extract_num(__beg, __end, __tm->tm_sec, 0, 60, 2,
+#else
+		  __beg = _M_extract_num(__beg, __end, __tm->tm_sec, 0, 61, 2,
+#endif
 					 __io, __err);
 		  break;
 		case 't':
@@ -2043,12 +2045,12 @@ namespace std
     do_get_time(iter_type __beg, iter_type __end, ios_base& __io,
 		ios_base::iostate& __err, tm* __tm) const
     {
-      _CharT __wcs[3];
-      const char* __cs = "%X";
       const locale& __loc = __io._M_getloc();
-      ctype<_CharT> const& __ctype = use_facet<ctype<_CharT> >(__loc);
-      __ctype.widen(__cs, __cs + 3, __wcs);
-      __beg = _M_extract_via_format(__beg, __end, __io, __err, __tm, __wcs);
+      const __timepunct<_CharT>& __tp = use_facet<__timepunct<_CharT> >(__loc);
+      const char_type*  __times[2];
+      __tp._M_time_formats(__times);
+      __beg = _M_extract_via_format(__beg, __end, __io, __err, 
+				    __tm, __times[0]);
       if (__beg == __end)
 	__err |= ios_base::eofbit;
       return __beg;
@@ -2060,12 +2062,12 @@ namespace std
     do_get_date(iter_type __beg, iter_type __end, ios_base& __io,
 		ios_base::iostate& __err, tm* __tm) const
     {
-      _CharT __wcs[3];
-      const char* __cs = "%x";
       const locale& __loc = __io._M_getloc();
-      ctype<_CharT> const& __ctype = use_facet<ctype<_CharT> >(__loc);
-      __ctype.widen(__cs, __cs + 3, __wcs);
-      __beg = _M_extract_via_format(__beg, __end, __io, __err, __tm, __wcs);
+      const __timepunct<_CharT>& __tp = use_facet<__timepunct<_CharT> >(__loc);
+      const char_type*  __dates[2];
+      __tp._M_date_formats(__dates);
+      __beg = _M_extract_via_format(__beg, __end, __io, __err,
+				    __tm, __dates[0]);
       if (__beg == __end)
 	__err |= ios_base::eofbit;
       return __beg;
@@ -2236,7 +2238,7 @@ namespace std
 
       // NB: This size is arbitrary. Should this be a data member,
       // initialized at construction?
-      const size_t __maxlen = 64;
+      const size_t __maxlen = 128;
       char_type* __res = 
        static_cast<char_type*>(__builtin_alloca(sizeof(char_type) * __maxlen));
 

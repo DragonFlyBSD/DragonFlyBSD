@@ -318,7 +318,7 @@ B b((0,A()),A(1));
 
 return A();
 
-          This  problem  occured  in  a  number  of  variants;  in  throw
+          This  problem  occurred  in  a  number  of  variants;  in throw
           statements,   people   also   frequently   put  the  object  in
           parentheses.
      _________________________________________________________________
@@ -375,6 +375,36 @@ int main()
      _________________________________________________________________
 
 C
+
+   Increment/decrement operator (++/--) not working as expected - a
+          [32]problem with many variations.
+          The following expressions have unpredictable results:
+
+x[i]=++i
+foo(i,++i)
+i*(++i)                 /* special case with foo=="operator*" */
+std::cout << i << ++i   /* foo(foo(std::cout,i),++i)          */
+
+          since  the i without increment can be evaluated before or after
+          ++i.
+
+          The  C  and C++ standards have the notion of "sequence points".
+          Everything  that happens between two sequence points happens in
+          an  unspecified order, but it has to happen after the first and
+          before  the second sequence point. The end of a statement and a
+          function   call  are  examples  for  sequence  points,  whereas
+          assignments and the comma between function arguments are not.
+
+          Modifying a value twice between two sequence points as shown in
+          the following examples is even worse:
+
+i=++i
+foo(++i,++i)
+(++i)*(++i)               /* special case with foo=="operator*" */
+std::cout << ++i << ++i   /* foo(foo(std::cout,++i),++i)        */
+
+          This  leads  to  undefined  behavior  (i.e. the compiler can do
+          anything).
 
    Casting does not work as expected when optimization is turned on.
           This  is  often  caused by a violation of aliasing rules, which
@@ -452,7 +482,7 @@ int main()
           Now the result will always be "2222 2222".
 
           For  some  more insight into the subject, please have a look at
-          [32]this article.
+          [33]this article.
 
    Cannot use preprocessor directive in macro arguments.
           Let  me  guess...  you  used an older version of GCC to compile
@@ -527,7 +557,7 @@ FILE *yyin = stdin;
 
           There  is  a  common  misconception that the GCC developers are
           responsible  for  GNU  libc.  These  are  in  fact two entirely
-          separate  projects; please check the [33]GNU libc web pages for
+          separate  projects; please check the [34]GNU libc web pages for
           details.
      _________________________________________________________________
 
@@ -643,7 +673,7 @@ void bar(void)
    you might want to recompile all libraries to be safe. It should not be
    necessary to recompile if you have changed to a bug-fix release of the
    same  version  of  the compiler; bug-fix releases are careful to avoid
-   ABI changes. See also the [34]compatibility section of the GCC manual.
+   ABI changes. See also the [35]compatibility section of the GCC manual.
 
    Remark:  A  major  release  is  designated by a change to the first or
    second  component  of  the  two- or three-part version number. A minor
@@ -656,11 +686,11 @@ void bar(void)
     Standard conformance
 
    With  each  release,  we try to make G++ conform closer to the ISO C++
-   standard  (available  at  [35]http://www.ncits.org/cplusplus.htm).  We
+   standard  (available  at  [36]http://www.ncits.org/cplusplus.htm).  We
    have  also  implemented  some  of  the core and library defect reports
    (available at
-   [36]http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html     &
-   [37]http://www.open-std.org/jtc1/sc22/wg21/docs/lwg-defects.html
+   [37]http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html     &
+   [38]http://www.open-std.org/jtc1/sc22/wg21/docs/lwg-defects.html
    respectively).
 
    Non-conforming  legacy code that worked with older versions of GCC may
@@ -765,7 +795,7 @@ template <typename T> struct B : A<T>
 };
 
    In  addition  to  the  problems  listed  above,  the manual contains a
-   section on [38]Common Misunderstandings with GNU C++.
+   section on [39]Common Misunderstandings with GNU C++.
 
 References
 
@@ -800,10 +830,11 @@ References
   29. http://gcc.gnu.org/onlinedocs/g77/Trouble.html
   30. http://gcc.gnu.org/PR323
   31. http://www.validlab.com/goldberg/paper.ps
-  32. http://mail-index.NetBSD.org/tech-kern/2003/08/11/0001.html
-  33. http://www.gnu.org/software/libc/
-  34. http://gcc.gnu.org/onlinedocs/gcc/Compatibility.html
-  35. http://www.ncits.org/cplusplus.htm
-  36. http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html
-  37. http://www.open-std.org/jtc1/sc22/wg21/docs/lwg-defects.html
-  38. http://gcc.gnu.org/onlinedocs/gcc/C---Misunderstandings.html
+  32. http://gcc.gnu.org/PR11751
+  33. http://mail-index.NetBSD.org/tech-kern/2003/08/11/0001.html
+  34. http://www.gnu.org/software/libc/
+  35. http://gcc.gnu.org/onlinedocs/gcc/Compatibility.html
+  36. http://www.ncits.org/cplusplus.htm
+  37. http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html
+  38. http://www.open-std.org/jtc1/sc22/wg21/docs/lwg-defects.html
+  39. http://gcc.gnu.org/onlinedocs/gcc/C---Misunderstandings.html

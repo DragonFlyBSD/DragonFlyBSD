@@ -43,6 +43,7 @@
 ./gcc/README-fixinc
 ./gcc/README.Portability
 ./gcc/aclocal.m4
+./gcc/c-config-lang.in
 ./gcc/config.build
 ./gcc/config.gcc
 ./gcc/config.host
@@ -239,6 +240,10 @@
 ./gcc/cp/Make-lang.in
 ./gcc/cp/NEWS
 ./gcc/cp/config-lang.in
+./gcc/cppucnid.pl
+./gcc/cppucnid.tab
+./gcc/cstamp-h.in
+./gcc/doc/install.texi2html
 ./gcc/f/ChangeLog
 ./gcc/f/ChangeLog.0
 ./gcc/f/Make-lang.in
@@ -247,6 +252,7 @@
 ./gcc/fixinc
 ./gcc/fixproto
 ./gcc/gccbug.in
+./gcc/gdbinit.in
 ./gcc/ginclude
 ./gcc/libgcc-darwin.ver
 ./gcc/libgcc-std.ver
@@ -406,6 +412,7 @@
 ./libstdc++-v3/config/cpu/sparc
 ./libstdc++-v3/config/locale/gnu
 ./libstdc++-v3/config/os/aix
+./libstdc++-v3/config/os/bsd/netbsd
 ./libstdc++-v3/config/os/djgpp
 ./libstdc++-v3/config/os/gnu-linux
 ./libstdc++-v3/config/os/hpux

@@ -431,11 +431,6 @@ cp_build_qualified_type_real (tree type,
 {
   tree result;
   int bad_quals = TYPE_UNQUALIFIED;
-  /* We keep bad function qualifiers separate, so that we can decide
-     whether to implement DR 295 or not. DR 295 break existing code,
-     unfortunately. Remove this variable to implement the defect
-     report.  */
-  int bad_func_quals = TYPE_UNQUALIFIED;
 
   if (type == error_mark_node)
     return type;
@@ -505,8 +500,6 @@ cp_build_qualified_type_real (tree type,
 	  || TREE_CODE (type) == METHOD_TYPE))
     {
       bad_quals |= type_quals & (TYPE_QUAL_CONST | TYPE_QUAL_VOLATILE);
-      if (TREE_CODE (type) != REFERENCE_TYPE)
-	bad_func_quals |= type_quals & (TYPE_QUAL_CONST | TYPE_QUAL_VOLATILE);
       type_quals &= ~(TYPE_QUAL_CONST | TYPE_QUAL_VOLATILE);
     }
   
@@ -525,21 +518,17 @@ cp_build_qualified_type_real (tree type,
     /*OK*/;
   else if (!(complain & (tf_error | tf_ignore_bad_quals)))
     return error_mark_node;
-  else if (bad_func_quals && !(complain & tf_error))
-    return error_mark_node;
   else
     {
       if (complain & tf_ignore_bad_quals)
  	/* We're not going to warn about constifying things that can't
  	   be constified.  */
  	bad_quals &= ~TYPE_QUAL_CONST;
-      bad_quals |= bad_func_quals;
       if (bad_quals)
  	{
  	  tree bad_type = build_qualified_type (ptr_type_node, bad_quals);
  
- 	  if (!(complain & tf_ignore_bad_quals)
-	      || bad_func_quals)
+ 	  if (!(complain & tf_ignore_bad_quals))
  	    error ("`%V' qualifiers cannot be applied to `%T'",
 		   bad_type, type);
  	}
@@ -1557,6 +1546,12 @@ cp_tree_equal (tree t1, tree t2)
     case IDENTIFIER_NODE:
       return false;
 
+    case BASELINK:
+      return (BASELINK_BINFO (t1) == BASELINK_BINFO (t2)
+	      && BASELINK_ACCESS_BINFO (t1) == BASELINK_ACCESS_BINFO (t2)
+	      && cp_tree_equal (BASELINK_FUNCTIONS (t1),
+				BASELINK_FUNCTIONS (t2)));
+
     case TEMPLATE_PARM_INDEX:
       return (TEMPLATE_PARM_IDX (t1) == TEMPLATE_PARM_IDX (t2)
 	      && TEMPLATE_PARM_LEVEL (t1) == TEMPLATE_PARM_LEVEL (t2)
@@ -1775,6 +1770,8 @@ pod_type_p (tree t)
     return 1; /* pointer to non-member */
   if (TYPE_PTR_TO_MEMBER_P (t))
     return 1; /* pointer to member */
+  if (TREE_CODE (t) == VECTOR_TYPE)
+    return 1; /* vectors are (small) arrays of scalars */
   
   if (! CLASS_TYPE_P (t))
     return 0; /* other non-class type (reference or function) */
@@ -2505,6 +2502,8 @@ stabilize_init (tree init, tree *initp)
 	t = TREE_OPERAND (t, 1);
       if (TREE_CODE (t) == TARGET_EXPR)
 	t = TARGET_EXPR_INITIAL (t);
+      if (TREE_CODE (t) == COMPOUND_EXPR)
+	t = expr_last (t);
       if (TREE_CODE (t) == CONSTRUCTOR
 	  && CONSTRUCTOR_ELTS (t) == NULL_TREE)
 	{

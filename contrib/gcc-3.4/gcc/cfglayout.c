@@ -865,6 +865,18 @@ fixup_fallthru_exit_predecessor (void)
     {
       basic_block c = ENTRY_BLOCK_PTR->next_bb;
 
+      /* If the very first block is the one with the fall-through exit
+	 edge, we have to split that block.  */
+      if (c == bb)
+	{
+	  bb = split_block (bb, NULL)->dest;
+	  cfg_layout_initialize_rbi (bb);
+	  bb->rbi->next = c->rbi->next;
+	  c->rbi->next = bb;
+	  bb->rbi->footer = c->rbi->footer;
+	  c->rbi->footer = NULL;
+	}
+
       while (c->rbi->next != bb)
 	c = c->rbi->next;
 
@@ -1118,10 +1130,14 @@ cfg_layout_initialize_rbi (basic_block bb)
 }
 
 /* Main entry point to this module - initialize the datastructures for
-   CFG layout changes.  It keeps LOOPS up-to-date if not null.  */
+   CFG layout changes.  It keeps LOOPS up-to-date if not null.
+
+   FLAGS is a set of additional flags to pass to cleanup_cfg().  It should
+   include CLEANUP_UPDATE_LIFE if liveness information must be kept up
+   to date.  */
 
 void
-cfg_layout_initialize (void)
+cfg_layout_initialize (unsigned int flags)
 {
   basic_block bb;
 
@@ -1137,7 +1153,7 @@ cfg_layout_initialize (void)
 
   record_effective_endpoints ();
 
-  cleanup_cfg (CLEANUP_CFGLAYOUT);
+  cleanup_cfg (CLEANUP_CFGLAYOUT | flags);
 }
 
 /* Splits superblocks.  */

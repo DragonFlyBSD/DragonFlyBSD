@@ -425,7 +425,7 @@ tarballs compressed with @command{gzip} or
 @command{bzip2}.  It is possible to download a full distribution or specific
 components.
 
-Please refer to our @uref{http://gcc.gnu.org/releases.html,,releases web page}
+Please refer to the @uref{http://gcc.gnu.org/releases.html,,releases web page}
 for information on how to obtain GCC@.
 
 The full distribution includes the C, C++, Objective-C, Fortran, Java,
@@ -1346,16 +1346,6 @@ Do not try to compile and run a test libart program.
 Now that GCC is configured, you are ready to build the compiler and
 runtime libraries.
 
-We @strong{highly} recommend that GCC be built using GNU make;
-other versions may work, then again they might not.
-GNU make is required for compiling GNAT (the Ada compiler) and the Java
-runtime library.
-
-(For example, many broken versions of make will fail if you use the
-recommended setup where @var{objdir} is different from @var{srcdir}.
-Other broken versions may recompile parts of the compiler when
-installing the compiler.)
-
 Some commands executed when making the compiler may fail (return a
 nonzero status) and be ignored by @command{make}.  These failures, which
 are often due to files that were not found, are expected, and can safely
@@ -1681,7 +1671,7 @@ might emit some harmless messages resembling
 @samp{WARNING: Couldn't find the global config file.} or
 @samp{WARNING: Couldn't find tool init file} that can be ignored.
 
-@section How can I run the test suite on selected tests?
+@section How can you run the testsuite on selected tests?
 
 In order to run sets of tests selectively, there are targets
 @samp{make check-gcc} and @samp{make check-g++}
@@ -1794,7 +1784,7 @@ specifying the location of that tree when invoking @samp{make}, as in
 @samp{make MAUVEDIR=~/mauve check}.
 
 @uref{http://www-124.ibm.com/developerworks/oss/cvs/jikes/~checkout~/jacks/jacks.html,,Jacks}
-is a free test suite that tests Java compiler front ends.  This suite
+is a free testsuite that tests Java compiler front ends.  This suite
 can be run as part of libgcj testing by placing the Jacks tree within
 the libjava testsuite at @file{libjava/testsuite/libjava.jacks/jacks}.
 
@@ -1824,9 +1814,9 @@ WARNING: the testsuite detected a possible problem
 @end itemize
 
 It is normal for some tests to report unexpected failures.  At the
-current time our testing harness does not allow fine grained control
-over whether or not a test is expected to fail.  We expect to fix this
-problem in future releases.
+current time the testing harness does not allow fine grained control
+over whether or not a test is expected to fail.  This problem should
+be fixed in future releases.
 
 
 @section Submitting test results
@@ -1925,7 +1915,7 @@ Include the following information:
 
 @itemize @bullet
 @item
-Output from running @file{@var{srcdir}/config.guess}.  Do not send us
+Output from running @file{@var{srcdir}/config.guess}.  Do not send
 that file itself, just the one-line output from running it.
 
 @item
@@ -1974,9 +1964,9 @@ We'd also like to know if the
 @end ifhtml
 didn't include your host/target information or if that information is
 incomplete or out of date.  Send a note to
-@email{gcc@@gcc.gnu.org} telling us how the information should be changed.
+@email{gcc@@gcc.gnu.org} detailing how the information should be changed.
 
-If you find a bug, please report it following our
+If you find a bug, please report it following the
 @uref{../bugs.html,,bug reporting guidelines}.
 
 If you want to print the GCC manuals, do @samp{cd @var{objdir}; make
@@ -2081,6 +2071,10 @@ Digital UNIX 4.0D and 5.1,
 GNU/Linux (i386),
 HP-UX 10.20, 11.00, and 11.11, and
 Solaris/SPARC 2.5.1, 2.6, 2.7, 8, and 9,
+
+@item
+@uref{http://www.openpkg.org/,,OpenPKG} offers binaries for quite a
+number of platforms.
 @end itemize
 
 In addition to those specific offerings, you can get a binary
@@ -2526,7 +2520,7 @@ information about this platform is available at
 @end html
 @heading @anchor{dos}DOS
 
-Please have a look at our @uref{binaries.html,,binaries page}.
+Please have a look at the @uref{binaries.html,,binaries page}.
 
 You cannot install GCC by itself on MSDOS; it will not compile under
 any MSDOS compiler except itself.  You need to get the complete
@@ -2593,7 +2587,7 @@ Shared @file{libgcc_s.so} is now built and installed by default.
 @heading @anchor{h8300-hms}h8300-hms
 Renesas H8/300 series of processors.
 
-Please have a look at our @uref{binaries.html,,binaries page}.
+Please have a look at the @uref{binaries.html,,binaries page}.
 
 The calling convention and structure layout has changed in release 2.6.
 All code must be recompiled.  The calling convention now passes the
@@ -2930,8 +2924,9 @@ have installed.
 IA-64 processor (also known as IPF, or Itanium Processor Family)
 running GNU/Linux.
 
-If you are using the optional libunwind library, then you must use
-libunwind 0.96 or later.
+If you are using the installed system libunwind library with
+@option{--with-system-libunwind}, then you must use libunwind 0.98 or
+later.
 
 None of the following versions of GCC has an ABI that is compatible
 with any of the other versions in this list, with the exception that
@@ -2953,6 +2948,8 @@ the option @option{--with-gnu-as} may be necessary.
 The GCC libunwind library has not been ported to HPUX. This means that for
 GCC versions 3.2.3 and earlier, @option{--enable-libunwind-exceptions}
 is required to build GCC. For GCC 3.3 and later, this is the default.
+For gcc 3.4.3 and later, @option{--enable-libunwind-exceptions} is
+removed and the system libunwind library will always be used.
 
 @html
 <hr />
@@ -3217,6 +3214,16 @@ later, and use the @option{--with-gnu-as} and @option{--with-gnu-ld}
 @command{configure} options when configuring GCC@.  You need to use GNU
 @command{ar} and @command{nm}, also distributed with GNU binutils.
 
+Some users have reported that @command{/bin/sh} will hang during bootstrap.
+This problem can be avoided by running the commands:
+
+@smallexample
+   % CONFIG_SHELL=/bin/ksh
+   % export CONFIG_SHELL
+@end smallexample
+
+before starting the build.
+
 @html
 <hr />
 @end html
@@ -3414,7 +3421,7 @@ supported as cross-compilation target only.
 @heading @anchor{*-*-solaris2*}*-*-solaris2*
 
 Sun does not ship a C compiler with Solaris 2.  To bootstrap and install
-GCC you first have to install a pre-built compiler, see our
+GCC you first have to install a pre-built compiler, see the
 @uref{binaries.html,,binaries page} for details.
 
 The Solaris 2 @command{/bin/sh} will often fail to configure
@@ -3427,9 +3434,9 @@ install GCC:
    % export CONFIG_SHELL
 @end smallexample
 
-and then proceed as described in @uref{build.html,,the build instructions},
-where we strongly recommend using GNU make and specifying an absolute path
-to invoke @var{srcdir}/configure.
+and then proceed as described in @uref{build.html,,the build instructions}.
+In addition we strongly recommend specifying an absolute path to invoke
+@var{srcdir}/configure.
 
 Solaris 2 comes with a number of optional OS packages.  Some of these
 are needed to use GCC fully, namely @code{SUNWarc},
@@ -3453,8 +3460,19 @@ have @file{/usr/xpg4/bin} in your @env{PATH}, we recommend that you place
 @file{/usr/bin} before @file{/usr/xpg4/bin} for the duration of the build.
 
 All releases of GNU binutils prior to 2.11.2 have known bugs on this
-platform.  We recommend the use of GNU binutils 2.11.2 or the vendor
-tools (Sun @command{as}, Sun @command{ld}).
+platform.  We recommend the use of GNU binutils 2.11.2 or later, or the
+vendor tools (Sun @command{as}, Sun @command{ld}).  Note that your mileage
+may vary if you use a combination of the GNU tools and the Sun tools: while
+the combination GNU @command{as} + Sun @command{ld} should reasonably work,
+the reverse combination Sun @command{as} + GNU @command{ld} is known to
+cause memory corruption at runtime in some cases for C++ programs.
+
+The stock GNU binutils 2.15 release is broken on this platform because of a
+single bug.  It has been fixed on the 2.15 branch in the CVS repository.
+You can obtain a working version by checking out the binutils-2_15-branch
+from the CVS repository or applying the patch
+@uref{http://sources.redhat.com/ml/binutils-cvs/2004-09/msg00036.html} to the
+release.
 
 Sun bug 4296832 turns up when compiling X11 headers with GCC 2.95 or
 newer: @command{g++} will complain that types are missing.  These headers assume
@@ -3469,6 +3487,17 @@ There are patches for Solaris 2.6 (105633-56 or newer for SPARC,
 106248-42 or newer for Intel), Solaris 7 (108376-21 or newer for SPARC,
 108377-20 for Intel), and Solaris 8 (108652-24 or newer for SPARC,
 108653-22 for Intel) that fix this bug.
+
+Sun bug 4927647 sometimes causes random spurious testsuite failures
+related to missing diagnostic output.  This bug doesn't affect GCC
+itself, rather it is a kernel bug triggered by the @command{expect}
+program which is used only by the GCC testsuite driver.  When the bug
+causes the @command{expect} program to miss anticipated output, extra
+testsuite failures appear.
+
+There are patches for Solaris 8 (117350-12 or newer for SPARC,
+117351-12 or newer for Intel) and Solaris 9 (117171-11 or newer for
+SPARC, 117172-11 or newer for Intel) that address this problem.
 
 @html
 <hr />
@@ -3522,11 +3551,16 @@ GCC 3.4 changed the default debugging format from STABS to DWARF-2 for
 assembler, this change apparently runs afoul of Sun bug 4910101, for
 which (as of 2004-05-23) there is no fix.  A symptom of the problem is
 that you cannot compile C++ programs like @command{groff} 1.19.1
-without getting messages like @samp{ld: warning: relocation error:
-R_SPARC_UA32 @dots{} external symbolic relocation against
-non-allocatable section .debug_info; cannot be processed at runtime:
-relocation ignored}.  To work around this problem, compile with
-@option{-gstabs+} instead of plain @option{-g}.
+without getting messages similar to the following:
+
+@smallexample
+ld: warning: relocation error: R_SPARC_UA32: @dots{}
+  external symbolic relocation against non-allocatable section
+  .debug_info cannot be processed at runtime: relocation ignored.
+@end smallexample
+
+To work around this problem, compile with @option{-gstabs+} instead of
+plain @option{-g}.
 
 @html
 <hr />

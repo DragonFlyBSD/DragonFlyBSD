@@ -142,7 +142,7 @@ GLIBCXX_3.4 {
     _ZNSt12__basic_fileIcE6xsgetn*;
     _ZNSt12__basic_fileIcE6xsputn*;
     _ZNSt12__basic_fileIcE7seekoff*;
-    _ZNSt12__basic_fileIcE8sys_openEP8_IO_FILESt13_Ios_Openmode;
+    _ZNSt12__basic_fileIcE8sys_openE*St13_Ios_Openmode;
     _ZNSt12__basic_fileIcE8sys_openEiSt13_Ios_Openmode;
     _ZNSt12__basic_fileIcE8xsputn_2*;
     _ZNSt12__basic_fileIcE9showmanycEv;
@@ -255,6 +255,39 @@ GLIBCXX_3.4.1 {
  
 } GLIBCXX_3.4;
  
+GLIBCXX_3.4.2 {
+
+    _ZN9__gnu_cxx18stdio_sync_filebufI[cw]St11char_traitsI[cw]EE4fileEv;
+
+    _ZN9__gnu_cxx17__pool_alloc_base9_M_refillE[jm];
+    _ZN9__gnu_cxx17__pool_alloc_base16_M_get_free_listE[jm];
+    _ZN9__gnu_cxx17__pool_alloc_base12_M_get_mutexEv;
+
+} GLIBCXX_3.4.1;
+
+GLIBCXX_3.4.3 {
+
+    # stub functions from libmath
+    acosf;
+    acosl;
+    asinf;
+    asinl;
+    atanf;
+    atanl;
+    ceilf;
+    ceill;
+    floorf;
+    floorl;
+    fmodf;
+    fmodl;
+    frexpf;
+    frexpl;
+    ldexpf;
+    ldexpl;
+    modff;
+    modfl;
+
+} GLIBCXX_3.4.2;
 
 # Symbols in the support library (libsupc++) have their own tag.
 CXXABI_1.3 {

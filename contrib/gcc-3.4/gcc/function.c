@@ -3651,10 +3651,20 @@ instantiate_decl (rtx x, HOST_WIDE_INT size, int valid_only)
   enum machine_mode mode;
   rtx addr;
 
+  if (x == 0)
+    return;
+
+  /* If this is a CONCAT, recurse for the pieces.  */
+  if (GET_CODE (x) == CONCAT)
+    {
+      instantiate_decl (XEXP (x, 0), size / 2, valid_only);
+      instantiate_decl (XEXP (x, 1), size / 2, valid_only);
+      return;
+    }
+
   /* If this is not a MEM, no need to do anything.  Similarly if the
      address is a constant or a register that is not a virtual register.  */
-
-  if (x == 0 || GET_CODE (x) != MEM)
+  if (GET_CODE (x) != MEM)
     return;
 
   addr = XEXP (x, 0);
@@ -4594,6 +4604,7 @@ assign_parms (tree fndecl)
 
       {
 	rtx offset_rtx;
+	unsigned int align, boundary;
 
 	/* If we're passing this arg using a reg, make its stack home
 	   the aligned stack slot.  */
@@ -4611,8 +4622,24 @@ assign_parms (tree fndecl)
 						  offset_rtx));
 
 	set_mem_attributes (stack_parm, parm, 1);
-	set_mem_align (stack_parm, 
-		       FUNCTION_ARG_BOUNDARY (promoted_mode, passed_type));
+
+	boundary = FUNCTION_ARG_BOUNDARY (promoted_mode, passed_type);
+	align = 0;
+
+	/* If we're padding upward, we know that the alignment of the slot
+	   is FUNCTION_ARG_BOUNDARY.  If we're using slot_offset, we're
+	   intentionally forcing upward padding.  Otherwise we have to come
+	   up with a guess at the alignment based on OFFSET_RTX.  */
+	if (locate.where_pad == upward || entry_parm)
+	  align = boundary;
+	else if (GET_CODE (offset_rtx) == CONST_INT)
+	  {
+	    align = INTVAL (offset_rtx) * BITS_PER_UNIT | boundary;
+	    align = align & -align;
+	  }
+	if (align > 0)
+	  set_mem_align (stack_parm, align);
+
 	if (entry_parm)
 	  set_reg_attrs_for_parm (entry_parm, stack_parm);
       }
@@ -4797,8 +4824,7 @@ assign_parms (tree fndecl)
 		  PUT_MODE (stack_parm, GET_MODE (entry_parm));
 		  set_mem_attributes (stack_parm, parm, 1);
 		}
-	      else if (GET_CODE (entry_parm) == PARALLEL 
-		       && GET_MODE(entry_parm) == BLKmode)
+	      else if (GET_CODE (entry_parm) == PARALLEL)
 		;
 	      else if (PARM_BOUNDARY % BITS_PER_WORD != 0)
 		abort ();

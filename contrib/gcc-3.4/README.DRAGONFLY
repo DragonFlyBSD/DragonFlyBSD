@@ -1,8 +1,8 @@
 
-			GCC-3.4-20040126 AS USED BY DRAGONFLY
+			GCC-3.4.3 AS USED BY DRAGONFLY
 
     This directory contains a selected set of files from the gnu 
-    gcc-3.4-20040618 distribution.  The entire distribution is 188MB but
+    gcc-3.4.3 distribution.  The entire distribution is 188MB but
     we really only need around 31MB of it.  No files have been moved
     or modified from their extracted position.
 
@@ -14,12 +14,11 @@
     on the distribution.  The only additional files added to this directory
     are README.DRAGONFLY and README.DELETED. 
 
-	MD5 (gcc-3.4-20040618.tar.bz2) = 6eb0e85c225250cc40b75496419d4250
+	MD5 (gcc-3.4.3.tar.bz2) = e744b30c834360fccac41eb7269a3011
 
     UPGRADE PROCDURE:
 
-	* download a new gcc-3.4.X dist greater then 3.4-20040618
-	  (the release after this snapshot would be gcc-3.4.1).
+	* download a new gcc-3.4.X dist greater then 3.4.3.
 
 	* extract the archive into this directory, overlaying the
 	  existing files.
