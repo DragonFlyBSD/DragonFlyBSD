@@ -1,6 +1,6 @@
 #  @(#)Makefile 5.1beta 93/09/24
 # $FreeBSD: src/lib/msun/Makefile,v 1.23.2.3 2002/07/22 14:21:50 ru Exp $
-# $DragonFly: src/lib/msun/Attic/Makefile,v 1.3 2004/12/29 10:24:07 asmodai Exp $
+# $DragonFly: src/lib/msun/Attic/Makefile,v 1.4 2004/12/29 10:40:09 asmodai Exp $
 #
 #  ====================================================
 #  Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -57,7 +57,7 @@ ARCH_SRCS = e_acos.S e_asin.S e_atan2.S e_exp.S e_fmod.S e_log.S e_log10.S \
 .PATH:	${.CURDIR}/man
 .PATH:	${.CURDIR}/src
 
-CFLAGS+= -D_IEEE_LIBM -D_ARCH_INDIRECT=${ARCH_PREFIX}
+CFLAGS+= -D_IEEE_LIBM -D_ARCH_INDIRECT=${ARCH_PREFIX} -I${ARCH}
 
 LIB=	m
 COMMON_SRCS =	e_acos.c e_acosf.c e_acosh.c e_acoshf.c e_asin.c e_asinf.c \
