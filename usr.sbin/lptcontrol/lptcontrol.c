@@ -28,25 +28,18 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/lptcontrol/lptcontrol.c,v 1.9.2.2 2001/07/30 10:22:57 dd Exp $
- * $DragonFly: src/usr.sbin/lptcontrol/lptcontrol.c,v 1.3 2003/08/08 04:18:46 dillon Exp $
+ * $DragonFly: src/usr.sbin/lptcontrol/lptcontrol.c,v 1.4 2005/01/23 19:52:30 liamfoy Exp $
  */
+#include <sys/ioctl.h>
 
-#include <ctype.h>
 #include <err.h>
-#include <limits.h>
-#include <paths.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 #include <dev/misc/lpt/lptio.h>
-#include <sys/file.h>
-#include <sys/ioctl.h>
-#include <sys/types.h>
 
-
-#define PATH_LPCTL	_PATH_DEV "lpctl"
 #define DEFAULT_DEVICE	"/dev/lpt0"
 #define IRQ_INVALID	-1
 #define DO_POLL		0
@@ -54,42 +47,54 @@
 #define USE_EXT_MODE	2
 #define USE_STD_MODE	3
 
-static void usage(void)
+static void 
+usage(void)
 {
 	fprintf(stderr, "usage: lptcontrol -i | -p | -s | -e [-d device]\n");
 	exit(1);
 }
 
-static void set_interrupt_status(int irq_status, const char * file)
+int 
+main(int argc, char *argv[])
 {
-	int	fd;
+	int opt;
+	int fd;
+	int irq_status = IRQ_INVALID;
+	const char *device = DEFAULT_DEVICE;
 
-	if((fd = open(file, O_WRONLY, 0660)) < 0)
-		err(1, "open");
-	if(ioctl(fd, LPT_IRQ, &irq_status) < 0)
-		err(1, "ioctl");
-	close(fd);
-}
-
-int main (int argc, char * argv[])
-{
-	int		opt;
-	int		irq_status = IRQ_INVALID;
-	const char	*device = DEFAULT_DEVICE;
-
-	while((opt = getopt(argc, argv, "ipesd:")) != -1)
-		switch(opt) {
-		case 'i': irq_status = USE_IRQ; break;
-		case 'p': irq_status = DO_POLL; break;
-		case 'e': irq_status = USE_EXT_MODE; break;
-		case 's': irq_status = USE_STD_MODE; break;
-		case 'd': device = optarg; break;
-		default : usage();
+	while ((opt = getopt(argc, argv, "ipesd:")) != -1) {
+		switch (opt) {
+		case 'i':
+			irq_status = USE_IRQ;
+			break;
+		case 'p':
+			irq_status = DO_POLL;
+			break;
+		case 'e':
+			irq_status = USE_EXT_MODE;
+			break;
+		case 's':
+			irq_status = USE_STD_MODE;
+			break;
+		case 'd':
+			device = optarg;
+			break;
+		default:
+			usage();
 		}
-	if(irq_status == IRQ_INVALID)
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc == 1 || irq_status == IRQ_INVALID)
 		usage();
 
-	set_interrupt_status(irq_status, device);
+	if ((fd = open(device, O_WRONLY)) < 0)
+		err(1, "open failed: %s", device);
 
+	if (ioctl(fd, LPT_IRQ, &irq_status) < 0)
+		err(1, "ioctl failed");
+
+	close(fd);
 	exit(0);
 }
