@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_lex.c,v 1.18 1999/08/28 00:41:08 peter Exp $
- * $DragonFly: src/sys/ddb/db_lex.c,v 1.3 2003/08/27 10:47:13 rob Exp $
+ * $DragonFly: src/sys/ddb/db_lex.c,v 1.4 2005/02/01 17:53:01 eirikn Exp $
  */
 
 /*
@@ -48,7 +48,7 @@ static int 	db_read_char (void);
 static void 	db_unread_char (int);
 
 int
-db_read_line()
+db_read_line(void)
 {
 	int	i;
 
@@ -61,7 +61,7 @@ db_read_line()
 }
 
 static void
-db_flush_line()
+db_flush_line(void)
 {
 	db_lp = db_line;
 	db_endlp = db_line;
@@ -70,7 +70,7 @@ db_flush_line()
 static int	db_look_char = 0;
 
 static int
-db_read_char()
+db_read_char(void)
 {
 	int	c;
 
@@ -95,14 +95,13 @@ db_unread_char(c)
 static int	db_look_token = 0;
 
 void
-db_unread_token(t)
-	int	t;
+db_unread_token(int t)
 {
 	db_look_token = t;
 }
 
 int
-db_read_token()
+db_read_token(void)
 {
 	int	t;
 
@@ -121,7 +120,7 @@ char	db_tok_string[TOK_STRING_SIZE];
 db_expr_t	db_radix = 16;
 
 void
-db_flush_lex()
+db_flush_lex(void)
 {
 	db_flush_line();
 	db_look_char = 0;
@@ -129,7 +128,7 @@ db_flush_lex()
 }
 
 static int
-db_lex()
+db_lex(void)
 {
 	int	c;
 
