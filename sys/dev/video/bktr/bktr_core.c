@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.103.2.4 2000/11/01 09:36:14 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.9 2004/02/13 01:45:15 joerg Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.10 2004/02/24 19:25:13 joerg Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -533,7 +533,7 @@ bktr_store_address(unit, BKTR_MEM_BUF,          buf);
 
 
 	if ( bootverbose ) {
-		printf("%s: buffer size %d, addr 0x%x\n",
+		printf("%s: buffer size %d, addr 0x%llx\n",
 			bktr_name(bktr), BROOKTREE_ALLOC, vtophys(buf));
 	}
 
