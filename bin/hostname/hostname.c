@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)hostname.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/hostname/hostname.c,v 1.10.2.1 2001/08/01 02:40:23 obrien Exp $
- * $DragonFly: src/bin/hostname/hostname.c,v 1.10 2004/07/05 05:37:51 dillon Exp $
+ * $DragonFly: src/bin/hostname/hostname.c,v 1.11 2004/09/26 15:55:37 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -106,7 +106,7 @@ int
 main(int argc, char **argv)
 {
 	int ch, sflag, rflag, ret, flag6, iflag;
-	int silen;
+	int silen = 0;
 	char hostname[MAXHOSTNAMELEN];
 	char *srflag, *siflag;
 	struct hostent *hst;
