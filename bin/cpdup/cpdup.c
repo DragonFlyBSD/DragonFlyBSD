@@ -42,7 +42,7 @@
  *
  *	- Can do MD5 consistancy checks
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.4 2004/06/09 07:40:15 cpressey Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.5 2004/07/22 12:35:11 asmodai Exp $
  */
 
 /*-
@@ -114,14 +114,12 @@ int ForceOpt = 0;
 int VerboseOpt = 0;
 int QuietOpt = 0;
 int NoRemoveOpt = 0;
-int SaveFs = 0;
 int UseMD5Opt = 0;
 int SummaryOpt = 0;
 const char *UseCpFile;
 
 int64_t CountSourceBytes = 0;
 int64_t CountSourceItems = 0;
-int64_t CountCopiedBytes = 0;
 int64_t CountCopiedItems = 0;
 int64_t CountReadBytes = 0;
 int64_t CountWriteBytes = 0;
