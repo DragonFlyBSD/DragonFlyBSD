@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.19 2004/09/15 00:46:00 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.20 2004/09/23 23:18:01 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -154,6 +154,16 @@ static struct sk_type sk_devs[] = {
 		VENDORID_3COM,
 		DEVICEID_3COM_3C940,
 		"3Com 3C940 Gigabit Ethernet"
+	},
+	{
+		VENDORID_LINKSYS,
+		DEVICEID_LINKSYS_EG1032,
+		"Linksys EG1032 Gigabit Ethernet"
+	},
+	{
+		VENDORID_DLINK,
+		DEVICEID_DLINK_DGE530T,
+		"D-Link DGE-530T Gigabit Ethernet"
 	},
 	{ 0, 0, NULL }
 };
@@ -1548,6 +1558,8 @@ static int skc_attach(dev)
 		break;
 	case DEVICEID_SK_V2:
 	case DEVICEID_3COM_3C940:
+	case DEVICEID_LINKSYS_EG1032:
+	case DEVICEID_DLINK_DGE530T:
 		sc->sk_type = SK_YUKON;
 		break;
 	}
