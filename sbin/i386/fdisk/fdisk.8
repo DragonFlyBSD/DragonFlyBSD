@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/sbin/i386/fdisk/fdisk.8,v 1.17.2.11 2002/04/25 16:25:12 trhodes Exp $
-.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.5 2004/03/11 12:28:54 hmp Exp $
+.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.6 2004/07/14 18:25:17 cpressey Exp $
 .\"
 .Dd October 4, 1996
 .Dt FDISK 8
@@ -104,7 +104,8 @@ for one
 .Dx
 slice covering the entire disk.
 .It Fl s
-Print summary information and exit.
+Print a summary of all slices on the disk and exit.
+All other options will be ignored.
 .It Fl t
 Test mode; do not write slice values.  Generally used with the
 .Fl f
