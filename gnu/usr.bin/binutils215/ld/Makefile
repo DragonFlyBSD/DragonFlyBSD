@@ -1,11 +1,12 @@
-# $DragonFly: src/gnu/usr.bin/binutils215/ld/Attic/Makefile,v 1.1 2004/12/20 13:14:44 asmodai Exp $
+# $DragonFly: src/gnu/usr.bin/binutils215/ld/Attic/Makefile,v 1.2 2005/01/10 05:00:37 y0netan1 Exp $
 
 .include "../Makefile.inc0"
 
 .PATH: ${SRCDIR}/ld
 
 PROG=	ld
-SCRIPTDIR= /usr/libexec/binutils214/ldscripts
+LIBEXEC_BINUTILS= /usr/libexec/binutils215
+SCRIPTDIR= ${LIBEXEC_BINUTILS}/ldscripts
 SRCS+=	ldcref.c ldctor.c ldemul.c ldemul-list.h ldexp.c ldfile.c \
 	ldgram.y ldlang.c ldlex.l ldmain.c ldmisc.c \
 	ldver.c ldwrite.c lexsup.c mri.c
@@ -31,11 +32,11 @@ elf-hints.h:
 .endif
 
 WARNS=	1
-CFLAGS+= -DSCRIPTDIR=\"${TOOLS_PREFIX}/usr/libexec/binutils214\"
+CFLAGS+= -DSCRIPTDIR=\"${TOOLS_PREFIX}${LIBEXEC_BINUTILS}\"
 CFLAGS+= -DBFD_VERSION_STRING=\"${VERSION}\"
 CFLAGS+= -I${SRCDIR}/ld -I${SRCDIR}/bfd -I${.OBJDIR}/../libbfd
-CFLAGS+= -DBINDIR=\"${TOOLS_PREFIX}/usr/libexec/binutils214\"
-CFLAGS+= -DTOOLBINDIR=\"${TOOLS_PREFIX}/usr/libexec/binutils214\"
+CFLAGS+= -DBINDIR=\"${TOOLS_PREFIX}${LIBEXEC_BINUTILS}\"
+CFLAGS+= -DTOOLBINDIR=\"${TOOLS_PREFIX}${LIBEXEC_BINUTILS}\"
 NOSHARED?= yes
 DPADD=	${RELTOP}/libbfd/libbfd.a
 DPADD+=	${RELTOP}/libiberty/libiberty.a
