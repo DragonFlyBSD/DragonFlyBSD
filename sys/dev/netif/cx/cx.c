@@ -16,7 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.13 2004/09/19 01:27:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.14 2004/09/19 01:28:54 dillon Exp $
  *
  */
 #undef DEBUG
@@ -919,17 +919,18 @@ void cxmint (cx_chan_t *c)
 /*
  * Recover after lost transmit interrupts.
  */
-void cxtimeout (void *a)
+void 
+cxtimeout (void *a)
 {
 	cx_board_t *b;
 	cx_chan_t *c;
 	struct tty *tp;
 	int s;
 
-	for (b=cxboard; b<cxboard+NCX; ++b)
-		for (c=b->chan; c<b->chan+NCHAN; ++c) {
+	for (b = cxboard; b < cxboard + NCX; ++b) {
+		for (c = b->chan; c < b->chan + NCHAN; ++c) {
 			tp = c->ttyp;
-			if (c->type==T_NONE || c->mode!=M_ASYNC || !tp)
+			if (c->type == T_NONE || c->mode != M_ASYNC || !tp)
 				continue;
 			s = spltty ();
 			if (tp->t_state & TS_BUSY) {
@@ -941,6 +942,7 @@ void cxtimeout (void *a)
 			}
 			splx (s);
 		}
+	}
 	callout_reset (&cxtimeout_ch, hz * 5, cxtimeout, NULL);
 }
 
