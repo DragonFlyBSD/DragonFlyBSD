@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.8 2004/06/18 23:50:34 drhodus Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.9 2004/07/05 00:22:38 dillon Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -131,6 +131,7 @@
 #	i4brbch* raw b channel access device(s)
 #
 # Special purpose devices:
+#	acpi	ACPI control device
 #	apm	Advanced Power Management BIOS
 #	apmctl	APM BIOS control device
 #	bpf*	packet filter
@@ -339,6 +340,7 @@ all)
 	sh MAKEDEV ipl tun0 tun1 tun2 tun3		# cdev, network
 	sh MAKEDEV tap0 tap1 tap2 tap3			# cdev, network
 	sh MAKEDEV ch0 perfmon tw0			# cdev, miscellaneous
+	sh MAKEDEV acpi					# cdev, laptop
 	sh MAKEDEV apm apmctl card0 card1 card2 card3	# cdev, laptop
 	sh MAKEDEV pass4 xpt2				# cdev, CAM
 	sh MAKEDEV i4b i4bctl i4btrc0 i4btrc1		# cdev, ISDN
@@ -1609,6 +1611,10 @@ gsc*)
 	chmod 666 gsc${unit}*
 	;;
 
+acpi)
+	mknod acpi c 152 0 root:operator
+	chmod 664 acpi
+	;;
 apm)
 	mknod apm c 39 0 root:operator
 	chmod 664 apm
