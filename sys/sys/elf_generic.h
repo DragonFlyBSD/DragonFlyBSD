@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_generic.h,v 1.4 1999/08/28 00:51:42 peter Exp $
- * $DragonFly: src/sys/sys/elf_generic.h,v 1.3 2003/11/10 06:12:17 dillon Exp $
+ * $DragonFly: src/sys/sys/elf_generic.h,v 1.4 2004/09/23 16:11:47 joerg Exp $
  */
 
 #ifndef _SYS_ELF_GENERIC_H_
@@ -43,9 +43,9 @@
 
 #define ELF_CLASS	__CONCAT(ELFCLASS,__ELF_WORD_SIZE)
 
-#if BYTE_ORDER == LITTLE_ENDIAN
+#if _BYTE_ORDER == _LITTLE_ENDIAN
 #define ELF_DATA	ELFDATA2LSB
-#elif BYTE_ORDER == BIG_ENDIAN
+#elif _BYTE_ORDER == _BIG_ENDIAN
 #define ELF_DATA	ELFDATA2MSB
 #else
 #error "Unknown byte order"

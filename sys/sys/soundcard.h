@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/soundcard.h,v 1.33.2.4 2003/06/07 21:31:56 mbr Exp $
- * $DragonFly: src/sys/sys/soundcard.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/soundcard.h,v 1.4 2004/09/23 16:11:47 joerg Exp $
  */
 
 #ifndef _SYS_SOUNDCARD_H_
@@ -164,10 +164,12 @@ struct snd_size {
 #define AFMT_MPEG	0x00000200	/* MPEG MP2/MP3 audio */
 #define AFMT_AC3	0x00000400	/* Dolby Digital AC3 */
 
-#if BYTE_ORDER == LITTLE_ENDIAN
+#if _BYTE_ORDER == _LITTLE_ENDIAN
 #define AFMT_S16_NE	AFMT_S16_LE	/* native endian signed 16 */
-#else
+#elif _BYTE_ODER == _BIG_ENDIAN
 #define AFMT_S16_NE	AFMT_S16_BE
+#else
+#error "Byte order not implemented"
 #endif
 
 /*

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/mchain.h,v 1.1.2.1 2001/05/18 11:01:23 bp Exp $
- * $DragonFly: src/sys/sys/mchain.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/mchain.h,v 1.3 2004/09/23 16:11:47 joerg Exp $
  */
 #ifndef _SYS_MCHAIN_H_
 #define _SYS_MCHAIN_H_
@@ -40,7 +40,7 @@
 /*
  * This macros probably belongs to the endian.h
  */
-#if (BYTE_ORDER == LITTLE_ENDIAN)
+#if _BYTE_ORDER == _LITTLE_ENDIAN
 
 #define htoles(x)	((u_int16_t)(x))
 #define letohs(x)	((u_int16_t)(x))
