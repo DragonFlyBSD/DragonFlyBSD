@@ -1,6 +1,6 @@
 # Makefile - module build for usb.ko
 #
-# $DragonFly: src/sys/bus/usb/Makefile,v 1.4 2003/08/22 23:51:55 dillon Exp $
+# $DragonFly: src/sys/bus/usb/Makefile,v 1.5 2004/01/09 16:46:42 drhodus Exp $
 
 S		 = ${.CURDIR}/../..
 .PATH:		 $S/bus/pci
@@ -12,7 +12,7 @@ SRCS		 = bus_if.h device_if.h usb_if.h usb_if.c \
 		   hid.c hid.h usbhid.h \
 		   uhub.c \
 		   usb.c usb.h \
-		   usb_mem.h \
+		   usb_mem.c usb_mem.h \
 		   usb_port.h \
 		   usb_quirks.c usb_quirks.h \
 		   usb_subr.c \
