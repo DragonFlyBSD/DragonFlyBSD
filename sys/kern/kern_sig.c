@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.29 2004/04/10 20:55:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.30 2004/04/15 00:51:32 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -962,6 +962,10 @@ psignal(struct proc *p, int sig)
 		 * For SMP we may have to forward the request to another cpu.
 		 * YYY the MP lock prevents the target process from moving
 		 * to another cpu, see kern/kern_switch.c
+		 *
+		 * If the target thread is waiting on its message port,
+		 * wakeup the target thread so it can check (or ignore)
+		 * the new signal.  YYY needs cleanup.
 		 */
 #ifdef SMP
 		if (p == lwkt_preempted_proc()) {
@@ -971,10 +975,17 @@ psignal(struct proc *p, int sig)
 
 			if (td->td_gd != mycpu)
 				lwkt_send_ipiq(td->td_gd, signotify_remote, p);
+			else if (td->td_msgport.mp_flags & MSGPORTF_WAITING)
+				lwkt_schedule(td);
 		}
 #else
-		if (p == lwkt_preempted_proc())
+		if (p == lwkt_preempted_proc()) {
 			signotify();
+		} else {
+			struct thread *td = p->p_thread;
+			if (td->td_msgport.mp_flags & MSGPORTF_WAITING)
+				lwkt_schedule(td);
+		}
 #endif
 		goto out;
 	}
@@ -996,8 +1007,14 @@ static void
 signotify_remote(void *arg)
 {
 	struct proc *p = arg;
-	if (p == lwkt_preempted_proc())
+
+	if (p == lwkt_preempted_proc()) {
 		signotify();
+	} else {
+		struct thread *td = p->p_thread;
+		if (td->td_msgport.mp_flags & MSGPORTF_WAITING)
+			lwkt_schedule(td);
+	}
 }
 
 #endif
