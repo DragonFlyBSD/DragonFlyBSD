@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_lookup.c	8.4 (Berkeley) 2/16/94
  * $FreeBSD: src/sys/kern/vfs_lookup.c,v 1.38.2.3 2001/08/31 19:36:49 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.4 2003/06/26 05:55:14 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.5 2003/07/26 19:42:11 rob Exp $
  */
 
 #include "opt_ktrace.h"
@@ -270,10 +270,10 @@ namei(struct nameidata *ndp)
  */
 int
 lookup(ndp)
-	register struct nameidata *ndp;
+	struct nameidata *ndp;
 {
-	register char *cp;		/* pointer into pathname argument */
-	register struct vnode *dp = 0;	/* the directory we are searching */
+	char *cp;		/* pointer into pathname argument */
+	struct vnode *dp = 0;	/* the directory we are searching */
 	struct vnode *tdp;		/* saved dp */
 	struct mount *mp;		/* mount table entry */
 	int docache;			/* == 0 do not cache last component */

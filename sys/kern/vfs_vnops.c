@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.9 2003/07/22 17:03:33 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.10 2003/07/26 19:42:11 rob Exp $
  */
 
 #include <sys/param.h>
@@ -81,12 +81,12 @@ struct 	fileops vnops = {
  */
 int
 vn_open(ndp, fmode, cmode)
-	register struct nameidata *ndp;
+	struct nameidata *ndp;
 	int fmode, cmode;
 {
-	register struct vnode *vp;
-	register struct thread *td = ndp->ni_cnd.cn_td;
-	register struct ucred *cred = ndp->ni_cnd.cn_cred;
+	struct vnode *vp;
+	struct thread *td = ndp->ni_cnd.cn_td;
+	struct ucred *cred = ndp->ni_cnd.cn_cred;
 	struct vattr vat;
 	struct vattr *vap = &vat;
 	int mode, error;
@@ -207,7 +207,7 @@ bad:
  */
 int
 vn_writechk(vp)
-	register struct vnode *vp;
+	struct vnode *vp;
 {
 
 	/*

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.9 2003/07/22 17:03:33 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.10 2003/07/26 19:42:11 rob Exp $
  */
 
 #include "opt_ddb.h"
@@ -227,7 +227,7 @@ boot(int howto)
 	 * Now sync filesystems
 	 */
 	if (!cold && (howto & RB_NOSYNC) == 0 && waittime < 0) {
-		register struct buf *bp;
+		struct buf *bp;
 		int iter, nbusy, pbusy;
 
 		waittime = 0;

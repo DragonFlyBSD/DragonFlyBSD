@@ -8,7 +8,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/inflate.c,v 1.14 1999/12/29 04:54:39 peter Exp $
- * $DragonFly: src/sys/kern/inflate.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/inflate.c,v 1.3 2003/07/26 19:42:11 rob Exp $
  *
  *
  */
@@ -430,17 +430,17 @@ huft_build(glbl, b, n, s, d, e, t, m)
 	unsigned        f;	/* i repeats in table every f entries */
 	int             g;	/* maximum code length */
 	int             h;	/* table level */
-	register unsigned i;	/* counter, current code */
-	register unsigned j;	/* counter */
-	register int    k;	/* number of bits in current code */
+	unsigned i;	/* counter, current code */
+	unsigned j;	/* counter */
+	int    k;	/* number of bits in current code */
 	int             lx[BMAX + 1];	/* memory for l[-1..BMAX-1] */
 	int            *l = lx + 1;	/* stack of bits per table */
-	register unsigned *p;	/* pointer into c[], b[], or v[] */
-	register struct huft *q;/* points to current table */
+	unsigned *p;	/* pointer into c[], b[], or v[] */
+	struct huft *q;/* points to current table */
 	struct huft     r;	/* table entry for structure assignment */
 	struct huft    *u[BMAX];/* table stack */
 	unsigned        v[N_MAX];	/* values in order of bit length */
-	register int    w;	/* bits before this table == (l * h) */
+	int    w;	/* bits before this table == (l * h) */
 	unsigned        x[BMAX + 1];	/* bit offsets, then code stack */
 	unsigned       *xp;	/* pointer into x */
 	int             y;	/* number of dummy codes added */
@@ -624,7 +624,7 @@ huft_free(glbl, t)
    list of the tables it made, with the links in a dummy first entry of
    each table. */
 {
-	register struct huft *p, *q;
+	struct huft *p, *q;
 
 	/* Go through linked list, freeing from the malloced (t[-1]) address. */
 	p = t;
@@ -644,13 +644,13 @@ inflate_codes(glbl, tl, td, bl, bd)
 	struct huft    *tl, *td;/* literal/length and distance decoder tables */
 	int             bl, bd;	/* number of bits decoded by tl[] and td[] */
 {
-	register unsigned e;	/* table entry flag/number of extra bits */
+	unsigned e;	/* table entry flag/number of extra bits */
 	unsigned        n, d;	/* length and index for copy */
 	unsigned        w;	/* current window position */
 	struct huft    *t;	/* pointer to table entry */
 	unsigned        ml, md;	/* masks for bl and bd bits */
-	register ulg    b;	/* bit buffer */
-	register unsigned k;	/* number of bits in bit buffer */
+	ulg    b;	/* bit buffer */
+	unsigned k;	/* number of bits in bit buffer */
 
 	/* make local copies of globals */
 	b = glbl->gz_bb;			/* initialize bit buffer */
@@ -740,8 +740,8 @@ inflate_stored(glbl)
 {
 	unsigned        n;	/* number of bytes in block */
 	unsigned        w;	/* current window position */
-	register ulg    b;	/* bit buffer */
-	register unsigned k;	/* number of bits in bit buffer */
+	ulg    b;	/* bit buffer */
+	unsigned k;	/* number of bits in bit buffer */
 
 	/* make local copies of globals */
 	b = glbl->gz_bb;			/* initialize bit buffer */
@@ -846,8 +846,8 @@ inflate_dynamic(glbl)
 	unsigned        ll[286 + 30];	/* literal/length and distance code
 					 * lengths */
 #endif
-	register ulg    b;	/* bit buffer */
-	register unsigned k;	/* number of bits in bit buffer */
+	ulg    b;	/* bit buffer */
+	unsigned k;	/* number of bits in bit buffer */
 
 	/* make local bit buffer */
 	b = glbl->gz_bb;
@@ -975,8 +975,8 @@ inflate_block(glbl, e)
 	int            *e;	/* last block flag */
 {
 	unsigned        t;	/* block type */
-	register ulg    b;	/* bit buffer */
-	register unsigned k;	/* number of bits in bit buffer */
+	ulg    b;	/* bit buffer */
+	unsigned k;	/* number of bits in bit buffer */
 
 	/* make local bit buffer */
 	b = glbl->gz_bb;

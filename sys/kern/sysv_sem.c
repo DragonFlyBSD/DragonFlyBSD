@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_sem.c,v 1.24.2.8 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.6 2003/07/26 18:12:44 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.7 2003/07/26 19:42:11 rob Exp $ */
 
 /*
  * Implementation of SVID semaphores
@@ -174,7 +174,7 @@ static void
 seminit(dummy)
 	void *dummy;
 {
-	register int i;
+	int i;
 
 	sem = malloc(sizeof(struct sem) * seminfo.semmns, M_SEM, M_WAITOK);
 	if (sem == NULL)
@@ -191,7 +191,7 @@ seminit(dummy)
 		sema[i].sem_perm.mode = 0;
 	}
 	for (i = 0; i < seminfo.semmnu; i++) {
-		register struct sem_undo *suptr = SEMU(i);
+		struct sem_undo *suptr = SEMU(i);
 		suptr->un_proc = NULL;
 	}
 	semu_list = NULL;
@@ -225,9 +225,9 @@ static struct sem_undo *
 semu_alloc(p)
 	struct proc *p;
 {
-	register int i;
-	register struct sem_undo *suptr;
-	register struct sem_undo **supptr;
+	int i;
+	struct sem_undo *suptr;
+	struct sem_undo **supptr;
 	int attempt;
 
 	/*
@@ -293,13 +293,13 @@ semu_alloc(p)
 
 static int
 semundo_adjust(p, supptr, semid, semnum, adjval)
-	register struct proc *p;
+	struct proc *p;
 	struct sem_undo **supptr;
 	int semid, semnum;
 	int adjval;
 {
-	register struct sem_undo *suptr;
-	register struct undo *sunptr;
+	struct sem_undo *suptr;
+	struct undo *sunptr;
 	int i;
 
 	/* Look for and remember the sem_undo if the caller doesn't provide
@@ -362,11 +362,11 @@ static void
 semundo_clear(semid, semnum)
 	int semid, semnum;
 {
-	register struct sem_undo *suptr;
+	struct sem_undo *suptr;
 
 	for (suptr = semu_list; suptr != NULL; suptr = suptr->un_next) {
-		register struct undo *sunptr = &suptr->un_ent[0];
-		register int i = 0;
+		struct undo *sunptr = &suptr->un_ent[0];
+		int i = 0;
 
 		while (i < suptr->un_cnt) {
 			if (sunptr->un_id == semid) {
@@ -402,7 +402,7 @@ __semctl(struct __semctl_args *uap)
 	struct ucred *cred = p->p_ucred;
 	int i, rval, eval;
 	struct semid_ds sbuf;
-	register struct semid_ds *semaptr;
+	struct semid_ds *semaptr;
 
 #ifdef SEM_DEBUG
 	printf("call to semctl(%d, %d, %d, 0x%x)\n", semid, semnum, cmd, arg);
@@ -663,9 +663,9 @@ semop(struct semop_args *uap)
 	int semid = uap->semid;
 	u_int nsops = uap->nsops;
 	struct sembuf sops[MAX_SOPS];
-	register struct semid_ds *semaptr;
-	register struct sembuf *sopptr;
-	register struct sem *semptr;
+	struct semid_ds *semaptr;
+	struct sembuf *sopptr;
+	struct sem *semptr;
 	struct sem_undo *suptr = NULL;
 	int i, j, eval;
 	int do_wakeup, do_undos;
@@ -915,8 +915,8 @@ void
 semexit(p)
 	struct proc *p;
 {
-	register struct sem_undo *suptr;
-	register struct sem_undo **supptr;
+	struct sem_undo *suptr;
+	struct sem_undo **supptr;
 	int did_something;
 
 	did_something = 0;

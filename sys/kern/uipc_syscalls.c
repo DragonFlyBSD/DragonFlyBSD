@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.6 2003/07/26 18:12:44 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.7 2003/07/26 19:42:11 rob Exp $
  */
 
 #include "opt_compat.h"
@@ -497,8 +497,8 @@ sendit(int s, struct msghdr *mp, int flags, int *res)
 	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct uio auio;
-	register struct iovec *iov;
-	register int i;
+	struct iovec *iov;
+	int i;
 	struct mbuf *control;
 	struct sockaddr *to;
 	int len, error;
@@ -549,7 +549,7 @@ sendit(int s, struct msghdr *mp, int flags, int *res)
 			goto bad;
 #ifdef COMPAT_OLDSOCK
 		if (mp->msg_flags == MSG_COMPAT) {
-			register struct cmsghdr *cm;
+			struct cmsghdr *cm;
 
 			M_PREPEND(control, sizeof(*cm), M_WAIT);
 			if (control == 0) {
@@ -726,8 +726,8 @@ recvit(int s, struct msghdr *mp, caddr_t namelenp, int *res)
 	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct uio auio;
-	register struct iovec *iov;
-	register int i;
+	struct iovec *iov;
+	int i;
 	int len, error;
 	struct mbuf *m, *control = 0;
 	caddr_t ctlbuf;
@@ -1271,8 +1271,8 @@ sockargs(mp, buf, buflen, type)
 	caddr_t buf;
 	int buflen, type;
 {
-	register struct sockaddr *sa;
-	register struct mbuf *m;
+	struct sockaddr *sa;
+	struct mbuf *m;
 	int error;
 
 	if ((u_int)buflen > MLEN) {
@@ -1342,7 +1342,7 @@ holdsock(fdp, fdes, fpp)
 	int fdes;
 	struct file **fpp;
 {
-	register struct file *fp = NULL;
+	struct file *fp = NULL;
 	int error = 0;
 
 	if ((unsigned)fdes >= fdp->fd_nfiles ||

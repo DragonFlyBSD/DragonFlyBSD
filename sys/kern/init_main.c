@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.20 2003/07/10 04:47:54 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.21 2003/07/26 19:42:11 rob Exp $
  */
 
 #include "opt_init_path.h"
@@ -254,9 +254,9 @@ SYSINIT(announce, SI_SUB_COPYRIGHT, SI_ORDER_FIRST, print_caddr_t, copyright)
 static void
 proc0_init(void *dummy __unused)
 {
-	register struct proc		*p;
-	register struct filedesc0	*fdp;
-	register unsigned i;
+	struct proc		*p;
+	struct filedesc0	*fdp;
+	unsigned i;
 
 	p = &proc0;
 

@@ -32,7 +32,7 @@
  *
  *	@(#)subr_prof.c	8.3 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/subr_prof.c,v 1.32.2.2 2000/08/03 00:09:32 ps Exp $
- * $DragonFly: src/sys/kern/subr_prof.c,v 1.5 2003/07/24 01:41:25 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prof.c,v 1.6 2003/07/26 19:42:11 rob Exp $
  */
 
 #include <sys/param.h>
@@ -395,14 +395,14 @@ profil(struct profil_args *uap)
  */
 void
 addupc_intr(p, pc, ticks)
-	register struct proc *p;
-	register u_long pc;
+	struct proc *p;
+	u_long pc;
 	u_int ticks;
 {
-	register struct uprof *prof;
-	register caddr_t addr;
-	register u_int i;
-	register int v;
+	struct uprof *prof;
+	caddr_t addr;
+	u_int i;
+	int v;
 
 	if (ticks == 0)
 		return;
@@ -425,13 +425,13 @@ addupc_intr(p, pc, ticks)
  */
 void
 addupc_task(p, pc, ticks)
-	register struct proc *p;
-	register u_long pc;
+	struct proc *p;
+	u_long pc;
 	u_int ticks;
 {
-	register struct uprof *prof;
-	register caddr_t addr;
-	register u_int i;
+	struct uprof *prof;
+	caddr_t addr;
+	u_int i;
 	u_short v;
 
 	/* Testing P_PROFIL may be unnecessary, but is certainly safe. */

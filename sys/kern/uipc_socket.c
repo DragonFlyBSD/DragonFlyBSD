@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.22 2002/12/15 09:24:23 maxim Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.7 2003/07/19 21:14:39 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.8 2003/07/26 19:42:11 rob Exp $
  */
 
 #include "opt_inet.h"
@@ -635,15 +635,15 @@ out:
  */
 int
 soreceive(so, psa, uio, mp0, controlp, flagsp)
-	register struct socket *so;
+	struct socket *so;
 	struct sockaddr **psa;
 	struct uio *uio;
 	struct mbuf **mp0;
 	struct mbuf **controlp;
 	int *flagsp;
 {
-	register struct mbuf *m, **mp;
-	register int flags, len, error, s, offset;
+	struct mbuf *m, **mp;
+	int flags, len, error, s, offset;
 	struct protosw *pr = so->so_proto;
 	struct mbuf *nextrecord;
 	int moff, type = 0;
@@ -930,10 +930,10 @@ release:
 
 int
 soshutdown(so, how)
-	register struct socket *so;
-	register int how;
+	struct socket *so;
+	int how;
 {
-	register struct protosw *pr = so->so_proto;
+	struct protosw *pr = so->so_proto;
 
 	if (!(how == SHUT_RD || how == SHUT_WR || how == SHUT_RDWR))
 		return (EINVAL);
@@ -947,11 +947,11 @@ soshutdown(so, how)
 
 void
 sorflush(so)
-	register struct socket *so;
+	struct socket *so;
 {
-	register struct sockbuf *sb = &so->so_rcv;
-	register struct protosw *pr = so->so_proto;
-	register int s;
+	struct sockbuf *sb = &so->so_rcv;
+	struct protosw *pr = so->so_proto;
+	int s;
 	struct sockbuf asb;
 
 	sb->sb_flags |= SB_NOINTR;
@@ -1475,7 +1475,7 @@ soopt_mcopyout(struct sockopt *sopt, struct mbuf *m)
 
 void
 sohasoutofband(so)
-	register struct socket *so;
+	struct socket *so;
 {
 	if (so->so_sigio != NULL)
 		pgsigio(so->so_sigio, SIGURG, 0);

@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.10 2003/07/19 21:14:39 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.11 2003/07/26 19:42:11 rob Exp $
  */
 
 /*
@@ -2596,7 +2596,7 @@ allocbuf(struct buf *bp, int size)
  *	error and cleared.
  */
 int
-biowait(register struct buf * bp)
+biowait(struct buf * bp)
 {
 	int s;
 
@@ -2643,7 +2643,7 @@ biowait(register struct buf * bp)
  *	in the biodone routine.
  */
 void
-biodone(register struct buf * bp)
+biodone(struct buf * bp)
 {
 	int s, error;
 
@@ -3253,7 +3253,7 @@ retry:
  */
 void
 vunmapbuf(bp)
-	register struct buf *bp;
+	struct buf *bp;
 {
 	int pidx;
 	int npages;

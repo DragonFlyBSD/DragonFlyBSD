@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.4 2003/07/19 21:14:39 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.5 2003/07/26 19:42:11 rob Exp $
  */
 
 #include "opt_param.h"
@@ -98,7 +98,7 @@ static	u_long sb_efficiency = 8;	/* parameter for sbreserve() */
 
 void
 soisconnecting(so)
-	register struct socket *so;
+	struct socket *so;
 {
 
 	so->so_state &= ~(SS_ISCONNECTED|SS_ISDISCONNECTING);
@@ -139,7 +139,7 @@ soisconnected(so)
 
 void
 soisdisconnecting(so)
-	register struct socket *so;
+	struct socket *so;
 {
 
 	so->so_state &= ~SS_ISCONNECTING;
@@ -151,7 +151,7 @@ soisdisconnecting(so)
 
 void
 soisdisconnected(so)
-	register struct socket *so;
+	struct socket *so;
 {
 
 	so->so_state &= ~(SS_ISCONNECTING|SS_ISCONNECTED|SS_ISDISCONNECTING);
@@ -173,7 +173,7 @@ soisdisconnected(so)
 struct socket *
 sonewconn(struct socket *head, int connstatus)
 {
-	register struct socket *so;
+	struct socket *so;
 
 	if (head->so_qlen > 3 * head->so_qlimit / 2)
 		return ((struct socket *)0);
@@ -267,7 +267,7 @@ sbwait(sb)
  */
 int
 sb_lock(sb)
-	register struct sockbuf *sb;
+	struct sockbuf *sb;
 {
 	int error;
 
@@ -290,8 +290,8 @@ sb_lock(sb)
  */
 void
 sowakeup(so, sb)
-	register struct socket *so;
-	register struct sockbuf *sb;
+	struct socket *so;
+	struct sockbuf *sb;
 {
 	selwakeup(&sb->sb_sel);
 	sb->sb_flags &= ~SB_SEL;
@@ -342,7 +342,7 @@ sowakeup(so, sb)
 
 int
 soreserve(so, sndcc, rcvcc)
-	register struct socket *so;
+	struct socket *so;
 	u_long sndcc, rcvcc;
 {
 	struct proc *p = curproc;
@@ -464,7 +464,7 @@ sbappend(sb, m)
 	struct sockbuf *sb;
 	struct mbuf *m;
 {
-	register struct mbuf *n;
+	struct mbuf *n;
 
 	if (m == 0)
 		return;
@@ -485,11 +485,11 @@ sbappend(sb, m)
 #ifdef SOCKBUF_DEBUG
 void
 sbcheck(sb)
-	register struct sockbuf *sb;
+	struct sockbuf *sb;
 {
-	register struct mbuf *m;
-	register struct mbuf *n = 0;
-	register u_long len = 0, mbcnt = 0;
+	struct mbuf *m;
+	struct mbuf *n = 0;
+	u_long len = 0, mbcnt = 0;
 
 	for (m = sb->sb_mb; m; m = n) {
 	    n = m->m_nextpkt;
@@ -514,10 +514,10 @@ sbcheck(sb)
  */
 void
 sbappendrecord(sb, m0)
-	register struct sockbuf *sb;
-	register struct mbuf *m0;
+	struct sockbuf *sb;
+	struct mbuf *m0;
 {
-	register struct mbuf *m;
+	struct mbuf *m;
 
 	if (m0 == 0)
 		return;
@@ -550,11 +550,11 @@ sbappendrecord(sb, m0)
  */
 void
 sbinsertoob(sb, m0)
-	register struct sockbuf *sb;
-	register struct mbuf *m0;
+	struct sockbuf *sb;
+	struct mbuf *m0;
 {
-	register struct mbuf *m;
-	register struct mbuf **mp;
+	struct mbuf *m;
+	struct mbuf **mp;
 
 	if (m0 == 0)
 		return;
@@ -597,11 +597,11 @@ sbinsertoob(sb, m0)
  */
 int
 sbappendaddr(sb, asa, m0, control)
-	register struct sockbuf *sb;
+	struct sockbuf *sb;
 	struct sockaddr *asa;
 	struct mbuf *m0, *control;
 {
-	register struct mbuf *m, *n;
+	struct mbuf *m, *n;
 	int space = asa->sa_len;
 
 if (m0 && (m0->m_flags & M_PKTHDR) == 0)
@@ -644,7 +644,7 @@ sbappendcontrol(sb, m0, control)
 	struct sockbuf *sb;
 	struct mbuf *control, *m0;
 {
-	register struct mbuf *m, *n;
+	struct mbuf *m, *n;
 	int space = 0;
 
 	if (control == 0)
@@ -679,11 +679,11 @@ sbappendcontrol(sb, m0, control)
  */
 void
 sbcompress(sb, m, n)
-	register struct sockbuf *sb;
-	register struct mbuf *m, *n;
+	struct sockbuf *sb;
+	struct mbuf *m, *n;
 {
-	register int eor = 0;
-	register struct mbuf *o;
+	int eor = 0;
+	struct mbuf *o;
 
 	while (m) {
 		eor |= m->m_flags & M_EOR;
@@ -730,7 +730,7 @@ sbcompress(sb, m, n)
  */
 void
 sbflush(sb)
-	register struct sockbuf *sb;
+	struct sockbuf *sb;
 {
 
 	if (sb->sb_flags & SB_LOCK)
@@ -753,10 +753,10 @@ sbflush(sb)
  */
 void
 sbdrop(sb, len)
-	register struct sockbuf *sb;
-	register int len;
+	struct sockbuf *sb;
+	int len;
 {
-	register struct mbuf *m;
+	struct mbuf *m;
 	struct mbuf *next;
 
 	next = (m = sb->sb_mb) ? m->m_nextpkt : 0;
@@ -795,9 +795,9 @@ sbdrop(sb, len)
  */
 void
 sbdroprecord(sb)
-	register struct sockbuf *sb;
+	struct sockbuf *sb;
 {
-	register struct mbuf *m;
+	struct mbuf *m;
 
 	m = sb->sb_mb;
 	if (m) {
@@ -816,10 +816,10 @@ sbdroprecord(sb)
 struct mbuf *
 sbcreatecontrol(p, size, type, level)
 	caddr_t p;
-	register int size;
+	int size;
 	int type, level;
 {
-	register struct cmsghdr *cp;
+	struct cmsghdr *cp;
 	struct mbuf *m;
 
 	if (CMSG_SPACE((u_int)size) > MCLBYTES)

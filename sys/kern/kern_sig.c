@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.14 2003/07/26 18:12:44 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.15 2003/07/26 19:42:11 rob Exp $
  */
 
 #include "opt_compat.h"
@@ -323,7 +323,7 @@ int
 sigaction(struct sigaction_args *uap)
 {
 	struct sigaction act, oact;
-	register struct sigaction *actp, *oactp;
+	struct sigaction *actp, *oactp;
 	int error;
 
 	actp = (uap->act != NULL) ? &act : NULL;
@@ -346,7 +346,7 @@ osigaction(struct osigaction_args *uap)
 {
 	struct osigaction sa;
 	struct sigaction nsa, osa;
-	register struct sigaction *nsap, *osap;
+	struct sigaction *nsap, *osap;
 	int error;
 
 	if (uap->signum <= 0 || uap->signum >= ONSIG)
@@ -379,7 +379,7 @@ void
 siginit(p)
 	struct proc *p;
 {
-	register int i;
+	int i;
 
 	for (i = 1; i <= NSIG; i++)
 		if (sigprop(i) & SA_IGNORE && i != SIGCONT)
@@ -391,10 +391,10 @@ siginit(p)
  */
 void
 execsigs(p)
-	register struct proc *p;
+	struct proc *p;
 {
-	register struct sigacts *ps = p->p_sigacts;
-	register int sig;
+	struct sigacts *ps = p->p_sigacts;
+	int sig;
 
 	/*
 	 * Reset caught signals.  Held signals remain held
@@ -534,7 +534,7 @@ osigvec(struct osigvec_args *uap)
 {
 	struct sigvec vec;
 	struct sigaction nsa, osa;
-	register struct sigaction *nsap, *osap;
+	struct sigaction *nsap, *osap;
 	int error;
 
 	if (uap->signum <= 0 || uap->signum >= ONSIG)
@@ -818,7 +818,7 @@ pgsignal(pgrp, sig, checkctty)
 	struct pgrp *pgrp;
 	int sig, checkctty;
 {
-	register struct proc *p;
+	struct proc *p;
 
 	if (pgrp)
 		LIST_FOREACH(p, &pgrp->pg_members, p_pglist)
@@ -834,7 +834,7 @@ pgsignal(pgrp, sig, checkctty)
 void
 trapsignal(p, sig, code)
 	struct proc *p;
-	register int sig;
+	int sig;
 	u_long code;
 {
 	struct sigacts *ps = p->p_sigacts;
@@ -885,8 +885,8 @@ trapsignal(p, sig, code)
 
 void
 psignal(p, sig)
-	register struct proc *p;
-	register int sig;
+	struct proc *p;
+	int sig;
 {
 	int s, prop;
 	sig_t action;
@@ -1124,10 +1124,10 @@ signotify_remote(void *arg)
  */
 int
 issignal(p)
-	register struct proc *p;
+	struct proc *p;
 {
 	sigset_t mask;
-	register int sig, prop;
+	int sig, prop;
 
 	for (;;) {
 		int traced = (p->p_flag & P_TRACED) || (p->p_stops & S_SIG);
@@ -1271,7 +1271,7 @@ issignal(p)
  */
 void
 stop(p)
-	register struct proc *p;
+	struct proc *p;
 {
 
 	p->p_stat = SSTOP;
@@ -1285,7 +1285,7 @@ stop(p)
  */
 void
 postsig(sig)
-	register int sig;
+	int sig;
 {
 	struct proc *p = curproc;
 	struct sigacts *ps = p->p_sigacts;

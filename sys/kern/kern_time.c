@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.6 2003/07/24 01:41:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.7 2003/07/26 19:42:11 rob Exp $
  */
 
 #include <sys/param.h>
@@ -475,7 +475,7 @@ void
 realitexpire(arg)
 	void *arg;
 {
-	register struct proc *p;
+	struct proc *p;
 	struct timeval ctv, ntv;
 	int s;
 
@@ -533,7 +533,7 @@ itimerfix(tv)
  */
 int
 itimerdecr(itp, usec)
-	register struct itimerval *itp;
+	struct itimerval *itp;
 	int usec;
 {
 

@@ -32,7 +32,7 @@
  *
  *	@(#)kern_malloc.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/kern_malloc.c,v 1.64.2.5 2002/03/16 02:19:51 archie Exp $
- * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.7 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.8 2003/07/26 19:42:11 rob Exp $
  */
 
 #include "opt_vm.h"
@@ -138,9 +138,9 @@ malloc(size, type, flags)
 	struct malloc_type *type;
 	int flags;
 {
-	register struct kmembuckets *kbp;
-	register struct kmemusage *kup;
-	register struct freelist *freep;
+	struct kmembuckets *kbp;
+	struct kmemusage *kup;
+	struct freelist *freep;
 	long indx, npg, allocsize;
 	int s;
 	caddr_t va, cp, savedlist;
@@ -149,7 +149,7 @@ malloc(size, type, flags)
 	int copysize;
 	const char *savedtype;
 #endif
-	register struct malloc_type *ksp = type;
+	struct malloc_type *ksp = type;
 
 #if defined(INVARIANTS) && defined(__i386__)
 	if (flags == M_WAITOK)
@@ -294,16 +294,16 @@ free(addr, type)
 	void *addr;
 	struct malloc_type *type;
 {
-	register struct kmembuckets *kbp;
-	register struct kmemusage *kup;
-	register struct freelist *freep;
+	struct kmembuckets *kbp;
+	struct kmemusage *kup;
+	struct freelist *freep;
 	long size;
 	int s;
 #ifdef INVARIANTS
 	struct freelist *fp;
 	long *end, *lp, alloc, copysize;
 #endif
-	register struct malloc_type *ksp = type;
+	struct malloc_type *ksp = type;
 
 	if (type->ks_limit == 0)
 		panic("freeing with unknown type (%s)", type->ks_shortdesc);
@@ -479,7 +479,7 @@ static void
 kmeminit(dummy)
 	void *dummy;
 {
-	register long indx;
+	long indx;
 	u_long npg;
 	u_long mem_size;
 

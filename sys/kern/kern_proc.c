@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.10 2003/07/25 05:26:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.11 2003/07/26 19:42:11 rob Exp $
  */
 
 #include <sys/param.h>
@@ -100,7 +100,7 @@ procinit()
  */
 int
 inferior(p)
-	register struct proc *p;
+	struct proc *p;
 {
 
 	for (; p != curproc; p = p->p_pptr)
@@ -114,9 +114,9 @@ inferior(p)
  */
 struct proc *
 pfind(pid)
-	register pid_t pid;
+	pid_t pid;
 {
-	register struct proc *p;
+	struct proc *p;
 
 	LIST_FOREACH(p, PIDHASH(pid), p_hash)
 		if (p->p_pid == pid)
@@ -129,9 +129,9 @@ pfind(pid)
  */
 struct pgrp *
 pgfind(pgid)
-	register pid_t pgid;
+	pid_t pgid;
 {
-	register struct pgrp *pgrp;
+	struct pgrp *pgrp;
 
 	LIST_FOREACH(pgrp, PGRPHASH(pgid), pg_hash)
 		if (pgrp->pg_id == pgid)
@@ -144,11 +144,11 @@ pgfind(pgid)
  */
 int
 enterpgrp(p, pgid, mksess)
-	register struct proc *p;
+	struct proc *p;
 	pid_t pgid;
 	int mksess;
 {
-	register struct pgrp *pgrp = pgfind(pgid);
+	struct pgrp *pgrp = pgfind(pgid);
 
 	KASSERT(pgrp == NULL || !mksess,
 	    ("enterpgrp: setsid into non-empty pgrp"));
@@ -168,7 +168,7 @@ enterpgrp(p, pgid, mksess)
 		MALLOC(pgrp, struct pgrp *, sizeof(struct pgrp), M_PGRP,
 		    M_WAITOK);
 		if (mksess) {
-			register struct session *sess;
+			struct session *sess;
 
 			/*
 			 * new session
@@ -219,7 +219,7 @@ enterpgrp(p, pgid, mksess)
  */
 int
 leavepgrp(p)
-	register struct proc *p;
+	struct proc *p;
 {
 
 	LIST_REMOVE(p, p_pglist);
@@ -234,7 +234,7 @@ leavepgrp(p)
  */
 static void
 pgdelete(pgrp)
-	register struct pgrp *pgrp;
+	struct pgrp *pgrp;
 {
 
 	/*
@@ -264,12 +264,12 @@ pgdelete(pgrp)
  */
 void
 fixjobc(p, pgrp, entering)
-	register struct proc *p;
-	register struct pgrp *pgrp;
+	struct proc *p;
+	struct pgrp *pgrp;
 	int entering;
 {
-	register struct pgrp *hispgrp;
-	register struct session *mysession = pgrp->pg_session;
+	struct pgrp *hispgrp;
+	struct session *mysession = pgrp->pg_session;
 
 	/*
 	 * Check p's parent to see whether p qualifies its own process
@@ -308,7 +308,7 @@ static void
 orphanpg(pg)
 	struct pgrp *pg;
 {
-	register struct proc *p;
+	struct proc *p;
 
 	LIST_FOREACH(p, &pg->pg_members, p_pglist) {
 		if (p->p_stat == SSTOP) {
@@ -327,9 +327,9 @@ orphanpg(pg)
 
 DB_SHOW_COMMAND(pgrpdump, pgrpdump)
 {
-	register struct pgrp *pgrp;
-	register struct proc *p;
-	register int i;
+	struct pgrp *pgrp;
+	struct proc *p;
+	int i;
 
 	for (i = 0; i <= pgrphash; i++) {
 		if (!LIST_EMPTY(&pgrphashtbl[i])) {
@@ -402,7 +402,7 @@ fill_eproc(struct proc *p, struct eproc *ep)
 		ep->e_procsig = *p->p_procsig;
 	}
 	if (p->p_stat != SIDL && p->p_stat != SZOMB && p->p_vmspace != NULL) {
-		register struct vmspace *vm = p->p_vmspace;
+		struct vmspace *vm = p->p_vmspace;
 		ep->e_vm = *vm;
 		ep->e_vm.vm_rssize = vmspace_resident_count(vm); /*XXX*/
 	}

@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.8 2003/07/26 18:12:44 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.9 2003/07/26 19:42:11 rob Exp $
  */
 
 #include "opt_ktrace.h"
@@ -510,7 +510,7 @@ ioctl(struct ioctl_args *uap)
 	struct filedesc *fdp;
 	u_long com;
 	int error;
-	register u_int size;
+	u_int size;
 	caddr_t data, memp;
 	int tmp;
 #define STK_PARAMS	128

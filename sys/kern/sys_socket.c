@@ -32,7 +32,7 @@
  *
  *	@(#)sys_socket.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/sys_socket.c,v 1.28.2.2 2001/02/26 04:23:16 jlemon Exp $
- * $DragonFly: src/sys/kern/sys_socket.c,v 1.3 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_socket.c,v 1.4 2003/07/26 19:42:11 rob Exp $
  */
 
 #include <sys/param.h>
@@ -86,7 +86,7 @@ soo_write(
 int
 soo_ioctl(struct file *fp, u_long cmd, caddr_t data, struct thread *td)
 {
-	register struct socket *so = (struct socket *)fp->f_data;
+	struct socket *so = (struct socket *)fp->f_data;
 
 	switch (cmd) {
 

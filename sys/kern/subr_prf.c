@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.4 2003/07/06 21:23:51 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.5 2003/07/26 19:42:11 rob Exp $
  */
 
 #include <sys/param.h>
@@ -159,7 +159,7 @@ tprintf_close(tpr_t sess)
 int
 tprintf(tpr_t tpr, const char *fmt, ...)
 {
-	register struct session *sess = (struct session *)tpr;
+	struct session *sess = (struct session *)tpr;
 	struct tty *tp = NULL;
 	int flags = TOLOG;
 	va_list ap;

@@ -32,7 +32,7 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.7 2003/07/22 17:03:33 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.8 2003/07/26 19:42:11 rob Exp $
  */
 
 /*
@@ -173,7 +173,7 @@ ptyinit(n)
 static	int
 ptsopen(dev_t dev, int flag, int devtype, struct thread *td)
 {
-	register struct tty *tp;
+	struct tty *tp;
 	int error;
 	int minr;
 	dev_t nextdev;
@@ -235,7 +235,7 @@ ptsclose(dev, flag, mode, td)
 	int flag, mode;
 	struct thread *td;
 {
-	register struct tty *tp;
+	struct tty *tp;
 	int err;
 
 	tp = dev->si_tty;
@@ -252,8 +252,8 @@ ptsread(dev, uio, flag)
 	int flag;
 {
 	struct proc *p = curproc;
-	register struct tty *tp = dev->si_tty;
-	register struct pt_ioctl *pti = dev->si_drv1;
+	struct tty *tp = dev->si_tty;
+	struct pt_ioctl *pti = dev->si_drv1;
 	int error = 0;
 
 again:
@@ -304,7 +304,7 @@ ptswrite(dev, uio, flag)
 	struct uio *uio;
 	int flag;
 {
-	register struct tty *tp;
+	struct tty *tp;
 
 	tp = dev->si_tty;
 	if (tp->t_oproc == 0)
@@ -320,7 +320,7 @@ static void
 ptsstart(tp)
 	struct tty *tp;
 {
-	register struct pt_ioctl *pti = tp->t_dev->si_drv1;
+	struct pt_ioctl *pti = tp->t_dev->si_drv1;
 
 	if (tp->t_state & TS_TTSTOP)
 		return;
@@ -354,7 +354,7 @@ ptcopen(dev, flag, devtype, td)
 	int flag, devtype;
 	struct thread *td;
 {
-	register struct tty *tp;
+	struct tty *tp;
 	struct pt_ioctl *pti;
 
 	if (!dev->si_drv1)
@@ -384,7 +384,7 @@ ptcclose(dev, flags, fmt, td)
 	int fmt;
 	struct thread *td;
 {
-	register struct tty *tp;
+	struct tty *tp;
 
 	tp = dev->si_tty;
 	(void)(*linesw[tp->t_line].l_modem)(tp, 0);
@@ -413,7 +413,7 @@ ptcread(dev, uio, flag)
 	struct uio *uio;
 	int flag;
 {
-	register struct tty *tp = dev->si_tty;
+	struct tty *tp = dev->si_tty;
 	struct pt_ioctl *pti = dev->si_drv1;
 	char buf[BUFSIZ];
 	int error = 0, cc;
@@ -471,7 +471,7 @@ ptcread(dev, uio, flag)
 
 static	void
 ptsstop(tp, flush)
-	register struct tty *tp;
+	struct tty *tp;
 	int flush;
 {
 	struct pt_ioctl *pti = tp->t_dev->si_drv1;
@@ -499,7 +499,7 @@ ptcpoll(dev, events, td)
 	int events;
 	struct thread *td;
 {
-	register struct tty *tp = dev->si_tty;
+	struct tty *tp = dev->si_tty;
 	struct pt_ioctl *pti = dev->si_drv1;
 	int revents = 0;
 	int s;
@@ -546,12 +546,12 @@ ptcpoll(dev, events, td)
 static	int
 ptcwrite(dev, uio, flag)
 	dev_t dev;
-	register struct uio *uio;
+	struct uio *uio;
 	int flag;
 {
-	register struct tty *tp = dev->si_tty;
-	register u_char *cp = 0;
-	register int cc = 0;
+	struct tty *tp = dev->si_tty;
+	u_char *cp = 0;
+	int cc = 0;
 	u_char locbuf[BUFSIZ];
 	int cnt = 0;
 	struct pt_ioctl *pti = dev->si_drv1;
@@ -662,9 +662,9 @@ ptyioctl(dev, cmd, data, flag, td)
 	int flag;
 	struct thread *td;
 {
-	register struct tty *tp = dev->si_tty;
-	register struct pt_ioctl *pti = dev->si_drv1;
-	register u_char *cc = tp->t_cc;
+	struct tty *tp = dev->si_tty;
+	struct pt_ioctl *pti = dev->si_drv1;
+	u_char *cc = tp->t_cc;
 	int stop, error;
 
 	if (dev_dflags(dev) & D_MASTER) {

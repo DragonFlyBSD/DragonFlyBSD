@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.9 2003/07/23 02:30:20 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.10 2003/07/26 19:42:11 rob Exp $
  */
 
 #include "opt_param.h"
@@ -186,11 +186,11 @@ bad:
 /* ARGSUSED */
 int
 m_mballoc(nmb, how)
-	register int nmb;
+	int nmb;
 	int how;
 {
-	register caddr_t p;
-	register int i;
+	caddr_t p;
+	int i;
 	int nbytes;
 
 	/*
@@ -323,11 +323,11 @@ SYSINIT(mclallocthread, SI_SUB_KTHREAD_UPDATE, SI_ORDER_ANY, kproc_start,
 /* ARGSUSED */
 int
 m_clalloc(ncl, how)
-	register int ncl;
+	int ncl;
 	int how;
 {
-	register caddr_t p;
-	register int i;
+	caddr_t p;
+	int i;
 	int npg;
 
 	/*
@@ -535,8 +535,8 @@ m_retryhdr(i, t)
 static void
 m_reclaim()
 {
-	register struct domain *dp;
-	register struct protosw *pr;
+	struct domain *dp;
+	struct protosw *pr;
 	int s = splimp();
 
 	for (dp = domains; dp; dp = dp->dom_next)
@@ -619,7 +619,7 @@ struct mbuf *
 m_getclr(how, type)
 	int how, type;
 {
-	register struct mbuf *m;
+	struct mbuf *m;
 
 	MGET(m, how, type);
 	if (m == 0)
@@ -890,7 +890,7 @@ m_freem(struct mbuf *m)
  */
 struct mbuf *
 m_prepend(m, len, how)
-	register struct mbuf *m;
+	struct mbuf *m;
 	int len, how;
 {
 	struct mbuf *mn;
@@ -923,10 +923,10 @@ struct mbuf *
 m_copym(m, off0, len, wait)
 	const struct mbuf *m;
 	int off0, wait;
-	register int len;
+	int len;
 {
-	register struct mbuf *n, **np;
-	register int off = off0;
+	struct mbuf *n, **np;
+	int off = off0;
 	struct mbuf *top;
 	int copyhdr = 0;
 
@@ -1081,11 +1081,11 @@ nospace:
 void
 m_copydata(m, off, len, cp)
 	const struct mbuf *m;
-	register int off;
-	register int len;
+	int off;
+	int len;
 	caddr_t cp;
 {
-	register unsigned count;
+	unsigned count;
 
 	KASSERT(off >= 0, ("m_copydata, negative off %d", off));
 	KASSERT(len >= 0, ("m_copydata, negative len %d", len));
@@ -1189,7 +1189,7 @@ nospace:
  */
 void
 m_cat(m, n)
-	register struct mbuf *m, *n;
+	struct mbuf *m, *n;
 {
 	while (m->m_next)
 		m = m->m_next;
@@ -1213,9 +1213,9 @@ m_adj(mp, req_len)
 	struct mbuf *mp;
 	int req_len;
 {
-	register int len = req_len;
-	register struct mbuf *m;
-	register int count;
+	int len = req_len;
+	struct mbuf *m;
+	int count;
 
 	if ((m = mp) == NULL)
 		return;
@@ -1294,11 +1294,11 @@ m_adj(mp, req_len)
 
 struct mbuf *
 m_pullup(n, len)
-	register struct mbuf *n;
+	struct mbuf *n;
 	int len;
 {
-	register struct mbuf *m;
-	register int count;
+	struct mbuf *m;
+	int count;
 	int space;
 
 	/*
@@ -1361,10 +1361,10 @@ bad:
  */
 struct mbuf *
 m_split(m0, len0, wait)
-	register struct mbuf *m0;
+	struct mbuf *m0;
 	int len0, wait;
 {
-	register struct mbuf *m, *n;
+	struct mbuf *m, *n;
 	unsigned len = len0, remain;
 
 	for (m = m0; m && len > m->m_len; m = m->m_next)
@@ -1437,10 +1437,10 @@ m_devget(buf, totlen, off0, ifp, copy)
 	struct ifnet *ifp;
 	void (*copy) __P((char *from, caddr_t to, u_int len));
 {
-	register struct mbuf *m;
+	struct mbuf *m;
 	struct mbuf *top = 0, **mp = &top;
-	register int off = off0, len;
-	register char *cp;
+	int off = off0, len;
+	char *cp;
 	char *epkt;
 
 	cp = buf;
@@ -1505,12 +1505,12 @@ m_devget(buf, totlen, off0, ifp, copy)
 void
 m_copyback(m0, off, len, cp)
 	struct	mbuf *m0;
-	register int off;
-	register int len;
+	int off;
+	int len;
 	caddr_t cp;
 {
-	register int mlen;
-	register struct mbuf *m = m0, *n;
+	int mlen;
+	struct mbuf *m = m0, *n;
 	int totlen = 0;
 
 	if (m0 == 0)

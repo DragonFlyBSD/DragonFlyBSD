@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_domain.c	8.2 (Berkeley) 10/18/93
  * $FreeBSD: src/sys/kern/uipc_domain.c,v 1.22.2.1 2001/07/03 11:01:37 ume Exp $
- * $DragonFly: src/sys/kern/uipc_domain.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_domain.c,v 1.3 2003/07/26 19:42:11 rob Exp $
  */
 
 #include <sys/param.h>
@@ -75,7 +75,7 @@ struct domain *domains;
 static void
 net_init_domain(struct domain *dp)
 {
-	register struct protosw *pr;
+	struct protosw *pr;
 	int	s;
 
 	s = splnet();
@@ -148,8 +148,8 @@ pffindtype(family, type)
 	int family;
 	int type;
 {
-	register struct domain *dp;
-	register struct protosw *pr;
+	struct domain *dp;
+	struct protosw *pr;
 
 	for (dp = domains; dp; dp = dp->dom_next)
 		if (dp->dom_family == family)
@@ -168,8 +168,8 @@ pffindproto(family, protocol, type)
 	int protocol;
 	int type;
 {
-	register struct domain *dp;
-	register struct protosw *pr;
+	struct domain *dp;
+	struct protosw *pr;
 	struct protosw *maybe = 0;
 
 	if (family == 0)
@@ -195,8 +195,8 @@ pfctlinput(cmd, sa)
 	int cmd;
 	struct sockaddr *sa;
 {
-	register struct domain *dp;
-	register struct protosw *pr;
+	struct domain *dp;
+	struct protosw *pr;
 
 	for (dp = domains; dp; dp = dp->dom_next)
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
@@ -234,8 +234,8 @@ static void
 pfslowtimo(arg)
 	void *arg;
 {
-	register struct domain *dp;
-	register struct protosw *pr;
+	struct domain *dp;
+	struct protosw *pr;
 
 	for (dp = domains; dp; dp = dp->dom_next)
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
@@ -248,8 +248,8 @@ static void
 pffasttimo(arg)
 	void *arg;
 {
-	register struct domain *dp;
-	register struct protosw *pr;
+	struct domain *dp;
+	struct protosw *pr;
 
 	for (dp = domains; dp; dp = dp->dom_next)
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.11 2003/07/26 18:12:44 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.12 2003/07/26 19:42:11 rob Exp $
  */
 
 /* For 4.3 integer FS ID compatibility */
@@ -654,7 +654,7 @@ fstatfs(struct fstatfs_args *uap)
 	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct mount *mp;
-	register struct statfs *sp;
+	struct statfs *sp;
 	int error;
 	struct statfs sb;
 

@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.5 2003/07/26 19:42:11 rob Exp $
  */
 
 #include <sys/param.h>
@@ -512,7 +512,7 @@ static int
 unp_attach(so)
 	struct socket *so;
 {
-	register struct unpcb *unp;
+	struct unpcb *unp;
 	int error;
 
 	if (so->so_snd.sb_hiwat == 0 || so->so_rcv.sb_hiwat == 0) {
@@ -549,7 +549,7 @@ unp_attach(so)
 
 static void
 unp_detach(unp)
-	register struct unpcb *unp;
+	struct unpcb *unp;
 {
 	LIST_REMOVE(unp, unp_link);
 	unp->unp_gencnt = ++unp_gencnt;
@@ -719,11 +719,11 @@ bad:
 
 int
 unp_connect2(so, so2)
-	register struct socket *so;
-	register struct socket *so2;
+	struct socket *so;
+	struct socket *so2;
 {
-	register struct unpcb *unp = sotounpcb(so);
-	register struct unpcb *unp2;
+	struct unpcb *unp = sotounpcb(so);
+	struct unpcb *unp2;
 
 	if (so2->so_type != so->so_type)
 		return (EPROTOTYPE);
@@ -752,7 +752,7 @@ static void
 unp_disconnect(unp)
 	struct unpcb *unp;
 {
-	register struct unpcb *unp2 = unp->unp_conn;
+	struct unpcb *unp2 = unp->unp_conn;
 
 	if (unp2 == 0)
 		return;
@@ -1129,8 +1129,8 @@ static int	unp_defer, unp_gcing;
 static void
 unp_gc()
 {
-	register struct file *fp, *nextfp;
-	register struct socket *so;
+	struct file *fp, *nextfp;
+	struct socket *so;
 	struct file **extra_ref, **fpp;
 	int nunref, i;
 

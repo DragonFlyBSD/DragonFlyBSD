@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.3 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.4 2003/07/26 19:42:11 rob Exp $
  */
 
 #include "opt_debug_lockf.h"
@@ -100,8 +100,8 @@ lf_advlock(ap, head, size)
 	struct lockf **head;
 	u_quad_t size;
 {
-	register struct flock *fl = ap->a_fl;
-	register struct lockf *lock;
+	struct flock *fl = ap->a_fl;
+	struct lockf *lock;
 	off_t start, end;
 	int error;
 
@@ -186,9 +186,9 @@ lf_advlock(ap, head, size)
  */
 static int
 lf_setlock(lock)
-	register struct lockf *lock;
+	struct lockf *lock;
 {
-	register struct lockf *block;
+	struct lockf *block;
 	struct lockf **head = lock->lf_head;
 	struct lockf **prev, *overlap, *ltmp;
 	static char lockstr[] = "lockf";
@@ -222,8 +222,8 @@ lf_setlock(lock)
 		 */
 		if ((lock->lf_flags & F_POSIX) &&
 		    (block->lf_flags & F_POSIX)) {
-			register struct proc *wproc;
-			register struct lockf *waitblock;
+			struct proc *wproc;
+			struct lockf *waitblock;
 			int i = 0;
 
 			/* The block is waiting on something */
@@ -421,10 +421,10 @@ lf_setlock(lock)
  */
 static int
 lf_clearlock(unlock)
-	register struct lockf *unlock;
+	struct lockf *unlock;
 {
 	struct lockf **head = unlock->lf_head;
-	register struct lockf *lf = *head;
+	struct lockf *lf = *head;
 	struct lockf *overlap, **prev;
 	int ovcase;
 
@@ -490,10 +490,10 @@ lf_clearlock(unlock)
  */
 static int
 lf_getlock(lock, fl)
-	register struct lockf *lock;
-	register struct flock *fl;
+	struct lockf *lock;
+	struct flock *fl;
 {
-	register struct lockf *block;
+	struct lockf *block;
 
 #ifdef LOCKF_DEBUG
 	if (lockf_debug & 1)
@@ -524,7 +524,7 @@ lf_getlock(lock, fl)
  */
 static struct lockf *
 lf_getblock(lock)
-	register struct lockf *lock;
+	struct lockf *lock;
 {
 	struct lockf **prev, *overlap, *lf = *(lock->lf_head);
 	int ovcase;
@@ -554,7 +554,7 @@ lf_getblock(lock)
  */
 static int
 lf_findoverlap(lf, lock, type, prev, overlap)
-	register struct lockf *lf;
+	struct lockf *lf;
 	struct lockf *lock;
 	int type;
 	struct lockf ***prev;
@@ -664,10 +664,10 @@ lf_findoverlap(lf, lock, type, prev, overlap)
  */
 static void
 lf_split(lock1, lock2)
-	register struct lockf *lock1;
-	register struct lockf *lock2;
+	struct lockf *lock1;
+	struct lockf *lock2;
 {
-	register struct lockf *splitlock;
+	struct lockf *splitlock;
 
 #ifdef LOCKF_DEBUG
 	if (lockf_debug & 2) {
@@ -713,7 +713,7 @@ static void
 lf_wakelock(listhead)
 	struct lockf *listhead;
 {
-	register struct lockf *wakelock;
+	struct lockf *wakelock;
 
 	while (!TAILQ_EMPTY(&listhead->lf_blkhd)) {
 		wakelock = TAILQ_FIRST(&listhead->lf_blkhd);
@@ -734,7 +734,7 @@ lf_wakelock(listhead)
 void
 lf_print(tag, lock)
 	char *tag;
-	register struct lockf *lock;
+	struct lockf *lock;
 {
 
 	printf("%s: lock %p for ", tag, (void *)lock);
@@ -762,7 +762,7 @@ lf_printlist(tag, lock)
 	char *tag;
 	struct lockf *lock;
 {
-	register struct lockf *lf, *blk;
+	struct lockf *lf, *blk;
 
 	printf("%s: Lock list for ino %lu on dev <%d, %d>:\n",
 	    tag, (u_long)lock->lf_inode->i_number,

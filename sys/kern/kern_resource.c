@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.10 2003/07/26 18:12:44 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.11 2003/07/26 19:42:11 rob Exp $
  */
 
 #include "opt_compat.h"
@@ -94,7 +94,7 @@ getpriority(struct getpriority_args *uap)
 
 	case PRIO_PGRP: 
 	{
-		register struct pgrp *pg;
+		struct pgrp *pg;
 
 		if (uap->who == 0)
 			pg = curp->p_pgrp;
@@ -150,7 +150,7 @@ setpriority(struct setpriority_args *uap)
 
 	case PRIO_PGRP: 
 	{
-		register struct pgrp *pg;
+		struct pgrp *pg;
 
 		if (uap->who == 0)
 			pg = curp->p_pgrp;
@@ -209,7 +209,7 @@ donice(struct proc *chgp, int n)
  */
 /* ARGSUSED */
 int
-rtprio(register struct rtprio_args *uap)
+rtprio(struct rtprio_args *uap)
 {
 	struct proc *curp = curproc;
 	struct proc *p;
@@ -497,10 +497,10 @@ getrusage(struct getrusage_args *uap)
 
 void
 ruadd(ru, ru2)
-	register struct rusage *ru, *ru2;
+	struct rusage *ru, *ru2;
 {
-	register long *ip, *ip2;
-	register int i;
+	long *ip, *ip2;
+	int i;
 
 	timevaladd(&ru->ru_utime, &ru2->ru_utime);
 	timevaladd(&ru->ru_stime, &ru2->ru_stime);
@@ -520,7 +520,7 @@ struct plimit *
 limcopy(lim)
 	struct plimit *lim;
 {
-	register struct plimit *copy;
+	struct plimit *copy;
 
 	MALLOC(copy, struct plimit *, sizeof(struct plimit),
 	    M_SUBPROC, M_WAITOK);

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.7 2003/07/26 18:12:44 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.8 2003/07/26 19:42:11 rob Exp $
  */
 
 /*
@@ -857,7 +857,7 @@ p_trespass(struct ucred *cr1, struct ucred *cr2)
 struct ucred *
 crget()
 {
-	register struct ucred *cr;
+	struct ucred *cr;
 
 	MALLOC(cr, struct ucred *, sizeof(*cr), M_CRED, M_WAITOK);
 	bzero((caddr_t)cr, sizeof(*cr));

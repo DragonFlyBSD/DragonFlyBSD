@@ -38,7 +38,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.9 2003/07/12 03:10:35 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.10 2003/07/26 19:42:11 rob Exp $
  */
 
 #include "opt_ntp.h"
@@ -189,7 +189,7 @@ static void
 initclocks(dummy)
 	void *dummy;
 {
-	register int i;
+	int i;
 
 	/*
 	 * Set divisors to 1 (normal case) and let the machine-specific
@@ -218,13 +218,13 @@ initclocks(dummy)
  */
 void
 hardclock(frame)
-	register struct clockframe *frame;
+	struct clockframe *frame;
 {
-	register struct proc *p;
+	struct proc *p;
 
 	p = curproc;
 	if (p) {
-		register struct pstats *pstats;
+		struct pstats *pstats;
 
 		/*
 		 * Run current process's virtual and profile time, as needed.
@@ -274,8 +274,8 @@ int
 tvtohz(tv)
 	struct timeval *tv;
 {
-	register unsigned long ticks;
-	register long sec, usec;
+	unsigned long ticks;
+	long sec, usec;
 
 	/*
 	 * If the number of usecs in the whole seconds part of the time
@@ -334,7 +334,7 @@ tvtohz(tv)
  */
 void
 startprofclock(p)
-	register struct proc *p;
+	struct proc *p;
 {
 	int s;
 
@@ -354,7 +354,7 @@ startprofclock(p)
  */
 void
 stopprofclock(p)
-	register struct proc *p;
+	struct proc *p;
 {
 	int s;
 
@@ -381,10 +381,10 @@ stopprofclock(p)
  */
 void
 statclock(frame)
-	register struct clockframe *frame;
+	struct clockframe *frame;
 {
 #ifdef GPROF
-	register struct gmonparam *g;
+	struct gmonparam *g;
 	int i;
 #endif
 	thread_t td;

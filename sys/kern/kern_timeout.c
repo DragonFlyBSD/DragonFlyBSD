@@ -37,7 +37,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.4 2003/06/29 07:37:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.5 2003/07/26 19:42:11 rob Exp $
  */
 
 #include <sys/param.h>
@@ -81,11 +81,11 @@ static struct callout *nextsoftcheck;	/* Next callout to be checked. */
 static void
 swi_softclock(void *dummy)
 {
-	register struct callout *c;
-	register struct callout_tailq *bucket;
-	register int s;
-	register int curticks;
-	register int steps;	/* #steps since we last allowed interrupts */
+	struct callout *c;
+	struct callout_tailq *bucket;
+	int s;
+	int curticks;
+	int steps;	/* #steps since we last allowed interrupts */
 
 #ifndef MAX_SOFTCLOCK_STEPS
 #define MAX_SOFTCLOCK_STEPS 100 /* Maximum allowed value of steps. */
@@ -163,7 +163,7 @@ struct callout_handle
 timeout(ftn, arg, to_ticks)
 	timeout_t *ftn;
 	void *arg;
-	register int to_ticks;
+	int to_ticks;
 {
 	int s;
 	struct callout *new;
@@ -191,7 +191,7 @@ untimeout(ftn, arg, handle)
 	void *arg;
 	struct callout_handle handle;
 {
-	register int s;
+	int s;
 
 	/*
 	 * Check for a handle that was initialized
@@ -324,7 +324,7 @@ void
 adjust_timeout_calltodo(time_change)
     struct timeval *time_change;
 {
-	register struct callout *p;
+	struct callout *p;
 	unsigned long delta_ticks;
 	int s;
 

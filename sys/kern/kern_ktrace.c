@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.6 2003/07/24 01:41:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.7 2003/07/26 19:42:11 rob Exp $
  */
 
 #include "opt_ktrace.h"
@@ -66,7 +66,7 @@ static struct ktr_header *
 ktrgetheader(type)
 	int type;
 {
-	register struct ktr_header *kth;
+	struct ktr_header *kth;
 	struct proc *p = curproc;	/* XXX */
 
 	MALLOC(kth, struct ktr_header *, sizeof (struct ktr_header),
@@ -86,7 +86,7 @@ ktrsyscall(vp, code, narg, args)
 {
 	struct	ktr_header *kth;
 	struct	ktr_syscall *ktp;
-	register int len = offsetof(struct ktr_syscall, ktr_args) +
+	int len = offsetof(struct ktr_syscall, ktr_args) +
 	    (narg * sizeof(register_t));
 	struct proc *p = curproc;	/* XXX */
 	register_t *argp;
@@ -377,7 +377,7 @@ utrace(struct utrace_args *uap)
 	struct thread *td = curthread;	/* XXX */
 	struct proc *p = td->td_proc;
 	struct vnode *vp;
-	register caddr_t cp;
+	caddr_t cp;
 
 	if (!KTRPOINT(td, KTR_USER))
 		return (0);
@@ -459,8 +459,8 @@ ktrsetchildren(curp, top, ops, facs, vp)
 	int ops, facs;
 	struct vnode *vp;
 {
-	register struct proc *p;
-	register int ret = 0;
+	struct proc *p;
+	int ret = 0;
 
 	p = top;
 	for (;;) {

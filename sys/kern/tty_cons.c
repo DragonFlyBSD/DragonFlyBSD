@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
- * $DragonFly: src/sys/kern/tty_cons.c,v 1.6 2003/07/22 17:03:33 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_cons.c,v 1.7 2003/07/26 19:42:11 rob Exp $
  */
 
 #include "opt_ddb.h"
@@ -475,7 +475,7 @@ cncheckc()
 
 void
 cnputc(c)
-	register int c;
+	int c;
 {
 	char *cp;
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_msg.c,v 1.23.2.5 2002/12/31 08:54:53 maxim Exp $ */
-/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.7 2003/07/26 18:12:44 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.8 2003/07/26 19:42:11 rob Exp $ */
 
 /*
  * Implementation of SVID messages
@@ -127,7 +127,7 @@ static void
 msginit(dummy)
 	void *dummy;
 {
-	register int i;
+	int i;
 
 	msginfo.msgmax = msginfo.msgseg * msginfo.msgssz;
 	msgpool = malloc(msginfo.msgmax, M_MSG, M_WAITOK);
@@ -247,7 +247,7 @@ msgctl(struct msgctl_args *uap)
 	struct msqid_ds *user_msqptr = uap->buf;
 	int rval, eval;
 	struct msqid_ds msqbuf;
-	register struct msqid_ds *msqptr;
+	struct msqid_ds *msqptr;
 
 #ifdef MSG_DEBUG_OK
 	printf("call to msgctl(%d, %d, 0x%x)\n", msqid, cmd, user_msqptr);
@@ -378,7 +378,7 @@ msgget(struct msgget_args *uap)
 	int key = uap->key;
 	int msgflg = uap->msgflg;
 	struct ucred *cred = p->p_ucred;
-	register struct msqid_ds *msqptr = NULL;
+	struct msqid_ds *msqptr = NULL;
 
 #ifdef MSG_DEBUG_OK
 	printf("msgget(0x%x, 0%o)\n", key, msgflg);
@@ -480,8 +480,8 @@ msgsnd(struct msgsnd_args *uap)
 	size_t msgsz = uap->msgsz;
 	int msgflg = uap->msgflg;
 	int segs_needed, eval;
-	register struct msqid_ds *msqptr;
-	register struct msg *msghdr;
+	struct msqid_ds *msqptr;
+	struct msg *msghdr;
 	short next;
 
 #ifdef MSG_DEBUG_OK
@@ -794,8 +794,8 @@ msgrcv(struct msgrcv_args *uap)
 	long msgtyp = uap->msgtyp;
 	int msgflg = uap->msgflg;
 	size_t len;
-	register struct msqid_ds *msqptr;
-	register struct msg *msghdr;
+	struct msqid_ds *msqptr;
+	struct msg *msghdr;
 	int eval;
 	short next;
 

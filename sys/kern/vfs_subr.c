@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.14 2003/07/22 17:03:33 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.15 2003/07/26 19:42:11 rob Exp $
  */
 
 /*
@@ -317,7 +317,7 @@ struct mount *
 vfs_getvfs(fsid)
 	fsid_t *fsid;
 {
-	register struct mount *mp;
+	struct mount *mp;
 
 	lwkt_gettoken(&mountlist_token);
 	TAILQ_FOREACH(mp, &mountlist, mnt_list) {
@@ -414,7 +414,7 @@ vfs_timestamp(tsp)
  */
 void
 vattr_null(vap)
-	register struct vattr *vap;
+	struct vattr *vap;
 {
 
 	vap->va_type = VNON;
@@ -769,8 +769,8 @@ getnewvnode(tag, mp, vops, vpp)
  */
 static void
 insmntque(vp, mp)
-	register struct vnode *vp;
-	register struct mount *mp;
+	struct vnode *vp;
+	struct mount *mp;
 {
 
 	lwkt_gettoken(&mntvnode_token);
@@ -800,9 +800,9 @@ insmntque(vp, mp)
  */
 void
 vwakeup(bp)
-	register struct buf *bp;
+	struct buf *bp;
 {
-	register struct vnode *vp;
+	struct vnode *vp;
 
 	bp->b_flags &= ~B_WRITEINPROG;
 	if ((vp = bp->b_vp)) {
@@ -824,7 +824,7 @@ int
 vinvalbuf(struct vnode *vp, int flags, struct thread *td,
 	int slpflag, int slptimeo)
 {
-	register struct buf *bp;
+	struct buf *bp;
 	struct buf *nbp, *blist;
 	int s, error;
 	vm_object_t object;
@@ -1044,8 +1044,8 @@ restartsync:
  */
 void
 bgetvp(vp, bp)
-	register struct vnode *vp;
-	register struct buf *bp;
+	struct vnode *vp;
+	struct buf *bp;
 {
 	int s;
 
@@ -1069,7 +1069,7 @@ bgetvp(vp, bp)
  */
 void
 brelvp(bp)
-	register struct buf *bp;
+	struct buf *bp;
 {
 	struct vnode *vp;
 	struct buflists *listheadp;
@@ -1282,8 +1282,8 @@ speedup_syncer()
  */
 void
 pbgetvp(vp, bp)
-	register struct vnode *vp;
-	register struct buf *bp;
+	struct vnode *vp;
+	struct buf *bp;
 {
 
 	KASSERT(bp->b_vp == NULL, ("pbgetvp: not free"));
@@ -1298,7 +1298,7 @@ pbgetvp(vp, bp)
  */
 void
 pbrelvp(bp)
-	register struct buf *bp;
+	struct buf *bp;
 {
 
 	KASSERT(bp->b_vp != NULL, ("pbrelvp: NULL"));
@@ -1336,8 +1336,8 @@ pbreassignbuf(bp, newvp)
  */
 void
 reassignbuf(bp, newvp)
-	register struct buf *bp;
-	register struct vnode *newvp;
+	struct buf *bp;
+	struct vnode *newvp;
 {
 	struct buflists *listheadp;
 	int delay;
@@ -1474,7 +1474,7 @@ bdevvp(dev, vpp)
 	dev_t dev;
 	struct vnode **vpp;
 {
-	register struct vnode *vp;
+	struct vnode *vp;
 	struct vnode *nvp;
 	int error;
 
@@ -1689,7 +1689,7 @@ vput(struct vnode *vp)
  */
 void
 vhold(vp)
-	register struct vnode *vp;
+	struct vnode *vp;
 {
 	int s;
 
@@ -1705,7 +1705,7 @@ vhold(vp)
  */
 void
 vdrop(vp)
-	register struct vnode *vp;
+	struct vnode *vp;
 {
 	int s;
 
@@ -2459,9 +2459,9 @@ vfs_hang_addrlist(mp, nep, argp)
 	struct netexport *nep;
 	struct export_args *argp;
 {
-	register struct netcred *np;
-	register struct radix_node_head *rnh;
-	register int i;
+	struct netcred *np;
+	struct radix_node_head *rnh;
+	int i;
 	struct radix_node *rn;
 	struct sockaddr *saddr, *smask = 0;
 	struct domain *dom;
@@ -2537,7 +2537,7 @@ vfs_free_netcred(rn, w)
 	struct radix_node *rn;
 	void *w;
 {
-	register struct radix_node_head *rnh = (struct radix_node_head *) w;
+	struct radix_node_head *rnh = (struct radix_node_head *) w;
 
 	(*rnh->rnh_deladdr) (rn->rn_key, rn->rn_mask, rnh);
 	free((caddr_t) rn, M_NETADDR);
@@ -2551,8 +2551,8 @@ static void
 vfs_free_addrlist(nep)
 	struct netexport *nep;
 {
-	register int i;
-	register struct radix_node_head *rnh;
+	int i;
+	struct radix_node_head *rnh;
 
 	for (i = 0; i <= AF_MAX; i++)
 		if ((rnh = nep->ne_rtable[i])) {
@@ -2675,12 +2675,12 @@ vfs_setpublicfs(mp, nep, argp)
 
 struct netcred *
 vfs_export_lookup(mp, nep, nam)
-	register struct mount *mp;
+	struct mount *mp;
 	struct netexport *nep;
 	struct sockaddr *nam;
 {
-	register struct netcred *np;
-	register struct radix_node_head *rnh;
+	struct netcred *np;
+	struct radix_node_head *rnh;
 	struct sockaddr *saddr;
 
 	np = NULL;

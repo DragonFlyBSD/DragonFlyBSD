@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.7 2003/07/21 07:57:47 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.8 2003/07/26 19:42:11 rob Exp $
  */
 
 #include <sys/param.h>
@@ -55,11 +55,11 @@
 
 int
 uiomove(cp, n, uio)
-	register caddr_t cp;
-	register int n;
-	register struct uio *uio;
+	caddr_t cp;
+	int n;
+	struct uio *uio;
 {
-	register struct iovec *iov;
+	struct iovec *iov;
 	u_int cnt;
 	int error = 0;
 	int save = 0;
@@ -277,10 +277,10 @@ uioread(n, uio, obj, nread)
  */
 int
 ureadc(c, uio)
-	register int c;
-	register struct uio *uio;
+	int c;
+	struct uio *uio;
 {
-	register struct iovec *iov;
+	struct iovec *iov;
 
 again:
 	if (uio->uio_iovcnt == 0 || uio->uio_resid == 0)
@@ -324,8 +324,8 @@ int
 uwritec(uio)
 	struct uio *uio;
 {
-	register struct iovec *iov;
-	register int c;
+	struct iovec *iov;
+	int c;
 
 	if (uio->uio_resid <= 0)
 		return (-1);
