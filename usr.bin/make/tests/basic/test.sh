@@ -1,10 +1,10 @@
 #!/bin/sh
 
-# $DragonFly: src/usr.bin/make/tests/basic/test.sh,v 1.1 2005/02/01 07:07:14 okumoto Exp $
+# $DragonFly: src/usr.bin/make/tests/basic/test.sh,v 1.2 2005/02/01 11:19:37 okumoto Exp $
 
 . ../env.sh
 
-DIR="t0 t1 t2"
+DIR="t?"
 
 case $1 in
 test)
@@ -14,6 +14,12 @@ test)
 	;;
 
 compare)
+	for d in $DIR; do
+		std_action $d $1
+	done
+	;;
+
+diff)
 	for d in $DIR; do
 		std_action $d $1
 	done
