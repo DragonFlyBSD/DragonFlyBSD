@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.96 2004/02/27 06:43:14 kan Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.17 2005/03/04 01:47:54 cpressey Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.18 2005/03/04 02:22:38 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -604,7 +604,7 @@ main(int argc, char * const *argv)
 		name[sdl->sdl_nlen] = '\0';
 
 		if (all || namesonly) {
-			int len;
+			size_t len;
 
 			/* sdl_data may not be terminated, don't use strlcpy */
 			if ((len = sdl->sdl_nlen) > sizeof(name) - 1)
@@ -1595,7 +1595,7 @@ in_getaddr(const char *s, int which)
 		return;
 	if ((hp = gethostbyname(s)) != 0)
 		bcopy(hp->h_addr, (char *)&addr_in->sin_addr, 
-		    MIN(hp->h_length, sizeof(addr_in->sin_addr)));
+		    MIN((size_t)hp->h_length, sizeof(addr_in->sin_addr)));
 	else if ((np = getnetbyname(s)) != 0)
 		addr_in->sin_addr = inet_makeaddr(np->n_net, INADDR_ANY);
 	else
