@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.16 2005/01/23 20:23:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.17 2005/02/12 02:23:24 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
  */
@@ -80,7 +80,6 @@
 
 #include <vm/vm.h>              /* for vtophys */
 #include <vm/pmap.h>            /* for vtophys */
-#include <machine/clock.h>      /* for DELAY */
 #include <machine/bus_pio.h>
 #include <machine/bus_memio.h>
 #include <machine/bus.h>
@@ -88,15 +87,15 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include "../mii_layer/mii.h"
-#include "../mii_layer/miivar.h"
+#include <dev/netif/mii_layer/mii.h>
+#include <dev/netif/mii_layer/miivar.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
 #define VR_USEIOSPACE
 
-#include "if_vrreg.h"
+#include <dev/netif/vr/if_vrreg.h>
 
 /* "controller miibus0" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
@@ -124,48 +123,45 @@ static struct vr_type vr_devs[] = {
 	{ 0, 0, NULL }
 };
 
-static int vr_probe		(device_t);
-static int vr_attach		(device_t);
-static int vr_detach		(device_t);
+static int	vr_probe(device_t);
+static int	vr_attach(device_t);
+static int	vr_detach(device_t);
 
-static int vr_newbuf		(struct vr_softc *,
-					struct vr_chain_onefrag *,
-					struct mbuf *);
-static int vr_encap		(struct vr_softc *, struct vr_chain *,
-						struct mbuf * );
+static int	vr_newbuf(struct vr_softc *, struct vr_chain_onefrag *,
+			  struct mbuf *);
+static int	vr_encap(struct vr_softc *, struct vr_chain *, struct mbuf * );
 
-static void vr_rxeof		(struct vr_softc *);
-static void vr_rxeoc		(struct vr_softc *);
-static void vr_txeof		(struct vr_softc *);
-static void vr_txeoc		(struct vr_softc *);
-static void vr_tick		(void *);
-static void vr_intr		(void *);
-static void vr_start		(struct ifnet *);
-static int vr_ioctl		(struct ifnet *, u_long, caddr_t,
-					struct ucred *);
-static void vr_init		(void *);
-static void vr_stop		(struct vr_softc *);
-static void vr_watchdog		(struct ifnet *);
-static void vr_shutdown		(device_t);
-static int vr_ifmedia_upd	(struct ifnet *);
-static void vr_ifmedia_sts	(struct ifnet *, struct ifmediareq *);
+static void	vr_rxeof(struct vr_softc *);
+static void	vr_rxeoc(struct vr_softc *);
+static void	vr_txeof(struct vr_softc *);
+static void	vr_txeoc(struct vr_softc *);
+static void	vr_tick(void *);
+static void	vr_intr(void *);
+static void	vr_start(struct ifnet *);
+static int	vr_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
+static void	vr_init(void *);
+static void	vr_stop(struct vr_softc *);
+static void	vr_watchdog(struct ifnet *);
+static void	vr_shutdown(device_t);
+static int	vr_ifmedia_upd(struct ifnet *);
+static void	vr_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 
 #ifdef VR_USESWSHIFT
-static void vr_mii_sync		(struct vr_softc *);
-static void vr_mii_send		(struct vr_softc *, u_int32_t, int);
+static void	vr_mii_sync(struct vr_softc *);
+static void	vr_mii_send(struct vr_softc *, uint32_t, int);
 #endif
-static int vr_mii_readreg	(struct vr_softc *, struct vr_mii_frame *);
-static int vr_mii_writereg	(struct vr_softc *, struct vr_mii_frame *);
-static int vr_miibus_readreg	(device_t, int, int);
-static int vr_miibus_writereg	(device_t, int, int, int);
-static void vr_miibus_statchg	(device_t);
+static int	vr_mii_readreg(struct vr_softc *, struct vr_mii_frame *);
+static int	vr_mii_writereg(struct vr_softc *, struct vr_mii_frame *);
+static int	vr_miibus_readreg(device_t, int, int);
+static int	vr_miibus_writereg(device_t, int, int, int);
+static void	vr_miibus_statchg(device_t);
 
-static void vr_setcfg		(struct vr_softc *, int);
-static u_int8_t vr_calchash	(u_int8_t *);
-static void vr_setmulti		(struct vr_softc *);
-static void vr_reset		(struct vr_softc *);
-static int vr_list_rx_init	(struct vr_softc *);
-static int vr_list_tx_init	(struct vr_softc *);
+static void	vr_setcfg(struct vr_softc *, int);
+static uint8_t	vr_calchash(uint8_t *);
+static void	vr_setmulti(struct vr_softc *);
+static void	vr_reset(struct vr_softc *);
+static int	vr_list_rx_init(struct vr_softc *);
+static int	vr_list_tx_init(struct vr_softc *);
 
 #ifdef VR_USEIOSPACE
 #define VR_RES			SYS_RES_IOPORT
@@ -208,44 +204,44 @@ DRIVER_MODULE(miibus, vr, miibus_driver, miibus_devclass, 0, 0);
 
 #define VR_SETBIT(sc, reg, x)				\
 	CSR_WRITE_1(sc, reg,				\
-		CSR_READ_1(sc, reg) | x)
+		CSR_READ_1(sc, reg) | (x))
 
 #define VR_CLRBIT(sc, reg, x)				\
 	CSR_WRITE_1(sc, reg,				\
-		CSR_READ_1(sc, reg) & ~x)
+		CSR_READ_1(sc, reg) & ~(x))
 
 #define VR_SETBIT16(sc, reg, x)				\
 	CSR_WRITE_2(sc, reg,				\
-		CSR_READ_2(sc, reg) | x)
+		CSR_READ_2(sc, reg) | (x))
 
 #define VR_CLRBIT16(sc, reg, x)				\
 	CSR_WRITE_2(sc, reg,				\
-		CSR_READ_2(sc, reg) & ~x)
+		CSR_READ_2(sc, reg) & ~(x))
 
 #define VR_SETBIT32(sc, reg, x)				\
 	CSR_WRITE_4(sc, reg,				\
-		CSR_READ_4(sc, reg) | x)
+		CSR_READ_4(sc, reg) | (x))
 
 #define VR_CLRBIT32(sc, reg, x)				\
 	CSR_WRITE_4(sc, reg,				\
-		CSR_READ_4(sc, reg) & ~x)
+		CSR_READ_4(sc, reg) & ~(x))
 
 #define SIO_SET(x)					\
 	CSR_WRITE_1(sc, VR_MIICMD,			\
-		CSR_READ_1(sc, VR_MIICMD) | x)
+		CSR_READ_1(sc, VR_MIICMD) | (x))
 
 #define SIO_CLR(x)					\
 	CSR_WRITE_1(sc, VR_MIICMD,			\
-		CSR_READ_1(sc, VR_MIICMD) & ~x)
+		CSR_READ_1(sc, VR_MIICMD) & ~(x))
 
 #ifdef VR_USESWSHIFT
 /*
  * Sync the PHYs by setting data bit and strobing the clock 32 times.
  */
-static void vr_mii_sync(sc)
-	struct vr_softc		*sc;
+static void
+vr_mii_sync(struct vr_softc *sc)
 {
-	int		i;
+	int i;
 
 	SIO_SET(VR_MIICMD_DIR|VR_MIICMD_DATAIN);
 
@@ -255,28 +251,23 @@ static void vr_mii_sync(sc)
 		SIO_CLR(VR_MIICMD_CLK);
 		DELAY(1);
 	}
-
-	return;
 }
 
 /*
  * Clock a series of bits through the MII.
  */
-static void vr_mii_send(sc, bits, cnt)
-	struct vr_softc		*sc;
-	u_int32_t		bits;
-	int			cnt;
+static void
+vr_mii_send(struct vr_softc *sc, uint32_t bits, int cnt)
 {
-	int			i;
+	int i;
 
 	SIO_CLR(VR_MIICMD_CLK);
 
 	for (i = (0x1 << (cnt - 1)); i; i >>= 1) {
-                if (bits & i) {
+                if (bits & i)
 			SIO_SET(VR_MIICMD_DATAIN);
-                } else {
+                else
 			SIO_CLR(VR_MIICMD_DATAIN);
-                }
 		DELAY(1);
 		SIO_CLR(VR_MIICMD_CLK);
 		DELAY(1);
@@ -288,19 +279,15 @@ static void vr_mii_send(sc, bits, cnt)
 /*
  * Read an PHY register through the MII.
  */
-static int vr_mii_readreg(sc, frame)
-	struct vr_softc		*sc;
-	struct vr_mii_frame	*frame;
-	
+static int
+vr_mii_readreg(struct vr_softc *sc, struct vr_mii_frame *frame)
 #ifdef VR_USESWSHIFT	
 {
-	int			i, ack, s;
+	int i, ack, s;
 
 	s = splimp();
 
-	/*
-	 * Set up frame for RX.
-	 */
+	/* Set up frame for RX. */
 	frame->mii_stdelim = VR_MII_STARTDELIM;
 	frame->mii_opcode = VR_MII_READOP;
 	frame->mii_turnaround = 0;
@@ -309,22 +296,18 @@ static int vr_mii_readreg(sc, frame)
 	CSR_WRITE_1(sc, VR_MIICMD, 0);
 	VR_SETBIT(sc, VR_MIICMD, VR_MIICMD_DIRECTPGM);
 
-	/*
- 	 * Turn on data xmit.
-	 */
+	/* Turn on data xmit. */
 	SIO_SET(VR_MIICMD_DIR);
 
 	vr_mii_sync(sc);
 
-	/*
-	 * Send command/address info.
-	 */
+	/* Send command/address info. */
 	vr_mii_send(sc, frame->mii_stdelim, 2);
 	vr_mii_send(sc, frame->mii_opcode, 2);
 	vr_mii_send(sc, frame->mii_phyaddr, 5);
 	vr_mii_send(sc, frame->mii_regaddr, 5);
 
-	/* Idle bit */
+	/* Idle bit. */
 	SIO_CLR((VR_MIICMD_CLK|VR_MIICMD_DATAIN));
 	DELAY(1);
 	SIO_SET(VR_MIICMD_CLK);
@@ -367,7 +350,6 @@ static int vr_mii_readreg(sc, frame)
 	}
 
 fail:
-
 	SIO_CLR(VR_MIICMD_CLK);
 	DELAY(1);
 	SIO_SET(VR_MIICMD_CLK);
@@ -381,15 +363,15 @@ fail:
 }
 #else
 {
-	int			s, i;
+	int s, i;
 
 	s = splimp();
 
-  	/* Set the PHY-adress */
+  	/* Set the PHY address. */
 	CSR_WRITE_1(sc, VR_PHYADDR, (CSR_READ_1(sc, VR_PHYADDR)& 0xe0)|
 	    frame->mii_phyaddr);
 
-  	/* Set the register-adress */
+	/* Set the register address. */
 	CSR_WRITE_1(sc, VR_MIIADDR, frame->mii_regaddr);
 	VR_SETBIT(sc, VR_MIICMD, VR_MIICMD_READ_ENB);
 	
@@ -398,10 +380,9 @@ fail:
 			break;
 		DELAY(1);
 	}
-
 	frame->mii_data = CSR_READ_2(sc, VR_MIIDATA);
 
-	(void)splx(s);
+	splx(s);
 
 	return(0);
 }
@@ -411,30 +392,23 @@ fail:
 /*
  * Write to a PHY register through the MII.
  */
-static int vr_mii_writereg(sc, frame)
-	struct vr_softc		*sc;
-	struct vr_mii_frame	*frame;
-	
+static int
+vr_mii_writereg(struct vr_softc *sc, struct vr_mii_frame *frame)
 #ifdef VR_USESWSHIFT	
 {
-	int			s;
+	int s;
 
 	s = splimp();
 
 	CSR_WRITE_1(sc, VR_MIICMD, 0);
 	VR_SETBIT(sc, VR_MIICMD, VR_MIICMD_DIRECTPGM);
 
-	/*
-	 * Set up frame for TX.
-	 */
-
+	/* Set up frame for TX. */
 	frame->mii_stdelim = VR_MII_STARTDELIM;
 	frame->mii_opcode = VR_MII_WRITEOP;
 	frame->mii_turnaround = VR_MII_TURNAROUND;
 	
-	/*
- 	 * Turn on data output.
-	 */
+	/* Turn on data output. */
 	SIO_SET(VR_MIICMD_DIR);
 
 	vr_mii_sync(sc);
@@ -452,9 +426,7 @@ static int vr_mii_writereg(sc, frame)
 	SIO_CLR(VR_MIICMD_CLK);
 	DELAY(1);
 
-	/*
-	 * Turn off xmit.
-	 */
+	/* Turn off xmit. */
 	SIO_CLR(VR_MIICMD_DIR);
 
 	splx(s);
@@ -463,7 +435,7 @@ static int vr_mii_writereg(sc, frame)
 }
 #else
 {
-	int			s, i;
+	int s, i;
 
 	s = splimp();
 
@@ -471,7 +443,7 @@ static int vr_mii_writereg(sc, frame)
 	CSR_WRITE_1(sc, VR_PHYADDR, (CSR_READ_1(sc, VR_PHYADDR)& 0xe0)|
 		    frame->mii_phyaddr);
 
-  	/* Set the register-adress and data to write */
+	/* Set the register address and data to write. */
 	CSR_WRITE_1(sc, VR_MIIADDR, frame->mii_regaddr);
 	CSR_WRITE_2(sc, VR_MIIDATA, frame->mii_data);
 
@@ -483,30 +455,30 @@ static int vr_mii_writereg(sc, frame)
 		DELAY(1);
 	}
 
-	(void)splx(s);
+	splx(s);
 
 	return(0);
 }
 #endif
 
-static int vr_miibus_readreg(dev, phy, reg)
-	device_t		dev;
-	int			phy, reg;
+static int
+vr_miibus_readreg(device_t dev, int phy, int reg)
 {
-	struct vr_softc		*sc;
-	struct vr_mii_frame	frame;
+	struct vr_mii_frame frame;
+	struct vr_softc *sc;
 
 	sc = device_get_softc(dev);
 
 	switch (sc->vr_revid) {
-		case REV_ID_VT6102_APOLLO:
-			if (phy != 1)
-				return 0;
-		default:
-			break;
-		}
+	case REV_ID_VT6102_APOLLO:
+		if (phy != 1)
+			return(0);
+		break;
+	default:
+		break;
+	}
 
-	bzero((char *)&frame, sizeof(frame));
+	bzero(&frame, sizeof(frame));
 
 	frame.mii_phyaddr = phy;
 	frame.mii_regaddr = reg;
@@ -515,24 +487,24 @@ static int vr_miibus_readreg(dev, phy, reg)
 	return(frame.mii_data);
 }
 
-static int vr_miibus_writereg(dev, phy, reg, data)
-	device_t		dev;
-	u_int16_t		phy, reg, data;
+static int
+vr_miibus_writereg(device_t dev, int phy, int reg, int data)
 {
-	struct vr_softc		*sc;
-	struct vr_mii_frame	frame;
+	struct vr_mii_frame frame;
+	struct vr_softc *sc;
 
 	sc = device_get_softc(dev);
 
 	switch (sc->vr_revid) {
-		case REV_ID_VT6102_APOLLO:
-			if (phy != 1)
-				return 0;
-		default:
-			break;
-		}
+	case REV_ID_VT6102_APOLLO:
+		if (phy != 1)
+			return 0;
+		break;
+	default:
+		break;
+	}
 
-	bzero((char *)&frame, sizeof(frame));
+	bzero(&frame, sizeof(frame));
 
 	frame.mii_phyaddr = phy;
 	frame.mii_regaddr = reg;
@@ -543,28 +515,26 @@ static int vr_miibus_writereg(dev, phy, reg, data)
 	return(0);
 }
 
-static void vr_miibus_statchg(dev)
-	device_t		dev;
+static void
+vr_miibus_statchg(device_t dev)
 {
-	struct vr_softc		*sc;
-	struct mii_data		*mii;
+	struct mii_data *mii;
+	struct vr_softc *sc;
 
 	sc = device_get_softc(dev);
 	mii = device_get_softc(sc->vr_miibus);
 	vr_setcfg(sc, mii->mii_media_active);
-
-	return;
 }
 
 /*
  * Calculate CRC of a multicast group address, return the lower 6 bits.
  */
-static u_int8_t vr_calchash(addr)
-	u_int8_t		*addr;
+static uint8_t
+vr_calchash(uint8_t *addr)
 {
-	u_int32_t		crc, carry;
-	int			i, j;
-	u_int8_t		c;
+	uint32_t crc, carry;
+	int i, j;
+	uint8_t c;
 
 	/* Compute CRC for the address value. */
 	crc = 0xFFFFFFFF; /* initial value */
@@ -587,15 +557,15 @@ static u_int8_t vr_calchash(addr)
 /*
  * Program the 64-bit multicast hash filter.
  */
-static void vr_setmulti(sc)
-	struct vr_softc		*sc;
+static void
+vr_setmulti(struct vr_softc *sc)
 {
-	struct ifnet		*ifp;
-	int			h = 0;
-	u_int32_t		hashes[2] = { 0, 0 };
-	struct ifmultiaddr	*ifma;
-	u_int8_t		rxfilt;
-	int			mcnt = 0;
+	struct ifnet *ifp;
+	int h = 0;
+	uint32_t hashes[2] = { 0, 0 };
+	struct ifmultiaddr *ifma;
+	uint8_t rxfilt;
+	int mcnt = 0;
 
 	ifp = &sc->arpcom.ac_if;
 
@@ -609,11 +579,11 @@ static void vr_setmulti(sc)
 		return;
 	}
 
-	/* first, zot all the existing hash bits */
+	/* First, zero out all the existing hash bits. */
 	CSR_WRITE_4(sc, VR_MAR0, 0);
 	CSR_WRITE_4(sc, VR_MAR1, 0);
 
-	/* now program new ones */
+	/* Now program new ones. */
 	for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
 				ifma = ifma->ifma_link.le_next) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
@@ -634,8 +604,6 @@ static void vr_setmulti(sc)
 	CSR_WRITE_4(sc, VR_MAR0, hashes[0]);
 	CSR_WRITE_4(sc, VR_MAR1, hashes[1]);
 	CSR_WRITE_1(sc, VR_RXCFG, rxfilt);
-
-	return;
 }
 
 /*
@@ -643,11 +611,10 @@ static void vr_setmulti(sc)
  * 'full-duplex' and '100Mbps' bits in the netconfig register, we
  * first have to put the transmit and/or receive logic in the idle state.
  */
-static void vr_setcfg(sc, media)
-	struct vr_softc		*sc;
-	int			media;
+static void
+vr_setcfg(struct vr_softc *sc, int media)
 {
-	int			restart = 0;
+	int restart = 0;
 
 	if (CSR_READ_2(sc, VR_COMMAND) & (VR_CMD_TX_ON|VR_CMD_RX_ON)) {
 		restart = 1;
@@ -661,14 +628,12 @@ static void vr_setcfg(sc, media)
 
 	if (restart)
 		VR_SETBIT16(sc, VR_COMMAND, VR_CMD_TX_ON|VR_CMD_RX_ON);
-
-	return;
 }
 
-static void vr_reset(sc)
-	struct vr_softc		*sc;
+static void
+vr_reset(struct vr_softc *sc)
 {
-	int		i;
+	int i;
 
 	VR_SETBIT16(sc, VR_COMMAND, VR_CMD_RESET);
 
@@ -678,29 +643,29 @@ static void vr_reset(sc)
 			break;
 	}
 	if (i == VR_TIMEOUT) {
-		if (sc->vr_revid < REV_ID_VT3065_A)
-			printf("vr%d: reset never completed!\n", sc->vr_unit);
-		else {
+		struct ifnet *ifp = &sc->arpcom.ac_if;
+
+		if (sc->vr_revid < REV_ID_VT3065_A) {
+			if_printf(ifp, "reset never completed!\n");
+		} else {
 			/* Use newer force reset command */
-			printf("vr%d: Using force reset command.\n", sc->vr_unit);
+			if_printf(ifp, "Using force reset command.\n");
 			VR_SETBIT(sc, VR_MISC_CR1, VR_MISCCR1_FORSRST);
 		}
 	}
 
 	/* Wait a little while for the chip to get its brains in order. */
 	DELAY(1000);
-
-        return;
 }
 
 /*
  * Probe for a VIA Rhine chip. Check the PCI vendor and device
  * IDs against our list and return a device name if we find a match.
  */
-static int vr_probe(dev)
-	device_t		dev;
+static int
+vr_probe(device_t dev)
 {
-	struct vr_type		*t;
+	struct vr_type *t;
 
 	t = vr_devs;
 
@@ -720,21 +685,20 @@ static int vr_probe(dev)
  * Attach the interface. Allocate softc structures, do ifmedia
  * setup and ethernet/BPF attach.
  */
-static int vr_attach(dev)
-	device_t		dev;
+static int
+vr_attach(device_t dev)
 {
-	int			i, s;
-	u_char			eaddr[ETHER_ADDR_LEN];
-	u_int32_t		command;
-	struct vr_softc		*sc;
-	struct ifnet		*ifp;
-	int			unit, error = 0, rid;
+	int i, s;
+	uint8_t eaddr[ETHER_ADDR_LEN];
+	uint32_t command;
+	struct vr_softc *sc;
+	struct ifnet *ifp;
+	int unit, error = 0, rid;
 
 	s = splimp();
 
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
-	bzero(sc, sizeof(struct vr_softc *));
 	callout_init(&sc->vr_stat_timer);
 
 	/*
@@ -743,10 +707,9 @@ static int vr_attach(dev)
 
 	command = pci_read_config(dev, VR_PCI_CAPID, 4) & 0x000000FF;
 	if (command == 0x01) {
-
 		command = pci_read_config(dev, VR_PCI_PWRMGMTCTRL, 4);
 		if (command & VR_PSTATE_MASK) {
-			u_int32_t		iobase, membase, irq;
+			uint32_t iobase, membase, irq;
 
 			/* Save important PCI config data. */
 			iobase = pci_read_config(dev, VR_PCI_LOIO, 4);
@@ -754,8 +717,8 @@ static int vr_attach(dev)
 			irq = pci_read_config(dev, VR_PCI_INTLINE, 4);
 
 			/* Reset the power state. */
-			printf("vr%d: chip is in D%d power mode "
-			"-- setting to D0\n", unit, command & VR_PSTATE_MASK);
+			device_printf(dev, "chip is in D%d power mode "
+			"-- setting to D0\n", command & VR_PSTATE_MASK);
 			command &= 0xFFFFFFFC;
 			pci_write_config(dev, VR_PCI_PWRMGMTCTRL, command, 4);
 
@@ -777,23 +740,22 @@ static int vr_attach(dev)
 
 #ifdef VR_USEIOSPACE
 	if (!(command & PCIM_CMD_PORTEN)) {
-		printf("vr%d: failed to enable I/O ports!\n", unit);
+		device_printf(dev, "failed to enable I/O ports!\n");
 		free(sc, M_DEVBUF);
 		goto fail;
 	}
 #else
 	if (!(command & PCIM_CMD_MEMEN)) {
-		printf("vr%d: failed to enable memory mapping!\n", unit);
+		device_printf(dev, "failed to enable memory mapping!\n");
 		goto fail;
 	}
 #endif
 
 	rid = VR_RID;
-	sc->vr_res = bus_alloc_resource(dev, VR_RES, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	sc->vr_res = bus_alloc_resource_any(dev, VR_RES, &rid, RF_ACTIVE);
 
 	if (sc->vr_res == NULL) {
-		printf("vr%d: couldn't map ports/memory\n", unit);
+		device_printf(dev, "couldn't map ports/memory\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -803,11 +765,11 @@ static int vr_attach(dev)
 
 	/* Allocate interrupt */
 	rid = 0;
-	sc->vr_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
-	    RF_SHAREABLE | RF_ACTIVE);
+	sc->vr_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
+					    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->vr_irq == NULL) {
-		printf("vr%d: couldn't map interrupt\n", unit);
+		device_printf(dev, "couldn't map interrupt\n");
 		bus_release_resource(dev, VR_RES, VR_RID, sc->vr_res);
 		error = ENXIO;
 		goto fail;
@@ -819,7 +781,7 @@ static int vr_attach(dev)
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->vr_irq);
 		bus_release_resource(dev, VR_RES, VR_RID, sc->vr_res);
-		printf("vr%d: couldn't set up irq\n", unit);
+		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
 
@@ -853,13 +815,11 @@ static int vr_attach(dev)
 	for (i = 0; i < ETHER_ADDR_LEN; i++)
 		eaddr[i] = CSR_READ_1(sc, VR_PAR0 + i);
 
-	sc->vr_unit = unit;
-
 	sc->vr_ldata = contigmalloc(sizeof(struct vr_list_data), M_DEVBUF,
 	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->vr_ldata == NULL) {
-		printf("vr%d: no memory for list buffers!\n", unit);
+		device_printf(dev, "no memory for list buffers!\n");
 		bus_teardown_intr(dev, sc->vr_irq, sc->vr_intrhand);
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->vr_irq);
 		bus_release_resource(dev, VR_RES, VR_RID, sc->vr_res);
@@ -871,7 +831,7 @@ static int vr_attach(dev)
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	if_initname(ifp, "vr", unit);
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = vr_ioctl;
@@ -886,7 +846,7 @@ static int vr_attach(dev)
 	 */
 	if (mii_phy_probe(dev, &sc->vr_miibus,
 	    vr_ifmedia_upd, vr_ifmedia_sts)) {
-		printf("vr%d: MII without any phy!\n", sc->vr_unit);
+		if_printf(ifp, "MII without any phy!\n");
 		bus_teardown_intr(dev, sc->vr_irq, sc->vr_intrhand);
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->vr_irq);
 		bus_release_resource(dev, VR_RES, VR_RID, sc->vr_res);
@@ -896,9 +856,7 @@ static int vr_attach(dev)
 		goto fail;
 	}
 
-	/*
-	 * Call MI attach routine.
-	 */
+	/* Call MI attach routine. */
 	ether_ifattach(ifp, eaddr);
 
 fail:
@@ -906,12 +864,12 @@ fail:
 	return(error);
 }
 
-static int vr_detach(dev)
-	device_t		dev;
+static int
+vr_detach(device_t dev)
 {
-	struct vr_softc		*sc;
-	struct ifnet		*ifp;
-	int			s;
+	struct vr_softc *sc;
+	struct ifnet *ifp;
+	int s;
 
 	s = splimp();
 
@@ -938,23 +896,22 @@ static int vr_detach(dev)
 /*
  * Initialize the transmit descriptors.
  */
-static int vr_list_tx_init(sc)
-	struct vr_softc		*sc;
+static int
+vr_list_tx_init(struct vr_softc *sc)
 {
-	struct vr_chain_data	*cd;
-	struct vr_list_data	*ld;
-	int			i;
+	struct vr_chain_data *cd;
+	struct vr_list_data *ld;
+	int i, nexti;
 
 	cd = &sc->vr_cdata;
 	ld = sc->vr_ldata;
 	for (i = 0; i < VR_TX_LIST_CNT; i++) {
 		cd->vr_tx_chain[i].vr_ptr = &ld->vr_tx_list[i];
 		if (i == (VR_TX_LIST_CNT - 1))
-			cd->vr_tx_chain[i].vr_nextdesc = 
-				&cd->vr_tx_chain[0];
+			nexti = 0;
 		else
-			cd->vr_tx_chain[i].vr_nextdesc =
-				&cd->vr_tx_chain[i + 1];
+			nexti = i + 1;
+		cd->vr_tx_chain[i].vr_nextdesc = &cd->vr_tx_chain[nexti];
 	}
 
 	cd->vr_tx_free = &cd->vr_tx_chain[0];
@@ -969,32 +926,26 @@ static int vr_list_tx_init(sc)
  * we arrange the descriptors in a closed ring, so that the last descriptor
  * points back to the first.
  */
-static int vr_list_rx_init(sc)
-	struct vr_softc		*sc;
+static int
+vr_list_rx_init(struct vr_softc *sc)
 {
-	struct vr_chain_data	*cd;
-	struct vr_list_data	*ld;
-	int			i;
+	struct vr_chain_data *cd;
+	struct vr_list_data *ld;
+	int i, nexti;
 
 	cd = &sc->vr_cdata;
 	ld = sc->vr_ldata;
 
 	for (i = 0; i < VR_RX_LIST_CNT; i++) {
-		cd->vr_rx_chain[i].vr_ptr =
-			(struct vr_desc *)&ld->vr_rx_list[i];
+		cd->vr_rx_chain[i].vr_ptr = (struct vr_desc *)&ld->vr_rx_list[i];
 		if (vr_newbuf(sc, &cd->vr_rx_chain[i], NULL) == ENOBUFS)
 			return(ENOBUFS);
-		if (i == (VR_RX_LIST_CNT - 1)) {
-			cd->vr_rx_chain[i].vr_nextdesc =
-					&cd->vr_rx_chain[0];
-			ld->vr_rx_list[i].vr_next =
-					vtophys(&ld->vr_rx_list[0]);
-		} else {
-			cd->vr_rx_chain[i].vr_nextdesc =
-					&cd->vr_rx_chain[i + 1];
-			ld->vr_rx_list[i].vr_next =
-					vtophys(&ld->vr_rx_list[i + 1]);
-		}
+		if (i == (VR_RX_LIST_CNT - 1))
+			nexti = 0;
+		else
+			nexti = i + 1;
+		cd->vr_rx_chain[i].vr_nextdesc = &cd->vr_rx_chain[nexti];
+		ld->vr_rx_list[i].vr_next = vtophys(&ld->vr_rx_list[nexti]);
 	}
 
 	cd->vr_rx_head = &cd->vr_rx_chain[0];
@@ -1009,12 +960,10 @@ static int vr_list_rx_init(sc)
  * MCLBYTES is 2048, so we have to subtract one otherwise we'll
  * overflow the field and make a mess.
  */
-static int vr_newbuf(sc, c, m)
-	struct vr_softc		*sc;
-	struct vr_chain_onefrag	*c;
-	struct mbuf		*m;
+static int
+vr_newbuf(struct vr_softc *sc, struct vr_chain_onefrag *c, struct mbuf *m)
 {
-	struct mbuf		*m_new = NULL;
+	struct mbuf *m_new = NULL;
 
 	if (m == NULL) {
 		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
@@ -1033,7 +982,7 @@ static int vr_newbuf(sc, c, m)
 		m_new->m_data = m_new->m_ext.ext_buf;
 	}
 
-	m_adj(m_new, sizeof(u_int64_t));
+	m_adj(m_new, sizeof(uint64_t));
 
 	c->vr_mbuf = m_new;
 	c->vr_ptr->vr_status = VR_RXSTAT;
@@ -1047,20 +996,20 @@ static int vr_newbuf(sc, c, m)
  * A frame has been uploaded: pass the resulting mbuf chain up to
  * the higher level protocols.
  */
-static void vr_rxeof(sc)
-	struct vr_softc		*sc;
+static void
+vr_rxeof(struct vr_softc *sc)
 {
-        struct mbuf		*m;
-        struct ifnet		*ifp;
-	struct vr_chain_onefrag	*cur_rx;
-	int			total_len = 0;
-	u_int32_t		rxstat;
+        struct mbuf *m;
+        struct ifnet *ifp;
+	struct vr_chain_onefrag *cur_rx;
+	int total_len = 0;
+	uint32_t rxstat;
 
 	ifp = &sc->arpcom.ac_if;
 
 	while(!((rxstat = sc->vr_cdata.vr_rx_head->vr_ptr->vr_status) &
 							VR_RXSTAT_OWN)) {
-		struct mbuf		*m0 = NULL;
+		struct mbuf *m0 = NULL;
 
 		cur_rx = sc->vr_cdata.vr_rx_head;
 		sc->vr_cdata.vr_rx_head = cur_rx->vr_nextdesc;
@@ -1074,8 +1023,7 @@ static void vr_rxeof(sc)
 		 */
 		if (rxstat & VR_RXSTAT_RXERR) {
 			ifp->if_ierrors++;
-			printf("vr%d: rx error (%02x):",
-			       sc->vr_unit, rxstat & 0x000000ff);
+			if_printf(ifp, "rx error (%02x):", rxstat & 0x000000ff);
 			if (rxstat & VR_RXSTAT_CRCERR)
 				printf(" crc error");
 			if (rxstat & VR_RXSTAT_FRAMEALIGNERR)
@@ -1120,15 +1068,13 @@ static void vr_rxeof(sc)
 		ifp->if_ipackets++;
 		(*ifp->if_input)(ifp, m);
 	}
-
-	return;
 }
 
-void vr_rxeoc(sc)
-	struct vr_softc		*sc;
+static void
+vr_rxeoc(struct vr_softc *sc)
 {
-	struct ifnet		*ifp;
-	int			i;
+	struct ifnet *ifp;
+	int i;
 
 	ifp = &sc->arpcom.ac_if;
 
@@ -1137,36 +1083,34 @@ void vr_rxeoc(sc)
 	VR_CLRBIT16(sc, VR_COMMAND, VR_CMD_RX_ON);	
         DELAY(10000);
 
+	/* Wait for receiver to stop */
 	for (i = 0x400;
 	     i && (CSR_READ_2(sc, VR_COMMAND) & VR_CMD_RX_ON);
 	     i--)
 		;	/* Wait for receiver to stop */
 
-	if (!i) {
-		printf("vr%d: rx shutdown error!\n", sc->vr_unit);
+	if (i == 0) {
+		if_printf(ifp, "rx shutdown error!\n");
 		sc->vr_flags |= VR_F_RESTART;
 		return;
-		}
+	}
 
 	vr_rxeof(sc);
 
 	CSR_WRITE_4(sc, VR_RXADDR, vtophys(sc->vr_cdata.vr_rx_head->vr_ptr));
 	VR_SETBIT16(sc, VR_COMMAND, VR_CMD_RX_ON);
 	VR_SETBIT16(sc, VR_COMMAND, VR_CMD_RX_GO);
-
-	return;
 }
 
 /*
  * A frame was downloaded to the chip. It's safe for us to clean up
  * the list buffers.
  */
-
-static void vr_txeof(sc)
-	struct vr_softc		*sc;
+static void
+vr_txeof(struct vr_softc *sc)
 {
-	struct vr_chain		*cur_tx;
-	struct ifnet		*ifp;
+	struct vr_chain *cur_tx;
+	struct ifnet *ifp;
 
 	ifp = &sc->arpcom.ac_if;
 
@@ -1182,8 +1126,8 @@ static void vr_txeof(sc)
 	 * frames that have been transmitted.
 	 */
 	while(sc->vr_cdata.vr_tx_head->vr_mbuf != NULL) {
-		u_int32_t		txstat;
-		int			i;
+		uint32_t txstat;
+		int i;
 
 		cur_tx = sc->vr_cdata.vr_tx_head;
 		txstat = cur_tx->vr_ptr->vr_status;
@@ -1194,8 +1138,8 @@ static void vr_txeof(sc)
 			     i && (CSR_READ_2(sc, VR_COMMAND) & VR_CMD_TX_ON);
 			     i--)
 				;	/* Wait for chip to shutdown */
-			if (!i) {
-				printf("vr%d: tx shutdown timeout\n", sc->vr_unit);
+			if (i == 0) {
+				if_printf(ifp, "tx shutdown timeout\n");
 				sc->vr_flags |= VR_F_RESTART;
 				break;
 			}
@@ -1231,17 +1175,15 @@ static void vr_txeof(sc)
 
 		sc->vr_cdata.vr_tx_head = cur_tx->vr_nextdesc;
 	}
-
-	return;
 }
 
 /*
  * TX 'end of channel' interrupt handler.
  */
-static void vr_txeoc(sc)
-	struct vr_softc		*sc;
+static void
+vr_txeoc(struct vr_softc *sc)
 {
-	struct ifnet		*ifp;
+	struct ifnet *ifp;
 
 	ifp = &sc->arpcom.ac_if;
 
@@ -1250,22 +1192,20 @@ static void vr_txeoc(sc)
 		sc->vr_cdata.vr_tx_tail = NULL;
 		ifp->if_timer = 0;
 	}
-
-	return;
 }
 
-static void vr_tick(xsc)
-	void			*xsc;
+static void
+vr_tick(void *xsc)
 {
-	struct vr_softc		*sc;
-	struct mii_data		*mii;
-	int			s;
+	struct vr_softc *sc;
+	struct mii_data *mii;
+	int s;
 
 	s = splimp();
 
 	sc = xsc;
 	if (sc->vr_flags & VR_F_RESTART) {
-		printf("vr%d: restarting\n", sc->vr_unit);
+		if_printf(&sc->arpcom.ac_if, "restarting\n");
 		vr_stop(sc);
 		vr_reset(sc);
 		vr_init(sc);
@@ -1278,16 +1218,14 @@ static void vr_tick(xsc)
 	callout_reset(&sc->vr_stat_timer, hz, vr_tick, sc);
 
 	splx(s);
-
-	return;
 }
 
-static void vr_intr(arg)
-	void			*arg;
+static void
+vr_intr(void *arg)
 {
-	struct vr_softc		*sc;
-	struct ifnet		*ifp;
-	u_int16_t		status;
+	struct vr_softc *sc;
+	struct ifnet *ifp;
+	uint16_t status;
 
 	sc = arg;
 	ifp = &sc->arpcom.ac_if;
@@ -1303,7 +1241,6 @@ static void vr_intr(arg)
 		CSR_WRITE_2(sc, VR_IMR, 0x0000);
 
 	for (;;) {
-
 		status = CSR_READ_2(sc, VR_ISR);
 		if (status)
 			CSR_WRITE_2(sc, VR_ISR, status);
@@ -1315,14 +1252,13 @@ static void vr_intr(arg)
 			vr_rxeof(sc);
 
 		if (status & VR_ISR_RX_DROPPED) {
-			printf("vr%d: rx packet lost\n", sc->vr_unit);
+			if_printf(ifp, "rx packet lost\n");
 			ifp->if_ierrors++;
 			}
 
 		if ((status & VR_ISR_RX_ERR) || (status & VR_ISR_RX_NOBUF) ||
 		    (status & VR_ISR_RX_NOBUF) || (status & VR_ISR_RX_OFLOW)) {
-			printf("vr%d: receive error (%04x)",
-			       sc->vr_unit, status);
+			if_printf(ifp, "receive error (%04x)", status);
 			if (status & VR_ISR_RX_NOBUF)
 				printf(" no buffers");
 			if (status & VR_ISR_RX_OFLOW)
@@ -1350,8 +1286,9 @@ static void vr_intr(arg)
 					VR_SETBIT16(sc, VR_COMMAND, VR_CMD_TX_ON);
 					VR_SETBIT16(sc, VR_COMMAND, VR_CMD_TX_GO);
 				}
-			} else
+			} else {
 				vr_txeoc(sc);
+			}
 		}
 
 	}
@@ -1360,26 +1297,21 @@ static void vr_intr(arg)
 	if ((ifp->if_flags & IFF_POLLING) == 0)
 		CSR_WRITE_2(sc, VR_IMR, VR_INTRS);
 
-	if (ifp->if_snd.ifq_head != NULL) {
+	if (ifp->if_snd.ifq_head != NULL)
 		vr_start(ifp);
-	}
-
-	return;
 }
 
 /*
  * Encapsulate an mbuf chain in a descriptor by coupling the mbuf data
  * pointers to the fragment pointers.
  */
-static int vr_encap(sc, c, m_head)
-	struct vr_softc		*sc;
-	struct vr_chain		*c;
-	struct mbuf		*m_head;
+static int
+vr_encap(struct vr_softc *sc, struct vr_chain *c, struct mbuf *m_head)
 {
-	int			frag = 0;
-	struct vr_desc		*f = NULL;
-	int			total_len;
-	struct mbuf		*m;
+	int frag = 0;
+	struct vr_desc *f = NULL;
+	int total_len;
+	struct mbuf *m;
 
 	m = m_head;
 	total_len = 0;
@@ -1391,19 +1323,19 @@ static int vr_encap(sc, c, m_head)
 	 * to copy, just do it all the time.
 	 */
 	if (m != NULL) {
-		struct mbuf		*m_new = NULL;
+		struct mbuf *m_new = NULL;
 
 		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL) {
-			printf("vr%d: no memory for tx list\n", sc->vr_unit);
+			if_printf(&sc->arpcom.ac_if, "no memory for tx list\n");
 			return(1);
 		}
 		if (m_head->m_pkthdr.len > MHLEN) {
 			MCLGET(m_new, MB_DONTWAIT);
 			if (!(m_new->m_flags & M_EXT)) {
 				m_freem(m_new);
-				printf("vr%d: no memory for tx list\n",
-						sc->vr_unit);
+				if_printf(&sc->arpcom.ac_if,
+					  "no memory for tx list\n");
 				return(1);
 			}
 		}
@@ -1442,23 +1374,19 @@ static int vr_encap(sc, c, m_head)
  * copy of the pointers since the transmit list fragment pointers are
  * physical addresses.
  */
-
-static void vr_start(ifp)
-	struct ifnet		*ifp;
+static void
+vr_start(struct ifnet *ifp)
 {
-	struct vr_softc		*sc;
-	struct mbuf		*m_head = NULL;
-	struct vr_chain		*cur_tx = NULL, *start_tx;
+	struct vr_softc *sc;
+	struct mbuf *m_head = NULL;
+	struct vr_chain *cur_tx = NULL, *start_tx;
 
 	sc = ifp->if_softc;
 
 	if (ifp->if_flags & IFF_OACTIVE)
 		return;
 
-	/*
-	 * Check for an available queue slot. If there are none,
-	 * punt.
-	 */
+	/* Check for an available queue slot. If there are none, punt. */
 	if (sc->vr_cdata.vr_tx_free->vr_mbuf != NULL) {
 		ifp->if_flags |= IFF_OACTIVE;
 		return;
@@ -1492,9 +1420,7 @@ static void vr_start(ifp)
 		VR_SETBIT16(sc, VR_COMMAND, /*VR_CMD_TX_ON|*/VR_CMD_TX_GO);
 	}
 
-	/*
-	 * If there are no frames queued, bail.
-	 */
+	/* If there are no frames queued, bail. */
 	if (cur_tx == NULL)
 		return;
 
@@ -1507,39 +1433,33 @@ static void vr_start(ifp)
 	 * Set a timeout in case the chip goes out to lunch.
 	 */
 	ifp->if_timer = 5;
-
-	return;
 }
 
-static void vr_init(xsc)
-	void			*xsc;
+static void
+vr_init(void *xsc)
 {
-	struct vr_softc		*sc = xsc;
-	struct ifnet		*ifp = &sc->arpcom.ac_if;
-	struct mii_data		*mii;
-	int			s, i;
+	struct vr_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct mii_data *mii;
+	int s, i;
 
 	s = splimp();
 
 	mii = device_get_softc(sc->vr_miibus);
 
-	/*
-	 * Cancel pending I/O and free all RX/TX buffers.
-	 */
+	/* Cancel pending I/O and free all RX/TX buffers. */
 	vr_stop(sc);
 	vr_reset(sc);
 
-	/*
-	 * Set our station address.
-	 */
+	/* Set our station address. */
 	for (i = 0; i < ETHER_ADDR_LEN; i++)
 		CSR_WRITE_1(sc, VR_PAR0 + i, sc->arpcom.ac_enaddr[i]);
-	
-	/* Set DMA size */
+
+	/* Set DMA size. */
 	VR_CLRBIT(sc, VR_BCR0, VR_BCR0_DMA_LENGTH);
 	VR_SETBIT(sc, VR_BCR0, VR_BCR0_DMA_STORENFWD);
 
-	/* 
+	/*
 	 * BCR0 and BCR1 can override the RXCFG and TXCFG registers,
 	 * so we must set both.
 	 */
@@ -1557,16 +1477,13 @@ static void vr_init(xsc)
 
 	/* Init circular RX list. */
 	if (vr_list_rx_init(sc) == ENOBUFS) {
-		printf("vr%d: initialization failed: no "
-			"memory for rx buffers\n", sc->vr_unit);
+		if_printf(ifp, "initialization failed: no memory for rx buffers\n");
 		vr_stop(sc);
-		(void)splx(s);
+		splx(s);
 		return;
 	}
 
-	/*
-	 * Init tx descriptors.
-	 */
+	/* Init tx descriptors. */
 	vr_list_tx_init(sc);
 
 	/* If we want promiscuous mode, set the allframes bit. */
@@ -1610,20 +1527,18 @@ static void vr_init(xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	(void)splx(s);
+	splx(s);
 
 	callout_reset(&sc->vr_stat_timer, hz, vr_tick, sc);
-
-	return;
 }
 
 /*
  * Set media options.
  */
-static int vr_ifmedia_upd(ifp)
-	struct ifnet		*ifp;
+static int
+vr_ifmedia_upd(struct ifnet *ifp)
 {
-	struct vr_softc		*sc;
+	struct vr_softc *sc;
 
 	sc = ifp->if_softc;
 
@@ -1636,32 +1551,26 @@ static int vr_ifmedia_upd(ifp)
 /*
  * Report current media status.
  */
-static void vr_ifmedia_sts(ifp, ifmr)
-	struct ifnet		*ifp;
-	struct ifmediareq	*ifmr;
+static void
+vr_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
-	struct vr_softc		*sc;
-	struct mii_data		*mii;
+	struct vr_softc *sc;
+	struct mii_data *mii;
 
 	sc = ifp->if_softc;
 	mii = device_get_softc(sc->vr_miibus);
 	mii_pollstat(mii);
 	ifmr->ifm_active = mii->mii_media_active;
 	ifmr->ifm_status = mii->mii_media_status;
-
-	return;
 }
 
-static int vr_ioctl(ifp, command, data, cr)
-	struct ifnet		*ifp;
-	u_long			command;
-	caddr_t			data;
-	struct ucred		*cr;
+static int
+vr_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
-	struct vr_softc		*sc = ifp->if_softc;
-	struct ifreq		*ifr = (struct ifreq *) data;
-	struct mii_data		*mii;
-	int			s, error = 0;
+	struct vr_softc *sc = ifp->if_softc;
+	struct ifreq *ifr = (struct ifreq *) data;
+	struct mii_data *mii;
+	int s, error = 0;
 
 	s = splimp();
 
@@ -1695,46 +1604,41 @@ static int vr_ioctl(ifp, command, data, cr)
 		break;
 	}
 
-	(void)splx(s);
+	splx(s);
 
 	return(error);
 }
 
 #ifdef DEVICE_POLLING
-
-static
-void
+static void
 vr_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 {
 	struct vr_softc *sc = ifp->if_softc;
 
-	if (cmd == POLL_DEREGISTER) {
+	if (cmd == POLL_DEREGISTER)
 		CSR_WRITE_2(sc, VR_IMR, VR_INTRS);
-	} else {
+	else
 		vr_intr(sc);
-	}
 }
-
 #endif
 
-static void vr_watchdog(ifp)
-	struct ifnet		*ifp;
+static void
+vr_watchdog(struct ifnet *ifp)
 {
-	struct vr_softc		*sc;
+	struct vr_softc *sc;
 
 	sc = ifp->if_softc;
 
 	ifp->if_oerrors++;
-	printf("vr%d: watchdog timeout\n", sc->vr_unit);
+	if_printf(ifp, "watchdog timeout\n");
 
 #ifdef DEVICE_POLLING
 	if (++sc->vr_wdogerrors == 1 && (ifp->if_flags & IFF_POLLING) == 0) {
-		printf("vr%d ints don't seem to be working, "
-			"emergency switch to polling\n", sc->vr_unit);
+		if_printf(ifp, "ints don't seem to be working, "
+			"emergency switch to polling\n");
 		emergency_poll_enable("if_vr");
-		if (ether_poll_register(vr_poll, ifp)) {
+		if (ether_poll_register(vr_poll, ifp))
 			CSR_WRITE_2(sc, VR_IMR, 0x0000);
-		}
 	} else 
 #endif
 	{
@@ -1751,11 +1655,11 @@ static void vr_watchdog(ifp)
  * Stop the adapter and free any mbufs allocated to the
  * RX and TX lists.
  */
-static void vr_stop(sc)
-	struct vr_softc		*sc;
+static void
+vr_stop(struct vr_softc *sc)
 {
-	int		i;
-	struct ifnet		*ifp;
+	int i;
+	struct ifnet *ifp;
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_timer = 0;
@@ -1794,22 +1698,18 @@ static void vr_stop(sc)
 		sizeof(sc->vr_ldata->vr_tx_list));
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-
-	return;
 }
 
 /*
  * Stop all chip I/O so that the kernel's probe routines don't
  * get confused by errant DMAs when rebooting.
  */
-static void vr_shutdown(dev)
-	device_t		dev;
+static void
+vr_shutdown(device_t dev)
 {
-	struct vr_softc		*sc;
+	struct vr_softc *sc;
 
 	sc = device_get_softc(dev);
 
 	vr_stop(sc);
-
-	return;
 }

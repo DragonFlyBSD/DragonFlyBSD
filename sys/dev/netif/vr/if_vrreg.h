@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vrreg.h,v 1.7.2.5 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vrreg.h,v 1.4 2004/09/15 01:04:59 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vrreg.h,v 1.5 2005/02/12 02:23:24 joerg Exp $
  */
 
 /*
@@ -329,10 +329,10 @@
  */
 
 struct vr_desc {
-	u_int32_t		vr_status;
-	u_int32_t		vr_ctl;
-	u_int32_t		vr_ptr1;
-	u_int32_t		vr_ptr2;
+	uint32_t		vr_status;
+	uint32_t		vr_ctl;
+	uint32_t		vr_ptr1;
+	uint32_t		vr_ptr2;
 };
 
 #define vr_data		vr_ptr1
@@ -427,18 +427,18 @@ struct vr_chain_data {
 };
 
 struct vr_type {
-	u_int16_t		vr_vid;
-	u_int16_t		vr_did;
+	uint16_t		vr_vid;
+	uint16_t		vr_did;
 	char			*vr_name;
 };
 
 struct vr_mii_frame {
-	u_int8_t		mii_stdelim;
-	u_int8_t		mii_opcode;
-	u_int8_t		mii_phyaddr;
-	u_int8_t		mii_regaddr;
-	u_int8_t		mii_turnaround;
-	u_int16_t		mii_data;
+	uint8_t			mii_stdelim;
+	uint8_t			mii_opcode;
+	uint8_t			mii_phyaddr;
+	uint8_t			mii_regaddr;
+	uint8_t			mii_turnaround;
+	uint16_t		mii_data;
 };
 
 /*
@@ -462,10 +462,9 @@ struct vr_softc {
 	void			*vr_intrhand;
 	device_t		vr_miibus;
 	struct vr_type		*vr_info;	/* Rhine adapter info */
-	u_int8_t		vr_unit;	/* interface number */
-	u_int8_t		vr_type;
-	u_int8_t		vr_revid;	/* Rhine chip revision */
-	u_int8_t		vr_flags;	/* See VR_F_* below */
+	uint8_t			vr_type;
+	uint8_t			vr_revid;	/* Rhine chip revision */
+	uint8_t			vr_flags;	/* See VR_F_* below */
 	struct vr_list_data	*vr_ldata;
 	struct vr_chain_data	vr_cdata;
 	struct callout		vr_stat_timer;
