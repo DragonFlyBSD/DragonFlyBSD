@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.8 2004/05/19 22:52:58 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.9 2004/05/31 17:38:08 dillon Exp $
  */
 
 /*
@@ -349,7 +349,7 @@ getdiskbyname(char *name)
 		unit = *cp - '0';
 	*cp++ = '\0';
 	for (cd = 0; cd < NUMCDEVSW; cd++) {
-		dev = udev2dev(makeudev(cd, 0), 0);
+		dev = udev2dev(makeudev(cd, dkmakeminor(unit, slice, part)), 0);
 		if (dev_is_good(dev) && dev_dname(dev) &&
 		    strcmp(dev_dname(dev), name) == 0) {
 			goto gotit;
