@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/emu10k1.c,v 1.6.2.9 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.5 2004/01/06 16:31:55 asmodai Exp $
+ * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.6 2004/02/24 19:37:43 joerg Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 #include <bus/pci/pcivar.h>
 #include <sys/queue.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.5 2004/01/06 16:31:55 asmodai Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.6 2004/02/24 19:37:43 joerg Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -1247,7 +1247,7 @@ audigy_initefx(struct sc_info *sc)
 
 	/* Audigy 2 (EMU10K2) DSP Registers:
 	   FX Bus
-		0x000-0x00f : 16 registers (???)
+		0x000-0x00f : 16 registers (?)
 	   Input
 		0x040/0x041 : AC97 Codec (l/r)
 		0x042/0x043 : ADC, S/PDIF (l/r)
@@ -1276,9 +1276,9 @@ audigy_initefx(struct sc_info *sc)
 		0x0cb = 0x10000000, 0x0cc = 0x20000000, 0x0cd = 0x40000000
 		0x0ce = 0x80000000, 0x0cf = 0x7fffffff, 0x0d0 = 0xffffffff
 		0x0d1 = 0xfffffffe, 0x0d2 = 0xc0000000, 0x0d3 = 0x41fbbcdc
-		0x0d4 = 0x5a7ef9db, 0x0d5 = 0x00100000, 0x0dc = 0x00000001 (???)
+		0x0d4 = 0x5a7ef9db, 0x0d5 = 0x00100000, 0x0dc = 0x00000001 (?)
 	   Temporary Values
-		0x0d6 : Accumulator (???)
+		0x0d6 : Accumulator (?)
 		0x0d7 : Condition Register
 		0x0d8 : Noise source
 		0x0d9 : Noise source
