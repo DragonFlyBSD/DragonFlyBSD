@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mkdir.c	8.2 (Berkeley) 1/25/94
  * $FreeBSD: src/bin/mkdir/mkdir.c,v 1.19.2.2 2001/08/01 04:42:37 obrien Exp $
- * $DragonFly: src/bin/mkdir/mkdir.c,v 1.4 2003/09/28 14:39:14 hmp Exp $
+ * $DragonFly: src/bin/mkdir/mkdir.c,v 1.5 2004/10/18 18:42:01 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -48,17 +48,17 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-int	build (char *, mode_t);
-int	main (int, char *[]);
-void	usage (void);
+static int	build(char *, mode_t);
+static void	usage(void);
 
 int vflag;
 
 int
 main(int argc, char **argv)
 {
-	int ch, exitval, success, omode, pflag;
-	mode_t *set = (mode_t *)NULL;
+	int ch, exitval, success, pflag;
+	void *set;
+	mode_t omode;
 	char *mode;
 
 	omode = pflag = 0;
@@ -74,7 +74,6 @@ main(int argc, char **argv)
 		case 'v':
 			vflag = 1;
 			break;
-		case '?':
 		default:
 			usage();
 		}
@@ -87,8 +86,14 @@ main(int argc, char **argv)
 	if (mode == NULL) {
 		omode = S_IRWXU | S_IRWXG | S_IRWXO;
 	} else {
-		if ((set = setmode(mode)) == NULL)
-			errx(1, "invalid file mode: %s", mode);
+		errno = 0;
+		if ((set = setmode(mode)) == NULL) {
+			if (!errno)
+				errx(1, "invalid file mode: %s", mode);
+			else
+				/* A malloc(3) error, not a invaild file mode. */	
+				err(1, "setmode failed");
+		}
 		omode = getmode(set, S_IRWXU | S_IRWXG | S_IRWXO);
 		free(set);
 	}
@@ -124,7 +129,7 @@ main(int argc, char **argv)
 	exit(exitval);
 }
 
-int
+static int
 build(char *path, mode_t omode)
 {
 	struct stat sb;
@@ -192,7 +197,7 @@ build(char *path, mode_t omode)
 	return (retval);
 }
 
-void
+static void
 usage(void)
 {
 
