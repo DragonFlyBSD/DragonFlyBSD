@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkcore/kcore.c,v 1.2 2004/11/28 15:40:43 joerg Exp $
+ * $DragonFly: src/lib/libkcore/kcore.c,v 1.3 2004/12/20 02:40:07 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -51,7 +51,7 @@ kcore_open(const char *execfile, const char *corefile, char *errbuf)
 	struct kcore_data *kc;
 
 	kc = malloc(sizeof(*kc));
-	if (kc)
+	if (kc == NULL)
 		return(NULL);
 	kc->kd = kvm_openfiles(execfile, corefile, NULL, O_RDONLY, errbuf);
 	if (kc->kd == NULL) {
