@@ -29,7 +29,7 @@
  *
  * @(#)newkey.c 1.8 91/03/11 Copyr 1986 Sun Micro
  * $FreeBSD: src/usr.bin/newkey/newkey.c,v 1.3 1999/08/28 01:04:34 peter Exp $
- * $DragonFly: src/usr.bin/newkey/newkey.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
+ * $DragonFly: src/usr.bin/newkey/newkey.c,v 1.4 2005/01/11 00:29:12 joerg Exp $
  */
 
 /*
@@ -39,8 +39,16 @@
 /*
  * Administrative tool to add a new user to the publickey database
  */
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #include <err.h>
+#include <pwd.h>
+#include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include <rpc/rpc.h>
 #include <rpc/key_prot.h>
 #ifdef YP
@@ -49,10 +57,8 @@
 #include <sys/wait.h>
 #include <netdb.h>
 #endif	/* YP */
-#include <pwd.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/resource.h>
+
+#include "externs.h"
 
 #ifdef YP
 #define MAXMAPNAMELEN 256
@@ -70,17 +76,15 @@
 #endif
 
 #ifdef YP
-static char *basename();
-static char SHELL[] = "/bin/sh";
 static char YPDBPATH[]="/var/yp";
 static char PKMAP[] = "publickey.byname";
-static char UPDATEFILE[] = "updaters";
 #else
 static char PKFILE[] = "/etc/publickey";
-static char *err_string();
+static const char	*err_string(int);
 #endif	/* YP */
 
-static void usage(void);
+static int	setpublicmap(char *, char *, char *);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
@@ -168,6 +172,7 @@ usage(void)
 /*
  * Set the entry in the public key file
  */
+static int
 setpublicmap(char *name, char *public, char *secret)
 {
 	char pkent[1024];
@@ -177,8 +182,7 @@ setpublicmap(char *name, char *public, char *secret)
 	return (mapupdate(name, PKMAP, YPOP_STORE,
 		strlen(name), name, strlen(pkent), pkent));
 #else
-	return (localupdate(name, PKFILE, YPOP_STORE,
-		strlen(name), name, strlen(pkent), pkent));
+	return (localupdate(name, PKFILE, YPOP_STORE, name, pkent));
 #endif
 	}
  
@@ -188,10 +192,10 @@ setpublicmap(char *name, char *public, char *secret)
 	 * to an input error code.  An input value of zero will return
 	 * a success message.
 	 */
-static char *
+static const char *
 err_string(int code)
 {
-	char *pmesg;
+	const char *pmesg;
 
 	switch (code) {
 	case 0:

@@ -29,29 +29,31 @@
  *
  * @(#)generic.c 1.2 91/03/11 Copyr 1986 Sun Micro
  * $FreeBSD: src/usr.bin/newkey/generic.c,v 1.3.2.1 2001/07/04 22:32:20 kris Exp $
- * $DragonFly: src/usr.bin/newkey/generic.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
+ * $DragonFly: src/usr.bin/newkey/generic.c,v 1.4 2005/01/11 00:29:12 joerg Exp $
  */
 
 /*
  * Copyright (C) 1986, Sun Microsystems, Inc.
  */
 
+#include <sys/file.h>
+
+#include <mp.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <rpc/rpc.h>
-#include <sys/file.h>
-#include <mp.h>
 #include <rpc/key_prot.h>
 
-static int adjust( char[], char * );
+#include "externs.h"
+
+static void	adjust(char[], char *);
+
 /*
  * Generate a seed
  */
-static
-getseed(seed, seedsize, pass)
-	char *seed;
-	int seedsize;
-	unsigned char *pass;
+static void
+getseed(char *seed, int seedsize, unsigned char *pass)
 {
 	int i;
 
@@ -63,9 +65,10 @@ getseed(seed, seedsize, pass)
 /*
  * Generate a random public/secret key pair
  */
+void
 genkeys(char *public, char *secret, char *pass)
 {
-	int i;
+	unsigned int i;
 
 #   define BASEBITS (8*sizeof (short) - 1)
 #	define BASE		(1 << BASEBITS)
@@ -106,7 +109,7 @@ genkeys(char *public, char *secret, char *pass)
 /*
  * Adjust the input key so that it is 0-filled on the left
  */
-static
+static void
 adjust(char keyout[HEXKEYBYTES+1], char *keyin)
 {
 	char *p;

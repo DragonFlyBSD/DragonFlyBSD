@@ -29,7 +29,7 @@
  *
  * @(#)update.c 1.2 91/03/11 Copyr 1986 Sun Micro
  * $FreeBSD: src/usr.bin/newkey/update.c,v 1.5 1999/08/28 01:04:35 peter Exp $
- * $DragonFly: src/usr.bin/newkey/update.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
+ * $DragonFly: src/usr.bin/newkey/update.c,v 1.4 2005/01/11 00:29:12 joerg Exp $
  */
 
 /*
@@ -39,8 +39,15 @@
 /*
  * Administrative tool to add a new user to the publickey database
  */
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
 #include <rpc/rpc.h>
 #include <rpc/key_prot.h>
 #ifdef YP
@@ -49,10 +56,8 @@
 #include <sys/wait.h>
 #include <netdb.h>
 #endif	/* YP */
-#include <pwd.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/resource.h>
+
+#include "externs.h"
 
 #ifdef YP
 #define	MAXMAPNAMELEN 256
@@ -64,23 +69,21 @@
 #endif
 
 #ifdef YP
-static char *basename();
+static char *basename(char *);
 static char SHELL[] = "/bin/sh";
 static char YPDBPATH[]="/var/yp";	/* This is defined but not used! */
-static char PKMAP[] = "publickey.byname";
 static char UPDATEFILE[] = "updaters";
-#else
-static char PKFILE[] = "/etc/publickey";
 #endif	/* YP */
 
 #ifdef YP
-static int _openchild( char *, FILE **, FILE ** );
+static int _openchild(char *, FILE **, FILE ** );
 
 /*
  * Determine if requester is allowed to update the given map,
  * and update it if so. Returns the yp status, which is zero
  * if there is no access violation.
  */
+int
 mapupdate(char *requester, char *mapname, u_int op, u_int keylen, char *key,
           u_int datalen, char *data)
 {
@@ -139,7 +142,7 @@ mapupdate(char *requester, char *mapname, u_int op, u_int keylen, char *key,
 /*
  * returns pid, or -1 for failure
  */
-static
+static int
 _openchild(char *command, FILE **fto, FILE **ffrom)
 {
 	int i;
@@ -205,8 +208,7 @@ error1:
 }
 
 static char *
-basename(path)
-	char *path;
+basename(char *path)
 {
 	char *p;
 
@@ -235,12 +237,8 @@ static int match( char * , char * );
  * if there is no access violation. This function updates
  * the local file and then shuts up.
  */
-localupdate(char *name, /* Name of the requestor */
-            char *filename, u_int op,
-				u_int keylen, /* Not used */
-				char *key,
-				u_int datalen, /* Not used */
-				char *data)
+int
+localupdate(char *name, char *filename, u_int op, char *key, char *data)
 {
 	char line[256];
 	FILE *rf;
@@ -325,7 +323,7 @@ localupdate(char *name, /* Name of the requestor */
 	return (err);
 }
 
-static
+static int
 match(char *line, char *name)
 {
 	int len;
