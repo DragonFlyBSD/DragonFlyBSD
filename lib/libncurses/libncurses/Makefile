@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.1 2005/03/12 19:13:54 eirikn Exp $
+# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.2 2005/03/12 20:57:07 joerg Exp $
 
 LIB=    ncurses
 SHLIB_MAJOR=5
@@ -13,10 +13,7 @@ NCURSESTRACEDIR=${NCURSESDIR}/ncurses/trace
 .PATH: ${NCURSESBASEDIR} ${NCURSESSERIALDIR} ${NCURSESTINFODIR} \
 	${NCURSESTRACEDIR} ${.OBJDIR} ${NCURSESDIR}/include/
 
-CFLAGS= 	-I${NCURSESDIR}/ncurses/
-CFLAGS+=	-I${NCURSESDIR}/include/
-CFLAGS+=	-I${.CURDIR}/../include/
-CFLAGS+=	-I${.OBJDIR}/
+CFLAGS+= 	-I${NCURSESDIR}/ncurses/
 CFLAGS+=	-DTRACE
 
 TERMINFO_CAPS=  ${NCURSESDIR}/include/Caps

@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libncurses/libform/Makefile,v 1.1 2005/03/12 19:13:54 eirikn Exp $
+# $DragonFly: src/lib/libncurses/libform/Makefile,v 1.2 2005/03/12 20:57:07 joerg Exp $
 
 LIB=    form
 SHLIB_MAJOR=5
@@ -10,10 +10,7 @@ NCURSESFORMDIR= ${NCURSESDIR}/form ${.OBJDIR}
 
 .PATH: ${NCURSESFORMDIR}
 
-CFLAGS= 	-I${NCURSESDIR}/menu
-CFLAGS+=	-I${NCURSESDIR}/include/
-CFLAGS+=	-I${.CURDIR}/../include/
-CFLAGS+=	-I${.CURDIR}
+CFLAGS+= 	-I${NCURSESDIR}/menu
 
 TERMINFO_CAPS=  ${NCURSESDIR}/include/Caps
 

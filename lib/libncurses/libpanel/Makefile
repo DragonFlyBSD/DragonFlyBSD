@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libncurses/libpanel/Makefile,v 1.1 2005/03/12 19:13:54 eirikn Exp $
+# $DragonFly: src/lib/libncurses/libpanel/Makefile,v 1.2 2005/03/12 20:57:07 joerg Exp $
 
 LIB=    panel
 SHLIB_MAJOR=5
@@ -10,11 +10,7 @@ NCURSESPANELDIR=${NCURSESDIR}/panel ${.OBJDIR}
 
 .PATH: ${NCURSESPANELDIR}
 
-CFLAGS= 	-I${NCURSESDIR}/menu
-CFLAGS+=	-I${NCURSESDIR}/include/
-CFLAGS+=	-I${NCURSESDIR}/ncurses/
-CFLAGS+=	-I${.CURDIR}/../include/
-CFLAGS+=	-I${.CURDIR}
+CFLAGS+= 	-I${NCURSESDIR}/menu -I${NCURSESDIR}/ncurses
 
 TERMINFO_CAPS=  ${NCURSESDIR}/include/Caps
 
