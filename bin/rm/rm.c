@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rm.c	8.5 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/rm/rm.c,v 1.29.2.5 2002/07/12 07:25:48 tjr Exp $
- * $DragonFly: src/bin/rm/rm.c,v 1.8 2004/10/18 17:38:52 dillon Exp $
+ * $DragonFly: src/bin/rm/rm.c,v 1.9 2004/11/06 19:37:44 liamfoy Exp $
  */
 
 #include <sys/stat.h>
@@ -54,13 +54,13 @@ int dflag, eval, fflag, iflag, Pflag, vflag, Wflag, stdin_ok;
 int rflag, Iflag;
 uid_t uid;
 
-int	check(char *, char *, struct stat *);
-int	check2(char **);
-void	checkdot(char **);
-void	rm_file(char **);
-void	rm_overwrite(char *, struct stat *);
-void	rm_tree(char **);
-void	usage(void);
+static int	check(const char *, const char *, struct stat *);
+static int	check2(char **);
+static void	checkdot(char **);
+static void	rm_file(char **);
+static int	rm_overwrite(const char *, struct stat *);
+static void	rm_tree(char **);
+static void	usage(void);
 
 /*
  * rm --
@@ -156,7 +156,7 @@ main(int argc, char *argv[])
 	exit (eval);
 }
 
-void
+static void
 rm_tree(char **argv)
 {
 	FTS *fts;
@@ -196,10 +196,10 @@ rm_tree(char **argv)
 		case FTS_ERR:
 			errx(1, "%s: %s", p->fts_path, strerror(p->fts_errno));
 		case FTS_NS:
-			/*
-			 * FTS_NS: assume that if can't stat the file, it
-			 * can't be unlinked.
-			 */
+		       /*
+			* Assume that since fts_read() couldn't stat
+			* the file, it can't be unlinked.
+			*/
 			if (!needstat)
 				break;
 			if (!fflag || p->fts_errno != ENOENT) {
@@ -267,9 +267,18 @@ rm_tree(char **argv)
 				}
 				break;
 
+			case FTS_NS:
+			/*
+			 * Assume that since fts_read() couldn't stat
+			 * the file, it can't be unlinked.
+			 */
+				if (fflag)
+					continue;
+				/* FALLTHROUGH */
 			default:
 				if (Pflag)
-					rm_overwrite(p->fts_accpath, NULL);
+					if (!rm_overwrite(p->fts_accpath, NULL))
+						continue;
 				rval = unlink(p->fts_accpath);
 				if (rval == 0 || (fflag && errno == ENOENT)) {
 					if (rval == 0 && vflag)
@@ -287,7 +296,7 @@ err:
 		err(1, "fts_read");
 }
 
-void
+static void
 rm_file(char **argv)
 {
 	struct stat sb;
@@ -335,7 +344,8 @@ rm_file(char **argv)
 				rval = rmdir(f);
 			else {
 				if (Pflag)
-					rm_overwrite(f, &sb);
+					if (!rm_overwrite(f, &sb))
+						continue;
 				rval = unlink(f);
 			}
 		}
@@ -359,8 +369,8 @@ rm_file(char **argv)
  * System V filesystem).  In a logging filesystem, you'll have to have
  * kernel support.
  */
-void
-rm_overwrite(char *file, struct stat *sbp)
+static int 
+rm_overwrite(const char *file, struct stat *sbp)
 {
 	struct stat sb;
 	struct statfs fsb;
@@ -374,15 +384,17 @@ rm_overwrite(char *file, struct stat *sbp)
 			goto err;
 		sbp = &sb;
 	}
-	if (!S_ISREG(sbp->st_mode))
-		return;
+	if (!S_ISREG(sbp->st_mode)) {
+		warnx("%s: cannot overwrite a non-regular file", file);
+		return (1);
+	}
 	if ((fd = open(file, O_WRONLY, 0)) == -1)
 		goto err;
 	if (fstatfs(fd, &fsb) == -1)
 		goto err;
 	bsize = MAX(fsb.f_iosize, 1024);
 	if ((buf = malloc(bsize)) == NULL)
-		err(1, "malloc");
+		err(1, "%s malloc failed", file);
 
 #define	PASS(byte) {							\
 	memset(buf, byte, bsize);					\
@@ -401,18 +413,21 @@ rm_overwrite(char *file, struct stat *sbp)
 	PASS(0xff);
 	if (!fsync(fd) && !close(fd)) {
 		free(buf);
-		return;
+		return (1);
 	}
 
 err:	eval = 1;
 	if (buf)
 		free(buf);
+	if (fd != -1)
+		close(fd);
 	warn("%s", file);
+	return (0);
 }
 
 
-int
-check(char *path, char *name, struct stat *sp)
+static int
+check(const char *path, const char *name, struct stat *sp)
 {
 	int ch, first;
 	char modep[15], *flagsp;
@@ -426,8 +441,11 @@ check(char *path, char *name, struct stat *sp)
 		 * talking to a terminal, ask.  Symbolic links are excluded
 		 * because their permissions are meaningless.  Check stdin_ok
 		 * first because we may not have stat'ed the file.
+		 * Also skip this check if the -P option was specified because
+  	         * we will not be able to overwrite file contents and will
+  	         * barf later.
 		 */
-		if (!stdin_ok || S_ISLNK(sp->st_mode) ||
+		if (!stdin_ok || S_ISLNK(sp->st_mode) || Pflag ||
 		    (!access(name, W_OK) &&
 		    !(sp->st_flags & (SF_APPEND|SF_IMMUTABLE)) &&
 		    (!(sp->st_flags & (UF_APPEND|UF_IMMUTABLE)) || !uid)))
@@ -451,7 +469,7 @@ check(char *path, char *name, struct stat *sp)
 	return (first == 'y' || first == 'Y');
 }
 
-int
+static int
 check2(char **argv)
 {
 	struct stat st;
@@ -502,7 +520,7 @@ check2(char **argv)
 }
 
 #define ISDOT(a)	((a)[0] == '.' && (!(a)[1] || ((a)[1] == '.' && !(a)[2])))
-void
+static void
 checkdot(char **argv)
 {
 	char *p, **save, **t;
@@ -526,7 +544,7 @@ checkdot(char **argv)
 	}
 }
 
-void
+static void
 usage(void)
 {
 
