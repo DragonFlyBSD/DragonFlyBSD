@@ -1,0 +1,60 @@
+
+			BINUTILS-2.14 AS USED BY DRAGONFLY
+
+    This directory contains a selected set of files from the gnu 
+    binutils-2.14 distribution.  The entire distribution is 71MB but
+    we really only need around 10MB of it.  No files have been moved
+    or modified from their extracted position.
+
+    DO NOT CREATE OR EDIT ANY FILES IN THIS DIRECTORY HIERARCHY!  THIS
+    HIERARCHY REPRESENTS AN EXACT COPY, MINUS UNNEEDED FILES, OF THE GNU
+    BINUTILS-2.14 DISTRIBUTION.  All modifications are made in the 
+    DragonFly build wrapper, in /usr/src/gnu/usr.bin/binutils214, by
+    creating overrides or performing surgery on the distribution.
+    The only additional files added to this directory are README.DRAGONFLY
+    and README.DELETED.  The base source was fetched from:
+
+	http://ftp.gnu.org/gnu/binutils/binutils-2.14.tar.gz
+	MD5 (binutils-2.14.tar.gz) = ba665d0ddcc88313384b79e293ecbbab
+
+    UPGRADE PROCDURE:
+
+	* download a new binutils > 2.14.0 from a gnu download site.
+
+	* extract the archive into this directory, overlaying the
+	  existing files.
+
+	* A 'cvs update' will show you what has changed ('M') relative 
+	  to what we had before.  There will be hundreds of files marked
+	  '?' which, if not needed, should be deleted and NOT COMMITTED.
+	  If any new files are needed you can cvs add and commit them.
+
+	* Make sure that both buildworld and a crossbuilt buildworld
+	  for supported architectures works before committing the upgrade,
+	  making adjustments within /usr/src/gnu/usr.bin/binutils214.
+
+	  DO NOT MAKE ANY EDITS TO THE BINUTILS DISTRIBUTION IN THIS CONTRIB
+	  DIRECTORY!
+
+    binutils is designed to be backwards compatible.  When unpacking a
+    new major rev, e.g. 2.15, it should be placed in a NEW CONTRIB DIRECTORY,
+    and a new infrastructure in /usr/src/gnu/usr.bin/binutilsXXX should be
+    created.  Be sure to commit only those files that the DragonFly build
+    actually needs to avoid bloating the cvs repository.
+
+    Do not overlay major rev changes in the contrib directory or
+    build infrastructure directory for older major revs!  The binutils the 
+    compiler subsystem uses is selected in:
+
+	/usr/src/usr.bin/objformat/objformat.c
+
+    That is what you edit to change the system binutils defaults.  Eventually
+    the physical cvs hierarchy representing older major revs of binutils
+    will be physically removed from the contrib/ hierarchy.   Older binutils
+    can be recovered by manually unpacking older gnu binutils dists in
+    /usr/src/contrib, without CVS support.  Do not physically remove
+    the DFly build infrastructure for older binutils from
+    /usr/src/gnu/usr.bin/.  cvs delete, sure, but no physical removal.
+
+    The file README.DELETED contains a list of deleted files.
+
