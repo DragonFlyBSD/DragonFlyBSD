@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.11 2004/02/02 05:43:16 dillon Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.12 2004/06/20 22:19:51 dillon Exp $
  */
 
 #include <err.h>
@@ -123,7 +123,7 @@ main(int argc, char **argv)
 			break;
 	}
 
-	if ((ccver = getenv("CCVER")) == NULL)
+	if ((ccver = getenv("CCVER")) == NULL || ccver[0] == 0)
 		ccver = CCVER_DEFAULT;
 	if ((buver = getenv("BINUTILSVER")) == NULL) {
 		if (strcmp(ccver, "gcc2") == 0)
