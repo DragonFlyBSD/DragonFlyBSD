@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.8 2004/02/16 20:11:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.9 2004/12/31 22:30:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -143,6 +143,7 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 		}
 	}
 doerror:
+	bp->b_data = sa;
 	relpbuf(bp, NULL);
 	return (error);
 }
