@@ -32,12 +32,12 @@
  *
  * @(#)mkmakefile.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkmakefile.c,v 1.51.2.3 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.7 2004/03/04 20:44:49 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.8 2004/03/04 20:50:58 eirikn Exp $
  */
 
 /*
  * Build the makefile for the system, from
- * the information in the files files and the
+ * the information in the 'files' files and the
  * additional files for the machine being compiled to.
  */
 
