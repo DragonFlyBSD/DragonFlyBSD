@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.23 2004/12/21 13:25:12 joerg Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.24 2004/12/22 10:25:42 joerg Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
@@ -75,6 +75,8 @@ $TITLE(DragonFly - Big-Picture Status)
 	<li>Fix /boot/loader's handling of extended DOS partitions.  There was
 	    an off-by-one issue that prevented the boot loader from passing
 	    the proper slice number to the kernel in certain cases (walt).
+	<li>Integration of PF as third firewall (joerg, corecode, Devon O'Dell,
+	    from FreeBSD/OpenBSD)
 </ul>
 
 <h2>Sat 18 September 2004</h2>
