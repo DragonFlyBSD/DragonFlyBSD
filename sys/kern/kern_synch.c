@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.15 2003/07/06 21:23:51 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.16 2003/07/10 04:47:54 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -408,6 +408,7 @@ tsleep(ident, priority, wmesg, timo)
 		crit_panicints();
 		return (0);
 	}
+	KKASSERT(td != &mycpu->gd_idlethread);	/* you must be kidding! */
 	s = splhigh();
 	KASSERT(ident != NULL, ("tsleep: no ident"));
 	KASSERT(p == NULL || p->p_stat == SRUN, ("tsleep %p %s %d",
@@ -429,7 +430,7 @@ tsleep(ident, priority, wmesg, timo)
 	 * A SIGCONT would cause us to be marked as SSLEEP
 	 * without resuming us, thus we must be ready for sleep
 	 * when CURSIG is called.  If the wakeup happens while we're
-	 * stopped, p->p_wchan will be 0 upon return from CURSIG.
+	 * stopped, td->td_wchan will be 0 upon return from CURSIG.
 	 */
 	if (p) {
 		if (catch) {
@@ -442,7 +443,7 @@ tsleep(ident, priority, wmesg, timo)
 				p->p_stat = SRUN;
 				goto resume;
 			}
-			if (p->p_wchan == NULL) {
+			if (td->td_wchan == NULL) {
 				catch = 0;
 				goto resume;
 			}
@@ -460,6 +461,7 @@ tsleep(ident, priority, wmesg, timo)
 		 */
 		clrrunnable(p, SSLEEP);
 		p->p_stats->p_ru.ru_nvcsw++;
+		KKASSERT(td->td_release || (p->p_flag & P_CURPROC) == 0);
 		mi_switch();
 		KASSERT(p->p_stat == SRUN, ("tsleep: stat not srun"));
 	} else {
@@ -729,7 +731,8 @@ restart:
 				p->p_stat = SRUN;
 				if (p->p_flag & P_INMEM) {
 					setrunqueue(p);
-					maybe_resched(p);
+					if (p->p_flag & P_CURPROC)
+					    maybe_resched(p);
 				} else {
 					p->p_flag |= P_SWAPINREQ;
 					wakeup((caddr_t)&proc0);
@@ -756,45 +759,6 @@ void
 wakeup_one(void *ident)
 {
     _wakeup(ident, 1);
-}
-
-/*
- * Release the P_CURPROC designation on a process in order to allow the
- * userland scheduler to schedule another one.  This places a runnable
- * process back on the userland scheduler's run queue.
- *
- * Note that losing P_CURPROC does not effect LWKT scheduling, you can
- * still tsleep/wakeup after having lost P_CURPROC, but userret() will
- * not return to user mode until it gets it back.
- */
-static __inline
-void
-_relscurproc(struct proc *p)
-{
-	struct proc *np;
-
-	crit_enter();
-	if (p->p_flag & P_CURPROC) {
-		p->p_flag &= ~P_CURPROC;
-		lwkt_deschedule_self();
-		if (p->p_stat == SRUN && (p->p_flag & P_INMEM)) {
-			setrunqueue(p);
-		}
-		if ((np = chooseproc()) != NULL) {
-			np->p_flag |= P_CURPROC;
-			lwkt_schedule(np->p_thread);
-		} else {
-			KKASSERT(mycpu->gd_uprocscheduled == 1);
-			mycpu->gd_uprocscheduled = 0;
-		}
-	}
-	crit_exit();
-}
-
-void
-relscurproc(struct proc *p)
-{
-	_relscurproc(p);
 }
 
 /*
@@ -831,14 +795,6 @@ mi_switch()
 	clear_resched();
 
 	/*
-	 * If the process being switched out is the 'current' process then
-	 * we have to lose the P_CURPROC designation and choose a new
-	 * process.  If the process is not being LWKT managed and it is in
-	 * SRUN we have to setrunqueue it.
-	 */
-	_relscurproc(p);
-
-	/*
 	 * Check if the process exceeds its cpu resource allocation.
 	 * If over max, kill it.  Time spent in interrupts is not 
 	 * included.  YYY 64 bit match is expensive.  Ick.
@@ -859,14 +815,15 @@ mi_switch()
 	}
 
 	/*
-	 * Pick a new current process and record its start time.
-	 * YYY lwkt_switch() will run the heavy weight process restoration
-	 * code, which removes the target thread and process from their
-	 * respective run queues to temporarily mimic 5.x behavior.
-	 * YYY the userland scheduler should pick only one user process
-	 * at a time to run per cpu.
+	 * Pick a new current process and record its start time.  If we
+	 * are in a SSTOPped state we deschedule ourselves.  YYY this needs
+	 * to be cleaned up, remember that LWKTs stay on their run queue
+	 * which works differently then the user scheduler which removes
+	 * the process from the runq when it runs it.
 	 */
 	mycpu->gd_cnt.v_swtch++;
+	if (p->p_stat == SSTOP)
+		lwkt_deschedule_self();
 	lwkt_switch();
 
 	splx(x);
@@ -925,38 +882,13 @@ clrrunnable(struct proc *p, int stat)
 	s = splhigh();
 	switch(p->p_stat) {
 	case SRUN:
-		if ((p->p_flag & (P_INMEM|P_CURPROC)) == P_INMEM)
+		if (p->p_flag & P_ONRUNQ)
 			remrunqueue(p);
 		break;
 	default:
 		break;
 	}
 	p->p_stat = stat;
-	splx(s);
-}
-
-/*
- * yield / synchronous reschedule
- *
- * Simply calling mi_switch() has the effect we want.  mi_switch will
- * deschedule the current thread, make sure the current process is on
- * the run queue, and then choose and reschedule another process.
- */
-void
-uio_yield()
-{
-	struct proc *p = curproc;
-	int s;
-		
-	s = splhigh();
-#if 0
-	KKASSERT(p->p_stat == SRUN);
-	if ((p->p_flag & (P_INMEM|P_CURPROC)) == (P_INMEM|P_CURPROC))
-		setrunqueue(p);
-	lwkt_deschedule_self();
-#endif
-	p->p_stats->p_ru.ru_nivcsw++;
-	mi_switch();
 	splx(s);
 }
 
@@ -982,8 +914,7 @@ resetpriority(struct proc *p)
 	npq = newpriority / PPQ;
 	crit_enter();
 	opq = p->p_priority / PPQ;
-	if (p->p_stat == SRUN && (p->p_flag & (P_CURPROC|P_INMEM)) == P_INMEM
-	    && opq != npq) {
+	if (p->p_stat == SRUN && (p->p_flag & P_ONRUNQ) && opq != npq) {
 		/*
 		 * We have to move the process to another queue
 		 */
@@ -992,10 +923,10 @@ resetpriority(struct proc *p)
 		setrunqueue(p);
 	} else {
 		/*
-		 * Not on a queue or is on the same queue, we can just
-		 * set the priority.
-		 * YYY P_INMEM?
+		 * We can just adjust the priority and it will be picked
+		 * up later.
 		 */
+		KKASSERT(opq == npq || (p->p_flag & P_ONRUNQ) == 0);
 		p->p_priority = newpriority;
 	}
 	crit_exit();

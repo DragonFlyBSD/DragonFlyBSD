@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.10 2003/07/03 17:24:04 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.11 2003/07/10 04:47:55 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -542,7 +542,7 @@ swapout(p)
 	(void) splhigh();
 	p->p_flag &= ~P_INMEM;
 	p->p_flag |= P_SWAPPING;
-	if (p->p_stat == SRUN)
+	if (p->p_flag & P_ONRUNQ)
 		remrunqueue(p);
 	(void) spl0();
 

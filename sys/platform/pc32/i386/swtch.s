@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.22 2003/07/08 06:27:26 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.23 2003/07/10 04:47:53 dillon Exp $
  */
 
 #include "npx.h"
@@ -54,6 +54,12 @@
 #endif /* SMP */
 
 #include "assym.s"
+
+#if defined(SMP)
+#define MPLOCKED        lock ;
+#else
+#define MPLOCKED
+#endif
 
 	.data
 
@@ -84,7 +90,7 @@ ENTRY(cpu_heavy_switch)
 	cli
 	movl	P_VMSPACE(%ecx), %edx
 	movl	PCPU(cpuid), %eax
-	btrl	%eax, VM_PMAP+PM_ACTIVE(%edx)
+	MPLOCKED btrl	%eax, VM_PMAP+PM_ACTIVE(%edx)
 
 	/*
 	 * Save general regs
@@ -134,7 +140,8 @@ ENTRY(cpu_heavy_switch)
 1:
  
 	/*
-	 * Save the FP state if we have used the FP.
+	 * Save the FP state if we have used the FP.  Note that calling
+	 * npxsave will NULL out PCPU(npxthread).
 	 */
 #if NNPX > 0
 	movl	P_THREAD(%ecx),%ecx
@@ -243,46 +250,54 @@ ENTRY(cpu_heavy_restore)
 	incl	_swtch_optim_stats
 #endif
 	/*
-	 * Restore the MMU address space
+	 * Tell the pmap that our cpu is using the VMSPACE now.  We cannot
+	 * safely test/reload %cr3 until after we have set the bit in the
+	 * pmap (remember, we do not hold the MP lock in the switch code).
 	 */
-	movl	%cr3,%ebx
-	cmpl	PCB_CR3(%edx),%ebx
+	movl	P_VMSPACE(%ecx), %ebx
+	movl	PCPU(cpuid), %eax
+	MPLOCKED btsl	%eax, VM_PMAP+PM_ACTIVE(%ebx)
+
+	/*
+	 * Restore the MMU address space.  If it is the same as the last
+	 * thread we don't have to invalidate the tlb (i.e. reload cr3).
+	 * YYY which naturally also means that the PM_ACTIVE bit had better
+	 * already have been set before we set it above, check? YYY
+	 */
+	movl	%cr3,%eax
+	movl	PCB_CR3(%edx),%ebx
+	cmpl	%eax,%ebx
 	je	4f
 #if defined(SWTCH_OPTIM_STATS)
 	decl	_swtch_optim_stats
 	incl	_tlb_flush_count
 #endif
-	movl	PCB_CR3(%edx),%ebx
 	movl	%ebx,%cr3
 4:
-
 	/*
 	 * Deal with the PCB extension, restore the private tss
 	 */
-	movl	PCPU(cpuid), %esi
-	cmpl	$0, PCB_EXT(%edx)		/* has pcb extension? */
-	je	1f
-	btsl	%esi, private_tss		/* mark use of private tss */
-	movl	PCB_EXT(%edx), %edi		/* new tss descriptor */
-	jmp	2f
-1:
+	movl	PCB_EXT(%edx),%edi	/* check for a PCB extension */
+	movl	$1,%ebx			/* maybe mark use of a private tss */
+	testl	%edi,%edi
+	jnz	2f
 
 	/*
-	 * update common_tss.tss_esp0 pointer.  This is the supervisor
-	 * stack pointer on entry from user mode.  Since the pcb is
-	 * at the top of the supervisor stack esp0 starts just below it.
-	 * We leave enough space for vm86 (16 bytes).
-	 *
-	 * common_tss.tss_esp0 is needed when user mode traps into the
-	 * kernel.
+	 * Going back to the common_tss.  We may need to update TSS_ESP0
+	 * which sets the top of the supervisor stack when entering from
+	 * usermode.  The PCB is at the top of the stack but we need another
+	 * 16 bytes to take vm86 into account.
 	 */
 	leal	-16(%edx),%ebx
 	movl	%ebx, PCPU(common_tss) + TSS_ESP0
 
-	btrl	%esi, private_tss
-	jae	3f
+	cmpl	$0,PCPU(private_tss)	/* don't have to reload if      */
+	je	3f			/* already using the common TSS */
+
+	subl	%ebx,%ebx		/* unmark use of private tss */
 
 	/*
+	 * Get the address of the common TSS descriptor for the ltr.
 	 * There is no way to get the address of a segment-accessed variable
 	 * so we store a self-referential pointer at the base of the per-cpu
 	 * data area and add the appropriate offset.
@@ -292,9 +307,10 @@ ENTRY(cpu_heavy_restore)
 
 	/*
 	 * Move the correct TSS descriptor into the GDT slot, then reload
-	 * tr.   YYY not sure what is going on here
+	 * ltr.
 	 */
 2:
+	movl	%ebx,PCPU(private_tss)		/* mark/unmark private tss */
 	movl	PCPU(tss_gdt), %ebx		/* entry in GDT */
 	movl	0(%edi), %eax
 	movl	%eax, 0(%ebx)
@@ -303,14 +319,7 @@ ENTRY(cpu_heavy_restore)
 	movl	$GPROC0_SEL*8, %esi		/* GSEL(entry, SEL_KPL) */
 	ltr	%si
 
-	/*
-	 * Tell the pmap that our cpu is using the VMSPACE now.
-	 */
 3:
-	movl	P_VMSPACE(%ecx), %ebx
-	movl	PCPU(cpuid), %eax
-	btsl	%eax, VM_PMAP+PM_ACTIVE(%ebx)
-
 	/*
 	 * Restore general registers.
 	 */
@@ -381,36 +390,11 @@ cpu_switch_load_gs:
 
 CROSSJUMPTARGET(sw1a)
 
-badsw0:
-	pushl	%eax
-	pushl	$sw0_1
-	call	panic
-
-sw0_1:	.asciz	"cpu_switch: panic: %p"
-
-#ifdef DIAGNOSTIC
-badsw1:
-	pushl	$sw0_1
-	call	panic
-
-sw0_1:	.asciz	"cpu_switch: has wchan"
-
 badsw2:
 	pushl	$sw0_2
 	call	panic
 
 sw0_2:	.asciz	"cpu_switch: not SRUN"
-#endif
-
-#if defined(SMP) && defined(DIAGNOSTIC)
-badsw4:
-	pushl	$sw0_4
-	call	panic
-
-sw0_4:	.asciz	"cpu_switch: do not have lock"
-#endif /* SMP && DIAGNOSTIC */
-
-string:	.asciz	"SWITCHING\n"
 
 /*
  * savectx(pcb)
@@ -473,7 +457,7 @@ ENTRY(savectx)
 	ret
 
 /*
- * cpu_idle_restore()	(current thread in %eax on entry)
+ * cpu_idle_restore()	(current thread in %eax on entry) (one-time execution)
  *
  *	Don't bother setting up any regs other then %ebp so backtraces
  *	don't die.  This restore function is used to bootstrap into the
@@ -487,8 +471,10 @@ ENTRY(savectx)
  *	cpus.
  */
 ENTRY(cpu_idle_restore)
+	movl	IdlePTD,%ecx
 	movl	$0,%ebp
 	pushl	$0
+	movl	%ecx,%cr3
 #ifdef SMP
 	cmpl	$0,PCPU(cpuid)
 	je	1f
@@ -499,7 +485,7 @@ ENTRY(cpu_idle_restore)
 	jmp	cpu_idle
 
 /*
- * cpu_kthread_restore()	(current thread is %eax on entry)
+ * cpu_kthread_restore() (current thread is %eax on entry) (one-time execution)
  *
  *	Don't bother setting up any regs other then %ebp so backtraces
  *	don't die.  This restore function is used to bootstrap into an
@@ -510,8 +496,10 @@ ENTRY(cpu_idle_restore)
  *	we can release our critical section and enable interrupts early.
  */
 ENTRY(cpu_kthread_restore)
+	movl	IdlePTD,%ecx
 	movl	TD_PCB(%eax),%ebx
 	movl	$0,%ebp
+	movl	%ecx,%cr3
 	subl	$TDPRI_CRIT,TD_PRI(%eax)
 	sti
 	popl	%edx		/* kthread exit function */
@@ -554,8 +542,18 @@ ENTRY(cpu_lwkt_switch)
  *	Warning: due to preemption the restore function can be used to 
  *	'return' to the original thread.  Interrupt disablement must be
  *	protected through the switch so we cannot run splz here.
+ *
+ *	YYY we theoretically do not need to load IdlePTD into cr3, but if
+ *	so we need a way to detect when the PTD we are using is being 
+ *	deleted due to a process exiting.
  */
 ENTRY(cpu_lwkt_restore)
+	movl	IdlePTD,%ecx	/* YYY borrow but beware desched/cpuchg/exit */
+	movl	%cr3,%eax
+	cmpl	%ecx,%eax
+	je	1f
+	movl	%ecx,%cr3
+1:
 	popfl
 	popl	%edi
 	popl	%esi

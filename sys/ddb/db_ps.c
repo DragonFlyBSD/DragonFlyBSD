@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.6 2003/07/08 06:27:23 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.7 2003/07/10 04:47:49 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -39,6 +39,33 @@
 #include <sys/cons.h>
 
 #include <ddb/ddb.h>
+
+static void
+db_more(int *nl)
+{
+	++*nl;
+	if (*nl == 20) {
+		int c;
+
+		db_printf("--More--");
+		c = cngetc();
+		db_printf("\r");
+		/*
+		 * A whole screenfull or just one line?
+		 */
+		switch (c) {
+		case '\n':		/* just one line */
+			*nl = 19;
+			break;
+		case ' ':
+			*nl = 0;	/* another screenfull */
+			break;
+		default:		/* exit */
+			db_printf("\n");
+			return;
+		}
+	}
+}
 
 void
 db_ps(dummy1, dummy2, dummy3, dummy4)
@@ -64,27 +91,7 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 		/*
 		 * XXX just take 20 for now...
 		 */
-		if (nl++ == 20) {
-			int c;
-
-			db_printf("--More--");
-			c = cngetc();
-			db_printf("\r");
-			/*
-			 * A whole screenfull or just one line?
-			 */
-			switch (c) {
-			case '\n':		/* just one line */
-				nl = 20;
-				break;
-			case ' ':
-				nl = 0;		/* another screenfull */
-				break;
-			default:		/* exit */
-				db_printf("\n");
-				return;
-			}
-		}
+		db_more(&nl);
 		if (p == NULL) {
 			printf("oops, ran out of processes early!\n");
 			break;
@@ -116,10 +123,13 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 	    thread_t td;
 	    struct globaldata *gd = &CPU_prvspace[cpuidx].mdglobaldata.mi;
 
-	    db_printf("cpu %d tdrunqmask %08x\n", gd->gd_cpuid, gd->gd_runqmask);
+	    db_printf("cpu %d tdrunqmask %08x curthread %p ast %02x\n",
+		    gd->gd_cpuid, gd->gd_runqmask,
+		    gd->gd_curthread, gd->gd_astpending);
 	    db_printf("  tdq     thread    pid flags  pri(act)        sp    wmesg comm\n");
 	    for (np = 0; np < 32; ++np) {
 		TAILQ_FOREACH(td, &gd->gd_tdrunq[np], td_threadq) {
+		    db_more(&nl);
 		    db_printf("  %3d %p %3d %08x %3d(%3d) %p %8.8s %s\n",
 			np, td, 
 			(td->td_proc ? td->td_proc->p_pid : -1),
@@ -133,6 +143,7 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 	    db_printf("\n");
 	    db_printf("  tdq     thread    pid flags  pri(act)        sp    wmesg comm\n");
 	    TAILQ_FOREACH(td, &gd->gd_tdallq, td_allq) {
+		db_more(&nl);
 		db_printf("  %3d %p %3d %08x %3d(%3d) %p %8.8s %s\n",
 		    np, td, 
 		    (td->td_proc ? td->td_proc->p_pid : -1),

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/globals.s,v 1.15 2003/07/08 06:27:26 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/globals.s,v 1.16 2003/07/10 04:47:53 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -59,9 +59,8 @@
 	 * the per-cpu address space, otherwise it's in the data segment.
 	 */
 	.globl	gd_curthread, gd_npxthread, gd_astpending, gd_reqpri
-	.globl	gd_common_tss, gd_idlethread
+	.globl	gd_common_tss
 	.set	gd_curthread,globaldata + GD_CURTHREAD
-	.set	gd_idlethread,globaldata + GD_IDLETHREAD
 	.set	gd_astpending,globaldata + GD_ASTPENDING
 	.set	gd_reqpri,globaldata + GD_REQPRI
 	.set	gd_npxthread,globaldata + GD_NPXTHREAD
@@ -84,9 +83,10 @@
 	.globl	gd_ss_eflags, gd_intr_nesting_level
 	.globl  gd_CMAP1, gd_CMAP2, gd_CMAP3, gd_PMAP1
 	.globl  gd_CADDR1, gd_CADDR2, gd_CADDR3, gd_PADDR1
-	.globl  gd_ipending, gd_fpending, gd_cnt
+	.globl  gd_ipending, gd_fpending, gd_cnt, gd_private_tss
 
 	.set    gd_cpuid,globaldata + GD_CPUID
+	.set    gd_private_tss,globaldata + GD_PRIVATE_TSS
 	.set    gd_cpu_lockid,globaldata + GD_CPU_LOCKID
 	.set    gd_other_cpus,globaldata + GD_OTHER_CPUS
 	.set    gd_ss_eflags,globaldata + GD_SS_EFLAGS

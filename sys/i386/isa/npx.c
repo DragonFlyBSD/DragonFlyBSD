@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.8 2003/07/08 06:27:27 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.9 2003/07/10 04:47:54 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -525,7 +525,7 @@ void
 npxexit(struct proc *p)
 {
 
-	if (p->p_thread == npxthread)
+	if (p->p_thread == mdcpu->gd_npxthread)
 		npxsave(&curthread->td_pcb->pcb_save);
 #ifdef NPX_DEBUG
 	if (npx_exists) {
@@ -746,16 +746,16 @@ npx_intr(dummy)
 	struct intrframe *frame;
 	u_long *exstat;
 
-	if (npxthread == NULL || !npx_exists) {
+	if (mdcpu->gd_npxthread == NULL || !npx_exists) {
 		get_mplock();
 		printf("npxintr: npxthread = %p, curthread = %p, npx_exists = %d\n",
-		       npxthread, curthread, npx_exists);
+		       mdcpu->gd_npxthread, curthread, npx_exists);
 		panic("npxintr from nowhere");
 	}
-	if (npxthread != curthread) {
+	if (mdcpu->gd_npxthread != curthread) {
 		get_mplock();
 		printf("npxintr: npxthread = %p, curthread = %p, npx_exists = %d\n",
-		       npxthread, curthread, npx_exists);
+		       mdcpu->gd_npxthread, curthread, npx_exists);
 		panic("npxintr from non-current process");
 	}
 
@@ -825,16 +825,16 @@ npxdna()
 
 	if (!npx_exists)
 		return (0);
-	if (npxthread != NULL) {
+	if (mdcpu->gd_npxthread != NULL) {
 		printf("npxdna: npxthread = %p, curthread = %p\n",
-		       npxthread, curthread);
+		       mdcpu->gd_npxthread, curthread);
 		panic("npxdna");
 	}
 	stop_emulating();
 	/*
 	 * Record new context early in case frstor causes an IRQ13.
 	 */
-	npxthread = curthread;
+	mdcpu->gd_npxthread = curthread;
 	exstat = GET_FPU_EXSW_PTR(curthread->td_pcb);
 	*exstat = 0;
 	/*
@@ -878,7 +878,7 @@ npxsave(addr)
 
 	/* fnop(); */
 	start_emulating();
-	npxthread = NULL;
+	mdcpu->gd_npxthread = NULL;
 
 #else /* SMP or CPU_ENABLE_SSE */
 
@@ -902,7 +902,7 @@ npxsave(addr)
 	fnsave(addr);
 	fnop();
 	start_emulating();
-	npxthread = NULL;
+	mdcpu->gd_npxthread = NULL;
 	cpu_disable_intr();
 	icu1_mask = inb(IO_ICU1 + 1);	/* masks may have changed */
 	icu2_mask = inb(IO_ICU2 + 1);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.8 2003/07/08 06:27:28 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.9 2003/07/10 04:47:55 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -34,8 +34,11 @@
 #include <sys/time.h>	/* struct timeval */
 #endif
 #ifndef _SYS_VMMETER_H_
-#include <sys/vmmeter.h>
-#endif _SYS_VMMETER_H_
+#include <sys/vmmeter.h> /* struct vmmeter */
+#endif
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>	/* struct thread */
+#endif
 
 /*
  * This structure maps out the global data that needs to be kept on a
@@ -57,20 +60,13 @@
  * further checks are necessary.  Interrupts are typically managed on a
  * per-processor basis at least until you leave a critical section, but
  * may then be scheduled to other cpus.
- *
- * gd_uprocscheduled indicates that the thread for a user process has been
- * scheduled.  It is used to schedule only one user process at a time in
- * the LWKT subsystem.
  */
 
 struct privatespace;
-struct thread;
-struct lwkt_ipiq;
 
 struct globaldata {
 	struct privatespace *gd_prvspace;	/* self-reference */
 	struct thread	*gd_curthread;
-	struct thread	*gd_idletd;		/* a bit messy but it works */
 	int		gd_tdfreecount;		/* new thread cache */
 	int		gd_reqpri;		/* (see note above) */
 	TAILQ_HEAD(,thread) gd_tdallq;		/* all threads */
@@ -82,9 +78,10 @@ struct globaldata {
 	struct timeval	gd_stattv;
 	int		gd_intr_nesting_level;	/* (for fast interrupts) */
 	int		gd_astpending;		/* sorta MD but easier here */
-	int		gd_uprocscheduled;
 	struct vmmeter	gd_cnt;
 	struct lwkt_ipiq *gd_ipiq;
+	struct thread	gd_schedthread;
+	struct thread	gd_idlethread;
 	/* extended by <machine/pcpu.h> */
 };
 

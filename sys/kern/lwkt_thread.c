@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.17 2003/07/08 09:57:13 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.18 2003/07/10 04:47:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -383,7 +383,8 @@ again:
 		    nq = bsrl(rqmask);
 		}
 		if (ntd == NULL) {
-		    ntd = gd->gd_idletd;
+		    ntd = &gd->gd_idlethread;
+		    ntd->td_flags |= TDF_IDLE_NOHLT;
 		} else {
 		    TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
 		    TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
@@ -397,11 +398,20 @@ again:
 	    TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
 #endif
 	} else {
-	    ntd = gd->gd_idletd;
+	    ntd = &gd->gd_idlethread;
 	}
     }
     KASSERT(ntd->td_pri >= TDPRI_CRIT,
 	("priority problem in lwkt_switch %d %d", td->td_pri, ntd->td_pri));
+
+    /*
+     * Passive release (used to transition from user to kernel mode
+     * when we block or switch rather then when we enter the kernel).
+     * This function is NOT called if we are switching into a preemption
+     * or returning from a preemption.
+     */
+    if (td->td_release)
+	    td->td_release(td);
 
     /*
      * Do the actual switch.  If the new target does not need the MP lock
@@ -500,12 +510,19 @@ lwkt_preempt(thread_t ntd, int critpri)
 	return;
     }
 #ifdef SMP
-    mpheld = MP_LOCK_HELD();
+    /*
+     * note: an interrupt might have occured just as we were transitioning
+     * to the MP lock, with the lock held but our mpcount still 0.  We have
+     * to be sure we restore the same condition when the preemption returns.
+     */
+    mpheld = MP_LOCK_HELD();	/* 0 or 1 */
     if (mpheld && td->td_mpcount == 0)
 	panic("lwkt_preempt(): held and no count");
     savecnt = td->td_mpcount;
+    td->td_mpcount += mpheld;
     ntd->td_mpcount += td->td_mpcount;
     if (mpheld == 0 && ntd->td_mpcount && !cpu_try_mplock()) {
+	td->td_mpcount -= mpheld;
 	ntd->td_mpcount -= td->td_mpcount;
 	++preempt_miss;
 	need_resched();
@@ -519,6 +536,7 @@ lwkt_preempt(thread_t ntd, int critpri)
     td->td_switch(ntd);
     KKASSERT(ntd->td_preempted && (td->td_flags & TDF_PREEMPT_DONE));
 #ifdef SMP
+    td->td_mpcount -= mpheld;
     KKASSERT(savecnt == td->td_mpcount);
     if (mpheld == 0 && MP_LOCK_HELD())
 	cpu_rel_mplock();
@@ -549,8 +567,17 @@ lwkt_yield_quick(void)
 {
     thread_t td = curthread;
 
+    /*
+     * gd_reqpri is cleared in splz if the cpl is 0.  If we were to clear
+     * it with a non-zero cpl then we might not wind up calling splz after
+     * a task switch when the critical section is exited even though the
+     * new task could accept the interrupt.  YYY alternative is to have
+     * lwkt_switch() just call splz unconditionally.
+     *
+     * XXX from crit_exit() only called after last crit section is released.
+     * If called directly will run splz() even if in a critical section.
+     */
     if ((td->td_pri & TDPRI_MASK) < mycpu->gd_reqpri) {
-	mycpu->gd_reqpri = 0;
 	splz();
     }
 
@@ -692,6 +719,24 @@ lwkt_schedule(thread_t td)
 	}
     }
     crit_exit();
+}
+
+void
+lwkt_acquire(thread_t td)
+{
+    struct globaldata *gd;
+
+    gd = td->td_gd;
+    KKASSERT((td->td_flags & TDF_RUNQ) == 0);
+    if (gd != mycpu) {
+	crit_enter();
+	TAILQ_REMOVE(&gd->gd_tdallq, td, td_allq);	/* protected by BGL */
+	gd = mycpu;
+	td->td_gd = gd;
+	td->td_cpu = gd->gd_cpuid;
+	TAILQ_INSERT_TAIL(&gd->gd_tdallq, td, td_allq); /* protected by BGL */
+	crit_exit();
+    }
 }
 
 /*
@@ -863,15 +908,20 @@ lwkt_signal(lwkt_wait_t w)
  * must still release it even if you lose your access to it).
  *
  * YYY for now we use a critical section to prevent IPIs from taking away
- * a token, but we really only need to disable IPIs ?
+ * a token, but do we really only need to disable IPIs ?
  *
  * YYY certain tokens could be made to act like mutexes when performance
  * would be better (e.g. t_cpu == -1).  This is not yet implemented.
  *
- * If the token is owned by another cpu we may have to send an IPI to
+ * YYY the tokens replace 4.x's simplelocks for the most part, but this
+ * means that 4.x does not expect a switch so for now we cannot switch
+ * when waiting for an IPI to be returned.  
+ *
+ * YYY If the token is owned by another cpu we may have to send an IPI to
  * it and then block.   The IPI causes the token to be given away to the
  * requesting cpu, unless it has already changed hands.  Since only the
  * current cpu can give away a token it owns we do not need a memory barrier.
+ * This needs serious optimization.
  */
 
 #ifdef SMP
@@ -882,7 +932,11 @@ lwkt_gettoken_remote(void *arg)
 {
     lwkt_gettoken_req *req = arg;
     if (req->tok->t_cpu == mycpu->gd_cpuid) {
+	if (token_debug)
+	    printf("GT(%d,%d) ", req->tok->t_cpu, req->cpu);
 	req->tok->t_cpu = req->cpu;
+	req->tok->t_reqcpu = req->cpu;	/* YYY leave owned by target cpu */
+	/* else set reqcpu to point to current cpu for release */
     }
 }
 
@@ -900,12 +954,9 @@ lwkt_gettoken(lwkt_token_t tok)
 
     crit_enter();
 #ifdef INVARIANTS
-    if (token_debug) {
-	printf("gettoken %p %d/%d\n", ((int **)&tok)[-1], (curthread->td_proc?curthread->td_proc->p_pid:-1), curthread->td_pri);
-	if (curthread->td_pri > 2000) {
-	    curthread->td_pri = 1000;
-	    panic("too HIGH!");
-	}
+    if (curthread->td_pri > 2000) {
+	curthread->td_pri = 1000;
+	panic("too HIGH!");
     }
 #endif
 #ifdef SMP
@@ -917,8 +968,13 @@ lwkt_gettoken(lwkt_token_t tok)
 	req.cpu = mycpu->gd_cpuid;
 	req.tok = tok;
 	dcpu = (volatile int)tok->t_cpu;
+	KKASSERT(dcpu >= 0 && dcpu < ncpus);
+	if (token_debug)
+	    printf("REQT%d ", dcpu);
 	seq = lwkt_send_ipiq(dcpu, lwkt_gettoken_remote, &req);
 	lwkt_wait_ipiq(dcpu, seq);
+	if (token_debug)
+	    printf("REQR%d ", tok->t_cpu);
     }
 #endif
     /*
@@ -1005,8 +1061,11 @@ lwkt_regettoken(lwkt_token_t tok)
 	    req.cpu = mycpu->gd_cpuid;
 	    req.tok = tok;
 	    dcpu = (volatile int)tok->t_cpu;
+	    KKASSERT(dcpu >= 0 && dcpu < ncpus);
+	    printf("REQT%d ", dcpu);
 	    seq = lwkt_send_ipiq(dcpu, lwkt_gettoken_remote, &req);
 	    lwkt_wait_ipiq(dcpu, seq);
+	    printf("REQR%d ", tok->t_cpu);
 	}
 #endif
 	++tok->t_gen;
@@ -1039,7 +1098,9 @@ lwkt_create(void (*func)(void *), void *arg,
     thread_t td;
     va_list ap;
 
-    td = *tdp = lwkt_alloc_thread(template);
+    td = lwkt_alloc_thread(template);
+    if (tdp)
+	*tdp = td;
     cpu_set_thread_handler(td, kthread_exit, func, arg);
     td->td_flags |= TDF_VERBOSE | tdflags;
 #ifdef SMP
@@ -1093,7 +1154,9 @@ kthread_create(void (*func)(void *), void *arg,
     thread_t td;
     va_list ap;
 
-    td = *tdp = lwkt_alloc_thread(NULL);
+    td = lwkt_alloc_thread(NULL);
+    if (tdp)
+	*tdp = td;
     cpu_set_thread_handler(td, kthread_exit, func, arg);
     td->td_flags |= TDF_VERBOSE;
 #ifdef SMP
@@ -1155,23 +1218,31 @@ lwkt_send_ipiq(int dcpu, ipifunc_t func, void *arg)
 {
     lwkt_ipiq_t ip;
     int windex;
+    struct globaldata *gd = mycpu;
 
-    if (dcpu == mycpu->gd_cpuid) {
+    if (dcpu == gd->gd_cpuid) {
 	func(arg);
 	return(0);
     } 
+    ++gd->gd_intr_nesting_level;
+#ifdef INVARIANTS
+    if (gd->gd_intr_nesting_level > 20)
+	panic("lwkt_send_ipiq: TOO HEAVILY NESTED!");
+#endif
     KKASSERT(curthread->td_pri >= TDPRI_CRIT);
     KKASSERT(dcpu >= 0 && dcpu < ncpus);
     ++ipiq_count;
-    ip = &mycpu->gd_ipiq[dcpu];
+    ip = &gd->gd_ipiq[dcpu];
     if (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
 	unsigned int eflags = read_eflags();
+	printf("SEND_IPIQ FIFO FULL\n");
 	cpu_enable_intr();
 	++ipiq_fifofull;
 	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
 	    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
 	    lwkt_process_ipiq();
 	}
+	printf("SEND_IPIQ FIFO GOOD\n");
 	write_eflags(eflags);
     }
     KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
@@ -1180,6 +1251,7 @@ lwkt_send_ipiq(int dcpu, ipifunc_t func, void *arg)
     ip->ip_arg[windex] = arg;
     /* YYY memory barrier */
     ++ip->ip_windex;
+    --gd->gd_intr_nesting_level;
     cpu_send_ipiq(dcpu);	/* issues memory barrier if appropriate */
     return(ip->ip_windex);
 }
@@ -1199,6 +1271,7 @@ void
 lwkt_wait_ipiq(int dcpu, int seq)
 {
     lwkt_ipiq_t ip;
+    int maxc = 100000000;
 
     if (dcpu != mycpu->gd_cpuid) {
 	KKASSERT(dcpu >= 0 && dcpu < ncpus);
@@ -1211,6 +1284,10 @@ lwkt_wait_ipiq(int dcpu, int seq)
 #if 0
 		lwkt_switch();	/* YYY fixme */
 #endif
+		if (--maxc == 0)
+			printf("LWKT_WAIT_IPIQ WARNING! %d wait %d (%d)\n", mycpu->gd_cpuid, dcpu, ip->ip_rindex - seq);
+		if (maxc < -1000000)
+			panic("LWKT_WAIT_IPIQ");
 	    }
 	    write_eflags(eflags);
 	}

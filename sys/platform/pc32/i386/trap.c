@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.19 2003/07/08 06:27:26 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.20 2003/07/10 04:47:53 dillon Exp $
  */
 
 /*
@@ -162,28 +162,19 @@ SYSCTL_INT(_machdep, OID_AUTO, panic_on_nmi, CTLFLAG_RW,
  * point of view of the userland scheduler unless we actually have to
  * switch.
  *
- * usertdsw is called from within a critical section, but the BGL will
- * have already been released by lwkt_switch() so only call MP safe functions
- * that don't block and don't require the BGL!
+ * usertdsw is called from within a critical section and the BGL will still
+ * be held.  This function is NOT called for preemptions, only for switchouts.
  */
 static void
-usertdsw(struct thread *ntd)
+passive_release(struct thread *td)
 {
-	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 
-	td->td_switch = cpu_heavy_switch;
+	td->td_release = NULL;
 	lwkt_setpri_self(TDPRI_KERN_USER);
-#if 0
-	/* 
-	 * This is where we might want to catch the P_CURPROC designation
-	 * and fix it for *any* switchout rather then just an mi_switch()
-	 * switchout (move from mi_switch()?) YYY
-	 */
 	if (p->p_flag & P_CURPROC) {
-		...
+		release_curproc(p);
 	}
-#endif
-	td->td_switch(ntd);
 }
 
 /*
@@ -195,40 +186,26 @@ usertdsw(struct thread *ntd)
 static __inline void
 userenter(void)
 {
-	struct thread *td;
-
-	td = curthread;
-	KASSERT(td->td_switch == cpu_heavy_switch,
-		("userenter: bad td_switch = %p", td->td_switch));
-#if 0
-	KASSERT(td->td_switch == cpu_heavy_switch || td->td_switch == usertdsw,
-		("userenter: bad td_switch = %p", td->td_switch));
-#endif
-	td->td_switch = usertdsw;
-}
-
-static void
-userret(struct proc *p, struct trapframe *frame, u_quad_t oticks)
-{
-	int sig, s;
 	struct thread *td = curthread;
 
-	/*
-	 * Post any pending signals
-	 */
-	crit_enter();
-	while ((sig = CURSIG(p)) != 0) {
-		crit_exit();
-		postsig(sig);
-		crit_enter();
-	}
+	td->td_release = passive_release;
+}
+
+static __inline void
+userexit(struct proc *p)
+{
+	struct thread *td = p->p_thread;
 
 	/*
-	 * Set our priority properly and restore our switch function.  If
-	 * we did not hit our lazy switch function in the first place we
-	 * do not need to restore anything.
+	 * If we did not have to release we should already be P_CURPROC.  If
+	 * we did have to release we must acquire P_CURPROC again and then
+	 * restore our priority for user return.
 	 */
-	if (td->td_switch == cpu_heavy_switch) {
+	if (td->td_release) {
+		td->td_release = NULL;
+		KKASSERT(p->p_flag & P_CURPROC);
+	} else {
+		acquire_curproc(p);
 		switch(p->p_rtprio.type) {
 		case RTP_PRIO_IDLE:
 			lwkt_setpri_self(TDPRI_USER_IDLE);
@@ -241,21 +218,35 @@ userret(struct proc *p, struct trapframe *frame, u_quad_t oticks)
 			lwkt_setpri_self(TDPRI_USER_NORM);
 			break;
 		}
-	} else {
-		KKASSERT(td->td_switch == usertdsw);
-		td->td_switch = cpu_heavy_switch;
 	}
-	crit_exit();
+}
+
+
+static void
+userret(struct proc *p, struct trapframe *frame, u_quad_t oticks)
+{
+	int sig;
 
 	/*
-	 * If a reschedule has been requested we call chooseproc() to locate
-	 * the next runnable process.  When we wakeup from that we check
-	 * for pending signals again.
+	 * Post any pending signals
+	 */
+	while ((sig = CURSIG(p)) != 0) {
+		postsig(sig);
+	}
+
+	/*
+	 * If a reschedule has been requested we lwkt_switch().  The
+	 * lwkt_switch() will ensure that our current process is released
+	 * (see the use of td_release) as well as ensure that any pending
+	 * LWKTs get run before we get cpu back.
+	 *
+	 * YYY though of doreti detects that we were in a user context
+	 * it should really just call lwkt_switch()!  and are re-acquisition 
+	 * of the current process below will handle userland scheduling
+	 * priorities.
 	 */
 	if (resched_wanted()) {
-		uio_yield();
-		while ((sig = CURSIG(p)) != 0)
-			postsig(sig);
+		lwkt_switch();
 	}
 
 	/*
@@ -267,18 +258,10 @@ userret(struct proc *p, struct trapframe *frame, u_quad_t oticks)
 	}
 
 	/*
-	 * In order to return to userland we need to be the designated
-	 * current (user) process on this cpu.  We have to wait for
-	 * the userland scheduler to schedule as P_CURPROC.
+	 * Post any pending signals XXX
 	 */
-	s = splhigh();
-	while ((p->p_flag & P_CURPROC) == 0) {
-		p->p_stats->p_ru.ru_nivcsw++;
-		lwkt_deschedule_self();
-		mi_switch();
-	}
-	splx(s);
-	KKASSERT(mycpu->gd_uprocscheduled == 1);
+	while ((sig = CURSIG(p)) != 0)
+		postsig(sig);
 }
 
 #ifdef DEVICE_POLLING
@@ -291,8 +274,14 @@ extern int ether_poll __P((int count));
  * This common code is called from assembly language IDT gate entry
  * routines that prepare a suitable stack frame, and restore this
  * frame after the exception has been processed.
+ *
+ * This function is also called from doreti in an interlock to handle ASTs.
+ * For example:  hardwareint->INTROUTINE->(set ast)->doreti->trap
+ *
+ * NOTE!  We have to retrieve the fault address prior to obtaining the
+ * MP lock because get_mplock() may switch out.  YYY cr2 really ought
+ * to be retrieved by the assembly code, not here.
  */
-
 void
 trap(frame)
 	struct trapframe frame;
@@ -302,45 +291,14 @@ trap(frame)
 	int i = 0, ucode = 0, type, code;
 	vm_offset_t eva;
 
-#ifdef SMP
-	if (panicstr == NULL)
-	    KASSERT(curthread->td_mpcount >= 0, ("BADX1 AT %08x %08x", frame.tf_eip, frame.tf_esp));
-#endif
-	get_mplock();
-#ifdef SMP
-	if (panicstr == NULL)
-	    KKASSERT(curthread->td_mpcount > 0);
-#endif
-
 #ifdef DDB
 	if (db_active) {
 		eva = (frame.tf_trapno == T_PAGEFLT ? rcr2() : 0);
+		get_mplock();
 		trap_fatal(&frame, eva);
 		goto out2;
 	}
 #endif
-
-	if (!(frame.tf_eflags & PSL_I)) {
-		/*
-		 * Buggy application or kernel code has disabled interrupts
-		 * and then trapped.  Enabling interrupts now is wrong, but
-		 * it is better than running with interrupts disabled until
-		 * they are accidentally enabled later.
-		 */
-		type = frame.tf_trapno;
-		if (ISPL(frame.tf_cs) == SEL_UPL || (frame.tf_eflags & PSL_VM))
-			printf(
-			    "pid %ld (%s): trap %d with interrupts disabled\n",
-			    (long)curproc->p_pid, curproc->p_comm, type);
-		else if (type != T_BPTFLT && type != T_TRCTRAP)
-			/*
-			 * XXX not quite right, since this may be for a
-			 * multiple fault in user mode.
-			 */
-			printf("kernel trap %d with interrupts disabled\n",
-			    type);
-		cpu_enable_intr();
-	}
 
 	eva = 0;
 	if (frame.tf_trapno == T_PAGEFLT) {
@@ -356,8 +314,38 @@ trap(frame)
 		 * correct.
 		 */
 		eva = rcr2();
+		get_mplock();
+		cpu_enable_intr();
+	} else {
+		get_mplock();
+	}
+	/*
+	 * MP lock is held at this point
+	 */
+
+	if (!(frame.tf_eflags & PSL_I)) {
+		/*
+		 * Buggy application or kernel code has disabled interrupts
+		 * and then trapped.  Enabling interrupts now is wrong, but
+		 * it is better than running with interrupts disabled until
+		 * they are accidentally enabled later.
+		 */
+		type = frame.tf_trapno;
+		if (ISPL(frame.tf_cs)==SEL_UPL || (frame.tf_eflags & PSL_VM)) {
+			printf(
+			    "pid %ld (%s): trap %d with interrupts disabled\n",
+			    (long)curproc->p_pid, curproc->p_comm, type);
+		} else if (type != T_BPTFLT && type != T_TRCTRAP) {
+			/*
+			 * XXX not quite right, since this may be for a
+			 * multiple fault in user mode.
+			 */
+			printf("kernel trap %d with interrupts disabled\n",
+			    type);
+		}
 		cpu_enable_intr();
 	}
+
 
 #ifdef DEVICE_POLLING
 	if (poll_in_trap)
@@ -750,6 +738,7 @@ out:
 		KASSERT(curthread->td_mpcount == 1, ("badmpcount trap from %p", (void *)frame.tf_eip));
 #endif
 	userret(p, &frame, sticks);
+	userexit(p);
 out2:
 #ifdef SMP
 	KKASSERT(curthread->td_mpcount > 0);
@@ -1345,6 +1334,7 @@ bad:
 	 */
 	STOPEVENT(p, S_SCX, code);
 
+	userexit(p);
 #ifdef SMP
 	/*
 	 * Release the MP lock if we had to get it
@@ -1374,6 +1364,7 @@ fork_return(p, frame)
 	if (KTRPOINT(p->p_thread, KTR_SYSRET))
 		ktrsysret(p->p_tracep, SYS_fork, 0, 0);
 #endif
+	userexit(p);
 #ifdef SMP
 	KKASSERT(curthread->td_mpcount == 1);
 	rel_mplock();

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.24 2003/07/08 09:57:11 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.25 2003/07/10 04:47:53 dillon Exp $
  */
 
 #include "apm.h"
@@ -946,10 +946,14 @@ cpu_halt(void)
  * and loop or halt as appropriate.  Giant is not held on entry to the thread.
  *
  * The main loop is entered with a critical section held, we must release
- * the critical section before doing anything else.
+ * the critical section before doing anything else.  lwkt_switch() will
+ * check for pending interrupts due to entering and exiting its own 
+ * critical section.
  *
- * Note on cpu_idle_hlt:  On an SMP system this may cause the system to 
- * halt until the next clock tick, even if a thread is ready YYY
+ * Note on cpu_idle_hlt:  On an SMP system we rely on a scheduler IPI
+ * to wake a HLTed cpu up.  However, there are cases where the idlethread
+ * will be entered with the possibility that no IPI will occur and in such
+ * cases lwkt_switch() sets TDF_IDLE_NOHLT.
  */
 static int	cpu_idle_hlt = 1;
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
@@ -958,18 +962,32 @@ SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
 void
 cpu_idle(void)
 {
+	struct thread *td = curthread;
+
 	crit_exit();
-	KKASSERT(curthread->td_pri < TDPRI_CRIT);
+	KKASSERT(td->td_pri < TDPRI_CRIT);
 	for (;;) {
+		/*
+		 * See if there are any LWKTs ready to go.
+		 */
 		lwkt_switch();
-		__asm __volatile("cli");
-		if (cpu_idle_hlt && !lwkt_runnable()) {
+
+		/*
+		 * If we are going to halt call splz unconditionally after
+		 * CLIing to catch any interrupt races.  Note that we are
+		 * at SPL0 and interrupts are enabled.
+		 */
+		if (cpu_idle_hlt && !lwkt_runnable() &&
+		    (td->td_flags & TDF_IDLE_NOHLT) == 0) {
 			/*
 			 * We must guarentee that hlt is exactly the instruction
 			 * following the sti.
 			 */
+			__asm __volatile("cli");
+			splz();
 			__asm __volatile("sti; hlt");
 		} else {
+			td->td_flags &= ~TDF_IDLE_NOHLT;
 			__asm __volatile("sti");
 		}
 	}
@@ -1124,8 +1142,6 @@ union descriptor ldt[NLDT];		/* local descriptor table */
 
 /* table descriptors - used to load tables by cpu */
 struct region_descriptor r_gdt, r_idt;
-
-int private_tss;			/* flag indicating private tss */
 
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)
 extern int has_f00f_bug;
@@ -1897,8 +1913,7 @@ init386(int first)
 	lwkt_set_comm(&thread0, "thread0");
 	proc0.p_addr = (void *)thread0.td_kstack;
 	proc0.p_thread = &thread0;
-	proc0.p_flag |= P_CURPROC;
-	gd->mi.gd_uprocscheduled = 1;
+	proc0.p_flag |= P_CP_RELEASED;	/* early set.  See also init_main.c */
 	thread0.td_proc = &proc0;
 	thread0.td_switch = cpu_heavy_switch;	/* YYY eventually LWKT */
 	safepri = thread0.td_cpl = SWI_MASK | HWI_MASK;
@@ -1983,7 +1998,6 @@ init386(int first)
 	gd->gd_common_tss.tss_esp0 = (int) thread0.td_pcb - 16;
 	gd->gd_common_tss.tss_ss0 = GSEL(GDATA_SEL, SEL_KPL) ;
 	gsel_tss = GSEL(GPROC0_SEL, SEL_KPL);
-	private_tss = 0;
 	gd->gd_tss_gdt = &gdt[GPROC0_SEL].sd;
 	gd->gd_common_tssd = *gd->gd_tss_gdt;
 	gd->gd_common_tss.tss_ioopt = (sizeof gd->gd_common_tss) << 16;
@@ -2062,15 +2076,14 @@ cpu_gdinit(struct mdglobaldata *gd, int cpu)
 	char *sp;
 
 	if (cpu)
-		gd->mi.gd_curthread = &gd->gd_idlethread;
+		gd->mi.gd_curthread = &gd->mi.gd_idlethread;
 
-	gd->mi.gd_idletd = &gd->gd_idlethread;
 	sp = gd->mi.gd_prvspace->idlestack;
-	lwkt_init_thread(&gd->gd_idlethread, sp, 0, &gd->mi);
-	lwkt_set_comm(&gd->gd_idlethread, "idle_%d", cpu);
-	gd->gd_idlethread.td_switch = cpu_lwkt_switch;
-	gd->gd_idlethread.td_sp -= sizeof(void *);
-	*(void **)gd->gd_idlethread.td_sp = cpu_idle_restore;
+	lwkt_init_thread(&gd->mi.gd_idlethread, sp, 0, &gd->mi);
+	lwkt_set_comm(&gd->mi.gd_idlethread, "idle_%d", cpu);
+	gd->mi.gd_idlethread.td_switch = cpu_lwkt_switch;
+	gd->mi.gd_idlethread.td_sp -= sizeof(void *);
+	*(void **)gd->mi.gd_idlethread.td_sp = cpu_idle_restore;
 }
 
 struct globaldata *

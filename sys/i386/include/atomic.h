@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.3 2003/07/10 04:47:53 dillon Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -75,9 +75,13 @@
 
 /*
  * The assembly is volatilized to demark potential before-and-after side
- * effects if an interrupt or SMP collision were to occur.
+ * effects if an interrupt or SMP collision were to occur.  The primary
+ * atomic instructions are MP safe, the nonlocked instructions are 
+ * local-interrupt-safe (so we don't depend on C 'X |= Y' generating an
+ * atomic instruction).
  */
 #if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 9)
+
 /* egcs 1.1.2+ version */
 #define ATOMIC_ASM(NAME, TYPE, OP, V)			\
 static __inline void					\
@@ -86,15 +90,30 @@ atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v)\
 	__asm __volatile(MPLOCKED OP			\
 			 : "=m" (*p)			\
 			 :  "0" (*p), "ir" (V)); 	\
+}							\
+static __inline void					\
+atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v)\
+{							\
+	__asm __volatile(MPLOCKED OP			\
+			 : "=m" (*p)			\
+			 :  "0" (*p), "ir" (V)); 	\
 }
 
 #else
+
 /* gcc <= 2.8 version */
 #define ATOMIC_ASM(NAME, TYPE, OP, V)			\
 static __inline void					\
 atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v)\
 {							\
 	__asm __volatile(MPLOCKED OP			\
+			 : "=m" (*p)			\
+			 : "ir" (V));		 	\
+}							\
+static __inline void					\
+atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v)\
+{							\
+	__asm __volatile(OP				\
 			 : "=m" (*p)			\
 			 : "ir" (V));		 	\
 }

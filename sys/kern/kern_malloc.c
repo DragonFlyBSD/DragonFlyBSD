@@ -32,7 +32,7 @@
  *
  *	@(#)kern_malloc.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/kern_malloc.c,v 1.64.2.5 2002/03/16 02:19:51 archie Exp $
- * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.5 2003/07/03 17:24:02 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.6 2003/07/10 04:47:54 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -45,6 +45,7 @@
 #include <sys/vmmeter.h>
 #include <sys/lock.h>
 #include <sys/thread.h>
+#include <sys/globaldata.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>

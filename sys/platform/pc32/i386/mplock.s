@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mplock.s,v 1.5 2003/07/08 06:27:26 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mplock.s,v 1.6 2003/07/10 04:47:53 dillon Exp $
  *
  * Functions for locking between CPUs in a SMP system.
  *
@@ -26,6 +26,12 @@
 #include <machine/apic.h>
 
 #include "assym.s"
+
+/*
+ * YYY Debugging only.  Define this to be paranoid about invalidating the
+ * TLB when we get giant.
+ */
+#undef PARANOID_INVLTLB
 
 	.data
 	ALIGN_DATA
@@ -58,6 +64,9 @@ NON_GPROF_ENTRY(cpu_try_mplock)
 	movl	$-1,%eax
 	lock cmpxchgl %ecx,mp_lock	/* ecx<->mem if eax matches */
 	jnz	1f
+#ifdef PARANOID_INVLTLB
+	movl	%cr3,%eax; movl %eax,%cr3	/* YYY check and remove */
+#endif
 	movl	$1,%eax
 	NON_GPROF_RET
 1:
@@ -69,6 +78,11 @@ NON_GPROF_ENTRY(get_mplock)
 	cmpl	$0,TD_MPCOUNT(%edx)
 	je	1f
 	incl	TD_MPCOUNT(%edx)	/* already have it, just ++mpcount */
+#ifdef INVARIANTS
+	movl	PCPU(cpuid),%eax	/* failure */
+	cmpl	%eax,mp_lock
+	jne	4f
+#endif
 	NON_GPROF_RET
 1:
 	pushfl
@@ -78,6 +92,9 @@ NON_GPROF_ENTRY(get_mplock)
 	movl	$-1,%eax
 	lock cmpxchgl %ecx,mp_lock	/* ecx<->mem & JZ if eax matches */
 	jnz	2f
+#ifdef PARANOID_INVLTLB
+	movl	%cr3,%eax; movl %eax,%cr3	/* YYY check and remove */
+#endif
 	popfl				/* success */
 	NON_GPROF_RET
 2:
@@ -89,6 +106,11 @@ NON_GPROF_ENTRY(get_mplock)
 	addl	$TDPRI_CRIT,TD_PRI(%edx)
 	popfl
 	call	lwkt_switch		/* will be correct on return */
+#ifdef INVARIANTS
+	movl	PCPU(cpuid),%eax	/* failure */
+	cmpl	%eax,mp_lock
+	jne	4f
+#endif
 	movl	PCPU(curthread),%edx
 	subl	$TDPRI_CRIT,TD_PRI(%edx)
 	NON_GPROF_RET
@@ -98,11 +120,21 @@ NON_GPROF_ENTRY(get_mplock)
 	popfl
 	NON_GPROF_RET
 
+4:
+	cmpl	$0,panicstr		/* don't double panic */
+	je	badmp_get2
+	NON_GPROF_RET
+
 NON_GPROF_ENTRY(try_mplock)
 	movl	PCPU(curthread),%edx
 	cmpl	$0,TD_MPCOUNT(%edx)
 	je	1f
 	incl	TD_MPCOUNT(%edx)	/* already have it, just ++mpcount */
+#ifdef INVARIANTS
+	movl	PCPU(cpuid),%eax	/* failure */
+	cmpl	%eax,mp_lock
+	jne	4b
+#endif
 	movl	$1,%eax
 	NON_GPROF_RET
 1:
@@ -113,6 +145,9 @@ NON_GPROF_ENTRY(try_mplock)
 	lock cmpxchgl %ecx,mp_lock	/* ecx<->mem & JZ if eax matches */
 	jnz	2f
 	movl	$1,TD_MPCOUNT(%edx)
+#ifdef PARANOID_INVLTLB
+	movl	%cr3,%eax; movl %eax,%cr3	/* YYY check and remove */
+#endif
 	popfl				/* success */
 	movl	$1,%eax
 	NON_GPROF_RET
@@ -159,6 +194,9 @@ NON_GPROF_ENTRY(rel_mplock)
 badmp_get:
 	pushl	$bmpsw1
 	call	panic
+badmp_get2:
+	pushl	$bmpsw1a
+	call	panic
 badmp_rel:
 	pushl	$bmpsw2
 	call	panic
@@ -170,6 +208,9 @@ badmp_rel2:
 
 bmpsw1:
 	.asciz	"try/get_mplock(): already have lock! %d %p"
+
+bmpsw1a:
+	.asciz	"try/get_mplock(): failed on count or switch %d %p"
 
 bmpsw2:
 	.asciz	"rel_mplock(): mpcount already 0 @ %p %p %p %p %p %p %p %p!"

@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.20 2003/07/08 06:27:28 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.21 2003/07/10 04:47:55 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -158,6 +158,7 @@ struct thread {
     int		td_gen;		/* wait queue chasing generation number */
 				/* maybe preempt */
     void	(*td_preemptable)(struct thread *td, int critpri);
+    void	(*td_release)(struct thread *td);
     union {
 	struct md_intr_info *intdata;
     } td_info;
@@ -184,12 +185,16 @@ struct thread {
  * Thread flags.  Note that TDF_EXITED is set by the appropriate switchout
  * code when a thread exits, after it has switched to another stack and
  * cleaned up the MMU state.
+ *
+ * LWKT threads stay on their (per-cpu) run queue while running, not to
+ * be confused with user processes which are removed from the user scheduling
+ * run queue while actually running.
  */
 #define TDF_EXITED		0x0001	/* thread finished exiting */
-#define TDF_RUNQ		0x0002	/* on run queue (if not on bglq) */
+#define TDF_RUNQ		0x0002	/* on an LWKT run queue */
 #define TDF_PREEMPT_LOCK	0x0004	/* I have been preempted */
 #define TDF_PREEMPT_DONE	0x0008	/* acknowledge preemption complete */
-#define TDF_BGLQ		0x0010	/* on BGL queue */
+#define TDF_IDLE_NOHLT		0x0010	/* we need to spin */
 
 #define TDF_ONALLQ		0x0100	/* on gd_tdallq */
 #define TDF_ALLOCATED_THREAD	0x0200	/* zalloc allocated thread */
@@ -248,6 +253,7 @@ extern void lwkt_schedule(thread_t td);
 extern void lwkt_schedule_self(void);
 extern void lwkt_deschedule(thread_t td);
 extern void lwkt_deschedule_self(void);
+extern void lwkt_acquire(thread_t td);
 extern void lwkt_yield(void);
 extern void lwkt_yield_quick(void);
 extern void lwkt_hold(thread_t td);

@@ -35,7 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.6 2003/06/29 05:29:30 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.7 2003/07/10 04:47:53 dillon Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -68,12 +68,14 @@
  * Preempt the current process if in interrupt from user mode,
  * or after the current trap/syscall if in system mode.
  *
- * XXX: if astpending is later changed to an |= here due to more flags being
- * added, we will have an atomicy problem.  The type of atomicy we need is
- * a non-locked orl.
+ * We do not have to use a locked bus cycle but we do have to use an
+ * atomic instruction because an interrupt on the local cpu can modify
+ * the field.
  */
-#define	need_resched()		do { mycpu->gd_astpending = AST_RESCHED|AST_PENDING; } while (0)
-#define	clear_resched()		do { mycpu->gd_astpending &= ~AST_RESCHED; } while(0)
+#define	need_resched()		\
+    atomic_set_int_nonlocked(&mycpu->gd_astpending, AST_RESCHED|AST_PENDING)
+#define	clear_resched()		\
+    atomic_clear_int_nonlocked(&mycpu->gd_astpending, AST_RESCHED)
 #define	resched_wanted()	(mycpu->gd_astpending & AST_RESCHED)
 
 /*

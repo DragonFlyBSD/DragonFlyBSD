@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.4 2003/06/29 03:28:44 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.5 2003/07/10 04:47:54 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -46,6 +46,7 @@
 #include <sys/domain.h>
 #include <sys/protosw.h>
 #include <sys/thread.h>
+#include <sys/globaldata.h>
 
 #include <vm/vm.h>
 #include <vm/vm_kern.h>

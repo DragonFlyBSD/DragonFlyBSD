@@ -28,7 +28,7 @@
  *	should not include this file.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.16 2003/07/08 06:27:26 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.17 2003/07/10 04:47:53 dillon Exp $
  */
 
 #ifndef _MACHINE_GLOBALDATA_H_
@@ -61,7 +61,6 @@
  */
 struct mdglobaldata {
 	struct globaldata mi;
-	struct thread   gd_idlethread;
 	struct segment_descriptor gd_common_tssd;
 	struct segment_descriptor *gd_tss_gdt;
 	struct thread   *gd_npxthread;
@@ -69,6 +68,7 @@ struct mdglobaldata {
 	int		gd_fpending;	/* fast interrupt pending */
 	int		gd_ipending;	/* normal interrupt pending */
 	int		gd_currentldt;	/* USER_LDT */
+	int		gd_private_tss;
 	u_int		gd_cpu_lockid;
 	u_int		gd_other_cpus;
 	u_int		gd_ss_eflags;
@@ -108,6 +108,5 @@ struct privatespace {
 extern struct privatespace CPU_prvspace[];
 
 #define mdcpu  		((struct mdglobaldata *)_get_mycpu())
-#define npxthread       mdcpu->gd_npxthread
 
 #endif

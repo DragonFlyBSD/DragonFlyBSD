@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.22 2003/07/06 21:23:54 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.23 2003/07/10 04:47:55 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -54,6 +54,7 @@
 #include <sys/ucred.h>
 #include <sys/event.h>			/* For struct klist */
 #include <sys/thread.h>
+#include <sys/globaldata.h>
 #include <machine/proc.h>		/* Machine-dependent proc substruct. */
 
 /*
@@ -271,9 +272,9 @@ struct	proc {
 #define	P_SWAPINREQ	0x80000	/* Swapin request due to wakeup */
 
 /* Marked a kernel thread */
-#define	P_ONRUNQ	0x100000 /* LWKT scheduled (== not on user sched q) */
+#define	P_ONRUNQ	0x100000 /* on a user scheduling run queue */
 #define	P_KTHREADP	0x200000 /* Process is really a kernel thread */
-#define P_XSLEEP	0x400000 /* process sitting on xwait_t structure */
+#define P_CP_RELEASED	0x400000 /* directly schedule LWKT, ignore user schd */
 
 #define	P_DEADLKTREAT   0x800000 /* lock aquisition - deadlock treatment */
 
@@ -388,6 +389,7 @@ struct pgrp *pgfind __P((pid_t));	/* Find process group by id. */
 struct proc *zpfind __P((pid_t));	/* Find zombie process by id. */
 
 struct vm_zone;
+struct globaldata;
 extern struct vm_zone *proc_zone;
 
 int	enterpgrp __P((struct proc *p, pid_t pgid, int mksess));
@@ -409,6 +411,8 @@ int	suser __P((struct thread *td));
 int	suser_proc __P((struct proc *p));
 int	suser_cred __P((struct ucred *cred, int flag));
 void	remrunqueue __P((struct proc *));
+void	release_curproc __P((struct proc *));
+void	acquire_curproc __P((struct proc *));
 void	cpu_heavy_switch __P((struct thread *));
 void	cpu_lwkt_switch __P((struct thread *));
 void	unsleep __P((struct thread *));
@@ -427,8 +431,8 @@ void	cpu_thread_wait __P((struct thread *));
 int	cpu_coredump __P((struct thread *, struct vnode *, struct ucred *));
 void	setsugid __P((void));
 void	faultin __P((struct proc *p));
+void	sched_thread_init(void);
 
-struct proc *	chooseproc __P((void));
 u_int32_t	procrunnable __P((void));
 
 #endif	/* _KERNEL */

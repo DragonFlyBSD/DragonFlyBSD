@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.10 2003/07/08 06:27:26 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.11 2003/07/10 04:47:53 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -2460,6 +2460,11 @@ ap_init(void)
 		smp_started = 1; /* enable IPI's, tlb shootdown, freezes etc */
 		smp_active = 1;	 /* historic */
 	}
+
+	/*
+	 * Startup helper thread(s) one per cpu.
+	 */
+	sched_thread_init();
 
 	/*
 	 * The idle loop doesn't expect the BGL to be held and while

@@ -24,15 +24,11 @@
  *
  *	Machine independant code should not directly include this file.
  *
- * $DragonFly: src/sys/platform/pc32/include/thread.h,v 1.4 2003/07/08 06:27:27 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/thread.h,v 1.5 2003/07/10 04:47:53 dillon Exp $
  */
 
 #ifndef	_MACHINE_THREAD_H_
 #define	_MACHINE_THREAD_H_
-
-#ifndef _SYS_GLOBALDATA_H_
-#include <sys/globaldata.h>	/* struct globaldata */
-#endif
 
 struct md_thread {
     unsigned int	mtd_cpl;

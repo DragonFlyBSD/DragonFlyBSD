@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.16 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.17 2003/07/10 04:47:53 dillon Exp $
  */
 
 /*
@@ -345,11 +345,17 @@ pmap_bootstrap(firstaddr, loadaddr)
 	for (i = 0; i < NKPT; i++)
 		PTD[i] = 0;
 
-	/* XXX - see also mp_machdep.c */
-	if (ncpus == 1 && (cpu_feature & CPUID_PGE))
+	/*
+	 * PG_G is terribly broken on SMP because we IPI invltlb's in some
+	 * cases rather then invl1pg.  Actually, I don't even know why it
+	 * works under UP because self-referential page table mappings
+	 */
+#ifdef SMP
+	pgeflag = 0;
+#else
+	if (cpu_feature & CPUID_PGE)
 		pgeflag = PG_G;
-	else
-		pgeflag = 0;
+#endif
 	
 /*
  * Initialize the 4MB page size flag
@@ -3101,6 +3107,9 @@ i386_protection_init()
  * address space. Return a pointer to where it is mapped. This
  * routine is intended to be used for mapping device memory,
  * NOT real memory.
+ *
+ * NOTE: we can't use pgeflag unless we invalidate the pages one at
+ * a time.
  */
 void *
 pmap_mapdev(pa, size)
@@ -3120,7 +3129,7 @@ pmap_mapdev(pa, size)
 	pa = pa & PG_FRAME;
 	for (tmpva = va; size > 0;) {
 		pte = (unsigned *)vtopte(tmpva);
-		*pte = pa | PG_RW | PG_V | pgeflag;
+		*pte = pa | PG_RW | PG_V; /* | pgeflag; */
 		size -= PAGE_SIZE;
 		tmpva += PAGE_SIZE;
 		pa += PAGE_SIZE;
@@ -3206,7 +3215,7 @@ pmap_activate(struct proc *p)
 
 	pmap = vmspace_pmap(p->p_vmspace);
 #if defined(SMP)
-	pmap->pm_active |= 1 << mycpu->gd_cpuid;
+	atomic_set_int(&pmap->pm_active, 1 << mycpu->gd_cpuid);
 #else
 	pmap->pm_active |= 1;
 #endif

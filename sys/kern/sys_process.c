@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.5 2003/07/10 04:47:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,6 +48,7 @@
 
 #include <sys/user.h>
 #include <miscfs/procfs/procfs.h>
+#include <sys/thread2.h>
 
 /* use the equivalent procfs code */
 #if 0
@@ -620,13 +621,17 @@ trace_req(p)
  */
 
 void
-stopevent(struct proc *p, unsigned int event, unsigned int val) {
+stopevent(struct proc *p, unsigned int event, unsigned int val) 
+{
 	p->p_step = 1;
 
 	do {
+		crit_enter();
+		wakeup(&p->p_stype);	/* Wake up any PIOCWAIT'ing procs */
 		p->p_xstat = val;
 		p->p_stype = event;	/* Which event caused the stop? */
-		wakeup(&p->p_stype);	/* Wake up any PIOCWAIT'ing procs */
 		tsleep(&p->p_step, PWAIT, "stopevent", 0);
+		crit_exit();
 	} while (p->p_step);
 }
+
