@@ -32,7 +32,7 @@
  *
  * @(#)server.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/server.c,v 1.10 1999/08/28 01:05:09 peter Exp $
- * $DragonFly: src/usr.bin/rdist/server.c,v 1.4 2004/07/24 19:45:10 eirikn Exp $
+ * $DragonFly: src/usr.bin/rdist/server.c,v 1.5 2004/07/24 19:50:42 eirikn Exp $
  */
 
 #include <sys/wait.h>
@@ -1474,6 +1474,7 @@ fatal(const char *fmt, ...)
 		vfprintf(lfp, fmt, ap);
 		fflush(lfp);
 	}
+	va_end(ap);
 	cleanup(0);
 }
 
