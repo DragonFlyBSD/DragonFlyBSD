@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.25 2003/11/11 14:33:23 daver Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.26 2003/11/12 10:11:09 daver Exp $
  */
 
 #include <sys/param.h>
@@ -1727,6 +1727,11 @@ pathconf(struct pathconf_args *uap)
 	return (error);
 }
 
+/*
+ * XXX: daver
+ * kern_readlink isn't properly split yet.  There is a copyin burried
+ * in VOP_READLINK().
+ */
 int
 kern_readlink(struct nameidata *nd, char *buf, int count, int *res)
 {
