@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *	$NetBSD: rcorder.c,v 1.7 2000/08/04 07:33:55 enami Exp $
- *	$DragonFly: src/sbin/rcorder/rcorder.c,v 1.6 2004/02/04 17:40:01 joerg Exp $
+ *	$DragonFly: src/sbin/rcorder/rcorder.c,v 1.7 2005/02/20 19:47:17 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -703,6 +703,10 @@ keep_ok(filenode *fnode)
  * is ok, we loop over the filenodes requirements, calling satisfy_req()
  * for each of them.. once we have done this, remove this filenode
  * from each provision table, as we are now done.
+ *
+ * NOTE: do_file() is called recursively from several places and cannot
+ * safely free() anything related to items that may be recursed on.
+ * Circular dependancies will cause problems if we do.
  */
 void
 do_file(filenode *fnode)
@@ -737,7 +741,7 @@ do_file(filenode *fnode)
 		r_tmp = r;
 		satisfy_req(r, fnode->filename);
 		r = r->next;
-		free(r_tmp);
+		/*free(r_tmp);*/
 	}
 	fnode->req_list = NULL;
 
@@ -776,8 +780,8 @@ do_file(filenode *fnode)
 	}
 
 	DPRINTF((stderr, "nuking %s\n", fnode->filename));
-	free(fnode->filename);
-	free(fnode);
+	/*free(fnode->filename);*/
+	/*free(fnode);*/
 }
 
 void
