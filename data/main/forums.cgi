@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/forums.cgi,v 1.11 2004/09/13 17:13:22 dillon Exp $
+# $DragonFly: site/data/main/Attic/forums.cgi,v 1.12 2004/10/11 13:23:27 justin Exp $
 
 $TITLE(DragonFly - Forums)
 <p>
@@ -10,10 +10,7 @@ will be forwarded to the appropriate mailing list and vice versa.
 When testing newsgroup access, be aware that posts may be delayed up to
 5 minutes.  Please use the 'test' newsgroup for any test postings / 
 experimentation.</p>
-<p>
-General postings should currently be made on the 'kernel' list.  When
-traffic increases beyond a certain point we will split off other lists
-for general discussion.</p>
+
 <ul>
     <li>Bug Reporting -
 	<a href="news://nntp.dragonflybsd.org/dragonfly.bugs">
