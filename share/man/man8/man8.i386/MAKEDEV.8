@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)MAKEDEV.8	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man8/man8.i386/MAKEDEV.8,v 1.15.2.5 2002/05/11 06:15:16 dd Exp $
-.\" $DragonFly: src/share/man/man8/man8.i386/MAKEDEV.8,v 1.3 2005/02/26 12:00:54 swildner Exp $
+.\" $DragonFly: src/share/man/man8/man8.i386/MAKEDEV.8,v 1.4 2005/03/22 00:40:54 dillon Exp $
 .\"
 .Dd June 5, 1993
 .Dt MAKEDEV 8 i386
@@ -102,12 +102,32 @@ tape drives.
 .Dq ATAPI
 CDROM drives.
 .El
+.Pp
+.Nm
+creates each special file with reasonable default ownership and permissions.
+Under DragonFly BSD, you can change these default settings by putting
+.Dq local override
+entries in the
+.Pa /etc/devices.conf
+file.
+.Pp
+Whenever
+.Nm
+finds overrides for a given special file in
+.Pa /etc/devices.conf ,
+it will use these settings when it creates the device node.
+.Pp
+Please see the devices.conf(5) manpage for more information on how to override the
+default settings.
 .Sh FILES
 .Bl -tag -width /dev/xxxx -compact
 .It Pa /dev
 The special file directory.
+.It Pa /etc/devices.conf
+File containing local ownership and permissions overrides.
 .El
 .Sh SEE ALSO
+.Xr devices.conf 5 ,
 .Xr ata 4 ,
 .Xr intro 4 ,
 .Xr config 8 ,

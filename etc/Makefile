@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.47 2005/03/15 19:16:17 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.48 2005/03/22 00:40:51 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -22,7 +22,7 @@ BINUPDATE= apmd.conf fbtab gettytab network.subr \
 #
 BIN1=	amd.map auth.conf \
 	crontab csh.cshrc csh.login csh.logout \
-	dhclient.conf dm.conf ftpusers group \
+	devices.conf dhclient.conf dm.conf ftpusers group \
 	hosts hosts.allow host.conf hosts.equiv hosts.lpd \
 	inetd.conf login.access login.conf \
 	motd modems networks newsyslog.conf \
