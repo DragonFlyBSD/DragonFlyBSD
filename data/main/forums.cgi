@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/forums.cgi,v 1.2 2003/08/11 02:24:49 dillon Exp $
+# $DragonFly: site/data/main/Attic/forums.cgi,v 1.3 2003/08/27 17:30:12 hmp Exp $
 
 $TITLE(DragonFly - Forums)
 <P>
@@ -22,6 +22,9 @@ for general discussion.
     <BR>Kernel Related -
 	<A HREF="nntp://nntp.dragonflybsd.org/dragonfly.kernel">
 		nntp://nntp.dragonflybsd.org/dragonfly.kernel</A>
+    <BR>Documentation Related -
+    	<A HREF="nntp://nntp.dragonflybsd.org/dragonfly.docs">
+		nntp://nntp.dragonflybsd.org/dragonfly.docs</A>
     <BR>Patch Submissions -
 	<A HREF="nntp://nntp.dragonflybsd.org/dragonfly.submit">
 		nntp://nntp.dragonflybsd.org/dragonfly.submit</A>
@@ -41,6 +44,7 @@ list for experimentation and remember to unsubscribe from it when you are done
 <UL>
     <P>Bug Reporting - <A HREF="mailto:bugs-request@lists.dragonflybsd.org">bugs-request@lists.dragonflybsd.org</A>
     <BR>Kernel Related - <A HREF="mailto:kernel-request@lists.dragonflybsd.org">kernel-request@lists.dragonflybsd.org</A>
+    <BR>Documentation Related - <A HREF="mailto:docs-request@lists.dragonflybsd.org">docs-request@lists.dragonflybsd.org</A>
     <BR>Patch Submissions - <A HREF="mailto:submit-request@lists.dragonflybsd.org">submit-request@lists.dragonflybsd.org</A>
     <BR>Commit Messages - <A HREF="mailto:commits-request@lists.dragonflybsd.org">commits-request@lists.dragonflybsd.org</A>
     <BR>Test Postings - <A HREF="mailto:test-request@lists.dragonflybsd.org">test-request@lists.dragonflybsd.org</A>
