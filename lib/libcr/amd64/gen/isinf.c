@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1990, 1993
+ * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,43 +30,39 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdlib/exit.c,v 1.3.6.1 2001/03/05 11:33:57 obrien Exp $
- * $DragonFly: src/lib/libcr/stdlib/Attic/exit.c,v 1.4 2004/03/13 19:46:56 eirikn Exp $
- *
- * @(#)exit.c	8.1 (Berkeley) 6/4/93
+ * @(#)isinf.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/amd64/gen/isinf.c,v 1.10 2003/02/12 20:03:41 mike Exp $
+ * $DragonFly: src/lib/libcr/amd64/gen/Attic/isinf.c,v 1.1 2004/03/13 19:46:55 eirikn Exp $
  */
 
-#include <stdlib.h>
-#include <unistd.h>
-#include "atexit.h"
+/* For binary compat; to be removed in FreeBSD 6.0. */
 
-void (*__cleanup)();
+#include <sys/types.h>
 
-/*
- * This variable is zero until a process has created a thread.
- * It is used to avoid calling locking functions in libc when they
- * are not required. By default, libc is intended to be(come)
- * thread-safe, but without a (significant) penalty to non-threaded
- * processes.
- */
-int	__isthreaded	= 0;
-
-/*
- * Exit, flushing stdio buffers if necessary.
- */
-void
-exit(status)
-	int status;
+int
+isnan(d)
+	double d;
 {
-#ifdef	_THREAD_SAFE
-	extern int _thread_autoinit_dummy_decl;
-	/* Ensure that the auto-initialization routine is linked in: */
-	_thread_autoinit_dummy_decl = 1;
-#endif
+	register struct IEEEdp {
+		u_int manl : 32;
+		u_int manh : 20;
+		u_int  exp : 11;
+		u_int sign :  1;
+	} *p = (struct IEEEdp *)&d;
 
-	__cxa_finalize(NULL);
+	return(p->exp == 2047 && (p->manh || p->manl));
+}
 
-	if (__cleanup)
-		(*__cleanup)();
-	_exit(status);
+int
+isinf(d)
+	double d;
+{
+	register struct IEEEdp {
+		u_int manl : 32;
+		u_int manh : 20;
+		u_int  exp : 11;
+		u_int sign :  1;
+	} *p = (struct IEEEdp *)&d;
+
+	return(p->exp == 2047 && !p->manh && !p->manl);
 }

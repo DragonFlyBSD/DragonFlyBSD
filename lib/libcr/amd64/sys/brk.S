@@ -1,6 +1,9 @@
 /*-
- * Copyright (c) 1990, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 1990 The Regents of the University of California.
+ * All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * William Jolitz.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,43 +33,54 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdlib/exit.c,v 1.3.6.1 2001/03/05 11:33:57 obrien Exp $
- * $DragonFly: src/lib/libcr/stdlib/Attic/exit.c,v 1.4 2004/03/13 19:46:56 eirikn Exp $
- *
- * @(#)exit.c	8.1 (Berkeley) 6/4/93
+ * @(#)brk.s	5.2 (Berkeley) 12/17/90
+ * $FreeBSD: src/lib/libc/amd64/sys/brk.S,v 1.12 2003/05/24 17:35:23 peter Exp $
+ * $DragonFly: src/lib/libcr/amd64/sys/Attic/brk.S,v 1.1 2004/03/13 19:46:55 eirikn Exp $
  */
 
-#include <stdlib.h>
-#include <unistd.h>
-#include "atexit.h"
+#include <machine/asm.h>
 
-void (*__cleanup)();
+#include "SYS.h"
 
-/*
- * This variable is zero until a process has created a thread.
- * It is used to avoid calling locking functions in libc when they
- * are not required. By default, libc is intended to be(come)
- * thread-safe, but without a (significant) penalty to non-threaded
- * processes.
- */
-int	__isthreaded	= 0;
+	.globl	HIDENAME(curbrk)
+	.globl	HIDENAME(minbrk)
+ENTRY(_brk)
+	pushq	%rdi
+	jmp	ok
 
-/*
- * Exit, flushing stdio buffers if necessary.
- */
-void
-exit(status)
-	int status;
-{
-#ifdef	_THREAD_SAFE
-	extern int _thread_autoinit_dummy_decl;
-	/* Ensure that the auto-initialization routine is linked in: */
-	_thread_autoinit_dummy_decl = 1;
+ENTRY(brk)
+	pushq	%rdi
+	movq	%rdi,%rax
+#ifdef PIC
+	movq	PIC_GOT(HIDENAME(minbrk)),%rdx
+	cmpq	%rax,(%rdx)
+#else
+	cmpq	%rax,HIDENAME(minbrk)(%rip)
 #endif
-
-	__cxa_finalize(NULL);
-
-	if (__cleanup)
-		(*__cleanup)();
-	_exit(status);
-}
+	jbe	ok
+#ifdef PIC
+	movq	(%rdx),%rdi
+#else
+	movq	HIDENAME(minbrk)(%rip),%rdi
+#endif
+ok:
+	movq	$SYS_break,%rax
+	KERNCALL
+	jb	err
+	movq	0(%rsp),%rax
+#ifdef PIC
+	movq	PIC_GOT(HIDENAME(curbrk)),%rdx
+	movq	%rax,(%rdx)
+#else
+	movq	%rax,HIDENAME(curbrk)(%rip)
+#endif
+	movq	$0,%rax
+	popq	%rdi
+	ret
+err:
+#ifdef PIC
+	movq	PIC_GOT(HIDENAME(cerror)),%rdx
+	jmp	*%rdx
+#else
+	jmp	HIDENAME(cerror)
+#endif

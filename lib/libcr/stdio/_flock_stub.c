@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/_flock_stub.c,v 1.3 1999/08/28 00:00:55 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/_flock_stub.c,v 1.3 2004/01/23 11:30:28 joerg Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/_flock_stub.c,v 1.4 2004/03/13 19:46:56 eirikn Exp $
  *
  */
 
@@ -49,7 +49,7 @@
 
 void	flockfile(FILE *);
 void	_flockfile_debug(FILE *, char *, int);
-int	ftrylockfile(FILE *);
+int 	ftrylockfile(FILE *);
 void	funlockfile(FILE *);
 
 /*

@@ -1,6 +1,9 @@
 /*-
- * Copyright (c) 1990, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 1990 The Regents of the University of California.
+ * All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * William Jolitz.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,43 +33,18 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdlib/exit.c,v 1.3.6.1 2001/03/05 11:33:57 obrien Exp $
- * $DragonFly: src/lib/libcr/stdlib/Attic/exit.c,v 1.4 2004/03/13 19:46:56 eirikn Exp $
- *
- * @(#)exit.c	8.1 (Berkeley) 6/4/93
+ * @(#)htons.s	5.2 (Berkeley) 12/17/90
+ * $FreeBSD: src/lib/libc/amd64/net/htons.S,v 1.10 2003/04/30 18:07:23 peter Exp $
+ * $DragonFly: src/lib/libcr/amd64/net/Attic/htons.S,v 1.1 2004/03/13 19:46:55 eirikn Exp $
  */
 
-#include <stdlib.h>
-#include <unistd.h>
-#include "atexit.h"
+#include <machine/asm.h>
 
-void (*__cleanup)();
+/* netorder = htons(hostorder) */
 
-/*
- * This variable is zero until a process has created a thread.
- * It is used to avoid calling locking functions in libc when they
- * are not required. By default, libc is intended to be(come)
- * thread-safe, but without a (significant) penalty to non-threaded
- * processes.
- */
-int	__isthreaded	= 0;
-
-/*
- * Exit, flushing stdio buffers if necessary.
- */
-void
-exit(status)
-	int status;
-{
-#ifdef	_THREAD_SAFE
-	extern int _thread_autoinit_dummy_decl;
-	/* Ensure that the auto-initialization routine is linked in: */
-	_thread_autoinit_dummy_decl = 1;
-#endif
-
-	__cxa_finalize(NULL);
-
-	if (__cleanup)
-		(*__cleanup)();
-	_exit(status);
-}
+        .weak CNAME(htons)
+        .set CNAME(htons),CNAME(__htons)
+ENTRY(__htons)
+	movl	%edi,%eax
+	xchgb	%al,%ah
+	ret

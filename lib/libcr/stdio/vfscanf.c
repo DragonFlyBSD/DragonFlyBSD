@@ -35,7 +35,7 @@
  *
  * @(#)vfscanf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vfscanf.c,v 1.14.2.2 2002/04/17 14:58:23 ache Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/vfscanf.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/vfscanf.c,v 1.3 2004/03/13 19:46:56 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -84,6 +84,7 @@
 
 #define	PFXOK		0x100	/* 0x prefix is (still) legal */
 #define	NZDIGITS	0x200	/* no zero digits detected */
+#define	HAVESIGN	0x10000	/* sign detected */
 
 /*
  * Conversion types.
@@ -502,13 +503,18 @@ literal:
 				case '+': case '-':
 					if (flags & SIGNOK) {
 						flags &= ~SIGNOK;
+						flags |= HAVESIGN;
 						goto ok;
 					}
 					break;
-
-				/* x ok iff flag still set & 2nd char */
+					
+				/*
+				 * x ok iff flag still set & 2nd char (or
+				 * 3rd char if we have a sign).
+				 */
 				case 'x': case 'X':
-					if (flags & PFXOK && p == buf + 1) {
+					if (flags & PFXOK && p ==
+					    buf + 1 + !!(flags & HAVESIGN)) {
 						base = 16;	/* if %i */
 						flags &= ~PFXOK;
 						goto ok;

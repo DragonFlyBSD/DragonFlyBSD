@@ -1,6 +1,9 @@
 /*-
- * Copyright (c) 1990, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 1990 The Regents of the University of California.
+ * All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * Sean Eric Fagan.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,43 +33,59 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdlib/exit.c,v 1.3.6.1 2001/03/05 11:33:57 obrien Exp $
- * $DragonFly: src/lib/libcr/stdlib/Attic/exit.c,v 1.4 2004/03/13 19:46:56 eirikn Exp $
+ * from: @(#)modf.s	5.5 (Berkeley) 3/18/91
+ * $NetBSD: modf.S,v 1.5 1997/07/16 14:37:18 christos Exp $
+ * $FreeBSD: src/lib/libc/amd64/gen/modf.S,v 1.2 2003/05/08 03:19:37 peter Exp $
+ * $DragonFly: src/lib/libcr/amd64/gen/Attic/modf.S,v 1.1 2004/03/13 19:46:55 eirikn Exp $
+ */
+
+#include <machine/asm.h>
+
+/*
+ * modf(value, iptr): return fractional part of value, and stores the
+ * integral part into iptr (a pointer to double).
  *
- * @(#)exit.c	8.1 (Berkeley) 6/4/93
+ * Written by Sean Eric Fagan (sef@kithrup.COM)
+ * Sun Mar 11 20:27:30 PST 1990
  */
 
-#include <stdlib.h>
-#include <unistd.h>
-#include "atexit.h"
+/* With CHOP mode on, frndint behaves as TRUNC does.  Useful. */
+ENTRY(modf)
 
-void (*__cleanup)();
+	/*
+	 * Set chop mode.
+	 */
+	fnstcw	-12(%rsp)
+	movw	-12(%rsp),%dx
+	orw	$3072,%dx
+	movw	%dx,-16(%rsp)
+	fldcw	-16(%rsp)
 
-/*
- * This variable is zero until a process has created a thread.
- * It is used to avoid calling locking functions in libc when they
- * are not required. By default, libc is intended to be(come)
- * thread-safe, but without a (significant) penalty to non-threaded
- * processes.
- */
-int	__isthreaded	= 0;
+	/*
+	 * Get integral part.
+	 */
+	movsd	%xmm0,-24(%rsp)
+	fldl	-24(%rsp)
+	frndint
+	fstpl	-8(%rsp)
 
-/*
- * Exit, flushing stdio buffers if necessary.
- */
-void
-exit(status)
-	int status;
-{
-#ifdef	_THREAD_SAFE
-	extern int _thread_autoinit_dummy_decl;
-	/* Ensure that the auto-initialization routine is linked in: */
-	_thread_autoinit_dummy_decl = 1;
-#endif
+	/*
+	 * Restore control word.
+	 */
+	fldcw	-12(%rsp)
 
-	__cxa_finalize(NULL);
+	/*
+	 * Store integral part.
+	 */
+	movsd	-8(%rsp),%xmm0
+	movsd	%xmm0,(%rdi)
 
-	if (__cleanup)
-		(*__cleanup)();
-	_exit(status);
-}
+	/*
+	 * Get fractional part and return it.
+	 */
+	fldl	-24(%rsp)
+	fsubl	-8(%rsp)
+	fstpl	-8(%rsp)
+	movsd   -8(%rsp),%xmm0
+
+	ret

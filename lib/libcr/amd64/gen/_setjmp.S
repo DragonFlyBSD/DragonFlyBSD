@@ -1,6 +1,9 @@
 /*-
- * Copyright (c) 1990, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 1990 The Regents of the University of California.
+ * All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * William Jolitz.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,43 +33,55 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdlib/exit.c,v 1.3.6.1 2001/03/05 11:33:57 obrien Exp $
- * $DragonFly: src/lib/libcr/stdlib/Attic/exit.c,v 1.4 2004/03/13 19:46:56 eirikn Exp $
+ * @(#)_setjmp.s	5.1 (Berkeley) 4/23/90
+ * $FreeBSD: src/lib/libc/amd64/gen/_setjmp.S,v 1.18 2003/06/02 22:37:53 peter Exp $
+ * $DragonFly: src/lib/libcr/amd64/gen/Attic/_setjmp.S,v 1.1 2004/03/13 19:46:55 eirikn Exp $
+ */
+
+#include <machine/asm.h>
+
+/*
+ * C library -- _setjmp, _longjmp
  *
- * @(#)exit.c	8.1 (Berkeley) 6/4/93
+ *	_longjmp(a,v)
+ * will generate a "return(v)" from the last call to
+ *	_setjmp(a)
+ * by restoring registers from the environment 'a'.
+ * The previous signal state is NOT restored.
  */
 
-#include <stdlib.h>
-#include <unistd.h>
-#include "atexit.h"
+ENTRY(_setjmp)
+	movq	%rdi,%rax
+	movq	0(%rsp),%rdx		/* retval */
+	movq	%rdx, 0(%rax)		/* 0; retval */
+	movq	%rbx, 8(%rax)		/* 1; rbx */
+	movq	%rsp,16(%rax)		/* 2; rsp */
+	movq	%rbp,24(%rax)		/* 3; rbp */
+	movq	%r12,32(%rax)		/* 4; r12 */
+	movq	%r13,40(%rax)		/* 5; r13 */
+	movq	%r14,48(%rax)		/* 6; r14 */
+	movq	%r15,56(%rax)		/* 7; r15 */
+	fnstcw	64(%rax)		/* 8; fpu cw */
+	xorq	%rax,%rax
+	ret
 
-void (*__cleanup)();
-
-/*
- * This variable is zero until a process has created a thread.
- * It is used to avoid calling locking functions in libc when they
- * are not required. By default, libc is intended to be(come)
- * thread-safe, but without a (significant) penalty to non-threaded
- * processes.
- */
-int	__isthreaded	= 0;
-
-/*
- * Exit, flushing stdio buffers if necessary.
- */
-void
-exit(status)
-	int status;
-{
-#ifdef	_THREAD_SAFE
-	extern int _thread_autoinit_dummy_decl;
-	/* Ensure that the auto-initialization routine is linked in: */
-	_thread_autoinit_dummy_decl = 1;
-#endif
-
-	__cxa_finalize(NULL);
-
-	if (__cleanup)
-		(*__cleanup)();
-	_exit(status);
-}
+	.weak	CNAME(_longjmp)
+	.set	CNAME(_longjmp),CNAME(___longjmp)
+ENTRY(___longjmp)
+	movq	%rdi,%rdx
+	movq	%rsi,%rax		/* retval */
+	movq	0(%rdx),%rcx
+	movq	8(%rdx),%rbx
+	movq	16(%rdx),%rsp
+	movq	24(%rdx),%rbp
+	movq	32(%rdx),%r12
+	movq	40(%rdx),%r13
+	movq	48(%rdx),%r14
+	movq	56(%rdx),%r15
+	fninit
+	fldcw	64(%rdx)
+	testq	%rax,%rax
+	jnz	1f
+	incq	%rax
+1:	movq	%rcx,0(%rsp)
+	ret

@@ -1,10 +1,9 @@
 /*-
- * Copyright (c) 1992, 1993, 1994 Henry Spencer.
- * Copyright (c) 1992, 1993, 1994
- *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 1990 The Regents of the University of California.
+ * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
- * Henry Spencer.
+ * William Jolitz.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,52 +33,73 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)regfree.c	8.3 (Berkeley) 3/20/94
- *
- * $FreeBSD: src/lib/libc/regex/regfree.c,v 1.1.1.1.14.1 2000/07/31 06:30:37 dcs Exp $
- * $DragonFly: src/lib/libcr/regex/Attic/regfree.c,v 1.3 2004/03/13 19:46:55 eirikn Exp $
- *
- * @(#)regfree.c	8.3 (Berkeley) 3/20/94
+ * @(#)setjmp.s	5.1 (Berkeley) 4/23/90
+ * $FreeBSD: src/lib/libc/amd64/gen/setjmp.S,v 1.26 2003/06/02 22:37:53 peter Exp $
+ * $DragonFly: src/lib/libcr/amd64/gen/Attic/setjmp.S,v 1.1 2004/03/13 19:46:55 eirikn Exp $
  */
 
-#include <sys/types.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <limits.h>
-#include <regex.h>
-
-#include "utils.h"
-#include "regex2.h"
+#include <machine/asm.h>
 
 /*
- - regfree - free everything
- = extern void regfree(regex_t *);
+ * C library -- _setjmp, _longjmp
+ *
+ *	longjmp(a,v)
+ * will generate a "return(v)" from the last call to
+ *	setjmp(a)
+ * by restoring registers from the environment 'a'.
+ * The previous signal state is restored.
  */
-void
-regfree(regex_t *preg)
-{
-	struct re_guts *g;
 
-	if (preg->re_magic != MAGIC1)	/* oops */
-		return;			/* nice to complain, but hard */
+#include "SYS.h"
 
-	g = preg->re_g;
-	if (g == NULL || g->magic != MAGIC2)	/* oops again */
-		return;
-	preg->re_magic = 0;		/* mark it invalid */
-	g->magic = 0;			/* mark it invalid */
+ENTRY(setjmp)
+	pushq	%rdi
+	movq	%rdi,%rcx
+	movq	$1,%rdi			/* SIG_BLOCK       */
+	movq	$0,%rsi			/* (sigset_t*)set  */
+	leaq	72(%rcx),%rdx		/* 9,10; (sigset_t*)oset */
+	call	PIC_PLT(CNAME(_sigprocmask))
+	popq	%rdi
+	movq	%rdi,%rcx
+	movq	0(%rsp),%rdx		/* retval */
+	movq	%rdx, 0(%rcx)		/* 0; retval */
+	movq	%rbx, 8(%rcx)		/* 1; rbx */
+	movq	%rsp,16(%rcx)		/* 2; rsp */
+	movq	%rbp,24(%rcx)		/* 3; rbp */
+	movq	%r12,32(%rcx)		/* 4; r12 */
+	movq	%r13,40(%rcx)		/* 5; r13 */
+	movq	%r14,48(%rcx)		/* 6; r14 */
+	movq	%r15,56(%rcx)		/* 7; r15 */
+	fnstcw	64(%rcx)		/* 8; fpu cw */
+	xorq	%rax,%rax
+	ret
 
-	if (g->strip != NULL)
-		free((char *)g->strip);
-	if (g->sets != NULL)
-		free((char *)g->sets);
-	if (g->setbits != NULL)
-		free((char *)g->setbits);
-	if (g->must != NULL)
-		free(g->must);
-	if (g->charjump != NULL)
-		free(&g->charjump[CHAR_MIN]);
-	if (g->matchjump != NULL)
-		free(g->matchjump);
-	free((char *)g);
-}
+	.weak CNAME(longjmp)
+	.set CNAME(longjmp),CNAME(__longjmp)
+ENTRY(__longjmp)
+	pushq	%rdi
+	pushq	%rsi
+	movq	%rdi,%rdx
+	movq	$3,%rdi			/* SIG_SETMASK     */
+	leaq	72(%rdx),%rsi		/* (sigset_t*)set  */
+	movq	$0,%rdx			/* (sigset_t*)oset */
+	call	PIC_PLT(CNAME(_sigprocmask))
+	popq	%rsi
+	popq	%rdi			/* jmpbuf */
+	movq	%rdi,%rdx
+	movq	%rsi,%rax		/* retval */
+	movq	0(%rdx),%rcx
+	movq	8(%rdx),%rbx
+	movq	16(%rdx),%rsp
+	movq	24(%rdx),%rbp
+	movq	32(%rdx),%r12
+	movq	40(%rdx),%r13
+	movq	48(%rdx),%r14
+	movq	56(%rdx),%r15
+	fninit
+	fldcw	64(%rdx)
+	testq	%rax,%rax
+	jnz	1f
+	incq	%rax
+1:	movq	%rcx,0(%rsp)
+	ret

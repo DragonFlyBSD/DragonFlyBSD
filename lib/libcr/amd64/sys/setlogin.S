@@ -1,6 +1,9 @@
 /*-
- * Copyright (c) 1990, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 1991 The Regents of the University of California.
+ * All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * William Jolitz.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,43 +33,21 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdlib/exit.c,v 1.3.6.1 2001/03/05 11:33:57 obrien Exp $
- * $DragonFly: src/lib/libcr/stdlib/Attic/exit.c,v 1.4 2004/03/13 19:46:56 eirikn Exp $
- *
- * @(#)exit.c	8.1 (Berkeley) 6/4/93
+ * @(#)setlogin.s	5.2 (Berkeley) 4/12/91
+ * $FreeBSD: src/lib/libc/amd64/sys/setlogin.S,v 1.11 2003/05/24 17:35:23 peter Exp $
+ * $DragonFly: src/lib/libcr/amd64/sys/Attic/setlogin.S,v 1.1 2004/03/13 19:46:55 eirikn Exp $
  */
 
-#include <stdlib.h>
-#include <unistd.h>
-#include "atexit.h"
+#include <machine/asm.h>
+#include "SYS.h"
 
-void (*__cleanup)();
+.globl	CNAME(_logname_valid)		/* in _getlogin() */
 
-/*
- * This variable is zero until a process has created a thread.
- * It is used to avoid calling locking functions in libc when they
- * are not required. By default, libc is intended to be(come)
- * thread-safe, but without a (significant) penalty to non-threaded
- * processes.
- */
-int	__isthreaded	= 0;
-
-/*
- * Exit, flushing stdio buffers if necessary.
- */
-void
-exit(status)
-	int status;
-{
-#ifdef	_THREAD_SAFE
-	extern int _thread_autoinit_dummy_decl;
-	/* Ensure that the auto-initialization routine is linked in: */
-	_thread_autoinit_dummy_decl = 1;
+SYSCALL(setlogin)
+#ifdef PIC
+	movq	PIC_GOT(CNAME(_logname_valid)),%rdx
+	movl	$0,(%rdx)
+#else
+	movl	$0,CNAME(_logname_valid)(%rip)
 #endif
-
-	__cxa_finalize(NULL);
-
-	if (__cleanup)
-		(*__cleanup)();
-	_exit(status);
-}
+	ret				/* setlogin(name) */

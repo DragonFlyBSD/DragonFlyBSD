@@ -2,6 +2,9 @@
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
+ * This code is derived from software contributed to Berkeley by
+ * Sean Eric Fagan.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -30,43 +33,34 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdlib/exit.c,v 1.3.6.1 2001/03/05 11:33:57 obrien Exp $
- * $DragonFly: src/lib/libcr/stdlib/Attic/exit.c,v 1.4 2004/03/13 19:46:56 eirikn Exp $
+ * @(#)ldexp.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/amd64/gen/ldexp.c,v 1.11 2003/06/10 21:17:55 obrien Exp $
+ * $DragonFly: src/lib/libcr/amd64/gen/Attic/ldexp.c,v 1.1 2004/03/13 19:46:55 eirikn Exp $
+ */
+
+/*
+ * ldexp(value, exp): return value * (2 ** exp).
  *
- * @(#)exit.c	8.1 (Berkeley) 6/4/93
+ * Written by Sean Eric Fagan (sef@kithrup.COM)
+ * Sun Mar 11 20:27:09 PST 1990
  */
-
-#include <stdlib.h>
-#include <unistd.h>
-#include "atexit.h"
-
-void (*__cleanup)();
 
 /*
- * This variable is zero until a process has created a thread.
- * It is used to avoid calling locking functions in libc when they
- * are not required. By default, libc is intended to be(come)
- * thread-safe, but without a (significant) penalty to non-threaded
- * processes.
+ * We do the conversion in C to let gcc optimize it away, if possible.
+ * The "fxch ; fstp" stuff is because value is still on the stack
+ * (stupid 8087!).
  */
-int	__isthreaded	= 0;
-
-/*
- * Exit, flushing stdio buffers if necessary.
- */
-void
-exit(status)
-	int status;
+double
+ldexp (double value, int exp)
 {
-#ifdef	_THREAD_SAFE
-	extern int _thread_autoinit_dummy_decl;
-	/* Ensure that the auto-initialization routine is linked in: */
-	_thread_autoinit_dummy_decl = 1;
+	double temp, texp, temp2;
+	texp = exp;
+#ifdef __GNUC__
+	__asm ("fscale "
+		: "=u" (temp2), "=t" (temp)
+		: "0" (texp), "1" (value));
+#else
+error unknown asm
 #endif
-
-	__cxa_finalize(NULL);
-
-	if (__cleanup)
-		(*__cleanup)();
-	_exit(status);
+	return (temp);
 }

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1990, 1993
+ * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,43 +30,36 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdlib/exit.c,v 1.3.6.1 2001/03/05 11:33:57 obrien Exp $
- * $DragonFly: src/lib/libcr/stdlib/Attic/exit.c,v 1.4 2004/03/13 19:46:56 eirikn Exp $
- *
- * @(#)exit.c	8.1 (Berkeley) 6/4/93
+ * @(#)frexp.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/amd64/gen/frexp.c,v 1.8 2002/03/23 02:05:17 obrien Exp $
+ * $DragonFly: src/lib/libcr/amd64/gen/Attic/frexp.c,v 1.1 2004/03/13 19:46:55 eirikn Exp $
  */
 
-#include <stdlib.h>
-#include <unistd.h>
-#include "atexit.h"
+#include <sys/types.h>
+#include <math.h>
 
-void (*__cleanup)();
-
-/*
- * This variable is zero until a process has created a thread.
- * It is used to avoid calling locking functions in libc when they
- * are not required. By default, libc is intended to be(come)
- * thread-safe, but without a (significant) penalty to non-threaded
- * processes.
- */
-int	__isthreaded	= 0;
-
-/*
- * Exit, flushing stdio buffers if necessary.
- */
-void
-exit(status)
-	int status;
+double
+frexp(value, eptr)
+	double value;
+	int *eptr;
 {
-#ifdef	_THREAD_SAFE
-	extern int _thread_autoinit_dummy_decl;
-	/* Ensure that the auto-initialization routine is linked in: */
-	_thread_autoinit_dummy_decl = 1;
-#endif
+	union {
+                double v;
+                struct {
+			u_int u_mant2 : 32;
+			u_int u_mant1 : 20;
+			u_int   u_exp : 11;
+                        u_int  u_sign :  1;
+                } s;
+        } u;
 
-	__cxa_finalize(NULL);
-
-	if (__cleanup)
-		(*__cleanup)();
-	_exit(status);
+	if (value) {
+		u.v = value;
+		*eptr = u.s.u_exp - 1022;
+		u.s.u_exp = 1022;
+		return(u.v);
+	} else {
+		*eptr = 0;
+		return((double)0);
+	}
 }
