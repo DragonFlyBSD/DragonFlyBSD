@@ -1,32 +1,8 @@
-$DragonFly: src/usr.bin/make/tests/variables/t1/expected.stdout,v 1.1 2005/02/25 08:53:14 okumoto Exp $
-echo 0
-0
-echo 1
-1
-echo 0
-0
-# The following are soo broken why no syntax error?
-echo 
-
-echo 
-
-echo 
-
-echo 
-
-echo 
-
-echo 
-
-echo 
-
-echo 
-
-echo 
-
-echo 
-
-echo 
-
-echo 
-
+$DragonFly: src/usr.bin/make/tests/variables/t1/expected.stdout,v 1.2 2005/02/26 11:23:54 okumoto Exp $
+all files: main.c globals.h  util.c util.h  map.c map.h  parser.y lexer.l  cmdman.1 format.5
+cfiles: main.c util.c map.c
+hfiles: globals.h util.h map.h
+grammer and lexer: parser.y lexer.l
+man page: cmdman.1 format.5
+utility files: util.c util.h
+m files: main.c map.c map.h
