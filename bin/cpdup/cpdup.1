@@ -3,7 +3,7 @@
 .\"    USE WITH EXTREME CAUTION.
 .\"
 .\"
-.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.5 2004/07/08 00:27:10 hmp Exp $
+.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.6 2004/08/25 22:53:07 cpressey Exp $
 .Dd October 28, 1999
 .Dt CPDUP 1
 .Os BSD 4
@@ -44,8 +44,8 @@ the destination and does not copy files which it believes to have already
 been synchronized (by observing that the source and destination file's size 
 and mtimes match).
 .Nm
-does not cross mount points in the source but may cross mount points in the
-destination.  As a safety measure,
+does not cross mount points in either the source or the destination.
+As a safety measure,
 .Nm
 refuses to replace a destination directory with a file.
 .Pp
