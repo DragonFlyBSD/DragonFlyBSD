@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)date.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/bin/date/date.c,v 1.32.2.6 2001/10/31 17:31:51 dillon Exp $
- * $DragonFly: src/bin/date/date.c,v 1.4 2003/09/28 14:39:13 hmp Exp $
+ * $DragonFly: src/bin/date/date.c,v 1.5 2004/03/19 17:30:59 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -47,6 +47,7 @@
 #include <syslog.h>
 #include <unistd.h>
 #include <locale.h>
+#include <libutil.h>
 
 #include "extern.h"
 #include "vary.h"
@@ -62,15 +63,14 @@ static void setthetime (const char *, const char *, int, int);
 static void badformat (void);
 static void usage (void);
 
-int logwtmp (char *, char *, char *);
-
 int
 main(int argc, char **argv)
 {
 	struct timezone tz;
 	int ch, rflag;
 	int jflag, nflag;
-	char *format, buf[1024];
+	const char *format;
+	char buf[1024];
 	char *endptr, *fmt;
 	char *tmp;
 	int set_timezone;
@@ -104,7 +104,7 @@ main(int argc, char **argv)
 			break;
 		case 'r':		/* user specified seconds */
 			rflag = 1;
-			tval = strtoq(optarg, &tmp, 0);
+			tval = strtoll(optarg, &tmp, 0);
 			if (*tmp != 0)
 				usage();
 			break;

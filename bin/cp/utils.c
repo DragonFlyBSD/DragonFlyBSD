@@ -32,7 +32,7 @@
  *
  * @(#)utils.c	8.3 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/utils.c,v 1.27.2.6 2002/08/10 13:20:19 johan Exp $
- * $DragonFly: src/bin/cp/utils.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/cp/utils.c,v 1.3 2004/03/19 17:30:59 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -55,9 +55,7 @@
 #include "extern.h"
 
 int
-copy_file(entp, dne)
-	FTSENT *entp;
-	int dne;
+copy_file(FTSENT *entp, int dne)
 {
 	static char buf[MAXBSIZE];
 	struct stat *fs;
@@ -190,33 +188,29 @@ copy_file(entp, dne)
 }
 
 int
-copy_link(p, exists)
-	FTSENT *p;
-	int exists;
+copy_link(FTSENT *p, int exists)
 {
 	int len;
-	char link[PATH_MAX];
+	char linkname[PATH_MAX];
 
-	if ((len = readlink(p->fts_path, link, sizeof(link) - 1)) == -1) {
+	if ((len = readlink(p->fts_path, linkname, sizeof(linkname) - 1)) == -1) {
 		warn("readlink: %s", p->fts_path);
 		return (1);
 	}
-	link[len] = '\0';
+	linkname[len] = '\0';
 	if (exists && unlink(to.p_path)) {
 		warn("unlink: %s", to.p_path);
 		return (1);
 	}
-	if (symlink(link, to.p_path)) {
-		warn("symlink: %s", link);
+	if (symlink(linkname, to.p_path)) {
+		warn("symlink: %s", linkname);
 		return (1);
 	}
 	return (0);
 }
 
 int
-copy_fifo(from_stat, exists)
-	struct stat *from_stat;
-	int exists;
+copy_fifo(struct stat *from_stat, int exists)
 {
 	if (exists && unlink(to.p_path)) {
 		warn("unlink: %s", to.p_path);
@@ -230,9 +224,7 @@ copy_fifo(from_stat, exists)
 }
 
 int
-copy_special(from_stat, exists)
-	struct stat *from_stat;
-	int exists;
+copy_special(struct stat *from_stat, int exists)
 {
 	if (exists && unlink(to.p_path)) {
 		warn("unlink: %s", to.p_path);
@@ -249,9 +241,7 @@ copy_special(from_stat, exists)
 	(S_ISUID | S_ISGID | S_ISVTX | S_IRWXU | S_IRWXG | S_IRWXO)
 
 int
-setfile(fs, fd)
-	register struct stat *fs;
-	int fd;
+setfile(struct stat *fs, int fd)
 {
 	static struct timeval tv[2];
 	struct stat ts;
@@ -308,7 +298,7 @@ setfile(fs, fd)
 }
 
 void
-usage()
+usage(void)
 {
 
 	(void)fprintf(stderr, "%s\n%s\n",

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)cp.c	8.2 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/cp.c,v 1.24.2.7 2002/09/24 12:41:04 mckay Exp $
- * $DragonFly: src/bin/cp/cp.c,v 1.3 2003/09/21 04:18:34 drhodus Exp $
+ * $DragonFly: src/bin/cp/cp.c,v 1.4 2004/03/19 17:30:59 cpressey Exp $
  */
 
 /*
@@ -73,7 +73,7 @@
                 *--(p).p_end = 0;					\
 }
 
-PATH_T to = { to.p_path, "", "" };
+PATH_T to = { to.p_path, to.p_path, "" };
 
 int Rflag, fflag, iflag, nflag, pflag, rflag, vflag;
 
@@ -83,9 +83,7 @@ int copy (char *[], enum op, int);
 int mastercmp (const FTSENT **, const FTSENT **);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	struct stat to_stat, tmp_stat;
 	enum op type;
@@ -456,8 +454,7 @@ copy(argv, type, fts_options)
  *	files first reduces seeking.
  */
 int
-mastercmp(a, b)
-	const FTSENT **a, **b;
+mastercmp(const FTSENT **a, const FTSENT **b)
 {
 	int a_info, b_info;
 

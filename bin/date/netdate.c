@@ -32,7 +32,7 @@
  *
  * @(#)netdate.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/date/netdate.c,v 1.11.2.1 2001/05/12 17:14:22 fenner Exp $
- * $DragonFly: src/bin/date/netdate.c,v 1.3 2003/09/28 14:39:13 hmp Exp $
+ * $DragonFly: src/bin/date/netdate.c,v 1.4 2004/03/19 17:30:59 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -72,7 +72,8 @@ netsettime(time_t tval)
 	struct sockaddr_in sin, dest, from;
 	fd_set ready;
 	long waittime;
-	int s, length, port, timed_ack, found, err;
+	int s, port, timed_ack, found, errn;
+	size_t length;
 	char hostname[MAXHOSTNAMELEN];
 
 	if ((sp = getservbyname("timed", "udp")) == NULL) {
@@ -138,11 +139,11 @@ loop:
 	FD_SET(s, &ready);
 	found = select(FD_SETSIZE, &ready, (fd_set *)0, (fd_set *)0, &tout);
 
-	length = sizeof(err);
+	length = sizeof(errn);
 	if (!getsockopt(s,
-	    SOL_SOCKET, SO_ERROR, (char *)&err, &length) && err) {
-		if (err != ECONNREFUSED)
-			warnc(err, "send (delayed error)");
+	    SOL_SOCKET, SO_ERROR, (char *)&errn, &length) && errn) {
+		if (errn != ECONNREFUSED)
+			warnc(errn, "send (delayed error)");
 		goto bad;
 	}
 

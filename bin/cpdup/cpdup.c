@@ -42,7 +42,7 @@
  *
  *	- Can do MD5 consistancy checks
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.2 2003/12/01 06:07:16 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.3 2004/03/19 17:30:59 cpressey Exp $
  */
 
 /*-
@@ -57,7 +57,7 @@
 #define HSIZE	16384
 #define HMASK	(HSIZE-1)
 
-char *MD5CacheFile;
+const char *MD5CacheFile;
 
 typedef struct Node {
     struct Node *no_Next;
@@ -80,7 +80,15 @@ struct hlink {
     int nlinked;
 };
 
-void RemoveRecur(const char *dpath, int devNo);
+typedef struct MD5Node {
+    struct MD5Node *md_Next;
+    char *md_Name;
+    char *md_Code;
+    int md_Accessed;
+} MD5Node;
+
+
+void RemoveRecur(const char *dpath, dev_t devNo);
 void InitList(List *list);
 void ResetList(List *list);
 int AddList(List *list, const char *name, int n);
@@ -92,11 +100,12 @@ int YesNo(const char *path);
 int xrename(const char *src, const char *dst, u_long flags);
 int xlink(const char *src, const char *dst, u_long flags);
 int WildCmp(const char *s1, const char *s2);
+MD5Node *md5_lookup(const char *sfile);
 int md5_check(const char *spath, const char *dpath);
 void md5_flush(void);
 void md5_cache(const char *spath, int sdirlen);
 char *fextract(FILE *fi, int n, int *pc, int skip);
-int DoCopy(const char *spath, const char *dpath, int sdevNo, int ddevNo);
+int DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo);
 char *doMD5File(const char *filename, char *buf);
 
 int AskConfirmation = 1;
@@ -108,7 +117,7 @@ int NoRemoveOpt = 0;
 int SaveFs = 0;
 int UseMD5Opt = 0;
 int SummaryOpt = 0;
-char *UseCpFile;
+const char *UseCpFile;
 
 int64_t CountSourceBytes = 0;
 int64_t CountSourceItems = 0;
@@ -117,6 +126,11 @@ int64_t CountCopiedItems = 0;
 int64_t CountReadBytes = 0;
 int64_t CountWriteBytes = 0;
 int64_t CountRemovedItems = 0;
+
+char *MD5SCache;		/* cache source directory name */
+MD5Node *MD5Base;
+int MD5SCacheDirLen;
+int MD5SCacheDirty;
 
 
 int
@@ -207,9 +221,9 @@ main(int ac, char **av)
 	/* not reached */
     }
     if (dst) {
-	i = DoCopy(src, dst, -1, -1);
+	i = DoCopy(src, dst, (dev_t)-1, (dev_t)-1);
     } else {
-	i = DoCopy(src, NULL, -1, -1);
+	i = DoCopy(src, NULL, (dev_t)-1, (dev_t)-1);
     }
     md5_flush();
 
@@ -308,7 +322,7 @@ hltdelete(struct hlink *hl)
 }
 
 int
-DoCopy(const char *spath, const char *dpath, int sdevNo, int ddevNo)
+DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 {
     struct stat st1;
     struct stat st2;
@@ -490,13 +504,13 @@ DoCopy(const char *spath, const char *dpath, int sdevNo, int ddevNo)
 		}
 	    }
 
-	    if (sdevNo >= 0 && st1.st_dev != sdevNo) {
+	    if ((int)sdevNo >= 0 && st1.st_dev != sdevNo) {
 		noLoop = 1;
 	    } else {
 		sdevNo = st1.st_dev;
 	    }
 
-	    if (ddevNo >= 0 && st2.st_dev != ddevNo) {
+	    if ((int)ddevNo >= 0 && st2.st_dev != ddevNo) {
 		noLoop = 1;
 	    } else {
 		ddevNo = st2.st_dev;
@@ -662,7 +676,7 @@ DoCopy(const char *spath, const char *dpath, int sdevNo, int ddevNo)
 		 * Matt: I think 64k would be faster here
 		 */
 		char buf[32768];
-		char *op;
+		const char *op;
 		int n;
 
 		/*
@@ -829,12 +843,12 @@ DoCopy(const char *spath, const char *dpath, int sdevNo, int ddevNo)
  */
 
 void
-RemoveRecur(const char *dpath, int devNo)
+RemoveRecur(const char *dpath, dev_t devNo)
 {
     struct stat st;
 
     if (lstat(dpath, &st) == 0) {
-	if (devNo < 0)
+	if ((int)devNo < 0)
 	    devNo = st.st_dev;
 	if (st.st_dev == devNo) {
 	    if (S_ISDIR(st.st_mode)) {
@@ -1048,18 +1062,6 @@ YesNo(const char *path)
 	ch = getchar();
     return ((first == 'y' || first == 'Y'));
 }
-
-typedef struct MD5Node {
-    struct MD5Node *md_Next;
-    char *md_Name;
-    char *md_Code;
-    int md_Accessed;
-} MD5Node;
-
-char *MD5SCache;		/* cache source directory name */
-MD5Node *MD5Base;
-int MD5SCacheDirLen;
-int MD5SCacheDirty;
 
 void 
 md5_flush(void)

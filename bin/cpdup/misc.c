@@ -1,7 +1,7 @@
 /*
  * MISC.C
  *
- * $DragonFly: src/bin/cpdup/misc.c,v 1.2 2003/12/01 06:07:16 dillon Exp $
+ * $DragonFly: src/bin/cpdup/misc.c,v 1.3 2004/03/19 17:30:59 cpressey Exp $
  */
 
 #include "cpdup.h"
@@ -54,7 +54,8 @@ fatal(const char *ctl, ...)
 	     "    -s0         disable safeties - allow files to overwrite directories\n"
 	     "    -q          quiet operation\n"
 	     "    -o          do not remove any files, just overwrite/add\n"
-	     "    -m          maintain/generate MD5 checkfile on source,\n"
+	);
+	puts("    -m          maintain/generate MD5 checkfile on source,\n"
 	     "                and compare with (optional) destination,\n"
 	     "                copying if the compare fails\n"
 	     "    -M file     -m+specify MD5 checkfile, else .MD5_CHECKSUMS\n"

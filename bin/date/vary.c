@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/bin/date/vary.c,v 1.8.2.2 2000/12/08 11:42:53 brian Exp $
- * $DragonFly: src/bin/date/vary.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/date/vary.c,v 1.3 2004/03/19 17:30:59 cpressey Exp $
  */
 
 #include <err.h>
@@ -35,7 +35,7 @@
 
 struct trans {
   int val;
-  char *str;
+  const char *str;
 };
 
 static struct trans trans_mon[] = {
@@ -201,14 +201,14 @@ adjmon(struct tm *t, char type, int val, int istext, int mk)
 static int
 adjday(struct tm *t, char type, int val, int mk)
 {
-  int mdays;
+  int daycount;
 
   switch (type) {
     case '+':
       while (val) {
-        mdays = daysinmonth(t);
-        if (val > mdays - t->tm_mday) {
-          val -= mdays - t->tm_mday + 1;
+        daycount = daysinmonth(t);
+        if (val > daycount - t->tm_mday) {
+          val -= daycount - t->tm_mday + 1;
           t->tm_mday = 1;
           if (!adjmon(t, '+', 1, 0, 0))
             return 0;
@@ -411,7 +411,7 @@ vary_apply(const struct vary *v, struct tm *t)
   char type;
   char which;
   char *arg;
-  int len;
+  size_t len;
   int val;
 
   for (; v; v = v->next) {
