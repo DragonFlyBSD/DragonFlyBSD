@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.40 2003/12/27 23:58:40 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.41 2004/01/04 22:14:39 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -374,12 +374,6 @@ extern struct thread *pagethread, *updatethread;
 
 #define	NQS	32			/* 32 run queues. */
 TAILQ_HEAD(rq, proc);
-extern struct rq queues[];
-extern struct rq rtqueues[];
-extern struct rq idqueues[];
-extern int	whichqs;	/* Bit mask summary of non-empty Q's. */
-extern int	whichrtqs;	/* Bit mask summary of non-empty Q's. */
-extern int	whichidqs;	/* Bit mask summary of non-empty Q's. */
 
 /*
  * Scheduler estcpu macros.
