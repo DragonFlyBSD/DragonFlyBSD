@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.27 2005/01/31 08:30:51 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.28 2005/01/31 21:13:07 okumoto Exp $
  */
 
 /*-
@@ -271,20 +271,19 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 	    size_t	sz;
 	    Buffer	*buf1;
 
-	    buf1 = Var_Subst(NULL, memName, ctxt, TRUE);
-	    memName = Buf_GetAll(buf1, NULL);
-	    Buf_Destroy(buf1, FALSE);
-
 	    /*
 	     * Now form an archive spec and recurse to deal with nested
 	     * variables and multi-word variable values.... The results
 	     * are just placed at the end of the nodeLst we're returning.
 	     */
+	    buf1 = Var_Subst(NULL, memName, ctxt, TRUE);
+	    memName = Buf_GetAll(buf1, NULL);
 
 	    sz = strlen(memName) + strlen(libName) + 3;
-	    buf = sacrifice = emalloc(sz);
-
+	    buf = emalloc(sz);
 	    snprintf(buf, sz, "%s(%s)", libName, memName);
+
+	    sacrifice = buf;
 
 	    if (strchr(memName, '$') && strcmp(memName, oldMemName) == 0) {
 		/*
@@ -296,6 +295,7 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 
 		if (gn == NULL) {
 		    free(buf);
+		    Buf_Destroy(buf1, FALSE);
 		    return (FAILURE);
 		} else {
 		    gn->type |= OP_ARCHV;
@@ -307,12 +307,14 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 		 * ourselves.
 		 */
 		free(buf);
+		Buf_Destroy(buf1, FALSE);
 		return (FAILURE);
 	    }
-	    /*
-	     * Free buffer and continue with our work.
-	     */
+
+	    /* Free buffer and continue with our work. */
 	    free(buf);
+	    Buf_Destroy(buf1, FALSE);
+
 	} else if (Dir_HasWildcards(memName)) {
 	    Lst members = Lst_Initializer(members);
 	    char  *member;
