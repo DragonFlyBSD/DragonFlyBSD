@@ -23,7 +23,7 @@
  * documentation and/or software.
  *
  * $FreeBSD: src/sys/kern/md5c.c,v 1.17 1999/12/29 04:54:39 peter Exp $
- * $DragonFly: src/sys/kern/md5c.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/md5c.c,v 1.3 2004/05/26 20:04:07 dillon Exp $
  *
  * This code is the same as the code published by RSA Inc.  It has been
  * edited for clarity and style only.
@@ -57,10 +57,7 @@
 
 /* XXX not prototyped, and not compatible with memcpy(). */
 static void
-Encode (output, input, len)
-	unsigned char *output;
-	u_int32_t *input;
-	unsigned int len;
+Encode (unsigned char *output, u_int32_t *input, unsigned int len)
 {
 	unsigned int i, j;
 
@@ -78,10 +75,7 @@ Encode (output, input, len)
  */
 
 static void
-Decode (output, input, len)
-	u_int32_t *output;
-	const unsigned char *input;
-	unsigned int len;
+Decode (u_int32_t *output, const unsigned char *input, unsigned int len)
 {
 	unsigned int i, j;
 
@@ -134,8 +128,7 @@ static unsigned char PADDING[64] = {
 /* MD5 initialization. Begins an MD5 operation, writing a new context. */
 
 void
-MD5Init (context)
-	MD5_CTX *context;
+MD5Init (MD5_CTX *context)
 {
 
 	context->count[0] = context->count[1] = 0;
@@ -154,10 +147,7 @@ MD5Init (context)
  */
 
 void
-MD5Update (context, input, inputLen)
-	MD5_CTX *context;
-	const unsigned char *input;
-	unsigned int inputLen;
+MD5Update (MD5_CTX *context, const unsigned char *input, unsigned int inputLen)
 {
 	unsigned int i, index, partLen;
 
@@ -196,8 +186,7 @@ MD5Update (context, input, inputLen)
  */
 
 void
-MD5Pad (context)
-	MD5_CTX *context;
+MD5Pad (MD5_CTX *context)
 {
 	unsigned char bits[8];
 	unsigned int index, padLen;
@@ -220,9 +209,7 @@ MD5Pad (context)
  */
 
 void
-MD5Final (digest, context)
-	unsigned char digest[16];
-	MD5_CTX *context;
+MD5Final (unsigned char digest[16], MD5_CTX *context)
 {
 	/* Do padding. */
 	MD5Pad (context);
@@ -237,9 +224,7 @@ MD5Final (digest, context)
 /* MD5 basic transformation. Transforms state based on block. */
 
 void
-MD5Transform (state, block)
-	u_int32_t state[4];
-	const unsigned char block[64];
+MD5Transform (u_int32_t state[4], const unsigned char block[64])
 {
 	u_int32_t a = state[0], b = state[1], c = state[2], d = state[3], x[16];
 

@@ -46,7 +46,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.10 2004/05/19 22:52:58 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.11 2004/05/26 20:04:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -103,8 +103,7 @@ disk_create(int unit, struct disk *dp, int flags, struct cdevsw *rawsw)
 	 * Create the raw backing device
 	 */
 	compile_devsw(rawsw);
-	rawdev = make_dev(rawsw,
-			    dkmakeminor(unit, WHOLE_DISK_SLICE, RAW_PART),
+	rawdev = make_dev(rawsw, dkmakeminor(unit, WHOLE_DISK_SLICE, RAW_PART),
 			    UID_ROOT, GID_OPERATOR, 0640,
 			    "%s%d", rawsw->d_name, unit);
 
@@ -197,7 +196,8 @@ disk_enumerate(struct disk *disk)
 		return (LIST_NEXT(disk, d_list));
 }
 
-static int
+static 
+int
 sysctl_disks(SYSCTL_HANDLER_ARGS)
 {
 	struct disk *disk;
@@ -328,7 +328,8 @@ diskclone(dev_t dev)
 /*
  * Open a disk device or partition.
  */
-static int
+static
+int
 diskopen(dev_t dev, int oflags, int devtype, struct thread *td)
 {
 	struct disk *dp;
@@ -390,7 +391,8 @@ out:
 /*
  * Close a disk device or partition
  */
-static int
+static
+int
 diskclose(dev_t dev, int fflag, int devtype, struct thread *td)
 {
 	struct disk *dp;
@@ -408,7 +410,8 @@ diskclose(dev_t dev, int fflag, int devtype, struct thread *td)
 /*
  * Execute strategy routine
  */
-static void
+static
+void
 diskstrategy(struct buf *bp)
 {
 	struct disk *dp;
@@ -435,7 +438,8 @@ diskstrategy(struct buf *bp)
  * First execute the ioctl on the disk device, and if it isn't supported 
  * try running it on the backing device.
  */
-static int
+static
+int
 diskioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, struct thread *td)
 {
 	struct disk *dp;
@@ -454,7 +458,8 @@ diskioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, struct thread *td)
 /*
  *
  */
-static int
+static
+int
 diskpsize(dev_t dev)
 {
 	struct disk *dp;
@@ -499,9 +504,7 @@ SYSCTL_INT(_debug_sizeof, OID_AUTO, disk, CTLFLAG_RD,
  * allocated.
  */
 void
-bufqdisksort(bufq, bp)
-	struct buf_queue_head *bufq;
-	struct buf *bp;
+bufqdisksort(struct buf_queue_head *bufq, struct buf *bp)
 {
 	struct buf *bq;
 	struct buf *bn;
@@ -512,8 +515,8 @@ bufqdisksort(bufq, bp)
 	 * If the queue is empty or we are an
 	 * ordered transaction, then it's easy.
 	 */
-	if ((bq = bufq_first(bufq)) == NULL
-	 || (bp->b_flags & B_ORDERED) != 0) {
+	if ((bq = bufq_first(bufq)) == NULL || 
+	    (bp->b_flags & B_ORDERED) != 0) {
 		bufq_insert_tail(bufq, bp);
 		return;
 	} else if (bufq->insert_point != NULL) {
@@ -644,9 +647,7 @@ readdisklabel(dev_t dev, struct disklabel *lp)
  * Check new disk label for sensibility before setting it.
  */
 int
-setdisklabel(olp, nlp, openmask)
-	struct disklabel *olp, *nlp;
-	u_long openmask;
+setdisklabel(struct disklabel *olp, struct disklabel *nlp, u_long openmask)
 {
 	int i;
 	struct partition *opp, *npp;
@@ -770,11 +771,7 @@ hp0g: hard error reading fsbn 12345 of 12344-12347 (hp0 bn %d cn %d tn %d sn %d)
  * or addlog, respectively.  There is no trailing space.
  */
 void
-diskerr(bp, what, pri, blkdone, lp)
-	struct buf *bp;
-	char *what;
-	int pri, blkdone;
-	struct disklabel *lp;
+diskerr(struct buf *bp, char *what, int pri, int blkdone, struct disklabel *lp)
 {
 	int unit = dkunit(bp->b_dev);
 	int slice = dkslice(bp->b_dev);

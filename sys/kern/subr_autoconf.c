@@ -42,7 +42,7 @@
  *	@(#)subr_autoconf.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/kern/subr_autoconf.c,v 1.14 1999/10/05 21:19:41 n_hibma Exp $
- * $DragonFly: src/sys/kern/subr_autoconf.c,v 1.4 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/subr_autoconf.c,v 1.5 2004/05/26 20:04:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,9 +62,9 @@ static TAILQ_HEAD(, intr_config_hook) intr_config_hook_list =
 
 /* ARGSUSED */
 static void run_interrupt_driven_config_hooks (void *dummy);
+
 static void
-run_interrupt_driven_config_hooks(dummy)
-	void *dummy;
+run_interrupt_driven_config_hooks(void *dummy)
 {
 	struct intr_config_hook *hook_entry, *next_entry;
 
@@ -88,8 +88,7 @@ SYSINIT(intr_config_hooks, SI_SUB_INT_CONFIG_HOOKS, SI_ORDER_FIRST,
  * be used to complete initialization.
  */
 int
-config_intrhook_establish(hook)
-	struct intr_config_hook *hook;
+config_intrhook_establish(struct intr_config_hook *hook)
 {
 	struct intr_config_hook *hook_entry;
 
@@ -111,8 +110,7 @@ config_intrhook_establish(hook)
 }
 
 void
-config_intrhook_disestablish(hook)
-	struct intr_config_hook *hook;
+config_intrhook_disestablish(struct intr_config_hook *hook)
 {
 	struct intr_config_hook *hook_entry;
 
@@ -123,7 +121,7 @@ config_intrhook_disestablish(hook)
 			break;
 	if (hook_entry == NULL)
 		panic("config_intrhook_disestablish: disestablishing an "
-		      "unestablished hook");
+		    "unestablished hook");
 
 	TAILQ_REMOVE(&intr_config_hook_list, hook, ich_links);
 	/* Wakeup anyone watching the list */
