@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.146 2005/03/12 12:03:17 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.147 2005/03/12 12:03:46 okumoto Exp $
  */
 
 /*-
@@ -917,7 +917,7 @@ VarExpand(Var *v, VarParser *vp)
 }
 
 /**
- * Select only those words that match the modifier.
+ * Select only those words in value that match the modifier.
  */
 static char *
 modifier_M(const char mod[], const char value[], char endc, size_t *consumed)
@@ -963,6 +963,10 @@ modifier_M(const char mod[], const char value[], char endc, size_t *consumed)
 	return (newValue);
 }
 
+/**
+ * Substitute the replacement string for the pattern.  The substitution
+ * is applied to each word in value.
+ */
 static char *
 modifier_S(const char mod[], const char value[], Var *v, VarParser *vp, size_t *consumed)
 {
@@ -1203,81 +1207,81 @@ ParseModifier(const char input[], const char tstr[],
 			tstr += consumed;
 			break;
 		case 'C':
-		{
-		    int		delim;
-		    VarREPattern    pattern;
-		    char	   *re;
-		    int		    error;
+{
+	VarREPattern patt;
+	int	delim;
+	char	*re;
+	int	error;
 
-		    pattern.flags = 0;
-		    delim = tstr[1];
-		    tstr += 2;
+	patt.flags = 0;
+	delim = tstr[1];
+	tstr += 2;
 
-		    cp = tstr;
+	cp = tstr;
 
-		    if ((re = VarGetPattern(vp, &cp, delim, NULL,
-			NULL, NULL)) == NULL) {
-			*lengthPtr = cp - input + 1;
-			if (*freePtr)
-			    free(value);
-			if (delim != '\0')
-			    Fatal("Unclosed substitution for %s (%c missing)",
-				  v->name, delim);
-			return (var_Error);
-		    }
+	if ((re = VarGetPattern(vp, &cp, delim, NULL,
+				NULL, NULL)) == NULL) {
+		*lengthPtr = cp - input + 1;
+		if (*freePtr)
+			free(value);
+		if (delim != '\0')
+			Fatal("Unclosed substitution for %s (%c missing)",
+			      v->name, delim);
+		return (var_Error);
+	}
+	if ((patt.replace = VarGetPattern(vp, &cp,
+					delim, NULL, NULL, NULL)) == NULL) {
+		free(re);
 
-		    if ((pattern.replace = VarGetPattern(vp, &cp,
-			delim, NULL, NULL, NULL)) == NULL){
-			free(re);
-
-			/* was: goto cleanup */
-			*lengthPtr = cp - input + 1;
-			if (*freePtr)
-			    free(value);
-			if (delim != '\0')
-			    Fatal("Unclosed substitution for %s (%c missing)",
-				  v->name, delim);
-			return (var_Error);
-		    }
-
-		    for (;; cp++) {
-			switch (*cp) {
-			case 'g':
-			    pattern.flags |= VAR_SUB_GLOBAL;
-			    continue;
-			case '1':
-			    pattern.flags |= VAR_SUB_ONE;
-			    continue;
-			default:
-			    break;
-			}
+		/* was: goto cleanup */
+		*lengthPtr = cp - input + 1;
+		if (*freePtr)
+			free(value);
+		if (delim != '\0')
+			Fatal("Unclosed substitution for %s (%c missing)",
+			      v->name, delim);
+		return (var_Error);
+	}
+	for (;; cp++) {
+		switch (*cp) {
+		case 'g':
+			patt.flags |= VAR_SUB_GLOBAL;
+			continue;
+		case '1':
+			patt.flags |= VAR_SUB_ONE;
+			continue;
+		default:
 			break;
-		    }
-
-		    termc = *cp;
-
-		    error = regcomp(&pattern.re, re, REG_EXTENDED);
-		    free(re);
-		    if (error)	{
-			*lengthPtr = cp - input + 1;
-			VarREError(error, &pattern.re, "RE substitution error");
-			free(pattern.replace);
-			return (var_Error);
-		    }
-
-		    pattern.nsub = pattern.re.re_nsub + 1;
-		    if (pattern.nsub < 1)
-			pattern.nsub = 1;
-		    if (pattern.nsub > 10)
-			pattern.nsub = 10;
-		    pattern.matches = emalloc(pattern.nsub *
-					      sizeof(regmatch_t));
-		    newStr = VarModify(value, VarRESubstitute, &pattern);
-		    regfree(&pattern.re);
-		    free(pattern.replace);
-		    free(pattern.matches);
-		    break;
 		}
+		break;
+	}
+
+	termc = *cp;
+
+	error = regcomp(&patt.re, re, REG_EXTENDED);
+	if (error) {
+		*lengthPtr = cp - input + 1;
+		VarREError(error, &patt.re, "RE substitution error");
+		free(patt.replace);
+		free(re);
+		return (var_Error);
+	}
+
+	patt.nsub = patt.re.re_nsub + 1;
+	if (patt.nsub < 1)
+		patt.nsub = 1;
+	if (patt.nsub > 10)
+		patt.nsub = 10;
+	patt.matches = emalloc(patt.nsub * sizeof(regmatch_t));
+
+	newStr = VarModify(value, VarRESubstitute, &patt);
+
+	regfree(&patt.re);
+	free(patt.matches);
+	free(patt.replace);
+	free(re);
+}
+	break;
 		case 'L':
 		    if (tstr[1] == endc || tstr[1] == ':') {
 			Buffer *buf;
