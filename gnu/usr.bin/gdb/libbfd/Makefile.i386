@@ -1,0 +1,10 @@
+# $DragonFly: src/gnu/usr.bin/gdb/libbfd/Makefile.i386,v 1.1 2004/10/23 17:02:38 joerg Exp $
+
+SRCS+=	elf32-gen.c elf32.c elf32-target.h
+SRCS+=	coff-i386.c cpu-i386.c elf32-i386.c
+
+CFLAGS+= -DDEFAULT_VECTOR=bfd_elf32_i386_freebsd_vec \
+  -DSELECT_VECS='&bfd_elf32_i386_freebsd_vec,&i386coff_vec,&bfd_elf32_little_generic_vec,&bfd_elf32_big_generic_vec' \
+  -DSELECT_ARCHITECTURES='&bfd_i386_arch' -DHAVE_bfd_elf32_i386_freebsd_vec \
+  -DHAVE_i386coff_vec -DHAVE_bfd_elf32_little_generic_vec \
+  -DHAVE_bfd_elf32_big_generic_vec

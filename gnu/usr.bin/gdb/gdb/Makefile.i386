@@ -1,0 +1,13 @@
+# $DragonFly: src/gnu/usr.bin/gdb/gdb/Attic/Makefile.i386,v 1.1 2004/10/23 17:02:38 joerg Exp $
+
+SRCS+=	i386-nat.c i386-tdep.c i386bsd-nat.c i386bsd-tdep.c i386fbsd-nat.c
+SRCS+=	i386fbsd-tdep.c i387-tdep.c
+
+tm.h: ${CONTRIBDIR}/config/i386/tm-fbsd.h
+	cp ${.ALLSRC} ${.TARGET}
+
+xm.h: ${CONTRIBDIR}/config/i386/xm-i386.h
+	cp ${.ALLSRC} ${.TARGET}
+
+kvm-fbsd.h:
+	echo '#include "kvm-fbsd-i386.h"' > ${.TARGET}
