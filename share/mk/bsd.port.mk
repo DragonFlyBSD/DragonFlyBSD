@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.5 2003/10/12 01:43:59 dillon Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.6 2003/10/13 23:57:41 dillon Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -47,6 +47,7 @@ TARGETS+=	reinstall
 TARGETS+=	install
 TARGETS+=	tags
 
+.undef PORTSDIR
 .BEGIN:
 	@echo "WARNING, USING DRAGONFLY OVERRIDE ${DFPORTSDIR}/${PORTPATH}"
 	cd ${DFPORTSDIR}/${PORTPATH} && ${MAKE} -B ${.TARGETS}
