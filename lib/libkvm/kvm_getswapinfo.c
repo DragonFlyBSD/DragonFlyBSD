@@ -7,8 +7,10 @@
  *
  * @(#) Copyright (c) 1999
  * $FreeBSD: src/lib/libkvm/kvm_getswapinfo.c,v 1.10.2.4 2003/01/12 09:23:13 dillon Exp $
- * $DragonFly: src/lib/libkvm/kvm_getswapinfo.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_getswapinfo.c,v 1.3 2004/04/11 21:28:03 cpressey Exp $
  */
+
+#define	_KERNEL_STRUCTURES
 
 #include <sys/param.h>
 #include <sys/time.h>

@@ -36,7 +36,7 @@
  *
  * @(#)kvm_sparc.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libkvm/kvm_sparc.c,v 1.3 1999/12/27 07:14:58 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm_sparc.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_sparc.c,v 1.3 2004/04/11 21:28:03 cpressey Exp $
  */
 
 /*
@@ -76,20 +76,18 @@ struct vmstate {
 };
 
 void
-_kvm_freevtop(kd)
-	kvm_t *kd;
+_kvm_freevtop(kvm_t *kd)
 {
 	if (kd->vmst != 0)
 		free(kd->vmst);
 }
 
 int
-_kvm_initvtop(kd)
-	kvm_t *kd;
+_kvm_initvtop(kvm_t *kd)
 {
-	register int i;
-	register int off;
-	register struct vmstate *vm;
+	int i;
+	int off;
+	struct vmstate *vm;
 	struct stat st;
 	struct nlist nlist[2];
 
@@ -156,15 +154,11 @@ _kvm_initvtop(kd)
  * Translate a user virtual address to a physical address.
  */
 int
-_kvm_uvatop(kd, p, va, pa)
-	kvm_t *kd;
-	const struct proc *p;
-	u_long va;
-	u_long *pa;
+_kvm_uvatop(kvm_t *kd, const struct proc *p, u_long va, u_long *pa)
 {
 	int kva, pte;
-	register int off, frame;
-	register struct vmspace *vms = p->p_vmspace;
+	int off, frame;
+	struct vmspace *vms = p->p_vmspace;
 
 	if ((u_long)vms < KERNBASE) {
 		_kvm_err(kd, kd->program, "_kvm_uvatop: corrupt proc");
@@ -208,15 +202,12 @@ invalid:
  * physical address.  This routine is used only for crashdumps.
  */
 int
-_kvm_kvatop(kd, va, pa)
-	kvm_t *kd;
-	u_long va;
-	u_long *pa;
+_kvm_kvatop(kvm_t *kd, u_long va, u_long *pa)
 {
-	register struct vmstate *vm;
-	register int s;
-	register int pte;
-	register int off;
+	struct vmstate *vm;
+	int s;
+	int pte;
+	int off;
 
 	if (va >= KERNBASE) {
 		vm = kd->vmst;

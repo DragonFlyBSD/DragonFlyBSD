@@ -32,7 +32,7 @@
  *
  * @(#)kvm_file.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libkvm/kvm_file.c,v 1.11 2000/02/18 16:39:00 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm_file.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_file.c,v 1.3 2004/04/11 21:28:03 cpressey Exp $
  */
 
 /*
@@ -72,14 +72,11 @@
  * Get file structures.
  */
 static int
-kvm_deadfiles(kd, op, arg, filehead_o, nfiles)
-	kvm_t *kd;
-	int op, arg, nfiles;
-	long filehead_o;
+kvm_deadfiles(kvm_t *kd, int op, int arg, long filehead_o, int nfiles)
 {
 	int buflen = kd->arglen, n = 0;
 	struct file *fp;
-	register char *where = kd->argspc;
+	char *where = kd->argspc;
 	struct filelist filehead;
 
 	/*
@@ -117,10 +114,7 @@ kvm_deadfiles(kd, op, arg, filehead_o, nfiles)
 }
 
 char *
-kvm_getfiles(kd, op, arg, cnt)
-	kvm_t *kd;
-	int op, arg;
-	int *cnt;
+kvm_getfiles(kvm_t *kd, int op, int arg, int *cnt)
 {
 	int mib[2], st, nfiles;
 	size_t size;

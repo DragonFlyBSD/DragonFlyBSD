@@ -36,7 +36,7 @@
  *
  * @(#)kvm.c	8.2 (Berkeley) 2/13/94
  * $FreeBSD: src/lib/libkvm/kvm.c,v 1.12.2.3 2002/09/13 14:53:43 nectar Exp $
- * $DragonFly: src/lib/libkvm/kvm.c,v 1.3 2003/11/12 20:21:30 eirikn Exp $
+ * $DragonFly: src/lib/libkvm/kvm.c,v 1.4 2004/04/11 21:28:03 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -62,6 +62,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <unistd.h>
 
 #include "kvm_private.h"
@@ -70,17 +71,10 @@
 int __fdnlist		(int, struct nlist *);
 
 char *
-kvm_geterr(kd)
-	kvm_t *kd;
+kvm_geterr(kvm_t *kd)
 {
 	return (kd->errbuf);
 }
-
-#if __STDC__
-#include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 /*
  * Report an error using printf style arguments.  "program" is kd->program
@@ -89,22 +83,11 @@ kvm_geterr(kd)
  * generate tons of error messages when trying to access bogus pointers).
  */
 void
-#if __STDC__
 _kvm_err(kvm_t *kd, const char *program, const char *fmt, ...)
-#else
-_kvm_err(kd, program, fmt, va_alist)
-	kvm_t *kd;
-	char *program, *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
 
-#ifdef __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	if (program != NULL) {
 		(void)fprintf(stderr, "%s: ", program);
 		(void)vfprintf(stderr, fmt, ap);
@@ -117,23 +100,12 @@ _kvm_err(kd, program, fmt, va_alist)
 }
 
 void
-#if __STDC__
 _kvm_syserr(kvm_t *kd, const char *program, const char *fmt, ...)
-#else
-_kvm_syserr(kd, program, fmt, va_alist)
-	kvm_t *kd;
-	char *program, *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
-	register int n;
+	int n;
 
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	if (program != NULL) {
 		(void)fprintf(stderr, "%s: ", program);
 		(void)vfprintf(stderr, fmt, ap);
@@ -150,9 +122,7 @@ _kvm_syserr(kd, program, fmt, va_alist)
 }
 
 void *
-_kvm_malloc(kd, n)
-	register kvm_t *kd;
-	register size_t n;
+_kvm_malloc(kvm_t *kd, size_t n)
 {
 	void *p;
 
@@ -163,12 +133,7 @@ _kvm_malloc(kd, n)
 }
 
 static kvm_t *
-_kvm_open(kd, uf, mf, flag, errout)
-	register kvm_t *kd;
-	const char *uf;
-	const char *mf;
-	int flag;
-	char *errout;
+_kvm_open(kvm_t *kd, const char *uf, const char *mf, int flag, char *errout)
 {
 	struct stat st;
 
@@ -257,14 +222,10 @@ failed:
 }
 
 kvm_t *
-kvm_openfiles(uf, mf, sf, flag, errout)
-	const char *uf;
-	const char *mf;
-	const char *sf;
-	int flag;
-	char *errout;
+kvm_openfiles(const char *uf, const char *mf, const char *sf, int flag,
+	      char *errout)
 {
-	register kvm_t *kd;
+	kvm_t *kd;
 
 	if ((kd = malloc(sizeof(*kd))) == NULL) {
 		(void)strlcpy(errout, strerror(errno), _POSIX2_LINE_MAX);
@@ -276,14 +237,10 @@ kvm_openfiles(uf, mf, sf, flag, errout)
 }
 
 kvm_t *
-kvm_open(uf, mf, sf, flag, errstr)
-	const char *uf;
-	const char *mf;
-	const char *sf;
-	int flag;
-	const char *errstr;
+kvm_open(const char *uf, const char *mf, const char *sf, int flag,
+	 const char *errstr)
 {
-	register kvm_t *kd;
+	kvm_t *kd;
 
 	if ((kd = malloc(sizeof(*kd))) == NULL) {
 		if (errstr != NULL)
@@ -297,10 +254,9 @@ kvm_open(uf, mf, sf, flag, errstr)
 }
 
 int
-kvm_close(kd)
-	kvm_t *kd;
+kvm_close(kvm_t *kd)
 {
-	register int error = 0;
+	int error = 0;
 
 	if (kd->pmfd >= 0)
 		error |= close(kd->pmfd);
@@ -320,12 +276,10 @@ kvm_close(kd)
 }
 
 int
-kvm_nlist(kd, nl)
-	kvm_t *kd;
-	struct nlist *nl;
+kvm_nlist(kvm_t *kd, struct nlist *nl)
 {
-	register struct nlist *p;
-	register int nvalid;
+	struct nlist *p;
+	int nvalid;
 	struct kld_sym_lookup lookup;
 
 	/*
@@ -365,14 +319,10 @@ kvm_nlist(kd, nl)
 }
 
 ssize_t
-kvm_read(kd, kva, buf, len)
-	kvm_t *kd;
-	register u_long kva;
-	register void *buf;
-	register size_t len;
+kvm_read(kvm_t *kd, u_long kva, void *buf, size_t len)
 {
-	register int cc;
-	register void *cp;
+	int cc;
+	void *cp;
 
 	if (ISALIVE(kd)) {
 		/*
@@ -429,13 +379,9 @@ kvm_read(kd, kva, buf, len)
 }
 
 ssize_t
-kvm_write(kd, kva, buf, len)
-	kvm_t *kd;
-	register u_long kva;
-	register const void *buf;
-	register size_t len;
+kvm_write(kvm_t *kd, u_long kva, const void *buf, size_t len)
 {
-	register int cc;
+	int cc;
 
 	if (ISALIVE(kd)) {
 		/*

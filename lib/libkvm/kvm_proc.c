@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libkvm/kvm_proc.c,v 1.25.2.3 2002/08/24 07:27:46 kris Exp $
- * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.5 2004/02/03 07:34:10 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.6 2004/04/11 21:28:03 cpressey Exp $
  *
  * @(#)kvm_proc.c	8.3 (Berkeley) 9/23/93
  */
@@ -75,11 +75,7 @@
 
 #if used
 static char *
-kvm_readswap(kd, p, va, cnt)
-	kvm_t *kd;
-	const struct proc *p;
-	u_long va;
-	u_long *cnt;
+kvm_readswap(kvm_t *kd, const struct proc *p, u_long va, u_long *cnt)
 {
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 	/* XXX Stubbed out, our vm system is differnet */
@@ -97,14 +93,10 @@ kvm_readswap(kd, p, va, cnt)
  * at most maxcnt procs.
  */
 static int
-kvm_proclist(kd, what, arg, p, bp, maxcnt)
-	kvm_t *kd;
-	int what, arg;
-	struct proc *p;
-	struct kinfo_proc *bp;
-	int maxcnt;
+kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
+	     struct kinfo_proc *bp, int maxcnt)
 {
-	register int cnt = 0;
+	int cnt = 0;
 	struct eproc eproc;
 	struct pgrp pgrp;
 	struct session sess;
@@ -248,15 +240,11 @@ kvm_proclist(kd, what, arg, p, bp, maxcnt)
  * Return number of procs read.  maxcnt is the max we will read.
  */
 static int
-kvm_deadprocs(kd, what, arg, a_allproc, a_zombproc, maxcnt)
-	kvm_t *kd;
-	int what, arg;
-	u_long a_allproc;
-	u_long a_zombproc;
-	int maxcnt;
+kvm_deadprocs(kvm_t *kd, int what, int arg, u_long a_allproc,
+	      u_long a_zombproc, int maxcnt)
 {
-	register struct kinfo_proc *bp = kd->procbase;
-	register int acnt, zcnt;
+	struct kinfo_proc *bp = kd->procbase;
+	int acnt, zcnt;
 	struct proc *p;
 
 	if (KREAD(kd, a_allproc, &p)) {
@@ -279,10 +267,7 @@ kvm_deadprocs(kd, what, arg, a_allproc, a_zombproc, maxcnt)
 }
 
 struct kinfo_proc *
-kvm_getprocs(kd, op, arg, cnt)
-	kvm_t *kd;
-	int op, arg;
-	int *cnt;
+kvm_getprocs(kvm_t *kd, int op, int arg, int *cnt)
 {
 	int mib[4], st, nprocs;
 	size_t size;
@@ -362,8 +347,7 @@ kvm_getprocs(kd, op, arg, cnt)
 }
 
 void
-_kvm_freeprocs(kd)
-	kvm_t *kd;
+_kvm_freeprocs(kvm_t *kd)
 {
 	if (kd->procbase) {
 		free(kd->procbase);
@@ -372,10 +356,7 @@ _kvm_freeprocs(kd)
 }
 
 void *
-_kvm_realloc(kd, p, n)
-	kvm_t *kd;
-	void *p;
-	size_t n;
+_kvm_realloc(kvm_t *kd, void *p, size_t n)
 {
 	void *np = (void *)realloc(p, n);
 
@@ -397,17 +378,12 @@ _kvm_realloc(kd, p, n)
  * environment strings.  Read at most maxcnt characters of strings.
  */
 static char **
-kvm_argv(kd, p, addr, narg, maxcnt)
-	kvm_t *kd;
-	const struct proc *p;
-	register u_long addr;
-	register int narg;
-	register int maxcnt;
+kvm_argv(kvm_t *kd, const struct proc *p, u_long addr, int narg, int maxcnt)
 {
-	register char *np, *cp, *ep, *ap;
-	register u_long oaddr = -1;
-	register int len, cc;
-	register char **argv;
+	char *np, *cp, *ep, *ap;
+	u_long oaddr = -1;
+	int len, cc;
+	char **argv;
 
 	/*
 	 * Check that there aren't an unreasonable number of agruments,
@@ -573,20 +549,14 @@ kvm_argv(kd, p, addr, narg, maxcnt)
 }
 
 static void
-ps_str_a(p, addr, n)
-	struct ps_strings *p;
-	u_long *addr;
-	int *n;
+ps_str_a(struct ps_strings *p, u_long *addr, int *n)
 {
 	*addr = (u_long)p->ps_argvstr;
 	*n = p->ps_nargvstr;
 }
 
 static void
-ps_str_e(p, addr, n)
-	struct ps_strings *p;
-	u_long *addr;
-	int *n;
+ps_str_e(struct ps_strings *p, u_long *addr, int *n)
 {
 	*addr = (u_long)p->ps_envstr;
 	*n = p->ps_nenvstr;
@@ -598,10 +568,7 @@ ps_str_e(p, addr, n)
  * being wrong are very low.
  */
 static int
-proc_verify(kd, kernp, p)
-	kvm_t *kd;
-	u_long kernp;
-	const struct proc *p;
+proc_verify(kvm_t *kd, u_long kernp, const struct proc *p)
 {
 	struct kinfo_proc kp;
 	int mib[4];
@@ -619,14 +586,11 @@ proc_verify(kd, kernp, p)
 }
 
 static char **
-kvm_doargv(kd, kp, nchr, info)
-	kvm_t *kd;
-	const struct kinfo_proc *kp;
-	int nchr;
-	void (*info)(struct ps_strings *, u_long *, int *);
+kvm_doargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr,
+	   void (*info)(struct ps_strings *, u_long *, int *))
 {
-	register const struct proc *p = &kp->kp_proc;
-	register char **ap;
+	const struct proc *p = &kp->kp_proc;
+	char **ap;
 	u_long addr;
 	int cnt;
 	static struct ps_strings arginfo;
@@ -665,10 +629,7 @@ kvm_doargv(kd, kp, nchr, info)
  * Get the command args.  This code is now machine independent.
  */
 char **
-kvm_getargv(kd, kp, nchr)
-	kvm_t *kd;
-	const struct kinfo_proc *kp;
-	int nchr;
+kvm_getargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr)
 {
 	int oid[4];
 	int i;
@@ -727,10 +688,7 @@ kvm_getargv(kd, kp, nchr)
 }
 
 char **
-kvm_getenvv(kd, kp, nchr)
-	kvm_t *kd;
-	const struct kinfo_proc *kp;
-	int nchr;
+kvm_getenvv(kvm_t *kd, const struct kinfo_proc *kp, int nchr)
 {
 	return (kvm_doargv(kd, kp, nchr, ps_str_e));
 }
@@ -739,14 +697,9 @@ kvm_getenvv(kd, kp, nchr)
  * Read from user space.  The user context is given by p.
  */
 ssize_t
-kvm_uread(kd, p, uva, buf, len)
-	kvm_t *kd;
-	register const struct proc *p;
-	register u_long uva;
-	register char *buf;
-	register size_t len;
+kvm_uread(kvm_t *kd, const struct proc *p, u_long uva, char *buf, size_t len)
 {
-	register char *cp;
+	char *cp;
 	char procfile[MAXPATHLEN];
 	ssize_t amount;
 	int fd;

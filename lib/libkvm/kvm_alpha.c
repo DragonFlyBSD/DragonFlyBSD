@@ -1,5 +1,5 @@
 /* $FreeBSD: src/lib/libkvm/kvm_alpha.c,v 1.4 1999/12/27 07:14:56 peter Exp $ */
-/* $DragonFly: src/lib/libkvm/Attic/kvm_alpha.c,v 1.2 2003/06/17 04:26:49 dillon Exp $ */
+/* $DragonFly: src/lib/libkvm/Attic/kvm_alpha.c,v 1.3 2004/04/11 21:28:03 cpressey Exp $ */
 /*	$NetBSD: kvm_alpha.c,v 1.7.2.1 1997/11/02 20:34:26 mellon Exp $	*/
 
 /*
@@ -56,18 +56,15 @@ struct vmstate {
 };
 
 void
-_kvm_freevtop(kd)
-	kvm_t *kd;
+_kvm_freevtop(kvm_t *kd)
 {
-
 	/* Not actually used for anything right now, but safe. */
 	if (kd->vmst != 0)
 		free(kd->vmst);
 }
 
 int
-_kvm_initvtop(kd)
-	kvm_t *kd;
+_kvm_initvtop(kvm_t *kd)
 {
 	struct vmstate *vm;
 	struct nlist nlist[2];
@@ -105,10 +102,7 @@ _kvm_initvtop(kd)
 }
 
 int
-_kvm_kvatop(kd, va, pa)
-	kvm_t *kd;
-	u_long va;
-	u_long *pa;
+_kvm_kvatop(kvm_t *kd, u_long va, u_long *pa)
 {
 	u_int64_t       lev1map_pa;             /* PA of Lev1map */
         u_int64_t       page_size;
@@ -203,10 +197,7 @@ lose:
  * Translate a physical address to a file-offset in the crash-dump.
  */
 off_t   
-_kvm_pa2off(kd, pa)
-	kvm_t *kd;
-	u_long pa;
+_kvm_pa2off(kvm_t *kd, u_long pa)
 {
 	return ALPHA_K0SEG_TO_PHYS(pa);
 }
-
