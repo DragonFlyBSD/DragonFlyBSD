@@ -40,7 +40,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/test/debug/vnodeinfo.c,v 1.5 2005/03/24 20:14:42 dillon Exp $
+ * $DragonFly: src/test/debug/vnodeinfo.c,v 1.6 2005/04/06 18:40:25 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES_
@@ -137,6 +137,8 @@ dumpmount(kvm_t *kd, struct mount *mp)
     printf("    mnt_flag %08x mnt_kern_flag %08x\n", 
 	mnt.mnt_flag, mnt.mnt_kern_flag);
     printf("    mnt_nvnodelistsize %d\n", mnt.mnt_nvnodelistsize);
+    printf("    mnt_stat.f_fsid %08x %08x\n", mnt.mnt_stat.f_fsid.val[0],
+	mnt.mnt_stat.f_fsid.val[1]);
     vp = mnt.mnt_nvnodelist.tqh_first;
     while (vp)
 	vp = dumpvp(kd, vp, 1);
