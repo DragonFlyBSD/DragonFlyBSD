@@ -1,7 +1,7 @@
 set -e
 
 # $FreeBSD: src/usr.bin/kdump/mkioctls,v 1.15.2.5 2002/11/15 18:22:31 ru Exp $
-# $DragonFly: src/usr.bin/kdump/mkioctls,v 1.4 2004/03/21 01:30:48 dillon Exp $
+# $DragonFly: src/usr.bin/kdump/mkioctls,v 1.5 2004/03/21 02:09:15 dillon Exp $
 
 if [ "x$1" = "x-s" ]; then
 	use_switch=1
@@ -20,12 +20,12 @@ LC_ALL=C; export LC_ALL
 # Build a list of headers that have ioctls in them.
 # XXX should we use an ANSI cpp?
 # XXX netipx conflicts with netns (leave out netns).
-# XXX leave out bus/ and netproto/ because even though they are
-# the 'real' directories, they are duped by softlinks in /usr/include.
+# XXX leave out cam/, isa/ pccard/, pci/, and usb/ because they
+#     are fake softlinks and handled by bus/
 ioctl_includes=`
 	cd $1
 	find -s * -name '*.h' -follow |
-		egrep -v '^(netns)/|^(bus)/|^(netproto)' |
+		egrep -v '^(netns/)|^(cam/)|^(isa/)|^(pccard/)|^(pci/)|^(usb/)|^(netproto/natm/)' |
 		xargs egrep -l \
 '^#[ 	]*define[ 	]+[A-Za-z_][A-Za-z0-9_]*[ 	]+_IO[^a-z0-9_]' |
 		awk '{printf("#include <%s>\\\\n", $1)}'
