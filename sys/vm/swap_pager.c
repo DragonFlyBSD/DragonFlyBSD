@@ -65,7 +65,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.9 2003/07/26 22:10:02 rob Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.10 2003/08/20 08:03:01 rob Exp $
  */
 
 #include <sys/param.h>
@@ -151,13 +151,13 @@ vm_zone_t		swap_zone;
  */
 
 static vm_object_t
-		swap_pager_alloc __P((void *handle, vm_ooffset_t size,
-				      vm_prot_t prot, vm_ooffset_t offset));
-static void	swap_pager_dealloc __P((vm_object_t object));
-static int	swap_pager_getpages __P((vm_object_t, vm_page_t *, int, int));
-static void	swap_pager_init __P((void));
-static void	swap_pager_unswapped __P((vm_page_t));
-static void	swap_pager_strategy __P((vm_object_t, struct buf *));
+		swap_pager_alloc (void *handle, vm_ooffset_t size,
+				      vm_prot_t prot, vm_ooffset_t offset);
+static void	swap_pager_dealloc (vm_object_t object);
+static int	swap_pager_getpages (vm_object_t, vm_page_t *, int, int);
+static void	swap_pager_init (void);
+static void	swap_pager_unswapped (vm_page_t);
+static void	swap_pager_strategy (vm_object_t, struct buf *);
 
 struct pagerops swappagerops = {
 	swap_pager_init,	/* early system initialization of pager	*/
@@ -183,25 +183,25 @@ static int dmmax_mask;
 int nswap_lowat = 128;		/* in pages, swap_pager_almost_full warn */
 int nswap_hiwat = 512;		/* in pages, swap_pager_almost_full warn */
 
-static __inline void	swp_sizecheck __P((void));
-static void	swp_pager_sync_iodone __P((struct buf *bp));
-static void	swp_pager_async_iodone __P((struct buf *bp));
+static __inline void	swp_sizecheck (void);
+static void	swp_pager_sync_iodone (struct buf *bp);
+static void	swp_pager_async_iodone (struct buf *bp);
 
 /*
  * Swap bitmap functions
  */
 
-static __inline void	swp_pager_freeswapspace __P((daddr_t blk, int npages));
-static __inline daddr_t	swp_pager_getswapspace __P((int npages));
+static __inline void	swp_pager_freeswapspace (daddr_t blk, int npages);
+static __inline daddr_t	swp_pager_getswapspace (int npages);
 
 /*
  * Metadata functions
  */
 
-static void swp_pager_meta_build __P((vm_object_t, vm_pindex_t, daddr_t));
-static void swp_pager_meta_free __P((vm_object_t, vm_pindex_t, daddr_t));
-static void swp_pager_meta_free_all __P((vm_object_t));
-static daddr_t swp_pager_meta_ctl __P((vm_object_t, vm_pindex_t, int));
+static void swp_pager_meta_build (vm_object_t, vm_pindex_t, daddr_t);
+static void swp_pager_meta_free (vm_object_t, vm_pindex_t, daddr_t);
+static void swp_pager_meta_free_all (vm_object_t);
+static daddr_t swp_pager_meta_ctl (vm_object_t, vm_pindex_t, int);
 
 /*
  * SWP_SIZECHECK() -	update swap_pager_full indication

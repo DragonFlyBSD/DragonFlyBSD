@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.9 2003/07/26 22:10:03 rob Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.10 2003/08/20 08:03:01 rob Exp $
  */
 
 /*
@@ -69,15 +69,15 @@
 #include <vm/vnode_pager.h>
 #include <vm/vm_extern.h>
 
-static vm_offset_t vnode_pager_addr __P((struct vnode *vp, vm_ooffset_t address,
-					 int *run));
-static void vnode_pager_iodone __P((struct buf *bp));
-static int vnode_pager_input_smlfs __P((vm_object_t object, vm_page_t m));
-static int vnode_pager_input_old __P((vm_object_t object, vm_page_t m));
-static void vnode_pager_dealloc __P((vm_object_t));
-static int vnode_pager_getpages __P((vm_object_t, vm_page_t *, int, int));
-static void vnode_pager_putpages __P((vm_object_t, vm_page_t *, int, boolean_t, int *));
-static boolean_t vnode_pager_haspage __P((vm_object_t, vm_pindex_t, int *, int *));
+static vm_offset_t vnode_pager_addr (struct vnode *vp, vm_ooffset_t address,
+					 int *run);
+static void vnode_pager_iodone (struct buf *bp);
+static int vnode_pager_input_smlfs (vm_object_t object, vm_page_t m);
+static int vnode_pager_input_old (vm_object_t object, vm_page_t m);
+static void vnode_pager_dealloc (vm_object_t);
+static int vnode_pager_getpages (vm_object_t, vm_page_t *, int, int);
+static void vnode_pager_putpages (vm_object_t, vm_page_t *, int, boolean_t, int *);
+static boolean_t vnode_pager_haspage (vm_object_t, vm_pindex_t, int *, int *);
 
 struct pagerops vnodepagerops = {
 	NULL,

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.6 2003/07/06 21:23:56 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.7 2003/08/20 08:03:01 rob Exp $
  */
 
 /*
@@ -1726,9 +1726,9 @@ vm_object_set_writeable_dirty(vm_object_t object)
 
 #include <ddb/ddb.h>
 
-static int	_vm_object_in_map __P((vm_map_t map, vm_object_t object,
-				       vm_map_entry_t entry));
-static int	vm_object_in_map __P((vm_object_t object));
+static int	_vm_object_in_map (vm_map_t map, vm_object_t object,
+				       vm_map_entry_t entry);
+static int	vm_object_in_map (vm_object_t object);
 
 static int
 _vm_object_in_map(map, object, entry)

@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.5 2003/07/26 22:10:02 rob Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.6 2003/08/20 08:03:01 rob Exp $
  */
 
 /*
@@ -95,8 +95,8 @@
 #include <vm/vm_extern.h>
 #include <vm/vm_page2.h>
 
-static int vm_fault_additional_pages __P((vm_page_t, int,
-					  int, vm_page_t *, int *));
+static int vm_fault_additional_pages (vm_page_t, int,
+					  int, vm_page_t *, int *);
 
 #define VM_FAULT_READ_AHEAD 8
 #define VM_FAULT_READ_BEHIND 7

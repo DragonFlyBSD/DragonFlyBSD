@@ -32,7 +32,7 @@
  *
  *	@(#)vm_extern.h	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_extern.h,v 1.46.2.3 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_extern.h,v 1.3 2003/06/25 03:56:12 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_extern.h,v 1.4 2003/08/20 08:03:01 rob Exp $
  */
 
 #ifndef _VM_EXTERN_H_
@@ -48,56 +48,56 @@ struct vnode;
 #ifdef _KERNEL
 
 #ifdef TYPEDEF_FOR_UAP
-int getpagesize __P((struct proc * p, void *, int *));
-int madvise __P((struct proc *, void *, int *));
-int mincore __P((struct proc *, void *, int *));
-int mprotect __P((struct proc *, void *, int *));
-int msync __P((struct proc *, void *, int *));
-int munmap __P((struct proc *, void *, int *));
-int obreak __P((struct proc *, void *, int *));
-int sbrk __P((struct proc *, void *, int *));
-int sstk __P((struct proc *, void *, int *));
-int swapon __P((struct proc *, void *, int *));
+int getpagesize (struct proc * p, void *, int *);
+int madvise (struct proc *, void *, int *);
+int mincore (struct proc *, void *, int *);
+int mprotect (struct proc *, void *, int *);
+int msync (struct proc *, void *, int *);
+int munmap (struct proc *, void *, int *);
+int obreak (struct proc *, void *, int *);
+int sbrk (struct proc *, void *, int *);
+int sstk (struct proc *, void *, int *);
+int swapon (struct proc *, void *, int *);
 #endif
 
-int grow __P((struct proc *, size_t));
-int grow_stack __P((struct proc *, size_t));
-int kernacc __P((caddr_t, int, int));
-vm_offset_t kmem_alloc __P((vm_map_t, vm_size_t));
-vm_offset_t kmem_alloc_nofault __P((vm_map_t, vm_size_t));
-vm_offset_t kmem_alloc_pageable __P((vm_map_t, vm_size_t));
-vm_offset_t kmem_alloc_wait __P((vm_map_t, vm_size_t));
-void kmem_free __P((vm_map_t, vm_offset_t, vm_size_t));
-void kmem_free_wakeup __P((vm_map_t, vm_offset_t, vm_size_t));
-void kmem_init __P((vm_offset_t, vm_offset_t));
-vm_offset_t kmem_malloc __P((vm_map_t, vm_size_t, boolean_t));
-vm_map_t kmem_suballoc __P((vm_map_t, vm_offset_t *, vm_offset_t *, vm_size_t));
-void munmapfd __P((struct proc *, int));
-int swaponvp __P((struct thread *, struct vnode *, dev_t , u_long));
-void swapout_procs __P((int));
-int useracc __P((caddr_t, int, int));
-int vm_fault __P((vm_map_t, vm_offset_t, vm_prot_t, int));
-void vm_fault_copy_entry __P((vm_map_t, vm_map_t, vm_map_entry_t, vm_map_entry_t));
-void vm_fault_unwire __P((vm_map_t, vm_offset_t, vm_offset_t));
-int vm_fault_wire __P((vm_map_t, vm_offset_t, vm_offset_t));
-int vm_fault_user_wire __P((vm_map_t, vm_offset_t, vm_offset_t));
-void vm_fork __P((struct proc *, struct proc *, int));
-void vm_waitproc __P((struct proc *));
-int vm_mmap __P((vm_map_t, vm_offset_t *, vm_size_t, vm_prot_t, vm_prot_t, int, void *, vm_ooffset_t));
-vm_offset_t vm_page_alloc_contig __P((vm_offset_t, vm_offset_t, vm_offset_t, vm_offset_t));
-void vm_set_page_size __P((void));
-struct vmspace *vmspace_alloc __P((vm_offset_t, vm_offset_t));
-struct vmspace *vmspace_fork __P((struct vmspace *));
-void vmspace_exec __P((struct proc *));
-void vmspace_unshare __P((struct proc *));
-void vmspace_free __P((struct vmspace *));
-void vmspace_exitfree __P((struct proc *));
-void vnode_pager_setsize __P((struct vnode *, vm_ooffset_t));
-void vslock __P((caddr_t, u_int));
-void vsunlock __P((caddr_t, u_int));
-void vm_object_print __P((/* db_expr_t */ long, boolean_t, /* db_expr_t */ long,
-			  char *));
-int vm_fault_quick __P((caddr_t v, int prot));
+int grow (struct proc *, size_t);
+int grow_stack (struct proc *, size_t);
+int kernacc (caddr_t, int, int);
+vm_offset_t kmem_alloc (vm_map_t, vm_size_t);
+vm_offset_t kmem_alloc_nofault (vm_map_t, vm_size_t);
+vm_offset_t kmem_alloc_pageable (vm_map_t, vm_size_t);
+vm_offset_t kmem_alloc_wait (vm_map_t, vm_size_t);
+void kmem_free (vm_map_t, vm_offset_t, vm_size_t);
+void kmem_free_wakeup (vm_map_t, vm_offset_t, vm_size_t);
+void kmem_init (vm_offset_t, vm_offset_t);
+vm_offset_t kmem_malloc (vm_map_t, vm_size_t, boolean_t);
+vm_map_t kmem_suballoc (vm_map_t, vm_offset_t *, vm_offset_t *, vm_size_t);
+void munmapfd (struct proc *, int);
+int swaponvp (struct thread *, struct vnode *, dev_t , u_long);
+void swapout_procs (int);
+int useracc (caddr_t, int, int);
+int vm_fault (vm_map_t, vm_offset_t, vm_prot_t, int);
+void vm_fault_copy_entry (vm_map_t, vm_map_t, vm_map_entry_t, vm_map_entry_t);
+void vm_fault_unwire (vm_map_t, vm_offset_t, vm_offset_t);
+int vm_fault_wire (vm_map_t, vm_offset_t, vm_offset_t);
+int vm_fault_user_wire (vm_map_t, vm_offset_t, vm_offset_t);
+void vm_fork (struct proc *, struct proc *, int);
+void vm_waitproc (struct proc *);
+int vm_mmap (vm_map_t, vm_offset_t *, vm_size_t, vm_prot_t, vm_prot_t, int, void *, vm_ooffset_t);
+vm_offset_t vm_page_alloc_contig (vm_offset_t, vm_offset_t, vm_offset_t, vm_offset_t);
+void vm_set_page_size (void);
+struct vmspace *vmspace_alloc (vm_offset_t, vm_offset_t);
+struct vmspace *vmspace_fork (struct vmspace *);
+void vmspace_exec (struct proc *);
+void vmspace_unshare (struct proc *);
+void vmspace_free (struct vmspace *);
+void vmspace_exitfree (struct proc *);
+void vnode_pager_setsize (struct vnode *, vm_ooffset_t);
+void vslock (caddr_t, u_int);
+void vsunlock (caddr_t, u_int);
+void vm_object_print (/* db_expr_t */ long, boolean_t, /* db_expr_t */ long,
+			  char *);
+int vm_fault_quick (caddr_t v, int prot);
 
 #endif				/* _KERNEL */
 

@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.10 2003/07/30 00:19:16 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.11 2003/08/20 08:03:01 rob Exp $
  */
 
 /*
@@ -92,7 +92,7 @@ SYSCTL_INT(_vm, OID_AUTO, max_proc_mmap, CTLFLAG_RW, &max_proc_mmap, 0, "");
  * multi-threaded processes are not unduly inconvenienced.
  */
 
-static void vmmapentry_rsrc_init __P((void *));
+static void vmmapentry_rsrc_init (void *);
 SYSINIT(vmmersrc, SI_SUB_KVM_RSRC, SI_ORDER_FIRST, vmmapentry_rsrc_init, NULL)
 
 static void

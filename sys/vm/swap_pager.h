@@ -37,7 +37,7 @@
  *
  *	from: @(#)swap_pager.h	7.1 (Berkeley) 12/5/90
  * $FreeBSD: src/sys/vm/swap_pager.h,v 1.28.2.1 2000/10/13 07:13:23 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.h,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.h,v 1.3 2003/08/20 08:03:01 rob Exp $
  */
 
 /*
@@ -86,25 +86,25 @@ extern struct pagerlst swap_pager_un_object_list;
 extern int swap_pager_full;
 extern struct blist *swapblist;
 
-void swap_pager_putpages __P((vm_object_t, vm_page_t *, int, boolean_t, int *));
-boolean_t swap_pager_haspage __P((vm_object_t object, vm_pindex_t pindex, int *before, int *after));
+void swap_pager_putpages (vm_object_t, vm_page_t *, int, boolean_t, int *);
+boolean_t swap_pager_haspage (vm_object_t object, vm_pindex_t pindex, int *before, int *after);
 
-int swap_pager_swp_alloc __P((vm_object_t, int));
-void swap_pager_copy __P((vm_object_t, vm_object_t, vm_pindex_t, int));
-void swap_pager_freespace __P((vm_object_t, vm_pindex_t, vm_size_t));
-void swap_pager_dmzspace __P((vm_object_t, vm_pindex_t, vm_size_t));
-void swap_pager_swap_init __P((void));
-int swap_pager_reserve __P((vm_object_t, vm_pindex_t, vm_size_t));
+int swap_pager_swp_alloc (vm_object_t, int);
+void swap_pager_copy (vm_object_t, vm_object_t, vm_pindex_t, int);
+void swap_pager_freespace (vm_object_t, vm_pindex_t, vm_size_t);
+void swap_pager_dmzspace (vm_object_t, vm_pindex_t, vm_size_t);
+void swap_pager_swap_init (void);
+int swap_pager_reserve (vm_object_t, vm_pindex_t, vm_size_t);
 
 /*
  * newswap functions
  */
 
-void swap_pager_page_removed __P((vm_page_t, vm_object_t));
+void swap_pager_page_removed (vm_page_t, vm_object_t);
 
 /* choose underlying swap device and queue up I/O */
 struct buf;
-void swstrategy __P((struct buf *bp));	/* probably needs to move elsewhere */
+void swstrategy (struct buf *bp);	/* probably needs to move elsewhere */
 
 #endif
 

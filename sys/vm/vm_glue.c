@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.14 2003/07/26 22:10:02 rob Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.15 2003/08/20 08:03:01 rob Exp $
  */
 
 #include "opt_vm.h"
@@ -98,7 +98,7 @@
  * Note: proc0 from proc.h
  */
 
-static void vm_init_limits __P((void *));
+static void vm_init_limits (void *);
 SYSINIT(vm_limits, SI_SUB_VM_CONF, SI_ORDER_FIRST, vm_init_limits, &proc0)
 
 /*
@@ -106,11 +106,11 @@ SYSINIT(vm_limits, SI_SUB_VM_CONF, SI_ORDER_FIRST, vm_init_limits, &proc0)
  *
  * Note: run scheduling should be divorced from the vm system.
  */
-static void scheduler __P((void *));
+static void scheduler (void *);
 SYSINIT(scheduler, SI_SUB_RUN_SCHEDULER, SI_ORDER_FIRST, scheduler, NULL)
 
 
-static void swapout __P((struct proc *));
+static void swapout (struct proc *);
 
 int
 kernacc(addr, len, rw)

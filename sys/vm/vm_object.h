@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.h,v 1.63.2.3 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.h,v 1.3 2003/07/19 21:14:53 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.h,v 1.4 2003/08/20 08:03:01 rob Exp $
  */
 
 /*
@@ -250,24 +250,24 @@ vm_object_pip_wait(vm_object_t object, char *waitid)
 		vm_object_pip_sleep(object, waitid);
 }
 
-vm_object_t vm_object_allocate __P((objtype_t, vm_size_t));
-void _vm_object_allocate __P((objtype_t, vm_size_t, vm_object_t));
-boolean_t vm_object_coalesce __P((vm_object_t, vm_pindex_t, vm_size_t, vm_size_t));
-void vm_object_collapse __P((vm_object_t));
-void vm_object_deallocate __P((vm_object_t));
-void vm_object_terminate __P((vm_object_t));
-void vm_object_vndeallocate __P((vm_object_t));
-void vm_object_set_writeable_dirty __P((vm_object_t));
-void vm_object_init __P((void));
-void vm_object_page_clean __P((vm_object_t, vm_pindex_t, vm_pindex_t, boolean_t));
-void vm_object_page_remove __P((vm_object_t, vm_pindex_t, vm_pindex_t, boolean_t));
-void vm_object_pmap_copy __P((vm_object_t, vm_pindex_t, vm_pindex_t));
-void vm_object_pmap_copy_1 __P((vm_object_t, vm_pindex_t, vm_pindex_t));
-void vm_object_pmap_remove __P((vm_object_t, vm_pindex_t, vm_pindex_t));
-void vm_object_reference __P((vm_object_t));
-void vm_object_shadow __P((vm_object_t *, vm_ooffset_t *, vm_size_t));
-void vm_object_madvise __P((vm_object_t, vm_pindex_t, int, int));
-void vm_object_init2 __P((void));
+vm_object_t vm_object_allocate (objtype_t, vm_size_t);
+void _vm_object_allocate (objtype_t, vm_size_t, vm_object_t);
+boolean_t vm_object_coalesce (vm_object_t, vm_pindex_t, vm_size_t, vm_size_t);
+void vm_object_collapse (vm_object_t);
+void vm_object_deallocate (vm_object_t);
+void vm_object_terminate (vm_object_t);
+void vm_object_vndeallocate (vm_object_t);
+void vm_object_set_writeable_dirty (vm_object_t);
+void vm_object_init (void);
+void vm_object_page_clean (vm_object_t, vm_pindex_t, vm_pindex_t, boolean_t);
+void vm_object_page_remove (vm_object_t, vm_pindex_t, vm_pindex_t, boolean_t);
+void vm_object_pmap_copy (vm_object_t, vm_pindex_t, vm_pindex_t);
+void vm_object_pmap_copy_1 (vm_object_t, vm_pindex_t, vm_pindex_t);
+void vm_object_pmap_remove (vm_object_t, vm_pindex_t, vm_pindex_t);
+void vm_object_reference (vm_object_t);
+void vm_object_shadow (vm_object_t *, vm_ooffset_t *, vm_size_t);
+void vm_object_madvise (vm_object_t, vm_pindex_t, int, int);
+void vm_object_init2 (void);
 #endif				/* _KERNEL */
 
 #endif				/* _VM_OBJECT_ */

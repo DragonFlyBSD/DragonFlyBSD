@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.4 2003/07/06 21:23:56 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.5 2003/08/20 08:03:01 rob Exp $
  */
 
 /*
@@ -358,34 +358,34 @@ vmspace_resident_count(struct vmspace *vmspace)
 #define VM_FAULT_DIRTY 8		/* Dirty the page */
 
 #ifdef _KERNEL
-boolean_t vm_map_check_protection __P((vm_map_t, vm_offset_t, vm_offset_t, vm_prot_t));
+boolean_t vm_map_check_protection (vm_map_t, vm_offset_t, vm_offset_t, vm_prot_t);
 struct pmap;
-vm_map_t vm_map_create __P((struct pmap *, vm_offset_t, vm_offset_t));
-int vm_map_delete __P((vm_map_t, vm_offset_t, vm_offset_t));
-int vm_map_find __P((vm_map_t, vm_object_t, vm_ooffset_t, vm_offset_t *, vm_size_t, boolean_t, vm_prot_t, vm_prot_t, int));
-int vm_map_findspace __P((vm_map_t, vm_offset_t, vm_size_t, vm_offset_t *));
-int vm_map_inherit __P((vm_map_t, vm_offset_t, vm_offset_t, vm_inherit_t));
-void vm_map_init __P((struct vm_map *, vm_offset_t, vm_offset_t));
-int vm_map_insert __P((vm_map_t, vm_object_t, vm_ooffset_t, vm_offset_t, vm_offset_t, vm_prot_t, vm_prot_t, int));
-int vm_map_lookup __P((vm_map_t *, vm_offset_t, vm_prot_t, vm_map_entry_t *, vm_object_t *,
-    vm_pindex_t *, vm_prot_t *, boolean_t *));
-void vm_map_lookup_done __P((vm_map_t, vm_map_entry_t));
-boolean_t vm_map_lookup_entry __P((vm_map_t, vm_offset_t, vm_map_entry_t *));
-int vm_map_pageable __P((vm_map_t, vm_offset_t, vm_offset_t, boolean_t));
-int vm_map_user_pageable __P((vm_map_t, vm_offset_t, vm_offset_t, boolean_t));
-int vm_map_clean __P((vm_map_t, vm_offset_t, vm_offset_t, boolean_t, boolean_t));
-int vm_map_protect __P((vm_map_t, vm_offset_t, vm_offset_t, vm_prot_t, boolean_t));
-int vm_map_remove __P((vm_map_t, vm_offset_t, vm_offset_t));
-void vm_map_startup __P((void));
-int vm_map_submap __P((vm_map_t, vm_offset_t, vm_offset_t, vm_map_t));
-int vm_map_madvise __P((vm_map_t, vm_offset_t, vm_offset_t, int));
-void vm_map_simplify_entry __P((vm_map_t, vm_map_entry_t));
-void vm_init2 __P((void));
-int vm_uiomove __P((vm_map_t, vm_object_t, off_t, int, vm_offset_t, int *));
-void vm_freeze_copyopts __P((vm_object_t, vm_pindex_t, vm_pindex_t));
-int vm_map_stack __P((vm_map_t, vm_offset_t, vm_size_t, vm_prot_t, vm_prot_t, int));
-int vm_map_growstack __P((struct proc *p, vm_offset_t addr));
-int vmspace_swap_count __P((struct vmspace *vmspace));
+vm_map_t vm_map_create (struct pmap *, vm_offset_t, vm_offset_t);
+int vm_map_delete (vm_map_t, vm_offset_t, vm_offset_t);
+int vm_map_find (vm_map_t, vm_object_t, vm_ooffset_t, vm_offset_t *, vm_size_t, boolean_t, vm_prot_t, vm_prot_t, int);
+int vm_map_findspace (vm_map_t, vm_offset_t, vm_size_t, vm_offset_t *);
+int vm_map_inherit (vm_map_t, vm_offset_t, vm_offset_t, vm_inherit_t);
+void vm_map_init (struct vm_map *, vm_offset_t, vm_offset_t);
+int vm_map_insert (vm_map_t, vm_object_t, vm_ooffset_t, vm_offset_t, vm_offset_t, vm_prot_t, vm_prot_t, int);
+int vm_map_lookup (vm_map_t *, vm_offset_t, vm_prot_t, vm_map_entry_t *, vm_object_t *,
+    vm_pindex_t *, vm_prot_t *, boolean_t *);
+void vm_map_lookup_done (vm_map_t, vm_map_entry_t);
+boolean_t vm_map_lookup_entry (vm_map_t, vm_offset_t, vm_map_entry_t *);
+int vm_map_pageable (vm_map_t, vm_offset_t, vm_offset_t, boolean_t);
+int vm_map_user_pageable (vm_map_t, vm_offset_t, vm_offset_t, boolean_t);
+int vm_map_clean (vm_map_t, vm_offset_t, vm_offset_t, boolean_t, boolean_t);
+int vm_map_protect (vm_map_t, vm_offset_t, vm_offset_t, vm_prot_t, boolean_t);
+int vm_map_remove (vm_map_t, vm_offset_t, vm_offset_t);
+void vm_map_startup (void);
+int vm_map_submap (vm_map_t, vm_offset_t, vm_offset_t, vm_map_t);
+int vm_map_madvise (vm_map_t, vm_offset_t, vm_offset_t, int);
+void vm_map_simplify_entry (vm_map_t, vm_map_entry_t);
+void vm_init2 (void);
+int vm_uiomove (vm_map_t, vm_object_t, off_t, int, vm_offset_t, int *);
+void vm_freeze_copyopts (vm_object_t, vm_pindex_t, vm_pindex_t);
+int vm_map_stack (vm_map_t, vm_offset_t, vm_size_t, vm_prot_t, vm_prot_t, int);
+int vm_map_growstack (struct proc *p, vm_offset_t addr);
+int vmspace_swap_count (struct vmspace *vmspace);
 
 #endif
 #endif				/* _VM_MAP_ */

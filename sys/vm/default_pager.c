@@ -37,7 +37,7 @@
  * is maintained whenever a resident page also has swap backing store.
  *
  * $FreeBSD: src/sys/vm/default_pager.c,v 1.23 1999/11/07 20:03:53 alc Exp $
- * $DragonFly: src/sys/vm/default_pager.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/default_pager.c,v 1.3 2003/08/20 08:03:01 rob Exp $
  */
 
 #include <sys/param.h>
@@ -49,14 +49,14 @@
 #include <vm/vm_pager.h>
 #include <vm/swap_pager.h>
 
-static vm_object_t default_pager_alloc __P((void *, vm_ooffset_t, vm_prot_t,
-		vm_ooffset_t));
-static void default_pager_dealloc __P((vm_object_t));
-static int default_pager_getpages __P((vm_object_t, vm_page_t *, int, int));
-static void default_pager_putpages __P((vm_object_t, vm_page_t *, int, 
-		boolean_t, int *));
-static boolean_t default_pager_haspage __P((vm_object_t, vm_pindex_t, int *, 
-		int *));
+static vm_object_t default_pager_alloc (void *, vm_ooffset_t, vm_prot_t,
+		vm_ooffset_t);
+static void default_pager_dealloc (vm_object_t);
+static int default_pager_getpages (vm_object_t, vm_page_t *, int, int);
+static void default_pager_putpages (vm_object_t, vm_page_t *, int, 
+		boolean_t, int *);
+static boolean_t default_pager_haspage (vm_object_t, vm_pindex_t, int *, 
+		int *);
 /*
  * pagerops for OBJT_DEFAULT - "default pager".
  */

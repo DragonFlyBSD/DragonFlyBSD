@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.h,v 1.26.2.1 2002/02/26 05:49:28 silby Exp $
- * $DragonFly: src/sys/vm/vm_pageout.h,v 1.3 2003/06/21 07:54:57 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.h,v 1.4 2003/08/20 08:03:01 rob Exp $
  */
 
 #ifndef _VM_VM_PAGEOUT_H_
@@ -99,17 +99,17 @@ extern int vm_pageout_deficit;
  *	Signal pageout-daemon and wait for it.
  */
 
-extern void pagedaemon_wakeup __P((void));
+extern void pagedaemon_wakeup (void);
 #define VM_WAIT vm_wait()
 #define VM_WAITPFAULT vm_waitpfault()
-extern void vm_wait __P((void));
-extern void vm_waitpfault __P((void));
+extern void vm_wait (void);
+extern void vm_waitpfault (void);
 
 #ifdef _KERNEL
-void vm_pageout_page __P((vm_page_t, vm_object_t));
-void vm_pageout_cluster __P((vm_page_t, vm_object_t));
-int vm_pageout_flush __P((vm_page_t *, int, int));
-void vm_pageout_page_free __P((vm_page_t));
+void vm_pageout_page (vm_page_t, vm_object_t);
+void vm_pageout_cluster (vm_page_t, vm_object_t);
+int vm_pageout_flush (vm_page_t *, int, int);
+void vm_pageout_page_free (vm_page_t);
 
 #endif
 

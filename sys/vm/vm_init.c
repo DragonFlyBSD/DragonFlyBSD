@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_init.c,v 1.20 1999/10/29 18:09:29 phk Exp $
- * $DragonFly: src/sys/vm/vm_init.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_init.c,v 1.3 2003/08/20 08:03:01 rob Exp $
  */
 
 /*
@@ -85,7 +85,7 @@
  * System initialization
  */
 
-static void vm_mem_init __P((void *));
+static void vm_mem_init (void *);
 SYSINIT(vm_mem, SI_SUB_VM, SI_ORDER_FIRST, vm_mem_init, NULL)
 
 /*

@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.h,v 1.13.2.2 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.h,v 1.3 2003/07/06 21:23:56 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.h,v 1.4 2003/08/20 08:03:01 rob Exp $
  */
 
 #ifndef _SYS_ZONE_H
@@ -50,14 +50,14 @@ typedef struct vm_zone {
 } *vm_zone_t;
 
 
-void		zerror __P((int)) __dead2;
-vm_zone_t	zinit __P((char *name, int size, int nentries, int flags,
-			   int zalloc));
-int		zinitna __P((vm_zone_t z, struct vm_object *obj, char *name,
-			     int size, int nentries, int flags, int zalloc));
-void *		zalloc __P((vm_zone_t z));
-void		zfree __P((vm_zone_t z, void *item));
-void		zbootinit __P((vm_zone_t z, char *name, int size, void *item,
-			       int nitems));
+void		zerror (int) __dead2;
+vm_zone_t	zinit (char *name, int size, int nentries, int flags,
+			   int zalloc);
+int		zinitna (vm_zone_t z, struct vm_object *obj, char *name,
+			     int size, int nentries, int flags, int zalloc);
+void *		zalloc (vm_zone_t z);
+void		zfree (vm_zone_t z, void *item);
+void		zbootinit (vm_zone_t z, char *name, int size, void *item,
+			       int nitems);
 
 #endif /* _SYS_ZONE_H */

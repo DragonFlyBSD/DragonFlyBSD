@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.7 2003/07/23 07:14:19 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.8 2003/08/20 08:03:01 rob Exp $
  */
 
 /*
@@ -139,16 +139,16 @@ static struct vm_map_entry map_entry_init[MAX_MAPENT];
 static struct vm_map_entry kmap_entry_init[MAX_KMAPENT];
 static struct vm_map map_init[MAX_KMAP];
 
-static void _vm_map_clip_end __P((vm_map_t, vm_map_entry_t, vm_offset_t));
-static void _vm_map_clip_start __P((vm_map_t, vm_map_entry_t, vm_offset_t));
-static vm_map_entry_t vm_map_entry_create __P((vm_map_t));
-static void vm_map_entry_delete __P((vm_map_t, vm_map_entry_t));
-static void vm_map_entry_dispose __P((vm_map_t, vm_map_entry_t));
-static void vm_map_entry_unwire __P((vm_map_t, vm_map_entry_t));
-static void vm_map_copy_entry __P((vm_map_t, vm_map_t, vm_map_entry_t,
-		vm_map_entry_t));
-static void vm_map_split __P((vm_map_entry_t));
-static void vm_map_unclip_range __P((vm_map_t map, vm_map_entry_t start_entry, vm_offset_t start, vm_offset_t end, int flags));
+static void _vm_map_clip_end (vm_map_t, vm_map_entry_t, vm_offset_t);
+static void _vm_map_clip_start (vm_map_t, vm_map_entry_t, vm_offset_t);
+static vm_map_entry_t vm_map_entry_create (vm_map_t);
+static void vm_map_entry_delete (vm_map_t, vm_map_entry_t);
+static void vm_map_entry_dispose (vm_map_t, vm_map_entry_t);
+static void vm_map_entry_unwire (vm_map_t, vm_map_entry_t);
+static void vm_map_copy_entry (vm_map_t, vm_map_t, vm_map_entry_t,
+		vm_map_entry_t);
+static void vm_map_split (vm_map_entry_t);
+static void vm_map_unclip_range (vm_map_t map, vm_map_entry_t start_entry, vm_offset_t start, vm_offset_t end, int flags);
 
 void
 vm_map_startup()
