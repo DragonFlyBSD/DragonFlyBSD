@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.171 2005/03/19 00:18:50 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.172 2005/03/20 00:44:45 okumoto Exp $
  */
 
 /*-
@@ -448,7 +448,7 @@ Var_Set(const char *name, const char *val, GNode *ctxt)
 	 * Any variables given on the command line are automatically exported
 	 * to the environment (as per POSIX standard)
 	 */
-	if (ctxt == VAR_CMD || (v != (Var *)NULL && (v->flags & VAR_TO_ENV))) {
+	if (ctxt == VAR_CMD || (v != NULL && (v->flags & VAR_TO_ENV))) {
 		setenv(n, val, 1);
 	}
 	free(n);
@@ -464,13 +464,13 @@ Var_SetEnv(const char *name, GNode *ctxt)
 	Var    *v;
 
 	v = VarFind(name, ctxt, FIND_CMD | FIND_GLOBAL | FIND_ENV);
-	if (v) {
+	if (v == NULL) {
+		Error("Cannot set environment flag on non-existant variable %s", name);
+	} else {
 		if ((v->flags & VAR_TO_ENV) == 0) {
 			v->flags |= VAR_TO_ENV;
 			setenv(v->name, Buf_Data(v->val), 1);
 		}
-	} else {
-		Error("Cannot set environment flag on non-existant variable %s", name);
 	}
 }
 
