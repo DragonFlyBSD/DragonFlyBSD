@@ -1,7 +1,7 @@
 /*	$NetBSD: if_devar.h,v 1.32 1999/04/01 14:55:25 tsubai Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_devar.h,v 1.23.2.1 2000/08/04 23:25:10 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.10 2005/02/21 04:58:34 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.11 2005/02/21 05:16:16 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -384,9 +384,6 @@ typedef struct {
 #define	PHY_NEED_HARD_RESET	0x0001
 #define	PHY_DUAL_CYCLE_TA	0x0002
     tulip_phy_modedata_t attr_modes[PHY_MODE_MAX];
-#ifdef TULIP_DEBUG
-    const char *attr_name;
-#endif
 } tulip_phy_attr_t;
 
 /*
@@ -525,36 +522,6 @@ struct _tulip_softc_t {
     tulip_chipid_t tulip_chipid;		/* type of chip we are using */
     const tulip_boardsw_t *tulip_boardsw;	/* board/chip characteristics */
     tulip_softc_t *tulip_slaves;		/* slaved devices (ZX3xx) */
-#if defined(TULIP_DEBUG)
-    /*
-     * Debugging/Statistical information
-     */
-    struct {
-	tulip_media_t dbg_last_media;
-	u_int32_t dbg_intrs;
-	u_int32_t dbg_media_probes;
-	u_int32_t dbg_txprobe_nocarr;
-	u_int32_t dbg_txprobe_exccoll;
-	u_int32_t dbg_link_downed;
-	u_int32_t dbg_link_suspected;
-	u_int32_t dbg_link_intrs;
-	u_int32_t dbg_link_pollintrs;
-	u_int32_t dbg_link_failures;
-	u_int32_t dbg_nway_starts;
-	u_int32_t dbg_nway_failures;
-	u_int16_t dbg_phyregs[32][4];
-	u_int32_t dbg_rxlowbufs;
-	u_int32_t dbg_rxintrs;
-	u_int32_t dbg_last_rxintrs;
-	u_int32_t dbg_high_rxintrs_hz;
-	u_int32_t dbg_no_txmaps;
-	u_int32_t dbg_txput_finishes[8];
-	u_int32_t dbg_txprobes_ok[TULIP_MEDIA_MAX];
-	u_int32_t dbg_txprobes_failed[TULIP_MEDIA_MAX];
-	u_int32_t dbg_events[TULIP_MEDIAPOLL_MAX];
-	u_int32_t dbg_rxpktsperintr[TULIP_RXDESCS];
-    } tulip_dbg;
-#endif
     struct ifqueue tulip_txq;
     struct ifqueue tulip_rxq;
     tulip_dot3_stats_t tulip_dot3stats;

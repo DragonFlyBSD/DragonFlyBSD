@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.25 2005/02/21 05:03:51 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.26 2005/02/21 05:16:16 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -91,18 +91,6 @@
  */
 #if defined(__i386__)
 #define	TULIP_IOMAPPED
-#endif
-
-#if 0
-/*
- * This turns on all sort of debugging stuff and make the
- * driver much larger.
- */
-#define TULIP_DEBUG
-#endif
-
-#if 0
-#define	TULIP_PERFSTATS
 #endif
 
 #define	TULIP_HZ	10
@@ -344,9 +332,6 @@ tulip_linkup(
     }
 #endif
     if (sc->tulip_media != media) {
-#ifdef TULIP_DEBUG
-	sc->tulip_dbg.dbg_last_media = sc->tulip_media;
-#endif
 	sc->tulip_media = media;
 	sc->tulip_flags |= TULIP_PRINTMEDIA;
 	if (TULIP_IS_MEDIA_FD(sc->tulip_media)) {
@@ -433,12 +418,6 @@ tulip_21140_gpr_media_sense(
 	if ((TULIP_CSR_READ(sc, csr_gp) & mi->mi_actmask) != mi->mi_actdata)
 	    continue;
 
-#if defined(TULIP_DEBUG)
-	printf("%s%d: gpr_media_sense: %s: 0x%02x & 0x%02x == 0x%02x\n",
-	       sc->tulip_name, sc->tulip_unit, tulip_mediums[media],
-	       TULIP_CSR_READ(sc, csr_gp) & 0xFF,
-	       mi->mi_actmask, mi->mi_actdata);
-#endif
 	/*
 	 * It does!  If this is the first media we detected, then 
 	 * remember this media.  If isn't the first, then there were
@@ -463,7 +442,7 @@ tulip_media_link_monitor(
     tulip_link_status_t linkup = TULIP_LINK_DOWN;
 
     if (mi == NULL) {
-#if defined(DIAGNOSTIC) || defined(TULIP_DEBUG)
+#if defined(DIAGNOSTIC)
 	panic("tulip_media_link_monitor: %s: botch at line %d\n",
 	      tulip_mediums[sc->tulip_media],__LINE__);
 #endif
@@ -496,11 +475,6 @@ tulip_media_link_monitor(
 	    u_int32_t abilities = tulip_mii_readreg(sc, sc->tulip_phyaddr, PHYREG_AUTONEG_ABILITIES);
 	    abilities = (abilities << 6) & status;
 	    if (abilities != sc->tulip_abilities) {
-#if defined(TULIP_DEBUG)
-		loudprintf("%s%d(phy%d): autonegotiation changed: 0x%04x -> 0x%04x\n",
-			   sc->tulip_name, sc->tulip_unit, sc->tulip_phyaddr,
-			   sc->tulip_abilities, abilities);
-#endif
 		if (tulip_mii_map_abilities(sc, abilities)) {
 		    tulip_linkup(sc, sc->tulip_probe_media);
 		    return TULIP_LINK_UP;
@@ -538,11 +512,6 @@ tulip_media_link_monitor(
 	    return TULIP_LINK_UNKNOWN;
 	if ((TULIP_CSR_READ(sc, csr_sia_status) & TULIP_SIASTS_LINKFAIL) == 0)
 	    linkup = TULIP_LINK_UP;
-#if defined(TULIP_DEBUG)
-	if (sc->tulip_probe_timeout <= 0)
-	    printf("%s%d: sia status = 0x%08x\n", sc->tulip_name,
-		    sc->tulip_unit, TULIP_CSR_READ(sc, csr_sia_status));
-#endif
     } else if (mi->mi_type == TULIP_MEDIAINFO_SYM) {
 	return TULIP_LINK_UNKNOWN;
     }
@@ -558,9 +527,6 @@ tulip_media_link_monitor(
 	sc->tulip_flags &= ~TULIP_LINKUP;
 	printf("%s%d: link down: cable problem?\n", sc->tulip_name, sc->tulip_unit);
     }
-#if defined(TULIP_DEBUG)
-    sc->tulip_dbg.dbg_link_downed++;
-#endif
     return TULIP_LINK_DOWN;
 }
 
@@ -569,9 +535,6 @@ tulip_media_poll(
     tulip_softc_t * const sc,
     tulip_mediapoll_event_t event)
 {
-#if defined(TULIP_DEBUG)
-    sc->tulip_dbg.dbg_events[event]++;
-#endif
     if (sc->tulip_probe_state == TULIP_PROBE_INACTIVE
 	    && event == TULIP_MEDIAPOLL_TIMER) {
 	switch (tulip_media_link_monitor(sc)) {
@@ -601,18 +564,12 @@ tulip_media_poll(
     if (event == TULIP_MEDIAPOLL_LINKFAIL) {
 	if (sc->tulip_probe_state == TULIP_PROBE_INACTIVE) {
 	    if (TULIP_DO_AUTOSENSE(sc)) {
-#if defined(TULIP_DEBUG)
-		sc->tulip_dbg.dbg_link_failures++;
-#endif
 		sc->tulip_media = TULIP_MEDIA_UNKNOWN;
 		if (sc->tulip_if.if_flags & IFF_UP)
 		    tulip_reset(sc);	/* restart probe */
 	    }
 	    return;
 	}
-#if defined(TULIP_DEBUG)
-	sc->tulip_dbg.dbg_link_pollintrs++;
-#endif
     }
 
     if (event == TULIP_MEDIAPOLL_START) {
@@ -621,9 +578,6 @@ tulip_media_poll(
 	    return;
 	sc->tulip_probe_mediamask = 0;
 	sc->tulip_probe_passes = 0;
-#if defined(TULIP_DEBUG)
-	sc->tulip_dbg.dbg_media_probes++;
-#endif
 	/*
 	 * If the SROM contained an explicit media to use, use it.
 	 */
@@ -666,10 +620,6 @@ tulip_media_poll(
 	if (event == TULIP_MEDIAPOLL_LINKPASS) {
 	    /* XXX Check media status just to be sure */
 	    sc->tulip_probe_media = TULIP_MEDIA_10BASET;
-#if defined(TULIP_DEBUG)
-	} else {
-	    sc->tulip_dbg.dbg_txprobes_ok[sc->tulip_probe_media]++;
-#endif
 	}
 	tulip_linkup(sc, sc->tulip_probe_media);
 	tulip_timeout(sc);
@@ -686,10 +636,6 @@ tulip_media_poll(
 	 */
 	if (sc->tulip_probe_timeout > 0) {
 	    tulip_media_t new_probe_media = tulip_21140_gpr_media_sense(sc);
-#if defined(TULIP_DEBUG)
-	    printf("%s%d: media_poll: gpr sensing = %s\n",
-		   sc->tulip_name, sc->tulip_unit, tulip_mediums[new_probe_media]);
-#endif
 	    if (new_probe_media != TULIP_MEDIA_UNKNOWN) {
 		if (new_probe_media == sc->tulip_probe_media) {
 		    if (--sc->tulip_probe_count == 0)
@@ -752,7 +698,7 @@ tulip_media_poll(
 		return;
 	    }
 	    default: {
-#if defined(DIAGNOSTIC) || defined(TULIP_DEBUG)
+#if defined(DIAGNOSTIC)
 		panic("tulip_media_poll: botch at line %d\n", __LINE__);
 #endif
 		break;
@@ -761,9 +707,6 @@ tulip_media_poll(
     }
 
     if (event == TULIP_MEDIAPOLL_TXPROBE_FAILED) {
-#if defined(TULIP_DEBUG)
-	sc->tulip_dbg.dbg_txprobes_failed[sc->tulip_probe_media]++;
-#endif
 	sc->tulip_flags &= ~TULIP_TXPROBE_ACTIVE;
 	return;
     }
@@ -772,13 +715,6 @@ tulip_media_poll(
      * switch to another media if we tried this one enough.
      */
     if (/* event == TULIP_MEDIAPOLL_TXPROBE_FAILED || */ sc->tulip_probe_timeout <= 0) {
-#if defined(TULIP_DEBUG)
-	if (sc->tulip_probe_media == TULIP_MEDIA_UNKNOWN) {
-	    printf("%s%d: poll media unknown!\n",
-		   sc->tulip_name, sc->tulip_unit);
-	    sc->tulip_probe_media = TULIP_MEDIA_MAX;
-	}
-#endif
 	/*
 	 * Find the next media type to check for.  Full Duplex
 	 * types are not allowed.
@@ -803,11 +739,6 @@ tulip_media_poll(
 		 || (sc->tulip_probe_mediamask & TULIP_BIT(sc->tulip_probe_media))
 		 || TULIP_IS_MEDIA_FD(sc->tulip_probe_media));
 
-#if defined(TULIP_DEBUG)
-	printf("%s%d: %s: probing %s\n", sc->tulip_name, sc->tulip_unit,
-	       event == TULIP_MEDIAPOLL_TXPROBE_FAILED ? "txprobe failed" : "timeout",
-	       tulip_mediums[sc->tulip_probe_media]);
-#endif
 	sc->tulip_probe_timeout = TULIP_IS_MEDIA_TP(sc->tulip_probe_media) ? 2500 : 1000;
 	sc->tulip_probe_state = TULIP_PROBE_MEDIATEST;
 	sc->tulip_probe.probe_txprobes = 0;
@@ -1011,10 +942,6 @@ tulip_21041_media_poll(
 {
     u_int32_t sia_status;
 
-#if defined(TULIP_DEBUG)
-    sc->tulip_dbg.dbg_events[event]++;
-#endif
-
     if (event == TULIP_MEDIAPOLL_LINKFAIL) {
 	if (sc->tulip_probe_state != TULIP_PROBE_INACTIVE
 		|| !TULIP_DO_AUTOSENSE(sc))
@@ -1050,9 +977,6 @@ tulip_21041_media_poll(
 	return;
 
     if (event == TULIP_MEDIAPOLL_TXPROBE_OK) {
-#if defined(TULIP_DEBUG)
-	sc->tulip_dbg.dbg_txprobes_ok[sc->tulip_probe_media]++;
-#endif
 	tulip_linkup(sc, sc->tulip_probe_media);
 	return;
     }
@@ -1171,9 +1095,6 @@ static const tulip_phy_attr_t tulip_mii_phy_attrlist[] = {
 	{ 0x19, 0x0040, 0x0040 },	/* 10TX */
 	{ 0x19, 0x0040, 0x0000 },	/* 100TX */
       },
-#if defined(TULIP_DEBUG)
-      "NS DP83840",
-#endif
     },
     { 0x0281F400, 0,		/* 00-A0-7D */
       {
@@ -1182,9 +1103,6 @@ static const tulip_phy_attr_t tulip_mii_phy_attrlist[] = {
 	{ 0x12, 0x0010, 0x0010 },	/* 100T4 */
 	{ 0x12, 0x0008, 0x0008 },	/* FULL_DUPLEX */
       },
-#if defined(TULIP_DEBUG)
-      "Seeq 80C240"
-#endif
     },
 #if 0
     { 0x0015F420, 0,	/* 00-A0-7D */
@@ -1194,9 +1112,6 @@ static const tulip_phy_attr_t tulip_mii_phy_attrlist[] = {
 	{ 0x12, 0x0010, 0x0010 },	/* 100T4 */
 	{ 0x12, 0x0008, 0x0008 },	/* FULL_DUPLEX */
       },
-#if defined(TULIP_DEBUG)
-      "Broadcom BCM5000"
-#endif
     },
 #endif
     { 0x0281F400, 0,		/* 00-A0-BE */
@@ -1206,9 +1121,6 @@ static const tulip_phy_attr_t tulip_mii_phy_attrlist[] = {
 	{ },				/* 100T4 */
 	{ 0x11, 0x4000, 0x4000 },	/* FULL_DUPLEX */
       },
-#if defined(TULIP_DEBUG)
-      "ICS 1890"
-#endif 
     },
     { 0 }
 };
@@ -1354,10 +1266,6 @@ tulip_mii_autonegotiate(
 	    }
 	    status = tulip_mii_readreg(sc, phyaddr, PHYREG_STATUS);
 	    if ((status & PHYSTS_CAN_AUTONEG) == 0) {
-#if defined(TULIP_DEBUG)
-		loudprintf("%s%d(phy%d): autonegotiation disabled\n",
-			   sc->tulip_name, sc->tulip_unit, phyaddr);
-#endif
 		sc->tulip_flags &= ~TULIP_DIDNWAY;
 		sc->tulip_probe_state = TULIP_PROBE_MEDIATEST;
 		return;
@@ -1366,15 +1274,6 @@ tulip_mii_autonegotiate(
 		tulip_mii_writereg(sc, phyaddr, PHYREG_AUTONEG_ADVERTISEMENT, (status >> 6) | 0x01);
 	    tulip_mii_writereg(sc, phyaddr, PHYREG_CONTROL, data|PHYCTL_AUTONEG_RESTART|PHYCTL_AUTONEG_ENABLE);
 	    data = tulip_mii_readreg(sc, phyaddr, PHYREG_CONTROL);
-#if defined(TULIP_DEBUG)
-	    if ((data & PHYCTL_AUTONEG_ENABLE) == 0)
-		loudprintf("%s%d(phy%d): oops: enable autonegotiation failed: 0x%04x\n",
-			   sc->tulip_name, sc->tulip_unit, phyaddr, data);
-	    else
-		loudprintf("%s%d(phy%d): autonegotiation restarted: 0x%04x\n",
-			   sc->tulip_name, sc->tulip_unit, phyaddr, data);
-	    sc->tulip_dbg.dbg_nway_starts++;
-#endif
 	    sc->tulip_probe_state = TULIP_PROBE_PHYAUTONEG;
 	    sc->tulip_probe_timeout = 3000;
 	    /* FALL THROUGH */
@@ -1387,20 +1286,11 @@ tulip_mii_autonegotiate(
 		    tulip_timeout(sc);
 		    return;
 		}
-#if defined(TULIP_DEBUG)
-		loudprintf("%s%d(phy%d): autonegotiation timeout: sts=0x%04x, ctl=0x%04x\n",
-			   sc->tulip_name, sc->tulip_unit, phyaddr, status,
-			   tulip_mii_readreg(sc, phyaddr, PHYREG_CONTROL));
-#endif
 		sc->tulip_flags &= ~TULIP_DIDNWAY;
 		sc->tulip_probe_state = TULIP_PROBE_MEDIATEST;
 		return;
 	    }
 	    data = tulip_mii_readreg(sc, phyaddr, PHYREG_AUTONEG_ABILITIES);
-#if defined(TULIP_DEBUG)
-	    loudprintf("%s%d(phy%d): autonegotiation complete: 0x%04x\n",
-		       sc->tulip_name, sc->tulip_unit, phyaddr, data);
-#endif
 	    data = (data << 6) & status;
 	    if (!tulip_mii_map_abilities(sc, data))
 		sc->tulip_flags &= ~TULIP_DIDNWAY;
@@ -1413,11 +1303,6 @@ tulip_mii_autonegotiate(
 	    break;
 	}
     }
-#if defined(TULIP_DEBUG)
-    loudprintf("%s%d(phy%d): autonegotiation failure: state = %d\n",
-	       sc->tulip_name, sc->tulip_unit, phyaddr, sc->tulip_probe_state);
-	    sc->tulip_dbg.dbg_nway_failures++;
-#endif
 }
 
 static void
@@ -1435,9 +1320,6 @@ tulip_2114x_media_preset(
     sc->tulip_cmdmode &= ~TULIP_CMD_PORTSELECT;
     sc->tulip_flags &= ~TULIP_SQETEST;
     if (media != TULIP_MEDIA_UNKNOWN && media != TULIP_MEDIA_MAX) {
-#if defined(TULIP_DEBUG)
-	if (media < TULIP_MEDIA_MAX && sc->tulip_mediums[media] != NULL) {
-#endif
 	    mi = sc->tulip_mediums[media];
 	    if (mi->mi_type == TULIP_MEDIAINFO_MII) {
 		sc->tulip_cmdmode |= TULIP_CMD_PORTSELECT;
@@ -1448,12 +1330,6 @@ tulip_2114x_media_preset(
 	    } else if (mi->mi_type == TULIP_MEDIAINFO_SIA) {
 		TULIP_CSR_WRITE(sc, csr_sia_connectivity, TULIP_SIACONN_RESET);
 	    }
-#if defined(TULIP_DEBUG)
-	} else {
-	    printf("%s%d: preset: bad media %d!\n",
-		   sc->tulip_name, sc->tulip_unit, media);
-	}
-#endif
     }
     switch (media) {
 	case TULIP_MEDIA_BNC:
@@ -1502,9 +1378,6 @@ tulip_null_media_poll(
     tulip_softc_t * const sc,
     tulip_mediapoll_event_t event)
 {
-#if defined(TULIP_DEBUG)
-    sc->tulip_dbg.dbg_events[event]++;
-#endif
 #if defined(DIAGNOSTIC)
     printf("%s%d: botch(media_poll) at line %d\n",
 	   sc->tulip_name, sc->tulip_unit, __LINE__);
@@ -1961,10 +1834,6 @@ tulip_mii_readreg(
     tulip_mii_turnaround(sc, MII_RDCMD);
 
     data = tulip_mii_readbits(sc);
-#if defined(TULIP_DEBUG)
-    sc->tulip_dbg.dbg_phyregs[regno][0] = data;
-    sc->tulip_dbg.dbg_phyregs[regno][1]++;
-#endif
     return data;
 }
 
@@ -1983,10 +1852,6 @@ tulip_mii_writereg(
     tulip_mii_writebits(sc, regno, 5);
     tulip_mii_turnaround(sc, MII_WRCMD);
     tulip_mii_writebits(sc, data, 16);
-#if defined(TULIP_DEBUG)
-    sc->tulip_dbg.dbg_phyregs[regno][2] = data;
-    sc->tulip_dbg.dbg_phyregs[regno][3]++;
-#endif
 }
 
 #define	tulip_mchash(mca)	(ether_crc32_le(mca, 6) & 0x1FF)
@@ -2504,13 +2369,8 @@ tulip_srom_decode(
 			DELAY(10000);
 			mi->mi_phyaddr = tulip_mii_get_phyaddr(sc, phyno);
 		    }
-		    if (mi->mi_phyaddr == TULIP_MII_NOPHY) {
-#if defined(TULIP_DEBUG)
-			printf("%s%d: can't find phy %d\n",
-			       sc->tulip_name, sc->tulip_unit, phyno);
-#endif
+		    if (mi->mi_phyaddr == TULIP_MII_NOPHY)
 			break;
-		    }
 		    sc->tulip_features |= TULIP_HAVE_MII;
 		    mi->mi_capabilities  = dp[0] + dp[1] * 256; dp += 2;
 		    mi->mi_advertisement = dp[0] + dp[1] * 256; dp += 2;
@@ -2605,13 +2465,8 @@ tulip_srom_decode(
 			DELAY(10000);
 			mi->mi_phyaddr = tulip_mii_get_phyaddr(sc, phyno);
 		    }
-		    if (mi->mi_phyaddr == TULIP_MII_NOPHY) {
-#if defined(TULIP_DEBUG)
-			printf("%s%d: can't find phy %d\n",
-			       sc->tulip_name, sc->tulip_unit, phyno);
-#endif
+		    if (mi->mi_phyaddr == TULIP_MII_NOPHY)
 			break;
-		    }
 		    sc->tulip_features |= TULIP_HAVE_MII;
 		    mi->mi_capabilities  = dp[0] + dp[1] * 256; dp += 2;
 		    mi->mi_advertisement = dp[0] + dp[1] * 256; dp += 2;
@@ -3218,11 +3073,6 @@ tulip_reset(
 
     if ((sc->tulip_flags & TULIP_DEVICEPROBE) == 0)
 	(*sc->tulip_boardsw->bd_media_select)(sc);
-#if defined(TULIP_DEBUG)
-    if ((sc->tulip_flags & TULIP_NEEDRESET) == TULIP_NEEDRESET)
-	printf("%s%d: tulip_reset: additional reset needed?!?\n",
-	       sc->tulip_name, sc->tulip_unit);
-#endif
     tulip_media_print(sc);
     if (sc->tulip_features & TULIP_HAVE_DUALSENSE)
 	TULIP_CSR_WRITE(sc, csr_sia_status, TULIP_CSR_READ(sc, csr_sia_status));
@@ -3282,9 +3132,6 @@ tulip_rx_intr(
     tulip_ringinfo_t * const ri = &sc->tulip_rxinfo;
     struct ifnet * const ifp = &sc->tulip_if;
     int fillok = 1;
-#if defined(TULIP_DEBUG)
-    int cnt = 0;
-#endif
 
     for (;;) {
 	struct ether_header eh;
@@ -3296,10 +3143,6 @@ tulip_rx_intr(
 	if (fillok && sc->tulip_rxq.ifq_len < TULIP_RXQ_TARGET)
 	    goto queue_mbuf;
 
-#if defined(TULIP_DEBUG)
-	if (cnt == ri->ri_max)
-	    break;
-#endif
 	/*
 	 * If the TULIP has no descriptors, there can't be any receive
 	 * descriptors to process.
@@ -3332,10 +3175,6 @@ tulip_rx_intr(
 		    eop = ri->ri_first;
 		TULIP_RXDESC_POSTSYNC(sc, eop, sizeof(*eop));
 		if (eop == ri->ri_nextout || ((((volatile tulip_desc_t *) eop)->d_status & TULIP_DSTS_OWNER))) {
-#if defined(TULIP_DEBUG)
-		    sc->tulip_dbg.dbg_rxintrs++;
-		    sc->tulip_dbg.dbg_rxpktsperintr[cnt]++;
-#endif
 		    return;
 		}
 		total_len++;
@@ -3395,9 +3234,6 @@ tulip_rx_intr(
 		}
 	    }
 	}
-#if defined(TULIP_DEBUG)
-	cnt++;
-#endif
 	ifp->if_ipackets++;
 	if (++eop == ri->ri_last)
 	    eop = ri->ri_first;
@@ -3464,9 +3300,6 @@ tulip_rx_intr(
 	     */
 	    fillok = 0;
 	    sc->tulip_flags |= TULIP_RXBUFSLOW;
-#if defined(TULIP_DEBUG)
-	    sc->tulip_dbg.dbg_rxlowbufs++;
-#endif
 	    continue;
 	}
 	/*
@@ -3489,11 +3322,6 @@ tulip_rx_intr(
 	if (sc->tulip_rxq.ifq_len >= TULIP_RXQ_TARGET)
 	    sc->tulip_flags &= ~TULIP_RXBUFSLOW;
     }
-
-#if defined(TULIP_DEBUG)
-    sc->tulip_dbg.dbg_rxintrs++;
-    sc->tulip_dbg.dbg_rxpktsperintr[cnt]++;
-#endif
 }
 
 static int
@@ -3541,21 +3369,10 @@ tulip_tx_intr(
 		IF_DEQUEUE(&sc->tulip_txq, m);
 		if (m != NULL) {
 		    m_freem(m);
-#if defined(TULIP_DEBUG)
-		} else {
-		    printf("%s%d: tx_intr: failed to dequeue mbuf?!?\n",
-			    sc->tulip_name, sc->tulip_unit);
-#endif
 		}
 		if (sc->tulip_flags & TULIP_TXPROBE_ACTIVE) {
 		    tulip_mediapoll_event_t event = TULIP_MEDIAPOLL_TXPROBE_OK;
 		    if (d_status & (TULIP_DSTS_TxNOCARR|TULIP_DSTS_TxEXCCOLL)) {
-#if defined(TULIP_DEBUG)
-			if (d_status & TULIP_DSTS_TxNOCARR)
-			    sc->tulip_dbg.dbg_txprobe_nocarr++;
-			if (d_status & TULIP_DSTS_TxEXCCOLL)
-			    sc->tulip_dbg.dbg_txprobe_exccoll++;
-#endif
 			event = TULIP_MEDIAPOLL_TXPROBE_FAILED;
 		    }
 		    (*sc->tulip_boardsw->bd_media_poll)(sc, event);
@@ -3676,9 +3493,6 @@ tulip_intr_handler(
 	    break;
 	}
 	if (csr & (TULIP_STS_LINKPASS|TULIP_STS_LINKFAIL) & sc->tulip_intrmask) {
-#if defined(TULIP_DEBUG)
-	    sc->tulip_dbg.dbg_link_intrs++;
-#endif
 	    if (sc->tulip_boardsw->bd_media_poll != NULL) {
 		(*sc->tulip_boardsw->bd_media_poll)(sc, csr & TULIP_STS_LINKFAIL
 						    ? TULIP_MEDIAPOLL_LINKFAIL
@@ -3756,9 +3570,6 @@ tulip_intr_shared(
     int progress = 0;
 
     for (; sc != NULL; sc = sc->tulip_slaves) {
-#if defined(TULIP_DEBUG)
-	sc->tulip_dbg.dbg_intrs++;
-#endif
 	tulip_intr_handler(sc, &progress);
     }
 }
@@ -3770,9 +3581,6 @@ tulip_intr_normal(
     tulip_softc_t * sc = (tulip_softc_t *) arg;
     int progress = 0;
 
-#if defined(TULIP_DEBUG)
-    sc->tulip_dbg.dbg_intrs++;
-#endif
     tulip_intr_handler(sc, &progress);
 }
 
@@ -3844,17 +3652,6 @@ tulip_txput(
     u_int32_t d_status;
     struct mbuf *m0;
 
-#if defined(TULIP_DEBUG)
-    if ((sc->tulip_cmdmode & TULIP_CMD_TXRUN) == 0) {
-	printf("%s%d: txput%s: tx not running\n",
-	       sc->tulip_name, sc->tulip_unit,
-	       (sc->tulip_flags & TULIP_TXPROBE_ACTIVE) ? "(probe)" : "");
-	sc->tulip_flags |= TULIP_WANTTXSTART;
-	sc->tulip_dbg.dbg_txput_finishes[0]++;
-	goto finish;
-    }
-#endif
-
     /*
      * Now we try to fill in our transmit descriptors.  This is
      * a bit reminiscent of going on the Ark two by two
@@ -3917,9 +3714,6 @@ tulip_txput(
 			 * mbuf and return.
 			 */
 			sc->tulip_flags |= TULIP_WANTTXSTART;
-#if defined(TULIP_DEBUG)
-			sc->tulip_dbg.dbg_txput_finishes[1]++;
-#endif
 			goto finish;
 		    }
 		}
@@ -4008,9 +3802,6 @@ tulip_txput(
     sc->tulip_flags &= ~TULIP_WANTTXSTART;
     if (sc->tulip_txtimer == 0)
 	sc->tulip_txtimer = TULIP_TXTIMER;
-#if defined(TULIP_DEBUG)
-    sc->tulip_dbg.dbg_txput_finishes[5]++;
-#endif
 
     /*
      * If we want a txstart, there must be not enough space in the
@@ -4022,9 +3813,6 @@ tulip_txput(
      * WANTTXSTART thereby causing TXINTR to be cleared.
      */
   finish:
-#if defined(TULIP_DEBUG)
-    sc->tulip_dbg.dbg_txput_finishes[6]++;
-#endif
     if (sc->tulip_flags & (TULIP_WANTTXSTART|TULIP_DOINGSETUP)) {
 	sc->tulip_if.if_flags |= IFF_OACTIVE;
 	sc->tulip_if.if_start = tulip_ifstart;
@@ -4053,15 +3841,6 @@ tulip_txput_setup(
      * We will transmit, at most, one setup packet per call to ifstart.
      */
 
-#if defined(TULIP_DEBUG)
-    if ((sc->tulip_cmdmode & TULIP_CMD_TXRUN) == 0) {
-	printf("%s%d: txput_setup: tx not running\n",
-	       sc->tulip_name, sc->tulip_unit);
-	sc->tulip_flags |= TULIP_WANTTXSTART;
-	sc->tulip_if.if_start = tulip_ifstart;
-	return;
-    }
-#endif
     /*
      * Try to reclaim some free descriptors..
      */
@@ -4290,13 +4069,6 @@ tulip_ifwatchdog(
     struct ifnet *ifp)
 {
     tulip_softc_t * const sc = (tulip_softc_t *)ifp->if_softc;
-
-#if defined(TULIP_DEBUG)
-    u_int32_t rxintrs = sc->tulip_dbg.dbg_rxintrs - sc->tulip_dbg.dbg_last_rxintrs;
-    if (rxintrs > sc->tulip_dbg.dbg_high_rxintrs_hz)
-	sc->tulip_dbg.dbg_high_rxintrs_hz = rxintrs;
-    sc->tulip_dbg.dbg_last_rxintrs = sc->tulip_dbg.dbg_rxintrs;
-#endif /* TULIP_DEBUG */
 
     sc->tulip_if.if_timer = 1;
     /*
