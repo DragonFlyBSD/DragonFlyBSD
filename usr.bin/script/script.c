@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)script.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/usr.bin/script/script.c,v 1.11.2.2 2004/03/13 09:21:00 cperciva Exp $
- * $DragonFly: src/usr.bin/script/script.c,v 1.6 2005/01/03 17:35:57 liamfoy Exp $
+ * $DragonFly: src/usr.bin/script/script.c,v 1.7 2005/03/01 20:05:14 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -83,7 +83,7 @@ main(int argc, char **argv)
 	int flushtime = 30;
 
 	aflg = kflg = 0;
-	while ((ch = getopt(argc, argv, "aqkt:")) != -1)
+	while ((ch = getopt(argc, argv, "aqkt:")) != -1) {
 		switch(ch) {
 		case 'a':
 			aflg = 1;
@@ -103,6 +103,7 @@ main(int argc, char **argv)
 		default:
 			usage();
 		}
+	}
 	argc -= optind;
 	argv += optind;
 
@@ -214,7 +215,7 @@ finish(void)
 	union wait status;
 
 	die = e = 0;
-	while ((pid = wait3((int *)&status, WNOHANG, 0)) > 0)
+	while ((pid = wait3((int *)&status, WNOHANG, NULL)) > 0) {
 	        if (pid == child) {
 			die = 1;
 			if (WIFEXITED(status))
@@ -224,6 +225,7 @@ finish(void)
 			else /* can't happen */
 				e = 1;
 		}
+	}
 
 	if (die)
 		done(e);
@@ -241,7 +243,7 @@ doshell(char **av)
 	close(master);
 	fclose(fscript);
 	login_tty(slave);
-	if (av[0]) {
+	if (av[0] != NULL) {
 		execvp(av[0], av);
 		warn("%s", av[0]);
 	} else {
