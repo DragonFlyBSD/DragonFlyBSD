@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.cpu.mk,v 1.2.2.5 2002/07/19 08:09:32 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.cpu.gcc2.mk,v 1.2 2004/01/30 02:35:02 dillon Exp $
+# $DragonFly: src/share/mk/Attic/bsd.cpu.gcc2.mk,v 1.3 2004/06/15 07:53:32 joerg Exp $
 
 # Set default baseline values of CPUTYPE based on MACHINE_ARCH -- this is
 # the minimum CPU type we support for each architecture
@@ -18,7 +18,7 @@ CPUTYPE ?= ev4
 CPUTYPE = i686
 . elif ${CPUTYPE} == "pentium"
 CPUTYPE = i586
-. elif ${CPUTYPE} == "athlon"
+. elif ${CPUTYPE} == "athlon" || ${CPUTYPE} == "k8" || ${CPUTYPE} == "opteron" || ${CPUTYPE} == "athlon64" || ${CPUTYPE} == "athlon-fx"
 CPUTYPE = k7
 . endif
 .endif

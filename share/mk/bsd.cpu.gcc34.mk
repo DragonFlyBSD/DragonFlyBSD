@@ -1,5 +1,4 @@
-# $FreeBSD: src/share/mk/bsd.cpu.v, 1.30 2004/01/10 18:01:08 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.cpu.gcc3.mk,v 1.3 2004/06/15 07:53:32 joerg Exp $
+# $DragonFly: src/share/mk/bsd.cpu.gcc34.mk,v 1.1 2004/06/15 07:53:32 joerg Exp $
 
 # Set default CPU compile flags and baseline CPUTYPE for each arch.  The
 # compile flags must support the minimum CPU type for each architecture but
@@ -7,10 +6,10 @@
 
 .if !defined(CPUTYPE) || empty(CPUTYPE)
 . if ${MACHINE_ARCH} == "i386"
-_CPUCFLAGS = -mcpu=pentiumpro
+_CPUCFLAGS = -mtune=pentiumpro
 MACHINE_CPU = i486
 . elif ${MACHINE_ARCH} == "alpha"
-_CPUCFLAGS = -mcpu=ev4 -mtune=ev5
+_CPUCFLAGS = -mtune=ev4 -mtune=ev5
 MACHINE_CPU = ev4
 .elif ${MACHINE_ARCH} == "amd64"
 MACHINE_CPU = amd64 sse2 sse
@@ -45,7 +44,7 @@ CPUTYPE = athlon
 
 . if ${MACHINE_ARCH} == "i386"
 .  if ${CPUTYPE} == "k8" || ${CPUTYPE} == "opteron" || ${CPUTYPE} == "athlon64" || ${CPUTYPE} == "athlon-fx"
-_CPUCFLAGS = -march=athlon
+_CPUCFLAGS = -march=${CPUTYPE}
 .  elif ${CPUTYPE} == "athlon-mp" || ${CPUTYPE} == "athlon-xp" || ${CPUTYPE} == "athlon-4" || ${CPUTYPE} == "athlon-tbird" || ${CPUTYPE} == "athlon"
 _CPUCFLAGS = -march=${CPUTYPE}
 .  elif ${CPUTYPE} == "k6-3" || ${CPUTYPE} == "k6-2" || ${CPUTYPE} == "k6"
@@ -69,19 +68,19 @@ _CPUCFLAGS = -march=i486
 .  endif
 . elif ${MACHINE_ARCH} == "alpha"
 .  if ${CPUTYPE} == "ev67"
-_CPUCFLAGS = -mcpu=ev67
+_CPUCFLAGS = -mtune=ev67
 .  elif ${CPUTYPE} == "ev6"
-_CPUCFLAGS = -mcpu=ev6
+_CPUCFLAGS = -mtune=ev6
 .  elif ${CPUTYPE} == "pca56"
-_CPUCFLAGS = -mcpu=pca56
+_CPUCFLAGS = -mtune=pca56
 .  elif ${CPUTYPE} == "ev56"
-_CPUCFLAGS = -mcpu=ev56
+_CPUCFLAGS = -mtune=ev56
 .  elif ${CPUTYPE} == "ev5"
-_CPUCFLAGS = -mcpu=ev5
+_CPUCFLAGS = -mtune=ev5
 .  elif ${CPUTYPE} == "ev45"
-_CPUCFLAGS = -mcpu=ev45
+_CPUCFLAGS = -mtune=ev45
 .  elif ${CPUTYPE} == "ev4"
-_CPUCFLAGS = -mcpu=ev4
+_CPUCFLAGS = -mtune=ev4
 .  endif
 . endif
 
@@ -90,7 +89,9 @@ _CPUCFLAGS = -mcpu=ev4
 # presence of a CPU feature.
 
 .if ${MACHINE_ARCH} == "i386"
-. if ${CPUTYPE} == "athlon-mp" || ${CPUTYPE} == "athlon-xp" || ${CPUTYPE} == "athlon-4"
+. if ${CPUTYPE} == "k8" || ${CPUTYPE} == "opteron" || ${CPUTYPE} == "athlon64" || ${CPUTYPE} == "athlon-fx"
+MACHINE_CPU = athlon-xp k7 3dnow sse mmx k6 k5 i586 i486 i386
+. elif ${CPUTYPE} == "athlon-mp" || ${CPUTYPE} == "athlon-xp" || ${CPUTYPE} == "athlon-4"
 MACHINE_CPU = athlon-xp k7 3dnow sse mmx k6 k5 i586 i486 i386
 . elif ${CPUTYPE} == "athlon" || ${CPUTYPE} == "athlon-tbird"
 MACHINE_CPU = athlon k7 3dnow mmx k6 k5 i586 i486 i386

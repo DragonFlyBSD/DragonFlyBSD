@@ -1,9 +1,9 @@
 # $FreeBSD: src/share/mk/Makefile,v 1.27.2.8 2002/07/22 14:21:51 ru Exp $
-# $DragonFly: src/share/mk/Makefile,v 1.8 2004/06/10 10:31:29 joerg Exp $
+# $DragonFly: src/share/mk/Makefile,v 1.9 2004/06/15 07:53:32 joerg Exp $
 #	@(#)Makefile	8.1 (Berkeley) 6/8/93
 
 FILES=	bsd.README
-FILES+=	bsd.cpu.mk bsd.cpu.gcc2.mk bsd.cpu.gcc3.mk
+FILES+=	bsd.cpu.mk bsd.cpu.gcc2.mk bsd.cpu.gcc3.mk bsd.cpu.gcc34.mk
 FILES+=	bsd.dep.mk bsd.doc.mk bsd.files.mk
 FILES+=	bsd.incs.mk bsd.info.mk bsd.init.mk
 FILES+=	bsd.kmod.mk
