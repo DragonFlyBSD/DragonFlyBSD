@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stream.c,v 1.12.2.2 2000/11/26 04:42:27 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.9 2003/08/27 06:07:10 rob Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.10 2003/10/08 01:30:32 daver Exp $
  */
 
 /*
@@ -201,10 +201,18 @@ svr4_sendit(td, s, mp, flags, retval)
 			error = EINVAL;
 			goto bad;
 		}
-		error = sockargs(&control, mp->msg_control,
-		    mp->msg_controllen, MT_CONTROL);
-		if (error)
+		control = m_get(M_WAIT, MT_CONTROL);
+		if (control == NULL) {
+			error = ENOBUFS;
 			goto bad;
+		}
+		control->m_len = mp->msg_controllen;
+		error = copyin(mp->msg_control, mtod(control, caddr_t),
+		    mp->msg_controllen);
+		if (error) {
+			m_free(control);
+			goto bad;
+		}
 	} else {
 		control = 0;
 	}

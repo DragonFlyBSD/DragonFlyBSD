@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_socket.c,v 1.3 2003/10/03 00:04:04 daver Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_socket.c,v 1.4 2003/10/08 01:30:32 daver Exp $
  *	from: DragonFly kern/uipc_syscalls.c,v 1.13
  *
  * The original versions of these syscalls used to live in
@@ -207,11 +207,11 @@ osendmsg(struct osendmsg_args *uap)
 	struct thread *td = curthread;
 	struct msghdr msg;
 	struct uio auio;
-	struct iovec aiov[UIO_SMALLIOV], *iov = NULL, *iovp;
+	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
 	struct sockaddr *sa = NULL;
 	struct mbuf *control = NULL;
 	struct cmsghdr *cm;
-	int error, i;
+	int error;
 
 	error = copyin(uap->msg, (caddr_t)&msg, sizeof (msg));
 	if (error)
@@ -230,31 +230,13 @@ osendmsg(struct osendmsg_args *uap)
 	/*
 	 * Populate auio.
 	 */
-	if (msg.msg_iovlen >= UIO_MAXIOV) {
-		error =  EMSGSIZE;
-		goto cleanup;
-	}
-	if (msg.msg_iovlen >= UIO_SMALLIOV) {
-		MALLOC(iov, struct iovec *,
-		    sizeof(struct iovec) * msg.msg_iovlen, M_IOV,
-		    M_WAITOK);
-	} else {
-		iov = aiov;
-	}
-	error = copyin(msg.msg_iov, iov, msg.msg_iovlen * sizeof(struct iovec));
+	error = iovec_copyin(msg.msg_iov, &iov, aiov, msg.msg_iovlen,
+	    &auio.uio_resid);
 	if (error)
 		goto cleanup;
 	auio.uio_iov = iov;
 	auio.uio_iovcnt = msg.msg_iovlen;
 	auio.uio_offset = 0;
-	auio.uio_resid = 0;
-	for (i = 0, iovp = auio.uio_iov; i < msg.msg_iovlen; i++, iovp++) {
-		auio.uio_resid += iovp->iov_len;
-		if (auio.uio_resid < 0) {
-			error = EINVAL;
-			goto cleanup;
-		}
-	}
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_rw = UIO_WRITE;
 	auio.uio_td = td;
@@ -304,8 +286,7 @@ osendmsg(struct osendmsg_args *uap)
 cleanup:
 	if (sa)
 		FREE(sa, M_SONAME);
-	if (iov != aiov)
-		FREE(iov, M_IOV);
+	iovec_free(&iov, aiov);
 	return (error);
 }
 
@@ -386,12 +367,12 @@ orecvmsg(struct orecvmsg_args *uap)
 	struct thread *td = curthread;
 	struct msghdr msg;
 	struct uio auio;
-	struct iovec aiov[UIO_SMALLIOV], *iov = NULL, *iovp;
-	struct mbuf *m, *control;
+	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
+	struct mbuf *m, *control = NULL;
 	struct sockaddr *sa = NULL;
 	caddr_t ctlbuf;
 	socklen_t *ufromlenp, *ucontrollenp;
-	int error, fromlen, controllen, len, i, flags, *uflagsp;
+	int error, fromlen, controllen, len, flags, *uflagsp;
 
 	/*
 	 * This copyin handles everything except the iovec.
@@ -415,28 +396,13 @@ orecvmsg(struct orecvmsg_args *uap)
 	/*
 	 * Populate auio.
 	 */
-	if (msg.msg_iovlen >= UIO_MAXIOV)
-		return (EMSGSIZE);
-	if (msg.msg_iovlen >= UIO_SMALLIOV) {
-		MALLOC(iov, struct iovec *,
-		    sizeof(struct iovec) * msg.msg_iovlen, M_IOV, M_WAITOK);
-	} else {
-		iov = aiov;
-	}
-	error = copyin(msg.msg_iov, iov, msg.msg_iovlen * sizeof(struct iovec));
+	error = iovec_copyin(msg.msg_iov, &iov, aiov, msg.msg_iovlen,
+	    &auio.uio_resid);
 	if (error)
-		goto cleanup;
+		return (error);
 	auio.uio_iov = iov;
 	auio.uio_iovcnt = msg.msg_iovlen;
 	auio.uio_offset = 0;
-	auio.uio_resid = 0;
-	for (i = 0, iovp = auio.uio_iov; i < msg.msg_iovlen; i++, iovp++) {
-		auio.uio_resid += iovp->iov_len;
-		if (auio.uio_resid < 0) {
-			error = EINVAL;
-			goto cleanup;
-		}
-	}
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_rw = UIO_READ;
 	auio.uio_td = td;
@@ -516,8 +482,7 @@ orecvmsg(struct orecvmsg_args *uap)
 cleanup:
 	if (sa)
 		FREE(sa, M_SONAME);
-	if (iov != aiov)
-		FREE(iov, M_IOV);
+	iovec_free(&iov, aiov);
 	if (control)
 		m_freem(control);
 	return (error);

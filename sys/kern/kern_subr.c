@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.11 2003/10/02 19:21:06 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.12 2003/10/08 01:30:32 daver Exp $
  */
 
 #include "opt_ddb.h"
@@ -445,4 +445,42 @@ phashinit(elements, type, nentries)
 		LIST_INIT(&hashtbl[i]);
 	*nentries = hashsize;
 	return (hashtbl);
+}
+
+/*
+ * Copyin an iovec.  If the iovec array fits, use the preallocated small
+ * iovec structure.  If it is too big, dynamically allocate an iovec array
+ * of sufficient size.
+ */
+int
+iovec_copyin(struct iovec *uiov, struct iovec **kiov, struct iovec *siov,
+    size_t iov_cnt, size_t *iov_len)
+{
+	struct iovec *iovp;
+	int error, i;
+
+	if (iov_cnt >= UIO_MAXIOV)
+		return EMSGSIZE;
+	if (iov_cnt >= UIO_SMALLIOV) {
+		MALLOC(*kiov, struct iovec *, sizeof(struct iovec) * iov_cnt,
+		    M_IOV, M_WAITOK);
+	} else {
+		*kiov = siov;
+	}
+	error = copyin(uiov, *kiov, iov_cnt * sizeof(struct iovec));
+	if (error)
+		goto cleanup;
+	*iov_len = 0;
+	for (i = 0, iovp = *kiov; i < iov_cnt; i++, iovp++) {
+		*iov_len += iovp->iov_len;
+		if (iov_len < 0) {
+			error = EINVAL;
+			goto cleanup;
+		}
+	}
+
+cleanup:
+	if (error)
+		iovec_free(kiov, siov);
+	return (error);
 }

@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.3 2003/10/08 01:30:32 daver Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -474,8 +474,7 @@
 333     STD     POSIX   { int sched_get_priority_min (int policy); }
 334     STD     POSIX   { int sched_rr_get_interval (pid_t pid, struct timespec *interval); }
 335	STD	BSD	{ int utrace(const void *addr, size_t len); }
-336	COMPAT	BSD	{ int sendfile(int fd, int s, off_t offset, size_t nbytes, \
-				struct sf_hdtr *hdtr, off_t *sbytes, int flags); }
+336	OBSOL	NOHIDE	freebsd4_sendfile
 337	STD	BSD	{ int kldsym(int fileid, int cmd, void *data); }
 338	STD	BSD	{ int jail(struct jail *jail); }
 339	UNIMPL	BSD	pioctl

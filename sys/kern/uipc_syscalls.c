@@ -35,10 +35,9 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.17 2003/10/03 00:04:04 daver Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.18 2003/10/08 01:30:32 daver Exp $
  */
 
-#include "opt_compat.h"
 #include "opt_ktrace.h"
 
 #include <sys/param.h>
@@ -73,15 +72,8 @@
 #include <vm/vm_extern.h>
 #include <sys/file2.h>
 
-#if defined(COMPAT_43)
-#include <emulation/43bsd/43bsd_socket.h>
-#endif /* COMPAT_43 */
-
 static void sf_buf_init(void *arg);
 SYSINIT(sock_sf, SI_SUB_MBUF, SI_ORDER_ANY, sf_buf_init, NULL)
-
-static int do_sendfile(struct sendfile_args *uap, int compat);
-
 static SLIST_HEAD(, sf_buf) sf_freelist;
 static vm_offset_t sf_base;
 static struct sf_buf *sf_bufs;
@@ -90,9 +82,6 @@ static int sf_buf_alloc_want;
 /*
  * System call interface to the socket abstraction.
  */
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-#define COMPAT_OLDSOCK
-#endif
 
 extern	struct fileops socketops;
 
@@ -100,7 +89,7 @@ extern	struct fileops socketops;
  * socket_args(int domain, int type, int protocol)
  */
 int
-socket(struct socket_args *uap)
+kern_socket(int domain, int type, int protocol, int *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -116,7 +105,7 @@ socket(struct socket_args *uap)
 	if (error)
 		return (error);
 	fhold(fp);
-	error = socreate(uap->domain, &so, uap->type, uap->protocol, td);
+	error = socreate(domain, &so, type, protocol, td);
 	if (error) {
 		if (fdp->fd_ofiles[fd] == fp) {
 			fdp->fd_ofiles[fd] = NULL;
@@ -127,12 +116,22 @@ socket(struct socket_args *uap)
 		fp->f_flag = FREAD|FWRITE;
 		fp->f_ops = &socketops;
 		fp->f_type = DTYPE_SOCKET;
-		uap->sysmsg_result = fd;
+		*res = fd;
 	}
 	fdrop(fp, td);
 	return (error);
 }
 
+int
+socket(struct socket_args *uap)
+{
+	int error;
+
+	error = kern_socket(uap->domain, uap->type, uap->protocol,
+	    &uap->sysmsg_result);
+
+	return (error);
+}
 int
 kern_bind(int s, struct sockaddr *sa)
 {
@@ -615,10 +614,10 @@ sendmsg(struct sendmsg_args *uap)
 	struct thread *td = curthread;
 	struct msghdr msg;
 	struct uio auio;
-	struct iovec aiov[UIO_SMALLIOV], *iov = NULL, *iovp;
+	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
 	struct sockaddr *sa = NULL;
 	struct mbuf *control = NULL;
-	int error, i;
+	int error;
 
 	error = copyin(uap->msg, (caddr_t)&msg, sizeof(msg));
 	if (error)
@@ -636,30 +635,13 @@ sendmsg(struct sendmsg_args *uap)
 	/*
 	 * Populate auio.
 	 */
-	if (msg.msg_iovlen >= UIO_MAXIOV) {
-		error =  EMSGSIZE;
-		goto cleanup;
-	}
-	if (msg.msg_iovlen >= UIO_SMALLIOV) {
-		MALLOC(iov, struct iovec *,
-		    sizeof(struct iovec) * msg.msg_iovlen, M_IOV, M_WAITOK);
-	} else {
-		iov = aiov;
-	}
-	error = copyin(msg.msg_iov, iov, msg.msg_iovlen * sizeof(struct iovec));
+	error = iovec_copyin(msg.msg_iov, &iov, aiov, msg.msg_iovlen,
+	    &auio.uio_resid);
 	if (error)
 		goto cleanup;
 	auio.uio_iov = iov;
 	auio.uio_iovcnt = msg.msg_iovlen;
 	auio.uio_offset = 0;
-	auio.uio_resid = 0;
-	for (i = 0, iovp = auio.uio_iov; i < msg.msg_iovlen; i++, iovp++) {
-		auio.uio_resid += iovp->iov_len;
-		if (auio.uio_resid < 0) {
-			error = EINVAL;
-			goto cleanup;
-		}
-	}
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_rw = UIO_WRITE;
 	auio.uio_td = td;
@@ -693,8 +675,7 @@ sendmsg(struct sendmsg_args *uap)
 cleanup:
 	if (sa)
 		FREE(sa, M_SONAME);
-	if (iov != aiov)
-		FREE(iov, M_IOV);
+	iovec_free(&iov, aiov);
 	return (error);
 }
 
@@ -811,12 +792,12 @@ recvmsg(struct recvmsg_args *uap)
 	struct thread *td = curthread;
 	struct msghdr msg;
 	struct uio auio;
-	struct iovec aiov[UIO_SMALLIOV], *iov = NULL, *iovp;
-	struct mbuf *m, *control;
+	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
+	struct mbuf *m, *control = NULL;
 	struct sockaddr *sa = NULL;
 	caddr_t ctlbuf;
 	socklen_t *ufromlenp, *ucontrollenp;
-	int error, fromlen, controllen, len, i, flags, *uflagsp;
+	int error, fromlen, controllen, len, flags, *uflagsp;
 
 	/*
 	 * This copyin handles everything except the iovec.
@@ -840,28 +821,13 @@ recvmsg(struct recvmsg_args *uap)
 	/*
 	 * Populate auio.
 	 */
-	if (msg.msg_iovlen >= UIO_MAXIOV)
-		return (EMSGSIZE);
-	if (msg.msg_iovlen >= UIO_SMALLIOV) {
-		MALLOC(iov, struct iovec *,
-		    sizeof(struct iovec) * msg.msg_iovlen, M_IOV, M_WAITOK);
-	} else {
-		iov = aiov;
-	}
-	error = copyin(msg.msg_iov, iov, msg.msg_iovlen * sizeof(struct iovec));
+	error = iovec_copyin(msg.msg_iov, &iov, aiov, msg.msg_iovlen,
+	    &auio.uio_resid);
 	if (error)
-		goto cleanup;
+		return (error);
 	auio.uio_iov = iov;
 	auio.uio_iovcnt = msg.msg_iovlen;
 	auio.uio_offset = 0;
-	auio.uio_resid = 0;
-	for (i = 0, iovp = auio.uio_iov; i < msg.msg_iovlen; i++, iovp++) {
-		auio.uio_resid += iovp->iov_len;
-		if (auio.uio_resid < 0) {
-			error = EINVAL;
-			goto cleanup;
-		}
-	}
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_rw = UIO_READ;
 	auio.uio_td = td;
@@ -919,8 +885,7 @@ recvmsg(struct recvmsg_args *uap)
 cleanup:
 	if (sa)
 		FREE(sa, M_SONAME);
-	if (iov != aiov)
-		FREE(iov, M_IOV);
+	iovec_free(&iov, aiov);
 	if (control)
 		m_freem(control);
 	return (error);
@@ -929,9 +894,8 @@ cleanup:
 /*
  * shutdown_args(int s, int how)
  */
-/* ARGSUSED */
 int
-shutdown(struct shutdown_args *uap)
+kern_shutdown(int s, int how)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -939,12 +903,22 @@ shutdown(struct shutdown_args *uap)
 	int error;
 
 	KKASSERT(p);
-	error = holdsock(p->p_fd, uap->s, &fp);
+	error = holdsock(p->p_fd, s, &fp);
 	if (error)
 		return (error);
-	error = soshutdown((struct socket *)fp->f_data, uap->how);
+	error = soshutdown((struct socket *)fp->f_data, how);
 	fdrop(fp, td);
 	return(error);
+}
+
+int
+shutdown(struct shutdown_args *uap)
+{
+	int error;
+
+	error = kern_shutdown(uap->s, uap->how);
+
+	return (error);
 }
 
 /*
@@ -1189,50 +1163,6 @@ getpeername(struct getpeername_args *uap)
 	return (error);
 }
 
-/*
- * sockargs() will be removed soon.  It is currently only called from the
- * emulation code.
- */
-int
-sockargs(mp, buf, buflen, type)
-	struct mbuf **mp;
-	caddr_t buf;
-	int buflen, type;
-{
-	struct sockaddr *sa;
-	struct mbuf *m;
-	int error;
-
-	if ((u_int)buflen > MLEN) {
-#ifdef COMPAT_OLDSOCK
-		if (type == MT_SONAME && (u_int)buflen <= 112)
-			buflen = MLEN;		/* unix domain compat. hack */
-		else
-#endif
-		return (EINVAL);
-	}
-	m = m_get(M_WAIT, type);
-	if (m == NULL)
-		return (ENOBUFS);
-	m->m_len = buflen;
-	error = copyin(buf, mtod(m, caddr_t), (u_int)buflen);
-	if (error)
-		(void) m_free(m);
-	else {
-		*mp = m;
-		if (type == MT_SONAME) {
-			sa = mtod(m, struct sockaddr *);
-
-#if defined(COMPAT_OLDSOCK) && BYTE_ORDER != BIG_ENDIAN
-			if (sa->sa_family == 0 && sa->sa_len < AF_MAX)
-				sa->sa_family = sa->sa_len;
-#endif
-			sa->sa_len = buflen;
-		}
-	}
-	return (error);
-}
-
 int
 getsockaddr(struct sockaddr **namp, caddr_t uaddr, size_t len)
 {
@@ -1249,7 +1179,11 @@ getsockaddr(struct sockaddr **namp, caddr_t uaddr, size_t len)
 	if (error) {
 		FREE(sa, M_SONAME);
 	} else {
-#if defined(COMPAT_OLDSOCK) && BYTE_ORDER != BIG_ENDIAN
+#if BYTE_ORDER != BIG_ENDIAN
+		/*
+		 * The bind(), connect(), and sendto() syscalls were not
+		 * versioned for COMPAT_43.  Thus, this check must stay.
+		 */
 		if (sa->sa_family == 0 && sa->sa_len < AF_MAX)
 			sa->sa_family = sa->sa_len;
 #endif
@@ -1389,54 +1323,29 @@ sf_buf_free(caddr_t addr, u_int size)
  * specified by 's'. Send only 'nbytes' of the file or until EOF if
  * nbytes == 0. Optionally add a header and/or trailer to the socket
  * output. If specified, write the total number of bytes sent into *sbytes.
+ *
+ * In FreeBSD kern/uipc_syscalls.c,v 1.103, a bug was fixed that caused
+ * the headers to count against the remaining bytes to be sent from
+ * the file descriptor.  We may wish to implement a compatibility syscall
+ * in the future.
  */
 int
 sendfile(struct sendfile_args *uap)
-{
-	return (do_sendfile(uap, 0));
-}
-
-#ifdef COMPAT_43
-int
-osendfile(struct osendfile_args *uap)
-{
-	struct sendfile_args args;
-
-	args.fd = uap->fd;
-	args.s = uap->s;
-	args.offset = uap->offset;
-	args.nbytes = uap->nbytes;
-	args.hdtr = uap->hdtr;
-	args.sbytes = uap->sbytes;
-	args.flags = uap->flags;
-
-	return (do_sendfile(&args, 1));
-}
-#endif
-
-int
-do_sendfile(struct sendfile_args *uap, int compat)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct filedesc *fdp;
-	struct vnode *vp;
-	struct vm_object *obj;
-	struct socket *so;
-	struct mbuf *m;
-	struct sf_buf *sf;
-	struct vm_page *pg;
-	struct writev_args nuap;
+	struct vnode *vp = NULL;
 	struct sf_hdtr hdtr;
-	off_t off, xfsize, hdtr_size, sbytes = 0;
-	int error = 0, s;
+	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
+	struct uio auio;
+	off_t hdtr_size = 0, sbytes;
+	int error, res;
 
 	KKASSERT(p);
 	fdp = p->p_fd;
 
-	vp = NULL;
-	hdtr_size = 0;
 	/*
 	 * Do argument checking. Must be a regular file in, stream
 	 * type and connected socket out, positive offset.
@@ -1452,12 +1361,99 @@ do_sendfile(struct sendfile_args *uap, int compat)
 	}
 	vp = (struct vnode *)fp->f_data;
 	vref(vp);
+	fdrop(fp, td);
+
+	/*
+	 * If specified, get the pointer to the sf_hdtr struct for
+	 * any headers/trailers.
+	 */
+	if (uap->hdtr) {
+		error = copyin(uap->hdtr, &hdtr, sizeof(hdtr));
+		if (error)
+			goto done;
+		/*
+		 * Send any headers.
+		 */
+		if (hdtr.headers) {
+			error = iovec_copyin(hdtr.headers, &iov, aiov,
+			    hdtr.hdr_cnt, &auio.uio_resid);
+			if (error)
+				goto done;
+			auio.uio_iov = iov;
+			auio.uio_iovcnt = hdtr.hdr_cnt;
+			auio.uio_offset = 0;
+			auio.uio_segflg = UIO_USERSPACE;
+			auio.uio_rw = UIO_WRITE;
+			auio.uio_td = td;
+
+			error = kern_sendmsg(uap->s, NULL, &auio, NULL, 0,
+			    &res);
+
+			iovec_free(&iov, aiov);
+			if (error)
+				goto done;
+			hdtr_size += res;
+		}
+	}
+
+	error = kern_sendfile(vp, uap->s, uap->offset, uap->nbytes,
+	    &sbytes, uap->flags);
+	if (error)
+		goto done;
+
+	/*
+	 * Send trailers. Wimp out and use writev(2).
+	 */
+	if (uap->hdtr != NULL && hdtr.trailers != NULL) {
+		error = iovec_copyin(hdtr.trailers, &iov, aiov,
+		    hdtr.trl_cnt, &auio.uio_resid);
+		if (error)
+			goto done;
+		auio.uio_iov = iov;
+		auio.uio_iovcnt = hdtr.trl_cnt;
+		auio.uio_offset = 0;
+		auio.uio_segflg = UIO_USERSPACE;
+		auio.uio_rw = UIO_WRITE;
+		auio.uio_td = td;
+
+		error = kern_sendmsg(uap->s, NULL, &auio, NULL, 0, &res);
+
+		iovec_free(&iov, aiov);
+		if (error)
+			goto done;
+		hdtr_size += res;
+	}
+
+done:
+	if (uap->sbytes != NULL) {
+		sbytes += hdtr_size;
+		copyout(&sbytes, uap->sbytes, sizeof(off_t));
+	}
+	if (vp)
+		vrele(vp);
+	return (error);
+}
+
+int
+kern_sendfile(struct vnode *vp, int s, off_t offset, size_t nbytes,
+    off_t *sbytes, int flags)
+{
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct vm_object *obj;
+	struct socket *so;
+	struct file *fp;
+	struct mbuf *m;
+	struct sf_buf *sf;
+	struct vm_page *pg;
+	off_t off, xfsize;
+	int error = 0;
+
 	if (vp->v_type != VREG || VOP_GETVOBJECT(vp, &obj) != 0) {
 		error = EINVAL;
 		goto done;
 	}
-	fdrop(fp, td);
-	error = holdsock(p->p_fd, uap->s, &fp);
+	error = holdsock(p->p_fd, s, &fp);
 	if (error)
 		goto done;
 	so = (struct socket *)fp->f_data;
@@ -1469,36 +1465,12 @@ do_sendfile(struct sendfile_args *uap, int compat)
 		error = ENOTCONN;
 		goto done;
 	}
-	if (uap->offset < 0) {
+	if (offset < 0) {
 		error = EINVAL;
 		goto done;
 	}
 
-	/*
-	 * If specified, get the pointer to the sf_hdtr struct for
-	 * any headers/trailers.
-	 */
-	if (uap->hdtr != NULL) {
-		error = copyin(uap->hdtr, &hdtr, sizeof(hdtr));
-		if (error)
-			goto done;
-		/*
-		 * Send any headers. Wimp out and use writev(2).
-		 */
-		if (hdtr.headers != NULL) {
-			nuap.fd = uap->s;
-			nuap.iovp = hdtr.headers;
-			nuap.iovcnt = hdtr.hdr_cnt;
-			error = writev(&nuap);
-			if (error)
-				goto done;
-			if (compat)
-				sbytes += nuap.sysmsg_result;
-			else
-				hdtr_size += nuap.sysmsg_result;
-		}
-	}
-
+	*sbytes = 0;
 	/*
 	 * Protect against multiple writers to the socket.
 	 */
@@ -1510,7 +1482,7 @@ do_sendfile(struct sendfile_args *uap, int compat)
 	 * into an sf_buf, attach an mbuf header to the sf_buf, and queue
 	 * it on the socket.
 	 */
-	for (off = uap->offset; ; off += xfsize, sbytes += xfsize) {
+	for (off = offset; ; off += xfsize, *sbytes += xfsize) {
 		vm_pindex_t pindex;
 		vm_offset_t pgoff;
 
@@ -1526,8 +1498,8 @@ retry_lookup:
 		pgoff = (vm_offset_t)(off & PAGE_MASK);
 		if (PAGE_SIZE - pgoff < xfsize)
 			xfsize = PAGE_SIZE - pgoff;
-		if (uap->nbytes && xfsize > (uap->nbytes - sbytes))
-			xfsize = uap->nbytes - sbytes;
+		if (nbytes && xfsize > (nbytes - *sbytes))
+			xfsize = nbytes - *sbytes;
 		if (xfsize <= 0)
 			break;
 		/*
@@ -1727,30 +1699,7 @@ retry_space:
 	}
 	sbunlock(&so->so_snd);
 
-	/*
-	 * Send trailers. Wimp out and use writev(2).
-	 */
-	if (uap->hdtr != NULL && hdtr.trailers != NULL) {
-			nuap.fd = uap->s;
-			nuap.iovp = hdtr.trailers;
-			nuap.iovcnt = hdtr.trl_cnt;
-			error = writev(&nuap);
-			if (error)
-				goto done;
-			if (compat)
-				sbytes += nuap.sysmsg_result;
-			else
-				hdtr_size += nuap.sysmsg_result;
-	}
-
 done:
-	if (uap->sbytes != NULL) {
-		if (compat == 0)
-			sbytes += hdtr_size;
-		copyout(&sbytes, uap->sbytes, sizeof(off_t));
-	}
-	if (vp)
-		vrele(vp);
 	if (fp)
 		fdrop(fp, td);
 	return (error);
