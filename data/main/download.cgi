@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.46 2004/07/15 00:01:14 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.47 2004/07/15 02:08:49 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -81,22 +81,24 @@ gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 <!-- for REL*/1.x releases, please list them here separately, -->
 <!-- even if the site's a regular mirror too. -->
 
-<TR BGCOLOR="#EEEEEE"><TD>GoBSD.COM</TD>
+<TR><TD CLASS="mirrorsection" COLSPAN="3">Most recent release</TD></TR>
+
+<TR><TD>GoBSD.COM</TD>
 <TD>1.0A_REL image</TD>
 <TD><A HREF="http://gobsd.com/dfly-1.0A_REL.iso.gz">HTTP</A></TD></TR>
 
-<!-- <TR BGCOLOR="#EEEEEE"><TD>The-BOFH.org (Holland)</TD>
+<!-- <TR><TD>The-BOFH.org (Holland)</TD>
 <TD>1.0_REL image</TD>
 <TD><A HREF="http://www.the-bofh.org/dfly-1.0REL.iso.gz">HTTP</A></TD></TR> 
 -->
 
 <!--
-<TR BGCOLOR="#EEEEEE"><TD>Sitetronics.com</TD>
+<TR><TD>Sitetronics.com</TD>
 <TD>1.0_REL image</TD>
 <TD><A HREF="http://freebsd0.sitetronics.com/~dodell/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
 -->
 
-<TR BGCOLOR="#EEEEEE"><TD>Fortunaty.net (Europe)</TD>
+<TR><TD>Fortunaty.net (Europe)</TD>
 <TD>1.0_REL image</TD>
 <TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
 
@@ -116,17 +118,17 @@ gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 <A HREF="ftp://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">FTP</A>
 <A HREF="http://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
 
-<TR BGCOLOR="#EEEEEE"><TD>chlamydia.fs.ei.tum.de (Germany)</TD>
+<TR><TD>chlamydia.fs.ei.tum.de (Germany)</TD>
 <TD>1.0_REL image</TD>
 <TD><A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A>, <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">FTP</A></TD></TR>
 
-<TR BGCOLOR="#EEEEEE"><TD>BSDTech.com (Norway)</TD>
+<TR><TD>BSDTech.com (Norway)</TD>
 <TD>1.0A_REL image</TD>
 <TD>
 <A HREF="http://dragon.bsdtech.com/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A>, 
 <A HREF="ftp://dragon.bsdtech.com/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A></TD></TR>
 
-<TR BGCOLOR="#EEEEEE"><TD>AllBSD.org (Japan)</TD>
+<TR><TD>AllBSD.org (Japan)</TD>
 <TD>1.0_REL image</TD>
 <TD><A HREF="http://pub.allbsd.org/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A>, 
 <A HREF="ftp://ftp.allbsd.org/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">FTP</A>, 
@@ -141,7 +143,7 @@ gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 <TD><A HREF="http://www.acm.cs.rpi.edu/~tbw/dfly-1.0A_REL.iso.gz">HTTP</A></TD></TR>
 
 <!--
-<TR BGCOLOR="#EEEEEE"><TD>Dragonflybsd.org (California, USA)</TD>
+<TR><TD>Dragonflybsd.org (California, USA)</TD>
 <TD>1.0_REL image</TD>
 <TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.0A_REL.iso.gz">FTP</A>
 (<I>try to find another site first)</I></TD></TR>
@@ -156,16 +158,16 @@ gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 <TD COLSPAN="3">&nbsp;</TD>
 </TR>
 
+<TR><TD CLASS="mirrorsection" COLSPAN="3">Snapshots and ISO images</TD></TR>
 
-<TR BGCOLOR="#EEEEEE">
+<TR>
 <TD>DragonFlyBSD.org (California)</TD>
 <TD>Code, ISO master site (<B>NOTE: Please use other sites to download the ISOs!</B>)</TD>
-<TD><a href="ftp://ftp.dragonflybsd.org/">FTP</a>, 
-<a href="http://www.dragonflybsd.org/cgi-bin/cvsweb.cgi">cvsweb</a>
+<TD><a href="ftp://ftp.dragonflybsd.org/">FTP</a>
 </TD>
 </TR>
 
-<TR BGCOLOR="#EEEEEE">
+<TR>
 <TD>chlamydia.fs.ei.tum.de (Germany)</TD>
 <TD>Snapshots master site, official ISOs</TD>
 <TD>
@@ -174,12 +176,12 @@ gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 </TD>
 </TR>
 
-<TR BGCOLOR="#EEEEEE">
+<TR>
 <TD>AllBSD.org (Japan)</TD>
-<TD>Daily snapshots, official ISOs, code</TD>
+<TD>Daily snapshots, official ISOs</TD>
 <TD><a href="http://pub.allbsd.org/DragonFly/snapshots/">HTTP</a>,
 <a href="ftp://ftp.allbsd.org/pub/DragonFly/snapshots/">FTP</a>, 
-rsync, cvsup, cvsync, cvsweb
+rsync
 </TD>
 </TR>
 
@@ -188,8 +190,8 @@ rsync, cvsup, cvsync, cvsweb
 <TD>Daily snapshots, official ISOs</TD>
 <TD>
 <a href="http://dragon.bsdtech.com/DragonFly/">HTTP</a>, 
-<a href="ftp://dragon.bsdtech.com/DragonFly/">FTP</a>, 
-cvsup</TD>
+<a href="ftp://dragon.bsdtech.com/DragonFly/">FTP</a>
+</TD>
 </TR>
 
 <TR>
@@ -210,7 +212,7 @@ cvsup</TD>
 </TD>
 </TR>
 
-<TR BGCOLOR="#EEEEEE">
+<TR>
 <TD>The University of Vienna (Austria)</TD>
 <TD>Daily snapshots, official ISOs</TD>
 <TD>
@@ -220,13 +222,70 @@ cvsup</TD>
 </TD>
 </TR>
 
-<TR BGCOLOR="#EEEEEE">
+<TR>
 <TD>University of Chicago (Illinois, USA)</TD>
-<TD>official ISOs</TD>
+<TD>Official ISOs</TD>
 <TD><a href="ftp://cvsup.math.uic.edu/dragonflybsd/">FTP</a></TD>
 </TR>
 
-<TR BGCOLOR="#EEEEEE">
+<TR>
+<TD>dragonfly.the-bofh.org (Holland)</TD>
+<TD>Daily snapshots, official ISOs</TD>
+<TD>
+<a href="http://dragonfly.the-bofh.org/">HTTP</a>, 
+<a href="ftp://dragonfly.the-bofh.org/">FTP</a>, 
+</TD>
+</TR>
+
+<TR>
+<TD>Starkast.net (Sweden)</TD>
+<TD>Daily snapshots, official ISOs</TD>
+<TD>
+<a href="http://ftp.starkast.net/pub/DragonFly/">HTTP</a>, 
+<a href="ftp://ftp.starkast.net/pub/DragonFly/">FTP</a>
+</TD>
+</TR>
+
+<TR>
+<TD>bgp4.net</TD>
+<TD>Daily snapshots, official ISOs</TD>
+<TD>
+<a href="http://www.bgp4.net/pub/DragonFly/">HTTP</a>, 
+<a href="ftp://ftp.bgp4.net/pub/DragonFly/">FTP</a>
+</TD>
+</TR>
+<!-- source only after this -->
+
+<TR>
+<TD COLSPAN="3">&nbsp;</TD>
+</TR>
+
+<TR><TD CLASS="mirrorsection" COLSPAN="3">Source mirrors</TD></TR>
+
+<TR>
+<TD>DragonFlyBSD.org (California)</TD>
+<TD>Code master site (<B>NOTE: Please use other sites!</B>)</TD>
+<TD> 
+<a href="http://www.dragonflybsd.org/cgi-bin/cvsweb.cgi">cvsweb</a>
+</TD>
+</TR>
+
+<TR>
+<TD>AllBSD.org (Japan)</TD>
+<TD>Code</TD>
+<TD>
+rsync, cvsup, cvsync, cvsweb
+</TD>
+</TR>
+
+<TR>
+<TD>dragon.BSDTech.com (Norway)</TD>
+<TD>Code</TD>
+<TD>
+cvsup</TD>
+</TR>
+
+<TR>
 <TD>grappa.unix-ag.uni-kl.de (Germany)</TD>
 <TD>Code</TD>
 <TD>
@@ -235,25 +294,14 @@ cvsup, cvsync, rsync, anoncvs
 </TD>
 </TR>
 
-<TR BGCOLOR="#EEEEEE">
+<TR>
 <TD>dragonfly.the-bofh.org (Holland)</TD>
 <TD>Code</TD>
 <TD>
-<a href="http://dragonfly.the-bofh.org/">HTTP</a>, 
-<a href="ftp://dragonfly.the-bofh.org/">FTP</a>, 
 cvsup, <a href="http://dragonfly.the-bofh.org/cgi-bin/cvsweb.cgi/">cvsweb</a>
 </TD>
 </TR>
 
-<TR BGCOLOR="#EEEEEE">
-<TD>Starkast.net (Sweden)</TD>
-<TD>Code</TD>
-<TD>
-<a href="http://ftp.starkast.net/pub/DragonFly/">HTTP</a>, 
-<a href="ftp://ftp.starkast.net/pub/DragonFly/">FTP</a>
-</TD>
-</TR>
- 
 </TABLE>
 
 <h2>Commerce Sites</h2>
@@ -269,7 +317,7 @@ cvsup, <a href="http://dragonfly.the-bofh.org/cgi-bin/cvsweb.cgi/">cvsweb</a>
 this section.</TD>
 </TR>
 
-<TR BGCOLOR="#EEEEEE">
+<TR>
 <TD><B>Crescent Anchor.</B>
 Crescent Anchor will be providing DragonFly BSD 1.0 on CD-ROM for a
 nominal fee.  Part of your purchase from Crescent Anchor will be contributed
