@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: doc/share/misc/docbook.css,v 1.1.1.1 2004/04/02 09:36:31 hmp Exp $
+ * $DragonFly: doc/share/misc/docbook.css,v 1.2 2004/06/01 16:59:01 justin Exp $
  */
 
 BODY ADDRESS {
@@ -71,7 +71,7 @@ DIV.PROCEDURE P B {
 
 H1, H2, H3, H4, H5, H6,
 TH, DIV.TOC, DIV.LOT {
-	font-family: helvetica, arial, gothic sans, arial, sans;
+	font-family: arial, helvetica, gothic sans, arial, sans;
 }
 
 DIV.TOC, DIV.LOT {
