@@ -1,5 +1,5 @@
 .\"	$OpenBSD: patch.1,v 1.17 2003/10/31 20:20:45 millert Exp $
-.\"	$DragonFly: src/usr.bin/patch/patch.1,v 1.2 2004/10/02 05:52:06 dillon Exp $
+.\"	$DragonFly: src/usr.bin/patch/patch.1,v 1.3 2004/12/26 15:55:23 swildner Exp $
 .\"
 .\" Copyright 1986, Larry Wall
 .\"
@@ -304,7 +304,7 @@ Always make simple backups.
 Sets internal debugging flags, and is of interest only to
 .Nm
 patchers.
-.It Fl z , Fl b , Fl Fl suffix
+.It Fl z , Fl Fl suffix
 Causes the next argument to be interpreted as the backup extension, to be
 used in place of
 .Qq .orig .
@@ -315,7 +315,7 @@ conformance, specifically:
 .Bl -enum
 .It
 Backup files are not created unless the
-.Fl Fl backup
+.Fl Fl b
 option is specified.
 .It
 If unspecified, the file name used is the first of the old, new and
@@ -484,7 +484,6 @@ the original file backed up to the same name with the extension
 or as specified by the
 .Fl B ,
 .Fl V ,
-.Fl b ,
 or
 .Fl z
 options.

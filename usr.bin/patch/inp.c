@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: inp.c,v 1.32 2004/08/05 21:47:24 deraadt Exp $
- * $DragonFly: src/usr.bin/patch/inp.c,v 1.2 2004/09/28 19:09:50 joerg Exp $
+ * $DragonFly: src/usr.bin/patch/inp.c,v 1.3 2004/12/26 15:55:23 swildner Exp $
  */
 
 /*
@@ -346,7 +346,7 @@ plan_b(const char *filename)
 	using_plan_a = false;
 	if ((ifp = fopen(filename, "r")) == NULL)
 		pfatal("can't open file %s", filename);
-	(void) unlink(TMPINNAME);
+	unlink(TMPINNAME);
 	if ((tifd = open(TMPINNAME, O_EXCL | O_CREAT | O_WRONLY, 0666)) < 0)
 		pfatal("can't open file %s", TMPINNAME);
 	while (fgets(buf, sizeof buf, ifp) != NULL) {

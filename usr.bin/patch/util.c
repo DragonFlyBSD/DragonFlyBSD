@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: util.c,v 1.28 2004/08/05 21:47:24 deraadt Exp $
- * $DragonFly: src/usr.bin/patch/util.c,v 1.2 2004/09/28 19:09:50 joerg Exp $
+ * $DragonFly: src/usr.bin/patch/util.c,v 1.3 2004/12/26 15:55:23 swildner Exp $
  */
 
 /*
@@ -332,7 +332,7 @@ char *
 fetchname(const char *at, bool *exists, int strip_leading)
 {
 	char		*fullname, *name, *t;
-	int		sleading;
+	int		sleading, tab;
 	struct stat	filestat;
 
 	if (at == NULL || *at == '\0')
@@ -348,8 +348,10 @@ fetchname(const char *at, bool *exists, int strip_leading)
 		return NULL;
 	name = fullname = t = savestr(at);
 
+	tab = strchr(t, '\t') != NULL;
 	/* Strip off up to `strip_leading' path components and NUL terminate. */
-	for (sleading = strip_leading; *t != '\0' && !isspace(*t); t++) {
+	for (sleading = strip_leading; *t != '\0' && ((tab && *t != '\t') ||
+	    !isspace(*t)); t++) {
 		if (t[0] == '/' && t[1] != '/' && t[1] != '\0')
 			if (--sleading >= 0)
 				name = t + 1;
