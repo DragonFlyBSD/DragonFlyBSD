@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)uniq.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/uniq/uniq.c,v 1.11.2.3 2002/06/28 08:02:19 tjr Exp $
- * $DragonFly: src/usr.bin/uniq/uniq.c,v 1.3 2003/10/04 20:36:54 hmp Exp $
+ * $DragonFly: src/usr.bin/uniq/uniq.c,v 1.4 2005/01/12 01:36:50 cpressey Exp $
  */
 
 #include <ctype.h>
@@ -163,7 +163,7 @@ char *
 getline(char *buf, size_t buflen, FILE *fp)
 {
 	size_t bufpos;
-	int ch;
+	int ch = EOF;
 
 	bufpos = 0;
 	while (bufpos + 2 != buflen && (ch = getc(fp)) != EOF && ch != '\n')
