@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/kget/kget.c,v 1.4.2.2 2001/08/01 08:19:51 obrien Exp $
- * $DragonFly: src/sbin/kget/kget.c,v 1.4 2004/02/04 17:40:00 joerg Exp $
+ * $DragonFly: src/sbin/kget/kget.c,v 1.5 2005/01/15 08:36:25 cpressey Exp $
  */
 
 #include <stdio.h>
@@ -42,7 +42,7 @@ main(int argc, char *argv[])
 {
 	int len,i;
 	char *buf;
-	char *mib1="machdep.uc_devlist";
+	const char *mib1="machdep.uc_devlist";
 	char name[9];
 	FILE *fout;
 
@@ -100,7 +100,7 @@ main(int argc, char *argv[])
 				fprintf(fout,"drq %s%d %d\n",name,id->id_unit,
 					id->id_drq);
 			}
-			if(id->id_maddr>0) {
+			if (id->id_maddr != NULL) {
 				fprintf(fout,"iomem %s%d %p\n",name,id->id_unit,
 					id->id_maddr);
 			}
