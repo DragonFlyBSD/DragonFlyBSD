@@ -1,32 +1,37 @@
 /*
- * $DragonFly: src/sys/sys/ckpt.h,v 1.1 2003/10/19 19:24:20 dillon Exp $
+ * $DragonFly: src/sys/sys/ckpt.h,v 1.2 2003/10/19 23:23:29 dillon Exp $
  */
 #ifndef _SYS_CKPT_H_
 #define _SYS_CKPT_H_
 
 struct ckpt_filehdr {
-	int cfh_nfiles;
+	int		cfh_magic;	/* XXX implement */
+	int		cfh_nfiles;
+	int		cfh_reserved[8];
 };
 
 
 struct ckpt_fileinfo {
-	int   cfi_index;
-	u_int cfi_flags;	/* saved f_flag	*/
-	off_t cfi_offset;	/* saved f_offset */
-	fhandle_t cfi_fh;
+	int		cfi_index;
+	u_int		cfi_flags;	/* saved f_flag	*/
+	off_t		cfi_offset;	/* saved f_offset */
+	fhandle_t	cfi_fh;
+	int		cfi_reserved[8];
 };
 
 struct ckpt_siginfo {
-  int               csi_ckptpisz;
-  struct procsig    csi_procsig;
-  struct sigacts    csi_sigacts;
-  struct itimerval  csi_itimerval;
-  int               csi_sigparent;
+	int		csi_ckptpisz;
+	struct procsig	csi_procsig;
+	struct sigacts	csi_sigacts;
+	struct itimerval csi_itimerval;
+	int		csi_sigparent;
+	int		csi_reserved[8];
 };
 
 struct vn_hdr {
-	fhandle_t vnh_fh;
-	Elf_Phdr vnh_phdr;
+	fhandle_t	vnh_fh;
+	Elf_Phdr	vnh_phdr;
+	int		vnh_reserved[8];
 };
 
 #ifdef _KERNEL

@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.7 2003/10/19 19:24:20 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.8 2003/10/19 23:23:29 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -54,6 +54,7 @@ struct uio;
 struct knote;
 struct file;
 struct ucred;
+struct vnode;
 struct lwkt_port;
 
 struct	fileops {
@@ -122,6 +123,7 @@ MALLOC_DECLARE(M_FILE);
 extern int fdrop (struct file *fp, struct thread *td);
 
 extern int fp_open(const char *path, int flags, int mode, struct file **fpp);
+extern int fp_vpopen(struct vnode *vp, int flags, struct file **fpp);
 extern int fp_pread(struct file *fp, void *buf, size_t nbytes, off_t offset, ssize_t *res);
 extern int fp_pwrite(struct file *fp, void *buf, size_t nbytes, off_t offset, ssize_t *res);
 extern int fp_read(struct file *fp, void *buf, size_t nbytes, ssize_t *res);

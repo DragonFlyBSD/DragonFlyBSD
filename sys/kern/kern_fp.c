@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.3 2003/10/19 19:24:18 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fp.c,v 1.4 2003/10/19 23:23:26 dillon Exp $
  */
 
 /*
@@ -99,7 +99,6 @@ fp_open(const char *path, int flags, int mode, file_t *fpp)
 
     NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_SYSSPACE, path, td);
     flags = FFLAGS(flags);
-    printf("%08x\n", flags);
     if ((error = vn_open(&nd, flags, mode)) == 0) {
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	fp->f_data = (caddr_t)nd.ni_vp;
@@ -112,6 +111,88 @@ fp_open(const char *path, int flags, int mode, file_t *fpp)
 	*fpp = NULL;
     }
     return(error);
+}
+
+
+/*
+ * fp_vpopen():	open a file pointer given a vnode.  The vnode must be locked.
+ * The vnode will be returned unlocked whether an error occurs or not.
+ */
+int
+fp_vpopen(struct vnode *vp, int flags, file_t *fpp)
+{
+    struct thread *td;
+    struct file *fp;
+    int vmode;
+    int error;
+
+    *fpp = NULL;
+    td = curthread;
+
+    /*
+     * Vnode checks (from vn_open())
+     */
+    if (vp->v_type == VLNK) {
+	error = EMLINK;
+	goto done;
+    }
+    if (vp->v_type == VSOCK) {
+	error = EOPNOTSUPP;
+	goto done;
+    }
+    flags = FFLAGS(flags);
+    vmode = 0;
+    if (flags & (FWRITE | O_TRUNC)) {
+	if (vp->v_type == VDIR) {
+	    error = EISDIR;
+	    goto done;
+	}
+	error = vn_writechk(vp);
+	if (error)
+	    goto done;
+	vmode |= VWRITE;
+    }
+    if (flags & FREAD)
+	vmode |= VREAD;
+    if (vmode) {
+	error = VOP_ACCESS(vp, vmode, td->td_proc->p_ucred, td);
+	if (error)
+	    goto done;
+    }
+    error = VOP_OPEN(vp, flags, td->td_proc->p_ucred, td);
+    if (error)
+	goto done;
+    /*
+     * Make sure that a VM object is created for VMIO support.
+     */
+    if (vn_canvmio(vp) == TRUE) {
+	if ((error = vfs_object_create(vp, td)) != 0)
+	    goto done;
+    }
+
+    /*
+     * File pointer setup
+     */
+    if ((error = falloc(NULL, fpp, NULL)) != 0)
+	goto done;
+    fp = *fpp;
+    if ((flags & O_ROOTCRED) == 0 && td->td_proc)
+	fsetcred(fp, td->td_proc->p_ucred);
+    fp->f_data = (caddr_t)vp;
+    fp->f_flag = flags;
+    fp->f_ops = &vnops;
+    fp->f_type = DTYPE_VNODE;
+
+    /*
+     * All done, set return value and update v_writecount now that no more
+     * errors can occur.
+     */
+    *fpp = fp;
+    if (flags & FWRITE)
+	vp->v_writecount++;
+done:
+    VOP_UNLOCK(vp, 0, td);
+    return (error);
 }
 
 /*
