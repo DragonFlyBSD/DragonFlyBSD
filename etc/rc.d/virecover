@@ -2,7 +2,7 @@
 #
 # $NetBSD: virecover,v 1.6 2002/03/22 04:34:00 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/virecover,v 1.5 2003/05/05 09:53:32 mtm Exp $
-# $DragonFly: src/etc/rc.d/virecover,v 1.2 2004/01/27 00:55:43 rob Exp $
+# $DragonFly: src/etc/rc.d/virecover,v 1.3 2004/06/22 20:37:02 cpressey Exp $
 #
 
 # PROVIDE: virecover
@@ -20,7 +20,11 @@ start_cmd="virecover_start"
 
 virecover_start()
 {
-	[ -d /var/tmp/vi.recover ] || return
+	if [ ! -d /var/tmp/vi.recover ]; then
+		mkdir /var/tmp/vi.recover
+		chown root:wheel /var/tmp/vi.recover
+		chmod 1777 /var/tmp/vi.recover
+	fi
 	find /var/tmp/vi.recover ! -type f -a ! -type d -delete
 	vibackup=`echo /var/tmp/vi.recover/vi.*`
 	if [ "${vibackup}" != '/var/tmp/vi.recover/vi.*' ]; then
