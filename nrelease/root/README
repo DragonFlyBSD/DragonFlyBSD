@@ -77,7 +77,16 @@
 	#
 	disklabel -e ad0s1
 
-	# Newfs (format) the various filesystems.  Softupdates is not 
+	# If you are not using ad0s1 as in the previous commands, you will 
+	# need to create the device nodes for that slice.  Change the  
+	# slice number (ad0s2a) to match the disk slice you are using.
+	# 
+	# The device nodes are automatically created for ad0s1, so you can 
+	# safely skip this step if you are using that disk slice.
+	#
+	cd /dev && MAKEDEV ad0s2a
+
+        # Newfs (format) the various filesystems.  Softupdates is not 
 	# normally enabled on the root filesystem because large kernel or
 	# world installs/upgrades can run it out of space due to softupdate's
 	# delayed bitmap freeing code.
@@ -238,5 +247,5 @@
     what they are, simply cat /mnt/etc/fstab after mounting the root
     partition.
 
-$DragonFly: src/nrelease/root/README,v 1.12 2004/04/22 16:53:17 cpressey Exp $
+$DragonFly: src/nrelease/root/README,v 1.13 2004/05/24 14:00:04 justin Exp $
 
