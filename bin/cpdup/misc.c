@@ -1,7 +1,7 @@
 /*
  * MISC.C
  *
- * $DragonFly: src/bin/cpdup/misc.c,v 1.3 2004/03/19 17:30:59 cpressey Exp $
+ * $DragonFly: src/bin/cpdup/misc.c,v 1.4 2004/06/09 07:40:15 cpressey Exp $
  */
 
 #include "cpdup.h"
@@ -48,6 +48,7 @@ fatal(const char *ctl, ...)
     if (ctl == NULL) {
 	puts("cpdup [<options>] src [dest]");
 	puts("    -v[vv]      verbose level (-vv is typical)\n"
+	     "    -u          use unbuffered output for -v[vv]\n"
 	     "    -I          display performance summary\n"
 	     "    -f          force update even if files look the same\n"
 	     "    -i0         do NOT confirm when removing something\n"

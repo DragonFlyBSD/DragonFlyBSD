@@ -42,7 +42,7 @@
  *
  *	- Can do MD5 consistancy checks
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.3 2004/03/19 17:30:59 cpressey Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.4 2004/06/09 07:40:15 cpressey Exp $
  */
 
 /*-
@@ -203,6 +203,9 @@ main(int ac, char **av)
 	case 'm':
 	    UseMD5Opt = v;
 	    MD5CacheFile = ".MD5.CHECKSUMS";
+	    break;
+	case 'u':
+	    setvbuf(stdout, NULL, _IOLBF, 0);
 	    break;
 	default:
 	    fatal("illegal option: %s\n", ptr - 2);
