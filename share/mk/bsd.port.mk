@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.18 2004/10/24 22:40:41 dillon Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.19 2004/11/15 14:29:00 joerg Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -71,7 +71,8 @@ TARGETS+=	tags
 
 .undef PORTSDIR
 .if !make(package-depends-list) && !make(all-depends-list) && \
-    !make(run-depends-list) && !make(build-depends-list)
+    !make(run-depends-list) && !make(build-depends-list) && \
+    !make(describe)
 .BEGIN:
 	@echo "WARNING, USING DRAGONFLY OVERRIDE ${DFPORTSDIR}/${PORTPATH}"
 	cd ${DFPORTSDIR}/${PORTPATH} && ${MAKE} -B ${.TARGETS}
@@ -91,6 +92,9 @@ MACHINE_ARCH?=		i386
 HAVE_GNOME?=
 FILESDIR?=		${.CURDIR}/files
 X_WINDOW_SYSTEM?=	xfree86-4
+CAT?=			cat
+PREFIX?=		/usr
+PERL_LEVEL?=		5
 
 # WORKAROUND to get portupgrade working
 # Taken from: ${PORTSDIR}/Mk/bsd.port.mk
