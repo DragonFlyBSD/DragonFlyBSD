@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.13 2003/10/20 16:09:00 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.14 2003/10/25 00:48:03 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -693,11 +693,16 @@ free(void *ptr, struct malloc_type *type)
 	    /*
 	     * note: we always adjust our cpu's slot, not the originating
 	     * cpu (kup->ku_cpuid).  The statistics are in aggregate.
+	     *
+	     * note: XXX we have still inherited the interrupts-can't-block
+	     * assumption.  An interrupt thread does not bump
+	     * gd_intr_nesting_level so check TDF_INTTHREAD.  This is
+	     * primarily until we can fix softupdate's assumptions about free().
 	     */
 	    crit_enter();
 	    --type->ks_inuse[gd->gd_cpuid];
 	    type->ks_memuse[gd->gd_cpuid] -= size;
-	    if (mycpu->gd_intr_nesting_level) {
+	    if (mycpu->gd_intr_nesting_level || (gd->gd_curthread->td_flags & TDF_INTTHREAD)) {
 		z = (SLZone *)ptr;
 		z->z_Magic = ZALLOC_OVSZ_MAGIC;
 		z->z_Next = slgd->FreeOvZones;
