@@ -1,16 +1,19 @@
 #
-# $DragonFly: src/test/cpuperf/Makefile,v 1.1 2004/02/09 18:08:54 dillon Exp $
+# $DragonFly: src/test/cpuperf/Makefile,v 1.2 2004/02/09 18:15:35 dillon Exp $
 #
 
 .PATH: ${.CURDIR}/../sysperf
-TARGETS=/tmp/cpu_add  /tmp/cpu_cmpadd /tmp/cpu_cmpexg /tmp/cpu_lcmpexg \
-	/tmp/cpu_call
+TARGETS=/tmp/cpu_add  /tmp/cpu_ladd /tmp/cpu_cmpadd /tmp/cpu_cmpexg \
+	/tmp/cpu_lcmpexg /tmp/cpu_call
 
 CFLAGS= -O2 -g -I../sysperf
 
 all:	$(TARGETS)
 
 /tmp/cpu_add: cputest.c cpu_add.S blib.c
+	$(CC) $(CFLAGS) ${.ALLSRC} -o ${.TARGET}
+
+/tmp/cpu_ladd: cputest.c cpu_ladd.S blib.c
 	$(CC) $(CFLAGS) ${.ALLSRC} -o ${.TARGET}
 
 /tmp/cpu_cmpadd: cputest.c cpu_cmpadd.S blib.c
