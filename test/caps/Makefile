@@ -1,4 +1,4 @@
-# $DragonFly: src/test/caps/Makefile,v 1.7 2004/07/05 15:18:35 joerg Exp $
+# $DragonFly: src/test/caps/Makefile,v 1.8 2004/08/18 09:10:30 dillon Exp $
 #
 
 # thr{1,2,3} disabled (obsolete at the moment)
@@ -11,6 +11,7 @@ all:	$(TARGETS)
 
 #/tmp/caps1: caps1.c
 #	$(CC) $(CFLAGS) caps1.c -lcaps -o /tmp/caps1
+#
 
 /tmp/thr1: thr1.c
 	$(CC) $(CFLAGS) thr1.c -lcaps -o /tmp/thr1
