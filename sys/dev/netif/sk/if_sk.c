@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.20 2004/09/23 23:18:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.21 2004/12/26 06:10:50 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -1546,6 +1546,7 @@ static int skc_attach(dev)
 	u_int32_t		command;
 	struct sk_softc		*sc;
 	int			unit, error = 0, rid, *port;
+	uint8_t			skrs;
 
 	s = splimp();
 
@@ -1656,9 +1657,10 @@ static int skc_attach(dev)
 	/* Read and save vital product data from EEPROM. */
 	sk_vpd_read(sc);
 
+	skrs = sk_win_read_1(sc, SK_EPROM0);
 	if (sc->sk_type == SK_GENESIS) {
 		/* Read and save RAM size and RAMbuffer offset */
-		switch(sk_win_read_1(sc, SK_EPROM0)) {
+		switch(skrs) {
 		case SK_RAMSIZE_512K_64:
 			sc->sk_ramsize = 0x80000;
 			sc->sk_rboff = SK_RBOFF_0;
@@ -1685,8 +1687,12 @@ static int skc_attach(dev)
 			goto fail;
 			break;
 		}
-	} else {
-		sc->sk_ramsize = 0x20000;
+	} else { /* SK_YUKON */
+		if (skrs == 0x00) {
+			sc->sk_ramsize = 0x20000;
+		} else {
+			sc->sk_ramsize = skrs * (1<<12);
+		}
 		sc->sk_rboff = SK_RBOFF_0;
 	}
 
