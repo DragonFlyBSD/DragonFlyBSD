@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rm.c	8.5 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/rm/rm.c,v 1.29.2.5 2002/07/12 07:25:48 tjr Exp $
- * $DragonFly: src/bin/rm/rm.c,v 1.10 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/rm/rm.c,v 1.11 2005/01/05 16:24:19 liamfoy Exp $
  */
 
 #include <sys/stat.h>
@@ -73,7 +73,7 @@ int
 main(int argc, char *argv[])
 {
 	int ch;
-	char *p;
+	const char *p;
 
 	/*
 	 * Test for the special case where the utility is called as
@@ -182,8 +182,11 @@ rm_tree(char **argv)
 		flags |= FTS_NOSTAT;
 	if (Wflag)
 		flags |= FTS_WHITEOUT;
-	if (!(fts = fts_open(argv, flags, NULL)))
+	if ((fts = fts_open(argv, flags, NULL)) == NULL) {
+		if (fflag && errno == ENOENT)
+			return;
 		err(1, NULL);
+	}
 	while ((p = fts_read(fts)) != NULL) {
 		switch (p->fts_info) {
 		case FTS_DNR:
@@ -301,7 +304,7 @@ rm_file(char **argv)
 {
 	struct stat sb;
 	int rval;
-	char *f;
+	const char *f;
 
 	/*
 	 * Remove a file.  POSIX 1003.2 states that, by default, attempting
