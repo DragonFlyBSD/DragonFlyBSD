@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.5 2003/09/15 23:38:13 hsu Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.6 2003/11/08 07:57:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,8 +45,8 @@
 #endif
 #endif
 
-static void netisr_poll(void);		/* the two netisr handlers	*/
-static void netisr_pollmore(void);
+static void netisr_poll(struct mbuf *);	/* the two netisr handlers	*/
+static void netisr_pollmore(struct mbuf *);
 
 void init_device_poll(void);		/* init routine			*/
 void hardclock_device_poll(void);	/* hook from hardclock		*/
@@ -185,8 +185,8 @@ static struct pollrec pr[POLL_LIST_LEN];
 void
 init_device_poll(void)
 {
-	netisr_register(NETISR_POLL, (netisr_fn_t)netisr_poll, NULL);
-	netisr_register(NETISR_POLLMORE, (netisr_fn_t)netisr_pollmore, NULL);
+	netisr_register(NETISR_POLL, cpu0_portfn, netisr_poll);
+	netisr_register(NETISR_POLLMORE, cpu0_portfn, netisr_pollmore);
 }
 
 /*
@@ -293,11 +293,11 @@ idle_poll(void)
  * handling and forwarding.
  */
 
-
 static struct timeval poll_start_t;
 
+/* ARGSUSED */
 static void
-netisr_pollmore()
+netisr_pollmore(struct mbuf *dummy __unused)
 {
 	struct timeval t;
 	int kern_load;
@@ -346,8 +346,9 @@ netisr_pollmore()
  * per tick. It is called at splnet() so first thing to do is to upgrade to
  * splimp(), and call all registered handlers.
  */
+/* ARGSUSED */
 static void
-netisr_poll(void)
+netisr_poll(struct mbuf *dummy __unused)
 {
 	static int reg_frac_count;
 	int i, cycles;

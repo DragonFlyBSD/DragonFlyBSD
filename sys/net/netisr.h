@@ -32,11 +32,13 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.5 2003/09/15 23:38:13 hsu Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.6 2003/11/08 07:57:42 dillon Exp $
  */
 
 #ifndef _NET_NETISR_H_
 #define _NET_NETISR_H_
+
+#include <sys/msgport.h>
 
 /*
  * The networking code runs off software interrupts.
@@ -70,38 +72,27 @@
 
 #define	NETISR_MAX	32
 
-
-#ifndef LOCORE
 #ifdef _KERNEL
-extern int isrmask;
-
-static __inline void
-schednetisr(int isrnum) 
-{
-    atomic_set_int(&isrmask, 1 << isrnum);
-    setsoftnet();
-}
 
 struct mbuf;
-struct ifqueue;
 
 typedef void (*netisr_fn_t)(struct mbuf *);
+typedef lwkt_port_t (*lwkt_portfn_t)(struct mbuf *);
 
-/*
- * This structure will change to use message ports instead of struct ifqueue.
- * XXX JH
- */
 struct netisr {
+	lwkt_port	ni_port;		/* must be first */
+	lwkt_portfn_t	ni_mport;
 	netisr_fn_t	ni_handler;
-	struct ifqueue	*ni_queue;
 };
 
-void	netisr_dispatch(int, struct mbuf *);
-int	netisr_queue(int, struct mbuf *);
-int	netisr_register(int, netisr_fn_t, struct ifqueue *);
-int	netisr_unregister(int);
+lwkt_port_t	cpu0_portfn(struct mbuf *m);
+void		netisr_dispatch(int, struct mbuf *);
+int		netisr_queue(int, struct mbuf *);
+void		netisr_register(int, lwkt_portfn_t, netisr_fn_t);
+int		netisr_unregister(int);
+void		netmsg_service_loop(void *arg);
+void		schednetisr(int);
 
 #endif
-#endif
 
-#endif
+#endif	/* _NET_NETISR_H_ */

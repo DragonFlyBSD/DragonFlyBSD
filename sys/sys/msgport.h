@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.7 2003/08/12 02:36:15 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.8 2003/11/08 07:57:43 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -72,6 +72,7 @@ typedef struct lwkt_msg {
 #define MSG_CMD_CDEV	0x00010000
 #define MSG_CMD_VFS	0x00020000
 #define MSG_CMD_SYSCALL	0x00030000
+#define MSG_CMD_NETMSG	0x00040000
 #define MSG_SUBCMD_MASK	0x0000FFFF
 
 typedef struct lwkt_port {

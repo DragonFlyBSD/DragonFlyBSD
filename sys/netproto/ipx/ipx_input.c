@@ -34,7 +34,7 @@
  *	@(#)ipx_input.c
  *
  * $FreeBSD: src/sys/netipx/ipx_input.c,v 1.22.2.2 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.5 2003/09/15 23:38:15 hsu Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.6 2003/11/08 07:57:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -88,10 +88,8 @@ struct	ipxpcb ipxpcb;
 struct	ipxpcb ipxrawpcb;
 
 static int ipxqmaxlen = IFQ_MAXLEN;
-static struct ifqueue ipxintrq;
 
 long	ipx_pexseq;
-const int ipxintrq_present = 1;
 
 static	void ipxintr(struct mbuf *);
 static	int ipx_do_route(struct ipx_addr *src, struct route *ro);
@@ -109,7 +107,6 @@ ipx_init()
 	ipx_broadhost = *(union ipx_host *)allones;
 
 	read_random(&ipx_pexseq, sizeof ipx_pexseq);
-	ipxintrq.ifq_maxlen = ipxqmaxlen;
 	ipxpcb.ipxp_next = ipxpcb.ipxp_prev = &ipxpcb;
 	ipxrawpcb.ipxp_next = ipxrawpcb.ipxp_prev = &ipxrawpcb;
 
@@ -120,7 +117,7 @@ ipx_init()
 	ipx_hostmask.sipx_addr.x_net = ipx_broadnet;
 	ipx_hostmask.sipx_addr.x_host = ipx_broadhost;
 
-	netisr_register(NETISR_IPX, ipxintr, &ipxintrq);
+	netisr_register(NETISR_IPX, cpu0_portfn, ipxintr);
 }
 
 /*

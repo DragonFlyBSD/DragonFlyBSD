@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.9 2003/09/16 01:58:00 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.10 2003/11/08 07:57:51 dillon Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -90,7 +90,6 @@
 #include <net/if_dl.h>
 #include <net/route.h>
 #include <net/netisr.h>
-#include <net/intrq.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -135,8 +134,6 @@ extern struct domain inet6domain;
 extern struct ip6protosw inet6sw[];
 
 u_char ip6_protox[IPPROTO_MAX];
-static struct ifqueue ip6intrq;
-static int ip6qmaxlen = IFQ_MAXLEN;
 struct in6_ifaddr *in6_ifaddr;
 
 extern struct callout in6_tmpaddrtimer_ch;
@@ -144,7 +141,6 @@ extern struct callout in6_tmpaddrtimer_ch;
 int ip6_forward_srcrt;			/* XXX */
 int ip6_sourcecheck;			/* XXX */
 int ip6_sourcecheck_interval;		/* XXX */
-const int int6intrq_present = 1;
 
 int ip6_ours_check_algorithm;
 
@@ -187,8 +183,7 @@ ip6_init()
 		if (pr->pr_domain->dom_family == PF_INET6 &&
 		    pr->pr_protocol && pr->pr_protocol != IPPROTO_RAW)
 			ip6_protox[pr->pr_protocol] = pr - inet6sw;
-	ip6intrq.ifq_maxlen = ip6qmaxlen;
-	netisr_register(NETISR_IPV6, ip6_input, &ip6intrq);
+	netisr_register(NETISR_IPV6, cpu0_portfn, ip6_input);
 	nd6_init();
 	frag6_init();
 	/*

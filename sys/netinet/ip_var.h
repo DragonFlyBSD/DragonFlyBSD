@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.3 2003/08/24 23:07:08 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.4 2003/11/08 07:57:51 dillon Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -142,6 +142,7 @@ struct ip;
 struct inpcb;
 struct route;
 struct sockopt;
+struct lwkt_port;
 
 extern struct	ipstat	ipstat;
 #ifndef RANDOM_IP_ID
@@ -166,6 +167,8 @@ void	 ip_freemoptions(struct ip_moptions *);
 void	 ip_init(void);
 extern int	 (*ip_mforward)(struct ip *, struct ifnet *, struct mbuf *,
 			  struct ip_moptions *);
+struct lwkt_port *
+	 ip_mport(struct mbuf *);
 int	 ip_output(struct mbuf *,
 	    struct mbuf *, struct route *, int, struct ip_moptions *,
 	    struct inpcb *);

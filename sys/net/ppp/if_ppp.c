@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.9 2003/09/15 23:38:13 hsu Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.10 2003/11/08 07:57:46 dillon Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -215,7 +215,7 @@ pppattach(dummy)
 	if_attach(&sc->sc_if);
 	bpfattach(&sc->sc_if, DLT_PPP, PPP_HDRLEN);
     }
-    netisr_register(NETISR_PPP, pppintr, NULL);
+    netisr_register(NETISR_PPP, cpu0_portfn, pppintr);
     /*
      * XXX layering violation - if_ppp can work over any lower level
      * transport that cares to attach to it.

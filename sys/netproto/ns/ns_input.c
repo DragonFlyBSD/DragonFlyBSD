@@ -32,7 +32,7 @@
  *
  *	@(#)ns_input.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_input.c,v 1.13 2000/02/13 03:32:04 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.7 2003/09/16 05:03:13 hsu Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.8 2003/11/08 07:57:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -73,15 +73,10 @@ struct sockaddr_ns ns_netmask, ns_hostmask;
 
 static u_short allones[] = {-1, -1, -1};
 
-static struct ifqueue nsintrq;
 struct nspcb nsrawpcb;
-
-int	nsqmaxlen = IFQ_MAXLEN;
 
 int	idpcksum = 1;
 long	ns_pexseq;
-
-const int	nsintrq_present = 1;
 
 static void nsintr(struct mbuf *m);
 
@@ -98,8 +93,7 @@ ns_init()
 	ns_hostmask.sns_len = 12;
 	ns_hostmask.sns_addr.x_net = ns_broadnet;
 	ns_hostmask.sns_addr.x_host = ns_broadhost;
-	nsintrq.ifq_maxlen = nsqmaxlen;
-	netisr_register(NETISR_NS, nsintr, &nsintrq);
+	netisr_register(NETISR_NS, cpu0_portfn, nsintr);
 }
 
 /*

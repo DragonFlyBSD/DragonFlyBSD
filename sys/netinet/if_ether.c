@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.7 2003/09/25 02:22:23 dillon Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.8 2003/11/08 07:57:51 dillon Exp $
  */
 
 /*
@@ -103,7 +103,6 @@ struct llinfo_arp {
 
 static	LIST_HEAD(, llinfo_arp) llinfo_arp;
 
-static struct	ifqueue arpintrq = {0, 0, 0, 50};
 static int	arp_inuse, arp_allocated, arpinit_done;
 
 static int	arp_maxtries = 5;
@@ -917,7 +916,7 @@ static void
 arp_init(void)
 {
 	LIST_INIT(&llinfo_arp);
-	netisr_register(NETISR_ARP, arpintr, &arpintrq);
+	netisr_register(NETISR_ARP, cpu0_portfn, arpintr);
 }
 
 SYSINIT(arp, SI_SUB_PROTO_DOMAIN, SI_ORDER_ANY, arp_init, 0);

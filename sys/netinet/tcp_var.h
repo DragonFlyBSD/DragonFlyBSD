@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.8 2003/08/23 11:18:00 rob Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.9 2003/11/08 07:57:51 dillon Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -441,7 +441,6 @@ struct	xtcpcb {
 	{ "v6mssdflt", CTLTYPE_INT }, \
 }
 
-
 #ifdef _KERNEL
 #ifdef SYSCTL_DECL
 SYSCTL_DECL(_net_inet_tcp);
@@ -469,6 +468,7 @@ void	 tcp_fasttimo (void);
 struct rmxp_tao *
 	 tcp_gettaocache (struct in_conninfo *);
 void	 tcp_init (void);
+void	 tcp_thread_init (void);
 void	 tcp_input (struct mbuf *, int, int);
 void	 tcp_mss (struct tcpcb *, int);
 int	 tcp_mssopt (struct tcpcb *);
@@ -489,6 +489,8 @@ void	 tcp_slowtimo (void);
 struct tcptemp *
 	 tcp_maketemplate (struct tcpcb *);
 void	 tcp_fillheaders (struct tcpcb *, void *, void *);
+struct lwkt_port *
+	 tcp_soport(struct socket *);
 struct tcpcb *
 	 tcp_timers (struct tcpcb *, int);
 void	 tcp_trace (int, int, struct tcpcb *, void *, struct tcphdr *,

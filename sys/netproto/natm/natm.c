@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.6 2003/09/15 23:38:15 hsu Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.7 2003/11/08 07:57:52 dillon Exp $ */
 
 /*
  *
@@ -717,18 +717,14 @@ int natm5_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
   return (ENOPROTOOPT);
 }
 
-static int natmqmaxlen = IFQ_MAXLEN;	/* max # of packets on queue */
 static void natmintr(struct mbuf *);
-static struct ifqueue natmintrq;
-
-const int natmintrq_present = 1;
 
 #if defined(__FreeBSD__)
 static void
 netisr_natm_setup(void *dummy __unused)
 {
 
-	netisr_register(NETISR_NATM, natmintr,  &natmintrq);
+	netisr_register(NETISR_NATM, cpu0_portfn, natmintr);
 }
 SYSINIT(natm_setup, SI_SUB_CPU, SI_ORDER_ANY, netisr_natm_setup, NULL);
 #endif
@@ -737,10 +733,8 @@ void
 natm_init()
 {
   LIST_INIT(&natm_pcbs);
-  bzero(&natmintrq, sizeof(natmintrq));
-  natmintrq.ifq_maxlen = natmqmaxlen;
 
-  netisr_register(NETISR_NATM, natmintr, &natmintrq);
+  netisr_register(NETISR_NATM, cpu0_portfn, natmintr);
 }
 
 /*

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_subr.c,v 1.7 2000/02/13 03:31:59 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.7 2003/09/16 06:25:35 hsu Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.8 2003/11/08 07:57:52 dillon Exp $
  */
 
 /*
@@ -122,7 +122,7 @@ atm_initialize()
 	atm_intr_index = register_isr(atm_intr);
 #endif
 #ifdef __FreeBSD__
-	netisr_register(NETISR_ATM, atm_intr, &atm_intrq);
+	netisr_register(NETISR_ATM, cpu0_portfn, atm_intr);
 #endif
 
 	/*

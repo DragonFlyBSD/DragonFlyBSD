@@ -3,11 +3,14 @@
  * Copyright (c) 2003 Jonathan Lemon
  * Copyright (c) 2003 Matthew Dillon
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.2 2003/09/15 23:38:13 hsu Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.3 2003/11/08 07:57:42 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kernel.h>
+#include <sys/msgport.h>
+#include <sys/msgport2.h>
 #include <sys/proc.h>
 #include <sys/interrupt.h>
 #include <sys/socket.h>
@@ -18,76 +21,59 @@
 #include <machine/cpufunc.h>
 #include <machine/ipl.h>
 
-int isrmask;
-static int isrsoftint_installed;
+struct netmsg {
+    struct lwkt_msg	nm_lmsg;
+    struct mbuf		*nm_packet;
+    netisr_fn_t		nm_handler;
+};
+
+#define CMD_NETMSG_NEWPKT	(MSG_CMD_NETMSG | 0x0001)
+#define CMD_NETMSG_POLL		(MSG_CMD_NETMSG | 0x0002)
+
 static struct netisr netisrs[NETISR_MAX];
 
-/* SYSCTL_NODE(_net, OID_AUTO, isr, CTLFLAG_RW, 0, "netisr counters"); */
-
-static int netisr_directdispatch = 0;
-/*
-SYSCTL_INT(_net_isr, OID_AUTO, directdispatch, CTLFLAG_RW,
-    &netisr_directdispatch, 0, "enable direct dispatch");
-*/
+/* Per-CPU thread to handle any protocol.  */
+struct thread netisr_cpu[MAXCPU];
 
 static void
-swi_net(void *arg)
+netisr_init(void)
 {
-    int mask;
-    int bit;
-	
-    while ((mask = isrmask) != 0) {
-	bit = bsfl(mask);
-	if (btrl(&isrmask, bit)) {
-	    struct netisr *ni = &netisrs[bit];
-	    netisr_fn_t func = ni->ni_handler;
+    int i;
 
-	    if (ni->ni_queue) {
-		while (1) {
-		    struct mbuf *m;
-		    int s;
+    /* Create default per-cpu threads for generic protocol handling. */
+    for (i = 0; i < ncpus; ++i)
+	lwkt_create(netmsg_service_loop, NULL, NULL, &netisr_cpu[i], 0, i,
+	    "netisr_cpu %d", i);
+}
 
-		    s = splimp();
-		    IF_DEQUEUE(ni->ni_queue, m);
-		    splx(s);
-		    if (!m)
-			break;
-		    func(m);
-		}
-	    } else
-	        func(NULL);
-	}
+SYSINIT(netisr, SI_SUB_PROTO_BEGIN, SI_ORDER_FIRST, netisr_init, NULL);
+
+void
+netmsg_service_loop(void *arg)
+{
+    struct netmsg *msg;
+
+    while ((msg = lwkt_waitport(&curthread->td_msgport))) {
+	struct mbuf *m = msg->nm_packet;
+	netisr_fn_t handler = msg->nm_handler;
+
+	if (handler)
+		handler(m);
+	else if (m)
+		m_freem(m);
+	free(msg, M_TEMP);
     }
 }
 
 /*
- * Call the netisr directly instead of queueing the packet, if possible.
+ * Call the netisr directly.
+ * Queueing may be done in the msg port layer at its discretion.
  */
 void
 netisr_dispatch(int num, struct mbuf *m)
 {
-    struct netisr *ni;
-
-    KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
-	("bad isr %d", num));
-
-    ni = &netisrs[num];
-
-    if (!ni->ni_queue) {
-	m_freem(m);
-	return;
-    }
-
-    if (netisr_directdispatch) {
-      /*
-       * missing check for concurrent execution from swi_net() XXX JH
-       * Address this after conversion to message ports.
-       */
-	ni->ni_handler(m);
-    } else {
-	if (IF_HANDOFF(ni->ni_queue, m, NULL))
-	    schednetisr(num);
-    }
+    /* just queue it for now XXX JH */
+    netisr_queue(num, m);
 }
 
 /*
@@ -98,38 +84,35 @@ netisr_dispatch(int num, struct mbuf *m)
 int
 netisr_queue(int num, struct mbuf *m)
 {
-    struct netisr *ni;
+    struct netisr *ni = &netisrs[num];
+    struct netmsg *pmsg;
+    lwkt_port_t port;
 
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
 	("bad isr %d", num));
 
-    ni = &netisrs[num];
-
-    if (!ni->ni_queue) {
-	m_freem(m);
-	return (ENOBUFS);
-    }
-
-    if (!IF_HANDOFF(ni->ni_queue, m, NULL))
+    /* use better message allocation system with limits later XXX JH */
+    if (!(pmsg = malloc(sizeof(struct netmsg), M_TEMP, M_NOWAIT)))
 	return (ENOBUFS);
 
-    schednetisr(num);
+    if (!(port = ni->ni_mport(m)))
+	return EIO;
+
+    lwkt_initmsg(&pmsg->nm_lmsg, port, CMD_NETMSG_NEWPKT);
+    pmsg->nm_packet = m;
+    pmsg->nm_handler = ni->ni_handler;
+    lwkt_sendmsg(port, &pmsg->nm_lmsg);
     return (0);
 }
 
-int
-netisr_register(int num, netisr_fn_t handler, struct ifqueue *ifq)
+void
+netisr_register(int num, lwkt_portfn_t mportfn, netisr_fn_t handler)
 {
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
 	("bad isr %d", num));
 
-    if (isrsoftint_installed == 0) {
-	isrsoftint_installed = 1;
-	register_swi(SWI_NET, swi_net, NULL, "swi_net");
-    }
+    netisrs[num].ni_mport = mportfn;
     netisrs[num].ni_handler = handler;
-    netisrs[num].ni_queue = ifq;
-    return (0);
 }
 
 int
@@ -138,13 +121,38 @@ netisr_unregister(int num)
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
 	("unregister_netisr: bad isr number: %d\n", num));
 
-    if (netisrs[num].ni_queue != NULL) {
-	int s;
-
-	s = splimp();
-	IF_DRAIN(netisrs[num].ni_queue);
-	splx(s);
-    }
-    netisrs[num].ni_handler = NULL;
+    /* XXX JH */
     return (0);
+}
+
+/*
+ * Return message port for default handler thread on CPU 0.
+ */
+lwkt_port_t
+cpu0_portfn(struct mbuf *m)
+{
+    return (&netisr_cpu[0].td_msgport);
+}
+
+/*
+ * This function is used to call the netisr handler from the appropriate
+ * netisr thread for polling and other purposes.  pmsg->nm_packet will be
+ * undefined.  At the moment operation is restricted to non-packet ISRs only.
+ */
+void
+schednetisr(int num)
+{
+    struct netisr *ni = &netisrs[num];
+    struct netmsg *pmsg;
+    lwkt_port_t port = &netisr_cpu[0].td_msgport;
+
+    KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
+	("bad isr %d", num));
+
+    if (!(pmsg = malloc(sizeof(struct netmsg), M_TEMP, M_NOWAIT)))
+	return;
+
+    lwkt_initmsg(&pmsg->nm_lmsg, port, CMD_NETMSG_POLL);
+    pmsg->nm_handler = ni->ni_handler;
+    lwkt_sendmsg(port, &pmsg->nm_lmsg);
 }

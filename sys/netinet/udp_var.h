@@ -32,7 +32,7 @@
  *
  *	@(#)udp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/udp_var.h,v 1.22.2.1 2001/02/18 07:12:25 luigi Exp $
- * $DragonFly: src/sys/netinet/udp_var.h,v 1.3 2003/08/23 11:18:00 rob Exp $
+ * $DragonFly: src/sys/netinet/udp_var.h,v 1.4 2003/11/08 07:57:51 dillon Exp $
  */
 
 #ifndef _NETINET_UDP_VAR_H_
@@ -94,7 +94,9 @@ struct	udpstat {
 }
 
 #ifdef _KERNEL
+#ifdef SYSCTL_DECL
 SYSCTL_DECL(_net_inet_udp);
+#endif
 
 extern struct	pr_usrreqs udp_usrreqs;
 extern struct	inpcbhead udb;
@@ -106,10 +108,14 @@ extern int	log_in_vain;
 
 void	udp_ctlinput (int, struct sockaddr *, void *);
 void	udp_init (void);
+void	udp_thread_init (void);
 void	udp_input (struct mbuf *, int, int);
 
 void	udp_notify (struct inpcb *inp, int errno);
 int	udp_shutdown (struct socket *so);
+
+struct lwkt_port *
+	udp_soport(struct socket *);
 #endif
 
 #endif

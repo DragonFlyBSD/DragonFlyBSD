@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.8 2003/08/23 11:18:00 rob Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.9 2003/11/08 07:57:51 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -220,7 +220,7 @@ void
 tcp_init()
 {
 	int hashsize = TCBHASHSIZE;
-	
+
 	tcp_ccgen = 1;
 	tcp_cleartaocache();
 
@@ -258,6 +258,7 @@ tcp_init()
 #undef TCP_MINPROTOHDR
 
 	syncache_init();
+	tcp_thread_init();
 }
 
 /*
@@ -1623,4 +1624,3 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 		bwnd = tp->t_maxseg * 2;
 	tp->snd_bwnd = bwnd;
 }
-

@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.7 2003/09/15 23:38:14 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.8 2003/11/08 07:57:51 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -273,7 +273,7 @@ ip_init()
 #endif
 	ipintrq.ifq_maxlen = ipqmaxlen;
 
-	netisr_register(NETISR_IP, ip_input, &ipintrq);
+	netisr_register(NETISR_IP, ip_mport, ip_input);
 }
 
 /*
@@ -816,8 +816,9 @@ found:
 			ip->ip_len -= hlen;
 		}
 #endif
-	} else
+	} else {
 		ip->ip_len -= hlen;
+	}
 
 #ifdef IPDIVERT
 	/*
@@ -911,6 +912,8 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 
 	/*
 	 * Switch out to protocol's input routine.
+	 *
+	 * XXX queue packet to protocol's message port.
 	 */
 	ipstat.ips_delivered++;
 	if (args.next_hop && ip->ip_p == IPPROTO_TCP) {
@@ -924,8 +927,9 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 
 		(*inetsw[ip_protox[ip->ip_p]].pr_input)(
 			(struct mbuf *)&tag, hlen, ip->ip_p);
-    	} else
+    	} else {
 		(*inetsw[ip_protox[ip->ip_p]].pr_input)(m, hlen, ip->ip_p);
+	}
 	return;
 bad:
 	m_freem(m);

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.4.2.4 2002/11/06 14:23:20 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.4 2003/09/15 23:38:12 hsu Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.5 2003/11/08 07:57:45 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.4.2.4 2002/11/06 14:23:20 joe Exp $
  */
@@ -120,7 +120,7 @@ Static void usbintr(struct mbuf *m)
 
 void usb_register_netisr()
 {
-	netisr_register(NETISR_USB, usbintr, NULL);
+	netisr_register(NETISR_USB, cpu0_portfn, usbintr);
 	return;
 }
 
@@ -131,21 +131,11 @@ void usb_register_netisr()
 void usb_ether_input(m)
 	struct mbuf		*m;
 {
-	int			s;
-	s = splimp();
-	IF_ENQUEUE(&usbq_rx, m);
-	schednetisr(NETISR_USB);
-	splx(s);
-	return;
+	netisr_queue(NETISR_USB, m);
 }
 
 void usb_tx_done(m)
 	struct mbuf		*m;
 {
-	int			s;
-	s = splimp();
-	IF_ENQUEUE(&usbq_tx, m);
-	schednetisr(NETISR_USB);
-	splx(s);
-	return;
+	netisr_queue(NETISR_USB, m);
 }
