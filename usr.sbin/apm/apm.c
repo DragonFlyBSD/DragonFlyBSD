@@ -13,7 +13,7 @@
  * Sep., 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/usr.sbin/apm/apm.c,v 1.22.2.6 2003/04/29 08:53:04 maxim Exp $
- * $DragonFly: src/usr.sbin/apm/apm.c,v 1.8 2004/08/13 19:12:52 asmodai Exp $
+ * $DragonFly: src/usr.sbin/apm/apm.c,v 1.9 2004/11/08 19:58:12 liamfoy Exp $
  */
 
 #include <sys/file.h>
@@ -216,15 +216,15 @@ print_all_info(int fd, apm_info_t aip, int bioscall_available)
 	printf("APM Management: %s\n", (aip->ai_status ? "Enabled" : "Disabled"));
 	printf("AC Line status: ");
 	if (aip->ai_acline == 255)
-		printf("unknown");
+		printf("unknown\n");
 	else if (aip->ai_acline > 1)
-		printf("invalid value (0x%x)", aip->ai_acline);
+		printf("invalid value (0x%x)\n", aip->ai_acline);
 	else
-		printf("%s", line_msg[aip->ai_acline]);
+		printf("%s\n", line_msg[aip->ai_acline]);
 
 	print_batt_stat(aip->ai_batt_stat);
 	print_batt_life(aip->ai_batt_life);
-	print_batt_life(aip->ai_batt_life);
+	print_batt_time(aip->ai_batt_time);
 
 	if (aip->ai_infoversion >= 1) {
 		printf("Number of batteries: ");
@@ -243,7 +243,7 @@ print_all_info(int fd, apm_info_t aip, int bioscall_available)
 				printf("Battery %d:\n", i);
 				if (aps.ap_batt_flag != 255 &&
 				    (aps.ap_batt_flag & APM_BATT_NOT_PRESENT)) {
-					printf("not present\n");
+					printf("\tnot present\n");
 					continue;
 				}
 
