@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.17 2004/09/13 16:22:36 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.18 2005/02/01 02:25:45 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -41,6 +41,7 @@
 #include <sys/sysctl.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/jail.h>
 #include <sys/filedesc.h>
 #include <sys/tty.h>
 #include <sys/signalvar.h>
@@ -628,7 +629,9 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 	 * cpu.
 	 */
 	origcpu = mycpu->gd_cpuid;
-	for (n = 1; ps_showallthreads && n <= ncpus; ++n) {
+	if (!ps_showallthreads || jailed(cr1))
+		goto post_threads;
+	for (n = 1; n <= ncpus; ++n) {
 		globaldata_t rgd;
 		int nid;
 
@@ -658,6 +661,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 				return (error);
 		}
 	}
+post_threads:
 	return (0);
 }
 
