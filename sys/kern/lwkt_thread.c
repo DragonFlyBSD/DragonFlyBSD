@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.32 2003/09/28 03:37:32 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.33 2003/10/01 22:53:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1047,6 +1047,7 @@ lwkt_trytoken(lwkt_token_t tok)
     crit_enter();
 #ifdef SMP
     if (tok->t_cpu != mycpu->gd_cpuid) {
+	crit_exit();
 	return(0);
     } 
 #endif
