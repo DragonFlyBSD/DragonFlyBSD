@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/killall/killall.c,v 1.5.2.4 2001/05/19 19:22:49 phk Exp $
- * $DragonFly: src/usr.bin/killall/killall.c,v 1.6 2004/07/16 00:52:22 hmp Exp $
+ * $DragonFly: src/usr.bin/killall/killall.c,v 1.7 2004/09/14 00:33:53 drhodus Exp $
  */
 
 #include <sys/cdefs.h>
@@ -198,7 +198,7 @@ main(int ac, char **av)
 					sig = strtol(*av, &ep, 10);
 					if (!*av || *ep)
 						errx(1, "illegal signal number: %s", *av);
-					if (sig < 0 || sig > NSIG)
+					if (sig < 0 || sig >= NSIG)
 						nosig(*av);
 				} else
 					nosig(*av);
