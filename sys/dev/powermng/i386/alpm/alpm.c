@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1998, 1999 Nicolas Souchu
+ * Copyright (c) 1998, 1999, 2001 Nicolas Souchu
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/pci/alpm.c,v 1.8 1999/12/03 08:41:21 mdodd Exp $
- * $DragonFly: src/sys/dev/powermng/i386/alpm/alpm.c,v 1.4 2003/08/07 21:17:07 dillon Exp $
+ * $FreeBSD: src/sys/pci/alpm.c,v 1.15 2001/01/17 00:38:06 peter Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/alpm/alpm.c,v 1.5 2003/12/07 18:22:09 dillon Exp $
  *
  */
 
@@ -36,16 +36,13 @@
 #include <sys/systm.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <sys/conf.h>
-#include <sys/buf.h>
 #include <sys/uio.h>
-#include <sys/malloc.h>
-
-#include <machine/clock.h>
 
 #include <machine/bus_pio.h>
 #include <machine/bus_memio.h>
 #include <machine/bus.h>
+#include <machine/resource.h>
+#include <sys/rman.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
@@ -53,8 +50,6 @@
 #include <bus/iicbus/iiconf.h>
 #include <bus/smbus/smbconf.h>
 #include "smbus_if.h"
-
-#include "use_alpm.h"
 
 #define ALPM_DEBUG(x)	if (alpm_debug) (x)
 
@@ -111,7 +106,7 @@ static int alpm_debug = 0;
 #define SMBBA		0x14
 
 #define ATPC		0x5b
-#define ATPC_SMBCTRL	0x04
+#define ATPC_SMBCTRL	0x04		/* XX linux has this as 0x6 */
 
 #define SMBHSI		0xe0
 #define SMBHSI_SLAVE	0x2
@@ -131,9 +126,7 @@ struct alpm_data {
 	int base;
         bus_space_tag_t smbst;
         bus_space_handle_t smbsh;
-	pcici_t tag;
 };
-struct alpm_data alpmdata[NALPM];
 
 struct alsmb_softc {
 	int base;
@@ -190,55 +183,67 @@ static driver_t alsmb_driver = {
 	sizeof(struct alsmb_softc),
 };
 
-static const char* alpm_pci_probe(pcici_t tag, pcidi_t type);
-static void alpm_pci_attach(pcici_t tag, int unit);
+static int alpm_pci_probe(device_t dev);
+static int alpm_pci_attach(device_t dev);
 
-static u_long	alpm_count;
+static devclass_t alpm_devclass;
 
-static struct	pci_device alpm_device = {
-	"alpm",
-	alpm_pci_probe,
-	alpm_pci_attach,
-	&alpm_count
+static device_method_t alpm_pci_methods[] = {
+	/* device interface */
+	DEVMETHOD(device_probe,		alpm_pci_probe),
+	DEVMETHOD(device_attach,	alpm_pci_attach),
+	
+	{ 0, 0 }
 };
 
-COMPAT_PCI_DRIVER (alpm, alpm_device);
+static driver_t alpm_pci_driver = {
+	"alpm",
+	alpm_pci_methods,
+	sizeof(struct alpm_data)
+};
 
-static const char*
-alpm_pci_probe(pcici_t tag, pcidi_t type)
+static int
+alpm_pci_probe(device_t dev)
 {
-	if (type == ACER_M1543_PMU_ID)
-		return ("AcerLabs M15x3 Power Management Unit");
-
-	return ((char *)0);
+	if(pci_get_devid(dev) == ACER_M1543_PMU_ID) {
+		device_set_desc(dev, "AcerLabs M15x3 Power Management Unit");
+		return 0;
+	} else {
+		return ENXIO;
+	}
 }
 
-static void
-alpm_pci_attach(pcici_t tag, int unit)
+static int
+alpm_pci_attach(device_t dev)
 {
+	int rid, unit;
+	u_int32_t l;
 	struct alpm_data *alpm;
-	u_long l;
+	struct resource *res;
+	device_t smbinterface;
 
-	if (unit >= NALPM) {
-		printf("alpm%d: attach: only %d units configured.\n",
-		        unit, NALPM);
-		return;
-	}
-	alpm = &alpmdata[unit];
-
-	alpm->tag = tag;
+	alpm = device_get_softc(dev);
+	unit = device_get_unit(dev);
 
 	/* Unlock SMBIO base register access */
-	l = pci_cfgread(tag, ATPC, 1);
-	pci_cfgwrite(tag, ATPC, l & ~ATPC_SMBCTRL, 1);
+	l = pci_read_config(dev, ATPC, 1);
+	pci_write_config(dev, ATPC, l & ~ATPC_SMBCTRL, 1);
+
+	/*
+	 * XX linux sets clock to 74k, should we?
+	l = pci_read_config(dev, SMBHCBC, 1);
+	l &= 0x1f;
+	l |= SMBCLOCK_74K;
+	pci_write_config(dev, SMBHCBC, l, 1)
+	 */
 
 	if (bootverbose) {
-		l = pci_cfgread(tag, SMBHSI, 1);
+		l = pci_read_config(dev, SMBHSI, 1);
 		printf("alsmb%d: %s/%s", unit,
 			(l & SMBHSI_HOST) ? "host":"nohost",
 			(l & SMBHSI_SLAVE) ? "slave":"noslave");
 
-		l = pci_cfgread(tag, SMBHCBC, 1);
+		l = pci_read_config(dev, SMBHCBC, 1);
 		switch (l & SMBHCBC_CLOCK) {
 		case SMBCLOCK_149K:
 			printf(" 149K");
@@ -261,30 +266,38 @@ alpm_pci_attach(pcici_t tag, int unit)
 		}
 	}
 
-	alpm->smbst = I386_BUS_SPACE_IO;
-
 #ifdef ALPM_SMBIO_BASE_ADDR
+	/* XX will this even work anymore? */
 	/* disable I/O */
-	l = pci_cfgread(tag, COM, 2);
-	pci_cfgwrite(tag, COM, l & ~COM_ENABLE_IO, 2);
+	l = pci_read_config(dev, COM, 2);
+	pci_write_config(dev, COM, l & ~COM_ENABLE_IO, 2);
 
 	/* set the I/O base address */
-	pci_cfgwrite(tag, SMBBA, ALPM_SMBIO_BASE_ADDR | 0x1, 4);
+	pci_write_config(dev, SMBBA, ALPM_SMBIO_BASE_ADDR | 0x1, 4);
 
 	/* enable I/O */
-	pci_cfgwrite(tag, COM, l | COM_ENABLE_IO, 2);
+	pci_write_config(dev, COM, l | COM_ENABLE_IO, 2);
 
-	alpm->smbsh = ALPM_SMBIO_BASE_ADDR;
-#else
-	alpm->smbsh = pci_cfgread(tag, SMBBA, 4) & ~0x1;
 #endif
+	rid = SMBBA;
+	res = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
+	    0, ~0, 1, RF_ACTIVE);
+	if (res == NULL) {
+		device_printf(dev, "Could not allocate Bus space\n");
+		return ENXIO;
+	}
+	alpm->smbst = rman_get_bustag(res);
+	alpm->smbsh = rman_get_bushandle(res);
+
 	if (bootverbose)
 		printf(" at 0x%x\n", alpm->smbsh);
 
-	/* XXX add the I2C interface to the root_bus until pcibus is ready */
-	device_add_child(root_bus, "alsmb", unit);
-
-	return;
+	smbinterface = device_add_child(dev, "alsmb", unit);
+	if (!smbinterface)
+		device_printf(dev, "could not add SMBus device\n");
+	else
+		device_probe_and_attach(smbinterface);
+	return 0;
 }
 
 /*
@@ -296,8 +309,10 @@ alsmb_probe(device_t dev)
 {
 	struct alsmb_softc *sc = (struct alsmb_softc *)device_get_softc(dev);
 
-	sc->alpm = &alpmdata[device_get_unit(dev)];
-
+	/* allocate a new smbus device */
+	sc->smbus = smbus_alloc_bus(dev);
+	if (!sc->smbus)
+		return (EINVAL);
 	device_set_desc(dev, "Aladdin IV/V/Pro2 SMBus controller");
 
 	return (0);
@@ -308,8 +323,7 @@ alsmb_attach(device_t dev)
 {
 	struct alsmb_softc *sc = (struct alsmb_softc *)device_get_softc(dev);
 
-	/* allocate a new smbus device */
-	sc->smbus = smbus_alloc_bus(dev);
+	sc->alpm = device_get_softc(device_get_parent(dev));
 
 	/* probe and attach the smbus */
 	device_probe_and_attach(sc->smbus);
@@ -664,4 +678,5 @@ error:
 	return (error);
 }
 
-DRIVER_MODULE(alsmb, root, alsmb_driver, alsmb_devclass, 0, 0);
+DRIVER_MODULE(alpm, pci, alpm_pci_driver, alpm_devclass, 0, 0);
+DRIVER_MODULE(alsmb, alpm, alsmb_driver, alsmb_devclass, 0, 0);
