@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.35.2.31 2003/05/07 16:46:11 jhb Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.15 2004/02/18 04:08:49 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.16 2004/02/18 04:12:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -702,6 +702,9 @@ ata_dmainit(struct ata_device *atadev, int apiomode, int wdmamode, int udmamode)
 	/* we could set PIO mode timings, but we assume the BIOS did that */
 	break;
 
+    case 0x35121095:	/* SiI 3512 SATA controller */
+	/* EXPERIMENTAL!  Works with FN85 AMD 64 3200+ motherboard */
+	/* FALLTHROUGH */
     case 0x06801095:	/* SiI 0680 ATA133 controller */
 	{
 	    u_int8_t ureg = 0xac + (device * 0x02) + (channel * 0x10);
