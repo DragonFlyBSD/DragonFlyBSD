@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.12 2004/06/15 07:35:17 joerg Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.13 2004/06/18 21:45:06 drhodus Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -377,6 +377,8 @@
             pppd
             ..
             printing
+            ..
+            rconfig
             ..
             scsi_target
             ..
