@@ -32,7 +32,7 @@
  *
  * @(#)commands.c	8.4 (Berkeley) 5/30/95
  * $FreeBSD: src/usr.bin/telnet/commands.c,v 1.21.2.6 2002/11/30 05:35:13 eric Exp $
- * $DragonFly: src/usr.bin/telnet/commands.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
+ * $DragonFly: src/usr.bin/telnet/commands.c,v 1.4 2005/02/28 16:55:39 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +71,7 @@
 
 #ifndef       MAXHOSTNAMELEN
 #define       MAXHOSTNAMELEN 256
-#endif        MAXHOSTNAMELEN
+#endif
 
 typedef int (*intrtn_t)(int, char **);
 

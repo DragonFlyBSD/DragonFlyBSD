@@ -32,7 +32,7 @@
  *
  * @(#)sys_bsd.c	8.4 (Berkeley) 5/30/95
  * $FreeBSD: src/usr.bin/telnet/sys_bsd.c,v 1.5.6.1 2002/04/13 11:07:13 markm Exp $
- * $DragonFly: src/usr.bin/telnet/sys_bsd.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/telnet/sys_bsd.c,v 1.3 2005/02/28 16:55:39 joerg Exp $
  */
 
 #include <sys/cdefs.h>
@@ -652,9 +652,9 @@ TerminalNewMode(int f)
 	(void) signal(SIGTSTP, SIG_DFL);
 # ifndef SOLARIS
 	(void) sigsetmask(sigblock(0) & ~(1<<(SIGTSTP-1)));
-# else	SOLARIS
+# else
 	(void) sigrelse(SIGTSTP);
-# endif	SOLARIS
+# endif
 #endif	/* SIGTSTP */
 #ifndef USE_TERMIO
 	ltc = oltc;
