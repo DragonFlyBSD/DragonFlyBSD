@@ -23,7 +23,7 @@
 # SUCH DAMAGE.
 #
 #	$FreeBSD: src/lib/libpam/libpam/Makefile,v 1.12.2.12 2002/07/22 14:21:49 ru Exp $
-#	$DragonFly: src/lib/libpam/libpam/Attic/Makefile,v 1.5 2004/03/20 16:27:40 drhodus Exp $
+#	$DragonFly: src/lib/libpam/libpam/Attic/Makefile,v 1.6 2004/12/20 18:02:19 dillon Exp $
 
 PAMDIR=		${.CURDIR}/../../../contrib/libpam
 MODOBJDIR=	../modules
@@ -78,10 +78,11 @@ STATIC_MODULES+= ${MODOBJDIR}/pam_unix/libpam_unix.a
 STATICOBJS+=	pam_static_modules.o
 CLEANFILES+=	pam_static.o
 
-_EXTRADEPEND:	pam_static.c
-	${MKDEPCMD} -f ${DEPENDFILE} -a ${MKDEP} \
-	    ${CFLAGS:M-nostdinc*} ${CFLAGS:M-[BID]*} \
-	    ${.ALLSRC}
+# doesn't work, bsd.lib.mk already has an _EXTRADEPEND for the .So files.
+#_EXTRADEPEND:	pam_static.c
+#	${MKDEPCMD} -f ${DEPENDFILE} -a ${MKDEP} \
+#	    ${CFLAGS:M-nostdinc*} ${CFLAGS:M-[BID]*} \
+#	    ${.ALLSRC}
 
 CLEANFILES+=	_pam_static_modules.o
 
