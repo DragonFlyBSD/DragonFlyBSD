@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/slot.h,v 1.25.2.5 2002/09/22 20:26:58 imp Exp $
- * $DragonFly: src/sys/bus/pccard/Attic/slot.h,v 1.3 2004/02/11 15:24:30 joerg Exp $
+ * $DragonFly: src/sys/bus/pccard/Attic/slot.h,v 1.4 2004/09/18 19:42:12 dillon Exp $
  */
 
 #ifndef _PCCARD_SLOT_H
@@ -108,8 +108,10 @@ struct slot {
 	 *	flags.
 	 */
 	unsigned int 	insert_seq;	/* Firing up under the card */
-	struct callout_handle insert_ch;/* Insert event timeout handle */
-	struct callout_handle poff_ch;	/* Power Off timeout handle */
+#if 0
+	struct callout	insert_ch;	/* Insert event timeout handle */
+	struct callout	poff_ch;	/* Power Off timeout handle */
+#endif
 
 	enum cardstate 	state, laststate; /* Current/last card states */
 	struct selinfo	selp;		/* Info for select */
