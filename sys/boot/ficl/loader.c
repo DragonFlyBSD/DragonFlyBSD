@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/ficl/loader.c,v 1.9 2003/06/08 03:11:16 nyan Exp $
- * $DragonFly: src/sys/boot/ficl/loader.c,v 1.4 2005/02/19 23:19:51 swildner Exp $
+ * $DragonFly: src/sys/boot/ficl/loader.c,v 1.5 2005/02/20 16:31:53 swildner Exp $
  */
 
 /*******************************************************************
@@ -659,11 +659,9 @@ void ficlCompilePlatform(FICL_SYSTEM *pSys)
 
 #if defined(__i386__)
     ficlSetEnv(pSys, "arch-i386",         FICL_TRUE);
-    ficlSetEnv(pSys, "arch-alpha",        FICL_FALSE);
     ficlSetEnv(pSys, "arch-ia64",         FICL_FALSE);
 #elif defined(__ia64__)
     ficlSetEnv(pSys, "arch-i386",         FICL_FALSE);
-    ficlSetEnv(pSys, "arch-alpha",        FICL_FALSE);
     ficlSetEnv(pSys, "arch-ia64",         FICL_TRUE);
 #endif
 
