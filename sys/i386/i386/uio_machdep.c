@@ -34,7 +34,7 @@
  *
  * @(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/i386/i386/uio_machdep.c,v 1.1 2004/03/21 20:28:36 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/uio_machdep.c,v 1.5 2004/06/28 02:49:06 drhodus Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/uio_machdep.c,v 1.6 2004/07/27 13:11:22 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -110,7 +110,6 @@ uiomove_fromphys(vm_page_t *ma, vm_offset_t offset, int n, struct uio *uio)
 			else
 				bcopy(iov->iov_base, cp, cnt);
 			break;
-		case UIO_USERISPACE:
 		case UIO_NOCOPY:
 			break;
 		}

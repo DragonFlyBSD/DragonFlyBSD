@@ -32,7 +32,7 @@
  *
  *	@(#)uio.h	8.5 (Berkeley) 2/22/94
  * $FreeBSD: src/sys/sys/uio.h,v 1.11.2.1 2001/09/28 16:58:35 dillon Exp $
- * $DragonFly: src/sys/sys/uio.h,v 1.8 2004/03/28 08:25:46 dillon Exp $
+ * $DragonFly: src/sys/sys/uio.h,v 1.9 2004/07/27 13:11:22 hmp Exp $
  */
 
 #ifndef _SYS_UIO_H_
@@ -55,7 +55,6 @@ enum	uio_rw { UIO_READ, UIO_WRITE };
 enum uio_seg {
 	UIO_USERSPACE,		/* from user data space */
 	UIO_SYSSPACE,		/* from system space */
-	UIO_USERISPACE,		/* from user I space */
 	UIO_NOCOPY		/* don't copy, already in object */
 };
 

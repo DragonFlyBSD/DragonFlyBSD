@@ -24,7 +24,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/uio.9,v 1.5.2.4 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/uio.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/uio.9,v 1.3 2004/07/27 13:11:22 hmp Exp $
 .\"
 .Dd February 2, 1997
 .Os
@@ -91,14 +91,11 @@ The offset into the device.
 The number of bytes to process.
 .It Va uio_segflg
 One of the following flags:
-.Bl -tag -width ".Dv UIO_USERISPACE"
+.Bl -tag -width ".Dv UIO_USERSPACE"
 .It Dv UIO_USERSPACE
 The I/O vector points into a process's address space.
 .It Dv UIO_SYSSPACE
 The I/O vector points into the kernel address space.
-.It Dv UIO_USERISPACE
-The I/O vector points into the instruction area of a process's address
-space.
 .It Dv UIO_NOCOPY
 Don't copy, already in object.
 .El

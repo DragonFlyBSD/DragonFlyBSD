@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.16 2004/05/02 07:59:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.17 2004/07/27 13:11:22 hmp Exp $
  */
 
 #include "opt_ddb.h"
@@ -95,7 +95,6 @@ uiomove(caddr_t cp, int n, struct uio *uio)
 		switch (uio->uio_segflg) {
 
 		case UIO_USERSPACE:
-		case UIO_USERISPACE:
 			if (ticks - baseticks >= hogticks) {
 				uio_yield();
 				baseticks = ticks;
@@ -182,7 +181,6 @@ uiomoveco(cp, n, uio, obj)
 		switch (uio->uio_segflg) {
 
 		case UIO_USERSPACE:
-		case UIO_USERISPACE:
 			if (ticks - baseticks >= hogticks) {
 				uio_yield();
 				baseticks = ticks;
@@ -330,10 +328,6 @@ again:
 		*iov->iov_base = c;
 		break;
 
-	case UIO_USERISPACE:
-		if (suibyte(iov->iov_base, c) < 0)
-			return (EFAULT);
-		break;
 	case UIO_NOCOPY:
 		break;
 	}
@@ -375,10 +369,6 @@ again:
 
 	case UIO_SYSSPACE:
 		c = *(u_char *) iov->iov_base;
-		break;
-
-	case UIO_USERISPACE:
-		c = fuibyte(iov->iov_base);
 		break;
 	}
 	if (c < 0)
