@@ -24,7 +24,7 @@
  *
  *	Machine independant code should not directly include this file.
  *
- * $DragonFly: src/sys/amd64/include/Attic/thread.h,v 1.1 2004/02/02 08:05:52 dillon Exp $
+ * $DragonFly: src/sys/amd64/include/Attic/thread.h,v 1.2 2005/03/07 06:29:01 asmodai Exp $
  */
 
 #ifndef	_MACHINE_THREAD_H_
@@ -45,7 +45,7 @@ struct md_thread {
  * the gd pointer across a procedure call (which might block and cause us
  * to wakeup on a different cpu).
  *
- * Also note that in TurtleBSD a thread can be preempted, but it cannot
+ * Also note that in DragonFly a thread can be preempted, but it cannot
  * move to another cpu preemptively so the 'gd' pointer is good until you
  * block.
  */
@@ -68,7 +68,7 @@ _get_mycpu(void)
 
 /*
  * note: curthread is never NULL, but curproc can be.  Also note that
- * in Turtle, the current pcb is stored in the thread structure.
+ * in DragonFly, the current pcb is stored in the thread structure.
  */
 #define curthread	mycpu->gd_curthread
 #define	curproc		curthread->td_proc
