@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/if_pflog.c,v 1.9 2004/06/22 20:13:24 brooks Exp $	*/
 /*	$OpenBSD: if_pflog.c,v 1.11 2003/12/31 11:18:25 cedric Exp $	*/
-/*	$DragonFly: src/sys/net/pf/if_pflog.c,v 1.1 2004/09/19 22:32:47 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/if_pflog.c,v 1.2 2004/11/14 17:27:31 joerg Exp $ */
 
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -225,12 +225,16 @@ pflog_packet(struct pfi_kif *kif, struct mbuf *m, sa_family_t af, u_int8_t dir,
 	hdr.dir = dir;
 
 #ifdef INET
-	if (af == AF_INET && dir == PF_OUT) {
-		struct ip *ip;
+	if (af == AF_INET) {
+		struct ip *ip = mtod(m, struct ip *);
 
-		ip = mtod(m, struct ip *);
-		ip->ip_sum = 0;
-		ip->ip_sum = in_cksum(m, ip->ip_hl << 2);
+		ip->ip_len = htons(ip->ip_len);
+		ip->ip_off = htons(ip->ip_off);
+
+		if (dir == PF_OUT) {
+			ip->ip_sum = 0;
+			ip->ip_sum = in_cksum(m, ip->ip_hl << 2);
+		}
 	}
 #endif /* INET */
 
@@ -242,6 +246,15 @@ pflog_packet(struct pfi_kif *kif, struct mbuf *m, sa_family_t af, u_int8_t dir,
 	ifn = &LIST_FIRST(&pflog_list)->sc_if;
 
 	BPF_MTAP(ifn, &m1);
+
+#ifdef INET
+	if (af == AF_INET) {
+		struct ip *ip = mtod(m, struct ip *);
+
+		ip->ip_len = ntohs(ip->ip_len);
+		ip->ip_off = ntohs(ip->ip_off);
+	}
+#endif /* INET */
 
 	return (0);
 }
