@@ -34,12 +34,13 @@
  *
  * @(#)getopt.c	8.3 (Berkeley) 4/27/95
  * $FreeBSD: src/lib/libc/stdlib/getopt.c,v 1.2.2.2 2001/08/26 03:36:04 jkoshy Exp $
- * $DragonFly: src/lib/libc/stdlib/getopt.c,v 1.4 2005/03/29 20:03:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdlib/getopt.c,v 1.5 2005/03/29 20:05:02 joerg Exp $
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 int	opterr = 1,		/* if error message should be printed */
 	optind,			/* index into parent argv vector */
@@ -49,17 +50,15 @@ char	*optarg;		/* argument associated with option */
 
 #define	BADCH	(int)'?'
 #define	BADARG	(int)':'
-#define	EMSG	""
+
+static char EMSG[] = { '\0' };
 
 /*
  * getopt --
  *	Parse argc/argv argument vector.
  */
 int
-getopt(nargc, nargv, ostr)
-	int nargc;
-	char * const nargv[];
-	const char *ostr;
+getopt(int nargc, char * const nargv[], const char *ostr)
 {
 	static char *place = EMSG;		/* option letter processing */
 	char *oli;				/* option letter list index */
