@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)mknod.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/sbin/mknod/mknod.8,v 1.11.2.10 2003/03/04 15:16:19 keramida Exp $
-.\" $DragonFly: src/sbin/mknod/mknod.8,v 1.3 2004/03/11 12:28:54 hmp Exp $
+.\" $DragonFly: src/sbin/mknod/mknod.8,v 1.4 2004/07/06 10:45:24 eirikn Exp $
 .\"
 .Dd December 11, 1993
 .Dt MKNOD 8
@@ -117,7 +117,9 @@ will cause the number to be interpreted as octal.
 The
 .Xr chown 8 Ns - Ns
 like functionality is specific to
-.Dx / Fx
+.Dx
+/
+.Fx
 and was added so that
 .Pa /dev/MAKEDEV
 would not depend on
