@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcireg.h,v 1.24.2.5 2002/08/31 10:06:51 gibbs Exp $
- * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.11 2004/07/21 07:21:01 asmodai Exp $
+ * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.12 2004/09/12 17:40:30 joerg Exp $
  *
  */
 
@@ -110,7 +110,6 @@
 #define PCIR_BARS       0x10
 #define PCIR_BAR(x)     (PCIR_BARS + (x) * 4)
 #define PCIR_MAPS       PCIR_BARS	/* DEPRECATED XXX */
-#define	PCIR_BAR(x)	(PCIR_BARS + (x) * 4)
 #define PCIR_CARDBUSCIS	0x28
 #define PCIR_SUBVEND_0	0x2c
 #define PCIR_SUBDEV_0	0x2e
