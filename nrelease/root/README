@@ -120,11 +120,74 @@
     network, use 'dhclient <interfacename>' to obtain an IP address from
     the netweork.
 
-    This CD contains two pre-installed ports:  cvsup and mkisofs.  cvsup
-    can be used to obtain the DragonFly cvs repository, the FreeBSD ports
-    tree, and so on and so forth.  'man cvsup' for more information.
-    The cvsup example files are in /usr/share/examples/cvsup.  You will
-    primarily be interested in the DragonFly CVS repository, DragonFly-supfile,
-    and the FreeBSD ports, FreeBSD-ports-supfile.
+	    USING CVSUP TO OBTAIN A CVS TREE, PORTS, AND DOING BUILDWORLDS
 
-$DragonFly: src/nrelease/root/README,v 1.2 2003/12/01 23:19:16 dillon Exp $
+    cvsup can be used to obtain the DragonFly cvs repository, the FreeBSD 
+    ports tree, and so on and so forth.  'man cvsup' for more information on
+    its capabilities.  cvsup is a port (not part of the base system), but
+    it IS included on the CD.  The cvsup example files are in
+    /usr/share/examples/cvsup.  You will primarily be interested in the
+    DragonFly CVS repository, DragonFly-supfile, and the FreeBSD ports,
+    FreeBSD-ports-supfile.  Once you have done the initial cvsup of the
+    blocks of data that you want you may wish to create a cron job to
+    keep it all up to date.  However, please do not run an unattended cvsup
+    more then once a day.
+
+    # get the CVS pository (it is placed in /home/dcvs)
+    cvsup /usr/share/examples/DragonFly-supfile
+    # install the source from the CVS hierarchy
+    cd /usr
+    cvs -R -d /home/dcvs checkout src
+    cvs -R -d /home/dcvs checkout dfports
+
+    # get the FreeBSD ports tree (it is directly broken out into /usr/ports)
+    cvsup -h cvsup.freebsd.org /usr/share/examples/FreeBSD-ports-supfile
+
+    # buildworld and installworld examples
+    #
+    cd /usr/src
+    make buildworld
+    make installworld
+
+    # buildkernel and installkernel examples.  Create your own custom kernel
+    # config in /usr/src/sys/i386/conf/<YOURKERNEL> and you can build and
+    # install custom kernels.
+    #
+    # WARNING!  Always keep a fully working backup kernel in / in case
+    # you blow it.  Remember that /kernel.old is overwritten when you 
+    # make installkernel.  It is usually a good idea to maintain an emergency
+    # kernel as /kernel.GENERIC or /kernel.bak.  If all else fails you can
+    # still fall back to booting the CD.
+    #
+    cd /usr/src
+    make buildkernel KERNCONF=GENERIC
+    make installkernel KERNCONF=GENERIC
+
+			EMERGENCY RECOVERY FROM THE CD
+
+    Lets say you blew up your kernel or something else in / and you need to
+    boot the CD to fix it.  Remember that you have a fully operational 
+    system when booting the CD, but that you have to fsck and mount your
+    hard drive (typically onto /mnt) to get at the contents of your HD.
+
+    Your HD is typically an IDE hard drive, so the device is typically
+    /dev/ad0.  DragonFly is typically on the first slice, which is
+    /dev/ad0s1, and the root partition is always in partition 'a',
+    which is /dev/ad0s1a.
+
+    # fsck root before trying to mount it.  
+    fsck /dev/ad0s1a
+    # mount root read-write onto /mnt
+    mount /dev/ad0s1a /mnt
+    # copy files from the CD as appropriate to make it possible to boot
+    # from your HD again.  Note that /mnt/kernel may be flags-protected.
+    chflags noschg /mnt/kernel
+    cp /kernel /mnt/kernel
+    cp /modules/* /mnt/modules/
+
+    If you want to mount other partitions from your HD but have forgotten
+    what they are, simply cat /mnt/etc/fstab after mounting the root
+    partition.
+
+$DragonFly: src/nrelease/root/README,v 1.3 2003/12/02 20:19:39 dillon Exp $
+
