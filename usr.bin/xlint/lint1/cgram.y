@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: cgram.y,v 1.8 1995/10/02 17:31:35 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/cgram.y,v 1.5 2004/07/07 12:24:00 asmodai Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/cgram.y,v 1.6 2004/07/07 12:26:51 asmodai Exp $
  */
 
 #include <stdlib.h>
@@ -1564,8 +1564,7 @@ identifier:
 
 /* ARGSUSED */
 int
-yyerror(msg)
-	char	*msg;
+yyerror(char *msg)
 {
 	error(249);
 	if (++sytxerr >= 5)
@@ -1583,8 +1582,7 @@ yyerror(msg)
  * expressions, it frees the memory used for the expression.
  */
 static int
-toicon(tn)
-	tnode_t	*tn;
+toicon(tnode_t *tn)
 {
 	int	i;
 	tspec_t	t;
@@ -1633,9 +1631,7 @@ toicon(tn)
 }
 
 static void
-idecl(decl, initflg)
-	sym_t	*decl;
-	int	initflg;
+idecl(sym_t *decl, int initflg)
 {
 	initerr = 0;
 	initsym = decl;
@@ -1663,7 +1659,7 @@ idecl(decl, initflg)
  * unmatched right paren
  */
 void
-ignuptorp()
+ignuptorp(void)
 {
 	int	level;
 
