@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.8 2004/12/16 22:05:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.9 2004/12/16 22:20:12 okumoto Exp $
  */
 
 #include    <ctype.h>
@@ -303,7 +303,7 @@ VarNoMatch(const char *word, Boolean addSpace, Buffer buf, void *pattern)
 Boolean
 VarSubstitute(const char *word, Boolean addSpace, Buffer buf, void *patternp)
 {
-    int		  	wordLen;    /* Length of word */
+    size_t	  	wordLen;    /* Length of word */
     const char	 	*cp;	    /* General pointer */
     VarPattern	*pattern = patternp;
 

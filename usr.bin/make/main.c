@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.32 2004/12/16 00:17:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.33 2004/12/16 22:20:12 okumoto Exp $
  */
 
 /*-
@@ -1002,7 +1002,8 @@ Cmd_Exec(char *cmd, char **error)
     int		status;		/* command exit status */
     Buffer	buf;		/* buffer to store the result */
     char	*cp;
-    int		cc;
+    size_t blen;
+    ssize_t rcnt;
 
     *error = NULL;
 
@@ -1060,12 +1061,10 @@ Cmd_Exec(char *cmd, char **error)
 
 	do {
 	    char   result[BUFSIZ];
-	    cc = read(fds[0], result, sizeof(result));
-	    if (cc > 0)
-		Buf_AddBytes(buf, cc, (Byte *)result);
-	}
-	while (cc > 0 || (cc == -1 && errno == EINTR));
-
+	    rcnt = read(fds[0], result, sizeof(result));
+	    if (rcnt != -1)
+		Buf_AddBytes(buf, (size_t)rcnt, (Byte *)result);
+	} while (rcnt > 0 || (rcnt == -1 && errno == EINTR));
 	/*
 	 * Close the input side of the pipe.
 	 */
@@ -1077,10 +1076,10 @@ Cmd_Exec(char *cmd, char **error)
 	while (((pid = wait(&status)) != cpid) && (pid >= 0))
 	    continue;
 
-	if (cc == -1)
+	if (rcnt == -1)
 	    *error = "Error reading shell's output for \"%s\"";
 
-	res = (char *)Buf_GetAll(buf, &cc);
+	res = (char *)Buf_GetAll(buf, &blen);
 	Buf_Destroy(buf, FALSE);
 
 	if (status)
@@ -1090,8 +1089,8 @@ Cmd_Exec(char *cmd, char **error)
 	 * Null-terminate the result, convert newlines to spaces and
 	 * install it in the variable.
 	 */
-	res[cc] = '\0';
-	cp = &res[cc] - 1;
+	res[blen] = '\0';
+	cp = &res[blen] - 1;
 
 	if (*cp == '\n') {
 	    /*

@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.22 2004/12/16 00:17:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.23 2004/12/16 22:20:12 okumoto Exp $
  */
 
 /*-
@@ -700,7 +700,7 @@ ParseDoDependency (char *line)
 		 * no errors in this, as they would have been discovered
 		 * in the initial Var_Subst and we wouldn't be here.
 		 */
-		int 	length;
+		size_t length;
 		Boolean	freeIt;
 		char	*result;
 
@@ -2012,7 +2012,8 @@ static char *
 ParseSkipLine(int skip, int keep_newline)
 {
     char *line;
-    int c, lastc, lineLength = 0;
+    int c, lastc;
+    size_t lineLength = 0;
     Buffer buf;
 
     buf = Buf_Init(MAKE_BSIZE);
@@ -2094,7 +2095,7 @@ ParseReadLine(void)
 				 * shell command */
     char 	  *line;    	/* Result */
     char          *ep;		/* to strip trailing blanks */
-    int	    	  lineLength;	/* Length of result */
+    size_t lineLength;		/* Length of result */
     int		  lineno;	/* Saved line # */
 
     semiNL = FALSE;

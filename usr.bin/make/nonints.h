@@ -37,7 +37,7 @@
  *
  *	from: @(#)nonints.h	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/nonints.h,v 1.8 1999/08/28 01:03:35 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.18 2004/12/01 01:29:31 joerg Exp $
+ * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.19 2004/12/16 22:20:12 okumoto Exp $
  */
 
 /* arch.c */
@@ -139,7 +139,7 @@ void Var_Append(char *, char *, GNode *);
 Boolean Var_Exists(char *, GNode *);
 char *Var_Value(char *, GNode *, char **);
 char *Var_Quote(const char *);
-char *Var_Parse(char *, GNode *, Boolean, int *, Boolean *);
+char *Var_Parse(char *, GNode *, Boolean, size_t *, Boolean *);
 char *Var_Subst(char *, char *, GNode *, Boolean);
 char *Var_GetTail(char *);
 char *Var_GetHead(char *);

@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.15 2004/12/16 00:17:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.16 2004/12/16 22:20:12 okumoto Exp $
  */
 
 /*-
@@ -194,7 +194,7 @@ Arch_ParseArchive(char **linePtr, Lst nodeLst, GNode *ctxt)
 	     * Variable spec, so call the Var module to parse the puppy
 	     * so we can safely advance beyond it...
 	     */
-	    int 	length;
+	    size_t length;
 	    Boolean	freeIt;
 	    char	*result;
 
@@ -236,11 +236,11 @@ Arch_ParseArchive(char **linePtr, Lst nodeLst, GNode *ctxt)
 		 * Variable spec, so call the Var module to parse the puppy
 		 * so we can safely advance beyond it...
 		 */
-		int 	length;
+		size_t length;
 		Boolean	freeIt;
 		char	*result;
 
-		result=Var_Parse(cp, ctxt, TRUE, &length, &freeIt);
+		result = Var_Parse(cp, ctxt, TRUE, &length, &freeIt);
 		if (result == var_Error) {
 		    return (FAILURE);
 		} else {

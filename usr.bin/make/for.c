@@ -35,7 +35,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.10 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.12 2004/12/16 00:17:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.13 2004/12/16 22:20:12 okumoto Exp $
  */
 
 /*-
@@ -113,7 +113,7 @@ For_Eval(char *line)
 
     if (forLevel == 0) {
 	Buffer	    buf;
-	int	    varlen;
+	size_t varlen;
 
 	for (ptr++; *ptr && isspace((unsigned char)*ptr); ptr++)
 	    continue;
@@ -247,7 +247,7 @@ ForExec(void *namep, void *argp)
 {
     char *name = namep;
     For *arg = argp;
-    int len;
+    size_t len;
 
     Var_Set(arg->var, name, VAR_GLOBAL);
     DEBUGF(FOR, ("--- %s = %s\n", arg->var, name));

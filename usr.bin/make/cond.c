@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.14 2004/12/16 00:17:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.15 2004/12/16 22:20:12 okumoto Exp $
  */
 
 /*-
@@ -179,7 +179,7 @@ static int
 CondGetArg(char **linePtr, char **argPtr, char *func, Boolean parens)
 {
     char	  *cp;
-    int	    	  argLen;
+    size_t    	  argLen;
     Buffer	  buf;
 
     cp = *linePtr;
@@ -222,7 +222,7 @@ CondGetArg(char **linePtr, char **argPtr, char *func, Boolean parens)
 	     * though perhaps we should...
 	     */
 	    char  	*cp2;
-	    int		len;
+	    size_t	len;
 	    Boolean	doFree;
 
 	    cp2 = Var_Parse(cp, VAR_CMD, TRUE, &len, &doFree);
@@ -506,7 +506,7 @@ CondToken(Boolean doEval)
 		char	*lhs;
 		char	*rhs;
 		char	*op;
-		int	varSpecLen;
+		size_t	varSpecLen;
 		Boolean	doFree;
 
 		/*
@@ -620,7 +620,7 @@ do_string_compare:
 			    cp++;
 			    Buf_AddByte(buf, (Byte)*cp);
 			} else if (*cp == '$') {
-			    int	len;
+			    size_t len;
 			    Boolean freeIt;
 
 			    cp2 = Var_Parse(cp, VAR_CMD, doEval, &len, &freeIt);
@@ -640,7 +640,7 @@ do_string_compare:
 
 		    Buf_AddByte(buf, (Byte)0);
 
-		    string = (char *)Buf_GetAll(buf, (int *)NULL);
+		    string = (char *)Buf_GetAll(buf, (size_t *)NULL);
 		    Buf_Destroy(buf, FALSE);
 
 		    DEBUGF(COND, ("lhs = \"%s\", rhs = \"%s\", op = %.2s\n",
@@ -672,7 +672,7 @@ do_string_compare:
 		    if (*CondCvtArg(lhs, &left) != '\0')
 			goto do_string_compare;
 		    if (*rhs == '$') {
-			int 	len;
+			size_t len;
 			Boolean	freeIt;
 
 			string = Var_Parse(rhs, VAR_CMD, doEval, &len, &freeIt);
@@ -793,7 +793,7 @@ error:
 		     * Use Var_Parse to parse the spec in parens and return
 		     * True if the resulting string is empty.
 		     */
-		    int	    length;
+		    size_t length;
 		    Boolean doFree;
 		    char    *val;
 

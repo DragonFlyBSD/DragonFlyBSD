@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/var.h,v 1.1 2002/10/28 23:33:57 jmallett Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.2 2004/12/10 19:22:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.3 2004/12/16 22:20:12 okumoto Exp $
  */
 
 typedef struct Var {
@@ -64,9 +64,9 @@ typedef struct Var {
 
 typedef struct {
     char    	  *lhs;	    /* String to match */
-    int	    	  leftLen;  /* Length of string */
+    size_t    	  leftLen;  /* Length of string */
     char    	  *rhs;	    /* Replacement string (w/ &'s removed) */
-    int	    	  rightLen; /* Length of replacement */
+    size_t    	  rightLen; /* Length of replacement */
     int	    	  flags;
 } VarPattern;
 
