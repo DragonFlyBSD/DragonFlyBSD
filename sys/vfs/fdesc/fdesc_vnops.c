@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.9 2004/03/01 06:33:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.10 2004/04/01 19:08:15 cpressey Exp $
  */
 
 /*
@@ -88,8 +88,7 @@ static int	fdesc_setattr (struct vop_setattr_args *ap);
  * Initialise cache headers
  */
 int
-fdesc_init(vfsp)
-	struct vfsconf *vfsp;
+fdesc_init(struct vfsconf *vfsp)
 {
 
 	fdhashtbl = hashinit(NFDCACHE, M_CACHE, &fdhash);
@@ -97,12 +96,8 @@ fdesc_init(vfsp)
 }
 
 int
-fdesc_allocvp(ftype, ix, mp, vpp, td)
-	fdntype ftype;
-	int ix;
-	struct mount *mp;
-	struct vnode **vpp;
-	struct thread *td;
+fdesc_allocvp(fdntype ftype, int ix, struct mount *mp, struct vnode **vpp,
+	      struct thread *td)
 {
 	struct fdhashhead *fc;
 	struct fdescnode *fd;
@@ -163,14 +158,12 @@ out:
 /*
  * vp is the current namei directory
  * ndp is the name to locate in that directory...
+ *
+ * fdesc_lookup(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		struct componentname *a_cnp)
  */
 static int
-fdesc_lookup(ap)
-	struct vop_lookup_args /* {
-		struct vnode * a_dvp;
-		struct vnode ** a_vpp;
-		struct componentname * a_cnp;
-	} */ *ap;
+fdesc_lookup(struct vop_lookup_args *ap)
 {
 	struct componentname *cnp = ap->a_cnp;
 	struct thread *td = cnp->cn_td;
@@ -237,14 +230,12 @@ bad:
 	return (error);
 }
 
+/*
+ * fdesc_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *	      struct thread *a_td)
+ */
 static int
-fdesc_open(ap)
-	struct vop_open_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+fdesc_open(struct vop_open_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct proc *p = ap->a_td->td_proc;
@@ -266,14 +257,12 @@ fdesc_open(ap)
 	return (ENODEV);
 }
 
+/*
+ * fdesc_getattr(struct vnode *a_vp, struct vattr *a_vap,
+ *		 struct ucred *a_cred, struct thread *a_td)
+ */
 static int
-fdesc_getattr(ap)
-	struct vop_getattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+fdesc_getattr(struct vop_getattr_args *ap)
 {
 	struct proc *p = ap->a_td->td_proc;
 	struct vnode *vp = ap->a_vp;
@@ -365,14 +354,12 @@ fdesc_getattr(ap)
 	return (error);
 }
 
+/*
+ * fdesc_setattr(struct vnode *a_vp, struct vattr *a_vap,
+ *		 struct ucred *a_cred, struct thread *a_td)
+ */
 static int
-fdesc_setattr(ap)
-	struct vop_setattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+fdesc_setattr(struct vop_setattr_args *ap)
 {
 	struct proc *p = ap->a_td->td_proc;
 	struct vattr *vap = ap->a_vap;
@@ -412,16 +399,12 @@ fdesc_setattr(ap)
 
 #define UIO_MX 16
 
+/*
+ * fdesc_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
+ *		 int *a_eofflag, u_long *a_cookies, int a_ncookies)
+ */
 static int
-fdesc_readdir(ap)
-	struct vop_readdir_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		struct ucred *a_cred;
-		int *a_eofflag;
-		u_long *a_cookies;
-		int a_ncookies;
-	} */ *ap;
+fdesc_readdir(struct vop_readdir_args *ap)
 {
 	struct uio *uio = ap->a_uio;
 	struct filedesc *fdp;
@@ -489,24 +472,21 @@ done:
 	return (error);
 }
 
+/*
+ * fdesc_poll(struct vnode *a_vp, int a_events, struct ucred *a_cred,
+ *	      struct thread *a_td)
+ */
 static int
-fdesc_poll(ap)
-	struct vop_poll_args /* {
-		struct vnode *a_vp;
-		int  a_events;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+fdesc_poll(struct vop_poll_args *ap)
 {
 	return seltrue(0, ap->a_events, ap->a_td);
 }
 
+/*
+ * fdesc_inactive(struct vnode *a_vp, struct thread *a_td)
+ */
 static int
-fdesc_inactive(ap)
-	struct vop_inactive_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-	} */ *ap;
+fdesc_inactive(struct vop_inactive_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
@@ -519,11 +499,11 @@ fdesc_inactive(ap)
 	return (0);
 }
 
+/*
+ * fdesc_reclaim(struct vnode *a_vp)
+ */
 static int
-fdesc_reclaim(ap)
-	struct vop_reclaim_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+fdesc_reclaim(struct vop_reclaim_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct fdescnode *fd = VTOFDESC(vp);
@@ -537,15 +517,13 @@ fdesc_reclaim(ap)
 
 /*
  * Print out the contents of a /dev/fd vnode.
+ *
+ * fdesc_print(struct vnode *a_vp)
  */
 /* ARGSUSED */
 static int
-fdesc_print(ap)
-	struct vop_print_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+fdesc_print(struct vop_print_args *ap)
 {
-
 	printf("tag VT_NON, fdesc vnode\n");
 	return (0);
 }
