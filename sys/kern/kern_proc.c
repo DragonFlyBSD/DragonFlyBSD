@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.16 2004/07/24 20:21:35 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.17 2004/09/13 16:22:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -189,7 +189,7 @@ enterpgrp(p, pgid, mksess)
 			    ("enterpgrp: mksession and p != curproc"));
 		} else {
 			pgrp->pg_session = p->p_session;
-			pgrp->pg_session->s_count++;
+			sess_hold(pgrp->pg_session);
 		}
 		pgrp->pg_id = pgid;
 		LIST_INIT(&pgrp->pg_members);
@@ -248,9 +248,39 @@ pgdelete(pgrp)
 	    pgrp->pg_session->s_ttyp->t_pgrp == pgrp)
 		pgrp->pg_session->s_ttyp->t_pgrp = NULL;
 	LIST_REMOVE(pgrp, pg_hash);
-	if (--pgrp->pg_session->s_count == 0)
-		FREE(pgrp->pg_session, M_SESSION);
-	FREE(pgrp, M_PGRP);
+	sess_rele(pgrp->pg_session);
+	free(pgrp, M_PGRP);
+}
+
+/*
+ * Adjust the ref count on a session structure.  When the ref count falls to
+ * zero the tty is disassociated from the session and the session structure
+ * is freed.  Note that tty assocation is not itself ref-counted.
+ */
+void
+sess_hold(struct session *sp)
+{
+	++sp->s_count;
+}
+
+void
+sess_rele(struct session *sp)
+{
+	KKASSERT(sp->s_count > 0);
+	if (--sp->s_count == 0) {
+		if (sp->s_ttyp && sp->s_ttyp->t_session) {
+#ifdef TTY_DO_FULL_CLOSE
+			/* FULL CLOSE, see ttyclearsession() */
+			KKASSERT(sp->s_ttyp->t_session == sp);
+			sp->s_ttyp->t_session = NULL;
+#else
+			/* HALF CLOSE, see ttyclearsession() */
+			if (sp->s_ttyp->t_session == sp)
+				sp->s_ttyp->t_session = NULL;
+#endif
+		}
+		free(sp, M_SESSION);
+	}
 }
 
 /*

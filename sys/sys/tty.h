@@ -37,7 +37,7 @@
  *
  *	@(#)tty.h	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/tty.h,v 1.53.2.1 2001/02/26 04:23:21 jlemon Exp $
- * $DragonFly: src/sys/sys/tty.h,v 1.5 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/tty.h,v 1.6 2004/09/13 16:22:41 dillon Exp $
  */
 
 #ifndef _SYS_TTY_H_
@@ -252,6 +252,7 @@ void	 ttyblock (struct tty *tp);
 void	 ttychars (struct tty *tp);
 int	 ttycheckoutq (struct tty *tp, int wait);
 int	 ttyclose (struct tty *tp);
+void	 ttyclearsession (struct tty *tp);
 void	 ttyflush (struct tty *tp, int rw);
 void	 ttyfree (struct tty *tp);
 void	 ttyinfo (struct tty *tp);

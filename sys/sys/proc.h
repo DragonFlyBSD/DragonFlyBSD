@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.54 2004/08/12 19:59:30 eirikn Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.55 2004/09/13 16:22:41 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -329,11 +329,6 @@ MALLOC_DECLARE(M_PARGS);
 #define	NO_PID		100000
 
 #define SESS_LEADER(p)	((p)->p_session->s_leader == (p))
-#define	SESSHOLD(s)	((s)->s_count++)
-#define	SESSRELE(s) {							\
-	if (--(s)->s_count == 0)					\
-		FREE(s, M_SESSION);					\
-}
 
 /*
  * STOPEVENT
@@ -430,6 +425,8 @@ int	enterpgrp (struct proc *p, pid_t pgid, int mksess);
 void	fixjobc (struct proc *p, struct pgrp *pgrp, int entering);
 int	inferior (struct proc *p);
 int	leavepgrp (struct proc *p);
+void	sess_hold(struct session *sp);
+void	sess_rele(struct session *sp);
 void	mi_switch (struct proc *p);
 void	procinit (void);
 void	relscurproc(struct proc *curp);

@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.11 2004/05/17 07:12:31 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.12 2004/09/13 16:22:36 dillon Exp $
  */
 
 /*-
@@ -229,6 +229,7 @@ ttyopen(device, tp)
  * Handle close() on a tty line: flush and set to initial state,
  * bumping generation number so that pending read/write calls
  * can detect recycling of the tty.
+ *
  * XXX our caller should have done `spltty(); l_close(); ttyclose();'
  * and l_close() should have flushed, but we repeat the spltty() and
  * the flush in case there are buggy callers.
@@ -251,11 +252,40 @@ ttyclose(tp)
 
 	tp->t_gen++;
 	tp->t_line = TTYDISC;
-	tp->t_pgrp = NULL;
-	tp->t_session = NULL;
+	ttyclearsession(tp);
 	tp->t_state = 0;
 	splx(s);
 	return (0);
+}
+
+/*
+ * Disassociate the tty from its session.  Traditionally this has only been
+ * a half-close, meaning that the session was still allowed to point at the
+ * tty (resulting in the tty in the ps command showing something like 'p0-'),
+ * even though the tty is no longer pointing at the session.
+ *
+ * The half close seems to be useful only for 'ps' output but there is as
+ * yet no reason to remove the feature.  The full-close code is currently
+ * #if 0'd out.  See also sess_rele() in kern/kern_proc.c.
+ */
+void
+ttyclearsession(struct tty *tp)
+{
+	struct session *sp;
+
+	tp->t_pgrp = NULL;
+	if ((sp = tp->t_session) != NULL) {
+		tp->t_session = NULL;
+#ifdef TTY_DO_FULL_CLOSE
+		/* FULL CLOSE (not yet) */
+		if (sp->s_ttyp == tp) {
+			sp->s_ttyp = NULL;
+		} else {
+			printf("ttyclearsession: warning: sp->s_ttyp != tp "
+				"%p/%p\n", sp->s_ttyp, tp);
+		}
+#endif
+	}
 }
 
 #define	FLUSHQ(q) {							\
@@ -2530,10 +2560,14 @@ ttymalloc(tp)
         return (tp);
 }
 
-#if 0 /* XXX not yet usable: session leader holds a ref (see kern_exit.c). */
+#if 0
 /*
  * Free a tty struct.  Clists in the struct should have been freed by
  * ttyclose().
+ *
+ * XXX not yet usable: since we support a half-closed state and do not
+ * ref count the tty reference from the session, it is possible for a 
+ * session to hold a ref on the tty.  See TTY_DO_FULL_CLOSE.
  */
 void
 ttyfree(tp)

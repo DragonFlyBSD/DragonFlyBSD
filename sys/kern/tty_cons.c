@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
- * $DragonFly: src/sys/kern/tty_cons.c,v 1.13 2004/05/19 22:52:58 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_cons.c,v 1.14 2004/09/13 16:22:36 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -420,8 +420,7 @@ cnclose(struct cdevmsg_close *msg)
 			if (cn_tp) {
 				/* perform a ttyhalfclose() */
 				/* reset session and proc group */
-				cn_tp->t_pgrp = NULL;
-				cn_tp->t_session = NULL;
+				ttyclearsession(cn_tp);
 			}
 			return (0);
 		}
