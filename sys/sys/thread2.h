@@ -8,7 +8,7 @@
  *	on a different cpu will not be immediately scheduled by a yield() on
  *	this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.16 2004/07/29 08:55:48 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.17 2004/10/12 19:29:29 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -119,6 +119,12 @@ static __inline void
 crit_panic_restore(int cpri)
 {
     curthread->td_pri = cpri;
+}
+
+static __inline int
+crit_test(thread_t td)
+{
+    return(td->td_pri >= TDPRI_CRIT);
 }
 
 /*

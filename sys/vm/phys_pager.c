@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/vm/phys_pager.c,v 1.3.2.3 2000/12/17 02:05:41 alfred Exp $
- * $DragonFly: src/sys/vm/phys_pager.c,v 1.3 2003/07/19 21:14:53 dillon Exp $
+ * $DragonFly: src/sys/vm/phys_pager.c,v 1.4 2004/10/12 19:29:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,6 +38,8 @@
 #include <vm/vm_page.h>
 #include <vm/vm_pager.h>
 #include <vm/vm_zone.h>
+
+#include <sys/thread2.h>
 
 /* list of device pager objects */
 static struct pagerlst phys_pager_object_list;
@@ -119,9 +121,9 @@ phys_pager_dealloc(vm_object_t object)
 static int
 phys_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 {
-	int i, s;
+	int i;
 
-	s = splvm();
+	crit_enter();
 	/*
 	 * Fill as many pages as vm_fault has allocated for us.
 	 */
@@ -139,7 +141,7 @@ phys_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 			m[i]->busy = 0;
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	return (VM_PAGER_OK);
 }

@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.30 2004/04/30 00:59:52 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.31 2004/10/12 19:29:26 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -525,7 +525,6 @@ vm_page_zero_idle()
 	static int free_rover;
 	static int zero_state;
 	vm_page_t m;
-	int s;
 
 	/*
 	 * Attempt to maintain approximately 1/2 of our free pages in a
@@ -544,7 +543,7 @@ vm_page_zero_idle()
 #ifdef SMP
 	if (try_mplock()) {
 #endif
-		s = splvm();
+		crit_enter();
 		__asm __volatile("sti" : : : "memory");
 		zero_state = 0;
 		m = vm_page_list_find(PQ_FREE, free_rover, FALSE);
@@ -552,9 +551,9 @@ vm_page_zero_idle()
 			vm_page_queues[m->queue].lcnt--;
 			TAILQ_REMOVE(&vm_page_queues[m->queue].pl, m, pageq);
 			m->queue = PQ_NONE;
-			splx(s);
+			crit_exit();
 			pmap_zero_page(VM_PAGE_TO_PHYS(m));
-			(void)splvm();
+			crit_enter();
 			vm_page_flag_set(m, PG_ZERO);
 			m->queue = PQ_FREE + m->pc;
 			vm_page_queues[m->queue].lcnt++;
@@ -566,7 +565,7 @@ vm_page_zero_idle()
 				zero_state = 1;
 		}
 		free_rover = (free_rover + PQ_PRIME2) & PQ_L2_MASK;
-		splx(s);
+		crit_exit();
 		__asm __volatile("cli" : : : "memory");
 #ifdef SMP
 		rel_mplock();

@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.46 2004/09/26 01:53:51 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.47 2004/10/12 19:29:26 dillon Exp $
  */
 
 /*
@@ -876,8 +876,8 @@ pmap_qremove(vm_offset_t va, int count)
  * page is busy.  This routine does not busy the page it returns.
  *
  * Unless the caller is managing objects whos pages are in a known state,
- * the call should be made at splvm() so the page's object association
- * remains valid on return.
+ * the call should be made with a critical section held so the page's object
+ * association remains valid on return.
  */
 static vm_page_t
 pmap_page_lookup(vm_object_t object, vm_pindex_t pindex)
@@ -957,10 +957,8 @@ pmap_swapout_proc(struct proc *p)
 	/*
 	 * Unwiring the pages allow them to be paged to their backing store
 	 * (swap).
-	 *
-	 * splvm() protection not required since nobody will be messing with
-	 * the pages but us.
 	 */
+	crit_enter();
 	for (i = 0; i < UPAGES; i++) {
 		if ((m = vm_page_lookup(upobj, i)) == NULL)
 			panic("pmap_swapout_proc: upage already missing???");
@@ -968,6 +966,7 @@ pmap_swapout_proc(struct proc *p)
 		vm_page_unwire(m, 0);
 		pmap_kremove((vm_offset_t)p->p_addr + (PAGE_SIZE * i));
 	}
+	crit_exit();
 #endif
 }
 
@@ -982,10 +981,7 @@ pmap_swapin_proc(struct proc *p)
 	vm_object_t upobj;
 	vm_page_t m;
 
-	/*
-	 * splvm() protection not required since nobody will be messing with
-	 * the pages but us.
-	 */
+	crit_enter();
 	upobj = p->p_upages_obj;
 	for (i = 0; i < UPAGES; i++) {
 		m = vm_page_grab(upobj, i, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
@@ -1004,6 +1000,7 @@ pmap_swapin_proc(struct proc *p)
 		vm_page_wakeup(m);
 		vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE);
 	}
+	crit_exit();
 #endif
 }
 
@@ -2230,7 +2227,6 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 	int psize;
 	vm_page_t p, mpte;
 	int objpgs;
-	int s;
 
 	if ((prot & VM_PROT_READ) == 0 || pmap == NULL || object == NULL)
 		return;
@@ -2324,7 +2320,7 @@ retry:
 	 * We cannot safely scan the object's memq unless we are at splvm(),
 	 * since interrupts can remove pages from objects.
 	 */
-	s = splvm();
+	crit_enter();
 	mpte = NULL;
 	if (psize > (object->resident_page_count >> 2)) {
 		objpgs = psize;
@@ -2389,7 +2385,7 @@ retry:
 			}
 		}
 	}
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -2412,7 +2408,6 @@ void
 pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 {
 	int i;
-	int s;
 	vm_offset_t starta;
 	vm_offset_t addr;
 	vm_pindex_t pindex;
@@ -2436,7 +2431,7 @@ pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 	 * their objects.
 	 */
 	mpte = NULL;
-	s = splvm();
+	crit_enter();
 	for (i = 0; i < PAGEORDER_SIZE; i++) {
 		vm_object_t lobject;
 		unsigned *pte;
@@ -2488,7 +2483,7 @@ pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 			vm_page_wakeup(m);
 		}
 	}
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -2552,7 +2547,6 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 	vm_offset_t pdnxt;
 	unsigned src_frame, dst_frame;
 	vm_page_t m;
-	int s;
 
 	if (dst_addr != src_addr)
 		return;
@@ -2573,11 +2567,11 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 	pmap_inval_add(&info, src_pmap, -1);
 
 	/*
-	 * splvm() protection is required to maintain the page/object
+	 * critical section protection is required to maintain the page/object
 	 * association, interrupts can free pages and remove them from 
 	 * their objects.
 	 */
-	s = splvm();
+	crit_enter();
 	for (addr = src_addr; addr < end_addr; addr = pdnxt) {
 		unsigned *src_pte, *dst_pte;
 		vm_page_t dstmpte, srcmpte;
@@ -2656,7 +2650,7 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 			dst_pte++;
 		}
 	}
-	splx(s);
+	crit_exit();
 	pmap_inval_flush(&info);
 }	
 

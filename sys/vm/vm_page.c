@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.26 2004/09/17 10:02:12 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.27 2004/10/12 19:29:34 dillon Exp $
  */
 
 /*
@@ -102,6 +102,8 @@ static struct vm_page **vm_page_buckets; /* Array of buckets */
 static volatile int vm_page_bucket_generation;
 struct vpgqueues vm_page_queues[PQ_COUNT]; /* Array of tailq lists */
 
+#define ASSERT_IN_CRIT_SECTION()	KKASSERT(crit_test(curthread));
+
 static void
 vm_page_queue_init(void) 
 {
@@ -152,7 +154,7 @@ vm_set_page_size(void)
  * queue in a bottom-up fashion, so both zero'd and non-zero'd page
  * requests pull 'recent' adds (higher physical addresses) first.
  *
- * Must be called at splhigh().
+ * Must be called in a critical section.
  */
 vm_page_t
 vm_add_new_page(vm_paddr_t pa)
@@ -374,13 +376,14 @@ vm_page_unhold(vm_page_t mem)
  * here so we *can't* do this anyway.
  *
  * This routine may not block.
- * This routine must be called at splvm().
+ * This routine must be called with a critical section held.
  */
 void
 vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 {
 	struct vm_page **bucket;
 
+	ASSERT_IN_CRIT_SECTION();
 	if (m->object != NULL)
 		panic("vm_page_insert: already inserted");
 
@@ -436,8 +439,11 @@ vm_page_remove(vm_page_t m)
 	vm_object_t object;
 	struct vm_page **bucket;
 
-	if (m->object == NULL)
+	crit_enter();
+	if (m->object == NULL) {
+		crit_exit();
 		return;
+	}
 
 	if ((m->flags & PG_BUSY) == 0)
 		panic("vm_page_remove: page not busy");
@@ -451,7 +457,6 @@ vm_page_remove(vm_page_t m)
 	 * Note: we must NULL-out m->hnext to prevent loops in detached
 	 * buffers with vm_page_lookup().
 	 */
-	crit_enter();
 	bucket = &vm_page_buckets[vm_page_hash(m->object, m->pindex)];
 	while (*bucket != m) {
 		if (*bucket == NULL)
@@ -485,7 +490,8 @@ vm_page_remove(vm_page_t m)
  * the returned page could be in flux if it is busy.  Because an
  * interrupt can race a caller's busy check (unbusying and freeing the
  * page we return before the caller is able to check the busy bit),
- * the caller should generally call this routine at splvm().
+ * the caller should generally call this routine with a critical
+ * section held.
  *
  * Callers may call this routine without spl protection if they know
  * 'for sure' that the page will not be ripped out from under them
@@ -669,7 +675,7 @@ vm_page_list_find(int basequeue, int index, boolean_t prefer_zero)
  * might be found, but not applicable, they are deactivated.  This
  * keeps us from using potentially busy cached pages.
  *
- * This routine must be called at splvm().
+ * This routine must be called with a critical section held.
  * This routine may not block.
  */
 vm_page_t
@@ -698,7 +704,7 @@ vm_page_select_cache(vm_object_t object, vm_pindex_t pindex)
  * inline the nominal case and fall back to _vm_page_select_free() 
  * otherwise.
  *
- * This routine must be called at splvm().
+ * This routine must be called with a critical section held.
  * This routine may not block.
  */
 static __inline vm_page_t
@@ -1096,19 +1102,18 @@ vm_page_free_toq(vm_page_t m)
  * physical memory as backing store rather then swap-backed memory and
  * will eventually be extended to support 4MB unmanaged physical 
  * mappings.
+ *
+ * Must be called with a critical section held.
  */
 void
 vm_page_unmanage(vm_page_t m)
 {
-	int s;
-
-	s = splvm();
+	ASSERT_IN_CRIT_SECTION();
 	if ((m->flags & PG_UNMANAGED) == 0) {
 		if (m->wire_count == 0)
 			vm_page_unqueue(m);
 	}
 	vm_page_flag_set(m, PG_UNMANAGED);
-	splx(s);
 }
 
 /*
@@ -1121,15 +1126,13 @@ vm_page_unmanage(vm_page_t m)
 void
 vm_page_wire(vm_page_t m)
 {
-	int s;
-
 	/*
 	 * Only bump the wire statistics if the page is not already wired,
 	 * and only unqueue the page if it is on some queue (if it is unmanaged
 	 * it is already off the queues).  Don't do anything with fictitious
 	 * pages because they are always wired.
 	 */
-	s = splvm();
+	crit_enter();
 	if ((m->flags & PG_FICTITIOUS) == 0) {
 		if (m->wire_count == 0) {
 			if ((m->flags & PG_UNMANAGED) == 0)
@@ -1140,8 +1143,8 @@ vm_page_wire(vm_page_t m)
 		KASSERT(m->wire_count != 0,
 		    ("vm_page_wire: wire_count overflow m=%p", m));
 	}
-	splx(s);
 	vm_page_flag_set(m, PG_MAPPED);
+	crit_exit();
 }
 
 /*
@@ -1172,9 +1175,7 @@ vm_page_wire(vm_page_t m)
 void
 vm_page_unwire(vm_page_t m, int activate)
 {
-	int s;
-
-	s = splvm();
+	crit_enter();
 	if (m->flags & PG_FICTITIOUS) {
 		/* do nothing */
 	} else if (m->wire_count <= 0) {
@@ -1200,7 +1201,7 @@ vm_page_unwire(vm_page_t m, int activate)
 			}
 		}
 	}
-	splx(s);
+	crit_exit();
 }
 
 
@@ -1217,15 +1218,12 @@ vm_page_unwire(vm_page_t m, int activate)
 static __inline void
 _vm_page_deactivate(vm_page_t m, int athead)
 {
-	int s;
-
 	/*
 	 * Ignore if already inactive.
 	 */
 	if (m->queue == PQ_INACTIVE)
 		return;
 
-	s = splvm();
 	if (m->wire_count == 0 && (m->flags & PG_UNMANAGED) == 0) {
 		if ((m->queue - m->pc) == PQ_CACHE)
 			mycpu->gd_cnt.v_reactivated++;
@@ -1239,13 +1237,14 @@ _vm_page_deactivate(vm_page_t m, int athead)
 		vm_page_queues[PQ_INACTIVE].lcnt++;
 		vmstats.v_inactive_count++;
 	}
-	splx(s);
 }
 
 void
 vm_page_deactivate(vm_page_t m)
 {
+    crit_enter();
     _vm_page_deactivate(m, 0);
+    crit_exit();
 }
 
 /*
@@ -1256,14 +1255,18 @@ vm_page_deactivate(vm_page_t m)
 int
 vm_page_try_to_cache(vm_page_t m)
 {
+	crit_enter();
 	if (m->dirty || m->hold_count || m->busy || m->wire_count ||
 	    (m->flags & (PG_BUSY|PG_UNMANAGED))) {
 		return(0);
 	}
 	vm_page_test_dirty(m);
-	if (m->dirty)
+	if (m->dirty) {
+		crit_exit();
 		return(0);
+	}
 	vm_page_cache(m);
+	crit_exit();
 	return(1);
 }
 
@@ -1274,16 +1277,21 @@ vm_page_try_to_cache(vm_page_t m)
 int
 vm_page_try_to_free(vm_page_t m)
 {
+	crit_enter();
 	if (m->dirty || m->hold_count || m->busy || m->wire_count ||
 	    (m->flags & (PG_BUSY|PG_UNMANAGED))) {
+		crit_exit();
 		return(0);
 	}
 	vm_page_test_dirty(m);
-	if (m->dirty)
+	if (m->dirty) {
+		crit_exit();
 		return(0);
+	}
 	vm_page_busy(m);
 	vm_page_protect(m, VM_PROT_NONE);
 	vm_page_free(m);
+	crit_exit();
 	return(1);
 }
 
@@ -1297,7 +1305,7 @@ vm_page_try_to_free(vm_page_t m)
 void
 vm_page_cache(vm_page_t m)
 {
-	int s;
+	ASSERT_IN_CRIT_SECTION();
 
 	if ((m->flags & (PG_BUSY|PG_UNMANAGED)) || m->busy ||
 			m->wire_count || m->hold_count) {
@@ -1317,14 +1325,12 @@ vm_page_cache(vm_page_t m)
 		panic("vm_page_cache: caching a dirty page, pindex: %ld",
 			(long)m->pindex);
 	}
-	s = splvm();
 	vm_page_unqueue_nowakeup(m);
 	m->queue = PQ_CACHE + m->pc;
 	vm_page_queues[m->queue].lcnt++;
 	TAILQ_INSERT_TAIL(&vm_page_queues[m->queue].pl, m, pageq);
 	vmstats.v_cache_count++;
 	vm_page_free_wakeup();
-	splx(s);
 }
 
 /*
@@ -1360,13 +1366,14 @@ vm_page_dontneed(vm_page_t m)
 	/*
 	 * occassionally leave the page alone
 	 */
-
+	crit_enter();
 	if ((dnw & 0x01F0) == 0 ||
 	    m->queue == PQ_INACTIVE || 
 	    m->queue - m->pc == PQ_CACHE
 	) {
 		if (m->act_count >= ACT_INIT)
 			--m->act_count;
+		crit_exit();
 		return;
 	}
 
@@ -1387,6 +1394,7 @@ vm_page_dontneed(vm_page_t m)
 		head = 1;
 	}
 	_vm_page_deactivate(m, head);
+	crit_exit();
 }
 
 /*
@@ -1410,11 +1418,11 @@ vm_page_t
 vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
 {
 	vm_page_t m;
-	int s, generation;
+	int generation;
 
 	KKASSERT(allocflags &
 		(VM_ALLOC_NORMAL|VM_ALLOC_INTERRUPT|VM_ALLOC_SYSTEM));
-	s = splvm();
+	crit_enter();
 retrylookup:
 	if ((m = vm_page_lookup(object, pindex)) != NULL) {
 		if (m->busy || (m->flags & PG_BUSY)) {
@@ -1443,7 +1451,7 @@ retrylookup:
 		goto retrylookup;
 	}
 done:
-	splx(s);
+	crit_exit();
 	return(m);
 }
 

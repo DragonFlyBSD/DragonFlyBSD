@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.17 2004/05/31 11:43:49 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.18 2004/10/12 19:29:34 dillon Exp $
  */
 
 /*
@@ -93,6 +93,8 @@
 #include <vm/vm_pager.h>
 #include <vm/vnode_pager.h>
 #include <vm/vm_extern.h>
+
+#include <sys/thread2.h>
 #include <vm/vm_page2.h>
 
 static int vm_fault_additional_pages (vm_page_t, int,
@@ -193,7 +195,6 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	vm_page_t marray[VM_FAULT_READ];
 	int hardfault;
 	int faultcount;
-	int s;
 	struct faultstate fs;
 
 	mycpu->gd_cnt.v_vm_faults++;
@@ -293,7 +294,7 @@ RetryFault:
 		 * lookup.  We must hold the protection through a page
 		 * allocation or busy.
 		 */
-		s = splvm();
+		crit_enter();
 		fs.m = vm_page_lookup(fs.object, fs.pindex);
 		if (fs.m != NULL) {
 			int queue;
@@ -318,7 +319,7 @@ RetryFault:
 				vm_page_sleep_busy(fs.m, TRUE, "vmpfw");
 				mycpu->gd_cnt.v_intrans++;
 				vm_object_deallocate(fs.first_object);
-				splx(s);
+				crit_exit();
 				goto RetryFault;
 			}
 
@@ -329,7 +330,7 @@ RetryFault:
 				vm_page_activate(fs.m);
 				unlock_and_deallocate(&fs);
 				vm_waitpfault();
-				splx(s);
+				crit_exit();
 				goto RetryFault;
 			}
 
@@ -344,7 +345,7 @@ RetryFault:
 			 */
 
 			vm_page_busy(fs.m);
-			splx(s);
+			crit_exit();
 
 			if (((fs.m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL) &&
 				fs.m->object != kernel_object && fs.m->object != kmem_object) {
@@ -363,7 +364,7 @@ RetryFault:
 
 		if (TRYPAGER || fs.object == fs.first_object) {
 			if (fs.pindex >= fs.object->size) {
-				splx(s);
+				crit_exit();
 				unlock_and_deallocate(&fs);
 				return (KERN_PROTECTION_FAILURE);
 			}
@@ -377,13 +378,13 @@ RetryFault:
 				    (fs.vp || fs.object->backing_object)? VM_ALLOC_NORMAL: VM_ALLOC_NORMAL | VM_ALLOC_ZERO);
 			}
 			if (fs.m == NULL) {
-				splx(s);
+				crit_exit();
 				unlock_and_deallocate(&fs);
 				vm_waitpfault();
 				goto RetryFault;
 			}
 		}
-		splx(s);
+		crit_exit();
 
 readrest:
 		/*
@@ -441,7 +442,7 @@ readrest:
 				 * unbusy/free sequence occuring prior to
 				 * our busy check.
 				 */
-				s = splvm();
+				crit_enter();
 				for (tmppindex = fs.first_pindex - 1;
 				    tmppindex >= firstpindex;
 				    --tmppindex
@@ -464,7 +465,7 @@ readrest:
 						vm_page_cache(mt);
 					}
 				}
-				splx(s);
+				crit_exit();
 
 				ahead += behind;
 				behind = 0;
@@ -840,11 +841,10 @@ readrest:
 			vm_page_flag_clear(fs.m, PG_NOSYNC);
 		}
 		if (fault_flags & VM_FAULT_DIRTY) {
-			int s;
+			crit_enter();
 			vm_page_dirty(fs.m);
-			s = splvm();
 			vm_pager_page_unswapped(fs.m);
-			splx(s);
+			crit_exit();
 		}
 	}
 
@@ -1193,6 +1193,7 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 			startpindex = pindex - rbehind;
 		}
 
+		crit_enter();
 		for ( tpindex = pindex - 1; tpindex >= startpindex; tpindex -= 1) {
 			if (vm_page_lookup( object, tpindex)) {
 				startpindex = tpindex + 1;
@@ -1206,6 +1207,7 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 
 			rtm = vm_page_alloc(object, tpindex, VM_ALLOC_NORMAL);
 			if (rtm == NULL) {
+				crit_exit();
 				for (j = 0; j < i; j++) {
 					vm_page_free(marray[j]);
 				}
@@ -1216,6 +1218,7 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 
 			marray[i] = rtm;
 		}
+		crit_exit();
 	} else {
 		startpindex = 0;
 		i = 0;
@@ -1235,6 +1238,7 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 	if (endpindex > object->size)
 		endpindex = object->size;
 
+	crit_enter();
 	for( ; tpindex < endpindex; i++, tpindex++) {
 
 		if (vm_page_lookup(object, tpindex)) {
@@ -1248,6 +1252,7 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 
 		marray[i] = rtm;
 	}
+	crit_exit();
 
 	/* return number of bytes of pages */
 	return i;

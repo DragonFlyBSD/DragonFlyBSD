@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.30 2004/07/14 03:43:58 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.31 2004/10/12 19:29:28 dillon Exp $
  */
 
 /*
@@ -53,7 +53,9 @@
 #include <vm/vm_object.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_map.h>
+
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 #include <vm/vm_page2.h>
 
 static MALLOC_DEFINE(M_BIOBUF, "BIO buffer", "BIO buffer");
@@ -2561,7 +2563,6 @@ allocbuf(struct buf *bp, int size)
 			vm_object_t obj;
 			vm_offset_t toff;
 			vm_offset_t tinc;
-			int s;
 
 			/*
 			 * Step 1, bring in the VM pages from the object, 
@@ -2577,7 +2578,7 @@ allocbuf(struct buf *bp, int size)
 			vp = bp->b_vp;
 			VOP_GETVOBJECT(vp, &obj);
 
-			s = splbio();
+			crit_enter();
 			while (bp->b_xio.xio_npages < desiredpages) {
 				vm_page_t m;
 				vm_pindex_t pi;
@@ -2635,7 +2636,7 @@ allocbuf(struct buf *bp, int size)
 				bp->b_xio.xio_pages[bp->b_xio.xio_npages] = m;
 				++bp->b_xio.xio_npages;
 			}
-			splx(s);
+			crit_exit();
 
 			/*
 			 * Step 2.  We've loaded the pages into the buffer,

@@ -38,7 +38,7 @@
  *	@(#)procfs_mem.c	8.5 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_mem.c,v 1.46.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.10 2004/06/07 16:26:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.11 2004/10/12 19:29:31 dillon Exp $
  */
 
 /*
@@ -62,6 +62,8 @@
 #include <vm/vm_page.h>
 #include <sys/user.h>
 #include <sys/ptrace.h>
+
+#include <sys/thread2.h>
 
 static int	procfs_rwmem (struct proc *curp,
 				  struct proc *p, struct uio *uio);
@@ -112,7 +114,6 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 		vm_object_t nobject;
 		u_int len;
 		vm_page_t m;
-		int s;
 
 		uva = (vm_offset_t) uio->uio_offset;
 
@@ -157,7 +158,7 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 		 * races, reference the object to avoid it being ripped
 		 * out from under us if we block.
 		 */
-		s = splvm();
+		crit_enter();
 		vm_object_reference(object);
 again:
 		m = vm_page_lookup(object, pindex);
@@ -183,7 +184,7 @@ again:
 				goto again;
 			vm_page_hold(m);
 		}
-		splx(s);
+		crit_exit();
 
 		/*
 		 * We no longer need the object.  If we do not have a page
@@ -208,9 +209,9 @@ again:
 		/*
 		 * release the page and we are done
 		 */
-		s = splbio();
+		crit_enter();
 		vm_page_unhold(m);
-		splx(s);
+		crit_exit();
 	} while (error == 0 && uio->uio_resid > 0);
 
 	kmem_free(kernel_map, kva, PAGE_SIZE);

@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.20 2004/05/13 17:40:19 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.21 2004/10/12 19:29:34 dillon Exp $
  */
 
 /*
@@ -78,6 +78,7 @@
 #include <vm/vm_kern.h>
 
 #include <sys/file2.h>
+#include <sys/thread2.h>
 
 static int max_proc_mmap;
 SYSCTL_INT(_vm, OID_AUTO, max_proc_mmap, CTLFLAG_RW, &max_proc_mmap, 0, "");
@@ -709,7 +710,6 @@ RestartScan:
 				vm_pindex_t pindex;
 				vm_ooffset_t offset;
 				vm_page_t m;
-				int s;
 
 				/*
 				 * calculate the page index into the object
@@ -724,7 +724,7 @@ RestartScan:
 				 * association.  And XXX what if the page is
 				 * busy?  What's the deal with that?
 				 */
-				s = splvm();
+				crit_enter();
 				m = vm_page_lookup(current->object.vm_object,
 						    pindex);
 				if (m && m->valid) {
@@ -738,7 +738,7 @@ RestartScan:
 						mincoreinfo |= MINCORE_REFERENCED_OTHER;
 					}
 				}
-				splx(s);
+				crit_exit();
 			}
 
 			/*
