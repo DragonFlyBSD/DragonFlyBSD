@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fb.c,v 1.11.2.2 2000/08/02 22:35:22 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.9 2004/05/19 22:52:54 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.10 2005/03/13 01:53:56 swildner Exp $
  */
 
 #include "opt_fb.h"
@@ -612,7 +612,6 @@ static char
 	{ KD_CGA,	"CGA" },
 	{ KD_EGA,	"EGA" },
 	{ KD_VGA,	"VGA" },
-	{ KD_PC98,	"PC-98x1" },
 	{ KD_TGA,	"TGA" },
 	{ -1,		"Unknown" },
     };
@@ -686,7 +685,6 @@ fb_type(int adp_type)
 		{ FBTYPE_CGA,		KD_CGA },
 		{ FBTYPE_EGA,		KD_EGA },
 		{ FBTYPE_VGA,		KD_VGA },
-		{ FBTYPE_PC98,		KD_PC98 },
 		{ FBTYPE_TGA,		KD_TGA },
 	};
 	int i;

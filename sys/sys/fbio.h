@@ -37,7 +37,7 @@
  *	@(#)fbio.h	8.2 (Berkeley) 10/30/93
  *
  * $FreeBSD: src/sys/sys/fbio.h,v 1.9.2.1 2000/05/05 09:16:16 nyan Exp $
- * $DragonFly: src/sys/sys/fbio.h,v 1.3 2005/02/14 23:05:30 swildner Exp $
+ * $DragonFly: src/sys/sys/fbio.h,v 1.4 2005/03/13 01:53:56 swildner Exp $
  */
 
 #ifndef _SYS_FBIO_H_
@@ -83,7 +83,6 @@
 #define	FBTYPE_CGA		22
 #define	FBTYPE_EGA		23
 #define	FBTYPE_VGA		24
-#define	FBTYPE_PC98		25
 #define	FBTYPE_TGA		26
 
 #define	FBTYPE_LASTPLUSONE	27	/* max number of fbs (change as add) */
@@ -252,7 +251,6 @@ struct video_adapter {
 #define KD_CGA		3		/* color graphics adapter */
 #define KD_EGA		4		/* enhanced graphics adapter */
 #define KD_VGA		5		/* video graphics adapter */
-#define KD_PC98		6		/* PC-98 display */
 #define KD_TGA		7		/* TGA */
     char		*va_name;
     int			va_unit;
@@ -381,12 +379,6 @@ typedef struct video_adapter_info video_adapter_info_t;
 
 #define M_ENH_B80x43	0x70	/* ega black & white 80x43 */
 #define M_ENH_C80x43	0x71	/* ega color 80x43 */
-
-#define M_PC98_80x25		98	/* PC98 text 80x25 */
-#define M_PC98_80x30		99	/* PC98 text 80x30 */
-#define M_PC98_EGC640x400	100	/* PC98 graphic 640x400 16 colors */
-#define M_PC98_PEGC640x400	101	/* PC98 graphic 640x400 256 colors */
-#define M_PC98_PEGC640x480	102	/* PC98 graphic 640x480 256 colors */
 
 #define M_HGC_P0	0xe0	/* hercules graphics - page 0 @ B0000 */
 #define M_HGC_P1	0xe1	/* hercules graphics - page 1 @ B8000 */
