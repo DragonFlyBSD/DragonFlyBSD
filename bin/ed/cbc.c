@@ -38,7 +38,7 @@
  *
  * @(#)cbc.c,v 1.2 1994/02/01 00:34:36 alm Exp
  * $FreeBSD: src/bin/ed/cbc.c,v 1.12.2.1 2001/07/04 22:32:18 kris Exp $
- * $DragonFly: src/bin/ed/cbc.c,v 1.7 2004/11/14 19:38:34 joerg Exp $
+ * $DragonFly: src/bin/ed/cbc.c,v 1.8 2005/02/02 18:46:01 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -145,7 +145,7 @@ put_des_char(int c, FILE *fp)
 		des_ct = cbc_encode(des_buf, des_n, fp);
 		des_n = 0;
 	}
-	return (des_ct >= 0) ? (des_buf[des_n++] = (char)(unsigned char)c) : EOF;
+	return (des_ct >= 0) ? (des_buf[des_n++] = (char)c) : EOF;
 #else
 	return (fputc(c, fp));
 #endif
