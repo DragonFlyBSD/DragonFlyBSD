@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.9 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.10 2003/08/08 21:47:49 dillon Exp $
  */
 
 /*
@@ -364,6 +364,7 @@ setuid(struct setuid_args *uap)
 		 * is important that we should do this.
 		 */
 		if (cr->cr_svuid != uid) {
+			cr = cratom(&p->p_ucred);
 			cr->cr_svuid = uid;
 			setsugid();
 		}
@@ -460,6 +461,7 @@ setgid(struct setgid_args *uap)
 		 * Set real gid
 		 */
 		if (cr->cr_rgid != gid) {
+			cr = cratom(&p->p_ucred);
 			cr->cr_rgid = gid;
 			setsugid();
 		}
@@ -471,6 +473,7 @@ setgid(struct setgid_args *uap)
 		 * is important that we should do this.
 		 */
 		if (cr->cr_svgid != gid) {
+			cr = cratom(&p->p_ucred);
 			cr->cr_svgid = gid;
 			setsugid();
 		}

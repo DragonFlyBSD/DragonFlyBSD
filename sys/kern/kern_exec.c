@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.8 2003/07/24 01:41:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.9 2003/08/08 21:47:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -345,8 +345,12 @@ interpret:
 	/*
 	 * Implement correct POSIX saved-id behavior.
 	 */
-	p->p_ucred->cr_svuid = p->p_ucred->cr_uid;
-	p->p_ucred->cr_svgid = p->p_ucred->cr_gid;
+	if (p->p_ucred->cr_svuid != p->p_ucred->cr_uid ||
+	    p->p_ucred->cr_svgid != p->p_ucred->cr_gid) {
+		cratom(&p->p_ucred);
+		p->p_ucred->cr_svuid = p->p_ucred->cr_uid;
+		p->p_ucred->cr_svgid = p->p_ucred->cr_gid;
+	}
 
 	/*
 	 * Store the vp for use in procfs
