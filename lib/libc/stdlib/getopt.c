@@ -34,7 +34,7 @@
  *
  * @(#)getopt.c	8.3 (Berkeley) 4/27/95
  * $FreeBSD: src/lib/libc/stdlib/getopt.c,v 1.2.2.2 2001/08/26 03:36:04 jkoshy Exp $
- * $DragonFly: src/lib/libc/stdlib/getopt.c,v 1.3 2004/07/15 04:10:33 hmp Exp $
+ * $DragonFly: src/lib/libc/stdlib/getopt.c,v 1.4 2005/03/29 20:03:06 joerg Exp $
  */
 
 #include <stdio.h>
@@ -42,7 +42,7 @@
 #include <string.h>
 
 int	opterr = 1,		/* if error message should be printed */
-	optind = 1,		/* index into parent argv vector */
+	optind,			/* index into parent argv vector */
 	optopt,			/* character checked for validity */
 	optreset;		/* reset getopt */
 char	*optarg;		/* argument associated with option */
@@ -63,6 +63,13 @@ getopt(nargc, nargv, ostr)
 {
 	static char *place = EMSG;		/* option letter processing */
 	char *oli;				/* option letter list index */
+
+	/*
+	 * Some programs like cvs expect optind = 0 to trigger
+	 * a reset of getopt.
+	 */
+	if (optind == 0)
+		optind = 1;
 
 	if (optreset || *place == 0) {		/* update scanning pointer */
 		optreset = 0;
