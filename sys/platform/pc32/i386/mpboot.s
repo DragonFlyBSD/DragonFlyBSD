@@ -32,7 +32,7 @@
  *		multiprocessor systems.
  *
  * $FreeBSD: src/sys/i386/i386/mpboot.s,v 1.13.2.3 2000/09/07 01:18:26 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mpboot.s,v 1.5 2003/07/11 17:42:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mpboot.s,v 1.6 2003/11/18 05:52:26 dillon Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
@@ -42,13 +42,16 @@
 #include "assym.s"
 
 /*
- * this code MUST be enabled here and in mp_machdep.c
+ * this code MUST be enabled here and in mp_machdep.c for debugging.
  * it follows the very early stages of AP boot by placing values in CMOS ram.
  * it NORMALLY will never be needed and thus the primitive method for enabling.
  *
+ * WARNING!  DEFINING THIS OPTION MAY CAUSE THE CMOS CHECKSUM TO FAIL AND THE
+ * BIOS MIGHT COMPLAIN.  ENABLE THIS OPTION FOR DEBUGGING THE BOOT PATH ONLY.
+ *
+#define CHECK_POINTS
  */
 
-#define CHECK_POINTS
 #if defined(CHECK_POINTS) && !defined(PC98)
 
 #define CMOS_REG	(0x70)
