@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.13 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.14 2005/02/18 15:48:11 joerg Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -78,6 +78,7 @@
 #include <sys/rman.h> 
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/if_media.h> 
 #include <net/ethernet.h>
@@ -296,7 +297,8 @@ ep_attach(sc)
 	ifp->if_ioctl = ep_if_ioctl;
 	ifp->if_watchdog = ep_if_watchdog;
 	ifp->if_init = ep_if_init;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	if (!sc->epb.mii_trans) {
 		ifmedia_init(&sc->ifmedia, 0, ep_ifmedia_upd, ep_ifmedia_sts);
@@ -451,10 +453,10 @@ ep_if_start(ifp)
 
 startagain:
     /* Sneak a peek at the next packet */
-    m = ifp->if_snd.ifq_head;
-    if (m == 0) {
+    m = ifq_poll(&ifp->if_snd);
+    if (m == NULL)
 	return;
-    }
+
     for (len = 0, top = m; m; m = m->m_next)
 	len += m->m_len;
 
@@ -468,7 +470,7 @@ startagain:
     if (len + pad > ETHER_MAX_LEN) {
 	/* packet is obviously too large: toss it */
 	++ifp->if_oerrors;
-	IF_DEQUEUE(&ifp->if_snd, m);
+	ifq_dequeue(&ifp->if_snd);
 	m_freem(m);
 	goto readcheck;
     }
@@ -484,7 +486,7 @@ startagain:
 	outw(BASE + EP_COMMAND, SET_TX_AVAIL_THRESH | EP_THRESH_DISABLE);
     }
 
-    IF_DEQUEUE(&ifp->if_snd, m);
+    m = ifq_dequeue(&ifp->if_snd);
 
     s = splhigh();
 
@@ -530,9 +532,8 @@ readcheck:
 	 * we check if we have packets left, in that case we prepare to come
 	 * back later
 	 */
-	if (ifp->if_snd.ifq_head) {
+	if (!ifq_is_empty(&ifp->if_snd))
 	    outw(BASE + EP_COMMAND, SET_TX_AVAIL_THRESH | 8);
-	}
 	return;
     }
     goto startagain;
@@ -631,9 +632,8 @@ rescan:
 		     * To have a tx_avail_int but giving the chance to the
 		     * Reception
 		     */
-		    if (ifp->if_snd.ifq_head) {
+		    if (!ifq_is_empty(&ifp->if_snd))
 			outw(BASE + EP_COMMAND, SET_TX_AVAIL_THRESH | 8);
-		    }
 		}
 		outb(BASE + EP_W1_TX_STATUS, 0x0);	/* pops up the next
 							 * status */
