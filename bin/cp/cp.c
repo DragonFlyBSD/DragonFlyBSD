@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)cp.c	8.2 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/cp.c,v 1.24.2.7 2002/09/24 12:41:04 mckay Exp $
- * $DragonFly: src/bin/cp/cp.c,v 1.4 2004/03/19 17:30:59 cpressey Exp $
+ * $DragonFly: src/bin/cp/cp.c,v 1.5 2004/07/22 11:49:38 asmodai Exp $
  */
 
 /*
@@ -75,12 +75,13 @@
 
 PATH_T to = { to.p_path, to.p_path, "" };
 
-int Rflag, fflag, iflag, nflag, pflag, rflag, vflag;
+int fflag, iflag, nflag, pflag, vflag;
+static int Rflag, rflag;
 
 enum op { FILE_TO_FILE, FILE_TO_DIR, DIR_TO_DNE };
 
-int copy (char *[], enum op, int);
-int mastercmp (const FTSENT **, const FTSENT **);
+static int copy (char *[], enum op, int);
+static int mastercmp (const FTSENT **, const FTSENT **);
 
 int
 main(int argc, char *argv[])
