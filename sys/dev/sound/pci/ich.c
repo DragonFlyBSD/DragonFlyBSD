@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/ich.c,v 1.3.2.12 2003/01/20 03:59:42 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.5 2003/08/24 17:55:21 drhodus Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.6 2004/04/08 15:16:50 joerg Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.5 2003/08/24 17:55:21 drhodus Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.6 2004/04/08 15:16:50 joerg Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -648,6 +648,10 @@ ich_pci_probe(device_t dev)
 
 	case 0x74451022:
 		device_set_desc(dev, "AMD-768");
+		return 0;
+
+	case 0x746d1022:
+		device_set_desc(dev, "AMD-8111");
 		return 0;
 
 	default:
