@@ -18,7 +18,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: ports/devel/gdb6/files/freebsd-uthread.c,v 1.2 2004/06/20 18:45:36 obrien Exp $ */
-/* $DragonFly: src/gnu/usr.bin/gdb/gdb/Attic/freebsd-uthread.c,v 1.1 2004/10/23 17:02:38 joerg Exp $ */
+/* $DragonFly: src/gnu/usr.bin/gdb/gdb/Attic/freebsd-uthread.c,v 1.2 2004/10/24 18:05:10 joerg Exp $ */
 
 /* This module implements a sort of half target that sits between the
    machine-independent parts of GDB and the ptrace interface (infptrace.c) to
