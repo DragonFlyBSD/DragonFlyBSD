@@ -15,11 +15,11 @@
  * `state' of FTP_t
  *
  * $FreeBSD: src/lib/libftpio/ftpio.c,v 1.33.2.4 2002/07/25 15:25:32 ume Exp $
- * $DragonFly: src/lib/libftpio/ftpio.c,v 1.6 2004/08/16 14:11:39 joerg Exp $
+ * $DragonFly: src/lib/libftpio/ftpio.c,v 1.7 2004/08/19 23:57:46 joerg Exp $
  *
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/socket.h>
 
 #include <netinet/in.h>
