@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.10 2003/11/20 22:07:33 dillon Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.11 2004/01/17 03:26:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -603,7 +603,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
 	vm_map_wire(kernel_map,
 			(vm_offset_t) segbase,
 			(vm_offset_t) segbase + segs[i]->p_memsz,
-			FALSE);
+			0);
 #endif
     }
 
