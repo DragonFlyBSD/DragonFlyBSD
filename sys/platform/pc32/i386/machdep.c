@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.64 2004/07/31 07:52:43 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.65 2004/08/12 19:59:30 eirikn Exp $
  */
 
 #include "use_apm.h"
@@ -1284,7 +1284,8 @@ extern inthand_t
 	IDTVEC(xmm), IDTVEC(syscall),
 	IDTVEC(rsvd0);
 extern inthand_t
-	IDTVEC(int0x80_syscall), IDTVEC(int0x81_syscall);
+	IDTVEC(int0x80_syscall), IDTVEC(int0x81_syscall),
+	IDTVEC(int0x82_syscall);
 
 #ifdef DEBUG_INTERRUPTS
 extern inthand_t *Xrsvdary[256];
@@ -1904,6 +1905,8 @@ init386(int first)
 			SDT_SYS386TGT, SEL_UPL, GSEL(GCODE_SEL, SEL_KPL));
  	setidt(0x81, &IDTVEC(int0x81_syscall),
 			SDT_SYS386TGT, SEL_UPL, GSEL(GCODE_SEL, SEL_KPL));
+	setidt(0x82, &IDTVEC(int0x82_syscall),
+ 			SDT_SYS386TGT, SEL_UPL, GSEL(GCODE_SEL, SEL_KPL));
 
 	r_idt.rd_limit = sizeof(idt0) - 1;
 	r_idt.rd_base = (int) idt;

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.22 2004/02/21 06:37:07 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.23 2004/08/12 19:59:30 eirikn Exp $
  */
 
 #include "use_npx.h"
@@ -864,12 +864,12 @@ IDTVEC(int0x80_syscall)
 	jmp	doreti
 
 /*
- * Trap gate entry for FreeBSD syscall messaging interface (int 0x81).
+ * Trap gate entry for syscall messaging interface (int 0x81).
  * Arguments are passed in registers, the return value is placed in %eax.
  *
  *	eax:error = int0x81(eax:port, ecx:msg, edx:msgsize)
  *
- *	Performs message sending, message and port waiting, and flushing
+ *	Performs message sending and flushing
  *	functinos.
  */
 	SUPERALIGN_TEXT
@@ -889,6 +889,38 @@ IDTVEC(int0x81_syscall)
 	incl	PCPU(cnt)+V_SENDSYS
 	/* warning, trap frame dummy arg, no extra reg pushes */
 	call	sendsys2
+	MEXITCOUNT
+	cli				/* atomic reqflags interlock w/irq */
+	cmpl    $0,PCPU(reqflags)
+	je	doreti_syscall_ret
+	pushl	$0			/* cpl to restore */
+	jmp	doreti
+
+/*
+ * Trap gate entry for syscall messaging interface (int 0x82).
+ * Arguments are passed in registers, the return value is placed in %eax.
+ *
+ *	eax:error = int0x82(eax:port, ecx:msg, edx:msgsize)
+ *
+ *	Performs message and port waiting functions.
+ */
+	SUPERALIGN_TEXT
+IDTVEC(int0x82_syscall)
+	subl	$8,%esp			/* skip over tf_trapno and tf_err */
+	pushal
+	pushl	%ds
+	pushl	%es
+	pushl	%fs
+	mov	$KDSEL,%ax		/* switch to kernel segments */
+	mov	%ax,%ds
+	mov	%ax,%es
+	mov	$KPSEL,%ax
+	mov	%ax,%fs
+					/* note: tf_err is not used */
+	FAKE_MCOUNT(13*4(%esp))
+	incl	PCPU(cnt)+V_WAITSYS
+	/* warning, trap frame dummy arg, no extra reg pushes */
+	call	waitsys2
 	MEXITCOUNT
 	cli				/* atomic reqflags interlock w/irq */
 	cmpl    $0,PCPU(reqflags)

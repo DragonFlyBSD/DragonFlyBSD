@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libcr/sys/Attic/Makefile.inc,v 1.5 2004/01/22 12:01:18 eirikn Exp $
+# $DragonFly: src/lib/libcr/sys/Attic/Makefile.inc,v 1.6 2004/08/12 19:59:30 eirikn Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libcr/${MACHINE_ARCH}/sys ${.CURDIR}/../libcr/sys
@@ -20,7 +20,7 @@
 SRCS+=	ftruncate.c lseek.c mmap.c pread.c pwrite.c truncate.c
 
 # Build __error() into libc, but not libc_r which has its own:
-.if ${LIB} == "c"
+.if ${LIB} == "c" || ${LIB} == "cr"
 SRCS+=	__error.c
 .endif
 
@@ -49,7 +49,7 @@ ASMR+=$(_asm)
 
 OBJS+=	${ASM} ${ASMR} ${PSEUDO} ${PSEUDOR}
 
-SASM=	${ASM:S/.o/.S/}
+SASM=	${ASM:S/.o/.c/}
 
 SASMR=	${ASMR:S/.o/.S/}
 
@@ -64,7 +64,8 @@ CLEANFILES+=	${SASM} ${SASMR} ${SPSEUDO} ${SPSEUDOR}
 
 # Generate the syscalls source-files
 ${SASM}:
-	printf '#include "SYS.h"\nRSYSCALL(${.PREFIX})\n' > ${.TARGET}
+	awk -f ${.CURDIR}/sys/gensyscall.awk -v syscall=${.PREFIX} \
+	      ${.CURDIR}/../../sys/sys/syscall-args
 
 ${SASMR}:
 	printf '#include "SYS.h"\nPRSYSCALL(${.PREFIX})\n' > ${.TARGET}

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/Attic/kern_sysmsg.c,v 1.3 2004/07/16 05:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_sysmsg.c,v 1.4 2004/08/12 19:59:30 eirikn Exp $
  */
 
 /*
@@ -82,6 +82,14 @@
 #include <sys/thread2.h>
 
 /*
+ * Sysctl to limit max in progress syscall messages per process. 0 for
+ * unlimited.
+ */
+int max_sysmsg = 0;
+SYSCTL_INT(_kern, OID_AUTO, max_sysmsg, CTLFLAG_RW, &max_sysmsg, 0,
+                "Max sysmsg's a process can have running");
+
+/*
  * Wait for a system call message to be returned.  If NULL is passed we
  * wait for the next ready sysmsg and return it.  We return NULL if there
  * are no pending sysmsgs queued.
@@ -116,6 +124,7 @@ sysmsg_wait(struct proc *p, struct sysmsg *sysmsg, int nonblock)
 	 * sysmsg is not NULL here
 	 */
 	TAILQ_REMOVE(&p->p_sysmsgq, sysmsg, msgq);
+	p->p_num_sysmsg--;
 	return(sysmsg);
 }
 

@@ -36,7 +36,7 @@
  *
  *	from: @(#)segments.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/segments.h,v 1.24 1999/12/29 04:33:07 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/segments.h,v 1.6 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/i386/include/Attic/segments.h,v 1.7 2004/08/12 19:59:30 eirikn Exp $
  */
 
 #ifndef _MACHINE_SEGMENTS_H_
@@ -198,7 +198,7 @@ struct region_descriptor {
 #if defined(SMP) || defined(APIC_IO)
 #define	NIDT	256		/* we use them all */
 #else
-#define	NIDT	130		/* 32 reserved, 16 h/w, 0 s/w, 0x80, 0x81 */
+#define	NIDT	131		/* 32 reserved, 16 h/w, 0 s/w, 0x80, 0x81, 0x82 */
 #endif /* SMP || APIC_IO */
 #define	NRSVIDT	32		/* reserved entries for cpu exceptions */
 

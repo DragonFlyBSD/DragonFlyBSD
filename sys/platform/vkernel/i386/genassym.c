@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.39 2004/05/05 19:26:38 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.40 2004/08/12 19:59:30 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -108,6 +108,7 @@ ASSYM(SZOMB, SZOMB);
 ASSYM(V_TRAP, offsetof(struct vmmeter, v_trap));
 ASSYM(V_SYSCALL, offsetof(struct vmmeter, v_syscall));
 ASSYM(V_SENDSYS, offsetof(struct vmmeter, v_sendsys));
+ASSYM(V_WAITSYS, offsetof(struct vmmeter, v_waitsys));
 ASSYM(V_INTR, offsetof(struct vmmeter, v_intr));
 ASSYM(V_FORWARDED_INTS, offsetof(struct vmmeter, v_forwarded_ints));
 ASSYM(V_FORWARDED_HITS, offsetof(struct vmmeter, v_forwarded_hits));

@@ -36,7 +36,7 @@
  *	from: @(#)SYS.h	5.5 (Berkeley) 5/7/91
  *
  * $FreeBSD: src/lib/libc/i386/SYS.h,v 1.17.2.2 2002/10/15 19:46:46 fjoe Exp $
- * $DragonFly: src/lib/libcr/i386/Attic/SYS.h,v 1.3 2004/04/25 12:40:48 joerg Exp $
+ * $DragonFly: src/lib/libcr/i386/Attic/SYS.h,v 1.4 2004/08/12 19:59:29 eirikn Exp $
  */
 
 #include <sys/syscall.h>
@@ -46,7 +46,9 @@
 			ENTRY(__CONCAT(_,x));				\
 			.weak CNAME(x);					\
 			.set CNAME(x),CNAME(__CONCAT(_,x));		\
-			lea __CONCAT(SYS_,x),%eax; KERNCALL; jb 2b
+			lea __CONCAT(SYS_,x),%eax;			\
+			KERNCALL;					\
+			jb 2b
 
 #define	RSYSCALL(x)	SYSCALL(x); ret
 

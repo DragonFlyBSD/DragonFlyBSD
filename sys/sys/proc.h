@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.53 2004/07/24 20:21:35 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.54 2004/08/12 19:59:30 eirikn Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -241,6 +241,7 @@ struct	proc {
 	struct sched *p_sched;	/* work-in-progress / Peter Kadau */
 	int	p_numposixlocks; /* number of POSIX locks */
 	TAILQ_HEAD(, sysmsg) p_sysmsgq; /* Recorded asynch system calls */
+	int p_num_sysmsg;		/* How many sysmsg's this proc has running */
 };
 
 #if defined(_KERNEL)
