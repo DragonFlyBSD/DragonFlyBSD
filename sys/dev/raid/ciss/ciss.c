@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.11 2004/09/17 03:25:43 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.12 2005/02/01 02:16:58 joerg Exp $
  */
 
 /*
@@ -3223,6 +3223,8 @@ ciss_print_adapter(struct ciss_softc *sc)
 	ciss_print_request(sc->ciss_request + i);
 
 }
+
+void	ciss_print0(void);
 
 /* DDB hook */
 void
