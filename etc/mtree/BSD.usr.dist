@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.26 2004/12/20 16:20:02 dillon Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.27 2004/12/20 19:23:26 joerg Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -31,6 +31,8 @@
             fonts
             ..
         ..
+	gcc34
+	..
         lint
         ..
         msdosfs

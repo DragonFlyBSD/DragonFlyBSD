@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/cc_prep/Makefile,v 1.4 2004/07/25 18:29:54 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/cc_prep/Makefile,v 1.5 2004/12/20 19:23:26 joerg Exp $
 
 .include "../Makefile.inc"
 
@@ -18,7 +18,7 @@ depend: getopt_long.c getopt.h
 .endif
 
 version_local.c: version.c Makefile
-	sed -e 's/\(const char version.*".*\) (/\1 [DragonFly] (propolice, /' < ${.ALLSRC:M*c} > ${.TARGET}
+	sed -e 's/\(const char version.*\)";/\1 [DragonFly] (propolice)";/' < ${.ALLSRC:M*c} > ${.TARGET}
 
 configargs.h: Makefile
 	echo '/* Generated automatically. */' > configargs.h

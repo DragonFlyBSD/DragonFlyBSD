@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/dragonfly-spec.h,v 1.2 2004/06/20 02:22:55 joerg Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/dragonfly-spec.h,v 1.3 2004/12/20 19:23:26 joerg Exp $ */
 
 /* Base configuration file for all DragonFly targets.
    Copyright (C) 1999, 2000, 2001 Free Software Foundation, Inc.
@@ -157,4 +157,16 @@ is built with the --enable-threads configure-time option.}		\
 #define GPLUSPLUS_INCLUDE_DIR		PREFIX2"/include/c++"
 #define GPLUSPLUS_TOOL_INCLUDE_DIR	PREFIX2"/include/c++/3.4"
 #define	GPLUSPLUS_BACKWARD_INCLUDE_DIR	PREFIX2"/include/c++/3.4/backward"
-#define GCC_INCLUDE_DIR			PREFIX2"/include"
+#define	GCC_LOCAL_INCLUDE_DIR		PREFIX2"/libdata/gcc34"
+#define	GCC_INCLUDE_DIR			PREFIX2"/include"
+
+#undef INCLUDE_DEFAULTS
+#define INCLUDE_DEFAULTS				\
+  {							\
+    { GPLUSPLUS_INCLUDE_DIR, "G++", 1, 1 },		\
+    { GPLUSPLUS_TOOL_INCLUDE_DIR, "G++", 1, 1, 0 },	\
+    { GPLUSPLUS_BACKWARD_INCLUDE_DIR, "G++", 1, 1, 0 },	\
+    { GCC_INCLUDE_DIR, "GCC", 0, 0 },			\
+    { GCC_LOCAL_INCLUDE_DIR, "GCC", 0, 0 },		\
+    { NULL, NULL, 0, 0 }				\
+  }

@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/lib/gcc34/libgcc/Makefile,v 1.4 2004/06/21 21:49:11 dillon Exp $
+# $DragonFly: src/gnu/lib/gcc34/libgcc/Makefile,v 1.5 2004/12/20 19:23:26 joerg Exp $
 
 .include "../Makefile.inc"
 .include "${STOPDIR}/cc_tools/Makefile.tools"
@@ -59,5 +59,12 @@ cc_prep: .PHONY
 
 cc_tools: .PHONY
 	cd ${STOPDIR}/cc_tools; ${MAKE} depend
+
+.if ${MACHINE_ARCH} == "i386"
+.PATH: ${GCCDIR}/gcc/config/i386
+
+INCS=	emmintrin.h mmintrin.h pmmintrin.h xmmintrin.h
+INCSDIR=	/usr/libdata/gcc34
+.endif
 
 .include <bsd.lib.mk>

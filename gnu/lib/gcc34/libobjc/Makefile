@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/lib/gcc34/libobjc/Makefile,v 1.1 2004/06/14 22:27:52 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc34/libobjc/Makefile,v 1.2 2004/12/20 19:23:26 joerg Exp $
 
 GCC_NO_PATH=	1
 .include "../Makefile.inc"
@@ -9,6 +9,7 @@ GCC_NO_PATH=	1
 CFLAGS+=	-I${GCCDIR}/libobjc/objc -I.
 
 LIB=		objc
+SHLIB_MAJOR=	1
 
 SRCS=		NXConstStr.m Object.m Protocol.m archive.c class.c encoding.c
 SRCS+=		gc.c hash.c init.c linking.m misc.c nil_method.c objects.c
