@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.58 2004/05/05 19:26:38 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.59 2004/06/26 02:12:08 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1361,14 +1361,15 @@ getmemsize(int first)
 	}
 
 	/*
-	 * Perform "base memory" related probes & setup
+	 * Perform "base memory" related probes & setup.  If we get a crazy
+	 * value give the bios some scribble space just in case.
 	 */
 	vm86_intcall(0x12, &vmf);
 	basemem = vmf.vmf_ax;
 	if (basemem > 640) {
-		printf("Preposterous BIOS basemem of %uK, truncating to 640K\n",
-			basemem);
-		basemem = 640;
+		printf("Preposterous BIOS basemem of %uK, "
+			"truncating to < 640K\n", basemem);
+		basemem = 636;
 	}
 
 	/*
