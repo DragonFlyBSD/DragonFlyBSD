@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.include.dist,v 1.32.2.14 2003/01/24 09:47:07 roam Exp $
-# $DragonFly: src/etc/mtree/BSD.include.dist,v 1.14 2004/12/20 18:36:29 joerg Exp $
+# $DragonFly: src/etc/mtree/BSD.include.dist,v 1.15 2005/01/16 13:31:24 eirikn Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -209,6 +209,8 @@
 	..
 	vjc
 	..
+    ..
+    kadm5
     ..
     netinet
     ..
