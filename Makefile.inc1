@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.5 2003/08/08 04:18:24 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.6 2003/08/08 19:22:45 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -475,8 +475,8 @@ buildkernel:
 .endif
 .endif
 	cd ${KRNLOBJDIR}/${_kernel}; \
-	    MAKESRCPATH=${KRNLSRCDIR}/dev/aic7xxx/aicasm \
-	    ${MAKE} -DBOOTSTRAPPING -f ${KRNLSRCDIR}/dev/aic7xxx/aicasm/Makefile
+	    MAKESRCPATH=${KRNLSRCDIR}/dev/disk/aic7xxx/aicasm \
+	    ${MAKE} -DBOOTSTRAPPING -f ${KRNLSRCDIR}/dev/disk/aic7xxx/aicasm/Makefile
 .if !defined(NO_KERNELDEPEND)
 	cd ${KRNLOBJDIR}/${_kernel}; \
 	    ${KMAKEENV} ${MAKE} KERNEL=${INSTKERNNAME} depend
