@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.23 2004/05/21 14:26:28 hmp Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.24 2004/07/24 20:30:00 dillon Exp $
  */
 
 /*
@@ -1204,6 +1204,8 @@ pipe_stat(struct file *fp, struct stat *ub, struct thread *td)
 	ub->st_mode = S_IFIFO;
 	ub->st_blksize = pipe->pipe_buffer.size;
 	ub->st_size = pipe->pipe_buffer.cnt;
+	if (ub->st_size == 0 && (pipe->pipe_state & PIPE_DIRECTW))
+		ub->st_size = pipe->pipe_map.xio_bytes;
 	ub->st_blocks = (ub->st_size + ub->st_blksize - 1) / ub->st_blksize;
 	ub->st_atimespec = pipe->pipe_atime;
 	ub->st_mtimespec = pipe->pipe_mtime;
