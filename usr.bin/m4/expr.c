@@ -39,7 +39,7 @@
  * @(#)expr.c	8.2 (Berkeley) 4/29/95
  * $OpenBSD: expr.c,v 1.14 2002/04/26 16:15:16 espie Exp $
  * $FreeBSD: src/usr.bin/m4/expr.c,v 1.3.12.1 2002/07/15 02:06:15 jmallett Exp $
- * $DragonFly: src/usr.bin/m4/expr.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/m4/expr.c,v 1.3 2004/07/27 21:03:51 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -115,7 +115,7 @@ static int eqrel(void);
 static int shift(void);
 static int primary(void);
 static int term(void);
-static int exp(void);
+static int expx(void);
 static int unary(void);
 static int factor(void);
 static int constant(void);
@@ -330,9 +330,9 @@ term(void)
 {
 	int c, vl, vr;
 
-	vl = exp();
+	vl = expx();
 	while ((c = skipws()) == '*' || c == '/' || c == '%') {
-		vr = exp();
+		vr = expx();
 
 		switch (c) {
 		case '*':
@@ -360,7 +360,7 @@ term(void)
  * <term> := <unary> { <expop> <unary> }
  */
 static int
-exp(void)
+expx(void)
 {
 	int c, vl, vr, n;
 
@@ -374,7 +374,7 @@ exp(void)
 		}
 
 	case '^':
-		vr = exp();
+		vr = expx();
 		n = 1;
 		while (vr-- > 0)
 			n *= vl;
