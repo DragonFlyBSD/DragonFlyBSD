@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.13 2004/09/15 01:38:13 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.14 2004/12/18 06:22:48 dillon Exp $
  */
 
 /*
@@ -375,7 +375,7 @@ Static struct umass_devdescr_t umass_devdescrs[] = {
 	  UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
 	  NO_QUIRKS
 	},
-	{ USB_VENDOR_PNY, USB_PRODUCT_PNY_ATTACHE, RID_WILDCARD,
+	{ USB_VENDOR_PEN, USB_PRODUCT_PEN_ATTACHE, RID_WILDCARD,
 	  UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
 	  IGNORE_RESIDUE
 	},
