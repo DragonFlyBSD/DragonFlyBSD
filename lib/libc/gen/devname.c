@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/devname.c,v 1.2.2.2 2001/07/31 20:10:19 tmm Exp $
- * $DragonFly: src/lib/libc/gen/devname.c,v 1.3 2004/01/04 20:20:16 eirikn Exp $
+ * $DragonFly: src/lib/libc/gen/devname.c,v 1.4 2004/01/06 15:38:09 eirikn Exp $
  *
  * @(#)devname.c	8.2 (Berkeley) 4/29/95
  */
@@ -81,17 +81,18 @@ xdevname(dev_t dev, mode_t type)
 }
 
 char *
-devname(dev_t dev, mode_t type)
+devname_r(dev_t dev, mode_t type, char *buf, size_t len)
 {
-	static char buf[30];	 /* XXX: pick up from <sys/conf.h> */
 	int i;
 	size_t j;
 	char *r;
 
 	/* First check the DB file. */
 	r = xdevname(dev, type);
-	if (r != NULL)
-		return (r);
+	if (r != NULL) {
+		strlcpy(buf, r, len);
+		return (buf);
+	}
 
 #if 0
 	/* The kern.devname sysctl does not exist */
@@ -105,15 +106,24 @@ devname(dev_t dev, mode_t type)
 #endif
 
 	/* Finally just format it */
-	r = buf;
 	if (minor(dev) > 255) {
-		sprintf(buf, "#%c%d:0x%x", 
+		snprintf(buf, len, "#%c%d:0x%x", 
 		    (type & S_IFMT) == S_IFCHR ? 'C' : 'B',
 		    major(dev), minor(dev));
 	} else {
-		sprintf(buf, "#%c%d:%d", 
+		snprintf(buf, len, "#%c%d:%d", 
 		    (type & S_IFMT) == S_IFCHR ? 'C' : 'B',
 		    major(dev), minor(dev));
 	}
-	return (r);
+	return (buf);
+}
+
+char *
+devname(dev_t dev, mode_t type)
+{
+	static char buf[30];	 /* XXX: pick up from <sys/conf.h> */
+
+	strncpy(buf, devname_r(dev, type, buf, sizeof(buf)), sizeof(buf));
+
+	return (buf);
 }

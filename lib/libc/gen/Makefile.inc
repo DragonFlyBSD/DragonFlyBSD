@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.6 (Berkeley) 5/4/95
 # $FreeBSD: src/lib/libc/gen/Makefile.inc,v 1.62.2.19 2003/02/21 13:46:16 phantom Exp $
-# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.2 2003/06/17 04:26:42 dillon Exp $
+# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.3 2004/01/06 15:38:09 eirikn Exp $
 
 # machine-independent gen sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
@@ -66,6 +66,7 @@ MLINKS+=ctermid.3 ctermid_r.3
 MLINKS+=directory.3 closedir.3 directory.3 dirfd.3 directory.3 opendir.3 \
 	directory.3 readdir.3 directory.3 readdir_r.3 directory.3 rewinddir.3 \
 	directory.3 seekdir.3 directory.3 telldir.3
+MLINKS+=devname.3 devname_r.3
 MLINKS+=dlopen.3 dlclose.3 dlopen.3 dlerror.3 dlopen.3 dlsym.3
 MLINKS+=err.3 err_set_exit.3 err.3 err_set_file.3 err.3 errc.3 err.3 errx.3 \
 	err.3 verr.3 err.3 verrc.3 err.3 verrx.3 err.3 vwarn.3 err.3 vwarnc.3 \

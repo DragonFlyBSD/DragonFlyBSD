@@ -32,7 +32,7 @@
  *
  *	@(#)stdlib.h	8.5 (Berkeley) 5/19/95
  * $FreeBSD: src/include/stdlib.h,v 1.16.2.5 2002/12/13 01:34:00 tjr Exp $
- * $DragonFly: src/include/stdlib.h,v 1.5 2003/11/15 19:28:42 asmodai Exp $
+ * $DragonFly: src/include/stdlib.h,v 1.6 2004/01/06 15:38:09 eirikn Exp $
  */
 
 #ifndef _STDLIB_H_
@@ -162,6 +162,7 @@ int	 cgetustr (char *, char *, char **);
 
 int	 daemon (int, int);
 char	*devname (int, int);
+char	*devname_r (int, int, char *, size_t);
 int	 getloadavg (double [], int);
 __const char *
 	getprogname (void);
