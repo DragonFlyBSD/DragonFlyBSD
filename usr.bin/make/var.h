@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/var.h,v 1.8 2005/02/07 16:27:19 harti Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.18 2005/03/19 00:16:19 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.19 2005/03/19 00:20:55 okumoto Exp $
  */
 
 #ifndef var_h_9cccafce
@@ -76,19 +76,19 @@ typedef struct Var {
 #define	VAR_MATCH_END	0x10	/* Match at end of word */
 
 typedef struct {
-    char	*lhs;		/* String to match */
-    size_t	leftLen;	/* Length of string */
-    char	*rhs;		/* Replacement string (w/ &'s removed) */
-    size_t	rightLen;	/* Length of replacement */
-    int		flags;
+	char	*lhs;		/* String to match */
+	size_t	leftLen;	/* Length of string */
+	char	*rhs;		/* Replacement string (w/ &'s removed) */
+	size_t	rightLen;	/* Length of replacement */
+	int	flags;
 } VarPattern;
 
 typedef struct {
-    regex_t	re;
-    int		nsub;
-    regmatch_t	*matches;
-    char	*replace;
-    int		flags;
+	regex_t		re;
+	int		nsub;
+	regmatch_t	*matches;
+	char		*replace;
+	int		flags;
 } VarREPattern;
 
 typedef Boolean VarModifyProc(const char *, Boolean, struct Buffer *, void *);
