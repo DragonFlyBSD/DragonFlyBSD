@@ -1,14 +1,14 @@
-/*	$DragonFly: src/sys/bus/pccard/pccarddevs.h,v 1.2 2004/02/11 17:34:08 joerg Exp $	*/
+/*	$DragonFly: src/sys/bus/pccard/pccarddevs.h,v 1.3 2004/07/23 11:46:50 joerg Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pccard/pccarddevs,v 1.2 2004/02/11 17:33:40 joerg Exp 
+ *	DragonFly: src/sys/bus/pccard/pccarddevs,v 1.3 2004/07/23 11:46:09 joerg Exp 
  */
 /* $NetBSD: pcmciadevs,v 1.186 2003/09/16 08:26:37 onoe Exp $ */
 /* $OpenBSD: pcmciadevs,v 1.93 2002/06/21 08:31:10 henning Exp $ */
-/* $FreeBSD: src/sys/dev/pccard/pccarddevs,v 1.79 2003/11/03 16:09:17 imp Exp $ */
+/* $FreeBSD: src/sys/dev/pccard/pccarddevs,v 1.85 2004/05/13 01:24:26 imp Exp $ */
 
 /*-
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -161,6 +161,9 @@
 #define	PCMCIA_CIS_3COM_3CXEM556INT	{ NULL, NULL, NULL, NULL }
 #define	PCMCIA_PRODUCT_3COM_3CXEM556INT	0x003d
 #define	PCMCIA_STR_3COM_3CXEM556INT	"3Com/Megahertz 3CXEM556-INT Ethernet/Modem"
+#define	PCMCIA_CIS_3COM_3CRWB609	{ NULL, NULL, NULL, NULL }
+#define	PCMCIA_PRODUCT_3COM_3CRWB609	0x0400
+#define	PCMCIA_STR_3COM_3CRWB609	"3Com Bluetooth PC Card 3CRWB60-A"
 #define	PCMCIA_CIS_3COM_3CCFEM556BI	{ NULL, NULL, NULL, NULL }
 #define	PCMCIA_PRODUCT_3COM_3CCFEM556BI	0x0556
 #define	PCMCIA_STR_3COM_3CCFEM556BI	"3Com/Megahertz 3CCFEM556BI Ethernet/Modem"
@@ -442,12 +445,18 @@
 #define	PCMCIA_CIS_INTEL_ETHEREXPPRO	{ NULL, NULL, NULL, NULL }
 #define	PCMCIA_PRODUCT_INTEL_ETHEREXPPRO	0x0301
 #define	PCMCIA_STR_INTEL_ETHEREXPPRO	"Intel EtherExpress Pro PCMCIA Card"
+#define	PCMCIA_CIS_INTEL_PRO100LAN56	{ NULL, NULL, NULL, NULL }
+#define	PCMCIA_PRODUCT_INTEL_PRO100LAN56	0x110a
+#define	PCMCIA_STR_INTEL_PRO100LAN56	"Intel EtherExpress PRO/100 LAN Modem"
 
 /* Intersil */
-/* Note: The following likely is an OEM card under a different Intersil name */
+/* OEMs sell these things under different marketing names */
 #define	PCMCIA_CIS_INTERSIL_MA401RA	{ NULL, NULL, NULL, NULL }
 #define	PCMCIA_PRODUCT_INTERSIL_MA401RA	0x7300
 #define	PCMCIA_STR_INTERSIL_MA401RA	"Netgear MA401RA"
+#define	PCMCIA_CIS_INTERSIL_DWL650	{ NULL, NULL, NULL, NULL }
+#define	PCMCIA_PRODUCT_INTERSIL_DWL650	0x7110
+#define	PCMCIA_STR_INTERSIL_DWL650	"Dlink DWL650"
 
 /* I-O DATA */
 #define	PCMCIA_CIS_IODATA_PCLATE	{ NULL, NULL, NULL, NULL }
@@ -800,12 +809,15 @@
 #define	PCMCIA_CIS_XIRCOM_CE	{ NULL, NULL, NULL, NULL }
 #define	PCMCIA_PRODUCT_XIRCOM_CE	0x0108
 #define	PCMCIA_STR_XIRCOM_CE	"Xircom CreditCard Ethernet"
+#define	PCMCIA_CIS_XIRCOM_CE2	{ NULL, NULL, NULL, NULL }
+#define	PCMCIA_PRODUCT_XIRCOM_CE2	0x010a
+#define	PCMCIA_STR_XIRCOM_CE2	"Xircom CreditCard Ethernet II"
 #define	PCMCIA_CIS_XIRCOM_CE3	{ NULL, NULL, NULL, NULL }
 #define	PCMCIA_PRODUCT_XIRCOM_CE3	0x010a
-#define	PCMCIA_STR_XIRCOM_CE3	"Xircom CreditCard 10/100 Ethernet"
-#define	PCMCIA_CIS_XIRCOM_CE2	{ NULL, NULL, NULL, NULL }
-#define	PCMCIA_PRODUCT_XIRCOM_CE2	0x010b
-#define	PCMCIA_STR_XIRCOM_CE2	"Xircom CreditCard Ethernet II"
+#define	PCMCIA_STR_XIRCOM_CE3	"Xircom CreditCard Ethernet 10/100"
+#define	PCMCIA_CIS_XIRCOM_CE2_2	{ NULL, NULL, NULL, NULL }
+#define	PCMCIA_PRODUCT_XIRCOM_CE2_2	0x010b
+#define	PCMCIA_STR_XIRCOM_CE2_2	"Xircom CreditCard Ethernet II"
 #define	PCMCIA_CIS_XIRCOM_XE2000	{ NULL, NULL, NULL, NULL }
 #define	PCMCIA_PRODUCT_XIRCOM_XE2000	0x0153
 #define	PCMCIA_STR_XIRCOM_XE2000	"Xircom XE2000 10/100 Ethernet"
@@ -821,18 +833,33 @@
 #define	PCMCIA_CIS_XIRCOM_CEM	{ NULL, NULL, NULL, NULL }
 #define	PCMCIA_PRODUCT_XIRCOM_CEM	0x110a
 #define	PCMCIA_STR_XIRCOM_CEM	"Xircom CreditCard Ethernet + Modem"
+#define	PCMCIA_CIS_XIRCOM_CEM2	{ NULL, NULL, NULL, NULL }
+#define	PCMCIA_PRODUCT_XIRCOM_CEM2	0x110a
+#define	PCMCIA_STR_XIRCOM_CEM2	"Xircom CreditCard Ethernet + Modem"
+#define	PCMCIA_CIS_XIRCOM_CEM56	{ NULL, NULL, NULL, NULL }
+#define	PCMCIA_PRODUCT_XIRCOM_CEM56	0x110a
+#define	PCMCIA_STR_XIRCOM_CEM56	"Xircom CreditCard Ethernet + Modem 56"
+#define	PCMCIA_CIS_XIRCOM_REM10	{ NULL, NULL, NULL, NULL }
+#define	PCMCIA_PRODUCT_XIRCOM_REM10	0x110a
+#define	PCMCIA_STR_XIRCOM_REM10	"Xircom CreditCard Ethernet 10 + Modem 56"
 #define	PCMCIA_CIS_XIRCOM_REM56	{ NULL, NULL, NULL, NULL }
 #define	PCMCIA_PRODUCT_XIRCOM_REM56	0x110a
 #define	PCMCIA_STR_XIRCOM_REM56	"Xircom RealPort Ethernet 10/100 + Modem 56"
+#define	PCMCIA_CIS_XIRCOM_XEM5600	{ NULL, NULL, NULL, NULL }
+#define	PCMCIA_PRODUCT_XIRCOM_XEM5600	0x110a
+#define	PCMCIA_STR_XIRCOM_XEM5600	"Xircom 10/100 Network + 56K Modem PC Card"
 #define	PCMCIA_CIS_XIRCOM_CEM28	{ NULL, NULL, NULL, NULL }
 #define	PCMCIA_PRODUCT_XIRCOM_CEM28	0x110b
-#define	PCMCIA_STR_XIRCOM_CEM28	"Xircom CreditCard Ethernet + Modem 28"
-#define	PCMCIA_CIS_XIRCOM_CEM56	{ NULL, NULL, NULL, NULL }
-#define	PCMCIA_PRODUCT_XIRCOM_CEM56	0x110b
-#define	PCMCIA_STR_XIRCOM_CEM56	"Xircom CreditCard Ethernet + Modem 56"
+#define	PCMCIA_STR_XIRCOM_CEM28	"Xircom CreditCard Ethernet + Modem 28.8"
+#define	PCMCIA_CIS_XIRCOM_CEM56_2	{ NULL, NULL, NULL, NULL }
+#define	PCMCIA_PRODUCT_XIRCOM_CEM56_2	0x110b
+#define	PCMCIA_STR_XIRCOM_CEM56_2	"Xircom CreditCard Ethernet + Modem 56"
 #define	PCMCIA_CIS_XIRCOM_CEM33	{ NULL, NULL, NULL, NULL }
-#define	PCMCIA_PRODUCT_XIRCOM_CEM33	0x110d
-#define	PCMCIA_STR_XIRCOM_CEM33	"Xircom CreditCard Ethernet + Modem 33"
+#define	PCMCIA_PRODUCT_XIRCOM_CEM33	0x110c
+#define	PCMCIA_STR_XIRCOM_CEM33	"Xircom CreditCard Ethernet + Modem 33.6"
+#define	PCMCIA_CIS_XIRCOM_CEM33_2	{ NULL, NULL, NULL, NULL }
+#define	PCMCIA_PRODUCT_XIRCOM_CEM33_2	0x110d
+#define	PCMCIA_STR_XIRCOM_CEM33_2	"Xircom CreditCard Ethernet + Modem 33.6"
 
 /* ZONET */
 #define	PCMCIA_CIS_ZONET_ZEN	{ NULL, NULL, NULL, NULL }
