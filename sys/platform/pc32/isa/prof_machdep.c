@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/prof_machdep.c,v 1.14.2.1 2000/08/03 00:09:30 ps Exp $
- * $DragonFly: src/sys/platform/pc32/isa/prof_machdep.c,v 1.3 2003/07/20 04:20:32 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/prof_machdep.c,v 1.4 2003/08/15 18:37:15 dillon Exp $
  */
 
 #ifdef GUPROF
@@ -48,7 +48,7 @@
 #ifdef PC98
 #include <pc98/pc98/pc98.h>
 #else
-#include <i386/isa/isa.h>
+#include <bus/isa/i386/isa.h>
 #endif
 #include <i386/isa/timerreg.h>
 
