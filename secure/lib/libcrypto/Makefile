@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile,v 1.15.2.14 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.2 2003/06/17 04:27:48 dillon Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.3 2004/03/22 23:49:06 dillon Exp $
 
 LIB=		crypto
 SHLIB_MAJOR=	3
@@ -203,6 +203,8 @@ SRCS+=	v3_akey.c v3_akeya.c v3_alt.c v3_bcons.c v3_bitst.c \
 
 INCS=		${HDRS} openssl/evp.h openssl/opensslconf.h
 INCSDIR=	${INCLUDEDIR}/openssl
+
+v3err.o: openssl/opensslconf.h openssl/evp.h
 
 .include <bsd.lib.mk>
 

@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.23 2004/03/22 20:57:17 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.24 2004/03/22 23:49:05 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -251,9 +251,9 @@ CROSSENV=	MAKEOBJDIRPREFIX=${WORLDDEST} \
 		MACHINE=${TARGET} \
 		OBJFORMAT_PATH=${CTOOLSDEST} \
 		PERL5LIB=${WORLDDEST}/usr/libdata/perl/5.00503 \
-		GROFF_BIN_PATH=${WORLDDEST}/usr/bin \
-		GROFF_FONT_PATH=${WORLDDEST}/usr/share/groff_font \
-		GROFF_TMAC_PATH=${WORLDDEST}/usr/share/tmac
+		GROFF_BIN_PATH=${BTOOLSDEST}/usr/bin \
+		GROFF_FONT_PATH=${BTOOLSDEST}/usr/share/groff_font \
+		GROFF_TMAC_PATH=${BTOOLSDEST}/usr/share/tmac
 
 WMAKEENV=	${CROSSENV} \
 		DESTDIR=${WORLDDEST} \
@@ -269,7 +269,7 @@ IMAKE=		${IMAKEENV} ${MAKE} -f Makefile.inc1
 
 # kernel stage
 KMAKEENV=	${WMAKEENV} \
-		OBJFORMAT_PATH=${CTOOLSDEST}:${OBJFORMAT_PATH}
+		OBJFORMAT_PATH=${WORLDDEST}:${OBJFORMAT_PATH}
 
 # buildworld
 #
@@ -638,7 +638,7 @@ bootstrap-tools:
     usr.bin/gencat usr.bin/chflags usr.bin/expand usr.bin/paste \
     usr.bin/mklocale usr.bin/uuencode usr.bin/compile_et \
     usr.bin/vi usr.bin/cap_mkdb usr.bin/vgrind usr.bin/true usr.bin/false \
-    usr.bin/cmp usr.bin/xargs usr.bin/id \
+    usr.bin/cmp usr.bin/xargs usr.bin/id usr.bin/env usr.bin/dirname \
     usr.sbin/chown usr.sbin/mtree usr.sbin/config \
     usr.sbin/btxld usr.sbin/pwd_mkdb usr.sbin/zic \
     gnu/usr.bin/gperf gnu/usr.bin/groff gnu/usr.bin/texinfo \
