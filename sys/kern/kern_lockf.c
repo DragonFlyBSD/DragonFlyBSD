@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.9 2004/05/05 09:17:04 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.10 2004/05/07 05:45:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -566,7 +566,7 @@ lf_clearlock(struct lockf *lock, struct proc *owner, int type, int flags,
 				}
 				nrange = new_range;
 				new_range = NULL;
-				lf_create_range(nrange, nrange->lf_owner,
+				lf_create_range(nrange, range->lf_owner,
 				    range->lf_type, range->lf_flags,
 				    end + 1, range->lf_end, 1);
 				range->lf_end = start;
