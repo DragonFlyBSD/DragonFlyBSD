@@ -1,4 +1,4 @@
-<!-- $DragonFly: doc/en/articles/new-bsdusers/article.sgml,v 1.3 2004/09/20 13:09:01 justin Exp $ -->
+<!-- $DragonFly: doc/en/articles/new-bsdusers/article.sgml,v 1.4 2004/10/21 18:38:04 justin Exp $ -->
 
 <!DOCTYPE ARTICLE PUBLIC "-//DragonFlyBSD//DTD DocBook V4.1-Based Extension//EN" [
 <!ENTITY % man PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Manual Page Entities//EN">
@@ -204,7 +204,7 @@
     
     <para>Note: XFree86 is a program that implements a protocol called X11.  
       This means that it is possible for other programs to provide the same 
-      services as long as they conform to the standard.  Therefore, it is i
+      services as long as they conform to the standard.  Therefore, it is 
       possible to use the new x.org instead of XFree86.  Commands should be 
       similar, such as xf86cfg being replaced with xorgcfg.</para>
     
