@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.18 2004/01/31 11:56:26 eirikn Exp $
+# $DragonFly: src/Makefile.inc1,v 1.19 2004/01/31 18:08:03 eirikn Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -655,7 +655,7 @@ _btxld=	usr.sbin/btxld
 .endif
 
 cross-tools:
-.for _tool in ${_btxld} ${_elf2exe}
+.for _tool in ${_btxld} ${_elf2exe} \
     gnu/usr.bin/binutils usr.bin/objformat usr.sbin/crunch/crunchide \
     gnu/usr.bin/cc gnu/usr.bin/cc3
 	${ECHODIR} "===> ${_tool}"; \
