@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.19 2004/05/02 07:57:45 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.20 2004/05/11 18:05:05 dillon Exp $
  */
 
 /*
@@ -688,6 +688,8 @@ pipe_clone_write_buffer(wpipe)
 	int size;
 
 	size = wpipe->pipe_map.xio_bytes;
+
+	KKASSERT(size <= wpipe->pipe_buffer.size);
 
 	wpipe->pipe_buffer.in = size;
 	wpipe->pipe_buffer.out = 0;

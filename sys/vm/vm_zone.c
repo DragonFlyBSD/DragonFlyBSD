@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.14 2004/03/01 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.15 2004/05/11 18:05:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -68,13 +68,13 @@ zalloc(vm_zone_t z)
 			panic("zalloc(%s) failed", z->zname);
 	} else {
 		item = z->zitems;
-		z->zitems = ((void **) item)[0];
 #ifdef INVARIANTS
 		KASSERT(item != NULL, ("zitems unexpectedly NULL"));
 		if (((void **) item)[1] != (void *) ZENTRY_FREE)
 			zerror(ZONE_ERROR_NOTFREE);
 		((void **) item)[1] = 0;
 #endif
+		z->zitems = ((void **) item)[0];
 		z->zfreecnt--;
 		z->znalloc++;
 	}
