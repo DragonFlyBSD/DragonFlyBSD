@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  *  $FreeBSD: src/lib/libncp/ncpl_conn.c,v 1.2 1999/10/29 12:59:59 bp Exp $
- *  $DragonFly: src/lib/libncp/ncpl_conn.c,v 1.3 2004/02/03 07:34:10 dillon Exp $
+ *  $DragonFly: src/lib/libncp/ncpl_conn.c,v 1.4 2005/02/28 16:23:25 joerg Exp $
  */
 
 /*
@@ -422,9 +422,9 @@ ncp_login(int connHandle, const char *user, int objtype, const char *password) {
 	ncp_init_request(conn);
 	ncp_add_byte(conn, NCP_CONN_LOGIN);
 	p = (struct ncp_conn_login *)&conn->packet[conn->rqsize];
-	(const char*)p->username = user;
+	p->username = user;
 	p->objtype = objtype;
-	(const char*)p->password = password;
+	p->password = password;
 	conn->rqsize += sizeof(*p);
 	if ((error = ncp_conn_request(connHandle, conn)) < 0) 
 		return -1;
