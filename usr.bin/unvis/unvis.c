@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)unvis.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/unvis/unvis.c,v 1.5.2.1 2001/07/30 10:16:49 dd Exp $
- * $DragonFly: src/usr.bin/unvis/unvis.c,v 1.3 2003/10/04 20:36:54 hmp Exp $
+ * $DragonFly: src/usr.bin/unvis/unvis.c,v 1.4 2005/01/03 01:06:24 cpressey Exp $
  */
 
 #include <err.h>
@@ -42,7 +42,7 @@
 #include <unistd.h>
 #include <vis.h>
 
-void process(FILE *, char *);
+static void process(FILE *, const char *);
 static void usage(void);
 
 int
@@ -80,10 +80,10 @@ usage(void)
 	exit(1);
 }
 
-void
-process(FILE *fp, char *filename)
+static void
+process(FILE *fp, const char *filename)
 {
-	register int offset = 0, c, ret;
+	int offset = 0, c, ret;
 	int state = 0;
 	char outc;
 
