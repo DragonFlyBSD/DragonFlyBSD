@@ -34,7 +34,7 @@
  *
  *	from: @(#)endian.h	7.8 (Berkeley) 4/3/91
  * $FreeBSD: src/sys/i386/include/endian.h,v 1.18 1999/12/29 04:33:01 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/endian.h,v 1.5 2004/08/23 21:16:38 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/endian.h,v 1.6 2004/11/15 08:16:02 joerg Exp $
  */
 
 #ifndef _MACHINE_ENDIAN_H_
@@ -101,7 +101,9 @@
 
 #if (defined(_KERNEL)  && !defined(I386_CPU) && \
 	(defined(I486_CPU) || defined(I586_CPU) || defined(I686_CPU))) || \
-    defined(__i486__) || defined(__i586__) || defined(__i686__)
+    defined(__i486__) || defined(__i586__) || defined(__i686__) || \
+    defined(__k6__) || defined(__athlon__) || defined(__k8__) || \
+    defined(__pentium4__)
 
 #define __byte_swap32_var(x) \
 	__extension__ ({ register __uint32_t __X = (x); \
