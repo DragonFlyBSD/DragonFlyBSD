@@ -2,7 +2,7 @@
      The DragonFly BSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/basics/chapter.sgml,v 1.124 2004/01/22 16:21:04 simon Exp $
-     $DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.2 2004/06/28 21:00:57 justin Exp $
+     $DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.3 2004/10/07 20:03:22 justin Exp $
 -->
 
 <chapter id="basics">
@@ -774,6 +774,11 @@ total 530
 	    <row>
 	      <entry><filename class="directory">/usr/ports</filename></entry>
 	      <entry>The FreeBSD ports collection (optional).</entry>
+	    </row>
+
+	    <row>
+	      <entry><filename class="directory">/usr/dfports</filename></entry>
+	      <entry>The &os; ports collection (optional).</entry>
 	    </row>
 	    
 	    <row>
