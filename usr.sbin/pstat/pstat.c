@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.5 2003/11/03 19:31:41 eirikn Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.6 2004/01/02 18:19:49 eirikn Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -208,9 +208,7 @@ void	vnode_print(struct vnode *, struct vnode *);
 void	vnodemode(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch, i, quit, ret;
 	int fileflag, ttyflag, vnodeflag;
@@ -306,7 +304,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: %s\n", usagestr);
 	exit (1);
@@ -318,7 +316,7 @@ struct e_vnode {
 };
 
 void
-vnodemode()
+vnodemode(void)
 {
 	struct e_vnode *e_vnodebase, *endvnode, *evp;
 	struct vnode *vp;
@@ -370,15 +368,13 @@ vnodemode()
 }
 
 void
-vnode_header()
+vnode_header(void)
 {
 	(void)printf("ADDR     TYP VFLAG  USE HOLD");
 }
 
 void
-vnode_print(avnode, vp)
-	struct vnode *avnode;
-	struct vnode *vp;
+vnode_print(struct vnode *avnode, struct vnode *vp)
 {
 	char *type, flags[16];
 	char *fp = flags;
@@ -452,14 +448,13 @@ vnode_print(avnode, vp)
 }
 
 void
-ufs_header()
+ufs_header(void)
 {
 	(void)printf(" FILEID IFLAG RDEV|SZ");
 }
 
 int
-ufs_print(vp)
-	struct vnode *vp;
+ufs_print(struct vnode *vp)
 {
 	int flag;
 	struct inode inode, *ip = &inode;
@@ -505,14 +500,13 @@ ufs_print(vp)
 }
 
 void
-nfs_header()
+nfs_header(void)
 {
 	(void)printf(" FILEID NFLAG RDEV|SZ");
 }
 
 int
-nfs_print(vp)
-	struct vnode *vp;
+nfs_print(struct vnode *vp)
 {
 	struct nfsnode nfsnode, *np = &nfsnode;
 	char flagbuf[16], *flags = flagbuf;
@@ -565,14 +559,13 @@ nfs_print(vp)
 }
 
 void
-union_header() 
+union_header(void)
 {
 	(void)printf("    UPPER    LOWER");
 }
 
 int
-union_print(vp) 
-	struct vnode *vp;
+union_print(struct vnode *vp)
 {
 	struct union_node unode, *up = &unode;
 
@@ -588,8 +581,7 @@ union_print(vp)
  * read it in and return a usable pointer to it.
  */
 struct mount *
-getmnt(maddr)
-	struct mount *maddr;
+getmnt(struct mount *maddr)
 {
 	static struct mtab {
 		struct mtab *next;
@@ -611,8 +603,7 @@ getmnt(maddr)
 }
 
 void
-mount_print(mp)
-	struct mount *mp;
+mount_print(struct mount *mp)
 {
 	int flags;
 	const char *type;
@@ -640,8 +631,7 @@ mount_print(mp)
 }
 
 struct e_vnode *
-loadvnodes(avnodes)
-	int *avnodes;
+loadvnodes(int *avnodes)
 {
 	int mib[2];
 	size_t copysize;
@@ -672,8 +662,7 @@ loadvnodes(avnodes)
  * simulate what a running kernel does in in kinfo_vnode
  */
 struct e_vnode *
-kinfo_vnodes(avnodes)
-	int *avnodes;
+kinfo_vnodes(int *avnodes)
 {
 	struct mntlist mountlist;
 	struct mount *mp, mount, *mp_next;
@@ -718,7 +707,7 @@ char hdr[] =
 int ttyspace = 128;
 
 void
-ttymode()
+ttymode(void)
 {
 	struct tty *tty;
 	struct tty ttyb[1000];
@@ -758,10 +747,7 @@ ttymode()
 }
 
 void
-ttytype(tty, name, type, number, indir)
-	struct tty *tty;
-	char *name;
-	int type, number, indir;
+ttytype(struct tty *tty, char *name, int type, int number, int indir)
 {
 	struct tty *tp;
 	int ntty;
@@ -842,9 +828,7 @@ struct {
 };
 
 void
-ttyprt(tp, line)
-	struct tty *tp;
-	int line;
+ttyprt(struct tty *tp, int line)
 {
 	int i, j;
 	pid_t pgid;
@@ -890,7 +874,7 @@ ttyprt(tp, line)
 }
 
 void
-filemode()
+filemode(void)
 {
 	struct file *fp;
 	struct file *addr;
@@ -950,9 +934,7 @@ filemode()
 }
 
 int
-getfiles(abuf, alen)
-	char **abuf;
-	int *alen;
+getfiles(char **abuf, int *alen)
 {
 	size_t len;
 	int mib[2];
