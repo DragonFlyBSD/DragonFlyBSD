@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)head.c	8.2 (Berkeley) 4/20/95
- * $FreeBSD: src/usr.bin/mail/head.c,v 1.1.1.1.14.4 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/head.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
+ * $FreeBSD: src/usr.bin/mail/head.c,v 1.1.1.1.14.5 2003/06/17 04:25:07 mikeh Exp $
+ * $DragonFly: src/usr.bin/mail/head.c,v 1.4 2004/07/24 06:25:29 hmp Exp $
  */
 
 #include "rcv.h"
@@ -55,11 +55,11 @@ ishead(char *linebuf)
 	struct headline hl;
 	char parbuf[BUFSIZ];
 
-	if (strncmp(linebuf, "From ", 5))
+	if (strncmp(linebuf, "From ", 5) != 0)
 		return (0);
 	parse(linebuf, &hl, parbuf);
-	if (hl.l_from == NULL || hl.l_date == NULL) {
-		fail(linebuf, "No from or date field");
+	if (hl.l_date == NULL) {
+		fail(linebuf, "No date field");
 		return (0);
 	}
 	if (!isdate(hl.l_date)) {
@@ -105,10 +105,17 @@ parse(char *line, struct headline *hl, char *pbuf)
 	 * Skip over "From" first.
 	 */
 	cp = nextword(cp, word);
+	/*
+	 * Check for missing return-path.
+	 */
+	if (isdate(cp)) {
+		hl->l_date = copyin(cp, &sp);
+		return;
+	}
 	cp = nextword(cp, word);
-	if (*word != '\0')
+	if (strlen(word) > 0)
 		hl->l_from = copyin(word, &sp);
-	if (cp != NULL && cp[0] == 't' && cp[1] == 't' && cp[2] == 'y') {
+	if (cp != NULL && strncmp(cp, "tty", 3) == 0) {
 		cp = nextword(cp, word);
 		hl->l_tty = copyin(word, &sp);
 	}
