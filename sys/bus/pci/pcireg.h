@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcireg.h,v 1.24.2.5 2002/08/31 10:06:51 gibbs Exp $
- * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.10 2004/07/21 07:15:37 asmodai Exp $
+ * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.11 2004/07/21 07:21:01 asmodai Exp $
  *
  */
 
@@ -36,6 +36,7 @@
  * PCIP_xxx: device programming interface
  * PCIV_xxx: PCI vendor ID (only required to fixup ancient devices)
  * PCID_xxx: device ID
+ * PCIY_xxx: capability identification number
  */
 
 /* some PCI bus constants */
