@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.67 2005/02/08 02:11:28 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.68 2005/02/08 02:13:13 okumoto Exp $
  */
 
 /*-
@@ -144,7 +144,6 @@ static Var *VarCreate(const char [], const char [], int);
 static void VarDestroy(Var *, Boolean);
 static char *VarGetPattern(GNode *, int, char **, int, int *, size_t *,
 			   VarPattern *);
-static char *VarModify(char *, VarModifyProc *, void *);
 static int VarPrintVar(void *, void *);
 
 /*-
