@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.3 2003/06/19 00:54:14 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -600,8 +600,6 @@ ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 			return;
 		}
 		if (bif != BDG_LOCAL) {
-			struct mbuf *oldm = m ;
-
 			save_eh = *eh ; /* because it might change */
 			m = bdg_forward_ptr(m, eh, bif); /* needs forwarding */
 			/*
