@@ -35,7 +35,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.6 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.7 2003/09/02 22:25:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,57 +52,57 @@
 #include <sys/fnv_hash.h>
 
 /*
- * This structure describes the elements in the cache of recent
- * names looked up by namei.
+ * The namecache structure describes the elements in the cache of recent
+ * names looked up by namei.  The cache is nominally LRU, but namecache
+ * path element sequences to active vnodes and in-progress lookups are
+ * always retained.  Non-inclusive of retained entries, the cache is
+ * mananged in an LRU fashion.
+ *
+ * random lookups in the cache are accomplished with a hash atble using
+ * a hash key of (nc_src_vp, name).
+ *
+ * Negative entries may exist and correspond to structures where nc_dst_vp
+ * is NULL.  In a negative entry, NCF_WHITEOUT will be set if the entry
+ * corresponds to a whited-out directory entry (verses simply not finding the
+ * entry at all).
+ *
+ * Upon reaching the last segment of a path, if the reference is for DELETE,
+ * or NOCACHE is set (rewrite), and the name is located in the cache, it
+ * will be dropped.
  */
-
 struct	namecache {
-	LIST_ENTRY(namecache) nc_hash;	/* hash chain */
-	LIST_ENTRY(namecache) nc_src;	/* source vnode list */
+	LIST_ENTRY(namecache) nc_hash;	/* hash chain (nc_src_vp,name) */
+	LIST_ENTRY(namecache) nc_src;	/* scan via nc_src_vp based list */
 	TAILQ_ENTRY(namecache) nc_dst;	/* destination vnode list */
-	struct	vnode *nc_dvp;		/* vnode of parent of name */
-	struct	vnode *nc_vp;		/* vnode the name refers to */
-	u_char	nc_flag;		/* flag bits */
-	u_char	nc_nlen;		/* length of name */
-	char	nc_name[0];		/* segment name */
+	struct	vnode *nc_src_vp;	/* directory containing name */
+	struct	vnode *nc_dst_vp;	/* vnode representing name or NULL */
+	u_char	nc_flag;
+	u_char	nc_nlen;		/* The length of the name, 255 max */
+	char	nc_name[0];		/* The segment name (embedded) */
 };
-
-/*
- * Name caching works as follows:
- *
- * Names found by directory scans are retained in a cache
- * for future reference.  It is managed LRU, so frequently
- * used names will hang around.  Cache is indexed by hash value
- * obtained from (vp, name) where vp refers to the directory
- * containing name.
- *
- * If it is a "negative" entry, (i.e. for a name that is known NOT to
- * exist) the vnode pointer will be NULL.
- *
- * Upon reaching the last segment of a path, if the reference
- * is for DELETE, or NOCACHE is set (rewrite), and the
- * name is located in the cache, it will be dropped.
- */
 
 /*
  * Structures associated with name cacheing.
  */
-#define NCHHASH(hash) \
-	(&nchashtbl[(hash) & nchash])
+#define NCHHASH(hash)	(&nchashtbl[(hash) & nchash])
+
 static LIST_HEAD(nchashhead, namecache) *nchashtbl;	/* Hash Table */
-static TAILQ_HEAD(, namecache) ncneg;	/* Hash Table */
+static TAILQ_HEAD(, namecache) ncneg;			/* Hash Table */
+
 static u_long	nchash;			/* size of hash table */
 SYSCTL_ULONG(_debug, OID_AUTO, nchash, CTLFLAG_RD, &nchash, 0, "");
+
 static u_long	ncnegfactor = 16;	/* ratio of negative entries */
 SYSCTL_ULONG(_debug, OID_AUTO, ncnegfactor, CTLFLAG_RW, &ncnegfactor, 0, "");
+
 static u_long	numneg;		/* number of cache entries allocated */
 SYSCTL_ULONG(_debug, OID_AUTO, numneg, CTLFLAG_RD, &numneg, 0, "");
+
 static u_long	numcache;		/* number of cache entries allocated */
 SYSCTL_ULONG(_debug, OID_AUTO, numcache, CTLFLAG_RD, &numcache, 0, "");
+
 struct	nchstats nchstats;		/* cache effectiveness statistics */
 
-static int	doingcache = 1;		/* 1 => enable the cache */
-SYSCTL_INT(_debug, OID_AUTO, vfscache, CTLFLAG_RW, &doingcache, 0, "");
 SYSCTL_INT(_debug, OID_AUTO, vnsize, CTLFLAG_RD, 0, sizeof(struct vnode), "");
 SYSCTL_INT(_debug, OID_AUTO, ncsize, CTLFLAG_RD, 0, sizeof(struct namecache), "");
 
@@ -133,21 +133,21 @@ MALLOC_DEFINE(M_VFSCACHE, "vfscache", "VFS name cache entries");
 /*
  * Flags in namecache.nc_flag
  */
-#define NCF_WHITE	1
+#define NCF_WHITE	0x01	/* negative entry corresponds to whiteout */
+
 /*
  * Delete an entry from its hash list and move it to the front
  * of the LRU list for immediate reuse.
  */
 static void
-cache_zap(ncp)
-	struct namecache *ncp;
+cache_zap(struct namecache *ncp)
 {
 	LIST_REMOVE(ncp, nc_hash);
 	LIST_REMOVE(ncp, nc_src);
-	if (LIST_EMPTY(&ncp->nc_dvp->v_cache_src)) 
-		vdrop(ncp->nc_dvp);
-	if (ncp->nc_vp) {
-		TAILQ_REMOVE(&ncp->nc_vp->v_cache_dst, ncp, nc_dst);
+	if (LIST_EMPTY(&ncp->nc_src_vp->v_cache_src)) 
+		vdrop(ncp->nc_src_vp);
+	if (ncp->nc_dst_vp) {
+		TAILQ_REMOVE(&ncp->nc_dst_vp->v_cache_dst, ncp, nc_dst);
 	} else {
 		TAILQ_REMOVE(&ncneg, ncp, nc_dst);
 		numneg--;
@@ -172,18 +172,10 @@ cache_zap(ncp)
  */
 
 int
-cache_lookup(dvp, vpp, cnp)
-	struct vnode *dvp;
-	struct vnode **vpp;
-	struct componentname *cnp;
+cache_lookup(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp)
 {
 	struct namecache *ncp;
 	u_int32_t hash;
-
-	if (!doingcache) {
-		cnp->cn_flags &= ~MAKEENTRY;
-		return (0);
-	}
 
 	numcalls++;
 
@@ -209,7 +201,7 @@ cache_lookup(dvp, vpp, cnp)
 	hash = fnv_32_buf(&dvp->v_id, sizeof(dvp->v_id), hash);
 	LIST_FOREACH(ncp, (NCHHASH(hash)), nc_hash) {
 		numchecks++;
-		if (ncp->nc_dvp == dvp && ncp->nc_nlen == cnp->cn_namelen &&
+		if (ncp->nc_src_vp == dvp && ncp->nc_nlen == cnp->cn_namelen &&
 		    !bcmp(ncp->nc_name, cnp->cn_nameptr, ncp->nc_nlen))
 			break;
 	}
@@ -234,10 +226,10 @@ cache_lookup(dvp, vpp, cnp)
 	}
 
 	/* We found a "positive" match, return the vnode */
-        if (ncp->nc_vp) {
+        if (ncp->nc_dst_vp) {
 		numposhits++;
 		nchstats.ncs_goodhits++;
-		*vpp = ncp->nc_vp;
+		*vpp = ncp->nc_dst_vp;
 		return (-1);
 	}
 
@@ -252,7 +244,7 @@ cache_lookup(dvp, vpp, cnp)
 	numneghits++;
 	/*
 	 * We found a "negative" match, ENOENT notifies client of this match.
-	 * The nc_vpid field records whether this is a whiteout.
+	 * The nc_flag field records whether this is a whiteout.
 	 */
 	TAILQ_REMOVE(&ncneg, ncp, nc_dst);
 	TAILQ_INSERT_TAIL(&ncneg, ncp, nc_dst);
@@ -266,18 +258,12 @@ cache_lookup(dvp, vpp, cnp)
  * Add an entry to the cache.
  */
 void
-cache_enter(dvp, vp, cnp)
-	struct vnode *dvp;
-	struct vnode *vp;
-	struct componentname *cnp;
+cache_enter(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 {
 	struct namecache *ncp;
 	struct nchashhead *ncpp;
 	u_int32_t hash;
 	int len;
-
-	if (!doingcache)
-		return;
 
 	if (cnp->cn_nameptr[0] == '.') {
 		if (cnp->cn_namelen == 1) {
@@ -310,11 +296,10 @@ cache_enter(dvp, vp, cnp)
 	/*
 	 * Fill in cache info, if vp is NULL this is a "negative" cache entry.
 	 * For negative entries, we have to record whether it is a whiteout.
-	 * the whiteout flag is stored in the nc_vpid field which is
-	 * otherwise unused.
+	 * the whiteout flag is stored in the nc_flag field.
 	 */
-	ncp->nc_vp = vp;
-	ncp->nc_dvp = dvp;
+	ncp->nc_dst_vp = vp;
+	ncp->nc_src_vp = dvp;
 	len = ncp->nc_nlen = cnp->cn_namelen;
 	hash = fnv_32_buf(cnp->cn_nameptr, len, FNV1_32_INIT);
 	bcopy(cnp->cn_nameptr, ncp->nc_name, len);
@@ -339,9 +324,8 @@ cache_enter(dvp, vp, cnp)
  * Name cache initialization, from vfs_init() when we are booting
  */
 void
-nchinit()
+nchinit(void)
 {
-
 	TAILQ_INIT(&ncneg);
 	nchashtbl = hashinit(desiredvnodes*2, M_VFSCACHE, &nchash);
 }
@@ -363,8 +347,7 @@ nchinit()
  */
 
 void
-cache_purge(vp)
-	struct vnode *vp;
+cache_purge(struct vnode *vp)
 {
 	static u_long nextid;
 
@@ -373,9 +356,9 @@ cache_purge(vp)
 	while (!TAILQ_EMPTY(&vp->v_cache_dst)) 
 		cache_zap(TAILQ_FIRST(&vp->v_cache_dst));
 
-	do
+	do {
 		nextid++;
-	while (nextid == vp->v_id || !nextid);
+	} while (nextid == vp->v_id || !nextid);
 	vp->v_id = nextid;
 	vp->v_dd = vp;
 	vp->v_ddid = 0;
@@ -388,8 +371,7 @@ cache_purge(vp)
  * entries at the same time.
  */
 void
-cache_purgevfs(mp)
-	struct mount *mp;
+cache_purgevfs(struct mount *mp)
 {
 	struct nchashhead *ncpp;
 	struct namecache *ncp, *nnp;
@@ -398,7 +380,7 @@ cache_purgevfs(mp)
 	for (ncpp = &nchashtbl[nchash]; ncpp >= nchashtbl; ncpp--) {
 		for (ncp = LIST_FIRST(ncpp); ncp != 0; ncp = nnp) {
 			nnp = LIST_NEXT(ncp, nc_hash);
-			if (ncp->nc_dvp->v_mount == mp) {
+			if (ncp->nc_src_vp->v_mount == mp) {
 				cache_zap(ncp);
 			}
 		}
@@ -424,7 +406,7 @@ cache_leaf_test(struct vnode *vp)
 	     ncpc != NULL;
 	     ncpc = LIST_NEXT(ncpc, nc_src)
 	) {
-		if (ncpc->nc_vp != NULL && ncpc->nc_vp->v_type == VDIR)
+		if (ncpc->nc_dst_vp != NULL && ncpc->nc_dst_vp->v_type == VDIR)
 			return(-1);
 	}
 	return(0);
@@ -433,15 +415,15 @@ cache_leaf_test(struct vnode *vp)
 /*
  * Perform canonical checks and cache lookup and pass on to filesystem
  * through the vop_cachedlookup only if needed.
+ *
+ * vop_lookup_args {
+ *	struct vnode a_dvp;
+ *	struct vnode **a_vpp;
+ *	struct componentname *a_cnp;
+ * }
  */
-
 int
-vfs_cache_lookup(ap)
-	struct vop_lookup_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-	} */ *ap;
+vfs_cache_lookup(struct vop_lookup_args *ap)
 {
 	struct vnode *dvp, *vp;
 	int lockparent;
@@ -572,7 +554,7 @@ __getcwd(struct __getcwd_args *uap)
 			free(buf, M_TEMP);
 			return (ENOENT);
 		}
-		if (ncp->nc_dvp != vp->v_dd) {
+		if (ncp->nc_src_vp != vp->v_dd) {
 			numcwdfail3++;
 			free(buf, M_TEMP);
 			return (EBADF);
@@ -629,7 +611,8 @@ STATNODE(numfullpathfail4);
 STATNODE(numfullpathfound);
 
 int
-textvp_fullpath(struct proc *p, char **retbuf, char **retfreebuf) {
+textvp_fullpath(struct proc *p, char **retbuf, char **retfreebuf) 
+{
 	char *bp, *buf;
 	int i, slash_prefixed;
 	struct filedesc *fdp;
@@ -667,7 +650,7 @@ textvp_fullpath(struct proc *p, char **retbuf, char **retfreebuf) {
 			free(buf, M_TEMP);
 			return (ENOENT);
 		}
-		if (vp != textvp && ncp->nc_dvp != vp->v_dd) {
+		if (vp != textvp && ncp->nc_src_vp != vp->v_dd) {
 			numfullpathfail3++;
 			free(buf, M_TEMP);
 			return (EBADF);
@@ -687,7 +670,7 @@ textvp_fullpath(struct proc *p, char **retbuf, char **retfreebuf) {
 		}
 		*--bp = '/';
 		slash_prefixed = 1;
-		vp = ncp->nc_dvp;
+		vp = ncp->nc_src_vp;
 	}
 	if (!slash_prefixed) {
 		if (bp == buf) {
@@ -702,3 +685,4 @@ textvp_fullpath(struct proc *p, char **retbuf, char **retfreebuf) {
 	*retfreebuf = buf;
 	return (0);
 }
+
