@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.56 2005/02/16 22:38:03 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.57 2005/02/28 12:17:37 okumoto Exp $
  */
 
 /*-
@@ -805,17 +805,16 @@ main(int argc, char **argv)
 		static char VPATH[] = "${VPATH}";
 		Buffer	*buf;
 		char	*vpath;
+		char	*ptr;
 		char	savec;
 
 		buf = Var_Subst(NULL, VPATH, VAR_CMD, FALSE);
 
 		vpath = Buf_GetAll(buf, NULL);
 		do {
-			char *ptr;
-
-			/* skip to end of directory name */
+			/* skip to end of directory */
 			for (ptr = vpath; *ptr != ':' && *ptr != '\0'; ptr++)
-				continue;
+				;
 
 			/* Save terminator character so know when to stop */
 			savec = *ptr;
@@ -891,7 +890,7 @@ main(int argc, char **argv)
 		 */
 		LstNode *n;
 
-		for (n = Lst_First(&variables); n != NULL; n = Lst_Succ(n)) {
+		LST_FOREACH(n, &variables) {
 			const char	*name = Lst_Datum(n);
 			if (expandVars) {
 				Buffer		*buf;
@@ -905,14 +904,15 @@ main(int argc, char **argv)
 				value = Buf_GetAll(buf, NULL);
 				printf("%s\n", value);
 
-				Buf_Destroy(buf, FALSE);
+				Buf_Destroy(buf, TRUE);
 				free(v);
 			} else {
 				char	*value;
-				value = Var_Value(name, VAR_GLOBAL, &p1);
-				printf("%s\n", value ? value : "");
-				if (p1)
-					free(p1);
+				char	*v;
+				value = Var_Value(name, VAR_GLOBAL, &v);
+				printf("%s\n", value != NULL ? value : "");
+				if (v != NULL)
+					free(v);
 			}
 		}
 	}

@@ -31,7 +31,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.35 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.34 2005/02/28 12:00:10 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.35 2005/02/28 12:17:37 okumoto Exp $
  */
 
 /*-
@@ -291,7 +291,6 @@ For_Run(int lineno)
 		Var_Set(var, val, VAR_GLOBAL);
 
 		DEBUGF(FOR, ("--- %s = %s\n", var, val));
-
 		buf1 = Var_Subst(var, (char *)Buf_GetAll(buf, NULL),
 		    VAR_GLOBAL, FALSE);
 		str = Buf_GetAll(buf1, NULL);

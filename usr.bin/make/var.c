@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.109 2005/02/28 12:00:10 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.110 2005/02/28 12:17:37 okumoto Exp $
  */
 
 /*-
@@ -215,6 +215,8 @@ VarCmp(const void *v, const void *name)
 static char *
 VarPossiblyExpand(const char *name, GNode *ctxt)
 {
+	Buffer	*buf;
+	char	*str;
 	char	*tmp;
 
 	/*
@@ -223,13 +225,11 @@ VarPossiblyExpand(const char *name, GNode *ctxt)
 	 */
 	tmp = estrdup(name);
 	if (strchr(name, '$') != NULL) {
-		Buffer	*buf;
-		char	*str;
-
 		buf = Var_Subst(NULL, tmp, ctxt, 0);
 		str = Buf_GetAll(buf, NULL);
 		Buf_Destroy(buf, FALSE);
 
+		free(tmp);
 		return (str);
 	} else {
 		return (tmp);
