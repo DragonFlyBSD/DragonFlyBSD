@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/disklabel.h,v 1.9 2005/03/16 06:29:03 joerg Exp $
+ * $DragonFly: src/sys/sys/disklabel.h,v 1.10 2005/03/17 07:11:15 y0netan1 Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -268,7 +268,7 @@ static const char *dktypenames[] = {
 #define	FS_VINUM	14		/* Vinum drive */
 
 #ifdef	DKTYPENAMES
-static char *fstypenames[] = {
+static const char *fstypenames[] = {
 	"unused",
 	"swap",
 	"Version 6",
