@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mkfifo.c	8.2 (Berkeley) 1/5/94
  * $FreeBSD: src/usr.bin/mkfifo/mkfifo.c,v 1.5 1999/08/28 01:04:06 peter Exp $
- * $DragonFly: src/usr.bin/mkfifo/mkfifo.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
+ * $DragonFly: src/usr.bin/mkfifo/mkfifo.c,v 1.4 2004/12/28 20:47:40 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -42,7 +42,6 @@
 #include <err.h>
 #include <errno.h>
 #include <stdio.h>
-#include <string.h>
 #include <unistd.h>
 
 #define	BASEMODE	S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | \
@@ -55,10 +54,12 @@ static int f_mode;
 int
 main(int argc, char **argv)
 {
-	char *modestr;
+	const char *modestr;
 	void *modep;
 	mode_t fifomode;
 	int ch, exitval;
+
+	modestr = NULL;
 
 	while ((ch = getopt(argc, argv, "m:")) != -1)
 		switch(ch) {
@@ -80,7 +81,7 @@ main(int argc, char **argv)
 		errno = 0;
 		if ((modep = setmode(modestr)) == NULL) {
 			if (errno)
-				err(1, "setmode");
+				err(1, "malloc failed");
 			errx(1, "invalid file mode: %s", modestr);
 		}
 		fifomode = getmode(modep, BASEMODE);
@@ -99,6 +100,6 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: mkfifo [-m mode] fifo_name ...\n");
+	fprintf(stderr, "usage: mkfifo [-m mode] fifo_name ...\n");
 	exit(1);
 }
