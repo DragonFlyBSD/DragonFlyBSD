@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)mount_union.8	8.6 (Berkeley) 3/27/94
 .\" $FreeBSD: src/sbin/mount_union/mount_union.8,v 1.6.2.2 2001/12/20 16:46:05 ru Exp $
-.\" $DragonFly: src/sbin/mount_union/mount_union.8,v 1.2 2003/06/17 04:27:33 dillon Exp $
+.\" $DragonFly: src/sbin/mount_union/mount_union.8,v 1.3 2004/07/17 17:43:35 dillon Exp $
 .\"
 .Dd March 27, 1994
 .Dt MOUNT_UNION 8
@@ -93,6 +93,10 @@ Hide the lower layer completely in the same way as mounting with
 To enforce filesystem security, the user mounting the filesystem
 must be superuser or else have write permission on the mounted-on
 directory.
+In addition, the
+.Em vfs.usermount
+.Xr sysctl 3
+variable must be set to 1 to permit file system mounting by ordinary users.
 .Pp
 Filenames are looked up in the upper layer and then in the
 lower layer.
