@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.8 2004/01/06 01:40:45 dillon Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.9 2004/02/12 22:38:59 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -51,11 +51,7 @@
 #include <net/if_media.h>
 #include <net/iso88025.h>
 
-#if (__FreeBSD_version < 400000)
-#include <bpfilter.h>
-#endif
-
-#if (NBPFILTER > 0) || (__FreeBSD_version > 400000)
+#if (NBPFILTER > 0)
 #include <net/bpf.h>
 #endif
 
@@ -228,7 +224,7 @@ static void oltr_intr		(void *);
 static int oltr_ifmedia_upd	(struct ifnet *);
 static void oltr_ifmedia_sts	(struct ifnet *, struct ifmediareq *);
 
-#if __FreeBSD_version > 400000
+#if defined(__DragonFly__) || __FreeBSD_version > 400000
 
 static int oltr_pci_probe		(device_t);
 static int oltr_pci_attach	(device_t);
@@ -421,7 +417,7 @@ oltr_pci_attach(device_t dev)
 	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
 	iso88025_ifattach(ifp);
 
-#if (NBPFILTER > 0) || (__FreeBSD_version > 400000)
+#if (NBPFILTER > 0) || defined(__DragonFly__) || (__FreeBSD_version > 400000)
 	bpfattach(ifp, DLT_IEEE802, sizeof(struct iso88025_header));
 #endif
 
@@ -663,7 +659,7 @@ oltr_pci_attach(pcici_t config_id, int unit)
 	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
 	iso88025_ifattach(ifp);
 
-#if (NBPFILTER > 0) || (__FreeBSD_version > 400000)
+#if (NBPFILTER > 0) || defined(__DragonFly__) || (__FreeBSD_version > 400000)
 	bpfattach(ifp, DLT_IEEE802, sizeof(struct iso88025_header));
 #endif
 
@@ -758,7 +754,7 @@ outloop:
 	sc->tx_head = RING_BUFFER((sc->tx_head + sc->frame_ring[frame].FragmentCount));
 	sc->tx_frame++;
 
-#if (NBPFILTER > 0) || (__FreeBSD_version > 400000)
+#if (NBPFILTER > 0) || defined(__DragonFly__) || (__FreeBSD_version > 400000)
 	if (ifp->if_bpf)
 		bpf_mtap(ifp, m0);
 #endif
@@ -1463,7 +1459,7 @@ DriverReceiveFrameCompleted(void *DriverHandle, int ByteCount, int FragmentCount
 					m->m_len = 0;
 				}
 			}
-#if (NBPFILTER > 0) || (__FreeBSD_version > 400000)
+#if (NBPFILTER > 0) || defined(__DragonFly__) || (__FreeBSD_version > 400000)
 			if (ifp->if_bpf)
 				bpf_mtap(ifp, m0);
 #endif

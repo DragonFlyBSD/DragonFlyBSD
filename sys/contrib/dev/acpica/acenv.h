@@ -113,7 +113,7 @@
  * such license, approval or letter.
  *
  *****************************************************************************/
-/* $DragonFly: src/sys/contrib/dev/acpica/Attic/acenv.h,v 1.1 2003/09/24 03:32:15 drhodus Exp $                                                               */
+/* $DragonFly: src/sys/contrib/dev/acpica/Attic/acenv.h,v 1.2 2004/02/12 22:38:59 joerg Exp $                                                               */
 
 #ifndef __ACENV_H__
 #define __ACENV_H__
@@ -205,7 +205,7 @@
 #elif defined(MSDOS)        /* Must appear after WIN32 and WIN64 check */
 #include "acdos16.h"
 
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include "acfreebsd.h"
 
 #elif defined(MODESTO)
