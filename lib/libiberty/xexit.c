@@ -22,19 +22,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libiberty/lbasename.c,v 1.3 2004/10/23 12:15:21 joerg Exp $
+ * $DragonFly: src/lib/libiberty/xexit.c,v 1.1 2004/10/23 12:15:21 joerg Exp $
  */
 
 #include <libiberty.h>
-#include <string.h>
+#include <stdlib.h>
 
-const char *
-lbasename(const char *path)
+void
+xexit(int code)
 {
-	const char *b = strrchr(path, '/');
-
-	if (b != NULL)
-		return(b);
-	else
-		return(path);
+	exit(code);
 }

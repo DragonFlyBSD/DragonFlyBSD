@@ -22,17 +22,41 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/include/libiberty.h,v 1.2 2004/06/09 12:32:07 joerg Exp $
+ * $DragonFly: src/include/libiberty.h,v 1.3 2004/10/23 12:15:21 joerg Exp $
  */
 
 #ifndef _LIBIBERTY_H_
 #define _LIBIBERTY_H_
 
 #include <sys/cdefs.h>
+#include <sys/stdint.h>
+
+#ifndef _SIZE_T_DECLARED
+#define _SIZE_T_DECLARED
+typedef __size_t	size_t;
+#endif
 
 __BEGIN_DECLS
+char **		buildargv(const char *);
+void		freeargv(char **);
+char **		dupargv(char * const *);
+
+void		hex_init(void);
+int		hex_p(int);
+unsigned int	hex_value(int);
+
+char *		concat(const char *, ...);
+char *		reconcat(char *, ...);
 const char *	lbasename(const char *);
 char *		lrealpath(const char *);
+int		xatexit(void (*)(void));
+void *		xcalloc(size_t, size_t);
+void		xexit(int);
+void *		xmalloc(size_t);
+void *		xmemdup(const void *, size_t, size_t);
+void *		xrealloc(void *, size_t);
+char *		xstrdup(const char *);
+char *		xstrerror(int error);
 __END_DECLS
 
 #endif

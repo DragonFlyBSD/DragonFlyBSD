@@ -22,19 +22,18 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libiberty/lbasename.c,v 1.3 2004/10/23 12:15:21 joerg Exp $
+ * $DragonFly: src/lib/libiberty/xmemdup.c,v 1.1 2004/10/23 12:15:21 joerg Exp $
  */
 
-#include <libiberty.h>
 #include <string.h>
+#include <libiberty.h>
 
-const char *
-lbasename(const char *path)
+void *
+xmemdup(const void *input, size_t input_size, size_t buffer_size)
 {
-	const char *b = strrchr(path, '/');
+	char *tmp;
 
-	if (b != NULL)
-		return(b);
-	else
-		return(path);
+	tmp = xcalloc(1, buffer_size);
+	memcpy(tmp, input, input_size);
+	return(tmp);
 }

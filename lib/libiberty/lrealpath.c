@@ -22,10 +22,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libiberty/lrealpath.c,v 1.1 2004/06/09 12:32:07 joerg Exp $
+ * $DragonFly: src/lib/libiberty/lrealpath.c,v 1.2 2004/10/23 12:15:21 joerg Exp $
  */
 
 #include <sys/param.h>
+#include <libiberty.h>
 #include <stdlib.h>
 #include <string.h>
 

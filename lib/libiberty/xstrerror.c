@@ -22,19 +22,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libiberty/lbasename.c,v 1.3 2004/10/23 12:15:21 joerg Exp $
+ * $DragonFly: src/lib/libiberty/xstrerror.c,v 1.1 2004/10/23 12:15:21 joerg Exp $
  */
 
 #include <libiberty.h>
 #include <string.h>
 
-const char *
-lbasename(const char *path)
+char *
+xstrerror(int error)
 {
-	const char *b = strrchr(path, '/');
-
-	if (b != NULL)
-		return(b);
-	else
-		return(path);
+	return(strerror(error));
 }
