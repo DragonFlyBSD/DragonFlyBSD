@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.h,v 1.22.2.7 2002/03/18 08:37:33 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.h,v 1.4 2004/02/18 02:47:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.h,v 1.5 2004/09/18 18:33:38 dillon Exp $
  */
 
 /* structure describing an ATA disk request */
@@ -36,7 +36,7 @@ struct ad_request {
     u_int32_t			bytecount;	/* bytes to transfer */
     u_int32_t			donecount;	/* bytes transferred */
     u_int32_t			currentsize;	/* size of current transfer */
-    struct callout_handle	timeout_handle; /* handle for untimeout */ 
+    struct callout		callout; 	/* handle for timeout */ 
     int				retries;	/* retry count */
     int				flags;
 #define		ADR_F_READ		0x0001

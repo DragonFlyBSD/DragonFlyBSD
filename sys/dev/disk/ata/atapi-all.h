@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.h,v 1.22.2.10 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.h,v 1.4 2004/02/18 04:08:49 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.h,v 1.5 2004/09/18 18:33:38 dillon Exp $
  */
 
 /* ATAPI misc defines */
@@ -153,7 +153,7 @@ struct atapi_request {
     u_int32_t			bytecount;	/* bytes to transfer */
     u_int32_t			donecount;	/* bytes transferred */
     int				timeout;	/* timeout for this cmd */
-    struct callout_handle	timeout_handle; /* handle for untimeout */
+    struct callout		callout;
     int				retries;	/* retry count */
     int				result;		/* result of this cmd */
     int				error;		/* result translated to errno */

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.13 2004/08/17 20:59:39 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.14 2004/09/18 18:33:38 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -187,6 +187,7 @@ atapi_queue_cmd(struct ata_device *atadev, int8_t *ccb, caddr_t data,
     request->error = EINPROGRESS;
     request->timeout = timeout * hz;
     request->ccbsize = atadev->param->packet_size ? 16 : 12;
+    callout_init(&request->callout);
     bcopy(ccb, request->ccb, request->ccbsize);
     if (callback) {
 	request->callback = callback;
@@ -287,8 +288,8 @@ atapi_transfer(struct atapi_request *request)
     }
 
     /* start timeout for this command */
-    request->timeout_handle = timeout((timeout_t *)atapi_timeout, 
-				      request, request->timeout);
+    callout_reset(&request->callout, request->timeout, 
+			(void *)atapi_timeout, request);
 
     if (!(request->flags & ATPR_F_INTERNAL))
 	atadev->cmd = request->ccb[0];
@@ -333,7 +334,7 @@ atapi_transfer(struct atapi_request *request)
     }
     if (timout <= 0) {
 	ata_prtdev(atadev, "failure to execute ATAPI packet command\n");
-	untimeout((timeout_t *)atapi_timeout, request, request->timeout_handle);
+	callout_stop(&request->callout);
 	request->error = EIO;
 	atapi_finish(request);	
 	return ATA_OP_FINISHED;
@@ -360,8 +361,7 @@ atapi_interrupt(struct atapi_request *request)
     if (reason == ATAPI_P_CMDOUT) {
 	if (!(atadev->channel->status & ATA_S_DRQ)) {
 	    ata_prtdev(atadev, "command interrupt without DRQ\n");
-	    untimeout((timeout_t *)atapi_timeout,
-		      request, request->timeout_handle);
+	    callout_stop(&request->callout);
 	    request->error = EIO;
 	    atapi_finish(request);	
 	    return ATA_OP_FINISHED;
@@ -431,7 +431,7 @@ atapi_interrupt(struct atapi_request *request)
 	    request->result = ATA_S_ERROR;
 	}
     }
-    untimeout((timeout_t *)atapi_timeout, request, request->timeout_handle);
+    callout_stop(&request->callout);
 
     /* check for error, if valid sense key, queue a request sense cmd */
     if ((request->result & ATAPI_SK_MASK) && 

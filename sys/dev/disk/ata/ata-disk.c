@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.21 2004/08/17 20:59:39 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.22 2004/09/18 18:33:38 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -419,6 +419,7 @@ ad_start(struct ata_device *atadev)
     request->bytecount = bp->b_bcount;
     request->data = bp->b_data;
     request->tag = tag;
+    callout_init(&request->callout);
     if (bp->b_flags & B_READ) 
 	request->flags |= ADR_F_READ;
     if (adp->device->mode >= ATA_DMA) {
@@ -471,11 +472,12 @@ ad_transfer(struct ad_request *request)
     if (request->donecount == 0) {
 
 	/* start timeout for this transfer */
-	if (dumping)
-	    request->timeout_handle.callout = NULL;
-	else
-	    request->timeout_handle = 
-		timeout((timeout_t*)ad_timeout, request, 10 * hz);
+	if (dumping) {
+		callout_stop(&request->callout);
+	} else {
+		callout_reset(&request->callout, 10 * hz, 
+				(void *)ad_timeout, request);
+	}
 
 	/* setup transfer parameters */
 	count = howmany(request->bytecount, DEV_BSIZE);
@@ -596,7 +598,7 @@ ad_transfer(struct ad_request *request)
     return ATA_OP_CONTINUES;
 
 transfer_failed:
-    untimeout((timeout_t *)ad_timeout, request, request->timeout_handle);
+    callout_stop(&request->callout);
     ad_invalidatequeue(adp, request);
     printf(" - resetting\n");
 
@@ -647,7 +649,7 @@ ad_interrupt(struct ad_request *request)
 	/* if this is a UDMA CRC error, reinject request */
 	if (request->flags & ADR_F_DMA_USED &&
 	    adp->device->channel->error & ATA_E_ICRC) {
-	    untimeout((timeout_t *)ad_timeout, request,request->timeout_handle);
+	    callout_stop(&request->callout);
 	    ad_invalidatequeue(adp, request);
 
 	    if (request->retries++ < AD_MAX_RETRIES)
@@ -662,7 +664,7 @@ ad_interrupt(struct ad_request *request)
 
 	/* if using DMA, try once again in PIO mode */
 	if (request->flags & ADR_F_DMA_USED) {
-	    untimeout((timeout_t *)ad_timeout, request,request->timeout_handle);
+	    callout_stop(&request->callout);
 	    ad_invalidatequeue(adp, request);
 	    ata_dmainit(adp->device, ata_pmode(adp->device->param), -1, -1);
 	    request->flags |= ADR_F_FORCE_PIO;
@@ -720,7 +722,7 @@ ad_interrupt(struct ad_request *request)
     }
 
     /* disarm timeout for this transfer */
-    untimeout((timeout_t *)ad_timeout, request, request->timeout_handle);
+    callout_stop(&request->callout);
 
     request->bp->b_resid = request->bytecount;
 
@@ -847,7 +849,7 @@ ad_invalidatequeue(struct ad_softc *adp, struct ad_request *request)
 	    adp->tags[tag] = NULL;
 	    if (tmpreq == request || tmpreq == NULL)
 		continue;
-	    untimeout((timeout_t *)ad_timeout, tmpreq, tmpreq->timeout_handle);
+	    callout_stop(&request->callout);
 	    ad_requeue(adp->device->channel, tmpreq);
 	}
 	if (ata_command(adp->device, ATA_C_NOP,
