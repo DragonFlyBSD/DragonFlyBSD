@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.20 2004/12/24 04:47:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.21 2005/01/31 21:41:00 joerg Exp $
  *
  */
 
@@ -707,7 +707,6 @@ ntfs_lookup(struct vop_lookup_args *ap)
 	struct ntnode *dip = VTONT(dvp);
 	struct ntfsmount *ntmp = dip->i_mp;
 	struct componentname *cnp = ap->a_cnp;
-	struct ucred *cred = cnp->cn_cred;
 	int error;
 	int lockparent = cnp->cn_flags & CNP_LOCKPARENT;
 #if NTFS_DEBUG
