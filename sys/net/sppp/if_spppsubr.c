@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.10 2004/02/09 12:03:36 rob Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.11 2004/02/24 19:00:36 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -43,7 +43,7 @@
 #include <sys/sockio.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
-#if defined(__DragonFly___)
+#if defined(__DragonFly__)
 #include <sys/random.h>
 #endif
 #include <sys/malloc.h>
