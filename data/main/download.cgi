@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.47 2004/07/15 02:08:49 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.48 2004/07/15 12:29:48 hmp Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -62,7 +62,7 @@ will improperly resize the target slice when it is not the last slice,
 to be the same size as the last slice, leading to a corrupt disk!  
 1.0A fixes the problem and is now online and there is an xdelta available at:
 <A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.0_REL-1.0A_REL.xdelta">dfly-1.0_REL-1.0A_REL.xdelta (master site)</A>.
-The 1.0A ISO is being propogated to our mirrors now.  If you have the original
+The 1.0A ISO is being propagated to our mirrors now.  If you have the original
 release iso please use the xdelta program and the above xdelta patch on the
 gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 </p>
