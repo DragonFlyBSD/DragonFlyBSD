@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86bios.s,v 1.15.2.1 2000/05/16 06:58:07 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm86bios.s,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm86bios.s,v 1.3 2003/06/18 06:33:24 dillon Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
@@ -70,7 +70,8 @@ ENTRY(vm86_bioscall)
 #endif
 
 #if NNPX > 0
-	movl	_curproc,%ecx
+	movl	_curthread,%ecx
+	movl	TD_PROC(%ecx),%ecx
 	cmpl	%ecx,_npxproc		/* do we need to save fp? */
 	jne	1f
 	testl	%ecx,%ecx
@@ -93,6 +94,7 @@ ENTRY(vm86_bioscall)
 	rep
 	movsl				/* copy frame to new stack */
 
+	/* YYY when pcb is in thread vm86_bios will be in its own thread */
 	movl	_curpcb,%eax
 	pushl	%eax			/* save curpcb */
 	movl	%edx,_curpcb		/* set curpcb to vm86pcb */

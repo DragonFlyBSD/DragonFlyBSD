@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.3 2003/06/18 06:33:24 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -55,16 +55,19 @@
 	 */
 	.globl	globaldata
 #ifndef SMP
+	.globl	UP_globaldata
 	.data
 	ALIGN_DATA
+UP_globaldata:
 globaldata:
 	.space	GD_SIZEOF		/* in data segment */
 #else
 	.set	globaldata,0
 #endif
-	.globl	gd_curproc, gd_curpcb, gd_npxproc, gd_astpending
-	.globl	gd_common_tss, gd_switchtime, gd_switchticks
-	.set	gd_curproc,globaldata + GD_CURPROC
+	.globl	gd_curthread, gd_curpcb, gd_npxproc, gd_astpending
+	.globl	gd_common_tss, gd_switchtime, gd_switchticks, gd_idlethread
+	.set	gd_curthread,globaldata + GD_CURTHREAD
+	.set	gd_idlethread,globaldata + GD_IDLETHREAD
 	.set	gd_astpending,globaldata + GD_ASTPENDING
 	.set	gd_curpcb,globaldata + GD_CURPCB
 	.set	gd_npxproc,globaldata + GD_NPXPROC
@@ -82,9 +85,10 @@ globaldata:
 #endif
 
 #ifndef SMP
-	.globl	_curproc, _curpcb, _npxproc, _astpending
-	.globl	_common_tss, _switchtime, _switchticks
-	.set	_curproc,globaldata + GD_CURPROC
+	.globl	_curthread, _curpcb, _npxproc, _astpending
+	.globl	_common_tss, _switchtime, _switchticks, _idlethread
+	.set	_curthread,globaldata + GD_CURTHREAD
+	.set	_idlethread,globaldata + GD_IDLETHREAD
 	.set	_astpending,globaldata + GD_ASTPENDING
 	.set	_curpcb,globaldata + GD_CURPCB
 	.set	_npxproc,globaldata + GD_NPXPROC

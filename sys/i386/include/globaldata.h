@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.3 2003/06/18 06:33:29 dillon Exp $
  */
 
 /*
@@ -41,7 +41,7 @@
  */
 struct globaldata {
 	struct privatespace *gd_prvspace;	/* self-reference */
-	struct proc	*gd_curproc;
+	struct thread	*gd_curthread;
 	struct proc	*gd_npxproc;
 	struct pcb	*gd_curpcb;
 	struct timeval	gd_switchtime;
@@ -68,6 +68,7 @@ struct globaldata {
 	unsigned	*gd_prv_PADDR1;
 #endif
 	u_int		gd_astpending;
+	struct thread	gd_idlethread;
 };
 
 #ifdef SMP
@@ -92,5 +93,9 @@ struct privatespace {
 };
 
 extern struct privatespace SMP_prvspace[];
+
+#else
+
+extern struct globaldata   UP_globaldata;
 
 #endif

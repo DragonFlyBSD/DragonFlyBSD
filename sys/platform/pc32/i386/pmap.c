@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.3 2003/06/18 06:33:24 dillon Exp $
  */
 
 /*
@@ -420,7 +420,6 @@ pmap_bootstrap(firstaddr, loadaddr)
 #endif
 	}
 #endif
-
 #ifdef SMP
 	if (cpu_apic_address == 0)
 		panic("pmap_bootstrap: no local apic!");

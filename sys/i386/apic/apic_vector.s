@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.3 2003/06/18 06:33:33 dillon Exp $
  */
 
 
@@ -389,7 +389,8 @@ _Xcpucheckstate:
 1:	
 	movl	_cpuid, %eax
 	movl	%ebx, _checkstate_cpustate(,%eax,4)
-	movl	_curproc, %ebx
+	movl	_curthread, %ebx
+	movl	TD_PROC(%ebx),%ebx
 	movl	%ebx, _checkstate_curproc(,%eax,4)
 	movl	16(%esp), %ebx
 	movl	%ebx, _checkstate_pc(,%eax,4)

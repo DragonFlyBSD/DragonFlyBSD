@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/support.s,v 1.67.2.5 2001/08/15 01:23:50 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.3 2003/06/18 06:33:24 dillon Exp $
  */
 
 #include "npx.h"
@@ -1002,8 +1002,9 @@ ENTRY(fastmove)
 	movl	-4(%ebp),%edi
 /* stop_emulating(); */
 	clts
-/* npxproc = curproc; */
-	movl	_curproc,%eax
+/* npxproc = curthread->td_proc; */
+	movl	_curthread,%eax
+	movl	TD_PROC(%eax),%eax
 	movl	%eax,_npxproc
 	movl	_curpcb,%eax
 	movl	$fastmove_fault,PCB_ONFAULT(%eax)

@@ -7,7 +7,7 @@
  *
  *	from: 386BSD 0.1
  * $FreeBSD: src/sys/i386/i386/math_emulate.c,v 1.35 1999/08/28 00:43:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/math_emulate.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/math_emulate.c,v 1.3 2003/06/18 06:33:24 dillon Exp $
  */
 
 /*
@@ -100,6 +100,7 @@ math_emulate(struct trapframe * info)
 	u_int32_t oldeip;
 
 	/* ever used fp? */
+	/* YYY NOTE: pcb will be moved out of uarea! */
 	if ((((struct pcb *)curproc->p_addr)->pcb_flags & FP_SOFTFP) == 0) {
 		((struct pcb *)curproc->p_addr)->pcb_flags |= FP_SOFTFP;
 		I387.cwd = 0x037f;

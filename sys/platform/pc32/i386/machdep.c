@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.3 2003/06/18 06:33:24 dillon Exp $
  */
 
 #include "apm.h"
@@ -102,8 +102,8 @@
 #include <machine/pcb_ext.h>		/* pcb.h included via sys/user.h */
 #ifdef SMP
 #include <machine/smp.h>
-#include <machine/globaldata.h>
 #endif
+#include <machine/globaldata.h>
 #ifdef PERFMON
 #include <machine/perfmon.h>
 #endif
@@ -1857,6 +1857,7 @@ init386(first)
 	/* table descriptors - used to load tables by microp */
 	struct region_descriptor r_gdt, r_idt;
 #endif
+	struct globaldata *gd;
 
 	/*
 	 * Prevent lowering of the ipl if we call tsleep() early.
@@ -1898,10 +1899,19 @@ init386(first)
 	gdt_segs[GPROC0_SEL].ssd_base =
 		(int) &SMP_prvspace[0].globaldata.gd_common_tss;
 	SMP_prvspace[0].globaldata.gd_prvspace = &SMP_prvspace[0];
+	gd = &SMP_prvspace[0].globaldata;
 #else
 	gdt_segs[GPRIV_SEL].ssd_limit = atop(0 - 1);
 	gdt_segs[GPROC0_SEL].ssd_base = (int) &common_tss;
+	gd = &UP_globaldata;
 #endif
+	/*
+	 * Note: on both UP and SMP curthread must be set non-NULL
+	 * early in the boot sequence because the system assumes
+	 * that 'curthread' is never NULL.
+	 */
+	/* YYY use prvspace for UP too and set here rather then later */
+	gd->gd_curthread = &gd->gd_idlethread;
 
 	for (x = 0; x < NGDT; x++) {
 #ifdef BDE_DEBUGGER

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.3 2003/06/18 06:33:24 dillon Exp $
  */
 
 #include "npx.h"
@@ -280,7 +280,8 @@ ENTRY(default_halt)
 ENTRY(cpu_switch)
 	
 	/* switch to new process. first, save context as needed */
-	movl	_curproc,%ecx
+	movl	_curthread,%ecx
+	movl	TD_PROC(%ecx),%ecx
 
 	/* if no process to save, don't bother */
 	testl	%ecx,%ecx
@@ -352,7 +353,17 @@ ENTRY(cpu_switch)
 1:
 #endif	/* NNPX > 0 */
 
-	movl	$0,_curproc			/* out of process */
+	/*
+	 * out of processes, set curthread to the current cpu's
+	 * idlethread.  Note that idlethread.td_proc will be NULL.
+	 */
+#ifdef SMP
+	movl	$gd_idlethread, %edi
+	addl	%fs:0, %edi
+#else
+	movl	$_idlethread, %edi
+#endif
+	movl	%edi,_curthread
 
 	/* save is done, now choose a new process or idle */
 sw1:
@@ -464,7 +475,9 @@ sw1a:
 	movb	%al, P_ONCPU(%ecx)
 #endif /* SMP */
 	movl	%edx, _curpcb
-	movl	%ecx, _curproc			/* into next process */
+	addl	$P_THREAD,%ecx			/* set current thread */
+	movl	%ecx, _curthread
+	subl	$P_THREAD,%ecx		/* YYY does %ecx need to be restored? */
 
 #ifdef SMP
 	movl	_cpu_lockid, %eax

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globals.h,v 1.5.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/globals.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/globals.h,v 1.3 2003/06/18 06:33:29 dillon Exp $
  */
 
 #ifndef	_MACHINE_GLOBALS_H_
@@ -82,7 +82,8 @@
  * other hand, kernel modules should always use these macros to maintain
  * portability between UP and SMP kernels.
  */
-#define	curproc		GLOBAL_RVALUE_NV(curproc, struct proc *)
+#define	curthread	GLOBAL_RVALUE_NV(curthread, struct thread *)
+#define	idlethread	GLOBAL_RVALUE_NV(idlethread, struct thread)
 #define	curpcb		GLOBAL_RVALUE_NV(curpcb, struct pcb *)
 #define	npxproc		GLOBAL_LVALUE(npxproc, struct proc *)
 #define	common_tss	GLOBAL_LVALUE(common_tss, struct i386tss)
@@ -110,9 +111,28 @@
 #define	prv_CADDR3	GLOBAL_RVALUE(prv_CADDR3, caddr_t)
 #define	prv_PADDR1	GLOBAL_RVALUE(prv_PADDR1, unsigned *)
 #endif
-#endif	/*UP kernel*/
 
-GLOBAL_FUNC(curproc)
+#else	/*UP kernel*/
+/*
+ * Otherwise we optimize for direct access in UP
+ */
+extern struct thread *curthread;        /* Current running proc. */
+extern struct thread idlethread;        /* Idle thread global */
+extern u_int astpending;                /* software interrupt pending */  
+extern int switchticks;                 /* `ticks' at last context switch. */
+extern struct timeval switchtime;       /* Uptime at last context switch */
+
+#endif
+
+/*
+ * note: curthread is never NULL, but curproc can be.  curpcb is a separate
+ * entity in other BSDs.  In Turtle it is integrated into the thread 
+ * structure.
+ */
+#define	curproc		(curthread->td_proc)
+
+GLOBAL_FUNC(curthread)
+GLOBAL_FUNC(idlethread)
 GLOBAL_FUNC(astpending)
 GLOBAL_FUNC(curpcb)
 GLOBAL_FUNC(npxproc)
@@ -141,7 +161,12 @@ GLOBAL_FUNC(prv_CADDR3)
 GLOBAL_FUNC(prv_PADDR1)
 #endif
 
-#define	SET_CURPROC(x)	(_global_curproc_set_nv((int)x))
+/*
+ * This is only used in kern/init_main.c and kern/kern_exit.c and should
+ * be converted to procedures.  YYY
+ */
+#define	SET_CURTHREAD(x) (_global_curthread_set_nv((int)x))
+#define	CLR_CURPROC()	curthread->td_proc = NULL
 
 #endif	/* _KERNEL */
 
