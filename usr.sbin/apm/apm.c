@@ -13,7 +13,7 @@
  * Sep., 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/usr.sbin/apm/apm.c,v 1.22.2.6 2003/04/29 08:53:04 maxim Exp $
- * $DragonFly: src/usr.sbin/apm/apm.c,v 1.6 2004/08/13 18:58:55 asmodai Exp $
+ * $DragonFly: src/usr.sbin/apm/apm.c,v 1.7 2004/08/13 19:01:18 asmodai Exp $
  */
 
 #include <sys/file.h>
@@ -298,7 +298,7 @@ print_all_info(int fd, apm_info_t aip, int bioscall_available)
 				else
 					t = timegm(&tm);
 				tm = *localtime(&t);
-				strftime(buf, sizeof(buf), "%c", &tm);
+				strftime(buf, sizeof(buf), "%s", &tm);
 				printf("Resume timer: %s\n", buf);
 			}
 		}
@@ -463,7 +463,6 @@ main(int argc, char *argv[])
 			standby = 1;
 			all_info = 0;
 			break;
-		case '?':
 		default:
 			usage();
 		}
