@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.12 2004/07/18 19:43:48 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.13 2004/10/25 19:14:34 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -127,44 +127,6 @@ ffs_read(struct vop_read_args *ap)
 	if (object)
 		vm_object_reference(object);
 
-#ifdef ENABLE_VFS_IOOPT
-	/*
-	 * If IO optimisation is turned on,
-	 * and we are NOT a VM based IO request, 
-	 * (i.e. not headed for the buffer cache)
-	 * but there IS a vm object associated with it.
-	 */
-	if ((ioflag & IO_VMIO) == 0 && (vfs_ioopt > 1) && object) {
-		int nread, toread;
-
-		toread = uio->uio_resid;
-		if (toread > bytesinfile)
-			toread = bytesinfile;
-		if (toread >= PAGE_SIZE) {
-			/*
-			 * Then if it's at least a page in size, try 
-			 * get the data from the object using vm tricks
-			 */
-			error = uioread(toread, uio, object, &nread);
-			if ((uio->uio_resid == 0) || (error != 0)) {
-				/*
-				 * If we finished or there was an error
-				 * then finish up (the reference previously
-				 * obtained on object must be released).
-				 */
-				if ((error == 0 ||
-				    uio->uio_resid != orig_resid) &&
-				    (vp->v_mount->mnt_flag & MNT_NOATIME) == 0)
-					ip->i_flag |= IN_ACCESS;
-
-				if (object)
-					vm_object_vndeallocate(object);
-				return error;
-			}
-		}
-	}
-#endif
-
 	/*
 	 * Ok so we couldn't do it all in one vm trick...
 	 * so cycle around trying smaller bites..
@@ -172,51 +134,6 @@ ffs_read(struct vop_read_args *ap)
 	for (error = 0, bp = NULL; uio->uio_resid > 0; bp = NULL) {
 		if ((bytesinfile = ip->i_size - uio->uio_offset) <= 0)
 			break;
-#ifdef ENABLE_VFS_IOOPT
-		if ((ioflag & IO_VMIO) == 0 && (vfs_ioopt > 1) && object) {
-			/*
-			 * Obviously we didn't finish above, but we
-			 * didn't get an error either. Try the same trick again.
-			 * but this time we are looping.
-			 */
-			int nread, toread;
-			toread = uio->uio_resid;
-			if (toread > bytesinfile)
-				toread = bytesinfile;
-
-			/*
-			 * Once again, if there isn't enough for a
-			 * whole page, don't try optimising.
-			 */
-			if (toread >= PAGE_SIZE) {
-				error = uioread(toread, uio, object, &nread);
-				if ((uio->uio_resid == 0) || (error != 0)) {
-					/*
-					 * If we finished or there was an 
-					 * error then finish up (the reference
-					 * previously obtained on object must 
-					 * be released).
-					 */
-					if ((error == 0 ||
-					    uio->uio_resid != orig_resid) &&
-					    (vp->v_mount->mnt_flag &
-					    MNT_NOATIME) == 0)
-						ip->i_flag |= IN_ACCESS;
-					if (object)
-						vm_object_vndeallocate(object);
-					return error;
-				}
-				/*
-				 * To get here we didnt't finish or err.
-				 * If we did get some data,
-				 * loop to try another bite.
-				 */
-				if (nread > 0) {
-					continue;
-				}
-			}
-		}
-#endif
 
 		lbn = lblkno(fs, uio->uio_offset);
 		nextlbn = lbn + 1;
@@ -317,30 +234,11 @@ ffs_read(struct vop_read_args *ap)
 			xfersize = size;
 		}
 
-#ifdef ENABLE_VFS_IOOPT
-		if (vfs_ioopt && object &&
-		    (bp->b_flags & B_VMIO) &&
-		    ((blkoffset & PAGE_MASK) == 0) &&
-		    ((xfersize & PAGE_MASK) == 0)) {
-			/*
-			 * If VFS IO  optimisation is turned on,
-			 * and it's an exact page multiple
-			 * And a normal VM based op,
-			 * then use uiomiveco()
-			 */
-			error =
-				uiomoveco((char *)bp->b_data + blkoffset,
-					(int)xfersize, uio, object);
-		} else 
-#endif
-		{
-			/*
-			 * otherwise use the general form
-			 */
-			error =
-				uiomove((char *)bp->b_data + blkoffset,
-					(int)xfersize, uio);
-		}
+		/*
+		 * otherwise use the general form
+		 */
+		error = uiomove((char *)bp->b_data + blkoffset, 
+				(int)xfersize, uio);
 
 		if (error)
 			break;

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.26 2004/09/23 06:52:05 simokawa Exp $
+# $DragonFly: src/sys/conf/options,v 1.27 2004/10/25 19:14:30 dillon Exp $
 #
 #        On the handling of kernel options
 #
@@ -396,7 +396,6 @@ DEBUG			opt_global.h
 DEBUG_LOCKS		opt_global.h
 DEBUG_VFS_LOCKS		opt_global.h
 DIAGNOSTIC		opt_global.h
-ENABLE_VFS_IOOPT	opt_global.h
 INVARIANT_SUPPORT	opt_global.h
 INVARIANTS		opt_global.h
 SIMPLELOCK_DEBUG	opt_global.h

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.44 2004/10/22 18:03:50 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.45 2004/10/25 19:14:32 dillon Exp $
  */
 
 /*
@@ -113,11 +113,6 @@ SYSCTL_INT(_vfs, OID_AUTO, reassignbufsortbad, CTLFLAG_RW,
 static int reassignbufmethod = 1;
 SYSCTL_INT(_vfs, OID_AUTO, reassignbufmethod, CTLFLAG_RW,
 		&reassignbufmethod, 0, "");
-
-#ifdef ENABLE_VFS_IOOPT
-int vfs_ioopt = 0;
-SYSCTL_INT(_vfs, OID_AUTO, ioopt, CTLFLAG_RW, &vfs_ioopt, 0, "");
-#endif
 
 int	nfs_mount_type = -1;
 static struct lwkt_token spechash_token;

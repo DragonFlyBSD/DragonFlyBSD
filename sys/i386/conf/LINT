@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.40 2004/10/20 23:03:05 dillon Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.41 2004/10/25 19:14:31 dillon Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2769,7 +2769,6 @@ options 	DEBUG
 options 	DEBUG_LINUX
 #options 	DISABLE_PSE
 options 	ENABLE_ALART
-options 	ENABLE_VFS_IOOPT
 options 	FB_DEBUG
 options 	FB_INSTALL_CDEV
 options 	FE_8BIT_SUPPORT

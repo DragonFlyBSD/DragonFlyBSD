@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.18 2004/07/27 13:50:15 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.19 2004/10/25 19:14:32 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -186,19 +186,7 @@ uiomoveco(cp, n, uio, obj)
 				baseticks = ticks;
 			}
 			if (uio->uio_rw == UIO_READ) {
-#ifdef ENABLE_VFS_IOOPT
-				if (vfs_ioopt && ((cnt & PAGE_MASK) == 0) &&
-					((((intptr_t) iov->iov_base) & PAGE_MASK) == 0) &&
-					((uio->uio_offset & PAGE_MASK) == 0) &&
-					((((intptr_t) cp) & PAGE_MASK) == 0)) {
-						error = vm_uiomove(&curproc->p_vmspace->vm_map, obj,
-								uio->uio_offset, cnt,
-								(vm_offset_t) iov->iov_base, NULL);
-				} else
-#endif
-				{
-					error = copyout(cp, iov->iov_base, cnt);
-				}
+				error = copyout(cp, iov->iov_base, cnt);
 			} else {
 				error = copyin(iov->iov_base, cp, cnt);
 			}
@@ -224,79 +212,6 @@ uiomoveco(cp, n, uio, obj)
 	}
 	return (0);
 }
-
-#ifdef ENABLE_VFS_IOOPT
-
-int
-uioread(n, uio, obj, nread)
-	int n;
-	struct uio *uio;
-	struct vm_object *obj;
-	int *nread;
-{
-	int npagesmoved;
-	struct iovec *iov;
-	u_int cnt, tcnt;
-	int error;
-	int baseticks = ticks;
-
-	*nread = 0;
-	if (vfs_ioopt < 2)
-		return 0;
-
-	error = 0;
-
-	while (n > 0 && uio->uio_resid) {
-		iov = uio->uio_iov;
-		cnt = iov->iov_len;
-		if (cnt == 0) {
-			uio->uio_iov++;
-			uio->uio_iovcnt--;
-			continue;
-		}
-		if (cnt > n)
-			cnt = n;
-
-		if ((uio->uio_segflg == UIO_USERSPACE) &&
-			((((intptr_t) iov->iov_base) & PAGE_MASK) == 0) &&
-				 ((uio->uio_offset & PAGE_MASK) == 0) ) {
-
-			if (cnt < PAGE_SIZE)
-				break;
-
-			cnt &= ~PAGE_MASK;
-
-			if (ticks - baseticks >= hogticks) {
-				uio_yield();
-				baseticks = ticks;
-			}
-			error = vm_uiomove(&curproc->p_vmspace->vm_map, obj,
-						uio->uio_offset, cnt,
-						(vm_offset_t) iov->iov_base, &npagesmoved);
-
-			if (npagesmoved == 0)
-				break;
-
-			tcnt = npagesmoved * PAGE_SIZE;
-			cnt = tcnt;
-
-			if (error)
-				break;
-
-			iov->iov_base += cnt;
-			iov->iov_len -= cnt;
-			uio->uio_resid -= cnt;
-			uio->uio_offset += cnt;
-			*nread += cnt;
-			n -= cnt;
-		} else {
-			break;
-		}
-	}
-	return error;
-}
-
-#endif
 
 /*
  * Give next character to user as result of read.
