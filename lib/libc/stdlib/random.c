@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/random.c,v 1.13 2000/01/27 23:06:49 jasone Exp $
- * $DragonFly: src/lib/libc/stdlib/random.c,v 1.4 2003/09/06 08:10:46 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/random.c,v 1.5 2003/09/06 08:19:16 asmodai Exp $
  *
  * @(#)random.c	8.2 (Berkeley) 5/19/95
  */
@@ -210,7 +210,7 @@ static int rand_deg = DEG_3;
 static int rand_sep = SEP_3;
 static uint32_t *end_ptr = &randtbl[DEG_3 + 1];
 
-static inline long good_rand __P((long));
+static inline long good_rand (long);
 
 static inline long good_rand (x)
 	long x;

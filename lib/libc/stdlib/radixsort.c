@@ -33,7 +33,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libc/stdlib/radixsort.c,v 1.3 2003/09/06 08:10:46 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/radixsort.c,v 1.4 2003/09/06 08:19:16 asmodai Exp $
  *
  * @(#)radixsort.c	8.2 (Berkeley) 4/28/95
  */
@@ -62,10 +62,10 @@ typedef struct {
 } stack;
 
 static inline void simplesort
-	    __P((const u_char **, int, int, const u_char *, u_int));
-static void r_sort_a __P((const u_char **, int, int, const u_char *, u_int));
-static void r_sort_b __P((const u_char **,
-	    const u_char **, int, int, const u_char *, u_int));
+	    (const u_char **, int, int, const u_char *, u_int);
+static void r_sort_a (const u_char **, int, int, const u_char *, u_int);
+static void r_sort_b (const u_char **,
+	    const u_char **, int, int, const u_char *, u_int);
 
 #define	THRESHOLD	20		/* Divert to simplesort(). */
 #define	SIZE		512		/* Default stack size. */

@@ -31,14 +31,14 @@
  * SUCH DAMAGE.
  *
  * @(#)getenv.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/stdlib/getenv.c,v 1.3 2003/09/06 08:10:46 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/getenv.c,v 1.4 2003/09/06 08:19:16 asmodai Exp $
  */
 
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
 
-inline char *__findenv __P((const char *, int *));
+inline char *__findenv (const char *, int *);
 
 /*
  * __findenv --

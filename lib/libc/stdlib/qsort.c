@@ -32,14 +32,14 @@
  *
  * @(#)qsort.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdlib/qsort.c,v 1.8 1999/08/28 00:01:35 peter Exp $
- * $DragonFly: src/lib/libc/stdlib/qsort.c,v 1.3 2003/09/06 08:10:46 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/qsort.c,v 1.4 2003/09/06 08:19:16 asmodai Exp $
  */
 
 #include <stdlib.h>
 
-typedef int		 cmp_t __P((const void *, const void *));
-static inline char	*med3 __P((char *, char *, char *, cmp_t *));
-static inline void	 swapfunc __P((char *, char *, int, int));
+typedef int		 cmp_t (const void *, const void *);
+static inline char	*med3 (char *, char *, char *, cmp_t *);
+static inline void	 swapfunc (char *, char *, int, int);
 
 #define min(a, b)	(a) < (b) ? a : b
 

@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libc/stdlib/malloc.c,v 1.49.2.4 2001/12/29 08:10:14 knu Exp $
- * $DragonFly: src/lib/libc/stdlib/malloc.c,v 1.3 2003/09/06 08:10:46 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/malloc.c,v 1.4 2003/09/06 08:19:16 asmodai Exp $
  *
  */
 
@@ -237,7 +237,7 @@ static int malloc_utrace;
 
 struct ut { void *p; size_t s; void *r; };
 
-void utrace __P((struct ut *, int));
+void utrace (struct ut *, int);
 
 #define UTRACE(a, b, c) \
 	if (malloc_utrace) \

@@ -10,7 +10,7 @@
  *
  * $NetBSD: tdelete.c,v 1.2 1999/09/16 11:45:37 lukem Exp $
  * $FreeBSD: src/lib/libc/stdlib/tdelete.c,v 1.1.2.1 2000/08/17 07:38:39 jhb Exp $
- * $DragonFly: src/lib/libc/stdlib/tdelete.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/tdelete.c,v 1.3 2003/09/06 08:19:16 asmodai Exp $
  */
 
 #include <sys/cdefs.h>
@@ -26,7 +26,7 @@ void *
 tdelete(vkey, vrootp, compar)
 	const void *vkey;	/* key to be deleted */
 	void      **vrootp;	/* address of the root of tree */
-	int       (*compar) __P((const void *, const void *));
+	int       (*compar) (const void *, const void *);
 {
 	node_t **rootp = (node_t **)vrootp;
 	node_t *p, *q, *r;

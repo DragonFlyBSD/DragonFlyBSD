@@ -33,7 +33,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libc/stdlib/heapsort.c,v 1.3 2003/09/06 08:10:46 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/heapsort.c,v 1.4 2003/09/06 08:19:16 asmodai Exp $
  *
  * @(#)heapsort.c	8.1 (Berkeley) 6/4/93
  */
@@ -141,7 +141,7 @@ int
 heapsort(vbase, nmemb, size, compar)
 	void *vbase;
 	size_t nmemb, size;
-	int (*compar) __P((const void *, const void *));
+	int (*compar) (const void *, const void *);
 {
 	int cnt, i, j, l;
 	char tmp, *tmp1, *tmp2;
