@@ -24,9 +24,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.9.2.6 2001/07/25 18:06:01 iedowse Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.6 2003/11/20 22:07:27 dillon Exp $
+ * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.55 2003/12/31 04:25:00 kato Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.7 2004/02/13 21:15:12 joerg Exp $
  */
+
+#include "opt_ed.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -34,13 +36,12 @@
 #include <sys/kernel.h>
 #include <sys/conf.h>
 #include <sys/uio.h>
-#include <sys/select.h>
-#include <sys/device.h>
-#include <machine/clock.h>
 
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <machine/bus.h>
+#include <sys/rman.h>
+#include <machine/resource.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -51,58 +52,41 @@
 #include "if_edreg.h"
 #include "if_edvar.h"
 #include <bus/pccard/pccardvar.h>
-#include <bus/pccard/cardinfo.h>
-#include <bus/pccard/slot.h>
-#include "../mii_layer/mii.h"
-#include "../mii_layer/miivar.h"
+#include <bus/pccard/pccarddevs.h>
+#ifndef ED_NO_MIIBUS
+#include <dev/netif/mii_layer/mii.h>
+#include <dev/netif/mii_layer/miivar.h>
+#endif
 
+#include "card_if.h"
+#ifndef ED_NO_MIIBUS
 /* "device miibus" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
 
-#define CARD_MAJOR	50
+MODULE_DEPEND(ed, miibus, 1, 1, 1);
+#endif
+MODULE_DEPEND(ed, ether, 1, 1, 1);
+MODULE_DEPEND(ed, pccard, 1, 1, 1);
 
 /*
  *      PC-Card (PCMCIA) specific code.
  */
+static int	ed_pccard_match(device_t);
 static int	ed_pccard_probe(device_t);
 static int	ed_pccard_attach(device_t);
 static int	ed_pccard_detach(device_t);
 
+static int	ed_pccard_Linksys(device_t dev);
+static int	ed_pccard_ax88190(device_t dev);
+
 static void	ax88190_geteprom(struct ed_softc *);
 static int	ed_pccard_memwrite(device_t dev, off_t offset, u_char byte);
-static int	ed_pccard_memread(device_t dev, off_t offset, u_char *buf, int size);
-static int	ed_pccard_Linksys(device_t dev);
+#ifndef ED_NO_MIIBUS
 static void	ed_pccard_dlink_mii_reset(struct ed_softc *sc);
 static u_int	ed_pccard_dlink_mii_readbits(struct ed_softc *sc, int nbits);
 static void	ed_pccard_dlink_mii_writebits(struct ed_softc *sc, u_int val,
     int nbits);
-static int	linksys;
-
-static device_method_t ed_pccard_methods[] = {
-	/* Device interface */
-	DEVMETHOD(device_probe,		ed_pccard_probe),
-	DEVMETHOD(device_attach,	ed_pccard_attach),
-	DEVMETHOD(device_detach,	ed_pccard_detach),
-
-	/* Bus interface */
-	DEVMETHOD(bus_child_detached,	ed_child_detached),
-
-	/* MII interface */
-	DEVMETHOD(miibus_readreg,	ed_miibus_readreg),
-	DEVMETHOD(miibus_writereg,	ed_miibus_writereg),
-	{ 0, 0 }
-};
-
-static driver_t ed_pccard_driver = {
-	"ed",
-	ed_pccard_methods,
-	sizeof(struct ed_softc)
-};
-
-static devclass_t ed_pccard_devclass;
-
-DRIVER_MODULE(if_ed, pccard, ed_pccard_driver, ed_pccard_devclass, 0, 0);
-DRIVER_MODULE(miibus, ed, miibus_driver, miibus_devclass, 0, 0);
+#endif
 
 /*
  *      ed_pccard_detach - unload the driver and clear the table.
@@ -132,6 +116,96 @@ ed_pccard_detach(device_t dev)
 	return (0);
 }
 
+static const struct ed_product {
+	struct pccard_product	prod;
+	int flags;
+#define	NE2000DVF_DL10019	0x0001		/* chip is D-Link DL10019 */
+#define	NE2000DVF_AX88190	0x0002		/* chip is ASIX AX88190 */
+} ed_pccard_products[] = {
+	{ PCMCIA_CARD(ACCTON, EN2212, 0), 0},
+	{ PCMCIA_CARD(ALLIEDTELESIS, LA_PCM, 0), 0},
+	{ PCMCIA_CARD(AMBICOM, AMB8002T, 0), 0},
+	{ PCMCIA_CARD(BILLIONTON, LNT10TN, 0), 0},
+	{ PCMCIA_CARD(BILLIONTON, CFLT10N, 0), 0},
+	{ PCMCIA_CARD(BUFFALO, LPC3_CLT,  0), 0},
+	{ PCMCIA_CARD(BUFFALO, LPC3_CLX,  0), NE2000DVF_AX88190},
+	{ PCMCIA_CARD(BUFFALO, LPC_CF_CLT,  0), 0},
+	{ PCMCIA_CARD(CNET, NE2000, 0), 0},
+	{ PCMCIA_CARD(COMPEX, LINKPORT_ENET_B, 0), 0},
+	{ PCMCIA_CARD(COREGA, ETHER_II_PCC_T, 0), 0},
+	{ PCMCIA_CARD(COREGA, ETHER_II_PCC_TD, 0), 0},
+	{ PCMCIA_CARD(COREGA, ETHER_PCC_T, 0), 0},
+	{ PCMCIA_CARD(COREGA, ETHER_PCC_TD, 0), 0},
+	{ PCMCIA_CARD(COREGA, FAST_ETHER_PCC_TX, 0), NE2000DVF_DL10019 },
+	{ PCMCIA_CARD(COREGA, FETHER_PCC_TXD, 0), NE2000DVF_AX88190 },
+	{ PCMCIA_CARD(COREGA, FETHER_PCC_TXF, 0), NE2000DVF_DL10019 },
+	{ PCMCIA_CARD(DAYNA, COMMUNICARD_E_1, 0), 0},
+	{ PCMCIA_CARD(DAYNA, COMMUNICARD_E_2, 0), 0},
+	{ PCMCIA_CARD(DIGITAL, DEPCMXX, 0), 0 },
+	{ PCMCIA_CARD(DLINK, DE650, 0), 0},
+	{ PCMCIA_CARD(DLINK, DE660, 0), 0 },
+	{ PCMCIA_CARD(DLINK, DE660PLUS, 0), 0},
+	{ PCMCIA_CARD(DLINK, DFE670TXD, 0), NE2000DVF_DL10019},
+	{ PCMCIA_CARD(DYNALINK, L10C, 0), 0},
+	{ PCMCIA_CARD(EDIMAX, EP4000A, 0), 0},
+	{ PCMCIA_CARD(EPSON, EEN10B, 0), 0},
+	{ PCMCIA_CARD(EXP, THINLANCOMBO, 0), 0},
+	{ PCMCIA_CARD(IBM, INFOMOVER, 0), 0},
+	{ PCMCIA_CARD(IODATA, PCLAT, 0), 0},
+	{ PCMCIA_CARD(IODATA, PCLATE, 0), 0},
+	{ PCMCIA_CARD(KINGSTON, KNE2, 0), 0},
+	{ PCMCIA_CARD(LANTECH, FASTNETTX, 0),NE2000DVF_AX88190 },
+	{ PCMCIA_CARD(LINKSYS, COMBO_ECARD, 0), NE2000DVF_DL10019 },
+	{ PCMCIA_CARD(LINKSYS, ECARD_1, 0), 0},
+	{ PCMCIA_CARD(LINKSYS, ECARD_2, 0), 0},
+	{ PCMCIA_CARD(LINKSYS, ETHERFAST, 0), NE2000DVF_DL10019 },
+	{ PCMCIA_CARD(LINKSYS, PCM100, 0), 0},
+	{ PCMCIA_CARD(LINKSYS, TRUST_COMBO_ECARD, 0), 0},
+	{ PCMCIA_CARD(LINKSYS, ETHERFAST, 0), NE2000DVF_DL10019 },
+	{ PCMCIA_CARD(MACNICA, ME1_JEIDA, 0), 0},
+	{ PCMCIA_CARD(MELCO, LPC3_CLX,  0), NE2000DVF_AX88190},
+	{ PCMCIA_CARD(MELCO, LPC3_TX, 0), NE2000DVF_AX88190 },
+	{ PCMCIA_CARD(NDC, ND5100_E, 0), 0},
+	{ PCMCIA_CARD(NETGEAR, FA410TXC, 0), NE2000DVF_DL10019},
+	{ PCMCIA_CARD(NETGEAR, FA411, 0), NE2000DVF_AX88190},
+	{ PCMCIA_CARD(PLANET, SMARTCOM2000, 0), 0 },
+	{ PCMCIA_CARD(PREMAX, PE200, 0), 0},
+	{ PCMCIA_CARD(RPTI, EP400, 0), 0},
+	{ PCMCIA_CARD(RPTI, EP401, 0), 0},
+	{ PCMCIA_CARD(SMC, EZCARD, 0), 0},
+	{ PCMCIA_CARD(SOCKET, EA_ETHER, 0), 0},
+	{ PCMCIA_CARD(SOCKET, LP_ETHER, 0), 0},
+	{ PCMCIA_CARD(SOCKET, LP_ETHER_CF, 0), 0},
+	{ PCMCIA_CARD(SOCKET, LP_ETH_10_100_CF, 0), NE2000DVF_DL10019},
+	{ PCMCIA_CARD(SVEC, COMBOCARD, 0), 0},
+	{ PCMCIA_CARD(SVEC, LANCARD, 0), 0},
+	{ PCMCIA_CARD(SYNERGY21, S21810, 0), 0},
+	{ PCMCIA_CARD(TDK, LAK_CD031, 0), 0},
+	{ PCMCIA_CARD(TELECOMDEVICE, TCD_HPC100, 0), NE2000DVF_AX88190 },
+	{ PCMCIA_CARD(XIRCOM, CFE_10, 0), 0},
+	{ PCMCIA_CARD(ZONET, ZEN, 0), 0},
+	{ { NULL } }
+};
+
+static int
+ed_pccard_match(device_t dev)
+{
+	const struct ed_product *pp;
+
+	if ((pp = (const struct ed_product *) pccard_product_lookup(dev, 
+	    (const struct pccard_product *) ed_pccard_products,
+	    sizeof(ed_pccard_products[0]), NULL)) != NULL) {
+		if (pp->prod.pp_name != NULL)
+			device_set_desc(dev, pp->prod.pp_name);
+		if (pp->flags & NE2000DVF_DL10019)
+			device_set_flags(dev, ED_FLAGS_LINKSYS);
+		else if (pp->flags & NE2000DVF_AX88190)
+			device_set_flags(dev, ED_FLAGS_AX88190);
+		return (0);
+	}
+	return (EIO);
+}
+
 /* 
  * Probe framework for pccards.  Replicates the standard framework,
  * minus the pccard driver registration and ignores the ether address
@@ -140,44 +214,12 @@ ed_pccard_detach(device_t dev)
 static int
 ed_pccard_probe(device_t dev)
 {
-	struct	ed_softc *sc = device_get_softc(dev);
-	int	flags = device_get_flags(dev);
 	int	error;
+	int	flags = device_get_flags(dev);
 
 	if (ED_FLAGS_GETTYPE(flags) == ED_FLAGS_AX88190) {
-		/* Special setup for AX88190 */
-		u_char rdbuf[4];
-		int iobase;
-		int attr_ioport;
-
-		/* XXX Allocate the port resource during setup. */
-		error = ed_alloc_port(dev, 0, ED_NOVELL_IO_PORTS);
-		if (error)
-			return (error);
-
-		sc->asic_offset = ED_NOVELL_ASIC_OFFSET;
-		sc->nic_offset  = ED_NOVELL_NIC_OFFSET;
-
-		sc->chip_type = ED_CHIP_TYPE_AX88190;
-
-		/*
-		 * Check & Set Attribute Memory IOBASE Register
-		 */
-		ed_pccard_memread(dev, ED_AX88190_IOBASE0, rdbuf, 4);
-		attr_ioport = rdbuf[2] << 8 | rdbuf[0];
-		iobase = rman_get_start(sc->port_res);
-		if (attr_ioport != iobase) {
-#if notdef
-			printf("AX88190 IOBASE MISMATCH %04x -> %04x Setting\n", attr_ioport, iobase);
-#endif /* notdef */
-			ed_pccard_memwrite(dev, ED_AX88190_IOBASE0,
-					   iobase & 0xff);
-			ed_pccard_memwrite(dev, ED_AX88190_IOBASE1,
-					   (iobase >> 8) & 0xff);
-		}
-		ax88190_geteprom(sc);
-
-		ed_release_resources(dev);
+		error = ed_pccard_ax88190(dev);
+		goto end2;
 	}
 
 	error = ed_probe_Novell(dev, 0, flags);
@@ -192,11 +234,8 @@ ed_pccard_probe(device_t dev)
 	goto end2;
 
 end:
-	if (ED_FLAGS_GETTYPE(flags) & ED_FLAGS_LINKSYS) {
-		linksys = ed_pccard_Linksys(dev);
-	} else {
-		linksys = 0;
-	}
+	if (ED_FLAGS_GETTYPE(flags) & ED_FLAGS_LINKSYS)
+		ed_pccard_Linksys(dev);
 end2:
 	if (error == 0)
 		error = ed_alloc_irq(dev, 0, 0);
@@ -209,7 +248,6 @@ static int
 ed_pccard_attach(device_t dev)
 {
 	struct ed_softc *sc = device_get_softc(dev);
-	int flags = device_get_flags(dev);
 	int error;
 	int i;
 	u_char sum;
@@ -229,7 +267,7 @@ ed_pccard_attach(device_t dev)
 		return (error);
 	}	      
 
-	if (linksys == 0) {
+	if (sc->vendor != ED_VENDOR_LINKSYS) {
 		pccard_get_ether(dev, ether_addr);
 		for (i = 0, sum = 0; i < ETHER_ADDR_LEN; i++)
 			sum |= ether_addr[i];
@@ -237,7 +275,8 @@ ed_pccard_attach(device_t dev)
 			bcopy(ether_addr, sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
 	}
 
-	error = ed_attach(sc, device_get_unit(dev), flags);
+	error = ed_attach(dev);
+#ifndef ED_NO_MIIBUS
 	if (error == 0 && sc->vendor == ED_VENDOR_LINKSYS) {
 		/* Probe for an MII bus, but ignore errors. */
 		ed_pccard_dlink_mii_reset(sc);
@@ -246,6 +285,7 @@ ed_pccard_attach(device_t dev)
 		mii_phy_probe(dev, &sc->miibus, ed_ifmedia_upd,
 		    ed_ifmedia_sts);
 	}
+#endif
 
 	return (error);
 }
@@ -260,12 +300,12 @@ ax88190_geteprom(struct ed_softc *sc)
 	} pg_seq[] = {
 		{ED_P0_CR, ED_CR_RD2|ED_CR_STP},	/* Select Page0 */
 		{ED_P0_DCR, 0x01},
-		{ED_P0_RBCR0, 0x00},	/* Clear the count regs. */
+		{ED_P0_RBCR0, 0x00},			/* Clear the count regs. */
 		{ED_P0_RBCR1, 0x00},
-		{ED_P0_IMR, 0x00},	/* Mask completion irq. */
+		{ED_P0_IMR, 0x00},			/* Mask completion irq. */
 		{ED_P0_ISR, 0xff},
 		{ED_P0_RCR, ED_RCR_MON | ED_RCR_INTT},	/* Set To Monitor */
-		{ED_P0_TCR, ED_TCR_LB0},	/* loopback mode. */
+		{ED_P0_TCR, ED_TCR_LB0},		/* loopback mode. */
 		{ED_P0_RBCR0, 32},
 		{ED_P0_RBCR1, 0x00},
 		{ED_P0_RSAR0, 0x00},
@@ -287,11 +327,6 @@ ax88190_geteprom(struct ed_softc *sc)
 	/* Get Data */
 	for (i = 0; i < 16; i++)
 		prom[i] = ed_asic_inb(sc, 0);
-/*
-	for (i = 0; i < 16; i++)
-		printf("ax88190 eprom [%02d] %02x %02x\n",
-			i,prom[i] & 0xff,prom[i] >> 8);
-*/
 	sc->arpcom.ac_enaddr[0] = prom[0] & 0xff;
 	sc->arpcom.ac_enaddr[1] = prom[0] >> 8;
 	sc->arpcom.ac_enaddr[2] = prom[1] & 0xff;
@@ -300,55 +335,27 @@ ax88190_geteprom(struct ed_softc *sc)
 	sc->arpcom.ac_enaddr[5] = prom[2] >> 8;
 }
 
-/* XXX: Warner-san, any plan to provide access to the attribute memory? */
 static int
 ed_pccard_memwrite(device_t dev, off_t offset, u_char byte)
 {
-	struct pccard_devinfo *devi;
-	dev_t d;
-	struct iovec iov;
-	struct uio uios;
+	int cis_rid;
+	struct resource *cis;
+	
+	cis_rid = 0;
+	cis = bus_alloc_resource(dev, SYS_RES_MEMORY, &cis_rid, 0, ~0,
+				 4 << 10, RF_ACTIVE | RF_SHAREABLE);
+	if (cis == NULL)
+		return (ENXIO);
+	CARD_SET_RES_FLAGS(device_get_parent(dev), dev, SYS_RES_MEMORY,
+			   cis_rid, PCCARD_A_MEM_ATTR);
 
-	devi = device_get_ivars(dev);
+	bus_space_write_1(rman_get_bustag(cis), rman_get_bushandle(cis),
+			  offset, byte);
 
-	iov.iov_base = &byte;
-	iov.iov_len = sizeof(byte);
+	bus_deactivate_resource(dev, SYS_RES_MEMORY, cis_rid, cis);
+	bus_release_resource(dev, SYS_RES_MEMORY, cis_rid, cis);
 
-	uios.uio_iov = &iov;
-	uios.uio_iovcnt = 1;
-	uios.uio_offset = offset;
-	uios.uio_resid = sizeof(byte);
-	uios.uio_segflg = UIO_SYSSPACE;
-	uios.uio_rw = UIO_WRITE;
-	uios.uio_td = NULL;
-
-	d = makedev(CARD_MAJOR, devi->slt->slotnum);
-	return (dev_dwrite(d, &uios, 0));
-}
-
-static int
-ed_pccard_memread(device_t dev, off_t offset, u_char *buf, int size)
-{
-	struct pccard_devinfo *devi;
-	dev_t d;
-	struct iovec iov;
-	struct uio uios;
-
-	devi = device_get_ivars(dev);
-
-	iov.iov_base = buf;
-	iov.iov_len = size;
-
-	uios.uio_iov = &iov;
-	uios.uio_iovcnt = 1;
-	uios.uio_offset = offset;
-	uios.uio_resid = size;
-	uios.uio_segflg = UIO_SYSSPACE;
-	uios.uio_rw = UIO_READ;
-	uios.uio_td = NULL;
-
-	d = makedev(CARD_MAJOR, devi->slt->slotnum);
-	return (dev_dread(d, &uios, 0));
+	return (0);
 }
 
 /*
@@ -390,6 +397,45 @@ ed_pccard_Linksys(device_t dev)
 	return (1);
 }
 
+/*
+ * Special setup for AX88190
+ */
+static int
+ed_pccard_ax88190(device_t dev)
+{
+	int	error;
+	int	flags = device_get_flags(dev);
+	int	iobase;
+	struct	ed_softc *sc = device_get_softc(dev);
+
+	/* Allocate the port resource during setup. */
+	error = ed_alloc_port(dev, 0, ED_NOVELL_IO_PORTS);
+	if (error)
+		return (error);
+
+	sc->asic_offset = ED_NOVELL_ASIC_OFFSET;
+	sc->nic_offset  = ED_NOVELL_NIC_OFFSET;
+	sc->chip_type = ED_CHIP_TYPE_AX88190;
+
+	/*
+	 * Set Attribute Memory IOBASE Register.  Is this a deficiency in
+	 * the PC Card layer, or an ax88190 specific issue? xxx
+	 */
+	iobase = rman_get_start(sc->port_res);
+	ed_pccard_memwrite(dev, ED_AX88190_IOBASE0, iobase & 0xff);
+	ed_pccard_memwrite(dev, ED_AX88190_IOBASE1, (iobase >> 8) & 0xff);
+	ax88190_geteprom(sc);
+	ed_release_resources(dev);
+	error = ed_probe_Novell(dev, 0, flags);
+	if (error == 0) {
+		sc->vendor = ED_VENDOR_PCCARD;
+		sc->type = ED_TYPE_NE2000;
+		sc->type_str = "AX88190";
+	}
+	return (error);
+}
+
+#ifndef ED_NO_MIIBUS
 /* MII bit-twiddling routines for cards using Dlink chipset */
 #define DLINK_MIISET(sc, x) ed_asic_outb(sc, ED_DLINK_MIIBUS, \
     ed_asic_inb(sc, ED_DLINK_MIIBUS) | (x))
@@ -457,3 +503,38 @@ ed_pccard_dlink_mii_readbits(sc, nbits)
 
 	return val;
 }
+#endif
+
+static device_method_t ed_pccard_methods[] = {
+	/* Device interface */
+	DEVMETHOD(device_probe,		pccard_compat_probe),
+	DEVMETHOD(device_attach,	pccard_compat_attach),
+	DEVMETHOD(device_detach,	ed_pccard_detach),
+
+#ifndef ED_NO_MIIBUS
+	/* Bus interface */
+	DEVMETHOD(bus_child_detached,	ed_child_detached),
+
+	/* MII interface */
+	DEVMETHOD(miibus_readreg,	ed_miibus_readreg),
+	DEVMETHOD(miibus_writereg,	ed_miibus_writereg),
+#endif
+
+	/* Card interface */
+	DEVMETHOD(card_compat_match,	ed_pccard_match),
+	DEVMETHOD(card_compat_probe,	ed_pccard_probe),
+	DEVMETHOD(card_compat_attach,	ed_pccard_attach),
+	{ 0, 0 }
+};
+
+static driver_t ed_pccard_driver = {
+	"ed",
+	ed_pccard_methods,
+	sizeof(struct ed_softc)
+};
+
+DRIVER_MODULE(if_ed, pccard, ed_pccard_driver, ed_devclass, 0, 0);
+#ifndef ED_NO_MIIBUS
+MODULE_DEPEND(if_ed, miibus, 1, 1, 1);
+DRIVER_MODULE(miibus, ed, miibus_driver, miibus_devclass, 0, 0);
+#endif

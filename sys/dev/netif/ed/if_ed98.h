@@ -24,8 +24,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ed/if_ed98.h,v 1.1.2.1 2000/09/10 08:45:11 nyan Exp $
- * $DragonFly: src/sys/dev/netif/ed/Attic/if_ed98.h,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $FreeBSD: src/sys/dev/ed/if_ed98.h,v 1.1 2000/08/17 12:15:43 nyan Exp $
+ * $DragonFly: src/sys/dev/netif/ed/Attic/if_ed98.h,v 1.3 2004/02/13 21:15:12 joerg Exp $
  */
 
 /*

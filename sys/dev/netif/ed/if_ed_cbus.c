@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ed/if_ed_cbus.c,v 1.1.2.3 2003/12/24 17:02:00 shiba Exp $
- * $DragonFly: src/sys/dev/netif/ed/Attic/if_ed_cbus.c,v 1.6 2004/02/08 06:47:35 hmp Exp $
+ * $FreeBSD: src/sys/dev/ed/if_ed_cbus.c,v 1.12 2003/10/31 18:31:58 brooks Exp $
+ * $DragonFly: src/sys/dev/netif/ed/Attic/if_ed_cbus.c,v 1.7 2004/02/13 21:15:12 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -49,7 +49,6 @@
 #include <net/if_mib.h>
 
 #include <bus/isa/isavar.h>
-#include <bus/isa/pnpvar.h>
 
 #include "if_edvar.h"
 #ifdef PC98
@@ -279,26 +278,8 @@ ed_isa_attach(dev)
 		return (error);
 	}
 
-	return ed_attach(sc, device_get_unit(dev), flags);
+	return ed_attach(dev);
 }
-
-static device_method_t ed_isa_methods[] = {
-	/* Device interface */
-	DEVMETHOD(device_probe,		ed_isa_probe),
-	DEVMETHOD(device_attach,	ed_isa_attach),
-
-	{ 0, 0 }
-};
-
-static driver_t ed_isa_driver = {
-	"ed",
-	ed_isa_methods,
-	sizeof(struct ed_softc)
-};
-
-static devclass_t ed_isa_devclass;
-
-DRIVER_MODULE(if_ed, isa, ed_isa_driver, ed_isa_devclass, 0, 0);
 
 #ifdef PC98
 /*
@@ -774,7 +755,7 @@ ed98_probe_Novell(dev, port_rid, flags)
 	/*
 	 * I don't know if this is necessary; probably cruft leftover from
 	 * Clarkson packet driver code. Doesn't do a thing on the boards I've
-	 * tested. -DG [note that a outb(0x84, 0) seems to work here, and is
+	 * tested. -DG [note that an outb(0x84, 0) seems to work here, and is
 	 * non-invasive...but some boards don't seem to reset and I don't have
 	 * complete documentation on what the 'right' thing to do is...so we
 	 * do the invasive thing for now. Yuck.]
@@ -959,7 +940,7 @@ ed_probe_SIC98(dev, port_rid, flags)
 	for (i = 0; i < sc->mem_size; i++) {
 		if (sc->mem_start[i]) {
 			device_printf(dev, "failed to clear shared memory "
-				"at %lx - check configuration\n",
+				"at %x - check configuration\n",
 				kvtop(sc->mem_start + i));
 
 			return (ENXIO);
@@ -995,7 +976,7 @@ ed_reset_CNET98(sc, flags)
 	struct ed_softc *sc;
 	int flags;
 {
-	u_short	init_addr = ED_CNET98_INIT;
+	u_int	init_addr = ED_CNET98_INIT;
 	u_char tmp;
 
 	/* Choose initial register address */
@@ -1121,7 +1102,7 @@ ed_probe_CNET98(dev, port_rid, flags)
 	if (((rman_get_start(sc->port_res) & 0x0fff) != 0x03d0)
 	||  ((rman_get_start(sc->port_res) & 0xf000) < (u_short) 0xa000)) {
 #ifdef DIAGNOSTIC
-		device_printf(dev, "Invalid i/o port configuration (0x%x) "
+		device_printf(dev, "Invalid i/o port configuration (0x%lx) "
 			"must be %s for %s\n", rman_get_start(sc->port_res),
 			"0x[a-f]3d0", "CNET98");
 #endif
@@ -1140,7 +1121,7 @@ ed_probe_CNET98(dev, port_rid, flags)
 	tmp_s &= 0x0f;
 	tmp    = rman_get_start(sc->port_res) >> 12;
 	if ((tmp_s <= tmp) && (tmp < (tmp_s + 4))) {
-		device_printf(dev, "Please change iobase address(0x%x) "
+		device_printf(dev, "Please change iobase address(0x%lx) "
 			"or window address(0x%x)\n",
 	   		rman_get_start(sc->port_res), kvtop(sc->mem_start));
 		return (ENXIO);
@@ -1193,7 +1174,7 @@ ed_probe_CNET98(dev, port_rid, flags)
 	for (i = 0; i < sc->mem_size; i++) {
 		if (sc->mem_start[i]) {
 			device_printf(dev, "failed to clear shared memory "
-				"at %lx - check configuration\n",
+				"at %x - check configuration\n",
 				kvtop(sc->mem_start + i));
 
 			return (ENXIO);
@@ -1283,7 +1264,7 @@ ed_probe_CNET98EL(dev, port_rid, flags)
 	/* Check I/O address. 0x[0-f]3d0 are allowed. */
 	if ((rman_get_start(sc->port_res) & 0x0fff) != 0x03d0) {
 #ifdef DIAGNOSTIC
-		device_printf(dev, "Invalid i/o port configuration (0x%x) "
+		device_printf(dev, "Invalid i/o port configuration (0x%lx) "
 			"must be %s for %s\n", rman_get_start(sc->port_res),
 			"0x?3d0", "CNET98E/L");
 #endif
@@ -1576,7 +1557,7 @@ ed_probe_SB98(dev, port_rid, flags)
 	/* Check I/O address. 00d[02468ace] are allowed. */
 	if ((rman_get_start(sc->port_res) & ~0x000e) != 0x00d0) {
 #ifdef DIAGNOSTIC
-		device_printf(dev, "Invalid i/o port configuration (0x%x) "
+		device_printf(dev, "Invalid i/o port configuration (0x%lx) "
 			"must be %s for %s\n", rman_get_start(sc->port_res),
 			"0xd?", "SB9801");
 #endif
@@ -1758,3 +1739,21 @@ ed_pio_testmem(sc, page_offset, isa16bit, flags)
 	return (1);
 }
 #endif	/* PC98 */
+
+static device_method_t ed_isa_methods[] = {
+	/* Device interface */
+	DEVMETHOD(device_probe,		ed_isa_probe),
+	DEVMETHOD(device_attach,	ed_isa_attach),
+
+	{ 0, 0 }
+};
+
+static driver_t ed_isa_driver = {
+	"ed",
+	ed_isa_methods,
+	sizeof(struct ed_softc)
+};
+
+DRIVER_MODULE(if_ed, isa, ed_isa_driver, ed_devclass, 0, 0);
+MODULE_DEPEND(if_ed, isa, 1, 1, 1);
+MODULE_DEPEND(if_ed, ether, 1, 1, 1);

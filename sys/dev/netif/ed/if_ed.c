@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.173.2.14 2003/12/24 17:02:00 shiba Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.9 2004/02/08 06:47:35 hmp Exp $
+ * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.10 2004/02/13 21:15:12 joerg Exp $
  */
 
 /*
@@ -37,6 +37,8 @@
  *   and a variety of similar clones.
  *
  */
+
+#include "opt_ed.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -60,25 +62,30 @@
 #include <net/if_mib.h>
 #include <net/if_media.h>
 
-#include "../mii_layer/mii.h"
-#include "../mii_layer/miivar.h"
+#ifndef ED_NO_MIIBUS
+#include <dev/netif/mii_layer/mii.h>
+#include <dev/netif/mii_layer/miivar.h>
+#endif
 
 #include <net/bpf.h>
 #include "opt_bdg.h"
 #include <net/bridge/bridge.h>
 
-#include <machine/clock.h>
 #include <machine/md_var.h>
 
 #include "if_edreg.h"
 #include "if_edvar.h"
+
+devclass_t ed_devclass;
 
 static void	ed_init		(void *);
 static int	ed_ioctl	(struct ifnet *, u_long, caddr_t);
 static void	ed_start	(struct ifnet *);
 static void	ed_reset	(struct ifnet *);
 static void	ed_watchdog	(struct ifnet *);
+#ifndef ED_NO_MIIBUS
 static void	ed_tick		(void *);
+#endif
 
 static void	ds_getmcaf	(struct ed_softc *, u_int32_t *);
 
@@ -101,7 +108,7 @@ static u_short	ed_pio_write_mbufs (struct ed_softc *, struct mbuf *,
 
 static void	ed_setrcr	(struct ed_softc *);
 
-static u_int32_t ds_crc		(u_char *ep);
+static uint32_t ds_mchash	(const uint8_t *);
 
 DECLARE_DUMMY_MODULE(if_ed);
 
@@ -569,7 +576,7 @@ ed_probe_WD80x3_generic(dev, flags, intr_vals)
 	for (i = 0; i < memsize; ++i) {
 		if (sc->mem_start[i]) {
 			device_printf(dev, "failed to clear shared memory at %llx - check configuration\n",
-				      kvtop(sc->mem_start + i));
+				      (long long)kvtop(sc->mem_start + i));
 
 			/*
 			 * Disable 16 bit access to shared memory
@@ -903,8 +910,8 @@ ed_probe_3Com(dev, port_rid, flags)
 
 	for (i = 0; i < memsize; ++i)
 		if (sc->mem_start[i]) {
-			device_printf(dev, "failed to clear shared memory at %lx - check configuration\n",
-				      kvtop(sc->mem_start + i));
+			device_printf(dev, "failed to clear shared memory at %llx - check configuration\n",
+				      (unsigned long long)kvtop(sc->mem_start + i));
 			return (ENXIO);
 		}
 	return (0);
@@ -997,7 +1004,7 @@ ed_probe_SIC(dev, port_rid, flags)
 		if (sc->mem_start[i]) {
 			device_printf(dev, "failed to clear shared memory "
 				"at %llx - check configuration\n",
-				kvtop(sc->mem_start + i));
+				(long long)kvtop(sc->mem_start + i));
 
 			return (ENXIO);
 		}
@@ -1050,7 +1057,7 @@ ed_probe_Novell_generic(dev, flags)
 	/*
 	 * I don't know if this is necessary; probably cruft leftover from
 	 * Clarkson packet driver code. Doesn't do a thing on the boards I've
-	 * tested. -DG [note that a outb(0x84, 0) seems to work here, and is
+	 * tested. -DG [note that an outb(0x84, 0) seems to work here, and is
 	 * non-invasive...but some boards don't seem to reset and I don't have
 	 * complete documentation on what the 'right' thing to do is...so we
 	 * do the invasive thing for now. Yuck.]
@@ -1545,7 +1552,7 @@ ed_probe_HP_pclanp(dev, port_rid, flags)
  * HP PC Lan+ : Set the physical link to use AUI or TP/TL.
  */
 
-void
+static void
 ed_hpp_set_physical_link(struct ed_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -1674,16 +1681,22 @@ ed_release_resources(dev)
 	struct ed_softc *sc = device_get_softc(dev);
 
 	if (sc->port_res) {
+		bus_deactivate_resource(dev, SYS_RES_IOPORT,
+					sc->port_rid, sc->port_res);
 		bus_release_resource(dev, SYS_RES_IOPORT,
 				     sc->port_rid, sc->port_res);
 		sc->port_res = 0;
 	}
 	if (sc->mem_res) {
+		bus_deactivate_resource(dev, SYS_RES_MEMORY,
+					sc->mem_rid, sc->mem_res);
 		bus_release_resource(dev, SYS_RES_MEMORY,
 				     sc->mem_rid, sc->mem_res);
 		sc->mem_res = 0;
 	}
 	if (sc->irq_res) {
+		bus_deactivate_resource(dev, SYS_RES_IRQ,
+					sc->irq_rid, sc->irq_res);
 		bus_release_resource(dev, SYS_RES_IRQ,
 				     sc->irq_rid, sc->irq_res);
 		sc->irq_res = 0;
@@ -1694,11 +1707,9 @@ ed_release_resources(dev)
  * Install interface into kernel networking data structures
  */
 int
-ed_attach(sc, unit, flags)
-	struct ed_softc *sc;
-	int unit;
-	int flags;
+ed_attach(device_t dev)
 {
+	struct ed_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	callout_handle_init(&sc->tick_ch);
@@ -1711,8 +1722,9 @@ ed_attach(sc, unit, flags)
 	 * Initialize ifnet structure
 	 */
 	ifp->if_softc = sc;
-	if_initname(ifp, "ed", unit);
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_output = ether_output;
+	ifp->if_mtu = ETHERMTU;
 	ifp->if_start = ed_start;
 	ifp->if_ioctl = ed_ioctl;
 	ifp->if_watchdog = ed_watchdog;
@@ -1720,6 +1732,7 @@ ed_attach(sc, unit, flags)
 	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
 	ifp->if_linkmib = &sc->mibdata;
 	ifp->if_linkmiblen = sizeof sc->mibdata;
+	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	/*
 	 * XXX - should do a better job.
 	 */
@@ -1738,12 +1751,8 @@ ed_attach(sc, unit, flags)
 	 * tranceiver for AUI operation), based on compile-time 
 	 * config option.
 	 */
-	if (flags & ED_FLAGS_DISABLE_TRANCEIVER)
-		ifp->if_flags = (IFF_BROADCAST | IFF_SIMPLEX | 
-		    IFF_MULTICAST | IFF_ALTPHYS);
-	else
-		ifp->if_flags = (IFF_BROADCAST | IFF_SIMPLEX |
-		    IFF_MULTICAST);
+	if (device_get_flags(dev) & ED_FLAGS_DISABLE_TRANCEIVER)
+		ifp->if_flags |= IFF_ALTPHYS;
 
 	/*
 	 * Attach the interface
@@ -1755,8 +1764,7 @@ ed_attach(sc, unit, flags)
 	/*
 	 * Print additional info when attached
 	 */
-	printf("%s: address %6D, ", ifp->if_xname,
-		sc->arpcom.ac_enaddr, ":");
+	if_printf(ifp, "address %6D, ", sc->arpcom.ac_enaddr, ":");
 
 	if (sc->type_str && (*sc->type_str != 0))
 		printf("type %s ", sc->type_str);
@@ -1809,8 +1817,10 @@ ed_stop(sc)
 {
 	int     n = 5000;
 
+#ifndef ED_NO_MIIBUS
 	untimeout(ed_tick, sc, sc->tick_ch);
 	callout_handle_init(&sc->tick_ch);
+#endif
 	if (sc->gone)
 		return;
 	/*
@@ -1845,6 +1855,7 @@ ed_watchdog(ifp)
 	ed_reset(ifp);
 }
 
+#ifndef ED_NO_MIIBUS
 static void
 ed_tick(arg)
 	void *arg;
@@ -1865,6 +1876,7 @@ ed_tick(arg)
 	sc->tick_ch = timeout(ed_tick, sc, hz);
 	splx(s);
 }
+#endif
 
 /*
  * Initialize device.
@@ -2007,11 +2019,13 @@ ed_init(xsc)
 		}
 	}
 
+#ifndef ED_NO_MIIBUS
 	if (sc->miibus != NULL) {
 		struct mii_data *mii;
 		mii = device_get_softc(sc->miibus);
 		mii_mediachg(mii);
 	}
+#endif
 	/*
 	 * Set 'running' flag, and clear output active flag.
 	 */
@@ -2023,8 +2037,10 @@ ed_init(xsc)
 	 */
 	ed_start(ifp);
 
+#ifndef ED_NO_MIIBUS
 	untimeout(ed_tick, sc, sc->tick_ch);
 	sc->tick_ch = timeout(ed_tick, sc, hz);
+#endif
 	(void) splx(s);
 }
 
@@ -2203,8 +2219,10 @@ outloop:
 		}
 	} else {
 		len = ed_pio_write_mbufs(sc, m, (int)buffer);
-		if (len == 0)
+		if (len == 0) {
+			m_freem(m0);
 			goto outloop;
+		}
 	}
 
 	sc->txb_len[sc->txb_new] = max(len, (ETHER_MIN_LEN-ETHER_CRC_LEN));
@@ -2381,6 +2399,7 @@ edintr(arg)
 	struct ed_softc *sc = (struct ed_softc*) arg;
 	struct ifnet *ifp = (struct ifnet *)sc;
 	u_char  isr;
+	int	count;
 
 	if (sc->gone)
 		return;
@@ -2390,9 +2409,12 @@ edintr(arg)
 	ed_nic_outb(sc, ED_P0_CR, sc->cr_proto | ED_CR_STA);
 
 	/*
-	 * loop until there are no more new interrupts
+	 * loop until there are no more new interrupts.  When the card
+	 * goes away, the hardware will read back 0xff.  Looking at
+	 * the interrupts, it would appear that 0xff is impossible,
+	 * or at least extremely unlikely.
 	 */
-	while ((isr = ed_nic_inb(sc, ED_P0_ISR)) != 0) {
+	while ((isr = ed_nic_inb(sc, ED_P0_ISR)) != 0 && isr != 0xff) {
 
 		/*
 		 * reset all the bits that we are 'acknowledging' by writing a
@@ -2401,12 +2423,21 @@ edintr(arg)
 		 */
 		ed_nic_outb(sc, ED_P0_ISR, isr);
 
-		/* XXX workaround for AX88190 */
+		/* 
+		 * XXX workaround for AX88190
+		 * We limit this to 5000 iterations.  At 1us per inb/outb,
+		 * this translates to about 15ms, which should be plenty
+		 * of time, and also gives protection in the card eject
+		 * case.
+		 */
 		if (sc->chip_type == ED_CHIP_TYPE_AX88190) {
-			while (ed_nic_inb(sc, ED_P0_ISR) & isr) {
-				ed_nic_outb(sc, ED_P0_ISR,0);
-				ed_nic_outb(sc, ED_P0_ISR,isr);
-			}
+			count = 5000;		/* 15ms */
+			while (count-- && (ed_nic_inb(sc, ED_P0_ISR) & isr)) {
+ 				ed_nic_outb(sc, ED_P0_ISR,0);
+ 				ed_nic_outb(sc, ED_P0_ISR,isr);
+ 			}
+			if (count == 0)
+				break;
 		}
 
 		/*
@@ -2554,7 +2585,7 @@ edintr(arg)
 						sc->mibdata.dot3StatsInternalMacReceiveErrors++;
 					ifp->if_ierrors++;
 #ifdef ED_DEBUG
-					printf("%s: receive error %x\n", ifp->if_xname,
+					if_printf("receive error %x\n",
 					       ed_nic_inb(sc, ED_P0_RSR));
 #endif
 				}
@@ -2636,8 +2667,10 @@ ed_ioctl(ifp, command, data)
 	caddr_t data;
 {
 	struct ed_softc *sc = ifp->if_softc;
+#ifndef ED_NO_MIIBUS
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct mii_data *mii;
+#endif
 	int     s, error = 0;
 
 	if (sc == NULL || sc->gone) {
@@ -2700,6 +2733,7 @@ ed_ioctl(ifp, command, data)
 		error = 0;
 		break;
 
+#ifndef ED_NO_MIIBUS
 	case SIOCGIFMEDIA:
 	case SIOCSIFMEDIA:
 		if (sc->miibus == NULL) {
@@ -2709,6 +2743,7 @@ ed_ioctl(ifp, command, data)
 		mii = device_get_softc(sc->miibus);
 		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, command);
 		break;
+#endif
 
 	default:
 		error = EINVAL;
@@ -2763,6 +2798,7 @@ ed_get_packet(sc, buf, len)
 	char   *buf;
 	u_short len;
 {
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct ether_header *eh;
 	struct mbuf *m;
 
@@ -2770,7 +2806,7 @@ ed_get_packet(sc, buf, len)
 	MGETHDR(m, M_DONTWAIT, MT_DATA);
 	if (m == NULL)
 		return;
-	m->m_pkthdr.rcvif = &sc->arpcom.ac_if;
+	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len = m->m_len = len;
 
 	/*
@@ -2801,11 +2837,11 @@ ed_get_packet(sc, buf, len)
 	 * Don't read in the entire packet if we know we're going to drop it
 	 * and no bpf is active.
 	 */
-	if (!sc->arpcom.ac_if.if_bpf && BDG_ACTIVE( (&sc->arpcom.ac_if) ) ) {
+	if (!ifp->if_bpf && BDG_ACTIVE( (ifp) ) ) {
 		struct ifnet *bif;
 
 		ed_ring_copy(sc, buf, (char *)eh, ETHER_HDR_LEN);
-		bif = bridge_in_ptr(&sc->arpcom.ac_if, eh) ;
+		bif = bridge_in_ptr(ifp, eh) ;
 		if (bif == BDG_DROP) {
 			m_freem(m);
 			return;
@@ -2825,7 +2861,7 @@ ed_get_packet(sc, buf, len)
 	m->m_pkthdr.len = m->m_len = len - sizeof(struct ether_header);
 	m->m_data += sizeof(struct ether_header);
 
-	ether_input(&sc->arpcom.ac_if, eh, m);
+	ether_input(ifp, eh, m);
 }
 
 /*
@@ -3157,7 +3193,7 @@ ed_hpp_readmem(sc, src, dst, amount)
  *	Only used in the probe routine to test the memory. 'len' must
  *	be even.
  */
-void
+static void
 ed_hpp_writemem(sc, src, dst, len)
 	struct ed_softc *sc;
 	unsigned char *src;
@@ -3245,7 +3281,7 @@ ed_hpp_write_mbufs(struct ed_softc *sc, struct mbuf *m, int dst)
 				/* finish the last word of the previous mbuf */
 				if (wantbyte) {
 					savebyte[1] = *data;
-					*d = *((ushort *) savebyte);
+					*d = *((u_short *) savebyte);
 					data++; len--; wantbyte = 0;
 				}
 				/* output contiguous words */
@@ -3326,6 +3362,7 @@ ed_hpp_write_mbufs(struct ed_softc *sc, struct mbuf *m, int dst)
 	return (total_len);
 }
 
+#ifndef ED_NO_MIIBUS
 /*
  * MII bus support routines.
  */
@@ -3343,7 +3380,7 @@ ed_miibus_readreg(dev, phy, reg)
 		splx(s);
 		return (0);
 	}
-	
+
 	(*sc->mii_writebits)(sc, 0xffffffff, 32);
 	(*sc->mii_writebits)(sc, ED_MII_STARTDELIM, ED_MII_STARTDELIM_BITS);
 	(*sc->mii_writebits)(sc, ED_MII_READOP, ED_MII_OP_BITS);
@@ -3429,6 +3466,7 @@ ed_child_detached(dev, child)
 	if (child == sc->miibus)
 		sc->miibus = NULL;
 }
+#endif
 
 static void
 ed_setrcr(sc)
@@ -3510,23 +3548,21 @@ ed_setrcr(sc)
 /*
  * Compute crc for ethernet address
  */
-static u_int32_t
-ds_crc(ep)
-	u_char *ep;
+static uint32_t
+ds_mchash(addr)
+	const uint8_t *addr;
 {
-#define POLYNOMIAL 0x04c11db6
-	u_int32_t crc = 0xffffffff;
-	int carry, i, j;
-	u_char b;
+#define ED_POLYNOMIAL 0x04c11db6
+	register uint32_t crc = 0xffffffff;
+	register int carry, idx, bit;
+	register uint8_t data;
 
-	for (i = 6; --i >= 0;) {
-		b = *ep++;
-		for (j = 8; --j >= 0;) {
-			carry = ((crc & 0x80000000) ? 1 : 0) ^ (b & 0x01);
+	for (idx = 6; --idx >= 0;) {
+		for (data = *addr++, bit = 8; --bit >= 0; data >>=1 ) {
+			carry = ((crc & 0x80000000) ? 1 : 0) ^ (data & 0x01);
 			crc <<= 1;
-			b >>= 1;
 			if (carry)
-				crc = (crc ^ POLYNOMIAL) | carry;
+				crc = (crc ^ ED_POLYNOMIAL) | carry;
 		}
 	}
 	return crc;
@@ -3553,7 +3589,7 @@ ds_getmcaf(sc, mcaf)
 	     ifma = ifma->ifma_link.le_next) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
-		index = ds_crc(LLADDR((struct sockaddr_dl *)ifma->ifma_addr))
+		index = ds_mchash(LLADDR((struct sockaddr_dl *)ifma->ifma_addr))
 			>> 26;
 		af[index >> 3] |= 1 << (index & 7);
 	}

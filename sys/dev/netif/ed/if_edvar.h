@@ -24,9 +24,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ed/if_edvar.h,v 1.4.2.5 2003/12/24 17:02:00 shiba Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_edvar.h,v 1.4 2004/02/08 06:47:35 hmp Exp $
+ * $FreeBSD: src/sys/dev/ed/if_edvar.h,v 1.16 2003/10/31 18:31:58 brooks Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_edvar.h,v 1.5 2004/02/13 21:15:12 joerg Exp $
  */
+
+#ifndef SYS_DEV_NETIF_ED_EDVAR_H
+#define SYS_DEV_NETIF_ED_EDVAR_H
 
 /*
  * ed_softc: per line info and status
@@ -203,17 +206,21 @@ int	ed_probe_Novell		(device_t, int, int);
 int	ed_probe_Novell_generic	(device_t, int);
 int	ed_probe_HP_pclanp	(device_t, int, int);
 
-int	ed_attach		(struct ed_softc *, int, int);
+int	ed_attach		(device_t);
 void	ed_stop			(struct ed_softc *);
 void	ed_pio_readmem		(struct ed_softc *, int, unsigned char *,
 				     unsigned short);
 void	ed_pio_writemem		(struct ed_softc *, char *,
 				     unsigned short, unsigned short);
+#ifndef ED_NO_MIIBUS
 int	ed_miibus_readreg	(device_t, int, int);
 void	ed_miibus_writereg	(device_t, int, int, int);
 int	ed_ifmedia_upd		(struct ifnet *);
 void	ed_ifmedia_sts		(struct ifnet *, struct ifmediareq *);
 void	ed_child_detached	(device_t, device_t);
+#endif
 
 driver_intr_t	edintr;
+extern devclass_t ed_devclass;
 
+#endif /* SYS_DEV_NETIF_ED_EDVAR_H */

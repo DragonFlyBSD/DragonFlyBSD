@@ -6,8 +6,8 @@
  *   of this software, nor does the author assume any responsibility
  *   for damages incurred with its use.
  *
- * $FreeBSD: src/sys/dev/ed/if_edreg.h,v 1.27.2.4 2003/12/24 17:02:00 shiba Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_edreg.h,v 1.3 2004/02/08 06:47:35 hmp Exp $
+ * $FreeBSD: src/sys/dev/ed/if_edreg.h,v 1.32 2003/10/15 17:22:15 shiba Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_edreg.h,v 1.4 2004/02/13 21:15:12 joerg Exp $
  */
 /*
  * National Semiconductor DS8390 NIC register definitions

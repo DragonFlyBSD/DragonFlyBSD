@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ed/if_ed_isa.c,v 1.5.2.4 2003/12/24 17:02:00 shiba Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.6 2004/02/08 06:47:35 hmp Exp $
+ * $FreeBSD: src/sys/dev/ed/if_ed_isa.c,v 1.15 2003/10/31 18:31:58 brooks Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.7 2004/02/13 21:15:12 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -43,7 +43,6 @@
 #include <net/if_mib.h>
 
 #include <bus/isa/isavar.h>
-#include <bus/isa/pnpvar.h>
 
 #include "if_edvar.h"
 
@@ -126,7 +125,6 @@ ed_isa_attach(dev)
 	device_t dev;
 {
 	struct ed_softc *sc = device_get_softc(dev);
-	int flags = device_get_flags(dev);
 	int error;
 	
 	if (sc->port_used > 0)
@@ -143,7 +141,7 @@ ed_isa_attach(dev)
 		return (error);
 	}
 
-	return ed_attach(sc, device_get_unit(dev), flags);
+	return ed_attach(dev);
 }
 
 static device_method_t ed_isa_methods[] = {
@@ -160,6 +158,6 @@ static driver_t ed_isa_driver = {
 	sizeof(struct ed_softc)
 };
 
-static devclass_t ed_isa_devclass;
-
-DRIVER_MODULE(if_ed, isa, ed_isa_driver, ed_isa_devclass, 0, 0);
+DRIVER_MODULE(if_ed, isa, ed_isa_driver, ed_devclass, 0, 0);
+MODULE_DEPEND(if_ed, isa, 1, 1, 1);
+MODULE_DEPEND(if_ed, ether, 1, 1, 1);

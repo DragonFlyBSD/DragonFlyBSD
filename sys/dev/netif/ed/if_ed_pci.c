@@ -17,8 +17,8 @@
  * 4. Modifications may be freely made to this file if the above conditions
  *    are met.
  *
- * $FreeBSD: src/sys/dev/ed/if_ed_pci.c,v 1.23.2.1 2000/09/10 08:45:11 nyan Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.5 2003/11/20 22:07:27 dillon Exp $
+ * $FreeBSD: src/sys/dev/ed/if_ed_pci.c,v 1.34 2003/10/31 18:31:58 brooks Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.6 2004/02/13 21:15:12 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -102,7 +102,7 @@ ed_pci_attach(device_t dev)
                 return (error);
         }
 
-	error = ed_attach(sc, device_get_unit(dev), flags);
+	error = ed_attach(dev);
 
 	return (error);
 }
@@ -123,4 +123,6 @@ static driver_t ed_pci_driver = {
 
 static devclass_t ed_devclass;
 
-DRIVER_MODULE(if_ed, pci, ed_pci_driver, ed_devclass, 0, 0);
+DRIVER_MODULE(ed, pci, ed_pci_driver, ed_devclass, 0, 0);
+MODULE_DEPEND(ed, pci, 1, 1, 1);
+MODULE_DEPEND(ed, ether, 1, 1, 1);
