@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rpvar.h,v 1.1.6.1 2000/08/03 01:01:20 peter Exp $
- * $DragonFly: src/sys/dev/serial/rp2/Attic/rpvar.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp2/Attic/rpvar.h,v 1.3 2004/09/19 01:55:07 dillon Exp $
  */
 
 /*
@@ -58,6 +58,7 @@ struct rp_port {
 	unsigned char		state;	/* state of dtr */
 
 /* Time to hold DTR down on close */
+	struct callout		dtr_ch;
 	int			dtr_wait;
 	int			wopeners;	/* processes waiting for DCD */
 

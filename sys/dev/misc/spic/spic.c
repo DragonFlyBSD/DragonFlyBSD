@@ -48,7 +48,7 @@
  * also provided sample code upon which this driver was based.
  *
  * $FreeBSD: src/sys/i386/isa/spic.c,v 1.4.2.1 2002/04/15 00:52:12 will Exp $
- * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.10 2004/09/18 19:11:28 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.11 2004/09/19 01:56:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -466,7 +466,7 @@ spicopen(dev_t dev, int flag, int fmt, struct thread *td)
 	sc->sc_count=0;
 
 	/* Start the polling */
-	timeout(spictimeout, sc, spic_pollrate);
+	callout_reset(&sc->sc_timeout_ch, spic_pollrate, spictimeout, sc);
 	return 0;
 }
 

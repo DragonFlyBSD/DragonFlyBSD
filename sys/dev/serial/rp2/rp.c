@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rp.c,v 1.33.2.2 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.13 2004/09/18 20:02:38 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.14 2004/09/19 01:55:07 dillon Exp $
  */
 
 /* 
@@ -128,6 +128,8 @@ static Byte_t sBitMapSetTbl[8] =
 {
    0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80
 };
+
+static struct callout do_poll_ch;
 
 /***************************************************************************
 Function: sInitController
@@ -1011,8 +1013,8 @@ static void rp_do_poll(void *not_used)
 		}
 	}
 	}
-	if(rp_num_ports_open)
-		timeout(rp_do_poll, (void *)NULL, POLL_INTERVAL);
+	if (rp_num_ports_open)
+		callout_reset(&do_poll_ch, POLL_INTERVAL, rp_do_poll, NULL);
 }
 
 static const char*
@@ -1137,6 +1139,7 @@ rp_pciattach(pcici_t tag, int unit)
 	/*		tty->t_termios = deftermios;
 	*/
 			rp->dtr_wait = 3 * hz;
+			callout_init(&rp->dtr_ch);
 			rp->it_in.c_iflag = 0;
 			rp->it_in.c_oflag = 0;
 			rp->it_in.c_cflag = TTYDEF_CFLAG;
@@ -1378,9 +1381,10 @@ open_top:
 			}
 		}
 
-	if(rp_num_ports_open == 1)
-		timeout(rp_do_poll, (void *)NULL, POLL_INTERVAL);
-
+	if (rp_num_ports_open == 1)
+		if ((do_poll_ch.c_flags & CALLOUT_DID_INIT) == 0)
+			callout_init(&do_poll_ch);
+		callout_reset(&do_poll_ch, POLL_INTERVAL, rp_do_poll, NULL);
 	}
 
 	if(!(flag&O_NONBLOCK) && !(tp->t_cflag&CLOCAL) &&
@@ -1398,9 +1402,6 @@ open_top:
 	if(tp->t_state & TS_ISOPEN && IS_CALLOUT(dev))
 		rp->active_out = TRUE;
 
-/*	if(rp_num_ports_open == 1)
-		timeout(rp_do_poll, (void *)NULL, POLL_INTERVAL);
-*/
 out:
 	splx(oldspl);
 	if(!(tp->t_state & TS_ISOPEN) && rp->wopeners == 0) {
@@ -1472,7 +1473,7 @@ rphardclose(struct rp_port *rp)
 		sClrDTR(cp);
 	}
 	if(rp->dtr_wait != 0) {
-		timeout(rpdtrwakeup, rp, rp->dtr_wait);
+		callout_reset(&rp->dtr_ch, rp->dtr_wait, rpdtrwakeup, rp);
 		rp->state |= ~SET_DTR;
 	}
 

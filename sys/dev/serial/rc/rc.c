@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rc.c,v 1.53.2.1 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.11 2004/05/19 22:52:49 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.12 2004/09/19 01:55:06 dillon Exp $
  *
  */
 
@@ -137,11 +137,13 @@ static struct rc_chans  {
 	u_char          *rc_bufend;             /* end of buffer        */
 	u_char          *rc_optr;               /* ptr in output buf    */
 	u_char          *rc_obufend;            /* end of output buf    */
+	struct callout	 rc_dtr_ch;
 	u_char           rc_ibuf[4 * RC_IBUFSIZE];  /* input buffer         */
 	u_char           rc_obuf[RC_OBUFSIZE];  /* output buffer        */
 } rc_chans[NRC * CD180_NCHAN];
 
 static int rc_scheduled_event = 0;
+static struct callout rc_wakeup_ch;
 
 /* for pstat -t */
 static struct tty rc_tty[NRC * CD180_NCHAN];
@@ -247,6 +249,7 @@ rcattach(dvp)
 		CD180_NCHAN, (rcin(CD180_GFRCR) & 0xF) + 'A');
 
 	for (chan = 0; chan < CD180_NCHAN; chan++, rc++) {
+		callout_init(&rc->rc_dtr_ch);
 		rc->rc_rcb     = rcb;
 		rc->rc_chan    = chan;
 		rc->rc_iptr    = rc->rc_ibuf;
@@ -268,7 +271,8 @@ rcattach(dvp)
 	if (!rc_started) {
 		cdevsw_add(&rc_cdevsw, -1, rcb->rcb_unit);
 		register_swi(SWI_TTY, rcpoll, NULL, "rcpoll");
-		rc_wakeup((void *)NULL);
+		callout_init(&rc_wakeup_ch);
+		rc_wakeup(NULL);
 		rc_started = 1;
 	}
 	return 1;
@@ -856,7 +860,8 @@ struct rc_chans *rc;
 		WAITFORCCR(rc->rc_rcb->rcb_unit, rc->rc_chan);
 		(void) rc_modctl(rc, TIOCM_RTS, DMSET);
 		if (rc->rc_dtrwait) {
-			timeout(rc_dtrwakeup, rc, rc->rc_dtrwait);
+			callout_reset(&rc->rc_dtr_ch, rc->rc_dtrwait,
+				rc_dtrwakeup, rc);
 			rc->rc_flags |= RC_DTR_OFF;
 		}
 	}
@@ -1413,8 +1418,6 @@ static void
 rc_wakeup(chan)
 	void	*chan;
 {
-	timeout(rc_wakeup, (caddr_t)NULL, 1);
-
 	if (rc_scheduled_event != 0) {
 		int	s;
 
@@ -1422,6 +1425,7 @@ rc_wakeup(chan)
 		rcpoll(NULL);
 		splx(s);
 	}
+	callout_reset(&rc_wakeup_ch, 1, rc_wakeup, NULL);
 }
 
 static void
