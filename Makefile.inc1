@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.31 2004/06/14 19:35:35 joerg Exp $
+# $DragonFly: src/Makefile.inc1,v 1.32 2004/06/20 20:49:45 joerg Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -205,6 +205,7 @@ TMPPID!=	echo $$$$
 #
 BMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		OBJTREE=${OBJTREE} \
+		HOST_CCVER=${HOST_CCVER} \
 		DESTDIR=${BTOOLSDEST} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
@@ -216,6 +217,7 @@ BMAKE=		${BMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
 #
 TMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		OBJTREE=${OBJTREE} \
+		HOST_CCVER=${HOST_CCVER} \
 		DESTDIR= \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
@@ -231,6 +233,7 @@ TMAKE=		${TMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
 #
 XMAKEENV=	MAKEOBJDIRPREFIX=${CTOOLSDEST} \
 		OBJTREE=${OBJTREE} \
+		HOST_CCVER=${HOST_CCVER} \
 		DESTDIR=${CTOOLSDEST} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh" \
 		TOOLS_PREFIX=${CTOOLSDEST} \
@@ -248,6 +251,7 @@ XMAKE=		${XMAKEENV} ${MAKE} -f Makefile.inc1 -DNO_FORTRAN -DNO_GDB \
 #
 CROSSENV=	MAKEOBJDIRPREFIX=${WORLDDEST} \
 		OBJTREE=${OBJTREE} \
+		HOST_CCVER=${HOST_CCVER} \
 		MACHINE_ARCH=${TARGET_ARCH} \
 		MACHINE=${TARGET} \
 		OBJFORMAT_PATH=${CTOOLSDEST} \
