@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/hostcache.c,v 1.6.2.1 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/Attic/hostcache.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/net/Attic/hostcache.c,v 1.3 2004/09/15 20:38:36 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,7 @@ MALLOC_DEFINE(M_HOSTCACHE, "hostcache", "per-host cache structure");
 static	struct hctable hctable[AF_MAX];
 static	int hc_timeout_interval = 120;
 static	int hc_maxidle = 1800;
+static	struct callout hc_timeout_h;
 
 static	int cmpsa(const struct sockaddr *sa1, const struct sockaddr *sa2);
 static	void hc_timeout(void *xhct);
@@ -75,7 +76,9 @@ hc_init(int af, struct hccallback *hccb, int init_nelem, int primes)
 	hct->hct_heads = heads;
 	hct->hct_nentries = nelem;
 	hct->hct_primes = primes;
-	timeout(hc_timeout, hct, hc_timeout_interval * hz);
+	callout_init(&hc_timeout_h);
+	callout_reset(&hc_timeout_h, hc_timeout_interval * hz,
+		      hc_timeout, hct);
 	return 0;
 }
 
@@ -232,7 +235,8 @@ hc_timeout(void *xhct)
 	/*
 	 * Fiddle something here based on tot_idle...
 	 */
-	timeout(hc_timeout, xhct, hc_timeout_interval * hz);
+	callout_reset(&hc_timeout_h, hc_timeout_interval * hz,
+		      hc_timeout, xhct);
 }
 
 static int
