@@ -26,7 +26,7 @@
  *
  *
  * $Id: if_ipw.c,v 1.7.2.1 2005/01/13 20:01:03 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.1 2005/03/06 18:25:12 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.2 2005/03/06 18:30:36 dillon Exp $
  */
 
 /*-
@@ -433,7 +433,7 @@ ipw_dma_alloc(struct ipw_softc *sc)
 	}
 
 	error = bus_dmamem_alloc(sc->tbd_dmat, (void **)&sc->tbd_list,
-	    BUS_DMA_NOWAIT | BUS_DMA_ZERO, &sc->tbd_map);
+	    BUS_DMA_WAITOK | BUS_DMA_ZERO, &sc->tbd_map);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not allocate tx ring DMA memory\n");
@@ -459,7 +459,7 @@ ipw_dma_alloc(struct ipw_softc *sc)
 	}
 
 	error = bus_dmamem_alloc(sc->rbd_dmat, (void **)&sc->rbd_list,
-	    BUS_DMA_NOWAIT | BUS_DMA_ZERO, &sc->rbd_map);
+	    BUS_DMA_WAITOK | BUS_DMA_ZERO, &sc->rbd_map);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not allocate rx ring DMA memory\n");
@@ -486,7 +486,7 @@ ipw_dma_alloc(struct ipw_softc *sc)
 	}
 
 	error = bus_dmamem_alloc(sc->status_dmat, (void **)&sc->status_list,
-	    BUS_DMA_NOWAIT | BUS_DMA_ZERO, &sc->status_map);
+	    BUS_DMA_WAITOK | BUS_DMA_ZERO, &sc->status_map);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not allocate status ring DMA memory\n");
@@ -1827,13 +1827,13 @@ ipw_cache_firmware(struct ipw_softc *sc, void *data)
 	fw->ucode_size = le32toh(hdr.ucode_size);
 	p += sizeof hdr;
 
-	fw->main = malloc(fw->main_size, M_DEVBUF, M_NOWAIT);
+	fw->main = malloc(fw->main_size, M_DEVBUF, M_WAITOK);
 	if (fw->main == NULL) {
 		error = ENOMEM;
 		goto fail1;
 	}
 
-	fw->ucode = malloc(fw->ucode_size, M_DEVBUF, M_NOWAIT);
+	fw->ucode = malloc(fw->ucode_size, M_DEVBUF, M_WAITOK);
 	if (fw->ucode == NULL) {
 		error = ENOMEM;
 		goto fail2;
