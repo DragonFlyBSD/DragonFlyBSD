@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chmod.c	8.8 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/chmod/chmod.c,v 1.16.2.6 2002/10/18 01:36:38 trhodes Exp $
- * $DragonFly: src/bin/chmod/chmod.c,v 1.4 2003/09/28 14:39:13 hmp Exp $
+ * $DragonFly: src/bin/chmod/chmod.c,v 1.5 2004/07/22 13:42:06 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -49,7 +49,7 @@
 #include <unistd.h>
 
 int main (int, char **);
-void usage (void);
+static void usage (void);
 
 int
 main(int argc, char **argv)
@@ -209,7 +209,7 @@ done:	argv += optind;
 	exit(rval);
 }
 
-void
+static void
 usage()
 {
 	(void)fprintf(stderr,
