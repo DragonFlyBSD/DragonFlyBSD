@@ -35,7 +35,7 @@
  *
  * @(#)fclose.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fclose.c,v 1.8 1999/11/21 22:34:57 dt Exp $
- * $DragonFly: src/lib/libc/stdio/fclose.c,v 1.6 2004/06/09 19:28:04 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fclose.c,v 1.7 2004/06/09 19:40:59 hmp Exp $
  */
 
 #include <errno.h>
@@ -63,6 +63,14 @@ fclose(FILE *fp)
 		FREEUB(fp);
 	if (HASLB(fp))
 		FREELB(fp);
+	/*
+	 * XXX-HITEN the FUNLOCKFILE(fp) cannot be moved below because of
+	 * the way the funlockfile() implementation works; it surrounds
+	 * the code with a if (fp->_file >= 0)... terrible, just terrible.
+	 *
+	 * This mess will be cleaned up when I rewrite the file contention
+	 * locking code.
+	 */
 	FUNLOCKFILE(fp);
 	fp->_file = -1;
 	fp->_r = fp->_w = 0;	/* Mess up if reaccessed. */
