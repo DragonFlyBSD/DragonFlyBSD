@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.4 2004/03/18 00:07:53 hmp Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.5 2004/03/18 15:18:02 eirikn Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SPLASSERT.9 SYSCALL_MODULE.9 \
@@ -17,8 +17,8 @@ MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	accept_filter.9 at_exit.9 at_fork.9 bios.9 boot.9 buf.9 bus_dma.9 \
 	cd.9 copy.9 \
 	crypto.9 devstat.9 \
-	devtoname.9 fetch.9 ifnet.9 inittodr.9 intro.9 kernacc.9 malloc.9 \
-	make_dev.9 mbuf.9 microseq.9 mi_switch.9 module.9 namei.9 \
+	devtoname.9 fetch.9 ifnet.9 inittodr.9 intro.9 kernacc.9 lock.9 \
+	malloc.9 make_dev.9 mbuf.9 microseq.9 mi_switch.9 module.9 namei.9 \
 	pci.9 panic.9 physio.9 posix4.9 psignal.9 \
 	resettodr.9 rtalloc.9 rtentry.9 sleep.9 spl.9 \
 	store.9 style.9 suser.9 time.9 timeout.9 uio.9 \
@@ -128,6 +128,12 @@ MLINKS+=devclass_add_driver.9 devclass_delete_driver.9
 MLINKS+=devclass_add_driver.9 devclass_find_driver.9
 MLINKS+=BUS_READ_IVAR.9 BUS_WRITE_IVAR.9
 MLINKS+=bus_generic_read_ivar.9 bus_generic_write_ivar.9
+
+MLINKS+=lock.9 lockcount.9
+MLINKS+=lock.9 lockinit.9
+MLINKS+=lock.9 lockmgr.9
+MLINKS+=lock.9 lockmgr_printinfo.9
+MLINKS+=lock.9 lockstatus.9
 
 MLINKS+=microtime.9 getmicrotime.9 microtime.9 nanotime.9
 MLINKS+=microtime.9 getnanotime.9
