@@ -1,10 +1,19 @@
 Scripts and Tools to help with Debugging DragonFly.
-$DragonFly: src/test/debug/README,v 1.2 2004/10/06 05:13:20 dillon Exp $
+$DragonFly: src/test/debug/README,v 1.3 2004/10/14 20:57:41 dillon Exp $
 
 Files in this directory:
 
-	gdb.kernel -	kernel debugging macro set for GDB
-	ncptrace.c -	trace the kernel's namecache hierarchy
-	ttyinfo.c  -	extract clist information and check the
-			block counts.
+	gdb.kernel -	Kernel debugging macro set for GDB
+
+	ncptrace.c -	Trace the kernel's namecache hierarchy.  Namecache
+			records are typically in one of three states:
+			unresolved (marked UNRESOLVED -- cache state not yet
+			known), positive cache hit (non-NULL vp), or negative
+			cache hit (NULL vp)
+
+	ttyinfo.c  -	Extract clist information and check the
+			block counts looking for corruption.
+
+	vnodeinfo.c -	Run through the mountlist and scan and display
+			summary counts and all related vnodes.
 			
