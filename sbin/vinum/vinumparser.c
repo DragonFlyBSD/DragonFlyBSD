@@ -35,7 +35,7 @@
  *
  * $Id: vinumparser.c,v 1.21 2000/12/20 03:44:13 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumparser.c,v 1.20.2.5 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sbin/vinum/vinumparser.c,v 1.6 2005/01/25 23:09:42 joerg Exp $
+ * $DragonFly: src/sbin/vinum/vinumparser.c,v 1.7 2005/02/03 22:05:27 joerg Exp $
  */
 
 /*
@@ -63,6 +63,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <string.h>
 #define iswhite isspace					    /* use the ctype macro */
 
 /* enum keyword is defined in vinumvar.h */

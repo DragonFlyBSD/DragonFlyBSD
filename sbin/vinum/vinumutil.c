@@ -37,7 +37,7 @@
  *
  * $Id: vinumutil.c,v 1.14 1999/12/30 07:04:02 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumutil.c,v 1.15 2000/02/29 06:16:44 grog Exp $
- * $DragonFly: src/sbin/vinum/vinumutil.c,v 1.5 2005/01/25 23:09:42 joerg Exp $
+ * $DragonFly: src/sbin/vinum/vinumutil.c,v 1.6 2005/02/03 22:05:27 joerg Exp $
  */
 
 /* This file contains utility routines used both in kernel and user context */
@@ -45,6 +45,7 @@
 #include <dev/raid/vinum/vinumhdr.h>
 #include <dev/raid/vinum/statetexts.h>
 #include <stdio.h>
+#include <string.h>
 extern jmp_buf command_fail;				    /* return on a failed command */
 
 static char numeric_state[32];				    /* temporary buffer for ASCII conversions */
