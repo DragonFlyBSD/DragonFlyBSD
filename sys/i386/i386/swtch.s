@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.33 2004/04/30 00:59:52 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.34 2004/05/05 19:26:38 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -436,12 +436,14 @@ ENTRY(savectx)
 	testl	%eax,%eax
 	je	1f
 
-	pushl	%ecx
-	movl	TD_SAVEFPU(%eax),%eax
+	pushl	%ecx			/* target pcb */
+	movl	TD_SAVEFPU(%eax),%eax	/* originating savefpu area */
 	pushl	%eax
+
 	pushl	%eax
 	call	npxsave
 	addl	$4,%esp
+
 	popl	%eax
 	popl	%ecx
 

@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.18 2004/05/04 12:22:46 hmp Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.19 2004/05/05 19:26:44 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -208,9 +208,7 @@ __asm("								\n\
  * Identify routine.  Create a connection point on our parent for probing.
  */
 static void
-npx_identify(driver, parent)
-	driver_t *driver;
-	device_t parent;
+npx_identify(driver_t *driver, device_t parent)
 {
 	device_t child;
 
@@ -226,8 +224,7 @@ npx_identify(driver, parent)
  * need to use interrupts.  Return 1 if device exists.
  */
 static int
-npx_probe(dev)
-	device_t dev;
+npx_probe(device_t dev)
 {
 #ifdef SMP
 
@@ -278,8 +275,7 @@ npx_probe(dev)
 }
 
 static int
-npx_probe1(dev)
-	device_t dev;
+npx_probe1(device_t dev)
 {
 #ifndef SMP
 	u_short control;
@@ -427,8 +423,7 @@ npx_probe1(dev)
  * Attach routine - announce which it is, and wire into system
  */
 int
-npx_attach(dev)
-	device_t dev;
+npx_attach(device_t dev)
 {
 	int flags;
 #if (defined(I586_CPU) || defined(I686_CPU)) && !defined(CPU_DISABLE_SSE)
@@ -523,11 +518,10 @@ npx_attach(dev)
 }
 
 /*
- * Initialize floating point unit.
+ * Initialize the floating point unit.
  */
 void
-npxinit(control)
-	u_short control;
+npxinit(u_short control)
 {
 	static union savefpu dummy;
 
@@ -539,15 +533,13 @@ npxinit(control)
 	 * the fpu and sets npxthread = NULL as important side effects.
 	 */
 	npxsave(&dummy);
+	crit_enter();
 	stop_emulating();
-#ifndef CPU_DISABLE_SSE
-	/* XXX npxsave() doesn't actually initialize the fpu in the SSE case. */
-	if (cpu_fxsr)
-		fninit();
-#endif
 	fldcw(&control);
 	fpusave(curthread->td_savefpu);
+	mdcpu->gd_npxthread = NULL;
 	start_emulating();
+	crit_exit();
 }
 
 /*
@@ -556,7 +548,6 @@ npxinit(control)
 void
 npxexit(struct proc *p)
 {
-
 	if (p->p_thread == mdcpu->gd_npxthread)
 		npxsave(curthread->td_savefpu);
 #ifdef NPX_DEBUG
@@ -770,8 +761,7 @@ static char fpetable[128] = {
  * should not be held on exit.
  */
 void
-npx_intr(dummy)
-	void *dummy;
+npx_intr(void *dummy)
 {
 	int code;
 	u_short control;
@@ -844,14 +834,12 @@ npx_intr(dummy)
 }
 
 /*
- * Implement device not available (DNA) exception
- *
- * It would be better to switch FP context here (if curthread != npxthread)
- * and not necessarily for every context switch, but it is too hard to
- * access foreign pcb's.
+ * Implement the device not available (DNA) exception.  gd_npxthread had 
+ * better be NULL.  Restore the current thread's FP state and set gd_npxthread
+ * to curthread.
  */
 int
-npxdna()
+npxdna(void)
 {
 	u_long *exstat;
 
@@ -862,6 +850,13 @@ npxdna()
 		       mdcpu->gd_npxthread, curthread);
 		panic("npxdna");
 	}
+	/*
+	 * The setting of gd_npxthread and the call to fpurstor() must not
+	 * be preempted by an interrupt thread or we will take an npxdna
+	 * trap and potentially save our current fpstate (which is garbage)
+	 * and then restore the garbage rather then the originally saved
+	 * fpstate.
+	 */
 	crit_enter();
 	stop_emulating();
 	/*
@@ -889,7 +884,7 @@ npxdna()
 }
 
 /*
- * Wrapper for fnsave instruction to handle h/w bugs.  If there is an error
+ * Wrapper for the fnsave instruction to handle h/w bugs.  If there is an error
  * pending, then fnsave generates a bogus IRQ13 on some systems.  Force
  * any IRQ13 to be handled immediately, and then ignore it.  This routine is
  * often called at splhigh so it must not use many system services.  In
@@ -900,19 +895,26 @@ npxdna()
  * setup for the new target thread rather then the current thread, so we
  * cannot do anything here that depends on the *_mplock() functions as
  * we may trip over their assertions.
+ *
+ * WARNING!  When using fxsave we MUST fninit after saving the FP state.  The
+ * kernel will always assume that the FP state is 'safe' (will not cause
+ * exceptions) for mmx/xmm use if npxthread is NULL.  The kernel must still
+ * setup a custom save area before actually using the FP unit, but it will
+ * not bother calling fninit.  This greatly improves kernel performance when
+ * it wishes to use the FP unit.
  */
 void
-npxsave(addr)
-	union savefpu *addr;
+npxsave(union savefpu *addr)
 {
 #if defined(SMP) || !defined(CPU_DISABLE_SSE)
 
+	crit_enter();
 	stop_emulating();
 	fpusave(addr);
-
-	/* fnop(); */
 	mdcpu->gd_npxthread = NULL;
+	fninit();
 	start_emulating();
+	crit_exit();
 
 #else /* !SMP and CPU_DISABLE_SSE */
 
@@ -952,10 +954,8 @@ npxsave(addr)
 }
 
 static void
-fpusave(addr)
-      union savefpu *addr;
+fpusave(union savefpu *addr)
 {
-
 #ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr)
 		fxsave(addr);
@@ -965,10 +965,8 @@ fpusave(addr)
 }
 
 static void
-fpurstor(addr)
-      union savefpu *addr;
+fpurstor(union savefpu *addr)
 {
-
 #ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr)
 		fxrstor(addr);

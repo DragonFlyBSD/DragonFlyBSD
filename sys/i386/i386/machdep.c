@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.57 2004/04/05 19:15:57 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.58 2004/05/05 19:26:38 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -977,20 +977,18 @@ setregs(p, entry, stack, ps_strings)
 	p->p_thread->td_pcb->pcb_flags &= ~FP_SOFTFP;
 
 	/*
-	 * Arrange to trap the next npx or `fwait' instruction (see npx.c
-	 * for why fwait must be trapped at least if there is an npx or an
-	 * emulator).  This is mainly to handle the case where npx0 is not
-	 * configured, since the npx routines normally set up the trap
-	 * otherwise.  It should be done only at boot time, but doing it
-	 * here allows modifying `npx_exists' for testing the emulator on
-	 * systems with an npx.
+	 * note: do not set CR0_TS here.  npxinit() must do it after clearing
+	 * gd_npxthread.  Otherwise a preemptive interrupt thread may panic
+	 * in npxdna().
 	 */
-	load_cr0(rcr0() | CR0_MP | CR0_TS);
+	crit_enter();
+	load_cr0(rcr0() | CR0_MP);
 
 #if NNPX > 0
 	/* Initialize the npx (if any) for the current process. */
 	npxinit(__INITIAL_NPXCW__);
 #endif
+	crit_exit();
 
 	/*
 	 * note: linux emulator needs edx to be 0x0 on entry, which is

@@ -35,7 +35,7 @@
  *
  *	from: @(#)npx.h	5.3 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/npx.h,v 1.18.2.1 2001/08/15 01:23:52 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/npx.h,v 1.6 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/i386/include/Attic/npx.h,v 1.7 2004/05/05 19:26:42 dillon Exp $
  */
 
 /*
@@ -145,7 +145,7 @@ union	savefpu {
 
 int	npxdna (void);
 void	npxexit (struct proc *p);
-void	npxinit (int control);
+void	npxinit (u_short control);
 void	npxsave (union savefpu *addr);
 #endif
 

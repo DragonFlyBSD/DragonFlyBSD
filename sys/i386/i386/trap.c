@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.50 2004/04/20 01:52:17 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.51 2004/05/05 19:26:38 dillon Exp $
  */
 
 /*
@@ -518,7 +518,12 @@ restart:
 
 		case T_DNA:
 #if NNPX > 0
-			/* if a transparent fault (due to context switch "late") */
+			/* 
+			 * The kernel may have switched out the FP unit's
+			 * state, causing the user process to take a fault
+			 * when it tries to use the FP unit.  Restore the
+			 * state here
+			 */
 			if (npxdna())
 				goto out;
 #endif
@@ -559,9 +564,8 @@ kernel_trap:
 		case T_DNA:
 #if NNPX > 0
 			/*
-			 * The kernel is apparently using npx for copying.
-			 * XXX this should be fatal unless the kernel has
-			 * registered such use.
+			 * The kernel may be using npx for copying or other
+			 * purposes.
 			 */
 			if (npxdna())
 				goto out2;

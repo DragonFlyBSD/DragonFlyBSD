@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/i386/i386/Attic/bcopy.s,v 1.4 2004/05/01 03:38:36 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/bcopy.s,v 1.5 2004/05/05 19:26:38 dillon Exp $
  */
 /*
  * bcopy(source:%esi, target:%edi, count:%ecx)
@@ -194,88 +194,118 @@ ENTRY(asm_generic_bcopy)
 	/*
 	 * MMX BCOPY() - COPY DIRECTION CHECK AND FORWARDS COPY
 	 *
-	 * Reasonably optimal on all modern machines with MMX or SSE2.
-	 * XXX But very messy, we need a better way to use fp in the kernel.
-	 *
-	 * note: esi, edi, eax, ecx, and edx may be destroyed
+	 * note: esi, edi, eax, ecx, and edx are allowed to be destroyed.
 	 *
 	 * In order for the kernel to be able to use the FPU:
 	 *
-	 *	(1) The kernel may not already be using the fpu
+	 *	(1) The kernel may not already be using the fpu.
 	 *
 	 *	(2) If the fpu is owned by the application, we must save
 	 *	    its state.  If the fpu is not owned by the application
 	 *	    the application's saved fp state may already exist
 	 *	    in TD_SAVEFPU.
 	 *
-	 *	(3) We cannot allow the kernel overwrite the application's
-	 *	    FPU state with our own, so we allocate space on the
-	 *	    stack and create a new TD_SAVEFPU, saving the old
-	 *	    pointer.
+	 *	(3) We cannot allow the kernel to overwrite the application's
+	 *	    FPU state with our own, so we make sure the application's
+	 *	    FPU state has been saved and then point TD_SAVEFPU at a
+	 *	    temporary fpu save area in the globaldata structure.
 	 *	    
-	 *	(4) While we are using the FP unit, an interrupt may come
-	 *	    along and preempt us, causing our FP state to be saved.
-	 *	    We will fault/restore upon resumption.  Our FP state
-	 *	    will be saved on the stack.
+	 * RACES/ALGORITHM:
 	 *
-	 *	(5) To clean up we throw away our FP state and, zero out
-	 *	    npxthread to indicate that the application's FP state
-	 *	    is stored in TD_SAVEFPU, and we then restore the original
-	 *	    TD_SAVEFPU.
+	 *	If gd_npxthread is not NULL we must save the application's
+	 *	current FP state to the current save area and then NULL
+	 *	out gd_npxthread to interlock against new interruptions
+	 *	changing the FP state further.
 	 *
-	 *	    We do not attempt to restore the application's FP state.
-	 *	    We set the TS bit to guarentee that the application will
-	 *	    fault when it next tries to access the FP (to restore its
-	 *	    state).
+	 *	If gd_npxthread is NULL the FP unit is in a known 'safe'
+	 *	state and may be used once the new save area is installed.
 	 *
-	 *  NOTE: fxsave requires a 16-byte aligned address
+	 *	race(1): If an interrupt occurs just prior to calling fxsave
+	 *	all that happens is that fxsave gets a npxdna trap, restores
+	 *	the app's environment, and immediately traps, restores,
+	 *	and saves it again.
 	 *
-	 *  NOTE: RACES (which are ok): 
+	 *	race(2): No interrupt can safely occur after we NULL-out
+	 *	npxthread until we fninit, because the kernel assumes that
+	 *	the FP unit is in a safe state when npxthread is NULL.  It's
+	 *	more convenient to use a cli sequence here (it is not
+	 *	considered to be in the critical path), but a critical
+	 *	section would also work.
 	 *
-	 *	+ interrupt saves fp state after we check npxthread but
-	 *	  before we call fxsave
-	 *	+ interrupt saves application fp state after we change
-	 *	  TD_SAVEFPU.  Data will be ignored.
-	 *	+ interrupt occurs in critical section.  interrupt will be
-	 *	  delayed until we return or block (unless we check for
-	 *	  pending interrupts but I'm not going to bother for now).
+	 *	race(3): The FP unit is in a known state (because npxthread
+	 *	was either previously NULL or we saved and init'd and made
+	 *	it NULL).  This is true even if we are preempted and the
+	 *	preempting thread uses the FP unit, because it will be
+	 *	fninit's again on return.  ANY STATE WE SAVE TO THE FPU MAY
+	 *	BE DESTROYED BY PREEMPTION WHILE NPXTHREAD IS NULL!  However,
+	 *	an interrupt occuring inbetween clts and the setting of
+	 *	gd_npxthread may set the TS bit again and cause the next
+	 *	npxdna() to panic when it sees a non-NULL gd_npxthread.
+	 *	
+	 *	We can safely set TD_SAVEFPU to point to a new uninitialized
+	 *	save area and then set GD_NPXTHREAD to non-NULL.  If an
+	 *	interrupt occurs after we set GD_NPXTHREAD, all that happens
+	 *	is that the safe FP state gets saved and restored.  We do not
+	 *	need to fninit again.
+	 *
+	 *	We can safely clts after setting up the new save-area, before
+	 *	installing gd_npxthread, even if we get preempted just after
+	 *	calling clts.  This is because the FP unit will be in a safe
+	 *	state while gd_npxthread is NULL.  Setting gd_npxthread will
+	 *	simply lock-in that safe-state.  Calling clts saves
+	 *	unnecessary trap overhead since we are about to use the FP
+	 *	unit anyway and don't need to 'restore' any state prior to
+	 *	that first use.
 	 *
 	 *  MMX+XMM (SSE2): Typical on Athlons, later P4s. 128 bit media insn.
 	 *  MMX: Typical on XPs and P3s.  64 bit media insn.
 	 */
 
-#define MMX_SAVE_BLOCK(missfunc)		\
-	cmpl	$2048,%ecx ;			\
-	jb	missfunc ;			\
-	btsl	$1,PCPU(kernel_fpu_lock) ;	\
-	jc	missfunc ;			\
-	pushl	%ebx ;				\
-	pushl	%ebp ;				\
-	movl	%esp, %ebp ;			\
-	movl	PCPU(curthread),%edx ;		\
-	movl	TD_SAVEFPU(%edx),%ebx ;		\
-	subl	$512,%esp ;			\
-	andl	$0xfffffff0,%esp ;		\
-	addl	$TDPRI_CRIT,TD_PRI(%edx) ;	\
-	cmpl	%edx,PCPU(npxthread) ;		\
-	jne	100f ;				\
-	fxsave	0(%ebx) ;			\
-100: ;						\
-	movl	%esp,TD_SAVEFPU(%edx) ;		\
-	movl	%edx,PCPU(npxthread) ;		\
-	clts ;					\
-	fninit ;				\
-	subl	$TDPRI_CRIT,TD_PRI(%edx) ;	\
-	pushl	$mmx_onfault
+#define MMX_SAVE_BLOCK(missfunc)					\
+	cmpl	$2048,%ecx ;						\
+	jb	missfunc ;						\
+	movl	MYCPU,%eax ;			/* EAX = MYCPU */	\
+	btsl	$1,GD_FPU_LOCK(%eax) ;					\
+	jc	missfunc ;						\
+	pushl	%ebx ;							\
+	pushl	%ecx ;							\
+	movl	GD_CURTHREAD(%eax),%edx ;	/* EDX = CURTHREAD */	\
+	movl	TD_SAVEFPU(%edx),%ebx ;		/* save app save area */\
+	addl	$TDPRI_CRIT,TD_PRI(%edx) ;				\
+	cmpl	$0,GD_NPXTHREAD(%eax) ;					\
+	je	100f ;							\
+	fxsave	0(%ebx) ;			/* race(1) */		\
+	movl	$0,GD_NPXTHREAD(%eax) ;		/* interlock intr */	\
+	clts ;								\
+	fninit ;				/* race(2) */		\
+100: ;									\
+	leal	GD_SAVEFPU(%eax),%ecx ;					\
+	movl	%ecx,TD_SAVEFPU(%edx) ;					\
+	clts ;								\
+	movl	%edx,GD_NPXTHREAD(%eax) ;	/* race(3) */		\
+	subl	$TDPRI_CRIT,TD_PRI(%edx) ;	/* crit_exit() */	\
+	cmpl	$0,GD_REQFLAGS(%eax) ;					\
+	je	101f ;							\
+	cmpl	$TDPRI_CRIT,TD_PRI(%edx) ;				\
+	jge	101f ;							\
+	call	lwkt_yield_quick ;					\
+	/* note: eax,ecx,edx destroyed */				\
+101: ;									\
+	movl	(%esp),%ecx ;						\
+	movl	$mmx_onfault,(%esp) ;					\
 
 	/*
-	 *  NOTE: RACES (which are ok): 
+	 * When restoring the application's FP state we must first clear
+	 * npxthread to prevent further saves, then restore the pointer
+	 * to the app's save area.  We do not have to (and should not)
+	 * restore the app's FP state now.  Note that we do not have to
+	 * call fninit because our use of the FP guarentees that it is in
+	 * a 'safe' state (at least for kernel use).
 	 *
-	 *	+ interrupt occurs after we store NULL to npxthread.  No
-	 *	  state will be saved (because npxthread is NULL).  Thread
-	 *	  switches never restore npxthread, only a DNA trap does that.
-	 *	+ we can safely restore TD_SAFEFPU after NULLing npxthread.
-	 *	+ we can safely set TS any time after NULLing npxthread.
+	 * NOTE: it is not usually safe to mess with CR0 outside of a
+	 * critical section, because TS may get set by a preemptive
+	 * interrupt.  However, we *can* race a load/set-ts/store against
+	 * an interrupt doing the same thing.
 	 */
 
 #define MMX_RESTORE_BLOCK			\
@@ -283,22 +313,22 @@ ENTRY(asm_generic_bcopy)
 	MMX_RESTORE_BLOCK2
 
 #define MMX_RESTORE_BLOCK2			\
-	movl	PCPU(curthread),%edx ;		\
-	movl	$0,PCPU(npxthread) ;		\
+	movl	MYCPU,%ecx ;			\
+	movl	GD_CURTHREAD(%ecx),%edx ;	\
+	movl	$0,GD_NPXTHREAD(%ecx) ;		\
 	movl	%ebx,TD_SAVEFPU(%edx) ;		\
 	smsw	%ax ;				\
-	movl	%ebp,%esp ;			\
-	orb	$CR0_TS,%al ;			\
-	popl	%ebp ;				\
-	lmsw	%ax ;				\
 	popl	%ebx ;				\
-	movl	$0,PCPU(kernel_fpu_lock)
+	orb	$CR0_TS,%al ;			\
+	lmsw	%ax ;				\
+	movl	$0,GD_FPU_LOCK(%ecx)
 
 	/*
 	 * xmm/mmx_onfault routine.  Restore the fpu state, skip the normal
 	 * return vector, and return to the caller's on-fault routine
-	 * (which was pushed on the callers stack just before he calle us)
+	 * (which was pushed on the callers stack just before he called us)
 	 */
+	ALIGN_TEXT
 mmx_onfault:
 	MMX_RESTORE_BLOCK2
 	addl	$4,%esp

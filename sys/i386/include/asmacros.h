@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/asmacros.h,v 1.18 1999/08/28 00:44:06 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/asmacros.h,v 1.6 2003/12/04 20:09:33 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/asmacros.h,v 1.7 2004/05/05 19:26:42 dillon Exp $
  */
 
 #ifndef _MACHINE_ASMACROS_H_
@@ -45,6 +45,7 @@
  * Access to a per-cpu data element
  */
 #define PCPU(x) %fs:gd_ ## x
+#define MYCPU	%fs:0
 
 #endif
 

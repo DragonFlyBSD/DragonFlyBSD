@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.36 2004/05/01 18:16:41 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.37 2004/05/05 19:26:38 dillon Exp $
  */
 
 /*
@@ -827,16 +827,16 @@ pmap_qenter2(vm_offset_t va, vm_page_t *m, int count, cpumask_t *mask)
 		pte = (unsigned *)vtopte(va);
 		pteval = VM_PAGE_TO_PHYS(*m) | PG_A | PG_RW | PG_V | pgeflag;
 		if (*pte != pteval) {
-			*mask = cmask;
+			*mask = 0;
 			*pte = pteval;
 			cpu_invlpg((void *)va);
 		} else if ((*mask & cmask) == 0) {
-			*mask |= cmask;
 			cpu_invlpg((void *)va);
 		}
 		va += PAGE_SIZE;
 		m++;
 	}
+	*mask |= cmask;
 }
 
 /*
@@ -3197,7 +3197,7 @@ pmap_mapdev(vm_paddr_t pa, vm_size_t size)
 	offset = pa & PAGE_MASK;
 	size = roundup(offset + size, PAGE_SIZE);
 
-	va = kmem_alloc_pageable(kernel_map, size);
+	va = kmem_alloc_nofault(kernel_map, size);
 	if (!va)
 		panic("pmap_mapdev: Couldn't alloc kernel virtual memory");
 
@@ -3220,6 +3220,7 @@ pmap_unmapdev(vm_offset_t va, vm_size_t size)
 {
 	vm_offset_t base, offset;
 
+	pmap_qremove(va, size);
 	base = va & PG_FRAME;
 	offset = va & PAGE_MASK;
 	size = roundup(offset + size, PAGE_SIZE);
