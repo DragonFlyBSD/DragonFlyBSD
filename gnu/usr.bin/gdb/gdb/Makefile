@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/gdb/gdb/Makefile,v 1.3 2004/10/26 10:22:11 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/gdb/Makefile,v 1.4 2004/11/14 15:16:59 joerg Exp $
 
 .include "../Makefile.inc"
 
@@ -51,7 +51,8 @@ SRCS+=	objc-lang.c objfiles.c observer.c osabi.c p-exp.y p-lang.c
 SRCS+=	p-typeprint.c p-valprint.c parse.c printcmd.c regcache.c reggroups.c
 SRCS+=	regset.c remote-fileio.c remote-utils.c remote.c scm-exp.c scm-lang.c
 SRCS+=	scm-valprint.c sentinel-frame.c ser-pipe.c ser-tcp.c ser-unix.c
-SRCS+=	serial.c signals.c solib-svr4.c solib.c source.c stabsread.c
+SRCS+=	serial.c signals.c solib-legacy.c solib-svr4.c solib.c source.c
+SRCS+=	stabsread.c
 SRCS+=	stack.c std-regs.c symfile.c symmisc.c symtab.c target.c thread.c
 SRCS+=	top.c tracepoint.c trad-frame.c tramp-frame.c typeprint.c
 SRCS+=	ui-file.c ui-out.c user-regs.c utils.c valarith.c valops.c valprint.c
