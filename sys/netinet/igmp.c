@@ -36,7 +36,7 @@
  *
  *	@(#)igmp.c	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/sys/netinet/igmp.c,v 1.29.2.2 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/netinet/igmp.c,v 1.4 2003/08/23 11:18:00 rob Exp $
+ * $DragonFly: src/sys/netinet/igmp.c,v 1.5 2004/02/14 02:09:28 dillon Exp $
  */
 
 /*
@@ -69,6 +69,8 @@
 #include <netinet/ip_var.h>
 #include <netinet/igmp.h>
 #include <netinet/igmp_var.h>
+
+#include <machine/in_cksum.h>
 
 static MALLOC_DEFINE(M_IGMP, "igmp", "igmp state");
 

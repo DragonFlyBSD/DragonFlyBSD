@@ -32,7 +32,7 @@
  *
  *	@(#)in.h	8.3 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/in.h,v 1.48.2.10 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in.h,v 1.5 2003/08/24 23:07:07 hsu Exp $
+ * $DragonFly: src/sys/netinet/in.h,v 1.6 2004/02/14 02:09:28 dillon Exp $
  */
 
 #ifndef _NETINET_IN_H_
@@ -492,7 +492,6 @@ struct thread;
 
 int	 in_broadcast (struct in_addr, struct ifnet *);
 int	 in_canforward (struct in_addr);
-int	 in_cksum (struct mbuf *, int);
 int	 in_localaddr (struct in_addr);
 char 	*inet_ntoa (struct in_addr); /* in libkern */
 
