@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cat.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/bin/cat/cat.c,v 1.14.2.8 2002/06/29 05:09:26 tjr Exp $
- * $DragonFly: src/bin/cat/cat.c,v 1.6 2004/06/01 01:15:59 cpressey Exp $
+ * $DragonFly: src/bin/cat/cat.c,v 1.7 2004/07/22 12:20:25 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -119,7 +119,7 @@ main(int argc, char **argv)
 	/* NOTREACHED */
 }
 
-void
+static void
 scanfiles(char **argv, int cooked)
 {
 	int i = 0;
