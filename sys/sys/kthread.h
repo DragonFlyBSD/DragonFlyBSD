@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/kthread.h,v 1.2 2000/01/07 08:36:44 luoqi Exp $
- * $DragonFly: src/sys/sys/kthread.h,v 1.6 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/kthread.h,v 1.7 2004/07/29 09:02:32 dillon Exp $
  */
 
 #ifndef _SYS_KTHREAD_H_
@@ -52,6 +52,8 @@ void	kproc_suspend_loop (void);
 void	shutdown_kproc (void *, int);
 int	kthread_create (void (*)(void *), void *, struct thread **,
 			const char *, ...);
+int	kthread_create_stk (void (*)(void *), void *, struct thread **,
+			int, const char *, ...);
 void	kthread_exit (void) __dead2;
 
 

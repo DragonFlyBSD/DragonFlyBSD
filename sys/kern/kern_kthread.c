@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_kthread.c,v 1.5.2.3 2001/12/25 01:51:14 dillon Exp $
- * $DragonFly: src/sys/kern/kern_kthread.c,v 1.9 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_kthread.c,v 1.10 2004/07/29 09:02:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,6 +38,84 @@
 #include <sys/wait.h>
 
 #include <machine/stdarg.h>
+
+/*
+ * Create a kernel process/thread/whatever.  It shares it's address space
+ * with proc0 - ie: kernel only.  5.x compatible.
+ *
+ * NOTE!  By default kthreads are created with the MP lock held.  A
+ * thread which does not require the MP lock should release it by calling
+ * rel_mplock() at the start of the new thread.
+ */
+int
+kthread_create(void (*func)(void *), void *arg,
+    struct thread **tdp, const char *fmt, ...)
+{
+    thread_t td;
+    __va_list ap;
+
+    td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1);
+    if (tdp)
+	*tdp = td;
+    cpu_set_thread_handler(td, kthread_exit, func, arg);
+    td->td_flags |= TDF_VERBOSE;
+#ifdef SMP
+    td->td_mpcount = 1;
+#endif
+
+    /*
+     * Set up arg0 for 'ps' etc
+     */
+    __va_start(ap, fmt);
+    vsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
+    __va_end(ap);
+
+    /*
+     * Schedule the thread to run
+     */
+    lwkt_schedule(td);
+    return 0;
+}
+
+/*
+ * Same as kthread_create() but you can specify a custom stack size.
+ */
+int
+kthread_create_stk(void (*func)(void *), void *arg,
+    struct thread **tdp, int stksize, const char *fmt, ...)
+{
+    thread_t td;
+    __va_list ap;
+
+    td = lwkt_alloc_thread(NULL, stksize, -1);
+    if (tdp)
+	*tdp = td;
+    cpu_set_thread_handler(td, kthread_exit, func, arg);
+    td->td_flags |= TDF_VERBOSE;
+#ifdef SMP
+    td->td_mpcount = 1;
+#endif
+    __va_start(ap, fmt);
+    vsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
+    __va_end(ap);
+
+    lwkt_schedule(td);
+    return 0;
+}
+
+/*
+ * Destroy an LWKT thread.   Warning!  This function is not called when
+ * a process exits, cpu_proc_exit() directly calls cpu_thread_exit() and
+ * uses a different reaping mechanism.
+ *
+ * XXX duplicates lwkt_exit()
+ */
+void
+kthread_exit(void)
+{
+    lwkt_exit();
+}
+
 
 /*
  * Start a kernel process.  This is called after a fork() call in

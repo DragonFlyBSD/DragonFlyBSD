@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.67 2004/07/29 08:55:00 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.68 2004/07/29 09:02:33 dillon Exp $
  */
 
 /*
@@ -1282,57 +1282,6 @@ lwkt_exit(void)
 	TAILQ_INSERT_TAIL(&gd->gd_tdfreeq, td, td_threadq);
     }
     cpu_thread_exit();
-}
-
-/*
- * Create a kernel process/thread/whatever.  It shares it's address space
- * with proc0 - ie: kernel only.  5.x compatible.
- *
- * NOTE!  By default kthreads are created with the MP lock held.  A
- * thread which does not require the MP lock should release it by calling
- * rel_mplock() at the start of the new thread.
- */
-int
-kthread_create(void (*func)(void *), void *arg,
-    struct thread **tdp, const char *fmt, ...)
-{
-    thread_t td;
-    __va_list ap;
-
-    td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1);
-    if (tdp)
-	*tdp = td;
-    cpu_set_thread_handler(td, kthread_exit, func, arg);
-    td->td_flags |= TDF_VERBOSE;
-#ifdef SMP
-    td->td_mpcount = 1;
-#endif
-
-    /*
-     * Set up arg0 for 'ps' etc
-     */
-    __va_start(ap, fmt);
-    vsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
-    __va_end(ap);
-
-    /*
-     * Schedule the thread to run
-     */
-    lwkt_schedule(td);
-    return 0;
-}
-
-/*
- * Destroy an LWKT thread.   Warning!  This function is not called when
- * a process exits, cpu_proc_exit() directly calls cpu_thread_exit() and
- * uses a different reaping mechanism.
- *
- * XXX duplicates lwkt_exit()
- */
-void
-kthread_exit(void)
-{
-    lwkt_exit();
 }
 
 #endif /* _KERNEL */
