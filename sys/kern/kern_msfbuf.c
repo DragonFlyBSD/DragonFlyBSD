@@ -36,7 +36,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  * 	src/sys/kern/kern_sfbuf.c,v 1.7 2004/05/13 19:46:18 dillon
  *
- * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.11 2005/03/04 05:20:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.12 2005/03/04 06:10:09 dillon Exp $
  */
 /*
  * MSFBUFs cache linear multi-page ephermal mappings and operate similar
@@ -179,7 +179,8 @@ msf_alloc(vm_page_t firstpage, int flags)
 				TAILQ_REMOVE(&msf_buf_freelist, msf, free_list);
 				msf->ms_flags &= ~MSF_ONFREEQ;
 				msf->ms_refcnt = 1;
-				firstpage->msf_hint = msf;
+				if (firstpage)
+					firstpage->msf_hint = msf;
 				break;
 			}
 			pflags = (flags & SFB_CATCH) ? PCATCH : 0;
@@ -190,7 +191,7 @@ msf_alloc(vm_page_t firstpage, int flags)
 					break;
 		}
 		++msf_buf_misses;
-    }
+	}
 	crit_exit();
 	return (msf);
 }
