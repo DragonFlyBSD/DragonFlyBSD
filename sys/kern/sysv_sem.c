@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_sem.c,v 1.24.2.8 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.9 2003/07/30 00:19:14 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.10 2003/08/01 17:14:23 dillon Exp $ */
 
 /*
  * Implementation of SVID semaphores
@@ -216,7 +216,7 @@ semsys(struct semsys_args *uap)
 		return (EINVAL);
 	bcopy(&uap->a2, &uap->which,
 	    sizeof(struct semsys_args) - offsetof(struct semsys_args, a2));
-	return ((*semcalls[which])(&uap));
+	return ((*semcalls[which])(uap));
 }
 
 /*
