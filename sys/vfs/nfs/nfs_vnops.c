@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.31 2004/09/30 19:00:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.32 2004/10/04 09:20:43 dillon Exp $
  */
 
 
@@ -866,6 +866,10 @@ nfs_lookup(struct vop_lookup_args *ap)
 			*vpp = NULLVP;
 			return (error);
 		}
+
+		/*
+		 * At this point we have a cache hit (error should be -1)
+		 */
 		if ((error = VOP_ACCESS(dvp, VEXEC, cnp->cn_cred, td)) != 0) {
 			*vpp = NULLVP;
 			return (error);
@@ -897,9 +901,18 @@ nfs_lookup(struct vop_lookup_args *ap)
 			}
 		}
 		if (!error) {
+			/*
+			 * Attempt to do a better job synchronizing our cache
+			 * to the NFS server by checking the vnode against 
+			 * the nfs-only cache via VOP_GETATTR().
+			 *
+			 * WARNING! An old ctime check has been removed.  We
+			 * can't just willy-nilly purge a directory vnode that
+			 * might have children in the new VFS scheme.  The
+			 * ctime check was bogus anyway.
+			 */
 			if (vpid == newvp->v_id) {
-			   if (!VOP_GETATTR(newvp, &vattr, td)
-			    && vattr.va_ctime.tv_sec == VTONFS(newvp)->n_ctime) {
+			   if (VOP_GETATTR(newvp, &vattr, td) == 0) {
 				nfsstats.lookupcache_hits++;
 				if (cnp->cn_nameiop != NAMEI_LOOKUP &&
 				    (flags & CNP_ISLASTCN))
@@ -2527,7 +2540,12 @@ nfs_sillyrename(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 	struct nfsnode *np;
 	int error;
 
-	cache_purge(dvp);
+	/*
+	 * We previously purged dvp instead of vp.  I don't know why, it
+	 * completely destroys performance.  We can't do it anyway with the
+	 * new VFS API since we would be breaking the namecache topology.
+	 */
+	cache_purge(vp);
 	np = VTONFS(vp);
 #ifndef DIAGNOSTIC
 	if (vp->v_type == VDIR)

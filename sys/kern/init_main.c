@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.38 2004/09/30 18:59:48 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.39 2004/10/04 09:20:40 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -463,8 +463,10 @@ start_init(void *dummy)
 	mp = TAILQ_FIRST(&mountlist);
 	if (VFS_ROOT(mp, &vp))
 		panic("cannot find root vnode");
-	if (mp->mnt_ncp == NULL)
+	if (mp->mnt_ncp == NULL) {
 		mp->mnt_ncp = cache_allocroot(vp);
+		cache_unlock(mp->mnt_ncp);	/* leave ref intact */
+	}
 	p->p_fd->fd_cdir = vp;
 	vref(p->p_fd->fd_cdir);
 	p->p_fd->fd_rdir = vp;

@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.15 2004/09/30 18:59:48 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.16 2004/10/04 09:20:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -188,6 +188,13 @@ vop_noresolve(struct vop_resolve_args *ap)
 		return(EPERM);
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
 		return(EPERM);
+
+	/*
+	 * We can race against another thread holding a locked vnode
+	 * trying to do a cache_enter().  We have to unlock the ncp
+	 * for the duration of any code that locks vp's.
+	 */
+	cache_unlock(ncp);
 	vget(dvp, NULL, LK_EXCLUSIVE, curthread);
 
 	bzero(&cnp, sizeof(cnp));
@@ -201,22 +208,32 @@ vop_noresolve(struct vop_resolve_args *ap)
 	/*
 	 * vop_lookup() always returns vp locked.  dvp may or may not be
 	 * left locked depending on CNP_PDIRUNLOCK.
+	 *
+	 * We have to unlock all related vnodes before we can safely relock
+	 * the ncp.  Fortunately this trash code goes away when the old
+	 * API goes away.
 	 */
 	error = vop_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
-	if (error == 0) {
+	if (error == 0)
+		VOP_UNLOCK(vp, NULL, 0, curthread);
+	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
+		VOP_UNLOCK(dvp, NULL, 0, curthread);
+	cache_lock(ncp);
+	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
+		/* was resolved by another process while we were unlocked */
+		if (error == 0)
+			vrele(vp);
+	} else if (error == 0) {
 		KKASSERT(vp != NULL);
 		cache_setvp(ncp, vp);
-		vput(vp);
+		vrele(vp);
 	} else if (error == ENOENT) {
 		KKASSERT(vp == NULL);
 		if (cnp.cn_flags & CNP_ISWHITEOUT)
 			ncp->nc_flag |= NCF_WHITEOUT;
 		cache_setvp(ncp, NULL);
 	}
-	if (cnp.cn_flags & CNP_PDIRUNLOCK)
-		vrele(dvp);
-	else
-		vput(dvp);
+	vrele(dvp);
 	return (error);
 }
 
