@@ -32,7 +32,7 @@
  *
  *	@(#)time.h	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/time.h,v 1.42 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/time.h,v 1.10 2004/11/20 20:25:13 dillon Exp $
+ * $DragonFly: src/sys/sys/time.h,v 1.11 2004/12/22 11:01:49 joerg Exp $
  */
 
 #ifndef _SYS_TIME_H_
@@ -166,6 +166,8 @@ struct	itimerval {
 
 /*
  * Getkerninfo clock information structure
+ *
+ * XXX Should be removed, use kinfo_clockinfo insteada.
  */
 struct clockinfo {
 	int	hz;		/* clock frequency */

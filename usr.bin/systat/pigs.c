@@ -32,7 +32,7 @@
  *
  * @(#)pigs.c	8.2 (Berkeley) 9/23/93
  *
- * $DragonFly: src/usr.bin/systat/pigs.c,v 1.8 2003/11/21 22:46:14 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/pigs.c,v 1.9 2004/12/22 11:01:49 joerg Exp $
  */
 
 /*
@@ -41,12 +41,12 @@
 
 #define _KERNEL_STRUCTURES
 #include <sys/param.h>
-#include <sys/dkstat.h>
 #include <sys/time.h>
 #include <sys/user.h>
 #include <sys/sysctl.h>
 
 #include <curses.h>
+#include <kinfo.h>
 #include <math.h>
 #include <nlist.h>
 #include <pwd.h>
@@ -63,7 +63,7 @@ static struct p_times {
 	struct kinfo_proc *pt_kp;
 } *pt;
 
-static long stime[CPUSTATES];
+struct kinfo_cputime old_cp_time;
 static long    fscale;
 static double  lccpu;
 
@@ -142,11 +142,7 @@ showpigs(void)
 
 static struct nlist namelist[] = {
 #define X_FIRST		0
-#define X_CPTIME	0
-	{ "_cp_time" },
-#define X_CCPU          1
-	{ "_ccpu" },
-#define X_FSCALE        2
+#define X_FSCALE        0
 	{ "_fscale" },
 
 	{ "" }
@@ -155,7 +151,7 @@ static struct nlist namelist[] = {
 int
 initpigs(void)
 {
-	fixpt_t ccpu;
+	int ccpu;
 
 	if (namelist[X_FIRST].n_type == 0) {
 		if (kvm_nlist(kd, namelist)) {
@@ -167,8 +163,11 @@ initpigs(void)
 			return(0);
 		}
 	}
-	KREAD(NPTR(X_CPTIME), stime, sizeof (stime));
-	NREAD(X_CCPU, &ccpu, sizeof(ccpu));
+	if (kinfo_get_sched_cputime(&old_cp_time))
+		err(1, "kinfo_get_sched_cputime");
+	if (kinfo_get_sched_ccpu(&ccpu))
+		err(1, "kinfo_get_sched_ccpu");
+	    
 	NREAD(X_FSCALE,  &fscale, LONG);
 	lccpu = log((double) ccpu / fscale);
 
@@ -183,7 +182,7 @@ fetchpigs(void)
 	struct proc *pp;
 	float *pctp;
 	struct kinfo_proc *kpp;
-	long ctime[CPUSTATES];
+	struct kinfo_cputime cp_time, diff_cp_time;
 	double t;
 	static int lastnproc = 0;
 
@@ -221,16 +220,21 @@ fetchpigs(void)
 	/*
 	 * and for the imaginary "idle" process
 	 */
-	KREAD(NPTR(X_CPTIME), ctime, sizeof (ctime));
-	t = 0;
-	for (i = 0; i < CPUSTATES; i++)
-		t += ctime[i] - stime[i];
+	if (kinfo_get_sched_cputime(&cp_time))
+		err(1, "kinfo_get_sched_cputime");
+	diff_cp_time.cp_user = cp_time.cp_user - old_cp_time.cp_user;
+	diff_cp_time.cp_nice = cp_time.cp_nice - old_cp_time.cp_nice;
+	diff_cp_time.cp_sys = cp_time.cp_sys - old_cp_time.cp_sys;
+	diff_cp_time.cp_intr = cp_time.cp_intr - old_cp_time.cp_intr;
+	diff_cp_time.cp_idle = cp_time.cp_idle - old_cp_time.cp_idle;
+	old_cp_time = cp_time;
+	t = diff_cp_time.cp_user + diff_cp_time.cp_nice +
+	    diff_cp_time.cp_sys + diff_cp_time.cp_intr +
+	    diff_cp_time.cp_idle;
 	if (t == 0.0)
 		t = 1.0;
 	pt[nproc].pt_kp = NULL;
-	pt[nproc].pt_pctcpu = (ctime[CP_IDLE] - stime[CP_IDLE]) / t;
-	for (i = 0; i < CPUSTATES; i++)
-		stime[i] = ctime[i];
+	pt[nproc].pt_pctcpu = diff_cp_time.cp_idle / t;
 }
 
 void

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkcore/kcore.h,v 1.1 2004/11/24 22:51:01 joerg Exp $
+ * $DragonFly: src/lib/libkcore/kcore.h,v 1.2 2004/12/22 11:01:49 joerg Exp $
  */
 
 #ifndef _KCORE_H
@@ -44,12 +44,28 @@
 
 #ifdef KCORE_KINFO_WRAPPER
 
+#define	kinfo_get_cpus(cpus)		\
+	kcore_get_cpus(NULL, cpus)
 #define	kinfo_get_files(files, len)	\
 	kcore_get_files(NULL, files, len)
 #define	kinfo_get_maxfiles(maxfiles)	\
 	kcore_get_maxfiles(NULL, maxfiles)
 #define	kinfo_get_openfiles(openfiles)	\
 	kcore_get_openfiles(NULL, openfiles)
+#define	kinfo_get_sched_ccpu(ccpu)	\
+	kcore_get_sched_ccpu(NULL, ccpu)
+#define	kinfo_get_sched_cputime(cputime)	\
+	kcore_get_sched_cputime(NULL, cputime)
+#define	kinfo_get_sched_hz(hz)		\
+	kcore_get_sched_hz(NULL, hz)
+#define	kinfo_get_sched_profhz(profhz)	\
+	kcore_get_sched_profhz(NULL, profhz)
+#define	kinfo_get_sched_stathz(stathz)	\
+	kcore_get_sched_stathz(NULL, stathz)
+#define	kinfo_get_tty_tk_nin(tk_nin)	\
+	kcore_get_tty_tk_nin(NULL, tk_nin)
+#define	kinfo_get_tty_tk_nout(tk_nout)	\
+	kcore_get_tty_tk_nout(NULL, tk_nout)
 #define	kinfo_get_vfs_bufspace(bufspace) \
 	kcore_get_vfs_bufspace(NULL, bufspace)
 
@@ -62,11 +78,20 @@ __BEGIN_DECLS;
 struct kcore_data
 	*kcore_open(const char *, const char *, char *);
 int	 kcore_close(struct kcore_data *);
+
+int	 kcore_get_cpus(struct kcore_data *, int *);
 int	 kcore_get_files(struct kcore_data *, struct kinfo_file **, size_t *);
 int	 kcore_get_maxfiles(struct kcore_data *, int *);
 int	 kcore_get_openfiles(struct kcore_data *, int *);
 int	 kcore_get_procs(struct kcore_data *kc, struct kinfo_proc **procs,
 			size_t *len);
+int	 kcore_get_sched_ccpu(struct kcore_data *, int *);
+int	 kcore_get_sched_cputime(struct kcore_data *, struct kinfo_cputime *);
+int	 kcore_get_sched_hz(struct kcore_data *, int *);
+int	 kcore_get_sched_profhz(struct kcore_data *, int *);
+int	 kcore_get_sched_stathz(struct kcore_data *, int *);
+int	 kcore_get_tty_tk_nin(struct kcore_data *, uint64_t *);
+int	 kcore_get_tty_tk_nout(struct kcore_data *, uint64_t *);
 int	 kcore_get_vfs_bufspace(struct kcore_data *, int *);
 __END_DECLS;
 

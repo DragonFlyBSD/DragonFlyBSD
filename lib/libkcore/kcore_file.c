@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkcore/kcore_file.c,v 1.1 2004/11/24 22:51:01 joerg Exp $
+ * $DragonFly: src/lib/libkcore/kcore_file.c,v 1.2 2004/12/22 11:01:49 joerg Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -128,20 +128,7 @@ kcore_get_maxfiles(struct kcore_data *kc, int *maxfiles)
 		{ NULL, 0, 0, 0, 0}
 	};
 
-	if (kc == NULL)
-		kc = &kcore_global;
-
-	if (nl[0].n_value == 0) {
-		if ((kvm_nlist(kc->kd, nl) < 0) || (nl[0].n_value == 0)) {
-			errno = EOPNOTSUPP;
-			return(-1);
-		}
-	}
-	if (kvm_read(kc->kd, nl[0].n_value, maxfiles,
-		     sizeof(*maxfiles)) != sizeof(*maxfiles)) {
-		warnx("cannot read _maxfiles: %s", kvm_geterr(kc->kd));
-	}
-	return(0);
+	return(kcore_get_generic(kc, nl, maxfiles, sizeof(*maxfiles)));
 }
 
 int
@@ -152,18 +139,5 @@ kcore_get_openfiles(struct kcore_data *kc, int *openfiles)
 		{ NULL, 0, 0, 0, 0}
 	};
 
-	if (kc == NULL)
-		kc = &kcore_global;
-
-	if (nl[0].n_value == 0) {
-		if ((kvm_nlist(kc->kd, nl) < 0) || (nl[0].n_value == 0)) {
-			errno = EOPNOTSUPP;
-			return(-1);
-		}
-	}
-	if (kvm_read(kc->kd, nl[0].n_value, openfiles,
-		     sizeof(*openfiles)) != sizeof(*openfiles)) {
-		warnx("cannot read _nfiles: %s", kvm_geterr(kc->kd));
-	}
-	return(0);
+	return(kcore_get_generic(kc, nl, openfiles, sizeof(*openfiles)));
 }

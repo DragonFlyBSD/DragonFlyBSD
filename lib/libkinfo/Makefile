@@ -1,7 +1,7 @@
-# $DragonFly: src/lib/libkinfo/Makefile,v 1.2 2004/11/18 14:33:01 joerg Exp $
+# $DragonFly: src/lib/libkinfo/Makefile,v 1.3 2004/12/22 11:01:49 joerg Exp $
 
 LIB=	kinfo
-SRCS=	kinfo_file.c kinfo_vfs.c
+SRCS=	kinfo_file.c kinfo_sched.c kinfo_tty.c kinfo_vfs.c
 INCS=	kinfo.h
 NOMAN=
 

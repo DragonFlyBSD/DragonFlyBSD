@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/kinfo.h,v 1.1 2004/11/18 13:56:56 joerg Exp $
+ * $DragonFly: src/sys/sys/kinfo.h,v 1.2 2004/12/22 11:01:49 joerg Exp $
  */
 
 #ifndef _SYS_KINFO_H
@@ -49,6 +49,22 @@ struct kinfo_file {
 	off_t	 f_offset;	/* file offset */
 	void	*f_data;	/* file descriptor specific data */
 	u_int	 f_flag;	/* flags (see fcntl.h) */
+};
+
+struct kinfo_cputime {
+	uint64_t	cp_user;
+	uint64_t	cp_nice;
+	uint64_t	cp_sys;
+	uint64_t	cp_intr;
+	uint64_t	cp_idle;
+};
+
+struct kinfo_clockinfo {
+	int	ci_hz;		/* clock frequency */
+	int	ci_tick;	/* micro-seconds per hz tick */
+	int	ci_tickadj;	/* clock skew rate for adjtime() */
+	int	ci_stathz;	/* statistics clock frequency */
+	int	ci_profhz;	/* profiling clock frequency */
 };
 
 #endif

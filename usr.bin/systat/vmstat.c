@@ -32,7 +32,7 @@
  *
  * @(#)vmstat.c	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/usr.bin/systat/vmstat.c,v 1.38.2.4 2002/03/12 19:50:23 phantom Exp $
- * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.7 2004/04/02 05:46:03 hmp Exp $
+ * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.8 2004/12/22 11:01:49 joerg Exp $
  */
 
 /*
@@ -47,7 +47,6 @@
 #include <sys/uio.h>
 #include <sys/namei.h>
 #include <sys/sysctl.h>
-#include <sys/dkstat.h>
 #include <sys/vmmeter.h>
 
 #include <vm/vm_param.h>
@@ -55,10 +54,12 @@
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
+#include <kinfo.h>
 #include <langinfo.h>
 #include <nlist.h>
 #include <paths.h>
 #include <signal.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -70,7 +71,7 @@
 #include "devs.h"
 
 static struct Info {
-	long	time[CPUSTATES];
+	struct kinfo_cputime cp_time;
 	struct	vmmeter Vmm;
 	struct	vmtotal Total;
 	struct  vmstats Vms;
@@ -84,6 +85,7 @@ static struct Info {
 	long	numdirtybuffers;
 } s, s1, s2, z;
 
+struct kinfo_cputime cp_time, old_cp_time;
 struct statinfo cur, last, run;
 
 #define	vmm s.Vmm
@@ -98,7 +100,6 @@ static	enum state { BOOT, TIME, RUN } state = TIME;
 
 static void allocinfo(struct Info *);
 static void copyinfo(struct Info *, struct Info *);
-static float cputime(int);
 static void dinfo(int, int, struct statinfo *, struct statinfo *);
 static void getinfo(struct Info *, enum state);
 static void putint(int, int, int, int);
@@ -143,27 +144,25 @@ closekre(WINDOW *w)
 
 
 static struct nlist namelist[] = {
-#define X_CPTIME	0
-	{ "_cp_time" },
-#define	X_BUFFERSPACE	1
+#define	X_BUFFERSPACE	0
 	{ "_bufspace" },
-#define	X_NCHSTATS	2
+#define	X_NCHSTATS	1
 	{ "_nchstats" },
-#define	X_INTRNAMES	3
+#define	X_INTRNAMES	2
 	{ "_intrnames" },
-#define	X_EINTRNAMES	4
+#define	X_EINTRNAMES	3
 	{ "_eintrnames" },
-#define	X_INTRCNT	5
+#define	X_INTRCNT	4
 	{ "_intrcnt" },
-#define	X_EINTRCNT	6
+#define	X_EINTRCNT	5
 	{ "_eintrcnt" },
-#define	X_DESIREDVNODES	7
+#define	X_DESIREDVNODES	6
 	{ "_desiredvnodes" },
-#define	X_NUMVNODES	8
+#define	X_NUMVNODES	7
 	{ "_numvnodes" },
-#define	X_FREEVNODES	9
+#define	X_FREEVNODES	8
 	{ "_freevnodes" },
-#define X_NUMDIRTYBUFFERS 10
+#define X_NUMDIRTYBUFFERS 9
 	{ "_numdirtybuffers" },
 	{ "" },
 };
@@ -375,8 +374,19 @@ labelkre(void)
 	}
 }
 
+#define CP_UPDATE(fld)	do {	\
+	uint64_t t;		\
+	t=s.fld;		\
+	s.fld-=s1.fld;		\
+	if(state==TIME)		\
+		s1.fld=t;	\
+	t=fld;			\
+	fld-=old_##fld;		\
+	if(state==TIME)		\
+		old_##fld=t;	\
+	etime += s.fld;		\
+} while(0)
 #define X(fld)	{t=s.fld[i]; s.fld[i]-=s1.fld[i]; if(state==TIME) s1.fld[i]=t;}
-#define Q(fld)	{t=cur.fld[i]; cur.fld[i]-=last.fld[i]; if(state==TIME) last.fld[i]=t;}
 #define Y(fld)	{t = s.fld; s.fld -= s1.fld; if(state == TIME) s1.fld = t;}
 #define Z(fld)	{t = s.nchstats.fld; s.nchstats.fld -= s1.nchstats.fld; \
 	if(state == TIME) s1.nchstats.fld = t;}
@@ -385,9 +395,16 @@ labelkre(void)
 	putint((int)((float)s.fld/etime + 0.5), l, c, w)
 #define MAXFAIL 5
 
-static	char cpuchar[CPUSTATES] = { '=' , '+', '>', '-', ' ' };
-static	char cpuorder[CPUSTATES] = { CP_SYS, CP_INTR, CP_USER, CP_NICE,
-				     CP_IDLE };
+#define CPUSTATES 5
+static	const char cpuchar[5] = { '=' , '+', '>', '-', ' ' };
+
+static	const size_t cpuoffsets[] = {
+	offsetof(struct kinfo_cputime, cp_sys),
+	offsetof(struct kinfo_cputime, cp_intr),
+	offsetof(struct kinfo_cputime, cp_user),
+	offsetof(struct kinfo_cputime, cp_nice),
+	offsetof(struct kinfo_cputime, cp_idle)
+};
 
 void
 showkre(void)
@@ -396,13 +413,19 @@ showkre(void)
 	int psiz, inttotal;
 	int i, l, c;
 	static int failcnt = 0;
+	double total_time;
 
 	etime = 0;
-	for(i = 0; i < CPUSTATES; i++) {
-		X(time);
-		Q(cp_time);
-		etime += s.time[i];
-	}
+	CP_UPDATE(cp_time.cp_user);
+	CP_UPDATE(cp_time.cp_nice);
+	CP_UPDATE(cp_time.cp_sys);
+	CP_UPDATE(cp_time.cp_intr);
+	CP_UPDATE(cp_time.cp_idle);
+
+	total_time = etime;
+	if (total_time == 0.0)
+		total_time = 1.0;
+
 	if (etime < 100000.0) {	/* < 100ms ignore this trash */
 		if (failcnt++ >= MAXFAIL) {
 			clear();
@@ -419,6 +442,8 @@ showkre(void)
 	failcnt = 0;
 	etime /= 1000000.0;
 	etime /= ncpu;
+	if (etime == 0)
+		etime = 1;
 	inttotal = 0;
 	for (i = 0; i < nintr; i++) {
 		if (s.intrcnt[i] == 0)
@@ -446,8 +471,9 @@ showkre(void)
 	psiz = 0;
 	f2 = 0.0;
 	for (c = 0; c < CPUSTATES; c++) {
-		i = cpuorder[c];
-		f1 = cputime(i);
+		uint64_t val = *(uint64_t *)(((uint8_t *)&s.cp_time) +
+		    cpuoffsets[c]);
+		f1 = 100.0 * val / total_time;
 		f2 += f1;
 		l = (int) ((f2 + 1.0) / 2.0) - psiz;
 		if (f1 > 99.9)
@@ -641,20 +667,6 @@ ucount(void)
 	return (nusers);
 }
 
-static float
-cputime(int indx)
-{
-	double t;
-	register int i;
-
-	t = 0;
-	for (i = 0; i < CPUSTATES; i++)
-		t += s.time[i];
-	if (t == 0.0)
-		t = 1.0;
-	return (s.time[indx] * 100.0 / t);
-}
-
 static void
 putint(int n, int l, int c, int w)
 {
@@ -738,8 +750,10 @@ getinfo(struct Info *s, enum state st)
                 exit(1);
         }
 
-	NREAD(X_CPTIME, s->time, sizeof s->time);
-	NREAD(X_CPTIME, cur.cp_time, sizeof(cur.cp_time));
+	if (kinfo_get_sched_cputime(&s->cp_time))
+		err(1, "kinfo_get_sched_cputime");
+	if (kinfo_get_sched_cputime(&cp_time))
+		err(1, "kinfo_get_sched_cputime");
 	NREAD(X_BUFFERSPACE, &s->bufspace, sizeof(s->bufspace));
 	NREAD(X_DESIREDVNODES, &s->desiredvnodes, sizeof(s->desiredvnodes));
 	NREAD(X_NUMVNODES, &s->numvnodes, LONG);
@@ -768,11 +782,8 @@ getinfo(struct Info *s, enum state st)
 		}
 	}
 
-	/* 
-	 * Since the nchstats is a per-cpu array, we can just divide
-	 * and get the number of cpus, saving us a sysctl(2) call.
-	 */
-	ncpu = nch_size / sizeof(struct nchstats);
+	if (kinfo_get_cpus(&ncpu))
+		err(1, "kinfo_get_cpus");
 	kvm_nch_cpuagg(nch_tmp, &s->nchstats, ncpu);
 	free(nch_tmp);
 

@@ -31,23 +31,26 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkcore/kcore_private.h,v 1.2 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/lib/libkinfo/kinfo_tty.c,v 1.1 2004/12/22 11:01:49 joerg Exp $
  */
 
-#ifndef KCORE_PRIVATE_H
-#define	KCORE_PRIVATE_H
+#include <sys/param.h>
+#include <sys/sysctl.h>
 
-#include <sys/cdefs.h>
-#include <kvm.h>
+#include <kinfo.h>
 
-struct kcore_data {
-	kvm_t *kd;
-};
+int
+kinfo_get_tty_tk_nin(uint64_t *tk_nin)
+{
+	size_t len = sizeof(*tk_nin);
 
-extern struct kcore_data kcore_global;
+	return(sysctlbyname("kern.tk_nin", tk_nin, &len, NULL, 0));
+}
 
-__BEGIN_DECLS;
-int	kcore_get_generic(struct kcore_data *, struct nlist *, void *, size_t);
-__END_DECLS;
+int
+kinfo_get_tty_tk_nout(uint64_t *tk_nout)
+{
+	size_t len = sizeof(*tk_nout);
 
-#endif
+	return(sysctlbyname("kern.tk_nout", tk_nout, &len, NULL, 0));
+}

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/iostat/iostat.c,v 1.17.2.2 2001/07/19 04:15:42 kris Exp $
- * $DragonFly: src/usr.sbin/iostat/iostat.c,v 1.4 2004/03/23 07:45:34 cpressey Exp $
+ * $DragonFly: src/usr.sbin/iostat/iostat.c,v 1.5 2004/12/22 11:01:49 joerg Exp $
  */
 /*
  * Parts of this program are derived from the original FreeBSD iostat
@@ -102,12 +102,11 @@
 
 #include <sys/param.h>
 #include <sys/errno.h>
-#include <sys/dkstat.h>
 
 #include <err.h>
 #include <ctype.h>
 #include <fcntl.h>
-#include <kvm.h>
+#include <kinfo.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -115,29 +114,15 @@
 #include <limits.h>
 #include <devstat.h>
 
-struct nlist namelist[] = {
-#define X_TK_NIN	0
-	{ "_tk_nin" },
-#define X_TK_NOUT	1
-	{ "_tk_nout" },
-#define X_CP_TIME	2
-	{ "_cp_time" },
-#define X_HZ		3
-	{ "_hz" },
-#define X_STATHZ	4
-	{ "_stathz" },
-#define X_END		4
-	{ NULL },
-};
-
 struct statinfo cur, last;
+uint64_t tk_nin, old_tk_nin, diff_tk_nin;
+uint64_t tk_nout, old_tk_nout, diff_tk_nout;
+struct kinfo_cputime cp_time, old_cp_time, diff_cp_time;
+double cp_time_total;
 int num_devices;
 struct device_selection *dev_select;
 int maxshowdevs;
 int dflag = 0, Iflag = 0, Cflag = 0, Tflag = 0, oflag = 0, Kflag = 0;
-
-#define nlread(x, v) \
-	kvm_read(kd, namelist[x].n_value, &(v), sizeof(v))
 
 /* local function declarations */
 static void usage(void);
@@ -154,8 +139,8 @@ usage(void)
 	 * This isn't mentioned in the man page, or the usage statement,
 	 * but it is supported.
 	 */
-	fprintf(stderr, "usage: iostat [-CdhIKoT?] [-c count] [-M core]"
-		" [-n devs] [-N system]\n"
+	fprintf(stderr, "usage: iostat [-CdhIKoT?] [-c count]"
+		" [-n devs]\n"
 		"\t      [-t type,if,pass] [-w wait] [drives]\n");
 }
 
@@ -166,11 +151,9 @@ main(int argc, char **argv)
 	int i;
 	int tflag = 0, hflag = 0, cflag = 0, wflag = 0, nflag = 0;
 	int count = 0, waittime = 0;
-	char *memf = NULL, *nlistf = NULL;
 	struct devstat_match *matches;
 	int num_matches = 0;
         char errbuf[_POSIX2_LINE_MAX];
-	kvm_t *kd;
 	int hz, stathz;
 	int headercount;
 	long generation;
@@ -206,18 +189,12 @@ main(int argc, char **argv)
 			case 'K':
 				Kflag++;
 				break;
-			case 'M':
-				memf = optarg;
-				break;
 			case 'n':
 				nflag++;
 				maxshowdevs = atoi(optarg);
 				if (maxshowdevs < 0)
 					errx(1, "number of devices %d is < 0",
 					     maxshowdevs);
-				break;
-			case 'N':
-				nlistf = optarg;
 				break;
 			case 'o':
 				oflag++;
@@ -246,13 +223,6 @@ main(int argc, char **argv)
 
 	argc -= optind;
 	argv += optind;
-
-	/*
-	 * Discard setgid privileges if not the running kernel so that bad
-	 * guys can't print interesting stuff from kernel memory.
-	 */
-	if (nlistf != NULL || memf != NULL)
-		setgid(getgid());
 
 	/*
 	 * Make sure that the userland devstat version matches the kernel
@@ -382,18 +352,10 @@ main(int argc, char **argv)
 	if ((wflag > 0) && (cflag == 0))
 		count = -1;
 
-	kd = kvm_openfiles(nlistf, memf, NULL, O_RDONLY, errbuf);
-
-	if (kd == 0)
-		errx(1, "kvm_openfiles: %s", errbuf);
-
-	if (kvm_nlist(kd, namelist) == -1)
-		errx(1, "kvm_nlist: %s", kvm_geterr(kd));
-
-	nlread(X_HZ, hz);
-	nlread(X_STATHZ, stathz);
-	if (stathz)
-		hz = stathz;
+	if (kinfo_get_sched_hz(&hz))
+		err(1, "kinfo_get_sched_hz");
+	if (kinfo_get_sched_stathz(&hz))
+		err(1, "kinfo_get_sched_stathz");
 
 	/*
 	 * If the user stops the program (control-Z) and then resumes it,
@@ -404,18 +366,17 @@ main(int argc, char **argv)
 	for (headercount = 1;;) {
 		struct devinfo *tmp_dinfo;
 		long tmp;
-		double etime;
 
 		if (!--headercount) {
 			phdr(0);
 			headercount = 20;
 		}
-		kvm_read(kd, namelist[X_TK_NIN].n_value,
-		    &cur.tk_nin, sizeof(cur.tk_nin));
-		kvm_read(kd, namelist[X_TK_NOUT].n_value,
-		    &cur.tk_nout, sizeof(cur.tk_nout));
-		kvm_read(kd, namelist[X_CP_TIME].n_value,
-		    cur.cp_time, sizeof(cur.cp_time));
+		if (kinfo_get_tty_tk_nin(&tk_nin))
+			err(1, "kinfo_get_tty_tk_nin");
+		if (kinfo_get_tty_tk_nout(&tk_nout))
+			err(1, "kinfo_get_tty_tk_nout");
+		if (kinfo_get_sched_cputime(&cp_time))
+			err(1, "kinfo_get_sched_cputime");
 
 		tmp_dinfo = last.dinfo;
 		last.dinfo = cur.dinfo;
@@ -490,27 +451,27 @@ main(int argc, char **argv)
 			}
 		}
 
-		tmp = cur.tk_nin;
-		cur.tk_nin -= last.tk_nin;
-		last.tk_nin = tmp;
-		tmp = cur.tk_nout;
-		cur.tk_nout -= last.tk_nout;
-		last.tk_nout = tmp;
+		diff_tk_nin = tk_nin - old_tk_nin;
+		old_tk_nin = tk_nin;
+		diff_tk_nout = tk_nout - old_tk_nout;
+		old_tk_nout = tk_nout;
 
-		etime = 0.0;
+		diff_cp_time.cp_user = cp_time.cp_user - old_cp_time.cp_user;
+		diff_cp_time.cp_nice = cp_time.cp_nice - old_cp_time.cp_nice;
+		diff_cp_time.cp_sys = cp_time.cp_sys - old_cp_time.cp_sys;
+		diff_cp_time.cp_intr = cp_time.cp_intr - old_cp_time.cp_intr;
+		diff_cp_time.cp_idle = cp_time.cp_idle - old_cp_time.cp_idle;
+		cp_time_total = diff_cp_time.cp_user + diff_cp_time.cp_nice +
+		    diff_cp_time.cp_sys + diff_cp_time.cp_intr +
+		    diff_cp_time.cp_idle;
+		old_cp_time = cp_time;
 
-		for (i = 0; i < CPUSTATES; i++) {
-			tmp = cur.cp_time[i];
-			cur.cp_time[i] -= last.cp_time[i];
-			last.cp_time[i] = tmp;
-			etime += cur.cp_time[i];
-		}
-		if (etime == 0.0)
-			etime = 1.0;
-		etime /= (float)hz;
+		if (cp_time_total == 0.0)
+			cp_time_total = 1.0;
+
 		if ((dflag == 0) || (Tflag > 0))
-			printf("%4.0f%5.0f", cur.tk_nin / etime, 
-				cur.tk_nout/etime);
+			printf("%4.0f%5.0f", diff_tk_nin / cp_time_total * 1e6, 
+				diff_tk_nout / cp_time_total * 1e6);
 		devstats(hflag);
 		if ((dflag == 0) || (Cflag > 0))
 			cpustats();
@@ -667,13 +628,13 @@ static void
 cpustats(void)
 {
 	int state;
-	double time;
 
-	time = 0.0;
+	if (cp_time_total == 0.0)
+		cp_time_total = 1.0;
 
-	for (state = 0; state < CPUSTATES; ++state)
-		time += cur.cp_time[state];
-	for (state = 0; state < CPUSTATES; ++state)
-		printf(" %2.0f",
-		       100. * cur.cp_time[state] / (time ? time : 1));
+	printf(" %2.0f", 100. * diff_cp_time.cp_user / cp_time_total);
+	printf(" %2.0f", 100. * diff_cp_time.cp_nice / cp_time_total);
+	printf(" %2.0f", 100. * diff_cp_time.cp_sys / cp_time_total);
+	printf(" %2.0f", 100. * diff_cp_time.cp_intr / cp_time_total);
+	printf(" %2.0f", 100. * diff_cp_time.cp_idle / cp_time_total);
 }

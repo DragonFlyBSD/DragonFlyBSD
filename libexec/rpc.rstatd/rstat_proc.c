@@ -29,7 +29,7 @@
  * @(#)rpc.rstatd.c 1.1 86/09/25 Copyr 1984 Sun Micro
  * @(#)rstat_proc.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/libexec/rpc.rstatd/rstat_proc.c,v 1.14.2.1 2002/07/11 17:17:56 alfred Exp $
- * $DragonFly: src/libexec/rpc.rstatd/rstat_proc.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
+ * $DragonFly: src/libexec/rpc.rstatd/rstat_proc.c,v 1.4 2004/12/22 11:01:49 joerg Exp $
  */
 
 /*
@@ -39,7 +39,7 @@
  */
 
 #include <sys/types.h>
-#include <sys/dkstat.h>
+#include <sys/kinfo.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
 #include <sys/time.h>
@@ -48,7 +48,6 @@
 
 #include <err.h>
 #include <fcntl.h>
-#include <kvm.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdio.h>
@@ -70,14 +69,6 @@
 #undef if_collisions
 #include <rpcsvc/rstat.h>
 
-struct nlist nl[] = {
-#define	X_CPTIME	0
-	{ "_cp_time" },
-#define	X_CNT		1
-	{ "_cnt" },
-	{ "" },
-};
-
 int havedisk (void);
 void updatexfers (int, int *);
 void setup (void);
@@ -95,12 +86,6 @@ union {
 
 void updatestat();
 static stat_is_init = 0;
-static kvm_t *kd;
-
-static int	cp_time_xlat[RSTAT_CPUSTATES] = { CP_USER, CP_NICE, CP_SYS,
-							CP_IDLE };
-static long	bsd_cp_time[CPUSTATES];
-
 
 #ifndef FSCALE
 #define FSCALE (1 << 8)
@@ -110,7 +95,6 @@ void
 stat_init()
 {
     stat_is_init = 1;
-    setup();
     alarm(0);
     updatestat();
     (void) signal(SIGALRM, updatestat);
@@ -185,10 +169,12 @@ updatestat()
 {
 	int i, hz;
 	struct clockinfo clockrate;
-	struct vmmeter cnt;
+	struct vmmeter vmm;
+	size_t vmm_size = sizeof(vmm);
 	struct ifmibdata ifmd;
 	double avrun[3];
 	struct timeval tm, btm;
+	struct kinfo_cputime cp_time;
 	int mib[6];
 	size_t len;
 	int ifcount;
@@ -200,7 +186,6 @@ updatestat()
 #ifdef DEBUG
                 fprintf(stderr, "about to closedown\n");
 #endif
-                kvm_close(kd);
                 if (from_inetd)
                         exit(0);
                 else {
@@ -219,13 +204,14 @@ updatestat()
 	}
 	hz = clockrate.hz;
 
-	if (kvm_read(kd, (long)nl[X_CPTIME].n_value, (char *)bsd_cp_time, sizeof(bsd_cp_time))
-	    != sizeof(bsd_cp_time)) {
+	if (kinfo_get_sched_cputime(&cp_time)) {
 		syslog(LOG_ERR, "rstat: can't read cp_time from kmem");
 		exit(1);
 	}
-	for(i = 0; i < RSTAT_CPUSTATES ; i++)
-		stats_all.s1.cp_time[i] = bsd_cp_time[cp_time_xlat[i]];
+	stats_all.s1.cp_time[0] = cp_time.cp_user;
+	stats_all.s1.cp_time[1] = cp_time.cp_nice;
+	stats_all.s1.cp_time[2] = cp_time.cp_sys;
+	stats_all.s1.cp_time[3] = cp_time.cp_idle;
 
         (void)getloadavg(avrun, sizeof(avrun) / sizeof(avrun[0]));
 
@@ -250,20 +236,19 @@ updatestat()
 	    stats_all.s1.cp_time[1], stats_all.s1.cp_time[2], stats_all.s1.cp_time[3]);
 #endif
 
-	/* XXX - should use sysctl */
- 	if (kvm_read(kd, (long)nl[X_CNT].n_value, (char *)&cnt, sizeof cnt) != sizeof cnt) {
-		syslog(LOG_ERR, "rstat: can't read cnt from kmem");
+	if (sysctlbyname("vm.vmmeter", &vmm, &vmm_size, NULL, 0)) {
+		syslog(LOG_ERR, "sysctlbyname: vm.vmmeter");
 		exit(1);
 	}
-	stats_all.s1.v_pgpgin = cnt.v_vnodepgsin;
-	stats_all.s1.v_pgpgout = cnt.v_vnodepgsout;
-	stats_all.s1.v_pswpin = cnt.v_swappgsin;
-	stats_all.s1.v_pswpout = cnt.v_swappgsout;
-	stats_all.s1.v_intr = cnt.v_intr;
+	stats_all.s1.v_pgpgin = vmm.v_vnodepgsin;
+	stats_all.s1.v_pgpgout = vmm.v_vnodepgsout;
+	stats_all.s1.v_pswpin = vmm.v_swappgsin;
+	stats_all.s1.v_pswpout = vmm.v_swappgsout;
+	stats_all.s1.v_intr = vmm.v_intr;
 	gettimeofday(&tm, (struct timezone *) 0);
 	stats_all.s1.v_intr -= hz*(tm.tv_sec - btm.tv_sec) +
 	    hz*(tm.tv_usec - btm.tv_usec)/1000000;
-	stats_all.s2.v_swtch = cnt.v_swtch;
+	stats_all.s2.v_swtch = vmm.v_swtch;
 
 	/* update disk transfers */
 	updatexfers(RSTAT_DK_NDRIVE, stats_all.s1.dk_xfer);
@@ -304,24 +289,6 @@ updatestat()
 	gettimeofday((struct timeval *)&stats_all.s3.curtime,
 		(struct timezone *) 0);
 	alarm(1);
-}
-
-void
-setup()
-{
-	char errbuf[_POSIX2_LINE_MAX];
-
-	int en;
-
-	if ((kd = kvm_openfiles(NULL, NULL, NULL, O_RDONLY, errbuf)) == NULL) {
-		syslog(LOG_ERR, "rpc.rstatd, %s", errbuf);
-		exit(1);
-	}
-
-	if ((en = kvm_nlist(kd, nl)) != 0) {
-		syslog(LOG_ERR, "rstatd: Can't get namelist. %d", en);
-		exit (1);
-        }
 }
 
 /*

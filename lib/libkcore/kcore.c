@@ -31,12 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkcore/kcore.c,v 1.3 2004/12/20 02:40:07 dillon Exp $
+ * $DragonFly: src/lib/libkcore/kcore.c,v 1.4 2004/12/22 11:01:49 joerg Exp $
  */
 
 #include <sys/types.h>
 #include <sys/fcntl.h>
 
+#include <err.h>
+#include <errno.h>
 #include <kcore.h>
 #include <kvm.h>
 #include <stdlib.h>
@@ -74,4 +76,25 @@ kcore_close(struct kcore_data *kc)
 	retval = kvm_close(kc->kd);
 	free(kc);
 	return(retval);
+}
+
+int
+kcore_get_generic(struct kcore_data *kc, struct nlist *nl,
+		  void *data, size_t len)
+{
+	if (kc == NULL)
+		kc = &kcore_global;
+
+	if (nl[0].n_value == 0) {
+		if ((kvm_nlist(kc->kd, nl) < 0) || (nl[0].n_value == 0)) {
+			errno = EOPNOTSUPP;
+			return(-1);
+		}
+	}
+	if (kvm_read(kc->kd, nl[0].n_value, data, len) != (int)len) {
+		warnx("cannot read %s: %s", nl[0].n_name, kvm_geterr(kc->kd));
+		errno = EINVAL;
+		return(-1);
+	}
+	return(0);
 }

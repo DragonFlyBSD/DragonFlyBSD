@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.14 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.15 2004/12/22 11:01:49 joerg Exp $
  */
 
 /*-
@@ -198,6 +198,14 @@ static u_char const char_type[] = {
 #undef MAX_INPUT		/* XXX wrong in <sys/syslimits.h> */
 #define	MAX_INPUT	TTYHOG	/* XXX limit is usually larger for !ICANON */
 
+uint64_t tk_nin;
+SYSCTL_OPAQUE(_kern, OID_AUTO, tk_nin, CTLFLAG_RD, &tk_nin, sizeof(tk_nin),
+    "LU", "TTY input statistic");
+uint64_t tk_nout;
+SYSCTL_OPAQUE(_kern, OID_AUTO, tk_nout, CTLFLAG_RD, &tk_nout, sizeof(tk_nout),
+    "LU", "TTY output statistic");
+uint64_t tk_rawcc;
+
 /*
  * list of struct tty where pstat(8) can pick it up with sysctl
  */
@@ -346,13 +354,10 @@ ttyinput(c, tp)
 	/*
 	 * Gather stats.
 	 */
-	if (ISSET(lflag, ICANON)) {
-		++tk_cancc;
+	if (ISSET(lflag, ICANON))
 		++tp->t_cancc;
-	} else {
-		++tk_rawcc;
+	else
 		++tp->t_rawcc;
-	}
 	++tk_nin;
 
 	/*

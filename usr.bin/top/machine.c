@@ -21,7 +21,7 @@
  *          Hiten Pandya <hmp@backplane.com>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.13 2004/11/18 14:35:08 joerg Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.14 2004/12/22 11:01:49 joerg Exp $
  */
 
 
@@ -31,14 +31,13 @@
 #include <sys/param.h>
 
 #include "os.h"
-#include <stdio.h>
-#include <nlist.h>
-#include <math.h>
+#include <err.h>
 #include <kvm.h>
+#include <stdio.h>
+#include <math.h>
 #include <pwd.h>
 #include <sys/errno.h>
 #include <sys/sysctl.h>
-#include <sys/dkstat.h>
 #include <sys/file.h>
 #include <sys/time.h>
 #include <sys/user.h>
@@ -52,6 +51,7 @@
 
 #include <osreldate.h> /* for changes in kernel structures */
 
+#include <sys/kinfo.h>
 #include <kinfo.h>
 #include "top.h"
 #include "machine.h"
@@ -93,22 +93,6 @@ struct handle
 /* what we consider to be process size: */
 #define PROCSIZE(pp) (VP((pp), vm_map.size) / 1024)
 
-/* definitions for indices in the nlist array */
-
-static struct nlist nlst[] = {
-#define X_CCPU		0
-    { "_ccpu" },
-#define X_CP_TIME	1
-    { "_cp_time" },
-#define X_AVENRUN	2
-    { "_averunnable" },
-
-/* Last pid */
-#define X_LASTPID	3
-    { "_nextpid" },		
-    { 0 }
-};
-
 /*
  *  These definitions control the format of the per-process area
  */
@@ -143,23 +127,13 @@ static kvm_t *kd;
 
 static double logcpu;
 
-/* these are retrieved from the kernel in _init */
-
-static load_avg  ccpu;
-
-/* these are offsets obtained via nlist and used in the get_ functions */
-
-static unsigned long cp_time_offset;
-static unsigned long avenrun_offset;
-static unsigned long lastpid_offset;
 static long lastpid;
 static long cnt;
+static int ccpu;
 
 /* these are for calculating cpu state percentages */
 
-static long cp_time[CPUSTATES];
-static long cp_old[CPUSTATES];
-static long cp_diff[CPUSTATES];
+static struct kinfo_cputime cp_time, cp_old;
 
 /* these are for detailing the process states */
 
@@ -171,9 +145,9 @@ char *procstatenames[] = {
 };
 
 /* these are for detailing the cpu states */
-
-int cpu_states[CPUSTATES];
-char *cpustatenames[] = {
+#define CPU_STATES 5
+int cpu_states[CPU_STATES];
+char *cpustatenames[CPU_STATES + 1] = {
     "user", "nice", "system", "interrupt", "idle", NULL
 };
 
@@ -209,15 +183,50 @@ static int pageshift;		/* log base 2 of the pagesize */
 
 #define pagetok(size) ((size) << pageshift)
 
-/* useful externals */
-long percentages();
-
 #ifdef ORDER
 /* sorting orders. first is default */
 char *ordernames[] = {
     "cpu", "size", "res", "time", "pri", "thr", NULL
 };
 #endif
+
+static void
+cputime_percentages(int out[CPU_STATES], struct kinfo_cputime *new,
+		    struct kinfo_cputime *old)
+{
+        struct kinfo_cputime diffs;
+        int i;
+	uint64_t total_change, half_total;
+
+        /* initialization */
+	total_change = 0;
+
+        diffs.cp_user = new->cp_user - old->cp_user;
+	diffs.cp_nice = new->cp_nice - old->cp_nice;
+	diffs.cp_sys = new->cp_sys - old->cp_sys;
+        diffs.cp_intr = new->cp_intr - old->cp_intr;
+        diffs.cp_idle = new->cp_idle - old->cp_idle;
+	total_change = diffs.cp_user + diffs.cp_nice + diffs.cp_sys +
+    	    diffs.cp_intr + diffs.cp_idle;
+        old->cp_user = new->cp_user;
+        old->cp_nice = new->cp_nice;
+        old->cp_sys = new->cp_sys;
+        old->cp_intr = new->cp_intr;
+	old->cp_idle = new->cp_idle;
+
+        /* avoid divide by zero potential */
+	if (total_change == 0)
+		total_change = 1;
+
+	/* calculate percentages based on overall change, rounding up */
+        half_total = total_change >> 1;
+
+	out[0] = ((diffs.cp_user * 1000LL + half_total) / total_change);
+        out[1] = ((diffs.cp_nice * 1000LL + half_total) / total_change);
+	out[2] = ((diffs.cp_sys * 1000LL + half_total) / total_change);
+        out[3] = ((diffs.cp_intr * 1000LL + half_total) / total_change);
+	out[4] = ((diffs.cp_idle * 1000LL + half_total) / total_change);
+}
 
 int
 machine_init(struct statics *statics)
@@ -247,28 +256,10 @@ machine_init(struct statics *statics)
     if ((kd = kvm_open(NULL, NULL, NULL, O_RDONLY, "kvm_open")) == NULL)
 	return -1;
 
-
-    /* get the list of symbols we want to access in the kernel */
-    (void) kvm_nlist(kd, nlst);
-    if (nlst[0].n_type == 0)
-    {
-	fprintf(stderr, "top: nlist failed\n");
+    if (kinfo_get_sched_ccpu(&ccpu)) {
+	fprintf(stderr, "top: kinfo_get_sched_ccpu failed\n");
 	return(-1);
     }
-
-    /* make sure they were all found */
-    if (i > 0 && check_nlist(nlst) > 0)
-    {
-	return(-1);
-    }
-
-    (void) getkval(nlst[X_CCPU].n_value,   (int *)(&ccpu),	sizeof(ccpu),
-	    nlst[X_CCPU].n_name);
-
-    /* stash away certain offsets for later use */
-    cp_time_offset = nlst[X_CP_TIME].n_value;
-    avenrun_offset = nlst[X_AVENRUN].n_value;
-    lastpid_offset =  nlst[X_LASTPID].n_value;
 
     /* this is used in calculating WCPU -- calculate it ahead of time */
     logcpu = log(loaddouble(ccpu));
@@ -328,45 +319,19 @@ void
 get_system_info(struct system_info *si)
 {
     long total;
-    load_avg avenrun[3];
     int mib[2];
     struct timeval boottime;
     size_t bt_size;
 
-    /* get the cp_time array */
-    (void) getkval(cp_time_offset, (int *)cp_time, sizeof(cp_time),
-		   nlst[X_CP_TIME].n_name);
-    (void) getkval(avenrun_offset, (int *)avenrun, sizeof(avenrun),
-		   nlst[X_AVENRUN].n_name);
+    if (kinfo_get_sched_cputime(&cp_time))
+	err(1, "kinfo_get_sched_cputime failed");
 
-    (void) getkval(lastpid_offset, (int *)(&lastpid), sizeof(lastpid),
-		   "!");
+    getloadavg(si->load_avg, 3);
 
-    /* convert load averages to doubles */
-    {
-	register int i;
-	register double *infoloadp;
-	load_avg *avenrunp;
-
-#ifdef notyet
-	struct loadavg sysload;
-	int size;
-	getkerninfo(KINFO_LOADAVG, &sysload, &size, 0);
-#endif
-
-	infoloadp = si->load_avg;
-	avenrunp = avenrun;
-	for (i = 0; i < 3; i++)
-	{
-#ifdef notyet
-	    *infoloadp++ = ((double) sysload.ldavg[i]) / sysload.fscale;
-#endif
-	    *infoloadp++ = loaddouble(*avenrunp++);
-	}
-    }
+    lastpid = 0;
 
     /* convert cp_time counts to percentages */
-    total = percentages(CPUSTATES, cpu_states, cp_time, cp_old, cp_diff);
+    cputime_percentages(cpu_states, &cp_time, &cp_old);
 
     /* sum memory & swap statistics */
     {
@@ -693,37 +658,6 @@ static int check_nlist(register struct nlist *nlst)
     return(i);
 }
 
-
-/*
- *  getkval(offset, ptr, size, refstr) - get a value out of the kernel.
- *	"offset" is the byte offset into the kernel for the desired value,
- *  	"ptr" points to a buffer into which the value is retrieved,
- *  	"size" is the size of the buffer (and the object to retrieve),
- *  	"refstr" is a reference string used when printing error meessages,
- *	    if "refstr" starts with a '!', then a failure on read will not
- *  	    be fatal (this may seem like a silly way to do things, but I
- *  	    really didn't want the overhead of another argument).
- *  	
- */
-
-static int getkval(unsigned long offset, int *ptr, int size, char *refstr)
-{
-    if (kvm_read(kd, offset, (char *) ptr, size) != size)
-    {
-	if (*refstr == '!')
-	{
-	    return(0);
-	}
-	else
-	{
-	    fprintf(stderr, "top: kvm_read for %s: %s\n",
-		refstr, strerror(errno));
-	    quit(23);
-	}
-    }
-    return(1);
-}
-    
 /* comparison routines for qsort */
 
 /*
@@ -986,24 +920,6 @@ int proc_owner(int pid)
  * swapmode is based on a program called swapinfo written
  * by Kevin Lahey <kml@rokkaku.atl.ga.us>.
  */
-
-#define	SVAR(var) __STRING(var)	/* to force expansion */
-#define	KGET(idx, var)							\
-	KGET1(idx, &var, sizeof(var), SVAR(var))
-#define	KGET1(idx, p, s, msg)						\
-	KGET2(nlst[idx].n_value, p, s, msg)
-#define	KGET2(addr, p, s, msg)						\
-	if (kvm_read(kd, (u_long)(addr), p, s) != s) {		        \
-		warnx("cannot read %s: %s", msg, kvm_geterr(kd));       \
-		return (0);                                             \
-       }
-#define	KGETRET(addr, p, s, msg)					\
-	if (kvm_read(kd, (u_long)(addr), p, s) != s) {			\
-		warnx("cannot read %s: %s", msg, kvm_geterr(kd));	\
-		return (0);						\
-	}
-
-
 int
 swapmode(int *retavail, int *retfree)
 {
@@ -1027,4 +943,3 @@ swapmode(int *retavail, int *retfree)
 	    (double)swapary[0].ksw_total);
 	return(n);
 }
-

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkinfo/kinfo.h,v 1.3 2004/11/24 22:51:01 joerg Exp $
+ * $DragonFly: src/lib/libkinfo/kinfo.h,v 1.4 2004/12/22 11:01:49 joerg Exp $
  */
 
 #ifndef _KINFO_H
@@ -41,9 +41,17 @@
 #include <sys/kinfo.h>
 
 __BEGIN_DECLS;
+int	kinfo_get_cpus(int *);
 int	kinfo_get_files(struct kinfo_file **, size_t *);
 int	kinfo_get_maxfiles(int *);
 int	kinfo_get_openfiles(int *);
+int	kinfo_get_sched_ccpu(int *);
+int	kinfo_get_sched_cputime(struct kinfo_cputime *);
+int	kinfo_get_sched_hz(int *);
+int	kinfo_get_sched_profhz(int *);
+int	kinfo_get_sched_stathz(int *);
+int	kinfo_get_tty_tk_nin(uint64_t *);
+int	kinfo_get_tty_tk_nout(uint64_t *);
 int	kinfo_get_vfs_bufspace(int *);
 __END_DECLS;
 

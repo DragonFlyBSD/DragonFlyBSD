@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkcore/kcore_vfs.c,v 1.1 2004/11/24 22:51:01 joerg Exp $
+ * $DragonFly: src/lib/libkcore/kcore_vfs.c,v 1.2 2004/12/22 11:01:49 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -52,18 +52,5 @@ kcore_get_vfs_bufspace(struct kcore_data *kc, int *bufspace)
 		{ NULL, 0, 0, 0, 0}
 	};
 
-	if (kc == NULL)
-		kc = &kcore_global;
-
-	if (nl[0].n_value == 0) {
-		if ((kvm_nlist(kc->kd, nl) < 0) || (nl[0].n_value == 0)) {
-			errno = EOPNOTSUPP;
-			return(-1);
-		}
-	}
-	if (kvm_read(kc->kd, nl[0].n_value, bufspace,
-		     sizeof(*bufspace)) != sizeof(*bufspace)) {
-		warnx("cannot read _bufspace: %s", kvm_geterr(kc->kd));
-	}
-	return(0);
+	return(kcore_get_generic(kc, nl, bufspace, sizeof(*bufspace)));
 }

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libdevstat/devstat.h,v 1.3 1999/08/28 00:04:27 peter Exp $
- * $DragonFly: src/lib/libdevstat/devstat.h,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libdevstat/devstat.h,v 1.3 2004/12/22 11:01:48 joerg Exp $
  */
 
 #ifndef _DEVSTAT_H
@@ -74,9 +74,6 @@ struct devinfo {
 };
 
 struct statinfo {
-	long		cp_time[CPUSTATES];
-	long		tk_nin;
-	long		tk_nout;
 	struct devinfo	*dinfo;
 	struct timeval	busy_time;
 };

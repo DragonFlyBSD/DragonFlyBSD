@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)time.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/time/time.c,v 1.14.2.5 2002/06/28 08:35:15 tjr Exp $
- * $DragonFly: src/usr.bin/time/time.c,v 1.8 2004/12/19 19:37:06 liamfoy Exp $
+ * $DragonFly: src/usr.bin/time/time.c,v 1.9 2004/12/22 11:01:49 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -41,18 +41,18 @@
 #include <sys/resource.h>
 #include <sys/signal.h>
 #include <sys/sysctl.h>
-#include <stdlib.h>
 #include <sys/wait.h>
 
 #include <err.h>
-#include <stdio.h>
 #include <errno.h>
+#include <kinfo.h>
 #include <locale.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <signal.h>
 
-static int getstathz(void);
 static void humantime(FILE *, long, long);
 static void usage(void);
 
@@ -166,7 +166,8 @@ main(int argc, char **argv)
 		int hz;
 		u_long ticks;
 
-		hz = getstathz();
+		if (kinfo_get_sched_stathz(&hz))
+			err(1, "kinfo_get_sched_stathz");
 		ticks = hz * (ru.ru_utime.tv_sec + ru.ru_stime.tv_sec) +
 		     hz * (ru.ru_utime.tv_usec + ru.ru_stime.tv_usec) / 1000000;
 
@@ -227,24 +228,6 @@ usage(void)
 	fprintf(stderr,
 	    "usage: time [-al] [-h|-p] [-o file] utility [argument ...]\n");
 	exit(1);
-}
-
-/*
- * Return the frequency of the kernel's statistics clock.
- */
-static int
-getstathz(void)
-{
-	struct clockinfo clockrate;
-	int mib[2];
-	size_t size;
-
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_CLOCKRATE;
-	size = sizeof(clockrate);
-	if (sysctl(mib, 2, &clockrate, &size, NULL, 0) == -1)
-		err(1, "sysctl kern.clockrate");
-	return(clockrate.stathz);
 }
 
 static void

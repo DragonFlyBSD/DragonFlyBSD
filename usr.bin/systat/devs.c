@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/devs.c,v 1.4 1999/08/28 01:05:59 peter Exp $
- * $DragonFly: src/usr.bin/systat/devs.c,v 1.5 2004/09/03 20:38:01 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/devs.c,v 1.6 2004/12/22 11:01:49 joerg Exp $
  */
 /*
  * Some code and ideas taken from the old disks.c.
@@ -67,7 +67,6 @@
 
 #include <sys/types.h>
 #include <sys/devicestat.h>
-#include <sys/dkstat.h>
 
 #include <string.h>
 #include <devstat.h>

@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.28 2004/12/04 20:38:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.29 2004/12/22 11:01:49 joerg Exp $
  */
 
 #include "opt_ntp.h"
@@ -80,6 +80,7 @@
 #include <sys/dkstat.h>
 #include <sys/callout.h>
 #include <sys/kernel.h>
+#include <sys/kinfo.h>
 #include <sys/proc.h>
 #include <sys/malloc.h>
 #include <sys/resourcevar.h>
@@ -111,18 +112,13 @@ SYSINIT(clocks, SI_SUB_CLOCKS, SI_ORDER_FIRST, initclocks, NULL)
 
 /*
  * Some of these don't belong here, but it's easiest to concentrate them.
- * Note that cp_time[] counts in microseconds, but most userland programs
+ * Note that cp_time counts in microseconds, but most userland programs
  * just compare relative times against the total by delta.
  */
-long cp_time[CPUSTATES];
+struct cp_time cp_time;
 
 SYSCTL_OPAQUE(_kern, OID_AUTO, cp_time, CTLFLAG_RD, &cp_time, sizeof(cp_time),
     "LU", "CPU time statistics");
-
-long tk_cancc;
-long tk_nin;
-long tk_nout;
-long tk_rawcc;
 
 /*
  * boottime is used to calculate the 'real' uptime.  Do not confuse this with
@@ -442,9 +438,9 @@ statclock(systimer_t info, struct intrframe *frame)
 		 * Charge the time as appropriate
 		 */
 		if (p && p->p_nice > NZERO)
-			cp_time[CP_NICE] += bump;
+			cp_time.cp_nice += bump;
 		else
-			cp_time[CP_USER] += bump;
+			cp_time.cp_user += bump;
 	} else {
 #ifdef GPROF
 		/*
@@ -480,12 +476,12 @@ statclock(systimer_t info, struct intrframe *frame)
 			td->td_sticks += bump;
 
 		if (frame && CLKF_INTR(frame)) {
-			cp_time[CP_INTR] += bump;
+			cp_time.cp_intr += bump;
 		} else {
 			if (td == &mycpu->gd_idlethread)
-				cp_time[CP_IDLE] += bump;
+				cp_time.cp_idle += bump;
 			else
-				cp_time[CP_SYS] += bump;
+				cp_time.cp_sys += bump;
 		}
 	}
 }
@@ -642,15 +638,15 @@ stopprofclock(struct proc *p)
 static int
 sysctl_kern_clockrate(SYSCTL_HANDLER_ARGS)
 {
-	struct clockinfo clkinfo;
+	struct kinfo_clockinfo clkinfo;
 	/*
 	 * Construct clockinfo structure.
 	 */
-	clkinfo.hz = hz;
-	clkinfo.tick = tick;
-	clkinfo.tickadj = tickadj;
-	clkinfo.profhz = profhz;
-	clkinfo.stathz = stathz ? stathz : hz;
+	clkinfo.ci_hz = hz;
+	clkinfo.ci_tick = tick;
+	clkinfo.ci_tickadj = tickadj;
+	clkinfo.ci_profhz = profhz;
+	clkinfo.ci_stathz = stathz ? stathz : hz;
 	return (sysctl_handle_opaque(oidp, &clkinfo, sizeof clkinfo, req));
 }
 

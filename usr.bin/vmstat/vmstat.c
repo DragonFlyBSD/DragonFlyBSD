@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.13 2004/10/25 22:01:06 liamfoy Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.14 2004/12/22 11:01:49 joerg Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -41,7 +41,6 @@
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/user.h>
-#include <sys/dkstat.h>
 #include <sys/uio.h>
 #include <sys/namei.h>
 #include <sys/malloc.h>
@@ -56,6 +55,7 @@
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
+#include <kinfo.h>
 #include <kvm.h>
 #include <limits.h>
 #include <nlist.h>
@@ -69,42 +69,36 @@
 #include <devstat.h>
 
 static struct nlist namelist[] = {
-#define	X_CPTIME	0
-	{ "_cp_time" },
-#define	X_BOOTTIME	1
+#define	X_BOOTTIME	0
 	{ "_boottime" },
-#define X_HZ		2
-	{ "_hz" },
-#define X_STATHZ	3
-	{ "_stathz" },
-#define X_NCHSTATS	4
+#define X_NCHSTATS	1
 	{ "_nchstats" },
-#define	X_INTRNAMES	5
+#define	X_INTRNAMES	2
 	{ "_intrnames" },
-#define	X_EINTRNAMES	6
+#define	X_EINTRNAMES	3
 	{ "_eintrnames" },
-#define	X_INTRCNT	7
+#define	X_INTRCNT	4
 	{ "_intrcnt" },
-#define	X_EINTRCNT	8
+#define	X_EINTRCNT	5
 	{ "_eintrcnt" },
-#define	X_KMEMSTATISTICS	9
+#define	X_KMEMSTATISTICS	6
 	{ "_kmemstatistics" },
-#define	X_ZLIST		10
+#define	X_ZLIST		7
 	{ "_zlist" },
 #ifdef notyet
-#define	X_DEFICIT	11
+#define	X_DEFICIT	8
 	{ "_deficit" },
-#define	X_FORKSTAT	12
+#define	X_FORKSTAT	9
 	{ "_forkstat" },
-#define X_REC		13
+#define X_REC		10
 	{ "_rectime" },
-#define X_PGIN		14
+#define X_PGIN		11
 	{ "_pgintime" },
-#define	X_XSTATS	15
+#define	X_XSTATS	12
 	{ "_xstats" },
-#define X_END		16
+#define X_END		13
 #else
-#define X_END		11
+#define X_END		8
 #endif
 	{ "" },
 };
@@ -128,6 +122,8 @@ int	winlines = 20;
 int	nflag = 0;
 
 kvm_t *kd;
+
+struct kinfo_cputime cp_time, old_cp_time, diff_cp_time;
 
 #define	FORKSTAT	0x01
 #define	INTRSTAT	0x02
@@ -381,7 +377,7 @@ getuptime(void)
 	return(uptime);
 }
 
-int	hz, hdrcnt;
+int	hdrcnt;
 
 void
 dovmstat(u_int interval, int reps)
@@ -398,15 +394,11 @@ dovmstat(u_int interval, int reps)
 	halfuptime = uptime / 2;
 	signal(SIGCONT, needhdr);
 
-	if (namelist[X_STATHZ].n_type != 0 && namelist[X_STATHZ].n_value != 0)
-		kread(X_STATHZ, &hz, sizeof(hz));
-	if (!hz)
-		kread(X_HZ, &hz, sizeof(hz));
-
 	for (hdrcnt = 1;;) {
 		if (!--hdrcnt)
 			printhdr();
-		kread(X_CPTIME, cur.cp_time, sizeof(cur.cp_time));
+		if (kinfo_get_sched_cputime(&cp_time))
+			err(1, "kinfo_get_sched_cputime");
 
 		tmp_dinfo = last.dinfo;
 		last.dinfo = cur.dinfo;
@@ -669,12 +661,13 @@ devstats(void)
 	long double transfers_per_second;
 	long double busy_seconds;
 	long tmp;
-	
-	for (state = 0; state < CPUSTATES; ++state) {
-		tmp = cur.cp_time[state];
-		cur.cp_time[state] -= last.cp_time[state];
-		last.cp_time[state] = tmp;
-	}
+
+	diff_cp_time.cp_user = cp_time.cp_user - old_cp_time.cp_user;
+	diff_cp_time.cp_nice = cp_time.cp_nice - old_cp_time.cp_nice;
+	diff_cp_time.cp_sys = cp_time.cp_sys - old_cp_time.cp_sys;
+	diff_cp_time.cp_intr = cp_time.cp_intr - old_cp_time.cp_intr;
+	diff_cp_time.cp_idle = cp_time.cp_idle - old_cp_time.cp_idle;
+	old_cp_time = cp_time;
 
 	busy_seconds = compute_etime(cur.busy_time, last.busy_time);
 
@@ -701,21 +694,19 @@ devstats(void)
 void
 cpustats(void)
 {
-	int state;
-	double pct, total;
+	uint64_t total;
+	double pct;
 
-	total = 0;
-	for (state = 0; state < CPUSTATES; ++state)
-		total += cur.cp_time[state];
+	total = diff_cp_time.cp_user + diff_cp_time.cp_nice +
+	    diff_cp_time.cp_sys + diff_cp_time.cp_intr + diff_cp_time.cp_idle;
+
 	if (total)
-		pct = 100 / total;
+		pct = 100.0 / total;
 	else
 		pct = 0;
-	printf("%2.0f ", (cur.cp_time[CP_USER] +
-				cur.cp_time[CP_NICE]) * pct);
-	printf("%2.0f ", (cur.cp_time[CP_SYS] +
-				cur.cp_time[CP_INTR]) * pct);
-	printf("%2.0f", cur.cp_time[CP_IDLE] * pct);
+	printf("%2.0f ", (diff_cp_time.cp_user + diff_cp_time.cp_nice) * pct);
+	printf("%2.0f ", (diff_cp_time.cp_sys + diff_cp_time.cp_intr) * pct);
+	printf("%2.0f", diff_cp_time.cp_idle * pct);
 }
 
 void
@@ -855,7 +846,7 @@ dozmem(void)
 void
 kread(int nlx, void *addr, size_t size)
 {
-	char *sym;
+	const char *sym;
 
 	if (namelist[nlx].n_type == 0 || namelist[nlx].n_value == 0) {
 		sym = namelist[nlx].n_name;

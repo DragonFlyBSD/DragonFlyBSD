@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/iostat.c,v 1.9.2.1 2000/07/02 10:03:17 ps Exp $
- * $DragonFly: src/usr.bin/systat/iostat.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
+ * $DragonFly: src/usr.bin/systat/iostat.c,v 1.4 2004/12/22 11:01:49 joerg Exp $
  *
  * @(#)iostat.c	8.1 (Berkeley) 6/6/93
  */
@@ -64,38 +64,22 @@
  */
 
 #include <sys/param.h>
-#include <sys/dkstat.h>
 
-#include <string.h>
-#include <stdlib.h>
-#include <nlist.h>
-#include <paths.h>
-#include <devstat.h>
 #include <err.h>
+#include <devstat.h>
+#include <kinfo.h>
+#include <paths.h>
+#include <stdlib.h>
+#include <string.h>
 #include "systat.h"
 #include "extern.h"
 #include "devs.h"
 
-static struct nlist namelist[] = {
-#define X_CP_TIME	0
-	{ "_cp_time" },
-#ifdef vax
-#define X_MBDINIT	(X_CP_TIME+1)
-	{ "_mbdinit" },
-#define X_UBDINIT	(X_CP_TIME+2)
-	{ "_ubdinit" },
-#endif
-#ifdef tahoe
-#define	X_VBDINIT	(X_CP_TIME+1)
-	{ "_vbdinit" },
-#endif
-	{ "" },
-};
-
 struct statinfo cur, last;
+static struct kinfo_cputime cp_time, old_cp_time;
+static double etime;
 
 static  int linesperregion;
-static  double etime;
 static  int numbers = 0;		/* default display bar graphs */
 static  int kbpt = 0;			/* default ms/seek shown */
 
@@ -103,7 +87,7 @@ static int barlabels(int);
 static void histogram(long double, int, double);
 static int numlabels(int);
 static int devstats(int, int, int);
-static void stat1(int, int);
+static void stat1(int, uint64_t);
 
 WINDOW *
 openiostat(void)
@@ -139,11 +123,6 @@ initiostat(void)
 	if (dsinit(100, &cur, &last, NULL) != 1)
 		return(0);
 
-	if (kvm_nlist(kd, namelist)) {
-       		nlisterr(namelist);
-		return(0);
-	}
-
 	return(1);
 }
 
@@ -152,7 +131,8 @@ fetchiostat(void)
 {
 	struct devinfo *tmp_dinfo;
 
-	NREAD(X_CP_TIME, cur.cp_time, sizeof(cur.cp_time));
+	if (kinfo_get_sched_cputime(&cp_time))
+		err(1, "kinfo_get_sched_cputime");
 	tmp_dinfo = last.dinfo;
 	last.dinfo = cur.dinfo;
 	cur.dinfo = tmp_dinfo;
@@ -274,19 +254,21 @@ showiostat(void)
 {
 	register long t;
 	register int i, row, col;
+	struct kinfo_cputime diff_cp_time;
 
-#define X(fld)	t = cur.fld[i]; cur.fld[i] -= last.fld[i]; last.fld[i] = t
-	etime = 0;
-	for(i = 0; i < CPUSTATES; i++) {
-		X(cp_time);
-		etime += cur.cp_time[i];
-	}
-	if (etime == 0.0)
-		etime = 1.0;
-	etime /= hertz;
+	diff_cp_time.cp_user = cp_time.cp_user - old_cp_time.cp_user;
+	diff_cp_time.cp_nice = cp_time.cp_nice - old_cp_time.cp_nice;
+	diff_cp_time.cp_sys = cp_time.cp_sys - old_cp_time.cp_sys;
+	diff_cp_time.cp_intr = cp_time.cp_intr - old_cp_time.cp_intr;
+	diff_cp_time.cp_idle = cp_time.cp_idle - old_cp_time.cp_idle;
+	old_cp_time = cp_time;
+
 	row = 1;
-	for (i = 0; i < CPUSTATES; i++)
-		stat1(row++, i);
+	stat1(row++, diff_cp_time.cp_user);
+	stat1(row++, diff_cp_time.cp_nice);
+	stat1(row++, diff_cp_time.cp_sys);
+	stat1(row++, diff_cp_time.cp_intr);
+	stat1(row++, diff_cp_time.cp_idle);
 	if (!numbers) {
 		row += 2;
 		for (i = 0; i < num_devices; i++)
@@ -356,19 +338,14 @@ devstats(int row, int col, int dn)
 }
 
 static void
-stat1(int row, int o)
+stat1(int row, uint64_t difference)
 {
 	register int i;
 	double time;
 
-	time = 0;
-	for (i = 0; i < CPUSTATES; i++)
-		time += cur.cp_time[i];
-	if (time == 0.0)
-		time = 1.0;
 	wmove(wnd, row, INSET);
 #define CPUSCALE	0.5
-	histogram(100.0 * cur.cp_time[o] / time, 50, CPUSCALE);
+	histogram(100.0 * difference / etime, 50, CPUSCALE);
 }
 
 static void

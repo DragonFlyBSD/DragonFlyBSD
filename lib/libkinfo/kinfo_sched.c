@@ -31,23 +31,79 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkcore/kcore_private.h,v 1.2 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/lib/libkinfo/kinfo_sched.c,v 1.1 2004/12/22 11:01:49 joerg Exp $
  */
 
-#ifndef KCORE_PRIVATE_H
-#define	KCORE_PRIVATE_H
+#include <sys/param.h>
+#include <sys/sysctl.h>
 
-#include <sys/cdefs.h>
-#include <kvm.h>
+#include <kinfo.h>
 
-struct kcore_data {
-	kvm_t *kd;
-};
+int
+kinfo_get_cpus(int *ncpus)
+{
+	size_t len = sizeof(*ncpus);
 
-extern struct kcore_data kcore_global;
+	return(sysctlbyname("hw.ncpu", ncpus, &len, NULL, 0));
+}
 
-__BEGIN_DECLS;
-int	kcore_get_generic(struct kcore_data *, struct nlist *, void *, size_t);
-__END_DECLS;
+int
+kinfo_get_sched_ccpu(int *ccpu)
+{
+	size_t len = sizeof(*ccpu);
 
-#endif
+	return(sysctlbyname("kern.ccpu", ccpu, &len, NULL, 0));
+}
+
+int
+kinfo_get_sched_cputime(struct kinfo_cputime *cputime)
+{
+	size_t len = sizeof(*cputime);
+
+	return(sysctlbyname("kern.cp_time", cputime, &len, NULL, 0));
+}
+
+int
+kinfo_get_sched_hz(int *hz)
+{
+	struct kinfo_clockinfo clockinfo;
+	size_t len = sizeof(clockinfo);
+	int retval;
+
+	retval = sysctlbyname("kern.clockrate", &clockinfo, &len, NULL, 0);
+	if (retval)
+		return(retval);
+
+	*hz = clockinfo.ci_hz;
+	return(0);
+}
+
+int
+kinfo_get_sched_stathz(int *stathz)
+{
+	struct kinfo_clockinfo clockinfo;
+	size_t len = sizeof(clockinfo);
+	int retval;
+
+	retval = sysctlbyname("kern.clockrate", &clockinfo, &len, NULL, 0);
+	if (retval)
+		return(retval);
+
+	*stathz = clockinfo.ci_stathz;
+	return(0);
+}
+
+int
+kinfo_get_sched_profhz(int *profhz)
+{
+	struct kinfo_clockinfo clockinfo;
+	size_t len = sizeof(clockinfo);
+	int retval;
+
+	retval = sysctlbyname("kern.clockrate", &clockinfo, &len, NULL, 0);
+	if (retval)
+		return(retval);
+
+	*profhz = clockinfo.ci_profhz;
+	return(0);
+}

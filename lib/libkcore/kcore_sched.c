@@ -31,23 +31,88 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkcore/kcore_private.h,v 1.2 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/lib/libkcore/kcore_sched.c,v 1.1 2004/12/22 11:01:49 joerg Exp $
  */
 
-#ifndef KCORE_PRIVATE_H
-#define	KCORE_PRIVATE_H
+#include <sys/param.h>
 
-#include <sys/cdefs.h>
+#include <err.h>
+#include <errno.h>
+#include <kcore.h>
 #include <kvm.h>
+#include <nlist.h>
 
-struct kcore_data {
-	kvm_t *kd;
-};
+#include "kcore_private.h"
 
-extern struct kcore_data kcore_global;
+int
+kcore_get_cpus(struct kcore_data *kc, int *ncpus)
+{
+	static struct nlist nl[] = {
+		{ "_ncpus", 0, 0, 0, 0},
+		{ NULL, 0, 0, 0, 0}
+	};
 
-__BEGIN_DECLS;
-int	kcore_get_generic(struct kcore_data *, struct nlist *, void *, size_t);
-__END_DECLS;
+	/* XXX always include ncpus in the kernel. */
+	if (kcore_get_generic(kc, nl, ncpus, sizeof(*ncpus)))
+		*ncpus = 1;
+	return(0);
+}
 
-#endif
+int
+kcore_get_sched_ccpu(struct kcore_data *kc, int *ccpu)
+{
+	static struct nlist nl[] = {
+		{ "_tk_nin", 0, 0, 0, 0},
+		{ NULL, 0, 0, 0, 0}
+	};
+
+	return(kcore_get_generic(kc, nl, ccpu, sizeof(*ccpu)));
+}
+
+int
+kcore_get_sched_cputime(struct kcore_data *kc, struct kinfo_cputime *cputime)
+{
+	static struct nlist nl[] = {
+		{ "_cp_time", 0, 0, 0, 0},
+		{ NULL, 0, 0, 0, 0}
+	};
+
+	return(kcore_get_generic(kc, nl, cputime, sizeof(*cputime)));
+}
+
+int
+kcore_get_sched_hz(struct kcore_data *kc, int *hz)
+{
+	static struct nlist nl[] = {
+		{ "_hz", 0, 0, 0, 0},
+		{ NULL, 0, 0, 0, 0}
+	};
+
+	return(kcore_get_generic(kc, nl, hz, sizeof(*hz)));
+}
+
+int
+kcore_get_sched_profhz(struct kcore_data *kc, int *profhz)
+{
+	static struct nlist nl[] = {
+		{ "_profhz", 0, 0, 0, 0},
+		{ NULL, 0, 0, 0, 0}
+	};
+
+	return(kcore_get_generic(kc, nl, profhz, sizeof(*profhz)));
+}
+
+int
+kcore_get_sched_stathz(struct kcore_data *kc, int *stathz)
+{
+	static struct nlist nl[] = {
+		{ "_stathz", 0, 0, 0, 0},
+		{ NULL, 0, 0, 0, 0}
+	};
+	int retval;
+
+	retval = kcore_get_generic(kc, nl, stathz, sizeof(*stathz));;
+	if (retval == 0 && *stathz == 0)
+		return(kcore_get_sched_hz(kc, stathz));
+	return(retval);
+}

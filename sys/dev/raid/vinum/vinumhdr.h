@@ -38,7 +38,7 @@
 /*
  * $Id: vinumhdr.h,v 1.18 2001/01/04 00:14:14 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumhdr.h,v 1.16.2.1 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumhdr.h,v 1.7 2003/11/21 22:46:13 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumhdr.h,v 1.8 2004/12/22 11:01:49 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -50,9 +50,9 @@
 #include <sys/conf.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
+#include <sys/dkstat.h>
 #endif
 #include <sys/errno.h>
-#include <sys/dkstat.h>
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #include <sys/buf.h>
 #include <sys/malloc.h>

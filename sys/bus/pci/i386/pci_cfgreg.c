@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pci_cfgreg.c,v 1.1.2.7 2001/11/28 05:47:03 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.c,v 1.7 2004/02/08 07:10:46 hmp Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.c,v 1.8 2004/12/22 11:01:49 joerg Exp $
  *
  */
 
@@ -273,7 +273,35 @@ pci_cfgintr(int bus, int device, int pin, int oldirq)
 
 	int already = 0;
 	int errok = 0;
-    
+
+    if(pin==1 && device==9)
+	already = 10;
+    if(pin==1 && device==10)
+	already = 6;
+
+    if(already)
+    {
+	u_long intr;
+	u_char irq = already;
+	
+#define PCI_INTERRUPT_REG 0x3c
+#define	PCI_INTERRUPT_LINE_SHIFT		0
+#define	PCI_INTERRUPT_LINE_MASK			0xff
+#define	PCI_INTERRUPT_LINE(icr) \
+	    (((icr) >> PCI_INTERRUPT_LINE_SHIFT) & PCI_INTERRUPT_LINE_MASK)
+
+	intr = pci_cfgregread(bus, device, 0 , PCI_INTERRUPT_REG, 4);
+	if (irq != PCI_INTERRUPT_LINE(intr)) {
+		intr &= ~(PCI_INTERRUPT_LINE_MASK << PCI_INTERRUPT_LINE_SHIFT);
+		intr |= (irq << PCI_INTERRUPT_LINE_SHIFT);
+		pci_cfgregwrite(bus, device,0 , PCI_INTERRUPT_REG, intr, 4);
+	}
+
+	return irq;
+    }
+
+    already = 0;
+
 	v = pcibios_get_version();
 	if (v < 0x0210) {
 		PRVERB((
