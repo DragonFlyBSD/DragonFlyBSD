@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.20 2005/02/15 18:25:42 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.21 2005/02/20 04:12:32 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
  */
@@ -200,7 +200,6 @@ static struct dc_type *dc_devtype	(device_t);
 static int dc_newbuf		(struct dc_softc *, int, struct mbuf *);
 static int dc_encap		(struct dc_softc *, struct mbuf *,
 					u_int32_t *);
-static int dc_coal		(struct dc_softc *, struct mbuf **);
 static void dc_pnic_rx_bug_war	(struct dc_softc *, int);
 static int dc_rx_resync		(struct dc_softc *);
 static void dc_rxeof		(struct dc_softc *);
@@ -3021,36 +3020,6 @@ static int dc_encap(sc, m_head, txidx)
 }
 
 /*
- * Coalesce an mbuf chain into a single mbuf cluster buffer.
- * Needed for some really badly behaved chips that just can't
- * do scatter/gather correctly.
- */
-static int dc_coal(sc, m_head)
-	struct dc_softc		*sc;
-	struct mbuf		**m_head;
-{
-        struct mbuf		*m_new, *m;
-
-	m = *m_head;
-	MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
-	if (m_new == NULL)
-		return(ENOBUFS);
-	if (m->m_pkthdr.len > MHLEN) {
-		MCLGET(m_new, MB_DONTWAIT);
-		if (!(m_new->m_flags & M_EXT)) {
-			m_freem(m_new);
-			return(ENOBUFS);
-		}
-	}
-	m_copydata(m, 0, m->m_pkthdr.len, mtod(m_new, caddr_t));
-	m_new->m_pkthdr.len = m_new->m_len = m->m_pkthdr.len;
-	m_freem(m);
-	*m_head = m_new;
-
-	return(0);
-}
-
-/*
  * Main transmit routine. To avoid having to do mbuf copies, we put pointers
  * to the mbuf data regions directly in the transmit lists. We also save a
  * copy of the pointers since the transmit list fragment pointers are
@@ -3061,7 +3030,7 @@ static void dc_start(ifp)
 	struct ifnet		*ifp;
 {
 	struct dc_softc		*sc;
-	struct mbuf		*m_head = NULL;
+	struct mbuf *m_head = NULL, *m_new;
 	int			idx;
 
 	sc = ifp->if_softc;
@@ -3082,11 +3051,13 @@ static void dc_start(ifp)
 		if (sc->dc_flags & DC_TX_COALESCE &&
 		    m_head->m_next != NULL) {
 			/* only coalesce if have >1 mbufs */
-			if (dc_coal(sc, &m_head)) {
+			if ((m_new = m_defrag(m_head, MB_DONTWAIT)) == NULL) {
 				IF_PREPEND(&ifp->if_snd, m_head);
 				ifp->if_flags |= IFF_OACTIVE;
 				break;
 			}
+			m_freem(m_head);
+			m_head = m_new;
 		}
 
 		if (dc_encap(sc, m_head, &idx)) {
