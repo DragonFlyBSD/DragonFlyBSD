@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmciavar.h,v 1.12 2000/02/08 12:51:31 enami Exp $	*/
 /* $FreeBSD: src/sys/dev/pccard/pccardvar.h,v 1.34 2002/11/14 05:15:50 imp Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccardvar.h,v 1.4 2004/02/12 14:50:33 joerg Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccardvar.h,v 1.5 2004/02/13 22:12:33 joerg Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -343,14 +343,15 @@ enum {
 };
 
 #define PCCARD_ACCESSOR(A, B, T)					\
-__inline static int							\
-pccard_get_ ## A(device_t dev, T *t)					\
+__inline static T							\
+pccard_get_ ## A(device_t dev)						\
 {									\
-	return BUS_READ_IVAR(device_get_parent(dev), dev,		\
-	    PCCARD_IVAR_ ## B, (uintptr_t *) t);			\
+	uintptr_t v;							\
+	BUS_READ_IVAR(device_get_parent(dev), dev, PCCARD_IVAR_ ## B, &v); \
+	return (T) v;							\
 }
 
-PCCARD_ACCESSOR(ether,		ETHADDR,		u_int8_t)
+PCCARD_ACCESSOR(ether,		ETHADDR,		u_int8_t *)
 PCCARD_ACCESSOR(vendor,		VENDOR,			u_int32_t)
 PCCARD_ACCESSOR(product,	PRODUCT,		u_int32_t)
 PCCARD_ACCESSOR(prodext,	PRODEXT,		u_int16_t)

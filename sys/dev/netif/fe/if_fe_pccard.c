@@ -20,7 +20,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fe_pccard.c,v 1.2.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.4 2003/11/20 22:07:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.5 2004/02/13 22:12:33 joerg Exp $
  */
 
 #include "opt_fe.h"
@@ -87,13 +87,19 @@ static int
 fe_pccard_probe(device_t dev)
 {
 	struct fe_softc *sc;
-	int error;
+	int i, error;
+	uint8_t sum;
+	uint8_t *ether_addr;
 
 	/* Prepare for the device probe process.  */
 	sc = device_get_softc(dev);
 	sc->sc_unit = device_get_unit(dev);
 
-	pccard_get_ether(dev, sc->sc_enaddr);
+	ether_addr = pccard_get_ether(dev);
+	for (i = 0, sum = 0; i < ETHER_ADDR_LEN; i++)
+		sum |= ether_addr[i];
+	if (sum)
+		bcopy(ether_addr, sc->sc_enaddr, ETHER_ADDR_LEN);
 
 	/* Probe for supported cards.  */
 	if ((error = fe_probe_mbh(dev)) == 0)

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/snc/if_snc_pccard.c,v 1.1.2.1 2000/10/21 03:30:03 nyan Exp $
- * $DragonFly: src/sys/dev/netif/snc/Attic/if_snc_pccard.c,v 1.4 2003/08/15 08:32:30 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/snc/Attic/if_snc_pccard.c,v 1.5 2004/02/13 22:12:34 joerg Exp $
  */
 
 /*
@@ -155,7 +155,7 @@ snc_pccard_attach(device_t dev)
 	/* This interface is always enabled. */
 	sc->sc_enabled = 1;
 
-	/* pccard_get_ether(dev, ether_addr); */
+	/* ether_addr = pccard_get_ether(dev); */
 
 	return snc_attach(dev);
 } 

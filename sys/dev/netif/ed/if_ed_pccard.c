@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.55 2003/12/31 04:25:00 kato Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.7 2004/02/13 21:15:12 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.8 2004/02/13 22:12:33 joerg Exp $
  */
 
 #include "opt_ed.h"
@@ -250,8 +250,8 @@ ed_pccard_attach(device_t dev)
 	struct ed_softc *sc = device_get_softc(dev);
 	int error;
 	int i;
-	u_char sum;
-	u_char ether_addr[ETHER_ADDR_LEN];
+	uint8_t sum;
+	uint8_t *ether_addr;
 	
 	if (sc->port_used > 0)
 		ed_alloc_port(dev, sc->port_rid, sc->port_used);
@@ -268,7 +268,7 @@ ed_pccard_attach(device_t dev)
 	}	      
 
 	if (sc->vendor != ED_VENDOR_LINKSYS) {
-		pccard_get_ether(dev, ether_addr);
+		ether_addr = pccard_get_ether(dev);
 		for (i = 0, sum = 0; i < ETHER_ADDR_LEN; i++)
 			sum |= ether_addr[i];
 		if (sum)

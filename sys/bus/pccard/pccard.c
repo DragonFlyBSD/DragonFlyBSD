@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmcia.c,v 1.23 2000/07/28 19:17:02 drochner Exp $	*/
 /* $FreeBSD: src/sys/dev/pccard/pccard.c,v 1.70 2002/11/14 14:02:32 mux Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.9 2004/02/11 15:05:08 eirikn Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.10 2004/02/13 22:12:33 joerg Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -111,7 +111,7 @@ static int	pccard_set_memory_offset(device_t dev, device_t child, int rid,
 		    u_int32_t offset, u_int32_t *deltap);
 static void	pccard_probe_nomatch(device_t cbdev, device_t child);
 static int	pccard_read_ivar(device_t bus, device_t child, int which,
-		    u_char *result);
+				 uintptr_t *result);
 static void	pccard_driver_added(device_t dev, driver_t *driver);
 static struct resource *pccard_alloc_resource(device_t dev,
 		    device_t child, int type, int *rid, u_long start,
@@ -304,24 +304,19 @@ pccard_do_product_lookup(device_t bus, device_t dev,
 	u_int32_t fcn;
 	u_int32_t vendor;
 	u_int32_t prod;
-	char *vendorstr;
-	char *prodstr;
+	const char *vendorstr;
+	const char *prodstr;
 
 #ifdef DIAGNOSTIC
 	if (sizeof *ent > ent_size)
 		panic("pccard_product_lookup: bogus ent_size %ld",
 		    (long) ent_size);
 #endif
-	if (pccard_get_vendor(dev, &vendor))
-		return (NULL);
-	if (pccard_get_product(dev, &prod))
-		return (NULL);
-	if (pccard_get_function_number(dev, &fcn))
-		return (NULL);
-	if (pccard_get_vendor_str(dev, &vendorstr))
-		return (NULL);
-	if (pccard_get_product_str(dev, &prodstr))
-		return (NULL);
+	vendor = pccard_get_vendor(dev);
+	prod = pccard_get_product(dev);
+	fcn = pccard_get_function_number(dev);
+	vendorstr = pccard_get_vendor_str(dev);
+	prodstr = pccard_get_product_str(dev);
 	for (ent = tab; ent->pp_name != NULL; ent =
 	    (const struct pccard_product *) ((const char *) ent + ent_size)) {
 		matches = 1;
@@ -966,7 +961,7 @@ pccard_child_pnpinfo_str(device_t bus, device_t child, char *buf,
 }
 
 static int
-pccard_read_ivar(device_t bus, device_t child, int which, u_char *result)
+pccard_read_ivar(device_t bus, device_t child, int which, uintptr_t *result)
 {
 	struct pccard_ivar *devi = PCCARD_IVAR(child);
 	struct pccard_function *func = devi->fcn;
@@ -975,38 +970,38 @@ pccard_read_ivar(device_t bus, device_t child, int which, u_char *result)
 	switch (which) {
 	default:
 	case PCCARD_IVAR_ETHADDR:
-		bcopy(func->pf_funce_lan_nid, result, ETHER_ADDR_LEN);
+		*result = (uintptr_t)func->pf_funce_lan_nid;
 		break;
 	case PCCARD_IVAR_VENDOR:
-		*(u_int32_t *) result = sc->card.manufacturer;
+		*result = sc->card.manufacturer;
 		break;
 	case PCCARD_IVAR_PRODUCT:
-		*(u_int32_t *) result = sc->card.product;
+		*result = sc->card.product;
 		break;
 	case PCCARD_IVAR_PRODEXT:
-		*(u_int16_t *) result = sc->card.prodext;
+		*result = sc->card.prodext;
 		break;
 	case PCCARD_IVAR_FUNCTION:
-		*(u_int32_t *) result = func->function;
+		*result = func->function;
 		break;
 	case PCCARD_IVAR_FUNCTION_NUMBER:
 		if (!func) {
 			device_printf(bus, "No function number, bug!\n");
 			return (ENOENT);
 		}
-		*(u_int32_t *) result = func->number;
+		*result = func->number;
 		break;
 	case PCCARD_IVAR_VENDOR_STR:
-		*(char **) result = sc->card.cis1_info[0];
+		*result = (uintptr_t)sc->card.cis1_info[0];
 		break;
 	case PCCARD_IVAR_PRODUCT_STR:
-		*(char **) result = sc->card.cis1_info[1];
+		*result = (uintptr_t)sc->card.cis1_info[1];
 		break;
 	case PCCARD_IVAR_CIS3_STR:
-		*(char **) result = sc->card.cis1_info[2];
+		*result = (uintptr_t)sc->card.cis1_info[2];
 		break;
 	case PCCARD_IVAR_CIS4_STR:
-		*(char **) result = sc->card.cis1_info[3];
+		*result = (uintptr_t)sc->card.cis1_info[3];
 		break;
 	}
 	return (0);
