@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_cmbat.c,v 1.29 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cmbat.c,v 1.4 2004/07/05 00:07:35 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cmbat.c,v 1.5 2004/08/02 19:51:07 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -583,7 +583,7 @@ acpi_cmbat_init_battery(void *arg)
     ACPI_VPRINT(dev, acpi_device_get_parent_softc(dev),
 		"battery initialization start\n");
 
-    for (retry = 0; retry < ACPI_CMBAT_RETRY_MAX; retry++, AcpiOsSleep(10, 0)) {
+    for (retry = 0; retry < ACPI_CMBAT_RETRY_MAX; retry++, AcpiOsSleep(0, 10)) {
 	sc->present = acpi_BatteryIsPresent(dev);
 	if (!sc->present)
 	    continue;

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.156 2004/06/05 07:25:58 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.7 2004/08/02 18:41:50 dillon Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.8 2004/08/02 19:51:07 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -596,10 +596,8 @@ acpi_attach(device_t dev)
     }
 #endif
 
-#ifdef ACPI_USE_THREADS
     if ((error = acpi_task_thread_init()))
 	goto out;
-#endif
 
     if ((error = acpi_machdep_init(dev)))
 	goto out;

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.69 2004/05/28 07:15:55 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.3 2004/07/05 00:07:35 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.4 2004/08/02 19:51:07 dillon Exp $
  */
 
 #include "bus_if.h"
@@ -343,16 +343,5 @@ int		acpi_PkgGas(device_t dev, ACPI_OBJECT *res, int idx, int *rid,
 			    struct resource **dst);
 ACPI_HANDLE	acpi_GetReference(ACPI_HANDLE scope, ACPI_OBJECT *obj);
 
-#if __FreeBSD_version >= 500000
-#ifndef ACPI_MAX_THREADS
-#define ACPI_MAX_THREADS	3
-#endif
-#if ACPI_MAX_THREADS > 0
-#define ACPI_USE_THREADS
-#endif
-#endif
-
-#ifdef ACPI_USE_THREADS
 /* ACPI task kernel thread initialization. */
 int		acpi_task_thread_init(void);
-#endif

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_acad.c,v 1.26 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_acad.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_acad.c,v 1.4 2004/08/02 19:51:07 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -248,7 +248,7 @@ acpi_acad_init_acline(void *arg)
 	acpi_acad_get_status(dev);
 	if (status != sc->status)
 	    break;
-	AcpiOsSleep(10, 0);
+	AcpiOsSleep(0, 10);
     }
 
     sc->initializing = 0;

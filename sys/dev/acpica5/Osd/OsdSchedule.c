@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdSchedule.c,v 1.28 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdSchedule.c,v 1.3 2004/06/27 08:52:42 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdSchedule.c,v 1.4 2004/08/02 19:51:09 dillon Exp $
  */
 
 /*
@@ -41,8 +41,12 @@
 #include <sys/kthread.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/msgport.h>
 #include <sys/taskqueue.h>
 #include <machine/clock.h>
+
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 #include "acpi.h"
 #include <dev/acpica5/acpivar.h>
@@ -57,102 +61,55 @@ ACPI_MODULE_NAME("SCHEDULE")
 
 MALLOC_DEFINE(M_ACPITASK, "acpitask", "ACPI deferred task");
 
-static void	AcpiOsExecuteQueue(void *arg, int pending);
+static void	acpi_task_thread(void *arg);
+static void	acpi_autofree_reply(lwkt_port_t port, lwkt_msg_t msg);
 
 struct acpi_task {
-    struct task			at_task;
+    struct lwkt_msg		at_msg;
     OSD_EXECUTION_CALLBACK	at_function;
     void			*at_context;
+    int				at_priority;
 };
 
-struct acpi_task_queue {
-    STAILQ_ENTRY(acpi_task_queue) at_q;
-    struct acpi_task		*at;
-};
+static struct thread *acpi_task_td;
+struct lwkt_port acpi_afree_rport;
 
-#if __FreeBSD_version >= 500000
 /*
- * Private task queue definition for ACPI
+ * Initialize the ACPI helper thread.
  */
-TASKQUEUE_DECLARE(acpi);
-static void	*taskqueue_acpi_ih;
-
-static void
-taskqueue_acpi_enqueue(void *context)
-{  
-    swi_sched(taskqueue_acpi_ih, 0);
-}
-
-static void
-taskqueue_acpi_run(void *dummy)
-{
-    taskqueue_run(taskqueue_acpi);
-}
-
-TASKQUEUE_DEFINE(acpi, taskqueue_acpi_enqueue, 0,
-		 swi_add(NULL, "acpitaskq", taskqueue_acpi_run, NULL,
-		     SWI_TQ, 0, &taskqueue_acpi_ih));
-
-#ifdef ACPI_USE_THREADS
-static STAILQ_HEAD(, acpi_task_queue) acpi_task_queue;
-static struct mtx	acpi_task_mtx;
-
-static void
-acpi_task_thread(void *arg)
-{
-    struct acpi_task_queue	*atq;
-    OSD_EXECUTION_CALLBACK	Function;
-    void			*Context;
-
-    for (;;) {
-	mtx_lock(&acpi_task_mtx);
-	if ((atq = STAILQ_FIRST(&acpi_task_queue)) == NULL) {
-	    msleep(&acpi_task_queue, &acpi_task_mtx, PCATCH, "actask", 0);
-	    mtx_unlock(&acpi_task_mtx);
-	    continue;
-	}
-
-	STAILQ_REMOVE_HEAD(&acpi_task_queue, at_q);
-	mtx_unlock(&acpi_task_mtx);
-
-	Function = (OSD_EXECUTION_CALLBACK)atq->at->at_function;
-	Context = atq->at->at_context;
-
-	mtx_lock(&Giant);
-	Function(Context);
-
-	free(atq->at, M_ACPITASK);
-	free(atq, M_ACPITASK);
-	mtx_unlock(&Giant);
-    }
-
-    kthread_exit(0);
-}
-
 int
 acpi_task_thread_init(void)
 {
-    int		i, err;
-    struct proc	*acpi_kthread_proc;
-
-    err = 0;
-    STAILQ_INIT(&acpi_task_queue);
-    mtx_init(&acpi_task_mtx, "ACPI task", NULL, MTX_DEF);
-
-    for (i = 0; i < ACPI_MAX_THREADS; i++) {
-	err = kthread_create(acpi_task_thread, NULL, &acpi_kthread_proc,
-			     0, 0, "acpi_task%d", i);
-	if (err != 0) {
-	    printf("%s: kthread_create failed(%d)\n", __func__, err);
-	    break;
-	}
-    }
-    return (err);
+    lwkt_initport(&acpi_afree_rport, NULL);
+    acpi_afree_rport.mp_replyport = acpi_autofree_reply;
+    kthread_create(acpi_task_thread, NULL, &acpi_task_td,
+			0, 0, "acpi_task");
+    return (0);
 }
-#endif /* ACPI_USE_THREADS */
-#endif /* __FreeBSD_version >= 500000 */
 
-/* This function is called in interrupt context. */
+/*
+ * The ACPI helper thread processes OSD execution callback messages.
+ */
+static void
+acpi_task_thread(void *arg)
+{
+    OSD_EXECUTION_CALLBACK func;
+    struct acpi_task *at;
+
+    for (;;) {
+	at = (void *)lwkt_waitport(&curthread->td_msgport, NULL);
+	func = (OSD_EXECUTION_CALLBACK)at->at_function;
+	func((void *)at->at_context);
+	lwkt_replymsg(&at->at_msg, 0);
+    }
+    kthread_exit();
+}
+
+/*
+ * Queue an ACPI message for execution by allocating a LWKT message structure
+ * and sending the message to the helper thread.  The reply port is setup
+ * to automatically free the message.
+ */
 ACPI_STATUS
 AcpiOsQueueForExecution(UINT32 Priority, OSD_EXECUTION_CALLBACK Function,
     void *Context)
@@ -165,10 +122,6 @@ AcpiOsQueueForExecution(UINT32 Priority, OSD_EXECUTION_CALLBACK Function,
     if (Function == NULL)
 	return_ACPI_STATUS (AE_BAD_PARAMETER);
 
-    /* Note: Interrupt Context */
-    at = malloc(sizeof(*at), M_ACPITASK, M_INTWAIT | M_ZERO);
-    at->at_function = Function;
-    at->at_context = Context;
     switch (Priority) {
     case OSD_PRIORITY_GPE:
 	pri = 4;
@@ -183,52 +136,29 @@ AcpiOsQueueForExecution(UINT32 Priority, OSD_EXECUTION_CALLBACK Function,
 	pri = 1;
 	break;
     default:
-	free(at, M_ACPITASK);
 	return_ACPI_STATUS (AE_BAD_PARAMETER);
     }
-    TASK_INIT(&at->at_task, pri, AcpiOsExecuteQueue, at);
 
-#if __FreeBSD_version >= 500000
-    taskqueue_enqueue(taskqueue_acpi, (struct task *)at);
-#else
-    taskqueue_enqueue(taskqueue_swi, (struct task *)at);
-#endif
+    /* Note: Interrupt Context */
+    at = malloc(sizeof(*at), M_ACPITASK, M_INTWAIT | M_ZERO);
+    lwkt_initmsg(&at->at_msg, &acpi_afree_rport, 0, 
+		lwkt_cmd_op_none, lwkt_cmd_op_none);
+    at->at_function = Function;
+    at->at_context = Context;
+    at->at_priority = pri;
+    lwkt_sendmsg(&acpi_task_td->td_msgport, &at->at_msg);
     return_ACPI_STATUS (AE_OK);
 }
 
+/*
+ * The message's reply port just frees the message.
+ */
 static void
-AcpiOsExecuteQueue(void *arg, int pending)
+acpi_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
 {
-    struct acpi_task		*at;
-    struct acpi_task_queue	*atq;
-    OSD_EXECUTION_CALLBACK	Function;
-    void			*Context;
-
-    ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
-
-    at = (struct acpi_task *)arg;
-    atq = NULL;
-    Function = NULL;
-    Context = NULL;
-
-#ifdef ACPI_USE_THREADS
-    atq = malloc(sizeof(*atq), M_ACPITASK, M_INTWAIT);
-    atq->at = at;
-
-    mtx_lock(&acpi_task_mtx);
-    STAILQ_INSERT_TAIL(&acpi_task_queue, atq, at_q);
-    mtx_unlock(&acpi_task_mtx);
-    wakeup_one(&acpi_task_queue);
-#else
-    Function = (OSD_EXECUTION_CALLBACK)at->at_function;
-    Context = at->at_context;
-
-    Function(Context);
-    free(at, M_ACPITASK);
-#endif
-
-    return_VOID;
+    free(msg, M_ACPITASK);
 }
+
 
 void
 AcpiOsSleep(UINT32 Seconds, UINT32 Milliseconds)
@@ -241,14 +171,22 @@ AcpiOsSleep(UINT32 Seconds, UINT32 Milliseconds)
     timo = (Seconds * hz) + Milliseconds * hz / 1000;
 
     /* 
-     * If requested sleep time is less than our hz resolution, use
-     * DELAY instead for better granularity.
+     * If requested sleep time is less than our hz resolution, or if
+     * the system is in early boot before the system tick is operational,
+     * use DELAY instead for better granularity.
      */
-    if (timo > 0)
+    if (clocks_running == 0) {
+	while (Seconds) {
+	    DELAY(1000000);
+	    --Seconds;
+	}
+	if (Milliseconds)
+	    DELAY(Milliseconds * 1000);
+    } else if (timo > 0) {
 	tsleep(&dummy, 0, "acpislp", timo);
-    else
+    } else {
 	DELAY(Milliseconds * 1000);
-
+    }
     return_VOID;
 }
 
@@ -269,10 +207,8 @@ AcpiOsGetThreadId(void)
     /* XXX do not add ACPI_FUNCTION_TRACE here, results in recursive call. */
 
     p = curproc;
-#if __FreeBSD_version < 500000
     if (p == NULL)
 	p = &proc0;
-#endif
     KASSERT(p != NULL, ("%s: curproc is NULL!", __func__));
 
     /* Returning 0 is not allowed. */
