@@ -1,14 +1,15 @@
 #	$FreeBSD: src/tools/tools/crypto/Makefile,v 1.2.2.2 2003/06/03 00:13:13 sam Exp $
-#	$DragonFly: src/tools/tools/crypto/Makefile,v 1.2 2003/06/17 04:29:11 dillon Exp $
+#	$DragonFly: src/tools/tools/crypto/Makefile,v 1.3 2004/01/21 21:05:15 dillon Exp $
 
-ALL=	cryptotest cryptokeytest cryptostats \
+ALL=	cryptokeytest cryptostats \
 	ubsecstats hifnstats ipsecstats
 
 all:	${ALL}
 
 # program to test symmetric crypto functions
-cryptotest: cryptotest.c
-	${CC} -o cryptotest cryptotest.c
+# removed - not under free license as indicated by Theo De Raadt
+#cryptotest: cryptotest.c
+#	${CC} -o cryptotest cryptotest.c
 
 # program to test asymmetric crypto functions
 cryptokeytest: cryptokeytest.c
