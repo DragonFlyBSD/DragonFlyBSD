@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1986, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)savecore.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/sbin/savecore/savecore.c,v 1.28.2.13 2002/04/07 21:17:50 asmodai Exp $
- * $DragonFly: src/sbin/savecore/savecore.c,v 1.5 2004/02/04 17:40:01 joerg Exp $
+ * $DragonFly: src/sbin/savecore/savecore.c,v 1.6 2004/11/04 21:51:18 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -117,8 +117,8 @@ char	vers[1024];			/* version of kernel that crashed */
 u_long	kernbase;			/* offset of kvm to core file */
 #endif
 
-int	clear, compress, force, verbose;	/* flags */
-int	keep;			/* keep dump on device */
+static int	clear, compress, force, verbose;	/* flags */
+static int	keep;			/* keep dump on device */
 
 void	 check_kmem(void);
 int	 check_space(void);
