@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)nfsstat.c	8.2 (Berkeley) 3/31/95
  * $FreeBSD: src/usr.bin/nfsstat/nfsstat.c,v 1.15.2.3 2001/06/06 20:25:58 tmm Exp $
- * $DragonFly: src/usr.bin/nfsstat/nfsstat.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
+ * $DragonFly: src/usr.bin/nfsstat/nfsstat.c,v 1.4 2004/07/16 00:55:04 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -79,6 +79,7 @@ char *sperc2(int, int);
 
 #define DELTA(field)	(nfsstats.field - lastst.field)
 
+int
 main(int argc, char **argv)
 {
 	u_int interval;
