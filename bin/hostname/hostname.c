@@ -33,10 +33,26 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)hostname.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/hostname/hostname.c,v 1.10.2.1 2001/08/01 02:40:23 obrien Exp $
- * $DragonFly: src/bin/hostname/hostname.c,v 1.4 2003/09/28 14:39:14 hmp Exp $
+ * $DragonFly: src/bin/hostname/hostname.c,v 1.5 2004/01/06 08:29:34 dillon Exp $
  */
 
 #include <sys/param.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/sysctl.h>
+#include <sys/time.h>
+#include <sys/module.h>
+#include <sys/linker.h>
+
+
+#include <net/ethernet.h>
+#include <net/if.h>
+#include <net/if_var.h>
+#include <net/if_dl.h>
+#include <net/if_types.h>
+#include <net/route.h>
+#include <netinet/in.h>
+
 
 #include <err.h>
 #include <stdio.h>
@@ -44,18 +60,101 @@
 #include <string.h>
 #include <unistd.h>
 
-int main (int, char *[]);
-void usage (void);
+#include <netdb.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#include <errno.h>
+
+#define HST_IF    (1 << 0)
+#define HST_IF_V6 (1 << 1)
+#define HST_IF_V4 (1 << 2)
+
+
+
+/*
+ * Expand the compacted form of addresses as returned via the
+ * configuration read via sysctl().
+ * Lifted from getifaddrs(3)
+ */
+
+static void rt_xaddrs(caddr_t, caddr_t, struct rt_addrinfo *);
+static void usage (void);
+
+#define ROUNDUP(a) \
+	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
+#define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
+
+static
+void
+rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
+{
+	struct sockaddr *sa;
+	int i;
+
+	memset(rtinfo->rti_info, 0, sizeof(rtinfo->rti_info));
+	for (i = 0; (i < RTAX_MAX) && (cp < cplim); i++) {
+		if ((rtinfo->rti_addrs & (1 << i)) == 0)
+			continue;
+		rtinfo->rti_info[i] = sa = (struct sockaddr *)cp;
+		ADVANCE(cp, sa);
+	}
+}
 
 int
 main(int argc, char **argv)
 {
-	int ch, sflag;
-	char *p, hostname[MAXHOSTNAMELEN];
+	int ch,sflag,rflag,ret,flag6,iflag;
+	char hostname[MAXHOSTNAMELEN];
+	char *srflag,*siflag;
+	struct hostent *hst;
+	struct in_addr ia;
+	struct in6_addr ia6;
 
-	sflag = 0;
-	while ((ch = getopt(argc, argv, "s")) != -1)
+	int mib[6];
+	int needed;
+	char *buf,*lim,*next,*p;
+	int idx;
+	struct sockaddr_dl *sdl;
+	struct rt_msghdr *rtm;
+	struct if_msghdr *ifm;
+	struct ifa_msghdr *ifam;
+	struct rt_addrinfo info;
+	struct sockaddr_in *sai;
+	struct sockaddr_in6 *sai6;
+
+	srflag = NULL;
+	iflag = sflag = rflag = 0;
+	flag6 = 0;
+	hst = NULL;
+
+	while ((ch = getopt(argc, argv, "46i:r:s")) != -1) {
 		switch (ch) {
+		case '4':
+			iflag |= HST_IF_V4;
+			break;
+		case '6':
+			iflag |= HST_IF_V6;
+			break;
+		case 'i':
+			siflag = (char*)calloc(1,sizeof(char) * (strlen((char*)optarg)+1));
+			if (siflag) {
+				iflag |= HST_IF;
+				strlcpy(siflag, (char*)optarg, strlen((char*)optarg)+1);
+			} else {
+				errx(1, "malloc");
+			}
+			break;
+		case 'r':
+			srflag = (char*)calloc(1,sizeof(char) * (strlen((char*)optarg)+1));
+			if (srflag) {
+				rflag = 1;
+				strlcpy(srflag, (char*)optarg, strlen((char*)optarg)+1);
+			} else {
+				errx(1, "malloc");
+			}
+			break;
 		case 's':
 			sflag = 1;
 			break;
@@ -63,13 +162,163 @@ main(int argc, char **argv)
 		default:
 			usage();
 		}
+	}
 	argc -= optind;
 	argv += optind;
 
 	if (argc > 1)
 		usage();
 
-	if (*argv) {
+	if (iflag && *argv) {
+		free(siflag);
+		usage();
+	}
+
+	if (rflag && *argv) {
+		free(srflag);
+		usage();
+	}
+
+	if (rflag && (iflag & HST_IF)) {
+		usage();
+		free(srflag);
+		free(siflag);
+	}
+
+	if ((iflag & HST_IF_V6) && (iflag & HST_IF_V4)) {
+		free(siflag);
+		usage();
+	}
+
+	if (!(iflag & HST_IF) && ((iflag & HST_IF_V6)||iflag & HST_IF_V4)) {
+		free(siflag);
+		usage();
+	}
+
+	if (iflag & HST_IF) {
+		mib[0] = CTL_NET;
+		mib[1] = PF_ROUTE;
+		mib[2] = 0;
+		mib[3] = 0;
+		mib[4] = NET_RT_IFLIST;
+		mib[5] = 0;
+
+		idx = 0;
+		needed = 1;
+
+		if (sysctl(mib, 6, NULL, &needed, NULL, 0) < 0) {
+			free(siflag);
+			errx(1, "iflist-sysctl-estimate:%i",errno);
+		}
+		if ((buf = malloc(needed)) == NULL) {
+			free(siflag);
+			errx(1, "malloc");
+		}
+		if (sysctl(mib, 6, buf, &needed, NULL, 0) < 0) {
+			free(siflag);
+			errx(1, "actual retrieval of interface table");
+		}
+	
+		lim = buf + needed;
+
+		for (next = buf; next < buf + needed; next += rtm->rtm_msglen) {
+			rtm = (struct rt_msghdr *)(void *)next;
+			if (rtm->rtm_version != RTM_VERSION)
+				continue;
+			switch (rtm->rtm_type) {
+			case RTM_IFINFO:
+				ifm = (struct if_msghdr *)(void *)rtm;
+
+				if (ifm->ifm_addrs & RTA_IFP) {
+					sdl = (struct sockaddr_dl *)(ifm+1);
+					if (strcmp(siflag,sdl->sdl_data) == 0) {
+						idx = ifm->ifm_index;
+					}
+				}
+				break;
+			case RTM_NEWADDR:
+				ifam = (struct ifa_msghdr *)(void *)rtm;
+
+				if (ifam->ifam_index == idx) {
+					info.rti_addrs = ifam->ifam_addrs;
+					rt_xaddrs((char *)(ifam + 1),
+						ifam->ifam_msglen + (char *)ifam, &info);
+					sai = (struct sockaddr_in *)info.rti_info[RTAX_IFA];
+
+					if (iflag & HST_IF_V6) {
+						if (sai->sin_family == AF_INET6) {
+							sai6 = (struct sockaddr_in6 *)info.rti_info[RTAX_IFA];
+							hst = gethostbyaddr((const char*)&sai6->sin6_addr,
+									sizeof(sai6->sin6_addr),AF_INET6);
+
+							if (h_errno == NETDB_SUCCESS) {
+								next = buf + needed;
+								continue;
+							}
+						}
+					} else {
+						if ((sai->sin_family == AF_INET)) {
+
+							hst = gethostbyaddr((const char*)&sai->sin_addr,
+									sizeof(sai->sin_addr),AF_INET);
+
+							if (h_errno == NETDB_SUCCESS) {
+								next = buf + needed;
+								continue;
+							}
+						}
+					}
+				}
+				break;
+			} /* switch */
+		} /* loop */
+
+		free(buf);
+		free(siflag);
+
+		if (idx == 0) {
+			errx(1,"interface not found");
+		}
+
+		if (h_errno == NETDB_SUCCESS) {
+			if (sethostname(hst->h_name, (int)strlen(hst->h_name)))
+				errx(1, "sethostname");
+		} else if (h_errno == HOST_NOT_FOUND) {
+			errx(1,"hostname not found");
+		} else {
+			errx(1,"gethostbyaddr");
+		}
+
+		if (idx == 0) {
+			errx(1,"interface not found");
+		}
+	} else if (rflag) {
+		ret = inet_pton(AF_INET, srflag, &ia);
+		if (ret != 1) {
+			// check IPV6
+			ret = inet_pton(AF_INET6, srflag, &ia6);
+
+			if (ret != 1) {
+				free(srflag);
+				errx(1, "invalid ip address");
+			}
+
+			flag6 = 1;
+		}
+		
+		if (flag6 == 1) 
+			hst = gethostbyaddr((const char*)&ia6, sizeof(ia6), AF_INET6);
+		else
+			hst = gethostbyaddr((const char*)&ia, sizeof(ia), AF_INET);
+		if (!hst) {
+			free(srflag);
+			if(h_errno == HOST_NOT_FOUND) 
+				errx(1,"host not found\n");
+		}
+
+		if (sethostname(hst->h_name, (int)strlen(hst->h_name)))
+			err(1, "sethostname");
+	} else if (*argv) {
 		if (sethostname(*argv, (int)strlen(*argv)))
 			err(1, "sethostname");
 	} else {
@@ -82,10 +331,11 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-void
+static void
 usage(void)
 {
-
-	(void)fprintf(stderr, "usage: hostname [-s] [name-of-host]\n");
+	fprintf(stderr, "usage: hostname [-s] [name-of-host |"
+			" -r ip-address | -i interface [-4 | -6]]\n");
 	exit(1);
 }
+

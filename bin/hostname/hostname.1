@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)hostname.1	8.2 (Berkeley) 4/28/95
 .\" $FreeBSD: src/bin/hostname/hostname.1,v 1.10.2.4 2002/04/22 22:20:29 keramida Exp $
-.\" $DragonFly: src/bin/hostname/hostname.1,v 1.2 2003/06/17 04:22:50 dillon Exp $
+.\" $DragonFly: src/bin/hostname/hostname.1,v 1.3 2004/01/06 08:29:34 dillon Exp $
 .\"
 .Dd April 28, 1995
 .Dt HOSTNAME 1
@@ -42,7 +42,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl s
-.Op Ar name-of-host
+.Op Ar name-of-host | -r ip-address | -i interface [-6 | -4]
 .Sh DESCRIPTION
 The
 .Nm
@@ -62,6 +62,17 @@ Options:
 .It Fl s
 Trim off any domain information from the printed
 name.
+.It Fl r
+Retrieve hostname via ip lookup.  The hostname is set to the first (official)
+name returned for the supplied ip address.  Can be an IPv6 or IPv4 address.
+.It Fl i
+Retrieve hostname via supplied interface name.
+.It Fl 6
+Used in conjunction with -i to select the 1st IPv6 address on the interface.
+.It Fl 4
+Used in conjunction with -i to select the 1st IPv4 address on the interface.
+This is the default and assumed if -6 or -4 is not supplied.
+
 .El
 .Sh SEE ALSO
 .Xr gethostname 3 ,
