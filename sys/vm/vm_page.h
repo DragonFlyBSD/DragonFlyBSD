@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.16 2004/10/04 09:05:26 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.17 2005/02/22 21:35:33 dillon Exp $
  */
 
 /*
@@ -418,7 +418,6 @@ int vm_page_bits (int, int);
 vm_page_t vm_page_list_find(int basequeue, int index, boolean_t prefer_zero);
 void vm_page_zero_invalid(vm_page_t m, boolean_t setvalid);
 void vm_page_free_toq(vm_page_t m);
-int vm_contig_pg_alloc(u_long, vm_paddr_t, vm_paddr_t, u_long, u_long);
 vm_offset_t vm_contig_pg_kmap(int, u_long, vm_map_t, int);
 void vm_contig_pg_free(int, u_long);
 

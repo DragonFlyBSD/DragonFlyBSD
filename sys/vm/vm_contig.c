@@ -64,7 +64,7 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
- * $DragonFly: src/sys/vm/vm_contig.c,v 1.12 2004/11/10 20:19:51 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_contig.c,v 1.13 2005/02/22 21:35:33 dillon Exp $
  */
 
 /*
@@ -146,8 +146,8 @@ vm_contig_pg_clean(int queue)
 
 	for (m = TAILQ_FIRST(&vm_page_queues[queue].pl); m != NULL; m = next) {
 		KASSERT(m->queue == queue,
-			("vm_contig_clean: page %p's queue is not %d", m, queue));
-		
+			("vm_contig_clean: page %p's queue is not %d", 
+			m, queue));
 		next = TAILQ_NEXT(m, pageq);
 		
 		if (vm_page_sleep_busy(m, TRUE, "vpctw0"))
@@ -170,14 +170,28 @@ vm_contig_pg_clean(int queue)
 				return (TRUE);
 			}
 		}
-		
 		if ((m->dirty == 0) && (m->busy == 0) && (m->hold_count == 0))
 			vm_page_cache(m);
 	}
-
 	return (FALSE);
 }
 
+/*
+ * vm_contig_pg_flush:
+ * 
+ * Attempt to flush (count) pages from the given page queue.   This may or
+ * may not succeed.  Take up to <count> passes and delay 1/20 of a second
+ * between each pass.
+ */
+static void
+vm_contig_pg_flush(int queue, int count) 
+{
+	while (count > 0) {
+		if (!vm_contig_pg_clean(queue))
+			break;
+		--count;
+	}
+}
 /*
  * vm_contig_pg_alloc:
  *
@@ -187,15 +201,10 @@ vm_contig_pg_clean(int queue)
  *
  * Malloc()'s data structures have been used for collection of
  * statistics and for allocations of less than a page.
- *
  */
-int
-vm_contig_pg_alloc(
-	unsigned long size,
-	vm_paddr_t low,
-	vm_paddr_t high,
-	unsigned long alignment,
-	unsigned long boundary)
+static int
+vm_contig_pg_alloc(unsigned long size, vm_paddr_t low, vm_paddr_t high,
+	unsigned long alignment, unsigned long boundary, int mflags)
 {
 	int i, start, pass;
 	vm_offset_t phys;
@@ -212,13 +221,20 @@ vm_contig_pg_alloc(
 		panic("vm_contig_pg_alloc: boundary must be a power of 2");
 
 	start = 0;
-	for (pass = 0; pass <= 1; pass++) {
-		crit_enter();
-again:
+	crit_enter();
+
+	/*
+	 * Three passes (0, 1, 2).  Each pass scans the VM page list for
+	 * free or cached pages.  After each pass if the entire scan failed
+	 * we attempt to flush inactive pages and reset the start index back
+	 * to 0.  For passes 1 and 2 we also attempt to flush active pages.
+	 */
+	for (pass = 0; pass < 3; pass++) {
 		/*
-		 * Find first page in array that is free, within range, aligned, and
-		 * such that the boundary won't be crossed.
+		 * Find first page in array that is free, within range, 
+		 * aligned, and such that the boundary won't be crossed.
 		 */
+again:
 		for (i = start; i < vmstats.v_page_count; i++) {
 			m = &pga[i];
 			phys = VM_PAGE_TO_PHYS(m);
@@ -244,13 +260,39 @@ again:
 		if ((i == vmstats.v_page_count) ||
 			((VM_PAGE_TO_PHYS(&pga[i]) + size) > high)) {
 
-again1:
-			if (vm_contig_pg_clean(PQ_INACTIVE))
-				goto again1;
-			if (vm_contig_pg_clean(PQ_ACTIVE))
-				goto again1;
+			/*
+			 * Best effort flush of all inactive pages.
+			 * This is quite quick, for now stall all
+			 * callers, even if they've specified M_NOWAIT.
+			 */
+			vm_contig_pg_flush(PQ_INACTIVE, 
+					    vmstats.v_inactive_count);
 
-			crit_exit();
+			crit_exit(); /* give interrupts a chance */
+			crit_enter();
+
+			/*
+			 * Best effort flush of active pages.
+			 *
+			 * This is very, very slow.
+			 * Only do this if the caller has agreed to M_WAITOK.
+			 *
+			 * If enough pages are flushed, we may succeed on
+			 * next (final) pass, if not the caller, contigmalloc(),
+			 * will fail in the index < 0 case.
+			 */
+			if (pass > 0 && (mflags & M_WAITOK)) {
+				vm_contig_pg_flush (PQ_ACTIVE,
+						    vmstats.v_active_count);
+			}
+
+			/*
+			 * We're already too high in the address space
+			 * to succeed, reset to 0 for the next iteration.
+			 */
+			start = 0;
+			crit_exit(); /* give interrupts a chance */
+			crit_enter();
 			continue;	/* next pass */
 		}
 		start = i;
@@ -423,13 +465,13 @@ contigmalloc_map(
 	int index;
 	void *rv;
 
-	index = vm_contig_pg_alloc(size, low, high, alignment, boundary);
+	index = vm_contig_pg_alloc(size, low, high, alignment, boundary, flags);
 	if (index < 0) {
 		printf("contigmalloc_map: failed in index < 0 case!");
 		return NULL;
 	}
 
-	rv = (void *) vm_contig_pg_kmap(index, size, map, flags);
+	rv = (void *)vm_contig_pg_kmap(index, size, map, flags);
 	if (!rv)
 		vm_contig_pg_free(index, size);
 	
