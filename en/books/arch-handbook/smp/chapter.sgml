@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
      The FreeBSD SMP Next Generation Project
 
-     $DragonFly: doc/en/books/arch-handbook/smp/chapter.sgml,v 1.1.1.1 2004/04/02 09:36:15 hmp Exp $
+     $DragonFly: doc/en/books/arch-handbook/smp/chapter.sgml,v 1.2 2004/11/05 19:14:48 dillon Exp $
 -->
 <chapter id="smp">
   <chapterinfo>
@@ -17,7 +17,7 @@
       </author>
     </authorgroup>
 
-    <pubdate>$DragonFly: doc/en/books/arch-handbook/smp/chapter.sgml,v 1.1.1.1 2004/04/02 09:36:15 hmp Exp $
+    <pubdate>$DragonFly: doc/en/books/arch-handbook/smp/chapter.sgml,v 1.2 2004/11/05 19:14:48 dillon Exp $</pubdate>
 
     <copyright>
       <year>2002</year>
