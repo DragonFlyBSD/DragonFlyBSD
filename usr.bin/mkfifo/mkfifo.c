@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mkfifo.c	8.2 (Berkeley) 1/5/94
  * $FreeBSD: src/usr.bin/mkfifo/mkfifo.c,v 1.5 1999/08/28 01:04:06 peter Exp $
- * $DragonFly: src/usr.bin/mkfifo/mkfifo.c,v 1.4 2004/12/28 20:47:40 liamfoy Exp $
+ * $DragonFly: src/usr.bin/mkfifo/mkfifo.c,v 1.5 2005/03/02 17:32:06 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -42,6 +42,7 @@
 #include <err.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #define	BASEMODE	S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | \
@@ -59,7 +60,7 @@ main(int argc, char **argv)
 	mode_t fifomode;
 	int ch, exitval;
 
-	modestr = NULL;
+	modestr = modep = NULL;
 
 	while ((ch = getopt(argc, argv, "m:")) != -1)
 		switch(ch) {
@@ -94,6 +95,7 @@ main(int argc, char **argv)
 			warn("%s", *argv);
 			exitval = 1;
 		}
+	free(modep);
 	exit(exitval);
 }
 
