@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.25 2005/01/05 13:29:00 okumoto Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.26 2005/02/01 03:46:27 drhodus Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -112,7 +112,7 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 </tr>
 -->
 
-<tr><td valign="top"><a href="mailto:drhodus 'at' catpa 'dot' com">David Rhodus</a> </td>
+<tr><td valign="top"><a href="mailto:drhodus 'at' machdep 'dot' com">David Rhodus</a> </td>
 <td valign="top">ACPI, ATAng, security upgrades, NFS, tinderbox builds
 (commit access)</td>
 </tr>
