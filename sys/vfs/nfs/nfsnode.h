@@ -35,7 +35,7 @@
  *
  *	@(#)nfsnode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfsnode.h,v 1.43 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.7 2004/04/23 18:01:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.8 2004/04/25 17:28:34 drhodus Exp $
  */
 
 
@@ -148,15 +148,15 @@ struct nfsnode {
 #define	NACC		0x0100	/* Special file accessed */
 #define	NUPD		0x0200	/* Special file updated */
 #define	NCHG		0x0400	/* Special file times changed */
-#define NLOCKED		0x0800  /* node is locked */
-#define NWANTED		0x0100  /* someone wants to lock */
+#define	NLOCKED		0x0800  /* node is locked */
+#define	NWANTED		0x0100  /* someone wants to lock */
 #define	NSIZECHANGED	0x2000  /* File size has changed: need cache inval */
 
 /*
  * Convert between nfsnode pointers and vnode pointers
  */
-#define VTONFS(vp)	((struct nfsnode *)(vp)->v_data)
-#define NFSTOV(np)	((struct vnode *)(np)->n_vnode)
+#define	VTONFS(vp)	((struct nfsnode *)(vp)->v_data)
+#define	NFSTOV(np)	((struct vnode *)(np)->n_vnode)
 
 /*
  * Queue head for nfsiod's
@@ -181,7 +181,8 @@ static __inline
 int
 nfs_rslock(struct nfsnode *np, struct thread *td)
 {
-        return(lockmgr(&np->n_rslock, LK_EXCLUSIVE | LK_CANRECURSE | LK_SLEEPFAIL, NULL, td));
+        return(lockmgr(&np->n_rslock, LK_EXCLUSIVE | LK_CANRECURSE |
+		LK_SLEEPFAIL, NULL, td));
 }
 
 static __inline
@@ -222,9 +223,9 @@ int	nfs_reclaim (struct vop_reclaim_args *);
 int	nfs_removeit (struct sillyrename *);
 int	nfs_nget (struct mount *,nfsfh_t *,int,struct nfsnode **);
 nfsuint64 *nfs_getcookie (struct nfsnode *, off_t, int);
-void nfs_invaldir (struct vnode *);
+void	nfs_invaldir (struct vnode *);
 
-#define nqnfs_lease_updatetime	nfs_lease_updatetime
+#define	nqnfs_lease_updatetime	nfs_lease_updatetime
 
 #endif /* _KERNEL */
 
