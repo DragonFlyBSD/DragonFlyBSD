@@ -32,14 +32,12 @@
  *
  * @(#)strcasecmp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strcasecmp.c,v 1.2.8.1 2001/07/09 23:30:03 obrien Exp $
- * $DragonFly: src/lib/libc/string/strcasecmp.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/string/strcasecmp.c,v 1.4 2005/02/28 17:15:28 joerg Exp $
  */
 
-#include <sys/cdefs.h>
+#include <sys/types.h>
 #include <string.h>
 #include <ctype.h>
-
-typedef unsigned char u_char;
 
 int
 strcasecmp(s1, s2)
