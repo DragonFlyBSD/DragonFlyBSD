@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.22 2004/09/18 18:33:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.23 2004/09/23 11:50:03 asmodai Exp $
  */
 
 #include "opt_ata.h"
@@ -359,6 +359,7 @@ addump(dev_t dev, u_int count, u_int blkno, u_int secsize)
 	request.blockaddr = blkno;
 	request.bytecount = PAGE_SIZE * dumppages;
 	request.data = va;
+	callout_init(&request.callout);
 
 	while (request.bytecount > 0) {
 	    ad_transfer(&request);
