@@ -82,7 +82,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.23 2005/03/04 02:21:48 hsu Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.24 2005/03/04 03:37:43 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -118,7 +118,7 @@ static const struct sockaddr route_src = { 2, PF_ROUTE, };
 struct walkarg {
 	int	w_tmemsize;
 	int	w_op, w_arg;
-	char	*w_tmem;
+	void	*w_tmem;
 	struct sysctl_req *w_req;
 };
 
@@ -354,6 +354,9 @@ reallocbuf(void *ptr, size_t len, size_t olen)
 	return (newptr);
 }
 
+/*
+ * Internal helper routine for route_output().
+ */
 static int
 fillrtmsg(struct rt_msghdr **prtm, struct rtentry *rt,
 	  struct rt_addrinfo *rtinfo)
@@ -1066,7 +1069,7 @@ sysctl_dumpentry(struct radix_node *rn, void *vw)
 		return (ENOMEM);
 	rt_msg_buffer(RTM_GET, &rtinfo, w->w_tmem, msglen);
 	if (w->w_req != NULL) {
-		struct rt_msghdr *rtm = (struct rt_msghdr *)w->w_tmem;
+		struct rt_msghdr *rtm = w->w_tmem;
 
 		rtm->rtm_flags = rt->rt_flags;
 		rtm->rtm_use = rt->rt_use;
@@ -1100,9 +1103,8 @@ sysctl_iflist(int af, struct walkarg *w)
 		rt_msg_buffer(RTM_IFINFO, &rtinfo, w->w_tmem, msglen);
 		rtinfo.rti_ifpaddr = NULL;
 		if (w->w_req != NULL && w->w_tmem != NULL) {
-			struct if_msghdr *ifm;
+			struct if_msghdr *ifm = w->w_tmem;
 
-			ifm = (struct if_msghdr *)w->w_tmem;
 			ifm->ifm_index = ifp->if_index;
 			ifm->ifm_flags = (u_short)ifp->if_flags;
 			ifm->ifm_data = ifp->if_data;
@@ -1126,9 +1128,8 @@ sysctl_iflist(int af, struct walkarg *w)
 				return (ENOMEM);
 			rt_msg_buffer(RTM_NEWADDR, &rtinfo, w->w_tmem, msglen);
 			if (w->w_req != NULL) {
-				struct ifa_msghdr *ifam;
+				struct ifa_msghdr *ifam = w->w_tmem;
 
-				ifam = (struct ifa_msghdr *)w->w_tmem;
 				ifam->ifam_index = ifa->ifa_ifp->if_index;
 				ifam->ifam_flags = ifa->ifa_flags;
 				ifam->ifam_metric = ifa->ifa_metric;
