@@ -48,7 +48,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:01:50 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_kbd.c,v 1.32.2.1 2000/10/29 16:59:28 dwmalone Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_kbd.c,v 1.6 2004/05/20 21:47:21 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_kbd.c,v 1.7 2004/09/18 20:23:04 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -186,8 +186,7 @@ do_vgapage(int page)
  */
 
 static int lost_intr_timeout_queued = 0;
-static struct callout_handle lost_intr_ch =
-    CALLOUT_HANDLE_INITIALIZER(&lost_intr_ch);
+static struct callout lost_intr_ch;
 
 static void
 check_for_lost_intr (void *arg)
@@ -211,8 +210,9 @@ check_for_lost_intr (void *arg)
 			pcrint (0);
 		splx (opri);
 	}
-
-	lost_intr_ch = timeout(check_for_lost_intr, (void *)NULL, hz);
+	if ((lost_intr_ch.c_flags & CALLOUT_DID_INIT) == 0)
+		callout_init(&lost_intr_ch);
+	callout_reset(&lost_intr_ch, hz, check_for_lost_intr, NULL);
 	lost_intr_timeout_queued = 1;
 #endif /* !_DEV_KBD_KBDREG_H_ */
 }
@@ -308,10 +308,9 @@ update_led(void)
 #endif /* !_DEV_KBD_KBDREG_H_ */
 
 #if PCVT_UPDLED_LOSES_INTR
-		if (lost_intr_timeout_queued)
-			untimeout(check_for_lost_intr, NULL, lost_intr_ch);
-
-		lost_intr_ch = timeout(check_for_lost_intr, NULL, hz);
+		if ((lost_intr_ch.c_flags & CALLOUT_DID_INIT) == 0)
+			callout_init(&lost_intr_ch);
+		callout_reset(&lost_intr_ch, hz, check_for_lost_intr, NULL);
 		lost_intr_timeout_queued = 1;
 #endif /* PCVT_UPDLED_LOSES_INTR */
 
@@ -620,7 +619,7 @@ r_entry:
 		return;
 
 	if (lost_intr_timeout_queued) {
-		untimeout(check_for_lost_intr, (void *)NULL, lost_intr_ch);
+		callout_stop(&lost_intr_ch);
 		lost_intr_timeout_queued = 0;
 	}
 
@@ -671,7 +670,9 @@ r_entry:
 
 	update_led();
 
-	lost_intr_ch = timeout(check_for_lost_intr, (void *)NULL, hz);
+	if ((lost_intr_ch.c_flags & CALLOUT_DID_INIT) == 0)
+		callout_init(&lost_intr_ch);
+	callout_reset(&lost_intr_ch, hz, check_for_lost_intr, NULL);
 	lost_intr_timeout_queued = 1;
 
 #endif /* !_DEV_KBD_KBDREG_H_ */

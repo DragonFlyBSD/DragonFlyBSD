@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/i386/isa/sound/sequencer.c,v 1.25.2.1 2001/06/10 02:02:05 dd Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/Attic/sequencer.c,v 1.3 2003/08/07 21:17:12 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/Attic/sequencer.c,v 1.4 2004/09/18 20:25:17 dillon Exp $
  */
 
 #define SEQUENCER_C
@@ -97,8 +97,7 @@ static int      seq_sync(void);
 static void     seq_reset(void);
 static int      pmgr_present[MAX_SYNTH_DEV] =
 {0};
-static struct callout_handle sequencertimeout_ch
-    = CALLOUT_HANDLE_INITIALIZER(&sequencertimeout_ch);
+static struct callout	sequencertimeout_ch;
 
 #if MAX_SYNTH_DEV > 15
 #error Too many synthesizer devices enabled.
@@ -121,10 +120,12 @@ request_sound_timer(int count)
     static int      current = 0;
     int             tmp = count;
 
-    if (count < 0)
-	sequencertimeout_ch = timeout(sequencer_timer, 0, -count);
-    else {
+    if ((sequencertimeout_ch.c_flags & CALLOUT_DID_INIT) == 0)
+	callout_init(&sequencertimeout_ch);
 
+    if (count < 0) {
+	callout_reset(&sequencertimeout_ch, -count, sequencer_timer, NULL);
+    } else {
 	if (count < current)
 	    current = 0;	/* Timer restarted */
 
@@ -132,7 +133,7 @@ request_sound_timer(int count)
 	current = tmp;
 	if (!count)
 	    count = 1;
-	sequencertimeout_ch = timeout(sequencer_timer, 0, count);
+	callout_reset(&sequencertimeout_ch, count, sequencer_timer, NULL);
     }
     timer_running = 1;
 }
@@ -141,7 +142,7 @@ void
 sound_stop_timer(void)
 {
     if (timer_running)
-	untimeout( sequencer_timer, 0, sequencertimeout_ch);
+	callout_stop(&sequencertimeout_ch);
     timer_running = 0;
 }
 

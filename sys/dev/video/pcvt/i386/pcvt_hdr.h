@@ -42,7 +42,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:06:31 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_hdr.h,v 1.36.2.3 2001/08/06 15:30:21 joerg Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_hdr.h,v 1.5 2004/05/19 22:52:54 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_hdr.h,v 1.6 2004/09/18 20:23:04 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -1291,6 +1291,7 @@ void	kbd_code_init1 ( void );
 void	kbd_emulate_pc(int do_emulation);
 #endif
 
+void	pcvt_support_init(void);
 int	kbdioctl ( Dev_t dev, int cmd, caddr_t data, int flag );
 void	loadchar ( int fontset, int character, int char_scanlines,
 		   u_char *char_table );

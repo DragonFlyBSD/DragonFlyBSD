@@ -47,7 +47,7 @@
  *	Last Edit-Date: [Thu Dec 30 17:01:03 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_sup.c,v 1.16 1999/12/30 16:17:10 hm Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_sup.c,v 1.4 2003/08/07 21:17:16 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_sup.c,v 1.5 2004/09/18 20:23:04 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -76,13 +76,11 @@ static void vgapcvtinfo ( struct pcvtinfo *data );
 static unsigned char * compute_charset_base ( unsigned fontset );
 #endif /* XSERVER */
 
-static struct callout_handle async_update_ch =
-    CALLOUT_HANDLE_INITIALIZER(&async_update_ch);
+static struct callout	async_update_ch;
 
 #if PCVT_SCREENSAVER
 static void scrnsv_timedout ( void *arg );
-static struct callout_handle scrnsv_timeout_ch =
-    CALLOUT_HANDLE_INITIALIZER(&scrnsv_timeout_ch);
+static struct callout	scrnsv_timeout_ch;
 static u_short *savedscreen = (u_short *)0;	/* ptr to screen contents */
 static size_t scrnsv_size = (size_t)-1;		/* size of saved image */
 
@@ -93,13 +91,24 @@ static void pcvt_set_scrnsv_tmo ( int timeout );/* else declared global */
 
 #if PCVT_PRETTYSCRNS
 static u_short *scrnsv_current = (u_short *)0;	/* attention char ptr */
-static struct callout_handle scrnsv_blink_ch =
-    CALLOUT_HANDLE_INITIALIZER(&scrnsv_blink_ch);
+static struct callout	scrnsv_blink_ch;
 static void scrnsv_blink ( void * );
 static u_short getrand ( void );
 #endif /* PCVT_PRETTYSCRNS */
 
 #endif /* PCVT_SCREENSAVER */
+
+void
+pcvt_support_init(void)
+{
+	callout_init(&async_update_ch);
+#if PCVT_SCREENSAVER
+	callout_init(&scrnsv_timeout_ch);
+#endif
+#if PCVT_PRETTYSCRNS
+	callout_init(&scrnsv_blink_ch);
+#endif
+}
 
 
 /*---------------------------------------------------------------------------*
@@ -954,7 +963,7 @@ async_update(void *arg)
 
 	if(arg == UPDATE_STOP)
 	{
-		untimeout(async_update, UPDATE_START, async_update_ch);
+		callout_stop(&async_update_ch);
 		return;
 	}
 #endif /* XSERVER */
@@ -1139,8 +1148,8 @@ async_update_exit:
 
  	if(arg == UPDATE_START)
 	{
-	   async_update_ch = timeout(async_update, UPDATE_START,
-				     PCVT_UPDATEFAST);
+		callout_reset(&async_update_ch, PCVT_UPDATEFAST,
+				async_update, (void *)UPDATE_START);
 	}
 }
 
@@ -2000,7 +2009,7 @@ scrnsv_blink(void * arg)
 	*scrnsv_current = (7 /* LIGHTGRAY */ << 8) + '*';
 	if(adaptor_type == VGA_ADAPTOR)
 		vgapaletteio(7 /* LIGHTGRAY */, &blink_rgb[(r >> 4) & 7], 1);
-	scrnsv_blink_ch = timeout(scrnsv_blink, NULL, hz);
+	callout_reset(&scrnsv_blink_ch, hz, scrnsv_blink, NULL);
 }
 
 #endif /* PCVT_PRETTYSCRNS */
@@ -2018,8 +2027,8 @@ pcvt_set_scrnsv_tmo(int timeout)
 {
 	int x = splhigh();
 
-	if(scrnsv_timeout)
-		untimeout(scrnsv_timedout, NULL, scrnsv_timeout_ch);
+	if (scrnsv_timeout)
+		callout_stop(&scrnsv_timeout_ch);
 
 	scrnsv_timeout = timeout;
 	pcvt_scrnsv_reset();		/* sanity */
@@ -2096,7 +2105,8 @@ scrnsv_timedout(void *arg)
 			vgapaletteio(0 /* BLACK */, &black, 1);
 		}
 		/* prepare for next time... */
-		scrnsv_timeout_ch = timeout(scrnsv_timedout, NULL, hz / 10);
+		callout_reset(&scrnsv_timeout_ch, hz / 10,
+				scrnsv_timedout, NULL);
 	}
 	else
 	{
@@ -2106,7 +2116,7 @@ scrnsv_timedout(void *arg)
 
 #if PCVT_PRETTYSCRNS
 		scrnsv_current = vsp->Crtat;
-		scrnsv_blink_ch = timeout(scrnsv_blink, NULL, hz);
+		callout_reset(&scrnsv_blink_ch, hz, scrnsv_blink, NULL);
 #endif /* PCVT_PRETTYSCRNS */
 
 		sw_cursor(0);	/* cursor off on mda/cga */
@@ -2134,14 +2144,14 @@ pcvt_scrnsv_reset(void)
 	{
 		last_schedule = time_second;
 		reschedule = 1;
-		untimeout(scrnsv_timedout, NULL, scrnsv_timeout_ch);
+		callout_stop(&scrnsv_timeout_ch);
 	}
 	if(scrnsv_active)
 	{
 
 #if PCVT_PRETTYSCRNS
 		if(scrnsv_active > 1)
-			untimeout(scrnsv_blink, NULL, scrnsv_blink_ch);
+			callout_stop(&scrnsv_blink_ch);
 #endif /* PCVT_PRETTYSCRNS */
 
 		bcopy(savedscreen, vsp->Crtat, scrnsv_size);
@@ -2161,11 +2171,11 @@ pcvt_scrnsv_reset(void)
 			sw_cursor(1);	/* cursor on */
 	}
 
-	if(reschedule)
+	if (reschedule)
 	{
 		/* mark next timeout */
-		scrnsv_timeout_ch = timeout(scrnsv_timedout, NULL,
-					    scrnsv_timeout * hz);
+		callout_reset(&scrnsv_timeout_ch, scrnsv_timeout * hz,
+				scrnsv_timedout, NULL);
 	}
 	splx(x);
 }

@@ -51,7 +51,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:03:36 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_drv.c,v 1.63.2.1 2001/02/26 04:23:13 jlemon Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.10 2004/05/19 22:52:54 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.11 2004/09/18 20:23:04 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -179,6 +179,7 @@ pcattach(struct isa_device *dev)
 
 	int i;
 
+	pcvt_support_init();
 	vt_coldmalloc();		/* allocate memory for screens */
 
 #ifdef _DEV_KBD_KBDREG_H_
