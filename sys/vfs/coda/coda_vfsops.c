@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.11 2004/03/01 06:33:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.12 2004/03/28 00:48:00 cpressey Exp $
  * 
  */
 
@@ -486,8 +486,9 @@ coda_fhtovp(vfsp, fhp, nam, vpp, exflagsp, creadanonp)
 /*
  * To allow for greater ease of use, some vnodes may be orphaned when
  * Venus dies.  Certain operations should still be allowed to go
- * through, but without propagating ophan-ness.  So this function will
- * get a new vnode for the file from the current run of Venus.  */
+ * through, but without propagating orphan-ness.  So this function will
+ * get a new vnode for the file from the current run of Venus.
+ */
  
 int
 getNewVnode(vpp)
