@@ -23,8 +23,8 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/bfe.4,v 1.1.4.1 2004/02/17 20:56:50 julian Exp $
-.\" $DragonFly: src/share/man/man4/bfe.4,v 1.1 2004/02/27 11:56:12 joerg Exp $
+.\" $FreeBSD: src/share/man/man4/bfe.4,v 1.1.4.2 2004/03/05 11:45:14 brueffer Exp $
+.\" $DragonFly: src/share/man/man4/bfe.4,v 1.2 2004/03/05 13:07:02 hmp Exp $
 .\"
 .Dd September 4, 2003
 .Dt BFE 4
@@ -38,7 +38,7 @@
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for the Broadcom BCM4401 based Fast Ethernet adapters.
+driver provides support for Broadcom BCM4401 based Fast Ethernet adapters.
 .Pp
 The
 .Nm
@@ -72,7 +72,7 @@ A fatal initialization error has occurred.
 .It "bfe%d: couldn't map interrupt"
 A fatal initialization error has occurred.
 .It "bfe%d: failed to allocate DMA resources"
-There are not enough mbuf's available for allocation.
+There are not enough mbufs available for allocation.
 .It "bfe%d: watchdog timeout -- resetting"
 The device has stopped responding to the network, or there is a problem with
 the network connection (cable).
