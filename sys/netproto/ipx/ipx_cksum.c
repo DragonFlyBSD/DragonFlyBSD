@@ -34,7 +34,7 @@
  *	@(#)ipx_cksum.c
  *
  * $FreeBSD: src/sys/netipx/ipx_cksum.c,v 1.9 1999/08/28 18:21:53 jhay Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_cksum.c,v 1.3 2003/08/07 21:17:37 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_cksum.c,v 1.4 2005/02/15 18:11:59 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -97,7 +97,7 @@ ipx_cksum(struct mbuf *m, int len) {
 		if (mlen) {
 			buf.b[1] = *(u_char*)w;
 			sum += buf.w;
-			((u_char*)w)++;
+			w = (uint16_t *)((uint8_t *)w + 1);
 			if (--len == 0)
 				break;
 		} 
