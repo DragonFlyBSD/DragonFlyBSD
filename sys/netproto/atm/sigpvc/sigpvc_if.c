@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/sigpvc/sigpvc_if.c,v 1.7 2000/01/17 20:49:46 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/sigpvc/sigpvc_if.c,v 1.6 2004/02/06 09:17:41 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/sigpvc/sigpvc_if.c,v 1.7 2004/04/22 05:09:44 dillon Exp $
  */
 
 /*
@@ -222,8 +222,7 @@ sigpvc_attach(smp, pip)
 	/*
 	 * Allocate sigpvc protocol instance control block
 	 */
-	pvp = (struct sigpvc *)
-		KM_ALLOC(sizeof(struct sigpvc), M_DEVBUF, M_NOWAIT);
+	pvp = KM_ALLOC(sizeof(struct sigpvc), M_DEVBUF, M_INTWAIT | M_NULLOK);
 	if (pvp == NULL) {
 		err = ENOMEM;
 		goto done;

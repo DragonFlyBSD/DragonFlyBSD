@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_device.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_device.c,v 1.4 2003/08/07 21:17:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_device.c,v 1.5 2004/04/22 05:09:43 dillon Exp $
  */
 
 /*
@@ -426,7 +426,8 @@ atm_dev_alloc(size, align, flags)
 	 * and link it into the chain
 	 */
 	if (mep == NULL) {
-		mbp = (Mem_blk *) KM_ALLOC(sizeof(Mem_blk), M_DEVBUF, M_NOWAIT);
+		mbp = KM_ALLOC(sizeof(Mem_blk), M_DEVBUF, 
+				M_INTWAIT | M_NULLOK);
 		if (mbp == NULL) {
 			log(LOG_ERR, "atm_dev_alloc: Mem_blk failure\n");
 			(void) splx(s);
@@ -474,12 +475,12 @@ atm_dev_alloc(size, align, flags)
 #ifdef sun
 		mep->me_kaddr = IOPBALLOC(ksize);
 #elif defined(__i386__)
-		mep->me_kaddr = KM_ALLOC(ksize, M_DEVBUF, M_NOWAIT);
+		mep->me_kaddr = KM_ALLOC(ksize, M_DEVBUF, M_INTWAIT | M_NULLOK);
 #else
 		#error Unsupported/unconfigured OS
 #endif
 	} else {
-		mep->me_kaddr = KM_ALLOC(ksize, M_DEVBUF, M_NOWAIT);
+		mep->me_kaddr = KM_ALLOC(ksize, M_DEVBUF, M_INTWAIT | M_NULLOK);
 	}
 
 	if (mep->me_kaddr == NULL) {

@@ -34,7 +34,7 @@
  *	@(#)ipx_pcb.c
  *
  * $FreeBSD: src/sys/netipx/ipx_pcb.c,v 1.18.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.7 2004/03/05 19:17:25 hsu Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.8 2004/04/22 05:09:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -59,7 +59,8 @@ ipx_pcballoc(struct socket *so, struct ipxpcb *head)
 {
 	struct ipxpcb *ipxp;
 
-	MALLOC(ipxp, struct ipxpcb *, sizeof *ipxp, M_PCB, M_NOWAIT | M_ZERO);
+	MALLOC(ipxp, struct ipxpcb *, sizeof *ipxp, M_PCB, 
+		M_WAITOK | M_ZERO | M_NULLOK);
 	if (ipxp == NULL)
 		return (ENOBUFS);
 	ipxp->ipxp_socket = so;

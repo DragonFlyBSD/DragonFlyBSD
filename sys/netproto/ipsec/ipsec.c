@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec.c,v 1.2.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.5 2004/02/14 21:15:33 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.6 2004/04/22 05:09:48 dillon Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -861,8 +861,8 @@ ipsec_init_policy(so, pcb_sp)
 	if (so == NULL || pcb_sp == NULL)
 		panic("ipsec_init_policy: NULL pointer was passed.\n");
 
-	new = (struct inpcbpolicy *) malloc(sizeof(struct inpcbpolicy),
-					    M_SECA, M_NOWAIT|M_ZERO);
+	new = malloc(sizeof(struct inpcbpolicy),
+			M_SECA, M_INTWAIT | M_ZERO | M_NULLOK);
 	if (new == NULL) {
 		ipseclog((LOG_DEBUG, "ipsec_init_policy: No more memory.\n"));
 		return ENOBUFS;
@@ -942,11 +942,10 @@ ipsec_deepcopy_policy(src)
 	 */
 	q = &newchain;
 	for (p = src->req; p; p = p->next) {
-		*q = (struct ipsecrequest *)malloc(sizeof(struct ipsecrequest),
-			M_SECA, M_NOWAIT);
+		*q = malloc(sizeof(struct ipsecrequest),
+			M_SECA, M_INTWAIT | M_ZERO | M_NULLOK);
 		if (*q == NULL)
 			goto fail;
-		bzero(*q, sizeof(**q));
 		(*q)->next = NULL;
 
 		(*q)->saidx.proto = p->saidx.proto;

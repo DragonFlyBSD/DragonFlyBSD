@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keydb.c,v 1.1.2.1 2000/07/15 07:14:42 kris Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keydb.c,v 1.5 2003/08/23 10:06:24 rob Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keydb.c,v 1.6 2004/04/22 05:09:50 dillon Exp $	*/
 /*	$KAME: keydb.c,v 1.64 2000/05/11 17:02:30 itojun Exp $	*/
 
 /*
@@ -67,7 +67,7 @@ keydb_newsecpolicy()
 {
 	struct secpolicy *p;
 
-	p = (struct secpolicy *)malloc(sizeof(*p), M_SECA, M_NOWAIT);
+	p = malloc(sizeof(*p), M_SECA, M_INTWAIT | M_NULLOK);
 	if (!p)
 		return p;
 	bzero(p, sizeof(*p));
@@ -91,7 +91,7 @@ keydb_newsecashead()
 	struct secashead *p;
 	int i;
 
-	p = (struct secashead *)malloc(sizeof(*p), M_SECA, M_NOWAIT);
+	p = malloc(sizeof(*p), M_SECA, M_INTWAIT | M_NULLOK);
 	if (!p)
 		return p;
 	bzero(p, sizeof(*p));
@@ -116,7 +116,7 @@ keydb_newsecasvar()
 {
 	struct secasvar *p;
 
-	p = (struct secasvar *)malloc(sizeof(*p), M_SECA, M_NOWAIT);
+	p = malloc(sizeof(*p), M_SECA, M_INTWAIT | M_NULLOK);
 	if (!p)
 		return p;
 	bzero(p, sizeof(*p));
@@ -169,13 +169,13 @@ keydb_newsecreplay(wsize)
 {
 	struct secreplay *p;
 
-	p = (struct secreplay *)malloc(sizeof(*p), M_SECA, M_NOWAIT);
+	p = malloc(sizeof(*p), M_SECA, M_INTWAIT | M_NULLOK);
 	if (!p)
 		return p;
 
 	bzero(p, sizeof(*p));
 	if (wsize != 0) {
-		p->bitmap = (caddr_t)malloc(wsize, M_SECA, M_NOWAIT);
+		p->bitmap = (caddr_t)malloc(wsize, M_SECA, M_INTWAIT | M_NULLOK);
 		if (!p->bitmap) {
 			free(p, M_SECA);
 			return NULL;
@@ -204,9 +204,7 @@ keydb_newsecreg()
 {
 	struct secreg *p;
 
-	p = (struct secreg *)malloc(sizeof(*p), M_SECA, M_NOWAIT);
-	if (p)
-		bzero(p, sizeof(*p));
+	p = malloc(sizeof(*p), M_SECA, M_INTWAIT | M_ZERO | M_NULLOK);
 	return p;
 }
 

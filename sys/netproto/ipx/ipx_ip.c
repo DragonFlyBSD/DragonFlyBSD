@@ -34,7 +34,7 @@
  *	@(#)ipx_ip.c
  *
  * $FreeBSD: src/sys/netipx/ipx_ip.c,v 1.24.2.2 2003/01/23 21:06:48 sam Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.10 2004/04/01 07:27:17 joerg Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.11 2004/04/22 05:09:49 dillon Exp $
  */
 
 /*
@@ -104,9 +104,7 @@ ipxipattach()
 		ifp->if_flags = IFF_POINTOPOINT;
 	}
 
-	MALLOC((m), struct ifnet_en *, sizeof(*m), M_PCB, M_NOWAIT | M_ZERO);
-	if (m == NULL)
-		return (NULL);
+	MALLOC((m), struct ifnet_en *, sizeof(*m), M_PCB, M_WAITOK | M_ZERO);
 	m->ifen_next = ipxip_list;
 	ipxip_list = m;
 	ifp = &m->ifen_ifnet;

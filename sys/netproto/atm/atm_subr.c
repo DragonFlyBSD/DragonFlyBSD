@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_subr.c,v 1.7 2000/02/13 03:31:59 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.13 2004/04/21 18:14:00 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.14 2004/04/22 05:09:43 dillon Exp $
  */
 
 /*
@@ -222,8 +222,8 @@ atm_allocate(sip)
 			return (NULL);
 		}
 
-		scp = (struct sp_chunk *)
-			KM_ALLOC(sip->si_chunksiz, M_DEVBUF, M_NOWAIT);
+		scp = KM_ALLOC(sip->si_chunksiz, M_DEVBUF,
+				M_INTWAIT | M_NULLOK);
 		if (scp == NULL) {
 			sip->si_fails++;
 			(void) splx(s);

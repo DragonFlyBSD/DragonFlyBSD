@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_esp.c,v 1.2.2.2 2003/02/26 00:14:05 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.3 2003/08/07 21:17:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.4 2004/04/22 05:09:48 dillon Exp $	*/
 /*	$OpenBSD: ip_esp.c,v 1.69 2001/06/26 06:18:59 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -352,11 +352,11 @@ esp_input(struct mbuf *m, struct secasvar *sav, int skip, int protoff)
 
 	/* Get IPsec-specific opaque pointer */
 	if (esph == NULL || mtag != NULL)
-		tc = (struct tdb_crypto *) malloc(sizeof(struct tdb_crypto),
-		    M_XDATA, M_NOWAIT|M_ZERO);
+		tc = malloc(sizeof(struct tdb_crypto),
+			    M_XDATA, M_INTWAIT | M_ZERO | M_NULLOK);
 	else
-		tc = (struct tdb_crypto *) malloc(sizeof(struct tdb_crypto) + alen,
-		    M_XDATA, M_NOWAIT|M_ZERO);
+		tc = malloc(sizeof(struct tdb_crypto) + alen,
+			    M_XDATA, M_INTWAIT | M_ZERO | M_NULLOK);
 	if (tc == NULL) {
 		crypto_freereq(crp);
 		DPRINTF(("esp_input: failed to allocate tdb_crypto\n"));
@@ -812,8 +812,8 @@ esp_output(
 		crda = crp->crp_desc;
 
 	/* IPsec-specific opaque crypto info. */
-	tc = (struct tdb_crypto *) malloc(sizeof(struct tdb_crypto),
-		M_XDATA, M_NOWAIT|M_ZERO);
+	tc = malloc(sizeof(struct tdb_crypto),
+			M_XDATA, M_INTWAIT | M_ZERO | M_NULLOK);
 	if (tc == NULL) {
 		crypto_freereq(crp);
 		DPRINTF(("esp_output: failed to allocate tdb_crypto\n"));

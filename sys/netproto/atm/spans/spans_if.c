@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_if.c,v 1.6 1999/08/28 00:48:49 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_if.c,v 1.6 2004/02/06 09:17:41 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_if.c,v 1.7 2004/04/22 05:09:45 dillon Exp $
  */
 
 /*
@@ -116,8 +116,8 @@ spans_start()
 	/*
 	 * Allocate protocol definition structure
 	 */
-	spans_mgr = (struct sigmgr *)KM_ALLOC(sizeof(struct sigmgr),
-			M_DEVBUF, M_NOWAIT);
+	spans_mgr = KM_ALLOC(sizeof(struct sigmgr),
+			M_DEVBUF, M_INTWAIT | M_NULLOK);
 	if (spans_mgr == NULL) {
 		err = ENOMEM;
 		goto done;
@@ -271,8 +271,8 @@ spans_attach(smp, pip)
 	/*
 	 * Allocate SPANS protocol instance control block
 	 */
-	spp = (struct spans *)KM_ALLOC(sizeof(struct spans),
-			M_DEVBUF, M_NOWAIT);
+	spp = KM_ALLOC(sizeof(struct spans),
+			M_DEVBUF, M_INTWAIT | M_NULLOK);
 	if (spp == NULL) {
 		err = ENOMEM;
 		goto done;

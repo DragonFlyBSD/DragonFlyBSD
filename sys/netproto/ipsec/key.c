@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key.c,v 1.3.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.5 2003/11/09 02:22:36 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.6 2004/04/22 05:09:48 dillon Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -291,13 +291,13 @@ MALLOC_DEFINE(M_SECA, "key mgmt", "security associations, key management");
 
 #if 1
 #define KMALLOC(p, t, n)                                                     \
-	((p) = (t) malloc((unsigned long)(n), M_SECA, M_NOWAIT))
+	((p) = (t) malloc((unsigned long)(n), M_SECA, M_INTWAIT | M_NULLOK))
 #define KFREE(p)                                                             \
 	free((caddr_t)(p), M_SECA)
 #else
 #define KMALLOC(p, t, n) \
 do { \
-	((p) = (t)malloc((unsigned long)(n), M_SECA, M_NOWAIT));             \
+	((p) = (t)malloc((unsigned long)(n), M_SECA, M_INTWAIT | M_NULLOK)); \
 	printf("%s %d: %p <- KMALLOC(%s, %d)\n",                             \
 		__FILE__, __LINE__, (p), #t, n);                             \
 } while (0)
@@ -1268,8 +1268,8 @@ key_newsp(const char* where, int tag)
 {
 	struct secpolicy *newsp = NULL;
 
-	newsp = (struct secpolicy *)
-		malloc(sizeof(struct secpolicy), M_SECA, M_NOWAIT|M_ZERO);
+	newsp = malloc(sizeof(struct secpolicy), M_SECA,
+			M_INTWAIT | M_ZERO | M_NULLOK);
 	if (newsp) {
 		newsp->refcnt = 1;
 		newsp->req = NULL;
@@ -2554,8 +2554,8 @@ key_newsah(saidx)
 
 	KASSERT(saidx != NULL, ("key_newsaidx: null saidx"));
 
-	newsah = (struct secashead *)
-		malloc(sizeof(struct secashead), M_SECA, M_NOWAIT|M_ZERO);
+	newsah = malloc(sizeof(struct secashead), M_SECA, 
+			M_INTWAIT | M_ZERO | M_NULLOK);
 	if (newsah != NULL) {
 		int i;
 		for (i = 0; i < sizeof(newsah->savtree)/sizeof(newsah->savtree[0]); i++)
@@ -2926,8 +2926,9 @@ key_setsaval(sav, m, mhp)
 
 		/* replay window */
 		if ((sa0->sadb_sa_flags & SADB_X_EXT_OLD) == 0) {
-			sav->replay = (struct secreplay *)
-				malloc(sizeof(struct secreplay)+sa0->sadb_sa_replay, M_SECA, M_NOWAIT|M_ZERO);
+			sav->replay = 
+			    malloc(sizeof(struct secreplay)+sa0->sadb_sa_replay,
+				    M_SECA, M_INTWAIT | M_ZERO | M_NULLOK);
 			if (sav->replay == NULL) {
 				ipseclog((LOG_DEBUG, "key_setsaval: No more memory.\n"));
 				error = ENOBUFS;

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ah.c,v 1.1.4.2 2003/02/26 00:14:05 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ah.c,v 1.3 2003/08/07 21:17:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ah.c,v 1.4 2004/04/22 05:09:48 dillon Exp $	*/
 /*	$OpenBSD: ip_ah.c,v 1.63 2001/06/26 06:18:58 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -430,9 +430,8 @@ ah_massage_headers(struct mbuf **m0, int proto, int skip, int alg, int out)
 		/* Let's deal with the remaining headers (if any). */
 		if (skip - sizeof(struct ip6_hdr) > 0) {
 			if (m->m_len <= skip) {
-				ptr = (unsigned char *) malloc(
-				    skip - sizeof(struct ip6_hdr),
-				    M_XDATA, M_NOWAIT);
+				ptr = malloc(skip - sizeof(struct ip6_hdr),
+					    M_XDATA, M_INTWAIT | M_NULLOK);
 				if (ptr == NULL) {
 					DPRINTF(("ah_massage_headers: failed "
 					    "to allocate memory for IPv6 "
@@ -644,12 +643,13 @@ ah_input(struct mbuf *m, struct secasvar *sav, int skip, int protoff)
 
 	/* Allocate IPsec-specific opaque crypto info. */
 	if (mtag == NULL) {
-		tc = (struct tdb_crypto *) malloc(sizeof (struct tdb_crypto) +
-			skip + rplen + authsize, M_XDATA, M_NOWAIT|M_ZERO);
+		tc = malloc(sizeof (struct tdb_crypto) +
+			skip + rplen + authsize, M_XDATA, 
+			M_INTWAIT | M_ZERO | M_NULLOK);
 	} else {
 		/* Hash verification has already been done successfully. */
-		tc = (struct tdb_crypto *) malloc(sizeof (struct tdb_crypto),
-						    M_XDATA, M_NOWAIT|M_ZERO);
+		tc = malloc(sizeof (struct tdb_crypto),
+			M_XDATA, M_INTWAIT | M_ZERO | M_NULLOK);
 	}
 	if (tc == NULL) {
 		DPRINTF(("ah_input: failed to allocate tdb_crypto\n"));
@@ -1026,8 +1026,8 @@ ah_output(
 	crda->crd_klen = _KEYBITS(sav->key_auth);
 
 	/* Allocate IPsec-specific opaque crypto info. */
-	tc = (struct tdb_crypto *) malloc(
-		sizeof(struct tdb_crypto) + skip, M_XDATA, M_NOWAIT|M_ZERO);
+	tc = malloc(sizeof(struct tdb_crypto) + skip, M_XDATA,
+		M_INTWAIT | M_ZERO | M_NULLOK);
 	if (tc == NULL) {
 		crypto_freereq(crp);
 		DPRINTF(("ah_output: failed to allocate tdb_crypto\n"));

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp.c,v 1.8 2000/01/15 20:46:07 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp.c,v 1.6 2004/01/06 03:17:28 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp.c,v 1.7 2004/04/22 05:09:46 dillon Exp $
  */
 
 /*
@@ -936,7 +936,8 @@ uniarp_ioctl(code, data, arg1)
 				break;
 			}
 			buf_len = i * sizeof(struct uniarp_prf);
-			buf_addr = KM_ALLOC(buf_len, M_DEVBUF, M_NOWAIT);
+			buf_addr = KM_ALLOC(buf_len, M_DEVBUF, 
+						M_INTWAIT | M_NULLOK);
 			if (buf_addr == NULL) {
 				err = ENOMEM;
 				break;

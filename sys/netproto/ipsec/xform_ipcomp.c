@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipcomp.c,v 1.1.4.2 2003/02/26 00:14:06 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipcomp.c,v 1.3 2003/08/07 21:17:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipcomp.c,v 1.4 2004/04/22 05:09:48 dillon Exp $	*/
 /* $OpenBSD: ip_ipcomp.c,v 1.1 2001/07/05 12:08:52 jjbg Exp $ */
 
 /*
@@ -151,7 +151,8 @@ ipcomp_input(struct mbuf *m, struct secasvar *sav, int skip, int protoff)
 		return ENOBUFS;
 	}
 	/* Get IPsec-specific opaque pointer */
-	tc = (struct tdb_crypto *) malloc(sizeof (*tc), M_XDATA, M_NOWAIT|M_ZERO);
+	tc = malloc(sizeof (*tc), M_XDATA, 
+		    M_INTWAIT | M_ZERO | M_NULLOK);
 	if (tc == NULL) {
 		m_freem(m);
 		crypto_freereq(crp);
@@ -456,8 +457,8 @@ ipcomp_output(
 	crdc->crd_alg = ipcompx->type;
 
 	/* IPsec-specific opaque crypto info */
-	tc = (struct tdb_crypto *) malloc(sizeof(struct tdb_crypto),
-		M_XDATA, M_NOWAIT|M_ZERO);
+	tc = malloc(sizeof(struct tdb_crypto),
+		    M_XDATA, M_INTWAIT | M_ZERO | M_NULLOK);
 	if (tc == NULL) {
 		ipcompstat.ipcomps_crypto++;
 		DPRINTF(("ipcomp_output: failed to allocate tdb_crypto\n"));

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_if.c,v 1.8 2000/01/17 20:49:56 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_if.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_if.c,v 1.6 2004/04/22 05:09:46 dillon Exp $
  */
 
 /*
@@ -247,8 +247,7 @@ unisig_attach(smp, pip)
 	/*
 	 * Allocate UNISIG protocol instance control block
 	 */
-	usp = (struct unisig *)
-			KM_ALLOC(sizeof(struct unisig), M_DEVBUF, M_NOWAIT);
+	usp = KM_ALLOC(sizeof(struct unisig), M_DEVBUF, M_INTWAIT | M_NULLOK);
 	if (usp == NULL) {
 		err = ENOMEM;
 		goto done;

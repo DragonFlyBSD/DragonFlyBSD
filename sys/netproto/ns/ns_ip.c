@@ -32,7 +32,7 @@
  *
  *	@(#)ns_ip.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_ip.c,v 1.9 1999/08/28 00:49:50 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.7 2004/03/06 07:30:44 hsu Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.8 2004/04/22 05:09:51 dillon Exp $
  */
 
 /*
@@ -98,8 +98,7 @@ nsipattach()
 		ifp->if_flags = IFF_POINTOPOINT;
 	}
 
-	MALLOC((m), struct ifnet_en *, sizeof(*m), M_PCB, M_NOWAIT);
-	if (m == NULL) return (NULL);
+	MALLOC((m), struct ifnet_en *, sizeof(*m), M_PCB, M_WAITOK);
 	m->ifen_next = nsip_list;
 	nsip_list = m;
 	ifp = &m->ifen_ifnet;
