@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/arch/i386/include/pthread_md.h,v 1.13 2004/11/06 03:35:51 peter Exp $
- * $DragonFly: src/lib/libthread_xu/arch/i386/include/pthread_md.h,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/i386/include/pthread_md.h,v 1.2 2005/02/22 00:10:00 davidxu Exp $
  */
 
 /*
@@ -49,7 +49,7 @@ struct tcb {
 	struct tcb		*tcb_self;	/* required by rtld */
 	void			*tcb_dtv;	/* required by rtld */
 	struct pthread		*tcb_thread;
-	int			tcb_ldt;
+	int			tcb_seg;
 };
 
 /*
@@ -107,19 +107,7 @@ struct tcb	*_tcb_ctor(struct pthread *, int);
 void		_tcb_dtor(struct tcb *tcb);
 
 /* Called from the thread to set its private data. */
-static __inline void
-_tcb_set(struct tcb *tcb)
-{
-#ifndef COMPAT_32BIT
-	int val;
-
-	val = (tcb->tcb_ldt << 3) | 7;
-	__asm __volatile("movl %0, %%gs" : : "r" (val));
-#else
-	_amd64_set_gsbase(tcb);
-#endif
-
-}
+void		_tcb_set(struct tcb *tcb);
 
 /* Get the current kcb. */
 static __inline struct tcb *
