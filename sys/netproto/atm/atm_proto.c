@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_proto.c,v 1.3 1999/08/28 00:48:36 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_proto.c,v 1.6 2004/03/06 01:58:56 hsu Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_proto.c,v 1.7 2004/06/07 07:01:36 dillon Exp $
  */
 
 /*
@@ -62,7 +62,7 @@ struct protosw atmsw[] = {
 	0,			/* pr_output */
 	0,			/* pr_ctlinput */
 	atm_aal5_ctloutput,	/* pr_ctloutput */
-	0,			/* pr_ousrreq */
+	cpu0_soport,		/* pr_ousrreq */
 	0,			/* pr_init */
 	0,			/* pr_fasttimo */
 	0,			/* pr_slowtimo */

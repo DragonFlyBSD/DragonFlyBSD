@@ -26,7 +26,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.22 2004/06/04 20:35:36 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.23 2004/06/07 07:01:34 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -474,8 +474,13 @@ lwkt_abortmsg(lwkt_msg_t msg)
 	else
 	    port = msg->ms_target_port;
 	cpu_mb1();
+
+	/*
+	 * The chase call must run on the cpu owning the port.  Fully
+	 * synchronous ports (mp_td == NULL) can run the call on any cpu.
+	 */
 	td = port->mp_td;
-	if (td->td_gd != mycpu) {
+	if (td && td->td_gd != mycpu) {
 	    lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_abortmsg_remote, msg);
 	} else {
 	    port->mp_abortport(port, msg);
@@ -612,6 +617,7 @@ lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg)
 			if (sentabort == 0 && CURSIG(port->mp_td->td_proc)) {
 			    sentabort = 1;
 			    lwkt_abortmsg(msg);
+			    continue;
 			}
 		    }
 #endif

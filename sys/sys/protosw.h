@@ -32,7 +32,7 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/protosw.h,v 1.28.2.2 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/protosw.h,v 1.12 2004/06/03 18:30:04 joerg Exp $
+ * $DragonFly: src/sys/sys/protosw.h,v 1.13 2004/06/07 07:01:36 dillon Exp $
  */
 
 #ifndef _SYS_PROTOSW_H_
@@ -292,6 +292,7 @@ int	pru_rcvoob_notsupp (struct socket *so, struct mbuf *m, int flags);
 int	pru_sense_null (struct socket *so, struct stat *sb);
 
 struct lwkt_port *cpu0_soport(struct socket *, struct sockaddr *, int);
+struct lwkt_port *sync_soport(struct socket *, struct sockaddr *, int);
 
 #endif /* _KERNEL */
 

@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.18 2004/06/04 20:35:39 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.19 2004/06/07 07:01:36 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -119,6 +119,44 @@ MALLOC_DECLARE(M_LWKTMSG);
 #endif
 #endif
 
+/*
+ * Notes on port processing requirements:
+ *
+ * mp_putport():
+ *	- may return synchronous error code (error != EASYNC) directly and
+ *	  does not need to check or set MSGF_DONE if so, or set ms_target_port
+ *	- for asynch procesing should clear MSGF_DONE and set ms_target_port
+ *	  to port prior to initiation of the command.
+ *
+ * mp_waitport():
+ *	- if the passed msg is NULL we wait for, remove, and return the
+ *	  next pending message on the port.
+ *	- if the passed msg is non-NULL we wait for that particular message,
+ *	  which typically involves waiting until MSGF_DONE is set then
+ *	  pulling the message off the port if MSGF_QUEUED is set and
+ *	  returning it.  If MSGF_PCATCH is set in the message we allow
+ *	  a signal to interrupt and abort the message.
+ *
+ * mp_replyport():
+ *	- reply a message (executed on the originating port to return a
+ *	  message to it).  This can be rather involved if abort is to be
+ *	  supported, see lwkt_default_replyport().  Generally speaking
+ *	  one sets MSGF_DONE.  If MSGF_ASYNC is set the message is queued
+ *	  to the port, else the port's thread is scheduled.
+ *
+ * mp_abortport():
+ *	- abort a message.  The mp_abortport function for the message's
+ *	  ms_target_port is called.  ms_target_port is basically where
+ *	  the message was sent to or last forwarded to.  Aborting a message
+ *	  can be rather involved.  Note that the lwkt_getmsg() code ensures
+ *	  that a message is returned non-abort before it is returned again
+ *	  with its ms_cmd set to ms_abort, even if the abort occurs before
+ *	  the initial retrieval of the message.  The setting of ms_cmd to
+ *	  ms_abort is NOT handled by mp_abortport().  mp_abortport() is
+ *	  basically responsible for requeueing the message to the target
+ *	  port and setting the MSGF_ABORTED flag.
+ *
+ */
 typedef struct lwkt_port {
     lwkt_msg_queue	mp_msgq;
     int			mp_flags;

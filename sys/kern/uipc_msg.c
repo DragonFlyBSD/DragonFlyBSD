@@ -27,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.11 2004/06/06 05:59:44 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.12 2004/06/07 07:01:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,9 +51,6 @@ so_pru_abort(struct socket *so)
 	struct netmsg_pru_abort msg;
 	lwkt_port_t port;
 
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_usrreqs->pru_abort)(so));
-
 	port = so->so_proto->pr_mport(so, NULL, PRU_ABORT);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_abort), lwkt_cmd_op_none);
@@ -74,9 +71,6 @@ so_pru_accept(struct socket *so, struct sockaddr **nam)
 	struct netmsg_pru_accept msg;
 	lwkt_port_t port;
 
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_usrreqs->pru_accept)(so, nam));
-
 	port = so->so_proto->pr_mport(so, NULL, PRU_ACCEPT);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_accept), lwkt_cmd_op_none);
@@ -95,9 +89,6 @@ so_pru_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	struct netmsg_pru_attach msg;
 	lwkt_port_t port;
 
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_usrreqs->pru_attach)(so, proto, ai));
-
 	port = so->so_proto->pr_mport(NULL, NULL, PRU_ATTACH);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_attach), lwkt_cmd_op_none);
@@ -115,9 +106,6 @@ so_pru_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	int error;
 	struct netmsg_pru_bind msg;
 	lwkt_port_t port;
-
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_usrreqs->pru_bind)(so, nam, td));
 
 	/* Send mesg to thread for new address. */
 	port = so->so_proto->pr_mport(NULL, nam, PRU_BIND);
@@ -138,9 +126,6 @@ so_pru_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	struct netmsg_pru_connect msg;
 	lwkt_port_t port;
 
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_usrreqs->pru_connect)(so, nam, td));
-
 	port = so->so_proto->pr_mport(so, nam, PRU_CONNECT);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_connect), lwkt_cmd_op_none);
@@ -159,15 +144,6 @@ so_pru_connect2(struct socket *so1, struct socket *so2)
 	struct netmsg_pru_connect2 msg;
 	lwkt_port_t port;
 
-	if (!so1->so_proto->pr_mport)
-		return ((*so1->so_proto->pr_usrreqs->pru_connect2)(so1, so2));
-
-	/*
-	 * Actually, connect2() is only called for Unix domain sockets
-	 * and we currently short-circuit that above, so the following
-	 * code is never reached.
-	 */
-	panic("connect2 on socket type %d", so1->so_type);
 	port = so1->so_proto->pr_mport(so1, NULL, PRU_CONNECT2);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_connect2), lwkt_cmd_op_none);
@@ -188,10 +164,6 @@ so_pru_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	int error;
 	struct netmsg_pru_control msg;
 	lwkt_port_t port;
-
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_usrreqs->pru_control)(so, cmd, data,
-		    ifp, td));
 
 	port = so->so_proto->pr_mport(so, NULL, PRU_CONTROL);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
@@ -214,9 +186,6 @@ so_pru_detach(struct socket *so)
 	struct netmsg_pru_detach msg;
 	lwkt_port_t port;
 
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_usrreqs->pru_detach)(so));
-
 	port = so->so_proto->pr_mport(so, NULL, PRU_DETACH);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_detach), lwkt_cmd_op_none);
@@ -233,9 +202,6 @@ so_pru_disconnect(struct socket *so)
 	struct netmsg_pru_disconnect msg;
 	lwkt_port_t port;
 
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_usrreqs->pru_disconnect)(so));
-
 	port = so->so_proto->pr_mport(so, NULL, PRU_DISCONNECT);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_disconnect), lwkt_cmd_op_none);
@@ -251,9 +217,6 @@ so_pru_listen(struct socket *so, struct thread *td)
 	int error;
 	struct netmsg_pru_listen msg;
 	lwkt_port_t port;
-
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_usrreqs->pru_listen)(so, td));
 
 	port = so->so_proto->pr_mport(so, NULL, PRU_LISTEN);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
@@ -272,9 +235,6 @@ so_pru_peeraddr(struct socket *so, struct sockaddr **nam)
 	struct netmsg_pru_peeraddr msg;
 	lwkt_port_t port;
 
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_usrreqs->pru_peeraddr)(so, nam));
-
 	port = so->so_proto->pr_mport(so, NULL, PRU_PEERADDR);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_peeraddr), lwkt_cmd_op_none);
@@ -292,9 +252,6 @@ so_pru_rcvd(struct socket *so, int flags)
 	struct netmsg_pru_rcvd msg;
 	lwkt_port_t port;
 
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_usrreqs->pru_rcvd)(so, flags));
-
 	port = so->so_proto->pr_mport(so, NULL, PRU_RCVD);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_rcvd), lwkt_cmd_op_none);
@@ -311,9 +268,6 @@ so_pru_rcvoob(struct socket *so, struct mbuf *m, int flags)
 	int error;
 	struct netmsg_pru_rcvoob msg;
 	lwkt_port_t port;
-
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_usrreqs->pru_rcvoob)(so, m, flags));
 
 	port = so->so_proto->pr_mport(so, NULL, PRU_RCVOOB);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
@@ -333,10 +287,6 @@ so_pru_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	int error;
 	struct netmsg_pru_send msg;
 	lwkt_port_t port;
-
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_usrreqs->pru_send)(so, flags, m,
-		    addr, control, td));
 
 	port = so->so_proto->pr_mport(so, NULL, PRU_SEND);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
@@ -359,9 +309,6 @@ so_pru_sense(struct socket *so, struct stat *sb)
 	struct netmsg_pru_sense msg;
 	lwkt_port_t port;
 
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_usrreqs->pru_sense)(so, sb));
-
 	port = so->so_proto->pr_mport(so, NULL, PRU_SENSE);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_sense), lwkt_cmd_op_none);
@@ -379,9 +326,6 @@ so_pru_shutdown(struct socket *so)
 	struct netmsg_pru_shutdown msg;
 	lwkt_port_t port;
 
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_usrreqs->pru_shutdown)(so));
-
 	port = so->so_proto->pr_mport(so, NULL, PRU_SHUTDOWN);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_shutdown), lwkt_cmd_op_none);
@@ -397,9 +341,6 @@ so_pru_sockaddr(struct socket *so, struct sockaddr **nam)
 	int error;
 	struct netmsg_pru_sockaddr msg;
 	lwkt_port_t port;
-
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_usrreqs->pru_sockaddr)(so, nam));
 
 	port = so->so_proto->pr_mport(so, NULL, PRU_SOCKADDR);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
@@ -418,10 +359,6 @@ so_pru_sopoll(struct socket *so, int events, struct ucred *cred,
 	int error;
 	struct netmsg_pru_sopoll msg;
 	lwkt_port_t port;
-
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_usrreqs->pru_sopoll)(so, events,
-		    cred, td));
 
 	port = so->so_proto->pr_mport(so, NULL, PRU_SOPOLL);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
@@ -443,9 +380,6 @@ so_pr_ctloutput(struct socket *so, struct sockopt *sopt)
 	struct netmsg_pr_ctloutput msg;
 	lwkt_port_t port;
 	int error;
-
-	if (!so->so_proto->pr_mport)
-		return ((*so->so_proto->pr_ctloutput)(so, sopt));
 
 	port = so->so_proto->pr_mport(so, NULL);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
