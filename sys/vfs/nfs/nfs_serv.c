@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.21 2004/12/20 18:37:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.22 2004/12/29 02:41:26 dillon Exp $
  */
 
 /*
@@ -3285,8 +3285,10 @@ again:
 		error = 0;
 		goto nfsmout;
 	}
-	vput(nvp);
-	nvp = NULL;
+	if (nvp) {
+		vput(nvp);
+		nvp = NULL;
+	}
 	    
 	dirlen = len = NFSX_V3POSTOPATTR + NFSX_V3COOKIEVERF + 2 * NFSX_UNSIGNED;
 	nfsm_reply(cnt);
