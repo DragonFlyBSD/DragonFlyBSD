@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.13 2004/03/01 06:33:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.14 2004/05/03 18:46:34 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -113,12 +113,11 @@ static struct vnodeopv_desc spec_vnodeop_opv_desc =
 
 VNODEOP_SET(spec_vnodeop_opv_desc);
 
+/*
+ * spec_vnoperate(struct vnodeop_desc *a_desc, ...)
+ */
 int
-spec_vnoperate(ap)
-	struct vop_generic_args /* {
-		struct vnodeop_desc *a_desc;
-		<other random data follows, presumably>
-	} */ *ap;
+spec_vnoperate(struct vop_generic_args *ap)
 {
 	return (VOCALL(spec_vnodeop_p, ap->a_desc->vdesc_offset, ap));
 }
@@ -127,16 +126,13 @@ static void spec_getpages_iodone (struct buf *bp);
 
 /*
  * Open a special file.
+ *
+ * spec_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *	     struct thread *a_td)
  */
 /* ARGSUSED */
 static int
-spec_open(ap)
-	struct vop_open_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+spec_open(struct vop_open_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	dev_t dev = vp->v_rdev;
@@ -224,16 +220,13 @@ spec_open(ap)
 
 /*
  * Vnode op for read
+ *
+ * spec_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *	     struct ucred *a_cred)
  */
 /* ARGSUSED */
 static int
-spec_read(ap)
-	struct vop_read_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+spec_read(struct vop_read_args *ap)
 {
 	struct vnode *vp;
 	struct thread *td;
@@ -257,16 +250,13 @@ spec_read(ap)
 
 /*
  * Vnode op for write
+ *
+ * spec_write(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *	      struct ucred *a_cred)
  */
 /* ARGSUSED */
 static int
-spec_write(ap)
-	struct vop_write_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+spec_write(struct vop_write_args *ap)
 {
 	struct vnode *vp;
 	struct thread *td;
@@ -287,18 +277,13 @@ spec_write(ap)
 
 /*
  * Device ioctl operation.
+ *
+ * spec_ioctl(struct vnode *a_vp, int a_command, caddr_t a_data,
+ *	      int a_fflag, struct ucred *a_cred, struct thread *a_td)
  */
 /* ARGSUSED */
 static int
-spec_ioctl(ap)
-	struct vop_ioctl_args /* {
-		struct vnode *a_vp;
-		int  a_command;
-		caddr_t  a_data;
-		int  a_fflag;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+spec_ioctl(struct vop_ioctl_args *ap)
 {
 	dev_t dev;
 
@@ -307,15 +292,13 @@ spec_ioctl(ap)
 		    ap->a_fflag, ap->a_td));
 }
 
+/*
+ * spec_poll(struct vnode *a_vp, int a_events, struct ucred *a_cred,
+ *	     struct thread *a_td)
+ */
 /* ARGSUSED */
 static int
-spec_poll(ap)
-	struct vop_poll_args /* {
-		struct vnode *a_vp;
-		int  a_events;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+spec_poll(struct vop_poll_args *ap)
 {
 	dev_t dev;
 
@@ -323,13 +306,12 @@ spec_poll(ap)
 	return (dev_dpoll(dev, ap->a_events, ap->a_td));
 }
 
+/*
+ * spec_kqfilter(struct vnode *a_vp, struct knote *a_kn)
+ */
 /* ARGSUSED */
 static int
-spec_kqfilter(ap)
-	struct vop_kqfilter_args /* {
-		struct vnode *a_vp;
-		struct knote *a_kn;
-	} */ *ap;
+spec_kqfilter(struct vop_kqfilter_args *ap)
 {
 	dev_t dev;
 
@@ -339,16 +321,13 @@ spec_kqfilter(ap)
 
 /*
  * Synch buffers associated with a block device
+ *
+ * spec_fsync(struct vnode *a_vp, struct ucred *a_cred,
+ *	      int a_waitfor, struct thread *a_td)
  */
 /* ARGSUSED */
 static int
-spec_fsync(ap)
-	struct vop_fsync_args /* {
-		struct vnode *a_vp;
-		struct ucred *a_cred;
-		int  a_waitfor;
-		struct thread *a_td;
-	} */ *ap;
+spec_fsync(struct vop_fsync_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct buf *bp;
@@ -419,27 +398,23 @@ loop2:
 	return (0);
 }
 
+/*
+ * spec_inactive(struct vnode *a_vp, struct thread *a_td)
+ */
 static int
-spec_inactive(ap)
-	struct vop_inactive_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-	} */ *ap;
+spec_inactive(struct vop_inactive_args *ap)
 {
-
 	VOP_UNLOCK(ap->a_vp, NULL, 0, ap->a_td);
 	return (0);
 }
 
 /*
  * Just call the device strategy routine
+ *
+ * spec_strategy(struct vnode *a_vp, struct buf *a_bp)
  */
 static int
-spec_strategy(ap)
-	struct vop_strategy_args /* {
-		struct vnode *a_vp;
-		struct buf *a_bp;
-	} */ *ap;
+spec_strategy(struct vop_strategy_args *ap)
 {
 	struct buf *bp;
 	struct vnode *vp;
@@ -480,13 +455,11 @@ spec_strategy(ap)
 	return (0);
 }
 
+/*
+ * spec_freeblks(struct vnode *a_vp, daddr_t a_addr, daddr_t a_length)
+ */
 static int
-spec_freeblks(ap)
-	struct vop_freeblks_args /* {
-		struct vnode *a_vp;
-		daddr_t a_addr;
-		daddr_t a_length;
-	} */ *ap;
+spec_freeblks(struct vop_freeblks_args *ap)
 {
 	struct buf *bp;
 
@@ -510,17 +483,12 @@ spec_freeblks(ap)
  * Implement degenerate case where the block requested is the block
  * returned, and assume that the entire device is contiguous in regards
  * to the contiguous block range (runp and runb).
+ *
+ * spec_bmap(struct vnode *a_vp, daddr_t a_bn, struct vnode **a_vpp,
+ *	     daddr_t *a_bnp, int *a_runp, int *a_runb)
  */
 static int
-spec_bmap(ap)
-	struct vop_bmap_args /* {
-		struct vnode *a_vp;
-		daddr_t  a_bn;
-		struct vnode **a_vpp;
-		daddr_t *a_bnp;
-		int *a_runp;
-		int *a_runb;
-	} */ *ap;
+spec_bmap(struct vop_bmap_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	int runp = 0;
@@ -541,16 +509,13 @@ spec_bmap(ap)
 
 /*
  * Device close routine
+ *
+ * spec_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
+ *	      struct thread *a_td)
  */
 /* ARGSUSED */
 static int
-spec_close(ap)
-	struct vop_close_args /* {
-		struct vnode *a_vp;
-		int  a_fflag;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+spec_close(struct vop_close_args *ap)
 {
 	struct proc *p = ap->a_td->td_proc;
 	struct vnode *vp = ap->a_vp;
@@ -591,48 +556,38 @@ spec_close(ap)
 
 /*
  * Print out the contents of a special device vnode.
+ *
+ * spec_print(struct vnode *a_vp)
  */
 static int
-spec_print(ap)
-	struct vop_print_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+spec_print(struct vop_print_args *ap)
 {
-
 	printf("tag VT_NON, dev %s\n", devtoname(ap->a_vp->v_rdev));
 	return (0);
 }
 
 /*
  * Special device advisory byte-level locks.
+ *
+ * spec_advlock(struct vnode *a_vp, caddr_t a_id, int a_op,
+ *		struct flock *a_fl, int a_flags)
  */
 /* ARGSUSED */
 static int
-spec_advlock(ap)
-	struct vop_advlock_args /* {
-		struct vnode *a_vp;
-		caddr_t  a_id;
-		int  a_op;
-		struct flock *a_fl;
-		int  a_flags;
-	} */ *ap;
+spec_advlock(struct vop_advlock_args *ap)
 {
-
 	return (ap->a_flags & F_FLOCK ? EOPNOTSUPP : EINVAL);
 }
 
 static void
-spec_getpages_iodone(bp)
-	struct buf *bp;
+spec_getpages_iodone(struct buf *bp)
 {
-
 	bp->b_flags |= B_DONE;
 	wakeup(bp);
 }
 
 static int
-spec_getpages(ap)
-	struct vop_getpages_args *ap;
+spec_getpages(struct vop_getpages_args *ap)
 {
 	vm_offset_t kva;
 	int error;
