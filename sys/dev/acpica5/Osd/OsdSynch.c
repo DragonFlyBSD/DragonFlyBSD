@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdSynch.c,v 1.18 2003/09/26 21:22:10 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.2 2004/03/01 06:33:13 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.3 2004/05/05 22:18:10 dillon Exp $
  */
 
 /*
@@ -101,10 +101,7 @@ AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits, ACPI_HANDLE *OutHand
     if (InitialUnits > MaxUnits)
 	return_ACPI_STATUS(AE_BAD_PARAMETER);
 
-    if ((as = malloc(sizeof(*as), M_ACPISEM, M_NOWAIT)) == NULL)
-	return_ACPI_STATUS(AE_NO_MEMORY);
-
-    bzero(as, sizeof(*as));
+    as = malloc(sizeof(*as), M_ACPISEM, M_INTWAIT | M_ZERO);
 #if __FreeBSD_version >= 500000
     mtx_init(&as->as_mtx, "ACPI semaphore", NULL, MTX_DEF);
 #endif
@@ -353,7 +350,7 @@ AcpiOsCreateLock (ACPI_HANDLE *OutHandle)
 
     if (OutHandle == NULL)
 	return (AE_BAD_PARAMETER);
-    MALLOC(lock, lwkt_rwlock_t, sizeof(*lock), M_ACPISEM, M_WAITOK | M_ZERO);
+    MALLOC(lock, lwkt_rwlock_t, sizeof(*lock), M_ACPISEM, M_INTWAIT | M_ZERO);
     if (lock == NULL)
 	return (AE_NO_MEMORY);
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdSchedule.c,v 1.26 2003/10/02 05:09:37 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdSchedule.c,v 1.1 2004/02/21 06:48:09 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdSchedule.c,v 1.2 2004/05/05 22:18:10 dillon Exp $
  */
 
 /*
@@ -166,11 +166,8 @@ AcpiOsQueueForExecution(UINT32 Priority, OSD_EXECUTION_CALLBACK Function, void *
     if (Function == NULL)
 	return_ACPI_STATUS(AE_BAD_PARAMETER);
 
-    at = malloc(sizeof(*at), M_ACPITASK, M_NOWAIT);	/* Interrupt Context */
-    if (at == NULL)
-	return_ACPI_STATUS(AE_NO_MEMORY);
-    bzero(at, sizeof(*at));
-
+    /* Note: Interrupt Context */
+    at = malloc(sizeof(*at), M_ACPITASK, M_INTWAIT | M_ZERO);
     at->at_function = Function;
     at->at_context = Context;
     switch (Priority) {
@@ -216,12 +213,7 @@ AcpiOsExecuteQueue(void *arg, int pending)
     Context = NULL;
 
 #ifdef ACPI_USE_THREADS
-    atq = malloc(sizeof(*atq), M_ACPITASK, M_NOWAIT);
-    if (atq == NULL) {
-	printf("%s: no memory\n", __func__);
-	return;
-    }
-
+    atq = malloc(sizeof(*atq), M_ACPITASK, M_INTWAIT);
     atq->at = at;
 
     mtx_lock(&acpi_task_mtx);

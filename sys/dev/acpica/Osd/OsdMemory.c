@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/Osd/OsdMemory.c,v 1.10.2.1 2003/08/22 20:49:21 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdMemory.c,v 1.1 2003/09/24 03:32:16 drhodus Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdMemory.c,v 1.2 2004/05/05 22:18:09 dillon Exp $ 
  */
 
 /*
@@ -42,10 +42,20 @@
 
 static MALLOC_DEFINE(M_ACPICA, "acpica", "ACPI CA memory pool");
 
+struct acpi_memtrack {
+    struct acpi_memtrack *next;
+    void *base;
+    ACPI_SIZE size;
+};
+
+typedef struct acpi_memtrack *acpi_memtrack_t;
+
+static acpi_memtrack_t acpi_mapbase;
+
 void *
 AcpiOsAllocate(ACPI_SIZE Size)
 {
-    return(malloc(Size, M_ACPICA, M_NOWAIT));
+    return(malloc(Size, M_ACPICA, M_INTWAIT));
 }
 
 void
@@ -57,16 +67,68 @@ AcpiOsFree (void *Memory)
 ACPI_STATUS
 AcpiOsMapMemory (ACPI_PHYSICAL_ADDRESS PhysicalAddress, ACPI_SIZE Length, void **LogicalAddress)
 {
+    acpi_memtrack_t track;
+
     *LogicalAddress = pmap_mapdev((vm_offset_t)PhysicalAddress, Length);
-    if (*LogicalAddress == NULL)
+    if (*LogicalAddress == NULL) {
 	return(AE_BAD_ADDRESS);
+    } else {
+	track = malloc(sizeof(struct acpi_memtrack), M_ACPICA, M_INTWAIT);
+	track->next = acpi_mapbase;
+	track->base = *LogicalAddress;
+	track->size = Length;
+	acpi_mapbase = track;
+    }
     return(AE_OK);
 }
 
 void
 AcpiOsUnmapMemory (void *LogicalAddress, ACPI_SIZE Length)
 {
-    pmap_unmapdev((vm_offset_t)LogicalAddress, Length);
+    struct acpi_memtrack **ptrack;
+    acpi_memtrack_t track;
+
+again:
+    for (ptrack = &acpi_mapbase; (track = *ptrack); ptrack = &track->next) {
+	/*
+	 * Exact match, degenerate case
+	 */
+	if (track->base == LogicalAddress && track->size == Length) {
+	    *ptrack = track->next;
+	    pmap_unmapdev((vm_offset_t)track->base, track->size);
+	    free(track, M_ACPICA);
+	    return;
+	}
+	/*
+	 * Completely covered
+	 */
+	if ((char *)LogicalAddress <= (char *)track->base &&
+	    (char *)LogicalAddress + Length >= (char *)track->base + track->size
+	) {
+	    *ptrack = track->next;
+	    pmap_unmapdev((vm_offset_t)track->base, track->size);
+	    printf("AcpiOsUnmapMemory: Warning, deallocation request too"
+		   " large! %p/%08x (actual was %p/%08x)\n",
+		   LogicalAddress, Length,
+		   track->base, track->size);
+	    free(track, M_ACPICA);
+	    goto again;
+	}
+
+	/*
+	 * Overlapping
+	 */
+	if ((char *)LogicalAddress + Length >= (char *)track->base &&
+	    (char *)LogicalAddress < (char *)track->base + track->size
+	) {
+	    printf("AcpiOsUnmapMemory: Warning, deallocation did not "
+		   "track allocation: %p/%08x (actual was %p/%08x)\n",
+		   LogicalAddress, Length,
+		   track->base, track->size);
+	}
+    }
+    printf("AcpiOsUnmapMemory: Warning, broken ACPI, bad unmap: %p/%08x\n",
+	LogicalAddress, Length);
 }
 
 ACPI_STATUS
