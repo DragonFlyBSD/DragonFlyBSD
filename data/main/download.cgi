@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.8 2003/12/01 21:26:20 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.9 2003/12/13 17:28:34 hmp Exp $
 
 $TITLE(DragonFly - Download)
 <P>
@@ -98,6 +98,6 @@ do try again in some minutes or hours.
 </P>
 <P>Download Details:</P>
 <UL>
-	<LI>FTP: <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly">ftp://chlamydia.fs.ei.tum.de/pub/DragonFly</A>
-	<LI>HTTP: <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly">http://chlamydia.fs.ei.tum.de/pub/DragonFly</A>
+	<LI>FTP: <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots</A>
+	<LI>HTTP: <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">http://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots</A>
 </UL>
