@@ -25,32 +25,38 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.6 2003/10/15 06:38:46 daver Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.7 2003/10/17 05:25:45 daver Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
 #define _SYS_KERN_SYSCALL_H_
 
-/*
- * Prototypes for syscalls in kern/kern_descrip.c
- */
 enum dup_type {DUP_FIXED, DUP_VARIABLE};
 union fcntl_dat;
-
-int kern_dup(enum dup_type type, int old, int new, int *res);
-int kern_fcntl(int fd, int cmd, union fcntl_dat *dat);
-
-/*
- * Prototypes for syscalls in kern/uipc_syscalls.c
- */
 struct mbuf;
 struct msghdr;
 struct sf_hdtr;
 struct sockaddr;
 struct socket;
 struct sockopt;
+struct uio;
 struct vnode;
 
+/*
+ * Prototypes for syscalls in kern/kern_descrip.c
+ */
+int kern_dup(enum dup_type type, int old, int new, int *res);
+int kern_fcntl(int fd, int cmd, union fcntl_dat *dat);
+
+/*
+ * Prototypes for syscalls in kern/sys_generic.c
+ */
+int kern_readv(int fd, struct uio *auio, int flags, int *res);
+int kern_writev(int fd, struct uio *auio, int flags, int *res);
+
+/*
+ * Prototypes for syscalls in kern/uipc_syscalls.c
+ */
 int kern_accept(int s, struct sockaddr **name, int *namelen, int *res);
 int kern_bind(int s, struct sockaddr *sa);
 int kern_connect(int s, struct sockaddr *sa);

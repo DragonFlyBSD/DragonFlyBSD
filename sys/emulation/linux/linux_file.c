@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.10 2003/10/15 06:38:46 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.11 2003/10/17 05:25:45 daver Exp $
  */
 
 #include "opt_compat.h"
@@ -743,34 +743,46 @@ linux_fdatasync(struct linux_fdatasync_args *uap)
 int
 linux_pread(struct linux_pread_args *uap)
 {
-	struct pread_args bsd;
+	struct thread *td = curthread;
+	struct uio auio;
+	struct iovec aiov;
 	int error;
 
-	bsd.fd = uap->fd;
-	bsd.buf = uap->buf;
-	bsd.nbyte = uap->nbyte;
-	bsd.offset = uap->offset;
-	bsd.sysmsg_result = 0;
+	aiov.iov_base = uap->buf;
+	aiov.iov_len = uap->nbyte;
+	auio.uio_iov = &aiov;
+	auio.uio_iovcnt = 1;
+	auio.uio_offset = uap->offset;
+	auio.uio_resid = uap->nbyte;
+	auio.uio_rw = UIO_READ;
+	auio.uio_segflg = UIO_USERSPACE;
+	auio.uio_td = td;
 
-	error = pread(&bsd);
-	uap->sysmsg_result = bsd.sysmsg_result;
+	error = kern_readv(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
+
 	return(error);
 }
 
 int
 linux_pwrite(struct linux_pwrite_args *uap)
 {
-	struct pwrite_args bsd;
+	struct thread *td = curthread;
+	struct uio auio;
+	struct iovec aiov;
 	int error;
 
-	bsd.fd = uap->fd;
-	bsd.buf = uap->buf;
-	bsd.nbyte = uap->nbyte;
-	bsd.offset = uap->offset;
-	bsd.sysmsg_result = 0;
+        aiov.iov_base = uap->buf;
+        aiov.iov_len = uap->nbyte;
+        auio.uio_iov = &aiov;
+        auio.uio_iovcnt = 1;
+        auio.uio_offset = uap->offset;
+        auio.uio_resid = uap->nbyte;
+        auio.uio_rw = UIO_WRITE;
+        auio.uio_segflg = UIO_USERSPACE;
+        auio.uio_td = td;
 
-	error = pwrite(&bsd);
-	uap->sysmsg_result = bsd.sysmsg_result;
+	error = kern_writev(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
+
 	return(error);
 }
 
