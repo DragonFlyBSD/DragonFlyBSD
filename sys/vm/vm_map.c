@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.36 2004/12/21 02:42:41 hsu Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.37 2005/01/20 18:00:38 dillon Exp $
  */
 
 /*
@@ -78,6 +78,7 @@
 #include <sys/vnode.h>
 #include <sys/resourcevar.h>
 #include <sys/shm.h>
+#include <sys/tree.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -163,6 +164,23 @@ vm_map_startup(void)
 	mapentzone = &mapentzone_store;
 	zbootinit(mapentzone, "MAP ENTRY", sizeof (struct vm_map_entry),
 		map_entry_init, MAX_MAPENT);
+}
+
+/*
+ * Red black tree functions
+ */
+static int rb_vm_map_compare(vm_map_entry_t a, vm_map_entry_t b);
+RB_GENERATE(vm_map_rb_tree, vm_map_entry, rb_entry, rb_vm_map_compare);
+
+/* a->start is address, and the only field has to be initialized */
+static int
+rb_vm_map_compare(vm_map_entry_t a, vm_map_entry_t b)
+{
+	if (a->start < b->start)
+		return(-1);
+	else if (a->start > b->start)
+		return(1);
+	return(0);
 }
 
 /*
@@ -320,6 +338,7 @@ void
 vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max)
 {
 	map->header.next = map->header.prev = &map->header;
+	RB_INIT(&map->rb_root);
 	map->nentries = 0;
 	map->size = 0;
 	map->system_map = 0;
@@ -499,6 +518,9 @@ vm_map_entry_dispose(vm_map_t map, vm_map_entry_t entry, int *countp)
 {
 	struct globaldata *gd = mycpu;
 
+	KKASSERT(map->hint != entry);
+	KKASSERT(map->first_free != entry);
+
 	++*countp;
 	crit_enter();
 	entry->next = gd->gd_vme_base;
@@ -522,6 +544,7 @@ vm_map_entry_link(vm_map_t map,
 	entry->next = after_where->next;
 	entry->next->prev = entry;
 	after_where->next = entry;
+	vm_map_rb_tree_RB_INSERT(&map->rb_root, entry);
 }
 
 static __inline void
@@ -537,17 +560,9 @@ vm_map_entry_unlink(vm_map_t map,
 	next = entry->next;
 	next->prev = prev;
 	prev->next = next;
+	vm_map_rb_tree_RB_REMOVE(&map->rb_root, entry);
 	map->nentries--;
 }
-
-/*
- *	SAVE_HINT:
- *
- *	Saves the specified entry as the hint for
- *	future lookups.
- */
-#define	SAVE_HINT(map,value) \
-		(map)->hint = (value);
 
 /*
  *	vm_map_lookup_entry:	[ internal use only ]
@@ -563,63 +578,55 @@ boolean_t
 vm_map_lookup_entry(vm_map_t map, vm_offset_t address,
     vm_map_entry_t *entry /* OUT */)
 {
-	vm_map_entry_t cur;
+	vm_map_entry_t tmp;
 	vm_map_entry_t last;
 
+#if 0
 	/*
-	 * Start looking either from the head of the list, or from the hint.
+	 * XXX TEMPORARILY DISABLED.  For some reason our attempt to revive
+	 * the hint code with the red-black lookup meets with system crashes
+	 * and lockups.  We do not yet know why.
+	 *
+	 * It is possible that the problem is related to the setting
+	 * of the hint during map_entry deletion, in the code specified
+	 * at the GGG comment later on in this file.
 	 */
-
-	cur = map->hint;
-
-	if (cur == &map->header)
-		cur = cur->next;
-
-	if (address >= cur->start) {
-		/*
-		 * Go from hint to end of list.
-		 *
-		 * But first, make a quick check to see if we are already looking
-		 * at the entry we want (which is usually the case). Note also
-		 * that we don't need to save the hint here... it is the same
-		 * hint (unless we are at the header, in which case the hint
-		 * didn't buy us anything anyway).
-		 */
-		last = &map->header;
-		if ((cur != last) && (cur->end > address)) {
-			*entry = cur;
-			return (TRUE);
+	/*
+	 * Quickly check the cached hint, there's a good chance of a match.
+	 */
+	if (map->hint != &map->header) {
+		tmp = map->hint;
+		if (address >= tmp->start && address < tmp->end) {
+			*entry = tmp;
+			return(TRUE);
 		}
-	} else {
-		/*
-		 * Go from start to hint, *inclusively*
-		 */
-		last = cur->next;
-		cur = map->header.next;
 	}
+#endif
 
 	/*
-	 * Search linearly
+	 * Locate the record from the top of the tree.  'last' tracks the
+	 * closest prior record and is returned if no match is found, which
+	 * in binary tree terms means tracking the most recent right-branch
+	 * taken.  If there is no prior record, &map->header is returned.
 	 */
+	last = &map->header;
+	tmp = RB_ROOT(&map->rb_root);
 
-	while (cur != last) {
-		if (cur->end > address) {
-			if (address >= cur->start) {
-				/*
-				 * Save this lookup for future hints, and
-				 * return
-				 */
-
-				*entry = cur;
-				SAVE_HINT(map, cur);
-				return (TRUE);
+	while (tmp) {
+		if (address >= tmp->start) {
+			if (address < tmp->end) {
+				*entry = tmp;
+				map->hint = tmp;
+				return(TRUE);
 			}
-			break;
+			last = tmp;
+			tmp = RB_RIGHT(tmp, rb_entry);
+		} else {
+			tmp = RB_LEFT(tmp, rb_entry);
 		}
-		cur = cur->next;
+		*entry = last;
 	}
-	*entry = cur->prev;
-	SAVE_HINT(map, *entry);
+	*entry = last;
 	return (FALSE);
 }
 
@@ -879,7 +886,7 @@ retry:
 		if (next == &map->header || next->start >= end)
 			break;
 	}
-	SAVE_HINT(map, entry);
+	map->hint = entry;
 	if (map == kernel_map) {
 		vm_offset_t ksize;
 		if ((ksize = round_page(start + length)) > kernel_vm_end) {
@@ -2279,27 +2286,33 @@ vm_map_delete(vm_map_t map, vm_offset_t start, vm_offset_t end, int *countp)
 	vm_map_entry_t entry;
 	vm_map_entry_t first_entry;
 
-	/*
-	 * Find the start of the region, and clip it
-	 */
-
 again:
-	if (!vm_map_lookup_entry(map, start, &first_entry)) {
-		entry = first_entry->next;
-	} else {
+	/*
+	 * Find the start of the region, and clip it.  Set entry to point
+	 * at the first record containing the requested address or, if no
+	 * such record exists, the next record with a greater address.  The
+	 * loop will run from this point until a record beyond the termination
+	 * address is encountered.
+	 *
+	 * map->hint must be adjusted to not point to anything we delete,
+	 * so set it to the entry prior to the one being deleted.
+	 *
+	 * GGG see other GGG comment.
+	 */
+	if (vm_map_lookup_entry(map, start, &first_entry)) {
 		entry = first_entry;
 		vm_map_clip_start(map, entry, start, countp);
-		/*
-		 * Fix the lookup hint now, rather than each time though the
-		 * loop.
-		 */
-		SAVE_HINT(map, entry->prev);
+		map->hint = entry->prev;	/* possible problem XXX */
+	} else {
+		map->hint = first_entry;	/* possible problem XXX */
+		entry = first_entry->next;
 	}
 
 	/*
-	 * Save the free space hint
+	 * If a hole opens up prior to the current first_free then
+	 * adjust first_free.  As with map->hint, map->first_free
+	 * cannot be left set to anything we might delete.
 	 */
-
 	if (entry == &map->header) {
 		map->first_free = &map->header;
 	} else if (map->first_free->start >= start) {

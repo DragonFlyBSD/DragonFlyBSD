@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.14 2004/05/24 07:25:36 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.15 2005/01/20 18:00:38 dillon Exp $
  */
 
 /*
@@ -71,6 +71,10 @@
 
 #ifndef	_VM_MAP_
 #define	_VM_MAP_
+
+#include <sys/tree.h>
+struct vm_map_rb_tree;
+RB_PROTOTYPE(vm_map_rb_tree, vm_map_entry, rb_entry, rb_vm_map_compare);
 
 /*
  *	Types defined:
@@ -101,6 +105,7 @@ union vm_map_object {
 struct vm_map_entry {
 	struct vm_map_entry *prev;	/* previous entry */
 	struct vm_map_entry *next;	/* next entry */
+	RB_ENTRY(vm_map_entry) rb_entry;
 	vm_offset_t start;		/* start address */
 	vm_offset_t end;		/* end address */
 	vm_offset_t avail_ssize;	/* amt can grow if this is a stack */
@@ -173,6 +178,7 @@ vm_map_entry_set_behavior(struct vm_map_entry *entry, u_char behavior)
  */
 struct vm_map {
 	struct vm_map_entry header;	/* List of entries */
+	RB_HEAD(vm_map_rb_tree, vm_map_entry) rb_root;
 	struct lock lock;		/* Lock for map data */
 	int nentries;			/* Number of entries */
 	vm_size_t size;			/* virtual size */
