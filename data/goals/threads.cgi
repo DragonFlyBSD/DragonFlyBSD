@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/threads.cgi,v 1.5 2004/02/15 20:04:05 dillon Exp $
+# $DragonFly: site/data/goals/Attic/threads.cgi,v 1.6 2004/02/22 15:34:35 justin Exp $
 
 $TITLE(DragonFly - Light Weight Kernel Threading Model)
 <CENTER>The Light Weight Kernel Threading Model</CENTER>
@@ -101,26 +101,31 @@ synchronization interface operates in a controlled environment the call
 back functions tend to work just like the callback functions used in the
 IPI messaging subsystem.
 <P>
-<CENTER>Token Passing Primitives Not Mutexes</CENTER>
+<CENTER>Serializing Tokens</CENTER>
+
 <P>
-The LWKT model implements a token passing primitive rather then a mutex
-primitive.  Tokens are owned by cpus rather then by threads, and a change
-of ownership is protected by a critical section (another cpu has to IPI message
-you to pull your token away from you).  A token can be made to act almost like
-a mutex by releasing it to NOCPU, but generally speaking a token is either
-passively released (left owned by the current cpu), or actively handed off to
-another cpu.  The release mechanism used depends on the circumstances.  A
-token that is ping-ponging (typical in a pipe) is best served by an active
-hand off, for example.  The primary advantage of the token over the mutex
-is that it costs almost nothing to acquire a token that your cpu already owns,
-and costs even *LESS* to release a token because you effectively do not actually
-have to release it.  The biggest disadvantage is that acquiring a token owned
-by another CPU requires a synchronous IPI message.  This disadvantage can
-be partially compensated for by having the release go to NOCPU (then the token
-may be acquired through a locked cmpxchgl in IA32-land), but it is our
-belief that most token operations can be optimal enough such that the cost
-of the occassional IPI will be on average less then the cost of a mutex.
-The token code really is a lot less complex then the mutex code.  We don't
-have to worry about deadlocks, we don't have to release tokens when we block,
-there are a whole lot of special cases that simply do not exist when using
-a token model.
+A serializing token may be held by any number of threads simultaneously.
+A thread holding a token is guaranteed that no other thread also
+holding that same token will be running at the same time.
+<P>
+A thread may hold any number of serializing tokens.
+<P>
+A thread may hold serializing tokens through a thread yield or blocking
+condition, but must understand that another thread holding those tokens
+may be allowed to run while the first thread is not running (blocked or
+yielded away).
+<P>
+There are theoretically no unresolvable deadlock situations that can
+arise with the serializing token mechanism.  However, the initial
+implementation can potentially get into livelock issues with multiply
+held tokens.
+<P>
+Serializing tokens may also be used to protect threads from preempting
+interrupts that attempt to obtain the same token.  This is a slightly
+different effect from the Big Giant Lock (also known as the MP lock),
+which does not interlock against interrupts on the same cpu.
+<P>
+Holding a serializing token does <B>not</B> prevent preemptive interrupts
+from occuring, though it might cause some of those interrupts to 
+block-reschedule.
+
