@@ -33,7 +33,7 @@
  *	@(#)extern.h	8.2 (Berkeley) 4/20/95 
  *
  * $FreeBSD: src/usr.bin/mail/extern.h,v 1.3.6.3 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/extern.h,v 1.5 2004/09/07 22:33:35 joerg Exp $
+ * $DragonFly: src/usr.bin/mail/extern.h,v 1.6 2004/09/07 22:42:26 joerg Exp $
  */
 
 struct name *cat(struct name *, struct name *);
@@ -112,7 +112,6 @@ int	 dosh(char *);
 int	 echo(char **);
 int	 edit1(int *, int);
 int	 editor(int *);
-void	 edstop(void);
 int	 elsecmd(void);
 int	 endifcmd(void);
 int	 evalcol(int);
@@ -249,6 +248,5 @@ void	 vfree(char *);
 int	 visual(int *);
 int	 wait_child(int);
 int	 wait_command(int);
-int	 writeback(FILE *);
 
 extern char *tmpdir;

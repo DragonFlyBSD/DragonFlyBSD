@@ -32,12 +32,15 @@
  *
  * @(#)quit.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/mail/quit.c,v 1.2.6.3 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/quit.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
+ * $DragonFly: src/usr.bin/mail/quit.c,v 1.4 2004/09/07 22:42:26 joerg Exp $
  */
 
 #include "rcv.h"
 #include <fcntl.h>
 #include "extern.h"
+
+static void	edstop(void);
+static int	writeback(FILE *res);
 
 /*
  * Rcv -- receive mail rationally.
@@ -331,7 +334,7 @@ newmail:
  * saved.  On any error, just return -1.  Else return 0.
  * Incorporate the any new mail that we found.
  */
-int
+static int
 writeback(FILE *res)
 {
 	struct message *mp;
@@ -384,7 +387,7 @@ writeback(FILE *res)
  * Terminate an editing session by attempting to write out the user's
  * file from the temporary.  Save any new stuff appended to the file.
  */
-void
+static void
 edstop(void)
 {
 	int gotcha, c;
