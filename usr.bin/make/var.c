@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.28 2004/12/17 21:09:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.29 2005/01/05 20:10:40 okumoto Exp $
  */
 
 /*-
@@ -578,32 +578,6 @@ Var_Value(char *name, GNode *ctxt, char **frp)
 
 /*-
  *-----------------------------------------------------------------------
- * VarREError --
- *	Print the error caused by a regcomp or regexec call.
- *
- * Results:
- *	None.
- *
- * Side Effects:
- *	An error gets printed.
- *
- *-----------------------------------------------------------------------
- */
-void
-VarREError(int err, regex_t *pat, const char *str)
-{
-    char *errbuf;
-    int errlen;
-
-    errlen = regerror(err, pat, 0, 0);
-    errbuf = emalloc(errlen);
-    regerror(err, pat, errbuf, errlen);
-    Error("%s: %s", str, errbuf);
-    free(errbuf);
-}
-
-/*-
- *-----------------------------------------------------------------------
  * VarModify --
  *	Modify each of the words of the passed string using the given
  *	function. Used to implement all modifiers.
@@ -837,6 +811,32 @@ Var_Quote(const char *str)
     retstr = Buf_GetAll (buf, (int *)NULL);
     Buf_Destroy(buf, FALSE);
     return retstr;
+}
+
+/*-
+ *-----------------------------------------------------------------------
+ * VarREError --
+ *	Print the error caused by a regcomp or regexec call.
+ *
+ * Results:
+ *	None.
+ *
+ * Side Effects:
+ *	An error gets printed.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+VarREError(int err, regex_t *pat, const char *str)
+{
+    char *errbuf;
+    int errlen;
+
+    errlen = regerror(err, pat, 0, 0);
+    errbuf = emalloc(errlen);
+    regerror(err, pat, errbuf, errlen);
+    Error("%s: %s", str, errbuf);
+    free(errbuf);
 }
 
 /*-
