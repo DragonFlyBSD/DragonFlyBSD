@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.17 2004/04/24 04:32:03 drhodus Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.18 2004/04/24 04:43:06 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -129,7 +129,7 @@ struct nchstats nchstats[SMP_MAXCPU];
  * distribution.
  */
 static int
-nchstats_agg(SYSCTL_HANDLER_ARGS)
+sysctl_nchstats(SYSCTL_HANDLER_ARGS)
 {
 	struct globaldata *gd;
 	int i, error;
@@ -145,7 +145,7 @@ nchstats_agg(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 SYSCTL_PROC(_vfs_cache, OID_AUTO, nchstats, CTLTYPE_OPAQUE|CTLFLAG_RD,
-  0, 0, nchstats_agg, "S,nchstats", "VFS cache effectiveness statistics");
+  0, 0, sysctl_nchstats, "S,nchstats", "VFS cache effectiveness statistics");
 
 static void cache_zap(struct namecache *ncp);
 
