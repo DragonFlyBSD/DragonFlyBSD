@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.7 2003/11/10 06:12:00 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.8 2003/12/29 08:37:38 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -2536,18 +2536,14 @@ xptpdrvtraverse(struct periph_driver **start_pdrv,
 	 * change while the system is running), the list traversal should
 	 * be modified to work like the other traversal functions.
 	 */
-	if (start_pdrv == NULL) {
-		SET_FOREACH(pdrv, periphdriver_set) {
-		}
-	} else {
-		while (*start_pdrv != NULL) {
-			retval = tr_func(start_pdrv, arg);
+	SET_FOREACH(pdrv, periphdriver_set) {
+		if (start_pdrv == NULL || start_pdrv == pdrv) {
+			retval = tr_func(pdrv, arg);
 			if (retval == 0)
 				return(retval);
-			++start_pdrv;
+			start_pdrv = NULL; /* traverse remainder */
 		}
 	}
-
 	return(retval);
 }
 
