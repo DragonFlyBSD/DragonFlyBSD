@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.53 2004/07/24 15:09:54 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.54 2004/08/25 15:41:24 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -352,5 +352,17 @@ addresses within India.
 </TD>
 <TD><A HREF="http://www.LinuxBazar.com/">http://www.LinuxBazar.com/</A>
 </TR>
+
+<TR>
+<TD><B>Ikarios</B><br>
+
+Ikarios is a low-cost supplier (mail-order only) of CDs, shipping in most
+European countries.<br>
+Each industrially-produced and tested CD-R of "DragonFly BSD 1.0A RELEASE"
+CD-R costs at most 1.99 euro (decreasing rate).<br>
+</TD>
+<TD><A HREF="http://www.ikarios.com/form#dfbsd">http://www.ikarios.com/</A>
+</TR>
+
 
 </TABLE>
