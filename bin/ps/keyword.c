@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.15 2004/11/16 12:16:36 joerg Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.16 2004/11/16 12:38:04 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -53,7 +53,7 @@
 
 #include "ps.h"
 
-static struct varent	*makevarent(char *);
+static struct varent	*makevarent(const char *);
 static int		 vcmp(const void *, const void *);
 
 struct varent_head var_head = STAILQ_HEAD_INITIALIZER(var_head);
@@ -218,18 +218,17 @@ showkey(void)
 void
 parsefmt(const char *fmt)
 {
+	struct varent *vent;
 	char *p, *op;
+	const char *cp;
 
 	op = p = strdup(fmt);
 
-	if (p == NULL)
+	if (op == NULL)
 		errx(1, "Not enough memory");
 
 #define	FMTSEP	" \t,\n"
-	while (p && *p) {
-		char *cp;
-		struct varent *vent;
-
+	while (p != NULL && *p != '\0') {
 		while ((cp = strsep(&p, FMTSEP)) != NULL && *cp == '\0')
 			/* void */;
 		if (cp == NULL)
@@ -248,7 +247,7 @@ parsefmt(const char *fmt)
 }
 
 static struct varent *
-makevarent(char *p)
+makevarent(const char *p)
 {
 	struct varent *vent = NULL;
 	const VAR *v;
@@ -279,8 +278,11 @@ makevarent(char *p)
 		err(1, NULL);
 	vent->var = v;
 	vent->width = v->width;
-	if (hp)
-		vent->header = hp;
+	if (hp) {
+		vent->header = strdup(hp);
+		if (vent->header == NULL)
+			err(1, "Not enough memory");
+	}
 	else
 		vent->header = v->header;
 	return (vent);
