@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.24 2005/02/21 04:59:42 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.25 2005/02/21 05:03:51 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -3383,37 +3383,16 @@ tulip_rx_intr(
 	    if (eop->d_status & (TULIP_DSTS_RxBADLENGTH|TULIP_DSTS_RxOVERFLOW|TULIP_DSTS_RxWATCHDOG)) {
 		sc->tulip_dot3stats.dot3StatsInternalMacReceiveErrors++;
 	    } else {
-#if defined(TULIP_VERBOSE)
-		const char *error = NULL;
-#endif
 		if (eop->d_status & TULIP_DSTS_RxTOOLONG) {
 		    sc->tulip_dot3stats.dot3StatsFrameTooLongs++;
-#if defined(TULIP_VERBOSE)
-		    error = "frame too long";
-#endif
 		}
 		if (eop->d_status & TULIP_DSTS_RxBADCRC) {
 		    if (eop->d_status & TULIP_DSTS_RxDRBBLBIT) {
 			sc->tulip_dot3stats.dot3StatsAlignmentErrors++;
-#if defined(TULIP_VERBOSE)
-			error = "alignment error";
-#endif
 		    } else {
 			sc->tulip_dot3stats.dot3StatsFCSErrors++;
-#if defined(TULIP_VERBOSE)
-			error = "bad crc";
-#endif
 		    }
 		}
-#if defined(TULIP_VERBOSE)
-		if (error != NULL && (sc->tulip_flags & TULIP_NOMESSAGES) == 0) {
-		    printf("%s%d: receive: %6D: %s\n",
-			   sc->tulip_name, sc->tulip_unit,
-			   mtod(ms, u_char *) + 6, ":",
-			   error);
-		    sc->tulip_flags |= TULIP_NOMESSAGES;
-		}
-#endif
 	    }
 	}
 #if defined(TULIP_DEBUG)
