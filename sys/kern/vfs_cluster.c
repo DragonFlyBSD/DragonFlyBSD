@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.11 2004/07/14 03:10:17 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.12 2005/02/19 00:47:03 joerg Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -62,7 +62,7 @@ static int	rcluster= 0;
 SYSCTL_INT(_debug, OID_AUTO, rcluster, CTLFLAG_RW, &rcluster, 0, "");
 #endif
 
-static MALLOC_DEFINE(M_SEGMENT, "cluster_save buffer", "cluster_save buffer");
+static MALLOC_DEFINE(M_SEGMENT, "cluster_save", "cluster_save buffer");
 
 static struct cluster_save *
 	cluster_collectbufs (struct vnode *vp, struct buf *last_bp);
