@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.13 2004/09/15 03:21:03 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.14 2005/02/21 18:56:05 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -262,13 +262,17 @@ dev_dread(dev_t dev, struct uio *uio, int ioflag)
 {
     struct cdevmsg_read msg;
     lwkt_port_t port;
+    int error;
 
     port = _init_cdevmsg(dev, &msg.msg, CDEV_CMD_READ);
     if (port == NULL)
 	return(ENXIO);
     msg.uio = uio;
     msg.ioflag = ioflag;
-    return(lwkt_domsg(port, &msg.msg.msg));
+    error = lwkt_domsg(port, &msg.msg.msg);
+    if (error == 0)
+	dev->si_lastread = time_second;
+    return (error);
 }
 
 int
@@ -280,6 +284,7 @@ dev_dwrite(dev_t dev, struct uio *uio, int ioflag)
     port = _init_cdevmsg(dev, &msg.msg, CDEV_CMD_WRITE);
     if (port == NULL)
 	return(ENXIO);
+    dev->si_lastwrite = time_second;
     msg.uio = uio;
     msg.ioflag = ioflag;
     return(lwkt_domsg(port, &msg.msg.msg));

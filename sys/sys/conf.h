@@ -37,13 +37,14 @@
  *
  *	@(#)conf.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/conf.h,v 1.103.2.6 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/sys/conf.h,v 1.8 2004/07/04 05:16:32 dillon Exp $
+ * $DragonFly: src/sys/sys/conf.h,v 1.9 2005/02/21 18:56:02 dillon Exp $
  */
 
 #ifndef _SYS_CONF_H_
 #define	_SYS_CONF_H_
 
 #include <sys/queue.h>
+#include <sys/time.h>
 
 #define SPECNAMELEN	15
 
@@ -75,6 +76,8 @@ struct specinfo {
 			int __sid_bsize_best; /* optimal block size */
 		} __si_disk;
 	} __si_u;
+	time_t		si_lastread;		/* time_second */
+	time_t		si_lastwrite;		/* time_second */
 };
 
 #define SI_STASHED	0x0001	/* created in stashed storage */

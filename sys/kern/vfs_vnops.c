@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.28 2004/11/30 18:59:52 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.29 2005/02/21 18:56:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -724,6 +724,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct thread *td)
 	struct vattr *vap;
 	int error;
 	u_short mode;
+	dev_t dev;
 
 	vap = &vattr;
 	error = VOP_GETATTR(vp, vap, td);
@@ -785,6 +786,24 @@ vn_stat(struct vnode *vp, struct stat *sb, struct thread *td)
 	sb->st_atimespec = vap->va_atime;
 	sb->st_mtimespec = vap->va_mtime;
 	sb->st_ctimespec = vap->va_ctime;
+
+	/*
+	 * A VCHR and VBLK device may track the last access and last modified
+	 * time independantly of the filesystem.  This is particularly true
+	 * because device read and write calls may bypass the filesystem.
+	 */
+	if (vp->v_type == VCHR || vp->v_type == VBLK) {
+		if ((dev = vp->v_rdev) != NULL) {
+			if (dev->si_lastread) {
+				sb->st_atimespec.tv_sec = dev->si_lastread;
+				sb->st_atimespec.tv_nsec = 0;
+			}
+			if (dev->si_lastwrite) {
+				sb->st_atimespec.tv_sec = dev->si_lastwrite;
+				sb->st_atimespec.tv_nsec = 0;
+			}
+		}
+	}
 
         /*
 	 * According to www.opengroup.org, the meaning of st_blksize is 
