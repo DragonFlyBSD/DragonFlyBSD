@@ -32,7 +32,7 @@
  *
  *	@(#)user.h	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/sys/user.h,v 1.24.2.1 2001/10/11 08:20:18 peter Exp $
- * $DragonFly: src/sys/sys/user.h,v 1.7 2003/06/28 04:16:05 dillon Exp $
+ * $DragonFly: src/sys/sys/user.h,v 1.8 2003/06/30 23:54:04 dillon Exp $
  */
 
 #ifndef _SYS_USER_H_
@@ -97,6 +97,7 @@ struct kinfo_proc {
 	} kp_eproc;
 	struct thread kp_thread;		/* thread structure */
 };
+void fill_eproc_td __P((struct thread *, struct eproc *, struct proc *));
 void fill_eproc __P((struct proc *, struct eproc *));
 
 

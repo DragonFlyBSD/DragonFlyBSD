@@ -27,7 +27,7 @@
  *	thread scheduler, which means that generally speaking we only need
  *	to use a critical section to prevent hicups.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.12 2003/06/30 19:50:31 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.13 2003/06/30 23:54:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -108,7 +108,7 @@ _lwkt_enqueue(thread_t td)
 /*
  * LWKTs operate on a per-cpu basis
  *
- * YYY implement strict priorities & round-robin at the same priority
+ * WARNING!  Called from early boot, 'mycpu' may not work yet.
  */
 void
 lwkt_gdinit(struct globaldata *gd)
@@ -118,6 +118,7 @@ lwkt_gdinit(struct globaldata *gd)
     for (i = 0; i < sizeof(gd->gd_tdrunq)/sizeof(gd->gd_tdrunq[0]); ++i)
 	TAILQ_INIT(&gd->gd_tdrunq[i]);
     gd->gd_runqmask = 0;
+    TAILQ_INIT(&gd->gd_tdallq);
 }
 
 /*
@@ -185,26 +186,63 @@ lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
     td->td_gd = gd;
     td->td_pri = TDPRI_CRIT;
     pmap_init_thread(td);
+    crit_enter();
+    TAILQ_INSERT_TAIL(&mycpu->gd_tdallq, td, td_allq);
+    crit_exit();
 }
 
 void
-lwkt_free_thread(struct thread *td)
+lwkt_set_comm(thread_t td, const char *ctl, ...)
 {
+    va_list va;
+
+    va_start(va, ctl);
+    vsnprintf(td->td_comm, sizeof(td->td_comm), ctl, va);
+    va_end(va);
+}
+
+void
+lwkt_hold(thread_t td)
+{
+    ++td->td_refs;
+}
+
+void
+lwkt_rele(thread_t td)
+{
+    KKASSERT(td->td_refs > 0);
+    --td->td_refs;
+}
+
+void
+lwkt_wait_free(thread_t td)
+{
+    while (td->td_refs)
+	tsleep(td, PWAIT, "tdreap", hz);
+}
+
+void
+lwkt_free_thread(thread_t td)
+{
+    struct globaldata *gd = mycpu;
+
     KASSERT(td->td_flags & TDF_EXITED,
 	("lwkt_free_thread: did not exit! %p", td));
 
     crit_enter();
-    if (mycpu->gd_tdfreecount < CACHE_NTHREADS &&
+    TAILQ_REMOVE(&gd->gd_tdallq, td, td_allq);
+    if (gd->gd_tdfreecount < CACHE_NTHREADS &&
 	(td->td_flags & TDF_ALLOCATED_THREAD)
     ) {
-	++mycpu->gd_tdfreecount;
-	TAILQ_INSERT_HEAD(&mycpu->gd_tdfreeq, td, td_threadq);
+	++gd->gd_tdfreecount;
+	TAILQ_INSERT_HEAD(&gd->gd_tdfreeq, td, td_threadq);
 	crit_exit();
     } else {
 	crit_exit();
 	if (td->td_kstack && (td->td_flags & TDF_ALLOCATED_STACK)) {
 	    kmem_free(kernel_map,
 		    (vm_offset_t)td->td_kstack, UPAGES * PAGE_SIZE);
+	    /* gd invalid */
 	    td->td_kstack = NULL;
 	}
 	if (td->td_flags & TDF_ALLOCATED_THREAD)
@@ -308,9 +346,9 @@ again:
  * switch.
  */
 void
-lwkt_preempt(struct thread *ntd, int id)
+lwkt_preempt(thread_t ntd, int id)
 {
-    struct thread *td = curthread;
+    thread_t td = curthread;
 
     /*
      * The caller has put us in a critical section, and in order to have
@@ -602,7 +640,7 @@ lwkt_setpri_self(int pri)
 struct proc *
 lwkt_preempted_proc(void)
 {
-    struct thread *td = curthread;
+    thread_t td = curthread;
     while (td->td_preempted)
 	td = td->td_preempted;
     return(td->td_proc);
@@ -761,10 +799,10 @@ lwkt_regettoken(lwkt_token_t tok)
  */
 int
 lwkt_create(void (*func)(void *), void *arg,
-    struct thread **tdp, struct thread *template, int tdflags,
+    struct thread **tdp, thread_t template, int tdflags,
     const char *fmt, ...)
 {
-    struct thread *td;
+    thread_t td;
     va_list ap;
 
     td = *tdp = lwkt_alloc_thread(template);
@@ -815,7 +853,7 @@ int
 kthread_create(void (*func)(void *), void *arg,
     struct thread **tdp, const char *fmt, ...)
 {
-    struct thread *td;
+    thread_t td;
     va_list ap;
 
     td = *tdp = lwkt_alloc_thread(NULL);
@@ -839,7 +877,7 @@ kthread_create(void (*func)(void *), void *arg,
 void
 crit_panic(void)
 {
-    struct thread *td = curthread;
+    thread_t td = curthread;
     int lpri = td->td_pri;
 
     td->td_pri = 0;

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.18 2003/06/30 19:50:30 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.19 2003/06/30 23:54:00 dillon Exp $
  */
 
 #include "apm.h"
@@ -1830,15 +1830,7 @@ init386(int first)
 	 */
 	gd = &CPU_prvspace[0].mdglobaldata;
 
-	lwkt_init_thread(&thread0, proc0paddr, 0, &gd->mi);
 	gd->mi.gd_curthread = &thread0;
-	safepri = thread0.td_cpl = SWI_MASK | HWI_MASK;
-	thread0.td_switch = cpu_heavy_switch;	/* YYY eventually LWKT */
-	proc0.p_addr = (void *)thread0.td_kstack;
-	proc0.p_thread = &thread0;
-	proc0.p_flag |= P_CURPROC;
-	gd->mi.gd_uprocscheduled = 1;
-	thread0.td_proc = &proc0;
 
 	atdevbase = ISA_HOLE_START + KERNBASE;
 
@@ -1880,9 +1872,6 @@ init386(int first)
 	 * early in the boot sequence because the system assumes
 	 * that 'curthread' is never NULL.
 	 */
-	/* YYY use prvspace for UP too and set here rather then later */
-	mi_gdinit(&gd->mi, 0);
-	cpu_gdinit(gd, 0);
 
 	for (x = 0; x < NGDT; x++) {
 #ifdef BDE_DEBUGGER
@@ -1896,6 +1885,18 @@ init386(int first)
 	r_gdt.rd_limit = NGDT * sizeof(gdt[0]) - 1;
 	r_gdt.rd_base =  (int) gdt;
 	lgdt(&r_gdt);
+
+	mi_gdinit(&gd->mi, 0);
+	cpu_gdinit(gd, 0);
+	lwkt_init_thread(&thread0, proc0paddr, 0, &gd->mi);
+	lwkt_set_comm(&thread0, "thread0");
+	proc0.p_addr = (void *)thread0.td_kstack;
+	proc0.p_thread = &thread0;
+	proc0.p_flag |= P_CURPROC;
+	gd->mi.gd_uprocscheduled = 1;
+	thread0.td_proc = &proc0;
+	thread0.td_switch = cpu_heavy_switch;	/* YYY eventually LWKT */
+	safepri = thread0.td_cpl = SWI_MASK | HWI_MASK;
 
 	/* make ldt memory segments */
 	/*
@@ -2045,6 +2046,8 @@ init386(int first)
  * data space were allocated in locore.
  *
  * Note: the idlethread's cpl is 0
+ *
+ * WARNING!  Called from early boot, 'mycpu' may not work yet.
  */
 void
 cpu_gdinit(struct mdglobaldata *gd, int cpu)
@@ -2057,6 +2060,7 @@ cpu_gdinit(struct mdglobaldata *gd, int cpu)
 	gd->mi.gd_idletd = &gd->gd_idlethread;
 	sp = gd->mi.gd_prvspace->idlestack;
 	lwkt_init_thread(&gd->gd_idlethread, sp, 0, &gd->mi);
+	lwkt_set_comm(&gd->gd_idlethread, "idle_%d", cpu);
 	gd->gd_idlethread.td_switch = cpu_lwkt_switch;
 	gd->gd_idlethread.td_sp -= sizeof(void *);
 	*(void **)gd->gd_idlethread.td_sp = cpu_idle_restore;

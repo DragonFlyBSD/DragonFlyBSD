@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.19 2003/06/30 19:50:32 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.20 2003/06/30 23:54:04 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -205,7 +205,6 @@ struct	proc {
 	stack_t	p_sigstk;	/* sp & on stack state variable */
 	u_char	p_priority;	/* Tracks user sched queue */
 	char	p_nice;		/* Process "nice" value. */
-	char	p_comm[MAXCOMLEN+1];
 
 	struct 	pgrp *p_pgrp;	/* Pointer to process group. */
 
@@ -234,6 +233,7 @@ struct	proc {
 #if defined(_KERNEL)
 #define p_wchan		p_thread->td_wchan
 #define p_wmesg		p_thread->td_wmesg
+#define	p_comm		p_thread->td_comm
 #define	p_session	p_pgrp->pg_session
 #define	p_pgid		p_pgrp->pg_id
 #endif
@@ -244,6 +244,7 @@ struct	proc {
 #define	SSLEEP	3		/* Sleeping on an address. */
 #define	SSTOP	4		/* Process debugging or suspension. */
 #define	SZOMB	5		/* Awaiting collection by parent. */
+#define STHREAD	6		/* Synthesized for eproc only */
 
 /* These flags are kept in p_flags. */
 #define	P_ADVLOCK	0x00001	/* Process may hold a POSIX advisory lock. */

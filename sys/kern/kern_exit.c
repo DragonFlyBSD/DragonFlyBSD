@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.13 2003/06/30 22:19:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.14 2003/06/30 23:54:02 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -464,6 +464,7 @@ loop:
 				while (p->p_lock)
 					tsleep(p, PWAIT, "reap2", hz);
 			}
+			lwkt_wait_free(p->p_thread);
 
 			/* charge childs scheduling cpu usage to parent */
 			if (curproc->p_pid != 1) {

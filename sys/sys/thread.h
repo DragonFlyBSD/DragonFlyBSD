@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.16 2003/06/30 19:50:32 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.17 2003/06/30 23:54:04 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -125,6 +125,7 @@ typedef struct lwkt_rwlock {
  */
 struct thread {
     TAILQ_ENTRY(thread) td_threadq;
+    TAILQ_ENTRY(thread) td_allq;
     struct proc	*td_proc;	/* (optional) associated process */
     struct pcb	*td_pcb;	/* points to pcb and top of kstack */
     struct globaldata *td_gd;	/* associated with this cpu */
@@ -142,6 +143,7 @@ struct thread {
     u_int64_t	td_sticks;      /* Statclock hits in system mode (uS) */
     u_int64_t	td_iticks;	/* Statclock hits processing intr (uS) */
     int		td_locks;	/* lockmgr lock debugging YYY */
+    int		td_refs;	/* hold position in gd_tdallq / hold free */
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
     struct thread *td_preempted; /* we preempted this thread */
     struct md_thread td_mach;
@@ -157,6 +159,7 @@ struct thread {
 #define TDF_PREEMPT_LOCK	0x0004	/* I have been preempted */
 #define TDF_PREEMPT_DONE	0x0008	/* acknowledge preemption complete */
 
+#define TDF_ONALLQ		0x0100	/* on gd_tdallq */
 #define TDF_ALLOCATED_THREAD	0x0200	/* zalloc allocated thread */
 #define TDF_ALLOCATED_STACK	0x0400	/* zalloc allocated stack */
 #define TDF_VERBOSE		0x0800	/* verbose on exit */
@@ -202,6 +205,8 @@ extern struct vm_zone	*thread_zone;
 extern struct thread *lwkt_alloc_thread(struct thread *template);
 extern void lwkt_init_thread(struct thread *td, void *stack, int flags,
 	struct globaldata *gd);
+extern void lwkt_set_comm(thread_t td, const char *ctl, ...);
+extern void lwkt_wait_free(struct thread *td);
 extern void lwkt_free_thread(struct thread *td);
 extern void lwkt_init_wait(struct lwkt_wait *w);
 extern void lwkt_gdinit(struct globaldata *gd);
@@ -213,6 +218,8 @@ extern void lwkt_deschedule(thread_t td);
 extern void lwkt_deschedule_self(void);
 extern void lwkt_yield(void);
 extern void lwkt_yield_quick(void);
+extern void lwkt_hold(thread_t td);
+extern void lwkt_rele(thread_t td);
 
 extern void lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen);
 extern void lwkt_signal(lwkt_wait_t w);

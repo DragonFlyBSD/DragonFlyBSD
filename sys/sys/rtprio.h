@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/rtprio.h,v 1.9 1999/12/29 04:24:46 peter Exp $
- * $DragonFly: src/sys/sys/rtprio.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/rtprio.h,v 1.3 2003/06/30 23:54:04 dillon Exp $
  */
 
 #ifndef _SYS_RTPRIO_H_
@@ -44,6 +44,7 @@
 #define RTP_PRIO_REALTIME	0
 #define RTP_PRIO_NORMAL		1
 #define RTP_PRIO_IDLE		2
+#define RTP_PRIO_THREAD		3
 
 /* RTP_PRIO_FIFO is POSIX.1B SCHED_FIFO.
  */

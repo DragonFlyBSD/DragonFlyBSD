@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.8 2003/06/30 22:19:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.9 2003/06/30 23:54:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -57,8 +57,11 @@ static MALLOC_DEFINE(M_PROC, "proc", "Proc structures");
 MALLOC_DEFINE(M_SUBPROC, "subproc", "Proc sub-structures");
 
 static int ps_showallprocs = 1;
+static int ps_showallthreads = 1;
 SYSCTL_INT(_kern, OID_AUTO, ps_showallprocs, CTLFLAG_RW,
     &ps_showallprocs, 0, "");
+SYSCTL_INT(_kern, OID_AUTO, ps_showallthreads, CTLFLAG_RW,
+    &ps_showallthreads, 0, "");
 
 static void pgdelete	__P((struct pgrp *));
 
@@ -350,21 +353,47 @@ DB_SHOW_COMMAND(pgrpdump, pgrpdump)
 #endif /* DDB */
 
 /*
+ * Fill in an eproc structure for the specified thread.
+ */
+void
+fill_eproc_td(thread_t td, struct eproc *ep, struct proc *xp)
+{
+	bzero(ep, sizeof(*ep));
+
+	ep->e_uticks = td->td_uticks;
+	ep->e_sticks = td->td_sticks;
+	ep->e_iticks = td->td_iticks;
+	ep->e_tdev = NOUDEV;
+	if (td->td_wmesg) {
+		strncpy(ep->e_wmesg, td->td_wmesg, WMESGLEN);
+		ep->e_wmesg[WMESGLEN] = 0;
+	}
+
+	/*
+	 * Fake up portions of the proc structure copied out by the sysctl
+	 * to return useful information.  Note that using td_pri directly
+	 * is messy because it includes critial section data so we fake
+	 * up an rtprio.prio for threads.
+	 */
+	if (xp) {
+		*xp = *initproc;
+		xp->p_rtprio.type = RTP_PRIO_THREAD;
+		xp->p_rtprio.prio = td->td_pri & TDPRI_MASK;
+		xp->p_pid = -1;
+	}
+}
+
+/*
  * Fill in an eproc structure for the specified process.
  */
 void
-fill_eproc(p, ep)
-	register struct proc *p;
-	register struct eproc *ep;
+fill_eproc(struct proc *p, struct eproc *ep)
 {
-	register struct tty *tp;
+	struct tty *tp;
 
-	bzero(ep, sizeof(*ep));
+	fill_eproc_td(p->p_thread, ep, NULL);
 
 	ep->e_paddr = p;
-	ep->e_uticks = p->p_thread->td_uticks;
-	ep->e_sticks = p->p_thread->td_sticks;
-	ep->e_iticks = p->p_thread->td_iticks;
 	if (p->p_ucred) {
 		ep->e_ucred = *p->p_ucred;
 	}
@@ -399,11 +428,8 @@ fill_eproc(p, ep)
 		ep->e_tdev = dev2udev(tp->t_dev);
 		ep->e_tpgid = tp->t_pgrp ? tp->t_pgrp->pg_id : NO_PID;
 		ep->e_tsess = tp->t_session;
-	} else
+	} else {
 		ep->e_tdev = NOUDEV;
-	if (p->p_wmesg) {
-		strncpy(ep->e_wmesg, p->p_wmesg, WMESGLEN);
-		ep->e_wmesg[WMESGLEN] = 0;
 	}
 }
 
@@ -419,26 +445,37 @@ zpfind(pid_t pid)
 }
 
 static int
-sysctl_out_proc(struct proc *p, struct sysctl_req *req, int doingzomb)
+sysctl_out_proc(struct proc *p, struct thread *td, struct sysctl_req *req, int doingzomb)
 {
 	struct eproc eproc;
+	struct proc xproc;
 	int error;
+#if 0
 	pid_t pid = p->p_pid;
+#endif
 
-	fill_eproc(p, &eproc);
-	error = SYSCTL_OUT(req,(caddr_t)p, sizeof(struct proc));
+	if (p) {
+		td = p->p_thread;
+		fill_eproc(p, &eproc);
+		xproc = *p;
+	} else if (td) {
+		fill_eproc_td(td, &eproc, &xproc);
+	}
+	error = SYSCTL_OUT(req,(caddr_t)&xproc, sizeof(struct proc));
 	if (error)
 		return (error);
 	error = SYSCTL_OUT(req,(caddr_t)&eproc, sizeof(eproc));
 	if (error)
 		return (error);
-	error = SYSCTL_OUT(req,(caddr_t)&p->p_thread, sizeof(struct thread));
+	error = SYSCTL_OUT(req,(caddr_t)td, sizeof(struct thread));
 	if (error)
 		return (error);
+#if 0
 	if (!doingzomb && pid && (pfind(pid) != p))
 		return EAGAIN;
 	if (doingzomb && zpfind(pid) != p)
 		return EAGAIN;
+#endif
 	return (0);
 }
 
@@ -448,6 +485,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 	int *name = (int*) arg1;
 	u_int namelen = arg2;
 	struct proc *p;
+	struct thread *td;
 	int doingzomb;
 	int error = 0;
 	struct ucred *cr1 = curproc->p_ucred;
@@ -460,7 +498,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 			return (0);
 		if (!PRISON_CHECK(cr1, p->p_ucred))
 			return (0);
-		error = sysctl_out_proc(p, req, 0);
+		error = sysctl_out_proc(p, NULL, req, 0);
 		return (error);
 	}
 	if (oidp->oid_number == KERN_PROC_ALL && !namelen)
@@ -497,7 +535,6 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 			 * do by session.
 			 */
 			switch (oidp->oid_number) {
-
 			case KERN_PROC_PGRP:
 				/* could do this by traversing pgrp */
 				if (p->p_pgrp == NULL || 
@@ -530,8 +567,28 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 			if (!PRISON_CHECK(cr1, p->p_ucred))
 				continue;
 			PHOLD(p);
-			error = sysctl_out_proc(p, req, doingzomb);
+			error = sysctl_out_proc(p, NULL, req, doingzomb);
 			PRELE(p);
+			if (error)
+				return (error);
+		}
+	}
+	if (ps_showallthreads) {
+		TAILQ_FOREACH(td, &mycpu->gd_tdallq, td_allq) {
+			if (td->td_proc)
+				continue;
+			switch (oidp->oid_number) {
+			case KERN_PROC_PGRP:
+			case KERN_PROC_TTY:
+			case KERN_PROC_UID:
+			case KERN_PROC_RUID:
+				continue;
+			default:
+				break;
+			}
+			lwkt_hold(td);
+			error = sysctl_out_proc(NULL, td, req, doingzomb);
+			lwkt_rele(td);
 			if (error)
 				return (error);
 		}
