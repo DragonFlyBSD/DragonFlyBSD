@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.9 2004/03/23 22:19:04 hsu Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.10 2004/04/07 05:45:30 dillon Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -1007,7 +1007,7 @@ txp_alloc_rings(sc)
 		if (sc->sc_rxbufs[i].rb_sd != NULL)
 			continue;
 		sc->sc_rxbufs[i].rb_sd = malloc(sizeof(struct txp_swdesc),
-		    M_DEVBUF, M_NOWAIT);
+		    M_DEVBUF, M_WAITOK);
 		if (sc->sc_rxbufs[i].rb_sd == NULL)
 			return(ENOBUFS);
 		sd = sc->sc_rxbufs[i].rb_sd;
@@ -1497,7 +1497,7 @@ txp_response(sc, ridx, id, seq, rspp)
 		if (id == rsp->rsp_id && rsp->rsp_seq == seq) {
 			*rspp = (struct txp_rsp_desc *)malloc(
 			    sizeof(struct txp_rsp_desc) * (rsp->rsp_numdesc + 1),
-			    M_DEVBUF, M_NOWAIT);
+			    M_DEVBUF, M_INTWAIT);
 			if ((*rspp) == NULL)
 				return (-1);
 			txp_rsp_fixup(sc, rsp, *rspp);

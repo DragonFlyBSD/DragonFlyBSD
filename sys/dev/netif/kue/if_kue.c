@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  *  $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.8 2004/03/23 22:19:01 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.9 2004/04/07 05:45:28 dillon Exp $
  */
 
 /*
@@ -474,7 +474,7 @@ USB_ATTACH(kue)
 	    0, (char *)&sc->kue_desc, sizeof(sc->kue_desc));
 
 	sc->kue_mcfilters = malloc(KUE_MCFILTCNT(sc) * ETHER_ADDR_LEN,
-	    M_USBDEV, M_NOWAIT);
+	    M_USBDEV, M_WAITOK);
 
 	/*
 	 * A KLSI chip was detected. Inform the world.
@@ -623,7 +623,7 @@ kue_tx_list_init(struct kue_softc *sc)
 			if (c->kue_xfer == NULL)
 				return(ENOBUFS);
 		}
-		c->kue_buf = malloc(KUE_BUFSZ, M_USBDEV, M_NOWAIT);
+		c->kue_buf = malloc(KUE_BUFSZ, M_USBDEV, M_WAITOK);
 		if (c->kue_buf == NULL)
 			return(ENOBUFS);
 	}

@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.8 2004/03/23 22:19:01 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.9 2004/04/07 05:45:29 dillon Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -964,7 +964,7 @@ my_attach(device_t dev)
 	sc->my_unit = unit;
 
 	sc->my_ldata_ptr = malloc(sizeof(struct my_list_data) + 8,
-				  M_DEVBUF, M_NOWAIT);
+				  M_DEVBUF, M_WAITOK);
 	if (sc->my_ldata_ptr == NULL) {
 		free(sc, M_DEVBUF);
 		printf("my%d: no memory for list buffers!\n", unit);

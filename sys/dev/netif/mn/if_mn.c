@@ -22,7 +22,7 @@
  * this gadget.
  *
  * $FreeBSD: src/sys/pci/if_mn.c,v 1.11.2.3 2001/01/23 12:47:09 phk Exp $
- * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.4 2003/11/20 22:07:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.5 2004/04/07 05:45:29 dillon Exp $
  */
 
 /*
@@ -354,7 +354,7 @@ ngmn_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_mes
 	}
 
 	NG_MKRESPONSE(*resp, msg, sizeof(struct ng_mesg) + NG_TEXTRESPONSE,
-	    M_NOWAIT);
+	    M_INTWAIT);
 	if (*resp == NULL) {
 		FREE(msg, M_NETGRAPH);
 		return (ENOMEM);
@@ -494,7 +494,7 @@ mn_alloc_desc(void)
 	if (dp) 
 		mn_desc_free = dp->vnext;
 	else
-		dp = (struct trxd *)malloc(sizeof *dp, M_MN, M_NOWAIT);
+		dp = (struct trxd *)malloc(sizeof *dp, M_MN, M_INTWAIT);
 	return (dp);
 }
 

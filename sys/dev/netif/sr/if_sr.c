@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.8 2004/03/23 22:19:03 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.9 2004/04/07 05:45:29 dillon Exp $
  */
 
 /*
@@ -2813,7 +2813,7 @@ ngsr_rcvmsg(node_p node,
 			    int pos = 0;
 			    int resplen = sizeof(struct ng_mesg) + 512;
 			    MALLOC(*resp, struct ng_mesg *, resplen,
-					M_NETGRAPH, M_NOWAIT | M_ZERO);
+					M_NETGRAPH, M_INTWAIT | M_ZERO);
 			    if (*resp == NULL) { 
 				error = ENOMEM;
 				break;

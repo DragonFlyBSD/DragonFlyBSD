@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fpa.c,v 1.13 1999/08/28 00:50:50 peter Exp $
- * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.7 2004/02/13 02:44:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.8 2004/04/07 05:45:28 dillon Exp $
  *
  */
 
@@ -170,11 +170,7 @@ pdq_pci_attach(
 	pci_conf_write(config_id, PCI_CFLT, data);
     }
 
-    sc = (pdq_softc_t *) malloc(sizeof(*sc), M_DEVBUF, M_NOWAIT);
-    if (sc == NULL)
-	return;
-
-    bzero(sc, sizeof(pdq_softc_t));	/* Zero out the softc*/
+    sc = malloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
     if (!pci_map_mem(config_id, PCI_CBMA, &va_csrs, &pa_csrs)) {
 	free((void *) sc, M_DEVBUF);
 	return;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.9 2004/03/23 22:18:58 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.10 2004/04/07 05:45:25 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
  */
@@ -897,7 +897,7 @@ aue_tx_list_init(struct aue_softc *sc)
 			if (c->aue_xfer == NULL)
 				return (ENOBUFS);
 		}
-		c->aue_buf = malloc(AUE_BUFSZ, M_USBDEV, M_NOWAIT);
+		c->aue_buf = malloc(AUE_BUFSZ, M_USBDEV, M_WAITOK);
 		if (c->aue_buf == NULL)
 			return (ENOBUFS);
 	}
@@ -1272,7 +1272,7 @@ aue_init(void *xsc)
 	}
 
 #ifdef AUE_INTR_PIPE
-	sc->aue_cdata.aue_ibuf = malloc(AUE_INTR_PKTLEN, M_USBDEV, M_NOWAIT);
+	sc->aue_cdata.aue_ibuf = malloc(AUE_INTR_PKTLEN, M_USBDEV, M_WAITOK);
 #endif
 
 	/* Load the multicast filter. */

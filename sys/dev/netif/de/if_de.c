@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.10 2004/03/23 22:18:59 hsu Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.11 2004/04/07 05:45:27 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -4969,9 +4969,8 @@ tulip_busdma_init(
     }
 #else
     if (error == 0) {
-	sc->tulip_txdescs = (tulip_desc_t *) malloc(TULIP_TXDESCS * sizeof(tulip_desc_t), M_DEVBUF, M_NOWAIT);
-	if (sc->tulip_txdescs == NULL)
-	    error = ENOMEM;
+	sc->tulip_txdescs = malloc(TULIP_TXDESCS * sizeof(tulip_desc_t), 
+				    M_DEVBUF, M_INTWAIT);
     }
 #endif
 #if !defined(TULIP_BUS_DMA_NORX)
@@ -5001,9 +5000,8 @@ tulip_busdma_init(
     }
 #else
     if (error == 0) {
-	sc->tulip_rxdescs = (tulip_desc_t *) malloc(TULIP_RXDESCS * sizeof(tulip_desc_t), M_DEVBUF, M_NOWAIT);
-	if (sc->tulip_rxdescs == NULL)
-	    error = ENOMEM;
+	sc->tulip_rxdescs = malloc(TULIP_RXDESCS * sizeof(tulip_desc_t),
+				    M_DEVBUF, M_INTWAIT);
     }
 #endif
     return error;
@@ -5244,16 +5242,10 @@ tulip_pci_attach(device_t dev)
 	return ENXIO;
     }
 #else
-    sc->tulip_rxdescs = (tulip_desc_t *) malloc(sizeof(tulip_desc_t) * TULIP_RXDESCS, M_DEVBUF, M_NOWAIT);
-    sc->tulip_txdescs = (tulip_desc_t *) malloc(sizeof(tulip_desc_t) * TULIP_TXDESCS, M_DEVBUF, M_NOWAIT);
-    if (sc->tulip_rxdescs == NULL || sc->tulip_txdescs == NULL) {
-	printf("malloc failed\n");
-	if (sc->tulip_rxdescs)
-	    free((caddr_t) sc->tulip_rxdescs, M_DEVBUF);
-	if (sc->tulip_txdescs)
-	    free((caddr_t) sc->tulip_txdescs, M_DEVBUF);
-	return ENXIO;
-    }
+    sc->tulip_rxdescs = malloc(sizeof(tulip_desc_t) * TULIP_RXDESCS, 
+				M_DEVBUF, M_INTWAIT);
+    sc->tulip_txdescs = malloc(sizeof(tulip_desc_t) * TULIP_TXDESCS,
+				M_DEVBUF, M_INTWAIT);
 #endif
 
     tulip_initring(sc, &sc->tulip_rxinfo, sc->tulip_rxdescs, TULIP_RXDESCS);

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.8 2004/03/23 22:19:01 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.9 2004/04/07 05:45:29 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
  */
@@ -1217,7 +1217,7 @@ static int nge_alloc_jumbo_mem(sc)
 		sc->nge_cdata.nge_jslots[i].nge_inuse = 0;
 		ptr += NGE_MCLBYTES;
 		entry = malloc(sizeof(struct nge_jpool_entry), 
-		    M_DEVBUF, M_NOWAIT);
+		    M_DEVBUF, M_WAITOK);
 		if (entry == NULL) {
 			printf("nge%d: no memory for jumbo "
 			    "buffer queue!\n", sc->nge_unit);

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.18 2004/03/23 22:18:59 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.19 2004/04/07 05:45:27 dillon Exp $
  *
  */
 
@@ -404,7 +404,7 @@ bge_vpd_read(sc)
         }
 
 	pos += sizeof(res);
-	sc->bge_vpd_prodname = malloc(res.vr_len + 1, M_DEVBUF, M_NOWAIT);
+	sc->bge_vpd_prodname = malloc(res.vr_len + 1, M_DEVBUF, M_INTWAIT);
 	for (i = 0; i < res.vr_len; i++)
 		sc->bge_vpd_prodname[i] = bge_vpd_readbyte(sc, i + pos);
 	sc->bge_vpd_prodname[i] = '\0';
@@ -419,7 +419,7 @@ bge_vpd_read(sc)
 	}
 
 	pos += sizeof(res);
-	sc->bge_vpd_readonly = malloc(res.vr_len, M_DEVBUF, M_NOWAIT);
+	sc->bge_vpd_readonly = malloc(res.vr_len, M_DEVBUF, M_INTWAIT);
 	for (i = 0; i < res.vr_len + 1; i++)
 		sc->bge_vpd_readonly[i] = bge_vpd_readbyte(sc, i + pos);
 
@@ -678,15 +678,7 @@ bge_alloc_jumbo_mem(sc)
 		sc->bge_cdata.bge_jslots[i].bge_inuse = 0;
 		ptr += (BGE_JLEN - sizeof(u_int64_t));
 		entry = malloc(sizeof(struct bge_jpool_entry), 
-			       M_DEVBUF, M_NOWAIT);
-		if (entry == NULL) {
-			contigfree(sc->bge_cdata.bge_jumbo_buf,
-			    BGE_JMEM, M_DEVBUF);
-			sc->bge_cdata.bge_jumbo_buf = NULL;
-			printf("bge%d: no memory for jumbo "
-			    "buffer queue!\n", sc->bge_unit);
-			return(ENOBUFS);
-		}
+			       M_DEVBUF, M_INTWAIT);
 		entry->slot = i;
 		SLIST_INSERT_HEAD(&sc->bge_jfree_listhead,
 		    entry, jpool_entries);
@@ -1631,9 +1623,7 @@ bge_probe(dev)
 			bge_vpd_read(sc);
 			device_set_desc(dev, sc->bge_vpd_prodname);
 #endif
-			descbuf = malloc(BGE_DEVDESC_MAX, M_TEMP, M_NOWAIT);
-			if (descbuf == NULL)
-				return(ENOMEM);
+			descbuf = malloc(BGE_DEVDESC_MAX, M_TEMP, M_INTWAIT);
 			snprintf(descbuf, BGE_DEVDESC_MAX,
 			    "%s, ASIC rev. %#04x", t->bge_name,
 			    pci_read_config(dev, BGE_PCI_MISC_CTL, 4) >> 16);

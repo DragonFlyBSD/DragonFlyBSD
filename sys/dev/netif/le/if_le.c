@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.9 2004/04/01 07:27:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.10 2004/04/07 05:45:28 dillon Exp $
  */
 
 /*
@@ -1483,7 +1483,7 @@ lance_init_ring(
      * our ring information data structure.  All these are
      * our copies and do not live in the LANCE RAM.
      */
-    ri->ri_first = (lance_descinfo_t *) malloc(ndescs * sizeof(*di), M_DEVBUF, M_NOWAIT);
+    ri->ri_first = malloc(ndescs * sizeof(*di), M_DEVBUF, M_WAITOK);
     if (ri->ri_first == NULL) {
 	printf("lance_init_ring: malloc(%d) failed\n", ndescs * sizeof(*di));
 	return 0;

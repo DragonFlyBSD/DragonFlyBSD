@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.8 2004/03/23 22:18:59 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.9 2004/04/07 05:45:27 dillon Exp $
  *
  */
 
@@ -654,9 +654,7 @@ cue_tx_list_init(struct cue_softc *sc)
 			if (c->cue_xfer == NULL)
 				return(ENOBUFS);
 		}
-		c->cue_buf = malloc(CUE_BUFSZ, M_USBDEV, M_NOWAIT);
-		if (c->cue_buf == NULL)
-			return(ENOBUFS);
+		c->cue_buf = malloc(CUE_BUFSZ, M_USBDEV, M_WAITOK);
 	}
 
 	return(0);

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.9 2004/03/23 22:19:04 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.10 2004/04/07 05:45:29 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
  */
@@ -639,7 +639,7 @@ static int ti_alloc_jumbo_mem(sc)
 		sc->ti_cdata.ti_jslots[i].ti_inuse = 0;
 		ptr += (TI_JLEN - sizeof(u_int64_t));
 		entry = malloc(sizeof(struct ti_jpool_entry), 
-			       M_DEVBUF, M_NOWAIT);
+			       M_DEVBUF, M_WAITOK);
 		if (entry == NULL) {
 			contigfree(sc->ti_cdata.ti_jumbo_buf, TI_JMEM,
 			           M_DEVBUF);
@@ -1150,7 +1150,7 @@ static void ti_setmulti(sc)
 	    ifma != NULL; ifma = ifma->ifma_link.le_next) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
-		mc = malloc(sizeof(struct ti_mc_entry), M_DEVBUF, M_NOWAIT);
+		mc = malloc(sizeof(struct ti_mc_entry), M_DEVBUF, M_INTWAIT);
 		bcopy(LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
 		    (char *)&mc->mc_addr, ETHER_ADDR_LEN);
 		SLIST_INSERT_HEAD(&sc->ti_mc_listhead, mc, mc_entries);

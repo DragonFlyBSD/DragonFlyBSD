@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.9 2004/03/23 22:19:00 hsu Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.10 2004/04/07 05:45:27 dillon Exp $*/
 
 #include "if_em.h"
 
@@ -1916,7 +1916,7 @@ em_allocate_transmit_structures(struct adapter * adapter)
 	if (!(adapter->tx_buffer_area =
 	      (struct em_buffer *) malloc(sizeof(struct em_buffer) *
 					     adapter->num_tx_desc, M_DEVBUF,
-					     M_NOWAIT))) {
+					     M_WAITOK))) {
 		printf("em%d: Unable to allocate tx_buffer memory\n", 
 		       adapter->unit);
 		return ENOMEM;
@@ -2266,7 +2266,7 @@ em_allocate_receive_structures(struct adapter * adapter)
 	if (!(adapter->rx_buffer_area =
 	      (struct em_buffer *) malloc(sizeof(struct em_buffer) *
 					     adapter->num_rx_desc, M_DEVBUF,
-					     M_NOWAIT))) {
+					     M_WAITOK))) {
 		printf("em%d: Unable to allocate rx_buffer memory\n", 
 		       adapter->unit);
 		return(ENOMEM);

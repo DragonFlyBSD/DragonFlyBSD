@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.13 2004/03/23 22:19:03 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.14 2004/04/07 05:45:29 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -456,7 +456,7 @@ static void sk_vpd_read(sc)
 	}
 
 	pos += sizeof(res);
-	sc->sk_vpd_prodname = malloc(res.vr_len + 1, M_DEVBUF, M_NOWAIT);
+	sc->sk_vpd_prodname = malloc(res.vr_len + 1, M_DEVBUF, M_INTWAIT);
 	for (i = 0; i < res.vr_len; i++)
 		sc->sk_vpd_prodname[i] = sk_vpd_readbyte(sc, i + pos);
 	sc->sk_vpd_prodname[i] = '\0';
@@ -471,7 +471,7 @@ static void sk_vpd_read(sc)
 	}
 
 	pos += sizeof(res);
-	sc->sk_vpd_readonly = malloc(res.vr_len, M_DEVBUF, M_NOWAIT);
+	sc->sk_vpd_readonly = malloc(res.vr_len, M_DEVBUF, M_INTWAIT);
 	for (i = 0; i < res.vr_len + 1; i++)
 		sc->sk_vpd_readonly[i] = sk_vpd_readbyte(sc, i + pos);
 
@@ -1041,7 +1041,7 @@ static int sk_alloc_jumbo_mem(sc_if)
 		sc_if->sk_cdata.sk_jslots[i].sk_inuse = 0;
 		ptr += SK_MCLBYTES;
 		entry = malloc(sizeof(struct sk_jpool_entry), 
-		    M_DEVBUF, M_NOWAIT);
+		    M_DEVBUF, M_WAITOK);
 		if (entry == NULL) {
 			free(sc_if->sk_cdata.sk_jumbo_buf, M_DEVBUF);
 			sc_if->sk_cdata.sk_jumbo_buf = NULL;
@@ -1708,13 +1708,13 @@ static int skc_attach(dev)
 	/* Announce the product name. */
 	printf("skc%d: %s\n", sc->sk_unit, sc->sk_vpd_prodname);
 	sc->sk_devs[SK_PORT_A] = device_add_child(dev, "sk", -1);
-	port = malloc(sizeof(int), M_DEVBUF, M_NOWAIT);
+	port = malloc(sizeof(int), M_DEVBUF, M_WAITOK);
 	*port = SK_PORT_A;
 	device_set_ivars(sc->sk_devs[SK_PORT_A], port);
 
 	if (!(sk_win_read_1(sc, SK_CONFIG) & SK_CONFIG_SINGLEMAC)) {
 		sc->sk_devs[SK_PORT_B] = device_add_child(dev, "sk", -1);
-		port = malloc(sizeof(int), M_DEVBUF, M_NOWAIT);
+		port = malloc(sizeof(int), M_DEVBUF, M_WAITOK);
 		*port = SK_PORT_B;
 		device_set_ivars(sc->sk_devs[SK_PORT_B], port);
 	}

@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii.c,v 1.6.2.2 2002/08/19 16:56:33 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii.c,v 1.5 2003/11/14 00:37:24 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii.c,v 1.6 2004/04/07 05:45:28 dillon Exp $
  */
 
 /*
@@ -139,7 +139,7 @@ int miibus_probe(dev)
 		ma.mii_capmask = capmask;
 
 		args = malloc(sizeof(struct mii_attach_args),
-		    M_DEVBUF, M_NOWAIT);
+		    M_DEVBUF, M_INTWAIT);
 		bcopy((char *)&ma, (char *)args, sizeof(ma));
 		child = device_add_child(dev, NULL, -1);
 		device_set_ivars(child, args);
@@ -247,7 +247,7 @@ int mii_phy_probe(dev, child, ifmedia_upd, ifmedia_sts)
 	void			**v;
 	int			bmsr, i;
 
-	v = malloc(sizeof(vm_offset_t) * 2, M_DEVBUF, M_NOWAIT);
+	v = malloc(sizeof(vm_offset_t) * 2, M_DEVBUF, M_INTWAIT);
 	v[0] = ifmedia_upd;
 	v[1] = ifmedia_sts;
 	*child = device_add_child(dev, "miibus", -1);

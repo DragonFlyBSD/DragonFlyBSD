@@ -28,7 +28,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.7 2004/03/23 22:18:59 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.8 2004/04/07 05:45:27 dillon Exp $
  *
  * Device driver for Crystal Semiconductor CS8920 based ethernet
  *   adapters. By Maxim Bolotin and Oleg Sharoiko, 27-April-1997
@@ -613,7 +613,7 @@ cs_attach(device_t dev)
 	 * this code still in progress (DMA support)
 	 *
 
-	sc->recv_ring=malloc(CS_DMA_BUFFER_SIZE<<1, M_DEVBUF, M_NOWAIT);
+	sc->recv_ring=malloc(CS_DMA_BUFFER_SIZE<<1, M_DEVBUF, M_WAITOK);
 	if (sc->recv_ring == NULL) {
 		log(LOG_ERR,
 		    "%s: Couldn't allocate memory for NIC\n", ifp->if_xname);
@@ -624,7 +624,7 @@ cs_attach(device_t dev)
 	    sc->recv_ring+=16*1024;
 	 */
 
-	sc->buffer=malloc(ETHER_MAX_LEN-ETHER_CRC_LEN,M_DEVBUF,M_NOWAIT);
+	sc->buffer=malloc(ETHER_MAX_LEN-ETHER_CRC_LEN,M_DEVBUF,M_WAITOK);
 	if (sc->buffer == NULL) {
 		printf("%s: Couldn't allocate memory for NIC\n",
 		    ifp->if_xname);

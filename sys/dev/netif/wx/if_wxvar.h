@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/pci/if_wxvar.h,v 1.4.2.6 2001/10/20 17:44:12 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wxvar.h,v 1.5 2003/11/20 22:07:32 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wxvar.h,v 1.6 2004/04/07 05:45:30 dillon Exp $ */
 /*                  
  * Principal Author: Matthew Jacob
  * Copyright (c) 1999, 2001 by Traakan Software
@@ -124,7 +124,7 @@ struct wxmdvar {
 #define	wx_mtx		w.wxmtx
 
 #define	IOCTL_CMD_TYPE			u_long
-#define	WXMALLOC(len)			malloc(len, M_DEVBUF, M_NOWAIT)
+#define	WXMALLOC(len)			malloc(len, M_DEVBUF, M_WAITOK)
 #define	WXFREE(ptr)			free(ptr, M_DEVBUF)
 #define	SOFTC_IFP(ifp)			ifp->if_softc
 #define	WX_BPFTAP_ARG(ifp)		ifp

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.10 2004/03/23 22:18:59 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.11 2004/04/07 05:45:27 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
  */
@@ -1627,8 +1627,7 @@ static void dc_decode_leaf_sia(sc, l)
 {
 	struct dc_mediainfo	*m;
 
-	m = malloc(sizeof(struct dc_mediainfo), M_DEVBUF, M_NOWAIT);
-	bzero(m, sizeof(struct dc_mediainfo));
+	m = malloc(sizeof(struct dc_mediainfo), M_DEVBUF, M_INTWAIT | M_ZERO);
 	if (l->dc_sia_code == DC_SIA_CODE_10BT)
 		m->dc_media = IFM_10_T;
 
@@ -1658,8 +1657,7 @@ static void dc_decode_leaf_sym(sc, l)
 {
 	struct dc_mediainfo	*m;
 
-	m = malloc(sizeof(struct dc_mediainfo), M_DEVBUF, M_NOWAIT);
-	bzero(m, sizeof(struct dc_mediainfo));
+	m = malloc(sizeof(struct dc_mediainfo), M_DEVBUF, M_INTWAIT | M_ZERO);
 	if (l->dc_sym_code == DC_SYM_CODE_100BT)
 		m->dc_media = IFM_100_TX;
 
@@ -1684,8 +1682,7 @@ static void dc_decode_leaf_mii(sc, l)
 	u_int8_t		*p;
 	struct dc_mediainfo	*m;
 
-	m = malloc(sizeof(struct dc_mediainfo), M_DEVBUF, M_NOWAIT);
-	bzero(m, sizeof(struct dc_mediainfo));
+	m = malloc(sizeof(struct dc_mediainfo), M_DEVBUF, M_INTWAIT | M_ZERO);
 	/* We abuse IFM_AUTO to represent MII. */
 	m->dc_media = IFM_AUTO;
 	m->dc_gp_len = l->dc_gpr_len;
@@ -1711,7 +1708,7 @@ static void dc_read_srom(sc, bits)
 	int size;
 
 	size = 2 << bits;
-	sc->dc_srom = malloc(size, M_DEVBUF, M_NOWAIT);
+	sc->dc_srom = malloc(size, M_DEVBUF, M_INTWAIT);
 	dc_read_eeprom(sc, (caddr_t)sc->dc_srom, 0, (size / 2), 0);
 }
 
@@ -1946,7 +1943,7 @@ static int dc_attach(dev)
 		sc->dc_type = DC_TYPE_PNIC;
 		sc->dc_flags |= DC_TX_STORENFWD|DC_TX_INTR_ALWAYS;
 		sc->dc_flags |= DC_PNIC_RX_BUG_WAR;
-		sc->dc_pnic_rx_buf = malloc(DC_RXLEN * 5, M_DEVBUF, M_NOWAIT);
+		sc->dc_pnic_rx_buf = malloc(DC_RXLEN * 5, M_DEVBUF, M_WAITOK);
 		if (revision < DC_REVISION_82C169)
 			sc->dc_pmode = DC_PMODE_SYM;
 		break;

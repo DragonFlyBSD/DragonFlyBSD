@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.9 2004/04/01 07:27:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.10 2004/04/07 05:45:27 dillon Exp $
  *
  */
 #undef DEBUG
@@ -242,17 +242,20 @@ cxattach (struct isa_device *id)
 			continue;
 
 		/* Allocate the buffer memory. */
-		c->arbuf = malloc (DMABUFSZ, M_DEVBUF, M_NOWAIT);
-		c->brbuf = malloc (DMABUFSZ, M_DEVBUF, M_NOWAIT);
-		c->atbuf = malloc (DMABUFSZ, M_DEVBUF, M_NOWAIT);
-		c->btbuf = malloc (DMABUFSZ, M_DEVBUF, M_NOWAIT);
+		c->arbuf = malloc (DMABUFSZ, M_DEVBUF, M_WAITOK);
+		c->brbuf = malloc (DMABUFSZ, M_DEVBUF, M_WAITOK);
+		c->atbuf = malloc (DMABUFSZ, M_DEVBUF, M_WAITOK);
+		c->btbuf = malloc (DMABUFSZ, M_DEVBUF, M_WAITOK);
 
+#if 0
 		/* All buffers should be located in lower 16M of memory! */
+		/* XXX all buffers located where?  I don't think so! */
 		if (!c->arbuf || !c->brbuf || !c->atbuf || !c->btbuf) {
 			printf ("cx%d.%d: No memory for channel buffers\n",
 				c->board->num, c->num);
 			c->type = T_NONE;
 		}
+#endif
 
 		switch (c->type) {
 		case T_SYNC_RS232:
@@ -261,14 +264,7 @@ cxattach (struct isa_device *id)
 		case T_UNIV_RS232:
 		case T_UNIV_RS449:
 		case T_UNIV_V35:
-			c->ifp = malloc (IFSTRUCTSZ, M_DEVBUF, M_NOWAIT);
-			if (! c->ifp) {
-				printf ("cx%d.%d: No memory for ifnet buffer\n",
-					c->board->num, c->num);
-				c->type = T_NONE;
-				continue;
-			}
-			bzero (c->ifp, IFSTRUCTSZ);
+			c->ifp = malloc (IFSTRUCTSZ, M_DEVBUF, M_WAITOK | M_ZERO);
 			c->master = c->ifp;
 			c->ifp->if_softc = c;
 			if_initname(c->ifp, "cx", u);

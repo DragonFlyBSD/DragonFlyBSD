@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.9 2004/03/23 22:19:01 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.10 2004/04/07 05:45:28 dillon Exp $
  */
 
 /*
@@ -798,11 +798,7 @@ ieattach(struct isa_device *dvp)
 	allocsize = sizeof(void *) * (ie->nframes
 				      + (ie->nrxbufs * 2)
 				      + (ie->ntxbufs * 3));
-	ie->rframes = (volatile struct ie_recv_frame_desc **) malloc(allocsize,
-								     M_DEVBUF,
-								   M_NOWAIT);
-	if (ie->rframes == NULL)
-		return (0);
+	ie->rframes = malloc(allocsize, M_DEVBUF, M_WAITOK);
 	ie->rbuffs =
 	    (volatile struct ie_recv_buf_desc **)&ie->rframes[ie->nframes];
 	ie->cbuffs = (volatile u_char **)&ie->rbuffs[ie->nrxbufs];

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.52.2.1 2002/06/17 15:10:57 jhay Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.7 2004/03/23 22:18:58 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.8 2004/04/07 05:45:24 dillon Exp $
  */
 
 /*
@@ -1080,7 +1080,7 @@ arc_init(struct ar_hardc *hc)
 	u_char isr, mar;
 
 	MALLOC(sc, struct ar_softc *, hc->numports * sizeof(struct ar_softc),
-		M_DEVBUF, M_WAITOK | M_ZERO);
+		M_DEVBUF, M_INTWAIT | M_ZERO);
 	if (sc == NULL)
 		return;
 	hc->sc = sc;
@@ -2173,7 +2173,7 @@ ngar_rcvmsg(node_p node,
 			    int pos = 0;
 			    int resplen = sizeof(struct ng_mesg) + 512;
 			    MALLOC(*resp, struct ng_mesg *, resplen,
-					M_NETGRAPH, M_NOWAIT | M_ZERO);
+					M_NETGRAPH, M_INTWAIT | M_ZERO);
 			    if (*resp == NULL) { 
 				error = ENOMEM;
 				break;

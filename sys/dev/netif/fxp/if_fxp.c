@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.9 2004/03/23 22:19:00 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.10 2004/04/07 05:45:28 dillon Exp $
  */
 
 /*
@@ -477,18 +477,12 @@ fxp_attach(device_t dev)
 	DELAY(10);
 
 	sc->cbl_base = malloc(sizeof(struct fxp_cb_tx) * FXP_NTXCB,
-	    M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (sc->cbl_base == NULL)
-		goto failmem;
+	    M_DEVBUF, M_WAITOK | M_ZERO);
 
 	sc->fxp_stats = malloc(sizeof(struct fxp_stats), M_DEVBUF,
-	    M_NOWAIT | M_ZERO);
-	if (sc->fxp_stats == NULL)
-		goto failmem;
+	    M_WAITOK | M_ZERO);
 
-	sc->mcsp = malloc(sizeof(struct fxp_cb_mcs), M_DEVBUF, M_NOWAIT);
-	if (sc->mcsp == NULL)
-		goto failmem;
+	sc->mcsp = malloc(sizeof(struct fxp_cb_mcs), M_DEVBUF, M_WAITOK);
 
 	/*
 	 * Pre-allocate our receive buffers.

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.9 2004/03/23 22:19:01 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.10 2004/04/07 05:45:28 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
  */
@@ -873,12 +873,7 @@ static int lge_alloc_jumbo_mem(sc)
 		sc->lge_cdata.lge_jslots[i].lge_inuse = 0;
 		ptr += LGE_MCLBYTES;
 		entry = malloc(sizeof(struct lge_jpool_entry), 
-		    M_DEVBUF, M_NOWAIT);
-		if (entry == NULL) {
-			printf("lge%d: no memory for jumbo "
-			    "buffer queue!\n", sc->lge_unit);
-			return(ENOBUFS);
-		}
+		    M_DEVBUF, M_WAITOK);
 		entry->slot = i;
 		SLIST_INSERT_HEAD(&sc->lge_jfree_listhead,
 		    entry, jpool_entries);

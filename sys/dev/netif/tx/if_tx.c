@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.9 2004/03/23 22:19:04 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.10 2004/04/07 05:45:30 dillon Exp $
  */
 
 /*
@@ -494,19 +494,11 @@ epic_common_attach(sc)
 	int i;
 
 	sc->tx_flist = malloc(sizeof(struct epic_frag_list)*TX_RING_SIZE,
-	    M_DEVBUF, M_NOWAIT | M_ZERO);
+	    M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->tx_desc = malloc(sizeof(struct epic_tx_desc)*TX_RING_SIZE,
-	    M_DEVBUF, M_NOWAIT | M_ZERO);
+	    M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->rx_desc = malloc(sizeof(struct epic_rx_desc)*RX_RING_SIZE,
-	    M_DEVBUF, M_NOWAIT | M_ZERO);
-
-	if (sc->tx_flist == NULL || sc->tx_desc == NULL || sc->rx_desc == NULL){
-		device_printf(sc->dev, "failed to malloc memory\n");
-		if (sc->tx_flist) free(sc->tx_flist, M_DEVBUF);
-		if (sc->tx_desc) free(sc->tx_desc, M_DEVBUF);
-		if (sc->rx_desc) free(sc->rx_desc, M_DEVBUF);
-		return (ENOMEM);
-	}
+	    M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/* Bring the chip out of low-power mode. */
 	CSR_WRITE_4(sc, GENCTL, GENCTL_SOFT_RESET);

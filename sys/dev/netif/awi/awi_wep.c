@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wep.c,v 1.4 2000/08/14 11:28:03 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wep.c,v 1.3.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.7 2004/02/13 02:44:47 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.8 2004/04/07 05:45:26 dillon Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -253,7 +253,7 @@ awi_wep_setalgo(sc, algo)
 		sc->sc_wep_ctx = NULL;
 	}
 	if (ctxlen) {
-		sc->sc_wep_ctx = malloc(ctxlen, M_DEVBUF, M_NOWAIT);
+		sc->sc_wep_ctx = malloc(ctxlen, M_DEVBUF, M_INTWAIT);
 		if (sc->sc_wep_ctx == NULL)
 			return ENOMEM;
 	}

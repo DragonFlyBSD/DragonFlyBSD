@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/wi_hostap.c,v 1.7.2.4 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/Attic/wi_hostap.c,v 1.6 2004/02/13 02:44:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/Attic/wi_hostap.c,v 1.7 2004/04/07 05:45:30 dillon Exp $
  */
 
 /* This is experimental Host AP software for Prism 2 802.11b interfaces.
@@ -419,7 +419,7 @@ wihap_sta_alloc(struct wi_softc *sc, u_int8_t *addr)
 
 	/* Allocate structure. */
 	MALLOC(sta, struct wihap_sta_info *, sizeof(struct wihap_sta_info),
-	    M_HAP_STA, M_NOWAIT);
+	    M_HAP_STA, M_INTWAIT);
 	if (sta == NULL)
 		return(NULL);
 
@@ -593,7 +593,7 @@ wihap_auth_req(struct wi_softc *sc, struct wi_frame *rxfrm,
 			/* Create a challenge frame. */
 			if (!sta->challenge) {
 				MALLOC(sta->challenge, u_int32_t *, 128,
-				       M_TEMP, M_NOWAIT);
+				       M_TEMP, M_INTWAIT);
 				if (!sta->challenge)
 					return;
 			}
