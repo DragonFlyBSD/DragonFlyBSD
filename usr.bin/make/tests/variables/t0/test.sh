@@ -1,11 +1,11 @@
 #!/bin/sh
 
-# $DragonFly: src/usr.bin/make/tests/variables/t0/test.sh,v 1.2 2005/02/01 11:19:38 okumoto Exp $
+# $DragonFly: src/usr.bin/make/tests/variables/t0/test.sh,v 1.3 2005/02/25 11:57:32 okumoto Exp $
 
 . ../../env.sh
 
-case $1 in
-test)
+run_test()
+{
 	cat > Makefile << "_EOF_"
 A	= 0
 AV	= 1
@@ -29,16 +29,6 @@ all:
 _EOF_
 	$MAKE 1> stdout 2> stderr
 	echo $? > status
-	;;
+}
 
-compare) std_compare ;;
-diff) std_diff ;;
-update) std_update ;;
-run) std_run ;;
-clean) std_clean ;;
-
-*)
-	echo "Usage: $0 run | compare | update | clean"
-	;;
-esac
-
+eval_cmd $1

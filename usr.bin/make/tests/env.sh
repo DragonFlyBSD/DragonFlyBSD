@@ -1,18 +1,8 @@
 #!/bin/sh
 
-# $DragonFly: src/usr.bin/make/tests/Attic/env.sh,v 1.3 2005/02/25 09:24:37 okumoto Exp $
+# $DragonFly: src/usr.bin/make/tests/Attic/env.sh,v 1.4 2005/02/25 11:57:32 okumoto Exp $
 
 MAKE=/usr/bin/make
-
-std_action()
-{
-	if [ -d $1 ]; then
-		chmod +x $d/test.sh
-		(cd $d; ./test.sh $2)
-	else
-		echo Test directory $1 missing in `pwd`
-	fi
-}
 
 #
 # We can't check a file into cvs without a DragonFly RCS Id tag, so
@@ -104,52 +94,74 @@ std_run()
 	$0 clean
 }
 
-
-eval_cmd()
+#
+# Run 
+#
+eval_subdir_cmd()
 {
-	case $1 in
-	test)
-		for d in $DIR; do
-			std_action $d $1
-		done
-		;;
+	local START_BASE
 
-	compare)
-		for d in $DIR; do
-			std_action $d $1
-		done
-		;;
+	if [ ! -d $1 ]; then
+		echo "Test directory '$1' missing in directory '$START_BASE'"
+		return
+	fi
 
-	diff)
-		for d in $DIR; do
-			std_action $d $1
-		done
-		;;
+	if [ ! -f $1/test.sh ]; then
+		echo "Test script missing in directory '$START_BASE/$1'"
+		return
+	fi
 
-	update)
-		for d in $DIR; do
-			std_action $d $1
-		done
-		;;
-
-	run)
-		for d in $DIR; do
-			std_action $d $1
-		done
-		;;
-
-	clean)
-		for d in $DIR; do
-			std_action $d $1
-		done
-		;;
-
-	*)
-		echo "Usage: $0 run | compare | update | clean"
-		;;
-	esac
+	START_BASE=${START_BASE}/$1
+	(cd $1; sh test.sh $2)
 }
 
+#
+# Note: Uses global variable $DIR which might be assigned by
+#	the script which sourced this file.
+#
+eval_cmd()
+{
+	if [ "${DIR}" ]; then
+		case $1 in
+		test|compare|diff|update|clean|run)
+			for d in $DIR; do
+				eval_subdir_cmd $d $1
+			done
+			;;
+		*)
+			echo "Usage: $0 run | compare | update | clean"
+			;;
+		esac
+	else
+		case $1 in
+		test)
+			run_test
+			;;
+		compare)
+			std_compare
+			;;
+		diff)
+			std_diff
+			;;
+		update)
+			std_update
+			;;
+		run)
+			std_run
+			;;
+		clean)
+			std_clean
+			;;
+		*)
+			echo "Usage: $0 run | compare | update | clean"
+			;;
+		esac
+	fi
+}
+
+#
+# Parse command line arguments.
+#
 args=`getopt m:v $*`
 if [ $? != 0 ]; then
 	echo 'Usage: ...'
@@ -174,5 +186,8 @@ for i; do
 	esac
 done
 
+START_BASE=${START_BASE:-.}
+
 export MAKE
 export VERBOSE
+export START_BASE
