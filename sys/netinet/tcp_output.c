@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.7 2003/09/18 18:32:55 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.8 2004/02/08 00:11:02 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -56,11 +56,9 @@
 #include <netinet/ip.h>
 #include <netinet/in_pcb.h>
 #include <netinet/ip_var.h>
-#ifdef INET6
 #include <netinet6/in6_pcb.h>
 #include <netinet/ip6.h>
 #include <netinet6/ip6_var.h>
-#endif
 #include <netinet/tcp.h>
 #define	TCPOUTFLAGS
 #include <netinet/tcp_fsm.h>
@@ -99,9 +97,9 @@ int ss_fltsz_local = 4;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, local_slowstart_flightsize, CTLFLAG_RW,
 	&ss_fltsz_local, 1, "Slow start flight size for local networks");
 
-int     tcp_do_newreno = 1;
+int	tcp_do_newreno = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, newreno, CTLFLAG_RW, &tcp_do_newreno,
-        0, "Enable NewReno Algorithms");
+	0, "Enable NewReno Algorithms");
 
 /*
  * Tcp output routine: figure out what should be sent and send it.
@@ -110,30 +108,24 @@ int
 tcp_output(tp)
 	struct tcpcb *tp;
 {
-	struct socket *so = tp->t_inpcb->inp_socket;
+	struct inpcb * const inp = tp->t_inpcb;
+	struct socket *so = inp->inp_socket;
 	long len, recvwin, sendwin;
 	int off, flags, error;
 	struct mbuf *m;
 	struct ip *ip = NULL;
 	struct ipovly *ipov = NULL;
-#ifdef INET6
-	struct ip6_hdr *ip6 = NULL;
-#endif /* INET6 */
 	struct tcphdr *th;
 	u_char opt[TCP_MAXOLEN];
 	unsigned ipoptlen, optlen, hdrlen;
 	int idle, sendalot;
-#if 0
-	int maxburst = TCP_MAXBURST;
+	struct ip6_hdr *ip6 = NULL;
+#ifdef INET6
+	const boolean_t isipv6 = (inp->inp_vflag & INP_IPV6) != 0;
+#else
+	const boolean_t isipv6 = FALSE;
 #endif
 	struct rmxp_tao *taop;
-#ifdef INET6
-	int isipv6;
-#endif
-
-#ifdef INET6
-	isipv6 = (tp->t_inpcb->inp_vflag & INP_IPV6) != 0;
-#endif
 
 	/*
 	 * Determine length of data that should be transmitted,
@@ -147,22 +139,14 @@ tcp_output(tp)
 		 * We have been idle for "a while" and no acks are
 		 * expected to clock out any data we send --
 		 * slow start to get ack "clock" running again.
-		 *       
+		 *
 		 * Set the slow-start flight size depending on whether
 		 * this is a local network or not.
-		 */      
-		if (
-#ifdef INET6
-		    (isipv6 && in6_localaddr(&tp->t_inpcb->in6p_faddr)) ||
-		    (!isipv6 &&
-#endif
-		     in_localaddr(tp->t_inpcb->inp_faddr)
-#ifdef INET6
-		     )
-#endif
-		    )
+		 */
+		if ((isipv6 && in6_localaddr(&inp->in6p_faddr)) ||
+		    (!isipv6 && in_localaddr(inp->inp_faddr)))
 			tp->snd_cwnd = tp->t_maxseg * ss_fltsz_local;
-		else     
+		else
 			tp->snd_cwnd = tp->t_maxseg * ss_fltsz;
 	}
 	idle = (tp->t_flags & TF_LASTIDLE) || (tp->snd_max == tp->snd_una);
@@ -220,7 +204,7 @@ again:
 	}
 
 	/*
-	 * If snd_nxt == snd_max and we have transmitted a FIN, the 
+	 * If snd_nxt == snd_max and we have transmitted a FIN, the
 	 * offset will be > 0 even if so_snd.sb_cc is 0, resulting in
 	 * a negative length.  This can also occur when TCP opens up
 	 * its congestion window while receiving additional duplicate
@@ -233,8 +217,6 @@ again:
 	 */
 	len = (long)ulmin(so->so_snd.sb_cc, sendwin) - off;
 
-	taop = tcp_gettaocache(&tp->t_inpcb->inp_inc);
-
 	/*
 	 * Lop off SYN bit if it has already been sent.  However, if this
 	 * is SYN-SENT state and if segment contains data and if we don't
@@ -244,7 +226,8 @@ again:
 		flags &= ~TH_SYN;
 		off--, len++;
 		if (len > 0 && tp->t_state == TCPS_SYN_SENT &&
-		    (taop == NULL || taop->tao_ccsent == 0))
+		    ((taop = tcp_gettaocache(&inp->inp_inc)) == NULL ||
+		     taop->tao_ccsent == 0))
 			return 0;
 	}
 
@@ -321,7 +304,7 @@ again:
 		if (!(tp->t_flags & TF_MORETOCOME) &&	/* normal case */
 		    (idle || (tp->t_flags & TF_NODELAY)) &&
 		    len + off >= so->so_snd.sb_cc &&
-		    (tp->t_flags & TF_NOPUSH) == 0) {
+		    !(tp->t_flags & TF_NOPUSH)) {
 			goto send;
 		}
 		if (tp->t_force)			/* typ. timeout case */
@@ -361,7 +344,7 @@ again:
 	if (tp->t_flags & TF_ACKNOW)
 		goto send;
 	if ((flags & TH_RST) ||
-	    ((flags & TH_SYN) && (tp->t_flags & TF_NEEDSYN) == 0))
+	    ((flags & TH_SYN) && !(tp->t_flags & TF_NEEDSYN)))
 		goto send;
 	if (SEQ_GT(tp->snd_up, tp->snd_una))
 		goto send;
@@ -370,7 +353,7 @@ again:
 	 * and we have not yet done so, then we need to send.
 	 */
 	if (flags & TH_FIN &&
-	    ((tp->t_flags & TF_SENTFIN) == 0 || tp->snd_nxt == tp->snd_una))
+	    (!(tp->t_flags & TF_SENTFIN) || tp->snd_nxt == tp->snd_una))
 		goto send;
 
 	/*
@@ -416,15 +399,13 @@ send:
 	 *	max_linkhdr + sizeof (struct tcpiphdr) + optlen <= MCLBYTES
 	 */
 	optlen = 0;
-#ifdef INET6
 	if (isipv6)
 		hdrlen = sizeof (struct ip6_hdr) + sizeof (struct tcphdr);
 	else
-#endif
-	hdrlen = sizeof (struct tcpiphdr);
+		hdrlen = sizeof (struct tcpiphdr);
 	if (flags & TH_SYN) {
 		tp->snd_nxt = tp->iss;
-		if ((tp->t_flags & TF_NOOPT) == 0) {
+		if (!(tp->t_flags & TF_NOOPT)) {
 			u_short mss;
 
 			opt[0] = TCPOPT_MAXSEG;
@@ -434,8 +415,8 @@ send:
 			optlen = TCPOLEN_MAXSEG;
 
 			if ((tp->t_flags & TF_REQ_SCALE) &&
-			    ((flags & TH_ACK) == 0 ||
-			    (tp->t_flags & TF_RCVD_SCALE))) {
+			    (!(flags & TH_ACK) ||
+			     (tp->t_flags & TF_RCVD_SCALE))) {
 				*((u_int32_t *)(opt + optlen)) = htonl(
 					TCPOPT_NOP << 24 |
 					TCPOPT_WINDOW << 16 |
@@ -444,32 +425,31 @@ send:
 				optlen += 4;
 			}
 		}
- 	}
+	}
 
- 	/*
+	/*
 	 * Send a timestamp and echo-reply if this is a SYN and our side
 	 * wants to use timestamps (TF_REQ_TSTMP is set) or both our side
 	 * and our peer have sent timestamps in our SYN's.
- 	 */
- 	if ((tp->t_flags & (TF_REQ_TSTMP|TF_NOOPT)) == TF_REQ_TSTMP &&
- 	    (flags & TH_RST) == 0 &&
-	    ((flags & TH_ACK) == 0 ||
-	     (tp->t_flags & TF_RCVD_TSTMP))) {
+	 */
+	if ((tp->t_flags & (TF_REQ_TSTMP|TF_NOOPT)) == TF_REQ_TSTMP &&
+	    !(flags & TH_RST) &&
+	    (!(flags & TH_ACK) || (tp->t_flags & TF_RCVD_TSTMP))) {
 		u_int32_t *lp = (u_int32_t *)(opt + optlen);
 
- 		/* Form timestamp option as shown in appendix A of RFC 1323. */
- 		*lp++ = htonl(TCPOPT_TSTAMP_HDR);
- 		*lp++ = htonl(ticks);
- 		*lp   = htonl(tp->ts_recent);
- 		optlen += TCPOLEN_TSTAMP_APPA;
- 	}
+		/* Form timestamp option as shown in appendix A of RFC 1323. */
+		*lp++ = htonl(TCPOPT_TSTAMP_HDR);
+		*lp++ = htonl(ticks);
+		*lp   = htonl(tp->ts_recent);
+		optlen += TCPOLEN_TSTAMP_APPA;
+	}
 
- 	/*
+	/*
 	 * Send `CC-family' options if our side wants to use them (TF_REQ_CC),
 	 * options are allowed (!TF_NOOPT) and it's not a RST.
- 	 */
- 	if ((tp->t_flags & (TF_REQ_CC|TF_NOOPT)) == TF_REQ_CC &&
- 	     (flags & TH_RST) == 0) {
+	 */
+	if ((tp->t_flags & (TF_REQ_CC|TF_NOOPT)) == TF_REQ_CC &&
+	     !(flags & TH_RST)) {
 		switch (flags & (TH_SYN|TH_ACK)) {
 		/*
 		 * This is a normal ACK, send CC if we received CC before
@@ -507,7 +487,7 @@ send:
 						TCPOPT_CCNEW : TCPOPT_CC;
 			opt[optlen++] = TCPOLEN_CC;
 			*(u_int32_t *)&opt[optlen] = htonl(tp->cc_send);
- 			optlen += 4;
+			optlen += 4;
 			break;
 
 		/*
@@ -533,23 +513,20 @@ send:
 			}
 			break;
 		}
- 	}
-
- 	hdrlen += optlen;
-
-#ifdef INET6
-	if (isipv6)
-		ipoptlen = ip6_optlen(tp->t_inpcb);
-	else
-#endif
-      {
-	if (tp->t_inpcb->inp_options) {
-		ipoptlen = tp->t_inpcb->inp_options->m_len -
-				offsetof(struct ipoption, ipopt_list);
-	} else {
-		ipoptlen = 0;
 	}
-      }
+
+	hdrlen += optlen;
+
+	if (isipv6)
+		ipoptlen = ip6_optlen(inp);
+	else {
+		if (inp->inp_options) {
+			ipoptlen = inp->inp_options->m_len -
+			    offsetof(struct ipoption, ipopt_list);
+		} else {
+			ipoptlen = 0;
+		}
+	}
 #ifdef IPSEC
 	ipoptlen += ipsec_hdrsiz_tcp(tp);
 #endif
@@ -569,15 +546,11 @@ send:
 		sendalot = 1;
 	}
 
-/*#ifdef DIAGNOSTIC*/
 #ifdef INET6
- 	if (max_linkhdr + hdrlen > MCLBYTES)
-		panic("tcphdr too big");
+	KASSERT(max_linkhdr + hdrlen <= MCLBYTES, ("tcphdr too big"));
 #else
- 	if (max_linkhdr + hdrlen > MHLEN)
-		panic("tcphdr too big");
+	KASSERT(max_linkhdr + hdrlen <= MHLEN, ("tcphdr too big"));
 #endif
-/*#endif*/
 
 	/*
 	 * Grab a header mbuf, attaching a copy of data to
@@ -614,7 +587,7 @@ send:
 #ifdef INET6
 		if (MHLEN < hdrlen + max_linkhdr) {
 			MCLGET(m, M_DONTWAIT);
-			if ((m->m_flags & M_EXT) == 0) {
+			if (!(m->m_flags & M_EXT)) {
 				m_freem(m);
 				error = ENOBUFS;
 				goto out;
@@ -659,30 +632,25 @@ send:
 			error = ENOBUFS;
 			goto out;
 		}
-#ifdef INET6
-		if (isipv6 && (MHLEN < hdrlen + max_linkhdr) &&
-		    MHLEN >= hdrlen) {
+		if (isipv6 &&
+		    (hdrlen + max_linkhdr > MHLEN) && hdrlen <= MHLEN)
 			MH_ALIGN(m, hdrlen);
-		} else
-#endif
-		m->m_data += max_linkhdr;
+		else
+			m->m_data += max_linkhdr;
 		m->m_len = hdrlen;
 	}
 	m->m_pkthdr.rcvif = (struct ifnet *)0;
-#ifdef INET6
 	if (isipv6) {
 		ip6 = mtod(m, struct ip6_hdr *);
 		th = (struct tcphdr *)(ip6 + 1);
 		tcp_fillheaders(tp, ip6, th);
-	} else
-#endif /* INET6 */
-      {
-	ip = mtod(m, struct ip *);
-	ipov = (struct ipovly *)ip;
-	th = (struct tcphdr *)(ip + 1);
-	/* this picks up the pseudo header (w/o the length) */
-	tcp_fillheaders(tp, ip, th);
-      }
+	} else {
+		ip = mtod(m, struct ip *);
+		ipov = (struct ipovly *)ip;
+		th = (struct tcphdr *)(ip + 1);
+		/* this picks up the pseudo header (w/o the length) */
+		tcp_fillheaders(tp, ip, th);
+	}
 
 	/*
 	 * Fill in fields, remembering maximum advertised
@@ -758,27 +726,24 @@ send:
 	 * checksum extended header and data.
 	 */
 	m->m_pkthdr.len = hdrlen + len; /* in6_cksum() need this */
-#ifdef INET6
-	if (isipv6)
+	if (isipv6) {
 		/*
 		 * ip6_plen is not need to be filled now, and will be filled
 		 * in ip6_output.
 		 */
 		th->th_sum = in6_cksum(m, IPPROTO_TCP, sizeof(struct ip6_hdr),
 				       sizeof(struct tcphdr) + optlen + len);
-	else
-#endif /* INET6 */
-      {
-	m->m_pkthdr.csum_flags = CSUM_TCP;
-	m->m_pkthdr.csum_data = offsetof(struct tcphdr, th_sum);
-	if (len + optlen)
-		th->th_sum = in_addword(th->th_sum, 
-		    htons((u_short)(optlen + len)));
+	} else {
+		m->m_pkthdr.csum_flags = CSUM_TCP;
+		m->m_pkthdr.csum_data = offsetof(struct tcphdr, th_sum);
+		if (len + optlen)
+			th->th_sum = in_addword(th->th_sum,
+						htons((u_short)(optlen + len)));
 
-	/* IP version must be set here for ipv4/ipv6 checking later */
-	KASSERT(ip->ip_v == IPVERSION,
-	    ("%s: IP version incorrect: %d", __func__, ip->ip_v));
-      }
+		/* IP version must be set here for ipv4/ipv6 checking later */
+		KASSERT(ip->ip_v == IPVERSION,
+		    ("%s: IP version incorrect: %d", __func__, ip->ip_v));
+	}
 
 	/*
 	 * In transmit state, time the transmission and arrange for
@@ -863,7 +828,6 @@ send:
 	 * m->m_pkthdr.len should have been set before cksum calcuration,
 	 * because in6_cksum() need it.
 	 */
-#ifdef INET6
 	if (isipv6) {
 		/*
 		 * we separately set hoplimit for every segment, since the
@@ -871,45 +835,41 @@ send:
 		 * Also, desired default hop limit might be changed via
 		 * Neighbor Discovery.
 		 */
-		ip6->ip6_hlim = in6_selecthlim(tp->t_inpcb,
-					       tp->t_inpcb->in6p_route.ro_rt ?
-					       tp->t_inpcb->in6p_route.ro_rt->rt_ifp
-					       : NULL);
+		ip6->ip6_hlim = in6_selecthlim(inp,
+		    (inp->in6p_route.ro_rt ?
+		     inp->in6p_route.ro_rt->rt_ifp : NULL));
 
 		/* TODO: IPv6 IP6TOS_ECT bit on */
-		error = ip6_output(m,
-			    tp->t_inpcb->in6p_outputopts,
-			    &tp->t_inpcb->in6p_route,
-			    (so->so_options & SO_DONTROUTE), NULL, NULL,
-			    tp->t_inpcb);
-	} else
-#endif /* INET6 */
-    {
-	struct rtentry *rt;
-	ip->ip_len = m->m_pkthdr.len;
+		error = ip6_output(m, inp->in6p_outputopts, &inp->in6p_route,
+		    (so->so_options & SO_DONTROUTE), NULL, NULL, inp);
+	} else {
+		struct rtentry *rt;
+		ip->ip_len = m->m_pkthdr.len;
 #ifdef INET6
- 	if (INP_CHECK_SOCKAF(so, AF_INET6))
- 		ip->ip_ttl = in6_selecthlim(tp->t_inpcb,
- 					    tp->t_inpcb->in6p_route.ro_rt ?
- 					    tp->t_inpcb->in6p_route.ro_rt->rt_ifp
- 					    : NULL);
- 	else
-#endif /* INET6 */
-	ip->ip_ttl = tp->t_inpcb->inp_ip_ttl;	/* XXX */
-	ip->ip_tos = tp->t_inpcb->inp_ip_tos;	/* XXX */
-	/*
-	 * See if we should do MTU discovery.  We do it only if the following
-	 * are true:
-	 *	1) we have a valid route to the destination
-	 *	2) the MTU is not locked (if it is, then discovery has been
-	 *	   disabled)
-	 */
-	if (path_mtu_discovery && (rt = tp->t_inpcb->inp_route.ro_rt) &&
-	    (rt->rt_flags & RTF_UP) && !(rt->rt_rmx.rmx_locks & RTV_MTU))
-		ip->ip_off |= IP_DF;
-	error = ip_output(m, tp->t_inpcb->inp_options, &tp->t_inpcb->inp_route,
-	    (so->so_options & SO_DONTROUTE), 0, tp->t_inpcb);
-    }
+		if (INP_CHECK_SOCKAF(so, AF_INET6))
+			ip->ip_ttl = in6_selecthlim(inp,
+			    (inp->in6p_route.ro_rt ?
+			     inp->in6p_route.ro_rt->rt_ifp : NULL));
+		else
+#endif
+			ip->ip_ttl = inp->inp_ip_ttl;	/* XXX */
+
+		ip->ip_tos = inp->inp_ip_tos;	/* XXX */
+		/*
+		 * See if we should do MTU discovery.
+		 * We do it only if the following are true:
+		 *	1) we have a valid route to the destination
+		 *	2) the MTU is not locked (if it is,
+		 *	   then discovery has been disabled)
+		 */
+		if (path_mtu_discovery &&
+		    (rt = inp->inp_route.ro_rt) && (rt->rt_flags & RTF_UP) &&
+		    !(rt->rt_rmx.rmx_locks & RTV_MTU))
+			ip->ip_off |= IP_DF;
+
+		error = ip_output(m, inp->inp_options, &inp->inp_route,
+		    (so->so_options & SO_DONTROUTE), NULL, inp);
+	}
 	if (error) {
 
 		/*
@@ -921,7 +881,7 @@ send:
 			 * No need to check for TH_FIN here because
 			 * the TF_SENTFIN flag handles that case.
 			 */
-			if ((flags & TH_SYN) == 0)
+			if (!(flags & TH_SYN))
 				tp->snd_nxt -= len;
 		}
 
@@ -932,12 +892,12 @@ out:
 			 * to get us going again later.  Persist state
 			 * is not necessarily right, but it is close enough.
 			 */
-	                if (!callout_active(tp->tt_rexmt) &&
-                            !callout_active(tp->tt_persist)) {
+			if (!callout_active(tp->tt_rexmt) &&
+			    !callout_active(tp->tt_persist)) {
 				tp->t_rxtshift = 0;
 				tcp_setpersist(tp);
 			}
-			tcp_quench(tp->t_inpcb, 0);
+			tcp_quench(inp, 0);
 			return (0);
 		}
 		if (error == EMSGSIZE) {
@@ -947,11 +907,11 @@ out:
 			 * initiate retransmission, so it is important to
 			 * not do so here.
 			 */
-			tcp_mtudisc(tp->t_inpcb, 0);
+			tcp_mtudisc(inp, 0);
 			return 0;
 		}
-		if ((error == EHOSTUNREACH || error == ENETDOWN)
-		    && TCPS_HAVERCVDSYN(tp->t_state)) {
+		if ((error == EHOSTUNREACH || error == ENETDOWN) &&
+		    TCPS_HAVERCVDSYN(tp->t_state)) {
 			tp->t_softerror = error;
 			return (0);
 		}
@@ -971,16 +931,6 @@ out:
 	tp->t_flags &= ~TF_ACKNOW;
 	if (tcp_delack_enabled)
 		callout_stop(tp->tt_delack);
-#if 0
-	/*
-	 * This completely breaks TCP if newreno is turned on.  What happens
-	 * is that if delayed-acks are turned on on the receiver, this code
-	 * on the transmitter effectively destroys the TCP window, forcing
-	 * it to four packets (1.5Kx4 = 6K window).
-	 */
-	if (sendalot && (!tcp_do_newreno || --maxburst))
-		goto again;
-#endif
 	if (sendalot)
 		goto again;
 	return (0);
