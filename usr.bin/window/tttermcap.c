@@ -35,14 +35,13 @@
  *
  * @(#)tttermcap.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/tttermcap.c,v 1.1.1.1.14.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/tttermcap.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/window/tttermcap.c,v 1.3 2005/02/28 13:57:05 joerg Exp $
  */
 
 #include "tt.h"
 
 char *tgetstr();
 char *tgoto();
-char *malloc();
 
 tttputc(c)
 {

@@ -35,13 +35,11 @@
  *
  * @(#)string.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/string.c,v 1.2.6.2 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/string.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/window/string.c,v 1.3 2005/02/28 13:57:05 joerg Exp $
  */
 
 #include <string.h> /* System string definitions. */
 #include "mystring.h" /* Local string definitions. */
-
-char *malloc();
 
 char *
 str_cpy(s)
