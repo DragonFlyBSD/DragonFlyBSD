@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.21 2004/12/20 21:13:09 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.22 2004/12/23 04:39:57 cpressey Exp $
 #
 
 ISODIR ?= /usr/release
@@ -52,8 +52,8 @@ INSTALLER_PKGS= libaura-1.0 libdfui-2.0 libinstaller-2.0 \
 		thttpd-notimeout-2.24 dfuife_cgi-1.1
 INSTALLER_SKELS= installer
 
-INSTALLER_ENV= EXTRA_PACKAGES="${INSTALLER_PKGS}" \
-		EXTRA_ROOTSKELS="${INSTALLER_SKELS}"
+INSTALLER_ENV= EXTRA_PACKAGES="${INSTALLER_PKGS} ${EXTRA_PACKAGES}" \
+		EXTRA_ROOTSKELS="${INSTALLER_SKELS} ${EXTRA_ROOTSKELS}"
 
 installer_check:
 		@${INSTALLER_ENV} ${MAKE} check
