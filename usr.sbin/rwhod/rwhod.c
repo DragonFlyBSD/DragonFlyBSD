@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.7 2005/03/17 15:39:34 joerg Exp $
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.8 2005/03/18 22:08:08 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -216,14 +216,13 @@ main(int argc, char *argv[])
 	/*
 	 * Establish host name as returned by system.
 	 */
-	if (gethostname(myname, sizeof(myname) - 1) < 0) {
+	if (gethostname(myname, sizeof(myname)) < 0) {
 		syslog(LOG_ERR, "gethostname: %m");
 		exit(1);
 	}
 	if ((cp = strchr(myname, '.')) != NULL)
 		*cp = '\0';
-	strncpy(mywd.wd_hostname, myname, sizeof(mywd.wd_hostname) - 1);
-	mywd.wd_hostname[sizeof(mywd.wd_hostname) - 1] = '\0';
+	strlcpy(mywd.wd_hostname, myname, sizeof(mywd.wd_hostname));
 	utmpf = open(_PATH_UTMP, O_RDONLY|O_CREAT, 0644);
 	if (utmpf < 0) {
 		syslog(LOG_ERR, "%s: %m", _PATH_UTMP);
