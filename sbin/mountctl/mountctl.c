@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.1 2005/01/08 23:22:35 dillon Exp $
+ * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.2 2005/01/09 03:06:14 dillon Exp $
  */
 /*
  * This utility implements the userland mountctl command which is used to
@@ -39,6 +39,9 @@
  */
 
 #include <sys/types.h>
+#include <sys/param.h>
+#include <sys/ucred.h>
+#include <sys/mount.h>
 #include <sys/time.h>
 #include <sys/mountctl.h>
 #include <stdio.h>
@@ -51,15 +54,16 @@ static volatile void usage(void);
 static void parse_option_keyword(const char *opt, 
 		const char **wopt, const char **xopt);
 static int64_t getsize(const char *str);
+static const char *numtostr(int64_t num);
 
-static void mountctl_scan(void (*func)(const char *, const char *, int),
+static int mountctl_scan(void (*func)(const char *, const char *, int, void *),
 		const char *keyword, const char *mountpt, int fd);
 static void mountctl_list(const char *keyword, const char *mountpt,
-		int __unused fd);
+		int __unused fd, void *info);
 static void mountctl_add(const char *keyword, const char *mountpt, int fd);
 static void mountctl_delete(const char *keyword, const char *mountpt,
-		int __unused fd);
-static void mountctl_modify(const char *keyword, const char *mountpt, int fd);
+		int __unused fd, void __unused *);
+static void mountctl_modify(const char *keyword, const char *mountpt, int fd, void __unused *);
 
 /*
  * For all options 0 means unspecified, -1 means noOPT or nonOPT, and a
@@ -90,6 +94,7 @@ main(int ac, char **av)
     const char *xopt = NULL;
     const char *keyword = NULL;
     const char *mountpt = NULL;
+    char *tmp;
 
     while ((ch = getopt(ac, av, "adflo:mw:x:ACFSZ")) != -1) {
 	switch(ch) {
@@ -168,24 +173,23 @@ main(int ac, char **av)
      */
     switch(ac) {
     case 0:
-	if (aopt == 0) {
+	if (aopt) {
 	    fprintf(stderr, "action requires a tag and/or mount "
 			    "point to be specified\n");
 	    usage();
 	}
 	break;
     case 1:
-	if (av[0][0] == '/')
+	if (av[0][0] == '/') {
 	    mountpt = av[0];
-	else
+	    if ((keyword = strchr(mountpt, ':')) != NULL) {
+		++keyword;
+		tmp = strdup(mountpt);
+		*strchr(tmp, ':') = 0;
+		mountpt = tmp;
+	    }
+	} else {
 	    keyword = av[0];
-	break;
-    case 2:
-	keyword = av[0];
-	mountpt = av[1];
-	if (*mountpt != '/') {
-	    fprintf(stderr, "mount points must begin with '/'\n");
-	    usage();
 	}
 	break;
     default:
@@ -244,10 +248,20 @@ main(int ac, char **av)
 	mountctl_scan(mountctl_list, keyword, mountpt, fd);
     if (aopt)
 	mountctl_add(keyword, mountpt, fd);
-    if (dopt)
-	mountctl_scan(mountctl_delete, keyword, mountpt, -1);
-    if (mopt)
-	mountctl_scan(mountctl_modify, keyword, mountpt, fd);
+    if (dopt) {
+	ch = mountctl_scan(mountctl_delete, keyword, mountpt, -1);
+	if (ch)
+	    printf("%d journals deleted\n", ch);
+	else
+	    printf("Unable to locate any matching journals\n");
+    }
+    if (mopt) {
+	ch = mountctl_scan(mountctl_modify, keyword, mountpt, fd);
+	if (ch)
+	    printf("%d journals modified\n", ch);
+	else
+	    printf("Unable to locate any matching journals\n");
+    }
 
     return(0);
 }
@@ -361,33 +375,104 @@ parse_option_keyword(const char *opt, const char **wopt, const char **xopt)
     }
 }
 
-static void
-mountctl_scan(void (*func)(const char *, const char *, int),
+static int
+mountctl_scan(void (*func)(const char *, const char *, int, void *),
 	    const char *keyword, const char *mountpt, int fd)
 {
-    fprintf(stderr, "scan not yet implemented\n");
+    struct statfs *sfs;
+    int count;
+    int calls;
+    int i;
+    struct mountctl_status_journal statreq;
+    struct mountctl_journal_ret_status rstat[4];	/* BIG */
+
+    calls = 0;
+    if (mountpt) {
+	bzero(&statreq, sizeof(statreq));
+	if (keyword) {
+	    statreq.index = MC_JOURNAL_INDEX_ID;
+	    count = strlen(keyword);
+	    if (count > JIDMAX)
+		count = JIDMAX;
+	    bcopy(keyword, statreq.id, count);
+	} else {
+	    statreq.index = MC_JOURNAL_INDEX_ALL;
+	}
+	count = mountctl(mountpt, MOUNTCTL_STATUS_VFS_JOURNAL, -1,
+			&statreq, sizeof(statreq), &rstat, sizeof(rstat));
+	if (count > 0 && rstat[0].recsize != sizeof(rstat[0])) {
+	    fprintf(stderr, "Unable to access status, "
+			    "structure size mismatch\n");
+	    exit(1);
+	}
+	if (count > 0) {
+	    count /= sizeof(rstat[0]);
+	    for (i = 0; i < count; ++i) {
+		func(rstat[i].id, mountpt, fd, &rstat[i]);
+		++calls;
+	    }
+	}
+    } else {
+	if ((count = getmntinfo(&sfs, MNT_WAIT)) > 0) {
+	    for (i = 0; i < count; ++i) {
+		calls += mountctl_scan(func, keyword, sfs[i].f_mntonname, fd);
+	    }
+	} else if (count < 0) {
+	    /* XXX */
+	}
+    }
+    return(calls);
 }
 
 static void
-mountctl_list(const char *keyword, const char *mountpt, int __unused fd)
+mountctl_list(const char *keyword, const char *mountpt, int __unused fd, void *info)
 {
-    fprintf(stderr, "list not yet implemented\n");
+    struct mountctl_journal_ret_status *rstat = info;
+
+    printf("%s:%s\n", mountpt, rstat->id[0] ? rstat->id : "<NOID>");
+    printf("    membufsize=%s\n", numtostr(rstat->membufsize));
+    printf("    membufused=%s\n", numtostr(rstat->membufused));
+    printf("    membufiopend=%s\n", numtostr(rstat->membufiopend));
+    printf("    total_bytes=%s\n", numtostr(rstat->bytessent));
 }
 
 static void
 mountctl_add(const char *keyword, const char *mountpt, int fd)
 {
-    fprintf(stderr, "add not yet implemented\n");
+    struct mountctl_install_journal joinfo;
+    int error;
+
+    bzero(&joinfo, sizeof(joinfo));
+    snprintf(joinfo.id, sizeof(joinfo.id), "%s", keyword);
+
+    error = mountctl(mountpt, MOUNTCTL_INSTALL_VFS_JOURNAL, fd,
+			&joinfo, sizeof(joinfo), NULL, 0);
+    if (error == 0) {
+	fprintf(stderr, "%s:%s added\n", mountpt, joinfo.id);
+    } else {
+	fprintf(stderr, "%s:%s failed to add, error %s\n", mountpt, joinfo.id, strerror(errno));
+    }
 }
 
 static void
-mountctl_delete(const char *keyword, const char *mountpt, int __unused fd)
+mountctl_delete(const char *keyword, const char *mountpt, int __unused fd, void __unused *info)
 {
-    fprintf(stderr, "delete not yet implemented\n");
+    struct mountctl_remove_journal joinfo;
+    int error;
+
+    bzero(&joinfo, sizeof(joinfo));
+    snprintf(joinfo.id, sizeof(joinfo.id), "%s", keyword);
+    error = mountctl(mountpt, MOUNTCTL_REMOVE_VFS_JOURNAL, -1,
+			&joinfo, sizeof(joinfo), NULL, 0);
+    if (error == 0) {
+	fprintf(stderr, "%s:%s deleted\n", mountpt, joinfo.id);
+    } else {
+	fprintf(stderr, "%s:%s deletion failed, error %s\n", mountpt, joinfo.id, strerror(errno));
+    }
 }
 
 static void
-mountctl_modify(const char *keyword, const char *mountpt, int fd)
+mountctl_modify(const char *keyword, const char *mountpt, int fd, void __unused *info)
 {
     fprintf(stderr, "modify not yet implemented\n");
 }
@@ -398,12 +483,12 @@ void
 usage(void)
 {
     printf(
-	" mountctl -l [tag/mountpt | tag mountpt]\n"
+	" mountctl -l [tag/mountpt | mountpt:tag]\n"
 	" mountctl -a [-w output_path] [-x filedesc]\n"
-	"             [-o option] [-o option ...] tag mountpt\n"
-	" mountctl -d [tag/mountpt | tag mountpt]\n"
-	" mountctl -m [-o option] [-o option ...] [tag/mountpt | tag mountpt]\n"
-	" mountctl -FZSCA [tag/mountpt | tag mountpt]\n"
+	"             [-o option] [-o option ...] mountpt:tag\n"
+	" mountctl -d [tag/mountpt | mountpt:tag]\n"
+	" mountctl -m [-o option] [-o option ...] [tag/mountpt | mountpt:tag]\n"
+	" mountctl -FZSCA [tag/mountpt | mountpt:tag]\n"
     );
     exit(1);
 }
@@ -439,5 +524,30 @@ getsize(const char *str)
 	}
     }
     return(val);
+}
+
+static
+const char *
+numtostr(int64_t num)
+{
+    static char buf[64];
+    int n;
+    double v = num;
+
+    if (num < 1024)
+	snprintf(buf, sizeof(buf), "%lld", num);
+    else if (num < 10 * 1024)
+	snprintf(buf, sizeof(buf), "%3.2fK", num / 1024.0);
+    else if (num < 1024 * 1024)
+	snprintf(buf, sizeof(buf), "%3.0fK", num / 1024.0);
+    else if (num < 10 * 1024 * 1024)
+	snprintf(buf, sizeof(buf), "%3.2fM", num / (1024.0 * 1024.0));
+    else if (num < 1024 * 1024 * 1024)
+	snprintf(buf, sizeof(buf), "%3.0fM", num / (1024.0 * 1024.0));
+    else if (num < 10LL * 1024 * 1024 * 1024)
+	snprintf(buf, sizeof(buf), "%3.2fG", num / (1024.0 * 1024.0 * 1024.0));
+    else
+	snprintf(buf, sizeof(buf), "%3.0fG", num / (1024.0 * 1024.0 * 1024.0));
+    return(buf);
 }
 
