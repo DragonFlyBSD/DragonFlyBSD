@@ -35,7 +35,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.10 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.9 2004/11/30 17:39:41 joerg Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.10 2004/12/09 19:08:35 okumoto Exp $
  */
 
 /*-
@@ -292,6 +292,6 @@ For_Run(int lineno)
     Lst_ForEach(arg.lst, ForExec, (void *) &arg);
 
     free(arg.var);
-    Lst_Destroy(arg.lst, (void (*)(void *)) free);
+    Lst_Destroy(arg.lst, free);
     Buf_Destroy(arg.buf, TRUE);
 }

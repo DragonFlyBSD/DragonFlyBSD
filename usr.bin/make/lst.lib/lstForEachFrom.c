@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstForEachFrom.c,v 1.7 1999/08/28 01:03:52 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstForEachFrom.c,v 1.6 2004/12/08 11:26:39 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstForEachFrom.c,v 1.7 2004/12/09 19:08:36 okumoto Exp $
  *
  * @(#)lstForEachFrom.c	8.1 (Berkeley) 6/6/93
  */
@@ -64,7 +64,7 @@
  *-----------------------------------------------------------------------
  */
 void
-Lst_ForEachFrom(Lst list, LstNode ln, int (*proc)(void *, void *), void *d)
+Lst_ForEachFrom(Lst list, LstNode ln, DoProc *proc, void *d)
 {
     LstNode	next;
     Boolean 	done;

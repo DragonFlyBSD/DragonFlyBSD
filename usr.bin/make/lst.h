@@ -38,7 +38,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.9 1999/08/28 01:03:32 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.9 2004/12/08 11:26:39 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.10 2004/12/09 19:08:35 okumoto Exp $
  */
 
 /*-
@@ -94,13 +94,18 @@ struct Lst {
 };
 typedef	struct	Lst	*Lst;
 
+typedef	int CompareProc(void *, void *);
+typedef	int DoProc(void *, void *);
+typedef	void *DuplicateProc(void *);
+typedef	void FreeProc(void *);
+
 /*
  * NOFREE can be used as the freeProc to Lst_Destroy when the elements are
  *	not to be freed.
  * NOCOPY performs similarly when given as the copyProc to Lst_Duplicate.
  */
-#define	NOFREE		((void (*)(void *)) 0)
-#define	NOCOPY		((void * (*)(void *)) 0)
+#define	NOFREE		((FreeProc *)NULL)
+#define	NOCOPY		((DuplicateProc *)NULL)
 
 #define	LST_CONCNEW	0   /* create new LstNode's when using Lst_Concat */
 #define	LST_CONCLINK	1   /* relink LstNode's when using Lst_Concat */
@@ -111,9 +116,9 @@ typedef	struct	Lst	*Lst;
 /* Create a new list */
 Lst		Lst_Init(Boolean);
 /* Duplicate an existing list */
-Lst		Lst_Duplicate(Lst, void * (*)(void *));
+Lst		Lst_Duplicate(Lst, DuplicateProc *);
 /* Destroy an old one */
-void		Lst_Destroy(Lst, void (*)(void *));
+void		Lst_Destroy(Lst, FreeProc *);
 
 /*
  * Functions to modify a list
@@ -149,22 +154,22 @@ void *	Lst_Datum(LstNode);
  * Functions for entire lists
  */
 /* Find an element in a list */
-LstNode		Lst_Find(Lst, void *, int (*)(void *, void *));
+LstNode		Lst_Find(Lst, void *, CompareProc *);
 /* Find an element starting from somewhere */
-LstNode		Lst_FindFrom(Lst, LstNode, void *, int (*cProc)(void *, void *));
+LstNode		Lst_FindFrom(Lst, LstNode, void *, CompareProc *);
 /*
  * See if the given datum is on the list. Returns the LstNode containing
  * the datum
  */
 LstNode		Lst_Member(Lst, void *);
 /* Apply a function to all elements of a lst */
-void		Lst_ForEach(Lst, int (*)(void *, void *), void *);
+void		Lst_ForEach(Lst, DoProc *, void *);
 /*
  * Apply a function to all elements of a lst starting from a certain point.
  * If the list is circular, the application will wrap around to the
  * beginning of the list again.
  */
-void		Lst_ForEachFrom(Lst, LstNode, int (*)(void *, void *), void *);
+void		Lst_ForEachFrom(Lst, LstNode, DoProc *, void *);
 /*
  * these functions are for dealing with a list as a table, of sorts.
  * An idea of the "current element" is kept and used by all the functions
