@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.14 2004/04/23 18:01:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.15 2004/05/08 04:11:48 dillon Exp $
  */
 
 
@@ -90,6 +90,7 @@ nfs_getpages(struct vop_getpages_args *ap)
 	struct vnode *vp;
 	struct nfsmount *nmp;
 	vm_page_t *pages;
+	vm_page_t m;
 
 	vp = ap->a_vp;
 	nmp = VFSTONFS(vp->v_mount);
@@ -108,23 +109,40 @@ nfs_getpages(struct vop_getpages_args *ap)
 	npages = btoc(count);
 
 	/*
-	 * If the requested page is partially valid, just return it and
-	 * allow the pager to zero-out the blanks.  Partially valid pages
-	 * can only occur at the file EOF.
+	 * NOTE that partially valid pages may occur in cases other
+	 * then file EOF, such as when a file is partially written and
+	 * ftruncate()-extended to a larger size.   It is also possible
+	 * for the valid bits to be set on garbage beyond the file EOF and
+	 * clear in the area before EOF (e.g. m->valid == 0xfc), which can
+	 * occur due to vtruncbuf() and the buffer cache's handling of
+	 * pages which 'straddle' buffers or when b_bufsize is not a 
+	 * multiple of PAGE_SIZE.... the buffer cache cannot normally
+	 * clear the extra bits.  This kind of situation occurs when you
+	 * make a small write() (m->valid == 0x03) and then mmap() and
+	 * fault in the buffer(m->valid = 0xFF).  When NFS flushes the
+	 * buffer (vinvalbuf() m->valid = 0xFC) we are left with a mess.
+	 *
+	 * This is combined with the possibility that the pages are partially
+	 * dirty or that there is a buffer backing the pages that is dirty
+	 * (even if m->dirty is 0).
+	 *
+	 * To solve this problem several hacks have been made:  (1) NFS
+	 * guarentees that the IO block size is a multiple of PAGE_SIZE and
+	 * (2) The buffer cache, when invalidating an NFS buffer, will
+	 * disregard the buffer's fragmentory b_bufsize and invalidate
+	 * the whole page rather then just the piece the buffer owns.
+	 *
+	 * This allows us to assume that a partially valid page found here
+	 * is fully valid (vm_fault will zero'd out areas of the page not
+	 * marked as valid).
 	 */
-
-	{
-		vm_page_t m = pages[ap->a_reqpage];
-
-		if (m->valid != 0) {
-			/* handled by vm_fault now	  */
-			/* vm_page_zero_invalid(m, TRUE); */
-			for (i = 0; i < npages; ++i) {
-				if (i != ap->a_reqpage)
-					vnode_pager_freepage(pages[i]);
-			}
-			return(0);
+	m = pages[ap->a_reqpage];
+	if (m->valid != 0) {
+		for (i = 0; i < npages; ++i) {
+			if (i != ap->a_reqpage)
+				vnode_pager_freepage(pages[i]);
 		}
+		return(0);
 	}
 
 	/*
@@ -169,7 +187,6 @@ nfs_getpages(struct vop_getpages_args *ap)
 	size = count - uio.uio_resid;
 
 	for (i = 0, toff = 0; i < npages; i++, toff = nextoff) {
-		vm_page_t m;
 		nextoff = toff + PAGE_SIZE;
 		m = pages[i];
 

@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.22 2004/03/31 15:32:53 drhodus Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.23 2004/05/08 04:11:46 dillon Exp $
  */
 
 /*
@@ -1149,11 +1149,42 @@ brelse(struct buf * bp)
 				}
 				m = bp->b_pages[i];
 			}
+
+			/*
+			 * Invalidate the backing store if B_NOCACHE is set
+			 * (e.g. used with vinvalbuf()).  If this is NFS
+			 * we impose a requirement that the block size be
+			 * a multiple of PAGE_SIZE and create a temporary
+			 * hack to basically invalidate the whole page.  The
+			 * problem is that NFS uses really odd buffer sizes
+			 * especially when tracking piecemeal writes and
+			 * it also vinvalbuf()'s a lot, which would result
+			 * in only partial page validation and invalidation
+			 * here.  If the file page is mmap()'d, however,
+			 * all the valid bits get set so after we invalidate
+			 * here we would end up with weird m->valid values
+			 * like 0xfc.  nfs_getpages() can't handle this so
+			 * we clear all the valid bits for the NFS case
+			 * instead of just some of them.
+			 *
+			 * The real bug is the VM system having to set m->valid
+			 * to VM_PAGE_BITS_ALL for faulted-in pages, which
+			 * itself is an artifact of the whole 512-byte
+			 * granular mess that exists to support odd block 
+			 * sizes and UFS meta-data block sizes (e.g. 6144).
+			 * A complete rewrite is required.
+			 */
 			if (bp->b_flags & (B_NOCACHE|B_ERROR)) {
 				int poffset = foff & PAGE_MASK;
-				int presid = resid > (PAGE_SIZE - poffset) ?
-					(PAGE_SIZE - poffset) : resid;
+				int presid;
 
+				presid = PAGE_SIZE - poffset;
+				if (bp->b_vp->v_tag == VT_NFS &&
+				    bp->b_vp->v_type == VREG) {
+					; /* entire page */
+				} else if (presid > resid) {
+					presid = resid;
+				}
 				KASSERT(presid >= 0, ("brelse: extra page"));
 				vm_page_set_invalid(m, poffset, presid);
 			}

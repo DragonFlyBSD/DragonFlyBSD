@@ -37,7 +37,7 @@
  *
  *	@(#)vnode_pager.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/vm/vnode_pager.h,v 1.14 1999/12/29 04:55:12 peter Exp $
- * $DragonFly: src/sys/vm/vnode_pager.h,v 1.3 2003/08/20 08:03:01 rob Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.h,v 1.4 2004/05/08 04:11:45 dillon Exp $
  */
 
 #ifndef	_VNODE_PAGER_
@@ -45,18 +45,16 @@
 
 #ifdef _KERNEL
 vm_object_t vnode_pager_alloc (void *, vm_ooffset_t, vm_prot_t, vm_ooffset_t);
-void vnode_pager_freepage (vm_page_t m);
+void vnode_pager_freepage (vm_page_t);
 struct vnode *vnode_pager_lock (vm_object_t);
 
 /*
  * XXX Generic routines; currently called by badly written FS code; these
  * XXX should go away soon.
  */
-int vnode_pager_generic_getpages (struct vnode *vp, vm_page_t *m,
-					  int count, int reqpage);
-int vnode_pager_generic_putpages (struct vnode *vp, vm_page_t *m,
-					  int count, boolean_t sync,
-					  int *rtvals);
+int vnode_pager_generic_getpages (struct vnode *, vm_page_t *, int, int);
+int vnode_pager_generic_putpages (struct vnode *, vm_page_t *, int,
+					boolean_t, int *);
 #endif
 
 #endif				/* _VNODE_PAGER_ */

@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.12 2004/03/23 22:54:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.13 2004/05/08 04:11:45 dillon Exp $
  */
 
 /*
@@ -284,12 +284,12 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 				FALSE);
 		}
 		/*
-		 * this gets rid of garbage at the end of a page that is now
-		 * only partially backed by the vnode.
-		 *
-		 * XXX for some reason (I don't know yet), if we take a
-		 * completely invalid page and mark it partially valid
-		 * it can screw up NFS reads, so we don't allow the case.
+		 * This gets rid of garbage at the end of a page that is now
+		 * only partially backed by the vnode.  Since we are setting
+		 * the entire page valid & clean after we are done we have
+		 * to be sure that the portion of the page within the file
+		 * bounds is already valid.  If it isn't then making it
+		 * valid would create a corrupt block.
 		 */
 		if (nsize & PAGE_MASK) {
 			vm_offset_t kva;
@@ -653,6 +653,12 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	 * If we have a completely valid page available to us, we can
 	 * clean up and return.  Otherwise we have to re-read the
 	 * media.
+	 *
+	 * Note that this does not work with NFS, so NFS has its own
+	 * getpages routine.  The problem is that NFS can have partially
+	 * valid pages associated with the buffer cache due to the piecemeal
+	 * write support.  If we were to fall through and re-read the media
+	 * as we do here, dirty data could be lost.
 	 */
 
 	if (m[reqpage]->valid == VM_PAGE_BITS_ALL) {

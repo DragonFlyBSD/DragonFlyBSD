@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.16 2004/04/24 04:32:04 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.17 2004/05/08 04:11:48 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -205,6 +205,20 @@ nfs_iosize(int v3, int sotype)
 		iosize = iomax;
 	if (iosize < PAGE_SIZE)
 		iosize = PAGE_SIZE;
+
+	/*
+	 * This is an aweful hack but until the buffer cache is rewritten
+	 * we need it.  The problem is that when you combine write() with
+	 * mmap() the vm_page->valid bits can become weird looking
+	 * (e.g. 0xfc).  This occurs because NFS uses piecemeal buffers
+	 * at the file EOF.  To solve the problem the BIO system needs to
+	 * be guarenteed that the NFS iosize for regular files will be a
+	 * multiple of PAGE_SIZE so it can invalidate the whole page
+	 * rather then just the piece of it owned by the buffer when
+	 * NFS does vinvalbuf() calls.
+	 */
+	if (iosize & PAGE_MASK)
+		iosize = (iosize & ~PAGE_MASK) + PAGE_SIZE;
 	return iosize;
 }
 
