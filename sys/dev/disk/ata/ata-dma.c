@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.35.2.31 2003/05/07 16:46:11 jhb Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.18 2004/03/02 21:03:46 drhodus Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.19 2004/03/09 21:38:05 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -62,15 +62,21 @@ static int hpt_cable80(struct ata_device *);
 	 (atadev->unit == ATA_SLAVE && \
 	 atadev->channel->devices & ATA_ATAPI_SLAVE))
 
+int ata_dma_debug = 0;
+
 int
 ata_dmaalloc(struct ata_device *atadev, int flags)
 {
     struct ata_channel *ch = atadev->channel;
 
+    if (atadev->dmastate.dmatab != NULL)
+	return(0);
+
     KKASSERT(ch->dma_mpipe.max_count != 0);
     atadev->dmastate.dmatab = mpipe_alloc(&ch->dma_mpipe, flags);
     KKASSERT(((uintptr_t)atadev->dmastate.dmatab & PAGE_MASK) == 0);
-    if (atadev->dmastate.dmatab)
+
+    if (atadev->dmastate.dmatab != NULL)
 	return(0);
     return(ENOBUFS);
 }
@@ -79,6 +85,9 @@ void
 ata_dmafree(struct ata_device *atadev)
 {
     struct ata_channel *ch = atadev->channel;
+
+    if(ata_dma_debug)
+	printf("ata_dmafree called\n");
 
     if (atadev->dmastate.dmatab) {
 	mpipe_free(&ch->dma_mpipe, atadev->dmastate.dmatab);
