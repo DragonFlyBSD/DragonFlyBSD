@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.57 2005/02/28 12:17:37 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.58 2005/03/03 23:39:06 okumoto Exp $
  */
 
 /*-
@@ -143,16 +143,18 @@ static char *objdir;			/* where we chdir'ed to */
 static void
 MFLAGS_append(const char *flag, char *arg)
 {
+	char *str;
+
 	Var_Append(MAKEFLAGS, flag, VAR_GLOBAL);
 	if (arg != NULL) {
-		char *str = MAKEFLAGS_quote(arg);
+		str = MAKEFLAGS_quote(arg);
 		Var_Append(MAKEFLAGS, str, VAR_GLOBAL);
 		free(str);
 	}
 
 	Var_Append("MFLAGS", flag, VAR_GLOBAL);
 	if (arg != NULL) {
-		char *str = MAKEFLAGS_quote(arg);
+		str = MAKEFLAGS_quote(arg);
 		Var_Append("MFLAGS", str, VAR_GLOBAL);
 		free(str);
 	}
@@ -396,6 +398,7 @@ Main_ParseArgLine(char *line, int mflags)
 		argv = MAKEFLAGS_break(line, &argc);
 	else
 		argv = brk_string(line, &argc, TRUE);
+
 	MainParseArgs(argc, argv);
 }
 
