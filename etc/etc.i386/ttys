@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/etc/etc.i386/ttys,v 1.8 2000/01/29 12:18:03 obrien Exp $
-# $DragonFly: src/etc/etc.i386/ttys,v 1.3 2004/06/27 21:39:04 dillon Exp $
+# $DragonFly: src/etc/etc.i386/ttys,v 1.4 2004/09/23 14:22:48 simokawa Exp $
 #	@(#)ttys	5.1 (Berkeley) 4/17/89
 #
 # This file specifies various information about terminals on the system.
@@ -47,6 +47,8 @@ ttyd0	"/usr/libexec/getty std.9600"	dialup	on secure
 ttyd1	"/usr/libexec/getty std.9600"	dialup	off secure
 ttyd2	"/usr/libexec/getty std.9600"	dialup	off secure
 ttyd3	"/usr/libexec/getty std.9600"	dialup	off secure
+# Dumb console
+dcons	"/usr/libexec/getty std.9600"	vt100	off secure
 # Pseudo terminals
 ttyp0	none			network
 ttyp1	none			network
