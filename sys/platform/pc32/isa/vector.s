@@ -1,21 +1,13 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/vector.s,v 1.32 1999/08/28 00:45:04 peter Exp $
- * $DragonFly: src/sys/platform/pc32/isa/Attic/vector.s,v 1.5 2003/08/07 21:17:23 dillon Exp $
- */
-
-/*
- * modified for PC98 by Kakefuda
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/vector.s,v 1.6 2005/02/27 12:44:43 asmodai Exp $
  */
 
 #include "opt_auto_eoi.h"
 
 #include <i386/isa/icu.h>
-#ifdef PC98
-#include <pc98/pc98/pc98.h>
-#else
 #include <bus/isa/i386/isa.h>
-#endif
 
 	.data
 	ALIGN_DATA

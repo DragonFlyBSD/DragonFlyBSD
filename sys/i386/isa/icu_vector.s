@@ -1,18 +1,10 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/i386/isa/Attic/icu_vector.s,v 1.16 2004/01/30 05:42:16 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/icu_vector.s,v 1.17 2005/02/27 12:44:43 asmodai Exp $
  */
 
-/*
- * modified for PC98 by Kakefuda
- */
-
-#ifdef PC98
-#define ICU_IMR_OFFSET		2	/* IO_ICU{1,2} + 2 */
-#else
 #define ICU_IMR_OFFSET		1	/* IO_ICU{1,2} + 1 */
-#endif
 
 #define	ICU_EOI			0x20	/* XXX - define elsewhere */
 

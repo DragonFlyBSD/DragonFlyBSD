@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.24 2005/02/01 22:41:25 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.25 2005/02/27 12:44:43 asmodai Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -67,13 +67,7 @@
 
 #include <machine/smptests.h>			/** FAST_HI */
 #include <machine/smp.h>
-#ifdef PC98
-#include <pc98/pc98/pc98.h>
-#include <pc98/pc98/pc98_machdep.h>
-#include <pc98/pc98/epsonio.h>
-#else
 #include <bus/isa/i386/isa.h>
-#endif
 #include <i386/isa/icu.h>
 
 #if NISA > 0
@@ -92,13 +86,8 @@
 #endif
 
 /* XXX should be in suitable include files */
-#ifdef PC98
-#define	ICU_IMR_OFFSET		2		/* IO_ICU{1,2} + 2 */
-#define	ICU_SLAVEID			7
-#else
 #define	ICU_IMR_OFFSET		1		/* IO_ICU{1,2} + 1 */
 #define	ICU_SLAVEID			2
-#endif
 
 #ifdef APIC_IO
 /*
@@ -181,16 +170,11 @@ static inthand_t *slowintr[ICU_LEN] = {
 #endif /* APIC_IO */
 };
 
-#ifdef PC98
-#define NMI_PARITY 0x04
-#define NMI_EPARITY 0x02
-#else
 #define NMI_PARITY (1 << 7)
 #define NMI_IOCHAN (1 << 6)
 #define ENMI_WATCHDOG (1 << 7)
 #define ENMI_BUSTIMER (1 << 6)
 #define ENMI_IOSTATUS (1 << 5)
-#endif
 
 /*
  * Handle a NMI, possibly a machine check.
@@ -201,22 +185,6 @@ isa_nmi(cd)
 	int cd;
 {
 	int retval = 0;
-#ifdef PC98
- 	int port = inb(0x33);
-
-	log(LOG_CRIT, "NMI PC98 port = %x\n", port);
-	if (epson_machine_id == 0x20)
-		epson_outb(0xc16, epson_inb(0xc16) | 0x1);
-	if (port & NMI_PARITY) {
-		log(LOG_CRIT, "BASE RAM parity error, likely hardware failure.");
-		retval = 1;
-	} else if (port & NMI_EPARITY) {
-		log(LOG_CRIT, "EXTENDED RAM parity error, likely hardware failure.");
-		retval = 1;
-	} else {
-		log(LOG_CRIT, "\nNMI Resume ??\n");
-	}
-#else /* IBM-PC */
 	int isa_port = inb(0x61);
 	int eisa_port = inb(0x461);
 
@@ -258,7 +226,6 @@ isa_nmi(cd)
 		log(LOG_CRIT, "EISA I/O port status error.");
 		retval = 1;
 	}
-#endif
 	return(retval);
 }
 
@@ -306,24 +273,14 @@ init_i8259(void)
 
 	outb(IO_ICU1+ICU_IMR_OFFSET, NRSVIDT);	/* starting at this vector index */
 	outb(IO_ICU1+ICU_IMR_OFFSET, IRQ_SLAVE);		/* slave on line 7 */
-#ifdef PC98
-#ifdef AUTO_EOI_1
-	outb(IO_ICU1+ICU_IMR_OFFSET, 0x1f);		/* (master) auto EOI, 8086 mode */
-#else
-	outb(IO_ICU1+ICU_IMR_OFFSET, 0x1d);		/* (master) 8086 mode */
-#endif
-#else /* IBM-PC */
 #ifdef AUTO_EOI_1
 	outb(IO_ICU1+ICU_IMR_OFFSET, 2 | 1);		/* auto EOI, 8086 mode */
 #else
 	outb(IO_ICU1+ICU_IMR_OFFSET, 1);		/* 8086 mode */
 #endif
-#endif /* PC98 */
 	outb(IO_ICU1+ICU_IMR_OFFSET, 0xff);		/* leave interrupts masked */
 	outb(IO_ICU1, 0x0a);		/* default to IRR on read */
-#ifndef PC98
 	outb(IO_ICU1, 0xc0 | (3 - 1));	/* pri order 3-7, 0-2 (com2 first) */
-#endif /* !PC98 */
 
 #if NMCA > 0
 	if (MCA_system)
@@ -334,15 +291,11 @@ init_i8259(void)
 
 	outb(IO_ICU2+ICU_IMR_OFFSET, NRSVIDT+8); /* staring at this vector index */
 	outb(IO_ICU2+ICU_IMR_OFFSET, ICU_SLAVEID);         /* my slave id is 7 */
-#ifdef PC98
-	outb(IO_ICU2+ICU_IMR_OFFSET,9);              /* 8086 mode */
-#else /* IBM-PC */
 #ifdef AUTO_EOI_2
 	outb(IO_ICU2+ICU_IMR_OFFSET, 2 | 1);		/* auto EOI, 8086 mode */
 #else
 	outb(IO_ICU2+ICU_IMR_OFFSET,1);		/* 8086 mode */
 #endif
-#endif /* PC98 */
 	outb(IO_ICU2+ICU_IMR_OFFSET, 0xff);          /* leave interrupts masked */
 	outb(IO_ICU2, 0x0a);		/* default to IRR on read */
 }

@@ -35,7 +35,7 @@
  *
  *	from: @(#)icu.h	5.6 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/icu.h,v 1.18 1999/12/26 12:43:47 bde Exp $
- * $DragonFly: src/sys/platform/pc32/isa/Attic/icu.h,v 1.4 2003/08/26 21:42:19 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/icu.h,v 1.5 2005/02/27 12:44:43 asmodai Exp $
  */
 
 /*
@@ -83,13 +83,6 @@ void	INTRDIS			(u_int);
 #define	IRQ5		0x0020
 #define	IRQ6		0x0040
 #define	IRQ7		0x0080		/* lowest - parallel printer */
-
-#ifdef PC98
-#undef	IRQ2
-#define IRQ2		0x0004
-#undef	IRQ_SLAVE
-#define	IRQ_SLAVE	0x0080
-#endif
 
 
 /*

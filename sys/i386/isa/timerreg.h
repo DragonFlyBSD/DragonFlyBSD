@@ -32,7 +32,7 @@
  *
  *	from: Header: timerreg.h,v 1.2 93/02/28 15:08:58 mccanne Exp
  * $FreeBSD: src/sys/i386/isa/timerreg.h,v 1.6 1999/08/28 00:45:04 peter Exp $
- * $DragonFly: src/sys/i386/isa/Attic/timerreg.h,v 1.3 2004/01/30 05:42:16 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/timerreg.h,v 1.4 2005/02/27 12:44:43 asmodai Exp $
  */
 
 /*
@@ -124,15 +124,9 @@
  * Macros for specifying values to be written into a mode register.
  */
 #define	TIMER_CNTR0	(IO_TIMER1 + 0)	/* timer 0 counter port */
-#ifdef PC98
-#define	TIMER_CNTR1	0x3fdb		/* timer 1 counter port */
-#define	TIMER_CNTR2	(IO_TIMER1 + 4)	/* timer 2 counter port */
-#define	TIMER_MODE	(IO_TIMER1 + 6)	/* timer mode port */
-#else
 #define	TIMER_CNTR1	(IO_TIMER1 + 1)	/* timer 1 counter port */
 #define	TIMER_CNTR2	(IO_TIMER1 + 2)	/* timer 2 counter port */
 #define	TIMER_MODE	(IO_TIMER1 + 3)	/* timer mode port */
-#endif
 #define		TIMER_SEL0	0x00	/* select counter 0 */
 #define		TIMER_SEL1	0x40	/* select counter 1 */
 #define		TIMER_SEL2	0x80	/* select counter 2 */
