@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.2 2003/06/17 04:37:01 dillon Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.3 2003/10/15 15:37:58 hmp Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SPLASSERT.9 SYSCALL_MODULE.9 \
@@ -155,8 +155,6 @@ MLINKS+=sbuf.9 sbuf_delete.9
 
 MLINKS+=zone.9 zalloc.9
 MLINKS+=zone.9 zfree.9
-MLINKS+=zone.9 zalloci.9
-MLINKS+=zone.9 zfreei.9
 MLINKS+=zone.9 zinit.9
 MLINKS+=zone.9 zinitna.9
 MLINKS+=zone.9 zbootinit.9
