@@ -1,4 +1,4 @@
-# $DragonFly: src/share/examples/cvsup/Attic/DragonFly-supfile,v 1.1 2003/08/11 12:42:05 rob Exp $
+# $DragonFly: src/share/examples/cvsup/Attic/DragonFly-supfile,v 1.2 2003/09/09 17:02:07 dillon Exp $
 #
 # DRAGONFLY-CVS-SUPFILE
 #
@@ -44,5 +44,6 @@
 
 cvs-root
 cvs-src
+cvs-dfports
 # cvs-site
 
