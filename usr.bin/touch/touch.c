@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)touch.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/touch/touch.c,v 1.11.2.2 2002/07/28 06:52:15 eric Exp $
- * $DragonFly: src/usr.bin/touch/touch.c,v 1.6 2004/09/05 00:03:30 dillon Exp $
+ * $DragonFly: src/usr.bin/touch/touch.c,v 1.7 2004/09/05 00:05:10 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -187,9 +187,9 @@ stime_arg1(const char *arg, struct timeval *tvp)
 	if ((t = localtime(&now)) == NULL)
 		err(1, "localtime");
 					/* [[CC]YY]MMDDhhmm[.SS] */
-	if ((p = strchr(arg, '.')) == NULL)
+	if ((p = strchr(arg, '.')) == NULL) {
 		t->tm_sec = 0;		/* Seconds defaults to 0. */
-	else {
+	} else {
 		if (strlen(p + 1) != 2)
 			goto failed;
 		*p++ = '\0';
@@ -236,7 +236,8 @@ stime_arg1(const char *arg, struct timeval *tvp)
 	return;
 
 failed:
-	errx(1, "out of range or illegal time specification: [[CC]YY]MMDDhhmm[.SS]");
+	errx(1, "out of range or illegal time "
+		"specification: [[CC]YY]MMDDhhmm[.SS]");
 }
 
 static void
@@ -263,7 +264,8 @@ stime_arg2(const char *arg, int year, struct timeval *tvp)
 	t->tm_isdst = -1;		/* Figure out DST. */
 	tvp[0].tv_sec = tvp[1].tv_sec = mktime(t);
 	if (tvp[0].tv_sec == -1)
-		errx(1, "out of range or illegal time specification: MMDDhhmm[yy]");
+		errx(1, "out of range or illegal time "
+			"specification: MMDDhhmm[yy]");
 
 	tvp[0].tv_usec = tvp[1].tv_usec = 0;
 }
@@ -336,6 +338,7 @@ failed:
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: touch [-acfm] [-r file] [-t [[CC]YY]MMDDhhmm[.SS]] file ...\n");
+	fprintf(stderr, "usage: touch [-acfm] [-r file] "
+			"[-t [[CC]YY]MMDDhhmm[.SS]] file ...\n");
 	exit(1);
 }

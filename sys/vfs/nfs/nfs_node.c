@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.14 2004/09/04 23:12:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.15 2004/09/05 00:06:43 dillon Exp $
  */
 
 
@@ -204,9 +204,10 @@ nfs_inactive(struct vop_inactive_args *ap)
 		vprint("nfs_inactive: pushing active", ap->a_vp);
 	if (ap->a_vp->v_type != VDIR) {
 		sp = np->n_sillyrename;
-		np->n_sillyrename = (struct sillyrename *)0;
-	} else
-		sp = (struct sillyrename *)0;
+		np->n_sillyrename = NULL;
+	} else {
+		sp = NULL;
+	}
 	if (sp) {
 		/*
 		 * We need a reference to keep the vnode from being
@@ -228,7 +229,7 @@ nfs_inactive(struct vop_inactive_args *ap)
 		FREE((caddr_t)sp, M_NFSREQ);
 	}
 	np->n_flag &= (NMODIFIED | NFLUSHINPROG | NFLUSHWANT | NQNFSEVICTED |
-		NQNFSNONCACHE | NQNFSWRITE);
+		       NQNFSNONCACHE | NQNFSWRITE);
 	VOP_UNLOCK(ap->a_vp, NULL, 0, ap->a_td);
 	return (0);
 }
