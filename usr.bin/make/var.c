@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.138 2005/03/12 11:57:38 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.139 2005/03/12 11:58:21 okumoto Exp $
  */
 
 /*-
@@ -1695,12 +1695,12 @@ ParseRest(const char input[], const char ptr[], char startc, char endc, Buffer *
 	}
 }
 
-/*
- * Check if brackets contain a variable name.
+/**
+ * Parse a multi letter variable name, and return it's value.
  */
 static char *
-VarParseLong(const char input[], GNode *ctxt, Boolean err, size_t *lengthPtr,
-	Boolean *freePtr)
+VarParseLong(const char input[], GNode *ctxt, Boolean err,
+	size_t *consumed, Boolean *freePtr)
 {
 	Buffer		*buf;
 	char		endc;	/* Ending character when variable in parens
@@ -1713,8 +1713,8 @@ VarParseLong(const char input[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 	buf = Buf_Init(MAKE_BSIZE);
 
 	/*
-	 * Skip to the end character or a colon, whichever comes first,
-	 * replacing embedded variables as we go.
+	 * Process characters until we reach an end character or a
+	 * colon, replacing embedded variables as we go.
 	 */
 	startc = input[0];
 	endc = (startc == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACE;
@@ -1729,7 +1729,7 @@ VarParseLong(const char input[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 			 * the string, since that's what make does.
 			 */
 			*freePtr = FALSE;
-			*lengthPtr += ptr - input;
+			*consumed += ptr - input;
 			Buf_Destroy(buf, TRUE);
 			return (var_Error);
 
@@ -1753,19 +1753,18 @@ VarParseLong(const char input[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		ptr++;
 	}
 
-	result = ParseRest(input, ptr, startc, endc, buf, ctxt, err, lengthPtr, freePtr);
+	result = ParseRest(input, ptr, startc, endc, buf, ctxt, err, consumed, freePtr);
+
 	Buf_Destroy(buf, TRUE);
 	return (result);
 }
 
 /**
- * If it's not bounded by braces of some sort, life is much simpler.
- * We just need to check for the first character and return the value
- * if it exists.
+ * Parse a single letter variable name, and return it's value.
  */
 static char *
 VarParseShort(const char input[], GNode *ctxt, Boolean err,
-	size_t *lengthPtr, Boolean *freePtr)
+	size_t *consumed, Boolean *freePtr)
 {
 	char	name[2];
 	Var	*v;
@@ -1774,7 +1773,7 @@ VarParseShort(const char input[], GNode *ctxt, Boolean err,
 	name[1] = '\0';
 
 	/* consume character */
-	*lengthPtr += 1;
+	*consumed += 1;
 
 	v = VarFind(name, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
 	if (v != NULL) {
@@ -1820,6 +1819,9 @@ VarParseShort(const char input[], GNode *ctxt, Boolean err,
 		}
 	}
 
+	/*
+	 * Variable name was not found.
+	 */
 	*freePtr = FALSE;
 	return (err ? var_Error : varNoError);
 }
@@ -1833,11 +1835,12 @@ VarParseShort(const char input[], GNode *ctxt, Boolean err,
  *
  * Results:
  *	The value of the variable or var_Error if the specification
- *	is invalid.  The length of the specification is placed in
- *	*lengthPtr (for invalid specifications, this is just 2 to
- *	skip the '$' and the following letter, or 1 if '$' was the
- *	last character in the string).  A Boolean in *freePtr telling
- *	whether the returned string should be freed by the caller.
+ *	is invalid.  The number of characters in the specification
+ *	is placed in the variable pointed to by consumed.  (for
+ *	invalid specifications, this is just 2 to skip the '$' and
+ *	the following letter, or 1 if '$' was the last character
+ *	in the string).  A Boolean in *freePtr telling whether the
+ *	returned string should be freed by the caller.
  *
  * Side Effects:
  *	None.
@@ -1849,13 +1852,13 @@ VarParseShort(const char input[], GNode *ctxt, Boolean err,
  */
 char *
 Var_Parse(const char input[], GNode *ctxt, Boolean err,
-	size_t *lengthPtr, Boolean *freePtr)
+	size_t *consumed, Boolean *freePtr)
 {
 	/* assert(input[0] == '$'); */
 
 	/* consume '$' */
 	input += 1;
-	*lengthPtr += 1;
+	*consumed += 1;
 
 	if (input[0] == '\0') {
 		/* Error, there is only a dollar sign in the input string. */
@@ -1864,11 +1867,11 @@ Var_Parse(const char input[], GNode *ctxt, Boolean err,
 
 	} else if (input[0] == OPEN_PAREN || input[0] == OPEN_BRACE) {
 		/* multi letter variable name */
-		return (VarParseLong(input, ctxt, err, lengthPtr, freePtr));
+		return (VarParseLong(input, ctxt, err, consumed, freePtr));
 
 	} else {
 		/* single letter variable name */
-		return (VarParseShort(input, ctxt, err, lengthPtr, freePtr));
+		return (VarParseShort(input, ctxt, err, consumed, freePtr));
 	}
 }
 
