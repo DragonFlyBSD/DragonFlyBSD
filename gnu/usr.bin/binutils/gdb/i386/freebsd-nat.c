@@ -1,5 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/binutils/gdb/i386/freebsd-nat.c,v 1.21.4.4 2001/08/15 02:42:27 peter Exp $ */
-/* $DragonFly: src/gnu/usr.bin/binutils/gdb/i386/Attic/freebsd-nat.c,v 1.2 2003/06/17 04:25:44 dillon Exp $ */
+/* $DragonFly: src/gnu/usr.bin/binutils/gdb/i386/Attic/freebsd-nat.c,v 1.3 2003/07/13 07:13:51 dillon Exp $ */
 /* Native-dependent code for BSD Unix running on i386's, for GDB.
    Copyright 1988, 1989, 1991, 1992, 1994, 1996 Free Software Foundation, Inc.
 
@@ -34,6 +34,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 #if defined(HAVE_GREGSET_T) || defined(HAVE_FPREGSET_T)
 #include <sys/procfs.h>
 #endif
+
+#define PCB_OFFSET (UPAGES * PAGE_SIZE - sizeof(struct pcb))
 
 /* this table must line up with REGISTER_NAMES in tm-i386v.h */
 /* symbols like 'tEAX' come from <machine/reg.h> */
@@ -109,6 +111,7 @@ fetch_core_registers (core_reg_sect, core_reg_size, which, reg_addr)
   /* 
    * First get virtual address of user structure. Then calculate offset.
    */
+
   memcpy(&tmp_uaddr,
 	 &((struct user *) core_reg_sect)->u_kproc.kp_proc.p_addr,
 	 sizeof(tmp_uaddr));
@@ -118,7 +121,7 @@ fetch_core_registers (core_reg_sect, core_reg_size, which, reg_addr)
     {
       cregno = tregmap[regno];
       if (cregno == tGS)
-        addr = offsetof (struct user, u_pcb) + offsetof (struct pcb, pcb_gs);
+        addr = PCB_OFFSET + offsetof (struct pcb, pcb_gs);
       else
         addr = offset + 4 * cregno;
       if (addr < 0 || addr >= core_reg_size)
@@ -137,9 +140,9 @@ fetch_core_registers (core_reg_sect, core_reg_size, which, reg_addr)
     }
 
 #if __FreeBSD_version >= 440000
-  addr = offsetof (struct user, u_pcb) + offsetof (struct pcb, pcb_save);
+  addr = PCB_OFFSET + offsetof (struct pcb, pcb_save);
 #else
-  addr = offsetof (struct user, u_pcb) + offsetof (struct pcb, pcb_savefpu);
+  addr = PCB_OFFSET + offsetof (struct pcb, pcb_savefpu);
 #endif
   memcpy (&pcb_savefpu, core_reg_sect + addr, sizeof pcb_savefpu);
 }
@@ -171,9 +174,9 @@ extern void print_387_status_word ();
 
 #define	fpstate		save87
 #if __FreeBSD_version >= 440000
-#define	U_FPSTATE(u)	u.u_pcb.pcb_save.sv_87
+#define	U_FPSTATE(u)	(((struct pcb *)((char *)&u + PCB_OFFSET))->pcb_save.sv_87)
 #else
-#define	U_FPSTATE(u)	u.u_pcb.pcb_savefpu
+#define	U_FPSTATE(u)	(((struct pcb *)((char *)&u + PCB_OFFSET))->pcb_savefpu)
 #endif
 
 static void

@@ -18,7 +18,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/gnu/usr.bin/binutils/gdb/i386/kvm-fbsd.c,v 1.17.4.3 2001/12/17 23:06:06 peter Exp $ */
-/* $DragonFly: src/gnu/usr.bin/binutils/gdb/i386/Attic/kvm-fbsd.c,v 1.2 2003/06/17 04:25:44 dillon Exp $ */
+/* $DragonFly: src/gnu/usr.bin/binutils/gdb/i386/Attic/kvm-fbsd.c,v 1.3 2003/07/13 07:13:51 dillon Exp $ */
 
 #include "defs.h"
 
@@ -31,6 +31,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 #include <sys/time.h>
 #include <sys/proc.h>
 #include <sys/user.h>
+#include <sys/globaldata.h>
 #include "frame.h"  /* required by inferior.h */
 #include "inferior.h"
 #include "symtab.h"
@@ -49,6 +50,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 #include <machine/pcb.h>
 #include <machine/tss.h>
 #include <machine/frame.h>
+#include <machine/globaldata.h>
 
 static void kcore_files_info PARAMS ((struct target_ops *));
 
@@ -190,12 +192,18 @@ const char *name;
 static struct proc *
 curProc ()
 {
-  struct proc *p;
-  CORE_ADDR addr = ksym_lookup ("gd_curproc") + prv_start;
+    CORE_ADDR td_ptr_addr;
+    CORE_ADDR td_ptr;
+    CORE_ADDR p_ptr_addr;
+    CORE_ADDR p_ptr;
 
-  if (kvread (addr, &p))
-    error ("cannot read proc pointer at %x\n", addr);
-  return p;
+    td_ptr_addr = prv_start + offsetof(struct mdglobaldata, mi.gd_curthread);
+    if (kvread(td_ptr_addr, &td_ptr) != 0)
+	error ("cannot read thread pointer at %08x\n", td_ptr_addr);
+    p_ptr_addr = td_ptr + offsetof(struct thread, td_proc);
+    if (kvread(p_ptr_addr, &p_ptr) != 0)
+	error ("cannot read proc pointer at %08x\n", p_ptr_addr);
+    return((void *)p_ptr);
 }
 
 /*
@@ -366,17 +374,25 @@ kcore_detach (args, from_tty)
 
 /* We just get all the registers, so we don't use regno.  */
 /* ARGSUSED */
-static void
-get_kcore_registers (regno)
-     int regno;
-{
-  struct user *uaddr;
 
-  /* find the pcb for the current process */
-  if (cur_proc == NULL || kvread (&cur_proc->p_addr, &uaddr))
-    error ("cannot read u area ptr for proc at %#x", cur_proc);
-  if (read_pcb (core_kd, (CORE_ADDR)&uaddr->u_pcb) < 0)
-    error ("cannot read pcb at %#x", &uaddr->u_pcb);
+#define PCB_ADDR(uptr)	((char *)uptr + UPAGES * PAGE_SIZE - sizeof(struct pcb))
+
+static void
+get_kcore_registers (int regno)
+{
+    struct user *uaddr;
+    struct thread *td;
+    void *pcb;
+
+    /* find the pcb for the current process */
+    if (cur_proc == NULL)
+	error ("cur_proc is NULL");
+    if (kvread(&cur_proc->p_thread, &td))
+	error ("cannot read cur_proc->p_thread at %p", cur_proc);
+    if (kvread(&td->td_pcb, &pcb))
+	error ("cannot read cur_proc->p_thread->td_pcb at %p", td);
+    if (read_pcb(core_kd, (CORE_ADDR)pcb) < 0)
+	error ("cannot read pcb at %p", pcb);
 }
 
 static void
@@ -486,31 +502,46 @@ static int kfd;
 static struct pcb pcb;
 
 static void
-set_proc_cmd (arg, from_tty)
-     char *arg;
-     int from_tty;
+set_proc_cmd (char *arg, int from_tty)
 {
-  CORE_ADDR paddr;
-  struct kinfo_proc *kp;
-  int cnt = 0;
+    CORE_ADDR paddr;
+    struct kinfo_proc *kp;
+    int cnt = 0;
 
-  if (!arg)
-    error_no_arg ("proc address for new current process");
-  if (!kernel_debugging)
-    error ("not debugging kernel");
+    if (!arg)
+	error_no_arg ("proc address for new current process");
+    if (!kernel_debugging)
+	error ("not debugging kernel");
 
-  paddr = (CORE_ADDR)parse_and_eval_address (arg);
-  /* assume it's a proc pointer if it's in the kernel */
-  if (paddr >= kernel_start) {
-    if (set_proc_context(paddr))
-      error("invalid proc address");
+    paddr = (CORE_ADDR)parse_and_eval_address (arg);
+    /* assume it's a proc pointer if it's in the kernel */
+    if (paddr >= kernel_start) {
+	if (set_proc_context(paddr))
+	error("invalid proc address");
     } else {
-      kp = kvm_getprocs(core_kd, KERN_PROC_PID, paddr, &cnt);
-      if (!cnt)
-        error("invalid pid");
-      if (set_proc_context((CORE_ADDR)kp->kp_eproc.e_paddr))
-        error("invalid proc address");
-  }
+	kp = kvm_getprocs(core_kd, KERN_PROC_PID, paddr, &cnt);
+	if (!cnt)
+	    error("invalid pid");
+	if (set_proc_context((CORE_ADDR)kp->kp_eproc.e_paddr))
+	    error("invalid proc address");
+    }
+}
+
+static CORE_ADDR
+findpcb(int cfd)
+{
+    CORE_ADDR td_ptr_addr;
+    CORE_ADDR td_ptr;
+    CORE_ADDR pcb_ptr_addr;
+    CORE_ADDR pcb_ptr;
+
+    td_ptr_addr = prv_start + offsetof(struct mdglobaldata, mi.gd_curthread);
+    td_ptr_addr = kvtophys(cfd, td_ptr_addr);
+    physrd(cfd, td_ptr_addr, (char *)&td_ptr, sizeof(CORE_ADDR));
+    pcb_ptr_addr = td_ptr + offsetof(struct thread, td_pcb);
+    pcb_ptr_addr = kvtophys(cfd, pcb_ptr_addr);
+    physrd(cfd, pcb_ptr_addr, (char *)&pcb_ptr, sizeof(CORE_ADDR));
+    return(pcb_ptr);
 }
 
 static void
@@ -535,8 +566,7 @@ set_cpu_cmd (arg, from_tty)
   cpuid = cpu;
 
   cfd = core_kd;
-  curpcb = kvtophys(cfd, ksym_lookup ("gd_curpcb") + prv_start);
-  physrd (cfd, curpcb, (char*)&curpcb, sizeof curpcb);
+  curpcb = findpcb(cfd);
 
   if (!devmem)
     paddr = ksym_lookup ("dumppcb") - KERNOFF;
@@ -583,23 +613,19 @@ kvm_open (efile, cfile, sfile, perm, errout)
       kfd = open (_PATH_KMEM, perm, 0);
     }
 
-  if (lookup_minimal_symbol("mp_ncpus", NULL, NULL)) {
-    physrd(cfd, ksym_lookup("mp_ncpus") - KERNOFF,
-	   (char*)&ncpus, sizeof(ncpus));
-    prv_space = ksym_lookup("SMP_prvspace");
-    prv_space_size = (int)ksym_lookup("gd_idlestack_top");
-    printf ("SMP %d cpus\n", ncpus);
-  } else {
-    ncpus = 0;
-    prv_space = 0;
-    prv_space_size = 0;
-  }
+  /*
+   * Both UP and SMP use CPU_prvspace.
+   */
+
+  physrd(cfd, ksym_lookup("ncpus") - KERNOFF, (char *)&ncpus, sizeof(ncpus));
+  prv_space = ksym_lookup("CPU_prvspace");
+  prv_space_size = (int)ksym_lookup("gd_idlestack_top");
+  printf("%d cpu%s [%08x,%d]\n", ncpus, (ncpus == 1 ? "" : "s"), prv_space, prv_space_size);
   cpuid = 0;
 
   physrd (cfd, ksym_lookup ("IdlePTD") - KERNOFF, (char*)&sbr, sizeof sbr);
   printf ("IdlePTD at phsyical address 0x%08lx\n", (unsigned long)sbr);
-  curpcb = kvtophys(cfd, ksym_lookup ("gd_curpcb") + prv_start);
-  physrd (cfd, curpcb, (char*)&curpcb, sizeof curpcb);
+  curpcb = findpcb(cfd);
 
   found_pcb = 1; /* for vtophys */
   if (!devmem)
@@ -899,48 +925,49 @@ kvtophys (fd, addr)
 }
 
 static int
-read_pcb (fd, uaddr)
-     int fd;
-     CORE_ADDR uaddr;
+read_pcb (int fd, CORE_ADDR pcbaddr)
 {
-  int i;
-  int noreg;
-  CORE_ADDR nuaddr = uaddr;
+    int i;
+    int noreg;
+    CORE_ADDR npcbaddr;
 
-  /* need this for the `proc' command to work */
-  if (INKERNEL(uaddr))
-      nuaddr = kvtophys(fd, uaddr);
+    /* need this for the `proc' command to work */
+    /* this is a bad hack XXX */
+    if (INKERNEL(pcbaddr))
+	npcbaddr = kvtophys(fd, pcbaddr);
+    else
+	npcbaddr = pcbaddr;
 
-  if (physrd (fd, nuaddr, (char *)&pcb, sizeof pcb) < 0)
-    {
-      error ("cannot read pcb at %x\n", uaddr);
-      return (-1);
+    if (physrd (fd, (CORE_ADDR)npcbaddr, (char *)&pcb, sizeof pcb) < 0) {
+	error ("cannot read pcb at %x\n", pcbaddr);
+	return (-1);
     }
+    printf("PCB EIP=%08x ESP=%08x EBP=%08x\n", pcb.pcb_eip, pcb.pcb_esp, pcb.pcb_ebp);
 
-  /*
-   * get the register values out of the sys pcb and
-   * store them where `read_register' will find them.
-   */
-  /*
-   * XXX many registers aren't available.
-   * XXX for the non-core case, the registers are stale - they are for
-   *     the last context switch to the debugger.
-   * XXX gcc's register numbers aren't all #defined in tm-i386.h.
-   */
-  noreg = 0;
-  for (i = 0; i < 3; ++i)		/* eax,ecx,edx */
-    supply_register (i, (char *)&noreg);
-  supply_register (3, (char *)&pcb.pcb_ebx);
-  supply_register (SP_REGNUM, (char *)&pcb.pcb_esp);
-  supply_register (FP_REGNUM, (char *)&pcb.pcb_ebp);
-  supply_register (6, (char *)&pcb.pcb_esi);
-  supply_register (7, (char *)&pcb.pcb_edi);
-  supply_register (PC_REGNUM, (char *)&pcb.pcb_eip);
-  for (i = 9; i < 14; ++i)		/* eflags, cs, ss, ds, es, fs */
-    supply_register (i, (char *)&noreg);
-  supply_register (15, (char *)&pcb.pcb_gs);
+    /*
+     * get the register values out of the sys pcb and
+     * store them where `read_register' will find them.
+     */
+    /*
+     * XXX many registers aren't available.
+     * XXX for the non-core case, the registers are stale - they are for
+     *     the last context switch to the debugger.
+     * XXX gcc's register numbers aren't all #defined in tm-i386.h.
+     */
+    noreg = 0;
+    for (i = 0; i < 3; ++i)		/* eax,ecx,edx */
+	supply_register (i, (char *)&noreg);
+    supply_register (3, (char *)&pcb.pcb_ebx);
+    supply_register (SP_REGNUM, (char *)&pcb.pcb_esp);
+    supply_register (FP_REGNUM, (char *)&pcb.pcb_ebp);
+    supply_register (6, (char *)&pcb.pcb_esi);
+    supply_register (7, (char *)&pcb.pcb_edi);
+    supply_register (PC_REGNUM, (char *)&pcb.pcb_eip);
+    for (i = 9; i < 14; ++i)		/* eflags, cs, ss, ds, es, fs */
+	supply_register (i, (char *)&noreg);
+    supply_register (15, (char *)&pcb.pcb_gs);
 
-  /* XXX 80387 registers? */
+    /* XXX 80387 registers? */
 }
 
 /*
