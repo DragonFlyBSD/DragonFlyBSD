@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/release1_0.cgi,v 1.1 2004/09/07 19:37:57 dillon Exp $
+# $DragonFly: site/data/main/Attic/release1_0.cgi,v 1.2 2004/11/22 01:36:22 hmp Exp $
 
 $TITLE(DragonFly - July 2004 Release 1.0A Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -67,6 +67,12 @@ gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 <TR><TD>GoBSD.COM</TD>
 <TD>1.0A_REL image</TD>
 <TD><A HREF="http://gobsd.com/dfly-1.0A_REL.iso.gz">HTTP</A></TD></TR>
+
+<TR><TD>theshell.com</TD>
+<TD>1.0A_REL image</TD>
+<TD>
+<A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A>
+<A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A><TD></TR>
 
 <TR><TD>Fortunaty.net (Europe)</TD>
 <TD>1.0A_REL image</TD>

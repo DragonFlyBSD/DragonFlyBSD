@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.63 2004/10/14 13:16:26 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.64 2004/11/22 01:36:22 hmp Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -199,6 +199,14 @@ rsync
 </TD>
 </TR>
 
+<TR>
+<TD>theshell.com (Phoenix Arizona, USA)</TD>
+<TD>Daily snapshots, official ISOs</TD>
+<TD>
+<a href="http://theshell.com/pub/DragonFly/">HTTP</a>,
+<a href="ftp://ftp.theshell.com/pub/DragonFly/">FTP</a>
+</TD>
+</TR>
 
 <TR>
 <TD>ftp.tu-clausthal.de (Germany)</TD>
