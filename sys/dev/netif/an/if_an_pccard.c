@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pccard.c,v 1.1.2.6 2003/02/01 03:25:12 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.3 2003/08/07 21:16:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.4 2004/02/19 14:31:12 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an_pccard.c,v 1.1.2.6 2003/02/01 03:25:12 ambrisko Exp $
  */
@@ -67,22 +67,32 @@
 #include <net/if_types.h>
 #include <net/if_media.h>
 
+#include <bus/pccard/pccardvar.h>
+#include <bus/pccard/pccarddevs.h>
+#include "card_if.h"
+
 #include "if_aironet_ieee.h"
 #include "if_anreg.h"
 
 /*
  * Support for PCMCIA cards.
  */
+static int  an_pccard_match(device_t);
 static int  an_pccard_probe(device_t);
 static int  an_pccard_attach(device_t);
 static int  an_pccard_detach(device_t);
 
 static device_method_t an_pccard_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe,		an_pccard_probe),
-	DEVMETHOD(device_attach,	an_pccard_attach),
-	DEVMETHOD(device_detach,	an_pccard_detach),
+	DEVMETHOD(device_probe,		pccard_compat_probe),
+	DEVMETHOD(device_attach,	pccard_compat_attach),
 	DEVMETHOD(device_shutdown,	an_shutdown),
+	DEVMETHOD(device_detach,	an_pccard_detach),
+
+	/* Card interface */
+	DEVMETHOD(card_compat_match,	an_pccard_match),
+	DEVMETHOD(card_compat_probe,	an_pccard_probe),
+	DEVMETHOD(card_compat_attach,	an_pccard_attach),
 
 	{ 0, 0 }
 };
@@ -96,6 +106,28 @@ static driver_t an_pccard_driver = {
 static devclass_t an_pccard_devclass;
 
 DRIVER_MODULE(if_an, pccard, an_pccard_driver, an_pccard_devclass, 0, 0);
+
+static const struct pccard_product an_pccard_products[] = {
+	PCMCIA_CARD(AIRONET, PC4500, 0),
+	PCMCIA_CARD(AIRONET, PC4800, 0),
+	PCMCIA_CARD(AIRONET, 350, 0),
+	PCMCIA_CARD(XIRCOM, CWE1130, 0), 
+	{ NULL }
+};
+
+static int
+an_pccard_match(device_t dev)
+{
+	const struct pccard_product *pp;
+
+	if ((pp = pccard_product_lookup(dev, an_pccard_products,
+	    sizeof(an_pccard_products[0]), NULL)) != NULL) {
+		if (pp->pp_name != NULL)
+			device_set_desc(dev, pp->pp_name);
+		return (0);
+	}
+	return (ENXIO);
+}
 
 static int
 an_pccard_detach(device_t dev)
@@ -143,18 +175,26 @@ an_pccard_attach(device_t dev)
 	an_alloc_port(dev, sc->port_rid, AN_IOSIZ);
 	an_alloc_irq(dev, sc->irq_rid, 0);
 
-	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
-			       an_intr, sc, &sc->irq_handle);
-	if (error) {
-		printf("setup intr failed %d \n", error);
-		an_release_resources(dev);
-		return (error);
-	}
-
 	sc->an_bhandle = rman_get_bushandle(sc->port_res);
 	sc->an_btag = rman_get_bustag(sc->port_res);
 	sc->an_dev = dev;
 
 	error = an_attach(sc, device_get_unit(dev), flags);
+	if (error) {
+		goto fail;
+	}
+	
+	/*
+	 * Must setup the interrupt after the an_attach to prevent racing.
+	 */
+	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
+			       an_intr, sc, &sc->irq_handle);
+	if (error) {
+		goto fail;
+	}
+
+fail:
+	if (error)
+		an_release_resources(dev);
 	return (error);
 }

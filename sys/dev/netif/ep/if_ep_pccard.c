@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_pccard.c,v 1.12.2.2 2000/08/08 23:55:02 peter Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_pccard.c,v 1.4 2003/11/20 22:07:27 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_pccard.c,v 1.5 2004/02/19 14:31:13 joerg Exp $
  */
 
 /*
@@ -58,6 +58,11 @@
 
 #include "if_epreg.h"
 #include "if_epvar.h"
+
+#include <bus/pccard/pccardvar.h>
+#include <bus/pccard/pccarddevs.h>
+
+#include "card_if.h"
 
 static const char *ep_pccard_identify(u_short id);
 
@@ -236,11 +241,41 @@ ep_pccard_detach(device_t dev)
 	return (0);
 }
 
+static const struct pccard_product ep_pccard_products[] = {
+	PCMCIA_CARD(3COM, 3C1, 0),
+	PCMCIA_CARD(3COM, 3C562, 0),
+	PCMCIA_CARD(3COM, 3C574, 0),	/* ROADRUNNER */
+	PCMCIA_CARD(3COM, 3C589, 0),
+	PCMCIA_CARD(3COM, 3CCFEM556BI, 0),	/* ROADRUNNER */
+	PCMCIA_CARD(3COM, 3CXEM556, 0),
+	PCMCIA_CARD(3COM, 3CXEM556INT, 0),
+	{NULL}
+};
+
+static int
+ep_pccard_match(device_t dev)
+{
+	const struct pccard_product *pp;
+
+	if ((pp = pccard_product_lookup(dev, ep_pccard_products,
+		    sizeof(ep_pccard_products[0]), NULL)) != NULL) {
+		if (pp->pp_name != NULL)
+			device_set_desc(dev, pp->pp_name);
+		return 0;
+	}
+	return EIO;
+}
+
 static device_method_t ep_pccard_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe,		ep_pccard_probe),
-	DEVMETHOD(device_attach,	ep_pccard_attach),
-	DEVMETHOD(device_detach,	ep_pccard_detach),
+	DEVMETHOD(device_probe, pccard_compat_probe),
+	DEVMETHOD(device_attach, pccard_compat_attach),
+	DEVMETHOD(device_detach, ep_pccard_detach),
+
+	/* Card interface */
+	DEVMETHOD(card_compat_match, ep_pccard_match),
+	DEVMETHOD(card_compat_probe, ep_pccard_probe),
+	DEVMETHOD(card_compat_attach, ep_pccard_attach),
 
 	{ 0, 0 }
 };

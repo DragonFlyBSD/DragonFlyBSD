@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ex/if_ex_pccard.c,v 1.2.2.1 2001/03/05 05:33:20 imp Exp $
- *	$DragonFly: src/sys/dev/netif/ex/if_ex_pccard.c,v 1.6 2004/02/13 22:12:33 joerg Exp $
+ *	$DragonFly: src/sys/dev/netif/ex/if_ex_pccard.c,v 1.7 2004/02/19 14:31:13 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -48,17 +48,29 @@
 #include "if_exvar.h"
 
 #include <bus/pccard/pccardvar.h>
+#include <bus/pccard/pccarddevs.h>
+
+static const struct pccard_product ex_pccard_products[] = {
+	PCMCIA_CARD(OLICOM, OC2220, 0),
+	{ NULL }
+};
 
 /* Bus Front End Functions */
+static int	ex_pccard_match		(device_t);
 static int	ex_pccard_probe		(device_t);
 static int	ex_pccard_attach	(device_t);
 static int	ex_pccard_detach	(device_t);
 
 static device_method_t ex_pccard_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe,		ex_pccard_probe),
-	DEVMETHOD(device_attach,	ex_pccard_attach),
+	DEVMETHOD(device_probe,		pccard_compat_probe),
+	DEVMETHOD(device_attach,	pccard_compat_attach),
 	DEVMETHOD(device_detach,	ex_pccard_detach),
+
+	/* Card interface */
+	DEVMETHOD(card_compat_match,	ex_pccard_match),
+	DEVMETHOD(card_compat_probe,	ex_pccard_probe),
+	DEVMETHOD(card_compat_attach,	ex_pccard_attach),
 
 	{ 0, 0 }
 };
@@ -72,6 +84,20 @@ static driver_t ex_pccard_driver = {
 extern devclass_t ex_devclass;
 
 DRIVER_MODULE(if_ex, pccard, ex_pccard_driver, ex_devclass, 0, 0);
+
+static int
+ex_pccard_match(device_t dev)
+{
+	const struct pccard_product *pp;
+
+	if ((pp = pccard_product_lookup(dev, ex_pccard_products,
+	    sizeof(ex_pccard_products[0]), NULL)) != NULL) {
+		if (pp->pp_name != NULL)
+			device_set_desc(dev, pp->pp_name);
+		return 0;
+	}
+	return EIO;
+}
 
 static int
 ex_pccard_probe(device_t dev)

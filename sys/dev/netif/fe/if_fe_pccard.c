@@ -20,7 +20,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fe_pccard.c,v 1.2.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.5 2004/02/13 22:12:33 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.6 2004/02/19 14:31:13 joerg Exp $
  */
 
 #include "opt_fe.h"
@@ -50,7 +50,10 @@
 #include "if_fevar.h"
 
 #include <bus/pccard/pccardvar.h>
+#include <bus/pccard/pccarddevs.h>
 #include <bus/pccard/cardinfo.h>
+
+#include "card_if.h"
 
 /*
  *	PC-Card (PCMCIA) specific code.
@@ -58,12 +61,50 @@
 static int fe_pccard_probe(device_t);
 static int fe_pccard_attach(device_t);
 static int fe_pccard_detach(device_t);
+static int fe_pccard_match(device_t);
+
+static const struct fe_pccard_product {
+        struct pccard_product mpp_product;
+        u_int32_t mpp_ioalign;                  /* required alignment */
+        int mpp_enet_maddr;
+} fe_pccard_products[] = {
+        { PCMCIA_CARD(TDK, LAK_CD021BX, 0), 0, -1 }, 
+        { PCMCIA_CARD(TDK, LAK_CF010, 0), 0, -1 }, 
+#if 0 /* XXX 86960-based? */
+        { PCMCIA_CARD(TDK, LAK_DFL9610, 1), 0, -1 }, 
+#endif
+        { PCMCIA_CARD(CONTEC, CNETPC, 0), 0, -1 },
+	{ PCMCIA_CARD(FUJITSU, LA501, 0), 0x20, -1 },
+	{ PCMCIA_CARD(FUJITSU, LA10S, 0), 0, -1 },
+	{ PCMCIA_CARD(RATOC, REX_R280, 0), 0, 0x1fc },
+        { { NULL } }
+};
+
+static int
+fe_pccard_match(device_t dev)
+{
+        const struct pccard_product *pp;
+
+        if ((pp = pccard_product_lookup(dev,
+	    (const struct pccard_product *)fe_pccard_products,
+            sizeof(fe_pccard_products[0]), NULL)) != NULL) {
+		if (pp->pp_name != NULL)
+			device_set_desc(dev, pp->pp_name);
+                return 0;
+        }
+        return ENXIO;
+}
 
 static device_method_t fe_pccard_methods[] = {
-	/* Device interface */
-	DEVMETHOD(device_probe,		fe_pccard_probe),
-	DEVMETHOD(device_attach,	fe_pccard_attach),
-	DEVMETHOD(device_detach,	fe_pccard_detach),
+        /* Device interface */
+        DEVMETHOD(device_probe,         pccard_compat_probe),
+        DEVMETHOD(device_attach,        pccard_compat_attach),
+        DEVMETHOD(device_detach,        fe_pccard_detach),
+
+        /* Card interface */
+        DEVMETHOD(card_compat_match,    fe_pccard_match),
+        DEVMETHOD(card_compat_probe,    fe_pccard_probe),
+        DEVMETHOD(card_compat_attach,   fe_pccard_attach),
 
 	{ 0, 0 }
 };

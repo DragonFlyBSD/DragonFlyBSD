@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs_pccard.c,v 1.1.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs_pccard.c,v 1.4 2004/01/06 03:17:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs_pccard.c,v 1.5 2004/02/19 14:31:13 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -43,8 +43,27 @@
 
 #include "if_csvar.h"
 #include <bus/pccard/pccardvar.h>
+#include <bus/pccard/pccarddevs.h>
 
 #include "card_if.h"
+
+static const struct pccard_product cs_pccard_products[] = {
+	PCMCIA_CARD(IBM, ETHERJET, 0),
+	{ NULL }
+};
+static int
+cs_pccard_match(device_t dev)
+{
+	const struct pccard_product *pp;
+
+	if ((pp = pccard_product_lookup(dev, cs_pccard_products,
+	    sizeof(cs_pccard_products[0]), NULL)) != NULL) {
+		if (pp->pp_name != NULL)
+			device_set_desc(dev, pp->pp_name);
+		return 0;
+	}
+	return EIO;
+}
 
 static int
 cs_pccard_probe(device_t dev)
@@ -83,11 +102,17 @@ bad:
 
 static device_method_t cs_pccard_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe,		cs_pccard_probe),
-	DEVMETHOD(device_attach,	cs_pccard_attach),
+	DEVMETHOD(device_probe,		pccard_compat_probe),
+	DEVMETHOD(device_attach,	pccard_compat_attach),
 #ifdef CS_HAS_DETACH
 	DEVMETHOD(device_detach,	cs_detach),
 #endif
+
+	/* Card interface */
+	DEVMETHOD(card_compat_match,	cs_pccard_match),
+	DEVMETHOD(card_compat_probe,	cs_pccard_probe),
+	DEVMETHOD(card_compat_attach,	cs_pccard_attach),
+
 	{ 0, 0 }
 };
 

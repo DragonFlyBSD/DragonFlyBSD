@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sn/if_sn_pccard.c,v 1.3.2.2 2001/01/25 19:40:27 imp Exp $
- * $DragonFly: src/sys/dev/netif/sn/if_sn_pccard.c,v 1.4 2004/02/13 22:12:33 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sn/if_sn_pccard.c,v 1.5 2004/02/19 14:31:13 joerg Exp $
  */
 
 /*
@@ -55,6 +55,32 @@
 #include "if_snreg.h"
 #include "if_snvar.h"
 #include <bus/pccard/pccardvar.h>
+#include <bus/pccard/pccarddevs.h>
+
+#include "card_if.h"
+
+static const struct pccard_product sn_pccard_products[] = {
+	PCMCIA_CARD(DSPSI, XJACK, 0),
+	PCMCIA_CARD(NEWMEDIA, BASICS, 0),
+#if 0
+	PCMCIA_CARD(SMC, 8020BT, 0),
+#endif
+	{ NULL }
+};
+
+static int
+sn_pccard_match(device_t dev)
+{
+	const struct pccard_product *pp;
+
+	if ((pp = pccard_product_lookup(dev, sn_pccard_products,
+	    sizeof(sn_pccard_products[0]), NULL)) != NULL) {
+		if (pp->pp_name != NULL)
+			device_set_desc(dev, pp->pp_name);
+		return 0;
+	}
+	return EIO;
+}
 
 /*
  * Initialize the device - called from Slot manager.
@@ -98,9 +124,14 @@ sn_pccard_detach(device_t dev)
 
 static device_method_t sn_pccard_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe,		sn_pccard_probe),
-	DEVMETHOD(device_attach,	sn_pccard_attach),
+	DEVMETHOD(device_probe,		pccard_compat_probe),
+	DEVMETHOD(device_attach,	pccard_compat_attach),
 	DEVMETHOD(device_detach,	sn_pccard_detach),
+
+	/* Card interface */
+	DEVMETHOD(card_compat_match,	sn_pccard_match),
+	DEVMETHOD(card_compat_probe,	sn_pccard_probe),
+	DEVMETHOD(card_compat_attach,	sn_pccard_attach),
 
 	{ 0, 0 }
 };

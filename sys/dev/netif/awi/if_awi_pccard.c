@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/awi/if_awi_pccard.c,v 1.5.2.1 2000/12/07 04:09:39 imp Exp $
- * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.5 2004/01/06 01:40:46 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.6 2004/02/19 14:31:13 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -51,6 +51,10 @@
 #include "awireg.h"
 #include "awivar.h"
 
+#include <bus/pccard/pccardvar.h>
+#include <bus/pccard/pccarddevs.h>
+#include "card_if.h"
+
 struct awi_pccard_softc {
 	struct awi_softc	sc_awi;
 
@@ -64,6 +68,40 @@ struct awi_pccard_softc {
 	struct resource	*sc_mem_res;
 	int		sc_mem_rid;
 };
+
+static const struct pccard_product awi_pccard_products[] = {
+	PCMCIA_CARD(AMD, AM79C930, 0),
+	PCMCIA_CARD(BAY, STACK_650, 0),
+	PCMCIA_CARD(BAY, STACK_660, 0),
+	PCMCIA_CARD(BAY, SURFER_PRO, 0),
+	PCMCIA_CARD(ICOM, SL200, 0),
+	PCMCIA_CARD(NOKIA, C020_WLAN, 0),
+	PCMCIA_CARD(FARALLON, SKYLINE, 0),
+	PCMCIA_CARD(ZOOM, AIR_4000, 0),
+	{ NULL }
+};
+
+static int awi_pccard_match(device_t);
+static int awi_pccard_probe(device_t);
+static int awi_pccard_attach(device_t);
+static int awi_pccard_detach(device_t);
+static void awi_pccard_shutdown(device_t);
+static int awi_pccard_enable(struct awi_softc *);
+static void awi_pccard_disable(struct awi_softc *);
+
+static int
+awi_pccard_match(device_t dev)
+{
+	const struct pccard_product *pp;
+
+	if ((pp = pccard_product_lookup(dev, awi_pccard_products,
+	    sizeof(awi_pccard_products[0]), NULL)) != NULL) {
+		if (pp->pp_name != NULL)
+			device_set_desc(dev, pp->pp_name);
+		return 0;
+	}
+	return ENXIO;
+}
 
 /*
  * Initialize the device - called from Slot manager.
@@ -234,9 +272,14 @@ awi_pccard_detach(device_t dev)
 
 static device_method_t awi_pccard_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe,		awi_pccard_probe),
-	DEVMETHOD(device_attach,	awi_pccard_attach),
+	DEVMETHOD(device_probe,		pccard_compat_probe),
+	DEVMETHOD(device_attach,	pccard_compat_attach),
 	DEVMETHOD(device_detach,	awi_pccard_detach),
+
+	/* Card interface */
+	DEVMETHOD(card_compat_match,	awi_pccard_match),
+	DEVMETHOD(card_compat_probe,	awi_pccard_probe),
+	DEVMETHOD(card_compat_attach,	awi_pccard_attach),
 
 	{ 0, 0 }
 };
