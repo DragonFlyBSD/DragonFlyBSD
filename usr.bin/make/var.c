@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.119 2005/03/01 23:27:53 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.120 2005/03/01 23:28:18 okumoto Exp $
  */
 
 /*-
@@ -1661,41 +1661,33 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		}
 	}
 
-	if (((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) &&
-	    ((vlen == 1) ||
-	   ((vlen == 2) && (vname[1] == 'F' || vname[1] == 'D')))) {
-		/*
-		 * If substituting a local variable in a non-local
-		 * context, assume it's for dynamic source stuff. We
-		 * have to handle this specially and return the
-		 * longhand for the variable with the dollar sign
-		 * escaped so it makes it back to the caller. Only
-		 * four of the local variables are treated specially
-		 * as they are the only four that will be set when
-		 * dynamic sources are expanded.
-		 */
-		if (strchr("!%*@", vname[0]) != NULL) {
-			dynamic = TRUE;
-		} else {
-			dynamic = FALSE;
+	if ((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) {
+		if (((vlen == 1)) ||
+		    ((vlen == 2) && (vname[1] == 'F' || vname[1] == 'D'))) {
+			/*
+			 * If substituting a local variable in a non-local
+			 * context, assume it's for dynamic source stuff. We
+			 * have to handle this specially and return the
+			 * longhand for the variable with the dollar sign
+			 * escaped so it makes it back to the caller. Only
+			 * four of the local variables are treated specially
+			 * as they are the only four that will be set when
+			 * dynamic sources are expanded.
+			 */
+			if (strchr("!%*@", vname[0]) != NULL) {
+				dynamic = TRUE;
+			}
 		}
-	} else if (((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) &&
-		   (vlen > 2) &&
-		   (vname[0] == '.') &&
-		   isupper((unsigned char)vname[1])) {
-		int     len;
-
-		len = vlen - 1;
-		if ((strncmp(vname, ".TARGET", len) == 0) ||
-		    (strncmp(vname, ".ARCHIVE", len) == 0) ||
-		    (strncmp(vname, ".PREFIX", len) == 0) ||
-		    (strncmp(vname, ".MEMBER", len) == 0)) {
-			dynamic = TRUE;
-		} else {
-			dynamic = FALSE;
+		if ((vlen > 2) &&
+		    (vname[0] == '.') &&
+		    isupper((unsigned char)vname[1])) {
+			if ((strncmp(vname, ".TARGET", vlen - 1) == 0) ||
+			    (strncmp(vname, ".ARCHIVE", vlen - 1) == 0) ||
+			    (strncmp(vname, ".PREFIX", vlen - 1) == 0) ||
+			    (strncmp(vname, ".MEMBER", vlen - 1) == 0)) {
+				dynamic = TRUE;
+			}
 		}
-	} else {
-		dynamic = FALSE;
 	}
 
 	if (haveModifier) {
