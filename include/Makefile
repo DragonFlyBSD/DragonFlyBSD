@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.6 2003/08/09 22:00:54 asmodai Exp $
+# $DragonFly: src/include/Makefile,v 1.7 2003/08/14 23:05:11 dillon Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -112,6 +112,10 @@ INCSLINKS+=	vfs/nfs ${INCLUDEDIR}/nfs
 INCSLINKS+=	vfs/ntfs ${INCLUDEDIR}/ntfs
 INCSLINKS+=	vfs/nwfs ${INCLUDEDIR}/nwfs
 INCSLINKS+=	vfs ${INCLUDEDIR}/fs
+# this is for <ufs/ufs/...> and <ufs/ffs/...> paths used by ports
+# It is hopefully a temporary hack until we have environments working.
+INCSLINKS+=	vfs ${INCLUDEDIR}/ufs
+INCSLINKS+=	ufs ${INCLUDEDIR}/vfs/ffs
 INCSLINKS+=	emulation ${INCLUDEDIR}/compat
 INCSLINKS+=	netproto/atalk ${INCLUDEDIR}/netatalk
 INCSLINKS+=	netproto/atm ${INCLUDEDIR}/netatm
