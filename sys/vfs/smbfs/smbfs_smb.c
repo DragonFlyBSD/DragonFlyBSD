@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_smb.c,v 1.1.2.2 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_smb.c,v 1.5 2003/08/07 21:54:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_smb.c,v 1.6 2004/01/07 11:04:21 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -966,7 +966,7 @@ smbfs_smb_trans2find2(struct smbfs_fctx *ctx)
 			 * I've didn't notice any problem, but put code
 			 * for it.
 			 */
-			 tsleep(&flags, 0, "fix95", tvtohz(&tv));
+			 tsleep(&flags, 0, "fix95", tvtohz_high(&tv));
 		}
 #endif
 	}

@@ -32,7 +32,7 @@
  *
  *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
- * $DragonFly: src/sys/sys/signalvar.h,v 1.10 2003/11/21 22:46:13 dillon Exp $
+ * $DragonFly: src/sys/sys/signalvar.h,v 1.11 2004/01/07 11:04:20 dillon Exp $
  */
 
 #ifndef	_SYS_SIGNALVAR_H_		/* tmp for user.h */
@@ -189,6 +189,7 @@ void	check_sigacts (void);
 void	execsigs (struct proc *p);
 void	gsignal (int pgid, int sig);
 int	issignal (struct proc *p);
+int	iscaught (struct proc *p);
 void	killproc (struct proc *p, char *why);
 void	pgsigio (struct sigio *, int signum, int checkctty);
 void	pgsignal (struct pgrp *pgrp, int sig, int checkctty);

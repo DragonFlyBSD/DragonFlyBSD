@@ -47,7 +47,7 @@
  * and I certainly make no claims as to its fitness for *any* purpose.
  * 
  * $FreeBSD: src/sys/kern/kern_threads.c,v 1.15 1999/08/28 00:46:15 peter Exp $
- * $DragonFly: src/sys/kern/kern_threads.c,v 1.7 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_threads.c,v 1.8 2004/01/07 11:04:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -96,7 +96,7 @@ thr_sleep(struct thr_sleep_args *uap)
 			p->p_wakeup = 0;
 			return (EINVAL);
 		}
-		timo = tvtohz(&atv);
+		timo = tvtohz_high(&atv);
 	}
 
 	uap->sysmsg_result = 0;

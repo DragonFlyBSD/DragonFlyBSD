@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_trantcp.c,v 1.3.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.6 2003/08/07 21:17:39 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.7 2004/01/07 11:04:27 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -128,7 +128,7 @@ retry:
 			goto done;
 		ttv = atv;
 		timevalsub(&ttv, &rtv);
-		timo = tvtohz(&ttv);
+		timo = tvtohz_high(&ttv);
 	}
 	s = splhigh();
 	if ((p->p_flag & P_SELECT) == 0) {

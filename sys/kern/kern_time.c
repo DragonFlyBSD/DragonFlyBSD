@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.11 2003/11/20 06:05:30 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.12 2004/01/07 11:04:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,6 +48,7 @@
 #include <sys/proc.h>
 #include <sys/time.h>
 #include <sys/vnode.h>
+#include <sys/sysctl.h>
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 #include <sys/msgport2.h>
@@ -69,6 +70,9 @@ static int	nanosleep1 (struct timespec *rqt,
 static int	settime (struct timeval *);
 static void	timevalfix (struct timeval *);
 static void	no_lease_updatetime (int);
+
+static int	sleep_hardloop = 0;
+SYSCTL_INT(_kern, OID_AUTO, sleep_hardloop, CTLFLAG_RW, &sleep_hardloop, 0, "");
 
 static void 
 no_lease_updatetime(deltat)
@@ -210,13 +214,36 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 		return (EINVAL);
 	if (rqt->tv_sec < 0 || (rqt->tv_sec == 0 && rqt->tv_nsec == 0))
 		return (0);
-	getnanouptime(&ts);
-	timespecadd(&ts, rqt);
-	TIMESPEC_TO_TIMEVAL(&tv, rqt);
+	nanouptime(&ts);
+	timespecadd(&ts, rqt);		/* ts = target timestamp compare */
+	TIMESPEC_TO_TIMEVAL(&tv, rqt);	/* tv = sleep interval */
 	for (;;) {
-		error = tsleep(&nanowait, PCATCH, "nanslp",
-		    tvtohz(&tv));
-		getnanouptime(&ts2);
+		/*
+		 * If hard looping is allowed and the interval is too short,
+		 * hard loop with a yield, otherwise sleep with a conservative
+		 * tick count.  In normal mode sleep with one extra tick count
+		 * which will be sufficient for most sleep values.  If it
+		 * isn't sufficient in normal mode we will wind up doing an
+		 * extra loop.
+		 *
+		 * sleep_hardloop = 0	Normal mode
+		 * sleep_hardloop = 1	Strict hard loop
+		 * sleep_hardloop = 2	Hard loop on < 1 tick requests only
+		 */
+		int ticks = tvtohz_low(&tv);
+
+		if (sleep_hardloop) {
+			if (ticks == 0) {
+				uio_yield();
+				error = iscaught(curproc);
+			} else {
+				error = tsleep(&nanowait, PCATCH, "nanslp", 
+						ticks + sleep_hardloop - 1);
+			}
+		} else {
+			error = tsleep(&nanowait, PCATCH, "nanslp", ticks + 1);
+		}
+		nanouptime(&ts2);
 		if (error != EWOULDBLOCK) {
 			if (error == ERESTART)
 				error = EINTR;
@@ -509,7 +536,7 @@ setitimer(struct setitimer_args *uap)
 			untimeout(realitexpire, (caddr_t)p, p->p_ithandle);
 		if (timevalisset(&aitv.it_value)) 
 			p->p_ithandle = timeout(realitexpire, (caddr_t)p,
-						tvtohz(&aitv.it_value));
+						tvtohz_high(&aitv.it_value));
 		getmicrouptime(&ctv);
 		timevaladd(&aitv.it_value, &ctv);
 		p->p_realtimer = aitv;
@@ -526,7 +553,7 @@ setitimer(struct setitimer_args *uap)
  * Else compute next time timer should go off which is > current time.
  * This is where delay in processing this timeout causes multiple
  * SIGALRM calls to be compressed into one.
- * tvtohz() always adds 1 to allow for the time until the next clock
+ * tvtohz_high() always adds 1 to allow for the time until the next clock
  * interrupt being strictly less than 1 clock tick, but we don't want
  * that here since we want to appear to be in sync with the clock
  * interrupt even when we're delayed.
@@ -554,7 +581,7 @@ realitexpire(arg)
 			ntv = p->p_realtimer.it_value;
 			timevalsub(&ntv, &ctv);
 			p->p_ithandle = timeout(realitexpire, (caddr_t)p,
-			    tvtohz(&ntv) - 1);
+			    tvtohz_low(&ntv));
 			splx(s);
 			return;
 		}

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.23 2003/10/24 14:10:46 daver Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.24 2004/01/07 11:04:18 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1009,6 +1009,25 @@ signotify_remote(void *arg)
 }
 
 #endif
+
+/*
+ * If the current process has received a signal that would interrupt a
+ * system call, return EINTR or ERESTART as appropriate.
+ */
+int
+iscaught(struct proc *p)
+{
+	int sig;
+
+	if (p) {
+		if ((sig = CURSIG(p)) != 0) {
+			if (SIGISMEMBER(p->p_sigacts->ps_sigintr, sig))
+				return (EINTR);                        
+			return (ERESTART);     
+		}                         
+	}
+	return(EWOULDBLOCK);
+}
 
 /*
  * If the current process has received a signal (should be caught or cause

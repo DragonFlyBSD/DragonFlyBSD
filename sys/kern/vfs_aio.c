@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.11 2003/11/05 23:27:15 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.12 2004/01/07 11:04:18 dillon Exp $
  */
 
 /*
@@ -1502,7 +1502,7 @@ aio_suspend(struct aio_suspend_args *uap)
 		TIMESPEC_TO_TIMEVAL(&atv, &ts);
 		if (itimerfix(&atv))
 			return (EINVAL);
-		timo = tvtohz(&atv);
+		timo = tvtohz_high(&atv);
 	}
 
 	ki = p->p_aioinfo;
@@ -2108,7 +2108,7 @@ aio_waitcomplete(struct aio_waitcomplete_args *uap)
 		TIMESPEC_TO_TIMEVAL(&atv, &ts);
 		if (itimerfix(&atv))
 			return (EINVAL);
-		timo = tvtohz(&atv);
+		timo = tvtohz_high(&atv);
 	}
 
 	ki = p->p_aioinfo;

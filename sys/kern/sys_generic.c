@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.15 2003/10/21 20:06:47 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.16 2004/01/07 11:04:18 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -594,7 +594,7 @@ retry:
 		ttv = atv;
 		timevalsub(&ttv, &rtv);
 		timo = ttv.tv_sec > 24 * 60 * 60 ?
-		    24 * 60 * 60 * hz : tvtohz(&ttv);
+		    24 * 60 * 60 * hz : tvtohz_high(&ttv);
 	}
 	s = splhigh();
 	if ((p->p_flag & P_SELECT) == 0 || nselcoll != ncoll) {
@@ -726,7 +726,7 @@ retry:
 		ttv = atv;
 		timevalsub(&ttv, &rtv);
 		timo = ttv.tv_sec > 24 * 60 * 60 ?
-		    24 * 60 * 60 * hz : tvtohz(&ttv);
+		    24 * 60 * 60 * hz : tvtohz_high(&ttv);
 	} 
 	s = splhigh(); 
 	if ((p->p_flag & P_SELECT) == 0 || nselcoll != ncoll) {

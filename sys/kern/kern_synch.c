@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.25 2003/10/17 07:30:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.26 2004/01/07 11:04:18 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -468,6 +468,7 @@ resume:
 		 */
 		td->td_wmesg = NULL;
 	}
+	/* inline of iscaught() */
 	if (p) {
 		if (catch && (sig != 0 || (sig = CURSIG(p)))) {
 			if (SIGISMEMBER(p->p_sigacts->ps_sigintr, sig))

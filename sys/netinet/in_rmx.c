@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/in_rmx.c,v 1.37.2.3 2002/08/09 14:49:23 ru Exp $
- * $DragonFly: src/sys/netinet/in_rmx.c,v 1.3 2003/08/23 11:18:00 rob Exp $
+ * $DragonFly: src/sys/netinet/in_rmx.c,v 1.4 2004/01/07 11:04:23 dillon Exp $
  */
 
 /*
@@ -325,7 +325,7 @@ in_rtqtimo(void *rock)
 
 	atv.tv_usec = 0;
 	atv.tv_sec = arg.nextstop - time_second;
-	timeout(in_rtqtimo, rock, tvtohz(&atv));
+	timeout(in_rtqtimo, rock, tvtohz_high(&atv));
 }
 
 void

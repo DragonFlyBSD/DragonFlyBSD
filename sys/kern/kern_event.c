@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.9 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.10 2004/01/07 11:04:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -306,7 +306,7 @@ filt_timerexpire(void *knx)
 	if ((kn->kn_flags & EV_ONESHOT) == 0) {
 		tv.tv_sec = kn->kn_sdata / 1000;
 		tv.tv_usec = (kn->kn_sdata % 1000) * 1000;
-		tticks = tvtohz(&tv);
+		tticks = tvtohz_high(&tv);
 		calloutp = (struct callout *)kn->kn_hook;
 		callout_reset(calloutp, tticks, filt_timerexpire, kn);
 	}
@@ -328,7 +328,7 @@ filt_timerattach(struct knote *kn)
 
 	tv.tv_sec = kn->kn_sdata / 1000;
 	tv.tv_usec = (kn->kn_sdata % 1000) * 1000;
-	tticks = tvtohz(&tv);
+	tticks = tvtohz_high(&tv);
 
 	kn->kn_flags |= EV_CLEAR;		/* automatically set */
 	MALLOC(calloutp, struct callout *, sizeof(*calloutp),
@@ -612,7 +612,7 @@ kqueue_scan(struct file *fp, int maxevents, struct kevent *ulistp,
 			timeout = -1;
 		else 
 			timeout = atv.tv_sec > 24 * 60 * 60 ?
-			    24 * 60 * 60 * hz : tvtohz(&atv);
+			    24 * 60 * 60 * hz : tvtohz_high(&atv);
 		getmicrouptime(&rtv);
 		timevaladd(&atv, &rtv);
 	} else {
@@ -630,7 +630,7 @@ retry:
 		ttv = atv;
 		timevalsub(&ttv, &rtv);
 		timeout = ttv.tv_sec > 24 * 60 * 60 ?
-			24 * 60 * 60 * hz : tvtohz(&ttv);
+			24 * 60 * 60 * hz : tvtohz_high(&ttv);
 	}
 
 start:

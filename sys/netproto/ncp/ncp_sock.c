@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.7 2003/08/07 21:54:35 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.8 2004/01/07 11:04:25 dillon Exp $
  *
  * Low level socket routines
  */
@@ -229,7 +229,7 @@ retry:
 			goto done;
 		ttv=atv;
 		timevalsub(&ttv, &rtv);
-		timo = tvtohz(&ttv);
+		timo = tvtohz_high(&ttv);
 	}
 	s = splhigh();
 	if ((p->p_flag & P_SELECT) == 0) {

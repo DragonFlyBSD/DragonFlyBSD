@@ -38,7 +38,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.12 2003/10/17 07:30:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.13 2004/01/07 11:04:18 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -268,35 +268,28 @@ hardclock(frame)
 }
 
 /*
- * Compute number of ticks in the specified amount of time.
+ * Compute number of ticks for the specified amount of time.  The 
+ * return value is intended to be used in a clock interrupt timed
+ * operation and guarenteed to meet or exceed the requested time.
+ * If the representation overflows, return INT_MAX.  The minimum return
+ * value is 1 ticks and the function will average the calculation up.
+ * If any value greater then 0 microseconds is supplied, a value
+ * of at least 2 will be returned to ensure that a near-term clock
+ * interrupt does not cause the timeout to occur (degenerately) early.
+ *
+ * Note that limit checks must take into account microseconds, which is
+ * done simply by using the smaller signed long maximum instead of
+ * the unsigned long maximum.
+ *
+ * If ints have 32 bits, then the maximum value for any timeout in
+ * 10ms ticks is 248 days.
  */
 int
-tvtohz(tv)
-	struct timeval *tv;
+tvtohz_high(struct timeval *tv)
 {
-	unsigned long ticks;
+	int ticks;
 	long sec, usec;
 
-	/*
-	 * If the number of usecs in the whole seconds part of the time
-	 * difference fits in a long, then the total number of usecs will
-	 * fit in an unsigned long.  Compute the total and convert it to
-	 * ticks, rounding up and adding 1 to allow for the current tick
-	 * to expire.  Rounding also depends on unsigned long arithmetic
-	 * to avoid overflow.
-	 *
-	 * Otherwise, if the number of ticks in the whole seconds part of
-	 * the time difference fits in a long, then convert the parts to
-	 * ticks separately and add, using similar rounding methods and
-	 * overflow avoidance.  This method would work in the previous
-	 * case but it is slightly slower and assumes that hz is integral.
-	 *
-	 * Otherwise, round the time difference down to the maximum
-	 * representable value.
-	 *
-	 * If ints have 32 bits, then the maximum value for any timeout in
-	 * 10ms ticks is 248 days.
-	 */
 	sec = tv->tv_sec;
 	usec = tv->tv_usec;
 	if (usec < 0) {
@@ -313,18 +306,41 @@ tvtohz(tv)
 		       sec, usec);
 #endif
 		ticks = 1;
-	} else if (sec <= LONG_MAX / 1000000)
-		ticks = (sec * 1000000 + (unsigned long)usec + (tick - 1))
-			/ tick + 1;
-	else if (sec <= LONG_MAX / hz)
-		ticks = sec * hz
-			+ ((unsigned long)usec + (tick - 1)) / tick + 1;
-	else
-		ticks = LONG_MAX;
-	if (ticks > INT_MAX)
+	} else if (sec <= INT_MAX / hz) {
+		ticks = (int)(sec * hz + 
+			    ((u_long)usec + (tick - 1)) / tick) + 1;
+	} else {
 		ticks = INT_MAX;
-	return ((int)ticks);
+	}
+	return (ticks);
 }
+
+/*
+ * Compute number of ticks for the specified amount of time, erroring on
+ * the side of it being too low to ensure that sleeping the returned number
+ * of ticks will not result in a late return.
+ *
+ * The supplied timeval may not be negative and should be normalized.  A
+ * return value of 0 is possible if the timeval converts to less then
+ * 1 tick.
+ *
+ * If ints have 32 bits, then the maximum value for any timeout in
+ * 10ms ticks is 248 days.
+ */
+int
+tvtohz_low(struct timeval *tv)
+{
+	int ticks;
+	long sec;
+
+	sec = tv->tv_sec;
+	if (sec <= INT_MAX / hz)
+		ticks = (int)(sec * hz + (u_long)tv->tv_usec / tick);
+	else
+		ticks = INT_MAX;
+	return (ticks);
+}
+
 
 /*
  * Start profiling on a process.

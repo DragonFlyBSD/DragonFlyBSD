@@ -32,7 +32,7 @@
  *
  *	@(#)time.h	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/time.h,v 1.42 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/time.h,v 1.6 2003/11/22 19:30:57 asmodai Exp $
+ * $DragonFly: src/sys/sys/time.h,v 1.7 2004/01/07 11:04:20 dillon Exp $
  */
 
 #ifndef _SYS_TIME_H_
@@ -288,7 +288,8 @@ void	nanotime (struct timespec *ts);
 void	set_timecounter (struct timespec *ts);
 void	timevaladd (struct timeval *, struct timeval *);
 void	timevalsub (struct timeval *, struct timeval *);
-int	tvtohz (struct timeval *);
+int	tvtohz_high (struct timeval *);
+int	tvtohz_low (struct timeval *);
 void	update_timecounter (struct timecounter *tc);
 #else /* !_KERNEL */
 #include <time.h>
