@@ -32,7 +32,7 @@
  *
  * @(#)slave.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/slave.c,v 1.7 1999/08/28 01:20:18 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/slave.c,v 1.4 2004/03/13 21:08:38 eirikn Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/slave.c,v 1.5 2004/09/05 01:59:44 dillon Exp $
  */
 
 #include "globals.h"
@@ -148,7 +148,7 @@ loop:
 			to.tsp_vers = TSPVERSION;
 			to.tsp_seq = sequence++;
 			to.tsp_hopcnt = MAX_HOPCNT;
-			(void)strcpy(to.tsp_name, hostname);
+			strlcpy(to.tsp_name, hostname, sizeof(to.tsp_name));
 			bytenetorder(&to);
 			if (sendto(sock, (char *)&to, sizeof(struct tsp), 0,
 				   (struct sockaddr*)&ntp->dest_addr,
@@ -262,9 +262,9 @@ loop:
 			 * the following line is necessary due to syslog
 			 * calling ctime() which clobbers the static buffer
 			 */
-			(void)strcpy(olddate, date());
+			strlcpy(olddate, date(), sizeof(olddate));
 			tsp_time_sec = msg->tsp_time.tv_sec;
-			(void)strcpy(newdate, ctime(&tsp_time_sec));
+			strlcpy(newdate, ctime(&tsp_time_sec), sizeof(newdate));
 #endif /* sgi */
 
 			if (!good_host_name(msg->tsp_name)) {
@@ -356,7 +356,7 @@ loop:
 			(void)cftime(newdate, "%D %T", &msg->tsp_time.tv_sec);
 #else
 			tsp_time_sec = msg->tsp_time.tv_sec;
-			(void)strcpy(newdate, ctime(&tsp_time_sec));
+			strlcpy(newdate, ctime(&tsp_time_sec), sizeof(newdate));
 #endif /* sgi */
 			schgdate(msg, newdate);
 			break;
@@ -368,7 +368,7 @@ loop:
 			(void)cftime(newdate, "%D %T", &msg->tsp_time.tv_sec);
 #else
 			tsp_time_sec = msg->tsp_time.tv_sec;
-			(void)strcpy(newdate, ctime(&tsp_time_sec));
+			strlcpy(newdate, ctime(&tsp_time_sec), sizeof(newdate));
 #endif /* sgi */
 			htp = findhost(msg->tsp_name);
 			if (0 == htp) {
@@ -422,8 +422,9 @@ loop:
 					refusetime = ntime.tv_sec + 30;
 				}
 				taddr = from;
-				(void)strcpy(tname, msg->tsp_name);
-				(void)strcpy(to.tsp_name, hostname);
+				strlcpy(tname, msg->tsp_name, sizeof(tname));
+				strlcpy(to.tsp_name, hostname, 
+					sizeof(to.tsp_name));
 				answerdelay();
 				if (!acksend(&to, &taddr, tname,
 					     TSP_ACK, 0, 0))
@@ -434,7 +435,8 @@ loop:
 			} else {	/* fromnet->status == MASTER */
 				htp = addmach(msg->tsp_name, &from,fromnet);
 				to.tsp_type = TSP_QUIT;
-				(void)strcpy(to.tsp_name, hostname);
+				strlcpy(to.tsp_name, hostname, 
+					sizeof(to.tsp_name));
 				if (!acksend(&to, &htp->addr, htp->name,
 					     TSP_ACK, 0, htp->noanswer)) {
 					syslog(LOG_ERR,
@@ -453,7 +455,7 @@ loop:
 			 * more than one master: the first slave to
 			 * come up will notify here the situation.
 			 */
-			(void)strcpy(to.tsp_name, hostname);
+			strlcpy(to.tsp_name, hostname, sizeof(to.tsp_name));
 
 			/* The other master often gets into the same state,
 			 * with boring results.
@@ -487,7 +489,7 @@ loop:
 			to.tsp_type = TSP_MSITEREQ;
 			to.tsp_vers = TSPVERSION;
 			to.tsp_seq = 0;
-			(void)strcpy(to.tsp_name, hostname);
+			strlcpy(to.tsp_name, hostname, sizeof(to.tsp_name));
 			answer = acksend(&to, &slavenet->dest_addr,
 					 ANYADDR, TSP_ACK,
 					 slavenet, 0);
@@ -495,7 +497,8 @@ loop:
 			    && good_host_name(answer->tsp_name)) {
 				setmaster(answer);
 				to.tsp_type = TSP_ACK;
-				(void)strcpy(to.tsp_name, answer->tsp_name);
+				strlcpy(to.tsp_name, answer->tsp_name,
+					sizeof(to.tsp_name));
 				bytenetorder(&to);
 				if (sendto(sock, (char *)&to,
 					   sizeof(struct tsp), 0,
@@ -545,9 +548,11 @@ loop:
 				    if (answer == NULL)
 					break;
 				    taddr = from;
-				    (void)strcpy(tname, answer->tsp_name);
+				    strlcpy(tname, answer->tsp_name,
+					    sizeof(tname));
 				    to.tsp_type = TSP_QUIT;
-				    (void)strcpy(to.tsp_name, hostname);
+				    strlcpy(to.tsp_name, hostname,
+					    sizeof(to.tsp_name));
 				    if (!acksend(&to, &taddr, tname,
 						 TSP_ACK, 0, 1)) {
 					syslog(LOG_ERR,
@@ -600,7 +605,8 @@ loop:
 				htp = addmach(answer->tsp_name,
 					      &from,ntp);
 				to.tsp_type = TSP_QUIT;
-				(void)strcpy(to.tsp_name, hostname);
+				strlcpy(to.tsp_name, hostname,
+					sizeof(to.tsp_name));
 				if (!acksend(&to,&htp->addr,htp->name,
 					     TSP_ACK, 0, htp->noanswer)) {
 					syslog(LOG_ERR,
@@ -636,7 +642,7 @@ setmaster(struct tsp *msg)
 	    && (slavenet != old_slavenet
 		|| strcmp(msg->tsp_name, master_name)
 		|| old_status != status)) {
-		(void)strcpy(master_name, msg->tsp_name);
+		strlcpy(master_name, msg->tsp_name, sizeof(master_name));
 		old_slavenet = slavenet;
 		old_status = status;
 
@@ -682,7 +688,7 @@ schgdate(struct tsp *msg, char *newdate)
 
 	to.tsp_type = TSP_SETDATEREQ;
 	to.tsp_time = msg->tsp_time;
-	(void)strcpy(to.tsp_name, hostname);
+	strlcpy(to.tsp_name, hostname, sizeof(to.tsp_name));
 	if (!acksend(&to, &slavenet->dest_addr,
 		     ANYADDR, TSP_DATEACK,
 		     slavenet, 0))

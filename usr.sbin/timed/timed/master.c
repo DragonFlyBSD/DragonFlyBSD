@@ -32,7 +32,7 @@
  *
  * @(#)master.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/master.c,v 1.6 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/master.c,v 1.4 2004/03/13 21:08:38 eirikn Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/master.c,v 1.5 2004/09/05 01:59:44 dillon Exp $
  */
 
 #include "globals.h"
@@ -147,7 +147,8 @@ loop:
 				to.tsp_vers = TSPVERSION;
 				to.tsp_seq = sequence++;
 				to.tsp_hopcnt = MAX_HOPCNT;
-				(void)strcpy(to.tsp_name, hostname);
+				strlcpy(to.tsp_name, hostname, 
+					sizeof(to.tsp_name));
 				bytenetorder(&to);
 				if (sendto(sock, (char *)&to,
 					   sizeof(struct tsp), 0,
@@ -177,7 +178,7 @@ loop:
 			(void)cftime(newdate, "%D %T", &msg->tsp_time.tv_sec);
 #else
 			tsp_time_sec = msg->tsp_time.tv_sec;
-			(void)strcpy(newdate, ctime(&tsp_time_sec));
+			strlcpy(newdate, ctime(&tsp_time_sec), sizeof(newdate));
 #endif /* sgi */
 			if (!good_host_name(msg->tsp_name)) {
 				syslog(LOG_NOTICE,
@@ -199,7 +200,7 @@ loop:
 			(void)cftime(newdate, "%D %T", &msg->tsp_time.tv_sec);
 #else
 			tsp_time_sec = msg->tsp_time.tv_sec;
-			(void)strcpy(newdate, ctime(&tsp_time_sec));
+			strlcpy(newdate, ctime(&tsp_time_sec), sizeof(newdate));
 #endif /* sgi */
 			htp = findhost(msg->tsp_name);
 			if (htp == 0) {
@@ -247,9 +248,9 @@ loop:
 				(void)addmach(msg->tsp_name, &from,fromnet);
 			}
 			taddr = from;
-			(void)strcpy(tname, msg->tsp_name);
+			strlcpy(tname, msg->tsp_name, sizeof(tname));
 			to.tsp_type = TSP_QUIT;
-			(void)strcpy(to.tsp_name, hostname);
+			strlcpy(to.tsp_name, hostname, sizeof(to.tsp_name));
 			answer = acksend(&to, &taddr, tname,
 					 TSP_ACK, 0, 1);
 			if (answer == NULL) {
@@ -266,7 +267,7 @@ loop:
 			 */
 			if (!fromnet || fromnet->status != MASTER)
 				break;
-			(void)strcpy(to.tsp_name, hostname);
+			strlcpy(to.tsp_name, hostname, sizeof(to.tsp_name));
 
 			/* The other master often gets into the same state,
 			 * with boring results if we stay at it forever.
@@ -274,7 +275,8 @@ loop:
 			ntp = fromnet;	/* (acksend() can leave fromnet=0 */
 			for (i = 0; i < 3; i++) {
 				to.tsp_type = TSP_RESOLVE;
-				(void)strcpy(to.tsp_name, hostname);
+				strlcpy(to.tsp_name, hostname, 
+					sizeof(to.tsp_name));
 				answer = acksend(&to, &ntp->dest_addr,
 						 ANYADDR, TSP_MASTERACK,
 						 ntp, 0);
@@ -319,7 +321,7 @@ loop:
 			 */
 			htp = addmach(msg->tsp_name, &from,fromnet);
 			to.tsp_type = TSP_QUIT;
-			(void)strcpy(to.tsp_name, hostname);
+			strlcpy(to.tsp_name, hostname, sizeof(to.tsp_name));
 			answer = acksend(&to, &htp->addr, htp->name,
 					 TSP_ACK, 0, 1);
 			if (!answer) {
@@ -362,11 +364,11 @@ mchgdate(struct tsp *msg)
 	char olddate[32];
 	struct timeval otime, ntime;
 
-	(void)strcpy(tname, msg->tsp_name);
+	strlcpy(tname, msg->tsp_name, sizeof(tname));
 
 	xmit(TSP_DATEACK, msg->tsp_seq, &from);
 
-	(void)strcpy(olddate, date());
+	strlcpy(olddate, date(), sizeof(olddate));
 
 	/* adjust time for residence on the queue */
 	(void)gettimeofday(&otime, 0);
@@ -500,7 +502,7 @@ spreadtime(void)
 	dictate = 2;
 	for (htp = self.l_fwd; htp != &self; htp = htp->l_fwd) {
 		to.tsp_type = TSP_SETTIME;
-		(void)strcpy(to.tsp_name, hostname);
+		strlcpy(to.tsp_name, hostname, sizeof(to.tsp_name));
 		(void)gettimeofday(&to.tsp_time, 0);
 		answer = acksend(&to, &htp->addr, htp->name,
 				 TSP_ACK, 0, htp->noanswer);
@@ -650,7 +652,7 @@ addmach(char *name, struct sockaddr_in *addr, struct netinfo *ntp)
 		}
 		ret->addr = *addr;
 		ret->ntp = ntp;
-		(void)strncpy(ret->name, name, sizeof(ret->name));
+		strlcpy(ret->name, name, sizeof(ret->name));
 		ret->good = good_host_name(name);
 		ret->l_fwd = &self;
 		ret->l_bak = self.l_bak;
@@ -776,7 +778,7 @@ newslave(struct tsp *msg)
 	if (now.tv_sec >= fromnet->slvwait.tv_sec+3
 	    || now.tv_sec < fromnet->slvwait.tv_sec) {
 		to.tsp_type = TSP_SETTIME;
-		(void)strcpy(to.tsp_name, hostname);
+		strlcpy(to.tsp_name, hostname, sizeof(to.tsp_name));
 		(void)gettimeofday(&to.tsp_time, 0);
 		answer = acksend(&to, &htp->addr,
 				 htp->name, TSP_ACK,

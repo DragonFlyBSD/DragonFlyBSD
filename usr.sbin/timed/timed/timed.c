@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)timed.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/timed.c,v 1.9 1999/08/28 01:20:19 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/timed.c,v 1.4 2004/03/13 21:08:38 eirikn Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/timed.c,v 1.5 2004/09/05 01:59:44 dillon Exp $
  */
 
 #define TSPTYPES
@@ -560,7 +560,7 @@ suppress(struct sockaddr_in *addr, char *name, struct netinfo *net)
 	if (trace)
 		fprintf(fd, "suppress: %s\n", name);
 	tgt = *addr;
-	(void)strcpy(tname, name);
+	strlcpy(tname, name, sizeof(tname));
 
 	while (0 != readmsg(TSP_ANY, ANYADDR, &wait, net)) {
 		if (trace)
@@ -570,7 +570,7 @@ suppress(struct sockaddr_in *addr, char *name, struct netinfo *net)
 
 	syslog(LOG_NOTICE, "suppressing false master %s", tname);
 	msg.tsp_type = TSP_QUIT;
-	(void)strcpy(msg.tsp_name, hostname);
+	strlcpy(msg.tsp_name, hostname, sizeof(msg.tsp_name));
 	(void)acksend(&msg, &tgt, tname, TSP_ACK, 0, 1);
 }
 
@@ -587,7 +587,7 @@ lookformaster(struct netinfo *ntp)
 
 	/* look for master */
 	resp.tsp_type = TSP_MASTERREQ;
-	(void)strcpy(resp.tsp_name, hostname);
+	strlcpy(resp.tsp_name, hostname, sizeof(resp.tsp_name));
 	answer = acksend(&resp, &ntp->dest_addr, ANYADDR,
 			 TSP_MASTERACK, ntp, 0);
 	if (answer != 0 && !good_host_name(answer->tsp_name)) {
@@ -642,7 +642,7 @@ lookformaster(struct netinfo *ntp)
 	}
 
 	ntp->status = SLAVE;
-	(void)strcpy(mastername, answer->tsp_name);
+	strlcpy(mastername, answer->tsp_name, sizeof(mastername));
 	masteraddr = from;
 
 	/*
@@ -660,7 +660,7 @@ lookformaster(struct netinfo *ntp)
 	if (answer != NULL &&
 	    strcmp(answer->tsp_name, mastername) != 0) {
 		conflict.tsp_type = TSP_CONFLICT;
-		(void)strcpy(conflict.tsp_name, hostname);
+		strlcpy(conflict.tsp_name, hostname, sizeof(conflict.tsp_name));
 		if (!acksend(&conflict, &masteraddr, mastername,
 			     TSP_ACK, 0, 0)) {
 			syslog(LOG_ERR,
@@ -842,7 +842,7 @@ add_good_host(char *name,
 	}
 
 	bzero((char*)ghp, sizeof(*ghp));
-	(void)strncpy(&ghp->name[0], name, sizeof(ghp->name));
+	strlcpy(&ghp->name[0], name, sizeof(ghp->name));
 	ghp->next = goodhosts;
 	ghp->perm = perm;
 	goodhosts = ghp;

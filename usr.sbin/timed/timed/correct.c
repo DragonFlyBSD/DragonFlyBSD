@@ -32,7 +32,7 @@
  *
  * @(#)correct.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/correct.c,v 1.4 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/correct.c,v 1.4 2004/03/13 21:08:38 eirikn Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/correct.c,v 1.5 2004/09/05 01:59:44 dillon Exp $
  */
 
 #include "globals.h"
@@ -79,7 +79,7 @@ correct(long avdelta)
 				mstotvround(&to.tsp_time, corr);
 				to.tsp_type = TSP_ADJTIME;
 			}
-			(void)strcpy(to.tsp_name, hostname);
+			strlcpy(to.tsp_name, hostname, sizeof(to.tsp_name));
 			answer = acksend(&to, &htp->addr, htp->name,
 					 TSP_ACK, 0, 0);
 			if (!answer) {

@@ -32,7 +32,7 @@
  *
  * @(#)candidate.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/candidate.c,v 1.5 1999/08/28 01:20:16 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/candidate.c,v 1.3 2004/03/13 21:08:38 eirikn Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/candidate.c,v 1.4 2004/09/05 01:59:44 dillon Exp $
  */
 
 #include "globals.h"
@@ -75,7 +75,7 @@ again:
 		fprintf(fd, "This machine is a candidate time master\n");
 	msg.tsp_type = TSP_ELECTION;
 	msg.tsp_vers = TSPVERSION;
-	(void)strcpy(msg.tsp_name, hostname);
+	strlcpy(msg.tsp_name, hostname, sizeof(msg.tsp_name));
 	bytenetorder(&msg);
 	if (sendto(sock, (char *)&msg, sizeof(struct tsp), 0,
 		   (struct sockaddr*)&net->dest_addr,
@@ -134,7 +134,7 @@ again:
 			/* no master for another round */
 			htp = addmach(resp->tsp_name,&from,fromnet);
 			msg.tsp_type = TSP_REFUSE;
-			(void)strcpy(msg.tsp_name, hostname);
+			strlcpy(msg.tsp_name, hostname, sizeof(msg.tsp_name));
 			answer = acksend(&msg, &htp->addr, htp->name,
 					 TSP_ACK, 0, htp->noanswer);
 			if (!answer) {
