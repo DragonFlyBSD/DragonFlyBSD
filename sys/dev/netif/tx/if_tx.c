@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.15 2005/01/23 20:23:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.16 2005/02/20 03:08:29 joerg Exp $
  */
 
 /*
@@ -49,6 +49,7 @@
 #include <sys/queue.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -238,7 +239,8 @@ epic_attach(dev)
 	ifp->if_init = (if_init_f_t*)epic_init;
 	ifp->if_timer = 0;
 	ifp->if_baudrate = 10000000;
-	ifp->if_snd.ifq_maxlen = TX_RING_SIZE - 1;
+	ifq_set_maxlen(&ifp->if_snd, TX_RING_SIZE - 1);
+	ifq_set_ready(&ifp->if_snd);
 
 	/* Enable ports, memory and busmastering */
 	command = pci_read_config(dev, PCIR_COMMAND, 4);
@@ -550,10 +552,11 @@ epic_ifstart(ifp)
 		flist = sc->tx_flist + sc->cur_tx;
 
 		/* Get next packet to send */
-		IF_DEQUEUE(&ifp->if_snd, m0);
+		m0 = ifq_dequeue(&ifp->if_snd);
 
 		/* If nothing to send, return */
-		if (NULL == m0) return;
+		if (m0 == NULL)
+			return;
 
 		/* Fill fragments list */
 		for (m = m0, i = 0;
@@ -742,7 +745,7 @@ epic_intr(arg)
 
 	if (status & (INTSTAT_TXC|INTSTAT_TCC|INTSTAT_TQE)) {
 	    epic_tx_done(sc);
-	    if (sc->sc_if.if_snd.ifq_head != NULL)
+	    if (!ifq_is_empty(&sc->sc_if.if_snd))
 		    epic_ifstart(&sc->sc_if);
 	}
 
@@ -849,7 +852,8 @@ epic_ifwatchdog(ifp)
 		device_printf(sc->dev, "seems we can continue normaly\n");
 
 	/* Start output */
-	if (ifp->if_snd.ifq_head) epic_ifstart(ifp);
+	if (!ifq_is_empty(&ifp->if_snd))
+		epic_ifstart(ifp);
 
 	splx(x);
 }
