@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq_ifsubr.c,v 1.11.2.1 2000/08/02 22:39:30 peter Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.10 2005/02/11 22:25:56 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.11 2005/02/20 04:41:46 joerg Exp $
  *
  */
 
@@ -44,6 +44,7 @@
 #endif
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_dl.h>
 
 #include <net/bpf.h>
@@ -132,13 +133,7 @@ pdq_ifwatchdog(
 
     ifp->if_flags &= ~IFF_OACTIVE;
     ifp->if_timer = 0;
-    for (;;) {
-	struct mbuf *m;
-	IF_DEQUEUE(&ifp->if_snd, m);
-	if (m == NULL)
-	    return;
-	m_freem(m);
-    }
+    ifq_purge(&ifp->if_snd);
 }
 
 ifnet_ret_t
@@ -160,13 +155,11 @@ pdq_ifstart(
 	return;
     }
     for (;; tx = 1) {
-	IF_DEQUEUE(&ifp->if_snd, m);
+	m = ifq_poll(&ifp->if_snd);
 	if (m == NULL)
 	    break;
 
-	if (pdq_queue_transmit_data(sc->sc_pdq, m) == PDQ_FALSE) {
-	    ifp->if_flags |= IFF_OACTIVE;
-	    IF_PREPEND(&ifp->if_snd, m);
+	if (pdq_queue_transmit_data(ifp, sc->sc_pdq, m) == PDQ_FALSE) {
 	    break;
 	}
     }
@@ -200,9 +193,9 @@ pdq_os_restart_transmitter(
 {
     pdq_softc_t *sc = (pdq_softc_t *) pdq->pdq_os_ctx;
     sc->sc_if.if_flags &= ~IFF_OACTIVE;
-    if (sc->sc_if.if_snd.ifq_head != NULL) {
-	sc->sc_if.if_timer = PDQ_OS_TX_TIMEOUT;
+    if (ifq_is_empty(&sc->sc_if.if_snd)) {
 	pdq_ifstart(&sc->sc_if);
+	sc->sc_if.if_timer = PDQ_OS_TX_TIMEOUT;
     } else {
 	sc->sc_if.if_timer = 0;
     }
@@ -364,7 +357,8 @@ pdq_ifattach(
 
     ifp->if_ioctl = pdq_ifioctl;
     ifp->if_start = pdq_ifstart;
-    ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+    ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+    ifq_set_ready(&ifp->if_snd);
   
     fddi_ifattach(ifp);
 }

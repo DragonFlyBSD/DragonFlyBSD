@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdqvar.h,v 1.3.2.1 2002/05/14 21:02:11 gallatin Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.7 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.8 2005/02/20 04:41:46 joerg Exp $
  *
  */
 
@@ -324,7 +324,7 @@ extern void pdq_os_receive_pdu(pdq_t *, PDQ_OS_DATABUF_T *pdu, size_t pdulen);
 extern void pdq_os_restart_transmitter(pdq_t *pdq);
 extern void pdq_os_transmit_done(pdq_t *pdq, PDQ_OS_DATABUF_T *pdu);
 
-extern pdq_boolean_t pdq_queue_transmit_data(pdq_t *pdq, PDQ_OS_DATABUF_T *pdu);
+pdq_boolean_t pdq_queue_transmit_data(struct ifnet *, pdq_t *, PDQ_OS_DATABUF_T *);
 extern void pdq_flush_transmitter(pdq_t *pdq);
 
 extern void pdq_run(pdq_t *pdq);

@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq.c,v 1.5 1999/08/28 00:42:19 peter Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq.c,v 1.4 2004/02/13 02:44:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq.c,v 1.5 2005/02/20 04:41:46 joerg Exp $
  *
  */
 
@@ -47,6 +47,10 @@
 #include "pdqvar.h"
 #include "pdqreg.h"
 #endif
+
+#include <sys/socket.h>
+#include <net/if.h>
+#include <net/ifq_var.h>
 
 #define	PDQ_ROUNDUP(n, x)	(((n) + ((x) - 1)) & ~((x) - 1))
 #define	PDQ_CMD_RX_ALIGNMENT	16
@@ -834,9 +838,7 @@ pdq_process_received_data(
 }
 
 pdq_boolean_t
-pdq_queue_transmit_data(
-    pdq_t *pdq,
-    PDQ_OS_DATABUF_T *pdu)
+pdq_queue_transmit_data(struct ifnet *ifp, pdq_t *pdq, PDQ_OS_DATABUF_T *pdu)
 {
     pdq_tx_info_t *tx = &pdq->pdq_tx_info;
     pdq_descriptor_block_t *dbp = pdq->pdq_dbp;
@@ -892,6 +894,7 @@ pdq_queue_transmit_data(
     /*
      * Everything went fine.  Finish it up.
      */
+    ifq_dequeue(&ifp->if_snd);
     tx->tx_descriptor_count[tx->tx_producer] = tx->tx_free - freecnt;
     eop->txd_eop = 1;
     PDQ_OS_DATABUF_ENQUEUE(&tx->tx_txq, pdu);
