@@ -1,8 +1,88 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.13 2004/03/06 14:39:08 hmp Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.14 2004/05/02 19:41:30 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
+
+<h2>Sun 2 May 2004</h2>
+<ul>
+	<li>NEWTOKENs replace old tokens.  The new token abstraction provides
+	    a serialization mechanism that persists across blocking conditions.
+	    This is not a lock, but more like an MP-capable SPL, in that 
+	    if you block you will lose serialization but then regain it when
+	    you wakeup again.  This means that newtokens can be used for
+	    serialization without having to make lower level subsystems 
+	    aware of tokens held by higher level subsystems in the call
+	    stack.  This represents a huge simplification over the FreeBSD-5
+	    mutex model.
+	<li>Support added for the Silicon Image SATA controller.
+	<li>DragonFly now supports 16 partitions per slice (up from 8).
+	<li>Wildcarded sockets have been split from the TCP/UDP connection
+	    hash table, and the listen table is now replicated across 
+	    cpus for lockless access.
+	<li>UDP sendto() without a connect no longer needs to make a 
+	    temporary connect inside the kernel, greatly improving UDP
+	    performance in this case.
+	<li>NFS performance has been greatly improved.
+	<li>Fix some major bugs in the USB/SIM code, greatly improving
+	    the reliability of USB disk keys and related devices.
+	<li>NEWCARD has been brought in from FreeBSD-5.
+	<li>A bunch of userland scheduler performance issues have been fixed.
+	<li>Major syscall procedural separation has been completed, separating
+	    the user interfacing portion of a syscall from the in-kernel
+	    core support, allowing the core support functions to be directly
+	    called from emulation code instead of using the stackgap junk.
+	<li>An optimized MMX and XMM kernel bcopy has been implemented and
+	    tested.  Most of i386/i386/support.s has been rewritten and a
+	    number of FP races in that and npxdna() have been closed.
+	<li>Brought in the SFBUF facility from FreeBSD-5, including all of
+	    Alan Cox's (the FBsd Alan Cox) improvements, plus additional
+	    improvements for cpu-localized invlpg calls (and the ability
+	    to avoid such calls when they aren't needed).
+	<li>A major PIPE code revamp has occured, augmenting the SFBUF
+	    direct-copy feature with a linear map.  Peak standard pipe
+	    throughput with 32KB buffers on an AMD64 3200+ now exceeds
+	    4GBytes/sec.
+	<li>Implement XIO, which is a multi-page buffer wrapper for SFBUFs
+	    and will eventually replace linear buffer management in the
+	    buffer cache as well as provide linear buffer mappings for other
+	    parts of the system.
+	<li>Added a localized cpu pmap_qenter() called pmap_qenter2() which
+	    is capable of maintaining a cpumask, to avoid unnecessary invlpg's
+	    on target-side linear maps.  It is currently used by the PIPE
+	    code and the CAPS code.
+	<li>Joerg has brought in most of the KOBJ extensions from FreeBSD-5.
+	<li>Major continuing work by Jeff on the threading and partitioningl
+	    of the network stack.  Nearly the whole stack is now
+	    theoretically MP safe, with only a few niggling issues before we
+	    can actually start turning off the MP lock.
+	<li>The last major element of the LWKT messaging system, 
+	    lwkt_abortmsg() support, is now in place.  Also it is now possible
+	    to wait on a port with PCATCH.
+	<li>Hiten has revamped the TCP protocol statistics, making them 
+	    per-cpu along the same lines that we have made vmstats per-cpu.
+	<li>propolice has been turned on by default in GCC3.
+	<li>CAPS (DragonFly userland IPC messaging) has been revamped to
+	    use SFBUFs.
+	<li>acpica5 now compiles, still needs testing.
+	<li>SYSTIMERS added, replacing the original hardclock(), statclock(),
+	    and other clocks, and is now used as a basis for timing in the
+	    system.  SYSTIMERS provide a fine-grained, MP-capable,
+	    cpu-localizable and distributable timer interrupt abstraction.
+	<li>Fix RTC write-back issues that were preventing 'ntpdate' changes
+	    from being written to the RTC in certain cases.
+	<li>Finish most of the namecache topology work.  We no longer need
+	    the v_dd and v_ddid junk.  The namecache topology is almost 
+	    ready for the next major step, which will be namespace locking
+	    via namecache rather then via vnode locks.
+	<li>Add ENOENT caching for NFS, greatly reducing the network overhead
+	    (by a factor of 5x!!!) required to support things like
+	    buildworld's using an NFS-mounted /usr/src.
+	<li>Jeff has added predicate messaging requests to the network
+	    subsystem, which allows us to convert situations which normally
+	    block, like connect(), to use LWKT messages.
+	<li>Lots of style cleanups, primarily by Chris Pressey.
+</ul>
 
 <h2>Sun 15 February 2004</h2>
 <ul>
