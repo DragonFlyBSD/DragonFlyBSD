@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip6.h,v 1.2.2.2 2001/07/03 11:01:46 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip6.h,v 1.3 2004/09/23 16:44:32 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip6.h,v 1.4 2004/09/24 12:39:25 joerg Exp $	*/
 /*	$KAME: ip6.h,v 1.18 2001/03/29 05:34:30 itojun Exp $	*/
 
 /*
@@ -200,7 +200,7 @@ struct ip6_frag {
 #define IP6F_OFF_MASK		0xfff8	/* mask out offset from _offlg */
 #define IP6F_RESERVED_MASK	0x0006	/* reserved bits in ip6f_offlg */
 #define IP6F_MORE_FRAG		0x0001	/* more-fragments flag */
-#elif _BYTE_ORDER == _LITTE_ENDIAN
+#elif _BYTE_ORDER == _LITTLE_ENDIAN
 #define IP6F_OFF_MASK		0xf8ff	/* mask out offset from _offlg */
 #define IP6F_RESERVED_MASK	0x0600	/* reserved bits in ip6f_offlg */
 #define IP6F_MORE_FRAG		0x0100	/* more-fragments flag */
