@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: pch.c,v 1.35 2004/08/05 21:47:24 deraadt Exp $
- * $DragonFly: src/usr.bin/patch/pch.c,v 1.1 2004/09/24 18:44:28 joerg Exp $
+ * $DragonFly: src/usr.bin/patch/pch.c,v 1.2 2004/09/28 19:09:50 joerg Exp $
  */
 
 /*
@@ -838,11 +838,11 @@ hunk_done:
 			}
 		}
 	} else if (diff_type == UNI_DIFF) {
-		long	line_beginning = ftell(pfp); /* file pos of the current line */
-		LINENUM	fillsrc;	/* index of old lines */
-		LINENUM	filldst;	/* index of new lines */
+		LINENUM	fillold;	/* index of old lines */
+		LINENUM	fillnew;	/* index of new lines */
 		char	ch;
 
+		line_beginning = ftell(pfp); /* file pos of the current line */
 		ret = pgets(buf, sizeof buf, pfp);
 		p_input_line++;
 		if (ret == NULL || strnNE(buf, "@@ -", 4)) {
@@ -883,9 +883,9 @@ hunk_done:
 		p_max = p_ptrn_lines + p_repl_lines + 1;
 		while (p_max >= hunkmax)
 			grow_hunkmax();
-		fillsrc = 1;
-		filldst = fillsrc + p_ptrn_lines;
-		p_end = filldst + p_repl_lines;
+		fillold = 1;
+		fillnew = fillold + p_ptrn_lines;
+		p_end = fillnew + p_repl_lines;
 		snprintf(buf, sizeof buf, "*** %ld,%ld ****\n", p_first,
 		    p_first + p_ptrn_lines - 1);
 		p_line[0] = savestr(buf);
@@ -896,21 +896,21 @@ hunk_done:
 		p_char[0] = '*';
 		snprintf(buf, sizeof buf, "--- %ld,%ld ----\n", p_newfirst,
 		    p_newfirst + p_repl_lines - 1);
-		p_line[filldst] = savestr(buf);
+		p_line[fillnew] = savestr(buf);
 		if (out_of_mem) {
 			p_end = 0;
 			return false;
 		}
-		p_char[filldst++] = '=';
+		p_char[fillnew++] = '=';
 		p_context = 100;
 		context = 0;
 		p_hunk_beg = p_input_line + 1;
-		while (fillsrc <= p_ptrn_lines || filldst <= p_end) {
+		while (fillold <= p_ptrn_lines || fillnew <= p_end) {
 			line_beginning = ftell(pfp);
 			ret = pgets(buf, sizeof buf, pfp);
 			p_input_line++;
 			if (ret == NULL) {
-				if (p_max - filldst < 3) {
+				if (p_max - fillnew < 3) {
 					/* assume blank lines got chopped */
 					strlcpy(buf, " \n", sizeof buf);
 				} else {
@@ -925,25 +925,25 @@ hunk_done:
 				s = savestr(buf + 1);
 			}
 			if (out_of_mem) {
-				while (--filldst > p_ptrn_lines)
-					free(p_line[filldst]);
-				p_end = fillsrc - 1;
+				while (--fillnew > p_ptrn_lines)
+					free(p_line[fillnew]);
+				p_end = fillold - 1;
 				return false;
 			}
 			switch (ch) {
 			case '-':
-				if (fillsrc > p_ptrn_lines) {
+				if (fillold > p_ptrn_lines) {
 					free(s);
-					p_end = filldst - 1;
+					p_end = fillnew - 1;
 					malformed();
 				}
-				p_char[fillsrc] = ch;
-				p_line[fillsrc] = s;
-				p_len[fillsrc++] = strlen(s);
-				if (fillsrc > p_ptrn_lines) {
+				p_char[fillold] = ch;
+				p_line[fillold] = s;
+				p_len[fillold++] = strlen(s);
+				if (fillold > p_ptrn_lines) {
 					if (remove_special_line()) {
-						p_len[fillsrc - 1] -= 1;
-						s[p_len[fillsrc - 1]] = 0;
+						p_len[fillold - 1] -= 1;
+						s[p_len[fillold - 1]] = 0;
 					}
 				}
 				break;
@@ -951,51 +951,51 @@ hunk_done:
 				ch = ' ';
 				/* FALL THROUGH */
 			case ' ':
-				if (fillsrc > p_ptrn_lines) {
+				if (fillold > p_ptrn_lines) {
 					free(s);
-					while (--filldst > p_ptrn_lines)
-						free(p_line[filldst]);
-					p_end = fillsrc - 1;
+					while (--fillnew > p_ptrn_lines)
+						free(p_line[fillnew]);
+					p_end = fillold - 1;
 					malformed();
 				}
 				context++;
-				p_char[fillsrc] = ch;
-				p_line[fillsrc] = s;
-				p_len[fillsrc++] = strlen(s);
+				p_char[fillold] = ch;
+				p_line[fillold] = s;
+				p_len[fillold++] = strlen(s);
 				s = savestr(s);
 				if (out_of_mem) {
-					while (--filldst > p_ptrn_lines)
-						free(p_line[filldst]);
-					p_end = fillsrc - 1;
+					while (--fillnew > p_ptrn_lines)
+						free(p_line[fillnew]);
+					p_end = fillold - 1;
 					return false;
 				}
-				if (fillsrc > p_ptrn_lines) {
+				if (fillold > p_ptrn_lines) {
 					if (remove_special_line()) {
-						p_len[fillsrc - 1] -= 1;
-						s[p_len[fillsrc - 1]] = 0;
+						p_len[fillold - 1] -= 1;
+						s[p_len[fillold - 1]] = 0;
 					}
 				}
 				/* FALL THROUGH */
 			case '+':
-				if (filldst > p_end) {
+				if (fillnew > p_end) {
 					free(s);
-					while (--filldst > p_ptrn_lines)
-						free(p_line[filldst]);
-					p_end = fillsrc - 1;
+					while (--fillnew > p_ptrn_lines)
+						free(p_line[fillnew]);
+					p_end = fillold - 1;
 					malformed();
 				}
-				p_char[filldst] = ch;
-				p_line[filldst] = s;
-				p_len[filldst++] = strlen(s);
-				if (fillsrc > p_ptrn_lines) {
+				p_char[fillnew] = ch;
+				p_line[fillnew] = s;
+				p_len[fillnew++] = strlen(s);
+				if (fillold > p_ptrn_lines) {
 					if (remove_special_line()) {
-						p_len[filldst - 1] -= 1;
-						s[p_len[filldst - 1]] = 0;
+						p_len[fillnew - 1] -= 1;
+						s[p_len[fillnew - 1]] = 0;
 					}
 				}
 				break;
 			default:
-				p_end = filldst;
+				p_end = fillnew;
 				malformed();
 			}
 			if (ch != ' ' && context > 0) {
@@ -1008,8 +1008,8 @@ hunk_done:
 		char	hunk_type;
 		int	i;
 		LINENUM	min, max;
-		long	line_beginning = ftell(pfp);
 
+		line_beginning = ftell(pfp);
 		p_context = 0;
 		ret = pgets(buf, sizeof buf, pfp);
 		p_input_line++;

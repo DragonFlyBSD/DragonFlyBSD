@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: util.c,v 1.28 2004/08/05 21:47:24 deraadt Exp $
- * $DragonFly: src/usr.bin/patch/util.c,v 1.1 2004/09/24 18:44:28 joerg Exp $
+ * $DragonFly: src/usr.bin/patch/util.c,v 1.2 2004/09/28 19:09:50 joerg Exp $
  */
 
 /*
@@ -279,10 +279,10 @@ set_signals(int reset)
 	if (!reset) {
 		hupval = signal(SIGHUP, SIG_IGN);
 		if (hupval != SIG_IGN)
-			hupval = (sig_t) my_exit;
+			hupval = my_exit;
 		intval = signal(SIGINT, SIG_IGN);
 		if (intval != SIG_IGN)
-			intval = (sig_t) my_exit;
+			intval = my_exit;
 	}
 	signal(SIGHUP, hupval);
 	signal(SIGINT, intval);

@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: backupfile.h,v 1.6 2003/07/28 18:35:36 otto Exp $
- * $DragonFly: src/usr.bin/patch/backupfile.h,v 1.1 2004/09/24 18:44:28 joerg Exp $
+ * $DragonFly: src/usr.bin/patch/backupfile.h,v 1.2 2004/09/28 19:09:50 joerg Exp $
  */
 
 /*
@@ -35,7 +35,7 @@ enum backup_type {
 };
 
 extern enum backup_type backup_type;
-extern char	*simple_backup_suffix;
+extern const char	*simple_backup_suffix;
 
 char		*find_backup_file_name(const char *file);
 enum backup_type get_version(const char *vers);

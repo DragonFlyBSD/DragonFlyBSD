@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: inp.c,v 1.32 2004/08/05 21:47:24 deraadt Exp $
- * $DragonFly: src/usr.bin/patch/inp.c,v 1.1 2004/09/24 18:44:28 joerg Exp $
+ * $DragonFly: src/usr.bin/patch/inp.c,v 1.2 2004/09/28 19:09:50 joerg Exp $
  */
 
 /*
@@ -54,6 +54,7 @@
 static off_t	i_size;		/* size of the input file */
 static char	*i_womp;	/* plan a buffer for entire file */
 static char	**i_ptr;	/* pointers to lines in i_womp */
+static char	empty_line[] = { '\0' };
 
 static int	tifd = -1;	/* plan b virtual string array */
 static char	*tibuf[2];	/* plan b buffers */
@@ -173,7 +174,7 @@ plan_a(const char *filename)
 	    (filestat.st_mode & 0222) == 0 ||
 	    /* I can't write to it.  */
 	    ((filestat.st_mode & 0022) == 0 && filestat.st_uid != getuid())) {
-		char	*cs = NULL, *filebase, *filedir;
+		const char	*cs = NULL, *filebase, *filedir;
 		struct stat	cstat;
 
 		filebase = basename(filename);
@@ -299,7 +300,7 @@ plan_a(const char *filename)
 		p[sz] = '\n';
 		i_ptr[iline] = p;
 		/* count the extra line and make it point to some valid mem */
-		i_ptr[++iline] = "";
+		i_ptr[++iline] = empty_line;
 	} else
 		last_line_missing_eol = false;
 

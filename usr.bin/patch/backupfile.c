@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: backupfile.c,v 1.18 2004/08/05 21:47:24 deraadt Exp $
- * $DragonFly: src/usr.bin/patch/backupfile.c,v 1.1 2004/09/24 18:44:28 joerg Exp $
+ * $DragonFly: src/usr.bin/patch/backupfile.c,v 1.2 2004/09/28 19:09:50 joerg Exp $
  */
 
 /*
@@ -39,7 +39,7 @@ enum backup_type backup_type = none;
  * The extension added to file names to produce a simple (as opposed to
  * numbered) backup file name.
  */
-char		*simple_backup_suffix = "~";
+const char	*simple_backup_suffix = "~";
 
 static char	*concat(const char *, const char *);
 static char	*make_version_name(const char *, int);
