@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.12 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.13 2005/02/15 20:28:38 joerg Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -35,6 +35,7 @@
 
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <net/ifq_var.h>
 
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
@@ -192,6 +193,8 @@ el_attach(struct isa_device *idev)
 	ifp->if_watchdog = el_watchdog;
 	ifp->if_init = el_init;
 	ifp->if_flags = (IFF_BROADCAST | IFF_SIMPLEX);
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	/* Now we can attach the interface */
 	dprintf(("Attaching interface...\n"));
@@ -303,7 +306,7 @@ el_start(struct ifnet *ifp)
 	 */
 	while(1) {
 		/* Dequeue the next datagram */
-		IF_DEQUEUE(&sc->arpcom.ac_if.if_snd,m0);
+		m0 = ifq_dequeue(&ifp->if_snd);
 
 		/* If there's nothing to send, return. */
 		if(m0 == NULL) {
