@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.96 2004/02/27 06:43:14 kan Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.15 2005/03/04 00:11:11 cpressey Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.16 2005/03/04 01:22:37 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -148,7 +148,7 @@ void	status(const struct afswtch *afp, int addrcount,
 		    struct ifa_msghdr *ifam);
 void	tunnel_status(int s);
 void	usage(void);
-void	ifmaybeload(char *name);
+void	ifmaybeload(char *if_nm);
 
 #ifdef INET6
 void	in6_fillscopeid(struct sockaddr_in6 *sin6);
@@ -781,10 +781,10 @@ void
 settunnel(const char *src, const char *dst, int s, const struct afswtch *afp)
 {
 	struct addrinfo hints, *srcres, *dstres;
-	struct ifaliasreq addreq;
+	struct ifaliasreq addr_req;
 	int ecode;
 #ifdef INET6
-	struct in6_aliasreq in6_addreq; 
+	struct in6_aliasreq in6_addr_req; 
 #endif
 
 	memset(&hints, 0, sizeof(hints));
@@ -804,27 +804,27 @@ settunnel(const char *src, const char *dst, int s, const struct afswtch *afp)
 
 	switch (srcres->ai_addr->sa_family) {
 	case AF_INET:
-		memset(&addreq, 0, sizeof(addreq));
-		strncpy(addreq.ifra_name, name, IFNAMSIZ);
-		memcpy(&addreq.ifra_addr, srcres->ai_addr,
+		memset(&addr_req, 0, sizeof(addr_req));
+		strncpy(addr_req.ifra_name, name, IFNAMSIZ);
+		memcpy(&addr_req.ifra_addr, srcres->ai_addr,
 		    srcres->ai_addr->sa_len);
-		memcpy(&addreq.ifra_dstaddr, dstres->ai_addr,
+		memcpy(&addr_req.ifra_dstaddr, dstres->ai_addr,
 		    dstres->ai_addr->sa_len);
 
-		if (ioctl(s, SIOCSIFPHYADDR, &addreq) < 0)
+		if (ioctl(s, SIOCSIFPHYADDR, &addr_req) < 0)
 			warn("SIOCSIFPHYADDR");
 		break;
 
 #ifdef INET6
 	case AF_INET6:
-		memset(&in6_addreq, 0, sizeof(in6_addreq));
-		strncpy(in6_addreq.ifra_name, name, IFNAMSIZ);
-		memcpy(&in6_addreq.ifra_addr, srcres->ai_addr,
+		memset(&in6_addr_req, 0, sizeof(in6_addr_req));
+		strncpy(in6_addr_req.ifra_name, name, IFNAMSIZ);
+		memcpy(&in6_addr_req.ifra_addr, srcres->ai_addr,
 		    srcres->ai_addr->sa_len);
-		memcpy(&in6_addreq.ifra_dstaddr, dstres->ai_addr,
+		memcpy(&in6_addr_req.ifra_dstaddr, dstres->ai_addr,
 		    dstres->ai_addr->sa_len);
 
-		if (ioctl(s, SIOCSIFPHYADDR_IN6, &in6_addreq) < 0)
+		if (ioctl(s, SIOCSIFPHYADDR_IN6, &in6_addr_req) < 0)
 			warn("SIOCSIFPHYADDR_IN6");
 		break;
 #endif /* INET6 */
@@ -1267,31 +1267,32 @@ tunnel_status(int s)
 void
 in_status(int s __unused, struct rt_addrinfo *info)
 {
-	struct sockaddr_in *sin, null_sin;
-	
-	memset(&null_sin, 0, sizeof(null_sin));
+	struct sockaddr_in *addr_in, null_in;
 
-	sin = (struct sockaddr_in *)info->rti_info[RTAX_IFA];
-	printf("\tinet %s ", inet_ntoa(sin->sin_addr));
+	memset(&null_in, 0, sizeof(null_in));
+
+	addr_in = (struct sockaddr_in *)info->rti_info[RTAX_IFA];
+	printf("\tinet %s ", inet_ntoa(addr_in->sin_addr));
 
 	if (flags & IFF_POINTOPOINT) {
 		/* note RTAX_BRD overlap with IFF_BROADCAST */
-		sin = (struct sockaddr_in *)info->rti_info[RTAX_BRD];
-		if (!sin)
-			sin = &null_sin;
-		printf("--> %s ", inet_ntoa(sin->sin_addr));
+		addr_in = (struct sockaddr_in *)info->rti_info[RTAX_BRD];
+		if (!addr_in)
+			addr_in = &null_in;
+		printf("--> %s ", inet_ntoa(addr_in->sin_addr));
 	}
 
-	sin = (struct sockaddr_in *)info->rti_info[RTAX_NETMASK];
-	if (!sin)
-		sin = &null_sin;
-	printf("netmask 0x%lx ", (unsigned long)ntohl(sin->sin_addr.s_addr));
+	addr_in = (struct sockaddr_in *)info->rti_info[RTAX_NETMASK];
+	if (!addr_in)
+		addr_in = &null_in;
+	printf("netmask 0x%lx ",
+	       (unsigned long)ntohl(addr_in->sin_addr.s_addr));
 
 	if (flags & IFF_BROADCAST) {
 		/* note RTAX_BRD overlap with IFF_POINTOPOINT */
-		sin = (struct sockaddr_in *)info->rti_info[RTAX_BRD];
-		if (sin && sin->sin_addr.s_addr != 0)
-			printf("broadcast %s", inet_ntoa(sin->sin_addr));
+		addr_in = (struct sockaddr_in *)info->rti_info[RTAX_BRD];
+		if (addr_in && addr_in->sin_addr.s_addr != 0)
+			printf("broadcast %s", inet_ntoa(addr_in->sin_addr));
 	}
 	putchar('\n');
 }
@@ -1312,7 +1313,7 @@ in6_fillscopeid(struct sockaddr_in6 *sin6)
 void
 in6_status(int s __unused, struct rt_addrinfo *info)
 {
-	struct sockaddr_in6 *sin, null_sin;
+	struct sockaddr_in6 *addr_in, null_in;
 	struct in6_ifreq ifr6;
 	int s6;
 	u_int32_t flags6;
@@ -1321,15 +1322,15 @@ in6_status(int s __unused, struct rt_addrinfo *info)
 	int error;
 	u_int32_t scopeid;
 
-	memset(&null_sin, 0, sizeof(null_sin));
+	memset(&null_in, 0, sizeof(null_in));
 
-	sin = (struct sockaddr_in6 *)info->rti_info[RTAX_IFA];
+	addr_in = (struct sockaddr_in6 *)info->rti_info[RTAX_IFA];
 	strncpy(ifr6.ifr_name, ifr.ifr_name, sizeof(ifr.ifr_name));
 	if ((s6 = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
 		perror("ifconfig: socket");
 		return;
 	}
-	ifr6.ifr_addr = *sin;
+	ifr6.ifr_addr = *addr_in;
 	if (ioctl(s6, SIOCGIFAFLAG_IN6, &ifr6) < 0) {
 		perror("ifconfig: ioctl(SIOCGIFAFLAG_IN6)");
 		close(s6);
@@ -1337,7 +1338,7 @@ in6_status(int s __unused, struct rt_addrinfo *info)
 	}
 	flags6 = ifr6.ifr_ifru.ifru_flags6;
 	memset(&lifetime, 0, sizeof(lifetime));
-	ifr6.ifr_addr = *sin;
+	ifr6.ifr_addr = *addr_in;
 	if (ioctl(s6, SIOCGIFALIFETIME_IN6, &ifr6) < 0) {
 		perror("ifconfig: ioctl(SIOCGIFALIFETIME_IN6)");
 		close(s6);
@@ -1347,61 +1348,59 @@ in6_status(int s __unused, struct rt_addrinfo *info)
 	close(s6);
 
 	/* XXX: embedded link local addr check */
-	if (IN6_IS_ADDR_LINKLOCAL(&sin->sin6_addr) &&
-	    *(u_short *)&sin->sin6_addr.s6_addr[2] != 0) {
-		u_short index;
+	if (IN6_IS_ADDR_LINKLOCAL(&addr_in->sin6_addr) &&
+	    *(u_short *)&addr_in->sin6_addr.s6_addr[2] != 0) {
+		u_short idx;
 
-		index = *(u_short *)&sin->sin6_addr.s6_addr[2];
-		*(u_short *)&sin->sin6_addr.s6_addr[2] = 0;
-		if (sin->sin6_scope_id == 0)
-			sin->sin6_scope_id = ntohs(index);
+		idx = *(u_short *)&addr_in->sin6_addr.s6_addr[2];
+		*(u_short *)&addr_in->sin6_addr.s6_addr[2] = 0;
+		if (addr_in->sin6_scope_id == 0)
+			addr_in->sin6_scope_id = ntohs(idx);
 	}
-	scopeid = sin->sin6_scope_id;
+	scopeid = addr_in->sin6_scope_id;
 
-	error = getnameinfo((struct sockaddr *)sin, sin->sin6_len, addr_buf,
+	error = getnameinfo((struct sockaddr *)addr_in, addr_in->sin6_len, addr_buf,
 			    sizeof(addr_buf), NULL, 0,
 			    NI_NUMERICHOST|NI_WITHSCOPEID);
 	if (error != 0)
-		inet_ntop(AF_INET6, &sin->sin6_addr, addr_buf,
+		inet_ntop(AF_INET6, &addr_in->sin6_addr, addr_buf,
 			  sizeof(addr_buf));
 	printf("\tinet6 %s ", addr_buf);
 
 	if (flags & IFF_POINTOPOINT) {
 		/* note RTAX_BRD overlap with IFF_BROADCAST */
-		sin = (struct sockaddr_in6 *)info->rti_info[RTAX_BRD];
+		addr_in = (struct sockaddr_in6 *)info->rti_info[RTAX_BRD];
 		/*
 		 * some of the interfaces do not have valid destination
 		 * address.
 		 */
-		if (sin && sin->sin6_family == AF_INET6) {
-			int error;
-
+		if (addr_in && addr_in->sin6_family == AF_INET6) {
 			/* XXX: embedded link local addr check */
-			if (IN6_IS_ADDR_LINKLOCAL(&sin->sin6_addr) &&
-			    *(u_short *)&sin->sin6_addr.s6_addr[2] != 0) {
-				u_short index;
+			if (IN6_IS_ADDR_LINKLOCAL(&addr_in->sin6_addr) &&
+			    *(u_short *)&addr_in->sin6_addr.s6_addr[2] != 0) {
+				u_short idx;
 
-				index = *(u_short *)&sin->sin6_addr.s6_addr[2];
-				*(u_short *)&sin->sin6_addr.s6_addr[2] = 0;
-				if (sin->sin6_scope_id == 0)
-					sin->sin6_scope_id = ntohs(index);
+				idx = *(u_short *)&addr_in->sin6_addr.s6_addr[2];
+				*(u_short *)&addr_in->sin6_addr.s6_addr[2] = 0;
+				if (addr_in->sin6_scope_id == 0)
+					addr_in->sin6_scope_id = ntohs(idx);
 			}
 
-			error = getnameinfo((struct sockaddr *)sin,
-					    sin->sin6_len, addr_buf,
+			error = getnameinfo((struct sockaddr *)addr_in,
+					    addr_in->sin6_len, addr_buf,
 					    sizeof(addr_buf), NULL, 0,
 					    NI_NUMERICHOST|NI_WITHSCOPEID);
 			if (error != 0)
-				inet_ntop(AF_INET6, &sin->sin6_addr, addr_buf,
+				inet_ntop(AF_INET6, &addr_in->sin6_addr, addr_buf,
 					  sizeof(addr_buf));
 			printf("--> %s ", addr_buf);
 		}
 	}
 
-	sin = (struct sockaddr_in6 *)info->rti_info[RTAX_NETMASK];
-	if (!sin)
-		sin = &null_sin;
-	printf("prefixlen %d ", prefix(&sin->sin6_addr,
+	addr_in = (struct sockaddr_in6 *)info->rti_info[RTAX_NETMASK];
+	if (!addr_in)
+		addr_in = &null_in;
+	printf("prefixlen %d ", prefix(&addr_in->sin6_addr,
 		sizeof(struct in6_addr)));
 
 	if ((flags6 & IN6_IFF_ANYCAST) != 0)
@@ -1564,13 +1563,13 @@ SIN(addreq.ifra_mask), SIN(addreq.ifra_broadaddr)};
 void
 in_getaddr(const char *s, int which)
 {
-	register struct sockaddr_in *sin = sintab[which];
+	register struct sockaddr_in *addr_in = sintab[which];
 	struct hostent *hp;
 	struct netent *np;
 
-	sin->sin_len = sizeof(*sin);
+	addr_in->sin_len = sizeof(*addr_in);
 	if (which != MASK)
-		sin->sin_family = AF_INET;
+		addr_in->sin_family = AF_INET;
 
 	if (which == ADDR) {
 		char *p = NULL;
@@ -1592,13 +1591,13 @@ in_getaddr(const char *s, int which)
 		}
 	}
 
-	if (inet_aton(s, &sin->sin_addr))
+	if (inet_aton(s, &addr_in->sin_addr))
 		return;
 	if ((hp = gethostbyname(s)) != 0)
-		bcopy(hp->h_addr, (char *)&sin->sin_addr, 
-		    MIN(hp->h_length, sizeof(sin->sin_addr)));
+		bcopy(hp->h_addr, (char *)&addr_in->sin_addr, 
+		    MIN(hp->h_length, sizeof(addr_in->sin_addr)));
 	else if ((np = getnetbyname(s)) != 0)
-		sin->sin_addr = inet_makeaddr(np->n_net, INADDR_ANY);
+		addr_in->sin_addr = inet_makeaddr(np->n_net, INADDR_ANY);
 	else
 		errx(1, "%s: bad value", s);
 }
@@ -1612,15 +1611,15 @@ SIN6(in6_addreq.ifra_prefixmask), SIN6(in6_addreq.ifra_dstaddr)};
 void
 in6_getaddr(const char *s, int which)
 {
-	register struct sockaddr_in6 *sin = sin6tab[which];
+	register struct sockaddr_in6 *addr_in = sin6tab[which];
 	struct addrinfo hints, *res;
 	int error = -1;
 
 	newaddr &= 1;
 
-	sin->sin6_len = sizeof(*sin);
+	addr_in->sin6_len = sizeof(*addr_in);
 	if (which != MASK)
-		sin->sin6_family = AF_INET6;
+		addr_in->sin6_family = AF_INET6;
 
 	if (which == ADDR) {
 		char *p = NULL;
@@ -1631,36 +1630,36 @@ in6_getaddr(const char *s, int which)
 		}
 	}
 
-	if (sin->sin6_family == AF_INET6) {
+	if (addr_in->sin6_family == AF_INET6) {
 		bzero(&hints, sizeof(struct addrinfo));
 		hints.ai_family = AF_INET6;
 		error = getaddrinfo(s, NULL, &hints, &res);
 	}
 	if (error != 0) {
-		if (inet_pton(AF_INET6, s, &sin->sin6_addr) != 1)
+		if (inet_pton(AF_INET6, s, &addr_in->sin6_addr) != 1)
 			errx(1, "%s: bad value", s);
 	} else
-		bcopy(res->ai_addr, sin, res->ai_addrlen);
+		bcopy(res->ai_addr, addr_in, res->ai_addrlen);
 }
 
 void
 in6_getprefix(const char *plen, int which)
 {
-	register struct sockaddr_in6 *sin = sin6tab[which];
+	register struct sockaddr_in6 *addr_in = sin6tab[which];
 	register u_char *cp;
 	int len = atoi(plen);
 
 	if ((len < 0) || (len > 128))
 		errx(1, "%s: bad value", plen);
-	sin->sin6_len = sizeof(*sin);
+	addr_in->sin6_len = sizeof(*addr_in);
 	if (which != MASK)
-		sin->sin6_family = AF_INET6;
+		addr_in->sin6_family = AF_INET6;
 	if ((len == 0) || (len == 128)) {
-		memset(&sin->sin6_addr, 0xff, sizeof(struct in6_addr));
+		memset(&addr_in->sin6_addr, 0xff, sizeof(struct in6_addr));
 		return;
 	}
-	memset((void *)&sin->sin6_addr, 0x00, sizeof(sin->sin6_addr));
-	for (cp = (u_char *)&sin->sin6_addr; len > 7; len -= 8)
+	memset((void *)&addr_in->sin6_addr, 0x00, sizeof(addr_in->sin6_addr));
+	for (cp = (u_char *)&addr_in->sin6_addr; len > 7; len -= 8)
 		*cp++ = 0xff;
 	*cp = 0xff << (8 - len);
 }
@@ -1825,23 +1824,23 @@ xns_getaddr(const char *addr, int which)
 int
 prefix(void *val, int size)
 {
-        register u_char *name = (u_char *)val;
-        register int byte, bit, plen = 0;
+	register u_char *addr = (u_char *)val;
+	register int byte, bit, plen = 0;
 
         for (byte = 0; byte < size; byte++, plen += 8)
-                if (name[byte] != 0xff)
+		if (addr[byte] != 0xff)
                         break;
 	if (byte == size)
 		return (plen);
 	for (bit = 7; bit != 0; bit--, plen++)
-                if (!(name[byte] & (1 << bit)))
+                if (!(addr[byte] & (1 << bit)))
                         break;
         for (; bit != 0; bit--)
-                if (name[byte] & (1 << bit))
+                if (addr[byte] & (1 << bit))
                         return(0);
         byte++;
         for (; byte < size; byte++)
-                if (name[byte])
+                if (addr[byte])
                         return(0);
         return (plen);
 }
@@ -1881,7 +1880,7 @@ sec2str(time_t total)
 #endif /*INET6*/
 
 void
-ifmaybeload(char *name)
+ifmaybeload(char *if_nm)
 {
 	struct module_stat mstat;
 	int fileid, modid;
@@ -1890,7 +1889,7 @@ ifmaybeload(char *name)
 
 	/* turn interface and unit into module name */
 	strcpy(ifkind, "if_");
-	for (cp = name, dp = ifkind + 3;
+	for (cp = if_nm, dp = ifkind + 3;
 	    (*cp != 0) && !isdigit(*cp); cp++, dp++)
 		*dp = *cp;
 	*dp = 0;
@@ -1910,7 +1909,7 @@ ifmaybeload(char *name)
 				cp = mstat.name;
 			}
 			/* already loaded? */
-			if (strncmp(name, cp, strlen(cp)) == 0 ||
+			if (strncmp(if_nm, cp, strlen(cp)) == 0 ||
 				strncmp(ifkind, cp, strlen(cp)) == 0)
 				return;
 		}
