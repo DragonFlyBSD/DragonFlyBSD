@@ -9,6 +9,8 @@
  * software must be clearly marked as such, and if the derived work is
  * incompatible with the protocol description in the RFC file, it must be
  * called by a name other than "ssh" or "Secure Shell".
+ *
+ * $DragonFly: src/crypto/openssh/Attic/buffer.c,v 1.2 2003/09/16 16:12:00 drhodus Exp $
  */
 
 #include "includes.h"
@@ -69,6 +71,7 @@ buffer_append(Buffer *buffer, const void *data, u_int len)
 void *
 buffer_append_space(Buffer *buffer, u_int len)
 {
+	u_int newlen;
 	void *p;
 
 	if (len > 0x100000)
@@ -98,11 +101,13 @@ restart:
 		goto restart;
 	}
 	/* Increase the size of the buffer and retry. */
-	buffer->alloc += len + 32768;
-	if (buffer->alloc > 0xa00000)
+
+	newlen = buffer->alloc + len + 32768;
+ 	if (newlen > 0xa00000)
 		fatal("buffer_append_space: alloc %u not supported",
-		    buffer->alloc);
-	buffer->buf = xrealloc(buffer->buf, buffer->alloc);
+  		   newlen);
+ 	buffer->buf = xrealloc(buffer->buf, newlen);
+ 	buffer->alloc = newlen;
 	goto restart;
 	/* NOTREACHED */
 }
