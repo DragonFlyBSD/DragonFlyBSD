@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgment:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,10 +26,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
-.\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.27.2.22 2003/01/26 03:33:56 keramida Exp $
-.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.4 2004/11/13 04:13:22 cpressey Exp $
+.\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.85 2004/07/27 09:51:49 yar Exp $
+.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.5 2005/03/06 05:01:59 dillon Exp $
 .\"
-.Dd July 2, 2001
+.Dd July 26, 2004
 .Dt IFCONFIG 8
 .Os
 .Sh NAME
@@ -140,7 +136,7 @@ The link-level
 address
 is specified as a series of colon-separated hex digits.
 This can be used to
-e.g. set a new MAC address on an ethernet interface, though the
+e.g.\& set a new MAC address on an ethernet interface, though the
 mechanism used is not ethernet-specific.
 If the interface is already
 up when this option is used, it will be briefly brought down and
@@ -201,9 +197,7 @@ Usually
 .Li 0xffffffff
 is most appropriate.
 .It Fl alias
-Remove the specified network address from this interface
-(if none is specified, all network addresses for the interface
-are removed.)
+Remove the network address specified.
 This would be used if you incorrectly specified an alias, or it
 was no longer needed.
 If you have incorrectly set an NS address having the side effect
@@ -271,6 +265,12 @@ automatically.
 .\" IP encapsulation of
 .\" .Tn CLNP
 .\" packets is done differently.
+ .It Cm maclabel Ar label
+ If Mandatory Access Control support is enabled in the kernel,
+ set the MAC label to
+ .Ar label .
+.\" (see
+.\" .Xr maclabel 7 ) .
 .It Cm media Ar type
 If the driver supports the media selection system, set the media type
 of the interface to
@@ -282,10 +282,10 @@ interface might support the use of either
 .Tn AUI
 or twisted pair connectors.
 Setting the media type to
-.Dq 10base5/AUI
+.Dq Li 10base5/AUI
 would change the currently active connector to the AUI port.
 Setting it to
-.Dq 10baseT/UTP
+.Dq Li 10baseT/UTP
 would activate twisted pair.
 Refer to the interfaces' driver
 specific documentation or man page for a complete list of the
@@ -302,6 +302,40 @@ list of available options.
 .It Fl mediaopt Ar opts
 If the driver supports the media selection system, disable the
 specified media options on the interface.
+.It Cm mode Ar mode
+If the driver supports the media selection system, set the specified
+operating mode on the interface to
+.Ar mode .
+For IEEE 802.11 wireless interfaces that support multiple operating modes
+this directive is used to select between 802.11a
+.Pq Dq Li 11a ,
+802.11b
+.Pq Dq Li 11b ,
+and 802.11g
+.Pq Dq Li 11g
+operating modes.
+.It Cm name Ar name
+Set the interface name to
+.Ar name .
+.It Cm rxcsum , txcsum
+If the driver supports user-configurable checksum offloading,
+enable receive (or transmit) checksum offloading on the interface.
+Some drivers may not be able to enable these flags independently
+of each other, so setting one may also set the other.
+The driver will offload as much checksum work as it can reliably
+support, the exact level of offloading varies between drivers.
+.\".It Fl rxcsum , Fl txcsum
+.\"If the driver supports user-configurable checksum offloading,
+.\"disable receive (or transmit) checksum offloading on the interface.
+.\"These settings may not always be independent of each other.
+.\".It Cm polling
+.\"If the driver has user-configurable
+.\".Xr polling 4
+.\"support, select the polling mode on the interface.
+.\".It Fl polling
+.\"If the driver has user-configurable
+.\".Xr polling 4
+.\"support, select the interrupt mode on the interface.
 .It Cm tunnel Ar src_addr dest_addr
 (IP tunnel devices only.)
 Configure the physical source and destination address for IP tunnel
@@ -340,55 +374,88 @@ Included for
 .Tn Solaris
 compatibility.
 .It Cm vlan Ar vlan_tag
-If the interface is a vlan pseudo interface, set the vlan tag value
+If the interface is a
+.Xr vlan 4
+pseudo interface, set the VLAN tag value
 to
 .Ar vlan_tag .
 This value is a 16-bit number which is used to create an 802.1Q
-vlan header for packets sent from the vlan interface.
+VLAN header for packets sent from the
+.Xr vlan 4
+interface.
 Note that
 .Cm vlan
 and
 .Cm vlandev
 must both be set at the same time.
 .It Cm vlandev Ar iface
-If the interface is a vlan pseudo device, associate physical interface
+If the interface is a
+.Xr vlan 4
+pseudo device, associate physical interface
 .Ar iface
 with it.
-Packets transmitted through the vlan interface will be
+Packets transmitted through the
+.Xr vlan 4
+interface will be
 diverted to the specified physical interface
 .Ar iface
-with 802.1Q vlan encapsulation.
+with 802.1Q VLAN encapsulation.
 Packets with 802.1Q encapsulation received
-by the parent interface with the correct vlan tag will be diverted to
-the associated vlan pseudo-interface.
-The vlan interface is assigned a
+by the parent interface with the correct VLAN tag will be diverted to
+the associated
+.Xr vlan 4
+pseudo-interface.
+The
+.Xr vlan 4
+interface is assigned a
 copy of the parent interface's flags and the parent's ethernet address.
 The
 .Cm vlandev
 and
 .Cm vlan
 must both be set at the same time.
-If the vlan interface already has
+If the
+.Xr vlan 4
+interface already has
 a physical interface associated with it, this command will fail.
 To
 change the association to another physical interface, the existing
 association must be cleared first.
 .Pp
-Note: if the
-.Cm link0
-flag is set on the vlan interface, the vlan pseudo
-interface's behavior changes: the
-.Cm link0
-tells the vlan interface that the
-parent interface supports insertion and extraction of vlan tags on its
+Note: if the hardware tagging capability
+is set on the parent interface, the
+.Xr vlan 4
+pseudo
+interface's behavior changes:
+the
+.Xr vlan 4
+interface recognizes that the
+parent interface supports insertion and extraction of VLAN tags on its
 own (usually in firmware) and that it should pass packets to and from
 the parent unaltered.
 .It Fl vlandev Ar iface
-If the driver is a vlan pseudo device, disassociate the physical interface
+If the driver is a
+.Xr vlan 4
+pseudo device, disassociate the physical interface
 .Ar iface
 from it.
-This breaks the link between the vlan interface and its parent,
-clears its vlan tag, flags and its link address and shuts the interface down.
+This breaks the link between the
+.Xr vlan 4
+interface and its parent,
+clears its VLAN tag, flags and its link address and shuts the interface down.
+.It Cm vlanmtu , vlanhwtag
+If the driver offers user-configurable VLAN support, enable
+reception of extended frames or tag processing in hardware,
+respectively.
+Note that this must be issued on a physical interface associated with
+.Xr vlan 4 ,
+not on a
+.Xr vlan 4
+interface itself.
+.It Fl vlanmtu , Fl vlanhwtag
+If the driver offers user-configurable VLAN support, disable
+reception of extended frames or tag processing in hardware,
+respectively.
 .It Cm metric Ar n
 Set the routing metric of the interface to
 .Ar n ,
@@ -479,7 +546,7 @@ of the form
 .Ar startnet Ns - Ns Ar endnet .
 Appletalk uses this scheme instead of
 netmasks though
-.Dx
+.Fx
 implements it internally as a set of netmasks.
 .It Cm remove
 Another name for the
@@ -507,6 +574,13 @@ for more information.
 .It Fl link Op Cm 0 No - Cm 2
 .Sm on
 Disable special processing at the link level with the specified interface.
+.\".It Cm monitor
+.\"Put the interface in monitor mode.
+.\"No packets are transmitted, and received packets are discarded after
+.\".Xr bpf 4
+.\"processing.
+.\".It Fl monitor
+.\"Take the interface out of monitor mode.
 .It Cm up
 Mark an interface
 .Dq up .
@@ -559,10 +633,10 @@ in infrastructure mode.
 Not all adaptors support all modes.
 The set of
 valid modes is
-.Dq none ,
-.Dq open ,
+.Dq Li none ,
+.Dq Li open ,
 and
-.Dq shared .
+.Dq Li shared .
 Modes are case insensitive.
 .It Cm powersave
 For IEEE 802.11 wireless interfaces, enable powersave mode.
@@ -571,24 +645,58 @@ For IEEE 802.11 wireless interfaces, disable powersave mode.
 .It Cm powersavesleep Ar sleep
 For IEEE 802.11 wireless interfaces, set the desired max powersave sleep
 time in milliseconds.
+.It Cm protmode Ar technique
+For IEEE 802.11 wireless interfaces operating in 11g, use the specified
+.Ar technique
+for protecting OFDM frames in a mixed 11b/11g network.
+The set of valid techniques is
+.Dq Li off ,
+.Dq Li cts
+(CTS to self),
+and
+.Dq Li rtscts
+(RTS/CTS).
+Technique names are case insensitive.
+.It Cm rtsthreshold Ar length
+For IEEE 802.11 wireless interfaces, set the threshold for which
+transmitted frames are preceded by transmission of an
+RTS
+control frame.
+The
+.Ar length
+argument
+is the frame size in bytes and must be in the range 1 to 2312.
+Not all adaptors support setting the RTS threshold.
+.It Cm txpower Ar power
+For IEEE 802.11 wireless interfaces, set the power used to transmit frames.
+The
+.Ar power
+argument
+is a unitless value in the range 0 to 100 that is interpreted
+by drivers to derive a device-specific value.
+Out of range values are truncated.
+Typically only a few discreet power settings are available and
+the driver will use the setting closest to the specified value.
+Not all adaptors support changing the transmit power.
 .It Cm wepmode Ar mode
 For IEEE 802.11 wireless interfaces, set the desired WEP mode.
 Not all adaptors support all modes.
 The set of valid modes is
-.Dq off ,
-.Dq on ,
+.Dq Li off ,
+.Dq Li on ,
 and
-.Dq mixed .
-.Dq Mixed
+.Dq Li mixed .
+The
+.Dq Li mixed
 mode explicitly tells the adaptor to allow association with access
 points which allow both encrypted and unencrypted traffic.
 On these adaptors,
-.Dq on
+.Dq Li on
 means that the access point must only allow encrypted connections.
 On other adaptors,
-.Dq on
+.Dq Li on
 is generally another name for
-.Dq mixed .
+.Dq Li mixed .
 Modes are case insensitive.
 .It Cm weptxkey Ar index
 For IEEE 802.11 wireless interfaces, set the WEP key to be used for
@@ -609,7 +717,7 @@ the mapping of text keys to WEP encryption is usually driver-specific.
 In particular, the
 .Tn Windows
 drivers do this mapping differently to
-.Dx .
+.Fx .
 A key may be cleared by setting it to
 .Ql - .
 If WEP is supported then there are at least four keys.
@@ -673,7 +781,7 @@ If the
 .Fl m
 flag is passed before an interface name,
 .Nm
-will display all
+will display the capability list and all
 of the supported media for the specified interface.
 If
 .Fl L
@@ -722,18 +830,26 @@ Messages indicating the specified interface does not exist, the
 requested address is unknown, or the user is not privileged and
 tried to alter an interface's configuration.
 .Sh BUGS
-IPv6 link-local addresses are required for several basic communication
-between IPv6 node.
-If they are deleted by
-.Nm
-manually, the kernel might show very strange behavior.
-So, such manual deletions are strongly discouraged.
+Basic IPv6 node operation requires a link-local address on each
+interface configured for IPv6.
+Normally, such an address is automatically configured by the
+kernel on each interface added to the system; this behaviour may
+be disabled by setting the sysctl MIB variable
+.Va net.inet6.ip6.auto_linklocal
+to 0.
+.Pp
+If you delete such an address using
+.Nm ,
+the kernel may act very oddly.
+Do this at your own risk.
 .Sh SEE ALSO
 .Xr netstat 1 ,
 .Xr netintro 4 ,
+.Xr vlan 4 ,
 .\" .Xr eon 5 ,
 .Xr rc 8 ,
-.Xr routed 8
+.Xr routed 8 ,
+.Xr sysctl 8
 .Sh HISTORY
 The
 .Nm

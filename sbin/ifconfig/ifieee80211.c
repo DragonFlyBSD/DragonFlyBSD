@@ -9,6 +9,8 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
+ * 3. The name of The Aerospace Corporation may not be used to endorse or
+ *    promote products derived from this software.
  *
  * THIS SOFTWARE IS PROVIDED BY THE AEROSPACE CORPORATION ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -23,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifieee80211.c,v 1.1.2.3 2002/02/07 15:12:37 ambrisko Exp $
- * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.7 2005/03/04 00:11:11 cpressey Exp $
+ * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.8 2005/03/06 05:01:59 dillon Exp $
  */
 
 /*-
@@ -75,6 +77,7 @@
 #include <net/if_types.h>
 #include <net/route.h>
 #include <netproto/802_11/ieee80211.h>
+#include <netproto/802_11/ieee80211_crypto.h>
 #include <netproto/802_11/ieee80211_ioctl.h>
 
 #include <ctype.h>
@@ -102,7 +105,7 @@ set80211ssid(const char *val, int d __unused, int s,
 	u_int8_t	data[33];
 
 	ssid = 0;
-	len = sizeof(val);
+	len = strlen(val);
 	if (len > 2 && isdigit(val[0]) && val[1] == ':') {
 		ssid = atoi(val)-1;
 		val += 2;
@@ -133,7 +136,10 @@ void
 set80211channel(const char *val, int d __unused, int s,
 		const struct afswtch *rafp __unused)
 {
-	set80211(s, IEEE80211_IOC_CHANNEL, atoi(val), 0, NULL);
+	if (strcmp(val, "-") == 0)
+		set80211(s, IEEE80211_IOC_CHANNEL, IEEE80211_CHAN_ANY, 0, NULL);
+	else
+		set80211(s, IEEE80211_IOC_CHANNEL, atoi(val), 0, NULL);
 }
 
 void
@@ -142,11 +148,11 @@ set80211authmode(const char *val, int d __unused, int s,
 {
 	int	mode;
 
-	if(strcasecmp(val, "none") == 0) {
+	if (strcasecmp(val, "none") == 0) {
 		mode = IEEE80211_AUTH_NONE;
-	} else if(strcasecmp(val, "open") == 0) {
+	} else if (strcasecmp(val, "open") == 0) {
 		mode = IEEE80211_AUTH_OPEN;
-	} else if(strcasecmp(val, "shared") == 0) {
+	} else if (strcasecmp(val, "shared") == 0) {
 		mode = IEEE80211_AUTH_SHARED;
 	} else {
 		err(1, "unknown authmode");
@@ -161,15 +167,15 @@ set80211powersavemode(const char *val, int d __unused, int s,
 {
 	int	mode;
 
-	if(strcasecmp(val, "off") == 0) {
+	if (strcasecmp(val, "off") == 0) {
 		mode = IEEE80211_POWERSAVE_OFF;
-	} else if(strcasecmp(val, "on") == 0) {
+	} else if (strcasecmp(val, "on") == 0) {
 		mode = IEEE80211_POWERSAVE_ON;
-	} else if(strcasecmp(val, "cam") == 0) {
+	} else if (strcasecmp(val, "cam") == 0) {
 		mode = IEEE80211_POWERSAVE_CAM;
-	} else if(strcasecmp(val, "psp") == 0) {
+	} else if (strcasecmp(val, "psp") == 0) {
 		mode = IEEE80211_POWERSAVE_PSP;
-	} else if(strcasecmp(val, "psp-cam") == 0) {
+	} else if (strcasecmp(val, "psp-cam") == 0) {
 		mode = IEEE80211_POWERSAVE_PSP_CAM;
 	} else {
 		err(1, "unknown powersavemode");
@@ -203,11 +209,11 @@ set80211wepmode(const char *val, int d __unused, int s,
 {
 	int	mode;
 
-	if(strcasecmp(val, "off") == 0) {
+	if (strcasecmp(val, "off") == 0) {
 		mode = IEEE80211_WEP_OFF;
-	} else if(strcasecmp(val, "on") == 0) {
+	} else if (strcasecmp(val, "on") == 0) {
 		mode = IEEE80211_WEP_ON;
-	} else if(strcasecmp(val, "mixed") == 0) {
+	} else if (strcasecmp(val, "mixed") == 0) {
 		mode = IEEE80211_WEP_MIXED;
 	} else {
 		err(1, "unknown wep mode");
@@ -236,9 +242,9 @@ set80211wepkey(const char *val, int d __unused, int s,
 {
 	int		key = 0;
 	int		len;
-	u_int8_t	data[14];
+	u_int8_t	data[IEEE80211_KEYBUF_SIZE];
 
-	if(isdigit(val[0]) && val[1] == ':') {
+	if (isdigit(val[0]) && val[1] == ':') {
 		key = atoi(val)-1;
 		val += 2;
 	}
@@ -251,7 +257,7 @@ set80211wepkey(const char *val, int d __unused, int s,
 }
 
 /*
- * This function is purly a NetBSD compatibility interface.  The NetBSD
+ * This function is purly a NetBSD compatability interface.  The NetBSD
  * iterface is too inflexable, but it's there so we'll support it since
  * it's not all that hard.
  */
@@ -261,15 +267,15 @@ set80211nwkey(const char *val, int d __unused, int s,
 {
 	int		txkey;
 	int		i, len;
-	u_int8_t	data[14];
+	u_int8_t	data[IEEE80211_KEYBUF_SIZE];
 
 	set80211(s, IEEE80211_IOC_WEP, IEEE80211_WEP_ON, 0, NULL);
 
-	if(isdigit(val[0]) && val[1] == ':') {
+	if (isdigit(val[0]) && val[1] == ':') {
 		txkey = val[0]-'0'-1;
 		val += 2;
 
-		for(i = 0; i < 4; i++) {
+		for (i = 0; i < 4; i++) {
 			bzero(data, sizeof(data));
 			len = sizeof(data);
 			val = get_string(val, ",", data, &len);
@@ -285,11 +291,44 @@ set80211nwkey(const char *val, int d __unused, int s,
 		set80211(s, IEEE80211_IOC_WEPKEY, 0, len, data);
 
 		bzero(data, sizeof(data));
-		for(i = 1; i < 4; i++)
+		for (i = 1; i < 4; i++)
 			set80211(s, IEEE80211_IOC_WEPKEY, i, 0, data);
 	}
 
 	set80211(s, IEEE80211_IOC_WEPTXKEY, txkey, 0, NULL);
+}
+
+void
+set80211rtsthreshold(const char *val, int d __unused, int s,
+	const struct afswtch *rafp __unused)
+{
+	set80211(s, IEEE80211_IOC_RTSTHRESHOLD, atoi(val), 0, NULL);
+}
+
+void
+set80211protmode(const char *val, int d __unused, int s,
+	const struct afswtch *rafp __unused)
+{
+	int	mode;
+
+	if (strcasecmp(val, "off") == 0) {
+		mode = IEEE80211_PROTMODE_OFF;
+	} else if (strcasecmp(val, "cts") == 0) {
+		mode = IEEE80211_PROTMODE_CTS;
+	} else if (strcasecmp(val, "rtscts") == 0) {
+		mode = IEEE80211_PROTMODE_RTSCTS;
+	} else {
+		err(1, "unknown protection mode");
+	}
+
+	set80211(s, IEEE80211_IOC_PROTMODE, mode, 0, NULL);
+}
+
+void
+set80211txpower(const char *val, int d __unused, int s,
+	const struct afswtch *rafp __unused)
+{
+	set80211(s, IEEE80211_IOC_TXPOWER, atoi(val), 0, NULL);
 }
 
 void
@@ -301,8 +340,8 @@ ieee80211_status (int s, struct rt_addrinfo *info __unused)
 	u_int8_t		data[32];
 	char			spacer;
 
-	memset(&ireq, 0, sizeof(ireq));
-	strncpy(ireq.i_name, name, sizeof(ireq.i_name));
+	(void) memset(&ireq, 0, sizeof(ireq));
+	(void) strncpy(ireq.i_name, name, sizeof(ireq.i_name));
 	ireq.i_data = &data;
 
 	ireq.i_type = IEEE80211_IOC_SSID;
@@ -380,12 +419,48 @@ ieee80211_status (int s, struct rt_addrinfo *info __unused)
 
 		ireq.i_type = IEEE80211_IOC_POWERSAVESLEEP;
 		if (ioctl(s, SIOCG80211, &ireq) != -1) {
-			if(ireq.i_val)
+			if (ireq.i_val)
 				printf(" powersavesleep %d", ireq.i_val);
 		}
 	}
 
 	printf("\n");
+
+	spacer = '\t';
+	ireq.i_type = IEEE80211_IOC_RTSTHRESHOLD;
+	if (ioctl(s, SIOCG80211, &ireq) != -1) {
+		printf("%crtsthreshold %d", spacer, ireq.i_val);
+		spacer = ' ';
+	}
+
+	ireq.i_type = IEEE80211_IOC_PROTMODE;
+	if (ioctl(s, SIOCG80211, &ireq) != -1) {
+		printf("%cprotmode", spacer);
+		switch (ireq.i_val) {
+			case IEEE80211_PROTMODE_OFF:
+				printf(" OFF");
+				break;
+			case IEEE80211_PROTMODE_CTS:
+				printf(" CTS");
+				break;
+			case IEEE80211_PROTMODE_RTSCTS:
+				printf(" RTSCTS");
+				break;
+			default:
+				printf(" UNKNOWN");
+				break;
+		}
+		spacer = ' ';
+	}
+
+	ireq.i_type = IEEE80211_IOC_TXPOWER;
+	if (ioctl(s, SIOCG80211, &ireq) != -1) {
+		printf("%ctxpower %d", spacer, ireq.i_val);
+		spacer = ' ';
+	}
+
+	if (spacer != '\t')
+		printf("\n");
 
 	ireq.i_type = IEEE80211_IOC_WEP;
 	if (ioctl(s, SIOCG80211, &ireq) != -1 &&
@@ -409,7 +484,7 @@ ieee80211_status (int s, struct rt_addrinfo *info __unused)
 		/*
 		 * If we get here then we've got WEP support so we need
 		 * to print WEP status.
-		 */ 
+		 */
 
 		ireq.i_type = IEEE80211_IOC_WEPTXKEY;
 		if (ioctl(s, SIOCG80211, &ireq) < 0) {
@@ -429,17 +504,19 @@ ieee80211_status (int s, struct rt_addrinfo *info __unused)
 
 		ireq.i_type = IEEE80211_IOC_WEPKEY;
 		spacer = '\t';
-		for(i = 0; i < num; i++) {
+		for (i = 0; i < num; i++) {
 			ireq.i_val = i;
 			if (ioctl(s, SIOCG80211, &ireq) < 0) {
 				warn("WEP support, but can get keys!");
 				goto end;
 			}
-			if(ireq.i_len == 0 || ireq.i_len > 13)
+			if (ireq.i_len == 0 ||
+			    ireq.i_len > IEEE80211_KEYBUF_SIZE)
 				continue;
 			printf("%cwepkey %d:%s", spacer, i+1,
-			    ireq.i_len <= 5 ? "64-bit" : "128-bit");
-			if(spacer == '\t')
+			    ireq.i_len <= 5 ? "40-bit" :
+			    ireq.i_len <= 13 ? "104-bit" : "128-bit");
+			if (spacer == '\t')
 				spacer = ' ';
 		}
 		if (spacer == ' ')
@@ -455,13 +532,13 @@ set80211(int s, int type, int val, int len, u_int8_t *data)
 {
 	struct ieee80211req	ireq;
 
-	memset(&ireq, 0, sizeof(ireq));
-	strncpy(ireq.i_name, name, sizeof(ireq.i_name));
+	(void) memset(&ireq, 0, sizeof(ireq));
+	(void) strncpy(ireq.i_name, name, sizeof(ireq.i_name));
 	ireq.i_type = type;
 	ireq.i_val = val;
 	ireq.i_len = len;
 	ireq.i_data = data;
-	if(ioctl(s, SIOCS80211, &ireq) < 0)
+	if (ioctl(s, SIOCS80211, &ireq) < 0)
 		err(1, "SIOCS80211");
 }
 
@@ -485,17 +562,20 @@ get_string(const char *val, const char *sep, u_int8_t *buf, int *lenp)
 			break;
 		}
 		if (hexstr) {
-			if (!isxdigit((u_char)val[0]) ||
-			    !isxdigit((u_char)val[1])) {
+			if (!isxdigit((u_char)val[0])) {
 				warnx("bad hexadecimal digits");
 				return NULL;
 			}
+			if (!isxdigit((u_char)val[1])) {
+				warnx("odd count hexadecimal digits");
+				return NULL;
+			}
 		}
-		if (p > buf + len) {
+		if (p >= buf + len) {
 			if (hexstr)
 				warnx("hexadecimal digits too long");
 			else
-				warnx("strings too long");
+				warnx("string too long");
 			return NULL;
 		}
 		if (hexstr) {
@@ -525,7 +605,7 @@ print_string(const u_int8_t *buf, int len)
 
 	i = 0;
 	hasspc = 0;
-	for(; i < len; i++) {
+	for (; i < len; i++) {
 		if (!isprint(buf[i]) && buf[i] != '\0')
 			break;
 		if (isspace(buf[i]))

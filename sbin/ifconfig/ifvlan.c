@@ -30,9 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifvlan.c,v 1.2 1999/08/28 00:13:09 peter Exp $
- * $DragonFly: src/sbin/ifconfig/ifvlan.c,v 1.5 2005/03/04 00:11:11 cpressey Exp $
- *
- * $FreeBSD: src/sbin/ifconfig/ifvlan.c,v 1.2 1999/08/28 00:13:09 peter Exp $
+ * $DragonFly: src/sbin/ifconfig/ifvlan.c,v 1.6 2005/03/06 05:01:59 dillon Exp $
  */
 
 #include <sys/param.h>

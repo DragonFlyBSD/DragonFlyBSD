@@ -31,8 +31,8 @@
  *
  * so there!
  *
- * $FreeBSD: src/sbin/ifconfig/ifconfig.h,v 1.5.2.2 2001/07/04 20:49:20 brooks Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.h,v 1.3 2004/03/15 22:39:37 hmp Exp $
+ * $FreeBSD: src/sbin/ifconfig/ifconfig.h,v 1.12 2004/03/30 22:59:22 sam Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.h,v 1.4 2005/03/06 05:01:59 dillon Exp $
  */
 
 extern struct ifreq ifr;
@@ -43,6 +43,7 @@ extern int supmedia;
 struct afswtch;
 
 extern void setmedia(const char *, int, int, const struct afswtch *rafp);
+extern void setmediamode(const char *, int, int, const struct afswtch *rafp);
 extern void setmediaopt(const char *, int, int, const struct afswtch *rafp);
 extern void unsetmediaopt(const char *, int, int, const struct afswtch *rafp);
 extern void media_status(int s, struct rt_addrinfo *);
@@ -64,4 +65,9 @@ extern void set80211wep(const char *, int, int, const struct afswtch *rafp);
 extern void set80211weptxkey(const char *, int, int, const struct afswtch *rafp);
 extern void set80211wepkey(const char *, int, int, const struct afswtch *rafp);
 extern void set80211nwkey(const char *, int, int, const struct afswtch *rafp);
+extern void set80211rtsthreshold(const char *, int, int, const struct afswtch *rafp);
+extern void set80211protmode(const char *, int, int, const struct afswtch *rafp);
+extern void set80211txpower(const char *, int, int, const struct afswtch *rafp);
 extern void ieee80211_status(int s, struct rt_addrinfo *);
+extern void maclabel_status(int s, struct rt_addrinfo *);
+extern void setifmaclabel(const char *, int, int, const struct afswtch *rafp);

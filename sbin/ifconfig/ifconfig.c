@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -33,7 +29,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.96 2004/02/27 06:43:14 kan Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.19 2005/03/04 02:37:44 cpressey Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.20 2005/03/06 05:01:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -99,6 +95,11 @@
 #define	NI_WITHSCOPEID	0
 #endif
 
+/*
+ * Since "struct ifreq" is composed of various union members, callers
+ * should pay special attention to interprete the value.
+ * (.e.g. little/big endian difference in the structure.)
+ */
 struct	ifreq		ifr, ridreq;
 struct	ifaliasreq	addreq;
 #ifdef INET6
@@ -235,8 +236,16 @@ struct	cmd {
 	{ "-link1",	-IFF_LINK1,	setifflags,	NULL },
 	{ "link2",	IFF_LINK2,	setifflags,	NULL },
 	{ "-link2",	-IFF_LINK2,	setifflags,	NULL },
+#if notyet
+	{ "monitor",	IFF_MONITOR,	setifflags,	NULL },
+	{ "-monitor",	-IFF_MONITOR,	setifflags,	NULL },
+	{ "staticarp",	IFF_STATICARP,	setifflags,	NULL },
+	{ "-staticarp",	-IFF_STATICARP,	setifflags,	NULL },
+#endif
+
 #ifdef USE_IF_MEDIA
 	{ "media",	NEXTARG,	setmedia,	NULL },
+	{ "mode",	NEXTARG,	setmediamode,	NULL },
 	{ "mediaopt",	NEXTARG,	setmediaopt,	NULL },
 	{ "-mediaopt",	NEXTARG,	unsetmediaopt,	NULL },
 #endif
@@ -255,21 +264,27 @@ struct	cmd {
 #ifdef USE_IEEE80211
 	{ "ssid",	NEXTARG,	set80211ssid,	NULL },
 	{ "nwid",	NEXTARG,	set80211ssid,	NULL },
-	{ "stationname", NEXTARG,	set80211stationname, NULL },
-	{ "station",	NEXTARG,	set80211stationname, NULL },/* BSD/OS */
-	{ "channel",	NEXTARG,	set80211channel, NULL },
-	{ "authmode",	NEXTARG,	set80211authmode, NULL },
-	{ "powersavemode", NEXTARG,	set80211powersavemode, NULL },
-	{ "powersave",	1,		set80211powersave, NULL },
-	{ "-powersave",	0,		set80211powersave, NULL },
-	{ "powersavesleep", NEXTARG,	set80211powersavesleep, NULL },
-	{ "wepmode",	NEXTARG,	set80211wepmode, NULL },
+	{ "stationname", NEXTARG,	set80211stationname,	NULL },
+	{ "station",	NEXTARG,	set80211stationname,	NULL },	/* BSD/OS */
+	{ "channel",	NEXTARG,	set80211channel,	NULL },
+	{ "authmode",	NEXTARG,	set80211authmode,	NULL },
+	{ "powersavemode", NEXTARG,	set80211powersavemode,	NULL },
+	{ "powersave",	1,		set80211powersave,	NULL },
+	{ "-powersave",	0,		set80211powersave,	NULL },
+	{ "powersavesleep", NEXTARG,	set80211powersavesleep,	NULL },
+	{ "wepmode",	NEXTARG,	set80211wepmode,	NULL },
 	{ "wep",	1,		set80211wep,	NULL },
 	{ "-wep",	0,		set80211wep,	NULL },
-	{ "weptxkey",	NEXTARG,	set80211weptxkey, NULL },
+	{ "weptxkey",	NEXTARG,	set80211weptxkey,	NULL },
 	{ "wepkey",	NEXTARG,	set80211wepkey,	NULL },
 	{ "nwkey",	NEXTARG,	set80211nwkey,	NULL },	/* NetBSD */
-	{ "-nwkey",	0,		set80211wep,	NULL },	/* NetBSD */
+	{ "-nwkey",	0,		set80211wep,	NULL },		/* NetBSD */
+	{ "rtsthreshold",NEXTARG,	set80211rtsthreshold,	NULL },
+	{ "protmode",	NEXTARG,	set80211protmode,	NULL },
+	{ "txpower",	NEXTARG,	set80211txpower,	NULL },
+#endif
+#ifdef USE_MAC
+	{ "maclabel",	NEXTARG,	setifmaclabel,	NULL },
 #endif
 	{ "rxcsum",	IFCAP_RXCSUM,	setifcap,	NULL },
 	{ "-rxcsum",	-IFCAP_RXCSUM,	setifcap,	NULL },
@@ -279,6 +294,10 @@ struct	cmd {
 	{ "-netcons",	-IFCAP_NETCONS,	setifcap,	NULL },
 	{ "polling",	IFCAP_POLLING,	setifcap,	NULL },
 	{ "-polling",	-IFCAP_POLLING,	setifcap,	NULL },
+	{ "vlanmtu",	IFCAP_VLAN_MTU,		setifcap,	NULL },
+	{ "-vlanmtu",	-IFCAP_VLAN_MTU,	setifcap,	NULL },
+	{ "vlanhwtag",	IFCAP_VLAN_HWTAGGING,	setifcap,	NULL },
+	{ "-vlanhwtag",	-IFCAP_VLAN_HWTAGGING,	setifcap,	NULL },
 	{ "normal",	-IFF_LINK0,	setifflags,	NULL },
 	{ "compress",	IFF_LINK0,	setifflags,	NULL },
 	{ "noicmp",	IFF_LINK1,	setifflags,	NULL },
@@ -351,17 +370,6 @@ struct	afswtch {
 	     0, SIOCSIFLLADDR, NULL, C(ridreq) },
 	{ "lladdr", AF_LINK, link_status, link_getaddr, NULL,
 	     0, SIOCSIFLLADDR, NULL, C(ridreq) },
-#if 0	/* XXX conflicts with the media command */
-#ifdef USE_IF_MEDIA
-	{ "media", AF_UNSPEC, media_status, NULL, NULL, }, /* XXX not real!! */
-#endif
-#ifdef USE_VLANS
-	{ "vlan", AF_UNSPEC, vlan_status, NULL, NULL, },  /* XXX not real!! */
-#endif
-#ifdef USE_IEEE80211
-	{ "ieee80211", AF_UNSPEC, ieee80211_status, NULL, NULL, },  /* XXX not real!! */
-#endif
-#endif
 	{ NULL,	0,	NULL, NULL, NULL,	0, 0,	NULL, NULL }
 };
 
@@ -371,22 +379,22 @@ struct	afswtch {
  */
 
 #define ROUNDUP(a) \
-	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
+        ((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
 #define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
 
 void
 rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 {
-	struct sockaddr *sa;
-	int i;
+        struct sockaddr *sa;
+        int i;
 
-	memset(rtinfo->rti_info, 0, sizeof(rtinfo->rti_info));
-	for (i = 0; (i < RTAX_MAX) && (cp < cplim); i++) {
-		if ((rtinfo->rti_addrs & (1 << i)) == 0)
-			continue;
-		rtinfo->rti_info[i] = sa = (struct sockaddr *)cp;
-		ADVANCE(cp, sa);
-	}
+        memset(rtinfo->rti_info, 0, sizeof(rtinfo->rti_info));
+        for (i = 0; (i < RTAX_MAX) && (cp < cplim); i++) {
+                if ((rtinfo->rti_addrs & (1 << i)) == 0)
+                        continue;
+                rtinfo->rti_info[i] = sa = (struct sockaddr *)cp;
+                ADVANCE(cp, sa);
+        }
 }
 
 
@@ -420,7 +428,7 @@ main(int argc, char * const *argv)
 {
 	int c;
 	int all, namesonly, downonly, uponly;
-	int need_nl = 0;
+	int need_nl = 0, count = 0;
 	const struct afswtch *afp = 0;
 	int addrcount, ifindex;
 	struct	if_msghdr *ifm, *nextifm;
@@ -547,12 +555,13 @@ main(int argc, char * const *argv)
 			afp = NULL;	/* not a family, NULL */
 	}
 
+retry:
 	mib[0] = CTL_NET;
 	mib[1] = PF_ROUTE;
 	mib[2] = 0;
-	mib[3] = 0;		/* address family */
+	mib[3] = 0;			/* address family */
 	mib[4] = NET_RT_IFLIST;
-	mib[5] = ifindex;	/* interface index */
+	mib[5] = ifindex;		/* interface index */
 
 	/* if particular family specified, only ask about it */
 	if (afp)
@@ -562,8 +571,15 @@ main(int argc, char * const *argv)
 		errx(1, "iflist-sysctl-estimate");
 	if ((buf = malloc(needed)) == NULL)
 		errx(1, "malloc");
-	if (sysctl(mib, 6, buf, &needed, NULL, 0) < 0)
+	if (sysctl(mib, 6, buf, &needed, NULL, 0) < 0) {
+		if (errno == ENOMEM && count++ < 10) {
+			warnx("Routing table grew, retrying");
+			free(buf);
+			sleep(1);
+			goto retry;
+		}
 		errx(1, "actual retrieval of interface table");
+	}
 	lim = buf + needed;
 
 	next = buf;
@@ -572,7 +588,14 @@ main(int argc, char * const *argv)
 		ifm = (struct if_msghdr *)next;
 		
 		if (ifm->ifm_type == RTM_IFINFO) {
-			sdl = (struct sockaddr_dl *)(ifm + 1);
+#if  notyet
+			if (ifm->ifm_data.ifi_datalen == 0)
+				ifm->ifm_data.ifi_datalen = sizeof(struct if_data);
+			sdl = (struct sockaddr_dl *)((char *)ifm + sizeof(struct if_msghdr) -
+			     sizeof(struct if_data) + ifm->ifm_data.ifi_datalen);
+#else
+                       sdl = (struct sockaddr_dl *)(ifm + 1);
+#endif
 			flags = ifm->ifm_flags;
 		} else {
 			fprintf(stderr, "out of sync parsing NET_RT_IFLIST\n");
@@ -600,8 +623,11 @@ main(int argc, char * const *argv)
 			addrcount++;
 			next += nextifm->ifm_msglen;
 		}
-		strncpy(name, sdl->sdl_data, sdl->sdl_nlen);
-		name[sdl->sdl_nlen] = '\0';
+		memcpy(name, sdl->sdl_data,
+		    sizeof(name) < sdl->sdl_nlen ?
+		    sizeof(name)-1 : sdl->sdl_nlen);
+		name[sizeof(name) < sdl->sdl_nlen ?
+		    sizeof(name)-1 : sdl->sdl_nlen] = '\0';
 
 		if (all || namesonly) {
 			size_t len;
@@ -842,7 +868,6 @@ void
 deletetunnel(const char *vname __unused, int param __unused, int s,
 	     const struct afswtch *afp __unused)
 {
-
 	if (ioctl(s, SIOCDIFPHYADDR, &ifr) < 0)
 		err(1, "SIOCDIFPHYADDR");
 }
@@ -976,9 +1001,10 @@ notealias(const char *addr __unused, int param, int s __unused,
 	  const struct afswtch *afp)
 {
 	if (setaddr && doalias == 0 && param < 0)
-		bcopy((caddr_t)rqtosa(af_addreq),
-		      (caddr_t)rqtosa(af_ridreq),
-		      rqtosa(af_addreq)->sa_len);
+		if (afp->af_addreq != NULL && afp->af_ridreq != NULL)
+			bcopy((caddr_t)rqtosa(af_addreq),
+			      (caddr_t)rqtosa(af_ridreq),
+			      rqtosa(af_addreq)->sa_len);
 	doalias = param;
 	if (param < 0) {
 		clearaddr = 1;
@@ -1096,10 +1122,10 @@ setifname(const char *val, int dummy __unused, int s,
 #define	IFFBITS \
 "\020\1UP\2BROADCAST\3DEBUG\4LOOPBACK\5POINTOPOINT\6SMART\7RUNNING" \
 "\10NOARP\11PROMISC\12ALLMULTI\13OACTIVE\14SIMPLEX\15LINK0\16LINK1\17LINK2" \
-"\20MULTICAST"
+"\20MULTICAST\21POLLING\23MONITOR\24STATICARP"
 
 #define	IFCAPBITS \
-"\003\1rxcsum\2txcsum\3netcons\7polling"
+"\020\1RXCSUM\2TXCSUM\3NETCONS\4VLAN_MTU\5VLAN_HWTAGGING\6JUMBO_MTU\7POLLING"
 
 /*
  * Print the status of the interface.  If an address family was
@@ -1182,11 +1208,18 @@ status(const struct afswtch *afp, int addrcount, struct sockaddr_dl *sdl,
 	if (allfamilies || afp->af_status == ieee80211_status)
 		ieee80211_status(s, NULL);
 #endif
+#ifdef USE_MAC
+	if (allfamilies || afp->af_status == maclabel_status)
+		maclabel_status(s, NULL);
+#endif
 	strncpy(ifs.ifs_name, name, sizeof ifs.ifs_name);
 	if (ioctl(s, SIOCGIFSTATUS, &ifs) == 0) 
 		printf("%s", ifs.ascii);
 
-	if (!allfamilies && !p && afp->af_status != media_status &&
+	if (!allfamilies && !p &&
+#ifdef USE_IF_MEDIA
+	    afp->af_status != media_status &&
+#endif
 	    afp->af_status != link_status
 #ifdef USE_VLANS
 	    && afp->af_status != vlan_status
@@ -1300,7 +1333,7 @@ in_status(int s __unused, struct rt_addrinfo *info)
 #ifdef INET6
 #if defined(__KAME__) && defined(KAME_SCOPEID)
 void
-in6_fillscopeid(struct sockaddr_in6 *sin6)
+in6_fillscopeid(struct sockaddr_in6 *sin6 __unused)
 {
 	if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr)) {
 		sin6->sin6_scope_id =
@@ -1760,9 +1793,9 @@ void
 setatrange(const char *range, int dummy __unused, int s __unused,
            const struct afswtch *afp __unused)
 {
-	u_short	first = 123, last = 123;
+	u_int	first = 123, last = 123;
 
-	if (sscanf(range, "%hu-%hu", &first, &last) != 2
+	if (sscanf(range, "%u-%u", &first, &last) != 2
 	    || first == 0 || first > 0xffff
 	    || last == 0 || last > 0xffff || first > last)
 		errx(1, "%s: illegal net range: %u-%u", range, first, last);
@@ -1972,7 +2005,7 @@ clone_create(void)
 		err(1, "socket");
 
 	memset(&ifr, 0, sizeof(ifr));
-	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	(void) strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 	if (ioctl(s, SIOCIFCREATE, &ifr) < 0)
 		err(1, "SIOCIFCREATE");
 
@@ -1994,7 +2027,7 @@ clone_destroy(const char *val __unused, int d __unused, int s,
 	      const struct afswtch *rafp __unused)
 {
 
-	strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	(void) strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 	if (ioctl(s, SIOCIFDESTROY, &ifr) < 0)
 		err(1, "SIOCIFDESTROY");
 	/*
