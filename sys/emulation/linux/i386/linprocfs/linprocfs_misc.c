@@ -39,15 +39,15 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_misc.c,v 1.3.2.8 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.9 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.10 2005/01/31 22:03:48 joerg Exp $
  */
 
 #include <sys/param.h>
 #include <sys/blist.h>
 #include <sys/dkstat.h>
-#include <sys/jail.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
+#include <sys/jail.h>
 #include <sys/resourcevar.h>
 #include <sys/systm.h>
 #include <sys/tty.h>
@@ -65,6 +65,7 @@
 
 #include <machine/clock.h>
 #include <machine/cputypes.h>
+#include <machine/inttypes.h>
 #include <machine/md_var.h>
 
 #include "linprocfs.h"
@@ -272,7 +273,7 @@ linprocfs_dostat(curp, p, pfs, uio)
 
 	ps = psbuf;
 	ps += sprintf(ps,
-		      "cpu %ld %ld %ld %ld\n"
+		      "cpu %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64"\n"
 		      "disk 0 0 0 0\n"
 		      "page %u %u\n"
 		      "swap %u %u\n"
@@ -306,7 +307,7 @@ linprocfs_douptime(curp, p, pfs, uio)
 
 	getmicrouptime(&tv);
 	ps = psbuf;
-	ps += sprintf(ps, "%ld.%02ld %ld.%02ld\n",
+	ps += sprintf(ps, "%ld.%02ld %"PRIu64".%02"PRIu64"\n",
 		      tv.tv_sec, tv.tv_usec / 10000,
 		      T2S(cp_time.cp_idle), T2J(cp_time.cp_idle) % 100);
 	return (uiomove_frombuf(psbuf, ps - psbuf, uio));
