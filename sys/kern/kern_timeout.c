@@ -70,7 +70,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.13 2004/09/17 09:53:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.14 2004/09/19 02:52:26 dillon Exp $
  */
 /*
  * DRAGONFLY BGL STATUS
@@ -117,7 +117,6 @@
 
 
 struct softclock_pcpu {
-	struct callout_list callfree;
 	struct callout_tailq *callwheel;
 	struct callout * volatile next;
 	int softticks;		/* softticks index */
@@ -163,7 +162,6 @@ swi_softclock_setup(void *arg)
 	 */
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		softclock_pcpu_t sc;
-		struct callout *callout;
 
 		sc = &softclock_pcpu_ary[cpu];
 
@@ -171,16 +169,6 @@ swi_softclock_setup(void *arg)
 					M_CALLOUT, M_WAITOK|M_ZERO);
 		for (i = 0; i < callwheelsize; ++i)
 			TAILQ_INIT(&sc->callwheel[i]);
-
-		SLIST_INIT(&sc->callfree);
-		callout = malloc(sizeof(struct callout) * ncallout,
-					M_CALLOUT, M_WAITOK|M_ZERO);
-		for (i = 0; i < ncallout; ++i) {
-			callout_init(&callout[i]);
-			callout[i].c_flags |= CALLOUT_LOCAL_ALLOC;
-			SLIST_INSERT_HEAD(&sc->callfree, &callout[i], 
-					c_links.sle);
-		}
 
 		/*
 		 * Create a preemption-capable thread for each cpu to handle
@@ -311,15 +299,7 @@ loop:
 			c_arg = c->c_arg;
 			c->c_func = NULL;
 			KKASSERT(c->c_flags & CALLOUT_DID_INIT);
-
-			if (c->c_flags & CALLOUT_LOCAL_ALLOC) {
-				c->c_flags = CALLOUT_LOCAL_ALLOC |
-					     CALLOUT_DID_INIT;
-				SLIST_INSERT_HEAD(&sc->callfree, 
-						    c, c_links.sle);
-			} else {
-				c->c_flags &= ~CALLOUT_PENDING;
-			}
+			c->c_flags &= ~CALLOUT_PENDING;
 			crit_exit();
 			c_func(c_arg);
 			crit_enter();
@@ -333,6 +313,8 @@ loop:
 	goto loop;
 	/* NOT REACHED */
 }
+
+#if 0
 
 /*
  * timeout --
@@ -397,6 +379,8 @@ callout_handle_init(struct callout_handle *handle)
 {
 	handle->callout = NULL;
 }
+
+#endif
 
 /*
  * New interface; clients allocate their own callout structures.
@@ -531,10 +515,6 @@ callout_stop(struct callout *c)
 		TAILQ_REMOVE(&sc->callwheel[c->c_time & callwheelmask], 
 				c, c_links.tqe);
 		c->c_func = NULL;
-
-		if (c->c_flags & CALLOUT_LOCAL_ALLOC) {
-			SLIST_INSERT_HEAD(&sc->callfree, c, c_links.sle);
-		}
 	}
 	crit_exit_gd(gd);
 	return (1);

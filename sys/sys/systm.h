@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.20 2004/08/02 19:36:27 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.21 2004/09/19 02:52:27 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -231,9 +231,12 @@ typedef void timeout_t (void *);	/* timeout function type */
 #define CALLOUT_HANDLE_INITIALIZER(handle)	\
 	{ NULL }
 
+#if 0
+/* OBSOLETE INTERFACE */
 void	callout_handle_init (struct callout_handle *);
 struct	callout_handle timeout (timeout_t *, void *, int);
 void	untimeout (timeout_t *, void *, struct callout_handle);
+#endif
 
 /* Interrupt management */
 
