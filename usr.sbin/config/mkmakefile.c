@@ -32,7 +32,7 @@
  *
  * @(#)mkmakefile.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkmakefile.c,v 1.51.2.3 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.13 2005/01/01 01:36:02 cpressey Exp $
+ * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.14 2005/01/12 00:26:03 cpressey Exp $
  */
 
 /*
@@ -231,7 +231,7 @@ read_files(void)
 	struct device *dp;
 	struct device *save_dp;
 	struct opt *op;
-	char *wd, *this, *needs, *special, *depends, *clean, *warn;
+	char *wd, *this, *needs, *special, *depends, *clean, *warning;
 	char fname[MAXPATHLEN];
 	int nreqs, first = 1, configdep, isdup, std, filetype,
 	    imp_rule, no_obj, before_depend, mandatory;
@@ -312,7 +312,7 @@ next:
 	special = NULL;
 	depends = NULL;
 	clean = NULL;
-	warn = NULL;
+	warning = NULL;
 	configdep = 0;
 	needs = NULL;
 	std = mandatory = 0;
@@ -397,7 +397,7 @@ nextparam:
 				fname, this);
 			exit(1);
 		}
-		warn = strdup(wd);
+		warning = strdup(wd);
 		goto nextparam;
 	}
 	nreqs++;
@@ -463,7 +463,7 @@ invis:
 	tp->f_special = special;
 	tp->f_depends = depends;
 	tp->f_clean = clean;
-	tp->f_warn = warn;
+	tp->f_warn = warning;
 	goto next;
 
 doneparam:
@@ -501,7 +501,7 @@ doneparam:
 	tp->f_special = special;
 	tp->f_depends = depends;
 	tp->f_clean = clean;
-	tp->f_warn = warn;
+	tp->f_warn = warning;
 	if (pf && pf->f_type == INVISIBLE)
 		pf->f_flags = 1;		/* mark as duplicate */
 	goto next;
@@ -709,7 +709,7 @@ do_rules(FILE *f)
 		tp = tail(np);
 		special = ftp->f_special;
 		if (special == NULL) {
-			char *ftype = NULL;
+			const char *ftype = NULL;
 			static char cmd[128];
 
 			switch (ftp->f_type) {

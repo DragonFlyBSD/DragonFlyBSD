@@ -33,7 +33,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkoptions.c,v 1.17.2.3 2001/12/13 19:18:01 dillon Exp $
- * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.13 2005/01/01 01:36:02 cpressey Exp $
+ * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.14 2005/01/12 00:26:03 cpressey Exp $
  */
 
 /*
@@ -83,7 +83,7 @@ options(void)
 	/* Fake MAXUSERS as an option. */
 	op = malloc(sizeof(*op));
 	bzero(op, sizeof(*op));
-	op->op_name = "MAXUSERS";
+	op->op_name = strdup("MAXUSERS");
 	snprintf(buf, sizeof(buf), "%d", maxusers);
 	op->op_value = strdup(buf);
 	op->op_next = opt;
@@ -108,7 +108,8 @@ options(void)
 static void
 do_option(char *name)
 {
-	char *basefile, *file, *inw;
+	const char *basefile, *file;
+	char *inw;
 	struct opt_list *ol;
 	struct opt *op, *op_head, *topp;
 	FILE *inf, *outf;

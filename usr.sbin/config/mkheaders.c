@@ -32,7 +32,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkheaders.c,v 1.14.2.2 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.12 2005/01/01 01:36:02 cpressey Exp $
+ * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.13 2005/01/12 00:26:03 cpressey Exp $
  */
 
 /*
@@ -47,10 +47,10 @@
 #include "config.h"
 #include "y.tab.h"
 
-static void do_header(char *, char *, int);
-static void do_count(char *, char *, int);
-static char *toheader(char *);
-static char *tomacro(char *);
+static void do_header(const char *, char *, int);
+static void do_count(const char *, char *, int);
+static char *toheader(const char *);
+static char *tomacro(const char *);
 
 void
 headers(void)
@@ -84,11 +84,11 @@ headers(void)
  * whatever the device is connected to
  */
 static void
-do_count(char *dev, char *hname, int search)
+do_count(const char *dev, char *hname, int search)
 {
 	struct device *dp;
 	int count, hicount;
-	char *mp;
+	const char *mp;
 
 	/*
 	 * After this loop, "count" will be the actual number of units,
@@ -135,7 +135,7 @@ do_count(char *dev, char *hname, int search)
 }
 
 static void
-do_header(char *dev, char *hname, int count)
+do_header(const char *dev, char *hname, int count)
 {
 	char *file, *name, *inw;
 	struct file_list *fl, *fl_head, *tflp;
@@ -214,7 +214,7 @@ do_header(char *dev, char *hname, int count)
  * convert a dev name to a .h file name
  */
 static char *
-toheader(char *dev)
+toheader(const char *dev)
 {
 	static char hbuf[MAXPATHLEN];
 	static char udev[MAXPATHLEN];
@@ -229,7 +229,7 @@ toheader(char *dev)
  * convert a dev name to a macro name
  */
 static char *
-tomacro(char *dev)
+tomacro(const char *dev)
 {
 	static char mbuf[20];
 	char *cp;

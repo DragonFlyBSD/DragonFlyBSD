@@ -32,7 +32,7 @@
  *
  * @(#)mkioconf.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/usr.sbin/config/mkioconf.c,v 1.62 2000/01/29 18:14:59 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkioconf.c,v 1.8 2004/03/08 03:24:27 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/mkioconf.c,v 1.9 2005/01/12 00:26:03 cpressey Exp $
  */
 
 #include <err.h>
@@ -44,7 +44,7 @@
  * build the ioconf.c file
  */
 
-static char *
+static const char *
 devstr(struct device *dp)
 {
     static char buf[100];
@@ -148,7 +148,7 @@ write_devtab(FILE *fp)
 	count = 0;
 	fprintf(fp, "struct config_device config_devtab[] = {\n");
 	for (dp = dtab; dp != NULL; dp = dp->d_next) {
-		char *n;
+		const char *n;
 
 		n = devstr(dp);
 		if (dp->d_type != DEVICE)

@@ -32,7 +32,7 @@
  *
  *	@(#)config.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.h,v 1.35.2.1 2000/08/03 00:09:56 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.h,v 1.5 2004/03/08 03:28:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/config.h,v 1.6 2005/01/12 00:26:03 cpressey Exp $
  */
 
 /*
@@ -75,9 +75,9 @@ struct file_list {
 
 struct device {
 	int	d_type;			/* DEVICE, bus adaptor */
-	char	*d_conn;		/* what it is connected to */
+	const char *d_conn;		/* what it is connected to */
 	int	d_connunit;		/* unit of connection */
-	char	*d_name;		/* name of device (e.g. rk11) */
+	const char *d_name;		/* name of device (e.g. rk11) */
 	int	d_unit;			/* unit number */
 	int	d_drive;		/* drive number */
 	int	d_target;		/* target number */
@@ -143,7 +143,7 @@ extern int	do_trace;
 
 char	*get_word(FILE *);
 char	*get_quoted_word(FILE *);
-char	*path(char *);
+char	*path(const char *);
 char	*raisestr(char *);
 void	moveifchanged(const char *, const char *);
 void	init_dev(struct device *);       

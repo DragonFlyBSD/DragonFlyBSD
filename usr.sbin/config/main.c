@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.13 2005/01/12 00:03:40 cpressey Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.14 2005/01/12 00:26:03 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -83,7 +83,7 @@ main(int argc, char *argv[])
 	unsigned int i;
 	char *p;
 	char linksrc[64], linkdest[MAXPATHLEN];
-	static char *emus[] = { "linux", "svr4" };
+	static const char *emus[] = { "linux", "svr4" };
 
 	while ((ch = getopt(argc, argv, "d:gprn")) != -1)
 		switch (ch) {
@@ -346,7 +346,7 @@ begin:
  * prepend the path to a filename
  */
 char *
-path(char *file)
+path(const char *file)
 {
 	char *cp;
 

@@ -33,7 +33,7 @@
  *
  *	@(#)lang.l	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/lang.l,v 1.27 1999/11/09 07:20:22 peter Exp $
- * $DragonFly: src/usr.sbin/config/lang.l,v 1.9 2004/03/08 03:28:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/lang.l,v 1.10 2005/01/12 00:26:03 cpressey Exp $
  */
 
 #include <ctype.h>
@@ -48,7 +48,7 @@
  */
 
 struct kt {
-	char *kt_name;
+	const char *kt_name;
 	int kt_val;
 } key_words[] = {
 	{ "at",		AT },

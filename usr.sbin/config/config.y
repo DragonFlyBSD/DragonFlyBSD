@@ -83,7 +83,7 @@
  *
  *	@(#)config.y	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.y,v 1.42.2.1 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.y,v 1.10 2004/03/08 03:28:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/config.y,v 1.11 2005/01/12 00:26:03 cpressey Exp $
  */
 
 #include <ctype.h>
@@ -104,7 +104,7 @@ char	errbuf[80];
 int	maxusers;
 
 static int connect(char *, int);
-static void yyerror(char *s);
+static void yyerror(const char *s);
 
 
 %}
@@ -406,7 +406,7 @@ Info:
 %%
 
 static void
-yyerror(char *s)
+yyerror(const char *s)
 {
 
 	errx(1, "line %d: %s", yyline + 1, s);
