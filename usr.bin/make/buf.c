@@ -38,7 +38,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.9 2004/12/16 21:58:14 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.10 2004/12/16 22:05:23 okumoto Exp $
  */
 
 /*-
@@ -62,7 +62,7 @@
  *	buffer in case it holds a string.
  */
 #define	BufExpand(bp, nb) do {						\
- 	if (bp->left < (nb) + 1) {					\
+ 	if ((bp)->left < (nb) + 1) {					\
 		int newSize = (bp)->size + max((nb) + 1, BUF_ADD_INC);	\
 		Byte  *newBuf = erealloc((bp)->buffer, newSize);	\
 									\
@@ -92,7 +92,7 @@
  *-----------------------------------------------------------------------
  */
 void
-Buf_OvAddByte(Buffer bp, int byte)
+Buf_OvAddByte(Buffer bp, Byte byte)
 {
 
 	bp->left = 0;
@@ -121,7 +121,7 @@ Buf_OvAddByte(Buffer bp, int byte)
  *-----------------------------------------------------------------------
  */
 void
-Buf_AddBytes(Buffer bp, int numBytes, const Byte *bytesPtr)
+Buf_AddBytes(Buffer bp, size_t numBytes, const Byte *bytesPtr)
 {
 
 	BufExpand(bp, numBytes);
@@ -150,7 +150,7 @@ Buf_AddBytes(Buffer bp, int numBytes, const Byte *bytesPtr)
  *-----------------------------------------------------------------------
  */
 void
-Buf_UngetByte(Buffer bp, int byte)
+Buf_UngetByte(Buffer bp, Byte byte)
 {
 
 	if (bp->outPtr != bp->buffer) {
@@ -170,7 +170,7 @@ Buf_UngetByte(Buffer bp, int byte)
 		 * usually push back many bytes when they're doing it a byte at
 		 * a time...
 		 */
-		int numBytes = bp->inPtr - bp->outPtr;
+		size_t numBytes = bp->inPtr - bp->outPtr;
 		Byte *newBuf;
 
 		newBuf = emalloc(bp->size + BUF_UNGET_INC);
@@ -200,18 +200,18 @@ Buf_UngetByte(Buffer bp, int byte)
  *-----------------------------------------------------------------------
  */
 void
-Buf_UngetBytes(Buffer bp, int numBytes, Byte *bytesPtr)
+Buf_UngetBytes(Buffer bp, size_t numBytes, Byte *bytesPtr)
 {
 
-	if (bp->outPtr - bp->buffer >= numBytes) {
+	if ((size_t)(bp->outPtr - bp->buffer) >= numBytes) {
 		bp->outPtr -= numBytes;
 		memcpy(bp->outPtr, bytesPtr, numBytes);
 	} else if (bp->outPtr == bp->inPtr) {
 		Buf_AddBytes(bp, numBytes, bytesPtr);
 	} else {
-		int curNumBytes = bp->inPtr - bp->outPtr;
+		size_t curNumBytes = bp->inPtr - bp->outPtr;
 		Byte *newBuf;
-		int newBytes = max(numBytes, BUF_UNGET_INC);
+		size_t newBytes = max(numBytes, BUF_UNGET_INC);
 
 		newBuf = emalloc(bp->size + newBytes);
 		memcpy(newBuf + newBytes, bp->outPtr, curNumBytes + 1);
@@ -273,10 +273,10 @@ Buf_GetByte(Buffer bp)
  *-----------------------------------------------------------------------
  */
 int
-Buf_GetBytes(Buffer bp, int numBytes, Byte *bytesPtr)
+Buf_GetBytes(Buffer bp, size_t numBytes, Byte *bytesPtr)
 {
 
-	if (bp->inPtr - bp->outPtr < numBytes)
+	if ((size_t)(bp->inPtr - bp->outPtr) < numBytes)
 		numBytes = bp->inPtr - bp->outPtr;
 
 	memcpy(bytesPtr, bp->outPtr, numBytes);
@@ -304,7 +304,7 @@ Buf_GetBytes(Buffer bp, int numBytes, Byte *bytesPtr)
  *-----------------------------------------------------------------------
  */
 Byte *
-Buf_GetAll(Buffer bp, int *numBytesPtr)
+Buf_GetAll(Buffer bp, size_t *numBytesPtr)
 {
 
 	if (numBytesPtr != NULL)
@@ -327,10 +327,10 @@ Buf_GetAll(Buffer bp, int *numBytesPtr)
  *-----------------------------------------------------------------------
  */
 void
-Buf_Discard(Buffer bp, int numBytes)
+Buf_Discard(Buffer bp, size_t numBytes)
 {
 
-	if (bp->inPtr - bp->outPtr <= numBytes) {
+	if ((size_t)(bp->inPtr - bp->outPtr) <= numBytes) {
 		bp->inPtr = bp->outPtr = bp->buffer;
 		bp->left = bp->size;
 		*bp->inPtr = 0;
@@ -352,7 +352,7 @@ Buf_Discard(Buffer bp, int numBytes)
  *
  *-----------------------------------------------------------------------
  */
-int
+size_t
 Buf_Size(Buffer buf)
 {
 
@@ -375,7 +375,7 @@ Buf_Size(Buffer buf)
  *-----------------------------------------------------------------------
  */
 Buffer
-Buf_Init(int size)
+Buf_Init(size_t size)
 {
 	Buffer bp;	  	/* New Buffer */
 
@@ -429,7 +429,7 @@ Buf_Destroy(Buffer buf, Boolean freeData)
  *-----------------------------------------------------------------------
  */
 void
-Buf_ReplaceLastByte(Buffer buf, int byte)
+Buf_ReplaceLastByte(Buffer buf, Byte byte)
 {
 	if (buf->inPtr == buf->outPtr)
 		Buf_AddByte(buf, byte);
