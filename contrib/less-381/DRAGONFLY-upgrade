@@ -1,0 +1,14 @@
+# $DragonFly: src/contrib/less-381/Attic/DRAGONFLY-upgrade,v 1.1.1.1 2004/04/20 17:34:50 eirikn Exp $
+
+Import of one-true-awk.
+
+Original source is availale from:
+http://www.greenwoodsoftware.com/less/
+MD5 (less-381.tar.gz) = 40c2dd4ac137b61b6a55a6478817daf4
+
+The following files were removed for this import:
+	INSTALL
+
+The vendor import was done by:
+
+	cvs import -m "Import of less 381" src/contrib/less-381 LESS less_381
