@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/bs/bsif.c,v 1.10.2.1 2000/08/24 08:06:08 kato Exp $
- * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.c,v 1.6 2004/03/15 01:10:43 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.c,v 1.7 2004/06/21 15:45:41 dillon Exp $
  */
 
 #if	0
@@ -354,7 +354,7 @@ bs_alloc_buf(ti)
 	if (rseg != 1 || error != 0)
 	{
 		ti->bounce_size = NBPG;
-		if ((addr = malloc(NBPG, M_DEVBUF, M_NOWAIT)) == NULL)
+		if ((addr = malloc(NBPG, M_DEVBUF, M_INTWAIT)) == NULL)
 			goto bad;
 	}
 
@@ -409,7 +409,7 @@ bs_alloc_buf(ti)
 	ti->bounce_size = BSHW_NBPG;
 #endif
 	/* Try malloc() first.  It works better if it works. */
-	addr = malloc(ti->bounce_size, M_DEVBUF, M_NOWAIT);
+	addr = malloc(ti->bounce_size, M_DEVBUF, M_INTWAIT);
 	if (addr != NULL) {
 		if (bs_dmarangecheck(addr, ti->bounce_size) == 0) {
 			physaddr = (caddr_t) vtophys(addr);
