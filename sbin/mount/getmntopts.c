@@ -32,7 +32,7 @@
  *
  * @(#)getmntopts.c	8.3 (Berkeley) 3/29/95
  * $FreeBSD: src/sbin/mount/getmntopts.c,v 1.9 1999/10/09 11:54:06 phk Exp $
- * $DragonFly: src/sbin/mount/getmntopts.c,v 1.3 2003/09/28 14:39:18 hmp Exp $
+ * $DragonFly: src/sbin/mount/getmntopts.c,v 1.4 2004/09/06 01:19:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,7 +53,7 @@ getmntopts(const char *options, const struct mntopt *m0, int *flagp,
            int *altflagp)
 {
 	const struct mntopt *m;
-	int negative, len;
+	int negative;
 	char *opt, *optbuf, *p;
 	int *thisflagp;
 
@@ -79,11 +79,7 @@ getmntopts(const char *options, const struct mntopt *m0, int *flagp,
 
 		/* Scan option table. */
 		for (m = m0; m->m_option != NULL; ++m) {
-			len = strlen(m->m_option);
-			if (strncasecmp(opt, m->m_option, len) == 0)
-				if (   m->m_option[len]	== '\0'
-				    || m->m_option[len]	== '='
-				   )
+			if (strcasecmp(opt, m->m_option) == 0)
 				break;
 		}
 
