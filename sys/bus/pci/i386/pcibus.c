@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.11 2002/11/13 21:40:40 peter Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.4 2004/01/15 08:05:41 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.5 2004/01/15 19:58:30 joerg Exp $
  *
  */
 
@@ -36,12 +36,34 @@
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 #include "pcibus.h"
+#include <bus/isa/isavar.h>
 #include <bus/pci/i386/pci_cfgreg.h>
 #include <machine/md_var.h>
 
-#include "opt_cpu.h"
+#include "pcib_if.h"
 
-#include "pci_if.h"
+static int
+nexus_pcib_maxslots(device_t dev)
+{
+	return 31;
+}
+
+/*
+ * Read configuration space register.
+ */
+static u_int32_t
+nexus_pcib_read_config(device_t dev, int bus, int slot, int func,
+		       int reg, int bytes)
+{
+	return (pci_cfgregread(bus, slot, func, reg, bytes));
+}
+
+static void
+nexus_pcib_write_config(device_t dev, int bus, int slot, int func,
+			int reg, u_int32_t data, int bytes)
+{
+	pci_cfgregwrite(bus, slot, func, reg, data, bytes);
+}
 
 static devclass_t	pcib_devclass;
 
@@ -357,8 +379,12 @@ static device_method_t nexus_pcib_methods[] = {
 	DEVMETHOD(bus_setup_intr,	bus_generic_setup_intr),
 	DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),
 
-	/* pci interface */
-	DEVMETHOD(pci_route_interrupt,	nexus_pcib_route_interrupt),
+	/* pcib interface */
+	DEVMETHOD(pcib_maxslots,	nexus_pcib_maxslots),
+	DEVMETHOD(pcib_read_config,	nexus_pcib_read_config),
+	DEVMETHOD(pcib_write_config,	nexus_pcib_write_config),
+	DEVMETHOD(pcib_route_interrupt,	nexus_pcib_route_interrupt),
+
 	{ 0, 0 }
 };
 
@@ -369,3 +395,99 @@ static driver_t nexus_pcib_driver = {
 };
 
 DRIVER_MODULE(pcib, nexus, nexus_pcib_driver, pcib_devclass, 0, 0);
+
+
+/*
+ * Provide a device to "eat" the host->pci bridges that we dug up above
+ * and stop them showing up twice on the probes.  This also stops them
+ * showing up as 'none' in pciconf -l.
+ */
+static int
+pci_hostb_probe(device_t dev)
+{
+	if (pci_get_class(dev) == PCIC_BRIDGE &&
+	    pci_get_subclass(dev) == PCIS_BRIDGE_HOST) {
+		device_set_desc(dev, "Host to PCI bridge");
+		device_quiet(dev);
+		return 0;
+	}
+	return (ENXIO);
+}
+
+static int
+pci_hostb_attach(device_t dev)
+{
+	return (0);
+}
+
+static device_method_t pci_hostb_methods[] = {
+	/* Device interface */
+	DEVMETHOD(device_probe,		pci_hostb_probe),
+	DEVMETHOD(device_attach,	pci_hostb_attach),
+	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
+	DEVMETHOD(device_suspend,	bus_generic_suspend),
+	DEVMETHOD(device_resume,	bus_generic_resume),
+
+	{ 0, 0 }
+};
+static driver_t pci_hostb_driver = {
+	"hostb",
+	pci_hostb_methods,
+	1,
+};
+static devclass_t pci_hostb_devclass;
+
+DRIVER_MODULE(hostb, pci, pci_hostb_driver, pci_hostb_devclass, 0, 0);
+
+
+/*
+ * Install placeholder to claim the resources owned by the
+ * PCI bus interface.  This could be used to extract the 
+ * config space registers in the extreme case where the PnP
+ * ID is available and the PCI BIOS isn't, but for now we just
+ * eat the PnP ID and do nothing else.
+ *
+ * XXX we should silence this probe, as it will generally confuse 
+ * people.
+ */
+static struct isa_pnp_id pcibus_pnp_ids[] = {
+	{ 0x030ad041 /* PNP030A */, "PCI Bus" },
+	{ 0 }
+};
+
+static int
+pcibus_pnp_probe(device_t dev)
+{
+	int result;
+	
+	if ((result = ISA_PNP_PROBE(device_get_parent(dev), dev, pcibus_pnp_ids)) <= 0)
+		device_quiet(dev);
+	return (result);
+}
+
+static int
+pcibus_pnp_attach(device_t dev)
+{
+	return(0);
+}
+
+static device_method_t pcibus_pnp_methods[] = {
+	/* Device interface */
+	DEVMETHOD(device_probe,		pcibus_pnp_probe),
+	DEVMETHOD(device_attach,	pcibus_pnp_attach),
+	DEVMETHOD(device_detach,	bus_generic_detach),
+	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
+	DEVMETHOD(device_suspend,	bus_generic_suspend),
+	DEVMETHOD(device_resume,	bus_generic_resume),
+	{ 0, 0 }
+};
+
+static driver_t pcibus_pnp_driver = {
+	"pcibus_pnp",
+	pcibus_pnp_methods,
+	1,		/* no softc */
+};
+
+static devclass_t pcibus_pnp_devclass;
+
+DRIVER_MODULE(pcibus_pnp, isa, pcibus_pnp_driver, pcibus_pnp_devclass, 0, 0);
