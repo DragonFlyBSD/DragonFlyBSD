@@ -28,8 +28,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/bfe/if_bfe.c,v 1.4.4.4 2004/02/20 15:41:54 ru Exp $
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.1 2004/02/27 11:56:12 joerg Exp $
+ * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.2 2004/03/07 21:35:27 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -1128,6 +1128,7 @@ bfe_rxeof(struct bfe_softc *sc)
 			if (flags & BFE_RX_FLAG_SERR)
 				ifp->if_collisions++;
 			bfe_list_newbuf(sc, cons, m);
+			BFE_INC(cons, BFE_RX_LIST_CNT);
 			continue;
 		}
 
@@ -1137,6 +1138,7 @@ bfe_rxeof(struct bfe_softc *sc)
 			m->m_len = m->m_pkthdr.len = len;
 		} else {
 			bfe_list_newbuf(sc, cons, m);
+			BFE_INC(cons, BFE_RX_LIST_CNT);
 			ifp->if_ierrors++;
 			continue;
 		}
