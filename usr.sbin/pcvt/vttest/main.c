@@ -16,7 +16,7 @@ choice to the address below.
 */
 
 /* $FreeBSD: src/usr.sbin/pcvt/vttest/main.c,v 1.4.6.1 2000/12/11 01:03:35 obrien Exp $ */
-/* $DragonFly: src/usr.sbin/pcvt/vttest/Attic/main.c,v 1.2 2003/06/17 04:29:59 dillon Exp $ */
+/* $DragonFly: src/usr.sbin/pcvt/vttest/Attic/main.c,v 1.3 2004/01/23 19:57:41 joerg Exp $ */
 
 #include "header.h"
 
@@ -1910,11 +1910,12 @@ bye () {
 #ifdef UNIX
   stty(0,&sgttyOrg);
 #endif
-  exit();
+  exit(0);
 }
 
 #ifdef UNIX
-onbrk() {
+void
+onbrk(int no) {
   signal(SIGINT, onbrk);
   if (reading)
     brkrd = 1;
@@ -1922,7 +1923,8 @@ onbrk() {
     longjmp(intrenv, 1);
 }
 
-onterm() {
+void
+onterm(int no) {
   signal(SIGTERM, onterm);
   longjmp(intrenv, 1);
 }

@@ -1,3 +1,4 @@
+/* $DragonFly: src/usr.sbin/pcvt/vttest/Attic/header.h,v 1.2 2004/01/23 19:57:41 joerg Exp $ */
 #define VERSION "1.7b 1985-04-19"
 
 /* Choose one of these */
@@ -35,7 +36,8 @@ jmp_buf intrenv;
 struct sgttyb sgttyOrg, sgttyNew;
 char stdioBuf[BUFSIZ];
 int brkrd, reading;
-extern onterm(), onbrk();
+void	onterm(int);
+void	onbrk(int);
 #ifdef SIII
 #include <fcntl.h>
 #endif
