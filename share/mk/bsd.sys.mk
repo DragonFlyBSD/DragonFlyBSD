@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.sys.mk,v 1.3.2.5 2002/07/03 16:59:14 des Exp $
-# $DragonFly: src/share/mk/bsd.sys.mk,v 1.5 2005/02/01 21:55:22 joerg Exp $
+# $DragonFly: src/share/mk/bsd.sys.mk,v 1.6 2005/03/09 16:12:29 corecode Exp $
 #
 # This file contains common settings used for building FreeBSD
 # sources.
@@ -42,7 +42,10 @@ WFORMAT		=	1
 . endif
 . if defined(WFORMAT)
 .  if ${WFORMAT} > 0
-CFLAGS		+=	-Wnon-const-format -Wno-format-extra-args
+CFLAGS		+=	-Wno-format-extra-args
+.   if ${CCVER} == gcc2
+CFLAGS		+=	-Wnon-const-format
+.   endif
 .   if defined(WARNS_WERROR) && !defined(NO_WERROR)
 CFLAGS		+=	-Werror
 .   endif
