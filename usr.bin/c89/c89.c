@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/c89/c89.c,v 1.1.2.1 2001/05/22 19:05:01 schweikh Exp $
- * $DragonFly: src/usr.bin/c89/c89.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/c89/c89.c,v 1.3 2005/01/16 19:17:28 joerg Exp $
  */
 
 #include <err.h>
@@ -37,7 +37,7 @@
 #include <unistd.h>
 
 #define	CC "/usr/bin/cc"	/* The big kahuna doing the actual work. */
-#define	N_ARGS_PREPENDED (sizeof(args_prepended) / sizeof(args_prepended[0]))
+#define	N_ARGS_PREPENDED __arysize(args_prepended)
 
 /*
  * We do not add -D_POSIX_SOURCE here because any POSIX source is supposed to
@@ -45,7 +45,7 @@
  * benefit of making c89 -D_ANSI_SOURCE do the right thing (or any other
  * -D_FOO_SOURCE feature test macro we support.)
  */
-static char	*args_prepended[] = {
+static const char *args_prepended[] = {
 	"-std=iso9899:199409",
 	"-pedantic"
 };
@@ -61,14 +61,14 @@ int
 main(int argc, char **argv)
 {
 	int Argc, i;
-	char **Argv;
+	const char **Argv;
 
 	Argc = 0;
 	Argv = malloc((argc + 1 + N_ARGS_PREPENDED) * sizeof *Argv);
 	if (Argv == NULL)
 		err(1, "malloc");
 	Argv[Argc++] = argv[0];
-	for (i = 0; i < N_ARGS_PREPENDED; ++i)
+	for (i = 0; i < (int)N_ARGS_PREPENDED; ++i)
 		Argv[Argc++] = args_prepended[i];
 	while ((i = getopt(argc, argv, "cD:EgI:l:L:o:OsU:")) != -1) {
 		if (i == '?')
@@ -89,7 +89,7 @@ main(int argc, char **argv)
 	/* Append argv[1..] at the end of Argv[]. */
 	for (i = 1; i <= argc; ++i)
 		Argv[Argc++] = argv[i];
-	(void)execv(CC, Argv);
+	execv(CC, __DECONST(char **, Argv));
 	err(1, "execv(" CC ")");
 }
 
