@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.i386,v 1.19 2004/02/21 06:37:06 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/files.i386,v 1.20 2004/02/24 18:07:11 joerg Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -265,7 +265,7 @@ i386/isa/intr_machdep.c			standard
 i386/isa/ipl_funcs.c			standard		   \
 	compile-with	"${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
 bus/isa/i386/isa.c			optional	isa
-bus/isa/i386/isa_compat.c		optional	isa
+bus/isa/i386/isa_compat.c		optional	isa compat_oldisa
 bus/isa/i386/isa_dma.c			optional	isa
 dev/serial/stli/istallion.c		optional	stli
 dev/misc/labpc/labpc.c			optional	labpc

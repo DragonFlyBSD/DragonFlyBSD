@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.kern.mk,v 1.17.2.1 2001/08/01 16:56:56 obrien Exp $
-# $DragonFly: src/sys/conf/bsd.kern.mk,v 1.4 2004/02/16 19:57:39 dillon Exp $
+# $DragonFly: src/sys/conf/bsd.kern.mk,v 1.5 2004/02/24 18:07:11 joerg Exp $
 
 #
 # Warning flags for compiling the kernel and components of the kernel.
@@ -8,9 +8,15 @@
 # most of the remaining warnings.  Warnings introduced with -Wall will
 # also pop up, but are easier to fix.
 #
+.if ${CCVER} == "gcc2"
+CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
+		-Wmissing-prototypes -Wpointer-arith -Winline -Wcast-qual \
+		-fformat-extensions -ansi
+.else
 CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 		-Wmissing-prototypes -Wpointer-arith -Winline -Wcast-qual \
 		-ansi
+.endif
 #
 # The following flags are next up for working on:
 #	-W
