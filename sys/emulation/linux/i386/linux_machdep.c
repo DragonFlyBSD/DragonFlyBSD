@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.11 2003/11/13 04:04:42 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.12 2003/11/15 03:52:33 daver Exp $
  */
 
 #include <sys/param.h>
@@ -444,40 +444,30 @@ struct l_mmap_argv {
 #define STACK_SIZE  (2 * 1024 * 1024)
 #define GUARD_SIZE  (4 * PAGE_SIZE)
 
-int
-linux_mmap(struct linux_mmap_args *args)
+static int
+linux_mmap_common(caddr_t linux_addr, size_t linux_len, int linux_prot,
+    int linux_flags, int linux_fd, off_t pos, void **res)
 {
-	struct proc *p = curproc;
-	struct mmap_args bsd_args;
-	int error;
-	struct l_mmap_argv linux_args;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	caddr_t addr;
+	void *new;
+	int error, flags, len, prot, fd;
 
-	error = copyin((caddr_t)args->ptr, &linux_args, sizeof(linux_args));
-	if (error)
-		return (error);
-
-#ifdef DEBUG
-	if (ldebug(mmap))
-		printf(ARGS(mmap, "%p, %d, %d, 0x%08x, %d, %d"),
-		    (void *)linux_args.addr, linux_args.len, linux_args.prot,
-		    linux_args.flags, linux_args.fd, linux_args.pos);
-#endif
-
-	bsd_args.flags = 0;
-	bsd_args.sysmsg_resultp = NULL;
-	if (linux_args.flags & LINUX_MAP_SHARED)
-		bsd_args.flags |= MAP_SHARED;
-	if (linux_args.flags & LINUX_MAP_PRIVATE)
-		bsd_args.flags |= MAP_PRIVATE;
-	if (linux_args.flags & LINUX_MAP_FIXED)
-		bsd_args.flags |= MAP_FIXED;
-	if (linux_args.flags & LINUX_MAP_ANON)
-		bsd_args.flags |= MAP_ANON;
-	else
-		bsd_args.flags |= MAP_NOSYNC;
-	if (linux_args.flags & LINUX_MAP_GROWSDOWN) {
-		bsd_args.flags |= MAP_STACK;
-
+	flags = 0;
+	if (linux_flags & LINUX_MAP_SHARED)
+		flags |= MAP_SHARED;
+	if (linux_flags & LINUX_MAP_PRIVATE)
+		flags |= MAP_PRIVATE;
+	if (linux_flags & LINUX_MAP_FIXED)
+		flags |= MAP_FIXED;
+	if (linux_flags & LINUX_MAP_ANON) {
+		flags |= MAP_ANON;
+	} else {
+		flags |= MAP_NOSYNC;
+	}
+	if (linux_flags & LINUX_MAP_GROWSDOWN) {
+		flags |= MAP_STACK;
 		/* The linux MAP_GROWSDOWN option does not limit auto
 		 * growth of the region.  Linux mmap with this option
 		 * takes as addr the inital BOS, and as len, the initial
@@ -500,9 +490,9 @@ linux_mmap(struct linux_mmap_args *args)
 		 */
 
 		/* This gives us TOS */
-		bsd_args.addr = linux_args.addr + linux_args.len;
+		addr = linux_addr + linux_len;
 
-		if (bsd_args.addr > p->p_vmspace->vm_maxsaddr) {
+		if (addr > p->p_vmspace->vm_maxsaddr) {
 			/* Some linux apps will attempt to mmap
 			 * thread stacks near the top of their
 			 * address space.  If their TOS is greater
@@ -523,41 +513,87 @@ linux_mmap(struct linux_mmap_args *args)
 		}
 
 		/* This gives us our maximum stack size */
-		if (linux_args.len > STACK_SIZE - GUARD_SIZE)
-			bsd_args.len = linux_args.len;
-		else
-			bsd_args.len  = STACK_SIZE - GUARD_SIZE;
-
+		if (linux_len > STACK_SIZE - GUARD_SIZE) {
+			len = linux_len;
+		} else {
+			len = STACK_SIZE - GUARD_SIZE;
+		}
 		/* This gives us a new BOS.  If we're using VM_STACK, then
 		 * mmap will just map the top SGROWSIZ bytes, and let
 		 * the stack grow down to the limit at BOS.  If we're
 		 * not using VM_STACK we map the full stack, since we
 		 * don't have a way to autogrow it.
 		 */
-		bsd_args.addr -= bsd_args.len;
+		addr -= len;
 	} else {
-		bsd_args.addr = linux_args.addr;
-		bsd_args.len  = linux_args.len;
+		addr = linux_addr;
+		len = linux_len;
 	}
 
-	bsd_args.prot = linux_args.prot | PROT_READ;	/* always required */
-	if (linux_args.flags & LINUX_MAP_ANON)
-		bsd_args.fd = -1;
-	else
-		bsd_args.fd = linux_args.fd;
-	bsd_args.pos = linux_args.pos;
-	bsd_args.pad = 0;
+	prot = linux_prot | PROT_READ;
+	if (linux_flags & LINUX_MAP_ANON) {
+		fd = -1;
+	} else {
+		fd = linux_fd;
+	}
+	
+#ifdef DEBUG
+	if (ldebug(mmap) || ldebug(mmap2))
+		printf("-> (%p, %d, %d, 0x%08x, %d, %lld)\n",
+		    addr, len, prot, flags, fd, pos);
+#endif
+	error = kern_mmap(addr, len, prot, flags, fd, pos, &new);
+
+	if (error == 0)
+		*res = new;
+	return (error);
+}
+
+int
+linux_mmap(struct linux_mmap_args *args)
+{
+	struct l_mmap_argv linux_args;
+	int error;
+
+	error = copyin((caddr_t)args->ptr, &linux_args, sizeof(linux_args));
+	if (error)
+		return (error);
 
 #ifdef DEBUG
 	if (ldebug(mmap))
-		printf("-> (%p, %d, %d, 0x%08x, %d, %d)\n",
-		    (void *)bsd_args.addr, bsd_args.len, bsd_args.prot,
-		    bsd_args.flags, bsd_args.fd, (int)bsd_args.pos);
+		printf(ARGS(mmap, "%p, %d, %d, 0x%08x, %d, %d"),
+		    (void *)linux_args.addr, linux_args.len, linux_args.prot,
+		    linux_args.flags, linux_args.fd, linux_args.pos);
 #endif
-
-	error = mmap(&bsd_args);
-	args->sysmsg_resultp = bsd_args.sysmsg_resultp;
+	error = linux_mmap_common(linux_args.addr, linux_args.len,
+	    linux_args.prot, linux_args.flags, linux_args.fd,
+	    linux_args.pos, &args->sysmsg_resultp);
+#ifdef DEBUG
+	if (ldebug(mmap))
+		printf("-> %p\n", args->sysmsg_resultp);
+#endif
 	return(error);
+}
+
+int
+linux_mmap2(struct linux_mmap2_args *args)
+{
+	int error;
+
+#ifdef DEBUG
+	if (ldebug(mmap2))
+		printf(ARGS(mmap2, "%p, %d, %d, 0x%08x, %d, %d"),
+		    (void *)args->addr, args->len, args->prot, args->flags,
+		    args->fd, args->pgoff);
+#endif
+	error = linux_mmap_common((void *)args->addr, args->len, args->prot,
+	    args->flags, args->fd, args->pgoff * PAGE_SIZE,
+	    &args->sysmsg_resultp);
+#ifdef DEBUG
+	if (ldebug(mmap2))
+		printf("-> %p\n", args->sysmsg_resultp);
+#endif
+	return (error);
 }
 
 int

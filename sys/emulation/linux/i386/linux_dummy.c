@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_dummy.c,v 1.21.2.7 2003/01/02 20:41:33 kan Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_dummy.c,v 1.4 2003/11/15 03:23:34 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_dummy.c,v 1.5 2003/11/15 03:52:33 daver Exp $
  */
 
 #include <sys/param.h>
@@ -65,7 +65,6 @@ DUMMY(rt_sigqueueinfo);
 DUMMY(capget);
 DUMMY(capset);
 DUMMY(sendfile);
-DUMMY(mmap2);
 DUMMY(setfsuid);
 DUMMY(setfsgid);
 DUMMY(pivot_root);

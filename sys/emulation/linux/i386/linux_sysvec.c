@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.14 2003/11/14 21:18:41 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.15 2003/11/15 03:52:33 daver Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -717,6 +717,7 @@ linux_prepsyscall(struct trapframe *tf, int *args, u_int *code, caddr_t *params)
 	args[2] = tf->tf_edx;
 	args[3] = tf->tf_esi;
 	args[4] = tf->tf_edi;
+	args[5] = tf->tf_ebp;
 	*params = NULL;		/* no copyin */
 }
 
