@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.3 2003/06/18 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.4 2003/06/18 07:04:25 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -175,7 +175,7 @@ ASSYM(BI_ESYMTAB, offsetof(struct bootinfo, bi_esymtab));
 ASSYM(BI_KERNEND, offsetof(struct bootinfo, bi_kernend));
 ASSYM(GD_SIZEOF, sizeof(struct globaldata));
 ASSYM(GD_CURTHREAD, offsetof(struct globaldata, gd_curthread));
-ASSYM(GD_NPXPROC, offsetof(struct globaldata, gd_npxproc));
+ASSYM(GD_NPXTHREAD, offsetof(struct globaldata, gd_npxthread));
 ASSYM(GD_CURPCB, offsetof(struct globaldata, gd_curpcb));
 ASSYM(GD_COMMON_TSS, offsetof(struct globaldata, gd_common_tss));
 ASSYM(GD_SWITCHTIME, offsetof(struct globaldata, gd_switchtime));

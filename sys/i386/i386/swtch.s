@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.3 2003/06/18 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.4 2003/06/18 07:04:25 dillon Exp $
  */
 
 #include "npx.h"
@@ -344,13 +344,15 @@ ENTRY(cpu_switch)
 
 #if NNPX > 0
 	/* have we used fp, and need a save? */
-	cmpl	%ecx,_npxproc
+	addl	$P_THREAD,%ecx
+	cmpl	%ecx,_npxthread
 	jne	1f
 	addl	$PCB_SAVEFPU,%edx		/* h/w bugs make saving complicated */
 	pushl	%edx
 	call	_npxsave			/* do it in a big C function */
 	popl	%eax
 1:
+	/* %ecx,%edx trashed */
 #endif	/* NNPX > 0 */
 
 	/*
@@ -581,22 +583,23 @@ ENTRY(savectx)
 
 #if NNPX > 0
 	/*
-	 * If npxproc == NULL, then the npx h/w state is irrelevant and the
+	 * If npxthread == NULL, then the npx h/w state is irrelevant and the
 	 * state had better already be in the pcb.  This is true for forks
 	 * but not for dumps (the old book-keeping with FP flags in the pcb
 	 * always lost for dumps because the dump pcb has 0 flags).
 	 *
-	 * If npxproc != NULL, then we have to save the npx h/w state to
-	 * npxproc's pcb and copy it to the requested pcb, or save to the
+	 * If npxthread != NULL, then we have to save the npx h/w state to
+	 * npxthread's pcb and copy it to the requested pcb, or save to the
 	 * requested pcb and reload.  Copying is easier because we would
 	 * have to handle h/w bugs for reloading.  We used to lose the
 	 * parent's npx state for forks by forgetting to reload.
 	 */
-	movl	_npxproc,%eax
+	movl	_npxthread,%eax
 	testl	%eax,%eax
 	je	1f
 
 	pushl	%ecx
+	movl	TD_PROC(%eax),%eax
 	movl	P_ADDR(%eax),%eax
 	leal	PCB_SAVEFPU(%eax),%eax
 	pushl	%eax

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/asnames.h,v 1.44.2.8 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/asnames.h,v 1.3 2003/06/18 06:33:29 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/asnames.h,v 1.4 2003/06/18 07:04:28 dillon Exp $
  */
 
 #ifndef _MACHINE_ASNAMES_H_
@@ -348,7 +348,7 @@
 #define _astpending			FS(astpending)
 #define _currentldt			FS(currentldt)
 #define _inside_intr			FS(inside_intr)
-#define _npxproc			FS(npxproc)
+#define _npxthread			FS(npxthread)
 #define _other_cpus			FS(other_cpus)
 #define _prv_CADDR1			FS(prv_CADDR1)
 #define _prv_CADDR2			FS(prv_CADDR2)

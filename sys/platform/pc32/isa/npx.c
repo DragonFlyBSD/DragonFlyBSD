@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.3 2003/06/18 07:04:30 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -503,7 +503,7 @@ npxinit(control)
 	/*
 	 * fninit has the same h/w bugs as fnsave.  Use the detoxified
 	 * fnsave to throw away any junk in the fpu.  npxsave() initializes
-	 * the fpu and sets npxproc = NULL as important side effects.
+	 * the fpu and sets npxthread = NULL as important side effects.
 	 */
 	npxsave(&dummy);
 	stop_emulating();
@@ -526,7 +526,7 @@ npxexit(p)
 	struct proc *p;
 {
 
-	if (p == npxproc)
+	if (&p->p_thread == npxthread)
 		npxsave(&curpcb->pcb_save);
 #ifdef NPX_DEBUG
 	if (npx_exists) {
@@ -743,14 +743,14 @@ npx_intr(dummy)
 	struct intrframe *frame;
 	u_long *exstat;
 
-	if (npxproc == NULL || !npx_exists) {
-		printf("npxintr: npxproc = %p, curproc = %p, npx_exists = %d\n",
-		       npxproc, curproc, npx_exists);
+	if (npxthread == NULL || !npx_exists) {
+		printf("npxintr: npxthread = %p, curthread = %p, npx_exists = %d\n",
+		       npxthread, curthread, npx_exists);
 		panic("npxintr from nowhere");
 	}
-	if (npxproc != curproc) {
-		printf("npxintr: npxproc = %p, curproc = %p, npx_exists = %d\n",
-		       npxproc, curproc, npx_exists);
+	if (npxthread != curthread) {
+		printf("npxintr: npxthread = %p, curthread = %p, npx_exists = %d\n",
+		       npxthread, curthread, npx_exists);
 		panic("npxintr from non-current process");
 	}
 
@@ -806,7 +806,7 @@ npx_intr(dummy)
 /*
  * Implement device not available (DNA) exception
  *
- * It would be better to switch FP context here (if curproc != npxproc)
+ * It would be better to switch FP context here (if curthread != npxthread)
  * and not necessarily for every context switch, but it is too hard to
  * access foreign pcb's.
  */
@@ -817,16 +817,16 @@ npxdna()
 
 	if (!npx_exists)
 		return (0);
-	if (npxproc != NULL) {
-		printf("npxdna: npxproc = %p, curproc = %p\n",
-		       npxproc, curproc);
+	if (npxthread != NULL) {
+		printf("npxdna: npxthread = %p, curthread = %p\n",
+		       npxthread, curthread);
 		panic("npxdna");
 	}
 	stop_emulating();
 	/*
 	 * Record new context early in case frstor causes an IRQ13.
 	 */
-	npxproc = curproc;
+	npxthread = curthread;
 	exstat = GET_FPU_EXSW_PTR(curpcb);
 	*exstat = 0;
 	/*
@@ -865,7 +865,7 @@ npxsave(addr)
 
 	/* fnop(); */
 	start_emulating();
-	npxproc = NULL;
+	npxthread = NULL;
 
 #else /* SMP or CPU_ENABLE_SSE */
 
@@ -887,7 +887,7 @@ npxsave(addr)
 	fnsave(addr);
 	fnop();
 	start_emulating();
-	npxproc = NULL;
+	npxthread = NULL;
 	disable_intr();
 	icu1_mask = inb(IO_ICU1 + 1);	/* masks may have changed */
 	icu2_mask = inb(IO_ICU2 + 1);

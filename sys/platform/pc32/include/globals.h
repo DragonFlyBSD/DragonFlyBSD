@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globals.h,v 1.5.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/globals.h,v 1.3 2003/06/18 06:33:29 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/globals.h,v 1.4 2003/06/18 07:04:28 dillon Exp $
  */
 
 #ifndef	_MACHINE_GLOBALS_H_
@@ -85,7 +85,7 @@
 #define	curthread	GLOBAL_RVALUE_NV(curthread, struct thread *)
 #define	idlethread	GLOBAL_RVALUE_NV(idlethread, struct thread)
 #define	curpcb		GLOBAL_RVALUE_NV(curpcb, struct pcb *)
-#define	npxproc		GLOBAL_LVALUE(npxproc, struct proc *)
+#define	npxthread	GLOBAL_LVALUE(npxthread, struct thread *)
 #define	common_tss	GLOBAL_LVALUE(common_tss, struct i386tss)
 #define	switchtime	GLOBAL_LVALUE(switchtime, struct timeval)
 #define	switchticks	GLOBAL_LVALUE(switchticks, int)
@@ -135,7 +135,7 @@ GLOBAL_FUNC(curthread)
 GLOBAL_FUNC(idlethread)
 GLOBAL_FUNC(astpending)
 GLOBAL_FUNC(curpcb)
-GLOBAL_FUNC(npxproc)
+GLOBAL_FUNC(npxthread)
 GLOBAL_FUNC(common_tss)
 GLOBAL_FUNC(switchtime)
 GLOBAL_FUNC(switchticks)

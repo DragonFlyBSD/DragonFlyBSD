@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86bios.s,v 1.15.2.1 2000/05/16 06:58:07 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm86bios.s,v 1.3 2003/06/18 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm86bios.s,v 1.4 2003/06/18 07:04:25 dillon Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
@@ -71,12 +71,12 @@ ENTRY(vm86_bioscall)
 
 #if NNPX > 0
 	movl	_curthread,%ecx
-	movl	TD_PROC(%ecx),%ecx
-	cmpl	%ecx,_npxproc		/* do we need to save fp? */
+	cmpl	%ecx,_npxthread		/* do we need to save fp? */
 	jne	1f
 	testl	%ecx,%ecx
-	je 	1f			/* no curproc/npxproc */
+	je 	1f			/* no curthread/npxthread */
 	pushl	%edx
+	movl	TD_PROC(%ecx),%ecx
 	movl	P_ADDR(%ecx),%ecx
 	addl	$PCB_SAVEFPU,%ecx
 	pushl	%ecx
@@ -85,6 +85,7 @@ ENTRY(vm86_bioscall)
 	popl	%edx			/* recover our pcb */
 #endif
 
+	/* %ecx is garbage at this point */
 1:
 	movl	SCR_VMFRAME(%edx),%ebx	/* target frame location */
 	movl	%ebx,%edi		/* destination */

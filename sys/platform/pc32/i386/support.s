@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/support.s,v 1.67.2.5 2001/08/15 01:23:50 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.3 2003/06/18 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.4 2003/06/18 07:04:25 dillon Exp $
  */
 
 #include "npx.h"
@@ -217,8 +217,8 @@ ENTRY(i586_bzero)
 	 * complicated since we avoid it if possible at all levels.  We
 	 * want to localize the complications even when that increases them.
 	 * Here the extra work involves preserving CR0_TS in TS.
-	 * `npxproc != NULL' is supposed to be the condition that all the
-	 * FPU resources belong to an application, but npxproc and CR0_TS
+	 * `npxthread != NULL' is supposed to be the condition that all the
+	 * FPU resources belong to an application, but npxthread and CR0_TS
 	 * aren't set atomically enough for this condition to work in
 	 * interrupt handlers.
 	 *
@@ -242,7 +242,7 @@ ENTRY(i586_bzero)
 	 * method.  CR0_TS must be preserved although it is very likely to
 	 * always end up as clear.
 	 */
-	cmpl	$0,_npxproc
+	cmpl	$0,_npxthread
 	je	i586_bz1
 	cmpl	$256+184,%ecx		/* empirical; not quite 2*108 more */
 	jb	intreg_i586_bzero
@@ -294,7 +294,7 @@ fpureg_i586_bzero_loop:
 	cmpl	$8,%ecx
 	jae	fpureg_i586_bzero_loop
 
-	cmpl	$0,_npxproc
+	cmpl	$0,_npxthread
 	je	i586_bz3
 	frstor	0(%esp)
 	addl	$108,%esp
@@ -502,7 +502,7 @@ ENTRY(i586_bcopy)
 
 	sarb	$1,kernel_fpu_lock
 	jc	small_i586_bcopy
-	cmpl	$0,_npxproc
+	cmpl	$0,_npxthread
 	je	i586_bc1
 	smsw	%dx
 	clts
@@ -573,7 +573,7 @@ large_i586_bcopy_loop:
 	cmpl	$64,%ecx
 	jae	4b
 
-	cmpl	$0,_npxproc
+	cmpl	$0,_npxthread
 	je	i586_bc2
 	frstor	0(%esp)
 	addl	$108,%esp
@@ -967,14 +967,14 @@ ENTRY(fastmove)
 	testl	$7,%edi	/* check if dst addr is multiple of 8 */
 	jnz	fastmove_tail
 
-/* if (npxproc != NULL) { */
-	cmpl	$0,_npxproc
+/* if (npxthread != NULL) { */
+	cmpl	$0,_npxthread
 	je	6f
 /*    fnsave(&curpcb->pcb_savefpu); */
 	movl	_curpcb,%eax
 	fnsave	PCB_SAVEFPU(%eax)
-/*   npxproc = NULL; */
-	movl	$0,_npxproc
+/*   npxthread = NULL; */
+	movl	$0,_npxthread
 /* } */
 6:
 /* now we own the FPU. */
@@ -1002,10 +1002,9 @@ ENTRY(fastmove)
 	movl	-4(%ebp),%edi
 /* stop_emulating(); */
 	clts
-/* npxproc = curthread->td_proc; */
+/* npxthread = curthread; */
 	movl	_curthread,%eax
-	movl	TD_PROC(%eax),%eax
-	movl	%eax,_npxproc
+	movl	%eax,_npxthread
 	movl	_curpcb,%eax
 	movl	$fastmove_fault,PCB_ONFAULT(%eax)
 4:
@@ -1083,8 +1082,8 @@ fastmove_loop:
 	smsw	%ax
 	orb	$CR0_TS,%al
 	lmsw	%ax
-/* npxproc = NULL; */
-	movl	$0,_npxproc
+/* npxthread = NULL; */
+	movl	$0,_npxthread
 
 	ALIGN_TEXT
 fastmove_tail:
@@ -1118,7 +1117,7 @@ fastmove_fault:
 	smsw	%ax
 	orb	$CR0_TS,%al
 	lmsw	%ax
-	movl	$0,_npxproc
+	movl	$0,_npxthread
 
 fastmove_tail_fault:
 	movl	%ebp,%esp
