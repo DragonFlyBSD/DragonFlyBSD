@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/libexec/telnetd/Makefile,v 1.19.2.4 2002/07/03 22:20:25 des Exp $
-# $DragonFly: src/secure/libexec/telnetd/Makefile,v 1.2 2003/06/17 04:27:48 dillon Exp $
+# $DragonFly: src/secure/libexec/telnetd/Makefile,v 1.3 2005/01/11 13:22:40 joerg Exp $
 
 # Do not define -DKLUDGELINEMODE, as it does not interact well with many
 # telnet implementations.
@@ -17,10 +17,9 @@ CFLAGS+=	-DLINEMODE -DUSE_TERMIO -DDIAGNOSTICS -DOLD_ENVIRON \
 WARNS?=		2
 WFORMAT?=	0
 
-DPADD=		${LIBUTIL} ${LIBTERMCAP} ${LIBTELNET} ${LIBMP} ${LIBCRYPTO} \
+DPADD=		${LIBUTIL} ${LIBTERMCAP} ${LIBTELNET} ${LIBCRYPTO} \
 		${LIBCRYPT} ${LIBPAM}
-LDADD=		-lutil -ltermcap ${LIBTELNET} -lmp -lcrypto \
-		-lcrypt ${MINUSLPAM}
+LDADD=		-lutil -ltermcap ${LIBTELNET} -lcrypto -lcrypt ${MINUSLPAM}
 
 .include <bsd.prog.mk>
 

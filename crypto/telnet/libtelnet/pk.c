@@ -28,7 +28,7 @@
  * 
  *
  * $FreeBSD: src/crypto/telnet/libtelnet/pk.c,v 1.2.2.4 2002/08/24 07:28:35 nsayer Exp $
- * $DragonFly: src/crypto/telnet/libtelnet/pk.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
+ * $DragonFly: src/crypto/telnet/libtelnet/pk.c,v 1.3 2005/01/11 13:22:41 joerg Exp $
  */
 
 /* public key routines */
@@ -43,13 +43,17 @@
  */
 
 #include <sys/time.h>
-#include <openssl/des.h>
+#include <err.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "mp.h"
+#include <openssl/bn.h>
+#include <openssl/crypto.h>
+#include <openssl/des.h>
+#include <openssl/err.h>
+
 #include "pk.h"
  
 static void adjust(char keyout[HEXKEYBYTES+1], char *keyin);
@@ -58,28 +62,30 @@ static void adjust(char keyout[HEXKEYBYTES+1], char *keyin);
  * Choose top 128 bits of the common key to use as our idea key.
  */
 static void
-extractideakey(MINT *ck, IdeaData *ideakey)
+extractideakey(BIGNUM *ck, IdeaData *ideakey)
 {
-        MINT *a;
-        MINT *z;
-        short r;
+        BIGNUM *a, *z;
         int i;
-        short base = (1 << 8);
+        BN_ULONG r, base = (1 << 8);
         char *k;
 
-        z = itom(0);
-        a = itom(0);
-        madd(ck, z, a);
+	if ((z = BN_new()) == NULL)
+		errx(1, "could not create BIGNUM");
+	BN_zero(z);
+	if ((a = BN_new()) == NULL)
+		errx(1, "could not create BIGNUM");
+	BN_zero(a);
+	BN_add(a, ck, z);
         for (i = 0; i < ((KEYSIZE - 128) / 8); i++) {
-                sdiv(a, base, a, &r);
+		r = BN_div_word(a, base);
         }
         k = (char *)ideakey;
         for (i = 0; i < 16; i++) {
-                sdiv(a, base, a, &r);
+                r = BN_div_word(a, base);
                 *k++ = r;
         }
-	mfree(z);
-        mfree(a);
+	BN_free(z);
+	BN_free(a);
 }
 
 /*
@@ -87,28 +93,30 @@ extractideakey(MINT *ck, IdeaData *ideakey)
  * overwriting the lower order bits by setting parity. 
  */
 static void
-extractdeskey(MINT *ck, DesData *deskey)
+extractdeskey(BIGNUM *ck, DesData *deskey)
 {
-        MINT *a;
-        MINT *z;
-        short r;
+        BIGNUM *a, *z;
         int i;
-        short base = (1 << 8);
+        BN_ULONG r, base = (1 << 8);
         char *k;
 
-        z = itom(0);
-        a = itom(0);
-        madd(ck, z, a);
+	if ((z = BN_new()) == NULL)
+		errx(1, "could not create BIGNUM");
+	BN_zero(z);
+	if ((a = BN_new()) == NULL)
+		errx(1, "could not create BIGNUM");
+	BN_zero(a);
+	BN_add(a, ck, z);
         for (i = 0; i < ((KEYSIZE - 64) / 2) / 8; i++) {
-                sdiv(a, base, a, &r);
+		r = BN_div_word(a, base);
         }
         k = (char *)deskey;
         for (i = 0; i < 8; i++) {
-                sdiv(a, base, a, &r);
+		r = BN_div_word(a, base);
                 *k++ = r;
         }
-	mfree(z);
-        mfree(a);
+	BN_free(z);
+	BN_free(a);
 }
 
 /*
@@ -117,22 +125,30 @@ extractdeskey(MINT *ck, DesData *deskey)
 void
 common_key(char *xsecret, char *xpublic, IdeaData *ideakey, DesData *deskey)
 {
-        MINT *public;
-        MINT *secret;
-        MINT *common;
-	MINT *modulus = xtom(HEXMODULUS);
+        BIGNUM *public, *secret, *common, *modulus;
+	BN_CTX *ctx;
 
-        public = xtom(xpublic);
-        secret = xtom(xsecret);
-        common = itom(0);
-        pow(public, secret, modulus, common);
+	if ((ctx = BN_CTX_new()) == NULL)
+		errx(1, "could not create BN_CTX");
+	if (BN_hex2bn(&modulus, HEXMODULUS) == NULL)
+		errx(1, "could not convert modulus");
+	if (BN_hex2bn(&public, xpublic) == NULL)
+		errx(1, "could not convert public");
+	if (BN_hex2bn(&secret, xsecret) == NULL)
+		errx(1, "could not convert secret");
+
+	if ((common = BN_new()) == NULL)
+		errx(1, "could not create BIGNUM");
+	BN_zero(common);
+	BN_mod_exp(common, public, secret, modulus, ctx);
         extractdeskey(common, deskey);
         extractideakey(common, ideakey);
 	des_set_odd_parity(deskey);
-        mfree(common);
-        mfree(secret);
-        mfree(public);
-	mfree(modulus);
+	BN_free(common);
+	BN_free(secret);
+	BN_free(public);
+	BN_free(modulus);
+	BN_CTX_free(ctx);
 }
 
 /*
@@ -143,10 +159,25 @@ getseed(char *seed, int seedsize)
 {
 	int i;
 
-	srandomdev();
 	for (i = 0; i < seedsize; i++) {
-		seed[i] = random() & 0xff;
+		seed[i] = arc4random() & 0xff;
 	}
+}
+
+static BIGNUM *
+itobn(long i)
+{
+	BIGNUM *n = 0;
+
+	if ((n = BN_new()) == NULL)
+		errx(1, "could not create BIGNUM: %s",
+		     ERR_error_string(ERR_get_error(), 0));
+	BN_init(n);
+	if (i > 0)
+		BN_add_word(n, (u_long)i);
+	else
+		BN_sub_word(n, (u_long)(-i));
+	return(n);
 }
 
 /*
@@ -155,42 +186,61 @@ getseed(char *seed, int seedsize)
 void
 genkeys(char *public, char *secret)
 {
-        size_t i;
- 
-#       define BASEBITS (8*sizeof(short) - 1)
-#       define BASE (1 << BASEBITS)
- 
-        MINT *pk = itom(0);
-        MINT *sk = itom(0);
-        MINT *tmp;
-        MINT *base = itom(BASE);
-        MINT *root = itom(PROOT);
-        MINT *modulus = xtom(HEXMODULUS);
-        short r;
-        unsigned short seed[KEYSIZE/BASEBITS + 1];
-        char *xkey;
+#define	BASEBITS (8*sizeof (short) - 1)
+#define	BASE (short)(1 << BASEBITS)
 
-        getseed((char *)seed, sizeof(seed));    
-        for (i = 0; i < KEYSIZE/BASEBITS + 1; i++) {
-                r = seed[i] % BASE;
-                tmp = itom(r);
-                mult(sk, base, sk);
-                madd(sk, tmp, sk);
-                mfree(tmp);  
-        }
-        tmp = itom(0);
-        mdiv(sk, modulus, tmp, sk);
-        mfree(tmp);
-        pow(root, sk, modulus, pk); 
-        xkey = mtox(sk);   
-        adjust(secret, xkey);
-        xkey = mtox(pk);
-        adjust(public, xkey);
-        mfree(sk);
-        mfree(base);
-        mfree(pk);
-        mfree(root);
-        mfree(modulus);
+	unsigned int i;
+	short r;
+	unsigned short seed[KEYSIZE/BASEBITS + 1];
+	char *xkey;
+
+	BN_CTX *ctx;
+	BIGNUM *pk, *sk, *tmp, *base, *root, *modulus;
+
+	pk = itobn(0);
+	sk = itobn(0);
+	tmp = itobn(0);
+	base = itobn(BASE);
+	root = itobn(PROOT);
+	modulus = NULL;
+	if (BN_hex2bn(&modulus, HEXMODULUS) == NULL)
+		errx(1, "could not convert modulus to BIGNUM: %s",
+		     ERR_error_string(ERR_get_error(), 0));
+
+	if ((ctx = BN_CTX_new()) == NULL)
+		errx(1, "could not create BN_CTX: %s",
+		     ERR_error_string(ERR_get_error(), 0));
+
+	getseed((char *)seed, sizeof (seed));
+	for (i = 0; i < KEYSIZE/BASEBITS + 1; i++) {
+		r = seed[i] % BASE;
+		BN_zero(tmp);
+		BN_add_word(tmp, r);
+		BN_mul(sk, base, sk, ctx);
+		BN_add(sk, tmp, sk);
+	}
+	BN_zero(tmp);
+	BN_div(tmp, sk, sk, modulus, ctx);
+	BN_mod_exp(pk, root, sk, modulus, ctx);
+
+	if ((xkey = BN_bn2hex(sk)) == NULL)
+		errx(1, "could convert sk to hex: %s",
+		     ERR_error_string(ERR_get_error(), 0));
+	adjust(secret, xkey);
+	OPENSSL_free(xkey);
+
+	if ((xkey = BN_bn2hex(pk)) == NULL)
+		errx(1, "could convert pk to hex: %s",
+		     ERR_error_string(ERR_get_error(), 0));
+	adjust(public, xkey);
+	OPENSSL_free(xkey);
+
+	BN_free(base);
+	BN_free(modulus);
+	BN_free(pk);
+	BN_free(sk);
+	BN_free(root);
+	BN_free(tmp);
 } 
 
 /*

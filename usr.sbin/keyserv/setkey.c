@@ -28,7 +28,7 @@
  *
  * @(#)setkey.c	1.11	94/04/25 SMI
  * $FreeBSD: src/usr.sbin/keyserv/setkey.c,v 1.3 1999/08/28 01:16:41 peter Exp $
- * $DragonFly: src/usr.sbin/keyserv/setkey.c,v 1.7 2004/12/18 22:48:03 swildner Exp $
+ * $DragonFly: src/usr.sbin/keyserv/setkey.c,v 1.8 2005/01/11 13:22:40 joerg Exp $
  */
 
 /*
@@ -41,7 +41,7 @@
  * and use them to decrypt and encrypt DES keys.
  * Cache the common keys, so the expensive computation is avoided.
  */
-#include <mp.h>
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -53,12 +53,15 @@
 #include <rpc/des.h>
 #include <sys/errno.h>
 #include "keyserv.h"
+#include <openssl/bn.h>
+#include <openssl/crypto.h>
+#include <openssl/err.h>
 
-static MINT *MODULUS;
+static BIGNUM *modulus;
 static char *fetchsecretkey( uid_t );
 static void writecache( char *, char *, des_block * );
 static int readcache( char *, char *, des_block * );
-static void extractdeskey ( MINT *, des_block * );
+static void extractdeskey ( BIGNUM *, des_block * );
 static int storesecretkey( uid_t, keybuf );
 static keystatus pk_crypt( uid_t, char *, netobj *, des_block *, int);
 static int nodefaultkeys = 0;
@@ -79,7 +82,9 @@ pk_nodefaultkeys(void)
 void
 setmodulus(char *modx)
 {
-	MODULUS = xtom(modx);
+	if (BN_hex2bn(&modulus, modx) == NULL)
+		errx(1, "could not convert modulus to BIGNUM: %s",
+		     ERR_error_string(ERR_get_error(), 0));
 }
 
 /*
@@ -147,10 +152,9 @@ pk_crypt(uid_t uid, char *remote_name, netobj *remote_key, des_block *key,
 	char xpublic[1024];
 	char xsecret_hold[1024];
 	des_block deskey;
-	int err;
-	MINT *public;
-	MINT *secret;
-	MINT *common;
+	int error;
+	BIGNUM *public, *secret, *common;
+	BN_CTX *ctx;
 	char zero[8];
 
 	xsecret = fetchsecretkey(uid);
@@ -175,23 +179,36 @@ pk_crypt(uid_t uid, char *remote_name, netobj *remote_key, des_block *key,
 	}
 
 	if (!readcache(xpublic, xsecret, &deskey)) {
-		public = xtom(xpublic);
-		secret = xtom(xsecret);
-		/* Sanity Check on public and private keys */
-		if ((public == NULL) || (secret == NULL))
+		if ((ctx = BN_CTX_new()) == NULL)
 			return (KEY_SYSTEMERR);
+		if (BN_hex2bn(&public, xpublic) == NULL) {
+			BN_CTX_free(ctx);
+			return (KEY_SYSTEMERR);
+		}
+		if (BN_hex2bn(&secret, xsecret) == NULL) {
+			BN_free(public);
+			BN_CTX_free(ctx);
+			return (KEY_SYSTEMERR);
+		}
 
-		common = itom(0);
-		pow(public, secret, MODULUS, common);
+		if ((common = BN_new()) == NULL) {
+			BN_free(secret);
+			BN_free(public);
+			BN_CTX_free(ctx);
+			return (KEY_SYSTEMERR);
+		}
+		BN_zero(common);
+		BN_mod_exp(common, public, secret, modulus, ctx);
 		extractdeskey(common, &deskey);
 		writecache(xpublic, xsecret, &deskey);
-		mfree(secret);
-		mfree(public);
-		mfree(common);
+		BN_free(secret);
+		BN_free(public);
+		BN_free(common);
+		BN_CTX_free(ctx);
 	}
-	err = ecb_crypt((char *)&deskey, (char *)key, sizeof (des_block),
+	error = ecb_crypt((char *)&deskey, (char *)key, sizeof (des_block),
 		DES_HW | mode);
-	if (DES_FAILED(err)) {
+	if (DES_FAILED(error)) {
 		return (KEY_SYSTEMERR);
 	}
 	return (KEY_SUCCESS);
@@ -202,9 +219,8 @@ pk_get_conv_key(uid_t uid, keybuf xpublic, cryptkeyres *result)
 {
 	char *xsecret;
 	char xsecret_hold[1024];
-	MINT *public;
-	MINT *secret;
-	MINT *common;
+	BIGNUM *public, *secret, *common;
+	BN_CTX *ctx;
 	char zero[8];
 
 
@@ -222,19 +238,33 @@ pk_get_conv_key(uid_t uid, keybuf xpublic, cryptkeyres *result)
 	}
 
 	if (!readcache(xpublic, xsecret, &result->cryptkeyres_u.deskey)) {
-		public = xtom(xpublic);
-		secret = xtom(xsecret);
-		/* Sanity Check on public and private keys */
-		if ((public == NULL) || (secret == NULL))
+		if ((ctx = BN_CTX_new()) == NULL)
 			return (KEY_SYSTEMERR);
+		if (BN_hex2bn(&public, xpublic) == NULL) {
+			BN_CTX_free(ctx);
+			return (KEY_SYSTEMERR);
+		}
+		if (BN_hex2bn(&secret, xsecret) == NULL) {
+			BN_free(public);
+			BN_CTX_free(ctx);
+			return (KEY_SYSTEMERR);
+		}
 
-		common = itom(0);
-		pow(public, secret, MODULUS, common);
+		if ((common = BN_new()) == NULL) {
+			BN_free(secret);
+			BN_free(public);
+			BN_CTX_free(ctx);
+			return (KEY_SYSTEMERR);
+		}
+		BN_zero(common);
+		BN_mod_exp(common, public, secret, modulus, ctx);
+
 		extractdeskey(common, &result->cryptkeyres_u.deskey);
 		writecache(xpublic, xsecret, &result->cryptkeyres_u.deskey);
-		mfree(secret);
-		mfree(public);
-		mfree(common);
+		BN_free(secret);
+		BN_free(public);
+		BN_free(common);
+		BN_CTX_free(ctx);
 	}
 
 	return (KEY_SUCCESS);
@@ -245,29 +275,25 @@ pk_get_conv_key(uid_t uid, keybuf xpublic, cryptkeyres *result)
  * overwriting the lower order bits by setting parity.
  */
 static void
-extractdeskey(MINT *ck, des_block *deskey)
+extractdeskey(BIGNUM *ck, des_block *deskey)
 {
-	MINT *a;
-	short r;
+	BIGNUM *a;
 	int i;
-	short base = (1 << 8);
+	BN_ULONG r, base = (1 << 8);
 	char *k;
 
-	a = itom(0);
-#ifdef SOLARIS_MP
-	_mp_move(ck, a);
-#else
-	move(ck, a);
-#endif
+	if ((a = BN_dup(ck)) == NULL)
+		errx(1, "could not copy BIGNUM");
+
 	for (i = 0; i < ((KEYSIZE - 64) / 2) / 8; i++) {
-		sdiv(a, base, a, &r);
+		r = BN_div_word(a, base);
 	}
 	k = deskey->c;
 	for (i = 0; i < 8; i++) {
-		sdiv(a, base, a, &r);
+		r = BN_div_word(a, base);
 		*k++ = r;
 	}
-	mfree(a);
+	BN_free(a);
 	des_setparity((char *)deskey);
 }
 
