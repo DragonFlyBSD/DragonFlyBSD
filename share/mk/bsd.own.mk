@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.own.mk,v 1.27.2.4 2002/07/22 14:21:51 ru Exp $
-# $DragonFly: src/share/mk/bsd.own.mk,v 1.10 2004/04/05 05:30:13 dillon Exp $
+# $DragonFly: src/share/mk/bsd.own.mk,v 1.11 2004/08/28 17:57:51 asmodai Exp $
 #
 # The include file <bsd.own.mk> set common variables for owner,
 # group, mode, and directories. Defaults are in brackets.
@@ -44,12 +44,6 @@
 #		Change the tree where header files are to be installed.
 #		Defaults to /usr/include.  Note that use of INCLUDEDIR
 #		is typically prefixed by ${DESTDIR}.
-#
-# COPY		The flag passed to the install program to cause the binary
-#		to be copied rather than moved.  This is to be used when
-#		building our own install script so that the entire system
-#		can either be installed with copies, or with moves using
-#		a single knob. [-c]
 #
 # COMPRESS_CMD	Program to compress documents. 
 #		Output is to stdout. [gzip -cn]
@@ -208,7 +202,6 @@ NLSMODE?=	${NOBINMODE}
 STRIP?=		-s
 .endif
 
-COPY?=		-c
 COMPRESS_CMD?=	gzip -cn
 COMPRESS_EXT?=	.gz
 
