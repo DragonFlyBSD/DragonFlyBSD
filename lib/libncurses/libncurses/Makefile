@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.4 2005/03/14 15:32:51 joerg Exp $
+# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.5 2005/03/25 11:42:36 y0netan1 Exp $
 
 LIB=    ncurses
 
@@ -51,11 +51,11 @@ make_hash: ${NCURSESTINFODIR}/comp_hash.c
 make_hash: hashsize.h ncurses_def.h curses.h
 
 expanded.c:
-	sh ${NCURSESSERIALDIR}/MKexpanded.sh "${CC}" ${CFLAGS} > $@
+	sh ${NCURSESSERIALDIR}/MKexpanded.sh "${CC}" -E ${CFLAGS} > $@
 fallback.c:
 	sh ${NCURSESTINFODIR}/MKfallback.sh /usr/share/terminfo ${NCURSESDIR}/misc/terminfo.src >$@
 lib_gen.c: curses.h
-	sh ${NCURSESBASEDIR}/MKlib_gen.sh "${CC} ${CFLAGS}" awk generated <curses.h >$@
+	sh ${NCURSESBASEDIR}/MKlib_gen.sh "${CC} -E ${CFLAGS}" awk generated <curses.h >$@
 lib_keyname.c: keys.list
 	awk -f ${NCURSESBASEDIR}/MKkeyname.awk keys.list > $@
 unctrl.c:
