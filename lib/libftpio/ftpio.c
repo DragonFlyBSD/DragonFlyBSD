@@ -15,7 +15,7 @@
  * `state' of FTP_t
  *
  * $FreeBSD: src/lib/libftpio/ftpio.c,v 1.33.2.4 2002/07/25 15:25:32 ume Exp $
- * $DragonFly: src/lib/libftpio/ftpio.c,v 1.5 2004/08/16 14:07:34 joerg Exp $
+ * $DragonFly: src/lib/libftpio/ftpio.c,v 1.6 2004/08/16 14:11:39 joerg Exp $
  *
  */
 
@@ -708,7 +708,7 @@ cmd(FTP_t ftp, const char *fmt, ...)
 
     va_list ap;
     va_start(ap, fmt);
-    if ((size_t)vsnprintf(p, sizeof p, fmt, ap) >= sizeof(p))
+    if ((size_t)vsnprintf(p, sizeof p - 2, fmt, ap) >= sizeof(p) - 2)
 	return FAILURE;
     va_end(ap);
 
