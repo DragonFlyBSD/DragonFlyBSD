@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.12 2004/03/15 02:27:54 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.13 2004/03/15 05:43:52 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -4098,6 +4098,11 @@ xpt_bus_register(struct cam_sim *sim, u_int32_t bus)
 	return (CAM_SUCCESS);
 }
 
+/*
+ * Deregister a bus.  We must clean out all transactions pending on the bus.
+ * This routine is typically called prior to cam_sim_free() (e.g. see
+ * dev/usbmisc/umass/umass.c)
+ */
 int32_t
 xpt_bus_deregister(path_id_t pathid)
 {
@@ -4109,8 +4114,19 @@ xpt_bus_deregister(path_id_t pathid)
 	if (status != CAM_REQ_CMP)
 		return (status);
 
+	/*
+	 * This should clear out all pending requests and timeouts, but
+	 * the ccb's may be queued to a software interrupt.
+	 *
+	 * XXX AC_LOST_DEVICE does not precisely abort the pending requests,
+	 * and it really ought to.
+	 */
 	xpt_async(AC_LOST_DEVICE, &bus_path, NULL);
 	xpt_async(AC_PATH_DEREGISTERED, &bus_path, NULL);
+
+	/* make sure all responses have been processed */
+	camisr(&cam_netq);
+	camisr(&cam_bioq);
 	
 	/* Release the reference count held while registered. */
 	xpt_release_bus(bus_path.bus);
@@ -4341,6 +4357,13 @@ xpt_dev_async(u_int32_t async_code, struct cam_eb *bus, struct cam_et *target,
 		}
 		xpt_release_path(&newpath);
 	} else if (async_code == AC_LOST_DEVICE) {
+		/*
+		 * When we lose a device the device may be about to detach
+		 * the sim, we have to clear out all pending timeouts and
+		 * requests before that happens.  XXX it would be nice if
+		 * we could abort the requests pertaining to the device.
+		 */
+		xpt_release_devq_timeout(device);
 		if ((device->flags & CAM_DEV_UNCONFIGURED) == 0) {
 			device->flags |= CAM_DEV_UNCONFIGURED;
 			xpt_release_device(bus, target, device);
@@ -4398,6 +4421,15 @@ xpt_freeze_simq(struct cam_sim *sim, u_int count)
 	return (sim->devq->send_queue.qfrozen_cnt);
 }
 
+/*
+ * WARNING: most devices, especially USB/UMASS, may detach their sim early.
+ * We ref-count the sim (and the bus only NULLs it out when the bus has been
+ * freed, which is not the case here), but the device queue is also freed XXX
+ * and we have to check that here.
+ *
+ * XXX fixme: could we simply not null-out the device queue via 
+ * cam_sim_free()?
+ */
 static void
 xpt_release_devq_timeout(void *arg)
 {
@@ -4423,6 +4455,7 @@ xpt_release_devq_device(struct cam_ed *dev, u_int count, int run_queue)
 	rundevq = 0;
 	s0 = splsoftcam();
 	s1 = splcam();
+
 	if (dev->qfrozen_cnt > 0) {
 
 		count = (count > dev->qfrozen_cnt) ? dev->qfrozen_cnt : count;
