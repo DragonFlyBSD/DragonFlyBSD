@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.32.2.7 2002/09/15 22:31:50 dd Exp $
- * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.5 2004/04/25 18:18:43 drhodus Exp $
+ * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.6 2004/04/26 19:57:18 dillon Exp $
  */
 
 #include <machine/console.h>
@@ -655,10 +655,9 @@ video_mode(int argc, char **argv, int *index)
                 revert();
                 errc(1, errno, "activating raster display");
             }
+        }
 
-            video_mode_changed = 1;
-        } else
-            video_mode_changed = 1;
+        video_mode_changed = 1;
         
         (*index)++;
     }
@@ -1132,12 +1131,12 @@ main(int argc, char **argv)
     char *font, *type;
     int opt;
 
+    if (argc == 1)
+        usage();
+
     init();
     
     info.size = sizeof(info);
-
-    if (argc == 1)
-        usage();
 
     if (ioctl(0, CONS_GETINFO, &info) == -1)
         err(1, "must be on a virtual console");
