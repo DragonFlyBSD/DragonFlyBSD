@@ -5,7 +5,7 @@
  *
  * DragonFly WWW Site: http://www.dragonflybsd.org/
  *
- * $DragonFly: site/data/stylesheet.css,v 1.14 2004/04/17 18:49:59 justin Exp $
+ * $DragonFly: site/data/stylesheet.css,v 1.15 2004/07/09 14:00:34 justin Exp $
  *
  */
 
@@ -44,8 +44,12 @@ P  {
    font:12px Verdana, Arial, Helvetica, sans-serif;
 }
 
-TD,TH { 
+TD { 
    font:12px Verdana, Arial, Helvetica, sans-serif;
+}
+
+TH { 
+   font:12px Verdana, Arial, Helvetica, sans-serif; font-weight: bold;
 }
 
 /* main */
