@@ -58,7 +58,7 @@
 
 /* most of this code has been pilfered from my libdes speed.c program */
 
-/* $DragonFly: src/secure/usr.bin/openssl/apps/Attic/speed.c,v 1.2 2004/02/08 10:51:18 rob Exp $
+/* $DragonFly: src/secure/usr.bin/openssl/apps/Attic/speed.c,v 1.3 2004/02/08 10:54:25 rob Exp $
 */
 #ifndef OPENSSL_NO_SPEED
 
