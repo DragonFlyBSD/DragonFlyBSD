@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.21 2003/07/26 19:07:47 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.22 2003/07/31 11:03:34 hmp Exp $
  */
 
 #include "npx.h"
@@ -484,7 +484,7 @@ cpu_reset_real()
 	/*
 	 * Attempt to do a CPU reset via CPU reset port.
 	 */
-	disable_intr();
+	cpu_disable_intr();
 	if ((inb(0x35) & 0xa0) != 0xa0) {
 		outb(0x37, 0x0f);		/* SHUT0 = 0. */
 		outb(0x37, 0x0b);		/* SHUT1 = 0. */
