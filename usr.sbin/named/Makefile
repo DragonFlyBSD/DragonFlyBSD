@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/named/Makefile,v 1.25.2.5 2002/07/07 08:17:07 dougb Exp $
-# $DragonFly: src/usr.sbin/named/Makefile,v 1.2 2003/06/17 04:29:57 dillon Exp $
+# $DragonFly: src/usr.sbin/named/Makefile,v 1.3 2004/01/24 20:16:24 joerg Exp $
 
 USE_LIBBIND=	true
 .include "${.CURDIR}/Makefile.inc"
@@ -17,6 +17,8 @@ SRCS=	tmp_version.c pathnames.h \
 	ns_resp.c ns_stats.c ns_ncache.c ns_xfr.c ns_glue.c \
 	ns_udp.c ns_config.c ns_update.c ns_ixfr.c ns_signal.c \
 	ns_sort.c ns_notify.c
+
+CFLAGS+=	-I${BIND_DIR}/bin/named
 
 .if exists(${.OBJDIR}/../../lib/libisc)
 LIBISCDIR:=    ${.OBJDIR}/../../lib/libisc
