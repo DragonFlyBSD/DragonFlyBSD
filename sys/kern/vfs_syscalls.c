@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.58 2005/02/02 21:34:18 joerg Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.59 2005/03/22 22:13:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,6 +47,7 @@
 #include <sys/sysent.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
+#include <sys/mountctl.h>
 #include <sys/sysproto.h>
 #include <sys/filedesc.h>
 #include <sys/kernel.h>
@@ -561,6 +562,13 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 			wakeup(mp);
 		return (error);
 	}
+	/*
+	 * Clean up any journals still associated with the mount after
+	 * filesystem activity has ceased.
+	 */
+	journal_remove_all_journals(mp, 
+	    ((flags & MNT_FORCE) ? MC_JOURNAL_STOP_IMM : 0));
+
 	TAILQ_REMOVE(&mountlist, mp, mnt_list);
 
 	/*

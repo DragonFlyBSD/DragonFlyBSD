@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/journal.h,v 1.2 2005/03/05 05:08:30 dillon Exp $
+ * $DragonFly: src/sys/sys/journal.h,v 1.3 2005/03/22 22:13:32 dillon Exp $
  */
 
 #ifndef _SYS_JOURNAL_H_
@@ -107,7 +107,7 @@ struct journal_rawrecbeg {
 	u_int16_t begmagic;	/* recovery scan, endianess detection */
 	u_int16_t streamid;	/* start/stop bits and stream identifier */
 	int32_t recsize;	/* stream data block (incls beg & end) */
-	int64_t seqno;		/* sequence number or transaction id */
+	int64_t transid;	/* sequence number or transaction id */
 	/* ADDITIONAL DATA */
 };
 
@@ -115,6 +115,13 @@ struct journal_rawrecend {
 	u_int16_t endmagic;	/* recovery scan, endianess detection */
 	u_int16_t check;	/* check word or 0 */
 	int32_t recsize;	/* same as rawrecbeg->recsize, for rev scan */
+};
+
+struct journal_ackrecord {
+	struct journal_rawrecbeg	rbeg;
+	int32_t				filler0;
+	int32_t				filler1;
+	struct journal_rawrecend	rend;
 };
 
 /*
@@ -278,6 +285,7 @@ struct journal_subrecord {
 #define JLEAF_FLAGS		0x041A
 #define JLEAF_UDEV		0x041B
 #define JLEAF_FILEREV		0x041C
+#define JLEAF_VTYPE		0x041D
 
 /*
  * Low level journal data file structures

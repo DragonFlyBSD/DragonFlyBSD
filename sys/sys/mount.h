@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.16 2004/12/29 02:40:03 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.17 2005/03/22 22:13:33 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -518,6 +518,8 @@ int	vfs_stduninit (struct vfsconf *);
 int	vfs_stdextattrctl (struct mount *mp, int cmd, const char *attrname,
 		caddr_t arg, struct thread *p);
 int     journal_mountctl(struct vop_mountctl_args *ap);
+void	journal_remove_all_journals(struct mount *mp, int flags);
+
 
 #else /* !_KERNEL */
 

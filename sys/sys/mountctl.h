@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/mountctl.h,v 1.6 2005/02/28 17:40:51 dillon Exp $
+ * $DragonFly: src/sys/sys/mountctl.h,v 1.7 2005/03/22 22:13:33 dillon Exp $
  */
 
 #ifndef _SYS_MOUNTCTL_H_
@@ -70,12 +70,15 @@ struct mountctl_install_journal {
 	int	unused04;
 };
 
-#define MC_JOURNAL_ACTIVE		0x00000001	/* journal is active */
+#define MC_JOURNAL_UNUSED0001		0x00000001
 #define MC_JOURNAL_STOP_REQ		0x00000002	/* stop request pend */
 #define MC_JOURNAL_STOP_IMM		0x00000004	/* STOP+trash fifo */
+#define MC_JOURNAL_WACTIVE		0x00000008	/* wthread running */
+#define MC_JOURNAL_RACTIVE		0x00000010	/* rthread running */
 #define MC_JOURNAL_WWAIT		0x00000040	/* write stall */
 #define MC_JOURNAL_WANT_AUDIT		0x00010000	/* audit trail */
 #define MC_JOURNAL_WANT_REVERSABLE	0x00020000	/* reversable stream */
+#define MC_JOURNAL_WANT_FULLDUPLEX	0x00040000	/* has ack stream */
 
 struct mountctl_remove_journal {
 	char	id[JIDMAX];
@@ -140,7 +143,8 @@ struct journal {
 	int64_t		transid;
 	int64_t		total_acked;
 	struct journal_memfifo fifo;
-	struct thread	thread;
+	struct thread	wthread;
+	struct thread	rthread;
 };
 
 /*
