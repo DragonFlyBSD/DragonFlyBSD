@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.18 2004/05/15 18:12:01 joerg Exp $
+# $DragonFly: src/include/Makefile,v 1.19 2004/05/17 01:03:54 dillon Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -135,9 +135,9 @@ INCSLINKS+=	netproto/ncp ${INCLUDEDIR}/netncp
 INCSLINKS+=	netproto/ns ${INCLUDEDIR}/netns
 INCSLINKS+=	netproto/smb ${INCLUDEDIR}/netsmb
 INCSLINKS+=	bus/pccard ${INCLUDEDIR}/pccard
-# this is for TV apps from ports.
-INCSLINKS+=	../dev/video/bktr/ioctl_bt848.h ${INCLUDEDIR}/machine/ioctl_bt848.h
-INCSLINKS+=	../dev/video/meteor/ioctl_meteor.h ${INCLUDEDIR}/machine/ioctl_meteor.h
+# warning, we cannot softlink through ${INCLUDEDIR}/machine/... because
+# machine itself is a softlink into the source tree in buildworld's 
+# temporary include hierarchy.
 
 mtree_setup:
 .for i in ${LDIRS} ${LSYMSUBDIRS} ${LSYMSUBDIRS3} machine crypto

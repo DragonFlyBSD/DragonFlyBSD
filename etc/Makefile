@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.18 2004/04/12 16:29:05 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.19 2004/05/17 01:03:52 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -93,6 +93,10 @@ upgrade_etc:
 .if !defined(NOMAN)
 	cd ${.CURDIR}/../share/man; ${MAKE} makedb
 .endif
+	rm -f ${DESTDIR}/usr/include/machine/ioctl_meteor.h
+	rm -f ${DESTDIR}/usr/include/machine/ioctl_bt848.h
+	ln -s "../dev/video/bktr/ioctl_bt848.h" ${DESTDIR}/usr/include/machine/ioctl_bt848.h
+	ln -s "../dev/video/meteor/ioctl_meteor.h" ${DESTDIR}/usr/include/machine/ioctl_meteor.h
 .if exists(${DESTDIR}/usr/libexec/binutils212/elf/as)
 	ldconfig -m ${DESTDIR}/usr/lib/gcc2
 	rm -rf ${DESTDIR}/usr/libdata/ldscripts
@@ -143,6 +147,7 @@ distribution:
 	cd ${.CURDIR}/isdn; ${MAKE} install
 .endif
 .if !defined(NO_SENDMAIL)
+	cd ${.CURDIR}/sendmail; ${MAKE} obj
 	cd ${.CURDIR}/sendmail; ${MAKE} distribution
 .endif
 .if exists(${.CURDIR}/../crypto) && !defined(NO_OPENSSL)
