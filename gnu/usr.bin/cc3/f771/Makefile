@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/f771/Makefile,v 1.10 2004/01/11 20:45:46 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/f771/Attic/Makefile,v 1.6 2004/02/03 18:06:06 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/f771/Attic/Makefile,v 1.7 2004/02/03 19:06:06 dillon Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 
@@ -16,15 +16,24 @@ SRCS=	bad.c bit.c bld.c com.c data.c equiv.c expr.c global.c implic.c info.c \
 NOMAN=
 
 CFLAGS+= -I${GCCDIR}/gcc/f -I.
+CFLAGS+= -DMALLOC_RENAME
 
 DPADD=	${LIBCC_INT} 
 LDADD=	${LIBCC_INT}
 
-DKFLAGS= -Dxmalloc=malloc -Dxrealloc=realloc
-
+# This is a mess.  PROG generates an objects-depend-on-all-headers 
+# dependancy prior to building the depends, so we have to specify
+# files not in SRCS
+#
 build-tools: fini
-fini: fini.o
-	${CC} -static ${CFLAGS} ${DKFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC}
+fini: fini.o xmalloc_local.o xexit_local.o
+	${CC} -static ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC}
+
+xmalloc_local.o : xmalloc.c
+	${CC} ${CFLAGS} -c -o ${.TARGET} ${.ALLSRC}
+
+xexit_local.o : xexit.c
+	${CC} ${CFLAGS} -c -o ${.TARGET} ${.ALLSRC}
 
 CLEANFILES=	fini fini.o
 
