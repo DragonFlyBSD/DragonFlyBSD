@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.28 2004/07/14 23:59:10 hmp Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.29 2004/07/27 19:12:57 justin Exp $
  */
 
 #include <sys/types.h>
@@ -74,6 +74,7 @@ char *Status[] = {
 };
 
 char *Docs[] = {
+    "donations.cgi",
     NULL
 };
 
