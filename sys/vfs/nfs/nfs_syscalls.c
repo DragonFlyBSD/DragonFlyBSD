@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.9 2003/08/20 09:56:33 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.10 2003/09/03 14:30:57 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -624,6 +624,8 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			 */
 			if (sotype == SOCK_STREAM) {
 				M_PREPEND(m, NFSX_UNSIGNED, M_WAIT);
+				if (m == NULL)
+					return (ENOBUFS);
 				*mtod(m, u_int32_t *) = htonl(0x80000000 | siz);
 			}
 			if (slp->ns_so->so_proto->pr_flags & PR_CONNREQUIRED)

@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.3 2003/08/07 21:17:33 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.4 2003/09/03 14:30:57 hmp Exp $
  */
 
 #include "opt_atalk.h"
@@ -573,6 +573,7 @@ aarpprobe( void *arg )
 	eh->ether_type = htons( sizeof( struct llc ) +
 		sizeof( struct ether_aarp ));
 	M_PREPEND( m, sizeof( struct llc ), M_WAIT );
+	/* XXX-MBUF */
 	llc = mtod( m, struct llc *);
 	llc->llc_dsap = llc->llc_ssap = LLC_SNAP_LSAP;
 	llc->llc_control = LLC_UI;
