@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.116 2005/03/01 23:26:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.117 2005/03/01 23:26:55 okumoto Exp $
  */
 
 /*-
@@ -1573,6 +1573,8 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 
     {
 	char	*const tstr = ptr;
+	size_t	consumed = tstr - input + 1;
+
 	Var	*v;		/* Variable in invocation */
 	Boolean	haveModifier;	/* TRUE if have modifiers for the variable */
 	Boolean	dynamic;	/* TRUE if the variable is local and we're
@@ -1621,7 +1623,7 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		     * tell caller to free it.
 		     */
 		    *freePtr = TRUE;
-		    *lengthPtr = tstr - input + 1;
+		    *lengthPtr = consumed;
 		    Buf_Destroy(buf, TRUE);
 		    return (val);
 		}
@@ -1682,22 +1684,21 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		 * No modifiers -- have specification length so we can return
 		 * now.
 		 */
-		size_t	rlen = tstr - input + 1;
 		if (dynamic) {
 		    char	*result;
 
-		    result = emalloc(rlen + 1);
-		    strncpy(result, input, rlen);
-		    result[rlen] = '\0';
+		    result = emalloc(consumed + 1);
+		    strncpy(result, input, consumed);
+		    result[consumed] = '\0';
 
 		    *freePtr = TRUE;
-		    *lengthPtr = rlen;
+		    *lengthPtr = consumed;
 
 		    Buf_Destroy(buf, TRUE);
 		    return (result);
 		} else {
 		    *freePtr = FALSE;
-		    *lengthPtr = rlen;
+		    *lengthPtr = consumed;
 
 		    Buf_Destroy(buf, TRUE);
 		    return (err ? var_Error : varNoError);
@@ -1721,7 +1722,7 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		}
 
 		*freePtr = TRUE;
-		*lengthPtr = tstr - input + 1;
+		*lengthPtr = consumed;
 		return (result);
 	}
     }
