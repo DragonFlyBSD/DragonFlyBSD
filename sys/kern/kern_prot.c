@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.13 2003/11/22 19:30:56 asmodai Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.14 2003/12/20 05:58:30 dillon Exp $
  */
 
 /*
@@ -791,9 +791,10 @@ groupmember(gid_t gid, struct ucred *cred)
 	gid_t *egp;
 
 	egp = &(cred->cr_groups[cred->cr_ngroups]);
-	for (gp = cred->cr_groups; gp < egp; gp++)
+	for (gp = cred->cr_groups; gp < egp; gp++) {
 		if (*gp == gid)
 			return (1);
+	}
 	return (0);
 }
 
