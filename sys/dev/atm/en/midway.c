@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.8 2004/03/14 14:37:39 joerg Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.9 2004/04/01 07:27:16 joerg Exp $
  */
 
 /*
@@ -272,7 +272,8 @@ STATIC		int en_dmaprobe_doit (struct en_softc *, u_int8_t *,
 STATIC INLINE	int en_dqneed (struct en_softc *, caddr_t, u_int,
 		    u_int) __attribute__ ((unused));
 STATIC		void en_init (struct en_softc *);
-STATIC		int en_ioctl (struct ifnet *, EN_IOCTL_CMDT, caddr_t);
+STATIC		int en_ioctl (struct ifnet *, EN_IOCTL_CMDT, caddr_t,
+			      struct ucred *);
 STATIC INLINE	int en_k2sz (int) __attribute__ ((unused));
 STATIC		void en_loadvc (struct en_softc *, int);
 STATIC		int en_mfix (struct en_softc *, struct mbuf **,
@@ -1130,11 +1131,12 @@ int wmtry;
  * txspeed[vci].
  */
 
-STATIC int en_ioctl(ifp, cmd, data)
+STATIC int en_ioctl(ifp, cmd, data, cr)
 
 struct ifnet *ifp;
 EN_IOCTL_CMDT cmd;
 caddr_t data;
+struct ucred *cr;
 
 {
     struct en_softc *sc = (struct en_softc *) ifp->if_softc;

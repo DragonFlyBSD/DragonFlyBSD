@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.10 2004/02/12 23:04:08 joerg Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.11 2004/04/01 07:27:16 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -219,7 +219,8 @@ static void oltr_start		(struct ifnet *);
 static void oltr_stop		(struct oltr_softc *);
 static void oltr_close		(struct oltr_softc *);
 static void oltr_init		(void *);
-static int oltr_ioctl		(struct ifnet *, u_long, caddr_t);
+static int oltr_ioctl		(struct ifnet *, u_long, caddr_t,
+				 struct ucred *);
 static void oltr_intr		(void *);
 static int oltr_ifmedia_upd	(struct ifnet *);
 static void oltr_ifmedia_sts	(struct ifnet *, struct ifmediareq *);
@@ -1028,7 +1029,7 @@ init_failed:
 }
 
 static int
-oltr_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
+oltr_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct oltr_softc 	*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *)data;

@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.8 2004/01/06 01:40:47 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.9 2004/04/01 07:27:16 joerg Exp $
  *
  */
 #undef DEBUG
@@ -80,7 +80,8 @@ static int cxtinth (cx_chan_t *c);
 #define IFSTRUCTSZ   (sizeof (struct sppp))
 #define IFNETSZ         (sizeof (struct ifnet))
 
-static int cxsioctl (struct ifnet *ifp, u_long cmd, caddr_t data);
+static int cxsioctl (struct ifnet *ifp, u_long cmd, caddr_t data,
+		     struct ucred *cr);
 static void cxstart (struct ifnet *ifp);
 static void cxwatchdog (struct ifnet *ifp);
 static void cxinput (cx_chan_t *c, void *buf, unsigned len);
@@ -303,7 +304,7 @@ struct isa_driver cxdriver = { cxprobe, cxattach, "cx" };
  * Process an ioctl request.
  */
 static int
-cxsioctl (struct ifnet *ifp, u_long cmd, caddr_t data)
+cxsioctl (struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	cx_chan_t *q, *c = ifp->if_softc;
 	int error, s, was_up, should_be_up;

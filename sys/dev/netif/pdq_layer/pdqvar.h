@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdqvar.h,v 1.3.2.1 2002/05/14 21:02:11 gallatin Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.3 2004/02/13 02:44:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.4 2004/04/01 07:27:17 joerg Exp $
  *
  */
 
@@ -231,7 +231,8 @@ extern void pdq_ifreset(pdq_softc_t *sc);
 extern void pdq_ifinit(pdq_softc_t *sc);
 extern void pdq_ifwatchdog(struct ifnet *ifp);
 extern ifnet_ret_t pdq_ifstart(struct ifnet *ifp);
-extern int pdq_ifioctl(struct ifnet *ifp, ioctl_cmd_t cmd, caddr_t data);
+extern int pdq_ifioctl(struct ifnet *ifp, ioctl_cmd_t cmd, caddr_t data,
+		       struct ucred *cr);
 extern void pdq_ifattach(pdq_softc_t *sc, ifnet_ret_t (*ifwatchdog)(int unit));
 #endif /* !PDQ_HWSUPPORT */
 

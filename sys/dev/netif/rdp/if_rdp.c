@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.8 2004/03/14 15:36:51 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.9 2004/04/01 07:27:17 joerg Exp $
  */
 
 /*
@@ -74,6 +74,7 @@
 #include <sys/syslog.h>
 #include <sys/linker_set.h>
 #include <sys/module.h>
+#include <sys/bus.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -96,6 +97,7 @@
 #include <machine/clock.h>
 #include <machine/md_var.h>
 
+#include <bus/isa/isavar.h>
 #include <bus/isa/i386/isa_device.h>
 #include <i386/isa/icu.h>
 #include "if_rdpreg.h"
@@ -175,7 +177,7 @@ static int rdp_attach		(struct isa_device *);
  * Required entry points.
  */
 static void rdp_init(void *);
-static int rdp_ioctl(struct ifnet *, IOCTL_CMD_T, caddr_t);
+static int rdp_ioctl(struct ifnet *, IOCTL_CMD_T, caddr_t, struct ucred *);
 static void rdp_start(struct ifnet *);
 static void rdp_reset(struct ifnet *);
 static void rdp_watchdog(struct ifnet *);
@@ -822,7 +824,8 @@ outloop:
  * Process an ioctl request.
  */
 static int
-rdp_ioctl(struct ifnet *ifp, IOCTL_CMD_T command, caddr_t data)
+rdp_ioctl(struct ifnet *ifp, IOCTL_CMD_T command, caddr_t data,
+	  struct ucred *ur)
 {
 	struct rdp_softc *sc = ifp->if_softc;
 	int s, error = 0;

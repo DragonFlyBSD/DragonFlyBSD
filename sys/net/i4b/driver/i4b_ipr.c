@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.10 2004/02/13 17:45:49 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.11 2004/04/01 07:27:17 joerg Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -241,7 +241,8 @@ enum ipr_states {
 #if defined(__DragonFly__) || defined(__FreeBSD__)
 PDEVSTATIC void i4biprattach(void *);
 PSEUDO_SET(i4biprattach, i4b_ipr);
-static int i4biprioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data);
+static int i4biprioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data,
+		       struct ucred *cr);
 #else
 PDEVSTATIC void i4biprattach (void);
 static int i4biprioctl(struct ifnet *ifp, u_long cmd, caddr_t data);
@@ -524,7 +525,7 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
  *---------------------------------------------------------------------------*/
 #if defined(__DragonFly__) || defined(__FreeBSD__)
 static int
-i4biprioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data)
+i4biprioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data, struct ucred *cr)
 #else
 static int
 i4biprioctl(struct ifnet *ifp, u_long cmd, caddr_t data)

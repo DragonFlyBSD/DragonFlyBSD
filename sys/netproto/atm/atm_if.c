@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.6 2004/01/06 03:17:28 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.7 2004/04/01 07:27:17 joerg Exp $
  */
 
 /*
@@ -48,7 +48,7 @@ static int	atm_physif_ioctl (int, caddr_t, caddr_t);
 #if (defined(BSD) && (BSD >= 199306))
 static int	atm_netif_rtdel (struct radix_node *, void *);
 #endif
-static int	atm_if_ioctl (struct ifnet *, u_long, caddr_t);
+static int	atm_if_ioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 static int	atm_ifparse (char *, char *, int, int *);
 
 /*
@@ -1024,10 +1024,7 @@ atm_ifoutput(ifp, m, dst)
  *	error		errno value
  */
 static int
-atm_if_ioctl(ifp, cmd, data)
-	struct ifnet *ifp;
-	u_long	cmd;
-	caddr_t data;
+atm_if_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	register struct ifreq *ifr = (struct ifreq *)data;
 	struct atm_nif	*nip = (struct atm_nif *)ifp;

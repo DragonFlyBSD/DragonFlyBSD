@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/if_ic.c,v 1.8 1999/12/29 04:35:39 peter Exp $
- * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.6 2004/01/06 03:17:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.7 2004/04/01 07:27:16 joerg Exp $
  */
 
 /*
@@ -91,7 +91,7 @@ static devclass_t ic_devclass;
 static int icprobe(device_t);
 static int icattach(device_t);
 
-static int icioctl(struct ifnet *, u_long, caddr_t);
+static int icioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static int icoutput(struct ifnet *, struct mbuf *, struct sockaddr *,
 		struct rtentry *);
 
@@ -156,7 +156,7 @@ icattach(device_t dev)
  * iciotcl()
  */
 static int
-icioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
+icioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
     device_t icdev = devclass_get_device(ic_devclass, ifp->if_dunit);
     device_t parent = device_get_parent(icdev);

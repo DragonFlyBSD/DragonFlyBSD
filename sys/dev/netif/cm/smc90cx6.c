@@ -1,6 +1,6 @@
 /*	$NetBSD: smc90cx6.c,v 1.38 2001/07/07 15:57:53 thorpej Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6.c,v 1.1.2.3 2003/02/05 18:42:14 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.7 2004/02/13 02:44:47 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.8 2004/04/01 07:27:16 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -144,7 +144,7 @@ devclass_t cm_devclass;
 void	cm_init (void *);
 void	cm_reset (struct cm_softc *);
 void	cm_start (struct ifnet *);
-int	cm_ioctl (struct ifnet *, unsigned long, caddr_t);
+int	cm_ioctl (struct ifnet *, unsigned long, caddr_t, struct ucred *);
 void	cm_watchdog (struct ifnet *);
 void	cm_srint (void *vsc);
 static	void cm_tint (struct cm_softc *, int);
@@ -971,10 +971,7 @@ cm_reconwatch(arg)
  * This code needs some work - it looks pretty ugly.
  */
 int
-cm_ioctl(ifp, command, data)
-	struct ifnet *ifp;
-	u_long command;
-	caddr_t data;
+cm_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct cm_softc *sc;
 	struct ifaddr *ifa;

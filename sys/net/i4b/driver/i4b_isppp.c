@@ -37,7 +37,7 @@
  *	$Id: i4b_isppp.c,v 1.44 2000/08/31 07:07:26 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_isppp.c,v 1.7.2.3 2003/02/06 14:50:53 gj Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.8 2004/03/15 20:08:40 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.9 2004/04/01 07:27:17 joerg Exp $
  *
  *	last edit-date: [Thu Aug 31 09:02:27 2000]
  *
@@ -178,7 +178,8 @@ struct i4bisppp_softc {
 } i4bisppp_softc[NI4BISPPP];
 
 static void	i4bisppp_init_linktab(int unit);
-static int	i4bisppp_ioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data);
+static int	i4bisppp_ioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data,
+			       struct ucred *cr);
 
 #if 0
 static void	i4bisppp_send(struct ifnet *ifp);
@@ -315,7 +316,8 @@ i4bispppattach()
  *	process ioctl
  *---------------------------------------------------------------------------*/
 static int
-i4bisppp_ioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data)
+i4bisppp_ioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data,
+	       struct ucred *cr)
 {
 	struct i4bisppp_softc *sc = ifp->if_softc;
 #if 0

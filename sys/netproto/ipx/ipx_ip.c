@@ -34,7 +34,7 @@
  *	@(#)ipx_ip.c
  *
  * $FreeBSD: src/sys/netipx/ipx_ip.c,v 1.24.2.2 2003/01/23 21:06:48 sam Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.9 2004/03/06 07:30:43 hsu Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.10 2004/04/01 07:27:17 joerg Exp $
  */
 
 /*
@@ -81,7 +81,8 @@ static struct	ifnet_en *ipxip_list;
 
 static	struct ifnet_en *ipxipattach(void);
 static	int ipxip_free(struct ifnet *ifp);
-static	int ipxipioctl(struct ifnet *ifp, u_long cmd, caddr_t data);
+static	int ipxipioctl(struct ifnet *ifp, u_long cmd, caddr_t data,
+		       struct ucred *cr);
 static	int ipxipoutput(struct ifnet *ifp, struct mbuf *m,
 			struct sockaddr *dst, struct rtentry *rt);
 static	void ipxip_rtchange(struct in_addr *dst);
@@ -126,10 +127,7 @@ ipxipattach()
  * Process an ioctl request.
  */
 static int
-ipxipioctl(ifp, cmd, data)
-	struct ifnet *ifp;
-	u_long cmd;
-	caddr_t data;
+ipxipioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	int error = 0;
 	struct ifreq *ifr;

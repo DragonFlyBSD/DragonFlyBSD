@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq_ifsubr.c,v 1.11.2.1 2000/08/02 22:39:30 peter Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.5 2004/02/13 02:44:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.6 2004/04/01 07:27:17 joerg Exp $
  *
  */
 
@@ -249,10 +249,7 @@ pdq_os_addr_fill(
 }
 
 int
-pdq_ifioctl(
-    struct ifnet *ifp,
-    ioctl_cmd_t cmd,
-    caddr_t data)
+pdq_ifioctl(struct ifnet *ifp, ioctl_cmd_t cmd, caddr_t data, struct ucred *cr)
 {
     pdq_softc_t *sc = (pdq_softc_t *) ((caddr_t) ifp - offsetof(pdq_softc_t, sc_ac.ac_if));
     int s, error = 0;

@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.7 2004/03/14 15:36:49 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.8 2004/04/01 07:27:16 joerg Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -65,7 +65,7 @@ static struct el_softc {
 /* Prototypes */
 static int el_attach(struct isa_device *);
 static void el_init(void *);
-static int el_ioctl(struct ifnet *,u_long,caddr_t);
+static int el_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static int el_probe(struct isa_device *);
 static void el_start(struct ifnet *);
 static void el_reset(void *);
@@ -599,10 +599,7 @@ elget(buf, totlen, ifp)
  *	pretty ugly.
  */
 static int
-el_ioctl(ifp, command, data)
-	struct ifnet *ifp;
-	u_long command;
-	caddr_t data;
+el_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	int s, error = 0;
 

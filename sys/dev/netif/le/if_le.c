@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.8 2004/03/14 15:36:50 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.9 2004/04/01 07:27:16 joerg Exp $
  */
 
 /*
@@ -222,7 +222,8 @@ struct le_softc {
 static int le_probe(struct isa_device *dvp);
 static int le_attach(struct isa_device *dvp);
 static ointhand2_t le_intr;
-static int le_ioctl(struct ifnet *ifp, u_long command, caddr_t data);
+static int le_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
+		    struct ucred *cr);
 static void le_input(le_softc_t *sc, caddr_t seg1, size_t total_len,
 		     size_t len2, caddr_t seg2);
 static void le_multi_filter(le_softc_t *sc);
@@ -430,10 +431,7 @@ le_input(
 }
 
 static int
-le_ioctl(
-    struct ifnet *ifp,
-    u_long cmd,
-    caddr_t data)
+le_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
     le_softc_t *sc = ifp->if_softc;
     int s, error = 0;
