@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.6 2003/10/22 01:01:16 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.7 2003/11/08 05:38:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -154,8 +154,12 @@ lwkt_waitmsg(lwkt_msg_t msg)
     if ((msg->ms_flags & (MSGF_DONE|MSGF_REPLY)) == MSGF_DONE)
 	return(msg->ms_error);
 
+    /*
+     * We must own the reply port to safely mess with it's contents.
+     */
     port = msg->ms_reply_port;
-    KKASSERT(port->mp_td == curthread);	/* for now */
+    KKASSERT(port->mp_td == curthread);
+
     crit_enter();
     if ((msg->ms_flags & MSGF_DONE) == 0) {
 	port->mp_flags |= MSGPORTF_WAITING;
@@ -211,10 +215,10 @@ lwkt_init_port(lwkt_port_t port, thread_t td)
  *	If MSGF_ASYNC is not set we do not bother queueing the message, we
  *	just set the DONE bit.  
  *
+ *	This inline must be entered with a critical section already held.
  *	Note that the IPIQ callback function (*_remote) is entered with a
- *	critical section already held.
+ *	critical section already held, and we obtain one in lwkt_replyport().
  */
-
 static __inline
 void
 _lwkt_replyport(lwkt_port_t port, lwkt_msg_t msg)
@@ -238,7 +242,6 @@ lwkt_replyport_remote(lwkt_msg_t msg)
     _lwkt_replyport(msg->ms_reply_port, msg);
 }
 
-
 void
 lwkt_replyport(lwkt_port_t port, lwkt_msg_t msg)
 {
@@ -261,6 +264,11 @@ lwkt_replyport(lwkt_port_t port, lwkt_msg_t msg)
  *	Queue a message to the target port and wakeup the thread owning it.
  *	This function always returns EASYNC and may be assigned to a
  *	message port's mp_beginmsg function vector.
+ *
+ *	You must already be in a critical section when calling
+ *	the inline function.  The _remote function will be in a critical
+ *	section due to being called from the IPI, and lwkt_putport() enters
+ *	a critical section.
  */
 static
 __inline
@@ -382,6 +390,10 @@ lwkt_getport(lwkt_port_t port)
  *
  *	Retrieve the next message from the port's message queue, block until
  *	a message is ready.  This function never returns NULL.
+ *
+ *	Note that the API does not currently support multiple threads waiting
+ * 	on a port.  By virtue of owning the port it is controlled by our
+ *	cpu and we can safely manipulate it's contents.
  */
 void *
 lwkt_waitport(lwkt_port_t port)
