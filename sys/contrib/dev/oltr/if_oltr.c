@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.9 2004/02/12 22:38:59 joerg Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.10 2004/02/12 23:04:08 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -51,7 +51,7 @@
 #include <net/if_media.h>
 #include <net/iso88025.h>
 
-#if (NBPFILTER > 0)
+#if defined(__DragonFly__) || (NBPFILTER > 0)
 #include <net/bpf.h>
 #endif
 
