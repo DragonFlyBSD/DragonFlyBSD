@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/forums.cgi,v 1.6 2004/01/26 21:49:23 justin Exp $
+# $DragonFly: site/data/main/Attic/forums.cgi,v 1.7 2004/02/17 14:04:36 justin Exp $
 
 $TITLE(DragonFly - Forums)
 <P>
@@ -40,7 +40,8 @@ To subscribe to a mailing list, please read
 <A HREF="misc/bestserv1.html">bestserv1.html</A>, then send a subscription request
 to the appropriate list email address as shown below.  Please use the test
 list for experimentation and remember to unsubscribe from it when you are done
-(unless you want to see other people's test messages!).
+(unless you want to see other people's test messages!).  Messages that 
+include HTML sent to any of the lists will be blocked as spam.
 <UL>
     <P>Bug Reporting - bugs-request at lists.dragonflybsd.org
     <BR>Kernel Related - kernel-request at lists.dragonflybsd.org
