@@ -32,10 +32,10 @@
  *
  * @(#)if.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/if.c,v 1.32.2.9 2001/09/17 14:35:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/if.c,v 1.5 2004/01/06 03:17:21 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/if.c,v 1.6 2004/08/19 23:35:45 joerg Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
