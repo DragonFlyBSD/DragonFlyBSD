@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/Makefile.inc,v 1.63 2002/06/04 19:45:08 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile.inc,v 1.9 2004/04/07 17:48:03 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile.inc,v 1.10 2004/05/15 16:17:57 joerg Exp $
 
 BINDIR?=/usr/libexec/gcc3
 MY_CCVER=gcc3
@@ -47,7 +47,8 @@ CFLAGS+=	-I${.CURDIR}/../cc_tools
 # This must go after the -I for cc_tools to resolve ambiguities for hash.h
 # correctly.
 CFLAGS+=	-I${GCCDIR} -I${GCCDIR}/include 
-CFLAGS+=	-I${GCCDIR}/gcc -I${GCCDIR}/gcc/config
+CFLAGS+=	-I${GCCDIR}/gcc -I${.OBJDIR}/../cc_int/config \
+		-I${GCCDIR}/gcc/config
 
 
 .if exists(${.OBJDIR}/../cc_int)
