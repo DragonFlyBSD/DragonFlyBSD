@@ -26,7 +26,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.26 2004/07/04 22:44:27 eirikn Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.27 2004/07/15 02:37:33 hmp Exp $
  */
 
 #ifdef _KERNEL
@@ -305,8 +305,7 @@ lwkt_replyport_remote(lwkt_msg_t msg)
 
 /*
  * This function is called in the context of the target to reply a message.
- * Note that the lwkt_replymsg() inline has already set MSGF_REPLY1 and
- * entered a critical section for us.
+ * The critical section protects us from IPIs on the this CPU.
  */
 
 void
