@@ -1,5 +1,5 @@
 /*	$NetBSD: getopt_long.c,v 1.16 2003/10/27 00:12:42 lukem Exp $	*/
-/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.3 2005/01/10 15:38:16 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.4 2005/01/10 16:45:15 joerg Exp $ */
 
 /*-
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -69,6 +69,8 @@ char    *optarg;		/* argument associated with option */
 
 static int getopt_internal(int, char * const *, const char *, int);
 static int getopt_internal_short(int, char * const *, const char *, int);
+static int getopt_long_internal(int, char * const *, const char *,
+				const struct option *, int *, int);
 static int gcd(int, int);
 static void permute_args(int, int, int, char * const *);
 
@@ -238,6 +240,9 @@ start:
 				return -2;
 			}
 		}
+		if (long_support == 2 &&
+		    (place[1] || strchr(options, *place) == NULL))
+			return -3;
 	}
 	return getopt_internal_short(nargc, nargv, options, long_support);
 }
@@ -302,36 +307,17 @@ getopt_internal_short(int nargc, char * const *nargv, const char *options,
 	/* dump back option letter */
 	return optchar;
 }
-
-#ifdef REPLACE_GETOPT
-/*
- * getopt --
- *	Parse argc/argv argument vector.
- *
- * [eventually this will replace the real getopt]
- */
-int
-getopt(int nargc, char * const *nargv, const char *options)
-{
-	int retval;
-
-	return getopt_internal(nargc, nargv, options, 0);
-}
-#endif
-
-/*
- * getopt_long --
- *	Parse argc/argv argument vector.
- */
-int
-getopt_long(int nargc, char * const *nargv, const char *options,
-	    const struct option *long_options, int *idx)
+static int
+getopt_long_internal(int nargc, char * const *nargv, const char *options,
+		     const struct option *long_options, int *idx, int long_only)
 {
 	int retval;
 
 	/* idx may be NULL */
 
-	if ((retval = getopt_internal(nargc, nargv, options, 1)) == -2) {
+	retval = getopt_internal(nargc, nargv, options, long_only ? 2 : 1);
+recheck:
+	if (retval == -2 || retval == -3) {
 		char *current_argv, *has_equal;
 		size_t current_argv_len;
 		int i, match;
@@ -420,6 +406,11 @@ getopt_long(int nargc, char * const *nargv, const char *options,
 				--optind;
 				return BADARG;
 			}
+		} else if (retval == -3) {
+			--optind;
+			retval = getopt_internal_short(nargc, nargv,
+			    options, long_only ? 2 : 1);
+			goto recheck;
 		} else {			/* unknown option */
 			if (PRINT_ERROR)
 				warnx(illoptstring, current_argv);
@@ -435,4 +426,46 @@ getopt_long(int nargc, char * const *nargv, const char *options,
 			*idx = match;
 	}
 	return retval;
+}
+
+#ifdef REPLACE_GETOPT
+/*
+ * getopt --
+ *	Parse argc/argv argument vector.
+ *
+ * [eventually this will replace the real getopt]
+ */
+int
+getopt(int nargc, char * const *nargv, const char *options)
+{
+	int retval;
+
+	return getopt_internal(nargc, nargv, options, 0);
+}
+#endif
+
+/*
+ * getopt_long --
+ *	Parse argc/argv argument vector.
+ */
+
+int
+getopt_long(int nargc, char * const *nargv, const char *options,
+	    const struct option *long_options, int *idx)
+{
+	return getopt_long_internal(nargc, nargv, options, long_options,
+				    idx, 0);
+}
+
+/*
+ * getopt_long_only --
+ *	Parse argc/argv argument vector.
+ *	Prefers long options over short options for single dash arguments.
+ */
+
+int getopt_long_only(int nargc, char * const *nargv, const char *options,
+	    const struct option *long_options, int *idx)
+{
+	return getopt_long_internal(nargc, nargv, options, long_options,
+				    idx, 1);
 }

@@ -1,5 +1,5 @@
 /*	$NetBSD: getopt.h,v 1.5 2003/04/28 23:16:13 bjh21 Exp $	*/
-/* 	$DragonFly: src/include/getopt.h,v 1.1 2004/01/31 13:38:48 joerg Exp $ */
+/* 	$DragonFly: src/include/getopt.h,v 1.2 2005/01/10 16:45:15 joerg Exp $ */
 
 /*-
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -67,6 +67,8 @@ struct option {
 __BEGIN_DECLS
 int	getopt_long(int, char * const *, const char *,
 		    const struct option *, int *);
+int	getopt_long_only(int, char * const *, const char *,
+			 const struct option *, int *);
 __END_DECLS
  
 #endif /* !_GETOPT_H_ */
