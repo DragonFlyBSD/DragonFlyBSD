@@ -35,7 +35,7 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.5 2003/08/20 09:56:32 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.6 2004/03/13 03:13:53 dillon Exp $
  */
 
 #ifndef _NFS_NFS_H_
@@ -357,14 +357,15 @@ struct nfsreq {
 extern TAILQ_HEAD(nfs_reqq, nfsreq) nfs_reqq;
 
 /* Flag values for r_flags */
-#define R_TIMING	0x01		/* timing request (in mntp) */
-#define R_SENT		0x02		/* request has been sent */
-#define	R_SOFTTERM	0x04		/* soft mnt, too many retries */
-#define	R_INTR		0x08		/* intr mnt, signal pending */
-#define	R_SOCKERR	0x10		/* Fatal error on socket */
-#define	R_TPRINTFMSG	0x20		/* Did a tprintf msg. */
-#define	R_MUSTRESEND	0x40		/* Must resend request */
-#define	R_GETONEREP	0x80		/* Probe for one reply only */
+#define R_TIMING	0x0001		/* timing request (in mntp) */
+#define R_SENT		0x0002		/* request has been sent */
+#define	R_SOFTTERM	0x0004		/* soft mnt, too many retries */
+#define	R_INTR		0x0008		/* intr mnt, signal pending */
+#define	R_SOCKERR	0x0010		/* Fatal error on socket */
+#define	R_TPRINTFMSG	0x0020		/* Did a tprintf msg. */
+#define	R_MUSTRESEND	0x0040		/* Must resend request */
+#define	R_GETONEREP	0x0080		/* Probe for one reply only */
+#define R_MASKTIMER	0x0100		/* Timer should ignore this req */
 
 /*
  * A list of nfssvc_sock structures is maintained with all the sockets

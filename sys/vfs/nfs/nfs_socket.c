@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.13 2004/03/05 16:57:16 hsu Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.14 2004/03/13 03:13:53 dillon Exp $
  */
 
 /*
@@ -63,6 +63,7 @@
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <sys/thread2.h>
 
 #include "rpcv2.h"
 #include "nfsproto.h"
@@ -871,10 +872,12 @@ nfsmout:
 					if (nmp->nm_cwnd > NFS_MAXCWND)
 						nmp->nm_cwnd = NFS_MAXCWND;
 				}
+				crit_enter();	/* nfs_timer interlock*/
 				if (rep->r_flags & R_SENT) {
 					rep->r_flags &= ~R_SENT;
 					nmp->nm_sent -= NFS_CWNDSCALE;
 				}
+				crit_exit();
 				/*
 				 * Update rtt using a gain of 0.125 on the mean
 				 * and a gain of 0.25 on the deviation.
@@ -1027,18 +1030,23 @@ tryagain:
 		rep->r_retry = NFS_MAXREXMIT + 1;	/* past clip limit */
 	rep->r_rtt = rep->r_rexmit = 0;
 	if (proct[procnum] > 0)
-		rep->r_flags = R_TIMING;
+		rep->r_flags = R_TIMING | R_MASKTIMER;
 	else
-		rep->r_flags = 0;
+		rep->r_flags = R_MASKTIMER;
 	rep->r_mrep = NULL;
 
 	/*
 	 * Do the client side RPC.
 	 */
 	nfsstats.rpcrequests++;
+
 	/*
 	 * Chain request into list of outstanding requests. Be sure
-	 * to put it LAST so timer finds oldest requests first.
+	 * to put it LAST so timer finds oldest requests first.  Note
+	 * that R_MASKTIMER is set at the moment to prevent any timer
+	 * action on this request while we are still doing processing on
+	 * it below.  splsoftclock() primarily protects nm_sent.  Note
+	 * that we may block in this code so there is no atomicy guarentee.
 	 */
 	s = splsoftclock();
 	TAILQ_INSERT_TAIL(&nfs_reqq, rep, r_chain);
@@ -1054,7 +1062,6 @@ tryagain:
 	if (nmp->nm_so && (nmp->nm_sotype != SOCK_DGRAM ||
 		(nmp->nm_flag & NFSMNT_DUMBTIMR) ||
 		nmp->nm_sent < nmp->nm_cwnd)) {
-		splx(s);
 		if (nmp->nm_soflags & PR_CONNREQUIRED)
 			error = nfs_sndlock(rep);
 		if (!error) {
@@ -1068,13 +1075,15 @@ tryagain:
 			rep->r_flags |= R_SENT;
 		}
 	} else {
-		splx(s);
 		rep->r_rtt = -1;
 	}
 
 	/*
-	 * Wait for the reply from our send or the timer's.
+	 * Let the timer do what it will with the request, then
+	 * wait for the reply from our send or the timer's.
 	 */
+	rep->r_flags &= ~R_MASKTIMER;
+	splx(s);
 	if (!error || error == EPIPE)
 		error = nfs_reply(rep);
 
@@ -1083,15 +1092,15 @@ tryagain:
 	 */
 	s = splsoftclock();
 	TAILQ_REMOVE(&nfs_reqq, rep, r_chain);
-	splx(s);
 
 	/*
 	 * Decrement the outstanding request count.
 	 */
 	if (rep->r_flags & R_SENT) {
-		rep->r_flags &= ~R_SENT;	/* paranoia */
+		rep->r_flags &= ~R_SENT;
 		nmp->nm_sent -= NFS_CWNDSCALE;
 	}
+	splx(s);
 
 	/*
 	 * If there was a successful reply and a tprintf msg.
@@ -1397,7 +1406,7 @@ nfs_timer(arg)
 	s = splnet();
 	for (rep = nfs_reqq.tqh_first; rep != 0; rep = rep->r_chain.tqe_next) {
 		nmp = rep->r_nmp;
-		if (rep->r_mrep || (rep->r_flags & R_SOFTTERM))
+		if (rep->r_mrep || (rep->r_flags & (R_SOFTTERM|R_MASKTIMER)))
 			continue;
 		if (nfs_sigintr(nmp, rep, rep->r_td)) {
 			nfs_softterm(rep);
@@ -1515,19 +1524,21 @@ nfs_nmcancelreqs(nmp)
 	struct nfsmount *nmp;
 {
 	struct nfsreq *req;
-	int i, s;
+	int i, s1, s2;
 
-	s = splnet();
+	s1 = splnet();
+	s2 = splsoftclock();
 	TAILQ_FOREACH(req, &nfs_reqq, r_chain) {
 		if (nmp != req->r_nmp || req->r_mrep != NULL ||
 		    (req->r_flags & R_SOFTTERM))
 			continue;
 		nfs_softterm(req);
 	}
-	splx(s);
+	splx(s2);
+	splx(s1);
 
 	for (i = 0; i < 30; i++) {
-		s = splnet();
+		int s = splnet();
 		TAILQ_FOREACH(req, &nfs_reqq, r_chain) {
 			if (nmp == req->r_nmp)
 				break;
@@ -1544,6 +1555,9 @@ nfs_nmcancelreqs(nmp)
  * Flag a request as being about to terminate (due to NFSMNT_INT/NFSMNT_SOFT).
  * The nm_send count is decremented now to avoid deadlocks when the process in
  * soreceive() hasn't yet managed to send its own request.
+ *
+ * This routine must be called at splsoftclock() to protect r_flags and
+ * nm_sent.
  */
 
 static void
@@ -1605,9 +1619,9 @@ nfs_sndlock(struct nfsreq *rep)
 	if (rep->r_nmp->nm_flag & NFSMNT_INT)
 		slpflag = PCATCH;
 	while (*statep & NFSSTA_SNDLOCK) {
+		*statep |= NFSSTA_WANTSND;
 		if (nfs_sigintr(rep->r_nmp, rep, td))
 			return (EINTR);
-		*statep |= NFSSTA_WANTSND;
 		(void) tsleep((caddr_t)statep, slpflag,
 			"nfsndlck", slptimeo);
 		if (slpflag == PCATCH) {
@@ -1646,6 +1660,15 @@ nfs_rcvlock(rep)
 {
 	int *statep = &rep->r_nmp->nm_state;
 	int slpflag, slptimeo = 0;
+
+	/*
+	 * Unconditionally check for completion in case another nfsiod
+	 * get the packet while the caller was blocked, before the caller
+	 * called us.  Packet reception is handled by mainline code which
+	 * is protected by the BGL at the moment.
+	 */
+	if (rep->r_mrep != NULL)
+		return (EALREADY);
 
 	if (rep->r_nmp->nm_flag & NFSMNT_INT)
 		slpflag = PCATCH;
