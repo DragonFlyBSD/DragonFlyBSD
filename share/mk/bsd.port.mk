@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.9 2004/01/25 16:52:34 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.10 2004/01/25 19:09:39 joerg Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -61,7 +61,7 @@ TARGETS+=	install
 TARGETS+=	tags
 
 .undef PORTSDIR
-.if !defined(CHILD_DEPENDS)
+.if !make(package-depends-list) && !make(all-depends-list)
 .BEGIN:
 	@echo "WARNING, USING DRAGONFLY OVERRIDE ${DFPORTSDIR}/${PORTPATH}"
 	cd ${DFPORTSDIR}/${PORTPATH} && ${MAKE} -B ${.TARGETS}
