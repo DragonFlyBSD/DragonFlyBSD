@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/ac97.c,v 1.49 2003/11/11 22:15:17 kuriyama Exp $
- * $DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.9 2004/01/22 07:27:21 asmodai Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.10 2004/01/22 07:29:18 asmodai Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -33,7 +33,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.9 2004/01/22 07:27:21 asmodai Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.10 2004/01/22 07:29:18 asmodai Exp $");
 
 MALLOC_DEFINE(M_AC97, "ac97", "ac97 codec");
 
@@ -204,6 +204,7 @@ static struct ac97_codecid ac97codecid[] = {
 	{ 0x574d4c03, 0x00, 0, "WM9703/4/7/8",	0 },
 	{ 0x574d4c04, 0x00, 0, "WM9704Q",	0 },
 	{ 0x574d4c05, 0x00, 0, "WM9705/10",	0 },
+	{ 0x574d4d09, 0x00, 0, "WM9709",	0 },
 	{ 0x574d4c12, 0x00, 0, "WM9711/12",	0 }, /* XXX: patch needed */
 	{ 0x57454301, 0x00, 0, "W83971D",	0 },
 	{ 0x594d4800, 0x00, 0, "YMF743",	0 },
