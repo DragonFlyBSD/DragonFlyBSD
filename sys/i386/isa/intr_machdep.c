@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.8 2003/07/11 01:23:23 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.9 2003/07/11 22:30:07 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -962,7 +962,7 @@ ithread_done(int irq)
     lwkt_deschedule_self();
     INTREN(mask);
     if (gd->gd_ipending & mask) {
-	atomic_clear_int(&gd->gd_ipending, mask);
+	atomic_clear_int_nonlocked(&gd->gd_ipending, mask);
 	INTRDIS(mask);
 	lwkt_schedule_self();
     } else {

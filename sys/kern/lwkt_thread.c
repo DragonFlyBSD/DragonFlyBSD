@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.21 2003/07/11 17:42:10 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.22 2003/07/11 22:30:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -381,7 +381,7 @@ again:
 		/*
 		 * Target needs MP lock and we couldn't get it, try
 		 * to locate a thread which does not need the MP lock
-		 * to run.
+		 * to run.  If we cannot locate a thread spin in idle.
 		 */
 		u_int32_t rqmask = gd->gd_runqmask;
 		while (rqmask) {
@@ -410,7 +410,13 @@ again:
 	    TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
 #endif
 	} else {
+	    /*
+	     * Nothing to run but we may still need the BGL to deal with
+	     * pending interrupts, spin in idle if so.
+	     */
 	    ntd = &gd->gd_idlethread;
+	    if (gd->gd_reqpri)
+		ntd->td_flags |= TDF_IDLE_NOHLT;
 	}
     }
     KASSERT(ntd->td_pri >= TDPRI_CRIT,

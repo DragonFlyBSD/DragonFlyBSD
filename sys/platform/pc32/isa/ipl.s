@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.8 2003/07/10 04:47:54 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.9 2003/07/11 22:30:07 dillon Exp $
  */
 
 
@@ -115,6 +115,9 @@ doreti_next:
 2:
 	/*
 	 * Nothing left to do, finish up.  Interrupts are still disabled.
+	 * If our temporary cpl mask is 0 then we have processed everything
+	 * (including any pending fast ints requiring the MP lock), and
+	 * we can clear reqpri.
 	 */
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)	/* interlocked with cli */
 	testl	%eax,%eax
@@ -183,7 +186,7 @@ doreti_fast:
 	jmp	doreti_next
 1:
 	btsl	%ecx, PCPU(fpending)	/* oops, couldn't get the MP lock */
-	popl	%eax
+	popl	%eax			/* add to temp. cpl mask to ignore */
 	orl	PCPU(fpending),%eax
 	jmp	doreti_next
 
@@ -287,6 +290,12 @@ splz_next:
 	jnz	splz_intr
 
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)
+	/*
+	 * Nothing left to do, finish up.  Interrupts are still disabled.
+	 * If our temporary cpl mask is 0 then we have processed everything
+	 * (including any pending fast ints requiring the MP lock), and
+	 * we can clear reqpri.
+	 */
 	testl	%eax,%eax
 	jnz	5f
 	movl	$0,PCPU(reqpri)
