@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.19 2004/11/15 14:29:00 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.20 2004/11/16 20:09:26 joerg Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -26,6 +26,14 @@ UNAME_r?=4.8-CURRENT
 .if defined(USE_RC_SUBR)
 .undef USE_RC_SUBR
 RC_SUBR=	/etc/rc.subr
+.endif
+
+.if defined(USE_GCC)
+.  if ${USE_GCC} == 3.4
+.undef USE_GCC
+CCVER=	gcc34
+.makeenv CCVER
+.  endif
 .endif
 
 # If the port does not exist in /usr/dfports/<portpath> use the original
