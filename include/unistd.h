@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.35.2.10 2002/04/15 12:52:28 nectar Exp $
- * $DragonFly: src/include/unistd.h,v 1.8 2004/09/19 17:25:42 joerg Exp $
+ * $DragonFly: src/include/unistd.h,v 1.9 2004/11/07 21:38:01 liamfoy Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -42,7 +42,7 @@
 #include <sys/types.h>
 #include <sys/unistd.h>
 
-#define	 STDIN_FILENO	0	/* standard input file descriptor */
+#define	STDIN_FILENO	0	/* standard input file descriptor */
 #define	STDOUT_FILENO	1	/* standard output file descriptor */
 #define	STDERR_FILENO	2	/* standard error file descriptor */
 
