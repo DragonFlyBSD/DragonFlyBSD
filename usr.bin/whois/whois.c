@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)whois.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/whois/whois.c,v 1.15.2.11 2003/02/25 20:59:41 roberto Exp $
- * $DragonFly: src/usr.bin/whois/whois.c,v 1.6 2005/01/09 13:30:06 liamfoy Exp $
+ * $DragonFly: src/usr.bin/whois/whois.c,v 1.7 2005/02/17 11:53:33 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -82,7 +82,7 @@ const char *ip_whois[] = { LNICHOST, RNICHOST, PNICHOST, BNICHOST, NULL };
 const char *port = DEFAULT_PORT;
 
 static char	*choose_server(const char *);
-static struct addrinfo *gethostinfo(char const *host, int exit_on_error);
+static struct addrinfo *gethostinfo(const char *host, int exit_on_error);
 static void	s_asprintf(char **ret, const char *format, ...);
 static void	usage(void);
 static void	whois(const char *, const char *, int);
@@ -220,7 +220,7 @@ choose_server(const char *domain)
 }
 
 static struct addrinfo *
-gethostinfo(char const *host, int exit_on_error)
+gethostinfo(const char *host, int exit_on_error)
 {
 	struct addrinfo hints, *res;
 	int error;
@@ -231,7 +231,10 @@ gethostinfo(char const *host, int exit_on_error)
 	hints.ai_socktype = SOCK_STREAM;
 	error = getaddrinfo(host, port, &hints, &res);
 	if (error) {
-		warnx("%s: %s", host, gai_strerror(error));
+		if (error == EAI_SERVICE)
+			warnx("bad port: %s", port);
+		else
+			warnx("%s: %s", host, gai_strerror(error));
 		if (exit_on_error)
 			exit(EX_NOHOST);
 		return (NULL);
