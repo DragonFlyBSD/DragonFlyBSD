@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.8 2004/01/20 05:04:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.9 2004/02/12 23:36:28 joerg Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -90,7 +90,7 @@ static int smbfs_unmount(struct mount *, int, struct thread *);
 static int smbfs_init(struct vfsconf *vfsp);
 static int smbfs_uninit(struct vfsconf *vfsp);
 
-#if __FreeBSD_version < 400009
+#if defined(__FreeBSD__) && __FreeBSD_version < 400009
 static int smbfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp);
 static int smbfs_fhtovp(struct mount *, struct fid *,
 			struct sockaddr *, struct vnode **, int *,
@@ -106,7 +106,7 @@ static struct vfsops smbfs_vfsops = {
 	smbfs_quotactl,
 	smbfs_statfs,
 	smbfs_sync,
-#if __FreeBSD_version > 400008
+#if defined(__DragonFly__) || __FreeBSD_version > 400008
 	vfs_stdvget,
 	vfs_stdfhtovp,		/* shouldn't happen */
 	vfs_stdcheckexp,
@@ -466,7 +466,7 @@ loop:
 	return (allerror);
 }
 
-#if __FreeBSD_version < 400009
+#if defined(__FreeBSD__) && __FreeBSD_version < 400009
 /*
  * smbfs flat namespace lookup. Unsupported.
  */

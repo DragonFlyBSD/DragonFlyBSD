@@ -35,7 +35,7 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
- * $DragonFly: src/sys/sys/cdefs.h,v 1.6 2003/11/10 06:12:17 dillon Exp $
+ * $DragonFly: src/sys/sys/cdefs.h,v 1.7 2004/02/12 23:36:28 joerg Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_
@@ -231,7 +231,7 @@
 #endif
 
 /* Compiler-dependent macros that rely on FreeBSD-specific extensions. */
-#if __FreeBSD_cc_version >= 300001
+#if defined(__DragonFly__) || __FreeBSD_cc_version >= 300001
 #define	__printf0like(fmtarg, firstvararg) \
 	    __attribute__((__format__ (__printf0__, fmtarg, firstvararg)))
 #else
