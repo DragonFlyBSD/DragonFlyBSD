@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/support.s,v 1.67.2.5 2001/08/15 01:23:50 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.5 2003/06/18 18:29:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.6 2003/06/28 02:09:47 dillon Exp $
  */
 
 #include "npx.h"
@@ -1544,9 +1544,7 @@ ENTRY(lgdt)
 	mov	%ax,%es
 	mov	%ax,%gs
 	mov	%ax,%ss
-#ifdef SMP
 	movl	$KPSEL,%eax
-#endif
 	mov	%ax,%fs
 
 	/* reload code selector by turning return into intersegmental return */

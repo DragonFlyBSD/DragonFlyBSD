@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.11 2003/06/27 03:30:37 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.12 2003/06/28 02:09:47 dillon Exp $
  */
 
 /*
@@ -177,9 +177,7 @@ static struct pv_entry *pvinit;
  * All those kernel PT submaps that BSD is so fond of
  */
 pt_entry_t *CMAP1 = 0;
-static pt_entry_t *CMAP2, *ptmmap;
 caddr_t CADDR1 = 0, ptvmmap = 0;
-static caddr_t CADDR2;
 static pt_entry_t *msgbufmap;
 struct msgbuf *msgbufp=0;
 
@@ -189,12 +187,7 @@ struct msgbuf *msgbufp=0;
 static pt_entry_t *pt_crashdumpmap;
 static caddr_t crashdumpmap;
 
-#ifdef SMP
 extern pt_entry_t *SMPpt;
-#else
-static pt_entry_t *PMAP1 = 0;
-static unsigned *PADDR1 = 0;
-#endif
 
 static PMAP_INLINE void	free_pv_entry __P((pv_entry_t pv));
 static unsigned * get_ptbase __P((pmap_t pmap));
@@ -285,9 +278,7 @@ pmap_bootstrap(firstaddr, loadaddr)
 {
 	vm_offset_t va;
 	pt_entry_t *pte;
-#ifdef SMP
 	struct globaldata *gd;
-#endif
 	int i;
 
 	avail_start = firstaddr;
@@ -337,18 +328,11 @@ pmap_bootstrap(firstaddr, loadaddr)
 	 * CMAP1/CMAP2 are used for zeroing and copying pages.
 	 */
 	SYSMAP(caddr_t, CMAP1, CADDR1, 1)
-	SYSMAP(caddr_t, CMAP2, CADDR2, 1)
 
 	/*
 	 * Crashdump maps.
 	 */
 	SYSMAP(caddr_t, pt_crashdumpmap, crashdumpmap, MAXDUMPPGS);
-
-	/*
-	 * ptvmmap is used for reading arbitrary physical pages via /dev/mem.
-	 * XXX ptmmap is not used.
-	 */
-	SYSMAP(caddr_t, ptmmap, ptvmmap, 1)
 
 	/*
 	 * msgbufp is used to map the system message buffer.
@@ -357,25 +341,17 @@ pmap_bootstrap(firstaddr, loadaddr)
 	SYSMAP(struct msgbuf *, msgbufmap, msgbufp,
 	       atop(round_page(MSGBUF_SIZE)))
 
-#if !defined(SMP)
-	/*
-	 * ptemap is used for pmap_pte_quick
-	 */
-	SYSMAP(unsigned *, PMAP1, PADDR1, 1);
-#endif
-
 	virtual_avail = va;
 
-	*(int *) CMAP1 = *(int *) CMAP2 = 0;
+	*(int *) CMAP1 = 0;
 	for (i = 0; i < NKPT; i++)
 		PTD[i] = 0;
 
-	pgeflag = 0;
-#if !defined(SMP)			/* XXX - see also mp_machdep.c */
-	if (cpu_feature & CPUID_PGE) {
+	/* XXX - see also mp_machdep.c */
+	if (ncpus == 1 && (cpu_feature & CPUID_PGE))
 		pgeflag = PG_G;
-	}
-#endif
+	else
+		pgeflag = 0;
 	
 /*
  * Initialize the 4MB page size flag
@@ -399,34 +375,35 @@ pmap_bootstrap(firstaddr, loadaddr)
 		ptditmp |= PG_V | PG_RW | PG_PS | PG_U | pgeflag;
 		pdir4mb = ptditmp;
 
-#if !defined(SMP)
-		/*
-		 * Enable the PSE mode.
-		 */
-		load_cr4(rcr4() | CR4_PSE);
+		if (ncpus == 1) {
+			/*
+			 * Enable the PSE mode.
+			 */
+			load_cr4(rcr4() | CR4_PSE);
 
-		/*
-		 * We can do the mapping here for the single processor
-		 * case.  We simply ignore the old page table page from
-		 * now on.
-		 */
-		/*
-		 * For SMP, we still need 4K pages to bootstrap APs,
-		 * PSE will be enabled as soon as all APs are up.
-		 */
-		PTD[KPTDI] = (pd_entry_t) ptditmp;
-		kernel_pmap->pm_pdir[KPTDI] = (pd_entry_t) ptditmp;
-		invltlb();
-#endif
+			/*
+			 * We can do the mapping here for the single processor
+			 * case.  We simply ignore the old page table page from
+			 * now on.
+			 */
+			/*
+			 * For SMP, we still need 4K pages to bootstrap APs,
+			 * PSE will be enabled as soon as all APs are up.
+			 */
+			PTD[KPTDI] = (pd_entry_t) ptditmp;
+			kernel_pmap->pm_pdir[KPTDI] = (pd_entry_t) ptditmp;
+			invltlb();
+		}
 	}
 #endif
-#ifdef SMP
+#ifdef APIC_IO
 	if (cpu_apic_address == 0)
 		panic("pmap_bootstrap: no local apic!");
 
 	/* local apic is mapped on last page */
 	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N | pgeflag |
 	    (cpu_apic_address & PG_FRAME));
+#endif
 
 	/* BSP does this itself, AP's get it pre-set */
 	gd = &CPU_prvspace[0].globaldata;
@@ -438,7 +415,6 @@ pmap_bootstrap(firstaddr, loadaddr)
 	gd->gd_prv_CADDR2 = CPU_prvspace[0].CPAGE2;
 	gd->gd_prv_CADDR3 = CPU_prvspace[0].CPAGE3;
 	gd->gd_prv_PADDR1 = (unsigned *)CPU_prvspace[0].PPAGE1;
-#endif
 
 	invltlb();
 }
@@ -640,11 +616,11 @@ get_ptbase(pmap)
  */
 
 static unsigned * 
-pmap_pte_quick(pmap, va)
-	register pmap_t pmap;
-	vm_offset_t va;
+pmap_pte_quick(pmap_t pmap, vm_offset_t va)
 {
+	struct globaldata *gd = mycpu;
 	unsigned pde, newpf;
+
 	if ((pde = (unsigned) pmap->pm_pdir[va >> PDRSHIFT]) != 0) {
 		unsigned frame = (unsigned) pmap->pm_pdir[PTDPTDI] & PG_FRAME;
 		unsigned index = i386_btop(va);
@@ -654,19 +630,11 @@ pmap_pte_quick(pmap, va)
 			return (unsigned *) PTmap + index;
 		}
 		newpf = pde & PG_FRAME;
-#ifdef SMP
-		if ( ((* (unsigned *) prv_PMAP1) & PG_FRAME) != newpf) {
-			* (unsigned *) prv_PMAP1 = newpf | PG_RW | PG_V;
-			cpu_invlpg(prv_PADDR1);
+		if ( ((* (unsigned *) gd->gd_prv_PMAP1) & PG_FRAME) != newpf) {
+			* (unsigned *) gd->gd_prv_PMAP1 = newpf | PG_RW | PG_V;
+			cpu_invlpg(gd->gd_prv_PADDR1);
 		}
-		return prv_PADDR1 + ((unsigned) index & (NPTEPG - 1));
-#else
-		if ( ((* (unsigned *) PMAP1) & PG_FRAME) != newpf) {
-			* (unsigned *) PMAP1 = newpf | PG_RW | PG_V;
-			invltlb_1pg((vm_offset_t) PADDR1);
-		}
-		return PADDR1 + ((unsigned) index & (NPTEPG - 1));
-#endif
+		return gd->gd_prv_PADDR1 + ((unsigned) index & (NPTEPG - 1));
 	}
 	return (0);
 }
@@ -1087,9 +1055,7 @@ pmap_pinit(pmap)
 	if ((ptdpg->flags & PG_ZERO) == 0)
 		bzero(pmap->pm_pdir, PAGE_SIZE);
 
-#ifdef SMP
 	pmap->pm_pdir[MPPTDI] = PTD[MPPTDI];
-#endif
 
 	/* install self-referential address mapping entry */
 	*(unsigned *) (pmap->pm_pdir + PTDPTDI) =
@@ -1147,9 +1113,7 @@ pmap_release_free_page(pmap, p)
 	 */
 	if (p->pindex == PTDPTDI) {
 		bzero(pde + KPTDI, nkpt * PTESIZE);
-#ifdef SMP
 		pde[MPPTDI] = 0;
-#endif
 		pde[APTDPTDI] = 0;
 		pmap_kremove((vm_offset_t) pmap->pm_pdir);
 	}
@@ -2653,39 +2617,25 @@ pmap_kernel()
  *	the page into KVM and using bzero to clear its contents.
  */
 void
-pmap_zero_page(phys)
-	vm_offset_t phys;
+pmap_zero_page(vm_offset_t phys)
 {
-#ifdef SMP
-	if (*(int *) prv_CMAP3)
+	struct globaldata *gd = mycpu;
+
+	if (*(int *)gd->gd_prv_CMAP3)
 		panic("pmap_zero_page: prv_CMAP3 busy");
 
-	*(int *) prv_CMAP3 = PG_V | PG_RW | (phys & PG_FRAME) | PG_A | PG_M;
-	cpu_invlpg(prv_CADDR3);
+	*(int *)gd->gd_prv_CMAP3 =
+		    PG_V | PG_RW | (phys & PG_FRAME) | PG_A | PG_M;
+	cpu_invlpg(gd->gd_prv_CADDR3);
 
 #if defined(I686_CPU)
 	if (cpu_class == CPUCLASS_686)
-		i686_pagezero(prv_CADDR3);
+		i686_pagezero(gd->gd_prv_CADDR3);
 	else
 #endif
-		bzero(prv_CADDR3, PAGE_SIZE);
+		bzero(gd->gd_prv_CADDR3, PAGE_SIZE);
 
-	*(int *) prv_CMAP3 = 0;
-#else
-	if (*(int *) CMAP2)
-		panic("pmap_zero_page: CMAP2 busy");
-
-	*(int *) CMAP2 = PG_V | PG_RW | (phys & PG_FRAME) | PG_A | PG_M;
-	invltlb_1pg((vm_offset_t)CADDR2);
-
-#if defined(I686_CPU)
-	if (cpu_class == CPUCLASS_686)
-		i686_pagezero(CADDR2);
-	else
-#endif
-		bzero(CADDR2, PAGE_SIZE);
-	*(int *) CMAP2 = 0;
-#endif
+	*(int *) gd->gd_prv_CMAP3 = 0;
 }
 
 /*
@@ -2700,36 +2650,22 @@ pmap_zero_page_area(phys, off, size)
 	int off;
 	int size;
 {
-#ifdef SMP
-	if (*(int *) prv_CMAP3)
+	struct globaldata *gd = mycpu;
+
+	if (*(int *) gd->gd_prv_CMAP3)
 		panic("pmap_zero_page: prv_CMAP3 busy");
 
-	*(int *) prv_CMAP3 = PG_V | PG_RW | (phys & PG_FRAME) | PG_A | PG_M;
-	cpu_invlpg(prv_CADDR3);
+	*(int *) gd->gd_prv_CMAP3 = PG_V | PG_RW | (phys & PG_FRAME) | PG_A | PG_M;
+	cpu_invlpg(gd->gd_prv_CADDR3);
 
 #if defined(I686_CPU)
 	if (cpu_class == CPUCLASS_686 && off == 0 && size == PAGE_SIZE)
-		i686_pagezero(prv_CADDR3);
+		i686_pagezero(gd->gd_prv_CADDR3);
 	else
 #endif
-		bzero((char *)prv_CADDR3 + off, size);
+		bzero((char *)gd->gd_prv_CADDR3 + off, size);
 
-	*(int *) prv_CMAP3 = 0;
-#else
-	if (*(int *) CMAP2)
-		panic("pmap_zero_page: CMAP2 busy");
-
-	*(int *) CMAP2 = PG_V | PG_RW | (phys & PG_FRAME) | PG_A | PG_M;
-	invltlb_1pg((vm_offset_t)CADDR2);
-
-#if defined(I686_CPU)
-	if (cpu_class == CPUCLASS_686 && off == 0 && size == PAGE_SIZE)
-		i686_pagezero(CADDR2);
-	else
-#endif
-		bzero((char *)CADDR2 + off, size);
-	*(int *) CMAP2 = 0;
-#endif
+	*(int *) gd->gd_prv_CMAP3 = 0;
 }
 
 /*
@@ -2743,43 +2679,23 @@ pmap_copy_page(src, dst)
 	vm_offset_t src;
 	vm_offset_t dst;
 {
-#ifdef SMP
-	if (*(int *) prv_CMAP1)
+	struct globaldata *gd = mycpu;
+
+	if (*(int *) gd->gd_prv_CMAP1)
 		panic("pmap_copy_page: prv_CMAP1 busy");
-	if (*(int *) prv_CMAP2)
+	if (*(int *) gd->gd_prv_CMAP2)
 		panic("pmap_copy_page: prv_CMAP2 busy");
 
-	*(int *) prv_CMAP1 = PG_V | (src & PG_FRAME) | PG_A;
-	*(int *) prv_CMAP2 = PG_V | PG_RW | (dst & PG_FRAME) | PG_A | PG_M;
+	*(int *) gd->gd_prv_CMAP1 = PG_V | (src & PG_FRAME) | PG_A;
+	*(int *) gd->gd_prv_CMAP2 = PG_V | PG_RW | (dst & PG_FRAME) | PG_A | PG_M;
 
-	cpu_invlpg(prv_CADDR1);
-	cpu_invlpg(prv_CADDR2);
+	cpu_invlpg(gd->gd_prv_CADDR1);
+	cpu_invlpg(gd->gd_prv_CADDR2);
 
-	bcopy(prv_CADDR1, prv_CADDR2, PAGE_SIZE);
+	bcopy(gd->gd_prv_CADDR1, gd->gd_prv_CADDR2, PAGE_SIZE);
 
-	*(int *) prv_CMAP1 = 0;
-	*(int *) prv_CMAP2 = 0;
-#else
-	if (*(int *) CMAP1 || *(int *) CMAP2)
-		panic("pmap_copy_page: CMAP busy");
-
-	*(int *) CMAP1 = PG_V | (src & PG_FRAME) | PG_A;
-	*(int *) CMAP2 = PG_V | PG_RW | (dst & PG_FRAME) | PG_A | PG_M;
-#if defined(I386_CPU)
-	if (cpu_class == CPUCLASS_386) {
-		invltlb();
-	} else
-#endif
-	{
-		invlpg((u_int)CADDR1);
-		invlpg((u_int)CADDR2);
-	}
-
-	bcopy(CADDR1, CADDR2, PAGE_SIZE);
-
-	*(int *) CMAP1 = 0;
-	*(int *) CMAP2 = 0;
-#endif
+	*(int *) gd->gd_prv_CMAP1 = 0;
+	*(int *) gd->gd_prv_CMAP2 = 0;
 }
 
 

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.3 2003/06/28 02:09:49 dillon Exp $
  */
 
 /*
@@ -243,22 +243,29 @@ invd(void)
 	__asm __volatile("invd");
 }
 
-#if defined(SMP) && defined(_KERNEL)
+#if defined(_KERNEL)
 
 /*
- * When using APIC IPI's, invlpg() is not simply the invlpg instruction
- * (this is a bug) and the inlining cost is prohibitive since the call
- * executes into the IPI transmission system.
+ * If we are not a true-SMP box then smp_invltlb() is a NOP.  Note that this
+ * will cause the invl*() functions to be equivalent to the cpu_invl*()
+ * functions.
  */
-void	invlpg		__P((u_int addr));
-void	invltlb		__P((void));
+#ifndef SMP
+#define smp_invltlb()
+#endif
 
+/*
+ * Invalidate a patricular VA on this cpu only
+ */
 static __inline void
 cpu_invlpg(void *addr)
 {
 	__asm __volatile("invlpg %0" : : "m" (*(char *)addr) : "memory");
 }
 
+/*
+ * Invalidate the TLB on this cpu only
+ */
 static __inline void
 cpu_invltlb(void)
 {
@@ -274,14 +281,19 @@ cpu_invltlb(void)
 #endif
 }
 
-#else /* !(SMP && _KERNEL) */
-
+/*
+ * Invalidate a patricular VA on all cpus
+ */
 static __inline void
 invlpg(u_int addr)
 {
 	__asm __volatile("invlpg %0" : : "m" (*(char *)addr) : "memory");
+	smp_invltlb();
 }
 
+/*
+ * Invalidate the TLB on all cpus
+ */
 static __inline void
 invltlb(void)
 {
@@ -292,12 +304,13 @@ invltlb(void)
 	 */
 	__asm __volatile("movl %%cr3, %0; movl %0, %%cr3" : "=r" (temp)
 			 : : "memory");
+	smp_invltlb();
 #ifdef SWTCH_OPTIM_STATS
 	++tlb_flush_count;
 #endif
 }
 
-#endif /* SMP && _KERNEL */
+#endif	/* _KERNEL */
 
 static __inline u_short
 inw(u_int port)

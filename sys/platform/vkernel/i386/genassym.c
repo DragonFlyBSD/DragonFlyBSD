@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.15 2003/06/27 20:27:15 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.16 2003/06/28 02:09:47 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -95,10 +95,8 @@ ASSYM(MTD_CPL, offsetof(struct mi_thread, mtd_cpl));
 
 ASSYM(TDPRI_CRIT, TDPRI_CRIT);
 
-#ifdef SMP
 ASSYM(P_ONCPU, offsetof(struct proc, p_oncpu));
 ASSYM(P_LASTCPU, offsetof(struct proc, p_lastcpu));
-#endif
 
 ASSYM(SSLEEP, SSLEEP);
 ASSYM(SRUN, SRUN);
@@ -196,7 +194,6 @@ ASSYM(GD_REQPRI, offsetof(struct globaldata, gd_reqpri));
 ASSYM(GD_CURRENTLDT, offsetof(struct globaldata, gd_currentldt));
 #endif
 
-#ifdef SMP
 ASSYM(GD_CPUID, offsetof(struct globaldata, gd_cpuid));
 ASSYM(GD_CPU_LOCKID, offsetof(struct globaldata, gd_cpu_lockid));
 ASSYM(GD_OTHER_CPUS, offsetof(struct globaldata, gd_other_cpus));
@@ -210,17 +207,15 @@ ASSYM(GD_PRV_CADDR1, offsetof(struct globaldata, gd_prv_CADDR1));
 ASSYM(GD_PRV_CADDR2, offsetof(struct globaldata, gd_prv_CADDR2));
 ASSYM(GD_PRV_CADDR3, offsetof(struct globaldata, gd_prv_CADDR3));
 ASSYM(GD_PRV_PADDR1, offsetof(struct globaldata, gd_prv_PADDR1));
-#endif
+
 ASSYM(PS_IDLESTACK, offsetof(struct privatespace, idlestack));
+ASSYM(PS_IDLESTACK_PAGE, offsetof(struct privatespace, idlestack) / PAGE_SIZE);
 ASSYM(PS_IDLESTACK_TOP, sizeof(struct privatespace));
 ASSYM(PS_SIZEOF, sizeof(struct privatespace));
 
 ASSYM(KCSEL, GSEL(GCODE_SEL, SEL_KPL));
 ASSYM(KDSEL, GSEL(GDATA_SEL, SEL_KPL));
-
-#ifdef SMP
 ASSYM(KPSEL, GSEL(GPRIV_SEL, SEL_KPL));
-#endif
 
 ASSYM(BC32SEL, GSEL(GBIOSCODE32_SEL, SEL_KPL));
 ASSYM(GPROC0_SEL, GPROC0_SEL);

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.13 2003/06/27 03:30:37 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.14 2003/06/28 02:09:47 dillon Exp $
  */
 
 #include "apm.h"
@@ -1146,14 +1146,10 @@ union descriptor gdt[NGDT * MAXCPU];	/* global descriptor table */
 static struct gate_descriptor idt0[NIDT];
 struct gate_descriptor *idt = &idt0[0];	/* interrupt descriptor table */
 union descriptor ldt[NLDT];		/* local descriptor table */
-#ifdef SMP
-/* table descriptors - used to load tables by microp */
-struct region_descriptor r_gdt, r_idt;
-#endif
 
-#ifndef SMP
-extern struct segment_descriptor common_tssd, *tss_gdt;
-#endif
+/* table descriptors - used to load tables by cpu */
+struct region_descriptor r_gdt, r_idt;
+
 int private_tss;			/* flag indicating private tss */
 
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)
@@ -1648,7 +1644,7 @@ physmap_done:
 	 */
 
 #ifdef SMP
-	/* make hole for AP bootstrap code */
+	/* make hole for AP bootstrap code YYY */
 	physmap[1] = mp_bootaddress(physmap[1] / 1024);
 
 	/* look for the MP hardware - needed for apic addresses */
@@ -1850,15 +1846,10 @@ physmap_done:
 }
 
 void
-init386(first)
-	int first;
+init386(int first)
 {
 	struct gate_descriptor *gdp;
 	int gsel_tss, metadata_missing, off, x;
-#ifndef SMP
-	/* table descriptors - used to load tables by microp */
-	struct region_descriptor r_gdt, r_idt;
-#endif
 	struct globaldata *gd;
 
 	/*
@@ -1900,17 +1891,15 @@ init386(first)
 	 */
 	gdt_segs[GCODE_SEL].ssd_limit = atop(0 - 1);
 	gdt_segs[GDATA_SEL].ssd_limit = atop(0 - 1);
-#ifdef SMP
+
 	gdt_segs[GPRIV_SEL].ssd_limit =
 		atop(sizeof(struct privatespace) - 1);
 	gdt_segs[GPRIV_SEL].ssd_base = (int) &CPU_prvspace[0];
 	gdt_segs[GPROC0_SEL].ssd_base =
 		(int) &CPU_prvspace[0].globaldata.gd_common_tss;
-#else
-	gdt_segs[GPRIV_SEL].ssd_limit = atop(0 - 1);
-	gdt_segs[GPROC0_SEL].ssd_base = (int) &common_tss;
-#endif
+
 	gd->gd_prvspace = &CPU_prvspace[0];
+
 	/*
 	 * Note: on both UP and SMP curthread must be set non-NULL
 	 * early in the boot sequence because the system assumes
@@ -1946,7 +1935,7 @@ init386(first)
 	_default_ldt = GSEL(GLDT_SEL, SEL_KPL);
 	lldt(_default_ldt);
 #ifdef USER_LDT
-	currentldt = _default_ldt;
+	gd->gd_currentldt = _default_ldt;
 #endif
 
 	/* exceptions */
@@ -2008,13 +1997,13 @@ init386(first)
 	 * make an initial tss so cpu can get interrupt stack on syscall!
 	 * The 16 bytes is to save room for a VM86 context.
 	 */
-	common_tss.tss_esp0 = (int) thread0.td_pcb - 16;
-	common_tss.tss_ss0 = GSEL(GDATA_SEL, SEL_KPL) ;
+	gd->gd_common_tss.tss_esp0 = (int) thread0.td_pcb - 16;
+	gd->gd_common_tss.tss_ss0 = GSEL(GDATA_SEL, SEL_KPL) ;
 	gsel_tss = GSEL(GPROC0_SEL, SEL_KPL);
 	private_tss = 0;
-	tss_gdt = &gdt[GPROC0_SEL].sd;
-	common_tssd = *tss_gdt;
-	common_tss.tss_ioopt = (sizeof common_tss) << 16;
+	gd->gd_tss_gdt = &gdt[GPROC0_SEL].sd;
+	gd->gd_common_tssd = *gd->gd_tss_gdt;
+	gd->gd_common_tss.tss_ioopt = (sizeof common_tss) << 16;
 	ltr(gsel_tss);
 
 	dblfault_tss.tss_esp = dblfault_tss.tss_esp0 = dblfault_tss.tss_esp1 =
@@ -2067,16 +2056,18 @@ init386(first)
 	thread0.td_pcb->pcb_flags = 0;
 	thread0.td_pcb->pcb_cr3 = (int)IdlePTD;	/* should already be setup */
 #ifdef SMP
+#if 0
 	thread0.td_pcb->pcb_mpnest = 1;
+#endif
 #endif
 	thread0.td_pcb->pcb_ext = 0;
 	proc0.p_md.md_regs = &proc0_tf;
 }
 
 /*
- * Initialize machine-dependant portions of the global data structure
- *
- *	YYY do we need to reserve pcb space for idlethread?
+ * Initialize machine-dependant portions of the global data structure.
+ * Note that the global data area and cpu0's idlestack in the private
+ * data space were allocated in locore.
  */
 void
 cpu_gdinit(struct globaldata *gd, int cpu)
@@ -2085,7 +2076,8 @@ cpu_gdinit(struct globaldata *gd, int cpu)
 
 	TAILQ_INIT(&gd->gd_tdfreeq);	/* for pmap_{new,dispose}_thread() */
 	if (cpu)
-	    gd->gd_curthread = &gd->gd_idlethread;
+		gd->gd_curthread = &gd->gd_idlethread;
+
 	sp = gd->gd_prvspace->idlestack;
 	lwkt_init_thread(&gd->gd_idlethread, sp, 0);
 	gd->gd_idlethread.td_switch = cpu_lwkt_switch;
@@ -2098,11 +2090,9 @@ static void f00f_hack(void *unused);
 SYSINIT(f00f_hack, SI_SUB_INTRINSIC, SI_ORDER_FIRST, f00f_hack, NULL);
 
 static void
-f00f_hack(void *unused) {
+f00f_hack(void *unused) 
+{
 	struct gate_descriptor *new_idt;
-#ifndef SMP
-	struct region_descriptor r_idt;
-#endif
 	vm_offset_t tmp;
 
 	if (!has_f00f_bug)

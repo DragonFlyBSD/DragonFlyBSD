@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/include/globaldata.h,v 1.11 2003/06/27 20:27:18 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/globaldata.h,v 1.12 2003/06/28 02:09:49 dillon Exp $
  */
 
 /*
@@ -56,10 +56,11 @@ struct globaldata {
 	int		gd_currentldt;		/* USER_LDT */
 	u_int		gd_cpuid;
 	struct timeval	gd_stattv;
-#ifdef SMP
+	struct thread	gd_idlethread;
+	int		gd_inside_intr;
+
 	u_int		gd_cpu_lockid;
 	u_int		gd_other_cpus;
-	int		gd_inside_intr;
 	u_int		gd_ss_eflags;
 	pt_entry_t	*gd_prv_CMAP1;
 	pt_entry_t	*gd_prv_CMAP2;
@@ -69,9 +70,7 @@ struct globaldata {
 	caddr_t		gd_prv_CADDR2;
 	caddr_t		gd_prv_CADDR3;
 	unsigned	*gd_prv_PADDR1;
-#endif
 	u_int		gd_astpending;
-	struct thread	gd_idlethread;
 };
 
 /*
@@ -84,13 +83,11 @@ struct privatespace {
 	struct globaldata globaldata;
 	char		__filler0[PAGE_SIZE - sizeof(struct globaldata)];
 
-#ifdef SMP
 	/* page 1..4 - CPAGE1,CPAGE2,CPAGE3,PPAGE1 */
 	char		CPAGE1[PAGE_SIZE];
 	char		CPAGE2[PAGE_SIZE];
 	char		CPAGE3[PAGE_SIZE];
 	char		PPAGE1[PAGE_SIZE];
-#endif
 
 	/* page 5..4+UPAGES - idle stack (UPAGES pages) */
 	char		idlestack[UPAGES * PAGE_SIZE];

@@ -43,7 +43,7 @@
  *	from: hp300: @(#)pmap.h	7.2 (Berkeley) 12/16/90
  *	from: @(#)pmap.h	7.4 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pmap.h,v 1.65.2.3 2001/10/03 07:15:37 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/pmap.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/pmap.h,v 1.3 2003/06/28 02:09:49 dillon Exp $
  */
 
 #ifndef _MACHINE_PMAP_H_
@@ -101,11 +101,10 @@
 #define	NKPT		30	/* actual number of kernel page tables */
 #endif
 #ifndef NKPDE
-#ifdef SMP
 #define NKPDE	(KVA_PAGES - 2)	/* addressable number of page tables/pde's */
-#else
-#define NKPDE	(KVA_PAGES - 1)	/* addressable number of page tables/pde's */
 #endif
+#if NKPDE > KVA_PAGES - 2
+#error "Maximum NKPDE is KVA_PAGES - 2"
 #endif
 
 /*
@@ -117,12 +116,8 @@
  * SMP_PRIVPAGES: The per-cpu address space is 0xff80000 -> 0xffbfffff
  */
 #define	APTDPTDI	(NPDEPG-1)	/* alt ptd entry that points to APTD */
-#ifdef SMP
 #define MPPTDI		(APTDPTDI-1)	/* per cpu ptd entry */
 #define	KPTDI		(MPPTDI-NKPDE)	/* start of kernel virtual pde's */
-#else
-#define	KPTDI		(APTDPTDI-NKPDE)/* start of kernel virtual pde's */
-#endif	/* SMP */
 #define	PTDPTDI		(KPTDI-1)	/* ptd entry that points to ptd! */
 #define	UMAXPTDI	(PTDPTDI-1)	/* ptd entry for user space end */
 #define	UMAXPTEOFF	(NPTEPG)	/* pte entry for user space end */
@@ -136,9 +131,6 @@
 #ifndef LOCORE
 
 #include <sys/queue.h>
-
-typedef unsigned int *pd_entry_t;
-typedef unsigned int *pt_entry_t;
 
 #define PDESIZE		sizeof(pd_entry_t) /* for assembly files */
 #define PTESIZE		sizeof(pt_entry_t) /* for assembly files */

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globals.h,v 1.5.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/globals.h,v 1.7 2003/06/20 02:09:54 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/globals.h,v 1.8 2003/06/28 02:09:49 dillon Exp $
  */
 
 #ifndef	_MACHINE_GLOBALS_H_
@@ -43,7 +43,6 @@
  * move to another cpu preemptively so the 'gd' pointer is good until you
  * block.
  */
-#if defined(SMP) || defined(KLD_MODULE) || defined(ACTUALLY_LKM_NOT_KERNEL)
 
 extern int __mycpu__dummy;
 
@@ -59,18 +58,13 @@ _get_mycpu(void)
 
 #define mycpu	_get_mycpu()
 
-#else
-
-#define mycpu	(&CPU_prvspace[0].globaldata)
-
-#endif
-
 /*
  * note: curthread is never NULL, but curproc can be.  Also note that
  * in Turtle, the current pcb is stored in the thread structure.
  */
-#define curthread	(mycpu->gd_curthread)
-#define	curproc		(curthread->td_proc)
+#define curthread	mycpu->gd_curthread
+#define	curproc		curthread->td_proc
+#define	npxthread	mycpu->gd_npxthread
 
 
 #endif	/* _KERNEL */

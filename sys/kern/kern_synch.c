@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.9 2003/06/27 01:53:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.10 2003/06/28 02:09:52 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -67,6 +67,7 @@ u_char	curpriority;
 int	hogticks;
 int	lbolt;
 int	sched_quantum;		/* Roundrobin scheduling quantum in ticks. */
+int	ncpus;
 
 static struct callout loadav_callout;
 

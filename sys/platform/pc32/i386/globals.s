@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.9 2003/06/27 20:27:15 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.10 2003/06/28 02:09:47 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -43,7 +43,6 @@
 	 * segment.
 	 */
 	.data
-#ifdef SMP
 	.globl	_CPU_prvspace, _lapic
 	.set	_CPU_prvspace,(MPPTDI << PDRSHIFT)
 	.set	_lapic,_CPU_prvspace + (NPTEPG-1) * PAGE_SIZE
@@ -54,13 +53,6 @@
 
 	.globl	globaldata
 	.set	globaldata,0
-#else
-	.globl	_CPU_prvspace
-	ALIGN_PAGE
-globaldata:
-_CPU_prvspace:
-	.space	PS_SIZEOF
-#endif
 
 	/*
 	 * Define layout of the global data.  On SMP this lives in
@@ -84,7 +76,7 @@ _CPU_prvspace:
 	.set	gd_currentldt,globaldata + GD_CURRENTLDT
 #endif
 
-#ifndef SMP
+#if 0
 	.globl	_curthread, _npxthread, _astpending, _reqpri
 	.globl	_common_tss, _idlethread
 	.set	_curthread,globaldata + GD_CURTHREAD
@@ -104,7 +96,6 @@ _CPU_prvspace:
 #endif
 #endif
 
-#ifdef SMP
 	/*
 	 * The BSP version of these get setup in locore.s and pmap.c, while
 	 * the AP versions are setup in mp_machdep.c.
@@ -127,9 +118,8 @@ _CPU_prvspace:
 	.set    gd_prv_CADDR2,globaldata + GD_PRV_CADDR2
 	.set    gd_prv_CADDR3,globaldata + GD_PRV_CADDR3
 	.set    gd_prv_PADDR1,globaldata + GD_PRV_PADDR1
-#endif
 
-#if defined(SMP) || defined(APIC_IO)
+#if defined(APIC_IO)
 	.globl	lapic_eoi, lapic_svr, lapic_tpr, lapic_irr1, lapic_ver
 	.globl	lapic_icr_lo,lapic_icr_hi,lapic_isr1
 /*

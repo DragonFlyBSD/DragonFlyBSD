@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/i386/icu/Attic/icu_vector.s,v 1.4 2003/06/22 08:54:22 dillon Exp $
+ * $DragonFly: src/sys/i386/icu/Attic/icu_vector.s,v 1.5 2003/06/28 02:09:52 dillon Exp $
  */
 
 /*
@@ -101,6 +101,7 @@ IDTVEC(vec_name) ; \
 	pushl	%fs ; \
 	mov	$KDSEL,%ax ; \
 	mov	%ax,%es ; \
+	mov	$KPSEL,%ax ; \
 	mov	%ax,%fs ; \
 	movl	(3+8+0)*4(%esp),%ecx ;	/* ... %ecx from thin frame ... */ \
 	movl	%ecx,(3+6)*4(%esp) ;	/* ... to fat frame ... */ \
@@ -123,6 +124,7 @@ IDTVEC(vec_name) ; \
 	mov	$KDSEL,%ax ;	/* ... and reload with kernel's own ... */ \
 	mov	%ax,%ds ;	/* ... early for obsolete reasons */ \
 	mov	%ax,%es ; \
+	mov	$KPSEL,%ax ; \
 	mov	%ax,%fs ; \
 	maybe_extra_ipending ; \
 	movb	_imen + IRQ_BYTE(irq_num),%al ; \

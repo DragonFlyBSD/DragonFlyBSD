@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/asnames.h,v 1.44.2.8 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/asnames.h,v 1.8 2003/06/22 08:54:20 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/asnames.h,v 1.9 2003/06/28 02:09:49 dillon Exp $
  */
 
 #ifndef _MACHINE_ASNAMES_H_
@@ -330,12 +330,7 @@
 
 #endif /* __ELF__ */
 
-#if defined(SMP) || defined(__ELF__)
-#ifdef SMP
 #define	FS(x)	%fs:gd_ ## x
-#else
-#define	FS(x)	x
-#endif
 
 #define _common_tss			FS(common_tss)
 #define _common_tssd			FS(common_tssd)
@@ -363,7 +358,5 @@
 #define _tss_gdt			FS(tss_gdt)
 #define	_idlestack			FS(idlestack)
 #define	_idlestack_top			FS(idlestack_top)
-
-#endif
 
 #endif /* !_MACHINE_ASNAMES_H_ */

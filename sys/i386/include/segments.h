@@ -36,7 +36,7 @@
  *
  *	from: @(#)segments.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/segments.h,v 1.24 1999/12/29 04:33:07 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/segments.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/segments.h,v 1.3 2003/06/28 02:09:49 dillon Exp $
  */
 
 #ifndef _MACHINE_SEGMENTS_H_
@@ -244,9 +244,6 @@ struct region_descriptor {
 #define NLDT		(LBSDICALLS_SEL + 1)
 
 #ifdef _KERNEL
-#ifndef currentldt
-extern int	currentldt;
-#endif
 extern int	_default_ldt;
 extern union descriptor gdt[];
 extern struct soft_segment_descriptor gdt_segs[];

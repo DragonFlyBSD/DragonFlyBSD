@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/bios.c,v 1.29.2.3 2001/07/19 18:07:35 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.3 2003/06/28 02:09:47 dillon Exp $
  */
 
 /*
@@ -41,6 +41,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/bus.h>
+#include <sys/proc.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
 #include <machine/md_var.h>
@@ -252,11 +253,7 @@ set_bios_selectors(struct bios_segments *seg, int flags)
     };
     union descriptor *p_gdt;
 
-#ifdef SMP
-    p_gdt = &gdt[cpuid * NGDT];
-#else
-    p_gdt = gdt;
-#endif
+    p_gdt = &gdt[mycpu->gd_cpuid * NGDT];
 	
     ssd.ssd_base = seg->code32.base;
     ssd.ssd_limit = seg->code32.limit;

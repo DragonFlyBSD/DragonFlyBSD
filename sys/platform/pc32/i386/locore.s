@@ -35,7 +35,7 @@
  *
  *	from: @(#)locore.s	7.3 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/locore.s,v 1.132.2.10 2003/02/03 20:54:49 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/locore.s,v 1.3 2003/06/18 18:29:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/locore.s,v 1.4 2003/06/28 02:09:47 dillon Exp $
  *
  *		originally from: locore.s, by William F. Jolitz
  *
@@ -116,22 +116,19 @@ _bootinfo:	.space	BOOTINFO_SIZE		/* bootinfo that we can handle */
 _KERNend:	.long	0			/* phys addr end of kernel (just after bss) */
 physfree:	.long	0			/* phys addr of next free page */
 
-#ifdef SMP
 		.globl	_cpu0prvpage
 cpu0pp:		.long	0			/* phys addr cpu0 private pg */
 _cpu0prvpage:	.long	0			/* relocated version */
+cpu0idlestk:	.long	0			/* stack for the idle thread */
 
 		.globl	_SMPpt
 SMPptpa:	.long	0			/* phys addr SMP page table */
 _SMPpt:		.long	0			/* relocated version */
-#endif /* SMP */
 
 	.globl	_IdlePTD
 _IdlePTD:	.long	0			/* phys addr of kernel PTD */
 
-#ifdef SMP
 	.globl	_KPTphys
-#endif
 _KPTphys:	.long	0			/* phys addr of kernel page tables */
 
 	.globl	_proc0paddr
@@ -163,16 +160,16 @@ _pc98_system_parameter:
 
 #define R(foo) ((foo)-KERNBASE)
 
-#define ALLOCPAGES(foo) \
-	movl	R(physfree), %esi ; \
-	movl	$((foo)*PAGE_SIZE), %eax ; \
-	addl	%esi, %eax ; \
-	movl	%eax, R(physfree) ; \
-	movl	%esi, %edi ; \
-	movl	$((foo)*PAGE_SIZE),%ecx ; \
-	xorl	%eax,%eax ; \
-	cld ; \
-	rep ; \
+#define ALLOCPAGES(foo) 				\
+	movl	R(physfree), %esi ; 			\
+	movl	$((foo)*PAGE_SIZE), %eax ; 		\
+	addl	%esi, %eax ; 				\
+	movl	%eax, R(physfree) ; 			\
+	movl	%esi, %edi ; 				\
+	movl	$((foo)*PAGE_SIZE),%ecx ; 		\
+	xorl	%eax,%eax ; 				\
+	cld ; 						\
+	rep ; 						\
 	stosb
 
 /*
@@ -341,6 +338,7 @@ NON_GPROF_ENTRY(btext)
 	orl	$CR0_PE|CR0_PG,%eax		/* enable paging */
 	movl	%eax,%cr0			/* and let's page NOW! */
 
+
 #ifdef BDE_DEBUGGER
 /*
  * Complete the adjustments for paging so that we can keep tracing through
@@ -355,6 +353,7 @@ NON_GPROF_ENTRY(btext)
 
 /* now running relocated at KERNBASE where the system is linked to run */
 begin:
+
 	/*
 	 * set up the bootstrap stack.  The pcb sits at the end of the
 	 * bootstrap stack.
@@ -377,6 +376,7 @@ begin:
 
 	movl	physfree, %esi
 	pushl	%esi				/* value of first for init386(first) */
+
 	call	_init386			/* wire 386 chip for unix operation */
 	popl	%esi
 
@@ -741,6 +741,7 @@ no_kernend:
 	movl	%esi,R(_KERNend)	/* save end of kernel */
 	movl	%esi,R(physfree)	/* next free page is at end of kernel */
 
+
 /* Allocate Kernel Page Tables */
 	ALLOCPAGES(NKPT)
 	movl	%esi,R(_KPTphys)
@@ -763,19 +764,21 @@ no_kernend:
 	addl	$KERNBASE, %esi
 	movl	%esi, R(_vm86paddr)
 
-#ifdef SMP
 /* Allocate cpu0's private data page */
 	ALLOCPAGES(1)
 	movl	%esi,R(cpu0pp)
 	addl	$KERNBASE, %esi
 	movl	%esi, R(_cpu0prvpage)	/* relocated to KVM space */
 
+/* Allocate cpu0's idle stack */
+	ALLOCPAGES(UPAGES)
+	movl	%esi,R(cpu0idlestk)
+
 /* Allocate SMP page table page */
 	ALLOCPAGES(1)
 	movl	%esi,R(SMPptpa)
 	addl	$KERNBASE, %esi
 	movl	%esi, R(_SMPpt)		/* relocated to KVM space */
-#endif	/* SMP */
 
 /* Map read-only from zero to the end of the kernel text section */
 	xorl	%eax, %eax
@@ -846,7 +849,6 @@ map_read_write:
 	movl	$ISA_HOLE_LENGTH>>PAGE_SHIFT, %ecx
 	fillkpt(R(_vm86pa), $PG_RW|PG_U)
 
-#ifdef SMP
 /* Map cpu0's private page into global kmem (4K @ cpu0prvpage) */
 	movl	R(cpu0pp), %eax
 	movl	$1, %ecx
@@ -863,6 +865,12 @@ map_read_write:
 	movl	$1, %ecx		/* one private page coming right up */
 	fillkpt(R(SMPptpa), $PG_RW)
 
+/* Map the cpu0's idle thread stack */
+	movl	R(cpu0idlestk), %eax
+	movl	$PS_IDLESTACK_PAGE, %ebx
+	movl	$UPAGES, %ecx
+	fillkpt(R(SMPptpa), $PG_RW)
+
 /* ... and put the page table table in the pde. */
 	movl	R(SMPptpa), %eax
 	movl	$MPPTDI, %ebx
@@ -876,6 +884,7 @@ map_read_write:
 	movl	$1, %ecx		/* one private pt coming right up */
 	fillkpt(R(SMPptpa), $PG_RW)
 
+#ifdef SMP
 /* Initialize mp lock to allow early traps */
 	movl	$1, R(_mp_lock)
 #endif	/* SMP */

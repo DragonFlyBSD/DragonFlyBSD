@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.8 2003/06/25 03:55:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.9 2003/06/28 02:09:47 dillon Exp $
  */
 
 /*
@@ -999,10 +999,12 @@ trap_fatal(frame, eva)
 void
 dblfault_handler()
 {
+	struct globaldata *gd = mycpu;
+
 	printf("\nFatal double fault:\n");
-	printf("eip = 0x%x\n", common_tss.tss_eip);
-	printf("esp = 0x%x\n", common_tss.tss_esp);
-	printf("ebp = 0x%x\n", common_tss.tss_ebp);
+	printf("eip = 0x%x\n", gd->gd_common_tss.tss_eip);
+	printf("esp = 0x%x\n", gd->gd_common_tss.tss_esp);
+	printf("ebp = 0x%x\n", gd->gd_common_tss.tss_ebp);
 #ifdef SMP
 	/* three seperate prints in case of a trap on an unmapped page */
 	printf("mp_lock = %08x; ", mp_lock);

@@ -35,7 +35,7 @@
  *
  *	from: @(#)pcb.h	5.10 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pcb.h,v 1.32.2.1 2001/08/15 01:23:52 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/pcb.h,v 1.3 2003/06/18 18:29:58 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/pcb.h,v 1.4 2003/06/28 02:09:49 dillon Exp $
  */
 
 #ifndef _I386_PCB_H_
@@ -73,10 +73,12 @@ struct pcb {
 #define	FP_SOFTFP	0x01	/* process using software fltng pnt emulator */
 #define	PCB_DBREGS	0x02	/* process using debug registers */
 	caddr_t	pcb_onfault;	/* copyin/out fault recovery */
+#if 0
 #ifdef SMP
 	u_long	pcb_mpnest;
 #else
 	u_long	pcb_mpnest_dontuse;
+#endif
 #endif
 	int	pcb_gs;
 	struct	pcb_ext	*pcb_ext;	/* optional pcb extension */

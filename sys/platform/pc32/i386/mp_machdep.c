@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.6 2003/06/21 07:54:56 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.7 2003/06/28 02:09:47 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -249,7 +249,6 @@ int	current_postcode;
 extern struct region_descriptor r_gdt, r_idt;
 
 int	bsp_apic_ready = 0;	/* flags useability of BSP apic */
-int	mp_ncpus;		/* # of CPUs, including BSP */
 int	mp_naps;		/* # of Applications processors */
 int	mp_nbusses;		/* # of busses */
 int	mp_napics;		/* # of IO APICs */
@@ -2383,31 +2382,6 @@ smp_invltlb(void)
 		all_but_self_ipi(XINVLTLB_OFFSET);
 #endif  /* APIC_IO */
 }
-
-void
-invlpg(u_int addr)
-{
-	__asm   __volatile("invlpg (%0)"::"r"(addr):"memory");
-
-	/* send a message to the other CPUs */
-	smp_invltlb();
-}
-
-void
-invltlb(void)
-{
-	u_long  temp;
-
-	/*
-	 * This should be implemented as load_cr3(rcr3()) when load_cr3() is
-	 * inlined.
-	 */
-	__asm __volatile("movl %%cr3, %0; movl %0, %%cr3":"=r"(temp) :: "memory");
-
-	/* send a message to the other CPUs */
-	smp_invltlb();
-}
-
 
 /*
  * When called the executing CPU will send an IPI to all other CPUs

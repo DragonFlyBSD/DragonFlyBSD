@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.5 2003/06/25 03:55:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.6 2003/06/28 02:09:47 dillon Exp $
  *
  */
 
@@ -257,7 +257,7 @@ set_user_ldt(struct pcb *pcb)
 	gdt[GUSERLDT_SEL].sd = pcb_ldt->ldt_sd;
 #endif
 	lldt(GSEL(GUSERLDT_SEL, SEL_KPL));
-	currentldt = GSEL(GUSERLDT_SEL, SEL_KPL);
+	mycpu->gd_currentldt = GSEL(GUSERLDT_SEL, SEL_KPL);
 }
 
 struct pcb_ldt *
@@ -305,7 +305,7 @@ user_ldt_free(struct pcb *pcb)
 
 	if (pcb == curthread->td_pcb) {
 		lldt(_default_ldt);
-		currentldt = _default_ldt;
+		mycpu->gd_currentldt = _default_ldt;
 	}
 
 	if (--pcb_ldt->ldt_refcnt == 0) {

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.5 2003/06/23 23:36:05 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.6 2003/06/28 02:09:47 dillon Exp $
  */
 
 #include "npx.h"
@@ -47,11 +47,6 @@
 
 #include "assym.s"
 
-#ifdef SMP
-#define	MOVL_KPSEL_EAX	movl	$KPSEL,%eax
-#else
-#define	MOVL_KPSEL_EAX
-#endif
 #define	SEL_RPL_MASK	0x0003
 
 	.text
@@ -172,7 +167,7 @@ IDTVEC(fpu)
 	mov	$KDSEL,%ax
 	mov	%ax,%ds
 	mov	%ax,%es
-	MOVL_KPSEL_EAX
+	movl	$KPSEL,%eax
 	mov	%ax,%fs
 	FAKE_MCOUNT(13*4(%esp))
 
@@ -226,7 +221,7 @@ alltraps_with_regs_pushed:
 	mov	$KDSEL,%ax
 	mov	%ax,%ds
 	mov	%ax,%es
-	MOVL_KPSEL_EAX
+	movl	$KPSEL,%eax
 	mov	%ax,%fs
 	FAKE_MCOUNT(13*4(%esp))
 calltrap:
@@ -273,7 +268,7 @@ IDTVEC(syscall)
 	mov	$KDSEL,%ax		/* switch to kernel segments */
 	mov	%ax,%ds
 	mov	%ax,%es
-	MOVL_KPSEL_EAX
+	movl	$KPSEL,%eax
 	mov	%ax,%fs
 	movl	TF_ERR(%esp),%eax	/* copy saved eflags to final spot */
 	movl	%eax,TF_EFLAGS(%esp)
@@ -313,7 +308,7 @@ IDTVEC(int0x80_syscall)
 	mov	$KDSEL,%ax		/* switch to kernel segments */
 	mov	%ax,%ds
 	mov	%ax,%es
-	MOVL_KPSEL_EAX
+	movl	$KPSEL,%eax
 	mov	%ax,%fs
 	movl	$2,TF_ERR(%esp)		/* sizeof "int 0x80" */
 	FAKE_MCOUNT(13*4(%esp))

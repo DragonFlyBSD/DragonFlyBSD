@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.13 2003/06/27 20:27:18 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.14 2003/06/28 02:09:52 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -164,10 +164,9 @@ sysinit_add(struct sysinit **set)
 void
 mi_startup(void)
 {
-
-	register struct sysinit **sipp;		/* system initialization*/
-	register struct sysinit **xipp;		/* interior loop of sort*/
-	register struct sysinit *save;		/* bubble*/
+	struct sysinit **sipp;		/* system initialization*/
+	struct sysinit **xipp;		/* interior loop of sort*/
+	struct sysinit *save;		/* bubble*/
 
 restart:
 	/*

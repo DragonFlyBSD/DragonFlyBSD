@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.14 2003/06/27 03:30:37 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.15 2003/06/28 02:09:47 dillon Exp $
  */
 
 #include "npx.h"
@@ -304,12 +304,15 @@ ENTRY(cpu_heavy_restore)
 
 	btrl	%esi, _private_tss
 	jae	3f
-#ifdef SMP
+
+	/*
+	 * There is no way to get the address of a segment-accessed variable
+	 * so we store a self-referential pointer at the base of the per-cpu
+	 * data area and add the appropriate offset.
+	 */
 	movl	$gd_common_tssd, %edi
 	addl	%fs:0, %edi
-#else
-	movl	$_common_tssd, %edi
-#endif
+
 	/*
 	 * Move the correct TSS descriptor into the GDT slot, then reload
 	 * tr.   YYY not sure what is going on here
@@ -328,11 +331,7 @@ ENTRY(cpu_heavy_restore)
 	 */
 3:
 	movl	P_VMSPACE(%ecx), %ebx
-#ifdef SMP
 	movl	_cpuid, %eax
-#else
-	xorl	%eax, %eax
-#endif
 	btsl	%eax, VM_PMAP+PM_ACTIVE(%ebx)
 
 	/*
