@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_null.c	8.6 (Berkeley) 4/26/95
  * $FreeBSD: src/sbin/mount_null/mount_null.c,v 1.13 1999/10/09 11:54:11 phk Exp $
- * $DragonFly: src/sbin/mount_null/mount_null.c,v 1.6 2004/12/18 21:43:39 swildner Exp $
+ * $DragonFly: src/sbin/mount_null/mount_null.c,v 1.7 2005/04/02 22:00:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,10 +54,10 @@
 
 struct mntopt mopts[] = {
 	MOPT_STDOPTS,
-	{ NULL }
+	MOPT_NULL
 };
 
-int	subdir(const char *, const char *);
+static int	subdir(const char *, const char *);
 static void	usage(void) __dead2;
 
 int
@@ -111,7 +111,7 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-int
+static int
 subdir(const char *p, const char *dir)
 {
 	int l;
