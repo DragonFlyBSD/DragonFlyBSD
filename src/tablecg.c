@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.29 2004/07/27 19:12:57 justin Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.30 2004/11/25 19:59:27 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -177,18 +177,20 @@ main(int ac, char **av)
 		
 	if ((t = parse_http_date("HTTP_IF_MODIFIED_SINCE")) != 0) {
 	    if (t >= sb.st_mtime) {
-		printf("Status: 304 Not Modified");
+		printf("Status: 304 Not Modified\r\n");
+		printf("\r\n");
 		return(0);	
 	    }
 	}
 	if ((t = parse_http_date("HTTP_IF_UNMODIFIED_SINCE")) != 0) {
 	    if (t < sb.st_mtime) {
-		printf("Status: 304 Not Modified");
+		printf("Status: 304 Not Modified\r\n");
+		printf("\r\n");
 		return(0);	
 	    }
 	}
 	strftime(buf,sizeof buf, "%a, %d %b %Y %H:%M:%S GMT", gmtime(&sb.st_mtime));
-	printf("Last-Modified: %s\n", buf);	
+	printf("Last-Modified: %s\r\n", buf);	
 
 	while (fgets(buf, sizeof(buf), fi) != NULL) {
 	    if (buf[0] == '#')
@@ -222,8 +224,9 @@ main(int ac, char **av)
     /*
      * End request header first.
      */
-    printf("Content-Type: text/html\n");
-    printf("\n");
+    printf("Content-Type: text/html\r\n");
+    printf("\r\n");
+    fflush(stdout);
     /*
      * Generate the table structure after processing the web page so
      * we can populate the tags properly.
