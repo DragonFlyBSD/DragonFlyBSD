@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.40 2003/11/07 06:01:12 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.41 2003/11/10 18:29:33 dillon Exp $
  */
 
 /*
@@ -1310,6 +1310,12 @@ syscall2(struct trapframe frame)
 		ktrsyscall(p->p_tracep, code, narg, (void *)(&args.nosys.usrmsg + 1));
 	}
 #endif
+
+	/*
+	 * For traditional syscall code edx is left untouched when 32 bit
+	 * results are returned.  Since edx is loaded from fds[1] when the 
+	 * system call returns we pre-set it here.
+	 */
 	lwkt_initmsg(&args.lmsg, &td->td_msgport, code);
 	args.sysmsg_fds[0] = 0;
 	args.sysmsg_fds[1] = frame.tf_edx;
