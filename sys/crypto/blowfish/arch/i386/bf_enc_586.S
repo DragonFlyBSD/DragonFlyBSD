@@ -1,6 +1,6 @@
 /*	$NetBSD: bf_enc_586.S,v 1.1 2001/09/09 11:01:01 tls Exp $	*/
 /*	$FreeBSD: src/sys/crypto/blowfish/arch/i386/bf_enc_586.S,v 1.1.2.1 2002/03/26 10:12:24 ume Exp $	*/
-/*	$DragonFly: src/sys/crypto/blowfish/arch/i386/bf_enc_586.S,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
+/*	$DragonFly: src/sys/crypto/blowfish/arch/i386/bf_enc_586.S,v 1.3 2004/02/13 16:13:44 joerg Exp $	*/
 
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
@@ -400,7 +400,7 @@ ENTRY(BF_encrypt)
 	xorl	%eax,		%ebx
 	movl	3144(%ebp,%edx,4),%edx
 	addl	%edx,		%ebx
-	# Load parameter 0 (16) enc=1 
+	/* Load parameter 0 (16) enc=1 */
 	movl	20(%esp),	%eax
 	xorl	%ebx,		%edi
 	movl	68(%ebp),	%edx
@@ -422,7 +422,7 @@ ENTRY(BF_decrypt)
 	movl	16(%esp),	%ebp
 	pushl	%esi
 	pushl	%edi
-	# Load the 2 words 
+	/* Load the 2 words */
 	movl	(%ebx),		%edi
 	movl	4(%ebx),	%esi
 	xorl	%eax,		%eax
@@ -747,7 +747,7 @@ ENTRY(BF_decrypt)
 	xorl	%eax,		%ebx
 	movl	3144(%ebp,%edx,4),%edx
 	addl	%edx,		%ebx
-	# Load parameter 0 (1) enc=0 
+	/* Load parameter 0 (1) enc=0 */
 	movl	20(%esp),	%eax
 	xorl	%ebx,		%edi
 	movl	(%ebp),		%edx
