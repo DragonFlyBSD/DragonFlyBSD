@@ -1,0 +1,123 @@
+.\"
+.\" Copyright (c) 2004 Hiten Pandya <hmp@backplane.com>. All rights reserved.
+.\" Copyright (c) 2003 Robert N. M. Watson.
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice(s), this list of conditions and the following disclaimer as
+.\"    the first lines of this file unmodified other than the possible
+.\"    addition of one or more copyright notices.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice(s), this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER(S) ``AS IS'' AND ANY
+.\" EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+.\" WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+.\" DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) BE LIABLE FOR ANY
+.\" DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+.\" (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+.\" SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+.\" CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+.\" DAMAGE.
+.\"
+.\" $FreeBSD: src/share/man/man9/vn_fullpath.9,v 1.2 2004/01/11 19:57:42 rwatson Exp $
+.\" $DragonFly: src/share/man/man9/vn_fullpath.9,v 1.1 2004/06/03 19:26:36 hmp Exp $
+.\"
+.Dd June 03, 2004
+.Dt VN_FULLPATH 9
+.Os
+.Sh NAME
+.Nm vn_fullpath
+.Nd construct a pathname by inspecting a vnode's namecache topology
+.Sh SYNOPSIS
+.In sys/param.h
+.In sys/vnode.h
+.Ft int
+.Fn vn_fullpath "struct proc *p" "struct vnode *vn" "char **retbuf" "char **freebuf"
+.Sh DESCRIPTION
+The
+.Nm
+function makes an attempt to generate a string pathname with the
+passed-in vnode,
+.Fa vp .
+The returned path in
+.Fa retbuf
+will be relative to the root directory of the process associated with the
+.Fa p
+argument.
+.Pp
+Its arguments are:
+.Bl -tag -width freebuf
+.It Fa p
+The process performing the call; this pointer will be dereferenced to find
+the process and its file descriptor structure, in order to identify the
+root vnode to use.
+.It Fa vp
+The vnode for constructing the pathname; the vnode is used for enumerating
+its namecache topology.
+If
+.Dv NULL
+is supplied, then it is assumed that the client wants to use the
+vnode of the process image, i.e.,
+.Po
+.Va p->p_textvp
+.Pc .
+.It Fa retbuf [out]
+Pointer address to a
+.Va "char *"
+which
+.Nm
+uses for storing the address to a newly allocated buffer, containing the
+constructed pathname.
+.It Fa freebuf
+Auxiliary buffer that is used to by
+.Nm
+for temporary purposes.
+.El
+.Pp
+Typical consumers will declare two character pointers: fullpath and
+freepath; they will set freepath to
+.Dv NULL ,
+and fullpath to a name to use
+in the event that the call to
+.Nm
+fails.
+After done with the value of fullpath, the caller will check if freepath
+is non-NULL, and if so, invoke
+.Xr free 9
+with a malloc type of
+.Dv M_TEMP .
+.Sh RETURN VALUES
+If the vnode can be successfully used to construct a pathname,
+.Ql 0
+is returned, otherwise an
+.Li errno
+value is returned.
+.Sh CODE REFERENCES
+All file references in this section are relative to the
+.Dx
+base source directory.
+.Pp
+The
+.Ql "Resident Executables"
+code utilizes the
+.Nm
+function;
+.Pa sys/kern/imgact_resident.c .
+.Sh SEE ALSO
+.Xr free 9 ,
+.Xr vnode 9
+.Sh AUTHORS
+.An -nosplit
+This manual page was written by
+.An Robert Watson Aq rwatson@FreeBSD.org
+and adapted for
+.Dx
+by
+.An Hiten Pandya Aq hmp@backplane.com .
