@@ -37,9 +37,10 @@
  * SUCH DAMAGE.
  *
  * @(#) Header: arp.c,v 1.5 93/07/15 05:52:26 leres Exp  (LBL)
+ * $DragonFly: src/lib/libstand/arp.c,v 1.2 2004/08/20 00:43:00 joerg Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/socket.h>
 #include <net/if.h>
 #include <netinet/in.h>

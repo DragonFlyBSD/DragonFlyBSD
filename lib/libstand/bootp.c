@@ -38,10 +38,10 @@
  *
  * @(#) Header: bootp.c,v 1.4 93/09/11 03:13:51 leres Exp  (LBL)
  * $FreeBSD: src/lib/libstand/bootp.c,v 1.1.1.1.6.2 2000/09/20 18:37:25 ps Exp $
- * $DragonFly: src/lib/libstand/bootp.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/libstand/bootp.c,v 1.3 2004/08/20 00:43:00 joerg Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
 
