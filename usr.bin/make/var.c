@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.86 2005/02/13 10:05:07 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.87 2005/02/13 10:08:36 okumoto Exp $
  */
 
 /*-
@@ -1105,7 +1105,6 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 
 	name[0] = str[1];
 	name[1] = '\0';
-	*lengthPtr = 2;
 
 	v = VarFind(name, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
 	if (v == NULL) {
@@ -1121,6 +1120,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 		 */
 		/* XXX: It looks like $% and $! are reversed here */
 		*freePtr = FALSE;
+		*lengthPtr = 2;
 		switch (str[1]) {
 		    case '@':
 			return ("$(.TARGET)");
@@ -1135,12 +1135,14 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 		}
 	    } else {
 		*freePtr = FALSE;
+		*lengthPtr = 2;
 		return (err ? var_Error : varNoError);
 	    }
 	} else {
 	    dynamic = FALSE;
 	    start = str;
 	    *freePtr = FALSE;
+	    *lengthPtr = 2;
 	    haveModifier = FALSE;
 	    startc = 0;
 	    endc = str[1];
