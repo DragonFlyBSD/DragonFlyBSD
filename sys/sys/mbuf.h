@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.16 2004/09/19 22:32:48 joerg Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.17 2004/09/19 23:31:18 dillon Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -84,22 +84,28 @@ struct m_tag {
 	u_int32_t		m_tag_cookie;	/* ABI/Module ID */
 };
 
+SLIST_HEAD(packet_tags, m_tag);
+
 /*
  * Record/packet header in first mbuf of chain; valid only if M_PKTHDR is set.
  */
 struct pkthdr {
 	struct	ifnet *rcvif;		/* rcv interface */
 	int	len;			/* total packet length */
-	SLIST_HEAD(packet_tags, m_tag) tags; /* list of packet tags */
+	struct packet_tags tags;	/* list of packet tags */
+
 	/* variables for ip and tcp reassembly */
 	void	*header;		/* pointer to packet header */
+
 	/* variables for hardware checksum */
 	int	csum_flags;		/* flags regarding checksum */
 	int	csum_data;		/* data field used by csum routines */
+
 	/* variables for PF processing */
 	int	pf_flags;		/* flags for PF */
-	uint16_t	pf_tag;		/* PF tag id */
-	uint8_t	pf_routed;	/* PF routing counter */
+	uint16_t pf_tag;		/* PF tag id */
+	uint8_t	pf_routed;		/* PF routing counter */
+	uint8_t pf_unused01;		/* pad */
 };
 
 /*
