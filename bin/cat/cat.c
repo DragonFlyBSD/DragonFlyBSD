@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cat.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/bin/cat/cat.c,v 1.14.2.8 2002/06/29 05:09:26 tjr Exp $
- * $DragonFly: src/bin/cat/cat.c,v 1.9 2004/07/27 16:12:38 hmp Exp $
+ * $DragonFly: src/bin/cat/cat.c,v 1.10 2004/07/27 16:21:52 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -69,6 +69,14 @@ static void raw_cat (int);
 static int udom_open (const char *path, int flags);
 #endif
 
+static void
+usage(void)
+{
+        fprintf(stderr,
+                "usage: cat [-benstuv] [-] [file ...]\n");
+        exit(EXIT_FAILURE);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -100,9 +108,7 @@ main(int argc, char **argv)
 			vflag = 1;
 			break;
 		default:
-			fprintf(stderr,
-			    "usage: cat [-benstuv] [-] [file ...]\n");
-			exit(1);
+			usage();
 			/* NOTREACHED */
 		}
 	argv += optind;
@@ -288,11 +294,11 @@ udom_open(const char *path, int flags)
 		switch (flags & O_ACCMODE) {
 		case O_RDONLY:
 			if (shutdown(fd, SHUT_WR) == -1)
-				perror("cat");
+				warn(NULL);
 			break;
 		case O_WRONLY:
 			if (shutdown(fd, SHUT_RD) == -1)
-				perror("cat");
+				warn(NULL);
 			break;
 		default:
 			break;
