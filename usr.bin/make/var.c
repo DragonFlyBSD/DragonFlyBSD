@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.91 2005/02/15 01:01:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.92 2005/02/15 10:54:26 okumoto Exp $
  */
 
 /*-
@@ -215,7 +215,7 @@ VarCmp(const void *v, const void *name)
 static char *
 VarPossiblyExpand(const char *name, GNode *ctxt)
 {
-	char   *tmp;
+	char	*tmp;
 
 	/*
 	 * XXX make a temporary copy of the name because Var_Subst insists
@@ -860,6 +860,48 @@ VarREError(int err, regex_t *pat, const char *str)
     free(errbuf);
 }
 
+/*
+ * Make sure this variable is fully expanded.
+ */
+char *
+VarExpand(Var *v, GNode *ctxt, Boolean err)
+{
+	char	*value;
+	char	*result;
+
+	if (v->flags & VAR_IN_USE) {
+		Fatal("Variable %s is recursive.", v->name);
+		/* NOTREACHED */
+	}
+
+	v->flags |= VAR_IN_USE;
+
+	/*
+	 * Before doing any modification, we have to make sure the
+	 * value has been fully expanded. If it looks like recursion
+	 * might be necessary (there's a dollar sign somewhere in the
+	 * variable's value) we just call Var_Subst to do any other
+	 * substitutions that are necessary. Note that the value
+	 * returned by Var_Subst will have been
+	 * dynamically-allocated, so it will need freeing when we
+	 * return.
+	 */
+	value = (char *)Buf_GetAll(v->val, (size_t *)NULL);
+	if (strchr(value, '$') == NULL) {
+		result = strdup(value);
+	} else {
+		Buffer	*buf;
+
+		buf = Var_Subst(NULL, value, ctxt, err);
+		result = Buf_GetAll(buf, NULL);
+		Buf_Destroy(buf, FALSE);
+	}
+
+	v->flags &= ~VAR_IN_USE;
+
+	return (result);
+}
+
 /*-
  *-----------------------------------------------------------------------
  * Var_Parse --
@@ -1152,40 +1194,8 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	}
     }
 
-	/*
-	 * Make sure this variable is fully expanded.
-	 * XXX This section really should be its own function.
-	 */
-	{
-		if (v->flags & VAR_IN_USE) {
-			Fatal("Variable %s is recursive.", v->name);
-			/* NOTREACHED */
-		} else {
-			v->flags |= VAR_IN_USE;
-		}
-
-		/*
-		 * Before doing any modification, we have to make sure the
-		 * value has been fully expanded. If it looks like recursion
-		 * might be necessary (there's a dollar sign somewhere in the
-		 * variable's value) we just call Var_Subst to do any other
-		 * substitutions that are necessary. Note that the value
-		 * returned by Var_Subst will have been
-		 * dynamically-allocated, so it will need freeing when we
-		 * return.
-		 */
-		rw_str = (char *)Buf_GetAll(v->val, (size_t *)NULL);
-		if (strchr(rw_str, '$') != NULL) {
-			Buffer *buf;
-
-			buf = Var_Subst(NULL, rw_str, ctxt, err);
-			rw_str = Buf_GetAll(buf, NULL);
-			Buf_Destroy(buf, FALSE);
-
-			*freePtr = TRUE;
-		}
-		v->flags &= ~VAR_IN_USE;
-	}
+    rw_str = VarExpand(v, ctxt, err);
+    *freePtr = TRUE;
 
     /*
      * Now we need to apply any modifiers the user wants applied.
