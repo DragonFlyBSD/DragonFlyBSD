@@ -10,11 +10,8 @@
  *	Upgraded to function properly on 64-bit machines.
  *
  * $FreeBSD: src/usr.bin/enigma/enigma.c,v 1.2.6.3 2001/08/01 23:51:34 obrien Exp $
- * $DragonFly: src/usr.bin/enigma/enigma.c,v 1.5 2004/07/31 11:18:43 eirikn Exp $
+ * $DragonFly: src/usr.bin/enigma/enigma.c,v 1.6 2005/01/05 18:42:33 liamfoy Exp $
  */
-
-#include <sys/types.h>
-#include <sys/wait.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,11 +29,11 @@ char	t3[ROTORSZ];
 char	deck[ROTORSZ];
 char	buf[13];
 
-void	shuffle(char *);
-void	setup(char *);
+static void	shuffle(char *);
+static void	setup(const char *);
 
-void
-setup(char *pw)
+static void
+setup(const char *pw)
 {
 	int ic, i, k, temp;
 	char salt[3];
@@ -81,7 +78,7 @@ setup(char *pw)
 int
 main(int argc, char **argv)
 {
-	register int i, n1, n2, nr1, nr2;
+	int i, n1, n2, nr1, nr2;
 	int secureflg = 0, kflag = 0;
 	char *cp;
 
@@ -136,7 +133,7 @@ main(int argc, char **argv)
 	return 0;
 }
 
-void
+static void
 shuffle(char *deckary)
 {
 	int i, ic, k, temp;
