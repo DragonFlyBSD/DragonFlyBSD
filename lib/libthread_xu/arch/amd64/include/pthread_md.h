@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/arch/amd64/include/pthread_md.h,v 1.10 2004/08/25 23:42:40 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/arch/amd64/include/pthread_md.h,v 1.2 2005/03/15 11:26:34 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/amd64/include/pthread_md.h,v 1.3 2005/03/15 15:09:22 davidxu Exp $
  */
 
 /*
@@ -84,7 +84,7 @@ struct tcb {
 struct tcb	*_tcb_ctor(struct pthread *, int);
 void		_tcb_dtor(struct tcb *tcb);
 
-/* Called from the KSE to set its private data. */
+/* Thread calls this function to set its private data. */
 static __inline void
 _tcb_set(struct tcb *tcb)
 {
