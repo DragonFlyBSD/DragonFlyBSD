@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sbin/newfs/fscopy.c,v 1.5 2005/01/06 03:21:00 cpressey Exp $
+ * $DragonFly: src/sbin/newfs/fscopy.c,v 1.6 2005/01/08 19:39:40 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -50,8 +50,6 @@ struct FSNode {
     int			fs_Marker;
     char		fs_Name[4];
 };
-
-static char empty_string[] = "";
 
 static
 fsnode_t
@@ -223,7 +221,7 @@ FSCopy(fsnode_t *phlinks, const char *path)
 		    node->fs_Data[n] = 0;
 		}
 	    } else if (n == 0) {
-		node->fs_Data = empty_string;
+		node->fs_Data = NULL;
 		node->fs_Bytes = 0;
 	    } else {
 		fprintf(stderr, "Unable to read link: %s\n", path);
@@ -308,17 +306,19 @@ FSPaste(const char *path, fsnode_t node, fsnode_t hlinks)
 	    fprintf(stderr, "Cannot create file: %s\n", path);
 	    break;
 	}
-	if (write(fd, node->fs_Data, node->fs_Bytes) != node->fs_Bytes) {
-	    fprintf(stderr, "Cannot write file: %s\n", path);
-	    remove(path);
-	    close(fd);
-	    break;
+	if (node->fs_Bytes > 0) {
+	    if (write(fd, node->fs_Data, node->fs_Bytes) != node->fs_Bytes) {
+		fprintf(stderr, "Cannot write file: %s\n", path);
+		remove(path);
+		close(fd);
+		break;
+	    }
 	}
 	close(fd);
 	ok = 1;
 	break;
     case S_IFLNK:
-	if (symlink(node->fs_Data, path) < 0) {
+	if (symlink(node->fs_Bytes > 0 ? node->fs_Data : "", path) < 0) {
 	    fprintf(stderr, "Unable to create symbolic link: %s\n", path);
 	    break;
 	}
