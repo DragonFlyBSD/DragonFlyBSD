@@ -23,14 +23,14 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/libkern/stack_protector.c,v 1.2 2003/12/27 03:12:56 drhodus Exp $
+ * $DragonFly: src/sys/libkern/stack_protector.c,v 1.3 2003/12/28 05:05:59 drhodus Exp $
  */
 
 #include <sys/param.h>
 
 void __stack_smash_handler(int damaged, char func[]);
 
-#define  __guard = '\0\0\n\377';
+int  __guard = '\0\0\n\377';
 
 void 
 __stack_smash_handler(int damaged, char func[])
