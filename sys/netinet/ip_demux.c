@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.22 2004/04/24 06:55:57 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.23 2004/07/06 19:26:39 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -80,17 +80,17 @@ ip_mport(struct mbuf *m)
 
 	ip = mtod(m, struct ip *);
 
-	/*
-	 * XXX generic packet handling defrag on CPU 0 for now.
-	 */
-	if (ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK))
-		return (&netisr_cpu[0].td_msgport);
-
 	iphlen = ip->ip_hl << 2;
 	if (iphlen < sizeof(struct ip)) {	/* minimum header length */
 		ipstat.ips_badhlen++;
 		return (NULL);
 	}
+
+	/*
+	 * XXX generic packet handling defrag on CPU 0 for now.
+	 */
+	if (ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK))
+		return (&netisr_cpu[0].td_msgport);
 
 	switch (ip->ip_p) {
 	case IPPROTO_TCP:
