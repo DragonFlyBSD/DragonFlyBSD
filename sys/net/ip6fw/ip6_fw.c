@@ -1,5 +1,5 @@
-/*	$FreeBSD: src/sys/netinet6/ip6_fw.c,v 1.2.2.9 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.10 2004/08/02 13:22:33 joerg Exp $	*/
+/*	$FreeBSD: src/sys/netinet6/ip6_fw.c,v 1.2.2.10 2003/08/03 17:52:54 ume Exp $	*/
+/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.11 2004/12/28 22:20:53 hsu Exp $	*/
 /*	$KAME: ip6_fw.c,v 1.21 2001/01/24 01:25:32 itojun Exp $	*/
 
 /*
@@ -289,19 +289,17 @@ ip6opts_match(struct ip6_hdr **pip6, struct ip6_fw *f, struct mbuf **m,
 			case IPPROTO_ESP:
 				opts &= ~IPV6_FW_IP6OPT_ESP;
 				nopts &= ~IPV6_FW_IP6OPT_ESP;
-				break;
+				goto opts_check;
 			case IPPROTO_NONE:
 				opts &= ~IPV6_FW_IP6OPT_NONXT;
 				nopts &= ~IPV6_FW_IP6OPT_NONXT;
 				goto opts_check;
-				break;
 			case IPPROTO_DSTOPTS:
 				opts &= ~IPV6_FW_IP6OPT_OPTS;
 				nopts &= ~IPV6_FW_IP6OPT_OPTS;
 				break;
 			default:
 				goto opts_check;
-				break;
 			}
 			*off += (ip6e->ip6e_len + 1) << 3;
 			break;
