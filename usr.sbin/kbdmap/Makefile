@@ -1,9 +1,9 @@
-# $FreeBSD: src/usr.sbin/kbdmap/Makefile,v 1.9.2.2 2001/04/25 14:04:50 ru Exp $
-# $DragonFly: src/usr.sbin/kbdmap/Makefile,v 1.3 2004/01/31 06:56:45 dillon Exp $
+# $FreeBSD: src/usr.sbin/kbdmap/Makefile,v 1.13 2002/07/03 14:56:08 markm Exp $
+# $DragonFly: src/usr.sbin/kbdmap/Makefile,v 1.4 2004/06/21 01:37:42 cpressey Exp $
 
-SCRIPTS=${.CURDIR}/kbdmap.pl
-MAN=	kbdmap.1
+PROG=	kbdmap
 LINKS=	${BINDIR}/kbdmap ${BINDIR}/vidfont
+MAN=	kbdmap.1
 MLINKS=	kbdmap.1 vidfont.1
 
 .include <bsd.prog.mk>
