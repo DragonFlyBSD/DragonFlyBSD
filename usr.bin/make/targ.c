@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.21 2005/01/06 10:53:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.22 2005/01/08 12:38:32 okumoto Exp $
  */
 
 /*-
@@ -135,7 +135,7 @@ Targ_Init(void)
  *-----------------------------------------------------------------------
  */
 GNode *
-Targ_NewGN(char *name)
+Targ_NewGN(const char *name)
 {
     GNode *gn;
 
@@ -181,7 +181,7 @@ Targ_NewGN(char *name)
  *-----------------------------------------------------------------------
  */
 GNode *
-Targ_FindNode(char *name, int flags)
+Targ_FindNode(const char *name, int flags)
 {
     GNode         *gn;	      /* node in that element */
     Hash_Entry	  *he;	      /* New or used hash entry for node */

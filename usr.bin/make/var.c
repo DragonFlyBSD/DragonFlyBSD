@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.34 2005/01/08 11:40:46 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.35 2005/01/08 12:38:32 okumoto Exp $
  */
 
 /*-
@@ -135,8 +135,8 @@ GNode          *VAR_CMD;      /* variables defined on the command-line */
 #define	FIND_ENV  	0x4   /* look in the environment also */
 
 static char *VarPossiblyExpand(const char *, GNode *);
-static Var *VarFind(char *, GNode *, int);
-static void VarAdd(const char *, char *, GNode *);
+static Var *VarFind(const char *, GNode *, int);
+static void VarAdd(const char *, const char *, GNode *);
 static void VarDelete(void *);
 static char *VarGetPattern(GNode *, int, char **, int, int *, size_t *,
 			   VarPattern *);
@@ -206,7 +206,7 @@ VarPossiblyExpand(const char *name, GNode *ctxt)
  *-----------------------------------------------------------------------
  */
 static Var *
-VarFind(char *name, GNode *ctxt, int flags)
+VarFind(const char *name, GNode *ctxt, int flags)
 {
     Boolean		localCheckEnvFirst;
     LstNode         	*var;
@@ -323,7 +323,7 @@ VarFind(char *name, GNode *ctxt, int flags)
  *-----------------------------------------------------------------------
  */
 static void
-VarAdd(const char *name, char *val, GNode *ctxt)
+VarAdd(const char *name, const char *val, GNode *ctxt)
 {
     Var		  *v;
     int	    	  len;
@@ -334,7 +334,7 @@ VarAdd(const char *name, char *val, GNode *ctxt)
 
     len = val ? strlen(val) : 0;
     v->val = Buf_Init(len+1);
-    Buf_AddBytes(v->val, len, (Byte *)val);
+    Buf_AddBytes(v->val, len, (const Byte *)val);
 
     v->flags = 0;
 
@@ -412,7 +412,7 @@ Var_Delete(char *name, GNode *ctxt)
  *-----------------------------------------------------------------------
  */
 void
-Var_Set(const char *name, char *val, GNode *ctxt)
+Var_Set(const char *name, const char *val, GNode *ctxt)
 {
     Var		*v;
     char	*n;
@@ -428,7 +428,7 @@ Var_Set(const char *name, char *val, GNode *ctxt)
 	VarAdd(n, val, ctxt);
     } else {
 	Buf_Discard(v->val, Buf_Size(v->val));
-	Buf_AddBytes(v->val, strlen(val), (Byte *)val);
+	Buf_AddBytes(v->val, strlen(val), (const Byte *)val);
 
 	DEBUGF(VAR, ("%s:%s = %s\n", ctxt->name, n, val));
     }
@@ -447,9 +447,9 @@ Var_Set(const char *name, char *val, GNode *ctxt)
  *	Set the VAR_TO_ENV flag on a variable
  */
 void
-Var_SetEnv (char *name, GNode *ctxt)
+Var_SetEnv(const char *name, GNode *ctxt)
 {
-    register Var   *v;
+    Var   *v;
 
     v = VarFind(name, ctxt, FIND_CMD|FIND_GLOBAL|FIND_ENV);
     if (v) {
@@ -485,7 +485,7 @@ Var_SetEnv (char *name, GNode *ctxt)
  *-----------------------------------------------------------------------
  */
 void
-Var_Append(const char *name, char *val, GNode *ctxt)
+Var_Append(const char *name, const char *val, GNode *ctxt)
 {
     Var		*v;
     char	*n;
@@ -496,7 +496,7 @@ Var_Append(const char *name, char *val, GNode *ctxt)
 	VarAdd(n, val, ctxt);
     } else {
 	Buf_AddByte(v->val, (Byte)' ');
-	Buf_AddBytes(v->val, strlen(val), (Byte *)val);
+	Buf_AddBytes(v->val, strlen(val), (const Byte *)val);
 
 	DEBUGF(VAR, ("%s:%s = %s\n", ctxt->name, n,
 	       (char *)Buf_GetAll(v->val, (size_t *)NULL)));
@@ -1740,13 +1740,14 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
  *-----------------------------------------------------------------------
  */
 char *
-Var_Subst(char *var, char *str, GNode *ctxt, Boolean undefErr)
+Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 {
     Buffer  	  *buf;	    	    /* Buffer for forming things */
     char    	  *val;		    /* Value to substitute for a variable */
     size_t	  length;   	    /* Length of the variable invocation */
     Boolean 	  doFree;   	    /* Set true if val should be freed */
-    static Boolean errorReported;   /* Set true if an error has already
+    char	*result;
+    static Boolean errorReported;/* Set true if an error has already
 				     * been reported to prevent a plethora
 				     * of messages when recursing */
 
@@ -1768,27 +1769,26 @@ Var_Subst(char *var, char *str, GNode *ctxt, Boolean undefErr)
 	     * Skip as many characters as possible -- either to the end of
 	     * the string or to the next dollar sign (variable invocation).
 	     */
-	    char  *cp;
+	    const char	*cp;
 
 	    for (cp = str++; *str != '$' && *str != '\0'; str++)
 		continue;
-	    Buf_AddBytes(buf, str - cp, (Byte *)cp);
+	    Buf_AddBytes(buf, str - cp, (const Byte *)cp);
 	} else {
 	    if (var != NULL) {
 		int expand;
 		for (;;) {
 		    if (str[1] != '(' && str[1] != '{') {
 			if (str[1] != *var || var[1] != '\0') {
-			    Buf_AddBytes(buf, 2, (Byte *)str);
+			    Buf_AddBytes(buf, 2, (const Byte *)str);
 			    str += 2;
 			    expand = FALSE;
 			}
 			else
 			    expand = TRUE;
 			break;
-		    }
-		    else {
-			char *p;
+		    } else {
+			const char *p;
 
 			/*
 			 * Scan up to the end of the variable name.
@@ -1803,7 +1803,7 @@ Var_Subst(char *var, char *str, GNode *ctxt, Boolean undefErr)
 			 * the nested one
 			 */
 			if (*p == '$') {
-			    Buf_AddBytes(buf, p - str, (Byte *)str);
+			    Buf_AddBytes(buf, p - str, (const Byte *)str);
 			    str = p;
 			    continue;
 			}
@@ -1816,7 +1816,7 @@ Var_Subst(char *var, char *str, GNode *ctxt, Boolean undefErr)
 			     */
 			    for (;*p != '$' && *p != '\0'; p++)
 				continue;
-			    Buf_AddBytes(buf, p - str, (Byte *)str);
+			    Buf_AddBytes(buf, p - str, (const Byte *)str);
 			    str = p;
 			    expand = FALSE;
 			}
@@ -1882,9 +1882,9 @@ Var_Subst(char *var, char *str, GNode *ctxt, Boolean undefErr)
     }
 
     Buf_AddByte(buf, '\0');
-    str = (char *)Buf_GetAll(buf, (size_t *)NULL);
+    result = (char *)Buf_GetAll(buf, (size_t *)NULL);
     Buf_Destroy(buf, FALSE);
-    return (str);
+    return (result);
 }
 
 /*-
