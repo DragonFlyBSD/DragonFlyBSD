@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.23 2004/12/01 15:50:51 joerg Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.24 2004/12/10 01:03:46 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -165,11 +165,10 @@ static int     	  numCommands; 	    /* The number of commands actually printed
  */
 static char     tfile[sizeof(TMPPAT)];
 
-
 /*
  * Descriptions for various shells.
  */
-static Shell    shells[] = {
+static const DEF_SHELL_STRUCT(CShell, const) shells[] = {
     /*
      * CSH description. The csh can do echo control by playing
      * with the setting of the 'echo' shell variable. Sadly,
@@ -194,15 +193,22 @@ static Shell    shells[] = {
 #endif
     "v", "e",
 },
+    /*
+     * KSH description. The Korn shell has a superset of
+     * the Bourne shell's functionality.
+     */
+{
+    "ksh",
+    TRUE, "set -", "set -v", "set -", 5,
+    TRUE, "set -e", "set +e",
+    "v", "e",
+},
 };
-static Shell 	*commandShell = &shells[DEFSHELL];/* this is the shell to
-						   * which we pass all
-						   * commands in the Makefile.
-						   * It is set by the
-						   * Job_ParseShell function */
-static char   	*shellPath = NULL,		  /* full pathname of
-						   * executable image */
-               	*shellName;	      	      	  /* last component of shell */
+static Shell 	*commandShell = NULL;	/* this is the shell to which we pass
+					 * all commands in the Makefile. It is
+					 * set by the Job_ParseShell function */
+char   		*shellPath = NULL,	/* full pathname of executable image */
+               	*shellName = NULL;	/* last component of shell */
 
 
 static int  	maxJobs;    	/* The most children we can run at once */
@@ -285,7 +291,7 @@ static void JobRestart(Job *);
 static int JobStart(GNode *, int, Job *);
 static char *JobOutput(Job *, char *, char *, int);
 static void JobDoOutput(Job *, Boolean);
-static Shell *JobMatchShell(char *);
+static Shell *JobMatchShell(const char *);
 static void JobInterrupt(int, int);
 static void JobRestartJobs(void);
 
@@ -2039,6 +2045,103 @@ Job_Make(GNode *gn)
     (void) JobStart(gn, 0, NULL);
 }
 
+/*
+ * JobCopyShell:
+ *
+ * Make a new copy of the shell structure including a copy of the strings
+ * in it. This also defaults some fields in case they are NULL.
+ *
+ * The function returns a pointer to the new shell structure otherwise.
+ */
+static Shell *
+JobCopyShell(const Shell *osh)
+{
+	Shell *nsh;
+
+	nsh = emalloc(sizeof(*nsh));
+	nsh->name = estrdup(osh->name);
+
+	if (osh->echoOff != NULL)
+		nsh->echoOff = estrdup(osh->echoOff);
+	else
+		nsh->echoOff = NULL;
+	if (osh->echoOn != NULL)
+		nsh->echoOn = estrdup(osh->echoOn);
+	else
+		nsh->echoOn = NULL;
+	nsh->hasEchoCtl = osh->hasEchoCtl;
+
+	if (osh->noPrint != NULL)
+		nsh->noPrint = estrdup(osh->noPrint);
+	else
+		nsh->noPrint = NULL;
+	nsh->noPLen = osh->noPLen;
+
+	nsh->hasErrCtl = osh->hasErrCtl;
+	if (osh->errCheck == NULL)
+		nsh->errCheck = estrdup("");
+	else
+		nsh->errCheck = estrdup(osh->errCheck);
+	if (osh->ignErr == NULL)
+		nsh->ignErr = estrdup("%s");
+	else
+		nsh->ignErr = estrdup(osh->ignErr);
+
+	if (osh->echo == NULL)
+		nsh->echo = estrdup("");
+	else
+		nsh->echo = estrdup(osh->echo);
+
+	if (osh->exit == NULL)
+		nsh->exit = estrdup("");
+	else
+		nsh->exit = estrdup(osh->exit);
+
+	return (nsh);
+}
+
+/*
+ * JobFreeShell:
+ *
+ * Free a shell structure and all associated strings.
+ */
+static void
+JobFreeShell(Shell *sh)
+{
+
+	if (sh != NULL) {
+		free(sh->name);
+		free(sh->echoOff);
+		free(sh->echoOn);
+		free(sh->noPrint);
+		free(sh->errCheck);
+		free(sh->ignErr);
+		free(sh->echo);
+		free(sh->exit);
+		free(sh);
+	}
+}
+
+void
+Shell_Init(void)
+{
+
+    if (commandShell == NULL)
+	commandShell = JobMatchShell(shells[DEFSHELL].name);
+
+    if (shellPath == NULL) {
+	/*
+	 * The user didn't specify a shell to use, so we are using the
+	 * default one... Both the absolute path and the last component
+	 * must be set. The last component is taken from the 'name' field
+	 * of the default shell description pointed-to by commandShell.
+	 * All default shells are located in _PATH_DEFSHELLDIR.
+	 */
+	shellName = commandShell->name;
+	shellPath = str_concat(_PATH_DEFSHELLDIR, shellName, STR_ADDSLASH);
+    }
+}
+
 /*-
  *-----------------------------------------------------------------------
  * Job_Init --
@@ -2078,24 +2181,7 @@ Job_Init(int maxproc)
 	targFmt = TARG_FMT;
     }
 
-    if (shellPath == NULL) {
-	/*
-	 * The user didn't specify a shell to use, so we are using the
-	 * default one... Both the absolute path and the last component
-	 * must be set. The last component is taken from the 'name' field
-	 * of the default shell description pointed-to by commandShell.
-	 * All default shells are located in _PATH_DEFSHELLDIR.
-	 */
-	shellName = commandShell->name;
-	shellPath = str_concat(_PATH_DEFSHELLDIR, shellName, STR_ADDSLASH);
-    }
-
-    if (commandShell->exit == NULL) {
-	commandShell->exit = "";
-    }
-    if (commandShell->echo == NULL) {
-	commandShell->echo = "";
-    }
+    Shell_Init();
 
     /*
      * Catch the four signals that POSIX specifies if they aren't ignored.
@@ -2219,7 +2305,9 @@ Job_Empty(void)
  *	Find a matching shell in 'shells' given its final component.
  *
  * Results:
- *	A pointer to the Shell structure.
+ *	A pointer to a freshly allocated Shell structure with is a copy
+ *	of the static structure or NULL if no shell with the given name
+ *	is found.
  *
  * Side Effects:
  *	None.
@@ -2227,13 +2315,14 @@ Job_Empty(void)
  *-----------------------------------------------------------------------
  */
 static Shell *
-JobMatchShell(char *name)
+JobMatchShell(const char *name)
 {
-    Shell	  *sh;	      /* Pointer into shells table */
-    Shell	  *match;     /* Longest-matching shell */
-    char	  *cp1,
-		  *cp2;
-    char	  *eoname;
+    const struct CShell	*sh;	      /* Pointer into shells table */
+    const struct CShell	*match;     /* Longest-matching shell */
+    struct Shell *nsh;
+    const char *cp1;
+    const char *cp2;
+    const char *eoname;
 
     eoname = name + strlen(name);
 
@@ -2251,7 +2340,25 @@ JobMatchShell(char *name)
 	   match = sh;
 	}
     }
-    return(match == NULL ? sh : match);
+    if (match == NULL)
+	return (NULL);
+
+    /* make a copy */
+    nsh = emalloc(sizeof(*nsh));
+
+    nsh->name = estrdup(match->name);
+    nsh->echoOff = estrdup(match->echoOff);
+    nsh->echoOn = estrdup(match->echoOn);
+    nsh->hasEchoCtl = match->hasEchoCtl;
+    nsh->noPrint = estrdup(match->noPrint);
+    nsh->noPLen = match->noPLen;
+    nsh->hasErrCtl = match->hasErrCtl;
+    nsh->errCheck = estrdup(match->errCheck);
+    nsh->ignErr = estrdup(match->ignErr);
+    nsh->echo = estrdup(match->echo);
+    nsh->exit = estrdup(match->exit);
+
+    return (nsh);
 }
 
 /*-
@@ -2306,6 +2413,7 @@ Job_ParseShell(char *line)
     int		  argc;
     char    	  *path;
     Shell   	  newShell;
+    Shell	  *sh;
     Boolean 	  fullSpec = FALSE;
 
     while (isspace((unsigned char) *line)) {
@@ -2354,6 +2462,18 @@ Job_ParseShell(char *line)
 	     }
     }
 
+    /*
+     * Some checks (could be more)
+     */
+    if (fullSpec) {
+	if ((newShell.echoOn != NULL) ^ (newShell.echoOff != NULL))
+	    Parse_Error(PARSE_FATAL, "Shell must have either both echoOff and "
+		"echoOn or none of them");
+
+	if (newShell.echoOn != NULL && newShell.echoOff)
+	    newShell.hasEchoCtl = TRUE;
+    }
+
     if (path == NULL) {
 	/*
 	 * If no path was given, the user wants one of the pre-defined shells,
@@ -2363,11 +2483,13 @@ Job_ParseShell(char *line)
 	 */
 	if (newShell.name == NULL) {
 	    Parse_Error(PARSE_FATAL, "Neither path nor name specified");
-	    return(FAILURE);
-	} else {
-	    commandShell = JobMatchShell(newShell.name);
-	    shellName = newShell.name;
+	    return (FAILURE);
 	}
+	if ((sh = JobMatchShell(newShell.name)) == NULL) {
+	    Parse_Error(PARSE_FATAL, "%s: no matching shell", newShell.name);
+	    return (FAILURE);
+	}
+
     } else {
 	/*
 	 * The user provided a path. If s/he gave nothing else (fullSpec is
@@ -2376,39 +2498,37 @@ Job_ParseShell(char *line)
 	 * to a new location. In either case, we need to record the
 	 * path the user gave for the shell.
 	 */
-	shellPath = path;
+	free(shellPath);
+	shellPath = estrdup(path);
+	if (newShell.name == NULL) {
+	    /* get the base name as the name */
 	path = strrchr(path, '/');
 	if (path == NULL) {
 	    path = shellPath;
 	} else {
 	    path += 1;
 	}
-	if (newShell.name != NULL) {
-	    shellName = newShell.name;
-	} else {
-	    shellName = path;
+	    newShell.name = path;
 	}
+
 	if (!fullSpec) {
-	    commandShell = JobMatchShell(shellName);
+	    if ((sh = JobMatchShell(newShell.name)) == NULL) {
+		Parse_Error(PARSE_FATAL, "%s: no matching shell",
+		    newShell.name);
+		return (FAILURE);
+	    }
 	} else {
-	    commandShell = (Shell *) emalloc(sizeof(Shell));
-	    *commandShell = newShell;
+	    sh = JobCopyShell(&newShell);
 	}
     }
 
-    if (commandShell->echoOn && commandShell->echoOff) {
-	commandShell->hasEchoCtl = TRUE;
-    }
+    /* set the new shell */
+    JobFreeShell(commandShell);
+    commandShell = sh;
 
-    if (!commandShell->hasErrCtl) {
-	if (commandShell->errCheck == NULL) {
-	    commandShell->errCheck = "";
-	}
-	if (commandShell->ignErr == NULL) {
-	    commandShell->ignErr = "%s\n";
-	}
-    }
-    return SUCCESS;
+    shellName = commandShell->name;
+
+    return (SUCCESS);
 }
 
 /*-

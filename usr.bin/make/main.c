@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.28 2004/12/09 23:33:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.29 2004/12/10 01:03:46 okumoto Exp $
  */
 
 /*-
@@ -475,6 +475,12 @@ main(int argc, char **argv)
 
 	check_make_level();
 
+#if DEFSHELL == 2
+	/*
+	 * Turn off ENV to make ksh happier.
+	 */
+	unsetenv("ENV");
+#endif
 
 #ifdef RLIMIT_NOFILE
 	/*
@@ -998,10 +1004,12 @@ Cmd_Exec(char *cmd, char **error)
 
     *error = NULL;
 
+    if (shellPath == NULL)
+	Shell_Init();
     /*
      * Set up arguments for shell
      */
-    args[0] = "sh";
+    args[0] = shellName;
     args[1] = "-c";
     args[2] = cmd;
     args[3] = NULL;
@@ -1032,7 +1040,7 @@ Cmd_Exec(char *cmd, char **error)
 	(void) dup2(fds[1], 1);
 	(void) close(fds[1]);
 
-	(void) execv("/bin/sh", args);
+	(void) execv(shellPath, args);
 	_exit(1);
 	/*NOTREACHED*/
 
