@@ -1,7 +1,7 @@
 /*
  * $NetBSD: gatea20.c,v 1.2 1997/10/29 00:32:49 fvdl Exp $
  * $FreeBSD: src/sys/boot/i386/libi386/gatea20.c,v 1.4 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/gatea20.c,v 1.3 2003/11/10 06:08:36 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/gatea20.c,v 1.4 2004/08/06 20:48:36 dillon Exp $
  */
 
 /* extracted from freebsd:sys/i386/boot/biosboot/io.c */
@@ -34,7 +34,7 @@
 static unsigned char	x_20 = KB_A20;
 void gateA20()
 {
-	__asm("pushfl ; cli");
+	__asm __volatile("pushfl ; cli");
 #ifdef	IBM_L40
 	outb(0x92, 0x2);
 #else	/* !IBM_L40 */
@@ -49,5 +49,5 @@ void gateA20()
 	delay(100);
 	while (inb(K_STATUS) & K_IBUF_FUL);
 #endif	/* IBM_L40 */
-	__asm("popfl");
+	__asm __volatile("popfl");
 }
