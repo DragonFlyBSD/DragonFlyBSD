@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ruptime.c	8.2 (Berkeley) 4/5/94
  * $FreeBSD: src/usr.bin/ruptime/ruptime.c,v 1.12.2.1 2000/06/30 09:45:00 ps Exp $
- * $DragonFly: src/usr.bin/ruptime/ruptime.c,v 1.4 2004/07/23 07:24:35 asmodai Exp $
+ * $DragonFly: src/usr.bin/ruptime/ruptime.c,v 1.5 2004/07/23 07:43:26 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -80,9 +80,10 @@ main(int argc, char *argv[])
 	struct whoent *we;
 	DIR *dirp;
 	size_t hspace;
-	int aflg, cc, ch, fd, i, maxloadav;
+	int aflg, ch, fd, maxloadav;
 	char buf[sizeof(struct whod)];
 	int (*cmp)(const void *, const void *);
+	u_int cc, i;
 
 	aflg = 0;
 	cmp = hscmp;
