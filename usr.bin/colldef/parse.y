@@ -26,12 +26,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/colldef/parse.y,v 1.15.2.5 2002/10/11 10:43:45 ache Exp $
- * $DragonFly: src/usr.bin/colldef/parse.y,v 1.3 2004/07/22 14:05:07 hmp Exp $
+ * $DragonFly: src/usr.bin/colldef/parse.y,v 1.4 2005/03/02 07:16:23 joerg Exp $
  */
 
 #include <sys/types.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
 #include <err.h>
 #include <stdarg.h>
 #include <stdio.h>
