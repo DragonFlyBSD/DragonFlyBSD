@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/if_pfsync.h,v 1.4 2004/06/16 23:24:00 mlaier Exp $	*/
 /*	$OpenBSD: if_pfsync.h,v 1.13 2004/03/22 04:54:17 mcbride Exp $	*/
-/*	$DragonFly: src/sys/net/pf/if_pfsync.h,v 1.1 2004/09/19 22:32:47 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/if_pfsync.h,v 1.2 2004/09/20 01:43:13 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -32,6 +32,15 @@
 
 #ifndef _NET_IF_PFSYNC_H_
 #define _NET_IF_PFSYNC_H_
+
+/*
+ * pfvar.h is required to get struct pf_addr.  Also kdump and other utilities
+ * blindly include header files to try to get all the ioctl constants and
+ * buildworld will fail without this.  We need a better way XXX
+ */
+#ifndef _NET_PFVAR_H_
+#include "pfvar.h"
+#endif
 
 
 #define PFSYNC_ID_LEN	sizeof(u_int64_t)
