@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.13 2004/07/29 08:46:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.14 2004/09/15 01:12:08 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
  */
@@ -817,6 +817,7 @@ static int wb_attach(dev)
 
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
+	callout_init(&sc->wb_stat_timer);
 
 	/*
 	 * Handle power management nonsense.
@@ -1379,7 +1380,7 @@ static void wb_tick(xsc)
 
 	mii_tick(mii);
 
-	sc->wb_stat_ch = timeout(wb_tick, sc, hz);
+	callout_reset(&sc->wb_stat_timer, hz, wb_tick, sc);
 
 	splx(s);
 
@@ -1687,9 +1688,7 @@ static void wb_init(xsc)
 
 	(void)splx(s);
 
-	sc->wb_stat_ch = timeout(wb_tick, sc, hz);
-
-	return;
+	callout_reset(&sc->wb_stat_timer, hz, wb_tick, sc);
 }
 
 /*
@@ -1814,7 +1813,7 @@ static void wb_stop(sc)
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_timer = 0;
 
-	untimeout(wb_tick, sc, sc->wb_stat_ch);
+	callout_stop(&sc->wb_stat_timer);
 
 	WB_CLRBIT(sc, WB_NETCFG, (WB_NETCFG_RX_ON|WB_NETCFG_TX_ON));
 	CSR_WRITE_4(sc, WB_IMR, 0x00000000);

@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.13 2004/07/23 07:16:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.14 2004/09/15 01:09:23 joerg Exp $
  *
  */
 
@@ -129,7 +129,7 @@ vxattach(sc)
     struct ifnet *ifp = &sc->arpcom.ac_if;
     int i;
 
-    callout_handle_init(&sc->ch);
+    callout_init(&sc->vx_timer);
     GO_WINDOW(0);
     CSR_WRITE_2(sc, VX_COMMAND, GLOBAL_RESET);
     VX_BUSY_WAIT;
@@ -757,7 +757,7 @@ vxget(sc, totlen)
     } else {
         /* If the queue is no longer full, refill. */
         if (sc->last_mb == sc->next_mb && sc->buffill_pending == 0) {
-	    sc->ch = timeout(vxmbuffill, sc, 1);
+	    callout_reset(&sc->vx_timer, 1, vxmbuffill, sc);
 	    sc->buffill_pending = 1;
 	}
         /* Convert one of our saved mbuf's. */
@@ -996,7 +996,7 @@ vxmbuffill(sp)
     sc->last_mb = i;
     /* If the queue was not filled, try again. */
     if (sc->last_mb != sc->next_mb) {
-	sc->ch = timeout(vxmbuffill, sc, 1);
+	callout_reset(&sc->vx_timer, 1, vxmbuffill, sc);
 	sc->buffill_pending = 1;
     } else {
 	sc->buffill_pending = 0;
@@ -1019,6 +1019,6 @@ vxmbufempty(sc)
     }
     sc->last_mb = sc->next_mb = 0;
     if (sc->buffill_pending != 0)
-	untimeout(vxmbuffill, sc, sc->ch);
+	callout_stop(&sc->vx_timer);
     splx(s);
 }

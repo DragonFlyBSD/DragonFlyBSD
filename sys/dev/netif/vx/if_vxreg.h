@@ -20,7 +20,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vxreg.h,v 1.6 2000/05/01 19:54:26 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vxreg.h,v 1.4 2003/12/07 19:23:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vxreg.h,v 1.5 2004/09/15 01:09:23 joerg Exp $
  *
  October 2, 1994
 
@@ -68,7 +68,7 @@ struct vx_softc {
     short tx_start_thresh;	/* Current TX_start_thresh.	*/
     int	tx_succ_ok;		/* # packets sent in sequence	*/
 				/* w/o underrun			*/
-    struct callout_handle ch;	/* Callout handle for timeouts  */
+    struct callout vx_timer;	/* Callout handle for timeouts	*/
     int	buffill_pending;
 };
 

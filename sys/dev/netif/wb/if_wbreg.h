@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wbreg.h,v 1.7 1999/08/30 23:08:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wbreg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wbreg.h,v 1.3 2004/09/15 01:12:08 joerg Exp $
  */
 
 /*
@@ -378,7 +378,7 @@ struct wb_softc {
 	caddr_t			wb_ldata_ptr;
 	struct wb_list_data	*wb_ldata;
 	struct wb_chain_data	wb_cdata;
-	struct callout_handle	wb_stat_ch;
+	struct callout		wb_stat_timer;
 };
 
 /*
