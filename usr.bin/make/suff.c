@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.39 2005/03/12 10:41:25 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.40 2005/03/12 10:52:52 okumoto Exp $
  */
 
 /*-
@@ -652,11 +652,8 @@ Suff_AddTransform(char *line)
  * Suff_EndTransform --
  *	Handle the finish of a transformation definition, removing the
  *	transformation from the graph if it has neither commands nor
- *	sources. This is a callback procedure for the Parse module via
- *	Lst_ForEach
- *
- * Results:
- *	=== 0
+ *	sources. This is called from the Parse module at the end of
+ *	a dependency block.
  *
  * Side Effects:
  *	If the node has no commands or children, the children and parents

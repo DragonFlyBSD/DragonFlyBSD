@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/suff.h,v 1.2 2005/02/01 22:05:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.h,v 1.3 2005/03/12 10:52:52 okumoto Exp $
  */
 
 #ifndef suff_h_2d5a821c
@@ -46,7 +46,7 @@ struct GNode;
 void Suff_ClearSuffixes(void);
 Boolean Suff_IsTransform(char *);
 struct GNode *Suff_AddTransform(char *);
-int Suff_EndTransform(void *, void *);
+void Suff_EndTransform(const struct GNode *);
 void Suff_AddSuffix(char *);
 Lst *Suff_GetPath(char *);
 void Suff_DoPaths(void);

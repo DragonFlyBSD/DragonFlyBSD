@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.50 2005/03/03 18:22:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.51 2005/03/12 10:52:51 okumoto Exp $
  */
 
 /*-
@@ -2366,12 +2366,16 @@ test_char:
 static void
 ParseFinishLine(void)
 {
+	const LstNode	*ln;
 
-    if (inLine) {
-	Lst_ForEach(&targets, Suff_EndTransform, NULL);
-	Lst_Destroy(&targets, ParseHasCommands);
-	inLine = FALSE;
-    }
+	if (inLine) {
+		LST_FOREACH(ln, &targets) {
+			if (((const GNode *)Lst_Datum(ln))->type & OP_TRANSFORM)
+				Suff_EndTransform(Lst_Datum(ln));
+		}
+		Lst_Destroy(&targets, ParseHasCommands);
+		inLine = FALSE;
+	}
 }
 
 static char *
