@@ -31,8 +31,8 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  * 
- * $FreeBSD: src/sys/dev/firewire/iec68113.h,v 1.1.2.5 2003/05/01 06:24:37 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/iec68113.h,v 1.2 2003/06/17 04:28:26 dillon Exp $
+ * $FreeBSD: src/sys/dev/firewire/iec68113.h,v 1.7 2003/04/29 13:27:13 simokawa Exp $
+ * $DragonFly: src/sys/bus/firewire/iec68113.h,v 1.3 2004/02/05 13:32:08 joerg Exp $
  *
  */
 

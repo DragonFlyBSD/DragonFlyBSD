@@ -31,18 +31,18 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $FreeBSD: src/sys/dev/firewire/fwmem.h,v 1.1.2.4 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwmem.h,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $FreeBSD: src/sys/dev/firewire/fwmem.h,v 1.6 2003/10/02 04:06:56 simokawa Exp $
+ * $DragonFly: src/sys/bus/firewire/fwmem.h,v 1.3 2004/02/05 13:32:08 joerg Exp $
  */
 
 struct fw_xfer *fwmem_read_quad(struct fw_device *, caddr_t, u_int8_t,
-	u_int16_t, u_int32_t, void (*)(struct fw_xfer *));
+	u_int16_t, u_int32_t, void *, void (*)(struct fw_xfer *));
 struct fw_xfer *fwmem_write_quad(struct fw_device *, caddr_t, u_int8_t,
-	u_int16_t, u_int32_t, u_int32_t, void (*)(struct fw_xfer *));
+	u_int16_t, u_int32_t, void *, void (*)(struct fw_xfer *));
 struct fw_xfer *fwmem_read_block(struct fw_device *, caddr_t, u_int8_t,
-	u_int16_t, u_int32_t, int, void (*)(struct fw_xfer *));
+	u_int16_t, u_int32_t, int, void *, void (*)(struct fw_xfer *));
 struct fw_xfer *fwmem_write_block(struct fw_device *, caddr_t, u_int8_t,
-	u_int16_t, u_int32_t, int, char *, void (*)(struct fw_xfer *));
+	u_int16_t, u_int32_t, int, void *, void (*)(struct fw_xfer *));
 
 d_open_t	fwmem_open;
 d_close_t	fwmem_close;
@@ -51,3 +51,4 @@ d_read_t	fwmem_read;
 d_write_t	fwmem_write;
 d_poll_t	fwmem_poll;
 d_mmap_t	fwmem_mmap;
+d_strategy_t	fwmem_strategy;

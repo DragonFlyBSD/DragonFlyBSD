@@ -31,8 +31,8 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  * 
- * $FreeBSD: src/sys/dev/firewire/firewire.h,v 1.2.2.8 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.h,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $FreeBSD: src/sys/dev/firewire/firewire.h,v 1.17 2003/11/07 09:01:41 simokawa Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.h,v 1.3 2004/02/05 13:32:07 joerg Exp $
  *
  */
 
@@ -48,7 +48,7 @@ struct fw_isochreq {
 };
 
 struct fw_isobufreq {
-	struct {
+	struct fw_bufspec {
 		unsigned int nchunk;
 		unsigned int npacket;
 		unsigned int psize;
@@ -72,7 +72,7 @@ struct fw_reg_req_t {
 
 #define MAXREC(x)	(2 << (x))
 #define FWPMAX_S400 (2048 + 20)	/* MAXREC plus space for control data */
-#define FWMAXQUEUE 64
+#define FWMAXQUEUE 128
 
 #define	FWLOCALBUS	0xffc0
 
@@ -191,12 +191,6 @@ struct fw_pkt {
 			BIT16x2(src, dest_hi);
 			u_int32_t dest_lo;
 			BIT16x2(len, extcode);
-#define FW_LREQ_MSKSWAP	1
-#define FW_LREQ_CMPSWAP	2
-#define FW_LREQ_FTADD	3
-#define FW_LREQ_LTADD	4
-#define FW_LREQ_BDADD	5
-#define FW_LREQ_WRADD	6
 			u_int32_t payload[0];
 		} lreq;
 		struct {
@@ -215,6 +209,33 @@ struct fw_pkt {
 		} lres;
 	} mode;
 };
+
+/*
+ * Response code (rtcode)
+ */
+/* The node has successfully completed the command. */
+#define	RESP_CMP		0
+/* A resource conflict was detected. The request may be retried. */
+#define	RESP_CONFLICT_ERROR	4
+/* Hardware error, data is unavailable. */
+#define	RESP_DATA_ERROR		5
+/* A field in the request packet header was set to an unsupported or incorrect
+ * value, or an invalid transaction was attempted (e.g., a write to a read-only
+ * address). */
+#define	RESP_TYPE_ERROR		6
+/* The destination offset field in the request was set to an address not
+ * accessible in the destination node. */
+#define	RESP_ADDRESS_ERROR	7
+
+/*
+ * Extended transaction code (extcode)
+ */
+#define EXTCODE_MASK_SWAP	1
+#define EXTCODE_CMP_SWAP	2
+#define EXTCODE_FETCH_ADD	3
+#define EXTCODE_LITTLE_ADD	4
+#define EXTCODE_BOUNDED_ADD	5
+#define EXTCODE_WRAP_ADD	6
 
 struct fw_eui64 {
 	u_int32_t hi, lo;
@@ -382,6 +403,8 @@ struct fw_crom_buf {
 
 #define FWOHCI_RDREG	_IOWR('S', 80, struct fw_reg_req_t)
 #define FWOHCI_WRREG	_IOWR('S', 81, struct fw_reg_req_t)
+#define FWOHCI_RDPHYREG	_IOWR('S', 82, struct fw_reg_req_t)
+#define FWOHCI_WRPHYREG	_IOWR('S', 83, struct fw_reg_req_t)
 
 #define DUMPDMA		_IOWR('S', 82, u_int32_t)
 
@@ -394,9 +417,10 @@ struct fw_crom_buf {
 #define unit2minor(x)	(((x) & 0xff) | (((x) << 8) & ~0xffff))
 #endif
 
-#define UNIT2MIN(x)	(((x) & 0xff) << 8)
+#define MAKEMINOR(f, u, s)	\
+	unit2minor((f) | (((u) & 0xff) << 8) | (s & 0xff))
 #define DEV2UNIT(x)	((dev2unit(x) & 0xff00) >> 8)
-#define DEV2DMACH(x)	(dev2unit(x) & 0xff)
+#define DEV2SUB(x)	(dev2unit(x) & 0xff)
 
 #define FWMEM_FLAG	0x10000
 #define DEV_FWMEM(x)	(dev2unit(x) & FWMEM_FLAG)

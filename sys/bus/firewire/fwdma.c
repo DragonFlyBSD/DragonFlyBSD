@@ -31,21 +31,37 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $FreeBSD: src/sys/dev/firewire/fwdma.c,v 1.1.2.1 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdma.c,v 1.3 2003/08/07 21:16:45 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdma.c,v 1.4 2004/02/05 13:32:07 joerg Exp $
  */
+
+#ifndef __DragonFly__
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD: src/sys/dev/firewire/fwdma.c,v 1.5 2003/08/24 17:46:07 obrien Exp $");
+#endif
+
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/conf.h>
 #include <sys/types.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
+#if __FreeBSD_version >= 501102 
+#include <sys/lock.h>
+#include <sys/mutex.h>
+#endif
 
 #include <sys/bus.h>
 #include <machine/bus.h>
 
-#include "firewire.h"
-#include "firewirereg.h"
-#include "fwdma.h"
+#ifdef __DragonFly__
+#include <bus/firewire/firewire.h>
+#include <bus/firewire/firewirereg.h>
+#include <bus/firewire/fwdma.h>
+#else
+#include <dev/firewire/firewire.h>
+#include <dev/firewire/firewirereg.h>
+#include <dev/firewire/fwdma.h>
+#endif
 
 static void
 fwdma_map_cb(void *arg, bus_dma_segment_t *segs, int nseg, int error)
@@ -75,7 +91,12 @@ fwdma_malloc(struct firewire_comm *fc, int alignment, bus_size_t size,
 		/*maxsize*/ size,
 		/*nsegments*/ 1,
 		/*maxsegsz*/ BUS_SPACE_MAXSIZE_32BIT,
-		/*flags*/ BUS_DMA_ALLOCNOW, &dma->dma_tag);
+		/*flags*/ BUS_DMA_ALLOCNOW,
+#if __FreeBSD_version >= 501102 
+		/*lockfunc*/busdma_lock_mutex,
+		/*lockarg*/&Giant,
+#endif
+		&dma->dma_tag);
 	if (err) {
 		printf("fwdma_malloc: failed(1)\n");
 		return(NULL);
@@ -168,7 +189,12 @@ fwdma_malloc_multiseg(struct firewire_comm *fc, int alignment,
 			/*maxsize*/ ssize,
 			/*nsegments*/ 1,
 			/*maxsegsz*/ BUS_SPACE_MAXSIZE_32BIT,
-			/*flags*/ BUS_DMA_ALLOCNOW, &am->dma_tag)) {
+			/*flags*/ BUS_DMA_ALLOCNOW,
+#if __FreeBSD_version >= 501102
+			/*lockfunc*/busdma_lock_mutex,
+			/*lockarg*/&Giant,
+#endif
+			&am->dma_tag)) {
 		printf("fwdma_malloc_multiseg: tag_create failed\n");
 		free(am, M_FW);
 		return(NULL);

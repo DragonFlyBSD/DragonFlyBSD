@@ -31,8 +31,8 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  * 
- * $FreeBSD: src/sys/dev/firewire/fwohcivar.h,v 1.1.2.6 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohcivar.h,v 1.3 2003/08/27 11:42:34 rob Exp $
+ * $FreeBSD: src/sys/dev/firewire/fwohcivar.h,v 1.11 2004/01/06 14:30:47 simokawa Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohcivar.h,v 1.4 2004/02/05 13:32:08 joerg Exp $
  *
  */
 
@@ -52,6 +52,7 @@ typedef struct fwohci_softc {
 	void *ih;
 #if __FreeBSD_version < 500000
 	void *ih_cam;
+	void *ih_bio;
 #endif
 	struct resource *bsr;
 	struct resource *irq_res;
@@ -85,6 +86,7 @@ typedef struct fwohci_softc {
 
 void fwohci_intr (void *arg);
 int fwohci_init (struct fwohci_softc *, device_t);
+void fwohci_poll (struct firewire_comm *, int, int);
 void fwohci_reset (struct fwohci_softc *, device_t);
 int fwohci_detach (struct fwohci_softc *, device_t);
 int fwohci_resume (struct fwohci_softc *, device_t);

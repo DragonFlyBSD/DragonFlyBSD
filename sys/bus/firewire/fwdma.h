@@ -31,13 +31,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $FreeBSD: src/sys/dev/firewire/fwdma.h,v 1.1.2.1 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdma.h,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $FreeBSD: src/sys/dev/firewire/fwdma.h,v 1.2 2003/05/27 16:34:52 scottl Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdma.h,v 1.3 2004/02/05 13:32:08 joerg Exp $
  */
-
-#if __FreeBSD_version >= 500111
-typedef int bus_dmasync_op_t;
-#endif
 
 struct fwdma_alloc {
 	bus_dma_tag_t	dma_tag;

@@ -31,8 +31,8 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  * 
- * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.3.2.11 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.3 2003/08/07 21:16:45 dillon Exp $
+ * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.38 2004/01/23 17:37:09 simokawa Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.4 2004/02/05 13:32:08 joerg Exp $
  */
 
 #define BOUNCE_BUFFER_TEST	0
@@ -41,13 +41,23 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
+#include <sys/conf.h>
 #include <sys/bus.h>
 #include <sys/queue.h>
 #include <machine/bus.h>
 #include <sys/rman.h>
 #include <sys/malloc.h>
+#if __FreeBSD_version >= 501102
+#include <sys/lock.h>
+#include <sys/mutex.h>
+#endif
 #include <machine/resource.h>
 
+#if __FreeBSD_version < 500000
+#include <machine/clock.h>		/* for DELAY() */
+#endif
+
+#ifdef __DragonFly__
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 
@@ -57,6 +67,22 @@
 #include "fwdma.h"
 #include "fwohcireg.h"
 #include "fwohcivar.h"
+#else
+#if __FreeBSD_version < 500000
+#include <pci/pcivar.h>
+#include <pci/pcireg.h>
+#else
+#include <dev/pci/pcivar.h>
+#include <dev/pci/pcireg.h>
+#endif
+
+#include <dev/firewire/firewire.h>
+#include <dev/firewire/firewirereg.h>
+
+#include <dev/firewire/fwdma.h>
+#include <dev/firewire/fwohcireg.h>
+#include <dev/firewire/fwohcivar.h>
+#endif
 
 static int fwohci_pci_attach(device_t self);
 static int fwohci_pci_detach(device_t self);
@@ -109,6 +135,10 @@ fwohci_pci_probe( device_t dev )
 	}
 	if (id == (FW_VENDORID_TI | FW_DEVICE_TITSB43AB23)) {
 		device_set_desc(dev, "Texas Instruments TSB43AB23");
+		return 0;
+	}
+	if (id == (FW_VENDORID_TI | FW_DEVICE_TITSB82AA2)) {
+		device_set_desc(dev, "Texas Instruments TSB82AA2");
 		return 0;
 	}
 	if (id == (FW_VENDORID_TI | FW_DEVICE_TIPCI4450)) {
@@ -215,7 +245,7 @@ fwohci_pci_attach(device_t self)
 {
 	fwohci_softc_t *sc = device_get_softc(self);
 	int err;
-	int rid, s;
+	int rid;
 #if __FreeBSD_version < 500000
 	int intr;
 	/* For the moment, put in a message stating what is wrong */
@@ -253,13 +283,6 @@ fwohci_pci_attach(device_t self)
 		return ENXIO;
 	}
 
-	sc->fc.bdev = device_add_child(self, "firewire", -1);
-	if (!sc->fc.bdev) {
-		device_printf(self, "Could not add firewire device\n");
-		fwohci_pci_detach(self);
-		return ENOMEM;
-	}
-	device_set_ivars(sc->fc.bdev, sc);
 
 	err = bus_setup_intr(self, sc->irq_res,
 #if FWOHCI_TASKQUEUE
@@ -272,6 +295,9 @@ fwohci_pci_attach(device_t self)
 	/* XXX splcam() should mask this irq for sbp.c*/
 	err = bus_setup_intr(self, sc->irq_res, INTR_TYPE_CAM,
 		     (driver_intr_t *) fwohci_dummy_intr, sc, &sc->ih_cam);
+	/* XXX splbio() should mask this irq for physio()/fwmem_strategy() */
+	err = bus_setup_intr(self, sc->irq_res, INTR_TYPE_BIO,
+		     (driver_intr_t *) fwohci_dummy_intr, sc, &sc->ih_bio);
 #endif
 	if (err) {
 		device_printf(self, "Could not setup irq, %d\n", err);
@@ -292,6 +318,10 @@ fwohci_pci_attach(device_t self)
 				/*nsegments*/0x20,
 				/*maxsegsz*/0x8000,
 				/*flags*/BUS_DMA_ALLOCNOW,
+#if __FreeBSD_version >= 501102
+				/*lockfunc*/busdma_lock_mutex,
+				/*lockarg*/&Giant,
+#endif
 				&sc->fc.dmat);
 	if (err != 0) {
 		printf("fwohci_pci_attach: Could not allocate DMA tag "
@@ -301,22 +331,15 @@ fwohci_pci_attach(device_t self)
 
 	err = fwohci_init(sc, self);
 
-	if (!err)
-		err = device_probe_and_attach(sc->fc.bdev);
-
 	if (err) {
-		device_printf(self, "FireWire init failed\n");
+		device_printf(self, "fwohci_init failed with err=%d\n", err);
 		fwohci_pci_detach(self);
 		return EIO;
 	}
 
-	/* XXX
-	 * Clear the bus reset event flag to start transactions even when
-	 * interrupt is disabled during the boot process.
-	 */
-	s = splfw();
-	fwohci_intr((void *)sc);
-	splx(s);
+	/* probe and attach a child device(firewire) */
+	bus_generic_probe(self);
+	bus_generic_attach(self);
 
 	return 0;
 }
@@ -330,8 +353,14 @@ fwohci_pci_detach(device_t self)
 
 	s = splfw();
 
-	fwohci_stop(sc, self);
+	if (sc->bsr)
+		fwohci_stop(sc, self);
+
 	bus_generic_detach(self);
+	if (sc->fc.bdev) {
+		device_delete_child(self, sc->fc.bdev);
+		sc->fc.bdev = NULL;
+	}
 
 	/* disable interrupts that might have been switched on */
 	if (sc->bst && sc->bsh)
@@ -345,14 +374,10 @@ fwohci_pci_detach(device_t self)
 			device_printf(self, "Could not tear down irq, %d\n",
 				      err);
 #if __FreeBSD_version < 500000
-		err = bus_teardown_intr(self, sc->irq_res, sc->ih_cam);
+		bus_teardown_intr(self, sc->irq_res, sc->ih_cam);
+		bus_teardown_intr(self, sc->irq_res, sc->ih_bio);
 #endif
 		sc->ih = NULL;
-	}
-
-	if (sc->fc.bdev) {
-		device_delete_child(self, sc->fc.bdev);
-		sc->fc.bdev = NULL;
 	}
 
 	if (sc->irq_res) {
@@ -376,13 +401,14 @@ fwohci_pci_detach(device_t self)
 static int
 fwohci_pci_suspend(device_t dev)
 {
+	fwohci_softc_t *sc = device_get_softc(dev);
 	int err;
 
 	device_printf(dev, "fwohci_pci_suspend\n");
 	err = bus_generic_suspend(dev);
 	if (err)
 		return err;
-	/* fwohci_stop(dev); */
+	fwohci_stop(sc, dev);
 	return 0;
 }
 
@@ -391,8 +417,11 @@ fwohci_pci_resume(device_t dev)
 {
 	fwohci_softc_t *sc = device_get_softc(dev);
 
+#ifndef BURN_BRIDGES
 	device_printf(dev, "fwohci_pci_resume: power_state = 0x%08x\n",
 					pci_get_powerstate(dev));
+	pci_set_powerstate(dev, PCI_POWERSTATE_D0);
+#endif
 	fwohci_pci_init(dev);
 	fwohci_resume(sc, dev);
 	return 0;
@@ -408,6 +437,42 @@ fwohci_pci_shutdown(device_t dev)
 	return 0;
 }
 
+static device_t
+fwohci_pci_add_child(device_t dev, int order, const char *name, int unit)
+{
+	struct fwohci_softc *sc;
+	device_t child;
+	int s, err = 0;
+
+	sc = (struct fwohci_softc *)device_get_softc(dev);
+	child = device_add_child(dev, name, unit);
+	if (child == NULL)
+		return (child);
+
+	sc->fc.bdev = child;
+	device_set_ivars(child, (void *)&sc->fc);
+
+	err = device_probe_and_attach(child);
+	if (err) {
+		device_printf(dev, "probe_and_attach failed with err=%d\n",
+		    err);
+		fwohci_pci_detach(dev);
+		device_delete_child(dev, child);
+		return NULL;
+	}
+
+	/* XXX
+	 * Clear the bus reset event flag to start transactions even when
+	 * interrupt is disabled during the boot process.
+	 */
+	DELAY(250); /* 2 cycles */
+	s = splfw();
+	fwohci_poll((void *)sc, 0, -1);
+	splx(s);
+
+	return (child);
+}
+
 static device_method_t fwohci_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		fwohci_pci_probe),
@@ -418,6 +483,7 @@ static device_method_t fwohci_methods[] = {
 	DEVMETHOD(device_shutdown,	fwohci_pci_shutdown),
 
 	/* Bus interface */
+	DEVMETHOD(bus_add_child,	fwohci_pci_add_child),
 	DEVMETHOD(bus_print_child,	bus_generic_print_child),
 
 	{ 0, 0 }
@@ -431,5 +497,8 @@ static driver_t fwohci_driver = {
 
 static devclass_t fwohci_devclass;
 
+#ifdef FWOHCI_MODULE
+MODULE_DEPEND(fwohci, firewire, 1, 1, 1);
+#endif
 DRIVER_MODULE(fwohci, pci, fwohci_driver, fwohci_devclass, 0, 0);
 DRIVER_MODULE(fwohci, cardbus, fwohci_driver, fwohci_devclass, 0, 0);

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2002-2003
  * 	Hidetoshi Shimokawa. All rights reserved.
  * 
@@ -31,9 +31,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $FreeBSD: src/sys/dev/firewire/fwcrom.c,v 1.2.2.2 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwcrom.c,v 1.3 2003/08/07 21:16:45 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwcrom.c,v 1.4 2004/02/05 13:32:07 joerg Exp $
  */
+
+#ifndef __DragonFly__
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD: src/sys/dev/firewire/fwcrom.c,v 1.9 2003/10/02 04:06:55 simokawa Exp $");
+#endif
 
 #include <sys/param.h>
 #if defined(_KERNEL) || defined(TEST)
@@ -50,8 +54,17 @@
 #include <stdlib.h>
 #include <string.h>
 #endif
+
+#ifdef __DragonFly__
 #include "firewire.h"
 #include "iec13213.h"
+#else
+#include <dev/firewire/firewire.h>
+#include <dev/firewire/iec13213.h>
+#endif
+
+#define MAX_ROM (1024 - sizeof(u_int32_t) * 5)
+#define CROM_END(cc) ((vm_offset_t)(cc)->stack[0].dir + MAX_ROM - 1)
 
 void
 crom_init_context(struct crom_context *cc, u_int32_t *p)
@@ -94,12 +107,12 @@ crom_next(struct crom_context *cc)
 		return;
 	reg = crom_get(cc);
 	if ((reg->key & CSRTYPE_MASK) == CSRTYPE_D) {
-		cc->depth ++;
-		if (cc->depth > CROM_MAX_DEPTH) {
+		if (cc->depth >= CROM_MAX_DEPTH) {
 			printf("crom_next: too deep\n");
-			cc->depth --;
 			goto again;
 		}
+		cc->depth ++;
+
 		ptr = &cc->stack[cc->depth];
 		ptr->dir = (struct csrdirectory *) (reg + reg->val);
 		ptr->index = 0;
@@ -109,8 +122,13 @@ again:
 	ptr = &cc->stack[cc->depth];
 	ptr->index ++;
 check:
-	if (ptr->index < ptr->dir->crc_len)
+	if (ptr->index < ptr->dir->crc_len &&
+			(vm_offset_t)crom_get(cc) <= CROM_END(cc))
 		return;
+
+	if (ptr->index < ptr->dir->crc_len)
+		printf("crom_next: bound check failed\n");
+
 	if (cc->depth > 0) {
 		cc->depth--;
 		goto again;
@@ -174,11 +192,17 @@ crom_parse_text(struct crom_context *cc, char *buf, int len)
 		return;
 
 	reg = crom_get(cc);
-	if (reg->key != CROM_TEXTLEAF) {
+	if (reg->key != CROM_TEXTLEAF ||
+			(vm_offset_t)(reg + reg->val) > CROM_END(cc)) {
 		strncpy(buf, nullstr, len);
 		return;
 	}
 	textleaf = (struct csrtext *)(reg + reg->val);
+
+	if ((vm_offset_t)textleaf + textleaf->crc_len > CROM_END(cc)) {
+		strncpy(buf, nullstr, len);
+		return;
+	}
 
 	/* XXX should check spec and type */
 
@@ -410,6 +434,7 @@ crom_add_chunk(struct crom_src *src, struct crom_chunk *parent,
 	return(index);
 }
 
+#define MAX_TEXT ((CROM_MAX_CHUNK_LEN + 1) * 4 - sizeof(struct csrtext))
 int
 crom_add_simple_text(struct crom_src *src, struct crom_chunk *parent,
 				struct crom_chunk *chunk, char *buf)
@@ -417,9 +442,9 @@ crom_add_simple_text(struct crom_src *src, struct crom_chunk *parent,
 	struct csrtext *tl;
 	u_int32_t *p;
 	int len, i;
+	char t[MAX_TEXT];
 
 	len = strlen(buf);
-#define MAX_TEXT ((CROM_MAX_CHUNK_LEN + 1) * 4 - sizeof(struct csrtext))
 	if (len > MAX_TEXT) {
 #if __FreeBSD_version < 500000
 		printf("text(%d) trancated to %d.\n", len, MAX_TEXT);
@@ -434,8 +459,10 @@ crom_add_simple_text(struct crom_src *src, struct crom_chunk *parent,
 	tl->spec_id = 0;
 	tl->spec_type = 0;
 	tl->lang_id = 0;
-	p = (u_int32_t *) buf;
-	for (i = 0; i < howmany(len, sizeof(u_int32_t)) / 4; i ++)
+	bzero(&t[0], roundup2(len, sizeof(u_int32_t)));
+	bcopy(buf, &t[0], len);
+	p = (u_int32_t *)&t[0];
+	for (i = 0; i < howmany(len, sizeof(u_int32_t)); i ++)
 		tl->text[i] = ntohl(*p++);
 	return (crom_add_chunk(src, parent, chunk, CROM_TEXTLEAF));
 }
@@ -457,8 +484,9 @@ crom_load(struct crom_src *src, u_int32_t *buf, int maxlen)
 {
 	struct crom_chunk *chunk, *parent;
 	struct csrhdr *hdr;
-#if 0
+#ifdef _KERNEL
 	u_int32_t *ptr;
+	int i;
 #endif
 	int count, offset;
 	int len;
@@ -495,9 +523,9 @@ crom_load(struct crom_src *src, u_int32_t *buf, int maxlen)
 	}
 	hdr = (struct csrhdr *)buf;
 	hdr->crc_len = count - 1;
-	hdr->crc = crom_crc(buf + 1, hdr->crc_len);
+	hdr->crc = crom_crc(&buf[1], hdr->crc_len);
 
-#if 0
+#ifdef _KERNEL
 	/* byte swap */
 	ptr = buf;
 	for (i = 0; i < count; i ++) {
