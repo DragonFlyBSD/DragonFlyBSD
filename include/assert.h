@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)assert.h	8.2 (Berkeley) 1/21/94
- * $DragonFly: src/include/assert.h,v 1.2 2003/11/14 01:01:43 dillon Exp $
+ * $DragonFly: src/include/assert.h,v 1.3 2005/01/06 17:32:44 joerg Exp $
  */
 
 /*
@@ -52,15 +52,19 @@
 #define	_assert(e)	((void)0)
 #else
 #define	_assert(e)	assert(e)
-#ifdef __STDC__
 #define	assert(e)	((e) ? (void)0 : __assert(__FILE__, __LINE__, #e))
-#else	/* PCC */
-#define	assert(e)	((e) ? (void)0 : __assert(__FILE__, __LINE__, "e"))
 #endif
+
+#undef _DIAGASSERT
+#ifdef _DIAGNOSTIC
+#define	_DIAGASSERT(e)	((e) ? (void)0 : __assert(__FILE__, __LINE__, #e))
+#else
+#define	_DIAGASSERT(e)	((void)0)
 #endif
 
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-void __assert (const char *, int, const char *);
+void	__assert(const char *, int, const char *);
+void	__diag_assert(const char *, int, const char *);
 __END_DECLS

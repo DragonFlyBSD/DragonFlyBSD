@@ -31,8 +31,10 @@
  * SUCH DAMAGE.
  *
  * @(#)assert.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/gen/assert.c,v 1.3 2005/01/06 17:32:44 joerg Exp $
  */
 
+#include <sys/syslog.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,4 +49,57 @@ __assert(file, line, failedexpr)
 	    failedexpr, file, line);
 	abort();
 	/* NOTREACHED */
+}
+
+enum {
+	DIAGASSERT_ABORT =	1<<0,
+	DIAGASSERT_STDERR =	1<<1,
+	DIAGASSERT_SYSLOG =	1<<2
+};
+
+static int	diagassert_flags = -1;
+
+void
+__diagassert(const char *file, const char *line, const char *function,
+	     int failedexpr)
+{
+	char buf[1024];
+
+	if (diagassert_flags == -1) {
+		const char *p;
+
+		diagassert_flags = DIAGASSERT_SYSLOG | DIAGASSERT_ABORT;
+
+		for (p = getenv("LIBC_DIAGASSERT"); p && *p; p++) {
+			switch (*p) {
+			case 'a':
+				diagassert_flags |= DIAGASSERT_ABORT;
+				break;
+			case 'A':
+				diagassert_flags &= ~DIAGASSERT_ABORT;
+				break;
+			case 'e':
+				diagassert_flags |= DIAGASSERT_STDERR;
+				break;
+			case 'E':
+				diagassert_flags &= ~DIAGASSERT_STDERR;
+				break;
+			case 'l':
+				diagassert_flags |= DIAGASSERT_SYSLOG;
+				break;
+			case 'L':
+				diagassert_flags &= ~DIAGASSERT_SYSLOG;
+				break;
+			}
+		}
+	}
+
+	snprintf(buf, sizeof(buf),
+		 "assertion \"%s\" failed: file \"%s\", line %d");
+	if (diagassert_flags & DIAGASSERT_STDERR)
+		fprintf(stderr, "%s: %s\n", getprogname(), buf);
+	if (diagassert_flags & DIAGASSERT_SYSLOG)
+		syslog(LOG_DEBUG | LOG_USER, "%s", buf);
+	if (diagassert_flags & DIAGASSERT_ABORT)
+		abort();
 }
