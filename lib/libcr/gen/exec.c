@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/exec.c,v 1.15 2000/01/27 23:06:14 jasone Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/exec.c,v 1.3 2004/07/05 17:30:59 eirikn Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/exec.c,v 1.4 2004/07/27 10:20:21 asmodai Exp $
  *
  * @(#)exec.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/exec.c,v 1.15 2000/01/27 23:06:14 jasone Exp $
@@ -47,33 +47,18 @@
 #include <stdio.h>
 #include <paths.h>
 
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 extern char **environ;
 
 int
-#if __STDC__
 execl(const char *name, const char *arg, ...)
-#else
-execl(name, arg, va_alist)
-	const char *name;
-	const char *arg;
-	va_dcl
-#endif
 {
 	va_list ap;
 	char **argv;
 	int n;
 
-#if __STDC__
 	va_start(ap, arg);
-#else
-	va_start(ap);
-#endif
 	n = 1;
 	while (va_arg(ap, char *) != NULL)
 		n++;
@@ -83,11 +68,7 @@ execl(name, arg, va_alist)
 		errno = ENOMEM;
 		return (-1);
 	}
-#if __STDC__
 	va_start(ap, arg);
-#else
-	va_start(ap);
-#endif
 	n = 1;
 	argv[0] = (char *)arg;
 	while ((argv[n] = va_arg(ap, char *)) != NULL)
@@ -97,24 +78,13 @@ execl(name, arg, va_alist)
 }
 
 int
-#if __STDC__
 execle(const char *name, const char *arg, ...)
-#else
-execle(name, arg, va_alist)
-	const char *name;
-	const char *arg;
-	va_dcl
-#endif
 {
 	va_list ap;
 	char **argv, **envp;
 	int n;
 
-#if __STDC__
 	va_start(ap, arg);
-#else
-	va_start(ap);
-#endif
 	n = 1;
 	while (va_arg(ap, char *) != NULL)
 		n++;
@@ -124,11 +94,7 @@ execle(name, arg, va_alist)
 		errno = ENOMEM;
 		return (-1);
 	}
-#if __STDC__
 	va_start(ap, arg);
-#else
-	va_start(ap);
-#endif
 	n = 1;
 	argv[0] = (char *)arg;
 	while ((argv[n] = va_arg(ap, char *)) != NULL)
@@ -139,25 +105,14 @@ execle(name, arg, va_alist)
 }
 
 int
-#if __STDC__
 execlp(const char *name, const char *arg, ...)
-#else
-execlp(name, arg, va_alist)
-	const char *name;
-	const char *arg;
-	va_dcl
-#endif
 {
 	va_list ap;
 	int sverrno;
 	char **argv;
 	int n;
 
-#if __STDC__
 	va_start(ap, arg);
-#else
-	va_start(ap);
-#endif
 	n = 1;
 	while (va_arg(ap, char *) != NULL)
 		n++;
@@ -167,11 +122,7 @@ execlp(name, arg, va_alist)
 		errno = ENOMEM;
 		return (-1);
 	}
-#if __STDC__
 	va_start(ap, arg);
-#else
-	va_start(ap);
-#endif
 	n = 1;
 	argv[0] = (char *)arg;
 	while ((argv[n] = va_arg(ap, char *)) != NULL)

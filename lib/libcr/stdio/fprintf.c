@@ -35,15 +35,11 @@
  *
  * @(#)fprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fprintf.c,v 1.6 1999/08/28 00:01:02 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/fprintf.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/fprintf.c,v 1.4 2004/07/27 10:20:21 asmodai Exp $
  */
 
 #include <stdio.h>
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 int
 fprintf(FILE *fp, const char *fmt, ...)
