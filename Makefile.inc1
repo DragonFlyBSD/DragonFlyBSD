@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.8 2003/11/09 02:36:35 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.9 2003/12/01 09:59:42 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -51,6 +51,9 @@ SUBDIR+= include
 .endif
 .if exists(${.CURDIR}/lib)
 SUBDIR+= lib
+.endif
+.if exists(${.CURDIR}/nrelease)
+SUBDIR+= nrelease
 .endif
 
 .if exists(${.CURDIR}/bin)
