@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/ifq_var.h,v 1.1 2005/02/11 22:25:57 joerg Exp $
+ * $DragonFly: src/sys/net/ifq_var.h,v 1.2 2005/03/12 02:36:04 joerg Exp $
  */
 #ifndef _NET_IFQ_VAR_H
 #define _NET_IFQ_VAR_H
@@ -74,17 +74,7 @@ ifq_set_ready(struct ifaltq *_ifq)
 static __inline int
 ifq_enqueue(struct ifaltq *_ifq, struct mbuf *_m, struct altq_pktattr *_pa)
 {
-	if (ifq_is_enabled(_ifq)) {
-		return((*_ifq->altq_enqueue)(_ifq, _m, _pa));
-	} else {
-		if (IF_QFULL(_ifq)) {
-			m_freem(_m);
-			return(ENOBUFS);
-		} else {
-			IF_ENQUEUE(_ifq, _m);
-			return(0);
-		}
-	}
+	return((*_ifq->altq_enqueue)(_ifq, _m, _pa));
 }
 
 static __inline struct mbuf *
@@ -94,14 +84,7 @@ ifq_dequeue(struct ifaltq *_ifq)
 	if (_ifq->altq_tbr != NULL)
 		return(tbr_dequeue(_ifq, ALTDQ_REMOVE));
 #endif
-	if (ifq_is_enabled(_ifq)) {
-		return((*_ifq->altq_dequeue)(_ifq, ALTDQ_REMOVE));
-	} else {
-		struct mbuf *_m;
-
-		IF_DEQUEUE(_ifq, _m);
-		return(_m);
-	}
+	return((*_ifq->altq_dequeue)(_ifq, ALTDQ_REMOVE));
 }
 
 static __inline struct mbuf *
@@ -111,23 +94,13 @@ ifq_poll(struct ifaltq *_ifq)
 	if (_ifq->altq_tbr != NULL)
 		return(tbr_dequeue(_ifq, ALTDQ_POLL));
 #endif
-	if (ifq_is_enabled(_ifq)) {
-		return((*_ifq->altq_dequeue)(_ifq, ALTDQ_POLL));
-	} else {
-		struct mbuf *_m;
-
-		IF_POLL(_ifq, _m);
-		return(_m);
-	}
+	return((*_ifq->altq_dequeue)(_ifq, ALTDQ_POLL));
 }
 
 static __inline void
 ifq_purge(struct ifaltq *_ifq)
 {
-	if (ifq_is_enabled(_ifq))
-		(*_ifq->altq_request)(_ifq, ALTRQ_PURGE, NULL);
-	else
-		IF_DRAIN(_ifq);
+	(*_ifq->altq_request)(_ifq, ALTRQ_PURGE, NULL);
 }
 
 static __inline void

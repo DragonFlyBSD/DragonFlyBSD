@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.29 2005/03/04 02:21:48 hsu Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.30 2005/03/12 02:36:04 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -80,6 +80,15 @@
 #if defined(COMPAT_43)
 #include <emulation/43bsd/43bsd_socket.h>
 #endif /* COMPAT_43 */
+
+/*
+ * Support for non-ALTQ interfaces.
+ */
+static int	ifq_classic_enqueue(struct ifaltq *, struct mbuf *,
+				    struct altq_pktattr *);
+static struct mbuf *
+		ifq_classic_dequeue(struct ifaltq *, int);
+static int	ifq_classic_request(struct ifaltq *, int, void *);
 
 /*
  * System initialization
@@ -160,6 +169,7 @@ if_attach(struct ifnet *ifp)
 	int namelen, masklen;
 	struct sockaddr_dl *sdl;
 	struct ifaddr *ifa;
+	struct ifaltq *ifq;
 
 	static int if_indexlim = 8;
 	static boolean_t inited;
@@ -240,11 +250,15 @@ if_attach(struct ifnet *ifp)
 
 	EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
 
-	ifp->if_snd.altq_type = 0;
-	ifp->if_snd.altq_disc = NULL;
-	ifp->if_snd.altq_flags &= ALTQF_CANTCHANGE;
-	ifp->if_snd.altq_tbr = NULL;
-	ifp->if_snd.altq_ifp = ifp;
+	ifq = &ifp->if_snd;
+	ifq->altq_type = 0;
+	ifq->altq_disc = NULL;
+	ifq->altq_flags &= ALTQF_CANTCHANGE;
+	ifq->altq_tbr = NULL;
+	ifq->altq_ifp = ifp;
+	ifq->altq_enqueue = ifq_classic_enqueue;
+	ifq->altq_dequeue = ifq_classic_dequeue;
+	ifq->altq_request = ifq_classic_request;
 
 	if (!SLIST_EMPTY(&domains))
 		if_attachdomain1(ifp);
@@ -1781,3 +1795,49 @@ if_printf(struct ifnet *ifp, const char *fmt, ...)
 
 SYSCTL_NODE(_net, PF_LINK, link, CTLFLAG_RW, 0, "Link layers");
 SYSCTL_NODE(_net_link, 0, generic, CTLFLAG_RW, 0, "Generic link-management");
+
+static int
+ifq_classic_enqueue(struct ifaltq *ifq, struct mbuf *m,
+		    struct altq_pktattr *pa __unused)
+{
+	if (IF_QFULL(ifq)) {
+		m_freem(m);
+		return(ENOBUFS);
+	} else {
+		IF_ENQUEUE(ifq, m);
+		return(0);
+	}	
+}
+
+static struct mbuf *
+ifq_classic_dequeue(struct ifaltq *ifq, int op)
+{
+	struct mbuf *m;
+
+	switch (op) {
+	case ALTDQ_POLL:
+		IF_POLL(ifq, m);
+		break;
+	case ALTDQ_REMOVE:
+		IF_DEQUEUE(ifq, m);
+		break;
+	default:
+		panic("unsupported ALTQ dequeue op: %d", op);
+	}
+
+	return(m);
+}
+
+static int
+ifq_classic_request(struct ifaltq *ifq, int req, void *arg)
+{
+	switch (req) {
+	case ALTRQ_PURGE:
+		IF_DRAIN(ifq);
+		break;
+	default:
+		panic("unspported ALTQ request: %d", req);
+	}
+
+	return(0);
+}
