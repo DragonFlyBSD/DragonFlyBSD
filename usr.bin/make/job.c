@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.35 2004/12/17 21:09:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.36 2005/01/05 23:30:35 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -211,7 +211,7 @@ char   		*shellPath = NULL,	/* full pathname of executable image */
                	*shellName = NULL;	/* last component of shell */
 
 
-static int  	maxJobs;    	/* The most children we can run at once */
+int maxJobs;		/* The most children we can run at once */
 STATIC int     	nJobs;	    	/* The number of children currently running */
 
 /* The structures that describe them */
