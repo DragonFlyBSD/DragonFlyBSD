@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.12 2003/06/30 19:50:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.13 2003/06/30 22:19:41 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -451,7 +451,19 @@ loop:
 				tsleep(p->p_thread, PWAIT, "reap", 0);
 				goto loop;
 			}
-			KASSERT(p->p_lock == 0, ("p_lock not 0! %p", p));
+
+			/*
+			 * Other kernel threads may be in the middle of 
+			 * accessing the proc.  For example, kern/kern_proc.c
+			 * could be blocked writing proc data to a sysctl.
+			 * At the moment, if this occurs, we are not woken
+			 * up and rely on a one-second retry.
+			 */
+			if (p->p_lock) {
+				printf("Diagnostic: waiting for p_lock\n");
+				while (p->p_lock)
+					tsleep(p, PWAIT, "reap2", hz);
+			}
 
 			/* charge childs scheduling cpu usage to parent */
 			if (curproc->p_pid != 1) {
