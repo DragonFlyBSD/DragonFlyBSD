@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.4 2003/06/26 02:17:45 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.5 2003/06/26 05:55:14 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -85,12 +85,11 @@ extern int cluster_pbuf_freecnt;
  * This replaces bread.
  */
 int
-cluster_read(vp, filesize, lblkno, size, cred, totread, seqcount, bpp)
+cluster_read(vp, filesize, lblkno, size, totread, seqcount, bpp)
 	struct vnode *vp;
 	u_quad_t filesize;
 	daddr_t lblkno;
 	long size;
-	struct ucred *cred;
 	long totread;
 	int seqcount;
 	struct buf **bpp;
@@ -804,9 +803,6 @@ cluster_wbuild(vp, size, start_lbn, len)
 		bp->b_bcount = 0;
 		bp->b_bufsize = 0;
 		bp->b_npages = 0;
-		if (tbp->b_wcred != NOCRED)
-		    bp->b_wcred = crhold(tbp->b_wcred);
-
 		bp->b_blkno = tbp->b_blkno;
 		bp->b_lblkno = tbp->b_lblkno;
 		bp->b_offset = tbp->b_offset;
@@ -852,7 +848,6 @@ cluster_wbuild(vp, size, start_lbn, len)
 				  != (B_DELWRI | B_CLUSTEROK |
 				    (bp->b_flags & (B_VMIO | B_NEEDCOMMIT))) ||
 				    (tbp->b_flags & B_LOCKED) ||
-				    tbp->b_wcred != bp->b_wcred ||
 				    BUF_LOCK(tbp, LK_EXCLUSIVE | LK_NOWAIT)) {
 					splx(s);
 					break;
@@ -969,7 +964,7 @@ cluster_collectbufs(vp, last_bp)
 	buflist->bs_nchildren = 0;
 	buflist->bs_children = (struct buf **) (buflist + 1);
 	for (lbn = vp->v_cstart, i = 0; i < len; lbn++, i++) {
-		(void) bread(vp, lbn, last_bp->b_bcount, NOCRED, &bp);
+		(void) bread(vp, lbn, last_bp->b_bcount, &bp);
 		buflist->bs_children[i] = bp;
 		if (bp->b_blkno == bp->b_lblkno)
 			VOP_BMAP(bp->b_vp, bp->b_lblkno, NULL, &bp->b_blkno,

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_subr.c	8.5 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_subr.c,v 1.25 1999/12/29 04:55:04 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.3 2003/06/26 05:55:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -81,7 +81,7 @@ ffs_blkatoff(vp, offset, res, bpp)
 	bsize = blksize(fs, ip, lbn);
 
 	*bpp = NULL;
-	error = bread(vp, lbn, bsize, NOCRED, &bp);
+	error = bread(vp, lbn, bsize, &bp);
 	if (error) {
 		brelse(bp);
 		return (error);

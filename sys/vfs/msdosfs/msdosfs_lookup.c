@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_lookup.c,v 1.30.2.1 2000/11/03 15:55:39 bp Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.3 2003/06/25 03:56:01 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.4 2003/06/26 05:55:17 dillon Exp $ */
 /*	$NetBSD: msdosfs_lookup.c,v 1.37 1997/11/17 15:36:54 ws Exp $	*/
 
 /*-
@@ -209,7 +209,7 @@ msdosfs_lookup(ap)
 				break;
 			return (error);
 		}
-		error = bread(pmp->pm_devvp, bn, blsize, NOCRED, &bp);
+		error = bread(pmp->pm_devvp, bn, blsize, &bp);
 		if (error) {
 			brelse(bp);
 			return (error);
@@ -596,7 +596,7 @@ createde(dep, ddep, depp, cnp)
 		dirclust = de_clcount(pmp, diroffset);
 		error = extendfile(ddep, dirclust, 0, 0, DE_CLEAR);
 		if (error) {
-			(void)detrunc(ddep, ddep->de_FileSize, 0, NOCRED, NULL);
+			(void)detrunc(ddep, ddep->de_FileSize, 0, NULL);
 			return error;
 		}
 
@@ -618,7 +618,7 @@ createde(dep, ddep, depp, cnp)
 	diroffset = ddep->de_fndoffset;
 	if (dirclust != MSDOSFSROOT)
 		diroffset &= pmp->pm_crbomask;
-	if ((error = bread(pmp->pm_devvp, bn, blsize, NOCRED, &bp)) != 0) {
+	if ((error = bread(pmp->pm_devvp, bn, blsize, &bp)) != 0) {
 		brelse(bp);
 		return error;
 	}
@@ -648,8 +648,7 @@ createde(dep, ddep, depp, cnp)
 				if (error)
 					return error;
 
-				error = bread(pmp->pm_devvp, bn, blsize,
-					      NOCRED, &bp);
+				error = bread(pmp->pm_devvp, bn, blsize, &bp);
 				if (error) {
 					brelse(bp);
 					return error;
@@ -716,7 +715,7 @@ dosdirempty(dep)
 				return (1);	/* it's empty */
 			return (0);
 		}
-		error = bread(pmp->pm_devvp, bn, blsize, NOCRED, &bp);
+		error = bread(pmp->pm_devvp, bn, blsize, &bp);
 		if (error) {
 			brelse(bp);
 			return (0);
@@ -809,7 +808,7 @@ doscheckpath(source, target)
 		}
 		scn = dep->de_StartCluster;
 		error = bread(pmp->pm_devvp, cntobn(pmp, scn),
-			      pmp->pm_bpcluster, NOCRED, &bp);
+			      pmp->pm_bpcluster, &bp);
 		if (error)
 			break;
 
@@ -875,7 +874,7 @@ readep(pmp, dirclust, diroffset, bpp, epp)
 	    && de_blk(pmp, diroffset + blsize) > pmp->pm_rootdirsize)
 		blsize = de_bn2off(pmp, pmp->pm_rootdirsize) & pmp->pm_crbomask;
 	bn = detobn(pmp, dirclust, diroffset);
-	if ((error = bread(pmp->pm_devvp, bn, blsize, NOCRED, bpp)) != 0) {
+	if ((error = bread(pmp->pm_devvp, bn, blsize, bpp)) != 0) {
 		brelse(*bpp);
 		*bpp = NULL;
 		return (error);
@@ -934,7 +933,7 @@ removede(pdep, dep)
 		error = pcbmap(pdep, de_cluster(pmp, offset), &bn, 0, &blsize);
 		if (error)
 			return error;
-		error = bread(pmp->pm_devvp, bn, blsize, NOCRED, &bp);
+		error = bread(pmp->pm_devvp, bn, blsize, &bp);
 		if (error) {
 			brelse(bp);
 			return error;
@@ -1017,7 +1016,7 @@ uniqdosname(dep, cnp, cp)
 					return 0;
 				return error;
 			}
-			error = bread(pmp->pm_devvp, bn, blsize, NOCRED, &bp);
+			error = bread(pmp->pm_devvp, bn, blsize, &bp);
 			if (error) {
 				brelse(bp);
 				return error;
@@ -1069,7 +1068,7 @@ findwin95(dep)
 	for (cn = 0;; cn++) {
 		if (pcbmap(dep, cn, &bn, 0, &blsize))
 			return (win95);
-		if (bread(pmp->pm_devvp, bn, blsize, NOCRED, &bp)) {
+		if (bread(pmp->pm_devvp, bn, blsize, &bp)) {
 			brelse(bp);
 			return (win95);
 		}

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_extern.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_extern.h,v 1.30 2000/01/09 22:40:02 mckusick Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_extern.h,v 1.3 2003/06/25 03:56:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_extern.h,v 1.4 2003/06/26 05:55:20 dillon Exp $
  */
 
 #ifndef _UFS_FFS_EXTERN_H
@@ -92,7 +92,7 @@ int	ffs_realloccg __P((struct inode *,
 	    ufs_daddr_t, ufs_daddr_t, int, int, struct ucred *, struct buf **));
 void	ffs_setblock __P((struct fs *, u_char *, ufs_daddr_t));
 int	ffs_statfs __P((struct mount *, struct statfs *, struct thread *));
-int	ffs_sync __P((struct mount *, int, struct ucred *, struct thread *));
+int	ffs_sync __P((struct mount *, int, struct thread *));
 int	ffs_truncate __P((struct vnode *, off_t, int, struct ucred *, struct thread *));
 int	ffs_unmount __P((struct mount *, int, struct thread *));
 int	ffs_update __P((struct vnode *, int));
@@ -110,8 +110,7 @@ extern vop_t **ffs_fifoop_p;
  * Soft update function prototypes.
  */
 void	softdep_initialize __P((void));
-int	softdep_mount __P((struct vnode *, struct mount *, struct fs *,
-	    struct ucred *));
+int	softdep_mount __P((struct vnode *, struct mount *, struct fs *));
 int	softdep_flushfiles __P((struct mount *, int, struct thread *));
 void	softdep_update_inodeblock __P((struct inode *, struct buf *, int));
 void	softdep_load_inodeblock __P((struct inode *));

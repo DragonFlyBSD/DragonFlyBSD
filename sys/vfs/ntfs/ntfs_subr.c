@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.3 2003/06/25 03:56:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.4 2003/06/26 05:55:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -284,8 +284,7 @@ ntfs_loadntnode(
 			ntmp->ntm_bpmftrec * ip->i_number;
 
 		error = bread(ntmp->ntm_devvp,
-			      bn, ntfs_bntob(ntmp->ntm_bpmftrec),
-			      NOCRED, &bp);
+			      bn, ntfs_bntob(ntmp->ntm_bpmftrec), &bp);
 		if (error) {
 			printf("ntfs_loadntnode: BREAD FAILED\n");
 			brelse(bp);
@@ -1467,7 +1466,7 @@ ntfs_writentvattr_plain(
 				clrbuf(bp);
 			} else {
 				error = bread(ntmp->ntm_devvp, ntfs_cntobn(cn),
-					      ntfs_cntob(cl), NOCRED, &bp);
+					      ntfs_cntob(cl), &bp);
 				if (error) {
 					brelse(bp);
 					return (error);
@@ -1572,7 +1571,7 @@ ntfs_readntvattr_plain(
 					error = bread(ntmp->ntm_devvp,
 						      ntfs_cntobn(cn),
 						      ntfs_cntob(cl),
-						      NOCRED, &bp);
+						      &bp);
 					if (error) {
 						brelse(bp);
 						return (error);

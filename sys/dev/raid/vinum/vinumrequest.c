@@ -39,7 +39,7 @@
  *
  * $Id: vinumrequest.c,v 1.30 2001/01/09 04:20:55 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrequest.c,v 1.44.2.5 2002/08/28 04:30:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.3 2003/06/26 05:55:11 dillon Exp $
  */
 
 #include <dev/vinum/vinumhdr.h>
@@ -825,8 +825,6 @@ build_rq_buffer(struct rqelement *rqe, struct plex *plex)
     bp->b_bcount = rqe->buflen << DEV_BSHIFT;		    /* number of bytes to transfer */
     bp->b_resid = bp->b_bcount;				    /* and it's still all waiting */
     bp->b_bufsize = bp->b_bcount;			    /* and buffer size */
-    bp->b_rcred = FSCRED;				    /* we have the file system credentials */
-    bp->b_wcred = FSCRED;				    /* we have the file system credentials */
 
     if (rqe->flags & XFR_MALLOCED) {			    /* this operation requires a malloced buffer */
 	bp->b_data = Malloc(bp->b_bcount);		    /* get a buffer to put it in */

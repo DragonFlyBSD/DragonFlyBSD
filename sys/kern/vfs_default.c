@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.3 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.4 2003/06/26 05:55:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -511,12 +511,10 @@ int
 vop_stdcreatevobject(ap)
 	struct vop_createvobject_args /* {
 		struct vnode *a_vp;
-		struct ucred *a_cred;
 		struct proc *a_td;
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
-	struct ucred *cred = ap->a_cred;
 	struct thread *td = ap->a_td;
 	struct vattr vat;
 	vm_object_t object;
@@ -528,7 +526,7 @@ vop_stdcreatevobject(ap)
 retry:
 	if ((object = vp->v_object) == NULL) {
 		if (vp->v_type == VREG || vp->v_type == VDIR) {
-			if ((error = VOP_GETATTR(vp, &vat, cred, td)) != 0)
+			if ((error = VOP_GETATTR(vp, &vat, td)) != 0)
 				goto retn;
 			object = vnode_pager_alloc(vp, vat.va_size, 0, 0);
 		} else if (devsw(vp->v_rdev) != NULL) {
@@ -667,8 +665,7 @@ vfs_stdquotactl(struct mount *mp, int cmds, uid_t uid,
 }
 
 int	
-vfs_stdsync(struct mount *mp, int waitfor,
-	struct ucred *cred, struct thread *td)
+vfs_stdsync(struct mount *mp, int waitfor, struct thread *td)
 {
 	return (0);
 }

@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.4 2003/06/25 03:56:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.5 2003/06/26 05:55:20 dillon Exp $
  */
 
 /*
@@ -825,7 +825,7 @@ softdep_flushfiles(struct mount *oldmnt, int flags, struct thread *td)
 				break;
 		}
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-		error = VOP_FSYNC(devvp, cred, MNT_WAIT, td);
+		error = VOP_FSYNC(devvp, MNT_WAIT, td);
 		VOP_UNLOCK(devvp, 0, td);
 		if (error)
 			break;
@@ -1099,11 +1099,10 @@ softdep_initialize()
  * filesystem wishes to use it.
  */
 int
-softdep_mount(devvp, mp, fs, cred)
+softdep_mount(devvp, mp, fs)
 	struct vnode *devvp;
 	struct mount *mp;
 	struct fs *fs;
-	struct ucred *cred;
 {
 	struct csum cstotal;
 	struct cg *cgp;
@@ -1122,7 +1121,7 @@ softdep_mount(devvp, mp, fs, cred)
 	bzero(&cstotal, sizeof cstotal);
 	for (cyl = 0; cyl < fs->fs_ncg; cyl++) {
 		if ((error = bread(devvp, fsbtodb(fs, cgtod(fs, cyl)),
-		    fs->fs_cgsize, cred, &bp)) != 0) {
+		    fs->fs_cgsize, &bp)) != 0) {
 			brelse(bp);
 			return (error);
 		}
@@ -1777,7 +1776,7 @@ softdep_setup_freeblocks(ip, length)
 	 */
 	if ((error = bread(ip->i_devvp,
 	    fsbtodb(fs, ino_to_fsba(fs, ip->i_number)),
-	    (int)fs->fs_bsize, NOCRED, &bp)) != 0)
+	    (int)fs->fs_bsize, &bp)) != 0)
 		softdep_error("softdep_setup_freeblocks", error);
 	*((struct dinode *)bp->b_data + ino_to_fsbo(fs, ip->i_number)) =
 	    ip->i_din;
@@ -2217,7 +2216,7 @@ indir_trunc(ip, dbn, level, lbn, countp)
 		FREE_LOCK(&lk);
 	} else {
 		FREE_LOCK(&lk);
-		error = bread(ip->i_devvp, dbn, (int)fs->fs_bsize, NOCRED, &bp);
+		error = bread(ip->i_devvp, dbn, (int)fs->fs_bsize, &bp);
 		if (error)
 			return (error);
 	}
@@ -4002,8 +4001,7 @@ softdep_fsync(vp)
 		/*
 		 * Flush directory page containing the inode's name.
 		 */
-		error = bread(pvp, lbn, blksize(fs, VTOI(pvp), lbn), p->p_ucred,
-		    &bp);
+		error = bread(pvp, lbn, blksize(fs, VTOI(pvp), lbn), &bp);
 		if (error == 0)
 			error = VOP_BWRITE(bp->b_vp, bp);
 		vput(pvp);
@@ -4323,8 +4321,7 @@ loop:
 	drain_output(vp, 1);
 	if (vn_isdisk(vp, NULL) && 
 	    vp->v_specmountpoint && !VOP_ISLOCKED(vp, NULL) &&
-	    (error = VFS_SYNC(vp->v_specmountpoint, MNT_WAIT, ap->a_cred,
-	     ap->a_td)) != 0)
+	    (error = VFS_SYNC(vp->v_specmountpoint, MNT_WAIT, ap->a_td)) != 0)
 		return (error);
 	return (0);
 }
@@ -4479,8 +4476,8 @@ flush_pagedep_deps(pvp, mp, diraddhdp)
 			FREE_LOCK(&lk);
 			if ((error = VFS_VGET(mp, inum, &vp)) != 0)
 				break;
-			if ((error=VOP_FSYNC(vp, cr, MNT_NOWAIT, td)) ||
-			    (error=VOP_FSYNC(vp, cr, MNT_NOWAIT, td))) {
+			if ((error=VOP_FSYNC(vp, MNT_NOWAIT, td)) ||
+			    (error=VOP_FSYNC(vp, MNT_NOWAIT, td))) {
 				vput(vp);
 				break;
 			}
@@ -4533,7 +4530,7 @@ flush_pagedep_deps(pvp, mp, diraddhdp)
 		FREE_LOCK(&lk);
 		if ((error = bread(ump->um_devvp,
 		    fsbtodb(ump->um_fs, ino_to_fsba(ump->um_fs, inum)),
-		    (int)ump->um_fs->fs_bsize, NOCRED, &bp)) != 0)
+		    (int)ump->um_fs->fs_bsize, &bp)) != 0)
 			break;
 		if ((error = VOP_BWRITE(bp->b_vp, bp)) != 0)
 			break;
@@ -4704,7 +4701,7 @@ clear_remove(struct thread *td)
 				softdep_error("clear_remove: vget", error);
 				return;
 			}
-			if ((error = VOP_FSYNC(vp, cred, MNT_NOWAIT, td)))
+			if ((error = VOP_FSYNC(vp, MNT_NOWAIT, td)))
 				softdep_error("clear_remove: fsync", error);
 			drain_output(vp, 0);
 			vput(vp);
@@ -4777,10 +4774,10 @@ clear_inodedeps(struct thread *td)
 			return;
 		}
 		if (ino == lastino) {
-			if ((error = VOP_FSYNC(vp, cred, MNT_WAIT, td)))
+			if ((error = VOP_FSYNC(vp, MNT_WAIT, td)))
 				softdep_error("clear_inodedeps: fsync1", error);
 		} else {
-			if ((error = VOP_FSYNC(vp, cred, MNT_NOWAIT, td)))
+			if ((error = VOP_FSYNC(vp, MNT_NOWAIT, td)))
 				softdep_error("clear_inodedeps: fsync2", error);
 			drain_output(vp, 0);
 		}

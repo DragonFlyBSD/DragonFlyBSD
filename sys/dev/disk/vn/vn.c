@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.4 2003/06/25 03:55:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.5 2003/06/26 05:55:11 dillon Exp $
  */
 
 /*
@@ -557,9 +557,9 @@ vniocattach_file(vn, vio, dev, flag, td)
 	}
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	if (nd.ni_vp->v_type != VREG ||
-	    (error = VOP_GETATTR(nd.ni_vp, &vattr, p->p_ucred, td))) {
+	    (error = VOP_GETATTR(nd.ni_vp, &vattr, td))) {
 		VOP_UNLOCK(nd.ni_vp, 0, td);
-		(void) vn_close(nd.ni_vp, flags, p->p_ucred, td);
+		(void) vn_close(nd.ni_vp, flags, td);
 		return (error ? error : EINVAL);
 	}
 	VOP_UNLOCK(nd.ni_vp, 0, td);
@@ -576,7 +576,7 @@ vniocattach_file(vn, vio, dev, flag, td)
 		vn->sc_size = vattr.va_size / vn->sc_secsize;
 	error = vnsetcred(vn, p->p_ucred);
 	if (error) {
-		(void) vn_close(nd.ni_vp, flags, p->p_ucred, td);
+		(void) vn_close(nd.ni_vp, flags, td);
 		return(error);
 	}
 	vn->sc_flags |= VNF_INITED;
@@ -733,7 +733,7 @@ vnclear(struct vn_softc *vn)
 	vn->sc_flags &= ~VNF_INITED;
 	if (vn->sc_vp != NULL) {
 		(void)vn_close(vn->sc_vp, vn->sc_flags & VNF_READONLY ?
-		    FREAD : (FREAD|FWRITE), vn->sc_cred, td);
+		    FREAD : (FREAD|FWRITE), td);
 		vn->sc_vp = NULL;
 	}
 	vn->sc_flags &= ~VNF_READONLY;

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.5 2003/06/25 03:55:47 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.6 2003/06/26 05:55:11 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -1333,8 +1333,7 @@ ccdioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 #endif
 			if ((error = ccdlookup(cpp[i], td, &vpp[i])) != 0) {
 				for (j = 0; j < lookedup; ++j)
-					(void)vn_close(vpp[j], FREAD|FWRITE,
-					    cred, td);
+					(void)vn_close(vpp[j], FREAD|FWRITE, td);
 				free(vpp, M_DEVBUF);
 				free(cpp, M_DEVBUF);
 				ccdunlock(cs);
@@ -1351,8 +1350,7 @@ ccdioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		 */
 		if ((error = ccdinit(&ccd, cpp, td)) != 0) {
 			for (j = 0; j < lookedup; ++j)
-				(void)vn_close(vpp[j], FREAD|FWRITE,
-				    cred, td);
+				(void)vn_close(vpp[j], FREAD|FWRITE, td);
 			bzero(&ccd_softc[unit], sizeof(struct ccd_softc));
 			free(vpp, M_DEVBUF);
 			free(cpp, M_DEVBUF);
@@ -1407,8 +1405,7 @@ ccdioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 				vprint("CCDIOCCLR: vnode info",
 				    cs->sc_cinfo[i].ci_vp);
 #endif
-			(void)vn_close(cs->sc_cinfo[i].ci_vp, FREAD|FWRITE,
-			    cred, td);
+			(void)vn_close(cs->sc_cinfo[i].ci_vp, FREAD|FWRITE, td);
 			free(cs->sc_cinfo[i].ci_path, M_DEVBUF);
 		}
 
@@ -1588,7 +1585,7 @@ bad:
 	VOP_UNLOCK(vp, 0, td);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	/* vn_close does vrele() for vp */
-	(void)vn_close(vp, FREAD|FWRITE, cred, td);
+	(void)vn_close(vp, FREAD|FWRITE, td);
 	return (error);
 }
 

@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.4 2003/06/25 03:56:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.5 2003/06/26 05:55:15 dillon Exp $
  */
 
 /*
@@ -652,7 +652,7 @@ procfs_access(ap)
 		return (0);
 
 	vap = &vattr;
-	error = VOP_GETATTR(ap->a_vp, vap, ap->a_cred, ap->a_td);
+	error = VOP_GETATTR(ap->a_vp, vap, ap->a_td);
 	if (error)
 		return (error);
 

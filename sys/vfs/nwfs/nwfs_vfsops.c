@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.4 2003/06/25 03:56:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.5 2003/06/26 05:55:19 dillon Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -73,7 +73,7 @@ static int nwfs_quotactl(struct mount *, int, uid_t, caddr_t, struct thread *);
 static int nwfs_root(struct mount *, struct vnode **);
 static int nwfs_start(struct mount *, int, struct thread *);
 static int nwfs_statfs(struct mount *, struct statfs *, struct thread *);
-static int nwfs_sync(struct mount *, int, struct ucred *, struct thread *);
+static int nwfs_sync(struct mount *, int, struct thread *);
 static int nwfs_unmount(struct mount *, int, struct thread *);
 static int nwfs_init(struct vfsconf *vfsp);
 static int nwfs_uninit(struct vfsconf *vfsp);
@@ -480,10 +480,9 @@ nwfs_statfs(mp, sbp, td)
  */
 /* ARGSUSED */
 static int
-nwfs_sync(mp, waitfor, cred, td)
+nwfs_sync(mp, waitfor, td)
 	struct mount *mp;
 	int waitfor;
-	struct ucred *cred;
 	struct thread *td;
 {
 	struct vnode *vp;
@@ -506,7 +505,7 @@ loop:
 			continue;
 		if (vget(vp, LK_EXCLUSIVE, td))
 			goto loop;
-		error = VOP_FSYNC(vp, cred, waitfor, td);
+		error = VOP_FSYNC(vp, waitfor, td);
 		if (error)
 			allerror = error;
 		vput(vp);

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.5 2003/06/25 05:22:32 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.6 2003/06/26 05:55:14 dillon Exp $
  */
 
 /* For 4.3 integer FS ID compatibility */
@@ -195,13 +195,13 @@ mount(struct mount_args *uap)
 	 * If the user is not root, ensure that they own the directory
 	 * onto which we are attempting to mount.
 	 */
-	if ((error = VOP_GETATTR(vp, &va, p->p_ucred, td)) ||
+	if ((error = VOP_GETATTR(vp, &va, td)) ||
 	    (va.va_uid != p->p_ucred->cr_uid &&
 	     (error = suser(td)))) {
 		vput(vp);
 		return (error);
 	}
-	if ((error = vinvalbuf(vp, V_SAVE, p->p_ucred, td, 0, 0)) != 0) {
+	if ((error = vinvalbuf(vp, V_SAVE, td, 0, 0)) != 0) {
 		vput(vp);
 		return (error);
 	}
@@ -511,7 +511,7 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	if (mp->mnt_syncer != NULL)
 		vrele(mp->mnt_syncer);
 	if (((mp->mnt_flag & MNT_RDONLY) ||
-	     (error = VFS_SYNC(mp, MNT_WAIT, p->p_ucred, td)) == 0) ||
+	     (error = VFS_SYNC(mp, MNT_WAIT, td)) == 0) ||
 	    (flags & MNT_FORCE))
 		error = VFS_UNMOUNT(mp, flags, td);
 	simple_lock(&mountlist_slock);
@@ -560,7 +560,6 @@ int
 sync(struct sync_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct mount *mp, *nmp;
 	int asyncflag;
 
@@ -574,8 +573,7 @@ sync(struct sync_args *uap)
 			asyncflag = mp->mnt_flag & MNT_ASYNC;
 			mp->mnt_flag &= ~MNT_ASYNC;
 			vfs_msync(mp, MNT_NOWAIT);
-			VFS_SYNC(mp, MNT_NOWAIT,
-				((p != NULL) ? p->p_ucred : NOCRED), td);
+			VFS_SYNC(mp, MNT_NOWAIT, td);
 			mp->mnt_flag |= asyncflag;
 		}
 		simple_lock(&mountlist_slock);
@@ -1017,7 +1015,7 @@ open(struct open_args *uap)
 		KASSERT(fdp->fd_ofiles[indx] != fp,
 		    ("Open file descriptor lost all refs"));
 		VOP_UNLOCK(vp, 0, td);
-		vn_close(vp, flags & FMASK, fp->f_cred, td);
+		vn_close(vp, flags & FMASK, td);
 		fdrop(fp, td);
 		p->p_retval[0] = indx;
 		return 0;
@@ -1418,7 +1416,6 @@ lseek(struct lseek_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	struct ucred *cred = p->p_ucred;
 	struct filedesc *fdp = p->p_fd;
 	struct file *fp;
 	struct vattr vattr;
@@ -1434,7 +1431,7 @@ lseek(struct lseek_args *uap)
 		fp->f_offset += SCARG(uap, offset);
 		break;
 	case L_XTND:
-		error=VOP_GETATTR((struct vnode *)fp->f_data, &vattr, cred, td);
+		error=VOP_GETATTR((struct vnode *)fp->f_data, &vattr, td);
 		if (error)
 			return (error);
 		fp->f_offset = SCARG(uap, offset) + vattr.va_size;
@@ -2303,7 +2300,7 @@ fsync(struct fsync_args *uap)
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	if (VOP_GETVOBJECT(vp, &obj) == 0)
 		vm_object_page_clean(obj, 0, 0, 0);
-	if ((error = VOP_FSYNC(vp, fp->f_cred, MNT_WAIT, td)) == 0 &&
+	if ((error = VOP_FSYNC(vp, MNT_WAIT, td)) == 0 &&
 	    vp->v_mount && (vp->v_mount->mnt_flag & MNT_SOFTDEP) &&
 	    bioops.io_fsync)
 		error = (*bioops.io_fsync)(vp);
@@ -2753,7 +2750,7 @@ revoke(struct revoke_args *uap)
 		error = EINVAL;
 		goto out;
 	}
-	if ((error = VOP_GETATTR(vp, &vattr, p->p_ucred, td)) != 0)
+	if ((error = VOP_GETATTR(vp, &vattr, td)) != 0)
 		goto out;
 	if (p->p_ucred->cr_uid != vattr.va_uid &&
 	    (error = suser_cred(p->p_ucred, PRISON_ROOT)))
@@ -2918,7 +2915,7 @@ fhopen(struct fhopen_args *uap)
 	 * Make sure that a VM object is created for VMIO support.
 	 */
 	if (vn_canvmio(vp) == TRUE) {
-		if ((error = vfs_object_create(vp, td, p->p_ucred)) != 0)
+		if ((error = vfs_object_create(vp, td)) != 0)
 			goto bad;
 	}
 	if (fmode & FWRITE)
@@ -2977,7 +2974,7 @@ fhopen(struct fhopen_args *uap)
 		fp->f_flag |= FHASLOCK;
 	}
 	if ((vp->v_type == VREG) && (VOP_GETVOBJECT(vp, NULL) != 0))
-		vfs_object_create(vp, td, p->p_ucred);
+		vfs_object_create(vp, td);
 
 	VOP_UNLOCK(vp, 0, td);
 	fdrop(fp, td);

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.4 2003/06/26 02:17:47 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.5 2003/06/26 05:55:21 dillon Exp $
  */
 
 /*
@@ -224,7 +224,6 @@ vm_pager_bufferinit()
 		TAILQ_INSERT_HEAD(&bswlist, bp, b_freelist);
 		BUF_LOCKINIT(bp);
 		LIST_INIT(&bp->b_dep);
-		bp->b_rcred = bp->b_wcred = NOCRED;
 		bp->b_xflags = 0;
 	}
 
@@ -345,8 +344,6 @@ vm_pager_object_lookup(pg_list, handle)
 static void
 initpbuf(struct buf *bp)
 {
-	bp->b_rcred = NOCRED;
-	bp->b_wcred = NOCRED;
 	bp->b_qindex = QUEUE_NONE;
 	bp->b_data = (caddr_t) (MAXPHYS * (bp - swbuf)) + swapbkva;
 	bp->b_kvabase = bp->b_data;
@@ -449,15 +446,6 @@ relpbuf(bp, pfreecnt)
 
 	s = splvm();
 
-	if (bp->b_rcred != NOCRED) {
-		crfree(bp->b_rcred);
-		bp->b_rcred = NOCRED;
-	}
-	if (bp->b_wcred != NOCRED) {
-		crfree(bp->b_wcred);
-		bp->b_wcred = NOCRED;
-	}
-
 	if (bp->b_vp)
 		pbrelvp(bp);
 
@@ -553,9 +541,6 @@ getchainbuf(struct buf *bp, struct vnode *vp, int flags)
 
 	nbp->b_flags = B_CALL | (bp->b_flags & B_ORDERED) | flags;
 	nbp->b_iodone = vm_pager_chain_iodone;
-
-	nbp->b_rcred = crhold(proc0.p_ucred);
-	nbp->b_wcred = crhold(proc0.p_ucred);
 
 	if (vp)
 		pbgetvp(vp, nbp);

@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.6 2003/06/26 02:17:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.7 2003/06/26 05:55:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -704,8 +704,6 @@ spec_getpages(ap)
 	bp->b_iodone = spec_getpages_iodone;
 
 	/* B_PHYS is not set, but it is nice to fill this in. */
-	bp->b_rcred = crhold(curproc->p_ucred);
-	bp->b_wcred = crhold(curproc->p_ucred);
 	bp->b_blkno = blkno;
 	bp->b_lblkno = blkno;
 	pbgetvp(ap->a_vp, bp);

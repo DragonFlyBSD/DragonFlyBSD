@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.4 2003/06/25 03:56:13 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.5 2003/06/26 05:55:21 dillon Exp $
  */
 
 /*
@@ -356,8 +356,7 @@ mmap(struct mmap_args *uap)
 			    (vp->v_type == VCHR && disablexworkaround)) {
 				if ((fp->f_flag & FWRITE) != 0) {
 					struct vattr va;
-					if ((error =
-					    VOP_GETATTR(vp, &va, p->p_ucred, td))) {
+					if ((error = VOP_GETATTR(vp, &va, td))) {
 						goto done;
 					}
 					if ((va.va_flags &
@@ -1032,7 +1031,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			struct vattr vat;
 			int error;
 
-			error = VOP_GETATTR(vp, &vat, p->p_ucred, td);
+			error = VOP_GETATTR(vp, &vat, td);
 			if (error)
 				return (error);
 			objsize = round_page(vat.va_size);

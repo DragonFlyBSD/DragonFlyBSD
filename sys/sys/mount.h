@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.3 2003/06/25 03:56:10 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.4 2003/06/26 05:55:20 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -341,7 +341,7 @@ struct vfsops {
 	int	(*vfs_statfs)	__P((struct mount *mp, struct statfs *sbp,
 				    struct thread *td));
 	int	(*vfs_sync)	__P((struct mount *mp, int waitfor,
-				    struct ucred *cred, struct thread *td));
+				    struct thread *td));
 	int	(*vfs_vget)	__P((struct mount *mp, ino_t ino,
 				    struct vnode **vpp));
 	int	(*vfs_fhtovp)	__P((struct mount *mp, struct fid *fhp,
@@ -363,7 +363,7 @@ struct vfsops {
 #define VFS_ROOT(MP, VPP)	  (*(MP)->mnt_op->vfs_root)(MP, VPP)
 #define VFS_QUOTACTL(MP,C,U,A,P)  (*(MP)->mnt_op->vfs_quotactl)(MP, C, U, A, P)
 #define VFS_STATFS(MP, SBP, P)	  (*(MP)->mnt_op->vfs_statfs)(MP, SBP, P)
-#define VFS_SYNC(MP, WAIT, C, P)  (*(MP)->mnt_op->vfs_sync)(MP, WAIT, C, P)
+#define VFS_SYNC(MP, WAIT, P)	  (*(MP)->mnt_op->vfs_sync)(MP, WAIT, P)
 #define VFS_VGET(MP, INO, VPP)	  (*(MP)->mnt_op->vfs_vget)(MP, INO, VPP)
 #define VFS_FHTOVP(MP, FIDP, VPP) \
 	(*(MP)->mnt_op->vfs_fhtovp)(MP, FIDP, VPP)
@@ -455,8 +455,7 @@ int	vfs_stdroot __P((struct mount *mp, struct vnode **vpp));
 int	vfs_stdquotactl __P((struct mount *mp, int cmds, uid_t uid,
 		caddr_t arg, struct thread *p));
 int	vfs_stdstatfs __P((struct mount *mp, struct statfs *sbp, struct thread *p));
-int	vfs_stdsync __P((struct mount *mp, int waitfor, struct ucred *cred, 
-		struct thread *p));
+int	vfs_stdsync __P((struct mount *mp, int waitfor, struct thread *td));
 int	vfs_stdvget __P((struct mount *mp, ino_t ino, struct vnode **vpp));
 int	vfs_stdfhtovp __P((struct mount *mp, struct fid *fhp, struct vnode **vpp));
 int	vfs_stdcheckexp __P((struct mount *mp, struct sockaddr *nam,

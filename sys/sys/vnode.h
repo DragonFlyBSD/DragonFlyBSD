@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.4 2003/06/25 03:56:10 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.5 2003/06/26 05:55:20 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -586,15 +586,14 @@ int 	vget __P((struct vnode *vp, int lockflag, struct thread *td));
 void 	vgone __P((struct vnode *vp));
 void	vgonel __P((struct vnode *vp, struct thread *td));
 void	vhold __P((struct vnode *));
-int	vinvalbuf __P((struct vnode *vp, int save, struct ucred *cred,
+int	vinvalbuf __P((struct vnode *vp, int save, 
 	    struct thread *td, int slpflag, int slptimeo));
-int	vtruncbuf __P((struct vnode *vp, struct ucred *cred, struct thread *td,
+int	vtruncbuf __P((struct vnode *vp, struct thread *td,
 		off_t length, int blksize));
 void	vprint __P((char *label, struct vnode *vp));
 int	vrecycle __P((struct vnode *vp, struct simplelock *inter_lkp,
 	    struct thread *td));
-int 	vn_close __P((struct vnode *vp,
-	    int flags, struct ucred *cred, struct thread *td));
+int 	vn_close __P((struct vnode *vp, int flags, struct thread *td));
 int	vn_isdisk __P((struct vnode *vp, int *errp));
 int	vn_lock __P((struct vnode *vp, int flags, struct thread *td));
 #ifdef	DEBUG_LOCKS
@@ -615,8 +614,7 @@ int	vn_rdwr_inchunks __P((enum uio_rw rw, struct vnode *vp, caddr_t base,
 int	vn_stat __P((struct vnode *vp, struct stat *sb, struct thread *td));
 dev_t	vn_todev __P((struct vnode *vp));
 int	vfs_cache_lookup __P((struct vop_lookup_args *ap));
-int	vfs_object_create __P((struct vnode *vp, struct thread *td,
-                struct ucred *cred));
+int	vfs_object_create __P((struct vnode *vp, struct thread *td));
 void	vfs_timestamp __P((struct timespec *));
 int 	vn_writechk __P((struct vnode *vp));
 int	vop_stdbwrite __P((struct vop_bwrite_args *ap));

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.5 2003/06/25 03:56:01 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.6 2003/06/26 05:55:17 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -495,7 +495,7 @@ msdosfs_setattr(ap)
 		default:
 			break;
 		}
-		error = detrunc(dep, vap->va_size, 0, cred, ap->a_td);
+		error = detrunc(dep, vap->va_size, 0, ap->a_td);
 		if (error)
 			return error;
 	}
@@ -605,7 +605,7 @@ msdosfs_read(ap)
 				break;
 			} else if (error)
 				break;
-			error = bread(pmp->pm_devvp, lbn, blsize, NOCRED, &bp);
+			error = bread(pmp->pm_devvp, lbn, blsize, &bp);
 		} else {
 			blsize = pmp->pm_bpcluster;
 			rablock = lbn + 1;
@@ -613,9 +613,9 @@ msdosfs_read(ap)
 			    de_cn2off(pmp, rablock) < dep->de_FileSize) {
 				rasize = pmp->pm_bpcluster;
 				error = breadn(vp, lbn, blsize,
-				    &rablock, &rasize, 1, NOCRED, &bp); 
+				    &rablock, &rasize, 1, &bp); 
 			} else {
-				error = bread(vp, lbn, blsize, NOCRED, &bp);
+				error = bread(vp, lbn, blsize, &bp);
 			}
 		}
 		if (error) {
@@ -667,7 +667,6 @@ msdosfs_write(ap)
 	struct vnode *thisvp;
 	struct denode *dep = VTODE(vp);
 	struct msdosfsmount *pmp = dep->de_pmp;
-	struct ucred *cred = ap->a_cred;
 	struct proc *p = td->td_proc;
 
 #ifdef MSDOSFS_DEBUG
@@ -715,7 +714,7 @@ msdosfs_write(ap)
 	 * with zeroed blocks.
 	 */
 	if (uio->uio_offset > dep->de_FileSize) {
-		error = deextend(dep, uio->uio_offset, cred);
+		error = deextend(dep, uio->uio_offset);
 		if (error)
 			return (error);
 	}
@@ -786,7 +785,7 @@ msdosfs_write(ap)
 			/*
 			 * The block we need to write into exists, so read it in.
 			 */
-			error = bread(thisvp, bn, pmp->pm_bpcluster, cred, &bp);
+			error = bread(thisvp, bn, pmp->pm_bpcluster, &bp);
 			if (error) {
 				brelse(bp);
 				break;
@@ -830,11 +829,11 @@ msdosfs_write(ap)
 errexit:
 	if (error) {
 		if (ioflag & IO_UNIT) {
-			detrunc(dep, osize, ioflag & IO_SYNC, NOCRED, NULL);
+			detrunc(dep, osize, ioflag & IO_SYNC, NULL);
 			uio->uio_offset -= resid - uio->uio_resid;
 			uio->uio_resid = resid;
 		} else {
-			detrunc(dep, dep->de_FileSize, ioflag & IO_SYNC, NOCRED, NULL);
+			detrunc(dep, dep->de_FileSize, ioflag & IO_SYNC, NULL);
 			if (uio->uio_resid != resid)
 				error = 0;
 		}
@@ -1269,8 +1268,7 @@ abortit:
 			panic("msdosfs_rename(): updating .. in root directory?");
 		} else
 			bn = cntobn(pmp, cn);
-		error = bread(pmp->pm_devvp, bn, pmp->pm_bpcluster,
-			      NOCRED, &bp);
+		error = bread(pmp->pm_devvp, bn, pmp->pm_bpcluster, &bp);
 		if (error) {
 			/* XXX should really panic here, fs is corrupt */
 			brelse(bp);
@@ -1492,7 +1490,7 @@ msdosfs_rmdir(ap)
 	/*
 	 * Truncate the directory that is being deleted.
 	 */
-	error = detrunc(ip, (u_long)0, IO_SYNC, cnp->cn_cred, td);
+	error = detrunc(ip, (u_long)0, IO_SYNC, td);
 	cache_purge(vp);
 
 	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
@@ -1651,7 +1649,7 @@ msdosfs_readdir(ap)
 		error = pcbmap(dep, lbn, &bn, &cn, &blsize);
 		if (error)
 			break;
-		error = bread(pmp->pm_devvp, bn, blsize, NOCRED, &bp);
+		error = bread(pmp->pm_devvp, bn, blsize, &bp);
 		if (error) {
 			brelse(bp);
 			return (error);

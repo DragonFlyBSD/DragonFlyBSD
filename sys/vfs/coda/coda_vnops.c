@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.4 2003/06/25 03:55:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.5 2003/06/26 05:55:07 dillon Exp $
  * 
  */
 
@@ -302,7 +302,7 @@ coda_open(v)
     }
 /* grab (above) does this when it calls newvnode unless it's in the cache*/
     if (vp->v_type == VREG) {
-    	error = vfs_object_create(vp, td, cred);
+    	error = vfs_object_create(vp, td);
 	if (error != 0) {
 	    printf("coda_open: vfs_object_create() returns %d\n", error);
 	    vput(vp);
@@ -324,7 +324,6 @@ coda_close(v)
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
     int flag = ap->a_fflag;
-    struct ucred *cred = ap->a_cred;
     struct thread *td = ap->a_td;
 /* locals */
     int error;
@@ -346,7 +345,7 @@ coda_close(v)
 #ifdef	hmm
 	    vgone(cp->c_ovp);
 #else
-	    VOP_CLOSE(cp->c_ovp, flag, cred, td); /* Do errors matter here? */
+	    VOP_CLOSE(cp->c_ovp, flag, td); /* Do errors matter here? */
 	    vrele(cp->c_ovp);
 #endif
 	} else {
@@ -356,7 +355,7 @@ coda_close(v)
 	}
 	return ENODEV;
     } else {
-	VOP_CLOSE(cp->c_ovp, flag, cred, td); /* Do errors matter here? */
+	VOP_CLOSE(cp->c_ovp, flag, td); /* Do errors matter here? */
 	vrele(cp->c_ovp);
     }
 
@@ -366,7 +365,7 @@ coda_close(v)
     if (flag & FWRITE)                    /* file was opened for write */
 	--cp->c_owrite;
 
-    error = venus_close(vtomi(vp), &cp->c_fid, flag, cred, td);
+    error = venus_close(vtomi(vp), &cp->c_fid, flag, proc0.p_ucred, td);
     vrele(CTOV(cp));
 
     CODADEBUG(CODA_CLOSE, myprintf(("close: result %d\n",error)); )
@@ -462,7 +461,7 @@ printf("coda_rdwr: Internally Opening %p\n", vp);
 		return (error);
 	    }
 	    if (vp->v_type == VREG) {
-		error = vfs_object_create(vp, td, cred);
+		error = vfs_object_create(vp, td);
 		if (error != 0) {
 		    printf("coda_rdwr: vfs_object_create() returns %d\n", error);
 		    vput(vp);
@@ -490,7 +489,7 @@ printf("coda_rdwr: Internally Opening %p\n", vp);
 
 	{   struct vattr attr;
 
-	    if (VOP_GETATTR(cfvp, &attr, cred, td) == 0) {
+	    if (VOP_GETATTR(cfvp, &attr, td) == 0) {
 		vnode_pager_setsize(vp, attr.va_size);
 	    }
 	}
@@ -504,7 +503,7 @@ printf("coda_rdwr: Internally Opening %p\n", vp);
     /* Do an internal close if necessary. */
     if (opened_internally) {
 	MARK_INT_GEN(CODA_CLOSE_STATS);
-	(void)VOP_CLOSE(vp, (rw == UIO_READ ? FREAD : FWRITE), cred, td);
+	(void)VOP_CLOSE(vp, (rw == UIO_READ ? FREAD : FWRITE), td);
     }
 
     /* Invalidate cached attributes if writing. */
@@ -608,7 +607,6 @@ coda_getattr(v)
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
     struct vattr *vap = ap->a_vap;
-    struct ucred *cred = ap->a_cred;
     struct thread *td = ap->a_td;
 /* locals */
     int error;
@@ -638,7 +636,7 @@ coda_getattr(v)
 	return(0);
     }
 
-    error = venus_getattr(vtomi(vp), &cp->c_fid, cred, td, vap);
+    error = venus_getattr(vtomi(vp), &cp->c_fid, proc0.p_ucred, td, vap);
 
     if (!error) {
 	CODADEBUG(CODA_GETATTR, myprintf(("getattr miss (%lx.%lx.%lx): result %d\n",
@@ -810,7 +808,6 @@ coda_fsync(v)
     struct vop_fsync_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
-    struct ucred *cred = ap->a_cred;
     struct thread *td = ap->a_td;
 /* locals */
     struct vnode *convp = cp->c_ovp;
@@ -834,7 +831,7 @@ coda_fsync(v)
     }
 
     if (convp)
-    	VOP_FSYNC(convp, cred, MNT_WAIT, td);
+    	VOP_FSYNC(convp, MNT_WAIT, td);
 
     /*
      * We see fsyncs with usecount == 1 then usecount == 0.
@@ -860,7 +857,7 @@ coda_fsync(v)
 
     /* needs research */
     return 0;
-    error = venus_fsync(vtomi(vp), &cp->c_fid, cred, td);
+    error = venus_fsync(vtomi(vp), &cp->c_fid, proc0.p_ucred, td);
 
     CODADEBUG(CODA_FSYNC, myprintf(("in fsync result %d\n",error)); );
     return(error);
@@ -1636,7 +1633,7 @@ printf("coda_readdir: Internally Opening %p\n", vp);
 		return (error);
 	    }
 	    if (vp->v_type == VREG) {
-		error = vfs_object_create(vp, td, cred);
+		error = vfs_object_create(vp, td);
 		if (error != 0) {
 		    printf("coda_readdir: vfs_object_create() returns %d\n", error);
 		    vput(vp);
@@ -1658,7 +1655,7 @@ printf("coda_readdir: Internally Opening %p\n", vp);
 	/* Do an "internal close" if necessary. */ 
 	if (opened_internally) {
 	    MARK_INT_GEN(CODA_CLOSE_STATS);
-	    (void)VOP_CLOSE(vp, FREAD, cred, td);
+	    (void)VOP_CLOSE(vp, FREAD, td);
 	}
     }
 

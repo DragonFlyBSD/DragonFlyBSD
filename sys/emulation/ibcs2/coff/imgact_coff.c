@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/imgact_coff.c,v 1.40 1999/12/15 23:01:47 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/coff/Attic/imgact_coff.c,v 1.3 2003/06/25 03:55:53 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/coff/Attic/imgact_coff.c,v 1.4 2003/06/26 05:55:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -188,7 +188,7 @@ coff_load_file(struct thread *td, char *name)
     		goto fail;
   	}
 
-  	if ((error = VOP_GETATTR(vp, &attr, cred, td)) != 0)
+  	if ((error = VOP_GETATTR(vp, &attr, td)) != 0)
     		goto fail;
 
   	if ((vp->v_mount->mnt_flag & MNT_NOEXEC)

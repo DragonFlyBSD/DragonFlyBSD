@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.5 2003/06/25 03:56:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.6 2003/06/26 05:55:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -339,7 +339,7 @@ mfs_close(ap)
 	 * we must invalidate any in core blocks, so that
 	 * we can, free up its vnode.
 	 */
-	if ((error = vinvalbuf(vp, 1, ap->a_cred, ap->a_td, 0, 0)) != 0)
+	if ((error = vinvalbuf(vp, 1, ap->a_td, 0, 0)) != 0)
 		return (error);
 	/*
 	 * There should be no way to have any more uses of this

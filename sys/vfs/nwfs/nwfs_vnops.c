@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.3 2003/06/25 03:56:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.4 2003/06/26 05:55:19 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -190,17 +190,17 @@ nwfs_open(ap)
 	}
 	if (vp->v_type == VDIR) return 0;	/* nothing to do now */
 	if (np->n_flag & NMODIFIED) {
-		if ((error = nwfs_vinvalbuf(vp, V_SAVE, ap->a_cred, ap->a_td, 1)) == EINTR)
+		if ((error = nwfs_vinvalbuf(vp, V_SAVE, ap->a_td, 1)) == EINTR)
 			return (error);
 		np->n_atime = 0;
-		error = VOP_GETATTR(vp, &vattr, ap->a_cred, ap->a_td);
+		error = VOP_GETATTR(vp, &vattr, ap->a_td);
 		if (error) return (error);
 		np->n_mtime = vattr.va_mtime.tv_sec;
 	} else {
-		error = VOP_GETATTR(vp, &vattr, ap->a_cred, ap->a_td);
+		error = VOP_GETATTR(vp, &vattr, ap->a_td);
 		if (error) return (error);
 		if (np->n_mtime != vattr.va_mtime.tv_sec) {
-			if ((error = nwfs_vinvalbuf(vp, V_SAVE,	ap->a_cred, ap->a_td, 1)) == EINTR)
+			if ((error = nwfs_vinvalbuf(vp, V_SAVE,	ap->a_td, 1)) == EINTR)
 				return (error);
 			np->n_mtime = vattr.va_mtime.tv_sec;
 		}
@@ -254,7 +254,7 @@ nwfs_close(ap)
 		return 0;
 	}
 	simple_unlock(&vp->v_interlock);
-	error = nwfs_vinvalbuf(vp, V_SAVE, ap->a_cred, ap->a_td, 1);
+	error = nwfs_vinvalbuf(vp, V_SAVE, ap->a_td, 1);
 	simple_lock(&vp->v_interlock);
 	if (np->opened == 0) {
 		simple_unlock(&vp->v_interlock);
@@ -263,7 +263,7 @@ nwfs_close(ap)
 	if (--np->opened == 0) {
 		simple_unlock(&vp->v_interlock);
 		error = ncp_close_file(NWFSTOCONN(VTONWFS(vp)), &np->n_fh, 
-		   ap->a_td, ap->a_cred);
+		   ap->a_td, proc0.p_ucred);
 	} else
 		simple_unlock(&vp->v_interlock);
 	np->n_atime = 0;
@@ -297,10 +297,10 @@ nwfs_getattr(ap)
 	oldsize = np->n_size;
 	if (np->n_flag & NVOLUME) {
 		error = ncp_obtain_info(nmp, np->n_fid.f_id, 0, NULL, &fattr,
-		    ap->a_td,ap->a_cred);
+		    ap->a_td,proc0.p_ucred);
 	} else {
 		error = ncp_obtain_info(nmp, np->n_fid.f_parent, np->n_nmlen, 
-		    np->n_name, &fattr, ap->a_td, ap->a_cred);
+		    np->n_name, &fattr, ap->a_td, proc0.p_ucred);
 	}
 	if (error) {
 		NCPVNDEBUG("error %d\n", error);
@@ -365,7 +365,7 @@ nwfs_setattr(ap)
 		vnode_pager_setsize(vp, (u_long)tsize);
 	}
 	np->n_atime = 0;	/* invalidate cache */
-	VOP_GETATTR(vp, vap, ap->a_cred, ap->a_td);
+	VOP_GETATTR(vp, vap, ap->a_td);
 	np->n_mtime = vap->va_mtime.tv_sec;
 	return (0);
 }
@@ -445,7 +445,7 @@ nwfs_create(ap)
 	*vpp = NULL;
 	if (vap->va_type == VSOCK)
 		return (EOPNOTSUPP);
-	if ((error = VOP_GETATTR(dvp, &vattr, cnp->cn_cred, cnp->cn_td))) {
+	if ((error = VOP_GETATTR(dvp, &vattr, cnp->cn_td))) {
 		return (error);
 	}
 	fmode = AR_READ | AR_WRITE;
@@ -658,7 +658,7 @@ nwfs_mkdir(ap)
 	struct vattr vattr;
 	char *name=cnp->cn_nameptr;
 
-	if ((error = VOP_GETATTR(dvp, &vattr, cnp->cn_cred, cnp->cn_td))) {
+	if ((error = VOP_GETATTR(dvp, &vattr, cnp->cn_td))) {
 		return (error);
 	}	
 	if ((name[0] == '.') && ((len == 1) || ((len == 2) && (name[1] == '.')))) {
@@ -809,7 +809,6 @@ static int nwfs_strategy (ap)
 	} */ *ap;
 {
 	struct buf *bp=ap->a_bp;
-	struct ucred *cr;
 	int error = 0;
 	struct thread *td = NULL;
 
@@ -818,17 +817,13 @@ static int nwfs_strategy (ap)
 		panic("nwfs physio");
 	if ((bp->b_flags & B_ASYNC) == 0)
 		td = curthread;		/* YYY dunno if this is legal */
-	if (bp->b_flags & B_READ)
-		cr = bp->b_rcred;
-	else
-		cr = bp->b_wcred;
 	/*
 	 * If the op is asynchronous and an i/o daemon is waiting
 	 * queue the request, wake it up and wait for completion
 	 * otherwise just do it ourselves.
 	 */
 	if ((bp->b_flags & B_ASYNC) == 0 )
-		error = nwfs_doio(bp, cr, td);
+		error = nwfs_doio(bp, proc0.p_ucred, td);
 	return (error);
 }
 
@@ -975,7 +970,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & ISDOTDO
 		}
 		if (!error) {
 			if (vpid == vp->v_id) {
-			   if (!VOP_GETATTR(vp, &vattr, cnp->cn_cred, td)
+			   if (!VOP_GETATTR(vp, &vattr, td)
 			    && vattr.va_ctime.tv_sec == VTONW(vp)->n_ctime) {
 				if (nameiop != LOOKUP && islastcn)
 					cnp->cn_flags |= SAVENAME;

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.3 2003/06/25 03:55:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.4 2003/06/26 05:55:12 dillon Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -85,7 +85,7 @@ static int smbfs_quotactl(struct mount *, int, uid_t, caddr_t, struct thread *);
 static int smbfs_root(struct mount *, struct vnode **);
 static int smbfs_start(struct mount *, int, struct thread *);
 static int smbfs_statfs(struct mount *, struct statfs *, struct thread *);
-static int smbfs_sync(struct mount *, int, struct ucred *, struct thread *);
+static int smbfs_sync(struct mount *, int, struct thread *);
 static int smbfs_unmount(struct mount *, int, struct thread *);
 static int smbfs_init(struct vfsconf *vfsp);
 static int smbfs_uninit(struct vfsconf *vfsp);
@@ -433,10 +433,9 @@ smbfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
  */
 /* ARGSUSED */
 static int
-smbfs_sync(mp, waitfor, cred, td)
+smbfs_sync(mp, waitfor, td)
 	struct mount *mp;
 	int waitfor;
-	struct ucred *cred;
 	struct thread *td;
 {
 	struct vnode *vp;
@@ -459,7 +458,7 @@ loop:
 			continue;
 		if (vget(vp, LK_EXCLUSIVE, td))
 			goto loop;
-		error = VOP_FSYNC(vp, cred, waitfor, td);
+		error = VOP_FSYNC(vp, waitfor, td);
 		if (error)
 			allerror = error;
 		vput(vp);

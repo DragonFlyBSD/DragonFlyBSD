@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_subr.c,v 1.1 1999/12/09 19:09:59 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_subr.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_subr.c,v 1.3 2003/06/26 05:55:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -116,7 +116,7 @@ hpfs_bminit(
 		M_HPFSMNT, M_WAITOK);
 
 	error = bread(hpmp->hpm_devvp, hpmp->hpm_su.su_bitmap.lsn1,
-		((hpmp->hpm_dbnum + 0x7F) & ~(0x7F)) << 2, NOCRED, &bp);
+		((hpmp->hpm_dbnum + 0x7F) & ~(0x7F)) << 2, &bp);
 	if (error) {
 		brelse(bp);
 		FREE(hpmp->hpm_bitmap, M_HPFSMNT);
@@ -135,7 +135,7 @@ hpfs_bminit(
 		dprintf(("[%d: 0x%x] ", i, hpmp->hpm_bmind[i]));
 
 		error = bread(hpmp->hpm_devvp, hpmp->hpm_bmind[i],
-				BMSIZE, NOCRED, &bp);
+				BMSIZE, &bp);
 		if (error) {
 			brelse(bp);
 			FREE(hpmp->hpm_bitmap, M_HPFSMNT);
@@ -216,7 +216,7 @@ hpfs_cpload (
 	struct cpdsec * cpdsp;
 	int error, i;
 
-	error = bread(hpmp->hpm_devvp, cpibp->b_cpdsec, DEV_BSIZE, NOCRED, &bp);
+	error = bread(hpmp->hpm_devvp, cpibp->b_cpdsec, DEV_BSIZE, &bp);
 	if (error) {
 		brelse(bp);
 		return (error);
@@ -279,7 +279,7 @@ hpfs_cpinit (
 	lsn = hpmp->hpm_sp.sp_cpi;
 
 	while (cpicnt > 0) {
-		error = bread(hpmp->hpm_devvp, lsn, DEV_BSIZE, NOCRED, &bp);
+		error = bread(hpmp->hpm_devvp, lsn, DEV_BSIZE, &bp);
 		if (error) {
 			brelse(bp);
 			return (error);

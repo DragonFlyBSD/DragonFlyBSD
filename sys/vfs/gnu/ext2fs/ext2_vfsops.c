@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.3 2003/06/26 05:55:12 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -535,7 +535,7 @@ ext2_reload(mountp, cred, p)
 	 * Step 1: invalidate all cached meta-data.
 	 */
 	devvp = VFSTOUFS(mountp)->um_devvp;
-	if (vinvalbuf(devvp, 0, cred, p, 0, 0))
+	if (vinvalbuf(devvp, 0, p, 0, 0))
 		panic("ext2_reload: dirty1");
 	/*
 	 * Step 2: re-read superblock from disk.
@@ -582,7 +582,7 @@ loop:
 		if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, p)) {
 			goto loop;
 		}
-		if (vinvalbuf(vp, 0, cred, p, 0, 0))
+		if (vinvalbuf(vp, 0, p, 0, 0))
 			panic("ext2_reload: dirty2");
 		/*
 		 * Step 6: re-read inode data for all active vnodes.
@@ -635,7 +635,7 @@ ext2_mountfs(devvp, mp, p)
 		return (error);
 	if (vcount(devvp) > 1 && devvp != rootvp)
 		return (EBUSY);
-	if ((error = vinvalbuf(devvp, V_SAVE, p->p_ucred, p, 0, 0)) != 0)
+	if ((error = vinvalbuf(devvp, V_SAVE, p, 0, 0)) != 0)
 		return (error);
 #ifdef READONLY
 /* turn on this to force it to be read-only */

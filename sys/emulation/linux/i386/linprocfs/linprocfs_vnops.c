@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.4 2003/06/25 03:55:55 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.5 2003/06/26 05:55:13 dillon Exp $
  */
 
 /*
@@ -602,7 +602,7 @@ linprocfs_access(ap)
 		return (0);
 
 	vap = &vattr;
-	error = VOP_GETATTR(ap->a_vp, vap, ap->a_cred, ap->a_td);
+	error = VOP_GETATTR(ap->a_vp, vap, ap->a_td);
 	if (error)
 		return (error);
 

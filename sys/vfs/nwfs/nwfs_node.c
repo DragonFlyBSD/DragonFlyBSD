@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.3 2003/06/25 03:56:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.4 2003/06/26 05:55:19 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -265,7 +265,7 @@ nwfs_inactive(ap)
 
 	NCPVNDEBUG("%s: %d\n", VTONW(vp)->n_name, vp->v_usecount);
 	if (np->opened) {
-		error = nwfs_vinvalbuf(vp, V_SAVE, cred, td, 1);
+		error = nwfs_vinvalbuf(vp, V_SAVE, td, 1);
 		error = ncp_close_file(NWFSTOCONN(VTONWFS(vp)), &np->n_fh, td, cred);
 		np->opened = 0;
 	}

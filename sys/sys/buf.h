@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.3 2003/06/19 01:55:07 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.4 2003/06/26 05:55:19 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -124,8 +124,6 @@ struct buf {
 	struct	vnode *b_vp;		/* Device vnode. */
 	int	b_dirtyoff;		/* Offset in buffer of dirty region. */
 	int	b_dirtyend;		/* Offset of end of dirty region. */
-	struct	ucred *b_rcred;		/* Read credentials reference. */
-	struct	ucred *b_wcred;		/* Write credentials reference. */
 	daddr_t	b_pblkno;               /* physical block number */
 	void	*b_saveaddr;		/* Original b_addr for physio. */
 	void	*b_driver1;		/* for private use by the driver */
@@ -339,10 +337,9 @@ void	bufinit __P((void));
 void	bwillwrite __P((void));
 int	buf_dirty_count_severe __P((void));
 void	bremfree __P((struct buf *));
-int	bread __P((struct vnode *, daddr_t, int,
-	    struct ucred *, struct buf **));
+int	bread __P((struct vnode *, daddr_t, int, struct buf **));
 int	breadn __P((struct vnode *, daddr_t, int, daddr_t *, int *, int,
-	    struct ucred *, struct buf **));
+	    struct buf **));
 int	bwrite __P((struct buf *));
 void	bdwrite __P((struct buf *));
 void	bawrite __P((struct buf *));
@@ -363,7 +360,7 @@ void	biodone __P((struct buf *));
 
 void	cluster_callback __P((struct buf *));
 int	cluster_read __P((struct vnode *, u_quad_t, daddr_t, long,
-	    struct ucred *, long, int, struct buf **));
+	    long, int, struct buf **));
 int	cluster_wbuild __P((struct vnode *, long, daddr_t, int));
 void	cluster_write __P((struct buf *, u_quad_t, int));
 int	physio __P((dev_t dev, struct uio *uio, int ioflag));

@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.3 2003/06/25 03:56:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.4 2003/06/26 05:55:18 dillon Exp $
  *
  */
 
@@ -188,7 +188,7 @@ ntfs_read(ap)
 
 		toread = min(off + resid, ntfs_cntob(1));
 
-		error = bread(vp, cn, ntfs_cntob(1), NOCRED, &bp);
+		error = bread(vp, cn, ntfs_cntob(1), &bp);
 		if (error) {
 			brelse(bp);
 			break;

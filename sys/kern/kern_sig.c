@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.5 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.6 2003/06/26 05:55:14 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1615,7 +1615,7 @@ coredump(struct proc *p)
 
 	/* Don't dump to non-regular files or files with links. */
 	if (vp->v_type != VREG ||
-	    VOP_GETATTR(vp, &vattr, cred, td) || vattr.va_nlink != 1) {
+	    VOP_GETATTR(vp, &vattr, td) || vattr.va_nlink != 1) {
 		error = EFAULT;
 		goto out1;
 	}
@@ -1636,7 +1636,7 @@ out1:
 	lf.l_type = F_UNLCK;
 	VOP_ADVLOCK(vp, (caddr_t)p, F_UNLCK, &lf, F_FLOCK);
 out2:
-	error1 = vn_close(vp, FWRITE, cred, td);
+	error1 = vn_close(vp, FWRITE, td);
 	if (error == 0)
 		error = error1;
 	return (error);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_io.c,v 1.6.2.1 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.3 2003/06/25 03:56:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.4 2003/06/26 05:55:19 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -179,14 +179,14 @@ nwfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred) {
 	biosize = NWFSTOCONN(nmp)->buffer_size;
 	if (np->n_flag & NMODIFIED) {
 		nwfs_attr_cacheremove(vp);
-		error = VOP_GETATTR(vp, &vattr, cred, td);
+		error = VOP_GETATTR(vp, &vattr, td);
 		if (error) return (error);
 		np->n_mtime = vattr.va_mtime.tv_sec;
 	} else {
-		error = VOP_GETATTR(vp, &vattr, cred, td);
+		error = VOP_GETATTR(vp, &vattr, td);
 		if (error) return (error);
 		if (np->n_mtime != vattr.va_mtime.tv_sec) {
-			error = nwfs_vinvalbuf(vp, V_SAVE, cred, td, 1);
+			error = nwfs_vinvalbuf(vp, V_SAVE, td, 1);
 			if (error) return (error);
 			np->n_mtime = vattr.va_mtime.tv_sec;
 		}
@@ -220,7 +220,7 @@ nwfs_writevnode(vp, uiop, cred, ioflag)
 	if (ioflag & (IO_APPEND | IO_SYNC)) {
 		if (np->n_flag & NMODIFIED) {
 			nwfs_attr_cacheremove(vp);
-			error = nwfs_vinvalbuf(vp, V_SAVE, cred, td, 1);
+			error = nwfs_vinvalbuf(vp, V_SAVE, td, 1);
 			if (error) return (error);
 		}
 		if (ioflag & IO_APPEND) {
@@ -229,7 +229,7 @@ nwfs_writevnode(vp, uiop, cred, ioflag)
 		 * the correct size. */
 #if notyet
 			nwfs_attr_cacheremove(vp);
-			error = VOP_GETATTR(vp, &vattr, cred, td);
+			error = VOP_GETATTR(vp, &vattr, td);
 			if (error) return (error);
 #endif
 			uiop->uio_offset = np->n_size;
@@ -584,10 +584,9 @@ nwfs_putpages(ap)
  * doing the flush, just wait for completion.
  */
 int
-nwfs_vinvalbuf(vp, flags, cred, td, intrflg)
+nwfs_vinvalbuf(vp, flags, td, intrflg)
 	struct vnode *vp;
 	int flags;
-	struct ucred *cred;
 	struct thread *td;
 	int intrflg;
 {
@@ -613,7 +612,7 @@ nwfs_vinvalbuf(vp, flags, cred, td, intrflg)
 			return EINTR;
 	}
 	np->n_flag |= NFLUSHINPROG;
-	error = vinvalbuf(vp, flags, cred, td, slpflag, 0);
+	error = vinvalbuf(vp, flags, td, slpflag, 0);
 	while (error) {
 		if (intrflg && (error == ERESTART || error == EINTR)) {
 			np->n_flag &= ~NFLUSHINPROG;
@@ -623,7 +622,7 @@ nwfs_vinvalbuf(vp, flags, cred, td, intrflg)
 			}
 			return EINTR;
 		}
-		error = vinvalbuf(vp, flags, cred, td, slpflag, 0);
+		error = vinvalbuf(vp, flags, td, slpflag, 0);
 	}
 	np->n_flag &= ~(NMODIFIED | NFLUSHINPROG);
 	if (np->n_flag & NFLUSHWANT) {

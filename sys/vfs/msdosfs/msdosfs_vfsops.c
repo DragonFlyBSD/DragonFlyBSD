@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vfsops.c,v 1.60.2.6 2002/09/12 21:33:38 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.3 2003/06/25 03:56:01 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.4 2003/06/26 05:55:17 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -98,8 +98,7 @@ static int	msdosfs_mount __P((struct mount *, char *, caddr_t,
 static int	msdosfs_root __P((struct mount *, struct vnode **));
 static int	msdosfs_statfs __P((struct mount *, struct statfs *,
 				    struct thread *));
-static int	msdosfs_sync __P((struct mount *, int, struct ucred *,
-				  struct thread *));
+static int	msdosfs_sync __P((struct mount *, int, struct thread *));
 static int	msdosfs_unmount __P((struct mount *, int, struct thread *));
 static int	msdosfs_vptofh __P((struct vnode *, struct fid *));
 
@@ -384,9 +383,6 @@ mountmsdosfs(devvp, mp, td, argp)
 	u_int8_t SecPerClust;
 	u_long clusters;
 	int	ronly, error;
-	struct proc *p = td->td_proc;
-
-	KKASSERT(p);
 
 	/*
 	 * Disallow multiple mounts of the same device.
@@ -400,7 +396,7 @@ mountmsdosfs(devvp, mp, td, argp)
 	if (vcount(devvp) > 1 && devvp != rootvp)
 		return (EBUSY);
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = vinvalbuf(devvp, V_SAVE, p->p_ucred, td, 0, 0);
+	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
 	VOP_UNLOCK(devvp, 0, td);
 	if (error)
 		return (error);
@@ -427,8 +423,7 @@ mountmsdosfs(devvp, mp, td, argp)
 		 * that the size of a disk block will always be 512 bytes.
 		 * Let's check it...
 		 */
-		error = VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart,
-				  FREAD, NOCRED, td);
+		error = VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, td);
 		if (error)
 			goto error_exit;
 		tmp   = dpart.part->p_fstype;
@@ -447,7 +442,7 @@ mountmsdosfs(devvp, mp, td, argp)
 	 *
 	 * NOTE: 2048 is a maximum sector size in current...
 	 */
-	error = bread(devvp, 0, 2048, NOCRED, &bp);
+	error = bread(devvp, 0, 2048, &bp);
 	if (error)
 		goto error_exit;
 	bp->b_flags |= B_AGE;
@@ -671,8 +666,7 @@ mountmsdosfs(devvp, mp, td, argp)
 	if (pmp->pm_fsinfo) {
 		struct fsinfo *fp;
 
-		if ((error = bread(devvp, pmp->pm_fsinfo, fsi_size(pmp),
-		    NOCRED, &bp)) != 0)
+		if ((error = bread(devvp, pmp->pm_fsinfo, fsi_size(pmp), &bp)) != 0)
 			goto error_exit;
 		fp = (struct fsinfo *)bp->b_data;
 		if (!bcmp(fp->fsisig1, "RRaA", 4)
@@ -745,7 +739,7 @@ mountmsdosfs(devvp, mp, td, argp)
 error_exit:
 	if (bp)
 		brelse(bp);
-	(void) VOP_CLOSE(devvp, ronly ? FREAD : FREAD | FWRITE, NOCRED, td);
+	(void) VOP_CLOSE(devvp, ronly ? FREAD : FREAD | FWRITE, td);
 	if (pmp) {
 		if (pmp->pm_inusemap)
 			free(pmp->pm_inusemap, M_MSDOSFSFAT);
@@ -799,7 +793,7 @@ msdosfs_unmount(mp, mntflags, td)
 #endif
 	error = VOP_CLOSE(pmp->pm_devvp,
 		    (pmp->pm_flags&MSDOSFSMNT_RONLY) ? FREAD : FREAD | FWRITE,
-		    NOCRED, td);
+		    td);
 	vrele(pmp->pm_devvp);
 	free(pmp->pm_inusemap, M_MSDOSFSFAT);
 	free(pmp, M_MSDOSFSMNT);
@@ -853,10 +847,9 @@ msdosfs_statfs(mp, sbp, td)
 }
 
 static int
-msdosfs_sync(mp, waitfor, cred, td)
+msdosfs_sync(mp, waitfor, td)
 	struct mount *mp;
 	int waitfor;
-	struct ucred *cred;
 	struct thread *td;
 {
 	struct vnode *vp, *nvp;
@@ -906,7 +899,7 @@ loop:
 				goto loop;
 			continue;
 		}
-		error = VOP_FSYNC(vp, cred, waitfor, td);
+		error = VOP_FSYNC(vp, waitfor, td);
 		if (error)
 			allerror = error;
 		VOP_UNLOCK(vp, 0, td);
@@ -920,7 +913,7 @@ loop:
 	 */
 	if (waitfor != MNT_LAZY) {
 		vn_lock(pmp->pm_devvp, LK_EXCLUSIVE | LK_RETRY, td);
-		error = VOP_FSYNC(pmp->pm_devvp, cred, waitfor, td);
+		error = VOP_FSYNC(pmp->pm_devvp, waitfor, td);
 		if (error)
 			allerror = error;
 		VOP_UNLOCK(pmp->pm_devvp, 0, td);

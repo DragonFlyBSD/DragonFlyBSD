@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_sysvec.c,v 1.10.2.2 2002/07/09 14:12:43 robert Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.4 2003/06/25 03:56:10 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.5 2003/06/26 05:55:19 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -337,11 +337,11 @@ svr4_emul_find(sgp, prefix, path, pbuf, cflag)
 		}
 		NDFREE(&ndroot, NDF_ONLY_PNBUF);
 
-		if ((error = VOP_GETATTR(nd.ni_vp, &vat, cred, td)) != 0) {
+		if ((error = VOP_GETATTR(nd.ni_vp, &vat, td)) != 0) {
 			goto done;
 		}
 
-		if ((error = VOP_GETATTR(ndroot.ni_vp, &vatroot, cred, td))
+		if ((error = VOP_GETATTR(ndroot.ni_vp, &vatroot, td))
 		    != 0) {
 			goto done;
 		}

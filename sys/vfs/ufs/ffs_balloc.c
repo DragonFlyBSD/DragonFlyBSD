@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_balloc.c	8.8 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_balloc.c,v 1.26.2.1 2002/10/10 19:48:20 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.4 2003/06/25 03:56:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.5 2003/06/26 05:55:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -128,7 +128,7 @@ ffs_balloc(ap)
 	if (lbn < NDADDR) {
 		nb = ip->i_db[lbn];
 		if (nb != 0 && ip->i_size >= smalllblktosize(fs, lbn + 1)) {
-			error = bread(vp, lbn, fs->fs_bsize, NOCRED, &bp);
+			error = bread(vp, lbn, fs->fs_bsize, &bp);
 			if (error) {
 				brelse(bp);
 				return (error);
@@ -144,7 +144,7 @@ ffs_balloc(ap)
 			osize = fragroundup(fs, blkoff(fs, ip->i_size));
 			nsize = fragroundup(fs, size);
 			if (nsize <= osize) {
-				error = bread(vp, lbn, osize, NOCRED, &bp);
+				error = bread(vp, lbn, osize, &bp);
 				if (error) {
 					brelse(bp);
 					return (error);
@@ -233,8 +233,7 @@ ffs_balloc(ap)
 	 * Fetch through the indirect blocks, allocating as necessary.
 	 */
 	for (i = 1;;) {
-		error = bread(vp,
-		    indirs[i].in_lbn, (int)fs->fs_bsize, NOCRED, &bp);
+		error = bread(vp, indirs[i].in_lbn, (int)fs->fs_bsize, &bp);
 		if (error) {
 			brelse(bp);
 			goto fail;
@@ -336,10 +335,10 @@ ffs_balloc(ap)
 		if (seqcount &&
 		    (vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0) {
 			error = cluster_read(vp, ip->i_size, lbn,
-				    (int)fs->fs_bsize, NOCRED,
+				    (int)fs->fs_bsize, 
 				    MAXBSIZE, seqcount, &nbp);
 		} else {
-			error = bread(vp, lbn, (int)fs->fs_bsize, NOCRED, &nbp);
+			error = bread(vp, lbn, (int)fs->fs_bsize, &nbp);
 		}
 		if (error) {
 			brelse(nbp);
@@ -363,7 +362,7 @@ fail:
 	 * occurence. The error return from fsync is ignored as we already
 	 * have an error to return to the user.
 	 */
-	(void) VOP_FSYNC(vp, cred, MNT_WAIT, td);
+	(void) VOP_FSYNC(vp, MNT_WAIT, td);
 	for (deallocated = 0, blkp = allociblk; blkp < allocblk; blkp++) {
 		ffs_blkfree(ip, *blkp, fs->fs_bsize);
 		deallocated += fs->fs_bsize;
@@ -373,8 +372,7 @@ fail:
 	} else if (unwindidx >= 0) {
 		int r;
 
-		r = bread(vp, indirs[unwindidx].in_lbn, 
-		    (int)fs->fs_bsize, NOCRED, &bp);
+		r = bread(vp, indirs[unwindidx].in_lbn, (int)fs->fs_bsize, &bp);
 		if (r) {
 			panic("Could not unwind indirect block, error %d", r);
 			brelse(bp);
@@ -400,6 +398,6 @@ fail:
 		ip->i_blocks -= btodb(deallocated);
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 	}
-	(void) VOP_FSYNC(vp, cred, MNT_WAIT, td);
+	(void) VOP_FSYNC(vp, MNT_WAIT, td);
 	return (error);
 }

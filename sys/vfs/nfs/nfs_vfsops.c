@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.3 2003/06/25 03:56:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.4 2003/06/26 05:55:18 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -111,7 +111,7 @@ static int	nfs_root __P(( struct mount *mp, struct vnode **vpp));
 static int	nfs_statfs __P(( struct mount *mp, struct statfs *sbp,
 			struct thread *td));
 static int	nfs_sync __P(( struct mount *mp, int waitfor,
-			struct ucred *cred, struct thread *td));
+			struct thread *td));
 
 /*
  * nfs vfs operations.
@@ -269,7 +269,7 @@ nfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	cred = crget();
 	cred->cr_ngroups = 1;
 	if (v3 && (nmp->nm_state & NFSSTA_GOTFSINFO) == 0)
-		(void)nfs_fsinfo(nmp, vp, cred, td);
+		(void)nfs_fsinfo(nmp, vp, td);
 	nfsstats.rpccnt[NFSPROC_FSSTAT]++;
 	nfsm_reqhead(vp, NFSPROC_FSSTAT, NFSX_FH(v3));
 	nfsm_fhtom(vp, v3);
@@ -319,8 +319,7 @@ nfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
  * nfs version 3 fsinfo rpc call
  */
 int
-nfs_fsinfo(struct nfsmount *nmp, struct vnode *vp, 
-	struct ucred *cred, struct thread *td)
+nfs_fsinfo(struct nfsmount *nmp, struct vnode *vp, struct thread *td)
 {
 	register struct nfsv3_fsinfo *fsp;
 	register caddr_t cp;
@@ -334,7 +333,7 @@ nfs_fsinfo(struct nfsmount *nmp, struct vnode *vp,
 	nfsstats.rpccnt[NFSPROC_FSINFO]++;
 	nfsm_reqhead(vp, NFSPROC_FSINFO, NFSX_FH(1));
 	nfsm_fhtom(vp, 1);
-	nfsm_request(vp, NFSPROC_FSINFO, td, cred);
+	nfsm_request(vp, NFSPROC_FSINFO, td, NFSVPCRED(vp));
 	nfsm_postop_attr(vp, retattr);
 	if (!error) {
 		nfsm_dissect(fsp, struct nfsv3_fsinfo *, NFSX_V3FSINFO);
@@ -903,6 +902,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	/* Set up the sockets and per-host congestion */
 	nmp->nm_sotype = argp->sotype;
 	nmp->nm_soproto = argp->proto;
+	nmp->nm_cred = crhold(proc0.p_ucred);
 
 	nfs_decode_args(nmp, argp);
 
@@ -938,7 +938,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	 * Get file attributes for the mountpoint.  This has the side
 	 * effect of filling in (*vpp)->v_type with the correct value.
 	 */
-	VOP_GETATTR(*vpp, &attrs, curproc->p_ucred, curthread);
+	VOP_GETATTR(*vpp, &attrs, curthread);
 
 	/*
 	 * Lose the lock but keep the ref.
@@ -948,7 +948,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	return (0);
 bad:
 	nfs_disconnect(nmp);
-	zfree(nfsmount_zone, nmp);
+	nfs_free_mount(nmp);
 	FREE(nam, M_SONAME);
 	return (error);
 }
@@ -1002,8 +1002,18 @@ nfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 	FREE(nmp->nm_nam, M_SONAME);
 
 	if ((nmp->nm_flag & (NFSMNT_NQNFS | NFSMNT_KERB)) == 0)
-		zfree(nfsmount_zone, nmp);
+		nfs_free_mount(nmp);
 	return (0);
+}
+
+void
+nfs_free_mount(struct nfsmount *nmp)
+{
+	if (nmp->nm_cred)  {
+		crfree(nmp->nm_cred);
+		nmp->nm_cred = NULL;
+	}
+	zfree(nfsmount_zone, nmp);
 }
 
 /*
@@ -1038,7 +1048,7 @@ extern int syncprt;
  */
 /* ARGSUSED */
 static int
-nfs_sync(struct mount *mp, int waitfor, struct ucred *cred, struct thread *td)
+nfs_sync(struct mount *mp, int waitfor, struct thread *td)
 {
 	struct vnode *vp;
 	int error, allerror = 0;
@@ -1061,7 +1071,7 @@ loop:
 			continue;
 		if (vget(vp, LK_EXCLUSIVE, td))
 			goto loop;
-		error = VOP_FSYNC(vp, cred, waitfor, td);
+		error = VOP_FSYNC(vp, waitfor, td);
 		if (error)
 			allerror = error;
 		vput(vp);

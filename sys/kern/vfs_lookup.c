@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_lookup.c	8.4 (Berkeley) 2/16/94
  * $FreeBSD: src/sys/kern/vfs_lookup.c,v 1.38.2.3 2001/08/31 19:36:49 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.3 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.4 2003/06/26 05:55:14 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -171,9 +171,7 @@ namei(struct nameidata *ndp)
 				(cnp->cn_nameiop != DELETE) &&
 				((cnp->cn_flags & (NOOBJ|LOCKLEAF)) ==
 				 LOCKLEAF))
-				vfs_object_create(ndp->ni_vp,
-					ndp->ni_cnd.cn_td,
-					ndp->ni_cnd.cn_cred);
+				vfs_object_create(ndp->ni_vp, ndp->ni_cnd.cn_td);
 
 			return (0);
 		}
@@ -719,7 +717,7 @@ relookup(dvp, vpp, cnp)
 
 	if (vn_canvmio(dp) == TRUE &&
 		((cnp->cn_flags & (NOOBJ|LOCKLEAF)) == LOCKLEAF))
-		vfs_object_create(dp, cnp->cn_td, cnp->cn_cred);
+		vfs_object_create(dp, cnp->cn_td);
 
 	if ((cnp->cn_flags & LOCKLEAF) == 0)
 		VOP_UNLOCK(dp, 0, td);

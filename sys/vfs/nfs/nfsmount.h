@@ -35,7 +35,7 @@
  *
  *	@(#)nfsmount.h	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfsmount.h,v 1.17 1999/12/29 04:54:54 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsmount.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsmount.h,v 1.3 2003/06/26 05:55:18 dillon Exp $
  */
 
 
@@ -94,13 +94,17 @@ struct	nfsmount {
 	short	nm_bufqwant;		/* process wants to add to the queue */
 	int	nm_bufqiods;		/* number of iods processing queue */
 	u_int64_t nm_maxfilesize;	/* maximum file size */
+	struct ucred *nm_cred;		/* 'root' credential */
 };
+
 
 #if defined(_KERNEL)
 /*
  * Convert mount ptr to nfsmount ptr.
  */
 #define VFSTONFS(mp)	((struct nfsmount *)((mp)->mnt_data))
+#define NFSVPCRED(vp)	(VFSTONFS((vp)->v_mount)->nm_cred)
+extern void nfs_free_mount(struct nfsmount *nmp);
 
 #endif
 

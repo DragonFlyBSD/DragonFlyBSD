@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.3 2003/06/25 03:55:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.4 2003/06/26 05:55:12 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -217,16 +217,16 @@ smbfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred)
 /*	biosize = SSTOCN(smp->sm_share)->sc_txmax;*/
 	if (np->n_flag & NMODIFIED) {
 		smbfs_attr_cacheremove(vp);
-		error = VOP_GETATTR(vp, &vattr, cred, td);
+		error = VOP_GETATTR(vp, &vattr, td);
 		if (error)
 			return error;
 		np->n_mtime.tv_sec = vattr.va_mtime.tv_sec;
 	} else {
-		error = VOP_GETATTR(vp, &vattr, cred, td);
+		error = VOP_GETATTR(vp, &vattr, td);
 		if (error)
 			return error;
 		if (np->n_mtime.tv_sec != vattr.va_mtime.tv_sec) {
-			error = smbfs_vinvalbuf(vp, V_SAVE, cred, td, 1);
+			error = smbfs_vinvalbuf(vp, V_SAVE, td, 1);
 			if (error)
 				return error;
 			np->n_mtime.tv_sec = vattr.va_mtime.tv_sec;
@@ -259,7 +259,7 @@ smbfs_writevnode(struct vnode *vp, struct uio *uiop,
 	if (ioflag & (IO_APPEND | IO_SYNC)) {
 		if (np->n_flag & NMODIFIED) {
 			smbfs_attr_cacheremove(vp);
-			error = smbfs_vinvalbuf(vp, V_SAVE, cred, td, 1);
+			error = smbfs_vinvalbuf(vp, V_SAVE, td, 1);
 			if (error)
 				return error;
 		}
@@ -269,7 +269,7 @@ smbfs_writevnode(struct vnode *vp, struct uio *uiop,
 			 * File size can be changed by another client
 			 */
 			smbfs_attr_cacheremove(vp);
-			error = VOP_GETATTR(vp, &vattr, cred, td);
+			error = VOP_GETATTR(vp, &vattr, td);
 			if (error) return (error);
 #endif
 			uiop->uio_offset = np->n_size;
@@ -615,10 +615,9 @@ smbfs_putpages(ap)
  * doing the flush, just wait for completion.
  */
 int
-smbfs_vinvalbuf(vp, flags, cred, td, intrflg)
+smbfs_vinvalbuf(vp, flags, td, intrflg)
 	struct vnode *vp;
 	int flags;
-	struct ucred *cred;
 	struct thread *td;
 	int intrflg;
 {
@@ -642,7 +641,7 @@ smbfs_vinvalbuf(vp, flags, cred, td, intrflg)
 			return EINTR;
 	}
 	np->n_flag |= NFLUSHINPROG;
-	error = vinvalbuf(vp, flags, cred, td, slpflag, 0);
+	error = vinvalbuf(vp, flags, td, slpflag, 0);
 	while (error) {
 		if (intrflg && (error == ERESTART || error == EINTR)) {
 			np->n_flag &= ~NFLUSHINPROG;
@@ -652,7 +651,7 @@ smbfs_vinvalbuf(vp, flags, cred, td, intrflg)
 			}
 			return EINTR;
 		}
-		error = vinvalbuf(vp, flags, cred, td, slpflag, 0);
+		error = vinvalbuf(vp, flags, td, slpflag, 0);
 	}
 	np->n_flag &= ~(NMODIFIED | NFLUSHINPROG);
 	if (np->n_flag & NFLUSHWANT) {

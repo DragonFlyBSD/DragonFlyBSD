@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.3 2003/06/25 03:55:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.4 2003/06/26 05:55:15 dillon Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -790,7 +790,7 @@ null_createvobject(ap)
 
 	if (vp->v_type == VNON || lowervp == NULL)
 		return 0;
-	error = VOP_CREATEVOBJECT(lowervp, ap->a_cred, ap->a_td);
+	error = VOP_CREATEVOBJECT(lowervp, ap->a_td);
 	if (error)
 		return (error);
 	vp->v_flag |= VOBJBUF;

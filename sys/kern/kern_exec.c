@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.5 2003/06/26 02:17:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.6 2003/06/26 05:55:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -749,7 +749,7 @@ exec_check_permissions(imgp)
 	int error;
 
 	/* Get file attributes */
-	error = VOP_GETATTR(vp, attr, p->p_ucred, td);
+	error = VOP_GETATTR(vp, attr, td);
 	if (error)
 		return (error);
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.3 2003/06/25 03:56:01 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.4 2003/06/26 05:55:17 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -425,11 +425,10 @@ deupdat(dep, waitfor)
  * Truncate the file described by dep to the length specified by length.
  */
 int
-detrunc(dep, length, flags, cred, td)
+detrunc(dep, length, flags, td)
 	struct denode *dep;
 	u_long length;
 	int flags;
-	struct ucred *cred;
 	struct thread *td;
 {
 	int error;
@@ -463,7 +462,7 @@ detrunc(dep, length, flags, cred, td)
 
 	if (dep->de_FileSize < length) {
 		vnode_pager_setsize(DETOV(dep), length);
-		return deextend(dep, length, cred);
+		return deextend(dep, length);
 	}
 
 	/*
@@ -500,12 +499,10 @@ detrunc(dep, length, flags, cred, td)
 	if ((boff = length & pmp->pm_crbomask) != 0) {
 		if (isadir) {
 			bn = cntobn(pmp, eofentry);
-			error = bread(pmp->pm_devvp, bn, pmp->pm_bpcluster,
-			    NOCRED, &bp);
+			error = bread(pmp->pm_devvp, bn, pmp->pm_bpcluster, &bp);
 		} else {
 			bn = de_blk(pmp, length);
-			error = bread(DETOV(dep), bn, pmp->pm_bpcluster,
-			    NOCRED, &bp);
+			error = bread(DETOV(dep), bn, pmp->pm_bpcluster, &bp);
 		}
 		if (error) {
 			brelse(bp);
@@ -531,7 +528,7 @@ detrunc(dep, length, flags, cred, td)
 	dep->de_FileSize = length;
 	if (!isadir)
 		dep->de_flag |= DE_UPDATE|DE_MODIFIED;
-	allerror = vtruncbuf(DETOV(dep), cred, td, length, pmp->pm_bpcluster);
+	allerror = vtruncbuf(DETOV(dep), td, length, pmp->pm_bpcluster);
 #ifdef MSDOSFS_DEBUG
 	if (allerror)
 		printf("detrunc(): vtruncbuf error %d\n", allerror);
@@ -575,10 +572,9 @@ detrunc(dep, length, flags, cred, td)
  * Extend the file described by dep to length specified by length.
  */
 int
-deextend(dep, length, cred)
+deextend(dep, length)
 	struct denode *dep;
 	u_long length;
-	struct ucred *cred;
 {
 	struct msdosfsmount *pmp = dep->de_pmp;
 	u_long count;
@@ -609,7 +605,7 @@ deextend(dep, length, cred)
 		error = extendfile(dep, count, NULL, NULL, DE_CLEAR);
 		if (error) {
 			/* truncate the added clusters away again */
-			(void) detrunc(dep, dep->de_FileSize, 0, cred, NULL);
+			(void) detrunc(dep, dep->de_FileSize, 0, NULL);
 			return (error);
 		}
 	}
@@ -711,7 +707,7 @@ msdosfs_inactive(ap)
 	       dep, dep->de_refcnt, vp->v_mount->mnt_flag, MNT_RDONLY);
 #endif
 	if (dep->de_refcnt <= 0 && (vp->v_mount->mnt_flag & MNT_RDONLY) == 0) {
-		error = detrunc(dep, (u_long) 0, 0, NOCRED, ap->a_td);
+		error = detrunc(dep, (u_long) 0, 0, ap->a_td);
 		dep->de_flag |= DE_UPDATE;
 		dep->de_Name[0] = SLOT_DELETED;
 	}

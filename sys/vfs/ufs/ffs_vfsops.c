@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.3 2003/06/25 03:56:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.4 2003/06/26 05:55:20 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -198,7 +198,7 @@ ffs_mount( mp, path, data, ndp, td)
 			/*
 			 * Flush any dirty data.
 			 */
-			VFS_SYNC(mp, MNT_WAIT, cred, td);
+			VFS_SYNC(mp, MNT_WAIT, td);
 			/*
 			 * Check for and optionally get rid of files open
 			 * for writing.
@@ -251,7 +251,7 @@ ffs_mount( mp, path, data, ndp, td)
 
 			/* check to see if we need to start softdep */
 			if (fs->fs_flags & FS_DOSOFTDEP) {
-				err = softdep_mount(devvp, mp, fs, cred);
+				err = softdep_mount(devvp, mp, fs);
 				if (err)
 					goto error_1;
 			}
@@ -441,7 +441,7 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 	 */
 	devvp = VFSTOUFS(mp)->um_devvp;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = vinvalbuf(devvp, 0, cred, td, 0, 0);
+	error = vinvalbuf(devvp, 0, td, 0, 0);
 	VOP_UNLOCK(devvp, 0, td);
 	if (error)
 		panic("ffs_reload: dirty1");
@@ -454,7 +454,7 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 	 */
 	if (devvp->v_tag != VT_MFS && vn_isdisk(devvp, NULL)) {
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-		vfs_object_create(devvp, td, cred);
+		vfs_object_create(devvp, td);
 		simple_lock(&devvp->v_interlock);
 		VOP_UNLOCK(devvp, LK_INTERLOCK, td);
 	}
@@ -466,7 +466,7 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 		size = DEV_BSIZE;
 	else
 		size = dpart.disklab->d_secsize;
-	if ((error = bread(devvp, (ufs_daddr_t)(SBOFF/size), SBSIZE, NOCRED,&bp)) != 0)
+	if ((error = bread(devvp, (ufs_daddr_t)(SBOFF/size), SBSIZE, &bp)) != 0)
 		return (error);
 	newfs = (struct fs *)bp->b_data;
 	if (newfs->fs_magic != FS_MAGIC || newfs->fs_bsize > MAXBSIZE ||
@@ -504,8 +504,7 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 		size = fs->fs_bsize;
 		if (i + fs->fs_frag > blks)
 			size = (blks - i) * fs->fs_fsize;
-		error = bread(devvp, fsbtodb(fs, fs->fs_csaddr + i), size,
-		    NOCRED, &bp);
+		error = bread(devvp, fsbtodb(fs, fs->fs_csaddr + i), size, &bp);
 		if (error)
 			return (error);
 		bcopy(bp->b_data, space, (u_int)size);
@@ -542,7 +541,7 @@ loop:
 		if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td)) {
 			goto loop;
 		}
-		if (vinvalbuf(vp, 0, cred, td, 0, 0))
+		if (vinvalbuf(vp, 0, td, 0, 0))
 			panic("ffs_reload: dirty2");
 		/*
 		 * Step 6: re-read inode data for all active vnodes.
@@ -550,7 +549,7 @@ loop:
 		ip = VTOI(vp);
 		error =
 		    bread(devvp, fsbtodb(fs, ino_to_fsba(fs, ip->i_number)),
-		    (int)fs->fs_bsize, NOCRED, &bp);
+		    (int)fs->fs_bsize, &bp);
 		if (error) {
 			vput(vp);
 			return (error);
@@ -584,13 +583,11 @@ ffs_mountfs(devvp, mp, td, malloctype)
 	void *space;
 	int error, i, blks, size, ronly;
 	int32_t *lp;
-	struct ucred *cred;
 	u_int64_t maxfilesize;					/* XXX */
 	size_t strsize;
 	int ncount;
 
 	dev = devvp->v_rdev;
-	cred = td->td_proc ? td->td_proc->p_ucred : NOCRED; /* XXX */
 	/*
 	 * Disallow multiple mounts of the same device.
 	 * Disallow mounting of a device that is currently in use
@@ -605,7 +602,7 @@ ffs_mountfs(devvp, mp, td, malloctype)
 	if (ncount > 1 && devvp != rootvp)
 		return (EBUSY);
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = vinvalbuf(devvp, V_SAVE, cred, td, 0, 0);
+	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
 	VOP_UNLOCK(devvp, 0, td);
 	if (error)
 		return (error);
@@ -618,7 +615,7 @@ ffs_mountfs(devvp, mp, td, malloctype)
 	 */
 	if (devvp->v_tag != VT_MFS && vn_isdisk(devvp, NULL)) {
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-		vfs_object_create(devvp, td, cred);
+		vfs_object_create(devvp, td);
 		simple_lock(&devvp->v_interlock);
 		VOP_UNLOCK(devvp, LK_INTERLOCK, td);
 	}
@@ -634,14 +631,14 @@ ffs_mountfs(devvp, mp, td, malloctype)
 	if (mp->mnt_iosize_max > MAXPHYS)
 		mp->mnt_iosize_max = MAXPHYS;
 
-	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, cred, td) != 0)
+	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, proc0.p_ucred, td) != 0)
 		size = DEV_BSIZE;
 	else
 		size = dpart.disklab->d_secsize;
 
 	bp = NULL;
 	ump = NULL;
-	if ((error = bread(devvp, SBLOCK, SBSIZE, cred, &bp)) != 0)
+	if ((error = bread(devvp, SBLOCK, SBSIZE, &bp)) != 0)
 		goto out;
 	fs = (struct fs *)bp->b_data;
 	if (fs->fs_magic != FS_MAGIC || fs->fs_bsize > MAXBSIZE ||
@@ -700,7 +697,7 @@ ffs_mountfs(devvp, mp, td, malloctype)
 		if (i + fs->fs_frag > blks)
 			size = (blks - i) * fs->fs_fsize;
 		if ((error = bread(devvp, fsbtodb(fs, fs->fs_csaddr + i), size,
-		    cred, &bp)) != 0) {
+		    &bp)) != 0) {
 			free(fs->fs_csp, M_UFSMNT);
 			goto out;
 		}
@@ -769,7 +766,7 @@ ffs_mountfs(devvp, mp, td, malloctype)
 		fs->fs_maxfilesize = maxfilesize;		/* XXX */
 	if (ronly == 0) {
 		if ((fs->fs_flags & FS_DOSOFTDEP) &&
-		    (error = softdep_mount(devvp, mp, fs, cred)) != 0) {
+		    (error = softdep_mount(devvp, mp, fs)) != 0) {
 			free(fs->fs_csp, M_UFSMNT);
 			goto out;
 		}
@@ -782,7 +779,7 @@ out:
 	devvp->v_specmountpoint = NULL;
 	if (bp)
 		brelse(bp);
-	(void)VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, cred, td);
+	(void)VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, td);
 	if (ump) {
 		free(ump->um_fs, M_UFSMNT);
 		free(ump, M_UFSMNT);
@@ -856,9 +853,8 @@ ffs_unmount(struct mount *mp, int mntflags, struct thread *td)
 	}
 	ump->um_devvp->v_specmountpoint = NULL;
 
-	vinvalbuf(ump->um_devvp, V_SAVE, NOCRED, td, 0, 0);
-	error = VOP_CLOSE(ump->um_devvp, fs->fs_ronly ? FREAD : FREAD|FWRITE,
-		NOCRED, td);
+	vinvalbuf(ump->um_devvp, V_SAVE, td, 0, 0);
+	error = VOP_CLOSE(ump->um_devvp, fs->fs_ronly ? FREAD : FREAD|FWRITE, td);
 
 	vrele(ump->um_devvp);
 
@@ -910,7 +906,7 @@ ffs_flushfiles(struct mount *mp, int flags, struct thread *td)
 	 * Flush filesystem metadata.
 	 */
 	vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = VOP_FSYNC(ump->um_devvp, cred, MNT_WAIT, td);
+	error = VOP_FSYNC(ump->um_devvp, MNT_WAIT, td);
 	VOP_UNLOCK(ump->um_devvp, 0, td);
 	return (error);
 }
@@ -954,7 +950,7 @@ ffs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
  * Note: we are always called with the filesystem marked `MPBUSY'.
  */
 int
-ffs_sync(struct mount *mp, int waitfor, struct ucred *cred, struct thread *td)
+ffs_sync(struct mount *mp, int waitfor, struct thread *td)
 {
 	struct vnode *nvp, *vp;
 	struct inode *ip;
@@ -1001,7 +997,7 @@ loop:
 				if (error == ENOENT)
 					goto loop;
 			} else {
-				if ((error = VOP_FSYNC(vp, cred, waitfor, td)) != 0)
+				if ((error = VOP_FSYNC(vp, waitfor, td)) != 0)
 					allerror = error;
 				VOP_UNLOCK(vp, 0, td);
 				vrele(vp);
@@ -1032,7 +1028,7 @@ loop:
 		if (ump->um_mountp->mnt_flag & MNT_SOFTDEP)
 			waitfor = MNT_NOWAIT;
 		vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY, td);
-		if ((error = VOP_FSYNC(ump->um_devvp, cred, waitfor, td)) != 0)
+		if ((error = VOP_FSYNC(ump->um_devvp, waitfor, td)) != 0)
 			allerror = error;
 		VOP_UNLOCK(ump->um_devvp, 0, td);
 	}
@@ -1142,7 +1138,7 @@ restart:
 
 	/* Read in the disk contents for the inode, copy into the inode. */
 	error = bread(ump->um_devvp, fsbtodb(fs, ino_to_fsba(fs, ino)),
-	    (int)fs->fs_bsize, NOCRED, &bp);
+	    (int)fs->fs_bsize, &bp);
 	if (error) {
 		/*
 		 * The inode does not contain anything useful, so it would

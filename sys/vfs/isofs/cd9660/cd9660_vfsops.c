@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.4 2003/06/25 03:55:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.5 2003/06/26 05:55:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -164,7 +164,7 @@ iso_mountroot(struct mount *mp, struct thread *td)
 
 	args.ssector = iso_get_ssector(rootdev, td);
 
-	(void)VOP_CLOSE(rootvp, FREAD, NOCRED, td);
+	(void)VOP_CLOSE(rootvp, FREAD, td);
 
 	if (bootverbose)
 		printf("iso_mountroot(): using session at block %d\n",
@@ -298,7 +298,6 @@ iso_mountfs(
 	if (!(mp->mnt_flag & MNT_RDONLY))
 		return EROFS;
 
-	KKASSERT(td->td_proc);
 	/*
 	 * Disallow multiple mounts of the same device.
 	 * Disallow mounting of a device that is currently in use
@@ -309,7 +308,7 @@ iso_mountfs(
 		return error;
 	if (vcount(devvp) > 1 && devvp != rootvp)
 		return EBUSY;
-	if ((error = vinvalbuf(devvp, V_SAVE, td->td_proc->p_ucred, td, 0, 0)))
+	if ((error = vinvalbuf(devvp, V_SAVE, td, 0, 0)))
 		return (error);
 
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
@@ -335,7 +334,7 @@ iso_mountfs(
 	     iso_blknum < 100 + argp->ssector;
 	     iso_blknum++) {
 		if ((error = bread(devvp, iso_blknum * btodb(iso_bsize),
-				  iso_bsize, NOCRED, &bp)) != 0)
+				  iso_bsize, &bp)) != 0)
 			goto out;
 		
 		vdp = (struct iso_volume_descriptor *)bp->b_data;
@@ -461,7 +460,7 @@ iso_mountfs(
 		if ((error = bread(isomp->im_devvp,
 				  (isomp->root_extent + isonum_711(rootp->ext_attr_length)) <<
 				  (isomp->im_bshift - DEV_BSHIFT),
-				  isomp->logical_block_size, NOCRED, &bp)) != 0)
+				  isomp->logical_block_size, &bp)) != 0)
 		    goto out;
 		
 		rootp = (struct iso_directory_record *)bp->b_data;
@@ -529,7 +528,7 @@ out:
 	if (supbp)
 		brelse(supbp);
 	if (needclose)
-		(void)VOP_CLOSE(devvp, FREAD, NOCRED, td);
+		(void)VOP_CLOSE(devvp, FREAD, td);
 	if (isomp) {
 		free((caddr_t)isomp, M_ISOFSMNT);
 		mp->mnt_data = (qaddr_t)0;
@@ -559,7 +558,7 @@ cd9660_unmount(struct mount *mp, int mntflags, struct thread *td)
 	isomp = VFSTOISOFS(mp);
 
 	isomp->im_devvp->v_specmountpoint = NULL;
-	error = VOP_CLOSE(isomp->im_devvp, FREAD, NOCRED, td);
+	error = VOP_CLOSE(isomp->im_devvp, FREAD, td);
 	vrele(isomp->im_devvp);
 	free((caddr_t)isomp, M_ISOFSMNT);
 	mp->mnt_data = (qaddr_t)0;
@@ -769,7 +768,7 @@ cd9660_vget_internal(mp, ino, vpp, relocated, isodir)
 	
 		error = bread(imp->im_devvp,
 			      lbn << (imp->im_bshift - DEV_BSHIFT),
-			      imp->logical_block_size, NOCRED, &bp);
+			      imp->logical_block_size, &bp);
 		if (error) {
 			vput(vp);
 			brelse(bp);

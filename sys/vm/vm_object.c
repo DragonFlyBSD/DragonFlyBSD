@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.3 2003/06/25 03:56:13 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.4 2003/06/26 05:55:21 dillon Exp $
  */
 
 /*
@@ -447,7 +447,7 @@ vm_object_terminate(object)
 		vm_object_page_clean(object, 0, 0, OBJPC_SYNC);
 
 		vp = (struct vnode *) object->handle;
-		vinvalbuf(vp, V_SAVE, NOCRED, NULL, 0, 0);
+		vinvalbuf(vp, V_SAVE, NULL, 0, 0);
 	}
 
 	/*

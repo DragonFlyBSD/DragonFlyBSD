@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.3 2003/06/26 05:55:12 dillon Exp $
  */
 
 
@@ -342,10 +342,10 @@ hpfs_mountfs(devvp, mp, argsp, p)
 
 #if defined(__FreeBSD__)
 	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY, p);
-	error = vinvalbuf(devvp, V_SAVE, p->p_ucred, p, 0, 0);
+	error = vinvalbuf(devvp, V_SAVE, p, 0, 0);
 	VOP__UNLOCK(devvp, 0, p);
 #else
-	error = vinvalbuf(devvp, V_SAVE, p->p_ucred, p, 0, 0);
+	error = vinvalbuf(devvp, V_SAVE, p, 0, 0);
 #endif
 	if (error)
 		return (error);
@@ -486,7 +486,7 @@ hpfs_unmount(
 	hpmp->hpm_devvp->v_specflags &= ~SI_MOUNTEDON;
 #endif
 
-	vinvalbuf(hpmp->hpm_devvp, V_SAVE, NOCRED, p, 0, 0);
+	vinvalbuf(hpmp->hpm_devvp, V_SAVE, p, 0, 0);
 	error = VOP_CLOSE(hpmp->hpm_devvp, ronly ? FREAD : FREAD|FWRITE,
 		NOCRED, p);
 

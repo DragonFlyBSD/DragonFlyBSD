@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.5 2003/06/26 05:55:14 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -299,7 +299,7 @@ ktrace(struct ktrace_args *uap)
 		vp = nd.ni_vp;
 		VOP_UNLOCK(vp, 0, td);
 		if (vp->v_type != VREG) {
-			(void) vn_close(vp, FREAD|FWRITE, curp->p_ucred, td);
+			(void) vn_close(vp, FREAD|FWRITE, td);
 			curp->p_traceflag &= ~KTRFAC_ACTIVE;
 			return (EACCES);
 		}
@@ -314,8 +314,7 @@ ktrace(struct ktrace_args *uap)
 				if (ktrcanset(curp, p) && p->p_tracep == vp) {
 					p->p_tracep = NULL;
 					p->p_traceflag = 0;
-					(void) vn_close(vp, FREAD|FWRITE,
-						p->p_ucred, td);
+					(void) vn_close(vp, FREAD|FWRITE, td);
 				} else {
 					error = EPERM;
 				}
@@ -366,7 +365,7 @@ ktrace(struct ktrace_args *uap)
 		error = EPERM;
 done:
 	if (vp != NULL)
-		(void) vn_close(vp, FWRITE, curp->p_ucred, td);
+		(void) vn_close(vp, FWRITE, td);
 	curp->p_traceflag &= ~KTRFAC_ACTIVE;
 	return (error);
 #else

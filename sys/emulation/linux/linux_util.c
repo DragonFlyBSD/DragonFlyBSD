@@ -28,7 +28,7 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/compat/linux/linux_util.c,v 1.12.2.2 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.4 2003/06/25 03:55:44 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.5 2003/06/26 05:55:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -145,11 +145,11 @@ linux_emul_find(td, sgp, prefix, path, pbuf, cflag)
 			return error;
 		}
 
-		if ((error = VOP_GETATTR(nd.ni_vp, &vat, cred, td)) != 0) {
+		if ((error = VOP_GETATTR(nd.ni_vp, &vat, td)) != 0) {
 			goto bad;
 		}
 
-		if ((error = VOP_GETATTR(ndroot.ni_vp, &vatroot, cred, td))
+		if ((error = VOP_GETATTR(ndroot.ni_vp, &vatroot, td))
 		    != 0) {
 			goto bad;
 		}

@@ -32,7 +32,7 @@
 #
 #	@(#)vnode_if.src	8.12 (Berkeley) 5/14/95
 # $FreeBSD: src/sys/kern/vnode_if.src,v 1.29.2.3 2001/05/18 09:58:45 bp Exp $
-# $DragonFly: src/sys/kern/Attic/vnode_if.src,v 1.3 2003/06/25 03:55:57 dillon Exp $
+# $DragonFly: src/sys/kern/Attic/vnode_if.src,v 1.4 2003/06/26 05:55:14 dillon Exp $
 #
 
 #
@@ -136,7 +136,6 @@ vop_open {
 vop_close {
 	IN struct vnode *vp;
 	IN int fflag;
-	IN struct ucred *cred;
 	IN struct thread *td;
 };
 
@@ -156,7 +155,6 @@ vop_access {
 vop_getattr {
 	IN struct vnode *vp;
 	OUT struct vattr *vap;
-	IN struct ucred *cred;
 	IN struct thread *td;
 };
 
@@ -253,7 +251,6 @@ vop_mmap {
 #
 vop_fsync {
 	IN struct vnode *vp;
-	IN struct ucred *cred;
 	IN int waitfor;
 	IN struct thread *td;
 };
@@ -554,7 +551,6 @@ vop_setextattr {
 #
 vop_createvobject {
 	IN struct vnode *vp;
-	IN struct ucred *cred;
 	IN struct thread *td;
 };
 

@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.4 2003/06/26 02:17:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.5 2003/06/26 05:55:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -410,7 +410,7 @@ quotaon(td, mp, type, fname)
 	vp = nd.ni_vp;
 	VOP_UNLOCK(vp, 0, td);
 	if (vp->v_type != VREG) {
-		(void) vn_close(vp, FREAD|FWRITE, cred, td);
+		(void) vn_close(vp, FREAD|FWRITE, td);
 		return (EACCES);
 	}
 	if (*vpp != vp)
@@ -501,7 +501,7 @@ again:
 	}
 	dqflush(qvp);
 	qvp->v_flag &= ~VSYSTEM;
-	error = vn_close(qvp, FREAD|FWRITE, cred, td);
+	error = vn_close(qvp, FREAD|FWRITE, td);
 	ump->um_quotas[type] = NULLVP;
 	crfree(ump->um_cred[type]);
 	ump->um_cred[type] = NOCRED;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_alsubr.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_alsubr.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_alsubr.c,v 1.3 2003/06/26 05:55:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -91,7 +91,7 @@ dive:
 				if (bp)
 					brelse(bp);
 				error = bread(hp->h_devvp, anp->an_lsn, 
-					      DEV_BSIZE, NOCRED, &bp);
+					      DEV_BSIZE, &bp);
 				if (error) {
 					printf("hpfs_hpbmap: bread error\n");
 					brelse(bp);

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.3 2003/06/25 03:56:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.4 2003/06/26 05:55:18 dillon Exp $
  */
 
 
@@ -194,7 +194,7 @@ nqsrv_getlease(vp, duration, flags, slp, td, nam, cachablep, frev, cred)
 		return (0);
 	if (*duration > nqsrv_maxlease)
 		*duration = nqsrv_maxlease;
-	error = VOP_GETATTR(vp, &vattr, cred, td);
+	error = VOP_GETATTR(vp, &vattr, td);
 	if (error)
 		return (error);
 	*frev = vattr.va_filerev;
@@ -758,7 +758,7 @@ nqnfsrv_getlease(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	}
 	(void) nqsrv_getlease(vp, &nfsd->nd_duration, flags, slp, td,
 		nam, &cache, &frev, cred);
-	error = VOP_GETATTR(vp, vap, cred, td);
+	error = VOP_GETATTR(vp, vap, td);
 	vput(vp);
 	nfsm_reply(NFSX_V3FATTR + 4 * NFSX_UNSIGNED);
 	nfsm_build(tl, u_int32_t *, 4 * NFSX_UNSIGNED);
@@ -850,8 +850,7 @@ nfsmout:
  * Client get lease rpc function.
  */
 int
-nqnfs_getlease(struct vnode *vp, int rwflag,
-	struct ucred *cred, struct thread *td)
+nqnfs_getlease(struct vnode *vp, int rwflag, struct thread *td)
 {
 	u_int32_t *tl;
 	caddr_t cp;
@@ -873,7 +872,7 @@ nqnfs_getlease(struct vnode *vp, int rwflag,
 	*tl++ = txdr_unsigned(rwflag);
 	*tl = txdr_unsigned(nmp->nm_leaseterm);
 	reqtime = time_second;
-	nfsm_request(vp, NQNFSPROC_GETLEASE, td, cred);
+	nfsm_request(vp, NQNFSPROC_GETLEASE, td, NFSVPCRED(vp));
 	np = VTONFS(vp);
 	nfsm_dissect(tl, u_int32_t *, 4 * NFSX_UNSIGNED);
 	cachable = fxdr_unsigned(int, *tl++);
@@ -1088,12 +1087,11 @@ nqnfs_clientd(nmp, cred, ncd, flag, argp, td)
 							nfs_invaldir(vp);
 						cache_purge(vp);
 						(void) nfs_vinvalbuf(vp,
-						       V_SAVE, cred, td, 0);
+						       V_SAVE, td, 0);
 						np->n_flag &= ~NQNFSEVICTED;
 						(void) nqnfs_vacated(vp, cred);
 					} else if (vp->v_type == VREG) {
-						(void) VOP_FSYNC(vp, cred,
-						    MNT_WAIT, td);
+						(void) VOP_FSYNC(vp, MNT_WAIT, td);
 						np->n_flag &= ~NMODIFIED;
 					}
 				}
@@ -1108,7 +1106,7 @@ nqnfs_clientd(nmp, cred, ncd, flag, argp, td)
 				 vget(vp, LK_EXCLUSIVE, td) == 0) {
 				 nmp->nm_inprog = vp;
 				 if (vpid == vp->v_id &&
-				     nqnfs_getlease(vp, ND_WRITE, cred, td)==0)
+				     nqnfs_getlease(vp, ND_WRITE, td)==0)
 					np->n_brev = np->n_lrev;
 				 vput(vp);
 				 nmp->nm_inprog = NULLVP;
@@ -1153,7 +1151,7 @@ nqnfs_clientd(nmp, cred, ncd, flag, argp, td)
 		TAILQ_REMOVE(&nmp->nm_uidlruhead, nuidp, nu_lru);
 		free((caddr_t)nuidp, M_NFSUID);
 	}
-	zfree(nfsmount_zone, nmp);
+	nfs_free_mount(nmp);
 	if (error == EWOULDBLOCK)
 		error = 0;
 	return (error);

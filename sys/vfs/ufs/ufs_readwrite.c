@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.3 2003/06/25 03:56:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.4 2003/06/26 05:55:21 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -256,7 +256,7 @@ READ(ap)
 			/*
 			 * Don't do readahead if this is the end of the file.
 			 */
-			error = bread(vp, lbn, size, NOCRED, &bp);
+			error = bread(vp, lbn, size, &bp);
 		} else if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0) {
 			/* 
 			 * Otherwise if we are allowed to cluster,
@@ -266,7 +266,7 @@ READ(ap)
 			 * doing sequential access.
 			 */
 			error = cluster_read(vp, ip->i_size, lbn,
-				size, NOCRED, uio->uio_resid, seqcount, &bp);
+				size, uio->uio_resid, seqcount, &bp);
 		} else if (seqcount > 1) {
 			/*
 			 * If we are NOT allowed to cluster, then
@@ -278,14 +278,14 @@ READ(ap)
 			 */
 			int nextsize = BLKSIZE(fs, ip, nextlbn);
 			error = breadn(vp, lbn,
-			    size, &nextlbn, &nextsize, 1, NOCRED, &bp);
+			    size, &nextlbn, &nextsize, 1, &bp);
 		} else {
 			/*
 			 * Failing all of the above, just read what the 
 			 * user asked for. Interestingly, the same as
 			 * the first option above.
 			 */
-			error = bread(vp, lbn, size, NOCRED, &bp);
+			error = bread(vp, lbn, size, &bp);
 		}
 		if (error) {
 			brelse(bp);

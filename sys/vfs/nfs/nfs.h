@@ -35,7 +35,7 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.3 2003/06/25 03:56:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.4 2003/06/26 05:55:18 dillon Exp $
  */
 
 #ifndef _NFS_NFS_H_
@@ -592,19 +592,17 @@ void	nfs_sndunlock __P((struct nfsreq *));
 int	nfs_slplock __P((struct nfssvc_sock *, int));
 void	nfs_slpunlock __P((struct nfssvc_sock *));
 int	nfs_disct __P((struct mbuf **, caddr_t *, int, int, caddr_t *));
-int	nfs_vinvalbuf __P((struct vnode *, int, struct ucred *, struct thread *,
-			   int));
-int	nfs_readrpc __P((struct vnode *, struct uio *, struct ucred *));
-int	nfs_writerpc __P((struct vnode *, struct uio *, struct ucred *, int *, 
-			  int *));
+int	nfs_vinvalbuf __P((struct vnode *, int, struct thread *, int));
+int	nfs_readrpc __P((struct vnode *, struct uio *));
+int	nfs_writerpc __P((struct vnode *, struct uio *, int *, int *));
 int	nfs_commit __P((struct vnode *vp, u_quad_t offset, int cnt, 
-			struct ucred *cred, struct thread *td));
-int	nfs_readdirrpc __P((struct vnode *, struct uio *, struct ucred *));
-int	nfs_asyncio __P((struct buf *, struct ucred *, struct thread *));
-int	nfs_doio __P((struct buf *, struct ucred *, struct thread *));
-int	nfs_readlinkrpc __P((struct vnode *, struct uio *, struct ucred *));
+			struct thread *td));
+int	nfs_readdirrpc __P((struct vnode *, struct uio *));
+int	nfs_asyncio __P((struct buf *, struct thread *));
+int	nfs_doio __P((struct buf *, struct thread *));
+int	nfs_readlinkrpc __P((struct vnode *, struct uio *));
 int	nfs_sigintr __P((struct nfsmount *, struct nfsreq *, struct thread *));
-int	nfs_readdirplusrpc __P((struct vnode *, struct uio *, struct ucred *));
+int	nfs_readdirplusrpc __P((struct vnode *, struct uio *));
 int	nfsm_disct __P((struct mbuf **, caddr_t *, int, int, caddr_t *));
 void	nfsm_srvfattr __P((struct nfsrv_descript *, struct vattr *, 
 			   struct nfs_fattr *));
@@ -646,7 +644,7 @@ void	nfs_disconnect __P((struct nfsmount *));
 void	nfs_safedisconnect __P((struct nfsmount *));
 int	nfs_getattrcache __P((struct vnode *, struct vattr *));
 int	nfsm_strtmbuf __P((struct mbuf **, char **, const char *, long));
-int	nfs_bioread __P((struct vnode *, struct uio *, int, struct ucred *));
+int	nfs_bioread __P((struct vnode *, struct uio *, int));
 int	nfsm_uiotombuf __P((struct uio *, struct mbuf **, int, caddr_t *));
 void	nfsrv_init __P((int));
 void	nfs_clearcommit __P((struct mount *));
@@ -658,8 +656,7 @@ int	nfsrv_object_create __P((struct vnode *));
 void	nfsrv_wakenfsd __P((struct nfssvc_sock *slp));
 int	nfsrv_writegather __P((struct nfsrv_descript **, struct nfssvc_sock *,
 			       struct thread *, struct mbuf **));
-int	nfs_fsinfo __P((struct nfsmount *, struct vnode *, struct ucred *,
-			struct thread *p));
+int	nfs_fsinfo __P((struct nfsmount *, struct vnode *, struct thread *p));
 
 int	nfsrv3_access __P((struct nfsrv_descript *nfsd, 
 			   struct nfssvc_sock *slp,
@@ -723,7 +720,7 @@ int	nfsrv_write __P((struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			 struct thread *td, struct mbuf **mrq));
 void	nfsrv_rcv __P((struct socket *so, void *arg, int waitflag));
 void	nfsrv_slpderef __P((struct nfssvc_sock *slp));
-int	nfs_meta_setsize __P((struct vnode *vp, struct ucred *cred, struct thread *td, u_quad_t nsize));
+int	nfs_meta_setsize __P((struct vnode *vp, struct thread *td, u_quad_t nsize));
 
 #endif	/* _KERNEL */
 

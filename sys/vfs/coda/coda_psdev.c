@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_psdev.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_psdev.c,v 1.13 1999/09/29 15:03:46 marcel Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.3 2003/06/23 17:55:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.4 2003/06/26 05:55:07 dillon Exp $
  * 
  */
 
@@ -149,13 +149,9 @@ vc_nb_close (dev_t dev, int flag, int mode, d_thread_t *td)
     struct vcomm *vcp;
     struct vmsg *vmp, *nvmp = NULL;
     struct coda_mntinfo *mi;
-    struct proc *p;
     int                 err;
 	
     ENTRY;
-
-    p = td->td_proc;
-    KKASSERT(p != NULL);
 
     if (minor(dev) >= NVCODA || minor(dev) < 0)
 	return(ENXIO);
@@ -220,7 +216,7 @@ vc_nb_close (dev_t dev, int flag, int mode, d_thread_t *td)
 #endif
     }
 
-    err = dounmount(mi->mi_vfsp, flag, p);
+    err = dounmount(mi->mi_vfsp, flag, td);
     if (err)
 	myprintf(("Error %d unmounting vfs in vcclose(%d)\n", 
 	           err, minor(dev)));

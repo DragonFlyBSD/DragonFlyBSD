@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.4 2003/06/25 03:55:44 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.5 2003/06/26 05:55:10 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -282,7 +282,7 @@ getdents_common(struct linux_getdents64_args *args, int is64bit)
 	if (vp->v_type != VDIR)
 		return (EINVAL);
 
-	if ((error = VOP_GETATTR(vp, &va, p->p_ucred, td)))
+	if ((error = VOP_GETATTR(vp, &va, td)))
 		return (error);
 
 	nbytes = args->count;

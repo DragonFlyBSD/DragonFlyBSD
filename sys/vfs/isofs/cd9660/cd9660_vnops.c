@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.3 2003/06/25 03:55:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.4 2003/06/26 05:55:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -203,7 +203,6 @@ cd9660_getattr(ap)
 	struct vop_getattr_args /* {
 		struct vnode *a_vp;
 		struct vattr *a_vap;
-		struct ucred *a_cred;
 		struct thread *a_td;
 	} */ *ap;
 
@@ -243,7 +242,7 @@ cd9660_getattr(ap)
 		auio.uio_resid = MAXPATHLEN;
 		rdlnk.a_uio = &auio;
 		rdlnk.a_vp = ap->a_vp;
-		rdlnk.a_cred = ap->a_cred;
+		rdlnk.a_cred = proc0.p_ucred; /* use root cred */
 		if (cd9660_readlink(&rdlnk) == 0)
 			vap->va_size = MAXPATHLEN - auio.uio_resid;
 		FREE(cp, M_TEMP);
@@ -330,18 +329,18 @@ cd9660_read(ap)
 		if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0) {
 			if (lblktosize(imp, rablock) < ip->i_size)
 				error = cluster_read(vp, (off_t)ip->i_size,
-				         lbn, size, NOCRED, uio->uio_resid,
+				         lbn, size, uio->uio_resid,
 					 (ap->a_ioflag >> 16), &bp);
 			else
-				error = bread(vp, lbn, size, NOCRED, &bp);
+				error = bread(vp, lbn, size, &bp);
 		} else {
 			if (seqcount > 1 &&
 			    lblktosize(imp, rablock) < ip->i_size) {
 				rasize = blksize(imp, ip, rablock);
 				error = breadn(vp, lbn, size, &rablock,
-					       &rasize, 1, NOCRED, &bp);
+					       &rasize, 1, &bp);
 			} else
-				error = bread(vp, lbn, size, NOCRED, &bp);
+				error = bread(vp, lbn, size, &bp);
 		}
 		n = min(n, size - bp->b_resid);
 		if (error) {
@@ -679,7 +678,7 @@ cd9660_readlink(ap)
 	error = bread(imp->im_devvp,
 		      (ip->i_number >> imp->im_bshift) <<
 		      (imp->im_bshift - DEV_BSHIFT),
-		      imp->logical_block_size, NOCRED, &bp);
+		      imp->logical_block_size, &bp);
 	if (error) {
 		brelse(bp);
 		return (EINVAL);

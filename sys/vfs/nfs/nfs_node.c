@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.3 2003/06/25 03:56:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.4 2003/06/26 05:55:18 dillon Exp $
  */
 
 
@@ -214,11 +214,11 @@ nfs_inactive(ap)
 		 * have our own reference.
 		 */
 		if (ap->a_vp->v_usecount > 0)
-			(void) nfs_vinvalbuf(ap->a_vp, 0, sp->s_cred, ap->a_td, 1);
+			(void) nfs_vinvalbuf(ap->a_vp, 0, ap->a_td, 1);
 		else if (vget(ap->a_vp, 0, ap->a_td))
 			panic("nfs_inactive: lost vnode");
 		else {
-			(void) nfs_vinvalbuf(ap->a_vp, 0, sp->s_cred, ap->a_td, 1);
+			(void) nfs_vinvalbuf(ap->a_vp, 0, ap->a_td, 1);
 			vrele(ap->a_vp);
 		}
 		/*

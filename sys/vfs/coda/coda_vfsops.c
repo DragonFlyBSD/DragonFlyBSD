@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.4 2003/06/25 03:55:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.5 2003/06/26 05:55:07 dillon Exp $
  * 
  */
 
@@ -418,10 +418,9 @@ coda_nb_statfs(vfsp, sbp, td)
  * Flush any pending I/O.
  */
 int
-coda_sync(vfsp, waitfor, cred, td)
+coda_sync(vfsp, waitfor, td)
     struct mount *vfsp;
     int    waitfor;
-    struct ucred *cred;
     struct thread *td;
 {
     ENTRY;

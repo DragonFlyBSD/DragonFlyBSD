@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.3 2003/06/25 03:56:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.4 2003/06/26 05:55:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -403,8 +403,7 @@ union_lookup(ap)
 			} else if (lowerdvp != NULLVP) {
 				int terror;
 
-				terror = VOP_GETATTR(upperdvp, &va,
-					cnp->cn_cred, cnp->cn_td);
+				terror = VOP_GETATTR(upperdvp, &va, cnp->cn_td);
 				if (terror == 0 && (va.va_flags & OPAQUE))
 					iswhiteout = 1;
 			}
@@ -773,7 +772,7 @@ union_open(ap)
 	 * Absolutely necessary or UFS will blowup
 	 */
         if (error == 0 && vn_canvmio(tvp) == TRUE) {
-                error = vfs_object_create(tvp, td, cred);
+                error = vfs_object_create(tvp, td);
         }
 
 	/*
@@ -934,7 +933,7 @@ union_getattr(ap)
 	vap = ap->a_vap;
 
 	if ((vp = un->un_uppervp) != NULLVP) {
-		error = VOP_GETATTR(vp, vap, ap->a_cred, ap->a_td);
+		error = VOP_GETATTR(vp, vap, ap->a_td);
 		if (error)
 			return (error);
 		/* XXX isn't this dangerouso without a lock? */
@@ -951,7 +950,7 @@ union_getattr(ap)
 	}
 
 	if (vp != NULLVP) {
-		error = VOP_GETATTR(vp, vap, ap->a_cred, ap->a_td);
+		error = VOP_GETATTR(vp, vap, ap->a_td);
 		if (error)
 			return (error);
 		/* XXX isn't this dangerous without a lock? */
@@ -1237,7 +1236,7 @@ union_fsync(ap)
 	struct union_node *un = VTOUNION(ap->a_vp);
 
 	if ((targetvp = union_lock_other(un, td)) != NULLVP) {
-		error = VOP_FSYNC(targetvp, ap->a_cred, ap->a_waitfor, td);
+		error = VOP_FSYNC(targetvp, ap->a_waitfor, td);
 		union_unlock_other(targetvp, td);
 	}
 
@@ -1799,10 +1798,12 @@ union_unlock(ap)
 		struct thread *a_td;
 	} */ *ap;
 {
-	struct union_node *un = VTOUNION(ap->a_vp);
 	int error;
+#if 0
+	struct union_node *un = VTOUNION(ap->a_vp);
 
 	KASSERT((un->un_uppervp == NULL || un->un_uppervp->v_usecount > 0), ("uppervp usecount is 0"));
+#endif
 
 	error = vop_stdunlock(ap);
 #if 0

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.4 2003/06/25 03:56:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.5 2003/06/26 05:55:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -954,10 +954,7 @@ nfssvc_iod(struct thread *td)
 		    nmp->nm_bufqwant = FALSE;
 		    wakeup(&nmp->nm_bufq);
 		}
-		if (bp->b_flags & B_READ)
-		    (void) nfs_doio(bp, bp->b_rcred, NULL);
-		else
-		    (void) nfs_doio(bp, bp->b_wcred, NULL);
+		(void) nfs_doio(bp, NULL);
 		/*
 		 * If there are more than one iod on this mount, then defect
 		 * so that the iods can be shared out fairly between the mounts

@@ -35,7 +35,7 @@
  *
  *	@(#)nqnfs.h	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nqnfs.h,v 1.22 2000/02/13 03:32:07 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nqnfs.h,v 1.3 2003/06/25 03:56:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nqnfs.h,v 1.4 2003/06/26 05:55:18 dillon Exp $
  */
 
 
@@ -196,7 +196,7 @@ int	nqsrv_getlease __P((struct vnode *, u_int32_t *, int,
 			    struct nfssvc_sock *, struct thread *,
 			    struct sockaddr *, int *, u_quad_t *,
 			    struct ucred *));
-int	nqnfs_getlease __P((struct vnode *,int,struct ucred *,struct thread *));
+int	nqnfs_getlease __P((struct vnode *,int,struct thread *));
 int	nqnfs_callback __P((struct nfsmount *,struct mbuf *,struct mbuf *,caddr_t));
 int	nqnfs_clientd __P((struct nfsmount *,struct ucred *,struct nfsd_cargs *,int,caddr_t,struct thread *));
 struct nfsnode;

@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.3 2003/06/25 03:56:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.4 2003/06/26 05:55:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -770,11 +770,11 @@ union_copyup(un, docopy, cred, td)
 		vn_lock(lvp, LK_EXCLUSIVE | LK_RETRY, td);
 		error = VOP_OPEN(lvp, FREAD, cred, td);
 		if (error == 0 && vn_canvmio(lvp) == TRUE)
-			error = vfs_object_create(lvp, td, cred);
+			error = vfs_object_create(lvp, td);
 		if (error == 0) {
 			error = union_copyfile(lvp, uvp, cred, td);
 			VOP_UNLOCK(lvp, 0, td);
-			(void) VOP_CLOSE(lvp, FREAD, cred, td);
+			(void) VOP_CLOSE(lvp, FREAD, td);
 		}
 		if (error == 0)
 			UDEBUG(("union: copied up %s\n", un->un_path));
@@ -797,12 +797,12 @@ union_copyup(un, docopy, cred, td)
 		int i;
 
 		for (i = 0; i < un->un_openl; i++) {
-			(void) VOP_CLOSE(lvp, FREAD, cred, td);
+			(void) VOP_CLOSE(lvp, FREAD, td);
 			(void) VOP_OPEN(uvp, FREAD, cred, td);
 		}
 		if (un->un_openl) {
 			if (vn_canvmio(uvp) == TRUE)
-				error = vfs_object_create(uvp, td, cred);
+				error = vfs_object_create(uvp, td);
 		}
 		un->un_openl = 0;
 	}
@@ -1107,7 +1107,7 @@ union_vn_create(vpp, un, td)
 
 	error = VOP_OPEN(vp, fmode, cred, td);
 	if (error == 0 && vn_canvmio(vp) == TRUE)
-		error = vfs_object_create(vp, td, cred);
+		error = vfs_object_create(vp, td);
 	if (error) {
 		vput(vp);
 		return (error);
@@ -1127,7 +1127,7 @@ union_vn_close(vp, fmode, cred, td)
 
 	if (fmode & FWRITE)
 		--vp->v_writecount;
-	return (VOP_CLOSE(vp, fmode, cred, td));
+	return (VOP_CLOSE(vp, fmode, td));
 }
 
 #if 0
@@ -1177,7 +1177,7 @@ union_dowhiteout(struct union_node *un, struct ucred *cred, struct thread *td)
 	if (un->un_lowervp != NULLVP)
 		return (1);
 
-	if (VOP_GETATTR(un->un_uppervp, &va, cred, td) == 0 &&
+	if (VOP_GETATTR(un->un_uppervp, &va, td) == 0 &&
 	    (va.va_flags & OPAQUE))
 		return (1);
 
@@ -1318,7 +1318,7 @@ union_dircheck(struct thread *td, struct vnode **vp, struct file *fp)
 			 * If the directory is opaque,
 			 * then don't show lower entries
 			 */
-			error = VOP_GETATTR(*vp, &va, fp->f_cred, td);
+			error = VOP_GETATTR(*vp, &va, td);
 			if (va.va_flags & OPAQUE) {
 				vput(lvp);
 				lvp = NULL;
@@ -1328,7 +1328,7 @@ union_dircheck(struct thread *td, struct vnode **vp, struct file *fp)
 		if (lvp != NULLVP) {
 			error = VOP_OPEN(lvp, FREAD, fp->f_cred, td);
 			if (error == 0 && vn_canvmio(lvp) == TRUE)
-				error = vfs_object_create(lvp, td, fp->f_cred);
+				error = vfs_object_create(lvp, td);
 			if (error) {
 				vput(lvp);
 				return (error);
@@ -1336,7 +1336,7 @@ union_dircheck(struct thread *td, struct vnode **vp, struct file *fp)
 			VOP_UNLOCK(lvp, 0, td);
 			fp->f_data = (caddr_t) lvp;
 			fp->f_offset = 0;
-			error = vn_close(*vp, FREAD, fp->f_cred, td);
+			error = vn_close(*vp, FREAD, td);
 			if (error)
 				return (error);
 			*vp = lvp;

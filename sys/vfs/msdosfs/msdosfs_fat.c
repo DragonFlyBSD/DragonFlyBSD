@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_fat.c,v 1.23 2000/01/27 14:43:06 nyan Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_fat.c,v 1.2 2003/06/17 04:28:47 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_fat.c,v 1.3 2003/06/26 05:55:17 dillon Exp $ */
 /*	$NetBSD: msdosfs_fat.c,v 1.28 1997/11/17 15:36:49 ws Exp $	*/
 
 /*-
@@ -229,7 +229,7 @@ pcbmap(dep, findcn, bnp, cnp, sp)
 		if (bn != bp_bn) {
 			if (bp)
 				brelse(bp);
-			error = bread(pmp->pm_devvp, bn, bsize, NOCRED, &bp);
+			error = bread(pmp->pm_devvp, bn, bsize, &bp);
 			if (error) {
 				brelse(bp);
 				return (error);
@@ -365,8 +365,7 @@ updatefats(pmp, bp, fatbn)
 				+ ffs(pmp->pm_inusemap[cn / N_INUSEBITS]
 				      ^ (u_int)-1) - 1;
 		}
-		if (bread(pmp->pm_devvp, pmp->pm_fsinfo, fsi_size(pmp), 
-		    NOCRED, &bpn) != 0) {
+		if (bread(pmp->pm_devvp, pmp->pm_fsinfo, fsi_size(pmp), &bpn) != 0) {
 			/*
 			 * Ignore the error, but turn off FSInfo update for the future.
 			 */
@@ -547,7 +546,7 @@ fatentry(function, pmp, cn, oldcontents, newcontents)
 
 	byteoffset = FATOFS(pmp, cn);
 	fatblock(pmp, byteoffset, &bn, &bsize, &bo);
-	error = bread(pmp->pm_devvp, bn, bsize, NOCRED, &bp);
+	error = bread(pmp->pm_devvp, bn, bsize, &bp);
 	if (error) {
 		brelse(bp);
 		return (error);
@@ -634,7 +633,7 @@ fatchain(pmp, start, count, fillwith)
 	while (count > 0) {
 		byteoffset = FATOFS(pmp, start);
 		fatblock(pmp, byteoffset, &bn, &bsize, &bo);
-		error = bread(pmp->pm_devvp, bn, bsize, NOCRED, &bp);
+		error = bread(pmp->pm_devvp, bn, bsize, &bp);
 		if (error) {
 			brelse(bp);
 			return (error);
@@ -870,7 +869,7 @@ freeclusterchain(pmp, cluster)
 		if (lbn != bn) {
 			if (bp)
 				updatefats(pmp, bp, lbn);
-			error = bread(pmp->pm_devvp, bn, bsize, NOCRED, &bp);
+			error = bread(pmp->pm_devvp, bn, bsize, &bp);
 			if (error) {
 				brelse(bp);
 				return (error);
@@ -945,7 +944,7 @@ fillinusemap(pmp)
 			if (bp)
 				brelse(bp);
 			fatblock(pmp, byteoffset, &bn, &bsize, NULL);
-			error = bread(pmp->pm_devvp, bn, bsize, NOCRED, &bp);
+			error = bread(pmp->pm_devvp, bn, bsize, &bp);
 			if (error) {
 				brelse(bp);
 				return (error);

@@ -302,10 +302,6 @@ printf "\nb_dirtyend:   "
 output $bp->b_dirtyend
 printf "\nb_generation: "
 output $bp->b_generation
-printf "\nb_rcred:      "
-output $bp->b_rcred
-printf "\nb_wcred:      "
-output $bp->b_wcred
 printf "\nb_validoff:   "
 output $bp->b_validoff
 printf "\nb_validend:   "

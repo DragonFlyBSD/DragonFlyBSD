@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.6 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.7 2003/06/26 05:55:14 dillon Exp $
  */
 
 /*
@@ -578,7 +578,6 @@ getnewvnode(tag, mp, vops, vpp)
 {
 	int s;
 	struct thread *td = curthread;	/* XXX */
-	struct proc *p = td->td_proc;
 	struct vnode *vp = NULL;
 	vm_object_t object;
 
@@ -713,7 +712,7 @@ getnewvnode(tag, mp, vops, vpp)
 	vp->v_data = 0;
 	splx(s);
 
-	vfs_object_create(vp, td, p->p_ucred);
+	vfs_object_create(vp, td);
 	return (0);
 }
 
@@ -774,8 +773,8 @@ vwakeup(bp)
  * Called with the underlying object locked.
  */
 int
-vinvalbuf(struct vnode *vp, int flags, struct ucred *cred,
-	struct thread *td, int slpflag, int slptimeo)
+vinvalbuf(struct vnode *vp, int flags, struct thread *td,
+	int slpflag, int slptimeo)
 {
 	register struct buf *bp;
 	struct buf *nbp, *blist;
@@ -795,7 +794,7 @@ vinvalbuf(struct vnode *vp, int flags, struct ucred *cred,
 		}
 		if (!TAILQ_EMPTY(&vp->v_dirtyblkhd)) {
 			splx(s);
-			if ((error = VOP_FSYNC(vp, cred, MNT_WAIT, td)) != 0)
+			if ((error = VOP_FSYNC(vp, MNT_WAIT, td)) != 0)
 				return (error);
 			s = splbio();
 			if (vp->v_numoutput > 0 ||
@@ -895,8 +894,7 @@ vinvalbuf(struct vnode *vp, int flags, struct ucred *cred,
  * sync activity.
  */
 int
-vtruncbuf(struct vnode *vp, struct ucred *cred, struct thread *td,
-	off_t length, int blksize)
+vtruncbuf(struct vnode *vp, struct thread *td, off_t length, int blksize)
 {
 	struct buf *bp;
 	struct buf *nbp;
@@ -1122,7 +1120,6 @@ sched_sync(void)
 	long starttime;
 	int s;
 	struct thread *td = updatethread;
-	struct proc *p = td->td_proc;
 
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
 	    SHUTDOWN_PRI_LAST);   
@@ -1146,7 +1143,7 @@ sched_sync(void)
 		while ((vp = LIST_FIRST(slp)) != NULL) {
 			if (VOP_ISLOCKED(vp, NULL) == 0) {
 				vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
-				(void) VOP_FSYNC(vp, p->p_ucred, MNT_LAZY, td);
+				(void) VOP_FSYNC(vp, MNT_LAZY, td);
 				VOP_UNLOCK(vp, 0, td);
 			}
 			s = splbio();
@@ -1703,7 +1700,6 @@ vflush(mp, rootrefs, flags)
 	int flags;
 {
 	struct thread *td = curthread;	/* XXX */
-	struct proc *p = td->td_proc;
 	struct vnode *vp, *nvp, *rootvp = NULL;
 	struct vattr vattr;
 	int busy = 0, error;
@@ -1745,7 +1741,7 @@ loop:
 		 */
 		if ((flags & WRITECLOSE) &&
 		    (vp->v_type == VNON ||
-		    (VOP_GETATTR(vp, &vattr, p->p_ucred, td) == 0 &&
+		    (VOP_GETATTR(vp, &vattr, td) == 0 &&
 		    vattr.va_nlink > 0)) &&
 		    (vp->v_writecount == 0 || vp->v_type != VREG)) {
 			simple_unlock(&vp->v_interlock);
@@ -1867,7 +1863,7 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 	/*
 	 * Clean out any buffers associated with the vnode.
 	 */
-	vinvalbuf(vp, V_SAVE, NOCRED, td, 0, 0);
+	vinvalbuf(vp, V_SAVE, td, 0, 0);
 
 	VOP_DESTROYVOBJECT(vp);
 
@@ -1878,7 +1874,7 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 	 */
 	if (active) {
 		if (flags & DOCLOSE)
-			VOP_CLOSE(vp, FNONBLOCK, NOCRED, td);
+			VOP_CLOSE(vp, FNONBLOCK, td);
 		VOP_INACTIVE(vp, td);
 	} else {
 		/*
@@ -2721,9 +2717,9 @@ loop:
  * vp must be locked when vfs_object_create is called.
  */
 int
-vfs_object_create(struct vnode *vp, struct thread *td, struct ucred *cred)
+vfs_object_create(struct vnode *vp, struct thread *td)
 {
-	return (VOP_CREATEVOBJECT(vp, cred, td));
+	return (VOP_CREATEVOBJECT(vp, td));
 }
 
 void
@@ -2953,7 +2949,7 @@ sync_fsync(ap)
 	asyncflag = mp->mnt_flag & MNT_ASYNC;
 	mp->mnt_flag &= ~MNT_ASYNC;
 	vfs_msync(mp, MNT_NOWAIT);
-	VFS_SYNC(mp, MNT_LAZY, ap->a_cred, td);
+	VFS_SYNC(mp, MNT_LAZY, td);
 	if (asyncflag)
 		mp->mnt_flag |= MNT_ASYNC;
 	vfs_unbusy(mp, td);

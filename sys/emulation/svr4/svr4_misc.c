@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.4 2003/06/25 03:56:10 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.5 2003/06/26 05:55:19 dillon Exp $
  */
 
 /*
@@ -263,7 +263,7 @@ svr4_sys_getdents64(struct svr4_sys_getdents64_args *uap)
 	if (vp->v_type != VDIR)
 		return (EINVAL);
 
-	if ((error = VOP_GETATTR(vp, &va, p->p_ucred, td))) {
+	if ((error = VOP_GETATTR(vp, &va, td))) {
 		return error;
 	}
 

@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/cfs/coda_vfsops.h,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $ 
  * $FreeBSD: src/sys/coda/coda_vfsops.h,v 1.4 1999/08/28 00:40:57 peter Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.h,v 1.3 2003/06/25 03:55:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.h,v 1.4 2003/06/26 05:55:07 dillon Exp $
  * 
  */
 
@@ -54,7 +54,7 @@ int coda_unmount(struct mount *, int, struct thread *);
 int coda_root(struct mount *, struct vnode **);
 int coda_quotactl(struct mount *, int, uid_t, caddr_t, struct thread *);
 int coda_nb_statfs(struct mount *, struct statfs *, struct thread *);
-int coda_sync(struct mount *, int, struct ucred *, struct thread *);
+int coda_sync(struct mount *, int, struct thread *);
 int coda_vget(struct mount *, ino_t, struct vnode **);
 int coda_fhtovp(struct mount *, struct fid *, struct mbuf *, struct vnode **,
 		       int *, struct ucred **);

@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.3 2003/06/25 03:55:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.4 2003/06/26 05:55:15 dillon Exp $
  */
 
 /*
@@ -69,8 +69,7 @@ static int	nullfs_root(struct mount *mp, struct vnode **vpp);
 static int	nullfs_start(struct mount *mp, int flags, struct thread *td);
 static int	nullfs_statfs(struct mount *mp, struct statfs *sbp,
 				   struct thread *td);
-static int	nullfs_sync(struct mount *mp, int waitfor,
-				 struct ucred *cred, struct thread *td);
+static int	nullfs_sync(struct mount *mp, int waitfor, struct thread *td);
 static int	nullfs_unmount(struct mount *mp, int mntflags, struct thread *td);
 static int	nullfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp);
 static int	nullfs_vptofh(struct vnode *vp, struct fid *fhp);
@@ -319,10 +318,9 @@ nullfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 }
 
 static int
-nullfs_sync(mp, waitfor, cred, td)
+nullfs_sync(mp, waitfor, td)
 	struct mount *mp;
 	int waitfor;
-	struct ucred *cred;
 	struct thread *td;
 {
 	/*

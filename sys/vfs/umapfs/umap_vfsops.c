@@ -36,7 +36,7 @@
  *	@(#)umap_vfsops.c	8.8 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vfsops.c,v 1.31.2.2 2001/09/11 09:49:53 kris Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.4 2003/06/25 03:56:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.5 2003/06/26 05:55:16 dillon Exp $
  */
 
 /*
@@ -70,7 +70,7 @@ static int	umapfs_start __P((struct mount *mp, int flags, struct thread *td));
 static int	umapfs_statfs __P((struct mount *mp, struct statfs *sbp,
 				   struct thread *td));
 static int	umapfs_sync __P((struct mount *mp, int waitfor,
-				 struct ucred *cred, struct thread *td));
+				 struct thread *td));
 static int	umapfs_unmount __P((struct mount *mp, int mntflags,
 				    struct thread *td));
 static int	umapfs_vget __P((struct mount *mp, ino_t ino,
@@ -356,7 +356,7 @@ umapfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 }
 
 static int
-umapfs_sync(struct mount *mp, int waitfor, struct ucred *cred, struct thread *td)
+umapfs_sync(struct mount *mp, int waitfor, struct thread *td)
 {
 	/*
 	 * XXX - Assumes no data cached at umap layer.

@@ -28,7 +28,7 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_util.c,v 1.7 1999/12/15 23:01:45 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_util.c,v 1.4 2003/06/25 03:55:53 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_util.c,v 1.5 2003/06/26 05:55:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -147,11 +147,11 @@ ibcs2_emul_find(sgp, prefix, path, pbuf, cflag)
 			return error;
 		}
 
-		if ((error = VOP_GETATTR(nd.ni_vp, &vat, cred, td)) != 0) {
+		if ((error = VOP_GETATTR(nd.ni_vp, &vat, td)) != 0) {
 			goto done;
 		}
 
-		if ((error = VOP_GETATTR(ndroot.ni_vp, &vatroot, cred, td))
+		if ((error = VOP_GETATTR(ndroot.ni_vp, &vatroot, td))
 		    != 0) {
 			goto done;
 		}

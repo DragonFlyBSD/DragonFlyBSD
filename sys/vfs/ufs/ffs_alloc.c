@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.3 2003/06/26 05:55:20 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -208,7 +208,7 @@ ffs_realloccg(ip, lbprev, bpref, osize, nsize, cred, bpp)
 	/*
 	 * Allocate the extra space in the buffer.
 	 */
-	error = bread(ITOV(ip), lbprev, osize, NOCRED, &bp);
+	error = bread(ITOV(ip), lbprev, osize, &bp);
 	if (error) {
 		brelse(bp);
 		return (error);
@@ -411,7 +411,7 @@ ffs_reallocblks(ap)
 		soff = start_lbn;
 	} else {
 		idp = &start_ap[start_lvl - 1];
-		if (bread(vp, idp->in_lbn, (int)fs->fs_bsize, NOCRED, &sbp)) {
+		if (bread(vp, idp->in_lbn, (int)fs->fs_bsize, &sbp)) {
 			brelse(sbp);
 			return (ENOSPC);
 		}
@@ -433,7 +433,7 @@ ffs_reallocblks(ap)
 			panic("ffs_reallocblk: start == end");
 #endif
 		ssize = len - (idp->in_off + 1);
-		if (bread(vp, idp->in_lbn, (int)fs->fs_bsize, NOCRED, &ebp))
+		if (bread(vp, idp->in_lbn, (int)fs->fs_bsize, &ebp))
 			goto fail;
 		ebap = (ufs_daddr_t *)ebp->b_data;
 	}
@@ -923,7 +923,7 @@ ffs_fragextend(ip, cg, bprev, osize, nsize)
 		return (0);
 	}
 	error = bread(ip->i_devvp, fsbtodb(fs, cgtod(fs, cg)),
-		(int)fs->fs_cgsize, NOCRED, &bp);
+		(int)fs->fs_cgsize, &bp);
 	if (error) {
 		brelse(bp);
 		return (0);
@@ -992,7 +992,7 @@ ffs_alloccg(ip, cg, bpref, size)
 	if (fs->fs_cs(fs, cg).cs_nbfree == 0 && size == fs->fs_bsize)
 		return (0);
 	error = bread(ip->i_devvp, fsbtodb(fs, cgtod(fs, cg)),
-		(int)fs->fs_cgsize, NOCRED, &bp);
+		(int)fs->fs_cgsize, &bp);
 	if (error) {
 		brelse(bp);
 		return (0);
@@ -1213,7 +1213,7 @@ ffs_clusteralloc(ip, cg, bpref, len)
 	if (fs->fs_maxcluster[cg] < len)
 		return (0);
 	if (bread(ip->i_devvp, fsbtodb(fs, cgtod(fs, cg)), (int)fs->fs_cgsize,
-	    NOCRED, &bp))
+	    &bp))
 		goto fail;
 	cgp = (struct cg *)bp->b_data;
 	if (!cg_chkmagic(cgp))
@@ -1325,7 +1325,7 @@ ffs_nodealloccg(ip, cg, ipref, mode)
 	if (fs->fs_cs(fs, cg).cs_nifree == 0)
 		return (0);
 	error = bread(ip->i_devvp, fsbtodb(fs, cgtod(fs, cg)),
-		(int)fs->fs_cgsize, NOCRED, &bp);
+		(int)fs->fs_cgsize, &bp);
 	if (error) {
 		brelse(bp);
 		return (0);
@@ -1423,7 +1423,7 @@ ffs_blkfree(ip, bno, size)
 		return;
 	}
 	error = bread(ip->i_devvp, fsbtodb(fs, cgtod(fs, cg)),
-		(int)fs->fs_cgsize, NOCRED, &bp);
+		(int)fs->fs_cgsize, &bp);
 	if (error) {
 		brelse(bp);
 		return;
@@ -1527,7 +1527,7 @@ ffs_checkblk(ip, bno, size)
 	if ((u_int)bno >= fs->fs_size)
 		panic("ffs_checkblk: bad block %d", bno);
 	error = bread(ip->i_devvp, fsbtodb(fs, cgtod(fs, dtog(fs, bno))),
-		(int)fs->fs_cgsize, NOCRED, &bp);
+		(int)fs->fs_cgsize, &bp);
 	if (error)
 		panic("ffs_checkblk: cg bread failed");
 	cgp = (struct cg *)bp->b_data;
@@ -1591,7 +1591,7 @@ ffs_vfree( pvp, ino, mode)
 		    major(pip->i_dev), minor(pip->i_dev), ino, fs->fs_fsmnt);
 	cg = ino_to_cg(fs, ino);
 	error = bread(pip->i_devvp, fsbtodb(fs, cgtod(fs, cg)),
-		(int)fs->fs_cgsize, NOCRED, &bp);
+		(int)fs->fs_cgsize, &bp);
 	if (error) {
 		brelse(bp);
 		return (error);

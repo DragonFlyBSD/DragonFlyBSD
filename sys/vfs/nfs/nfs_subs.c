@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_subs.c,v 1.90.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.4 2003/06/25 03:56:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.5 2003/06/26 05:55:18 dillon Exp $
  */
 
 /*
@@ -2191,11 +2191,10 @@ int
 nfsrv_object_create(struct vnode *vp)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 
 	if (vp == NULL || vp->v_type != VREG)
 		return (1);
-	return (vfs_object_create(vp, td, p ? p->p_ucred : NULL));
+	return (vfs_object_create(vp, td));
 }
 
 /*

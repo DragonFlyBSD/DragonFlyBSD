@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.5 2003/06/26 05:55:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -188,7 +188,7 @@ vn_open(ndp, fmode, cmode)
 	 * Make sure that a VM object is created for VMIO support.
 	 */
 	if (vn_canvmio(vp) == TRUE) {
-		if ((error = vfs_object_create(vp, td, cred)) != 0)
+		if ((error = vfs_object_create(vp, td)) != 0)
 			goto bad;
 	}
 
@@ -224,13 +224,13 @@ vn_writechk(vp)
  * Vnode close call
  */
 int
-vn_close(struct vnode *vp, int flags, struct ucred *cred, struct thread *td)
+vn_close(struct vnode *vp, int flags, struct thread *td)
 {
 	int error;
 
 	if (flags & FWRITE)
 		vp->v_writecount--;
-	error = VOP_CLOSE(vp, flags, cred, td);
+	error = VOP_CLOSE(vp, flags, td);
 	vrele(vp);
 	return (error);
 }
@@ -457,7 +457,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct thread *td)
 
 	KKASSERT(p);
 	vap = &vattr;
-	error = VOP_GETATTR(vp, vap, p->p_ucred, td);
+	error = VOP_GETATTR(vp, vap, td);
 	if (error)
 		return (error);
 
@@ -570,7 +570,7 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct thread *td)
 	case VREG:
 	case VDIR:
 		if (com == FIONREAD) {
-			error = VOP_GETATTR(vp, &vattr, ucred, td);
+			error = VOP_GETATTR(vp, &vattr, td);
 			if (error)
 				return (error);
 			*(int *)data = vattr.va_size - fp->f_offset;
@@ -671,7 +671,7 @@ vn_closefile(struct file *fp, struct thread *td)
 	int err;
 
 	fp->f_ops = &badfileops;
-	err = vn_close(((struct vnode *)fp->f_data), fp->f_flag, fp->f_cred, td);
+	err = vn_close(((struct vnode *)fp->f_data), fp->f_flag, td);
 	return(err);
 }
 

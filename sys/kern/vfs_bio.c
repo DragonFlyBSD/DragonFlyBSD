@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.4 2003/06/22 17:39:42 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.5 2003/06/26 05:55:14 dillon Exp $
  */
 
 /*
@@ -353,8 +353,6 @@ bufinit(void)
 		bzero(bp, sizeof *bp);
 		bp->b_flags = B_INVAL;	/* we're just an empty header */
 		bp->b_dev = NODEV;
-		bp->b_rcred = NOCRED;
-		bp->b_wcred = NOCRED;
 		bp->b_qindex = QUEUE_EMPTY;
 		bp->b_xflags = 0;
 		LIST_INIT(&bp->b_dep);
@@ -505,8 +503,7 @@ bremfree(struct buf * bp)
  * getblk() ).
  */
 int
-bread(struct vnode * vp, daddr_t blkno, int size, struct ucred * cred,
-    struct buf ** bpp)
+bread(struct vnode * vp, daddr_t blkno, int size, struct buf ** bpp)
 {
 	struct buf *bp;
 
@@ -520,11 +517,6 @@ bread(struct vnode * vp, daddr_t blkno, int size, struct ucred * cred,
 		KASSERT(!(bp->b_flags & B_ASYNC), ("bread: illegal async bp %p", bp));
 		bp->b_flags |= B_READ;
 		bp->b_flags &= ~(B_ERROR | B_INVAL);
-		if (bp->b_rcred == NOCRED) {
-			if (cred != NOCRED)
-				crhold(cred);
-			bp->b_rcred = cred;
-		}
 		vfs_busy_pages(bp, 0);
 		VOP_STRATEGY(vp, bp);
 		return (biowait(bp));
@@ -539,9 +531,8 @@ bread(struct vnode * vp, daddr_t blkno, int size, struct ucred * cred,
  * and we do not have to do anything.
  */
 int
-breadn(struct vnode * vp, daddr_t blkno, int size,
-    daddr_t * rablkno, int *rabsize,
-    int cnt, struct ucred * cred, struct buf ** bpp)
+breadn(struct vnode * vp, daddr_t blkno, int size, daddr_t * rablkno,
+	int *rabsize, int cnt, struct buf ** bpp)
 {
 	struct buf *bp, *rabp;
 	int i;
@@ -555,11 +546,6 @@ breadn(struct vnode * vp, daddr_t blkno, int size,
 			curproc->p_stats->p_ru.ru_inblock++;
 		bp->b_flags |= B_READ;
 		bp->b_flags &= ~(B_ERROR | B_INVAL);
-		if (bp->b_rcred == NOCRED) {
-			if (cred != NOCRED)
-				crhold(cred);
-			bp->b_rcred = cred;
-		}
 		vfs_busy_pages(bp, 0);
 		VOP_STRATEGY(vp, bp);
 		++readwait;
@@ -575,11 +561,6 @@ breadn(struct vnode * vp, daddr_t blkno, int size,
 				curproc->p_stats->p_ru.ru_inblock++;
 			rabp->b_flags |= B_READ | B_ASYNC;
 			rabp->b_flags &= ~(B_ERROR | B_INVAL);
-			if (rabp->b_rcred == NOCRED) {
-				if (cred != NOCRED)
-					crhold(cred);
-				rabp->b_rcred = cred;
-			}
 			vfs_busy_pages(rabp, 0);
 			BUF_KERNPROC(rabp);
 			VOP_STRATEGY(vp, rabp);
@@ -1639,14 +1620,6 @@ restart:
 		 * valid after this operation.
 		 */
 
-		if (bp->b_rcred != NOCRED) {
-			crfree(bp->b_rcred);
-			bp->b_rcred = NOCRED;
-		}
-		if (bp->b_wcred != NOCRED) {
-			crfree(bp->b_wcred);
-			bp->b_wcred = NOCRED;
-		}
 		if (LIST_FIRST(&bp->b_dep) != NULL && bioops.io_deallocate)
 			(*bioops.io_deallocate)(bp);
 		if (bp->b_xflags & BX_BKGRDINPROG)
