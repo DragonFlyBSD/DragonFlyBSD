@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.6 2005/02/04 23:16:28 joerg Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.7 2005/02/09 02:51:04 dillon Exp $
  */
 
 /*
@@ -352,19 +352,72 @@ vfs_getnewfsid(struct mount *mp)
 /*
  * Return 0 if the vnode is not already on the free list, return 1 if the
  * vnode, with some additional work could possibly be placed on the free list.
+ * We try to avoid recycling vnodes with lots of cached pages.  The cache
+ * trigger level is calculated dynamically.
  */
 static __inline int 
-vmightfree(struct vnode *vp, int use_count, int page_count)
+vmightfree(struct vnode *vp, int page_count)
 {
 	if (vp->v_flag & VFREE)
 		return (0);
-	if (vp->v_usecount != use_count || vp->v_holdcnt)
+	if (vp->v_usecount != 0)
 		return (0);
 	if (vp->v_object && vp->v_object->resident_page_count >= page_count)
 		return (0);
 	return (1);
 }
 
+/*
+ * The vnode was found to be possibly freeable and the caller has locked it
+ * (thus the usecount should be 1 now).  Determine if the vnode is actually
+ * freeable, doing some cleanups in the process.  Returns 1 if the vnode
+ * can be freed, 0 otherwise.
+ *
+ * Note that v_holdcnt may be non-zero because (A) this vnode is not a leaf
+ * in the namecache topology and (B) this vnode has buffer cache bufs.
+ * We cannot remove vnodes with non-leaf namecache associations.  We do a
+ * tentitive leaf check prior to attempting to flush out any buffers but the
+ * 'real' test when all is said in done is that v_holdcnt must become 0 for
+ * the vnode to be freeable.
+ *
+ * We could theoretically just unconditionally flush when v_holdcnt != 0,
+ * but flushing data associated with non-leaf nodes (which are always
+ * directories), just throws it away for no benefit.  It is the buffer 
+ * cache's responsibility to choose buffers to recycle from the cached
+ * data point of view.
+ */
+static int
+visleaf(struct vnode *vp)
+{
+	struct namecache *ncp;
+
+	TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
+		if (!TAILQ_EMPTY(&ncp->nc_list))
+			return(0);
+	}
+	return(1);
+}
+
+static int
+vtrytomakefreeable(struct vnode *vp, int page_count)
+{
+	if (vp->v_flag & VFREE)
+		return (0);
+	if (vp->v_usecount != 1)
+		return (0);
+	if (vp->v_object && vp->v_object->resident_page_count >= page_count)
+		return (0);
+	if (vp->v_holdcnt && visleaf(vp)) {
+		vinvalbuf(vp, V_SAVE, NULL, 0, 0);
+#if 0	/* DEBUG */
+		printf((vp->v_holdcnt ? "vrecycle: vp %p failed: %s\n" :
+			"vrecycle: vp %p succeeded: %s\n"), vp,
+			(TAILQ_FIRST(&vp->v_namecache) ? 
+			    TAILQ_FIRST(&vp->v_namecache)->nc_name : "?"));
+#endif
+	}
+	return(vp->v_usecount == 1 && vp->v_holdcnt == 0);
+}
 
 static int
 vlrureclaim(struct mount *mp)
@@ -401,7 +454,7 @@ vlrureclaim(struct mount *mp)
 		 */
 		if (vp->v_type == VNON ||	/* XXX */
 		    vp->v_type == VBAD ||	/* XXX */
-		    !vmightfree(vp, 0, trigger)	/* critical path opt */
+		    !vmightfree(vp, trigger)	/* critical path opt */
 		) {
 			TAILQ_REMOVE(&mp->mnt_nvnodelist, vp, v_nmntvnodes);
 			TAILQ_INSERT_TAIL(&mp->mnt_nvnodelist,vp, v_nmntvnodes);
@@ -436,7 +489,7 @@ vlrureclaim(struct mount *mp)
 		    vp->v_type == VBAD ||	/* XXX */
 		    (vp->v_flag & VRECLAIMED) ||
 		    vp->v_mount != mp ||
-		    !vmightfree(vp, 1, trigger)	/* critical path opt */
+		    !vtrytomakefreeable(vp, trigger)	/* critical path opt */
 		) {
 			if (vp->v_mount == mp) {
 				TAILQ_REMOVE(&mp->mnt_nvnodelist, 
