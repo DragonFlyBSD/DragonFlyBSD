@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.55 2005/01/31 17:20:48 joerg Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.56 2005/02/01 13:55:49 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -903,13 +903,12 @@ getfsstat(struct getfsstat_args *uap)
 {
 	struct thread *td = curthread;
 	struct mount *mp, *nmp;
-	struct statfs *sp;
-	caddr_t sfsp;
+	struct statfs *sp, *sfsp;
 	lwkt_tokref ilock;
 	long count, maxcount, error;
 
-	maxcount = SCARG(uap, bufsize) / sizeof(struct statfs);
-	sfsp = (caddr_t)SCARG(uap, buf);
+	maxcount = uap->bufsize / sizeof(struct statfs);
+	sfsp = uap->buf;
 	count = 0;
 	lwkt_gettoken(&ilock, &mountlist_token);
 	for (mp = TAILQ_FIRST(&mountlist); mp != NULL; mp = nmp) {
@@ -924,8 +923,8 @@ getfsstat(struct getfsstat_args *uap)
 			 * refresh the fsstat cache. MNT_NOWAIT or MNT_LAZY
 			 * overrides MNT_WAIT.
 			 */
-			if (((SCARG(uap, flags) & (MNT_LAZY|MNT_NOWAIT)) == 0 ||
-			    (SCARG(uap, flags) & MNT_WAIT)) &&
+			if (((uap->flags & (MNT_LAZY|MNT_NOWAIT)) == 0 ||
+			    (uap->flags & MNT_WAIT)) &&
 			    (error = VFS_STATFS(mp, sp, td))) {
 				lwkt_gettokref(&ilock);
 				nmp = TAILQ_NEXT(mp, mnt_list);
