@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.11 2004/03/15 20:08:40 joerg Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.12 2004/03/16 23:06:11 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -958,6 +958,9 @@ ether_ioctl(ifp, command, data)
 		} else {
 			ifp->if_mtu = ifr->ifr_mtu;
 		}
+		break;
+	default:
+		error = EINVAL;
 		break;
 	}
 	return (error);
