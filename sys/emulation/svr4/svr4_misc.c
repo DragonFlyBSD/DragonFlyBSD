@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.15 2003/08/27 06:07:10 rob Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.16 2003/09/14 16:38:48 dillon Exp $
  */
 
 /*
@@ -659,7 +659,6 @@ svr4_mknod(retval, path, mode, dev)
 int
 svr4_sys_mknod(struct svr4_sys_mknod_args *uap)
 {
-	struct thread *td = curthread;	/* XXX */
         int *retval;
 
 	retval = &uap->sysmsg_result;
@@ -672,7 +671,6 @@ svr4_sys_mknod(struct svr4_sys_mknod_args *uap)
 int
 svr4_sys_xmknod(struct svr4_sys_xmknod_args *uap)
 {
-	struct thread *td = curthread;	/* XXX */
         int *retval;
 
 	retval = &uap->sysmsg_result;
@@ -692,7 +690,6 @@ svr4_sys_vhangup(struct svr4_sys_vhangup_args *uap)
 int
 svr4_sys_sysconfig(struct svr4_sys_sysconfig_args *uap)
 {
-	struct thread *td = curthread;	/* XXX */
 	int *retval;
 
 	retval = &uap->sysmsg_result;
