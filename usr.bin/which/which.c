@@ -23,11 +23,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * $FreeBSD: src/usr.bin/which/which.c,v 1.5 2002/06/30 06:02:39 tjr Exp $");
- * $DragonFly: src/usr.bin/which/which.c,v 1.1 2004/03/25 16:18:40 drhodus Exp $
+ * $DragonFly: src/usr.bin/which/which.c,v 1.2 2005/03/03 17:09:58 liamfoy Exp $
  */
-
-#include <sys/cdefs.h>
-
 
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -79,7 +76,7 @@ main(int argc, char **argv)
        pathlen = strlen(p) + 1;
        path = malloc(pathlen);
        if (path == NULL)
-               err(EXIT_FAILURE, NULL);
+               err(EXIT_FAILURE, "malloc failed");
 
        if (argc == 0)
                status = EXIT_FAILURE;
@@ -101,12 +98,11 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-
        errx(EXIT_FAILURE, "usage: which [-as] program ...");
 }
 
 static int
-is_there(char *candidate)
+is_there(const char *candidate)
 {
        struct stat fin;
 
