@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.2 2004/03/06 22:14:09 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.3 2004/03/31 19:28:29 dillon Exp $
  */
 
 /*
@@ -228,23 +228,22 @@ caps_find_msg(caps_kinfo_t caps, off_t msgid)
 
 static
 caps_kinfo_t
-caps_load_ccr(caps_kinfo_t caps, caps_kmsg_t msg, struct proc *p, void *udata, int ubytes)
+caps_load_ccr(caps_kinfo_t caps, caps_kmsg_t msg, struct proc *p,
+		void *udata, int ubytes)
 {
     int i;
     struct ucred *cr = p->p_ucred;
     caps_kinfo_t rcaps;
 
     /*
-     * replace km_mcaps with new VM state, return the old km_mcaps.  We
-     * dereference the old mcap's mrefs but do not drop its main ref count.
-     * The caller is expected to do that.
+     * replace km_mcaps with new VM state, return the old km_mcaps.  The
+     * caller is expected to drop the rcaps ref count on return so we do
+     * not do it ourselves.
      */
     rcaps = caps_free_msg_mcaps(msg);	/* can be NULL */
-    ++caps->ci_mrefs;
     caps_hold(caps);
     msg->km_mcaps = caps;
-    msg->km_umsg = udata;
-    msg->km_umsg_size = ubytes;
+    xio_init_ubuf(&msg->km_xio, udata, ubytes, XIOF_READ);
 
     msg->km_ccr.pid = p ? p->p_pid : -1;
     msg->km_ccr.uid = cr->cr_ruid;
@@ -289,11 +288,6 @@ caps_put_msg(caps_kinfo_t caps, caps_kmsg_t msg, caps_msg_state_t state)
 
 /*
  * caps_free_msg_mcaps()
- *
- * Free the vmspace reference relating to the data associated with the
- * message (this prevents the target process from exiting too early).
- * Return and clear km_mcaps.  The caller is responsible for dropping the
- * reference to the returned caps.
  */
 static
 caps_kinfo_t
@@ -301,11 +295,10 @@ caps_free_msg_mcaps(caps_kmsg_t msg)
 {
     caps_kinfo_t mcaps;
 
-    if ((mcaps = msg->km_mcaps) != NULL) {
-	msg->km_mcaps = NULL;
-	if (--mcaps->ci_mrefs == 0 && (mcaps->ci_flags & CAPKF_MWAIT))
-	    wakeup(mcaps);
-    }
+    mcaps = msg->km_mcaps;	/* may be NULL */
+    msg->km_mcaps = NULL;
+    if (msg->km_xio.xio_npages)
+	xio_release(&msg->km_xio);
     return(mcaps);
 }
 
@@ -413,12 +406,14 @@ caps_term(caps_kinfo_t caps, int flags, caps_kinfo_t cflush)
 			    caps_drop(rcaps);
 			} else {
 			    caps_drop(rcaps);
-			    caps_hold(caps);
+			    caps_hold(caps);	/* for message */
 			    caps_put_msg(caps, msg, CAPMS_DISPOSE);
 			}
 		    } else {
 			/*
-			 * auto-reply to the originator.
+			 * auto-reply to the originator.  rcaps already
+			 * has a dangling hold so we do not have to hold it
+			 * again.
 			 */
 			caps_put_msg(rcaps, msg, CAPMS_REPLY);
 		    }
@@ -462,10 +457,6 @@ caps_term(caps_kinfo_t caps, int flags, caps_kinfo_t cflush)
 	caps->ci_flags &= ~CAPKF_HLIST;
     }
     if ((flags & CAPKF_TDLIST) && (caps->ci_flags & CAPKF_TDLIST)) {
-	while (caps->ci_mrefs) {
-	    caps->ci_flags |= CAPKF_MWAIT;
-	    tsleep(caps, 0, "cexit", 0);
-	}
 	for (scan = &caps->ci_td->td_caps;
 	    *scan != caps;
 	    scan = &(*scan)->ci_tdnext
@@ -648,28 +639,38 @@ int
 caps_sys_setgen(struct caps_sys_setgen_args *uap)
 {
     caps_kinfo_t caps;
+    int error;
 
     if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
 	return(EINVAL);
-    if (caps->ci_type == CAPT_FORKED)
-	return(ENOTCONN);
-    caps->ci_gen = uap->gen;
-    return(0);
+    if (caps->ci_type == CAPT_FORKED) {
+	error = ENOTCONN;
+    } else {
+	caps->ci_gen = uap->gen;
+	error = 0;
+    }
+    caps_drop(caps);
+    return(error);
 }
 
 int
 caps_sys_getgen(struct caps_sys_getgen_args *uap)
 {
     caps_kinfo_t caps;
+    int error;
 
     if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
 	return(EINVAL);
-    if (caps->ci_type == CAPT_FORKED)
-	return(ENOTCONN);
-    if (caps->ci_rcaps == NULL)
-	return(EINVAL);
-    uap->sysmsg_result64 = caps->ci_rcaps->ci_gen;
-    return(0);
+    if (caps->ci_type == CAPT_FORKED) {
+	error = ENOTCONN;
+    } else if (caps->ci_rcaps == NULL) {
+	error = EINVAL;
+    } else {
+	uap->sysmsg_result64 = caps->ci_rcaps->ci_gen;
+	error = 0;
+    }
+    caps_drop(caps);
+    return(error);
 }
 
 /*
@@ -690,48 +691,43 @@ caps_sys_put(struct caps_sys_put_args *uap)
 	return(EINVAL);
     if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
 	return(EINVAL);
-    if (caps->ci_type == CAPT_FORKED)
-	return(ENOTCONN);
-    if (caps->ci_rcaps == NULL) {
-	caps_drop(caps);
-	return(EINVAL);
-    }
-
-    /*
-     * If this client has queued a large number of messages return
-     * ENOBUFS.  The client must process some replies before it can
-     * send new messages.  The server can also throttle a client by
-     * holding its replies.  XXX allow a server to refuse messages from
-     * a client.
-     */
-    if (caps->ci_cmsgcount > CAPS_MAXINPROG) {
-	caps_drop(caps);
-	return(ENOBUFS);
-    }
-    msg = caps_alloc_msg(caps);
-    uap->sysmsg_offset = msg->km_msgid.c_id;
-
-    /*
-     * If the remote end is closed return ENOTCONN immediately, otherwise
-     * send it to the remote end.
-     *
-     * Note: since this is a new message, caps_load_ccr() returns a remote
-     * caps of NULL.
-     */
-    error = 0;
-    if (caps->ci_rcaps->ci_flags & CAPKF_CLOSED) {
+    if (caps->ci_type == CAPT_FORKED) {
 	error = ENOTCONN;
-	caps_free_msg(msg);
-#if 0
-	caps_load_ccr(caps, msg, p, NULL, 0);	/* returns NULL */
-	caps_hold(caps);
-	caps_put_msg(caps, msg, CAPMS_REPLY);	/* drops caps */
-#endif
+    } else if (caps->ci_rcaps == NULL) {
+	error = EINVAL;
+    } else if (caps->ci_cmsgcount > CAPS_MAXINPROG) {
+	/*
+	 * If this client has queued a large number of messages return
+	 * ENOBUFS.  The client must process some replies before it can
+	 * send new messages.  The server can also throttle a client by
+	 * holding its replies.  XXX allow a server to refuse messages from
+	 * a client.
+	 */
+	error = ENOBUFS;
     } else {
-	caps_load_ccr(caps, msg, p, uap->msg, uap->msgsize); /* returns NULL */
-	caps_hold(caps->ci_rcaps);			  /* need ref */
-	++caps->ci_cmsgcount;
-	caps_put_msg(caps->ci_rcaps, msg, CAPMS_REQUEST); /* drops rcaps */
+	msg = caps_alloc_msg(caps);
+	uap->sysmsg_offset = msg->km_msgid.c_id;
+
+	/*
+	 * If the remote end is closed return ENOTCONN immediately, otherwise
+	 * send it to the remote end.
+	 *
+	 * Note: since this is a new message, caps_load_ccr() returns a remote
+	 * caps of NULL.
+	 */
+	if (caps->ci_rcaps->ci_flags & CAPKF_CLOSED) {
+	    error = ENOTCONN;
+	    caps_free_msg(msg);
+	} else {
+	    /*
+	     * new message, load_ccr returns NULL. hold rcaps for put_msg
+	     */
+	    error = 0;
+	    caps_load_ccr(caps, msg, p, uap->msg, uap->msgsize);
+	    caps_hold(caps->ci_rcaps);
+	    ++caps->ci_cmsgcount;
+	    caps_put_msg(caps->ci_rcaps, msg, CAPMS_REQUEST); /* drops rcaps */
+	}
     }
     caps_drop(caps);
     return(error);
@@ -750,47 +746,49 @@ caps_sys_reply(struct caps_sys_reply_args *uap)
     caps_kinfo_t rcaps;
     caps_kmsg_t msg;
     struct proc *p;
+    int error;
 
     if (uap->msgsize < 0)
 	return(EINVAL);
     if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
 	return(EINVAL);
-    if (caps->ci_type == CAPT_FORKED)
-	return(ENOTCONN);
-
-    /*
-     * Can't find message to reply to
-     */
-    if ((msg = caps_find_msg(caps, uap->msgcid)) == NULL) {
-	caps_drop(caps);
-	return(EINVAL);
-    }
-
-    /*
-     * Trying to reply to a non-replyable message
-     */
-    if ((msg->km_flags & CAPKMF_ONUSERQ) == 0) {
-	caps_drop(caps);
-	return(EINVAL);
-    }
-
-    /*
-     * If the remote end is closed requeue to ourselves for disposal.
-     * Otherwise send the reply to the other end (the other end will
-     * return a passive DISPOSE to us when it has eaten the data)
-     */
-    caps_dequeue_msg(caps, msg);
-    p = curproc;
-    if (msg->km_mcaps->ci_flags & CAPKF_CLOSED) {
-	caps_drop(caps_load_ccr(caps, msg, p, NULL, 0));
-	caps_hold(caps);
-	caps_put_msg(caps, msg, CAPMS_DISPOSE);	/* drops caps */
+    if (caps->ci_type == CAPT_FORKED) {
+	/*
+	 * The caps structure is just a fork placeholder, tell the caller
+	 * that he has to reconnect.
+	 */
+	error = ENOTCONN;
+    } else if ((msg = caps_find_msg(caps, uap->msgcid)) == NULL) {
+	/*
+	 * Could not find message being replied to (other side might have
+	 * gone away).
+	 */
+	error = EINVAL;
+    } else if ((msg->km_flags & CAPKMF_ONUSERQ) == 0) {
+	/*
+	 * Trying to reply to a non-replyable message
+	 */
+	error = EINVAL;
     } else {
-	rcaps = caps_load_ccr(caps, msg, p, uap->msg, uap->msgsize);
-	caps_put_msg(rcaps, msg, CAPMS_REPLY);
+	/*
+	 * If the remote end is closed requeue to ourselves for disposal.
+	 * Otherwise send the reply to the other end (the other end will
+	 * return a passive DISPOSE to us when it has eaten the data)
+	 */
+	error = 0;
+	caps_dequeue_msg(caps, msg);
+	p = curproc;
+	if (msg->km_mcaps->ci_flags & CAPKF_CLOSED) {
+	    caps_drop(caps_load_ccr(caps, msg, p, NULL, 0));
+	    caps_hold(caps);			/* ref for message */
+	    caps_put_msg(caps, msg, CAPMS_DISPOSE);
+	} else {
+	    rcaps = caps_load_ccr(caps, msg, p, uap->msg, uap->msgsize);
+	    caps_put_msg(rcaps, msg, CAPMS_REPLY);
+	}
     }
     caps_drop(caps);
-    return(0);
+    return(error);
 }
 
 /*
@@ -811,18 +809,21 @@ caps_sys_get(struct caps_sys_get_args *uap)
 {
     caps_kinfo_t caps;
     caps_kmsg_t msg;
+    int error;
 
     if (uap->maxsize < 0)
 	return(EINVAL);
     if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
 	return(EINVAL);
-    if (caps->ci_type == CAPT_FORKED)
-	return(ENOTCONN);
-    if ((msg = TAILQ_FIRST(&caps->ci_msgpendq)) == NULL) {
-	caps_drop(caps);
-	return(EWOULDBLOCK);
+    if (caps->ci_type == CAPT_FORKED) {
+	error = ENOTCONN;
+    } else if ((msg = TAILQ_FIRST(&caps->ci_msgpendq)) == NULL) {
+	error = EWOULDBLOCK;
+    } else {
+	error = caps_process_msg(caps, msg, uap);
     }
-    return(caps_process_msg(caps, msg, uap));
+    caps_drop(caps);
+    return(error);
 }
 
 /*
@@ -850,15 +851,21 @@ caps_sys_wait(struct caps_sys_wait_args *uap)
 	return(EINVAL);
     if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
 	return(EINVAL);
-    if (caps->ci_type == CAPT_FORKED)
-	return(ENOTCONN);
-    while ((msg = TAILQ_FIRST(&caps->ci_msgpendq)) == NULL) {
-	if ((error = tsleep(caps, PCATCH, "caps", 0)) != 0) {
-	    caps_drop(caps);
-	    return(error);
+    if (caps->ci_type == CAPT_FORKED) {
+	error = ENOTCONN;
+    } else {
+	error = 0;
+	while ((msg = TAILQ_FIRST(&caps->ci_msgpendq)) == NULL) {
+	    if ((error = tsleep(caps, PCATCH, "caps", 0)) != 0)
+		break;
+	}
+	if (error == 0) {
+	    error = caps_process_msg(caps, msg, 
+				(struct caps_sys_get_args *)uap);
 	}
     }
-    return(caps_process_msg(caps, msg, (struct caps_sys_get_args *)uap));
+    caps_drop(caps);
+    return(error);
 }
 
 static int
@@ -869,18 +876,17 @@ caps_process_msg(caps_kinfo_t caps, caps_kmsg_t msg, struct caps_sys_get_args *u
     caps_kinfo_t rcaps;
 
     msg->km_flags |= CAPKMF_PEEKED;
-    msgsize = msg->km_umsg_size;
+    msgsize = msg->km_xio.xio_bytes;
     if (msgsize <= uap->maxsize)
 	caps_dequeue_msg(caps, msg);
 
-    if (msg->km_umsg_size != 0) {
+    if (msg->km_xio.xio_bytes != 0) {
 	struct proc *rp = msg->km_mcaps->ci_td->td_proc;
 	KKASSERT(rp != NULL);
-	error = vmspace_copy(rp->p_vmspace, (vm_offset_t)msg->km_umsg,
-			    curproc->p_vmspace, (vm_offset_t)uap->msg, 
-			    min(msgsize, uap->maxsize), uap->maxsize);
+	error = xio_copy_xtou(&msg->km_xio, uap->msg, 
+			    min(msg->km_xio.xio_bytes, uap->maxsize));
 	if (error) {
-	    printf("vmspace_copy: error %d from proc %d\n", error, rp->p_pid);
+	    printf("xio_copy_xtou: error %d from proc %d\n", error, rp->p_pid);
 	    if (msgsize > uap->maxsize)
 		caps_dequeue_msg(caps, msg);
 	    msgsize = 0;
@@ -922,7 +928,6 @@ caps_process_msg(caps_kinfo_t caps, caps_kmsg_t msg, struct caps_sys_get_args *u
 	    break;
 	}
     }
-    caps_drop(caps);
     return(error);
 }
 

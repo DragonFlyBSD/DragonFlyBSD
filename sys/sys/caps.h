@@ -3,7 +3,7 @@
  *
  *	Implements an architecture independant Capability Service API
  * 
- * $DragonFly: src/sys/sys/caps.h,v 1.6 2004/03/14 11:04:12 hmp Exp $
+ * $DragonFly: src/sys/sys/caps.h,v 1.7 2004/03/31 19:28:25 dillon Exp $
  */
 
 #ifndef _SYS_CAPS_H_
@@ -14,6 +14,9 @@
 #endif
 #ifndef _SYS_MSGPORT_H_
 #include <sys/msgport.h>
+#endif
+#ifndef _SYS_XIO_H_
+#include <sys/xio.h>
 #endif
 
 typedef enum caps_msg_state { 
@@ -112,7 +115,6 @@ typedef struct caps_kinfo {
 	int			ci_id;
 	int			ci_flags;
 	int			ci_refs;
-	int			ci_mrefs;	/* message (vmspace) refs */
 	caps_type_t		ci_type;
 	caps_gen_t		ci_gen;
 	uid_t			ci_uid;
@@ -138,8 +140,7 @@ typedef struct caps_kinfo {
 typedef struct caps_kmsg {
 	TAILQ_ENTRY(caps_kmsg)	km_node;
 	caps_kinfo_t		km_mcaps;	/* message sender */
-	void			*km_umsg;	/* mcaps vmspace */
-	int			km_umsg_size;	/* mcaps vmspace */
+	struct xio		km_xio;		/* mcaps user data */
 	struct caps_cred	km_ccr;		/* caps cred for msg */
 	struct caps_msgid	km_msgid;
 	int			km_flags;
