@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.96 2004/02/27 06:43:14 kan Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.13 2005/01/05 15:14:04 joerg Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.14 2005/03/03 23:52:00 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -105,9 +105,9 @@ struct	ifaliasreq	addreq;
 struct	in6_ifreq	in6_ridreq;
 struct	in6_aliasreq	in6_addreq = 
   { { 0 }, 
-    { 0 }, 
-    { 0 }, 
-    { 0 }, 
+    { 0, 0, 0, 0, { { { 0 } } }, 0 }, 
+    { 0, 0, 0, 0, { { { 0 } } }, 0 }, 
+    { 0, 0, 0, 0, { { { 0 } } }, 0 }, 
     0, 
     { 0, 0, ND6_INFINITE_LIFETIME, ND6_INFINITE_LIFETIME } };
 #endif
@@ -190,102 +190,102 @@ struct	cmd {
 	void	(*c_func)(const char *, int, int, const struct afswtch *afp);
 	void	(*c_func2)(const char *, const char *, int, const struct afswtch *afp);
 } cmds[] = {
-	{ "up",		IFF_UP,		setifflags } ,
-	{ "down",	-IFF_UP,	setifflags },
-	{ "arp",	-IFF_NOARP,	setifflags },
-	{ "-arp",	IFF_NOARP,	setifflags },
-	{ "debug",	IFF_DEBUG,	setifflags },
-	{ "-debug",	-IFF_DEBUG,	setifflags },
-	{ "promisc",	IFF_PPROMISC,	setifflags },
-	{ "-promisc",	-IFF_PPROMISC,	setifflags },
-	{ "add",	IFF_UP,		notealias },
-	{ "alias",	IFF_UP,		notealias },
-	{ "-alias",	-IFF_UP,	notealias },
-	{ "delete",	-IFF_UP,	notealias },
-	{ "remove",	-IFF_UP,	notealias },
+	{ "up",		IFF_UP,		setifflags,	NULL },
+	{ "down",	-IFF_UP,	setifflags,	NULL },
+	{ "arp",	-IFF_NOARP,	setifflags,	NULL },
+	{ "-arp",	IFF_NOARP,	setifflags,	NULL },
+	{ "debug",	IFF_DEBUG,	setifflags,	NULL },
+	{ "-debug",	-IFF_DEBUG,	setifflags,	NULL },
+	{ "promisc",	IFF_PPROMISC,	setifflags,	NULL },
+	{ "-promisc",	-IFF_PPROMISC,	setifflags,	NULL },
+	{ "add",	IFF_UP,		notealias,	NULL },
+	{ "alias",	IFF_UP,		notealias,	NULL },
+	{ "-alias",	-IFF_UP,	notealias,	NULL },
+	{ "delete",	-IFF_UP,	notealias,	NULL },
+	{ "remove",	-IFF_UP,	notealias,	NULL },
 #ifdef notdef
 #define	EN_SWABIPS	0x1000
-	{ "swabips",	EN_SWABIPS,	setifflags },
-	{ "-swabips",	-EN_SWABIPS,	setifflags },
+	{ "swabips",	EN_SWABIPS,	setifflags,	NULL },
+	{ "-swabips",	-EN_SWABIPS,	setifflags,	NULL },
 #endif
-	{ "netmask",	NEXTARG,	setifnetmask },
+	{ "netmask",	NEXTARG,	setifnetmask,	NULL },
 #ifdef INET6
-	{ "prefixlen",	NEXTARG,	setifprefixlen },
-	{ "anycast",	IN6_IFF_ANYCAST, setip6flags },
-	{ "tentative",	IN6_IFF_TENTATIVE, setip6flags },
-	{ "-tentative",	-IN6_IFF_TENTATIVE, setip6flags },
-	{ "deprecated",	IN6_IFF_DEPRECATED, setip6flags },
-	{ "-deprecated", -IN6_IFF_DEPRECATED, setip6flags },
-	{ "autoconf",	IN6_IFF_AUTOCONF, setip6flags },
-	{ "-autoconf",	-IN6_IFF_AUTOCONF, setip6flags },
-	{ "pltime",     NEXTARG,        setip6pltime },
-	{ "vltime",     NEXTARG,        setip6vltime },
-	{ "eui64",	0,		setip6eui64 },
+	{ "prefixlen",	NEXTARG,	setifprefixlen,	NULL },
+	{ "anycast",	IN6_IFF_ANYCAST, setip6flags,	NULL },
+	{ "tentative",	IN6_IFF_TENTATIVE, setip6flags,	NULL },
+	{ "-tentative",	-IN6_IFF_TENTATIVE, setip6flags, NULL },
+	{ "deprecated",	IN6_IFF_DEPRECATED, setip6flags, NULL },
+	{ "-deprecated", -IN6_IFF_DEPRECATED, setip6flags, NULL },
+	{ "autoconf",	IN6_IFF_AUTOCONF, setip6flags,	NULL },
+	{ "-autoconf",	-IN6_IFF_AUTOCONF, setip6flags,	NULL },
+	{ "pltime",     NEXTARG,        setip6pltime,	NULL },
+	{ "vltime",     NEXTARG,        setip6vltime,	NULL },
+	{ "eui64",	0,		setip6eui64,	NULL },
 #endif
-	{ "range",	NEXTARG,	setatrange },
-	{ "phase",	NEXTARG,	setatphase },
-	{ "metric",	NEXTARG,	setifmetric },
-	{ "broadcast",	NEXTARG,	setifbroadaddr },
-	{ "ipdst",	NEXTARG,	setifipdst },
-	{ "tunnel",	NEXTARG2,	NULL,	settunnel },
-	{ "deletetunnel", 0,		deletetunnel },
-	{ "link0",	IFF_LINK0,	setifflags },
-	{ "-link0",	-IFF_LINK0,	setifflags },
-	{ "link1",	IFF_LINK1,	setifflags },
-	{ "-link1",	-IFF_LINK1,	setifflags },
-	{ "link2",	IFF_LINK2,	setifflags },
-	{ "-link2",	-IFF_LINK2,	setifflags },
+	{ "range",	NEXTARG,	setatrange,	NULL },
+	{ "phase",	NEXTARG,	setatphase,	NULL },
+	{ "metric",	NEXTARG,	setifmetric,	NULL },
+	{ "broadcast",	NEXTARG,	setifbroadaddr,	NULL },
+	{ "ipdst",	NEXTARG,	setifipdst,	NULL },
+	{ "tunnel",	NEXTARG2,	NULL,		settunnel },
+	{ "deletetunnel", 0,		deletetunnel,	NULL },
+	{ "link0",	IFF_LINK0,	setifflags,	NULL },
+	{ "-link0",	-IFF_LINK0,	setifflags,	NULL },
+	{ "link1",	IFF_LINK1,	setifflags,	NULL },
+	{ "-link1",	-IFF_LINK1,	setifflags,	NULL },
+	{ "link2",	IFF_LINK2,	setifflags,	NULL },
+	{ "-link2",	-IFF_LINK2,	setifflags,	NULL },
 #ifdef USE_IF_MEDIA
-	{ "media",	NEXTARG,	setmedia },
-	{ "mediaopt",	NEXTARG,	setmediaopt },
-	{ "-mediaopt",	NEXTARG,	unsetmediaopt },
+	{ "media",	NEXTARG,	setmedia,	NULL },
+	{ "mediaopt",	NEXTARG,	setmediaopt,	NULL },
+	{ "-mediaopt",	NEXTARG,	unsetmediaopt,	NULL },
 #endif
 #ifdef USE_VLANS
-	{ "vlan",	NEXTARG,	setvlantag },
-	{ "vlandev",	NEXTARG,	setvlandev },
-	{ "-vlandev",	NEXTARG,	unsetvlandev },
+	{ "vlan",	NEXTARG,	setvlantag,	NULL },
+	{ "vlandev",	NEXTARG,	setvlandev,	NULL },
+	{ "-vlandev",	NEXTARG,	unsetvlandev,	NULL },
 #endif
 #if 0
 	/* XXX `create' special-cased below */
-	{"create",	0,		clone_create },
-	{"plumb",	0,		clone_create },
+	{"create",	0,		clone_create,	NULL },
+	{"plumb",	0,		clone_create,	NULL },
 #endif
-	{"destroy",	0,		clone_destroy },
-	{"unplumb",	0,		clone_destroy },
+	{"destroy",	0,		clone_destroy,	NULL },
+	{"unplumb",	0,		clone_destroy,	NULL },
 #ifdef USE_IEEE80211
-	{ "ssid",	NEXTARG,	set80211ssid },
-	{ "nwid",	NEXTARG,	set80211ssid },
-	{ "stationname", NEXTARG,	set80211stationname },
-	{ "station",	NEXTARG,	set80211stationname },	/* BSD/OS */
-	{ "channel",	NEXTARG,	set80211channel },
-	{ "authmode",	NEXTARG,	set80211authmode },
-	{ "powersavemode", NEXTARG,	set80211powersavemode },
-	{ "powersave",	1,		set80211powersave },
-	{ "-powersave",	0,		set80211powersave },
-	{ "powersavesleep", NEXTARG,	set80211powersavesleep },
-	{ "wepmode",	NEXTARG,	set80211wepmode },
-	{ "wep",	1,		set80211wep },
-	{ "-wep",	0,		set80211wep },
-	{ "weptxkey",	NEXTARG,	set80211weptxkey },
-	{ "wepkey",	NEXTARG,	set80211wepkey },
-	{ "nwkey",	NEXTARG,	set80211nwkey },	/* NetBSD */
-	{ "-nwkey",	0,		set80211wep },		/* NetBSD */
+	{ "ssid",	NEXTARG,	set80211ssid,	NULL },
+	{ "nwid",	NEXTARG,	set80211ssid,	NULL },
+	{ "stationname", NEXTARG,	set80211stationname, NULL },
+	{ "station",	NEXTARG,	set80211stationname, NULL },/* BSD/OS */
+	{ "channel",	NEXTARG,	set80211channel, NULL },
+	{ "authmode",	NEXTARG,	set80211authmode, NULL },
+	{ "powersavemode", NEXTARG,	set80211powersavemode, NULL },
+	{ "powersave",	1,		set80211powersave, NULL },
+	{ "-powersave",	0,		set80211powersave, NULL },
+	{ "powersavesleep", NEXTARG,	set80211powersavesleep, NULL },
+	{ "wepmode",	NEXTARG,	set80211wepmode, NULL },
+	{ "wep",	1,		set80211wep,	NULL },
+	{ "-wep",	0,		set80211wep,	NULL },
+	{ "weptxkey",	NEXTARG,	set80211weptxkey, NULL },
+	{ "wepkey",	NEXTARG,	set80211wepkey,	NULL },
+	{ "nwkey",	NEXTARG,	set80211nwkey,	NULL },	/* NetBSD */
+	{ "-nwkey",	0,		set80211wep,	NULL },	/* NetBSD */
 #endif
-	{ "rxcsum",	IFCAP_RXCSUM,	setifcap },
-	{ "-rxcsum",	-IFCAP_RXCSUM,	setifcap },
-	{ "txcsum",	IFCAP_TXCSUM,	setifcap },
-	{ "-txcsum",	-IFCAP_TXCSUM,	setifcap },
-	{ "netcons",	IFCAP_NETCONS,	setifcap },
-	{ "-netcons",	-IFCAP_NETCONS,	setifcap },
-	{ "polling",	IFCAP_POLLING,	setifcap },
-	{ "-polling",	-IFCAP_POLLING,	setifcap },
-	{ "normal",	-IFF_LINK0,	setifflags },
-	{ "compress",	IFF_LINK0,	setifflags },
-	{ "noicmp",	IFF_LINK1,	setifflags },
-	{ "mtu",	NEXTARG,	setifmtu },
-	{ "name",	NEXTARG,	setifname },
-	{ 0,		0,		setifaddr },
-	{ 0,		0,		setifdstaddr },
+	{ "rxcsum",	IFCAP_RXCSUM,	setifcap,	NULL },
+	{ "-rxcsum",	-IFCAP_RXCSUM,	setifcap,	NULL },
+	{ "txcsum",	IFCAP_TXCSUM,	setifcap,	NULL },
+	{ "-txcsum",	-IFCAP_TXCSUM,	setifcap,	NULL },
+	{ "netcons",	IFCAP_NETCONS,	setifcap,	NULL },
+	{ "-netcons",	-IFCAP_NETCONS,	setifcap,	NULL },
+	{ "polling",	IFCAP_POLLING,	setifcap,	NULL },
+	{ "-polling",	-IFCAP_POLLING,	setifcap,	NULL },
+	{ "normal",	-IFF_LINK0,	setifflags,	NULL },
+	{ "compress",	IFF_LINK0,	setifflags,	NULL },
+	{ "noicmp",	IFF_LINK1,	setifflags,	NULL },
+	{ "mtu",	NEXTARG,	setifmtu,	NULL },
+	{ "name",	NEXTARG,	setifname,	NULL },
+	{ NULL,		0,		setifaddr,	NULL },
+	{ NULL,		0,		setifdstaddr,	NULL },
 };
 
 /*
@@ -362,7 +362,7 @@ struct	afswtch {
 	{ "ieee80211", AF_UNSPEC, ieee80211_status, NULL, NULL, },  /* XXX not real!! */
 #endif
 #endif
-	{ 0,	0,	    0,		0 }
+	{ NULL,	0,	NULL, NULL, NULL,	0, 0,	NULL, NULL }
 };
 
 /*
