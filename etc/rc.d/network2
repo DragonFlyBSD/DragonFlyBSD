@@ -3,12 +3,12 @@
 # Configure routing and miscellaneous network tunables
 #
 # $FreeBSD: src/etc/rc.d/network2,v 1.137 2003/06/29 05:15:57 mtm Exp $
-# $DragonFly: src/etc/rc.d/Attic/network2,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/Attic/network2,v 1.2 2004/01/27 00:42:45 rob Exp $
 #
 
 # PROVIDE: network2
 # REQUIRE: netif ppp-user
-# KEYWORD: DragonFly FreeBSD nostart
+# KEYWORD: DragonFly  nostart
 
 . /etc/rc.subr
 

@@ -1,13 +1,13 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/localdaemons,v 1.2 2003/05/05 15:38:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/localdaemons,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/localdaemons,v 1.2 2004/01/27 00:42:45 rob Exp $
 #
 
 # PROVIDE: localdaemons
 # REQUIRE: abi
 # BEFORE:  securelevel
-# KEYWORD: DragonFly FreeBSD shutdown
+# KEYWORD: DragonFly  shutdown
 
 . /etc/rc.subr
 

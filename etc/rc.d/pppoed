@@ -1,13 +1,13 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/pppoed,v 1.1 2002/06/13 22:14:36 gordon Exp $
-# $DragonFly: src/etc/rc.d/pppoed,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/pppoed,v 1.2 2004/01/27 00:42:45 rob Exp $
 #
 
 # PROVIDE: pppoed
 # REQUIRE: NETWORKING
 # BEFORE: DAEMON
-# KEYWORD: DragonFly FreeBSD
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 

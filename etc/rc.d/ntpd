@@ -2,13 +2,13 @@
 #
 # $NetBSD: ntpd,v 1.6 2002/03/22 04:33:59 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/ntpd,v 1.5 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/Attic/ntpd,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/Attic/ntpd,v 1.2 2004/01/27 00:42:45 rob Exp $
 #
 
 # PROVIDE: ntpd
 # REQUIRE: DAEMON
 # BEFORE:  LOGIN
-# KEYWORD: DragonFly FreeBSD NetBSD
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 
@@ -17,13 +17,6 @@ rcvar=`set_rcvar`
 command="/usr/sbin/${name}"
 pidfile="/var/run/${name}.pid"
 required_files="/etc/ntp.conf"
-
-case ${OSTYPE} in
-NetBSD)
-	start_precmd="ntpd_precmd"
-	;;
-esac
-
 ntpd_precmd()
 {
 	if [ -z "$ntpd_chrootdir" ]; then

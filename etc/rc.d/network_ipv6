@@ -26,12 +26,12 @@
 #
 # $FreeBSD: src/etc/rc.d/network_ipv6,v 1.35 2003/06/29 05:15:57 mtm Exp $
 # 	From: src/etc/rc.network6,v 1.29 2002/04/06 15:15:43
-# $DragonFly: src/etc/rc.d/network_ipv6,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/network_ipv6,v 1.2 2004/01/27 00:42:45 rob Exp $
 #
 
 # PROVIDE: network_ipv6
 # REQUIRE: routing
-# KEYWORD: DragonFly FreeBSD
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 . /etc/network.subr

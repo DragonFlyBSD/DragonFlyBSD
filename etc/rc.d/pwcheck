@@ -2,13 +2,13 @@
 #
 # $NetBSD: pwcheck,v 1.4 2002/03/22 04:33:59 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/pwcheck,v 1.2 2002/06/13 22:14:36 gordon Exp $
-# $DragonFly: src/etc/rc.d/pwcheck,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/pwcheck,v 1.2 2004/01/27 00:42:45 rob Exp $
 #
 
 # PROVIDE: pwcheck
 # REQUIRE: mountcritremote syslogd
 # BEFORE:  DAEMON
-# KEYWORD: DragonFly FreeBSD NetBSD
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 

@@ -2,13 +2,13 @@
 #
 # $NetBSD: named,v 1.10 2002/03/22 04:33:59 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/named,v 1.6 2003/01/12 04:53:54 mtm Exp $
-# $DragonFly: src/etc/rc.d/named,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/named,v 1.2 2004/01/27 00:42:45 rob Exp $
 #
 
 # PROVIDE: named
 # REQUIRE: SERVERS
 # BEFORE:  DAEMON
-# KEYWORD: DragonFly FreeBSD NetBSD
+# KEYWORD: DragonFly 
 
 . /etc/rc.subr
 
@@ -19,20 +19,8 @@ start_precmd="named_precmd"
 required_dirs="$named_chrootdir"	# if it is set, it must exist
 extra_commands="reload"
 
-case ${OSTYPE} in
-DragonFly)
-	nuser=bind
-	ngroup=bind
-	;;
-FreeBSD)
-	nuser=bind
-	ngroup=bind
-	;;
-NetBSD)
-	nuser=named
-	ngroup=named
-	;;
-esac
+nuser=bind
+ngroup=bind
 
 # If running in a chroot cage, ensure that the appropriate files
 # exist inside the cage, as well as helper symlinks into the cage
@@ -83,57 +71,19 @@ make_symlinks()
 
 named_precmd()
 {
-	case ${OSTYPE} in
-	DragonFly)
-		! checkyesno named_rcng && return 0
-		# Is the user using a sandbox?
-		if [ -z "$named_chrootdir" ]; then
-			rc_flags="-u $nuser -g $ngroup $rc_flags"
-			return 0
-		fi
-		# Do the following checks only if the user wants them done
-		checkyesno named_chroot_autoupdate && chroot_autoupdate
-		;;
-	FreeBSD)
-		! checkyesno named_rcng && return 0
-		# Is the user using a sandbox?
-		if [ -z "$named_chrootdir" ]; then
-			rc_flags="-u $nuser -g $ngroup $rc_flags"
-			return 0
-		fi
-
-		# Do the following checks only if the user wants them done
-		checkyesno named_chroot_autoupdate && chroot_autoupdate
-		;;
-	NetBSD)
-		chroot_autoupdate
-		;;
-	esac
-
-	case ${OSTYPE} in
-	DragonFly)	
-		# Make the symlinks only if the user wants them done.
-                checkyesno named_symlink_enable && make_symlinks
-                ;;	
-	FreeBSD)
-		# Make the symlinks only if the user wants them done.
-		checkyesno named_symlink_enable && make_symlinks
-		;;
-	NetBSD)
-		make_symlinks
-		;;
-	esac
+	! checkyesno named_rcng && return 0
+	# Is the user using a sandbox?
+	if [ -z "$named_chrootdir" ]; then
+		rc_flags="-u $nuser -g $ngroup $rc_flags"
+		return 0
+	fi
+	# Do the following checks only if the user wants them done
+	checkyesno named_chroot_autoupdate && chroot_autoupdate
+        checkyesno named_symlink_enable && make_symlinks
 
 	#       Change run_rc_commands()'s internal copy of $named_flags
 	#
-	case ${OSTYPE} in
-	DragonFly)
-		! checkyesno named_rcng && return
-		;;
-	FreeBSD)
-		! checkyesno named_rcng && return
-		;;
-	esac
+	! checkyesno named_rcng && return
 	rc_flags="-u $nuser -g $ngroup -t ${named_chrootdir} $rc_flags"
 }
 

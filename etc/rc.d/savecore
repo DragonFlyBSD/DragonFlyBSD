@@ -2,13 +2,13 @@
 #
 # $NetBSD: savecore,v 1.5 2002/03/22 04:34:00 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/savecore,v 1.3 2002/09/06 16:18:05 gordon Exp $
-# $DragonFly: src/etc/rc.d/savecore,v 1.4 2003/12/14 19:13:15 dillon Exp $
+# $DragonFly: src/etc/rc.d/savecore,v 1.5 2004/01/27 00:42:46 rob Exp $
 #
 
 # PROVIDE: savecore
 # REQUIRE: syslogd
 # BEFORE:  SERVERS
-# KEYWORD: DragonFly FreeBSD NetBSD
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 
@@ -30,65 +30,28 @@ savecore_prestart()
 	#
 	DUMPDIR="${dumpdir:-/var/crash}"
 
-	case ${OSTYPE} in
-	DragonFly)
-		# Quit if we have no dumb device
-		case ${dumpdev} in
-		[Nn][Oo] | '')
-			debug 'No dump device. Quitting.'
-			dumpdev=
-			return 0
-			;;
-		esac
-		# If there is no crash directory set it now
-		case ${dumpdir} in
-		'')
-			dumpdir='/var/crash'
-			;;
-		[Nn][Oo])
-			dumpdir='NO'
-			;;
-		esac
-		if [ ! -e "${dumpdev}" -o ! -d "${dumpdir}" ]; then
-			warn "Wrong dump device or directory. Savecore not run."
-			dumpdev=
-			return 0
-		fi
+	# Quit if we have no dumb device
+	case ${dumpdev} in
+	[Nn][Oo] | '')
+		debug 'No dump device. Quitting.'
+		dumpdev=
+		return 0
+	;;
+	esac
+	# If there is no crash directory set it now
+	case ${dumpdir} in
+	'')
+		dumpdir='/var/crash'
 		;;
-	FreeBSD)
-		# Quit if we have no dump device
-		case ${dumpdev} in
-		[Nn][Oo] | '')
-			debug 'No dump device. Quitting.'
-			dumpdev=
-			return 0
-			;;
-		esac
-
-		# If there is no crash directory set it now
-		case ${dumpdir} in
-		'')
-			dumpdir='/var/crash'
-			;;
-		[Nn][Oo])
-			dumpdir='NO'
-			;;
-		esac
-
-		if [ ! -e "${dumpdev}" -o ! -d "${dumpdir}" ]; then
-			warn "Wrong dump device or directory. Savecore not run."
-			dumpdev=
-			return 0
-		fi
-		;;
-	NetBSD)
-		if [ ! -d "${dumpdir}" ]; then
-			warn "No /var/crash directory; savecore not run."
-			dumpdev=
-			return 0
-		fi
+	[Nn][Oo])
+		dumpdir='NO'
 		;;
 	esac
+	if [ ! -e "${dumpdev}" -o ! -d "${dumpdir}" ]; then
+		warn "Wrong dump device or directory. Savecore not run."
+		dumpdev=
+		return 0
+	fi
 	return 0
 }
 

@@ -1,12 +1,12 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/ppp-user,v 1.4 2003/04/18 17:55:05 mtm Exp $
-# $DragonFly: src/etc/rc.d/ppp-user,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/ppp-user,v 1.2 2004/01/27 00:42:45 rob Exp $
 #
 
 # PROVIDE: ppp-user
 # REQUIRE: netif isdnd
-# KEYWORD: DragonFly FreeBSD
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 

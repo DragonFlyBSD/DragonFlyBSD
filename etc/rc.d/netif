@@ -23,12 +23,12 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/netif,v 1.2 2003/06/29 05:34:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/netif,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/netif,v 1.2 2004/01/27 00:42:45 rob Exp $
 #
 
 # PROVIDE: netif
 # REQUIRE: atm1 ipfilter mountcritlocal pccard serial sppp sysctl tty
-# KEYWORD: DragonFly FreeBSD
+# KEYWORD: DragonFly 
 
 . /etc/rc.subr
 . /etc/network.subr

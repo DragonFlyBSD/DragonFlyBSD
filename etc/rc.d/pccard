@@ -25,12 +25,12 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/pccard,v 1.28 2003/02/12 04:12:23 imp Exp $
-# $DragonFly: src/etc/rc.d/Attic/pccard,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/Attic/pccard,v 1.2 2004/01/27 00:42:45 rob Exp $
 #
 
 # PROVIDE: pccard
 # REQUIRE: mountcritlocal
-# KEYWORD: DragonFly FreeBSD
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 

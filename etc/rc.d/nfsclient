@@ -1,12 +1,12 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/nfsclient,v 1.3 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/nfsclient,v 1.3 2003/11/19 20:11:58 dillon Exp $
+# $DragonFly: src/etc/rc.d/nfsclient,v 1.4 2004/01/27 00:42:45 rob Exp $
 #
 
 # PROVIDE: nfsclient
 # REQUIRE: NETWORKING mountcritremote rpcbind
-# KEYWORD: DragonFly FreeBSD shutdown
+# KEYWORD: DragonFly shutdown
 
 . /etc/rc.subr
 

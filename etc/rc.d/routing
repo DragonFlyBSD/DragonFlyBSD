@@ -3,12 +3,12 @@
 # Configure routing and miscellaneous network tunables
 #
 # $FreeBSD: src/etc/rc.d/routing,v 1.138 2003/06/29 17:59:09 mtm Exp $
-# $DragonFly: src/etc/rc.d/routing,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/routing,v 1.2 2004/01/27 00:42:45 rob Exp $
 #
 
 # PROVIDE: routing
 # REQUIRE: netif ppp-user
-# KEYWORD: DragonFly FreeBSD
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 
