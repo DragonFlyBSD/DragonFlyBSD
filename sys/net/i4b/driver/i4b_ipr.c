@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.3 2003/06/25 03:55:55 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.4 2003/07/21 07:57:46 dillon Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -619,7 +619,6 @@ i4biprioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 			{
 			struct thread *td = curthread;	/* XXX */
 
-#if defined(__FreeBSD_version) && __FreeBSD_version >= 400005
 			if ((error = suser(td)) != 0)
 				return (error);
 		        sl_compress_setup(sc->sc_compr, *(int *)data);

@@ -9,7 +9,7 @@
  *	for damages incurred with its use.
  *
  * $FreeBSD: src/sys/i386/isa/ctx.c,v 1.36 2000/01/29 16:17:31 peter Exp $
- * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.3 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.4 2003/07/21 07:57:44 dillon Exp $
  */
 
 /*
@@ -211,7 +211,7 @@ ctxattach(struct isa_device * devp)
 }
 
 static int
-ctxopen(dev_t dev, int flags, int fmt, struct proc *p)
+ctxopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	struct ctx_soft_registers *sr;
 	u_char  unit;
@@ -266,7 +266,7 @@ ctxopen(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int
-ctxclose(dev_t dev, int flags, int fmt, struct proc *p)
+ctxclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	int     unit;
 
@@ -283,6 +283,7 @@ ctxwrite(dev_t dev, struct uio * uio, int ioflag)
 	int     unit, status = 0;
 	int     page, count, offset;
 	struct ctx_soft_registers *sr;
+	u_long	ef;
 
 	unit = UNIT(minor(dev));
 	sr = &(ctx_sr[unit]);
@@ -309,13 +310,14 @@ ctxwrite(dev_t dev, struct uio * uio, int ioflag)
 	I should disable interrupts here, so I have done so.
 */
 
-		disable_intr();
+		ef = read_eflags();
+		cpu_disable_intr();
 		sr->cp1 |= RAM_ENABLE;
 		outb(sr->iobase + ctx_cp1, sr->cp1);
 		status = uiomove(sr->maddr + offset, count, uio);
 		sr->cp1 &= ~RAM_ENABLE;
 		outb(sr->iobase + ctx_cp1, sr->cp1);
-		enable_intr();
+		write_eflags(ef);
 
 		page = (u_int)uio->uio_offset / PAGESIZE;
 		offset = (u_int)uio->uio_offset % PAGESIZE;
@@ -333,6 +335,7 @@ ctxread(dev_t dev, struct uio * uio, int ioflag)
 	int     unit, status = 0;
 	int     page, count, offset;
 	struct ctx_soft_registers *sr;
+	u_long  ef;
 
 	unit = UNIT(minor(dev));
 	sr = &(ctx_sr[unit]);
@@ -357,13 +360,14 @@ ctxread(dev_t dev, struct uio * uio, int ioflag)
 	is actually being read or written.  All my instincts tell me that
 	I should disable interrupts here, so I have done so.
 */
-		disable_intr();
+		ef = read_eflags();
+		cpu_disable_intr();
 		sr->cp1 |= RAM_ENABLE;
 		outb(sr->iobase + ctx_cp1, sr->cp1);
 		status = uiomove(sr->maddr + offset, count, uio);
 		sr->cp1 &= ~RAM_ENABLE;
 		outb(sr->iobase + ctx_cp1, sr->cp1);
-		enable_intr();
+		write_eflags(ef);
 
 		page = (u_int)uio->uio_offset / PAGESIZE;
 		offset = (u_int)uio->uio_offset % PAGESIZE;
@@ -376,7 +380,7 @@ ctxread(dev_t dev, struct uio * uio, int ioflag)
 }
 
 static int
-ctxioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct proc *p)
+ctxioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 {
 	int     error;
 	int     unit, i;

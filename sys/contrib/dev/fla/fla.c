@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/contrib/dev/fla/fla.c,v 1.16 1999/12/08 04:45:16 ken Exp $ 
- * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.3 2003/07/21 05:50:25 dillon Exp $ 
+ * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.4 2003/07/21 07:57:39 dillon Exp $ 
  *
  */
 
@@ -16,6 +16,7 @@
 #include <sys/systm.h>
 #include <sys/sysctl.h>
 #include <sys/kernel.h>
+#include <sys/proc.h>
 #include <sys/buf.h>
 #include <sys/malloc.h>
 #include <sys/conf.h>
@@ -28,6 +29,7 @@
 #include <vm/vm.h>
 #include <vm/pmap.h>
 #include <vm/vm_param.h>
+#include <sys/buf2.h>
 
 #include <sys/bus.h>
 #include <isa/isavar.h>
@@ -126,7 +128,7 @@ static struct fla_s {
 } softc[NFLA];
 
 static int
-flaopen(dev_t dev, int flag, int fmt, struct proc *p)
+flaopen(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	struct fla_s *sc;
 	int error;
@@ -134,7 +136,7 @@ flaopen(dev_t dev, int flag, int fmt, struct proc *p)
 
 	if (fla_debug)
 		printf("flaopen(%s %x %x %p)\n",
-			devtoname(dev), flag, fmt, p);
+			devtoname(dev), flag, fmt, td);
 
 	sc = dev->si_drv1;
 
@@ -156,14 +158,14 @@ flaopen(dev_t dev, int flag, int fmt, struct proc *p)
 }
 
 static int
-flaclose(dev_t dev, int flags, int fmt, struct proc *p)
+flaclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	int error;
 	struct fla_s *sc;
 
 	if (fla_debug)
 		printf("flaclose(%s %x %x %p)\n",
-			devtoname(dev), flags, fmt, p);
+			devtoname(dev), flags, fmt, td);
 
 	sc = dev->si_drv1;
 
@@ -176,12 +178,12 @@ flaclose(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int
-flaioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct proc *p)
+flaioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 {
 
 	if (fla_debug)
 		printf("flaioctl(%s %lx %p %x %p)\n",
-			devtoname(dev), cmd, addr, flags, p);
+			devtoname(dev), cmd, addr, flags, td);
 
 	return (ENOIOCTL);
 }

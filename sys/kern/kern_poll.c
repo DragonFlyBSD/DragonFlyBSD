@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.3 2003/07/21 07:57:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -260,16 +260,16 @@ ether_poll(int count)
 
 /*
  * idle_poll is replaces the body of the idle loop when DEVICE_POLLING
- * is used.
+ * is used.  YYY not currently implemented.
  */
 int
 idle_poll(void)
 {
 	if (poll_in_idle_loop && poll_handlers > 0) {
 		int s = splimp();
-		enable_intr();
+		cpu_enable_intr();
 		ether_poll(poll_each_burst);
-		disable_intr();
+		cpu_disable_intr();
 		splx(s);
 		vm_page_zero_idle();
 		return 1;

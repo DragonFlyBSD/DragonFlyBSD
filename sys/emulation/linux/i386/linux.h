@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux.h,v 1.41.2.4 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux.h,v 1.3 2003/06/25 03:55:55 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux.h,v 1.4 2003/07/21 07:57:46 dillon Exp $
  */
 
 #ifndef _I386_LINUX_LINUX_H_
@@ -41,8 +41,8 @@
  */
 extern u_char linux_debug_map[];
 #define ldebug(name)	isclr(linux_debug_map, LINUX_SYS_linux_ ## name)
-#define ARGS(nm, fmt)	"linux(%ld): "#nm"("fmt")\n", (long)p->p_pid
-#define LMSG(fmt)	"linux(%ld): "fmt"\n", (long)p->p_pid
+#define ARGS(nm, fmt)	"linux(%ld): "#nm"("fmt")\n", (long)(curthread->td_proc ? curthread->td_proc->p_pid : -1)
+#define LMSG(fmt)	"linux(%ld): "fmt"\n", (long)(curthread->td_proc ? curthread->td_proc->p_pid : -1)
 
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_LINUX);

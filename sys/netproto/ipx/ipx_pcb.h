@@ -34,7 +34,7 @@
  *	@(#)ipx_pcb.h
  *
  * $FreeBSD: src/sys/netipx/ipx_pcb.h,v 1.15 1999/12/29 04:46:08 peter Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_pcb.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_pcb.h,v 1.3 2003/07/21 07:57:50 dillon Exp $
  */
 
 #ifndef _NETIPX_IPX_PCB_H_
@@ -84,11 +84,11 @@ struct ipxpcb {
 extern struct ipxpcb ipxpcb;			/* head of list */
 
 int	ipx_pcballoc __P((struct socket *so, struct ipxpcb *head,
-			  struct proc *p));
+			  struct thread *td));
 int	ipx_pcbbind __P((struct ipxpcb *ipxp, struct sockaddr *nam,
-			 struct proc *p));
+			 struct thread *td));
 int	ipx_pcbconnect __P((struct ipxpcb *ipxp, struct sockaddr *nam,
-			    struct proc *p));
+			    struct thread *td));
 void	ipx_pcbdetach __P((struct ipxpcb *ipxp));
 void	ipx_pcbdisconnect __P((struct ipxpcb *ipxp));
 struct ipxpcb *

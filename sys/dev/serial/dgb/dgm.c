@@ -1,6 +1,6 @@
 /*-
  * $FreeBSD: src/sys/dev/dgb/dgm.c,v 1.31.2.3 2001/10/07 09:02:25 brian Exp $
- * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.5 2003/07/21 05:50:29 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.6 2003/07/21 07:57:40 dillon Exp $
  *
  *  This driver and the associated header files support the ISA PC/Xem
  *  Digiboards.  Its evolutionary roots are described below.
@@ -1595,7 +1595,7 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	if (cmd == TIOCSETAW || cmd == TIOCSETAF)
 		port->mustdrain = 1;
 
-	error = linesw[tp->t_line].l_ioctl(tp, cmd, data, flag, p);
+	error = linesw[tp->t_line].l_ioctl(tp, cmd, data, flag, td);
 	if (error != ENOIOCTL)
 		return error;
 	s = spltty();

@@ -30,7 +30,7 @@
  *	last edit-date: [Sat Aug 11 18:07:15 2001]
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_trace.c,v 1.9.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.4 2003/07/21 05:50:42 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.5 2003/07/21 07:57:46 dillon Exp $
  *
  *	NOTE: the code assumes that SPLI4B >= splimp !
  *
@@ -337,7 +337,7 @@ get_trace_data_from_l1(i4b_trace_hdr_t *hdr, int len, char *buf)
  *	open trace device
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btrcopen(dev_t dev, int flag, int fmt, struct proc *p)
+i4btrcopen(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	int x;
 	int unit = minor(dev);
@@ -364,7 +364,7 @@ i4btrcopen(dev_t dev, int flag, int fmt, struct proc *p)
  *	close trace device
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btrcclose(dev_t dev, int flag, int fmt, struct proc *p)
+i4btrcclose(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	int unit = minor(dev);
 	int i, x;
@@ -465,7 +465,7 @@ i4btrcread(dev_t dev, struct uio * uio, int ioflag)
  *	poll device
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btrcpoll(dev_t dev, int events, struct proc *p)
+i4btrcpoll(dev_t dev, int events, struct thread *td)
 {
 	return(ENODEV);
 }
@@ -476,7 +476,7 @@ i4btrcpoll(dev_t dev, int events, struct proc *p)
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
 #if defined (__FreeBSD_version) && __FreeBSD_version >= 300003
-i4btrcioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
+i4btrcioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 #elif defined(__bsdi__)
 i4btrcioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
 #else

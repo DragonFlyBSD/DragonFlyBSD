@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.4 2003/07/21 05:50:46 dillon Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.5 2003/07/21 07:57:52 dillon Exp $
  */
 
 /*		Change History:
@@ -1159,7 +1159,7 @@ struct	saa7116_regs	*m;
 
 
 int
-meteor_open(dev_t dev, int flags, int fmt, struct proc *p)
+meteor_open(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	meteor_reg_t *mtr;
 	int	unit; 
@@ -1203,7 +1203,7 @@ meteor_open(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 int
-meteor_close(dev_t dev, int flags, int fmt, struct proc *p)
+meteor_close(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	meteor_reg_t *mtr;
 	int	unit; 
@@ -1326,7 +1326,7 @@ meteor_write(dev_t dev, struct uio *uio, int ioflag)
 }
 
 int
-meteor_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct proc *pr)
+meteor_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 {
 	int	error;  
 	int	unit;   
@@ -1390,7 +1390,7 @@ meteor_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct proc *pr)
 	case METEORSSIGNAL:
 		mtr->signal = *(int *) arg;
 		if (mtr->signal) {
-		  mtr->proc = pr;
+		  mtr->proc = td->td_proc;	/* might be NULL */
 		} else {
 		  mtr->proc = (struct proc *)0;
 		}

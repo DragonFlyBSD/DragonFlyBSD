@@ -43,7 +43,7 @@
  * Version 1.7, December 1995.
  *
  * $FreeBSD: src/sys/i386/isa/spigot.c,v 1.44 2000/01/29 16:17:36 peter Exp $
- * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.5 2003/07/21 07:57:45 dillon Exp $
  *
  */
 
@@ -155,7 +155,7 @@ spigot_attach(struct isa_device *devp)
 }
 
 static	int
-spigot_open(dev_t dev, int flags, int fmt, struct proc *p)
+spigot_open(dev_t dev, int flags, int fmt, struct thread *td)
 {
 int			error;
 struct	spigot_softc	*ss = (struct spigot_softc *)&spigot_softc[UNIT(dev)];
@@ -188,7 +188,7 @@ struct	spigot_softc	*ss = (struct spigot_softc *)&spigot_softc[UNIT(dev)];
 }
 
 static	int
-spigot_close(dev_t dev, int flags, int fmt, struct proc *p)
+spigot_close(dev_t dev, int flags, int fmt, struct thread *td)
 {
 struct	spigot_softc	*ss = (struct spigot_softc *)&spigot_softc[UNIT(dev)];
 
@@ -215,7 +215,7 @@ spigot_read(dev_t dev, struct uio *uio, int ioflag)
 
 
 static	int
-spigot_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
+spigot_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
 int			error;
 struct	spigot_softc	*ss = (struct spigot_softc *)&spigot_softc[UNIT(dev)];
@@ -224,7 +224,7 @@ struct	spigot_info	*info;
 	if(!data) return(EINVAL);
 	switch(cmd){
 	case	SPIGOT_SETINT:
-		ss->p = p;
+		ss->p = td->td_proc;
 		ss->signal_num = *((int *)data);
 		break;
 	case	SPIGOT_IOPL_ON:	/* allow access to the IO PAGE */
@@ -235,10 +235,10 @@ struct	spigot_info	*info;
 		if (securelevel > 0)
 			return EPERM;
 #endif
-		p->p_md.md_regs->tf_eflags |= PSL_IOPL;
+		td->td_proc->p_md.md_regs->tf_eflags |= PSL_IOPL;
 		break;
 	case	SPIGOT_IOPL_OFF: /* deny access to the IO PAGE */
-		p->p_md.md_regs->tf_eflags &= ~PSL_IOPL;
+		td->td_proc->p_md.md_regs->tf_eflags &= ~PSL_IOPL;
 		break;
 	case	SPIGOT_GET_INFO:
 		info = (struct spigot_info *)data;

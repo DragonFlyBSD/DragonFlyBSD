@@ -35,7 +35,7 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
- * $DragonFly: src/sys/i386/isa/Attic/asc.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/asc.c,v 1.5 2003/07/21 07:57:44 dillon Exp $
  */
 
 #include "asc.h"
@@ -544,7 +544,7 @@ ascintr(int unit)
  ***/
 
 STATIC int
-ascopen(dev_t dev, int flags, int fmt, struct proc *p)
+ascopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
   struct asc_unit *scu;
   int unit;
@@ -639,7 +639,7 @@ asc_startread(struct asc_unit *scu)
  ***/
 
 STATIC int
-ascclose(dev_t dev, int flags, int fmt, struct proc *p)
+ascclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
   int unit = UNIT(minor(dev));
   struct asc_unit *scu = unittab + unit;
@@ -786,7 +786,7 @@ ascread(dev_t dev, struct uio *uio, int ioflag)
  ***/
 
 STATIC int
-ascioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct proc *p)
+ascioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 {
   int unit = UNIT(minor(dev));
   struct asc_unit *scu = unittab + unit;
@@ -851,13 +851,17 @@ ascioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct proc *p)
 }
 
 STATIC int
-ascpoll(dev_t dev, int events, struct proc *p)
+ascpoll(dev_t dev, int events, struct thread *td)
 {
     int unit = UNIT(minor(dev));
     struct asc_unit *scu = unittab + unit;
     int sps;
+    struct proc *p;
     struct proc *p1;
     int revents = 0;
+
+    p = td->td_proc;
+    KKASSERT(p);
 
     sps=spltty();
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.4 2003/07/21 05:50:24 dillon Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.5 2003/07/21 07:57:36 dillon Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -426,7 +426,7 @@ sesregister(struct cam_periph *periph, void *arg)
 }
 
 static int
-sesopen(dev_t dev, int flags, int fmt, struct proc *p)
+sesopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	struct cam_periph *periph;
 	struct ses_softc *softc;
@@ -482,7 +482,7 @@ out:
 }
 
 static int
-sesclose(dev_t dev, int flag, int fmt, struct proc *p)
+sesclose(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	struct cam_periph *periph;
 	struct ses_softc *softc;
@@ -539,7 +539,7 @@ seserror(union ccb *ccb, u_int32_t cflags, u_int32_t sflags)
 }
 
 static int
-sesioctl(dev_t dev, u_long cmd, caddr_t arg_addr, int flag, struct proc *p)
+sesioctl(dev_t dev, u_long cmd, caddr_t arg_addr, int flag, struct thread *td)
 {
 	struct cam_periph *periph;
 	ses_encstat tmp;

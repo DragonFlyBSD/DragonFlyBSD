@@ -1,6 +1,6 @@
 /*-
  *  dgb.c $FreeBSD: src/sys/gnu/i386/isa/dgb.c,v 1.56.2.1 2001/02/26 04:23:09 jlemon Exp $
- *  dgb.c $DragonFly: src/sys/platform/pc32/gnu/isa/dgb.c,v 1.5 2003/07/21 05:50:39 dillon Exp $
+ *  dgb.c $DragonFly: src/sys/platform/pc32/gnu/isa/dgb.c,v 1.6 2003/07/21 07:57:43 dillon Exp $
  *
  *  Digiboard driver.
  *
@@ -229,25 +229,25 @@ static struct cdevsw dgb_cdevsw = {
 static	speed_t	dgbdefaultrate = TTYDEF_SPEED;
 
 static	struct speedtab dgbspeedtab[] = {
-	0,	FEP_B0, /* old (sysV-like) Bx codes */
-	50,	FEP_B50,
-	75,	FEP_B75,
-	110,	FEP_B110,
-	134,	FEP_B134,
-	150,	FEP_B150,
-	200,	FEP_B200,
-	300,	FEP_B300,
-	600,	FEP_B600,
-	1200,	FEP_B1200,
-	1800,	FEP_B1800,
-	2400,	FEP_B2400,
-	4800,	FEP_B4800,
-	9600,	FEP_B9600,
-	19200,	FEP_B19200,
-	38400,	FEP_B38400,
-	57600,	(FEP_FASTBAUD|FEP_B50),	/* B50 & fast baud table */
-	115200, (FEP_FASTBAUD|FEP_B110), /* B100 & fast baud table */
-	-1,	-1
+	{ 0,		FEP_B0 }, /* old (sysV-like) Bx codes */
+	{ 50,		FEP_B50 },
+	{ 75,		FEP_B75 },
+	{ 110,		FEP_B110 },
+	{ 134,		FEP_B134 },
+	{ 150,		FEP_B150 },
+	{ 200,		FEP_B200 },
+	{ 300,		FEP_B300 },
+	{ 600,		FEP_B600 },
+	{ 1200,		FEP_B1200 },
+	{ 1800,		FEP_B1800 },
+	{ 2400,		FEP_B2400 },
+	{ 4800,		FEP_B4800 },
+	{ 9600,		FEP_B9600 },
+	{ 19200,	FEP_B19200 },
+	{ 38400,	FEP_B38400 },
+	{ 57600,	(FEP_FASTBAUD|FEP_B50) }, /* B50 & fast baud table */
+	{ 115200, (FEP_FASTBAUD|FEP_B110) }, /* B100 & fast baud table */
+	{ -1,	-1 }
 };
 
 static struct dbgflagtbl
@@ -1575,7 +1575,7 @@ dgbioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 	if(cmd==TIOCSETAW || cmd==TIOCSETAF)
 		port->mustdrain=1;
 
-	error = linesw[tp->t_line].l_ioctl(tp, cmd, data, flag, p);
+	error = linesw[tp->t_line].l_ioctl(tp, cmd, data, flag, td);
 	if (error != ENOIOCTL)
 		return error;
 	s = spltty();

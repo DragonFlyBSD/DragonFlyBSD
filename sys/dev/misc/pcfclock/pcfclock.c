@@ -22,7 +22,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/pcfclock.c,v 1.3.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.3 2003/07/21 05:50:33 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.4 2003/07/21 07:57:41 dillon Exp $
  *
  */
 
@@ -159,7 +159,7 @@ pcfclock_attach(device_t dev)
 }
 
 static int 
-pcfclock_open(dev_t dev, int flag, int fms, struct proc *p)
+pcfclock_open(dev_t dev, int flag, int fms, struct thread *td)
 {
 	u_int unit = minor(dev);
 	struct pcfclock_data *sc = UNITOSOFTC(unit);
@@ -180,7 +180,7 @@ pcfclock_open(dev_t dev, int flag, int fms, struct proc *p)
 }
 
 static int
-pcfclock_close(dev_t dev, int flags, int fmt, struct proc *p)
+pcfclock_close(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	u_int unit = minor(dev);
 	struct pcfclock_data *sc = UNITOSOFTC(unit);

@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_linux_balloc.c,v 1.11.2.3 2001/08/14 18:03:19 gallatin Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_balloc.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_balloc.c,v 1.3 2003/07/21 07:57:43 dillon Exp $
  */
 /*
  *  linux/fs/ext2/balloc.c
@@ -35,6 +35,7 @@
 #include <sys/proc.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
+#include <sys/buf2.h>
 
 #include <ufs/ufs/quota.h>
 #include <ufs/ufs/ufsmount.h>
@@ -68,7 +69,7 @@ static void read_block_bitmap (struct mount * mp,
 	
 	gdp = get_group_desc (mp, block_group, NULL);
 	if ((error = bread (VFSTOUFS(mp)->um_devvp, 
-		fsbtodb(sb, gdp->bg_block_bitmap),sb->s_blocksize, NOCRED, &bh)) != 0)
+		fsbtodb(sb, gdp->bg_block_bitmap),sb->s_blocksize, &bh)) != 0)
 		panic ( "read_block_bitmap: "
 			    "Cannot read block bitmap - "
 			    "block_group = %d, block_bitmap = %lu",

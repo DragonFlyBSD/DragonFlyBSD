@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.4 2003/07/19 21:14:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.5 2003/07/21 07:57:43 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -66,6 +66,7 @@
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
 #include <vm/vnode_pager.h>
+#include <sys/buf2.h>
 
 #include <sys/signalvar.h>
 #include <ufs/ufs/dir.h>
@@ -339,7 +340,7 @@ ext2_link(ap)
 	struct vnode *vp = ap->a_vp;
 	struct vnode *tdvp = ap->a_tdvp;
 	struct componentname *cnp = ap->a_cnp;
-	struct proc *p = cnp->cn_proc;
+	struct thread *td = cnp->cn_td;
 	struct inode *ip;
 	int error;
 
@@ -351,7 +352,7 @@ ext2_link(ap)
 		error = EXDEV;
 		goto out2;
 	}
-	if (tdvp != vp && (error = vn_lock(vp, LK_EXCLUSIVE, p))) {
+	if (tdvp != vp && (error = vn_lock(vp, LK_EXCLUSIVE, td))) {
 		goto out2;
 	}
 	ip = VTOI(vp);
@@ -374,7 +375,7 @@ ext2_link(ap)
 	}
 out1:
 	if (tdvp != vp)
-		VOP_UNLOCK(vp, 0, p);
+		VOP_UNLOCK(vp, 0, td);
 out2:
 	return (error);
 }
@@ -400,7 +401,7 @@ ext2_rename(ap)
 	struct vnode *fdvp = ap->a_fdvp;
 	struct componentname *tcnp = ap->a_tcnp;
 	struct componentname *fcnp = ap->a_fcnp;
-	struct proc *p = fcnp->cn_proc;
+	struct thread *td = fcnp->cn_td;
 	struct inode *ip, *xp, *dp;
 	struct dirtemplate dirbuf;
 	int doingdirectory = 0, oldparent = 0, newparent = 0;
@@ -446,18 +447,18 @@ abortit:
 		goto abortit;
 	}
 
-	if ((error = vn_lock(fvp, LK_EXCLUSIVE, p)) != 0)
+	if ((error = vn_lock(fvp, LK_EXCLUSIVE, td)) != 0)
 		goto abortit;
 	dp = VTOI(fdvp);
 	ip = VTOI(fvp);
  	if (ip->i_nlink >= LINK_MAX) {
- 		VOP_UNLOCK(fvp, 0, p);
+ 		VOP_UNLOCK(fvp, 0, td);
  		error = EMLINK;
  		goto abortit;
  	}
 	if ((ip->i_flags & (NOUNLINK | IMMUTABLE | APPEND))
 	    || (dp->i_flags & APPEND)) {
-		VOP_UNLOCK(fvp, 0, p);
+		VOP_UNLOCK(fvp, 0, td);
 		error = EPERM;
 		goto abortit;
 	}
@@ -468,7 +469,7 @@ abortit:
 		if ((fcnp->cn_namelen == 1 && fcnp->cn_nameptr[0] == '.') ||
 		    dp == ip || (fcnp->cn_flags | tcnp->cn_flags) & ISDOTDOT ||
 		    (ip->i_flag & IN_RENAME)) {
-			VOP_UNLOCK(fvp, 0, p);
+			VOP_UNLOCK(fvp, 0, td);
 			error = EINVAL;
 			goto abortit;
 		}
@@ -496,7 +497,7 @@ abortit:
 	ip->i_nlink++;
 	ip->i_flag |= IN_CHANGE;
 	if ((error = UFS_UPDATE(fvp, 1)) != 0) {
-		VOP_UNLOCK(fvp, 0, p);
+		VOP_UNLOCK(fvp, 0, td);
 		goto bad;
 	}
 
@@ -510,8 +511,8 @@ abortit:
 	 * to namei, as the parent directory is unlocked by the
 	 * call to checkpath().
 	 */
-	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred, tcnp->cn_proc);
-	VOP_UNLOCK(fvp, 0, p);
+	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred, tcnp->cn_td);
+	VOP_UNLOCK(fvp, 0, td);
 	if (oldparent != dp->i_number)
 		newparent = dp->i_number;
 	if (doingdirectory && newparent) {
@@ -637,7 +638,7 @@ abortit:
 			if (--xp->i_nlink != 0)
 				panic("ufs_rename: linked directory");
 			error = UFS_TRUNCATE(tvp, (off_t)0, IO_SYNC,
-			    tcnp->cn_cred, tcnp->cn_proc);
+			    tcnp->cn_cred, tcnp->cn_td);
 		}
 		xp->i_flag |= IN_CHANGE;
 		vput(tvp);
@@ -691,7 +692,7 @@ abortit:
 			error = vn_rdwr(UIO_READ, fvp, (caddr_t)&dirbuf,
 				sizeof (struct dirtemplate), (off_t)0,
 				UIO_SYSSPACE, IO_NODELOCKED,
-				tcnp->cn_cred, (int *)0, (struct proc *)0);
+				tcnp->cn_cred, (int *)0, NULL);
 			if (error == 0) {
 				/* Like ufs little-endian: */
 				namlen = dirbuf.dotdot_type;
@@ -708,7 +709,7 @@ abortit:
 					    (off_t)0, UIO_SYSSPACE,
 					    IO_NODELOCKED|IO_SYNC,
 					    tcnp->cn_cred, (int *)0,
-					    (struct proc *)0);
+					    NULL);
 					cache_purge(fdvp);
 				}
 			}
@@ -734,7 +735,7 @@ bad:
 out:
 	if (doingdirectory)
 		ip->i_flag &= ~IN_RENAME;
-	if (vn_lock(fvp, LK_EXCLUSIVE, p) == 0) {
+	if (vn_lock(fvp, LK_EXCLUSIVE, td) == 0) {
 		ip->i_nlink--;
 		ip->i_flag |= IN_CHANGE;
 		ip->i_flag &= ~IN_RENAME;
@@ -879,7 +880,7 @@ ext2_mkdir(ap)
 	dirtemplate.dotdot_reclen = DIRBLKSIZ - 12;
 	error = vn_rdwr(UIO_WRITE, tvp, (caddr_t)&dirtemplate,
 	    sizeof (dirtemplate), (off_t)0, UIO_SYSSPACE,
-	    IO_NODELOCKED|IO_SYNC, cnp->cn_cred, (int *)0, (struct proc *)0);
+	    IO_NODELOCKED|IO_SYNC, cnp->cn_cred, (int *)0, NULL);
 	if (error) {
 		dp->i_nlink--;
 		dp->i_flag |= IN_CHANGE;
@@ -929,7 +930,7 @@ ext2_rmdir(ap)
 	struct vnode *vp = ap->a_vp;
 	struct vnode *dvp = ap->a_dvp;
 	struct componentname *cnp = ap->a_cnp;
-	struct proc *p = cnp->cn_proc;
+	struct thread *td = cnp->cn_td;
 	struct inode *ip, *dp;
 	int error;
 
@@ -964,7 +965,7 @@ ext2_rmdir(ap)
 	dp->i_nlink--;
 	dp->i_flag |= IN_CHANGE;
 	cache_purge(dvp);
-	VOP_UNLOCK(dvp, 0, p);
+	VOP_UNLOCK(dvp, 0, td);
 	/*
 	 * Truncate inode.  The only stuff left
 	 * in the directory is "." and "..".  The
@@ -977,9 +978,9 @@ ext2_rmdir(ap)
 	 * worry about them later.
 	 */
 	ip->i_nlink -= 2;
-	error = UFS_TRUNCATE(vp, (off_t)0, IO_SYNC, cnp->cn_cred, p);
+	error = UFS_TRUNCATE(vp, (off_t)0, IO_SYNC, cnp->cn_cred, td);
 	cache_purge(ITOV(ip));
-	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, p);
+	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
 out:
 	return (error);
 }
@@ -1015,7 +1016,7 @@ ext2_symlink(ap)
 	} else
 		error = vn_rdwr(UIO_WRITE, vp, ap->a_target, len, (off_t)0,
 		    UIO_SYSSPACE, IO_NODELOCKED, ap->a_cnp->cn_cred, (int *)0,
-		    (struct proc *)0);
+		    NULL);
 	if (error)
 		vput(vp);
 	return (error);

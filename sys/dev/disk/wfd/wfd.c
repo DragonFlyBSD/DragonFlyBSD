@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/wfd.c,v 1.35 2000/01/29 16:00:33 peter Exp $
- * $DragonFly: src/sys/dev/disk/wfd/Attic/wfd.c,v 1.5 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wfd/Attic/wfd.c,v 1.6 2003/07/21 07:57:45 dillon Exp $
  */
 
 /*
@@ -35,6 +35,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/bootmaj.h>
 #include <sys/kernel.h>
 #include <sys/conf.h>
 #include <sys/proc.h>
@@ -321,7 +322,7 @@ void wfd_describe (struct wfd *t)
 	}
 }
 
-int wfdopen (dev_t dev, int flags, int fmt, struct proc *p)
+int wfdopen (dev_t dev, int flags, int fmt, struct thread *td)
 {
 	int lun = UNIT(dev);
 	struct wfd *t;
@@ -376,7 +377,7 @@ int wfdopen (dev_t dev, int flags, int fmt, struct proc *p)
  * Close the device.  Only called if we are the LAST
  * occurence of an open device.
  */
-int wfdclose (dev_t dev, int flags, int fmt, struct proc *p)
+int wfdclose (dev_t dev, int flags, int fmt, struct thread *td)
 {
 	int lun = UNIT(dev);
 	struct wfd *t = wfdtab[lun];
@@ -605,7 +606,7 @@ static int wfd_request_wait (struct wfd *t, u_char cmd, u_char a1, u_char a2,
  * Perform special action on behalf of the user.
  * Knows about the internals of this device
  */
-int wfdioctl (dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
+int wfdioctl (dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 {
 	int lun = UNIT(dev);
 	struct wfd *t = wfdtab[lun];
@@ -724,4 +725,4 @@ static void 	wfd_drvinit(void *unused)
 	cdevsw_add(&wfd_cdevsw);
 }
 
-SYSINIT(wfddev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,wfd_drvinit,NULL)
+SYSINIT(wfddev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+WFD_CDEV_MAJOR,wfd_drvinit,NULL)

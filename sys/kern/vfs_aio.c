@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.7 2003/07/19 21:14:39 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.8 2003/07/21 07:57:47 dillon Exp $
  */
 
 /*
@@ -47,6 +47,8 @@
 #include <vm/vm_map.h>
 #include <vm/vm_zone.h>
 #include <sys/aio.h>
+#include <sys/file2.h>
+#include <sys/buf2.h>
 
 #include <machine/limits.h>
 #include "opt_vfs_aio.h"
@@ -345,7 +347,7 @@ aio_free_entry(struct aiocblist *aiocbe)
 	}
 
 	/* aiocbe is going away, we need to destroy any knotes */
-	knote_remove(p, &aiocbe->klist);
+	knote_remove(p->p_thread, &aiocbe->klist);
 
 	if ((ki->kaio_flags & KAIO_WAKEUP) || ((ki->kaio_flags & KAIO_RUNDOWN)
 	    && ((ki->kaio_buffer_count == 0) && (ki->kaio_queue_count == 0)))) {
@@ -384,7 +386,7 @@ aio_free_entry(struct aiocblist *aiocbe)
 	}
 	aiocbe->jobstate = JOBST_NULL;
 	untimeout(process_signal, aiocbe, aiocbe->timeouthandle);
-	fdrop(aiocbe->fd_file, curproc);
+	fdrop(aiocbe->fd_file, curthread);
 	TAILQ_INSERT_HEAD(&aio_freejobs, aiocbe, list);
 	return 0;
 }
@@ -551,7 +553,7 @@ aio_selectjob(struct aioproclist *aiop)
 static void
 aio_process(struct aiocblist *aiocbe)
 {
-	struct proc *mycp;
+	struct thread *mytd;
 	struct aiocb *cb;
 	struct file *fp;
 	struct uio auio;
@@ -561,7 +563,7 @@ aio_process(struct aiocblist *aiocbe)
 	int oublock_st, oublock_end;
 	int inblock_st, inblock_end;
 
-	mycp = curproc;
+	mytd = curthread;
 	cb = &aiocbe->uaiocb;
 	fp = aiocbe->fd_file;
 
@@ -574,23 +576,23 @@ aio_process(struct aiocblist *aiocbe)
 	auio.uio_resid = cb->aio_nbytes;
 	cnt = cb->aio_nbytes;
 	auio.uio_segflg = UIO_USERSPACE;
-	auio.uio_procp = mycp;
+	auio.uio_td = mytd;
 
-	inblock_st = mycp->p_stats->p_ru.ru_inblock;
-	oublock_st = mycp->p_stats->p_ru.ru_oublock;
+	inblock_st = mytd->td_proc->p_stats->p_ru.ru_inblock;
+	oublock_st = mytd->td_proc->p_stats->p_ru.ru_oublock;
 	/*
 	 * _aio_aqueue() acquires a reference to the file that is
 	 * released in aio_free_entry().
 	 */
 	if (cb->aio_lio_opcode == LIO_READ) {
 		auio.uio_rw = UIO_READ;
-		error = fo_read(fp, &auio, fp->f_cred, FOF_OFFSET, mycp);
+		error = fo_read(fp, &auio, fp->f_cred, FOF_OFFSET, mytd);
 	} else {
 		auio.uio_rw = UIO_WRITE;
-		error = fo_write(fp, &auio, fp->f_cred, FOF_OFFSET, mycp);
+		error = fo_write(fp, &auio, fp->f_cred, FOF_OFFSET, mytd);
 	}
-	inblock_end = mycp->p_stats->p_ru.ru_inblock;
-	oublock_end = mycp->p_stats->p_ru.ru_oublock;
+	inblock_end = mytd->td_proc->p_stats->p_ru.ru_inblock;
+	oublock_end = mytd->td_proc->p_stats->p_ru.ru_oublock;
 
 	aiocbe->inputcharge = inblock_end - inblock_st;
 	aiocbe->outputcharge = oublock_end - oublock_st;
@@ -861,7 +863,7 @@ aio_daemon(void *uproc)
 						    mycp->p_vmspace->vm_refcnt);
 					}
 #endif
-					exit1(mycp, 0);
+					exit1(0);
 				}
 			}
 			splx(s);
@@ -1135,7 +1137,7 @@ aio_swake(struct socket *so, struct sockbuf *sb)
 static int
 _aio_aqueue(struct aiocb *job, struct aio_liojob *lj, int type)
 {
-	struct proc *p = curprpoc;
+	struct proc *p = curproc;
 	struct filedesc *fdp;
 	struct file *fp;
 	unsigned int fd;
@@ -1225,7 +1227,7 @@ _aio_aqueue(struct aiocb *job, struct aio_liojob *lj, int type)
 		jobrefid++;
 	
 	if (opcode == LIO_NOP) {
-		fdrop(fp, p);
+		fdrop(fp, p->p_thread);
 		TAILQ_INSERT_HEAD(&aio_freejobs, aiocbe, list);
 		if (type == 0) {
 			suword(&job->_aiocb_private.error, 0);
@@ -1272,10 +1274,10 @@ _aio_aqueue(struct aiocb *job, struct aio_liojob *lj, int type)
 	kev.filter = EVFILT_AIO;
 	kev.flags = EV_ADD | EV_ENABLE | EV_FLAG1;
 	kev.data = (intptr_t)aiocbe;
-	error = kqueue_register(kq, &kev, p);
+	error = kqueue_register(kq, &kev, p->p_thread);
 aqueue_fail:
 	if (error) {
-		fdrop(fp, p);
+		fdrop(fp, p->p_thread);
 		TAILQ_INSERT_HEAD(&aio_freejobs, aiocbe, list);
 		if (type == 0)
 			suword(&job->_aiocb_private.error, error);
@@ -1380,7 +1382,7 @@ done:
 static int
 aio_aqueue(struct aiocb *job, int type)
 {
-	struct proc *p = curprpoc;
+	struct proc *p = curproc;
 	struct kaioinfo *ki;
 
 	if (p->p_aioinfo == NULL)

@@ -42,7 +42,7 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.4 2003/07/21 05:50:40 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.5 2003/07/21 07:57:44 dillon Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
@@ -229,7 +229,7 @@ scd_attach(struct isa_device *dev)
 }
 
 static	int
-scdopen(dev_t dev, int flags, int fmt, struct proc *p)
+scdopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	int unit,part,phys;
 	int rc;
@@ -283,7 +283,7 @@ scdopen(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static	int
-scdclose(dev_t dev, int flags, int fmt, struct proc *p)
+scdclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	int unit,part,phys;
 	struct scd_data *cd;
@@ -415,7 +415,7 @@ scd_start(int unit)
 }
 
 static	int
-scdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct proc *p)
+scdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 {
 	struct scd_data *cd;
 	int unit,part;
@@ -920,7 +920,7 @@ writeparam:
 
 		reg = port + OREG_WPARAMS;
 		/* send the read command */
-		disable_intr();
+		cpu_disable_intr();
 		outb(reg, sdata[0]);
 		outb(reg, sdata[1]);
 		outb(reg, sdata[2]);
@@ -928,7 +928,7 @@ writeparam:
 		outb(reg, 0);
 		outb(reg, 1);
 		outb(port+OREG_COMMAND, CMD_READ);
-		enable_intr();
+		cpu_enable_intr();
 
 		mbx->count = RDELAY_WAITREAD;
 		for (i = 0; i < 50; i++) {

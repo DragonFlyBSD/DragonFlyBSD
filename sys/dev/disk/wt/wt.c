@@ -21,7 +21,7 @@
  *
  * Version 1.3, Thu Nov 11 12:09:13 MSK 1993
  * $FreeBSD: src/sys/i386/isa/wt.c,v 1.57.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.5 2003/07/21 07:57:45 dillon Exp $
  *
  */
 
@@ -278,7 +278,7 @@ struct isa_driver wtdriver = { wtprobe, wtattach, "wt", };
  * Open routine, called on every device open.
  */
 static int
-wtopen (dev_t dev, int flag, int fmt, struct proc *p)
+wtopen (dev_t dev, int flag, int fmt, struct thread *td)
 {
 	int u = minor (dev) & T_UNIT;
 	wtinfo_t *t = wttab + u;
@@ -360,7 +360,7 @@ wtopen (dev_t dev, int flag, int fmt, struct proc *p)
  * Close routine, called on last device close.
  */
 static int
-wtclose (dev_t dev, int flags, int fmt, struct proc *p)
+wtclose (dev_t dev, int flags, int fmt, struct thread *td)
 {
 	int u = minor (dev) & T_UNIT;
 	wtinfo_t *t = wttab + u;
@@ -409,7 +409,7 @@ done:
  * ioctl (int fd, MTIOCTOP, struct mtop *buf)   -- do BSD-like op
  */
 static int
-wtioctl (dev_t dev, u_long cmd, caddr_t arg, int flags, struct proc *p)
+wtioctl (dev_t dev, u_long cmd, caddr_t arg, int flags, struct thread *td)
 {
 	int u = minor (dev) & T_UNIT;
 	wtinfo_t *t = wttab + u;

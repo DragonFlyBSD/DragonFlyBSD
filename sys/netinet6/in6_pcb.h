@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.h,v 1.2.2.3 2001/08/13 16:26:17 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.h,v 1.3 2003/06/25 05:22:32 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.h,v 1.4 2003/07/21 07:57:50 dillon Exp $	*/
 /*	$KAME: in6_pcb.h,v 1.13 2001/02/06 09:16:53 itojun Exp $	*/
 
 /*
@@ -74,6 +74,12 @@
 #define	satosin6(sa)	((struct sockaddr_in6 *)(sa))
 #define	sin6tosa(sin6)	((struct sockaddr *)(sin6))
 #define	ifatoia6(ifa)	((struct in6_ifaddr *)(ifa))
+
+struct in6pcb;
+struct inpcbinfo;
+struct inpcbhead;
+struct ip6_moptions;
+struct ip6_pktopts;
 
 void	in6_pcbpurgeif0 __P((struct in6pcb *, struct ifnet *));
 void	in6_losing __P((struct inpcb *));

@@ -48,7 +48,7 @@
  * also provided sample code upon which this driver was based.
  *
  * $FreeBSD: src/sys/i386/isa/spic.c,v 1.4.2.1 2002/04/15 00:52:12 will Exp $
- * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.5 2003/07/21 07:57:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -450,7 +450,7 @@ spictimeout(void *arg)
 }
 
 static int
-spicopen(dev_t dev, int flag, int fmt, struct proc *p)
+spicopen(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	struct spic_softc *sc;
 
@@ -468,7 +468,7 @@ spicopen(dev_t dev, int flag, int fmt, struct proc *p)
 }
 
 static int
-spicclose(dev_t dev, int flag, int fmt, struct proc *p)
+spicclose(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	struct spic_softc *sc;
 
@@ -515,7 +515,7 @@ spicread(dev_t dev, struct uio *uio, int flag)
 }
 
 static int
-spicioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
+spicioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 {
 	struct spic_softc *sc;
 
@@ -525,11 +525,15 @@ spicioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
 }
 
 static int
-spicpoll(dev_t dev, int events, struct proc *p)
+spicpoll(dev_t dev, int events, struct thread *td)
 {
 	struct spic_softc *sc;
+	struct proc *p;
 	struct proc *p1;
 	int revents = 0, s;
+
+	p = td->td_proc;
+	KKASSERT(p);
 
 	sc = devclass_get_softc(spic_devclass, 0);
 	s = spltty();

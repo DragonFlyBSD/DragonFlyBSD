@@ -35,7 +35,7 @@
  *
  *	from: @(#)wd.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/wd.c,v 1.219.2.2 2000/08/04 22:31:07 peter Exp $
- * $DragonFly: src/sys/dev/disk/wd/Attic/wd.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wd/Attic/wd.c,v 1.5 2003/07/21 07:57:45 dillon Exp $
  */
 
 /* TODO:
@@ -67,6 +67,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/bootmaj.h>
 #include <sys/kernel.h>
 #include <sys/conf.h>
 #include <sys/bus.h>
@@ -1116,7 +1117,7 @@ done: ;
  * Initialize a drive.
  */
 int
-wdopen(dev_t dev, int flags, int fmt, struct proc *p)
+wdopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	register unsigned int lunit;
 	register struct disk *du;
@@ -1780,14 +1781,14 @@ failed:
 }
 
 int
-wdclose(dev_t dev, int flags, int fmt, struct proc *p)
+wdclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	dsclose(dev, fmt, wddrives[dkunit(dev)]->dk_slices);
 	return (0);
 }
 
 int
-wdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct proc *p)
+wdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 {
 	int	lunit = dkunit(dev);
 	register struct disk *du;

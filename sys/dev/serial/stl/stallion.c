@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.5 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.6 2003/07/21 07:57:45 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -504,7 +504,7 @@ static void	stl_echmcaintr(stlbrd_t *brdp);
 static void	stl_echpciintr(stlbrd_t *brdp);
 static void	stl_echpci64intr(stlbrd_t *brdp);
 static int	stl_memioctl(dev_t dev, unsigned long cmd, caddr_t data,
-			int flag, struct proc *p);
+			int flag, struct thread *td);
 static int	stl_getbrdstats(caddr_t data);
 static int	stl_getportstats(stlport_t *portp, caddr_t data);
 static int	stl_clrportstats(stlport_t *portp, caddr_t data);
@@ -1158,7 +1158,7 @@ void stlpciattach(pcici_t tag, int unit)
 
 /*****************************************************************************/
 
-STATIC int stlopen(dev_t dev, int flag, int mode, struct proc *p)
+STATIC int stlopen(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct tty	*tp;
 	stlport_t	*portp;
@@ -1276,7 +1276,7 @@ stlopen_end:
 
 /*****************************************************************************/
 
-STATIC int stlclose(dev_t dev, int flag, int mode, struct proc *p)
+STATIC int stlclose(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct tty	*tp;
 	stlport_t	*portp;
@@ -1336,7 +1336,7 @@ STATIC int stlstop(struct tty *tp, int rw)
 /*****************************************************************************/
 
 STATIC int stlioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
-		    struct proc *p)
+		    struct thread *td)
 {
 	struct termios	*newtios, *localtios;
 	struct tty	*tp;
@@ -1349,7 +1349,7 @@ STATIC int stlioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
 #endif
 
 	if (minor(dev) & STL_MEMDEV)
-		return(stl_memioctl(dev, cmd, data, flag, p));
+		return(stl_memioctl(dev, cmd, data, flag, td));
 
 	portp = stl_dev2port(dev);
 	if (portp == (stlport_t *) NULL)
@@ -1439,7 +1439,7 @@ STATIC int stlioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
  *	Call the line discipline and the common command processing to
  *	process this command (if they can).
  */
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, p);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
 	if (error != ENOIOCTL)
 		return(error);
 
@@ -2740,7 +2740,7 @@ static int stl_clrportstats(stlport_t *portp, caddr_t data)
  */
 
 static int stl_memioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
-			struct proc *p)
+			struct thread *td)
 {
 	int		rc;
 

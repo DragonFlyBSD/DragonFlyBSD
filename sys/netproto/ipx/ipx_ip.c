@@ -34,7 +34,7 @@
  *	@(#)ipx_ip.c
  *
  * $FreeBSD: src/sys/netipx/ipx_ip.c,v 1.24.2.2 2003/01/23 21:06:48 sam Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.3 2003/07/21 07:57:50 dillon Exp $
  */
 
 /*
@@ -393,14 +393,14 @@ ipxip_route(so, sopt)
 	ifr_ipxip.ifr_name[4] = '0' + ipxipif.if_unit - 1;
 	ifr_ipxip.ifr_dstaddr = *(struct sockaddr *)ipx_dst;
 	ipx_control(so, (int)SIOCSIFDSTADDR, (caddr_t)&ifr_ipxip,
-			(struct ifnet *)ifn, sopt->sopt_p);
+			(struct ifnet *)ifn, sopt->sopt_td);
 
 	/* use any of our addresses */
 	satoipx_addr(ifr_ipxip.ifr_addr).x_host = 
 			ipx_ifaddr->ia_addr.sipx_addr.x_host;
 
 	return (ipx_control(so, (int)SIOCSIFADDR, (caddr_t)&ifr_ipxip,
-			(struct ifnet *)ifn, sopt->sopt_p));
+			(struct ifnet *)ifn, sopt->sopt_td));
 }
 
 static int

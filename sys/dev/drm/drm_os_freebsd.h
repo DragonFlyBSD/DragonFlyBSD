@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.5 2003/07/19 21:14:20 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.6 2003/07/21 07:57:40 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -92,14 +92,14 @@
 #define DRM_SPINUNLOCK(u)	mtx_unlock(u);
 #define DRM_CURRENTPID		curthread->td_proc->p_pid
 #else
-#define DRM_CURPROC		curproc
-#define DRM_STRUCTPROC		struct proc
+#define DRM_CURPROC		curthread
+#define DRM_STRUCTPROC		struct thread
 #define DRM_SPINTYPE		struct lwkt_token
 #define DRM_SPININIT(l,name)	lwkt_inittoken(&l)
 #define DRM_SPINUNINIT(l)
 #define DRM_SPINLOCK(l)		lwkt_gettoken(l)
 #define DRM_SPINUNLOCK(u)	lwkt_reltoken(u);
-#define DRM_CURRENTPID		curproc->p_pid
+#define DRM_CURRENTPID		curthread->td_proc->p_pid
 #endif
 
 /* Currently our DRMFILE (filp) is a void * which is actually the pid

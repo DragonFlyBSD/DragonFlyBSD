@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.5 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.6 2003/07/21 07:57:44 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -91,8 +91,8 @@
 #include <i386/isa/ic/cd1400.h>
 
 #ifdef SMP
-#define disable_intr()	COM_DISABLE_INTR()
-#define enable_intr()	COM_ENABLE_INTR()
+#define disable_intr()	com_lock()
+#define enable_intr()	com_unlock()
 #endif /* SMP */
 
 /*
@@ -346,7 +346,7 @@ static	void	siointr1	__P((struct com_s *com));
 #endif
 static	int	commctl		__P((struct com_s *com, int bits, int how));
 static	int	comparam	__P((struct tty *tp, struct termios *t));
-static	swihand_t siopoll;
+static	inthand2_t siopoll;
 static	int	sioprobe	__P((struct isa_device *dev));
 static	void	siosettimeout	__P((void));
 static	int	siosetwater	__P((struct com_s *com, speed_t speed));
@@ -622,7 +622,7 @@ cyattach_common(cy_iobase, cy_align)
 
 	if (!sio_registered) {
 		cdevsw_add(&sio_cdevsw);
-		register_swi(SWI_TTY, siopoll);
+		register_swi(SWI_TTY, siopoll, NULL, "cy");
 		sio_registered = TRUE;
 	}
 	minorbase = UNIT_TO_MINOR(unit);
@@ -654,7 +654,7 @@ cyattach_common(cy_iobase, cy_align)
 }
 
 static int
-sioopen(dev_t dev; int flag; int mode; struct thread *td)
+sioopen(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct com_s	*com;
 	int		error;
@@ -1085,7 +1085,7 @@ siointr(unit)
 	cy_addr	iobase;
 	u_char	status;
 
-	COM_LOCK();	/* XXX could this be placed down lower in the loop? */
+	com_lock();	/* XXX could this be placed down lower in the loop? */
 
 	baseu = unit * CY_MAX_PORTS;
 	cy_align = com_addr(baseu)->cy_align;
@@ -1550,7 +1550,7 @@ terminate_tx_service:
 
 	schedsofttty();
 
-	COM_UNLOCK();
+	com_unlock();
 }
 
 #if 0
@@ -1641,7 +1641,7 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		if (lt->c_ospeed != 0)
 			dt->c_ospeed = tp->t_ospeed;
 	}
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, p);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
 	if (error != ENOIOCTL)
 		return (error);
 	s = spltty();
@@ -1717,7 +1717,7 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 }
 
 static void
-siopoll()
+siopoll(void *data)
 {
 	int		unit;
 

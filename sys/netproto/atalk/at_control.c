@@ -2,7 +2,7 @@
  * Copyright (c) 1990,1991 Regents of The University of Michigan.
  * All Rights Reserved.
  *
- * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.3 2003/07/19 21:14:44 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.4 2003/07/21 07:57:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,7 @@ static int aa_claim_addr(struct ifaddr *ifa, struct sockaddr *gw);
 
 int
 at_control(struct socket *so, u_long cmd, caddr_t data,
-		struct ifnet *ifp, struct proc *p )
+		struct ifnet *ifp, struct thread *td )
 {
     struct ifreq	*ifr = (struct ifreq *)data;
     struct sockaddr_at	*sat;

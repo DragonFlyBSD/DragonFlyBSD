@@ -12,7 +12,7 @@
  * without express or implied warranty.
  *
  * $FreeBSD: src/sys/i386/isa/mse.c,v 1.49.2.1 2000/03/20 13:58:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.5 2003/07/21 07:57:44 dillon Exp $
  */
 /*
  * Driver for the Logitech and ATI Inport Bus mice for use with 386bsd and
@@ -396,11 +396,11 @@ mse_detach(dev)
  * Exclusive open the mouse, initialize it and enable interrupts.
  */
 static	int
-mseopen(dev, flags, fmt, p)
+mseopen(dev, flags, fmt, td)
 	dev_t dev;
 	int flags;
 	int fmt;
-	struct proc *p;
+	struct thread *td;
 {
 	mse_softc_t *sc;
 	int s;
@@ -436,11 +436,11 @@ mseopen(dev, flags, fmt, p)
  * mseclose: just turn off mouse innterrupts.
  */
 static	int
-mseclose(dev, flags, fmt, p)
+mseclose(dev, flags, fmt, td)
 	dev_t dev;
 	int flags;
 	int fmt;
-	struct proc *p;
+	struct thread *td;
 {
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 	int s;
@@ -526,12 +526,12 @@ mseread(dev, uio, ioflag)
  * mseioctl: process ioctl commands.
  */
 static int
-mseioctl(dev, cmd, addr, flag, p)
+mseioctl(dev, cmd, addr, flag, td)
 	dev_t dev;
 	u_long cmd;
 	caddr_t addr;
 	int flag;
-	struct proc *p;
+	struct thread *td;
 {
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 	mousestatus_t status;
@@ -643,10 +643,10 @@ mseioctl(dev, cmd, addr, flag, p)
  * msepoll: check for mouse input to be processed.
  */
 static	int
-msepoll(dev, events, p)
+msepoll(dev, events, td)
 	dev_t dev;
 	int events;
-	struct proc *p;
+	struct thread *td;
 {
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 	int s;
@@ -663,7 +663,7 @@ msepoll(dev, events, p)
 			 * Since this is an exclusive open device, any previous
 			 * proc pointer is trash now, so we can just assign it.
 			 */
-			selrecord(p, &sc->sc_selp);
+			selrecord(td, &sc->sc_selp);
 		}
 	}
 	splx(s);

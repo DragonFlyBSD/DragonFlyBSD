@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/initcpu.c,v 1.19.2.9 2003/04/05 13:47:19 dwmalone Exp $
- * $DragonFly: src/sys/i386/i386/Attic/initcpu.c,v 1.3 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/initcpu.c,v 1.4 2003/07/21 07:57:43 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -689,7 +689,7 @@ enable_K5_wt_alloc(void)
 		msr=rdmsr(0x83);
 		wrmsr(0x83, msr|0x10); /* enable write allocate */
 
-		enable_intr();
+		cpu_enable_intr();
 	}
 }
 
@@ -752,7 +752,6 @@ enable_K6_wt_alloc(void)
 	wrmsr(0x0c0000082, whcr);
 
 	write_eflags(eflags);
-	enable_intr();
 }
 
 void
@@ -814,7 +813,6 @@ enable_K6_2_wt_alloc(void)
 	wrmsr(0x0c0000082, whcr);
 
 	write_eflags(eflags);
-	enable_intr();
 }
 #endif /* I585_CPU && CPU_WT_ALLOC */
 

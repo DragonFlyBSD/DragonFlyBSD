@@ -32,7 +32,7 @@
  *
  *	@(#)un.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/un.h,v 1.17.2.1 2002/03/09 05:22:23 dd Exp $
- * $DragonFly: src/sys/sys/un.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/un.h,v 1.3 2003/07/21 07:57:52 dillon Exp $
  */
 
 #ifndef _SYS_UN_H_
@@ -53,6 +53,7 @@ struct	sockaddr_un {
 #ifdef _KERNEL
 struct mbuf;
 struct socket;
+struct sockopt;
 
 int	uipc_usrreq __P((struct socket *so, int req, struct mbuf *m,
 		struct mbuf *nam, struct mbuf *control));

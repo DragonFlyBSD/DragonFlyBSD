@@ -28,7 +28,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.4 2003/07/21 05:50:42 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.5 2003/07/21 07:57:46 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
@@ -307,7 +307,7 @@ i4brbchattach()
  *	open rbch device
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4brbchopen(dev_t dev, int flag, int fmt, struct proc *p)
+i4brbchopen(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	int unit = minor(dev);
 	
@@ -332,7 +332,7 @@ i4brbchopen(dev_t dev, int flag, int fmt, struct proc *p)
  *	close rbch device
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4brbchclose(dev_t dev, int flag, int fmt, struct proc *p)
+i4brbchclose(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	int unit = minor(dev);
 	struct rbch_softc *sc = &rbch_softc[unit];
@@ -575,7 +575,7 @@ i4brbchwrite(dev_t dev, struct uio * uio, int ioflag)
  *	rbch device ioctl handlibg
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4brbchioctl(dev_t dev, IOCTL_CMD_T cmd, caddr_t data, int flag, struct proc *p)
+i4brbchioctl(dev_t dev, IOCTL_CMD_T cmd, caddr_t data, int flag, struct thread *td)
 {
 	int error = 0;
 	int unit = minor(dev);
@@ -674,7 +674,7 @@ i4brbchioctl(dev_t dev, IOCTL_CMD_T cmd, caddr_t data, int flag, struct proc *p)
  *	device driver poll
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4brbchpoll(dev_t dev, int events, struct proc *p)
+i4brbchpoll(dev_t dev, int events, struct thread *td)
 {
 	int revents = 0;	/* Events we found */
 	int s;
@@ -720,7 +720,7 @@ i4brbchpoll(dev_t dev, int events, struct proc *p)
 	}
 		
 	if(revents == 0)
-		selrecord(p, &sc->selp);
+		selrecord(td, &sc->selp);
 
 	splx(s);
 	return(revents);
@@ -732,7 +732,7 @@ i4brbchpoll(dev_t dev, int events, struct proc *p)
  *	device driver select
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4brbchselect(dev_t dev, int rw, struct proc *p)
+i4brbchselect(dev_t dev, int rw, struct thread *td)
 {
 	int unit = minor(dev);
 	struct rbch_softc *sc = &rbch_softc[unit];

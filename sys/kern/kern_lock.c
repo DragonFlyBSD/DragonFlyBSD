@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.4 2003/07/06 21:23:51 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.5 2003/07/21 07:57:47 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -195,7 +195,7 @@ debuglockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
 			if (error)
 				break;
 			sharelock(lkp, 1);
-			COUNT(p, 1);
+			COUNT(td, 1);
 			break;
 		}
 		/*
@@ -203,7 +203,7 @@ debuglockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
 		 * An alternative would be to fail with EDEADLK.
 		 */
 		sharelock(lkp, 1);
-		COUNT(p, 1);
+		COUNT(td, 1);
 		/* fall into downgrade */
 
 	case LK_DOWNGRADE:
@@ -225,7 +225,7 @@ debuglockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
 		 */
 		if (lkp->lk_flags & LK_WANT_UPGRADE) {
 			shareunlock(lkp, 1);
-			COUNT(p, -1);
+			COUNT(td, -1);
 			error = EBUSY;
 			break;
 		}
@@ -243,7 +243,7 @@ debuglockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
 		if ((lkp->lk_lockholder == td) || (lkp->lk_sharecount <= 0))
 			panic("lockmgr: upgrade exclusive lock");
 		shareunlock(lkp, 1);
-		COUNT(p, -1);
+		COUNT(td, -1);
 		/*
 		 * If we are just polling, check to see if we will block.
 		 */
@@ -275,7 +275,7 @@ debuglockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
 			lkp->lk_lineno = line;
 			lkp->lk_lockername = name;
 #endif
-			COUNT(p, 1);
+			COUNT(td, 1);
 			break;
 		}
 		/*
@@ -297,7 +297,7 @@ debuglockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
 				panic("lockmgr: locking against myself");
 			if ((extflags & LK_CANRECURSE) != 0) {
 				lkp->lk_exclusivecount++;
-				COUNT(p, 1);
+				COUNT(td, 1);
 				break;
 			}
 		}
@@ -333,7 +333,7 @@ debuglockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
 			lkp->lk_lineno = line;
 			lkp->lk_lockername = name;
 #endif
-		COUNT(p, 1);
+		COUNT(td, 1);
 		break;
 
 	case LK_RELEASE:
@@ -346,7 +346,7 @@ debuglockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
 				    lkp->lk_lockholder);
 			}
 			if (lkp->lk_lockholder != LK_KERNTHREAD) {
-				COUNT(p, -1);
+				COUNT(td, -1);
 			}
 			if (lkp->lk_exclusivecount == 1) {
 				lkp->lk_flags &= ~LK_HAVE_EXCL;
@@ -357,7 +357,7 @@ debuglockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
 			}
 		} else if (lkp->lk_flags & LK_SHARE_NONZERO) {
 			shareunlock(lkp, 1);
-			COUNT(p, -1);
+			COUNT(td, -1);
 		}
 		if (lkp->lk_flags & LK_WAIT_NONZERO)
 			wakeup((void *)lkp);
@@ -384,7 +384,7 @@ debuglockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
 			lkp->lk_lineno = line;
 			lkp->lk_lockername = name;
 #endif
-		COUNT(p, 1);
+		COUNT(td, 1);
 		break;
 
 	default:

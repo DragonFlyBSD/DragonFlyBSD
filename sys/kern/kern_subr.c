@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.6 2003/06/30 19:50:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.7 2003/07/21 07:57:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -212,6 +212,7 @@ uioread(n, uio, obj, nread)
 	struct iovec *iov;
 	u_int cnt, tcnt;
 	int error;
+	int baseticks = ticks;
 
 	*nread = 0;
 	if (vfs_ioopt < 2)
@@ -239,8 +240,10 @@ uioread(n, uio, obj, nread)
 
 			cnt &= ~PAGE_MASK;
 
-			if (ticks - mycpu->gd_switchticks >= hogticks)
+			if (ticks - baseticks >= hogticks) {
 				uio_yield();
+				baseticks = ticks;
+			}
 			error = vm_uiomove(&curproc->p_vmspace->vm_map, obj,
 						uio->uio_offset, cnt,
 						(vm_offset_t) iov->iov_base, &npagesmoved);

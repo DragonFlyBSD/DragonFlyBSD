@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.4 2003/07/21 05:50:24 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.5 2003/07/21 07:57:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -145,7 +145,7 @@ static struct extend_array *ptperiphs;
 #endif
 
 static int
-ptopen(dev_t dev, int flags, int fmt, struct proc *p)
+ptopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	struct cam_periph *periph;
 	struct pt_softc *softc;
@@ -189,7 +189,7 @@ ptopen(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int
-ptclose(dev_t dev, int flag, int fmt, struct proc *p)
+ptclose(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	struct	cam_periph *periph;
 	struct	pt_softc *softc;
@@ -694,7 +694,7 @@ pterror(union ccb *ccb, u_int32_t cam_flags, u_int32_t sense_flags)
 }
 
 static int
-ptioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
+ptioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 {
 	struct cam_periph *periph;
 	struct pt_softc *softc;

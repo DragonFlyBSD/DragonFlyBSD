@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.12 2003/07/11 01:23:21 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.13 2003/07/21 07:57:43 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -458,7 +458,7 @@ init_secondary(void)
 
 	lldt(_default_ldt);
 #ifdef USER_LDT
-	currentldt = _default_ldt;
+	mdcpu->gd_currentldt = _default_ldt;
 #endif
 
 	gsel_tss = GSEL(GPROC0_SEL, SEL_KPL);

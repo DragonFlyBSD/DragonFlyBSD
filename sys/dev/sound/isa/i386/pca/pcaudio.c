@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcaudio.c,v 1.58 2000/01/25 21:58:43 dfr Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/pca/Attic/pcaudio.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/pca/Attic/pcaudio.c,v 1.5 2003/07/21 07:57:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -368,7 +368,7 @@ DRIVER_MODULE(pca, isa, pca_driver, pca_devclass, 0, 0);
 
 
 static int
-pcaopen(dev_t dev, int flags, int fmt, struct proc *p)
+pcaopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	/* audioctl device can always be opened */
 	if (minor(dev) == 128)
@@ -396,7 +396,7 @@ pcaopen(dev_t dev, int flags, int fmt, struct proc *p)
 
 
 static int
-pcaclose(dev_t dev, int flags, int fmt, struct proc *p)
+pcaclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	/* audioctl device can always be closed */
 	if (minor(dev) == 128)
@@ -467,7 +467,7 @@ pcawrite(dev_t dev, struct uio *uio, int flag)
 
 
 static int
-pcaioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
+pcaioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
 	audio_info_t *auptr;
 
@@ -535,7 +535,7 @@ static void
 pcaintr(struct clockframe *frame)
 {
 	if (pca_status.index < pca_status.in_use[pca_status.current]) {
-		disable_intr();
+		cpu_disable_intr();
 		__asm__("outb %0,$0x61\n"
 			"andb $0xFE,%0\n"
 			"outb %0,$0x61"
@@ -544,7 +544,7 @@ pcaintr(struct clockframe *frame)
 			"outb %0,$0x42"
 			: : "a" ((char)pca_status.buffer[pca_status.index]),
 			    "b" (volume_table) );
-		enable_intr();
+		cpu_enable_intr();
 		pca_status.counter += pca_status.scale;
 		pca_status.index = (pca_status.counter >> 8);
 	}
@@ -567,11 +567,15 @@ pcaintr(struct clockframe *frame)
 
 
 static int
-pcapoll(dev_t dev, int events, struct proc *p)
+pcapoll(dev_t dev, int events, struct thread *td)
 {
  	int s;
+ 	struct proc *p;
  	struct proc *p1;
 	int revents = 0;
+
+	p = td->td_proc;
+	KKASSERT(p);
 
  	s = spltty();
 

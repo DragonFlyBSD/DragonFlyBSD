@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_tel.c,v 1.10.2.4 2001/12/16 15:12:57 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.4 2003/07/21 05:50:42 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.5 2003/07/21 07:57:46 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:07:05 2001]
  *
@@ -236,7 +236,7 @@ i4btelattach(void *dummy)
  *	open tel device
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btelopen(dev_t dev, int flag, int fmt, struct proc *p)
+i4btelopen(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	int unit = UNIT(dev);
 	int func = FUNC(dev);
@@ -265,7 +265,7 @@ i4btelopen(dev_t dev, int flag, int fmt, struct proc *p)
  *	close tel device
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btelclose(dev_t dev, int flag, int fmt, struct proc *p)
+i4btelclose(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	int unit = UNIT(dev);
 	int func = FUNC(dev);
@@ -308,7 +308,7 @@ i4btelclose(dev_t dev, int flag, int fmt, struct proc *p)
  *	i4btelioctl - device driver ioctl routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btelioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
+i4btelioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
 	int unit = UNIT(dev);
 	int func = FUNC(dev);
@@ -736,7 +736,7 @@ tel_tone(tel_sc_t *sc)
  *	device driver poll
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btelpoll(dev_t dev, int events, struct proc *p)
+i4btelpoll(dev_t dev, int events, struct thread *td)
 {
 	int revents = 0;	/* Events we found */
 	int s;
@@ -784,7 +784,7 @@ i4btelpoll(dev_t dev, int events, struct proc *p)
 		if(revents == 0)
 		{
 			NDBGL4(L4_TELDBG, "i4btel%d, selrecord", unit);
-			selrecord(p, &sc->selp);
+			selrecord(td, &sc->selp);
 		}
 	}
 	else if(func == FUNCDIAL)
@@ -805,7 +805,7 @@ i4btelpoll(dev_t dev, int events, struct proc *p)
 		if(revents == 0)
 		{
 			NDBGL4(L4_TELDBG, "i4bteld%d,  selrecord", unit);
-			selrecord(p, &sc->selp);
+			selrecord(td, &sc->selp);
 		}
 	}
 	splx(s);
@@ -818,7 +818,7 @@ i4btelpoll(dev_t dev, int events, struct proc *p)
  *	device driver select
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btelsel(dev_t dev, int rw, struct proc *p)
+i4btelsel(dev_t dev, int rw, struct thread *td)
 {
 	int s;
 	int unit = UNIT(dev);

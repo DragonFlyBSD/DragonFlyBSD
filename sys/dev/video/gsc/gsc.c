@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/gsc.c,v 1.35.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.5 2003/07/21 07:57:44 dillon Exp $
  *
  */
 
@@ -556,7 +556,7 @@ gscattach(struct isa_device *isdp)
  */
 
 static	int
-gscopen  (dev_t dev, int flags, int fmt, struct proc *p)
+gscopen  (dev_t dev, int flags, int fmt, struct thread *td)
 {
   struct gsc_unit *scu;
   int unit;
@@ -623,7 +623,7 @@ gscopen  (dev_t dev, int flags, int fmt, struct proc *p)
  */
 
 static	int
-gscclose (dev_t dev, int flags, int fmt, struct proc *p)
+gscclose (dev_t dev, int flags, int fmt, struct thread *td)
 {
   int unit = UNIT(minor(dev));
   struct gsc_unit *scu = unittab + unit;
@@ -746,7 +746,7 @@ gscread  (dev_t dev, struct uio *uio, int ioflag)
  */
 
 static	int
-gscioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
+gscioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
   int unit = UNIT(minor(dev));
   struct gsc_unit *scu = unittab + unit;

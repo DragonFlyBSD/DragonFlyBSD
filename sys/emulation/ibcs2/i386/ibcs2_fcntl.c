@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_fcntl.c,v 1.14 1999/09/19 17:00:14 green Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.4 2003/06/25 03:55:53 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.5 2003/07/21 07:57:44 dillon Exp $
  */
 
 #include "opt_spx_hack.h"
@@ -185,13 +185,13 @@ ibcs2_open(struct ibcs2_open_args *uap)
 		CHECKALTEXIST(&sg, SCARG(uap, path));
 	ret = open((struct open_args *)uap);
 
+	p = td->td_proc;
 #ifdef SPX_HACK
 	if (ret == ENXIO) {
 		if (!strcmp(SCARG(uap, path), "/compat/ibcs2/dev/spx"))
 			ret = spx_open(uap);
 	} else
 #endif /* SPX_HACK */
-	p = td->td_proc;
 	if (!ret && !noctty && p && SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
 		struct filedesc *fdp = p->p_fd;
 		struct file *fp = fdp->fd_ofiles[p->p_retval[0]];

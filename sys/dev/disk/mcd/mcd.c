@@ -41,13 +41,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.5 2003/07/21 07:57:44 dillon Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
 #include "mcd.h"
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/bootmaj.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 #include <sys/buf.h>
@@ -266,7 +267,7 @@ int mcd_attach(struct isa_device *dev)
 	return 1;
 }
 
-int mcdopen(dev_t dev, int flags, int fmt, struct proc *p)
+int mcdopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	int unit,part,phys,r,retry;
 	struct mcd_data *cd;
@@ -358,7 +359,7 @@ MCD_TRACE("open: partition=%d, disksize = %ld, blksize=%d\n",
 	return ENXIO;
 }
 
-int mcdclose(dev_t dev, int flags, int fmt, struct proc *p)
+int mcdclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	int unit,part;
 	struct mcd_data *cd;
@@ -500,7 +501,7 @@ static void mcd_start(int unit)
 	return;
 }
 
-int mcdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct proc *p)
+int mcdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 {
 	struct mcd_data *cd;
 	int unit,part,retry,r;
@@ -1098,7 +1099,7 @@ nextblock:
 		hsg2msf(blknum,rbuf.start_msf);
 retry_read:
 		/* send the read command */
-		disable_intr();
+		cpu_disable_intr();
 		mcd_put(com_port,cd->read_command);
 		mcd_put(com_port,rbuf.start_msf[0]);
 		mcd_put(com_port,rbuf.start_msf[1]);
@@ -1106,7 +1107,7 @@ retry_read:
 		mcd_put(com_port,0);
 		mcd_put(com_port,0);
 		mcd_put(com_port,1);
-		enable_intr();
+		cpu_enable_intr();
 
 		/* Spin briefly (<= 2ms) to avoid missing next block */
 		for (i = 0; i < 20; i++) {
@@ -1756,7 +1757,7 @@ mcd_play(int unit, struct mcd_read2 *pb)
 	cd->lastpb = *pb;
 	for(retry=0; retry<MCD_RETRYS; retry++) {
 
-		disable_intr();
+		cpu_disable_intr();
 		outb(com_port, MCD_CMDSINGLESPEEDREAD);
 		outb(com_port, pb->start_msf[0]);
 		outb(com_port, pb->start_msf[1]);
@@ -1764,7 +1765,7 @@ mcd_play(int unit, struct mcd_read2 *pb)
 		outb(com_port, pb->end_msf[0]);
 		outb(com_port, pb->end_msf[1]);
 		outb(com_port, pb->end_msf[2]);
-		enable_intr();
+		cpu_enable_intr();
 
 		status=mcd_getstat(unit, 0);
 		if (status == -1)

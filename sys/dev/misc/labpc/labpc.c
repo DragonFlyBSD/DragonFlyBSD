@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.3 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.4 2003/07/21 07:57:44 dillon Exp $
  *
  */
 
@@ -717,7 +717,7 @@ lockout_multiple_open(dev_t current, dev_t next)
 }
 
 static	int
-labpcopen(dev_t dev, int flags, int fmt, struct proc *p)
+labpcopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	u_short unit = UNIT(dev);
 
@@ -754,7 +754,7 @@ labpcopen(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static	int
-labpcclose(dev_t dev, int flags, int fmt, struct proc *p)
+labpcclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	struct ctlr *ctlr = labpcs[UNIT(dev)];
 
@@ -1028,7 +1028,7 @@ labpcstrategy(struct buf *bp)
 }
 
 static	int
-labpcioctl(dev_t dev, u_long cmd, caddr_t arg, int mode, struct proc *p)
+labpcioctl(dev_t dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 {
 	struct ctlr *ctlr = labpcs[UNIT(dev)];
 

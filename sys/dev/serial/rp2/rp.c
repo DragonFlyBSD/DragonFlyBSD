@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rp.c,v 1.33.2.2 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.5 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.6 2003/07/21 07:57:44 dillon Exp $
  */
 
 /* 
@@ -1280,10 +1280,10 @@ struct	isa_device	*dev;
 }
 
 int
-rpopen(dev, flag, mode, p)
+rpopen(dev, flag, mode, td)
 	dev_t	dev;
 	int	flag, mode;
-	struct	proc	*p;
+	struct thread *td;
 {
 	struct	rp_port *rp;
 	int	unit, port, mynor, umynor, flags;  /* SG */
@@ -1432,10 +1432,10 @@ out:
 }
 
 int
-rpclose(dev, flag, mode, p)
+rpclose(dev, flag, mode, td)
 	dev_t	dev;
 	int	flag, mode;
-	struct	proc	*p;
+	struct thread *td;
 {
 	int	oldspl, unit, mynor, umynor, port; /* SG */
 	struct	rp_port *rp;
@@ -1545,12 +1545,12 @@ rpdtrwakeup(void *chan)
 }
 
 int
-rpioctl(dev, cmd, data, flag, p)
+rpioctl(dev, cmd, data, flag, td)
 	dev_t	dev;
 	u_long	cmd;
 	caddr_t data;
 	int	flag;
-	struct	proc	*p;
+	struct	thread *td;
 {
 	struct rp_port	*rp;
 	CHANNEL_t	*cp;
@@ -1640,7 +1640,7 @@ rpioctl(dev, cmd, data, flag, p)
 
 	t = &tp->t_termios;
 
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, p);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
 	if(error != ENOIOCTL) {
 		return(error);
 	}
@@ -1755,7 +1755,7 @@ static struct speedtab baud_table[] = {
 	{B38400, BRD38400},	{B7200,	BRD7200},	{B14400, BRD14400},
 				{B57600, BRD57600},	{B76800, BRD76800},
 	{B115200, BRD115200},	{B230400, BRD230400},
-	-1,	-1
+	{ -1,	-1 }
 };
 
 static int

@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 1990,1994 Regents of The University of Michigan.
  * All Rights Reserved.  See COPYRIGHT.
+ *
+ * $DragonFly: src/sys/netproto/atalk/ddp_usrreq.c,v 1.3 2003/07/21 07:57:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -84,7 +86,7 @@ ddp_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	    return( EINVAL);
 	}
 	s = splnet();
-	error = at_pcbsetaddr(ddp, nam, p);
+	error = at_pcbsetaddr(ddp, nam, td);
 	splx(s);
 	return (error);
 }
@@ -106,7 +108,7 @@ ddp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	}
 
 	s = splnet();
-	error = at_pcbconnect( ddp, nam, p );
+	error = at_pcbconnect( ddp, nam, td );
 	splx(s);
 	if ( error == 0 )
 	    soisconnected( so );
@@ -172,7 +174,7 @@ ddp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 		}
 
 		s = splnet();
-		error = at_pcbconnect(ddp, addr, p);
+		error = at_pcbconnect(ddp, addr, td);
 		splx( s );
 		if ( error ) {
 			return(error);
@@ -400,7 +402,7 @@ at_pcbconnect(struct ddpcb *ddp, struct sockaddr *addr, struct thread *td)
 
     ddp->ddp_fsat = *sat;
     if ( ddp->ddp_lsat.sat_port == ATADDR_ANYPORT ) {
-	return(at_pcbsetaddr(ddp, (struct sockaddr *)0, p));
+	return(at_pcbsetaddr(ddp, (struct sockaddr *)0, td));
     }
     return( 0 );
 }

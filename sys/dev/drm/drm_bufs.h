@@ -28,7 +28,7 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  * $FreeBSD: src/sys/dev/drm/drm_bufs.h,v 1.5.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_bufs.h,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_bufs.h,v 1.3 2003/07/21 07:57:40 dillon Exp $
  */
 
 #include "dev/drm/drmP.h"
@@ -902,11 +902,7 @@ int DRM(mapbufs)( DRM_IOCTL_ARGS )
 	const int zero = 0;
 	vm_offset_t virtual, address;
 #ifdef __FreeBSD__
-#if __FreeBSD_version >= 500000
 	struct vmspace *vms = p->td_proc->p_vmspace;
-#else
-	struct vmspace *vms = p->p_vmspace;
-#endif
 #endif /* __FreeBSD__ */
 #ifdef __NetBSD__
 	struct vnode *vn;

@@ -38,7 +38,7 @@
  *
  *	@(#)ufs_readwrite.c	8.7 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_readwrite.c,v 1.18.2.2 2000/12/22 18:44:33 dillon Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_readwrite.c,v 1.4 2003/06/26 18:34:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_readwrite.c,v 1.5 2003/07/21 07:57:43 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -107,16 +107,16 @@ ext2_read(ap)
 			xfersize = bytesinfile;
 
 		if (lblktosize(fs, nextlbn) >= ip->i_size)
-			error = bread(vp, lbn, size, NOCRED, &bp);
+			error = bread(vp, lbn, size, &bp);
 		else if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0)
 			error = cluster_read(vp, ip->i_size, lbn, size, 
 				uio->uio_resid, (ap->a_ioflag >> 16), &bp);
 		else if (seqcount > 1) {
 			int nextsize = BLKSIZE(fs, ip, nextlbn);
 			error = breadn(vp, lbn,
-			    size, &nextlbn, &nextsize, 1, NOCRED, &bp);
+			    size, &nextlbn, &nextsize, 1, &bp);
 		} else
-			error = bread(vp, lbn, size, NOCRED, &bp);
+			error = bread(vp, lbn, size, &bp);
 		if (error) {
 			brelse(bp);
 			bp = NULL;
@@ -168,7 +168,7 @@ ext2_write(ap)
 	register struct inode *ip;
 	register FS *fs;
 	struct buf *bp;
-	struct proc *p;
+	struct thread *td;
 	daddr_t lbn;
 	off_t osize;
 	int seqcount;
@@ -212,11 +212,11 @@ ext2_write(ap)
 	 * Maybe this should be above the vnode op call, but so long as
 	 * file servers have no limits, I don't think it matters.
 	 */
-	p = uio->uio_procp;
-	if (vp->v_type == VREG && p &&
+	td = uio->uio_td;
+	if (vp->v_type == VREG && td && td->td_proc &&
 	    uio->uio_offset + uio->uio_resid >
-	    p->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
-		psignal(p, SIGXFSZ);
+	    td->td_proc->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
+		psignal(td->td_proc, SIGXFSZ);
 		return (EFBIG);
 	}
 
@@ -294,7 +294,7 @@ ext2_write(ap)
 	if (error) {
 		if (ioflag & IO_UNIT) {
 			(void)UFS_TRUNCATE(vp, osize,
-			    ioflag & IO_SYNC, ap->a_cred, uio->uio_procp);
+			    ioflag & IO_SYNC, ap->a_cred, uio->uio_td);
 			uio->uio_offset -= resid - uio->uio_resid;
 			uio->uio_resid = resid;
 		}

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/wd_cd.c,v 1.29 2000/01/29 16:00:33 peter Exp $
- * $DragonFly: src/sys/dev/disk/wcd/Attic/wd_cd.c,v 1.5 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wcd/Attic/wd_cd.c,v 1.6 2003/07/21 07:57:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -382,7 +382,7 @@ acd_describe(struct acd *cdp)
 }
 
 static int
-acdopen(dev_t dev, int flags, int fmt, struct proc *p)
+acdopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
     int lun = dkunit(dev);
     struct acd *cdp;
@@ -408,7 +408,7 @@ acdopen(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 int 
-acdclose(dev_t dev, int flags, int fmt, struct proc *p)
+acdclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
     struct acd *cdp = acdtab[dkunit(dev)];
 
@@ -586,7 +586,7 @@ msf2lba(u_char m, u_char s, u_char f)
 }
 
 int 
-acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
+acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 {
     int lun = dkunit(dev);
     struct acd *cdp = acdtab[lun];

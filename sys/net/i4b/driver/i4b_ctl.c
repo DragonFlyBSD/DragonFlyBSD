@@ -30,7 +30,7 @@
  *	$Id: i4b_ctl.c,v 1.37 2000/05/31 08:04:43 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ctl.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.3 2003/07/21 05:50:42 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.4 2003/07/21 07:57:46 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:38 2001]
  *
@@ -234,7 +234,7 @@ i4bctlattach()
  *	i4bctlopen - device driver open routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4bctlopen(dev_t dev, int flag, int fmt, struct proc *p)
+i4bctlopen(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	if(minor(dev))
 		return (ENXIO);
@@ -251,7 +251,7 @@ i4bctlopen(dev_t dev, int flag, int fmt, struct proc *p)
  *	i4bctlclose - device driver close routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4bctlclose(dev_t dev, int flag, int fmt, struct proc *p)
+i4bctlclose(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	openflag = 0;
 	return (0);
@@ -262,7 +262,7 @@ i4bctlclose(dev_t dev, int flag, int fmt, struct proc *p)
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
 #if defined (__FreeBSD_version) && __FreeBSD_version >= 300003
-i4bctlioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
+i4bctlioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 #elif defined(__bsdi__)
 i4bctlioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
 #else
@@ -364,7 +364,7 @@ i4bctlioctl(dev_t dev, int cmd, caddr_t data, int flag, struct proc *p)
  *	i4bctlpoll - device driver poll routine
  *---------------------------------------------------------------------------*/
 static int
-i4bctlpoll (dev_t dev, int events, struct proc *p)
+i4bctlpoll (dev_t dev, int events, struct thread *td)
 {
 	return (ENODEV);
 }

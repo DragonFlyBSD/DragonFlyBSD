@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.c,v 1.55.2.11 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.4 2003/06/25 03:55:44 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.5 2003/07/21 07:57:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1866,7 +1866,7 @@ linux_ioctl(struct linux_ioctl_args *args)
 
 #ifdef DEBUG
 	if (ldebug(ioctl))
-		printf(ARGS(ioctl, "%d, %04lx, *"), args->fd, args->cmd);
+		printf(ARGS(ioctl, "%d, %04x, *"), args->fd, args->cmd);
 #endif
 
 	fdp = p->p_fd;

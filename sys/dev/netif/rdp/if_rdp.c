@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.3 2003/07/21 07:57:44 dillon Exp $
  */
 
 /*
@@ -495,7 +495,7 @@ rdp_probe(struct isa_device *isa_dev)
 	 * We have found something that could be a RTL 80[01]2, now
 	 * see whether we can generate an interrupt.
 	 */
-	disable_intr();
+	cpu_disable_intr();
 
 	/*
 	 * Test whether our configured IRQ is working.
@@ -534,7 +534,7 @@ rdp_probe(struct isa_device *isa_dev)
 	outb(sc->baseaddr + lpt_control, Ctrl_SelData);
 	WrNib(sc, CMR2, CMR2_IRQINV);
 
-	enable_intr();
+	cpu_enable_intr();
 
 	if (bootverbose)
 		printf("rdp%d: irq maps / lpt status "

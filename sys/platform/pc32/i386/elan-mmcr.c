@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/i386/elan-mmcr.c,v 1.6.2.1 2002/09/17 22:39:53 sam Exp $
- * $DragonFly: src/sys/platform/pc32/i386/elan-mmcr.c,v 1.3 2003/07/21 05:50:39 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/elan-mmcr.c,v 1.4 2003/07/21 07:57:43 dillon Exp $
  * The AMD Elan sc520 is a system-on-chip gadget which is used in embedded
  * kind of things, see www.soekris.com for instance, and it has a few quirks
  * we need to deal with.
@@ -67,7 +67,7 @@ init_AMD_Elan_sc520(void)
 	 */
 	
 	new = 1189161;
-	i = kernel_sysctlbyname(curproc, "machdep.i8254_freq", 
+	i = kernel_sysctlbyname("machdep.i8254_freq", 
 	    NULL, 0, 
 	    &new, sizeof new, 
 	    NULL);
@@ -110,13 +110,13 @@ static struct cdevsw elan_cdevsw = {
 };
 
 static int
-elan_open(dev_t dev, int flag, int mode, struct proc *p)
+elan_open(dev_t dev, int flag, int mode, struct thread *td)
 {
 	return (0);
 }
 
 static int
-elan_close(dev_t dev, int flag, int mode, struct proc *p)
+elan_close(dev_t dev, int flag, int mode, struct thread *td)
 { 
 	return (0);
 }
@@ -130,7 +130,7 @@ elan_mmap(dev_t dev, vm_offset_t offset, int nprot)
 }
 
 static int
-elan_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct proc *p)
+elan_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 {
 	return(ENOENT);
 }

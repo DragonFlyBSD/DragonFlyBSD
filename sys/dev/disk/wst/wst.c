@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/wst.c,v 1.28 2000/01/29 16:00:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/wst/Attic/wst.c,v 1.3 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wst/Attic/wst.c,v 1.4 2003/07/21 07:57:45 dillon Exp $
  */
 
 #include "wdc.h"
@@ -335,7 +335,7 @@ wst_describe(struct wst *t)
 }
 
 int
-wstopen(dev_t dev, int flags, int fmt, struct proc *p)
+wstopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
     int lun = UNIT(dev);
     struct wst *t;
@@ -358,7 +358,7 @@ wstopen(dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 int 
-wstclose(dev_t dev, int flags, int fmt, struct proc *p)
+wstclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
     int lun = UNIT(dev);
     struct wst *t = wsttab[lun];
@@ -573,7 +573,7 @@ wst_error(struct wst *t, struct atapires result)
 }
 
 int 
-wstioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
+wstioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 {
     int lun = UNIT(dev);
     int error = 0;

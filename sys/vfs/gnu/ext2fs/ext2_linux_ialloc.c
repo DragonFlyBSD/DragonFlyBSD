@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_linux_ialloc.c,v 1.13.2.2 2001/08/14 18:03:19 gallatin Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.3 2003/07/21 07:57:43 dillon Exp $
  */
 /*
  *  linux/fs/ext2/ialloc.c
@@ -45,6 +45,7 @@
 #include <gnu/ext2fs/ext2_fs_sb.h>
 #include <gnu/ext2fs/fs.h>
 #include <sys/stat.h>
+#include <sys/buf2.h>
 
 #ifdef __i386__
 #include <gnu/ext2fs/i386-bitops.h>
@@ -106,8 +107,7 @@ static void read_inode_bitmap (struct mount * mp,
 	gdp = get_group_desc (mp, block_group, NULL);
 	if ((error = bread (VFSTOUFS(mp)->um_devvp, 
 			    fsbtodb(sb, gdp->bg_inode_bitmap), 
-			    sb->s_blocksize,
-			    NOCRED, &bh)) != 0)
+			    sb->s_blocksize, &bh)) != 0)
 		panic ( "read_inode_bitmap:"
 			    "Cannot read inode bitmap - "
 			    "block_group = %lu, inode_bitmap = %lu",

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_bio.c,v 1.83.2.4 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.7 2003/07/19 21:14:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.8 2003/07/21 07:57:51 dillon Exp $
  */
 
 
@@ -738,7 +738,7 @@ nfs_write(ap)
 #ifdef DIAGNOSTIC
 	if (uio->uio_rw != UIO_WRITE)
 		panic("nfs_write mode");
-	if (uio->uio_segflg == UIO_USERSPACE && uio->uio_procp != curproc)
+	if (uio->uio_segflg == UIO_USERSPACE && uio->uio_td != curthread)
 		panic("nfs_write proc");
 #endif
 	if (vp->v_type != VREG)

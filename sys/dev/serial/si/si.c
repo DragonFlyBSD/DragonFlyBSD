@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.5 2003/07/21 05:50:35 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.6 2003/07/21 07:57:41 dillon Exp $
  */
 
 #ifndef lint
@@ -801,7 +801,7 @@ siclose(dev_t dev, int flag, int mode, struct thread *td)
 	tp = pp->sp_tty;
 
 	DPRINT((pp, DBG_ENTRY|DBG_CLOSE, "siclose(%s,%x,%x,%x) sp_state:%x\n",
-		devtoname(dev), flag, mode, p, pp->sp_state));
+		devtoname(dev), flag, mode, td, pp->sp_state));
 
 	/* did we sleep and loose a race? */
 	if (pp->sp_state & SS_CLOSING) {
@@ -949,7 +949,7 @@ siioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 #endif
 
 	if (IS_SI_IOCTL(cmd))
-		return(si_Sioctl(dev, cmd, data, flag, p));
+		return(si_Sioctl(dev, cmd, data, flag, td));
 
 	pp = MINOR2PP(mynor);
 	tp = pp->sp_tty;
@@ -1043,7 +1043,7 @@ siioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		si_write_enable(pp, 0);
 	}
 
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, p);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
 	if (error != ENOIOCTL)
 		goto out;
 

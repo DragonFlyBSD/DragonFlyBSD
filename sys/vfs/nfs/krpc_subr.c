@@ -1,6 +1,6 @@
 /*	$NetBSD: krpc_subr.c,v 1.12.4.1 1996/06/07 00:52:26 cgd Exp $	*/
 /* $FreeBSD: src/sys/nfs/krpc_subr.c,v 1.13.2.1 2000/11/20 21:17:14 tegge Exp $	*/
-/* $DragonFly: src/sys/vfs/nfs/krpc_subr.c,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/krpc_subr.c,v 1.3 2003/07/21 07:57:51 dillon Exp $	*/
 
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass
@@ -125,11 +125,11 @@ struct rpc_reply {
  * Returns non-zero error on failure.
  */
 int
-krpc_portmap(sin,  prog, vers, portp, procp)
+krpc_portmap(sin,  prog, vers, portp, td)
 	struct sockaddr_in *sin;		/* server address */
 	u_int prog, vers;	/* host order */
 	u_int16_t *portp;	/* network order */
-	struct proc *procp;
+	struct thread *td;
 {
 	struct sdata {
 		u_int32_t prog;		/* call program */
@@ -164,7 +164,7 @@ krpc_portmap(sin,  prog, vers, portp, procp)
 
 	sin->sin_port = htons(PMAPPORT);
 	error = krpc_call(sin, PMAPPROG, PMAPVERS,
-					  PMAPPROC_GETPORT, &m, NULL, procp);
+					  PMAPPROC_GETPORT, &m, NULL, td);
 	if (error) 
 		return error;
 
@@ -186,12 +186,12 @@ krpc_portmap(sin,  prog, vers, portp, procp)
  * the address from whence the response came is saved there.
  */
 int
-krpc_call(sa, prog, vers, func, data, from_p, procp)
+krpc_call(sa, prog, vers, func, data, from_p, td)
 	struct sockaddr_in *sa;
 	u_int prog, vers, func;
 	struct mbuf **data;	/* input/output */
 	struct sockaddr **from_p;	/* output */
-	struct proc *procp;
+	struct thread *td;
 {
 	struct socket *so;
 	struct sockaddr_in *sin, ssin;
@@ -221,7 +221,7 @@ krpc_call(sa, prog, vers, func, data, from_p, procp)
 	/*
 	 * Create socket and set its recieve timeout.
 	 */
-	if ((error = socreate(AF_INET, &so, SOCK_DGRAM, 0, procp)))
+	if ((error = socreate(AF_INET, &so, SOCK_DGRAM, 0, td)))
 		goto out;
 
 	tv.tv_sec = 1;
@@ -261,7 +261,7 @@ krpc_call(sa, prog, vers, func, data, from_p, procp)
 	do {
 		tport--;
 		sin->sin_port = htons(tport);
-		error = sobind(so, (struct sockaddr *)sin, procp);
+		error = sobind(so, (struct sockaddr *)sin, td);
 	} while (error == EADDRINUSE &&
 			 tport > IPPORT_RESERVED / 2);
 	if (error) {
@@ -322,7 +322,7 @@ krpc_call(sa, prog, vers, func, data, from_p, procp)
 			goto out;
 		}
 		error = sosend(so, (struct sockaddr *)sa, NULL, m,
-			       NULL, 0, procp);
+			       NULL, 0, td);
 		if (error) {
 			printf("krpc_call: sosend: %d\n", error);
 			goto out;

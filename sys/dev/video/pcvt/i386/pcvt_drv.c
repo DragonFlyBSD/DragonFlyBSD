@@ -51,7 +51,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:03:36 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_drv.c,v 1.63.2.1 2001/02/26 04:23:13 jlemon Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.4 2003/07/21 05:50:41 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.5 2003/07/21 07:57:45 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -78,7 +78,7 @@ extern int getchar __P((void));
 static void vgapelinit(void);	/* read initial VGA DAC palette */
 
 #if defined XSERVER && !PCVT_USL_VT_COMPAT
-static int pcvt_xmode_set(int on, struct proc *p); /* initialize for X mode */
+static int pcvt_xmode_set(int on, struct thread *td); /* initialize for X mode */
 #endif /* XSERVER && !PCVT_USL_VT_COMPAT */
 
 #ifdef _DEV_KBD_KBDREG_H_
@@ -417,7 +417,7 @@ get_pccons(Dev_t dev)
  *		/dev/ttyc0, /dev/ttyc1, etc.
  *---------------------------------------------------------------------------*/
 int
-pcopen(Dev_t dev, int flag, int mode, struct proc *p)
+pcopen(Dev_t dev, int flag, int mode, struct thread *td)
 {
 	register struct tty *tp;
 	register struct video_state *vsx;
@@ -507,7 +507,7 @@ pcopen(Dev_t dev, int flag, int mode, struct proc *p)
 }
 
 int
-pcclose(Dev_t dev, int flag, int mode, struct proc *p)
+pcclose(Dev_t dev, int flag, int mode, struct thread *td)
 {
 	register struct tty *tp;
 	register struct video_state *vsx;
@@ -551,7 +551,7 @@ pcclose(Dev_t dev, int flag, int mode, struct proc *p)
 }
 
 int
-pcioctl(Dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
+pcioctl(Dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
 	register int error;
 	register struct tty *tp;
@@ -577,7 +577,7 @@ pcioctl(Dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
 #ifdef XSERVER
 #if PCVT_USL_VT_COMPAT
 
-	if((error = usl_vt_ioctl(dev, cmd, data, flag, p)) >= 0)
+	if((error = usl_vt_ioctl(dev, cmd, data, flag, td->td_proc)) >= 0)
 		return error;
 
 	/*
@@ -596,16 +596,16 @@ pcioctl(Dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
 	  {
 	    int i;
 
-	    if((error = usl_vt_ioctl(dev, KDENABIO, 0, flag, p)) > 0)
+	    if((error = usl_vt_ioctl(dev, KDENABIO, 0, flag, td->td_proc)) > 0)
 	      return error;
 
 	    i = KD_GRAPHICS;
-	    if((error = usl_vt_ioctl(dev, KDSETMODE, (caddr_t)&i, flag, p))
+	    if((error = usl_vt_ioctl(dev, KDSETMODE, (caddr_t)&i, flag, td->td_proc))
 	       > 0)
 	      return error;
 
 	    i = K_RAW;
-	    error = usl_vt_ioctl(dev, KDSKBMODE, (caddr_t)&i, flag, p);
+	    error = usl_vt_ioctl(dev, KDSKBMODE, (caddr_t)&i, flag, td->td_proc);
 	    return error;
 	  }
 
@@ -613,13 +613,13 @@ pcioctl(Dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
 	  {
 	    int i;
 
-	    (void)usl_vt_ioctl(dev, KDDISABIO, 0, flag, p);
+	    (void)usl_vt_ioctl(dev, KDDISABIO, 0, flag, td->td_proc);
 
 	    i = KD_TEXT;
-	    (void)usl_vt_ioctl(dev, KDSETMODE, (caddr_t)&i, flag, p);
+	    (void)usl_vt_ioctl(dev, KDSETMODE, (caddr_t)&i, flag, td->td_proc);
 
 	    i = K_XLATE;
-	    (void)usl_vt_ioctl(dev, KDSKBMODE, (caddr_t)&i, flag, p);
+	    (void)usl_vt_ioctl(dev, KDSKBMODE, (caddr_t)&i, flag, td->td_proc);
 	    return 0;
 	  }
 
@@ -658,10 +658,10 @@ pcioctl(Dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
 	switch(cmd)
 	{
 	  case CONSOLE_X_MODE_ON:
-		return pcvt_xmode_set(1, p);
+		return pcvt_xmode_set(1, td->td_proc);
 
 	  case CONSOLE_X_MODE_OFF:
-		return pcvt_xmode_set(0, p);
+		return pcvt_xmode_set(0, td->td_proc);
 
 	  case CONSOLE_X_BELL:
 
@@ -706,7 +706,7 @@ do_standard:
 #endif
 
 #if PCVT_NETBSD > 9 || PCVT_FREEBSD >= 200
-	if((error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, p))
+	if((error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td))
 	    != ENOIOCTL)
 		return (error);
 #else
@@ -715,7 +715,7 @@ do_standard:
 #endif /* PCVT_NETBSD > 9 || PCVT_FREEBSD >= 200 */
 
 #if PCVT_NETBSD > 9
-	if((error = ttioctl(tp, cmd, data, flag, p)) >= 0)
+	if((error = ttioctl(tp, cmd, data, flag, td)) >= 0)
 		return (error);
 #else
 	if((error = ttioctl(tp, cmd, data, flag)) != ENOIOCTL)
@@ -1392,7 +1392,7 @@ vgapelinit(void)
  *	if parameter `on' is false, the same procedure is done reverse.
  *----------------------------------------------------------------------*/
 static int
-pcvt_xmode_set(int on, struct proc *p)
+pcvt_xmode_set(int on, struct thread *td)
 {
 	static unsigned char *saved_fonts[NVGAFONTS];
 

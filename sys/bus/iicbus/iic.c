@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iic.c,v 1.18 1999/11/18 05:43:32 peter Exp $
- * $DragonFly: src/sys/bus/iicbus/iic.c,v 1.3 2003/07/21 05:50:31 dillon Exp $
+ * $DragonFly: src/sys/bus/iicbus/iic.c,v 1.4 2003/07/21 07:57:41 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -140,7 +140,7 @@ iic_attach(device_t dev)
 }
 
 static int
-iicopen (dev_t dev, int flags, int fmt, struct proc *p)
+iicopen (dev_t dev, int flags, int fmt, struct thread *td)
 {
 	struct iic_softc *sc = IIC_SOFTC(minor(dev));
 
@@ -156,7 +156,7 @@ iicopen (dev_t dev, int flags, int fmt, struct proc *p)
 }
 
 static int
-iicclose(dev_t dev, int flags, int fmt, struct proc *p)
+iicclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	struct iic_softc *sc = IIC_SOFTC(minor(dev));
 
@@ -234,7 +234,7 @@ iicread(dev_t dev, struct uio * uio, int ioflag)
 }
 
 static int
-iicioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct proc *p)
+iicioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 {
 	device_t iicdev = IIC_DEVICE(minor(dev));
 	struct iic_softc *sc = IIC_SOFTC(minor(dev));

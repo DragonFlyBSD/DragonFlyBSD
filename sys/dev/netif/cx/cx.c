@@ -16,7 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.5 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.6 2003/07/21 07:57:44 dillon Exp $
  *
  */
 #undef DEBUG
@@ -424,7 +424,7 @@ int cxioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	if (! tp)
 		return (EINVAL);
 #if __FreeBSD__ >= 2
-	error = (*linesw[tp->t_line].l_ioctl) (tp, cmd, data, flag, p);
+	error = (*linesw[tp->t_line].l_ioctl) (tp, cmd, data, flag, td);
 #else
 	error = (*linesw[tp->t_line].l_ioctl) (tp, cmd, data, flag);
 #endif

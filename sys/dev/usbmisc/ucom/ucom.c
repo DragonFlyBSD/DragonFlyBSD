@@ -1,6 +1,6 @@
 /*	$NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ucom.c,v 1.24.2.2 2003/01/17 17:32:10 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.6 2003/07/21 05:50:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.7 2003/07/21 07:57:42 dillon Exp $	*/
 
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -268,7 +268,7 @@ ucomopen(dev_t dev, int flag, int mode, usb_proc_ptr td)
 	int s;
 	int error;
 
-	KKASSERT(p != NULL);
+	KKASSERT(td != NULL);
 
 	USB_GET_SC_OPEN(ucom, unit, sc);
 

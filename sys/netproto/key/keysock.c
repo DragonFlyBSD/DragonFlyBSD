@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keysock.c,v 1.1.2.4 2003/01/11 19:10:59 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.3 2003/07/21 07:57:51 dillon Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -393,7 +393,7 @@ key_abort(struct socket *so)
  * derived from net/rtsock.c:rts_attach()
  */
 static int
-key_attach(struct socket *so, int proto, struct proc *p)
+key_attach(struct socket *so, int proto, struct thread *td)
 {
 	struct keycb *kp;
 	int s, error;
@@ -414,7 +414,7 @@ key_attach(struct socket *so, int proto, struct proc *p)
 	 */
 	s = splnet();
 	so->so_pcb = (caddr_t)kp;
-	error = raw_usrreqs.pru_attach(so, proto, p);
+	error = raw_usrreqs.pru_attach(so, proto, td);
 	kp = (struct keycb *)sotorawcb(so);
 	if (error) {
 		free(kp, M_PCB);
@@ -442,11 +442,11 @@ key_attach(struct socket *so, int proto, struct proc *p)
  * derived from net/rtsock.c:rts_bind()
  */
 static int
-key_bind(struct socket *so, struct sockaddr *nam, struct proc *p)
+key_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int s, error;
 	s = splnet();
-	error = raw_usrreqs.pru_bind(so, nam, p); /* xxx just EINVAL */
+	error = raw_usrreqs.pru_bind(so, nam, td); /* xxx just EINVAL */
 	splx(s);
 	return error;
 }
@@ -456,11 +456,11 @@ key_bind(struct socket *so, struct sockaddr *nam, struct proc *p)
  * derived from net/rtsock.c:rts_connect()
  */
 static int
-key_connect(struct socket *so, struct sockaddr *nam, struct proc *p)
+key_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int s, error;
 	s = splnet();
-	error = raw_usrreqs.pru_connect(so, nam, p); /* XXX just EINVAL */
+	error = raw_usrreqs.pru_connect(so, nam, td); /* XXX just EINVAL */
 	splx(s);
 	return error;
 }
@@ -523,11 +523,11 @@ key_peeraddr(struct socket *so, struct sockaddr **nam)
  */
 static int
 key_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
-	 struct mbuf *control, struct proc *p)
+	 struct mbuf *control, struct thread *td)
 {
 	int s, error;
 	s = splnet();
-	error = raw_usrreqs.pru_send(so, flags, m, nam, control, p);
+	error = raw_usrreqs.pru_send(so, flags, m, nam, control, td);
 	splx(s);
 	return error;
 }

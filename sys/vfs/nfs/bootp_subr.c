@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $	*/
-/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.3 2003/07/19 21:14:45 dillon Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.4 2003/07/21 07:57:51 dillon Exp $	*/
 
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass
@@ -216,18 +216,17 @@ struct bootpc_globalcontext {
 extern int nfs_diskless_valid;
 extern struct nfsv3_diskless nfsv3_diskless;
 static char bootp_cookie[128];
-SYSCTL_DECL(_kern);
 SYSCTL_STRING(_kern, OID_AUTO, bootp_cookie, CTLFLAG_RD,
 	bootp_cookie, 0, "Cookie (T134) supplied by bootp server");
 
 /* mountd RPC */
 static int md_mount(struct sockaddr_in *mdsin, char *path,
 		    u_char *fhp, int *fhsizep,
-		    struct nfs_args *args,struct proc *procp);
+		    struct nfs_args *args,struct thread *td);
 static int md_lookup_swap(struct sockaddr_in *mdsin,char *path,
 			  u_char *fhp, int *fhsizep,
 			  struct nfs_args *args,
-			  struct proc *procp);
+			  struct thread *td);
 static int setfs(struct sockaddr_in *addr, char *path, char *p);
 static int getdec(char **ptr);
 static char *substr(char *a,char *b);
@@ -241,7 +240,7 @@ static
 struct bootpc_ifcontext *allocifctx(struct bootpc_globalcontext *gctx);
 static void bootpc_compose_query(struct bootpc_ifcontext *ifctx,
 				 struct bootpc_globalcontext *gctx,
-				 struct proc *procp);
+				 struct thread *td);
 static unsigned char *bootpc_tag(struct bootpc_tagcontext *tctx,
 				 struct bootp_packet *bp, int len, int tag);
 static void bootpc_tag_helper(struct bootpc_tagcontext *tctx,
@@ -258,15 +257,15 @@ void bootpboot_p_iflist(void);
 #endif
 
 static int  bootpc_call(struct bootpc_globalcontext *gctx,
-			struct proc *procp);
+			struct thread *td);
 
 static int bootpc_fakeup_interface(struct bootpc_ifcontext *ifctx,
 				   struct bootpc_globalcontext *gctx,
-				   struct proc *procp);
+				   struct thread *td);
 
 static int bootpc_adjust_interface(struct bootpc_ifcontext *ifctx,
 				   struct bootpc_globalcontext *gctx,
-				   struct proc *procp);
+				   struct thread *td);
 
 static void bootpc_decode_reply(struct nfsv3_diskless *nd,
 				struct bootpc_ifcontext *ifctx,
@@ -591,7 +590,7 @@ bootpc_received(struct bootpc_globalcontext *gctx,
 
 static int
 bootpc_call(struct bootpc_globalcontext *gctx,
-	    struct proc *procp)
+	    struct thread *td)
 {
 	struct socket *so;
 	struct sockaddr_in *sin, dst;
@@ -611,7 +610,7 @@ bootpc_call(struct bootpc_globalcontext *gctx,
 	/*
 	 * Create socket and set its recieve timeout.
 	 */
-	error = socreate(AF_INET, &so, SOCK_DGRAM, 0, procp);
+	error = socreate(AF_INET, &so, SOCK_DGRAM, 0, td);
 	if (error != 0)
 		goto out;
 	
@@ -658,7 +657,7 @@ bootpc_call(struct bootpc_globalcontext *gctx,
 	sin = &dst;
 	clear_sinaddr(sin);
 	sin->sin_port = htons(IPPORT_BOOTPC);
-	error = sobind(so, (struct sockaddr *)sin, procp);
+	error = sobind(so, (struct sockaddr *)sin, td);
 	if (error != 0) {
 		printf("bind failed\n");
 		goto out;
@@ -716,7 +715,7 @@ bootpc_call(struct bootpc_globalcontext *gctx,
 			    (ifctx->state == IF_BOOTP_UNRESOLVED &&
 			     ifctx->dhcpquerytype != DHCP_NOMSG)) {
 				ifctx->sentmsg = 0;
-				bootpc_compose_query(ifctx, gctx, procp);
+				bootpc_compose_query(ifctx, gctx, td);
 			}
 			
 			/* Send BOOTP request (or re-send). */
@@ -753,21 +752,21 @@ bootpc_call(struct bootpc_globalcontext *gctx,
 			auio.uio_rw = UIO_WRITE;
 			auio.uio_offset = 0;
 			auio.uio_resid = sizeof(ifctx->call);
-			auio.uio_procp = procp;
+			auio.uio_td = td;
 			
 			/* Set netmask to 0.0.0.0 */
 			
 			sin = (struct sockaddr_in *) &ifctx->ireq.ifr_addr;
 			clear_sinaddr(sin);
 			error = ifioctl(ifctx->so, SIOCSIFNETMASK,
-					(caddr_t) &ifctx->ireq, procp);
+					(caddr_t) &ifctx->ireq, td);
 			if (error != 0)
 				panic("bootpc_call:"
 				      "set if netmask, error=%d",
 				      error);
 	
 			error = sosend(so, (struct sockaddr *) &dst,
-				       &auio, NULL, NULL, 0, procp);
+				       &auio, NULL, NULL, 0, td);
 			if (error != 0) {
 				printf("bootpc_call: sosend: %d state %08x\n",
 				       error, (int) so->so_state);
@@ -782,7 +781,7 @@ bootpc_call(struct bootpc_globalcontext *gctx,
 			clear_sinaddr(sin);
 			sin->sin_addr.s_addr = htonl(0xff000000u);
 			error = ifioctl(ifctx->so, SIOCSIFNETMASK,
-					(caddr_t) &ifctx->ireq, procp);
+					(caddr_t) &ifctx->ireq, td);
 			if (error != 0)
 				panic("bootpc_call:"
 				      "set if netmask, error=%d",
@@ -820,7 +819,7 @@ bootpc_call(struct bootpc_globalcontext *gctx,
 			auio.uio_rw = UIO_READ;
 			auio.uio_offset = 0;
 			auio.uio_resid = sizeof(gctx->reply);
-			auio.uio_procp = procp;
+			auio.uio_td = td;
 			
 			rcvflg = 0;
 			error = soreceive(so, NULL, &auio,
@@ -989,7 +988,7 @@ out:
 static int
 bootpc_fakeup_interface(struct bootpc_ifcontext *ifctx,
 			struct bootpc_globalcontext *gctx,
-			struct proc *procp)
+			struct thread *td)
 {
 	struct sockaddr_in *sin;
 	int error;
@@ -999,7 +998,7 @@ bootpc_fakeup_interface(struct bootpc_ifcontext *ifctx,
 	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
 
-	error = socreate(AF_INET, &ifctx->so, SOCK_DGRAM, 0, procp);
+	error = socreate(AF_INET, &ifctx->so, SOCK_DGRAM, 0, td);
 	if (error != 0)
 		panic("nfs_boot: socreate, error=%d", error);
 	
@@ -1012,11 +1011,11 @@ bootpc_fakeup_interface(struct bootpc_ifcontext *ifctx,
 	 * Get the old interface flags and or IFF_UP into them; if
 	 * IFF_UP set blindly, interface selection can be clobbered.
 	 */
-	error = ifioctl(so, SIOCGIFFLAGS, (caddr_t)ireq, procp);
+	error = ifioctl(so, SIOCGIFFLAGS, (caddr_t)ireq, td);
 	if (error != 0)
 		panic("bootpc_fakeup_interface: GIFFLAGS, error=%d", error);
 	ireq->ifr_flags |= IFF_UP;
-	error = ifioctl(so, SIOCSIFFLAGS, (caddr_t)ireq, procp);
+	error = ifioctl(so, SIOCSIFFLAGS, (caddr_t)ireq, td);
 	if (error != 0)
 		panic("bootpc_fakeup_interface: SIFFLAGS, error=%d", error);
 	
@@ -1029,7 +1028,7 @@ bootpc_fakeup_interface(struct bootpc_ifcontext *ifctx,
 	
 	sin = (struct sockaddr_in *) &ireq->ifr_addr;
 	clear_sinaddr(sin);
-	error = ifioctl(so, SIOCSIFADDR, (caddr_t) ireq, procp);
+	error = ifioctl(so, SIOCSIFADDR, (caddr_t) ireq, td);
 	if (error != 0 && (error != EEXIST || ifctx == gctx->interfaces))
 		panic("bootpc_fakeup_interface: "
 		      "set if addr, error=%d", error);
@@ -1039,7 +1038,7 @@ bootpc_fakeup_interface(struct bootpc_ifcontext *ifctx,
 	sin = (struct sockaddr_in *) &ireq->ifr_addr;
 	clear_sinaddr(sin);
 	sin->sin_addr.s_addr = htonl(0xff000000u);
-	error = ifioctl(so, SIOCSIFNETMASK, (caddr_t)ireq, procp);
+	error = ifioctl(so, SIOCSIFNETMASK, (caddr_t)ireq, td);
 	if (error != 0)
 		panic("bootpc_fakeup_interface: set if netmask, error=%d",
 		      error);
@@ -1052,7 +1051,7 @@ bootpc_fakeup_interface(struct bootpc_ifcontext *ifctx,
 	sin->sin_addr.s_addr = htonl(INADDR_BROADCAST);
 	ifctx->broadcast.sin_addr.s_addr = sin->sin_addr.s_addr;
 	
-	error = ifioctl(so, SIOCSIFBRDADDR, (caddr_t)ireq, procp);
+	error = ifioctl(so, SIOCSIFBRDADDR, (caddr_t)ireq, td);
 	if (error != 0 && error != EADDRNOTAVAIL)
 		panic("bootpc_fakeup_interface: "
 		      "set if broadcast addr, error=%d",
@@ -1082,7 +1081,7 @@ bootpc_fakeup_interface(struct bootpc_ifcontext *ifctx,
 static int
 bootpc_adjust_interface(struct bootpc_ifcontext *ifctx,
 			struct bootpc_globalcontext *gctx,
-			struct proc *procp)
+			struct thread *td)
 {
 	int error;
 	struct sockaddr_in defdst;
@@ -1106,19 +1105,19 @@ bootpc_adjust_interface(struct bootpc_ifcontext *ifctx,
 		/* Shutdown interfaces where BOOTP failed */
 		
 		printf("Shutdown interface %s\n", ifctx->ireq.ifr_name);
-		error = ifioctl(so, SIOCGIFFLAGS, (caddr_t)ireq, procp);
+		error = ifioctl(so, SIOCGIFFLAGS, (caddr_t)ireq, td);
 		if (error != 0)
 			panic("bootpc_adjust_interface: "
 			      "SIOCGIFFLAGS, error=%d", error);
 		ireq->ifr_flags &= ~IFF_UP;
-		error = ifioctl(so, SIOCSIFFLAGS, (caddr_t)ireq, procp);
+		error = ifioctl(so, SIOCSIFFLAGS, (caddr_t)ireq, td);
 		if (error != 0)
 			panic("bootpc_adjust_interface: "
 			      "SIOCSIFFLAGS, error=%d", error);
 		
 		sin = (struct sockaddr_in *) &ireq->ifr_addr;
 		clear_sinaddr(sin);
-		error = ifioctl(so, SIOCDIFADDR, (caddr_t) ireq, procp);
+		error = ifioctl(so, SIOCDIFADDR, (caddr_t) ireq, td);
 		if (error != 0 && (error != EADDRNOTAVAIL ||
 				   ifctx == gctx->interfaces))
 			panic("bootpc_adjust_interface: "
@@ -1133,7 +1132,7 @@ bootpc_adjust_interface(struct bootpc_ifcontext *ifctx,
 	 * can talk to the servers.  (just set the address)
 	 */
 	bcopy(netmask, &ireq->ifr_addr, sizeof(*netmask));
-	error = ifioctl(so, SIOCSIFNETMASK, (caddr_t) ireq, procp);
+	error = ifioctl(so, SIOCSIFNETMASK, (caddr_t) ireq, td);
 	if (error != 0)
 		panic("bootpc_adjust_interface: "
 		      "set if netmask, error=%d", error);
@@ -1144,13 +1143,13 @@ bootpc_adjust_interface(struct bootpc_ifcontext *ifctx,
 	clear_sinaddr(sin);
 	sin->sin_addr.s_addr = myaddr->sin_addr.s_addr |
 		~ netmask->sin_addr.s_addr;
-	error = ifioctl(so, SIOCSIFBRDADDR, (caddr_t) ireq, procp);
+	error = ifioctl(so, SIOCSIFBRDADDR, (caddr_t) ireq, td);
 	if (error != 0)
 		panic("bootpc_adjust_interface: "
 		      "set if broadcast addr, error=%d", error);
 	
 	bcopy(myaddr, &ireq->ifr_addr, sizeof(*myaddr));
-	error = ifioctl(so, SIOCSIFADDR, (caddr_t) ireq, procp);
+	error = ifioctl(so, SIOCSIFADDR, (caddr_t) ireq, td);
 	if (error != 0 && (error != EEXIST || ifctx == gctx->interfaces))
 		panic("bootpc_adjust_interface: "
 		      "set if addr, error=%d", error);
@@ -1337,10 +1336,10 @@ print_in_addr(struct in_addr addr)
 }
 
 static void
-bootpc_compose_query(ifctx, gctx, procp)
+bootpc_compose_query(ifctx, gctx, td)
 	struct bootpc_ifcontext *ifctx;
 	struct bootpc_globalcontext *gctx;
-	struct proc *procp;
+	struct thread *td;
 {
 	unsigned char *vendp;
 	unsigned char vendor_client[64];
@@ -1699,10 +1698,10 @@ bootpc_init(void)
 	struct ifnet *ifp;
 	int error;
 	struct nfsv3_diskless *nd;
-	struct proc *procp;
+	struct thread *td;
 
 	nd = &nfsv3_diskless;
-	procp = curproc;
+	td = curthread;
 	
 	/*
 	 * If already filled in, don't touch it here
@@ -1774,13 +1773,13 @@ bootpc_init(void)
 	gctx->gotgw = 0;
 	
 	for (ifctx = gctx->interfaces; ifctx != NULL; ifctx = ifctx->next)
-		bootpc_fakeup_interface(ifctx, gctx, procp);
+		bootpc_fakeup_interface(ifctx, gctx, td);
 	
 	for (ifctx = gctx->interfaces; ifctx != NULL; ifctx = ifctx->next)
-		bootpc_compose_query(ifctx, gctx, procp);
+		bootpc_compose_query(ifctx, gctx, td);
 	
 	ifctx = gctx->interfaces;
-	error = bootpc_call(gctx, procp);
+	error = bootpc_call(gctx, td);
 	
 	if (error != 0) {
 #ifdef BOOTP_NFSROOT
@@ -1806,7 +1805,7 @@ bootpc_init(void)
 #endif
 	
 	for (ifctx = gctx->interfaces; ifctx != NULL; ifctx = ifctx->next) {
-		bootpc_adjust_interface(ifctx, gctx, procp);
+		bootpc_adjust_interface(ifctx, gctx, td);
 		
 		soclose(ifctx->so);
 	}
@@ -1828,7 +1827,7 @@ bootpc_init(void)
 		
 		error = md_mount(&nd->root_saddr, nd->root_hostnam,
 				 nd->root_fh, &nd->root_fhsize,
-				 &nd->root_args, procp);
+				 &nd->root_args, td);
 		if (error != 0)
 			panic("nfs_boot: mountd root, error=%d", error);
     
@@ -1837,7 +1836,7 @@ bootpc_init(void)
 			error = md_mount(&nd->swap_saddr,
 					 nd->swap_hostnam,
 					 nd->swap_fh, &nd->swap_fhsize,
-					 &nd->swap_args, procp);
+					 &nd->swap_args, td);
 			if (error != 0)
 				panic("nfs_boot: mountd swap, error=%d",
 				      error);
@@ -1845,7 +1844,7 @@ bootpc_init(void)
 			error = md_lookup_swap(&nd->swap_saddr,
 					       gctx->lookup_path,
 					       nd->swap_fh, &nd->swap_fhsize,
-					       &nd->swap_args, procp);
+					       &nd->swap_args, td);
 			if (error != 0)
 				panic("nfs_boot: lookup swap, error=%d",
 				      error);
@@ -1881,7 +1880,7 @@ md_mount(struct sockaddr_in *mdsin,		/* mountd server address */
 	 u_char *fhp,
 	 int *fhsizep,
 	 struct nfs_args *args,
-	 struct proc *procp)
+	 struct thread *td)
 {
 	struct mbuf *m;
 	int error;
@@ -1893,13 +1892,13 @@ md_mount(struct sockaddr_in *mdsin,		/* mountd server address */
 	/* First try NFS v3 */
 	/* Get port number for MOUNTD. */
 	error = krpc_portmap(mdsin, RPCPROG_MNT, RPCMNT_VER3,
-			     &mdsin->sin_port, procp);
+			     &mdsin->sin_port, td);
 	if (error == 0) {
 		m = xdr_string_encode(path, strlen(path));
 		
 		/* Do RPC to mountd. */
 		error = krpc_call(mdsin, RPCPROG_MNT, RPCMNT_VER3,
-				  RPCMNT_MOUNT, &m, NULL, procp);
+				  RPCMNT_MOUNT, &m, NULL, td);
 	}
 	if (error == 0) {
 		args->flags |= NFSMNT_NFSV3;
@@ -1909,7 +1908,7 @@ md_mount(struct sockaddr_in *mdsin,		/* mountd server address */
 		
 		/* Get port number for MOUNTD. */
 		error = krpc_portmap(mdsin, RPCPROG_MNT, RPCMNT_VER1,
-				     &mdsin->sin_port, procp);
+				     &mdsin->sin_port, td);
 		if (error != 0)
 			return error;
 		
@@ -1917,7 +1916,7 @@ md_mount(struct sockaddr_in *mdsin,		/* mountd server address */
 		
 		/* Do RPC to mountd. */
 		error = krpc_call(mdsin, RPCPROG_MNT, RPCMNT_VER1,
-				  RPCMNT_MOUNT, &m, NULL, procp);
+				  RPCMNT_MOUNT, &m, NULL, td);
 		if (error != 0)
 			return error;	/* message already freed */
 		
@@ -1960,7 +1959,7 @@ md_mount(struct sockaddr_in *mdsin,		/* mountd server address */
 	error = krpc_portmap(mdsin, NFS_PROG,
 			     (args->flags &
 			      NFSMNT_NFSV3) ? NFS_VER3 : NFS_VER2,
-			     &mdsin->sin_port, procp);
+			     &mdsin->sin_port, td);
 	
 	goto out;
 	
@@ -1979,7 +1978,7 @@ md_lookup_swap(struct sockaddr_in *mdsin,	/* mountd server address */
 	       u_char *fhp,
 	       int *fhsizep,
 	       struct nfs_args *args,
-	       struct proc *procp)
+	       struct thread *td)
 {
 	struct mbuf *m;
 	int error;
@@ -2013,10 +2012,10 @@ md_lookup_swap(struct sockaddr_in *mdsin,	/* mountd server address */
 	/* Do RPC to nfsd. */
 	if ((args->flags & NFSMNT_NFSV3) != 0)
 		error = krpc_call(mdsin, NFS_PROG, NFS_VER3,
-				  NFSPROC_LOOKUP, &m, NULL, procp);
+				  NFSPROC_LOOKUP, &m, NULL, td);
 	else
 		error = krpc_call(mdsin, NFS_PROG, NFS_VER2,
-				  NFSV2PROC_LOOKUP, &m, NULL, procp);
+				  NFSV2PROC_LOOKUP, &m, NULL, td);
 	if (error != 0)
 		return error;	/* message already freed */
 

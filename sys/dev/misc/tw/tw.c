@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/tw.c,v 1.38 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.5 2003/07/21 07:57:45 dillon Exp $
  *
  */
 
@@ -411,11 +411,11 @@ static int twattach(idp)
   return (1);
 }
 
-int twopen(dev, flag, mode, p)
+int twopen(dev, flag, mode, td)
      dev_t dev;
      int flag;
      int mode;
-     struct proc *p;
+     struct thread *td;
 {
   struct tw_sc *sc = &tw_sc[TWUNIT(dev)];
   int s;
@@ -431,11 +431,11 @@ int twopen(dev, flag, mode, p)
   return(0);
 }
 
-int twclose(dev, flag, mode, p)
+int twclose(dev, flag, mode, td)
      dev_t dev;
      int flag;
      int mode;
-     struct proc *p;
+     struct thread *td;
 {
   struct tw_sc *sc = &tw_sc[TWUNIT(dev)];
   int s;
@@ -537,10 +537,10 @@ int twwrite(dev, uio, ioflag)
  * Determine if there is data available for reading
  */
 
-int twpoll(dev, events, p)
+int twpoll(dev, events, td)
      dev_t dev;
      int events;
-     struct proc *p;
+     struct thread *td;
 {
   struct tw_sc *sc;
   int s;
@@ -553,7 +553,7 @@ int twpoll(dev, events, p)
     if(sc->sc_nextin != sc->sc_nextout)
       revents |= events & (POLLIN | POLLRDNORM);
     else
-      selrecord(p, &sc->sc_selp);
+      selrecord(td, &sc->sc_selp);
   }
   splx(s);
   return(revents);

@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_balloc.c	8.4 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_balloc.c,v 1.9.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_balloc.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_balloc.c,v 1.3 2003/07/21 07:57:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -106,7 +106,7 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 		/* no new block is to be allocated, and no need to expand
 		   the file */
 		if (nb != 0 && ip->i_size >= (bn + 1) * fs->s_blocksize) {
-			error = bread(vp, bn, fs->s_blocksize, NOCRED, &bp);
+			error = bread(vp, bn, fs->s_blocksize, &bp);
 			if (error) {
 				brelse(bp);
 				return (error);
@@ -121,7 +121,7 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 			osize = fragroundup(fs, blkoff(fs, ip->i_size));
 			nsize = fragroundup(fs, size);
 			if (nsize <= osize) {
-				error = bread(vp, bn, osize, NOCRED, &bp);
+				error = bread(vp, bn, osize, &bp);
 				if (error) {
 					brelse(bp);
 					return (error);
@@ -214,7 +214,7 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 	 */
 	for (i = 1;;) {
 		error = bread(vp,
-		    indirs[i].in_lbn, (int)fs->s_blocksize, NOCRED, &bp);
+		    indirs[i].in_lbn, (int)fs->s_blocksize, &bp);
 		if (error) {
 			brelse(bp);
 			return (error);
@@ -301,7 +301,7 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 	}
 	brelse(bp);
 	if (flags & B_CLRBUF) {
-		error = bread(vp, lbn, (int)fs->s_blocksize, NOCRED, &nbp);
+		error = bread(vp, lbn, (int)fs->s_blocksize, &nbp);
 		if (error) {
 			brelse(nbp);
 			return (error);

@@ -30,7 +30,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_fops.h,v 1.7.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_fops.h,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_fops.h,v 1.3 2003/07/21 07:57:40 dillon Exp $
  */
 
 #include "dev/drm/drmP.h"
@@ -41,8 +41,8 @@ drm_file_t *DRM(find_file_by_proc)(drm_device_t *dev, DRM_STRUCTPROC *p)
 	uid_t uid = p->td_ucred->cr_svuid;
 	pid_t pid = p->td_proc->p_pid;
 #else
-	uid_t uid = p->p_cred->p_svuid;
-	pid_t pid = p->p_pid;
+	uid_t uid = p->td_proc->p_ucred->cr_svuid;
+	pid_t pid = p->td_proc->p_pid;
 #endif
 	drm_file_t *priv;
 
@@ -77,8 +77,8 @@ int DRM(open_helper)(dev_t kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 		priv->uid		= p->td_ucred->cr_svuid;
 		priv->pid		= p->td_proc->p_pid;
 #else
-		priv->uid		= p->p_cred->p_svuid;
-		priv->pid		= p->p_pid;
+		priv->uid		= p->td_proc->p_ucred->cr_svuid;
+		priv->pid		= p->td_proc->p_pid;
 #endif
 
 		priv->refs		= 1;

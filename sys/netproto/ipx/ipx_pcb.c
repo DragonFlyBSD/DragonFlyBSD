@@ -34,7 +34,7 @@
  *	@(#)ipx_pcb.c
  *
  * $FreeBSD: src/sys/netipx/ipx_pcb.c,v 1.18.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.3 2003/06/25 03:56:05 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.4 2003/07/21 07:57:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -95,7 +95,7 @@ ipx_pcbbind(struct ipxpcb *ipxp, struct sockaddr *nam, struct thread *td)
 		int error;
 
 		if (aport < IPXPORT_RESERVED &&
-		    p != NULL && (error = suser(td)) != 0)
+		    td != NULL && (error = suser(td)) != 0)
 			return (error);
 		if (ipx_pcblookup(&zeroipx_addr, lport, 0))
 			return (EADDRINUSE);
