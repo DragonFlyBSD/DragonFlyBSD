@@ -1,7 +1,7 @@
 .\" Copyright (c) 2005 The DragonFly Project.  All rights reserved.
 .\"
 .\" This code is derived from software contributed to The DragonFly Project
-.\" by Sarunas Vancevicius and Maxime Labelle. 
+.\" by Maxime Labelle. 
 .\" 
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -29,10 +29,10 @@
 .\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
-.\" 
-.\" $DragonFly: src/usr.sbin/battd/battd.8,v 1.1 2005/02/01 17:16:36 liamfoy Exp $
- 
-.Dd January 1, 2005
+.\"
+.\" $DragonFly: src/usr.sbin/battd/battd.8,v 1.2 2005/02/01 18:43:15 liamfoy Exp $ 
+
+.Dd January 31, 2005
 .Dt BATTD 1
 .Os
 .Sh NAME
@@ -40,7 +40,7 @@
 .Nd Battery status monitoring daemon 
 .Sh SYNOPSIS
 .Nm
-.Op Fl dEhT
+.Op Fl hEdT
 .Op Fl p Ar percentage
 .Op Fl t Ar minutes
 .Op Fl s Ar status
@@ -50,16 +50,16 @@
 The
 .Nm
 daemon monitors the status of the battery or batteries present in the system.
-The daemon will alert all users on the system
-and may execute a supplied command once a particular criteria has  been
-met.   The  criterias  are  based on the percentage remaining, the time
-remaining and the status of the battery.
+The daemon will alert all users on the system and may execute a supplied
+command once a particular criteria has been met. The criterias are based
+on the percentage remaining, the time remaining and the status of the battery. 
 .Pp
 The options are as follows:
 .Bl -tag -width indent
 .It Fl c Ar seconds
-Interval in seconds for checking the battery status, default is
-.Ar 30 .
+Interval in seconds for checking the battery status. Default is
+.Ar 30
+seconds.
 .It Fl d
 Start
 .Nm
@@ -68,19 +68,25 @@ in debug mode.
 Execute
 .Ar command
 once condition has been met.
-.It Fl E
-Do not continue executing after a condition has been met.
+.It Fl E 
+Execute command only once after a condition has been met.
 .It Fl f Ar device
-Specifies a different device path to be used in place of the default
+Specifies a different device path to be used. Default is 
+.Ar /dev/apm .
 .It Fl h 
 Print
 .Nm 
-usage.
+command line usage and exit.
 .It Fl p Ar percent
 Alert the user when the remaining battery life has reached approximately
 .Ar percent .
 .It Fl s Ar status
-Alert the user when the remaining battery status has reached High, Low or
+Alert the user when the remaining battery has reached a given status. The status specified can either be 
+.Ar high
+, 
+.Ar low
+or 
+.Ar critical .
 .It Fl t Ar minutes
 Alert the user when the remaining battery time has reached approximately
 .Ar minutes.
@@ -92,6 +98,7 @@ the system has roughly 10 minutes remaining.
 By default,
 .Nm
 will alert users once the battery or batteries have roughly 10% of power remaining.
+.Pp
 .Sh EXAMPLES
 .Bl -tag -width indent
 .It Li "battd -p 50 -s low"
@@ -104,6 +111,8 @@ Alert users when the battery percentage has reached 50% and execute the command 
 Increase the interval between checking the battery to 10 seconds.
 .El
 .Sh SEE ALSO
+.Xr zzz 4 ,
+.Xr viapm 4 ,
 .Xr apm 8 ,
 .Xr apmd 8 ,
 .Xr syslogd 8
