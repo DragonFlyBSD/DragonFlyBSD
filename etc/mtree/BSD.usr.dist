@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.30 2005/03/11 20:25:11 joerg Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.31 2005/03/13 18:42:39 joerg Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -94,101 +94,7 @@
         dict
         ..
         doc
-            IPv6
-            ..
-            bind
-                html
-                ..
-                misc
-                ..
-            ..
             ncurses
-            ..
-            ntp
-            ..
-            papers
-            ..
-            psd
-                05.sysman
-                ..
-                12.make
-                ..
-                13.rcs
-                ..
-                18.gprof
-                ..
-                20.ipctut
-                ..
-                21.ipc
-                ..
-                22.rpcgen
-                ..
-                23.rpc
-                ..
-                24.xdr
-                ..
-                25.xdrrfc
-                ..
-                26.rpcrfc
-                ..
-                27.nfsrfc
-                ..
-                28.cvs
-                ..
-            ..
-            smm
-                01.setup
-                ..
-                02.config
-                ..
-                03.fsck
-                ..
-                04.quotas
-                ..
-                05.fastfs
-                ..
-                06.nfs
-                ..
-                07.lpd
-                ..
-                08.sendmailop
-                ..
-                10.named
-                ..
-                11.timedop
-                ..
-                12.timed
-                ..
-                18.net
-                ..
-            ..
-            usd
-                04.csh
-                ..
-                05.dc
-                ..
-                06.bc
-                ..
-                07.mail
-                ..
-                10.exref
-                ..
-                11.edit
-                ..
-                12.vi
-                ..
-                13.viref
-                ..
-                18.msdiffs
-                ..
-                19.memacros
-                ..
-                20.meref
-                ..
-                30.rogue
-                ..
-                31.trek
-                ..
             ..
         ..
         examples
