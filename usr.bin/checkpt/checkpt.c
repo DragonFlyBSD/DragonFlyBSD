@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/checkpt/checkpt.c,v 1.1 2003/10/20 04:46:14 dillon Exp $
+ * $DragonFly: src/usr.bin/checkpt/checkpt.c,v 1.2 2003/10/20 07:01:05 dillon Exp $
  */
 
 #include <stdio.h>
@@ -69,7 +69,7 @@ main(int ac, char **av)
 
     fd = open(filename, O_RDONLY);
     if (fd < 0) {
-	fprintf(stderr, "unable to open %s\n", av[1]);
+	fprintf(stderr, "unable to open %s\n", filename);
 	exit(1);
     }
     error = ckpt_restore(fd, THAW_RETURN);
