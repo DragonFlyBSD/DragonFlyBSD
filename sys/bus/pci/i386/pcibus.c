@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.11 2002/11/13 21:40:40 peter Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.5 2004/01/15 19:58:30 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.6 2004/01/15 20:41:57 joerg Exp $
  *
  */
 
@@ -32,13 +32,15 @@
 #include <sys/systm.h>
 #include <sys/bus.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-#include "pcibus.h"
+#include <bus/pci/i386/pcibus.h>
 #include <bus/isa/isavar.h>
 #include <bus/pci/i386/pci_cfgreg.h>
 #include <machine/md_var.h>
+#include <machine/nexusvar.h>
 
 #include "pcib_if.h"
 
@@ -68,7 +70,7 @@ nexus_pcib_write_config(device_t dev, int bus, int slot, int func,
 static devclass_t	pcib_devclass;
 
 static const char *
-nexus_pcib_is_host_bridge(pcicfgregs *cfg,
+nexus_pcib_is_host_bridge(int bus, int slot, int func,
 			  u_int32_t id, u_int8_t class, u_int8_t subclass,
 			  u_int8_t *busnum)
 {
@@ -81,8 +83,8 @@ nexus_pcib_is_host_bridge(pcicfgregs *cfg,
 	case 0x12258086:
 		s = "Intel 824?? host to PCI bridge";
 		/* XXX This is a guess */
-		/* *busnum = pci_cfgread(cfg, 0x41, 1); */
-		*busnum = cfg->bus;
+		/* *busnum = nexus_pcib_read_config(0, bus, slot, func, 0x41, 1); */
+		*busnum = bus;
 		break;
 	case 0x71208086:
 		s = "Intel 82810 (i810 GMCH) Host To Hub bridge";
@@ -116,7 +118,7 @@ nexus_pcib_is_host_bridge(pcicfgregs *cfg,
 		break;
 	case 0x84c48086:
 		s = "Intel 82454KX/GX (Orion) host to PCI bridge";
-		*busnum = pci_cfgread(cfg, 0x4a, 1);
+		*busnum = nexus_pcib_read_config(0, bus, slot, func, 0x4a, 1);
 		break;
 	case 0x84ca8086:
 		/*
@@ -130,13 +132,17 @@ nexus_pcib_is_host_bridge(pcicfgregs *cfg,
 		 * Since the MIOC doesn't have a pci bus attached, we
 		 * pretend it wasn't there.
 		 */
-		pxb[0] = pci_cfgread(cfg, 0xd0, 1); /* BUSNO[0] */
-		pxb[1] = pci_cfgread(cfg, 0xd1, 1) + 1;	/* SUBA[0]+1 */
-		pxb[2] = pci_cfgread(cfg, 0xd3, 1); /* BUSNO[1] */
-		pxb[3] = pci_cfgread(cfg, 0xd4, 1) + 1;	/* SUBA[1]+1 */
+		pxb[0] = nexus_pcib_read_config(0, bus, slot, func,
+						0xd0, 1); /* BUSNO[0] */
+		pxb[1] = nexus_pcib_read_config(0, bus, slot, func,
+						0xd1, 1) + 1;	/* SUBA[0]+1 */
+		pxb[2] = nexus_pcib_read_config(0, bus, slot, func,
+						0xd3, 1); /* BUSNO[1] */
+		pxb[3] = nexus_pcib_read_config(0, bus, slot, func,
+						0xd4, 1) + 1;	/* SUBA[1]+1 */
 		return NULL;
 	case 0x84cb8086:
-		switch (cfg->slot) {
+		switch (slot) {
 		case 0x12:
 			s = "Intel 82454NX PXB#0, Bus#A";
 			*busnum = pxb[0];
@@ -213,6 +219,9 @@ nexus_pcib_is_host_bridge(pcicfgregs *cfg,
 		break;
 
 		/* OPTi -- vendor 0x1045 */
+	case 0xc7011045:
+		s = "OPTi 82C700 host to PCI bridge";
+		break;
 	case 0xc8221045:
 		s = "OPTi 82C822 host to PCI Bridge";
 		break;
@@ -220,24 +229,24 @@ nexus_pcib_is_host_bridge(pcicfgregs *cfg,
 		/* ServerWorks -- vendor 0x1166 */
 	case 0x00051166:
 		s = "ServerWorks NB6536 2.0HE host to PCI bridge";
-		*busnum = pci_cfgread(cfg, 0x44, 1);
+		*busnum = nexus_pcib_read_config(0, bus, slot, func, 0x44, 1);
 		break;
 	
 	case 0x00061166:
 		/* FALLTHROUGH */
 	case 0x00081166:
 		s = "ServerWorks host to PCI bridge";
-		*busnum = pci_cfgread(cfg, 0x44, 1);
+		*busnum = nexus_pcib_read_config(0, bus, slot, func, 0x44, 1);
 		break;
 
 	case 0x00091166:
 		s = "ServerWorks NB6635 3.0LE host to PCI bridge";
-		*busnum = pci_cfgread(cfg, 0x44, 1);
+		*busnum = nexus_pcib_read_config(0, bus, slot, func, 0x44, 1);
 		break;
 
 	case 0x00101166:
 		s = "ServerWorks CIOB30 host to PCI bridge";
-		*busnum = pci_cfgread(cfg, 0x44, 1);
+		*busnum = nexus_pcib_read_config(0, bus, slot, func, 0x44, 1);
 		break;
 
 		/* XXX unknown chipset, but working */
@@ -245,7 +254,7 @@ nexus_pcib_is_host_bridge(pcicfgregs *cfg,
 		/* FALLTHROUGH */
 	case 0x01011166:
 		s = "ServerWorks host to PCI bridge(unknown chipset)";
-		*busnum = pci_cfgread(cfg, 0x44, 1);
+		*busnum = nexus_pcib_read_config(0, bus, slot, func, 0x44, 1);
 		break;
 
 		/* Integrated Micro Solutions -- vendor 0x10e0 */
@@ -269,63 +278,94 @@ nexus_pcib_is_host_bridge(pcicfgregs *cfg,
 static void
 nexus_pcib_identify(driver_t *driver, device_t parent)
 {
-	pcicfgregs probe;
+	int bus, slot, func;
 	u_int8_t  hdrtype;
 	int found = 0;
 	int pcifunchigh;
 	int found824xx = 0;
-	int found_orion = 0;
+	device_t child;
+	devclass_t pci_devclass;
 
 	if (pci_cfgregopen() == 0)
 		return;
-	probe.hose = 0;
-	probe.bus = 0;
+	/*
+	 * Check to see if we haven't already had a PCI bus added
+	 * via some other means. If we have, bail since otherwise
+	 * we're going to end up duplicating it.
+	 */
+	if ((pci_devclass = devclass_find("pci")) &&
+	    devclass_get_device(pci_devclass,0))
+		return;
+	
+	bus = 0;
  retry:
-	for (probe.slot = 0; probe.slot <= PCI_SLOTMAX; probe.slot++) {
-		probe.func = 0;
-		hdrtype = pci_cfgread(&probe, PCIR_HEADERTYPE, 1);
-		if (hdrtype & PCIM_MFDEV && (!found_orion || hdrtype != 0xff) )
+	for (slot = 0; slot <= PCI_SLOTMAX; slot++) {
+		func = 0;
+		hdrtype = nexus_pcib_read_config(0, bus, slot, func,
+						 PCIR_HEADERTYPE, 1);
+		if (hdrtype & PCIM_MFDEV)
 			pcifunchigh = 7;
 		else
 			pcifunchigh = 0;
-		for (probe.func = 0;
-		     probe.func <= pcifunchigh;
-		     probe.func++) {
+		for (func = 0; func <= pcifunchigh; func++) {
 			/*
 			 * Read the IDs and class from the device.
 			 */
 			u_int32_t id;
 			u_int8_t class, subclass, busnum;
-			device_t child;
 			const char *s;
+			device_t *devs;
+			int ndevs, i;
 
-			id = pci_cfgread(&probe, PCIR_DEVVENDOR, 4);
+			id = nexus_pcib_read_config(0, bus, slot, func,
+						    PCIR_DEVVENDOR, 4);
 			if (id == -1)
 				continue;
-			class = pci_cfgread(&probe, PCIR_CLASS, 1);
-			subclass = pci_cfgread(&probe, PCIR_SUBCLASS, 1);
+			class = nexus_pcib_read_config(0, bus, slot, func,
+						       PCIR_CLASS, 1);
+			subclass = nexus_pcib_read_config(0, bus, slot, func,
+							  PCIR_SUBCLASS, 1);
 
-			s = nexus_pcib_is_host_bridge(&probe, id,
-						      class, subclass,
+			s = nexus_pcib_is_host_bridge(bus, slot, func,
+						      id, class, subclass,
 						      &busnum);
-			if (s) {
-				/*
-				 * Add at priority 100 to make sure we
-				 * go after any motherboard resources
-				 */
-				child = BUS_ADD_CHILD(parent, 100,
-						      "pcib", busnum);
-				device_set_desc(child, s);
-				found = 1;
-				if (id == 0x12258086)
-					found824xx = 1;
-				if (id == 0x84c48086)
-					found_orion = 1;
+			if (s == NULL)
+				continue;
+
+			/*
+			 * Check to see if the physical bus has already
+			 * been seen. Eg: hybrid 32 and 64 bit host
+			 * bridges to the same logical bus.
+			 */
+			if (device_get_children(parent, &devs, &ndevs) == 0) {
+				for (i = 0; s != NULL && i < ndevs; i++) {
+					if (strcmp(device_get_name(devs[i]),
+					    "pcib") != 0)
+						continue;
+					if (nexus_get_pcibus(devs[i]) == busnum)
+						s = NULL;
+				}
+				free(devs, M_TEMP);
 			}
+
+			if (s == NULL)
+				continue;
+			/*
+			 * Add at priority 100 to make sure we
+			 * go after any motherboard resources
+			 */
+			child = BUS_ADD_CHILD(parent, 100,
+					      "pcib", busnum);
+			device_set_desc(child, s);
+			nexus_set_pcibus(child, busnum);
+
+			found = 1;
+			if (id == 0x12258086)
+				found824xx = 1;
 		}
 	}
-	if (found824xx && probe.bus == 0) {
-		probe.bus++;
+	if (found824xx && bus == 0) {
+		bus++;
 		goto retry;
 	}
 
@@ -338,18 +378,60 @@ nexus_pcib_identify(driver_t *driver, device_t parent)
 		if (bootverbose)
 			printf(
 	"nexus_pcib_identify: no bridge found, adding pcib0 anyway\n");
-		BUS_ADD_CHILD(parent, 100, "pcib", 0);
+		child = BUS_ADD_CHILD(parent, 100, "pcib", 0);
+		nexus_set_pcibus(child, 0);
 	}
 }
 
 static int
 nexus_pcib_probe(device_t dev)
 {
-	if (pci_cfgregopen() != 0) {
-		device_add_child(dev, "pci", device_get_unit(dev));
-		return 0;
+	devclass_t pci_devclass;
+
+	if (pci_cfgregopen() == 0)
+		return (ENXIO);
+	/*
+	 * Check to see if we haven't already had a PCI bus added
+	 * via some other means.  If we have, bail since otherwise
+	 * we're going to end up duplicating it.
+	 */
+	if ((pci_devclass = devclass_find("pci")) && 
+		devclass_get_device(pci_devclass, device_get_unit(dev)))
+		return (ENXIO);
+
+	return (0);
+}
+
+static int
+nexus_pcib_attach(device_t dev)
+{
+	device_t child;
+
+	child = device_add_child(dev, "pci", device_get_unit(dev));
+
+	return (bus_generic_attach(dev));
+}
+
+static int
+nexus_pcib_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
+{
+	switch (which) {
+	case  PCIB_IVAR_BUS:
+		*result = nexus_get_pcibus(dev);
+		return (0);
 	}
-	return ENXIO;
+	return (ENOENT);
+}
+
+static int
+nexus_pcib_write_ivar(device_t dev, device_t child, int which, uintptr_t value)
+{
+	switch (which) {
+	case  PCIB_IVAR_BUS:
+		nexus_set_pcibus(dev, value);
+		return (0);
+	}
+	return (ENOENT);
 }
 
 /* route interrupt */
@@ -365,13 +447,15 @@ static device_method_t nexus_pcib_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_identify,	nexus_pcib_identify),
 	DEVMETHOD(device_probe,		nexus_pcib_probe),
-	DEVMETHOD(device_attach,	bus_generic_attach),
+	DEVMETHOD(device_attach,	nexus_pcib_attach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	DEVMETHOD(device_suspend,	bus_generic_suspend),
 	DEVMETHOD(device_resume,	bus_generic_resume),
 
 	/* Bus interface */
 	DEVMETHOD(bus_print_child,	bus_generic_print_child),
+	DEVMETHOD(bus_read_ivar,	nexus_pcib_read_ivar),
+	DEVMETHOD(bus_write_ivar,	nexus_pcib_write_ivar),
 	DEVMETHOD(bus_alloc_resource,	bus_generic_alloc_resource),
 	DEVMETHOD(bus_release_resource,	bus_generic_release_resource),
 	DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
