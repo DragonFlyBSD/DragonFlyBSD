@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.5 2003/07/26 22:10:02 rob Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.6 2003/09/14 21:14:53 dillon Exp $
  */
 
 /*
@@ -215,6 +215,7 @@ struct vpgqueues {
 	struct pglist pl;
 	int	*cnt;
 	int	lcnt;
+	int	flipflop;	/* probably not the best place */
 };
 
 extern struct vpgqueues vm_page_queues[PQ_COUNT];

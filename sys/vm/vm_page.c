@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.9 2003/08/27 01:43:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.10 2003/09/14 21:14:53 dillon Exp $
  */
 
 /*
@@ -150,13 +150,18 @@ vm_set_page_size(void)
 /*
  *	vm_add_new_page:
  *
- *	Add a new page to the freelist for use by the system.
+ *	Add a new page to the freelist for use by the system.  New pages
+ *	are added to both the head and tail of the associated free page
+ *	queue in a bottom-up fashion, so both zero'd and non-zero'd page
+ *	requests pull 'recent' adds (higher physical addresses) first.
+ *
  *	Must be called at splhigh().
  */
 vm_page_t
 vm_add_new_page(vm_offset_t pa)
 {
 	vm_page_t m;
+	struct vpgqueues *vpq;
 
 	++vmstats.v_page_count;
 	++vmstats.v_free_count;
@@ -165,7 +170,12 @@ vm_add_new_page(vm_offset_t pa)
 	m->flags = 0;
 	m->pc = (pa >> PAGE_SHIFT) & PQ_L2_MASK;
 	m->queue = m->pc + PQ_FREE;
-	TAILQ_INSERT_HEAD(&vm_page_queues[m->queue].pl, m, pageq);
+	vpq = &vm_page_queues[m->queue];
+	if (vpq->flipflop)
+		TAILQ_INSERT_TAIL(&vpq->pl, m, pageq);
+	else
+		TAILQ_INSERT_HEAD(&vpq->pl, m, pageq);
+	vpq->flipflop = 1 - vpq->flipflop;
 	vm_page_queues[m->queue].lcnt++;
 	return (m);
 }
@@ -304,7 +314,7 @@ vm_page_startup(vm_offset_t starta, vm_offset_t enda, vm_offset_t vaddr)
 	vm_page_array_size = page_range;
 
 	/*
-	 * Construct the free queue(s) in descending order (by physical
+	 * Construct the free queue(s) in ascending order (by physical
 	 * address) so that the first 16MB of physical memory is allocated
 	 * last rather than first.  On large-memory machines, this avoids
 	 * the exhaustion of low physical memory before isa_dmainit has run.
