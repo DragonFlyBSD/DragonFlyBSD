@@ -1,6 +1,6 @@
 /*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.14 2004/07/02 17:42:16 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.15 2004/07/10 12:48:55 joerg Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -1191,8 +1191,8 @@ awi_input(sc, m, rxts, rssi)
 	wh = mtod(m, struct ieee80211_frame *);
 	if ((wh->i_fc[0] & IEEE80211_FC0_VERSION_MASK) !=
 	    IEEE80211_FC0_VERSION_0) {
-		printf("%s; receive packet with wrong version: %x\n",
-		    sc->sc_dev.dv_xname, wh->i_fc[0]);
+		if_printf(ifp, "receive packet with wrong version: %x\n",
+			  wh->i_fc[0]);
 		m_freem(m);
 		ifp->if_ierrors++;
 		return;

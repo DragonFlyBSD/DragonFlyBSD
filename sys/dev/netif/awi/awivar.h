@@ -1,6 +1,6 @@
 /* $NetBSD: awivar.h,v 1.12 2000/07/21 04:48:56 onoe Exp $ */
 /* $FreeBSD: src/sys/dev/awi/awivar.h,v 1.6.2.1 2000/12/07 04:09:39 imp Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awivar.h,v 1.4 2004/02/13 02:44:47 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awivar.h,v 1.5 2004/07/10 12:48:55 joerg Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -96,13 +96,6 @@ struct awi_softc
 	void			*sc_ih; /* interrupt handler */
 #endif
 #if defined(__DragonFly__) || defined(__FreeBSD__)
-#if defined(__DragonFly__) || __FreeBSD__ >= 4
-	struct {
-		char	dv_xname[64];	/*XXX*/
-	}			sc_dev;
-#else
-	struct device		sc_dev;
-#endif
 	struct arpcom		sc_ec;
 #endif
 	struct am79c930_softc 	sc_chip;

@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/awi/if_awi_pccard.c,v 1.5.2.1 2000/12/07 04:09:39 imp Exp $
- * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.8 2004/03/14 15:36:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.9 2004/07/10 12:48:55 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -147,15 +147,7 @@ awi_pccard_attach(device_t dev)
 	psc->sc_mem_res = 0;
 	psc->sc_intrhand = 0;
 
-	ifp->if_dname = device_get_name(dev);
-	if (ifp->if_dname == NULL) {
-		printf("awi%d: awi_pccard_attach: cannot get device name\n",
-		    device_get_unit(dev));
-		goto fail;
-	}
-	if_initname(ifp, ifp->if_dname, device_get_unit(dev));
-	strlcpy(sc->sc_dev.dv_xname, ifp->if_xname,
-	    sizeof(sc->sc_dev.dv_xname));
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
 	psc->sc_port_rid = 0;
 	psc->sc_port_res = bus_alloc_resource(dev, SYS_RES_IOPORT,
