@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/Makefile.inc,v 1.63 2002/06/04 19:45:08 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile.inc,v 1.4 2004/02/02 05:43:12 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile.inc,v 1.5 2004/02/02 23:35:09 dillon Exp $
 
 BINDIR?=/usr/libexec/gcc3
 MY_CCVER=gcc3
@@ -9,12 +9,12 @@ MY_CCVER=gcc3
 .if !defined(__CC_MAKEFILE_INC__)
 __CC_MAKEFILE_INC__= ${MFILE}
 
-GCCDIR=	${.CURDIR}/../../../../contrib/gcc3
+GCCDIR=	${.CURDIR}/../../../../contrib/gcc-3.3
 
 .include "Makefile.tgt"
 
 # Machine description.
-MD_FILE=	${GCCDIR}/config/${GCC_CPU}/${GCC_CPU}.md
+MD_FILE=	${GCCDIR}/gcc/config/${GCC_CPU}/${GCC_CPU}.md
 target=		${TARGET_ARCH}-undermydesk-freebsd
 
 CFLAGS+=	-DIN_GCC -DHAVE_CONFIG_H
@@ -41,12 +41,18 @@ CFLAGS+=	-I${.OBJDIR}/../cc_tools
 CFLAGS+=	-I${.CURDIR}/../cc_tools
 # This must go after the -I for cc_tools to resolve ambiguities for hash.h
 # correctly.
-CFLAGS+=	-I${GCCDIR} -I${GCCDIR}/config
+CFLAGS+=	-I${GCCDIR} -I${GCCDIR}/include 
+CFLAGS+=	-I${GCCDIR}/gcc -I${GCCDIR}/gcc/config
+
 
 .if exists(${.OBJDIR}/../cc_int)
 LIBCC_INT=	${.OBJDIR}/../cc_int/libcc_int.a
 .else
 LIBCC_INT=	${.CURDIR}/../cc_int/libcc_int.a
 .endif
+
+gcc_local.c : gcc.c
+	sed -e 's%startfile_prefix_1 = "/lib/"%startfile_prefix_1 = STANDARD_STARTFILE_PREFIX_1%' < ${.ALLSRC:M*c} > ${.TARGET}.new
+	mv -f ${.TARGET}.new ${.TARGET}
 
 .endif # !__CC_MAKEFILE_INC__

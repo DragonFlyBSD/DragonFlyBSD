@@ -1,0 +1,2 @@
+# $DragonFly: src/gnu/usr.bin/cc3/config/Attic/t-libunwind,v 1.1 2004/02/02 23:35:11 dillon Exp $
+LIB2ADDEH = $(srcdir)/unwind-libunwind.c $(srcdir)/unwind-sjlj.c

@@ -1,13 +1,16 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cpp/Makefile,v 1.23 2003/06/06 13:46:55 kuriyama Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/cpp/Attic/Makefile,v 1.6 2004/01/25 22:14:27 drhodus Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/cpp/Attic/Makefile,v 1.7 2004/02/02 23:35:11 dillon Exp $
 
 .include "../Makefile.inc"
 .include "../Makefile.fe"
 
-.PATH: ${GCCDIR}
+CFLAGS+=        -I${.CURDIR}/../config
+
+.PATH: ${GCCDIR}/gcc ${GCCDIR}/libiberty
 
 PROG=	cpp
-SRCS=	gcc.c cppspec.c
+SRCS=	gcc_local.c cppspec.c
+SRCS+=  make-relative-prefix.c lrealpath.c
 
 CFLAGS+= -DDEFAULT_TARGET_VERSION=\"$(version)\"
 CFLAGS+= -DDEFAULT_TARGET_MACHINE=\"$(target)\"

@@ -1,13 +1,16 @@
 # $FreeBSD: src/gnu/usr.bin/cc/f77/Makefile,v 1.21 2004/01/05 20:23:16 kan Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/f77/Attic/Makefile,v 1.4 2004/01/24 20:03:28 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/f77/Attic/Makefile,v 1.5 2004/02/02 23:35:11 dillon Exp $
 
 .include "../Makefile.inc"
 .include "../Makefile.fe"
 
-.PATH: ${GCCDIR}/f ${GCCDIR}
+CFLAGS+=        -I${.CURDIR}/../config
+
+.PATH: ${GCCDIR}/gcc/f ${GCCDIR}/gcc ${GCCDIR}/libiberty
 
 PROG=	f77
-SRCS=	gcc.c g77spec.c
+SRCS=	gcc_local.c g77spec.c
+SRCS+=  make-relative-prefix.c lrealpath.c
 
 CFLAGS+= -DDEFAULT_TARGET_VERSION=\"$(version)\"
 CFLAGS+= -DDEFAULT_TARGET_MACHINE=\"$(target)\"

@@ -1,14 +1,17 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc/Makefile,v 1.28 2002/06/05 21:30:43 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/cc/Attic/Makefile,v 1.4 2004/01/24 20:03:28 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/cc/Attic/Makefile,v 1.5 2004/02/02 23:35:10 dillon Exp $
 
 .include "../Makefile.inc"
 .include "../Makefile.fe"
 
-.PATH: ${GCCDIR}
+CFLAGS+=        -I${.CURDIR}/../config
+
+.PATH: ${GCCDIR}/gcc ${GCCDIR}/libiberty
 
 PROG=	cc
 MAN=	gcc.1
-SRCS=	gcc.c gccspec.c
+SRCS=	gcc_local.c gccspec.c
+SRCS+=	make-relative-prefix.c lrealpath.c
 NOSHARED?=yes
 
 LINKS=	${BINDIR}/cc ${BINDIR}/gcc

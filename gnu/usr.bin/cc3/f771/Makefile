@@ -1,9 +1,11 @@
 # $FreeBSD: src/gnu/usr.bin/cc/f771/Makefile,v 1.10 2004/01/11 20:45:46 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/f771/Attic/Makefile,v 1.3 2004/02/02 05:43:12 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/f771/Attic/Makefile,v 1.4 2004/02/02 23:35:11 dillon Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 
-.PATH: ${GCCDIR}/f ${GCCDIR}
+CFLAGS+=        -I${.CURDIR}/../config
+
+.PATH: ${GCCDIR}/gcc/f ${GCCDIR}/gcc
 
 PROG=	f771
 SRCS=	bad.c bit.c bld.c com.c data.c equiv.c expr.c global.c implic.c info.c \
@@ -12,7 +14,7 @@ SRCS=	bad.c bit.c bld.c com.c data.c equiv.c expr.c global.c implic.c info.c \
 	stw.c symbol.c target.c top.c type.c where.c main.c
 NOMAN=
 
-CFLAGS+= -I${GCCDIR}/f -I.
+CFLAGS+= -I${GCCDIR}/gcc/f -I.
 
 DPADD=	${LIBCC_INT} 
 LDADD=	${LIBCC_INT}
@@ -29,7 +31,7 @@ CLEANFILES=	fini fini.o
 .for i in 1t 2t fo io nq op ot
 .ORDER: str-$i.h str-$i.j
 str-$i.j str-$i.h: str-$i.fin fini
-	./fini ${GCCDIR}/f/str-$i.fin str-$i.j str-$i.h
+	./fini ${GCCDIR}/gcc/f/str-$i.fin str-$i.j str-$i.h
 
 FINIHDRS+=	str-$i.j str-$i.h
 .endfor

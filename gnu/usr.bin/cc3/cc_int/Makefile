@@ -1,9 +1,11 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc_int/Makefile,v 1.39 2004/01/12 22:02:31 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/cc_int/Attic/Makefile,v 1.1 2004/01/17 22:40:15 drhodus Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/cc_int/Attic/Makefile,v 1.2 2004/02/02 23:35:10 dillon Exp $
 
 .include "../Makefile.inc"
 
-.PATH: ../cc_tools ${GCCDIR}/config/${GCC_CPU} ${GCCDIR} ${GCCDIR}/../libiberty
+CFLAGS+=	-I${.CURDIR}/../config
+
+.PATH: ../cc_tools ${GCCDIR}/gcc/config/${GCC_CPU} ${GCCDIR}/gcc ${GCCDIR}/libiberty
 
 LIB=		cc_int
 INTERNALLIB=	YES

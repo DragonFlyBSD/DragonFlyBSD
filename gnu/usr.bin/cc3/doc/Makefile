@@ -1,9 +1,9 @@
 # $FreeBSD: src/gnu/usr.bin/cc/doc/Makefile,v 1.12 2003/07/11 05:37:23 kan Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/doc/Attic/Makefile,v 1.1 2004/01/17 22:40:16 drhodus Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/doc/Attic/Makefile,v 1.2 2004/02/02 23:35:11 dillon Exp $
 
 .include "../Makefile.inc"
 
-.PATH: ${GCCDIR}/doc
+.PATH: ${GCCDIR}/gcc/doc
 
 INFO=	gcc cpp gccint cppinternals
 
@@ -28,6 +28,6 @@ gccint.info: gccint.texi include/gcc-common.texi contribute.texi \
 
 cpp.info: cpp.texi include/fdl.texi cppenv.texi cppopts.texi
 
-MAKEINFOFLAGS+= -I ${GCCDIR}/doc -I ${GCCDIR}/doc/include
+MAKEINFOFLAGS+= -I ${GCCDIR}/gcc/doc -I ${GCCDIR}/gcc/doc/include
 
 .include <bsd.info.mk>

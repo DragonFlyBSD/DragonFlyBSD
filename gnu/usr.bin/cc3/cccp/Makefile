@@ -1,9 +1,11 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cccp/Makefile,v 1.24 2002/05/13 03:27:02 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/cccp/Attic/Makefile,v 1.3 2004/02/02 05:43:12 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/cccp/Attic/Makefile,v 1.4 2004/02/02 23:35:11 dillon Exp $
 
 .include "../Makefile.inc"
 
-.PATH: ${GCCDIR}
+CFLAGS+=        -I${.CURDIR}/../config
+
+.PATH: ${GCCDIR}/gcc ${GCCDIR}/libiberty
 
 PROG=	cpp0
 SRCS=	cppmain.c c-parse+%DIKED.c c-lang.c c-decl.c

@@ -1,13 +1,10 @@
 # $FreeBSD: src/gnu/lib/libgcc/Makefile,v 1.50 2003/07/11 05:29:11 kan Exp $
-# $DragonFly: src/gnu/lib/gcc3/libgcc/Attic/Makefile,v 1.1 2004/01/21 21:59:04 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc3/libgcc/Attic/Makefile,v 1.2 2004/02/02 23:35:09 dillon Exp $
 
+.include "../Makefile.inc"
 .include "${.CURDIR}/../../../usr.bin/cc3/Makefile.tgt"
 
-GCCDIR=	${.CURDIR}/../../../../contrib/gcc3
-CCTOOLS_SRC = ${.CURDIR}/../../../usr.bin/cc3/cc_tools
-CCTOOLS_OBJ = ${.OBJDIR}/../../../usr.bin/cc3/cc_tools
-
-.PATH: ${GCCDIR}/config/${GCC_CPU} ${GCCDIR}
+.PATH: ${GCCDIR}/gcc/config/${GCC_CPU} ${GCCDIR}/gcc
 
 # allow to be overridden for the a.out case
 .if !defined(LIB) || ${LIB} != "gcc_r"
@@ -39,8 +36,9 @@ CFLAGS+=	-fexceptions
 CFLAGS+=	-DIN_GCC -DIN_LIBGCC2 -D__GCC_FLOAT_NOT_NEEDED \
 		-DFINE_GRAINED_LIBRARIES
 CFLAGS+=	-D_PTHREADS -DGTHREAD_USE_WEAK
-CFLAGS+=	-I${CCTOOLS_SRC} -I${CCTOOLS_OBJ} \
-		-I${GCCDIR}/config -I${GCCDIR} -I.
+CFLAGS+=	-I. -I${CCTOOLS_SRC} -I${CCTOOLS_OBJ} \
+		-I${DFLYH} -I${GCCDIR}/include -I${GCCDIR}/gcc/config \
+		-I${GCCDIR}/gcc
 
 OBJS=		# added to below in various ways depending on TARGET_ARCH
 

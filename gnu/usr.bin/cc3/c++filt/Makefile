@@ -1,12 +1,15 @@
 # $FreeBSD: src/gnu/usr.bin/cc/c++filt/Makefile,v 1.16 2003/07/11 05:37:23 kan Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/c++filt/Attic/Makefile,v 1.3 2004/01/23 22:30:25 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/c++filt/Attic/Makefile,v 1.4 2004/02/02 23:35:10 dillon Exp $
 
 .include "../Makefile.inc"
 
-.PATH: ${GCCDIR}
+CFLAGS+=        -I${.CURDIR}/../config
+
+.PATH: ${GCCDIR}/gcc ${GCCDIR}/libiberty
 
 PROG=	c++filt
 SRCS=	cp-demangle.c cplus-dem+%DIKED.c
+SRCS+=  make-relative-prefix.c lrealpath.c
 NOMAN=	1
 
 CFLAGS+= -DSTANDALONE_DEMANGLER -DIN_GCC -DVERSION=\"$(version)\"

@@ -1,21 +1,29 @@
-# $DragonFly: src/gnu/lib/gcc3/csu/Attic/Makefile,v 1.3 2004/01/21 21:59:04 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc3/csu/Attic/Makefile,v 1.4 2004/02/02 23:35:09 dillon Exp $
 
-GCCDIR=	${.CURDIR}/../../../../contrib/gcc3
-CCTOOLS_SRC = ${.CURDIR}/../../../usr.bin/cc3/cc_tools
-CCTOOLS_OBJ = ${.OBJDIR}/../../../usr.bin/cc3/cc_tools
+.include "../Makefile.inc"
 
-.PATH: ${GCCDIR}
+.PATH: ${GCCDIR}/gcc
 SRCS=		crtstuff.c
 
 OBJS=		crtbegin.o crtend.o
 SOBJS=		crtbegin.So crtend.So
-CFLAGS+=	-I${GCCDIR} -I${GCCDIR}/config -I${CCTOOLS_SRC} \
-		-I${CCTOOLS_OBJ} -DIN_GCC \
+
+CFLAGS+=	-I${GCCDIR}/gcc -I${GCCDIR}/gcc/config \
+		-I${GCCDIR}/include -I${CCTOOLS_SRC} -I${DFLYH} \
+		-I${GCCIR}/gcc/config \
+		-I${CCTOOLS_OBJ}
+
+CFLAGS+=	-DIN_GCC \
 		-finhibit-size-directive -fno-inline-functions \
 		-fno-exceptions -fno-omit-frame-pointer \
 		-fno-zero-initialized-in-bss
 
 CRTS_CFLAGS=	-DCRTSTUFFS_O ${PICFLAG}
+
+# crtbegin.c needs either CRT_BEGIN or CRT_END defined, and we can't
+# set a default in CFLAGS because we need to switch down below.
+#
+MKDEPCMD=	CC="${CC}" MKDEP_CPP_OPTS="-M -DCRT_BEGIN" mkdep
 
 all: ${OBJS} ${SOBJS}
 

@@ -1,10 +1,11 @@
 # $FreeBSD: src/gnu/lib/libsupc++/Makefile,v 1.5 2003/07/11 05:37:22 kan Exp $
-# $DragonFly: src/gnu/lib/gcc3/libsupc++/Attic/Makefile,v 1.1 2004/01/22 21:45:57 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc3/libsupc++/Attic/Makefile,v 1.2 2004/02/02 23:35:09 dillon Exp $
 
-GCCDIR=	${.CURDIR}/../../../../contrib/gcc3
-SRCDIR=	${.CURDIR}/../../../../contrib/libstdc++3/libsupc++
+.include "../Makefile.inc"
 
-.PATH: ${SRCDIR} ${GCCDIR}
+SRCDIR=	${GCCDIR}/libstdc++-v3/libsupc++
+
+.PATH: ${SRCDIR} ${GCCDIR}/gcc ${GCCDIR}/libiberty
 
 # Static only.
 LIB=	supc++
@@ -16,9 +17,9 @@ SRCS=	del_op.cc del_opnt.cc del_opv.cc del_opvnt.cc \
 
 # from libiberty:
 SRCS+=	cp-demangle.c dyn-string.c
-
 CFLAGS+=	-DIN_GLIBCPP_V3 -DHAVE_CONFIG_H
-CFLAGS+=	-I${SRCDIR} -I${GCCDIR} -I${.CURDIR}/../libstdc++
+CFLAGS+=	-I${SRCDIR} -I${.CURDIR}/../libstdc++
+CFLAGS+=	-I${GCCDIR}/gcc -I${GCCDIR}/include
 CXXFLAGS+=	-fno-implicit-templates -ffunction-sections -fdata-sections
 
 HDRS=	exception new typeinfo cxxabi.h exception_defines.h

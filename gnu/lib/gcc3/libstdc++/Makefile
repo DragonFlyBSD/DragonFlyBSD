@@ -1,13 +1,14 @@
 # $FreeBSD: src/gnu/lib/libstdc++/Makefile,v 1.49 2004/01/06 19:20:30 kan Exp $
-# $DragonFly: src/gnu/lib/gcc3/libstdc++/Attic/Makefile,v 1.1 2004/01/22 21:45:57 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc3/libstdc++/Attic/Makefile,v 1.2 2004/02/02 23:35:09 dillon Exp $
 
-GCCDIR=	${.CURDIR}/../../../../contrib/gcc3
-SRCDIR=	${.CURDIR}/../../../../contrib/libstdc++3
+.include "../Makefile.inc"
+
+SRCDIR=	${GCCDIR}/libstdc++-v3
 SUPDIR=	${SRCDIR}/libsupc++
 
 .PATH: ${SRCDIR}/src ${SRCDIR}/libmath ${SRCDIR}/config/io \
        ${SRCDIR}/config/locale/generic ${SRCDIR} ${SRCDIR}/std \
-       ${SUPDIR} ${GCCDIR}
+       ${SUPDIR} ${GCCDIR}/gcc ${GCCDIR}/libiberty
 
 #SUBDIR=	doc
 
@@ -15,7 +16,7 @@ LIB=		stdc++
 SHLIB_MAJOR=	4
 
 CFLAGS+=	-DIN_GLIBCPP_V3 -DHAVE_CONFIG_H
-CFLAGS+=	-I${.CURDIR} -I${SUPDIR} -I${GCCDIR}
+CFLAGS+=	-I${.CURDIR} -I${SUPDIR} -I${GCCDIR}/gcc -I${GCCDIR}/include
 CXXFLAGS+=	-fno-implicit-templates -ffunction-sections -fdata-sections \
 		-Wno-deprecated
 #LDFLAGS+=	-Wl,-version-info,4:0:0 -Wl,--version-script=${SRCDIR}/src/linker.map
@@ -166,28 +167,28 @@ TARGETHDRS+=	${SRCDIR}/config/cpu/generic/${h}
 THRHDRS=	gthr.h gthr-single.h gthr-posix.h gthr-default.h
 THRHDRSDIR=	${INCLUDEDIR}/c++/3.3/bits
 
-gthr.h: ${GCCDIR}/gthr.h
+gthr.h: ${GCCDIR}/gcc/gthr.h
 	sed -e '/^#/s/\([ABCDEFGHIJKLMNOPQRSTUVWXYZ_][ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*\)/_GLIBCPP_\1/g' \
 	    -e 's,^#include "\(.*\)",#include <bits/\1>,g' \
-	    < ${GCCDIR}/gthr.h > gthr.h
+	    < ${GCCDIR}/gcc/gthr.h > gthr.h
 
-gthr-single.h: ${GCCDIR}/gthr-single.h
+gthr-single.h: ${GCCDIR}/gcc/gthr-single.h
 	sed -e 's/\(UNUSED\)/_GLIBCPP_\1/g' \
 	    -e 's/\(GCC[ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*_H\)/_GLIBCPP_\1/g' \
-	    < ${GCCDIR}/gthr-single.h > gthr-single.h
+	    < ${GCCDIR}/gcc/gthr-single.h > gthr-single.h
 
-gthr-posix.h: ${GCCDIR}/gthr-posix.h
+gthr-posix.h: ${GCCDIR}/gcc/gthr-posix.h
 	sed -e 's/\(UNUSED\)/_GLIBCPP_\1/g' \
 	    -e 's/\(GCC[ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*_H\)/_GLIBCPP_\1/g' \
 	    -e 's/\([ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*WEAK\)/_GLIBCPP_\1/g' \
-	    < ${GCCDIR}/gthr-posix.h > gthr-posix.h
+	    < ${GCCDIR}/gcc/gthr-posix.h > gthr-posix.h
 
-gthr-default.h: ${GCCDIR}/gthr-posix.h
+gthr-default.h: ${GCCDIR}/gcc/gthr-posix.h
 	sed -e 's/\(UNUSED\)/_GLIBCPP_\1/g' \
 	    -e 's/\(GCC[ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*_H\)/_GLIBCPP_\1/g' \
 	    -e 's/\([ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*WEAK\)/_GLIBCPP_\1/g' \
 	    -e 's,^#include "\(.*\)",#include <bits/\1>,g' \
-	    < ${GCCDIR}/gthr-posix.h > gthr-default.h
+	    < ${GCCDIR}/gcc/gthr-posix.h > gthr-default.h
 
 CLEANFILES+=	${THRHDRS}
 

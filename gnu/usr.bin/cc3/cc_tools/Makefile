@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc_tools/Makefile,v 1.73 2004/01/15 10:07:59 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/Makefile,v 1.3 2004/01/20 20:41:52 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/Makefile,v 1.4 2004/02/02 23:35:10 dillon Exp $
 
 #
 # This could probably be merged with ../cc_int/Makefile, but bsd.lib.mk
@@ -12,11 +12,12 @@
 # Prevent mkdep from using it, so that we don't have to give rules for
 # aliases of generated headers.
 
-CFLAGS+=	-I. -static -DGENERATOR_FILE
+CFLAGS+=	-I. -I${.CURDIR}/../config 
+CFLAGS+=	-static -DGENERATOR_FILE
 
 .include "../Makefile.inc"
 
-.PATH: ${GCCDIR}
+.PATH: ${GCCDIR} ${GCCDIR}/gcc ${GCCDIR}/libiberty
 
 #-----------------------------------------------------------------------
 # insn-* gunk
@@ -205,26 +206,29 @@ GCONFIG_H+=	$D/$H
 #
 # Define some variables to make blocks copied from Makefile.in happy
 #
-srcdir=		${GCCDIR}
-HASHTAB_H=	${GCCDIR}/hashtab.h
-out_file=	${GCCDIR}/config/${GCC_CPU}/${GCC_CPU}.c
-GTFILES_SRCDIR=	${GCCDIR}
+srcdir=		${GCCDIR}/gcc
+out_file=	${GCCDIR}/gcc/config/${GCC_CPU}/${GCC_CPU}.c
+GTFILES_SRCDIR=	${GCCDIR}/gcc
 
 #
 # Copied unchanged from gcc/Makefile.in
 #
 GTFILES = $(GCONFIG_H) $(srcdir)/location.h \
-  $(HASHTAB_H) \
-  $(srcdir)/bitmap.h $(srcdir)/function.h  $(srcdir)/rtl.h $(srcdir)/optabs.h \
-  $(srcdir)/tree.h $(srcdir)/libfuncs.h $(srcdir)/hashtable.h $(srcdir)/real.h \
-  $(srcdir)/varray.h $(srcdir)/ssa.h $(srcdir)/insn-addr.h $(srcdir)/cselib.h \
+  $(GCCDIR)/include/hashtab.h \
+  $(srcdir)/bitmap.h $(srcdir)/function.h \
+  $(srcdir)/rtl.h $(srcdir)/optabs.h \
+  $(srcdir)/tree.h $(srcdir)/libfuncs.h \
+  $(srcdir)/hashtable.h $(srcdir)/real.h \
+  $(srcdir)/varray.h $(srcdir)/ssa.h $(srcdir)/insn-addr.h \
+  $(srcdir)/cselib.h \
   $(srcdir)/c-common.h $(srcdir)/c-tree.h \
   $(srcdir)/basic-block.h \
   $(srcdir)/alias.c $(srcdir)/bitmap.c $(srcdir)/cselib.c \
   $(srcdir)/dwarf2out.c $(srcdir)/emit-rtl.c \
   $(srcdir)/except.c $(srcdir)/explow.c $(srcdir)/expr.c \
   $(srcdir)/fold-const.c $(srcdir)/function.c \
-  $(srcdir)/gcse.c $(srcdir)/integrate.c $(srcdir)/lists.c $(srcdir)/optabs.c \
+  $(srcdir)/gcse.c $(srcdir)/integrate.c $(srcdir)/lists.c \
+  $(srcdir)/optabs.c \
   $(srcdir)/profile.c $(srcdir)/ra-build.c $(srcdir)/regclass.c \
   $(srcdir)/reg-stack.c \
   $(srcdir)/sdbout.c $(srcdir)/stmt.c $(srcdir)/stor-layout.c \
@@ -233,6 +237,8 @@ GTFILES = $(GCONFIG_H) $(srcdir)/location.h \
 
 #
 # Build a list of frontend directories to look into
+#
+# These paths are very sensitive and used in the gengtype program.
 #
 GTFILES_LANG_DIR_NAMES=
 
@@ -252,11 +258,11 @@ GTFILES_LANG_DIR_NAMES+=	f
 # Build a list of language specific files for gengtype
 #
 .for L in ${GTFILES_LANG_DIR_NAMES} c
-.if exists(${GCCDIR}/$L-config-lang.in)
+.if exists(${GCCDIR}/gcc/$L-config-lang.in)
 # Source the language config file
-$L_GTFILES!=	sh -c '. ${GCCDIR}/$L-config-lang.in; echo $$gtfiles'
+$L_GTFILES!=	sh -c '. ${GCCDIR}/gcc/$L-config-lang.in; echo $$gtfiles'
 .else
-$L_GTFILES!=	sh -c '. ${GCCDIR}/$L/config-lang.in; echo $$gtfiles'
+$L_GTFILES!=	sh -c '. ${GCCDIR}/gcc/$L/config-lang.in; echo $$gtfiles'
 .endif
 GTFILES+=	${$L_GTFILES}
 .for F in ${$L_GTFILES}
@@ -338,7 +344,7 @@ tconfig.h:
 	echo '#ifndef POSIX'				>> ${.TARGET}
 	echo '# define POSIX'				>> ${.TARGET}
 	echo '#endif'					>> ${.TARGET}
-.if exists(${GCCDIR}/config/${GCC_CPU}/${GCC_CPU}-modes.def)
+.if exists(${GCCDIR}/gcc/config/${GCC_CPU}/${GCC_CPU}-modes.def)
 	echo '#define EXTRA_MODES_FILE "${GCC_CPU}/${GCC_CPU}-modes.def"' >> ${.TARGET}
 	echo '#define EXTRA_CC_MODES 1'			>> ${.TARGET}
 .endif

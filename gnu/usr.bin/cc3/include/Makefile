@@ -1,9 +1,9 @@
 # $FreeBSD: src/gnu/usr.bin/cc/include/Makefile,v 1.6 2003/12/09 16:31:30 kan Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/include/Attic/Makefile,v 1.1 2004/01/17 22:40:16 drhodus Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/include/Attic/Makefile,v 1.2 2004/02/02 23:35:11 dillon Exp $
 
 .include "../Makefile.inc"
 
-.PATH: ${GCCDIR}/config/${GCC_CPU}
+.PATH: ${GCCDIR}/gcc/config/${GCC_CPU}
 
 .if ${TARGET_ARCH} == "i386" || ${TARGET_ARCH} == "amd64"
 INCS=	emmintrin.h mmintrin.h pmmintrin.h xmmintrin.h

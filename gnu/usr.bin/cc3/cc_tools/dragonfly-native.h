@@ -1,5 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/cc/cc_tools/freebsd-native.h,v 1.23 2003/07/11 05:33:24 kan Exp $ */
-/* $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/dragonfly-native.h,v 1.2 2004/02/02 05:43:12 dillon Exp $
+/* $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/dragonfly-native.h,v 1.3 2004/02/02 23:35:10 dillon Exp $
 */
 
 /* FREEBSD_NATIVE is defined when gcc is integrated into the FreeBSD
@@ -36,7 +36,7 @@
 #undef	TOOLDIR_BASE_PREFIX		/* Old??  This is not documented. */
 #undef	STANDARD_BINDIR_PREFIX		/* We don't need one for now. */
 #define	STANDARD_EXEC_PREFIX		PREFIX"/libexec/gcc3/"
-#undef	MD_EXEC_PREFIX			/* We don't want one. */
+#define	MD_EXEC_PREFIX			PREFIX"/libexec/gcc3/"
 #define	FBSD_DATA_PREFIX		PREFIX"/libdata/gcc/"
 
 /*
@@ -48,10 +48,8 @@
 /* Under FreeBSD, the normal location of the various *crt*.o files is the
    /usr/lib directory.  */
 
-#define STANDARD_STARTFILE_PREFIX1	PREFIX"/lib/"
-#define STANDARD_STARTFILE_PREFIX2	PREFIX"/lib/gcc3/"
-#define STANDARD_STARTFILE_PREFIX3	""
-#define STANDARD_STARTFILE_PREFIX4	""
+#define STANDARD_STARTFILE_PREFIX	PREFIX"/lib/"
+#define STANDARD_STARTFILE_PREFIX_1	PREFIX"/lib/gcc3/"
 #undef MD_STARTFILE_PREFIX
 
 /* For the native system compiler, we actually build libgcc in a profiled
