@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.42 2004/11/12 00:09:24 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.43 2004/11/18 20:04:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -565,13 +565,33 @@ cache_setunresolved(struct namecache *ncp)
 }
 
 /*
- * Invalidate portions of a namecache entry.  The passed ncp should be
- * referenced and locked but we might not adhere to that rule during the
- * old api -> new api transition period.
+ * Invalidate portions of the namecache topology given a starting entry.
+ * The passed ncp is set to an unresolved state and:
  *
- * CINV_PARENT		- disconnect the ncp from its parent
- * CINV_SELF		- same as cache_setunresolved(ncp)
- * CINV_CHILDREN	- disconnect children of the ncp from the ncp
+ * The passed ncp must be locked.
+ *
+ * CINV_DESTROY		- Set a flag in the passed ncp entry indicating
+ *			  that the physical underlying nodes have been 
+ *			  destroyed... as in deleted.  For example, when
+ *			  a directory is removed.  This will cause record
+ *			  lookups on the name to no longer be able to find
+ *			  the record and tells the resolver to return failure
+ *			  rather then trying to resolve through the parent.
+ *
+ *			  The topology itself, including ncp->nc_name,
+ *			  remains intact.
+ *
+ *			  This only applies to the passed ncp, if CINV_CHILDREN
+ *			  is specified the children are not flagged.
+ *
+ * CINV_CHILDREN	- Set all children (recursively) to an unresolved
+ *			  state as well.
+ *
+ *			  Note that this will also have the side effect of
+ *			  cleaning out any unreferenced nodes in the topology
+ *			  from the leaves up as the recursion backs out.
+ *
+ * Note that the topology for any referenced nodes remains intact.
  */
 void
 cache_inval(struct namecache *ncp, int flags)
@@ -579,59 +599,53 @@ cache_inval(struct namecache *ncp, int flags)
 	struct namecache *kid;
 	struct namecache *nextkid;
 
-	if (flags & CINV_SELF)
-		cache_setunresolved(ncp);
-	if (flags & CINV_PARENT)
-		cache_unlink_parent(ncp);
+	KKASSERT(ncp->nc_exlocks);
+again:
+	cache_setunresolved(ncp);
+	if (flags & CINV_DESTROY)
+		ncp->nc_flag |= NCF_DESTROYED;
 
-	/*
-	 * Children are invalidated when the parent is destroyed.  This
-	 * basically disconnects the children from the parent.  Anyone
-	 * CD'd into a child will no longer be able to ".." back up.
-	 *
-	 * Any unresolved or negative cache-hit children with a ref count
-	 * of 0 must be immediately and recursively destroyed or this
-	 * disconnection may leave them dangling forever.  XXX this recursion
-	 * could run the kernel out of stack, the children should be placed
-	 * on a to-destroy list instead.
-	 */
-	if (flags & CINV_CHILDREN) {
-		if ((kid = TAILQ_FIRST(&ncp->nc_list)) != NULL)
-			cache_hold(kid);
+	if ((flags & CINV_CHILDREN) && 
+	    (kid = TAILQ_FIRST(&ncp->nc_list)) != NULL
+	) {
+		cache_hold(kid);
+		cache_unlock(ncp);
 		while (kid) {
 			if ((nextkid = TAILQ_NEXT(kid, nc_entry)) != NULL)
 				cache_hold(nextkid);
-			if (kid->nc_refs == 0 &&
-			    ((kid->nc_flag & NCF_UNRESOLVED) || 
-			     kid->nc_vp == NULL)
+			if ((kid->nc_flag & NCF_UNRESOLVED) == 0 ||
+			    TAILQ_FIRST(&kid->nc_list)
 			) {
-				cache_inval(kid, CINV_PARENT);
+				cache_lock(kid);
+				cache_inval(kid, flags & ~CINV_DESTROY);
+				cache_unlock(kid);
 			}
-			cache_unlink_parent(kid);
 			cache_drop(kid);
 			kid = nextkid;
 		}
+		cache_lock(ncp);
+
+		/*
+		 * Someone could have gotten in there while ncp was unlocked,
+		 * retry if so.
+		 */
+		if ((ncp->nc_flag & NCF_UNRESOLVED) == 0)
+			goto again;
 	}
 }
 
+/*
+ * Invalidate a vnode's namecache associations.
+ */
 void
 cache_inval_vp(struct vnode *vp, int flags)
 {
 	struct namecache *ncp;
 
-	if (flags & CINV_SELF) {
-		while ((ncp = TAILQ_FIRST(&vp->v_namecache)) != NULL) {
-			cache_hold(ncp);
-			KKASSERT((ncp->nc_flag & NCF_UNRESOLVED) == 0);
-			cache_inval(ncp, flags);
-			cache_drop(ncp);
-		}
-	} else {
-		TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
-			cache_hold(ncp);
-			cache_inval(ncp, flags);
-			cache_drop(ncp);
-		}
+	while ((ncp = TAILQ_FIRST(&vp->v_namecache)) != NULL) {
+		cache_get(ncp);
+		cache_inval(ncp, flags);
+		cache_put(ncp);
 	}
 }
 
@@ -641,6 +655,10 @@ cache_inval_vp(struct vnode *vp, int flags)
  * will be disconnected (the prior contents of the target is assumed to be
  * destroyed by the rename operation, e.g. renaming over an empty directory),
  * and all children of fncp will be moved to tncp.
+ *
+ * XXX the disconnection could pose a problem, check code paths to make
+ * sure any code that blocks can handle the parent being changed out from
+ * under it.  Maybe we should lock the children (watch out for deadlocks) ?
  *
  * After we return the caller has the option of calling cache_setvp() if
  * the vnode of the new target ncp is known.
@@ -1185,11 +1203,13 @@ restart:
 
 		/*
 		 * Break out if we find a matching entry.  Note that
-		 * UNRESOLVED entries may match.
+		 * UNRESOLVED entries may match, but DESTROYED entries
+		 * do not.
 		 */
 		if (ncp->nc_parent == par &&
 		    ncp->nc_nlen == nlc->nlc_namelen &&
-		    bcmp(ncp->nc_name, nlc->nlc_nameptr, ncp->nc_nlen) == 0
+		    bcmp(ncp->nc_name, nlc->nlc_nameptr, ncp->nc_nlen) == 0 &&
+		    (ncp->nc_flag & NCF_DESTROYED) == 0
 		) {
 			if (cache_get_nonblock(ncp) == 0) {
 				if (new_ncp)
@@ -1300,6 +1320,7 @@ restart:
 	 *	- due to NFS being stupid about tracking the namespace and
 	 *	  destroys the namespace for entire directories quite often.
 	 *	- due to forced unmounts.
+	 *	- due to an rmdir (parent will be marked DESTROYED)
 	 *
 	 * When this occurs we have to track the chain backwards and resolve
 	 * it, looping until the resolver catches up to the current node.  We
@@ -1309,6 +1330,14 @@ restart:
 	 * many nodes to resolve the ncp.
 	 */
 	while (ncp->nc_parent->nc_vp == NULL) {
+		/*
+		 * This case can occur if a process is CD'd into a
+		 * directory which is then rmdir'd.  If the parent is marked
+		 * destroyed there is no point trying to resolve it.
+		 */
+		if (ncp->nc_parent->nc_flag & NCF_DESTROYED)
+			return(ENOENT);
+
 		par = ncp->nc_parent;
 		while (par->nc_parent && par->nc_parent->nc_vp == NULL)
 			par = par->nc_parent;
@@ -1549,7 +1578,7 @@ cache_purge(struct vnode *vp)
 {
 	static u_long nextid;
 
-	cache_inval_vp(vp, CINV_PARENT | CINV_SELF | CINV_CHILDREN);
+	cache_inval_vp(vp, CINV_DESTROY | CINV_CHILDREN);
 
 	/*
 	 * Calculate a new unique id for ".." handling

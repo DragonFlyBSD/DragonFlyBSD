@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.7 2004/11/12 00:09:24 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.8 2004/11/18 20:04:24 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -357,10 +357,16 @@ nlookup(struct nlookupdata *nd)
 		ncp = cache_get(ncp);
 	    } else {
 		while ((ncp->nc_flag & NCF_MOUNTPT) && ncp != nd->nl_rootncp) {
+		    if (ncp->nc_parent->nc_flag & NCF_DESTROYED)
+			break;
 		    ncp = ncp->nc_parent;	/* get to underlying node */
 		    KKASSERT(ncp != NULL && 1);
 		}
 		if (ncp != nd->nl_rootncp) {
+			if (ncp->nc_parent->nc_flag & NCF_DESTROYED) {
+				error = EINVAL;
+				break;
+			}
 			ncp = ncp->nc_parent;
 			if (ncp == NULL) {
 				error = EINVAL;

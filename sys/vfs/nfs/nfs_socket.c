@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.21 2004/11/12 00:09:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.22 2004/11/18 20:04:28 dillon Exp $
  */
 
 /*
@@ -1166,7 +1166,7 @@ tryagain:
 			 * lookup cache, just in case.
 			 */
 			if (error == ESTALE)
-				cache_inval_vp(vp, CINV_SELF);
+				cache_inval_vp(vp, CINV_CHILDREN);
 			if (nmp->nm_flag & NFSMNT_NFSV3) {
 				*mrp = mrep;
 				*mdp = md;

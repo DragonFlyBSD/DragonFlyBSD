@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.47 2004/11/12 10:58:59 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.48 2004/11/18 20:04:24 dillon Exp $
  */
 
 /*
@@ -827,7 +827,7 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 	/*
 	 * Scrap the vfs cache
 	 */
-	cache_inval_vp(vp, CINV_SELF);
+	cache_inval_vp(vp, 0);
 
 	/*
 	 * Check to see if the vnode is in use. If so we have to reference it

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.20 2004/11/12 00:09:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.21 2004/11/18 20:04:28 dillon Exp $
  */
 
 
@@ -1062,7 +1062,7 @@ nqnfs_clientd(struct nfsmount *nmp, struct ucred *cred, struct nfsd_cargs *ncd,
 					if (np->n_flag & NQNFSEVICTED) {
 						if (vp->v_type == VDIR)
 							nfs_invaldir(vp);
-						cache_inval_vp(vp, CINV_SELF);
+						cache_inval_vp(vp, 0);
 						(void) nfs_vinvalbuf(vp,
 						       V_SAVE, td, 0);
 						np->n_flag &= ~NQNFSEVICTED;

@@ -62,7 +62,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.15 2004/11/12 00:09:27 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.16 2004/11/18 20:04:26 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -130,13 +130,14 @@ typedef struct namecache *namecache_t;
 #define NCF_UNUSED080	0x0080
 #define NCF_ISSYMLINK	0x0100	/* represents a symlink */
 #define NCF_ISDIR	0x0200	/* represents a directory */
+#define NCF_DESTROYED	0x0400	/* name association is considered destroyed */
 
 /*
  * cache_inval[_vp]() flags
  */
-#define CINV_PARENT	0x0001	/* disconnect from parent in namecache */
-#define CINV_SELF	0x0002	/* disconnect vp from namecache */
-#define CINV_CHILDREN	0x0004	/* disconnect children in namecache */
+#define CINV_DESTROY	0x0001	/* flag so cache_nlookup ignores the ncp */
+#define CINV_UNUSED02	0x0002
+#define CINV_CHILDREN	0x0004	/* recursively set children to unresolved */
 
 #ifdef _KERNEL
 

@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.22 2004/11/12 00:09:24 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.23 2004/11/18 20:04:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -959,7 +959,7 @@ vop_compat_nrmdir(struct vop_nrmdir_args *ap)
 		 * back out.
 		 */
 		if (error == 0)
-			cache_inval(ncp, CINV_SELF|CINV_PARENT);
+			cache_inval(ncp, CINV_DESTROY);
 	}
 	if (vp) {
 		if (dvp == vp)
