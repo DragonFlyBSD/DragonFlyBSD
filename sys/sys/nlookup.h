@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/nlookup.h,v 1.3 2004/11/12 00:09:27 dillon Exp $
+ * $DragonFly: src/sys/sys/nlookup.h,v 1.4 2005/03/09 06:11:22 hmp Exp $
  */
 
 #ifndef _SYS_NLOOKUP_H_
@@ -107,6 +107,7 @@ struct nlookupdata {
 
 int nlookup_init(struct nlookupdata *, const char *, enum uio_seg, int);
 int nlookup_init_raw(struct nlookupdata *, const char *, enum uio_seg, int, struct ucred *, struct namecache *);
+void nlookup_set_cred(struct nlookupdata *nd, struct ucred *cred);
 void nlookup_zero(struct nlookupdata *);
 void nlookup_done(struct nlookupdata *);
 struct namecache *nlookup_simple(const char *str, enum uio_seg seg, 

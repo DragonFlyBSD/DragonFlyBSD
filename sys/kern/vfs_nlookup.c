@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.9 2004/12/27 20:30:03 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.10 2005/03/09 06:11:21 hmp Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -73,6 +73,9 @@
 /*
  * Initialize a nlookup() structure, early error return for copyin faults
  * or a degenerate empty string (which is not allowed).
+ *
+ * The first process proc0's credentials are used if the calling thread
+ * is not associated with a process context.
  */
 int
 nlookup_init(struct nlookupdata *nd, 
@@ -167,6 +170,22 @@ nlookup_init_raw(struct nlookupdata *nd,
 	nlookup_done(nd);
     }
     return(error);
+}
+
+/*
+ * Set a different credential; this credential will be used by future
+ * operations performed on nd.nl_open_vp and nlookupdata structure.
+ */
+void
+nlookup_set_cred(struct nlookupdata *nd, struct ucred *cred)
+{
+	KKASSERT(nd->nl_cred != NULL);
+
+	if (nd->nl_cred != cred) {
+		cred = crhold(cred);
+		crfree(nd->nl_cred);
+		nd->nl_cred = cred;
+	}
 }
 
 /*
