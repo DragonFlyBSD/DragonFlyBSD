@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.96 2004/02/27 06:43:14 kan Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.18 2005/03/04 02:22:38 cpressey Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.19 2005/03/04 02:37:44 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -662,7 +662,7 @@ ifconfig(int argc, char *const *argv, const struct afswtch *afp)
 		err(1, "socket");
 
 	while (argc > 0) {
-		register const struct cmd *p;
+		const struct cmd *p;
 
 		for (p = cmds; p->c_name; p++)
 			if (strcmp(*argv, p->c_name) == 0)
@@ -1563,7 +1563,7 @@ SIN(addreq.ifra_mask), SIN(addreq.ifra_broadaddr)};
 void
 in_getaddr(const char *s, int which)
 {
-	register struct sockaddr_in *addr_in = sintab[which];
+	struct sockaddr_in *addr_in = sintab[which];
 	struct hostent *hp;
 	struct netent *np;
 
@@ -1611,7 +1611,7 @@ SIN6(in6_addreq.ifra_prefixmask), SIN6(in6_addreq.ifra_dstaddr)};
 void
 in6_getaddr(const char *s, int which)
 {
-	register struct sockaddr_in6 *addr_in = sin6tab[which];
+	struct sockaddr_in6 *addr_in = sin6tab[which];
 	struct addrinfo hints, *res;
 	int error = -1;
 
@@ -1645,8 +1645,8 @@ in6_getaddr(const char *s, int which)
 void
 in6_getprefix(const char *plen, int which)
 {
-	register struct sockaddr_in6 *addr_in = sin6tab[which];
-	register u_char *cp;
+	struct sockaddr_in6 *addr_in = sin6tab[which];
+	u_char *cp;
 	int len = atoi(plen);
 
 	if ((len < 0) || (len > 128))
@@ -1669,10 +1669,10 @@ in6_getprefix(const char *plen, int which)
  * Print a value a la the %b format of the kernel's printf
  */
 void
-printb(const char *s, register unsigned v, register const char *bits)
+printb(const char *s, unsigned v, const char *bits)
 {
-	register int i, any = 0;
-	register char c;
+	int i, any = 0;
+	char c;
 
 	if (bits && *bits == 8)
 		printf("%s=%o", s, v);
@@ -1824,8 +1824,8 @@ xns_getaddr(const char *addr, int which)
 int
 prefix(void *val, int size)
 {
-	register u_char *addr = (u_char *)val;
-	register int byte, bit, plen = 0;
+	u_char *addr = (u_char *)val;
+	int byte, bit, plen = 0;
 
         for (byte = 0; byte < size; byte++, plen += 8)
 		if (addr[byte] != 0xff)
