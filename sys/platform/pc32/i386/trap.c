@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.39 2003/10/25 17:39:21 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.40 2003/11/07 06:01:12 dillon Exp $
  */
 
 /*
@@ -1022,7 +1022,7 @@ trap_fatal(frame, eva)
 
 	code = frame->tf_err;
 	type = frame->tf_trapno;
-	sdtossd(&gdt[IDXSEL(frame->tf_cs & 0xffff)].sd, &softseg);
+	sdtossd(&gdt[mycpu->gd_cpuid * NGDT + IDXSEL(frame->tf_cs & 0xffff)].sd, &softseg);
 
 	if (type <= MAX_TRAP_MSG)
 		printf("\n\nFatal trap %d: %s while in %s mode\n",
