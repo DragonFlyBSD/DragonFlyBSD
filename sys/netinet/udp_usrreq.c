@@ -32,7 +32,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.9 2004/02/14 21:12:39 dillon Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.10 2004/03/04 01:02:05 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -151,6 +151,8 @@ udp_init()
 	udbinfo.hashbase = hashinit(UDBHASHSIZE, M_PCB, &udbinfo.hashmask);
 	udbinfo.porthashbase = hashinit(UDBHASHSIZE, M_PCB,
 					&udbinfo.porthashmask);
+	udbinfo.bindhashbase = hashinit(UDBHASHSIZE, M_PCB,
+					&udbinfo.bindhashmask);
 	udbinfo.ipi_zone = zinit("udpcb", sizeof(struct inpcb), maxsockets,
 				 ZONE_INTERRUPT, 0);
 	udp_thread_init();

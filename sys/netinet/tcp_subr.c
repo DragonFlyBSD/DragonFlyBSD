@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.11 2004/03/02 20:41:13 rob Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.12 2004/03/04 01:02:05 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -242,8 +242,8 @@ tcp_init()
 	}
 	tcp_tcbhashsize = hashsize;
 	tcbinfo.hashbase = hashinit(hashsize, M_PCB, &tcbinfo.hashmask);
-	tcbinfo.porthashbase = hashinit(hashsize, M_PCB,
-					&tcbinfo.porthashmask);
+	tcbinfo.porthashbase = hashinit(hashsize, M_PCB, &tcbinfo.porthashmask);
+	tcbinfo.bindhashbase = hashinit(hashsize, M_PCB, &tcbinfo.bindhashmask);
 	tcbinfo.ipi_zone = zinit("tcpcb", sizeof(struct inp_tp), maxsockets,
 				 ZONE_INTERRUPT, 0);
 

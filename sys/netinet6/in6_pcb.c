@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.10 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.11 2004/03/04 01:02:06 hsu Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -252,12 +252,13 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	}
 	else {
 		inp->inp_lport = lport;
-		if (in_pcbinshash(inp) != 0) {
+		if (in_pcbinsporthash(inp) != 0) {
 			inp->in6p_laddr = in6addr_any;
 			inp->inp_lport = 0;
 			return (EAGAIN);
 		}
 	}
+	in_pcbinsbindhash(inp);
 	return(0);
 }
 
@@ -372,7 +373,7 @@ in6_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		inp->in6p_flowinfo |=
 		    (htonl(ip6_flow_seq++) & IPV6_FLOWLABEL_MASK);
 
-	in_pcbrehash(inp);
+	in_pcbrehash(inp, INP_CONNECTED);
 	return (0);
 }
 
@@ -590,7 +591,7 @@ in6_pcbdisconnect(inp)
 	inp->inp_fport = 0;
 	/* clear flowinfo - draft-itojun-ipv6-flowlabel-api-00 */
 	inp->in6p_flowinfo &= ~IPV6_FLOWLABEL_MASK;
-	in_pcbrehash(inp);
+	in_pcbremconnhash(inp);
 	if (inp->inp_socket->so_state & SS_NOFDREF)
 		in6_pcbdetach(inp);
 }
@@ -857,80 +858,55 @@ in6_pcblookup_local(pcbinfo, laddr, lport_arg, wild_okay)
 	struct inpcb *inp;
 	int matchwild = 3, wildcard;
 	u_short lport = lport_arg;
+	struct inpcbporthead *porthash;
+	struct inpcbport *phd;
+	struct inpcb *match = NULL;
 
-	if (!wild_okay) {
-		struct inpcbhead *head;
+	/*
+	 * Best fit PCB lookup.
+	 *
+	 * First see if this local port is in use by looking on the
+	 * port hash list.
+	 */
+	porthash = &pcbinfo->porthashbase[INP_PCBPORTHASH(lport,
+	    pcbinfo->porthashmask)];
+	LIST_FOREACH(phd, porthash, phd_hash) {
+		if (phd->phd_port == lport)
+			break;
+	}
+	if (phd != NULL) {
 		/*
-		 * Look for an unconnected (wildcard foreign addr) PCB that
-		 * matches the local address and port we're looking for.
+		 * Port is in use by one or more PCBs. Look for best
+		 * fit.
 		 */
-		head = &pcbinfo->hashbase[INP_PCBHASH(INADDR_ANY, lport, 0,
-						      pcbinfo->hashmask)];
-		LIST_FOREACH(inp, head, inp_hash) {
+		LIST_FOREACH(inp, &phd->phd_pcblist, inp_portlist) {
+			wildcard = 0;
 			if ((inp->inp_vflag & INP_IPV6) == 0)
 				continue;
-			if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr) &&
-			    IN6_ARE_ADDR_EQUAL(&inp->in6p_laddr, laddr) &&
-			    inp->inp_lport == lport) {
-				/*
-				 * Found.
-				 */
-				return (inp);
-			}
-		}
-		/*
-		 * Not found.
-		 */
-		return (NULL);
-	} else {
-		struct inpcbporthead *porthash;
-		struct inpcbport *phd;
-		struct inpcb *match = NULL;
-		/*
-		 * Best fit PCB lookup.
-		 *
-		 * First see if this local port is in use by looking on the
-		 * port hash list.
-		 */
-		porthash = &pcbinfo->porthashbase[INP_PCBPORTHASH(lport,
-		    pcbinfo->porthashmask)];
-		LIST_FOREACH(phd, porthash, phd_hash) {
-			if (phd->phd_port == lport)
-				break;
-		}
-		if (phd != NULL) {
-			/*
-			 * Port is in use by one or more PCBs. Look for best
-			 * fit.
-			 */
-			LIST_FOREACH(inp, &phd->phd_pcblist, inp_portlist) {
-				wildcard = 0;
-				if ((inp->inp_vflag & INP_IPV6) == 0)
-					continue;
-				if (!IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr))
+			if (!IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr))
+				wildcard++;
+			if (!IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr)) {
+				if (IN6_IS_ADDR_UNSPECIFIED(laddr))
 					wildcard++;
-				if (!IN6_IS_ADDR_UNSPECIFIED(
-					&inp->in6p_laddr)) {
-					if (IN6_IS_ADDR_UNSPECIFIED(laddr))
-						wildcard++;
-					else if (!IN6_ARE_ADDR_EQUAL(
-						&inp->in6p_laddr, laddr))
-						continue;
-				} else {
-					if (!IN6_IS_ADDR_UNSPECIFIED(laddr))
-						wildcard++;
-				}
-				if (wildcard < matchwild) {
-					match = inp;
+				else if (!IN6_ARE_ADDR_EQUAL(
+					&inp->in6p_laddr, laddr))
+					continue;
+			} else {
+				if (!IN6_IS_ADDR_UNSPECIFIED(laddr))
+					wildcard++;
+			}
+			if (wildcard && !wild_okay)
+				continue;
+			if (wildcard < matchwild) {
+				match = inp;
+				if (wildcard == 0)
+					break;
+				else
 					matchwild = wildcard;
-					if (matchwild == 0) {
-						break;
-					}
-				}
 			}
 		}
-		return (match);
 	}
+	return (match);
 }
 
 void
@@ -1046,8 +1022,10 @@ in6_pcblookup_hash(pcbinfo, faddr, fport_arg, laddr, lport_arg, wildcard, ifp)
 	/*
 	 * First look for an exact match.
 	 */
-	head = &pcbinfo->hashbase[INP_PCBHASH(faddr->s6_addr32[3] /* XXX */,
-					      lport, fport,
+	head = &pcbinfo->hashbase[INP_PCBCONNHASH(faddr->s6_addr32[3] /* XXX */,
+					      fport,
+					      laddr->s6_addr32[3], /* XXX JH */
+					      lport,
 					      pcbinfo->hashmask)];
 	LIST_FOREACH(inp, head, inp_hash) {
 		if ((inp->inp_vflag & INP_IPV6) == 0)
@@ -1065,8 +1043,8 @@ in6_pcblookup_hash(pcbinfo, faddr, fport_arg, laddr, lport_arg, wildcard, ifp)
 	if (wildcard) {
 		struct inpcb *local_wild = NULL;
 
-		head = &pcbinfo->hashbase[INP_PCBHASH(INADDR_ANY, lport, 0,
-						      pcbinfo->hashmask)];
+		head = &pcbinfo->hashbase[INP_PCBBINDHASH(lport,
+		    pcbinfo->hashmask)];
 		LIST_FOREACH(inp, head, inp_hash) {
 			if ((inp->inp_vflag & INP_IPV6) == 0)
 				continue;

@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.10 2004/02/14 21:12:39 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.11 2004/03/04 01:02:05 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -563,7 +563,7 @@ syncache_socket(sc, lso)
 	}
 #endif
 	inp->inp_lport = sc->sc_inc.inc_lport;
-	if (in_pcbinshash(inp) != 0) {
+	if (in_pcbinsporthash(inp) != 0) {
 		/*
 		 * Undo the assignments above if we failed to
 		 * put the PCB on the hash lists.

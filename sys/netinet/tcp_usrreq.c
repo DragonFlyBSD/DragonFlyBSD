@@ -32,7 +32,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.5 2003/08/23 11:18:00 rob Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.6 2004/03/04 01:02:05 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -706,7 +706,7 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	struct socket *so = inp->inp_socket;
 	struct tcpcb *otp;
 	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
-	struct sockaddr_in *ifaddr;
+	struct sockaddr_in *if_sin;
 	struct rmxp_tao *taop;
 	struct rmxp_tao tao_noncached;
 	int error;
@@ -714,7 +714,7 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	if (inp->inp_lport == 0) {
 		error = in_pcbbind(inp, (struct sockaddr *)0, td);
 		if (error)
-			return error;
+			return (error);
 	}
 
 	/*
@@ -722,28 +722,29 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	 * earlier incarnation of this same connection still in
 	 * TIME_WAIT state, creating an ADDRINUSE error.
 	 */
-	error = in_pcbladdr(inp, nam, &ifaddr);
+	error = in_pcbladdr(inp, nam, &if_sin);
 	if (error)
-		return error;
+		return (error);
 	oinp = in_pcblookup_hash(inp->inp_pcbinfo,
 	    sin->sin_addr, sin->sin_port,
-	    inp->inp_laddr.s_addr != INADDR_ANY ? inp->inp_laddr
-						: ifaddr->sin_addr,
+	    inp->inp_laddr.s_addr != INADDR_ANY ?
+	        inp->inp_laddr : if_sin->sin_addr,
 	    inp->inp_lport,  0, NULL);
-	if (oinp) {
+	if (oinp != NULL) {
 		if (oinp != inp && (otp = intotcpcb(oinp)) != NULL &&
-		otp->t_state == TCPS_TIME_WAIT &&
+		    otp->t_state == TCPS_TIME_WAIT &&
 		    (ticks - otp->t_starttime) < tcp_msl &&
 		    (otp->t_flags & TF_RCVD_CC))
-			otp = tcp_close(otp);
+			(void) tcp_close(otp);
 		else
-			return EADDRINUSE;
+			return (EADDRINUSE);
 	}
 	if (inp->inp_laddr.s_addr == INADDR_ANY)
-		inp->inp_laddr = ifaddr->sin_addr;
+		inp->inp_laddr = if_sin->sin_addr;
 	inp->inp_faddr = sin->sin_addr;
 	inp->inp_fport = sin->sin_port;
-	in_pcbrehash(inp);
+	in_pcbrembindhash(inp);
+	in_pcbinsconnhash(inp);
 
 	/* Compute window scaling to request.  */
 	while (tp->request_r_scale < TCP_MAX_WINSHIFT &&
@@ -776,7 +777,7 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 		tp->t_flags |= TF_SENDCCNEW;
 	}
 
-	return 0;
+	return (0);
 }
 
 #ifdef INET6
@@ -808,9 +809,8 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 		return error;
 	oinp = in6_pcblookup_hash(inp->inp_pcbinfo,
 				  &sin6->sin6_addr, sin6->sin6_port,
-				  IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr)
-				  ? addr6
-				  : &inp->in6p_laddr,
+				  IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr) ?
+				      addr6 : &inp->in6p_laddr,
 				  inp->inp_lport,  0, NULL);
 	if (oinp) {
 		if (oinp != inp && (otp = intotcpcb(oinp)) != NULL &&
@@ -819,7 +819,7 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 		    (otp->t_flags & TF_RCVD_CC))
 			otp = tcp_close(otp);
 		else
-			return EADDRINUSE;
+			return (EADDRINUSE);
 	}
 	if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr))
 		inp->in6p_laddr = *addr6;
@@ -827,7 +827,8 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	inp->inp_fport = sin6->sin6_port;
 	if ((sin6->sin6_flowinfo & IPV6_FLOWINFO_MASK) != NULL)
 		inp->in6p_flowinfo = sin6->sin6_flowinfo;
-	in_pcbrehash(inp);
+	in_pcbrembindhash(inp);
+	in_pcbinsconnhash(inp);
 
 	/* Compute window scaling to request.  */
 	while (tp->request_r_scale < TCP_MAX_WINSHIFT &&
@@ -860,7 +861,7 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 		tp->t_flags |= TF_SENDCCNEW;
 	}
 
-	return 0;
+	return (0);
 }
 #endif /* INET6 */
 
