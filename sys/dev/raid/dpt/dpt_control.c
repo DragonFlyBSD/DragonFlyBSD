@@ -37,7 +37,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_control.c,v 1.16 1999/09/25 18:23:48 phk Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.4 2003/08/07 21:17:08 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.5 2004/02/16 20:13:26 dillon Exp $"
 
 #include "opt_dpt.h"
 
@@ -60,6 +60,9 @@
 #define INLINE __inline
 
 extern char     osrelease[];
+
+enum dpt_message dpt_message;
+enum dpt_immediate_cmd dpt_immediate_cmd;
 
 static dpt_sysinfo_t   dpt_sysinfo;
 

@@ -41,7 +41,7 @@
 
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt.h,v 1.8.2.1 2000/08/07 18:48:14 peter Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt.h,v 1.3 2003/11/22 19:30:55 asmodai Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt.h,v 1.4 2004/02/16 20:13:26 dillon Exp $"
 
 #ifndef _DPT_H
 #define _DPT_H
@@ -227,7 +227,7 @@ typedef void *physaddr;
  * Beware of this enumeration.	Not all commands are in sequence!
  */
 
-enum {
+enum dpt_immediate_cmd {
     EATA_GENERIC_ABORT,
     EATA_SPECIFIC_RESET,
     EATA_BUS_RESET,
@@ -239,7 +239,9 @@ enum {
     EATA_SCSI_BUS_OFFLINE,
     EATA_RESET_MASKED_BUS,
     EATA_POWER_OFF_WARN
-} dpt_immediate_cmd;
+};
+
+extern enum dpt_immediate_cmd dpt_immediate_cmd;
 
 #define HA_CTRLREG		0x206 /* control register for HBA */
 #define HA_CTRL_DISINT		0x02  /* CTRLREG: disable interrupts */
@@ -277,7 +279,7 @@ enum {
  * Message definitions	
  */
 
-enum {
+enum dpt_message {
 	HA_NO_ERROR,		/* No Error				*/
 	HA_ERR_SEL_TO,		/* Selection Timeout			*/
 	HA_ERR_CMD_TO,		/* Command Timeout			*/
@@ -300,7 +302,9 @@ enum {
 	HA_PCI_MABORT,		/* PCI Master Abort			*/
 	HA_PCI_TABORT,		/* PCI Target Abort			*/
 	HA_PCI_STABORT		/* PCI Signaled Target Abort		*/
-} dpt_message;
+};
+
+extern enum dpt_message dpt_message;
 
 #define HA_STATUS_MASK  	0x7F
 #define HA_IDENTIFY_MSG 	0x80

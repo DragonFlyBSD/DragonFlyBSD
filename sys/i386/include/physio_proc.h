@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/i386/include/physio_proc.h,v 1.1.2.1 2000/10/29 11:05:48 non Exp $	*/
-/*	$DragonFly: src/sys/i386/include/Attic/physio_proc.h,v 1.6 2004/02/13 02:36:40 joerg Exp $	*/
+/*	$DragonFly: src/sys/i386/include/Attic/physio_proc.h,v 1.7 2004/02/16 20:11:21 dillon Exp $	*/
 /*	$NecBSD: physio_proc.h,v 3.4 1999/07/23 20:47:03 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -39,7 +39,7 @@
 
 struct physio_proc;
 TAILQ_HEAD(physio_proc_head, physio_proc);
-struct physio_proc_head physio_proc_freet, physio_proc_busyt;
+extern struct physio_proc_head physio_proc_freet, physio_proc_busyt;
 
 struct physio_proc {
 	TAILQ_ENTRY(physio_proc) pp_chain;
