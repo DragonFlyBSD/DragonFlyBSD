@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)msgs.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/msgs/msgs.c,v 1.15.2.2 2003/02/11 21:31:56 mike Exp $
- * $DragonFly: src/usr.bin/msgs/msgs.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
+ * $DragonFly: src/usr.bin/msgs/msgs.c,v 1.4 2005/02/02 06:39:09 cpressey Exp $
  */
 
 /*
@@ -101,7 +101,7 @@ typedef	char	bool;
 
 FILE	*msgsrc;
 FILE	*newmsg;
-char	*sep = "-";
+const char *sep = "-";
 char	inbuf[BUFSIZ];
 char	fname[MAXPATHLEN];
 char	cmdbuf[MAXPATHLEN + MAXPATHLEN];
@@ -142,7 +142,7 @@ bool	lastcmd = NO;
 jmp_buf	tstpbuf;
 
 
-void ask(char *);
+void ask(const char *);
 void gfrsub(FILE *);
 int linecnt(FILE *);
 int next(char *);
@@ -660,7 +660,7 @@ prmesg(int length)
 }
 
 void
-onintr(int unused)
+onintr(int unused __unused)
 {
 	signal(SIGINT, onintr);
 	if (mailing)
@@ -685,7 +685,7 @@ onintr(int unused)
  * We have just gotten a susp.  Suspend and prepare to resume.
  */
 void
-onsusp(int unused)
+onsusp(int unused __unused)
 {
 	signal(SIGTSTP, SIG_DFL);
 	sigsetmask(0);
@@ -719,7 +719,7 @@ next(char *buf)
 }
 
 void
-ask(char *prompt)
+ask(const char *prompt)
 {
 	char	inch;
 	int	n, cmsg, fd;
