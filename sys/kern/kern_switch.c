@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.13 2003/10/21 04:14:55 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.14 2003/10/25 17:39:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -596,15 +596,16 @@ acquire_curproc(struct proc *p)
 
 /*
  * Yield / synchronous reschedule.  This is a bit tricky because the trap
- * code might have set a lazy release on the switch function.  The lazy
- * release normally doesn't release the P_CURPROC designation unless we
- * are blocking at the time of the switch (no longer on the run queue), which
- * we aren't.  We need to release our P_CURPROC designation in order to
- * properly allow another user process to run.  This is done by creating
- * a special case by setting P_PASSIVE_ACQ prior to calling lwkt_switch().
+ * code might have set a lazy release on the switch function.   Setting
+ * P_PASSIVE_ACQ will ensure that the lazy release executes when we call
+ * switch, and that we will not be rescheduled to another cpu when we attempt
+ * to re-acquire P_CURPROC.  
  *
- * This code is confusing and really needs to be cleaned up.  Plus I don't
- * think it actually works as expected.
+ * We have to release P_CURPROC (by calling lwkt_switch(), and acquire it
+ * again to yield to another user process.  Note that the release will
+ * ensure that we are running at a kernel LWKT priority, and this priority
+ * is not lowered through the reacquisition and rerelease sequence to ensure
+ * that we do not deadlock against a higher priority *user* process.
  */
 void
 uio_yield(void)

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.38 2003/10/25 17:36:22 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.39 2003/10/25 17:39:21 dillon Exp $
  */
 
 /*
@@ -170,41 +170,43 @@ SYSCTL_INT(_machdep, OID_AUTO, slow_release, CTLFLAG_RW,
 static int pass_release;
 SYSCTL_INT(_machdep, OID_AUTO, pass_release, CTLFLAG_RW,
 	&pass_release, 0, "Passive Release on switch");
-static int pass_hold;
-SYSCTL_INT(_machdep, OID_AUTO, pass_hold, CTLFLAG_RW,
-	&pass_hold, 0, "Passive Held on switch");
 
 MALLOC_DEFINE(M_SYSMSG, "sysmsg", "sysmsg structure");
 
 /*
  * USER->KERNEL transition.  Do not transition us out of userland from the
  * point of view of the userland scheduler unless we actually have to
- * switch.
+ * switch.  Switching typically occurs when a process blocks in the kernel.
  *
  * passive_release is called from within a critical section and the BGL will
  * still be held.  This function is NOT called for preemptions, only for
- * switchouts.  We only actually release our P_CURPROC designation when we
- * are going to sleep, otherwise another process might be assigned P_CURPROC
- * unnecessarily.
+ * switchouts.  Note that other elements of the system (uio_yield()) assume
+ * that the user cruft will be released when lwkt_switch() is called.
  */
 static void
 passive_release(struct thread *td)
 {
 	struct proc *p = td->td_proc;
 
+	td->td_release = NULL;
+
+	/*
+	 * P_CP_RELEASED prevents the userland scheduler from messing with
+	 * this proc.
+	 */
 	if ((p->p_flag & P_CP_RELEASED) == 0) {
 		p->p_flag |= P_CP_RELEASED;
 		lwkt_setpri_self(TDPRI_KERN_USER);
 	}
-	if ((p->p_flag & P_CURPROC) && (td->td_flags & TDF_RUNQ) == 0) {
-		td->td_release = NULL;
+
+	/*
+	 * Only one process will have a P_CURPROC designation for each cpu
+	 * in the system.  Releasing it allows another userland process to
+	 * be scheduled in case our thread blocks in the kernel.
+	 */
+	if (p->p_flag & P_CURPROC) {
 		release_curproc(p);
 		++pass_release;
-	} else if ((p->p_flag & (P_CURPROC|P_PASSIVE_ACQ)) == (P_CURPROC|P_PASSIVE_ACQ)) {
-		td->td_release = NULL;
-		release_curproc(p);
-	} else {
-		++pass_hold;
 	}
 }
 
@@ -233,7 +235,12 @@ userexit(struct proc *p)
 	 *
 	 * Lowering our priority may make other higher priority threads
 	 * runnable. lwkt_setpri_self() does not switch away, so call
-	 * lwkt_maybe_switch() to deal with it.
+	 * lwkt_maybe_switch() to deal with it.  
+	 *
+	 * WARNING!  Once our priority is lowered to a user level priority
+	 * it is possible, once we return to user mode (or if we were to
+	 * block) for a cpu-bound user process to prevent us from getting cpu
+	 * again.  This is always the last step.
 	 */
 	td->td_release = NULL;
 	if ((p->p_flag & (P_CP_RELEASED|P_CURPROC)) == P_CURPROC) {
