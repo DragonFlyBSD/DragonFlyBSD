@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.yppasswdd/yppasswdd_server.c,v 1.16.2.2 2002/02/15 00:46:57 des Exp $
- * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_server.c,v 1.3 2004/01/23 15:33:28 joerg Exp $
+ * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_server.c,v 1.4 2004/01/23 19:30:21 dillon Exp $
  */
 
 #include <stdio.h>
@@ -380,11 +380,12 @@ static int update_inplace(pw, domain)
 		if (i % 2) {
 			if (strncmp(data.data, pw->pw_name,
 							strlen(pw->pw_name))) {
-				yp_error("warning: found entry for UID %d \
-in map %s@%s with wrong name (%.*s)", pw->pw_uid, maps[i], domain,
-					ptr - (char *)data.data, data.data);
-				yp_error("there may be more than one user \
-with the same UID - continuing");
+				yp_error("warning: found entry for UID %d "
+				    "in map %s@%s with wrong name (%.*s)",
+				    pw->pw_uid, maps[i], domain,
+				    ptr - (char *)data.data, data.data);
+				yp_error("there may be more than one user "
+				    "with the same UID - continuing");
 				continue;
 			}
 		} else {
