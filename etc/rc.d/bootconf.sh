@@ -2,11 +2,13 @@
 #
 # $NetBSD: bootconf.sh,v 1.5 2002/03/25 03:22:10 wiz Exp $
 # $FreeBSD: src/etc/rc.d/bootconf.sh,v 1.4 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/Attic/bootconf.sh,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/Attic/bootconf.sh,v 1.2 2003/12/11 23:28:41 dillon Exp $
 #
 
 # PROVIDE: bootconf
 # REQUIRE: mountcritlocal
+
+. /etc/rc.subr
 
 bootconf_start()
 {
@@ -81,3 +83,6 @@ case "$1" in
 	bootconf_start
 	;;
 esac
+
+dummy_rc_command $1 XXX
+

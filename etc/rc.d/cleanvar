@@ -1,12 +1,16 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/cleanvar,v 1.5 2003/07/14 13:02:36 mtm Exp $
-# $DragonFly: src/etc/rc.d/cleanvar,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/cleanvar,v 1.2 2003/12/11 23:28:41 dillon Exp $
 #
 
 # PROVIDE: cleanvar
 # REQUIRE: mountcritlocal
 # KEYWORD: DragonFly FreeBSD
+
+. /etc/rc.subr 
+
+dummy_rc_command "$1"
 
 purgedir()
 {

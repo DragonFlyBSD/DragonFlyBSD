@@ -2,7 +2,7 @@
 #
 # $NetBSD: DAEMON,v 1.8 2002/03/22 04:33:57 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/DAEMON,v 1.3 2002/10/12 13:49:20 schweikh Exp $
-# $DragonFly: src/etc/rc.d/DAEMON,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/DAEMON,v 1.2 2003/12/11 23:28:41 dillon Exp $
 #
 
 # PROVIDE: DAEMON
@@ -11,3 +11,7 @@
 
 #	This is a dummy dependency, to ensure that general purpose daemons
 #	are run _after_ the above are.
+
+. /etc/rc.subr
+dummy_rc_command "$1"
+

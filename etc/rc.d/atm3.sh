@@ -25,7 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/atm3.sh,v 1.10 2002/06/13 22:14:36 gordon Exp $
-# $DragonFly: src/etc/rc.d/atm3.sh,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/atm3.sh,v 1.2 2003/12/11 23:28:41 dillon Exp $
 #
 
 # Start ATM daemons
@@ -39,6 +39,7 @@
 # KEYWORD: DragonFly FreeBSD 
 
 . /etc/rc.subr
+dummy_rc_command "$1"
 
 atm3_start()
 {

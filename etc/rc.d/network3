@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/network3,v 1.138 2003/06/29 05:15:57 mtm Exp $
-# $DragonFly: src/etc/rc.d/Attic/network3,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/Attic/network3,v 1.2 2003/12/11 23:28:41 dillon Exp $
 #
 
 # PROVIDE: network3
@@ -12,6 +12,7 @@
 . /etc/rc.subr
 
 load_rc_config 'XXX'
+dummy_rc_command "$1"
 
 echo -n 'Additional TCP options:'
 case ${log_in_vain} in

@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $NetBSD: downinterfaces,v 1.2 2001/09/04 20:40:40 martin Exp $
-# $DragonFly: src/etc/rc.d/Attic/downinterfaces,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/Attic/downinterfaces,v 1.2 2003/12/11 23:28:41 dillon Exp $
 #
 
 # PROVIDE: downinterfaces
@@ -10,6 +10,7 @@
 if [ "x$1" != "xstop" ]; then exit 0; fi
 
 . /etc/rc.conf
+dummy_rc_command "$1"
 
 tmp=`ifconfig -lu`
 iflist=""

@@ -25,11 +25,13 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/initdiskless,v 1.24 2003/06/30 21:47:06 brooks Exp $
-# $DragonFly: src/etc/rc.d/initdiskless,v 1.3 2003/11/19 10:32:45 eirikn Exp $
+# $DragonFly: src/etc/rc.d/initdiskless,v 1.4 2003/12/11 23:28:41 dillon Exp $
 #
 # PROVIDE: initdiskless
 # KEYWORD: DragonFly FreeBSD
 
+. /etc/rc.subr
+dummy_rc_command "$1"
  
 # On entry to this script the entire system consists of a read-only root
 # mounted via NFS.  We use the contents of /conf to create and populate

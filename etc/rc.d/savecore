@@ -2,7 +2,7 @@
 #
 # $NetBSD: savecore,v 1.5 2002/03/22 04:34:00 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/savecore,v 1.3 2002/09/06 16:18:05 gordon Exp $
-# $DragonFly: src/etc/rc.d/savecore,v 1.2 2003/11/19 10:32:45 eirikn Exp $
+# $DragonFly: src/etc/rc.d/savecore,v 1.3 2003/12/11 23:28:41 dillon Exp $
 #
 
 # PROVIDE: savecore
@@ -36,7 +36,8 @@ savecore_prestart()
 		case ${dumpdev} in
 		[Nn][Oo] | '')
 			debug 'No dump device. Quitting.'
-			return 1
+			dumpdev=
+			return 0
 			;;
 		esac
 		# If there is no crash directory set it now
@@ -50,7 +51,8 @@ savecore_prestart()
 		esac
 		if [ ! -e "${dumpdev}" -o ! -d "${dumpdir}" ]; then
 			warn "Wrong dump device or directory. Savecore not run."
-			return 1
+			dumpdev=
+			return 0
 		fi
 		;;
 	FreeBSD)
@@ -58,7 +60,8 @@ savecore_prestart()
 		case ${dumpdev} in
 		[Nn][Oo] | '')
 			debug 'No dump device. Quitting.'
-			return 1
+			dumpdev=
+			return 0
 			;;
 		esac
 
@@ -74,13 +77,15 @@ savecore_prestart()
 
 		if [ ! -e "${dumpdev}" -o ! -d "${dumpdir}" ]; then
 			warn "Wrong dump device or directory. Savecore not run."
-			return 1
+			dumpdev=
+			return 0
 		fi
 		;;
 	NetBSD)
 		if [ ! -d "${dumpdir}" ]; then
 			warn "No /var/crash directory; savecore not run."
-			return 1
+			dumpdev=
+			return 0
 		fi
 		;;
 	esac
@@ -89,8 +94,10 @@ savecore_prestart()
 
 savecore_start()
 {
+	if [ X$dumpdev != X ]; then
 		echo "Checking for core dump..."
 		savecore ${savecore_flags} ${DUMPDIR}
+	fi
 }
 
 load_rc_config $name

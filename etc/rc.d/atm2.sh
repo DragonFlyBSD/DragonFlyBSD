@@ -25,7 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/atm2.sh,v 1.13 2003/06/29 05:15:57 mtm Exp $
-# $DragonFly: src/etc/rc.d/atm2.sh,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/atm2.sh,v 1.2 2003/12/11 23:28:41 dillon Exp $
 #
 
 # PROVIDE: atm2
@@ -38,6 +38,7 @@
 #
 
 . /etc/rc.subr
+dummy_rc_command "$1"
 
 atm2_start()
 {

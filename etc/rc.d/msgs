@@ -1,12 +1,15 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/msgs,v 1.1 2002/06/13 22:14:36 gordon Exp $
-# $DragonFly: src/etc/rc.d/msgs,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/msgs,v 1.2 2003/12/11 23:28:41 dillon Exp $
 #
 
 # PROVIDE: msgs
 # REQUIRE: LOGIN
 # KEYWORD: DragonFly FreeBSD
+
+. /etc/rc.subr
+dummy_rc_command "$1"
 
 # Make a bounds file for msgs(1) if there isn't one already
 #
