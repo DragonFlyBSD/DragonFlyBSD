@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.17 2004/03/01 06:33:16 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.18 2004/03/29 17:17:09 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -174,15 +174,15 @@ elf_check_header(const Elf_Ehdr *hdr)
 	if (!IS_ELF(*hdr) ||
 	    hdr->e_ident[EI_CLASS] != ELF_TARG_CLASS ||
 	    hdr->e_ident[EI_DATA] != ELF_TARG_DATA ||
-	    hdr->e_ident[EI_VERSION] != EV_CURRENT)
+	    hdr->e_ident[EI_VERSION] != EV_CURRENT ||
+	    hdr->e_phentsize != sizeof(Elf_Phdr) ||
+	    hdr->e_ehsize != sizeof(Elf_Ehdr) ||
+	    hdr->e_version != ELF_TARG_VER)
 		return ENOEXEC;
 
 	if (!ELF_MACHINE_OK(hdr->e_machine))
 		return ENOEXEC;
 
-	if (hdr->e_version != ELF_TARG_VER)
-		return ENOEXEC;
-	
 	return 0;
 }
 
@@ -414,9 +414,10 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 		goto fail;
 	}
 
-	/* Only support headers that fit within first page for now */
+	/* Only support headers that fit within first page for now
+	 * (multiplication of two Elf_Half fields will not overflow) */
 	if ((hdr->e_phoff > PAGE_SIZE) ||
-	    (hdr->e_phoff + hdr->e_phentsize * hdr->e_phnum) > PAGE_SIZE) {
+	    (hdr->e_phentsize * hdr->e_phnum) > PAGE_SIZE - hdr->e_phoff) {
 		error = ENOEXEC;
 		goto fail;
 	}
