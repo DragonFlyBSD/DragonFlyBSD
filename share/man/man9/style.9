@@ -40,11 +40,11 @@ Be careful to check the examples before assuming that
 is silent on an issue.
 .Bd -literal
 /*
- * Style guide for FreeBSD.  Based on the CSRG's KNF (Kernel Normal Form).
+ * Style guide for DragonFly.  Based on the CSRG's KNF (Kernel Normal Form).
  *
  *	@(#)style	1.14 (Berkeley) 4/28/95
  * $FreeBSD: src/share/man/man9/style.9,v 1.32.2.19 2002/04/14 19:28:03 asmodai Exp $
- * $DragonFly: src/share/man/man9/style.9,v 1.4 2004/01/27 21:03:08 dillon Exp $
+ * $DragonFly: src/share/man/man9/style.9,v 1.5 2004/02/05 11:51:54 joerg Exp $
  */
 
 /*
@@ -57,6 +57,12 @@ is silent on an issue.
  * Multi-line comments look like this.  Make them real sentences.  Fill
  * them so they look like real paragraphs.
  */
+
+/*
+ * XXX in a comment indicates code which is incomplete, suboptimal,
+ * or otherwise deserving of further attention.
+ */
+
 .Ed
 .Pp
 Version control system ID tags should only exist once in a file
@@ -252,18 +258,15 @@ Functions that are used locally in more than one module go into a
 separate header file, e.g.\&
 .Qq Pa extern.h .
 .Pp
-Only use the
+Avoid using the
 .Dv __P
 macro from the include file
-.Aq Pa sys/cdefs.h
-if the source
-file in general is (to be) compilable with a K&R Old Testament compiler.
-Use of the
-.Dv __P
-macro in new code is discouraged, although modifications
-to existing files should be consistent with that file's conventions.
+.Aq Pa sys/cdefs.h .
+Code in the DragonFly source tree is not
+expected to be K&R compliant.
 .Pp
-In general code can be considered
+Changes to existing files should be consistent with that file's conventions.
+In general, code can be considered
 .Dq "new code"
 when it makes up about 50% or more of the file(s) involved.
 This is enough
@@ -400,12 +403,12 @@ inside blocks unless the routine is unusually complicated.
 	}
 .Ed
 .Pp
-Indentation is an 8 character tab.
-Second level indents are four spaces.
+Indentation used for program block structure is an 8 character tab.
+Second level indents used for line continuation are four spaces.
 If you have to wrap a long statement, put the operator at the end of the
 line.
 .Bd -literal
-	while (cnt < 20 && this_variable_name_is_too_long_for_its_own_good &&
+	while (cnt < 20 && this_variable_name_is_really_far_too_long &&
 	    ep != NULL)
 		z = a + really + long + statement + that + needs +
 		    two lines + gets + indented + four + spaces +
@@ -452,8 +455,8 @@ characters.
 Unary operators do not require spaces, binary operators do.
 Do not use parentheses unless they are required for precedence or unless the
 statement is confusing without them.
-Remember that other people may
-confuse easier than you.
+Remember that other people may become
+confused more easily than you.
 Do YOU understand the following?
 .Bd -literal
 	a = b->c[0] + ~d == (e || f) || g && h ? i : j >> 1;
@@ -502,12 +505,18 @@ declaration.
 Hiding file declarations in what appears to be a local
 scope is undesirable and will elicit complaints from a good compiler.
 .Pp
-Casts and
-.Ic sizeof Ns 's
-are not followed by a space.
+Casts are not followed by a space.
 Note that
 .Xr indent 1
 does not understand this rule.
+.Pp
+For the purposes of formatting, treat
+.Ic return
+and
+.Ic sizeof
+as functions.  In other words, they are not
+followed by a space, and their single argument
+should be enclosed in parentheses.
 .Pp
 .Dv NULL
 is the preferred null pointer constant.
@@ -570,7 +579,7 @@ do not roll your own.
 }
 .Ed
 .Pp
-Old-style function declarations look like this:
+Avoid old-style function declarations that look like this:
 .Bd -literal
 static char *
 function(a1, a2, fl, a4)
@@ -580,7 +589,7 @@ function(a1, a2, fl, a4)
 {
 .Ed
 .Pp
-Use ANSI function declarations unless you explicitly need K&R compatibility.
+Use ANSI function declarations instead.
 Long parameter lists are wrapped with a normal four space indent.
 .Pp
 Variable numbers of arguments should look like this.
