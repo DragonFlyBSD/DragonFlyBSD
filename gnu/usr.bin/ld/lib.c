@@ -31,7 +31,7 @@
 
 /*
  * $FreeBSD: src/gnu/usr.bin/ld/lib.c,v 1.23 1999/08/27 23:36:01 peter Exp $	- library routines
- * $DragonFly: src/gnu/usr.bin/ld/Attic/lib.c,v 1.2 2003/06/17 04:25:46 dillon Exp $	- library routines
+ * $DragonFly: src/gnu/usr.bin/ld/Attic/lib.c,v 1.3 2003/11/09 11:41:15 eirikn Exp $	- library routines
  */
 
 #include <sys/param.h>
@@ -55,11 +55,11 @@
 #include "ld.h"
 #include "dynamic.h"
 
-static void		linear_library __P((int, struct file_entry *));
-static void		symdef_library __P((int, struct file_entry *, int));
-static struct file_entry	*decode_library_subfile __P((int,
+static void		linear_library(int, struct file_entry *);
+static void		symdef_library(int, struct file_entry *, int);
+static struct file_entry	*decode_library_subfile(int,
 							struct file_entry *,
-							int, int *));
+							int, int *);
 
 /*
  * Search the library ENTRY, already open on descriptor FD. This means
@@ -189,7 +189,7 @@ decode_library_subfile(fd, library_entry, subfile_offset, length_loc)
 	return subentry;
 }
 
-static int	subfile_wanted_p __P((struct file_entry *));
+static int	subfile_wanted_p(struct file_entry *);
 
 /*
  * Search a library that has a __.SYMDEF member. FD is a descriptor on

@@ -14,7 +14,9 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
-
+/*
+ * $DragonFly: src/gnu/usr.bin/sort/system.h,v 1.2 2003/11/09 11:41:16 eirikn Exp $
+ */
 /* Include sys/types.h before this file.  */
 
 #include <sys/stat.h>
@@ -196,10 +198,3 @@ char *getenv ();
 #undef _
 #define _(String) String
 
-#ifndef __P
-# if PROTOTYPES
-#  define __P(Args) Args
-# else
-#  define __P(Args) ()
-# endif
-#endif

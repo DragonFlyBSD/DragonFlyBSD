@@ -31,7 +31,7 @@
 
 /*
  * $FreeBSD: src/gnu/usr.bin/ld/ld.c,v 1.47 1999/08/27 23:36:00 peter Exp $
- * $DragonFly: src/gnu/usr.bin/ld/Attic/ld.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/ld/Attic/ld.c,v 1.3 2003/11/09 11:41:15 eirikn Exp $
  */
 
 /* Define how to initialize system-dependent header fields.  */
@@ -235,35 +235,35 @@ int	specified_data_size;
 long	*set_vectors;
 int	setv_fill_count;
 
-static void	decode_option __P((char *, char *));
-static void	decode_command __P((int, char **));
-static int	classify_arg __P((char *));
-static void	load_symbols __P((void));
-static void	enter_global_ref __P((struct localsymbol *,
-						char *, struct file_entry *));
-static void	digest_symbols __P((void));
-static void	digest_pass1 __P((void)), digest_pass2 __P((void));
-static void	consider_file_section_lengths __P((struct file_entry *));
-static void	relocate_file_addresses __P((struct file_entry *));
-static void	consider_relocation __P((struct file_entry *, int));
-static void	consider_local_symbols __P((struct file_entry *));
-static void	perform_relocation __P((char *, int,
+static void	decode_option(char *, char *);
+static void	decode_command(int, char **);
+static int	classify_arg(char *);
+static void	load_symbols(void);
+static void	enter_global_ref(struct localsymbol *,
+						char *, struct file_entry *);
+static void	digest_symbols(void);
+static void	digest_pass1(void), digest_pass2(void);
+static void	consider_file_section_lengths(struct file_entry *);
+static void	relocate_file_addresses(struct file_entry *);
+static void	consider_relocation(struct file_entry *, int);
+static void	consider_local_symbols(struct file_entry *);
+static void	perform_relocation(char *, int,
 						struct relocation_info *, int,
-						struct file_entry *, int));
-static void	copy_text __P((struct file_entry *));
-static void	copy_data __P((struct file_entry *));
-static void	coptxtrel __P((struct file_entry *));
-static void	copdatrel __P((struct file_entry *));
-static void	write_output __P((void));
-static void	write_header __P((void));
-static void	write_text __P((void));
-static void	write_data __P((void));
-static void	write_rel __P((void));
-static void	write_syms __P((void));
-static void	assign_symbolnums __P((struct file_entry *, int *));
-static void	cleanup __P((void));
-static int	parse __P((char *, char *, char *));
-static void	list_files __P((void));
+						struct file_entry *, int);
+static void	copy_text(struct file_entry *);
+static void	copy_data(struct file_entry *);
+static void	coptxtrel(struct file_entry *);
+static void	copdatrel(struct file_entry *);
+static void	write_output(void);
+static void	write_header(void);
+static void	write_text(void);
+static void	write_data(void);
+static void	write_rel(void);
+static void	write_syms(void);
+static void	assign_symbolnums(struct file_entry *, int *);
+static void	cleanup(void);
+static int	parse(char *, char *, char *);
+static void	list_files(void);
 
 
 int
@@ -3274,8 +3274,8 @@ copdatrel(entry)
 		sizeof(struct relocation_info), outstream);
 }
 
-void write_file_syms __P((struct file_entry *, int *));
-void write_string_table __P((void));
+void write_file_syms(struct file_entry *, int *);
+void write_string_table(void);
 
 /* Offsets and current lengths of symbol and string tables in output file. */
 

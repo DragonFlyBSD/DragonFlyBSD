@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/gnu/usr.bin/ld/sparc/md.h,v 1.11 1999/08/27 23:36:04 peter Exp $
- * $DragonFly: src/gnu/usr.bin/ld/sparc/Attic/md.h,v 1.2 2003/06/17 04:25:46 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/ld/sparc/Attic/md.h,v 1.3 2003/11/09 11:41:16 eirikn Exp $
  */
 
 /*
@@ -184,11 +184,11 @@ typedef struct jmpslot {
 
 /* Define IO byte swapping routines */
 
-void	md_swapin_exec_hdr __P((struct exec *));
-void	md_swapout_exec_hdr __P((struct exec *));
-void	md_swapin_reloc __P((struct relocation_info *, int));
-void	md_swapout_reloc __P((struct relocation_info *, int));
-void	md_swapout_jmpslot __P((jmpslot_t *, int));
+void	md_swapin_exec_hdr(struct exec *);
+void	md_swapout_exec_hdr(struct exec *);
+void	md_swapin_reloc(struct relocation_info *, int);
+void	md_swapout_reloc(struct relocation_info *, int);
+void	md_swapout_jmpslot(jmpslot_t *, int);
 
 #define md_swapin_symbols(s,n)			swap_symbols(s,n)
 #define md_swapout_symbols(s,n)			swap_symbols(s,n)
@@ -291,13 +291,13 @@ void	md_swapout_jmpslot __P((jmpslot_t *, int));
 
 #endif /* CROSS_LINKER */
 
-void	md_init_header __P((struct exec *, int, int));
-long	md_get_addend __P((struct relocation_info *, unsigned char *));
-void	md_relocate __P((struct relocation_info *, long, unsigned char *, int));
-void	md_make_jmpslot __P((jmpslot_t *, long, long));
-void	md_fix_jmpslot __P((jmpslot_t *, long, u_long));
-int	md_make_reloc __P((struct relocation_info *, struct relocation_info *, int));
-void	md_make_jmpreloc __P((struct relocation_info *, struct relocation_info *, int));
-void	md_make_gotreloc __P((struct relocation_info *, struct relocation_info *, int));
-void	md_make_copyreloc __P((struct relocation_info *, struct relocation_info *));
-void	md_set_breakpoint __P((long, long *));
+void	md_init_header(struct exec *, int, int);
+long	md_get_addend(struct relocation_info *, unsigned char *);
+void	md_relocate(struct relocation_info *, long, unsigned char *, int);
+void	md_make_jmpslot(jmpslot_t *, long, long);
+void	md_fix_jmpslot(jmpslot_t *, long, u_long);
+int	md_make_reloc(struct relocation_info *, struct relocation_info *, int);
+void	md_make_jmpreloc(struct relocation_info *, struct relocation_info *, int);
+void	md_make_gotreloc(struct relocation_info *, struct relocation_info *, int);
+void	md_make_copyreloc(struct relocation_info *, struct relocation_info *);
+void	md_set_breakpoint(long, long *);

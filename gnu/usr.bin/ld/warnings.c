@@ -31,7 +31,7 @@
 
 /*
  * $FreeBSD: src/gnu/usr.bin/ld/warnings.c,v 1.18 1999/08/27 23:36:02 peter Exp $
- * $DragonFly: src/gnu/usr.bin/ld/Attic/warnings.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/ld/Attic/warnings.c,v 1.3 2003/11/09 11:41:16 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -144,8 +144,8 @@ get_file_name (entry)
 
 /* Print a complete or partial map of the output file. */
 
-static void	describe_file_sections __P((struct file_entry *, FILE *));
-static void	list_file_locals __P((struct file_entry *, FILE *));
+static void	describe_file_sections(struct file_entry *, FILE *);
+static void	list_file_locals(struct file_entry *, FILE *);
 
 void
 print_symbols(outfile)
@@ -230,9 +230,9 @@ list_file_locals (entry, outfile)
 static int list_unresolved_refs;	/* List unresolved refs */
 static int list_multiple_defs;		/* List multiple definitions */
 
-static struct line_debug_entry *init_debug_scan __P((int, struct file_entry *));
-static int	next_debug_entry __P((int, struct line_debug_entry *));
-static int	address_to_line __P((unsigned long, struct line_debug_entry *));
+static struct line_debug_entry *init_debug_scan(int, struct file_entry *);
+static int	next_debug_entry(int, struct line_debug_entry *);
+static int	address_to_line(unsigned long, struct line_debug_entry *);
 
 /*
  * Structure for communication between do_file_warnings and it's

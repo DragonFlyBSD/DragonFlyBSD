@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/gnu/usr.bin/ld/ld.h,v 1.21 1999/08/27 23:36:01 peter Exp $
- * $DragonFly: src/gnu/usr.bin/ld/Attic/ld.h,v 1.2 2003/06/17 04:25:46 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/ld/Attic/ld.h,v 1.3 2003/11/09 11:41:15 eirikn Exp $
  */
 /*-
  * This code is derived from software copyrighted by the Free Software
@@ -17,14 +17,6 @@
 
 #ifndef min
 #define min(a,b) ((a) < (b) ? (a) : (b))
-#endif
-
-#ifndef __P
-#ifndef __STDC__
-#define __P(a)	()
-#else
-#define __P(a)	a
-#endif
 #endif
 
 /* If compiled with GNU C, use the built-in alloca */
@@ -55,7 +47,7 @@ extern int	netzmagic;
 #endif
 
 #ifdef DEMANGLE_CPLUSPLUS
-extern char *demangle __P((char*));
+extern char *demangle(char*);
 #else
 #define demangle(name) name
 #endif
