@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.3 2003/12/01 19:12:25 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.4 2003/12/01 19:32:56 dillon Exp $
 #
 ISODIR ?= /usr/release
 ISOFILE ?= ${ISODIR}/dfly.iso
@@ -6,18 +6,19 @@ ISOROOT = ${ISODIR}/root
 OBJSYS= ${.OBJDIR}/../sys
 KERNCONF ?= GENERIC
 
-#.if !exists(/usr/local/bin/mkisofs)
-#.error "You need to install the mkisofs port so I can build the ISO"
-#.endif
-#.if !exists(/usr/local/bin/cvsup)
-#.error "You need to install the cvsup port so I can put cvsup in the ISO"
-#.endif
+release:	check clean buildworld1 buildkernel1 buildiso mkiso
 
-release:	clean buildworld1 buildkernel1 buildiso mkiso
+quickrel:	check clean buildworld2 buildkernel2 buildiso mkiso
 
-quickrel:	clean buildworld2 buildkernel2 buildiso mkiso
+realquickrel:	check clean buildiso mkiso
 
-realquickrel:	clean buildiso mkiso
+check:
+	if [ ! -f /usr/local/bin/mkisofs ]; then \
+		echo "You need to install the mkisofs port for this target"; \
+		exit 1; fi
+	if [ ! -f /usr/local/bin/cvsup ]; then \
+		echo "You need to install the cvsup port for this target"; \
+		exit 1; fi
 
 buildworld1:
 	( cd ${.CURDIR}/..; make buildworld )
