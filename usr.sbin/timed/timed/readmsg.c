@@ -32,7 +32,7 @@
  *
  * @(#)readmsg.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/readmsg.c,v 1.5.2.3 2001/08/31 08:02:05 kris Exp $
- * $DragonFly: src/usr.sbin/timed/timed/readmsg.c,v 1.4 2004/09/05 01:59:44 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/readmsg.c,v 1.5 2004/09/05 02:16:48 dillon Exp $
  */
 
 #include "globals.h"
@@ -471,12 +471,8 @@ print(struct tsp *msg, struct sockaddr_in *addr)
 	case TSP_SETTIME:
 	case TSP_SETDATE:
 	case TSP_SETDATEREQ:
-#ifdef sgi
-		(void)cftime(tm, "%D %T", &msg->tsp_time.tv_sec);
-#else
 		tsp_time_sec = msg->tsp_time.tv_sec;
 		strlcpy(tm, ctime(&tsp_time_sec)+3+1, sizeof(tm));
-#endif /* sgi */
 		fprintf(fd, "%s %d %-6u %s %-15s %s\n",
 			tsptype[msg->tsp_type],
 			msg->tsp_vers,

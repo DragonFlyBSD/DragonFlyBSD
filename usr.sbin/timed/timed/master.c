@@ -32,7 +32,7 @@
  *
  * @(#)master.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/master.c,v 1.6 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/master.c,v 1.6 2004/09/05 02:09:24 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/master.c,v 1.7 2004/09/05 02:16:48 dillon Exp $
  */
 
 #include "globals.h"
@@ -40,9 +40,6 @@
 #include <sys/types.h>
 #include <sys/times.h>
 #include <setjmp.h>
-#ifdef sgi
-#include <sys/schedctl.h>
-#endif /* sgi */
 #include <utmp.h>
 #include "pathnames.h"
 
@@ -55,12 +52,6 @@ static int dictate;
 static int slvcount;			/* slaves listening to our clock */
 
 static void mchgdate(struct tsp *);
-
-#ifdef sgi
-extern void logwtmp(struct timeval *, struct timeval *);
-#else
-extern void logwtmp(char *, char *, char *);
-#endif /* sgi */
 
 /*
  * The main function of `master' is to periodically compute the differences
@@ -174,12 +165,8 @@ loop:
 			/*
 			 * XXX check to see it is from ourself
 			 */
-#ifdef sgi
-			(void)cftime(newdate, "%D %T", &msg->tsp_time.tv_sec);
-#else
 			tsp_time_sec = msg->tsp_time.tv_sec;
 			strlcpy(newdate, ctime(&tsp_time_sec), sizeof(newdate));
-#endif /* sgi */
 			if (!good_host_name(msg->tsp_name)) {
 				syslog(LOG_NOTICE,
 				       "attempted date change by %s to %s",
@@ -196,12 +183,8 @@ loop:
 		case TSP_SETDATEREQ:
 			if (!fromnet || fromnet->status != MASTER)
 				break;
-#ifdef sgi
-			(void)cftime(newdate, "%D %T", &msg->tsp_time.tv_sec);
-#else
 			tsp_time_sec = msg->tsp_time.tv_sec;
 			strlcpy(newdate, ctime(&tsp_time_sec), sizeof(newdate));
-#endif /* sgi */
 			htp = findhost(msg->tsp_name);
 			if (htp == 0) {
 				syslog(LOG_ERR,
@@ -382,16 +365,9 @@ mchgdate(struct tsp *msg)
 		dictate = 3;
 		synch(tvtomsround(ntime));
 	} else {
-#ifdef sgi
-		if (0 > settimeofday(&msg->tsp_time, 0)) {
-			syslog(LOG_ERR, "settimeofday(): %m");
-		}
-		logwtmp(&otime, &msg->tsp_time);
-#else
 		logwtmp("|", "date", "");
 		(void)settimeofday(&msg->tsp_time, 0);
 		logwtmp("{", "date", "");
-#endif /* sgi */
 		spreadtime();
 	}
 
@@ -409,20 +385,11 @@ synch(long mydelta)
 	struct hosttbl *htp;
 	int measure_status;
 	struct timeval check, stop, wait;
-#ifdef sgi
-	int pri;
-#endif /* sgi */
 
 	if (slvcount > 0) {
 		if (trace)
 			fprintf(fd, "measurements starting at %s\n", date());
 		(void)gettimeofday(&check, 0);
-#ifdef sgi
-		/* run fast to get good time */
-		pri = schedctl(NDPRI,0,NDPHIMIN);
-		if (pri < 0)
-			syslog(LOG_ERR, "schedctl(): %m");
-#endif /* sgi */
 		for (htp = self.l_fwd; htp != &self; htp = htp->l_fwd) {
 			if (htp->noanswer != 0) {
 				measure_status = measure(500, 100,
@@ -466,10 +433,6 @@ synch(long mydelta)
 				(void)gettimeofday(&check, 0);
 			}
 		}
-#ifdef sgi
-		if (pri >= 0)
-			(void)schedctl(NDPRI,0,pri);
-#endif /* sgi */
 		if (trace)
 			fprintf(fd, "measurements finished at %s\n", date());
 	}
@@ -869,30 +832,3 @@ traceoff(char *msg)
 	trace = OFF;
 }
 
-
-#ifdef sgi
-void
-logwtmp(struct timeval *otime, struct timeval *ntime)
-{
-	static struct utmp wtmp[2] = {
-		{"","",OTIME_MSG,0,OLD_TIME,0,0,0},
-		{"","",NTIME_MSG,0,NEW_TIME,0,0,0}
-	};
-	static char *wtmpfile = WTMP_FILE;
-	int f;
-
-	wtmp[0].ut_time = otime->tv_sec + (otime->tv_usec + 500000) / 1000000;
-	wtmp[1].ut_time = ntime->tv_sec + (ntime->tv_usec + 500000) / 1000000;
-	if (wtmp[0].ut_time == wtmp[1].ut_time)
-		return;
-
-	setutent();
-	(void)pututline(&wtmp[0]);
-	(void)pututline(&wtmp[1]);
-	endutent();
-	if ((f = open(wtmpfile, O_WRONLY|O_APPEND)) >= 0) {
-		(void) write(f, (char *)wtmp, sizeof(wtmp));
-		(void) close(f);
-	}
-}
-#endif /* sgi */

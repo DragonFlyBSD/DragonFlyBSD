@@ -32,7 +32,7 @@
  *
  * @(#)measure.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/measure.c,v 1.6 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/measure.c,v 1.5 2004/09/05 02:09:24 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/measure.c,v 1.6 2004/09/05 02:16:48 dillon Exp $
  */
 
 #include "globals.h"
@@ -125,10 +125,6 @@ measure(u_long maxmsec,			/* wait this many msec at most */
 	oicp->icmp_seq = seqno;
 
 	FD_ZERO(&ready);
-
-#ifdef sgi
-	sginap(1);			/* start at a clock tick */
-#endif /* sgi */
 
 	(void)gettimeofday(&tdone, 0);
 	mstotvround(&tout, maxmsec);
@@ -298,13 +294,12 @@ void
 mstotvround(struct timeval *res, long x)
 {
 
-#ifndef sgi
 	if (x < 0)
 		x = -((-x + 3)/5);
 	else
 		x = (x+3)/5;
 	x *= 5;
-#endif /* sgi */
+
 	res->tv_sec = x/1000;
 	res->tv_usec = (x-res->tv_sec*1000)*1000;
 	if (res->tv_usec < 0) {

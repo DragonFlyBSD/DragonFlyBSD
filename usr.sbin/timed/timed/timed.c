@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)timed.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/timed.c,v 1.9 1999/08/28 01:20:19 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/timed.c,v 1.6 2004/09/05 02:09:24 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/timed.c,v 1.7 2004/09/05 02:16:48 dillon Exp $
  */
 
 #define TSPTYPES
@@ -46,11 +46,6 @@
 #include <math.h>
 #include <sys/types.h>
 #include <sys/times.h>
-#ifdef sgi
-#include <unistd.h>
-#include <sys/syssgi.h>
-#include <sys/schedctl.h>
-#endif /* sgi */
 
 int trace = 0;
 int sock, sock_raw = -1;
@@ -92,18 +87,6 @@ static char *goodgroup;			/* net group of trusted hosts */
 static void checkignorednets(void);
 static void pickslavenet(struct netinfo *);
 static void add_good_host(char *, int);
-
-#ifdef sgi
-char *timetrim_fn;
-char *timetrim_wpat = "long timetrim = %ld;\ndouble tot_adj = %.0f;\ndouble tot_ticks = %.0f;\n/* timed version 2 */\n";
-char *timetrim_rpat = "long timetrim = %ld;\ndouble tot_adj = %lf;\ndouble tot_ticks = %lf;";
-long timetrim;
-double tot_adj, hr_adj;			/* totals in nsec */
-double tot_ticks, hr_ticks;
-
-int bufspace = 60*1024;
-#endif
-
 static void usage(void);
 
 /*
@@ -140,26 +123,11 @@ main(int argc, char *argv[])
 	struct sockaddr_in server;
 	u_short port;
 	char c;
-#ifdef sgi
-	FILE *timetrim_st;
-#endif
-
-#ifdef sgi
-	struct tms tms;
-#endif /* sgi */
 
 	on = 1;
 	nflag = OFF;
 	iflag = OFF;
 	ntip = NULL;
-
-#ifdef sgi
-	if (0 > syssgi(SGI_GETTIMETRIM, &timetrim)) {
-		warn("syssgi(GETTIMETRIM)");
-		timetrim = 0;
-	}
-	tot_ticks = hr_ticks = times(&tms);
-#endif /* sgi */
 
 	opterr = 0;
 	while ((c = getopt(argc, argv, "Mtdn:i:F:G:P:")) != -1) {
@@ -204,49 +172,6 @@ main(int argc, char *argv[])
 				errx(1, "only one net group");
 			goodgroup = optarg;
 			break;
-#ifdef sgi
-		case 'P':
-			timetrim_fn = optarg;
-			timetrim_st = fopen(timetrim_fn, "r+");
-			if (0 == timetrim_st) {
-				if (errno != ENOENT) {
-					warn("%s", timetrim_fn);
-					timetrim_fn = 0;
-				}
-			} else {
-				int i;
-				long trim;
-				double adj, ticks;
-
-				i = fscanf(timetrim_st, timetrim_rpat,
-					   &trim, &adj, &ticks);
-				if (i < 1
-				    || trim > MAX_TRIM
-				    || trim < -MAX_TRIM
-				    || i == 2
-				    || (i == 3
-					&& trim != rint(adj*CLK_TCK/ticks))) {
-					if (trace && i != EOF)
-						warn(
-						"unrecognized contents in %s",
-							      timetrim_fn);
-				} else {
-					if (0 > syssgi(SGI_SETTIMETRIM,
-						       trim)) {
-					 warn("syssgi(SETTIMETRIM)");
-					} else {
-						timetrim = trim;
-					}
-					if (i == 3) {
-						tot_adj = adj;
-						tot_ticks -= ticks;
-					}
-				}
-				(void)fclose(timetrim_st);
-			}
-			break;
-#endif /* sgi */
-
 		default:
 			usage();
 			break;
@@ -293,14 +218,6 @@ main(int argc, char *argv[])
 			warn("bind");
 		exit(1);
 	}
-#ifdef sgi
-	/*
-	 * handle many slaves with our buffer
-	 */
-	if (0 > setsockopt(sock, SOL_SOCKET, SO_RCVBUF, (char*)&bufspace,
-			 sizeof(bufspace)))
-		err(1, "setsockopt");
-#endif /* sgi */
 
 	/* choose a unique seed for random number generation */
 	(void)gettimeofday(&ntime, 0);
@@ -308,12 +225,10 @@ main(int argc, char *argv[])
 
 	sequence = random();     /* initial seq number */
 
-#ifndef sgi
 	/* rounds kernel variable time to multiple of 5 ms. */
 	ntime.tv_sec = 0;
 	ntime.tv_usec = -((ntime.tv_usec/1000) % 5) * 1000;
 	(void)adjtime(&ntime, (struct timeval *)0);
-#endif /* sgi */
 
 	for (nt = nets; nt; nt = nt->next) {
 		nentp = getnetbyname(nt->name);
@@ -345,11 +260,8 @@ main(int argc, char *argv[])
 	if (ioctl(sock, SIOCGIFCONF, (char *)&ifc) < 0)
 		err(1, "get interface configuration");
 	ntp = NULL;
-#ifdef sgi
-#define size(p)	(sizeof(*ifr) - sizeof(ifr->ifr_name))  /* XXX hack. kludge */
-#else
+
 #define size(p)	max((p).sa_len, sizeof(p))
-#endif
 	cplim = buf + ifc.ifc_len; /*skip over if's with big ifr_addr's */
 	for (cp = buf; cp < cplim;
 			cp += sizeof (ifr->ifr_name) + size(ifr->ifr_addr)) {
@@ -427,27 +339,15 @@ main(int argc, char *argv[])
 		errx(1, "no network usable");
 
 
-#ifdef sgi
-	(void)schedctl(RENICE,0,10);	   /* run fast to get good time */
-
-	/* ticks to delay before responding to a broadcast */
-	delay1 = casual(0, CLK_TCK/10);
-#else
-
 	/* microseconds to delay before responding to a broadcast */
 	delay1 = casual(1, 100*1000);
-#endif /* sgi */
 
 	/* election timer delay in secs. */
 	delay2 = casual(MINTOUT, MAXTOUT);
 
 
-#ifdef sgi
-	(void)_daemonize(debug ? _DF_NOFORK|_DF_NOCHDIR : 0, sock, -1, -1);
-#else
 	if (!debug)
 		daemon(debug, 0);
-#endif /* sgi */
 
 	if (trace)
 		traceon();
@@ -527,11 +427,6 @@ static void
 usage(void)
 {
 
-#ifdef sgi
-	fprintf(stderr, "%s\n%s\n",
-"usage: timed [-dtM] [-i net|-n net] [-F host1 host2 ...]",
-"             [-G netgp] [-P trimfile]");
-#else
 #ifdef HAVENIS
 	fprintf(stderr, 
 "usage: timed [-dtM] [-i net|-n net] [-F host1 host2 ...] [-G netgp]\n");
@@ -539,7 +434,6 @@ usage(void)
 	fprintf(stderr,
 "usage: timed [-dtM] [-i net|-n net] [-F host1 host2 ...]\n");
 #endif /* HAVENIS */
-#endif /* sgi */
 	exit(1);
 }
 
@@ -793,21 +687,12 @@ casual(long inf, long sup)
 char *
 date(void)
 {
-#ifdef sgi
-	struct	timeval tv;
-	static char tm[32];
-
-	(void)gettimeofday(&tv, (struct timezone *)0);
-	(void)cftime(tm, "%D %T", &tv.tv_sec);
-	return (tm);
-#else
 	struct	timeval tv;
 	time_t	tv_sec;
 
 	(void)gettimeofday(&tv, (struct timezone *)0);
 	tv_sec = tv.tv_sec;
 	return (ctime(&tv_sec));
-#endif /* sgi */
 }
 
 void

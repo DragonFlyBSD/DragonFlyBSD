@@ -32,7 +32,7 @@
  *
  *	@(#)globals.h	8.1 (Berkeley) 6/6/93
  *	$FreeBSD: src/usr.sbin/timed/timed/globals.h,v 1.5 2000/03/03 13:01:56 shin Exp $
- *	$DragonFly: src/usr.sbin/timed/timed/globals.h,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ *	$DragonFly: src/usr.sbin/timed/timed/globals.h,v 1.3 2004/09/05 02:16:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,18 +52,12 @@
 #include <syslog.h>
 #include <syslog.h>
 #include <unistd.h>
+#include <libutil.h>
 
 #include <protocols/timed.h>
-#ifdef sgi
-#include <bstring.h>
-#include <sys/clock.h>
-/* use the constant HZ instead of the function CLK_TCK */
-#undef CLK_TCK
-#define CLK_TCK HZ
-#else
+
 #define	SECHR	(60*60)
 #define	SECDAY	(24*SECHR)
-#endif /* sgi */
 
 extern int sock;
 

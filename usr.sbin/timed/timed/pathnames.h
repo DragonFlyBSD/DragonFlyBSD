@@ -31,14 +31,10 @@
  * SUCH DAMAGE.
  *
  *	@(#)pathnames.h	8.1 (Berkeley) 6/6/93
+ * $DragonFly: src/usr.sbin/timed/timed/pathnames.h,v 1.2 2004/09/05 02:16:48 dillon Exp $
  */
 
 #include <paths.h>
 
-#ifdef sgi
-#define	_PATH_MASTERLOG	"/usr/adm/timed.masterlog"
-#define	_PATH_TIMEDLOG	"/usr/adm/timed.log"
-#else
 #define	_PATH_MASTERLOG	"/var/log/timed.masterlog"
 #define	_PATH_TIMEDLOG	"/var/log/timed.log"
-#endif
