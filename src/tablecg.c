@@ -5,7 +5,8 @@
  *	pages, to highlight Horizontal or Vertical selection features, and
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
- * $DragonFly: site/src/tablecg.c,v 1.2 2003/07/23 21:26:55 dillon Exp $
+ *
+ * $DragonFly: site/src/tablecg.c,v 1.3 2003/07/24 02:13:42 cvstest Exp $
  */
 
 #include <sys/types.h>
