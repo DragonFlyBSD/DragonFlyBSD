@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.15 2004/10/16 16:58:32 y0netan1 Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.16 2004/12/08 01:26:17 y0netan1 Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -331,6 +331,7 @@ all)
 	sh MAKEDEV kbd0 kbd1				# cdev, keyboard
 	sh MAKEDEV mse0 psm0 jogdial sysmouse		# cdev, mouse
 	sh MAKEDEV pcaudio speaker snd0			# cdev, noise
+	sh MAKEDEV ipsd0				# cdev, ServeRAID disk
 	sh MAKEDEV lpt0 lpt1 lpt2			# cdev, printer
 	sh MAKEDEV ppi0 ppi1 ppi2			# cdev, parallel port
 	sh MAKEDEV iic0 iic1				# cdev, I2C device
