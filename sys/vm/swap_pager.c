@@ -65,7 +65,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.3 2003/06/19 01:55:08 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.4 2003/06/22 17:39:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1251,7 +1251,7 @@ swap_pager_putpages(object, m, count, sync, rtvals)
 	if (object->type != OBJT_SWAP)
 		swp_pager_meta_build(object, 0, SWAPBLK_NONE);
 
-	if (curproc != pageproc)
+	if (curthread != pagethread)
 		sync = TRUE;
 
 	/*

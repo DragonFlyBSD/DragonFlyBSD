@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.3 2003/06/19 01:55:06 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.4 2003/06/22 17:39:42 dillon Exp $
  */
 
 /*
@@ -518,7 +518,7 @@ vlrureclaim(struct mount *mp)
  * Calling vlrurecycle() from the bowels of file system code has some
  * interesting deadlock problems.
  */
-static struct proc *vnlruproc;
+static struct thread *vnlruthread;
 static int vnlruproc_sig;
 
 static void 
@@ -527,18 +527,19 @@ vnlru_proc(void)
 	struct mount *mp, *nmp;
 	int s;
 	int done;
-	struct proc *p = vnlruproc;
+	struct thread *td = vnlruthread;
+	struct proc *p = td->td_proc;
 
-	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, p,
+	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
 	    SHUTDOWN_PRI_FIRST);   
 
 	s = splbio();
 	for (;;) {
-		kproc_suspend_loop(p);
+		kproc_suspend_loop(td);
 		if (numvnodes - freevnodes <= desiredvnodes * 9 / 10) {
 			vnlruproc_sig = 0;
 			wakeup(&vnlruproc_sig);
-			tsleep(vnlruproc, PVFS, "vlruwt", hz);
+			tsleep(p, PVFS, "vlruwt", hz);
 			continue;
 		}
 		done = 0;
@@ -556,7 +557,7 @@ vnlru_proc(void)
 		simple_unlock(&mountlist_slock);
 		if (done == 0) {
 			vnlru_nowhere++;
-			tsleep(vnlruproc, PPAUSE, "vlrup", hz * 3);
+			tsleep(p, PPAUSE, "vlrup", hz * 3);
 		}
 	}
 	splx(s);
@@ -565,7 +566,7 @@ vnlru_proc(void)
 static struct kproc_desc vnlru_kp = {
 	"vnlru",
 	vnlru_proc,
-	&vnlruproc
+	&vnlruthread
 };
 SYSINIT(vnlru, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &vnlru_kp)
 
@@ -600,7 +601,7 @@ getnewvnode(tag, mp, vops, vpp)
 	while (numvnodes - freevnodes > desiredvnodes) {
 		if (vnlruproc_sig == 0) {
 			vnlruproc_sig = 1;	/* avoid unnecessary wakeups */
-			wakeup(vnlruproc);
+			wakeup(vnlruthread);
 		}
 		tsleep(&vnlruproc_sig, PVFS, "vlruwk", hz);
 	}
@@ -1117,12 +1118,12 @@ vn_syncer_add_to_worklist(struct vnode *vp, int delay)
 	splx(s);
 }
 
-struct  proc *updateproc;
+struct  thread *updatethread;
 static void sched_sync __P((void));
 static struct kproc_desc up_kp = {
 	"syncer",
 	sched_sync,
-	&updateproc
+	&updatethread
 };
 SYSINIT(syncer, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &up_kp)
 
@@ -1136,13 +1137,14 @@ sched_sync(void)
 	struct vnode *vp;
 	long starttime;
 	int s;
-	struct proc *p = updateproc;
+	struct thread *td = updatethread;
+	struct proc *p = td->td_proc;
 
-	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, p,
+	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
 	    SHUTDOWN_PRI_LAST);   
 
 	for (;;) {
-		kproc_suspend_loop(p);
+		kproc_suspend_loop(td);
 
 		starttime = time_second;
 
@@ -1229,8 +1231,8 @@ speedup_syncer()
 	int s;
 
 	s = splhigh();
-	if (updateproc->p_wchan == &lbolt)
-		setrunnable(updateproc);
+	if (updatethread->td_proc->p_wchan == &lbolt) /* YYY */
+		setrunnable(updatethread->td_proc);
 	splx(s);
 	if (rushjob < syncdelay / 2) {
 		rushjob += 1;

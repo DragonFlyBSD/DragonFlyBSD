@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.11 2003/06/22 04:30:43 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.12 2003/06/22 17:39:46 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -386,7 +386,8 @@ extern int sched_quantum;		/* Scheduling quantum in ticks */
 LIST_HEAD(proclist, proc);
 extern struct proclist allproc;		/* List of all processes. */
 extern struct proclist zombproc;	/* List of zombie processes. */
-extern struct proc *initproc, *pageproc, *updateproc; /* Process slots for init, pager. */
+extern struct proc *initproc;		/* Process slot for init */
+extern struct thread *pagethread, *updatethread;
 
 #define	NQS	32			/* 32 run queues. */
 TAILQ_HEAD(rq, proc);

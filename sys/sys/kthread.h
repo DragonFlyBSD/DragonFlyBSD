@@ -24,13 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/kthread.h,v 1.2 2000/01/07 08:36:44 luoqi Exp $
- * $DragonFly: src/sys/sys/kthread.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/kthread.h,v 1.3 2003/06/22 17:39:46 dillon Exp $
  */
 
 #ifndef _SYS_KTHREAD_H_
 #define _SYS_KTHREAD_H_
 
 struct proc;
+struct thread;
 
 /* 
  * A kernel process descriptor; used to start "internal" daemons
@@ -40,17 +41,17 @@ struct proc;
 struct kproc_desc {
 	char		*arg0;			/* arg 0 (for 'ps' listing) */
 	void		(*func) __P((void));	/* "main" for kernel process */
-	struct proc	**global_procpp;	/* ptr to proc ptr save area */
+	struct thread	**global_threadpp;	/* ptr to proc ptr save area */
 };
 
 void	kproc_start __P((const void *));
-int     kthread_create __P((void (*)(void *), void *, struct proc **,
+int     kthread_create __P((void (*)(void *), void *, struct thread **,
 	    const char *, ...)) __printflike(4, 5);
 void    kthread_exit __P((int)) __dead2;
 
-int	suspend_kproc __P((struct proc *, int));
-int	resume_kproc __P((struct proc *));
-void	kproc_suspend_loop __P((struct proc *));
+int	suspend_kproc __P((struct thread *, int));
+int	resume_kproc __P((struct thread *));
+void	kproc_suspend_loop __P((struct thread *));
 void	shutdown_kproc __P((void *, int));
 
 #endif

@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.3 2003/06/19 01:55:06 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.4 2003/06/22 17:39:42 dillon Exp $
  */
 
 /*
@@ -1785,12 +1785,12 @@ restart:
  *	take the load in an attempt to prevent getnewbuf() from blocking.
  */
 
-static struct proc *bufdaemonproc;
+static struct thread *bufdaemonthread;
 
 static struct kproc_desc buf_kp = {
 	"bufdaemon",
 	buf_daemon,
-	&bufdaemonproc
+	&bufdaemonthread
 };
 SYSINIT(bufdaemon, SI_SUB_KTHREAD_BUF, SI_ORDER_FIRST, kproc_start, &buf_kp)
 
@@ -1802,8 +1802,8 @@ buf_daemon()
 	/*
 	 * This process needs to be suspended prior to shutdown sync.
 	 */
-	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, bufdaemonproc,
-	    SHUTDOWN_PRI_LAST);
+	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc,
+	    bufdaemonthread, SHUTDOWN_PRI_LAST);
 
 	/*
 	 * This process is allowed to take the buffer cache to the limit
@@ -1811,7 +1811,7 @@ buf_daemon()
 	s = splbio();
 
 	for (;;) {
-		kproc_suspend_loop(bufdaemonproc);
+		kproc_suspend_loop(bufdaemonthread);
 
 		/*
 		 * Do the flush.  Limit the amount of in-transit I/O we
@@ -2550,7 +2550,7 @@ allocbuf(struct buf *bp, int size)
 				 * We have a good page.  Should we wakeup the
 				 * page daemon?
 				 */
-				if ((curproc != pageproc) &&
+				if ((curthread != pagethread) &&
 				    ((m->queue - m->pc) == PQ_CACHE) &&
 				    ((cnt.v_free_count + cnt.v_cache_count) <
 					(cnt.v_free_min + cnt.v_cache_min))) {

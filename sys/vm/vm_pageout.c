@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.3 2003/06/22 17:39:48 dillon Exp $
  */
 
 /*
@@ -105,24 +105,24 @@ static void vm_pageout __P((void));
 static int vm_pageout_clean __P((vm_page_t));
 static void vm_pageout_scan __P((int pass));
 static int vm_pageout_free_page_calc __P((vm_size_t count));
-struct proc *pageproc;
+struct thread *pagethread;
 
 static struct kproc_desc page_kp = {
 	"pagedaemon",
 	vm_pageout,
-	&pageproc
+	&pagethread
 };
 SYSINIT(pagedaemon, SI_SUB_KTHREAD_PAGE, SI_ORDER_FIRST, kproc_start, &page_kp)
 
 #if !defined(NO_SWAPPING)
 /* the kernel process "vm_daemon"*/
 static void vm_daemon __P((void));
-static struct	proc *vmproc;
+static struct	thread *vmthread;
 
 static struct kproc_desc vm_kp = {
 	"vmdaemon",
 	vm_daemon,
-	&vmproc
+	&vmthread
 };
 SYSINIT(vmdaemon, SI_SUB_KTHREAD_VM, SI_ORDER_FIRST, kproc_start, &vm_kp)
 #endif
@@ -1411,7 +1411,7 @@ vm_pageout()
 void
 pagedaemon_wakeup()
 {
-	if (!vm_pages_needed && curproc != pageproc) {
+	if (!vm_pages_needed && curthread != pagethread) {
 		vm_pages_needed++;
 		wakeup(&vm_pages_needed);
 	}

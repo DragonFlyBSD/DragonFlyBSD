@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.3 2003/06/19 01:55:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.4 2003/06/22 17:39:42 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -630,16 +630,22 @@ SYSCTL_INT(_kern_shutdown, OID_AUTO, kproc_shutdown_wait, CTLFLAG_RW,
 void
 shutdown_kproc(void *arg, int howto)
 {
+	struct thread *td;
 	struct proc *p;
 	int error;
 
 	if (panicstr)
 		return;
 
-	p = (struct proc *)arg;
-	printf("Waiting (max %d seconds) for system process `%s' to stop...",
-	    kproc_shutdown_wait, p->p_comm);
-	error = suspend_kproc(p, kproc_shutdown_wait * hz);
+	td = (struct thread *)arg;
+	if ((p = td->td_proc) != NULL) {
+	    printf("Waiting (max %d seconds) for system process `%s' to stop...",
+		kproc_shutdown_wait, p->p_comm);
+	} else {
+	    printf("Waiting (max %d seconds) for system thread %p to stop...",
+		kproc_shutdown_wait, td);
+	}
+	error = suspend_kproc(td, kproc_shutdown_wait * hz);
 
 	if (error == EWOULDBLOCK)
 		printf("timed out\n");

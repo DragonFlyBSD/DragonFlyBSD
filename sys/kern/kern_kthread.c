@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_kthread.c,v 1.5.2.3 2001/12/25 01:51:14 dillon Exp $
- * $DragonFly: src/sys/kern/kern_kthread.c,v 1.3 2003/06/22 04:30:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_kthread.c,v 1.4 2003/06/22 17:39:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,7 +54,7 @@ kproc_start(udata)
 	int error;
 
 	error = kthread_create((void (*)(void *))kp->func, NULL,
-		    kp->global_procpp, kp->arg0);
+		    kp->global_threadpp, kp->arg0);
 	if (error)
 		panic("kproc_start: %s: error %d", kp->arg0, error);
 }
@@ -65,7 +65,7 @@ kproc_start(udata)
  */
 int
 kthread_create(void (*func)(void *), void *arg,
-    struct proc **newpp, const char *fmt, ...)
+    struct thread **newpp, const char *fmt, ...)
 {
 	int error;
 	va_list ap;
@@ -81,7 +81,7 @@ kthread_create(void (*func)(void *), void *arg,
 
 	/* save a global descriptor, if desired */
 	if (newpp != NULL)
-		*newpp = p2;
+		*newpp = p2->p_thread;
 
 	/* this is a non-swapped system process */
 	p2->p_flag |= P_INMEM | P_SYSTEM;
@@ -112,36 +112,45 @@ kthread_exit(int ecode)
  * Participation is voluntary.
  */
 int
-suspend_kproc(struct proc *p, int timo)
+suspend_kproc(struct thread *td, int timo)
 {
+	struct proc *p = td->td_proc;
+
 	/*
 	 * Make sure this is indeed a system process and we can safely
 	 * use the p_siglist field.
 	 */
 	if ((p->p_flag & P_SYSTEM) == 0)
 		return (EINVAL);
+	KASSERT(p != NULL, ("suspend_kproc: no proc context: %p", td));
 	SIGADDSET(p->p_siglist, SIGSTOP);
 	wakeup(p);
 	return tsleep((caddr_t)&p->p_siglist, PPAUSE, "suspkp", timo);
 }
 
 int
-resume_kproc(struct proc *p)
+resume_kproc(struct thread *td)
 {
+	struct proc *p = td->td_proc;
+
 	/*
 	 * Make sure this is indeed a system process and we can safely
 	 * use the p_siglist field.
 	 */
 	if ((p->p_flag & P_SYSTEM) == 0)
 		return (EINVAL);
+	KASSERT(p != NULL, ("suspend_kproc: no proc context: %p", td));
 	SIGDELSET(p->p_siglist, SIGSTOP);
 	wakeup((caddr_t)&p->p_siglist);
 	return (0);
 }
 
 void
-kproc_suspend_loop(struct proc *p)
+kproc_suspend_loop(struct thread *td)
 {
+	struct proc *p = td->td_proc;
+
+	KASSERT(p != NULL, ("suspend_kproc: no proc context: %p", td));
 	while (SIGISMEMBER(p->p_siglist, SIGSTOP)) {
 		wakeup((caddr_t)&p->p_siglist);
 		tsleep((caddr_t)&p->p_siglist, PPAUSE, "kpsusp", 0);

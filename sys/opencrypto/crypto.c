@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/crypto.c,v 1.4.2.7 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.3 2003/06/22 17:39:44 dillon Exp $	*/
 /*	$OpenBSD: crypto.c,v 1.38 2002/06/11 11:14:29 beck Exp $	*/
 /*
  * The author of this code is Angelos D. Keromytis (angelos@cis.upenn.edu)
@@ -114,7 +114,7 @@ MALLOC_DEFINE(M_CRYPTO_DATA, "crypto", "crypto session records");
  */ 
 static	void cryptointr(void);		/* swi thread to dispatch ops */
 static	void cryptoret(void);		/* kernel thread for callbacks*/
-static	struct proc *cryptoproc;
+static	struct thread *cryptothread;
 static	void crypto_destroy(void);
 static	int crypto_invoke(struct cryptop *crp, int hint);
 static	int crypto_kinvoke(struct cryptkop *krp, int hint);
@@ -158,7 +158,7 @@ crypto_init(void)
 
 	register_swi(SWI_CRYPTO, cryptointr);
 	error = kthread_create((void (*)(void *)) cryptoret, NULL,
-		    &cryptoproc, "cryptoret");
+		    &cryptothread, "cryptoret");
 	if (error) {
 		printf("crypto_init: cannot start cryptoret thread; error %d",
 			error);

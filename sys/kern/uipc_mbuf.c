@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.3 2003/06/22 17:39:42 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -303,13 +303,13 @@ kproc_mclalloc(void)
 	}
 }
 
-static struct proc *mclallocproc;
+static struct thread *mclallocthread;
 static struct kproc_desc mclalloc_kp = {
 	"mclalloc",
 	kproc_mclalloc,
-	&mclallocproc
+	&mclallocthread
 };
-SYSINIT(mclallocproc, SI_SUB_KTHREAD_UPDATE, SI_ORDER_ANY, kproc_start,
+SYSINIT(mclallocthread, SI_SUB_KTHREAD_UPDATE, SI_ORDER_ANY, kproc_start,
 	   &mclalloc_kp);
 #endif
 

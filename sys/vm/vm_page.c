@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.3 2003/06/21 07:54:57 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.4 2003/06/22 17:39:48 dillon Exp $
  */
 
 /*
@@ -745,7 +745,7 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 	 * The pager is allowed to eat deeper into the free page list.
 	 */
 
-	if ((curproc == pageproc) && (page_req != VM_ALLOC_INTERRUPT)) {
+	if ((curthread == pagethread) && (page_req != VM_ALLOC_INTERRUPT)) {
 		page_req = VM_ALLOC_SYSTEM;
 	};
 
@@ -869,7 +869,7 @@ vm_wait(void)
 	int s;
 
 	s = splvm();
-	if (curproc == pageproc) {
+	if (curthread == pagethread) {
 		vm_pageout_pages_needed = 1;
 		tsleep(&vm_pageout_pages_needed, PSWP, "VMWait", 0);
 	} else {
