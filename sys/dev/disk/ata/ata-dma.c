@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.35.2.31 2003/05/07 16:46:11 jhb Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.9 2004/01/23 15:35:13 asmodai Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.10 2004/01/28 12:48:49 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -383,6 +383,7 @@ ata_dmainit(struct ata_channel *ch, int device,
     case 0x74411022:	/* AMD 768 */
     case 0x74111022:	/* AMD 766 */
     case 0x74091022:	/* AMD 756 */
+    case 0x74691022:	/* AMD 8111 */
     case 0x05711106:	/* VIA 82C571, 82C586, 82C596, 82C686, 8231,8233,8235 */
 	{
 	    int via_modes[5][7] = {
@@ -423,6 +424,11 @@ ata_dmainit(struct ata_channel *ch, int device,
 	    else if (ch->chiptype == 0x74411022 ||		/* AMD 768 */
 		     ch->chiptype == 0x74111022) {		/* AMD 766 */
 		udmamode = imin(udmamode, 5);
+		reg_val = via_modes[4];
+		chip = "AMD";
+	    }
+	    else if (ch->chiptype == 0x74691022) {		/* AMD 8111 */
+		udmamode = imin(udmamode, 6);
 		reg_val = via_modes[4];
 		chip = "AMD";
 	    }
