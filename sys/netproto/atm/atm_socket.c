@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_socket.c,v 1.4 1999/08/28 00:48:37 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_socket.c,v 1.4 2004/01/06 03:17:28 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_socket.c,v 1.5 2004/02/26 14:25:29 joerg Exp $
  */
 
 /*
@@ -1203,7 +1203,7 @@ atm_sock_getopt(so, sopt, atp)
 
 			ifp = &ap->nif->nif_if;
 			(void) snprintf(netif.net_intf, sizeof(netif.net_intf),
-			    "%s", if_name(ifp));
+			    "%s", ifp->if_xname);
 			return (sooptcopyout(sopt, &netif,
 					sizeof netif));
 		} else {
