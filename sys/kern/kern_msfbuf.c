@@ -36,7 +36,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  * 	src/sys/kern/kern_sfbuf.c,v 1.7 2004/05/13 19:46:18 dillon
  *
- * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.10 2005/03/04 00:44:44 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.11 2005/03/04 05:20:27 dillon Exp $
  */
 /*
  * MSFBUFs cache linear multi-page ephermal mappings and operate similar
@@ -70,6 +70,7 @@
 #include <sys/thread.h>
 #include <sys/xio.h>
 #include <sys/msfbuf.h>
+#include <sys/uio.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -225,6 +226,7 @@ msf_map_pagelist(struct msf_buf **msfp, vm_page_t *list, int npages, int flags)
 		KKASSERT(msf->ms_xio == &msf->ms_internal_xio);
 		for (i = 0; i < npages; ++i)
 			msf->ms_internal_xio.xio_pages[i] = list[i];
+		msf->ms_internal_xio.xio_offset = 0;
 		msf->ms_internal_xio.xio_npages = npages;
 		msf->ms_internal_xio.xio_bytes = npages << PAGE_SHIFT;
 		msf->ms_type = MSF_TYPE_PGLIST;
@@ -264,7 +266,7 @@ msf_map_ubuf(struct msf_buf **msfp, void *base, size_t nbytes, int flags)
 	vm_paddr_t paddr;
 	int error;
 
-	if (nbytes > XIO_INTERNAL_SIZE) {
+	if (((int)(intptr_t)base & PAGE_MASK) + nbytes > XIO_INTERNAL_SIZE) {
 		*msfp = NULL;
 		return (ERANGE);
 	}
@@ -298,7 +300,7 @@ msf_map_kbuf(struct msf_buf **msfp, void *base, size_t nbytes, int flags)
 	vm_paddr_t paddr;
 	int error;
 
-	if (nbytes > XIO_INTERNAL_SIZE) {
+	if (((int)(intptr_t)base & PAGE_MASK) + nbytes > XIO_INTERNAL_SIZE) {
 		*msfp = NULL;
 		return (ERANGE);
 	}
@@ -325,19 +327,67 @@ msf_map_kbuf(struct msf_buf **msfp, void *base, size_t nbytes, int flags)
 	return (error);
 }
 
-#if 0
 /*
  * Iterate through the specified uio calling the function with a kernel buffer
- * containing the data until the uio has been exhausted.
+ * containing the data until the uio has been exhausted.  If the uio 
+ * represents system space no mapping occurs.  If the uio represents user 
+ * space the data is mapped into system space in chunks.  This function does
+ * not guarentee any particular alignment or minimum chunk size, it will 
+ * depend on the limitations of MSF buffers and the breakdown of the UIO's
+ * elements.
  */
 int
 msf_uio_iterate(struct uio *uio, 
-				int (*callback)(void *info, char *buf, int bytes),
-				void *info)
+		int (*callback)(void *info, char *buf, int bytes), void *info)
 {
-}
+	struct msf_buf *msf;
+	struct iovec *iov;
+	size_t offset;
+	size_t bytes;
+	size_t pgoff;
+	int error;
+	int i;
 
-#endif
+	switch (uio->uio_segflg) {
+	case UIO_USERSPACE:
+		error = 0;
+		for (i = 0; i < uio->uio_iovcnt && error == 0; ++i) {
+			iov = &uio->uio_iov[i];
+			offset = 0;
+			pgoff = (int)(intptr_t)iov->iov_base & PAGE_MASK;
+			while (offset < iov->iov_len) {
+				bytes = iov->iov_len - offset;
+				if (bytes + pgoff > XIO_INTERNAL_SIZE)
+					bytes = XIO_INTERNAL_SIZE - pgoff;
+				error = msf_map_ubuf(&msf, iov->iov_base + offset, bytes, 0);
+				if (error)
+					break;
+				error = callback(info, msf_buf_kva(msf), bytes);
+				msf_buf_free(msf);
+				if (error)
+					break;
+				pgoff = 0;
+				offset += bytes;
+			}
+		}
+		break;
+	case UIO_SYSSPACE:
+		error = 0;
+		for (i = 0; i < uio->uio_iovcnt; ++i) {
+			iov = &uio->uio_iov[i];
+			if (iov->iov_len == 0)
+				continue;
+			error = callback(info, iov->iov_base, iov->iov_len);
+			if (error)
+				break;
+		}
+		break;
+	default:
+		error = EOPNOTSUPP;
+		break;
+	}
+	return (error);
+}
 
 #if 0
 /*

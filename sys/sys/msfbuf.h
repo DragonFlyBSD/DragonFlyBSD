@@ -39,7 +39,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  *	src/sys/sys/sfbuf.h,v 1.4 2004/04/01 17:58:06 dillon
  *
- * $DragonFly: src/sys/sys/msfbuf.h,v 1.8 2005/03/04 00:44:46 dillon Exp $
+ * $DragonFly: src/sys/sys/msfbuf.h,v 1.9 2005/03/04 05:20:29 dillon Exp $
  */
 #ifndef _SYS_MSFBUF_H_
 #define _SYS_MSFBUF_H_
@@ -108,10 +108,10 @@ struct msf_buf {
  * Return a KVA offset to the client
  */
 static __inline
-vm_offset_t
+char *
 msf_buf_kva(struct msf_buf *msf)
 {
-	return (msf->ms_kva);
+	return ((char *)msf->ms_kva + msf->ms_xio->xio_offset);
 }
 
 /*
@@ -129,6 +129,8 @@ int msf_map_pagelist(struct msf_buf **, struct vm_page **, int, int);
 int msf_map_xio(struct msf_buf **, struct xio *, int);
 int msf_map_ubuf(struct msf_buf **, void *, size_t, int);
 int msf_map_kbuf(struct msf_buf **, void *, size_t, int);
+int msf_uio_iterate(struct uio *uio,
+                int (*callback)(void *info, char *buf, int bytes), void *info);
 void	msf_buf_free(struct msf_buf *);
 void	msf_buf_ref(struct msf_buf *);
 
