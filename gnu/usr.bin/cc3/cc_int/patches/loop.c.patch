@@ -1,0 +1,23 @@
+$DragonFly: src/gnu/usr.bin/cc3/cc_int/patches/Attic/loop.c.patch,v 1.1 2004/03/05 21:38:44 joerg Exp $
+Index: loop.c
+===================================================================
+RCS file: /cvs/src/contrib/gcc-3.3/gcc/loop.c,v
+retrieving revision 1.1
+diff -u -r1.1 loop.c
+--- loop.c	2 Feb 2004 23:09:49 -0000	1.1
++++ loop.c	4 Mar 2004 15:18:41 -0000
+@@ -6547,6 +6547,14 @@
+   if (GET_CODE (*mult_val) == USE)
+     *mult_val = XEXP (*mult_val, 0);
+ 
++#ifndef FRAME_GROWS_DOWNWARD
++  if (flag_propolice_protection
++      && GET_CODE (*add_val) == PLUS
++      && (XEXP (*add_val, 0) == frame_pointer_rtx
++	  || XEXP (*add_val, 1) == frame_pointer_rtx))
++    return 0;
++#endif
++
+   if (is_addr)
+     *pbenefit += address_cost (orig_x, addr_mode) - reg_address_cost;
+   else

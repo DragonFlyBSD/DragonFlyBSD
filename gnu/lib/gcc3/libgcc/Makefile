@@ -1,9 +1,11 @@
 # $FreeBSD: src/gnu/lib/libgcc/Makefile,v 1.50 2003/07/11 05:29:11 kan Exp $
-# $DragonFly: src/gnu/lib/gcc3/libgcc/Attic/Makefile,v 1.2 2004/02/02 23:35:09 dillon Exp $
+# $DragonFly: src/gnu/lib/gcc3/libgcc/Attic/Makefile,v 1.3 2004/03/05 21:38:44 joerg Exp $
 
 .include "../Makefile.inc"
 .include "${.CURDIR}/../../../usr.bin/cc3/Makefile.tgt"
 
+.PATH: ${.OBJDIR}/../../../usr.bin/cc3/cc_int
+.PATH: ${.CURDIR}/../../../usr.bin/cc3/cc_int
 .PATH: ${GCCDIR}/gcc/config/${GCC_CPU} ${GCCDIR}/gcc
 
 # allow to be overridden for the a.out case
@@ -55,7 +57,8 @@ LIB2FUNCS_1 = _muldi3 _negdi2 _lshrdi3 _ashldi3 _ashrdi3 _ffsdi2 _clz \
 
 LIB2FUNCS_2 = _floatdixf _fixunsxfsi _fixtfdi _fixunstfdi _floatditf \
     _clear_cache _trampoline __main _exit _absvsi2 _absvdi2 _addvsi3 \
-    _addvdi3 _subvsi3 _subvdi3 _mulvsi3 _mulvdi3 _negvsi2 _negvdi2 _ctors
+    _addvdi3 _subvsi3 _subvdi3 _mulvsi3 _mulvdi3 _negvsi2 _negvdi2 _ctors \
+    _stack_smash_handler
 
 # Defined in libgcc2.c, included only in the static library.
 LIB2FUNCS_ST = _eprintf _bb __gcc_bcmp

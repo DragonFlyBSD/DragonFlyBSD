@@ -1,0 +1,17 @@
+$DragonFly: src/gnu/usr.bin/cc3/cc_int/patches/Attic/gcse.c.patch,v 1.1 2004/03/05 21:38:44 joerg Exp $
+Index: gcse.c
+===================================================================
+RCS file: /cvs/src/contrib/gcc-3.3/gcc/gcse.c,v
+retrieving revision 1.1
+diff -u -r1.1 gcse.c
+--- gcse.c	2 Feb 2004 23:09:48 -0000	1.1
++++ gcse.c	4 Mar 2004 15:18:36 -0000
+@@ -4212,7 +4212,7 @@
+       /* Find an assignment that sets reg_used and is available
+ 	 at the start of the block.  */
+       set = find_avail_set (regno, insn);
+-      if (! set)
++      if (! set || set->expr->volatil)
+ 	continue;
+ 
+       pat = set->expr;

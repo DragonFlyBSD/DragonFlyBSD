@@ -1,4 +1,4 @@
-$DragonFly: src/gnu/usr.bin/cc3/cc_int/Attic/bsd-printf.patch,v 1.1 2004/02/24 18:04:20 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc3/cc_int/patches/Attic/c-format.c.patch,v 1.1 2004/03/05 21:38:44 joerg Exp $
 --- c-format.c.orig	Tue Feb 24 18:37:09 2004
 +++ c-format.c	Tue Feb 24 18:43:03 2004
 @@ -762,6 +762,18 @@

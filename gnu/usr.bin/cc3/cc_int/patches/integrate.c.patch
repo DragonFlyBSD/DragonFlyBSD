@@ -1,0 +1,30 @@
+$DragonFly: src/gnu/usr.bin/cc3/cc_int/patches/Attic/integrate.c.patch,v 1.1 2004/03/05 21:38:44 joerg Exp $
+Index: integrate.c
+===================================================================
+RCS file: /cvs/src/contrib/gcc-3.3/gcc/integrate.c,v
+retrieving revision 1.1
+diff -u -r1.1 integrate.c
+--- integrate.c	2 Feb 2004 23:09:48 -0000	1.1
++++ integrate.c	4 Mar 2004 15:18:37 -0000
+@@ -401,6 +401,10 @@
+   /* These args would always appear unused, if not for this.  */
+   TREE_USED (copy) = 1;
+ 
++  /* The inlined variable is marked as INLINE not to sweep by propolice */
++  if (flag_propolice_protection && TREE_CODE (copy) == VAR_DECL)
++    DECL_INLINE (copy) = 1;
++
+   /* Set the context for the new declaration.  */
+   if (!DECL_CONTEXT (decl))
+     /* Globals stay global.  */
+@@ -1965,6 +1969,10 @@
+ 
+ 	      seq = get_insns ();
+ 	      end_sequence ();
++#ifdef FRAME_GROWS_DOWNWARD
++	      if (flag_propolice_protection && GET_CODE (seq) == SET)
++		RTX_INTEGRATED_P (SET_SRC (seq)) = 1;
++#endif
+ 	      emit_insn_after (seq, map->insns_at_start);
+ 	      return temp;
+ 	    }

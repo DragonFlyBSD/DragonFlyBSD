@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/Makefile.inc,v 1.63 2002/06/04 19:45:08 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile.inc,v 1.6 2004/02/03 03:47:08 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile.inc,v 1.7 2004/03/05 21:38:44 joerg Exp $
 
 BINDIR?=/usr/libexec/gcc3
 MY_CCVER=gcc3
@@ -8,6 +8,8 @@ MY_CCVER=gcc3
 # Sometimes this is .include'd several times...
 .if !defined(__CC_MAKEFILE_INC__)
 __CC_MAKEFILE_INC__= ${MFILE}
+
+CFLAGS+=	-I${.CURDIR}/../cc_int -I${.OBJDIR}/../cc_int
 
 GCCDIR=	${.CURDIR}/../../../../contrib/gcc-3.3
 
@@ -56,7 +58,9 @@ gcc_local.c : gcc.c
 	mv -f ${.TARGET}.new ${.TARGET}
 
 version_local.c : version.c
-	sed -e 's/const char version.*".* /&[DragonFly] /' < ${.ALLSRC:M*c} > ${.TARGET}.new
+	sed -e 's/\(const char version.*".*\) (/\1 [DragonFly] (propolice, /' < ${.ALLSRC:M*c} > ${.TARGET}.new
 	mv -f ${.TARGET}.new ${.TARGET}
+
+CLEANFILES+=	version_local.c
 
 .endif # !__CC_MAKEFILE_INC__

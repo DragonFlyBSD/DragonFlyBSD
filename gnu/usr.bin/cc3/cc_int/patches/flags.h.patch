@@ -1,0 +1,22 @@
+$DragonFly: src/gnu/usr.bin/cc3/cc_int/patches/Attic/flags.h.patch,v 1.1 2004/03/05 21:38:44 joerg Exp $
+Index: flags.h
+===================================================================
+RCS file: /cvs/src/contrib/gcc-3.3/gcc/flags.h,v
+retrieving revision 1.1
+diff -u -r1.1 flags.h
+--- flags.h	2 Feb 2004 23:09:47 -0000	1.1
++++ flags.h	4 Mar 2004 15:18:30 -0000
+@@ -690,4 +690,13 @@
+ #define HONOR_SIGN_DEPENDENT_ROUNDING(MODE) \
+   (MODE_HAS_SIGN_DEPENDENT_ROUNDING (MODE) && !flag_unsafe_math_optimizations)
+ 
++/* Nonzero means use propolice as a stack protection method */
++
++extern int flag_propolice_protection;
++extern int flag_stack_protection;
++
++/* Warn when not issuing stack smashing protection for some reason */
++
++extern int warn_stack_protector;
++
+ #endif /* ! GCC_FLAGS_H */
