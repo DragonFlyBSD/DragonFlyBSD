@@ -32,7 +32,7 @@
  *
  * @(#)itime.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/dump/itime.c,v 1.3.2.1 2001/08/01 06:29:35 obrien Exp $
- * $DragonFly: src/sbin/dump/itime.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/dump/itime.c,v 1.7 2004/12/27 22:36:37 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -109,8 +109,8 @@ initdumptimes(void)
 static void
 readdumptimes(FILE *df)
 {
-	register int i;
-	register struct	dumptime *dtwalk;
+	int i;
+	struct dumptime *dtwalk;
 
 	for (;;) {
 		dtwalk = (struct dumptime *)calloc(1, sizeof (struct dumptime));
@@ -135,8 +135,8 @@ readdumptimes(FILE *df)
 void
 getdumptime(void)
 {
-	register struct dumpdates *ddp;
-	register int i;
+	struct dumpdates *ddp;
+	int i;
 	char *fname;
 
 	fname = disk;
@@ -168,8 +168,8 @@ void
 putdumptime(void)
 {
 	FILE *df;
-	register struct dumpdates *dtwalk;
-	register int i;
+	struct dumpdates *dtwalk;
+	int i;
 	int fd;
 	char *fname;
 

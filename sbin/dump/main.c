@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/main.c,v 1.20.2.9 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/main.c,v 1.8 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/dump/main.c,v 1.9 2004/12/27 22:36:37 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -88,12 +88,12 @@ int
 main(int argc, char **argv)
 {
 	struct stat sb;
-	register ino_t ino;
-	register int dirty;
-	register struct dinode *dp;
-	register struct	fstab *dt;
-	register char *map;
-	register int ch;
+	ino_t ino;
+	int dirty;
+	struct dinode *dp;
+	struct	fstab *dt;
+	char *map;
+	int ch;
 	int i, anydirskipped, bflag = 0, Tflag = 0, honorlevel = 1;
 	int just_estimate = 0;
 	ino_t maxino;

@@ -32,7 +32,7 @@
  *
  * @(#)tape.c	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/tape.c,v 1.12.2.3 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/tape.c,v 1.7 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/dump/tape.c,v 1.8 2004/12/27 22:36:37 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -392,8 +392,8 @@ close_rewind(void)
 void
 rollforward(void)
 {
-	register struct req *p, *q, *prev;
-	register struct slave *tslp;
+	struct req *p, *q, *prev;
+	struct slave *tslp;
 	int i, size, savedtapea, got;
 	union u_spcl *ntb, *otb;
 	tslp = &slaves[SLAVES];
@@ -683,7 +683,7 @@ void
 enslave(void)
 {
 	int cmd[2];
-	register int i, j;
+	int i, j;
 
 	master = getpid();
 
@@ -726,7 +726,7 @@ enslave(void)
 void
 killall(void)
 {
-	register int i;
+	int i;
 
 	for (i = 0; i < SLAVES; i++)
 		if (slaves[i].pid > 0) {
@@ -743,9 +743,9 @@ killall(void)
  * get the lock back for the next cycle by swapping descriptors.
  */
 static void
-doslave(register int cmd, int slave_number)
+doslave(int cmd, int slave_number)
 {
-	register int nread;
+	int nread;
 	int nextslave, size, wrote = 0, eot_count;
 
 	/*
@@ -767,7 +767,7 @@ doslave(register int cmd, int slave_number)
 	 * Get list of blocks to dump, read the blocks into tape buffer
 	 */
 	while ((nread = atomic(read, cmd, (char *)slp->req, reqsiz)) == reqsiz) {
-		register struct req *p = slp->req;
+		struct req *p = slp->req;
 
 		for (trecno = 0; trecno < ntrec;
 		     trecno += p->count, p += p->count) {

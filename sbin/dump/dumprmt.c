@@ -32,7 +32,7 @@
  *
  * @(#)dumprmt.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/dump/dumprmt.c,v 1.14.2.1 2000/07/01 06:31:52 ps Exp $
- * $DragonFly: src/sbin/dump/dumprmt.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/dump/dumprmt.c,v 1.7 2004/12/27 22:36:37 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -136,8 +136,8 @@ rmtconnaborted(void)
 void
 rmtgetconn(void)
 {
-	register char *cp;
-	register const char *rmt;
+	char *cp;
+	const char *rmt;
 	static struct servent *sp = NULL;
 	static struct passwd *pwd = NULL;
 	char *tuser;
@@ -203,8 +203,8 @@ rmtgetconn(void)
 static int
 okname(char *cp0)
 {
-	register char *cp;
-	register int c;
+	char *cp;
+	int c;
 
 	for (cp = cp0; *cp; cp++) {
 		c = *cp;
@@ -303,8 +303,8 @@ struct	mtget mts;
 struct mtget *
 rmtstatus(void)
 {
-	register int i;
-	register char *cp;
+	int i;
+	char *cp;
 
 	if (rmtstate != TS_OPEN)
 		return (NULL);
@@ -337,7 +337,7 @@ rmtcall(char *cmd, char *buf)
 static int
 rmtreply(char *cmd)
 {
-	register char *cp;
+	char *cp;
 	char code[30], emsg[BUFSIZ];
 
 	rmtgets(code, sizeof (code));
@@ -376,7 +376,7 @@ rmtgetb(void)
 void
 rmtgets(char *line, int len)
 {
-	register char *cp = line;
+	char *cp = line;
 
 	while (len > 1) {
 		*cp = rmtgetb();

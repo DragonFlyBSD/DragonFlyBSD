@@ -32,7 +32,7 @@
  *
  * @(#)traverse.c	8.7 (Berkeley) 6/15/95
  * $FreeBSD: src/sbin/dump/traverse.c,v 1.10.2.6 2003/04/14 20:10:35 johan Exp $
- * $DragonFly: src/sbin/dump/traverse.c,v 1.7 2004/02/04 17:39:59 joerg Exp $
+ * $DragonFly: src/sbin/dump/traverse.c,v 1.8 2004/12/27 22:36:37 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -84,7 +84,7 @@ static	int searchdir(ino_t ino, daddr_t blkno, long size, long filesize,
  * hence the estimate may be high.
  */
 long
-blockest(register struct dinode *dp)
+blockest(struct dinode *dp)
 {
 	long blkest, sizeest;
 
@@ -138,9 +138,9 @@ blockest(register struct dinode *dp)
 int
 mapfiles(ino_t maxino, long *tapesize)
 {
-	register int mode;
-	register ino_t ino;
-	register struct dinode *dp;
+	int mode;
+	ino_t ino;
+	struct dinode *dp;
 	int anydirskipped = 0;
 
 	for (ino = ROOTINO; ino < maxino; ino++) {
@@ -193,10 +193,10 @@ mapfiles(ino_t maxino, long *tapesize)
 int
 mapdirs(ino_t maxino, long *tapesize)
 {
-	register struct	dinode *dp;
-	register int i, isdir, nodump;
-	register char *map;
-	register ino_t ino;
+	struct	dinode *dp;
+	int i, isdir, nodump;
+	char *map;
+	ino_t ino;
 	struct dinode di;
 	long filesize;
 	int ret, change = 0;
@@ -265,7 +265,7 @@ dirindir(ino_t ino, daddr_t blkno, int ind_level, long *filesize,
          long *tapesize, int nodump)
 {
 	int ret = 0;
-	register int i;
+	int i;
 	daddr_t	idblk[MAXNINDIR];
 
 	bread(fsbtodb(sblock, blkno), (char *)idblk, (int)sblock->fs_bsize);
@@ -298,12 +298,12 @@ dirindir(ino_t ino, daddr_t blkno, int ind_level, long *filesize,
  * contains any subdirectories.
  */
 static int
-searchdir(ino_t ino, daddr_t blkno, register long size, long filesize,
+searchdir(ino_t ino, daddr_t blkno, long size, long filesize,
           long *tapesize, int nodump)
 {
-	register struct direct *dp;
-	register struct dinode *ip;
-	register long loc, ret = 0;
+	struct direct *dp;
+	struct dinode *ip;
+	long loc, ret = 0;
 	char dblk[MAXBSIZE];
 
 	bread(fsbtodb(sblock, blkno), dblk, (int)size);
@@ -358,7 +358,7 @@ searchdir(ino_t ino, daddr_t blkno, register long size, long filesize,
  * Dump the contents of an inode to tape.
  */
 void
-dumpino(register struct dinode *dp, ino_t ino)
+dumpino(struct dinode *dp, ino_t ino)
 {
 	int ind_level, cnt;
 	fsizeT size;
@@ -465,7 +465,7 @@ dmpindir(ino_t ino, daddr_t blk, int ind_level, fsizeT *size)
 void
 blksout(daddr_t *blkp, int frags, ino_t ino)
 {
-	register daddr_t *bp;
+	daddr_t *bp;
 	int i, j, count, blks, tbperdb;
 
 	blks = howmany(frags * sblock->fs_fsize, TP_BSIZE);
@@ -500,7 +500,7 @@ blksout(daddr_t *blkp, int frags, ino_t ino)
 void
 dumpmap(char *map, int type, ino_t ino)
 {
-	register int i;
+	int i;
 	char *cp;
 
 	spcl.c_type = type;
@@ -516,7 +516,7 @@ dumpmap(char *map, int type, ino_t ino)
 void
 writeheader(ino_t ino)
 {
-	register int32_t sum, cnt, *lp;
+	int32_t sum, cnt, *lp;
 
 	spcl.c_inumber = ino;
 	spcl.c_magic = NFS_MAGIC;

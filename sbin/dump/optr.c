@@ -32,7 +32,7 @@
  *
  * @(#)optr.c	8.2 (Berkeley) 1/6/94
  * $FreeBSD: src/sbin/dump/optr.c,v 1.9.2.5 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/optr.c,v 1.5 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/dump/optr.c,v 1.6 2004/12/27 22:36:37 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -264,9 +264,9 @@ quit(const char *fmt, ...)
  */
 
 struct fstab *
-allocfsent(register struct fstab *fs)
+allocfsent(struct fstab *fs)
 {
-	register struct fstab *new;
+	struct fstab *new;
 
 	new = (struct fstab *)malloc(sizeof (*fs));
 	if (new == NULL ||
@@ -289,8 +289,8 @@ static	SLIST_HEAD(, pfstab) table;
 void
 getfstab(void)
 {
-	register struct fstab *fs;
-	register struct pfstab *pf;
+	struct fstab *fs;
+	struct pfstab *pf;
 
 	if (setfsent() == 0) {
 		msg("Can't open %s for dump table information: %s\n",
@@ -320,8 +320,8 @@ getfstab(void)
 struct fstab *
 fstabsearch(char *key)
 {
-	register struct pfstab *pf;
-	register struct fstab *fs;
+	struct pfstab *pf;
+	struct fstab *fs;
 	char *rn;
 
 	SLIST_FOREACH(pf, &table, pf_list) {
@@ -352,9 +352,9 @@ fstabsearch(char *key)
 void
 lastdump(int arg)
 {
-	register int i;
-	register struct fstab *dt;
-	register struct dumpdates *dtwalk;
+	int i;
+	struct fstab *dt;
+	struct dumpdates *dtwalk;
 	char *lastname, *date;
 	int dumpme;
 	time_t tnow;
