@@ -1,9 +1,9 @@
 #
 # $FreeBSD: src/gnu/lib/libg++/Makefile,v 1.22 1999/08/27 23:32:45 peter Exp $
-# $DragonFly: src/gnu/lib/libg++/Attic/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
+# $DragonFly: src/gnu/lib/gcc2/libg++/Attic/Makefile,v 1.1 2004/01/16 07:45:19 dillon Exp $
 #
 
-GPPDIR=	${.CURDIR}/../../../contrib/libg++
+GPPDIR=	${.CURDIR}/../../../../contrib/libg++
 
 .PATH:	${GPPDIR}/libiberty ${GPPDIR}/libio ${GPPDIR}/libg++/src ${GPPDIR}/librx
 

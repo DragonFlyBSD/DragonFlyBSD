@@ -18,7 +18,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/gnu/usr.bin/binutils/gdb/i386/kvm-fbsd.c,v 1.17.4.3 2001/12/17 23:06:06 peter Exp $ */
-/* $DragonFly: src/gnu/usr.bin/binutils/gdb/i386/Attic/kvm-fbsd.c,v 1.4 2003/08/27 03:21:48 dillon Exp $ */
+/* $DragonFly: src/gnu/usr.bin/binutils/gdb/i386/Attic/kvm-fbsd.c,v 1.5 2004/01/16 07:45:20 dillon Exp $ */
 
 #define _KERNEL_STRUCTURES
 
@@ -222,6 +222,7 @@ set_proc_context (paddr)
     return (1);
 
   cur_proc = (struct proc *)paddr;
+  printf("CURPROC %08x\n", cur_proc);
 #ifdef notyet
   set_kernel_boundaries (cur_proc);
 #endif
@@ -377,7 +378,9 @@ kcore_detach (args, from_tty)
 /* We just get all the registers, so we don't use regno.  */
 /* ARGSUSED */
 
+#if 0
 #define PCB_ADDR(uptr)	((char *)uptr + UPAGES * PAGE_SIZE - sizeof(struct pcb))
+#endif
 
 static void
 get_kcore_registers (int regno)
@@ -393,6 +396,14 @@ get_kcore_registers (int regno)
 	error ("cannot read cur_proc->p_thread at %p", cur_proc);
     if (kvread(&td->td_pcb, &pcb))
 	error ("cannot read cur_proc->p_thread->td_pcb at %p", td);
+    /*
+     * Hack, gdb using newer structures need to deal with older elements
+     * XXX look up the offset in the debug info ?
+     */
+    if (pcb == (void *)0xff800000) {
+	if (kvread(&td->td_pcb - 1, &pcb))
+	    error ("cannot read cur_proc->p_thread->td_pcb at %p", td);
+    }
     if (read_pcb(core_kd, (CORE_ADDR)pcb) < 0)
 	error ("cannot read pcb at %p", pcb);
 }
@@ -944,7 +955,7 @@ read_pcb (int fd, CORE_ADDR pcbaddr)
 	error ("cannot read pcb at %x\n", pcbaddr);
 	return (-1);
     }
-    printf("PCB EIP=%08x ESP=%08x EBP=%08x\n", pcb.pcb_eip, pcb.pcb_esp, pcb.pcb_ebp);
+    printf("PCB @%08x EIP=%08x ESP=%08x EBP=%08x\n", npcbaddr, pcb.pcb_eip, pcb.pcb_esp, pcb.pcb_ebp);
 
     /*
      * get the register values out of the sys pcb and

@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.libnames.mk,v 1.28.2.10 2002/08/08 09:33:28 ru Exp $
-# $DragonFly: src/share/mk/bsd.libnames.mk,v 1.3 2003/08/05 07:45:43 asmodai Exp $
+# $DragonFly: src/share/mk/bsd.libnames.mk,v 1.4 2004/01/16 07:45:19 dillon Exp $
 #
 # The include file <bsd.libnames.mk> define library names. 
 # Other include files (e.g. bsd.prog.mk, bsd.lib.mk) include this 
@@ -38,10 +38,10 @@ LIBFL?=		"don't use LIBFL, use LIBL"
 LIBFORM?=	${DESTDIR}${LIBDIR}/libform.a
 LIBFORMS?=	${DESTDIR}${LIBDIR}/libforms.a
 LIBFTPIO?=	${DESTDIR}${LIBDIR}/libftpio.a
-LIBGPLUSPLUS?=	${DESTDIR}${LIBDIR}/libg++.a
+LIBGPLUSPLUS?=	${DESTDIR}${GCCLIBDIR}/libg++.a
 LIBG2C?=	${DESTDIR}${LIBDIR}/libg2c.a
-LIBGCC?=	${DESTDIR}${LIBDIR}/libgcc.a
-LIBGCC_PIC?=	${DESTDIR}${LIBDIR}/libgcc_pic.a
+LIBGCC?=	${DESTDIR}${GCCLIBDIR}/libgcc.a
+LIBGCC_PIC?=	${DESTDIR}${GCCLIBDIR}/libgcc_pic.a
 LIBGMP?=	${DESTDIR}${LIBDIR}/libgmp.a
 LIBGNUREGEX?=	${DESTDIR}${LIBDIR}/libgnuregex.a
 LIBGSSAPI?=	${DESTDIR}${LIBDIR}/libgssapi.a	# XXX in secure dist, not base
@@ -67,7 +67,7 @@ LIBMYTINFO?=	${DESTDIR}${LIBDIR}/libmytinfo.a
 LIBNCP?=	${DESTDIR}${LIBDIR}/libncp.a
 LIBNCURSES?=	${DESTDIR}${LIBDIR}/libncurses.a
 LIBNETGRAPH?=	${DESTDIR}${LIBDIR}/libnetgraph.a
-LIBOBJC?=	${DESTDIR}${LIBDIR}/libobjc.a
+LIBOBJC?=	${DESTDIR}${GCCLIBDIR}/libobjc.a
 LIBOPIE?=	${DESTDIR}${LIBDIR}/libopie.a
 
 # The static PAM library doesn't know its secondary dependencies,
@@ -98,7 +98,7 @@ LIBSKEY?=	${DESTDIR}${LIBDIR}/libskey.a
 LIBSS?=		${DESTDIR}${LIBDIR}/libss.a
 LIBSSH?=	${DESTDIR}${LIBDIR}/libssh.a	# XXX in secure dist, not base
 LIBSSL?=	${DESTDIR}${LIBDIR}/libssl.a	# XXX in secure dist, not base
-LIBSTDCPLUSPLUS?= ${DESTDIR}${LIBDIR}/libstdc++.a
+LIBSTDCPLUSPLUS?= ${DESTDIR}${GCCLIBDIR}/libstdc++.a
 LIBTACPLUS?=	${DESTDIR}${LIBDIR}/libtacplus.a
 LIBTCL?=	${DESTDIR}${LIBDIR}/libtcl.a
 LIBTERMCAP?=	${DESTDIR}${LIBDIR}/libtermcap.a

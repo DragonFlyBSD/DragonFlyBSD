@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/truss/Makefile,v 1.10.2.2 2002/07/23 09:18:30 ru Exp $
-# $DragonFly: src/usr.bin/truss/Makefile,v 1.3 2003/08/08 04:18:44 dillon Exp $
+# $DragonFly: src/usr.bin/truss/Makefile,v 1.4 2004/01/16 07:45:22 dillon Exp $
 
 PROG=	truss
 SRCS=	main.c setup.c syscalls.c syscalls.h ioctl.c
@@ -9,7 +9,7 @@ SRCS+=	alpha-fbsd.c
 SRCS+=	i386-fbsd.c i386-linux.c linux_syscalls.h
 .endif
 
-CFLAGS+= -I${.CURDIR} -I.
+CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../../sys -I.
 CLEANFILES+=i386l-syscalls.master syscalls.master linux_syscalls.h \
 	syscalls.h ioctl.c
 

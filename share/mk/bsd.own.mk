@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.own.mk,v 1.27.2.4 2002/07/22 14:21:51 ru Exp $
-# $DragonFly: src/share/mk/bsd.own.mk,v 1.2 2003/06/17 04:37:02 dillon Exp $
+# $DragonFly: src/share/mk/bsd.own.mk,v 1.3 2004/01/16 07:45:19 dillon Exp $
 #
 # The include file <bsd.own.mk> set common variables for owner,
 # group, mode, and directories. Defaults are in brackets.
@@ -37,6 +37,10 @@
 # BINGRP	Binary group. [wheel]
 #
 # BINMODE	Binary mode. [555]
+#
+# GCCVER	Default gcc version
+# GCCLIBDIR	Default gcc subdirectory [${LIBDIR}/gcc${GCCVER}]
+# GCCSHLIBDIR	Default gcc subdirectory [${SHLIBDIR}/gcc${GCCVER}]
 #
 # NOBINMODE	Mode for non-executable files. [444]
 #
@@ -131,15 +135,18 @@ KMODOWN?=	${BINOWN}
 KMODGRP?=	${BINGRP}
 KMODMODE?=	${BINMODE}
 
+GCCVER?=	2
 .if ${OBJFORMAT} == aout
 LIBDIR?=	/usr/lib/aout
 .else
 LIBDIR?=	/usr/lib
 .endif
+GCCLIBDIR?=	${LIBDIR}/gcc${GCCVER}
 LIBCOMPATDIR?=	/usr/lib/compat
 LIBDATADIR?=	/usr/libdata
 LINTLIBDIR?=	/usr/libdata/lint
 SHLIBDIR?=	${LIBDIR}
+GCCSHLIBDIR?=	${SHLIBDIR}/gcc${GCCVER}
 LIBOWN?=	${BINOWN}
 LIBGRP?=	${BINGRP}
 LIBMODE?=	${NOBINMODE}

@@ -1,12 +1,12 @@
 # $FreeBSD: src/gnu/usr.bin/binutils/ld/Makefile,v 1.8.2.8 2002/09/01 23:39:14 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/binutils/ld/Attic/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/binutils/ld/Attic/Makefile,v 1.3 2004/01/16 07:45:21 dillon Exp $
 
 .include "../Makefile.inc0"
 
 .PATH: ${SRCDIR}/ld
 
 PROG=	ld
-SCRIPTDIR= /usr/libdata/ldscripts
+SCRIPTDIR= /usr/libdata/gcc2/ldscripts
 SRCS+=	ldcref.c ldctor.c ldemul.c ldemul-list.h ldexp.c ldfile.c \
 	ldgram.y ldlang.c ldlex.l ldmain.c ldmisc.c \
 	ldver.c ldwrite.c lexsup.c mri.c

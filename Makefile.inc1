@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.12 2004/01/14 03:55:36 drhodus Exp $
+# $DragonFly: src/Makefile.inc1,v 1.13 2004/01/16 07:45:15 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -148,7 +148,6 @@ WORLDTMP=	${OBJTREE}${.CURDIR}/${MACHINE_ARCH}
 # /usr/games added for fortune which depend on strfile
 STRICTTMPPATH=	${WORLDTMP}/usr/sbin:${WORLDTMP}/usr/bin:${WORLDTMP}/usr/games
 TMPPATH=	${STRICTTMPPATH}:${PATH}
-OBJFORMAT_PATH?=	/usr/libexec
 
 TMPDIR?=	/tmp
 TMPPID!=	echo $$$$
@@ -179,7 +178,7 @@ INSTALLTMP=	${TMPDIR}/install.${TMPPID}
 CROSSENV=	MAKEOBJDIRPREFIX=${OBJTREE} \
 		MACHINE_ARCH=${TARGET_ARCH} \
 		MACHINE=${TARGET} \
-		OBJFORMAT_PATH=${WORLDTMP}/usr/libexec \
+		OBJFORMAT_PATH=${WORLDTMP} \
 		PERL5LIB=${WORLDTMP}/usr/libdata/perl/5.00503 \
 		GROFF_BIN_PATH=${WORLDTMP}/usr/bin \
 		GROFF_FONT_PATH=${WORLDTMP}/usr/share/groff_font \
@@ -216,10 +215,16 @@ IMAKE=		${IMAKEENV} ${MAKE} -f Makefile.inc1
 
 # kernel stage
 KMAKEENV=	${WMAKEENV} \
-		OBJFORMAT_PATH=${WORLDTMP}/usr/libexec:${OBJFORMAT_PATH}
+		OBJFORMAT_PATH=${WORLDTMP}:${OBJFORMAT_PATH}
 
-USRDIRS=	usr/bin usr/lib/compat/aout usr/games usr/libdata/ldscripts \
-		usr/libexec/${OBJFORMAT} usr/sbin usr/share/misc \
+USRDIRS=	usr/bin usr/bin/gcc2 usr/bin/gcc3 \
+		usr/lib/gcc2 usr/lib/gcc3 \
+		usr/lib/compat/aout usr/games \
+		usr/libdata/gcc2 usr/libdata/gcc2/ldscripts \
+		usr/libdata/gcc3 usr/libdata/gcc3/ldscripts \
+		usr/libexec/gcc2 usr/libexec/gcc3 \
+		usr/libexec/gcc2/${OBJFORMAT} usr/libexec/gcc3/${OBJFORMAT} \
+		usr/sbin usr/share/misc \
 		usr/share/dict \
 		usr/share/groff_font/devX100 \
 		usr/share/groff_font/devX100-12 \
@@ -682,7 +687,7 @@ libraries:
 # gnu/lib/csu, gnu/lib/libgcc and lib/csu must be built before all
 # shared libraries for ELF.
 #
-_startup_libs=	gnu/lib/csu gnu/lib/libgcc
+_startup_libs=	gnu/lib/gcc2/csu gnu/lib/gcc2/libgcc
 .if exists(${.CURDIR}/lib/csu/${MACHINE_ARCH}-${OBJFORMAT})
 _startup_libs+=	lib/csu/${MACHINE_ARCH}-${OBJFORMAT}
 .else

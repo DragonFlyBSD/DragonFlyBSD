@@ -1,6 +1,6 @@
 #	from: @(#)bsd.lib.mk	5.26 (Berkeley) 5/2/91
 # $FreeBSD: src/share/mk/bsd.lib.mk,v 1.91.2.15 2002/08/07 16:31:50 ru Exp $
-# $DragonFly: src/share/mk/bsd.lib.mk,v 1.2 2003/06/17 04:37:02 dillon Exp $
+# $DragonFly: src/share/mk/bsd.lib.mk,v 1.3 2004/01/16 07:45:19 dillon Exp $
 #
 
 .include <bsd.init.mk>
@@ -39,6 +39,13 @@ STRIP?=	-s
 .if ${OBJFORMAT} != aout || make(checkdpadd) || defined(NEED_LIBNAMES)
 .include <bsd.libnames.mk>
 .endif
+.if defined(USEGNUDIR)
+USELIBDIR?=${GCCLIBDIR}
+USESHLIBDIR?=${GCCSHLIBDIR}
+.else
+USELIBDIR?=${LIBDIR}
+USESHLIBDIR?=${SHLIBDIR}
+.endif
 
 # prefer .s to a .c, add .po, remove stuff not used in the BSD libraries
 # .So used for PIC object files
@@ -49,13 +56,15 @@ STRIP?=	-s
 PICFLAG=-fpic
 .endif
 
+PO_FLAG=-pg
+
 .c.o:
 	${CC} ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 	@${LD} -o ${.TARGET}.tmp -x -r ${.TARGET}
 	@mv ${.TARGET}.tmp ${.TARGET}
 
 .c.po:
-	${CC} -pg ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+	${CC} ${PO_FLAG} ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 	@${LD} -o ${.TARGET}.tmp -X -r ${.TARGET}
 	@mv ${.TARGET}.tmp ${.TARGET}
 
@@ -70,7 +79,7 @@ PICFLAG=-fpic
 	@mv ${.TARGET}.tmp ${.TARGET}
 
 .cc.po .C.po .cpp.po .cxx.po:
-	${CXX} -pg ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+	${CXX} ${PO_FLAG} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 	@${LD} -o ${.TARGET}.tmp -X -r ${.TARGET}
 	@mv ${.TARGET}.tmp ${.TARGET}
 
@@ -207,7 +216,7 @@ lib${LIB}_pic.a: ${SOBJS}
 	${RANLIB} ${.TARGET}
 .endif
 
-.endif !defined(INTERNALLIB)
+.endif # !defined(INTERNALLIB)
 
 all: ${_LIBS}
 
@@ -253,23 +262,23 @@ realinstall: _libinstall
 _libinstall:
 .if defined(LIB) && !empty(LIB) && !defined(NOINSTALLLIB)
 	${INSTALL} -C -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \
-	    ${_INSTALLFLAGS} lib${LIB}.a ${DESTDIR}${LIBDIR}
+	    ${_INSTALLFLAGS} lib${LIB}.a ${DESTDIR}${USELIBDIR}
 .endif
 .if !defined(NOPROFILE) && defined(LIB) && !empty(LIB)
 	${INSTALL} -C -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \
-	    ${_INSTALLFLAGS} lib${LIB}_p.a ${DESTDIR}${LIBDIR}
+	    ${_INSTALLFLAGS} lib${LIB}_p.a ${DESTDIR}${USELIBDIR}
 .endif
 .if defined(SHLIB_NAME)
 	${INSTALL} ${STRIP} -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \
 	    ${_INSTALLFLAGS} ${_SHLINSTALLFLAGS} \
-	    ${SHLIB_NAME} ${DESTDIR}${SHLIBDIR}
+	    ${SHLIB_NAME} ${DESTDIR}${USESHLIBDIR}
 .if defined(SHLIB_LINK)
-	ln -fs ${SHLIB_NAME} ${DESTDIR}${SHLIBDIR}/${SHLIB_LINK}
+	ln -fs ${SHLIB_NAME} ${DESTDIR}${USESHLIBDIR}/${SHLIB_LINK}
 .endif
 .endif
 .if defined(INSTALL_PIC_ARCHIVE) && defined(LIB) && !empty(LIB)
 	${INSTALL} -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \
-	    ${_INSTALLFLAGS} lib${LIB}_pic.a ${DESTDIR}${LIBDIR}
+	    ${_INSTALLFLAGS} lib${LIB}_pic.a ${DESTDIR}${USELIBDIR}
 .endif
 .endif !defined(INTERNALLIB)
 

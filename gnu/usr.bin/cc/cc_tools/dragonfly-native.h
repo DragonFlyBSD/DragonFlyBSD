@@ -1,5 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/cc/cc_tools/freebsd-native.h,v 1.5.2.9 2002/05/01 20:04:37 obrien Exp $ */
-/* $DragonFly: src/gnu/usr.bin/cc/cc_tools/Attic/dragonfly-native.h,v 1.1 2003/11/19 01:37:27 dillon Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc/cc_tools/Attic/dragonfly-native.h,v 1.2 2004/01/16 07:45:21 dillon Exp $ */
 
 /* FREEBSD_NATIVE is defined when gcc is integrated into the FreeBSD
    source tree so it can be configured appropriately without using
@@ -31,7 +31,7 @@
 */
 
 #undef  TOOLDIR_BASE_PREFIX		/* Old??  This is not documented. */
-#define STANDARD_EXEC_PREFIX		PREFIX"/libexec/"
+#define STANDARD_EXEC_PREFIX		PREFIX"/libexec/gcc2/"
 #undef  MD_EXEC_PREFIX			/* We don't want one. */
 
 /* Under FreeBSD, the normal location of the various *crt*.o files is the
@@ -39,9 +39,9 @@
 
 #define STANDARD_STARTFILE_PREFIX	PREFIX"/lib/"
 #ifdef CROSS_COMPILE
-#define CROSS_STARTFILE_PREFIX		PREFIX"/lib/"
+#define CROSS_STARTFILE_PREFIX		PREFIX"/lib/gcc2/"
 #endif
-#undef  MD_STARTFILE_PREFIX		/* We don't need one for now. */
+#define  MD_STARTFILE_PREFIX		PREFIX"/lib/gcc2/"
 
 /* For the native system compiler, we actually build libgcc in a profiled
    version.  So we should use it with -pg.  */

@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/lib/libgcc_r/Makefile,v 1.4.4.1 2000/11/01 01:20:37 jdp Exp $
-# $DragonFly: src/gnu/lib/libgcc_r/Attic/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
+# $DragonFly: src/gnu/lib/gcc2/libgcc_r/Attic/Makefile,v 1.1 2004/01/16 07:45:19 dillon Exp $
 
 LIB=	gcc_r
 CFLAGS+=-D_PTHREADS

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.3 2004/01/16 07:45:22 dillon Exp $
  */
 
 #include <err.h>
@@ -41,16 +41,43 @@ main(int argc, char **argv)
 	char *path, *chunk;
 	char *cmd, *newcmd = NULL;
 	char *objformat_path;
+	char *gccver;
+	char *dirprefix;
+	char *dirpostfix;
 
 	if (getobjformat(objformat, sizeof objformat, &argc, argv) == -1)
 		errx(1, "Invalid object format");
 
+	/*
+	 * Get the last path elemenet of the program name being executed
+	 */
 	cmd = strrchr(argv[0], '/');
 	if (cmd != NULL)
 		cmd++;
 	else
 		cmd = argv[0];
 
+	/*
+	 * Directory prefix
+	 */
+	if (strcmp(cmd, "c++") == 0 ||
+		   strcmp(cmd, "cc") == 0 ||
+		   strcmp(cmd, "cpp") == 0 ||
+		   strcmp(cmd, "f77") == 0 ||
+		   strcmp(cmd, "g++") == 0 ||
+		   strcmp(cmd, "gcc") == 0 ||
+		   strcmp(cmd, "gcov") == 0
+	) {
+		dirprefix = "/usr/bin";
+		dirpostfix = "";
+	} else {
+		dirprefix = "/usr/libexec";
+		asprintf(&dirpostfix, "/%s", objformat);
+	}
+
+	/*
+	 * The objformat command itself doesn't need another exec
+	 */
 	if (strcmp(cmd, "objformat") == 0) {
 		if (argc != 1) {
 			fprintf(stderr, "Usage: objformat\n");
@@ -60,25 +87,38 @@ main(int argc, char **argv)
 		exit(0);
 	}
 
-	/* 'make world' glue */
+	/*
+	 * make buildweorld glue and GCCVER overrides.
+	 */
 	objformat_path = getenv("OBJFORMAT_PATH");
 	if (objformat_path == NULL)
-		objformat_path = "/usr/libexec";
+		objformat_path = "";
+	if ((gccver = getenv("GCCVER")) == NULL) {
+		gccver = "gcc2";
+	} else if (gccver[0] >= '0' && gccver[0] <= '9') {
+	    asprintf(&gccver, "gcc%s", gccver);
+	}
 	path = strdup(objformat_path);
 
 	setenv("OBJFORMAT", objformat, 1);
 
+	/*
+	 * objformat_path could be sequence of colon-separated paths.
+	 */
 	while ((chunk = strsep(&path, ":")) != NULL) {
 		if (newcmd != NULL) {
 			free(newcmd);
 			newcmd = NULL;
 		}
-		asprintf(&newcmd, "%s/%s/%s", chunk, objformat, cmd);
+		asprintf(&newcmd, "%s%s/%s%s/%s",
+			chunk, dirprefix, gccver, dirpostfix, cmd);
 		if (newcmd == NULL)
-			err(1, "cannot allocate memory for new command");
+			err(1, "cannot allocate memory");
 
 		argv[0] = newcmd;
 		execv(newcmd, argv);
 	}
-	err(1, "could not exec %s/%s in %s", objformat, cmd, objformat_path);
+	err(1, "in path [%s]%s/%s%s/%s",
+		objformat_path, dirprefix, gccver, dirpostfix, cmd);
 }
+

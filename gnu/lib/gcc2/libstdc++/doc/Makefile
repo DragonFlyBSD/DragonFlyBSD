@@ -1,7 +1,7 @@
 # $FreeBSD: src/gnu/lib/libstdc++/doc/Makefile,v 1.5 2000/01/03 17:40:47 obrien Exp $
-# $DragonFly: src/gnu/lib/libstdc++/doc/Attic/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
+# $DragonFly: src/gnu/lib/gcc2/libstdc++/doc/Attic/Makefile,v 1.1 2004/01/16 07:45:20 dillon Exp $
 
-SRCDIR= ${.CURDIR}/../../../../contrib/libstdc++
+SRCDIR= ${.CURDIR}/../../../../../contrib/libstdc++
 
 .PATH: ${SRCDIR}/../libio
 

@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.5 2003/10/13 08:43:56 dillon Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.6 2004/01/16 07:45:18 dillon Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -7,6 +7,10 @@
 /set type=dir uname=root gname=wheel mode=0755
 .
     bin
+	gcc2
+	..
+	gcc3
+	..
     ..
     games
         hide            gname=games mode=0550
@@ -15,6 +19,10 @@
     include
     ..
     lib
+	gcc2
+	..
+	gcc3
+	..
         aout
         ..
         compat
@@ -27,10 +35,14 @@
             fonts
             ..
         ..
-        gcc
+        gcc2
+		ldscripts
+		..
         ..
-        ldscripts
-        ..
+	gcc3
+		ldscripts
+		..
+	..
         lint
         ..
         msdosfs
@@ -145,10 +157,16 @@
         ..
     ..
     libexec
-        aout
-        ..
-        elf
-        ..
+	gcc2
+	    aout
+	    ..
+	    elf
+	    ..
+	..
+	gcc3
+	    elf
+	    ..
+	..
         lpr
             ru
             ..

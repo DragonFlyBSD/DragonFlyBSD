@@ -2,7 +2,7 @@
 #
 # $NetBSD: ldconfig,v 1.5 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/ldconfig,v 1.7 2003/06/30 15:02:05 trhodes Exp $
-# $DragonFly: src/etc/rc.d/ldconfig,v 1.2 2003/11/19 10:32:45 eirikn Exp $
+# $DragonFly: src/etc/rc.d/ldconfig,v 1.3 2004/01/16 07:45:18 dillon Exp $
 #
 
 # PROVIDE: ldconfig
@@ -25,7 +25,7 @@ ldconfig_start()
 		ldconfig=${ldconfig_command}
 		checkyesno ldconfig_insecure && _ins="-i"
 		if [ -x "${ldconfig_command}" ]; then
-			_LDC=/usr/lib
+			_LDC="/usr/lib /usr/lib/gcc*"
 			for i in ${ldconfig_paths} /etc/ld-elf.so.conf; do
 				if [ -r "${i}" ]; then
 					_LDC="${_LDC} ${i}"
