@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.14 2003/12/20 05:52:23 dillon Exp $
+# $DragonFly: src/sys/config/LINT,v 1.15 2004/01/05 14:07:31 asmodai Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2588,6 +2588,8 @@ device          mly
 device		uhci
 # OHCI controller
 device		ohci
+# EHCI controller
+device 		ehci
 # General USB code (mandatory for USB)
 device		usb
 #
