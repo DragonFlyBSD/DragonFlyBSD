@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.25 2004/03/05 19:29:17 hsu Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.26 2004/03/29 07:36:48 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -2394,8 +2394,6 @@ ap_init(void)
 	/* Set memory range attributes for this CPU to match the BSP */
 	mem_range_AP_init();
 
-	initclocks_pcpu();	/* clock interrupts (via IPIs) */
-
 	/*
 	 * The idle loop doesn't expect the BGL to be held and while
 	 * lwkt_switch() normally cleans things up this is a special case
@@ -2406,6 +2404,7 @@ ap_init(void)
 	 */
 	KKASSERT(curthread->td_mpcount == 1);
 	smp_active_mask |= 1 << mycpu->gd_cpuid;
+	initclocks_pcpu();	/* clock interrupts (via IPIs) */
 	rel_mplock();
 	KKASSERT((curthread->td_flags & TDF_RUNQ) == 0);
 }
