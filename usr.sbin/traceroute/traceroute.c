@@ -32,22 +32,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/traceroute/traceroute.c,v 1.3 2004/08/27 21:27:41 asmodai Exp $
+ * $DragonFly: src/usr.sbin/traceroute/traceroute.c,v 1.4 2004/11/15 19:57:35 eirikn Exp $
+ * @(#)traceroute.c	8.1 (Berkeley) 6/6/93
  */
-
-#ifndef lint
-static char copyright[] =
-"@(#) Copyright (c) 1990, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)traceroute.c	8.1 (Berkeley) 6/6/93";*/
-#else
-static char rcsid[] = "$OpenBSD: traceroute.c,v 1.61 2004/01/26 18:23:51 deraadt Exp $";
-#endif
-#endif /* not lint */
 
 /*
  * traceroute host  - trace the route ip packets follow going to "host".
@@ -268,7 +255,7 @@ void dump_packet(void);
 int wait_for_reply(int, struct sockaddr_in *, struct timeval *);
 void send_probe(int, u_int8_t, int, struct sockaddr_in *);
 int packet_ok(u_char *, int, struct sockaddr_in *, int, int);
-char *pr_type(u_int8_t);
+const char *pr_type(u_int8_t);
 void print(u_char *, int, struct sockaddr_in *);
 char *inetname(struct in_addr);
 u_short in_cksum(u_short *, int);
@@ -502,7 +489,7 @@ main(int argc, char *argv[])
 	datalen += headerlen;
 
 	outpacket = (u_char *)malloc(datalen);
-	if (outpacket == 0)
+	if (outpacket == NULL)
 		err(1, "malloc");
 	(void) memset(outpacket, 0, datalen);
 
@@ -832,7 +819,7 @@ send_probe(int seq, u_int8_t ttl, int iflag, struct sockaddr_in *to)
 	}
 }
 
-static char *ttab[] = {
+static const char *ttab[] = {
 	"Echo Reply",
 	"ICMP 1",
 	"ICMP 2",
@@ -857,7 +844,7 @@ static char *ttab[] = {
 /*
  * Convert an ICMP "type" field to a printable string.
  */
-char *
+const char *
 pr_type(u_int8_t t)
 {
 	if (t > 18)
@@ -1036,11 +1023,9 @@ inetname(struct in_addr in)
 void
 usage(void)
 {
-	extern char *__progname;
-
 	fprintf(stderr,
 	    "usage: %s [-cdDIlnrSv] [-f first_ttl] [-g gateway_addr] [-m max_ttl]\n"
 	    "\t[-p port] [-P proto] [-q nqueries] [-s src_addr] [-t tos]\n"
-	    "\t[-w waittime] host [packetsize]\n", __progname);
+	    "\t[-w waittime] host [packetsize]\n", getprogname());
 	exit(1);
 }

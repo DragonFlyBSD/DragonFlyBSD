@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/traceroute/Makefile,v 1.11.2.3 2001/06/23 10:07:29 ru Exp $
-# $DragonFly: src/usr.sbin/traceroute/Makefile,v 1.3 2004/08/27 18:07:49 asmodai Exp $
+# $DragonFly: src/usr.sbin/traceroute/Makefile,v 1.4 2004/11/15 19:57:35 eirikn Exp $
 
 PROG=	traceroute
 MAN=	traceroute.8
@@ -37,5 +37,7 @@ CFLAGS+=	-I${TRACEROUTE_DISTDIR}/lbl
 version.c: ${TRACEROUTE_DISTDIR}/VERSION
 	@rm -f ${.TARGET}
 	sed -e 's/.*/char version[] = "&";/' ${TRACEROUTE_DISTDIR}/VERSION > ${.TARGET}
+
+WARNS?= 6
 
 .include <bsd.prog.mk>
