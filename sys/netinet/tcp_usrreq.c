@@ -32,7 +32,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.20 2004/04/24 04:47:29 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.21 2004/04/28 08:00:35 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -324,6 +324,7 @@ tcp_usr_listen(struct socket *so, struct thread *td)
 		msg->nm_pcbinfo = &tcbinfo[cpu];
 		lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
 	}
+	inp->inp_flags |= INP_WILDCARD_MP;
 #else
 	in_pcbinswildcardhash(inp);
 #endif

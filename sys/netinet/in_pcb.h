@@ -33,7 +33,7 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.12 2004/04/24 04:47:29 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.13 2004/04/28 08:00:35 hsu Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -277,8 +277,9 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	INP_MTUDISC		0x100	/* user can do MTU discovery */
 #define	INP_FAITH		0x200	/* accept FAITH'ed connections */
 #define	INP_WILDCARD		0x400	/* wildcard match */
-#define	INP_CONNECTED		0x800	/* exact match */
-#define	INP_WASBOUND_NOTANY	0x1000	/* was bound to non-null laddr */
+#define	INP_WILDCARD_MP		0x800	/* distributed wildcard match */
+#define	INP_CONNECTED		0x1000	/* exact match */
+#define	INP_WASBOUND_NOTANY	0x2000	/* was bound to non-null laddr */
 
 #define IN6P_IPV6_V6ONLY	0x008000 /* restrict AF_INET6 socket for v6 */
 

@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.29 2004/04/24 04:47:29 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.30 2004/04/28 08:00:35 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -782,17 +782,19 @@ no_valid_rt:
 	soisdisconnected(so);
 
 #ifdef SMP
-	for (cpu = 0; cpu < ncpus2; cpu ++) {
-		struct netmsg_remwildcard *msg;
+	if (inp->inp_flags & INP_WILDCARD_MP) {
+		for (cpu = 0; cpu < ncpus2; cpu ++) {
+			struct netmsg_remwildcard *msg;
 
-		msg = malloc(sizeof(struct netmsg_remwildcard), M_LWKTMSG,
-		    M_INTWAIT);
-		lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
-		    lwkt_cmd_func(in_pcbremwildcardhash_handler),
-		    lwkt_cmd_op_none);
-		msg->nm_inp = inp;
-		msg->nm_pcbinfo = &tcbinfo[cpu];
-		lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
+			msg = malloc(sizeof(struct netmsg_remwildcard),
+			    M_LWKTMSG, M_INTWAIT);
+			lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
+			    lwkt_cmd_func(in_pcbremwildcardhash_handler),
+			    lwkt_cmd_op_none);
+			msg->nm_inp = inp;
+			msg->nm_pcbinfo = &tcbinfo[cpu];
+			lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
+		}
 	}
 #endif
 
