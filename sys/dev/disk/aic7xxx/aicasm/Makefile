@@ -1,7 +1,7 @@
 # $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aicasm/Makefile#2 $
 #
 # $FreeBSD: src/sys/dev/aic7xxx/aicasm/Makefile,v 1.8.2.5 2002/09/27 15:46:28 gibbs Exp $
-# $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/Makefile,v 1.3 2003/08/16 02:51:58 dillon Exp $
+# $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/Makefile,v 1.4 2003/11/14 22:58:31 dillon Exp $
 
 PROG=	aicasm
 
@@ -23,7 +23,7 @@ LDADD+=	-ll
 DEPENDFILE=
 .endif
 
-CFLAGS+= -nostdinc -I/usr/include -I.
+CFLAGS+= -nostdinc -I/usr/include -I. -I${.CURDIR}
 .ifdef MAKESRCPATH
 CFLAGS+= -I${MAKESRCPATH}
 .endif

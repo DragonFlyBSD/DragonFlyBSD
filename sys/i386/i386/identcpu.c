@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/identcpu.c,v 1.6 2003/09/29 15:56:42 hmp Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/identcpu.c,v 1.7 2003/11/14 22:58:33 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -733,35 +733,35 @@ static	volatile u_int trap_by_rdmsr;
  * be advanced.
  */
 inthand_t	bluetrap6;
-__asm
-("
-	.text
-	.p2align 2,0x90
-	.type	" __XSTRING(CNAME(bluetrap6)) ",@function
-" __XSTRING(CNAME(bluetrap6)) ":
-	ss
-	movl	$0xa8c1d," __XSTRING(CNAME(trap_by_rdmsr)) "
-	addl	$2, (%esp)		  # I know rdmsr is a 2-bytes instruction.
-	iret
-");
+
+__asm(
+    "	.text							\n"
+    "	.p2align 2,0x90						\n"
+    "	.type	" __XSTRING(CNAME(bluetrap6)) ",@function	\n"
+    __XSTRING(CNAME(bluetrap6)) ":				\n"
+    "	ss							\n"
+    "	movl	$0xa8c1d," __XSTRING(CNAME(trap_by_rdmsr)) "	\n"
+    "	addl	$2, (%esp)  # I know rdmsr is a 2-bytes instruction.	\n"
+    "	iret							\n"
+);
 
 /*
  * Special exception 13 handler.
  * Accessing non-existent MSR generates general protection fault.
  */
 inthand_t	bluetrap13;
-__asm
-("
-	.text
-	.p2align 2,0x90
-	.type " __XSTRING(CNAME(bluetrap13)) ",@function
-" __XSTRING(CNAME(bluetrap13)) ":
-	ss
-	movl	$0xa89c4," __XSTRING(CNAME(trap_by_rdmsr)) "
-	popl	%eax				# discard errorcode.
-	addl	$2, (%esp)			# I know rdmsr is a 2-bytes instruction.
-	iret
-");
+
+__asm(
+    "	.text							\n"
+    "	.p2align 2,0x90						\n"
+    "	.type " __XSTRING(CNAME(bluetrap13)) ",@function	\n"
+    __XSTRING(CNAME(bluetrap13)) ":				\n"
+    "	ss							\n"
+    "	movl	$0xa89c4," __XSTRING(CNAME(trap_by_rdmsr)) "	\n"
+    "	popl	%eax			# discard errorcode.	\n"
+    "	addl	$2, (%esp) # I know rdmsr is a 2-bytes instruction.	\n"
+    "	iret							\n"
+);
 
 /*
  * Distinguish IBM Blue Lightning CPU from Cyrix CPUs that does not

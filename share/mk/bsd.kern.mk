@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.kern.mk,v 1.17.2.1 2001/08/01 16:56:56 obrien Exp $
-# $DragonFly: src/share/mk/Attic/bsd.kern.mk,v 1.2 2003/06/17 04:37:02 dillon Exp $
+# $DragonFly: src/share/mk/Attic/bsd.kern.mk,v 1.3 2003/11/14 22:58:30 dillon Exp $
 
 #
 # Warning flags for compiling the kernel and components of the kernel.
@@ -10,7 +10,7 @@
 #
 CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 		-Wmissing-prototypes -Wpointer-arith -Winline -Wcast-qual \
-		-fformat-extensions -ansi
+		-fformat-extensions -ffreestanding -ansi
 #
 # The following flags are next up for working on:
 #	-W
