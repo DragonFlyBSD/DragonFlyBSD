@@ -11,7 +11,7 @@
 # in doubt as to the purpose or necessity of a line, check first in LINT.
 #
 # $FreeBSD: src/sys/i386/conf/GENERIC,v 1.246.2.54 2003/04/28 03:41:46 simokawa Exp $
-# $DragonFly: src/sys/config/GENERIC,v 1.11 2004/04/05 13:44:40 eirikn Exp $
+# $DragonFly: src/sys/config/GENERIC,v 1.12 2004/04/16 20:13:17 drhodus Exp $
 
 machine		i386
 cpu		I386_CPU
@@ -134,7 +134,8 @@ device		aac		# Adaptec FSA RAID, Dell PERC2/PERC3
 device		ida		# Compaq Smart RAID
 device		amr		# AMI MegaRAID
 device		mlx		# Mylex DAC960 family
-device		twe		# 3ware Escalade
+device		twe		# 3ware Escalade 8000's
+device		twa		# 3ware Escalade 9000's
 device		pst		# Promise Supertrack
 
 # atkbdc0 controls both the keyboard and the PS/2 mouse

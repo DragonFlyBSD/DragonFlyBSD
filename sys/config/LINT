@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.26 2004/04/16 19:49:09 drhodus Exp $
+# $DragonFly: src/sys/config/LINT,v 1.27 2004/04/16 20:13:17 drhodus Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1253,6 +1253,7 @@ device		amr		# AMI MegaRAID
 # 3ware ATA RAID
 #
 device		twe		# 3ware ATA RAID
+device		twa		# 3ware SATA RAID
 
 #
 # Promise Supertrack SX6000
