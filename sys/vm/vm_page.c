@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.18 2004/03/24 17:06:44 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.19 2004/04/01 17:41:19 dillon Exp $
  */
 
 /*
@@ -1008,7 +1008,9 @@ vm_page_free_toq(vm_page_t m)
 {
 	int s;
 	struct vpgqueues *pq;
+#if 0
 	vm_object_t object = m->object;
+#endif
 
 	s = splvm();
 
