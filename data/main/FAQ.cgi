@@ -1,14 +1,8 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/FAQ.cgi,v 1.6 2004/07/02 15:06:21 justin Exp $
+# $DragonFly: site/data/main/Attic/FAQ.cgi,v 1.7 2004/07/14 01:01:05 hmp Exp $
 
 $TITLE(DragonFly Frequently Asked Questions)
-
-<p>
-<b>What is the release date for DragonFly 1.0?</b><br/>
-Very soon.  We are currently at release candidate status.  Keep watching the 
-<a href="/main/download.cgi">download page</a> for new versions.
-</p>
 
 <p>
 <b>What will be used to handle third-party applications?
