@@ -1,3 +1,3 @@
-<!-- $DragonFly: doc/share/pgpkeys/pgpkeys.ent,v 1.1.1.1 2004/04/02 09:36:37 hmp Exp $
+<!-- $DragonFly: doc/share/pgpkeys/pgpkeys.ent,v 1.2 2004/06/15 19:54:46 justin Exp $ -->
 
 <!ENTITY pgpkey.hmp SYSTEM "hmp.key">
