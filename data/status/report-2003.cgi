@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/report-2003.cgi,v 1.2 2004/01/11 15:08:01 justin Exp $
+# $DragonFly: site/data/status/Attic/report-2003.cgi,v 1.3 2004/01/12 17:24:59 justin Exp $
 
 $TITLE(DragonFly - Activity Summary)
 
@@ -264,5 +264,5 @@ Ryan Dooley patched libc giving stack-smashing protection.
 <H2>Website</H2>
 <BLOCKQUOTE>
 	In October, the DragonFly website received a facelift from Justin Sherrill
-	and Hiten Pandya.  It also now has a <a href="http://www.dragonflybsd.org/Main/team.cgi">Team</a> page.
+	and Hiten Pandya.  It also now has a <a href="http://www.dragonflybsd.org/Main/team.cgi">Team</a> page, and this report.
 </BLOCKQUOTE>
