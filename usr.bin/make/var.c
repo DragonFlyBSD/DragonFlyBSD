@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.147 2005/03/12 12:03:46 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.148 2005/03/12 12:04:08 okumoto Exp $
  */
 
 /*-
@@ -1146,6 +1146,79 @@ modifier_S(const char mod[], const char value[], Var *v, VarParser *vp, size_t *
 	return (newValue);
 }
 
+static char *
+modifier_C(const char mod[], char value[], Var *v, VarParser *vp, size_t *consumed)
+{
+	VarREPattern	patt;
+	int		delim;
+	char		*re;
+	const char	*cur;
+	int		error;
+	char		*newValue;
+
+	patt.flags = 0;
+
+	delim = mod[1];	/* delimiter between sections */
+
+	cur = mod + 2;
+
+	re = VarGetPattern(vp, &cur, delim, NULL, NULL, NULL);
+	if (re == NULL) {
+		Fatal("Unclosed substitution for %s (%c missing)",
+		      v->name, delim);
+	}
+
+	patt.replace = VarGetPattern(vp, &cur, delim, NULL, NULL, NULL);
+	if (patt.replace == NULL) {
+		Fatal("Unclosed substitution for %s (%c missing)",
+		      v->name, delim);
+	}
+
+	for (;; cur++) {
+		switch (*cur) {
+		case 'g':
+			patt.flags |= VAR_SUB_GLOBAL;
+			continue;
+		case '1':
+			patt.flags |= VAR_SUB_ONE;
+			continue;
+		default:
+			break;
+		}
+		break;
+	}
+
+	error = regcomp(&patt.re, re, REG_EXTENDED);
+	if (error) {
+		*consumed = cur - mod;
+		VarREError(error, &patt.re, "RE substitution error");
+		free(patt.replace);
+		free(re);
+		return (var_Error);
+	}
+
+	patt.nsub = patt.re.re_nsub + 1;
+	if (patt.nsub < 1)
+		patt.nsub = 1;
+	if (patt.nsub > 10)
+		patt.nsub = 10;
+	patt.matches = emalloc(patt.nsub * sizeof(regmatch_t));
+
+	newValue = VarModify(value, VarRESubstitute, &patt);
+
+	regfree(&patt.re);
+	free(patt.matches);
+	free(patt.replace);
+	free(re);
+
+	*consumed += (cur - mod);
+
+	if (cur[0] == ':') {
+		*consumed += 1;	/* include colin as part of modifier */
+	}
+	return (newValue);
+}
+
 /*
  * Now we need to apply any modifiers the user wants applied.
  * These are:
@@ -1194,94 +1267,20 @@ ParseModifier(const char input[], const char tstr[],
 	    switch (*tstr) {
 		case 'N':
 		case 'M':
-			readonly = TRUE; /* tstr isn't modified here */
-
+			readonly = TRUE;
 			newStr = modifier_M(tstr, value, endc, &consumed);
 			tstr += consumed;
 			break;
 		case 'S':
-
-			readonly = TRUE; /* tstr isn't modified here */
-
+			readonly = TRUE;
 			newStr = modifier_S(tstr, value, v, vp, &consumed);
 			tstr += consumed;
 			break;
 		case 'C':
-{
-	VarREPattern patt;
-	int	delim;
-	char	*re;
-	int	error;
-
-	patt.flags = 0;
-	delim = tstr[1];
-	tstr += 2;
-
-	cp = tstr;
-
-	if ((re = VarGetPattern(vp, &cp, delim, NULL,
-				NULL, NULL)) == NULL) {
-		*lengthPtr = cp - input + 1;
-		if (*freePtr)
-			free(value);
-		if (delim != '\0')
-			Fatal("Unclosed substitution for %s (%c missing)",
-			      v->name, delim);
-		return (var_Error);
-	}
-	if ((patt.replace = VarGetPattern(vp, &cp,
-					delim, NULL, NULL, NULL)) == NULL) {
-		free(re);
-
-		/* was: goto cleanup */
-		*lengthPtr = cp - input + 1;
-		if (*freePtr)
-			free(value);
-		if (delim != '\0')
-			Fatal("Unclosed substitution for %s (%c missing)",
-			      v->name, delim);
-		return (var_Error);
-	}
-	for (;; cp++) {
-		switch (*cp) {
-		case 'g':
-			patt.flags |= VAR_SUB_GLOBAL;
-			continue;
-		case '1':
-			patt.flags |= VAR_SUB_ONE;
-			continue;
-		default:
+			readonly = TRUE;
+			newStr = modifier_C(tstr, value, v, vp, &consumed);
+			tstr += consumed;
 			break;
-		}
-		break;
-	}
-
-	termc = *cp;
-
-	error = regcomp(&patt.re, re, REG_EXTENDED);
-	if (error) {
-		*lengthPtr = cp - input + 1;
-		VarREError(error, &patt.re, "RE substitution error");
-		free(patt.replace);
-		free(re);
-		return (var_Error);
-	}
-
-	patt.nsub = patt.re.re_nsub + 1;
-	if (patt.nsub < 1)
-		patt.nsub = 1;
-	if (patt.nsub > 10)
-		patt.nsub = 10;
-	patt.matches = emalloc(patt.nsub * sizeof(regmatch_t));
-
-	newStr = VarModify(value, VarRESubstitute, &patt);
-
-	regfree(&patt.re);
-	free(patt.matches);
-	free(patt.replace);
-	free(re);
-}
-	break;
 		case 'L':
 		    if (tstr[1] == endc || tstr[1] == ':') {
 			Buffer *buf;
