@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.20 2005/02/20 00:20:43 joerg Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.21 2005/03/12 01:58:26 joerg Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -233,26 +233,11 @@ struct mbuf {
 #define	MT_FREE		0	/* should be on free list */
 #define	MT_DATA		1	/* dynamic (data) allocation */
 #define	MT_HEADER	2	/* packet header */
-#if 0
-#define	MT_SOCKET	3	/* socket structure */
-#define	MT_PCB		4	/* protocol control block */
-#define	MT_RTABLE	5	/* routing tables */
-#define	MT_HTABLE	6	/* IMP host tables */
-#define	MT_ATABLE	7	/* address resolution tables */
-#endif
-#define	MT_SONAME	8	/* socket name */
-#if 0
-#define	MT_SOOPTS	10	/* socket options */
-#endif
-#define	MT_FTABLE	11	/* fragment reassembly header */
-#if 0
-#define	MT_RIGHTS	12	/* access rights */
-#define	MT_IFADDR	13	/* interface address */
-#endif
-#define	MT_TAG		13	/* volatile metadata associated to pkts */
-#define	MT_CONTROL	14	/* extra-data protocol message */
-#define	MT_OOBDATA	15	/* expedited data  */
-#define	MT_NTYPES	16	/* number of mbuf types for mbtypes[] */
+#define	MT_SONAME	3	/* socket name */
+#define	MT_TAG		4	/* volatile metadata associated to pkts */
+#define	MT_CONTROL	5	/* extra-data protocol message */
+#define	MT_OOBDATA	6	/* expedited data  */
+#define	MT_NTYPES	7	/* number of mbuf types for mbtypes[] */
 
 /*
  * General mbuf allocator statistics structure.
