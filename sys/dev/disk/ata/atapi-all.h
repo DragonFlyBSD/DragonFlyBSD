@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.h,v 1.22.2.10 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.h,v 1.3 2004/02/18 00:37:08 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.h,v 1.4 2004/02/18 04:08:49 dillon Exp $
  */
 
 /* ATAPI misc defines */
@@ -167,7 +167,6 @@ struct atapi_request {
 
     caddr_t			data;		/* pointer to data buf */
     atapi_callback_t		*callback;	/* ptr to callback func */
-    struct ata_dmaentry		*dmatab;	/* DMA transfer table */
     void			*driver;	/* driver specific */
     TAILQ_ENTRY(atapi_request)	chain;		/* list management */
 };

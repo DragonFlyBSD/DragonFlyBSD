@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.9 2004/01/28 12:48:49 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.10 2004/02/18 04:08:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -151,6 +151,9 @@ ata_pci_match(device_t dev)
     case 0x24cb8086:
 	return "Intel ICH4 ATA100 controller";
 
+    case 0x24d18086:
+	return "Intel ICH5 SATA150 controller";
+
     case 0x24db8086:
 	return "Intel ICH5 ATA100 controller";
 
@@ -188,7 +191,12 @@ ata_pci_match(device_t dev)
 	    return "VIA 8233 ATA133 controller";
 	if (ata_find_dev(dev, 0x31771106, 0))
 	    return "VIA 8235 ATA133 controller";
+	if (ata_find_dev(dev, 0x31491106, 0))
+	    return "VIA 8237 ATA133 controller";
 	return "VIA Apollo ATA controller";
+
+    case 0x31491106:
+	 return "VIA 8237 SATA 150 controller";
 
     case 0x55131039:
 	if (ata_find_dev(dev, 0x07461039, 0))
@@ -249,10 +257,13 @@ ata_pci_match(device_t dev)
     	return "AMD 8111 UltraATA/133 controller";
 
     case 0x01bc10de:
-	return "NVIDIA nForce ATA100 controller";
+	return "nVIDIA nForce ATA100 controller";
 
     case 0x006510de:
-	return "NVIDIA nForce ATA133 controller";
+	return "nVIDIA nForce ATA133 controller";
+
+    case 0x00d510de:
+	return "nVIDIA nForce2 ATA133 controller";
 
     case 0x02111166:
 	return "ServerWorks ROSB4 ATA33 controller";
@@ -262,6 +273,12 @@ ata_pci_match(device_t dev)
 	    return "ServerWorks CSB5 ATA100 controller";
 	else
 	    return "ServerWorks CSB5 ATA66 controller";
+
+    case 0x02131166:
+	return "ServerWorks CSB6 ATA100 controller (channel 0+1)";
+
+    case 0x02171166:
+	return "ServerWorks CSB6 ATA66 controller (channel 2)";
 
     case 0x4d33105a:
 	return "Promise ATA33 controller";
@@ -591,6 +608,17 @@ ata_pci_intr(struct ata_channel *ch)
 	if (!(pci_read_config(device_get_parent(ch->dev), 0x71, 1) &
 	      (ch->unit ? 0x08 : 0x04)))
 	    return 1;
+#if !defined(NO_ATANG)
+	pci_write_config(device_get_parent(ch->dev), 0x71,
+		pci_read_config(device_get_parent(ch->dev), 0x71, 1) &
+		~(ch->unit ? 0x04 : 0x08), 1);
+	break;
+#endif
+
+    case 0x06801095:   /* SiI 680 */
+	if (!(pci_read_config(device_get_parent(ch->dev),
+				(ch->unit ? 0xb1 : 0xa1), 1) & 0x08))
+	    return 1;
 	break;
 
     case 0x4d33105a:	/* Promise Ultra/Fasttrak 33 */
@@ -613,6 +641,17 @@ ata_pci_intr(struct ata_channel *ch)
 	if (!(ATA_INB(ch->r_bmio, ATA_BMDEVSPEC_1) & 0x20))
 	    return 1;
 	break;
+
+    case 0x24d18086:   /* Intel ICH5 SATA150 */
+	dmastat = ATA_INB(ch->r_bmio, ATA_BMSTAT_PORT);
+	if ((dmastat & (ATA_BMSTAT_ACTIVE | ATA_BMSTAT_INTERRUPT)) !=
+		ATA_BMSTAT_INTERRUPT)
+	    return 1;
+	ATA_OUTB(ch->r_bmio, ATA_BMSTAT_PORT, dmastat &
+	    ~(ATA_BMSTAT_DMA_SIMPLEX | ATA_BMSTAT_ERROR));
+	DELAY(1);
+	return 0;
+
     }
 
     if (ch->flags & ATA_DMA_ACTIVE) {

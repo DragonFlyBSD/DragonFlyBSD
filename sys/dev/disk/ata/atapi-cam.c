@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.10.2.3 2003/05/21 09:24:55 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.4 2003/11/30 20:14:18 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.5 2004/02/18 04:08:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -240,7 +240,11 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	cpi->version_num = 1;
 	cpi->hba_inquiry = 0;
 	cpi->target_sprt = 0;
+#if !defined(NO_ATANG)
+	cpi->hba_misc = PIM_NO_6_BYTE;
+#else
 	cpi->hba_misc = 0;
+#endif
 	cpi->hba_eng_cnt = 0;
 	bzero(cpi->vuhba_flags, sizeof(cpi->vuhba_flags));
 	cpi->max_target = 1;
@@ -253,7 +257,8 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	strncpy(cpi->dev_name, cam_sim_name(sim), sizeof cpi->dev_name);
 	cpi->unit_number = cam_sim_unit(sim);
 	cpi->bus_id = cam_sim_bus(sim);
-	if (softc->ata_ch && ccb_h->target_id >= 0) {
+	cpi->base_transfer_speed = 3300;
+	if (softc->ata_ch && ccb_h->target_id != CAM_TARGET_WILDCARD) {
 	    switch (softc->ata_ch->device[ccb_h->target_id].mode) {
 	    case ATA_PIO1:
 		cpi->base_transfer_speed = 5200;
@@ -281,7 +286,8 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	    case ATA_UDMA6:
 		cpi->base_transfer_speed = 133000;
 		break;
-	    default: cpi->base_transfer_speed = 3300;
+	    default:
+		break;
 	    }
 	}
 	ccb->ccb_h.status = CAM_REQ_CMP;
@@ -428,6 +434,7 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	    }
 	    break;
 	}
+#if defined(NO_ATANG) 		/* EXITED IN ORIGINAL, DELETED IN ATANG */
 	case MODE_SELECT_6:
 	    /* FALLTHROUGH */
 
@@ -457,6 +464,7 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	    hcb->cmd[4] = 0;
 	    hcb->cmd[5] = 0;
 	    break;
+#endif
 
 	case READ_6:
 	    /* FALLTHROUGH */

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.8 2004/02/18 02:47:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.9 2004/02/18 04:08:49 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -230,7 +230,6 @@ atapi_queue_cmd(struct ata_device *atadev, int8_t *ccb, caddr_t data,
     error = request->error;
     if (error)
 	 bcopy(&request->sense, atadev->result, sizeof(struct atapi_reqsense));
-    ata_dmafree(atadev);
     free(request, M_ATAPI);
     return error;
 }
@@ -608,7 +607,6 @@ atapi_finish(struct atapi_request *request)
 #endif
     if (request->callback) {
 	if (!((request->callback)(request))) {
-	    ata_dmafree(request->device);
 	    free(request, M_ATAPI);
 	}
     }
