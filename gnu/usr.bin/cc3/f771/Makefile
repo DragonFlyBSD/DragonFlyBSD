@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/f771/Makefile,v 1.10 2004/01/11 20:45:46 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/f771/Attic/Makefile,v 1.7 2004/02/03 19:06:06 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/f771/Attic/Makefile,v 1.8 2004/02/04 15:39:54 rob Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 
@@ -14,7 +14,7 @@ SRCS=	bad.c bit.c bld.c com.c data.c equiv.c expr.c global.c implic.c info.c \
 	stw.c symbol.c target.c top.c type.c where.c main.c \
 	xmalloc.c xexit.c
 NOMAN=
-
+CFLAGS+= -D__FREEBSD__
 CFLAGS+= -I${GCCDIR}/gcc/f -I.
 CFLAGS+= -DMALLOC_RENAME
 

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/gifconfig/gifconfig.c,v 1.2.2.4 2002/08/30 14:23:39 sobomax Exp $	*/
-/*	$DragonFly: src/usr.sbin/gifconfig/gifconfig.c,v 1.4 2003/11/16 14:10:46 eirikn Exp $	*/
+/*	$DragonFly: src/usr.sbin/gifconfig/gifconfig.c,v 1.5 2004/02/04 15:39:54 rob Exp $	*/
 /*	$KAME: gifconfig.c,v 1.14 2001/01/01 04:04:56 jinmei Exp $	*/
 
 /*
@@ -59,9 +59,9 @@
 #include <sys/sysctl.h>
 
 #include <net/if.h>
-#if defined(__FreeBSD__) && __FreeBSD__ >= 3
+#if defined(__DragonFly__)
 #include <net/if_var.h>
-#endif /* __FreeBSD__ >= 3 */
+#endif /* __DragonFly >= 3 */
 #include <net/if_dl.h>
 #include <net/if_types.h>
 #include <net/route.h>
