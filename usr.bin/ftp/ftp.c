@@ -1,5 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/ftp.c,v 1.28.2.5 2002/07/25 15:29:18 ume Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/ftp.c,v 1.4 2003/11/03 19:31:29 eirikn Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/ftp.c,v 1.5 2004/01/22 19:39:13 dillon Exp $	*/
 /*	$NetBSD: ftp.c,v 1.29.2.1 1997/11/18 01:01:04 mellon Exp $	*/
 
 /*
@@ -462,8 +462,10 @@ sendrequest(const char *cmd, const char *local, const char *remote,
 	int (*closefunc)(FILE *);
 	sig_t oldinti, oldintr, oldintp;
 	volatile off_t hashbytes;
-	char *lmode, buf[BUFSIZ], *bufp;
+	char *lmode, *bufp;
 	int oprogress;
+	static size_t bufsize;
+	static char *buf;
 
 #ifdef __GNUC__			/* XXX: to shut up gcc warnings */
 	(void)&fin;
@@ -563,6 +565,19 @@ sendrequest(const char *cmd, const char *local, const char *remote,
 			(*closefunc)(fin);
 		goto cleanupsend;
 	}
+	if (fstat(fileno(fin), &st) < 0 || st.st_blksize < BUFSIZ)
+		st.st_blksize = BUFSIZ;
+	if (st.st_blksize > bufsize) {
+		if (buf)
+			(void)free(buf);
+		buf = malloc((unsigned)st.st_blksize);
+		if (buf == NULL) {
+			warn("malloc");
+			bufsize = 0;
+			goto abort;
+		}
+		bufsize = st.st_blksize;
+	}
 	if (setjmp(sendabort))
 		goto abort;
 
@@ -624,7 +639,7 @@ sendrequest(const char *cmd, const char *local, const char *remote,
 	case TYPE_I:
 	case TYPE_L:
 		errno = d = 0;
-		while ((c = read(fileno(fin), buf, sizeof(buf))) > 0) {
+		while ((c = read(fileno(fin), buf, bufsize)) > 0) {
 			bytes += c;
 			for (bufp = buf; c > 0; c -= d, bufp += d)
 				if ((d = write(fileno(dout), bufp, c)) <= 0)
@@ -917,7 +932,7 @@ recvrequest(const char *cmd, const char *local, const char *remote,
 		}
 		closefunc = fclose;
 	}
-	if (fstat(fileno(fout), &st) < 0 || st.st_blksize == 0)
+	if (fstat(fileno(fout), &st) < 0 || st.st_blksize < BUFSIZ)
 		st.st_blksize = BUFSIZ;
 	if (st.st_blksize > bufsize) {
 		if (buf)
