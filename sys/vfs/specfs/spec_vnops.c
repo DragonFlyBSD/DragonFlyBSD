@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.15 2004/05/19 22:53:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.16 2004/05/26 00:11:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -175,7 +175,12 @@ spec_open(struct vop_open_args *ap)
 	if (error)
 		return(error);
 
+	/*
+	 * Prevent degenerate open/close sequences from nulling out rdev.
+	 */
+	++vp->v_opencount;
 	dev = vp->v_rdev;
+	KKASSERT(dev != NULL);
 
 	/*
 	 * Make this field valid before any I/O in ->d_open.  XXX the
@@ -258,12 +263,12 @@ spec_open(struct vop_open_args *ap)
 			    dev_dname(dev), cp);
 		}
 	}
-	++vp->v_opencount;
 	if (dev_ref_debug)
 		printf("spec_open: %s %d\n", dev->si_name, vp->v_opencount);
 done:
 	if (error) {
-		if (vp->v_opencount == 0)
+		KKASSERT(vp->v_opencount > 0);
+		if (--vp->v_opencount == 0)
 			v_release_rdev(vp);
 	}
 	return (error);
