@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/rndtest/rndtest.c,v 1.1.4.1 2003/06/04 17:10:30 sam Exp $	*/
-/*	$DragonFly: src/sys/dev/crypto/rndtest/rndtest.c,v 1.4 2003/11/09 02:22:34 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/crypto/rndtest/rndtest.c,v 1.5 2004/02/13 00:40:38 joerg Exp $	*/
 /*	$OpenBSD$	*/
 
 /*
@@ -94,7 +94,7 @@ rndtest_attach(device_t dev)
 		rsp->rs_discard = 1;
 		rsp->rs_collect = 1;
 		rsp->rs_parent = dev;
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 		callout_init(&rsp->rs_to);
 #else
 		/* NB: 1 means the callout runs w/o Giant locked */
@@ -146,7 +146,7 @@ rndtest_harvest(struct rndtest_state *rsp, void *buf, u_int len)
 	if (rsp->rs_discard)
 		rndstats.rst_discard += len;
 	else {
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 		/* XXX verify buffer is word aligned */
 		u_int32_t *p = buf;
 		for (len /= sizeof (u_int32_t); len; len--)
