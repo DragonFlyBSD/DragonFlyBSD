@@ -31,7 +31,7 @@
  *
  * $NetBSD: lastlogin.c,v 1.4 1998/02/03 04:45:35 perry Exp $
  * $FreeBSD: src/usr.sbin/lastlogin/lastlogin.c,v 1.2.2.2 2001/07/19 05:02:46 kris Exp $
- * $DragonFly: src/usr.sbin/lastlogin/lastlogin.c,v 1.4 2003/11/16 15:17:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/lastlogin/lastlogin.c,v 1.5 2004/11/13 16:14:33 liamfoy Exp $
  */
 
 #include <sys/cdefs.h>
@@ -44,9 +44,6 @@
 #include <utmp.h>
 #include <unistd.h>
 
-static	const char *logfile = _PATH_LASTLOG;
-
-	int	main(int, char **);
 static	void	output(struct passwd *, struct lastlog *);
 static	void	usage(void);
 
@@ -62,9 +59,8 @@ main(int argc, char **argv)
 		usage();
 	}
 
-	fp = fopen(logfile, "r");
-	if (fp == NULL)
-		err(1, "%s", logfile);
+	if ((fp = fopen(_PATH_LASTLOG, "r")) == NULL)
+		err(1, "%s", _PATH_LASTLOG);
 
 	setpassent(1);	/* Keep passwd file pointers open */
 
