@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.46 2003/11/21 08:32:49 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.47 2003/12/04 20:35:07 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -721,9 +721,9 @@ sendupcall(struct vmupcall *vu, int morepending)
 	 * section count, mark the data structure as pending and return 
 	 * without doing an upcall.  vu_pending is left set.
 	 */
-	if (upcall.pending || upcall.crit_count) {
-		if (upcall.pending == 0) {
-			upcall.pending = 1;
+	if (upcall.pending || upcall.crit_count >= vu->vu_pending) {
+		if (upcall.pending < vu->vu_pending) {
+			upcall.pending = vu->vu_pending;
 			copyout(&upcall.pending, &p->p_upcall->pending,
 				sizeof(upcall.pending));
 		}

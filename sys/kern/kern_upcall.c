@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_upcall.c,v 1.2 2003/11/21 08:32:47 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_upcall.c,v 1.3 2003/12/04 20:35:09 dillon Exp $
  */
 
 /*
@@ -130,9 +130,10 @@ upc_control(struct upc_control_args *uap)
 	error = (uap->upcid == -1) ? 0 : ENOENT;
 	for (vu = vms->vm_upcalls; vu; vu = vu->vu_next) {
 	    if (vu->vu_id == uap->upcid || 
-		(uap->upcid == -1 && vu->vu_pending && vu->vu_proc == p)
+		(uap->upcid == -1 && vu->vu_pending >= (int)uap->data && vu->vu_proc == p)
 	    ) {
-		vu->vu_pending = 1;
+		if (vu->vu_pending < (int)uap->data)
+		    vu->vu_pending = (int)uap->data;
 		error = 0;
 		targp = vu->vu_proc;
 		targp->p_flag |= P_UPCALLPEND;
@@ -216,7 +217,7 @@ upc_control(struct upc_control_args *uap)
 	error = (uap->upcid == -1) ? 0 : ENOENT;
 	for (vu = vms->vm_upcalls; vu; vu = vu->vu_next) {
 	    if (vu->vu_id == uap->upcid || 
-		(uap->upcid == -1 && vu->vu_pending && vu->vu_proc == p)
+		(uap->upcid == -1 && vu->vu_pending >= (int)uap->data && vu->vu_proc == p)
 	    ) {
 		error = 0;
 		if (uap->upcid == -1)
@@ -254,6 +255,10 @@ upc_release(struct vmspace *vm, struct proc *p)
     }
 }
 
+/*
+ * XXX eventually we should sort by vu_pending priority and dispatch
+ * the highest priority upcall first.
+ */
 void
 postupcall(struct proc *p)
 {

@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/upc_register.2,v 1.2 2003/11/21 08:32:49 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/upc_register.2,v 1.3 2003/12/04 20:35:06 dillon Exp $
 .\"
 .Dd November 20, 2003
 .Dt UPC_REGISTER 2
@@ -104,7 +104,7 @@ the context assembly function's interlocks, deleting upcalls, and polling
 for upcalls.
 .Pp
 .Ft int
-.Fn upc_control "UPC_CONTROL_DISPATCH" "upcid" "NULL"
+.Fn upc_control "UPC_CONTROL_DISPATCH" "upcid" "(int)priority"
 .Pp
 .Bd -offset indent
 Dispatch a particular upcall.  0 is returned on success, ENOENT if
@@ -115,6 +115,9 @@ to another process.  You may specify a
 of -1 to re-dispatch the first upcall owned by your own process that is
 pending from a previous operation.  Note that that critical section and
 pending rules apply, and an actual dispatch will pushdown the stack.
+.Pp
+The priority will be compared against the current crit_count to determine
+whether the upcall dispatches or is made pending.
 .Pp
 This command is most often used to alert a target process to a change in
 a shared structure, queue, etc.
@@ -154,7 +157,7 @@ not effected.
 .Fn upc_control "UPC_CONTROL_POLL" "upcid" "NULL"
 .Pp
 .Ft int
-.Fn upc_control "UPC_CONTROL_POLLANDCLEAR" "upcid" "NULL"
+.Fn upc_control "UPC_CONTROL_POLLANDCLEAR" "upcid" "(int)priority"
 .Pp
 .Bd -offset indent
 Poll or poll-and-clear the pending status for a particular upcall.  0 or 1
@@ -165,6 +168,11 @@ of -1 is specified, locate a pending upcall for the current process and return
 it's
 .Fa upcid ,
 or 0 if no upcalls for the current process are pending.
+.Pp
+The priority will be compared against the upcall's pending priority.  Only
+upcalls with greater or equal pending priorities are returned.  You must
+specify a minimum priority of 1 or this call will simply return a random
+registered upcall that may or may not be pending.
 .Ed
 .Pp
 .Bd -literal -offset indent -compact
