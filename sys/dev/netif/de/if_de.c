@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.26 2005/02/21 05:16:16 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.27 2005/02/21 05:18:29 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -146,30 +146,6 @@ tulip_timeout(
     	    tulip_timeout_callback, sc);
 }
 
-#if defined(TULIP_NEED_FASTTIMEOUT)
-static void
-tulip_fasttimeout_callback(
-    void *arg)
-{
-    tulip_softc_t * const sc = arg;
-    int s = splimp();
-
-    sc->tulip_flags &= ~TULIP_FASTTIMEOUTPENDING;
-    (sc->tulip_boardsw->bd_media_poll)(sc, TULIP_MEDIAPOLL_FASTTIMER);
-    splx(s);
-}
-
-static void
-tulip_fasttimeout(
-    tulip_softc_t * const sc)
-{
-    if (sc->tulip_flags & TULIP_FASTTIMEOUTPENDING)
-	return;
-    sc->tulip_flags |= TULIP_FASTTIMEOUTPENDING;
-    callout_reset(&sc->tulip_fast_timer, 1, tulip_fasttimeout_callback, sc);
-}
-#endif
-
 static int
 tulip_txprobe(
     tulip_softc_t * const sc)
