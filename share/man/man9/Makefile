@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.3 2003/10/15 15:37:58 hmp Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.4 2004/03/18 00:07:53 hmp Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SPLASSERT.9 SYSCALL_MODULE.9 \
@@ -14,7 +14,8 @@ MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	VOP_READLINK.9 VOP_REALLOCBLKS.9 VOP_REMOVE.9 VOP_RENAME.9 \
 	VOP_STRATEGY.9 \
 	accf_data.9 accf_http.9 \
-	accept_filter.9 at_exit.9 at_fork.9 bios.9 boot.9 buf.9 cd.9 copy.9 \
+	accept_filter.9 at_exit.9 at_fork.9 bios.9 boot.9 buf.9 bus_dma.9 \
+	cd.9 copy.9 \
 	crypto.9 devstat.9 \
 	devtoname.9 fetch.9 ifnet.9 inittodr.9 intro.9 kernacc.9 malloc.9 \
 	make_dev.9 mbuf.9 microseq.9 mi_switch.9 module.9 namei.9 \
@@ -65,6 +66,17 @@ MLINKS+=VOP_RDWR.9 VOP_WRITE.9
 MLINKS+=VOP_REMOVE.9 VOP_RMDIR.9
 MLINKS+=at_exit.9 rm_at_exit.9
 MLINKS+=at_fork.9 rm_at_fork.9
+MLINKS+=bus_dma.9 bus_dma_tag_create.9
+MLINKS+=bus_dma.9 bus_dma_tag_destroy.9
+MLINKS+=bus_dma.9 bus_dmamap_create.9
+MLINKS+=bus_dma.9 bus_dmamap_destroy.9
+MLINKS+=bus_dma.9 bus_dmamap_load.9
+MLINKS+=bus_dma.9 bus_dmamap_load_mbuf.9
+MLINKS+=bus_dma.9 bus_dmamap_load_uio.9
+MLINKS+=bus_dma.9 bus_dmamap_sync.9
+MLINKS+=bus_dma.9 bus_dmamap_unload.9
+MLINKS+=bus_dma.9 bus_dmamem_alloc.9
+MLINKS+=bus_dma.9 bus_dmamem_free.9
 MLINKS+=copy.9 copyin.9 copy.9 copyinstr.9 copy.9 copyout.9 copy.9 copystr.9
 MLINKS+=devstat.9 devicestat.9 devstat.9 devstat_add_entry.9
 MLINKS+=devstat.9 devstat_remove_entry.9 devstat.9 devstat_start_transaction.9
