@@ -35,7 +35,7 @@
  *
  * @(#)jobs.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/jobs.c,v 1.27.2.10 2003/04/04 08:16:26 tjr Exp $
- * $DragonFly: src/bin/sh/jobs.c,v 1.6 2005/01/13 23:17:17 dillon Exp $
+ * $DragonFly: src/bin/sh/jobs.c,v 1.7 2005/01/13 23:20:07 dillon Exp $
  */
 
 #include <fcntl.h>
